@@ -26,6 +26,13 @@ fooc = c foo
 qfoo :: Exp
 qfoo = [s|(\x -> x*x+3*x+2) 5|]
 
+qbar :: Exp
+qbar = [s|(\x -> x*x+@(hlength [1, 2, 3, 4])*x+2) 5|]
+
+hlength :: [a] -> Exp
+hlength xs = IntegerE (fromIntegral (length xs))
+
+
 main :: IO ()
 main = do
     tfoo <- typecheck foo
@@ -44,4 +51,7 @@ main = do
 
     putStrLn $ "Q Foo: " ++ show qfoo
     putStrLn $ "Q Foo Elaborated: " ++ show (elaborate qfoo)
+
+    putStrLn $ "Q Bar: " ++ show qbar
+    putStrLn $ "Q Bar Elaborated: " ++ show (elaborate qbar)
 

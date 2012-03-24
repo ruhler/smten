@@ -20,4 +20,5 @@ instance Lift Exp where
     lift (AppE t a b) = [e| AppE t a b |]
     lift (LamE t n e) = [e| LamE t n e |]
     lift (VarE t n) = [e| VarE t n |]
+    lift (ThE x) = return x
 

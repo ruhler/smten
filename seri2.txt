@@ -550,3 +550,47 @@ that thing directly, not a Q Exp. But that's fine with me.
 
 Cool! Next step... slices.
 
+Now then... how do I want to go about doing this?
+
+I can parse everything between @(...) into a single string, with matched
+parenthesis. Now I have a string.
+
+How about I add an expression type to Seri (I wince a little at this thought,
+but I'll clean things up later as needed), which is that Seri can have an
+expression which is a THQExp.
+
+Now all I need are two things.
+
+1. Add that to the lift instance. Which is trivial, right?
+2. Find a haskell parser to convert String into Q Exp.
+
+The second point is just a little harder. Let's see what there is out there.
+
+Looks like: Language.Haskell.Meta.QQ.Hs has hs quasiquoter for haskell, which
+is just what I want.
+
+So then, this should be simple.
+
+
+1. Add Q Exp as a kind of seri expression.
+2. Figure out how to parse the string @(...), with nested parens.
+And also, probably want to escape |] at some point. But don't worry about that
+now.
+3. Use hs quasiquoter to convert String to Q Exp.
+4. Implement lifting.
+
+Or whatever. There's nothing big here. It should all work swell.
+
+But! I should go eat dinner first.
+
+Sat Mar 24 18:02:24 EDT 2012
+
+It works! Haskell slices work just swell. That's awesome.
+
+Currently the slice has to return a Seri.Exp. It might be nice if it can
+return any arbitrary haskell value that can be converted to a Seri.Exp.
+
+That should be simple to do. I just need to introduce a typeclass.
+
+Cool.
+

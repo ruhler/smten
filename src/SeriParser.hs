@@ -5,6 +5,7 @@ module SeriParser (
 
 import Data.Char(ord)
 import Text.Parsec
+import Language.Haskell.Meta.Parse(parseExp)
 
 import Seri
 
@@ -19,7 +20,7 @@ seriparse str
 type Parser = Parsec String ()
 
 atom :: Parser Exp
-atom = eparen <|> einteger <|> evar
+atom = eth <|> elam <|> eparen <|> einteger <|> evar
 
 appls :: Parser Exp
 appls = atom `chainl1` eapp
@@ -31,7 +32,7 @@ adds :: Parser Exp
 adds = mults `chainl1` eadd
 
 expression :: Parser Exp
-expression = elam <|> adds
+expression = adds
 
 eparen :: Parser Exp
 eparen = do
@@ -87,3 +88,29 @@ evar = do
 name :: Parser Name
 name = many1 alphaNum
 
+-- Parse a template haskell slice
+-- @(...)
+-- Where ... is haskell code with properly nested parentheses.
+eth :: Parser Exp
+eth = do
+    string "@("
+    str <- strtoclose 1
+    case parseExp str of
+        Right x -> return $ ThE x
+        Left err -> fail err
+
+strtoclose :: Integer -> Parser String
+strtoclose n = do
+    c <- anyChar
+    case (c, n) of
+        (')', 1) -> return ""
+        (')', _) -> do
+            s <- strtoclose (n-1)
+            return (c:s)
+        ('(', _) -> do
+            s <- strtoclose (n+1)
+            return (c:s)
+        (_, _) -> do
+            s <- strtoclose n
+            return (c:s)
+    
