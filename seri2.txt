@@ -512,3 +512,41 @@ Sat Mar 24 15:02:04 EDT 2012
 Okay! I have a parser. It's picky about whitespace, but it's enough of what I
 want right now.
 
+Sat Mar 24 16:16:35 EDT 2012
+
+Next step: quasiquoting.
+
+I can tell you at least one benefit of this. Maybe two.
+1. Don't have to escape backsash.
+2. vim will syntax highlight the contents of the string.
+Now, admittedly it will use haskell syntax, but I could always add to vim an
+escape to do specialized syntax highlighting for the quasiquote.
+
+Little things, but let's see how it goes.
+
+First step: lifting a Seri.Exp into TH.Exp. I wonder if there is a typeclass
+for this already I could use?
+
+Yes! There is. In Language.Haskell.TH.Syntax, called Lift.
+
+Except... err... it would be Seri.Exp -> QExp. Is that okay?
+
+Look, I can provide the pure version too. The lift instance will just be to
+return that. Fine.
+
+Sat Mar 24 16:30:15 EDT 2012
+
+If what I'm doing will work, it will be much easier to lift into Q Exp than
+Exp. Just wrap everything in th brackets. Let's see if it works.
+
+How to test...
+
+I suppose the way to test is to make a quoter, and see if it works.
+
+Sat Mar 24 16:46:48 EDT 2012
+
+It works! A slight difference than what I expected: the quoted thing returns
+that thing directly, not a Q Exp. But that's fine with me.
+
+Cool! Next step... slices.
+
