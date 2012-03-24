@@ -1,5 +1,6 @@
 
 import Seri
+import SeriPrint
 import Elaborate
 
 -- foo: (\x = x*x + 3*x + 2) 5
@@ -14,4 +15,5 @@ main :: IO ()
 main = do
     putStrLn $ show foo
     putStrLn $ show (elaborate foo)
+    putStrLn $ show (ppr foo)
 

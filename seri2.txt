@@ -85,9 +85,50 @@ program.
 
 First expression...
 
-(\x = x*x + 3*x + 2) 5
+(\x -> x*x + 3*x + 2) 5
 
 Sat Mar 24 09:26:00 EDT 2012
 
 Nifty! It works.
+
+What's the next step, do you think?
+
+I think it would be nice to pretty print the expression. This is different
+from Show.
+
+Let me do that, then brainstorm what the next steps should be. I think it
+probably makes sense to try and get all the parts of my goal in a nice way for
+the simplest version of the IR, so I'm not rewriting so much code as I try
+different things.
+
+So, perhaps the first thing to get done are the basics:
+
+- pretty print seri
+- generate C from seri
+- generate BSV from seri
+- generate Haskell from seri
+- have a nice front end
+- make seri extensible
+
+The last two points will be hard, but very important. They are really the meat
+of what I want to do. So work on them, see what I can come up with. Add more
+to seri if I need to demonstrate the issues I'm worried about. And so on.
+
+Okay, cool. I have something to work on now.
+
+Sat Mar 24 10:14:10 EDT 2012
+
+I did the printing. It works fine, it's just riddled with parentheses I'd like
+to get rid of if I could.
+
+The question is, what precedence do I want?
+
+(\x -> x*x + 3*x + 2) 5
+
+lam, +, *, app
+
+
+Sat Mar 24 10:22:57 EDT 2012
+
+Okay, That works well enough.
 
