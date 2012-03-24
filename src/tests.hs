@@ -5,22 +5,18 @@ import Elaborate
 import SeriHaskell
 import CPrint
 import qualified C
+import SeriC
 
 -- foo: (\x = x*x + 3*x + 2) 5
 foo :: Exp
 foo =
  let x = VarE IntegerT "x"
      body = AddE (AddE (MulE x x) (MulE (IntegerE 3) x)) (IntegerE 2)
-     lam = LamE IntegerT "x" body
+     lam = LamE IntegerT IntegerT "x" body
  in AppE (ArrowT IntegerT IntegerT) lam (IntegerE 5)
 
-fooc :: (C.Dec, C.Exp)
-fooc = 
-  let x = C.VarE "x"
-      body = C.AddE (C.AddE (C.MulE x x) (C.MulE (C.IntE 3) x)) (C.IntE 2)
-      dec = C.FunD "l1" [(C.IntT, "x")] C.IntT [C.ReturnS body]
-      exp = C.AppE (C.VarE "l1") [C.IntE 5]
-  in (dec, exp)
+fooc :: ([C.Dec], C.Exp)
+fooc = c foo
 
 main :: IO ()
 main = do

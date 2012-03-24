@@ -103,10 +103,10 @@ different things.
 
 So, perhaps the first thing to get done are the basics:
 
-- pretty print seri
-- generate C from seri
-- generate BSV from seri
-- generate Haskell from seri
++ pretty print seri
++ generate C from seri
+x generate BSV from seri
++ generate Haskell from seri
 - have a nice front end
 - make seri extensible
 
@@ -168,4 +168,12 @@ Exp = Int | Mul | Add
 
 Let me stick to C for now. I don't anticipate needing C++ for my explorations.
     
+Okay, last thing I need before playing with front end: the C code generation.
+
+I'll want to use a monad, because an expression could return a bunch of
+declarations as well.
+
+Okay, good. That works.
+
+Next step: a nice front end.
 
