@@ -27,10 +27,10 @@ elaborate (AppE t f x) =
     let fe = elaborate f
         xe = elaborate x
     in case (fe) of
-        (LamE _ _ name body) -> elaborate $ reduce body name xe
+        (LamE _ name body) -> elaborate $ reduce body name xe
         _ -> AppE t fe xe
 
-elaborate e@(LamE _ _ _ _) = e
+elaborate e@(LamE _ _ _) = e
 elaborate e@(VarE _ _) = e
 
 
@@ -41,8 +41,8 @@ reduce e@(IntegerE _) _ _ = e
 reduce (AddE a b) n v = AddE (reduce a n v) (reduce b n v)
 reduce (MulE a b) n v = MulE (reduce a n v) (reduce b n v)
 reduce (AppE t a b) n v = AppE t (reduce a n v) (reduce b n v)
-reduce (LamE ta tb ln body) n v | ln /= n = LamE ta tb ln (reduce body n v)
-reduce e@(LamE _ _ _ _) _ _ = e
+reduce (LamE t ln body) n v | ln /= n = LamE t ln (reduce body n v)
+reduce e@(LamE _ _ _) _ _ = e
 reduce (VarE t vn) n v | vn == n = v
 reduce e@(VarE t vn) _ _ = e
 

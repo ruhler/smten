@@ -27,7 +27,7 @@ precedence (IntegerE _) = pIntegerE
 precedence (AddE _ _) = pAddE
 precedence (MulE _ _) = pMulE
 precedence (AppE _ _ _) = pAppE
-precedence (LamE _ _ _ _) = pLamE
+precedence (LamE _ _ _) = pLamE
 precedence (VarE _ _) = pVarE
 
 prec :: Integer -> Exp -> Doc
@@ -41,6 +41,6 @@ instance Ppr Exp where
     ppr (AddE a b) = prec pAddE a <+> text "+" <+> prec pAddE b
     ppr (MulE a b) = prec pMulE a <+> text "*" <+> prec pMulE b
     ppr (AppE _ a b) = prec pAppE a <+> prec pAppE b
-    ppr (LamE _ _ n b) = text "\\" <> text n <+> text "->" <+> prec pLamE b
+    ppr (LamE _ n b) = text "\\" <> text n <+> text "->" <+> prec pLamE b
     ppr (VarE _ n) = text n
 

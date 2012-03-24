@@ -177,3 +177,89 @@ Okay, good. That works.
 
 Next step: a nice front end.
 
+Sat Mar 24 11:21:46 EDT 2012
+
+This part is going to take some thought, and experiment.
+
+What are my requirements?
+
+A. Assume user knows haskell
+B. Haskell code should be easily incorporated into front end code for static
+  elaboration.
+C. Names used in front end should be preserved in the ir
+D. It should be nice to write programs.
+For example: writing in the IR is NOT nice. We want to use syntax.
+E. Type checking must be done somewhere.
+F. ? Error messages should be interpretable
+
+Let's walk through some possible ideas, and evaluate them under the above
+requirements.
+
+Write in IR directly
+--------------------
+This is what I've been testing so far.
+B. Good. We can easily generate code from haskell.
+C. Good. Because the names are one and the same.
+D. Terrible. Horrific.
+E. We could add a step to check your types are consistent fairly easily,
+right? A simple type check (not type inference).
+F. We wouldn't have line numbers for type errors. Haskell will catch other
+errors in its type system just fine.
+
+Write a parser for the IR
+-------------------------
+B. Not good initially. Perhaps some extra work could let you inline haskell
+fairly easily. This is worth looking into.
+C. Good. Names transfer easily.
+D. Good. We get just the syntax we want.
+E. Don't know. How hard would type inference be? Perhaps we could require type
+annotations? But that would make it more annoying to write programs in.
+F. We could pass through line numbers, so this is fine.
+
+Translate from Haskell using Template Haskell
+---------------------------------------------
+B. Good.
+C. Good.
+D. Okay. It's not clear how easy it will be to add custom primitives and such.
+E. Haskell does the Type checking. We may need to infer types.
+F. We wouldn't have line numbers.
+
+Translate from Haskell using Quasi Quoting
+------------------------------------------
+This is like having our own parser, with haskell type checking.
+
+
+So, there are some questions I think it's worth exploring before deciding on
+theses.
+
+1. How hard is it to write a type checker.
+So, given a Seri Ir, just return whether or not it types correctly, and
+ideally a nice message if it doesn't as to why it doesn't.
+
+2. How hard is it to write type inference?
+So, given a Seri Ir, assuming no type annotations, how hard to figure out what
+the types should be?
+
+If the primitives are all explicitly typed, that's fine. But what I suspect we
+would want is overloading. So, given '+', how do we know what type to use for
+it? Can that be inferred?
+
+Do we support polymorphism? Or does every function have a concrete type? So
+length of list of Integer is a different function than length of list of
+Boolean, and so on?
+
+3. How could we incorporate abstractions of haskell into the front end?
+Can you have some sort of $ substitution, or something like that?
+
+
+I'm afraid some of these depend on language features. They may be easy to do
+now, but adding some language feature could suddenly make it much harder.
+
+Anyway, let me investigate these questions and see what comes out of it.
+
+Sat Mar 24 12:15:43 EDT 2012
+
+Checking the types are consistent, given the types, is not hard.
+If I had line number information, I could give pretty decent error messages
+too I think.
+

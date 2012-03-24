@@ -33,7 +33,7 @@ c' (S.AppE _ a b) = do
     f <- c' a
     x <- c' b
     return $ AppE f [x]
-c' (S.LamE tn te argname e) = do
+c' (S.LamE (S.ArrowT tn te) argname e) = do
     CState n ds <- get
     let lname = "l" ++ show n
     eb <- c' e
