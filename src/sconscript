@@ -1,0 +1,9 @@
+# vim: ft=python
+
+Import('env')
+
+env['SRCDIR'] = Dir(".")
+
+## tests test
+tests = env.GHCProgram('tests', GHCPATH=[Dir(".")])
+

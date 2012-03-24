@@ -1,0 +1,93 @@
+
+Sat Mar 24 08:21:35 EDT 2012
+
+I want to give seri another shot, for the fun of it. But also as something
+potentially useful. It's strange how I keep going around in full circles, and
+I did a full circle away from seri and now back again.
+
+But let me see if I can't make it rather cleaner this time around.
+
+What's the goal?
+
+We want the following:
+
+- An intermediate representation for describing seri programs.
+This will consist of expressions, types, perhaps modules.
+My vision is to have an IR which is described in such a way that you can pick
+and choose just the pieces you want to use, and it's extensible, so you can
+add in things for where you want to use it. So it's not specific to my
+language, but should, for example, work for a lambda calculus that Nirav wants
+for SMT, work for BCL, for Structural Spec, and all seri all at once, but in a
+clean way.
+
+- C code generation of IR.
+To separate things out, have a C IR for describing a C program in haskell. Or
+C++ or both or something like that. Then have conversion from the seri IR to
+that C ir, and have that C ir support pretty printing.
+
+- BSV code generation of IR.
+Analogous to the C code generation: we have a BSV IR we can translate to, then
+pretty print to get working bluespec.
+
+- Haskell code generation of IR.
+Just convert to haskell's existing IR, and pretty print that.
+
+- Haskell Interpreter for IR.
+Aka: Static elaborator of IR.
+
+- Clean front end.
+This could be hard. What I want is this: I want to be able to describe
+programs in haskell, using the full generality and abstractions haskell
+provides. I want to generate from them a monomorphic, simple seri IR.
+
+This might involve having a parser, or some translation to/from template
+haskell. Important things: we want to leverage the abstractions of haskell. We
+want to pass meaningful names into the IR from the front end. We want to have
+types checked properly. It should not be messy yucky to write.
+
+
+I think, perhaps, the first step would be to come up with a simple lambda IR.
+Have booleans and integers and tuples, or whatever seri has.
+
+Start writing the C or C++ and BSV IRs (which are completely separate modules
+which can be reused elsewhere, which is really nice).
+
+Once I have that baseline, then play with it to try and find good ways of
+making the IR extensible and making the front end nice the way I really want
+it to be.
+
+Cool. This sounds like fun. Let me get started after breakfast.
+
+Sat Mar 24 08:46:22 EDT 2012
+
+First step: define my base language. My simple ir.
+
+Types:
+  Unit, Integer, Bool, Tuple, Function
+
+Expressions:
+  Unit, Integer, Boolean, Tuple,
+  Add, Mul, Sub, Eq, Lt, If, Fst, Snd
+  App, Lam, Fix
+
+I'm not sure I like using Fix for recursive functions, but I can fix that
+later. This will be enough of a start for factorial.
+
+Sat Mar 24 08:57:49 EDT 2012
+
+Okay, so I've defined my language.
+
+The next thing to do is write a simple program in it.
+
+Let's not start with a recursive program just yet.
+In fact, let me get rid of Fix, because I don't want to start with a recursive
+program.
+
+First expression...
+
+(\x = x*x + 3*x + 2) 5
+
+Sat Mar 24 09:26:00 EDT 2012
+
+Nifty! It works.
+
