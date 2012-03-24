@@ -132,3 +132,40 @@ Sat Mar 24 10:22:57 EDT 2012
 
 Okay, That works well enough.
 
+Next step?
+
+Convert to haskell... done.
+
+Next?
+
+I think, either C or BSV back end?
+
+The concern is how to do anonymous functions in those.
+Perhaps, instead, I have to give each anonymous function a name?
+
+Let me do a simple C ir. Just enough of what I need. Just to have something
+more than haskell, something where types aren't inferred automatically. No
+need to support bsv yet.
+
+What do I need for C?
+
+(\x = x*x + 3*x + 2) 5
+
+Should become something like:
+
+int l1(int x)
+{
+    return x*x + 3*x + 2;
+}
+
+l1(5)
+
+So...
+
+Dec = FunD Name [(Type Name)] Type [Stmt]
+Stmt = ReturnS Exp
+Exp = Int | Mul | Add
+
+Let me stick to C for now. I don't anticipate needing C++ for my explorations.
+    
+
