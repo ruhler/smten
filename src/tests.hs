@@ -7,6 +7,7 @@ import CPrint
 import qualified C
 import SeriC
 import SeriTypeCheck
+import SeriParser
 
 -- foo: (\x = x*x + 3*x + 2) 5
 foo :: Exp
@@ -23,6 +24,9 @@ main :: IO ()
 main = do
     tfoo <- typecheck foo
     putStrLn $ show tfoo
+
+    parsed <- seriparse "(\\x -> x*x+3*x+2) 5"
+    putStrLn $ "Parsed: " ++ show parsed
 
     putStrLn $ show foo
     putStrLn $ show (elaborate foo)

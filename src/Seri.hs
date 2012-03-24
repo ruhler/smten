@@ -7,6 +7,7 @@ type Name = String
 
 data Type = IntegerT
           | ArrowT Type Type
+          | UnknownT
       deriving(Eq, Show)
 
 data Exp = IntegerE Integer

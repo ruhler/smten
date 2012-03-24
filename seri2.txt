@@ -263,3 +263,252 @@ Checking the types are consistent, given the types, is not hard.
 If I had line number information, I could give pretty decent error messages
 too I think.
 
+What do I have to do for type inference?
+
+Well, you have to give some types.
+
+I wonder if SMT could do this for me. I just ask: does there exist a
+consistent typing for this expression? If so, give me evidence. And then I
+could ask if there were others as well. If there is exactly 1, then we are all
+set. If less, it's not well typed. If more, it's ambiguous.
+
+I don't think SMT will give me very good error messages though.
+
+What would type inference look like for me?
+
+The things you infer types for are:
+
+Applications. Just take the return type of function.
+Lambda - based on type of the variables and type of the expression
+    The names could be inconsistent
+Variables - based on the type of the lambda.
+
+So you would need to give information about either the variables, or the
+lambdas. Otherwise it could be ambiguous. We need to make sure all the uses of
+the variable have the same type.
+
+I feel like, if we don't have polymorphism, then it's easy. If we don't have
+typeclass or overloading, then it's easy.
+
+If I were to do this, I would want another kind of type. An Unknown type, or
+some such, to distinguish between those types I know and those I don't.
+
+I'm pretty confident I could do type checking of this simple IR. I think it
+could get much more difficult when I make it a more realistic IR.
+
+Let me skip now to question (3). I'll take an initial look, then think about
+it over lunch.
+
+How could we easily integrate haskell into the front end?
+
+I need an example. A concrete example to work with...
+
+Okay, so here's an example...
+
+I wonder if my language is too simple right now.
+
+What I want is something where you have a list of statements you want to
+write, using haskell. Or, when you want to compute a number statically with a
+haskell function. That's good. Let me start with that.
+
+So I have some language, where say foo is in the IR, but bar is something we
+want to evaluate statically. Either in haskell, or in the IR?
+
+    foo x + (bar 24.5)
+
+Here we don't know to do bar in haskell. The proposal then would be something
+like:
+
+    foo x + $(bar 24.5)
+
+Says, evaluate $(e) as a haskell expression.
+
+There are a couple of cases. First case: the haskell expression returns a
+haskell value, and we require you have a way to convert that haskell value to
+a seri value. Second case, which I guess is a special case, is that haskell
+function returns a seri object directly.
+
+So let me propose the general case first. We say any expression... or anything
+really (?) in our front end can be described using $(...) which statically
+evaluates haskell code, as long as that haskell code can be transformed into
+the kind of object we are expecting.
+
+I would love it if there were some way I could convert haskell template code
+into a pure haskell object, then possibly translate that into my language.
+
+This is perhaps doable. You could imagine something like:
+   $($(toseri [e| \x -> x+2 |]))
+
+Unfortunately the $() is being overloaded here. The outside is meant to be let
+me do haskell, the inside one is meant to be template haskell's splice, where
+toseri goes from template haskell Exp to a Q Exp which is of type Seri IR,
+which can then trivially be converted to Seri IR. So that's something we could
+do. Not sure how useful it would be.
+
+I should consider too how I intend to parse and execute haskell code
+statically.
+
+The other thing I may want to do is manipulate seri constructs in haskell.
+
+So, something like,
+  Say x is a variable in Seri front end in scope, or whatever...
+
+I guess what I'm saying, is I want a way to input a nice front end string, and
+turn it into a haskell seri object, which I can then pass to a haskell
+function, which gives me back a new haskell seri object, which I can then
+splice into seri front end again.
+
+So, I guess I need two things.
+
+We have the notion of a front end context. Not sure how I want to do that just
+yet. I'm leaning towards quasi quoting at this point.
+
+1. Inside a front end context, I want a splice, which lets me run arbitrary
+haskell code, if that code returns a value we can turn into a seri object.
+
+2. I want a way to convert a front end context into haskell code, which can
+then be passed to haskell functions.
+
+For example, let's say this is pure haskell code. I could do things like:
+
+----------
+foo :: Seri.Exp
+foo = [seri| (\x -> x*x + 3*x + 2) 5 |]
+
+three :: Integer
+three = 3
+
+bar :: Seri.Exp
+bar = [seri| (\x -> x*x + $(three)*x + 2) 5 |]
+
+sludge :: Seri.Exp
+sludge = [seri| (\x -> $(muln 2 [seri| x |]) + 3*2) 5|]
+----------
+
+And, I thus hypothesize this is all the integration I need to do all the nice
+static elaboration I want. Though I'm not at all convinced of this. I think
+the best way to test that is through practice and trying to write real
+programs in Seri, leveraging haskell as much as I can.
+
+Cool! So, let me have some lunch, come back, and understand if quasi quoting
+will give me everything I want, and if so, how specifically it looks.
+
+Sat Mar 24 13:13:39 EDT 2012
+
+Oh boy. So this is exciting.
+
+The concerns with this method, over say, BCL's front end, are:
+1. How much work is it to do type checking and inference
+2. How much work is it to write a parser
+3. How hard is it to get reasonable error messages?
+
+Let me look at quasiquoting now.
+
+Hmm...
+
+So I provide a quoter. Let's just look at the expression context for now.
+
+I provide a function: String -> Q Exp.
+
+Then, [s| ... |]  just calls the function to get back the Q Exp.
+
+Now then, here's how this would work.
+
+Let me define my own slice notation, to avoid confusion. In my seri language,
+let's say a splice is... inside: @(...).
+
+I implement a quasiquoter s. It parses the string, and returns a Q Exp, where
+the Exp describes a Seri.Exp.
+
+Now the examples look as follows:
+
+
+----------
+foo :: Seri.Exp
+foo = $([s| (\x -> x*x + 3*x + 2) 5 |])
+
+three :: Integer
+three = 3
+
+bar :: Seri.Exp
+bar = $([s| (\x -> x*x + @(three)*x + 2) 5 |])
+
+sludge :: Seri.Exp
+sludge = $([s| (\x -> @(muln 2 $([s| x |]) + 3*2) 5|])
+----------
+
+Fine. The real question is, how do I do the @() splice? How do I implement it?
+
+Well, I need a haskell expression parser. I parse the expression into a QExp
+(I'm in the Q monad, so that's fine). Then I have an Exp in haskell, I wrap it
+in, say, an AppE toseri foo, where foo is that expression. When the quote
+returns, template haskell will evaluate that application, evaluate foo, do the
+conversion, and give me the result. Here toseri has type a -> Seri.Exp, for
+some haskell type a (we'll want a typeclass for haskell things you can lift
+into Seri.Exp).
+
+The other slight issue is nesting of [s|...|]. I'll have to add a way to
+escape.
+
+What type checking do we get? Your haskell code will be typechecked and run.
+The seri code we'll have to type check.
+
+Okay? 
+
+I think quasiquoting is a better idea than parsing from strings, just because
+it makes it that much easier to embed in haskell. We can still read from
+files too, using the same thing. This way we get type checking of the haskell
+code for free.
+
+I'm not sure about line numbers, but I could certainly keep track of them
+myself as I parse the string. So you get a line number relative to a slice,
+and presumably haskell tells you the line of the slice that failed.
+
+We don't use a DSEL, or the type checking we could get from that.
+
+That's interesting. Perhaps we could have an intermediate DSEL, it gives us
+the type info we want, still use quasiquoting, then we leverage haskell's type
+system.
+
+That's an idea. Let me try not doing that first, and reconsider it when type
+inference starts causing me problems.
+
+Cool. I'm going to take a walk, then start getting to the nitty gritty, to see
+if I can make this work.
+
+Sat Mar 24 14:01:36 EDT 2012
+
+Here are the steps.
+
+1. Write a parsec (3) parser for Seri.Exp.
+
+parse :: String -> m Seri.Exp.
+
+To test: parse the foo expression.
+
+2. Implement lifting of Seri.Exp to TH.Exp
+
+This should give me a quasiquoter for seri.
+
+To test: write down foo as [s| ... |].
+
+Not sure what this adds at this point...
+
+3. Add support for slices in the front end.
+
+This may require finding or implementing a haskell expression parser.
+
+This is where using quasiquoting becomes important.
+
+Try the bar test.
+
+I don't imagine I'll get this far today, so let me stop the list there, and
+start working.
+
+First step, a parsec parser for Seri.Exp.
+
+Sat Mar 24 15:02:04 EDT 2012
+
+Okay! I have a parser. It's picky about whitespace, but it's enough of what I
+want right now.
+
