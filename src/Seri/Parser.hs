@@ -34,8 +34,11 @@ mults = appls `chainl1` emul
 adds :: Parser Exp
 adds = mults `chainl1` (eadd <|> esub)
 
+lts :: Parser Exp
+lts = adds `chainl1` elt
+
 expression :: Parser Exp
-expression = adds
+expression = lts
 
 -- top level parser, skips initial whitespace, force match at eof.
 top :: Parser Exp
@@ -93,6 +96,12 @@ esub = do
     char '-'
     many space
     return $ SubE
+
+elt :: Parser (Exp -> Exp -> Exp)
+elt = do
+    char '<'
+    many space
+    return $ LtE
 
 emul :: Parser (Exp -> Exp -> Exp)
 emul = do

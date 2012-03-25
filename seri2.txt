@@ -1068,7 +1068,7 @@ Well, I want to write something like:
 
 I need the following:
 + Subtract
-- Bool
++ Bool
 - Lt
 - If
 - fix operator
@@ -1099,5 +1099,19 @@ same way.
 
 Next: Bool. This is a type, so there will be some difference.
 Really we want Bool.
+
+Sun Mar 25 12:04:02 EDT 2012
+
+I notice adding new constructs seems fairly straight forward.
+SubE was just like AddE.
+BoolT, BoolE were just like IntegerT, IntegerE.
+
+It makes you wonder if you should have primitive types, or binary integral
+functions, or some more general representations of things.
+
+Anyway, on to Lt. This is another binary function, but it has a different type
+than the previous ones.
+
+Yup, adding that was pretty straight forward.
 
 
