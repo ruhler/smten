@@ -67,7 +67,10 @@ tests = "Seri" ~: [
         "simple" ~: foo ~=? typeinfer [s|(\x -> x*x+3*x+2) 5|]
         ],
     "General" ~: [
-        "simple" ~: Just (IntegerE 42) ~=? run [s|(\x -> x*x+3*x+2) 5|]
+        "simple" ~: Just (IntegerE 42) ~=? run [s|(\x -> x*x+3*x+2) 5|],
+        "frontspace" ~: Just (IntegerE 13) ~=? run [s| 8+5|],
+        "backspace" ~: Just (IntegerE 13) ~=? run [s|8+5 |],
+        "space" ~: Just (IntegerE 13) ~=? run [s| 8 + 5 |]
         ]
     ]
 

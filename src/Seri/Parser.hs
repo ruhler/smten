@@ -13,14 +13,17 @@ import Seri.IR
 -- Fails if there is a parse error.
 seriparse :: (Monad m) => String -> m Exp
 seriparse str
-  = case (runParser expression () "???" str) of
+  = case (runParser top () "???" str) of
         Left err -> fail $ show (errorPos err) ++ ": " ++ show err
         Right x -> return x
 
 type Parser = Parsec String ()
 
 atom :: Parser Exp
-atom = eth <|> elam <|> eparen <|> einteger <|> evar
+atom = do
+    e <- (eth <|> elam <|> eparen <|> einteger <|> evar)
+    many space
+    return e
 
 appls :: Parser Exp
 appls = atom `chainl1` eapp
@@ -34,16 +37,28 @@ adds = mults `chainl1` eadd
 expression :: Parser Exp
 expression = adds
 
+-- top level parser, skips initial whitespace, force match at eof.
+top :: Parser Exp
+top = do
+    many space
+    x <- expression
+    eof
+    return x
+
 eparen :: Parser Exp
 eparen = do
     char '('
+    many space
     x <- expression
+    many space
     char ')'
+    many space
     return x
 
 einteger :: Parser Exp
 einteger = do
     x <- integer
+    many space
     return $ IntegerE x
 
 integer :: Parser Integer
@@ -58,31 +73,34 @@ digitstoint acc (x:xs) = digitstoint (acc*10 + (fromIntegral $ (ord x - ord '0')
 eadd :: Parser (Exp -> Exp -> Exp)
 eadd = do
     char '+'
+    many space
     return $ AddE
 
 emul :: Parser (Exp -> Exp -> Exp)
 emul = do
     char '*'
+    many space
     return $ MulE
 
 eapp :: Parser (Exp -> Exp -> Exp)
 eapp = do
-    char ' '
     return $ AppE UnknownT
 
 elam :: Parser Exp
 elam = do
     char '\\'
     nm <- name
-    many1 space
+    many space
     string "->"
-    many1 space
+    many space
     body <- expression
+    many space
     return $ LamE UnknownT nm body
 
 evar :: Parser Exp
 evar = do
     nm <- name
+    many space
     return $ VarE UnknownT nm
 
 name :: Parser Name

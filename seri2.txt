@@ -1044,3 +1044,35 @@ And even the one I did which was monadic could take advantage of this.
 Oh, no, actually checkvars doesn't work so well with monadic, because we have
 a case where we don't want to apply the monadic part.
 
+Sun Mar 25 11:07:31 EDT 2012
+
+Okay, so that's maybe a little bit cleaner.
+
+I don't know. It still feels a little irksome to me, but I don't know why.
+
+Anyway, let me expand the language to support a factorial function. This will
+be a bit of grunt work, but it will be valuable.
+
+In particular, pay attention to what I need to do to add a new construct to
+the IR. This is the kind of information I'll need an IR extender to write.
+This is the kind of information we want to be component specific.
+
+Fine. What's first?
+
+What's the sum list of things I need?
+
+Well, I want to write something like:
+
+  let factorial = [s| !f \x -> if (x < 1) then 1 else x * f (n - 1)
+  in [|s @(factorial) 5 |]
+
+I need the following:
+- Subtract
+- Bool
+- Lt
+- If
+- fix operator
+
+Start with subtract.
+
+
