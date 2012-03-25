@@ -1067,7 +1067,7 @@ Well, I want to write something like:
   in [|s @(factorial) 5 |]
 
 I need the following:
-- Subtract
++ Subtract
 - Bool
 - Lt
 - If
@@ -1096,4 +1096,8 @@ conversions to C or Haskell.
 
 I do observe AddE, SubE, and MulE are all implemented in almost exactly the
 same way.
+
+Next: Bool. This is a type, so there will be some difference.
+Really we want Bool.
+
 

@@ -71,7 +71,9 @@ tests = "Seri" ~: [
         "frontspace" ~: Just (IntegerE 13) ~=? run [s| 8+5|],
         "backspace" ~: Just (IntegerE 13) ~=? run [s|8+5 |],
         "space" ~: Just (IntegerE 13) ~=? run [s| 8 + 5 |],
-        "subtract" ~: Just (IntegerE 3) ~=? run [s| 8 - 5 |]
+        "subtract" ~: Just (IntegerE 3) ~=? run [s| 8 - 5 |],
+        "true" ~: Just (BoolE True) ~=? run [s| true |],
+        "false" ~: Just (BoolE False) ~=? run [s| false |]
         ]
     ]
 

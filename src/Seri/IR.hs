@@ -13,12 +13,14 @@ import Language.Haskell.TH(Ppr(..))
 type Name = String
 
 data Type = IntegerT
+          | BoolT
           | ArrowT Type Type
           | UnknownT
           | VarT Integer
       deriving(Eq, Show)
 
-data Exp = IntegerE Integer
+data Exp = BoolE Bool
+         | IntegerE Integer
          | AddE Exp Exp
          | SubE Exp Exp
          | MulE Exp Exp
@@ -29,6 +31,7 @@ data Exp = IntegerE Integer
      deriving(Eq, Show)
 
 typeof :: Exp -> Type
+typeof (BoolE _) = BoolT
 typeof (IntegerE _) = IntegerT
 typeof (AddE _ _) = IntegerT
 typeof (MulE _ _) = IntegerT
@@ -37,6 +40,7 @@ typeof (LamE t _ _) = t
 typeof (VarE t _) = t
 
 data TraversalM m a = TraversalM {
+    tr_boolM :: Exp -> Bool -> m a,
     tr_intM :: Exp -> Integer -> m a,
     tr_addM :: Exp -> a -> a -> m a,
     tr_mulM :: Exp -> a -> a -> m a,
@@ -47,6 +51,7 @@ data TraversalM m a = TraversalM {
 }
 
 data Traversal a = Traversal {
+    tr_bool :: Exp -> Bool -> a,
     tr_int :: Exp -> Integer -> a,
     tr_add :: Exp -> a -> a -> a,
     tr_mul :: Exp -> a -> a -> a,
@@ -57,6 +62,7 @@ data Traversal a = Traversal {
 }
 
 traverseM :: (Monad m) => TraversalM m a -> Exp -> m a
+traverseM tr e@(BoolE b) = tr_boolM tr e b
 traverseM tr e@(IntegerE i) = tr_intM tr e i
 traverseM tr e@(AddE a b) = do
     a' <- traverseM tr a
@@ -80,6 +86,7 @@ traverseM tr e@(LamE t n b) = do
 traverseM tr e@(VarE t n) = tr_varM tr e t n
 
 traverse :: Traversal a -> Exp -> a
+traverse tr e@(BoolE b) = tr_bool tr e b
 traverse tr e@(IntegerE i) = tr_int tr e i
 traverse tr e@(AddE a b) = tr_add tr e (traverse tr a) (traverse tr b)
 traverse tr e@(MulE a b) = tr_mul tr e (traverse tr a) (traverse tr b)
@@ -94,16 +101,22 @@ class Seriable a where
 instance Seriable Exp where
     seriate = id
 
+instance Seriable Bool where 
+    seriate = BoolE
+
 instance Seriable Integer where
     seriate = IntegerE
     
 
 instance Ppr Type where
+    ppr BoolT = text "Bool"
     ppr IntegerT = text "Integer"
     ppr (ArrowT a b) = parens $ ppr a <+> text "->" <+> ppr b
 
+pBoolE = 4
 pIntegerE = 4
 pAddE = 1
+pSubE = 1
 pMulE = 2
 pAppE = 3
 pLamE = 0

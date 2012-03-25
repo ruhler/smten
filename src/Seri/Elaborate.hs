@@ -9,6 +9,7 @@ import Seri.IR
 -- Reduce the given expression as much as possible.
 elaborate :: Exp -> Exp
 elaborate = traverse $ Traversal {
+    tr_bool = \e _ -> e,
     tr_int = \e _ -> e,
     tr_add = \_ a b ->
         case (a, b) of
@@ -35,6 +36,7 @@ elaborate = traverse $ Traversal {
 -- Perform beta reduction in exp, replacing occurances of variable n with v.
 reduce :: Name -> Exp -> Exp -> Exp
 reduce n v = traverse $ Traversal {
+    tr_bool = \e _ -> e,
     tr_int = \e _ -> e,
     tr_add = \_ -> AddE,
     tr_mul = \_ -> MulE,

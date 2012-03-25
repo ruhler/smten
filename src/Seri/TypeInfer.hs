@@ -23,6 +23,7 @@ typeinfer eorig
 -- replace each type in expression according to the given association list.
 tereplace :: [(Type, Type)] -> Exp -> Exp
 tereplace l = traverse $ Traversal {
+    tr_bool = \e _ -> e,
     tr_int = \e _ -> e,
     tr_add = \_ -> AddE,
     tr_mul = \_ -> MulE,
@@ -45,6 +46,7 @@ tereplace l = traverse $ Traversal {
 -- State is the id of the next free type variable to use.
 ununknown :: Exp -> State Integer Exp
 ununknown = traverseM $ TraversalM {
+    tr_boolM = \e _ -> return e,
     tr_intM = \e _ -> return e,
     tr_addM = \_ a b -> return $ AddE a b,
     tr_mulM = \_ a b -> return $ MulE a b,
@@ -61,6 +63,7 @@ ununknown = traverseM $ TraversalM {
 }
 
 ununknownt :: Type -> State Integer Type
+ununknownt t@BoolT = return t
 ununknownt t@IntegerT = return t
 ununknownt (ArrowT a b) = do
     a' <- ununknownt a
@@ -82,6 +85,7 @@ constraints e
 -- in it.
 constrain :: Exp -> State (Integer, [(Type, Type)]) ()
 constrain = traverseM $ TraversalM {
+    tr_boolM = \_ _ -> return (),
     tr_intM = \_ _ -> return (),
     tr_addM = \(AddE a b) _ _ -> do
         addc IntegerT (typeof a)
@@ -109,6 +113,7 @@ constrain = traverseM $ TraversalM {
 
 constrainvs :: Name -> Type -> Exp -> State (Integer, [(Type, Type)]) ()
 constrainvs n v = traverse $ Traversal {
+    tr_bool = \_ _ -> return (),
     tr_int = \_ _ -> return (),
     tr_add = \_ a b -> a >> b,
     tr_mul = \_ a b -> a >> b,
@@ -190,6 +195,7 @@ treplace _ _ x = x
 
 lessknown :: Type -> Type -> Bool
 lessknown (VarT a) (VarT b) = a > b
+lessknown (VarT _) BoolT = True
 lessknown (VarT _) IntegerT = True
 lessknown (VarT _) (ArrowT _ _) = True
 lessknown UnknownT _ = error $ "UnknownT found in lessknown"

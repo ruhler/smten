@@ -28,11 +28,13 @@ qdec = error $ "Seri dec quasi-quote not supported"
 
 
 instance Lift Type where
+    lift BoolT = [e| BoolT |]
     lift IntegerT = [e| IntegerT |]
     lift (ArrowT a b) = [e| ArrowT a b |]
     lift UnknownT = [e| UnknownT |]
 
 instance Lift Exp where
+    lift (BoolE x) = [e| BoolE x |]
     lift (IntegerE x) = [e| IntegerE x |]
     lift (AddE a b) = [e| AddE a b |]
     lift (SubE a b) = [e| SubE a b |]

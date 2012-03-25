@@ -21,7 +21,7 @@ type Parser = Parsec String ()
 
 atom :: Parser Exp
 atom = do
-    e <- (eth <|> elam <|> eparen <|> einteger <|> evar)
+    e <- (eth <|> elam <|> eparen <|> einteger <|> etrue <|> efalse <|> evar)
     many space
     return e
 
@@ -54,6 +54,18 @@ eparen = do
     char ')'
     many space
     return x
+
+etrue :: Parser Exp
+etrue = do
+    string "true"
+    many space
+    return $ BoolE True
+
+efalse :: Parser Exp
+efalse = do
+    string "false"
+    many space
+    return $ BoolE False
 
 einteger :: Parser Exp
 einteger = do

@@ -14,6 +14,7 @@ import Control.Monad.State
 -- It fails with a hopefully useful message if typecheck fails. Otherwise it
 -- returns the type of the expression.
 typecheck :: (Monad m) => Exp -> m Type
+typecheck (BoolE _) = return BoolT
 typecheck (IntegerE _) = return IntegerT
 
 typecheck (AddE a b) = do
@@ -65,6 +66,7 @@ typecheck (VarE t _) = return t
 -- given type. If they don't, fail with a hopefully meaningful message.
 checkvars :: Monad m => Name -> Type -> Exp -> m ()
 checkvars n v = traverse $ Traversal {
+    tr_bool = \_ _ -> return (),
     tr_int = \_ _ -> return (),
     tr_add = \_ a b -> a >> b,
     tr_mul = \_ a b -> a >> b,
