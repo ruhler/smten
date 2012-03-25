@@ -3,6 +3,8 @@ module Seri.TypeInfer (
     typeinfer
     ) where
 
+import Data.Generics
+import Data.Maybe
 import Control.Monad.State
 
 import Seri.IR
@@ -21,62 +23,19 @@ typeinfer eorig
    in tereplace sol evared
 
 -- replace each type in expression according to the given association list.
-tereplace :: [(Type, Type)] -> Exp -> Exp
-tereplace l = traverse $ Traversal {
-    tr_bool = \e _ -> e,
-    tr_int = \e _ -> e,
-    tr_add = \_ -> AddE,
-    tr_mul = \_ -> MulE,
-    tr_sub = \_ -> SubE,
-    tr_lt = \_ -> LtE,
-    tr_if = \_ t ->
-        case (lookup t l) of
-            Just t' -> IfE t'
-            Nothing -> IfE t,
-    tr_app = \_ t ->
-        case (lookup t l) of
-            Just t' -> AppE t'
-            Nothing -> AppE t,
-    tr_fix = \_ t n b ->
-        case (lookup t l) of
-            Just t' -> FixE $ FixE_F t' n b
-            Nothing -> FixE $ FixE_F t n b,
-    tr_lam = \_ t ->
-        case (lookup t l) of
-            Just t' -> LamE t'
-            Nothing -> LamE t,
-    tr_var = \_ t ->
-        case (lookup t l) of
-            Just t' -> VarE t'
-            Nothing -> VarE t
-}
+tereplace :: (Data e) => [(Type, Type)] -> e -> e
+tereplace l
+  = let dochange :: Type -> Type
+        dochange t = case lookup t l of
+                        Just t' -> t'
+                        Nothing -> t
+    in everywhere (mkT dochange)
+                            
 
 -- Replace all unknown types with variable types.
 -- State is the id of the next free type variable to use.
-ununknown :: Exp -> State Integer Exp
-ununknown = traverseM $ TraversalM {
-    tr_boolM = \e _ -> return e,
-    tr_intM = \e _ -> return e,
-    tr_addM = \_ a b -> return $ AddE a b,
-    tr_mulM = \_ a b -> return $ MulE a b,
-    tr_subM = \_ a b -> return $ SubE a b,
-    tr_ltM = \_ a b -> return $ LtE a b,
-    tr_ifM = \_ t p a b -> do
-        t' <- ununknownt t
-        return $ IfE t' p a b,
-    tr_appM = \_ t a b -> do
-        t' <- ununknownt t
-        return $ AppE t' a b,
-    tr_fixM = \_ t n b -> do
-        t' <- ununknownt t
-        return $ FixE (FixE_F t' n b),
-    tr_lamM = \_ t n b -> do
-        t' <- ununknownt t
-        return $ LamE t' n b,
-    tr_varM = \_ t n -> do
-        t' <- ununknownt t
-        return $ VarE t' n
-}
+ununknown :: (Data e) => e -> State Integer e
+ununknown = everywhereM (mkM ununknownt)
 
 ununknownt :: Type -> State Integer Type
 ununknownt t@BoolT = return t

@@ -1381,3 +1381,52 @@ at generic programming? Perhaps that will give me ideas?
 
 Erg...
 
+Sun Mar 25 17:17:59 EDT 2012
+
+I looked into generic programming a little bit. I think I can make use of it.
+
+Let me try the following.
+
+In TypeInfer, we have this function tereplace.
+
+I bet that I can implement that in a generic way.
+I fear this could be slightly problematic, if, for example, you want to have a
+Type in your expression which you don't want substituted, but that seems
+unlikely to me. So let me try this.
+
+I'm going to make the replacement work for any typeable thing. And I'm going
+to see recurse through the structure, and replace all types.
+
+Wish me luck.
+
+Well! It works.
+
+That's no so bad actually, using everywhere and mkT.
+
+And you know what this means? I don't need to implement that function for each
+separate feature. That's nice.
+
+Let me go see where else I can apply this.
+
+Aha! It would seem ununknownt is a good candidate. Monadic this time.
+
+Wow. that's really nice.
+
+It means much less work for adding new features, that's for sure.
+
+Sun Mar 25 17:46:29 EDT 2012
+
+I'm not sure there are other really generic kinds of functions that I could
+take advantage of Data.Generics for.
+
+Hmm... So the real question is, could I use this to say something like:
+
+We have a typeclass which says, given a constructor FixE, for example, and all
+its fields, knows how to do, say, elaboration on it.
+
+Then each feature is a constructor.
+
+Hum hum... I feel like that's worth pursuing.
+
+Let me think about this a bit.
+

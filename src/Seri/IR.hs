@@ -1,4 +1,6 @@
 
+{-# LANGUAGE DeriveDataTypeable #-}
+
 module Seri.IR (
     Name, Type(..), Exp(..),
     Seriable(..), Ppr(..),
@@ -6,6 +8,8 @@ module Seri.IR (
     Traversal(..), TraversalM(..), traverse, traverseM,
     FixE_F(..),
     ) where
+
+import Data.Generics
 
 import qualified Language.Haskell.TH as TH
 import Language.Haskell.TH.PprLib
@@ -18,10 +22,10 @@ data Type = IntegerT
           | ArrowT Type Type
           | UnknownT
           | VarT Integer
-      deriving(Eq, Show)
+      deriving(Eq, Show, Typeable, Data)
 
 data FixE_F e = FixE_F Type Name e
-    deriving (Eq, Show)
+    deriving (Eq, Show, Typeable, Data)
 
 data Exp = BoolE Bool
          | IntegerE Integer
@@ -35,7 +39,7 @@ data Exp = BoolE Bool
          | FixE (FixE_F Exp)
          | VarE Type Name
          | ThE (TH.Exp)
-     deriving(Eq, Show)
+     deriving(Eq, Show, Typeable, Data)
 
 class Typeof a where
     typeof :: a -> Type
