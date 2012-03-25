@@ -43,27 +43,20 @@ tereplace l = traverse $ Traversal {
 -- Replace all unknown types with variable types.
 -- State is the id of the next free type variable to use.
 ununknown :: Exp -> State Integer Exp
-ununknown e@(IntegerE _) = return e
-ununknown (AddE a b) = do
-    a' <- ununknown a
-    b' <- ununknown b
-    return $ AddE a' b'
-ununknown (MulE a b) = do
-    a' <- ununknown a
-    b' <- ununknown b
-    return $ MulE a' b'
-ununknown (AppE t a b) = do
-    t' <- ununknownt t
-    a' <- ununknown a
-    b' <- ununknown b
-    return $ AppE t' a' b'
-ununknown (LamE t n b) = do
-    t' <- ununknownt t  
-    b' <- ununknown b
-    return $ LamE t' n b'
-ununknown (VarE t n) = do
-    t' <- ununknownt t
-    return $ VarE t' n
+ununknown = traverseM $ TraversalM {
+    tr_intM = \e _ -> return e,
+    tr_addM = \_ a b -> return $ AddE a b,
+    tr_mulM = \_ a b -> return $ MulE a b,
+    tr_appM = \_ t a b -> do
+        t' <- ununknownt t
+        return $ AppE t' a b,
+    tr_lamM = \_ t n b -> do
+        t' <- ununknownt t
+        return $ LamE t' n b,
+    tr_varM = \_ t n -> do
+        t' <- ununknownt t
+        return $ VarE t' n
+}
 
 ununknownt :: Type -> State Integer Type
 ununknownt t@IntegerT = return t
@@ -86,49 +79,44 @@ constraints e
 -- Generate type constraints for an expression, assuming no UnknownT types are
 -- in it.
 constrain :: Exp -> State (Integer, [(Type, Type)]) ()
-constrain (IntegerE _) = return ()
-constrain (AddE a b) = do
-    constrain a
-    constrain b
-    addc IntegerT (typeof a)
-    addc IntegerT (typeof b)
-constrain (MulE a b) = do
-    constrain a
-    constrain b
-    addc IntegerT (typeof a)
-    addc IntegerT (typeof b)
-constrain (AppE t f x) = do
-    constrain f
-    constrain x
-    it <- nextv
-    ot <- nextv
-    addc (ArrowT it ot) (typeof f)
-    addc ot t
-    addc it (typeof x)
-constrain (LamE t n b) = do
-    constrain b
-    it <- nextv
-    ot <- nextv
-    addc (ArrowT it ot) t
-    addc ot (typeof b)
-    constrainvs b n it
-constrain (VarE _ _) = return ()
+constrain = traverseM $ TraversalM {
+    tr_intM = \_ _ -> return (),
+    tr_addM = \(AddE a b) _ _ -> do
+        addc IntegerT (typeof a)
+        addc IntegerT (typeof b),
+    tr_mulM = \(MulE a b) _ _ -> do
+        addc IntegerT (typeof a)
+        addc IntegerT (typeof b),
+    tr_appM = \(AppE t f x) _ _ _ -> do
+        it <- nextv
+        ot <- nextv
+        addc (ArrowT it ot) (typeof f)
+        addc ot t
+        addc it (typeof x),
+    tr_lamM = \(LamE t n b) _ _ _ -> do
+        it <- nextv
+        ot <- nextv
+        addc (ArrowT it ot) t
+        addc ot (typeof b)
+        constrainvs n it b,
+    tr_varM = \_ _ _ -> return ()
+}
 
-constrainvs :: Exp -> Name -> Type -> State (Integer, [(Type, Type)]) ()
-constrainvs (IntegerE _) _ _ = return ()
-constrainvs (AddE a b) n v = do
-    constrainvs a n v
-    constrainvs b n v
-constrainvs (MulE a b) n v = do
-    constrainvs a n v
-    constrainvs b n v
-constrainvs (AppE _ a b) n v = do
-    constrainvs a n v
-    constrainvs b n v
-constrainvs (LamE _ nm _) n _ | nm == n = return ()
-constrainvs (LamE _ _ b) n v = constrainvs b n v
-constrainvs (VarE _ nm) n _ | nm /= n = return ()
-constrainvs (VarE t _) _ v = addc t v
+constrainvs :: Name -> Type -> Exp -> State (Integer, [(Type, Type)]) ()
+constrainvs n v = traverse $ Traversal {
+    tr_int = \_ _ -> return (),
+    tr_add = \_ a b -> a >> b,
+    tr_mul = \_ a b -> a >> b,
+    tr_app = \_ _ a b -> a >> b,
+    tr_lam = \_ _ nm b ->
+        if n == nm
+            then return ()
+            else b,
+    tr_var = \_ t nm ->
+        if n /= nm
+            then return ()
+            else addc t v
+}
 
 addc :: Type -> Type -> State (Integer, [(Type, Type)]) ()
 addc a b = do

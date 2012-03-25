@@ -3,7 +3,7 @@ module Seri.IR (
     Name, Type(..), Exp(..),
     Seriable(..), Ppr(..),
     typeof,
-    Traversal(..), traverse,
+    Traversal(..), TraversalM(..), traverse, traverseM,
     ) where
 
 import qualified Language.Haskell.TH as TH
@@ -35,6 +35,15 @@ typeof (AppE t _ _) = t
 typeof (LamE t _ _) = t
 typeof (VarE t _) = t
 
+data TraversalM m a = TraversalM {
+    tr_intM :: Exp -> Integer -> m a,
+    tr_addM :: Exp -> a -> a -> m a,
+    tr_mulM :: Exp -> a -> a -> m a,
+    tr_appM :: Exp -> Type -> a -> a -> m a,
+    tr_lamM :: Exp -> Type -> Name -> a -> m a,
+    tr_varM :: Exp -> Type -> Name -> m a
+}
+
 data Traversal a = Traversal {
     tr_int :: Exp -> Integer -> a,
     tr_add :: Exp -> a -> a -> a,
@@ -43,6 +52,25 @@ data Traversal a = Traversal {
     tr_lam :: Exp -> Type -> Name -> a -> a,
     tr_var :: Exp -> Type -> Name -> a
 }
+
+traverseM :: (Monad m) => TraversalM m a -> Exp -> m a
+traverseM tr e@(IntegerE i) = tr_intM tr e i
+traverseM tr e@(AddE a b) = do
+    a' <- traverseM tr a
+    b' <- traverseM tr b
+    tr_addM tr e a' b'
+traverseM tr e@(MulE a b) = do
+    a' <- traverseM tr a
+    b' <- traverseM tr b
+    tr_mulM tr e a' b'
+traverseM tr e@(AppE t a b) = do
+    a' <- traverseM tr a
+    b' <- traverseM tr b
+    tr_appM tr e t a' b'
+traverseM tr e@(LamE t n b) = do
+    b' <- traverseM tr b
+    tr_lamM tr e t n b'
+traverseM tr e@(VarE t n) = tr_varM tr e t n
 
 traverse :: Traversal a -> Exp -> a
 traverse tr e@(IntegerE i) = tr_int tr e i
