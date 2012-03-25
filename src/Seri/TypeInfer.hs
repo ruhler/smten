@@ -37,6 +37,10 @@ tereplace l = traverse $ Traversal {
         case (lookup t l) of
             Just t' -> AppE t'
             Nothing -> AppE t,
+    tr_fix = \_ t ->
+        case (lookup t l) of
+            Just t' -> FixE t'
+            Nothing -> FixE t,
     tr_lam = \_ t ->
         case (lookup t l) of
             Just t' -> LamE t'
@@ -63,6 +67,9 @@ ununknown = traverseM $ TraversalM {
     tr_appM = \_ t a b -> do
         t' <- ununknownt t
         return $ AppE t' a b,
+    tr_fixM = \_ t n b -> do
+        t' <- ununknownt t
+        return $ FixE t' n b,
     tr_lamM = \_ t n b -> do
         t' <- ununknownt t
         return $ LamE t' n b,
@@ -117,6 +124,9 @@ constrain = traverseM $ TraversalM {
         addc (ArrowT it ot) (typeof f)
         addc ot t
         addc it (typeof x),
+    tr_fixM = \(FixE t n b) _ _ _ -> do
+        addc t (typeof b)
+        constrainvs n t b,
     tr_lamM = \(LamE t n b) _ _ _ -> do
         it <- nextv
         ot <- nextv
@@ -136,6 +146,10 @@ constrainvs n v = traverse $ Traversal {
     tr_lt = \_ a b -> a >> b,
     tr_if = \_ _ p a b -> p >> a >> b,
     tr_app = \_ _ a b -> a >> b,
+    tr_fix = \_ _ nm b ->
+        if n == nm
+            then return ()
+            else b,
     tr_lam = \_ _ nm b ->
         if n == nm
             then return ()

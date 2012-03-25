@@ -21,7 +21,7 @@ type Parser = Parsec String ()
 
 atom :: Parser Exp
 atom = do
-    e <- (eth <|> elam <|> eparen <|> einteger <|>
+    e <- (eth <|> elam <|> efix <|> eparen <|> einteger <|>
           eif <|> try etrue <|> try efalse <|> try evar)
     many space
     return e
@@ -130,6 +130,14 @@ elam = do
     token "->"
     body <- expression
     return $ LamE UnknownT nm body
+
+efix :: Parser Exp
+efix = do
+    char '!'
+    nm <- name
+    many space
+    body <- expression
+    return $ FixE UnknownT nm body
 
 
 reserved = ["if", "then", "else", "true", "false"]

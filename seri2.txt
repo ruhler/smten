@@ -1070,7 +1070,7 @@ I need the following:
 + Subtract
 + Bool
 + Lt
-- If
++ If
 - fix operator
 
 Start with subtract.
@@ -1122,4 +1122,84 @@ Sun Mar 25 12:32:07 EDT 2012
 
 In all these things, the Parser is most fragile. Adding more stuff can break
 it easily. That's not so much the case for anything else.
+
+Sun Mar 25 12:41:01 EDT 2012
+
+Next, and the last needed for factorial, though perhaps the one I need be most
+careful about...
+
+Let me wait to do 'fix' until after lunch.
+
+Sun Mar 25 13:15:06 EDT 2012
+
+Okay, so, how do I implement fix?
+
+I think everything is straight forward except for elaboration.
+
+FixE :: Type -> Name -> Exp -> Exp
+
+How do I reduce this?
+
+Well, the idea is, it's an expression, and we can construct the new expression
+as ...
+
+I need to be careful.
+
+Let's say you have to fix a function, not just a value?
+
+Ug. What I want to do, is, we have Exp -> Exp which unrolls the expression. We
+just call haskell's fix point operator on that, then fix goes away, and it
+becomes... what?
+
+Well, it becomes a lambda.
+The trouble is, if you try to print it out, for example, it will become an
+infinite lambda. So, don't try to print this out.
+
+I feel like what I could do, is say: the type of the Fix expression has to be
+a function type. Then we only go to unroll it when we try to apply to it.
+
+Okay, fine. Whatever. Let me just do it this way: to evaluate fix, use
+haskell's fixed point. Haskell is lazy. As long as we don't try printing the
+result, we should be fine.
+
+So, to elaborate fix, I would do the following:
+
+Okay, I think I got it. Let me try and see what happens.
+
+Sun Mar 25 13:40:36 EDT 2012
+
+Okay! So, we have a type error.
+
+The expression is x.
+The expected value is Integer. That's good.
+
+The inferred type is:
+
+---------
+((IntegerT -> IntegerT -> V8)
+    ->  (IntegerT -> IntegerT -> V8)
+    -> V8)
+-> ((IntegerT -> IntegerT -> V8) -> V8)
+---------
+
+That's very strange.
+
+First note: I should print types in errors, not show them.
+
+Oh, I had some bugs. Now it type checks.
+
+Trouble though: elaboration doesn't complete.
+
+That is, elaboration returns this big old expression.
+
+Oh. I bet I just forgot to elaborate the result of the fix.
+
+No. That wasn't it. Hmm...
+
+I should be pretty printing the results, not showing them. Hmm...
+
+Oh. I had a typo in the input. I used both n and x, but n was free, it wasn't
+bound. That caused the problem.
+
+Hey! Cool. Fix point works. Factorial works.
 

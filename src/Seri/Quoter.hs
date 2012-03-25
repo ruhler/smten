@@ -42,6 +42,7 @@ instance Lift Exp where
     lift (LtE a b) = [e| LtE a b |]
     lift (IfE t p a b) = [e| IfE t p a b |]
     lift (AppE t a b) = [e| AppE t a b |]
+    lift (FixE t n e) = [e| FixE t n e |]
     lift (LamE t n e) = [e| LamE t n e |]
     lift (VarE t n) = [e| VarE t n |]
     lift (ThE x) = TH.appE [e| seriate |] (return x)

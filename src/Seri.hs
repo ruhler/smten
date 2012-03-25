@@ -33,11 +33,14 @@ foo =
 
 -- Run type inference and type checking on the expression,
 -- Then elaborate it.
-run :: Exp -> Maybe Exp
+run :: (Monad m) => Exp -> m Exp
 run exp = do
     let inferred = typeinfer exp
     typecheck inferred
     return $ elaborate inferred
+
+is :: Exp -> Either String Exp
+is = Right
 
 tests = "Seri" ~: [
     "Elaborate" ~: [
@@ -67,15 +70,18 @@ tests = "Seri" ~: [
         "simple" ~: foo ~=? typeinfer [s|(\x -> x*x+3*x+2) 5|]
         ],
     "General" ~: [
-        "simple" ~: Just (IntegerE 42) ~=? run [s|(\x -> x*x+3*x+2) 5|],
-        "frontspace" ~: Just (IntegerE 13) ~=? run [s| 8+5|],
-        "backspace" ~: Just (IntegerE 13) ~=? run [s|8+5 |],
-        "space" ~: Just (IntegerE 13) ~=? run [s| 8 + 5 |],
-        "subtract" ~: Just (IntegerE 3) ~=? run [s| 8 - 5 |],
-        "true" ~: Just (BoolE True) ~=? run [s| true |],
-        "false" ~: Just (BoolE False) ~=? run [s| false |],
-        "lt" ~: Just (BoolE False) ~=? run [s| 6 < 4 |],
-        "if" ~: Just (IntegerE 23) ~=? run [s| if 6 < 4 then 42 else 23 |]
+        "simple" ~: is (IntegerE 42) ~=? run [s|(\x -> x*x+3*x+2) 5|],
+        "frontspace" ~: is (IntegerE 13) ~=? run [s| 8+5|],
+        "backspace" ~: is (IntegerE 13) ~=? run [s|8+5 |],
+        "space" ~: is (IntegerE 13) ~=? run [s| 8 + 5 |],
+        "subtract" ~: is (IntegerE 3) ~=? run [s| 8 - 5 |],
+        "true" ~: is (BoolE True) ~=? run [s| true |],
+        "false" ~: is (BoolE False) ~=? run [s| false |],
+        "lt" ~: is (BoolE False) ~=? run [s| 6 < 4 |],
+        "if" ~: is (IntegerE 23) ~=? run [s| if 6 < 4 then 42 else 23 |],
+        "fix" ~: is (IntegerE 120) ~=?
+            let factorial = [s| !f \x -> if (x < 1) then 1 else x * f (x-1) |]
+            in run [s| @(factorial) 5 |]
         ]
     ]
 

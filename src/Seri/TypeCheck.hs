@@ -72,6 +72,13 @@ typecheck e@(AppE t f x) = do
             typeassert bt t e
             return bt
         _ -> typefail "function" ft f
+
+typecheck (FixE t n body) = do
+    bodyt <- typecheck body
+    checkvars n t body
+    typeassert t bodyt body
+    return t
+
 typecheck (LamE t@(ArrowT at bt) n body) = do
     bodyt <- typecheck body
     checkvars n at body
@@ -93,6 +100,7 @@ checkvars n v = traverse $ Traversal {
     tr_lt = \_ a b -> a >> b,
     tr_if = \_ _ p a b -> p >> a >> b,
     tr_app = \_ _ a b -> a >> b,
+    tr_fix = \_ _ ln b -> if ln /= n then b else return (),
     tr_lam = \_ _ ln b -> if ln /= n then b else return (),
     tr_var = \e t vn -> if vn == n then typeassert v t e else return ()
 }
@@ -101,7 +109,7 @@ checkvars n v = traverse $ Traversal {
 -- Indicate a type failure.
 typefail :: (Monad m) => String -> Type -> Exp -> m a
 typefail exp fnd expr
-  = fail $ "Expected type " ++ exp ++ ", found type " ++ show fnd
+  = fail $ "Expected type " ++ exp ++ ", found type " ++ show (ppr fnd)
             ++ " in the expression " ++ show (ppr expr)
 
 typeassert :: (Monad m) => Type -> Type -> Exp -> m ()

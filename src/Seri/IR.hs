@@ -28,20 +28,25 @@ data Exp = BoolE Bool
          | IfE Type Exp Exp Exp
          | AppE Type Exp Exp
          | LamE Type Name Exp
+         | FixE Type Name Exp
          | VarE Type Name
          | ThE (TH.Exp)
      deriving(Eq, Show)
+
 
 typeof :: Exp -> Type
 typeof (BoolE _) = BoolT
 typeof (IntegerE _) = IntegerT
 typeof (AddE _ _) = IntegerT
+typeof (SubE _ _) = IntegerT
 typeof (MulE _ _) = IntegerT
 typeof (LtE _ _) = BoolT
 typeof (IfE t _ _ _) = t
 typeof (AppE t _ _) = t
 typeof (LamE t _ _) = t
+typeof (FixE t _ _) = t
 typeof (VarE t _) = t
+typeof x = error $ "TODO: typeof " ++ show x
 
 data TraversalM m a = TraversalM {
     tr_boolM :: Exp -> Bool -> m a,
@@ -53,6 +58,7 @@ data TraversalM m a = TraversalM {
     tr_ifM :: Exp -> Type -> a -> a -> a -> m a,
     tr_appM :: Exp -> Type -> a -> a -> m a,
     tr_lamM :: Exp -> Type -> Name -> a -> m a,
+    tr_fixM :: Exp -> Type -> Name -> a -> m a,
     tr_varM :: Exp -> Type -> Name -> m a
 }
 
@@ -66,6 +72,7 @@ data Traversal a = Traversal {
     tr_if :: Exp -> Type -> a -> a -> a -> a,
     tr_app :: Exp -> Type -> a -> a -> a,
     tr_lam :: Exp -> Type -> Name -> a -> a,
+    tr_fix :: Exp -> Type -> Name -> a -> a,
     tr_var :: Exp -> Type -> Name -> a
 }
 
@@ -100,6 +107,9 @@ traverseM tr e@(AppE t a b) = do
 traverseM tr e@(LamE t n b) = do
     b' <- traverseM tr b
     tr_lamM tr e t n b'
+traverseM tr e@(FixE t n b) = do
+    b' <- traverseM tr b
+    tr_fixM tr e t n b'
 traverseM tr e@(VarE t n) = tr_varM tr e t n
 
 traverse :: Traversal a -> Exp -> a
@@ -112,6 +122,7 @@ traverse tr e@(LtE a b) = tr_lt tr e (traverse tr a) (traverse tr b)
 traverse tr e@(IfE t p a b) = tr_if tr e t (traverse tr p) (traverse tr a) (traverse tr b)
 traverse tr e@(AppE t a b) = tr_app tr e t (traverse tr a) (traverse tr b)
 traverse tr e@(LamE t n b) = tr_lam tr e t n (traverse tr b)
+traverse tr e@(FixE t n b) = tr_fix tr e t n (traverse tr b)
 traverse tr e@(VarE t n) = tr_var tr e t n
 
 class Seriable a where
@@ -131,21 +142,31 @@ instance Ppr Type where
     ppr BoolT = text "Bool"
     ppr IntegerT = text "Integer"
     ppr (ArrowT a b) = parens $ ppr a <+> text "->" <+> ppr b
+    ppr UnknownT = text "Unknown"
+    ppr (VarT i) = text "V" <> integer i
 
 pBoolE = 4
 pIntegerE = 4
 pAddE = 1
 pSubE = 1
 pMulE = 2
+pLtE =  0
+pIfE = -1
 pAppE = 3
-pLamE = 0
+pFixE = -1
+pLamE = -1
 pVarE = 4
 
 precedence :: Exp -> Integer
+precedence (BoolE _) = pBoolE
 precedence (IntegerE _) = pIntegerE
 precedence (AddE _ _) = pAddE
+precedence (SubE _ _) = pSubE
 precedence (MulE _ _) = pMulE
+precedence (LtE _ _) = pLtE
+precedence (IfE _ _ _ _) = pIfE
 precedence (AppE _ _ _) = pAppE
+precedence (FixE _ _ _) = pFixE
 precedence (LamE _ _ _) = pLamE
 precedence (VarE _ _) = pVarE
 
@@ -156,10 +177,17 @@ prec i e
      else ppr e
 
 instance Ppr Exp where
+    ppr (BoolE b) = if b then text "true" else text "false"
     ppr (IntegerE i) = integer i
     ppr (AddE a b) = prec pAddE a <+> text "+" <+> prec pAddE b
+    ppr (SubE a b) = prec pSubE a <+> text "-" <+> prec pSubE b
     ppr (MulE a b) = prec pMulE a <+> text "*" <+> prec pMulE b
+    ppr (LtE a b) = prec pLtE a <+> text "<" <+> prec pLtE b
+    ppr (IfE _ p a b) = text "if" <+> ppr p
+                        <+> text "then" <+> ppr a
+                        <+> text "else" <+> ppr b
     ppr (AppE _ a b) = prec pAppE a <+> prec pAppE b
     ppr (LamE _ n b) = text "\\" <> text n <+> text "->" <+> prec pLamE b
+    ppr (FixE _ n b) = text "!" <> text n <+> ppr b
     ppr (VarE _ n) = text n
 

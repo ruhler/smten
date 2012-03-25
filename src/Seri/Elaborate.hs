@@ -3,6 +3,8 @@ module Seri.Elaborate (
     elaborate
     ) where
 
+import Control.Monad.Fix(fix)
+
 import Seri.IR
 
 -- elaborate prg
@@ -36,6 +38,7 @@ elaborate = traverse $ Traversal {
         case f of
             (LamE _ name body) -> elaborate $ reduce name x body
             _ -> AppE t f x,
+    tr_fix = \e _ n b -> reduce n e b,
     tr_lam = \e _ _ _ -> e,
     tr_var = \e _ _ -> e
 }
@@ -53,6 +56,7 @@ reduce n v = traverse $ Traversal {
     tr_lt = \_ -> LtE,
     tr_if = \_ -> IfE,
     tr_app = \_ -> AppE,
+    tr_fix = \e t ln b -> if ln /= n then FixE t ln b else e,
     tr_lam = \e t ln b -> if ln /= n then LamE t ln b else e,
     tr_var = \e t vn -> if vn == n then v else e
 }
