@@ -594,3 +594,16 @@ That should be simple to do. I just need to introduce a typeclass.
 
 Cool.
 
+Sat Mar 24 20:09:50 EDT 2012
+
+Now then, what should I call this typeclass?
+
+Seriable? Sounds too much like Serializable?
+Seriable and seriize. Err...
+
+Seriable seriate. Good.
+
+Sat Mar 24 20:16:42 EDT 2012
+
+That works nicely.
+

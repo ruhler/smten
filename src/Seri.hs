@@ -1,6 +1,6 @@
 
 module Seri (
-    Name, Type(..), Exp(..)
+    Name, Type(..), Exp(..), Seriable(..)
     ) where
 
 import qualified Language.Haskell.TH as TH
@@ -21,3 +21,12 @@ data Exp = IntegerE Integer
          | ThE (TH.Exp)
      deriving(Eq, Show)
 
+class Seriable a where
+    seriate :: a -> Exp
+
+instance Seriable Exp where
+    seriate = id
+
+instance Seriable Integer where
+    seriate = IntegerE
+    

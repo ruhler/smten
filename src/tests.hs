@@ -27,10 +27,7 @@ qfoo :: Exp
 qfoo = [s|(\x -> x*x+3*x+2) 5|]
 
 qbar :: Exp
-qbar = [s|(\x -> x*x+@(hlength [1, 2, 3, 4])*x+2) 5|]
-
-hlength :: [a] -> Exp
-hlength xs = IntegerE (fromIntegral (length xs))
+qbar = [s|(\x -> x*x+@(toInteger $ length [1, 2, 3, 4])*x+2) 5|]
 
 
 main :: IO ()
