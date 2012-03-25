@@ -6,4 +6,5 @@ env['SRCDIR'] = Dir(".")
 
 ## tests test
 tests = env.GHCProgram('tests', GHCPATH=[Dir(".")])
+env.Default(env.Command('tests.out', tests, "$SOURCE > $TARGET"))
 

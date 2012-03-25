@@ -868,7 +868,7 @@ Here's the plan for tomorrow.
 
 + Implement my proposed type constraint solving algorithm.
 + Combine that with the constraint generation to do type inference.
-- Try using yices to solve the above constraint problem.
+x Try using yices to solve the above constraint problem.
 Mostly just for practice with yices. I don't actually want to use it in my
 compiler because I don't want to have to go to IO. It will be good to have
 confidence that I can use an SMT solver if things start getting messy though.
@@ -878,7 +878,7 @@ checker (if not subsumed by type inference, it might be nice to have type
 checker to make it easier to figure out type errors), elaborator, pretty
 printer, haskell generator, c generator.
 
-- Reorganize code into something nice.
++ Reorganize code into something nice.
 - Write up HUnit test cases.
 - Expand Seri to support factorial function with fix operator.
 
@@ -945,4 +945,8 @@ And we should have test cases for everything.
 Let each module define its own tests? Yes, as HUnit.
 
 Good. This will be nice to do.
+
+Sun Mar 25 08:32:21 EDT 2012
+
+Next step: switch to using HUnit for tests.
 

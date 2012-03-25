@@ -34,12 +34,13 @@ typecheck (MulE a b) = do
 
     return IntegerT
 
-typecheck (AppE t f x) = do
+typecheck e@(AppE t f x) = do
     ft <- typecheck f
     xt <- typecheck x
     case ft of
         ArrowT at bt -> do
             typeassert at xt x
+            typeassert bt t e
             return bt
         _ -> typefail "function" ft f
 typecheck (LamE t@(ArrowT at bt) n body) = do
