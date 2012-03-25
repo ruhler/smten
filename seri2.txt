@@ -904,3 +904,16 @@ First step: implement my type constraint solver.
 Well, it seems to have worked on my simple example. We shall see if it works
 in general.
 
+Next step: make type inference much nicer.
+
+Here's how it should work.
+
+1. UnUnknown expression
+2. Generate type constraints
+3. Solve type constraints
+4. apply solution
+
+Let's allow the user to do typecheck separately from inference.
+And we just say, well, inference may not return a correct result, so you
+should probably check the solution it gets.
+

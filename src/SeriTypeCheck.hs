@@ -1,6 +1,6 @@
 
 module SeriTypeCheck (
-    typecheck, constraints, solve
+    typecheck, typeinfer
     ) where
 
 import Seri
@@ -85,6 +85,41 @@ typeassert exp fnd expr
         then return ()
         else typefail (show $ ppr exp) fnd expr
   
+
+-- typeinfer 
+--  Run typeinference on an expression.
+--  Types marked TyUnknown are inferred.
+--  Assumes there are no VarT's in the expression.
+--  The returned expression has types inferred, but they may be incorrectly
+--  inferred if the expression doesn't type check, so you should run typecheck
+--  after inference to make sure it's valid.
+typeinfer :: Exp -> Exp
+typeinfer eorig
+ = let (evared, cons) = constraints eorig
+       sol = solve cons
+   in tereplace sol evared
+
+-- replace each type in expression according to the given association list.
+tereplace :: [(Type, Type)] -> Exp -> Exp
+tereplace _ e@(IntegerE _) = e
+tereplace l (AddE a b) = AddE (tereplace l a) (tereplace l b)
+tereplace l (MulE a b) = MulE (tereplace l a) (tereplace l b)
+tereplace l (AppE t a b) =
+    let a' = tereplace l a
+        b' = tereplace l b
+    in case (lookup t l) of
+          Just t' -> AppE t' a' b'
+          Nothing -> AppE t a' b'
+tereplace l (LamE t n e) =
+    let e' = tereplace l e
+    in case (lookup t l) of
+          Just t' -> LamE t' n e'
+          Nothing -> LamE t n e'
+tereplace l (VarE t n) =
+    case (lookup t l) of
+          Just t' -> VarE t' n
+          Nothing -> VarE t n
+
 
 -- Replace all unknown types with variable types.
 -- State is the id of the next free type variable to use.

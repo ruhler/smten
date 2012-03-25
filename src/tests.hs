@@ -62,9 +62,5 @@ main = do
 
     putStrLn $ "Q Sludge: " ++ show qsludge
     putStrLn $ "Q Sludge Elaborated: " ++ show (elaborate qsludge)
-
-    let (e, cons) = constraints qsludge
-    putStrLn $ "Q Sludge UnUnknowned: " ++ show e
-    putStrLn $ "Q Sludge Constraints: " ++ show cons
-    putStrLn $ "Q Sludge Solved: " ++ show (solve cons)
+    putStrLn $ "Q Sludge Inferred: " ++ show (typeinfer qsludge)
 
