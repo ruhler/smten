@@ -29,6 +29,14 @@ qfoo = [s|(\x -> x*x+3*x+2) 5|]
 qbar :: Exp
 qbar = [s|(\x -> x*x+@(toInteger $ length [1, 2, 3, 4])*x+2) 5|]
 
+qsludge :: Exp
+qsludge = 
+    let t = muln 2 [s|x|]
+    in [s|(\x -> @(t)+3*x+2) 5|]
+
+muln :: Integer -> Exp -> Exp
+muln 1 x = x
+muln n x = MulE x $ muln (n-1) x
 
 main :: IO ()
 main = do
@@ -51,4 +59,12 @@ main = do
 
     putStrLn $ "Q Bar: " ++ show qbar
     putStrLn $ "Q Bar Elaborated: " ++ show (elaborate qbar)
+
+    putStrLn $ "Q Sludge: " ++ show qsludge
+    putStrLn $ "Q Sludge Elaborated: " ++ show (elaborate qsludge)
+
+    let (e, cons) = constraints qsludge
+    putStrLn $ "Q Sludge UnUnknowned: " ++ show e
+    putStrLn $ "Q Sludge Constraints: " ++ show cons
+    putStrLn $ "Q Sludge Solved: " ++ show (solve cons)
 

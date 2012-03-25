@@ -607,3 +607,300 @@ Sat Mar 24 20:16:42 EDT 2012
 
 That works nicely.
 
+What remains to do now?
+
+From my list above, I just want to try nested quotes. I think it will require
+escape characters to make work.
+
+Yup, nesting needs to be escaped.
+I can escape it with...
+Uh... "|~]" how about?
+
+
+You know what? We don't need nested quotes. I can always say
+ let x = [s| ... |]
+ in [s| ... @(x) ... |]
+
+And that's just fine with me. The issue is, we would run into double nesting
+issues, triple nesting, and so on. It's just not worth the effort to deal
+with.
+
+Okay! Cool.
+
+What's left?
+
+The big thing missing now is just type inference. Because I really can't do
+type inference in the parser. Can I? Can I just have explicit types?
+
+Well, we would like some explicit types, and some type inference.
+
+I think, give me type inference. And it can be sloppy. Infer types, then run
+typecheck on the inferred types. Hopefully that's easier than trying to do it
+all at once.
+
+I'm a little worried about error messages and line numbers, but ... don't
+worry about that just yet.
+
+How can I do type inference?
+
+I feel like I tried this before with drizzt, or whatever language I had. And
+it was messy.
+
+Let's assume no polymorphism for now.
+
+Conceptually you can assign a type variable to each unknown type, and come up
+with a bunch of constraints.
+
+Can I use an SMT solver for this? That would certainly be cool...
+
+Is it worth trying to do in yices manually?
+
+For example, how would I typecheck qbar?
+
+AppE A (LamE B "x" (AddE (AddE (MulE (VarE C "x")
+(VarE D "x")) (MulE (IntegerE 4) (VarE E "x"))) (IntegerE 2)))
+(IntegerE 5)
+ 
+
+Variables: A, B, C, D, E.
+
+Constraints:
+
+B = ArrowT F G  -- function in apply must have ArrowT type
+A = G           -- type of apply is return type of function
+F = C           -- type of variable is same as input to lambda
+F = D
+F = E
+
+
+Hmm... Maybe it makes sense to combine this with type check.
+
+I come up with a set of constraints of these forms, introducing variables as
+needed.
+
+Then I ought to be able to use SMT or something to solve this, right?
+
+Come up with a set of constraints, then try to solve.
+
+Let me alter the typecheck function...
+
+No, let me write another function, which given an expression, returns a set of
+constraints. Where each constraint is of the form (Type, Type). And we add
+VarT as a type. We'll have a state monad to collect constraints, and a counter
+to keep track of free variable types.
+
+I'll run this, print out what it gives for my expression, make sure it looks
+right, then see if I can solve that with yices.
+
+Err... I really hate to have to go to IO to do typecheck.
+Could I not implement a constraint solver?
+
+Well, let's see what I can do with the constraints.
+
+Here are the constraints I generated for Q Sludge.
+ 
+V7 = IntegerT
+V8 = V0
+ArrowT V7 V8 = V1
+V4 = V5
+V3 = V5
+V2 = V5
+ArrowT V5 V6 = V1
+IntegerT = ,IntegerT
+IntegerT = ArrowT IntegerT IntegerT
+IntegerT = ArrowT IntegerT IntegerT
+IntegerT = ArrowT IntegerT IntegerT
+IntegerT = V4
+IntegerT = IntegerT
+IntegerT = V3
+IntegerT = V2
+
+What do we see? Clearly I have my types wrong, because this is not
+satisfiable. Let me go fix my bugs.
+
+V7 = IntegerT
+V8 = V0
+ArrowT V7 V8 = V1
+V4 = V5
+V3 = V5
+V2 = V5
+ArrowT V5 V6 = V1
+IntegerT = IntegerT
+IntegerT = IntegerT
+IntegerT = IntegerT
+IntegerT = IntegerT
+IntegerT = V4
+IntegerT = IntegerT
+IntegerT = V3
+IntegerT = V2
+
+Now if I solve this by hand, I get...
+
+V0 = V8
+V1 = IntegerT V6
+V2 = IntegerT
+V3 = IntegerT
+V4 = IntegerT
+V5 = IntegerT
+V6 = V8
+V7 = IntegerT
+
+Hm... We don't have all the info we need.
+
+Let me print the expression out too.
+
+(AppE (VarT 0) (LamE IntegerT "x" (AddE (AddE (MulE (VarE IntegerT "x") (VarE
+IntegerT "x")) (MulE (IntegerE 3) (VarE IntegerT "x"))) (IntegerE 2)))
+(IntegerE 5),
+
+I'm missing a constraint. One that says the type of an application is the
+output type of the function called?
+
+Okay, I see what I missed. Now let's see.
+
+(AppE (VarT 0) (LamE (VarT 1) "x" (AddE (AddE (MulE (VarE (VarT 2) "x") (VarE
+(VarT 3) "x")) (MulE (IntegerE 3) (VarE (VarT 4) "x"))) (IntegerE 2)))
+(IntegerE 5),
+
+V7 = IntegerT
+V8 = V0
+ArrowT V7 V8 = V1
+V4 = V5
+V3 = V5
+V2 = V5
+V6 = IntegerT
+ArrowT V5 V6 = V1
+IntegerT = IntegerT
+IntegerT = IntegerT
+IntegerT = IntegerT
+IntegerT = IntegerT
+IntegerT = V4
+IntegerT = IntegerT
+IntegerT = V3
+IntegerT = V2
+
+If I solve it manually, I get:
+
+V0 = IntegerT
+V1 = ArrowT IntegerT IntegerT
+V2 = IntegerT
+V3 = IntegerT
+V4 = IntegerT
+V5 = IntegerT
+V6 = IntegerT
+V7 = IntegerT
+V8 = IntegerT
+
+Perfect. Just what we want.
+
+Now, I think it would be good practice to try asking this question to the SMT
+solver, yices. I'll do that tomorrow morning.
+
+My question to you is, is there a systematic way to solve this system of
+equations? Can I do variable elimination? In some order?
+
+Perhaps I can eliminate constraints?
+
+X = X  - drop the constraint, because it's trivial.
+ArrowT X Y = ArrowT W Z  - replace with X = W, Y = Z
+X = Y - If we can give priority to types, say smaller types have higher
+priority than larger types, we could say, substitute every occurence of Y with
+X, recording that Y is Y.
+
+Repeat until we reach some sort of fixed point?
+
+Let me try it.
+
+V7 = IntegerT
+V8 = V0
+V1 = ArrowT IntegerT V0
+V5 = V4
+V4 = V3
+V3 = V2
+V6 = IntegerT
+V2 = IntegerT
+V0 = IntegerT
+
+We make pretty good progress after one round, but now what? Another round
+isn't going to help any.
+
+Maybe I have to replace all of them?
+Let me try that.
+
+So we say the following: you may only replace a variable with a better known
+variable. That should finish us. Let me try it.
+
+
+V7 = IntegerT
+V8 = IntegerT
+V1 = ArrowT IntegerT IntegerT
+V5 = IntegerT
+V4 = IntegerT
+V3 = IntegerT
+V6 = IntegerT
+V2 = IntegerT
+V0 = IntegerT
+
+Wow. Well, that works pretty well here.
+
+Perhaps there is some fixed point thing or something. It would be nice to try
+and prove in coq or some such.
+
+The idea is this. We order expressions from best known to least known.
+
+Whenever you encounter the constraint: X = Y, flip it so that whatever is on
+the left is the last known. Call that X. Then, replace every other occurrence
+of X in all other constraints with Y. You have just made things better known
+overall.
+
+Ignore constraints of the form X = X
+Fail at constraints of the form X = Y where X and Y are known but don't match.
+Reduce constraints of the form ArrowT A B = ArrowT C D to two simpler
+constraints: A = C, B = D.
+
+The hpothesis is, running this algorithm will leave you with an association
+list mapping unknown types to known types. Just look up your type variable in
+the list, it will tell you, as best it can, what the type of that is.
+
+Well, it's late enough I need to call it a day.
+
+Here's the plan for tomorrow.
+
++ Implement my proposed type constraint solving algorithm.
+- Combine that with the constraint generation to do type inference.
+- Try using yices to solve the above constraint problem.
+Mostly just for practice with yices. I don't actually want to use it in my
+compiler because I don't want to have to go to IO. It will be good to have
+confidence that I can use an SMT solver if things start getting messy though.
+
+At this point, I should have a full front end, parser, type inference, type
+checker (if not subsumed by type inference, it might be nice to have type
+checker to make it easier to figure out type errors), elaborator, pretty
+printer, haskell generator, c generator.
+
+- Reorganize code into something nice.
+- Write up HUnit test cases.
+- Expand Seri to support factorial function with fix operator.
+
+This should give me a feel for things. At this point, I think I'll have enough
+to go on to try and understand extensibility. I'd like to answer questions
+such as:
+* Can we augment the IR with unknown type just for parsing?
+* Can we augment the IR with variable types just for type checking?
+* Can we augment the IR with source pos info for parsing and type checking?
+* Can we separate primitives out of IR in a nice way? 
+
+If this is not enough to go on, then continue to expand the IR until it
+supports everything I want for tibby. See if I can describe QR in my IR, how
+nice it is, if it all works, and then try to compile to C, BSV, and Fiddler.
+
+That's really the ultimate for this project. If I can do QR in those
+languages, them I'm ready to roll.
+
+Sun Mar 25 06:48:06 EDT 2012
+
+First step: implement my type constraint solver.
+
+Well, it seems to have worked on my simple example. We shall see if it works
+in general.
+
