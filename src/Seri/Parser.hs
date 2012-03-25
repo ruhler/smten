@@ -4,7 +4,7 @@ module Seri.Parser (
     ) where
 
 import Data.Char(ord)
-import Text.Parsec
+import Text.Parsec hiding (token)
 import Language.Haskell.Meta.Parse(parseExp)
 
 import Seri.IR
@@ -49,38 +49,37 @@ top = do
     eof
     return x
 
+-- A string token followed by optional space.
+token :: String -> Parser String
+token x = do
+    string x
+    many space
+    return x
+
 eparen :: Parser Exp
 eparen = do
-    char '('
-    many space
+    token "("
     x <- expression
-    many space
-    char ')'
-    many space
+    token ")"
     return x
 
 etrue :: Parser Exp
 etrue = do
-    string "true"
-    many space
+    token "true"
     return $ BoolE True
 
 efalse :: Parser Exp
 efalse = do
-    string "false"
-    many space
+    token "false"
     return $ BoolE False
 
 eif :: Parser Exp
 eif = do
-    string "if"
-    many space
+    token "if"
     p <- expression
-    string "then"
-    many space
+    token "then"
     tb <- expression
-    string "else"
-    many space
+    token "else"
     tf <- expression
     return $ IfE UnknownT p tb tf
 
@@ -101,26 +100,22 @@ digitstoint acc (x:xs) = digitstoint (acc*10 + (fromIntegral $ (ord x - ord '0')
     
 eadd :: Parser (Exp -> Exp -> Exp)
 eadd = do
-    char '+'
-    many space
+    token "+"
     return $ AddE
 
 esub :: Parser (Exp -> Exp -> Exp)
 esub = do
-    char '-'
-    many space
+    token "-"
     return $ SubE
 
 elt :: Parser (Exp -> Exp -> Exp)
 elt = do
-    char '<'
-    many space
+    token "<"
     return $ LtE
 
 emul :: Parser (Exp -> Exp -> Exp)
 emul = do
-    char '*'
-    many space
+    token "*"
     return $ MulE
 
 eapp :: Parser (Exp -> Exp -> Exp)
@@ -132,10 +127,8 @@ elam = do
     char '\\'
     nm <- name
     many space
-    string "->"
-    many space
+    token "->"
     body <- expression
-    many space
     return $ LamE UnknownT nm body
 
 
