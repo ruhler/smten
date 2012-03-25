@@ -34,6 +34,15 @@ typecheck (MulE a b) = do
 
     return IntegerT
 
+typecheck (SubE a b) = do
+    at <- typecheck a
+    typeassert IntegerT at a
+
+    bt <- typecheck b
+    typeassert IntegerT bt b
+
+    return IntegerT
+
 typecheck e@(AppE t f x) = do
     ft <- typecheck f
     xt <- typecheck x
@@ -59,6 +68,7 @@ checkvars n v = traverse $ Traversal {
     tr_int = \_ _ -> return (),
     tr_add = \_ a b -> a >> b,
     tr_mul = \_ a b -> a >> b,
+    tr_sub = \_ a b -> a >> b,
     tr_app = \_ _ a b -> a >> b,
     tr_lam = \_ _ ln b -> if ln /= n then b else return (),
     tr_var = \e t vn -> if vn == n then typeassert v t e else return ()

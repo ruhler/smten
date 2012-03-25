@@ -32,7 +32,7 @@ mults :: Parser Exp
 mults = appls `chainl1` emul
 
 adds :: Parser Exp
-adds = mults `chainl1` eadd
+adds = mults `chainl1` (eadd <|> esub)
 
 expression :: Parser Exp
 expression = adds
@@ -75,6 +75,12 @@ eadd = do
     char '+'
     many space
     return $ AddE
+
+esub :: Parser (Exp -> Exp -> Exp)
+esub = do
+    char '-'
+    many space
+    return $ SubE
 
 emul :: Parser (Exp -> Exp -> Exp)
 emul = do

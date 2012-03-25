@@ -70,7 +70,8 @@ tests = "Seri" ~: [
         "simple" ~: Just (IntegerE 42) ~=? run [s|(\x -> x*x+3*x+2) 5|],
         "frontspace" ~: Just (IntegerE 13) ~=? run [s| 8+5|],
         "backspace" ~: Just (IntegerE 13) ~=? run [s|8+5 |],
-        "space" ~: Just (IntegerE 13) ~=? run [s| 8 + 5 |]
+        "space" ~: Just (IntegerE 13) ~=? run [s| 8 + 5 |],
+        "subtract" ~: Just (IntegerE 3) ~=? run [s| 8 - 5 |]
         ]
     ]
 

@@ -1075,4 +1075,25 @@ I need the following:
 
 Start with subtract.
 
+Things to add:
+
+- IR construct for it: SubE
+- Add syntax to parser: -
+- TH lift (TODO: can't we automatic this in most cases?)
+- traverseM
+- ununknown
+- constrain
+- traverse
+- elaborate
+- reduce
+- tereplace
+- constrainvs
+- typecheck
+- checkvars
+
+All that just to run the thing. This doesn't include pretty printing of
+conversions to C or Haskell.
+
+I do observe AddE, SubE, and MulE are all implemented in almost exactly the
+same way.
 

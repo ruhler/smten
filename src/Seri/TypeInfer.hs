@@ -26,6 +26,7 @@ tereplace l = traverse $ Traversal {
     tr_int = \e _ -> e,
     tr_add = \_ -> AddE,
     tr_mul = \_ -> MulE,
+    tr_sub = \_ -> SubE,
     tr_app = \_ t ->
         case (lookup t l) of
             Just t' -> AppE t'
@@ -47,6 +48,7 @@ ununknown = traverseM $ TraversalM {
     tr_intM = \e _ -> return e,
     tr_addM = \_ a b -> return $ AddE a b,
     tr_mulM = \_ a b -> return $ MulE a b,
+    tr_subM = \_ a b -> return $ SubE a b,
     tr_appM = \_ t a b -> do
         t' <- ununknownt t
         return $ AppE t' a b,
@@ -87,6 +89,9 @@ constrain = traverseM $ TraversalM {
     tr_mulM = \(MulE a b) _ _ -> do
         addc IntegerT (typeof a)
         addc IntegerT (typeof b),
+    tr_subM = \(SubE a b) _ _ -> do
+        addc IntegerT (typeof a)
+        addc IntegerT (typeof b),
     tr_appM = \(AppE t f x) _ _ _ -> do
         it <- nextv
         ot <- nextv
@@ -107,6 +112,7 @@ constrainvs n v = traverse $ Traversal {
     tr_int = \_ _ -> return (),
     tr_add = \_ a b -> a >> b,
     tr_mul = \_ a b -> a >> b,
+    tr_sub = \_ a b -> a >> b,
     tr_app = \_ _ a b -> a >> b,
     tr_lam = \_ _ nm b ->
         if n == nm
