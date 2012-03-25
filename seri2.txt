@@ -1069,7 +1069,7 @@ Well, I want to write something like:
 I need the following:
 + Subtract
 + Bool
-- Lt
++ Lt
 - If
 - fix operator
 
@@ -1114,4 +1114,12 @@ than the previous ones.
 
 Yup, adding that was pretty straight forward.
 
+Next: If.
+
+This one might be more interesting.
+
+Sun Mar 25 12:32:07 EDT 2012
+
+In all these things, the Parser is most fragile. Adding more stuff can break
+it easily. That's not so much the case for anything else.
 

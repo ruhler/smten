@@ -21,7 +21,8 @@ type Parser = Parsec String ()
 
 atom :: Parser Exp
 atom = do
-    e <- (eth <|> elam <|> eparen <|> einteger <|> etrue <|> efalse <|> evar)
+    e <- (eth <|> elam <|> eparen <|> einteger <|>
+          eif <|> try etrue <|> try efalse <|> try evar)
     many space
     return e
 
@@ -69,6 +70,19 @@ efalse = do
     string "false"
     many space
     return $ BoolE False
+
+eif :: Parser Exp
+eif = do
+    string "if"
+    many space
+    p <- expression
+    string "then"
+    many space
+    tb <- expression
+    string "else"
+    many space
+    tf <- expression
+    return $ IfE UnknownT p tb tf
 
 einteger :: Parser Exp
 einteger = do
@@ -124,11 +138,17 @@ elam = do
     many space
     return $ LamE UnknownT nm body
 
+
+reserved = ["if", "then", "else", "true", "false"]
+
 evar :: Parser Exp
 evar = do
     nm <- name
-    many space
-    return $ VarE UnknownT nm
+    if (nm `elem` reserved)
+     then fail ""
+     else do
+        many space
+        return $ VarE UnknownT nm
 
 name :: Parser Name
 name = many1 alphaNum

@@ -74,7 +74,8 @@ tests = "Seri" ~: [
         "subtract" ~: Just (IntegerE 3) ~=? run [s| 8 - 5 |],
         "true" ~: Just (BoolE True) ~=? run [s| true |],
         "false" ~: Just (BoolE False) ~=? run [s| false |],
-        "lt" ~: Just (BoolE False) ~=? run [s| 6 < 4 |]
+        "lt" ~: Just (BoolE False) ~=? run [s| 6 < 4 |],
+        "if" ~: Just (IntegerE 23) ~=? run [s| if 6 < 4 then 42 else 23 |]
         ]
     ]
 

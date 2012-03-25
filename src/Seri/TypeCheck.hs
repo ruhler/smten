@@ -53,6 +53,16 @@ typecheck (LtE a b) = do
 
     return BoolT
 
+typecheck e@(IfE t p a b) = do
+    pt <- typecheck p
+    typeassert BoolT pt p
+
+    at <- typecheck a
+    bt <- typecheck b
+    typeassert at bt b
+    
+    return at
+
 typecheck e@(AppE t f x) = do
     ft <- typecheck f
     xt <- typecheck x
@@ -81,6 +91,7 @@ checkvars n v = traverse $ Traversal {
     tr_mul = \_ a b -> a >> b,
     tr_sub = \_ a b -> a >> b,
     tr_lt = \_ a b -> a >> b,
+    tr_if = \_ _ p a b -> p >> a >> b,
     tr_app = \_ _ a b -> a >> b,
     tr_lam = \_ _ ln b -> if ln /= n then b else return (),
     tr_var = \e t vn -> if vn == n then typeassert v t e else return ()
