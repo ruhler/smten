@@ -880,7 +880,7 @@ printer, haskell generator, c generator.
 
 + Reorganize code into something nice.
 + Write up HUnit test cases.
-- Expand Seri to support factorial function with fix operator.
++ Expand Seri to support factorial function with fix operator.
 
 This should give me a feel for things. At this point, I think I'll have enough
 to go on to try and understand extensibility. I'd like to answer questions
@@ -1071,7 +1071,7 @@ I need the following:
 + Bool
 + Lt
 + If
-- fix operator
++ fix operator
 
 Start with subtract.
 
@@ -1202,4 +1202,182 @@ Oh. I had a typo in the input. I used both n and x, but n was free, it wasn't
 bound. That caused the problem.
 
 Hey! Cool. Fix point works. Factorial works.
+
+Sun Mar 25 14:10:21 EDT 2012
+
+Next goal: Extensibility.
+
+I'm pretty confident I could write a bunch of cool stuff, have a bunch of
+features. But I want it to be clean. That is, I want each feature to be like a
+library, and I just need to pull in whatever libraries I need for my
+application.
+
+Let me start with perhaps a simpler goal than I had before, but still a big
+step towards extensibility.
+
+Right now we have things broken up by phase: parse, quote, typeinfer,
+typecheck, elaborate. What I really want, though, is to be broken up by
+construct: Bool, Integer, Add, Sub, Mul, Fix, If.
+
+Hum. This seems rather daunting. Perhaps I can put up some strawmen and see
+how well they do.
+
+Let me ignore the parser for now, because I think that's its own issue.
+
+I have these functions: typeinfer, typecheck, elaborate, and friends.
+
+What I want, in my vision, is that these will work on any kind of IR type that
+has each function properly described. Thus, it would seem, typeclasses could
+help us. I want each feature of the IR to be its own type, I implement the
+right typeclass, and suddenly I can use the functions.
+
+In particular, it would seem I'd like a way to put a bunch of features
+together, so that given an IR and a Feature, I get back a new IR.
+
+Okay, good, that all sounds good.
+
+And I'm fine having a core IR with variables, lambdas, and applications, if
+that helps to kick-start things.
+
+Okay, now what? Um, let's say every IR has an Exp type and a Type type? I
+don't know what I'm doing, let me just write things down and see where I end
+up.
+
+Ug.
+
+Say a Feature involves some Type and Exp it adds.
+For example, boolean might add: BoolT, BoolE.
+We have a core IR with Type and Exp
+
+I want a new IR with (Type, BoolT) (Exp, BoolE).
+
+Err...
+
+data Exp a = IntegerE
+           | AddE (Exp a) (Exp a)
+           | ...
+           | a
+           ;
+
+This is an extensible expression type. To extend it, you just add expressions
+as described by the 'a' type. So, this becomes a bit like stacking monad
+transformers.
+
+Now, I could fill that with a feature, right? And the Feature should be
+extensible...
+
+data Feature a = BoolE
+               | a
+               ;
+
+No. It doesn't work, because the new features need access to all the old stuff
+too.
+
+hmm.. an IR augmented with a feature can be typechecked, for example, if the
+IR can be typechecked, and the new feature can be typechecked.
+
+Let me use If as the example, I think it will reveal more.
+
+data CoreE t e = 
+    AppE t e e
+  | LamE t Name e
+  | VarE t e e
+   
+        
+data IfE t e = IfE t e e e
+
+Okay, so we specify features like this, say. Parameterized by t and e.
+
+Now, in order to instantiate our concrete IR, we would do something like:
+
+data MyExp = Core (CoreE MyType MyExp)
+           | If (IfE MyType MyExp)
+
+Ooh. This looks like it has potential to me.
+
+instance Typeof MyExp where
+    typeof (Core x) = typeof x
+    typeof (If x) = typeof x
+
+And we could maybe even use generics to help us write these, but let's not
+worry about that just now.
+
+instance Traverse MyExp where   
+    traverse... It should work.
+
+I want to try this for a little example. Maybe, have the core be everything
+now aside from fix. Then add Fix as a feature. That will be a good test.
+
+I'll have type classes for all the phases. I'll implement Core to work the way
+you would expect.
+
+Um, things could get messy. I would recommend: don't worry about messing a
+bunch of stuff up.
+
+In fact, it may make sense to try and start from scratch with a simple core,
+one bit at a time, copying code. Yes, I bet that will be easier than trying to
+modify this whole thing.
+
+Cool. I like this vision.
+
+Sun Mar 25 15:45:34 EDT 2012
+
+Slight change in plan. I'm going to try and adapt the existing code rather
+than starting from scratch.
+
+We'll say the parser is for my specific choice of combinations (what I have
+currently).
+
+I'll pull pieces out of Exp and Type a bit at a time.
+
+First thing to pull out: Fix.
+
+Pull it out, make type classes for each feature.
+After that, I should be able to pull things out a piece at a time.
+
+There is one issue I might run into. I'll probably run into. Let me deal with
+it when I get there, but have it in my mind now. That's, some features depend
+on others. Like, you can have If unless you have Bool. How will those compose
+together? Hmm... worried. But let me try this anyhow and see how it goes.
+
+Sun Mar 25 15:54:14 EDT 2012
+
+Not sure how to deal with traversal. Can I come back to that later?
+
+Things to pull fix out of:
+
+elaborate.
+
+Hmm... this seems to interact poorly with traversal...
+
+Let me try typecheck, which doesn't have the traversal issue.
+
+But that depends on checkvars, which has the traversal issue.
+
+This traversal thing... doesn't seem to help.
+
+Let me remove use of traversal from all of TypeCheck, then try to pull FixE_F
+out of it.
+
+Sun Mar 25 16:20:52 EDT 2012
+
+I should figure out how they use generic programming in haskell to implement a
+generic show. That way I can write a generic implementation for your concrete
+IR, given the implementation for all the pieces.
+
+Anyway, continuing on with extraction of FixE.
+
+Sun Mar 25 16:38:51 EDT 2012
+
+Trouble with the Elaborate class. We need to pass in the top level expression
+container. Does that mean it needs to be part of the class?
+
+It seems like a Fix point specific thing, because fix has to refer to itself.
+
+Ug.
+
+I think, maybe, I should take a break from this track, and look more closely
+at generic programming? Perhaps that will give me ideas?
+
+Erg...
 

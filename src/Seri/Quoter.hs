@@ -33,6 +33,9 @@ instance Lift Type where
     lift (ArrowT a b) = [e| ArrowT a b |]
     lift UnknownT = [e| UnknownT |]
 
+instance (Lift e) => Lift (FixE_F e) where
+    lift (FixE_F t n e) = [e| FixE_F t n e |]
+
 instance Lift Exp where
     lift (BoolE x) = [e| BoolE x |]
     lift (IntegerE x) = [e| IntegerE x |]
@@ -42,7 +45,7 @@ instance Lift Exp where
     lift (LtE a b) = [e| LtE a b |]
     lift (IfE t p a b) = [e| IfE t p a b |]
     lift (AppE t a b) = [e| AppE t a b |]
-    lift (FixE t n e) = [e| FixE t n e |]
+    lift (FixE x) = [e| FixE x |]
     lift (LamE t n e) = [e| LamE t n e |]
     lift (VarE t n) = [e| VarE t n |]
     lift (ThE x) = TH.appE [e| seriate |] (return x)

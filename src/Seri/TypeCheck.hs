@@ -7,112 +7,122 @@ import Seri.IR
 
 import Control.Monad.State
 
--- Typecheck an expression.
--- All the type information should already be in the expression, this just
--- checks that that information is consistent.
---
--- It fails with a hopefully useful message if typecheck fails. Otherwise it
--- returns the type of the expression.
-typecheck :: (Monad m) => Exp -> m Type
-typecheck (BoolE _) = return BoolT
-typecheck (IntegerE _) = return IntegerT
+class (Ppr a) => TypeCheck a where
+    -- Typecheck an expression.
+    -- All the type information should already be in the expression, this just
+    -- checks that that information is consistent.
+    --
+    -- It fails with a hopefully useful message if typecheck fails. Otherwise it
+    -- returns the type of the expression.
+    typecheck :: (Monad m) => a -> m Type
 
-typecheck (AddE a b) = do
-    at <- typecheck a
-    typeassert IntegerT at a
+    -- Check that all variables with the given name in the expression have the
+    -- given type. If they don't, fail with a hopefully meaningful message.
+    checkvars :: Monad m => Name -> Type -> a -> m ()
 
-    bt <- typecheck b
-    typeassert IntegerT bt b
+instance (TypeCheck e) => TypeCheck (FixE_F e) where
+    typecheck (FixE_F t n body) = do
+        bodyt <- typecheck body
+        checkvars n t body
+        typeassert t bodyt body
+        return t
 
-    return IntegerT
+    checkvars n v (FixE_F _ ln b) =
+        if ln /= n
+            then checkvars n v b
+            else return ()
 
-typecheck (MulE a b) = do
-    at <- typecheck a
-    typeassert IntegerT at a
+instance TypeCheck Exp where
+    typecheck (BoolE _) = return BoolT
+    typecheck (IntegerE _) = return IntegerT
 
-    bt <- typecheck b
-    typeassert IntegerT bt b
+    typecheck (AddE a b) = do
+        at <- typecheck a
+        typeassert IntegerT at a
 
-    return IntegerT
+        bt <- typecheck b
+        typeassert IntegerT bt b
 
-typecheck (SubE a b) = do
-    at <- typecheck a
-    typeassert IntegerT at a
+        return IntegerT
 
-    bt <- typecheck b
-    typeassert IntegerT bt b
+    typecheck (MulE a b) = do
+        at <- typecheck a
+        typeassert IntegerT at a
 
-    return IntegerT
+        bt <- typecheck b
+        typeassert IntegerT bt b
 
-typecheck (LtE a b) = do
-    at <- typecheck a
-    typeassert IntegerT at a
+        return IntegerT
 
-    bt <- typecheck b
-    typeassert IntegerT bt b
+    typecheck (SubE a b) = do
+        at <- typecheck a
+        typeassert IntegerT at a
 
-    return BoolT
+        bt <- typecheck b
+        typeassert IntegerT bt b
 
-typecheck e@(IfE t p a b) = do
-    pt <- typecheck p
-    typeassert BoolT pt p
+        return IntegerT
 
-    at <- typecheck a
-    bt <- typecheck b
-    typeassert at bt b
-    
-    return at
+    typecheck (LtE a b) = do
+        at <- typecheck a
+        typeassert IntegerT at a
 
-typecheck e@(AppE t f x) = do
-    ft <- typecheck f
-    xt <- typecheck x
-    case ft of
-        ArrowT at bt -> do
-            typeassert at xt x
-            typeassert bt t e
-            return bt
-        _ -> typefail "function" ft f
+        bt <- typecheck b
+        typeassert IntegerT bt b
 
-typecheck (FixE t n body) = do
-    bodyt <- typecheck body
-    checkvars n t body
-    typeassert t bodyt body
-    return t
+        return BoolT
 
-typecheck (LamE t@(ArrowT at bt) n body) = do
-    bodyt <- typecheck body
-    checkvars n at body
-    typeassert bt bodyt body
-    return t
+    typecheck e@(IfE t p a b) = do
+        pt <- typecheck p
+        typeassert BoolT pt p
 
-typecheck e@(LamE t n body) = typefail "function" t e
-typecheck (VarE t _) = return t
+        at <- typecheck a
+        bt <- typecheck b
+        typeassert at bt b
+        
+        return at
 
--- Check that all variables with the given name in the expression have the
--- given type. If they don't, fail with a hopefully meaningful message.
-checkvars :: Monad m => Name -> Type -> Exp -> m ()
-checkvars n v = traverse $ Traversal {
-    tr_bool = \_ _ -> return (),
-    tr_int = \_ _ -> return (),
-    tr_add = \_ a b -> a >> b,
-    tr_mul = \_ a b -> a >> b,
-    tr_sub = \_ a b -> a >> b,
-    tr_lt = \_ a b -> a >> b,
-    tr_if = \_ _ p a b -> p >> a >> b,
-    tr_app = \_ _ a b -> a >> b,
-    tr_fix = \_ _ ln b -> if ln /= n then b else return (),
-    tr_lam = \_ _ ln b -> if ln /= n then b else return (),
-    tr_var = \e t vn -> if vn == n then typeassert v t e else return ()
-}
+    typecheck e@(AppE t f x) = do
+        ft <- typecheck f
+        xt <- typecheck x
+        case ft of
+            ArrowT at bt -> do
+                typeassert at xt x
+                typeassert bt t e
+                return bt
+            _ -> typefail "function" ft f
+
+    typecheck (FixE x) = typecheck x
+
+    typecheck (LamE t@(ArrowT at bt) n body) = do
+        bodyt <- typecheck body
+        checkvars n at body
+        typeassert bt bodyt body
+        return t
+
+    typecheck e@(LamE t n body) = typefail "function" t e
+    typecheck (VarE t _) = return t
+
+    checkvars n v (BoolE _) = return ()
+    checkvars n v (IntegerE _) = return ()
+    checkvars n v (AddE a b) = checkvars n v a >> checkvars n v b
+    checkvars n v (MulE a b) = checkvars n v a >> checkvars n v b
+    checkvars n v (SubE a b) = checkvars n v a >> checkvars n v b
+    checkvars n v (LtE a b) = checkvars n v a >> checkvars n v b
+    checkvars n v (IfE _ p a b) = checkvars n v p >> checkvars n v a >> checkvars n v b
+    checkvars n v (AppE _ a b) = checkvars n v a >> checkvars n v b
+    checkvars n v (FixE x) = checkvars n v x
+    checkvars n v (LamE _ ln b) = if ln /= n then checkvars n v b else return ()
+    checkvars n v e@(VarE t vn) = if vn == n then typeassert v t e else return ()
 
 -- typefail expected found expr
 -- Indicate a type failure.
-typefail :: (Monad m) => String -> Type -> Exp -> m a
+typefail :: (Monad m, Ppr e) => String -> Type -> e -> m a
 typefail exp fnd expr
   = fail $ "Expected type " ++ exp ++ ", found type " ++ show (ppr fnd)
             ++ " in the expression " ++ show (ppr expr)
 
-typeassert :: (Monad m) => Type -> Type -> Exp -> m ()
+typeassert :: (Ppr e) => (Monad m) => Type -> Type -> e -> m ()
 typeassert exp fnd expr
   = if (exp == fnd)
         then return ()
