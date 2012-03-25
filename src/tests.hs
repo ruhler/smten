@@ -2,15 +2,9 @@
 {-# LANGUAGE QuasiQuotes #-}
 
 import Seri
-import SeriPrint
-import Elaborate
-import SeriHaskell
-import CPrint
+import Seri.Backend.Haskell
 import qualified C
-import SeriC
-import SeriTypeCheck
-import SeriParser
-import SeriQuoter
+import Seri.Backend.C
 
 -- foo: (\x = x*x + 3*x + 2) 5
 foo :: Exp

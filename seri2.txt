@@ -867,7 +867,7 @@ Well, it's late enough I need to call it a day.
 Here's the plan for tomorrow.
 
 + Implement my proposed type constraint solving algorithm.
-- Combine that with the constraint generation to do type inference.
++ Combine that with the constraint generation to do type inference.
 - Try using yices to solve the above constraint problem.
 Mostly just for practice with yices. I don't actually want to use it in my
 compiler because I don't want to have to go to IO. It will be good to have
@@ -916,4 +916,33 @@ Here's how it should work.
 Let's allow the user to do typecheck separately from inference.
 And we just say, well, inference may not return a correct result, so you
 should probably check the solution it gets.
+
+Sun Mar 25 07:37:56 EDT 2012
+
+I don't feel much like playing with yices right now.
+
+Let me instead move on to code cleanup.
+
+I'll start by looking at the code, proposing a solution. Then I'll take a
+break for breakfast, come back, and clean stuff up.
+
+Proposed hierarchy:
+
+C - ir, ppr
+Seri - Seri.IR, Seri.Elaborate, Seri.Parser, Seri.Quoter, Seri.TypeCheck, Seri.TypeInfer
+Seri.IR - ir, typeof, ppr
+Seri.Elaborate elaborate
+Seri.Parser parser
+Seri.Quoter quoter, thlift
+Seri.TypeCheck typecheck
+Seri.TypeInfer typeinfer
+Seri.Backend.C
+Seri.Backend.Haskell
+
+I think that will make for a nice structure, and clean sharing, and such like.
+
+And we should have test cases for everything.
+Let each module define its own tests? Yes, as HUnit.
+
+Good. This will be nice to do.
 

@@ -1,8 +1,8 @@
 
-module SeriHaskell (haskell)
+module Seri.Backend.Haskell (haskell)
   where
 
-import qualified Seri as S
+import qualified Seri.IR as S
 import Language.Haskell.TH
 
 haskell :: S.Exp -> Exp

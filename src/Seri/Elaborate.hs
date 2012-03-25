@@ -1,9 +1,9 @@
 
-module Elaborate (
+module Seri.Elaborate (
     elaborate
     ) where
 
-import Seri
+import Seri.IR
 
 -- elaborate prg
 -- Reduce the given expression as much as possible.

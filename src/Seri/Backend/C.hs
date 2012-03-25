@@ -1,11 +1,10 @@
 
-
-module SeriC (c)
+module Seri.Backend.C (c)
   where
 
 import Control.Monad.State
 
-import qualified Seri as S
+import qualified Seri.IR as S
 import C
 
 data CState = CState {

@@ -1,5 +1,5 @@
 
-module SeriParser (
+module Seri.Parser (
     seriparse
     ) where
 
@@ -7,7 +7,7 @@ import Data.Char(ord)
 import Text.Parsec
 import Language.Haskell.Meta.Parse(parseExp)
 
-import Seri
+import Seri.IR
 
 -- Parse a seri expression.
 -- Fails if there is a parse error.
