@@ -8,41 +8,34 @@ import Seri.IR
 -- elaborate prg
 -- Reduce the given expression as much as possible.
 elaborate :: Exp -> Exp
-elaborate e@(IntegerE _) = e
-elaborate (AddE a b) =
-    let ae = elaborate a
-        be = elaborate b
-    in case (ae, be) of
-        (IntegerE av, IntegerE bv) -> IntegerE (av+bv)
-        _ -> AddE ae be
-
-elaborate (MulE a b) =
-    let ae = elaborate a
-        be = elaborate b
-    in case (ae, be) of
-        (IntegerE av, IntegerE bv) -> IntegerE (av*bv)
-        _ -> MulE ae be
-
-elaborate (AppE t f x) =
-    let fe = elaborate f
-        xe = elaborate x
-    in case (fe) of
-        (LamE _ name body) -> elaborate $ reduce body name xe
-        _ -> AppE t fe xe
-
-elaborate e@(LamE _ _ _) = e
-elaborate e@(VarE _ _) = e
+elaborate = traverse $ Traversal {
+    tr_int = \e _ -> e,
+    tr_add = \_ a b ->
+        case (a, b) of
+            (IntegerE av, IntegerE bv) -> IntegerE (av+bv)
+            _ -> AddE a b,
+    tr_mul = \_ a b ->
+        case (a, b) of
+            (IntegerE av, IntegerE bv) -> IntegerE (av*bv)
+            _ -> MulE a b,
+    tr_app = \_ t f x ->
+        case f of
+            (LamE _ name body) -> elaborate $ reduce name x body
+            _ -> AppE t f x,
+    tr_lam = \e _ _ _ -> e,
+    tr_var = \e _ _ -> e
+}
 
 
--- reduce exp n v
+-- reduce n v exp
 -- Perform beta reduction in exp, replacing occurances of variable n with v.
-reduce :: Exp -> Name -> Exp -> Exp
-reduce e@(IntegerE _) _ _ = e
-reduce (AddE a b) n v = AddE (reduce a n v) (reduce b n v)
-reduce (MulE a b) n v = MulE (reduce a n v) (reduce b n v)
-reduce (AppE t a b) n v = AppE t (reduce a n v) (reduce b n v)
-reduce (LamE t ln body) n v | ln /= n = LamE t ln (reduce body n v)
-reduce e@(LamE _ _ _) _ _ = e
-reduce (VarE t vn) n v | vn == n = v
-reduce e@(VarE t vn) _ _ = e
+reduce :: Name -> Exp -> Exp -> Exp
+reduce n v = traverse $ Traversal {
+    tr_int = \e _ -> e,
+    tr_add = \_ -> AddE,
+    tr_mul = \_ -> MulE,
+    tr_app = \_ -> AppE,
+    tr_lam = \e t ln b -> if ln /= n then LamE t ln b else e,
+    tr_var = \e t vn -> if vn == n then v else e
+}
 

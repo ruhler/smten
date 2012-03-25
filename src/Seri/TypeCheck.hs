@@ -45,7 +45,7 @@ typecheck e@(AppE t f x) = do
         _ -> typefail "function" ft f
 typecheck (LamE t@(ArrowT at bt) n body) = do
     bodyt <- typecheck body
-    checkvars body n at
+    checkvars n at body
     typeassert bt bodyt body
     return t
 
@@ -54,22 +54,15 @@ typecheck (VarE t _) = return t
 
 -- Check that all variables with the given name in the expression have the
 -- given type. If they don't, fail with a hopefully meaningful message.
-checkvars :: Monad m => Exp -> Name -> Type -> m ()
-checkvars (IntegerE _) _ _ = return ()
-checkvars (AddE a b) n v = do
-    checkvars a n v
-    checkvars b n v
-checkvars (MulE a b) n v = do
-    checkvars a n v
-    checkvars b n v
-checkvars (AppE _ a b) n v = do
-    checkvars a n v
-    checkvars b n v
-checkvars (LamE _ ln body) n v | ln /= n = checkvars body n v
-checkvars (LamE _ ln body) n v = return ()
-checkvars e@(VarE t vn) n v | vn == n = typeassert v t e
-checkvars e@(VarE t vn) n v = return ()
-
+checkvars :: Monad m => Name -> Type -> Exp -> m ()
+checkvars n v = traverse $ Traversal {
+    tr_int = \_ _ -> return (),
+    tr_add = \_ a b -> a >> b,
+    tr_mul = \_ a b -> a >> b,
+    tr_app = \_ _ a b -> a >> b,
+    tr_lam = \_ _ ln b -> if ln /= n then b else return (),
+    tr_var = \e t vn -> if vn == n then typeassert v t e else return ()
+}
 
 -- typefail expected found expr
 -- Indicate a type failure.

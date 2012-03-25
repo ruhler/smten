@@ -2,7 +2,8 @@
 module Seri.IR (
     Name, Type(..), Exp(..),
     Seriable(..), Ppr(..),
-    typeof
+    typeof,
+    Traversal(..), traverse,
     ) where
 
 import qualified Language.Haskell.TH as TH
@@ -33,6 +34,23 @@ typeof (MulE _ _) = IntegerT
 typeof (AppE t _ _) = t
 typeof (LamE t _ _) = t
 typeof (VarE t _) = t
+
+data Traversal a = Traversal {
+    tr_int :: Exp -> Integer -> a,
+    tr_add :: Exp -> a -> a -> a,
+    tr_mul :: Exp -> a -> a -> a,
+    tr_app :: Exp -> Type -> a -> a -> a,
+    tr_lam :: Exp -> Type -> Name -> a -> a,
+    tr_var :: Exp -> Type -> Name -> a
+}
+
+traverse :: Traversal a -> Exp -> a
+traverse tr e@(IntegerE i) = tr_int tr e i
+traverse tr e@(AddE a b) = tr_add tr e (traverse tr a) (traverse tr b)
+traverse tr e@(MulE a b) = tr_mul tr e (traverse tr a) (traverse tr b)
+traverse tr e@(AppE t a b) = tr_app tr e t (traverse tr a) (traverse tr b)
+traverse tr e@(LamE t n b) = tr_lam tr e t n (traverse tr b)
+traverse tr e@(VarE t n) = tr_var tr e t n
 
 class Seriable a where
     seriate :: a -> Exp

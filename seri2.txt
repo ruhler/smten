@@ -879,7 +879,7 @@ checker to make it easier to figure out type errors), elaborator, pretty
 printer, haskell generator, c generator.
 
 + Reorganize code into something nice.
-- Write up HUnit test cases.
++ Write up HUnit test cases.
 - Expand Seri to support factorial function with fix operator.
 
 This should give me a feel for things. At this point, I think I'll have enough
@@ -949,4 +949,98 @@ Good. This will be nice to do.
 Sun Mar 25 08:32:21 EDT 2012
 
 Next step: switch to using HUnit for tests.
+
+Sun Mar 25 09:11:23 EDT 2012
+
+I want to see if I can simplify the code some. This will help for
+understanding how I could do generic programming too.
+
+The issue is, I feel like I implement recursion down the expression tree lots
+and lots of times, repeating lots of the same stuff.
+
+Can I make some generic expression traversals to make things easier?
+
+Let's look at all the times I do this recursion, and see if I see any common
+forms.
+
+elaborate: 
+    integer: does something
+    adde: recurses to a, b, does something
+    mule: recurses to a, b, does something
+    appe: recurses to f, x, does something
+    lame: does something (this is a leaf for elaborate)
+    vare: does something
+
+reduce: takes args
+    integer: does something
+    add,mul: recurse to a, b, does something
+    app: recurse to f, x, does something
+    lame: recurses to body, does something
+    var: does something
+
+typeof: does something for each. No recursion.
+
+ppr: does the recursion like reduce
+
+lift: does something for each. Nor recursion.
+    
+checkvars, typecheck use our common recursion
+tereplace does, ununknown does, constrain does, constrainvs does
+
+In summary, we do this recursion in the following places:
+
+reduce, ppr, checkvars, typecheck, tereplace, ununknown, constrain, constrainvs
+
+You would think I could factor out the common code.
+
+Okay, so let me make a stab at a proposal for the traversal function.
+
+At the high level, we want to produce a function of the form: Exp -> a
+I want to provide the following:
+
+Integer :: Integer -> a
+AddE :: a -> a -> a, 
+MulE :: a -> a -> a,
+AppE :: Type -> a -> a -> a
+LamE :: Type -> Name -> a -> a
+VarE :: Type -> Name -> a
+
+For example, reduce would be:
+Integer :: IntegerE
+AddE :: AddE
+MulE :: MulE
+AppE :: AppE
+LamE :: \t ln b -> if ln /= n then LamE t ln b else (original LamE)
+VarE :: \t vn -> if vn == n then v else VarE t vn
+
+So maybe we also pass around the original expression, as an escape hatch if
+you don't want to do the recursion completely.
+
+How would you specify these? As arguments, or in a structure.
+
+I think this is worth trying out at least. See if it cleans things up at all
+or not. See if it works or not.
+
+Sun Mar 25 09:45:48 EDT 2012
+
+Well, there's less code written. But I'm not sure you can read the code and
+understand how it works. Maybe that's not true. Maybe it actually captures the
+heart of what you want to do?
+
+Anyway, let's see how much work it is to use with elaborate.
+Elaborate works fine.
+
+ppr - doesn't exactly match form. I could rewrite it so it does, but let me
+skip it for now.
+
+typecheck - doesn't work so well, because of the monad. Perhaps I can have a
+monadic traversal implementation? Let me skip this for now.
+
+ununknown - another one which could take advantage of a monadic traversal.
+constrain - same, monadic traversal would be nice
+constrainvs - same.
+
+And even the one I did which was monadic could take advantage of this.
+Oh, no, actually checkvars doesn't work so well with monadic, because we have
+a case where we don't want to apply the monadic part.
 

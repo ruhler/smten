@@ -22,25 +22,23 @@ typeinfer eorig
 
 -- replace each type in expression according to the given association list.
 tereplace :: [(Type, Type)] -> Exp -> Exp
-tereplace _ e@(IntegerE _) = e
-tereplace l (AddE a b) = AddE (tereplace l a) (tereplace l b)
-tereplace l (MulE a b) = MulE (tereplace l a) (tereplace l b)
-tereplace l (AppE t a b) =
-    let a' = tereplace l a
-        b' = tereplace l b
-    in case (lookup t l) of
-          Just t' -> AppE t' a' b'
-          Nothing -> AppE t a' b'
-tereplace l (LamE t n e) =
-    let e' = tereplace l e
-    in case (lookup t l) of
-          Just t' -> LamE t' n e'
-          Nothing -> LamE t n e'
-tereplace l (VarE t n) =
-    case (lookup t l) of
-          Just t' -> VarE t' n
-          Nothing -> VarE t n
-
+tereplace l = traverse $ Traversal {
+    tr_int = \e _ -> e,
+    tr_add = \_ -> AddE,
+    tr_mul = \_ -> MulE,
+    tr_app = \_ t ->
+        case (lookup t l) of
+            Just t' -> AppE t'
+            Nothing -> AppE t,
+    tr_lam = \_ t ->
+        case (lookup t l) of
+            Just t' -> LamE t'
+            Nothing -> LamE t,
+    tr_var = \_ t ->
+        case (lookup t l) of
+            Just t' -> VarE t'
+            Nothing -> VarE t
+}
 
 -- Replace all unknown types with variable types.
 -- State is the id of the next free type variable to use.
