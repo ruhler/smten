@@ -3,10 +3,15 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE UndecidableInstances #-}
 
-module Seri.Arithmetic (IntegerE(..), AddE(..), MulE(..)) 
+module Seri.Arithmetic (
+    IntegerT(..), IntegerE(..),
+    AddE(..), MulE(..)) 
     where
 
 import Seri.Elaborate
+
+data IntegerT = IntegerT
+    deriving(Show, Eq)
 
 data IntegerE = IntegerE Integer
     deriving(Show, Eq)

@@ -10,14 +10,19 @@ import Seri.Elaborate
 import Seri.Lambda
 import Seri.IR
 
-data MyExp = MyInteger IntegerE
-           | MyAdd (AddE MyExp)
-           | MyMul (MulE MyExp)
-           | MyVar VarE
-           | MyLam (LamE MyExp)
-           | MyApp (AppE MyExp)
+data MyType = MyIntegerT IntegerT
+            | MyArrowT (ArrowT MyType)
         deriving(Show, Eq)
-ir ''MyExp
+
+data MyExp = MyIntegerE IntegerE
+           | MyAddE (AddE MyExp)
+           | MyMulE (MulE MyExp)
+           | MyVarE (VarE MyType)
+           | MyLamE (LamE MyType MyExp)
+           | MyAppE (AppE MyType MyExp)
+        deriving(Show, Eq)
+
+ir ''MyType ''MyExp
 
 four :: AddE MyExp
 four = AddE (inject $ IntegerE 1) (inject $ IntegerE 3)
@@ -34,13 +39,16 @@ sixteen = AddE (inject four) (inject twelve)
 my :: (Inject e MyExp) => e -> MyExp
 my = inject
 
+myt :: (Inject t MyType) => t -> MyType
+myt = inject
+
 -- foo: (\x -> x*x + 3*x + 2) 5
 foo :: MyExp
 foo =
- let x = my $ VarE "x"
+ let x = my $ VarE (myt IntegerT) "x"
      body = my $ AddE (my $ AddE (my $ MulE x x) (my $ MulE (my $ IntegerE 3) x)) (my $ IntegerE 2)
-     lam = my $ LamE "x" body 
- in my $ AppE lam (my $ IntegerE 5)
+     lam = my $ LamE (myt $ ArrowT (myt IntegerT) (myt IntegerT)) "x" body 
+ in my $ AppE (myt IntegerT) lam (my $ IntegerE 5)
 
 tests = "Tests" ~: [
         "dummy" ~: 4 ~=? 4,

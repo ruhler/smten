@@ -4,44 +4,47 @@
 {-# LANGUAGE UndecidableInstances #-}
 
 module Seri.Lambda (
-    Name, VarE(..), LamE(..), AppE(..)
+    ArrowT(..),
+    VarE(..), LamE(..), AppE(..)
     ) where
 
 import Seri.Elaborate
 
-data VarE = VarE Name
+data VarE t = VarE t Name
     deriving(Show, Eq)
 
-instance (Inject VarE e) => Elaborate VarE e where
+instance (Inject (VarE t) e) => Elaborate (VarE t) e where
     elaborate x = inject x
-    reduce n v (VarE nm) | n == nm = v
+    reduce n v (VarE _ nm) | n == nm = v
     reduce _ _ v = inject v
     
-
-data LamE e = LamE Name e
+data ArrowT t = ArrowT t t
     deriving(Show, Eq)
 
-instance (Inject (LamE e) e, Elaborate e e)
-        => Elaborate (LamE e) e where
+data LamE t e = LamE t Name e
+    deriving(Show, Eq)
+
+instance (Inject (LamE t e) e, Elaborate e e)
+        => Elaborate (LamE t e) e where
     elaborate x = inject x
-    reduce n v (LamE nm b) | n /= nm = reduce n v b
+    reduce n v (LamE _ nm b) | n /= nm = reduce n v b
     reduce _ _ l = inject l
     
-data AppE e = AppE e e
+data AppE t e = AppE t e e
     deriving(Show, Eq)
 
-instance (Inject (AppE e) e, Inject (LamE e) e, Elaborate e e)
-        => Elaborate (AppE e) e where
-    elaborate (AppE a b) = 
+instance (Inject (AppE t e) e, Inject (LamE t e) e, Elaborate e e)
+        => Elaborate (AppE t e) e where
+    elaborate (AppE t a b) = 
         let a' = elaborate a :: e
             b' = elaborate b :: e
         in case (unject a') of
-              Just (LamE name body :: LamE e) -> elaborate $ reduce name b body
-              Nothing -> inject $ (AppE a' b' :: AppE e)
+              Just (LamE t name body :: LamE t e) -> elaborate $ reduce name b body
+              Nothing -> inject $ (AppE t a' b' :: AppE t e)
 
-    reduce n v (AppE a b) =
+    reduce n v (AppE t a b) =
         let a' = reduce n v a
             b' = reduce n v b
-        in inject $ AppE a' b'
+        in inject $ AppE t a' b'
         
     

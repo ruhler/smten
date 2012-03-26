@@ -1698,3 +1698,88 @@ Mon Mar 26 18:04:10 EDT 2012
 Okay! So that wasn't too bad. We now automate self elaboration. Good. What's
 next?
 
+We have enough of the expressions. I'm confident I could keep adding more and
+still have that work out for elaborate.
+
+The real challenge next is...
+
+Type checking. Adding and checking type information.
+
+And note, we'll want the types to be extensible too.
+
+What types do I need for type checking?
+
+Assuming the are all known, for now it should be enough to have IntegerT and
+ArrowT.
+
+For each expression we need: typecheck, checkvars
+We also need pretty printing of expressions and types.
+
+I don't need any sort of traversal of types to do this, which is nice.
+
+Okay, so, it's straight forward, right?
+
+class (Eq t, Ppr t, Ppr e, Inject ) => TypeCheck t e...
+
+One thing is we return the type in typecheck. We could just as easily use
+typeof to get at the type, right? I honestly think that makes more sense.
+
+Hmm... it's hard to figure out what I need to do.
+
+Well, first step, let's say, is to add type parameters to Var, Lam, App.
+See what all headaches that causes.
+
+Here's an idea, maybe LamE should be a VarE and a body. That makes sense,
+right? It does to me...
+
+Mon Mar 26 18:27:34 EDT 2012
+
+I'm getting this error:
+    No instance for (Inject (LamE t MyExp) MyExp)
+      arising from a use of `reduce'
+    Possible fix:
+      add an instance declaration for (Inject (LamE t MyExp) MyExp)
+    In the expression: reduce n v x
+    In an equation for `reduce': reduce n v (MyApp x) = reduce n v x
+    In the instance declaration for `Elaborate MyExp MyExp'
+
+I think the issue is, reduce requires you can inject any LamE t, but you can
+only inject a LamE MyType. That is, t is determined by MyExp. So we need some
+form of functional dependencies.
+
+Well... we could have inject know about types, right?
+
+But why doesn't VarT have that issue?
+
+That's odd... AppE doesn't have the issue either. Did I implement something
+wrong?
+
+And now it works fine... okay, whatever.
+
+So I added a type parameter. I just don't have any interesting types yet.
+
+Let me define an interesting type: IntegerT, ArrowT.
+
+Mon Mar 26 18:38:29 EDT 2012
+
+Okay, now when I start to use different expressions, we have issues with the
+types. That is, our boilerplate code defines instances for
+Inject (AppE MyType MyExp) MyExp
+
+It does not for
+Inject (AppE IntegerT MyExp) MyExp.
+
+Maybe I just need to do the injections of the types.
+
+So I want a way to inject IntegerT into MyType.
+
+Okay, I had a typeo. Remember, you have to lift everything up to MyType or
+MyExp before passing it to a bigger expression or type. This is very annoying
+when writing the IR code by hand, but hopefully the parse will have no trouble
+at all with it.
+
+And now, let me automate generate of instances for the types too. It should be
+exactly the same. I'll add an argument to the ir function.
+
+Cool, so that's all automated, and we have types inside of expressions.
+

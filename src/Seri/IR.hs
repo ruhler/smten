@@ -71,10 +71,17 @@ selfelab (DataD _ my _ cons _) =
     in sequence [inst]
 
 
-ir :: Name -> Q [Dec]
-ir name = do
-    TyConI x <- reify name
-    injs <- injections x
-    sele <- selfelab x
-    return $ injs ++ sele
+-- ir type exp
+--  Given the name of your top level MyType and MyExp data types,
+--      generate boilerplate code for injection and elaboration.
+ir :: Name -> Name -> Q [Dec]
+ir tname ename = do
+    TyConI t <- reify tname
+    tinjs <- injections t
+
+    TyConI e <- reify ename
+    einjs <- injections e
+    esele <- selfelab e
+
+    return $ tinjs ++ einjs ++ esele
 
