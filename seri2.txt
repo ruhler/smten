@@ -1616,3 +1616,68 @@ Good. So I'm feeling pretty confident in the way things are going for
 elaborate. I think now would be a good time to step back, think about what's
 going on, and do some code cleanup.
 
+Mon Mar 26 09:08:21 EDT 2012
+
+Basically the idea is each expression can be boxed (injected) into the full
+expression, and we can go back and forth. So it's like a dynamic typing sort
+of thing.
+
+The problems currently are:
+- You have to specify lots of types explicitly, because any time you construct
+  an expression, and especially if you then inject it, you have an ambiguous
+  type. Perhaps there's some way to get rid of this, but nothing comes to mind
+  immediately.
+
+- boilerplate code for MyExp (the box) is really annoying, though simple.
+
+- Have to deal with all these multi param type class, flexible instance and
+  contexts, undecidable contexts and scoped type variables. That worries me a
+  little. But we don't need GADTs, which I guess is nice.
+
+So, next step is clear, I think. Automate the boiler plate code, because it's
+only going to get more annoying.
+
+After that... I think we have interesting enough constructs to try and flesh
+out the whole stack, from parser down to... let's stick with elaboration for
+now. No need to go to the backends just yet, because that's too hard to test.
+
+First step. automation. I can do this with template haskell, I'm sure.
+Can I do it easily with generics?
+
+We want two things: an instance of Inject for each field.
+   instance Inject Foo MyExp where
+        inject = MyFoo
+        unject (MyFoo x) = Just x
+        unject _ = Nothing
+
+An instance for Elaborate, which just applies the same functions to each
+immediate sub constructor.
+
+I feel like the elaborate instance should be ... It's like a query. So I
+should be able to use generics, aside from this typeclass issue.
+
+Ah, but we can have a default value, no?
+
+I think it's worth a try. It would be much cleaner than template haskell.
+
+No, I don't think I'll get it to work, because, again, of this typeclass
+issue. Fundamentally I need to figure out how to do a transformation on
+typeclasses, where ideally it would though a static error if you would ever
+try to use it on an object that doesn't implement that type class. Or, in
+other words, template haskell will give me just what I want.
+
+So let me use template haskell.
+
+First step: the instances of inject.
+
+Mon Mar 26 10:18:36 EDT 2012
+
+Template haskell and quotes seem so promising, but when you get into it,
+little details make them, basically, unusuable. Like, not being able to splice
+in patterns. Not being able to splice in non-top level declarations.
+
+I almost feel like it would work better to use a haskell quasi quoter, where I
+supposedly can do those things. That may be worth experimenting with.
+
+Anyway, I have automatic generation of Inject now. Next I need elaborate.
+

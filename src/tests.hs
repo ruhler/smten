@@ -1,5 +1,6 @@
 
 {-# LANGUAGE FlexibleContexts, FlexibleInstances, MultiParamTypeClasses #-}
+{-# LANGUAGE TemplateHaskell #-}
 
 import Test.HUnit
 import System.Exit
@@ -7,6 +8,7 @@ import System.Exit
 import Seri.Arithmetic
 import Seri.Elaborate
 import Seri.Lambda
+import Seri.IR
 
 data MyExp = MyInteger IntegerE
            | MyAdd (AddE MyExp)
@@ -16,35 +18,7 @@ data MyExp = MyInteger IntegerE
            | MyApp (AppE MyExp)
         deriving(Show, Eq)
 
-instance Inject (AppE MyExp) MyExp where
-    inject = MyApp
-    unject (MyApp x) = Just x
-    unject _ = Nothing
-
-instance Inject (LamE MyExp) MyExp where
-    inject = MyLam
-    unject (MyLam x) = Just x
-    unject _ = Nothing
-
-instance Inject VarE MyExp where
-    inject = MyVar
-    unject (MyVar x) = Just x
-    unject _ = Nothing
-
-instance Inject (MulE MyExp) MyExp where
-    inject = MyMul
-    unject (MyMul x) = Just x
-    unject _ = Nothing
-
-instance Inject (AddE MyExp) MyExp where
-    inject = MyAdd
-    unject (MyAdd x) = Just x
-    unject _ = Nothing
-
-instance Inject IntegerE MyExp where
-    inject = MyInteger
-    unject (MyInteger x) = Just x
-    unject _ = Nothing
+ir ''MyExp
 
 instance Elaborate MyExp MyExp where
     elaborate (MyInteger x) = elaborate x
