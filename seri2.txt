@@ -1575,3 +1575,44 @@ It's a little scary typewise.
 
 There are a lot of places where we need explicit type info.
 
+Sun Mar 25 21:56:47 EDT 2012
+
+Okay, so I cleaned up a little.
+
+It seems like I've ended up close to where I was headed towards in my last
+attempt. The key idea is: have inject, and unject to be able to stuff an
+expression into the top level expression and extract an expression from the
+top level expression. That gives me the dependency stuff I need.
+
+I believe this has some promise.
+
+Let me figure out how to elaborate my favorite expression:
+    (\x -> x*x + 3*x + 2) 5
+
+That should help force the issues.
+
+Once I can do that, add some type info, and move on to type checking.
+From there move on to type inference.
+
+Mon Mar 26 08:21:15 EDT 2012
+
+Okay, so it seems robust to adding MulE. That's good.
+
+And I think it should be relatively easy to automate the generate of the
+Inject interface and the top level elaborate interfaces using template
+haskell.
+
+I feel like I should be able to do similar with generics, but I don't know how
+to get around this typeclass issue. I feel like template haskell is safer,
+because it does that extra type checking step.
+
+Next step: application, var, and lambda.
+
+Mon Mar 26 09:02:54 EDT 2012
+
+Foo works!
+
+Good. So I'm feeling pretty confident in the way things are going for
+elaborate. I think now would be a good time to step back, think about what's
+going on, and do some code cleanup.
+

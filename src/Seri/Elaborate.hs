@@ -1,8 +1,10 @@
 
 {-# LANGUAGE FlexibleInstances, MultiParamTypeClasses #-}
 
-module Seri.Elaborate (Inject(..), Elaborate(..))
+module Seri.Elaborate (Name, Inject(..), Elaborate(..))
     where
+
+type Name = String
 
 class Inject a b where
     inject :: a -> b
@@ -12,6 +14,11 @@ instance Inject a a where
     inject = id
     unject = Just
 
-class (Show a, Show b, Inject a b) => Elaborate a b where
+class (Inject a b) => Elaborate a b where
     elaborate :: a -> b
+
+    -- reduce n v exp
+    -- Perform beta reduction in the exp, replacing occurances of varaible n
+    -- with v.
+    reduce :: Name -> b -> a -> b
 
