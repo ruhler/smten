@@ -1681,3 +1681,20 @@ supposedly can do those things. That may be worth experimenting with.
 
 Anyway, I have automatic generation of Inject now. Next I need elaborate.
 
+Mon Mar 26 17:50:01 EDT 2012
+
+Elaborate.
+
+for each constructor
+    elaborate (Foo x) = elaborate x
+for each constructor
+    reduce n v (Foo x) = reduce n v x
+
+I don't believe template haskell quotes will work here, so let me not bother
+with them.
+
+Mon Mar 26 18:04:10 EDT 2012
+
+Okay! So that wasn't too bad. We now automate self elaboration. Good. What's
+next?
+

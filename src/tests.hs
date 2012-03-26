@@ -17,22 +17,7 @@ data MyExp = MyInteger IntegerE
            | MyLam (LamE MyExp)
            | MyApp (AppE MyExp)
         deriving(Show, Eq)
-
 ir ''MyExp
-
-instance Elaborate MyExp MyExp where
-    elaborate (MyInteger x) = elaborate x
-    elaborate (MyAdd x) = elaborate x
-    elaborate (MyMul x) = elaborate x
-    elaborate (MyVar x) = elaborate x
-    elaborate (MyApp x) = elaborate x
-    elaborate (MyLam x) = elaborate x
-    reduce n v (MyInteger x) = reduce n v x
-    reduce n v (MyAdd x) = reduce n v x
-    reduce n v (MyMul x) = reduce n v x
-    reduce n v (MyVar x) = reduce n v x
-    reduce n v (MyApp x) = reduce n v x
-    reduce n v (MyLam x) = reduce n v x
 
 four :: AddE MyExp
 four = AddE (inject $ IntegerE 1) (inject $ IntegerE 3)

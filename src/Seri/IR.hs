@@ -8,7 +8,7 @@ module Seri.IR (ir)
 
 import Language.Haskell.TH
 
-import Seri.Elaborate (Inject(..))
+import Seri.Elaborate hiding (Name)
 
 
 -- injections
@@ -39,8 +39,42 @@ injections (DataD _ name _ cons _) =
         decs <- mapM (\(NormalC cn [(_, ct)]) -> injcon name cn ct) cons
         return $ concat decs
 
+-- selfelab
+--  Given a data declaration of the form
+--      data MyExp = MyA A | MyB B | ...
+--
+--  Derive an instance of Elaborate MyExp MyExp
+--  Of the form
+--      instance Elaborate MyExp MyExp where
+--          elaborate (MyA x) = elaborate x
+--          elaborate (MyB x) = elaborate x
+--          ...
+--          reduce n v (MyA x) = reduce n v x
+--          reduce n v (MyB x) = reduce n v x
+selfelab :: Dec -> Q [Dec]
+selfelab (DataD _ my _ cons _) =
+   let x = mkName "x"
+       n = mkName "n"
+       v = mkName "v"
+
+       elabclause :: Name -> Q Clause
+       elabclause a = clause [conP a [varP x]] (normalB
+            (appE (varE 'elaborate) (varE x))) []
+
+       reduclause :: Name -> Q Clause
+       reduclause a = clause [varP n, varP v, conP a [varP x]] (normalB
+            (appE (appE (appE (varE 'reduce) (varE n)) (varE v)) (varE x))) []
+
+       elab_impl = funD 'elaborate (map (\(NormalC cn _) -> elabclause cn) cons)
+       redu_impl = funD 'reduce (map (\(NormalC cn _) -> reduclause cn) cons)
+       inst = instanceD (return []) (appT (appT (conT ''Elaborate) (conT my)) (conT my)) [elab_impl, redu_impl]
+    in sequence [inst]
+
+
 ir :: Name -> Q [Dec]
 ir name = do
     TyConI x <- reify name
-    injections x
+    injs <- injections x
+    sele <- selfelab x
+    return $ injs ++ sele
 
