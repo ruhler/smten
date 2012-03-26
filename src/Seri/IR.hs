@@ -1,5 +1,6 @@
 
 {-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE FlexibleInstances, MultiParamTypeClasses #-}
 
 module Seri.IR (
     Name, Type(..), Exp(..),
@@ -24,7 +25,7 @@ data Type = IntegerT
           | VarT Integer
       deriving(Eq, Show, Typeable, Data)
 
-data FixE_F e = FixE_F Type Name e
+data FixE_F t e = FixE_F t Name e
     deriving (Eq, Show, Typeable, Data)
 
 data Exp = BoolE Bool
@@ -36,18 +37,18 @@ data Exp = BoolE Bool
          | IfE Type Exp Exp Exp
          | AppE Type Exp Exp
          | LamE Type Name Exp
-         | FixE (FixE_F Exp)
+         | FixE (FixE_F Type Exp)
          | VarE Type Name
          | ThE (TH.Exp)
      deriving(Eq, Show, Typeable, Data)
 
-class Typeof a where
-    typeof :: a -> Type
+class Typeof t e where
+    typeof :: e -> t
 
-instance Typeof (FixE_F a) where
+instance Typeof t (FixE_F t e) where
     typeof (FixE_F t _ _) = t
 
-instance Typeof Exp where
+instance Typeof Type Exp where
     typeof (BoolE _) = BoolT
     typeof (IntegerE _) = IntegerT
     typeof (AddE _ _) = IntegerT
@@ -189,7 +190,7 @@ prec i e
      then parens $ ppr e
      else ppr e
 
-instance (Ppr e) => Ppr (FixE_F e) where
+instance (Ppr e) => Ppr (FixE_F t e) where
     ppr (FixE_F _ n b) = text "!" <> text n <+> ppr b 
 
 instance Ppr Exp where

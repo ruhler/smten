@@ -1,4 +1,7 @@
 
+{-# LANGUAGE FlexibleInstances, MultiParamTypeClasses #-}
+{-# LANGUAGE FunctionalDependencies #-}
+
 module Seri.TypeCheck (
     typecheck
     ) where
@@ -7,20 +10,20 @@ import Seri.IR
 
 import Control.Monad.State
 
-class (Ppr a) => TypeCheck a where
+class (Eq t, Ppr t, Ppr e) => TypeCheck t e | e -> t where
     -- Typecheck an expression.
     -- All the type information should already be in the expression, this just
     -- checks that that information is consistent.
     --
     -- It fails with a hopefully useful message if typecheck fails. Otherwise it
     -- returns the type of the expression.
-    typecheck :: (Monad m) => a -> m Type
+    typecheck :: (Monad m) => e -> m t
 
     -- Check that all variables with the given name in the expression have the
     -- given type. If they don't, fail with a hopefully meaningful message.
-    checkvars :: Monad m => Name -> Type -> a -> m ()
+    checkvars :: Monad m => Name -> t -> e -> m ()
 
-instance (TypeCheck e) => TypeCheck (FixE_F e) where
+instance (TypeCheck t e) => TypeCheck t (FixE_F t e) where
     typecheck (FixE_F t n body) = do
         bodyt <- typecheck body
         checkvars n t body
@@ -32,7 +35,7 @@ instance (TypeCheck e) => TypeCheck (FixE_F e) where
             then checkvars n v b
             else return ()
 
-instance TypeCheck Exp where
+instance TypeCheck Type Exp where
     typecheck (BoolE _) = return BoolT
     typecheck (IntegerE _) = return IntegerT
 
@@ -117,12 +120,12 @@ instance TypeCheck Exp where
 
 -- typefail expected found expr
 -- Indicate a type failure.
-typefail :: (Monad m, Ppr e) => String -> Type -> e -> m a
+typefail :: (Monad m, Ppr t, Ppr e) => String -> t -> e -> m a
 typefail exp fnd expr
   = fail $ "Expected type " ++ exp ++ ", found type " ++ show (ppr fnd)
             ++ " in the expression " ++ show (ppr expr)
 
-typeassert :: (Ppr e) => (Monad m) => Type -> Type -> e -> m ()
+typeassert :: (TypeCheck t e) => (Monad m) => t -> t -> e -> m ()
 typeassert exp fnd expr
   = if (exp == fnd)
         then return ()

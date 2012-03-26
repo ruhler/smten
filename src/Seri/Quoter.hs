@@ -33,7 +33,7 @@ instance Lift Type where
     lift (ArrowT a b) = [e| ArrowT a b |]
     lift UnknownT = [e| UnknownT |]
 
-instance (Lift e) => Lift (FixE_F e) where
+instance (Lift t, Lift e) => Lift (FixE_F t e) where
     lift (FixE_F t n e) = [e| FixE_F t n e |]
 
 instance Lift Exp where

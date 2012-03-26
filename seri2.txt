@@ -1430,3 +1430,21 @@ Hum hum... I feel like that's worth pursuing.
 
 Let me think about this a bit.
 
+Sun Mar 25 19:55:06 EDT 2012
+
+Type classes could lead to trouble with generics. That is, you can't use a
+typeclass to define your transformation function (a -> a) because we don't
+know that every a you encounter will be an instance of that typeclass.
+
+Sun Mar 25 20:06:37 EDT 2012
+
+One thing I can do is ask for a constructor of a given object. I'm not sure
+how that helps.
+
+How about this. Let me not get caught up in Data.Generics. I know how it can
+be used, how it can be useful, but that's enough. I'll use it where it makes
+sense.
+
+I think the original plan still holds. Try to pull Fix outside, into its own
+file.
+
