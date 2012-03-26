@@ -1,0 +1,11 @@
+
+env = Environment(tools=['ghc'], toolpath=['scons'])
+Export('env')
+
+# Host local configuration should all be in scons/local
+# Should set:
+#  env['GHC'] to the ghc executable
+SConscript('scons/local')
+
+SConscript('src/sconscript')
+

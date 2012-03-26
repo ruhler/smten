@@ -1448,3 +1448,130 @@ sense.
 I think the original plan still holds. Try to pull Fix outside, into its own
 file.
 
+Sun Mar 25 20:23:56 EDT 2012
+
+Perhaps it does make sense to try start from scratch after all?
+
+I can make my parameterized core. Build it from the ground up?
+
+I suppose it's worth a try.
+
+First step: IR/Core:
+
+AppE, LamE, VarE
+ArrowT, UnknownT, VarT
+
+Trouble is, I can't really do anything with that, can I?
+
+I'll want, perhaps, also IR/Arithmetic:
+
+IntegerE, AddE, SubE, MulE
+IntegerT
+
+I'm not sure this can work.
+
+Okay, maybe I just need to think of myself as having type features as well as
+expression features.
+
+This could get messy.
+
+I wonder... Could I make this cleaner?
+
+
+For example, what we really want is to have some expression e.
+
+That is, imagine an expression. And say,
+
+data FixE = FixE ...
+
+This is a kind of expression.
+
+data LamE = ...
+
+is a kind of expression.
+
+Now, my functions work on expressions.
+
+The question really is, how do you define what all types of sub expressions an
+expression could have? Well... that's defined by what you import, right?
+
+For example, we could define the following expressions:
+
+data BoolE = BoolE Bool
+data IntegerE = IntegerE Integer
+data AddE where
+    (Exp e1, e2) => e1 -> e2 -> AddE
+
+I fear this is starting to look just a bit like GADTs... 
+
+But let me keep looking.
+
+Okay, fine... now how do I do, say, elaborate?
+
+instance Elaborate IntegerE where
+    elaborate e = e
+
+instance Elaborate AddE where
+    elaborate (AddE e1 e2) =
+        case (elaborate a, elaborate b) of
+            ... -> IntegerE
+            ... -> AddE
+
+Aha! Now we see the problem.
+
+What's the return type of elaborate? In the case above, two branches have
+different types! That's bad news.
+            
+Something about this feels nice though. Like, the dependency problem I was
+worried about goes away or some such.
+
+What if you defined some top level Exp type, which is the union of all the
+kinds of expressions you want.
+
+instance (ToE AddE, ToE IntegerE) => Elaborate AddE E where
+    elaborate (AddE e1 e2) =
+        case (elaborate a, elaborate b) of
+            ... -> toE IntegerE
+            ... -> toE AddE
+
+So now we can build up a library of specific expressions. Then, when you want
+to define you top level thing, all you need to do is define your top level
+data type, and deriving ToE. That, perhaps, could also be automated with
+template haskell or generics.
+
+The real question is, is there any chance at all this could work?
+How could I come up with a proof of concept?
+
+Let's start with: Elaborate, IR. Using Core and Arithmetic.
+Then add TypeCheck. If all goes well, expand it slowly.
+
+Shall I take a quick stab at things?
+
+We have a type level expression. We have a type level type.
+LiftE, LiftT.
+
+Let me try to get started. For now, treat all names as String. It will be
+simpler.
+
+Sun Mar 25 21:00:14 EDT 2012
+
+Okay, we'll see if this is going to work or not.
+
+Just try to get elaboration to work with core and integer.
+That should show me lots of issues.
+
+In fact, let me ignore types for now, because we don't need them for
+elaboration. I can add them later.
+
+Sun Mar 25 21:10:32 EDT 2012
+
+Let's simplify even more for this first attempt. Forget core. Just be able to
+do expressions like: 2 + 3 + 4...
+    
+Sun Mar 25 21:42:26 EDT 2012
+
+Well, believe it or not, something works.
+It's a little scary typewise.
+
+There are a lot of places where we need explicit type info.
+
