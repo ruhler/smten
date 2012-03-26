@@ -1,10 +1,10 @@
 
 {-# LANGUAGE FlexibleInstances, MultiParamTypeClasses #-}
 
-module Seri.Elaborate (Name, Inject(..), Elaborate(..))
+module Seri.Elaborate (Inject(..), Elaborate(..))
     where
 
-type Name = String
+import Seri.Name
 
 class Inject a b where
     inject :: a -> b

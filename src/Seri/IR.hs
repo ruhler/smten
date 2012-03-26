@@ -8,7 +8,7 @@ module Seri.IR (ir)
 
 import Language.Haskell.TH
 
-import Seri.Elaborate hiding (Name)
+import Seri.Elaborate
 
 
 -- injections

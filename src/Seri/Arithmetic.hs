@@ -9,6 +9,7 @@ module Seri.Arithmetic (
     where
 
 import Seri.Elaborate
+import Seri.TypeCheck
 
 data IntegerT = IntegerT
     deriving(Show, Eq)
@@ -20,6 +21,9 @@ instance (Inject IntegerE e)
     => Elaborate IntegerE e where
     elaborate x = inject x
     reduce _ _ x = inject x
+
+instance (Eq t, Show t) => TypeCheck t IntegerE where
+    checkvars _ _ _ = return ()
 
 data AddE e = AddE e e
     deriving(Show, Eq)
@@ -37,6 +41,11 @@ instance (Elaborate e e, Inject (AddE e) e, Inject IntegerE e)
         let a' = reduce n v a
             b' = reduce n v b
         in inject $ (AddE a' b' :: AddE e)
+
+instance (TypeCheck t e) => TypeCheck t (AddE e) where
+    checkvars n v (AddE a b) = do
+        checkvars n v a
+        checkvars n v b
         
                 
 data MulE e = MulE e e
@@ -56,3 +65,7 @@ instance (Elaborate e e, Inject (MulE e) e, Inject IntegerE e)
             b' = reduce n v b
         in inject $ (MulE a' b' :: MulE e)
                 
+instance (TypeCheck t e) => TypeCheck t (MulE e) where
+    checkvars n v (MulE a b) = do
+        checkvars n v a
+        checkvars n v b

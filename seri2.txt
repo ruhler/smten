@@ -1783,3 +1783,21 @@ exactly the same. I'll add an argument to the ir function.
 
 Cool, so that's all automated, and we have types inside of expressions.
 
+Now let's see if typechecking is made any easier.
+
+Let me start with checkvars, which is the simpler of the two things.
+
+class TypeCheck t e | e -> t where
+    checkvars :: Monad m => Name -> t -> e -> m ()
+
+Say? Let me just dive into code, not really knowing what I'm doing, and see if
+anything comes out of it other than a big mess.
+
+Mon Mar 26 19:22:22 EDT 2012
+
+checkvars works now. I feel like there was a bad test case that magically
+fixed itself. Oh well.
+
+Anyway, we have more boilerplate code to do away with.
+Instance TypeCheck MyType MyExp.
+

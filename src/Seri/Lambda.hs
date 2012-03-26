@@ -9,6 +9,8 @@ module Seri.Lambda (
     ) where
 
 import Seri.Elaborate
+import Seri.Name
+import Seri.TypeCheck
 
 data VarE t = VarE t Name
     deriving(Show, Eq)
@@ -17,6 +19,12 @@ instance (Inject (VarE t) e) => Elaborate (VarE t) e where
     elaborate x = inject x
     reduce n v (VarE _ nm) | n == nm = v
     reduce _ _ v = inject v
+
+instance (Eq t, Show t) => TypeCheck t (VarE t) where
+    checkvars n v e@(VarE t vn) =
+        if vn == n
+            then typeassert v t e
+            else return ()
     
 data ArrowT t = ArrowT t t
     deriving(Show, Eq)
@@ -29,6 +37,12 @@ instance (Inject (LamE t e) e, Elaborate e e)
     elaborate x = inject x
     reduce n v (LamE _ nm b) | n /= nm = reduce n v b
     reduce _ _ l = inject l
+
+instance (TypeCheck t e) => TypeCheck t (LamE t e) where
+    checkvars n v e@(LamE _ ln b) =
+        if ln /= n
+            then checkvars n v b
+            else return ()
     
 data AppE t e = AppE t e e
     deriving(Show, Eq)
@@ -47,4 +61,8 @@ instance (Inject (AppE t e) e, Inject (LamE t e) e, Elaborate e e)
             b' = reduce n v b
         in inject $ AppE t a' b'
         
+instance (TypeCheck t e) => TypeCheck t (AppE t e) where
+    checkvars n v (AppE _ a b) = do
+        checkvars n v a
+        checkvars n v b
     

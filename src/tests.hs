@@ -9,6 +9,7 @@ import Seri.Arithmetic
 import Seri.Elaborate
 import Seri.Lambda
 import Seri.IR
+import Seri.TypeCheck
 
 data MyType = MyIntegerT IntegerT
             | MyArrowT (ArrowT MyType)
@@ -21,6 +22,14 @@ data MyExp = MyIntegerE IntegerE
            | MyLamE (LamE MyType MyExp)
            | MyAppE (AppE MyType MyExp)
         deriving(Show, Eq)
+
+instance TypeCheck MyType MyExp where
+    checkvars n t (MyIntegerE x) = checkvars n t x
+    checkvars n t (MyAddE x) = checkvars n t x
+    checkvars n t (MyMulE x) = checkvars n t x
+    checkvars n t (MyVarE x) = checkvars n t x
+    checkvars n t (MyLamE x) = checkvars n t x
+    checkvars n t (MyAppE x) = checkvars n t x
 
 ir ''MyType ''MyExp
 
@@ -56,7 +65,19 @@ tests = "Tests" ~: [
         "eight" ~: (inject (IntegerE 8) :: MyExp) ~=? elaborate eight,
         "twelve" ~: (inject (IntegerE 12) :: MyExp) ~=? elaborate twelve,
         "sixteen" ~: (inject (IntegerE 16) :: MyExp) ~=? elaborate sixteen,
-        "foo" ~: (inject (IntegerE 42) :: MyExp) ~=? elaborate foo
+        "foo" ~: (inject (IntegerE 42) :: MyExp) ~=? elaborate foo,
+        "checkvars var good" ~: Just () ~=?  
+            let exp = my $ VarE (myt IntegerT) "x"
+            in checkvars "x" (myt IntegerT) exp,
+        "checkvars var bad" ~: Nothing ~=?  
+            let exp = my $ VarE (myt (ArrowT (myt IntegerT) (myt IntegerT))) "x"
+            in checkvars "x" (myt IntegerT) exp,
+        "checkvars var not relevant teq" ~: Just () ~=?  
+            let exp = my $ VarE (myt IntegerT) "x"
+            in checkvars "y" (myt IntegerT) exp,
+        "checkvars var not relevant tne" ~: Just () ~=?  
+            let exp = my $ VarE (myt (ArrowT (myt IntegerT) (myt IntegerT))) "x"
+            in checkvars "y" (myt IntegerT) exp
     ]
 
 -- Run tests, exiting failure if any failed, exiting success if all succeeded.
