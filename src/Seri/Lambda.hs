@@ -10,17 +10,21 @@ module Seri.Lambda (
 
 import Seri.Elaborate
 import Seri.Name
+import Seri.Ppr
 import Seri.TypeCheck
 
 data VarE t = VarE t Name
     deriving(Show, Eq)
+
+instance (Ppr (VarE t)) where
+    ppr (VarE _ nm) = text nm
 
 instance (Inject (VarE t) e) => Elaborate (VarE t) e where
     elaborate x = inject x
     reduce n v (VarE _ nm) | n == nm = v
     reduce _ _ v = inject v
 
-instance (Eq t, Show t) => TypeCheck t (VarE t) where
+instance (Eq t, Ppr t) => TypeCheck t (VarE t) where
     typeof (VarE t _) = t
 
     typecheck (VarE _ _) = return ()
@@ -33,8 +37,14 @@ instance (Eq t, Show t) => TypeCheck t (VarE t) where
 data ArrowT t = ArrowT t t
     deriving(Show, Eq)
 
+instance (Ppr t) => Ppr (ArrowT t) where
+    ppr (ArrowT a b) = parens (ppr a) <+> text "->" <+> parens (ppr b)
+
 data LamE t e = LamE t Name e
     deriving(Show, Eq)
+
+instance (Ppr e) => Ppr (LamE t e) where
+    ppr (LamE _ n b) = text "\\" <> text n <+> text "->" <+> ppr b
 
 instance (Inject (LamE t e) e, Elaborate e e)
         => Elaborate (LamE t e) e where
@@ -43,7 +53,7 @@ instance (Inject (LamE t e) e, Elaborate e e)
     reduce _ _ l = inject l
 
 instance
-    (Show t, Show e, TypeCheck t e, Inject (ArrowT t) t, Eq t)
+    (Ppr t, Ppr e, TypeCheck t e, Inject (ArrowT t) t, Eq t)
     => TypeCheck t (LamE t e) where
 
     typeof (LamE t _ _) = t
@@ -64,6 +74,9 @@ instance
 data AppE t e = AppE t e e
     deriving(Show, Eq)
 
+instance (Ppr e) => Ppr (AppE t e) where
+    ppr (AppE _ f x) = parens (ppr f) <+> parens (ppr x)
+
 instance (Inject (AppE t e) e, Inject (LamE t e) e, Elaborate e e)
         => Elaborate (AppE t e) e where
     elaborate (AppE t a b) = 
@@ -79,7 +92,7 @@ instance (Inject (AppE t e) e, Inject (LamE t e) e, Elaborate e e)
         in inject $ AppE t a' b'
         
 instance
-    (Eq t, Show t, Show e, TypeCheck t e, Inject (ArrowT t) t)
+    (Eq t, Ppr t, Ppr e, TypeCheck t e, Inject (ArrowT t) t)
     => TypeCheck t (AppE t e) where
 
     typeof (AppE t _ _) = t

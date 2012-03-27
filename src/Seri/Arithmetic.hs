@@ -9,13 +9,20 @@ module Seri.Arithmetic (
     where
 
 import Seri.Elaborate
+import Seri.Ppr
 import Seri.TypeCheck
 
 data IntegerT = IntegerT
     deriving(Show, Eq)
 
+instance Ppr IntegerT where
+    ppr _ = text "Integer"
+
 data IntegerE = IntegerE Integer
     deriving(Show, Eq)
+
+instance Ppr IntegerE where
+    ppr (IntegerE i) = integer i
 
 instance (Inject IntegerE e)
     => Elaborate IntegerE e where
@@ -29,6 +36,9 @@ instance (Eq t, Show t, Inject IntegerT t) => TypeCheck t IntegerE where
 
 data AddE e = AddE e e
     deriving(Show, Eq)
+
+instance (Ppr e) => Ppr (AddE e) where
+    ppr (AddE a b) = parens (ppr a) <+> text "+" <+> parens (ppr b)
 
 instance (Elaborate e e, Inject (AddE e) e, Inject IntegerE e)
     => Elaborate (AddE e) e where
@@ -45,7 +55,7 @@ instance (Elaborate e e, Inject (AddE e) e, Inject IntegerE e)
         in inject $ (AddE a' b' :: AddE e)
 
 instance
-    (Eq t, Show t, Show e, TypeCheck t e, Inject IntegerT t)
+    (Eq t, Ppr t, Ppr e, TypeCheck t e, Inject IntegerT t)
     => TypeCheck t (AddE e) where
 
     typeof _ = inject IntegerT
@@ -64,6 +74,9 @@ instance
 data MulE e = MulE e e
     deriving(Show, Eq)
 
+instance (Ppr e) => Ppr (MulE e) where
+    ppr (MulE a b) = parens (ppr a) <+> text "*" <+> parens (ppr b)
+
 instance (Elaborate e e, Inject (MulE e) e, Inject IntegerE e)
     => Elaborate (MulE e) e where
     elaborate (MulE a b) =
@@ -79,7 +92,7 @@ instance (Elaborate e e, Inject (MulE e) e, Inject IntegerE e)
         in inject $ (MulE a' b' :: MulE e)
                 
 instance
-    (Eq t, Show t, Show e, TypeCheck t e, Inject IntegerT t)
+    (Eq t, Ppr t, Ppr e, TypeCheck t e, Inject IntegerT t)
     => TypeCheck t (MulE e) where
 
     typeof _ = inject IntegerT

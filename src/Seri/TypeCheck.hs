@@ -6,6 +6,7 @@ module Seri.TypeCheck (
     typefail, typeassert,
     ) where
 
+import Seri.Ppr
 import Seri.Name
 
 class TypeCheck t e | e -> t where
@@ -26,14 +27,14 @@ class TypeCheck t e | e -> t where
 
 -- typefail expected found expr
 -- Indicate a type failure.
-typefail :: (Monad m, Show t, Show e) => String -> t -> e -> m a
+typefail :: (Monad m, Ppr t, Ppr e) => String -> t -> e -> m a
 typefail exp fnd expr
-  = fail $ "Expected type " ++ exp ++ ", found type " ++ show fnd
-            ++ " in the expression " ++ show expr
+  = fail $ "Expected type " ++ exp ++ ", found type " ++ show (ppr fnd)
+            ++ " in the expression " ++ show (ppr expr)
 
-typeassert :: (Eq t, Show t, Show e) => (Monad m) => t -> t -> e -> m ()
+typeassert :: (Eq t, Ppr t, Ppr e) => (Monad m) => t -> t -> e -> m ()
 typeassert exp fnd expr
   = if (exp == fnd)
         then return ()
-        else typefail (show exp) fnd expr
+        else typefail (show (ppr exp)) fnd expr
   

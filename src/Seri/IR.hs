@@ -9,6 +9,7 @@ module Seri.IR (ir)
 import Language.Haskell.TH
 
 import Seri.Elaborate
+import Seri.Ppr
 import Seri.TypeCheck
 
 
@@ -113,15 +114,27 @@ derive_elaborate (DataD _ my _ cons _) =
 --          ...
 derive_typecheck :: Name -> Dec -> Q [Dec]
 derive_typecheck mytype (DataD _ my _ cons _) =
-   let x = mkName "x"
-       n = mkName "n"
-       t = mkName "t"
-
-       typeof_impl = impl 'typeof clause1 cons
+   let typeof_impl = impl 'typeof clause1 cons
        typecheck_impl = impl 'typecheck clause1 cons
        checkvars_impl = impl 'checkvars clause3 cons
        inst = instanceD (return []) (appT (appT (conT ''TypeCheck) (conT mytype)) (conT my)) [typeof_impl, typecheck_impl, checkvars_impl]
     in sequence [inst]
+
+-- derive_ppr
+--  Given a data declaration of the form
+--      data MyFoo = MyA A | MyB B | ...
+--
+--  Derive an instance of Ppr MyFoo
+--  Of the form
+--      instance Ppr MyFoo where
+--          ppr (MyA x) = ppr x
+--          ppr (MyB x) = ppr x
+--          ...
+derive_ppr :: Dec -> Q [Dec]
+derive_ppr (DataD _ my _ cons _) =
+  let ppr_impl = impl 'ppr clause1 cons
+      inst = instanceD (return []) (appT (conT ''Ppr) (conT my)) [ppr_impl]
+   in sequence [inst]
 
 
 -- ir type exp
@@ -130,13 +143,15 @@ derive_typecheck mytype (DataD _ my _ cons _) =
 ir :: Name -> Name -> Q [Dec]
 ir tname ename = do
     TyConI t <- reify tname
+    tpprs <- derive_ppr t
     tinjs <- injections t
 
     TyConI e <- reify ename
+    epprs <- derive_ppr e
     einjs <- injections e
     elab <- derive_elaborate e
 
     tchk <- derive_typecheck tname e 
 
-    return $ tinjs ++ einjs ++ elab ++ tchk
+    return $ concat [tpprs, tinjs, epprs, einjs, elab, tchk]
 
