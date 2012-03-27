@@ -69,7 +69,9 @@ tests = "Tests" ~: [
             in checkvars "y" (myt IntegerT) exp,
         "checkvars var not relevant tne" ~: Just () ~=?  
             let exp = my $ VarE (myt (ArrowT (myt IntegerT) (myt IntegerT))) "x"
-            in checkvars "y" (myt IntegerT) exp
+            in checkvars "y" (myt IntegerT) exp,
+        "typeof foo" ~: (myt IntegerT) ~=?  typeof foo
+        --"typecheck foo" ~: Just () ~=?  typecheck foo
     ]
 
 -- Run tests, exiting failure if any failed, exiting success if all succeeded.

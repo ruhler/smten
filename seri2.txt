@@ -1801,3 +1801,7 @@ fixed itself. Oh well.
 Anyway, we have more boilerplate code to do away with.
 Instance TypeCheck MyType MyExp.
 
+Mon Mar 26 20:39:02 EDT 2012
+
+Next step: the typecheck function.
+

@@ -81,6 +81,9 @@ derive_elaborate (DataD _ my _ cons _) =
 --          checkvars n t (MyA x) = checkvars n t x
 --          checkvars n t (MyB x) = checkvars n t x
 --          ...
+--          typeof (MyA x) = typeof x
+--          typeof (MyB x) = typeof x
+--          ...
 derive_typecheck :: Name -> Dec -> Q [Dec]
 derive_typecheck mytype (DataD _ my _ cons _) =
    let x = mkName "x"
@@ -91,8 +94,13 @@ derive_typecheck mytype (DataD _ my _ cons _) =
        checkvarsclause a = clause [varP n, varP t, conP a [varP x]] (normalB
             (appE (appE (appE (varE 'checkvars) (varE n)) (varE t)) (varE x))) []
 
+       typeofclause :: Name -> Q Clause
+       typeofclause a = clause [conP a [varP x]] (normalB
+            (appE (varE 'typeof) (varE x))) []
+
        checkvars_impl = funD 'checkvars (map (\(NormalC cn _) -> checkvarsclause cn) cons)
-       inst = instanceD (return []) (appT (appT (conT ''TypeCheck) (conT mytype)) (conT my)) [checkvars_impl]
+       typeof_impl = funD 'typeof (map (\(NormalC cn _) -> typeofclause cn) cons)
+       inst = instanceD (return []) (appT (appT (conT ''TypeCheck) (conT mytype)) (conT my)) [checkvars_impl, typeof_impl]
     in sequence [inst]
 
 

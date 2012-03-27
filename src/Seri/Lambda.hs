@@ -21,6 +21,8 @@ instance (Inject (VarE t) e) => Elaborate (VarE t) e where
     reduce _ _ v = inject v
 
 instance (Eq t, Show t) => TypeCheck t (VarE t) where
+    typeof (VarE t _) = t
+
     checkvars n v e@(VarE t vn) =
         if vn == n
             then typeassert v t e
@@ -39,7 +41,9 @@ instance (Inject (LamE t e) e, Elaborate e e)
     reduce _ _ l = inject l
 
 instance (TypeCheck t e) => TypeCheck t (LamE t e) where
-    checkvars n v e@(LamE _ ln b) =
+    typeof (LamE t _ _) = t
+
+    checkvars n v (LamE _ ln b) =
         if ln /= n
             then checkvars n v b
             else return ()
@@ -62,6 +66,7 @@ instance (Inject (AppE t e) e, Inject (LamE t e) e, Elaborate e e)
         in inject $ AppE t a' b'
         
 instance (TypeCheck t e) => TypeCheck t (AppE t e) where
+    typeof (AppE t _ _) = t
     checkvars n v (AppE _ a b) = do
         checkvars n v a
         checkvars n v b
