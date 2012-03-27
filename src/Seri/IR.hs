@@ -9,6 +9,7 @@ module Seri.IR (ir)
 import Language.Haskell.TH
 
 import Seri.Elaborate
+import Seri.TypeCheck
 
 
 -- injections
@@ -39,7 +40,7 @@ injections (DataD _ name _ cons _) =
         decs <- mapM (\(NormalC cn [(_, ct)]) -> injcon name cn ct) cons
         return $ concat decs
 
--- selfelab
+-- derive_elaborate
 --  Given a data declaration of the form
 --      data MyExp = MyA A | MyB B | ...
 --
@@ -51,8 +52,8 @@ injections (DataD _ name _ cons _) =
 --          ...
 --          reduce n v (MyA x) = reduce n v x
 --          reduce n v (MyB x) = reduce n v x
-selfelab :: Dec -> Q [Dec]
-selfelab (DataD _ my _ cons _) =
+derive_elaborate :: Dec -> Q [Dec]
+derive_elaborate (DataD _ my _ cons _) =
    let x = mkName "x"
        n = mkName "n"
        v = mkName "v"
@@ -70,6 +71,30 @@ selfelab (DataD _ my _ cons _) =
        inst = instanceD (return []) (appT (appT (conT ''Elaborate) (conT my)) (conT my)) [elab_impl, redu_impl]
     in sequence [inst]
 
+-- derive_typecheck
+--  Given the name of a type MyType and data declarations of the form
+--      data MyExp = MyA A | MyB B | ...
+--
+--  Derive an instance of TypeCheck MyType MyExp
+--  Of the form
+--      instance TypeCheck MyType MyExp where
+--          checkvars n t (MyA x) = checkvars n t x
+--          checkvars n t (MyB x) = checkvars n t x
+--          ...
+derive_typecheck :: Name -> Dec -> Q [Dec]
+derive_typecheck mytype (DataD _ my _ cons _) =
+   let x = mkName "x"
+       n = mkName "n"
+       t = mkName "t"
+
+       checkvarsclause :: Name -> Q Clause
+       checkvarsclause a = clause [varP n, varP t, conP a [varP x]] (normalB
+            (appE (appE (appE (varE 'checkvars) (varE n)) (varE t)) (varE x))) []
+
+       checkvars_impl = funD 'checkvars (map (\(NormalC cn _) -> checkvarsclause cn) cons)
+       inst = instanceD (return []) (appT (appT (conT ''TypeCheck) (conT mytype)) (conT my)) [checkvars_impl]
+    in sequence [inst]
+
 
 -- ir type exp
 --  Given the name of your top level MyType and MyExp data types,
@@ -81,7 +106,9 @@ ir tname ename = do
 
     TyConI e <- reify ename
     einjs <- injections e
-    esele <- selfelab e
+    elab <- derive_elaborate e
 
-    return $ tinjs ++ einjs ++ esele
+    tchk <- derive_typecheck tname e 
+
+    return $ tinjs ++ einjs ++ elab ++ tchk
 

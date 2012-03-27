@@ -23,14 +23,6 @@ data MyExp = MyIntegerE IntegerE
            | MyAppE (AppE MyType MyExp)
         deriving(Show, Eq)
 
-instance TypeCheck MyType MyExp where
-    checkvars n t (MyIntegerE x) = checkvars n t x
-    checkvars n t (MyAddE x) = checkvars n t x
-    checkvars n t (MyMulE x) = checkvars n t x
-    checkvars n t (MyVarE x) = checkvars n t x
-    checkvars n t (MyLamE x) = checkvars n t x
-    checkvars n t (MyAppE x) = checkvars n t x
-
 ir ''MyType ''MyExp
 
 four :: AddE MyExp
