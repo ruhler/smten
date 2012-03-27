@@ -24,6 +24,7 @@ instance (Inject IntegerE e)
 
 instance (Eq t, Show t, Inject IntegerT t) => TypeCheck t IntegerE where
     typeof _ = inject $ IntegerT
+    typecheck _ = return ()
     checkvars _ _ _ = return ()
 
 data AddE e = AddE e e
@@ -43,8 +44,18 @@ instance (Elaborate e e, Inject (AddE e) e, Inject IntegerE e)
             b' = reduce n v b
         in inject $ (AddE a' b' :: AddE e)
 
-instance (TypeCheck t e, Inject IntegerT t) => TypeCheck t (AddE e) where
+instance
+    (Eq t, Show t, Show e, TypeCheck t e, Inject IntegerT t)
+    => TypeCheck t (AddE e) where
+
     typeof _ = inject IntegerT
+
+    typecheck (AddE a b) = do
+        typecheck a
+        typecheck b
+        typeassert (inject IntegerT) (typeof a) a
+        typeassert (inject IntegerT) (typeof b) b
+
     checkvars n v (AddE a b) = do
         checkvars n v a
         checkvars n v b
@@ -67,8 +78,18 @@ instance (Elaborate e e, Inject (MulE e) e, Inject IntegerE e)
             b' = reduce n v b
         in inject $ (MulE a' b' :: MulE e)
                 
-instance (TypeCheck t e, Inject IntegerT t) => TypeCheck t (MulE e) where
+instance
+    (Eq t, Show t, Show e, TypeCheck t e, Inject IntegerT t)
+    => TypeCheck t (MulE e) where
+
     typeof _ = inject IntegerT
+
+    typecheck (MulE a b) = do
+        typecheck a
+        typecheck b
+        typeassert (inject IntegerT) (typeof a) a
+        typeassert (inject IntegerT) (typeof b) b
+
     checkvars n v (MulE a b) = do
         checkvars n v a
         checkvars n v b

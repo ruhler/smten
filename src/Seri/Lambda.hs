@@ -23,6 +23,8 @@ instance (Inject (VarE t) e) => Elaborate (VarE t) e where
 instance (Eq t, Show t) => TypeCheck t (VarE t) where
     typeof (VarE t _) = t
 
+    typecheck (VarE _ _) = return ()
+
     checkvars n v e@(VarE t vn) =
         if vn == n
             then typeassert v t e
@@ -40,8 +42,19 @@ instance (Inject (LamE t e) e, Elaborate e e)
     reduce n v (LamE _ nm b) | n /= nm = reduce n v b
     reduce _ _ l = inject l
 
-instance (TypeCheck t e) => TypeCheck t (LamE t e) where
+instance
+    (Show t, Show e, TypeCheck t e, Inject (ArrowT t) t, Eq t)
+    => TypeCheck t (LamE t e) where
+
     typeof (LamE t _ _) = t
+
+    typecheck e@(LamE t n body) =
+        case (unject t) of
+            Just (ArrowT at bt) -> do
+                typecheck body
+                checkvars n at body
+                typeassert bt (typeof body) body
+            Nothing -> typefail "function" t e
 
     checkvars n v (LamE _ ln b) =
         if ln /= n
@@ -65,8 +78,21 @@ instance (Inject (AppE t e) e, Inject (LamE t e) e, Elaborate e e)
             b' = reduce n v b
         in inject $ AppE t a' b'
         
-instance (TypeCheck t e) => TypeCheck t (AppE t e) where
+instance
+    (Eq t, Show t, Show e, TypeCheck t e, Inject (ArrowT t) t)
+    => TypeCheck t (AppE t e) where
+
     typeof (AppE t _ _) = t
+
+    typecheck e@(AppE t f x) = do
+        typecheck f
+        typecheck x
+        case (unject (typeof f)) of
+            Just (ArrowT at bt) -> do
+                typeassert at (typeof x) x
+                typeassert bt t e
+            Nothing -> typefail "function" (typeof f) f
+
     checkvars n v (AppE _ a b) = do
         checkvars n v a
         checkvars n v b
