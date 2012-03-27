@@ -48,6 +48,29 @@ clause1 func a
   = let x = mkName "x"
     in clause [conP a [varP x]] (normalB (appE (varE func) (varE x))) []
 
+-- clause3 function myx
+--  Returns a clause for the function definition of the form:
+--      function a b (myx x) = function a b x
+clause3 :: Name -> Name -> Q Clause
+clause3 func myx 
+  = let a = mkName "a"
+        b = mkName "b"
+        x = mkName "x"
+    in clause [varP a, varP b, conP myx [varP x]] (normalB
+            (appE (appE (appE (varE func) (varE a)) (varE b)) (varE x))) []
+
+-- impl n f cs
+-- Convenience function. See use examples for why it's convenient
+--
+--  n - the name of a function
+--  f - a function which produces a clause of 'n' given a 'f' and a type
+--      constructor. e.g. clause1, clause3
+--  cs - a list of type constructors
+--
+-- Return a function definition for 'n' consisting of a clause for each
+-- type constructor.
+impl :: Name -> (Name -> Name -> Q Clause) -> [Con] -> Q Dec
+impl n f cs = funD n (map (\(NormalC cn _) -> f n cn) cs)
 
 -- derive_elaborate
 --  Given a data declaration of the form
@@ -67,12 +90,8 @@ derive_elaborate (DataD _ my _ cons _) =
        n = mkName "n"
        v = mkName "v"
 
-       reduclause :: Name -> Q Clause
-       reduclause a = clause [varP n, varP v, conP a [varP x]] (normalB
-            (appE (appE (appE (varE 'reduce) (varE n)) (varE v)) (varE x))) []
-
-       elab_impl = funD 'elaborate (map (\(NormalC cn _) -> clause1 'elaborate cn) cons)
-       redu_impl = funD 'reduce (map (\(NormalC cn _) -> reduclause cn) cons)
+       elab_impl = impl 'elaborate clause1 cons
+       redu_impl = impl 'reduce clause3 cons
        inst = instanceD (return []) (appT (appT (conT ''Elaborate) (conT my)) (conT my)) [elab_impl, redu_impl]
     in sequence [inst]
 
@@ -98,13 +117,9 @@ derive_typecheck mytype (DataD _ my _ cons _) =
        n = mkName "n"
        t = mkName "t"
 
-       checkvarsclause :: Name -> Q Clause
-       checkvarsclause a = clause [varP n, varP t, conP a [varP x]] (normalB
-            (appE (appE (appE (varE 'checkvars) (varE n)) (varE t)) (varE x))) []
-
-       typeof_impl = funD 'typeof (map (\(NormalC cn _) -> clause1 'typeof cn) cons)
-       typecheck_impl = funD 'typecheck (map (\(NormalC cn _) -> clause1 'typecheck cn) cons)
-       checkvars_impl = funD 'checkvars (map (\(NormalC cn _) -> checkvarsclause cn) cons)
+       typeof_impl = impl 'typeof clause1 cons
+       typecheck_impl = impl 'typecheck clause1 cons
+       checkvars_impl = impl 'checkvars clause3 cons
        inst = instanceD (return []) (appT (appT (conT ''TypeCheck) (conT mytype)) (conT my)) [typeof_impl, typecheck_impl, checkvars_impl]
     in sequence [inst]
 

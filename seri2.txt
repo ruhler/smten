@@ -1805,3 +1805,29 @@ Mon Mar 26 20:39:02 EDT 2012
 
 Next step: the typecheck function.
 
+Mon Mar 26 21:09:58 EDT 2012
+
+Nifty, so that's done, and we have type checking!
+
+The type errors are terrible to read though, because we don't have pretty
+printing of expressions. That's something it would be very useful to have.
+
+Well, it's safe if I use parenthesis, but otherwise, how do we deal with
+operator precedence? Do we go the haskell route and just use parentheses
+everywhere?
+
+Well, anything is better than what show gives us, so I should think ppr would
+be just fine.
+
+I think, perhaps, I'm running a little low on steam just now, so let me call
+it a day there.
+
+What are the next steps?
+
+- pretty printing of expressions and types
+- VarT, UnknownT
+- type inference
+- parser - good luck figuring this one out.
+- quoter
+- add to expressions until we can implement factorial.
+
