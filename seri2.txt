@@ -2101,3 +2101,20 @@ FixE into a primitive 'fix' function.
 infix has two arguments, right? I could maybe use that to make things easier
 parsing.
 
+Wed Mar 28 16:29:11 EDT 2012
+
+Okay, so parsing of infix primitives is clean now.
+
+I'm a little annoyed out how clumsy it is to specify how to elaborate a
+primitive expression. Perhaps that can be improved in time.
+
+Last primitive to deal with: the 'fix' primitive.
+
+First step: preserve my special syntax. Second step: dump the special syntax.
+
+Wed Mar 28 16:39:06 EDT 2012
+
+Actually, here's an idea. True and False should be made primitives. I can use
+that to work out the naming thing. Then change the syntax for fix. Then try to
+make fix a primitive. Let's see how that goes.
+

@@ -16,10 +16,11 @@ data Primitive = AddP
                | SubP
                | MulP
                | LtP
+               | TrueP
+               | FalseP
       deriving(Eq, Show)
 
-data Exp = BoolE Bool
-         | IntegerE Integer
+data Exp = IntegerE Integer
          | PrimE Type Primitive
          | IfE Type Exp Exp Exp
          | AppE Type Exp Exp
@@ -38,9 +39,10 @@ instance Ppr Primitive where
     ppr SubP = text "-"
     ppr MulP = text "*"
     ppr LtP = text "<"
+    ppr TrueP = text "True"
+    ppr FalseP = text "False"
 
 instance Ppr Exp where
-    ppr (BoolE b) = if b then text "true" else text "false"
     ppr (IntegerE i) = integer i
     ppr (PrimE _ p) = ppr p
     ppr (IfE _ p a b) = parens $ text "if" <+> ppr p

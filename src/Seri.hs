@@ -24,7 +24,7 @@ run = elaborate . typed
 
 tests = "Seri" ~: [
     "foo" ~: IntegerE 42 ~=? run [st|(\x -> x*x+3*x+2) 5|],
-    "true" ~: BoolE True ~=? run [st| true |],
+    "true" ~: PrimE BoolT TrueP ~=? run [st| True |],
     "if" ~: IntegerE 23 ~=? run [st| if 6 < 4 then 42 else 23 |],
     "slice" ~: IntegerE 7 ~=? run [st| 3 + @(integerE . toInteger $ length [4,1,5,56]) |],
     "fix" ~: IntegerE 120 ~=?

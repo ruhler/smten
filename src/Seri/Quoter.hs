@@ -34,7 +34,7 @@ infixp nm = (\a b -> apply 'S.infixE [VarE nm, a, b])
 atom :: Parser Exp
 atom = do
     e <- (eth <|> elam <|> efix <|> eparen <|> einteger <|>
-          eif <|> try etrue <|> try efalse <|> try evar)
+          eif <|> try ename)
     many space
     return e
 
@@ -74,16 +74,6 @@ eparen = do
     x <- expression
     token ")"
     return x
-
-etrue :: Parser Exp
-etrue = do
-    token "true"
-    return $ apply 'S.boolE [ConE 'True]
-
-efalse :: Parser Exp
-efalse = do
-    token "false"
-    return $ apply 'S.boolE [ConE 'False]
 
 eif :: Parser Exp
 eif = do
@@ -149,16 +139,22 @@ efix = do
     return $ apply 'S.fixE [LitE (StringL nm), LamE [VarP $ mkName nm] body]
 
 
-reserved = ["if", "then", "else", "true", "false"]
+keyword = ["if", "then", "else"]
+primitive = ["True", "False"]
 
-evar :: Parser Exp
-evar = do
+prim :: String -> Exp
+prim "True" = VarE 'S.trueP
+prim "False" = VarE 'S.falseP
+
+ename :: Parser Exp
+ename = do
     nm <- name
-    if (nm `elem` reserved)
-     then fail ""
-     else do
-        many space
-        return $ VarE (mkName nm)
+    many space
+    if (nm `elem` keyword)
+      then fail ""
+      else if (nm `elem` primitive)
+             then return $ prim nm
+             else return $ VarE (mkName nm)
 
 name :: Parser SIR.Name
 name = many1 alphaNum

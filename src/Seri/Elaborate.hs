@@ -8,8 +8,8 @@ import Seri.IR
 -- elaborate prg
 -- Reduce the given expression as much as possible.
 elaborate :: Exp -> Exp
-elaborate e@(BoolE _) = e
 elaborate e@(IntegerE _) = e
+elaborate e@(PrimE _ _) = e
 elaborate (AppE t1 (AppE t2 (PrimE t3 AddP) a) b) =
     case (elaborate a, elaborate b) of
         (IntegerE av, IntegerE bv) -> IntegerE (av+bv)
@@ -24,12 +24,15 @@ elaborate (AppE t1 (AppE t2 (PrimE t3 MulP) a) b) =
         (ea, eb) -> AppE t1 (AppE t2 (PrimE t3 MulP) ea) eb
 elaborate (AppE t1 (AppE t2 (PrimE t3 LtP) a) b) =
     case (elaborate a, elaborate b) of
-        (IntegerE av, IntegerE bv) -> BoolE (av < bv)
+        (IntegerE av, IntegerE bv) ->
+            if av < bv
+                then PrimE BoolT TrueP
+                else PrimE BoolT FalseP
         (ea, eb) -> AppE t1 (AppE t2 (PrimE t3 LtP) ea) eb
 elaborate (IfE t p a b) =
     case (elaborate p) of
-        (BoolE True) -> elaborate a
-        (BoolE False) -> elaborate b
+        (PrimE _ TrueP) -> elaborate a
+        (PrimE _ FalseP) -> elaborate b
         p' -> IfE t p' a b
 elaborate (AppE t a b) =
     case (elaborate a) of
@@ -42,7 +45,6 @@ elaborate e@(VarE _ _) = e
 -- reduce n v exp
 -- Perform beta reduction in exp, replacing occurances of variable n with v.
 reduce :: Name -> Exp -> Exp -> Exp
-reduce n v e@(BoolE _) = e
 reduce n v e@(IntegerE _) = e
 reduce n v e@(PrimE _ _) = e
 reduce n v (IfE t p a b) = IfE t (reduce n v p) (reduce n v a) (reduce n v b)

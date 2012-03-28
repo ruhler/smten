@@ -7,12 +7,12 @@ module Seri.Typed
     (
         TypedExp(..),
 
-        boolE, integerE, ifE,
+        integerE, ifE,
         varE, lamE, appE, fixE,
 
         infixE,
 
-        addP, subP, mulP, ltP
+        addP, subP, mulP, ltP, trueP, falseP
     )
     where
 
@@ -58,8 +58,11 @@ mulP = TypedExp (PrimE (ArrowT IntegerT (ArrowT IntegerT IntegerT)) MulP)
 ltP :: TypedExp (Integer -> Integer -> Bool)
 ltP = TypedExp (PrimE (ArrowT IntegerT (ArrowT IntegerT BoolT)) LtP)
 
-boolE :: Bool -> TypedExp Bool
-boolE x = TypedExp $ BoolE x
+trueP :: TypedExp Bool
+trueP = TypedExp $ PrimE BoolT TrueP
+
+falseP :: TypedExp Bool
+falseP = TypedExp $ PrimE BoolT FalseP
 
 integerE :: Integer -> TypedExp Integer
 integerE x = TypedExp $ IntegerE x
