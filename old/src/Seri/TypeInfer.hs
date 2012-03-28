@@ -22,15 +22,16 @@ typeinfer eorig
        sol = solve cons
    in tereplace sol evared
 
+-- If the given type is in the map, replace it, otherwise keep it unchanged.
+replace :: [(Type, Type)] -> Type -> Type
+replace l t =
+    case lookup t l of
+        Just t' -> t'
+        Nothing -> t
+
 -- replace each type in expression according to the given association list.
 tereplace :: (Data e) => [(Type, Type)] -> e -> e
-tereplace l
-  = let dochange :: Type -> Type
-        dochange t = case lookup t l of
-                        Just t' -> t'
-                        Nothing -> t
-    in everywhere (mkT dochange)
-                            
+tereplace l = everywhere (mkT $ replace l)
 
 -- Replace all unknown types with variable types.
 -- State is the id of the next free type variable to use.
@@ -38,17 +39,13 @@ ununknown :: (Data e) => e -> State Integer e
 ununknown = everywhereM (mkM ununknownt)
 
 ununknownt :: Type -> State Integer Type
-ununknownt t@BoolT = return t
-ununknownt t@IntegerT = return t
-ununknownt (ArrowT a b) = do
-    a' <- ununknownt a
-    b' <- ununknownt b
-    return $ ArrowT a' b'
-ununknownt UnknownT = do
-    id <- get
-    put (id+1)
-    return $ VarT id
-ununknownt t@(VarT _) = error $ "Found VarT while ununknownting"
+ununknownt =
+    let ununt UnknownT = do
+            id <- get
+            put (id + 1)
+            return $ VarT id
+        ununt t = return t
+    in everywhereM (mkM ununt)
 
 constraints :: Exp -> (Exp, [(Type, Type)])
 constraints e

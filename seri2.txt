@@ -1824,10 +1824,137 @@ it a day there.
 
 What are the next steps?
 
-- pretty printing of expressions and types
++ pretty printing of expressions and types
 - VarT, UnknownT
 - type inference
 - parser - good luck figuring this one out.
 - quoter
 - add to expressions until we can implement factorial.
+
+Tue Mar 27 13:13:29 EDT 2012
+
+Type inference will take a little bit of thought.
+
+What are the assumptions about types we use?
+
+Well, there's this thing called a VarT. I think type checking has to assume
+that. Then we say a VarT is less known than any other type, and a VarT with
+greater id is less known than a VarT with lesser id.
+
+Is there ever a type which should be less known than VarT?
+I don't think so.
+
+The other issue is ArrowT. This is a type constructor. Somehow we need to know
+it has fields ArrowT a b, so if comparing two of these things, the types of
+the fields should be set to equal.
+
+This is not specific to ArrowT. You could imagine ListT, VectorT, MaybeT, any
+sort of type constructor could have some number of arguments, and these
+arguments have to match.
+
+One way we could capture this information is by specifying a function of the
+form: t -> [t]. So, given a type, return all the list of component types. And
+we just say all the component types have to be equal.
+
+This is close, but not enough to do type replacement, so map every VarT X into
+the corresponding thing in the association list. Perhaps what we want is some
+generic way of doing traversals? Like the traversal mechanism I had before,
+just made into a typeclass?
+
+Err... what I want is, I give you a function, it should work on types
+generically. You apply that function to all your subtypes, and do some
+composition of the results, and give me that back?
+
+For example, to collect the list of subtypes, I'd say something like:
+
+traverse id (:)?
+No, that's not a good example, because it isn't a recursive kind of search.
+
+How about more specific cases?
+
+Constrain. We have an expression. I want to say, apply some ...
+
+You know what? I don't think this makes sense. You have to specify type
+specific composition anyway, so may as well let the type specific recursion
+happen in the same place.
+
+The goal is just to somehow make it so you don't have to specify as much for
+each expression or type. Like, can I extract all the information I need in
+some generic way, then apply that, but I don't think that's the case.
+
+Okay. Let me list all the functions I think I'll need from each expression and
+type in order to do type inference, and we'll see how it looks.
+
+
+-- replace all occurrence of a type with some other type in the given
+-- expression.
+typesubst :: [(t, t)] -> e -> e
+
+-- replace all occurrences of UnknownT in e with a VarT with unique id.
+ununknown :: e -> State Integer e
+
+-- replace all occurrences of UnknownT in t with a VarT with unique id.
+ununknownt :: t -> State Integer t
+
+-- Generate type constraints for the given expression.
+constrain :: e -> State (Integer, [(t, t)]) ()
+
+-- add a constraint that every variable with the given name has the given type
+-- in the given expression.
+constrainvs :: Name -> t -> e -> State (Integer, [(t, t)]) ()
+
+-- Given the constraint t == t, reduce it to a smaller constraint.
+-- So, both t's should be of the same type, otherwise you can do nothing.
+-- Then, if they are the same... this feels messy to me.
+subconstrain :: t -> t -> State (Integer, [(t, t)]) ()
+
+I wonder if you could do it slightly differently. What if we had the
+following:
+
+-- Given type, return its subtypes.
+unconstruct :: t -> [t]
+
+-- Given sub types, construct the type.
+construct :: [t] -> t
+
+
+Now, typesubst is something like:
+    subs <- unconstruct
+    construct (map typesubst subs)
+
+Now, ununknown is something like:
+    
+well, if we could ask for all the expressions in it, we could map on those, if
+we could ask for all the types in it, we could replace those.
+
+In other words, I feel like it's worth trying to use generics for this. If
+it's not efficient, we'll see that and we can deal with it later. But for now,
+isn't it much easier?
+
+I should try getting more practice with generics. Let me see if I can't
+convert more of the functions in my old seri to use generics.
+
+Tue Mar 27 14:02:36 EDT 2012
+
+No, I had tried that before. There are some things which are just plain
+specific. Like, don't descend into a LamT if it introduce a new name. That
+sort of thing. The sort of thing I'd rather not hardcode. It should be up to
+each expression how it wants to do things.
+
+I don't know.
+
+Wed Mar 28 10:05:38 EDT 2012
+
+I want to think about, or investigate more, this idea of leveraging haskell's
+type system to do inference. I think my type inference is fine for my simple
+lambda calculus, but it would be good in general to be able to leverage
+haskell's type system.
+
+The idea is this: we want to make it so when you write an expression in a
+quoter or what have you, it is automatically type checked. That is, we will
+convert it into a TH.Exp which constructs the object for you, and makes it
+type correctly by construction.
+
+The first thing we need is some type safe way to construct expressions.
+Let me work on the old version to try and figure this idea out.
 
