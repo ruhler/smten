@@ -1,14 +1,9 @@
 
-{-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE FlexibleInstances, MultiParamTypeClasses #-}
-
 module Seri.IR (
     Name, Type(..), Exp(..),
     Ppr(..),
     typeof,
     ) where
-
-import Data.Generics
 
 import Language.Haskell.TH.PprLib
 import Language.Haskell.TH(Ppr(..))
@@ -18,7 +13,7 @@ type Name = String
 data Type = IntegerT
           | BoolT
           | ArrowT Type Type
-      deriving(Eq, Show, Typeable, Data)
+      deriving(Eq, Show)
 
 data Exp = BoolE Bool
          | IntegerE Integer
@@ -31,7 +26,7 @@ data Exp = BoolE Bool
          | LamE Type Name Exp
          | FixE Type Name Exp
          | VarE Type Name
-     deriving(Eq, Show, Typeable, Data)
+     deriving(Eq, Show)
 
 typeof :: Exp -> Type
 typeof (BoolE _) = BoolT
