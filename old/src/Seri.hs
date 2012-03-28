@@ -11,13 +11,14 @@ module Seri (
     tests
     ) where
 
+import Seri.Elaborate
+import Seri.IR
 import Seri.Parser
 import Seri.Quoter
 import Seri.TypeCheck
 import Seri.TypeInfer
 import Seri.Typed
-import Seri.IR
-import Seri.Elaborate
+import Seri.TypedQuoter
 
 import Test.HUnit
 
@@ -39,6 +40,9 @@ run exp = do
     let inferred = typeinfer exp
     typecheck inferred
     return $ elaborate inferred
+
+runt :: TypedExp a -> Exp
+runt = elaborate . typed
 
 is :: Exp -> Either String Exp
 is = Right
@@ -85,6 +89,15 @@ tests = "Seri" ~: [
                 texp = appE lam (integerE 5)
                 exp = typed texp
             in elaborate exp
+        ],
+    "TypedQuoter" ~: [
+        "simple" ~: IntegerE 42 ~=? runt [st|(\x -> x*x+3*x+2) 5|],
+        "true" ~: BoolE True ~=? runt [st| true |],
+        "if" ~: IntegerE 23 ~=? runt [st| if 6 < 4 then 42 else 23 |],
+        "slice" ~: IntegerE 7 ~=? runt [st| 3 + @(integerE . toInteger $ length [4,1,5,56]) |],
+        "fix" ~: IntegerE 120 ~=?
+            let factorial = [st| !f \x -> if (x < 1) then 1 else x * f (x-1) |]
+            in runt [st| @(factorial) 5 |]
         ],
     "General" ~: [
         "simple" ~: is (IntegerE 42) ~=? run [s|(\x -> x*x+3*x+2) 5|],

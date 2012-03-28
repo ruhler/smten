@@ -11,6 +11,8 @@ module Seri.Typed
     )
     where
 
+import qualified Language.Haskell.TH as TH
+
 import Seri.IR
 
 data TypedExp a = TypedExp {
@@ -73,5 +75,4 @@ varE :: (SeriType a) => Name -> TypedExp a
 varE nm = 
     let r = TypedExp (VarE (seritype r) nm)
     in r
-
 
