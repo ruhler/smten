@@ -19,7 +19,7 @@ import qualified Seri.Typed as S
 -- Fails if there is a parse error.
 seriparse :: String -> Q Exp
 seriparse str
-  = case (runParser top () "???" str) of
+  = case (runParser top () "Unknown Source" str) of
         Left err -> fail $ show (errorPos err) ++ ": " ++ show err
         Right x -> return x
 

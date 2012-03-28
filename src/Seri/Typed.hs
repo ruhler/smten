@@ -35,57 +35,56 @@ instance (SeriType a, SeriType b) => SeriType (a -> b) where
             xb = undefined :: b
         in ArrowT (seritype xa) (seritype xb)
 
-seritypeE :: (SeriType a) => TypedExp a -> Type
-seritypeE x =
-    let f :: TypedExp a -> a
-        f _ = undefined
-    in seritype (f x)
+-- withtype f 
+--  Calls the function f with the Type corresponding to the type of the
+--  returned expression.
+withtype :: (SeriType a) => (Type -> TypedExp a) -> TypedExp a
+withtype f =
+    let tt :: TypedExp a -> a
+        tt _ = undefined
+        r = f (seritype (tt r))
+    in r
 
+primitive :: (SeriType a) => Primitive -> TypedExp a
+primitive p = withtype $ \t -> TypedExp $ PrimE t p
 
 addP :: TypedExp (Integer -> Integer -> Integer)
-addP = TypedExp (PrimE (ArrowT IntegerT (ArrowT IntegerT IntegerT)) AddP)
+addP = primitive AddP
 
 subP :: TypedExp (Integer -> Integer -> Integer)
-subP = TypedExp (PrimE (ArrowT IntegerT (ArrowT IntegerT IntegerT)) SubP)
+subP = primitive SubP
 
 mulP :: TypedExp (Integer -> Integer -> Integer)
-mulP = TypedExp (PrimE (ArrowT IntegerT (ArrowT IntegerT IntegerT)) MulP)
+mulP = primitive MulP
 
 ltP :: TypedExp (Integer -> Integer -> Bool)
-ltP = TypedExp (PrimE (ArrowT IntegerT (ArrowT IntegerT BoolT)) LtP)
+ltP = primitive LtP
 
 trueP :: TypedExp Bool
-trueP = TypedExp $ PrimE BoolT TrueP
+trueP = primitive TrueP
 
 falseP :: TypedExp Bool
-falseP = TypedExp $ PrimE BoolT FalseP
+falseP = primitive FalseP
 
 fixP :: (SeriType a) => TypedExp ((a -> a) -> a)
-fixP =
-  let r = TypedExp $ PrimE (seritypeE r) FixP
-  in r
+fixP = primitive FixP
 
 integerE :: Integer -> TypedExp Integer
 integerE x = TypedExp $ IntegerE x
 
 ifE :: (SeriType a) => TypedExp Bool -> TypedExp a -> TypedExp a -> TypedExp a
-ifE (TypedExp p) ta@(TypedExp a) (TypedExp b)
-    = TypedExp $ IfE (seritypeE ta) p a b
+ifE (TypedExp p) (TypedExp a) (TypedExp b)
+    = withtype $ \t -> TypedExp $ IfE t p a b
 
 appE :: (SeriType b) => TypedExp (a -> b) -> TypedExp a -> TypedExp b
-appE (TypedExp f) (TypedExp x) =
-    let r = TypedExp (AppE (seritypeE r) f x)
-    in r
+appE (TypedExp f) (TypedExp x)
+    = withtype $ \t -> TypedExp $ AppE t f x
 
 lamE :: (SeriType a, SeriType (a -> b)) => Name -> (TypedExp a -> TypedExp b) -> TypedExp (a -> b)
-lamE n f =
-    let r = TypedExp (LamE (seritypeE r) n (typed $ f (varE n)))
-    in r
+lamE n f = withtype $ \t -> TypedExp $ LamE t n (typed $ f (varE n))
 
 varE :: (SeriType a) => Name -> TypedExp a
-varE nm = 
-    let r = TypedExp (VarE (seritypeE r) nm)
-    in r
+varE nm = withtype $ \t -> TypedExp $ VarE t nm
 
 
 infixE :: (SeriType b, SeriType c) => TypedExp (a -> b -> c) -> TypedExp a -> TypedExp b -> TypedExp c
