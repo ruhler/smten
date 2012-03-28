@@ -2,7 +2,7 @@
 {-# LANGUAGE TemplateHaskell #-}
 
 module Seri.Quoter (
-    st
+    s
     ) where
 
 import Data.Char(ord)
@@ -177,8 +177,8 @@ strtoclose n = do
             return (c:s)
     
 
-st :: QuasiQuoter 
-st = QuasiQuoter qexp qpat qtype qdec
+s :: QuasiQuoter 
+s = QuasiQuoter qexp qpat qtype qdec
 
 qexp :: String -> Q Exp
 qexp = seriparse

@@ -2048,7 +2048,7 @@ Where id can have two different types.
 
 - Declarations
 
-- Better use of primitives.
++ Better use of primitives.
 Meaning, I suspect, instead of: AddE Exp Exp, we'll want something like
 PrimE Type Name.
 
@@ -2117,4 +2117,83 @@ Wed Mar 28 16:39:06 EDT 2012
 Actually, here's an idea. True and False should be made primitives. I can use
 that to work out the naming thing. Then change the syntax for fix. Then try to
 make fix a primitive. Let's see how that goes.
+
+Wed Mar 28 17:24:31 EDT 2012
+
+Fix is now a primitive.
+
+So, where am I at?
+
+I'm at a point where everything is wonderfully clean, especially now that we
+have primitives. Everything, that is, except specifying how to do elaboration
+of primitives. That parts rather annoying. Oh well.
+
+It's good. I like it. Very much. What's next?
+
+Well, I can try out Nirav's (id id) 5 thing. If I make id a primitive, I
+suspect it will work fine. In fact, that's how fix works. Perhaps the real
+question is, can I make (id id) 5 work even if id isn't a primitive. If id is
+defined in the language.
+
+So, that brings us to the next step, which I think is rather clear.
+
+We want to have global declarations.
+
+That is, I want to be able to write the code:
+
+----
+[st|
+    factorial :: Integer -> Integer
+    factorial = fix (\f -> \x -> if (x < 1) then 1 else x * f (x-1))
+
+    main :: Integer
+    main = factorial 5 
+|]
+----
+
+Okay, fine, what have you.
+
+Now, say we have this context. Now we want to run an expression within this
+context. Perhaps we can have a main expression to evaluate? Or perhaps
+elaboration takes place in this context, or...?
+
+We could put primitives into the language naturally this way too. Just give it
+an initial context.
+
+Hmm... so that could cause problems with type inference... it would seem we
+have to know the context ahead of time?
+
+Perhaps we will?
+
+Err... I don't know...
+
+We could have declarations. Maybe the idea is this, when you declare a seri
+function foo, it defines in a global scope: '__seri_foo',  which is an
+implementation of the TypedExp for that function, annotated with the correct
+type. Now, whenever I have a variable name when parsing, look it up in the
+relevant context to figure out if it should be free or not (is that doable?),
+then replace that with a call to '__seri_<name>'.
+
+No. That's not what we want. What we want as to keep it as a variable, but
+give it the right type, so we want something like:
+
+----
+varE :: a -> Name -> TypedExp a
+----
+Where the 'a' argument is used solely for typing, it is otherwise thrown away.
+Now we get the name, we get the type, we have the source for the primitive.
+That's perfect, no?
+
+So, I think the next step is to try adding declarations of the form: name,
+type, expression.
+
+How about this. I'll have declarations, and I'll have them define this
+'__seri_<name>' at the top level, and then I'll let the haskell user run it by
+referring to '__seri_<name>'.
+
+So, the test is this: have the declaration st brackets in a top level haskell
+context implement factorial and foo. Then for my test, elaborate foo. Easy...?
+
+One issue will be looking up global contexts in names. Well, let me work that
+out when I come to it. I think the idea for now is clear.
 
