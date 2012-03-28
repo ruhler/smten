@@ -29,6 +29,7 @@ elaborate (AppE t1 (AppE t2 (PrimE t3 LtP) a) b) =
                 then PrimE BoolT TrueP
                 else PrimE BoolT FalseP
         (ea, eb) -> AppE t1 (AppE t2 (PrimE t3 LtP) ea) eb
+elaborate e@(AppE _ (PrimE _ FixP) (LamE _ n b)) = reduce n e (elaborate b)
 elaborate (IfE t p a b) =
     case (elaborate p) of
         (PrimE _ TrueP) -> elaborate a
@@ -38,7 +39,6 @@ elaborate (AppE t a b) =
     case (elaborate a) of
         (LamE _ name body) -> elaborate $ reduce name (elaborate b) body
         a' -> AppE t a' (elaborate b)
-elaborate e@(FixE t n b) = reduce n e (elaborate b)
 elaborate e@(LamE _ _ _) = e
 elaborate e@(VarE _ _) = e
 
@@ -49,8 +49,6 @@ reduce n v e@(IntegerE _) = e
 reduce n v e@(PrimE _ _) = e
 reduce n v (IfE t p a b) = IfE t (reduce n v p) (reduce n v a) (reduce n v b)
 reduce n v (AppE t a b) = AppE t (reduce n v a) (reduce n v b)
-reduce n v e@(FixE t ln b) =
-    if ln /= n then FixE t ln (reduce n v b) else e
 reduce n v e@(LamE t ln b) =
     if ln /= n then LamE t ln (reduce n v b) else e
 reduce n v e@(VarE t vn) =

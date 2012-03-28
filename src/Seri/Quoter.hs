@@ -33,8 +33,7 @@ infixp nm = (\a b -> apply 'S.infixE [VarE nm, a, b])
 
 atom :: Parser Exp
 atom = do
-    e <- (eth <|> elam <|> efix <|> eparen <|> einteger <|>
-          eif <|> try ename)
+    e <- (eth <|> elam <|> eparen <|> einteger <|> eif <|> try ename)
     many space
     return e
 
@@ -130,21 +129,13 @@ elam = do
     body <- expression
     return $ apply 'S.lamE [LitE (StringL nm), LamE [VarP $ mkName nm] body]
 
-efix :: Parser Exp
-efix = do
-    char '!'
-    nm <- name
-    many space
-    body <- expression
-    return $ apply 'S.fixE [LitE (StringL nm), LamE [VarP $ mkName nm] body]
-
-
 keyword = ["if", "then", "else"]
-primitive = ["True", "False"]
+primitive = ["True", "False", "fix"]
 
 prim :: String -> Exp
 prim "True" = VarE 'S.trueP
 prim "False" = VarE 'S.falseP
+prim "fix" = VarE 'S.fixP
 
 ename :: Parser Exp
 ename = do

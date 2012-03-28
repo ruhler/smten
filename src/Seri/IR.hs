@@ -18,6 +18,7 @@ data Primitive = AddP
                | LtP
                | TrueP
                | FalseP
+               | FixP
       deriving(Eq, Show)
 
 data Exp = IntegerE Integer
@@ -25,7 +26,6 @@ data Exp = IntegerE Integer
          | IfE Type Exp Exp Exp
          | AppE Type Exp Exp
          | LamE Type Name Exp
-         | FixE Type Name Exp
          | VarE Type Name
      deriving(Eq, Show)
 
@@ -41,6 +41,7 @@ instance Ppr Primitive where
     ppr LtP = text "<"
     ppr TrueP = text "True"
     ppr FalseP = text "False"
+    ppr FixP = text "fix"
 
 instance Ppr Exp where
     ppr (IntegerE i) = integer i
@@ -50,6 +51,5 @@ instance Ppr Exp where
                         <+> text "else" <+> ppr b
     ppr (AppE _ a b) = parens $ ppr a <+> ppr b
     ppr (LamE _ n b) = parens $ text "\\" <> text n <+> text "->" <+> ppr b
-    ppr (FixE _ n b) = parens $ text "!" <> text n <+> ppr b 
     ppr (VarE _ n) = text n
 

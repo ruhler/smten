@@ -6,13 +6,9 @@
 module Seri.Typed 
     (
         TypedExp(..),
-
-        integerE, ifE,
-        varE, lamE, appE, fixE,
-
+        integerE, ifE, varE, lamE, appE,
         infixE,
-
-        addP, subP, mulP, ltP, trueP, falseP
+        addP, subP, mulP, ltP, trueP, falseP, fixP
     )
     where
 
@@ -64,6 +60,11 @@ trueP = TypedExp $ PrimE BoolT TrueP
 falseP :: TypedExp Bool
 falseP = TypedExp $ PrimE BoolT FalseP
 
+fixP :: (SeriType a) => TypedExp ((a -> a) -> a)
+fixP =
+  let r = TypedExp $ PrimE (seritypeE r) FixP
+  in r
+
 integerE :: Integer -> TypedExp Integer
 integerE x = TypedExp $ IntegerE x
 
@@ -79,11 +80,6 @@ appE (TypedExp f) (TypedExp x) =
 lamE :: (SeriType a, SeriType (a -> b)) => Name -> (TypedExp a -> TypedExp b) -> TypedExp (a -> b)
 lamE n f =
     let r = TypedExp (LamE (seritypeE r) n (typed $ f (varE n)))
-    in r
-
-fixE :: (SeriType a) => Name -> (TypedExp a -> TypedExp a) -> TypedExp a
-fixE n f =
-    let r = TypedExp $ FixE (seritypeE r) n (typed $ f (varE n))
     in r
 
 varE :: (SeriType a) => Name -> TypedExp a
