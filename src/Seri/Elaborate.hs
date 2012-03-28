@@ -14,18 +14,18 @@ elaborate (AppE t1 (AppE t2 (PrimE t3 AddP) a) b) =
     case (elaborate a, elaborate b) of
         (IntegerE av, IntegerE bv) -> IntegerE (av+bv)
         (ea, eb) -> AppE t1 (AppE t2 (PrimE t3 AddP) ea) eb
-elaborate e@(MulE a b) =
-    case (elaborate a, elaborate b) of
-        (IntegerE av, IntegerE bv) -> IntegerE (av*bv)
-        (ea, eb) -> MulE ea eb
-elaborate e@(SubE a b) =
+elaborate (AppE t1 (AppE t2 (PrimE t3 SubP) a) b) =
     case (elaborate a, elaborate b) of
         (IntegerE av, IntegerE bv) -> IntegerE (av-bv)
-        (ea, eb) -> SubE ea eb
-elaborate e@(LtE a b) =
+        (ea, eb) -> AppE t1 (AppE t2 (PrimE t3 SubP) ea) eb
+elaborate (AppE t1 (AppE t2 (PrimE t3 MulP) a) b) =
+    case (elaborate a, elaborate b) of
+        (IntegerE av, IntegerE bv) -> IntegerE (av*bv)
+        (ea, eb) -> AppE t1 (AppE t2 (PrimE t3 MulP) ea) eb
+elaborate (AppE t1 (AppE t2 (PrimE t3 LtP) a) b) =
     case (elaborate a, elaborate b) of
         (IntegerE av, IntegerE bv) -> BoolE (av < bv)
-        (ea, eb) -> LtE ea eb
+        (ea, eb) -> AppE t1 (AppE t2 (PrimE t3 LtP) ea) eb
 elaborate (IfE t p a b) =
     case (elaborate p) of
         (BoolE True) -> elaborate a
@@ -45,9 +45,6 @@ reduce :: Name -> Exp -> Exp -> Exp
 reduce n v e@(BoolE _) = e
 reduce n v e@(IntegerE _) = e
 reduce n v e@(PrimE _ _) = e
-reduce n v (MulE a b) = MulE (reduce n v a) (reduce n v b)
-reduce n v (SubE a b) = SubE (reduce n v a) (reduce n v b)
-reduce n v (LtE a b) = LtE (reduce n v a) (reduce n v b)
 reduce n v (IfE t p a b) = IfE t (reduce n v p) (reduce n v a) (reduce n v b)
 reduce n v (AppE t a b) = AppE t (reduce n v a) (reduce n v b)
 reduce n v e@(FixE t ln b) =

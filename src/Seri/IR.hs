@@ -13,14 +13,14 @@ data Type = IntegerT
       deriving(Eq, Show)
 
 data Primitive = AddP
+               | SubP
+               | MulP
+               | LtP
       deriving(Eq, Show)
 
 data Exp = BoolE Bool
          | IntegerE Integer
          | PrimE Type Primitive
-         | SubE Exp Exp
-         | MulE Exp Exp
-         | LtE Exp Exp
          | IfE Type Exp Exp Exp
          | AppE Type Exp Exp
          | LamE Type Name Exp
@@ -35,14 +35,14 @@ instance Ppr Type where
 
 instance Ppr Primitive where
     ppr AddP = text "+"
+    ppr SubP = text "-"
+    ppr MulP = text "*"
+    ppr LtP = text "<"
 
 instance Ppr Exp where
     ppr (BoolE b) = if b then text "true" else text "false"
     ppr (IntegerE i) = integer i
     ppr (PrimE _ p) = ppr p
-    ppr (SubE a b) = parens $ ppr a <+> text "-" <+> ppr b
-    ppr (MulE a b) = parens $ ppr a <+> text "*" <+> ppr b
-    ppr (LtE a b) = parens $ ppr a <+> text "<" <+> ppr b
     ppr (IfE _ p a b) = parens $ text "if" <+> ppr p
                         <+> text "then" <+> ppr a
                         <+> text "else" <+> ppr b

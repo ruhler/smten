@@ -7,12 +7,12 @@ module Seri.Typed
     (
         TypedExp(..),
 
-        boolE, integerE, addE, subE, mulE, ltE, ifE,
+        boolE, integerE, ifE,
         varE, lamE, appE, fixE,
 
         infixE,
 
-        addP,
+        addP, subP, mulP, ltP
     )
     where
 
@@ -46,29 +46,23 @@ seritypeE x =
     in seritype (f x)
 
 
+addP :: TypedExp (Integer -> Integer -> Integer)
+addP = TypedExp (PrimE (ArrowT IntegerT (ArrowT IntegerT IntegerT)) AddP)
+
+subP :: TypedExp (Integer -> Integer -> Integer)
+subP = TypedExp (PrimE (ArrowT IntegerT (ArrowT IntegerT IntegerT)) SubP)
+
+mulP :: TypedExp (Integer -> Integer -> Integer)
+mulP = TypedExp (PrimE (ArrowT IntegerT (ArrowT IntegerT IntegerT)) MulP)
+
+ltP :: TypedExp (Integer -> Integer -> Bool)
+ltP = TypedExp (PrimE (ArrowT IntegerT (ArrowT IntegerT BoolT)) LtP)
+
 boolE :: Bool -> TypedExp Bool
 boolE x = TypedExp $ BoolE x
 
 integerE :: Integer -> TypedExp Integer
 integerE x = TypedExp $ IntegerE x
-
-addP :: TypedExp (Integer -> Integer -> Integer)
-addP = TypedExp (PrimE (ArrowT IntegerT (ArrowT IntegerT IntegerT)) AddP)
-
-addE :: TypedExp Integer -> TypedExp Integer -> TypedExp Integer
-addE = infixE addP
-
-infixE :: (SeriType b, SeriType c) => TypedExp (a -> b -> c) -> TypedExp a -> TypedExp b -> TypedExp c
-infixE p a b = appE (appE p a) b
-
-subE :: TypedExp Integer -> TypedExp Integer -> TypedExp Integer
-subE (TypedExp a) (TypedExp b) = TypedExp (SubE a b)
-
-mulE :: TypedExp Integer -> TypedExp Integer -> TypedExp Integer
-mulE (TypedExp a) (TypedExp b) = TypedExp (MulE a b)
-
-ltE :: TypedExp Integer -> TypedExp Integer -> TypedExp Bool
-ltE (TypedExp a) (TypedExp b) = TypedExp (LtE a b)
 
 ifE :: (SeriType a) => TypedExp Bool -> TypedExp a -> TypedExp a -> TypedExp a
 ifE (TypedExp p) ta@(TypedExp a) (TypedExp b)
@@ -93,4 +87,8 @@ varE :: (SeriType a) => Name -> TypedExp a
 varE nm = 
     let r = TypedExp (VarE (seritypeE r) nm)
     in r
+
+
+infixE :: (SeriType b, SeriType c) => TypedExp (a -> b -> c) -> TypedExp a -> TypedExp b -> TypedExp c
+infixE p a b = appE (appE p a) b
 

@@ -115,17 +115,17 @@ eadd = do
 esub :: Parser (Exp -> Exp -> Exp)
 esub = do
     token "-"
-    return $ (\a b -> apply 'S.subE [a, b])
+    return $ (\a b -> apply 'S.infixE [VarE 'S.subP, a, b])
 
 elt :: Parser (Exp -> Exp -> Exp)
 elt = do
     token "<"
-    return $ (\a b -> apply 'S.ltE [a, b])
+    return $ (\a b -> apply 'S.infixE [VarE 'S.ltP, a, b])
 
 emul :: Parser (Exp -> Exp -> Exp)
 emul = do
     token "*"
-    return $ (\a b -> apply 'S.mulE [a, b])
+    return $ (\a b -> apply 'S.infixE [VarE 'S.mulP, a, b])
 
 eapp :: Parser (Exp -> Exp -> Exp)
 eapp = do
