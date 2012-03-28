@@ -15,6 +15,7 @@ import Seri.Parser
 import Seri.Quoter
 import Seri.TypeCheck
 import Seri.TypeInfer
+import Seri.Typed
 import Seri.IR
 import Seri.Elaborate
 
@@ -68,6 +69,22 @@ tests = "Seri" ~: [
         ],
     "TypeInfer" ~: [
         "simple" ~: foo ~=? typeinfer [s|(\x -> x*x+3*x+2) 5|]
+        ],
+    "Typed" ~: [
+        "lt" ~: BoolE True ~=?
+            let texp = ltE (integerE 4) (integerE 29)
+                exp = typed texp
+            in elaborate exp,
+        "if" ~: IntegerE 12 ~=?
+            let texp = ifE (boolE False) (integerE 10) (integerE 12)
+                exp = typed texp
+            in elaborate exp,
+        "foo" ~: IntegerE 42 ~=?
+            let body = \x -> addE (addE (mulE x x) (mulE (integerE 3) x)) (integerE 2)
+                lam = lamE "x" body
+                texp = appE lam (integerE 5)
+                exp = typed texp
+            in elaborate exp
         ],
     "General" ~: [
         "simple" ~: is (IntegerE 42) ~=? run [s|(\x -> x*x+3*x+2) 5|],
