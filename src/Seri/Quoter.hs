@@ -15,12 +15,13 @@ import Language.Haskell.TH
 import qualified Seri.IR as SIR
 import qualified Seri.Typed as S
 
--- Parse a seri expression.
+
+-- Run a parser
 -- Fails if there is a parse error.
-seriparse :: String -> Q Exp
-seriparse str
-  = case (runParser top () "Unknown Source" str) of
-        Left err -> fail $ show (errorPos err) ++ ": " ++ show err
+run :: (Monad m) => Parser a -> String -> m a
+run p str 
+  = case (runParser p () "here" str) of
+        Left err -> fail $ show err
         Right x -> return x
 
 type Parser = Parsec String ()
@@ -32,10 +33,7 @@ infixp :: Name -> (Exp -> Exp -> Exp)
 infixp nm = (\a b -> apply 'S.infixE [VarE nm, a, b])
 
 atom :: Parser Exp
-atom = do
-    e <- (eth <|> elam <|> eparen <|> einteger <|> eif <|> try ename)
-    many space
-    return e
+atom = eth <|> elam <|> eparen <|> einteger <|> eif <|> try ename
 
 appls :: Parser Exp
 appls = atom `chainl1` eapp
@@ -49,14 +47,14 @@ adds = mults `chainl1` (eadd <|> esub)
 lts :: Parser Exp
 lts = adds `chainl1` elt
 
-expression :: Parser Exp
-expression = lts
+expr :: Parser Exp
+expr = lts
 
 -- top level parser, skips initial whitespace, force match at eof.
-top :: Parser Exp
-top = do
+top :: Parser a -> Parser a
+top p = do
     many space
-    x <- expression
+    x <- p
     eof
     return x
 
@@ -70,18 +68,18 @@ token x = do
 eparen :: Parser Exp
 eparen = do
     token "("
-    x <- expression
+    x <- expr
     token ")"
     return x
 
 eif :: Parser Exp
 eif = do
     token "if"
-    p <- expression
+    p <- expr
     token "then"
-    tb <- expression
+    tb <- expr
     token "else"
-    tf <- expression
+    tf <- expr
     return $ apply 'S.ifE [p, tb, tf]
 
 einteger :: Parser Exp
@@ -124,9 +122,8 @@ elam :: Parser Exp
 elam = do
     char '\\'
     nm <- name
-    many space
     token "->"
-    body <- expression
+    body <- expr
     return $ apply 'S.lamE [LitE (StringL nm), LamE [VarP $ mkName nm] body]
 
 keyword = ["if", "then", "else"]
@@ -140,7 +137,6 @@ prim "fix" = VarE 'S.fixP
 ename :: Parser Exp
 ename = do
     nm <- name
-    many space
     if (nm `elem` keyword)
       then fail ""
       else if (nm `elem` primitive)
@@ -148,7 +144,10 @@ ename = do
              else return $ VarE (mkName nm)
 
 name :: Parser SIR.Name
-name = many1 alphaNum
+name = do
+    x <- many1 alphaNum
+    many space
+    return x
 
 -- Parse a template haskell slice
 -- @(...)
@@ -157,6 +156,7 @@ eth :: Parser Exp
 eth = do
     string "@("
     str <- strtoclose 1
+    many space
     case parseExp str of
         Right x -> return $ x
         Left err -> fail err
@@ -175,21 +175,80 @@ strtoclose n = do
         (_, _) -> do
             s <- strtoclose n
             return (c:s)
-    
+
+dname :: SIR.Name -> Name
+dname x = mkName $ "_seri__" ++ x
+
+-- parse a value declaration.
+-- We turn a declaration of the form
+--      foo :: MyType
+--      foo = myval
+-- into a haskell declaration of the form
+--      _seri__foo :: TypedExp MyType
+--      _seri__foo = myval
+dval :: Parser [Dec]
+dval = do
+    n <- name
+    token "::"
+    t <- type_
+    n' <- name
+    if (n /= n')
+        then fail $ "type and exp have different names in decl: " ++ n ++ " vs. " ++ n'
+        else return ()
+    token "="
+    e <- expr
+    let sig = SigD (dname n) (AppT (ConT ''S.TypedExp) t)
+    let impl = FunD (dname n) [Clause [] (NormalB e) []]
+    return [sig, impl]
+
+-- Parse a bunch of declarations
+decls :: Parser [Dec]
+decls = many1 dval >>= return . concat
+
+tint :: Parser Type
+tint = do
+    token "Integer"
+    return $ ConT ''Integer
+
+tbool :: Parser Type
+tbool = do
+    token "Bool"
+    return $ ConT ''Bool
+
+tparen :: Parser Type
+tparen = do
+    token "("
+    x <- type_
+    token ")"
+    return x
+
+tatom :: Parser Type
+tatom = tparen <|> tint <|> tbool
+
+tarrows :: Parser Type
+tarrows = tatom `chainl1` tarrow
+
+tarrow :: Parser (Type -> Type -> Type)
+tarrow = do
+    token "->"
+    return $ \a b -> AppT (AppT ArrowT a) b
+
+type_ :: Parser Type    
+type_ = tarrows
 
 s :: QuasiQuoter 
 s = QuasiQuoter qexp qpat qtype qdec
 
 qexp :: String -> Q Exp
-qexp = seriparse
+qexp = run (top expr)
 
 qpat :: String -> Q Pat
 qpat = error $ "Seri pattern quasi-quote not supported"
 
 qtype :: String -> Q Type
-qtype = error $ "Seri type quasi-quote not supported"
+qtype = run (top type_)
 
 qdec :: String -> Q [Dec]
-qdec = error $ "Seri dec quasi-quote not supported"
+qdec = run (top decls)
 
 

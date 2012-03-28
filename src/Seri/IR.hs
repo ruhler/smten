@@ -1,6 +1,6 @@
 
 module Seri.IR (
-    Name, Type(..), Primitive(..), Exp(..),
+    Name, Type(..), Primitive(..), Exp(..), Dec(..)
     ) where
 
 import Seri.Ppr
@@ -29,6 +29,9 @@ data Exp = IntegerE Integer
          | VarE Type Name
      deriving(Eq, Show)
 
+data Dec = ValD Name Type Exp
+     deriving(Eq, Show)
+
 instance Ppr Type where
     ppr BoolT = text "Bool"
     ppr IntegerT = text "Integer"
@@ -52,4 +55,8 @@ instance Ppr Exp where
     ppr (AppE _ a b) = parens $ ppr a <+> ppr b
     ppr (LamE _ n b) = parens $ text "\\" <> text n <+> text "->" <+> ppr b
     ppr (VarE _ n) = text n
+
+instance Ppr Dec where
+    ppr (ValD n t e) = text n <+> text "::" <+> ppr t
+                        $+$ text n <+> text "=" <+> ppr e
 

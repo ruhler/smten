@@ -2197,3 +2197,75 @@ context implement factorial and foo. Then for my test, elaborate foo. Easy...?
 One issue will be looking up global contexts in names. Well, let me work that
 out when I come to it. I think the idea for now is clear.
 
+Wed Mar 28 18:59:39 EDT 2012
+
+I have a plan. Here it is.
+
+We add a Dec type for declarations. The first kind of declaration we we'll
+implement, and the only kind for now, is a declaration of the form Name, Type,
+Exp.
+
+When we generate code for declarations, we'll do it in a declaration context.
+So declarations in the IR correspond do declarations of haskell functions.
+
+The haskell declaration for foo with type t and expression e will be:
+
+----
+_seri__foo :: TypedExp t
+_seri__foo = e
+----
+
+Um, that's a little imprecise. Basically we keep track of the top level
+haskell type information for the expression.
+
+The other thing we'll want, perhaps eventually, will be to have the notion of
+a context. Hmm... this might be important. Hum...
+
+Anyway, the idea is this. A context is just a list of declarations. Now I
+don't know of any way to say: here is the context for every declaration we've
+ever made. But what I can say is, here is all the context that is used by a
+declaration. So for each declaration, we also generate the haskell
+declaration:
+
+----
+_serictx_foo :: [Dec]
+_serictx_foo = nub (_serictx_a ++ _serictx_b ++ ...)
+----
+
+Next question: how do I figure out which variables refer to things in the
+context, and which are free variables? Can I figure it out while parsing?
+
+You know? I think I could. Just add state to the parsers which is the set of
+bound variables. If you encounter a variable, and it is not bound, you assume
+it is declared. Then generate '__seri_xxx' for it. Simple.
+
+Cool. This is nifty.
+
+I guess we have another question. How to do elaboration? In order to do
+elaboration, we have to have a context.
+
+Fine. Just make elaboration take place in a given context. That is, you pass
+an explicit context to the elaborate function.
+
+Good. So, first test case: declare factorial. Declare some foo which is
+factorial of 5. Then elaborate it in the context.
+
+For the first step, let's not generate the context in the parser, I'll just
+specify it manually. In the second step, I'll generate a context for each
+declaration automatically.
+
+Cool? Cool. Let me see what I can accomplish today, see how much I can get
+done.
+
+Wed Mar 28 19:11:40 EDT 2012
+
+Oh! I just thought of something... Never mind. I was just thinking another
+thing we could do is make the types more generic, have type constructors and
+type application and such, but that can come later just fine. So, onward to
+declarations.
+
+Wed Mar 28 19:54:07 EDT 2012
+
+Okay, so I now can parse declarations and define the '__seri_foo' thing.
+The next step will be, I fear, a little trickier.
+
