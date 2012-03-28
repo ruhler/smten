@@ -28,6 +28,9 @@ type Parser = Parsec String ()
 apply :: Name -> [Exp] -> Exp
 apply n exps = foldl AppE (VarE n) exps
 
+infixp :: Name -> (Exp -> Exp -> Exp)
+infixp nm = (\a b -> apply 'S.infixE [VarE nm, a, b])
+
 atom :: Parser Exp
 atom = do
     e <- (eth <|> elam <|> efix <|> eparen <|> einteger <|>
@@ -106,26 +109,23 @@ integer = do
 digitstoint :: Integer -> [Char] -> Integer
 digitstoint acc [] = acc
 digitstoint acc (x:xs) = digitstoint (acc*10 + (fromIntegral $ (ord x - ord '0'))) xs
+
+einfix :: String -> Name -> Parser (Exp -> Exp -> Exp)
+einfix str name = do
+    token str
+    return $ infixp name
     
 eadd :: Parser (Exp -> Exp -> Exp)
-eadd = do
-    token "+"
-    return $ (\a b -> apply 'S.infixE [VarE 'S.addP, a, b])
+eadd = einfix "+" 'S.addP
 
 esub :: Parser (Exp -> Exp -> Exp)
-esub = do
-    token "-"
-    return $ (\a b -> apply 'S.infixE [VarE 'S.subP, a, b])
+esub = einfix "-" 'S.subP
 
 elt :: Parser (Exp -> Exp -> Exp)
-elt = do
-    token "<"
-    return $ (\a b -> apply 'S.infixE [VarE 'S.ltP, a, b])
+elt = einfix "<" 'S.ltP
 
 emul :: Parser (Exp -> Exp -> Exp)
-emul = do
-    token "*"
-    return $ (\a b -> apply 'S.infixE [VarE 'S.mulP, a, b])
+emul = einfix "*" 'S.mulP
 
 eapp :: Parser (Exp -> Exp -> Exp)
 eapp = do
