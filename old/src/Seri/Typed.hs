@@ -7,7 +7,7 @@ module Seri.Typed
     (
         TypedExp(..),
         boolE, integerE, addE, subE, mulE, ltE, ifE,
-        varE, lamE, appE,
+        varE, lamE, appE, fixE
     )
     where
 
@@ -64,8 +64,14 @@ lamE n f =
     let r = TypedExp (LamE (seritype r) n (typed $ f (varE n)))
     in r
 
+fixE :: (SeriType a) => Name -> (TypedExp a -> TypedExp a) -> TypedExp a
+fixE n f =
+    let r = TypedExp $ FixE (seritype r) n (typed $ f (varE n))
+    in r
+
 varE :: (SeriType a) => Name -> TypedExp a
 varE nm = 
     let r = TypedExp (VarE (seritype r) nm)
     in r
+
 
