@@ -80,7 +80,7 @@ constrain = traverseM $ TraversalM {
         addc (ArrowT it ot) (typeof f)
         addc ot t
         addc it (typeof x),
-    tr_fixM = \(FixE (FixE_F t n b)) _ _ _ -> do
+    tr_fixM = \(FixE t n b) _ _ _ -> do
         addc t (typeof b)
         constrainvs n t b,
     tr_lamM = \(LamE t n b) _ _ _ -> do

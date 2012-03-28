@@ -137,7 +137,7 @@ efix = do
     nm <- name
     many space
     body <- expression
-    return $ FixE (FixE_F UnknownT nm body)
+    return $ FixE UnknownT nm body
 
 
 reserved = ["if", "then", "else", "true", "false"]

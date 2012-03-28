@@ -37,7 +37,7 @@ elaborate (AppE t a b) =
     case (elaborate a) of
         (LamE _ name body) -> elaborate $ reduce name (elaborate b) body
         a' -> AppE t a' (elaborate b)
-elaborate e@(FixE (FixE_F t n b)) = reduce n e (elaborate b)
+elaborate e@(FixE t n b) = reduce n e (elaborate b)
 elaborate e@(LamE _ _ _) = e
 elaborate e@(VarE _ _) = e
 
@@ -52,8 +52,8 @@ reduce n v (SubE a b) = SubE (reduce n v a) (reduce n v b)
 reduce n v (LtE a b) = LtE (reduce n v a) (reduce n v b)
 reduce n v (IfE t p a b) = IfE t (reduce n v p) (reduce n v a) (reduce n v b)
 reduce n v (AppE t a b) = AppE t (reduce n v a) (reduce n v b)
-reduce n v e@(FixE (FixE_F t ln b)) =
-    if ln /= n then FixE (FixE_F t ln (reduce n v b)) else e
+reduce n v e@(FixE t ln b) =
+    if ln /= n then FixE t ln (reduce n v b) else e
 reduce n v e@(LamE t ln b) =
     if ln /= n then LamE t ln (reduce n v b) else e
 reduce n v e@(VarE t vn) =

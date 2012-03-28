@@ -7,7 +7,6 @@ module Seri.IR (
     Seriable(..), Ppr(..),
     typeof,
     Traversal(..), TraversalM(..), traverse, traverseM,
-    FixE_F(..),
     ) where
 
 import Data.Generics
@@ -25,9 +24,6 @@ data Type = IntegerT
           | VarT Integer
       deriving(Eq, Show, Typeable, Data)
 
-data FixE_F t e = FixE_F t Name e
-    deriving (Eq, Show, Typeable, Data)
-
 data Exp = BoolE Bool
          | IntegerE Integer
          | AddE Exp Exp
@@ -37,30 +33,24 @@ data Exp = BoolE Bool
          | IfE Type Exp Exp Exp
          | AppE Type Exp Exp
          | LamE Type Name Exp
-         | FixE (FixE_F Type Exp)
+         | FixE Type Name Exp
          | VarE Type Name
          | ThE (TH.Exp)
      deriving(Eq, Show, Typeable, Data)
 
-class Typeof t e where
-    typeof :: e -> t
-
-instance Typeof t (FixE_F t e) where
-    typeof (FixE_F t _ _) = t
-
-instance Typeof Type Exp where
-    typeof (BoolE _) = BoolT
-    typeof (IntegerE _) = IntegerT
-    typeof (AddE _ _) = IntegerT
-    typeof (SubE _ _) = IntegerT
-    typeof (MulE _ _) = IntegerT
-    typeof (LtE _ _) = BoolT
-    typeof (IfE t _ _ _) = t
-    typeof (AppE t _ _) = t
-    typeof (LamE t _ _) = t
-    typeof (FixE x) = typeof x
-    typeof (VarE t _) = t
-    typeof x = error $ "TODO: typeof " ++ show x
+typeof :: Exp -> Type
+typeof (BoolE _) = BoolT
+typeof (IntegerE _) = IntegerT
+typeof (AddE _ _) = IntegerT
+typeof (SubE _ _) = IntegerT
+typeof (MulE _ _) = IntegerT
+typeof (LtE _ _) = BoolT
+typeof (IfE t _ _ _) = t
+typeof (AppE t _ _) = t
+typeof (LamE t _ _) = t
+typeof (FixE t _ _) = t
+typeof (VarE t _) = t
+typeof x = error $ "TODO: typeof " ++ show x
 
 data TraversalM m a = TraversalM {
     tr_boolM :: Exp -> Bool -> m a,
@@ -121,7 +111,7 @@ traverseM tr e@(AppE t a b) = do
 traverseM tr e@(LamE t n b) = do
     b' <- traverseM tr b
     tr_lamM tr e t n b'
-traverseM tr e@(FixE (FixE_F t n b)) = do
+traverseM tr e@(FixE t n b) = do
     b' <- traverseM tr b
     tr_fixM tr e t n b'
 traverseM tr e@(VarE t n) = tr_varM tr e t n
@@ -136,7 +126,7 @@ traverse tr e@(LtE a b) = tr_lt tr e (traverse tr a) (traverse tr b)
 traverse tr e@(IfE t p a b) = tr_if tr e t (traverse tr p) (traverse tr a) (traverse tr b)
 traverse tr e@(AppE t a b) = tr_app tr e t (traverse tr a) (traverse tr b)
 traverse tr e@(LamE t n b) = tr_lam tr e t n (traverse tr b)
-traverse tr e@(FixE (FixE_F t n b)) = tr_fix tr e t n (traverse tr b)
+traverse tr e@(FixE t n b) = tr_fix tr e t n (traverse tr b)
 traverse tr e@(VarE t n) = tr_var tr e t n
 
 class Seriable a where
@@ -180,7 +170,7 @@ precedence (MulE _ _) = pMulE
 precedence (LtE _ _) = pLtE
 precedence (IfE _ _ _ _) = pIfE
 precedence (AppE _ _ _) = pAppE
-precedence (FixE (FixE_F _ _ _)) = pFixE
+precedence (FixE _ _ _) = pFixE
 precedence (LamE _ _ _) = pLamE
 precedence (VarE _ _) = pVarE
 
@@ -189,9 +179,6 @@ prec i e
  = if (i > precedence e) 
      then parens $ ppr e
      else ppr e
-
-instance (Ppr e) => Ppr (FixE_F t e) where
-    ppr (FixE_F _ n b) = text "!" <> text n <+> ppr b 
 
 instance Ppr Exp where
     ppr (BoolE b) = if b then text "true" else text "false"
@@ -205,6 +192,6 @@ instance Ppr Exp where
                         <+> text "else" <+> ppr b
     ppr (AppE _ a b) = prec pAppE a <+> prec pAppE b
     ppr (LamE _ n b) = text "\\" <> text n <+> text "->" <+> prec pLamE b
-    ppr (FixE x) = ppr x
+    ppr (FixE _ n b) = text "!" <> text n <+> ppr b 
     ppr (VarE _ n) = text n
 
