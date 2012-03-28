@@ -20,7 +20,7 @@ data TypedExp a = TypedExp {
 }
 
 class SeriType a where
-    seritype :: TypedExp a -> Type
+    seritype :: a -> Type
 
 instance SeriType Bool where
     seritype _ = BoolT
@@ -29,10 +29,17 @@ instance SeriType Integer where
     seritype _ = IntegerT
 
 instance (SeriType a, SeriType b) => SeriType (a -> b) where
-    seritype f = 
-        let ta = varE "a" :: TypedExp a
-            tb = varE "b" :: TypedExp b
-        in ArrowT (seritype ta) (seritype tb)
+    seritype _ = 
+        let xa = undefined :: a
+            xb = undefined :: b
+        in ArrowT (seritype xa) (seritype xb)
+
+seritypeE :: (SeriType a) => TypedExp a -> Type
+seritypeE x =
+    let f :: TypedExp a -> a
+        f _ = undefined
+    in seritype (f x)
+
 
 boolE :: Bool -> TypedExp Bool
 boolE x = TypedExp $ BoolE x
@@ -54,25 +61,25 @@ ltE (TypedExp a) (TypedExp b) = TypedExp (LtE a b)
 
 ifE :: (SeriType a) => TypedExp Bool -> TypedExp a -> TypedExp a -> TypedExp a
 ifE (TypedExp p) ta@(TypedExp a) (TypedExp b)
-    = TypedExp $ IfE (seritype ta) p a b
+    = TypedExp $ IfE (seritypeE ta) p a b
 
 appE :: (SeriType b) => TypedExp (a -> b) -> TypedExp a -> TypedExp b
 appE (TypedExp f) (TypedExp x) =
-    let r = TypedExp (AppE (seritype r) f x)
+    let r = TypedExp (AppE (seritypeE r) f x)
     in r
 
 lamE :: (SeriType a, SeriType (a -> b)) => Name -> (TypedExp a -> TypedExp b) -> TypedExp (a -> b)
 lamE n f =
-    let r = TypedExp (LamE (seritype r) n (typed $ f (varE n)))
+    let r = TypedExp (LamE (seritypeE r) n (typed $ f (varE n)))
     in r
 
 fixE :: (SeriType a) => Name -> (TypedExp a -> TypedExp a) -> TypedExp a
 fixE n f =
-    let r = TypedExp $ FixE (seritype r) n (typed $ f (varE n))
+    let r = TypedExp $ FixE (seritypeE r) n (typed $ f (varE n))
     in r
 
 varE :: (SeriType a) => Name -> TypedExp a
 varE nm = 
-    let r = TypedExp (VarE (seritype r) nm)
+    let r = TypedExp (VarE (seritypeE r) nm)
     in r
 
