@@ -1,6 +1,6 @@
 
 module Seri.IR (
-    Name, Type(..), Exp(..),
+    Name, Type(..), Primitive(..), Exp(..),
     Ppr(..),
     typeof,
     ) where
@@ -15,9 +15,12 @@ data Type = IntegerT
           | ArrowT Type Type
       deriving(Eq, Show)
 
+data Primitive = AddP
+      deriving(Eq, Show)
+
 data Exp = BoolE Bool
          | IntegerE Integer
-         | AddE Exp Exp
+         | PrimE Type Primitive
          | SubE Exp Exp
          | MulE Exp Exp
          | LtE Exp Exp
@@ -31,7 +34,7 @@ data Exp = BoolE Bool
 typeof :: Exp -> Type
 typeof (BoolE _) = BoolT
 typeof (IntegerE _) = IntegerT
-typeof (AddE _ _) = IntegerT
+typeof (PrimE t _) = t
 typeof (SubE _ _) = IntegerT
 typeof (MulE _ _) = IntegerT
 typeof (LtE _ _) = BoolT
@@ -46,10 +49,13 @@ instance Ppr Type where
     ppr IntegerT = text "Integer"
     ppr (ArrowT a b) = parens $ ppr a <+> text "->" <+> ppr b
 
+instance Ppr Primitive where
+    ppr AddP = text "+"
+
 instance Ppr Exp where
     ppr (BoolE b) = if b then text "true" else text "false"
     ppr (IntegerE i) = integer i
-    ppr (AddE a b) = parens $ ppr a <+> text "+" <+> ppr b
+    ppr (PrimE _ p) = ppr p
     ppr (SubE a b) = parens $ ppr a <+> text "-" <+> ppr b
     ppr (MulE a b) = parens $ ppr a <+> text "*" <+> ppr b
     ppr (LtE a b) = parens $ ppr a <+> text "<" <+> ppr b

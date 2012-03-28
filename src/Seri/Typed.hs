@@ -6,8 +6,13 @@
 module Seri.Typed 
     (
         TypedExp(..),
+
         boolE, integerE, addE, subE, mulE, ltE, ifE,
-        varE, lamE, appE, fixE
+        varE, lamE, appE, fixE,
+
+        infixE,
+
+        addP,
     )
     where
 
@@ -47,8 +52,14 @@ boolE x = TypedExp $ BoolE x
 integerE :: Integer -> TypedExp Integer
 integerE x = TypedExp $ IntegerE x
 
+addP :: TypedExp (Integer -> Integer -> Integer)
+addP = TypedExp (PrimE (ArrowT IntegerT (ArrowT IntegerT IntegerT)) AddP)
+
 addE :: TypedExp Integer -> TypedExp Integer -> TypedExp Integer
-addE (TypedExp a) (TypedExp b) = TypedExp (AddE a b)
+addE = infixE addP
+
+infixE :: (SeriType b, SeriType c) => TypedExp (a -> b -> c) -> TypedExp a -> TypedExp b -> TypedExp c
+infixE p a b = appE (appE p a) b
 
 subE :: TypedExp Integer -> TypedExp Integer -> TypedExp Integer
 subE (TypedExp a) (TypedExp b) = TypedExp (SubE a b)

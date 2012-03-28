@@ -10,10 +10,10 @@ import Seri.IR
 elaborate :: Exp -> Exp
 elaborate e@(BoolE _) = e
 elaborate e@(IntegerE _) = e
-elaborate e@(AddE a b) =
+elaborate (AppE t1 (AppE t2 (PrimE t3 AddP) a) b) =
     case (elaborate a, elaborate b) of
         (IntegerE av, IntegerE bv) -> IntegerE (av+bv)
-        (ea, eb) -> AddE ea eb
+        (ea, eb) -> AppE t1 (AppE t2 (PrimE t3 AddP) ea) eb
 elaborate e@(MulE a b) =
     case (elaborate a, elaborate b) of
         (IntegerE av, IntegerE bv) -> IntegerE (av*bv)
@@ -44,7 +44,7 @@ elaborate e@(VarE _ _) = e
 reduce :: Name -> Exp -> Exp -> Exp
 reduce n v e@(BoolE _) = e
 reduce n v e@(IntegerE _) = e
-reduce n v (AddE a b) = AddE (reduce n v a) (reduce n v b)
+reduce n v e@(PrimE _ _) = e
 reduce n v (MulE a b) = MulE (reduce n v a) (reduce n v b)
 reduce n v (SubE a b) = SubE (reduce n v a) (reduce n v b)
 reduce n v (LtE a b) = LtE (reduce n v a) (reduce n v b)

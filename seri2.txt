@@ -2092,3 +2092,12 @@ Let me start with that though. We'll want functions:
 prim :: String -> Maybe Primitive
 primtype :: Primitive -> TH.Type?
 
+Wed Mar 28 15:59:11 EDT 2012
+
+The primitives I'm using: +, -, *, etc... are special in that they are infix.
+Let me deal with them specially for now. The real test should come when I turn
+FixE into a primitive 'fix' function.
+
+infix has two arguments, right? I could maybe use that to make things easier
+parsing.
+

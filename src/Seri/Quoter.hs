@@ -110,7 +110,7 @@ digitstoint acc (x:xs) = digitstoint (acc*10 + (fromIntegral $ (ord x - ord '0')
 eadd :: Parser (Exp -> Exp -> Exp)
 eadd = do
     token "+"
-    return $ (\a b -> apply 'S.addE [a, b])
+    return $ (\a b -> apply 'S.infixE [VarE 'S.addP, a, b])
 
 esub :: Parser (Exp -> Exp -> Exp)
 esub = do
