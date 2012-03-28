@@ -1,12 +1,9 @@
 
 module Seri.IR (
     Name, Type(..), Primitive(..), Exp(..),
-    Ppr(..),
-    typeof,
     ) where
 
-import Language.Haskell.TH.PprLib
-import Language.Haskell.TH(Ppr(..))
+import Seri.Ppr
 
 type Name = String
 
@@ -30,19 +27,6 @@ data Exp = BoolE Bool
          | FixE Type Name Exp
          | VarE Type Name
      deriving(Eq, Show)
-
-typeof :: Exp -> Type
-typeof (BoolE _) = BoolT
-typeof (IntegerE _) = IntegerT
-typeof (PrimE t _) = t
-typeof (SubE _ _) = IntegerT
-typeof (MulE _ _) = IntegerT
-typeof (LtE _ _) = BoolT
-typeof (IfE t _ _ _) = t
-typeof (AppE t _ _) = t
-typeof (LamE t _ _) = t
-typeof (FixE t _ _) = t
-typeof (VarE t _) = t
 
 instance Ppr Type where
     ppr BoolT = text "Bool"
