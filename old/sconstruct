@@ -1,3 +1,0 @@
-
-SConscript('sconscript', variant_dir='build')
-

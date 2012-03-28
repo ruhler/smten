@@ -1958,3 +1958,113 @@ type correctly by construction.
 The first thing we need is some type safe way to construct expressions.
 Let me work on the old version to try and figure this idea out.
 
+For example, in what sorts of ways can we build up expressions improperly
+typed?
+
+Application. That's a good example.
+
+AppE Type Exp Exp
+
+The function needs type a -> b, the expression type a, the application type b.
+
+This only works, I fear, if we can associate a haskell type with each
+expression. That's something I personally rather would have avoided. Or at
+least separate out into a different step...
+
+Okay, let's say I have a type like this:
+
+data TypedExp a = TypedExp Exp
+
+Now Exp stays how it was, but TypedExp is associated with a haskell type.
+
+Given a TypedExp, it's trivial to extract the Exp without that type
+annotation. So we can get at the raw thing. Oh, I like this.
+
+Now how do we do apply?
+
+-----
+appE :: TypedExp (a -> b) -> TypedExp a -> TypedExp b
+appE (TypedExp f) (TypedExp x) = TypedExp (AppE t f x)
+-----
+
+That's fine. But how do we figure out what 't' is?
+Can we just do:
+
+----
+t = (convtype :: b)
+----
+
+I fear that won't work (though it would be good to try out).
+
+Cool. I like this solution. Then I implement a Quoter which uses the type safe
+constructions (we'll have to merge Quoter and Parser together). And we can
+know the primitive types.
+
+What if I want to introduce a primitive name? Say, foo, and I want it to be
+typed as Foo -> Bar. To do this we would need a primitive function foo, of
+proper type, that we know about and can use to construct. Fine, just use the
+name foo. Easy. All you have to do is define the primitive version, you don't
+have to describe this yucky undefined haskell version.
+
+The key thing is, for Quoters, you don't have to typecheck before parsing,
+only after. That's definitely a better solution than template haskell gives.
+
+I'm confident we can do the translation. And splicing in and out of haskell
+too.
+
+I should work up a proof of concept for this though, just to make sure.
+
+If it works, and it's easier than type inference, perhaps I should ditch type
+inference entirely? I don't know. We'll see.
+
+But cool. Nifty. Let me work at this right now, see if I can get anywhere.
+
+Wed Mar 28 11:15:38 EDT 2012
+
+Wow. This is neat. So I have type safe constructors for expressions, and we
+get all the type information constructed we need as we go. Exactly as I was
+hoping for.
+
+What's the next part?
+
+I want a type safe quoter. So it will have to do parsing directly from String
+to Q Exp. Or Exp if I prefer, but I suspect Q Exp will be easier.
+
+Shall I just duplicate the parser?
+
+Wed Mar 28 13:13:13 EDT 2012
+
+It works! My typed quoter works. That's really cool.
+
+Wed Mar 28 13:51:37 EDT 2012
+
+So I say, ditch my typechecking and type inference. I don't need it anymore.
+
+Talked to Nirav. He suggests the following would be good to have:
+
+- higher order stuff. That is, be able to write the program
+    (id id) 5
+Where id can have two different types.
+
+- Declarations
+
+- Better use of primitives.
+Meaning, I suspect, instead of: AddE Exp Exp, we'll want something like
+PrimE Type Name.
+
+Then a primitive will be: "add", and we can elaborate based on that. Or, I
+suppose, you could have a list of primitives (I think I like that better).
+
+- For SeriType class, have a -> Type, not TypedExp a -> Type. The way to make
+  it work in haskell is, Nirav claims, something like:
+
+constseri :: TypedExp a -> a
+constseri _ = undefined
+
+Then, (seritype r) should still work.
+
+Okay? Good. I think I'll switch back to the specific version, and avoid this
+generalization thing. With haskell for type inference, I think that becomes
+easier. And perhaps if we let users define their own primitives, you can stuff
+all the library stuff into primitives. That sounds better to me.
+
