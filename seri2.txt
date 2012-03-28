@@ -2055,7 +2055,7 @@ PrimE Type Name.
 Then a primitive will be: "add", and we can elaborate based on that. Or, I
 suppose, you could have a list of primitives (I think I like that better).
 
-- For SeriType class, have a -> Type, not TypedExp a -> Type. The way to make
++ For SeriType class, have a -> Type, not TypedExp a -> Type. The way to make
   it work in haskell is, Nirav claims, something like:
 
 constseri :: TypedExp a -> a
@@ -2067,4 +2067,28 @@ Okay? Good. I think I'll switch back to the specific version, and avoid this
 generalization thing. With haskell for type inference, I think that becomes
 easier. And perhaps if we let users define their own primitives, you can stuff
 all the library stuff into primitives. That sounds better to me.
+
+Wed Mar 28 14:22:59 EDT 2012
+
+Cool, I like this.
+
+I think the next step is fairly clear.
+
+Add primitives.
+
+So, for example, Add, Mul, Fix, True, False, Lt should all turn into
+primitives.
+
+What is PrimE?
+
+I think it should be either a String, or a Primitive, which is just a union. I
+think I prefer primitive, because it makes it much more clear what you do and
+don't consider a primitive, and you can write functions in primitives. That
+harder part is, perhaps, parsing primitives? Annotating the type of
+primitives?
+
+Let me start with that though. We'll want functions:
+
+prim :: String -> Maybe Primitive
+primtype :: Primitive -> TH.Type?
 

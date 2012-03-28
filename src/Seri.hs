@@ -27,8 +27,8 @@ foo =
      lam = LamE (ArrowT IntegerT IntegerT) "x" body
  in AppE IntegerT lam (IntegerE 5)
 
-runt :: TypedExp a -> Exp
-runt = elaborate . typed
+rn :: TypedExp a -> Exp
+rn = elaborate . typed
 
 tests = "Seri" ~: [
     "Elaborate" ~: [
@@ -51,13 +51,13 @@ tests = "Seri" ~: [
             in elaborate exp
         ],
     "General" ~: [
-        "simple" ~: IntegerE 42 ~=? runt [st|(\x -> x*x+3*x+2) 5|],
-        "true" ~: BoolE True ~=? runt [st| true |],
-        "if" ~: IntegerE 23 ~=? runt [st| if 6 < 4 then 42 else 23 |],
-        "slice" ~: IntegerE 7 ~=? runt [st| 3 + @(integerE . toInteger $ length [4,1,5,56]) |],
+        "simple" ~: IntegerE 42 ~=? rn [st|(\x -> x*x+3*x+2) 5|],
+        "true" ~: BoolE True ~=? rn [st| true |],
+        "if" ~: IntegerE 23 ~=? rn [st| if 6 < 4 then 42 else 23 |],
+        "slice" ~: IntegerE 7 ~=? rn [st| 3 + @(integerE . toInteger $ length [4,1,5,56]) |],
         "fix" ~: IntegerE 120 ~=?
             let factorial = [st| !f \x -> if (x < 1) then 1 else x * f (x-1) |]
-            in runt [st| @(factorial) 5 |]
+            in rn [st| @(factorial) 5 |]
         ]
     ]
 

@@ -10,7 +10,6 @@ module Seri.IR (
 
 import Data.Generics
 
-import qualified Language.Haskell.TH as TH
 import Language.Haskell.TH.PprLib
 import Language.Haskell.TH(Ppr(..))
 
@@ -32,7 +31,6 @@ data Exp = BoolE Bool
          | LamE Type Name Exp
          | FixE Type Name Exp
          | VarE Type Name
-         | ThE (TH.Exp)
      deriving(Eq, Show, Typeable, Data)
 
 typeof :: Exp -> Type
@@ -47,7 +45,6 @@ typeof (AppE t _ _) = t
 typeof (LamE t _ _) = t
 typeof (FixE t _ _) = t
 typeof (VarE t _) = t
-typeof x = error $ "TODO: typeof " ++ show x
 
 instance Ppr Type where
     ppr BoolT = text "Bool"

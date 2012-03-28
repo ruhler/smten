@@ -3,8 +3,6 @@ module Seri.Elaborate (
     elaborate
     ) where
 
-import Control.Monad.Fix(fix)
-
 import Seri.IR
 
 -- elaborate prg
