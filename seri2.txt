@@ -2269,3 +2269,66 @@ Wed Mar 28 19:54:07 EDT 2012
 Okay, so I now can parse declarations and define the '__seri_foo' thing.
 The next step will be, I fear, a little trickier.
 
+The goal is this: elaborate should take a list of declarations as input.
+
+I suppose there are two parts. Perhaps the first is, we want to be able to
+refer to existing declarations in other declarations.
+
+so, I should be able to write:
+
+[s| 
+    fact5 :: Integer
+    fact5 = factorial 5
+|]
+
+I suspect if I try that now it will fail, because it will say factorial is
+undefined. Yes. That's exactly what happens.
+
+Now I need to do the following: any name foo which is not already bound to
+some other identifier (from a lambda) should be translated to '_seri__foo'.
+
+No. That's wrong. That's not right.
+
+What we really want is to translate it into a VarE, but a VarE which is
+properly typed.
+
+So, for example, tvarE :: TypeExp a -> Name -> TypedExp a, where the first
+argument is a throwaway, just for type purposes. What we'll use for that
+argument will be '_seri__foo'. Cool, eh?
+
+First step: let me try to manually detect out of bounds names. The goal is to
+find a name which isn't already bound.
+
+You know what? This is cool, it's fun, a great next step. But I think the work
+can wait until tomorrow.
+
+Steps tomorrow:
+
++ throw a parse error if a name is not bound or primitive. Verify it throws
+  errors where I expect the way I expect.
++ replace unbound names with tvarE '_seri__foo' 'foo'. Verify declarations
+  compile, but elaboration gets stuck.
++ add [Dec] as an argument to elaboration. Construct a [Dec] manually and
+  verify elaboration now works as desired.
+- automatically create '_serictx_foo', verify that now we don't have to
+  manually construct the declarations.
+- Make 'fix' like any other name rather than having it be parsed specially.
+  (It still needs to be a primitive, unfortunately, in order for elaboration
+   to work)
+- Try out '(id id) 5', see if it works. I think it will, I just need to have a
+  VarT kind of type.
+
+Then I'll be in good shape. That might be a good time to update Nirav on the
+status.
+
+Thu Mar 29 08:57:30 EDT 2012
+
+Names are bound by lambdas. So here's the strategy. We keep a set (list?) of
+the names currently bound. When we get a lambda, we add to the list. 
+
+Yes, let's have a list, which is really a stack. So we add to the head of the
+list new names, we pop from the head of the list when we go out of scope. That
+will handle shadowed variables correctly.
+
+Now when I encounter a variable name, I can ask if it's in this list or not.
+

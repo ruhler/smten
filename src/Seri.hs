@@ -20,7 +20,10 @@ import Test.HUnit
 -- Test Cases for Seri
 
 run :: TypedExp a -> Exp
-run = elaborate . typed
+run = rund []
+
+rund :: [Dec] -> TypedExp a -> Exp
+rund decls = elaborate decls . typed
 
 [s|
     foo :: Integer
@@ -33,6 +36,14 @@ run = elaborate . typed
     factorial = fix (\f -> \x -> if (x < 1) then 1 else x * f (x-1))
 |]
 
+[s|
+    fact5 :: Integer
+    fact5 = factorial 5
+|]
+
+fact5_decls :: [Dec]
+fact5_decls = [ValD "factorial" (ArrowT IntegerT IntegerT) (typed _seri__factorial)]
+
 tests = "Seri" ~: [
     "foo" ~: IntegerE 42 ~=? run [s|(\x -> x*x+3*x+2) 5|],
     "true" ~: PrimE BoolT TrueP ~=? run [s| True |],
@@ -42,6 +53,6 @@ tests = "Seri" ~: [
         let factorial = [s| fix (\f -> \x -> if (x < 1) then 1 else x * f (x-1)) |]
         in run [s| @(factorial) 5 |],
     "foo decl" ~: IntegerE 42 ~=? run _seri__foo,
-    "factorial decl" ~: IntegerE 120 ~=? run [s| @(_seri__factorial) 5 |]
+    "fact5 decl" ~: IntegerE 120 ~=? rund fact5_decls _seri__fact5
     ]
 

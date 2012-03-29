@@ -20,11 +20,25 @@ import qualified Seri.Typed as S
 -- Fails if there is a parse error.
 run :: (Monad m) => Parser a -> String -> m a
 run p str 
-  = case (runParser p () "here" str) of
+  = case (runParser p [] "here" str) of
         Left err -> fail $ show err
         Right x -> return x
 
-type Parser = Parsec String ()
+-- The state of the parser is the list of bound variable names.
+type Parser = Parsec String [SIR.Name]
+
+bindname :: SIR.Name -> Parser ()
+bindname nm = modifyState (\n -> (nm:n))
+
+unbindname :: SIR.Name -> Parser ()
+unbindname nm = do
+    (n:names) <- getState
+    if (n /= nm) 
+        then fail $ "unbindname '" ++ nm ++ "' doesn't match expected '" ++ n ++ "'"
+        else putState names
+
+getBound :: Parser [SIR.Name]
+getBound = getState
 
 apply :: Name -> [Exp] -> Exp
 apply n exps = foldl AppE (VarE n) exps
@@ -123,7 +137,9 @@ elam = do
     char '\\'
     nm <- name
     token "->"
+    bindname nm
     body <- expr
+    unbindname nm
     return $ apply 'S.lamE [LitE (StringL nm), LamE [VarP $ mkName nm] body]
 
 keyword = ["if", "then", "else"]
@@ -137,11 +153,12 @@ prim "fix" = VarE 'S.fixP
 ename :: Parser Exp
 ename = do
     nm <- name
-    if (nm `elem` keyword)
-      then fail ""
-      else if (nm `elem` primitive)
-             then return $ prim nm
-             else return $ VarE (mkName nm)
+    bound <- getBound
+    case () of
+        _ | nm `elem` keyword -> fail $ "keyword '" ++ nm ++ "' used as a variable"
+        _ | nm `elem` bound -> return $ VarE (mkName nm)
+        _ | nm `elem` primitive -> return $ prim nm
+        _ -> return $ apply 'S.varE_typed [VarE (dname nm), LitE (StringL nm)]
 
 name :: Parser SIR.Name
 name = do

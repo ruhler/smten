@@ -1,6 +1,7 @@
 
 module Seri.IR (
-    Name, Type(..), Primitive(..), Exp(..), Dec(..)
+    Name, Type(..), Primitive(..), Exp(..), Dec(..),
+    lookupvar,
     ) where
 
 import Seri.Ppr
@@ -59,4 +60,9 @@ instance Ppr Exp where
 instance Ppr Dec where
     ppr (ValD n t e) = text n <+> text "::" <+> ppr t
                         $+$ text n <+> text "=" <+> ppr e
+
+lookupvar :: Name -> [Dec] -> Maybe Dec
+lookupvar x [] = Nothing
+lookupvar x (d@(ValD nm _ _):ds) | nm == x = Just d
+lookupvar x (d:ds) = lookupvar x ds
 

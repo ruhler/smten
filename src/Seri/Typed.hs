@@ -6,9 +6,9 @@
 module Seri.Typed 
     (
         TypedExp(..),
-        integerE, ifE, varE, lamE, appE,
+        integerE, ifE, varE, varE_typed, lamE, appE,
         infixE,
-        addP, subP, mulP, ltP, trueP, falseP, fixP
+        addP, subP, mulP, ltP, trueP, falseP, fixP,
     )
     where
 
@@ -85,6 +85,12 @@ lamE n f = withtype $ \t -> TypedExp $ LamE t n (typed $ f (varE n))
 
 varE :: (SeriType a) => Name -> TypedExp a
 varE nm = withtype $ \t -> TypedExp $ VarE t nm
+
+-- varE_typed ref nm
+-- Construct a variable whose type is the same as the type of 'ref'. 'ref' is
+-- otherwise unused.
+varE_typed :: (SeriType a) => TypedExp a -> Name -> TypedExp a
+varE_typed _ = varE
 
 
 infixE :: (SeriType b, SeriType c) => TypedExp (a -> b -> c) -> TypedExp a -> TypedExp b -> TypedExp c
