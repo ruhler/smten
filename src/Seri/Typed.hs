@@ -9,6 +9,7 @@ module Seri.Typed
         integerE, ifE, varE, varE_typed, lamE, appE,
         infixE,
         addP, subP, mulP, ltP, trueP, falseP, fixP,
+        valD,
     )
     where
 
@@ -35,15 +36,16 @@ instance (SeriType a, SeriType b) => SeriType (a -> b) where
             xb = undefined :: b
         in ArrowT (seritype xa) (seritype xb)
 
+usetype :: (SeriType a) => TypedExp a -> (Type -> b) -> b
+usetype e f = f (seritype (gettype e))
+    where gettype :: TypedExp a -> a
+          gettype _ = undefined
+
 -- withtype f 
 --  Calls the function f with the Type corresponding to the type of the
 --  returned expression.
 withtype :: (SeriType a) => (Type -> TypedExp a) -> TypedExp a
-withtype f =
-    let tt :: TypedExp a -> a
-        tt _ = undefined
-        r = f (seritype (tt r))
-    in r
+withtype f = r where r = usetype r f
 
 primitive :: (SeriType a) => Primitive -> TypedExp a
 primitive p = withtype $ \t -> TypedExp $ PrimE t p
@@ -95,4 +97,7 @@ varE_typed _ = varE
 
 infixE :: (SeriType b, SeriType c) => TypedExp (a -> b -> c) -> TypedExp a -> TypedExp b -> TypedExp c
 infixE p a b = appE (appE p a) b
+
+valD :: (SeriType a) => Name -> TypedExp a -> Dec
+valD nm e = usetype e (\t -> ValD nm t (typed e))
 

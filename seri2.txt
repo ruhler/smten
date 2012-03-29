@@ -1,4 +1,6 @@
 
+vim: ft=txt
+
 Sat Mar 24 08:21:35 EDT 2012
 
 I want to give seri another shot, for the fun of it. But also as something
@@ -2310,7 +2312,7 @@ Steps tomorrow:
   compile, but elaboration gets stuck.
 + add [Dec] as an argument to elaboration. Construct a [Dec] manually and
   verify elaboration now works as desired.
-- automatically create '_serictx_foo', verify that now we don't have to
++ automatically create '_serictx_foo', verify that now we don't have to
   manually construct the declarations.
 - Make 'fix' like any other name rather than having it be parsed specially.
   (It still needs to be a primitive, unfortunately, in order for elaboration
@@ -2331,4 +2333,19 @@ list new names, we pop from the head of the list when we go out of scope. That
 will handle shadowed variables correctly.
 
 Now when I encounter a variable name, I can ask if it's in this list or not.
+
+Thu Mar 29 09:33:32 EDT 2012
+
+Now we want to automatically create '_serictx_foo'. So we need to add more
+user state to the parser.
+
+For every declaration we parse, I want a list of the variables used.
+Now for each one, I create a ValD.
+
+What do I need? Well, I can have a function
+
+valD :: Name -> TypedExp a -> Dec
+valD nm t = ValD nm (seritypeE) (typed t)
+
+So all I need is the name.
 

@@ -20,25 +20,40 @@ import qualified Seri.Typed as S
 -- Fails if there is a parse error.
 run :: (Monad m) => Parser a -> String -> m a
 run p str 
-  = case (runParser p [] "here" str) of
+  = case (runParser p initialUserState "here" str) of
         Left err -> fail $ show err
         Right x -> return x
 
--- The state of the parser is the list of bound variable names.
-type Parser = Parsec String [SIR.Name]
+data UserState = UserState {
+    boundnames :: [SIR.Name],
+    freenames :: [SIR.Name]
+}
+
+initialUserState = UserState [] []
+
+type Parser = Parsec String UserState
 
 bindname :: SIR.Name -> Parser ()
-bindname nm = modifyState (\n -> (nm:n))
+bindname nm = modifyState (\us -> us { boundnames = (nm:(boundnames us)) })
 
 unbindname :: SIR.Name -> Parser ()
 unbindname nm = do
-    (n:names) <- getState
+    UserState (n:names) fn <- getState
     if (n /= nm) 
         then fail $ "unbindname '" ++ nm ++ "' doesn't match expected '" ++ n ++ "'"
-        else putState names
+        else putState $ UserState names fn
 
 getBound :: Parser [SIR.Name]
-getBound = getState
+getBound = getState >>= return . boundnames
+
+freename :: SIR.Name -> Parser ()
+freename nm = modifyState (\us -> us { freenames = (nm:(freenames us)) })
+
+clearFree :: Parser ()
+clearFree = modifyState (\us -> us { freenames = [] })
+
+getFree :: Parser [SIR.Name]
+getFree = getState >>= return . freenames
 
 apply :: Name -> [Exp] -> Exp
 apply n exps = foldl AppE (VarE n) exps
@@ -158,7 +173,9 @@ ename = do
         _ | nm `elem` keyword -> fail $ "keyword '" ++ nm ++ "' used as a variable"
         _ | nm `elem` bound -> return $ VarE (mkName nm)
         _ | nm `elem` primitive -> return $ prim nm
-        _ -> return $ apply 'S.varE_typed [VarE (dname nm), LitE (StringL nm)]
+        _ -> do
+            freename nm
+            return $ apply 'S.varE_typed [VarE (dname nm), LitE (StringL nm)]
 
 name :: Parser SIR.Name
 name = do
@@ -196,6 +213,9 @@ strtoclose n = do
 dname :: SIR.Name -> Name
 dname x = mkName $ "_seri__" ++ x
 
+ctxname :: SIR.Name -> Name
+ctxname x = mkName $ "_serictx_" ++ x
+
 -- parse a value declaration.
 -- We turn a declaration of the form
 --      foo :: MyType
@@ -213,10 +233,15 @@ dval = do
         then fail $ "type and exp have different names in decl: " ++ n ++ " vs. " ++ n'
         else return ()
     token "="
+    clearFree
     e <- expr
+    free <- getFree
     let sig = SigD (dname n) (AppT (ConT ''S.TypedExp) t)
     let impl = FunD (dname n) [Clause [] (NormalB e) []]
-    return [sig, impl]
+    let mkctx fn = apply 'S.valD [LitE (StringL fn), VarE (dname fn)]
+    let ctxsig = SigD (ctxname n) (AppT ListT (ConT ''SIR.Dec))
+    let ctximpl = FunD (ctxname n) [Clause [] (NormalB (ListE (map mkctx free))) []]
+    return [sig, impl, ctxsig, ctximpl]
 
 -- Parse a bunch of declarations
 decls :: Parser [Dec]
