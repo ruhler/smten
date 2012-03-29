@@ -8,10 +8,11 @@ module Seri.Typed
         TypedExp(..),
         integerE, ifE, varE, varE_typed, lamE, appE,
         infixE,
-        addP, subP, mulP, ltP, fixP,
+        addP, subP, mulP, ltP,
         valD,
         _seri__True, _serictx_True,
         _seri__False, _serictx_False,
+        _seri__fix, _serictx_fix,
     )
     where
 
@@ -76,11 +77,15 @@ _seri__False = primitive FalseP
 _serictx_False :: [Dec]
 _serictx_False = [valD "False" _seri__False]
 
-falseP :: TypedExp Bool
-falseP = primitive FalseP
+_seri__fix :: (SeriType a) => TypedExp ((a -> a) -> a)
+_seri__fix = primitive FixP
 
-fixP :: (SeriType a) => TypedExp ((a -> a) -> a)
-fixP = primitive FixP
+_serictx_fix :: [Dec]
+_serictx_fix
+  = let fixtype = (ArrowT (ArrowT (VarT "a") (VarT "a")) (VarT "a"))
+        dummyfix :: TypedExp ((Bool -> Bool) -> Bool)
+        dummyfix = _seri__fix
+    in [ValD "fix" fixtype (typed dummyfix)]
 
 integerE :: Integer -> TypedExp Integer
 integerE x = TypedExp $ IntegerE x

@@ -158,10 +158,6 @@ elam = do
     return $ apply 'S.lamE [LitE (StringL nm), LamE [VarP $ mkName nm] body]
 
 keyword = ["if", "then", "else"]
-primitive = ["fix"]
-
-prim :: String -> Exp
-prim "fix" = VarE 'S.fixP
 
 ename :: Parser Exp
 ename = do
@@ -170,7 +166,6 @@ ename = do
     case () of
         _ | nm `elem` keyword -> fail $ "keyword '" ++ nm ++ "' used as a variable"
         _ | nm `elem` bound -> return $ VarE (mkName nm)
-        _ | nm `elem` primitive -> return $ prim nm
         _ -> do
             freename nm
             return $ apply 'S.varE_typed [VarE (dname nm), LitE (StringL nm)]

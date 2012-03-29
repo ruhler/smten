@@ -2358,4 +2358,128 @@ which is special at this point) need not be known in the parser.
 Just replace trueP and falseP and fixP with _seri__True _seri__False and
 _seri__fix, and their corresponding contexts.
 
+Thu Mar 29 10:30:12 EDT 2012
+
+Turns out True and False were easy. The problem with fix is it requires
+variable types. So, let me try to declare a polymorphic function (id), and add
+what I need to make that work. Then I can pull out fix.
+
+Thu Mar 29 10:35:59 EDT 2012
+
+Hm... It says: not in scope, type variable 'a'. What am I doing wrong?
+Err... do I need to say something like: forall a. a -> a?
+
+Okay, step back. Now we have VarT, I should be able to do fix. Once I have
+fix, use that as a template for the kind of code I have to generate. I think
+it has to be something like: (SeriType a) => a -> a;
+
+Thu Mar 29 10:58:29 EDT 2012
+
+Okay, yes. So there are some rather unsatisfying things about making fix work.
+
+First is, to extract the expression from _seri__fix, I need to give a dummy
+type for fix. And it needs to be a SeriType dummy type. For example, I picked
+the type as (Bool -> Bool -> Bool. But I hate making such an arbitrary
+decision.
+
+Here's an idea. What if we had some predefined concrete haskell types
+corresponding to variable types? Like BCL does. So we define types:
+
+data VarT_a = VarT_a
+data VarT_b = VarT_b
+data VarT_c = VarT_c
+data VarT_d = VarT_d
+
+And maybe 4 is enough, because really, how many do you need?
+
+Then, when parsing a type, we only allow the type variables "a", "b", "c", and
+"d". And they are parsed into these VarT_a, VarT_b, VarT_c, VarT_d.
+
+We make each of those an instance of SeriType, which maps them to VarT "a",
+VarT "b", VarT "c", VarT "d".
+
+Now the dummy type I can use is VarT_a.
+
+The next problem is one with elaboration. Specifically with regards to
+primitives I suspect. I don't think this is related to the type issue.
+
+But I have to understand what's going on. I think the thing is, we pattern
+match on primitives, but what if they aren't applied directly as primitives,
+but applied, like fix, as a function. So what I should really do is try to
+elaborate them, see if they are primitives, if so, advance and elaborate
+again, and so forth.
+
+Let me try to fix the elaboration problem with the current state of 'fix'.
+Then I'll consier adding VarT_a, etc...
+
+Thu Mar 29 11:05:37 EDT 2012
+
+Okay then. How to clean up elaboration of primitives?
+
+Primitives take some number of arguments.
+
+For example: TrueP, FalseP, take 0. FixP takes 1. AddP, MulP take 2.
+
+Let's stick to the special case for now, which is the case assuming you can
+elaborate away a primitive (with more than one argument) if all of its
+arguments are ...
+
+TrueP, FalseP - can't ever elaborate more.
+
+Hmm... maybe that's an important observation. When we get a primitive, it's
+primitive. There's no way you could elaborate it more, otherwise it wouldn't
+be primitive.
+
+The real thing we want to do, is in some cases we can have an expression
+containing a primitive, and that lets us simplify the expression.
+
+For example, I can reduce the expression
+    if (TrueP) a b  to a.
+
+This is like a reduction rule. Maybe I should read up on how Nirav did this,
+and his references to how ghc does it.
+
+I'll do that. I'll also spend a little time brainstorming first, to better
+understand what I read.
+
+So we say we have these reduction rules. If your expression has this form, we
+can reduce it to this other form.
+
+The problem is: I can perform a reduction in some local context, which makes
+another reduction available in a more global context which I can't see from
+the local context.
+
+What we really want is, after reducing parts of an expression, try again to
+see if we match any rules from before.
+
+For example, consider AppE a b. Currently the way I elaborate it is by saying:
+elaborate a, if it's a lambda, then I can do the substitution. But what I
+should be saying is: elaborate it, if it's a lambda, then I can do the
+substitution, otherwise, I can try to elaborate it again after the components
+have been elaborated.
+
+The fear is that I'll get stuck in an infinite loop.
+
+So how about the following. Change elaborate from Exp -> Exp to Exp -> Maybe
+Exp. It returns an elaborated expression, if that expression could be
+elaborated.
+
+Now how would this look?
+
+IntegerE, PrimE = Nothing
+AppE Lambda - do a reduction, elaborate the result.
+AppE general - elaborate f, if it could be, then elaborate the expression. 
+AppE AddP IntegerE IntegerE - do the reduction.
+
+So, in other words, we only do the elaboration if it matches exactly. We let
+AppE take care of elaborating components if needed.
+
+I think this will be cleaner, simpler to specify, and more correct.
+
+So, what do you say? Are you willing to try it?
+
+Thu Mar 29 11:43:41 EDT 2012
+
+Cool. It works. And it's a much nicer way of specifying elaboration, not only
+for primitives, but also the other constructs.
 
