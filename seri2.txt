@@ -2349,3 +2349,13 @@ valD nm t = ValD nm (seritypeE) (typed t)
 
 So all I need is the name.
 
+Thu Mar 29 10:21:20 EDT 2012
+
+Next step: having the parser not need to know about fix. I should be able to
+do the same for True and False too. That is primitives (aside from infix,
+which is special at this point) need not be known in the parser.
+
+Just replace trueP and falseP and fixP with _seri__True _seri__False and
+_seri__fix, and their corresponding contexts.
+
+

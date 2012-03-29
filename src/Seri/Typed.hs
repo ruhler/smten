@@ -8,8 +8,10 @@ module Seri.Typed
         TypedExp(..),
         integerE, ifE, varE, varE_typed, lamE, appE,
         infixE,
-        addP, subP, mulP, ltP, trueP, falseP, fixP,
+        addP, subP, mulP, ltP, fixP,
         valD,
+        _seri__True, _serictx_True,
+        _seri__False, _serictx_False,
     )
     where
 
@@ -62,8 +64,17 @@ mulP = primitive MulP
 ltP :: TypedExp (Integer -> Integer -> Bool)
 ltP = primitive LtP
 
-trueP :: TypedExp Bool
-trueP = primitive TrueP
+_seri__True :: TypedExp Bool
+_seri__True = primitive TrueP
+
+_serictx_True :: [Dec]
+_serictx_True = [valD "True" _seri__True]
+
+_seri__False :: TypedExp Bool
+_seri__False = primitive FalseP
+
+_serictx_False :: [Dec]
+_serictx_False = [valD "False" _seri__False]
 
 falseP :: TypedExp Bool
 falseP = primitive FalseP

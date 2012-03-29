@@ -158,11 +158,9 @@ elam = do
     return $ apply 'S.lamE [LitE (StringL nm), LamE [VarP $ mkName nm] body]
 
 keyword = ["if", "then", "else"]
-primitive = ["True", "False", "fix"]
+primitive = ["fix"]
 
 prim :: String -> Exp
-prim "True" = VarE 'S.trueP
-prim "False" = VarE 'S.falseP
 prim "fix" = VarE 'S.fixP
 
 ename :: Parser Exp

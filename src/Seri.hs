@@ -53,7 +53,7 @@ rund decls = elaborate decls . typed
 
 tests = "Seri" ~: [
     "foo" ~: IntegerE 42 ~=? run [s|(\x -> x*x+3*x+2) 5|],
-    "true" ~: PrimE BoolT TrueP ~=? run [s| True |],
+    "true" ~: PrimE BoolT TrueP ~=? rund _serictx_True [s| True |],
     "if" ~: IntegerE 23 ~=? run [s| if 6 < 4 then 42 else 23 |],
     "slice" ~: IntegerE 7 ~=? run [s| 3 + @(integerE . toInteger $ length [4,1,5,56]) |],
     "fix" ~: IntegerE 120 ~=?
