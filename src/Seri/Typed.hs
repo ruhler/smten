@@ -5,7 +5,9 @@
 
 module Seri.Typed 
     (
-        TypedExp(..),
+        TypedExp(..), SeriType(..),
+        VarT_a(..), VarT_b(..), VarT_c(..), VarT_d(..),
+    
         integerE, ifE, varE, varE_typed, lamE, appE,
         infixE,
         addP, subP, mulP, ltP,
@@ -42,9 +44,21 @@ instance (SeriType a, SeriType b) => SeriType (a -> b) where
 -- Dummy haskell types corresponding to variable types in seri.
 -- Lets us express polymorphic seri expressions with a concrete haskell type.
 data VarT_a = VarT_a
+data VarT_b = VarT_b
+data VarT_c = VarT_c
+data VarT_d = VarT_d
 
 instance SeriType VarT_a where
     seritype _ = VarT "a"
+
+instance SeriType VarT_b where
+    seritype _ = VarT "b"
+
+instance SeriType VarT_c where
+    seritype _ = VarT "c"
+
+instance SeriType VarT_d where
+    seritype _ = VarT "d"
 
 usetype :: (SeriType a) => TypedExp a -> (Type -> b) -> b
 usetype e f = f (seritype (gettype e))

@@ -6,6 +6,7 @@ module Seri.Quoter (
     ) where
 
 import Data.Char(ord)
+import Data.List(nub)
 import Text.Parsec hiding (token)
 import Language.Haskell.Meta.Parse(parseExp)
 
@@ -62,7 +63,7 @@ infixp :: Name -> (Exp -> Exp -> Exp)
 infixp nm = (\a b -> apply 'S.infixE [VarE nm, a, b])
 
 atom :: Parser Exp
-atom = eth <|> elam <|> eparen <|> einteger <|> eif <|> try ename
+atom = eth <|> elam <|> eparen <|> einteger <|> try eif <|> try ename
 
 appls :: Parser Exp
 appls = atom `chainl1` eapp
@@ -248,12 +249,20 @@ dval = do
     free <- getFree
     return $ mkdecls n t e free
 
-mkdecls :: SIR.Name -> Type -> Exp -> [SIR.Name] -> [Dec]
-mkdecls n t e free =
-  let sig_P = SigD (name_P n) (AppT (ConT ''S.TypedExp) t)
+mkdecls :: SIR.Name -> CPType -> Exp -> [SIR.Name] -> [Dec]
+mkdecls n (CPType tc tp vns) e free =
+  let ptt = (AppT (ConT ''S.TypedExp) tp)
+      inctx t = ForallT (map (PlainTV . mkName) vns)
+                        (map (\x -> ClassP ''S.SeriType [VarT $ mkName x]) vns)
+                        t
+      pta = if null vns
+            then ptt
+            else inctx ptt
+
+      sig_P = SigD (name_P n) pta
       impl_P = FunD (name_P n) [Clause [] (NormalB e) []]
 
-      sig_C = SigD (name_C n) (AppT (ConT ''S.TypedExp) t)
+      sig_C = SigD (name_C n) (AppT (ConT ''S.TypedExp) tc)
       impl_C = FunD (name_C n) [Clause [] (NormalB (VarE (name_P n))) []]
 
       subctx = map (\fn -> VarE (name_D fn)) free
@@ -270,35 +279,55 @@ mkdecls n t e free =
 decls :: Parser [Dec]
 decls = many1 dval >>= return . concat
 
-tint :: Parser Type
+data CPType = CPType {
+    concrete :: Type,
+    polymorphic :: Type,
+    varnames :: [SIR.Name]
+}
+
+tint :: Parser CPType
 tint = do
     token "Integer"
-    return $ ConT ''Integer
+    return $ CPType (ConT ''Integer) (ConT ''Integer) []
 
-tbool :: Parser Type
+tbool :: Parser CPType
 tbool = do
     token "Bool"
-    return $ ConT ''Bool
+    return $ CPType (ConT ''Bool) (ConT ''Bool) []
 
-tparen :: Parser Type
+tvar :: Parser CPType
+tvar = do
+    c <- oneOf "abcd"
+    many space
+    let cname =
+          case c of
+            'a' -> ''S.VarT_a
+            'b' -> ''S.VarT_b
+            'c' -> ''S.VarT_c
+            'd' -> ''S.VarT_d
+    let cstr = [c]
+    return $ CPType (ConT cname) (VarT $ mkName cstr) [cstr]
+
+tparen :: Parser CPType
 tparen = do
     token "("
     x <- type_
     token ")"
     return x
 
-tatom :: Parser Type
-tatom = tparen <|> tint <|> tbool
+tatom :: Parser CPType
+tatom = tparen <|> tint <|> tbool <|> tvar
 
-tarrows :: Parser Type
+tarrows :: Parser CPType
 tarrows = tatom `chainl1` tarrow
 
-tarrow :: Parser (Type -> Type -> Type)
+tarrow :: Parser (CPType -> CPType -> CPType)
 tarrow = do
     token "->"
-    return $ \a b -> AppT (AppT ArrowT a) b
+    return $ \(CPType ac ap an) (CPType bc bp bn) ->
+        CPType (AppT (AppT ArrowT ac) bc) (AppT (AppT ArrowT ap) bp) (nub (an ++ bn))
 
-type_ :: Parser Type    
+type_ :: Parser CPType    
 type_ = tarrows
 
 s :: QuasiQuoter 
@@ -311,7 +340,7 @@ qpat :: String -> Q Pat
 qpat = error $ "Seri pattern quasi-quote not supported"
 
 qtype :: String -> Q Type
-qtype = run (top type_)
+qtype = error $ "Seri type quasi-quote not supported"
 
 qdec :: String -> Q [Dec]
 qdec = run (top decls)

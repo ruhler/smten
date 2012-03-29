@@ -48,6 +48,11 @@ run decls = elaborate decls . typed
     rfact = \x -> if (x < 1) then 1 else x * rfact (x-1)
 |]
 
+[s|
+    id :: a -> a
+    id = \x -> x
+|]
+
 tests = "Seri" ~: [
     "foo" ~: IntegerE 42 ~=? run [] [s|(\x -> x*x+3*x+2) 5|],
     "true" ~: PrimE BoolT TrueP ~=? run _seriD_True [s| True |],
@@ -59,6 +64,7 @@ tests = "Seri" ~: [
     "foo decl" ~: IntegerE 42 ~=? run [] _seriC_foo,
     "fact5 decl" ~: IntegerE 120 ~=? run _seriD_fact5 _seriC_fact5,
     "subctx" ~: IntegerE 720 ~=? run _seriD_fact6 _seriC_fact6,
-    "rfact5" ~: IntegerE 120 ~=? run _seriD_rfact [s| rfact 5 |]
+    "rfact5" ~: IntegerE 120 ~=? run _seriD_rfact [s| rfact 5 |],
+    "id id 5" ~: IntegerE 5 ~=? run _seriD_id [s| (id id) 5 |]
     ]
 
