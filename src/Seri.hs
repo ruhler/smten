@@ -41,6 +41,11 @@ rund decls = elaborate decls . typed
     fact5 = factorial 5
 |]
 
+[s|
+    fact6 :: Integer
+    fact6 = 6 * fact5
+|]
+
 tests = "Seri" ~: [
     "foo" ~: IntegerE 42 ~=? run [s|(\x -> x*x+3*x+2) 5|],
     "true" ~: PrimE BoolT TrueP ~=? run [s| True |],
@@ -50,6 +55,7 @@ tests = "Seri" ~: [
         let factorial = [s| fix (\f -> \x -> if (x < 1) then 1 else x * f (x-1)) |]
         in run [s| @(factorial) 5 |],
     "foo decl" ~: IntegerE 42 ~=? run _seri__foo,
-    "fact5 decl" ~: IntegerE 120 ~=? rund _serictx_fact5 _seri__fact5
+    "fact5 decl" ~: IntegerE 120 ~=? rund _serictx_fact5 _seri__fact5,
+    "subctx" ~: IntegerE 720 ~=? rund _serictx_fact6 _seri__fact6
     ]
 

@@ -1,8 +1,10 @@
 
 module Seri.IR (
     Name, Type(..), Primitive(..), Exp(..), Dec(..),
-    lookupvar,
+    lookupvar, nubdecl
     ) where
+
+import Data.List(nub)
 
 import Seri.Ppr
 
@@ -65,4 +67,8 @@ lookupvar :: Name -> [Dec] -> Maybe Dec
 lookupvar x [] = Nothing
 lookupvar x (d@(ValD nm _ _):ds) | nm == x = Just d
 lookupvar x (d:ds) = lookupvar x ds
+
+-- remove duplicate occurences of a declaration from the list.
+nubdecl :: [Dec] -> [Dec]
+nubdecl = nub
 

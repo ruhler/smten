@@ -220,9 +220,14 @@ ctxname x = mkName $ "_serictx_" ++ x
 -- We turn a declaration of the form
 --      foo :: MyType
 --      foo = myval
--- into a haskell declaration of the form
+-- into haskell declarations of the form
 --      _seri__foo :: TypedExp MyType
 --      _seri__foo = myval
+--  
+--      _serictx_foo :: [Dec]
+--      _serictx_foo = nubdecl (concat [[varD "foo" _seri__foo],
+--                                      _serictx_a, _serictx_b, ...])
+--          where foo refers to names a, b, ...
 dval :: Parser [Dec]
 dval = do
     n <- name
@@ -236,12 +241,22 @@ dval = do
     clearFree
     e <- expr
     free <- getFree
-    let sig = SigD (dname n) (AppT (ConT ''S.TypedExp) t)
-    let impl = FunD (dname n) [Clause [] (NormalB e) []]
-    let mkctx fn = apply 'S.valD [LitE (StringL fn), VarE (dname fn)]
-    let ctxsig = SigD (ctxname n) (AppT ListT (ConT ''SIR.Dec))
-    let ctximpl = FunD (ctxname n) [Clause [] (NormalB (ListE (map mkctx free))) []]
-    return [sig, impl, ctxsig, ctximpl]
+    return $ mkdecls n t e free
+
+mkdecls :: SIR.Name -> Type -> Exp -> [SIR.Name] -> [Dec]
+mkdecls n t e free =
+  let sig = SigD (dname n) (AppT (ConT ''S.TypedExp) t)
+      impl = FunD (dname n) [Clause [] (NormalB e) []]
+
+      subctx = map (\fn -> VarE (ctxname fn)) free
+      mydecl = ListE [apply 'S.valD [LitE (StringL n), VarE (dname n)]]
+      concated = apply 'concat [ListE (mydecl:subctx)]
+      nubbed = apply 'SIR.nubdecl [concated]
+
+      ctxsig = SigD (ctxname n) (AppT ListT (ConT ''SIR.Dec))
+      ctximpl = FunD (ctxname n) [Clause [] (NormalB nubbed) []]
+    in [sig, impl, ctxsig, ctximpl]
+
 
 -- Parse a bunch of declarations
 decls :: Parser [Dec]
