@@ -2483,3 +2483,44 @@ Thu Mar 29 11:43:41 EDT 2012
 Cool. It works. And it's a much nicer way of specifying elaboration, not only
 for primitives, but also the other constructs.
 
+Thu Mar 29 11:45:15 EDT 2012
+
+Okay, now I can go back and try VarT_a, VarT_b, etc... Right?
+
+First use it to make specifying _seri__fix much easier.
+Then use it to try and make id work (but after understanding the code I have
+to generate for it).
+
+Thu Mar 29 11:49:52 EDT 2012
+
+Okay, so, given a polymorphic function, what code do I need to generate for
+it?
+
+1. The polymorphic haskell TypedExp corresponding to it.
+for example: _seri__id :: (SeriType a) => TypedExp (a -> a)
+We need each variable type to be an instance of SeriType.
+
+2. A concrete haskell TypedExp corresponding to it.
+for example: _sericon_id :: TypedExp (VarT_a -> VarT_a)
+             _sericon_id = _seri__id
+
+3. A context based on the concrete version of it.
+for example: _serictx_id = [valD "id" _sericon_id]
+
+There's a question of whether or not the user would want to refer to (2). I
+think they do.
+
+So I propose a new naming convention, now that we have 3 haskell things
+corresponding to each seri expression.
+
+_seriP_<name>   The haskell polymorphic version of the function.
+_seriC_<name>   The haskell concrete version of the function.
+_seriD_<name>   The declarations for the function.
+
+Furthermore, I propose every expression, both polymorphic and concrete, have
+both polymorphic and concrete implementations. For concrete ones, you'll just
+have that _seri_P_ and _seri_C_ are exactly the same. That's fine.
+
+That's my proposal. Let me try it out after lunch. I believe this will work.
+We just have to limit the number of type variables available to the user.
+

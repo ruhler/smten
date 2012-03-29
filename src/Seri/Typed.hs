@@ -39,6 +39,13 @@ instance (SeriType a, SeriType b) => SeriType (a -> b) where
             xb = undefined :: b
         in ArrowT (seritype xa) (seritype xb)
 
+-- Dummy haskell types corresponding to variable types in seri.
+-- Lets us express polymorphic seri expressions with a concrete haskell type.
+data VarT_a = VarT_a
+
+instance SeriType VarT_a where
+    seritype _ = VarT "a"
+
 usetype :: (SeriType a) => TypedExp a -> (Type -> b) -> b
 usetype e f = f (seritype (gettype e))
     where gettype :: TypedExp a -> a
@@ -82,10 +89,9 @@ _seri__fix = primitive FixP
 
 _serictx_fix :: [Dec]
 _serictx_fix
-  = let fixtype = (ArrowT (ArrowT (VarT "a") (VarT "a")) (VarT "a"))
-        dummyfix :: TypedExp ((Bool -> Bool) -> Bool)
-        dummyfix = _seri__fix
-    in [ValD "fix" fixtype (typed dummyfix)]
+  = let concrete :: TypedExp ((VarT_a -> VarT_a) -> VarT_a)
+        concrete = _seri__fix
+    in [valD "fix" concrete]
 
 integerE :: Integer -> TypedExp Integer
 integerE x = TypedExp $ IntegerE x
