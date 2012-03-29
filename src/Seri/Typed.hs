@@ -10,9 +10,9 @@ module Seri.Typed
         infixE,
         addP, subP, mulP, ltP,
         valD,
-        _seri__True, _serictx_True,
-        _seri__False, _serictx_False,
-        _seri__fix, _serictx_fix,
+        _seriP_True, _seriC_True, _seriD_True,
+        _seriP_False, _seriC_False, _seriD_False,
+        _seriP_fix, _seriC_fix, _seriD_fix,
     )
     where
 
@@ -72,26 +72,32 @@ mulP = primitive MulP
 ltP :: TypedExp (Integer -> Integer -> Bool)
 ltP = primitive LtP
 
-_seri__True :: TypedExp Bool
-_seri__True = primitive TrueP
+_seriP_True :: TypedExp Bool
+_seriP_True = primitive TrueP
 
-_serictx_True :: [Dec]
-_serictx_True = [valD "True" _seri__True]
+_seriC_True :: TypedExp Bool
+_seriC_True = _seriP_True
 
-_seri__False :: TypedExp Bool
-_seri__False = primitive FalseP
+_seriD_True :: [Dec]
+_seriD_True = [valD "True" _seriC_True]
 
-_serictx_False :: [Dec]
-_serictx_False = [valD "False" _seri__False]
+_seriP_False :: TypedExp Bool
+_seriP_False = primitive FalseP
 
-_seri__fix :: (SeriType a) => TypedExp ((a -> a) -> a)
-_seri__fix = primitive FixP
+_seriC_False :: TypedExp Bool
+_seriC_False = _seriP_False
 
-_serictx_fix :: [Dec]
-_serictx_fix
-  = let concrete :: TypedExp ((VarT_a -> VarT_a) -> VarT_a)
-        concrete = _seri__fix
-    in [valD "fix" concrete]
+_seriD_False :: [Dec]
+_seriD_False = [valD "False" _seriC_False]
+
+_seriP_fix :: (SeriType a) => TypedExp ((a -> a) -> a)
+_seriP_fix = primitive FixP
+
+_seriC_fix :: TypedExp ((VarT_a -> VarT_a) -> VarT_a)
+_seriC_fix = _seriP_fix
+
+_seriD_fix :: [Dec]
+_seriD_fix = [valD "fix" _seriC_fix]
 
 integerE :: Integer -> TypedExp Integer
 integerE x = TypedExp $ IntegerE x

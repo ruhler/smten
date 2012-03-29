@@ -168,7 +168,7 @@ ename = do
         _ | nm `elem` bound -> return $ VarE (mkName nm)
         _ -> do
             freename nm
-            return $ apply 'S.varE_typed [VarE (dname nm), LitE (StringL nm)]
+            return $ apply 'S.varE_typed [VarE (name_P nm), LitE (StringL nm)]
 
 name :: Parser SIR.Name
 name = do
@@ -203,24 +203,36 @@ strtoclose n = do
             s <- strtoclose n
             return (c:s)
 
-dname :: SIR.Name -> Name
-dname x = mkName $ "_seri__" ++ x
 
-ctxname :: SIR.Name -> Name
-ctxname x = mkName $ "_serictx_" ++ x
+-- The name of the (possibly) polymorphic function generated.
+name_P :: SIR.Name -> Name
+name_P x = mkName $ "_seriP_" ++ x
+
+-- The name of the concrete function generated.
+name_C :: SIR.Name -> Name
+name_C x = mkName $ "_seriC_" ++ x
+
+-- The name of the context (Declarations) function generated.
+name_D :: SIR.Name -> Name
+name_D x = mkName $ "_seriD_" ++ x
 
 -- parse a value declaration.
--- We turn a declaration of the form
+-- We turn a declaration of the form:
 --      foo :: MyType
 --      foo = myval
--- into haskell declarations of the form
---      _seri__foo :: TypedExp MyType
---      _seri__foo = myval
+--
+-- into haskell declarations of the form:
+--
+--      _seriP_foo :: (SeriType a) => TypedExp (MyType a)
+--      _seriP_foo = myval
+--
+--      _seriC_foo :: TypedExp (MyType (MyType VarT_a))
+--      _seriC_foo = _seriP_foo
 --  
---      _serictx_foo :: [Dec]
---      _serictx_foo = nubdecl (concat [[varD "foo" _seri__foo],
---                                      _serictx_a, _serictx_b, ...])
---          where foo refers to names a, b, ...
+--      _seriD_foo :: [Dec]
+--      _seriD_foo = nubdecl (concat [[varD "foo" _seriC_foo],
+--                                      _seriD_x, _seriD_y, ...])
+--          where foo refers to previously defined values x, y, ...
 dval :: Parser [Dec]
 dval = do
     n <- name
@@ -238,17 +250,20 @@ dval = do
 
 mkdecls :: SIR.Name -> Type -> Exp -> [SIR.Name] -> [Dec]
 mkdecls n t e free =
-  let sig = SigD (dname n) (AppT (ConT ''S.TypedExp) t)
-      impl = FunD (dname n) [Clause [] (NormalB e) []]
+  let sig_P = SigD (name_P n) (AppT (ConT ''S.TypedExp) t)
+      impl_P = FunD (name_P n) [Clause [] (NormalB e) []]
 
-      subctx = map (\fn -> VarE (ctxname fn)) free
-      mydecl = ListE [apply 'S.valD [LitE (StringL n), VarE (dname n)]]
+      sig_C = SigD (name_C n) (AppT (ConT ''S.TypedExp) t)
+      impl_C = FunD (name_C n) [Clause [] (NormalB (VarE (name_P n))) []]
+
+      subctx = map (\fn -> VarE (name_D fn)) free
+      mydecl = ListE [apply 'S.valD [LitE (StringL n), VarE (name_C n)]]
       concated = apply 'concat [ListE (mydecl:subctx)]
       nubbed = apply 'SIR.nubdecl [concated]
 
-      ctxsig = SigD (ctxname n) (AppT ListT (ConT ''SIR.Dec))
-      ctximpl = FunD (ctxname n) [Clause [] (NormalB nubbed) []]
-    in [sig, impl, ctxsig, ctximpl]
+      sig_D = SigD (name_D n) (AppT ListT (ConT ''SIR.Dec))
+      impl_D = FunD (name_D n) [Clause [] (NormalB nubbed) []]
+    in [sig_P, impl_P, sig_C, impl_C, sig_D, impl_D]
 
 
 -- Parse a bunch of declarations

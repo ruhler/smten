@@ -2524,3 +2524,27 @@ have that _seri_P_ and _seri_C_ are exactly the same. That's fine.
 That's my proposal. Let me try it out after lunch. I believe this will work.
 We just have to limit the number of type variables available to the user.
 
+Thu Mar 29 12:48:25 EDT 2012
+
+Okay, so what is it I want to do? I think we have the following steps:
+
+1. Collect the set of all type variable's used in a type.
+For current examples this will be empty. So, assert it's empty, and get the
+thing to work with all current examples.
+
+2+ Rename _seri__ to _seriP_ for the no type variable case.
+Still assert the non-empty type variable case.
+
+3+ Implement _seriC_ as _seriP_ for the no type variable case still.
+
+4+ Rename _serictx_ as _seriD_.
+
+5. Implement the non-empty type variable case.
+ - Add Forall [typevars] t to signature of P
+ - Substitute all TH.VarT x with VarT_x to produce the signature of C
+
+And that should be it.
+
+All of it is straight forward.
+And then it should work, right? Yes. Then (id id) 5 should work just fine.
+
