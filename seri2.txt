@@ -2314,10 +2314,10 @@ Steps tomorrow:
   verify elaboration now works as desired.
 + automatically create '_serictx_foo', verify that now we don't have to
   manually construct the declarations.
-- Make 'fix' like any other name rather than having it be parsed specially.
++ Make 'fix' like any other name rather than having it be parsed specially.
   (It still needs to be a primitive, unfortunately, in order for elaboration
    to work)
-- Try out '(id id) 5', see if it works. I think it will, I just need to have a
++ Try out '(id id) 5', see if it works. I think it will, I just need to have a
   VarT kind of type.
 
 Then I'll be in good shape. That might be a good time to update Nirav on the
@@ -2551,4 +2551,16 @@ And then it should work, right? Yes. Then (id id) 5 should work just fine.
 Thu Mar 29 14:37:43 EDT 2012
 
 It works :).
+
+Now what?
+
+Thu Mar 29 14:52:39 EDT 2012
+
+I think the next step is to start using the IR for things.
+
+Use it for Tibby. Use it to do SMT queries. Use it for structural spec?
+
+Because now it has everything. Now I'm confident it can have everything we
+want, it's just a matter of using it now.
+
 
