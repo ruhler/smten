@@ -8,13 +8,9 @@ module Seri.Typed
         VarT_a(..), VarT_b(..), VarT_c(..), VarT_d(..),
     
         integerE, ifE, varE, varE_typed, lamE, appE,
-        infixE,
+        infixE, primitive,
         addP, subP, mulP, ltP,
         valD,
-        _seriP_unit, _seriC_unit, _seriD_unit,
-        _seriP_True, _seriC_True, _seriD_True,
-        _seriP_False, _seriC_False, _seriD_False,
-        _seriP_fix, _seriC_fix, _seriD_fix,
     )
     where
 
@@ -91,42 +87,6 @@ mulP = primitive MulP
 
 ltP :: TypedExp (Integer -> Integer -> Bool)
 ltP = primitive LtP
-
-_seriP_unit :: TypedExp ()
-_seriP_unit = primitive UnitP
-
-_seriC_unit :: TypedExp ()
-_seriC_unit = _seriP_unit
-
-_seriD_unit :: [Dec]
-_seriD_unit = [valD "unit" _seriC_unit]
-
-_seriP_True :: TypedExp Bool
-_seriP_True = primitive TrueP
-
-_seriC_True :: TypedExp Bool
-_seriC_True = _seriP_True
-
-_seriD_True :: [Dec]
-_seriD_True = [valD "True" _seriC_True]
-
-_seriP_False :: TypedExp Bool
-_seriP_False = primitive FalseP
-
-_seriC_False :: TypedExp Bool
-_seriC_False = _seriP_False
-
-_seriD_False :: [Dec]
-_seriD_False = [valD "False" _seriC_False]
-
-_seriP_fix :: (SeriType a) => TypedExp ((a -> a) -> a)
-_seriP_fix = primitive FixP
-
-_seriC_fix :: TypedExp ((VarT_a -> VarT_a) -> VarT_a)
-_seriC_fix = _seriP_fix
-
-_seriD_fix :: [Dec]
-_seriD_fix = [valD "fix" _seriC_fix]
 
 integerE :: Integer -> TypedExp Integer
 integerE x = TypedExp $ IntegerE x

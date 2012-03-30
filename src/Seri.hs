@@ -5,6 +5,7 @@ module Seri (
     module Seri.Elaborate,
     module Seri.IR,
     module Seri.Quoter,
+    module Seri.Primitives,
     module Seri.Typed,
     tests
     ) where
@@ -12,6 +13,7 @@ module Seri (
 import Seri.Elaborate
 import Seri.IR
 import Seri.Quoter
+import Seri.Primitives
 import Seri.Typed
 
 import Test.HUnit

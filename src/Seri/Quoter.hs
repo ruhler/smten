@@ -15,6 +15,7 @@ import Language.Haskell.TH
 
 import qualified Seri.IR as SIR
 import qualified Seri.Typed as S
+import Seri.Declarations
 
 
 -- Run a parser
@@ -205,40 +206,14 @@ strtoclose n = do
             return (c:s)
 
 
--- The name of the (possibly) polymorphic function generated.
-name_P :: SIR.Name -> Name
-name_P x = mkName $ "_seriP_" ++ x
-
--- The name of the concrete function generated.
-name_C :: SIR.Name -> Name
-name_C x = mkName $ "_seriC_" ++ x
-
--- The name of the context (Declarations) function generated.
-name_D :: SIR.Name -> Name
-name_D x = mkName $ "_seriD_" ++ x
-
--- parse a value declaration.
--- We turn a declaration of the form:
+-- parse a value declaration. Syntax is:
 --      foo :: MyType
 --      foo = myval
---
--- into haskell declarations of the form:
---
---      _seriP_foo :: (SeriType a) => TypedExp (MyType a)
---      _seriP_foo = myval
---
---      _seriC_foo :: TypedExp (MyType (MyType VarT_a))
---      _seriC_foo = _seriP_foo
---  
---      _seriD_foo :: [Dec]
---      _seriD_foo = nubdecl (concat [[varD "foo" _seriC_foo],
---                                      _seriD_x, _seriD_y, ...])
---          where foo refers to previously defined values x, y, ...
 dval :: Parser [Dec]
 dval = do
     n <- name
     token "::"
-    t <- type_
+    (t, vns) <- type_
     n' <- name
     if (n /= n')
         then fail $ "type and exp have different names in decl: " ++ n ++ " vs. " ++ n'
@@ -247,55 +222,29 @@ dval = do
     clearFree
     e <- expr
     free <- getFree
-    return $ mkdecls n t e free
 
-mkdecls :: SIR.Name -> CPType -> Exp -> [SIR.Name] -> [Dec]
-mkdecls n (CPType tc tp vns) e free =
-  let ptt = (AppT (ConT ''S.TypedExp) tp)
-      inctx t = ForallT (map (PlainTV . mkName) vns)
-                        (map (\x -> ClassP ''S.SeriType [VarT $ mkName x]) vns)
-                        t
-      pta = if null vns
-            then ptt
-            else inctx ptt
-
-      sig_P = SigD (name_P n) pta
-      impl_P = FunD (name_P n) [Clause [] (NormalB e) []]
-
-      sig_C = SigD (name_C n) (AppT (ConT ''S.TypedExp) tc)
-      impl_C = FunD (name_C n) [Clause [] (NormalB (VarE (name_P n))) []]
-
-      subctx = map (\fn -> VarE (name_D fn)) free
-      mydecl = ListE [apply 'S.valD [LitE (StringL n), VarE (name_C n)]]
-      concated = apply 'concat [ListE (mydecl:subctx)]
-      nubbed = apply 'SIR.nubdecl [concated]
-
-      sig_D = SigD (name_D n) (AppT ListT (ConT ''SIR.Dec))
-      impl_D = FunD (name_D n) [Clause [] (NormalB nubbed) []]
-    in [sig_P, impl_P, sig_C, impl_C, sig_D, impl_D]
-
+    let ptt = (AppT (ConT ''S.TypedExp) t)
+    let inctx t = ForallT (map (PlainTV . mkName) vns)
+                   (map (\x -> ClassP ''S.SeriType [VarT $ mkName x]) vns)
+                   t
+    let pta = if null vns then ptt else inctx ptt
+    return $ declval n pta e free
 
 -- Parse a bunch of declarations
 decls :: Parser [Dec]
 decls = many1 dval >>= return . concat
 
-data CPType = CPType {
-    concrete :: Type,
-    polymorphic :: Type,
-    varnames :: [SIR.Name]
-}
-
-tint :: Parser CPType
+tint :: Parser (Type, [SIR.Name])
 tint = do
     token "Integer"
-    return $ CPType (ConT ''Integer) (ConT ''Integer) []
+    return $ (ConT ''Integer, [])
 
-tbool :: Parser CPType
+tbool :: Parser (Type, [SIR.Name])
 tbool = do
     token "Bool"
-    return $ CPType (ConT ''Bool) (ConT ''Bool) []
+    return $ (ConT ''Bool, [])
 
-tvar :: Parser CPType
+tvar :: Parser (Type, [SIR.Name])
 tvar = do
     c <- oneOf "abcd"
     many space
@@ -306,35 +255,35 @@ tvar = do
             'c' -> ''S.VarT_c
             'd' -> ''S.VarT_d
     let cstr = [c]
-    return $ CPType (ConT cname) (VarT $ mkName cstr) [cstr]
+    return $ (VarT $ mkName cstr, [cstr])
 
-tparen :: Parser CPType
+tparen :: Parser (Type, [SIR.Name])
 tparen = do
     token "("
     x <- type_
     token ")"
     return x
 
-tatom :: Parser CPType
+tatom :: Parser (Type, [SIR.Name])
 tatom = tparen <|> tint <|> tbool <|> tvar
 
-tappls :: Parser CPType
+tappls :: Parser (Type, [SIR.Name])
 tappls = tatom `chainl1` tapp
 
-tarrows :: Parser CPType
+tarrows :: Parser (Type, [SIR.Name])
 tarrows = tappls `chainl1` tarrow
 
-tapp :: Parser (CPType -> CPType -> CPType)
-tapp = return $ \(CPType ac ap an) (CPType bc bp bn) ->
-        CPType (AppT ac bc) (AppT ap bp) (nub (an ++ bn))
+tapp :: Parser ((Type, [SIR.Name]) -> (Type, [SIR.Name]) -> (Type, [SIR.Name]))
+tapp = return $ \(at, an) (bt, bn) ->
+        (AppT at bt, nub (an ++ bn))
 
-tarrow :: Parser (CPType -> CPType -> CPType)
+tarrow :: Parser ((Type, [SIR.Name]) -> (Type, [SIR.Name]) -> (Type, [SIR.Name]))
 tarrow = do
     token "->"
-    return $ \(CPType ac ap an) (CPType bc bp bn) ->
-        CPType (AppT (AppT ArrowT ac) bc) (AppT (AppT ArrowT ap) bp) (nub (an ++ bn))
+    return $ \(at, an) (bt, bn) ->
+        (AppT (AppT ArrowT at) bt, nub (an ++ bn))
 
-type_ :: Parser CPType    
+type_ :: Parser (Type, [SIR.Name])    
 type_ = tarrows
 
 s :: QuasiQuoter 

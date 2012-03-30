@@ -2650,3 +2650,23 @@ primitive type, and the primitive types are Arrow, Integer, Bool.
 You know what, I don't want to worry with this until I have some compelling
 reason to change. So let me leave it where it is for now.
 
+Fri Mar 30 11:50:11 EDT 2012
+
+I definitely want to make primitives easier to declare. So let me do that.
+
+Let me go with template haskell on my first attempt. The question is, can I
+have a context in a [t| ... |] quote?
+
+Fri Mar 30 13:50:19 EDT 2012
+
+The answer is yes! Thank goodness. I'll use that then.
+
+The code will overlap with code in the Quoter. It would be good to share.
+
+In particular: Looks like I'll want to do a type traversal to replace VarT "x"
+with VarT_x for concrete version. That should simplify the parser.
+
+Fri Mar 30 14:26:13 EDT 2012
+
+Cool. It works. Works swell. I like it a lot. Good work.
+
