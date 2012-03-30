@@ -11,6 +11,7 @@ module Seri.Typed
         infixE,
         addP, subP, mulP, ltP,
         valD,
+        _seriP_unit, _seriC_unit, _seriD_unit,
         _seriP_True, _seriC_True, _seriD_True,
         _seriP_False, _seriC_False, _seriD_False,
         _seriP_fix, _seriC_fix, _seriD_fix,
@@ -27,6 +28,9 @@ data TypedExp a = TypedExp {
 
 class SeriType a where
     seritype :: a -> Type
+
+instance SeriType () where
+    seritype _ = UnitT
 
 instance SeriType Bool where
     seritype _ = BoolT
@@ -87,6 +91,15 @@ mulP = primitive MulP
 
 ltP :: TypedExp (Integer -> Integer -> Bool)
 ltP = primitive LtP
+
+_seriP_unit :: TypedExp ()
+_seriP_unit = primitive UnitP
+
+_seriC_unit :: TypedExp ()
+_seriC_unit = _seriP_unit
+
+_seriD_unit :: [Dec]
+_seriD_unit = [valD "unit" _seriC_unit]
 
 _seriP_True :: TypedExp Bool
 _seriP_True = primitive TrueP

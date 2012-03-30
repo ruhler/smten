@@ -13,6 +13,7 @@ type Name = String
 data Type = IntegerT
           | BoolT
           | ArrowT
+          | UnitT
           | AppT Type Type
           | VarT Name
       deriving(Eq, Show)
@@ -24,6 +25,7 @@ data Primitive = AddP
                | TrueP
                | FalseP
                | FixP
+               | UnitP
       deriving(Eq, Show)
 
 data Exp = IntegerE Integer
@@ -43,6 +45,7 @@ instance Ppr Type where
     ppr ArrowT = text "->"
     ppr (AppT a b) = parens $ ppr a <+> ppr b
     ppr (VarT n) = text n
+    ppr UnitT = text "Unit"
 
 instance Ppr Primitive where
     ppr AddP = text "+"
@@ -52,6 +55,7 @@ instance Ppr Primitive where
     ppr TrueP = text "True"
     ppr FalseP = text "False"
     ppr FixP = text "fix"
+    ppr UnitP = text "unit"
 
 instance Ppr Exp where
     ppr (IntegerE i) = integer i
