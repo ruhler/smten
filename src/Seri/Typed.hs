@@ -1,6 +1,5 @@
 
 {-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE ScopedTypeVariables #-}
 
 
 module Seri.Typed 
@@ -36,10 +35,13 @@ instance SeriType Integer where
     seritype _ = IntegerT
 
 instance (SeriType a, SeriType b) => SeriType (a -> b) where
-    seritype _ = 
-        let xa = undefined :: a
-            xb = undefined :: b
-        in ArrowT (seritype xa) (seritype xb)
+    seritype f = 
+        let ta :: (a -> b) -> a
+            ta _ = undefined
+
+            tb :: (a -> b) -> b
+            tb _ = undefined
+        in AppT (AppT ArrowT (seritype (ta f))) (seritype (tb f))
 
 -- Dummy haskell types corresponding to variable types in seri.
 -- Lets us express polymorphic seri expressions with a concrete haskell type.

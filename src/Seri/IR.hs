@@ -12,7 +12,8 @@ type Name = String
 
 data Type = IntegerT
           | BoolT
-          | ArrowT Type Type
+          | ArrowT
+          | AppT Type Type
           | VarT Name
       deriving(Eq, Show)
 
@@ -39,7 +40,8 @@ data Dec = ValD Name Type Exp
 instance Ppr Type where
     ppr BoolT = text "Bool"
     ppr IntegerT = text "Integer"
-    ppr (ArrowT a b) = parens $ ppr a <+> text "->" <+> ppr b
+    ppr ArrowT = text "->"
+    ppr (AppT a b) = parens $ ppr a <+> ppr b
     ppr (VarT n) = text n
 
 instance Ppr Primitive where

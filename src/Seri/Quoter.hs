@@ -318,8 +318,15 @@ tparen = do
 tatom :: Parser CPType
 tatom = tparen <|> tint <|> tbool <|> tvar
 
+tappls :: Parser CPType
+tappls = tatom `chainl1` tapp
+
 tarrows :: Parser CPType
-tarrows = tatom `chainl1` tarrow
+tarrows = tappls `chainl1` tarrow
+
+tapp :: Parser (CPType -> CPType -> CPType)
+tapp = return $ \(CPType ac ap an) (CPType bc bp bn) ->
+        CPType (AppT ac bc) (AppT ap bp) (nub (an ++ bn))
 
 tarrow :: Parser (CPType -> CPType -> CPType)
 tarrow = do

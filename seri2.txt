@@ -2563,4 +2563,90 @@ Use it for Tibby. Use it to do SMT queries. Use it for structural spec?
 Because now it has everything. Now I'm confident it can have everything we
 want, it's just a matter of using it now.
 
+Thu Mar 29 16:34:25 EDT 2012
+
+Okay, so the real question is, how can we use it as a library. How can we all
+share the work each other does?
+
+That is, we have different languages, with different constructs. There will be
+a common core. How can we pull out the common parts into a library that
+everyone can use, while letting everyone extend it in a reasonable way?
+
+One idea is what I was trying before. Parameterize each construct by the IR
+type and expression, as needed, and use template haskell to assemble the
+constructs together into the type level IR type and expression. I believe this
+will work, but it's messy.
+
+Perhaps the question is, what things is it that you need to describe to add a
+new construct in a reasonable way?
+
+Perhaps the way to figure this out is to add some construct, and keep track of
+everything I had to do for it.
+
+I think you need to do the following:
+ - add types
+ - add expressions
+ - add declarations
+ - add pretty printing of all that
+ - add rules for elaboration
+ - add rules for properly typed construction
+ - add a way to parse them.
+
+Another idea I want to mention is using template haskell to collect together
+features.
+
+So, say each feature has some dummy type.
+
+data IF = IF
+
+Now that can be an instance of things.
+So, for example, we need the form of its constructor.
+
+cnstr :: IF -> Con
+cnstr = NormalC "IfE" ["Type", "Exp", "Exp", "Exp"]
+
+Or something to that effect. Then I can have these components, which assume
+the names Type, Exp. I specify them in different places.
+
+And for my type level IR, something like:
+
+data IRSpec = IRType INTEGER BOOL ARROW VAR
+            | IRPrim ADD SUB MUL ...
+            | IRExp  INTEGERE PRIME APPE ...
+'mkir ''IRSpec
+
+And that can define everything we want for us.
+
+Well, of course, that's silly. If you're going to do that, why not go all the
+way and just define a language for specifying IRs and implement a quasiquoter
+for it?
+
+I don't know. I think, really, the question is what all work is involved in
+extending the IR with the constructs I want. Until I understand that, it's a
+little premature to try making it into a library, no?
+
+How about this. Murali will work on extending it to Structural Spec. I'll work
+on extending it to SMT, or Tibby, then we come back, compare the two, factor
+out the common code, and thus we have the starting of a library.
+
+Fine.
+
+Fri Mar 30 10:21:05 EDT 2012
+
+I want to clean up how types are done, make them more general.
+
+Which means, I want to change ArrowT Type Type, to just ArrowT. And I want to
+add AppT Type Type to do type application. Should be simple.
+
+Fri Mar 30 10:32:15 EDT 2012
+
+I'm not sure how far to take this. Do I need BoolT, ArrowT, IntegerT? Can I
+just make those ConT "Bool", ConT "Arrow", ConT "Integer"? I don't know. That
+worries me a little.
+
+Perhaps you want it just like expressions, you want a PrimT, and it contains a
+primitive type, and the primitive types are Arrow, Integer, Bool.
+
+You know what, I don't want to worry with this until I have some compelling
+reason to change. So let me leave it where it is for now.
 
