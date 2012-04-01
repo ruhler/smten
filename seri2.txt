@@ -2688,3 +2688,54 @@ expression have to know about type declarations?
 Oh well. I get what I want for the input, and if I can clean up later, then I
 can clean up later.
 
+Sun Apr  1 11:09:32 EDT 2012
+
+Idea for how we can handle overloading.
+
+So the issue is this. Currently seri is a subset of haskell, aside from the
+@() slice. I'd like to keep it that way as much as possible, because it seems
+like a nice thing to have.
+
+The question is: how do we handle overloading? Typeclasses? I have two things
+specifically in mind. First is monads and do notation. Second is overloading
+of operators +, <, etc... which I expect to be common.
+
+Well, here's my proposed solution. The question is, how generic do you want to
+be? Do you want to allow polymorphic declarations in seri that have some
+context? I say, perhaps, yes, you would want that. But what if you don't need
+that? I think you can still get much of the behavior you want as follows:
+
+For example, consider the primitive +. Currently the type signature is
+something like:
+
+_seriP_add :: TypedExp (Integer -> Integer -> Integer)
+
+If I want it overloaded, change it to
+
+_seriP_add :: (Num a) => (a -> a -> a)
+
+Now, the concrete version _seriC_add will lack this requirement that a be an
+instance of num, but the built up expressions will have that requirement.
+
+Same could be done for return.
+
+_seriP_return :: (Monad m) => (a -> m a)
+
+assuming "m" was an allowed type variable (we could easily add it).
+
+This works for monads of primitive type. I don't know how return would be
+implemented for other types, but I don't know how we would do user defined
+types yet either.
+
+I don't know. Maybe it's a hack. Maybe it's useful or maybe not.
+
+It almost makes you wonder if there's some easy way to do elaboration
+leveraging haskell.
+
+For example, could you convert a Seri expression to its corresponding haskell
+type, evaluate it, then return it back?
+
+That sounds very messy to me.
+
+Anyway, things to think about.
+
