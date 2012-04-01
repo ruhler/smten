@@ -242,15 +242,12 @@ tvarnames t = []
 decls :: Parser [Dec]
 decls = many1 dval >>= return . concat
 
-tint :: Parser Type
-tint = do
-    token "Integer"
-    return $ ConT ''Integer
-
-tbool :: Parser Type
-tbool = do
-    token "Bool"
-    return $ ConT ''Bool
+tcon :: Parser Type
+tcon = do
+    x <- upper
+    xs <- many alphaNum
+    many space
+    return $ ConT (mkName (x:xs))
 
 tvar :: Parser Type
 tvar = do
@@ -273,7 +270,7 @@ tparen = do
     return x
 
 tatom :: Parser Type
-tatom = tparen <|> tint <|> tbool <|> tvar
+tatom = tparen <|> tcon <|> tvar
 
 tappls :: Parser Type
 tappls = tatom `chainl1` tapp
