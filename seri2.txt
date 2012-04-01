@@ -2739,3 +2739,218 @@ That sounds very messy to me.
 
 Anyway, things to think about.
 
+Sun Apr  1 13:55:37 EDT 2012
+
+I'm bored, so let me just spew out some thoughts.
+
+Here's a question. Or rather, the question. About whether we can easily share
+a core library and have each person extend it in his own way.
+
+Let's say we have type ConT. So really, we only need the following kinds of
+types: ConT Name, VarT Name, AppT. Then Integer, Bool, Arrow, Unit, they are
+all just type names.
+
+Now let's say a Primitive is really just a string. Just a name. So, primitives
+are like: "add", "sub", "mul", etc...
+
+Now for elaboration, we can provide a function for each primitive of the form
+Exp -> Maybe Exp, which does some reduction.
+
+And for each primitive, we declare its type separately.
+
+Then my claim is, primitives can be all imported separately.
+
+Then you can have a library. For example, an SMT library. Or a Tibby library.
+Or a structural spec library.
+
+Hmm... I have my doubts.
+
+SMT works because you describe a query as a function. It doesn't add any new
+sort of construct.
+
+What if we wanted to have a new kind of type, an interface type? What about
+parsing of special constructs?
+
+For example, what if you want a module type? Can that be encoded as a monad
+with some primitives?
+
+What's my fear with using string names for primitive types and expressions
+rather than a constructor of a data type?
+
+There's only really one issue. Name conflicts. What if two people specify
+primitives with the same name and want them to be different?
+
+The other issue is documentation. How do you know what all primitives are
+supported by a component? When you put them together, how do you know there
+will be no clash?
+
+I fear it will become like bcl.
+
+And I'm not convinced having named primitives will suffice for all the sorts
+of extensions we'll want to do.
+
+I should put it to the test.
+
+The other question is how to deal with infix operators. Because I guess,
+currently, they are handled specially. But they need not be, I suppose.
+
+Um, that sounds tricky. Let me not worry about infix things yet.
+
+For SMT to work this way, we need user defined data types. Because, for
+example, we want a type for Answer, which is an algebraic data type.
+
+In other words, I'm not sure this will help. I'm not sure it's an improvement.
+But it might be. It might be all we need to make the library extensible.
+
+I just really hate the naming issue.
+
+How about this. We agree that, for SMT to work this way, we at least need user
+defined data types. That's something we'll need for any place we use this. How
+about this. First implement user defined data types, then try doing this
+primitive thing, and merge the two branches master and smt, and see if smt
+becomes like a library component. One that can be pulled out and compiled
+separately. One that treats the core as a library package itself.
+
+That sounds reasonable to me.
+
+Okay then. How to support algebraic data types?
+
+Each algebraic data type has a list of constructors. Each constructor takes
+some number of arguments of different types. A constructor is just a function.
+The representation of the data type as an expression is just a constructor
+function application.
+
+For example, consider 
+
+data Answer a = Unknown | Unsatisfiable | Satisfiable a
+
+This defines 3 constructor functions:
+
+Unknown :: Answer a
+Unsatisfiable :: Answer a
+Satisfiable :: a -> Answer a
+
+To represent an Answer Integer of value Satisfiable 4, it would take the form
+of an expression which looks like:
+
+AppE (ConE "Satisfiable") (IntegerE 4)
+
+This is all well and good. The real question is, how do you deconstruct a user
+defined data type? Given some Answer a, how do I figure out if it is Unknown,
+Unsatisfiable, or Satisfiable? And if it's Satisfiable, how do I access the
+first argument?
+
+It seems as if the answer is, much as I hate to say it, use pattern matching.
+
+If I could specify a pattern, I could use that to give names to the parts.
+
+So, we would have a case statement.
+
+CaseE Type Exp [Clause]
+
+where Clause has: Pattern Exp.
+
+And Pattern is: wildcard, constructor, variable, application. That sort of
+thing.
+
+For example, I could have an expression:
+
+CaseE _ myanswer 
+    ConP "Unknown" -> ...
+    ConP "Unsatisfiable" -> ...
+    AppP (ConP "Satisfiable") (VarP x) -> ...
+
+Okay. What would the elaboration rule look like for this? How do we reduce a
+case statement?
+
+We have to have some way to match a pattern against an expression.
+
+match :: Pattern -> Exp -> Maybe [(Name, Exp)]
+match (ConP pname) (ConE ename) | pname == ename = Just []
+match (VarP vname) e = Just [(vname, e)]
+match (AppP ap bp) (AppE ae be) = do
+    anms <- match ap ae
+    bnms <- match bp be
+    return $ anms ++ bnms 
+
+That all looks reasonable.
+
+For now, let me just allow patterns at case statements.
+
+Now the question is, how can we ensure a pattern is well typed? How can we
+construct a pattern in a type safe way?
+
+It seems like a pattern should be associated with a haskell type, no? And a
+clause is associated with a haskell type.
+
+mkClause :: Pattern a -> Exp b -> Clause a b
+mkCase :: Exp a -> [Clause a b] -> Exp b
+
+Okay, so say I want to have the pattern (Satisfiable x). How do I construct
+that?
+
+mkPattern (_seriTCP_Satisfiable) (varP "x")
+
+Where _seriTCP_Satisfiable has type (Pattern Seri_Answer).
+
+Which brings us now to the question, what all things should we generate for an
+algebraic data type definition? Sounds like we want the following:
+
+- A corresponding haskell type, for use with type checking.
+data Seri_Answer a = Seri_Unknown | Seri_Unsatisfiable | Seri_Satisfiable a
+
+- For each constructor, a constructor function
+_seri_Satisfiable :: TypedExp (a -> Seri_Answer a)
+_seri_Satisfiable = TypedExp $ ConE "Satisfiable"
+
+- For each constructor, a pattern to match it.
+_seriM_Satisfiable :: Pattern (Seri_Answer a)
+_seriM_Satisfiable = ConP "Satisfiable"
+
+You know what? That could actually work.
+
+I worry about the fact that Answer is a type constructor based on 'a'. Clearly
+that should come as a second step. The first step will be monomorphic user
+defined algebraic data types.
+
+Wow. That's... it could work.
+
+What do you think? Should I try it out? Try implementing like...
+
+data Bool = True | False
+
+Or
+
+data AnswerInteger = Unknown | Unsatisfiable | Satisfiable Integer
+
+Or
+
+data Rational = Rational Integer Integer
+
+data Complex = Complex Integer Integer
+
+Clearly polymorphic data types will be important.
+
+Here's a concern. Can patterns be easily generated to backend code? Like C? or
+Yices? Somehow I think yes. Because patterns are a higher level construct
+than if/else and member extraction.
+
+I think it's worth a try. Do it, see how I like it. Figure out how hard it
+would be to make data types polymorphic.
+
+First step? I think I need a dummy test case. 
+
+data Foo = FooInt Integer
+         | FooBool Boolean
+         | FooIntBool Integer Boolean
+
+foo :: Foo -> Integer
+foo = \x -> case x of
+                FooInt i = i
+                FooBool b = if b then 1 else 0
+                FooIntBool i b = if b then 1+i else i
+
+Or something like that.
+
+Or I could start with Booleans.
+
