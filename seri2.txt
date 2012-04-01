@@ -2670,3 +2670,21 @@ Fri Mar 30 14:26:13 EDT 2012
 
 Cool. It works. Works swell. I like it a lot. Good work.
 
+Sun Apr  1 09:04:39 EDT 2012
+
+I want to make it so you can have multiple declarations in a single quote. The
+problem is, I can't figure out how to make the parser work for that. So I
+added to a declaration a ';' character, which makes it obvious.
+
+I'm not so happy with this solution, but it will serve until I can figure out
+how to make the parser infer the semicolon.
+
+Sun Apr  1 09:07:47 EDT 2012
+
+Oh, look. If I pollute the parsing of an expression to include a notFollowedBy
+'::', then it works. That's a little unsatisfying. Like, why should an
+expression have to know about type declarations?
+
+Oh well. I get what I want for the input, and if I can clean up later, then I
+can clean up later.
+

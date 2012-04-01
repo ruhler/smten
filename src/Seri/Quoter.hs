@@ -164,6 +164,7 @@ keyword = ["if", "then", "else"]
 ename :: Parser Exp
 ename = do
     nm <- name
+    notFollowedBy (token "::")
     bound <- getBound
     case () of
         _ | nm `elem` keyword -> fail $ "keyword '" ++ nm ++ "' used as a variable"

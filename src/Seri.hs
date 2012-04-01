@@ -27,30 +27,19 @@ run decls = elaborate decls . typed
 [s|
     foo :: Integer
     foo = (\x -> x*x+3*x+2) 5
-|]
 
-
-[s|
     factorial :: Integer -> Integer
     factorial = fix (\f -> \x -> if (x < 1) then 1 else x * f (x-1))
-|]
 
-[s|
     fact5 :: Integer
     fact5 = factorial 5
-|]
 
-[s|
     fact6 :: Integer
     fact6 = 6 * fact5
-|]
 
-[s|
     rfact :: Integer -> Integer
     rfact = \x -> if (x < 1) then 1 else x * rfact (x-1)
-|]
 
-[s|
     id :: a -> a
     id = \x -> x
 |]
