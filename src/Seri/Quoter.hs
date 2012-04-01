@@ -254,14 +254,7 @@ tvar :: Parser Type
 tvar = do
     c <- oneOf "abcd"
     many space
-    let cname =
-          case c of
-            'a' -> ''S.VarT_a
-            'b' -> ''S.VarT_b
-            'c' -> ''S.VarT_c
-            'd' -> ''S.VarT_d
-    let cstr = [c]
-    return $ (VarT $ mkName cstr)
+    return $ (VarT $ mkName [c])
 
 tparen :: Parser Type
 tparen = do
