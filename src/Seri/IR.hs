@@ -10,8 +10,7 @@ import Seri.Ppr
 
 type Name = String
 
-data Type = IntegerT
-          | BoolT
+data Type = ConT Name
           | ArrowT
           | UnitT
           | AppT Type Type
@@ -40,8 +39,7 @@ data Dec = ValD Name Type Exp
      deriving(Eq, Show)
 
 instance Ppr Type where
-    ppr BoolT = text "Bool"
-    ppr IntegerT = text "Integer"
+    ppr (ConT nm) = text nm
     ppr ArrowT = text "->"
     ppr (AppT a b) = parens $ ppr a <+> ppr b
     ppr (VarT n) = text n

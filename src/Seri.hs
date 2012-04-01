@@ -42,21 +42,23 @@ run decls = elaborate decls . typed
 
     id :: a -> a
     id = \x -> x
-
-    data MaybeInteger = NoInteger | JustInteger Integer
-
-    fromMaybeInteger :: Integer -> MaybeInteger -> Integer
-    fromMaybeInteger = \def -> \mi -> case mi of {
-        JustInteger i -> i ;
-        NoInteger -> def ;
-    }
-                
 |]
+
+--[s|
+--    data MaybeInteger = NoInteger | JustInteger Integer
+--
+--    fromMaybeInteger :: Integer -> MaybeInteger -> Integer
+--    fromMaybeInteger = \def -> \mi -> case mi of {
+--        JustInteger i -> i ;
+--        NoInteger -> def ;
+--    }
+--                
+-- |]
 
 tests = "Seri" ~: [
     "foo" ~: IntegerE 42 ~=? run [] [s|(\x -> x*x+3*x+2) 5|],
     "unit" ~: PrimE UnitT UnitP ~=? run _seriD_unit [s| unit |],
-    "true" ~: PrimE BoolT TrueP ~=? run _seriD_True [s| True |],
+    "true" ~: PrimE (ConT "Bool") TrueP ~=? run _seriD_True [s| True |],
     "if" ~: IntegerE 23 ~=? run [] [s| if 6 < 4 then 42 else 23 |],
     "slice" ~: IntegerE 7 ~=? run [] [s| 3 + @(integerE . toInteger $ length [4,1,5,56]) |],
     "fix" ~: IntegerE 120 ~=?
@@ -66,10 +68,10 @@ tests = "Seri" ~: [
     "fact5 decl" ~: IntegerE 120 ~=? run _seriD_fact5 _seriC_fact5,
     "subctx" ~: IntegerE 720 ~=? run _seriD_fact6 _seriC_fact6,
     "rfact5" ~: IntegerE 120 ~=? run _seriD_rfact [s| rfact 5 |],
-    "id id 5" ~: IntegerE 5 ~=? run _seriD_id [s| (id id) 5 |],
-    "justInteger" ~: IntegerE 5 ~=? run _seriD_fromMaybeInteger
-            [s| fromMaybeInteger 10 (JustInteger 5) |],
-    "noInteger" ~: IntegerE 10 ~=? run _seriD_fromMaybeInteger
-            [s| fromMaybeInteger 10 NoInteger |]
+    "id id 5" ~: IntegerE 5 ~=? run _seriD_id [s| (id id) 5 |]
+--    "justInteger" ~: IntegerE 5 ~=? run _seriD_fromMaybeInteger
+--            [s| fromMaybeInteger 10 (JustInteger 5) |],
+--    "noInteger" ~: IntegerE 10 ~=? run _seriD_fromMaybeInteger
+--            [s| fromMaybeInteger 10 NoInteger |]
     ]
 

@@ -29,10 +29,10 @@ instance SeriType () where
     seritype _ = UnitT
 
 instance SeriType Bool where
-    seritype _ = BoolT
+    seritype _ = ConT "Bool"
 
 instance SeriType Integer where
-    seritype _ = IntegerT
+    seritype _ = ConT "Integer"
 
 instance (SeriType a, SeriType b) => SeriType (a -> b) where
     seritype f = 

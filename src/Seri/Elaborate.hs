@@ -4,6 +4,7 @@ module Seri.Elaborate (
     ) where
 
 import Seri.IR
+import Seri.Typed(seritype)
 import Seri.Ppr
 
 -- elaborate decls prg
@@ -24,8 +25,8 @@ elaborate decls =
             = (True, IntegerE (a*b))
         elab (AppE _ (AppE _ (PrimE _ LtP) (IntegerE a)) (IntegerE b))
             = let ne = if a < b
-                         then PrimE BoolT TrueP
-                         else PrimE BoolT FalseP
+                         then PrimE (seritype True) TrueP
+                         else PrimE (seritype False) FalseP
               in (True, ne)
         elab e@(AppE _ (PrimE _ FixP) (LamE _ n b))
             = (True, reduce n e b)

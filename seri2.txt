@@ -2958,7 +2958,7 @@ Sun Apr  1 15:03:23 EDT 2012
 
 Okay, so what are all the steps I need here?
 
-- Switch to using ConT instead of IntegerT, BoolT, etc...
++ Switch to using ConT instead of IntegerT, BoolT, etc...
 - Parse data type declaration
 - Generate Seri_Foo haskell declaration
 - Define pattern
