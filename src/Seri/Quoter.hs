@@ -213,7 +213,7 @@ dval :: Parser [Dec]
 dval = do
     n <- name
     token "::"
-    (t, vns) <- type_
+    t <- type_
     n' <- name
     if (n /= n')
         then fail $ "type and exp have different names in decl: " ++ n ++ " vs. " ++ n'
@@ -223,28 +223,36 @@ dval = do
     e <- expr
     free <- getFree
 
+    let vns = tvarnames t
     let ptt = (AppT (ConT ''S.TypedExp) t)
-    let inctx t = ForallT (map (PlainTV . mkName) vns)
-                   (map (\x -> ClassP ''S.SeriType [VarT $ mkName x]) vns)
+    let inctx t = ForallT (map PlainTV vns)
+                   (map (\x -> ClassP ''S.SeriType [VarT x]) vns)
                    t
     let pta = if null vns then ptt else inctx ptt
     return $ declval n pta e free
+
+-- Return a list of all the variable type names in the given type.
+tvarnames :: Type -> [Name]
+tvarnames (ForallT _ _ t) = tvarnames t
+tvarnames (VarT nm) = [nm]
+tvarnames (AppT a b) = nub $ (tvarnames a) ++ (tvarnames b)
+tvarnames t = []
 
 -- Parse a bunch of declarations
 decls :: Parser [Dec]
 decls = many1 dval >>= return . concat
 
-tint :: Parser (Type, [SIR.Name])
+tint :: Parser Type
 tint = do
     token "Integer"
-    return $ (ConT ''Integer, [])
+    return $ ConT ''Integer
 
-tbool :: Parser (Type, [SIR.Name])
+tbool :: Parser Type
 tbool = do
     token "Bool"
-    return $ (ConT ''Bool, [])
+    return $ ConT ''Bool
 
-tvar :: Parser (Type, [SIR.Name])
+tvar :: Parser Type
 tvar = do
     c <- oneOf "abcd"
     many space
@@ -255,35 +263,33 @@ tvar = do
             'c' -> ''S.VarT_c
             'd' -> ''S.VarT_d
     let cstr = [c]
-    return $ (VarT $ mkName cstr, [cstr])
+    return $ (VarT $ mkName cstr)
 
-tparen :: Parser (Type, [SIR.Name])
+tparen :: Parser Type
 tparen = do
     token "("
     x <- type_
     token ")"
     return x
 
-tatom :: Parser (Type, [SIR.Name])
+tatom :: Parser Type
 tatom = tparen <|> tint <|> tbool <|> tvar
 
-tappls :: Parser (Type, [SIR.Name])
+tappls :: Parser Type
 tappls = tatom `chainl1` tapp
 
-tarrows :: Parser (Type, [SIR.Name])
+tarrows :: Parser Type
 tarrows = tappls `chainl1` tarrow
 
-tapp :: Parser ((Type, [SIR.Name]) -> (Type, [SIR.Name]) -> (Type, [SIR.Name]))
-tapp = return $ \(at, an) (bt, bn) ->
-        (AppT at bt, nub (an ++ bn))
+tapp :: Parser (Type -> Type -> Type)
+tapp = return AppT
 
-tarrow :: Parser ((Type, [SIR.Name]) -> (Type, [SIR.Name]) -> (Type, [SIR.Name]))
+tarrow :: Parser (Type -> Type -> Type)
 tarrow = do
     token "->"
-    return $ \(at, an) (bt, bn) ->
-        (AppT (AppT ArrowT at) bt, nub (an ++ bn))
+    return $ \at bt -> AppT (AppT ArrowT at) bt
 
-type_ :: Parser (Type, [SIR.Name])    
+type_ :: Parser Type
 type_ = tarrows
 
 s :: QuasiQuoter 
