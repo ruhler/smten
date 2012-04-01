@@ -2974,3 +2974,45 @@ well enough that I can try doing it all, then fixing issues as they arise.
 
 Cool. Sounds like a plan.
 
+Sun Apr  1 18:58:52 EDT 2012
+
+This question came up. It seems like I'm just replicating everything in
+haskell into seri. So why not just use haskell? Why not hack the ghc compiler?
+Or use the template haskell IR?
+
+What do we really want to have?
+
+We want the following:
+ - parsing
+ - type inference
+ - type checking 
+ - access to source for everything
+
+Hum. Or something like that anyway.
+
+The problem with using monads in haskell is we don't have access to the
+source. This is the problem with tibby. It's the problem with smt.
+
+So I checked out the ghc source. It's complicated. We don't want to go there,
+trust me.
+
+But what about using the template haskell IR? Why can't we do that?
+
+We can still write our own parsers.
+We have all the features of haskell.
+We can use haskell parsers.
+
+Types map one to one between haskell and ... uh haskell.
+
+It's complicated, but not nearly so much as ghc.
+
+Oh. I know the problem. We don't get any type information in the template
+haskell IR.
+
+Well. That answers that question pretty well then, doesn't it. I should stick
+with seri IR.
+
+That's good to know at least.
+
+Then let me get started on user defined data types.
+

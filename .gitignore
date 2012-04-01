@@ -1,6 +1,4 @@
 build
 scons/ghc.pyc
+scons/local
 .sconsign.dblite
-old/build
-old/scons/ghc.pyc
-old/.sconsign.dblite
