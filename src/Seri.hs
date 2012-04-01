@@ -42,6 +42,15 @@ run decls = elaborate decls . typed
 
     id :: a -> a
     id = \x -> x
+
+    data MaybeInteger = NoInteger | JustInteger Integer
+
+    fromMaybeInteger :: Integer -> MaybeInteger -> Integer
+    fromMaybeInteger = \def -> \mi -> case mi of {
+        JustInteger i -> i ;
+        NoInteger -> def ;
+    }
+                
 |]
 
 tests = "Seri" ~: [
@@ -57,6 +66,10 @@ tests = "Seri" ~: [
     "fact5 decl" ~: IntegerE 120 ~=? run _seriD_fact5 _seriC_fact5,
     "subctx" ~: IntegerE 720 ~=? run _seriD_fact6 _seriC_fact6,
     "rfact5" ~: IntegerE 120 ~=? run _seriD_rfact [s| rfact 5 |],
-    "id id 5" ~: IntegerE 5 ~=? run _seriD_id [s| (id id) 5 |]
+    "id id 5" ~: IntegerE 5 ~=? run _seriD_id [s| (id id) 5 |],
+    "justInteger" ~: IntegerE 5 ~=? run _seriD_fromMaybeInteger
+            [s| fromMaybeInteger 10 (JustInteger 5) |],
+    "noInteger" ~: IntegerE 10 ~=? run _seriD_fromMaybeInteger
+            [s| fromMaybeInteger 10 NoInteger |]
     ]
 
