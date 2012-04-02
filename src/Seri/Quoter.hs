@@ -91,15 +91,23 @@ mkexp (CondE p a b) = do
     b' <- mkexp b
     return $ apply 'S.ifE [p', a', b']
 
+--mkexp (CaseE e matches) =
+--  let mkmatch :: Match -> Exp
+--      mkmatch p (NormalB e) [] = 
+--  in do e' <- mkexp e
+
+mkexp x = error $ "TODO: mkexp " ++ show x
+
 mkdecls :: [Dec] -> [Dec]
 mkdecls [] = []
 mkdecls ((SigD nm ty):(ValD (VarP nm') (NormalB e) []):ds) = 
   let (e', UserState _ free) = runState (mkexp e) initialUserState
+      typedexp t = (AppT (AppT (ConT ''S.Typed) (ConT ''SIR.Exp)) t)
       ty' = case ty of
                 ForallT vns [] t ->
                     let ctx = map (\(PlainTV x) -> ClassP ''S.SeriType [VarT x]) vns
-                    in ForallT vns ctx (AppT (ConT ''S.TypedExp) t)
-                t -> AppT (ConT ''S.TypedExp) t
+                    in ForallT vns ctx (typedexp t)
+                t -> typedexp t
       d = declval (nameBase nm) ty' e' (map nameBase free)
   in d ++ (mkdecls ds)
 

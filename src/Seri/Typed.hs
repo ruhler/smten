@@ -4,7 +4,7 @@
 
 module Seri.Typed 
     (
-        TypedExp(..), SeriType(..),
+        Typed(..), SeriType(..),
         VarT_a(..), VarT_b(..), VarT_c(..), VarT_d(..),
     
         integerE, ifE, varE, varE_typed, lamE, appE,
@@ -18,8 +18,8 @@ import qualified Language.Haskell.TH as TH
 
 import Seri.IR
 
-data TypedExp a = TypedExp {
-    typed :: Exp
+data Typed x t = Typed {
+    typed :: x
 }
 
 class SeriType a where
@@ -62,59 +62,59 @@ instance SeriType VarT_c where
 instance SeriType VarT_d where
     seritype _ = VarT "d"
 
-usetype :: (SeriType a) => TypedExp a -> (Type -> b) -> b
+usetype :: (SeriType a) => Typed Exp a -> (Type -> b) -> b
 usetype e f = f (seritype (gettype e))
-    where gettype :: TypedExp a -> a
+    where gettype :: Typed Exp a -> a
           gettype _ = undefined
 
 -- withtype f 
 --  Calls the function f with the Type corresponding to the type of the
 --  returned expression.
-withtype :: (SeriType a) => (Type -> TypedExp a) -> TypedExp a
+withtype :: (SeriType a) => (Type -> Typed Exp a) -> Typed Exp a
 withtype f = r where r = usetype r f
 
-primitive :: (SeriType a) => Primitive -> TypedExp a
-primitive p = withtype $ \t -> TypedExp $ PrimE t p
+primitive :: (SeriType a) => Primitive -> Typed Exp a
+primitive p = withtype $ \t -> Typed $ PrimE t p
 
-addP :: TypedExp (Integer -> Integer -> Integer)
+addP :: Typed Exp (Integer -> Integer -> Integer)
 addP = primitive AddP
 
-subP :: TypedExp (Integer -> Integer -> Integer)
+subP :: Typed Exp (Integer -> Integer -> Integer)
 subP = primitive SubP
 
-mulP :: TypedExp (Integer -> Integer -> Integer)
+mulP :: Typed Exp (Integer -> Integer -> Integer)
 mulP = primitive MulP
 
-ltP :: TypedExp (Integer -> Integer -> Bool)
+ltP :: Typed Exp (Integer -> Integer -> Bool)
 ltP = primitive LtP
 
-integerE :: Integer -> TypedExp Integer
-integerE x = TypedExp $ IntegerE x
+integerE :: Integer -> Typed Exp Integer
+integerE x = Typed $ IntegerE x
 
-ifE :: (SeriType a) => TypedExp Bool -> TypedExp a -> TypedExp a -> TypedExp a
-ifE (TypedExp p) (TypedExp a) (TypedExp b)
-    = withtype $ \t -> TypedExp $ IfE t p a b
+ifE :: (SeriType a) => Typed Exp Bool -> Typed Exp a -> Typed Exp a -> Typed Exp a
+ifE (Typed p) (Typed a) (Typed b)
+    = withtype $ \t -> Typed $ IfE t p a b
 
-appE :: (SeriType b) => TypedExp (a -> b) -> TypedExp a -> TypedExp b
-appE (TypedExp f) (TypedExp x)
-    = withtype $ \t -> TypedExp $ AppE t f x
+appE :: (SeriType b) => Typed Exp (a -> b) -> Typed Exp a -> Typed Exp b
+appE (Typed f) (Typed x)
+    = withtype $ \t -> Typed $ AppE t f x
 
-lamE :: (SeriType a, SeriType (a -> b)) => Name -> (TypedExp a -> TypedExp b) -> TypedExp (a -> b)
-lamE n f = withtype $ \t -> TypedExp $ LamE t n (typed $ f (varE n))
+lamE :: (SeriType a, SeriType (a -> b)) => Name -> (Typed Exp a -> Typed Exp b) -> Typed Exp (a -> b)
+lamE n f = withtype $ \t -> Typed $ LamE t n (typed $ f (varE n))
 
-varE :: (SeriType a) => Name -> TypedExp a
-varE nm = withtype $ \t -> TypedExp $ VarE t nm
+varE :: (SeriType a) => Name -> Typed Exp a
+varE nm = withtype $ \t -> Typed $ VarE t nm
 
 -- varE_typed ref nm
 -- Construct a variable whose type is the same as the type of 'ref'. 'ref' is
 -- otherwise unused.
-varE_typed :: (SeriType a) => TypedExp a -> Name -> TypedExp a
+varE_typed :: (SeriType a) => Typed Exp a -> Name -> Typed Exp a
 varE_typed _ = varE
 
 
-infixE :: (SeriType b, SeriType c) => TypedExp (a -> b -> c) -> TypedExp a -> TypedExp b -> TypedExp c
+infixE :: (SeriType b, SeriType c) => Typed Exp (a -> b -> c) -> Typed Exp a -> Typed Exp b -> Typed Exp c
 infixE p a b = appE (appE p a) b
 
-valD :: (SeriType a) => Name -> TypedExp a -> Dec
+valD :: (SeriType a) => Name -> Typed Exp a -> Dec
 valD nm e = usetype e (\t -> ValD nm t (typed e))
 

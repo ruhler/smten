@@ -3122,3 +3122,100 @@ And now I have declarations. Let me just clean stuff up now.
 
 It's all clean. That was easy.
 
+Mon Apr  2 17:51:19 EDT 2012
+
+Next step: I need patterns in order to handle pattern matching. So I propose
+we add: ConP, VarP, and AppP. and maybe WildP. Let me compare with TH's
+patterns and see if there is any similarity.
+
+After patterns I can define patterns and constructors for each field in a data
+declaration, as well as an instance of SeriType.
+
+Then I implement case statement, and I have user defined algebraic data types.
+
++ Define pattern: ConP, VarP, AppP, WildP
+- Generate constructor patterns, constructor functions, SeriType instance.
+- Implement case statement
+
+Looked at patterns in TH. They do it a little differently. They have ConP take
+a list of patterns to match against the arguments instead of having AppP.
+
+I suppose that makes sense. You don't want to have a pattern like: x a b,
+where x stands for a constructor. Fine.
+
+I think it's easier to implement if you have AppP, but I should be able to
+achieve the same thing with ConP using folds and unfolds and what not and what
+have you.
+
+Cool. Let me write up patterns.
+
+Done. Now constructor patterns, constructor functions, and seritype instance.
+
+data MaybeInteger = NoInteger | JustInteger Integer
+
+This should generate the following:
+
+_seriM_NoInteger :: TypedPat (MaybeInteger)
+_seriM_NoInteger = conP "NoInteger" []
+
+_seriM_JustInteger :: TypedPat (Integer -> MaybeInteger)
+_seriM_JustInteger = conP "JustInteger" ...
+
+Um, trouble. I want the pattern to just represent the constructor, right?
+So I guess, what we really need, is to take a list of patterns as input. Or...
+a tuple of patterns of the right type?
+
+So you see now why I wanted AppP? We can let the parser enforce the right
+structure.  But if I have AppP, then I can do
+
+_seriM_NoInteger :: TypedPat (MaybeInteger)
+_seriM_NoInteger = conP "NoInteger"
+
+_seriM_JustInteger :: TypedPat (Integer -> MaybeInteger)
+_seriM_JustInteger = conP "JustInteger"
+
+Now, if I have the pattern: JustInteger 4, I would construct it as:
+    appP :: TypedPat (a -> b) -> TypedPat a -> TypedPat b
+
+  appP _seriM_JustInteger (integerP 4)
+
+And it would be a well typed pattern.
+
+Okay, so let me go with this instead. Push through, see if it works or not.
+
+Good. So I'm generating the following:
+
+_seriM_NoInteger :: TypedPat (MaybeInteger)
+_seriM_NoInteger = conP "NoInteger"
+
+_seriM_JustInteger :: TypedPat (Integer -> MaybeInteger)
+_seriM_JustInteger = conP "JustInteger"
+
+_seriP_NoInteger :: TypedExp (MaybeInteger)
+_seriP_NoInteger = conE "NoInteger"
+
+_seriC_NoInteger :: TypedExp (MaybeInteger)
+_seriC_NoInteger = _seriP_NoInteger
+
+etc...
+
+Mon Apr  2 18:18:22 EDT 2012
+
+It seems to make more sense to implement CaseE first. More natural in terms of
+test driven.
+
+So, how do I build a caseE?
+
+caseE :: TypedExp a -> [TypedClause a b] -> TypedExp b
+
+Some observations:
+    I want to define:
+        data Clause = Clause Pat Exp
+        Typed Pat, Typed Clause
+       But a typed Clause takes two arguments. Or maybe I can just represent
+       it's type as a function. Given an expression of type a, matches it and
+       turns into an expression of type b. That sounds reasonable to me.
+
+So I want Typed to be more generic. I can do that as a first step. It could be
+messy.
+

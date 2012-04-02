@@ -21,7 +21,7 @@ import Test.HUnit
 
 -- Test Cases for Seri
 
-run :: [Dec] -> TypedExp a -> Exp
+run :: [Dec] -> Typed Exp a -> Exp
 run decls = elaborate decls . typed
 
 [s|
@@ -44,9 +44,9 @@ run decls = elaborate decls . typed
     id = \x -> x
 |]
 
+data MaybeInteger = NoInteger | JustInteger Integer
+
 --[s|
---    data MaybeInteger = NoInteger | JustInteger Integer
---
 --    fromMaybeInteger :: Integer -> MaybeInteger -> Integer
 --    fromMaybeInteger = \def -> \mi -> case mi of {
 --        JustInteger i -> i ;

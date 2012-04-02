@@ -25,18 +25,25 @@ data Primitive = AddP
                | FalseP
                | FixP
                | UnitP
-      deriving(Eq, Show)
+      deriving (Eq, Show)
 
 data Exp = IntegerE Integer
          | PrimE Type Primitive
          | IfE Type Exp Exp Exp
+         | CaseE Type Exp [(Pat, Exp)]
          | AppE Type Exp Exp
          | LamE Type Name Exp
          | VarE Type Name
-     deriving(Eq, Show)
+     deriving (Eq, Show)
+
+data Pat = ConP Name
+         | VarP Name
+         | AppP Pat Pat
+         | WildP
+     deriving (Eq, Show)
 
 data Dec = ValD Name Type Exp
-     deriving(Eq, Show)
+     deriving (Eq, Show)
 
 instance Ppr Type where
     ppr (ConT nm) = text nm
@@ -64,6 +71,12 @@ instance Ppr Exp where
     ppr (AppE _ a b) = parens $ ppr a <+> ppr b
     ppr (LamE _ n b) = parens $ text "\\" <> text n <+> text "->" <+> ppr b
     ppr (VarE _ n) = text n
+
+instance Ppr Pat where
+    ppr (ConP nm) = text nm
+    ppr (VarP nm) = text nm
+    ppr (AppP a b) = ppr a <+> ppr b
+    ppr WildP = text "_"
 
 instance Ppr Dec where
     ppr (ValD n t e) = text n <+> text "::" <+> ppr t

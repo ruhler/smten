@@ -13,8 +13,8 @@ import Seri.IR
 import Seri.Typed
 import Seri.Declarations
 
-declprim "unit" 'UnitP [t| TypedExp () |]
-declprim "True" 'TrueP [t| TypedExp Bool |]
-declprim "False" 'FalseP [t| TypedExp Bool |]
-declprim "fix" 'FixP [t| (SeriType a) => TypedExp ((a -> a) -> a) |]
+declprim "unit" 'UnitP [t| Typed Exp () |]
+declprim "True" 'TrueP [t| Typed Exp Bool |]
+declprim "False" 'FalseP [t| Typed Exp Bool |]
+declprim "fix" 'FixP [t| (SeriType a) => Typed Exp ((a -> a) -> a) |]
  
