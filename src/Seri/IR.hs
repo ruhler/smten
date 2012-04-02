@@ -1,6 +1,6 @@
 
 module Seri.IR (
-    Name, Type(..), Primitive(..), Exp(..), Dec(..),
+    Name, Type(..), Primitive(..), Pat(..), Match(..), Exp(..), Dec(..),
     lookupvar, nubdecl
     ) where
 
@@ -27,10 +27,13 @@ data Primitive = AddP
                | UnitP
       deriving (Eq, Show)
 
+data Match = Match Pat Exp
+    deriving (Eq, Show)
+
 data Exp = IntegerE Integer
          | PrimE Type Primitive
          | IfE Type Exp Exp Exp
-         | CaseE Type Exp [(Pat, Exp)]
+         | CaseE Type Exp [Match]
          | AppE Type Exp Exp
          | LamE Type Name Exp
          | VarE Type Name

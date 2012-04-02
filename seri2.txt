@@ -3219,3 +3219,15 @@ Some observations:
 So I want Typed to be more generic. I can do that as a first step. It could be
 messy.
 
+Mon Apr  2 18:28:19 EDT 2012
+
+I made Typed more generic. What's next?
+
++ Define Clause. Okay, call it Match instead.
++ define caseE.
+
+That's all I have time for now. Next steps:
+ - uncomment that test case
+ - implement quoter conversion for CaseE
+ - solve other issues as they arise by test.
+
