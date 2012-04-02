@@ -62,9 +62,6 @@ declval n t e free =
       impl_D = FunD (name_D n) [Clause [] (NormalB nubbed) []]
     in [sig_P, impl_P, sig_C, impl_C, sig_D, impl_D]
 
-declval' :: [Dec] -> [Dec]
-declval' x = error $ "TODO: declval' " ++ show x
-
 -- Given a potentially polymorphic haskell type, convert it to a concrete
 -- haskell type which represents the polymorphic seri type.
 --
