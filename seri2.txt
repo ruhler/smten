@@ -3016,3 +3016,101 @@ That's good to know at least.
 
 Then let me get started on user defined data types.
 
+Sun Apr  1 19:14:32 EDT 2012
+
+How to parse a data type declaration...
+
+We have the form:
+
+data NAME = NAME TYPE1 TYPE2 ...
+          | NAME TYPE1 TYPE2 ...
+          ...
+
+What do I want to parse it into? I could parse it into a data type declaration
+I suppose. That would be logical, no?
+
+Except, in the type I generate, I'll want to change names and such.
+
+How about like this.
+
+each constructor gives me a (Name, [Type]) list. Okay?
+
+Or, does it make sense to parse it into a haskell declaration?
+
+I think it does. Let me do that.
+
+Actually, this is a good idea, because it means I have some function which
+knows how to generate the declarations I want for a data type definition given
+a TH definition. Or, in other words, I don't need to declare a data type
+definition in [s|...|] brackets. I can just pass an existing defined type to
+this function.
+
+You know? I think I prefer that to get started.
+
+So, don't change the parser yet. First we want to write a function which,
+given a data type declaration, generates...
+
+Well, we don't need haskell declarations if it's already been declared in
+haskell. That's nice. Otherwise I could just include given declaration. Naming
+issues... blah blah.
+
+So, assuming the type is already a haskell type, I would want the following:
+
+_seriM_Foo for each constructor.
+_seriP_Foo, _seriC_Foo, _seriD_Foo for each constructor.
+instance of SeriType
+
+The P,C,D functions should be trivial by reusing what I have.
+
+Let me start with those then.
+
+Sun Apr  1 19:29:39 EDT 2012
+
+This brings up an interesting question. Why use quasiquotes. Why not use
+template haskell? I can do the same sort of type thing. The same sort of
+conversions and declarations. It just already has the parser for everything we
+could want to parse. No?
+
+That's an interesting question.
+
+Oh. I remember. Template haskell requires you to type check before as well as
+after. We could use a haskell quasi quoter, which wouldn't have that problem.
+I guess it's the same sort of interface?
+
+It's certainly an interesting idea. What would things look like then?
+
+Instead of String -> TH.Exp (TypedExp a)
+we do String -> TH.Exp (a) -> (TypedExp a)
+
+If it's doable, that actually sounds like a good idea to me.
+
+Can I try that before trying data types? Sure, why not?
+
+First step: let me change declval to take a TH.Dec as input.
+
+Err... maybe I should start by treating this as a different input path.
+
+I could make a HSQuoter. Start by just supporting expressions.
+
+Sun Apr  1 19:56:19 EDT 2012
+
+You know what? I think this actually could be much cleaner. All the parsing is
+done for us. If you want to extend the syntax, write your own quasi quoter for
+just the extend part. Well... that won't work for extending the expression
+syntax. But I don't expect that to be an issue.
+
+Sun Apr  1 20:15:46 EDT 2012
+
+It seems to work...
+
+What we don't get is slice, because parsing that hasn't been implemented yet
+apparently.
+
+Perhaps I can have a special function I recognize. Like, uh... _@?
+
+Sun Apr  1 20:24:28 EDT 2012
+
+You know what? This totally works. I'm very much sold on the idea.
+
+Let me completely replace Quoter.
+
