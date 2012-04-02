@@ -8,7 +8,7 @@ import Control.Monad.State
 
 import Language.Haskell.TH
 import Language.Haskell.TH.Quote
-import Language.Haskell.Meta.Parse(parseExp)
+import Language.Haskell.Meta.Parse
 
 import qualified Seri.IR as SIR
 import qualified Seri.Typed as S
@@ -91,6 +91,17 @@ mkexp (CondE p a b) = do
     b' <- mkexp b
     return $ apply 'S.ifE [p', a', b']
 
+mkdecls :: [Dec] -> [Dec]
+mkdecls [] = []
+mkdecls ((SigD nm ty):(ValD (VarP nm') (NormalB e) []):ds) = 
+  let (e', UserState _ free) = runState (mkexp e) initialUserState
+      ty' = case ty of
+                ForallT vns [] t ->
+                    let ctx = map (\(PlainTV x) -> ClassP ''S.SeriType [VarT x]) vns
+                    in ForallT vns ctx (AppT (ConT ''S.TypedExp) t)
+                t -> AppT (ConT ''S.TypedExp) t
+      d = declval (nameBase nm) ty' e' (map nameBase free)
+  in d ++ (mkdecls ds)
 
 hs :: QuasiQuoter 
 hs = QuasiQuoter qexp qpat qtype qdec
@@ -107,6 +118,8 @@ qtype :: String -> Q Type
 qtype = error $ "Seri type quasi-quote not supported"
 
 qdec :: String -> Q [Dec]
-qdec = error $ "Seri dec quasi-quote not supported"
+qdec s = case (parseDecs s) of
+            Right decls -> return $ mkdecls decls
+            Left err -> fail err
 
 

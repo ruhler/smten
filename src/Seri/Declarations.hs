@@ -3,9 +3,10 @@
 
 module Seri.Declarations (
     name_P, name_C, name_D,
-    declprim, declval,
+    declprim, declval, tvarnames
     ) where
 
+import Data.List(nub)
 import Language.Haskell.TH
 
 import qualified Seri.IR as SIR
@@ -61,6 +62,9 @@ declval n t e free =
       impl_D = FunD (name_D n) [Clause [] (NormalB nubbed) []]
     in [sig_P, impl_P, sig_C, impl_C, sig_D, impl_D]
 
+declval' :: [Dec] -> [Dec]
+declval' x = error $ "TODO: declval' " ++ show x
+
 -- Given a potentially polymorphic haskell type, convert it to a concrete
 -- haskell type which represents the polymorphic seri type.
 --
@@ -70,6 +74,14 @@ concretize (ForallT _ _ t) = concretize t
 concretize (VarT nm) = ConT $ mkName ("VarT_" ++ (nameBase nm))
 concretize (AppT a b) = AppT (concretize a) (concretize b)
 concretize t = t
+
+-- Return a list of all the variable type names in the given type.
+tvarnames :: Type -> [Name]
+tvarnames (ForallT _ _ t) = tvarnames t
+tvarnames (VarT nm) = [nm]
+tvarnames (AppT a b) = nub $ (tvarnames a) ++ (tvarnames b)
+tvarnames t = []
+
 
 apply :: Name -> [Exp] -> Exp
 apply n exps = foldl AppE (VarE n) exps

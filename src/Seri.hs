@@ -25,7 +25,7 @@ import Test.HUnit
 run :: [Dec] -> TypedExp a -> Exp
 run decls = elaborate decls . typed
 
-[s|
+[hs|
     foo :: Integer
     foo = (\x -> x*x+3*x+2) 5
 
@@ -40,10 +40,18 @@ run decls = elaborate decls . typed
 
     rfact :: Integer -> Integer
     rfact = \x -> if (x < 1) then 1 else x * rfact (x-1)
+|]
 
+[hs|
     id :: a -> a
     id = \x -> x
 |]
+
+[hs|
+    foohs :: Integer
+    foohs = (\x -> x*x+3*x+2) 5
+|]
+
 
 --[s|
 --    data MaybeInteger = NoInteger | JustInteger Integer
@@ -73,6 +81,7 @@ tests = "Seri" ~: [
         let factorial = [hs| fix (\f -> \x -> if (x < 1) then 1 else x * f (x-1)) |]
         in run _seriD_fix [hs| _s (factorial) 5 |],
     "foo decl" ~: IntegerE 42 ~=? run [] _seriC_foo,
+    "foohs decl" ~: IntegerE 42 ~=? run [] _seriC_foohs,
     "fact5 decl" ~: IntegerE 120 ~=? run _seriD_fact5 _seriC_fact5,
     "subctx" ~: IntegerE 720 ~=? run _seriD_fact6 _seriC_fact6,
     "rfact5" ~: IntegerE 120 ~=? run _seriD_rfact [s| rfact 5 |],
