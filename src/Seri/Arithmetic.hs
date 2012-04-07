@@ -1,28 +1,19 @@
 
-module Seri.Arithmetic (
-    addP, subP, mulP, ltP, gtP,
-    arithR
- ) where
+{-# LANGUAGE TemplateHaskell #-}
+
+module Seri.Arithmetic where
 
 import Seri.Primitives(trueE, falseE)
+import Seri.Declarations
 import Seri.Elaborate
 import Seri.IR
 import Seri.Typed
 
-addP :: Typed Exp (Integer -> Integer -> Integer)
-addP = primitive "+"
-
-subP :: Typed Exp (Integer -> Integer -> Integer)
-subP = primitive "-"
-
-mulP :: Typed Exp (Integer -> Integer -> Integer)
-mulP = primitive "*"
-
-ltP :: Typed Exp (Integer -> Integer -> Bool)
-ltP = primitive "<"
-
-gtP :: Typed Exp (Integer -> Integer -> Bool)
-gtP = primitive ">"
+declprim "+" [t| Typed Exp (Integer -> Integer -> Integer) |]
+declprim "-" [t| Typed Exp (Integer -> Integer -> Integer) |]
+declprim "*" [t| Typed Exp (Integer -> Integer -> Integer) |]
+declprim "<" [t| Typed Exp (Integer -> Integer -> Bool) |]
+declprim ">" [t| Typed Exp (Integer -> Integer -> Bool) |]
 
 arithR :: Rule
 arithR = Rule $ \decls gr e ->

@@ -3678,3 +3678,36 @@ I think it's worth trying, rather than mucking with the core.
 
 Okay? So I'll see if I can make this work.
 
+Sat Apr  7 18:12:46 EDT 2012
+
+My work on SMT suggests I can have functions in haskell called _seriP_+,
+_seriP_-, etc...
+
+Let me check the language spec to verify, because that will make me feel
+better. Then, I should use this to solve my infix parsing problem.
+
+Convert infix applications just like normal, by name. Then declare the
+primitives just like normal, with declprim.
+
+But. After dinner.
+
+Sat Apr  7 18:38:33 EDT 2012
+
+The haskell report says an identifier _seriP_+ is not legal. Maybe ghc is
+nice and I can get away with it.
+
+Anyway, it should be easy to try out. So let me try it out and see what
+happens.
+
+So, it would seem I can't write down the name of the function, because it
+doesn't pass in the lexer. But I can using template haskell to refer to it. Is
+that okay?
+
+I fear it could be troublesome, but let's see what happens.
+
+Worst case, I could give non-symbolic names for all the operators too.
+
+I fear this is going to be problematic, and I'll probably have to change it
+back, because it's not good to not be able to refer to functions that have
+been defined. Oh well. Let me deal with it then. At least it looks pretty.
+

@@ -70,13 +70,7 @@ mkexp (AppE a b) = do
 mkexp (InfixE (Just a) (VarE op) (Just b)) = do
     a' <- mkexp a
     b' <- mkexp b
-    return $ case (nameBase op) of
-        "+" -> infixp 'SA.addP a' b'
-        "-" -> infixp 'SA.subP a' b'
-        "*" -> infixp 'SA.mulP a' b'
-        "<" -> infixp 'SA.ltP a' b'
-        ">" -> infixp 'SA.gtP a' b'
-        x -> error $ "TODO: infix " ++ show x
+    return $ infixp (name_P (nameBase op)) a' b'
 
 mkexp (LamE [VarP nm] a) = do
     bindname nm
