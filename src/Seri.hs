@@ -58,6 +58,16 @@ decltype ''MaybeInteger
             NoInteger -> def
 |]
 
+decltype ''Maybe
+
+[s|
+    fromMaybeBool :: Bool -> Maybe Bool -> Bool
+    fromMaybeBool = \def -> \mb ->
+        case mb of
+            Just b -> b
+            Nothing -> def
+|]
+
 tests = "Seri" ~: [
     "foo" ~: IntegerE 42 ~=? run [] [s|(\x -> x*x+3*x+2) 5|],
     "unit" ~: PrimE UnitT UnitP ~=? run _seriD_unit [s| unit |],
@@ -75,6 +85,10 @@ tests = "Seri" ~: [
     "justInteger" ~: IntegerE 5 ~=? run _seriD_fromMaybeInteger
             [s| fromMaybeInteger 10 (JustInteger 5) |],
     "noInteger" ~: IntegerE 10 ~=? run _seriD_fromMaybeInteger
-            [s| fromMaybeInteger 10 NoInteger |]
+            [s| fromMaybeInteger 10 NoInteger |],
+    "just Bool" ~: trueE ~=? run _seriD_fromMaybeBool
+            [s| fromMaybeBool False (Just True) |],
+    "no Bool" ~: falseE ~=? run _seriD_fromMaybeBool
+            [s| fromMaybeBool False Nothing |]
     ]
 

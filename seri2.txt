@@ -3479,3 +3479,90 @@ Sat Apr  7 10:01:59 EDT 2012
 
 It works! Nifty.
 
+Sat Apr  7 10:07:03 EDT 2012
+
+So, what's the next step?
+
+Well, I don't have data type declarations, so user defined data types are
+incomplete in that sense. We would want to use those for generating back end
+code. That should be fairly straight forward to add when I want to.
+
+And certainly we'll want to allow polymorphic user defined data types. Like,
+Maybe a = Just a | Nothing, for instance.
+
+Once I have polymorphic user defined data types, I should be able to switch
+primitives over to names, right? Then I can merge smt into the master branch,
+separating the smt primitives off. That's really the high level goal.
+
+We'll want some way of expressing monads too. Perhaps that can be done
+primitively or some such.
+
+Anyway. Let me summarize the steps to the next high level goal.
+
++ Support polymorphic user defined data types.
+Test case: Maybe Integer instead of MaybeInteger.
+
+- Replace elaborate implementation with a list of reduction rules, so that
+  different reduction rules can be specified in different files.
+
+- Replace primitives with String names, so that different primitives can be
+  specified in different files.
+
+- Merge smt into master branch in a library like way.
+So, SMT code should be completely separate, but it should still work just
+swell like.
+
+- Add user defined data type Dec to seri ir for backend code generation.
+
+At this point I should be able to express SMT queries. I should also be able
+to express Tibby, all in the same branch.
+
+Cool.
+
+Sat Apr  7 11:29:23 EDT 2012
+
+Next step is polymorphic user defined data types. I'm not sure what all this
+would involve, so I want to just start the thoughts flowing here while I think
+about it.
+
+We want to allow constructors with type variables.
+
+data Maybe a = ...
+
+This means we have a list of types variables. That's fine.
+
+What has to change? The type for the generated _seriP expression has to
+include a SeriType context like we have for polymorphic expressions. That's
+not really anything new.
+
+Is it just that easy? Let me take a hack at it, and if it is that easy, I'll
+have it done, otherwise I'll know what challenges I need to think of.
+
+Sat Apr  7 11:43:04 EDT 2012
+
+Hmm... Here's a problem. It seems I can't have an instance of SeriType for
+Maybe, because of the kind. So I'll want to define SeriType1 and SeriType2,
+... as needed? Shall I try that?
+
+Okay, I defined SeriType1 and SeriType2. That solved that issue.
+
+Now I have the issue that I need to apply the type variables in my generation
+of _seriP_...
+
+Sat Apr  7 12:07:22 EDT 2012
+
+Okay, so that fixed that. The issue now is... for some reason seritype is not
+being defined in the instance?
+
+Well, one issue is I need to give the right method name...
+Gah. Must be a template haskell quoting issue.
+
+Sat Apr  7 12:12:05 EDT 2012
+
+There! It works. Nifty.
+
+Wow. That was easier than I feared.
+
+So let me take a walk, have some lunch. Then the next step will be making
+primitives into strings, and separating out elaboration rules. Cool.
+

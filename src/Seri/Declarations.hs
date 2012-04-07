@@ -75,19 +75,25 @@ declval' n t e free =
 --  - _seriP_Foo and friends for each constructor Foo
 decltype :: Name -> Q [Dec]
 decltype nm =
- let mkcon :: Type -> Con -> [Dec]
-     mkcon dt (NormalC nc sts) =
+ let mkcon :: Type -> [TyVarBndr] -> Con -> [Dec]
+     mkcon dt vars (NormalC nc sts) =
         let ts = map snd sts
-            t = AppT (AppT (ConT ''S.Typed) (ConT ''SIR.Exp)) (arrowts (ts ++ [dt]))
+            t = AppT (AppT (ConT ''S.Typed) (ConT ''SIR.Exp)) (arrowts (ts ++ [appts $ dt:(map (\(PlainTV n) -> VarT n) vars)]))
+            ctx = map (\(PlainTV x) -> ClassP ''S.SeriType [VarT x]) vars
+            ty = if null vars
+                    then t
+                    else ForallT vars ctx t
             e = apply 'S.conE [string nc]
-        in declval' (nameBase nc) t e []
+        in declval' (nameBase nc) ty e []
 
- in do TyConI (DataD [] _ [] cs _) <- reify nm
-       inst <- [d| instance S.SeriType $(conT nm) where
-                       seritype _ = SIR.ConT $(litE (StringL (nameBase nm)))
-               |]
-       let cones = concat $ map (mkcon (ConT nm)) cs
-       return $ concat [inst, cones]
+ in do TyConI (DataD [] _ vars cs _) <- reify nm
+       let numvars = length vars
+       let classname = "SeriType" ++ if numvars == 0 then "" else show numvars
+       let methname = "seritype" ++ if numvars == 0 then "" else show numvars
+       let dec = FunD (mkName methname) [Clause [WildP] (NormalB (AppE (ConE 'SIR.ConT) (string nm))) []]
+       let inst = InstanceD [] (AppT (ConT (mkName classname)) (ConT nm)) [dec]
+       let cones = concat $ map (mkcon (ConT nm) vars) cs
+       return $ concat [[inst], cones]
 
 -- Given a potentially polymorphic haskell type, convert it to a concrete
 -- haskell type which represents the polymorphic seri type.
