@@ -1,4 +1,5 @@
 
+{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE QuasiQuotes #-}
 
 module Seri (
@@ -10,6 +11,7 @@ module Seri (
     tests
     ) where
 
+import Seri.Declarations
 import Seri.Elaborate
 import Seri.IR
 import Seri.Quoter
@@ -46,14 +48,16 @@ run decls = elaborate decls . typed
 
 data MaybeInteger = NoInteger | JustInteger Integer
 
---[s|
---    fromMaybeInteger :: Integer -> MaybeInteger -> Integer
---    fromMaybeInteger = \def -> \mi -> case mi of {
---        JustInteger i -> i ;
---        NoInteger -> def ;
---    }
---                
--- |]
+decltype ''MaybeInteger
+
+[s|
+    fromMaybeInteger :: Integer -> MaybeInteger -> Integer
+    fromMaybeInteger = \def -> \mi -> case mi of {
+        JustInteger i -> i ;
+        NoInteger -> def ;
+    }
+                
+ |]
 
 tests = "Seri" ~: [
     "foo" ~: IntegerE 42 ~=? run [] [s|(\x -> x*x+3*x+2) 5|],

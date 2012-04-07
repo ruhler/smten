@@ -39,6 +39,9 @@ unbindname nm = do
 apply :: Name -> [Exp] -> Exp
 apply n exps = foldl AppE (VarE n) exps
 
+string :: Name -> Exp
+string n = LitE (StringL (nameBase n))
+
 infixp :: Name -> Exp -> Exp -> Exp
 infixp nm a b = apply 'S.infixE [VarE nm, a, b]
 
@@ -55,9 +58,9 @@ mkexp (VarE nm) = do
         then return $ VarE nm
         else do
             freename nm
-            return $ apply 'S.varE_typed [VarE (name_P (nameBase nm)), LitE (StringL (nameBase nm))]
+            return $ apply 'S.varE_typed [VarE (name_P (nameBase nm)), string nm]
 
-mkexp (ConE nm) = return $ apply 'S.varE_typed [VarE (name_P (nameBase nm)), LitE (StringL (nameBase nm))]
+mkexp (ConE nm) = return $ apply 'S.varE_typed [VarE (name_P (nameBase nm)), string nm]
 
 mkexp l@(LitE (IntegerL i)) = return $ apply 'S.integerE [l]
 
@@ -83,7 +86,7 @@ mkexp (LamE [VarP nm] a) = do
     bindname nm
     a' <- mkexp a
     unbindname nm
-    return $ apply 'S.lamE [LitE (StringL (nameBase nm)), LamE [VarP nm] a']
+    return $ apply 'S.lamE [string nm, LamE [VarP nm] a']
 
 mkexp (CondE p a b) = do
     p' <- mkexp p
@@ -91,12 +94,46 @@ mkexp (CondE p a b) = do
     b' <- mkexp b
     return $ apply 'S.ifE [p', a', b']
 
---mkexp (CaseE e matches) =
---  let mkmatch :: Match -> Exp
---      mkmatch p (NormalB e) [] = 
---  in do e' <- mkexp e
+mkexp (CaseE e matches) = do
+    e' <- mkexp e
+    ms <- mapM mkmatch matches
+    return $ apply 'S.caseE [e', ListE ms]
 
 mkexp x = error $ "TODO: mkexp " ++ show x
+
+mkmatch :: Match -> State UserState Exp
+mkmatch (Match p (NormalB e) [])
+  = let lamify :: [Name] -> Exp -> Exp
+        lamify [] e = e
+        lamify (n:ns) e = lamify ns (apply 'S.lamM [string n, LamE [VarP $ mkvarpnm n, VarP n] e])
+
+        vns = varps p
+        p' = mkpat p 
+    in do
+        mapM_ bindname vns
+        e' <- mkexp e
+        mapM_ unbindname (reverse vns)
+        return $ lamify vns (apply 'S.match [p', e'])
+
+-- Convert a haskell pattern to a Seri pattern.
+mkpat :: Pat -> Exp
+mkpat (ConP n ps) =
+    let mkpat' :: Exp -> [Pat] -> Exp
+        mkpat' e [] = e
+        mkpat' e (p:ps) = mkpat' (apply 'S.appP [e, mkpat p]) ps
+    in mkpat' (apply 'S.conP [string n]) ps
+mkpat (VarP n) = VarE $ mkvarpnm n
+mkpat x = error $ "todo: mkpat " ++ show x
+
+mkvarpnm :: Name -> Name
+mkvarpnm nm = mkName ("p_" ++ (nameBase nm))
+
+-- Get the list of variable pattern names in the given pattern.
+varps :: Pat -> [Name]
+varps (VarP nm) = [nm]
+varps (ConP _ ps) = concat (map varps ps)
+varps p = error $ "TODO: varps " ++ show p
+
 
 mkdecls :: [Dec] -> [Dec]
 mkdecls [] = []

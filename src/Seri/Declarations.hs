@@ -1,9 +1,10 @@
 
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE TemplateHaskell #-}
 
 module Seri.Declarations (
     name_P, name_C, name_D,
-    declprim, declval, tvarnames
+    declprim, declval, decltype, tvarnames
     ) where
 
 import Data.List(nub)
@@ -61,6 +62,20 @@ declval n t e free =
       sig_D = SigD (name_D n) (AppT ListT (ConT ''SIR.Dec))
       impl_D = FunD (name_D n) [Clause [] (NormalB nubbed) []]
     in [sig_P, impl_P, sig_C, impl_C, sig_D, impl_D]
+
+-- decltype name
+-- Given the name of a haskell type, make a seri type declaration for it.
+--
+-- The following is generated for the given type.
+--  - an instance of SeriType.
+--  - _seriP_Foo and friends for each constructor Foo
+decltype :: Name -> Q [Dec]
+decltype nm = do
+    TyConI (DataD [] _ [] cs _) <- reify nm
+    inst <- [d| instance S.SeriType $(conT nm) where
+                    seritype _ = SIR.ConT $(litE (StringL (nameBase nm)))
+            |]
+    return inst
 
 -- Given a potentially polymorphic haskell type, convert it to a concrete
 -- haskell type which represents the polymorphic seri type.

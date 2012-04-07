@@ -36,6 +36,7 @@ data Exp = IntegerE Integer
          | CaseE Type Exp [Match]
          | AppE Type Exp Exp
          | LamE Type Name Exp
+         | ConE Type Name
          | VarE Type Name
      deriving (Eq, Show)
 

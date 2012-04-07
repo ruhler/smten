@@ -3227,7 +3227,115 @@ I made Typed more generic. What's next?
 + define caseE.
 
 That's all I have time for now. Next steps:
- - uncomment that test case
- - implement quoter conversion for CaseE
+ + uncomment that test case
+ + implement quoter conversion for CaseE
  - solve other issues as they arise by test.
+
+Wed Apr  4 18:35:33 EDT 2012
+
+Issue: patterns introduce bound names for VarP. So somehow I need to add the
+bound name to the list of bound names for a match, then undo it when it's
+undone.
+
+So let's say a pattern adds to the bound names, and the match undoes those
+after the expression is done.
+
+I'm getting the error: Not in scope: 'i'...
+
+So, a pattern binds a name. But we convert it to a seri pattern... I need a
+lambda somewhere, like with lamE. Something to make sure the pattern variables
+are bound with the right type expression in the body of the match.
+
+For example, how would I construct the match:
+  JustInteger i -> i
+
+in a well typed manner?
+
+The pattern has type MaybeInteger.
+The variable I has type Integer, set when we form the pattern.
+
+_seriM_JustInteger :: Typed Pat MaybeInteger
+_seriM_JustInteger = conP "JustInteger"
+
+appP (_seriM_JustInteger) (varP "i")
+
+The type of the varP result is a Typed Pat Integer. Hmm... So what I really
+would like, right, is to say we have a variable 'i' which is used in both the
+pattern and the match. Can I do that? Something like:
+
+\i -> match (appP (_seriM_JustInteger) i) (varE i)
+
+uh... but what is the type of i? In the one hand it has type pattern, in the
+other it has type expression. Maybe we need two inputs of the same type.
+
+\ip ie -> match (appP (_seriM_JustInteger) ip) ie
+
+Hmm... This sounds... worrysome. Let me think a bit about it more. Clearly
+there is some fundamental stuff going on that needs be worked out.
+
+Fri Apr  6 19:46:56 EDT 2012
+
+This is right. This will work.
+
+The idea is as follows.
+
+1. Get the list of VarP names in the pattern.
+There should be no duplicate names. If there are, it is an error.
+
+2. Add the list of names to boundnames.
+3. Translate the match to an expression.
+VarE get's translated as normal.
+VarP get's translated to the name prefixed with "p_" or some such convention.
+4. Apply the names.
+That is, call this mkmatch function
+
+mkmatch :: Name -> (Typed Pat a -> Typed Exp a -> Typed Match b) -> Typed Match b
+Where Name is the name, and function is a lambda: (\p_n n -> exp). This gives
+you a new expression to use as the body for the next name. You'll have a
+lambda for each name.
+
+Simple.
+
+So here's what I need.
+
+mkmatch does the steps described above.
+mkpat takes the set of names as input. It need not be state.
+We need a ... lamM? or bindM? Or... varM? That is, a match with a variable
+pattern? Sure.
+
+Understood? Let me try it out and see what issues I run into.
+
+Fri Apr  6 20:12:20 EDT 2012
+
+Cool progress. I think I generate a good expression for case now.
+
+The next thing I need is: add the data type.
+
+In particular, first step is an instance of SeriType.
+
+That's easy to do. Maybe I'll do it by hand just for now, then later automate
+it.
+
+That's all I needed to make it compile.
+Next question is, can I run the test cases?
+
+I need to generate _seriP_JustInteger. That is, the constructor function.
+
+What does it look like? What is the constructor function? A ConE, right?
+
+Yes. Let me have ConE, to keep it distinct from VarE. A ConE in elaboration
+should not be looked up. It should be treated like a primitive, or something
+irreducible.
+
+So, I want
+
+_seriP_Foo :: Typed Exp MyType
+_seriP_Foo = conE MyType "Foo"
+
+I can reuse declval for this.
+
+Oh. But constructors can take arguments. So I should handle that
+appropriately.
+
+This is more than I feel like doing tonight. I'll do it later.
 

@@ -8,7 +8,8 @@ module Seri.Typed
         VarT_a(..), VarT_b(..), VarT_c(..), VarT_d(..),
     
         integerE, ifE, caseE, varE, varE_typed, lamE, appE,
-        infixE, primitive,
+        infixE, primitive, match, lamM,
+        conP, appP,
         addP, subP, mulP, ltP,
         valD,
     )
@@ -98,12 +99,25 @@ ifE (Typed p) (Typed a) (Typed b)
 caseE :: (SeriType b) => Typed Exp a -> [Typed Match (a -> b)] -> Typed Exp b
 caseE (Typed e) matches = withtype $ \t -> Typed $ CaseE t e (map typed matches)
 
+match :: Typed Pat a -> Typed Exp b -> Typed Match (a -> b)
+match (Typed p) (Typed e) = Typed $ Match p e
+
+conP :: Name -> Typed Pat a
+conP n = Typed $ ConP n
+
+appP :: Typed Pat (a -> b) -> Typed Pat a -> Typed Pat b
+appP (Typed f) (Typed x) = Typed $ AppP f x
+
 appE :: (SeriType b) => Typed Exp (a -> b) -> Typed Exp a -> Typed Exp b
 appE (Typed f) (Typed x)
     = withtype $ \t -> Typed $ AppE t f x
 
 lamE :: (SeriType a, SeriType (a -> b)) => Name -> (Typed Exp a -> Typed Exp b) -> Typed Exp (a -> b)
 lamE n f = withtype $ \t -> Typed $ LamE t n (typed $ f (varE n))
+
+-- Construct a type safe match which uses a variable pattern.
+lamM :: (SeriType a) => Name -> (Typed Pat a -> Typed Exp a -> Typed Match b) -> Typed Match b
+lamM n f = f (Typed $ VarP n) (varE n)
 
 varE :: (SeriType a) => Name -> Typed Exp a
 varE nm = withtype $ \t -> Typed $ VarE t nm
