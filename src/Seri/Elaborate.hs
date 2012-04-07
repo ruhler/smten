@@ -1,58 +1,78 @@
 
 module Seri.Elaborate (
-    elaborate
+    Rule(..), rules, elaborate, coreR,
     ) where
 
 import Seri.IR
 import Seri.Typed(seritype)
 import Seri.Ppr
 
+-- A reduction rule. Given a set of global declarations, a global reduction
+-- rule, and an expression, reduce the expression in some way. Returns Nothing
+-- if the rule can't reduce the expression any, otherwise returns a reduced
+-- version of the expression.  It need not be fully reduced or anything like
+-- that, just reduced in some part.
+data Rule = Rule {
+    run :: [Dec] -> Rule -> Exp -> Maybe Exp
+}
+
+-- Combine a bunch of reduction rules.
+-- It tries each rule in turn, applying the first one which succeeds.
+rules :: [Rule] -> Rule
+rules [] = Rule $ \_ _ _ -> Nothing
+rules (r:rs) = Rule $ \decls gr e ->
+  case run r decls gr e of
+      Just e' -> Just e'
+      Nothing -> run (rules rs) decls gr e
+
 -- elaborate decls prg
 -- Reduce the given expression as much as possible.
+--  rule - the reduction rule to use
 --  decls - gives the context under which to evaluate the expression.
 --  prg - is the expression to evaluate.
-elaborate :: [Dec] -> Exp -> Exp
-elaborate decls =
-    -- elab returns (True, e) if some reduction happened, (False, e) else.
-    -- elab only makes partial progress. It doesn't ensure the result is fully
-    -- elaborated.
-    let elab :: Exp -> (Bool, Exp)
-        elab (AppE _ (AppE _ (PrimE _ "+") (IntegerE a)) (IntegerE b))
-            = (True, IntegerE (a+b))
-        elab (AppE _ (AppE _ (PrimE _ "-") (IntegerE a)) (IntegerE b))
-            = (True, IntegerE (a-b))
-        elab (AppE _ (AppE _ (PrimE _ "*") (IntegerE a)) (IntegerE b))
-            = (True, IntegerE (a*b))
-        elab (AppE _ (AppE _ (PrimE _ "<") (IntegerE a)) (IntegerE b))
-            = let ne = if a < b
-                         then trueE
-                         else falseE
-              in (True, ne)
-        elab e@(AppE _ (PrimE _ "fix") (LamE _ n b))
-            = (True, reduce n e b)
-        elab (IfE _ p a b) | p == trueE = (True, a)
-        elab (IfE _ p a b) | p == falseE = (True, b)
-        elab (IfE t p a b) | fst (elab p) = (True, IfE t (snd (elab p)) a b)
-        elab c@(CaseE t e ((Match p b):ms)) = 
-            case (match p e) of
-                Failed -> (True, CaseE t e ms)
-                Succeeded vs -> (True, reduces vs b)
-                _ -> (False, c)
-        elab (AppE _ (LamE _ name body) b) = (True, reduce name b body)
-        elab (AppE t a b) | fst (elab a) = (True, AppE t (snd (elab a)) b)
-        elab (AppE t a b) | fst (elab b) = (True, AppE t a (snd (elab b)))
-        elab e@(LamE _ _ _) = (False, e)
-        elab e@(VarE _ nm)
-            = case (lookupvar nm decls) of
-                 Nothing -> (False, e)
-                 Just (ValD _ _ ve) -> (True, ve)
-        elab e = (False, e)
+elaborate :: Rule -> [Dec] -> Exp -> Exp
+elaborate r decls prg =
+    case run r decls r prg of
+        Just e -> elaborate r decls e
+        Nothing -> prg
 
-        -- perform full elaboration of an expression.
-        elabfull :: Exp -> Exp
-        elabfull e | fst $ elab e = elabfull (snd $ elab e)
-        elabfull e = e
-    in elabfull
+-- coreR - The core reduction rules.
+coreR :: Rule
+coreR = Rule $ \decls gr e ->
+   case e of
+      (AppE _ (AppE _ (PrimE _ "+") (IntegerE a)) (IntegerE b))
+        -> Just $ IntegerE (a+b)
+      (AppE _ (AppE _ (PrimE _ "-") (IntegerE a)) (IntegerE b))
+        -> Just $ IntegerE (a-b)
+      (AppE _ (AppE _ (PrimE _ "*") (IntegerE a)) (IntegerE b))
+        -> Just $ IntegerE (a*b)
+      (AppE _ (AppE _ (PrimE _ "<") (IntegerE a)) (IntegerE b))
+        -> Just $ if a < b then trueE else falseE
+      (AppE _ (PrimE _ "fix") (LamE _ n b))
+        -> Just $ reduce n e b
+      (IfE _ p a b) | p == trueE -> Just a
+      (IfE _ p a b) | p == falseE -> Just b
+      (IfE t p a b) -> do
+         p' <-  run gr decls gr p
+         return $ IfE t p' a b
+      (CaseE t x ((Match p b):ms))
+         -> case (match p x) of
+                Failed -> Just $ CaseE t x ms
+                Succeeded vs -> Just $ reduces vs b
+                _ -> Nothing
+      (AppE _ (LamE _ name body) b) -> Just $ reduce name b body
+      (AppE t a b) | (run gr decls gr a) /= Nothing -> do
+          a' <- run gr decls gr a
+          return $ AppE t a' b
+      (AppE t a b) | (run gr decls gr b) /= Nothing -> do
+          b' <- run gr decls gr b
+          return $ AppE t a b'
+      (LamE _ _ _) -> Nothing
+      (VarE _ nm)
+        -> case (lookupvar nm decls) of
+               Nothing -> Nothing
+               Just (ValD _ _ ve) -> Just ve
+      _ -> Nothing
 
 data MatchResult = Failed | Succeeded [(Name, Exp)] | Unknown
 

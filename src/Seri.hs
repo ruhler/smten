@@ -3,11 +3,6 @@
 {-# LANGUAGE QuasiQuotes #-}
 
 module Seri (
-    module Seri.Elaborate,
-    module Seri.IR,
-    module Seri.Quoter,
-    module Seri.Primitives,
-    module Seri.Typed,
     tests
     ) where
 
@@ -24,7 +19,7 @@ import Test.HUnit
 -- Test Cases for Seri
 
 run :: [Dec] -> Typed Exp a -> Exp
-run decls = elaborate decls . typed
+run decls = elaborate coreR decls . typed
 
 [s|
     foo :: Integer

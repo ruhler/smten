@@ -3566,3 +3566,73 @@ Wow. That was easier than I feared.
 So let me take a walk, have some lunch. Then the next step will be making
 primitives into strings, and separating out elaboration rules. Cool.
 
+Sat Apr  7 13:43:19 EDT 2012
+
+I changed primitives to strings. Next step is to separate out elaboration
+rules. After that, I can pull out the arithmetic primitives, to put my
+library idea to test.
+
+Sat Apr  7 13:44:56 EDT 2012
+
+Okay, so what's the plan.
+
+We want to specify a list of elaboration rules. Reduction rules call them.
+Then, given a list of these rules, we can do elaboration.
+
+elaborate :: [Rule] -> [Dec] -> Exp -> Exp
+
+But of course, one reduction rule is as good as a list, right?
+
+elaborate :: Rule -> [Dec] -> Exp -> Exp
+
+What is a rule?
+
+type Rule = [Dec] -> Exp -> Maybe Exp
+
+You need to have the declarations, for some of the rules.
+
+Now you want something like: combine :: [Rule] -> Rule
+
+So, given a list of rules, we can reduce it to a rule. And the behavior is
+simple: try each rule in turn, for the first one that works.
+
+Okay?
+
+I should define these core things in elaborate.
+Elaborate can also specify the core reduction rules. That is, the
+non-primitives.
+
+Then, when that works, pull primitives out into Arithmetic, and ditch fix,
+because we really don't need that.
+
+It might be nice to have a primitives directory. Seri.Primitives.Arithmetic,
+that sort of thing. Just to keep clear what belongs to the core, and what is
+really just an extension? I'm not sure.
+
+Cool. Let me dive in.
+
+Sat Apr  7 14:27:22 EDT 2012
+
+Trouble. How do I recurse?
+
+That is, I want to say, in my limited reduction rule, that I try to reduce the
+predicate of an if statement.
+
+But in order to do the full reduction, I need all the rules.
+
+Well, I could take the reduction rules as input to each rule. It's a little
+annoying, but it will work. Is there any other good way of doing it?
+
+No. That should work fine.
+
+Sat Apr  7 14:40:21 EDT 2012
+
+Except, I have this cycle in my rule type synonym... I need a data type to
+allow the recursion I think.
+
+Sat Apr  7 14:48:10 EDT 2012
+
+Okay, fixed that. It works now. It's a little messy. But not to bad?
+
+We'll see what happens when I try to pull out Arith and do SMT.
+
