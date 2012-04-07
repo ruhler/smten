@@ -4,12 +4,13 @@
 
 module Seri.Declarations (
     name_P, name_C, name_D,
-    declprim, declval, decltype, tvarnames
+    declprim, declval', declval, decltype, tvarnames
     ) where
 
 import Data.List(nub)
 import Language.Haskell.TH
 
+import Seri.THUtils
 import qualified Seri.IR as SIR
 import qualified Seri.Typed as S
 
@@ -27,12 +28,15 @@ name_D x = mkName $ "_seriD_" ++ x
 
 
 declprim :: SIR.Name -> Name -> Q Type -> Q [Dec]
-declprim nm prim ty = do
-    t <- ty
-    e <- [e| S.primitive $(conE prim) |]
-    return $ declval nm t e []
+declprim nm prim ty = declval nm ty [e| S.primitive $(conE prim) |] []
 
--- declval name ty exp free
+declval :: SIR.Name -> Q Type -> Q Exp -> [SIR.Name] -> Q [Dec]
+declval n qt qe ns = do
+    t <- qt
+    e <- qe
+    return $ declval' n t e ns
+
+-- declval' name ty exp free
 -- Make a seri value declaration.
 --   name - name of the seri value being defined.
 --   ty - the polymorphic haskell type of the expression.
@@ -46,8 +50,8 @@ declprim nm prim ty = do
 --  _seriC_name - the expression with a concrete haskell type.
 --  _seriD_name - a list of the seri declarations needed to evaluate this
 --                value.
-declval :: SIR.Name -> Type -> Exp -> [SIR.Name] -> [Dec]
-declval n t e free =
+declval' :: SIR.Name -> Type -> Exp -> [SIR.Name] -> [Dec]
+declval' n t e free =
   let sig_P = SigD (name_P n) t
       impl_P = FunD (name_P n) [Clause [] (NormalB e) []]
 
@@ -70,12 +74,20 @@ declval n t e free =
 --  - an instance of SeriType.
 --  - _seriP_Foo and friends for each constructor Foo
 decltype :: Name -> Q [Dec]
-decltype nm = do
-    TyConI (DataD [] _ [] cs _) <- reify nm
-    inst <- [d| instance S.SeriType $(conT nm) where
-                    seritype _ = SIR.ConT $(litE (StringL (nameBase nm)))
-            |]
-    return inst
+decltype nm =
+ let mkcon :: Type -> Con -> [Dec]
+     mkcon dt (NormalC nc sts) =
+        let ts = map snd sts
+            t = AppT (AppT (ConT ''S.Typed) (ConT ''SIR.Exp)) (arrowts (ts ++ [dt]))
+            e = apply 'S.conE [string nc]
+        in declval' (nameBase nc) t e []
+
+ in do TyConI (DataD [] _ [] cs _) <- reify nm
+       inst <- [d| instance S.SeriType $(conT nm) where
+                       seritype _ = SIR.ConT $(litE (StringL (nameBase nm)))
+               |]
+       let cones = concat $ map (mkcon (ConT nm)) cs
+       return $ concat [inst, cones]
 
 -- Given a potentially polymorphic haskell type, convert it to a concrete
 -- haskell type which represents the polymorphic seri type.
@@ -94,7 +106,4 @@ tvarnames (VarT nm) = [nm]
 tvarnames (AppT a b) = nub $ (tvarnames a) ++ (tvarnames b)
 tvarnames t = []
 
-
-apply :: Name -> [Exp] -> Exp
-apply n exps = foldl AppE (VarE n) exps
 

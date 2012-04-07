@@ -13,6 +13,7 @@ import Language.Haskell.Meta.Parse
 import qualified Seri.IR as SIR
 import qualified Seri.Typed as S
 
+import Seri.THUtils
 import Seri.Declarations
 
 data UserState = UserState {
@@ -35,13 +36,6 @@ unbindname nm = do
         then fail $ "unbindname '" ++ show nm ++ "' doesn't match expected '" ++ show n ++ "'"
         else put $ UserState names fn
 
-
-apply :: Name -> [Exp] -> Exp
-apply n exps = foldl AppE (VarE n) exps
-
-string :: Name -> Exp
-string n = LitE (StringL (nameBase n))
-
 infixp :: Name -> Exp -> Exp -> Exp
 infixp nm a b = apply 'S.infixE [VarE nm, a, b]
 
@@ -60,7 +54,7 @@ mkexp (VarE nm) = do
             freename nm
             return $ apply 'S.varE_typed [VarE (name_P (nameBase nm)), string nm]
 
-mkexp (ConE nm) = return $ apply 'S.varE_typed [VarE (name_P (nameBase nm)), string nm]
+mkexp (ConE nm) = return $ apply 'S.conE_typed [VarE (name_P (nameBase nm)), string nm]
 
 mkexp l@(LitE (IntegerL i)) = return $ apply 'S.integerE [l]
 
@@ -145,7 +139,7 @@ mkdecls ((SigD nm ty):(ValD (VarP nm') (NormalB e) []):ds) =
                     let ctx = map (\(PlainTV x) -> ClassP ''S.SeriType [VarT x]) vns
                     in ForallT vns ctx (typedexp t)
                 t -> typedexp t
-      d = declval (nameBase nm) ty' e' (map nameBase free)
+      d = declval' (nameBase nm) ty' e' (map nameBase free)
   in d ++ (mkdecls ds)
 
 s :: QuasiQuoter 
@@ -166,5 +160,4 @@ qdec :: String -> Q [Dec]
 qdec s = case (parseDecs s) of
             Right decls -> return $ mkdecls decls
             Left err -> fail err
-
 

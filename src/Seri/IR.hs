@@ -1,7 +1,7 @@
 
 module Seri.IR (
     Name, Type(..), Primitive(..), Pat(..), Match(..), Exp(..), Dec(..),
-    lookupvar, nubdecl
+    lookupvar, nubdecl, trueE, falseE,
     ) where
 
 import Data.List(nub)
@@ -21,8 +21,6 @@ data Primitive = AddP
                | SubP
                | MulP
                | LtP
-               | TrueP
-               | FalseP
                | FixP
                | UnitP
       deriving (Eq, Show)
@@ -61,8 +59,6 @@ instance Ppr Primitive where
     ppr SubP = text "-"
     ppr MulP = text "*"
     ppr LtP = text "<"
-    ppr TrueP = text "True"
-    ppr FalseP = text "False"
     ppr FixP = text "fix"
     ppr UnitP = text "unit"
 
@@ -94,4 +90,10 @@ lookupvar x (d:ds) = lookupvar x ds
 -- remove duplicate occurences of a declaration from the list.
 nubdecl :: [Dec] -> [Dec]
 nubdecl = nub
+
+trueE :: Exp
+trueE = ConE (ConT "Bool") "True"
+
+falseE :: Exp
+falseE = ConE (ConT "Bool") "False"
 

@@ -3339,3 +3339,143 @@ appropriately.
 
 This is more than I feel like doing tonight. I'll do it later.
 
+Sat Apr  7 07:59:04 EDT 2012
+
+Later as arrived it would seem.
+
+Say we have a constructor Foo with types A B ...
+
+We want to define:
+
+_seriP_Foo :: Typed Exp (A -> B -> ... -> MyType)
+_seriP_Foo = conE "Foo"
+
+So that's pretty easy. I just want to turn a list of types into a sequence of
+applications of types.
+
+I can use the declval function to generate the code for me.
+
+This should actually be pretty easy. Let me try it out.
+
+Sat Apr  7 08:16:22 EDT 2012
+
+Good. Now we get to the elaboration phase.
+I'll want to add elaboration of ConE, CaseE.
+
+Okay, so the question is, what is the elaboration rule for CaseE?
+
+Well... the idea is, we need to reduce the expression enough to check it
+against each of the matches. But we have to check it against the matches in
+order, and some of the matches may require more or less reduction of the
+expression.
+
+Perhaps better would be to start by trying to understand how to match
+patterns?
+
+ConP nm    matches   ConE nm
+VarP nm    matches   *
+AppP a b   matches   AppE ae be   when a matches ae and b matches be
+WildP      matches   *
+
+The goal of a match is to produce a mapping from variable name to expression.
+Once we have that, we can do all the beta reductions, and that's our
+reduction.
+
+I think we'll want to distinguish between the case when a match outright fails
+and when we don't know if that match fails or not, because the expression
+isn't reduced enough.
+
+We have to consider just the two cases: ConP and AppP.
+
+ConP. Here are the cases:
+ IntegerE - fail
+ PrimE - unknown (because maybe it can be reduced more)
+ IfE - unknown
+ CaseE - unknown
+ AppE - unknown
+ LamE - fail
+ ConE - succeed if name matches, fail otherwise
+ VarE - unknown
+
+That's pretty straight forward.
+
+AppP now:
+ IntegerE - fail 
+ PrimE - unknown
+ IfE - unknown
+ CaseE - unknown
+ AppE - try submatches and fail, unknown, or succeed based on result
+ LamE - fail
+ ConE - fail
+ VarE - unknown
+
+So my vote is the following. We have a function which attempts to do a match.
+It returns: Fail | Unknown | Suceeded [(Name, Exp)]
+
+The rule to do a case statement is then as follows.
+
+Starting with the first match:
+  - try the match and based on the result:
+    fail - go on to the next match
+    unknown - can't reduce
+    suceeded - do beta reduction and return the expression
+
+Good, huh? Then we'll probably want a helper function which takes the list of
+matches and the expression to match and does this. I suppose...
+
+Could we reduce a case expression to another case expression? Would that be
+correct?
+
+For example, say we have something like
+
+ case e of
+    NoArg -> foo
+    JustArg SomeCon -> bar
+    JustArg OtherCon -> sludge
+
+And we have e is of the form: JustArg somevar
+
+Can we then reduce the case to just:
+ case e of 
+    JustArg SomeCon -> bar
+    JustArg OtherCon -> sludge
+
+I feel like we should be able to do that. Then I should make that be my
+reduction rule. That should be simple to code up.
+
+Cool. So I need the following:
+- function to do match: Exp -> Pat -> MatchResult
+- case reduction rule.
+
+Let me take a little break, then code it up. This is pretty exciting.
+
+Sat Apr  7 09:40:11 EDT 2012
+
+I coded it up. I must have a bug. Or something's going on.
+
+Let's see, I want to reduce the following:
+
+e = AppE (VarE "JustInteger") (IntegerE 5)
+  Match (AppP (ConP "JustInteger") (VarP "i")) ->  ...
+  Match (ConP NoInteger) ->  ...
+
+My claim is this should be reduced, because.
+
+Oh... We have VarE, we want ConE. Okay. I think I know the bug. It's the
+quoter...
+
+Wait. The issue is, where does VarE "JustInteger" come from?
+It should go to (VarE _seriP_JustInteger), which is implemented as
+ConE "JustInteger", right?
+
+Sat Apr  7 09:48:01 EDT 2012
+
+Cool! It seems to be working.
+
+Except, now booleans are not primitive, but rather, ConT "True" and ConT
+"False". That's fine with me I think. Let me fix that.
+
+Sat Apr  7 10:01:59 EDT 2012
+
+It works! Nifty.
+
