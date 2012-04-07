@@ -6,11 +6,11 @@
 module Seri.Typed 
     (
         Typed(..), SeriType(..), SeriType1(..), SeriType2(..),
-        VarT_a(..), VarT_b(..), VarT_c(..), VarT_d(..),
+        VarT_a(..), VarT_b(..), VarT_c(..), VarT_d(..), VarT_m(..),
     
         integerE, ifE, caseE, conE, conE_typed, varE, varE_typed, lamE, appE,
         infixE, primitive, match, lamM,
-        conP, appP,
+        conP, appP, wildP,
         valD,
     )
     where
@@ -63,6 +63,9 @@ data VarT_b = VarT_b
 data VarT_c = VarT_c
 data VarT_d = VarT_d
 
+-- And some of kind * -> *.
+data VarT_m a = VarT_m
+
 instance SeriType VarT_a where
     seritype _ = VarT "a"
 
@@ -74,6 +77,13 @@ instance SeriType VarT_c where
 
 instance SeriType VarT_d where
     seritype _ = VarT "d"
+
+instance SeriType1 VarT_m where
+    seritype1 _ = VarT "m"
+
+instance Monad VarT_m where
+    return = error $ "return VarT_m"
+    (>>=) = error $ ">>= VarT_m"
 
 usetype :: (SeriType a) => Typed Exp a -> (Type -> b) -> b
 usetype e f = f (seritype (gettype e))
@@ -107,6 +117,9 @@ conP n = Typed $ ConP n
 
 appP :: Typed Pat (a -> b) -> Typed Pat a -> Typed Pat b
 appP (Typed f) (Typed x) = Typed $ AppP f x
+
+wildP :: Typed Pat a
+wildP = Typed WildP
 
 appE :: (SeriType b) => Typed Exp (a -> b) -> Typed Exp a -> Typed Exp b
 appE (Typed f) (Typed x)

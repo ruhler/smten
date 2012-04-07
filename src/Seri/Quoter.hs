@@ -75,6 +75,7 @@ mkexp (InfixE (Just a) (VarE op) (Just b)) = do
         "-" -> infixp 'SA.subP a' b'
         "*" -> infixp 'SA.mulP a' b'
         "<" -> infixp 'SA.ltP a' b'
+        ">" -> infixp 'SA.gtP a' b'
         x -> error $ "TODO: infix " ++ show x
 
 mkexp (LamE [VarP nm] a) = do
@@ -93,6 +94,8 @@ mkexp (CaseE e matches) = do
     e' <- mkexp e
     ms <- mapM mkmatch matches
     return $ apply 'S.caseE [e', ListE ms]
+
+mkexp (DoE stmts) = mkexp $ desugar stmts
 
 mkexp x = error $ "TODO: mkexp " ++ show x
 
@@ -118,6 +121,7 @@ mkpat (ConP n ps) =
         mkpat' e (p:ps) = mkpat' (apply 'S.appP [e, mkpat p]) ps
     in mkpat' (apply 'S.conP [string n]) ps
 mkpat (VarP n) = VarE $ mkvarpnm n
+mkpat WildP = VarE 'S.wildP
 mkpat x = error $ "todo: mkpat " ++ show x
 
 mkvarpnm :: Name -> Name
@@ -127,6 +131,7 @@ mkvarpnm nm = mkName ("p_" ++ (nameBase nm))
 varps :: Pat -> [Name]
 varps (VarP nm) = [nm]
 varps (ConP _ ps) = concat (map varps ps)
+varps WildP = []
 varps p = error $ "TODO: varps " ++ show p
 
 

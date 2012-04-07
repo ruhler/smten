@@ -1,6 +1,6 @@
 
 module Seri.Arithmetic (
-    addP, subP, mulP, ltP,
+    addP, subP, mulP, ltP, gtP,
     arithR
  ) where
 
@@ -21,6 +21,9 @@ mulP = primitive "*"
 ltP :: Typed Exp (Integer -> Integer -> Bool)
 ltP = primitive "<"
 
+gtP :: Typed Exp (Integer -> Integer -> Bool)
+gtP = primitive ">"
+
 arithR :: Rule
 arithR = Rule $ \decls gr e ->
     case e of 
@@ -32,5 +35,7 @@ arithR = Rule $ \decls gr e ->
         -> Just $ IntegerE (a*b)
       (AppE _ (AppE _ (PrimE _ "<") (IntegerE a)) (IntegerE b))
         -> Just $ if a < b then trueE else falseE
+      (AppE _ (AppE _ (PrimE _ ">") (IntegerE a)) (IntegerE b))
+        -> Just $ if a > b then trueE else falseE
       _ -> Nothing
 

@@ -1,0 +1,270 @@
+
+Fri Mar 30 08:55:07 EDT 2012
+
+Goal: be able to go to SMT solver and back from some form of seri IR.
+
+First question, what's the interface?
+
+I propose the following.
+
+We have a monad, say a Query monad. We provide the following functions:
+
+----------
+free :: Query a
+Introduces a new free variable.
+
+assert :: Bool -> Query ()
+Make an assertion.
+
+data QueryResult a = Unknown | Unsat | Sat a
+
+query :: a -> Query (QueryResult a)
+Check if there exists a concrete value of the given argument under the current
+context.
+
+runQuery :: Query a -> IO a
+Run a query.
+----------
+
+Very simple. Now, the question is, how can I write the queries I want using
+this?
+
+Let's do some examples to get a feel for this.
+
+I want to find some integer x which satisfies some conditions. Let me pretend
+I'm just dealing with haskell here.
+
+myquery :: Query (QueryResult Integer)
+myquery = do
+    x <- free
+    assert (x < 5)
+    assert (x > 2)
+    query x
+
+Easy. Now, let's say I want to find the set of all possible values of a
+variable. 
+
+queryall :: a -> Query [a]
+queryall x = do
+    q <- query x
+    case q of
+        Unknown -> fail "unknown"
+        Unsat -> return []
+        Sat a -> do
+            assert (x /= a)
+            xs <- queryall x
+            return $ a:xs
+
+See? Simple. I love it.
+
+I think this is a good interface.
+
+It will be another question entirely how to implement this Query monad.
+
+Cool. Let's see what work Myron's done, and how it relates or differs from
+this.
+
+Fri Mar 30 09:26:40 EDT 2012
+
+Myron's attempt looks like this, just using different names and types. So the
+idea is there.
+
+Fri Mar 30 09:59:16 EDT 2012
+
+Cool. So then, what do I need to add to start asking queries?
+
+- free, assert, QueryResult, query, return, bind.
+- syntax for query monad.
+- figure out how to turn queries into a yices question.
+- figure out how to interpret the yices evidence.
+
+The last couple will be key. I should probably figure that out first, because
+the first couple I know I can do easily.
+
+Okay, easy enough. Then let me figure out how I would do my simple sample
+query in yices, what information I need, how to get it, and so on.
+
+--------
+myquery :: Query (QueryResult Integer)
+myquery = do
+    x <- free
+    assert (x < 5)
+    assert (x > 2)
+    query x
+--------
+
+
+This should turn into something like:
+
+--------
+(define free_0 :: int)
+(assert (< free_0 5))
+(assert (> free_0 2))
+(check)
+--------
+
+How can I interpret the result?
+
+Let's see what this gives me.
+
+Okay, in this case I get back a boolean expression as evidence:
+ (= free_0 3)
+
+How should interpret that evidence?
+
+In this case, it's obvious. I want to say free_0 is 3, then replace every
+occurrence of free_0 in x with 3, and you get... 3.
+
+I'm worried it may not always be so easy. Let me play with other queries that
+are more complicated, see if I can figure out the format of evidence.
+
+--------
+myquery :: Query (QueryResult (Integer, Integer))
+myquery = do
+    x <- free
+    y <- free
+    assert (2 * x + y == 7)
+    assert (x - y == 2)
+    query (x, y)
+--------
+
+------
+(define free_x :: int)
+(define free_y :: int)
+(assert (= (+ (* 2 free_x) (free_y)) 7))
+(assert (= (- free_x free_y) 2))
+(check)
+------
+
+sat
+(= free_x 3)
+(= free_y 1)
+
+Okay, fine. How about this then. For my first attempt, I'll just assume for
+each free variable you define, there will be an evidence of the form:
+(= freevar value). So then I parse the value and that's it.
+
+I'm sure there will be times when that's not the case. But I can get something
+working first with this, then figure out how to make this work that don't when
+I run into them.
+
+Cool.
+
+First thing I want to do is make types a little more general, because I
+suspect that will help in the future.
+
+Fri Mar 30 10:37:20 EDT 2012
+
+Okay, so I'm going to dive in. Here's what we want.
+
+Steps:
+1. free, assert, query, Query, Answer, return, bind.
+Are all primitive like things.
+
+2. syntax for queries. I vote for the following:
+
+@query ( 
+    x <- free ;
+    assert (...)
+)
+
+So it's a query do block. I don't want to worry with layout or generalizations
+at this point. Inside parens are a list of semicolon separated query
+statements. A query statement is either: name <- expression, or expression.
+
+This is translated into bind, return, in the usual way.
+
+Hmm... I should really see what work has already been done for yices and
+haskell integration.
+
+Fri Mar 30 10:59:02 EDT 2012
+
+Some work has been done, but it's low level and I think not worth trying to
+reuse when I can just easily work something clean together from scratch.
+
+Good news: the yices c api lets you query for the evidence of a given
+variable. So I should be able to use that eventually if there are any issues
+with me parsing the displayed evidence myself. I suspect they internally do
+the same sort of thing as I'm going to do.
+
+Continuing with my list:
+
+1. free, assert, query, Query, Answer, return, bind.
+2. syntax for queries.
+3. specification of basic yices IR needed.
+define, assert, =, +, -, <, check.
+4. convert query expression to yices IR
+Start with the specific case where we just have query at the end. 
+I should probably spend some time thinking about this now.
+5. pretty print yices IR.
+Now we can generate yices code from lambda expressions.
+6. call yices in IO, parse response.
+7. Implement querying of a free variable given a yices response. (all in a
+yices like ir).
+8. Implement conversion from yices value to lambda value, given the lambda
+type.
+
+That should complete the stack, no? It's more than I think I can do all today,
+but let me get started and see where I get.
+
+But first! I have to prep for number (4).
+
+How will I convert query expressions to yices in general?
+
+We'll want a state like thing. So, it's like we use elaboration with state?
+
+qelab :: [Dec] -> Exp -> State [Yices.Dec] Exp
+
+free declares a new free variable. Call it whatever you want. free_n or
+something, with the right type. Then it returns that free variable. So we will
+need the notion of a free variable, separate from VarT, in the ir. It can just
+have a string name. Or an integer id. Perhaps that makes more sense.
+
+assert turns into an assertion. That's easy.
+
+check turns into a check.
+
+So really, there's nothing hard here. You just have to change the primitives,
+re-elaborate. It's like an expanded elaboration. I could probably reuse a lot
+of the elaborate function. Maybe expose the elab part of it?
+
+Fine. Let me get started then.
+
+Fri Mar 30 11:48:32 EDT 2012
+
+Okay, in theory I can express a query now. Let me add a syntax before testing
+if it actually works.
+
+Sat Apr  7 17:43:21 EDT 2012
+
+I'm switching over to the master branch now, having SMT as a library.
+
+I've made a simple test case. I don't expect to get the test case to the point
+where it will pass at this time, because that would require me get the whole
+yices thing going, which I don't really want to do. The main goal is to be
+able to express a query this way.
+
+First issue: Quoter doesn't support do notation yet.
+
+So we should support do notation, via desugaring.
+
+Sat Apr  7 17:54:21 EDT 2012
+
+Okay. Now I need the primitives >>, >>=, and return.
+I'm not sure >> and >>= will work as far as names go, but I might as well try.
+
+Here's an interesting problem. For concrete type variables, we need different
+kinds for different arity type constructors.
+
+That is, I can't represent a monadic "m" type variable using VarT_d, because
+VarT_d is not of kind * -> *, it's of kind *.
+
+For now let me just add a type variable VarT_m which is of kind * -> *.
+
+Sat Apr  7 18:07:32 EDT 2012
+
+Wow. That's cool. And no problem with the names. That surprises me, but it's
+nifty.
+
+This is totally replacing SMT branch. Good.
+

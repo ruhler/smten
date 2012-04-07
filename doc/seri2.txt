@@ -3651,3 +3651,30 @@ the SMT branch.
 Let me first check on what work I did in the SMT branch that I want to pull
 over.
 
+Sat Apr  7 17:13:44 EDT 2012
+
+SMT has the following:
+ Types - Answer, Query 
+ Primitives: free, assert, query, return, bind
+ Expressions: FreeE
+ Docs: smt.txt
+
+Here's the question. How can we have FreeE not be part of the core?
+Could we represent a free variable somehow in the language?
+
+How about with a data type?
+
+data Free a = Free Integer
+
+Okay, so I can have a Free a, but somehow I need to get its value. Perhaps a
+primitive?
+
+realize :: Free a -> a
+
+And what the primitive realize does, when translating to yices, is just turn
+it into a variable name or something. What do you think of that?
+
+I think it's worth trying, rather than mucking with the core.
+
+Okay? So I'll see if I can make this work.
+
