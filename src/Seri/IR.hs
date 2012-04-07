@@ -1,6 +1,6 @@
 
 module Seri.IR (
-    Name, Type(..), Primitive(..), Pat(..), Match(..), Exp(..), Dec(..),
+    Name, Type(..), Pat(..), Match(..), Exp(..), Dec(..),
     lookupvar, nubdecl, trueE, falseE,
     ) where
 
@@ -17,19 +17,11 @@ data Type = ConT Name
           | VarT Name
       deriving(Eq, Show)
 
-data Primitive = AddP
-               | SubP
-               | MulP
-               | LtP
-               | FixP
-               | UnitP
-      deriving (Eq, Show)
-
 data Match = Match Pat Exp
     deriving (Eq, Show)
 
 data Exp = IntegerE Integer
-         | PrimE Type Primitive
+         | PrimE Type Name
          | IfE Type Exp Exp Exp
          | CaseE Type Exp [Match]
          | AppE Type Exp Exp
@@ -54,17 +46,9 @@ instance Ppr Type where
     ppr (VarT n) = text n
     ppr UnitT = text "Unit"
 
-instance Ppr Primitive where
-    ppr AddP = text "+"
-    ppr SubP = text "-"
-    ppr MulP = text "*"
-    ppr LtP = text "<"
-    ppr FixP = text "fix"
-    ppr UnitP = text "unit"
-
 instance Ppr Exp where
     ppr (IntegerE i) = integer i
-    ppr (PrimE _ p) = ppr p
+    ppr (PrimE _ p) = text p
     ppr (IfE _ p a b) = parens $ text "if" <+> ppr p
                         <+> text "then" <+> ppr a
                         <+> text "else" <+> ppr b

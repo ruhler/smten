@@ -87,20 +87,20 @@ usetype e f = f (seritype (gettype e))
 withtype :: (SeriType a) => (Type -> Typed Exp a) -> Typed Exp a
 withtype f = r where r = usetype r f
 
-primitive :: (SeriType a) => Primitive -> Typed Exp a
+primitive :: (SeriType a) => Name -> Typed Exp a
 primitive p = withtype $ \t -> Typed $ PrimE t p
 
 addP :: Typed Exp (Integer -> Integer -> Integer)
-addP = primitive AddP
+addP = primitive "+"
 
 subP :: Typed Exp (Integer -> Integer -> Integer)
-subP = primitive SubP
+subP = primitive "-"
 
 mulP :: Typed Exp (Integer -> Integer -> Integer)
-mulP = primitive MulP
+mulP = primitive "*"
 
 ltP :: Typed Exp (Integer -> Integer -> Bool)
-ltP = primitive LtP
+ltP = primitive "<"
 
 integerE :: Integer -> Typed Exp Integer
 integerE x = Typed $ IntegerE x

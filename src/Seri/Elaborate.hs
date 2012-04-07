@@ -17,18 +17,18 @@ elaborate decls =
     -- elab only makes partial progress. It doesn't ensure the result is fully
     -- elaborated.
     let elab :: Exp -> (Bool, Exp)
-        elab (AppE _ (AppE _ (PrimE _ AddP) (IntegerE a)) (IntegerE b))
+        elab (AppE _ (AppE _ (PrimE _ "+") (IntegerE a)) (IntegerE b))
             = (True, IntegerE (a+b))
-        elab (AppE _ (AppE _ (PrimE _ SubP) (IntegerE a)) (IntegerE b))
+        elab (AppE _ (AppE _ (PrimE _ "-") (IntegerE a)) (IntegerE b))
             = (True, IntegerE (a-b))
-        elab (AppE _ (AppE _ (PrimE _ MulP) (IntegerE a)) (IntegerE b))
+        elab (AppE _ (AppE _ (PrimE _ "*") (IntegerE a)) (IntegerE b))
             = (True, IntegerE (a*b))
-        elab (AppE _ (AppE _ (PrimE _ LtP) (IntegerE a)) (IntegerE b))
+        elab (AppE _ (AppE _ (PrimE _ "<") (IntegerE a)) (IntegerE b))
             = let ne = if a < b
                          then trueE
                          else falseE
               in (True, ne)
-        elab e@(AppE _ (PrimE _ FixP) (LamE _ n b))
+        elab e@(AppE _ (PrimE _ "fix") (LamE _ n b))
             = (True, reduce n e b)
         elab (IfE _ p a b) | p == trueE = (True, a)
         elab (IfE _ p a b) | p == falseE = (True, b)

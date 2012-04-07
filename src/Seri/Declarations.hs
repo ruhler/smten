@@ -27,8 +27,8 @@ name_D :: SIR.Name -> Name
 name_D x = mkName $ "_seriD_" ++ x
 
 
-declprim :: SIR.Name -> Name -> Q Type -> Q [Dec]
-declprim nm prim ty = declval nm ty [e| S.primitive $(conE prim) |] []
+declprim :: SIR.Name -> Q Type -> Q [Dec]
+declprim nm ty = declval nm ty [e| S.primitive $(litE (StringL nm)) |] []
 
 declval :: SIR.Name -> Q Type -> Q Exp -> [SIR.Name] -> Q [Dec]
 declval n qt qe ns = do
