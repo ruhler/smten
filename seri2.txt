@@ -3636,3 +3636,10 @@ Okay, fixed that. It works now. It's a little messy. But not to bad?
 
 We'll see what happens when I try to pull out Arith and do SMT.
 
+Sat Apr  7 15:02:41 EDT 2012
+
+Things I wish I could clean up somehow:
+ - get rid of fix primitive
+ - unit a primitive? UnitT a type constructor instead of built in?
+ - general support for infix functions?
+

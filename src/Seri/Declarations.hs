@@ -4,10 +4,9 @@
 
 module Seri.Declarations (
     name_P, name_C, name_D,
-    declprim, declval', declval, decltype, tvarnames
+    declprim, declval', declval, decltype,
     ) where
 
-import Data.List(nub)
 import Language.Haskell.TH
 
 import Seri.THUtils
@@ -104,12 +103,4 @@ concretize (ForallT _ _ t) = concretize t
 concretize (VarT nm) = ConT $ mkName ("VarT_" ++ (nameBase nm))
 concretize (AppT a b) = AppT (concretize a) (concretize b)
 concretize t = t
-
--- Return a list of all the variable type names in the given type.
-tvarnames :: Type -> [Name]
-tvarnames (ForallT _ _ t) = tvarnames t
-tvarnames (VarT nm) = [nm]
-tvarnames (AppT a b) = nub $ (tvarnames a) ++ (tvarnames b)
-tvarnames t = []
-
 

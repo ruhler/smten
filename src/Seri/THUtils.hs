@@ -3,6 +3,7 @@ module Seri.THUtils (
     apply, arrowts, string, appts,
     ) where 
 
+import Data.List(nub)
 import Language.Haskell.TH
 
 apply :: Name -> [Exp] -> Exp
@@ -23,4 +24,11 @@ appts ts = foldl1 AppT ts
 
 string :: Name -> Exp
 string n = LitE (StringL (nameBase n))
+
+-- Return a list of all the variable type names in the given type.
+tvarnames :: Type -> [Name]
+tvarnames (ForallT _ _ t) = tvarnames t
+tvarnames (VarT nm) = [nm]
+tvarnames (AppT a b) = nub $ (tvarnames a) ++ (tvarnames b)
+tvarnames t = []
 

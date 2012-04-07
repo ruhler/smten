@@ -4,6 +4,7 @@ module Seri.Arithmetic (
     arithR
  ) where
 
+import Seri.Primitives(trueE, falseE)
 import Seri.Elaborate
 import Seri.IR
 import Seri.Typed

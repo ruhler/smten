@@ -1,7 +1,7 @@
 
 module Seri.IR (
     Name, Type(..), Pat(..), Match(..), Exp(..), Dec(..),
-    lookupvar, nubdecl, trueE, falseE,
+    lookupvar, nubdecl,
     ) where
 
 import Data.List(nub)
@@ -74,10 +74,4 @@ lookupvar x (d:ds) = lookupvar x ds
 -- remove duplicate occurences of a declaration from the list.
 nubdecl :: [Dec] -> [Dec]
 nubdecl = nub
-
-trueE :: Exp
-trueE = ConE (ConT "Bool") "True"
-
-falseE :: Exp
-falseE = ConE (ConT "Bool") "False"
 
