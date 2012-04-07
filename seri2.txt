@@ -3643,3 +3643,11 @@ Things I wish I could clean up somehow:
  - unit a primitive? UnitT a type constructor instead of built in?
  - general support for infix functions?
 
+Sat Apr  7 17:09:31 EDT 2012
+
+Okay, so I'll get to all those eventually. What I want to do now is get rid of
+the SMT branch.
+
+Let me first check on what work I did in the SMT branch that I want to pull
+over.
+
