@@ -12,6 +12,7 @@ import Language.Haskell.Meta.Parse
 
 import qualified Seri.IR as SIR
 import qualified Seri.Typed as S
+import qualified Seri.Arithmetic as SA
 
 import Seri.THUtils
 import Seri.Declarations
@@ -70,10 +71,10 @@ mkexp (InfixE (Just a) (VarE op) (Just b)) = do
     a' <- mkexp a
     b' <- mkexp b
     return $ case (nameBase op) of
-        "+" -> infixp 'S.addP a' b'
-        "-" -> infixp 'S.subP a' b'
-        "*" -> infixp 'S.mulP a' b'
-        "<" -> infixp 'S.ltP a' b'
+        "+" -> infixp 'SA.addP a' b'
+        "-" -> infixp 'SA.subP a' b'
+        "*" -> infixp 'SA.mulP a' b'
+        "<" -> infixp 'SA.ltP a' b'
         x -> error $ "TODO: infix " ++ show x
 
 mkexp (LamE [VarP nm] a) = do

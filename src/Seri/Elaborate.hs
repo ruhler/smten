@@ -40,14 +40,6 @@ elaborate r decls prg =
 coreR :: Rule
 coreR = Rule $ \decls gr e ->
    case e of
-      (AppE _ (AppE _ (PrimE _ "+") (IntegerE a)) (IntegerE b))
-        -> Just $ IntegerE (a+b)
-      (AppE _ (AppE _ (PrimE _ "-") (IntegerE a)) (IntegerE b))
-        -> Just $ IntegerE (a-b)
-      (AppE _ (AppE _ (PrimE _ "*") (IntegerE a)) (IntegerE b))
-        -> Just $ IntegerE (a*b)
-      (AppE _ (AppE _ (PrimE _ "<") (IntegerE a)) (IntegerE b))
-        -> Just $ if a < b then trueE else falseE
       (AppE _ (PrimE _ "fix") (LamE _ n b))
         -> Just $ reduce n e b
       (IfE _ p a b) | p == trueE -> Just a

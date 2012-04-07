@@ -11,7 +11,6 @@ module Seri.Typed
         integerE, ifE, caseE, conE, conE_typed, varE, varE_typed, lamE, appE,
         infixE, primitive, match, lamM,
         conP, appP,
-        addP, subP, mulP, ltP,
         valD,
     )
     where
@@ -89,18 +88,6 @@ withtype f = r where r = usetype r f
 
 primitive :: (SeriType a) => Name -> Typed Exp a
 primitive p = withtype $ \t -> Typed $ PrimE t p
-
-addP :: Typed Exp (Integer -> Integer -> Integer)
-addP = primitive "+"
-
-subP :: Typed Exp (Integer -> Integer -> Integer)
-subP = primitive "-"
-
-mulP :: Typed Exp (Integer -> Integer -> Integer)
-mulP = primitive "*"
-
-ltP :: Typed Exp (Integer -> Integer -> Bool)
-ltP = primitive "<"
 
 integerE :: Integer -> Typed Exp Integer
 integerE x = Typed $ IntegerE x

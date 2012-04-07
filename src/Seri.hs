@@ -6,6 +6,7 @@ module Seri (
     tests
     ) where
 
+import Seri.Arithmetic
 import Seri.Declarations
 import Seri.Elaborate
 import Seri.IR
@@ -18,8 +19,11 @@ import Test.HUnit
 
 -- Test Cases for Seri
 
+seriR :: Rule
+seriR = rules [coreR, arithR]
+
 run :: [Dec] -> Typed Exp a -> Exp
-run decls = elaborate coreR decls . typed
+run decls = elaborate seriR decls . typed
 
 [s|
     foo :: Integer
