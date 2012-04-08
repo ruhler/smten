@@ -31,10 +31,10 @@ run decls = elaborate seriR decls . typed
     fact6 = 6 * fact5
 
     rfact :: Integer -> Integer
-    rfact = \x -> if (x < 1) then 1 else x * rfact (x-1)
+    rfact x = if (x < 1) then 1 else x * rfact (x-1)
 
     id :: a -> a
-    id = \x -> x
+    id x = x
 |]
 
 data MaybeInteger = NoInteger | JustInteger Integer
@@ -43,7 +43,7 @@ decltype ''MaybeInteger
 
 [s|
     fromMaybeInteger :: Integer -> MaybeInteger -> Integer
-    fromMaybeInteger = \def -> \mi ->
+    fromMaybeInteger def = \mi ->
         case mi of
             JustInteger i -> i
             NoInteger -> def
@@ -53,7 +53,7 @@ decltype ''Maybe
 
 [s|
     fromMaybeBool :: Bool -> Maybe Bool -> Bool
-    fromMaybeBool = \def -> \mb ->
+    fromMaybeBool def = \mb ->
         case mb of
             Just b -> b
             Nothing -> def

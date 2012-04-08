@@ -131,7 +131,7 @@ varps p = error $ "TODO: varps " ++ show p
 
 mkdecls :: [Dec] -> [Dec]
 mkdecls [] = []
-mkdecls ((SigD nm ty):(ValD (VarP nm') (NormalB e) []):ds) = 
+mkdecls ((SigD nm ty):(ValD (VarP _) (NormalB e) []):ds) = 
   let (e', UserState _ free) = runState (mkexp e) initialUserState
       typedexp t = (AppT (AppT (ConT ''S.Typed) (ConT ''SIR.Exp)) t)
       ty' = case ty of
@@ -141,6 +141,34 @@ mkdecls ((SigD nm ty):(ValD (VarP nm') (NormalB e) []):ds) =
                 t -> typedexp t
       d = declval' (nameBase nm) ty' e' (map nameBase free)
   in d ++ (mkdecls ds)
+mkdecls (s@(SigD nm ty):f@(FunD _ clauses):ds) =
+  let
+      -- Each clause of the form: a b c ... = foo is turned into a case match
+      -- of the form: (a, b, c, ...) -> foo.
+      --
+      -- For this to work, all clauses must have the same number of argument
+      -- patterns. We can't yet handle the case where different clauses of the
+      -- same function take a different number of arguments.
+      Clause pats1 _ _ = head clauses
+      nargs = length pats1
+
+      mkmatch :: Clause -> Match
+      mkmatch (Clause pats _ _) | nargs /= length pats
+        = error $ "Not all clauses of the function " ++ show nm ++
+                  " have the same number of arguments. " ++
+                  "This is not yet supported"
+      mkmatch (Clause pats body decls) =
+         if nargs == 1
+            then Match (head pats) body decls
+            else Match (TupP pats) body decls
+
+      -- TODO: hopefully these argnames don't shadow any thing they shouldn't.
+      argnames = [mkName $ "_" ++ show i | i <- [1..nargs]]
+      casearg = if nargs == 1 then VarE (head argnames) else TupE (map VarE argnames)
+      body = LamE (map VarP argnames) $ CaseE casearg (map mkmatch clauses)
+      d = ValD (VarP nm) (NormalB body) []
+  in mkdecls (s:d:ds)
+mkdecls d = error $ "TODO: mkdecls " ++ show d
 
 s :: QuasiQuoter 
 s = QuasiQuoter qexp qpat qtype qdec

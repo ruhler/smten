@@ -3775,3 +3775,22 @@ case f of
 Anyway, I should always be able to write the haskell code I want to write. It
 should all translate pretty nicely.
 
+Sun Apr  8 16:32:25 EDT 2012
+
+First, let me allow function definitions.
+foo bar = sludge, as opposed to foo = \bar -> sludge.
+
+Sun Apr  8 16:35:39 EDT 2012
+
+The TH code generated is: FunD name clauses. I ought to be able to turn it
+into a case statement easy.
+
+And hey, that will simultaneously give me: function definitions, multiple
+clauses, and pattern matching of arguments.
+
+Sun Apr  8 17:08:37 EDT 2012
+
+Cool. It works. The only issue is, it depends on tuples for multiple
+arguments. So for multiple arguments to work, I'll need support for general
+tuples.
+
