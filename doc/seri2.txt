@@ -3502,13 +3502,13 @@ Anyway. Let me summarize the steps to the next high level goal.
 + Support polymorphic user defined data types.
 Test case: Maybe Integer instead of MaybeInteger.
 
-- Replace elaborate implementation with a list of reduction rules, so that
++ Replace elaborate implementation with a list of reduction rules, so that
   different reduction rules can be specified in different files.
 
-- Replace primitives with String names, so that different primitives can be
++ Replace primitives with String names, so that different primitives can be
   specified in different files.
 
-- Merge smt into master branch in a library like way.
++ Merge smt into master branch in a library like way.
 So, SMT code should be completely separate, but it should still work just
 swell like.
 
@@ -3710,4 +3710,17 @@ Worst case, I could give non-symbolic names for all the operators too.
 I fear this is going to be problematic, and I'll probably have to change it
 back, because it's not good to not be able to refer to functions that have
 been defined. Oh well. Let me deal with it then. At least it looks pretty.
+
+Sat Apr  7 18:51:05 EDT 2012
+
+Now what? The only thing left on the list from before is adding user defined
+data type declarations to the seri ir for backend code generation.
+
+Maybe I should try expressing Tibby? Or I could try starting the SMT path?
+
+Okay, so if I really want to do something cool, I make tibby work, and I
+implement software (via fiddler) generation and hardware (via bluespec)
+generation.
+
+Eh. All think about it.
 

@@ -1,0 +1,305 @@
+
+Sun Apr  8 09:19:09 EDT 2012
+
+Goal: understand how I can describe tibby programs in seri.
+
+Let's have a reminder of what tibby is.
+
+You have modules, each with latency sensitive interfaces. That is, an
+interface is some hierarchical grouping of FIFOs puts and gets.
+
+A module can instantiate submodules. And a module has a program.
+
+The program is described with a StmtFSM like language. You have ways to
+compose programs in sequence, and in parallel if they are completely
+disjoint. And perhaps we have a way of annotating for hardware synthesis when
+actions are implemented in the same hardware cycle. The primitive actions are
+getting from and putting to a port.
+
+The goal is to be able to describe systems which synthesize to high quality
+hardware and high quality software. Though perhaps not so general a software.
+
+Maybe it would be good to start with a simple example, and ask how I can
+express that.
+
+So, we have a module which computes the function x^4^. This is a functional,
+transformational module, so it won't capture all the kinds of things I want to
+test, but it should be a good first step.
+
+Interface Fourth a
+    request :: Put a
+    response :: Get a
+
+Module mkForth a = \i -> do
+    loop $ seq $ do
+        x <- request i
+        let x2 = x*x
+        let x4 = x2*x2
+        i response $ x4
+
+This would be the completely combinational one. Good for software, probably
+doesn't make sense in hardware.
+        
+Module mkForth a = \i -> do
+    x2 <- mkRegU
+    loop $ seq $ do
+        x <- request i
+        write x2 $ x*x
+        --------------
+        x2v <- read x2
+        i response $ x2v * x2v
+
+This would break the multiplies across multiple cycles, but it isn't
+pipelined.
+        
+
+Module mkForth a = \i -> do
+    x2 <- mkFIFO
+    loop $ par $ do
+        seq
+            x <- request i
+            put x2 $ x*x
+        seq
+            x2v <- get x2
+            i response $ x2v * x2v
+
+This is a potentially pipelined version.
+
+Module mkForth a = \i -> do
+    x2 <- mkFIFO
+    seq 
+        cycle
+            x <- request i
+            put x2 $ x*x
+        loop 
+            cycle
+                x2v <- get x2
+                i response $ x2v * x2v
+                x <- request i
+                put x2 $ x*x
+
+And here is the hardware pipelined version. Or something like that.
+
+Hmm... Maybe I need to spend more time thinking about how I want to express
+things.
+
+For instance, we don't want state to be instantiated in the middle of things
+for now (though you could imagine such things in the future).
+
+So what if we had the following monads.
+
+Module:
+   - instantiate submodules (binding their interfaces to names)
+   - you return a program to run (referencing those bound interfaces)
+
+Program:
+   - read and write ports
+   - bind is sequential connective.
+   - par - takes a list (not monad) of programs to run in parallel. We want a
+     list instead of a monad because it doesn't make sense to bind variables
+     across the statements (whereas it does for sequential composition).
+
+That should be fine for now. We have some sort of static restriction on par
+that the list cannot depend on dynamic data. So it must be statically
+elaboratable into a list that we can test for disjointness on.
+
+Cool. This sounds reasonable to me.
+    
+I'd love to get a simple version working with enough backend support to
+generate haskell and bluespec.
+
+Sun Apr  8 10:31:32 EDT 2012
+
+Some changes.
+
+data Module a = ... instance of Monad.
+data Program a = ... instance of Program.
+
+-- Instantiate a module
+make :: (Interface a, a') => (a' -> Module (Program ())) -> Module a'
+make = ...
+
+-- Execute a number of disjoint programs in parallel, waiting for them all to
+-- complete before completing.
+par :: [Program ()] -> Program ()
+par = ...
+
+-- And the supposed:
+cycle :: Program () -> Program ()
+cycle = ...
+
+Now, the pipelined version should look like:
+
+mkForth :: Forth' -> Module (Program ())
+mkForth a = \i -> do
+    x2 <- make mkFIFO
+    return $ do
+      cycle $ do
+        x <- request i
+        put x2 $ x*x
+      -----
+      loop .  cycle $ do
+          x2v <- get x2
+          i response $ x2v * x2v
+          -----
+          x <- request i
+          put x2 $ x*x
+
+See? Simple. That we are returning the program instead of making it part of
+the module monad lets us enforce that the module structure is declared
+statically.
+
+It may also make sense to introduce a kind of program action? That is, what if
+we want to make explicit where there are separation of variables? For
+instance, the dotted line above.
+
+If that's the case, then a program need not be a monad. But we can have an
+action monad, and say local variables are only available in the action monad.
+That would look something like:
+
+
+mkForth :: Forth' -> Module (Program ())
+mkForth a = \i -> do
+    x2 <- make mkFIFO
+    return $ seq [
+      cycle . action $ do
+        x <- request i
+        put x2 $ x*x,
+      loop . cycle . seq $ [
+          action $ do
+            x2v <- get x2
+            i response $ x2v * x2v,
+          action $ do
+            x <- request i
+            put x2 $ x*x
+      ]
+      ]
+
+So Program is no longer a Monad, but Action is.
+And we have an abstract interface to program:
+
+action :: Action () -> Program
+cycle :: Program -> Program
+loop :: Program -> Program
+seq :: [Program] -> Program
+par :: [Program] -> Program
+
+That may or may not be a good thing to be specifying explicitly.
+Unfortunately it's messy syntactically.
+
+Now action takes on the meaning that it happens all or nothing. In that sense
+it's like a bluespec action. The reason we want to enforce this is because
+then we know we don't leave any local variables stranded across actions.
+
+The problem is, the annoyance is, it feels like I'm writing using an abstract
+syntax tree. How hard would it be to make a special syntax for this? Perhaps
+using quasi quoters? Here's what I'm imagining (first attempt):
+
+----
+[p|
+  cycle
+    x <- request i
+    put x2 $ x*x .
+  loop
+    cycle
+      x2v <- get x2
+      i response $ x2v * x2v .
+      x <- request i
+      put x2 $ x*x .
+|]
+----
+
+So, here '.' terminates an action.
+And as long as we have a way to slice in haskell code, it should be reasonable
+to write in I hope.
+
+So! The first step would be: do the abstract syntax tree. I think it will be
+good to distinguish between actions and sequences of actions. Figure out how
+to make that work the way I want. Later on I can implement a quasi quoter for
+it to get a prettier syntax.
+
+It may be the case we want to put the whole module in a quasiquote, so we
+don't have nested stuff to worry about? err... worry about that later.
+
+Cool. Let me try expressing something in Tibby. That's the first step. The
+second step will be... probably want to generate fiddler code. I think that
+will be easier than elaborating directly. And that will show me the back end
+issues I have to deal with, which is good.
+
+Sun Apr  8 11:18:13 EDT 2012
+
+I'm going to try it. Wish me luck.
+
+Sun Apr  8 11:39:48 EDT 2012
+
+Well, straight away I can see some issues.
+
+- We need a list data type.
+- I'd like to do pattern matching in do bindings, so I can say
+      (sq_g, sq_p) <- form, for example
+- How do I test things at the top level?
+- would like to automate interface declaration
+- Maybe want type synonyms? Or can I do away with them statically?
+- support for record type constructors.
+- both SMT and Tibby want support for monads, so maybe we should add a Monad
+  extension? Otherwise the two won't get along so well I fear. Maybe I can put
+  that off until I actually want them to get along.
+- test cases really should go into different files. Have Seri.SMTTest and
+  Seri.TibbyTest.
+- nice to have support for function definitions as well as values.
+  meaning, I want to write: foo bar = blah, instead of foo = \bar -> blah.
+- need support for tuple types.
+
+Okay, so here's what I propose.
+
+I need to figure out how to test a tibby module. Maybe we provide a top level
+function: 
+  unittest :: Module (Put' (Terminating a)) -> [a]
+
+So my test case should put like, for instance, the fourths from 0 to 10, or
+some such.
+
+Ultimately for tibby we are going to want something like:
+
+Module a -> TH.Exp
+
+Which compiles a module. If we have that, then maybe we could inline
+everything for testing more easily using template haskell. But really I need
+to figure out how I want to use tibby.
+
+1. Figure out how to use tibby.
+2. Describe test case which uses that use proposal.
+3. Pull tests for SMT and Tibby out of their files into a FooTest thing. Do
+the same with Seri.
+4. Let compilation of the Tibby unit tests drive the features I need to add to
+Seri. Do one at a time. At the end, I'll have a beefed up seri, and a basic
+tibby.
+
+After that, it would be good to get the bluespec back end for tibby going.
+After that, I can play around with tibby and see if I've solved all the worlds
+problems.
+
+Sun Apr  8 14:32:59 EDT 2012
+
+For the top level tibby, we need a driver. We'll need a driver for running on
+the FPGA. We'll need a driver for running in software. That depends on how you
+want to communicate input and output. You could imagine all sorts of ways. To
+keep it simple, to start with something useful in both software and hardware,
+have a driver which takes a module of type Put' (Terminating a). Runs it until
+it gets all the outputs, and prints the outputs it gets as it gets them.
+
+So the test case for fiddler will be as follows.
+
+Write a mkFourthTest module which does as desired. That will be compiled to a
+haskell program. That is, an Exp which we will pretty print to a file. I guess
+we would like that file to have a main function with the top level driver.
+
+Then we compile that with ghc, run it, and return the string output.
+
+How hard would it be to run using template haskell? It would pollute the
+namespace, so I think that's a bad idea. Don't do that.
+
+Okay? Clear on the interface? Good. Let me write some code. Or rather, let me
+separate out the tests first. Then I can write code where it won't clutter
+stuff.
+

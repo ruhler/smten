@@ -5,18 +5,13 @@
 -- Seri.SMT
 -- 
 -- Extensions to Seri which allow you to express and perform SMT queries.
-module Seri.SMT (
-    tests
-    ) where
-
-import Test.HUnit
+module Seri.SMT where
 
 import Seri.Arithmetic
 import Seri.Declarations
 import Seri.Elaborate
 import Seri.IR
 import Seri.Typed
-import Seri.Quoter
 
 data Query a = Query
 decltype ''Query
@@ -43,29 +38,4 @@ declprim ">>=" [t| (SeriType a, SeriType b, SeriType1 m, Monad m) => Typed Exp (
 
 runQuery :: Rule -> [Dec] -> Typed Exp (Query a) -> IO (Typed Exp a)
 runQuery = error $ "TODO: runQuery"
-
-
-
-
--- Test cases for Seri.SMT
-
--- querytest expected decls query 
-querytest :: Exp -> [Dec] -> Typed Exp (Query a) -> Assertion
-querytest exp decls q = do
-    --r <- runQuery (rules [coreR, arithR]) decls q
-    --assertEqual "" exp (typed r)
-    return ()
-
-
-tests = "Seri.SMT" ~: [
-        "simple" ~: querytest (IntegerE 5) [] [s|
-            do  x <- free
-                assert (x < 6)
-                assert (x > 4)
-                qr <- query x
-                case qr of
-                    Satisfiable v -> return v
-                    _ -> return 0
-            |]
-        ]
 
