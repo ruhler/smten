@@ -14,7 +14,7 @@ declifc ''Forth
 
 [s| 
     mkForth :: Forth' -> Module (Program ())
-    mkForth = \ifc -> do
+    mkForth ifc = do
         (sq_g, sq_p) <- form
         return . loop $ seq [
             action $ do

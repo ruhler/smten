@@ -59,6 +59,15 @@ decltype ''Maybe
             Nothing -> def
 |]
 
+[s|
+    multclause :: Integer -> Integer
+    multclause 2 = 10
+    multclause 3 = 20
+    multclause 4 = 30   
+    multclause 5 = 40
+    multclause _ = 50
+|]
+
 tests = "Seri" ~: [
     "foo" ~: IntegerE 42 ~=? run [] [s|(\x -> x*x+3*x+2) 5|],
     "unit" ~: PrimE UnitT "unit" ~=? run _seriD_unit [s| unit |],
@@ -88,6 +97,7 @@ tests = "Seri" ~: [
             4 -> 30
             5 -> 40 
             _ -> 50
-        |]
+        |],
+    "multclause" ~: IntegerE 30 ~=? run _seriD_multclause [s| multclause 4 |]
     ]
 
