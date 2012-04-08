@@ -3731,7 +3731,7 @@ funny style.
 
 Things like:
 
-- Allow function definitions
++ Allow function definitions
 foo bar = sludge, as opposed to foo = \bar -> sludge.
 
 - Allow case matching of integers
@@ -3793,4 +3793,10 @@ Sun Apr  8 17:08:37 EDT 2012
 Cool. It works. The only issue is, it depends on tuples for multiple
 arguments. So for multiple arguments to work, I'll need support for general
 tuples.
+
+Next on the list: integer patterns.
+
+It should be straight forward.
+
+Yup. Works now.
 

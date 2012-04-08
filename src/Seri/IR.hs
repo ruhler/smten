@@ -32,6 +32,7 @@ data Exp = IntegerE Integer
 
 data Pat = ConP Name
          | VarP Name
+         | IntegerP Integer
          | AppP Pat Pat
          | WildP
      deriving (Eq, Show)
@@ -59,6 +60,7 @@ instance Ppr Exp where
 instance Ppr Pat where
     ppr (ConP nm) = text nm
     ppr (VarP nm) = text nm
+    ppr (IntegerP i) = integer i
     ppr (AppP a b) = ppr a <+> ppr b
     ppr WildP = text "_"
 

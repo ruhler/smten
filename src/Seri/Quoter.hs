@@ -115,6 +115,7 @@ mkpat (ConP n ps) =
         mkpat' e (p:ps) = mkpat' (apply 'S.appP [e, mkpat p]) ps
     in mkpat' (apply 'S.conP [string n]) ps
 mkpat (VarP n) = VarE $ mkvarpnm n
+mkpat (LitP i@(IntegerL _)) = apply 'S.integerP [LitE i]
 mkpat WildP = VarE 'S.wildP
 mkpat x = error $ "todo: mkpat " ++ show x
 
@@ -126,6 +127,7 @@ varps :: Pat -> [Name]
 varps (VarP nm) = [nm]
 varps (ConP _ ps) = concat (map varps ps)
 varps WildP = []
+varps (LitP _) = []
 varps p = error $ "TODO: varps " ++ show p
 
 

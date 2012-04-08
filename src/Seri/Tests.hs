@@ -80,6 +80,14 @@ tests = "Seri" ~: [
     "just Bool" ~: trueE ~=? run _seriD_fromMaybeBool
             [s| fromMaybeBool False (Just True) |],
     "no Bool" ~: falseE ~=? run _seriD_fromMaybeBool
-            [s| fromMaybeBool False Nothing |]
+            [s| fromMaybeBool False Nothing |],
+    "int pattern" ~: IntegerE 30 ~=? run [] [s|
+        case (1 + 3) of
+            2 -> 10
+            3 -> 20
+            4 -> 30
+            5 -> 40 
+            _ -> 50
+        |]
     ]
 

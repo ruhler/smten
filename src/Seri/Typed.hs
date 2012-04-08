@@ -10,7 +10,7 @@ module Seri.Typed
     
         integerE, ifE, caseE, conE, conE_typed, varE, varE_typed, lamE, appE,
         infixE, primitive, match, lamM,
-        conP, appP, wildP,
+        conP, appP, wildP, integerP,
         valD,
     )
     where
@@ -120,6 +120,9 @@ appP (Typed f) (Typed x) = Typed $ AppP f x
 
 wildP :: Typed Pat a
 wildP = Typed WildP
+
+integerP :: Integer -> Typed Pat Integer
+integerP i = Typed $ IntegerP i
 
 appE :: (SeriType b) => Typed Exp (a -> b) -> Typed Exp a -> Typed Exp b
 appE (Typed f) (Typed x)

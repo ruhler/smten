@@ -48,6 +48,9 @@ coreR = Rule $ \decls gr e ->
       (IfE t p a b) -> do
          p' <-  run gr decls gr p
          return $ IfE t p' a b
+      (CaseE t x ms) | (run gr decls gr x) /= Nothing -> do
+         x' <- run gr decls gr x
+         return $ CaseE t x' ms
       (CaseE t x ((Match p b):ms))
          -> case (match p x) of
                 Failed -> Just $ CaseE t x ms
@@ -77,6 +80,11 @@ match (ConP nm) (ConE _ n) | n == nm = Succeeded []
 match (ConP nm) (ConE _ n) = Failed
 match (ConP nm) _ = Unknown
 match (VarP nm) e = Succeeded [(nm, e)]
+match (IntegerP i) (IntegerE i') | i == i' = Succeeded []
+match (IntegerP i) (IntegerE _) = Failed
+match (IntegerP _) (LamE _ _ _) = Failed
+match (IntegerP _) (ConE _ _) = Failed
+match (IntegerP _) _ = Unknown
 match (AppP a b) (IntegerE _) = Failed
 match (AppP a b) (LamE _ _ _) = Failed
 match (AppP a b) (ConE _ _) = Failed
