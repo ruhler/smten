@@ -3724,3 +3724,54 @@ generation.
 
 Eh. All think about it.
 
+Sun Apr  8 15:04:14 EDT 2012
+
+I should allow all the canonical haskell stuff. Don't get used to writing in a
+funny style.
+
+Things like:
+
+- Allow function definitions
+foo bar = sludge, as opposed to foo = \bar -> sludge.
+
+- Allow case matching of integers
+case x of
+    0 -> blah
+    3 -> flub
+    _ -> sludge
+
+as opposed to
+    if x == 0 then blah else if x == 3 then flub else sludge
+
+- Allow multiple function clauses
+foo 0 = blah
+foo 3 = flub
+foo _ = sludge
+
+as opposed to
+
+foo x = case x of
+            0 -> blah
+            3 -> flub
+            _ -> sludge
+
+- allow patterns in lambdas
+\(Foo bar) -> blah bar
+
+as opposed to
+\x -> case x of
+          Foo bar -> blah 
+          _ -> ???
+
+- allow patterns in do bindings
+Foo bar <- x
+
+as opposed to
+
+f <- x
+case f of
+    Foo bar -> ...
+
+Anyway, I should always be able to write the haskell code I want to write. It
+should all translate pretty nicely.
+

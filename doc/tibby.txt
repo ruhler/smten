@@ -303,3 +303,24 @@ Okay? Clear on the interface? Good. Let me write some code. Or rather, let me
 separate out the tests first. Then I can write code where it won't clutter
 stuff.
 
+Sun Apr  8 14:55:30 EDT 2012
+
+Here's a question. I want to describe the test case. I personally would like
+to describe it using haskell for static elaboration. I want to have a program
+which does a sequence of puts and gets. For some reason I don't want to use a
+register to count.
+
+I guess really the test you want to do is, in parallel: do all puts in
+sequence, and do all gets in sequence, where the last get outputs as
+terminating.
+
+Sun Apr  8 15:14:13 EDT 2012
+
+Hey, it's easy! I can write my functions in [s| .. |], and it works no problem
+to describe exactly what I want to. Good.
+
+Sun Apr  8 15:25:21 EDT 2012
+
+Okay, I think I have enough now to start trying things out. Let me take a
+little break, and then I'll get to work. Plenty to work on now.
+

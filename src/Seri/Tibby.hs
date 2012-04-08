@@ -1,9 +1,7 @@
 
-module Seri.Tibby (
-    tests
-    ) where
+module Seri.Tibby where
 
-import Test.HUnit
+import qualified Language.Haskell.TH as TH
 
 
 data Module a = Module
@@ -71,4 +69,11 @@ declprim "make" [t| (SeriType a, SeriType b, Interface a b) => Typed Exp ((b -> 
 declprim "return" [t| (SeriType a, SeriType1 m, Monad m) => Typed Exp (a -> m a) |]
 declprim ">>" [t| (SeriType a, SeriType b, SeriType1 m, Monad m) => Typed Exp (m a -> m b -> m b) |]
 declprim ">>=" [t| (SeriType a, SeriType b, SeriType1 m, Monad m) => Typed Exp (m a -> (a -> m b) -> m b) |]
+
+data Terminating a = Terminating {
+    islast :: Bool,
+    value :: a
+}
+
+decltype ''Terminating
 
