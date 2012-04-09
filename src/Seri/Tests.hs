@@ -68,6 +68,11 @@ decltype ''Maybe
     multclause _ = 50
 |]
 
+[s|
+    tupleswap :: (a, b) -> (b, a)
+    tupleswap (x, y) = (y, x)
+|]
+
 tests = "Seri" ~: [
     "foo" ~: IntegerE 42 ~=? run [] [s|(\x -> x*x+3*x+2) 5|],
     "unit" ~: PrimE UnitT "unit" ~=? run _seriD_unit [s| unit |],
@@ -98,6 +103,8 @@ tests = "Seri" ~: [
             5 -> 40 
             _ -> 50
         |],
-    "multclause" ~: IntegerE 30 ~=? run _seriD_multclause [s| multclause 4 |]
+    "multclause" ~: IntegerE 30 ~=? run _seriD_multclause [s| multclause 4 |],
+    "tuples" ~: IntegerE 30 ~=? run (_seriD_tupleswap ++ _seriD_snd)
+        [s| snd (tupleswap (30, 40)) |]
     ]
 

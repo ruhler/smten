@@ -3809,3 +3809,60 @@ should get priority.
 - lists: type, expression, literal, pattern, comprehension
 - tuples
 
+Mon Apr  9 17:14:26 EDT 2012
+
+I want to focus on lists and tuples, because I know I need those for tibby.
+
+How to make it work?
+
+Well, the real question is if I want these to be special cases or not. They
+are special cases in TH.Exp. I think, though, there's no need for them to be
+special cases, so let me not have them be special cases.
+
+So, (a, b) is equivalent to Tuple2 a b.
+
+The user of the language needs not care about the type name Tuple2, because
+all that will be translated at the front end. The back end generation does
+care, but it's like an any other type, so it shouldn't need any special
+handling. I think that will make it much easier in the long run to get it to
+work on different platforms.
+
+And the same for list. There's nothing special about list. I just need a
+constructor, and I can call it _seriP_:. And an empty list... call it
+_seriP_[], if I may.
+
+The only issue is, I can't use decltype to declare the constructor types and
+matches and stuff. I'll have to do that manually.
+
+Or... just have a special case in decltype to do it for me? It's worth a try I
+suppose.
+
+For that matter, we could name Tuple2 constructor ()? No, because that
+conflicts.
+
+Fine. I'll just do the constructor stuff manually, as annoying as that is.
+
+First step: tuple 2.
+
+Mon Apr  9 17:38:41 EDT 2012
+
+It looks good. I define the Tuple2 constructor. I define the instance of
+SeriType2 for (,). I define in seri fst and snd functions.
+
+But elaboration isn't finishing. I'm getting:
+
+AppE (VarE "snd") (AppE (AppE (ConE "Tuple2") (IntegerE 40)) (IntegerE 30))
+
+Or...
+
+snd (Tuple2 40 30)
+
+Why don't we finish elaborating that?
+
+I expect the first argument to be looked up in the context.
+Is it not in decls? Let me list the declarations.
+
+Oh. I forgot to include _seriD_snd. That's rather annoying. Oh well.
+
+It works now. Cool. Simple. Nice. Clean. I like it.
+

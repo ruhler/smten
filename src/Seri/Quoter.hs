@@ -91,6 +91,13 @@ mkexp (CaseE e matches) = do
 
 mkexp (DoE stmts) = mkexp $ desugar stmts
 
+-- We turn a tuple (a, b, ...) of N elements into
+--  TupleN a b ...
+mkexp (TupE es)
+ = let n = length es
+       tupn = ConE (mkName $ "Tuple" ++ show n)
+   in mkexp (foldl AppE tupn es)
+
 mkexp x = error $ "TODO: mkexp " ++ show x
 
 mkmatch :: Match -> State UserState Exp
@@ -117,6 +124,10 @@ mkpat (ConP n ps) =
 mkpat (VarP n) = VarE $ mkvarpnm n
 mkpat (LitP i@(IntegerL _)) = apply 'S.integerP [LitE i]
 mkpat WildP = VarE 'S.wildP
+mkpat (TupP ps)
+ = let n = length ps
+       tupn = mkName $ "Tuple" ++ show n
+   in mkpat $ ConP tupn ps
 mkpat x = error $ "todo: mkpat " ++ show x
 
 mkvarpnm :: Name -> Name
@@ -128,6 +139,7 @@ varps (VarP nm) = [nm]
 varps (ConP _ ps) = concat (map varps ps)
 varps WildP = []
 varps (LitP _) = []
+varps (TupP ps) = concat (map varps ps)
 varps p = error $ "TODO: varps " ++ show p
 
 
