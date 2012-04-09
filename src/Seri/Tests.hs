@@ -73,6 +73,14 @@ decltype ''Maybe
     tupleswap (x, y) = (y, x)
 |]
 
+[s|
+    listswaptop :: [a] -> [a]
+    listswaptop (x:xs) = (head xs) : x : (tail xs)
+
+    listdifftop :: [Integer] -> Integer
+    listdifftop (x:y:_) = x - y
+|]
+
 tests = "Seri" ~: [
     "foo" ~: IntegerE 42 ~=? run [] [s|(\x -> x*x+3*x+2) 5|],
     "unit" ~: PrimE UnitT "unit" ~=? run _seriD_unit [s| unit |],
@@ -105,6 +113,8 @@ tests = "Seri" ~: [
         |],
     "multclause" ~: IntegerE 30 ~=? run _seriD_multclause [s| multclause 4 |],
     "tuples" ~: IntegerE 30 ~=? run (_seriD_tupleswap ++ _seriD_snd)
-        [s| snd (tupleswap (30, 40)) |]
+        [s| snd (tupleswap (30, 40)) |],
+    "lists" ~: IntegerE 20 ~=? run (_seriD_listswaptop ++ _seriD_listdifftop)
+        [s| listdifftop (listswaptop [10, 30, 50, 0]) |]
     ]
 

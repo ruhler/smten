@@ -37,9 +37,6 @@ unbindname nm = do
         then fail $ "unbindname '" ++ show nm ++ "' doesn't match expected '" ++ show n ++ "'"
         else put $ UserState names fn
 
-infixp :: Name -> Exp -> Exp -> Exp
-infixp nm a b = apply 'S.infixE [VarE nm, a, b]
-
 -- mkexp :: Exp (a) -> Exp (S.TypedExp a)
 --   Convert a haskell expression to its corresponding typed seri
 --   representation.
@@ -70,7 +67,12 @@ mkexp (AppE a b) = do
 mkexp (InfixE (Just a) (VarE op) (Just b)) = do
     a' <- mkexp a
     b' <- mkexp b
-    return $ infixp (name_P (nameBase op)) a' b'
+    return $ apply 'S.infixE [VarE (name_P (nameBase op)), a', b']
+
+mkexp (InfixE (Just a) (ConE op) (Just b)) = do
+    a' <- mkexp a
+    b' <- mkexp b
+    return $ apply 'S.infixE [VarE (name_P (nameBase op)), a', b']
 
 mkexp (LamE [VarP nm] a) = do
     bindname nm
@@ -97,6 +99,14 @@ mkexp (TupE es)
  = let n = length es
        tupn = ConE (mkName $ "Tuple" ++ show n)
    in mkexp (foldl AppE tupn es)
+
+-- We turn a list literal [a, b, ...] into its construction:
+--  a:b:...:[]
+mkexp (ListE es)
+ = let desugar :: [Exp] -> Exp
+       desugar [] = ConE ''[]
+       desugar (x:xs) = InfixE (Just x) (ConE $ mkName ":") (Just (desugar xs))
+   in mkexp $ desugar es
 
 mkexp x = error $ "TODO: mkexp " ++ show x
 
@@ -128,6 +138,7 @@ mkpat (TupP ps)
  = let n = length ps
        tupn = mkName $ "Tuple" ++ show n
    in mkpat $ ConP tupn ps
+mkpat (InfixP a nm b) = mkpat (ConP nm [a, b])
 mkpat x = error $ "todo: mkpat " ++ show x
 
 mkvarpnm :: Name -> Name
@@ -140,6 +151,7 @@ varps (ConP _ ps) = concat (map varps ps)
 varps WildP = []
 varps (LitP _) = []
 varps (TupP ps) = concat (map varps ps)
+varps (InfixP a n b) = varps a ++ varps b
 varps p = error $ "TODO: varps " ++ show p
 
 

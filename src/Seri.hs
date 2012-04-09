@@ -4,6 +4,7 @@ module Seri (
     module Seri.Declarations,
     module Seri.Elaborate,
     module Seri.IR,
+    module Seri.List,
     module Seri.Quoter,
     module Seri.Primitives,
     module Seri.Tuple,
@@ -14,6 +15,7 @@ import Seri.Arithmetic
 import Seri.Declarations
 import Seri.Elaborate
 import Seri.IR
+import Seri.List
 import Seri.Quoter
 import Seri.Primitives
 import Seri.Tuple

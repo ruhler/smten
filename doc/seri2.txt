@@ -3866,3 +3866,17 @@ Oh. I forgot to include _seriD_snd. That's rather annoying. Oh well.
 
 It works now. Cool. Simple. Nice. Clean. I like it.
 
+Mon Apr  9 17:46:31 EDT 2012
+
+So! What do you think? Will lists be as easy? I guess it's worth a try.
+
+Mon Apr  9 17:55:56 EDT 2012
+
+I need the following:
+_seriP for: ':', head, tail.
+
+Mon Apr  9 18:05:32 EDT 2012
+
+List works! I'm not sure if the type name should be [] or List. I'll just go
+with List for now, in an analogous kind of way to Tuple.
+
