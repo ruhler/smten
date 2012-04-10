@@ -9,6 +9,7 @@ module Seri.SMT where
 
 import Seri.Arithmetic
 import Seri.Declarations
+import Seri.Unit
 import Seri.Elaborate
 import Seri.IR
 import Seri.Typed

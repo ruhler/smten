@@ -72,9 +72,9 @@ decltype ''Maybe
     listdifftop (x:y:_) = x - y
 |]
 
+
 tests = "Seri" ~: [
     "foo" ~: IntegerE 42 ~=? run [] [s|(\x -> x*x+3*x+2) 5|],
-    "unit" ~: PrimE UnitT "unit" ~=? run _seriD_unit [s| unit |],
     "true" ~: trueE ~=? run _seriD_True [s| True |],
     "if" ~: IntegerE 23 ~=? run [] [s| if 6 < 4 then 42 else 23 |],
     "slice" ~: IntegerE 7 ~=? run [] [s| 3 + _s (integerE . toInteger $ length [4,1,5,56]) |],

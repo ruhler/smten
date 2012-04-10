@@ -12,7 +12,6 @@ type Name = String
 
 data Type = ConT Name
           | ArrowT
-          | UnitT
           | AppT Type Type
           | VarT Name
       deriving(Eq, Show)
@@ -45,7 +44,6 @@ instance Ppr Type where
     ppr ArrowT = text "->"
     ppr (AppT a b) = parens $ ppr a <+> ppr b
     ppr (VarT n) = text n
-    ppr UnitT = text "Unit"
 
 instance Ppr Exp where
     ppr (IntegerE i) = integer i

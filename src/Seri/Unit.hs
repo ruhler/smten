@@ -2,11 +2,14 @@
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE TemplateHaskell #-}
 
-module Seri.Primitives where
+module Seri.Unit where
 
 import Seri.IR
 import Seri.Typed
 import Seri.Declarations
 
-declprim "unit" [t| Typed Exp () |]
+declprim "()" [t| Typed Exp () |]
+instance SeriType () where
+    seritype _ = ConT "()"
+
 

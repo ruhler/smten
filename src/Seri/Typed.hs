@@ -26,9 +26,6 @@ data Typed x t = Typed {
 class SeriType a where
     seritype :: a -> Type
 
-instance SeriType () where
-    seritype _ = UnitT
-
 instance SeriType Integer where
     seritype _ = ConT "Integer"
 
