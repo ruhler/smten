@@ -3880,3 +3880,84 @@ Mon Apr  9 18:05:32 EDT 2012
 List works! I'm not sure if the type name should be [] or List. I'll just go
 with List for now, in an analogous kind of way to Tuple.
 
+Mon Apr  9 18:06:57 EDT 2012
+
+What now?
+
+I feel like it would be good to separate out the library code from the core
+code. That's something I could do.
+
+Anyway, now that I have lists, I feel like I ought to be able to compile
+Tibby.
+
+The test won't pass, because I haven't defined declifc though. Maybe I can
+steal that from when I defined it for my previous tibby attempt.
+
+Reading through, I think I need to support the following before I can make it
+work:
+
+- declifc
+- (a, b) <- blah 
+- '.',  '$' functions
+- Tuple3
+- [1..5]
+- ttest
+
+But otherwise, pretty close!
+
+I do think I should have a Seri/Lib/ directory.
+
+How would the thing be broken up?
+
+src/Seri/Declarations.hs
+src/Seri/Elaborate.hs
+src/Seri/IR.hs
+src/Seri/Ppr.hs
+src/Seri/Quoter.hs
+src/Seri/THUtils.hs
+src/Seri/Typed.hs
+src/Seri/Tests.hs
+src/Seri/Lib/Arithmetic.hs
+    -> src/Seri/Lib/Integer.hs
+src/Seri/Lib/Primitives.hs
+    -> src/Seri/Lib/Unit.hs
+       src/Seri/Lib/Bool.hs
+src/Seri/Lib/Prelude.hs
+src/Seri/Lib/List.hs
+src/Seri/Lib/Tuple.hs
+src/Seri/Lib/SMT/SMT.hs
+src/Seri/Lib/SMT/Tests.hs
+src/Seri/Lib/Tibby/Tibby.hs
+src/Seri/Lib/Tibby/Tests.hs
+
+So, we keep core files separate from all the libraries.
+You can import libraries just like you would in haskell.
+We give a dir to SMT, and a dir to Tibby, because I expect each of those will
+have its own specific collection of stuffs.
+
+There. Nice, simple, easy to understand, modular.
+
+I think the Seri core should be exported by Seri.hs at the top level. But that
+shouldn't include any of the library primitives.
+
+The libraries should import Seri. Then they will be collected and exported by
+Seri.Lib.Prelude as appropriate.
+
+Yes. I think this is good. This is what I should change next, the next time I
+have time to change things.
+
+Tue Apr 10 16:03:13 EDT 2012
+
+I had some more ideas, just to note down.
+
+- I can use (), (,), [], etc... instead of Unit, Tuple2 and List. I think it
+  will be better to be consistent with haskll. Before I was thinking tuple2
+  was represented with () and not (,), which was my motivation for using
+  names, but I was mistaken.
+
+- If I need to, and using these illegal names like _seriP_+ becomes an issue,
+  it should be pretty simple to add a case to name_X to recognize operators
+  and use a different prefix, maybe %%%%+ for those.
+
+So, first thing I'm going to do: change the names of those constructors and
+types and such.

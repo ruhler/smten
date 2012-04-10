@@ -9,12 +9,12 @@ import Seri.IR
 import Seri.Quoter
 import Seri.Typed
 
-declval "Tuple2"
+declval "(,)"
     [t| (SeriType a, SeriType b) => Typed Exp (a -> b -> (a, b)) |]
-    [e| conE "Tuple2" |] []
+    [e| conE "(,)" |] []
 
 instance SeriType2 (,) where
-    seritype2 _ = ConT "Tuple2"
+    seritype2 _ = ConT "(,)"
 
 [s| 
     fst :: (a, b) -> a

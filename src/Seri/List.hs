@@ -19,7 +19,7 @@ declval "[]"
     [e| conE "[]" |] []
 
 instance SeriType1 [] where
-    seritype1 _ = ConT "List"
+    seritype1 _ = ConT "[]"
 
 [s| 
     head :: [a] -> a

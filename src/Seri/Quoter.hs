@@ -94,10 +94,10 @@ mkexp (CaseE e matches) = do
 mkexp (DoE stmts) = mkexp $ desugar stmts
 
 -- We turn a tuple (a, b, ...) of N elements into
---  TupleN a b ...
+--  (,, ...) a b ...
 mkexp (TupE es)
  = let n = length es
-       tupn = ConE (mkName $ "Tuple" ++ show n)
+       tupn = ConE (mkName $ "(" ++ replicate (n-1) ',' ++ ")")
    in mkexp (foldl AppE tupn es)
 
 -- We turn a list literal [a, b, ...] into its construction:
@@ -136,7 +136,7 @@ mkpat (LitP i@(IntegerL _)) = apply 'S.integerP [LitE i]
 mkpat WildP = VarE 'S.wildP
 mkpat (TupP ps)
  = let n = length ps
-       tupn = mkName $ "Tuple" ++ show n
+       tupn = mkName $ "(" ++ replicate (n-1) ',' ++ ")"
    in mkpat $ ConP tupn ps
 mkpat (InfixP a nm b) = mkpat (ConP nm [a, b])
 mkpat x = error $ "todo: mkpat " ++ show x
