@@ -7,8 +7,8 @@
 -- Extensions to Seri which allow you to express and perform SMT queries.
 module Seri.SMT where
 
-import Seri.Arithmetic
 import Seri.Declarations
+import Seri.Integer
 import Seri.Unit
 import Seri.Elaborate
 import Seri.IR

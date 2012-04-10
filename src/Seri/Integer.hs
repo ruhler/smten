@@ -1,13 +1,16 @@
 
 {-# LANGUAGE TemplateHaskell #-}
 
-module Seri.Arithmetic where
+module Seri.Integer where
 
 import Seri.Bool
 import Seri.Declarations
 import Seri.Elaborate
 import Seri.IR
 import Seri.Typed
+
+instance SeriType Integer where
+    seritype _ = ConT "Integer"
 
 declprim "+" [t| Typed Exp (Integer -> Integer -> Integer) |]
 declprim "-" [t| Typed Exp (Integer -> Integer -> Integer) |]

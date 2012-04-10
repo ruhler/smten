@@ -12,7 +12,6 @@ import Language.Haskell.Meta.Parse
 
 import qualified Seri.IR as SIR
 import qualified Seri.Typed as S
-import qualified Seri.Arithmetic as SA
 
 import Seri.THUtils
 import Seri.Declarations
