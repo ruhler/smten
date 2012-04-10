@@ -3,7 +3,7 @@
 
 module Seri.Arithmetic where
 
-import Seri.Primitives(trueE, falseE)
+import Seri.Bool
 import Seri.Declarations
 import Seri.Elaborate
 import Seri.IR

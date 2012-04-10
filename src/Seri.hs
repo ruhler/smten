@@ -1,6 +1,7 @@
 
 module Seri (
     module Seri.Arithmetic,
+    module Seri.Bool,
     module Seri.Declarations,
     module Seri.Elaborate,
     module Seri.IR,
@@ -12,6 +13,7 @@ module Seri (
     ) where
 
 import Seri.Arithmetic
+import Seri.Bool
 import Seri.Declarations
 import Seri.Elaborate
 import Seri.IR

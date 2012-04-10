@@ -29,9 +29,6 @@ class SeriType a where
 instance SeriType () where
     seritype _ = UnitT
 
-instance SeriType Bool where
-    seritype _ = ConT "Bool"
-
 instance SeriType Integer where
     seritype _ = ConT "Integer"
 
