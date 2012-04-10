@@ -3899,7 +3899,7 @@ work:
 - declifc
 - (a, b) <- blah 
 - '.',  '$' functions
-- Tuple3
++ Tuple3
 - [1..5]
 - ttest
 
@@ -4000,4 +4000,40 @@ Should be simple.
 Tue Apr 10 17:18:26 EDT 2012
 
 Okay, I did that, and tuple3.
+
+Next... '.' and '$'? Or patterns in lambdas?
+
+I think both will be pretty easy. I hope.
+
+Let me do '.' and '$' first.
+
+how to test... uh... Well, '$' is easy to test, right?
+Erg. I'd rather have these tested when I try to use them, and get the test
+from that naturally.
+
+So, let's do patterns first? Or am I far enough along, I should just try
+running the Tibby test and see what issues that brings up?
+
+Tue Apr 10 17:35:18 EDT 2012
+
+Issue: If we try to use () in a type signature, we get the error:
+  Data constructor `()' used as a type.
+
+Why is that? This would be an issue with the type passed to declval, right?
+Somehow we are doing... ConE instead of ConT? That makes no sense.
+
+Maybe some special case having to do with the unit type?
+
+I don't know. I'll come back and look at this later I guess, because I'm not
+feeling in the mood just now.
+
+What I should do is simplify the example to something boring:
+    unit :: ()
+    unit = ()
+
+Then, print out the expression I get with that parsed, and see what type it
+uses for unit. I would think it uses ConT "()", right? Maybe what I can do is
+detect that, and replace all occurrence of ConT "()" with ConT ''()?
+
+I dunno. Something like that.
 

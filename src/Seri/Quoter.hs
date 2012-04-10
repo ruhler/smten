@@ -144,6 +144,8 @@ mkpat (TupP ps)
        tupn = mkName $ "(" ++ replicate (n-1) ',' ++ ")"
    in mkpat $ ConP tupn ps
 mkpat (InfixP a nm b) = mkpat (ConP nm [a, b])
+mkpat (ListP []) = mkpat $ ConP (mkName "[]") []
+mkpat (ListP (x:xs)) = mkpat $ ConP (mkName ":") [x, ListP xs]
 mkpat x = error $ "todo: mkpat " ++ show x
 
 mkvarpnm :: Name -> Name
@@ -157,6 +159,7 @@ varps WildP = []
 varps (LitP _) = []
 varps (TupP ps) = concat (map varps ps)
 varps (InfixP a n b) = varps a ++ varps b
+varps (ListP ps) = concat (map varps ps)
 varps p = error $ "TODO: varps " ++ show p
 
 

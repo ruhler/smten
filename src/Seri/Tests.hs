@@ -81,6 +81,12 @@ decltype ''Maybe
     sum3 a b c = a + b + c
 |]
 
+--[s|
+--    unary2int :: [()] -> Integer
+--    unary2int [] = 0
+--    unary2int (x:xs) = 1 + unary2int xs
+-- |]
+
 
 tests = "Seri" ~: [
     "foo" ~: IntegerE 42 ~=? run [] [s|(\x -> x*x+3*x+2) 5|],
@@ -112,5 +118,6 @@ tests = "Seri" ~: [
         [s| listdifftop (listswaptop [10, 30, 50, 0]) |],
     "2 arg func" ~: IntegerE 12 ~=? run _seriD_sum2 [s| sum2 5 7 |],
     "3 arg func" ~: IntegerE 20 ~=? run _seriD_sum3 [s| sum3 5 7 8 |]
+--    "unit type" ~: IntegerE 3 ~=? run _seriD_unary2int [s| unary2int [(), (), ()] |]
     ]
 

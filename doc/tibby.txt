@@ -324,3 +324,9 @@ Sun Apr  8 15:25:21 EDT 2012
 Okay, I think I have enough now to start trying things out. Let me take a
 little break, and then I'll get to work. Plenty to work on now.
 
+Tue Apr 10 17:27:52 EDT 2012
+
+I'm getting this error: Data constructor '()' used as a type.
+In the type signature for '_seriP_action'. Can I not use the unit type in
+signatures? I should try that and see.
+

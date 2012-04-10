@@ -4,7 +4,7 @@ module Seri.Tibby.Tests (tests) where
 import Test.HUnit
 
 import Seri
-import Seri.Tibby
+import Seri.Tibby.Tibby
 
 data Forth = Forth {
     request :: Put Integer

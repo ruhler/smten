@@ -1,8 +1,14 @@
 
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE QuasiQuotes #-}
+{-# LANGUAGE TemplateHaskell #-}
+
 module Seri.Tibby.Tibby where
 
 import qualified Language.Haskell.TH as TH
 
+import Seri
 
 data Module a = Module
 decltype ''Module
@@ -21,6 +27,7 @@ instance (Interface1 a b) => (Interface (a c) (b c)) where
     form = form1
 
 data Action a = Action
+    deriving(Show, Eq)
 decltype ''Action
 
 instance Monad Action where
@@ -52,6 +59,7 @@ decltype ''Program
 data Put a = Put {
     put :: a -> Action ()
 }
+decltype ''Put
 
 data Put' a = Put' {
     put' :: Action a
