@@ -41,8 +41,6 @@ elaborate r decls prg =
 coreR :: Rule
 coreR = Rule $ \decls gr e ->
    case e of
-      (AppE _ (PrimE _ "fix") (LamE _ n b))
-        -> Just $ reduce n e b
       (IfE _ p a b) | p == trueE -> Just a
       (IfE _ p a b) | p == falseE -> Just b
       (IfE t p a b) -> do

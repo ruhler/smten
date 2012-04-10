@@ -9,7 +9,6 @@ import Seri.Typed
 import Seri.Declarations
 
 declprim "unit" [t| Typed Exp () |]
-declprim "fix" [t| (SeriType a) => Typed Exp ((a -> a) -> a) |]
 
 trueE :: Exp
 trueE = ConE (ConT "Bool") "True"

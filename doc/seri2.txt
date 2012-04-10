@@ -3961,3 +3961,17 @@ I had some more ideas, just to note down.
 
 So, first thing I'm going to do: change the names of those constructors and
 types and such.
+
+Tue Apr 10 16:46:06 EDT 2012
+
+I changed the name for list and tuple. I'd like to change unit now.
+
+One concern that comes up is, what if I need to refer to the context
+_seriD_()? I can't do it, because that's not lexically valid.
+
+Maybe what I should do is, instead of having a seri expression quote generate
+a plain expression, have it generate both the expression and the context
+needed for the expression. Wouldn't that be better?
+
+Something to think about.
+
