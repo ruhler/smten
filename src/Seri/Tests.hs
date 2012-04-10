@@ -73,6 +73,14 @@ decltype ''Maybe
     listdifftop (x:y:_) = x - y
 |]
 
+[s|
+    sum2 :: Integer -> Integer -> Integer
+    sum2 a b = a + b
+
+    sum3 :: Integer -> Integer -> Integer -> Integer
+    sum3 a b c = a + b + c
+|]
+
 
 tests = "Seri" ~: [
     "foo" ~: IntegerE 42 ~=? run [] [s|(\x -> x*x+3*x+2) 5|],
@@ -101,6 +109,8 @@ tests = "Seri" ~: [
     "tuples" ~: IntegerE 30 ~=? run (_seriD_tupleswap ++ _seriD_snd)
         [s| snd (tupleswap (30, 40)) |],
     "lists" ~: IntegerE 20 ~=? run (_seriD_listswaptop ++ _seriD_listdifftop)
-        [s| listdifftop (listswaptop [10, 30, 50, 0]) |]
+        [s| listdifftop (listswaptop [10, 30, 50, 0]) |],
+    "2 arg func" ~: IntegerE 12 ~=? run _seriD_sum2 [s| sum2 5 7 |],
+    "3 arg func" ~: IntegerE 20 ~=? run _seriD_sum3 [s| sum3 5 7 8 |]
     ]
 

@@ -5,7 +5,8 @@
 
 module Seri.Typed 
     (
-        Typed(..), SeriType(..), SeriType1(..), SeriType2(..),
+        Typed(..),
+        SeriType(..), SeriType1(..), SeriType2(..), SeriType3(..),
         VarT_a(..), VarT_b(..), VarT_c(..), VarT_d(..), VarT_m(..),
     
         integerE, ifE, caseE, conE, conE_typed, varE, varE_typed, lamE, appE,
@@ -46,6 +47,15 @@ instance (SeriType2 m, SeriType a) => SeriType1 (m a) where
         let ta :: m a b -> a
             ta _ = undefined
         in AppT (seritype2 ma) (seritype (ta ma))
+
+class SeriType3 m where
+    seritype3 :: m a b c -> Type
+    
+instance (SeriType3 m, SeriType a) => SeriType2 (m a) where
+    seritype2 ma = 
+        let ta :: m a b c -> a
+            ta _ = undefined
+        in AppT (seritype3 ma) (seritype (ta ma))
 
 -- Dummy haskell types corresponding to variable types in seri.
 -- Lets us express polymorphic seri expressions with a concrete haskell type.

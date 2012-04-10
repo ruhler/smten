@@ -79,6 +79,12 @@ mkexp (LamE [VarP nm] a) = do
     unbindname nm
     return $ apply 'S.lamE [string nm, LamE [VarP nm] a']
 
+-- We convert lambda expressions with multiple arguments, such as
+--  \a b -> blah
+-- To nested lambda expressions of single arguments:
+--  \a -> (\b -> blah)
+mkexp (LamE (x:xs@(_:_)) a) = mkexp $ LamE [x] (LamE xs a)
+
 mkexp (CondE p a b) = do
     p' <- mkexp p
     a' <- mkexp a

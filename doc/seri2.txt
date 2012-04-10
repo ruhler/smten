@@ -3975,3 +3975,29 @@ needed for the expression. Wouldn't that be better?
 
 Something to think about.
 
+Tue Apr 10 17:06:54 EDT 2012
+
+Okay! So I reorganize the code as desired. I ended up not putting Tibby and
+SMT under Lib, but rather in their own directories. I'm not sure why.
+
+What next?
+
+How about some grunt work, working towards a working tibby. Easiest to tackle:
+three argument functions (3 element tuples).
+
+Tue Apr 10 17:11:43 EDT 2012
+
+Well, apparently I can't even do two argument functions yet, so let's figure
+those out.
+
+Specifically the issue is it gets translated into a multi argument lambda.
+So, something of the form: \a b -> ...
+
+What I want to do is turn this into:
+    \a -> \b -> blah.
+Should be simple.
+
+Tue Apr 10 17:18:26 EDT 2012
+
+Okay, I did that, and tuple3.
+

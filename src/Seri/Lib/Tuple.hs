@@ -21,3 +21,10 @@ instance SeriType2 (,) where
     snd (_, y) = y
 |]
 
+declval "(,,)"
+    [t| (SeriType a, SeriType b, SeriType c)
+            => Typed Exp (a -> b -> c -> (a, b, c)) |]
+    [e| conE "(,,)" |] []
+
+instance SeriType3 (,,) where
+    seritype3 _ = ConT "(,,)"
