@@ -6,7 +6,7 @@ module Seri.Elaborate (
 import Seri.IR
 import Seri.Typed(seritype)
 import Seri.Ppr
-import Seri.Bool
+import Seri.Lib.Bool
 
 -- A reduction rule. Given a set of global declarations, a global reduction
 -- rule, and an expression, reduce the expression in some way. Returns Nothing

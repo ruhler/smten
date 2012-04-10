@@ -1,13 +1,10 @@
 
 {-# LANGUAGE TemplateHaskell #-}
 
-module Seri.Integer where
+module Seri.Lib.Integer where
 
-import Seri.Bool
-import Seri.Declarations
-import Seri.Elaborate
-import Seri.IR
-import Seri.Typed
+import Seri
+import Seri.Lib.Bool
 
 instance SeriType Integer where
     seritype _ = ConT "Integer"

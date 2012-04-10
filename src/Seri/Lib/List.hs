@@ -3,12 +3,9 @@
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE TemplateHaskell #-}
 
-module Seri.List where
+module Seri.Lib.List where
 
-import Seri.Declarations
-import Seri.IR
-import Seri.Quoter
-import Seri.Typed
+import Seri
 
 declval ":"
     [t| (SeriType a) => Typed Exp (a -> [a] -> [a]) |]

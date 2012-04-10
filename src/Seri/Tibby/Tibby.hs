@@ -1,5 +1,5 @@
 
-module Seri.Tibby where
+module Seri.Tibby.Tibby where
 
 import qualified Language.Haskell.TH as TH
 

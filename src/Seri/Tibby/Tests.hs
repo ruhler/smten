@@ -1,5 +1,5 @@
 
-module Seri.TibbyTests (tests) where
+module Seri.Tibby.Tests (tests) where
 
 import Test.HUnit
 

@@ -1,12 +1,13 @@
 
 {-# LANGUAGE QuasiQuotes #-}
 
-module Seri.SMTTests (tests) where
+module Seri.SMT.Tests (tests) where
 
 import Test.HUnit
 
 import Seri
-import Seri.SMT
+import Seri.Lib.Prelude
+import Seri.SMT.SMT
 
 -- querytest expected decls query 
 querytest :: Exp -> [Dec] -> Typed Exp (Query a) -> Assertion

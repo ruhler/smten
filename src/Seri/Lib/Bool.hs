@@ -2,7 +2,7 @@
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE TemplateHaskell #-}
 
-module Seri.Bool where
+module Seri.Lib.Bool where
 
 import Seri.IR
 import Seri.Typed

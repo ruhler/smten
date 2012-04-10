@@ -7,6 +7,7 @@ module Seri.Tests (
     ) where
 
 import Seri
+import Seri.Lib.Prelude
 
 import Test.HUnit
 

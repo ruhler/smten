@@ -2,11 +2,9 @@
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE TemplateHaskell #-}
 
-module Seri.Unit where
+module Seri.Lib.Unit where
 
-import Seri.IR
-import Seri.Typed
-import Seri.Declarations
+import Seri
 
 declprim "()" [t| Typed Exp () |]
 instance SeriType () where

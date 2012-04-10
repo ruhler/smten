@@ -2,12 +2,9 @@
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE TemplateHaskell #-}
 
-module Seri.Tuple where
+module Seri.Lib.Tuple where
 
-import Seri.Declarations
-import Seri.IR
-import Seri.Quoter
-import Seri.Typed
+import Seri
 
 declval "(,)"
     [t| (SeriType a, SeriType b) => Typed Exp (a -> b -> (a, b)) |]

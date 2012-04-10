@@ -3,7 +3,7 @@ import Test.HUnit
 import System.Exit
 
 import qualified Seri.Tests
-import qualified Seri.SMTTests
+import qualified Seri.SMT.Tests
 
 -- Run tests, exiting failure if any failed, exiting success if all succeeded.
 runtests :: Test -> IO ()
@@ -16,7 +16,7 @@ runtests t = do
 
 tests = "Tests" ~: [
     Seri.Tests.tests,
-    Seri.SMTTests.tests
+    Seri.SMT.Tests.tests
     ]
 
 main :: IO ()
