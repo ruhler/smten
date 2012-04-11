@@ -64,7 +64,8 @@ declval' n t e free =
 
       sig_D = SigD (name_D n) (AppT ListT (ConT ''SIR.Dec))
       impl_D = FunD (name_D n) [Clause [] (NormalB nubbed) []]
-    in [sig_P, impl_P, sig_C, impl_C, sig_D, impl_D]
+      decls = [sig_P, impl_P, sig_C, impl_C, sig_D, impl_D]
+    in decls
 
 -- decltype name
 -- Given the name of a haskell type, make a seri type declaration for it.

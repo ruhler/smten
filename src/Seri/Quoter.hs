@@ -174,6 +174,7 @@ mkdecls ((SigD nm ty):(ValD (VarP _) (NormalB e) []):ds) =
                     in ForallT vns ctx (typedexp t)
                 t -> typedexp t
       d = declval' (nameBase nm) ty' e' (map nameBase free)
+      
   in d ++ (mkdecls ds)
 mkdecls (s@(SigD nm ty):f@(FunD _ clauses):ds) =
   let
@@ -220,6 +221,6 @@ qtype = error $ "Seri type quasi-quote not supported"
 
 qdec :: String -> Q [Dec]
 qdec s = case (parseDecs s) of
-            Right decls -> return $ mkdecls decls
+            Right decls -> return $ map fixUnit (mkdecls decls)
             Left err -> fail err
 

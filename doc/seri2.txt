@@ -4037,3 +4037,89 @@ detect that, and replace all occurrence of ConT "()" with ConT ''()?
 
 I dunno. Something like that.
 
+Wed Apr 11 17:26:17 EDT 2012
+
+Input type to declval is: ConT GHC.Unit.()
+In output we have: ConT GHC.Unit.()
+
+WORKS: Input Type: AppT (AppT (ConT Seri.Typed.Typed) (ConT Seri.IR.Exp)) (ConT GHC.Unit.())
+FAILS: Input Type: AppT (AppT (ConT Seri.Typed.Typed) (ConT Seri.IR.Exp)) (ConT GHC.Unit.())
+WORKS: Output: [SigD _seriP_unit (AppT (AppT (ConT Seri.Typed.Typed) (ConT Seri.IR.Exp)) (ConT GHC.Unit.())),FunD _seriP_unit [Clause [] (NormalB (AppE (VarE Seri.Typed.conE) (LitE (StringL "()")))) []],                              SigD _seriC_unit (AppT (AppT (ConT Seri.Typed.Typed) (ConT Seri.IR.Exp)) (ConT GHC.Unit.())),FunD _seriC_unit [Clause [] (NormalB (VarE _seriP_unit)) []],SigD _seriD_unit (AppT ListT (ConT Seri.IR.Dec)),FunD _seriD_unit [Clause [] (NormalB (AppE (VarE Seri.IR.nubdecl) (AppE (VarE GHC.List.concat) (ListE [ListE [AppE (AppE (VarE Seri.Typed.valD) (LitE (StringL "unit"))) (VarE _seriC_unit)]])))) []]]
+FAILS: Output: [SigD _seriP_unit (AppT (AppT (ConT Seri.Typed.Typed) (ConT Seri.IR.Exp)) (ConT GHC.Unit.())),FunD _seriP_unit [Clause [] (NormalB (AppE (AppE (VarE Seri.Typed.conE_typed) (VarE _seriP_())) (LitE (StringL "()")))) []],SigD _seriC_unit (AppT (AppT (ConT Seri.Typed.Typed) (ConT Seri.IR.Exp)) (ConT GHC.Unit.())),FunD _seriC_unit [Clause [] (NormalB (VarE _seriP_unit)) []],SigD _seriD_unit (AppT ListT (ConT Seri.IR.Dec)),FunD _seriD_unit [Clause [] (NormalB (AppE (VarE Seri.IR.nubdecl) (AppE (VarE GHC.List.concat) (ListE [ListE [AppE (AppE (VarE Seri.Typed.valD) (LitE (StringL "unit"))) (VarE _seriC_unit)]])))) []]]
+
+Aha! There is a difference.
+
+The clause for the working one is:
+  conE "()"
+
+The clause for the failing one is:
+  conE_typed _seriP_() "()"
+
+But the error says something different.
+
+Hmm... what's the difference? Could it be a bug in ghc?
+That is, one is going into a template haskell thing, the other a quasiquoter.
+
+Well, I should be able to test that, right? Try splicing in a () with
+quasiquotes, then again with template haskell. In a very simple test case. See
+if it's a problem there. If so, I can report it somewhere.
+
+Wed Apr 11 17:52:03 EDT 2012
+
+I've verified it's not specific to anything I'm doing. It works in template
+haskell, it doesn't in quotes. So this is a quoter bug.
+
+I have a simple test case. I should try it on the latest version of the
+compiler, verify the same problem occurs. If not, then I should update to the
+latest version of the compiler. If so, I should report the bug.
+
+Sounds like a plan. So, for now... is there a workaround? Perhaps using type
+synonyms? Like if I make a synonym: Unit for (), then refer to Unit, it should
+be obvious, right? Let me try that.
+
+Wed Apr 11 17:59:11 EDT 2012
+
+Yes. That's a workaround. In every type I see, replace () with Unit, for a
+type synonym Unit. Terribly annoying, but it will work, and I want to be able
+to use Units. I'll mark it as a bug in haskell, and still check on ghc 7.4 and
+submit a bug report. Otherwise, this should suffice.
+
+Wed Apr 11 18:01:56 EDT 2012
+
+Good news! I can replace GHC.Unit.() with "()" and that should fix it. That
+will be much easier.
+
+I'll make it a TH util.
+
+Wed Apr 11 18:09:56 EDT 2012
+
+Cool. That wasn't too bad to fix.
+
+But now we run into other issues.
+
+- You can have unused pattern variables. It's a little annoying, because you
+  get a funny error about ambiguous types. It might be nice to fix that.
+
+- My unary thing isn't elaborating as expected.
+
+We have:
+
+CaseE (AppE (AppE (ConE ":") (ConE  "()")) (AppE  (AppE  (ConE  ":") (ConE  "()")) (AppE  (AppE  (ConE  ":") (ConE  "()")) (ConE  "[]"))))
+[
+   Match (ConP "[]") (IntegerE 0),
+   Match (AppP (AppP (ConP ":") WildP) (VarP "xs")) (AppE  (AppE  (PrimE  "+") (IntegerE 1)) (AppE  (VarE  "unary2int") (VarE  "xs")))
+]
+
+Oh... I think I know. We don't ever fail in the first case for fear we could
+maybe elaborate the argument to the case more. Hum...
+
+The question is... is the expression fully reduced.
+That is, I should know that ConP fails to match AppE AppE ConE, which is fully
+reduced. That is... I want to say AppE AppE ConE is fully reduced.
+
+Well. Perhaps that's why haskell uses ConP Name [Pat] instead of this AppP
+thing.
+
+I dunno. I'm not sure what to do about this. Let me just take some time to
+think about it.
+

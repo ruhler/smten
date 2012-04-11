@@ -1,6 +1,6 @@
 
 module Seri.THUtils (
-    apply, arrowts, string, appts, desugar,
+    apply, arrowts, string, appts, desugar, fixUnit,
     ) where 
 
 import Data.List(nub)
@@ -40,4 +40,19 @@ desugar ((NoBindS e):stmts)
 desugar ((BindS p e):stmts)
     = AppE (AppE (VarE $ mkName ">>=") e) (LamE [p] (desugar stmts))
 
+
+-- There seems to be a bug with quasi quoters where the type "GHC.Unit.()" is
+-- interpreted as a data constructor instead of a type. To allow use of the
+-- unit type in quasi quotes, we replace occurrences of "GHC.Unit.()" with
+-- just "()".
+fixUnit :: Dec -> Dec
+fixUnit (SigD n t) = SigD n (fixUnitT t)
+fixUnit d = d
+
+fixUnitT :: Type -> Type
+fixUnitT (ForallT vs ctx t) = ForallT vs ctx (fixUnitT t)
+fixUnitT (ConT n) | nameBase n == "()" = ConT (mkName "()")
+fixUnitT (AppT a b) = AppT (fixUnitT a) (fixUnitT b)
+fixUnitT (SigT t k) = SigT (fixUnitT t) k
+fixUnitT t = t
 
