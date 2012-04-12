@@ -64,6 +64,7 @@ decltype ''Put
 data Put' a = Put' {
     put' :: Action a
 }
+decltype ''Put'
 
 [s|
     get :: Put' a -> Action a
@@ -73,7 +74,7 @@ data Put' a = Put' {
 instance Interface1 Put Put' where
     form1 = error $ "Put, Put' form1"
 
-declprim "make" [t| (SeriType a, SeriType b, Interface a b) => Typed Exp ((b -> Module (Program ())) -> Module a) |] 
+declprim "make" [t| (SeriType a, SeriType b, Interface a b) => Typed Exp ((b -> Module Program) -> Module a) |] 
 declprim "return" [t| (SeriType a, SeriType1 m, Monad m) => Typed Exp (a -> m a) |]
 declprim ">>" [t| (SeriType a, SeriType b, SeriType1 m, Monad m) => Typed Exp (m a -> m b -> m b) |]
 declprim ">>=" [t| (SeriType a, SeriType b, SeriType1 m, Monad m) => Typed Exp (m a -> (a -> m b) -> m b) |]

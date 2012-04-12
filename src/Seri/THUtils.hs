@@ -1,6 +1,6 @@
 
 module Seri.THUtils (
-    apply, arrowts, string, appts, desugar, fixUnit,
+    apply, arrowts, string, integer, appts, desugar, fixUnit,
     ) where 
 
 import Data.List(nub)
@@ -24,6 +24,9 @@ appts ts = foldl1 AppT ts
 
 string :: Name -> Exp
 string n = LitE (StringL (nameBase n))
+
+integer :: Integer -> Exp
+integer i = LitE (IntegerL i)
 
 -- Return a list of all the variable type names in the given type.
 tvarnames :: Type -> [Name]

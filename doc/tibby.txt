@@ -330,3 +330,11 @@ I'm getting this error: Data constructor '()' used as a type.
 In the type signature for '_seriP_action'. Can I not use the unit type in
 signatures? I should try that and see.
 
+Thu Apr 12 17:18:49 EDT 2012
+
+Okay, so now I have unit types up and running. Now let me try compiling tibby
+and see what the next problem is.
+
+Next problem is decltype for record type constructors. That sounds like a core
+seri issue to me, so I'll address it there.
+

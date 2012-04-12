@@ -67,33 +67,65 @@ declval' n t e free =
       decls = [sig_P, impl_P, sig_C, impl_C, sig_D, impl_D]
     in decls
 
--- decltype name
--- Given the name of a haskell type, make a seri type declaration for it.
+-- decltype' 
+-- Given a type declaration, make a seri type declaration for it, assuming the
+-- type is already defined in haskell.
 --
 -- The following is generated for the given type.
 --  - an instance of SeriType.
 --  - _seriP_Foo and friends for each constructor Foo
-decltype :: Name -> Q [Dec]
-decltype nm =
- let mkcon :: Type -> [TyVarBndr] -> Con -> [Dec]
-     mkcon dt vars (NormalC nc sts) =
-        let ts = map snd sts
-            t = AppT (AppT (ConT ''S.Typed) (ConT ''SIR.Exp)) (arrowts (ts ++ [appts $ dt:(map (\(PlainTV n) -> VarT n) vars)]))
-            ctx = map (\(PlainTV x) -> ClassP ''S.SeriType [VarT x]) vars
-            ty = if null vars
-                    then t
-                    else ForallT vars ctx t
-            e = apply 'S.conE [string nc]
-        in declval' (nameBase nc) ty e []
+decltype' :: Dec -> [Dec]
+decltype' (DataD [] dt vars cs _) =
+ let numvars = length vars
+     classname = "SeriType" ++ if numvars == 0 then "" else show numvars
+     methname = "seritype" ++ if numvars == 0 then "" else show numvars
+     texpify t = AppT (AppT (ConT ''S.Typed) (ConT ''SIR.Exp)) t
+     dtapp = appts $ (ConT dt):(map (\(PlainTV n) -> VarT n) vars)
 
- in do TyConI (DataD [] _ vars cs _) <- reify nm
-       let numvars = length vars
-       let classname = "SeriType" ++ if numvars == 0 then "" else show numvars
-       let methname = "seritype" ++ if numvars == 0 then "" else show numvars
-       let dec = FunD (mkName methname) [Clause [WildP] (NormalB (AppE (ConE 'SIR.ConT) (string nm))) []]
-       let inst = InstanceD [] (AppT (ConT (mkName classname)) (ConT nm)) [dec]
-       let cones = concat $ map (mkcon (ConT nm) vars) cs
-       return $ concat [[inst], cones]
+     -- Assuming the data type is polymorphic in type variables a, b, ...
+     -- Wrap the given type in a context with SeriType a, SeriType b, ...
+     contextify :: Type -> Type
+     contextify t =
+        let ctx = map (\(PlainTV x) -> ClassP ''S.SeriType [VarT x]) vars
+        in if null vars
+               then t
+               else ForallT vars ctx t
+
+     -- contype: given the list of field types [a, b, ...] for a constructor
+     -- form the constructor type: a -> b -> ... -> Foo
+     contype :: [Type] -> Type
+     contype ts = contextify . texpify $ arrowts (ts ++ [dtapp])
+
+     -- produce the declarations needed for a given constructor.
+     mkcon :: Con -> [Dec]
+     mkcon (NormalC nc sts) =
+        let e = apply 'S.conE [string nc]
+            ty = contype (map snd sts)
+        in declval' (nameBase nc) ty e []
+     mkcon (RecC nc sts) =
+        let e = apply 'S.conE [string nc]
+            ty = contype (map (\(_, _, t) -> t) sts)
+            constrs = declval' (nameBase nc) ty e []
+            numfields = toInteger $ length sts
+
+            mkacc :: Integer -> Name -> Type -> [Dec]
+            mkacc i n st =
+                let t = contextify . texpify $ arrowts [dtapp, st]
+                    e = apply 'S.selector [string dt, integer i, integer numfields]
+                in declval' (nameBase n) t e []
+
+            accessors = concat $ map (\(i, (n, _, t)) -> mkacc i n t) (zip [0..] sts)
+        in constrs ++ accessors
+
+     dec = FunD (mkName methname) [Clause [WildP] (NormalB (AppE (ConE 'SIR.ConT) (string dt))) []]
+     inst = InstanceD [] (AppT (ConT (mkName classname)) (ConT dt)) [dec]
+     cones = concat $ map mkcon cs
+ in concat [[inst], cones]
+
+decltype :: Name -> Q [Dec]
+decltype nm = do
+    TyConI d <- reify nm
+    return $ decltype' d
 
 -- Given a potentially polymorphic haskell type, convert it to a concrete
 -- haskell type which represents the polymorphic seri type.

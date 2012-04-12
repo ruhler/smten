@@ -1,14 +1,14 @@
 
 - Unused pattern variables cause error about ambiguous types.
-    ex: foo x = 2
+    example: foo x = 2
 
 - Allow arbitrary patterns in lambda expression arguments.
-    ex: \(Foo x) -> x+1
+    example: \(Foo x) -> x+1
 
 - Add support for list comprehensions
-    ex: [1..5]
+    example: [1..5]
 
 - Support different number of args in function clauses
-    ex:  foo 1 2 = 3
-         foo a = \b -> a + b
+    example:  foo 1 2 = 3
+              foo a = \b -> a + b
 

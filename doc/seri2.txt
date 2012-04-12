@@ -4147,3 +4147,124 @@ Thu Apr 12 17:16:32 EDT 2012
 
 Yup. It works now. And it simplifies the match code. Good.
 
+Thu Apr 12 17:20:31 EDT 2012
+
+Complaint from tibby: I want to decltype where we use record constructors.
+
+What does this mean? Well, it means 2 things. It means I want to declare the
+seritype, instance of SeriType, constructors. That's like normal.
+
+The second thing I would like is, define the accessors functions.
+
+Hmm... What about the record syntax for updates and patterns and such? Do I
+want support for those?
+
+I should, really. How about, start with one thing at a time. First thing, I
+should be able to just extract the name and types of the constructor, and
+ignore the field names. Then that will cause problems in tibby, so then I'll
+add field accessors. At some point I'll try to use the field update thing, and
+that will cause problems, so I can deal with that then. Maybe I can list that
+in my todo file.
+
+Sound like a plan? Yes. Good.
+
+Thu Apr 12 17:29:31 EDT 2012
+
+That was easy, but I ran into the accessor issue. So let me handle that.
+
+What is it we want? For each accessor I want to know... its name and it's
+type. Then I want to declare a value function for it.
+
+Name: fieldname
+Type: (SeriType a, ...) => TypedExp (Foo a ... -> fieldtype)
+Expr: \(Foo _ ... _ x _ ...) -> x
+Free: []
+
+So I'll also need its position in the structure, and the total number of
+fields.
+
+You know? It kind of sounds like to me that I just want to have a special case
+for RecC. I can share code between RecC and NormalC, but don't try to be so
+general.
+
+Okay?
+
+That sounds relatively easy. Let me get to work.
+
+Thu Apr 12 18:12:34 EDT 2012
+
+Ug. This is a bit of a slog. Let me keep slogging.
+
+The problem is, it's annoying to have to write the expressions for accessors,
+which is a big pattern match. I'd love to be able to reuse the code in Quoter,
+but I'm not sure how to organize things so that makes sense to do.
+
+Thu Apr 12 18:16:48 EDT 2012
+
+Okay, so the annoying part is generating the Th.Exp representing the SIR.Exp
+of the form: \(Foo _ _ _ x _ _ ) -> x.
+
+But! I know it's well typed, right? So I don't need to build up a nicely typed
+sort of thing. So how would this look if I wrote the haskell code directly?
+
+Well, it would be post desugar first of all, so
+\d -> case d of
+    (Foo _ _ _ x _ _ ) -> x.
+
+And this is a ...
+
+Hmm... maybe it makes sense to construct it typed after all, so we can infer
+the proper types.
+
+You know what? I'm not in the mood for this. Let me disallow record types for
+now.
+
+Ug ug! So, the reason I need to support record types is... because otherwise
+we have to declare the field accessor both in haskell and in seri. I really
+ought to just suck it up and implement the record type stuff.
+
+Okay. So it's something like:
+
+\d -> case d of
+    (Foo _ _ _ x _ _ ) -> x.
+
+Which will be...
+
+lamE "d" (\d -> caseE d [lamM "x" (\xp xe -> match (appPs [
+        conP "Foo", wildP, wildP, wildP, xp, wildP, wildP])
+          xe])
+
+Hey! You know what? I could maybe write this using a helper haskell function.
+
+That would make it much easier. Then I just need an application of that
+function. Oh... that sounds like a good idea.
+
+How would that look?
+
+-- selector dt i fields
+-- Create a selector function for ith field of data type dt which has 'fields'
+-- number of fields
+selector :: Name -> Integer -> Integer -> Typed Exp (a -> b)
+selector dt i 
+ = lamE "d" (\d -> caseE d [lamM "x" (\xp xe -> match (pat xp) xe)])
+    where pat :: Typed Pat a
+          pat = wilds (fields - i - 1) (appP xp (wilds i (conP dt)))
+        
+          wilds :: Integer -> Typed Pat a -> Typed Pat b
+          wilds n (Typed p) = Typed $ foldl AppP p (replicate n WildP)
+
+There! I think that's it. Then I can implement that much in haskell (in
+Typed.hs). Now implementing a selector function for the declaration is as easy
+as: apply 'S.selector [string nm, integer i, integer fields].
+
+Yes. That's totally what I'm going to do.
+
+Let me try it real quick like, and see how far I can  get. Otherwise I'll just
+come back to this later.
+
+Well... it types, but I don't seem to have declared the thing I wanted to?
+
+Oh! No. It actually worked! Wow. That's a type trip.
+
+Cool. And now we get to other issues. But this is good for now.
+
