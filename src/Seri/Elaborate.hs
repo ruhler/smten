@@ -72,29 +72,31 @@ data MatchResult = Failed | Succeeded [(Name, Exp)] | Unknown
 
 -- Match an expression against a pattern.
 match :: Pat -> Exp -> MatchResult
-match (ConP nm) (IntegerE _) = Failed
-match (ConP nm) (LamE _ _ _) = Failed
 match (ConP nm) (ConE _ n) | n == nm = Succeeded []
-match (ConP nm) (ConE _ n) = Failed
-match (ConP nm) _ = Unknown
-match (VarP nm) e = Succeeded [(nm, e)]
 match (IntegerP i) (IntegerE i') | i == i' = Succeeded []
-match (IntegerP i) (IntegerE _) = Failed
-match (IntegerP _) (LamE _ _ _) = Failed
-match (IntegerP _) (ConE _ _) = Failed
-match (IntegerP _) _ = Unknown
-match (AppP a b) (IntegerE _) = Failed
-match (AppP a b) (LamE _ _ _) = Failed
-match (AppP a b) (ConE _ _) = Failed
+match (VarP nm) e = Succeeded [(nm, e)]
 match (AppP a b) (AppE _ ae be)
   = case (match a ae, match b be) of
         (Succeeded as, Succeeded bs) -> Succeeded (as ++ bs)
         (Failed, _) -> Failed
         (_, Failed) -> Failed
         _ -> Unknown
-match (AppP a b) _ = Unknown
 match WildP _ = Succeeded []
+match _ x | iswhnf x = Failed
+match _ _ = Unknown
 
+-- iswhnf exp
+--  Return True if the expression is in weak head normal form.
+--  TODO: how should we handle primitives?
+iswhnf :: Exp -> Bool
+iswhnf (IntegerE _) = True
+iswhnf (LamE _ _ _) = True
+iswhnf x
+ = let iscon :: Exp -> Bool
+       iscon (ConE _ _) = True
+       iscon (AppE _ f _) = iscon f
+       iscon _ = False
+   in iscon x
 
 -- reduce n v exp
 -- Perform beta reduction in exp, replacing occurances of variable n with v.

@@ -117,7 +117,7 @@ tests = "Seri" ~: [
     "lists" ~: IntegerE 20 ~=? run (_seriD_listswaptop ++ _seriD_listdifftop)
         [s| listdifftop (listswaptop [10, 30, 50, 0]) |],
     "2 arg func" ~: IntegerE 12 ~=? run _seriD_sum2 [s| sum2 5 7 |],
-    "3 arg func" ~: IntegerE 20 ~=? run _seriD_sum3 [s| sum3 5 7 8 |]
-    --"unit type" ~: IntegerE 3 ~=? run _seriD_unary2int [s| unary2int [(), (), ()] |]
+    "3 arg func" ~: IntegerE 20 ~=? run _seriD_sum3 [s| sum3 5 7 8 |],
+    "unit type" ~: IntegerE 3 ~=? run _seriD_unary2int [s| unary2int [(), (), ()] |]
     ]
 

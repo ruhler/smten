@@ -4123,3 +4123,27 @@ thing.
 I dunno. I'm not sure what to do about this. Let me just take some time to
 think about it.
 
+Thu Apr 12 17:06:27 EDT 2012
+
+Okay, so here's the deal. I have a function called iswhnf, which tells us if
+an expression is in weak head normal form.
+
+An expression is in weak head normal form if...
+- it's an integer
+- it's a lambda
+- it's a ConE
+- it's an application of a ConE with something, so AppE (AppE ... (ConE ...
+
+There's a question about primitives...
+
+Let me worry about that when it comes up. For now treat primitives as not weak
+head normal form, because maybe some rule can reduce them to something else.
+
+This should make the implementation of pattern matching easier too.
+
+Okay? Shall I try it out? Sure. Let's see what happens.
+
+Thu Apr 12 17:16:32 EDT 2012
+
+Yup. It works now. And it simplifies the match code. Good.
+
