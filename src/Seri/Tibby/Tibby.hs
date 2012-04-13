@@ -9,6 +9,7 @@ module Seri.Tibby.Tibby where
 import qualified Language.Haskell.TH as TH
 
 import Seri
+import Seri.Lib.Prelude
 
 data Module a = Module
 decltype ''Module

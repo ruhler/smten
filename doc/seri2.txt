@@ -4268,3 +4268,286 @@ Oh! No. It actually worked! Wow. That's a type trip.
 
 Cool. And now we get to other issues. But this is good for now.
 
+Fri Apr 13 11:48:17 EDT 2012
+
+Okay, so we've reached upon what I suspect will be a major next issue. But
+maybe it won't be?
+
+I want to have a typeclass, call it Foo. I want to supply a primitive function
+foo which has Foo a in the context. Perhaps: foo :: Foo a => a -> Integer, or
+something like that.
+
+Currently this doesn't work, because the _seriC_ function is implemented as
+  _seriC_foo = _seriP_foo, but _seriP_foo requires VarT_a be an instance of
+Foo.
+
+I ran into the same problem when using monads. My solution before was to just
+make a VarT_m which was an instance of monad, but somehow that doesn't feel
+like a very good solution.
+
+And, moving forward, I suspect we'll want to define our own instances in seri
+for classes. Like, be able to define a complex number type, or fixed point,
+which is an instance of Num. Or, our own kinds of monads.
+
+I'm seeing (admittedly fuzzily) three ideas.
+
+1. Work around the issue: don't have _seriC_foo use _seriP_foo, but rather do
+an inline like thing so we never have the context requirement for _seriC_foo,
+so we won't get that compiler error.
+
+2. Make VarT_x an instance of every class you could possibly want. That way we
+won't get that compiler error.
+
+3. Come up with a real, more general solution to the typeclass issue.
+
+Let me think about this some more and get back to you.
+
+Fri Apr 13 14:56:11 EDT 2012
+
+I've thought a little bit about it. I think one thing is clear: I want haskell
+to do the work of figuring out which functions to call.
+
+In other words, typeclasses are really a way of having two different functions
+with the same name, chosen based on type.
+
+What we want in the built up seri expression is, whenever a function is
+called, use the specific instance of it that should be used. So we want
+a way to distinguish between different instances of a function.
+
+So, let's assume we have some magical id which uniquely identifies a function
+instance. Now when we write something like: "return x", it will compile to...
+
+return_Query x, if it's in the Query monad, and return_Action x, if it's in
+the action monad, and so on.
+
+Thoughts on choice of id:
+- It seems like it would be nice, for debugging, and maybe for backend code
+  generation (though I'm not sure about this) for it to be clear when we use
+  a function defined in a typeclass what the name of the typeclass method is.
+  So, for example, for the above two instances, it should be clear they both
+  refer to the "return" method of the Monad class. 
+
+  This could be easily done by make a function name a pair of: (name, instance id)
+
+- Type is not good to use for instance id.
+  What we really want to do is associate a unique id for every different
+  implementation of a given function. In the simple case, you could just use
+  the type used in the instance declaration for the id, but some instance
+  declarations will have contexts and be polymorphic and such.
+
+  I think what you really want to use is the context and complete type used in
+  the class instance declaration. So, maybe use the complete type.
+
+Once we have this id, we can just make function identifiers the pair as I said
+before, we have haskell tell us which is the right one, and that gives us what
+we want, I think. At least, it gives us the first step. I don't know if other
+steps will come up later (like, imagine what information we have to have to
+generate backend haskell code for the instances).
+
+But let me just focus on this first step.
+
+The real question now is, how do we get haskell to tell us which instance to
+use?
+
+I need an example. Let me use '+', because I think that should be clear to
+think about.
+
+I should be careful though, because of the question of primitives. You can
+imagine some type classes which have primitive instances, and some which
+don't. I feel like primitive instances is a special case that I may want to
+handle separately. So, for starters, can I assume we don't have to worry about
+primitives?
+
+I have an expression: foo + bar.
+When quoted, this will turn into
+    appE (appE _seriP_+ (varE "foo")) (varE "bar")
+
+or something like that.
+
+What is _seriP_+? Well, remember now, I'm saying + belongs to a typeclass, so
+_seriP_+ should belong to a haskell type class.
+
+Interesting. (does this look familiar to you from bcl?)
+
+This typeclass is not the same as the haskell typeclass Num, because I'm
+calling the function _seriP_+ and not (+), right?
+
+Well, what type do I want for _seriP_+?
+
+It should be:
+
+class SeriType a => SeriOrd a where
+    _seriP_+ :: Typed Exp (a -> a -> a)
+
+And I probably want the declarations and such too.
+
+_seriC_+ :: Typed Exp (VarT_a -> VarT_a -> VarT_a)
+
+Hmm... This raises an interesting question.
+
+Why is the type of _seriC_ a Typed expression?
+Why not have something like:
+
+_seriP_foo :: SeriType a => Typed Exp (a -> Integer)
+_seriP_foo = ...
+
+_seriC_foo :: Exp
+_seriC_foo = typed $ _seriP_foo
+
+Where do I use _seriC_foo?
+
+I use it in the call to valD, so I can get the type information, where the
+type information uses the variable type.
+
+But don't I have that from the polymorphic type?
+
+I guess the issue is, I want to convert the type from haskell to seri, which
+means I want to call seritype, but to do that I need a concrete type to apply
+it to. One way to get that concrete type would be to define _seriC_ with a
+concrete type. Another way would be to use a type signature, in which case we
+don't need _seriC_, and it doesn't matter anyway.
+
+Fine. Whatever. Maybe I could get rid of _seriC_, but I still need a way to
+represent a polymorphic type as a concrete haskell type.
+
+What does this mean in the context of type classes? It means I want an
+instance of the type class for the variable types. Then I can say:
+
+_seriC_+ :: Typed Exp (VarT_a -> VarT_a -> VarT_a)
+_seriC_+ = _seriP_+
+
+And it will give me what I want. ??? Or will it? What should the instance
+implementation be? I feel like each instance of the class will need it's own
+_seriC_+?
+
+Or maybe what we do is have an instD instead of valD?
+
+Let me move on and worry about this later. Maybe it will become more clear.
+
+So, we say we have our own typeclass:
+
+class SeriType a => SeriOrd a where
+    _seriP_+ :: Typed Exp (a -> a -> a)
+
+Hmm... now this is interesting. Because consider, once I have this, having
+primitive instances isn't too bad, right?
+
+instance SeriOrd Integer where
+    _seriP_+ = _seriP_prim_integer_+
+
+where _seriP_prim_integer_+ is defined just like normal. So I think primitive
+instances aren't something to be too troubled about.
+
+Let's go back now to the main question. We have some expression:
+  appE (appE _seriP_+ (varE "foo")) (varE "bar")
+
+But what we really want to do is augment the IR with this id information for
+the functions. That is... for the variables.
+
+Let's say, then, that our identifier is some string. What if I change my class
+as follows:
+
+class SeriType a => SeriOrd a where
+    _seriP_+ :: (ID, Typed Exp (a -> a -> a))
+
+Does that work? No, that's not exactly what I want. I'm going to see an
+unbound variable, assume it's from the top level, convert it to this typed
+thing, so it contains within the expression the information about instance.
+
+Wait a second. I'm a little confused. I think I got my thing wrong.
+
+We actually get:
+  appE (appE (varE_typed _seriP_+ "+") (varE "foo")) (varE "bar")
+
+Now what I want to do is change varE_typed.
+
+varE_typed :: (SeriType a) => (ID, Typed Exp a) -> Name -> Typed Exp a
+varE_typed (id, _) = varE id
+
+varE :: (SeriType a) => ID -> Name -> Typed Exp a
+varE id nm = withtype $ \t -> Typed $ VarE t nm id
+
+And now we associate this special id with each type, just as we want.
+
+Cool. This is looking good to me. There's just one big issue I see remaining.
+
+I don't know at time of quoting whether a function belongs to a typeclass or
+not. So what do I do?
+
+Well, that's not too hard. Change the type of _seriP_...
+
+_seriP_foo :: (SeriType a) => (ID, Typed Exp (a -> Integer))
+_seriP_foo = (nullid, ...)
+
+Simple.
+
+This is, unfortunately, a little complex. But I think I see a path.
+
+The main points are:
+
+- type classes and type instances should be declared in seri, so we can do the
+  proper transformations.
+We can have a declclass and a declinst kind of thing to make it easier to
+integrate existing haskell classes and instance declarations. Uh... existing
+classes will work, existing declarations will not, because we need the code
+for the implementations. You'll have to write those yourself, but that
+shouldn't be too hard.
+
+For primitives, I can provide a way to declare a primitive instance, perhaps
+by giving an association map or some such. Or you can just declare the
+primitives as functions, and refer to those functions. I see no problem there.
+In fact, that sounds very good to me.
+
+I think this is it. I think this is the right solution to take.
+
+We can define our own type classes. We can define our own instances. We can
+automatically deduce seri type classes from existing haskell ones. We can
+easily describe primitive instances of type classes. It's just what you want.
+
+Representing a typeclass and instance declaration in the IR itself will come
+later as needed.
+
+I feel like I should start a document collecting all the haskell things we
+define and how they correspond to seri things.
+
+I also want to make a distinction between: writing declarations in seri, and
+having a way to infer seri declarations from existing haskell declarations.
+They are two paths which can share code, and both are useful for their own
+purposes. It might be good to support the user defined data type all within
+seri path, which I can use to clean up some code.
+
+And finally, while I'm at it, and because I've thought of something like this
+a few times, it may make sense, rather than have _seriP_, _seriC_, _seriD_,
+..., especially because _seriP_ will no longer directly be a typed expression,
+it might make sense to bundle it all into one. For example:
+
+_seri_foo :: (SeriType a) => (ID, [Dec], Typed Exp (a -> Integer), Typed Exp (VarT_a -> Integer))
+_seri_foo = (nillid, [ValD ...], ..., ...)
+
+And have generic accessors. That is, ways to get the context, the concrete
+expression, the generic expression, and so on. We could also have a similar
+construct for just plain expressions, which includes the context so I can get
+at the context when I use an expression quote.
+
+Cool. Good. Lot's to think about. But I think the path is fairly clear, and
+not so terribly unpleasant.
+
+Fri Apr 13 17:28:01 EDT 2012
+
+Okay, here's the plan.
+
+1. Support type declarations in quotes.
+This should be easy. Just call decltype'.
+
+2. Define a Declaration type which holds for each expression, information
+about its haskell type, seri type, seri implementation, and context.
+
+3. Add support for type classes.
+As described above. So, add ID to Declaration. Implement declaration of seri
+type classes and type instances. To test it, I can make up my own simple
+classes. Maybe converting a type to an arbitrary integer.
+ 
+Okay? Ready?
+
+Let's me get started and see how it goes.
+
