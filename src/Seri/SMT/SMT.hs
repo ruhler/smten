@@ -10,20 +10,20 @@ module Seri.SMT.SMT where
 import Seri
 import Seri.Lib.Prelude
 
-data Query a = Query
-decltype ''Query
+
+[s|
+    data Query a = Query
+
+    data Answer a = Satisfiable a | Unsatisfiable | Unknown
+        deriving (Show, Eq)
+
+    data Free a = Free Integer
+|]
 
 instance Monad Query where
     return = error $ "Query return"
     (>>=) = error $ "Query >>="
 
-
-data Answer a = Satisfiable a | Unsatisfiable | Unknown
-    deriving (Show, Eq)
-decltype ''Answer
-
-data Free a = Free Integer
-decltype ''Free
 
 declprim "free" [t| (SeriType a) => Typed Exp (Query a) |]
 declprim "realize" [t| (SeriType a) => Typed Exp (Free a -> a) |]

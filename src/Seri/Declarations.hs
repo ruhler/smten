@@ -4,7 +4,8 @@
 
 module Seri.Declarations (
     name_P, name_C, name_D,
-    declprim, declval', declval, decltype,
+    declval', decltype',
+    declprim, declval, decltype,
     ) where
 
 import Language.Haskell.TH

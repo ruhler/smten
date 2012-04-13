@@ -1,6 +1,6 @@
 
 module Seri.THUtils (
-    apply, arrowts, string, integer, appts, desugar, fixUnit,
+    apply, arrowts, string, integer, appts, desugar, FixUnit(..),
     ) where 
 
 import Data.List(nub)
@@ -48,14 +48,23 @@ desugar ((BindS p e):stmts)
 -- interpreted as a data constructor instead of a type. To allow use of the
 -- unit type in quasi quotes, we replace occurrences of "GHC.Unit.()" with
 -- just "()".
-fixUnit :: Dec -> Dec
-fixUnit (SigD n t) = SigD n (fixUnitT t)
-fixUnit d = d
+class FixUnit a where
+    fixUnit :: a -> a
 
-fixUnitT :: Type -> Type
-fixUnitT (ForallT vs ctx t) = ForallT vs ctx (fixUnitT t)
-fixUnitT (ConT n) | nameBase n == "()" = ConT (mkName "()")
-fixUnitT (AppT a b) = AppT (fixUnitT a) (fixUnitT b)
-fixUnitT (SigT t k) = SigT (fixUnitT t) k
-fixUnitT t = t
+instance FixUnit Dec where
+    fixUnit (SigD n t) = SigD n (fixUnit t)
+    fixUnit (DataD ctx n vrs cons dervs)
+        = DataD ctx n vrs (map fixUnit cons) dervs
+    fixUnit d = d
+
+instance FixUnit Con where
+    fixUnit (NormalC n sts) = NormalC n (map (\(s, t) -> (s, fixUnit t)) sts)
+    fixUnit (RecC n sts) = RecC n (map (\(fn, s, t) -> (fn, s, fixUnit t)) sts)
+
+instance FixUnit Type where
+    fixUnit (ForallT vs ctx t) = ForallT vs ctx (fixUnit t)
+    fixUnit (ConT n) | nameBase n == "()" = ConT (mkName "()")
+    fixUnit (AppT a b) = AppT (fixUnit a) (fixUnit b)
+    fixUnit (SigT t k) = SigT (fixUnit t) k
+    fixUnit t = t
 

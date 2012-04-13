@@ -29,11 +29,10 @@ run decls = elaborate seriR decls . typed
     id x = x
 |]
 
-data MaybeInteger = NoInteger | JustInteger Integer
-
-decltype ''MaybeInteger
 
 [s|
+    data MaybeInteger = NoInteger | JustInteger Integer
+
     fromMaybeInteger :: Integer -> MaybeInteger -> Integer
     fromMaybeInteger def = \mi ->
         case mi of
@@ -42,7 +41,6 @@ decltype ''MaybeInteger
 |]
 
 decltype ''Maybe
-
 [s|
     fromMaybeBool :: Bool -> Maybe Bool -> Bool
     fromMaybeBool def = \mb ->

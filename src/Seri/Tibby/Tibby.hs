@@ -11,8 +11,9 @@ import qualified Language.Haskell.TH as TH
 import Seri
 import Seri.Lib.Prelude
 
-data Module a = Module
-decltype ''Module
+[s|
+    data Module a = Module
+|]
 
 instance Monad Module where
     return = error $ "Module return"
@@ -27,23 +28,23 @@ class Interface1 a b where
 instance (Interface1 a b) => (Interface (a c) (b c)) where
     form = form1
 
-data Action a = Action
-    deriving(Show, Eq)
-decltype ''Action
+[s|
+    data Action a = Action
+        deriving(Show, Eq)
+|]
 
 instance Monad Action where
     return = error $ "Action return"
     (>>=) = error $ "Action >>="
 
-data Program =
-      Atom (Action ())
-    | Seq [Program]
-    | Par [Program]
-    | Loop Program
- deriving(Eq, Show)
-decltype ''Program
-
 [s|
+    data Program =
+          Atom (Action ())
+        | Seq [Program]
+        | Par [Program]
+        | Loop Program
+     deriving(Eq, Show)
+
     action :: Action () -> Program
     action = Atom
 
@@ -55,21 +56,22 @@ decltype ''Program
 
     loop :: Program -> Program
     loop = Loop
-|]
 
-data Put a = Put {
-    put :: a -> Action ()
-}
-decltype ''Put
+    data Put a = Put {
+        put :: a -> Action ()
+    }
 
-data Put' a = Put' {
-    put' :: Action a
-}
-decltype ''Put'
+    data Put' a = Put' {
+        put' :: Action a
+    }
 
-[s|
     get :: Put' a -> Action a
     get = put'
+
+    data Terminating a = Terminating {
+        islast :: Bool,
+        value :: a
+    }
 |]
 
 instance Interface1 Put Put' where
@@ -80,10 +82,4 @@ declprim "return" [t| (SeriType a, SeriType1 m, Monad m) => Typed Exp (a -> m a)
 declprim ">>" [t| (SeriType a, SeriType b, SeriType1 m, Monad m) => Typed Exp (m a -> m b -> m b) |]
 declprim ">>=" [t| (SeriType a, SeriType b, SeriType1 m, Monad m) => Typed Exp (m a -> (a -> m b) -> m b) |]
 
-data Terminating a = Terminating {
-    islast :: Bool,
-    value :: a
-}
-
-decltype ''Terminating
 

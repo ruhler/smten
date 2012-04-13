@@ -165,6 +165,7 @@ varps p = error $ "TODO: varps " ++ show p
 
 mkdecls :: [Dec] -> [Dec]
 mkdecls [] = []
+mkdecls (d@(DataD {}) : ds) = [d] ++ (decltype' d) ++ mkdecls ds
 mkdecls ((SigD nm ty):(ValD (VarP _) (NormalB e) []):ds) = 
   let (e', UserState _ free) = runState (mkexp e) initialUserState
       typedexp t = (AppT (AppT (ConT ''S.Typed) (ConT ''SIR.Exp)) t)
