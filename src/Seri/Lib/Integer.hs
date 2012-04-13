@@ -9,11 +9,11 @@ import Seri.Lib.Bool
 instance SeriType Integer where
     seritype _ = ConT "Integer"
 
-declprim "+" [t| Typed Exp (Integer -> Integer -> Integer) |]
-declprim "-" [t| Typed Exp (Integer -> Integer -> Integer) |]
-declprim "*" [t| Typed Exp (Integer -> Integer -> Integer) |]
-declprim "<" [t| Typed Exp (Integer -> Integer -> Bool) |]
-declprim ">" [t| Typed Exp (Integer -> Integer -> Bool) |]
+declprim "+" [t| Integer -> Integer -> Integer |]
+declprim "-" [t| Integer -> Integer -> Integer |]
+declprim "*" [t| Integer -> Integer -> Integer |]
+declprim "<" [t| Integer -> Integer -> Bool |]
+declprim ">" [t| Integer -> Integer -> Bool |]
 
 arithR :: Rule
 arithR = Rule $ \decls gr e ->

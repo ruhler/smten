@@ -1,4 +1,5 @@
 
+{-# LANGUAGE ExplicitForAll #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE QuasiQuotes #-}
 
@@ -25,13 +26,13 @@ instance Monad Query where
     (>>=) = error $ "Query >>="
 
 
-declprim "free" [t| (SeriType a) => Typed Exp (Query a) |]
-declprim "realize" [t| (SeriType a) => Typed Exp (Free a -> a) |]
-declprim "assert" [t| Typed Exp (Bool -> Query ()) |]
-declprim "query" [t| (SeriType a) => Typed Exp (a -> Query (Answer a)) |]
-declprim "return" [t| (SeriType a, SeriType1 m, Monad m) => Typed Exp (a -> m a) |]
-declprim ">>" [t| (SeriType a, SeriType b, SeriType1 m, Monad m) => Typed Exp (m a -> m b -> m b) |]
-declprim ">>=" [t| (SeriType a, SeriType b, SeriType1 m, Monad m) => Typed Exp (m a -> (a -> m b) -> m b) |]
+declprim "free" [t| forall a. Query a |]
+declprim "realize" [t| forall a. Free a -> a |]
+declprim "assert" [t| Bool -> Query () |]
+declprim "query" [t| forall a. a -> Query (Answer a) |]
+declprim "return" [t| forall a m . (Monad m) => a -> m a |]
+declprim ">>" [t| forall a b m . (Monad m) => m a -> m b -> m b |]
+declprim ">>=" [t| forall a b m . (Monad m) => m a -> (a -> m b) -> m b |]
 
 runQuery :: Rule -> [Dec] -> Typed Exp (Query a) -> IO (Typed Exp a)
 runQuery = error $ "TODO: runQuery"

@@ -1,4 +1,5 @@
 
+{-# LANGUAGE ExplicitForAll #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE TemplateHaskell #-}
 
@@ -7,7 +8,7 @@ module Seri.Lib.Tuple where
 import Seri
 
 declval "(,)"
-    [t| (SeriType a, SeriType b) => Typed Exp (a -> b -> (a, b)) |]
+    [t| forall a b. (a -> b -> (a, b)) |]
     [e| conE "(,)" |] []
 
 instance SeriType2 (,) where
@@ -22,8 +23,7 @@ instance SeriType2 (,) where
 |]
 
 declval "(,,)"
-    [t| (SeriType a, SeriType b, SeriType c)
-            => Typed Exp (a -> b -> c -> (a, b, c)) |]
+    [t| forall a b c. (a -> b -> c -> (a, b, c)) |]
     [e| conE "(,,)" |] []
 
 instance SeriType3 (,,) where

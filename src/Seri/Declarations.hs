@@ -40,7 +40,7 @@ declval n qt qe ns = do
 -- Make a seri value declaration.
 --   name - name of the seri value being defined.
 --   ty - the polymorphic haskell type of the expression.
---          For example: (SeriType a) => TypedExp (a -> Integer)
+--          For example: (Eq a) => a -> Integer
 --   exp - the value
 --   free - a list of unbounded variables used in exp which have already been
 --          defined.
@@ -52,10 +52,11 @@ declval n qt qe ns = do
 --                value.
 declval' :: SIR.Name -> Type -> Exp -> [SIR.Name] -> [Dec]
 declval' n t e free =
-  let sig_P = SigD (name_P n) t
+  let dt = declize t
+      sig_P = SigD (name_P n) dt
       impl_P = FunD (name_P n) [Clause [] (NormalB e) []]
 
-      sig_C = SigD (name_C n) (concretize t)
+      sig_C = SigD (name_C n) (concretize dt)
       impl_C = FunD (name_C n) [Clause [] (NormalB (VarE (name_P n))) []]
 
       subctx = map (\fn -> VarE (name_D fn)) free
@@ -80,22 +81,18 @@ decltype' (DataD [] dt vars cs _) =
  let numvars = length vars
      classname = "SeriType" ++ if numvars == 0 then "" else show numvars
      methname = "seritype" ++ if numvars == 0 then "" else show numvars
-     texpify t = AppT (AppT (ConT ''S.Typed) (ConT ''SIR.Exp)) t
      dtapp = appts $ (ConT dt):(map (\(PlainTV n) -> VarT n) vars)
 
      -- Assuming the data type is polymorphic in type variables a, b, ...
-     -- Wrap the given type in a context with SeriType a, SeriType b, ...
+     -- Given type t, return type (forall a b ... . t)
+     --
      contextify :: Type -> Type
-     contextify t =
-        let ctx = map (\(PlainTV x) -> ClassP ''S.SeriType [VarT x]) vars
-        in if null vars
-               then t
-               else ForallT vars ctx t
+     contextify t = ForallT vars [] t
 
      -- contype: given the list of field types [a, b, ...] for a constructor
      -- form the constructor type: a -> b -> ... -> Foo
      contype :: [Type] -> Type
-     contype ts = contextify . texpify $ arrowts (ts ++ [dtapp])
+     contype ts = contextify $ arrowts (ts ++ [dtapp])
 
      -- produce the declarations needed for a given constructor.
      mkcon :: Con -> [Dec]
@@ -111,7 +108,7 @@ decltype' (DataD [] dt vars cs _) =
 
             mkacc :: Integer -> Name -> Type -> [Dec]
             mkacc i n st =
-                let t = contextify . texpify $ arrowts [dtapp, st]
+                let t = contextify $ arrowts [dtapp, st]
                     e = apply 'S.selector [string dt, integer i, integer numfields]
                 in declval' (nameBase n) t e []
 
@@ -127,6 +124,32 @@ decltype :: Name -> Q [Dec]
 decltype nm = do
     TyConI d <- reify nm
     return $ decltype' d
+
+-- Given the raw haskell type corresponding to an expression, return the type
+-- of the haskell function representing an expression of that type.
+--
+-- For example
+--  input: (Eq a) => a -> Integer
+--  output: (Eq a, SeriType a) => Typed Exp (a -> Integer) 
+declize :: Type -> Type
+declize ty = 
+  let typedexp t = (AppT (AppT (ConT ''S.Typed) (ConT ''SIR.Exp)) t)
+
+      -- Given a type variable, figure out what predicate we should add for it
+      -- in the context.
+      --
+      -- TODO: this is a bad special case hack. Can we come up with a better
+      -- way for figuring out the kind of each type variable?
+      stcon :: TyVarBndr -> Pred
+      stcon (PlainTV x) | 'm' == head (nameBase x)
+        = ClassP ''S.SeriType1 [VarT x]
+      stcon (PlainTV x) = ClassP ''S.SeriType [VarT x]
+
+  in case ty of
+        ForallT vns c t ->
+           let ctx = map stcon vns
+           in ForallT vns (c ++ ctx) (typedexp t)
+        _ -> typedexp ty
 
 -- Given a potentially polymorphic haskell type, convert it to a concrete
 -- haskell type which represents the polymorphic seri type.

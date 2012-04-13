@@ -4551,3 +4551,139 @@ Okay? Ready?
 
 Let's me get started and see how it goes.
 
+Fri Apr 13 17:51:58 EDT 2012
+
+1 is done. It was pretty easier. The hardest part was dealing with this
+FixUnit bug thing.
+
+Next step, number 2. This one will take some preparation.
+
+The question is, what information do I want from declared expressions and
+local expressions?
+
+Local: 
+ - the seri expression :: Exp
+ - the seri context needed to evaluate :: [Dec]
+ - the haskell type of the expression
+     For example, for use in SMT.runQuery to make sure you pass in the right
+     type expression.
+
+Global:
+ - the seri expression :: Exp
+ - the seri context needed to evaluate :: [Dec]
+     This includes the concrete type of the value being defined.
+ - the haskell type of the expression (for type checking)
+
+And hey! Look. Both are the same.
+
+I propose the following abstract data type:
+
+Declaration a = ...
+
+value :: Declaration a -> Exp
+tvalue :: Declaration a -> Typed Exp a
+context :: Declaration a -> [Dec]
+
+Hmm... one wonders. Could I reused Typed here?
+Like, for instance, isn't what I really want the following:
+
+data Declaration = Declaration Exp [Dec]
+ (and now I should think about a different name)
+
+And then the quote will return, and _seri_blah will be of type:
+
+Typed Declaration a.
+
+Yes. That, I think, is a better way to go.
+
+What am I doing then? That is, what name should I use instead of Declaration?
+
+I'm tracking info... 
+    the value
+    the context
+    in the future: the id for a function name
+
+It's like, an annotated expression. Or, Info about an expression.
+
+Info is a short name. What if I used that?
+
+data Info = Info Exp [Dec]
+
+What does info include? It includes the implementation, and the context, and
+in the future the class instance id. Then [s|...|] in the expression context
+gives you (typed) information about the expression.
+
+You know what? I feel a little uneasy about that choice of name, but I like
+it, so let me go with it.
+
+So there we have it.
+
+I don't know what all I'll need to change to make this work. How about, let me
+dive in, solve problems as they arise, then see where I end up.
+
+In summary:
+
+- Expression quotes return a Typed Info, where Info is the expression and
+context.
+- Declaration quotes for a function generate haskell declarations of the form:
+_seri_foo :: (SeriType a) => Typed Info a
+
+Here I go.
+
+Fri Apr 13 18:18:18 EDT 2012
+
+Here's a question. How should I be specifying types?
+
+Because currently I assume you pass a type like:
+    (SeriType a) => Typed Exp (a -> Integer)
+
+But the information I think you really want to specify is:
+    a -> Integer,
+or
+    (Monad m) => m a -> Integer
+
+for example.
+
+And I'm going to want to map this internally to something like:
+    (SeriType1 m, Monad m) => Typed Info (m a -> Integer)
+
+Yup. That's what I should do.
+
+Do you think that would be a good first step to take? Rather than clumping it
+with other changes? I think so. Let me do that.
+
+Fri Apr 13 18:44:39 EDT 2012
+
+Good! I'm liking this change very much. Specifying types for primitives and
+such becomes much simpler, and we can share common code that was being
+duplicated between declarations and quoter.
+
+One issue though. decltype doesn't seem to be working.
+
+decltype ''Maybe is trying to give me something of the wrong type, and I can't
+seem to track it down in the code.
+
+It's for a constructor. So what type do I specify to declval for the
+constructor? For example, Just. The type should be: forall a . a -> Maybe a.
+
+I found the bug. An extra call to declize. Fixed that.
+
+Fri Apr 13 18:52:48 EDT 2012
+
+Another problem. We don't just want to blindly make the  variables instances
+of SeriType, because they could be, for instance, the type 'm', which should
+require in the context SeriType1, not SeriType.
+
+Is there a way I can figure out which variables should get which? Does it need
+to be a special case? Can I have some naming convention?
+
+I think for now, just have a special case.
+
+Fri Apr 13 19:01:59 EDT 2012
+
+I put the special case in. This will probably come back to haunt me later, but
+I don't know of a good solution yet.
+
+But this is a good change. I like it. I'm glad I did it. It should make the
+next transformation much easier, and the code is much nicer.
+

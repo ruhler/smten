@@ -14,8 +14,8 @@ trueE = ConE (ConT "Bool") "True"
 falseE :: Exp
 falseE = ConE (ConT "Bool") "False"
 
-declval "True" [t| Typed Exp Bool |] [e| conE "True" |] []
-declval "False" [t| Typed Exp Bool |] [e| conE "False" |] []
+declval "True" [t| Bool |] [e| conE "True" |] []
+declval "False" [t| Bool |] [e| conE "False" |] []
 
 instance SeriType Bool where
     seritype _ = ConT "Bool"

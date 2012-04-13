@@ -168,14 +168,7 @@ mkdecls [] = []
 mkdecls (d@(DataD {}) : ds) = [d] ++ (decltype' d) ++ mkdecls ds
 mkdecls ((SigD nm ty):(ValD (VarP _) (NormalB e) []):ds) = 
   let (e', UserState _ free) = runState (mkexp e) initialUserState
-      typedexp t = (AppT (AppT (ConT ''S.Typed) (ConT ''SIR.Exp)) t)
-      ty' = case ty of
-                ForallT vns [] t ->
-                    let ctx = map (\(PlainTV x) -> ClassP ''S.SeriType [VarT x]) vns
-                    in ForallT vns ctx (typedexp t)
-                t -> typedexp t
-      d = declval' (nameBase nm) ty' e' (map nameBase free)
-      
+      d = declval' (nameBase nm) ty e' (map nameBase free)
   in d ++ (mkdecls ds)
 mkdecls (s@(SigD nm ty):f@(FunD _ clauses):ds) =
   let

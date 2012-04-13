@@ -1,4 +1,5 @@
 
+{-# LANGUAGE ExplicitForAll #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE QuasiQuotes #-}
@@ -77,9 +78,9 @@ instance Monad Action where
 instance Interface1 Put Put' where
     form1 = error $ "Put, Put' form1"
 
-declprim "make" [t| (SeriType a, SeriType b, Interface a b) => Typed Exp ((b -> Module Program) -> Module a) |] 
-declprim "return" [t| (SeriType a, SeriType1 m, Monad m) => Typed Exp (a -> m a) |]
-declprim ">>" [t| (SeriType a, SeriType b, SeriType1 m, Monad m) => Typed Exp (m a -> m b -> m b) |]
-declprim ">>=" [t| (SeriType a, SeriType b, SeriType1 m, Monad m) => Typed Exp (m a -> (a -> m b) -> m b) |]
+declprim "make" [t| forall a b . (Interface a b) => (b -> Module Program) -> Module a |] 
+declprim "return" [t| forall a m . (Monad m) => a -> m a |]
+declprim ">>" [t| forall a b m . (Monad m) => m a -> m b -> m b |]
+declprim ">>=" [t| forall a b m . (Monad m) => m a -> (a -> m b) -> m b |]
 
 
