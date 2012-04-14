@@ -10,7 +10,7 @@ module Seri.Typed
         VarT_a(..), VarT_b(..), VarT_c(..), VarT_d(..), VarT_m(..),
     
         integerE, ifE, caseE, conE, conE_typed, varE, varE_typed, lamE, appE,
-        infixE, primitive, match, selector, lamM,
+        primitive, match, selector, lamM,
         conP, appP, wildP, integerP,
         valD,
     )
@@ -162,9 +162,6 @@ conE nm = withtype $ \t -> Typed $ ConE t nm
 
 conE_typed :: (SeriType a) => Typed Exp a -> Name -> Typed Exp a
 conE_typed _ = conE
-
-infixE :: (SeriType b, SeriType c) => Typed Exp (a -> b -> c) -> Typed Exp a -> Typed Exp b -> Typed Exp c
-infixE p a b = appE (appE p a) b
 
 valD :: (SeriType a) => Name -> Typed Exp a -> Dec
 valD nm e = usetype e (\t -> ValD nm t (typed e))

@@ -68,7 +68,7 @@ declval' n t e free =
       sig_C = SigD (name_C n) (concretize dt)
       impl_C = FunD (name_C n) [Clause [] (NormalB (VarE (name_P n))) []]
 
-      subdecls = declctx' free
+      subdecls = declctx' (filter (/= n) free)
       mydecl = apply 'S.valD [LitE (StringL n), VarE (name_C n)]
       nubbed = apply 'SIR.nubdecl [applyC (mkName ":") [mydecl, subdecls]]
 

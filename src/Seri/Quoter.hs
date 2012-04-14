@@ -63,15 +63,8 @@ mkexp (AppE a b) = do
     b' <- mkexp b
     return $ apply 'S.appE [a', b']
 
-mkexp (InfixE (Just a) (VarE op) (Just b)) = do
-    a' <- mkexp a
-    b' <- mkexp b
-    return $ apply 'S.infixE [VarE (name_P (nameBase op)), a', b']
-
-mkexp (InfixE (Just a) (ConE op) (Just b)) = do
-    a' <- mkexp a
-    b' <- mkexp b
-    return $ apply 'S.infixE [VarE (name_P (nameBase op)), a', b']
+mkexp (InfixE (Just a) op@(VarE _) (Just b)) = mkexp $ AppE (AppE op a) b
+mkexp (InfixE (Just a) op@(ConE _) (Just b)) = mkexp $ AppE (AppE op a) b
 
 mkexp (LamE [VarP nm] a) = do
     bindname nm

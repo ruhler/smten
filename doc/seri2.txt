@@ -4785,7 +4785,7 @@ Anyway, here's what I want to do next.
 
 1+ Commit what few changes I have. Mostly additions to fixUnit.
 2+ Rewrite fixUnit to use generics, verify it works.
-3. Have the seri [s|...|] expression quotes return an expression and a
+3+ Have the seri [s|...|] expression quotes return an expression and a
 context.
 4. Fix that supposed issue in the Quoter.
 5. Reconsider the next step needed moving forward.
@@ -4813,4 +4813,31 @@ rather distressing.
 That is, if I change the code for a quoter or template haskell slice, the file
 which uses the slice isn't seen to be needing recompilation? Something like
 that.
+
+Sat Apr 14 08:10:39 EDT 2012
+
+Supposed issue in quoter. What is it?
+
+- free variable is typed appropriately.
+- constructors are typed appropriately.
+- infix operators are not typed!
+
+That needs fixing, right? Wait... maybe they are.
+
+Oh... I see the issue. Currently we are inlining directly the infix operators.
+
+That's no good. They should be treated just like normal expressions.
+
+Let me do this. Let me just rewrite the expression a `op` b to be the
+expression op a b, and then translate that how I would before.
+
+Sat Apr 14 08:17:11 EDT 2012
+
+Ah. And now we run into this issue: <<loop>> is what I get. Hmm...
+
+I have an idea that this is the infinite self context problem. Let me try
+fixing that.
+
+Yup. That fixed it. Now we are type safe, and cleaner code, and working
+correctly. Good.
 
