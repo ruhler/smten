@@ -36,6 +36,16 @@ unbindname nm = do
         then fail $ "unbindname '" ++ show nm ++ "' doesn't match expected '" ++ show n ++ "'"
         else put $ UserState names fn
 
+-- declared varorcon name
+-- Return a reference to a free seri variable or constructor declared in the
+-- top level environment.
+--   varorcon - either 'S.varE or 'S.conE
+--   name - the seri name.
+declared :: Name -> Name -> State UserState Exp
+declared e nm = do
+    freename nm
+    return $ apply 'S.typedas [VarE (name_P (nameBase nm)), apply e [string nm]]
+
 -- mkexp :: Exp (a) -> Exp (S.TypedExp a)
 --   Convert a haskell expression to its corresponding typed seri
 --   representation.
@@ -47,11 +57,9 @@ mkexp (VarE nm) = do
     bound <- gets boundnames
     if (nm `elem` bound)
         then return $ VarE nm
-        else do
-            freename nm
-            return $ apply 'S.varE_typed [VarE (name_P (nameBase nm)), string nm]
+        else declared 'S.varE nm
 
-mkexp (ConE nm) = return $ apply 'S.conE_typed [VarE (name_P (nameBase nm)), string nm]
+mkexp (ConE nm) = declared 'S.conE nm
 
 mkexp l@(LitE (IntegerL i)) = return $ apply 'S.integerE [l]
 

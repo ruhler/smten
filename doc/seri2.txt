@@ -4787,7 +4787,7 @@ Anyway, here's what I want to do next.
 2+ Rewrite fixUnit to use generics, verify it works.
 3+ Have the seri [s|...|] expression quotes return an expression and a
 context.
-4. Fix that supposed issue in the Quoter.
+4+ Fix that supposed issue in the Quoter.
 5. Reconsider the next step needed moving forward.
 
 Sat Apr 14 07:49:29 EDT 2012

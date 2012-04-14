@@ -5,11 +5,11 @@
 
 module Seri.Typed 
     (
-        Typed(..),
+        Typed(..), typedas,
         SeriType(..), SeriType1(..), SeriType2(..), SeriType3(..),
         VarT_a(..), VarT_b(..), VarT_c(..), VarT_d(..), VarT_m(..),
     
-        integerE, ifE, caseE, conE, conE_typed, varE, varE_typed, lamE, appE,
+        integerE, ifE, caseE, conE, varE, lamE, appE,
         primitive, match, selector, lamM,
         conP, appP, wildP, integerP,
         valD,
@@ -23,6 +23,9 @@ import Seri.IR
 data Typed x t = Typed {
     typed :: x
 }
+
+typedas :: Typed a t -> Typed b t -> Typed b t
+typedas _ x = x
 
 class SeriType a where
     seritype :: a -> Type
@@ -151,17 +154,8 @@ lamM n f = f (Typed $ VarP n) (varE n)
 varE :: (SeriType a) => Name -> Typed Exp a
 varE nm = withtype $ \t -> Typed $ VarE t nm
 
--- varE_typed ref nm
--- Construct a variable whose type is the same as the type of 'ref'. 'ref' is
--- otherwise unused.
-varE_typed :: (SeriType a) => Typed Exp a -> Name -> Typed Exp a
-varE_typed _ = varE
-
 conE :: (SeriType a) => Name -> Typed Exp a
 conE nm = withtype $ \t -> Typed $ ConE t nm
-
-conE_typed :: (SeriType a) => Typed Exp a -> Name -> Typed Exp a
-conE_typed _ = conE
 
 valD :: (SeriType a) => Name -> Typed Exp a -> Dec
 valD nm e = usetype e (\t -> ValD nm t (typed e))
