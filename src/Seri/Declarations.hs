@@ -3,8 +3,8 @@
 {-# LANGUAGE TemplateHaskell #-}
 
 module Seri.Declarations (
-    name_P, name_C, name_D,
-    declval', decltype', declctx',
+    name_P, name_C,
+    declval', decltype',
     declprim, declval, decltype,
     ) where
 
@@ -14,68 +14,53 @@ import Seri.THUtils
 import qualified Seri.IR as SIR
 import qualified Seri.Typed as S
 
+name_X :: String -> Name -> Name
+name_X pre x = mkName $ pre ++ nameBase x
+
 -- The name of the (possibly) polymorphic function generated.
-name_P :: SIR.Name -> Name
-name_P x = mkName $ "_seriP_" ++ x
+name_P :: Name -> Name
+name_P = name_X "_seriP_"
 
 -- The name of the concrete function generated.
-name_C :: SIR.Name -> Name
-name_C x = mkName $ "_seriC_" ++ x
-
--- The name of the context (Declarations) function generated.
-name_D :: SIR.Name -> Name
-name_D x = mkName $ "_seriD_" ++ x
-
+name_C :: Name -> Name
+name_C = name_X "_seriC_"
 
 declprim :: SIR.Name -> Q Type -> Q [Dec]
-declprim nm ty = declval nm ty [e| S.primitive $(litE (StringL nm)) |] []
+declprim nm ty = declval nm ty [e| S.primitive $(litE (StringL nm)) |]
 
-declval :: SIR.Name -> Q Type -> Q Exp -> [SIR.Name] -> Q [Dec]
-declval n qt qe ns = do
+declval :: String -> Q Type -> Q Exp -> Q [Dec]
+declval n qt qe = do
     t <- qt
     e <- qe
-    return $ declval' n t e ns
+    return $ declval' (mkName n) t e
 
--- Given a list of free variable names, return the seri context for that.
--- The returned Exp represents a haskell expression of type [SIR.Dec]
-declctx' :: [SIR.Name] -> Exp
-declctx' free = 
-  let ctx = map (\fn -> VarE (name_D fn)) free
-      concated = apply 'concat [ListE ctx]
-      nubbed = apply 'SIR.nubdecl [concated]
-  in nubbed
-
--- declval' name ty exp free
+-- declval' name ty exp
 -- Make a seri value declaration.
 --   name - name of the seri value being defined.
 --   ty - the polymorphic haskell type of the expression.
---          For example: (Eq a) => a -> Integer
 --   exp - the value
---   free - a list of unbounded variables used in exp which have already been
---          defined.
 --
--- The following haskell declarations are generated:
---  _seriP_name - the expression with a polymorphic haskell type.
---  _seriC_name - the expression with a concrete haskell type.
---  _seriD_name - a list of the seri declarations needed to evaluate this
---                value.
-declval' :: SIR.Name -> Type -> Exp -> [SIR.Name] -> [Dec]
-declval' n t e free =
+-- For (contrived) example, given:
+--  name: foo
+--  ty: (Eq a) => a -> Integer
+--  exp: lamE "x" (\x -> appE (varE "incr") (integerE 41))
+--
+-- The following haskell declarations are generated (approximately):
+--  _seriP_foo :: (Eq a, SeriType a) => TEnv Exp (a -> Integer)
+--  _seriP_foo = valD "foo" (lamE "x" (\x -> appE (varE "incr") (integerE --  41)))
+--
+--  _seriC_foo :: TEnv Exp (VarT_a -> Integer)
+--  _seriC_foo = _seriP_foo
+declval' :: Name -> Type -> Exp -> [Dec]
+declval' n t e =
   let dt = declize t
       sig_P = SigD (name_P n) dt
-      impl_P = FunD (name_P n) [Clause [] (NormalB e) []]
+      impl_P = FunD (name_P n) [Clause [] (NormalB (apply 'S.valD [string n, e])) []]
 
       sig_C = SigD (name_C n) (concretize dt)
       impl_C = FunD (name_C n) [Clause [] (NormalB (VarE (name_P n))) []]
 
-      subdecls = declctx' (filter (/= n) free)
-      mydecl = apply 'S.valD [LitE (StringL n), VarE (name_C n)]
-      nubbed = apply 'SIR.nubdecl [applyC (mkName ":") [mydecl, subdecls]]
-
-      sig_D = SigD (name_D n) (AppT ListT (ConT ''SIR.Dec))
-      impl_D = FunD (name_D n) [Clause [] (NormalB nubbed) []]
-      decls = [sig_P, impl_P, sig_C, impl_C, sig_D, impl_D]
-    in decls
+  in [sig_P, impl_P, sig_C, impl_C]
 
 -- decltype' 
 -- Given a type declaration, make a seri type declaration for it, assuming the
@@ -107,18 +92,18 @@ decltype' (DataD [] dt vars cs _) =
      mkcon (NormalC nc sts) =
         let e = apply 'S.conE [string nc]
             ty = contype (map snd sts)
-        in declval' (nameBase nc) ty e []
+        in declval' nc ty e
      mkcon (RecC nc sts) =
         let e = apply 'S.conE [string nc]
             ty = contype (map (\(_, _, t) -> t) sts)
-            constrs = declval' (nameBase nc) ty e []
+            constrs = declval' nc ty e
             numfields = toInteger $ length sts
 
             mkacc :: Integer -> Name -> Type -> [Dec]
             mkacc i n st =
                 let t = contextify $ arrowts [dtapp, st]
                     e = apply 'S.selector [string dt, integer i, integer numfields]
-                in declval' (nameBase n) t e []
+                in declval' n t e
 
             accessors = concat $ map (\(i, (n, _, t)) -> mkacc i n t) (zip [0..] sts)
         in constrs ++ accessors
@@ -138,10 +123,10 @@ decltype nm = do
 --
 -- For example
 --  input: (Eq a) => a -> Integer
---  output: (Eq a, SeriType a) => Typed Exp (a -> Integer) 
+--  output: (Eq a, SeriType a) => TEnv Exp (a -> Integer) 
 declize :: Type -> Type
 declize ty = 
-  let typedexp t = (AppT (AppT (ConT ''S.Typed) (ConT ''SIR.Exp)) t)
+  let typedexp t = (AppT (AppT (ConT ''S.TEnv) (ConT ''SIR.Exp)) t)
 
       -- Given a type variable, figure out what predicate we should add for it
       -- in the context.

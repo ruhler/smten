@@ -15,8 +15,19 @@ import Test.HUnit
 seriR :: Rule
 seriR = rules [coreR, arithR]
 
-eval :: ([Dec], Typed Exp a) -> Exp
-eval (decls, e) = elaborate seriR decls (typed e)
+eval :: TEnv Exp a -> Exp
+eval e = elaborate seriR (typed e)
+
+eqexp :: Exp -> TEnv Exp a -> Assertion
+eqexp wnt e = do
+    let got = eval e
+    if (wnt /= got)
+        then assertFailure $ unlines [
+            "expected:" ++ (show . ppr $ wnt),
+            " but got:" ++ (show . ppr $ got),
+            "with env: " ++ (show . ppr . env . typed $ e)
+            ]
+        else return ()
 
 [s|
     foo :: Integer
@@ -87,21 +98,21 @@ decltype ''Maybe
 
 
 tests = "Seri" ~: [
-    "foo" ~: IntegerE 42 ~=? eval [s|(\x -> x*x+3*x+2) 5|],
-    "true" ~: trueE ~=? eval [s| True |],
-    "if" ~: IntegerE 23 ~=? eval [s| if 6 < 4 then 42 else 23 |],
-    "slice" ~: IntegerE 7 ~=? eval [s| 3 + _s (integerE . toInteger $ length [4,1,5,56]) |],
-    "foo decl" ~: IntegerE 42 ~=? eval (_seriD_foo, _seriC_foo),
-    "id id 5" ~: IntegerE 5 ~=? eval [s| (id id) 5 |],
-    "justInteger" ~: IntegerE 5 ~=? eval 
+    "foo" ~: IntegerE 42 `eqexp` [s|(\x -> x*x+3*x+2) 5|],
+    "true" ~: trueE `eqexp` [s| True |],
+    "if" ~: IntegerE 23 `eqexp` [s| if 6 < 4 then 42 else 23 |],
+    "slice" ~: IntegerE 7 `eqexp` [s| 3 + _s (integerE . toInteger $ length [4,1,5,56]) |],
+    "foo decl" ~: IntegerE 42 `eqexp` _seriC_foo,
+    "id id 5" ~: IntegerE 5 `eqexp` [s| (id id) 5 |],
+    "justInteger" ~: IntegerE 5 `eqexp` 
             [s| fromMaybeInteger 10 (JustInteger 5) |],
-    "noInteger" ~: IntegerE 10 ~=? eval
+    "noInteger" ~: IntegerE 10 `eqexp`
             [s| fromMaybeInteger 10 NoInteger |],
-    "just Bool" ~: trueE ~=? eval
+    "just Bool" ~: trueE `eqexp`
             [s| fromMaybeBool False (Just True) |],
-    "no Bool" ~: falseE ~=? eval
+    "no Bool" ~: falseE `eqexp`
             [s| fromMaybeBool False Nothing |],
-    "int pattern" ~: IntegerE 30 ~=? eval [s|
+    "int pattern" ~: IntegerE 30 `eqexp` [s|
         case (1 + 3) of
             2 -> 10
             3 -> 20
@@ -109,13 +120,13 @@ tests = "Seri" ~: [
             5 -> 40 
             _ -> 50
         |],
-    "multclause" ~: IntegerE 30 ~=? eval [s| multclause 4 |],
-    "tuples" ~: IntegerE 30 ~=? eval 
+    "multclause" ~: IntegerE 30 `eqexp` [s| multclause 4 |],
+    "tuples" ~: IntegerE 30 `eqexp` 
         [s| snd (tupleswap (30, 40)) |],
-    "lists" ~: IntegerE 20 ~=? eval 
+    "lists" ~: IntegerE 20 `eqexp` 
         [s| listdifftop (listswaptop [10, 30, 50, 0]) |],
-    "2 arg func" ~: IntegerE 12 ~=? eval [s| sum2 5 7 |],
-    "3 arg func" ~: IntegerE 20 ~=? eval [s| sum3 5 7 8 |],
-    "unit type" ~: IntegerE 3 ~=? eval [s| unary2int [(), (), ()] |]
+    "2 arg func" ~: IntegerE 12 `eqexp` [s| sum2 5 7 |],
+    "3 arg func" ~: IntegerE 20 `eqexp` [s| sum3 5 7 8 |],
+    "unit type" ~: IntegerE 3 `eqexp` [s| unary2int [(), (), ()] |]
     ]
 

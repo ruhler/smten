@@ -14,3 +14,6 @@
 
 - declval' should be able to figure out the free variables itself
 
+- Add support for let expressions
+    example: let foo = 2 in foo + 40
+

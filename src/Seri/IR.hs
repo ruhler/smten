@@ -1,7 +1,6 @@
 
 module Seri.IR (
     Name, Type(..), Pat(..), Match(..), Exp(..), Dec(..),
-    lookupvar, nubdecl,
     ) where
 
 import Data.List(nub)
@@ -52,8 +51,13 @@ instance Ppr Exp where
                         <+> text "then" <+> ppr a
                         <+> text "else" <+> ppr b
     ppr (AppE _ a b) = parens $ ppr a <+> ppr b
+    ppr (CaseE _ e ms) = text "case" <+> ppr e <+> text "of" <+> ppr ms
     ppr (LamE _ n b) = parens $ text "\\" <> text n <+> text "->" <+> ppr b
+    ppr (ConE _ n) = text n
     ppr (VarE _ n) = text n
+
+instance Ppr Match where
+    ppr (Match p e) = ppr p <+> text "->" <+> ppr e
 
 instance Ppr Pat where
     ppr (ConP nm) = text nm
@@ -65,13 +69,4 @@ instance Ppr Pat where
 instance Ppr Dec where
     ppr (ValD n t e) = text n <+> text "::" <+> ppr t
                         $+$ text n <+> text "=" <+> ppr e
-
-lookupvar :: Name -> [Dec] -> Maybe Dec
-lookupvar x [] = Nothing
-lookupvar x (d@(ValD nm _ _):ds) | nm == x = Just d
-lookupvar x (d:ds) = lookupvar x ds
-
--- remove duplicate occurences of a declaration from the list.
-nubdecl :: [Dec] -> [Dec]
-nubdecl = nub
 

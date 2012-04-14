@@ -18,7 +18,7 @@ runtests t = do
 tests = "Tests" ~: [
     Seri.Tests.tests,
     Seri.SMT.Tests.tests
-    --Seri.Tibby.Tests.tests
+--    Seri.Tibby.Tests.tests
     ]
 
 main :: IO ()

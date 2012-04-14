@@ -17,34 +17,41 @@ import Seri.THUtils
 import Seri.Declarations
 
 data UserState = UserState {
-    boundnames :: [Name],
-    freenames :: [Name]
+    declname :: Name,
+    boundnames :: [Name]
 }
 
-initialUserState = UserState [] []
-
-freename :: Name -> State UserState ()
-freename nm = modify (\us -> us { freenames = (nm:(freenames us)) })
+us :: Name -> UserState
+us n = UserState n []
 
 bindname :: Name -> State UserState ()
 bindname nm = modify (\us -> us { boundnames = (nm:(boundnames us)) })
 
 unbindname :: Name -> State UserState ()
 unbindname nm = do
-    UserState (n:names) fn <- get
+    UserState d (n:names) <- get
     if (n /= nm) 
         then fail $ "unbindname '" ++ show nm ++ "' doesn't match expected '" ++ show n ++ "'"
-        else put $ UserState names fn
+        else put $ UserState d names
 
--- declared varorcon name
--- Return a reference to a free seri variable or constructor declared in the
--- top level environment.
---   varorcon - either 'S.varE or 'S.conE
+-- declaredV name
+-- Return a reference to a free seri variable declared in the top level
+-- environment.
 --   name - the seri name.
-declared :: Name -> Name -> State UserState Exp
-declared e nm = do
-    freename nm
-    return $ apply 'S.typedas [VarE (name_P (nameBase nm)), apply e [string nm]]
+declaredV :: Name -> State UserState Exp
+declaredV nm = do
+    dn <- gets declname
+    if dn == nm
+        then return $ apply 'S.rdvarE [VarE (name_P nm), string nm]
+        else return $ apply 'S.dvarE [VarE (name_P nm), string nm]
+
+-- declaredC
+-- Return a reference to a free seri constructor declared in the top level
+-- environment.
+--   name - the seri name.
+declaredC :: Name -> State UserState Exp
+declaredC nm =
+    return $ apply 'S.typedas [VarE (name_P nm), apply 'S.conE [string nm]]
 
 -- mkexp :: Exp (a) -> Exp (S.TypedExp a)
 --   Convert a haskell expression to its corresponding typed seri
@@ -57,9 +64,9 @@ mkexp (VarE nm) = do
     bound <- gets boundnames
     if (nm `elem` bound)
         then return $ VarE nm
-        else declared 'S.varE nm
+        else declaredV nm
 
-mkexp (ConE nm) = declared 'S.conE nm
+mkexp (ConE nm) = declaredC nm
 
 mkexp l@(LitE (IntegerL i)) = return $ apply 'S.integerE [l]
 
@@ -168,8 +175,8 @@ mkdecls :: [Dec] -> [Dec]
 mkdecls [] = []
 mkdecls (d@(DataD {}) : ds) = [d] ++ (decltype' d) ++ mkdecls ds
 mkdecls ((SigD nm ty):(ValD (VarP _) (NormalB e) []):ds) = 
-  let (e', UserState _ free) = runState (mkexp e) initialUserState
-      d = declval' (nameBase nm) ty e' (map nameBase free)
+  let e' = fst $ runState (mkexp e) $ us nm
+      d = declval' nm ty e'
   in d ++ (mkdecls ds)
 mkdecls (s@(SigD nm ty):f@(FunD _ clauses):ds) =
   let
@@ -205,9 +212,7 @@ s = QuasiQuoter qexp qpat qtype qdec
 
 qexp :: String -> Q Exp
 qexp s = case (parseExp s) of
-            Right e ->
-                let (e', UserState _ free) = runState (mkexp e) initialUserState
-                in return $ TupE [declctx' (map nameBase free), e']
+            Right e -> return . fst $ runState (mkexp e) (us $ mkName "")
             Left err -> fail err
 
 qpat :: String -> Q Pat

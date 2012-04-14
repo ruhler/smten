@@ -4,8 +4,8 @@ module Seri.Elaborate (
     ) where
 
 import Seri.IR
+import Seri.Env
 import Seri.Typed(seritype)
-import Seri.Ppr
 import Seri.Lib.Bool
 
 -- A reduction rule. Given a set of global declarations, a global reduction
@@ -14,40 +14,46 @@ import Seri.Lib.Bool
 -- version of the expression.  It need not be fully reduced or anything like
 -- that, just reduced in some part.
 data Rule = Rule {
-    run :: [Dec] -> Rule -> Exp -> Maybe Exp
+    run :: Rule -> Env Exp -> Maybe Exp
 }
+
+runme :: Rule -> Env Exp -> Maybe Exp
+runme r = run r r
+
+runmeenv :: Env x -> Rule -> Exp -> Maybe Exp
+runmeenv e r x = runme r (withenv e x)
 
 -- Combine a bunch of reduction rules.
 -- It tries each rule in turn, applying the first one which succeeds.
 rules :: [Rule] -> Rule
-rules [] = Rule $ \_ _ _ -> Nothing
-rules (r:rs) = Rule $ \decls gr e ->
-  case run r decls gr e of
+rules [] = Rule $ \_ _ -> Nothing
+rules (r:rs) = Rule $ \gr e ->
+  case run r gr e of
       Just e' -> Just e'
-      Nothing -> run (rules rs) decls gr e
+      Nothing -> run (rules rs) gr e
 
 -- elaborate decls prg
 -- Reduce the given expression as much as possible.
 --  rule - the reduction rule to use
 --  decls - gives the context under which to evaluate the expression.
 --  prg - is the expression to evaluate.
-elaborate :: Rule -> [Dec] -> Exp -> Exp
-elaborate r decls prg =
-    case run r decls r prg of
-        Just e -> elaborate r decls e
-        Nothing -> prg
+elaborate :: Rule -> Env Exp -> Exp
+elaborate r prg =
+    case runme r prg of
+        Just e -> elaborate r (withenv prg e)
+        Nothing -> val prg
 
 -- coreR - The core reduction rules.
 coreR :: Rule
-coreR = Rule $ \decls gr e ->
-   case e of
+coreR = Rule $ \gr e ->
+   case val e of
       (IfE _ p a b) | p == trueE -> Just a
       (IfE _ p a b) | p == falseE -> Just b
       (IfE t p a b) -> do
-         p' <-  run gr decls gr p
+         p' <-  runmeenv e gr p
          return $ IfE t p' a b
-      (CaseE t x ms) | (run gr decls gr x) /= Nothing -> do
-         x' <- run gr decls gr x
+      (CaseE t x ms) | (runmeenv e gr x) /= Nothing -> do
+         x' <- runmeenv e gr x
          return $ CaseE t x' ms
       (CaseE t x ((Match p b):ms))
          -> case (match p x) of
@@ -55,15 +61,15 @@ coreR = Rule $ \decls gr e ->
                 Succeeded vs -> Just $ reduces vs b
                 _ -> Nothing
       (AppE _ (LamE _ name body) b) -> Just $ reduce name b body
-      (AppE t a b) | (run gr decls gr a) /= Nothing -> do
-          a' <- run gr decls gr a
+      (AppE t a b) | (runmeenv e gr a) /= Nothing -> do
+          a' <- runmeenv e gr a
           return $ AppE t a' b
-      (AppE t a b) | (run gr decls gr b) /= Nothing -> do
-          b' <- run gr decls gr b
+      (AppE t a b) | (runmeenv e gr b) /= Nothing -> do
+          b' <- runmeenv e gr b
           return $ AppE t a b'
       (LamE _ _ _) -> Nothing
       (VarE _ nm)
-        -> case (lookupvar nm decls) of
+        -> case (lookupvar nm e) of
                Nothing -> Nothing
                Just (ValD _ _ ve) -> Just ve
       _ -> Nothing

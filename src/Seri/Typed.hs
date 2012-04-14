@@ -5,11 +5,11 @@
 
 module Seri.Typed 
     (
-        Typed(..), typedas,
+        Typed(..), typedas, TEnv,
         SeriType(..), SeriType1(..), SeriType2(..), SeriType3(..),
         VarT_a(..), VarT_b(..), VarT_c(..), VarT_d(..), VarT_m(..),
     
-        integerE, ifE, caseE, conE, varE, lamE, appE,
+        integerE, ifE, caseE, conE, varE, dvarE, rdvarE, lamE, appE,
         primitive, match, selector, lamM,
         conP, appP, wildP, integerP,
         valD,
@@ -19,10 +19,13 @@ module Seri.Typed
 import qualified Language.Haskell.TH as TH
 
 import Seri.IR
+import Seri.Env
 
 data Typed x t = Typed {
     typed :: x
 }
+
+type TEnv x a = Typed (Env x) a
 
 typedas :: Typed a t -> Typed b t -> Typed b t
 typedas _ x = x
@@ -89,32 +92,42 @@ instance Monad VarT_m where
     return = error $ "return VarT_m"
     (>>=) = error $ ">>= VarT_m"
 
-usetype :: (SeriType a) => Typed Exp a -> (Type -> b) -> b
+usetype :: (SeriType a) => Typed x a -> (Type -> b) -> b
 usetype e f = f (seritype (gettype e))
-    where gettype :: Typed Exp a -> a
+    where gettype :: Typed x a -> a
           gettype _ = undefined
 
 -- withtype f 
 --  Calls the function f with the Type corresponding to the type of the
 --  returned expression.
-withtype :: (SeriType a) => (Type -> Typed Exp a) -> Typed Exp a
+withtype :: (SeriType a) => (Type -> Typed x a) -> Typed x a
 withtype f = r where r = usetype r f
 
-primitive :: (SeriType a) => Name -> Typed Exp a
-primitive p = withtype $ \t -> Typed $ PrimE t p
+primitive :: (SeriType a) => Name -> TEnv Exp a
+primitive p = withtype $ \t -> Typed $ return (PrimE t p)
 
-integerE :: Integer -> Typed Exp Integer
-integerE x = Typed $ IntegerE x
+integerE :: Integer -> TEnv Exp Integer
+integerE x = Typed $ return (IntegerE x)
 
-ifE :: (SeriType a) => Typed Exp Bool -> Typed Exp a -> Typed Exp a -> Typed Exp a
+ifE :: (SeriType a) => TEnv Exp Bool -> TEnv Exp a -> TEnv Exp a -> TEnv Exp a
 ifE (Typed p) (Typed a) (Typed b)
-    = withtype $ \t -> Typed $ IfE t p a b
+    = withtype $ \t -> Typed $ do
+        p' <- p
+        a' <- a
+        b' <- b
+        return $ IfE t p' a' b'
 
-caseE :: (SeriType b) => Typed Exp a -> [Typed Match (a -> b)] -> Typed Exp b
-caseE (Typed e) matches = withtype $ \t -> Typed $ CaseE t e (map typed matches)
+caseE :: (SeriType b) => TEnv Exp a -> [TEnv Match (a -> b)] -> TEnv Exp b
+caseE e matches
+  = withtype $ \t -> Typed $ do
+        e' <- typed e
+        ms <- mapM typed matches
+        return $ CaseE t e' ms
 
-match :: Typed Pat a -> Typed Exp b -> Typed Match (a -> b)
-match (Typed p) (Typed e) = Typed $ Match p e
+match :: Typed Pat a -> TEnv Exp b -> TEnv Match (a -> b)
+match p e = Typed $ do
+    e' <- typed e
+    return $ Match (typed p) e'
 
 conP :: Name -> Typed Pat a
 conP n = Typed $ ConP n
@@ -128,17 +141,21 @@ wildP = Typed WildP
 integerP :: Integer -> Typed Pat Integer
 integerP i = Typed $ IntegerP i
 
-appE :: (SeriType b) => Typed Exp (a -> b) -> Typed Exp a -> Typed Exp b
-appE (Typed f) (Typed x)
-    = withtype $ \t -> Typed $ AppE t f x
+appE :: (SeriType b) => TEnv Exp (a -> b) -> TEnv Exp a -> TEnv Exp b
+appE f x = withtype $ \t -> Typed $ do
+    f' <- typed f
+    x' <- typed x
+    return $ AppE t f' x'
 
-lamE :: (SeriType a, SeriType (a -> b)) => Name -> (Typed Exp a -> Typed Exp b) -> Typed Exp (a -> b)
-lamE n f = withtype $ \t -> Typed $ LamE t n (typed $ f (varE n))
+lamE :: (SeriType a, SeriType (a -> b)) => Name -> (TEnv Exp a -> TEnv Exp b) -> TEnv Exp (a -> b)
+lamE n f = withtype $ \t -> Typed $ do
+    body <- typed $ f (varE n)
+    return $ LamE t n body
 
 -- selector dt i fields
 -- Create a selector function for ith field of data type dt which has 'fields'
 -- number of fields
-selector :: (SeriType a, SeriType b) => Name -> Integer -> Integer -> Typed Exp (a -> b)
+selector :: (SeriType a, SeriType b) => Name -> Integer -> Integer -> TEnv Exp (a -> b)
 selector dt i fields
  = lamE "d" (\d -> caseE d [lamM "x" (\xp xe ->
         let wilds :: Integer -> Typed Pat c -> Typed Pat d
@@ -148,15 +165,22 @@ selector dt i fields
         )])
         
 
-lamM :: (SeriType a) => Name -> (Typed Pat a -> Typed Exp a -> Typed Match b) -> Typed Match b
+lamM :: (SeriType a) => Name -> (Typed Pat a -> TEnv Exp a -> TEnv Match b) -> TEnv Match b
 lamM n f = f (Typed $ VarP n) (varE n)
 
-varE :: (SeriType a) => Name -> Typed Exp a
-varE nm = withtype $ \t -> Typed $ VarE t nm
+varE :: (SeriType a) => Name -> TEnv Exp a
+varE nm = withtype $ \t -> Typed . return $ VarE t nm
 
-conE :: (SeriType a) => Name -> Typed Exp a
-conE nm = withtype $ \t -> Typed $ ConE t nm
+dvarE :: (SeriType a) => TEnv Exp a -> Name -> TEnv Exp a
+dvarE (Typed e) nm = withtype $ \t -> Typed $ withenv e (VarE t nm)
 
-valD :: (SeriType a) => Name -> Typed Exp a -> Dec
-valD nm e = usetype e (\t -> ValD nm t (typed e))
+rdvarE :: (SeriType a) => TEnv Exp a -> Name -> TEnv Exp a
+rdvarE (Typed e) nm = withtype $ \t -> Typed . return $ VarE t nm
+
+conE :: (SeriType a) => Name -> TEnv Exp a
+conE nm = withtype $ \t -> Typed . return $ ConE t nm
+
+valD :: (SeriType a) => Name -> TEnv Exp a -> TEnv Exp a
+valD nm (Typed e) = withtype $ \t -> Typed $ do
+    putenv (ValD nm t (val e)) e
 
