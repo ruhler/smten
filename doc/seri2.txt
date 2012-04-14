@@ -5103,3 +5103,239 @@ Sat Apr 14 12:02:07 EDT 2012
 
 Aha! It works! Amazing.
 
+Sat Apr 14 12:07:04 EDT 2012
+
+And now, time for a break, during which I can think again about how I can add
+type classes to this. Or support mutual recursion. That would probably be good
+to figure out at this point.
+
+Sat Apr 14 13:43:46 EDT 2012
+
+Okay! So, here are just some thoughts while I'm here.
+
+Mutual recursion is completely orthogonal to typeclasses. So don't worry about
+it.
+
+Now, type classes will be as described above, but we'll do it this way.
+
+- add id to Var, Dec, Env to identify the right variable instance.
+- Keep _seriP_ and _seriC_ as they are, but add another function:
+
+_seriI_foo :: a -> InstId
+
+In this case, the type variable a is meant to represent whatever the head of
+the class instance is. It is used solely to identify which instances this is,
+the value is completely ignored.
+
+For normal functions, we can have a be (), or anything actually.
+
+_seriI_foo _ = nullid
+
+For each class instance, we will define the id for this instance? I guess
+we'll need one for each method of the instance, and they'll all look the same.
+So I can define a single _seriI_Foo, for class Foo, and have a default
+implementation for _seriI_foo be _seriI_Foo. Easy.
+
+Now when I have a variable reference, I use _seriP_foo to get the type and
+environment. I use _seriI_foo to get the id, and we can have a constructor
+type which makes it work:
+
+dvarE :: TEnv Exp a -> (a -> Id) -> Name -> TEnv Exp a
+
+which knows how to call the _seriI_ function to get the right Id to use.
+
+Now, we'll also want a concrete instance... So to do that we just have:
+
+_seriC_foo :: concretized
+_seriC_foo = _seriP_foo
+
+Which works as long as we have an instance of Foo for VarT_a, or whichever
+type variables are used and involved. So we generate that instance
+automatically, and for the id we return a special id which says: this is a
+method from a type class, and we make sure we never look up that variable in
+elaboration (I don't think this is such a big deal).
+
+And that, thus, is the idea.
+
+The first step would be: add this index thing. The next step will be to have
+the type class.
+
+Sat Apr 14 17:07:28 EDT 2012
+
+I'm worried. Worried that my plan's not going to work out.
+
+Two issues come to mind.
+
+1. How can it support multiparam type classes? What is the signature of the
+_seriI_ function then?
+
+Considering the whole motivation for typeclasses is this multiparameter type
+class used by Tibby, it seems like I ought to be able to support that.
+
+The other is, it's not clear how to get the class type from the signature of
+_seriP_foo. _seriP_foo could be of type (a -> Integer), so how would I know
+how to get the 'a' out of that?
+
+This suggests to me it may make more sense to return the id as part of
+_seriP_foo (I seem to be oscillating back and forth on this issue, don't I...)
+
+So! Rather than diving in to make something work, I think it would valuable to
+take a break from this track and work on another big piece of the puzzle which
+I've been neglecting. The back end.
+
+I think I should work on a haskell back end. This will make sure I have enough
+type information around to generate everything I need for a back end. Okay, so
+it's not quite so good as a C backend would be, where we really need every
+type, but it's better than nothing. Certainly it will force me to add user
+data type declarations to seri, which I'm rather lacking at this point.
+
+So let me have a Seri.Target.Haskell module. Input will be an Env Exp. Output
+will be a haskell program with all the needed declarations, and for the top
+level...
+
+I guess what would be nice is to have string literals. If I had string
+literals, then the input could be a (Typed Env Exp String). Then the top level
+program would just printStrLn that string. I suppose if I didn't want to do
+that, I could just have the main program do: putStrLn . show $ (foo ...).
+
+It should be able to handle integers at least, which can be used to test
+things pretty well. I can abstract the test case well enough it shouldn't
+matter much at this point. The test case will be: given an expression, and an
+expected haskell value, compile the program, run it, verify it gives the same
+haskell value.
+
+Good. I like that. Allow me to get started then.
+
+What's the high level interface? Input: a Env Exp. Output... A string? The
+file? I don't think a TH.Exp is enough, because we have to include the import
+statements for the Seri haskell prelude.
+
+So let me output to a string. Oh. Better yet. Let me output to a document.
+Then you can format it how you like. Good. I like that.
+
+And the name? Well... generate? compile? haskell? target? Let me call it
+generate? Er... haskell. That makes sense at least. Given an expression, it
+returns you haskell code for that expression.
+
+Sat Apr 14 18:04:16 EDT 2012
+
+Cool. I wrote up the code for the haskell target. It looks pretty clean. Now
+it's time to try it.
+
+That is, make a test case for it.
+
+There is the question about builtins. Like, it would be nice if you could take
+as input the header files. That way you could say, for instance: compile this
+library code. So we don't have to compile the whole thing every time.
+
+Hmm... All this annoying system stuff, when all I want to do is see if it
+works. It will be worth spending time to think about this well in the future.
+
+Perhaps it makes sense to think a little about it now?
+
+I want to generate and test test cases. Shouldn't I be using scons for that?
+HUnit isn't really ideal in this case.
+
+Which tends to make you wonder. What sort of interface do you want? How do you
+actually want to use the tool? What is the tool I'm providing?
+
+And then you could ask... what are extensions, such as SMT or Tibby?
+
+Let's take Tibby. What I want is an interface as follows:
+
+I give you a seri file, or a haskell file with the seri source I want to
+compile. You spit out a haskell, c, or bluespec program as specified.
+
+In a sense, though, all an extension like Tibby is is a Seri library and some
+primitives.
+
+I imagine I would want to do analysis at some point. So another way to look at
+it is the seri project is a library for tools. Then you can write specific
+tools which use it to do certain things.
+
+For example, one tool is: generate a haskell program from seri. So I input a
+seri program, and you output the haskell program.
+
+All of which is to say, at this point, I think the tool I want to have is as
+follows... err... I don't know.
+
+It's kind of like bcl. The program is merged with the compiler. The compiler
+is a library.
+
+In that sense, it would be like, when I want to write a seri program, I put a
+bunch of seri code, I write a main function. The main function calls this
+haskell function, and spits out my desired code.
+
+So, the haskell test cases would be main haskell programs which I run to
+produce other haskell programs which I run for test.
+
+This is kind of confusing.
+
+One thing I'm pretty sure of though. I want scons to know about the files
+touching disk, so don't call ghc from an HUnit test.
+
+Fine. What's my first haskell back end test then?
+
+I want to return an integer. 0 is passed, something else is failed. I'll write
+seri like test cases. First test case will be the dummy test case, return 0.
+The second will be do an addition or some such. Or I could jump to the second.
+I suppose I could output a boolean true or false.
+
+I suppose I could also write the main function myself... But maybe don't worry
+about that right now?
+
+It's certainly more flexible. Fine. I let you give me the main function, which
+can optionally be empty. That's good.
+
+Sat Apr 14 18:59:47 EDT 2012
+
+Okay. This looks like a good path to take to me. Compiling via scons.
+
+But I need to take a break just now, so this will have to wait.
+
+Sat Apr 14 19:19:44 EDT 2012
+
+I have a little more time on this. Let me see if I can make any progress.
+
+We have the following issues:
+- declaration of infix operators seems to print wrong?
+- we need to remap primitives.
+
+For remapping primitives, I propose having the 'haskell' function take as
+input a primitive map, from string to string. It will look something like:
+  [("+", "prim_add"), ("-", "prim_sub"), ...] And I'll implement those
+  primitives in this Lib.Builtins.
+
+I can review later how I want to organize things so it makes sense. Each
+seri library module which declares primitives having a corresponding haskell
+target library and mapping, etc... For now I just want to get the basic
+working, so it will be a bit clumped together.
+
+Let me do the primitives thing first, since I know I'll need it.
+
+I suppose I could somewhat cheat and just make each instance of a primitive
+foo as "Prim.foo"... it would be expedient. And cleanupable later...
+
+Sure, let me try that.
+
+Now... how to handle those declarations...
+
+I feel like any name which is infix just needs to be wrapped in parenthesis
+for the declaration. Will that work? I hope so. Otherwise I may need to
+implement my own pretty printing...
+
+Sat Apr 14 19:33:24 EDT 2012
+
+Yes, that works.
+Now the issue is, a bunch of stuff isn't defined. Like... Integer. And for the
+main function: IO, putStrLn, ., show, $,
+
+Should those be defined? How?
+
+Integer clearly has to be considered a primitive type.
+Maybe for now, again, just to get things going, I can import just what I need
+from Prelude for this test to pass.
+
+Good! I hacked enough for it to work. Let me check it in now, and I can start
+thinking about how I want to clean it up.
+

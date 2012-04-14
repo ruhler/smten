@@ -3,8 +3,15 @@
 Import('env')
 
 env['SRCDIR'] = Dir(".")
+env['GHCPATH'] = [Dir(".")]
 
 ## tests test
-tests = env.GHCProgram('tests', GHCPATH=[Dir(".")])
+tests = env.GHCProgram('tests')
 env.Default(env.Command('tests.out', tests, "$SOURCE > $TARGET"))
+
+## haskell back end tests.
+hstest = env.GHCProgram('hstest', 'Seri/Target/Haskell/tests.hs')
+hstest_src = env.Command('hstest_hs.hs', hstest, '$SOURCE $TARGET')
+hstest_exe = env.GHCProgram('hstest_exe', hstest_src)
+env.Default(env.Command('hstest_exe.out', hstest_exe, "$SOURCE > $TARGET"))
 

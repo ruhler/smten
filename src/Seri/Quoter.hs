@@ -178,6 +178,7 @@ mkdecls ((SigD nm ty):(ValD (VarP _) (NormalB e) []):ds) =
   let e' = fst $ runState (mkexp e) $ us nm
       d = declval' nm ty e'
   in d ++ (mkdecls ds)
+
 mkdecls (s@(SigD nm ty):f@(FunD _ clauses):ds) =
   let
       -- Each clause of the form: a b c ... = foo is turned into a case match

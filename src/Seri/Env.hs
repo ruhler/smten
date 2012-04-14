@@ -2,7 +2,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 
 module Seri.Env (
-    Env(), env, val,
+    Env(), env, val, decls,
     withenv, putenv, lookupvar,
     ) where
 
@@ -15,6 +15,9 @@ data Env x = Env {
     env :: Map.Map Name Dec,
     val :: x
 } deriving (Show, Eq)
+
+decls :: Env x -> [Dec]
+decls e = Map.elems (env e)
 
 instance Monad Env where
     return x = Env Map.empty x

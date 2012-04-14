@@ -17,3 +17,10 @@
 - Add support for let expressions
     example: let foo = 2 in foo + 40
 
+- Add support for mutual recursion
+    I think there's a bug with looping contexts in this case.
+
+- Add support for ValD quoting
+   example: foo :: Integer -> Integer
+            foo x = 1 + x
+
