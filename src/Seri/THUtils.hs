@@ -1,7 +1,9 @@
 
 module Seri.THUtils (
-    apply, applyC, arrowts, string, integer, appts, desugar, FixUnit(..),
+    apply, applyC, arrowts, string, integer, appts, desugar, fixUnit,
     ) where 
+
+import Data.Generics
 
 import Data.List(nub)
 import Language.Haskell.TH
@@ -49,37 +51,12 @@ desugar ((BindS p e):stmts)
 
 -- There seems to be a bug with quasi quoters where the type "GHC.Unit.()" is
 -- interpreted as a data constructor instead of a type. To allow use of the
--- unit type in quasi quotes, we replace occurrences of "GHC.Unit.()" with
--- just "()".
-class FixUnit a where
-    fixUnit :: a -> a
-
-instance FixUnit Dec where
-    fixUnit (SigD n t) = SigD n (fixUnit t)
-    fixUnit (DataD ctx n vrs cons dervs)
-        = DataD ctx n vrs (map fixUnit cons) dervs
-    fixUnit (FunD n clauses) = FunD n (map fixUnit clauses)
-    fixUnit d = d
-
-instance FixUnit Clause where
-    fixUnit (Clause pats body decs)
-      = Clause pats (fixUnit body) (map fixUnit decs)
-
-instance FixUnit Body where
-    fixUnit (NormalB exp) = NormalB (fixUnit exp)
-
-instance FixUnit Exp where
-    fixUnit (LetE decs e) = LetE (map fixUnit decs) (fixUnit e)
-    fixUnit e = e
-
-instance FixUnit Con where
-    fixUnit (NormalC n sts) = NormalC n (map (\(s, t) -> (s, fixUnit t)) sts)
-    fixUnit (RecC n sts) = RecC n (map (\(fn, s, t) -> (fn, s, fixUnit t)) sts)
-
-instance FixUnit Type where
-    fixUnit (ForallT vs ctx t) = ForallT vs ctx (fixUnit t)
-    fixUnit (ConT n) | nameBase n == "()" = ConT (mkName "()")
-    fixUnit (AppT a b) = AppT (fixUnit a) (fixUnit b)
-    fixUnit (SigT t k) = SigT (fixUnit t) k
-    fixUnit t = t
+-- unit type in quasi quotes, we replace occurrences of the type constructor
+-- "GHC.Unit.()" with the type constructor "()".
+fixUnit :: (Data a) => a -> a
+fixUnit = 
+  let base :: Type -> Type
+      base (ConT n) | nameBase n == "()" = ConT (mkName "()")
+      base t = t
+  in everywhere $ mkT base
 

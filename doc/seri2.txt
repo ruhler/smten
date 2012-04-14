@@ -4783,7 +4783,7 @@ tried to fix it, it lead to problems.
 
 Anyway, here's what I want to do next.
 
-1. Commit what few changes I have. Mostly additions to fixUnit.
+1+ Commit what few changes I have. Mostly additions to fixUnit.
 2. Rewrite fixUnit to use generics, verify it works.
 3. Have the seri [s|...|] expression quotes return an expression and a
 context.
