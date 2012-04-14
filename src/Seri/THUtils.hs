@@ -1,6 +1,6 @@
 
 module Seri.THUtils (
-    apply, arrowts, string, integer, appts, desugar, FixUnit(..),
+    apply, applyC, arrowts, string, integer, appts, desugar, FixUnit(..),
     ) where 
 
 import Data.List(nub)
@@ -8,6 +8,9 @@ import Language.Haskell.TH
 
 apply :: Name -> [Exp] -> Exp
 apply n exps = foldl AppE (VarE n) exps
+
+applyC :: Name -> [Exp] -> Exp
+applyC n exps = foldl AppE (ConE n) exps
 
 -- arrowts 
 --  Turn a list of types [a, b, c, ...]
@@ -55,7 +58,19 @@ instance FixUnit Dec where
     fixUnit (SigD n t) = SigD n (fixUnit t)
     fixUnit (DataD ctx n vrs cons dervs)
         = DataD ctx n vrs (map fixUnit cons) dervs
+    fixUnit (FunD n clauses) = FunD n (map fixUnit clauses)
     fixUnit d = d
+
+instance FixUnit Clause where
+    fixUnit (Clause pats body decs)
+      = Clause pats (fixUnit body) (map fixUnit decs)
+
+instance FixUnit Body where
+    fixUnit (NormalB exp) = NormalB (fixUnit exp)
+
+instance FixUnit Exp where
+    fixUnit (LetE decs e) = LetE (map fixUnit decs) (fixUnit e)
+    fixUnit e = e
 
 instance FixUnit Con where
     fixUnit (NormalC n sts) = NormalC n (map (\(s, t) -> (s, fixUnit t)) sts)

@@ -12,3 +12,5 @@
     example:  foo 1 2 = 3
               foo a = \b -> a + b
 
+- declval' should be able to figure out the free variables itself
+

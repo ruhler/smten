@@ -4687,3 +4687,106 @@ I don't know of a good solution yet.
 But this is a good change. I like it. I'm glad I did it. It should make the
 next transformation much easier, and the code is much nicer.
 
+Fri Apr 13 19:04:28 EDT 2012
+
+Now. On to the Info thing.
+
+Fri Apr 13 19:28:39 EDT 2012
+
+Implementing declval will be a bit of a slog, but I think it will be worth it.
+And I already have most of everything in place.
+
+One thing, though, is I'd like also to have another function, which is a
+helper function. The function the quoter will use when it generates an
+expression. That is, exactly like what I want declval to do, only without
+including the declaration. Just returning the (Typed Info a) expression.
+
+You know what? I think I should make that a separate step. First step, handle
+declarations. Second step, have seri quoted expressions return these info
+things. That will make my life much easier I feel.
+
+So, back to the slog.
+
+Fri Apr 13 20:10:27 EDT 2012
+
+Okay, so it wasn't so bad. I've updated Declarations to where I think it will
+work. What else has to change?
+
+It's just the quoter, right? Instead of _seri_foo, it should do 
+(typedas _seri_foo (Typed exp _seri_foo)). Or, in other words, I want a texp
+function, then it's texp _seri_foo.
+
+Okay. So I fixed that... what's left will be the test cases.
+
+Fri Apr 13 20:50:46 EDT 2012
+
+Started working out the bugs. I'll finish working out the bugs tomorrow. I
+think the meat of it is all there.
+
+Sat Apr 14 07:07:39 EDT 2012
+
+Yet again I run into this fixunit problem. What I ought to do is switch to
+using generics. Say everywhere, change ConT n where n looks like unit into
+ConT "()".
+
+But I think that should be a separate step. The next step. For now I'll just
+add let declarations and expressions to my FixUnit.
+
+Sat Apr 14 07:14:26 EDT 2012
+
+Issue: I'm doing env (typed _seri_tail), for example, which apparently doesn't
+have enough type info. I need a concrete type for _seri_incr to use.
+
+That sucks. The concrete type I want is the concretized version, but I can't
+get at that info just from the name.
+
+Bugger. This is fairly serious. It shouldn't matter what type I use, but a
+need some valid type, and I don't know anything about the type of the free
+variable... Or do I?
+
+What if I made that an input? Do I have that information?
+
+No. That comes after type check...
+
+Bugger.
+
+That's a big bugger.
+
+That means we have to have separate top level haskell declarations for the
+polymorphic type and concrete type. Any attempt to put them together, and
+whenever we want to get concrete information, we have to cast it to concrete
+type, which just doesn't make sense.
+
+In other words... I should dump all the changes I just made, because they
+won't work.
+
+Sat Apr 14 07:26:00 EDT 2012
+
+Oh well. At least it's good to know the way I've done it is valid. And I'm not
+sure this change I wanted to make is so much of an improvement. I mostly
+wanted to reduce the top level namespace clutter, but that doesn't matter.
+
+And a bunch of the changes I made I can keep.
+
+In an attempt to keep my partial changes, I'm getting:
+
+AppE  (AppE  (VarE  "+") (AppE  (AppE  (VarE  "+") (AppE  (AppE  (VarE  "*") (IntegerE 5)) (IntegerE 5))) (AppE  (AppE  (VarE  "*") (IntegerE 3)) (IntegerE 5)))) (IntegerE 2)
+
+Which is:
++ (+ (* 5 5) (* 3 5)) 2
+
+Why is this not elaborating?
+I don't have '+' in the context. Why wasn't I running into this bug before?
+
+I don't know. I think there's a bug in the quoter I'm relying on, and when I
+tried to fix it, it lead to problems.
+
+Anyway, here's what I want to do next.
+
+1. Commit what few changes I have. Mostly additions to fixUnit.
+2. Rewrite fixUnit to use generics, verify it works.
+3. Have the seri [s|...|] expression quotes return an expression and a
+context.
+4. Fix that supposed issue in the Quoter.
+5. Reconsider the next step needed moving forward.
+
