@@ -4784,9 +4784,33 @@ tried to fix it, it lead to problems.
 Anyway, here's what I want to do next.
 
 1+ Commit what few changes I have. Mostly additions to fixUnit.
-2. Rewrite fixUnit to use generics, verify it works.
+2+ Rewrite fixUnit to use generics, verify it works.
 3. Have the seri [s|...|] expression quotes return an expression and a
 context.
 4. Fix that supposed issue in the Quoter.
 5. Reconsider the next step needed moving forward.
+
+Sat Apr 14 07:49:29 EDT 2012
+
+I want to have the seri expression quotes return a context. How do I do that?
+
+I want a way, given a list of names, to convert that into a context. This is
+used in declval, I should just pull it out into a separate function. Then the
+quoter can use it too.
+
+That is, we want: [name] -> Exp, where the Exp has type [Dec].
+
+Then at the top level of the seri parser, run it, get an Exp and a list of
+free names, and return a Tuple2 ([Dec], Exp).
+
+Sat Apr 14 08:08:52 EDT 2012
+
+Err... there's a bug in the build system. It's not always making.
+
+I feel like it's a problem with the haskell compiler and mixing with TH. It's
+rather distressing.
+
+That is, if I change the code for a quoter or template haskell slice, the file
+which uses the slice isn't seen to be needing recompilation? Something like
+that.
 

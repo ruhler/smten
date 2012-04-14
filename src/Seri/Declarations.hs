@@ -4,7 +4,7 @@
 
 module Seri.Declarations (
     name_P, name_C, name_D,
-    declval', decltype',
+    declval', decltype', declctx',
     declprim, declval, decltype,
     ) where
 
@@ -36,6 +36,15 @@ declval n qt qe ns = do
     e <- qe
     return $ declval' n t e ns
 
+-- Given a list of free variable names, return the seri context for that.
+-- The returned Exp represents a haskell expression of type [SIR.Dec]
+declctx' :: [SIR.Name] -> Exp
+declctx' free = 
+  let ctx = map (\fn -> VarE (name_D fn)) free
+      concated = apply 'concat [ListE ctx]
+      nubbed = apply 'SIR.nubdecl [concated]
+  in nubbed
+
 -- declval' name ty exp free
 -- Make a seri value declaration.
 --   name - name of the seri value being defined.
@@ -59,10 +68,9 @@ declval' n t e free =
       sig_C = SigD (name_C n) (concretize dt)
       impl_C = FunD (name_C n) [Clause [] (NormalB (VarE (name_P n))) []]
 
-      subctx = map (\fn -> VarE (name_D fn)) free
-      mydecl = ListE [apply 'S.valD [LitE (StringL n), VarE (name_C n)]]
-      concated = apply 'concat [ListE (mydecl:subctx)]
-      nubbed = apply 'SIR.nubdecl [concated]
+      subdecls = declctx' free
+      mydecl = apply 'S.valD [LitE (StringL n), VarE (name_C n)]
+      nubbed = apply 'SIR.nubdecl [applyC (mkName ":") [mydecl, subdecls]]
 
       sig_D = SigD (name_D n) (AppT ListT (ConT ''SIR.Dec))
       impl_D = FunD (name_D n) [Clause [] (NormalB nubbed) []]

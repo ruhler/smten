@@ -204,7 +204,9 @@ s = QuasiQuoter qexp qpat qtype qdec
 
 qexp :: String -> Q Exp
 qexp s = case (parseExp s) of
-            Right e -> return (fst $ runState (mkexp e) initialUserState)
+            Right e ->
+                let (e', UserState _ free) = runState (mkexp e) initialUserState
+                in return $ TupE [declctx' (map nameBase free), e']
             Left err -> fail err
 
 qpat :: String -> Q Pat

@@ -15,8 +15,8 @@ import Test.HUnit
 seriR :: Rule
 seriR = rules [coreR, arithR]
 
-eval :: [Dec] -> Typed Exp a -> Exp
-eval decls = elaborate seriR decls . typed
+eval :: ([Dec], Typed Exp a) -> Exp
+eval (decls, e) = elaborate seriR decls (typed e)
 
 [s|
     foo :: Integer
@@ -87,21 +87,21 @@ decltype ''Maybe
 
 
 tests = "Seri" ~: [
-    "foo" ~: IntegerE 42 ~=? eval [] [s|(\x -> x*x+3*x+2) 5|],
-    "true" ~: trueE ~=? eval _seriD_True [s| True |],
-    "if" ~: IntegerE 23 ~=? eval [] [s| if 6 < 4 then 42 else 23 |],
-    "slice" ~: IntegerE 7 ~=? eval [] [s| 3 + _s (integerE . toInteger $ length [4,1,5,56]) |],
-    "foo decl" ~: IntegerE 42 ~=? eval [] _seriC_foo,
-    "id id 5" ~: IntegerE 5 ~=? eval _seriD_id [s| (id id) 5 |],
-    "justInteger" ~: IntegerE 5 ~=? eval _seriD_fromMaybeInteger
+    "foo" ~: IntegerE 42 ~=? eval [s|(\x -> x*x+3*x+2) 5|],
+    "true" ~: trueE ~=? eval [s| True |],
+    "if" ~: IntegerE 23 ~=? eval [s| if 6 < 4 then 42 else 23 |],
+    "slice" ~: IntegerE 7 ~=? eval [s| 3 + _s (integerE . toInteger $ length [4,1,5,56]) |],
+    "foo decl" ~: IntegerE 42 ~=? eval (_seriD_foo, _seriC_foo),
+    "id id 5" ~: IntegerE 5 ~=? eval [s| (id id) 5 |],
+    "justInteger" ~: IntegerE 5 ~=? eval 
             [s| fromMaybeInteger 10 (JustInteger 5) |],
-    "noInteger" ~: IntegerE 10 ~=? eval _seriD_fromMaybeInteger
+    "noInteger" ~: IntegerE 10 ~=? eval
             [s| fromMaybeInteger 10 NoInteger |],
-    "just Bool" ~: trueE ~=? eval _seriD_fromMaybeBool
+    "just Bool" ~: trueE ~=? eval
             [s| fromMaybeBool False (Just True) |],
-    "no Bool" ~: falseE ~=? eval _seriD_fromMaybeBool
+    "no Bool" ~: falseE ~=? eval
             [s| fromMaybeBool False Nothing |],
-    "int pattern" ~: IntegerE 30 ~=? eval [] [s|
+    "int pattern" ~: IntegerE 30 ~=? eval [s|
         case (1 + 3) of
             2 -> 10
             3 -> 20
@@ -109,13 +109,13 @@ tests = "Seri" ~: [
             5 -> 40 
             _ -> 50
         |],
-    "multclause" ~: IntegerE 30 ~=? eval _seriD_multclause [s| multclause 4 |],
-    "tuples" ~: IntegerE 30 ~=? eval (_seriD_tupleswap ++ _seriD_snd)
+    "multclause" ~: IntegerE 30 ~=? eval [s| multclause 4 |],
+    "tuples" ~: IntegerE 30 ~=? eval 
         [s| snd (tupleswap (30, 40)) |],
-    "lists" ~: IntegerE 20 ~=? eval (_seriD_listswaptop ++ _seriD_listdifftop)
+    "lists" ~: IntegerE 20 ~=? eval 
         [s| listdifftop (listswaptop [10, 30, 50, 0]) |],
-    "2 arg func" ~: IntegerE 12 ~=? eval _seriD_sum2 [s| sum2 5 7 |],
-    "3 arg func" ~: IntegerE 20 ~=? eval _seriD_sum3 [s| sum3 5 7 8 |],
-    "unit type" ~: IntegerE 3 ~=? eval _seriD_unary2int [s| unary2int [(), (), ()] |]
+    "2 arg func" ~: IntegerE 12 ~=? eval [s| sum2 5 7 |],
+    "3 arg func" ~: IntegerE 20 ~=? eval [s| sum3 5 7 8 |],
+    "unit type" ~: IntegerE 3 ~=? eval [s| unary2int [(), (), ()] |]
     ]
 
