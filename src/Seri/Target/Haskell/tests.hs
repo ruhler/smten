@@ -21,11 +21,17 @@ hsMain me =
     text "main :: IO ()" $+$
     text "main = putStrLn . show $" <+> me
 
+builtin = Builtin {
+    mapprim = \s -> Just $ "Prim." ++ s,
+    maptype = \s -> Nothing,
+    includes = text "import Prelude(Integer, IO, putStrLn, (.), show, ($))" $+$
+               text "import qualified Seri.Target.Haskell.Lib.Primitives as Prim"
+}
+
 main :: IO ()
 main = do
     args <- getArgs
     let outfile = head args
-    let doc = text "import Prelude(Integer, IO, putStrLn, (.), show, ($))"
-              $+$ haskell hsMain emain
+    let doc = haskell builtin hsMain emain
     writeFile outfile (show doc)
 

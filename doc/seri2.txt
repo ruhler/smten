@@ -5339,3 +5339,99 @@ from Prelude for this test to pass.
 Good! I hacked enough for it to work. Let me check it in now, and I can start
 thinking about how I want to clean it up.
 
+Sun Apr 15 08:34:02 EDT 2012
+
+Just some thoughts.
+
+We can make the typeclass thing work. We just need to choose the right type
+for the _seriI_ function. Of course, we could return the InstId with the
+_seriP_ function, but we could also still keep them separate. The solution is
+have the input type of the _seriI_ function be the same as the output type of
+the _seriP_ function. So if you want the id, you can just do (_seriI_ _seriP_).
+
+That should also handle multi param type classes properly, I believe.
+
+One more question, while I've thought of it. Do we ever actually use the
+_seriC_ function?
+
+Oh. That would be a bug. We should be referring to it when we create the ValD
+for the context, but currently we are using the type specific one. Bugger.
+Well, that's something to work out first and fix.
+
+This is a bug that would be caught if I tested a polymorphic function in the
+back end? Or maybe it's okay? Maybe it's just that you have multiple ValD's
+with the same name, but with a different type? How can that be okay?
+
+The real test will be to try ((id id) 5) in the back end. That will reveal the
+bug. Then I can think about the best way to fix it.
+
+Anyway, more thoughts on backend stuff.
+
+I feel like I want each Seri/Lib/Foo.hs file to have a corresponding
+Seri/Target/*/Lib/Foo.hs file which declares the primitives. We need a
+different name space for primitives from variables. I think, perhaps, the best
+thing to do would be have something like the elaboration rules. Each seri
+library module provides a mapping from their primitive to corresponding back
+end primitives, and perhaps the appropriate header to include. For example,
+The Integer module could say something like:
+
+Map: * -> Integer.*
+Header:  import qualified Seri.Target.Haskell.Lib.Integer as Integer
+
+There is also this notion, or perhaps desired distinction between a user
+defined type and a primitive type. Integer, Bool, List, Tuple, these are all
+primitive types, not defined by the user. Maybe, Answer, etc... are user
+defined types. Perhaps it makes sense to have a PrimT kind of type then, which
+behaves just like a ConT. Then I could provide a mapping for the primitive
+types too.
+
+Ideally we would like to be able to compile modules separately. Like, ... oh.
+But that could be a bit of work to figure out and arrange, because we have to
+start tracking which declarations are from which modules. Let me put that off
+for now. Just say that, the vision is, in the future, you have a library of
+compiled seri code, in addition to the seri code? And you provide more seri
+code, and compile just that part. Yeah, that's too confusing to think about
+just now.
+
+I think this idea of a PrimT is good. Then supply rules for mapping primitive
+values and types, just like we have primitive elaboration rules. And have with
+those rules information about headers to be included.
+
+I'm going to assume for now we always have a main function. But that can just
+be added as more information: import qualified Prelude (which we'll want to
+import qualified anyway so as not to pollute things), then the main function
+should refer to things as Prelude.IO, Prelude.putStrLn, and so on. Or, perhaps
+better, HSPrelude.putStrLn, to distinguish it from the Seri prelude.
+
+Good. This all sounds decent to me.
+
+So I propose now the following next steps:
+- Add a PrimT type to the Seri IR (which behaves just like ConT). I wonder,
+  perhaps it would be better to have ConT and PrimT be the same, and just
+  annotate whether or not it's primitive using a boolean?
+
+  Or, assuming ConT and PrimT share the same namespace, then we really don't
+  need to annotate a type as PrimT, we just assume the primitive mapping for
+  types only renames primitive types. That may be the easiest way to do it.
+
+  Cool. So, don't change the Seri IR.
+
+- Define some structure to contain information about a target back end.
+  It should have:
+   - a mapping from primitive name to back end name
+   - a mapping from primitive type to back end type
+   - a set of import headers to include in the document.
+  And you should be able to compose them together to get bigger mappings.
+
+At this point my test case for the haskell target should be nice and clean.
+Then.
+
+- test ((id id) 5) in haskell back end.
+I expect it to fail.
+
+- fix this concrete declarations issue.
+- Try, yet again, to make the jump to supporting type classes.
+  Or, add more tests to the back end, such as user defined data type tests.
+
+Good! Cool. I like it.
+
