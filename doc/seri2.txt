@@ -5458,3 +5458,97 @@ language, the better. The easier to port to new backends, that's for sure.
 But, this means I really have to add user defined data type declarations.
 That's the next step.
 
+Sun Apr 15 12:24:33 EDT 2012
+
+How to support user defined data types? Allow me to start thinking about that
+now and I'll tell you what I come up with.
+
+Sun Apr 15 16:56:41 EDT 2012
+
+Thinking more about this context declarations things. I've gone back and forth
+and back and forth, but I think I've got a solution!
+
+What we really want is some way to ask, what are all the declarations that
+have been made so far? What is it we can ask about like that? Class instances.
+
+So here's the idea. We have a typeclass.
+
+class SeriDec a where
+    dec :: a -> Dec
+
+Now, for each declaration, I make a phantom type like thing. For example:
+
+data SeriDec_foo = {}
+
+instance SeriDec SeriDec_foo where
+    dec _ = ValD "foo" (typed _seriC_foo)
+
+Those collect. So by reifying the 'SeriDec type class, I should be able to get
+the list of all things declared so far.
+
+So here's the deal. The expression quoter for seri will build the expression,
+then combine that with an environment which is looked up.
+
+Simple. Easy. No recursion problems. No messiness. No monadness of Env.
+
+What do you think? Fits in with type classes naturally. Works with data types
+too. The only slight annoyance is the difference between a type constructor
+and a data constructor of the same name.
+
+This will work. I'm sure of it. And it is much nicer.
+
+The question is... how do I make the transition to this scheme in a sane way?
+
+Steps that would need to be taken:
+- declval should define the SeriDec_foo type and class instance.
+We can get rid of _seriC_, and instead just use (_seriP_ :: concretized) to
+get the value of the declaration with concrete polymorphic types.
+
+- We can keep Env as is, but we no longer need the monad.
+- Typed constructors should not refer to Env at all.
+
+I would take the following steps. First add the SeriDec class and use that for
+the context. Just overwrite, or ignore whatever conte...
+
+Whatever. It's not so big a change. I can do it all at once.
+
+Good! And hopefully this will work better than my last attempts rather than be
+just another failed revision.
+
+Once I have this, adding user data types as declarations should be easy.
+
+Uh oh. Issue. Will the reify give us the latest declarations?
+
+Oh. Doesn't matter, because we can't add new declarations in an expression.
+Phew.
+
+Sun Apr 15 18:34:12 EDT 2012
+
+Well... there seems to be some issue. I'm getting a bunch of the declarations
+in the environment. But I'm not getting all of them.
+
+For example... I'm not getting fromMaybeBool in the environment.
+
+There is an instance of SeriDec for it being constructed... Why aren't I
+seeing it in the environment list?
+
+I'm not getting all the instances from haskell.
+
+Perhaps they have to be defined in a different file?
+
+Or, maybe it has to do with this decltype'' Maybe. Maybe I could define that
+elsewhere and it would work okay?
+
+I have a suspicion that's the case. Like a splicing template haskell
+funniness. Let me see if I can't work around that in an acceptable way.
+
+Oh! Actually it appears to be the other way around. The call to template
+haskell was forcing the instances to be compiled. Maybe I can have a hack.
+Like, a commit thing. Yup. That does it.
+
+I can live with that.
+
+Sun Apr 15 18:51:19 EDT 2012
+
+It works! That's cool. Nifty. I like this solution much better than before.
+

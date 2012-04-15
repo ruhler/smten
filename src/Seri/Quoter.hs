@@ -17,43 +17,34 @@ import Seri.THUtils
 import Seri.Declarations
 
 data UserState = UserState {
-    declname :: Name,
     boundnames :: [Name]
 }
-
-us :: Name -> UserState
-us n = UserState n []
 
 bindname :: Name -> State UserState ()
 bindname nm = modify (\us -> us { boundnames = (nm:(boundnames us)) })
 
 unbindname :: Name -> State UserState ()
 unbindname nm = do
-    UserState d (n:names) <- get
+    UserState (n:names) <- get
     if (n /= nm) 
         then fail $ "unbindname '" ++ show nm ++ "' doesn't match expected '" ++ show n ++ "'"
-        else put $ UserState d names
+        else put $ UserState names
 
 -- declaredV name
 -- Return a reference to a free seri variable declared in the top level
 -- environment.
 --   name - the seri name.
 declaredV :: Name -> State UserState Exp
-declaredV nm = do
-    dn <- gets declname
-    if dn == nm
-        then return $ apply 'S.rdvarE [VarE (name_P nm), string nm]
-        else return $ apply 'S.dvarE [VarE (name_P nm), string nm]
+declaredV nm = return $ apply 'S.varE [VarE (name_P nm), string nm]
 
 -- declaredC
 -- Return a reference to a free seri constructor declared in the top level
 -- environment.
 --   name - the seri name.
 declaredC :: Name -> State UserState Exp
-declaredC nm =
-    return $ apply 'S.typedas [VarE (name_P nm), apply 'S.conE [string nm]]
+declaredC nm = return $ apply 'S.conE [VarE (name_P nm), string nm]
 
--- mkexp :: Exp (a) -> Exp (S.TypedExp a)
+-- mkexp :: Exp (a) -> Exp (S.Typed Exp a)
 --   Convert a haskell expression to its corresponding typed seri
 --   representation.
 --
@@ -175,7 +166,7 @@ mkdecls :: [Dec] -> [Dec]
 mkdecls [] = []
 mkdecls (d@(DataD {}) : ds) = [d] ++ (decltype' d) ++ mkdecls ds
 mkdecls ((SigD nm ty):(ValD (VarP _) (NormalB e) []):ds) = 
-  let e' = fst $ runState (mkexp e) $ us nm
+  let e' = fst $ runState (mkexp e) $ UserState []
       d = declval' nm ty e'
   in d ++ (mkdecls ds)
 
@@ -186,7 +177,8 @@ mkdecls (s@(SigD nm ty):f@(FunD _ clauses):ds) =
       --
       -- For this to work, all clauses must have the same number of argument
       -- patterns. We can't yet handle the case where different clauses of the
-      -- same function take a different number of arguments.
+      -- same function take a different number of arguments. (though it
+      -- wouldn't be too difficult to handle that case).
       Clause pats1 _ _ = head clauses
       nargs = length pats1
 
@@ -211,10 +203,26 @@ mkdecls d = error $ "TODO: mkdecls " ++ show d
 s :: QuasiQuoter 
 s = QuasiQuoter qexp qpat qtype qdec
 
+-- The seri expression quoter returns a haskell value of type
+--  Typed Env Exp a
 qexp :: String -> Q Exp
-qexp s = case (parseExp s) of
-            Right e -> return . fst $ runState (mkexp e) (us $ mkName "")
+qexp s = do
+    case (parseExp s) of
+            Right e -> do
+                let expr = fst $ runState (mkexp e) (UserState [])
+                ClassI _ insts  <- reify ''SeriDec
+                return $ envize expr insts
             Left err -> fail err
+
+-- envize
+-- Given the an expression and a list of SeriDec class instances, return an
+-- Envexpression of type [SIR.Dec] with the corresponding seri declarations.
+envize :: Exp -> [ClassInstance] -> Exp
+envize e insts =
+  let tys = map (head . ci_tys) insts
+      decs = map (\(ConT n) -> apply 'dec [ConE $ mkName (nameBase n)]) tys
+  in apply 'S.enved [e, ListE decs]
+
 
 qpat :: String -> Q Pat
 qpat = error $ "Seri pattern quasi-quote not supported"

@@ -11,10 +11,10 @@ import Seri.Lib.Prelude
 
 import Test.HUnit
 
-eval :: TEnv Exp a -> Exp
+eval :: Typed (Env Exp) a -> Exp
 eval e = elaborate preludeR (typed e)
 
-eqexp :: Exp -> TEnv Exp a -> Assertion
+eqexp :: Exp -> Typed (Env Exp) a -> Assertion
 eqexp wnt e = do
     let got = eval e
     if (wnt /= got)
@@ -47,7 +47,6 @@ eqexp wnt e = do
             NoInteger -> def
 |]
 
-decltype ''Maybe
 [s|
     fromMaybeBool :: Bool -> Maybe Bool -> Bool
     fromMaybeBool def = \mb ->
@@ -92,13 +91,13 @@ decltype ''Maybe
     unary2int (_:xs) = 1 + unary2int xs
 |]
 
+declcommit
 
 tests = "Seri" ~: [
     "foo" ~: IntegerE 42 `eqexp` [s|(\x -> x*x+3*x+2) 5|],
     "true" ~: trueE `eqexp` [s| True |],
     "if" ~: IntegerE 23 `eqexp` [s| if 6 < 4 then 42 else 23 |],
     "slice" ~: IntegerE 7 `eqexp` [s| 3 + _s (integerE . toInteger $ length [4,1,5,56]) |],
-    "foo decl" ~: IntegerE 42 `eqexp` _seriC_foo,
     "id id 5" ~: IntegerE 5 `eqexp` [s| (id id) 5 |],
     "justInteger" ~: IntegerE 5 `eqexp` 
             [s| fromMaybeInteger 10 (JustInteger 5) |],
