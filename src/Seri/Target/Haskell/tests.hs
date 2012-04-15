@@ -18,15 +18,10 @@ emain = typed [s| foo |]
 
 hsMain :: Doc -> Doc
 hsMain me = 
-    text "main :: IO ()" $+$
-    text "main = putStrLn . show $" <+> me
+    text "main :: Prelude.IO ()" $+$
+    text "main = Prelude.putStrLn" <+> (parens $ text "Prelude.show " <+> (parens me))
 
-builtin = Builtin {
-    mapprim = \s -> Just $ "Prim." ++ s,
-    maptype = \s -> Nothing,
-    includes = text "import Prelude(Integer, IO, putStrLn, (.), show, ($))" $+$
-               text "import qualified Seri.Target.Haskell.Lib.Primitives as Prim"
-}
+builtin = arithB
 
 main :: IO ()
 main = do
