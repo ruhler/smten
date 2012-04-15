@@ -5448,3 +5448,13 @@ needed if I'm using Seri.Lib.Prelude.
 What this means is, the next step is... add lots of tests to the haskell back
 end.
 
+Sun Apr 15 12:21:29 EDT 2012
+
+It turns out Bool doesn't need any special handling. I can define it with
+decltype. That makes it easier in the backend, because I don't have anything
+builtin to worry about (which is really cool). The more I can do in the
+language, the better. The easier to port to new backends, that's for sure.
+
+But, this means I really have to add user defined data type declarations.
+That's the next step.
+

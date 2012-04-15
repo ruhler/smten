@@ -5,7 +5,10 @@
 
 module Seri.Lib.Tuple where
 
-import Seri
+import Seri.IR
+import Seri.Typed
+import Seri.Declarations
+import Seri.Quoter
 
 declval "(,)"
     [t| forall a b. (a -> b -> (a, b)) |]

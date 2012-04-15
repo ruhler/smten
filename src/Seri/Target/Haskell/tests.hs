@@ -12,8 +12,14 @@ import Seri.Target.Haskell.Haskell
     foo :: Integer
     foo = (\x -> x*x+3*x+2) 5
 
+    unary2int :: [()] -> Integer
+    unary2int [] = 0
+    unary2int (_:xs) = 1 + unary2int xs
+
     allpassed :: Bool
-    allpassed = foo == 42
+    allpassed =
+           foo == 42
+        && unary2int [(), (), ()] == 3
 |]
 
 emain :: Env Exp
