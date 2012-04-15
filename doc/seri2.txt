@@ -5435,3 +5435,16 @@ I expect it to fail.
 
 Good! Cool. I like it.
 
+Sun Apr 15 11:09:59 EDT 2012
+
+I used my Builtins structure thing for Integer. It looks clean to me.
+
+What I'll want to do, guided by test cases, is add support for each of the
+library primitives: Unit, Bool, Tuple, List. And ideally I can have a Prelude
+builtins object which combines all those together. So, I include
+Seri.Lib.Prelude. It gives me access to preludeB, which has all the builtins
+needed if I'm using Seri.Lib.Prelude.
+
+What this means is, the next step is... add lots of tests to the haskell back
+end.
+

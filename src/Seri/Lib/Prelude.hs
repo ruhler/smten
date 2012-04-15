@@ -1,5 +1,6 @@
 
 module Seri.Lib.Prelude (
+    preludeB, preludeR,
     module Seri.Lib.Bool,
     module Seri.Lib.Integer,
     module Seri.Lib.List,
@@ -7,9 +8,16 @@ module Seri.Lib.Prelude (
     module Seri.Lib.Unit,
     ) where
 
+import Seri
 import Seri.Lib.Bool
 import Seri.Lib.Integer
 import Seri.Lib.List
 import Seri.Lib.Tuple
 import Seri.Lib.Unit
+
+preludeB :: Builtin
+preludeB = builtins [boolB, integerB]
+
+preludeR :: Rule
+preludeR = rules [coreR, integerR]
 

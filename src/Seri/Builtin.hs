@@ -19,8 +19,8 @@ data Builtin = Builtin {
 }
 
 -- Compose builtins together.
-builtins :: Builtin -> Builtin -> Builtin
-builtins a b =
+builtins :: [Builtin] -> Builtin
+builtins bs =
     let mergelookup :: (String -> Maybe String) -> (String -> Maybe String)
                         -> (String -> Maybe String)
         mergelookup a b str = 
@@ -29,9 +29,12 @@ builtins a b =
                 (Nothing, Just x) -> Just x
                 (Nothing, Nothing) -> Nothing
                 (Just x, Just y) -> error $ "multiply defined builtin: " ++ x
-    in Builtin {
-         mapprim = mergelookup (mapprim a) (mapprim b),
-         maptype = mergelookup (maptype a) (maptype b),
-         includes = includes a $+$ includes b
-       }
+
+        compose :: Builtin -> Builtin -> Builtin
+        compose a b = Builtin {
+             mapprim = mergelookup (mapprim a) (mapprim b),
+             maptype = mergelookup (maptype a) (maptype b),
+             includes = includes a $+$ includes b
+           }
+    in foldl1 compose bs
 

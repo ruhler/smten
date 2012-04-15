@@ -11,17 +11,25 @@ import Seri.Target.Haskell.Haskell
 [s|
     foo :: Integer
     foo = (\x -> x*x+3*x+2) 5
+
+    allpassed :: Bool
+    allpassed = foo == 42
 |]
 
 emain :: Env Exp
-emain = typed [s| foo |]
+emain = typed [s| allpassed |]
 
 hsMain :: Doc -> Doc
 hsMain me = 
     text "main :: Prelude.IO ()" $+$
-    text "main = Prelude.putStrLn" <+> (parens $ text "Prelude.show " <+> (parens me))
+    text "main = if " <+> me <+>
+        text " then System.Exit.exitSuccess else System.Exit.exitFailure"
 
-builtin = arithB
+builtin = builtins [preludeB, Builtin {
+    mapprim = \_ -> Nothing,
+    maptype = \_ -> Nothing,
+    includes = text "import qualified System.Exit"
+}]
 
 main :: IO ()
 main = do

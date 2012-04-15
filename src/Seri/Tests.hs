@@ -11,12 +11,8 @@ import Seri.Lib.Prelude
 
 import Test.HUnit
 
-
-seriR :: Rule
-seriR = rules [coreR, arithR]
-
 eval :: TEnv Exp a -> Exp
-eval e = elaborate seriR (typed e)
+eval e = elaborate preludeR (typed e)
 
 eqexp :: Exp -> TEnv Exp a -> Assertion
 eqexp wnt e = do

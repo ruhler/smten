@@ -14,9 +14,10 @@ declprim "-" [t| Integer -> Integer -> Integer |]
 declprim "*" [t| Integer -> Integer -> Integer |]
 declprim "<" [t| Integer -> Integer -> Bool |]
 declprim ">" [t| Integer -> Integer -> Bool |]
+declprim "==" [t| Integer -> Integer -> Bool |]
 
-arithR :: Rule
-arithR = Rule $ \gr e ->
+integerR :: Rule
+integerR = Rule $ \gr e ->
     case val e of 
       (AppE _ (AppE _ (PrimE _ "+") (IntegerE a)) (IntegerE b))
         -> Just $ IntegerE (a+b)
@@ -28,15 +29,18 @@ arithR = Rule $ \gr e ->
         -> Just $ if a < b then trueE else falseE
       (AppE _ (AppE _ (PrimE _ ">") (IntegerE a)) (IntegerE b))
         -> Just $ if a > b then trueE else falseE
+      (AppE _ (AppE _ (PrimE _ "==") (IntegerE a)) (IntegerE b))
+        -> Just $ if a == b then trueE else falseE
       _ -> Nothing
 
-arithB :: Builtin
-arithB =
+integerB :: Builtin
+integerB =
   let mp "+" = Just "Integer.+"
       mp "-" = Just "Integer.-"
       mp "*" = Just "Integer.*"
       mp "<" = Just "Integer.<"
       mp ">" = Just "Integer.>"
+      mp "==" = Just "Integer.=="
       mp _ = Nothing
 
       mt "Integer" = Just "Integer.Integer"
