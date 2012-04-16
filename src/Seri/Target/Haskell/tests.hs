@@ -22,6 +22,8 @@ import Seri.Target.Haskell.Haskell
         && unary2int [(), (), ()] == 3
 |]
 
+declcommit
+
 emain :: Env Exp
 emain = typed [s| allpassed |]
 

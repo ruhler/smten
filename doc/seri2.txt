@@ -5552,3 +5552,74 @@ Sun Apr 15 18:51:19 EDT 2012
 
 It works! That's cool. Nifty. I like this solution much better than before.
 
+Sun Apr 15 18:55:24 EDT 2012
+
+So then. What are the next steps?
+
+- Support data declarations in seri.
+  DataD Name [Con]
+  Con Name [Type]
+
+  generate: SeriDecD_Foo
+     instance SeriDecD_Foo where
+        dec _ = DataD "Foo" [...]
+
+Easy.
+
+Then the haskell test case should work right. And then! Finally (??) I can
+think about how I want to deal with type classes.
+
+Sun Apr 15 19:39:00 EDT 2012
+
+The haskell test case is running into other issues I probably ought to tackle
+first, though they may be related.
+
+The issue is this. We have a bunch of declarations which are constructor
+functions. I can define a constructor explicitly in haskell.
+
+For example:
+
+False :: Bool
+False = False
+
+This just won't fly.
+
+I want _seri_False to be defined, so I can know the type of the constructor
+False is Bool.
+
+How about this. Maybe I just don't need a declaration for it. So, I have
+declval. I should make a declcon. It's just like declval, only it doesn't
+include the declaration.
+
+Then I also need to distinguish between primitive constructors and primitive
+variables... You know what? We can figure it out by the name. Upper case is
+constructor, don't generate a declaration for it. Lower case is a value, do
+generate a declaration for it. We always want to generate the type.
+
+Let me try that out and see what happens.
+ 
+Sun Apr 15 19:49:39 EDT 2012
+
+Well, the idea was good. Just some minor problems.
+
+We have to know that "()", "(,)", "(,,)", ":", ... are all constructors.
+I'm not sure how we know that.
+
+They are all builtin. So maybe I have a declprimc. And that can tell us?
+You know, I think I like that solution better.
+
+Sun Apr 15 19:59:29 EDT 2012
+
+Instead of declprimc, I just have declcon.
+
+There is this awkwardness, that declval' takes a boolean. I would rather have
+declval' and declcon'. They'll have very similar implementations, but things
+will be much more clear that way. Let me change that after I get things
+working? Or I can change it now? 
+
+Let me change it now.
+
+Sun Apr 15 20:06:25 EDT 2012
+
+Good! That's much nicer. I like it.
+

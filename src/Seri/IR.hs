@@ -35,7 +35,11 @@ data Pat = ConP Name
          | WildP
      deriving (Eq, Show)
 
+data Con = Con Name [Type]
+    deriving(Eq, Show)
+
 data Dec = ValD Name Type Exp
+         | DataD Name [Con]
      deriving (Eq, Show)
 
 instance Ppr Type where
@@ -66,7 +70,11 @@ instance Ppr Pat where
     ppr (AppP a b) = ppr a <+> ppr b
     ppr WildP = text "_"
 
+instance Ppr Con where
+    ppr (Con n ts) = text n <+> hsep (map ppr ts)
+
 instance Ppr Dec where
     ppr (ValD n t e) = text n <+> text "::" <+> ppr t
                         $+$ text n <+> text "=" <+> ppr e
+    ppr (DataD n cs) = text "data" <+> text n <+> ppr cs
 

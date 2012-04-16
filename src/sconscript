@@ -13,5 +13,5 @@ env.Default(env.Command('tests.out', tests, "$SOURCE > $TARGET"))
 hstest = env.GHCProgram('hstest', 'Seri/Target/Haskell/tests.hs')
 hstest_src = env.Command('hstest_hs.hs', hstest, '$SOURCE $TARGET')
 hstest_exe = env.GHCProgram('hstest_exe', hstest_src)
-env.Command('hstest_exe.out', hstest_exe, "$SOURCE > $TARGET")
+env.Default(env.Command('hstest_exe.out', hstest_exe, "$SOURCE > $TARGET"))
 

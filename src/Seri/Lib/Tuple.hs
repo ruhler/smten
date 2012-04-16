@@ -10,9 +10,7 @@ import Seri.Typed
 import Seri.Declarations
 import Seri.Quoter
 
-declval "(,)"
-    [t| forall a b. (a -> b -> (a, b)) |]
-    [e| conE' "(,)" |]
+declcon "(,)" [t| forall a b. (a -> b -> (a, b)) |]
 
 instance SeriType2 (,) where
     seritype2 _ = ConT "(,)"
@@ -25,9 +23,7 @@ instance SeriType2 (,) where
     snd (_, y) = y
 |]
 
-declval "(,,)"
-    [t| forall a b c. (a -> b -> c -> (a, b, c)) |]
-    [e| conE' "(,,)" |]
+declcon "(,,)" [t| forall a b c. (a -> b -> c -> (a, b, c)) |]
 
 instance SeriType3 (,,) where
     seritype3 _ = ConT "(,,)"

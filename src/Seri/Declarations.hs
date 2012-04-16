@@ -4,11 +4,12 @@
 
 module Seri.Declarations (
     SeriDec(..),
-    name_P, name_D,
-    declval', decltype',
-    declprim, declval, decltype, declcommit,
+    declname,
+    declval', declcon', decltype',
+    declprim, declval, declcon, decltype, declcommit,
     ) where
 
+import Data.Char(isUpper)
 import Language.Haskell.TH
 
 import Seri.THUtils
@@ -22,8 +23,8 @@ name_X :: String -> Name -> Name
 name_X pre x = mkName $ pre ++ nameBase x
 
 -- The name of the (possibly) polymorphic function generated.
-name_P :: Name -> Name
-name_P = name_X "_seriP_"
+declname :: Name -> Name
+declname = name_X "_seriP_"
 
 -- The name of the declaration type
 name_D :: Name -> Name
@@ -35,6 +36,11 @@ unname_D x = drop (length "SeriDec_") x
 declprim :: SIR.Name -> Q Type -> Q [Dec]
 declprim nm ty = declval nm ty [e| S.primitive $(litE (StringL nm)) |]
 
+declcon :: String -> Q Type -> Q [Dec]
+declcon n qt = do
+    t <- qt
+    return $ declcon' (mkName n) t
+
 declval :: String -> Q Type -> Q Exp -> Q [Dec]
 declval n qt qe = do
     t <- qt
@@ -42,7 +48,7 @@ declval n qt qe = do
     return $ declval' (mkName n) t e
 
 -- declval' name ty exp
--- Make a seri value declaration.
+-- Make a seri value declaration
 --   name - name of the seri value being defined.
 --   ty - the polymorphic haskell type of the expression.
 --   exp - the value
@@ -51,6 +57,7 @@ declval n qt qe = do
 --  name: foo
 --  ty: (Eq a) => a -> Integer
 --  exp: lamE "x" (\x -> appE (varE "incr") (integerE 41))
+--  iscon: False
 --
 -- The following haskell declarations are generated (approximately):
 --  _seri_foo :: (Eq a, SeriType a) => Typed Exp (a -> Integer)
@@ -63,15 +70,34 @@ declval n qt qe = do
 declval' :: Name -> Type -> Exp -> [Dec]
 declval' n t e =
   let dt = declize t
-      sig_P = SigD (name_P n) dt
-      impl_P = FunD (name_P n) [Clause [] (NormalB e) []]
+      sig_P = SigD (declname n) dt
+      impl_P = FunD (declname n) [Clause [] (NormalB e) []]
 
       data_D = DataD [] (name_D n) [] [NormalC (name_D n) []] []
 
-      body = apply 'S.valD [string n, SigE (VarE (name_P n)) (concretize dt)]
+      body = apply 'S.valD [string n, SigE (VarE (declname n)) (concretize dt)]
       impl_D = FunD 'dec [Clause [WildP] (NormalB body) []]
       inst_D = InstanceD [] (AppT (ConT ''SeriDec) (ConT $ name_D n)) [impl_D]
   in [sig_P, impl_P, data_D, inst_D]
+
+-- declcon' name ty
+-- Make a seri data constructor declaration
+--   name - name of the seri data constructor being defined.
+--   ty - the polymorphic haskell type of the expression.
+--
+-- For (contrived) example, given:
+--  name: Foo
+--  ty: a -> Bar
+--
+-- The following haskell declarations are generated (approximately):
+--  _seri_Foo :: (SeriType a) => Typed Exp (a -> Bar)
+--  _seri_Foo = conE' "Foo"
+declcon' :: Name -> Type -> [Dec]
+declcon' n t =
+  let dt = declize t
+      sig_P = SigD (declname n) dt
+      impl_P = FunD (declname n) [Clause [] (NormalB (apply 'S.conE' [string n])) []]
+  in [sig_P, impl_P]
 
 -- decltype' 
 -- Given a type declaration, make a seri type declaration for it, assuming the
@@ -101,13 +127,11 @@ decltype' (DataD [] dt vars cs _) =
      -- produce the declarations needed for a given constructor.
      mkcon :: Con -> [Dec]
      mkcon (NormalC nc sts) =
-        let e = apply 'S.conE' [string nc]
-            ty = contype (map snd sts)
-        in declval' nc ty e
+        let ty = contype (map snd sts)
+        in declcon' nc ty
      mkcon (RecC nc sts) =
-        let e = apply 'S.conE' [string nc]
-            ty = contype (map (\(_, _, t) -> t) sts)
-            constrs = declval' nc ty e
+        let ty = contype (map (\(_, _, t) -> t) sts)
+            constrs = declcon' nc ty
             numfields = toInteger $ length sts
 
             mkacc :: Integer -> Name -> Type -> [Dec]

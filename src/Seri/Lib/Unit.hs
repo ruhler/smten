@@ -6,8 +6,7 @@ module Seri.Lib.Unit where
 
 import Seri
 
-declprim "()" [t| () |]
+declcon "()" [t| () |]
 instance SeriType () where
     seritype _ = ConT "()"
-
 
