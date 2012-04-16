@@ -18,7 +18,7 @@ import Seri.Lib.Tuple
 import Seri.Lib.Unit
 
 preludeB :: Builtin
-preludeB = builtins [integerB]
+preludeB = builtins [boolB, integerB]
 
 preludeR :: Rule
 preludeR = rules [coreR, integerR]

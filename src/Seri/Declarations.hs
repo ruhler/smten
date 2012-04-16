@@ -24,14 +24,14 @@ name_X pre x = mkName $ pre ++ nameBase x
 
 -- The name of the (possibly) polymorphic function generated.
 declname :: Name -> Name
-declname = name_X "_seriP_"
+declname = name_X "_seri_"
 
 -- The name of the declaration type
 name_D :: Name -> Name
 name_D = name_X "SeriDec_"
 
-unname_D :: SIR.Name -> SIR.Name
-unname_D x = drop (length "SeriDec_") x
+name_DD :: Name -> Name
+name_DD = name_X "SeriDecD_"
 
 declprim :: SIR.Name -> Q Type -> Q [Dec]
 declprim nm ty = declval nm ty [e| S.primitive $(litE (StringL nm)) |]
@@ -103,15 +103,36 @@ declcon' n t =
 -- Given a type declaration, make a seri type declaration for it, assuming the
 -- type is already defined in haskell.
 --
--- The following is generated for the given type.
---  - an instance of SeriType.
---  - _seriP_Foo and friends for each constructor Foo
+-- For example, given 
+--    data Foo a = Bar Integer
+--               | Sludge a
+--
+-- The following haskell declarations are generated:
+--    instance SeriType1 Foo where
+--       seritype1 _ = ConT "Foo"
+--
+--    data SeriDecD_Foo = SeriDecD_Foo
+--
+--    instance SeriDec SeriDecD_Foo where
+--        dec _ = DataD "Foo" ["a"] [Con "Bar" [ConT "Integer"],
+--                                   Con "Sludge" [ConT "VarT_a"]]
+--
+--    _seri_Bar :: Typed Exp (Integer -> Foo)
+--    _seri_Bar = conE "Bar"
+--
+--    _seri_Sludge :: (SeriType a) => Typed Exp (a -> Foo)
+--    _seri_Sludge = conE "Sludge"
+--
+-- Record type constructors are also supported, in which case the selector
+-- functions will also be declared like normal seri values.
+--
 decltype' :: Dec -> [Dec]
 decltype' (DataD [] dt vars cs _) =
  let numvars = length vars
      classname = "SeriType" ++ if numvars == 0 then "" else show numvars
      methname = "seritype" ++ if numvars == 0 then "" else show numvars
-     dtapp = appts $ (ConT dt):(map (\(PlainTV n) -> VarT n) vars)
+     vnames = map (\(PlainTV n) -> n) vars
+     dtapp = appts $ (ConT dt):(map VarT vnames)
 
      -- Assuming the data type is polymorphic in type variables a, b, ...
      -- Given type t, return type (forall a b ... . t)
@@ -143,10 +164,31 @@ decltype' (DataD [] dt vars cs _) =
             accessors = concat $ map (\(i, (n, _, t)) -> mkacc i n t) (zip [0..] sts)
         in constrs ++ accessors
 
-     dec = FunD (mkName methname) [Clause [WildP] (NormalB (AppE (ConE 'SIR.ConT) (string dt))) []]
-     inst = InstanceD [] (AppT (ConT (mkName classname)) (ConT dt)) [dec]
-     cones = concat $ map mkcon cs
- in concat [[inst], cones]
+     stimpl = FunD (mkName methname) [Clause [WildP] (NormalB (AppE (ConE 'SIR.ConT) (string dt))) []]
+     stinst = InstanceD [] (AppT (ConT (mkName classname)) (ConT dt)) [stimpl]
+
+     data_D = DataD [] (name_DD dt) [] [NormalC (name_DD dt) []] []
+
+
+     -- Given a type, return an expression corresonding to the seri type of
+     -- that type.
+     mktyinfo :: Type -> Exp
+     mktyinfo t = apply 'S.seritype [SigE (VarE 'undefined) (concretize t)]
+
+     -- Given a constructor, return an expression corresponding to the Seri
+     -- Con representing that constructor.
+     mkconinfo :: Con -> Exp
+     mkconinfo (NormalC n sts)
+        = applyC 'SIR.Con [string n, ListE (map (\(_, t) -> mktyinfo t) sts)]
+     mkconinfo (RecC n sts)
+        = applyC 'SIR.Con [string n, ListE (map (\(_, _, t) -> mktyinfo t) sts)]
+
+     body = applyC 'SIR.DataD [string dt, ListE (map string vnames), ListE (map mkconinfo cs)]
+     sdimpl = FunD 'dec [Clause [WildP] (NormalB body) []]
+     sdinst = InstanceD [] (AppT (ConT ''SeriDec) (ConT $ name_DD dt)) [sdimpl]
+
+     constrs = concat $ map mkcon cs
+ in concat [[stinst, data_D, sdinst], constrs]
 
 decltype :: Name -> Q [Dec]
 decltype nm = do

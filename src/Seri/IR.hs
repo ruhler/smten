@@ -1,6 +1,6 @@
 
 module Seri.IR (
-    Name, Type(..), Pat(..), Match(..), Exp(..), Dec(..),
+    Name, Type(..), Pat(..), Match(..), Exp(..), Dec(..), Con(..),
     ) where
 
 import Data.List(nub)
@@ -39,7 +39,7 @@ data Con = Con Name [Type]
     deriving(Eq, Show)
 
 data Dec = ValD Name Type Exp
-         | DataD Name [Con]
+         | DataD Name [Name] [Con]  -- name tyvars constrs
      deriving (Eq, Show)
 
 instance Ppr Type where
@@ -76,5 +76,5 @@ instance Ppr Con where
 instance Ppr Dec where
     ppr (ValD n t e) = text n <+> text "::" <+> ppr t
                         $+$ text n <+> text "=" <+> ppr e
-    ppr (DataD n cs) = text "data" <+> text n <+> ppr cs
+    ppr (DataD n vs cs) = text "data" <+> text n <+> hsep (map text vs) <+> text "=" <+> ppr cs
 

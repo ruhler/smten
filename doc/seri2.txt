@@ -5623,3 +5623,32 @@ Sun Apr 15 20:06:25 EDT 2012
 
 Good! That's much nicer. I like it.
 
+Sun Apr 15 20:09:01 EDT 2012
+
+Now we come to the part I'm interested in. Data type declarations.
+
+So I need to generate for each type:
+
+data SeriDecD_Foo = SeriDecD_Foo
+
+instance SeriDecD_Foo where
+    dec _ = DataD "Foo" [...]
+
+Sun Apr 15 20:42:04 EDT 2012
+
+There! It works. Except... well, there's a bug.
+
+So the issue is, the definition of Bool needs to be used in the Integer
+library, but the Integer library uses the prelude bool.
+
+So, perhaps I should treat boolean special, and try to get haskell's version?
+Bool is kind of... builtinish. I'm not sure my bool will work for if
+statements and such. Okay, let me do that then.
+
+What does this mean? It means I don't want to define the Bool data type as a
+Bool data type. I'll just make it a built in thing.
+
+That works. It feels slightly sad, but it works.
+
+And now, finally, I can say, it works!
+

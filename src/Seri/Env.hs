@@ -16,7 +16,10 @@ data Env x = Env {
 } deriving (Show, Eq)
 
 mkenv :: [Dec] -> x -> Env x
-mkenv ds x = Env (Map.fromList $ map (\d@(ValD n _ _) -> (n, d)) ds) x
+mkenv ds x =
+    let kv d@(ValD n _ _) = (n ,d)
+        kv d@(DataD n _ _) = (n, d)
+    in Env (Map.fromList $ map kv ds) x
 
 decls :: Env x -> [Dec]
 decls e = Map.elems (env e)

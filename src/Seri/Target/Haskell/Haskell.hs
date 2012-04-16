@@ -58,6 +58,11 @@ haskell builtin main e =
             sig = H.SigD hsn (hsType t)
             val = H.FunD hsn [H.Clause [] (H.NormalB (hsExp e)) []]
         in [sig, val]
+      hsDec (DataD n tyvars constrs)    
+        = [H.DataD [] (hsName n) (map (H.PlainTV . hsName) tyvars) (map hsCon constrs) []]
+
+      hsCon :: Con -> H.Con
+      hsCon (Con n tys) = H.NormalC (hsName n) (map (\t -> (H.NotStrict, hsType t)) tys)
     
       hsType :: Type -> H.Type
       hsType (ConT n) =
