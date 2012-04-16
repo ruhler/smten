@@ -5652,3 +5652,30 @@ That works. It feels slightly sad, but it works.
 
 And now, finally, I can say, it works!
 
+Sun Apr 15 20:59:20 EDT 2012
+
+I think now would be a good time to take a step back and remind myself where
+I'm headed.
+
+I want to get Tibby going. The road block for Tibby is type classes, which I
+use for Monad and Interface.
+
+There is this TH.ValD construct that I don't support yet when I should. That's
+caused problems, and isn't always work around able, so I should fix that up.
+
+I could also always write more library code.
+
+Let's have Tibby drive the library and features and stuff. I'd like to write a
+Tibby program and compile it to haskell STM. And compile it to bluespec.
+That's really the key. If I can do that, then Seri is all set to start doing
+useful stuff.
+
+Good. When I come back, I'll go after that ValD issue. Then I'll review my
+plans for typeclasses yet again, taking into account the new state of things.
+
+Mon Apr 16 08:48:24 EDT 2012
+
+So! The TH.ValD problem magically went away. Good. I like when that happens.
+I'm thinking maybe I had a syntax error which led to things getting parsed
+funny or some such.
+

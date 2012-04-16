@@ -9,8 +9,8 @@ import Seri.Lib.Prelude
 import Seri.Target.Haskell.Haskell
 
 [s|
-    foo :: Integer
-    foo = (\x -> x*x+3*x+2) 5
+    foo :: Integer -> Integer
+    foo x = x*x+3*x+2
 
     unary2int :: [()] -> Integer
     unary2int [] = 0
@@ -18,7 +18,7 @@ import Seri.Target.Haskell.Haskell
 
     allpassed :: Bool
     allpassed =
-           foo == 42
+           foo 5 == 42
         && unary2int [(), (), ()] == 3
 |]
 

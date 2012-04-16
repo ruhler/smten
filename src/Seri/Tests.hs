@@ -29,6 +29,9 @@ eqexp wnt e = do
     foo :: Integer
     foo = (\x -> x*x+3*x+2) 5
 
+    foo2 :: Integer -> Integer
+    foo2 x = x*x+3*x+2
+
     rfact :: Integer -> Integer
     rfact x = if (x < 1) then 1 else x * rfact (x-1)
 
@@ -95,6 +98,8 @@ declcommit
 
 tests = "Seri" ~: [
     "foo" ~: IntegerE 42 `eqexp` [s|(\x -> x*x+3*x+2) 5|],
+    "foodec" ~: IntegerE 42 `eqexp` [s| foo |],
+    "foo2dec" ~: IntegerE 42 `eqexp` [s| foo2 5 |],
     "true" ~: trueE `eqexp` [s| True |],
     "if" ~: IntegerE 23 `eqexp` [s| if 6 < 4 then 42 else 23 |],
     "slice" ~: IntegerE 7 `eqexp` [s| 3 + _s (integerE . toInteger $ length [4,1,5,56]) |],

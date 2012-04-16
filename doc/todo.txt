@@ -12,15 +12,6 @@
     example:  foo 1 2 = 3
               foo a = \b -> a + b
 
-- declval' should be able to figure out the free variables itself
-
 - Add support for let expressions
     example: let foo = 2 in foo + 40
-
-- Add support for mutual recursion
-    I think there's a bug with looping contexts in this case.
-
-- Add support for ValD quoting
-   example: foo :: Integer -> Integer
-            foo x = 1 + x
 
