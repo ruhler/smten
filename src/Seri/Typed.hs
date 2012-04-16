@@ -19,6 +19,7 @@ module Seri.Typed
 import qualified Language.Haskell.TH as TH
 
 import Seri.IR
+import Seri.InstId
 import Seri.Env
 
 data Typed x t = Typed {
@@ -154,10 +155,10 @@ lamM :: (SeriType a) => Name -> (Typed Pat a -> Typed Exp a -> Typed Match b) ->
 lamM n f = f (Typed $ VarP n) (varE n)
 
 varE :: (SeriType a) => Name -> Typed Exp a
-varE nm = withtype $ \t -> Typed $ VarE t nm
+varE nm = withtype $ \t -> Typed $ VarE t nm noinst
 
-dvarE :: (SeriType a) => Typed Exp a -> Name -> Typed Exp a
-dvarE _ nm = withtype $ \t -> varE nm
+dvarE :: (SeriType a) => Typed Exp a -> (Typed Exp a -> InstId) -> Name -> Typed Exp a
+dvarE e fid nm = withtype $ \t -> Typed $ VarE t nm (fid e)
 
 conE' :: (SeriType a) => Name -> Typed Exp a
 conE' nm = withtype $ \t -> Typed $ ConE t nm

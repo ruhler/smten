@@ -68,10 +68,10 @@ coreR = Rule $ \gr e ->
           b' <- runmeenv e gr b
           return $ AppE t a b'
       (LamE _ _ _) -> Nothing
-      (VarE _ nm)
-        -> case (lookupvar nm e) of
+      v@(VarE _ _ _)
+        -> case (lookupvar $ withenv e v) of
                Nothing -> Nothing
-               Just (ValD _ _ ve) -> Just ve
+               Just ve -> Just ve
       _ -> Nothing
 
 data MatchResult = Failed | Succeeded [(Name, Exp)] | Unknown
@@ -123,7 +123,7 @@ reduces vs (CaseE t e ms) =
 reduces vs (AppE t a b) = AppE t (reduces vs a) (reduces vs b)
 reduces vs e@(LamE t ln b) = LamE t ln (reduces (filter (\(n, _) -> n /= ln) vs) b)
 reduces _ e@(ConE _ _) = e
-reduces vs e@(VarE t vn) =
+reduces vs e@(VarE _ vn _) =
     case lookup vn vs of
         (Just v) -> v
         Nothing -> e

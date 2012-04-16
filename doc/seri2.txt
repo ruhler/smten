@@ -5853,3 +5853,18 @@ Okay... so I made the change... but I'm not sure it's really useful for
 anything, and it kind of clutters things a bit, so I think I'm not going to
 accept the change.
 
+Mon Apr 16 12:09:59 EDT 2012
+
+Good. Now for the first step in type classes. Oh boy! Are you excited?
+
+- Add InstId to VarE.
+- declare _seriI_foo
+- reference _seriI_foo
+
+And nothing else should have to change.
+Let me try it and see what happens.
+
+Mon Apr 16 12:30:41 EDT 2012
+
+Okay, that wasn't so bad.
+

@@ -21,7 +21,7 @@ eqexp wnt e = do
         then assertFailure $ unlines [
             "expected:" ++ (show . ppr $ wnt),
             " but got:" ++ (show . ppr $ got),
-            "with env: " ++ (show . ppr . env . typed $ e)
+            "with env: " ++ (show . ppr . decls . typed $ e)
             ]
         else return ()
 

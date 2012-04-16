@@ -5,6 +5,7 @@ module Seri.IR (
 
 import Data.List(nub)
 
+import Seri.InstId
 import Seri.Ppr
 
 type Name = String
@@ -25,7 +26,7 @@ data Exp = IntegerE Integer
          | AppE Type Exp Exp
          | LamE Type Name Exp
          | ConE Type Name
-         | VarE Type Name
+         | VarE Type Name InstId
      deriving (Eq, Show)
 
 data Pat = ConP Name
@@ -58,7 +59,7 @@ instance Ppr Exp where
     ppr (CaseE _ e ms) = text "case" <+> ppr e <+> text "of" <+> ppr ms
     ppr (LamE _ n b) = parens $ text "\\" <> text n <+> text "->" <+> ppr b
     ppr (ConE _ n) = text n
-    ppr (VarE _ n) = text n
+    ppr (VarE _ n _) = text n
 
 instance Ppr Match where
     ppr (Match p e) = ppr p <+> text "->" <+> ppr e

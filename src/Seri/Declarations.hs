@@ -4,7 +4,7 @@
 
 module Seri.Declarations (
     SeriDec(..),
-    declname,
+    declname, declidname,
     declval', declcon', decltype',
     declprim, declval, declcon, decltype, declcommit,
     ) where
@@ -13,6 +13,7 @@ import Data.Char(isUpper)
 import Language.Haskell.TH
 
 import Seri.THUtils
+import Seri.InstId
 import qualified Seri.IR as SIR
 import qualified Seri.Typed as S
 
@@ -24,7 +25,10 @@ name_X pre x = mkName $ pre ++ nameBase x
 
 -- The name of the (possibly) polymorphic function generated.
 declname :: Name -> Name
-declname = name_X "_seri_"
+declname = name_X "_seriP_"
+
+declidname :: Name -> Name
+declidname = name_X "_seriI_"
 
 -- The name of the declaration type
 name_D :: Name -> Name
@@ -60,8 +64,11 @@ declval n qt qe = do
 --  iscon: False
 --
 -- The following haskell declarations are generated (approximately):
---  _seri_foo :: (Eq a, SeriType a) => Typed Exp (a -> Integer)
---  _seri_foo = lamE "x" (\x -> appE (varE "incr") (integerE 41))
+--  _seriP_foo :: (Eq a, SeriType a) => Typed Exp (a -> Integer)
+--  _seriP_foo = lamE "x" (\x -> appE (varE "incr") (integerE 41))
+--
+--  _seriI_foo :: Typed Exp (a -> Integer) -> InstId
+--  _seriI_foo _ = noinst
 --
 --  data SeriDec_foo = SeriDec_foo
 --
@@ -73,12 +80,15 @@ declval' n t e =
       sig_P = SigD (declname n) dt
       impl_P = FunD (declname n) [Clause [] (NormalB e) []]
 
+      sig_I = SigD (declidname n) (declidize t)
+      impl_I = FunD (declidname n) [Clause [WildP] (NormalB $ VarE 'noinst) []]
+
       data_D = DataD [] (name_D n) [] [NormalC (name_D n) []] []
 
       body = apply 'S.valD [string n, SigE (VarE (declname n)) (concretize dt)]
       impl_D = FunD 'dec [Clause [WildP] (NormalB body) []]
       inst_D = InstanceD [] (AppT (ConT ''SeriDec) (ConT $ name_D n)) [impl_D]
-  in [sig_P, impl_P, data_D, inst_D]
+  in [sig_P, impl_P, sig_I, impl_I, data_D, inst_D]
 
 -- declcon' name ty
 -- Make a seri data constructor declaration
@@ -220,6 +230,19 @@ declize ty =
            let ctx = map stcon vns
            in ForallT vns (c ++ ctx) (typedexp t)
         _ -> typedexp ty
+
+-- Given the raw haskell type corresponding to an expression, return the type
+-- of the haskell function representing the InstId of that expression.
+--
+-- For example
+--  input: (Eq a) => a -> Integer
+--  output: Typed Exp (a -> Integer) -> InstId
+declidize :: Type -> Type 
+declidize ty =
+  let mkt t = arrowts [(AppT (AppT (ConT ''S.Typed) (ConT ''SIR.Exp)) t), (ConT ''InstId)]
+  in case ty of
+     ForallT vns c t -> ForallT vns [] (mkt t)
+     _ -> mkt ty
 
 -- Given a potentially polymorphic haskell type, convert it to a concrete
 -- haskell type which represents the polymorphic seri type.
