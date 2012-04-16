@@ -9,7 +9,7 @@ module Seri.Typed
         SeriType(..), SeriType1(..), SeriType2(..), SeriType3(..),
         VarT_a(..), VarT_b(..), VarT_c(..), VarT_d(..), VarT_m(..),
     
-        integerE, ifE, caseE, conE, conE', varE, varE', lamE, appE,
+        integerE, ifE, caseE, conE, conE', varE, dvarE, lamE, appE,
         primitive, match, selector, lamM,
         conP, appP, wildP, integerP,
         valD, enved,
@@ -135,7 +135,7 @@ appE (Typed f) (Typed x)
     = withtype $ \t -> Typed $ AppE t f x
 
 lamE :: (SeriType a, SeriType (a -> b)) => Name -> (Typed Exp a -> Typed Exp b) -> Typed Exp (a -> b)
-lamE n f = withtype $ \t -> Typed $ LamE t n (typed $ f (varE' n))
+lamE n f = withtype $ \t -> Typed $ LamE t n (typed $ f (varE n))
 
 -- selector dt i fields
 -- Create a selector function for ith field of data type dt which has 'fields'
@@ -151,13 +151,13 @@ selector dt i fields
         
 
 lamM :: (SeriType a) => Name -> (Typed Pat a -> Typed Exp a -> Typed Match b) -> Typed Match b
-lamM n f = f (Typed $ VarP n) (varE' n)
+lamM n f = f (Typed $ VarP n) (varE n)
 
-varE' :: (SeriType a) => Name -> Typed Exp a
-varE' nm = withtype $ \t -> Typed $ VarE t nm
+varE :: (SeriType a) => Name -> Typed Exp a
+varE nm = withtype $ \t -> Typed $ VarE t nm
 
-varE :: (SeriType a) => Typed Exp a -> Name -> Typed Exp a
-varE _ nm = withtype $ \t -> varE' nm
+dvarE :: (SeriType a) => Typed Exp a -> Name -> Typed Exp a
+dvarE _ nm = withtype $ \t -> varE nm
 
 conE' :: (SeriType a) => Name -> Typed Exp a
 conE' nm = withtype $ \t -> Typed $ ConE t nm

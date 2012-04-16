@@ -5679,3 +5679,177 @@ So! The TH.ValD problem magically went away. Good. I like when that happens.
 I'm thinking maybe I had a syntax error which led to things getting parsed
 funny or some such.
 
+Mon Apr 16 08:49:59 EDT 2012
+
+Now, allow me to write down thoughts on type classes. Yet again. See if it
+looks any better now.
+
+- Add an InstId field to VarE, and to ValD.
+It's like an extension to the variable name. So now a variable is identified
+using the pair of its name and instance id.
+
+- For each variable value declared, and I suppose data constructor too,
+  define a function _seriI_foo which given the return type of _seriP_foo,
+  returns the InstId corresponding to that instance.
+
+For example:
+
+_seriP_foo = (SeriType a) => Typed Exp (a -> Integer)
+_seriP_foo = ...
+
+_seriI_foo :: Typed Exp (a -> Integer) -> InstId
+_seriI_foo _ = ...
+
+Now, in varE and conE, we pass both _seriP_foo and _seriI_foo, which it uses
+to figure out the instance id of the function being called.
+
+- The form of the InstId?
+Let's have it be a structure
+data InstId = NullId | InstId SIR.Type
+
+Where the SIR.Type is the seri type corresponding to the haskell type for
+which the instance is made. This doesn't take into account the context of the
+haskell instance declaration, but I don't think that's an issue. If it becomes
+one, we can fix it easily enough.
+
+We'll want functions:
+    nullid :: InstId
+    instid :: InstanceD -> InstId
+
+And that's all we need to worry about for that.
+
+- Classes are generated as described before. Methods are prefixed with _seriP_
+  or whatever. We also add a _seriI_ method for each method in the original
+  class.
+
+- Instances are generated like regular value definitions.
+
+
+Hmm... Here's an interesting question. How do we represent classes and
+instances in Seri? And does this mean we want to be able to represent contexts
+in seri too?
+
+Why else would we want type classes?
+
+So let me propose the following. There are details which will need to be
+worked out which I won't discover until later in the process. I don't have
+a complete understanding of what I want. Fine. It's okay to dive in and see
+what happens.
+
+But let me have a test example I want to make work. It looks like this:
+
+class Foo a where
+    foo :: a -> Integer
+
+instance Foo () where
+    foo _ = 0
+
+instance Foo Bool where
+    foo _ = 1
+
+instance Foo Integer where
+    foo _ = 2
+
+instance (Foo a) => Foo [a] where
+    foo x = 10*(foo (head x))
+
+foofun :: (Foo a) => a -> Integer
+foofun x = (foo x)*(foo x) + 3*(foo x) + 2
+
+Verify [s| foofun [1, 2, 3] |] is the right value.
+
+This covers a lot. classes, instances, contexts in instances, contexts in
+functions.
+
+I think that's too much to try all at once, so I propose breaking it down into
+the following steps:
+
+1. Simple class
+class Foo a where
+    foo :: a -> Integer
+
+instance Foo Bool where
+    foo _ = 1
+
+instance Foo Integer where
+    foo _ = 2
+
+assert 1 == [s| foo True |]
+assert 2 == [s| foo 42 |]
+
+2. Add contexts to functions
+
+foofun :: (Foo a) => a -> Integer
+foofun x = (foo x)*(foo x) + 3*(foo x) + 2
+
+assert ? = [s| foofun True |]
+assert ? = [s| foofun 42 |]
+
+3. Add contexts to instances.
+
+instance (Foo a) => Foo [a] where
+    foo x = 10*(foo (head x))
+
+assert ? = [s| foofun [1, 2, 3] |]
+
+That's plenty of work to do.
+
+For step 1, I want to generate the following haskell code:
+
+class (SeriType a) => SeriClass_Foo a where
+    _seriP_foo :: Typed Exp (a -> Integer)
+    _seriI_foo :: Typed Exp (a -> Integer) -> InstId
+
+instance SeriClass_Foo Bool where
+    _seriP_foo = ...
+    _seriI_foo x =
+        let f :: Typed Exp (a -> Integer) -> a
+            f _ = undefined
+        in instid (seritype (f x))
+
+instance SeriClass_Foo Integer where
+    _seriP_foo = ...
+    _seriI_foo x =
+        let f :: Typed Exp (a -> Integer) -> a
+            f _ = undefined
+        in instid (seritype (f x))
+
+I'm not sure how to deal with the SIR.Dec. That's kind of important, in order
+to make elaboration and back end code generation work.
+
+Maybe I can do as follows.
+
+- Don't add InstId to ValD.
+- Add something called ClassD. This isn't needed for elaboration, it will be
+needed for the back end. It can be whatever it needs to be.
+- Add something called InstD.
+
+Whenever you look up a variable, by name and by InstId, if the InstId is not
+null, then it looks for an InstD with the given name and instance id?
+
+How about, we include in the InstId the name of the class. So an InstD has the
+name of the class, and the type, and we can use the InstId to look that up.
+Once we get the InstD, it has a list of [(Name, Exp)] pairs for the functions,
+so we look up the function in that list.
+
+I kind of like that.
+
+That should be enough for me to get elaboration and haskell target to work for
+Step 1. So let me go with that idea.
+
+Mon Apr 16 12:03:22 EDT 2012
+
+I have this idea that bound variables can be different from declared
+variables. Bound variables don't have any notion of an instance, they are
+really just names, and we never have to look them up, because they will be
+resolved by beta reduction.
+
+So I want to try that first and see how it works. Make a distinction between
+VarE and DVarE.
+
+Mon Apr 16 12:08:02 EDT 2012
+
+Okay... so I made the change... but I'm not sure it's really useful for
+anything, and it kind of clutters things a bit, so I think I'm not going to
+accept the change.
+
