@@ -4,9 +4,9 @@
 
 module Seri.Declarations (
     SeriDec(..),
-    declname, declidname,
-    declval', declcon', decltype',
-    declprim, declval, declcon, decltype, declcommit,
+    declname, declidname, declclname,
+    declval', declcon', decltype', declclass', declinst',
+    declprim, declval, declcon, decltype, declclass, declcommit,
     ) where
 
 import Data.Char(isUpper)
@@ -29,6 +29,9 @@ declname = name_X "_seriP_"
 
 declidname :: Name -> Name
 declidname = name_X "_seriI_"
+
+declclname :: Name -> Name
+declclname = name_X "SeriClass_"
 
 -- The name of the declaration type
 name_D :: Name -> Name
@@ -204,6 +207,49 @@ decltype :: Name -> Q [Dec]
 decltype nm = do
     TyConI d <- reify nm
     return $ decltype' d
+
+-- declclass
+-- Make a seri class declaration.
+--
+-- For example, given the class
+--   class Foo a where
+--      foo :: a -> Integer
+--
+-- Generates:
+--   class SeriClass_Foo a where
+--      _seriP_foo :: (SeriType a) => Typed Exp (a -> Integer)
+--      _seriI_foo :: (SeriType a) => Typed Exp (a -> Integer) -> InstId
+declclass' :: Dec -> [Dec]
+declclass' (ClassD [] nm vars [] sigs) =
+  let mksig :: Dec -> [Dec]
+      mksig (SigD n t) =
+        let sig_P = SigD (declname n) (declize t)
+            sig_I = SigD (declidname n) (declidize t)
+        in [sig_P, sig_I]
+  in [ClassD [] (declclname nm) vars [] (concat $ map mksig sigs)]
+
+declclass :: Name -> Q [Dec]
+declclass nm = do
+    ClassI d _ <- reify nm
+    return $ declclass' d
+
+-- declinst
+-- Make a seri instance declaration.
+--
+-- For example, given the instance
+--   instance Foo Bool where
+--      foo _ = 2
+--
+-- Generates:
+-- instance SeriClass_Foo Bool where
+--   _seriP_foo = ...
+--   _seriI_foo x =
+--       let f :: Typed Exp (a -> Integer) -> a
+--           f _ = undefined
+--       in instid (seritype (f x))
+--
+declinst' :: Dec -> [Dec]
+declinst' i@(InstanceD [] t impls) = error $ "TODO: declinst' " ++ show i
 
 -- Given the raw haskell type corresponding to an expression, return the type
 -- of the haskell function representing an expression of that type.

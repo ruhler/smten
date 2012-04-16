@@ -5868,3 +5868,66 @@ Mon Apr 16 12:30:41 EDT 2012
 
 Okay, that wasn't so bad.
 
+Mon Apr 16 12:31:16 EDT 2012
+
+Next step is straight forward too I think.
+
+- Generate class declarations
+class (SeriType a) => SeriClass_Foo a where
+    _seriP_foo :: Typed Exp (a -> Integer)
+    _seriI_foo :: Typed Exp (a -> Integer) -> InstId
+
+- Generate instance declarations
+instance SeriClass_Foo Bool where
+    _seriP_foo = ...
+    _seriI_foo x =
+        let f :: Typed Exp (a -> Integer) -> a
+            f _ = undefined
+        in instid (seritype (f x))
+
+And this should be driven by a test case.
+
+Mon Apr 16 12:38:40 EDT 2012
+
+Uh... problem. The haskell parser I'm using doesn't seem to support parsing of
+class declarations yet. Sadness.
+
+latest version I see is 0.5.1.2
+I'm using... 0.5.1.1. Do you think they added class declarations?
+
+Nope. They didn't. But! The important part is, they have support instance
+declarations. This means what I can do is declare the class in haskell? Or
+declare the class in template haskell. Yes, I can use template haskell. The
+type issue shouldn't be there, everything is well typed I think. And wait for
+the haskell-src-meta people to translate class declarations. I hope.
+
+Mon Apr 16 12:47:44 EDT 2012
+
+Maybe I want a way to declare existing classes? Perhaps I can use that back
+door to start with.
+
+Mon Apr 16 13:11:28 EDT 2012
+
+Hmm... an interesting thing has come up.
+
+In generating the instance declaration, I need to do the same sort of
+simplifications of the haskell code as I do in the Seri quoter.
+
+So, the question is, should this be a separate chunk of code?
+
+That is, given a Th.Exp, can I convert it to a canonical, simplified Th.Exp
+which is directly supportable in Seri?
+
+That would separate out the translation stuff from the quoter, which should
+really focus on the typed constructors. And it means we can share the
+translator between the quoter and the declarations.
+
+Yes. I think this is a good idea. Worth making a separate step.
+
+I'll have to describe in good detail what the translations are though.
+Otherwise it won't be so usable methinks.
+
+I can call it the Canonicalizer. Or just Canonicalize, or Canonical.
+
+That sounds like a fun cleanup step. Let me do that now.
+

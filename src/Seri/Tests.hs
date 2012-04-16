@@ -26,8 +26,8 @@ eqexp wnt e = do
         else return ()
 
 [s|
-    foo :: Integer
-    foo = (\x -> x*x+3*x+2) 5
+    foo1 :: Integer
+    foo1 = (\x -> x*x+3*x+2) 5
 
     foo2 :: Integer -> Integer
     foo2 x = x*x+3*x+2
@@ -94,11 +94,24 @@ eqexp wnt e = do
     unary2int (_:xs) = 1 + unary2int xs
 |]
 
+class Foo a where
+    foo :: a -> Integer
+
+-- declclass ''Foo
+
+-- [s|
+--     instance Foo Bool where
+--         foo _ = 1
+--     
+--     instance Foo Integer where
+--         foo _ = 2
+-- |]
+
 declcommit
 
 tests = "Seri" ~: [
     "foo" ~: IntegerE 42 `eqexp` [s|(\x -> x*x+3*x+2) 5|],
-    "foodec" ~: IntegerE 42 `eqexp` [s| foo |],
+    "foo1dec" ~: IntegerE 42 `eqexp` [s| foo1 |],
     "foo2dec" ~: IntegerE 42 `eqexp` [s| foo2 5 |],
     "true" ~: trueE `eqexp` [s| True |],
     "if" ~: IntegerE 23 `eqexp` [s| if 6 < 4 then 42 else 23 |],
@@ -128,5 +141,7 @@ tests = "Seri" ~: [
     "2 arg func" ~: IntegerE 12 `eqexp` [s| sum2 5 7 |],
     "3 arg func" ~: IntegerE 20 `eqexp` [s| sum3 5 7 8 |],
     "unit type" ~: IntegerE 3 `eqexp` [s| unary2int [(), (), ()] |]
+    --"Foo class bool" ~: IntegerE 1 `eqexp` [s| foo True |],
+    --"Foo class int" ~: IntegerE 2 `eqexp` [s| foo 42 |]
     ]
 
