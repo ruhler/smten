@@ -1,6 +1,6 @@
 
 module Seri.THUtils (
-    apply, applyC, arrowts, string, integer, appts, desugar, fixUnit,
+    apply, applyC, arrowts, string, integer, appts, fixUnit,
     ) where 
 
 import Data.Generics
@@ -39,15 +39,6 @@ tvarnames (ForallT _ _ t) = tvarnames t
 tvarnames (VarT nm) = [nm]
 tvarnames (AppT a b) = nub $ (tvarnames a) ++ (tvarnames b)
 tvarnames t = []
-
--- Desugar a do block into bind and return calls.
-desugar :: [Stmt] -> Exp
-desugar [NoBindS e] = e
-desugar ((NoBindS e):stmts)
-    = AppE (AppE (VarE $ mkName ">>") e) (desugar stmts)
-desugar ((BindS p e):stmts)
-    = AppE (AppE (VarE $ mkName ">>=") e) (LamE [p] (desugar stmts))
-
 
 -- There seems to be a bug with quasi quoters where the type "GHC.Unit.()" is
 -- interpreted as a data constructor instead of a type. To allow use of the

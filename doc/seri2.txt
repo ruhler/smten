@@ -5931,3 +5931,12 @@ I can call it the Canonicalizer. Or just Canonicalize, or Canonical.
 
 That sounds like a fun cleanup step. Let me do that now.
 
+Mon Apr 16 13:34:11 EDT 2012
+
+It's going to be a little ... broken at first, just because I don't properly
+traverse everything, but let me try and see how it goes. I certainly have
+plenty of test cases to help me out here.
+
+The idea is this. The quoter gets an Exp or [Dec], it canonicalizes them, then
+it does the typed construction.
+
