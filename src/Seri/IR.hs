@@ -1,12 +1,11 @@
 
 module Seri.IR (
     Name, Type(..), Pat(..), Match(..), Exp(..), Dec(..), Con(..),
-    Sig(..), Method(..),
+    Sig(..), Method(..), InstId(..),
     ) where
 
 import Data.List(nub)
 
-import Seri.InstId
 import Seri.Ppr
 
 type Name = String
@@ -16,6 +15,9 @@ data Type = ConT Name
           | AppT Type Type
           | VarT Name
       deriving(Eq, Show)
+
+data InstId = NoInst | Inst Name [Type]
+    deriving (Eq, Show)
 
 data Match = Match Pat Exp
     deriving (Eq, Show)
@@ -49,7 +51,7 @@ data Method = Method Name Exp
 data Dec = ValD Name Type Exp
          | DataD Name [Name] [Con]    -- name tyvars constrs
          | ClassD Name [Name] [Sig]   -- name tyvars sigs
-         | InstD InstId [Method]
+         | InstD Name [Type] [Method]
      deriving (Eq, Show)
 
 instance Ppr Type where

@@ -6159,3 +6159,98 @@ later.
 
 I feel like I could also probably get things a bit cleaner.
 
+Mon Apr 16 20:55:14 EDT 2012
+
+Just as a reminder, the reason tibby doesn't compile currently is because we
+have a context: Interface a b => ... for the make primitive, and it says there
+is no instance of Interface for VarT_a VarT_b.
+
+So I should figure out how to solve this issue at some point. I think if I
+move on to step 2 I'll get there.
+
+Tue Apr 17 13:44:47 EDT 2012
+
+I'd like to test classes in the haskell back end.
+
+The trouble is, it's a little annoying to have to write all the test cases
+twice, once for elaboration and general seriness, and then again for the
+haskell backend.
+
+I'm wondering if I could share some or all or most of the code?
+
+Like, what if I had a Seri.Lib.Tests module with the seri tests. And I could
+write code in seri to see if they work or not? Like, a function which returns
+a boolean true or false.
+
+I like the sharing. I'm a little concerned about:
+- what if we don't always want to have to implement a feature for haskell
+  target before it works in seri in general? Does this system let me do that?
+
+- if all the tests depend on bools working, a bug in bool could mask all the
+  tests
+
+Well, to start I can compromise as follows.
+
+Put all the declarations of Seri code in Seri.Lib.Tests. Test each specific
+test separately in the seri tests, and separately in the haskell tests. Let me
+try that, see how it helps or not.
+
+Tue Apr 17 13:53:43 EDT 2012
+
+I have this bad feeling I'm going to regret coupling the tests so much. Oh
+well. It will be easy to uncouple if so desired.
+
+Tue Apr 17 13:59:16 EDT 2012
+
+Trouble generating InstanceD for haskell back end.
+
+I don't have the information I need.
+The information I need is, well, for haskell, I need the type.
+
+The information I really want, though, is 
+  - the name of the class this is an instance of
+  - the type of the variables used in the class.
+
+And note, this is the same info as the InstId contains, it just contains it in
+a form which makes it difficult to recover.
+
+How about this. I'm fairly, almost certain that given the class name, and the
+type for all its variables, you can uniquely determined the instance. That is,
+you can't have two different instances which have the same class name and
+variable types.
+
+In that case, really we should have:
+
+ InstD Name [Type] [Method]
+
+And InstId... Should be InstId Name [Type]
+
+Then I guess you could say
+ InstD InstId [Method]. That feels a little bit messy to me though.
+
+So what if I dump this notion of InstId, and instead ...
+ Well, we could still have
+
+InstId = NoInst | Inst Name [Type]
+
+That sounds fine.
+
+We'll want the following functions, I suppose:
+  instid :: TH.Type -> Exp
+  instid (AppT (ConT nm) t)  = [e| Inst nm [seritype (undefined :: $(concretize t))] |]
+
+For the single param type class. And it extends naturally to the multiparam
+type class.
+
+  instnm :: TH.Type -> String
+which returns a suitable haskell identifier for the instance? Call it the
+instance name?
+
+That sounds reasonable to me.
+
+Tue Apr 17 14:27:03 EDT 2012
+
+Cool. So that cleans things up a bit. Good. I like that.
+
+And now classes work swell with the haskell back end.
+

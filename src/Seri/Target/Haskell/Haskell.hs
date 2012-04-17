@@ -6,6 +6,7 @@ module Seri.Target.Haskell.Haskell (
 import Data.Char(isAlphaNum)
 import qualified Language.Haskell.TH as H
 import Seri
+import Seri.THUtils
 
 -- haskell builtin main exp
 --  Compile the given expression and its environment to haskell.
@@ -58,8 +59,21 @@ haskell builtin main e =
             sig = H.SigD hsn (hsType t)
             val = H.FunD hsn [H.Clause [] (H.NormalB (hsExp e)) []]
         in [sig, val]
+
       hsDec (DataD n tyvars constrs)    
         = [H.DataD [] (hsName n) (map (H.PlainTV . hsName) tyvars) (map hsCon constrs) []]
+
+      hsDec (ClassD n vars sigs)
+        = [H.ClassD [] (hsName n) (map (H.PlainTV . hsName) vars) [] (map hsSig sigs)]
+
+      hsDec (InstD n ts ms)
+        = [H.InstanceD [] (appts ((H.ConT (hsName n)):(map hsType ts))) (map hsMethod ms)] 
+
+      hsSig :: Sig -> H.Dec
+      hsSig (Sig n t) = H.SigD (hsName n) (hsType t)
+
+      hsMethod :: Method -> H.Dec
+      hsMethod (Method n e) = H.ValD (H.VarP (hsName n)) (H.NormalB (hsExp e)) []
 
       hsCon :: Con -> H.Con
       hsCon (Con n tys) = H.NormalC (hsName n) (map (\t -> (H.NotStrict, hsType t)) tys)

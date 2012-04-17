@@ -19,7 +19,6 @@ module Seri.Typed
 import qualified Language.Haskell.TH as TH
 
 import Seri.IR
-import Seri.InstId
 import Seri.Env
 
 data Typed x t = Typed {

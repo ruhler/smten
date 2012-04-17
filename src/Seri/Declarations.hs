@@ -12,7 +12,6 @@ module Seri.Declarations (
 import Data.Char(isUpper)
 import Language.Haskell.TH
 
-import Seri.InstId
 import Seri.THUtils
 import qualified Seri.IR as SIR
 import qualified Seri.Typed as S
@@ -80,7 +79,7 @@ declval' n t e =
       impl_P = FunD (declname n) [Clause [] (NormalB e) []]
 
       sig_I = SigD (declidname n) (declidize t)
-      impl_I = FunD (declidname n) [Clause [WildP] (NormalB $ ConE 'NoInst) []]
+      impl_I = FunD (declidname n) [Clause [WildP] (NormalB $ ConE 'SIR.NoInst) []]
 
       body = apply 'S.valD [string n, SigE (VarE (declname n)) (concretize dt)]
       ddec = decldec (name_X "SeriDecD_" n) body
@@ -217,7 +216,7 @@ declclass' (ClassD [] nm vars [] sigs) =
       mksig (SigD n t) =
         let dft = deforall t
             sig_P = SigD (declname n) (texpify dft)
-            sig_I = SigD (declidname n) (arrowts [texpify dft, (ConT ''InstId)])
+            sig_I = SigD (declidname n) (arrowts [texpify dft, (ConT ''SIR.InstId)])
         in [sig_P, sig_I]
 
       ctx = map (\(PlainTV v) -> ClassP ''S.SeriType [VarT v]) vars
@@ -268,15 +267,20 @@ declclass nm = do
 --  
 declinst' :: Dec -> [Dec]
 declinst' i@(InstanceD [] tf@(AppT (ConT cn) t) impls) =
-  let instid = idize tf
-      instidexp = applyC 'InstId [LitE (StringL instid)]
+  let -- TODO: don't assume single param type class
+      iname = string cn
+      itys = ListE [seritypize t]
 
       mkimpl :: Dec -> [Dec]
       mkimpl (ValD (VarP n) (NormalB b) []) =
         let p = ValD (VarP (declname n)) (NormalB b) []
-            i = FunD (declidname n) [Clause [WildP] (NormalB instidexp) []]
+            i = FunD (declidname n) [Clause [WildP] (NormalB (applyC 'SIR.Inst [iname, itys])) []]
         in [p, i]
-        
+
+      idize :: Type -> String
+      idize (AppT a b) = idize a ++ "$" ++ idize b
+      idize (ConT nm) = nameBase nm
+
       impls' = concat $ map mkimpl impls
       inst_D = InstanceD [] (AppT (ConT (declclname cn)) t) impls'
 
@@ -284,8 +288,8 @@ declinst' i@(InstanceD [] tf@(AppT (ConT cn) t) impls) =
         apply 'S.method [string n, AppE (VarE (declctname n)) (SigE (VarE 'undefined) t), b]
 
       methods = ListE $ map mkmeth impls
-      body = applyC 'SIR.InstD [instidexp, methods]
-      ddec = decldec (mkName $ "SeriDecI_" ++ instid) body
+      body = applyC 'SIR.InstD [iname, itys, methods]
+      ddec = decldec (mkName $ "SeriDecI_" ++ (idize tf)) body
    in [inst_D] ++ ddec
 
 -- Given the raw haskell type corresponding to an expression, return the type
@@ -318,7 +322,7 @@ declize ty =
 --  output: Typed Exp (a -> Integer) -> InstId
 declidize :: Type -> Type 
 declidize ty =
-  let mkt t = arrowts [texpify t, (ConT ''InstId)]
+  let mkt t = arrowts [texpify t, (ConT ''SIR.InstId)]
   in inforall mkt ty
 
 -- Produce declarations for:
@@ -368,4 +372,3 @@ concretize t = t
 -- expressions referring to the declarations.
 declcommit :: Q [Dec]
 declcommit = return []
-

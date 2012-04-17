@@ -6,19 +6,13 @@ import System.Environment
 
 import Seri
 import Seri.Lib.Prelude
+import Seri.Lib.Tests
 import Seri.Target.Haskell.Haskell
 
 [s|
-    foo :: Integer -> Integer
-    foo x = x*x+3*x+2
-
-    unary2int :: [()] -> Integer
-    unary2int [] = 0
-    unary2int (_:xs) = 1 + unary2int xs
-
     allpassed :: Bool
     allpassed =
-           foo 5 == 42
+           foo1 == 42
         && unary2int [(), (), ()] == 3
 |]
 
