@@ -97,15 +97,15 @@ eqexp wnt e = do
 class Foo a where
     foo :: a -> Integer
 
--- declclass ''Foo
+declclass ''Foo
 
--- [s|
---     instance Foo Bool where
---         foo _ = 1
---     
---     instance Foo Integer where
---         foo _ = 2
--- |]
+[s|
+    instance Foo Bool where
+        foo _ = 1
+    
+    instance Foo Integer where
+        foo _ = 2
+|]
 
 declcommit
 
@@ -140,8 +140,8 @@ tests = "Seri" ~: [
         [s| listdifftop (listswaptop [10, 30, 50, 0]) |],
     "2 arg func" ~: IntegerE 12 `eqexp` [s| sum2 5 7 |],
     "3 arg func" ~: IntegerE 20 `eqexp` [s| sum3 5 7 8 |],
-    "unit type" ~: IntegerE 3 `eqexp` [s| unary2int [(), (), ()] |]
-    --"Foo class bool" ~: IntegerE 1 `eqexp` [s| foo True |],
-    --"Foo class int" ~: IntegerE 2 `eqexp` [s| foo 42 |]
+    "unit type" ~: IntegerE 3 `eqexp` [s| unary2int [(), (), ()] |],
+    "Foo class bool" ~: IntegerE 1 `eqexp` [s| foo True |],
+    "Foo class int" ~: IntegerE 2 `eqexp` [s| foo 42 |]
     ]
 

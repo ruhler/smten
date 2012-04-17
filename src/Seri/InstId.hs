@@ -1,11 +1,19 @@
 
 module Seri.InstId (
-    InstId(), noinst
+    InstId(..), idize,
     ) where
 
-data InstId = NoInst
+import Language.Haskell.TH
+
+data InstId = NoInst | InstId String
     deriving(Eq, Show)
 
-noinst :: InstId
-noinst = NoInst
+-- Given the type for an instance delcaration, return a unique string
+-- identifying that instance.
+--
+-- The return string is suitable for use as part of the name of an identifier
+-- in haskell via template haskell.
+idize :: Type -> String
+idize (AppT a b) = idize a ++ "$" ++ idize b
+idize (ConT nm) = nameBase nm
 

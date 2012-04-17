@@ -10,7 +10,7 @@ module Seri.Typed
         VarT_a(..), VarT_b(..), VarT_c(..), VarT_d(..), VarT_m(..),
     
         integerE, ifE, caseE, conE, conE', varE, dvarE, lamE, appE,
-        primitive, match, selector, lamM,
+        primitive, match, selector, lamM, method,
         conP, appP, wildP, integerP,
         valD, enved,
     )
@@ -155,7 +155,7 @@ lamM :: (SeriType a) => Name -> (Typed Pat a -> Typed Exp a -> Typed Match b) ->
 lamM n f = f (Typed $ VarP n) (varE n)
 
 varE :: (SeriType a) => Name -> Typed Exp a
-varE nm = withtype $ \t -> Typed $ VarE t nm noinst
+varE nm = withtype $ \t -> Typed $ VarE t nm NoInst
 
 dvarE :: (SeriType a) => Typed Exp a -> (Typed Exp a -> InstId) -> Name -> Typed Exp a
 dvarE e fid nm = withtype $ \t -> Typed $ VarE t nm (fid e)
@@ -171,4 +171,11 @@ valD nm e = usetype e $ \t -> ValD nm t (typed e)
 
 enved :: Typed Exp a -> [Dec] -> Typed (Env Exp) a
 enved e x = Typed $ mkenv x (typed e)
+
+-- Make a method
+--   The first typed expression is ignored (it's only used to get the right
+--   type of the second expression), the second is used for the body of the
+--   method.
+method :: Name -> Typed Exp a -> Typed Exp a -> Method
+method n _ e = Method n (typed e)
 

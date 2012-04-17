@@ -15,3 +15,5 @@
 - Add support for let expressions
     example: let foo = 2 in foo + 40
 
+- Move RecC code out of declarations into canonicalizer?
+

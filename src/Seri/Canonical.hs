@@ -129,6 +129,7 @@ instance Canonical Dec where
 
     canonical d@(DataD {}) = d
     canonical d@(SigD {}) = d
+    canonical (InstanceD c t ds) = InstanceD c t (canonical ds)
 
     canonical d = error $ "TODO: canonical " ++ show d
 

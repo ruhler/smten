@@ -4,6 +4,7 @@ Import('env')
 
 env['SRCDIR'] = Dir(".")
 env['GHCPATH'] = [Dir(".")]
+#env['GHCFLAGS'] = "-ddump-splices"
 
 ## tests test
 tests = env.GHCProgram('tests')

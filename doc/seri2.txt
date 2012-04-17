@@ -5940,3 +5940,222 @@ plenty of test cases to help me out here.
 The idea is this. The quoter gets an Exp or [Dec], it canonicalizes them, then
 it does the typed construction.
 
+Mon Apr 16 15:23:03 EDT 2012
+
+Moving on to type classes.
+
+There's a problem with how I convert classes. We end up renaming things.
+
+I think what I want is to take just the first character of all the type
+variables. See if that works.
+
+Or... actually, the problem is with using forall, because that introduces a
+new type. I really need for SeriType to be in the context of the class, and
+not in the body.
+
+Which means I need a different kind of declize. A little annoying, yes, but I
+can work through it.
+
+Mon Apr 16 15:39:11 EDT 2012
+
+I worked through that. Now the issue is, I have to have a way to represent the
+InstD in Seri so I can look it up for elaboration.
+
+And thus we run into questions, yet again, about what the InstId should look
+like.
+
+We said it would be like this. The InstId identifies ... well, the instance.
+
+So we just need InstD InstId [(Name, Exp)]
+
+The InstId says which instance this is, the fields are given by what's given.
+
+You know? I have a question. Do we really want to represent typeclasses and
+instances in Seri? Is there anything we gain from that? Isn't it just a
+syntactic sugar for identifying which functions to use?
+
+Well... um, no. Because you may have a function which operates on a context
+which is otherwise polymorphic. Do you want to replicate that function over
+and over again?
+
+This is worth taking time to think about.
+
+The question under consideration is, should we add ClassD and InstanceD to
+seri? Or should we just give different names to each instance of a function?
+
+The one tricky case is this polymorphic function with a context. Now you're
+saying I have to make a different copy of this function for each different
+type under which it is used. Or for each type for which there exists an
+instance.
+
+I don't know. I'm going to take a break and stew on this a bit.
+
+Mon Apr 16 18:15:38 EDT 2012
+
+Here are the thoughts.
+
+I was right above. Type classes are almost just a syntactic sugar. They would
+be if it weren't for polymorphic functions with contexts.
+
+I believe I could implement type classes on top of seri. Perhaps having those
+polymorphic functions take a bunch of functions as input or what have you. But
+that's just as hard, if not rather harder than representing type classes in
+seri.
+
+The idea is this. I want the core features of haskell to be represented in
+seri. I don't want the syntactic sugars of haskell to be represented in seri.
+type classes provide some coreness, so let's keep them in seri.
+
+As for instance id, I have a simple proposal. The ID we use is the string we
+get from calling show on the type for the instance declaration.
+
+Now we can pull InstId out of Seri.IR. instid should be Type -> Exp.
+
+InstD is now InstD InstId [(Name, Exp)]. Maybe define Method as Name Exp?
+
+And all the immediate issues are then gone, right?
+
+Let me try and see.
+
+Mon Apr 16 18:31:48 EDT 2012
+
+I seem not to be doing so well just now. In order to declare the InstD using
+my strategy, I need to provide an instance of SeriDec for some type specific
+to the instance. What is that type?
+
+In other words, I need a nice name which uniquely identifies an instance type.
+And, it would seem, this would be a great candidate for an instance id.
+
+For example, the instance Foo Bool where ... seems to naturally map to
+
+Foo_Bool.
+
+And you could imagine: Foo_Integer.
+
+Harder is. Foo_[]_Integer, which won't work. We would need something like...
+I dunno. Perhaps take advantage of unicode?
+
+Well, haskell is flexible other places, who says something like ...
+
+Okay, I can have a name fixer, and deal with conflicts later. I do think the
+instance id names should be the same. This way we can easily detect duplicates
+(because haskell will complain).
+
+So let's say instid is a string. And I can give the function to compute it,
+and I promise the function is such that it can be used as part of an
+identifier name. How is that?
+
+Sigh. Another problem. What type do I use to figure out the method expression?
+I don't have the types for the methods. :(
+
+Okay, so I need to leave them somewhere. When I declare a class, for each
+method, I should provide a _seriC_foo with the concrete type.
+
+But that won't work, because what I really want is to use the right instance?
+So I can't refer to the name, I have to give the expression, and have a
+function which takes an expression, and something else with the same
+polymorphic type (so, we'll want a function with that polymorphic type),
+ignores the value...?
+
+I don't know. What we want is given a method, and given an instance, we want
+some way to get at the type of the method for that instance.
+
+Well... I know the type of the instance.
+What I need is some function which, given the type of the instance, returns
+the type of the function.
+
+Something like...
+
+_seriT_foo :: a -> (a -> Integer)
+_seriT_foo _ = undefined (this can be a default method)
+
+And then, I can get the information I want using:
+    _seriT_foo (undefined :: Blah), where Blah is the type for the instance.
+
+Note also that, Blah (or some form of it) will be the instid.
+
+And Blah will be the concretized type, right? So instead of having variable
+types, we'll have VarT_a, etc... That way we don't have to worry about scoped
+type variables.
+
+Yes. That sounds right.
+
+Mon Apr 16 19:10:49 EDT 2012
+
+Let me summarize, because it's all jumbled up now.
+
+IR:
+  Class:
++   Sig Name Type
++   ClassD Name [Name] [Sig]
+
+  Instance:
++   Method Name Exp
++   InstD InstId [Method]
+
+Typed:
++ method :: SIR.Name -> Typed Exp a -> Typed Exp a -> Method
+
+Declarations:
+  Class:
++   class (SeriType a) => SeriClass_Foo a where
++     _seriP_foo :: Typed Exp (a -> Integer)
++     _seriI_foo :: Typed Exp (a -> Integer) -> InstId
+    
++   _seriT_foo :: a -> Typed Exp (a -> Integer)
++   _seriT_foo = undefined
+
++   data SeriDecC_Foo = SeriDecC_Foo
++   instance SeriDec SeriDecC_Foo where
++     dec = ClassD "Foo" ["a"] [Sig "foo" (VarT_a -> Integer)]
+
+  Instance:
++   instance SeriClass_Foo Bool where
++     _seriP_foo = ...
++     _seriI_foo _ = instid "Foo$Bool"
+
++   data SeriDecI_Foo$Bool = SeriDecI_Foo$Bool
++   instance SeriDec SeriDecI_Foo$Bool where
++     dec = InstD (instid "Foo$Bool") [
++             method "foo" (_seriT_foo (undefined :: Bool)) (...)
++             ]
+
+The undefined value used in 'method' is typed with the concretized version of
+the type.
+
+We have some function which given the type of an instance, returns the InstId
+string, which is made up of characters that can be used in a data type (via
+template haskell, which may be more lenient than the lexer in terms of
+characters allowed). This is the "Foo$Bool" string used above.
+
+There! I do believe that will do it.
+
+Am I up for trying it out? One last push to see if I can make it?
+
+Let me take it slowly.
+
+Mon Apr 16 20:24:06 EDT 2012
+
+Okay! So I've written up all the code right?
+
+Well, except for the environment lookup. Let me write that up, then, once I
+have all the rough draft code, I can figure out how to make it compile.
+
+Mon Apr 16 20:26:25 EDT 2012
+
+Okay, rough draft code is done. Hypothetically it could work now. Time to get
+it to compile.
+
+Mon Apr 16 20:48:17 EDT 2012
+
+Happy news. It works. :)
+
+Step 1 is done. It was a lot of work.
+
+Well. I guess Step 1 is partially done. I haven't implemented the back end
+support yet. But the haskell target support should be pretty easy. Just dump
+the class declarations and the instance declarations. I'll leave that for
+later.
+
+I feel like I could also probably get things a bit cleaner.
+

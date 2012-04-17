@@ -143,6 +143,15 @@ mkdecls ((SigD nm ty):(ValD (VarP _) (NormalB e) []):ds) =
       d = declval' nm ty e'
   in d ++ (mkdecls ds)
 
+mkdecls ((InstanceD c t ids):ds) =
+  let mkid :: Dec -> Dec
+      mkid (ValD p (NormalB b) []) =
+        let b' = fst $ runState (mkexp b) $ UserState []
+        in ValD p (NormalB b') []
+      
+      ids' = map mkid ids
+  in declinst' (InstanceD c t ids') ++ mkdecls ds
+
 mkdecls d = error $ "TODO: mkdecls " ++ show d
 
 s :: QuasiQuoter 
