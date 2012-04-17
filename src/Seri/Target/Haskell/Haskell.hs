@@ -86,9 +86,15 @@ haskell builtin main e =
       hsType ArrowT = H.ArrowT
       hsType (AppT a b) = H.AppT (hsType a) (hsType b)
       hsType (VarT n) = H.VarT (hsName n)
+      hsType (ForallT vars pred t) =
+        H.ForallT (map (H.PlainTV . hsName) vars) (map hsPred pred) (hsType t)
+
+      hsPred :: Pred -> H.Pred
+      hsPred (Pred nm [t]) = H.ClassP (hsName nm) [hsType t]
     
       hsHeader :: Doc
-      hsHeader = text "import qualified Prelude"
+      hsHeader = text "{-# LANGUAGE ExplicitForAll #-}" $+$
+                 text "import qualified Prelude"
 
       ds = concat $ map hsDec (decls e)
       me = hsExp $ val e

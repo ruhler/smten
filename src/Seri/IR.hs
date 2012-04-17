@@ -1,7 +1,7 @@
 
 module Seri.IR (
     Name, Type(..), Pat(..), Match(..), Exp(..), Dec(..), Con(..),
-    Sig(..), Method(..), InstId(..),
+    Sig(..), Method(..), InstId(..), Pred(..),
     ) where
 
 import Data.List(nub)
@@ -14,6 +14,10 @@ data Type = ConT Name
           | ArrowT
           | AppT Type Type
           | VarT Name
+          | ForallT [Name] [Pred] Type     -- tyvars ctx type
+      deriving(Eq, Show)
+
+data Pred = Pred Name [Type]
       deriving(Eq, Show)
 
 data InstId = NoInst | Inst Name [Type]

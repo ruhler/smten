@@ -6254,3 +6254,160 @@ Cool. So that cleans things up a bit. Good. I like that.
 
 And now classes work swell with the haskell back end.
 
+Tue Apr 17 14:33:03 EDT 2012
+
+Step 2: Adding contexts to functions.
+
+foofun :: (Foo a) => a -> Integer
+foofun x = (foo x)*(foo x) + 3*(foo x) + (foo 2)
+
+assert ? = [s| foofun True |]
+assert ? = [s| foofun 42 |]
+
+
+This is now pretty easy, right?
+Or is it?
+
+We'll want to introduce a ForallT type, which lets you introduce type
+variables and have contexts. Contexts are of the form 
+    Context Name [Type], right? Where Name is the name of a class, and
+    [Type] are the type parameters of the class.
+
+When generating haskell, transform (Foo a) to (SeriClass_Foo a).
+
+The hard part? 
+
+We look up foofun. It gives us back an expression. But now the expression is
+the concretized expression, it's not specific to the type of the argument to
+foofun.
+
+The other hard part? We can't concretize the type unless, for example in this
+case, VarT_a is an instance of class SeriClass_Foo.
+
+Hmm... that's interesting. I wonder if we could take advantage of that
+somehow? I'm not sure. I'll have to think about it.
+
+Tue Apr 17 17:59:00 EDT 2012
+
+Okay, so it turns out it's pretty simple, and clear, and clean.
+
+Here's how it works.
+
+We add the notion of a context. I'd like it to be associated with the type,
+rather than some extra thing, so we can add a ForallT type like what they have
+in template haskell.
+
+ForallT Context [Name] Type
+
+with Context = [Predicate]
+and Predicate = Name [Type], or some such.
+
+Now, when we have a polymorphic function with a context, the expression comes
+from the concretized type. So, using the above example for example, we will
+defined foofun as a function with type 
+ ForallT [Predicate "Foo" [VarT "a"]] ["a"] (AppT (AppT ArrowT (VarT "a")) IntegerT)
+
+Everywhere we make use of a method from the class Foo whose instance depends
+on a variable type we'll have some VarT "a" appear somewhere in the InstId.
+
+For example, the first call to foo in foofun is a VarE with name "foo" and
+InstId "Foo" [VarT "a"]. The last call is InstId "Foo" [IntegerT], just to
+draw the distinction.
+
+This representation, I argue, is the one we want. Easy to go to haskell target
+this way, and it's what we get under the current implementation of things.
+There's no change to be made (aside from adding contexts). This is the
+information that makes sense.
+
+The question is, how do we implement elaboration?
+
+We need the following:
+
+Given the polymorphic type of a function, such as: (Foo a) => a -> Integer,
+and the concrete type of the function, such as (Bool -> Integer), return a
+mapping from type variables in the polymorphic type to concrete types in the
+concrete type. In this example [("a", Bool)].
+
+I argue this is easy to implement, because we have the concrete type fully
+concretized. There's nothing fancy going on here. It's pattern matching.
+
+Now, when we look up a variable, we look at it's type. If the type is
+polymorphic, we call the above function to get the mapping from type variable
+to concrete types. Now before substituting this expression in, all we have to
+do is recurse through it and replace any of the type variable types in the
+expression with the corresponding concrete type. This includes for the types
+in the InstId. And once we change the types in the InstId, we identify the
+appropriate instance of the method to call. Easy.
+
+So, give me those two functions: to get the concrete types for variable types,
+and to replace occurrences of a variable type in an expression as given, this
+becomes a trivial generalization of the current scheme.
+
+There is one hopefully minor issue. This question of how do we produce the
+correct SIR.Type for a function if it has types of the form ForallT?
+
+Maybe we do just like for VarT types. Introduce a ForallT type in haskell
+corresponding to a forall type in haskell. Make that an instance of SeriType.
+Now concretize will take something like:
+    (Eq a) => a -> Integer
+
+And turn it into ForallT [Eq ... blah blah, which we can call seritype on.
+
+Cool. I think it will work. I think it will be nice.
+
+I think the steps are as follows.
+
+1. Add ForallT and use it for existing polymorphic seri functions.
+This will require updating how concretization is done.
+
+2. Implement type matching function
+tmatch :: Type -> Type -> [(Name, Type)]
+
+3. Implement type replacement function
+treduces :: [(Name, Type)] -> Exp -> Exp
+
+4. Try out foofun, have elaboration rule for variable substitution call tmatch
+and treduces whenever it does the substitution.
+
+Cool. Am I up for trying it? Sure.
+
+Wish me luck.
+
+Tue Apr 17 18:35:51 EDT 2012
+
+About concretization. I think what we want is, given a haskell type, return a
+haskell expression representing the seri type corresponding to that haskell
+type. This is something we already have, known sa seritypize, but mixed a
+little with concretize.
+
+I think, if we stop using valD, and switched instead to ValD... is that what I
+want?
+
+ValD "foo" (typed (_seriP_foo :: VarT_a -> Integer)) (ForallT [...] [...] ...)
+
+Looks to me like we really want a combination of the both.
+
+So keep concretize as it is for now, but expand seritypeize to support
+ForallT, and add it as an argument to valD? Or just get rid of valD. That
+sounds reasonable to me.
+
+Okay. I'll try that.
+
+Tue Apr 17 18:57:26 EDT 2012
+
+There's an issue. With seritype and variable types.
+
+I have Monad m. I want to get the seritype of m. I'm confused.
+
+Okay, so I worked around it. I can convert variable type "m" in haskell
+directly to SIR.VarT "m", I needn't go through seritype for that. That seems
+to have done it.
+
+Perhaps I can clean up that sort of issue later. I expect I'll be faced with
+it pretty soon anyway. In fact... it's a point I haven't discussed yet that
+I'll need for foofun.
+
+Tue Apr 17 19:08:33 EDT 2012
+
+Okay, did the first part. Next couple parts should be easy.
+

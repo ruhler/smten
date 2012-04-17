@@ -12,7 +12,7 @@ module Seri.Typed
         integerE, ifE, caseE, conE, conE', varE, dvarE, lamE, appE,
         primitive, match, selector, lamM, method,
         conP, appP, wildP, integerP,
-        valD, enved,
+        enved,
     )
     where
 
@@ -164,9 +164,6 @@ conE' nm = withtype $ \t -> Typed $ ConE t nm
 
 conE :: (SeriType a) => Typed Exp a -> Name -> Typed Exp a
 conE _ nm = withtype $ \t -> conE' nm
-
-valD :: (SeriType a) => Name -> Typed Exp a -> Dec
-valD nm e = usetype e $ \t -> ValD nm t (typed e)
 
 enved :: Typed Exp a -> [Dec] -> Typed (Env Exp) a
 enved e x = Typed $ mkenv x (typed e)

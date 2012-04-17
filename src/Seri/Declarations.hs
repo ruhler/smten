@@ -71,7 +71,9 @@ declval n qt qe = do
 --  data SeriDec_foo = SeriDec_foo
 --
 --  instance SeriDec SeriDec_foo where
---      dec _ = valD "foo" (_seri_foo :: Typed Exp (VarT_a -> Integer))
+--      dec _ = ValD "foo"
+--                  (ForallT ["a"] [Pred "Eq" [VarT_a]] (VarT_a -> Integer))
+--                  (typed (_seri_foo :: Typed Exp (VarT_a -> Integer)))
 declval' :: Name -> Type -> Exp -> [Dec]
 declval' n t e =
   let dt = declize t
@@ -81,7 +83,8 @@ declval' n t e =
       sig_I = SigD (declidname n) (declidize t)
       impl_I = FunD (declidname n) [Clause [WildP] (NormalB $ ConE 'SIR.NoInst) []]
 
-      body = apply 'S.valD [string n, SigE (VarE (declname n)) (concretize dt)]
+      exp = apply 'S.typed [SigE (VarE (declname n)) (concretize dt)]
+      body = applyC 'SIR.ValD [string n, seritypize t, exp]
       ddec = decldec (name_X "SeriDecD_" n) body
 
   in [sig_P, impl_P, sig_I, impl_I] ++ ddec
@@ -232,8 +235,10 @@ declclass' (ClassD [] nm vars [] sigs) =
       type_ds = concat $ map mkt sigs
 
 
+      -- TODO: shouldn't we only remove that part of the forall which refers
+      -- to the class type variables?
       mkdsig :: Dec -> Exp
-      mkdsig (SigD n t) = applyC 'SIR.Sig [string n, seritypize t]
+      mkdsig (SigD n t) = applyC 'SIR.Sig [string n, seritypize (deforall t)]
 
       tyvars = ListE $ map (\(PlainTV n) -> string n) vars
       dsigs = ListE $ map mkdsig sigs
@@ -351,7 +356,19 @@ inforall f t = f t
 -- Given a type, return an expression corresonding to the seri type of
 -- that type.
 seritypize :: Type -> Exp
-seritypize t = apply 'S.seritype [SigE (VarE 'undefined) (concretize t)]
+seritypize t =
+  let callseritype t@(VarT nm) = applyC 'SIR.VarT [string nm]
+      callseritype t = apply 'S.seritype [SigE (VarE 'undefined) (concretize t)]
+  in case t of
+        ForallT vars preds t' ->
+          let vars' = ListE $ map (\(PlainTV n) -> string n) vars
+
+              mkpred :: Pred -> Exp
+              mkpred (ClassP n [t]) = applyC 'SIR.Pred [string n, ListE [seritypize t]]
+
+              preds' = ListE $ map mkpred preds
+          in applyC 'SIR.ForallT [vars', preds', callseritype t']
+        t' -> callseritype t'
 
 -- Given a potentially polymorphic haskell type, convert it to a concrete
 -- haskell type which represents the polymorphic seri type.
