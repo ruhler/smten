@@ -11,7 +11,6 @@ import Seri.Ppr
 type Name = String
 
 data Type = ConT Name
-          | ArrowT
           | AppT Type Type
           | VarT Name
           | ForallT [Name] [Pred] Type     -- tyvars ctx type
@@ -60,7 +59,6 @@ data Dec = ValD Name Type Exp
 
 instance Ppr Type where
     ppr (ConT nm) = text nm
-    ppr ArrowT = text "->"
     ppr (AppT a b) = parens $ ppr a <+> ppr b
     ppr (VarT n) = text n
 

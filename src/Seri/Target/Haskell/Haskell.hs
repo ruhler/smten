@@ -79,11 +79,11 @@ haskell builtin main e =
       hsCon (Con n tys) = H.NormalC (hsName n) (map (\t -> (H.NotStrict, hsType t)) tys)
     
       hsType :: Type -> H.Type
+      hsType (ConT "->") = H.ArrowT
       hsType (ConT n) =
          case maptype builtin n of
             Just n' -> H.ConT (hsName n')
             Nothing -> H.ConT (hsName n)
-      hsType ArrowT = H.ArrowT
       hsType (AppT a b) = H.AppT (hsType a) (hsType b)
       hsType (VarT n) = H.VarT (hsName n)
       hsType (ForallT vars pred t) =

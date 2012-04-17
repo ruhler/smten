@@ -127,3 +127,13 @@ reduces vs e@(VarE _ vn _) =
     case lookup vn vs of
         (Just v) -> v
         Nothing -> e
+
+-- tmatch poly concrete
+-- Given a polymorphic type and a concrete type of the same form, return the
+-- mapping from type variable name to concrete type.
+tmatch :: Type -> Type -> [(Name, Type)]
+tmatch (VarT n) t = [(n, t)]
+tmatch (AppT a b) (AppT a' b') = (tmatch a a') ++ (tmatch b b')
+tmatch (ForallT _ _ t) t' = tmatch t t'
+tmatch _ _ = []
+

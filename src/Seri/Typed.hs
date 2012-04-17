@@ -44,7 +44,7 @@ class SeriType2 m where
     seritype2 :: m a b -> Type
 
 instance SeriType2 (->) where
-    seritype2 _ = ArrowT
+    seritype2 _ = ConT "->"
 
 instance (SeriType2 m, SeriType a) => SeriType1 (m a) where
     seritype1 ma =
