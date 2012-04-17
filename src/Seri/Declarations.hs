@@ -257,11 +257,11 @@ declclass nm = do
 -- Generates:
 --   instance SeriClass_Foo Bool where
 --     _seriP_foo = ...
---     _seriI_foo _ = instid "Foo$Bool"
+--     _seriI_foo _ = Inst "Foo" [Bool]
 
 --   data SeriDecI_Foo$Bool = SeriDecI_Foo$Bool
 --   instance SeriDec SeriDecI_Foo$Bool where
---     dec = InstD (instid "Foo$Bool") [
+--     dec = InstD "Foo" [Bool] [
 --             method "foo" (_seriT_foo (undefined :: Bool)) (...)
 --             ]
 --  
