@@ -7,7 +7,7 @@ module Seri.Lib.Tuple where
 
 import Seri.IR
 import Seri.Typed
-import Seri.Declarations
+import Seri.Declarations.User
 import Seri.Quoter
 
 declcon "(,)" [t| forall a b. (a -> b -> (a, b)) |]

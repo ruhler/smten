@@ -6622,3 +6622,51 @@ Okay! Finally it works. After much much messiness.
 
 Let me check it in, then start the cleanup process.
 
+Wed Apr 18 17:21:11 EDT 2012
+
+I want to clean up. How can I clean up?
+
+I need to figure out the module structure. What things use what. What
+functions should be library, shared, local, etc...
+
+Specifically the issue is with Declarations. Perhaps I can split it up into
+submodules which would make it easier to use. Let me look at what all is
+there.
+
+- Template Haskell Interface:
+declprim, declcon, decltype, declclass, declcommit, declvartinst.
+
+These are all wrappers around the core decl library functions. They could
+easily go into their own separate module.
+
+- Declarations library:
+declval', declcon', decltype', declclass', declinst'
+
+- Naming library:
+declname, declidname. The quoter has to know about these naming conventions.
+
+- Internally used utility functions:
+name_X - translate a name by adding a string prefix
+Specific instances of name_X for P, I, Class, T, shared across functions.
+Type utilities: figure out type of P, I,
+    texpify, deforall, inforall, nestforall, seritypize, concretize
+decldec utilities for declaring a seri declarations.
+
+I think there's a pretty clear separation of things we can do.
+
+I wonder also if it makes sense to separate out of the Quoter this translation
+from canonicalized haskell expression to Th.Exp representation of type
+constructed expression.
+
+I think we could also do well putting all the FrontEnd related code into its
+own subdirectory. So, stuff dealing with declarations, and quoting and types
+and all that annoyance.
+
+Yup. So, just start pulling things out, one bit at a time. The goal is to make
+shared functions well defined and part of a library, and local functions stay
+local, and keep the code uncluttered.
+
+Wed Apr 18 18:17:14 EDT 2012
+
+I pulled the user interface out into Declarations.User. That's a start.
+

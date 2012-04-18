@@ -5,9 +5,7 @@
 module Seri.Declarations (
     SeriDec(..),
     declname, declidname,
-    declval', declcon', decltype', declclass', declinst',
-    declprim, declval, declcon, decltype, declclass, declcommit,
-    declvartinst,
+    declval', declcon', decltype', declinst', declclass', declvartinst',
     ) where
 
 import Data.Char(isUpper)
@@ -36,19 +34,6 @@ declclname = name_X "SeriClass_"
 declctname :: Name -> Name
 declctname = name_X "_seriT_"
 
-declprim :: SIR.Name -> Q Type -> Q [Dec]
-declprim nm ty = declval nm ty [e| S.primitive $(litE (StringL nm)) |]
-
-declcon :: String -> Q Type -> Q [Dec]
-declcon n qt = do
-    t <- qt
-    return $ declcon' (mkName n) t
-
-declval :: String -> Q Type -> Q Exp -> Q [Dec]
-declval n qt qe = do
-    t <- qt
-    e <- qe
-    return $ declval' (mkName n) t e
 
 -- declval' name ty exp
 -- Make a seri value declaration
@@ -191,10 +176,6 @@ decltype' (DataD [] dt vars cs _) =
      constrs = concat $ map mkcon cs
  in [stinst] ++ ddec ++ constrs
 
-decltype :: Name -> Q [Dec]
-decltype nm = do
-    TyConI d <- reify nm
-    return $ decltype' d
 
 -- declclass
 -- Make a seri class declaration.
@@ -254,10 +235,6 @@ declclass' (ClassD [] nm vars [] sigs) =
       
   in [class_D] ++ type_ds ++ ddec
 
-declclass :: Name -> Q [Dec]
-declclass nm = do
-    ClassI d _ <- reify nm
-    return $ declclass' d
 
 -- declinst
 -- Make a seri instance declaration.
@@ -399,32 +376,6 @@ concretize (ForallT _ _ t) = concretize t
 concretize (VarT nm) = ConT $ mkName ("VarT_" ++ (nameBase nm))
 concretize (AppT a b) = AppT (concretize a) (concretize b)
 concretize t = t
-
--- Declarations may not be seen right away. Call this template haskell
--- function to force the declarations to be committed.
---
--- So, for example, to use this you would declare all your seri functions,
--- then below those in the source file call this as a top level template
--- haskell slice, then below that in the source file you can use quoted seri
--- expressions referring to the declarations.
-declcommit :: Q [Dec]
-declcommit = return []
-
--- declvartinst class vart
---   Declare a dummy instance of the class with the given name for the given
---   variable type.
---
--- For example, 
---  declvartinst ''Foo "a"
---
--- Generate the declaration
---  instance SeriClass_Foo VarT_a where
---    _seriP_foo = undefined
---    _seriT_foo = Inst "Foo" [VarT "a"]
-declvartinst :: Name -> SIR.Name -> Q [Dec]
-declvartinst n v = do
-    ClassI d _ <- reify n
-    return $ declvartinst' d v
 
 declvartinst' :: Dec -> SIR.Name -> [Dec]
 declvartinst' (ClassD [] n _ [] sigs) v =
