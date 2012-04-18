@@ -23,20 +23,20 @@ decls x = env x
 
 -- Given a VarE in an environment return the value of that variable as
 -- determined by the environment.
-lookupvar :: Env Exp -> Maybe Exp
+lookupvar :: Env Exp -> Maybe (Type, Exp)
 lookupvar (Env e (VarE _ x NoInst)) =
-  let look :: [Dec] -> Name -> Maybe Exp
+  let look :: [Dec] -> Name -> Maybe (Type, Exp)
       look [] _ = Nothing
-      look ((ValD nd _ e):ds) n | nd == n = Just e
+      look ((ValD nd t e):ds) n | nd == n = Just (t, e)
       look (d:ds) n = look ds n
   in look e x
 lookupvar (Env e (VarE _ x (Inst n ts))) =
-  let mlook :: [Method] -> Maybe Exp
+  let mlook :: [Method] -> Maybe (Type, Exp)
       mlook [] = Nothing
-      mlook ((Method nm e):ms) | nm == x = Just e
+      mlook ((Method nm e):ms) | nm == x = Just (error "TODO: look up type of method in ClassD", e)
       mlook (m:ms) = mlook ms
 
-      look :: [Dec] -> Maybe Exp
+      look :: [Dec] -> Maybe (Type, Exp)
       look [] = Nothing
       look ((InstD ni tsi  meths):ds) | (n == ni && ts == tsi) = mlook meths
       look (d:ds) = look ds

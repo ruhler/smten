@@ -68,10 +68,10 @@ coreR = Rule $ \gr e ->
           b' <- runmeenv e gr b
           return $ AppE t a b'
       (LamE _ _ _) -> Nothing
-      v@(VarE _ _ _)
+      v@(VarE ct _ _)
         -> case (lookupvar $ withenv e v) of
                Nothing -> Nothing
-               Just ve -> Just ve
+               Just (pt, ve) -> Just $ treduces (tmatch pt ct) ve
       _ -> Nothing
 
 data MatchResult = Failed | Succeeded [(Name, Exp)] | Unknown
@@ -136,4 +136,35 @@ tmatch (VarT n) t = [(n, t)]
 tmatch (AppT a b) (AppT a' b') = (tmatch a a') ++ (tmatch b b')
 tmatch (ForallT _ _ t) t' = tmatch t t'
 tmatch _ _ = []
+
+-- treduces vs x
+--  Replace each occurence of a variable type according to the given mapping
+--  in x.
+class TReduces a where
+    treduces :: [(Name, Type)] -> a -> a
+
+instance TReduces Exp where
+    treduces _ e@(IntegerE {}) = e
+    treduces vs (PrimE t n) = PrimE (treduces vs t) n
+    treduces vs (IfE t p a b) = IfE (treduces vs t) (treduces vs p) (treduces vs a) (treduces vs b)
+    treduces vs (CaseE t e ms) = CaseE (treduces vs t) (treduces vs e) (map (treduces vs) ms)
+    treduces vs (AppE t a b) = AppE (treduces vs t) (treduces vs a) (treduces vs b)
+    treduces vs (LamE t ln b) = LamE (treduces vs t) ln (treduces vs b)
+    treduces vs (ConE t n) = ConE (treduces vs t) n
+    treduces vs (VarE t vn id) = VarE (treduces vs t) vn (treduces vs id)
+
+instance TReduces Type where
+    treduces _ t@(ConT {}) = t
+    treduces vs (AppT a b) = AppT (treduces vs a) (treduces vs b)   
+    treduces vs t@(VarT n) =
+        case lookup n vs of
+            Just t' -> t'
+            Nothing -> t
+
+instance TReduces InstId where
+    treduces _ NoInst = NoInst
+    treduces vs (Inst n ts) = Inst n (map (treduces vs) ts)
+
+instance TReduces Match where
+    treduces vs (Match p e) = Match p (treduces vs e)
 

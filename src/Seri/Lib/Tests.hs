@@ -80,6 +80,7 @@ class Foo a where
     foo :: a -> Integer
 
 declclass ''Foo
+declvartinst ''Foo "a"
 
 [s|
     instance Foo Bool where
@@ -87,5 +88,10 @@ declclass ''Foo
     
     instance Foo Integer where
         foo _ = 2
+|]
+
+[s|
+    foofun :: (Foo a) => a -> Integer
+    foofun x = (foo x)*(foo x) + 3*(foo x) + (foo True)
 |]
 

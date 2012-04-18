@@ -3,7 +3,7 @@ import Test.HUnit
 import System.Exit
 
 import qualified Seri.Tests
-import qualified Seri.SMT.Tests
+--import qualified Seri.SMT.Tests
 --import qualified Seri.Tibby.Tests
 
 -- Run tests, exiting failure if any failed, exiting success if all succeeded.
@@ -16,8 +16,8 @@ runtests t = do
         else exitWith ExitSuccess
 
 tests = "Tests" ~: [
-    Seri.Tests.tests,
-    Seri.SMT.Tests.tests
+    Seri.Tests.tests
+--    Seri.SMT.Tests.tests
 --    Seri.Tibby.Tests.tests
     ]
 

@@ -60,6 +60,8 @@ tests = "Seri" ~: [
     "3 arg func" ~: IntegerE 20 `eqexp` [s| sum3 5 7 8 |],
     "unit type" ~: IntegerE 3 `eqexp` [s| unary2int [(), (), ()] |],
     "Foo class bool" ~: IntegerE 1 `eqexp` [s| foo True |],
-    "Foo class int" ~: IntegerE 2 `eqexp` [s| foo 42 |]
+    "Foo class int" ~: IntegerE 2 `eqexp` [s| foo 42 |],
+    "foofun bool" ~: IntegerE 5 `eqexp` [s| foofun False |],
+    "foofun int" ~: IntegerE 11 `eqexp` [s| foofun 5 |]
     ]
 

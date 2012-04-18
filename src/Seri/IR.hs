@@ -61,6 +61,11 @@ instance Ppr Type where
     ppr (ConT nm) = text nm
     ppr (AppT a b) = parens $ ppr a <+> ppr b
     ppr (VarT n) = text n
+    ppr (ForallT ns ps t) =
+        text "forall" <+> hsep (map text ns) <+> hsep (map ppr ps) <+> ppr t
+
+instance Ppr Pred where
+    ppr (Pred n ts) = text n <+> hsep (map ppr ts)
 
 instance Ppr Exp where
     ppr (IntegerE i) = integer i
@@ -91,4 +96,16 @@ instance Ppr Dec where
     ppr (ValD n t e) = text n <+> text "::" <+> ppr t
                         $+$ text n <+> text "=" <+> ppr e
     ppr (DataD n vs cs) = text "data" <+> text n <+> hsep (map text vs) <+> text "=" <+> ppr cs
+    ppr (ClassD n vs sigs) 
+        = text "class" <+> text n <+> hsep (map text vs) <+> text "where"
+            <+> ppr sigs
+    ppr (InstD n ts meths)
+        = text "instance" <+> text n <+> hsep (map ppr ts) <+> text "where"
+            <+> ppr meths
+
+instance Ppr Sig where
+    ppr (Sig n t) = text n <+> text "::" <+> ppr t 
+
+instance Ppr Method where
+    ppr (Method n e) = text n <+> text "=" <+> ppr e
 

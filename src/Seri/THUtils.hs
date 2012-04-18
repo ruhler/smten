@@ -1,6 +1,6 @@
 
 module Seri.THUtils (
-    apply, applyC, arrowts, string, integer, appts, fixUnit,
+    apply, applyC, arrowts, string, integer, appts, fixUnit, tyvarname,
     ) where 
 
 import Data.Generics
@@ -39,6 +39,10 @@ tvarnames (ForallT _ _ t) = tvarnames t
 tvarnames (VarT nm) = [nm]
 tvarnames (AppT a b) = nub $ (tvarnames a) ++ (tvarnames b)
 tvarnames t = []
+
+tyvarname :: TyVarBndr -> Name
+tyvarname (PlainTV v) = v
+tyvarname (KindedTV v _) = v
 
 -- There seems to be a bug with quasi quoters where the type "GHC.Unit.()" is
 -- interpreted as a data constructor instead of a type. To allow use of the
