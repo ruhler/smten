@@ -16,6 +16,7 @@ import qualified Seri.Typed as S
 import Seri.THUtils
 import Seri.Canonical
 import Seri.Declarations.Names
+import Seri.Declarations.SeriDec
 import Seri.Declarations
 import Seri.Slice
 
@@ -164,20 +165,8 @@ qexp :: String -> Q Exp
 qexp s = do
     case (parseExp s) of
             Right e -> do
-                let expr = fst $ runState (mkexp . canonical $ e) (UserState [])
-                ClassI _ insts  <- reify ''SeriDec
-                return $ envize expr insts
+                withdecs (fst $ runState (mkexp . canonical $ e) (UserState []))
             Left err -> fail err
-
--- envize
--- Given an expression and a list of SeriDec class instances, return an
--- Env expression with the corresponding seri declarations.
-envize :: Exp -> [ClassInstance] -> Exp
-envize e insts =
-  let tys = map (head . ci_tys) insts
-      decs = map (\(ConT n) -> apply 'dec [ConE $ mkName (nameBase n)]) tys
-  in apply 'S.enved [e, ListE decs]
-
 
 qpat :: String -> Q Pat
 qpat = error $ "Seri pattern quasi-quote not supported"

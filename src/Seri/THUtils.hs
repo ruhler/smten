@@ -1,7 +1,7 @@
 
 module Seri.THUtils (
     apply, applyC, arrowts, string, integer, appts, fixUnit, tyvarname,
-    prefixed,
+    prefixed, flattenforall
     ) where 
 
 import Data.Generics
@@ -48,6 +48,15 @@ tyvarname (KindedTV v _) = v
 -- Add a prefix to a name.
 prefixed :: String -> Name -> Name
 prefixed pre x = mkName $ pre ++ nameBase x
+
+-- Collapse nested ForallT types to a single ForallT.
+flattenforall :: Type -> Type
+flattenforall (ForallT vs ctx t) =
+    case (flattenforall t) of
+        ForallT vs' ctx' t' -> ForallT (vs++vs') (ctx ++ ctx') t'
+        t' -> ForallT vs ctx t'
+flattenforall t = t
+
 
 -- There seems to be a bug with quasi quoters where the type "GHC.Unit.()" is
 -- interpreted as a data constructor instead of a type. To allow use of the

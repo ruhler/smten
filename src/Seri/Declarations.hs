@@ -14,9 +14,8 @@ import Seri.THUtils
 import qualified Seri.IR as SIR
 import qualified Seri.Typed as S
 import Seri.Declarations.Names
-
-class SeriDec a where
-    dec :: a -> SIR.Dec
+import Seri.Declarations.Utils
+import Seri.Declarations.SeriDec
 
 -- declval' name ty exp
 -- Make a seri value declaration
@@ -45,7 +44,7 @@ class SeriDec a where
 --                  (typed (_seri_foo :: Typed Exp (VarT_a -> Integer)))
 declval' :: Name -> Type -> Exp -> [Dec]
 declval' n t e =
-  let dt = declize t
+  let dt = valuetype t
       sig_P = SigD (valuename n) dt
       impl_P = FunD (valuename n) [Clause [] (NormalB e) []]
 
@@ -54,7 +53,7 @@ declval' n t e =
 
       exp = apply 'S.typed [SigE (VarE (valuename n)) (concretize dt)]
       body = applyC 'SIR.ValD [string n, seritypize t, exp]
-      ddec = decldec (prefixed "SeriDecD_" n) body
+      ddec = seridec (prefixed "D_" n) body
 
   in [sig_P, impl_P, sig_I, impl_I] ++ ddec
 
@@ -72,7 +71,7 @@ declval' n t e =
 --  _seri_Foo = conE' "Foo"
 declcon' :: Name -> Type -> [Dec]
 declcon' n t =
-  let dt = declize t
+  let dt = valuetype t
       sig_P = SigD (valuename n) dt
       impl_P = FunD (valuename n) [Clause [] (NormalB (apply 'S.conE' [string n])) []]
   in [sig_P, impl_P]
@@ -154,7 +153,7 @@ decltype' (DataD [] dt vars cs _) =
         = applyC 'SIR.Con [string n, ListE (map (\(_, _, t) -> seritypize t) sts)]
 
      body = applyC 'SIR.DataD [string dt, ListE (map string vnames), ListE (map mkconinfo cs)]
-     ddec = decldec (prefixed "SeriDecD_" dt) body
+     ddec = seridec (prefixed "D_" dt) body
 
      constrs = concat $ map mkcon cs
  in [stinst] ++ ddec ++ constrs
@@ -183,17 +182,11 @@ declclass' (ClassD [] nm vars [] sigs) =
   let mksig :: Dec -> [Dec]
       mksig (SigD n t) =
         let dft = deforall t
-            sig_P = SigD (valuename n) (declize dft)
+            sig_P = SigD (valuename n) (valuetype dft)
             sig_I = SigD (instidname n) (declidize dft)
         in [sig_P, sig_I]
 
-      mkst :: TyVarBndr -> Pred
-      mkst (PlainTV v) = ClassP ''S.SeriType [VarT v]
-      mkst (KindedTV v StarK) = ClassP ''S.SeriType [VarT v]
-      mkst (KindedTV v (ArrowK StarK StarK)) = ClassP ''S.SeriType1 [VarT v]
-      mkst x = error $ "TODO: mkst " ++ show x
-
-      ctx = map mkst vars
+      ctx = map stpred vars
       class_D = ClassD ctx (classname nm) vars [] (concat $ map mksig sigs)
 
       mkt :: Dec -> [Dec]
@@ -212,7 +205,7 @@ declclass' (ClassD [] nm vars [] sigs) =
       tyvars = ListE $ map (string . tyvarname) vars
       dsigs = ListE $ map mkdsig sigs
       body = applyC 'SIR.ClassD [string nm, tyvars, dsigs]
-      ddec = decldec (prefixed "SeriDecC_" nm) body
+      ddec = seridec (prefixed "C_" nm) body
       
   in [class_D] ++ type_ds ++ ddec
 
@@ -259,33 +252,8 @@ declinst' addseridec i@(InstanceD [] tf@(AppT (ConT cn) t) impls) =
 
       methods = ListE $ map mkmeth impls
       body = applyC 'SIR.InstD [iname, itys, methods]
-      ddec = decldec (mkName $ "SeriDecI_" ++ (idize tf)) body
+      ddec = seridec (mkName $ "I_" ++ (idize tf)) body
    in [inst_D] ++ if addseridec then ddec else []
-
--- Given the raw haskell type corresponding to an expression, return the type
--- of the haskell function representing an expression of that type.
---
--- For example
---  input: (Eq a) => a -> Integer
---  output: (Eq a, SeriType a) => Typed Exp (a -> Integer) 
-declize :: Type -> Type
-declize ty = 
-  let -- Given a type variable, figure out what predicate we should add for it
-      -- in the context.
-      --
-      -- TODO: this is a bad special case hack. Can we come up with a better
-      -- way for figuring out the kind of each type variable?
-      stcon :: TyVarBndr -> Pred
-      stcon (PlainTV x) | 'm' == head (nameBase x)
-        = ClassP ''S.SeriType1 [VarT x]
-      stcon (PlainTV x) = ClassP ''S.SeriType [VarT x]
-
-      upcon :: Pred -> Pred
-      upcon (ClassP n ts) = ClassP (classname n) ts
-
-  in case (nestforall ty) of
-        ForallT vns ctx t -> ForallT vns ((map upcon ctx) ++ (map stcon vns)) (texpify t)
-        t -> texpify t 
 
 -- Given the raw haskell type corresponding to an expression, return the type
 -- of the haskell function representing the InstId of that expression.
@@ -298,24 +266,6 @@ declidize ty =
   let mkt t = arrowts [texpify (deforall t), (ConT ''SIR.InstId)]
   in inforall mkt ty
 
--- Produce declarations for:
---  data <Name> = <Name>
---  instance SeriDec <Name> where
---      dec _ = <Exp>
-decldec :: Name -> Exp -> [Dec]
-decldec n body = 
-  let data_D = DataD [] n [] [NormalC n []] []
-      impl_D = FunD 'dec [Clause [WildP] (NormalB body) []]
-      inst_D = InstanceD [] (AppT (ConT ''SeriDec) (ConT n)) [impl_D]
-  in [data_D, inst_D]
-
-
-texpify :: Type -> Type
-texpify t =
-  case t of
-    ForallT vars ctx t' -> ForallT vars ctx (texpify t')
-    _ -> AppT (AppT (ConT ''S.Typed) (ConT ''SIR.Exp)) t
-
 deforall :: Type -> Type
 deforall (ForallT _ _ t) = t
 deforall t = t
@@ -324,20 +274,13 @@ inforall :: (Type -> Type) -> Type -> Type
 inforall f (ForallT vns ctx t) = ForallT vns ctx (f t)
 inforall f t = f t
 
-nestforall :: Type -> Type
-nestforall (ForallT vs ctx t) =
-    case (nestforall t) of
-        ForallT vs' ctx' t' -> ForallT (vs++vs') (ctx ++ ctx') t'
-        t' -> ForallT vs ctx t'
-nestforall t = t
-
 -- Given a type, return an expression corresonding to the seri type of
 -- that type.
 seritypize :: Type -> Exp
 seritypize t =
   let callseritype t@(VarT nm) = applyC 'SIR.VarT [string nm]
       callseritype t = apply 'S.seritype [SigE (VarE 'undefined) (concretize t)]
-  in case nestforall t of
+  in case flattenforall t of
         ForallT vars preds t' ->
           let vars' = ListE $ map (\(PlainTV n) -> string n) vars
 
