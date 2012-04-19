@@ -152,7 +152,7 @@ mkdecls ((InstanceD c t ids):ds) =
         in ValD p (NormalB b') []
       
       ids' = map mkid ids
-  in declinst' True (InstanceD c t ids') ++ mkdecls ds
+  in declinst' (InstanceD c t ids') ++ mkdecls ds
 
 mkdecls d = error $ "TODO: mkdecls " ++ show d
 

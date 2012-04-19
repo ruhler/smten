@@ -225,8 +225,8 @@ declclass' (ClassD [] nm vars [] sigs) =
 --             method "foo" (_seriT_foo (undefined :: Bool)) (...)
 --             ]
 --  
-declinst' :: Bool -> Dec -> [Dec]
-declinst' addseridec i@(InstanceD [] tf@(AppT (ConT cn) t) impls) =
+declinst'' :: Bool -> Dec -> [Dec]
+declinst'' addseridec i@(InstanceD [] tf@(AppT (ConT cn) t) impls) =
   let -- TODO: don't assume single param type class
       iname = string cn
       itys = ListE [seritypeexp t]
@@ -252,11 +252,14 @@ declinst' addseridec i@(InstanceD [] tf@(AppT (ConT cn) t) impls) =
       ddec = seridec (mkName $ "I_" ++ (idize tf)) body
    in [inst_D] ++ if addseridec then ddec else []
 
+declinst' :: Dec -> [Dec]
+declinst' = declinst'' True
+
 declvartinst' :: Dec -> SIR.Name -> [Dec]
 declvartinst' (ClassD [] n _ [] sigs) v =
   let mkimpl :: Dec -> Dec
       mkimpl (SigD n t) = ValD (VarP n) (NormalB (VarE 'undefined)) []
     
       inst = InstanceD [] (AppT (ConT n) (ConT $ mkName ("VarT_" ++ v))) (map mkimpl sigs)
-  in declinst' False inst 
+  in declinst'' False inst 
 
