@@ -51,8 +51,8 @@ declval' n t e =
       sig_I = SigD (instidname n) (instidtype t)
       impl_I = FunD (instidname n) [Clause [WildP] (NormalB $ ConE 'SIR.NoInst) []]
 
-      exp = apply 'S.typed [SigE (VarE (valuename n)) (concretize dt)]
-      body = applyC 'SIR.ValD [string n, seritypize t, exp]
+      exp = apply 'S.typed [SigE (VarE (valuename n)) (concrete dt)]
+      body = applyC 'SIR.ValD [string n, seritypeexp t, exp]
       ddec = seridec (prefixed "D_" n) body
 
   in [sig_P, impl_P, sig_I, impl_I] ++ ddec
@@ -148,9 +148,9 @@ decltype' (DataD [] dt vars cs _) =
      -- Con representing that constructor.
      mkconinfo :: Con -> Exp
      mkconinfo (NormalC n sts)
-        = applyC 'SIR.Con [string n, ListE (map (\(_, t) -> seritypize t) sts)]
+        = applyC 'SIR.Con [string n, ListE (map (\(_, t) -> seritypeexp t) sts)]
      mkconinfo (RecC n sts)
-        = applyC 'SIR.Con [string n, ListE (map (\(_, _, t) -> seritypize t) sts)]
+        = applyC 'SIR.Con [string n, ListE (map (\(_, _, t) -> seritypeexp t) sts)]
 
      body = applyC 'SIR.DataD [string dt, ListE (map string vnames), ListE (map mkconinfo cs)]
      ddec = seridec (prefixed "D_" dt) body
@@ -180,27 +180,25 @@ decltype' (DataD [] dt vars cs _) =
 declclass' :: Dec -> [Dec]
 declclass' (ClassD [] nm vars [] sigs) =
   let mksig :: Dec -> [Dec]
-      mksig (SigD n t) =
-        let dft = deforall t
-            sig_P = SigD (valuename n) (valuetype dft)
-            sig_I = SigD (instidname n) (instidtype dft)
+      mksig (SigD n (ForallT _ _ t)) =
+        let sig_P = SigD (valuename n) (valuetype t)
+            sig_I = SigD (instidname n) (instidtype t)
         in [sig_P, sig_I]
 
       ctx = map stpred vars
       class_D = ClassD ctx (classname nm) vars [] (concat $ map mksig sigs)
 
       mkt :: Dec -> [Dec]
-      mkt (SigD n t) = 
-        let f t = arrowts $ map (VarT . tyvarname) vars ++ [texpify t]
-            sig_T = SigD (methodtypename n) (ForallT vars [] (f (deforall t)))
+      mkt (SigD n (ForallT _ _ t)) = 
+        let ty = arrowts $ map (VarT . tyvarname) vars ++ [texpify t]
+            sig_T = SigD (methodtypename n) (ForallT vars [] ty)
             impl_T = FunD (methodtypename n) [Clause [WildP] (NormalB (VarE 'undefined)) []]
         in [sig_T, impl_T]
 
       type_ds = concat $ map mkt sigs
 
-
       mkdsig :: Dec -> Exp
-      mkdsig (SigD n t) = applyC 'SIR.Sig [string n, seritypize (deforall t)]
+      mkdsig (SigD n (ForallT _ _ t)) = applyC 'SIR.Sig [string n, seritypeexp t]
 
       tyvars = ListE $ map (string . tyvarname) vars
       dsigs = ListE $ map mkdsig sigs
@@ -232,7 +230,7 @@ declinst' :: Bool -> Dec -> [Dec]
 declinst' addseridec i@(InstanceD [] tf@(AppT (ConT cn) t) impls) =
   let -- TODO: don't assume single param type class
       iname = string cn
-      itys = ListE [seritypize t]
+      itys = ListE [seritypeexp t]
 
       mkimpl :: Dec -> [Dec]
       mkimpl (ValD (VarP n) (NormalB b) []) =
@@ -254,41 +252,6 @@ declinst' addseridec i@(InstanceD [] tf@(AppT (ConT cn) t) impls) =
       body = applyC 'SIR.InstD [iname, itys, methods]
       ddec = seridec (mkName $ "I_" ++ (idize tf)) body
    in [inst_D] ++ if addseridec then ddec else []
-
-deforall :: Type -> Type
-deforall (ForallT _ _ t) = t
-deforall t = t
-
-inforall :: (Type -> Type) -> Type -> Type
-inforall f (ForallT vns ctx t) = ForallT vns ctx (f t)
-inforall f t = f t
-
--- Given a type, return an expression corresonding to the seri type of
--- that type.
-seritypize :: Type -> Exp
-seritypize t =
-  let callseritype t@(VarT nm) = applyC 'SIR.VarT [string nm]
-      callseritype t = apply 'S.seritype [SigE (VarE 'undefined) (concretize t)]
-  in case flattenforall t of
-        ForallT vars preds t' ->
-          let vars' = ListE $ map (string . tyvarname) vars
-
-              mkpred :: Pred -> Exp
-              mkpred (ClassP n [t]) = applyC 'SIR.Pred [string n, ListE [seritypize t]]
-
-              preds' = ListE $ map mkpred preds
-          in applyC 'SIR.ForallT [vars', preds', callseritype t']
-        t' -> callseritype t'
-
--- Given a potentially polymorphic haskell type, convert it to a concrete
--- haskell type which represents the polymorphic seri type.
---
--- In other words, replace all occurences of VarT "foo" with VarT_foo.
-concretize :: Type -> Type
-concretize (ForallT _ _ t) = concretize t
-concretize (VarT nm) = ConT $ mkName ("VarT_" ++ (nameBase nm))
-concretize (AppT a b) = AppT (concretize a) (concretize b)
-concretize t = t
 
 declvartinst' :: Dec -> SIR.Name -> [Dec]
 declvartinst' (ClassD [] n _ [] sigs) v =
