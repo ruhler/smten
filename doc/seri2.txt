@@ -6805,3 +6805,11 @@ I also think I should move handling of record constructors to the
 canonicalizer. It's a little annoying, because it goes Dec -> [Dec], but I can
 add it as a case in the [Dec] -> [Dec] version.
 
+Thu Apr 19 17:44:32 EDT 2012
+
+Good. Things are cleaner now.
+
+Do I want to try moving canonicalization of record constructors into
+canonical? I think it's worth a try. Let me just see how it goes, and what
+issues come up.
+

@@ -122,23 +122,10 @@ decltype' (DataD [] dt vars cs _) =
      contype ts = contextify $ arrowts (ts ++ [dtapp])
 
      -- produce the declarations needed for a given constructor.
+     -- Note: RecC is not canonical, so we assume we needn't deal with it
+     -- here.
      mkcon :: Con -> [Dec]
-     mkcon (NormalC nc sts) =
-        let ty = contype (map snd sts)
-        in declcon' nc ty
-     mkcon (RecC nc sts) =
-        let ty = contype (map (\(_, _, t) -> t) sts)
-            constrs = declcon' nc ty
-            numfields = toInteger $ length sts
-
-            mkacc :: Integer -> Name -> Type -> [Dec]
-            mkacc i n st =
-                let t = contextify $ arrowts [dtapp, st]
-                    e = apply 'S.selector [string dt, integer i, integer numfields]
-                in declval' n t e
-
-            accessors = concat $ map (\(i, (n, _, t)) -> mkacc i n t) (zip [0..] sts)
-        in constrs ++ accessors
+     mkcon (NormalC nc sts) = declcon' nc (contype $ map snd sts)
 
      stimpl = FunD (mkName methname) [Clause [WildP] (NormalB (AppE (ConE 'SIR.ConT) (string dt))) []]
      stinst = InstanceD [] (AppT (ConT (mkName classname)) (ConT dt)) [stimpl]
@@ -146,10 +133,7 @@ decltype' (DataD [] dt vars cs _) =
      -- Given a constructor, return an expression corresponding to the Seri
      -- Con representing that constructor.
      mkconinfo :: Con -> Exp
-     mkconinfo (NormalC n sts)
-        = applyC 'SIR.Con [string n, ListE (map (\(_, t) -> seritypeexp t) sts)]
-     mkconinfo (RecC n sts)
-        = applyC 'SIR.Con [string n, ListE (map (\(_, _, t) -> seritypeexp t) sts)]
+     mkconinfo (NormalC n sts) = applyC 'SIR.Con [string n, ListE (map (\(_, t) -> seritypeexp t) sts)]
 
      body = applyC 'SIR.DataD [string dt, ListE (map string vnames), ListE (map mkconinfo cs)]
      ddec = seridec (prefixed "D_" dt) body

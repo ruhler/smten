@@ -7,7 +7,9 @@ module Seri.Canonical (
     ) where
 
 import Language.Haskell.TH
+import Language.Haskell.TH.Syntax
 import Seri.Slice
+import Seri.THUtils
 
 -- Canonical
 --  Given a TH declaration or expression, reduce it to a canonical form
@@ -133,7 +135,14 @@ instance Canonical Dec where
 
     canonical d = error $ "TODO: canonical " ++ show d
 
-instance (Canonical a) => Canonical [a] where
+instance Canonical [Dec] where
+    canonical [] = []
+    canonical (d:ds) = (canonicalrec d) ++ canonical ds
+
+instance Canonical [Match] where
+    canonical = map canonical
+
+instance Canonical [Pat] where
     canonical = map canonical
 
 instance Canonical Body where
@@ -142,4 +151,33 @@ instance Canonical Body where
 
 instance Canonical Match where
     canonical (Match p b ds) = Match (canonical p) (canonical b) (canonical ds)
+
+
+-- Canonicalize record type constructors to normal constructors + selector
+-- functions.
+canonicalrec :: Dec -> [Dec]
+canonicalrec (DataD ctx n vars cs derv) = 
+  let mksel :: Con -> [Dec]
+      mksel c@(NormalC {}) = []
+      mksel (RecC nc fields) =
+        let mksig :: VarStrictType -> Dec
+            mksig (fn, _, t) = SigD fn (ForallT vars [] (arrowts [t, ConT n]))
+
+            mkfun :: Int -> Dec
+            mkfun i =
+              let (fn, _, t) = fields !! i
+                  pats = replicate i WildP
+                         ++ [VarP $ mkName "x"]
+                         ++ replicate (length fields - i - 1) WildP
+              in FunD fn [Clause pats (NormalB (VarE $ mkName "x")) []] 
+
+            mkboth :: Int -> [Dec]
+            mkboth i = [mksig (fields !! i), mkfun i]
+        in concat $ [mkboth i | i <- [0..(length fields - 1)]]
+
+      mknorm :: Con -> Con
+      mknorm c@(NormalC {}) = c
+      mknorm (RecC nc fields) = NormalC nc (map (\(_, s, t) -> (s, t)) fields)
+  in (DataD ctx n vars (map mknorm cs) derv) : (canonical . concat $ map mksel cs)
+canonicalrec d = [canonical d]
 

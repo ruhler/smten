@@ -10,7 +10,7 @@ module Seri.Typed
         VarT_a(..), VarT_b(..), VarT_c(..), VarT_d(..), VarT_m(..),
     
         integerE, ifE, caseE, conE, conE', varE, dvarE, lamE, appE,
-        primitive, match, selector, lamM, method,
+        primitive, match, lamM, method,
         conP, appP, wildP, integerP,
         enved,
     )
@@ -136,19 +136,6 @@ appE (Typed f) (Typed x)
 
 lamE :: (SeriType a, SeriType (a -> b)) => Name -> (Typed Exp a -> Typed Exp b) -> Typed Exp (a -> b)
 lamE n f = withtype $ \t -> Typed $ LamE t n (typed $ f (varE n))
-
--- selector dt i fields
--- Create a selector function for ith field of data type dt which has 'fields'
--- number of fields
-selector :: (SeriType a, SeriType b) => Name -> Integer -> Integer -> Typed Exp (a -> b)
-selector dt i fields
- = lamE "d" (\d -> caseE d [lamM "x" (\xp xe ->
-        let wilds :: Integer -> Typed Pat c -> Typed Pat d
-            wilds n (Typed p) = Typed $ foldl AppP p (replicate (fromInteger n) WildP)
-            pat = wilds (fields - i - 1) (appP (wilds i (conP dt)) xp)
-        in match pat xe
-        )])
-        
 
 lamM :: (SeriType a) => Name -> (Typed Pat a -> Typed Exp a -> Typed Match b) -> Typed Match b
 lamM n f = f (Typed $ VarP n) (varE n)
