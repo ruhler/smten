@@ -48,7 +48,7 @@ declval' n t e =
       sig_P = SigD (valuename n) dt
       impl_P = FunD (valuename n) [Clause [] (NormalB e) []]
 
-      sig_I = SigD (instidname n) (declidize t)
+      sig_I = SigD (instidname n) (instidtype t)
       impl_I = FunD (instidname n) [Clause [WildP] (NormalB $ ConE 'SIR.NoInst) []]
 
       exp = apply 'S.typed [SigE (VarE (valuename n)) (concretize dt)]
@@ -108,7 +108,7 @@ decltype' (DataD [] dt vars cs _) =
  let numvars = length vars
      classname = "SeriType" ++ if numvars == 0 then "" else show numvars
      methname = "seritype" ++ if numvars == 0 then "" else show numvars
-     vnames = map (\(PlainTV n) -> n) vars
+     vnames = map tyvarname vars
      dtapp = appts $ (ConT dt):(map VarT vnames)
 
      -- Assuming the data type is polymorphic in type variables a, b, ...
@@ -183,7 +183,7 @@ declclass' (ClassD [] nm vars [] sigs) =
       mksig (SigD n t) =
         let dft = deforall t
             sig_P = SigD (valuename n) (valuetype dft)
-            sig_I = SigD (instidname n) (declidize dft)
+            sig_I = SigD (instidname n) (instidtype dft)
         in [sig_P, sig_I]
 
       ctx = map stpred vars
@@ -255,17 +255,6 @@ declinst' addseridec i@(InstanceD [] tf@(AppT (ConT cn) t) impls) =
       ddec = seridec (mkName $ "I_" ++ (idize tf)) body
    in [inst_D] ++ if addseridec then ddec else []
 
--- Given the raw haskell type corresponding to an expression, return the type
--- of the haskell function representing the InstId of that expression.
---
--- For example
---  input: (Eq a) => a -> Integer
---  output: Typed Exp (a -> Integer) -> InstId
-declidize :: Type -> Type 
-declidize ty =
-  let mkt t = arrowts [texpify (deforall t), (ConT ''SIR.InstId)]
-  in inforall mkt ty
-
 deforall :: Type -> Type
 deforall (ForallT _ _ t) = t
 deforall t = t
@@ -282,7 +271,7 @@ seritypize t =
       callseritype t = apply 'S.seritype [SigE (VarE 'undefined) (concretize t)]
   in case flattenforall t of
         ForallT vars preds t' ->
-          let vars' = ListE $ map (\(PlainTV n) -> string n) vars
+          let vars' = ListE $ map (string . tyvarname) vars
 
               mkpred :: Pred -> Exp
               mkpred (ClassP n [t]) = applyC 'SIR.Pred [string n, ListE [seritypize t]]

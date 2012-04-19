@@ -6791,3 +6791,17 @@ Then go from there. Sound good?
 
 Can I do that tonight? Real quick like? Let me try it.
 
+Thu Apr 19 17:11:38 EDT 2012
+
+I had an idea, for how to deal with this dummy instance annoyance thing. What
+if we declared VarT_x and instances for it on the fly, lazily? Then the user
+could specify whatever variables they want, and it works. Maybe?
+
+Anyway, that's a thought for another time. Back to cleanup.
+
+Thu Apr 19 17:14:40 EDT 2012
+
+I also think I should move handling of record constructors to the
+canonicalizer. It's a little annoying, because it goes Dec -> [Dec], but I can
+add it as a case in the [Dec] -> [Dec] version.
+
