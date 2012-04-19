@@ -4,7 +4,6 @@
 
 module Seri.Declarations (
     SeriDec(..),
-    declname, declidname,
     declval', declcon', decltype', declinst', declclass', declvartinst',
     ) where
 
@@ -14,26 +13,10 @@ import Language.Haskell.TH
 import Seri.THUtils
 import qualified Seri.IR as SIR
 import qualified Seri.Typed as S
+import Seri.Declarations.Names
 
 class SeriDec a where
     dec :: a -> SIR.Dec
-
-name_X :: String -> Name -> Name
-name_X pre x = mkName $ pre ++ nameBase x
-
--- The name of the (possibly) polymorphic function generated.
-declname :: Name -> Name
-declname = name_X "_seriP_"
-
-declidname :: Name -> Name
-declidname = name_X "_seriI_"
-
-declclname :: Name -> Name
-declclname = name_X "SeriClass_"
-
-declctname :: Name -> Name
-declctname = name_X "_seriT_"
-
 
 -- declval' name ty exp
 -- Make a seri value declaration
@@ -63,15 +46,15 @@ declctname = name_X "_seriT_"
 declval' :: Name -> Type -> Exp -> [Dec]
 declval' n t e =
   let dt = declize t
-      sig_P = SigD (declname n) dt
-      impl_P = FunD (declname n) [Clause [] (NormalB e) []]
+      sig_P = SigD (valuename n) dt
+      impl_P = FunD (valuename n) [Clause [] (NormalB e) []]
 
-      sig_I = SigD (declidname n) (declidize t)
-      impl_I = FunD (declidname n) [Clause [WildP] (NormalB $ ConE 'SIR.NoInst) []]
+      sig_I = SigD (instidname n) (declidize t)
+      impl_I = FunD (instidname n) [Clause [WildP] (NormalB $ ConE 'SIR.NoInst) []]
 
-      exp = apply 'S.typed [SigE (VarE (declname n)) (concretize dt)]
+      exp = apply 'S.typed [SigE (VarE (valuename n)) (concretize dt)]
       body = applyC 'SIR.ValD [string n, seritypize t, exp]
-      ddec = decldec (name_X "SeriDecD_" n) body
+      ddec = decldec (prefixed "SeriDecD_" n) body
 
   in [sig_P, impl_P, sig_I, impl_I] ++ ddec
 
@@ -90,8 +73,8 @@ declval' n t e =
 declcon' :: Name -> Type -> [Dec]
 declcon' n t =
   let dt = declize t
-      sig_P = SigD (declname n) dt
-      impl_P = FunD (declname n) [Clause [] (NormalB (apply 'S.conE' [string n])) []]
+      sig_P = SigD (valuename n) dt
+      impl_P = FunD (valuename n) [Clause [] (NormalB (apply 'S.conE' [string n])) []]
   in [sig_P, impl_P]
 
 -- decltype' 
@@ -171,7 +154,7 @@ decltype' (DataD [] dt vars cs _) =
         = applyC 'SIR.Con [string n, ListE (map (\(_, _, t) -> seritypize t) sts)]
 
      body = applyC 'SIR.DataD [string dt, ListE (map string vnames), ListE (map mkconinfo cs)]
-     ddec = decldec (name_X "SeriDecD_" dt) body
+     ddec = decldec (prefixed "SeriDecD_" dt) body
 
      constrs = concat $ map mkcon cs
  in [stinst] ++ ddec ++ constrs
@@ -200,8 +183,8 @@ declclass' (ClassD [] nm vars [] sigs) =
   let mksig :: Dec -> [Dec]
       mksig (SigD n t) =
         let dft = deforall t
-            sig_P = SigD (declname n) (texpify dft)
-            sig_I = SigD (declidname n) (declidize dft)
+            sig_P = SigD (valuename n) (declize dft)
+            sig_I = SigD (instidname n) (declidize dft)
         in [sig_P, sig_I]
 
       mkst :: TyVarBndr -> Pred
@@ -211,27 +194,25 @@ declclass' (ClassD [] nm vars [] sigs) =
       mkst x = error $ "TODO: mkst " ++ show x
 
       ctx = map mkst vars
-      class_D = ClassD ctx (declclname nm) vars [] (concat $ map mksig sigs)
+      class_D = ClassD ctx (classname nm) vars [] (concat $ map mksig sigs)
 
       mkt :: Dec -> [Dec]
       mkt (SigD n t) = 
         let f t = arrowts $ map (VarT . tyvarname) vars ++ [texpify t]
-            sig_T = SigD (declctname n) (ForallT vars [] (f (deforall t)))
-            impl_T = FunD (declctname n) [Clause [WildP] (NormalB (VarE 'undefined)) []]
+            sig_T = SigD (methodtypename n) (ForallT vars [] (f (deforall t)))
+            impl_T = FunD (methodtypename n) [Clause [WildP] (NormalB (VarE 'undefined)) []]
         in [sig_T, impl_T]
 
       type_ds = concat $ map mkt sigs
 
 
-      -- TODO: shouldn't we only remove that part of the forall which refers
-      -- to the class type variables?
       mkdsig :: Dec -> Exp
       mkdsig (SigD n t) = applyC 'SIR.Sig [string n, seritypize (deforall t)]
 
       tyvars = ListE $ map (string . tyvarname) vars
       dsigs = ListE $ map mkdsig sigs
       body = applyC 'SIR.ClassD [string nm, tyvars, dsigs]
-      ddec = decldec (name_X "SeriDecC_" nm) body
+      ddec = decldec (prefixed "SeriDecC_" nm) body
       
   in [class_D] ++ type_ds ++ ddec
 
@@ -262,8 +243,8 @@ declinst' addseridec i@(InstanceD [] tf@(AppT (ConT cn) t) impls) =
 
       mkimpl :: Dec -> [Dec]
       mkimpl (ValD (VarP n) (NormalB b) []) =
-        let p = ValD (VarP (declname n)) (NormalB b) []
-            i = FunD (declidname n) [Clause [WildP] (NormalB (applyC 'SIR.Inst [iname, itys])) []]
+        let p = ValD (VarP (valuename n)) (NormalB b) []
+            i = FunD (instidname n) [Clause [WildP] (NormalB (applyC 'SIR.Inst [iname, itys])) []]
         in [p, i]
 
       idize :: Type -> String
@@ -271,10 +252,10 @@ declinst' addseridec i@(InstanceD [] tf@(AppT (ConT cn) t) impls) =
       idize (ConT nm) = nameBase nm
 
       impls' = concat $ map mkimpl impls
-      inst_D = InstanceD [] (AppT (ConT (declclname cn)) t) impls'
+      inst_D = InstanceD [] (AppT (ConT (classname cn)) t) impls'
 
       mkmeth (ValD (VarP n) (NormalB b) _) = 
-        apply 'S.method [string n, AppE (VarE (declctname n)) (SigE (VarE 'undefined) t), b]
+        apply 'S.method [string n, AppE (VarE (methodtypename n)) (SigE (VarE 'undefined) t), b]
 
       methods = ListE $ map mkmeth impls
       body = applyC 'SIR.InstD [iname, itys, methods]
@@ -300,7 +281,7 @@ declize ty =
       stcon (PlainTV x) = ClassP ''S.SeriType [VarT x]
 
       upcon :: Pred -> Pred
-      upcon (ClassP n ts) = ClassP (declclname n) ts
+      upcon (ClassP n ts) = ClassP (classname n) ts
 
   in case (nestforall ty) of
         ForallT vns ctx t -> ForallT vns ((map upcon ctx) ++ (map stcon vns)) (texpify t)

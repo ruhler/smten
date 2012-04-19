@@ -6670,3 +6670,124 @@ Wed Apr 18 18:17:14 EDT 2012
 
 I pulled the user interface out into Declarations.User. That's a start.
 
+Wed Apr 18 18:18:18 EDT 2012
+
+What's next?
+
+I could put each kind of declaration thing into its own module. Would that be
+excessive?
+
+Wed Apr 18 18:20:12 EDT 2012
+
+Let me look at each of the main functions and see which utilities they make
+use of. Perhaps that will give me some idea.
+
+declval
+ - declize - to figure out the haskell type for _seriP_
+ - declidize - to figure out the haskell type for _seriI_
+ - declname - to figure out the name of the _seriP_
+ - declidname - to figure out the name of the _seriI_
+ - concretize - used for the exp in the constructed ValD.
+ - seritypize - used for the type in the constructed ValD.
+ - decldec - used for the declaration thing.
+ This is clean.
+
+declcon
+ - declize - to figure out the type of the _seriP_
+ - declname - to figure out the name of the _seriP_
+ This is clean.
+
+decltype
+ - declcon - to declare the constructors.
+ - seritypize - to figure out the type of the constructors in the DataD.
+ - decldec - for the declaration
+ This is a little messy.
+ How it could be made cleaner:
+  - get rid of RecC constructors in canonicalization?
+  - have function given name, kind (as a number), appends the kind number, or
+    nothing if the kind number is 0.
+  - have a function mapping TyVarBndr to Name
+
+declclass
+ - declname, declidname, declize, declidize for _seriP, _seriI
+ - declclname - to know to use name SeriClass_Foo
+ - decldec
+ This is messy.
+ How it could be made cleaner:
+  - function given TyVarBndr to Kind number and name.
+  - Don't duplicate so much code. Share it.
+
+declinst
+ - seritypize to form the inst id.
+ - declname, declclname, decldec.
+ This is messy.
+
+decldec
+ This is clean.
+
+declvartinst
+ Relatively clean.
+ 
+
+So, what did I learn? I learned valuable stuff. I learned what utilities I
+want to have, that make sense to have. What I'll want is, perhaps, much better
+names for them. Let me refer to the current names though.
+
+declname :: Name -> Name
+  Says what the name is of the function in haskell which describes the value
+  of the expression.
+
+declidname :: Name -> Name
+  Says what the name is of the function in haskell which describes the
+  instance id of the expression.
+
+declclcname :: Name -> Name
+  Says what the name is of the class in haskell corresponding to the given
+  seri class.
+
+declize :: Type -> Type
+  Given the haskell type corresponding to an expression, give the type of the
+  declname function for that expression.
+
+declidize :: Type -> Type
+  Given the haskell type corresponding to an expression, give the type of the
+  declidname function for that expression.
+
+seritypize :: Type -> Exp
+  Given the haskell type corresponding to an expression, give an expression
+  which evaluates to the seritype of the expression.
+
+decldec :: Name -> Exp -> [Dec]
+  Declare the FooD seri declaration appropriately.
+
+concretize :: Type -> Type
+  Convert a polymorphic haskell type to its concrete haskell representation.
+
+Allow me to pull these library things out, say into Declarations.Util. See if
+that cleans things up any.
+
+Wed Apr 18 21:06:31 EDT 2012
+
+Okay, so here's my proposal. Or, initial proposal.
+
+Seri.THUtils:
+  prefixed :: String -> Name -> Name
+    Add a prefix to a TH Name.
+
+Seri.Declarations.Names:
+  valuename :: Name -> Name
+  classname :: Name -> Name
+  instidname :: Name -> Name
+
+Seri.Declarations.Utils:
+  valuetype :: Type -> Type
+  instidtype :: Type -> Type
+  seritypeexp :: Type -> Exp
+  concrete :: Type -> Type
+  decldec :: Name -> Exp -> [Dec]
+
+
+Then go from there. Sound good?
+
+Can I do that tonight? Real quick like? Let me try it.
+

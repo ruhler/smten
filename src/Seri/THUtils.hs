@@ -1,6 +1,7 @@
 
 module Seri.THUtils (
     apply, applyC, arrowts, string, integer, appts, fixUnit, tyvarname,
+    prefixed,
     ) where 
 
 import Data.Generics
@@ -43,6 +44,10 @@ tvarnames t = []
 tyvarname :: TyVarBndr -> Name
 tyvarname (PlainTV v) = v
 tyvarname (KindedTV v _) = v
+
+-- Add a prefix to a name.
+prefixed :: String -> Name -> Name
+prefixed pre x = mkName $ pre ++ nameBase x
 
 -- There seems to be a bug with quasi quoters where the type "GHC.Unit.()" is
 -- interpreted as a data constructor instead of a type. To allow use of the

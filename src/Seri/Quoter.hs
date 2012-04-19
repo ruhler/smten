@@ -15,6 +15,7 @@ import qualified Seri.Typed as S
 
 import Seri.THUtils
 import Seri.Canonical
+import Seri.Declarations.Names
 import Seri.Declarations
 import Seri.Slice
 
@@ -37,14 +38,14 @@ unbindname nm = do
 -- environment.
 --   name - the seri name.
 declaredV :: Name -> State UserState Exp
-declaredV nm = return $ apply 'S.dvarE [VarE (declname nm), VarE (declidname nm), string nm]
+declaredV nm = return $ apply 'S.dvarE [VarE (valuename nm), VarE (instidname nm), string nm]
 
 -- declaredC
 -- Return a reference to a free seri constructor declared in the top level
 -- environment.
 --   name - the seri name.
 declaredC :: Name -> State UserState Exp
-declaredC nm = return $ apply 'S.conE [VarE (declname nm), string nm]
+declaredC nm = return $ apply 'S.conE [VarE (valuename nm), string nm]
 
 -- mkexp :: Exp (a) -> Exp (S.Typed Exp a)
 --   Convert a haskell expression to its corresponding typed seri
