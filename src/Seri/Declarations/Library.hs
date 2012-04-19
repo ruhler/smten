@@ -173,7 +173,12 @@ declclass' (ClassD [] nm vars [] sigs) =
 
       mkt :: Dec -> [Dec]
       mkt (SigD n (ForallT _ _ t)) = 
-        let ty = arrowts $ map (VarT . tyvarname) vars ++ [texpify t]
+        let vararg :: TyVarBndr -> Type
+            vararg v = appts $ [VarT (tyvarname v)] ++ replicate (fromInteger $ tvarkind v) (ConT $ mkName "()")
+
+            ty = case flattenforall t of
+                    ForallT vns ctx t' -> ForallT vns ctx (arrowts $ map vararg vars ++ [texpify t'])
+                    t' -> arrowts $ map vararg vars ++ [texpify t']
             sig_T = SigD (methodtypename n) (ForallT vars [] ty)
             impl_T = FunD (methodtypename n) [Clause [WildP] (NormalB (VarE 'undefined)) []]
         in [sig_T, impl_T]

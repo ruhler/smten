@@ -2,7 +2,7 @@
 {-# LANGUAGE TemplateHaskell #-}
 
 module Seri.Declarations.Utils (
-    stpred, valuetype, instidtype, texpify, concrete, seritypeexp,
+    tvarkind, stpred, valuetype, instidtype, texpify, concrete, seritypeexp,
     ) where
 
 import Language.Haskell.TH
@@ -12,18 +12,28 @@ import qualified Seri.Typed as S
 import qualified Seri.IR as SIR
 import Seri.Declarations.Names
 
--- Given a type variable, figure out what predicate we should add for it
--- in the context.
+-- Return the kind of a type variable.
+--  0 means kind *
+--  1 means kind * -> *
+--  2 means kind (* -> *) -> * 
+--  etc...
 --
 -- We assume the following:
 --   - PlainTV's starting with 'a', 'b', 'c', or 'd' are of kind *
 --   - PlainTV's starting with 'm' are of kind * -> *
+tvarkind :: TyVarBndr -> Integer
+tvarkind (PlainTV v) | head (nameBase v) `elem` "abcd" = 0
+tvarkind (PlainTV v) | head (nameBase v) `elem` "m" = 1
+tvarkind (KindedTV v StarK) = 0
+tvarkind (KindedTV v (ArrowK StarK StarK)) = 1
+tvarkind v = error $ "TODO: Seri.Declarations.Utils.tvarkind " ++ show v
+
+-- Given a type variable, figure out what predicate we should add for it
+-- in the context.
 stpred :: TyVarBndr -> Pred
-stpred (PlainTV v) | head (nameBase v) `elem` "abcd" = ClassP ''S.SeriType [VarT v]
-stpred (PlainTV v) | head (nameBase v) `elem` "m" = ClassP ''S.SeriType1 [VarT v]
-stpred (KindedTV v StarK) = ClassP ''S.SeriType [VarT v]
-stpred (KindedTV v (ArrowK StarK StarK)) = ClassP ''S.SeriType1 [VarT v]
-stpred v = error $ "TODO: Seri.Declarations.Utils.stdpred " ++ show v
+stpred v = 
+  let nm n = mkName $ "SeriType" ++ if n == 0 then "" else show n
+  in ClassP (nm (tvarkind v)) [VarT (tyvarname v)]
 
 -- Turn a type t into (Typed Exp t)
 texpify :: Type -> Type

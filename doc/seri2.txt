@@ -6813,3 +6813,34 @@ Do I want to try moving canonicalization of record constructors into
 canonical? I think it's worth a try. Let me just see how it goes, and what
 issues come up.
 
+Thu Apr 19 18:13:12 EDT 2012
+
+Cool! I moved record constructors into canonicalizer. There are still little
+things that could be cleaned up, but I think for the most part it is clean.
+
+What's next then? I think try to get monads to work. And try to do it cleanly,
+not so hackishly. See how that goes. Take it a step at a time and understand
+each problem and solve it right.
+
+Okay, so the problem we have: _seriT_ needs to be fully applied.
+
+This is simple. I should be able to have type
+ m () -> ... that is, just apply it to N units, where N is the kind.
+
+Thu Apr 19 18:25:31 EDT 2012
+
+Okay, so I solved that issue. Now I have a problem where I'm putting a forall
+inside a texpify, which is wrong.
+
+Thu Apr 19 18:30:40 EDT 2012
+
+Good. I worked that out. Now I'm getting what I expect... String isn't an
+instance of SeriType.
+
+We need list and char... I could quickly add char...
+
+Maybe just say it's an error for now?
+
+Nah. That will be the next step. Let me figure out how I want to add
+characters.
+
