@@ -17,7 +17,7 @@ import Seri.THUtils
 import Seri.Canonical
 import Seri.Declarations.Names
 import Seri.Declarations.SeriDec
-import Seri.Declarations
+import Seri.Declarations.Library
 import Seri.Slice
 
 data UserState = UserState {

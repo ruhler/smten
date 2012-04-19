@@ -2,12 +2,11 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE TemplateHaskell #-}
 
-module Seri.Declarations (
+module Seri.Declarations.Library (
     SeriDec(..),
     declval', declcon', decltype', declinst', declclass', declvartinst',
     ) where
 
-import Data.Char(isUpper)
 import Language.Haskell.TH
 
 import Seri.THUtils

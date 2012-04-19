@@ -7,7 +7,7 @@ module Seri.Declarations.User (
 
 import Language.Haskell.TH
 
-import Seri.Declarations
+import Seri.Declarations.Library
 import Seri.Typed(primitive)
 
 -- API for users to declare seri things.
