@@ -6,8 +6,7 @@ module Seri.Lib.Char where
 
 import Seri
 
-instance SeriType Char where
-    seritype _ = ConT "Char"
+decltycon 0 ''Char
 
 charB :: Builtin
 charB =

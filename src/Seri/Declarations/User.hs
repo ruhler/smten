@@ -2,7 +2,10 @@
 {-# LANGUAGE TemplateHaskell #-}
 
 module Seri.Declarations.User (
-    declprim, declcon, declval, decltype, declclass, declvartinst, declcommit,
+    declprim, declcon, declval,
+    decltycon, decltype,
+    declclass, declvartinst,
+    declcommit,
     ) where
 
 import Language.Haskell.TH
@@ -39,6 +42,15 @@ declval n qt qe = do
     t <- qt
     e <- qe
     return $ declval' (mkName n) t e
+
+-- decltycon kind name
+--
+-- Declare a primitive type constructor.
+--   kind - the kind of the type constructor. That is, the number of type
+--          arguments it takes.
+--   name - the name of the type constructor.
+decltycon :: Integer -> Name -> Q [Dec]
+decltycon k nm = return $ decltycon' k nm
 
 -- decltype name
 -- Declare a Seri type based on an existing haskell type.

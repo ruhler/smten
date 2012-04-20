@@ -8,11 +8,9 @@ module Seri.Lib.List where
 
 import Seri
 
+decltycon 1 ''[]
 declcon ":" [t| forall a. a -> [a] -> [a] |]
 declcon "[]" [t| forall a. [a] |]
-
-instance SeriType1 [] where
-    seritype1 _ = ConT "[]"
 
 [s| 
     head :: [a] -> a

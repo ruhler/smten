@@ -6946,3 +6946,27 @@ for multiparameter typeclasses. I like it.
 
 So, I propose those things ought to be worked on next.
 
+Fri Apr 20 11:59:40 EDT 2012
+
+I remember why I don't want to declare Bool with decltype. It's because that
+gives us our own definition of Bool, which doesn't necessarally match with
+haskells, and may not work in if statements and such.
+
+Fri Apr 20 18:59:09 EDT 2012
+
+Okay! So I have a plan.
+
+1. Make a decltycon. This basically just defines the instance of SeriType.
+Reuse it in decltype.
+Use it for List, Bool, etc...
+
+2. Change seritypeexp to assume ConT nm goes to ConT nm.
+Now SMT test should compile? Hopefully.
+
+3. Move VarT_x and friends (including some stuff in Declarations.Utils) to
+Seri.Polymorphic. Define the Polymorphic typeclass for those. Have
+declclass declare instances for Polymorphic types. Remove decltvarinst.
+
+After that, I still think Tibby should be my driving motivation. So work on
+getting that to compile, and deal with those issues as they come up.
+

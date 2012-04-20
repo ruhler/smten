@@ -4,7 +4,7 @@
 
 module Seri.Declarations.Library (
     SeriDec(..),
-    declval', declcon', decltype', declinst', declclass', declvartinst',
+    declval', declcon', decltycon', decltype', declinst', declclass', declvartinst',
     ) where
 
 import Language.Haskell.TH
@@ -75,6 +75,25 @@ declcon' n t =
       impl_P = FunD (valuename n) [Clause [] (NormalB (apply 'S.conE' [string n])) []]
   in [sig_P, impl_P]
 
+
+-- decltycon'
+--
+-- Given the name of a type constructor and its kind, make a SeriType instance
+-- for it.
+--
+-- Use 0 for kind *
+--     1 for kind * -> *
+--     2 for kind * -> * -> *
+--     etc...
+decltycon' :: Integer -> Name -> [Dec]
+decltycon' k nm = 
+  let classname = "SeriType" ++ if k == 0 then "" else show k
+      methname = "seritype" ++ if k == 0 then "" else show k
+
+      stimpl = FunD (mkName methname) [Clause [WildP] (NormalB (AppE (ConE 'SIR.ConT) (string nm))) []]
+      stinst = InstanceD [] (AppT (ConT (mkName classname)) (ConT nm)) [stimpl]
+  in [stinst]
+
 -- decltype' 
 -- Given a type declaration, make a seri type declaration for it, assuming the
 -- type is already defined in haskell.
@@ -104,10 +123,7 @@ declcon' n t =
 --
 decltype' :: Dec -> [Dec]
 decltype' (DataD [] dt vars cs _) =
- let numvars = length vars
-     classname = "SeriType" ++ if numvars == 0 then "" else show numvars
-     methname = "seritype" ++ if numvars == 0 then "" else show numvars
-     vnames = map tyvarname vars
+ let vnames = map tyvarname vars
      dtapp = appts $ (ConT dt):(map VarT vnames)
 
      -- Assuming the data type is polymorphic in type variables a, b, ...
@@ -127,9 +143,6 @@ decltype' (DataD [] dt vars cs _) =
      mkcon :: Con -> [Dec]
      mkcon (NormalC nc sts) = declcon' nc (contype $ map snd sts)
 
-     stimpl = FunD (mkName methname) [Clause [WildP] (NormalB (AppE (ConE 'SIR.ConT) (string dt))) []]
-     stinst = InstanceD [] (AppT (ConT (mkName classname)) (ConT dt)) [stimpl]
-
      -- Given a constructor, return an expression corresponding to the Seri
      -- Con representing that constructor.
      mkconinfo :: Con -> Exp
@@ -139,7 +152,9 @@ decltype' (DataD [] dt vars cs _) =
      ddec = seridec (prefixed "D_" dt) body
 
      constrs = concat $ map mkcon cs
- in [stinst] ++ ddec ++ constrs
+
+     stinst = decltycon' (toInteger $ length vars) dt
+ in stinst ++ ddec ++ constrs
 
 
 -- declclass

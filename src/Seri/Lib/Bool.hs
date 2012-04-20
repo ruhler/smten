@@ -18,11 +18,9 @@ trueE = ConE (ConT "Bool") "True"
 falseE :: Exp
 falseE = ConE (ConT "Bool") "False"
 
+decltycon 0 ''Bool
 declcon "True" [t| Bool |]
 declcon "False" [t| Bool |]
-
-instance SeriType Bool where
-    seritype _ = ConT "Bool"
 
 boolB :: Builtin
 boolB =

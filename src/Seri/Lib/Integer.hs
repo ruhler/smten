@@ -6,8 +6,7 @@ module Seri.Lib.Integer where
 import Seri
 import Seri.Lib.Bool
 
-instance SeriType Integer where
-    seritype _ = ConT "Integer"
+decltycon 0 ''Integer
 
 declprim "+" [t| Integer -> Integer -> Integer |]
 declprim "-" [t| Integer -> Integer -> Integer |]

@@ -10,10 +10,9 @@ import Seri.Typed
 import Seri.Declarations.User
 import Seri.Quoter
 
+decltycon 2 ''(,)
 declcon "(,)" [t| forall a b. (a -> b -> (a, b)) |]
 
-instance SeriType2 (,) where
-    seritype2 _ = ConT "(,)"
 
 [s| 
     fst :: (a, b) -> a
@@ -23,7 +22,6 @@ instance SeriType2 (,) where
     snd (_, y) = y
 |]
 
+decltycon 3 ''(,,)
 declcon "(,,)" [t| forall a b c. (a -> b -> c -> (a, b, c)) |]
 
-instance SeriType3 (,,) where
-    seritype3 _ = ConT "(,,)"
