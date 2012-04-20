@@ -86,10 +86,6 @@ instance SeriType VarT_d where
 instance SeriType1 VarT_m where
     seritype1 _ = VarT "m"
 
-instance Monad VarT_m where
-    return = error $ "return VarT_m"
-    (>>=) = error $ ">>= VarT_m"
-
 usetype :: (SeriType a) => Typed x a -> (Type -> b) -> b
 usetype e f = f (seritype (gettype e))
     where gettype :: Typed x a -> a

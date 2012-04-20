@@ -6844,3 +6844,105 @@ Maybe just say it's an error for now?
 Nah. That will be the next step. Let me figure out how I want to add
 characters.
 
+Thu Apr 19 21:36:50 EDT 2012
+
+For now I just added SeriType for Char. No need to worry about the expression
+until I try compiling a character literal.
+
+Monad compiles now. Let's see if I can do SMT?
+
+Thu Apr 19 21:39:05 EDT 2012
+
+I need for Query to be an instance of Monad. Let me try that out, see if it
+works. I'm... not sure... maybe I can make a dummy instance?
+
+I should probably do that for VarM_T too at some point.
+
+Thu Apr 19 21:41:52 EDT 2012
+
+Hmm... I should declare primitives. That's what I really want anyway, right?
+Yes, real quick, let me try.
+
+Close. I'm close. This is almost working. What I need is to fix this bug in
+seritypeexp.
+
+seritypeexp (ConT "Query")
+  gives:  seritype (undefined :: Query)
+
+But you can't have undefined of type Query! Instead we want something like...
+ seritype1 (undefined :: Query ())
+
+So I should figure out somehow what the kind of Query is if I can, so I know
+to do this. Let me do this some time when I have more brain cells and time.
+
+Here's a question. Do I even need SeriType? Can I assume any haskell type has
+a corresponding SeriType and build the thing directly?
+
+Like, say ConT nm maps to ConT nm?
+
+I suppose it's an issue about know what has been declared as a type in seri. I
+dunno. I'll see later.
+
+Fri Apr 20 11:45:43 EDT 2012
+
+I have a solution. Multiple solutions, actually.
+
+First is, when we declare a data type, declare a _seriDT_ fucntion or some
+such of type SIR.Type which gives the seri type corresponding to that data
+type. Then all I have to do is call that function.
+
+But then we ask... if it's a ConT, couldn't I just translate the name? And
+couldn't I just use that entirely and get rid of SeriType entirely?
+
+The answer is....
+
+I can't get rid of SeriType, because I need some way given a haskell value to
+return it's seri type, because that's how I do the type annotations from
+haskell's type inference.
+
+My concern with using the ConT name directly is, is it ever the case you'll
+want to have a haskell type constructor with a different name than in seri?
+
+I can't think of one, but it's rather a big assumption to assume nobody will
+ever try such a thing, and these sorts of assumptions are exactly the kinds of
+things that cause big headaches later on.
+
+But! I have a sort of proposed solution like thing. The question about when
+it's okay to use ConT is a question about the implementation of SeriType. It's
+not an issue for user defined types, because I know I map ConT nm to that same
+seritype.
+
+It's only an issue for those for types which the user defines the
+implementation of SeriType. Such as... List, Integer, Bool.
+
+Here's a question. Why is it, again, that I don't want to derive the seri type
+for Bool?
+
+Anyway, something like Integer is certainly special. A builtin primitive type.
+But what if I let you declare it as such? For example:
+
+decltycon ''Integer
+
+And what this does is: defines SeriType. And since, then, you never define
+seritype yourself, it's okay for me to assume ConT nm maps to ConT nm, and it
+makes seritypeexp much easier to implement. In particular, I don't need this
+additional function thing defined when I define a user defined type.
+
+You know what? I think that's a good solution.
+
+The other thing I thought of is an easy way to declare instances of
+SeriClass_Foo for all the VarT_x types. All you have do is...
+
+have a class, I don't know what to call it, maybe SeriPolymorphic. It doesn't
+need to have any methods, but it could if I really wanted.
+
+Make VarT_x an instance of this.
+
+Then, when I declare a class, give an instance that works on any
+SeriPolymorphic type, and is just undefined and using the proper InstId. Easy.
+That way you don't have to declare your own. Hopefully it can figure out kinds
+(we'll have Seripolymorphic1, Seripolymorphic2, ...). And it should work fine
+for multiparameter typeclasses. I like it.
+
+So, I propose those things ought to be worked on next.
+

@@ -21,15 +21,24 @@ import Seri.Lib.Prelude
     data Free a = Free Integer
 |]
 
-instance Monad Query where
-    return = error $ "Query return"
-    (>>=) = error $ "Query >>="
-
 
 declprim "free" [t| forall a. Query a |]
 declprim "realize" [t| forall a. Free a -> a |]
 declprim "assert" [t| Bool -> Query () |]
 declprim "query" [t| forall a. a -> Query (Answer a) |]
+
+declprim "return_query" [t| forall a . a -> Query a |]
+declprim "nobind_query" [t| forall a b . Query a -> Query b -> Query b |]
+declprim "bind_query" [t| forall a b . Query a -> (a -> Query b) -> Query b |]
+declprim "fail_query" [t| forall a . String -> Query a |]
+
+[s|
+    instance Monad Query where
+        return = return_query
+        (>>=) = bind_query
+        (>>) = nobind_query
+        fail = fail_query
+|]
 
 runQuery :: Rule -> [Dec] -> Typed Exp (Query a) -> IO (Typed Exp a)
 runQuery = error $ "TODO: runQuery"

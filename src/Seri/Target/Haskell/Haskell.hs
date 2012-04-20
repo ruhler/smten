@@ -50,12 +50,12 @@ haskell builtin main e =
             foldth ((ConP n):args) = H.ConP (hsName n) (map hsPat args)
         in foldth . unfold
     
-      isinfix :: Name -> Bool
-      isinfix (h:_) = not $ isAlphaNum h || h == '_'
+      issymbol :: Name -> Bool
+      issymbol (h:_) = not $ isAlphaNum h || h == '_'
     
       hsDec :: Dec -> [H.Dec]
       hsDec (ValD n t e) =
-        let hsn = hsName $ if isinfix n then "(" ++ n ++ ")" else n
+        let hsn = hsName $ if issymbol n then "(" ++ n ++ ")" else n
             sig = H.SigD hsn (hsType t)
             val = H.FunD hsn [H.Clause [] (H.NormalB (hsExp e)) []]
         in [sig, val]
@@ -70,10 +70,14 @@ haskell builtin main e =
         = [H.InstanceD [] (appts ((H.ConT (hsName n)):(map hsType ts))) (map hsMethod ms)] 
 
       hsSig :: Sig -> H.Dec
-      hsSig (Sig n t) = H.SigD (hsName n) (hsType t)
+      hsSig (Sig n t) =
+        let hsn = hsName $ if issymbol n then "(" ++ n ++ ")" else n
+        in H.SigD hsn (hsType t)
 
       hsMethod :: Method -> H.Dec
-      hsMethod (Method n e) = H.ValD (H.VarP (hsName n)) (H.NormalB (hsExp e)) []
+      hsMethod (Method n e) =
+        let hsn = hsName $ if issymbol n then "(" ++ n ++ ")" else n
+        in H.ValD (H.VarP hsn) (H.NormalB (hsExp e)) []
 
       hsCon :: Con -> H.Con
       hsCon (Con n tys) = H.NormalC (hsName n) (map (\t -> (H.NotStrict, hsType t)) tys)
