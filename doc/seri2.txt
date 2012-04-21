@@ -6970,3 +6970,146 @@ declclass declare instances for Polymorphic types. Remove decltvarinst.
 After that, I still think Tibby should be my driving motivation. So work on
 getting that to compile, and deal with those issues as they come up.
 
+Fri Apr 20 19:26:28 EDT 2012
+
+It doesn't work. Somethings broken.
+I don't understand.
+
+Fri Apr 20 19:34:25 EDT 2012
+
+Okay, so it looks like we call seritypeexp on a concretized type. Perhaps
+that's the mistake?
+
+Fri Apr 20 19:38:17 EDT 2012
+
+Yes, that's a mistake. But there's another issue too. Somehow we get the name
+String instead of [Char]?
+
+I don't like having these special cases. I really don't.
+
+You know what? I think maybe I should scrap this change. Take the other route
+instead where I define for each type constructor a function
+_seriTC_Foo :: SIR.Type
+
+Because I know the kind of those then.
+And this should be pretty easy to add.
+
+Yup. I think that makes more sense.
+
+Fri Apr 20 19:55:29 EDT 2012
+
+Okay, but now I have another issue.
+
+Remember why all this started. I want a way, given the type a for a class
+instance, to figure out the method type. So we define this thing
+
+_seriT_foo :: a -> Typed Exp (a -> Integer)
+
+Or whatever.
+
+But for some classes, the kind of the type is higher. So, for example
+
+_seriT_return :: m () -> Typed Exp (a -> m a)
+
+Now, when I call _seriT_return, I can't give it 'Query', for instance. I have
+to give it 'Query ()'. Which means, I have to know the kind of Query.
+
+The problem is... I don't know the kind of Query at this point. :(
+
+I should probably remind myself what the real high level goal is. I want to
+specify a Method, which is name and value. But to know the value, I have to
+know the type of the specific method, so we can do type checking (ideally
+concrete), but hmm...
+
+Okay, so this has other problems too. Let me think about it.
+
+At some point I should really collect the information about the purpose of
+each declaration I make.
+
+Fri Apr 20 20:43:49 EDT 2012
+
+Okay. I figured out a solution.
+
+Have the Query type generate a 
+ _seriX_Query :: Query ()
+
+Now _seriT_Foo . _seriX_Query  gives exactly the information I need.
+
+I want to take some time now to better understand what all my declarations are
+for. Then I can see if we have superfluous things, or we can get rid of some,
+or what not. Let me go through Declarations.Library and start documenting.
+
+Fri Apr 20 21:05:35 EDT 2012
+
+Okay, getting closer. I think, though, I can't have something like:
+
+_seriT_return :: m () -> Typed Exp (a -> Integer)
+
+What I really want is...
+_seriT_return :: m a -> Typed Exp (a -> Integer)
+
+And now, for the concrete version to work, I want
+_seriK_Query :: Query VarT_a
+
+Right? Otherwise we introduce ambiguities.
+
+I think it's something like that. Let me take a break and come back to this
+and try it later.
+
+Sat Apr 21 11:39:29 EDT 2012
+
+I'm making some pretty strong assumptions that won't hold up, mostly about
+variable type names and variable type kinds. I really ought to figure out how
+to resolve this.
+
+Sat Apr 21 11:44:44 EDT 2012
+
+Yeah, no. I can't really accept my solution.
+
+Let me remind you what I want.
+
+I'm given instance Monad Query.
+The type of return is: Typed Exp (a -> m a)
+I want to form the type: Typed Exp (VarT_a -> Query VarT_a)
+So that I can say, give me a version of the return implementation which is
+typed using a = VarT_a, and m = Query.
+
+Remember, I have 'Monad' and 'Query'. I don't know their kinds. I don't know
+the type of return.
+
+What I've proposed is to capture that information elsewhere.
+
+I tried: _seriT_return :: m -> Typed Exp (a -> m a)
+but 'm' is incomplete, so it won't work.
+
+I tried: _seriT_return :: m () -> Typed Exp (a -> m a)
+and then to call it: (_seriT_return (undefined :: Query))
+but 'Query' is incomplete, so it won't work.
+
+I tried adding a _seriK_Query :: Query ()
+but (_seriT_return _seriK_Query) leaves the type variable a ambiguous.
+
+Ah. Now I think I see what I really want.
+
+_seriT_return :: m () -> Typed Exp (VarT_a -> m VarT_a)
+ That is, this should be the concrete version.
+
+_seriK_Query :: Query ()
+
+That's what I want. That's a bit cleaner and more easily doable, because I'm
+not introducing new type variables.
+
+Okay. Let's try this.
+
+Sat Apr 21 11:57:24 EDT 2012
+
+What I want is a way to say: concrete, but leave these variables in tact.
+
+Sat Apr 21 12:34:16 EDT 2012
+
+Okay! Finally it works.
+
+I can express the SMT Query using this primitive monad instance.
+
+Let me just run up to the next problem with Tibby, just to see.
+

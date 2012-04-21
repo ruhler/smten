@@ -4,7 +4,7 @@
 
 module Seri.Declarations.Library (
     SeriDec(..),
-    declval', declcon', decltycon', decltype', declinst', declclass', declvartinst',
+    declval', declcon', decltycon', decltyvar', decltype', declinst', declclass', declvartinst',
     ) where
 
 import Language.Haskell.TH
@@ -29,9 +29,13 @@ import Seri.Declarations.SeriDec
 --  iscon: False
 --
 -- The following haskell declarations are generated (approximately):
+--
+-- To specify the proper type of the variable referencing foo in typed
+-- construction:
 --  _seriP_foo :: (Eq a, SeriType a) => Typed Exp (a -> Integer)
 --  _seriP_foo = lamE "x" (\x -> appE (varE "incr") (integerE 41))
 --
+-- To specify that foo is not a method of a class.
 --  _seriI_foo :: Typed Exp (a -> Integer) -> InstId
 --  _seriI_foo _ = noinst
 --
@@ -66,8 +70,10 @@ declval' n t e =
 --  ty: a -> Bar
 --
 -- The following haskell declarations are generated (approximately):
---  _seri_Foo :: (SeriType a) => Typed Exp (a -> Bar)
---  _seri_Foo = conE' "Foo"
+--
+-- Used to specify the type of Foo in typed construction.
+--  _seriP_Foo :: (SeriType a) => Typed Exp (a -> Bar)
+--  _seriP_Foo = conE' "Foo"
 declcon' :: Name -> Type -> [Dec]
 declcon' n t =
   let dt = valuetype t
@@ -79,20 +85,65 @@ declcon' n t =
 -- decltycon'
 --
 -- Given the name of a type constructor and its kind, make a SeriType instance
--- for it.
+-- for it. 
+--
+-- To determine the SIR.Type of a type constructor for use in, among other
+-- things, InstD declarations: 
+-- _seriS_Foo :: SIR.Type
+-- _seriS_Foo = ...
+--
+-- To form a concrete value of the given type. This is primarally useful for
+-- type constructors of kind greater than *.
+-- _seriK_Foo :: Foo ()
+-- _seriK_Foo = undefined
+--
+-- With the Seri type corresponding to this type constructor.
 --
 -- Use 0 for kind *
 --     1 for kind * -> *
 --     2 for kind * -> * -> *
 --     etc...
 decltycon' :: Integer -> Name -> [Dec]
-decltycon' k nm = 
+decltycon' k nm =
   let classname = "SeriType" ++ if k == 0 then "" else show k
       methname = "seritype" ++ if k == 0 then "" else show k
 
       stimpl = FunD (mkName methname) [Clause [WildP] (NormalB (AppE (ConE 'SIR.ConT) (string nm))) []]
       stinst = InstanceD [] (AppT (ConT (mkName classname)) (ConT nm)) [stimpl]
-  in [stinst]
+
+      body = AppE (ConE 'SIR.ConT) (string nm)
+      sig_S = SigD (tycontypename nm) (ConT ''SIR.Type)
+      impl_S = ValD (VarP (tycontypename nm)) (NormalB body) []
+
+      vars = replicate (fromInteger k) (ConT ''())
+      sig_K = SigD (concretevaluename nm) (appts (ConT nm : vars))
+      impl_K = ValD (VarP (concretevaluename nm)) (NormalB (VarE 'undefined)) []
+  in [stinst, sig_S, impl_S, sig_K, impl_K]
+
+-- decltyvar'
+--
+-- Given the name of a type variable and its kind, make a SeriType instance
+-- for it and other relevant things, just like decltycon' does for type
+-- constructors.
+decltyvar' :: Integer -> String -> [Dec]
+decltyvar' k vn =  
+ let nm = (mkName $ "VarT_" ++ vn)
+     dataD = DataD [] nm (map (\n -> PlainTV (mkName [n])) (take (fromInteger k) "abcd")) [NormalC nm []] []
+
+     classname = "SeriType" ++ if k == 0 then "" else show k
+     methname = "seritype" ++ if k == 0 then "" else show k
+
+     body = (AppE (ConE 'SIR.VarT) (string (mkName vn)))
+     stimpl = FunD (mkName methname) [Clause [WildP] (NormalB body ) []]
+     stinst = InstanceD [] (AppT (ConT (mkName classname)) (ConT nm)) [stimpl]
+
+     sig_S = SigD (tycontypename nm) (ConT ''SIR.Type)
+     impl_S = ValD (VarP (tycontypename nm)) (NormalB body) []
+
+     vars = replicate (fromInteger k) (ConT ''())
+     sig_K = SigD (concretevaluename nm) (appts (ConT nm : vars))
+     impl_K = ValD (VarP (concretevaluename nm)) (NormalB (VarE 'undefined)) []
+  in [dataD, stinst, sig_S, impl_S, sig_K, impl_K]
 
 -- decltype' 
 -- Given a type declaration, make a seri type declaration for it, assuming the
@@ -112,11 +163,11 @@ decltycon' k nm =
 --        dec _ = DataD "Foo" ["a"] [Con "Bar" [ConT "Integer"],
 --                                   Con "Sludge" [ConT "VarT_a"]]
 --
---    _seri_Bar :: Typed Exp (Integer -> Foo)
---    _seri_Bar = conE "Bar"
+--    _seriP_Bar :: Typed Exp (Integer -> Foo)
+--    _seriP_Bar = conE "Bar"
 --
---    _seri_Sludge :: (SeriType a) => Typed Exp (a -> Foo)
---    _seri_Sludge = conE "Sludge"
+--    _seriP_Sludge :: (SeriType a) => Typed Exp (a -> Foo)
+--    _seriP_Sludge = conE "Sludge"
 --
 -- Record type constructors are also supported, in which case the selector
 -- functions will also be declared like normal seri values.
@@ -169,6 +220,8 @@ decltype' (DataD [] dt vars cs _) =
 --     _seriP_foo :: Typed Exp (a -> Integer)
 --     _seriI_foo :: Typed Exp (a -> Integer) -> InstId
 --   
+-- To figure out the specific type of a method when declaring an instance of
+-- this class:
 --   _seriT_foo :: a -> Typed Exp (a -> Integer)
 --   _seriT_foo = undefined
 -- 
@@ -191,9 +244,7 @@ declclass' (ClassD [] nm vars [] sigs) =
         let vararg :: TyVarBndr -> Type
             vararg v = appts $ [VarT (tyvarname v)] ++ replicate (fromInteger $ tvarkind v) (ConT $ mkName "()")
 
-            ty = case flattenforall t of
-                    ForallT vns ctx t' -> ForallT vns ctx (arrowts $ map vararg vars ++ [texpify t'])
-                    t' -> arrowts $ map vararg vars ++ [texpify t']
+            ty = arrowts $ map vararg vars ++ [texpify (concrete' (map tyvarname vars) t)]
             sig_T = SigD (methodtypename n) (ForallT vars [] ty)
             impl_T = FunD (methodtypename n) [Clause [WildP] (NormalB (VarE 'undefined)) []]
         in [sig_T, impl_T]
@@ -226,7 +277,7 @@ declclass' (ClassD [] nm vars [] sigs) =
 --   data SeriDecI_Foo$Bool = SeriDecI_Foo$Bool
 --   instance SeriDec SeriDecI_Foo$Bool where
 --     dec = InstD "Foo" [Bool] [
---             method "foo" (_seriT_foo (undefined :: Bool)) (...)
+--             method "foo" (_seriT_foo _seriK_Bool) (...)
 --             ]
 --  
 declinst'' :: Bool -> Dec -> [Dec]
@@ -249,7 +300,8 @@ declinst'' addseridec i@(InstanceD [] tf@(AppT (ConT cn) t) impls) =
       inst_D = InstanceD [] (AppT (ConT (classname cn)) t) impls'
 
       mkmeth (ValD (VarP n) (NormalB b) _) = 
-        apply 'S.method [string n, AppE (VarE (methodtypename n)) (SigE (VarE 'undefined) t), b]
+        let ConT tnm = t
+        in apply 'S.method [string n, AppE (VarE (methodtypename n)) (VarE (concretevaluename tnm)), b]
 
       methods = ListE $ map mkmeth impls
       body = applyC 'SIR.InstD [iname, itys, methods]

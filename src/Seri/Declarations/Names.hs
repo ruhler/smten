@@ -1,6 +1,7 @@
 
 module Seri.Declarations.Names (
-    valuename, instidname, classname, methodtypename,
+    valuename, instidname, classname, methodtypename, tycontypename,
+    concretevaluename,
     ) where
 
 import Language.Haskell.TH
@@ -18,4 +19,10 @@ classname = prefixed "SeriClass_"
 
 methodtypename :: Name -> Name
 methodtypename = prefixed "_seriT_"
+
+tycontypename :: Name -> Name
+tycontypename = prefixed "_seriS_"
+
+concretevaluename :: Name -> Name
+concretevaluename = prefixed "_seriK_"
 

@@ -8,6 +8,7 @@ module Seri.Lib.Tuple where
 import Seri.IR
 import Seri.Typed
 import Seri.Declarations.User
+import Seri.Polymorphic
 import Seri.Quoter
 
 decltycon 2 ''(,)

@@ -2,7 +2,7 @@
 {-# LANGUAGE TemplateHaskell #-}
 
 module Seri.Declarations.Utils (
-    tvarkind, stpred, valuetype, instidtype, texpify, concrete, seritypeexp,
+    tvarkind, stpred, valuetype, instidtype, texpify, concrete, concrete', seritypeexp,
     ) where
 
 import Language.Haskell.TH
@@ -21,6 +21,7 @@ import Seri.Declarations.Names
 -- We assume the following:
 --   - PlainTV's starting with 'a', 'b', 'c', or 'd' are of kind *
 --   - PlainTV's starting with 'm' are of kind * -> *
+-- Note: this should be kept in sync with the info in Seri.Polymorphic
 tvarkind :: TyVarBndr -> Integer
 tvarkind (PlainTV v) | head (nameBase v) `elem` "abcd" = 0
 tvarkind (PlainTV v) | head (nameBase v) `elem` "m" = 1
@@ -69,10 +70,16 @@ instidtype t = arrowts [texpify t, ConT ''SIR.InstId]
 -- In other words, remove all ForallTs and replace all occurences of VarT
 -- "foo" with VarT_foo.
 concrete :: Type -> Type
-concrete (ForallT _ _ t) = concrete t
-concrete (VarT nm) = ConT $ mkName ("VarT_" ++ (nameBase nm))
-concrete (AppT a b) = AppT (concrete a) (concrete b)
-concrete t = t
+concrete = concrete' []
+
+-- concrete' - same as concrete, but lets you leave a list of variable types
+-- unconcrete.
+concrete' :: [Name] -> Type -> Type
+concrete' ns (ForallT _ _ t) = concrete' ns t
+concrete' ns t@(VarT nm) | nm `elem` ns = t
+concrete' ns (VarT nm) = ConT $ prefixed "VarT_" nm
+concrete' ns (AppT a b) = AppT (concrete' ns a) (concrete' ns b)
+concrete' ns t = t
 
 -- Given a type, return an expression corresonding to the seri type of
 -- that type.
@@ -86,5 +93,6 @@ seritypeexp (ForallT vars preds t) =
 
      preds' = ListE $ map mkpred preds
  in applyC 'SIR.ForallT [vars', preds', seritypeexp t]
+seritypeexp (ConT nm) = VarE (tycontypename nm)
 seritypeexp t = apply 'S.seritype [SigE (VarE 'undefined) (concrete t)]
     

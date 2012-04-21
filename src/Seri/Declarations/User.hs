@@ -3,7 +3,7 @@
 
 module Seri.Declarations.User (
     declprim, declcon, declval,
-    decltycon, decltype,
+    decltycon, decltyvar, decltype,
     declclass, declvartinst,
     declcommit,
     ) where
@@ -51,6 +51,15 @@ declval n qt qe = do
 --   name - the name of the type constructor.
 decltycon :: Integer -> Name -> Q [Dec]
 decltycon k nm = return $ decltycon' k nm
+
+-- decltyvar kind name
+--
+-- Declare a type variable.
+--   kind - the kind of the type variable. That is, the number of type
+--          arguments it takes.
+--   name - the name of the type variable.
+decltyvar :: Integer -> String -> Q [Dec]
+decltyvar k nm = return $ decltyvar' k nm
 
 -- decltype name
 -- Declare a Seri type based on an existing haskell type.
