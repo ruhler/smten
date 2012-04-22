@@ -73,7 +73,8 @@ seritypeexp (ForallT vars preds t) =
  let vars' = ListE $ map (string . tyvarname) vars
 
      mkpred :: Pred -> Exp
-     mkpred (ClassP n [t]) = applyC 'SIR.Pred [string n, ListE [seritypeexp t]]
+     mkpred (ClassP n ts) =
+        applyC 'SIR.Pred [string n, ListE $ map seritypeexp ts]
 
      preds' = ListE $ map mkpred preds
  in applyC 'SIR.ForallT [vars', preds', seritypeexp t]

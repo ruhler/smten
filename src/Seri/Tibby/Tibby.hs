@@ -1,4 +1,5 @@
 
+{-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE ExplicitForAll #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
@@ -58,18 +59,30 @@ class Interface a b where
 
 declclass ''Interface
  
-class Interface1 a b where
-    form1 :: Module (a c, b c)
+class Interface1 m n where
+    form1 :: Module (m a, n a)
 declclass ''Interface1
+
+declprim "return_action" [t| forall a . a -> Action a |]
+declprim "nobind_action" [t| forall a b . Action a -> Action b -> Action b |]
+declprim "bind_action" [t| forall a b . Action a -> (a -> Action b) -> Action b |]
+declprim "fail_action" [t| forall a . String -> Action a |]
+
+declprim "form1_put" [t| forall a . Module (Put a, Put' a) |]
+
+[s|
+    instance Monad Action where
+        return = return_action
+        (>>=) = bind_action
+        (>>) = nobind_action
+        fail = fail_action
+
+    instance Interface1 Put Put' where
+        form1 = form1_put
+    
+|]
  
 -- instance (Interface1 a b) => (Interface (a c) (b c)) where
 --     form = form1
 -- 
--- instance Monad Action where
---     return = error $ "Action return"
---     (>>=) = error $ "Action >>="
--- 
--- 
--- instance Interface1 Put Put' where
---     form1 = error $ "Put, Put' form1"
--- 
+

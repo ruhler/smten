@@ -1,4 +1,5 @@
 
+{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE TemplateHaskell #-}
 
@@ -80,7 +81,7 @@ class Foo a where
     foo :: a -> Integer
 
 declclass ''Foo
-declvartinst ''Foo "a"
+declvartinst ''Foo ["a"]
 
 [s|
     instance Foo Bool where
@@ -109,3 +110,28 @@ declvartinst ''Foo "a"
     }
 |]
 
+
+class MultiFoo a b where
+    multifoo :: a -> b -> Integer
+
+declclass ''MultiFoo
+declvartinst ''MultiFoo ["a", "b"]
+
+[s|
+    instance MultiFoo Bool Bool where
+        multifoo _ _ = 1
+
+    instance MultiFoo Integer Integer where
+        multifoo _ _ = 2
+
+    instance MultiFoo Bool Integer where
+        multifoo _ _ = 3
+
+    instance MultiFoo Integer Bool where
+        multifoo _ _ = 4
+|]
+
+--    multifoofun :: (MultiFoo a b) => a -> b -> Integer
+--    multifoofun x y = (multifoo x y)*(multifoo x y)
+--                        + 3*(multifoo x y) + (multifoo True False)
+--

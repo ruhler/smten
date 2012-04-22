@@ -98,6 +98,7 @@ haskell builtin main e =
     
       hsHeader :: Doc
       hsHeader = text "{-# LANGUAGE ExplicitForAll #-}" $+$
+                 text "{-# LANGUAGE MultiParamTypeClasses #-}" $+$
                  text "import qualified Prelude"
 
       ds = concat $ map hsDec (decls e)

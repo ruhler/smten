@@ -88,7 +88,7 @@ declclass nm = do
 -- declvartinst class vart
 --   Declare a dummy instance of a seri class with the given name for the
 --   given variable type.
-declvartinst :: Name -> String -> Q [Dec]
+declvartinst :: Name -> [String] -> Q [Dec]
 declvartinst n v = do
     ClassI d _ <- reify n
     return $ declvartinst' d v

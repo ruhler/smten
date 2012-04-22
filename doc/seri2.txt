@@ -7125,3 +7125,69 @@ I need more kind *->* type variables. How about "n"?
 Which means, I really want to move it all to one place. So if I want to add a
 new type variable, I should only have to add it in one place.
 
+Sun Apr 22 08:17:16 EDT 2012
+
+Next concern from Tibby: instances of multiparam classes. They aren't handled
+right now.
+
+Sun Apr 22 10:00:12 EDT 2012
+
+Easy solution. I believe class declarations already handle multiparam type
+classes. All we have to do is handle instances correctly. This is easy.
+
+If the type is AppT AppT ... (ConT c) a) b) ...
+
+Turn that into: [ConT c, a, b, ...]
+Then a, b, ... are the list of type parameters.
+
+I just have to make sure I use all of them when calling this _seriI_ function,
+right?
+
+Let me try real quick and see if I can't do it this way.
+
+Sun Apr 22 10:05:15 EDT 2012
+
+Oh, that reminds me another thing I want. I want a declclassth which takes a
+template haskell quoted class and does the translation for it.
+
+And really, it should work with any kind of declarations. So really what I
+want is to pull the quoting stuff converting TH.* -> TH.* (Seri) out of the
+Quoter so it can be shared. That would be a good next step.
+
+Sun Apr 22 10:15:17 EDT 2012
+
+The other thing to do next is this auto instance generation thing for type
+variables.
+
+Sun Apr 22 10:23:58 EDT 2012
+
+Hmm... I'm running into a problem I don't understand.
+
+(multifoo x y) isn't typing by the haskell compiler because it claims there is
+ambiguity about the types.
+
+It can't figure out the type of 'a' used for the requirement of (SeriType a)
+in dvarE.
+
+appE (appE (dvarE _seriP_multifoo _seriI_multifoo "multifoo") x) y'
+
+What's the issue?
+_seriP_multifoo has type Typed Exp (a -> b -> Integer)
+So we want the SeriType to be of (a -> b -> Integer). But what is a and b
+here?
+
+_seriI_multifoo doesn't help at all, because it gives the same info as
+_seriP_multifoo. So we have to get the info from the return type.
+
+First arg of appE is (a -> (b -> Integer))
+    where a is applied to x, which assume has a type VarT_a.
+    and b is applied the result passed to another appE where b is applied to y
+    with type VarT_b.
+
+No, it's not a VarT thing, it's straight polymorphic.  I don't understand the
+issue. Why can't haskell type it?
+
+Perhaps I have some type information missing in my typed constructors?
+I don't know. I'll have to look into this another time.
+
+

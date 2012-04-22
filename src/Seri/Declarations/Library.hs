@@ -281,10 +281,15 @@ declclass' (ClassD [] nm vars [] sigs) =
 --             ]
 --  
 declinst'' :: Bool -> Dec -> [Dec]
-declinst'' addseridec i@(InstanceD [] tf@(AppT (ConT cn) t) impls) =
-  let -- TODO: don't assume single param type class
+declinst'' addseridec i@(InstanceD [] tf impls) =
+  let unapp :: Type -> [Type]
+      unapp (AppT a b) = unapp a ++ [b]
+      unapp t = [t]
+    
+      ((ConT cn):ts) = unapp tf
+
       iname = string cn
-      itys = ListE [seritypeexp t]
+      itys = ListE $ map seritypeexp ts
 
       mkimpl :: Dec -> [Dec]
       mkimpl (ValD (VarP n) (NormalB b) []) =
@@ -297,25 +302,26 @@ declinst'' addseridec i@(InstanceD [] tf@(AppT (ConT cn) t) impls) =
       idize (ConT nm) = nameBase nm
 
       impls' = concat $ map mkimpl impls
-      inst_D = InstanceD [] (AppT (ConT (classname cn)) t) impls'
+      inst_D = InstanceD [] (appts $ (ConT (classname cn)):ts) impls'
 
+      concretevals = map (\(ConT tnm) -> VarE (concretevaluename tnm)) ts
       mkmeth (ValD (VarP n) (NormalB b) _) = 
-        let ConT tnm = t
-        in apply 'S.method [string n, AppE (VarE (methodtypename n)) (VarE (concretevaluename tnm)), b]
+        apply 'S.method [string n, apply (methodtypename n) concretevals, b]
 
       methods = ListE $ map mkmeth impls
       body = applyC 'SIR.InstD [iname, itys, methods]
       ddec = seridec (mkName $ "I_" ++ (idize tf)) body
    in [inst_D] ++ if addseridec then ddec else []
+declinst'' _ i = error $ "TODO: declinst " ++ show i
 
 declinst' :: Dec -> [Dec]
 declinst' = declinst'' True
 
-declvartinst' :: Dec -> SIR.Name -> [Dec]
-declvartinst' (ClassD [] n _ [] sigs) v =
+declvartinst' :: Dec -> [SIR.Name] -> [Dec]
+declvartinst' (ClassD [] n _ [] sigs) vs =
   let mkimpl :: Dec -> Dec
       mkimpl (SigD n t) = ValD (VarP n) (NormalB (VarE 'undefined)) []
     
-      inst = InstanceD [] (AppT (ConT n) (ConT $ mkName ("VarT_" ++ v))) (map mkimpl sigs)
+      inst = InstanceD [] (appts $ (ConT n):(map (\v -> ConT $ mkName ("VarT_" ++ v)) vs)) (map mkimpl sigs)
   in declinst'' False inst 
 
