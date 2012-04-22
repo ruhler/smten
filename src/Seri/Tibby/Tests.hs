@@ -1,4 +1,7 @@
 
+{-# LANGUAGE QuasiQuotes #-}
+{-# LANGUAGE TemplateHaskell #-}
+
 module Seri.Tibby.Tests (tests) where
 
 import Test.HUnit
@@ -7,7 +10,7 @@ import Seri
 import Seri.Tibby.Tibby
 
 data Forth = Forth {
-    request :: Put Integer
+    request :: Put Integer,
     response :: Put' Integer
 }
 declifc ''Forth

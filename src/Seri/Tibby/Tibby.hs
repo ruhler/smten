@@ -53,12 +53,15 @@ import Seri.Lib.Prelude
 
 |]
 
--- class Interface a b where
---     form :: Module (a, b)
--- 
--- class Interface1 a b where
---     form1 :: Module (a c, b c)
--- 
+class Interface a b where
+    form :: Module (a, b)
+
+declclass ''Interface
+ 
+class Interface1 a b where
+    form1 :: Module (a c, b c)
+declclass ''Interface1
+ 
 -- instance (Interface1 a b) => (Interface (a c) (b c)) where
 --     form = form1
 -- 

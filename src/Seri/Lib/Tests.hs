@@ -102,4 +102,10 @@ declvartinst ''Foo "a"
     }
 |]
 
+[s|
+    data Wonderful a = Wonderful {
+        thething :: a,
+        howgreat :: Integer
+    }
+|]
 

@@ -161,7 +161,9 @@ canonicalrec (DataD ctx n vars cs derv) =
       mksel c@(NormalC {}) = []
       mksel (RecC nc fields) =
         let mksig :: VarStrictType -> Dec
-            mksig (fn, _, t) = SigD fn (ForallT vars [] (arrowts [ConT n, t]))
+            mksig (fn, _, t) =
+              let applied = appts $ (ConT n) : (map (VarT . tyvarname) vars)
+              in SigD fn (ForallT vars [] (arrowts [applied, t]))
 
             mkfun :: Int -> Dec
             mkfun i =
