@@ -11,23 +11,7 @@ import Seri.THUtils
 import qualified Seri.Typed as S
 import qualified Seri.IR as SIR
 import Seri.Declarations.Names
-
--- Return the kind of a type variable.
---  0 means kind *
---  1 means kind * -> *
---  2 means kind (* -> *) -> * 
---  etc...
---
--- We assume the following:
---   - PlainTV's starting with 'a', 'b', 'c', or 'd' are of kind *
---   - PlainTV's starting with 'm' are of kind * -> *
--- Note: this should be kept in sync with the info in Seri.Polymorphic
-tvarkind :: TyVarBndr -> Integer
-tvarkind (PlainTV v) | head (nameBase v) `elem` "abcd" = 0
-tvarkind (PlainTV v) | head (nameBase v) `elem` "m" = 1
-tvarkind (KindedTV v StarK) = 0
-tvarkind (KindedTV v (ArrowK StarK StarK)) = 1
-tvarkind v = error $ "TODO: Seri.Declarations.Utils.tvarkind " ++ show v
+import Seri.Declarations.Polymorphic
 
 -- Given a type variable, figure out what predicate we should add for it
 -- in the context.

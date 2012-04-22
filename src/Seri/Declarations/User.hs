@@ -3,7 +3,7 @@
 
 module Seri.Declarations.User (
     declprim, declcon, declval,
-    decltycon, decltyvar, decltype,
+    decltycon, decltyvar, decltyvars, decltype,
     declclass, declvartinst,
     declcommit,
     ) where
@@ -60,6 +60,14 @@ decltycon k nm = return $ decltycon' k nm
 --   name - the name of the type variable.
 decltyvar :: Integer -> String -> Q [Dec]
 decltyvar k nm = return $ decltyvar' k nm
+
+-- Declare all the type variables specified in Declarations.Polymorphic
+decltyvars :: [(Integer, [String])] -> Q [Dec]
+decltyvars [] = return []
+decltyvars ((i, ns):xs) = do
+    dns <- decltyvars xs
+    di <- mapM (decltyvar i) ns
+    return $ concat (dns:di)
 
 -- decltype name
 -- Declare a Seri type based on an existing haskell type.

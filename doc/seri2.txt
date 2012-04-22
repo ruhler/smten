@@ -7118,3 +7118,10 @@ Sat Apr 21 12:44:29 EDT 2012
 Looks like bugs in record constructor canonicalization or some such. So I
 should make a test case in Seri.Lib.Tests for record constructors.
 
+Sat Apr 21 20:21:18 EDT 2012
+
+I need more kind *->* type variables. How about "n"?
+ 
+Which means, I really want to move it all to one place. So if I want to add a
+new type variable, I should only have to add it in one place.
+
