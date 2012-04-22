@@ -230,9 +230,14 @@ decltype' (DataD [] dt vars cs _) =
 --     dec = ClassD "Foo" ["a"] [Sig "foo" (VarT_a -> Integer)]
 declclass' :: Dec -> [Dec]
 declclass' (ClassD [] nm vars [] sigs) =
-  let mksig :: Dec -> [Dec]
-      mksig (SigD n (ForallT _ _ t)) =
-        let sig_P = SigD (valuename n) (valuetype t)
+  let gett t = case t of
+                 ForallT _ _ t' -> t'
+                 _ -> t
+
+      mksig :: Dec -> [Dec]
+      mksig (SigD n ft) =
+        let t = gett ft
+            sig_P = SigD (valuename n) (valuetype t)
             sig_I = SigD (instidname n) (instidtype t)
         in [sig_P, sig_I]
 
@@ -240,8 +245,10 @@ declclass' (ClassD [] nm vars [] sigs) =
       class_D = ClassD ctx (classname nm) vars [] (concat $ map mksig sigs)
 
       mkt :: Dec -> [Dec]
-      mkt (SigD n (ForallT _ _ t)) = 
-        let vararg :: TyVarBndr -> Type
+      mkt (SigD n ft) = 
+        let t = gett ft
+
+            vararg :: TyVarBndr -> Type
             vararg v = appts $ [VarT (tyvarname v)] ++ replicate (fromInteger $ tvarkind v) (ConT $ mkName "()")
 
             ty = arrowts $ map vararg vars ++ [texpify (concrete' (map tyvarname vars) t)]
@@ -252,7 +259,7 @@ declclass' (ClassD [] nm vars [] sigs) =
       type_ds = concat $ map mkt sigs
 
       mkdsig :: Dec -> Exp
-      mkdsig (SigD n (ForallT _ _ t)) = applyC 'SIR.Sig [string n, seritypeexp t]
+      mkdsig (SigD n ft) = applyC 'SIR.Sig [string n, seritypeexp (gett ft)]
 
       tyvars = ListE $ map (string . tyvarname) vars
       dsigs = ListE $ map mkdsig sigs

@@ -79,7 +79,6 @@ import Seri.Lib.Prelude
 
 class Foo a where
     foo :: a -> Integer
-
 declclass ''Foo
 declvartinst ''Foo ["a"]
 

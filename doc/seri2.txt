@@ -7190,4 +7190,78 @@ issue. Why can't haskell type it?
 Perhaps I have some type information missing in my typed constructors?
 I don't know. I'll have to look into this another time.
 
+Sun Apr 22 10:35:48 EDT 2012
+
+Good. Next steps are clear.
+- Add a template haskell quoter front end, specifically for quoting classes.
+- Add automatic type variable instance generation.
+- Figure out this type ambiguity bug in multifoofun.
+
+Sun Apr 22 12:42:29 EDT 2012
+
+I had an idea I wanted to put out there. I'm worried about this polymorphic
+thing, because it means we'll have an instance of every class for type a,
+which will lead to undecidable instances and other such scary things.
+
+What if, instead of having VarT_a, VarT_b, ...
+We merged them all into a single type.
+
+Either: data Polymorphic = Polymorphic String
+Or, maybe we could just use VarT String directly?
+
+Then we could make than an instance of things easily enough. The only concern
+is the haskell couldn't distinguish between the type of VarT "a" and VarT "b",
+for instance. But in that case, couldn't we just  used Typed?
+
+That is:    (Typed (VarT "a") :: Typed Type a)
+     vs.    (Typed (VarT "b") :: Typed Type b)
+
+Hey, I like that.
+
+I think that's something I should try out. Ditch these VarT_x things. I think
+that's much cleaner.
+
+Sun Apr 22 16:36:20 EDT 2012
+
+Nope. Won't work. I can't distinguish SeriType by value, because we often
+convert using undefined. So I need distinct, concrete types for each different
+variable type.
+
+One thing I could do, to avoid the undecidability of instances is have an
+extra type: Poly a. With instances of SeriType for Poly VarT_a, Poly VarT_b,
+etc... Then I can give an instance of a class like:
+
+instance SeriClass_Foo (Poly a) where
+    ...
+
+I would need a Poly1, Poly2, etc... for all the different kinds still, which
+is a little bit sad. But it's better than having to call decltvarinst for
+every combination of type variable. All I have to do then is choose the right
+type variable based on kind and everything else works naturally.
+
+Sun Apr 22 17:47:44 EDT 2012
+
+Let me pull the type constructor stuff out of the seri quoter.
+
+What I want are functions:
+[Dec] -> Q [Dec]
+Exp -> Q Exp
+
+Maybe call it translate. It's basically all the code in Quoter except the top
+level driver functions. Is it worth pulling out? Then Quoter will be pretty
+empty. Maybe I can have Quoter implement both quote things.
+
+That's fine.
+
+Sun Apr 22 18:04:33 EDT 2012
+
+Of course, the input for template haskell class declarations differs from
+reified haskell. That's annoying.
+
+Sun Apr 22 18:10:04 EDT 2012
+
+The declvartinst input doesn't make much sense if I use template haskell. So
+before I can switch to using the template haskell quoter, I should fix this
+Poly thing.
+
 
