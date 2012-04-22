@@ -7113,3 +7113,8 @@ I can express the SMT Query using this primitive monad instance.
 
 Let me just run up to the next problem with Tibby, just to see.
 
+Sat Apr 21 12:44:29 EDT 2012
+
+Looks like bugs in record constructor canonicalization or some such. So I
+should make a test case in Seri.Lib.Tests for record constructors.
+

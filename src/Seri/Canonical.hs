@@ -161,7 +161,7 @@ canonicalrec (DataD ctx n vars cs derv) =
       mksel c@(NormalC {}) = []
       mksel (RecC nc fields) =
         let mksig :: VarStrictType -> Dec
-            mksig (fn, _, t) = SigD fn (ForallT vars [] (arrowts [t, ConT n]))
+            mksig (fn, _, t) = SigD fn (ForallT vars [] (arrowts [ConT n, t]))
 
             mkfun :: Int -> Dec
             mkfun i =
@@ -169,7 +169,8 @@ canonicalrec (DataD ctx n vars cs derv) =
                   pats = replicate i WildP
                          ++ [VarP $ mkName "x"]
                          ++ replicate (length fields - i - 1) WildP
-              in FunD fn [Clause pats (NormalB (VarE $ mkName "x")) []] 
+                  fund = FunD fn [Clause [ConP nc pats] (NormalB (VarE $ mkName "x")) []] 
+              in fund
 
             mkboth :: Int -> [Dec]
             mkboth i = [mksig (fields !! i), mkfun i]
@@ -178,6 +179,7 @@ canonicalrec (DataD ctx n vars cs derv) =
       mknorm :: Con -> Con
       mknorm c@(NormalC {}) = c
       mknorm (RecC nc fields) = NormalC nc (map (\(_, s, t) -> (s, t)) fields)
+
   in (DataD ctx n vars (map mknorm cs) derv) : (canonical . concat $ map mksel cs)
 canonicalrec d = [canonical d]
 

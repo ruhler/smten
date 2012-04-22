@@ -95,3 +95,11 @@ declvartinst ''Foo "a"
     foofun x = (foo x)*(foo x) + 3*(foo x) + (foo True)
 |]
 
+[s|
+    data Apple = Apple {
+        isgreen :: Bool,
+        numseeds :: Integer
+    }
+|]
+
+

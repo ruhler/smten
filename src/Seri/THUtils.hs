@@ -20,7 +20,7 @@ applyC n exps = foldl AppE (ConE n) exps
 --  Into a type (a -> b -> c -> ...)
 arrowts :: [Type] -> Type
 arrowts [t] = t
-arrowts (ta:tb:ts) = arrowts ((AppT (AppT ArrowT ta) tb) : ts)
+arrowts (x:xs) = AppT (AppT ArrowT x) (arrowts xs)
 
 -- appts
 --  Turn a list of types [a, b, c, ...]
