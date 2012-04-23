@@ -2,7 +2,7 @@
 {-# LANGUAGE TemplateHaskell #-}
 
 module Seri.Declarations.Utils (
-    tvarkind, stpred, valuetype, instidtype, texpify, concrete, concrete', seritypeexp,
+    tvarkind, stpred, valuetype, instidtype, texpify, seritypeexp,
     ) where
 
 import Language.Haskell.TH
@@ -47,23 +47,6 @@ valuetype ty =
 instidtype :: Type -> Type 
 instidtype (ForallT vns _ t) = ForallT vns [] (instidtype t)
 instidtype t = arrowts [texpify t, ConT ''SIR.InstId]
-
--- Given a potentially polymorphic haskell type, convert it to a concrete
--- haskell type which represents the polymorphic seri type.
---
--- In other words, remove all ForallTs and replace all occurences of VarT
--- "foo" with VarT_foo.
-concrete :: Type -> Type
-concrete = concrete' []
-
--- concrete' - same as concrete, but lets you leave a list of variable types
--- unconcrete.
-concrete' :: [Name] -> Type -> Type
-concrete' ns (ForallT _ _ t) = concrete' ns t
-concrete' ns t@(VarT nm) | nm `elem` ns = t
-concrete' ns (VarT nm) = ConT $ prefixed "VarT_" nm
-concrete' ns (AppT a b) = AppT (concrete' ns a) (concrete' ns b)
-concrete' ns t = t
 
 -- Given a type, return an expression corresonding to the seri type of
 -- that type.

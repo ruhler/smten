@@ -7264,4 +7264,39 @@ The declvartinst input doesn't make much sense if I use template haskell. So
 before I can switch to using the template haskell quoter, I should fix this
 Poly thing.
 
+Sun Apr 22 18:13:45 EDT 2012
+
+Okay! Poly thing. What's the deal?
+
+1. Change occurrences of VarT_x with Polymorphic (VarT_x).
+2. declclass should declare a dummy instance for Polymorphic a
+
+Sun Apr 22 18:24:18 EDT 2012
+
+Ug. This is so messy. Is there some way I can clean it up?
+
+That is, identify all places where we refer to or make use of these
+polymorphic things, and put them all in one place.
+
+Or, rather, two places, because we want to use template haskell to help us? Or
+more, because we need to produce things for declarations?
+
+I dunno.
+
+Mon Apr 23 17:36:26 EDT 2012
+
+I want to just slog through this polymorphic cleanup thing.
+
+First: where do I reference VarT_x, and what information do I need to turn
+that into PolymorphicN VarT_x?
+
+Mon Apr 23 17:42:47 EDT 2012
+
+- Well, I use them in the comments a lot. That's annoying.
+- Used in decltyvar'
+    - I want to declare the type as I do.
+    - I shouldn't need the kind, because that I can figure out by the name.
+    - SeriType instance should be for PolymorphicN VarT_x.
+- Used in declvartinst'
+    This will go away eventually. Again, get the kind from the name.
 

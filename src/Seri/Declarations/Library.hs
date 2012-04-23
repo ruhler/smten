@@ -15,6 +15,7 @@ import qualified Seri.Typed as S
 import Seri.Declarations.Names
 import Seri.Declarations.Utils
 import Seri.Declarations.SeriDec
+import Seri.Declarations.Polymorphic
 
 -- declval' name ty exp
 -- Make a seri value declaration
@@ -125,9 +126,10 @@ decltycon' k nm =
 -- Given the name of a type variable and its kind, make a SeriType instance
 -- for it and other relevant things, just like decltycon' does for type
 -- constructors.
-decltyvar' :: Integer -> String -> [Dec]
-decltyvar' k vn =  
+decltyvar' :: String -> [Dec]
+decltyvar' vn =  
  let nm = (mkName $ "VarT_" ++ vn)
+     k = tvnamekind vn
      dataD = DataD [] nm (map (\n -> PlainTV (mkName [n])) (take (fromInteger k) "abcd")) [NormalC nm []] []
 
      classname = "SeriType" ++ if k == 0 then "" else show k

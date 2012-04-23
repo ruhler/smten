@@ -55,18 +55,16 @@ decltycon k nm = return $ decltycon' k nm
 -- decltyvar kind name
 --
 -- Declare a type variable.
---   kind - the kind of the type variable. That is, the number of type
---          arguments it takes.
 --   name - the name of the type variable.
-decltyvar :: Integer -> String -> Q [Dec]
-decltyvar k nm = return $ decltyvar' k nm
+decltyvar :: String -> Q [Dec]
+decltyvar nm = return $ decltyvar' nm
 
 -- Declare all the type variables specified in Declarations.Polymorphic
 decltyvars :: [(Integer, [String])] -> Q [Dec]
 decltyvars [] = return []
 decltyvars ((i, ns):xs) = do
     dns <- decltyvars xs
-    di <- mapM (decltyvar i) ns
+    di <- mapM decltyvar ns
     return $ concat (dns:di)
 
 -- decltype name
