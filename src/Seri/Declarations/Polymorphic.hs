@@ -1,6 +1,6 @@
 
 module Seri.Declarations.Polymorphic (
-    tyvars, tvarkind, tvnamekind, concrete, concrete',
+    kindsuf, tyvars, tvarkind, tvnamekind, concrete, concrete',
     ) where
 
 import Language.Haskell.TH
@@ -46,7 +46,13 @@ concrete = concrete' []
 concrete' :: [Name] -> Type -> Type
 concrete' ns (ForallT _ _ t) = concrete' ns t
 concrete' ns t@(VarT nm) | nm `elem` ns = t
-concrete' ns (VarT nm) = ConT $ prefixed "VarT_" nm
+concrete' ns (VarT nm) = (ConT $ prefixed "VarT_" nm)
 concrete' ns (AppT a b) = AppT (concrete' ns a) (concrete' ns b)
 concrete' ns t = t
+
+-- Append "" to a string for kind 0
+--  and n for kind n
+kindsuf :: Integer -> String -> String
+kindsuf 0 x = x
+kindsuf n x = x ++ show n
 

@@ -106,8 +106,8 @@ declcon' n t =
 --     etc...
 decltycon' :: Integer -> Name -> [Dec]
 decltycon' k nm =
-  let classname = "SeriType" ++ if k == 0 then "" else show k
-      methname = "seritype" ++ if k == 0 then "" else show k
+  let classname = kindsuf k "SeriType"
+      methname = kindsuf k "seritype"
 
       stimpl = FunD (mkName methname) [Clause [WildP] (NormalB (AppE (ConE 'SIR.ConT) (string nm))) []]
       stinst = InstanceD [] (AppT (ConT (mkName classname)) (ConT nm)) [stimpl]
@@ -132,18 +132,20 @@ decltyvar' vn =
      k = tvnamekind vn
      dataD = DataD [] nm (map (\n -> PlainTV (mkName [n])) (take (fromInteger k) "abcd")) [NormalC nm []] []
 
-     classname = "SeriType" ++ if k == 0 then "" else show k
-     methname = "seritype" ++ if k == 0 then "" else show k
+     classname = kindsuf k "SeriType"
+     methname = kindsuf k "seritype"
+
+     polytype = (concrete (VarT (mkName vn)))
 
      body = (AppE (ConE 'SIR.VarT) (string (mkName vn)))
      stimpl = FunD (mkName methname) [Clause [WildP] (NormalB body ) []]
-     stinst = InstanceD [] (AppT (ConT (mkName classname)) (ConT nm)) [stimpl]
+     stinst = InstanceD [] (AppT (ConT (mkName classname)) polytype) [stimpl]
 
      sig_S = SigD (tycontypename nm) (ConT ''SIR.Type)
      impl_S = ValD (VarP (tycontypename nm)) (NormalB body) []
 
      vars = replicate (fromInteger k) (ConT ''())
-     sig_K = SigD (concretevaluename nm) (appts (ConT nm : vars))
+     sig_K = SigD (concretevaluename nm) (appts (polytype : vars))
      impl_K = ValD (VarP (concretevaluename nm)) (NormalB (VarE 'undefined)) []
   in [dataD, stinst, sig_S, impl_S, sig_K, impl_K]
 

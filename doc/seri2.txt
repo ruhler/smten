@@ -7300,3 +7300,35 @@ Mon Apr 23 17:42:47 EDT 2012
 - Used in declvartinst'
     This will go away eventually. Again, get the kind from the name.
 
+Mon Apr 23 17:51:35 EDT 2012
+
+Okay, so I cleaned up the use. Now all reference to kind is by name. So it
+should be easy to switch to using PolymorphicN. Wish me luck.
+
+First attempt: just replace every occurrence of VarT_x with PolymorphicN
+Vart_x.
+
+Mon Apr 23 18:02:29 EDT 2012
+
+Uh oh. This is going to cause trouble. Trouble with the _seriK_ function.
+Hmm...
+
+Because it will be called what?
+
+_seriK_PolymorphicN?
+Perhaps we don't need those?
+
+I'm not sure. Let me see what happens when I try to compile. But I fear...
+
+Mon Apr 23 18:06:48 EDT 2012
+
+Well, here's an unfortunate, unexpected problem.
+
+I can't give an instance of SeriType (Polymorphic VarT_a), because it overlaps
+with the SeriType1 instance.
+
+Hum.
+
+So let me roll back these changes, but keep the good changes I made. Then I
+need to think.
+
