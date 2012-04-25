@@ -12,14 +12,3 @@
 - Add support for let expressions
     example: let foo = 2 in foo + 40
 
-- Move RecC code out of declarations into canonicalizer?
-
-- Issue with figuring out type of a number for target back end
-    example: foofun 5 doesn't work (but foofun 2+3 does)
-
-- Typeclasses on type constructors with kind higher than *->*
-   example: declclass ''Monad
-
-- Multiparam typeclasses
-   example: declclass ''Interface
-

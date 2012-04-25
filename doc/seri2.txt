@@ -7193,9 +7193,9 @@ I don't know. I'll have to look into this another time.
 Sun Apr 22 10:35:48 EDT 2012
 
 Good. Next steps are clear.
-- Add a template haskell quoter front end, specifically for quoting classes.
++ Add a template haskell quoter front end, specifically for quoting classes.
 - Add automatic type variable instance generation.
-- Figure out this type ambiguity bug in multifoofun.
++ Figure out this type ambiguity bug in multifoofun.
 
 Sun Apr 22 12:42:29 EDT 2012
 
@@ -7606,4 +7606,15 @@ Yup. That fixed it. Wonderful. So I can restore the original version of
 multifunfoo.
 
 :)
+
+Wed Apr 25 18:04:01 EDT 2012
+
+Cool. Which means... we now have multiparam type classes, and they seem to
+work out okay.
+
+What are the next things on the list of things to do?
+
+- Change decltvarinst to reify the seri class instead of a haskell class.
+- Add support for contexts in instance declarations.
+- Think about writing a C backend (which doesn't need to be fast)
 

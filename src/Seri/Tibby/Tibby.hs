@@ -79,10 +79,10 @@ declprim "form1_put" [t| forall a . Module (Put a, Put' a) |]
 
     instance Interface1 Put Put' where
         form1 = form1_put
+
+    instance (Interface1 m n) => (Interface (m a) (m b)) where
+        form = form1
     
 |]
  
--- instance (Interface1 m n) => (Interface (m a) (m b)) where
---     form = form1
--- 
 

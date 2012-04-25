@@ -15,7 +15,7 @@ import Seri.Target.Haskell.Haskell
            foo1 == 42
         && unary2int [(), (), ()] == 3
         && foofun False == 5
-        && foofun (2+3) == 11
+        && foofun 5 == 11
 |]
 
 declcommit

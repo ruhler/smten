@@ -6,6 +6,7 @@ module Seri.Target.Haskell.Haskell (
 import Data.Char(isAlphaNum)
 import qualified Language.Haskell.TH as H
 import Seri
+import Seri.Lib.Prelude
 import Seri.THUtils
 
 -- haskell builtin main exp
@@ -22,7 +23,7 @@ haskell builtin main e =
       hsName = H.mkName
     
       hsExp :: Seri.Exp -> H.Exp
-      hsExp (IntegerE i) = H.LitE (H.IntegerL i)
+      hsExp (IntegerE i) = H.SigE (H.LitE (H.IntegerL i)) (hsType (seritype (undefined :: Integer)))
       hsExp (PrimE _ n) =   
          case mapprim builtin n of  
              Just x -> H.VarE (hsName x)
