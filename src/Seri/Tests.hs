@@ -64,6 +64,8 @@ tests = "Seri" ~: [
     "foofun bool" ~: IntegerE 5 `eqexp` [s| foofun False |],
     "foofun int" ~: IntegerE 11 `eqexp` [s| foofun 5 |],
     "green apple" ~: IntegerE 11 `eqexp` [s| numseeds (Apple True 11) |],
-    "wonderful" ~: IntegerE 11 `eqexp` [s| thething (Wonderful 11 32) |]
+    "wonderful" ~: IntegerE 11 `eqexp` [s| thething (Wonderful 11 32) |],
+    "unused" ~: IntegerE 42 `eqexp` [s| unused True |],
+    "multifoofun" ~: IntegerE 19 `eqexp` [s| multifoofun True 12 |]
     ]
 

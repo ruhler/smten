@@ -114,7 +114,7 @@ mkpat (ConP n ps) =
     let mkpat' :: Exp -> [Pat] -> Exp
         mkpat' e [] = e
         mkpat' e (p:ps) = mkpat' (apply 'S.appP [e, mkpat p]) ps
-    in mkpat' (apply 'S.conP [string n]) ps
+    in mkpat' (apply 'S.conP [VarE (valuename n), string n]) ps
 mkpat (VarP n) = VarE $ mkvarpnm n
 mkpat (LitP i@(IntegerL _)) = apply 'S.integerP [LitE i]
 mkpat WildP = VarE 'S.wildP

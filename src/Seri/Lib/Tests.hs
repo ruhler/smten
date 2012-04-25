@@ -130,7 +130,14 @@ declvartinst ''MultiFoo ["a", "b"]
         multifoo _ _ = 4
 |]
 
---    multifoofun :: (MultiFoo a b) => a -> b -> Integer
---    multifoofun x y = (multifoo x y)*(multifoo x y)
---                        + 3*(multifoo x y) + (multifoo True False)
---
+[s|
+    unused :: a -> Integer
+    unused x = 42
+|]
+
+[s|
+    multifoofun :: (MultiFoo a b) => a -> b -> Integer
+    multifoofun x y = (multifoo x y) * (multifoo x y) 
+                        + 3 * (multifoo x y) + (multifoo True False)
+|]
+

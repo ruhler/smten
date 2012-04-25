@@ -1,7 +1,4 @@
 
-- Unused pattern variables cause error about ambiguous types.
-    example: foo x = 2
-
 - Allow arbitrary patterns in lambda expression arguments.
     example: \(Foo x) -> x+1
 

@@ -7332,3 +7332,278 @@ Hum.
 So let me roll back these changes, but keep the good changes I made. Then I
 need to think.
 
+Mon Apr 23 18:10:30 EDT 2012
+
+Okay. What do I do?
+
+Goal is: do something so for a user declared type class, an instance for
+VarT_x automatically gets generated.
+
+And especially in the multiparam type class case, we wouldn't want an instance
+for all combinations of VarT_x types.
+
+One idea is, well, make VarT_x an instance of some Polymorphic type, then say
+anything which is an instance of Polymorphic has a dummy instance for this
+class. The fear is, that instance for Polymorphic will overlap with every
+other instance, because the type of the instance is just "a".
+
+The next idea was, well, let's replace occurrences of VarT_x with
+Polymorphic VarT_x, and then I could have an instance for "Polymorphic a",
+which would be just fine. The issue is, we want each Polymorphic VarT_x to
+have a different SeriType, and that I can't do because it conflicts with
+the SeriType1 instance.
+
+I wouldn't mind doing an instance for all the variables, now that we have this
+list, but multiparam type classes blow up.
+
+It would be nice if you could give an instance whenever you wanted,
+explicitly. But... really they should all be in the same spot, otherwise you
+have conflicting instances.
+
+Perhaps I could rely on conventions? ... No. That won't work out how I want.
+
+Maybe go with the combinatorial explosion until it becomes a problem? And if
+it never becomes a problem, then no problem?
+
+Currently we're talking 4x4 = 16 instances for each 2 parameter type class.
+Ug. That's not happy. Because a 3 parameter type class goes to 64, and add
+another type variable, and it's even worse.
+
+Well, the least I can do is, instead of reifying the class 'Foo', reify the
+class 'SeriFoo' and define the dummy instance for that. Or, pass the list of
+desired instances when I declare the class.
+
+Or... make multiparam type classes a special case? Or, in other words, do the
+combinatorial explosion until it causes problems. I don't expect to have lots
+of these classes...
+
+It's also. Arg!
+
+Well, perhaps I can make a Polymorphic class thing work. That's worth trying.
+Adding undecidable instance's wouldn't be so bad, would it?
+
+The error messages would be annoying. You forget to declare an instance, it
+says there's no instance for Polymorphic...
+
+So, let me put off this issue. But let me reify the other class so I can use
+the template haskell parsing for class declarations. Which will eventually
+turn into the Seri quoter parsing.
+
+Good. Goal: declvartinst should no longer require reification of the haskell
+class. It can use reification of the Seri class.
+
+Mon Apr 23 18:30:32 EDT 2012
+
+No. That's messy, and I don't feel like it. Let me think on this more. Maybe
+I'll come up with a better solution.
+
+For now, let me take a closer look at the multfoofun bug.
+
+The error:
+||     Ambiguous type variable `a0' in the constraint:
+||       (SeriType a0) arising from a use of `dvarE'
+||     Probable fix: add a type signature that fixes these type variable(s)
+||     In the first argument of `appE', namely
+||       `dvarE _seriP_multifoo _seriI_multifoo "multifoo"'
+||     In the first argument of `appE', namely
+||       `appE (dvarE _seriP_multifoo _seriI_multifoo "multifoo") x'
+||     In the second argument of `appE', namely
+||       `appE
+||          (appE (dvarE _seriP_multifoo _seriI_multifoo "multifoo") x) y'
+
+The implementation:
+
+Uh... this is going to be messy. Bear with me.
+
+[_seriP_multifoofun ::
+   forall a b. (SeriClass_MultiFoo a b, SeriType a, SeriType b) =>
+   Typed Exp (a -> (b -> Integer)),
+ _seriP_multifoofun
+
+...
+
+p_y :: Typed Pat b
+y :: Typed Exp b
+
+p_x :: Typed Pat a
+x :: Typed Exp a
+
+
+Tue Apr 24 17:36:18 EDT 2012
+
+Some thoughts on this polymorphic variable issue.
+
+One idea is, generate two kinds of haskell functions for each seri
+declaration. One which is the polymorphic type, which we use for the full type
+check. Another which is the same, only without the context requirements which
+we use for the concrete polymorphic variable type things.
+
+This almost works, but not quite, because we still need a way to figure out
+which instance of a method call is, and we may need an instance of that method
+call for the concrete polymorphic variable type things.
+
+So, after some deliberation, I think the best solution I have to propose is...
+use reification to identify what instances exist for concrete polymorphic
+variable type things, and generate new instances as needed on the fly.
+
+It's easy to tell what instances we need. It's just the context of the
+function.
+
+So, for example, multifoofun has a context (MultiFoo a b), which means I need
+an instance for MultiFoo VarT_a VarT_b. Which we can automatically derive if
+needed. I'm slightly worried about if needed, and the issues we had which led
+to introducing declcommit. But let me deal with those when I see them in
+practice.
+
+In summary, all instances for concrete polymorphic variable things will be
+derived automatically, lazily.
+
+The first step towards this is to change declavartinst' to take as input...
+Well, we would like to give as input: MultiFoo a b, or MultiFoo VarT_a VarT_b,
+that sort of thing. So, give it the type you want the instance for. Then it
+should look up the class and generate a dummy instance based on that.
+
+Note, it will be looking up the SeriClass version of the class, because we may
+not have a corresponding haskell class to look up.
+
+So I can make this change, then I can call decltvarinst' manually until it
+annoys me enough to implement the lazy automatic part of it.
+
+Fine. Let me continue working on this type bug, see if I can't make any
+progress.
+
+Tue Apr 24 17:56:57 EDT 2012
+
+I finished going through the type bug. I don't agree with haskell. I think
+it's completely unambiguous.
+
+Let me try to simplify the expression and see if I get the same results.
+
+Tue Apr 24 18:02:00 EDT 2012
+
+You know what? You know what I think the issue is?
+
+I think it's the same issue as passing in a variable which is not used. Maybe?
+
+That is, I should make it so
+
+foo x = 4 works first. Solve that problem. Then see if that solves this
+problem.
+
+Because I see the problem with:
+ multifoofun :: (MultiFoo a b) => a -> b -> Integer
+ multifoofun x y = multifoo x y
+
+Which is clearly well typed haskell.
+
+So let me make a test for the simpler case and try to understand that.
+
+Um... that problem no longer seems to be being a problem. Lovely. But not so
+helpful for figuring out this bug.
+
+Why don't I have this issue with foofun?
+
+I don't know.
+
+All I can think of is, maybe I could copy the generated expression into
+haskell, and try to simplify things until I can figure out what's wrong. Let
+me try that for a little bit real quick like.
+
+Nope. I dunno.
+
+Wed Apr 25 17:32:01 EDT 2012
+
+Nirav mentioned a concern today that I should try doing more backend code
+generation before getting too far ahead on front end capabilities. I see the
+concern.
+
+Perhaps I should consider that?
+
+The problem is, it's just a bunch of work to generate backend code. Maybe
+that's the concern.
+
+A bluespec backend makes sense. We'll certainly want that eventually. A c
+backend? I feel like a c backend duplicates a lot of work done by the haskell
+compiler, and I don't expect I can do it better than haskell...
+
+Maybe the real thing is this. Generate C code, but don't worry about making it
+decent C code, just worry about it being functional C code. Just to prove that
+I don't require the back end have support for... polymorphism, type classes,
+pattern matching. That's a good idea. C++ would probably easier, but C would
+be simpler (An odd distinction...).
+
+Something to keep in mind anyway. Now back to my bug hunting.
+
+Wed Apr 25 17:39:29 EDT 2012
+
+I pulled the match construct out of the expression. If I don't give a type
+signature to it, we have all sorts of ambiguity. If I do give a type signature
+to it, then everything works fine.
+
+Clearly adding the type signatures to my typed constructors isn't a great
+solution for me, because I don't know the types. That's the whole point.
+
+Hmm... I don't really understand the issue here. Why the ambiguity if I don't
+have the type?
+
+Could we have a different signature? Is the type signature less general the
+expression would allow? Isn't that the only reason it would matter that I
+specified something explicitly?
+
+Let me try to pull more and more outside of thematch function and see what
+minimal type thing I have to specify.
+
+Wed Apr 25 17:45:34 EDT 2012
+
+Adding a type to the multifoocall doesn't help any.
+How about adding a type to the match pattern?
+
+Wed Apr 25 17:47:11 EDT 2012
+
+Specifying the type of the pattern does fix the problem.
+
+Wed Apr 25 17:48:30 EDT 2012
+
+Aha! I think I found the problem. The ambiguity.  It's this use of conP, which
+returns any arbitrary kind of type. Let's see how the problem could come up.
+
+thepattern p_x p_y = (appP (appP (conP "(,)") p_x) p_y)
+
+
+p_x :: a
+p_y :: b
+conP "(,)"  ::  (a1 -> b1)
+
+fooP = appP (conP "(,)") p_x   :: b1
+ Says that:  a1 = a 
+
+appP foo p_y  :: b2
+ Says that: b1 = b -> b2
+
+b2... we have no idea that b2 should be (a, b)!
+
+That is, conPs need to be typed just like varPs.
+
+Why don't I have this? Did it just fall through the cracks?
+
+Anyway, I believe I see the problem now. Good. I like that.
+
+What's the solution?
+
+Constructors have to be declared. We already know they are, right? I have a
+constructor function: _seriP_Foo :: Typed Exp (a -> Integer), for example, or
+more relevantly: _seriP_() :: Typed Exp (a -> b -> (a, b)). Just use that.
+
+So we'll want something like:
+
+conP :: Typed Exp a -> Name -> Typed Pat a
+
+Simple. Trivial fix.
+
+Cool! Let me try it on multifunfoo then, see if it works out.
+
+Yup. That fixed it. Wonderful. So I can restore the original version of
+multifunfoo.
+
+:)
+

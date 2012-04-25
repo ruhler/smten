@@ -87,8 +87,8 @@ caseE (Typed e) matches
 match :: Typed Pat a -> Typed Exp b -> Typed Match (a -> b)
 match (Typed p) (Typed e) = Typed $ Match p e
 
-conP :: Name -> Typed Pat a
-conP n = Typed $ ConP n
+conP :: Typed Exp a -> Name -> Typed Pat a
+conP _ n = Typed $ ConP n
 
 appP :: Typed Pat (a -> b) -> Typed Pat a -> Typed Pat b
 appP (Typed f) (Typed x) = Typed $ AppP f x

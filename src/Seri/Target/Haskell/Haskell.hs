@@ -94,7 +94,7 @@ haskell builtin main e =
         H.ForallT (map (H.PlainTV . hsName) vars) (map hsPred pred) (hsType t)
 
       hsPred :: Pred -> H.Pred
-      hsPred (Pred nm [t]) = H.ClassP (hsName nm) [hsType t]
+      hsPred (Pred nm ts) = H.ClassP (hsName nm) (map hsType ts)
     
       hsHeader :: Doc
       hsHeader = text "{-# LANGUAGE ExplicitForAll #-}" $+$
