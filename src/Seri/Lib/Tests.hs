@@ -77,10 +77,11 @@ import Seri.Lib.Prelude
     unary2int (_:xs) = 1 + unary2int xs
 |]
 
-class Foo a where
-    foo :: a -> Integer
-declclass ''Foo
-declvartinst ''Foo ["a"]
+sth [d|
+    class Foo a where
+        foo :: a -> Integer
+    |]
+declvartinst "Foo" ["a"]
 
 [s|
     instance Foo Bool where
@@ -110,11 +111,11 @@ declvartinst ''Foo ["a"]
 |]
 
 
-class MultiFoo a b where
-    multifoo :: a -> b -> Integer
-
-declclass ''MultiFoo
-declvartinst ''MultiFoo ["a", "b"]
+sth [d|
+        class MultiFoo a b where
+            multifoo :: a -> b -> Integer
+    |]
+declvartinst "MultiFoo" ["a", "b"]
 
 [s|
     instance MultiFoo Bool Bool where

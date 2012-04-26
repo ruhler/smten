@@ -7618,3 +7618,34 @@ What are the next things on the list of things to do?
 - Add support for contexts in instance declarations.
 - Think about writing a C backend (which doesn't need to be fast)
 
+Thu Apr 26 17:21:02 EDT 2012
+
+Let me do the decltvarisnt thing, which should be real easy. Then I'll tell
+you about my thoughts for a simple C backend, which I think makes sense to
+have as the next step, even before adding support for contexts in instance
+declarations.
+
+This should be easy. Let me do it in two steps.
+
+1. generate instance based on names of signatures from class.
+2. get names from SeriClass instead of haskell.
+
+Thu Apr 26 17:31:27 EDT 2012
+
+Hmm... so this is annoying. We have to extract the original name from the
+SeriName... so I want, like, a declassname.
+
+Thu Apr 26 17:33:41 EDT 2012
+
+Yeah... so it's messy a little, but the change was simple enough. So let me
+use it now, and the TH declaration for a class, and see how that turns out.
+
+Thu Apr 26 17:37:18 EDT 2012
+
+Cool. I guess the interface I really want eventually is something like... oh,
+I don't know. I want to say something like:
+
+declvartinst [?| MultiFoo a b |]
+
+Let me leave that for another time though.
+

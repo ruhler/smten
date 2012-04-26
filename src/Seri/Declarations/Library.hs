@@ -7,6 +7,7 @@ module Seri.Declarations.Library (
     declval', declcon', decltycon', decltyvar', decltype', declinst', declclass', declvartinst',
     ) where
 
+import Data.List(nub)
 import Language.Haskell.TH
 
 import Seri.THUtils
@@ -328,11 +329,18 @@ declinst'' _ i = error $ "TODO: declinst " ++ show i
 declinst' :: Dec -> [Dec]
 declinst' = declinst'' True
 
+-- Given the declaration of a SeriClass and a list of type variable
+-- parameters, generate a dummy instance for that class.
 declvartinst' :: Dec -> [SIR.Name] -> [Dec]
-declvartinst' (ClassD [] n _ [] sigs) vs =
-  let mkimpl :: Dec -> Dec
-      mkimpl (SigD n t) = ValD (VarP n) (NormalB (VarE 'undefined)) []
-    
-      inst = InstanceD [] (appts $ (ConT n):(map (\v -> ConT $ mkName ("VarT_" ++ v)) vs)) (map mkimpl sigs)
+declvartinst' (ClassD _ n _ _ sigs) vs =
+  let mkimpl :: String -> Dec
+      mkimpl n = ValD (VarP (mkName n)) (NormalB (VarE 'undefined)) []
+
+      -- TODO: this assumes the prefixes for all the methods in the SeriClass
+      -- corresponding to the same method in the original class are of the
+      -- same length. That seems... bad to do.
+      prefixlen = length $ nameBase (valuename (mkName ""))
+      names = nub $ map (\(SigD n _) -> drop prefixlen (nameBase n)) sigs
+      inst = InstanceD [] (appts $ (ConT (declassname n)):(map (\v -> ConT $ mkName ("VarT_" ++ v)) vs)) (map mkimpl names)
   in declinst'' False inst 
 

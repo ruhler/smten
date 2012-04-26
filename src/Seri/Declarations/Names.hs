@@ -1,6 +1,6 @@
 
 module Seri.Declarations.Names (
-    valuename, instidname, classname, methodtypename, tycontypename,
+    valuename, instidname, classname, declassname, methodtypename, tycontypename,
     concretevaluename,
     ) where
 
@@ -16,6 +16,9 @@ instidname = prefixed "_seriI_"
 
 classname :: Name -> Name
 classname = prefixed "SeriClass_"
+
+declassname :: Name -> Name
+declassname n = mkName $ drop (length "SeriClass_") (nameBase n)
 
 methodtypename :: Name -> Name
 methodtypename = prefixed "_seriT_"

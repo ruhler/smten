@@ -11,6 +11,7 @@ module Seri.Declarations.User (
 import Language.Haskell.TH
 
 import Seri.Declarations.Library
+import Seri.Declarations.Names
 import Seri.Typed(primitive)
 
 -- API for users to declare seri things.
@@ -86,9 +87,9 @@ declclass nm = do
 -- declvartinst class vart
 --   Declare a dummy instance of a seri class with the given name for the
 --   given variable type.
-declvartinst :: Name -> [String] -> Q [Dec]
+declvartinst :: String -> [String] -> Q [Dec]
 declvartinst n v = do
-    ClassI d _ <- reify n
+    ClassI d _ <- reify (classname (mkName n))
     return $ declvartinst' d v
 
 -- Declarations may not be seen right away. Call this template haskell
