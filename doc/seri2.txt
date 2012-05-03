@@ -7649,3 +7649,283 @@ declvartinst [?| MultiFoo a b |]
 
 Let me leave that for another time though.
 
+Thu Apr 26 17:39:39 EDT 2012
+
+On to a C backend!
+
+The purpose: make sure we keep track of enough information in the IR to
+generate back end code for backends which aren't so fancy as haskell. I can
+already think of one thing my IR is lacking. This should help expose more.
+
+I don't want to replicate the work of ghc. My goal isn't to generate super
+high quality C code. The goal is what I stated above. For that reason, I
+propose the following. Generate simple C code (not C++). Don't worry about
+making it fast, just make it functional.
+
+Toward that end, I propose the following initial simplifying assumptions.
+- Require all functions are always totally applied.
+- Assume no recursive user defined data types.
+
+These can be relaxed later, but to get started, I fear I would get distracted
+by them. Then start a bit at a time. I have ideas for how to implement
+functions, lambdas, pattern matching, etc... Polymorphic functions become more
+interesting.
+
+So, let me start with the simplest examples.
+
+  foo2 :: Integer -> Integer
+  foo2 x = x*x+3*x+2
+
+  allpassed :: Bool
+  allpassed = foo2 5 == 42
+
+It is interesting the simplest examples for haskell aren't the simplest for C.
+
+Anyway, I want to generate approximately the following C code for this.
+
+  int foo2(int x)
+  {
+     return (x*x + 3*x + 2);
+  }
+
+  bool allpassed()
+  {
+     return (foo2 5 == 42);
+  }
+
+  int main()
+  {
+     return allpassed() ? 0 : 1;
+  }
+
+Hmm... fail already. Because int means something different than Integer, and c
+doesn't have bool, and I probably want to avoid using infix operators for the
+time being. Unless it's not so hard. Maybe it's not so hard, especially if I
+use lots of parenthesis.
+
+In fact, it probably makes sense to start with an even simpler,
+allpassed = True?
+
+Well, the first thing I want is a C abstract syntax representation I can build
+up in haskell which knows how to print C prettily. Haskell has some libraries
+for this, you think? That would be really nice. Let me go looking and see what
+I find.
+
+Thu Apr 26 17:55:40 EDT 2012
+
+Yes! We have it. It's in the package language-c. Cool.
+
+Also, it looks like there are some other haskell quasi-quoters available,
+including ones with slices. See haskell-src-exts-qq for example. I ought to be
+able to use these directly in my quoters, and they may have the class
+declaration issue solved.
+
+So good then. The next steps are clear. I think it would be fun to try to
+update the quoter, particularly to get class declaration support. Let me give
+that a try.
+
+Thu Apr 26 18:05:58 EDT 2012
+
+Um... so there are issues. I think maybe this parser is what I already use, so
+I should just stick to what I have.
+
+Okay, so back to work on C. Getting it going the first time is a bit of a
+slog, so let me get started.
+
+  bool allpassed()
+  {
+     return (foo2 5 == 42);
+  }
+
+CTranslUnit [
+  CFDefExt (CFunDef [] (CDeclr (Just "allpassed") []  ()
+
+okay... so I'm finding this IR is rather cumbersome. Or maybe I just don't get
+it yet.
+
+Okay, they have a parser, so what I should do, to get an idea for the code I
+want to generate is parse the code I want to generate and see what syntax tree
+it defines, and duplicate that.
+
+I may want to come up with some functions for building up trees in an easier
+way. For example, I would like to express my program something like:
+
+function :: Type -> Name -> [(Name, Type)] -> Stmt -> Function
+
+Which is much easier for me to understand, and gives me plenty.
+
+Fine.
+
+Anyway, I think the next step, perhaps, is to have a utility program which I
+give as input a c file, and it spits out the shown abstract syntax tree. That
+will help.
+
+Fri Apr 27 17:13:09 EDT 2012
+
+Here's the plan.
+
+1. Start a C target directory.
+
+2. Write a program in that directory which takes as input a c file and dumps
+as output the abstract syntax tree for it.
+
+3. Based on the output of my above program, come up with some type synonyms
+and functions to make it easier to work with the c abstract syntax tree. Not
+my own IR, just functions to make it easier to build abstract trees. In other
+words, hiding most of the details I'm not interested in.
+
+4. Try to implement my basic program, with just allpassed = True.
+
+Cool. Let me get started.
+
+The code:
+    int allpassed(void)
+    {
+       return 1;
+    }
+
+Turns into:
+Right (CTranslUnit [CFDefExt (CFunDef [CTypeSpec (CIntType ())]
+(CDeclr (Just "allpassed") [CFunDeclr (Right
+([CDecl [CTypeSpec (CVoidType ())] []
+()],False)) []
+()] Nothing []
+()) []
+(CCompound [] [CBlockStmt (CReturn (Just (CConst (CIntConst 1 (NodeInfo
+("./src/Seri/Target/C/example.c": line 4) (("./src/Seri/Target/C/example.c":
+line 4),1) (Name {nameId = 6}))))) (NodeInfo ("./src/Seri/Target/C/example.c":
+line 4) (("./src/Seri/Target/C/example.c": line 4),1) (Name {nameId = 7})))]
+(NodeInfo ("./src/Seri/Target/C/example.c": line 3)
+(("./src/Seri/Target/C/example.c": line 5),1) (Name {nameId = 8}))) (NodeInfo
+("./src/Seri/Target/C/example.c": line 2) (("./src/Seri/Target/C/example.c":
+line 5),1) (Name {nameId = 9})))] (NodeInfo ("./src/Seri/Target/C/example.c":
+line 2) (("./src/Seri/Target/C/example.c": line 5),1) (Name {nameId = 10})))
+
+The interface I would like to use:
+
+type Type = ...
+type Dec = ...
+type Stmt = ... 
+
+funD :: Type Name [(Type, Name)] Stmt
+
+Okay? Shall I try?
+
+Fri Apr 27 17:42:05 EDT 2012
+
+Wow. This IR really is tedious.
+
+Okay, so let's just say the rough code I wrote will work. How do I want to
+test it? Let me start a test? Shall I just try to spike it, as they say?
+
+Sure. Why not.
+
+Fri Apr 27 18:07:05 EDT 2012
+
+Err... I'm not convinced this C IR is worth using. It's just so needlessly
+complicated.
+
+I give up. It's not worth it to me. It just can't be that hard to have a
+simple C IR and generate C code from it.
+
+Fri Apr 27 18:32:29 EDT 2012
+
+Well, basically I have a bit of work to do. Firstly, in getting the C abstract
+syntax tree up and running. Secondly in getting the translation up and going.
+
+Sat Apr 28 15:11:12 EDT 2012
+
+The question is, what should the C abstract syntax tree look like?
+
+For example, let's talk about types. What kinds of types are there in C?
+
+Primitive Values: int, long, short, float, double, char
+Pointers: * type
+Structs: struct name
+Typenames: like, things that are typedef, for example: bool?
+Functions: type [type]
+
+Pointers and functions are pretty clear.
+But what sort of structure should the other kinds of types have?
+For example, some extremes are:
+
+ PrimitiveType = IntT | LongT | ShortT | FloatT | DoubleT | CharT | ...
+ Type = PrimT (PrimitiveType)
+      | StructT String
+      | NameT String
+      | ...
+vs.
+ Type = ConT String
+
+In the later, we could represent the primitive types as ConT "int", ConT
+"char", etc... 
+
+This is the kind of approach I took in the Seri IR. We just have ConT. We
+don't, for instance, do anything special for ArrowT, UnitT, BoolT, IntegerT,
+TupleT.
+
+The value of this is, we don't have lots of special cases to deal with. We
+don't have to change the IR to support additional primitive types.
+
+The disadvantage is, it's hard to attach semantic meaning to a specific type
+name. For example, it's hard to say: ConT "Bool" refers to the type of
+booleans in the sense we mean, having true and false and being used in
+conditional expressions. In particular, the backend targets have to assume a
+meaning for these special types in some cases. And you saw the annoyance that
+caused in BCL. Changing "void" to "Void" can't be done in one place, it has to
+be done everywhere, and the compiler can't check for us that we remembered to
+do it everywhere.
+
+Perhaps we can compromise. I like not having special cases, but there are some
+primitive types with special meaning we want to assume. Rather than assuming
+it by string name, let's have functions to tell us the type of it.
+
+For example, have boolT and arrowT and things like that? I don't know. I don't
+know when I should worry about it and when I shouldn't.
+
+So I propose the following Type structure for the C abstract syntax tree:
+
+  Type = NameT String
+       | StructT String
+       | PointerT Type
+       | FunctionT Type [Type]
+       
+with abstract data type functions for:
+   boolT, intT, charT, doubleT, floatT, etc...
+
+Okay? Cool.
+
+Now, here's a problem. For C, I need to know the difference between a locally
+bound variable, such as 'x', and a call to a top level function which takes no
+arguments, such as 'allpassed()'. You should be able to figure that out based
+on the expression, but it may be nice to add an annotation to variable
+expressions indicating which is the case?
+
+Tue May  1 08:24:28 EDT 2012
+
+I looked at how VarE is used. There are pretty clearly two distinct uses of
+it. One for variables bound by lambdas, another for declared variables. They
+are constructed differently and dealt with differently. The only place they
+are the same is in the haskell back end, they happen to be printed out the
+same.
+
+So it seems not unreasonable to me to have a distinction between the two. How
+about something rather simple. InstId for lambda bound variables is Lambda, or
+some such special. Best of all worlds?
+
+That is, we have extra info about variables, which is either:
+  - they are bound by lambdas 
+  - they are calls to non-class method functions 
+  - they are calls to a specific instance method of a class.
+
+It may make sense, then, to not call it an instance id. Instead call it
+VarInfo or some such.
+
+data VarInfo = Lambda | Declared | Instance Name [Type]
+
+Or something like that.
+
+Sound good? Sounds good to me. Let's do that first, then getting the C target
+should be easier.
+
+

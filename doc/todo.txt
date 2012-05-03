@@ -8,7 +8,13 @@
 - Support different number of args in function clauses
     example:  foo 1 2 = 3
               foo a = \b -> a + b
+    idea: rewrite it as
+              foo 1 2 = 3
+              foo a x = (\b -> a + b) x
 
 - Add support for let expressions
     example: let foo = 2 in foo + 40
+    idea: is let the same thing as abstraction + application?
+          could we just rewrite this as: (\foo -> foo + 40) 2
+          would we want to?
 

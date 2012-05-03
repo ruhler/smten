@@ -16,3 +16,9 @@ hstest_src = env.Command('hstest_hs.hs', hstest, '$SOURCE $TARGET')
 hstest_exe = env.GHCProgram('hstest_exe', hstest_src)
 env.Default(env.Command('hstest_exe.out', hstest_exe, "$SOURCE > $TARGET"))
 
+## C back end tests.
+ctest = env.GHCProgram('ctest', 'Seri/Target/C/tests.hs')
+ctest_src = env.Command('ctest_c.c', ctest, '$SOURCE $TARGET')
+ctest_exe = env.Program('ctest_exe', ctest_src)
+#env.Default(env.Command('ctest_exe.out', ctest_exe, "$SOURCE > $TARGET"))
+
