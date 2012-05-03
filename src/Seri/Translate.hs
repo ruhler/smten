@@ -9,7 +9,6 @@ import Data.Maybe
 
 import Language.Haskell.TH
 
-import qualified Seri.IR as SIR
 import qualified Seri.Typed as S
 
 import Seri.THUtils

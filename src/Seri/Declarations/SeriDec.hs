@@ -8,11 +8,11 @@ module Seri.Declarations.SeriDec (
 import Language.Haskell.TH
 
 import Seri.THUtils
-import qualified Seri.IR as SIR
+import qualified Seri.IR as S
 import Seri.Typed(enved)
 
 class SeriDec a where
-    dec :: a -> SIR.Dec
+    dec :: a -> S.Dec
 
 -- Produce declarations for:
 --  data SeriDec<Name> = <Name>

@@ -11,7 +11,7 @@ import Data.List(nub)
 import Language.Haskell.TH
 
 import Seri.THUtils
-import qualified Seri.IR as SIR
+import qualified Seri.IR as S
 import qualified Seri.Typed as S
 import Seri.Declarations.Names
 import Seri.Declarations.Utils
@@ -54,10 +54,10 @@ declval' n t e =
       impl_P = FunD (valuename n) [Clause [] (NormalB e) []]
 
       sig_I = SigD (instidname n) (instidtype t)
-      impl_I = FunD (instidname n) [Clause [WildP] (NormalB $ ConE 'SIR.NoInst) []]
+      impl_I = FunD (instidname n) [Clause [WildP] (NormalB $ ConE 'S.NoInst) []]
 
       exp = apply 'S.typed [SigE (VarE (valuename n)) (concrete dt)]
-      body = applyC 'SIR.ValD [string n, seritypeexp t, exp]
+      body = applyC 'S.ValD [string n, seritypeexp t, exp]
       ddec = seridec (prefixed "D_" n) body
 
   in [sig_P, impl_P, sig_I, impl_I] ++ ddec
@@ -89,9 +89,9 @@ declcon' n t =
 -- Given the name of a type constructor and its kind, make a SeriType instance
 -- for it. 
 --
--- To determine the SIR.Type of a type constructor for use in, among other
+-- To determine the S.Type of a type constructor for use in, among other
 -- things, InstD declarations: 
--- _seriS_Foo :: SIR.Type
+-- _seriS_Foo :: S.Type
 -- _seriS_Foo = ...
 --
 -- To form a concrete value of the given type. This is primarally useful for
@@ -110,11 +110,11 @@ decltycon' k nm =
   let classname = kindsuf k "SeriType"
       methname = kindsuf k "seritype"
 
-      stimpl = FunD (mkName methname) [Clause [WildP] (NormalB (AppE (ConE 'SIR.ConT) (string nm))) []]
+      stimpl = FunD (mkName methname) [Clause [WildP] (NormalB (AppE (ConE 'S.ConT) (string nm))) []]
       stinst = InstanceD [] (AppT (ConT (mkName classname)) (ConT nm)) [stimpl]
 
-      body = AppE (ConE 'SIR.ConT) (string nm)
-      sig_S = SigD (tycontypename nm) (ConT ''SIR.Type)
+      body = AppE (ConE 'S.ConT) (string nm)
+      sig_S = SigD (tycontypename nm) (ConT ''S.Type)
       impl_S = ValD (VarP (tycontypename nm)) (NormalB body) []
 
       vars = replicate (fromInteger k) (ConT ''())
@@ -138,11 +138,11 @@ decltyvar' vn =
 
      polytype = (concrete (VarT (mkName vn)))
 
-     body = (AppE (ConE 'SIR.VarT) (string (mkName vn)))
+     body = (AppE (ConE 'S.VarT) (string (mkName vn)))
      stimpl = FunD (mkName methname) [Clause [WildP] (NormalB body ) []]
      stinst = InstanceD [] (AppT (ConT (mkName classname)) polytype) [stimpl]
 
-     sig_S = SigD (tycontypename nm) (ConT ''SIR.Type)
+     sig_S = SigD (tycontypename nm) (ConT ''S.Type)
      impl_S = ValD (VarP (tycontypename nm)) (NormalB body) []
 
      vars = replicate (fromInteger k) (ConT ''())
@@ -202,9 +202,9 @@ decltype' (DataD [] dt vars cs _) =
      -- Given a constructor, return an expression corresponding to the Seri
      -- Con representing that constructor.
      mkconinfo :: Con -> Exp
-     mkconinfo (NormalC n sts) = applyC 'SIR.Con [string n, ListE (map (\(_, t) -> seritypeexp t) sts)]
+     mkconinfo (NormalC n sts) = applyC 'S.Con [string n, ListE (map (\(_, t) -> seritypeexp t) sts)]
 
-     body = applyC 'SIR.DataD [string dt, ListE (map string vnames), ListE (map mkconinfo cs)]
+     body = applyC 'S.DataD [string dt, ListE (map string vnames), ListE (map mkconinfo cs)]
      ddec = seridec (prefixed "D_" dt) body
 
      constrs = concat $ map mkcon cs
@@ -264,11 +264,11 @@ declclass' (ClassD [] nm vars [] sigs) =
       type_ds = concat $ map mkt sigs
 
       mkdsig :: Dec -> Exp
-      mkdsig (SigD n ft) = applyC 'SIR.Sig [string n, seritypeexp (gett ft)]
+      mkdsig (SigD n ft) = applyC 'S.Sig [string n, seritypeexp (gett ft)]
 
       tyvars = ListE $ map (string . tyvarname) vars
       dsigs = ListE $ map mkdsig sigs
-      body = applyC 'SIR.ClassD [string nm, tyvars, dsigs]
+      body = applyC 'S.ClassD [string nm, tyvars, dsigs]
       ddec = seridec (prefixed "C_" nm) body
       
   in [class_D] ++ type_ds ++ ddec
@@ -306,7 +306,7 @@ declinst'' addseridec i@(InstanceD [] tf impls) =
       mkimpl :: Dec -> [Dec]
       mkimpl (ValD (VarP n) (NormalB b) []) =
         let p = ValD (VarP (valuename n)) (NormalB b) []
-            i = FunD (instidname n) [Clause [WildP] (NormalB (applyC 'SIR.Inst [iname, itys])) []]
+            i = FunD (instidname n) [Clause [WildP] (NormalB (applyC 'S.Inst [iname, itys])) []]
         in [p, i]
 
       idize :: Type -> String
@@ -321,7 +321,7 @@ declinst'' addseridec i@(InstanceD [] tf impls) =
         apply 'S.method [string n, apply (methodtypename n) concretevals, b]
 
       methods = ListE $ map mkmeth impls
-      body = applyC 'SIR.InstD [iname, itys, methods]
+      body = applyC 'S.InstD [iname, itys, methods]
       ddec = seridec (mkName $ "I_" ++ (idize tf)) body
    in [inst_D] ++ if addseridec then ddec else []
 declinst'' _ i = error $ "TODO: declinst " ++ show i
@@ -331,7 +331,7 @@ declinst' = declinst'' True
 
 -- Given the declaration of a SeriClass and a list of type variable
 -- parameters, generate a dummy instance for that class.
-declvartinst' :: Dec -> [SIR.Name] -> [Dec]
+declvartinst' :: Dec -> [S.Name] -> [Dec]
 declvartinst' (ClassD _ n _ _ sigs) vs =
   let mkimpl :: String -> Dec
       mkimpl n = ValD (VarP (mkName n)) (NormalB (VarE 'undefined)) []
