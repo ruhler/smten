@@ -39,14 +39,14 @@ valuetype ty =
         t -> texpify t 
 
 -- Given the raw haskell type corresponding to an expression, return the type
--- of the haskell function representing the InstId of that expression.
+-- of the haskell function representing the VarInfo of that expression.
 --
 -- For example
 --  input: (Eq a) => a -> Integer
---  output: Typed Exp (a -> Integer) -> InstId
+--  output: Typed Exp (a -> Integer) -> VarInfo
 instidtype :: Type -> Type 
 instidtype (ForallT vns _ t) = ForallT vns [] (instidtype t)
-instidtype t = arrowts [texpify t, ConT ''S.InstId]
+instidtype t = arrowts [texpify t, ConT ''S.VarInfo]
 
 -- Given a type, return an expression corresonding to the seri type of
 -- that type.

@@ -110,9 +110,9 @@ lamM :: (SeriType a) => Name -> (Typed Pat a -> Typed Exp a -> Typed Match b) ->
 lamM n f = f (Typed $ VarP n) (varE n)
 
 varE :: (SeriType a) => Name -> Typed Exp a
-varE nm = withtype $ \t -> Typed $ VarE t nm NoInst
+varE nm = withtype $ \t -> Typed $ VarE t nm Bound
 
-dvarE :: (SeriType a) => Typed Exp a -> (Typed Exp a -> InstId) -> Name -> Typed Exp a
+dvarE :: (SeriType a) => Typed Exp a -> (Typed Exp a -> VarInfo) -> Name -> Typed Exp a
 dvarE e fid nm = withtype $ \t -> Typed $ VarE t nm (fid e)
 
 conE' :: (SeriType a) => Name -> Typed Exp a

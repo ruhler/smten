@@ -161,9 +161,9 @@ instance TReduces Type where
             Just t' -> t'
             Nothing -> t
 
-instance TReduces InstId where
-    treduces _ NoInst = NoInst
-    treduces vs (Inst n ts) = Inst n (map (treduces vs) ts)
+instance TReduces VarInfo where
+    treduces vs (Instance n ts) = Instance n (map (treduces vs) ts)
+    treduces _ vi = vi
 
 instance TReduces Match where
     treduces vs (Match p e) = Match p (treduces vs e)

@@ -38,7 +38,7 @@ import Seri.Declarations.Polymorphic
 --  _seriP_foo = lamE "x" (\x -> appE (varE "incr") (integerE 41))
 --
 -- To specify that foo is not a method of a class.
---  _seriI_foo :: Typed Exp (a -> Integer) -> InstId
+--  _seriI_foo :: Typed Exp (a -> Integer) -> VarInfo
 --  _seriI_foo _ = noinst
 --
 --  data SeriDec_foo = SeriDec_foo
@@ -54,7 +54,7 @@ declval' n t e =
       impl_P = FunD (valuename n) [Clause [] (NormalB e) []]
 
       sig_I = SigD (instidname n) (instidtype t)
-      impl_I = FunD (instidname n) [Clause [WildP] (NormalB $ ConE 'S.NoInst) []]
+      impl_I = FunD (instidname n) [Clause [WildP] (NormalB $ ConE 'S.Declared) []]
 
       exp = apply 'S.typed [SigE (VarE (valuename n)) (concrete dt)]
       body = applyC 'S.ValD [string n, seritypeexp t, exp]
@@ -223,7 +223,7 @@ decltype' (DataD [] dt vars cs _) =
 -- We generate:
 --   class (SeriType a) => SeriClass_Foo a where
 --     _seriP_foo :: Typed Exp (a -> Integer)
---     _seriI_foo :: Typed Exp (a -> Integer) -> InstId
+--     _seriI_foo :: Typed Exp (a -> Integer) -> VarInfo
 --   
 -- To figure out the specific type of a method when declaring an instance of
 -- this class:
@@ -306,7 +306,7 @@ declinst'' addseridec i@(InstanceD [] tf impls) =
       mkimpl :: Dec -> [Dec]
       mkimpl (ValD (VarP n) (NormalB b) []) =
         let p = ValD (VarP (valuename n)) (NormalB b) []
-            i = FunD (instidname n) [Clause [WildP] (NormalB (applyC 'S.Inst [iname, itys])) []]
+            i = FunD (instidname n) [Clause [WildP] (NormalB (applyC 'S.Instance [iname, itys])) []]
         in [p, i]
 
       idize :: Type -> String

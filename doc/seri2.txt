@@ -7928,4 +7928,8 @@ Or something like that.
 Sound good? Sounds good to me. Let's do that first, then getting the C target
 should be easier.
 
+Thu May  3 17:48:27 EDT 2012
+
+Declared and Instance seem to overlap. Is that okay?
+Sure. Why not?
 

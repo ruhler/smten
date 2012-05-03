@@ -1,7 +1,7 @@
 
 module Seri.IR (
     Name, Type(..), Pat(..), Match(..), Exp(..), Dec(..), Con(..),
-    Sig(..), Method(..), InstId(..), Pred(..),
+    Sig(..), Method(..), VarInfo(..), Pred(..),
     ) where
 
 import Data.List(nub)
@@ -19,7 +19,7 @@ data Type = ConT Name
 data Pred = Pred Name [Type]
       deriving(Eq, Show)
 
-data InstId = NoInst | Inst Name [Type]
+data VarInfo = Bound | Declared | Instance Name [Type]
     deriving (Eq, Show)
 
 data Match = Match Pat Exp
@@ -32,7 +32,7 @@ data Exp = IntegerE Integer
          | AppE Type Exp Exp
          | LamE Type Name Exp
          | ConE Type Name
-         | VarE Type Name InstId
+         | VarE Type Name VarInfo
      deriving (Eq, Show)
 
 data Pat = ConP Name
