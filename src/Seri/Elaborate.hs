@@ -3,6 +3,8 @@ module Seri.Elaborate (
     Rule(..), rules, elaborate, coreR,
     ) where
 
+import Data.Generics
+
 import Seri.IR
 import Seri.Env
 import Seri.Typed(seritype)
@@ -140,31 +142,13 @@ tmatch _ _ = []
 -- treduces vs x
 --  Replace each occurence of a variable type according to the given mapping
 --  in x.
-class TReduces a where
-    treduces :: [(Name, Type)] -> a -> a
-
-instance TReduces Exp where
-    treduces _ e@(IntegerE {}) = e
-    treduces vs (PrimE t n) = PrimE (treduces vs t) n
-    treduces vs (IfE t p a b) = IfE (treduces vs t) (treduces vs p) (treduces vs a) (treduces vs b)
-    treduces vs (CaseE t e ms) = CaseE (treduces vs t) (treduces vs e) (map (treduces vs) ms)
-    treduces vs (AppE t a b) = AppE (treduces vs t) (treduces vs a) (treduces vs b)
-    treduces vs (LamE t ln b) = LamE (treduces vs t) ln (treduces vs b)
-    treduces vs (ConE t n) = ConE (treduces vs t) n
-    treduces vs (VarE t vn id) = VarE (treduces vs t) vn (treduces vs id)
-
-instance TReduces Type where
-    treduces _ t@(ConT {}) = t
-    treduces vs (AppT a b) = AppT (treduces vs a) (treduces vs b)   
-    treduces vs t@(VarT n) =
-        case lookup n vs of
+treduces :: (Data a) => [(Name, Type)] -> a -> a
+treduces m =
+  let base :: Type -> Type
+      base t@(VarT n) = 
+        case lookup n m of
             Just t' -> t'
             Nothing -> t
-
-instance TReduces VarInfo where
-    treduces vs (Instance n ts) = Instance n (map (treduces vs) ts)
-    treduces _ vi = vi
-
-instance TReduces Match where
-    treduces vs (Match p e) = Match p (treduces vs e)
+      base t = t
+  in everywhere $ mkT base
 

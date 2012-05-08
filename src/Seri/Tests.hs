@@ -66,6 +66,7 @@ tests = "Seri" ~: [
     "green apple" ~: IntegerE 11 `eqexp` [s| numseeds (Apple True 11) |],
     "wonderful" ~: IntegerE 11 `eqexp` [s| thething (Wonderful 11 32) |],
     "unused" ~: IntegerE 42 `eqexp` [s| unused True |],
-    "multifoofun" ~: IntegerE 19 `eqexp` [s| multifoofun True 12 |]
+    "multifoofun" ~: IntegerE 19 `eqexp` [s| multifoofun True 12 |],
+    "shadow" ~: IntegerE 8 `eqexp` [s| shadow 3 |]
     ]
 

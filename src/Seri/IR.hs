@@ -1,10 +1,13 @@
 
+{-# LANGUAGE DeriveDataTypeable #-}
+
 module Seri.IR (
     Name, Type(..), Pat(..), Match(..), Exp(..), Dec(..), Con(..),
     Sig(..), Method(..), VarInfo(..), Pred(..),
     ) where
 
 import Data.List(nub)
+import Data.Generics
 
 import Seri.Ppr
 
@@ -14,16 +17,16 @@ data Type = ConT Name
           | AppT Type Type
           | VarT Name
           | ForallT [Name] [Pred] Type     -- tyvars ctx type
-      deriving(Eq, Show)
+      deriving(Eq, Show, Data, Typeable)
 
 data Pred = Pred Name [Type]
-      deriving(Eq, Show)
+      deriving(Eq, Show, Data, Typeable)
 
 data VarInfo = Bound | Declared | Instance Name [Type]
-    deriving (Eq, Show)
+    deriving (Eq, Show, Data, Typeable)
 
 data Match = Match Pat Exp
-    deriving (Eq, Show)
+    deriving (Eq, Show, Data, Typeable)
 
 data Exp = IntegerE Integer
          | PrimE Type Name
@@ -33,29 +36,29 @@ data Exp = IntegerE Integer
          | LamE Type Name Exp
          | ConE Type Name
          | VarE Type Name VarInfo
-     deriving (Eq, Show)
+     deriving (Eq, Show, Data, Typeable)
 
 data Pat = ConP Name
          | VarP Name
          | IntegerP Integer
          | AppP Pat Pat
          | WildP
-     deriving (Eq, Show)
+     deriving (Eq, Show, Data, Typeable)
 
 data Con = Con Name [Type]
-    deriving(Eq, Show)
+    deriving(Eq, Show, Data, Typeable)
 
 data Sig = Sig Name Type
-    deriving(Eq, Show)
+    deriving(Eq, Show, Data, Typeable)
 
 data Method = Method Name Exp
-    deriving(Eq, Show)
+    deriving(Eq, Show, Data, Typeable)
 
 data Dec = ValD Name Type Exp
          | DataD Name [Name] [Con]    -- name tyvars constrs
          | ClassD Name [Name] [Sig]   -- name tyvars sigs
          | InstD Name [Type] [Method]
-     deriving (Eq, Show)
+     deriving (Eq, Show, Data, Typeable)
 
 instance Ppr Type where
     ppr (ConT nm) = text nm

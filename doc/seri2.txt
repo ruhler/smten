@@ -7933,3 +7933,146 @@ Thu May  3 17:48:27 EDT 2012
 Declared and Instance seem to overlap. Is that okay?
 Sure. Why not?
 
+Thu May  3 17:57:08 EDT 2012
+
+Okay, I made the change, nice and easy. Now maybe that makes c generation
+easier, so let me continue with that.
+
+Thu May  3 18:04:30 EDT 2012
+
+Here's a problem. An annoying problem.
+
+I'd like to build up support for C code gradually. I don't necessarily want to
+support every construct at first. The problem is, if I include the standard
+library, it means I need to support everything in the standard library!
+
+That's... annoying. To say the least.
+
+Well, I have an idea for hacking around that issue.
+
+Could we say it would be useful to minimize an environment?
+
+For example, 
+     minimize :: Env Exp -> Env Exp
+
+Takes an expression with an environment. Returns the same expression with a
+new environment which is just the subset of the old environment which we need
+for this expression.
+
+That could be useful somewhere, right? Maybe improve performance by not
+requiring everything you need, shrink code, and, uh... in particular, make it
+easier to build up the C code in pieces. What do you think about that?
+
+It may also lead to a number of useful compiler utilities.
+
+Basically I just need to do a recursive tree traversal.
+
+Find all Names and all Types, and all instances and all classes in a given
+expression, preserve those declarations. Then repeat it for all the preserved
+declarations, and so on until you reach them all.
+
+Hmm... sounds like a bit of work to me.
+
+Other hacks:
+ - C code gen could just silently drop things it can't handle?
+ - Introduce module structure, and tell the compiler the prelude is given?
+
+I dunno.
+
+Sat May  5 10:32:14 EDT 2012
+
+I was thinking about code organization. In particular, where we should
+describe builtin things for targets.
+
+Currently we are putting them for the haskell target with the seri library
+code. But I think we would like to associate it with the haskell target.
+
+So, Seri.Lib/... has the seri library.
+    Seri.Target.Haskell.Lib/... has the haskell library.
+    
+I propose
+    Seri.Target.Haksell.Builtin/... has the mapping from seri lib to haskell
+    lib.
+
+And we do similar with the C target.
+
+So, if you want to add to the library, you add to Seri.Lib, and for each
+target, add to Seri.Target.*.Builtin and Seri.Target.*.Lib.
+
+If you are just a user of seri and want to do things on your own, you can have
+your own seri code, target library, and mapping from one to the other, for
+whichever targets you are interested in.
+
+Let me try this.
+
+Sat May  5 10:37:29 EDT 2012
+
+So, here's a question. How should we treat elaboration? Is it not like another
+target? Should we always associate that with the seri library code?
+
+Sun May  6 13:46:23 EDT 2012
+
+I think, for C, the best I can do is implement this minimization thing. Then I
+can start to make progress. It's just a bit of work to do.
+
+How to implement minimization?
+
+Let me decompose it into the following:
+
+Given an expression, return the list of top level declared names it refers to.
+
+This I ought to be able to do easily with generic programming.
+Is there a relatively easy way to do it without generic programming?
+
+Perhaps I could make a generic query traversal?
+
+query :: (Exp -> m ()) -> Exp -> m ()
+
+Do I already to that sort of thing anywhere?
+
+reduces sort of does that, but it does a replacement too.
+
+So, in general, I could do a replacing query thing.
+Or... I could just use generics. Then specialize later on as performance
+requirements dictate.
+
+Hey... a traversal could create a new thing. Just build up an Exp in the
+state, right? Not so clear.
+
+I would like to have a generic replacement.
+
+To replace types.
+
+Let me use generics. First thing to do: replace treduces with generics.
+
+It would be something like:
+
+treduces [(Name, Type)] -> a -> a
+treduces nmap = 
+ let f :: Type -> Type
+     f (VarT n) = case
+        ...
+     f t = t
+ in everywhere $ mkT f
+
+Sun May  6 14:04:54 EDT 2012
+
+Cool. Done. That's a lot less code.
+
+I would do the same thing to reduces, but it has this condition for LamE, so I
+would want an everywhereBut kind of thing. I think that would make a good next
+step. Make reduces work. I should have a test case for shadowed variables to
+verify LamE is reduced right (and have it fail if I do everywhere instead of
+everywhereBut).
+
+Tue May  8 17:16:25 EDT 2012
+
+Here's the plan:
+
+1. Implement reduces using generics. Verify it fails test case.
+2. Fix reduces implementation using everywhereBut kind of thing.
+Verify it passes test case.
+3. Move all generic code into Seri.Generic.
+Try using standalone deriving too. This will make Nirav happier. It isolates
+the generic stuff from everyone else, which I like.
+

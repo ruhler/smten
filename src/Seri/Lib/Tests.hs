@@ -142,3 +142,9 @@ declvartinst "MultiFoo" ["a", "b"]
                         + 3 * (multifoo x y) + (multifoo True False)
 |]
 
+[s|
+    -- shadow x = 2*(x+1)
+    shadow :: Integer -> Integer
+    shadow = \x -> (\x -> 2*x) (x+1)
+|]
+

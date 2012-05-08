@@ -18,6 +18,7 @@ import Seri
 c :: Builtin -> (Doc -> Doc) -> Env Exp -> Doc
 c builtin main e =
   let cExp :: Exp -> C.Exp
+      cExp (VarE _ nm Declared) = C.AppE nm []
       cExp x = error $ "TODO: cExp " ++ show x
 
       cDec :: Dec -> C.Dec
