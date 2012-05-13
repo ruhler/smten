@@ -8183,3 +8183,8 @@ Then... repeatedly call declarations until we reach a fixed point.
 
 That is...  declarations (union in out) = out
 
+Sun May 13 11:48:03 EDT 2012
+
+Hey! Wow. It looks like it might be working. That's pretty nifty.
+Slightly unbelievable...
+

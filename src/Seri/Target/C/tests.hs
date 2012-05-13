@@ -16,7 +16,7 @@ import Seri.Target.C.C
 declcommit
 
 emain :: Env Exp
-emain = typed [s| allpassed |]
+emain = minimize $ typed [s| allpassed |]
 
 cMain :: Doc -> Doc
 cMain me = 

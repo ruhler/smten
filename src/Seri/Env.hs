@@ -2,11 +2,12 @@
 {-# LANGUAGE FlexibleInstances #-}
 
 module Seri.Env (
-    Env(), val, mkenv, decls, lookupvar, withenv,
+    Env(), val, mkenv, decls, lookupvar, withenv, minimize,
     ) where
 
-import Data.Maybe(listToMaybe)
+import Data.Generics
 import Data.List(nub)
+import Data.Maybe
 
 import Seri.IR
 import Seri.Ppr
@@ -30,11 +31,11 @@ lookupValD (Env decls _) n =
       theValD _ = False
   in listToMaybe $ filter theValD decls
 
--- Look up a DataD with given Name in the given Environment.
-lookupDataD :: Env a -> Name -> Maybe Dec
-lookupDataD (Env decls _) n =
+-- Look up a DataD with a given constructor Name in the given Environment.
+lookupDataDbyCon :: Env a -> Name -> Maybe Dec
+lookupDataDbyCon (Env decls _) n =
   let theDataD :: Dec -> Bool
-      theDataD (DataD nm _ _) = n == nm
+      theDataD (DataD _ _ cs) = any (\(Con nm _) -> n == nm) cs
       theDataD _ = False
   in listToMaybe $ filter theDataD decls
 
@@ -72,12 +73,41 @@ lookupvar e@(Env _ (VarE _ x (Instance n ts))) =
 withenv :: Env a -> b -> Env b
 withenv (Env m _) x = Env m x
 
+union :: (Eq a) => [a] -> [a] -> [a]
+union a b = nub $ a ++ b
 
----- Return the set of declarations a given expression depends on.
---declarations :: Env Exp -> [Dec]
---declarations (Env m e) =
---  let query :: Exp -> [Dec]
---      query e = []
---
---  in (everything (\a b -> nub $ a ++ b) $ mkQ [] query) e
+-- declarations env x
+-- Return the set of declarations in the given environment a thing depends on.
+declarations :: (Data a) => [Dec] -> a -> [Dec]
+declarations m =
+  let theenv = Env m ()
+      qexp :: Exp -> [Dec]
+      qexp (VarE _ n Declared) = maybeToList $ lookupValD theenv n
+      qexp (VarE _ n (Instance ni ts)) = catMaybes [lookupClassD theenv ni, lookupInstD theenv ni ts]
+      qexp e = []
+
+      qtype :: Type -> [Dec]
+      qtype (ConT n) = maybeToList $ lookupDataDbyCon theenv n
+      qtype t = []
+
+      qpred :: Pred -> [Dec]
+      qpred (Pred n ts) = catMaybes [lookupClassD theenv n, lookupInstD theenv n ts]
+
+      query :: (Typeable a) => a -> [Dec]
+      query = extQ (extQ (mkQ [] qexp) qtype) qpred
+  in everything union query
+
+-- minimize x
+-- Return x under the smallest environment needed for x.
+minimize :: (Data a) => Env a -> Env a
+minimize (Env m x) =
+  let alldecls :: [Dec] -> [Dec]
+      alldecls d =
+        let ds = declarations m d
+            dds = d `union` ds
+        in if (length d == length dds)
+            then d
+            else alldecls dds
+  in Env (alldecls (declarations m x)) x
+
 
