@@ -107,12 +107,12 @@ iswhnf x
    in iscon x
 
 -- reduce n v exp
--- Perform beta reduction in exp, replacing occurances of variable n with v.
+-- Perform beta reduction in exp, replacing occurrences of variable n with v.
 reduce :: Name -> Exp -> Exp -> Exp
 reduce n v e = reduces [(n, v)] e
 
 -- reduces vs exp
--- Perform multiple simultaneous beta reduction in exp, replacing occurances
+-- Perform multiple simultaneous beta reduction in exp, replacing occurrences
 -- of variable n with v if (n, v) is in vs.
 reduces :: [(Name, Exp)] -> Exp -> Exp
 reduces _ e@(IntegerE _) = e

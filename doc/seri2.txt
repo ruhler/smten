@@ -8076,3 +8076,110 @@ Verify it passes test case.
 Try using standalone deriving too. This will make Nirav happier. It isolates
 the generic stuff from everyone else, which I like.
 
+Tue May  8 17:20:23 EDT 2012
+
+1. Check.
+
+Tue May  8 17:25:48 EDT 2012
+
+Hmm... I'm not sure everywhereBut gets me what I want.
+
+I have to change this m thing. I have to remove elements from it.
+
+Perhaps we could do a top down, with a State, where we remove things.
+This sounds complicated. But perhaps it's worth a try?
+
+Another way to do it would be one element at a time. Then a stop condition
+makes sense: stop if the names match. But it seems... much less efficient for
+large number of substitutions?
+
+But may substitutions are small, so that doesn't matter?
+
+No. I'm not sure that's the same. Because we could be substituting higher
+variables in or some such.
+
+The problem with using a State monad is we don't have top down monadic
+everywhere.
+
+Sadness. I don't see an easy solution.
+
+Well, that was rather anticlimactic.
+
+Back to the initial motivation: C target.
+
+Specifically, we are failing on the definition of &&.
+
+The proposed workaround is: implement a way to minimize environments. This
+could be very useful later on as well.
+
+The other thing I could do, (but I will run into problems later), is implement
+&& correctly. Then we get into questions of ... how? Because it has all of
+pattern matching and lambdas and such. All the stuff I was hoping to put off
+into separate concerns.
+
+So let's talk about minimization. How do we implement it?
+
+The algorithm is clear. Given an expression, enumerate all the declarations it
+depends on. Then do that recursively for all those declarations. Eventually
+you end up with a set of declarations you need, throw away the rest.
+
+You need coloring of some sort.
+
+Let's start with an empty set, which is the set of declarations needed to be
+explored. We can start with initial declarations from the expression. Then I
+want a for-loop like thing. For every declaration needed to be explored,
+explore it, get a new set, filter out those items that haven't been explored
+yet.
+
+First step: given an expression, return the set of immediate declarations it
+depends on. But how do we identify declarations?
+
+ValD - by name.
+DataD - by name.
+ClassD - by name.
+InstD - by name and [Type].
+
+That's annoying. Everything a name except instance declarations. maybe have a
+name, and ignore the specific type, so we always include all instances. To
+start that should certainly be sufficient... Just to get things going.
+
+Then I want a function from Exp -> Name.
+
+Fine. I'll just return a list of declarations. They can be compared for
+equality easy enough. Don't worry about performance until I have to.
+
+Sun May 13 10:35:21 EDT 2012
+
+Okay, here's how this will work.
+I need helper functions.
+
+lookupValD :: [Dec] -> Name -> Maybe Dec
+lookupDataD :: [Dec] -> Name -> Maybe Dec
+lookupClassD :: [Dec] -> Name -> Maybe Dec
+lookupInstD :: [Dec] -> Name -> [Type] -> Maybe Dec
+
+I can reuse these for lookupvar, for example (that would be a good first
+step).
+
+To query an expression:
+ VarE - look up ValD or (InstD, ClassD) as appropriate
+
+To query a type:
+ ConT - look up DataD as appropriate
+
+To query a predicate:
+ Pred - look up (InstD, ClassD) as appropriate
+
+This should be easy with generics.
+
+I can extend declarations to take any kind of Data a:
+
+declarations :: (Data a) => [Dec] -> a -> [Dec]
+
+Now the top level minimization is simply this:
+
+Use declarations to get a list of declarations from the expression.
+Then... repeatedly call declarations until we reach a fixed point.
+
+That is...  declarations (union in out) = out
+
