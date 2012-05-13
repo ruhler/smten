@@ -7,6 +7,8 @@ import System.Environment
 import Seri
 import Seri.Lib.Prelude
 import Seri.Target.C.C
+import Seri.Target.C.Builtin
+import Seri.Target.C.Builtins.Prelude
 
 [s|
     allpassed :: Bool
@@ -29,8 +31,8 @@ cMain me =
     text "int main(void)" $+$ (braces $
         text "return " <+> me <+> text ";")
 
-builtin = builtins [Builtin {
-    mapprim = \_ -> Nothing,
+builtin = builtins [preludeB, Builtin {
+    mapexp = \_ -> Nothing,
     maptype = \_ -> Nothing,
     includes = empty
 }]

@@ -4,8 +4,11 @@ module Seri.Target.C.C (
     c
     ) where
 
-import qualified Seri.Target.C.AST as C
+import Data.Maybe(fromJust)
+
 import Seri
+import qualified Seri.Target.C.AST as C
+import Seri.Target.C.Builtin
 
 -- c builtin main exp
 --  Compile the given expression and its environment to c.
@@ -32,6 +35,7 @@ c builtin main e =
       flattentapp t = (t, [])
 
       cExp :: Exp -> C.Exp
+      cExp e | mapexp builtin e /= Nothing = fromJust (mapexp builtin e)
       cExp (IntegerE i) = C.IntE i
       cExp (IfE _ p a b) = C.CondE (cExp p) (cExp a) (cExp b)
       cExp (ConE _ nm) = C.AppE nm []
@@ -39,6 +43,7 @@ c builtin main e =
       cExp x = error $ "TODO: cExp " ++ show x
 
       cType :: Type -> C.Type
+      cType t | maptype builtin t /= Nothing = fromJust (maptype builtin t)
       cType (ConT nm) = C.StructT (tcname nm)
       cType x = error $ "TODO: cType " ++ show x
 

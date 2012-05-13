@@ -1,6 +1,7 @@
 
 module Seri.Target.C.AST (
     Name, Type(..), Exp(..), Stmt(..), Dec(..),
+    boolT, intT,
     ) where
 
 import Seri.Ppr
@@ -9,19 +10,29 @@ type Name = String
 
 data Type = BasicT String
           | StructT String
+    deriving(Eq, Show)
 
 data Exp = IntE Integer
          | AppE Name [Exp]
          | CondE Exp Exp Exp
+    deriving(Eq, Show)
 
 data Stmt = ReturnS Exp
+    deriving(Eq, Show)
 
 data Dec = FunD Type Name [(Type, Name)] Stmt
+    deriving(Eq, Show)
 
 commalist :: [Doc] -> Doc
 commalist [] = empty
 commalist [x] = x
 commalist (x:xs) = x <> comma <+> (commalist xs)
+
+boolT :: Type
+boolT = intT
+
+intT :: Type
+intT = BasicT "int"
 
 instance Ppr Type where
     ppr (BasicT str) = text str 
