@@ -31,11 +31,11 @@ lookupValD (Env decls _) n =
       theValD _ = False
   in listToMaybe $ filter theValD decls
 
--- Look up a DataD with a given constructor Name in the given Environment.
-lookupDataDbyCon :: Env a -> Name -> Maybe Dec
-lookupDataDbyCon (Env decls _) n =
+-- Look up a DataD with given Name in the given Environment.
+lookupDataD :: Env a -> Name -> Maybe Dec
+lookupDataD (Env decls _) n =
   let theDataD :: Dec -> Bool
-      theDataD (DataD _ _ cs) = any (\(Con nm _) -> n == nm) cs
+      theDataD (DataD nm _ _) = n == nm
       theDataD _ = False
   in listToMaybe $ filter theDataD decls
 
@@ -87,7 +87,7 @@ declarations m =
       qexp e = []
 
       qtype :: Type -> [Dec]
-      qtype (ConT n) = maybeToList $ lookupDataDbyCon theenv n
+      qtype (ConT n) = maybeToList $ lookupDataD theenv n
       qtype t = []
 
       qpred :: Pred -> [Dec]

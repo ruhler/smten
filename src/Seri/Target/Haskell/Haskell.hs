@@ -4,10 +4,14 @@ module Seri.Target.Haskell.Haskell (
     ) where
 
 import Data.Char(isAlphaNum)
+import Data.Maybe(fromJust)
+
 import qualified Language.Haskell.TH as H
 import Seri
 import Seri.Lib.Prelude
 import Seri.THUtils
+
+import Seri.Target.Haskell.Builtin
 
 -- haskell builtin main exp
 --  Compile the given expression and its environment to haskell.
@@ -23,11 +27,9 @@ haskell builtin main e =
       hsName = H.mkName
     
       hsExp :: Seri.Exp -> H.Exp
+      hsExp e | mapexp builtin e /= Nothing = fromJust (mapexp builtin e)
       hsExp (IntegerE i) = H.SigE (H.LitE (H.IntegerL i)) (hsType (seritype (undefined :: Integer)))
-      hsExp (PrimE _ n) =   
-         case mapprim builtin n of  
-             Just x -> H.VarE (hsName x)
-             Nothing -> error $ "primitive " ++ n ++ " not defined for haskell target"
+      hsExp (PrimE _ n) = error $ "primitive " ++ n ++ " not defined for haskell target"
       hsExp (IfE _ p a b) = H.CondE (hsExp p) (hsExp a) (hsExp b)
       hsExp (CaseE _ e ms) = H.CaseE (hsExp e) (map hsMatch ms)
       hsExp (AppE _ f x) = H.AppE (hsExp f) (hsExp x)
@@ -84,11 +86,9 @@ haskell builtin main e =
       hsCon (Con n tys) = H.NormalC (hsName n) (map (\t -> (H.NotStrict, hsType t)) tys)
     
       hsType :: Type -> H.Type
+      hsType t | maptype builtin t /= Nothing = fromJust (maptype builtin t)
       hsType (ConT "->") = H.ArrowT
-      hsType (ConT n) =
-         case maptype builtin n of
-            Just n' -> H.ConT (hsName n')
-            Nothing -> H.ConT (hsName n)
+      hsType (ConT n) = H.ConT (hsName n)
       hsType (AppT a b) = H.AppT (hsType a) (hsType b)
       hsType (VarT n) = H.VarT (hsName n)
       hsType (ForallT vars pred t) =

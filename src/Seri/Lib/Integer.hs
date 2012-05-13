@@ -32,21 +32,3 @@ integerR = Rule $ \gr e ->
         -> Just $ if a == b then trueE else falseE
       _ -> Nothing
 
-integerB :: Builtin
-integerB =
-  let mp "+" = Just "Integer.+"
-      mp "-" = Just "Integer.-"
-      mp "*" = Just "Integer.*"
-      mp "<" = Just "Integer.<"
-      mp ">" = Just "Integer.>"
-      mp "==" = Just "Integer.=="
-      mp _ = Nothing
-
-      mt "Integer" = Just "Integer.Integer"
-      mt _ = Nothing
-  in Builtin {
-     mapprim = mp,
-     maptype = mt,
-     includes = text "import qualified Seri.Target.Haskell.Lib.Integer as Integer"
-  }
-

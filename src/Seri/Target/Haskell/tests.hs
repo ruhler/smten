@@ -8,6 +8,8 @@ import Seri
 import Seri.Lib.Prelude
 import Seri.Lib.Tests
 import Seri.Target.Haskell.Haskell
+import Seri.Target.Haskell.Builtin
+import Seri.Target.Haskell.Builtins.Prelude
 
 [s|
     allpassed :: Bool
@@ -30,7 +32,7 @@ hsMain me =
         text " then System.Exit.exitSuccess else System.Exit.exitFailure"
 
 builtin = builtins [preludeB, Builtin {
-    mapprim = \_ -> Nothing,
+    mapexp = \_ -> Nothing,
     maptype = \_ -> Nothing,
     includes = text "import qualified System.Exit"
 }]

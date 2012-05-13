@@ -1,7 +1,6 @@
 
 module Seri.Target.C.AST (
     Name, Type(..), Exp(..), Stmt(..), Dec(..),
-    boolT, intT,
     ) where
 
 import Seri.Ppr
@@ -9,28 +8,15 @@ import Seri.Ppr
 type Name = String
 
 data Type = BasicT String
+          | StructT String
 
 data Exp = IntE Integer
          | AppE Name [Exp]
+         | CondE Exp Exp Exp
 
 data Stmt = ReturnS Exp
 
 data Dec = FunD Type Name [(Type, Name)] Stmt
-
-boolT :: Type
-boolT = intT
-
-trueE :: Exp
-trueE = intE 1
-
-falseE :: Exp
-falseE = intE 0
-
-intE :: Integer -> Exp
-intE = IntE
-
-intT :: Type
-intT = BasicT "int"
 
 commalist :: [Doc] -> Doc
 commalist [] = empty
@@ -39,10 +25,12 @@ commalist (x:xs) = x <> comma <+> (commalist xs)
 
 instance Ppr Type where
     ppr (BasicT str) = text str 
+    ppr (StructT str) = text "struct" <+> text str 
 
 instance Ppr Exp where
     ppr (IntE i) = integer i
     ppr (AppE nm args) = text nm <> parens (commalist $ map ppr args)
+    ppr (CondE p a b) = parens (ppr p <+> text "?" <+> ppr a <+> text ":" <+> ppr b)
 
 instance Ppr Stmt where
     ppr (ReturnS e) = text "return" <+> ppr e <+> semi

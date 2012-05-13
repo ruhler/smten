@@ -11,17 +11,23 @@ import Seri.Target.C.C
 [s|
     allpassed :: Bool
     allpassed = True
+
+    returncode :: Integer
+    returncode = 
+        if allpassed
+            then 0
+            else 1
 |]
 
 declcommit
 
 emain :: Env Exp
-emain = minimize $ typed [s| allpassed |]
+emain = minimize $ typed [s| returncode |]
 
 cMain :: Doc -> Doc
 cMain me = 
     text "int main(void)" $+$ (braces $
-        text "return " <+> me <+> text " ? 0 : 1;")
+        text "return " <+> me <+> text ";")
 
 builtin = builtins [Builtin {
     mapprim = \_ -> Nothing,

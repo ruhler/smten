@@ -17,11 +17,35 @@ import Seri
 --  exp - The expression to compile to c.
 c :: Builtin -> (Doc -> Doc) -> Env Exp -> Doc
 c builtin main e =
-  let cExp :: Exp -> C.Exp
+  let
+      -- Given a seri type constructor, return the name of the c structure
+      -- for that type.
+      tcname :: Name -> C.Name
+      tcname nm = "tc_" ++ nm
+
+      -- Given a type of the form a -> b -> ... -> r
+      --   Return (r, [a, b, ...])
+      flattentapp :: Type -> (Type, [Type])
+      flattentapp (AppT a b)
+        = let (r, targs) = flattentapp b
+          in (r, a:targs)
+      flattentapp t = (t, [])
+
+      cExp :: Exp -> C.Exp
+      cExp (IntegerE i) = C.IntE i
+      cExp (IfE _ p a b) = C.CondE (cExp p) (cExp a) (cExp b)
+      cExp (ConE _ nm) = C.AppE nm []
       cExp (VarE _ nm Declared) = C.AppE nm []
       cExp x = error $ "TODO: cExp " ++ show x
 
+      cType :: Type -> C.Type
+      cType (ConT nm) = C.StructT (tcname nm)
+      cType x = error $ "TODO: cType " ++ show x
+
       cDec :: Dec -> C.Dec
+      cDec (ValD nm t v)
+        = let (r, []) = flattentapp t
+          in C.FunD (cType r) nm [] (C.ReturnS (cExp v))
       cDec x = error $ "TODO: cDec " ++ show x
 
       ds = map cDec (decls e)

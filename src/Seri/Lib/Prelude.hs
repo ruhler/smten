@@ -1,6 +1,6 @@
 
 module Seri.Lib.Prelude (
-    preludeB, preludeR,
+    preludeR,
     module Seri.Lib.Bool,
     module Seri.Lib.Char,
     module Seri.Lib.Integer,
@@ -20,9 +20,6 @@ import Seri.Lib.Maybe
 import Seri.Lib.Monad
 import Seri.Lib.Tuple
 import Seri.Lib.Unit
-
-preludeB :: Builtin
-preludeB = builtins [boolB, charB, integerB]
 
 preludeR :: Rule
 preludeR = rules [coreR, integerR]

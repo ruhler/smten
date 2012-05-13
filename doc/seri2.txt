@@ -8188,3 +8188,154 @@ Sun May 13 11:48:03 EDT 2012
 Hey! Wow. It looks like it might be working. That's pretty nifty.
 Slightly unbelievable...
 
+Sun May 13 11:51:36 EDT 2012
+
+Good. So now, compiling for C code:
+TODO: cDec ValD "allpassed" (ConT "Bool") (ConE (ConT "Bool") "True")
+
+Do I remember how I want to implement this?
+
+Something like:
+  int allpassed(void)
+  {
+     return 1;
+  }
+
+Or...
+    FunD boolT "allpassed" [] (ReturnS trueE)
+
+In general?
+
+For a ValD:
+ - Convert it's type from (a -> b -> c ... -> r) to (r, [a, b, c, ...])
+ - FunD (totype r) name (zip [a, b, c, ...] ["_1", "_2", ...]) (ReturnS toexp e)
+
+I don't have to worry about the argument names yet. If I can, it would be good
+to give them names from the source code.
+
+How do I turn type: ConT Bool into IntT?
+How do I turn constructor: ConE True into 1?
+
+That should be part of builtins. Boolean is builtin.
+
+But, unlike haskell, pure string substitution isn't going to work.
+
+Perhaps I should augment my notion of a builtin description. Generalize it, as
+it were.
+
+I want to specify that the thing:
+    ConT Bool maps into C abstract syntax IntT
+    ConE True maps into C abstract syntax LitE 1
+
+Or, in general, what I really want is for Builtins to be:
+
+data CBuiltin = CBuiltin {
+    -- optionally return a target name for the given primitive which is
+    -- different from the primitive name.
+    mapexp :: S.Exp -> Maybe C.Exp,
+
+    -- optionally return a target name for the given type constructor which is
+    -- different from the given type constructor name.
+    maptype :: S.Type -> Maybe C.Type,
+
+    -- Additional includes or imports to include in the target output code.
+    includes :: Doc
+}
+
+And we could have a 
+
+data HaskellBuiltin = HaskellBuiltin {  
+ ...
+}
+
+Which maps to TH.Exp.
+
+These builtins should be associated with the target. Not the library.
+
+Good. So, to start, let me try to write generic (non-builtin) c target
+generation. When we can finally generate C code, it will give us an error
+about Bool perhaps. Then I can switch to this new builtin strategy for both C
+and haskell, and verify it gives me everything I want.
+
+Sun May 13 12:11:19 EDT 2012
+
+Fine. Next question, how to generate code for constructors?
+
+In other words, I need to decide how I want to implement user defined data
+types in C. Let me think about this a bit before going on.
+
+
+Sun May 13 13:12:04 EDT 2012
+
+Data types. Let's assume for now we don't have any polymorphic data types.
+
+I think it's fairly straight forward.
+
+For each constructor Foo with fields a b ...
+
+Have a C struct:
+    struct FooC {
+        a _1;
+        b _2;
+        ...
+    }
+
+For each data type DFoo we have an enum of all the constructor names:
+
+enum DFooE = {
+    FooC, BarC, ...
+}
+
+And a top level structure
+
+struct DFoo = {
+   DFooE constr; 
+   union {
+     struct FooC,
+     struct BarC,
+     ...
+   } data
+}
+
+Or something like that. I'll have to decide on the naming scheme.
+
+Additionally, we'll want constructor functions for each constructor.
+
+struct DFoo Foo(a, b, ...)
+{
+    ...
+}
+
+The name of constructor function matches that of the constructor itself.
+
+So, the expression: cExp ConE (ConT "Bool") "True"
+Is translated into a function call to True().
+
+Sun May 13 13:29:51 EDT 2012
+
+Good. Next step: switch to my new builtins strategy.
+
+To make this work, I want the following:
+    ConT Integer maps to IntT
+    ConT Bool maps to IntT
+    
+    Add True() to boolean library.
+
+Sun May 13 13:48:38 EDT 2012
+
+Okay, so I converted builtins for haskell as described.
+
+I have some concerns.
+- Won't it slow us down terribly to be checking every intermediate expression
+  to see if it's a builtin? I mean, we're talking the number of builtins times
+  the number of subexpressions, which is, like, really big, right?
+
+  Then again, maybe we were doing that anyway.
+
+- Will there ever be a case where we want to translate a seri expression to
+  some other expression and then compile that, rather than translating and
+  compiling all in one step?
+
+Let's see if any of the concerns come to fruition. I can deal with them
+then.
+
