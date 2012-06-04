@@ -4,7 +4,7 @@ module Seri.Target.Haskell.Builtin (
  ) where
 
 import qualified Language.Haskell.TH as H
-import Seri
+import Seri.Lambda
 import Seri.Utils.Ppr
 
 data Builtin = Builtin {

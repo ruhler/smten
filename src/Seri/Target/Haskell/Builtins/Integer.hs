@@ -5,7 +5,8 @@ module Seri.Target.Haskell.Builtins.Integer (
 
 import qualified Language.Haskell.TH as H
 
-import Seri
+import Seri.Lambda
+import Seri.Utils.Ppr
 import Seri.Target.Haskell.Builtin
 
 integerB :: Builtin

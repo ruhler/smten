@@ -7,9 +7,10 @@ import Data.Char(isAlphaNum)
 import Data.Maybe(fromJust)
 
 import qualified Language.Haskell.TH as H
-import Seri
+import Seri.Lambda as Seri
 import Seri.Lib.Prelude
 import Seri.Utils.TH
+import Seri.Utils.Ppr
 
 import Seri.Target.Haskell.Builtin
 
@@ -28,7 +29,7 @@ haskell builtin main e =
     
       hsExp :: Seri.Exp -> H.Exp
       hsExp e | mapexp builtin e /= Nothing = fromJust (mapexp builtin e)
-      hsExp (IntegerE i) = H.SigE (H.LitE (H.IntegerL i)) (hsType (seritype (undefined :: Integer)))
+      hsExp (IntegerE i) = H.SigE (H.LitE (H.IntegerL i)) (hsType (ConT "Integer"))
       hsExp (PrimE _ n) = error $ "primitive " ++ n ++ " not defined for haskell target"
       hsExp (IfE _ p a b) = H.CondE (hsExp p) (hsExp a) (hsExp b)
       hsExp (CaseE _ e ms) = H.CaseE (hsExp e) (map hsMatch ms)
