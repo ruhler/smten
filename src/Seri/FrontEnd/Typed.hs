@@ -7,7 +7,7 @@ module Seri.FrontEnd.Typed
     (
         Typed(..), typedas,
         SeriType(..), SeriType1(..), SeriType2(..), SeriType3(..),
-        integerE, ifE, caseE, conE, conE', varE, dvarE, lamE, appE,
+        integerE, caseE, conE, conE', varE, dvarE, lamE, appE,
         primitive, match, lamM, method,
         conP, appP, wildP, integerP,
         enved,
@@ -75,10 +75,6 @@ primitive p = withtype $ \t -> Typed $ PrimE t p
 
 integerE :: Integer -> Typed Exp Integer
 integerE x = Typed $ IntegerE x
-
-ifE :: (SeriType a) => Typed Exp Bool -> Typed Exp a -> Typed Exp a -> Typed Exp a
-ifE (Typed p) (Typed a) (Typed b)
-    = withtype $ \t -> Typed $ IfE t p a b
 
 caseE :: (SeriType b) => Typed Exp a -> [Typed Match (a -> b)] -> Typed Exp b
 caseE (Typed e) matches

@@ -79,13 +79,6 @@ mkexp (LamE [VarP nm] a) = do
     unbindname nm
     return $ apply 'S.lamE [string nm, LamE [VarP nm] a']
 
-
-mkexp (CondE p a b) = do
-    p' <- mkexp p
-    a' <- mkexp a
-    b' <- mkexp b
-    return $ apply 'S.ifE [p', a', b']
-
 mkexp (CaseE e matches) = do
     e' <- mkexp e
     ms <- mapM mkmatch matches

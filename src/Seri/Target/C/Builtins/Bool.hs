@@ -4,7 +4,7 @@ module Seri.Target.C.Builtins.Bool (
     ) where
 
 import Seri
-import Seri.Ppr
+import Seri.Utils.Ppr
 import Seri.Target.C.AST as C
 import Seri.Target.C.Builtin
 

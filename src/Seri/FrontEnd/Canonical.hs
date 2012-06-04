@@ -49,7 +49,13 @@ instance Canonical Exp where
            tupn = ConE (mkName $ "(" ++ replicate (n-1) ',' ++ ")")
        in canonical (foldl AppE tupn es)
 
-    canonical (CondE p a b) = CondE (canonical p) (canonical a) (canonical b)
+    -- if statements desugared into case.
+    canonical (CondE p a b)
+      = canonical $ CaseE p [
+            Match (ConP (mkName "True") []) (NormalB a) [], 
+            Match (ConP (mkName "False") []) (NormalB b) []
+            ]
+
     canonical (CaseE e ms) = CaseE (canonical e) (canonical ms)
 
     -- Do statements are desugared

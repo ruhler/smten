@@ -8481,3 +8481,154 @@ Steps:
 2. Make FrontEnd its own directory.
 3. Make Lambda its own directory.
 
+Mon Jun  4 18:30:21 EDT 2012
+
+There is a way we can make a clean distinction between the front end and the
+lambda calculus. It works fine with libraries too, I think.
+
+It's this idea (raised by Myron and Nirav) that we have a text format for
+specifying the ir that can be read and written to via files.
+
+That is, have a language for the ir.
+
+This language for the IR will be different from my front end language in the
+following ways:
+ - all types will be explicitly annotated
+ - there will be no syntactic sugar
+
+Just raw, core, IR, but with a readable syntax.
+
+Now, how does this solve our problems?
+
+The back ends take as input the raw, core IR, which is already typed.
+The libraries are input as the raw, core IR, which is already typed.
+It's a common format you can generate from Bluespec, BCL, etc...
+It's a common format easy to generate backend code from.
+
+And, I believe, with it's support for polymorphism and monads and user defined
+data types, it's a good common format for describing just about anything.
+
+The front end now generates this raw format as output. It's completely
+separate from the core. The front end adds type inference and checking and
+syntactic sugar. If we want, we could have one front end be core, which does
+type inference, so that type inference and type checking are a separate
+process. That would let people write things by hand if they want, and the
+compiler could test the types for correctness, or infer them, or whatever.
+
+So I think this is a very good idea. This is, perhaps, what Nirav is really
+after.
+
+Cool. Let me look through my IR, and give thoughts on whether it is adequate
+or not, and what annotations we might want, and what syntax we want for the
+core language.
+
+Type:
+- ConT Name, syntax is just Name, with upper case name.
+- AppT Type Type, syntax is (a b)
+- VarT Name, syntax is name with lower case name.
+- ForallT [Name] [Pred] Type
+    Syntax is... how about just like haskell?
+     forall a b ... c . (Pred...) => Type
+
+Expressions
+- IntegerE Integer.
+I suspect, eventually, we'll want this to be something like an integer
+literal, which can be used for any number of different typed things: Integer,
+Int, UInt, Int#(32), Int#(12), Bit#(12), etc... So probably we'll want to add
+a type annotation eventually. The syntax without the type annotation should
+just be an integer (specified in decimal okay?)
+
+- PrimE - a primitive. Syntax could be, maybe @name. And annotated with a
+  type.
+
+- IfE
+Now this is interesting. You know what? I don't think I need this, because I
+think it's a trivially special case of the case expression:
+
+  if p then a else b
+
+same as:
+  case p of
+    True -> a   
+    False -> b
+
+I think this is left over from old stuff, before I had case. So I say, get rid
+of this. It doesn't add any high level information I don't think.
+
+Let me try that in a bit, see if it causes any major issues.
+
+- CaseE
+Has the type of the returning expression... I feel like we should be able to
+infer that from any of the expression bodies. What if there is no clause?
+    case foo of {}
+Well, then, maybe it doesn't matter what type it has? I'm not sure.
+Syntax?
+    case a of {
+        blah -> blah;
+    ...
+
+That is, I think the haskell syntax without layout, because I don't want to
+implement support for layout in the parser.
+
+- AppE
+We shouldn't need the type, because it's just the output type of the first
+expression. Syntax is obvious.
+
+- LamE
+You need the type, to know the type of the input expression.
+\name -> blah is a fine syntax for me.
+
+- ConE - just a name, needs a type.
+- VarE
+needs a type. It will be:
+ name, but then it needs variable info.
+So maybe if it's bound it's just name.
+Maybe if it's declared it's %name.
+Maybe if it's an instance, it's name{pred}, or some such.
+
+And so on.
+
+The big question is, how to annotate expressions with their types?
+
+The big ones are Primitive, LamE, ConE, VarE. The others may or may not need
+the annotation.
+
+Well, we could do like haskell, and just annotate it using type signatures:
+(foo :: Bar). Have that going on everywhere.
+
+The value to this is: we basically have a legal subset of haskell.  Then I
+don't have to decide what the syntax should be, I just say we use haskell
+syntax. All I have to do is say what is not allowed. We could reuse a haskell
+parser. That would give us layout-like stuff if we wanted.
+
+I just fear that it won't look so readable.
+
+Okay, how about this. It should be easy to add the type signature to the
+pretty printing I do. Let me try that, see if it turns out to be readable or
+not, then stew a bit.
+
+Mon Jun  4 19:04:05 EDT 2012
+
+Well, so there are a couple problems. The type signatures are rather verbose,
+but I don't think that's going to change if they come before or after the
+thing they are annotating. One issue is primitives, which need a different
+syntax than haskell has.
+
+I suppose I should at least look at the haskell core syntax. See if it is well
+defined and has everything we need (types and such). If so, that might be
+something better to try to use, or use a subset of.
+
+I dunno. I'll think about it.
+
+For now, let me try getting rid of if statements, see if that causes any
+major problems.
+
+Mon Jun  4 19:07:22 EDT 2012
+
+First benefit of removing ifs: the core doesn't have to know about booleans
+anymore.
+
+Mon Jun  4 19:15:36 EDT 2012
+
+Works swell! Cool.
+

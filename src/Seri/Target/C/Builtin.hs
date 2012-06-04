@@ -4,7 +4,7 @@ module Seri.Target.C.Builtin (
  ) where
 
 import Seri
-import Seri.Ppr
+import Seri.Utils.Ppr
 
 import qualified Seri.Target.C.AST as C
 

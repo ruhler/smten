@@ -4,7 +4,7 @@ module Seri.Target.C.AST (
     boolT, intT,
     ) where
 
-import Seri.Ppr
+import Seri.Utils.Ppr
 
 type Name = String
 

@@ -7,7 +7,6 @@ import Data.Generics
 
 import Seri.Lambda.IR
 import Seri.Lambda.Env
-import Seri.Lambda.Bool
 
 -- A reduction rule. Given a set of global declarations, a global reduction
 -- rule, and an expression, reduce the expression in some way. Returns Nothing
@@ -48,11 +47,6 @@ elaborate r prg =
 coreR :: Rule
 coreR = Rule $ \gr e ->
    case val e of
-      (IfE _ p a b) | p == trueE -> Just a
-      (IfE _ p a b) | p == falseE -> Just b
-      (IfE t p a b) -> do
-         p' <-  runmeenv e gr p
-         return $ IfE t p' a b
       (CaseE t x ms) | (runmeenv e gr x) /= Nothing -> do
          x' <- runmeenv e gr x
          return $ CaseE t x' ms
@@ -116,7 +110,6 @@ reduce n v e = reduces [(n, v)] e
 reduces :: [(Name, Exp)] -> Exp -> Exp
 reduces _ e@(IntegerE _) = e
 reduces _ e@(PrimE _ _) = e
-reduces vs (IfE t p a b) = IfE t (reduces vs p) (reduces vs a) (reduces vs b)
 reduces vs (CaseE t e ms) =
     let reducematch :: Match -> Match
         reducematch (Match p b) = Match p (reduces vs b)

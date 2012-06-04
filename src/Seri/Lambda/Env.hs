@@ -110,4 +110,3 @@ minimize (Env m x) =
             else alldecls dds
   in Env (alldecls (declarations m x)) x
 
-

@@ -31,7 +31,6 @@ haskell builtin main e =
       hsExp e | mapexp builtin e /= Nothing = fromJust (mapexp builtin e)
       hsExp (IntegerE i) = H.SigE (H.LitE (H.IntegerL i)) (hsType (ConT "Integer"))
       hsExp (PrimE _ n) = error $ "primitive " ++ n ++ " not defined for haskell target"
-      hsExp (IfE _ p a b) = H.CondE (hsExp p) (hsExp a) (hsExp b)
       hsExp (CaseE _ e ms) = H.CaseE (hsExp e) (map hsMatch ms)
       hsExp (AppE _ f x) = H.AppE (hsExp f) (hsExp x)
       hsExp (LamE _ n x) = H.LamE [H.VarP (hsName n)] (hsExp x)

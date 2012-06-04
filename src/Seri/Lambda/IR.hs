@@ -30,7 +30,6 @@ data Match = Match Pat Exp
 
 data Exp = IntegerE Integer
          | PrimE Type Name
-         | IfE Type Exp Exp Exp
          | CaseE Type Exp [Match]
          | AppE Type Exp Exp
          | LamE Type Name Exp
@@ -70,17 +69,17 @@ instance Ppr Type where
 instance Ppr Pred where
     ppr (Pred n ts) = text n <+> hsep (map ppr ts)
 
+pprtype :: Type -> Doc -> Doc
+pprtype t x = parens $ x <+> text "::" <+> ppr t
+
 instance Ppr Exp where
     ppr (IntegerE i) = integer i
-    ppr (PrimE _ p) = text p
-    ppr (IfE _ p a b) = parens $ text "if" <+> ppr p
-                        <+> text "then" <+> ppr a
-                        <+> text "else" <+> ppr b
+    ppr (PrimE t p) = pprtype t (text "@" <> text p)
     ppr (AppE _ a b) = parens $ ppr a <+> ppr b
     ppr (CaseE _ e ms) = text "case" <+> ppr e <+> text "of" <+> ppr ms
-    ppr (LamE _ n b) = parens $ text "\\" <> text n <+> text "->" <+> ppr b
-    ppr (ConE _ n) = text n
-    ppr (VarE _ n _) = text n
+    ppr (LamE t n b) = pprtype t (parens $ text "\\" <> text n <+> text "->" <+> ppr b)
+    ppr (ConE t n) = pprtype t (text n)
+    ppr (VarE t n _) = pprtype t (text n)
 
 instance Ppr Match where
     ppr (Match p e) = ppr p <+> text "->" <+> ppr e

@@ -4,7 +4,6 @@
 
 module Seri.Lib.Bool where
 
-import qualified Seri.Lambda.Bool
 import Seri.Lambda.IR
 import Seri.FrontEnd.Typed
 import Seri.FrontEnd.Declarations.User
@@ -13,10 +12,10 @@ import Seri.Utils.Ppr
 import Seri.Lib.Tuple
 
 trueE :: Exp
-trueE = Seri.Lambda.Bool.trueE
+trueE = ConE (ConT "Bool") "True"
 
 falseE :: Exp
-falseE = Seri.Lambda.Bool.falseE
+falseE = ConE (ConT "Bool") "False"
 
 decltycon 0 ''Bool
 declcon "True" [t| Bool |]
