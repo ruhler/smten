@@ -32,6 +32,7 @@ instance Canonical Exp where
 
     -- De-infixation
     canonical (InfixE (Just a) op (Just b)) = canonical $ AppE (AppE op a) b
+    canonical (UInfixE a op b) = canonical $ AppE (AppE op a) b
 
     canonical (LamE ps@[VarP x] a) = LamE ps (canonical a)
 
@@ -70,6 +71,7 @@ instance Canonical Exp where
        in canonical $ desugar es
 
     canonical (SigE e t) = SigE (canonical e) t
+    canonical (ParensE e) = canonical e
     canonical e = error $ "TODO: canonical " ++ show e
 
 instance Canonical Pat where
@@ -94,6 +96,9 @@ instance Canonical Pat where
     --      a:b:...:[]
     canonical (ListP []) = canonical $ ConP (mkName "[]") []
     canonical (ListP (x:xs)) = canonical $ ConP (mkName ":") [x, ListP xs]
+
+    canonical (ParensP p) = canonical p
+    canonical (UInfixP a op b) = canonical $ ConP op [a, b]
 
     canonical p = error $ "TODO: canonical " ++ show p
 

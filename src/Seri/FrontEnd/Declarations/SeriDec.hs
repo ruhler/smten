@@ -31,7 +31,9 @@ seridec nm body =
 withdecs :: Exp -> Q Exp
 withdecs e = do
     ClassI _ insts <- reify ''SeriDec
-    let tys = map (head . ci_tys) insts
-    let decs = map (\(ConT n) -> apply 'dec [ConE $ mkName (nameBase n)]) tys
+    let tys = map (\(InstanceD _ x _) -> x) insts
+    let mkdec (AppT (ConT _) (ConT n)) = apply 'dec [ConE $ mkName (nameBase n)]
+        mkdec x = error $ "TODO: mkdec" ++ show x
+    let decs = map mkdec tys
     return $ apply 'enved [e, ListE decs]
 
