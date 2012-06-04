@@ -1,17 +1,17 @@
 
 {-# LANGUAGE TemplateHaskell #-}
 
-module Seri.Declarations.Utils (
+module Seri.FrontEnd.Declarations.Utils (
     tvarkind, stpred, valuetype, instidtype, texpify, seritypeexp,
     ) where
 
 import Language.Haskell.TH
 
 import Seri.Utils.TH
-import qualified Seri.Typed as S
+import qualified Seri.FrontEnd.Typed as S
 import qualified Seri.IR as S
-import Seri.Declarations.Names
-import Seri.Declarations.Polymorphic
+import Seri.FrontEnd.Declarations.Names
+import Seri.FrontEnd.Declarations.Polymorphic
 
 -- Given a type variable, figure out what predicate we should add for it
 -- in the context.

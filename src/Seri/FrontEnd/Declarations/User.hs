@@ -1,7 +1,7 @@
 
 {-# LANGUAGE TemplateHaskell #-}
 
-module Seri.Declarations.User (
+module Seri.FrontEnd.Declarations.User (
     declprim, declcon, declval,
     decltycon, decltyvar, decltyvars, decltype,
     declclass, declvartinst,
@@ -10,9 +10,9 @@ module Seri.Declarations.User (
 
 import Language.Haskell.TH
 
-import Seri.Declarations.Library
-import Seri.Declarations.Names
-import Seri.Typed(primitive)
+import Seri.FrontEnd.Declarations.Library
+import Seri.FrontEnd.Declarations.Names
+import Seri.FrontEnd.Typed(primitive)
 
 -- API for users to declare seri things.
 

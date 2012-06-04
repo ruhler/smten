@@ -5,10 +5,10 @@
 module Seri.Lib.Bool where
 
 import Seri.IR
-import Seri.Typed
-import Seri.Declarations.User
+import Seri.FrontEnd.Typed
+import Seri.FrontEnd.Declarations.User
+import Seri.FrontEnd.Quoter
 import Seri.Utils.Ppr
-import Seri.Quoter
 import Seri.Lib.Tuple
 
 trueE :: Exp

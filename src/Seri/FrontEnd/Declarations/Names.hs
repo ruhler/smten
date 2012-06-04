@@ -1,5 +1,5 @@
 
-module Seri.Declarations.Names (
+module Seri.FrontEnd.Declarations.Names (
     valuename, instidname, classname, declassname, methodtypename, tycontypename,
     concretevaluename,
     ) where

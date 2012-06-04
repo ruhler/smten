@@ -3,7 +3,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 
 
-module Seri.Typed 
+module Seri.FrontEnd.Typed 
     (
         Typed(..), typedas,
         SeriType(..), SeriType1(..), SeriType2(..), SeriType3(..),

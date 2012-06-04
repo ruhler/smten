@@ -2,13 +2,13 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE TemplateHaskell #-}
 
-module Seri.Quoter (s, STH(..)) where
+module Seri.FrontEnd.Quoter (s, STH(..)) where
 
 import Language.Haskell.TH
 import Language.Haskell.TH.Quote
 import Language.Haskell.Meta.Parse
 
-import Seri.Translate
+import Seri.FrontEnd.Translate
 
 s :: QuasiQuoter 
 s = QuasiQuoter qexp qpat qtype qdec

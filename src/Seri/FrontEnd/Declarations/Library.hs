@@ -2,7 +2,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE TemplateHaskell #-}
 
-module Seri.Declarations.Library (
+module Seri.FrontEnd.Declarations.Library (
     SeriDec(..),
     declval', declcon', decltycon', decltyvar', decltype', declinst', declclass', declvartinst',
     ) where
@@ -12,11 +12,11 @@ import Language.Haskell.TH
 
 import Seri.Utils.TH
 import qualified Seri.IR as S
-import qualified Seri.Typed as S
-import Seri.Declarations.Names
-import Seri.Declarations.Utils
-import Seri.Declarations.SeriDec
-import Seri.Declarations.Polymorphic
+import qualified Seri.FrontEnd.Typed as S
+import Seri.FrontEnd.Declarations.Names
+import Seri.FrontEnd.Declarations.Utils
+import Seri.FrontEnd.Declarations.SeriDec
+import Seri.FrontEnd.Declarations.Polymorphic
 
 -- declval' name ty exp
 -- Make a seri value declaration

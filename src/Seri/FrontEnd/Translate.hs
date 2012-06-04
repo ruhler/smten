@@ -2,21 +2,21 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE TemplateHaskell #-}
 
-module Seri.Translate (Translate(..)) where
+module Seri.FrontEnd.Translate (Translate(..)) where
 
 import Control.Monad.State
 import Data.Maybe
 
 import Language.Haskell.TH
 
-import qualified Seri.Typed as S
+import qualified Seri.FrontEnd.Typed as S
 
 import Seri.Utils.TH
-import Seri.Canonical
-import Seri.Declarations.Names
-import Seri.Declarations.SeriDec
-import Seri.Declarations.Library
-import Seri.Slice
+import Seri.FrontEnd.Canonical
+import Seri.FrontEnd.Declarations.Names
+import Seri.FrontEnd.Declarations.SeriDec
+import Seri.FrontEnd.Declarations.Library
+import Seri.FrontEnd.Slice
 
 data UserState = UserState {
     boundnames :: [Name]

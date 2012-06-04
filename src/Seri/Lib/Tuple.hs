@@ -6,10 +6,10 @@
 module Seri.Lib.Tuple where
 
 import Seri.IR
-import Seri.Typed
-import Seri.Declarations.User
-import Seri.Polymorphic
-import Seri.Quoter
+import Seri.FrontEnd.Typed
+import Seri.FrontEnd.Declarations.User
+import Seri.FrontEnd.Polymorphic
+import Seri.FrontEnd.Quoter
 
 decltycon 2 ''(,)
 declcon "(,)" [t| forall a b. (a -> b -> (a, b)) |]

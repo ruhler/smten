@@ -1,5 +1,5 @@
 
-module Seri.Declarations.Polymorphic (
+module Seri.FrontEnd.Declarations.Polymorphic (
     kindsuf, tyvars, tvarkind, tvnamekind, concrete, concrete',
     ) where
 

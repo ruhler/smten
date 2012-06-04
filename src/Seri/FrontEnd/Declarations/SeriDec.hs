@@ -1,7 +1,7 @@
 
 {-# LANGUAGE TemplateHaskell #-}
 
-module Seri.Declarations.SeriDec (
+module Seri.FrontEnd.Declarations.SeriDec (
     SeriDec(..), seridec, withdecs,
     ) where
 
@@ -9,7 +9,7 @@ import Language.Haskell.TH
 
 import Seri.Utils.TH
 import qualified Seri.IR as S
-import Seri.Typed(enved)
+import Seri.FrontEnd.Typed(enved)
 
 class SeriDec a where
     dec :: a -> S.Dec

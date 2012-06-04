@@ -1,5 +1,5 @@
 
-module Seri.Slice (sliceof) where
+module Seri.FrontEnd.Slice (sliceof) where
 
 import Language.Haskell.TH
 

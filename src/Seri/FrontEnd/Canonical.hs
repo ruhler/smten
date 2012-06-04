@@ -2,13 +2,13 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE TemplateHaskell #-}
 
-module Seri.Canonical (
+module Seri.FrontEnd.Canonical (
     Canonical(..)
     ) where
 
 import Language.Haskell.TH
 import Language.Haskell.TH.Syntax
-import Seri.Slice
+import Seri.FrontEnd.Slice
 import Seri.Utils.TH
 
 -- Canonical
