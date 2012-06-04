@@ -16,16 +16,16 @@ querytest exp q = do
     --assertEqual "" exp (typed r)
     return ()
 
+simple :: Typed (Env Exp) (Query (Answer Integer))
+simple = [s| do
+    x <- free
+    assert (x < 6)
+    assert (x > 4)
+    query x
+    |]
 
 tests = "Seri.SMT" ~: [
-        "simple" ~: querytest (IntegerE 5) [s|
-            do  x <- free
-                assert (x < 6)
-                assert (x > 4)
-                qr <- query x
-                case qr of
-                    Satisfiable v -> return v
-                    _ -> return 0
-            |]
+        "simple" ~: querytest (val (typed [s| Satisfiable 5 |])) simple,
+        "print simple" ~: (putStrLn (show (minimize (typed simple))))
         ]
 

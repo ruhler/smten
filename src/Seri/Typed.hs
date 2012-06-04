@@ -21,7 +21,7 @@ import Seri.Env
 
 data Typed x t = Typed {
     typed :: x
-}
+} deriving (Show)
 
 typedas :: Typed a t -> Typed b t -> Typed b t
 typedas _ x = x
