@@ -3,7 +3,7 @@ module Seri.Target.Haskell.Builtins.Bool (
     boolB
     ) where
 
-import Seri.Ppr
+import Seri.Utils.Ppr
 import Seri.Target.Haskell.Builtin
 
 boolB :: Builtin

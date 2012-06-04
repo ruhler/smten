@@ -7,7 +7,6 @@ import Data.Generics
 
 import Seri.IR
 import Seri.Env
-import Seri.Typed(seritype)
 import Seri.Lib.Bool
 
 -- A reduction rule. Given a set of global declarations, a global reduction

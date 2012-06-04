@@ -4,7 +4,7 @@ module Seri.Declarations.Polymorphic (
     ) where
 
 import Language.Haskell.TH
-import Seri.THUtils
+import Seri.Utils.TH
 
 -- All the type variables defined that we are allowed to use,
 -- indexed by kind.

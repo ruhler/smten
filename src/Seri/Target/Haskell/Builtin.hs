@@ -5,7 +5,7 @@ module Seri.Target.Haskell.Builtin (
 
 import qualified Language.Haskell.TH as H
 import Seri
-import Seri.Ppr
+import Seri.Utils.Ppr
 
 data Builtin = Builtin {
     -- Optionally give a builtin implementation for the given seri expression.

@@ -10,7 +10,7 @@ import Data.List(nub)
 import Data.Maybe
 
 import Seri.IR
-import Seri.Ppr
+import Seri.Utils.Ppr
 
 data Env x = Env {
     env :: [Dec],

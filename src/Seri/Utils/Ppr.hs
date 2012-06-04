@@ -1,5 +1,5 @@
 
-module Seri.Ppr (
+module Seri.Utils.Ppr (
         module Language.Haskell.TH.PprLib,
         module Language.Haskell.TH
     ) where

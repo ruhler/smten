@@ -10,7 +10,7 @@ module Seri.Declarations.Library (
 import Data.List(nub)
 import Language.Haskell.TH
 
-import Seri.THUtils
+import Seri.Utils.TH
 import qualified Seri.IR as S
 import qualified Seri.Typed as S
 import Seri.Declarations.Names

@@ -9,7 +9,7 @@ module Seri.IR (
 import Data.List(nub)
 import Data.Generics
 
-import Seri.Ppr
+import Seri.Utils.Ppr
 
 type Name = String
 

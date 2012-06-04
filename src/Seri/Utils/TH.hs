@@ -1,5 +1,5 @@
 
-module Seri.THUtils (
+module Seri.Utils.TH (
     apply, applyC, arrowts, string, integer, appts, fixUnit, tyvarname,
     prefixed, flattenforall
     ) where 

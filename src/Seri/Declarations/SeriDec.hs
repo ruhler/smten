@@ -7,7 +7,7 @@ module Seri.Declarations.SeriDec (
 
 import Language.Haskell.TH
 
-import Seri.THUtils
+import Seri.Utils.TH
 import qualified Seri.IR as S
 import Seri.Typed(enved)
 

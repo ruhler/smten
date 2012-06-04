@@ -8438,3 +8438,46 @@ Do you think I should rewrite the C back end this way?
 
 I think it's worth a shot.
 
+Mon Jun  4 13:09:48 EDT 2012
+
+I need to separate out the front end from the IR. It should be possible
+without trouble.
+
+What is the new module organization going to look like?
+
+Seri.Utils.*
+  Utilities not specific to Seri.
+  Includes: Ppr, THUtils.
+
+Seri.Lambda.*
+  The lambda expressions.
+  Includes: Env, IR, Elaborate
+    Note: we need access to trueE and falseE to implement if statements
+          properly. Maybe define trueE and falseE in the IR somewhere so this
+          doesn't depend on the seri library.
+
+Seri.FrontEnd.*
+  All of the front end:
+  Declarations/*
+  Canonical, Polymorphic, Quoter, Slice, Translate, Typed
+
+Seri.Lib.*
+  The seri library (described using FrontEnd currently...).
+
+Seri.Target
+  Target code generation: C, Haskell, Yices (expression compilation).
+
+Seri.SMT.*
+  The SMT specific stuff.
+
+Seri.Tibby.*
+  The Tibby specific stuff.
+
+Yes. It will be good to clean it up like this. Separate out the front end
+which currently dominates everything.
+
+Steps:
+1. Make Utils its own directory.
+2. Make FrontEnd its own directory.
+3. Make Lambda its own directory.
+

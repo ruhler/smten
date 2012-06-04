@@ -7,7 +7,7 @@ module Seri.Lib.Bool where
 import Seri.IR
 import Seri.Typed
 import Seri.Declarations.User
-import Seri.Ppr
+import Seri.Utils.Ppr
 import Seri.Quoter
 import Seri.Lib.Tuple
 

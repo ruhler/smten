@@ -6,7 +6,7 @@ module Seri.Declarations.Names (
 
 import Language.Haskell.TH
 
-import Seri.THUtils
+import Seri.Utils.TH
 
 valuename :: Name -> Name
 valuename = prefixed "_seriP_"

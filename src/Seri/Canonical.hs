@@ -9,7 +9,7 @@ module Seri.Canonical (
 import Language.Haskell.TH
 import Language.Haskell.TH.Syntax
 import Seri.Slice
-import Seri.THUtils
+import Seri.Utils.TH
 
 -- Canonical
 --  Given a TH declaration or expression, reduce it to a canonical form

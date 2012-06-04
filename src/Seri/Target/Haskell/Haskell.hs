@@ -9,7 +9,7 @@ import Data.Maybe(fromJust)
 import qualified Language.Haskell.TH as H
 import Seri
 import Seri.Lib.Prelude
-import Seri.THUtils
+import Seri.Utils.TH
 
 import Seri.Target.Haskell.Builtin
 

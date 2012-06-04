@@ -11,7 +11,7 @@ import Language.Haskell.TH
 
 import qualified Seri.Typed as S
 
-import Seri.THUtils
+import Seri.Utils.TH
 import Seri.Canonical
 import Seri.Declarations.Names
 import Seri.Declarations.SeriDec

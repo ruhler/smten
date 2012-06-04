@@ -7,7 +7,7 @@ module Seri.Declarations.Utils (
 
 import Language.Haskell.TH
 
-import Seri.THUtils
+import Seri.Utils.TH
 import qualified Seri.Typed as S
 import qualified Seri.IR as S
 import Seri.Declarations.Names
