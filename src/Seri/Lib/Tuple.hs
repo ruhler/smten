@@ -5,7 +5,7 @@
 
 module Seri.Lib.Tuple where
 
-import Seri.IR
+import Seri.Lambda.IR
 import Seri.FrontEnd.Typed
 import Seri.FrontEnd.Declarations.User
 import Seri.FrontEnd.Polymorphic

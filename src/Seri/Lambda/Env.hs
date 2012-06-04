@@ -1,7 +1,7 @@
 
 {-# LANGUAGE FlexibleInstances #-}
 
-module Seri.Env (
+module Seri.Lambda.Env (
     Env(), val, mkenv, decls, lookupvar, withenv, minimize,
     ) where
 
@@ -9,7 +9,7 @@ import Data.Generics
 import Data.List(nub)
 import Data.Maybe
 
-import Seri.IR
+import Seri.Lambda.IR
 import Seri.Utils.Ppr
 
 data Env x = Env {

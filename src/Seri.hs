@@ -1,9 +1,9 @@
 
 module Seri (
     module Seri.Utils.Ppr,
-    module Seri.Elaborate,
-    module Seri.Env,
-    module Seri.IR,
+    module Seri.Lambda.Elaborate,
+    module Seri.Lambda.Env,
+    module Seri.Lambda.IR,
     module Seri.FrontEnd.Declarations.User,
     module Seri.FrontEnd.Polymorphic,
     module Seri.FrontEnd.Quoter,
@@ -11,9 +11,9 @@ module Seri (
     ) where
 
 import Seri.Utils.Ppr
-import Seri.Elaborate
-import Seri.Env
-import Seri.IR
+import Seri.Lambda.Elaborate
+import Seri.Lambda.Env
+import Seri.Lambda.IR
 import Seri.FrontEnd.Declarations.User
 import Seri.FrontEnd.Polymorphic
 import Seri.FrontEnd.Quoter

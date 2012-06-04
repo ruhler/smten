@@ -8,7 +8,7 @@ module Seri.FrontEnd.Declarations.SeriDec (
 import Language.Haskell.TH
 
 import Seri.Utils.TH
-import qualified Seri.IR as S
+import qualified Seri.Lambda.IR as S
 import Seri.FrontEnd.Typed(enved)
 
 class SeriDec a where

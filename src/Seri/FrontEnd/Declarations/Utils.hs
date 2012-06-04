@@ -9,7 +9,7 @@ import Language.Haskell.TH
 
 import Seri.Utils.TH
 import qualified Seri.FrontEnd.Typed as S
-import qualified Seri.IR as S
+import qualified Seri.Lambda.IR as S
 import Seri.FrontEnd.Declarations.Names
 import Seri.FrontEnd.Declarations.Polymorphic
 

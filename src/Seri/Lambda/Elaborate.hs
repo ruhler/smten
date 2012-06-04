@@ -1,13 +1,13 @@
 
-module Seri.Elaborate (
+module Seri.Lambda.Elaborate (
     Rule(..), rules, elaborate, coreR,
     ) where
 
 import Data.Generics
 
-import Seri.IR
-import Seri.Env
-import Seri.Lib.Bool
+import Seri.Lambda.IR
+import Seri.Lambda.Env
+import Seri.Lambda.Bool
 
 -- A reduction rule. Given a set of global declarations, a global reduction
 -- rule, and an expression, reduce the expression in some way. Returns Nothing

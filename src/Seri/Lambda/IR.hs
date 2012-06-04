@@ -1,7 +1,7 @@
 
 {-# LANGUAGE DeriveDataTypeable #-}
 
-module Seri.IR (
+module Seri.Lambda.IR (
     Name, Type(..), Pat(..), Match(..), Exp(..), Dec(..), Con(..),
     Sig(..), Method(..), VarInfo(..), Pred(..),
     ) where

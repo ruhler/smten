@@ -16,8 +16,8 @@ module Seri.FrontEnd.Typed
 
 import qualified Language.Haskell.TH as TH
 
-import Seri.IR
-import Seri.Env
+import Seri.Lambda.IR
+import Seri.Lambda.Env
 
 data Typed x t = Typed {
     typed :: x
