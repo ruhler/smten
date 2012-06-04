@@ -8339,3 +8339,102 @@ I have some concerns.
 Let's see if any of the concerns come to fruition. I can deal with them
 then.
 
+Sun May 13 14:08:02 EDT 2012
+
+I got the C target started. Next is to add support for more constructs. I
+think the following would be a good order to do things in:
+
+1. Get * and + to work.
+2. Get multi-argument functions to work (foo2)
+3. Get user defined data types to work (MaybeInteger)
+4. Get polymorphic functions to work (id id 5)
+5. Get polymorphic data types to work
+6. Get type classes to work (foo)
+7. Get predicated functions to work (foofun)
+
+That ought to keep me busy for a while, and should give me a fairly decent C
+back end. If I really want to flesh it out, after all these work, get rid of
+the call to minimize, and that will force lots of issues.
+
+All the polymorphic stuff can, I think, be done in a target agnostic way.
+Maybe I have a Monomorphic target, which takes a Seri expression, and compiles
+it to a Seri expression which has a completely monomorphic environment.
+
+Sun May 20 15:34:37 EDT 2012
+
+1. Getting * and + to work.
+
+We should have an InfixE for C. I'm fine with 
+ InfixE Op Exp Exp
+
+where Op is just a string. "*", "+", whatever. We can expose operator
+constructors: times, plus, etc...
+
+The problem is, what I was afraid of before and hit much sooner than expected.
+Let's say I have an expression add (foo ...) (bar ...). What do I convert that
+to? It can't be InfixE "+" (foo ...) (bar ...), because I have to translate
+the foo and bar expression too. So we need to pass the compiler as an
+argument to the builtins.
+
+Another way to think about it is, I want to specify the compilation in a
+distributed fashion. That is, I want to define some
+
+f :: a -> b
+
+by specifying a bunch of partial functions in different places in the source
+code. But those partial functions need to know about f.
+
+To do this in haskell, I make partial functions explicit by returning a Maybe
+type, and I need to pass f as the argument.
+
+pf1 :: (a -> b) -> a -> Maybe b
+pf2 :: (a -> b) -> a -> Maybe b
+
+And f will be some sort of fixed point.
+
+f :: (a -> b)
+f x = case pf1 f x of
+        Just y -> y
+        Nothing -> fromJust $ pf2 f x
+
+Let me introduce another annoyance though. One that we maybe won't run into
+for this specific problem, but that I fear in the future. The builtin for an
+expression may need to know how to translate a type.
+
+Maybe, then, what we want is the notion of a compiler.
+
+data Compiler = Compiler {
+    compile_exp :: Exp -> C.Exp
+    compile_type :: Type -> C.Type
+    ...
+}
+
+And just for convenience, we could have that be a partial compiler.
+
+data Compiler = Compiler {
+    compile_exp :: Exp -> Maybe C.Exp
+    compile_type :: Type -> Maybe C.Type
+    ...
+}
+
+Ooh...
+
+And now we can compose compilers together...
+
+So Builtin turns into Compiler. And you specify a partial compiler for each
+construct.
+
+But, taking the above into account, we really want:
+
+data Compiler = Compiler {
+    compile_exp :: Compiler -> Exp -> Maybe C.Exp
+    compile_type :: Compiler -> Type -> Maybe C.Type
+    ...
+}
+
+Good! I think I like it.
+
+Do you think I should rewrite the C back end this way?
+
+I think it's worth a shot.
+

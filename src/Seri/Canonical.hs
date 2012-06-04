@@ -102,11 +102,6 @@ instance Canonical Dec where
     --
     -- Each clause of the form: a b c ... = foo is turned into a case match
     -- of the form: (a, b, c, ...) -> foo.
-    --
-    -- For this to work, all clauses must have the same number of argument
-    -- patterns. We can't yet handle the case where different clauses of the
-    -- same function take a different number of arguments. (though it
-    -- wouldn't be too difficult to handle that case).
     canonical (FunD nm clauses) =
       let Clause pats1 _ _ = head clauses
           nargs = length pats1

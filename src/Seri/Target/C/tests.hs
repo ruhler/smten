@@ -11,8 +11,11 @@ import Seri.Target.C.Builtin
 import Seri.Target.C.Builtins.Prelude
 
 [s|
+    arith :: Bool
+    arith = 5 * 2 == 9 + 1
+
     allpassed :: Bool
-    allpassed = True
+    allpassed = arith
 
     returncode :: Integer
     returncode = 

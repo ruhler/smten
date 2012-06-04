@@ -2,15 +2,8 @@
 - Allow arbitrary patterns in lambda expression arguments.
     example: \(Foo x) -> x+1
 
-- Add support for list comprehensions
+- Add support for list sequences
     example: [1..5]
-
-- Support different number of args in function clauses
-    example:  foo 1 2 = 3
-              foo a = \b -> a + b
-    idea: rewrite it as
-              foo 1 2 = 3
-              foo a x = (\b -> a + b) x
 
 - Add support for let expressions
     example: let foo = 2 in foo + 40

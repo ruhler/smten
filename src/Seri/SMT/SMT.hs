@@ -40,6 +40,6 @@ declprim "fail_query" [t| forall a . String -> Query a |]
         fail = fail_query
 |]
 
-runQuery :: Rule -> [Dec] -> Typed Exp (Query a) -> IO (Typed Exp a)
+runQuery :: Typed Exp (Query a) -> IO (Typed Exp a)
 runQuery = error $ "TODO: runQuery"
 

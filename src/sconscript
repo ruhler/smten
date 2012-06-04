@@ -20,5 +20,5 @@ env.Default(env.Command('hstest_exe.out', hstest_exe, "$SOURCE > $TARGET"))
 ctest = env.GHCProgram('ctest', 'Seri/Target/C/tests.hs')
 ctest_src = env.Command('ctest_c.c', ctest, '$SOURCE $TARGET')
 ctest_exe = env.Program('ctest_exe', ctest_src)
-env.Default(env.Command('ctest_exe.out', ctest_exe, "$SOURCE > $TARGET"))
+#env.Default(env.Command('ctest_exe.out', ctest_exe, "$SOURCE > $TARGET"))
 

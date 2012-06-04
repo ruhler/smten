@@ -67,6 +67,7 @@ tests = "Seri" ~: [
     "wonderful" ~: IntegerE 11 `eqexp` [s| thething (Wonderful 11 32) |],
     "unused" ~: IntegerE 42 `eqexp` [s| unused True |],
     "multifoofun" ~: IntegerE 19 `eqexp` [s| multifoofun True 12 |],
-    "shadow" ~: IntegerE 8 `eqexp` [s| shadow 3 |]
+    "shadow" ~: IntegerE 8 `eqexp` [s| shadow 3 |],
+    "listlen" ~: IntegerE 3 `eqexp` [s| length [1, 5, 2] |]
     ]
 
