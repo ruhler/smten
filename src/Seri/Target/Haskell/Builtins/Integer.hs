@@ -11,12 +11,12 @@ import Seri.Target.Haskell.Builtin
 
 integerB :: Builtin
 integerB =
-  let me (PrimE _ "+") = Just (H.VarE $ H.mkName "Integer.+")
-      me (PrimE _ "-") = Just (H.VarE $ H.mkName "Integer.-")
-      me (PrimE _ "*") = Just (H.VarE $ H.mkName "Integer.*")
-      me (PrimE _ "<") = Just (H.VarE $ H.mkName "Integer.<")
-      me (PrimE _ ">") = Just (H.VarE $ H.mkName "Integer.>")
-      me (PrimE _ "==") = Just (H.VarE $ H.mkName "Integer.==")
+  let me (PrimE (Sig "+" _)) = Just (H.VarE $ H.mkName "Integer.+")
+      me (PrimE (Sig "-" _)) = Just (H.VarE $ H.mkName "Integer.-")
+      me (PrimE (Sig "*" _)) = Just (H.VarE $ H.mkName "Integer.*")
+      me (PrimE (Sig "<" _)) = Just (H.VarE $ H.mkName "Integer.<")
+      me (PrimE (Sig ">" _)) = Just (H.VarE $ H.mkName "Integer.>")
+      me (PrimE (Sig "==" _)) = Just (H.VarE $ H.mkName "Integer.==")
       me _ = Nothing
 
       mt (ConT "Integer") = Just (H.ConT $ H.mkName "Integer.Integer")

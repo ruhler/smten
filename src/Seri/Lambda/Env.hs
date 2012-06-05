@@ -58,10 +58,10 @@ lookupInstD (Env decls _) n t =
 -- Given a VarE in an environment return the value of that variable as
 -- determined by the environment.
 lookupvar :: Env Exp -> Maybe (Type, Exp)
-lookupvar e@(Env _ (VarE _ n Declared)) = do
+lookupvar e@(Env _ (VarE (Sig n _) Declared)) = do
   (ValD _ t v) <- lookupValD e n
   return (t, v)
-lookupvar e@(Env _ (VarE _ x (Instance n ts))) =
+lookupvar e@(Env _ (VarE (Sig x _) (Instance n ts))) =
   let mlook :: [Method] -> Maybe (Type, Exp)
       mlook [] = Nothing
       mlook ((Method nm e):ms) | nm == x = Just (error "TODO: look up type of method in ClassD", e)
@@ -82,8 +82,8 @@ declarations :: (Data a) => [Dec] -> a -> [Dec]
 declarations m =
   let theenv = Env m ()
       qexp :: Exp -> [Dec]
-      qexp (VarE _ n Declared) = maybeToList $ lookupValD theenv n
-      qexp (VarE _ n (Instance ni ts)) = catMaybes [lookupClassD theenv ni, lookupInstD theenv ni ts]
+      qexp (VarE (Sig n _) Declared) = maybeToList $ lookupValD theenv n
+      qexp (VarE (Sig n _) (Instance ni ts)) = catMaybes [lookupClassD theenv ni, lookupInstD theenv ni ts]
       qexp e = []
 
       qtype :: Type -> [Dec]

@@ -37,8 +37,8 @@ c builtin main e =
       cExp :: Exp -> C.Exp
       cExp e | mapexp builtin e /= Nothing = fromJust (mapexp builtin e)
       cExp (IntegerE i) = C.IntE i
-      cExp (ConE _ nm) = C.AppE nm []
-      cExp (VarE _ nm Declared) = C.AppE nm []
+      cExp (ConE (Sig nm _)) = C.AppE nm []
+      cExp (VarE (Sig nm _) Declared) = C.AppE nm []
       cExp x = error $ "TODO: cExp " ++ show x
 
       cType :: Type -> C.Type

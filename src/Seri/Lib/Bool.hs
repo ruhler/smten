@@ -12,10 +12,10 @@ import Seri.Utils.Ppr
 import Seri.Lib.Tuple
 
 trueE :: Exp
-trueE = ConE (ConT "Bool") "True"
+trueE = ConE (Sig "True" (ConT "Bool"))
 
 falseE :: Exp
-falseE = ConE (ConT "Bool") "False"
+falseE = ConE (Sig "False" (ConT "Bool"))
 
 decltycon 0 ''Bool
 declcon "True" [t| Bool |]

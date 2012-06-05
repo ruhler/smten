@@ -71,48 +71,56 @@ withtype :: (SeriType a) => (Type -> Typed x a) -> Typed x a
 withtype f = r where r = usetype r f
 
 primitive :: (SeriType a) => Name -> Typed Exp a
-primitive p = withtype $ \t -> Typed $ PrimE t p
+primitive p = withtype $ \t -> Typed $ PrimE (Sig p t)
 
 integerE :: Integer -> Typed Exp Integer
 integerE x = Typed $ IntegerE x
 
 caseE :: (SeriType b) => Typed Exp a -> [Typed Match (a -> b)] -> Typed Exp b
-caseE (Typed e) matches
-  = withtype $ \t -> Typed $ CaseE t e (map typed matches)
+caseE (Typed e) matches = Typed $ CaseE e (map typed matches)
 
 match :: Typed Pat a -> Typed Exp b -> Typed Match (a -> b)
 match (Typed p) (Typed e) = Typed $ Match p e
 
-conP :: Typed Exp a -> Name -> Typed Pat a
-conP _ n = Typed $ ConP n
+conP :: (SeriType a) => Typed Exp a -> Name -> Typed Pat a
+conP _ n = withtype $ \t -> Typed $ ConP (Sig n t)
 
 appP :: Typed Pat (a -> b) -> Typed Pat a -> Typed Pat b
 appP (Typed f) (Typed x) = Typed $ AppP f x
 
-wildP :: Typed Pat a
-wildP = Typed WildP
+wildP :: (SeriType a) => Typed Pat a
+wildP = withtype $ \t -> Typed (WildP t)
 
 integerP :: Integer -> Typed Pat Integer
 integerP i = Typed $ IntegerP i
 
 appE :: (SeriType b) => Typed Exp (a -> b) -> Typed Exp a -> Typed Exp b
-appE (Typed f) (Typed x)
-    = withtype $ \t -> Typed $ AppE t f x
+appE (Typed f) (Typed x) = Typed $ AppE f x
 
 lamE :: (SeriType a, SeriType (a -> b)) => Name -> (Typed Exp a -> Typed Exp b) -> Typed Exp (a -> b)
-lamE n f = withtype $ \t -> Typed $ LamE t n (typed $ f (varE n))
+lamE n f =
+    let ft :: (Typed Exp a -> Typed Exp b) -> Typed Exp a
+        ft = undefined
+
+        sig = usetype (ft f) (\t -> Sig n t)
+    in Typed $ LamE sig (typed $ f (varE n))
 
 lamM :: (SeriType a) => Name -> (Typed Pat a -> Typed Exp a -> Typed Match b) -> Typed Match b
-lamM n f = f (Typed $ VarP n) (varE n)
+lamM n f =
+    let ft :: (Typed Pat a -> Typed Exp a -> Typed Match b) -> Typed Exp a
+        ft = undefined
+
+        sig = usetype (ft f) (\t -> Sig n t)
+    in f (Typed $ VarP sig) (varE n)
 
 varE :: (SeriType a) => Name -> Typed Exp a
-varE nm = withtype $ \t -> Typed $ VarE t nm Bound
+varE nm = withtype $ \t -> Typed $ VarE (Sig nm t) Bound
 
 dvarE :: (SeriType a) => Typed Exp a -> (Typed Exp a -> VarInfo) -> Name -> Typed Exp a
-dvarE e fid nm = withtype $ \t -> Typed $ VarE t nm (fid e)
+dvarE e fid nm = withtype $ \t -> Typed $ VarE (Sig nm t) (fid e)
 
 conE' :: (SeriType a) => Name -> Typed Exp a
-conE' nm = withtype $ \t -> Typed $ ConE t nm
+conE' nm = withtype $ \t -> Typed $ ConE (Sig nm t)
 
 conE :: (SeriType a) => Typed Exp a -> Name -> Typed Exp a
 conE _ nm = withtype $ \t -> conE' nm

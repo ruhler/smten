@@ -47,23 +47,23 @@ elaborate r prg =
 coreR :: Rule
 coreR = Rule $ \gr e ->
    case val e of
-      (CaseE t x ms) | (runmeenv e gr x) /= Nothing -> do
+      (CaseE x ms) | (runmeenv e gr x) /= Nothing -> do
          x' <- runmeenv e gr x
-         return $ CaseE t x' ms
-      (CaseE t x ((Match p b):ms))
+         return $ CaseE x' ms
+      (CaseE x ((Match p b):ms))
          -> case (match p x) of
-                Failed -> Just $ CaseE t x ms
+                Failed -> Just $ CaseE x ms
                 Succeeded vs -> Just $ reduces vs b
                 _ -> Nothing
-      (AppE _ (LamE _ name body) b) -> Just $ reduce name b body
-      (AppE t a b) | (runmeenv e gr a) /= Nothing -> do
+      (AppE (LamE (Sig name _) body) b) -> Just $ reduce name b body
+      (AppE a b) | (runmeenv e gr a) /= Nothing -> do
           a' <- runmeenv e gr a
-          return $ AppE t a' b
-      (AppE t a b) | (runmeenv e gr b) /= Nothing -> do
+          return $ AppE a' b
+      (AppE a b) | (runmeenv e gr b) /= Nothing -> do
           b' <- runmeenv e gr b
-          return $ AppE t a b'
-      (LamE _ _ _) -> Nothing
-      v@(VarE ct _ _)
+          return $ AppE a b'
+      (LamE _ _) -> Nothing
+      v@(VarE (Sig _ ct) _)
         -> case (lookupvar $ withenv e v) of
                Nothing -> Nothing
                Just (pt, ve) -> Just $ treduces (tmatch pt ct) ve
@@ -73,16 +73,16 @@ data MatchResult = Failed | Succeeded [(Name, Exp)] | Unknown
 
 -- Match an expression against a pattern.
 match :: Pat -> Exp -> MatchResult
-match (ConP nm) (ConE _ n) | n == nm = Succeeded []
+match (ConP (Sig nm _)) (ConE (Sig n _)) | n == nm = Succeeded []
 match (IntegerP i) (IntegerE i') | i == i' = Succeeded []
-match (VarP nm) e = Succeeded [(nm, e)]
-match (AppP a b) (AppE _ ae be)
+match (VarP (Sig nm _)) e = Succeeded [(nm, e)]
+match (AppP a b) (AppE ae be)
   = case (match a ae, match b be) of
         (Succeeded as, Succeeded bs) -> Succeeded (as ++ bs)
         (Failed, _) -> Failed
         (_, Failed) -> Failed
         _ -> Unknown
-match WildP _ = Succeeded []
+match (WildP _) _ = Succeeded []
 match _ x | iswhnf x = Failed
 match _ _ = Unknown
 
@@ -91,11 +91,11 @@ match _ _ = Unknown
 --  TODO: how should we handle primitives?
 iswhnf :: Exp -> Bool
 iswhnf (IntegerE _) = True
-iswhnf (LamE _ _ _) = True
+iswhnf (LamE _ _) = True
 iswhnf x
  = let iscon :: Exp -> Bool
-       iscon (ConE _ _) = True
-       iscon (AppE _ f _) = iscon f
+       iscon (ConE _) = True
+       iscon (AppE f _) = iscon f
        iscon _ = False
    in iscon x
 
@@ -109,15 +109,15 @@ reduce n v e = reduces [(n, v)] e
 -- of variable n with v if (n, v) is in vs.
 reduces :: [(Name, Exp)] -> Exp -> Exp
 reduces _ e@(IntegerE _) = e
-reduces _ e@(PrimE _ _) = e
-reduces vs (CaseE t e ms) =
+reduces _ e@(PrimE _) = e
+reduces vs (CaseE e ms) =
     let reducematch :: Match -> Match
         reducematch (Match p b) = Match p (reduces vs b)
-    in CaseE t (reduces vs e) (map reducematch ms)
-reduces vs (AppE t a b) = AppE t (reduces vs a) (reduces vs b)
-reduces vs e@(LamE t ln b) = LamE t ln (reduces (filter (\(n, _) -> n /= ln) vs) b)
-reduces _ e@(ConE _ _) = e
-reduces vs e@(VarE _ vn _) =
+    in CaseE (reduces vs e) (map reducematch ms)
+reduces vs (AppE a b) = AppE (reduces vs a) (reduces vs b)
+reduces vs e@(LamE (Sig ln t) b) = LamE (Sig ln t) (reduces (filter (\(n, _) -> n /= ln) vs) b)
+reduces _ e@(ConE _) = e
+reduces vs e@(VarE (Sig vn _) _) =
     case lookup vn vs of
         (Just v) -> v
         Nothing -> e

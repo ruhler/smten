@@ -30,12 +30,12 @@ haskell builtin main e =
       hsExp :: Seri.Exp -> H.Exp
       hsExp e | mapexp builtin e /= Nothing = fromJust (mapexp builtin e)
       hsExp (IntegerE i) = H.SigE (H.LitE (H.IntegerL i)) (hsType (ConT "Integer"))
-      hsExp (PrimE _ n) = error $ "primitive " ++ n ++ " not defined for haskell target"
-      hsExp (CaseE _ e ms) = H.CaseE (hsExp e) (map hsMatch ms)
-      hsExp (AppE _ f x) = H.AppE (hsExp f) (hsExp x)
-      hsExp (LamE _ n x) = H.LamE [H.VarP (hsName n)] (hsExp x)
-      hsExp (ConE _ n) = H.ConE (hsName n)
-      hsExp (VarE _ n _) = H.VarE (hsName n)
+      hsExp (PrimE (Sig n _)) = error $ "primitive " ++ n ++ " not defined for haskell target"
+      hsExp (CaseE e ms) = H.CaseE (hsExp e) (map hsMatch ms)
+      hsExp (AppE f x) = H.AppE (hsExp f) (hsExp x)
+      hsExp (LamE (Sig n _) x) = H.LamE [H.VarP (hsName n)] (hsExp x)
+      hsExp (ConE (Sig n _)) = H.ConE (hsName n)
+      hsExp (VarE (Sig n _) _) = H.VarE (hsName n)
     
       hsMatch :: Match -> H.Match
       hsMatch (Match p e) = H.Match (hsPat p) (H.NormalB $ hsExp e) []
@@ -47,10 +47,10 @@ haskell builtin main e =
             unfold p = [p]
     
             foldth :: [Pat] -> H.Pat
-            foldth [VarP n] = H.VarP (hsName n)
+            foldth [VarP (Sig n _)] = H.VarP (hsName n)
             foldth [IntegerP i] = H.LitP (H.IntegerL i)
-            foldth [WildP] = H.WildP
-            foldth ((ConP n):args) = H.ConP (hsName n) (map hsPat args)
+            foldth [WildP _] = H.WildP
+            foldth ((ConP (Sig n _)):args) = H.ConP (hsName n) (map hsPat args)
         in foldth . unfold
     
       issymbol :: Name -> Bool

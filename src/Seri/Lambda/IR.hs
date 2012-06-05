@@ -29,19 +29,19 @@ data Match = Match Pat Exp
     deriving (Eq, Show, Data, Typeable)
 
 data Exp = IntegerE Integer
-         | PrimE Type Name
-         | CaseE Type Exp [Match]
-         | AppE Type Exp Exp
-         | LamE Type Name Exp
-         | ConE Type Name
-         | VarE Type Name VarInfo
+         | PrimE Sig
+         | CaseE Exp [Match]
+         | AppE Exp Exp
+         | LamE Sig Exp
+         | ConE Sig
+         | VarE Sig VarInfo
      deriving (Eq, Show, Data, Typeable)
 
-data Pat = ConP Name
-         | VarP Name
+data Pat = ConP Sig
+         | VarP Sig
          | IntegerP Integer
          | AppP Pat Pat
-         | WildP
+         | WildP Type
      deriving (Eq, Show, Data, Typeable)
 
 data Con = Con Name [Type]
@@ -69,27 +69,24 @@ instance Ppr Type where
 instance Ppr Pred where
     ppr (Pred n ts) = text n <+> hsep (map ppr ts)
 
-pprtype :: Type -> Doc -> Doc
-pprtype t x = parens $ x <+> text "::" <+> ppr t
-
 instance Ppr Exp where
     ppr (IntegerE i) = integer i
-    ppr (PrimE t p) = pprtype t (text "@" <> text p)
-    ppr (AppE _ a b) = parens $ ppr a <+> ppr b
-    ppr (CaseE _ e ms) = text "case" <+> ppr e <+> text "of" <+> ppr ms
-    ppr (LamE t n b) = pprtype t (parens $ text "\\" <> text n <+> text "->" <+> ppr b)
-    ppr (ConE t n) = pprtype t (text n)
-    ppr (VarE t n _) = pprtype t (text n)
+    ppr (PrimE s) = text "@" <> ppr s
+    ppr (AppE a b) = parens $ ppr a <+> ppr b
+    ppr (CaseE e ms) = text "case" <+> ppr e <+> text "of" <+> ppr ms
+    ppr (LamE s b) = parens $ text "\\" <> ppr s <+> text "->" <+> ppr b
+    ppr (ConE s) = ppr s
+    ppr (VarE s _) = ppr s
 
 instance Ppr Match where
     ppr (Match p e) = ppr p <+> text "->" <+> ppr e
 
 instance Ppr Pat where
-    ppr (ConP nm) = text nm
-    ppr (VarP nm) = text nm
+    ppr (ConP s) = ppr s
+    ppr (VarP s) = ppr s
     ppr (IntegerP i) = integer i
     ppr (AppP a b) = ppr a <+> ppr b
-    ppr WildP = text "_"
+    ppr (WildP _) = text "_"
 
 instance Ppr Con where
     ppr (Con n ts) = text n <+> hsep (map ppr ts)
@@ -106,7 +103,7 @@ instance Ppr Dec where
             <+> ppr meths
 
 instance Ppr Sig where
-    ppr (Sig n t) = text n <+> text "::" <+> ppr t 
+    ppr (Sig n t) = text n <> braces (ppr t)
 
 instance Ppr Method where
     ppr (Method n e) = text n <+> text "=" <+> ppr e
