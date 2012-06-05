@@ -8632,3 +8632,21 @@ Mon Jun  4 19:15:36 EDT 2012
 
 Works swell! Cool.
 
+Tue Jun  5 11:38:39 EDT 2012
+
+Talked to Nirav about this language for dumping and reading in the lambda
+expressions, and I reworked types in the lambda expression to a way I think
+more reasonable.
+
+Let me not get stuck on this, but do a first pass. The goal is two things:
+- Pretty printer
+Nirav wants me to not have stupid parenthesis in easy cases:
+ names, function application, type application 
+ But don't worry about operators
+ Try to have vertical alignment things printed nicely, because it makes it
+ much easier to read (see what the pretty printer I'm using lets you do).
+- Parser
+Should be able to read in the pretty printed code.
+
+First step: pretty print the way I want.
+

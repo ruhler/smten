@@ -57,7 +57,7 @@ haskell builtin main e =
       issymbol (h:_) = not $ isAlphaNum h || h == '_'
     
       hsDec :: Dec -> [H.Dec]
-      hsDec (ValD n t e) =
+      hsDec (ValD (Sig n t) e) =
         let hsn = hsName $ if issymbol n then "(" ++ n ++ ")" else n
             sig = H.SigD hsn (hsType t)
             val = H.FunD hsn [H.Clause [] (H.NormalB (hsExp e)) []]

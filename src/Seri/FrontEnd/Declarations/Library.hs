@@ -44,8 +44,9 @@ import Seri.FrontEnd.Declarations.Polymorphic
 --  data SeriDec_foo = SeriDec_foo
 --
 --  instance SeriDec SeriDec_foo where
---      dec _ = ValD "foo"
---                  (ForallT ["a"] [Pred "Eq" [VarT_a]] (VarT_a -> Integer))
+--      dec _ = ValD (Sig "foo"
+--                         (ForallT ["a"] [Pred "Eq" [VarT_a]]
+--                                  (VarT_a -> Integer)))
 --                  (typed (_seri_foo :: Typed Exp (VarT_a -> Integer)))
 declval' :: Name -> Type -> Exp -> [Dec]
 declval' n t e =
@@ -57,7 +58,7 @@ declval' n t e =
       impl_I = FunD (instidname n) [Clause [WildP] (NormalB $ ConE 'S.Declared) []]
 
       exp = apply 'S.typed [SigE (VarE (valuename n)) (concrete dt)]
-      body = applyC 'S.ValD [string n, seritypeexp t, exp]
+      body = applyC 'S.ValD [applyC 'S.Sig [string n, seritypeexp t], exp]
       ddec = seridec (prefixed "D_" n) body
 
   in [sig_P, impl_P, sig_I, impl_I] ++ ddec

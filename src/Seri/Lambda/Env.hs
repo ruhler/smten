@@ -27,7 +27,7 @@ decls x = env x
 lookupValD :: Env a -> Name -> Maybe Dec
 lookupValD (Env decls _) n =
   let theValD :: Dec -> Bool
-      theValD (ValD nm _ _) = n == nm
+      theValD (ValD (Sig nm _) _) = n == nm
       theValD _ = False
   in listToMaybe $ filter theValD decls
 
@@ -59,7 +59,7 @@ lookupInstD (Env decls _) n t =
 -- determined by the environment.
 lookupvar :: Env Exp -> Maybe (Type, Exp)
 lookupvar e@(Env _ (VarE (Sig n _) Declared)) = do
-  (ValD _ t v) <- lookupValD e n
+  (ValD (Sig _ t) v) <- lookupValD e n
   return (t, v)
 lookupvar e@(Env _ (VarE (Sig x _) (Instance n ts))) =
   let mlook :: [Method] -> Maybe (Type, Exp)
