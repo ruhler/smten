@@ -10,11 +10,17 @@ import Data.Char(ord)
 import Text.Parsec hiding (token)
 import Seri.Lambda.IR
 
+runToEnd :: Parser a -> Parser a
+runToEnd p = do 
+    x <- p
+    eof
+    return x
+
 -- Run a parser
 -- Fails if there is a parse error.
 run :: (Monad m) => Parser a -> String -> m a
 run p str 
-  = case (runParser p () str str) of
+  = case (runParser (runToEnd p) () str str) of
         Left err -> fail $ show err
         Right x -> return x
 
@@ -28,28 +34,27 @@ token x = do
     return x
 
 symbol :: Parser Char
-symbol = oneOf "!#$%&*+./<=>?@^-~"
+symbol = oneOf "!#$%&*+./<=>@^-~"
 
 -- A variable name
 vname :: Parser Name
 vname =
-  let normal = do
-        x <- lower
-        xs <- many alphaNum
-        many space
-        return (x:xs)
-
-      vsym = do
+  let vsym = do
         s <- symbol
         ss <- many (symbol <|> char ':')
         return (s:ss)
-  in vsym <|> normal
+  in vsym <|> tvname
+
+reserved = ["data", "case", "if", "instance", "class"]
 
 -- A type variable name
 tvname :: Parser Name
 tvname = do
-    x <- lower
-    xs <- many alphaNum
+    x <- (lower <|> char '_')
+    xs <- many (alphaNum <|> char '_' <|> char '\'')
+    if (x:xs `elem` reserved) 
+        then fail $ (x:xs) ++ " is reserved"
+        else return ()
     many space
     return (x:xs)
 
@@ -68,9 +73,8 @@ cname =
         token ")"
         return $ "(" ++ cs ++ ")"
 
-      arrow = token "->"
       list = token "[]"
-  in arrow <|> tuple <|> list <|> normal
+  in tuple <|> list <|> normal
 
 integer :: Parser Integer
 integer =

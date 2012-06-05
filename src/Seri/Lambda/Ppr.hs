@@ -39,7 +39,7 @@ isAtomE (ConE {}) = True
 isAtomE (VarE {}) = True
 
 pprsig :: String -> Sig -> Doc
-pprsig s (Sig n t) = text n <> text s <> braces (ppr t)
+pprsig s (Sig n t) = text s <> text n <> braces (ppr t)
 
 sep2 :: Doc -> Doc -> Doc
 sep2 a b = a $$ nest tabwidth b
@@ -51,12 +51,12 @@ instance Ppr Exp where
                             nest tabwidth (vcat (map ppr ms)) $$ text "}"
     ppr (AppE a b) | isAtomE b = ppr a <+> ppr b
     ppr (AppE a b) = ppr a <+> (parens $ ppr b)
-    ppr (LamE s b) = (text "\\" <> pprsig "." s <+> text "->") `sep2` ppr b
-    ppr (ConE s) = pprsig "%" s
+    ppr (LamE s b) = parens $ (text "\\" <> ppr s <+> text "->") `sep2` ppr b
+    ppr (ConE s) = ppr s
     ppr (VarE s Bound) = pprsig "." s
     ppr (VarE s Declared) = pprsig "%" s
     ppr (VarE (Sig n t) (Instance ni tis))
-        = text n <> text "#" <> braces (ppr t <> comma <+> ppr (Pred ni tis))
+        = text "#" <> text n <> braces (ppr t <> comma <+> ppr (Pred ni tis))
 
 instance Ppr Match where
     ppr (Match p e) = (ppr p <+> text "->") `sep2` ppr e <> semi
@@ -69,8 +69,8 @@ isAtomP (AppP {}) = False
 isAtomP (WildP {}) = True
 
 instance Ppr Pat where
-    ppr (ConP s) = pprsig "%" s
-    ppr (VarP s) = pprsig "%" s
+    ppr (ConP s) = ppr s
+    ppr (VarP s) = ppr s
     ppr (IntegerP i) = integer i
     ppr (AppP a b) | isAtomP b = ppr a <+> ppr b
     ppr (AppP a b) = ppr a <+> (parens $ ppr b)
@@ -83,16 +83,19 @@ conlist (x:xs) = text " " <+> ppr x
                     $+$ vcat (map (\c -> text "|" <+> ppr c) xs)
 
 instance Ppr Dec where
-    ppr (ValD s e) = pprsig "%" s <+> text "=" $$ nest tabwidth (ppr e <> semi)
+    ppr (ValD s e) = ppr s <+> text "=" $$ nest tabwidth (ppr e) <> semi
     ppr (DataD n vs cs)
         = text "data" <+> text n <+> hsep (map text vs) <+> text "=" $$
-            nest tabwidth (conlist cs)
+            (nest tabwidth (conlist cs)) <> semi
     ppr (ClassD n vs ss)
         = text "class" <+> text n <+> hsep (map text vs) <+> text "where" $$
-            nest tabwidth (vcat (map (pprsig "#") ss))
+            nest tabwidth (vcat (map ppr ss))
     ppr (InstD n ts ms)
         = text "instance" <+> ppr (Pred n ts) <+> text "where" $$
             vcat (map ppr ms)
+
+instance Ppr Sig where
+    ppr = pprsig ""
     
 instance Ppr Con where
     ppr (Con n ts) = text n <+> hsep (map ppr ts)

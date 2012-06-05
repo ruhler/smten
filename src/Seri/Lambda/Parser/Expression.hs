@@ -1,5 +1,5 @@
 
-module Seri.Lambda.Parser.Expression (expE) where
+module Seri.Lambda.Parser.Expression (expE, matchE) where
 
 import Text.Parsec hiding (token)
 
@@ -15,7 +15,7 @@ appE :: Parser (Exp -> Exp -> Exp)
 appE = return AppE
 
 atomE :: Parser Exp
-atomE = parenE <|> integerE <|> (try caseE) <|> varE <|> lamE <|> conE
+atomE = (try parenE) <|> integerE <|> (try caseE) <|> varE <|> lamE <|> conE <?> "atom expression"
 
 parenE :: Parser Exp
 parenE = do
@@ -32,8 +32,8 @@ integerE = do
 -- Variable or primitive
 varE :: Parser Exp
 varE = do
-    n <- vname
     kind <- oneOf ".%@#"
+    n <- vname
     case kind of
         '.' -> do
             t <- braces typeT
@@ -55,7 +55,6 @@ varE = do
 conE :: Parser Exp
 conE = do
     n <- cname
-    char '%'
     t <- braces typeT
     many space
     return (ConE (Sig n t))
@@ -63,8 +62,7 @@ conE = do
 lamE :: Parser Exp
 lamE = do
     char '\\'
-    n <- vname
-    char '.'
+    n <- tvname
     t <- braces (typeT)
     token "->"
     e <- expE

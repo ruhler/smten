@@ -7,7 +7,7 @@ import Seri.Lambda.IR
 import Seri.Lambda.Parser.Utils
 
 typeT :: Parser Type
-typeT = forallT <|> appsT
+typeT = forallT <|> appsT <?> "type"
 
 forallT :: Parser Type
 forallT = do
@@ -40,7 +40,7 @@ appT :: Parser (Type -> Type -> Type)
 appT = return AppT
 
 atomT :: Parser Type
-atomT = parenT <|> conT <|> varT
+atomT = (try parenT) <|> conT <|> varT <?> "atom type"
 
 parenT :: Parser Type
 parenT = do
@@ -51,7 +51,7 @@ parenT = do
 
 conT :: Parser Type
 conT = do
-    n <- cname
+    n <- (cname <|> token "->")
     return (ConT n)
 
 varT :: Parser Type

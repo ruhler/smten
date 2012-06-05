@@ -14,7 +14,7 @@ appP :: Parser (Pat -> Pat -> Pat)
 appP = return (AppP)
 
 atomP :: Parser Pat
-atomP = parenP <|> (try wildP) <|> conP <|> varP <|> integerP
+atomP = (try parenP) <|> (try wildP) <|> conP <|> varP <|> integerP <?> "atom pattern"
 
 parenP :: Parser Pat
 parenP = do
@@ -32,14 +32,12 @@ wildP = do
 conP :: Parser Pat
 conP = do
     n <- cname
-    char '%'
     t <- braces typeT
     return (ConP (Sig n t))
     
 varP :: Parser Pat
 varP = do
-    n <- vname
-    char '%'
+    n <- tvname
     t <- braces typeT
     return (VarP (Sig n t))
 

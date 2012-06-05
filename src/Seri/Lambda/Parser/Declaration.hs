@@ -11,15 +11,15 @@ import Seri.Lambda.Parser.Type
 import Seri.Lambda.Parser.Utils
 
 decD :: Parser Dec
-decD = valD <|> dataD <|> classD <|> instD
+decD = (try dataD) <|> (try classD) <|> (try instD) <|> valD <?> "declaration"
 
 valD :: Parser Dec
 valD = do
     n <- vname
-    char '%'
     t <- braces typeT
     token "="
     e <- expE
+    token ";"
     return (ValD (Sig n t) e)
 
 dataD :: Parser Dec
@@ -27,7 +27,9 @@ dataD = do
     token "data"
     n <- cname
     vs <- many tvname
+    token "="
     cs <- consD
+    token ";"
     return (DataD n vs cs)
 
 consD :: Parser [Con]
@@ -54,7 +56,6 @@ classD = do
 sigD :: Parser Sig
 sigD = do
     n <- vname
-    char '#'
     t <- braces typeT
     return (Sig n t)
 
