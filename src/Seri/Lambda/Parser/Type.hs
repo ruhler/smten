@@ -1,5 +1,5 @@
 
-module Seri.Lambda.Parser.Type (typeT) where
+module Seri.Lambda.Parser.Type (typeT, predicateT) where
 
 import Text.Parsec hiding (token)
 
@@ -12,7 +12,7 @@ typeT = forallT <|> appsT
 forallT :: Parser Type
 forallT = do
     token "forall"
-    tvars <- many vname
+    tvars <- many tvname
     token "."
     ctx <- option [] contextT
     t <- typeT
@@ -56,6 +56,6 @@ conT = do
 
 varT :: Parser Type
 varT = do
-    n <- vname
+    n <- tvname
     return (VarT n)
 

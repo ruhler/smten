@@ -27,6 +27,9 @@ eqexp wnt e = do
         else return ()
 
 
+theenv :: [Dec]
+theenv = decls (typed [s| () |])
+
 tests = "Seri" ~: [
     "foo" ~: IntegerE 42 `eqexp` [s|(\x -> x*x+3*x+2) 5|],
     "foo1dec" ~: IntegerE 42 `eqexp` [s| foo1 |],
@@ -69,6 +72,8 @@ tests = "Seri" ~: [
     "multifoofun" ~: IntegerE 19 `eqexp` [s| multifoofun True 12 |],
     "shadow" ~: IntegerE 8 `eqexp` [s| shadow 3 |],
     "listlen" ~: IntegerE 3 `eqexp` [s| length [1, 5, 2] |],
-    "ppr" ~: putStrLn (show (ppr (decls (typed [s| 21 |]))))
+    "ppr" ~: putStrLn (show (ppr (decls (typed [s| 21 |])))),
+    "print and parse" ~: Right theenv
+        ~=? (parseDecs (render (ppr theenv)) :: Either String [Dec])
     ]
 

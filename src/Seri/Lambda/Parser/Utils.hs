@@ -1,8 +1,11 @@
 
 module Seri.Lambda.Parser.Utils (
     Parser,
-    run, token, vname, cname,
+    run, token, vname, cname, tvname,
+    integer, braces,
     ) where
+
+import Data.Char(ord)
 
 import Text.Parsec hiding (token)
 import Seri.Lambda.IR
@@ -24,9 +27,27 @@ token x = do
     many space
     return x
 
+symbol :: Parser Char
+symbol = oneOf "!#$%&*+./<=>?@^-~"
+
 -- A variable name
 vname :: Parser Name
-vname = do
+vname =
+  let normal = do
+        x <- lower
+        xs <- many alphaNum
+        many space
+        return (x:xs)
+
+      vsym = do
+        s <- symbol
+        ss <- many (symbol <|> char ':')
+        return (s:ss)
+  in vsym <|> normal
+
+-- A type variable name
+tvname :: Parser Name
+tvname = do
     x <- lower
     xs <- many alphaNum
     many space
@@ -50,4 +71,22 @@ cname =
       arrow = token "->"
       list = token "[]"
   in arrow <|> tuple <|> list <|> normal
+
+integer :: Parser Integer
+integer =
+    let digitstoint :: Integer -> [Char] -> Integer
+        digitstoint acc [] = acc
+        digitstoint acc (x:xs)  
+            = digitstoint (acc*10 + (fromIntegral $ (ord x - ord '0'))) xs
+    in do
+        digits <- many1 digit
+        many space
+        return $ digitstoint 0 digits
+
+braces :: Parser a -> Parser a
+braces p = do
+    token "{"
+    x <- p
+    token "}"
+    return x
 

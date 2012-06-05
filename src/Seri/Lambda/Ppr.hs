@@ -74,7 +74,7 @@ instance Ppr Pat where
     ppr (IntegerP i) = integer i
     ppr (AppP a b) | isAtomP b = ppr a <+> ppr b
     ppr (AppP a b) = ppr a <+> (parens $ ppr b)
-    ppr (WildP {}) = text "_"
+    ppr (WildP t) = text "_" <+> braces (ppr t)
 
 
 conlist :: [Con] -> Doc

@@ -8650,3 +8650,26 @@ Should be able to read in the pretty printed code.
 
 First step: pretty print the way I want.
 
+Tue Jun  5 15:38:03 EDT 2012
+
+Note: I need to change how patterns are represented.
+For translating from haskell it's fine to have AppP and so on. But really I
+should be restricting it to ConP name [Pat].
+
+Why? Because otherwise you could stuff like:
+ case foo of
+    c 3 -> c 5
+
+Which you certainly can't do in haskell. And really, I don't want to allow it.
+So let me do this next, after the parser gets going well enough.
+
+Tue Jun  5 16:36:09 EDT 2012
+
+Trouble with the parser. Parsing operator names is annoying, because they
+clash with the symbols used to specify the kind of variable.
+
+Can I change things? Rather than have the symbol for the name at the end, how
+about put it at the start? I like that idea. Sounds reasonable to me.
+
+I'll get on it then.
+
