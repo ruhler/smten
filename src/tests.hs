@@ -3,6 +3,7 @@ import Test.HUnit
 import System.Exit
 
 import qualified Seri.Tests
+import qualified Seri.Lambda.Parser
 import qualified Seri.SMT.Tests
 --import qualified Seri.Tibby.Tests
 
@@ -16,6 +17,7 @@ runtests t = do
         else exitWith ExitSuccess
 
 tests = "Tests" ~: [
+    Seri.Lambda.Parser.tests,
     Seri.Tests.tests,
     Seri.SMT.Tests.tests
 --    Seri.Tibby.Tests.tests
