@@ -21,6 +21,6 @@ import Seri.Lib.Monad
 import Seri.Lib.Tuple
 import Seri.Lib.Unit
 
-preludeR :: Rule
+preludeR :: (Monad m) => Rule m
 preludeR = rules [coreR, integerR]
 

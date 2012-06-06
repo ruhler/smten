@@ -6,6 +6,8 @@ module Seri.Tests (
     tests
     ) where
 
+import Control.Monad.Identity
+
 import Seri
 import Seri.Lib.Prelude
 import Seri.Lib.Tests
@@ -13,7 +15,7 @@ import Seri.Lib.Tests
 import Test.HUnit
 
 eval :: Typed (Env Exp) a -> Exp
-eval e = elaborate preludeR (typed e)
+eval e = runIdentity $ elaborate preludeR (typed e)
 
 eqexp :: Exp -> Typed (Env Exp) a -> Assertion
 eqexp wnt e = do
