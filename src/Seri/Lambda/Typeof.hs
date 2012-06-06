@@ -13,7 +13,7 @@ instance Typeof Exp where
     typeof (PrimE tn) = typeof tn
     typeof (CaseE _ (m:_)) = typeof m
     typeof (AppE f _) = outputtype (typeof f)
-    typeof (LamE tn e) = tarrow (typeof tn)) (typeof e)
+    typeof (LamE tn e) = tarrow (typeof tn) (typeof e)
     typeof (ConE tn) = typeof tn
     typeof (VarE tn _) = typeof tn
     
