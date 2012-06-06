@@ -26,6 +26,6 @@ simple = [s| do
 
 tests = "Seri.SMT" ~: [
         "simple" ~: querytest (val (typed [s| Satisfiable 5 |])) simple,
-        "print simple" ~: (putStrLn (show (minimize (typed simple))))
+        "print simple" ~: (putStrLn (render (ppr (minimize (typed simple)))))
         ]
 

@@ -93,7 +93,7 @@ instance Ppr Dec where
             nest tabwidth (vcat (map ppr ss))
     ppr (InstD n ts ms)
         = text "instance" <+> ppr (Pred n ts) <+> text "where" $$
-            vcat (map ppr ms)
+            nest tabwidth (vcat (map ppr ms))
 
 instance Ppr Sig where
     ppr = pprsig ""
@@ -102,7 +102,7 @@ instance Ppr Con where
     ppr (Con n ts) = text n <+> hsep (map ppr ts)
 
 instance Ppr Method where
-    ppr (Method n e) = text n <+> text "=" <+> ppr e
+    ppr (Method n e) = text n <+> text "=" <+> ppr e <> semi
 
 instance Ppr [Dec] where
     ppr ds = vcat (map (\d -> ppr d $+$ text "") ds)

@@ -10,6 +10,7 @@ import Data.List(nub)
 import Data.Maybe
 
 import Seri.Lambda.IR
+import Seri.Lambda.Ppr
 import Seri.Utils.Ppr
 
 data Env x = Env {
@@ -109,4 +110,8 @@ minimize (Env m x) =
             then d
             else alldecls dds
   in Env (alldecls (declarations m x)) x
+
+instance (Ppr a) => Ppr (Env a) where
+    ppr (Env ds x) = ppr ds $+$ ppr x
+
 

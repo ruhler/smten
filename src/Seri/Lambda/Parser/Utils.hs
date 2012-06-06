@@ -20,7 +20,7 @@ runToEnd p = do
 -- Fails if there is a parse error.
 run :: (Monad m) => Parser a -> String -> m a
 run p str 
-  = case (runParser (runToEnd p) () str str) of
+  = case (runParser (many space >> runToEnd p) () str str) of
         Left err -> fail $ show err
         Right x -> return x
 

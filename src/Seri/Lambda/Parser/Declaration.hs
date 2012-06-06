@@ -72,7 +72,9 @@ instD = do
 methodD :: Parser Method
 methodD = do
     n <- vname
+    many space
     token "="
     b <- expE
+    token ";"
     return (Method n b)
 
