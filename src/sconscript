@@ -27,9 +27,13 @@ runquery = env.GHCProgram('runquery', 'Seri/SMT/runquery.hs')
 env.Default(runquery)
 
 ## SMT run query tests
-q1bin = env.GHCProgram('query1', 'Seri/SMT/Tests/query1.hs')
-q1sri = env.Command('query1.sri', q1bin, "$SOURCE > $TARGET")
-q1out = env.Command('query1.out', [runquery, q1sri],
-    '$SOURCE < ${SOURCES[1]} > $TARGET')
-env.Default(q1out)
+def querytest(name):
+    bin = env.GHCProgram(name, 'Seri/SMT/Tests/%s.hs' % name)
+    sri = env.Command('%s.sri' % name, bin, "$SOURCE > $TARGET")
+    out = env.Command('%s.out' % name, [runquery, sri],
+        '$SOURCE < ${SOURCES[1]} > $TARGET')
+    env.Default(out)
+
+querytest("query1")
+querytest("query2")
 

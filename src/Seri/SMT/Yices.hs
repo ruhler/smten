@@ -65,7 +65,7 @@ runQuery gr e = do
         x -> error $ "unknown Query: " ++ render (ppr x)
 
 
-yicespath = "/home/ruhler/sri/scratch/yices/yices-1.0.34/bin/yices"
+yicespath = "/home/ruhler/sri/scratch/yices/yices-1.0.34/bin/tyices"
 
 yType :: Type -> Y.TypY
 yType t = case compile_type smtY smtY t of
