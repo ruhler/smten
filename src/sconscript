@@ -27,5 +27,5 @@ runquery = env.GHCProgram('runquery', 'Seri/SMT/runquery.hs')
 env.Default(runquery)
 query1 = env.Command('query1.out', [runquery, 'Seri/SMT/query1.sri'],
     '$SOURCE < ${SOURCES[1]} > $TARGET')
-#env.Default(query1)
+env.Default(query1)
 

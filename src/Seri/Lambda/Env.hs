@@ -56,6 +56,18 @@ lookupInstD (Env decls _) n t =
       theInstD _ = False
   in listToMaybe $ filter theInstD decls
 
+-- Look up the type of a method in the given class.
+lookupSig :: Env a -> Name -> Name -> Maybe Type
+lookupSig e cls meth =
+  let sigInClass :: [Sig] -> Maybe Type
+      sigInClass [] = Nothing
+      sigInClass ((Sig n t):_) | n == meth = Just t
+      sigInClass (_:xs) = sigInClass xs
+  in do
+     ClassD _ _ sigs <- lookupClassD e cls
+     sigInClass sigs
+
+
 -- Given a VarE in an environment return the value of that variable as
 -- determined by the environment.
 lookupvar :: Env Exp -> Maybe (Type, Exp)
@@ -65,7 +77,9 @@ lookupvar e@(Env _ (VarE (Sig n _) Declared)) = do
 lookupvar e@(Env _ (VarE (Sig x _) (Instance n ts))) =
   let mlook :: [Method] -> Maybe (Type, Exp)
       mlook [] = Nothing
-      mlook ((Method nm e):ms) | nm == x = Just (error "TODO: look up type of method in ClassD", e)
+      mlook ((Method nm body):ms) | nm == x = do
+          t <- lookupSig e n x
+          return (t, body)
       mlook (m:ms) = mlook ms
   in do
       InstD _ _ ms <- lookupInstD e n ts  
