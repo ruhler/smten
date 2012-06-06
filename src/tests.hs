@@ -4,8 +4,6 @@ import System.Exit
 
 import qualified Seri.Tests
 import qualified Seri.Lambda.Parser.Tests
-import qualified Seri.SMT.Tests
---import qualified Seri.Tibby.Tests
 
 -- Run tests, exiting failure if any failed, exiting success if all succeeded.
 runtests :: Test -> IO ()
@@ -18,9 +16,7 @@ runtests t = do
 
 tests = "Tests" ~: [
     Seri.Lambda.Parser.Tests.tests,
-    Seri.Tests.tests,
-    Seri.SMT.Tests.tests
---    Seri.Tibby.Tests.tests
+    Seri.Tests.tests
     ]
 
 main :: IO ()
