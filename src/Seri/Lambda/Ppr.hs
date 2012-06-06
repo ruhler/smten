@@ -74,7 +74,7 @@ instance Ppr Pat where
     ppr (IntegerP i) = integer i
     ppr (AppP a b) | isAtomP b = ppr a <+> ppr b
     ppr (AppP a b) = ppr a <+> (parens $ ppr b)
-    ppr (WildP t) = text "_" <+> braces (ppr t)
+    ppr (WildP t) = text "_" <> braces (ppr t)
 
 
 conlist :: [Con] -> Doc
@@ -83,7 +83,8 @@ conlist (x:xs) = text " " <+> ppr x
                     $+$ vcat (map (\c -> text "|" <+> ppr c) xs)
 
 instance Ppr Dec where
-    ppr (ValD s e) = ppr s <+> text "=" $$ nest tabwidth (ppr e) <> semi
+    ppr (ValD s e) = text "value" <+> ppr s <+> text "=" $$
+            nest tabwidth (ppr e) <> semi
     ppr (DataD n vs cs)
         = text "data" <+> text n <+> hsep (map text vs) <+> text "=" $$
             (nest tabwidth (conlist cs)) <> semi

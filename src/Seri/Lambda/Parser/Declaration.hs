@@ -1,6 +1,6 @@
 
 
-module Seri.Lambda.Parser.Declaration (decD) where
+module Seri.Lambda.Parser.Declaration (decD, conD) where
 
 import Text.Parsec hiding (token)
 
@@ -11,10 +11,11 @@ import Seri.Lambda.Parser.Type
 import Seri.Lambda.Parser.Utils
 
 decD :: Parser Dec
-decD = (try dataD) <|> (try classD) <|> (try instD) <|> valD <?> "declaration"
+decD = valD <|> dataD <|> classD <|> instD <?> "declaration"
 
 valD :: Parser Dec
 valD = do
+    token "value"
     n <- vname
     t <- braces typeT
     token "="
@@ -41,7 +42,7 @@ consD = do
 conD :: Parser Con
 conD = do
     n <- cname 
-    ts <- many typeT
+    ts <- many atomT
     return (Con n ts)
     
 classD :: Parser Dec
@@ -63,7 +64,7 @@ instD :: Parser Dec
 instD = do
     token "instance"
     n <- cname
-    ts <- many typeT
+    ts <- many atomT
     token "where"
     ms <- many methodD
     return (InstD n ts ms)

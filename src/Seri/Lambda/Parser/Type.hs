@@ -1,5 +1,5 @@
 
-module Seri.Lambda.Parser.Type (typeT, predicateT) where
+module Seri.Lambda.Parser.Type (typeT, atomT, predicateT) where
 
 import Text.Parsec hiding (token)
 
@@ -30,7 +30,7 @@ contextT = do
 predicateT :: Parser Pred
 predicateT = do
     n <- cname
-    ts <- many typeT
+    ts <- many atomT
     return (Pred n ts)
 
 appsT :: Parser Type

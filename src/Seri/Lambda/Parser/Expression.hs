@@ -15,7 +15,7 @@ appE :: Parser (Exp -> Exp -> Exp)
 appE = return AppE
 
 atomE :: Parser Exp
-atomE = (try parenE) <|> integerE <|> (try caseE) <|> varE <|> lamE <|> conE <?> "atom expression"
+atomE = (try parenE) <|> integerE <|> (try caseE) <|> varE <|> lamE <|> (try conE) <?> "atom expression"
 
 parenE :: Parser Exp
 parenE = do

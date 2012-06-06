@@ -45,16 +45,22 @@ vname =
         return (s:ss)
   in vsym <|> tvname
 
-reserved = ["data", "case", "if", "instance", "class"]
+keyword :: Parser Name 
+keyword = token "case" 
+            <|> token "of"
+            <|> token "where"
+            <|> token "value"
+            <|> token "data"
+            <|> token "class"
+            <|> token "instance"
+            <?> "keyword"
 
 -- A type variable name
 tvname :: Parser Name
 tvname = do
+    notFollowedBy keyword
     x <- (lower <|> char '_')
     xs <- many (alphaNum <|> char '_' <|> char '\'')
-    if (x:xs `elem` reserved) 
-        then fail $ (x:xs) ++ " is reserved"
-        else return ()
     many space
     return (x:xs)
 
@@ -73,7 +79,7 @@ cname =
         token ")"
         return $ "(" ++ cs ++ ")"
 
-      list = token "[]"
+      list = token "[]" <|> token ":"
   in tuple <|> list <|> normal
 
 integer :: Parser Integer

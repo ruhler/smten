@@ -40,7 +40,10 @@ patterns = "Pattern" ~: [
         ~=? (run patP "Foo{Bar} a{Integer} 42" :: Either String Pat),
     "varP" ~:
         Right (VarP (Sig "y" (ConT "Integer")))
-        ~=? (run patP "y{Integer}" :: Either String Pat)
+        ~=? (run patP "y{Integer}" :: Either String Pat),
+    "wildP" ~:
+        Right (WildP (ConT "Integer"))
+        ~=? (run patP "_{Integer}" :: Either String Pat)
     ]
 
 expressions = "Expression" ~: [
@@ -74,9 +77,17 @@ expressions = "Expression" ~: [
 declarations = "Declaration" ~: [
     "vald simple" ~: 
         Right (ValD (Sig "foo" (ConT "Integer")) (IntegerE 3))
-        ~=? (run decD "foo{Integer} = 3;" :: Either String Dec),
+        ~=? (run decD "value foo{Integer} = 3;" :: Either String Dec),
     "data simple" ~:
         Right (DataD "Foo" [] [Con "Bar" [ConT "Integer"], Con "Sludge" [ConT "Bool"]])
-        ~=? (run decD "data Foo = Bar Integer | Sludge Bool;" :: Either String Dec)
+        ~=? (run decD "data Foo = Bar Integer | Sludge Bool;"
+                        :: Either String Dec),
+    "con" ~:
+        Right (Con "Bar" [ConT "Integer", ConT "Bool"])
+        ~=? (run conD "Bar Integer Bool" :: Either String Con),
+    "class simple" ~:
+        Right (ClassD "Foo" ["a"] [Sig "foo" (AppT (AppT (ConT "->") (VarT "a")) (ConT "Integer"))])
+        ~=? (run decD "class Foo a where  foo{-> a Integer}"
+                        :: Either String Dec)
     ]
 
