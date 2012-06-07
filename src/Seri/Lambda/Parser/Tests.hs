@@ -20,15 +20,19 @@ tests = "Parser" ~: [
 types = "Type" ~: [
     "simple" ~:
         Right (AppT (AppT (ConT "->") (VarT "a")) (ConT "Integer"))
-        ~=? (run typeT "-> a Integer" :: Either String Type),
+        ~=? (run typeT "a -> Integer" :: Either String Type),
     "tuple" ~:
         Right (ConT "(,)")
         ~=? (run typeT "(,)" :: Either String Type),
+    "arrows" ~:
+        Right (AppT (AppT (ConT "->") (VarT "a"))
+                    (AppT (AppT (ConT "->") (VarT "b")) (VarT "c")))
+        ~=? (run typeT "a -> b -> c" :: Either String Type),
     "forall" ~:
         Right (ForallT ["a", "m"] [ 
                 Pred "Foo" [VarT "a"], Pred "Monad" [VarT "m"]]
                 (AppT (AppT (ConT "->") (VarT "a")) (AppT (VarT "m") (VarT "a"))))
-        ~=? (run typeT "forall a m . (Foo a, Monad m) => -> a (m a)"
+        ~=? (run typeT "forall a m . (Foo a, Monad m) => a -> m a"
                             :: Either String Type)
     ]
 
@@ -58,7 +62,7 @@ expressions = "Expression" ~: [
                     (AppE (AppE (VarE (Sig "f" (AppT (AppT (ConT "->") (ConT "Integer")) (ConT "Integer"))) Declared)
                                 (VarE (Sig "x" (ConT "Integer")) Bound))
                           (IntegerE 1)))
-        ~=? (run expE "\\(x :: Integer) -> (%f :: -> Integer Integer) (.x :: Integer) 1"
+        ~=? (run expE "\\(x :: Integer) -> (%f :: Integer -> Integer) (.x :: Integer) 1"
                             :: Either String Exp),
     "paren" ~:
         Right (IntegerE 2)
@@ -90,7 +94,7 @@ declarations = "Declaration" ~: [
         ~=? (run conD "Bar Integer Bool" :: Either String Con),
     "class simple" ~:
         Right (ClassD "Foo" ["a"] [Sig "foo" (AppT (AppT (ConT "->") (VarT "a")) (ConT "Integer"))])
-        ~=? (run decD "class Foo a where { foo :: -> a Integer ; } ;"
+        ~=? (run decD "class Foo a where { foo :: a -> Integer ; } ;"
                         :: Either String Dec)
     ]
 

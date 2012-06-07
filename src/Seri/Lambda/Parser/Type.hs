@@ -7,14 +7,14 @@ import Seri.Lambda.IR
 import Seri.Lambda.Parser.Utils
 
 typeT :: Parser Type
-typeT = forallT <|> appsT <?> "type"
+typeT = forallT <|> arrowsT <?> "type"
 
 forallT :: Parser Type
 forallT = do
     token "forall"
     tvars <- many tvname
     token "."
-    ctx <- option [] contextT
+    ctx <- option [] (try contextT)
     t <- typeT
     return (ForallT tvars ctx t)
 
@@ -33,6 +33,14 @@ predicateT = do
     ts <- many atomT
     return (Pred n ts)
 
+arrowsT :: Parser Type
+arrowsT = appsT `chainr1` arrowT
+
+arrowT :: Parser (Type -> Type -> Type)
+arrowT = do
+    token "->"
+    return $ \at bt -> AppT (AppT (ConT "->") at) bt
+
 appsT :: Parser Type
 appsT = atomT `chainl1` appT
 
@@ -40,7 +48,7 @@ appT :: Parser (Type -> Type -> Type)
 appT = return AppT
 
 atomT :: Parser Type
-atomT = (try parenT) <|> (try listT) <|> (try tupT) <|> conT <|> varT <?> "atom type"
+atomT = (try parenT) <|> (try listT) <|> (try tupT) <|> (try arrT) <|> conT <|> varT <?> "atom type"
 
 parenT :: Parser Type
 parenT = do
@@ -49,9 +57,14 @@ parenT = do
     token ")"
     return x
 
+arrT :: Parser Type
+arrT = do
+    token "(->)"
+    return (ConT "->")
+
 conT :: Parser Type
 conT = do
-    n <- (cname <|> token "->")
+    n <- cname 
     return (ConT n)
 
 varT :: Parser Type

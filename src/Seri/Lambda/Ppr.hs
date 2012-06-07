@@ -10,11 +10,17 @@ tabwidth :: Int
 tabwidth = 2
 
 isAtomT :: Type -> Bool
+isAtomT (AppT (ConT "[]") _) = True
+isAtomT (AppT (AppT (ConT "(,)") a) b) = True
+isAtomT (AppT (AppT (AppT (ConT "(,,)") a) b) c) = True
 isAtomT (ConT {}) = True
 isAtomT (VarT {}) = True
-isAtomT (AppT (ConT "[]") _) = True
 isAtomT (AppT {}) = False
 isAtomT (ForallT {}) = False
+
+isArrowsT :: Type -> Bool
+isArrowsT (AppT (AppT (ConT "->") _) _) = True
+isArrowsT _ = False
 
 instance Ppr Type where
     -- Special case for list
@@ -26,6 +32,14 @@ instance Ppr Type where
     ppr (AppT (AppT (AppT (ConT "(,,)") a) b) c)
         = parens $ ppr a <> comma <+> ppr b <> comma <+> ppr c
 
+    -- Special case for ->
+    ppr (AppT (AppT (ConT "->") a) b) | isArrowsT a
+        = parens (ppr a) <+> text "->" <+> ppr b
+    ppr (AppT (AppT (ConT "->") a) b)
+        = ppr a <+> text "->" <+> ppr b
+    ppr (ConT "->") = text "(->)"
+
+    -- Normal cases
     ppr (ConT n) = text n
     ppr (VarT n) = text n
     ppr (AppT a b) | isAtomT b = ppr a <+> ppr b
