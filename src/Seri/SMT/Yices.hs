@@ -1,6 +1,8 @@
 
 module Seri.SMT.Yices (runYices, yicesR) where
 
+import Data.List((\\))
+
 import Control.Monad.State
 import Math.SMT.Yices.Pipe
 import qualified Math.SMT.Yices.Syntax as Y
@@ -12,6 +14,7 @@ import Seri.Lambda
 import Seri.Utils.Ppr
 
 data YicesState = YicesState {
+    ys_decls :: [Dec],
     ys_ipc :: YicesIPC,
     ys_freeid :: Integer
 }
@@ -57,9 +60,17 @@ runQuery gr e = do
             lift $ runCmdsY' ipc [Y.DEFINE ("free_" ++ show fid, yType t) Nothing]
             return (AppE (PrimE (Sig "realize" (AppT (AppT (ConT "->") (AppT (ConT "Free") t)) t))) (AppE (ConE (Sig "Free" (AppT (AppT (ConT "->") (ConT "Integer")) (AppT (ConT "Free") t)))) (IntegerE fid)))
         (AppE (PrimE (Sig "assert" _)) p) -> do
-            -- TODO: simplify p as much as possible first.
-            -- TODO: tell yices about functions, types used by p
             ipc <- gets ys_ipc
+
+            -- Tell yices about any new functions or types needed to
+            -- assert the predicate.
+            decs <- gets ys_decls
+            let pdecls = decls (minimize (withenv e p))
+            let newdecls = pdecls \\ decs
+            modify $ \ys -> ys { ys_decls = decs ++ newdecls }
+            lift $ runCmdsY' ipc (yDecs newdecls)
+
+            -- Assert the predicate.
             let (cmds, py) = yExp p
             lift $ runCmdsY' ipc (cmds ++ [Y.ASSERT py])
             return (ConE (Sig "()" (ConT "()")))
@@ -73,6 +84,9 @@ yType t = case compile_type smtY smtY t of
               Just yt -> yt
               Nothing -> error $ "failed: yType " ++ render (ppr t)
 
+yDecs :: [Dec] -> [Y.CmdY]
+yDecs = compile_decs smtY
+
 yExp :: Exp -> ([Y.CmdY], Y.ExpY)
 yExp e = case compile_exp smtY smtY e of
               Just ye -> ye
@@ -82,7 +96,7 @@ runYices :: Rule YicesMonad -> Env Exp -> IO Exp
 runYices gr e = do
     ipc <- createYicesPipe yicespath []
     runCmdsY' ipc (includes smtY)
-    (x, _) <- runStateT (runQuery gr e) (YicesState ipc 1)
+    (x, _) <- runStateT (runQuery gr e) (YicesState [] ipc 1)
     return x
     
 

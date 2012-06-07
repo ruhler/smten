@@ -1,7 +1,7 @@
 
 module Seri.Target.Yices.Yices (yicesY, compile_decs) where
 
-import Data.Maybe(fromJust)
+import Data.Maybe(fromJust, fromMaybe)
 import qualified Math.SMT.Yices.Syntax as Y
 
 import Seri.Lambda
@@ -60,8 +60,14 @@ yExp c (LamE (Sig n t) e) = do
     return (es, Y.LAMBDA [(n, fromJust $ compile_type c c t)] e')
 yExp _ (ConE (Sig n _)) = return ([], Y.VarE n)
 yExp _ (VarE (Sig n _) _) = return ([], Y.VarE n)
+yExp _ _ = Nothing
 
 yType :: Compiler -> Type -> Maybe Y.TypY
+yType _ (ConT n) = Just $ Y.VarT n
+yType c (AppT a b) = do
+    a' <- compile_type c c a
+    b' <- compile_type c c b
+    return $ Y.ARR [a', b']
 yType _ _ = Nothing
 
 coreY :: Compiler
@@ -74,8 +80,8 @@ yicesY = compilers [preludeY, coreY]
 --   Assumes the declaration is monomorphic.
 compile_dec :: Compiler -> Dec -> [Y.CmdY]
 compile_dec c (ValD (Sig n t) e) =
-    let Just yt = compile_type c c t
-        Just (cmds, ye) = compile_exp c c e
+    let yt = fromMaybe (error $ "compile type " ++ render (ppr t)) (compile_type c c t)
+        (cmds, ye) = fromMaybe (error $ "compile exp " ++ render (ppr e)) (compile_exp c c e)
     in cmds ++ [Y.DEFINE (n, yt) (Just ye)]
 compile_dec c (DataD n [] cs) =
     let con :: Con -> (String, [(String, Y.TypY)])
