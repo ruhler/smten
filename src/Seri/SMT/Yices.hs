@@ -60,7 +60,8 @@ runQuery gr e = do
             -- TODO: simplify p as much as possible first.
             -- TODO: tell yices about functions, types used by p
             ipc <- gets ys_ipc
-            lift $ runCmdsY' ipc [Y.ASSERT (yExp p)]
+            let (cmds, py) = yExp p
+            lift $ runCmdsY' ipc (cmds ++ [Y.ASSERT py])
             return (ConE (Sig "()" (ConT "()")))
         x -> error $ "unknown Query: " ++ render (ppr x)
 
@@ -72,7 +73,7 @@ yType t = case compile_type smtY smtY t of
               Just yt -> yt
               Nothing -> error $ "failed: yType " ++ render (ppr t)
 
-yExp :: Exp -> Y.ExpY
+yExp :: Exp -> ([Y.CmdY], Y.ExpY)
 yExp e = case compile_exp smtY smtY e of
               Just ye -> ye
               Nothing -> error $ "failed: yExp " ++ render (ppr e)
@@ -86,8 +87,8 @@ runYices gr e = do
 
 smtY :: Compiler
 smtY =
-  let ye :: Compiler -> Exp -> Maybe Y.ExpY
-      ye _ (AppE (PrimE (Sig "realize" _)) (AppE (ConE (Sig "Free" _)) (IntegerE id))) = Just $ Y.VarE ("free_" ++ show id)
+  let ye :: Compiler -> Exp -> Maybe ([Y.CmdY], Y.ExpY)
+      ye _ (AppE (PrimE (Sig "realize" _)) (AppE (ConE (Sig "Free" _)) (IntegerE id))) = Just $ ([], Y.VarE ("free_" ++ show id))
       ye _ _ = Nothing
 
       yt :: Compiler -> Type -> Maybe Y.TypY

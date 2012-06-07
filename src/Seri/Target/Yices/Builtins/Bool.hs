@@ -11,9 +11,9 @@ import Seri.Target.Yices.Compiler
 import Seri.Utils.Ppr
 import Seri.Target.Haskell.Builtin
 
-yExp :: Compiler -> Exp -> Maybe Y.ExpY
-yExp c (ConE (Sig "True" _)) = Just $ Y.LitB True
-yExp c (ConE (Sig "False" _)) = Just $ Y.LitB False
+yExp :: Compiler -> Exp -> Maybe ([Y.CmdY], Y.ExpY)
+yExp c (ConE (Sig "True" _)) = Just $ ([], Y.LitB True)
+yExp c (ConE (Sig "False" _)) = Just $ ([], Y.LitB False)
 yExp _ _ = Nothing
 
 yType :: Compiler -> Type -> Maybe Y.TypY

@@ -5,7 +5,7 @@ import Seri.Lambda
 import qualified Math.SMT.Yices.Syntax as Y
 
 data Compiler = Compiler {
-    compile_exp :: Compiler -> Exp -> Maybe Y.ExpY,
+    compile_exp :: Compiler -> Exp -> Maybe ([Y.CmdY], Y.ExpY),
     compile_type :: Compiler -> Type -> Maybe Y.TypY
 }
 

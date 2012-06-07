@@ -9,8 +9,8 @@ import Seri.Target.Yices.Builtins.Prelude
 import Seri.Utils.Ppr
 
 -- Translate a seri expression to a yices expression
-yExp :: Compiler -> Exp -> Maybe Y.ExpY
-yExp _ (IntegerE x) = Just $ Y.LitI x
+yExp :: Compiler -> Exp -> Maybe ([Y.CmdY], Y.ExpY)
+yExp _ (IntegerE x) = Just $ ([], Y.LitI x)
 yExp _ _ = Nothing
 
 yType :: Compiler -> Type -> Maybe Y.TypY
