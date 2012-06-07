@@ -1,5 +1,6 @@
 
 {
+-- vim: ft=haskell
 import Data.Char
 
 import Seri.Lambda
@@ -32,12 +33,21 @@ btype : atype              { $1 }
 atype : gtycon             { ConT $1 }
       | tyvar              { VarT $1 }
       | '[' type ']'       { AppT (ConT "[]") $2 }
+      | tuplety_head ')'
+         { foldl AppT (ConT $ "(" ++ replicate (length $1 - 1) ',' ++ ")") $1 }
       | '(' type ')'       { $2 }
 
 gtycon : tycon             { $1 }
        | '(' ')'           { "()" }
        | '[' ']'           { "[]" }
+       | tuplecon_head ')' { $1 ++ ")" }
        | '(' '->' ')'      { "->" }
+
+tuplecon_head : '(' ','               { "(," }
+              | tuplecon_head ','     { $1 ++ "," }
+
+tuplety_head : '(' type               { [$2] }
+             | tuplety_head ',' type  { $1 ++ [$3] }
 
 tycon : conid              { $1 }
 
