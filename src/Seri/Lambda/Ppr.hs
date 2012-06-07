@@ -17,7 +17,15 @@ isAtomT (AppT {}) = False
 isAtomT (ForallT {}) = False
 
 instance Ppr Type where
+    -- Special case for list
     ppr (AppT (ConT "[]") t) = text "[" <> ppr t <> text "]"
+    
+    -- Special case for tuple 2, 3
+    ppr (AppT (AppT (ConT "(,)") a) b)
+        = parens $ ppr a <> comma <+> ppr b
+    ppr (AppT (AppT (AppT (ConT "(,,)") a) b) c)
+        = parens $ ppr a <> comma <+> ppr b <> comma <+> ppr c
+
     ppr (ConT n) = text n
     ppr (VarT n) = text n
     ppr (AppT a b) | isAtomT b = ppr a <+> ppr b

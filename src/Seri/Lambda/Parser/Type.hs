@@ -40,7 +40,7 @@ appT :: Parser (Type -> Type -> Type)
 appT = return AppT
 
 atomT :: Parser Type
-atomT = (try parenT) <|> (try listT) <|> conT <|> varT <?> "atom type"
+atomT = (try parenT) <|> (try listT) <|> (try tupT) <|> conT <|> varT <?> "atom type"
 
 parenT :: Parser Type
 parenT = do
@@ -65,4 +65,12 @@ listT = do
     t <- typeT
     token "]"
     return (AppT (ConT "[]") t)
+
+tupT :: Parser Type
+tupT = do
+    token "("
+    t <- typeT
+    ts <- many (token "," >> typeT)
+    token ")"
+    return (foldl AppT (ConT $ "(" ++ replicate (length ts) ',' ++ ")") (t:ts))
 
