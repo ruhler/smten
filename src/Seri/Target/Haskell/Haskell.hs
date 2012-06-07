@@ -41,18 +41,11 @@ haskell builtin main e =
       hsMatch (Match p e) = H.Match (hsPat p) (H.NormalB $ hsExp e) []
     
       hsPat :: Pat -> H.Pat
-      hsPat = 
-        let unfold :: Pat -> [Pat]
-            unfold (AppP a b) = unfold a ++ [b]
-            unfold p = [p]
-    
-            foldth :: [Pat] -> H.Pat
-            foldth [VarP (Sig n _)] = H.VarP (hsName n)
-            foldth [IntegerP i] = H.LitP (H.IntegerL i)
-            foldth [WildP _] = H.WildP
-            foldth ((ConP (Sig n _)):args) = H.ConP (hsName n) (map hsPat args)
-        in foldth . unfold
-    
+      hsPat (ConP (Sig n _) ps) = H.ConP (hsName n) (map hsPat ps)
+      hsPat (VarP (Sig n _)) = H.VarP (hsName n)
+      hsPat (IntegerP i) = H.LitP (H.IntegerL i)
+      hsPat (WildP _) = H.WildP
+         
       issymbol :: Name -> Bool
       issymbol (h:_) = not $ isAlphaNum h || h == '_'
     

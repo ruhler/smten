@@ -111,15 +111,15 @@ data MatchResult = Failed | Succeeded [(Name, Exp)] | Unknown
 
 -- Match an expression against a pattern.
 match :: Pat -> Exp -> MatchResult
-match (ConP (Sig nm _)) (ConE (Sig n _)) | n == nm = Succeeded []
-match (IntegerP i) (IntegerE i') | i == i' = Succeeded []
-match (VarP (Sig nm _)) e = Succeeded [(nm, e)]
-match (AppP a b) (AppE ae be)
-  = case (match a ae, match b be) of
+match (ConP (Sig nm _) []) (ConE (Sig n _)) | n == nm = Succeeded []
+match (ConP s ps) (AppE ae be) | not (null ps)
+  = case (match (ConP s (init ps)) ae, match (last ps) be) of
         (Succeeded as, Succeeded bs) -> Succeeded (as ++ bs)
         (Failed, _) -> Failed
         (_, Failed) -> Failed
         _ -> Unknown
+match (IntegerP i) (IntegerE i') | i == i' = Succeeded []
+match (VarP (Sig nm _)) e = Succeeded [(nm, e)]
 match (WildP _) _ = Succeeded []
 match _ x | iswhnf x = Failed
 match _ _ = Unknown

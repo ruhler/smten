@@ -34,10 +34,15 @@ data Exp = IntegerE Integer
          | VarE Sig VarInfo
      deriving (Eq, Show, Data, Typeable)
 
-data Pat = ConP Sig
+-- Note: The Type of ConP is the output type of the Type of the signature.
+--    For example: ConP (Sig "Foo" (Integer -> Food) [5]) has type Food.
+--    (This makes sense for legacy reasons. It's not clear to me if it
+--    continues to make sense now. Why not just have: ConP Type Name [Pat],
+--    where the type is the data type the constructor belongs to? Maybe just
+--    because it's more consistent with all the other kinds of names we type.)
+data Pat = ConP Sig [Pat]
          | VarP Sig
          | IntegerP Integer
-         | AppP Pat Pat
          | WildP Type
      deriving (Eq, Show, Data, Typeable)
 

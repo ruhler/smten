@@ -24,10 +24,9 @@ instance Typeof Match where
     typeof (Match _ e) = typeof e
 
 instance Typeof Pat where
-    typeof (ConP tn) = typeof tn
+    typeof (ConP tn _) = outputtype (typeof tn)
     typeof (VarP tn) = typeof tn
     typeof (IntegerP _) = tinteger
-    typeof (AppP f _) = outputtype (typeof f)
     typeof (WildP t) = t
 
 -- Return the output type of a function type.

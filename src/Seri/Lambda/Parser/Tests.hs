@@ -34,10 +34,15 @@ types = "Type" ~: [
 
 patterns = "Pattern" ~: [
     "simple" ~: 
-        Right (AppP (AppP (ConP (Sig "Foo" (ConT "Bar")))
-                (VarP (Sig "a" (ConT "Integer"))))
-                (IntegerP 42)) 
+        Right (ConP (Sig "Foo" (ConT "Bar")) [
+                VarP (Sig "a" (ConT "Integer")),
+                IntegerP 42])
         ~=? (run patP "Foo{Bar} a{Integer} 42" :: Either String Pat),
+    "conP" ~: 
+        Right (ConP (Sig "Foo" (ConT "Blah")) [
+                ConP (Sig "True" (ConT "Bool")) [],
+                ConP (Sig "True" (ConT "Bool")) []])
+        ~=? (run patP "Foo{Blah} True{Bool} True{Bool}" :: Either String Pat),
     "varP" ~:
         Right (VarP (Sig "y" (ConT "Integer")))
         ~=? (run patP "y{Integer}" :: Either String Pat),

@@ -8,13 +8,15 @@ import Seri.Lambda.Parser.Type
 import Seri.Lambda.Parser.Utils
 
 patP :: Parser Pat
-patP = atomP `chainl1` appP
-
-appP :: Parser (Pat -> Pat -> Pat)
-appP = return (AppP)
+patP = conP <|> atomP <?> "pattern"
 
 atomP :: Parser Pat
-atomP = (try parenP) <|> (try wildP) <|> conP <|> varP <|> integerP <?> "atom pattern"
+atomP = try parenP
+       <|> try wildP
+       <|> aconP
+       <|> varP
+       <|> integerP
+       <?> "atomic pattern"
 
 parenP :: Parser Pat
 parenP = do
@@ -33,8 +35,16 @@ conP :: Parser Pat
 conP = do
     n <- cname
     t <- braces typeT
-    return (ConP (Sig n t))
+    ps <- many atomP
+    return (ConP (Sig n t) ps)
     
+-- An atomic constructor
+aconP :: Parser Pat
+aconP = do
+    n <- cname
+    t <- braces typeT
+    return (ConP (Sig n t) [])
+
 varP :: Parser Pat
 varP = do
     n <- tvname

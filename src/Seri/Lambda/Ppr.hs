@@ -62,18 +62,19 @@ instance Ppr Match where
     ppr (Match p e) = (ppr p <+> text "->") `sep2` ppr e <> semi
 
 isAtomP :: Pat -> Bool
-isAtomP (ConP {}) = True
+isAtomP (ConP _ []) = True
+isAtomP (ConP _ _) = False
 isAtomP (VarP {}) = True
 isAtomP (IntegerP {}) = True
-isAtomP (AppP {}) = False
 isAtomP (WildP {}) = True
 
 instance Ppr Pat where
-    ppr (ConP s) = ppr s
+    ppr (ConP s ps) =
+        let subp p | isAtomP p = ppr p
+            subp p = parens (ppr p)
+        in ppr s <+> hsep (map subp ps)
     ppr (VarP s) = ppr s
     ppr (IntegerP i) = integer i
-    ppr (AppP a b) | isAtomP b = ppr a <+> ppr b
-    ppr (AppP a b) = ppr a <+> (parens $ ppr b)
     ppr (WildP t) = text "_" <> braces (ppr t)
 
 
