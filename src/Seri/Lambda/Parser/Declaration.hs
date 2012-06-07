@@ -11,13 +11,19 @@ import Seri.Lambda.Parser.Type
 import Seri.Lambda.Parser.Utils
 
 decD :: Parser Dec
-decD = valD <|> dataD <|> classD <|> instD <?> "declaration"
+decD = try valD <|> dataD <|> classD <|> instD <?> "declaration"
 
 valD :: Parser Dec
 valD = do
-    token "value"
     n <- vname
-    t <- braces typeT
+    token "::"
+    t <- typeT
+    token ";"
+    n' <- vname
+    if (n /= n') 
+        then fail $ "signature and function have different names: " 
+                        ++ show n ++ " vs " ++ show n'
+        else return ()
     token "="
     e <- expE
     token ";"
@@ -51,13 +57,18 @@ classD = do
     n <- cname
     vs <- many vname
     token "where"
+    token "{"
     s <- many sigD
+    token "}"
+    token ";"
     return (ClassD n vs s)
 
 sigD :: Parser Sig
 sigD = do
     n <- vname
-    t <- braces typeT
+    token "::"
+    t <- typeT
+    token ";"
     return (Sig n t)
 
 instD :: Parser Dec
@@ -66,13 +77,15 @@ instD = do
     n <- cname
     ts <- many atomT
     token "where"
+    token "{"
     ms <- many methodD
+    token "}"
+    token ";"
     return (InstD n ts ms)
 
 methodD :: Parser Method
 methodD = do
     n <- vname
-    many space
     token "="
     b <- expE
     token ";"

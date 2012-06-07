@@ -42,6 +42,7 @@ vname =
   let vsym = do
         s <- symbol
         ss <- many (symbol <|> char ':')
+        many space
         return (s:ss)
   in vsym <|> tvname
 

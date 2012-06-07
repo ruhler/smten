@@ -38,25 +38,25 @@ isAtomE (LamE {}) = False
 isAtomE (ConE {}) = True
 isAtomE (VarE {}) = True
 
-pprsig :: String -> Sig -> Doc
-pprsig s (Sig n t) = text s <> text n <> braces (ppr t)
+pprsig :: Doc -> Sig -> Doc
+pprsig s (Sig n t) = parens (s <> text n <+> text "::" <+> (ppr t))
 
 sep2 :: Doc -> Doc -> Doc
 sep2 a b = a $$ nest tabwidth b
 
 instance Ppr Exp where
     ppr (IntegerE i) = integer i
-    ppr (PrimE s) = pprsig "@" s
+    ppr (PrimE s) = pprsig (text "@") s
     ppr (CaseE e ms) = text "case" <+> ppr e <+> text "of" <+> text "{" $$
                             nest tabwidth (vcat (map ppr ms)) $$ text "}"
     ppr (AppE a b) | isAtomE b = ppr a <+> ppr b
     ppr (AppE a b) = ppr a <+> (parens $ ppr b)
-    ppr (LamE s b) = parens $ (text "\\" <> ppr s <+> text "->") `sep2` ppr b
-    ppr (ConE s) = ppr s
-    ppr (VarE s Bound) = pprsig "." s
-    ppr (VarE s Declared) = pprsig "%" s
-    ppr (VarE (Sig n t) (Instance ni tis))
-        = text "#" <> text n <> braces (ppr t <> comma <+> ppr (Pred ni tis))
+    ppr (LamE s b) = parens $ (text "\\" <> pprsig empty s <+> text "->") `sep2` ppr b
+    ppr (ConE s) = pprsig empty s
+    ppr (VarE s Bound) = pprsig (text ".") s
+    ppr (VarE s Declared) = pprsig (text "%") s
+    ppr (VarE s (Instance ni tis))
+        = pprsig (text "#" <>  braces (ppr (Pred ni tis))) s
 
 instance Ppr Match where
     ppr (Match p e) = (ppr p <+> text "->") `sep2` ppr e <> semi
@@ -72,10 +72,10 @@ instance Ppr Pat where
     ppr (ConP s ps) =
         let subp p | isAtomP p = ppr p
             subp p = parens (ppr p)
-        in ppr s <+> hsep (map subp ps)
-    ppr (VarP s) = ppr s
+        in pprsig empty s <+> hsep (map subp ps)
+    ppr (VarP s) = pprsig empty s
     ppr (IntegerP i) = integer i
-    ppr (WildP t) = text "_" <> braces (ppr t)
+    ppr (WildP t) = pprsig empty (Sig "_" t)
 
 
 conlist :: [Con] -> Doc
@@ -84,20 +84,22 @@ conlist (x:xs) = text " " <+> ppr x
                     $+$ vcat (map (\c -> text "|" <+> ppr c) xs)
 
 instance Ppr Dec where
-    ppr (ValD s e) = text "value" <+> ppr s <+> text "=" $$
-            nest tabwidth (ppr e) <> semi
+    ppr (ValD (Sig n t) e) = text n <+> text "::" <+> ppr t <> semi $$
+                             text n <+> text "=" <+> ppr e <> semi
     ppr (DataD n vs cs)
         = text "data" <+> text n <+> hsep (map text vs) <+> text "=" $$
             (nest tabwidth (conlist cs)) <> semi
     ppr (ClassD n vs ss)
-        = text "class" <+> text n <+> hsep (map text vs) <+> text "where" $$
-            nest tabwidth (vcat (map ppr ss))
+        = text "class" <+> text n <+> hsep (map text vs)
+                <+> text "where" <+> text "{" $$
+                    nest tabwidth (vcat (map ppr ss)) $$ text "}" <> semi
     ppr (InstD n ts ms)
-        = text "instance" <+> ppr (Pred n ts) <+> text "where" $$
-            nest tabwidth (vcat (map ppr ms))
+        = text "instance" <+> ppr (Pred n ts)
+                <+> text "where" <+> text "{" $$
+                    nest tabwidth (vcat (map ppr ms)) $$ text "}" <> semi
 
 instance Ppr Sig where
-    ppr = pprsig ""
+    ppr (Sig n t) = text n <+> text "::" <+> ppr t <> semi
     
 instance Ppr Con where
     ppr (Con n ts) = text n <+> hsep (map ppr ts)
@@ -107,3 +109,4 @@ instance Ppr Method where
 
 instance Ppr [Dec] where
     ppr ds = vcat (map (\d -> ppr d $+$ text "") ds)
+
