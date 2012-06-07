@@ -17,15 +17,19 @@ import Seri.Utils.Ppr
        ']'      { TokenCloseBracket }
        '('      { TokenOpenParen }
        ')'      { TokenCloseParen }
-       '->'     { TokenArrow }
+       '->'     { TokenDashArrow }
+       '=>'     { TokenEqualsArrow }
        ','      { TokenComma }
+       '.'      { TokenPeriod }
        conid    { TokenConId $$ }
        varid    { TokenVarId $$ }
+       forall   { TokenForall }
 
 %%
 
 type : btype               { $1 } 
      | btype '->' type     { AppT (AppT (ConT "->") $1) $3 }
+     | forallty            { $1 }
 
 btype : atype              { $1 }
       | btype atype        { AppT $1 $2 }
@@ -53,6 +57,25 @@ tycon : conid              { $1 }
 
 tyvar : varid              { $1 }
 
+
+context :  class            { [$1] }
+        |  context_head ')' { $1 }
+
+context_head : '(' class                { [$2] }
+             | context_head ',' class   { $1 ++ [$3] }
+
+class : qtycls tyvar               { Pred $1 [VarT $2] }
+
+qtycls : tycls  { $1 }
+
+tycls : conid   { $1 }
+
+forallty : forall tyvars '.' type               { ForallT $2 [] $4 }
+         | forall tyvars '.' context '=>' type  { ForallT $2 $4 $6 }
+
+tyvars : tyvar              { [$1] }
+       | tyvars tyvar       { $1 ++ [$2] }
+
 {
 parseError :: [Token] -> a
 parseError _ = error "Parse error"
@@ -62,10 +85,13 @@ data Token =
      | TokenCloseBracket
      | TokenOpenParen
      | TokenCloseParen
-     | TokenArrow
+     | TokenDashArrow
+     | TokenEqualsArrow
      | TokenComma
+     | TokenPeriod
      | TokenConId String
      | TokenVarId String
+     | TokenForall
     deriving (Show)
 
 isSmall :: Char -> Bool
@@ -89,15 +115,20 @@ lexer ('[':cs) = TokenOpenBracket : lexer cs
 lexer (']':cs) = TokenCloseBracket : lexer cs
 lexer ('(':cs) = TokenOpenParen : lexer cs
 lexer (')':cs) = TokenCloseParen : lexer cs
-lexer ('-':'>':cs) = TokenArrow : lexer cs
+lexer ('-':'>':cs) = TokenDashArrow : lexer cs
+lexer ('=':'>':cs) = TokenEqualsArrow : lexer cs
 lexer (',':cs) = TokenComma : lexer cs
+lexer ('.':cs) = TokenPeriod : lexer cs
 lexer (c:cs) | isSpace c = lexer cs
 lexer (c:cs) | isLarge c
     = let (ns, rest) = span isIdChar cs
       in TokenConId (c:ns) : lexer rest
 lexer (c:cs) | isSmall c
     = let (ns, rest) = span isIdChar cs
-      in TokenVarId (c:ns) : lexer rest
+      in case (c:ns) of
+           "forall" -> TokenForall : lexer rest
+           id -> TokenVarId id : lexer rest
+
 lexer cs = error $ "fail to lex: " ++ cs
 
 main :: IO ()
