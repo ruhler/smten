@@ -36,4 +36,6 @@ def querytest(name):
 
 querytest("query1")
 querytest("query2")
+#querytest("if")
+querytest("complex")
 

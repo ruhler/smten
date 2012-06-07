@@ -5,7 +5,7 @@ import qualified Math.SMT.Yices.Syntax as Y
 
 import Seri.Lambda
 import Seri.Target.Yices.Compiler
-import Seri.Target.Yices.Builtins.Integer
+import Seri.Target.Yices.Builtins.Prelude
 import Seri.Utils.Ppr
 
 -- Translate a seri expression to a yices expression
@@ -20,5 +20,5 @@ coreY :: Compiler
 coreY = Compiler yExp yType
 
 yicesY :: Compiler
-yicesY = compilers [integerY, coreY]
+yicesY = compilers [preludeY, coreY]
             
