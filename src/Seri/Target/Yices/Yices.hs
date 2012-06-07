@@ -12,13 +12,60 @@ import Seri.Utils.Ppr
 -- Translate a seri expression to a yices expression
 yExp :: Compiler -> Exp -> Maybe ([Y.CmdY], Y.ExpY)
 yExp _ (IntegerE x) = Just $ ([], Y.LitI x)
-yExp _ _ = Nothing
+yExp c (CaseE e ms) =
+  let -- depat p e
+      --    outputs: (predicate, bindings)
+      --   predicate - predicates indicating if the 
+      --                pattern p matches expression e
+      --   bindings - a list of bindings made when p matches e.
+      depat :: Pat -> Y.ExpY -> ([Y.ExpY], [((String, Maybe Y.TypY), Y.ExpY)])
+      depat (ConP (Sig n _) ps) e =
+        let (preds, binds) = unzip [depat p (Y.APP (Y.VarE (n ++ show i)) [e])
+                                    | (p, i) <- zip ps [0..]]
+            mypred = Y.APP (Y.VarE (n ++ "?")) [e]
+        in (mypred:(concat preds), concat binds)
+      depat (VarP (Sig n t)) e = ([], [((n, compile_type c c t), e)])
+      depat (IntegerP i) e = ([Y.LitI i Y.:= e], [])
+      depat (WildP _) _ = ([], [])
+
+      -- dematch e ms
+      --    e - the expression being cased on
+      --    ms - the remaining matches in the case statement.
+      --  outputs (cmds, pred, body)
+      --    cmds - additional commands to be executed.
+      --    pred - predicates for each match.
+      --    body - the yices expression implementing the matches.
+      dematch :: Y.ExpY -> [Match] -> ([Y.CmdY], [Y.ExpY], Y.ExpY)
+      dematch e [] = error $ "empty case statement"
+      dematch e [Match p b] = 
+        let Just (cmds, b') = compile_exp c c b
+            (pred, bindings) = depat p e
+        in (cmds, [Y.AND pred], Y.LET bindings b')
+      dematch e ((Match p b):ms) =
+        let (cms, pms, bms) = dematch e ms
+            Just (cmds, b') = compile_exp c c b
+            (preds, bindings) = depat p e
+            pred = Y.AND preds
+        in (cmds ++ cms, pred:pms, Y.IF pred (Y.LET bindings b') bms)
+  in do
+      (es, e') <- compile_exp c c e
+      let (cmds, ps, b) = dematch e' ms
+      return (cmds ++ [Y.ASSERT (Y.OR ps)], b)
+yExp c (AppE a b) = do
+    (as, a') <- compile_exp c c a
+    (bs, b') <- compile_exp c c b
+    return (as ++ bs, Y.APP a' [b'])
+yExp c (LamE (Sig n t) e) = do
+    (es, e') <- compile_exp c c e
+    return (es, Y.LAMBDA [(n, fromJust $ compile_type c c t)] e')
+yExp _ (ConE (Sig n _)) = return ([], Y.VarE n)
+yExp _ (VarE (Sig n _) _) = return ([], Y.VarE n)
 
 yType :: Compiler -> Type -> Maybe Y.TypY
 yType _ _ = Nothing
 
 coreY :: Compiler
-coreY = Compiler yExp yType
+coreY = Compiler [] yExp yType
 
 yicesY :: Compiler
 yicesY = compilers [preludeY, coreY]

@@ -29,5 +29,5 @@ yType _ (ConT "Integer") = Just $ Y.VarT "int"
 yType _ _ = Nothing
 
 integerY :: Compiler
-integerY = Compiler yExp yType
+integerY = Compiler [] yExp yType
 

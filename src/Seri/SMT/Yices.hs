@@ -81,6 +81,7 @@ yExp e = case compile_exp smtY smtY e of
 runYices :: Rule YicesMonad -> Env Exp -> IO Exp
 runYices gr e = do
     ipc <- createYicesPipe yicespath []
+    runCmdsY' ipc (includes smtY)
     (x, _) <- runStateT (runQuery gr e) (YicesState ipc 1)
     return x
     
@@ -93,4 +94,4 @@ smtY =
 
       yt :: Compiler -> Type -> Maybe Y.TypY
       yt _ _ = Nothing
-  in compilers [Compiler ye yt, yicesY]
+  in compilers [Compiler [] ye yt, yicesY]
