@@ -12,10 +12,12 @@ tabwidth = 2
 isAtomT :: Type -> Bool
 isAtomT (ConT {}) = True
 isAtomT (VarT {}) = True
+isAtomT (AppT (ConT "[]") _) = True
 isAtomT (AppT {}) = False
 isAtomT (ForallT {}) = False
 
 instance Ppr Type where
+    ppr (AppT (ConT "[]") t) = text "[" <> ppr t <> text "]"
     ppr (ConT n) = text n
     ppr (VarT n) = text n
     ppr (AppT a b) | isAtomT b = ppr a <+> ppr b

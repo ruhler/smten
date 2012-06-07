@@ -40,7 +40,7 @@ appT :: Parser (Type -> Type -> Type)
 appT = return AppT
 
 atomT :: Parser Type
-atomT = (try parenT) <|> conT <|> varT <?> "atom type"
+atomT = (try parenT) <|> (try listT) <|> conT <|> varT <?> "atom type"
 
 parenT :: Parser Type
 parenT = do
@@ -58,4 +58,11 @@ varT :: Parser Type
 varT = do
     n <- tvname
     return (VarT n)
+
+listT :: Parser Type
+listT = do
+    token "["
+    t <- typeT
+    token "]"
+    return (AppT (ConT "[]") t)
 
