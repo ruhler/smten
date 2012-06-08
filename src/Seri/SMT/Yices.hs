@@ -1,7 +1,10 @@
 
-module Seri.SMT.Yices (runYices, yicesR) where
+module Seri.SMT.Yices (RunOptions(..), runYices, yicesR) where
 
 import Data.List((\\))
+import Data.Maybe(fromMaybe)
+
+import System.IO
 
 import Control.Monad.State
 import Math.SMT.Yices.Pipe
@@ -16,6 +19,7 @@ import Seri.Utils.Ppr
 data YicesState = YicesState {
     ys_decls :: [Dec],
     ys_ipc :: YicesIPC,
+    ys_dh :: Handle,
     ys_freeid :: Integer
 }
 
@@ -40,13 +44,26 @@ nobindR = Rule $ \gr e ->
           return $ Just y
         _ -> return Nothing
 
+sendCmds :: [Y.CmdY] -> YicesIPC -> Handle -> IO ()
+sendCmds cmds ipc dh = do
+    hPutStr dh (unlines (map show cmds))
+    runCmdsY' ipc cmds
+
+runCmds :: [Y.CmdY] -> YicesMonad ()
+runCmds cmds = do
+    ipc <- gets ys_ipc
+    dh <- gets ys_dh
+    lift $ sendCmds cmds ipc dh
+
 runQuery :: Rule YicesMonad -> Env Exp -> YicesMonad Exp
 runQuery gr e = do
     elaborated <- elaborate gr e
     case elaborated of
         (AppE (PrimE (Sig "query" _)) arg) -> do
+            dh <- gets ys_dh
             ipc <- gets ys_ipc
             res <- lift $ checkY ipc
+            lift $ hPutStrLn dh $ ">> check returned: " ++ show res 
             -- TODO: Read the evidence and return the appropriate expression
             -- when satisfiable.
             case res of 
@@ -54,13 +71,11 @@ runQuery gr e = do
                 Sat _ -> return $ AppE (ConE (Sig "Satisfiable" (AppT (ConT "Answer") (typeof arg)))) (PrimE (Sig "undefined" (typeof arg)))
                 _ -> return $ ConE (Sig "Unsatisfiable" (AppT (ConT "Answer") (typeof arg)))
         (PrimE (Sig "free" (AppT (ConT "Query") t))) -> do
-            ipc <- gets ys_ipc
             fid <- gets ys_freeid
             modify $ \ys -> ys {ys_freeid = fid+1}
-            lift $ runCmdsY' ipc [Y.DEFINE ("free_" ++ show fid, yType t) Nothing]
+            runCmds [Y.DEFINE ("free_" ++ show fid, yType t) Nothing]
             return (AppE (PrimE (Sig "realize" (AppT (AppT (ConT "->") (AppT (ConT "Free") t)) t))) (AppE (ConE (Sig "Free" (AppT (AppT (ConT "->") (ConT "Integer")) (AppT (ConT "Free") t)))) (IntegerE fid)))
         (AppE (PrimE (Sig "assert" _)) p) -> do
-            ipc <- gets ys_ipc
 
             -- Tell yices about any new functions or types needed to
             -- assert the predicate.
@@ -68,16 +83,14 @@ runQuery gr e = do
             let (pdecls, []) = sort $ decls (minimize (withenv e p))
             let newdecls = pdecls \\ decs
             modify $ \ys -> ys { ys_decls = decs ++ newdecls }
-            lift $ runCmdsY' ipc (yDecs newdecls)
+            runCmds (yDecs newdecls)
 
             -- Assert the predicate.
             let (cmds, py) = yExp p
-            lift $ runCmdsY' ipc (cmds ++ [Y.ASSERT py])
+            runCmds (cmds ++ [Y.ASSERT py])
             return (ConE (Sig "()" (ConT "()")))
         x -> error $ "unknown Query: " ++ render (ppr x)
 
-
-yicespath = "/home/ruhler/sri/scratch/yices/yices-1.0.34/bin/tyices"
 
 yType :: Type -> Y.TypY
 yType t = case compile_type smtY smtY t of
@@ -91,12 +104,19 @@ yExp :: Exp -> ([Y.CmdY], Y.ExpY)
 yExp e = case compile_exp smtY smtY e of
               Just ye -> ye
               Nothing -> error $ "failed: yExp " ++ render (ppr e)
+
+data RunOptions = RunOptions {
+    debugout :: Maybe FilePath,
+    yicesexe :: FilePath
+}
             
-runYices :: Rule YicesMonad -> Env Exp -> IO Exp
-runYices gr e = do
-    ipc <- createYicesPipe yicespath ["-tc"]
-    runCmdsY' ipc (includes smtY)
-    (x, _) <- runStateT (runQuery gr e) (YicesState [] ipc 1)
+runYices :: Rule YicesMonad -> RunOptions -> Env Exp -> IO Exp
+runYices gr opts e = do
+    dh <- openFile (fromMaybe "/dev/null" (debugout opts)) WriteMode
+    ipc <- createYicesPipe (yicesexe opts) ["-tc"]
+    sendCmds (includes smtY) ipc dh
+    (x, _) <- runStateT (runQuery gr e) (YicesState [] ipc dh 1)
+    hClose dh
     return x
     
 

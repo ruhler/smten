@@ -9,6 +9,8 @@ main :: IO ()
 main = do
     querytext <- getContents
     query <- parseDecs querytext
-    result <- runYices queryR (mkenv query (VarE (Sig "main" (AppT (ConT "Query") (ConT "?"))) Declared))
+    let e = (mkenv query (VarE (Sig "main" (AppT (ConT "Query") (ConT "?"))) Declared))
+    let opts = (RunOptions (Just "debug.out") "/home/ruhler/local/bin/yices")
+    result <- runYices queryR opts e
     putStrLn $ render (ppr result)
 
