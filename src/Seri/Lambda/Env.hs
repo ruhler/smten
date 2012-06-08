@@ -2,11 +2,11 @@
 {-# LANGUAGE FlexibleInstances #-}
 
 module Seri.Lambda.Env (
-    Env(), val, mkenv, decls, lookupvar, withenv, minimize,
+    Env(), val, mkenv, decls, lookupvar, withenv, minimize, sort
     ) where
 
 import Data.Generics
-import Data.List(nub)
+import Data.List(nub, partition)
 import Data.Maybe
 
 import Seri.Lambda.IR
@@ -17,6 +17,9 @@ data Env x = Env {
     env :: [Dec],
     val :: x
 } deriving (Show, Eq)
+
+instance (Ppr a) => Ppr (Env a) where
+    ppr (Env ds x) = ppr ds $+$ ppr x
 
 mkenv :: [Dec] -> x -> Env x
 mkenv ds x = Env ds x
@@ -125,7 +128,23 @@ minimize (Env m x) =
             else alldecls dds
   in Env (alldecls (declarations m x)) x
 
-instance (Ppr a) => Ppr (Env a) where
-    ppr (Env ds x) = ppr ds $+$ ppr x
+-- sort ds
+-- Perform a topological sort of declarations ds by dependency.
+--   returns (sorted, mutual)
+--  sorted - the list of sorted declarations. Declarations earlier in the list
+--           do not depend on declarations later in the list.
+--  mutual - a list of the remaining mutually dependent declarations from ds.
+sort :: [Dec] -> ([Dec], [Dec])
+sort ds = 
+  let dependencies :: [(Dec, [Dec])]
+      dependencies = [(d, declarations ds d) | d <- ds]
 
+      sorte :: [Dec] -> [(Dec, [Dec])] -> ([Dec], [Dec])
+      sorte sorted unsorted = 
+        let indep :: (Dec, [Dec]) -> Bool
+            indep (d, deps) = and [dp `elem` sorted | dp <- deps]
+        in case partition indep unsorted of
+            ([], deps) -> (sorted, map fst unsorted)
+            (indeps, deps) -> sorte (sorted ++ (map fst indeps)) deps
+  in sorte [] dependencies
 

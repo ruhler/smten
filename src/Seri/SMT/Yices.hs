@@ -65,7 +65,7 @@ runQuery gr e = do
             -- Tell yices about any new functions or types needed to
             -- assert the predicate.
             decs <- gets ys_decls
-            let pdecls = decls (minimize (withenv e p))
+            let (pdecls, []) = sort $ decls (minimize (withenv e p))
             let newdecls = pdecls \\ decs
             modify $ \ys -> ys { ys_decls = decs ++ newdecls }
             lift $ runCmdsY' ipc (yDecs newdecls)
