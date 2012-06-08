@@ -31,7 +31,7 @@ def querytest(name):
     bin = env.GHCProgram(name, 'Seri/SMT/Tests/%s.hs' % name)
     sri = env.Command('%s.sri' % name, bin, "$SOURCE > $TARGET")
     out = env.Command('%s.out' % name, [runquery, sri],
-        '$SOURCE < ${SOURCES[1]} > $TARGET')
+        '$SOURCE -d ${TARGET.dir}/%s.dbg ${SOURCES[1]} > $TARGET' % name)
     env.Default(out)
 
 querytest("query1")
