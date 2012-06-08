@@ -108,7 +108,7 @@ yExp e = case compile_exp smtY smtY e of
 data RunOptions = RunOptions {
     debugout :: Maybe FilePath,
     yicesexe :: FilePath
-}
+} deriving(Show)
             
 runYices :: Rule YicesMonad -> RunOptions -> Env Exp -> IO Exp
 runYices gr opts e = do
