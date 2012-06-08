@@ -12,6 +12,8 @@ import Seri
 import Seri.Lib.Prelude
 import Seri.Lib.Tests
 
+import qualified Seri.Lambda.HappyParser.Seri as HP
+
 import Test.HUnit
 
 eval :: Typed (Env Exp) a -> Exp
@@ -77,6 +79,8 @@ tests = "Seri" ~: [
     "ppr" ~: putStrLn (show (ppr (decls (typed [s| 21 |])))),
     "print env" ~: putStrLn (render (ppr theenv)),
     "print and parse" ~: Right theenv
-        ~=? (parseDecs (render (ppr theenv)) :: Either String [Dec])
+        ~=? (parseDecs (render (ppr theenv)) :: Either String [Dec]),
+    "print and happy parse" ~: Right theenv
+        ~=? (HP.parseDecs (render (ppr theenv)) :: Either String [Dec])
     ]
 
