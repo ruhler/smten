@@ -31,8 +31,8 @@ yIncludes = [
     ]
 
 yExp :: Compiler -> Exp -> Maybe ([Y.CmdY], Y.ExpY)
-yExp c (PrimE (Sig "+" _)) = return ([], Y.VarE "__prim_add")
-yExp c (PrimE (Sig "-" _)) = return ([], Y.VarE "__prim_sub")
+yExp c (PrimE (Sig "__prim_add_Integer" _)) = return ([], Y.VarE "__prim_add")
+yExp c (PrimE (Sig "__prim_sub_Integer" _)) = return ([], Y.VarE "__prim_sub")
 yExp c (PrimE (Sig "<" _)) = return ([], Y.VarE "__prim_lt")
 yExp c (PrimE (Sig ">" _)) = return ([], Y.VarE "__prim_gt")
 yExp c (PrimE (Sig "==" _)) = return ([], Y.VarE "__prim_eq")
