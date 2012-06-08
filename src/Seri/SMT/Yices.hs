@@ -94,7 +94,7 @@ yExp e = case compile_exp smtY smtY e of
             
 runYices :: Rule YicesMonad -> Env Exp -> IO Exp
 runYices gr e = do
-    ipc <- createYicesPipe yicespath []
+    ipc <- createYicesPipe yicespath ["-tc"]
     runCmdsY' ipc (includes smtY)
     (x, _) <- runStateT (runQuery gr e) (YicesState [] ipc 1)
     return x
