@@ -81,7 +81,7 @@ tests = "Seri" ~: [
     "print and parse" ~: Right theenv
         ~=? (parseDecs (render (ppr theenv)) :: Either String [Dec]),
     "print and happy parse" ~:
-        let tenv = take 1 theenv
+        let tenv = take 2 theenv
         in Right tenv
            ~=? (HP.parseDecs (render (ppr tenv)) :: Either String [Dec])
     ]

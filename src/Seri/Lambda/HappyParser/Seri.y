@@ -14,7 +14,10 @@ import Seri.Utils.Ppr (Ppr(..), render)
 
 }
 
-%name seri_decls
+%name seri_decls body
+%name seri_type type
+%name seri_exp exp
+%name seri_pat pat
 %tokentype { Token }
 %error { parseError }
 %monad { ParserMonad }
@@ -34,7 +37,6 @@ import Seri.Utils.Ppr (Ppr(..), render)
        '.'      { TokenPeriod }
        '|'      { TokenBar }
        '='      { TokenEquals }
-       '_'      { TokenUnderscore }
        '@'      { TokenAtSign }
        '%'      { TokenPercent }
        '#'      { TokenHash }
@@ -54,7 +56,7 @@ import Seri.Utils.Ppr (Ppr(..), render)
 %%
 
 body :: { [Dec] }
- : topdecls 
+ : topdecls
     { $1 }
 
 topdecls :: { [Dec] }
@@ -68,6 +70,24 @@ topdecl :: { Dec }
     { DataD $2 $3 $5 }
  | 'class' tycls tyvar 'where' '{' cdecls '}'
     { ClassD $2 [$3] $6}
+ | decl
+    { $1 }
+
+decl :: { Dec }
+ : gendecl ';' fundecl
+    { let Method n body = $3 in ValD $1 body }
+
+fundecl :: { Method }
+ : funlhs rhs
+    { Method $1 $2 }
+
+funlhs :: { Name }
+ : var 
+    { $1 } 
+
+rhs :: { Exp }
+ : '=' exp
+    { $2 }
 
 cdecls :: { [Sig] }
  : cdecl
@@ -170,11 +190,12 @@ aexp :: { Exp }
  | '(' exp ')'
     { $2 }
 
+-- TODO: Haskell doesn't allow a semicolon after the last alternative.
 alts :: { [Match] }
- : alt
+ : alt ';'
     { [$1] }
- | alts ';' alt
-    { $1 ++ [$3] }
+ | alts alt ';'
+    { $1 ++ [$2] }
 
 alt :: { Match }
  : pat '->' exp
@@ -194,11 +215,9 @@ apats :: { [Pat] }
 
 apat :: { Pat }
  : var_typed
-    { VarP $1 }
+    { let Sig n t = $1 in if n == "_" then WildP t else VarP $1 }
  | gcon_typed
     { ConP $1 [] }
- | '(' '_' '::' type ')'
-    { WildP $4 }
  | '(' pat ')'
     { $2 }
  | integer
@@ -340,7 +359,6 @@ data Token =
      | TokenPeriod
      | TokenBar
      | TokenEquals
-     | TokenUnderscore
      | TokenAtSign
      | TokenPercent
      | TokenHash
@@ -393,7 +411,6 @@ singles = [
     ('.', TokenPeriod),
     ('|', TokenBar),
     ('=', TokenEquals),
-    ('_', TokenUnderscore),
     ('@', TokenAtSign),
     ('%', TokenPercent),
     ('#', TokenHash),
@@ -429,7 +446,7 @@ many = mapM_ (const single)
 
 -- advance to the next line
 newline :: ParserMonad ()
-newline = modify $ \ps -> ps {ps_line = 1 + ps_line ps }
+newline = modify $ \ps -> ps {ps_line = 1 + ps_line ps, ps_column = 0 }
 
 setText :: String -> ParserMonad ()
 setText txt = modify $ \ps -> ps {ps_text = txt }
