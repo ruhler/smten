@@ -1,9 +1,9 @@
 
 {
 
+-- vim: ft=haskell
 module Seri.Lambda.HappyParser.Seri (parseDecs) where
 
--- vim: ft=haskell
 import Data.Char
 import Data.Maybe
 
@@ -53,130 +53,259 @@ import Seri.Utils.Ppr (Ppr(..), render)
 
 %%
 
-body : topdecls             { $1 }
+body :: { [Dec] }
+ : topdecls 
+    { $1 }
 
-topdecls : topdecl                  { [$1] }
-         | topdecls ';' topdecl     { $1 ++ [$3] }
+topdecls :: { [Dec] }
+ : topdecl
+    { [$1] }
+ | topdecls ';' topdecl
+    { $1 ++ [$3] }
 
-topdecl :  'data' tycon tyvars '=' constrs      { DataD $2 $3 $5 }
-        |  'class' tycls tyvar 'where' '{' cdecls '}'   { ClassD $2 [$3] $6}
+topdecl :: { Dec }
+ : 'data' tycon tyvars '=' constrs
+    { DataD $2 $3 $5 }
+ | 'class' tycls tyvar 'where' '{' cdecls '}'
+    { ClassD $2 [$3] $6}
 
-cdecls : cdecl              { [$1] }
-       | cdecls ';' cdecl   { $1 ++ [$3] }
+cdecls :: { [Sig] }
+ : cdecl
+    { [$1] }
+ | cdecls ';' cdecl
+    { $1 ++ [$3] }
 
-cdecl : gendecl             { $1 }
+cdecl :: { Sig }
+ : gendecl
+    { $1 }
 
-gendecl : var '::' type     { Sig $1 $3 }
+gendecl :: { Sig }
+ : var '::' type
+    { Sig $1 $3 }
 
-type : btype               { $1 } 
-     | btype '->' type     { AppT (AppT (ConT "->") $1) $3 }
-     | forallty            { $1 }
+type :: { Type }
+ : btype
+    { $1 } 
+ | btype '->' type
+    { AppT (AppT (ConT "->") $1) $3 }
+ | forallty
+    { $1 }
 
-btype : atype              { $1 }
-      | btype atype        { AppT $1 $2 }
+btype :: { Type }
+ : atype
+    { $1 }
+ | btype atype
+    { AppT $1 $2 }
 
-atype : gtycon             { ConT $1 }
-      | tyvar              { VarT $1 }
-      | '[' type ']'       { AppT (ConT "[]") $2 }
-      | '(' types_commasep ')'
-         { foldl AppT (ConT $ "(" ++ replicate (length $2 - 1) ',' ++ ")") $2 }
-      | '(' type ')'       { $2 }
+atype :: { Type }
+ : gtycon
+    { ConT $1 }
+ | tyvar
+    { VarT $1 }
+ | '[' type ']'
+    { AppT (ConT "[]") $2 }
+ | '(' types_commasep ')'
+    { foldl AppT (ConT $ "(" ++ replicate (length $2 - 1) ',' ++ ")") $2 }
+ | '(' type ')'
+    { $2 }
 
-gtycon : tycon             { $1 }
-       | '(' ')'           { "()" }
-       | '[' ']'           { "[]" }
-       | '(' commas ')' { "(" ++ $2 ++ ")" }
-       | '(' '->' ')'      { "->" }
+gtycon :: { String }
+ : tycon
+    { $1 }
+ | '(' ')'
+    { "()" }
+ | '[' ']'
+    { "[]" }
+ | '(' commas ')'
+    { "(" ++ $2 ++ ")" }
+ | '(' '->' ')'
+    { "->" }
 
-context :  class                        { [$1] }
-        |  '(' classes_commasep ')'     { $2 }
-
-
-class : qtycls tyvar               { Pred $1 [VarT $2] }
-
-constrs : constr            { [$1] }
-        | constrs constr    { $1 ++ [$2] }
-
-constr : con atypes         { Con $1 $2 }
-
-exp : exp10                 { $1 }
-
-exp10 : '\\' var_typed '->' exp         { LamE $2 $4 }
-      | 'case' exp 'of' '{' alts '}'    { CaseE $2 $5 }
-      | fexp                            { $1 }
-
-fexp : aexp         { $1 }
-     | fexp aexp    { AppE $1 $2 }
-
-aexp : qvar_withinfo  { $1 }
-     | gcon_typed     { ConE $1 }
-     | integer        { IntegerE $1 }
-     | '(' exp ')'    { $2 }
-
-alts : alt              { [$1] }
-     | alts ';' alt     { $1 ++ [$2] }
-
-alt : pat '->' exp      { Match $1 $3 }
-
-pat : gcon_typed apats        { ConP $1 $2 }
-    | apat                    { $1 }
-
-apats : apat                  { [$1] }
-      | apats apat            { $1 ++ [$2] }
-
-apat : var_typed              { VarP $1 }
-     | gcon_typed             { ConP $1 [] }
-     | '(' '_' '::' type ')'  { WildP $4 }
-     | '(' pat ')'            { $2 }
-     | integer                { IntegerP $1 }
-
-var_typed  : '(' var  '::' type ')'         { Sig $2 $4 }
-gcon_typed : '(' gcon '::' type ')'         { Sig $2 $4 }
-
-qvar_withinfo : '(' '.' qvar '::' type ')'  { VarE (Sig $3 $5) Bound }
-              | '(' '@' qvar '::' type ')'  { PrimE (Sig $3 $5) }
-              | '(' '%' qvar '::' type ')'  { VarE (Sig $3 $5) Declared }
-              | '(' '#' '{' qtycls tyvar '}' qvar '::' type ')' 
-                    { VarE (Sig $7 $9) (Instance $4 [$5]) }
-
-gcon : '(' ')'          { "()" }
-     | '[' ']'          { "[]" }
-     | '(' commas ')'   { "(" ++ $2 ++ ")" }
-     | qcon             { $1 }
-
-var : varid          { $1 }
-qvar : qvarid        { $1 }
-con : conid          { $1 }
-qcon : qconid        { $1 }
+context :: { [Pred] }
+ : class
+    { [$1] }
+ | '(' classes_commasep ')'
+    { $2 }
 
 
+class :: { Pred }
+ : qtycls tyvar
+    { Pred $1 [VarT $2] }
 
-tycon : conid   { $1 }
-tyvar : varid   { $1 }
-tycls : conid   { $1 }
-qtycls : tycls  { $1 }
-qconid : conid  { $1 }
-qvarid : varid  { $1 }
+constrs :: { [Con] }
+ : constr
+    { [$1] }
+ | constrs constr
+    { $1 ++ [$2] }
 
+constr :: { Con }
+ : con atypes
+    { Con $1 $2 }
 
+exp :: { Exp }
+ : exp10
+    { $1 }
 
-commas : ','        { "," }
-       | commas ',' { ',':$1 }
+exp10 :: { Exp }
+ : '\\' var_typed '->' exp
+    { LamE $2 $4 }
+ | 'case' exp 'of' '{' alts '}'
+    { CaseE $2 $5 }
+ | fexp
+    { $1 }
 
-types_commasep : type                       { [$1] }
-               | types_commasep ',' type    { $1 ++ [$3] }
+fexp :: { Exp }
+ : aexp
+    { $1 }
+ | fexp aexp
+    { AppE $1 $2 }
 
-classes_commasep : class                        { [$1] }
-                 | classes_commasep ',' class   { $1 ++ [$3] }
+aexp :: { Exp }
+ : qvar_withinfo
+    { $1 }
+ | gcon_typed
+    { ConE $1 }
+ | integer
+    { IntegerE $1 }
+ | '(' exp ')'
+    { $2 }
 
-forallty : 'forall' tyvars '.' type               { ForallT $2 [] $4 }
-         | 'forall' tyvars '.' context '=>' type  { ForallT $2 $4 $6 }
+alts :: { [Match] }
+ : alt
+    { [$1] }
+ | alts ';' alt
+    { $1 ++ [$3] }
 
-tyvars : tyvar              { [$1] }
-       | tyvars tyvar       { $1 ++ [$2] }
+alt :: { Match }
+ : pat '->' exp
+    { Match $1 $3 }
 
-atypes : atype              { [$1] }
-       | atypes atype       { $1 ++ [$2] }
+pat :: { Pat }
+ : gcon_typed apats
+    { ConP $1 $2 }
+ | apat
+    { $1 }
+
+apats :: { [Pat] }
+ : apat
+    { [$1] }
+ | apats apat
+    { $1 ++ [$2] }
+
+apat :: { Pat }
+ : var_typed
+    { VarP $1 }
+ | gcon_typed
+    { ConP $1 [] }
+ | '(' '_' '::' type ')'
+    { WildP $4 }
+ | '(' pat ')'
+    { $2 }
+ | integer
+    { IntegerP $1 }
+
+var_typed :: { Sig }
+ : '(' var  '::' type ')'
+    { Sig $2 $4 }
+
+gcon_typed :: { Sig }
+ : '(' gcon '::' type ')'
+    { Sig $2 $4 }
+
+qvar_withinfo :: { Exp }
+ : '(' '.' qvar '::' type ')'
+    { VarE (Sig $3 $5) Bound }
+ | '(' '@' qvar '::' type ')'
+    { PrimE (Sig $3 $5) }
+ | '(' '%' qvar '::' type ')'
+    { VarE (Sig $3 $5) Declared }
+ | '(' '#' '{' qtycls atypes '}' qvar '::' type ')' 
+    { VarE (Sig $7 $9) (Instance $4 $5) }
+
+gcon :: { String }
+ : '(' ')'
+    { "()" }
+ | '[' ']'
+    { "[]" }
+ | '(' commas ')'
+    { "(" ++ $2 ++ ")" }
+ | qcon
+    { $1 }
+
+var :: { String }
+ : varid
+    { $1 }
+
+qvar :: { String }
+ : qvarid
+    { $1 }
+
+con :: { String }
+ : conid
+    { $1 }
+
+qcon :: { String }
+ : qconid
+    { $1 }
+
+tycon :: { String }
+ : conid
+    { $1 }
+
+tyvar :: { String }
+ : varid
+    { $1 }
+
+tycls :: { String }
+ : conid
+    { $1 }
+
+qtycls :: { String }
+  : tycls
+    { $1 }
+
+qconid :: { String }
+  : conid
+    { $1 }
+
+qvarid :: { String }
+  : varid  { $1 }
+
+commas :: { String }
+ : ','
+    { "," }
+ | commas ','
+    { ',':$1 }
+
+types_commasep :: { [Type] }
+ : type
+    { [$1] }
+ | types_commasep ',' type
+    { $1 ++ [$3] }
+
+classes_commasep :: { [Pred] }
+ : class
+    { [$1] }
+ | classes_commasep ',' class
+    { $1 ++ [$3] }
+
+forallty :: { Type }
+ : 'forall' tyvars '.' type
+    { ForallT $2 [] $4 }
+ | 'forall' tyvars '.' context '=>' type
+    { ForallT $2 $4 $6 }
+
+tyvars :: { [String] }
+ : tyvar
+    { [$1] }
+ | tyvars tyvar
+    { $1 ++ [$2] }
+
+atypes :: { [Type] }
+ : atype
+    { [$1] }
+ | atypes atype
+    { $1 ++ [$2] }
 
 
 
