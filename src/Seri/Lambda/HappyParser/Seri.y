@@ -5,15 +5,20 @@ module Seri.Lambda.HappyParser.Seri (parseDecs) where
 
 -- vim: ft=haskell
 import Data.Char
+import Data.Maybe
+
+import Control.Monad.State
 
 import Seri.Lambda hiding (parseDecs)
-import Seri.Utils.Ppr
+import Seri.Utils.Ppr (Ppr(..), render)
 
 }
 
 %name seri_decls
 %tokentype { Token }
 %error { parseError }
+%monad { ParserMonad }
+%lexer { lexer } { TokenEOF }
 
 %token 
        '['      { TokenOpenBracket }
@@ -44,6 +49,7 @@ import Seri.Utils.Ppr
        'where'  { TokenWhere }
        'case'   { TokenCase }
        'of'     { TokenOf }
+       EOF      { TokenEOF }
 
 %%
 
@@ -175,8 +181,21 @@ atypes : atype              { [$1] }
 
 
 {
-parseError :: [Token] -> a
-parseError _ = error "Parse error"
+
+data ParserState = ParserState {
+    ps_text :: String,
+    ps_line :: Integer,
+    ps_column :: Integer,
+    ps_error :: Maybe String
+}
+
+type ParserMonad = State ParserState
+
+parseError :: Token -> ParserMonad a
+parseError tok = do
+    ln <- gets ps_line
+    cl <- gets ps_column
+    failE $ "error:" ++ show ln ++ ":" ++ show cl ++ ": parser error at " ++ show tok
 
 data Token = 
        TokenOpenBracket
@@ -207,6 +226,7 @@ data Token =
      | TokenWhere
      | TokenCase
      | TokenOf
+     | TokenEOF
     deriving (Show)
 
 isSmall :: Char -> Bool
@@ -224,49 +244,100 @@ isIdChar c | isDigit c = True
 isIdChar '\'' = True
 isIdChar _ = False
 
-lexer :: String -> [Token]
-lexer [] = []
-lexer ('[':cs) = TokenOpenBracket : lexer cs
-lexer (']':cs) = TokenCloseBracket : lexer cs
-lexer ('(':cs) = TokenOpenParen : lexer cs
-lexer (')':cs) = TokenCloseParen : lexer cs
-lexer ('{':cs) = TokenOpenBrace : lexer cs
-lexer ('}':cs) = TokenCloseBrace : lexer cs
-lexer ('-':'>':cs) = TokenDashArrow : lexer cs
-lexer ('=':'>':cs) = TokenEqualsArrow : lexer cs
-lexer (',':cs) = TokenComma : lexer cs
-lexer (';':cs) = TokenSemicolon : lexer cs
-lexer ('.':cs) = TokenPeriod : lexer cs
-lexer ('|':cs) = TokenBar : lexer cs
-lexer ('=':cs) = TokenEquals : lexer cs
-lexer ('_':cs) = TokenUnderscore : lexer cs
-lexer ('@':cs) = TokenAtSign : lexer cs
-lexer ('%':cs) = TokenPercent : lexer cs
-lexer ('#':cs) = TokenHash : lexer cs
-lexer ('\\':cs) = TokenBackSlash : lexer cs
-lexer (':':':':cs) = TokenDoubleColon : lexer cs
-lexer (c:cs) | isSpace c = lexer cs
-lexer (c:cs) | isLarge c
-    = let (ns, rest) = span isIdChar cs
-      in TokenConId (c:ns) : lexer rest
-lexer (c:cs) | isSmall c
-    = let (ns, rest) = span isIdChar cs
-      in case (c:ns) of
-           "data" -> TokenData : lexer rest
-           "forall" -> TokenForall : lexer rest
-           "class" -> TokenClass : lexer rest
-           "where" -> TokenWhere : lexer rest
-           "case" -> TokenCase : lexer rest
-           "of" -> TokenOf : lexer rest
-           id -> TokenVarId id : lexer rest
-lexer (c:cs) | isDigit c
-    = let (ns, rest) = span isDigit cs
-      in TokenInteger (read (c:ns)) : lexer rest
+doubles :: [(String, Token)]
+doubles = [
+    ("->", TokenDashArrow),
+    ("=>", TokenEqualsArrow),
+    ("::", TokenDoubleColon)
+    ]
 
-lexer cs = error $ "fail to lex: " ++ cs
+singles :: [(Char, Token)]
+singles = [
+    ('[', TokenOpenBracket),
+    (']', TokenCloseBracket),
+    ('(', TokenOpenParen),
+    (')', TokenCloseParen),
+    ('{', TokenOpenBrace),
+    ('}', TokenCloseBrace),
+    (',', TokenComma),
+    (';', TokenSemicolon),
+    ('.', TokenPeriod),
+    ('|', TokenBar),
+    ('=', TokenEquals),
+    ('_', TokenUnderscore),
+    ('@', TokenAtSign),
+    ('%', TokenPercent),
+    ('#', TokenHash),
+    ('\\', TokenBackSlash)
+    ]
+
+keywords :: [(String, Token)]
+keywords = [         
+    ("data", TokenData),
+    ("forall", TokenForall),
+    ("class", TokenClass),
+    ("where", TokenWhere),
+    ("case", TokenCase),
+    ("of", TokenOf)
+    ]
+
+failE :: String -> ParserMonad a
+failE msg = do
+    modify $ \ps -> ps { ps_error = Just msg}
+    fail msg
+
+-- advance a single column
+single :: ParserMonad ()
+single = modify $ \ps -> ps {ps_column = 1 + ps_column ps }
+
+-- advance two columns
+double :: ParserMonad ()
+double = single >> single
+
+-- advance many columns
+many :: String -> ParserMonad ()
+many = mapM_ (const single)
+
+-- advance to the next line
+newline :: ParserMonad ()
+newline = modify $ \ps -> ps {ps_line = 1 + ps_line ps }
+
+setText :: String -> ParserMonad ()
+setText txt = modify $ \ps -> ps {ps_text = txt }
+
+lexer :: (Token -> ParserMonad a) -> ParserMonad a
+lexer output = do
+  let odouble t r = double >> setText r >> output t
+  let osingle t r = single >> setText r >> output t
+  text <- gets ps_text
+  case text of
+      [] -> output TokenEOF
+      (c1:c2:cs) | ([c1, c2] `elem` (map fst doubles)) ->
+          odouble (fromJust (lookup [c1, c2] doubles)) cs
+      (c:cs) | (c `elem` (map fst singles)) ->
+          osingle (fromJust (lookup c singles)) cs
+      ('\n':cs) -> newline >> setText cs >> lexer output
+      (c:cs) | isSpace c -> single >> setText cs >> lexer output
+      (c:cs) | isLarge c ->
+          let (ns, rest) = span isIdChar cs
+          in many (c:ns) >> setText rest >> (output $ TokenConId (c:ns))
+      (c:cs) | isSmall c ->
+          let (ns, rest) = span isIdChar cs
+          in case (c:ns) of
+              kw | kw `elem` (map fst keywords) ->
+                  many kw >> setText rest >> output (fromJust (lookup kw keywords))
+              id -> many id >> setText rest >> output (TokenVarId id)
+      (c:cs) | isDigit c ->
+          let (ns, rest) = span isDigit cs
+          in many (c:ns) >> setText rest >> output (TokenInteger (read (c:ns)))
+      cs -> failE $ "fail to lex: " ++ cs
 
 parseDecs :: (Monad m) => String -> m [Dec]
-parseDecs = return . seri_decls . lexer
+parseDecs text =
+    case (runState seri_decls (ParserState text 1 0 Nothing)) of
+        (ds, ParserState _ _ _ Nothing) -> return ds
+        (_, ParserState _ _ _ (Just msg)) -> fail msg
+
 
 }
 
