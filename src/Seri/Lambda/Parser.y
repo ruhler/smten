@@ -2,7 +2,7 @@
 {
 
 -- vim: ft=haskell
-module Seri.Lambda.Parser.Seri (parseDecs) where
+module Seri.Lambda.Parser (parseDecs) where
 
 import Data.Char hiding (isSymbol)
 import Data.Maybe
