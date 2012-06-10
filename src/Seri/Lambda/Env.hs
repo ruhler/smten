@@ -108,11 +108,11 @@ declarations m =
       qtype (ConT n) = maybeToList $ lookupDataD theenv n
       qtype t = []
 
-      qpred :: Pred -> [Dec]
-      qpred (Pred n ts) = catMaybes [lookupClassD theenv n, lookupInstD theenv n ts]
+      qclass :: Class -> [Dec]
+      qclass (Class n ts) = catMaybes [lookupClassD theenv n, lookupInstD theenv n ts]
 
       query :: (Typeable a) => a -> [Dec]
-      query = extQ (extQ (mkQ [] qexp) qtype) qpred
+      query = extQ (extQ (mkQ [] qexp) qtype) qclass
   in everything union query
 
 -- minimize x

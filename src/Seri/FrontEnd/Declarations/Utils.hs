@@ -59,7 +59,7 @@ seritypeexp (ForallT vars preds t) =
 
      mkpred :: Pred -> Exp
      mkpred (ClassP n ts) =
-        applyC 'S.Pred [string n, ListE $ map seritypeexp ts]
+        applyC 'S.Class [string n, ListE $ map seritypeexp ts]
 
      preds' = ListE $ map mkpred preds
  in applyC 'S.ForallT [vars', preds', seritypeexp t]

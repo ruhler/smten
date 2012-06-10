@@ -50,8 +50,8 @@ instance Ppr Type where
         in text "forall" <+> hsep (map text vars)
               <+> text "." <+> ctx preds <+> ppr t
 
-instance Ppr Pred where
-    ppr (Pred n ts) = text n <+> hsep (map ppr ts)
+instance Ppr Class where
+    ppr (Class n ts) = text n <+> hsep (map ppr ts)
 
 isAtomE :: Exp -> Bool
 isAtomE (IntegerE {}) = True
@@ -95,7 +95,7 @@ instance Ppr Exp where
     ppr (VarE s Bound) = pprsig (text ".") s
     ppr (VarE s Declared) = pprsig (text "%") s
     ppr (VarE s (Instance ni tis))
-        = pprsig (text "#" <>  braces (ppr (Pred ni tis))) s
+        = pprsig (text "#" <>  braces (ppr (Class ni tis))) s
 
 instance Ppr Match where
     ppr (Match p e) = (ppr p <+> text "->") `sep2` ppr e <> semi
@@ -133,7 +133,7 @@ instance Ppr Dec where
                 <+> text "where" <+> text "{" $$
                     nest tabwidth (vcat (map ppr ss)) $$ text "}" <> semi
     ppr (InstD n ts ms)
-        = text "instance" <+> ppr (Pred n ts)
+        = text "instance" <+> ppr (Class n ts)
                 <+> text "where" <+> text "{" $$
                     nest tabwidth (vcat (map ppr ms)) $$ text "}" <> semi
 

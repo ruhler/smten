@@ -169,14 +169,14 @@ gtycon :: { String }
  | '(' '->' ')'
     { "->" }
 
-context :: { [Pred] }
+context :: { [Class] }
  : '(' classes_commasep ')'
     { $2 }
 
 
-class :: { Pred }
+class :: { Class }
  : qtycls tyvars
-    { Pred $1 (map VarT $2) }
+    { Class $1 (map VarT $2) }
 
 constrs :: { [Con] }
  : constr
@@ -352,7 +352,7 @@ types_commasep :: { [Type] }
  | types_commasep ',' type
     { $1 ++ [$3] }
 
-classes_commasep :: { [Pred] }
+classes_commasep :: { [Class] }
  : class
     { [$1] }
  | classes_commasep ',' class
@@ -486,9 +486,9 @@ keywords = [
     ("instance", TokenInstance),
     ("where", TokenWhere),
     ("case", TokenCase),
-    ("of", TokenOf)
-    ("if", TokenIf)
-    ("then", TokenThen)
+    ("of", TokenOf),
+    ("if", TokenIf),
+    ("then", TokenThen),
     ("else", TokenElse)
     ]
 
