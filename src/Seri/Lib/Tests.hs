@@ -148,3 +148,11 @@ declvartinst "MultiFoo" ["a", "b"]
     shadow = \x -> (\x -> 2*x) (x+1)
 |]
 
+[s|
+    thedo :: Maybe Bool -> Maybe Integer
+    thedo m = do
+        b <- m
+        if b then return 5 else Nothing
+|]
+            
+

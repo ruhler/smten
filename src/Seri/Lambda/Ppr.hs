@@ -4,6 +4,7 @@
 module Seri.Lambda.Ppr () where
 
 import Seri.Lambda.IR
+import Seri.Lambda.Sugar
 import Seri.Utils.Ppr
 
 tabwidth :: Int
@@ -50,8 +51,6 @@ instance Ppr Type where
         in text "forall" <+> hsep (map text vars)
               <+> text "." <+> ctx preds <+> ppr t
 
-instance Ppr Class where
-    ppr (Class n ts) = text n <+> hsep (map ppr ts)
 
 isAtomE :: Exp -> Bool
 isAtomE (IntegerE {}) = True
@@ -75,6 +74,20 @@ pprsig s (Sig n t) = parens (s <> pprname n <+> text "::" <+> (ppr t))
 sep2 :: Doc -> Doc -> Doc
 sep2 a b = a $$ nest tabwidth b
 
+cando :: Exp -> Bool
+cando (AppE (AppE (VarE (Sig ">>" _) _) _) _) = True
+cando (AppE (AppE (VarE (Sig ">>=" _) _) _) (LamE _ _)) = True
+cando _ = False
+
+sugardo :: Exp -> (Class, [Stmt])
+sugardo (AppE (AppE (VarE (Sig ">>" _) (Instance cls)) m) r) =
+  let (_, substmts) = sugardo r
+  in (cls, NoBindS m : substmts)
+sugardo (AppE (AppE (VarE (Sig ">>=" _) (Instance cls)) m) (LamE s r)) =
+  let (_, substmts) = sugardo r
+  in (cls, BindS s m : substmts)
+sugardo e = (undefined, [NoBindS e])
+
 instance Ppr Exp where
     -- Special case for If statements
     ppr (CaseE e [Match (ConP (Sig "True" (ConT "Bool")) []) a,
@@ -82,6 +95,12 @@ instance Ppr Exp where
         = text "if" <+> ppr e $$ nest tabwidth (
                 text "then" <+> ppr a $$
                 text "else" <+> ppr b)
+
+    -- Special case for Do statements
+    ppr e | cando e =
+        let (cls, stmts) = sugardo e
+        in text "#" <>  braces (ppr cls) <> text "do" <+> text "{" $$
+              nest tabwidth (vcat (map ppr stmts)) $$ text "}"
 
     -- Normal cases
     ppr (IntegerE i) = integer i
@@ -96,6 +115,10 @@ instance Ppr Exp where
     ppr (VarE s Declared) = pprsig (text "%") s
     ppr (VarE s (Instance cls))
         = pprsig (text "#" <>  braces (ppr cls)) s
+
+instance Ppr Stmt where
+    ppr (NoBindS e) = ppr e <> semi
+    ppr (BindS s e) = pprsig empty s <+> text "<-" <+> ppr e <> semi
 
 instance Ppr Match where
     ppr (Match p e) = (ppr p <+> text "->") `sep2` ppr e <> semi
@@ -132,8 +155,8 @@ instance Ppr Dec where
         = text "class" <+> text n <+> hsep (map text vs)
                 <+> text "where" <+> text "{" $$
                     nest tabwidth (vcat (map ppr ss)) $$ text "}" <> semi
-    ppr (InstD n ts ms)
-        = text "instance" <+> ppr (Class n ts)
+    ppr (InstD cls ms)
+        = text "instance" <+> ppr cls
                 <+> text "where" <+> text "{" $$
                     nest tabwidth (vcat (map ppr ms)) $$ text "}" <> semi
 
@@ -149,3 +172,5 @@ instance Ppr Method where
 instance Ppr [Dec] where
     ppr ds = vcat (map (\d -> ppr d $+$ text "") ds)
 
+instance Ppr Class where
+    ppr (Class n ts) = text n <+> hsep (map ppr ts)

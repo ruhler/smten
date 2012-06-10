@@ -62,7 +62,7 @@ haskell builtin main e =
       hsDec (ClassD n vars sigs)
         = [H.ClassD [] (hsName n) (map (H.PlainTV . hsName) vars) [] (map hsSig sigs)]
 
-      hsDec (InstD n ts ms)
+      hsDec (InstD (Class n ts) ms)
         = [H.InstanceD [] (appts ((H.ConT (hsName n)):(map hsType ts))) (map hsMethod ms)] 
 
       hsSig :: Sig -> H.Dec

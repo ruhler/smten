@@ -55,7 +55,7 @@ lookupClassD (Env decls _) n =
 lookupInstD :: Env a -> Name -> [Type] -> Maybe Dec
 lookupInstD (Env decls _) n t =
   let theInstD :: Dec -> Bool
-      theInstD (InstD nm ts _) = n == nm && t == ts
+      theInstD (InstD (Class nm ts) _) = n == nm && t == ts
       theInstD _ = False
   in listToMaybe $ filter theInstD decls
 
@@ -85,7 +85,7 @@ lookupvar e@(Env _ (VarE (Sig x _) (Instance (Class n ts)))) =
           return (t, body)
       mlook (m:ms) = mlook ms
   in do
-      InstD _ _ ms <- lookupInstD e n ts  
+      InstD _ ms <- lookupInstD e n ts  
       mlook ms
 
 withenv :: Env a -> b -> Env b

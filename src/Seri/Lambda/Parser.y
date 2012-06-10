@@ -32,6 +32,7 @@ import Seri.Utils.Ppr (Ppr(..), render)
        '{'      { TokenOpenBrace }
        '}'      { TokenCloseBrace }
        '->'     { TokenDashArrow }
+       '<-'     { TokenBindArrow }
        '=>'     { TokenEqualsArrow }
        ','      { TokenComma }
        ';'      { TokenSemicolon }
@@ -59,6 +60,7 @@ import Seri.Utils.Ppr (Ppr(..), render)
        'if'     { TokenIf }
        'then'     { TokenThen }
        'else'     { TokenElse }
+       'do'     { TokenDo }
        EOF      { TokenEOF }
 
 %%
@@ -84,10 +86,10 @@ topdecl :: { Dec }
     { ClassD $2 $3 $6}
  | 'class' tycls tyvars 'where' '{' cdecls ';' '}'
     { ClassD $2 $3 $6}
- | 'instance' qtycls atypes 'where' '{' idecls '}'
-    { InstD $2 $3 $6 }
- | 'instance' qtycls atypes 'where' '{' idecls ';' '}'
-    { InstD $2 $3 $6 }
+ | 'instance' class 'where' '{' idecls '}'
+    { InstD $2 $5 }
+ | 'instance' class 'where' '{' idecls ';' '}'
+    { InstD $2 $5 }
  | decl
     { $1 }
 
@@ -201,6 +203,8 @@ exp10 :: { Exp }
     { ifE $2 $4 $6 }
  | 'case' exp 'of' '{' alts '}'
     { CaseE $2 $5 }
+ | '#' '{' class '}' 'do' '{' stmts exp ';' '}' 
+    { doE $3 ($7 ++ [NoBindS $8]) }
  | fexp
     { $1 }
 
@@ -230,6 +234,18 @@ alts :: { [Match] }
 alt :: { Match }
  : pat '->' exp
     { Match $1 $3 }
+
+stmts :: { [Stmt] }
+ : stmt 
+    { [$1] }
+ | stmts stmt
+    { $1 ++ [$2] }
+
+stmt :: { Stmt }
+ : exp ';'
+    { NoBindS $1 }
+ | var_typed '<-' exp ';'
+    { BindS $1 $3 }
 
 pat :: { Pat }
  : gcon_typed apats
@@ -403,6 +419,7 @@ data Token =
      | TokenOpenBrace
      | TokenCloseBrace
      | TokenDashArrow
+     | TokenBindArrow
      | TokenEqualsArrow
      | TokenComma
      | TokenSemicolon
@@ -430,6 +447,7 @@ data Token =
      | TokenIf
      | TokenThen
      | TokenElse
+     | TokenDo
      | TokenEOF
     deriving (Show)
 
@@ -474,6 +492,7 @@ reservedops = [
     (":", TokenColon),
     ("\\", TokenBackSlash),
     ("->", TokenDashArrow),
+    ("<-", TokenBindArrow),
     ("=>", TokenEqualsArrow),
     ("::", TokenDoubleColon)
     ]
@@ -489,7 +508,8 @@ keywords = [
     ("of", TokenOf),
     ("if", TokenIf),
     ("then", TokenThen),
-    ("else", TokenElse)
+    ("else", TokenElse),
+    ("do", TokenDo)
     ]
 
 failE :: String -> ParserMonad a

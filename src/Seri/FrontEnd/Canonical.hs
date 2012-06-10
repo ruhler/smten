@@ -35,6 +35,7 @@ instance Canonical Exp where
     canonical (UInfixE a op b) = canonical $ AppE (AppE op a) b
 
     canonical (LamE ps@[VarP x] a) = LamE ps (canonical a)
+    canonical (LamE [WildP] a) = canonical (LamE [VarP (mkName "__wild")] a)
 
     -- We convert lambda expressions with multiple arguments, such as
     --  \a b -> blah

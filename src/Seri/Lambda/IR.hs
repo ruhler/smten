@@ -58,6 +58,6 @@ data Method = Method Name Exp
 data Dec = ValD Sig Exp
          | DataD Name [Name] [Con]    -- name tyvars constrs
          | ClassD Name [Name] [Sig]   -- name tyvars sigs
-         | InstD Name [Type] [Method]
+         | InstD Class [Method]
      deriving (Eq, Show, Data, Typeable)
 

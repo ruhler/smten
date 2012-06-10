@@ -322,7 +322,7 @@ declinst'' addseridec i@(InstanceD [] tf impls) =
         apply 'S.method [string n, apply (methodtypename n) concretevals, b]
 
       methods = ListE $ map mkmeth impls
-      body = applyC 'S.InstD [iname, itys, methods]
+      body = applyC 'S.InstD [applyC 'S.Class [iname, itys], methods]
       ddec = seridec (mkName $ "I_" ++ (idize tf)) body
    in [inst_D] ++ if addseridec then ddec else []
 declinst'' _ i = error $ "TODO: declinst " ++ show i
