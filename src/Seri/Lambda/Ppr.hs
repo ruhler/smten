@@ -62,8 +62,15 @@ isAtomE (LamE {}) = False
 isAtomE (ConE {}) = True
 isAtomE (VarE {}) = True
 
+isOp :: String -> Bool
+isOp (c:_) = c `elem` ":!#$%&*+./<=>?@\\^|-~"
+
+pprname :: String -> Doc
+pprname n | isOp n = parens (text n)
+pprname n = text n
+
 pprsig :: Doc -> Sig -> Doc
-pprsig s (Sig n t) = parens (s <> text n <+> text "::" <+> (ppr t))
+pprsig s (Sig n t) = parens (s <> pprname n <+> text "::" <+> (ppr t))
 
 sep2 :: Doc -> Doc -> Doc
 sep2 a b = a $$ nest tabwidth b
@@ -108,8 +115,8 @@ conlist (x:xs) = text " " <+> ppr x
                     $+$ vcat (map (\c -> text "|" <+> ppr c) xs)
 
 instance Ppr Dec where
-    ppr (ValD (Sig n t) e) = text n <+> text "::" <+> ppr t <> semi $$
-                             text n <+> text "=" <+> ppr e <> semi
+    ppr (ValD (Sig n t) e) = pprname n <+> text "::" <+> ppr t <> semi $$
+                             pprname n <+> text "=" <+> ppr e <> semi
     ppr (DataD n vs cs)
         = text "data" <+> text n <+> hsep (map text vs) <+> text "=" $$
             (nest tabwidth (conlist cs)) <> semi
@@ -123,13 +130,13 @@ instance Ppr Dec where
                     nest tabwidth (vcat (map ppr ms)) $$ text "}" <> semi
 
 instance Ppr Sig where
-    ppr (Sig n t) = text n <+> text "::" <+> ppr t <> semi
+    ppr (Sig n t) = pprname n <+> text "::" <+> ppr t <> semi
     
 instance Ppr Con where
     ppr (Con n ts) = text n <+> hsep (map ppr ts)
 
 instance Ppr Method where
-    ppr (Method n e) = text n <+> text "=" <+> ppr e <> semi
+    ppr (Method n e) = pprname n <+> text "=" <+> ppr e <> semi
 
 instance Ppr [Dec] where
     ppr ds = vcat (map (\d -> ppr d $+$ text "") ds)

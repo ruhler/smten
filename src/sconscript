@@ -39,10 +39,8 @@ querytest("query2")
 querytest("if")
 querytest("complex")
 
-## Happy Parser
-env.Command('Seri/Lambda/HappyParser/Seri.hs',
-            'Seri/Lambda/HappyParser/Seri.y',
+## Parser
+env.Command('Seri/Lambda/Parser/Seri.hs',
+            'Seri/Lambda/Parser/Seri.y',
             "/home/ruhler/.cabal/bin/happy -o $TARGET $SOURCE")
-happyseri = env.GHCProgram('happyseri', 'Seri/Lambda/HappyParser/Seri.hs')
-env.Default(happyseri)
 

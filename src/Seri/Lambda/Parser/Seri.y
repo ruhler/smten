@@ -2,14 +2,14 @@
 {
 
 -- vim: ft=haskell
-module Seri.Lambda.HappyParser.Seri (parseDecs) where
+module Seri.Lambda.Parser.Seri (parseDecs) where
 
-import Data.Char
+import Data.Char hiding (isSymbol)
 import Data.Maybe
 
 import Control.Monad.State
 
-import Seri.Lambda hiding (parseDecs)
+import Seri.Lambda.IR
 import Seri.Utils.Ppr (Ppr(..), render)
 
 }
@@ -40,14 +40,18 @@ import Seri.Utils.Ppr (Ppr(..), render)
        '@'      { TokenAtSign }
        '%'      { TokenPercent }
        '#'      { TokenHash }
+       ':'      { TokenColon }
        '\\'      { TokenBackSlash }
        '::'      { TokenDoubleColon }
        conid    { TokenConId $$ }
        varid    { TokenVarId $$ }
+       varsym   { TokenVarSym $$ }
+       consym   { TokenConSym $$ }
        integer  { TokenInteger $$ }
        'data'   { TokenData }
        'forall' { TokenForall }
        'class'  { TokenClass }
+       'instance'  { TokenInstance }
        'where'  { TokenWhere }
        'case'   { TokenCase }
        'of'     { TokenOf }
@@ -57,6 +61,8 @@ import Seri.Utils.Ppr (Ppr(..), render)
 
 body :: { [Dec] }
  : topdecls
+    { $1 }
+ | topdecls ';'
     { $1 }
 
 topdecls :: { [Dec] }
@@ -68,8 +74,16 @@ topdecls :: { [Dec] }
 topdecl :: { Dec }
  : 'data' tycon tyvars '=' constrs
     { DataD $2 $3 $5 }
+ | 'data' tycon '=' constrs
+    { DataD $2 [] $4 }
  | 'class' tycls tyvar 'where' '{' cdecls '}'
     { ClassD $2 [$3] $6}
+ | 'class' tycls tyvar 'where' '{' cdecls ';' '}'
+    { ClassD $2 [$3] $6}
+ | 'instance' qtycls atypes 'where' '{' idecls '}'
+    { InstD $2 $3 $6 }
+ | 'instance' qtycls atypes 'where' '{' idecls ';' '}'
+    { InstD $2 $3 $6 }
  | decl
     { $1 }
 
@@ -97,6 +111,16 @@ cdecls :: { [Sig] }
 
 cdecl :: { Sig }
  : gendecl
+    { $1 }
+
+idecls :: { [Method] }
+ : idecl
+    { [$1] }
+ | idecls ';' idecl
+    { $1 ++ [$3] }
+
+idecl :: { Method }
+ : fundecl
     { $1 }
 
 gendecl :: { Sig }
@@ -155,12 +179,14 @@ class :: { Pred }
 constrs :: { [Con] }
  : constr
     { [$1] }
- | constrs constr
-    { $1 ++ [$2] }
+ | constrs '|' constr
+    { $1 ++ [$3] }
 
 constr :: { Con }
  : con atypes
     { Con $1 $2 }
+ | con
+    { Con $1 [] }
 
 exp :: { Exp }
  : exp10
@@ -254,9 +280,17 @@ gcon :: { String }
 var :: { String }
  : varid
     { $1 }
+ | '(' varsym ')'
+    { $2 }
 
 qvar :: { String }
  : qvarid
+    { $1 }
+ | '(' qvarsym ')'
+    { $2 }
+
+qvarsym :: { String }
+ : varsym
     { $1 }
 
 con :: { String }
@@ -266,6 +300,18 @@ con :: { String }
 qcon :: { String }
  : qconid
     { $1 }
+ | '(' gconsym ')'
+    { $2 }
+
+gconsym :: { String }
+ : ':'
+    { ":" }
+ | qconsym 
+    { $1 }
+
+qconsym :: { String }
+ : consym
+    { $1 } 
 
 tycon :: { String }
  : conid
@@ -362,14 +408,18 @@ data Token =
      | TokenAtSign
      | TokenPercent
      | TokenHash
+     | TokenColon
      | TokenBackSlash
      | TokenDoubleColon
      | TokenConId String
      | TokenVarId String
+     | TokenVarSym String
+     | TokenConSym String
      | TokenInteger Integer
      | TokenData
      | TokenForall
      | TokenClass
+     | TokenInstance
      | TokenWhere
      | TokenCase
      | TokenOf
@@ -391,12 +441,8 @@ isIdChar c | isDigit c = True
 isIdChar '\'' = True
 isIdChar _ = False
 
-doubles :: [(String, Token)]
-doubles = [
-    ("->", TokenDashArrow),
-    ("=>", TokenEqualsArrow),
-    ("::", TokenDoubleColon)
-    ]
+isSymbol :: Char -> Bool
+isSymbol c = c `elem` ":!#$%&*+./<=>?@\\^|-~"
 
 singles :: [(Char, Token)]
 singles = [
@@ -407,14 +453,22 @@ singles = [
     ('{', TokenOpenBrace),
     ('}', TokenCloseBrace),
     (',', TokenComma),
-    (';', TokenSemicolon),
-    ('.', TokenPeriod),
-    ('|', TokenBar),
-    ('=', TokenEquals),
-    ('@', TokenAtSign),
-    ('%', TokenPercent),
-    ('#', TokenHash),
-    ('\\', TokenBackSlash)
+    (';', TokenSemicolon)
+    ]
+
+reservedops :: [(String, Token)] 
+reservedops = [
+    (".", TokenPeriod),
+    ("|", TokenBar),
+    ("=", TokenEquals),
+    ("@", TokenAtSign),
+    ("%", TokenPercent),
+    ("#", TokenHash),
+    (":", TokenColon),
+    ("\\", TokenBackSlash),
+    ("->", TokenDashArrow),
+    ("=>", TokenEqualsArrow),
+    ("::", TokenDoubleColon)
     ]
 
 keywords :: [(String, Token)]
@@ -422,6 +476,7 @@ keywords = [
     ("data", TokenData),
     ("forall", TokenForall),
     ("class", TokenClass),
+    ("instance", TokenInstance),
     ("where", TokenWhere),
     ("case", TokenCase),
     ("of", TokenOf)
@@ -436,10 +491,6 @@ failE msg = do
 single :: ParserMonad ()
 single = modify $ \ps -> ps {ps_column = 1 + ps_column ps }
 
--- advance two columns
-double :: ParserMonad ()
-double = single >> single
-
 -- advance many columns
 many :: String -> ParserMonad ()
 many = mapM_ (const single)
@@ -453,13 +504,10 @@ setText txt = modify $ \ps -> ps {ps_text = txt }
 
 lexer :: (Token -> ParserMonad a) -> ParserMonad a
 lexer output = do
-  let odouble t r = double >> setText r >> output t
   let osingle t r = single >> setText r >> output t
   text <- gets ps_text
   case text of
       [] -> output TokenEOF
-      (c1:c2:cs) | ([c1, c2] `elem` (map fst doubles)) ->
-          odouble (fromJust (lookup [c1, c2] doubles)) cs
       (c:cs) | (c `elem` (map fst singles)) ->
           osingle (fromJust (lookup c singles)) cs
       ('\n':cs) -> newline >> setText cs >> lexer output
@@ -476,6 +524,13 @@ lexer output = do
       (c:cs) | isDigit c ->
           let (ns, rest) = span isDigit cs
           in many (c:ns) >> setText rest >> output (TokenInteger (read (c:ns)))
+      (c:cs) | isSymbol c ->
+          let (ns, rest) = span isSymbol cs
+          in case (c:ns) of
+              rop | rop `elem` (map fst reservedops) ->
+                  many rop >> setText rest >> output (fromJust (lookup rop reservedops))
+              op | head op == ':' -> many op >> setText rest >> output (TokenConSym op)
+              op -> many op >> setText rest >> output (TokenVarSym op)
       cs -> failE $ "fail to lex: " ++ cs
 
 parseDecs :: (Monad m) => String -> m [Dec]
@@ -483,7 +538,5 @@ parseDecs text =
     case (runState seri_decls (ParserState text 1 0 Nothing)) of
         (ds, ParserState _ _ _ Nothing) -> return ds
         (_, ParserState _ _ _ (Just msg)) -> fail msg
-
-
 }
 
