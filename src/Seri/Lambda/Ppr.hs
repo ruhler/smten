@@ -94,8 +94,8 @@ instance Ppr Exp where
     ppr (ConE s) = pprsig empty s
     ppr (VarE s Bound) = pprsig (text ".") s
     ppr (VarE s Declared) = pprsig (text "%") s
-    ppr (VarE s (Instance ni tis))
-        = pprsig (text "#" <>  braces (ppr (Class ni tis))) s
+    ppr (VarE s (Instance cls))
+        = pprsig (text "#" <>  braces (ppr cls)) s
 
 instance Ppr Match where
     ppr (Match p e) = (ppr p <+> text "->") `sep2` ppr e <> semi

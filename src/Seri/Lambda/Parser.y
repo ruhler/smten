@@ -175,8 +175,8 @@ context :: { [Class] }
 
 
 class :: { Class }
- : qtycls tyvars
-    { Class $1 (map VarT $2) }
+ : qtycls atypes
+    { Class $1 $2 }
 
 constrs :: { [Con] }
  : constr
@@ -268,8 +268,8 @@ qvar_withinfo :: { Exp }
     { PrimE (Sig $3 $5) }
  | '(' '%' qvar '::' type ')'
     { VarE (Sig $3 $5) Declared }
- | '(' '#' '{' qtycls atypes '}' qvar '::' type ')' 
-    { VarE (Sig $7 $9) (Instance $4 $5) }
+ | '(' '#' '{' class '}' qvar '::' type ')' 
+    { VarE (Sig $6 $8) (Instance $4) }
 
 gcon :: { String }
  : '(' ')'

@@ -307,7 +307,7 @@ declinst'' addseridec i@(InstanceD [] tf impls) =
       mkimpl :: Dec -> [Dec]
       mkimpl (ValD (VarP n) (NormalB b) []) =
         let p = ValD (VarP (valuename n)) (NormalB b) []
-            i = FunD (instidname n) [Clause [WildP] (NormalB (applyC 'S.Instance [iname, itys])) []]
+            i = FunD (instidname n) [Clause [WildP] (NormalB (applyC 'S.Instance [applyC 'S.Class [iname, itys]])) []]
         in [p, i]
 
       idize :: Type -> String

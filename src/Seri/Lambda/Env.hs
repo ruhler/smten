@@ -77,7 +77,7 @@ lookupvar :: Env Exp -> Maybe (Type, Exp)
 lookupvar e@(Env _ (VarE (Sig n _) Declared)) = do
   (ValD (Sig _ t) v) <- lookupValD e n
   return (t, v)
-lookupvar e@(Env _ (VarE (Sig x _) (Instance n ts))) =
+lookupvar e@(Env _ (VarE (Sig x _) (Instance (Class n ts)))) =
   let mlook :: [Method] -> Maybe (Type, Exp)
       mlook [] = Nothing
       mlook ((Method nm body):ms) | nm == x = do
@@ -101,7 +101,7 @@ declarations m =
   let theenv = Env m ()
       qexp :: Exp -> [Dec]
       qexp (VarE (Sig n _) Declared) = maybeToList $ lookupValD theenv n
-      qexp (VarE (Sig n _) (Instance ni ts)) = catMaybes [lookupClassD theenv ni, lookupInstD theenv ni ts]
+      qexp (VarE (Sig n _) (Instance (Class ni ts))) = catMaybes [lookupClassD theenv ni, lookupInstD theenv ni ts]
       qexp e = []
 
       qtype :: Type -> [Dec]

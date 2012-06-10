@@ -19,7 +19,7 @@ data Type = ConT Name
 data Class = Class Name [Type]
       deriving(Eq, Show, Data, Typeable)
 
-data VarInfo = Bound | Declared | Instance Name [Type]
+data VarInfo = Bound | Declared | Instance Class
     deriving (Eq, Show, Data, Typeable)
 
 data Match = Match Pat Exp
