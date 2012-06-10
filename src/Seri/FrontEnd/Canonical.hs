@@ -50,11 +50,7 @@ instance Canonical Exp where
        in canonical (foldl AppE tupn es)
 
     -- if statements desugared into case.
-    canonical (CondE p a b)
-      = canonical $ CaseE p [
-            Match (ConP (mkName "True") []) (NormalB a) [], 
-            Match (ConP (mkName "False") []) (NormalB b) []
-            ]
+    canonical (CondE p a b) = CondE (canonical p) (canonical a) (canonical b)
 
     canonical (CaseE e ms) = CaseE (canonical e) (canonical ms)
 

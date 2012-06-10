@@ -7,7 +7,7 @@ module Seri.FrontEnd.Typed
     (
         Typed(..), typedas,
         SeriType(..), SeriType1(..), SeriType2(..), SeriType3(..),
-        integerE, caseE, conE, conE', varE, dvarE, lamE, appE,
+        integerE, ifE, caseE, conE, conE', varE, dvarE, lamE, appE,
         primitive, match, lamM, method,
         conP, appP, wildP, integerP,
         enved,
@@ -16,6 +16,7 @@ module Seri.FrontEnd.Typed
 
 import qualified Language.Haskell.TH as TH
 
+import qualified Seri.Lambda.Sugar as Sugar
 import Seri.Lambda.IR
 import Seri.Lambda.Env
 
@@ -75,6 +76,9 @@ primitive p = withtype $ \t -> Typed $ PrimE (Sig p t)
 
 integerE :: Integer -> Typed Exp Integer
 integerE x = Typed $ IntegerE x
+
+ifE :: Typed Exp Bool -> Typed Exp a -> Typed Exp a -> Typed Exp a
+ifE (Typed p) (Typed a) (Typed b) = Typed $ Sugar.ifE p a b
 
 caseE :: (SeriType b) => Typed Exp a -> [Typed Match (a -> b)] -> Typed Exp b
 caseE (Typed e) matches = Typed $ CaseE e (map typed matches)

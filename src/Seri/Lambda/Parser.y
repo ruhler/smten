@@ -10,6 +10,7 @@ import Data.Maybe
 import Control.Monad.State
 
 import Seri.Lambda.IR
+import Seri.Lambda.Sugar
 import Seri.Utils.Ppr (Ppr(..), render)
 
 }
@@ -55,6 +56,9 @@ import Seri.Utils.Ppr (Ppr(..), render)
        'where'  { TokenWhere }
        'case'   { TokenCase }
        'of'     { TokenOf }
+       'if'     { TokenIf }
+       'then'     { TokenThen }
+       'else'     { TokenElse }
        EOF      { TokenEOF }
 
 %%
@@ -193,6 +197,8 @@ exp :: { Exp }
 exp10 :: { Exp }
  : '\\' var_typed '->' exp
     { LamE $2 $4 }
+ | 'if' exp 'then' exp 'else' exp
+    { ifE $2 $4 $6 }
  | 'case' exp 'of' '{' alts '}'
     { CaseE $2 $5 }
  | fexp
@@ -421,6 +427,9 @@ data Token =
      | TokenWhere
      | TokenCase
      | TokenOf
+     | TokenIf
+     | TokenThen
+     | TokenElse
      | TokenEOF
     deriving (Show)
 
@@ -478,6 +487,9 @@ keywords = [
     ("where", TokenWhere),
     ("case", TokenCase),
     ("of", TokenOf)
+    ("if", TokenIf)
+    ("then", TokenThen)
+    ("else", TokenElse)
     ]
 
 failE :: String -> ParserMonad a

@@ -76,6 +76,14 @@ sep2 :: Doc -> Doc -> Doc
 sep2 a b = a $$ nest tabwidth b
 
 instance Ppr Exp where
+    -- Special case for If statements
+    ppr (CaseE e [Match (ConP (Sig "True" (ConT "Bool")) []) a,
+                  Match (ConP (Sig "False" (ConT "Bool")) []) b])
+        = text "if" <+> ppr e $$ nest tabwidth (
+                text "then" <+> ppr a $$
+                text "else" <+> ppr b)
+
+    -- Normal cases
     ppr (IntegerE i) = integer i
     ppr (PrimE s) = pprsig (text "@") s
     ppr (CaseE e ms) = text "case" <+> ppr e <+> text "of" <+> text "{" $$
