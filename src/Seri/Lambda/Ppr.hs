@@ -56,7 +56,7 @@ instance Ppr Pred where
 isAtomE :: Exp -> Bool
 isAtomE (IntegerE {}) = True
 isAtomE (PrimE {}) = True
-isAtomE (CaseE {}) = True
+isAtomE (CaseE {}) = False
 isAtomE (AppE {}) = False
 isAtomE (LamE {}) = False
 isAtomE (ConE {}) = True

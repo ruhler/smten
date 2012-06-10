@@ -76,10 +76,10 @@ topdecl :: { Dec }
     { DataD $2 $3 $5 }
  | 'data' tycon '=' constrs
     { DataD $2 [] $4 }
- | 'class' tycls tyvar 'where' '{' cdecls '}'
-    { ClassD $2 [$3] $6}
- | 'class' tycls tyvar 'where' '{' cdecls ';' '}'
-    { ClassD $2 [$3] $6}
+ | 'class' tycls tyvars 'where' '{' cdecls '}'
+    { ClassD $2 $3 $6}
+ | 'class' tycls tyvars 'where' '{' cdecls ';' '}'
+    { ClassD $2 $3 $6}
  | 'instance' qtycls atypes 'where' '{' idecls '}'
     { InstD $2 $3 $6 }
  | 'instance' qtycls atypes 'where' '{' idecls ';' '}'
@@ -166,15 +166,13 @@ gtycon :: { String }
     { "->" }
 
 context :: { [Pred] }
- : class
-    { [$1] }
- | '(' classes_commasep ')'
+ : '(' classes_commasep ')'
     { $2 }
 
 
 class :: { Pred }
- : qtycls tyvar
-    { Pred $1 [VarT $2] }
+ : qtycls tyvars
+    { Pred $1 (map VarT $2) }
 
 constrs :: { [Con] }
  : constr

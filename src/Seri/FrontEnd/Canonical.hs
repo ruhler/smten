@@ -169,7 +169,8 @@ canonicalrec (DataD ctx n vars cs derv) =
         let mksig :: VarStrictType -> Dec
             mksig (fn, _, t) =
               let applied = appts $ (ConT n) : (map (VarT . tyvarname) vars)
-              in SigD fn (ForallT vars [] (arrowts [applied, t]))
+                  forall x = if null vars then x else ForallT vars [] x
+              in SigD fn (forall (arrowts [applied, t]))
 
             mkfun :: Int -> Dec
             mkfun i =

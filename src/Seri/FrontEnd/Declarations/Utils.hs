@@ -52,6 +52,8 @@ instidtype t = arrowts [texpify t, ConT ''S.VarInfo]
 -- that type.
 seritypeexp :: Type -> Exp
 seritypeexp (VarT nm) = applyC 'S.VarT [string nm]
+seritypeexp (ForallT v1 p1 (ForallT v2 p2 t))
+  = seritypeexp (ForallT (v1 ++ v2) (p1 ++ p2) t)
 seritypeexp (ForallT vars preds t) =
  let vars' = ListE $ map (string . tyvarname) vars
 

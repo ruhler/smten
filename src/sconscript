@@ -42,5 +42,5 @@ querytest("complex")
 ## Parser
 env.Command('Seri/Lambda/Parser/Seri.hs',
             'Seri/Lambda/Parser/Seri.y',
-            "/home/ruhler/.cabal/bin/happy -o $TARGET $SOURCE")
+            "/home/ruhler/.cabal/bin/happy -o $TARGET -i${TARGET.dir}/Seri.info $SOURCE")
 
