@@ -8,6 +8,7 @@ module Seri.FrontEnd.Typed
         Typed(..), typedas,
         SeriType(..), SeriType1(..), SeriType2(..), SeriType3(..),
         integerE, ifE, caseE, conE, conE', varE, dvarE, lamE, appE,
+        tup2E, tup3E,
         primitive, match, lamM, method,
         conP, appP, wildP, integerP,
         enved,
@@ -100,6 +101,12 @@ integerP i = Typed $ IntegerP i
 
 appE :: (SeriType b) => Typed Exp (a -> b) -> Typed Exp a -> Typed Exp b
 appE (Typed f) (Typed x) = Typed $ AppE f x
+
+tup2E :: Typed Exp a -> Typed Exp b -> Typed Exp (a, b)
+tup2E (Typed a) (Typed b) = Typed $ Sugar.tupE [a, b]
+
+tup3E :: Typed Exp a -> Typed Exp b -> Typed Exp c -> Typed Exp (a, b, c)
+tup3E (Typed a) (Typed b) (Typed c) = Typed $ Sugar.tupE [a, b, c]
 
 lamE :: (SeriType a, SeriType (a -> b)) => Name -> (Typed Exp a -> Typed Exp b) -> Typed Exp (a -> b)
 lamE n f =

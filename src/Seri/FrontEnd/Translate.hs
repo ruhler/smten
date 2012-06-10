@@ -90,6 +90,17 @@ mkexp (CaseE e matches) = do
     ms <- mapM mkmatch matches
     return $ apply 'S.caseE [e', ListE ms]
 
+mkexp (TupE [a, b]) = do
+    a' <- mkexp a
+    b' <- mkexp b
+    return $ apply 'S.tup2E [a', b']
+
+mkexp (TupE [a, b, c]) = do
+    a' <- mkexp a
+    b' <- mkexp b
+    c' <- mkexp c
+    return $ apply 'S.tup3E [a', b', c']
+
 mkexp x = error $ "TODO: Translate.mkexp " ++ show x
 
 mkmatch :: Match -> State UserState Exp

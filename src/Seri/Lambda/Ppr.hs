@@ -89,18 +89,24 @@ sugardo (AppE (AppE (VarE (Sig ">>=" _) (Instance cls)) m) (LamE s r)) =
 sugardo e = (undefined, [NoBindS e])
 
 instance Ppr Exp where
-    -- Special case for If statements
+    -- Special case for if expressions
     ppr (CaseE e [Match (ConP (Sig "True" (ConT "Bool")) []) a,
                   Match (ConP (Sig "False" (ConT "Bool")) []) b])
         = text "if" <+> ppr e $$ nest tabwidth (
                 text "then" <+> ppr a $$
                 text "else" <+> ppr b)
 
-    -- Special case for Do statements
+    -- Special case for do statements
     ppr e | cando e =
         let (cls, stmts) = sugardo e
         in text "#" <>  braces (ppr cls) <> text "do" <+> text "{" $$
               nest tabwidth (vcat (map ppr stmts)) $$ text "}"
+
+    -- Special case for tuples
+    ppr (AppE (AppE (ConE (Sig "(,)" _)) a) b) =
+        parens . sep $ punctuate comma (map ppr [a, b])
+    ppr (AppE (AppE (AppE (ConE (Sig "(,,)" _)) a) b) c) =
+        parens . sep $ punctuate comma (map ppr [a, b, c])
 
     -- Normal cases
     ppr (IntegerE i) = integer i

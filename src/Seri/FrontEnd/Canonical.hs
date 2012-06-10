@@ -43,12 +43,7 @@ instance Canonical Exp where
     --  \a -> (\b -> blah)
     canonical (LamE (x:xs@(_:_)) a) = LamE [x] (canonical $ LamE xs a)
 
-    -- We turn a tuple (a, b, ...) of N elements into
-    --  (,, ...) a b ...
-    canonical (TupE es)
-     = let n = length es
-           tupn = ConE (mkName $ "(" ++ replicate (n-1) ',' ++ ")")
-       in canonical (foldl AppE tupn es)
+    canonical (TupE es) = TupE (map canonical es)
 
     -- if statements desugared into case.
     canonical (CondE p a b) = CondE (canonical p) (canonical a) (canonical b)

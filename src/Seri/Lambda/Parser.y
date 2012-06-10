@@ -223,6 +223,8 @@ aexp :: { Exp }
     { IntegerE $1 }
  | '(' exp ')'
     { $2 }
+ | '(' exp ',' exps_commasep ')'
+    { tupE ($2 : $4) }
 
 -- TODO: Haskell doesn't allow a semicolon after the last alternative.
 alts :: { [Match] }
@@ -372,6 +374,12 @@ classes_commasep :: { [Class] }
  : class
     { [$1] }
  | classes_commasep ',' class
+    { $1 ++ [$3] }
+
+exps_commasep :: { [Exp] }
+ : exp
+    { [$1] }
+ | exps_commasep ',' exp
     { $1 ++ [$3] }
 
 forallty :: { Type }
