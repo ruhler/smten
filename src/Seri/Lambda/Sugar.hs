@@ -1,6 +1,6 @@
 
 module Seri.Lambda.Sugar (
-    ifE, Stmt(..), doE, tupE,
+    ifE, Stmt(..), doE, tupE, tupP,
     ) where
 
 import Seri.Lambda.IR
@@ -30,10 +30,18 @@ doE cls ((BindS s e):stmts) =
                         (Instance cls)) e) f
 
 tupE :: [Exp] -> Exp
-tupE es =
+tupE es@(_:_:_) =
     let n = length es
         name = "(" ++ replicate (n-1) ',' ++ ")"
         types = map typeof es
         ttype = arrowsT (types ++ [foldl AppT (ConT name) types])
     in foldl AppE (ConE (Sig name ttype)) es
+
+tupP :: [Pat] -> Pat
+tupP ps@(_:_:_) =
+    let n = length ps
+        name = "(" ++ replicate (n-1) ',' ++ ")"
+        types = map typeof ps
+        ttype = arrowsT (types ++ [foldl AppT (ConT name) types])
+    in ConP (Sig name ttype) ps
     

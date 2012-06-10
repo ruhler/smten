@@ -268,6 +268,8 @@ apat :: { Pat }
     { ConP $1 [] }
  | '(' pat ')'
     { $2 }
+ | '(' pat ',' pats_commasep ')'
+    { tupP ($2 : $4) }
  | integer
     { IntegerP $1 }
 
@@ -380,6 +382,12 @@ exps_commasep :: { [Exp] }
  : exp
     { [$1] }
  | exps_commasep ',' exp
+    { $1 ++ [$3] }
+
+pats_commasep :: { [Pat] }
+ : pat
+    { [$1] }
+ | pats_commasep ',' pat
     { $1 ++ [$3] }
 
 forallty :: { Type }

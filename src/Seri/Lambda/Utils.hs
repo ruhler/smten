@@ -15,4 +15,5 @@ arrowsT (t:ts) = AppT (AppT (ConT "->") t) (arrowsT ts)
 -- Returns b
 outputT :: Type -> Type
 outputT (AppT (AppT (ConT "->") _) t) = t
+outputT t = t
 

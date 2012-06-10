@@ -3,6 +3,8 @@
 
 module Seri.Lambda.Ppr () where
 
+import Data.List(group, nub)
+
 import Seri.Lambda.IR
 import Seri.Lambda.Sugar
 import Seri.Utils.Ppr
@@ -136,7 +138,15 @@ isAtomP (VarP {}) = True
 isAtomP (IntegerP {}) = True
 isAtomP (WildP {}) = True
 
+isTuple :: String -> Bool
+isTuple n = ["(", ",", ")"] == nub (group n)
+
 instance Ppr Pat where
+    -- special case for tuples
+    ppr (ConP (Sig n _) ps) | isTuple n = 
+        parens . sep $ punctuate comma (map ppr ps)
+        
+    -- normal cases
     ppr (ConP s ps) =
         let subp p | isAtomP p = ppr p
             subp p = parens (ppr p)

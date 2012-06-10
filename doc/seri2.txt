@@ -8673,3 +8673,72 @@ about put it at the start? I like that idea. Sounds reasonable to me.
 
 I'll get on it then.
 
+
+Sun Jun 10 13:49:57 EDT 2012
+
+I started making the syntax for the core language prettier. That is, sugaring
+things. Some ideas for what I could do next to make it prettier:
+
+- trivial case simplification
+case e of
+  x -> blah
+
+can become:
+let x = e in blah
+
+- multi arg lambdas
+  \a -> \b -> ... \c -> blah
+
+can become:
+  \a b ... c -> blah 
+
+- delambda functions
+
+foo :: ...
+foo = \a b ... c -> blah 
+
+can become:
+foo :: ...
+foo a b ... c = blah
+
+
+It's not clear to how important all these things are though. If I get any
+significant complaints, I can consider more changes. For now though, I'd say
+it's pretty good.
+
+One big thing missing that I think people will not like is the lack of let
+statements. I believe these can be mostly desugared without trouble, but let
+me look at the details of what let means in haskell.
+
+Claim is:
+    let x = e in blah
+ is the same as:
+    case e of
+        x -> blah
+
+Why is that not the case?
+
+- let in haskell allows declarations to be mutually recursive
+- let in haskell allows declaration of polymorphic functions
+- let is lazy:
+    let (x, y) = undefined in blah
+        will only raise an error if x or y are read in blah
+
+    case undefined of
+        (x, y) -> blah
+        will raise an error right away.
+
+So, in other words... they are rather quite different, and in general, let's
+can't be desugared into case statements without meaning something different.
+
+However! I don't believe any of my personal use of lets couldn't be written as
+case, so let me just say: no let statements. If you want to express sharing,
+use a case statement.
+
+I suspect people will complain about this. Oh well.
+
+An alternative would be to introduce a let construct. But honestly, what for?
+Let me wait for a reason until I introduce it.
+
+Of more use may be the scoping of a where clause.
+        
