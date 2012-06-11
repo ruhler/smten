@@ -3,7 +3,7 @@ module Seri.SMT.Yices (RunOptions(..), runYices) where
 
 import Data.Generics
 import Data.List((\\))
-import Data.Maybe(fromMaybe)
+import Data.Maybe
 
 import System.IO
 
@@ -56,11 +56,9 @@ runQuery gr e = do
             ipc <- gets ys_ipc
             res <- lift $ checkY ipc
             lift $ hPutStrLn dh $ ">> check returned: " ++ show res 
-            -- TODO: Read the evidence and return the appropriate expression
-            -- when satisfiable.
             case res of 
                 Unknown _ -> return $ ConE (Sig "Unknown" (AppT (ConT "Answer") (typeof arg)))
-                Sat _ -> return $ AppE (ConE (Sig "Satisfiable" (AppT (ConT "Answer") (typeof arg)))) (PrimE (Sig "undefined" (typeof arg)))
+                Sat evidence -> return $ AppE (ConE (Sig "Satisfiable" (AppT (ConT "Answer") (typeof arg)))) (realize (assignments evidence) arg)
                 _ -> return $ ConE (Sig "Unsatisfiable" (AppT (ConT "Answer") (typeof arg)))
         (PrimE (Sig "free" (AppT (ConT "Query") t))) -> do
             fid <- gets ys_freeid
@@ -125,3 +123,37 @@ smtY =
       yt :: Compiler -> Type -> YCM Y.TypY
       yt _ t = fail $ "smtY does not apply: " ++ render (ppr t)
   in compilers [Compiler [] ye yt, yicesY]
+
+
+-- Given the evidence returned by a yices query, extract the free variable
+-- assignments.
+assignments :: [Y.ExpY] -> [(Integer, Exp)]
+assignments = concat . map assignment
+
+assignment :: Y.ExpY -> [(Integer, Exp)]
+assignment (Y.VarE ('f':'r':'e':'e':'_':id) Y.:= e)
+    = case (antiyices e) of
+        Just e -> [(read id, e)]
+        Nothing -> []
+assignment (e Y.:= Y.VarE ('f':'r':'e':'e':'_':id))
+    = case (antiyices e) of
+        Just e -> [(read id, e)]
+        Nothing -> []
+
+antiyices :: (Monad m) => Y.ExpY -> m Exp
+antiyices (Y.LitB True) = return $ ConE (Sig "True" (ConT "Bool"))
+antiyices (Y.LitB False) = return $ ConE (Sig "False" (ConT "Bool"))
+antiyices (Y.LitI i) = return $ IntegerE i
+antiyices x = fail $ "TODO: antiyices: " ++ show x
+
+-- Apply free variable assignements to the given expression.
+realize :: [(Integer, Exp)] -> Exp -> Exp
+realize as =
+    let qexp :: Exp -> Exp
+        qexp (AppE (PrimE (Sig "realize" (AppT (AppT (ConT "->") (AppT (ConT "Free") t)) _))) (AppE (ConE (Sig "Free" (AppT (AppT (ConT "->") (ConT "Integer")) (AppT (ConT "Free") _)))) (IntegerE fid)))
+            = case lookup fid as of
+                Just e -> e
+                Nothing -> (PrimE (Sig "undefined" t))
+        qexp e = e
+    in everywhere (mkT qexp)
+

@@ -29,11 +29,13 @@ instance Ppr Type where
     -- Special case for list
     ppr (AppT (ConT "[]") t) = text "[" <> ppr t <> text "]"
     
-    -- Special case for tuple 2, 3
+    -- Special case for tuples
     ppr (AppT (AppT (ConT "(,)") a) b)
-        = parens $ ppr a <> comma <+> ppr b
+        = parens . sep $ punctuate comma (map ppr [a, b])
     ppr (AppT (AppT (AppT (ConT "(,,)") a) b) c)
-        = parens $ ppr a <> comma <+> ppr b <> comma <+> ppr c
+        = parens . sep $ punctuate comma (map ppr [a, b, c])
+    ppr (AppT (AppT (AppT (AppT (ConT "(,,,)") a) b) c) d)
+        = parens . sep $ punctuate comma (map ppr [a, b, c, d])
 
     -- Special case for ->
     ppr (AppT (AppT (ConT "->") a) b) | isArrowsT a
@@ -109,6 +111,8 @@ instance Ppr Exp where
         parens . sep $ punctuate comma (map ppr [a, b])
     ppr (AppE (AppE (AppE (ConE (Sig "(,,)" _)) a) b) c) =
         parens . sep $ punctuate comma (map ppr [a, b, c])
+    ppr (AppE (AppE (AppE (AppE (ConE (Sig "(,,,)" _)) a) b) c) d) =
+        parens . sep $ punctuate comma (map ppr [a, b, c, d])
 
     -- Normal cases
     ppr (IntegerE i) = integer i
