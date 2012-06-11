@@ -20,5 +20,12 @@ main = do
     text <- input
     seri <- parseDecs text
     let hs = serif seri
-    output (render (ppr hs))
+    output $ unlines [
+        "import Seri.Lambda.IR",
+        "import Seri.FrontEnd.Typed",
+        "import Seri.Serif.Library",
+        render (ppr hs),
+        "main :: IO ()",
+        "main = putStrLn \"hello!\""
+        ]
 

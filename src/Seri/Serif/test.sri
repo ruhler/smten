@@ -1,3 +1,21 @@
 foo1 :: Integer;
 foo1 = (\(x :: Integer) ->
           (%(+) :: Integer -> Integer -> Integer) ((%(+) :: Integer -> Integer -> Integer) ((%(*) :: Integer -> Integer -> Integer) (.x :: Integer) (.x :: Integer)) ((%(*) :: Integer -> Integer -> Integer) 3 (.x :: Integer))) 2) 5;
+
+(+) :: Integer -> Integer -> Integer;
+(+) = (@(+) :: Integer -> Integer -> Integer);
+
+(-) :: Integer -> Integer -> Integer;
+(-) = (@(-) :: Integer -> Integer -> Integer);
+
+(*) :: Integer -> Integer -> Integer;
+(*) = (@(*) :: Integer -> Integer -> Integer);
+
+(<) :: Integer -> Integer -> Bool;
+(<) = (@(<) :: Integer -> Integer -> Bool);
+
+(>) :: Integer -> Integer -> Bool;
+(>) = (@(>) :: Integer -> Integer -> Bool);
+
+(==) :: Integer -> Integer -> Bool;
+(==) = (@(==) :: Integer -> Integer -> Bool);

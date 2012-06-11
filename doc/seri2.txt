@@ -8873,3 +8873,36 @@ Cool. When I have more battery, I'll set up this initial test framework, write
 the test case, stub out the implementation, then think about how to implement
 it.
 
+Mon Jun 11 18:04:24 EDT 2012
+
+Making progress. Now I'm translating a simple expression to haskell. I want to
+try compiling.
+
+Well... all sorts of annoying issues come up, like what module should I output
+to, and what things should I declare, and how should I deal with libraries,
+and all this yuckiness I don't want to deal with right now.
+
+It is an interesting question. I think, in the future, we'll want to add
+import statements to the seri language, and support modularity that way. For
+right now, I'm going to bypass the issue.
+
+Good. Agreed. Let's see how much progress I can make now then.
+
+Wonderful! Progress to be made:
+ - import Seri.FrontEnd.Typed
+ - rename operators to some nice ascii string
+
+Mon Jun 11 18:52:28 EDT 2012
+
+Okay, so I can compile my simple example just fine now.
+
+One issue did come up: the built in type constructors need a few auxiliary
+things to be defined. Is it okay, then, that it's hard for the user to do
+built in type constructors? They have to do it manually? Is that bad?
+
+I'm not sure there are a whole lot of them. Integer, Bool, Char, [], (,),
+(,,), ... err, maybe there are. Oh well. Something to worry about later.
+
+And again, I think it's fairly clear we'll want some way to compile a module
+at a time and use imports and all that fun stuff. All in good time.
+
