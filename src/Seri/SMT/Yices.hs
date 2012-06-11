@@ -1,6 +1,7 @@
 
 module Seri.SMT.Yices (RunOptions(..), runYices, yicesR) where
 
+import Data.Generics
 import Data.List((\\))
 import Data.Maybe(fromMaybe)
 
@@ -55,6 +56,16 @@ runCmds cmds = do
     dh <- gets ys_dh
     lift $ sendCmds cmds ipc dh
 
+-- Tell yices about any types or expressions needed to refer to the given
+-- object.
+declareNeeded :: (Data a) => Env a -> YicesMonad ()
+declareNeeded x = do
+  decs <- gets ys_decls
+  let (pdecls, []) = sort $ decls (minimize x)
+  let newdecls = pdecls \\ decs
+  modify $ \ys -> ys { ys_decls = decs ++ newdecls }
+  runCmds (yDecs newdecls)
+
 runQuery :: Rule YicesMonad -> Env Exp -> YicesMonad Exp
 runQuery gr e = do
     elaborated <- elaborate gr e
@@ -73,21 +84,13 @@ runQuery gr e = do
         (PrimE (Sig "free" (AppT (ConT "Query") t))) -> do
             fid <- gets ys_freeid
             modify $ \ys -> ys {ys_freeid = fid+1}
+            
+            declareNeeded (withenv e t)
             runCmds [Y.DEFINE ("free_" ++ show fid, yType t) Nothing]
             return (AppE (PrimE (Sig "realize" (AppT (AppT (ConT "->") (AppT (ConT "Free") t)) t))) (AppE (ConE (Sig "Free" (AppT (AppT (ConT "->") (ConT "Integer")) (AppT (ConT "Free") t)))) (IntegerE fid)))
         (AppE (PrimE (Sig "assert" _)) p) -> do
-
-            -- Tell yices about any new functions or types needed to
-            -- assert the predicate.
-            decs <- gets ys_decls
-            let (pdecls, []) = sort $ decls (minimize (withenv e p))
-            let newdecls = pdecls \\ decs
-            modify $ \ys -> ys { ys_decls = decs ++ newdecls }
-            runCmds (yDecs newdecls)
-
-            -- Assert the predicate.
-            let (cmds, py) = yExp p
-            runCmds (cmds ++ [Y.ASSERT py])
+            declareNeeded (withenv e p)
+            runCmds [Y.ASSERT (yExp p)]
             return (ConE (Sig "()" (ConT "()")))
         x -> error $ "unknown Query: " ++ render (ppr x)
 
@@ -100,8 +103,8 @@ yType t = case compile_type smtY smtY t of
 yDecs :: [Dec] -> [Y.CmdY]
 yDecs = compile_decs smtY
 
-yExp :: Exp -> ([Y.CmdY], Y.ExpY)
-yExp e = case compile_exp smtY smtY e of
+yExp :: Exp -> Y.ExpY
+yExp e = case runYCM $ compile_exp smtY smtY e of
               Just ye -> ye
               Nothing -> error $ "failed: yExp " ++ render (ppr e)
 
@@ -122,9 +125,9 @@ runYices gr opts e = do
 
 smtY :: Compiler
 smtY =
-  let ye :: Compiler -> Exp -> Maybe ([Y.CmdY], Y.ExpY)
-      ye _ (AppE (PrimE (Sig "realize" _)) (AppE (ConE (Sig "Free" _)) (IntegerE id))) = Just $ ([], Y.VarE ("free_" ++ show id))
-      ye _ _ = Nothing
+  let ye :: Compiler -> Exp -> YCM Y.ExpY
+      ye _ (AppE (PrimE (Sig "realize" _)) (AppE (ConE (Sig "Free" _)) (IntegerE id))) = return $ Y.VarE ("free_" ++ show id)
+      ye _ _ = fail "smtY does not apply"
 
       yt :: Compiler -> Type -> Maybe Y.TypY
       yt _ _ = Nothing

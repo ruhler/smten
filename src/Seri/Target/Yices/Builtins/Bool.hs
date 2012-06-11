@@ -19,10 +19,10 @@ yIncludes = [
         (Just (Y.LAMBDA [("b", Y.VarT "bool")] (Y.NOT $ Y.VarE "b")))
     ]
 
-yExp :: Compiler -> Exp -> Maybe ([Y.CmdY], Y.ExpY)
-yExp c (ConE (Sig "True" _)) = Just $ ([], Y.LitB True)
-yExp c (ConE (Sig "False" _)) = Just $ ([], Y.LitB False)
-yExp _ _ = Nothing
+yExp :: Compiler -> Exp -> YCM Y.ExpY
+yExp c (ConE (Sig "True" _)) = return $ Y.LitB True
+yExp c (ConE (Sig "False" _)) = return $ Y.LitB False
+yExp _ _ = fail "boolY doesn't apply"
 
 yType :: Compiler -> Type -> Maybe Y.TypY
 yType _ (ConT "Bool") = Just $ Y.VarT "bool"
