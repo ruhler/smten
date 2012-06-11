@@ -11,6 +11,7 @@ import Seri.Utils.Ppr
 -- Translate a seri expression to a yices expression
 yExp :: Compiler -> Exp -> YCM Y.ExpY
 yExp _ (IntegerE x) = return $ Y.LitI x
+yExp _ e@(CaseE _ []) = fail $ "empty case statement: " ++ render (ppr e)
 yExp c (CaseE e ms) =
   let -- depat p e
       --    outputs: (predicate, bindings)
@@ -38,7 +39,6 @@ yExp c (CaseE e ms) =
       --    ms - the remaining matches in the case statement.
       --  outputs - the yices expression implementing the matches.
       dematch :: Y.ExpY -> [Match] -> YCM Y.ExpY
-      dematch e [] = fail "empty case statement"
       dematch e [Match p b] = do
           -- TODO: return an error condition of some sort if 
           -- the predicate for the last match doesn't hold.

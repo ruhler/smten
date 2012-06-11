@@ -154,5 +154,4 @@ declvartinst "MultiFoo" ["a", "b"]
         b <- m
         if b then return 5 else Nothing
 |]
-            
 
