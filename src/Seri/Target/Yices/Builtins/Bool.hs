@@ -24,9 +24,9 @@ yExp c (ConE (Sig "True" _)) = return $ Y.LitB True
 yExp c (ConE (Sig "False" _)) = return $ Y.LitB False
 yExp _ _ = fail "boolY doesn't apply"
 
-yType :: Compiler -> Type -> Maybe Y.TypY
-yType _ (ConT "Bool") = Just $ Y.VarT "bool"
-yType _ _ = Nothing
+yType :: Compiler -> Type -> YCM Y.TypY
+yType _ (ConT "Bool") = return $ Y.VarT "bool"
+yType _ _ = fail "boolY doesn't apply"
 
 boolY :: Compiler
 boolY = Compiler yIncludes yExp yType

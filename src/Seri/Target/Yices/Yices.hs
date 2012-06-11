@@ -1,7 +1,6 @@
 
 module Seri.Target.Yices.Yices (yicesY, compile_decs) where
 
-import Data.Maybe(fromJust, fromMaybe)
 import qualified Math.SMT.Yices.Syntax as Y
 
 import Seri.Lambda
@@ -24,7 +23,7 @@ yExp c (CaseE e ms) =
                                     | (p, i) <- zip ps [0..]]
             mypred = Y.APP (Y.VarE (n ++ "?")) [e]
         in (mypred:(concat preds), concat binds)
-      depat (VarP (Sig n t)) e = ([], [((n, compile_type c c t), e)])
+      depat (VarP (Sig n t)) e = ([], [((n, runYCM $ compile_type c c t), e)])
       depat (IntegerP i) e = ([Y.LitI i Y.:= e], [])
       depat (WildP _) _ = ([], [])
 
@@ -61,7 +60,7 @@ yExp c (AppE a b) = do
     return $ Y.APP a' [b']
 yExp c (LamE (Sig n t) e) = do
     e' <- compile_exp c c e
-    return $ Y.LAMBDA [(n, fromJust $ compile_type c c t)] e'
+    return $ Y.LAMBDA [(n, fromYCM $ compile_type c c t)] e'
 yExp _ (ConE (Sig n _)) = return $ Y.VarE (yicesname n)
 yExp _ (VarE (Sig n _) _) = return $ Y.VarE (yicesname n)
 yExp _ _ = fail "yicesY does not apply"
@@ -95,13 +94,13 @@ yicesname ('-':cs) = "__dash" ++ yicesname cs
 yicesname ('~':cs) = "__tilde" ++ yicesname cs
 yicesname (c:cs) = c : yicesname cs
 
-yType :: Compiler -> Type -> Maybe Y.TypY
-yType _ (ConT n) = Just $ Y.VarT n
+yType :: Compiler -> Type -> YCM Y.TypY
+yType _ (ConT n) = return $ Y.VarT n
 yType c (AppT (AppT (ConT "->") a) b) = do
     a' <- compile_type c c a
     b' <- compile_type c c b
     return $ Y.ARR [a', b']
-yType _ _ = Nothing
+yType _ _ = fail "yicesY does not apply"
 
 coreY :: Compiler
 coreY = Compiler [] yExp yType
@@ -113,13 +112,13 @@ yicesY = compilers [preludeY, coreY]
 --   Assumes the declaration is monomorphic.
 compile_dec :: Compiler -> Dec -> [Y.CmdY]
 compile_dec c (ValD (Sig n t) e) =
-    let yt = fromMaybe (error $ "compile type " ++ render (ppr t)) (compile_type c c t)
-        ye = fromMaybe (error $ "compile exp " ++ render (ppr e)) (runYCM $ compile_exp c c e)
+    let yt = fromYCM $ compile_type c c t
+        ye = fromYCM $ compile_exp c c e
     in [Y.DEFINE (yicesname n, yt) (Just ye)]
 compile_dec c (DataD n [] cs) =
     let con :: Con -> (String, [(String, Y.TypY)])
         con (Con n ts) = (n, zip [n ++ show i | i <- [0..]]
-                                 (map (fromJust . compile_type c c) ts))
+                                 (map (fromYCM . compile_type c c) ts))
     in [Y.DEFTYP n (Just (Y.DATATYPE (map con cs)))]
 compile_dec c d
     = error $ "compile_dec: cannot compile to yices: " ++ render (ppr d)

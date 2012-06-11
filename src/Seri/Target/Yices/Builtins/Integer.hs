@@ -38,9 +38,9 @@ yExp c (PrimE (Sig ">" _)) = return $ Y.VarE "__prim_gt"
 yExp c (PrimE (Sig "==" _)) = return $ Y.VarE "__prim_eq"
 yExp _ _ = fail "integerY doesn't apply"
 
-yType :: Compiler -> Type -> Maybe Y.TypY
-yType _ (ConT "Integer") = Just $ Y.VarT "int"
-yType _ _ = Nothing
+yType :: Compiler -> Type -> YCM Y.TypY
+yType _ (ConT "Integer") = return $ Y.VarT "int"
+yType _ _ = fail "integerY doesn't apply"
 
 integerY :: Compiler
 integerY = Compiler yIncludes yExp yType

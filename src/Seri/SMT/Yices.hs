@@ -96,17 +96,13 @@ runQuery gr e = do
 
 
 yType :: Type -> Y.TypY
-yType t = case compile_type smtY smtY t of
-              Just yt -> yt
-              Nothing -> error $ "failed: yType " ++ render (ppr t)
+yType t = fromYCM $ compile_type smtY smtY t
 
 yDecs :: [Dec] -> [Y.CmdY]
 yDecs = compile_decs smtY
 
 yExp :: Exp -> Y.ExpY
-yExp e = case runYCM $ compile_exp smtY smtY e of
-              Just ye -> ye
-              Nothing -> error $ "failed: yExp " ++ render (ppr e)
+yExp e = fromYCM $ compile_exp smtY smtY e
 
 data RunOptions = RunOptions {
     debugout :: Maybe FilePath,
@@ -127,8 +123,8 @@ smtY :: Compiler
 smtY =
   let ye :: Compiler -> Exp -> YCM Y.ExpY
       ye _ (AppE (PrimE (Sig "realize" _)) (AppE (ConE (Sig "Free" _)) (IntegerE id))) = return $ Y.VarE ("free_" ++ show id)
-      ye _ _ = fail "smtY does not apply"
+      ye _ e = fail $ "smtY does not apply: " ++ render (ppr e)
 
-      yt :: Compiler -> Type -> Maybe Y.TypY
-      yt _ _ = Nothing
+      yt :: Compiler -> Type -> YCM Y.TypY
+      yt _ t = fail $ "smtY does not apply: " ++ render (ppr t)
   in compilers [Compiler [] ye yt, yicesY]
