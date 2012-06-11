@@ -1,5 +1,5 @@
 
-module Seri.SMT.Yices (RunOptions(..), runYices, yicesR) where
+module Seri.SMT.Yices (RunOptions(..), runYices) where
 
 import Data.Generics
 import Data.List((\\))
@@ -25,25 +25,6 @@ data YicesState = YicesState {
 }
 
 type YicesMonad = StateT YicesState IO
-
-yicesR :: Rule YicesMonad
-yicesR = rules [bindR, nobindR]
-
-bindR :: Rule YicesMonad
-bindR = Rule $ \gr e ->
-    case val e of
-        (AppE (AppE (PrimE (Sig "bind_query" _)) x) f) -> do
-          result <- runQuery gr (withenv e x)
-          return $ Just (AppE f result)
-        _ -> return Nothing
-
-nobindR :: Rule YicesMonad
-nobindR = Rule $ \gr e ->
-    case val e of
-        (AppE (AppE (PrimE (Sig "nobind_query" _)) x) y) -> do
-          runQuery gr (withenv e x)
-          return $ Just y
-        _ -> return Nothing
 
 sendCmds :: [Y.CmdY] -> YicesIPC -> Handle -> IO ()
 sendCmds cmds ipc dh = do
@@ -92,6 +73,20 @@ runQuery gr e = do
             declareNeeded (withenv e p)
             runCmds [Y.ASSERT (yExp p)]
             return (ConE (Sig "()" (ConT "()")))
+        (AppE (PrimE (Sig "scoped" _)) q) -> do
+            odecls <- gets ys_decls
+            runCmds [Y.PUSH]
+            r <- runQuery gr (withenv e q)
+            runCmds [Y.POP]
+            modify $ \ys -> ys { ys_decls = odecls }
+            return r
+        (AppE (PrimE (Sig "return_query" _)) x) -> return x
+        (AppE (AppE (PrimE (Sig "bind_query" _)) x) f) -> do
+          result <- runQuery gr (withenv e x)
+          runQuery gr (withenv e (AppE f result))
+        (AppE (AppE (PrimE (Sig "nobind_query" _)) x) y) -> do
+          runQuery gr (withenv e x)
+          runQuery gr (withenv e y)
         x -> error $ "unknown Query: " ++ render (ppr x)
 
 

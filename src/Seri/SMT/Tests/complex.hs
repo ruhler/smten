@@ -17,7 +17,16 @@ import Seri.Lib.Prelude
     foo :: Integer -> Integer
     foo x = x + 1
 
-    main :: Query (Answer (Bool, Integer, Foo))
+    scopedfail :: Query Bool
+    scopedfail = do
+        x <- free
+        assert(x < x)
+        q <- query x
+        case q of
+            Satisfiable _ -> return True
+            _ -> return False
+
+    main :: Query (Answer (Bool, Integer, Bool, Foo))
     main = do
         b <- free
         assert b
@@ -25,9 +34,11 @@ import Seri.Lib.Prelude
         x <- free
         assert ((if x < 0 then x else foo x) == 4)
 
+        sf <- scoped scopedfail
+
         f <- free
         assert (2 == defoo f)
-        query (b, x, f)
+        query (b, x, sf, f)
 |]
 
 declcommit

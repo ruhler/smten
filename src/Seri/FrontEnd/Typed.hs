@@ -6,9 +6,9 @@
 module Seri.FrontEnd.Typed 
     (
         Typed(..), typedas,
-        SeriType(..), SeriType1(..), SeriType2(..), SeriType3(..),
+        SeriType(..), SeriType1(..), SeriType2(..), SeriType3(..), SeriType4(..),
         integerE, ifE, caseE, conE, conE', varE, dvarE, lamE, appE,
-        tup2E, tup3E,
+        tup2E, tup3E, tup4E,
         primitive, match, lamM, method,
         conP, appP, wildP, integerP,
         enved,
@@ -61,6 +61,15 @@ instance (SeriType3 m, SeriType a) => SeriType2 (m a) where
             ta _ = undefined
         in AppT (seritype3 ma) (seritype (ta ma))
 
+class SeriType4 m where
+    seritype4 :: m a b c d -> Type
+    
+instance (SeriType4 m, SeriType a) => SeriType3 (m a) where
+    seritype3 ma = 
+        let ta :: m a b c d -> a
+            ta _ = undefined
+        in AppT (seritype4 ma) (seritype (ta ma))
+
 usetype :: (SeriType a) => Typed x a -> (Type -> b) -> b
 usetype e f = f (seritype (gettype e))
     where gettype :: Typed x a -> a
@@ -107,6 +116,9 @@ tup2E (Typed a) (Typed b) = Typed $ Sugar.tupE [a, b]
 
 tup3E :: Typed Exp a -> Typed Exp b -> Typed Exp c -> Typed Exp (a, b, c)
 tup3E (Typed a) (Typed b) (Typed c) = Typed $ Sugar.tupE [a, b, c]
+
+tup4E :: Typed Exp a -> Typed Exp b -> Typed Exp c -> Typed Exp d -> Typed Exp (a, b, c, d)
+tup4E (Typed a) (Typed b) (Typed c) (Typed d)= Typed $ Sugar.tupE [a, b, c, d]
 
 lamE :: (SeriType a, SeriType (a -> b)) => Name -> (Typed Exp a -> Typed Exp b) -> Typed Exp (a -> b)
 lamE n f =

@@ -101,6 +101,13 @@ mkexp (TupE [a, b, c]) = do
     c' <- mkexp c
     return $ apply 'S.tup3E [a', b', c']
 
+mkexp (TupE [a, b, c, d]) = do
+    a' <- mkexp a
+    b' <- mkexp b
+    c' <- mkexp c
+    d' <- mkexp d
+    return $ apply 'S.tup4E [a', b', c', d']
+
 mkexp x = error $ "TODO: Translate.mkexp " ++ show x
 
 mkmatch :: Match -> State UserState Exp

@@ -26,3 +26,6 @@ declcon "(,)" [t| forall a b. (a -> b -> (a, b)) |]
 decltycon 3 ''(,,)
 declcon "(,,)" [t| forall a b c. (a -> b -> c -> (a, b, c)) |]
 
+decltycon 4 ''(,,,)
+declcon "(,,,)" [t| forall a b c d. (a -> b -> c -> d -> (a, b, c, d)) |]
+

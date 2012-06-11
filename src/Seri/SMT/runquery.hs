@@ -7,7 +7,7 @@ import Seri
 import Seri.Lib.Prelude
 import Seri.SMT.Yices
 
-queryR = rules [yicesR, preludeR]
+queryR = preludeR
 
 main :: IO ()
 main = do

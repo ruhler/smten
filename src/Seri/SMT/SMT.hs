@@ -21,11 +21,10 @@ import Seri.Lib.Prelude
     data Free a = Free Integer
 |]
 
-
 declprim "free" [t| forall a. Query a |]
-declprim "realize" [t| forall a. Free a -> a |]
 declprim "assert" [t| Bool -> Query () |]
 declprim "query" [t| forall a. a -> Query (Answer a) |]
+declprim "scoped" [t| forall a. Query a -> Query a |]
 
 declprim "return_query" [t| forall a . a -> Query a |]
 declprim "nobind_query" [t| forall a b . Query a -> Query b -> Query b |]
