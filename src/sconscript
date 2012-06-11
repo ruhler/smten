@@ -45,3 +45,10 @@ env.Command('Seri/Lambda/Parser.hs',
             'Seri/Lambda/Parser.y',
             "/home/ruhler/.cabal/bin/happy -o $TARGET -i${TARGET.dir}/Seri.info $SOURCE")
 
+## Serif front end
+serif = env.GHCProgram('serif', 'Seri/Serif/serif.hs')
+env.Default(serif)
+env.Default(env.Command('serif.out', [serif, 'Seri/Serif/test.sri'],
+                    '$SOURCE -o $TARGET ${SOURCES[1]}'))
+
+
