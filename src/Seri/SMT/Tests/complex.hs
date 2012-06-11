@@ -17,14 +17,11 @@ import Seri.Lib.Prelude
     foo :: Integer -> Integer
     foo x = x + 1
 
-    scopedfail :: Query Bool
+    scopedfail :: Query Integer
     scopedfail = do
         x <- free
         assert(x < x)
-        q <- query x
-        case q of
-            Satisfiable _ -> return True
-            _ -> return False
+        return x
 
     main :: Query (Answer (Bool, Integer, Bool, Foo))
     main = do
@@ -34,7 +31,10 @@ import Seri.Lib.Prelude
         x <- free
         assert ((if x < 0 then x else foo x) == 4)
 
-        sf <- scoped scopedfail
+        q <- queryS scopedfail
+        sf <- case q of
+                Satisfiable _ -> return True
+                _ -> return False
 
         f <- free
         assert (2 == defoo f)

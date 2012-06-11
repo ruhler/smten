@@ -73,13 +73,15 @@ runQuery gr e = do
             declareNeeded (withenv e p)
             runCmds [Y.ASSERT (yExp p)]
             return (ConE (Sig "()" (ConT "()")))
-        (AppE (PrimE (Sig "scoped" _)) q) -> do
+        (AppE (PrimE (Sig "queryS" _)) q) -> do
             odecls <- gets ys_decls
             runCmds [Y.PUSH]
-            r <- runQuery gr (withenv e q)
+            x <- runQuery gr (withenv e q)
+            let q' = AppE (PrimE (Sig "query" undefined)) x
+            y <- runQuery gr (withenv e q')
             runCmds [Y.POP]
             modify $ \ys -> ys { ys_decls = odecls }
-            return r
+            return y
         (AppE (PrimE (Sig "return_query" _)) x) -> return x
         (AppE (AppE (PrimE (Sig "bind_query" _)) x) f) -> do
           result <- runQuery gr (withenv e x)
