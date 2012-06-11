@@ -8742,3 +8742,134 @@ Let me wait for a reason until I introduce it.
 
 Of more use may be the scoping of a where clause.
         
+Sun Jun 10 14:27:02 EDT 2012
+
+Aha! So I know what it is I want to do, which answers a previous question I
+had.
+
+I want to have a nice front end with a haskell syntax and type inference. I
+have a front end, the trouble is, it's difficult to specify primitives and
+such in the language, and class declarations aren't parsed correctly.
+
+Well, here's my proposal. Use my existing core language, add the rest of the
+de-sugaring (which can be reused for the core part of the language), then have
+the front end do the type inference. So instead of generating typed
+constructors from template haskell, we generate typed constructors from a seri
+Exp. And why not? We just ignore the types already given.
+
+So, have an unannotated name turn into something like:
+   VarE (Sig name UnknownT) Unknown.
+
+That's all I need. And best part is, all the desugaring comes before type
+checking anyway.
+
+Good. Let me do that then.
+
+There are two parts:
+ - move the rest of the desugaring done in the front end to the core.
+ - generate typed expressions from Seri Exp instead of TH Exp.
+
+And I have all the test cases still set up, which is very nice.
+
+Here are the desugaring things still to do:
+
+- infix operators
+    How do I figure out the fixity though??
+- multi-arg lambdas
+    \a b ... c -> blah
+    \a -> \b -> ... -> \c -> blah
+- list literal expressions
+- list literal patterns
+- multi-clause functions
+- record type constructors
+    
+
+Maybe I should begin by creating a new quoter which uses my existing parser.
+Remove the requirement for annotated names in my parser (perhaps take a flag
+though to throw an error if they are found when trying to parse core?). Then I
+can move each construct in my test cases over to that quoter one at a time,
+implementing the desugaring as needed.
+
+That sounds like a great idea to me. Let me get started on this.
+
+Sun Jun 10 14:54:00 EDT 2012
+
+This is going to be a bit of work. A lot of the front end code is geared
+around translating from TH instead of Seri. I think what I'll do, to avoid
+duplicating all these library functions, is just try to switch to Seri
+directly. We can't go a bit at a time, but oh well, I'll see what I can do.
+
+Sun Jun 10 15:16:03 EDT 2012
+
+Wow. This is going to be quite a bit of work. I wonder if there is a better
+way to go? Start from scratch somehow perhaps? Build up from small examples?
+I'm not sure trying to transform the existing implementation into the new one
+makes all that much sense.
+
+I don't know. Let me think about it some. I feel like if I start from
+scratch, and just use the same strategy as in the existing front end, I should
+be okay. For example, start with just simple expressions.
+
+The top level program I want is this:
+  Given a serif input file, produce a core output file with types inferred.
+That should be easy to build up, right?
+
+Or, I guess, really, we want to say: given seri declarations, generate the
+typed version of them? Lemme think.
+
+Sun Jun 10 15:47:23 EDT 2012
+
+I've thought a little, and here are my thoughts.
+
+What we want is a function, not sure what it's called.
+    generate_typed :: [Seri.Dec] -> [TH.Dec]
+
+So, you give a bunch of seri declarations. It returns a bunch of haskell
+declarations representing typed versions of the seri declarations.
+
+The use case is as follows:
+  You input to the front end a bunch of seri declarations.
+  The front end generates a haskell file which declares type inferred versions
+  of the originally input declarations, which will only type check if they
+  type check.
+
+Note: we should not need quasi quotes at all here. Just generate haskell
+code, like happy does. That's no problem, I don't think. Then you can compile
+with whatever haskell compiler you want, so we aren't tied to ghc 7.
+
+One cool thing now is, we know all the declarations we need to generate, so I
+don't have to collect them with type classes or any silly hacks like that.
+This I like.
+
+I think the architecture will be changed fairly significantly from the front
+end I have currently, so it does make sense to start from scratch as it were.
+But all the same ideas apply.
+
+So let me make a new folder, call it Seri.Serif, for the new front end, and
+just leave the old one as is to be obsoleted. 
+
+So, I'll want one main program: serif, which takes a .sri as input, and
+generates a .hs as output.
+
+First test is...
+
+foo1 :: Integer
+foo1 = (\x -> x*x+3*x+2) 5
+
+A single declaration, nothing fancy, but needs type inference.
+
+Um... also needs operator precedence, doesn't it. So, simpler:
+
+foo1 :: Integer
+foo1 = (\x -> (+) ((*) x x) ((+) ((*) 3 x) 2))
+
+That's a single declaration, which I can have inline defined as a seri
+expression (using a parser to describe it if that helps). Then I generate some
+output Tests.hs. Then I compile tests.hs. And maybe I have a wrapper program
+around the tests which runs it by: importing all the declarations from
+Tests.hs, and using HUnit to unit test.
+
+Cool. When I have more battery, I'll set up this initial test framework, write
+the test case, stub out the implementation, then think about how to implement
+it.
+
