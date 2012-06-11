@@ -20,5 +20,9 @@ decltype ''Maybe
             case m of
                 Just x -> f x
                 Nothing -> Nothing
+
+    fromMaybe :: a -> Maybe a -> a
+    fromMaybe _ (Just x) = x
+    fromMaybe x Nothing = x
 |]
 

@@ -38,6 +38,7 @@ querytest("query1")
 querytest("query2")
 querytest("if")
 querytest("complex")
+querytest("casenomatch")
 
 ## Parser
 env.Command('Seri/Lambda/Parser.hs',

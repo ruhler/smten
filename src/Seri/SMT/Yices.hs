@@ -1,8 +1,9 @@
 
-module Seri.SMT.Yices (RunOptions(..), runYices, yicesR) where
+module Seri.SMT.Yices (RunOptions(..), runYices) where
 
+import Data.Generics
 import Data.List((\\))
-import Data.Maybe(fromMaybe)
+import Data.Maybe
 
 import System.IO
 
@@ -25,25 +26,6 @@ data YicesState = YicesState {
 
 type YicesMonad = StateT YicesState IO
 
-yicesR :: Rule YicesMonad
-yicesR = rules [bindR, nobindR]
-
-bindR :: Rule YicesMonad
-bindR = Rule $ \gr e ->
-    case val e of
-        (AppE (AppE (PrimE (Sig "bind_query" _)) x) f) -> do
-          result <- runQuery gr (withenv e x)
-          return $ Just (AppE f result)
-        _ -> return Nothing
-
-nobindR :: Rule YicesMonad
-nobindR = Rule $ \gr e ->
-    case val e of
-        (AppE (AppE (PrimE (Sig "nobind_query" _)) x) y) -> do
-          runQuery gr (withenv e x)
-          return $ Just y
-        _ -> return Nothing
-
 sendCmds :: [Y.CmdY] -> YicesIPC -> Handle -> IO ()
 sendCmds cmds ipc dh = do
     hPutStr dh (unlines (map show cmds))
@@ -55,6 +37,16 @@ runCmds cmds = do
     dh <- gets ys_dh
     lift $ sendCmds cmds ipc dh
 
+-- Tell yices about any types or expressions needed to refer to the given
+-- object.
+declareNeeded :: (Data a) => Env a -> YicesMonad ()
+declareNeeded x = do
+  decs <- gets ys_decls
+  let (pdecls, []) = sort $ decls (minimize x)
+  let newdecls = pdecls \\ decs
+  modify $ \ys -> ys { ys_decls = decs ++ newdecls }
+  runCmds (yDecs newdecls)
+
 runQuery :: Rule YicesMonad -> Env Exp -> YicesMonad Exp
 runQuery gr e = do
     elaborated <- elaborate gr e
@@ -64,46 +56,48 @@ runQuery gr e = do
             ipc <- gets ys_ipc
             res <- lift $ checkY ipc
             lift $ hPutStrLn dh $ ">> check returned: " ++ show res 
-            -- TODO: Read the evidence and return the appropriate expression
-            -- when satisfiable.
             case res of 
                 Unknown _ -> return $ ConE (Sig "Unknown" (AppT (ConT "Answer") (typeof arg)))
-                Sat _ -> return $ AppE (ConE (Sig "Satisfiable" (AppT (ConT "Answer") (typeof arg)))) (PrimE (Sig "undefined" (typeof arg)))
+                Sat evidence -> return $ AppE (ConE (Sig "Satisfiable" (AppT (ConT "Answer") (typeof arg)))) (realize (assignments evidence) arg)
                 _ -> return $ ConE (Sig "Unsatisfiable" (AppT (ConT "Answer") (typeof arg)))
         (PrimE (Sig "free" (AppT (ConT "Query") t))) -> do
             fid <- gets ys_freeid
             modify $ \ys -> ys {ys_freeid = fid+1}
+            
+            declareNeeded (withenv e t)
             runCmds [Y.DEFINE ("free_" ++ show fid, yType t) Nothing]
             return (AppE (PrimE (Sig "realize" (AppT (AppT (ConT "->") (AppT (ConT "Free") t)) t))) (AppE (ConE (Sig "Free" (AppT (AppT (ConT "->") (ConT "Integer")) (AppT (ConT "Free") t)))) (IntegerE fid)))
         (AppE (PrimE (Sig "assert" _)) p) -> do
-
-            -- Tell yices about any new functions or types needed to
-            -- assert the predicate.
-            decs <- gets ys_decls
-            let (pdecls, []) = sort $ decls (minimize (withenv e p))
-            let newdecls = pdecls \\ decs
-            modify $ \ys -> ys { ys_decls = decs ++ newdecls }
-            runCmds (yDecs newdecls)
-
-            -- Assert the predicate.
-            let (cmds, py) = yExp p
-            runCmds (cmds ++ [Y.ASSERT py])
+            declareNeeded (withenv e p)
+            runCmds [Y.ASSERT (yExp p)]
             return (ConE (Sig "()" (ConT "()")))
+        (AppE (PrimE (Sig "queryS" _)) q) -> do
+            odecls <- gets ys_decls
+            runCmds [Y.PUSH]
+            x <- runQuery gr (withenv e q)
+            let q' = AppE (PrimE (Sig "query" undefined)) x
+            y <- runQuery gr (withenv e q')
+            runCmds [Y.POP]
+            modify $ \ys -> ys { ys_decls = odecls }
+            return y
+        (AppE (PrimE (Sig "return_query" _)) x) -> return x
+        (AppE (AppE (PrimE (Sig "bind_query" _)) x) f) -> do
+          result <- runQuery gr (withenv e x)
+          runQuery gr (withenv e (AppE f result))
+        (AppE (AppE (PrimE (Sig "nobind_query" _)) x) y) -> do
+          runQuery gr (withenv e x)
+          runQuery gr (withenv e y)
         x -> error $ "unknown Query: " ++ render (ppr x)
 
 
 yType :: Type -> Y.TypY
-yType t = case compile_type smtY smtY t of
-              Just yt -> yt
-              Nothing -> error $ "failed: yType " ++ render (ppr t)
+yType t = fromYCM $ compile_type smtY smtY t
 
 yDecs :: [Dec] -> [Y.CmdY]
 yDecs = compile_decs smtY
 
-yExp :: Exp -> ([Y.CmdY], Y.ExpY)
-yExp e = case compile_exp smtY smtY e of
-              Just ye -> ye
-              Nothing -> error $ "failed: yExp " ++ render (ppr e)
+yExp :: Exp -> Y.ExpY
+yExp e = fromYCM $ compile_exp smtY smtY e
 
 data RunOptions = RunOptions {
     debugout :: Maybe FilePath,
@@ -122,10 +116,44 @@ runYices gr opts e = do
 
 smtY :: Compiler
 smtY =
-  let ye :: Compiler -> Exp -> Maybe ([Y.CmdY], Y.ExpY)
-      ye _ (AppE (PrimE (Sig "realize" _)) (AppE (ConE (Sig "Free" _)) (IntegerE id))) = Just $ ([], Y.VarE ("free_" ++ show id))
-      ye _ _ = Nothing
+  let ye :: Compiler -> Exp -> YCM Y.ExpY
+      ye _ (AppE (PrimE (Sig "realize" _)) (AppE (ConE (Sig "Free" _)) (IntegerE id))) = return $ Y.VarE ("free_" ++ show id)
+      ye _ e = fail $ "smtY does not apply: " ++ render (ppr e)
 
-      yt :: Compiler -> Type -> Maybe Y.TypY
-      yt _ _ = Nothing
+      yt :: Compiler -> Type -> YCM Y.TypY
+      yt _ t = fail $ "smtY does not apply: " ++ render (ppr t)
   in compilers [Compiler [] ye yt, yicesY]
+
+
+-- Given the evidence returned by a yices query, extract the free variable
+-- assignments.
+assignments :: [Y.ExpY] -> [(Integer, Exp)]
+assignments = concat . map assignment
+
+assignment :: Y.ExpY -> [(Integer, Exp)]
+assignment (Y.VarE ('f':'r':'e':'e':'_':id) Y.:= e)
+    = case (antiyices e) of
+        Just e -> [(read id, e)]
+        Nothing -> []
+assignment (e Y.:= Y.VarE ('f':'r':'e':'e':'_':id))
+    = case (antiyices e) of
+        Just e -> [(read id, e)]
+        Nothing -> []
+
+antiyices :: (Monad m) => Y.ExpY -> m Exp
+antiyices (Y.LitB True) = return $ ConE (Sig "True" (ConT "Bool"))
+antiyices (Y.LitB False) = return $ ConE (Sig "False" (ConT "Bool"))
+antiyices (Y.LitI i) = return $ IntegerE i
+antiyices x = fail $ "TODO: antiyices: " ++ show x
+
+-- Apply free variable assignements to the given expression.
+realize :: [(Integer, Exp)] -> Exp -> Exp
+realize as =
+    let qexp :: Exp -> Exp
+        qexp (AppE (PrimE (Sig "realize" (AppT (AppT (ConT "->") (AppT (ConT "Free") t)) _))) (AppE (ConE (Sig "Free" (AppT (AppT (ConT "->") (ConT "Integer")) (AppT (ConT "Free") _)))) (IntegerE fid)))
+            = case lookup fid as of
+                Just e -> e
+                Nothing -> (PrimE (Sig "undefined" t))
+        qexp e = e
+    in everywhere (mkT qexp)
+
