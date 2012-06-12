@@ -23,7 +23,7 @@ main = do
     output $ unlines [
         "{-# LANGUAGE ExplicitForAll #-}",
         "{-# LANGUAGE MultiParamTypeClasses #-}",
-        "import Prelude(Char, Integer, Bool)",
+        "import Prelude(Char, Integer, Bool, undefined)",
         "import qualified Prelude",
         "import Seri.Lambda.IR",
         "import Seri.FrontEnd.Typed",

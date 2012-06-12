@@ -12,7 +12,11 @@ import Seri.FrontEnd.Typed
 import Seri.Serif.Polymorphic
 
 serif :: [Dec] -> [H.Dec]
-serif = concat . map mkdec  
+serif ds =
+  let sig = H.SigD (H.mkName "declarations") (H.AppT H.ListT (H.ConT ''Dec))
+      impl = H.FunD (H.mkName "declarations") [
+                H.Clause [] (H.NormalB (H.ListE (map mksdec ds))) []]
+  in concat (map mkdec ds) ++ [sig, impl] 
 
 -- mkexp bound e
 --  bound - a list of bound names.
@@ -75,6 +79,9 @@ mkpat (WildP _) = H.VarE 'wildP
 
 apply :: H.Name -> [H.Exp] -> H.Exp
 apply n es = foldl H.AppE (H.VarE n) es
+
+applyC :: H.Name -> [H.Exp] -> H.Exp
+applyC n es = foldl H.AppE (H.ConE n) es
 
 string :: Name -> H.Exp
 string n = H.LitE (H.StringL n)
@@ -235,3 +242,40 @@ varps (VarP (Sig nm _)) = [nm]
 varps (ConP _ ps) = concat (map varps ps)
 varps (WildP {}) = []
 varps (IntegerP {}) = []
+
+-- Given a seri declaration, return a haskell expression representing that
+-- seri declaration with types inferred.
+mksdec :: Dec -> H.Exp
+mksdec (ValD (Sig n t) e) =
+  let e' = apply 'typed [H.SigE (H.VarE (vnm n)) (concrete (vty t))]
+  in applyC 'ValD [applyC 'Sig [string n, seritypeexp t], e']
+mksdec (DataD dt vars cs) =
+  let mkscon (Con n ts) = applyC 'Con [string n, H.ListE (map seritypeexp ts)]
+  in applyC 'DataD [string dt, H.ListE (map string vars), H.ListE (map mkscon cs)]
+mksdec (ClassD n vars sigs) = 
+  let mkdsig (Sig n t) = applyC 'Sig [string n, seritypeexp t]
+      tyvars = H.ListE (map string vars)
+      dsigs = H.ListE (map mkdsig sigs)
+  in applyC 'ClassD [string n, tyvars, dsigs]
+mksdec (InstD (Class n ts) ms) =
+  let mkmeth (Method n e) = apply 'method [string n]
+      ts' = H.ListE (map seritypeexp ts)
+      ms' = H.ListE (map mkmeth ms)
+  in applyC 'InstD [applyC 'Class [string n, ts'], ms']
+
+
+-- Given a type, return an expression corresonding to the seri type of
+-- that type.
+seritypeexp :: Type -> H.Exp
+seritypeexp (VarT nm) = applyC 'VarT [string nm]
+seritypeexp (ForallT vars preds t) =
+ let vars' = H.ListE $ map string vars
+
+     mkpred :: Class -> H.Exp
+     mkpred (Class n ts) =
+        applyC 'Class [string n, H.ListE $ map seritypeexp ts]
+
+     preds' = H.ListE $ map mkpred preds
+ in applyC 'ForallT [vars', preds', seritypeexp t]
+seritypeexp t = apply 'seritype [H.SigE (H.VarE $ H.mkName "undefined") (concrete (mkty t))]
+

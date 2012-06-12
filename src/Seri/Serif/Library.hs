@@ -54,3 +54,15 @@ _serifP___colon = conE' ":"
 instance SeriType Char where
     seritype _ = ConT "Char"
 
+-- Variable types
+data VarT_a = VarT_a
+instance SeriType VarT_a where
+    seritype _ = VarT "a"
+
+data VarT_b = VarT_b
+instance SeriType VarT_b where
+    seritype _ = VarT "b"
+
+data VarT_m a = VarT_m
+instance SeriType1 VarT_m where
+    seritype1 _ = VarT "m"
