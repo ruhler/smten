@@ -1,6 +1,89 @@
-foo1 :: Integer;
-foo1 = (\(x :: Integer) ->
-          (%(+) :: Integer -> Integer -> Integer) ((%(+) :: Integer -> Integer -> Integer) ((%(*) :: Integer -> Integer -> Integer) (.x :: Integer) (.x :: Integer)) ((%(*) :: Integer -> Integer -> Integer) 3 (.x :: Integer))) 2) 5;
+fst :: forall a b . (a, b) -> a;
+fst = (\(_1 :: (a, b)) ->
+         case (._1 :: (a, b)) of {
+           ((x :: a), (_ :: b)) ->
+             (.x :: a);
+         });
+
+snd :: forall a b . (a, b) -> b;
+snd = (\(_1 :: (a, b)) ->
+         case (._1 :: (a, b)) of {
+           ((_ :: a), (y :: b)) ->
+             (.y :: b);
+         });
+
+class Monad m where {
+  (>>=) :: forall a b . m a -> (a -> m b) -> m b;
+  (>>) :: forall a b . m a -> m b -> m b;
+  return :: forall a . a -> m a;
+  fail :: forall a . [Char] -> m a;
+};
+
+data Maybe a =
+    Nothing
+  | Just a;
+
+instance Monad Maybe where {
+  fail = (\(_1 :: [Char]) ->
+            case (._1 :: [Char]) of {
+              (_ :: [Char]) ->
+                (Nothing :: Maybe a);
+            });
+  return = (Just :: a -> Maybe a);
+  (>>) = (\(_1 :: Maybe a) ->
+            (\(_2 :: Maybe b) ->
+               case ((._1 :: Maybe a), (._2 :: Maybe b)) of {
+                 ((a :: Maybe a), (b :: Maybe b)) ->
+                   #{Monad Maybe}do {
+                     (__wild :: a) <- (.a :: Maybe a);
+                     (.b :: Maybe b);
+                   };
+               }));
+  (>>=) = (\(_1 :: Maybe a) ->
+             (\(_2 :: a -> Maybe b) ->
+                case ((._1 :: Maybe a), (._2 :: a -> Maybe b)) of {
+                  ((m :: Maybe a), (f :: a -> Maybe b)) ->
+                    case (.m :: Maybe a) of {
+                      (Just :: a -> Maybe a) (x :: a) ->
+                        (.f :: a -> Maybe b) (.x :: a);
+                      (Nothing :: Maybe a) ->
+                        (Nothing :: Maybe b);
+                    };
+                }));
+};
+
+fromMaybe :: forall a . a -> Maybe a -> a;
+fromMaybe = (\(_1 :: a) ->
+               (\(_2 :: Maybe a) ->
+                  case ((._1 :: a), (._2 :: Maybe a)) of {
+                    ((_ :: a), (Just :: a -> Maybe a) (x :: a)) ->
+                      (.x :: a);
+                    ((x :: a), (Nothing :: Maybe a)) ->
+                      (.x :: a);
+                  }));
+
+head :: forall a . [a] -> a;
+head = (\(_1 :: [a]) ->
+          case (._1 :: [a]) of {
+            ((:) :: a -> [a] -> [a]) (x :: a) (_ :: [a]) ->
+              (.x :: a);
+          });
+
+tail :: forall a . [a] -> [a];
+tail = (\(_1 :: [a]) ->
+          case (._1 :: [a]) of {
+            ((:) :: a -> [a] -> [a]) (_ :: a) (xs :: [a]) ->
+              (.xs :: [a]);
+          });
+
+length :: forall a . [a] -> Integer;
+length = (\(_1 :: [a]) ->
+            case (._1 :: [a]) of {
+              ([] :: [a]) ->
+                0;
+              ((:) :: a -> [a] -> [a]) (x :: a) (xs :: [a]) ->
+                (%(+) :: Integer -> Integer -> Integer) 1 ((%length :: [a] -> Integer) (.xs :: [a]));
+            });
 
 (+) :: Integer -> Integer -> Integer;
 (+) = (@(+) :: Integer -> Integer -> Integer);
@@ -19,3 +102,267 @@ foo1 = (\(x :: Integer) ->
 
 (==) :: Integer -> Integer -> Bool;
 (==) = (@(==) :: Integer -> Integer -> Bool);
+
+(&&) :: Bool -> Bool -> Bool;
+(&&) = (\(_1 :: Bool) ->
+          (\(_2 :: Bool) ->
+             case ((._1 :: Bool), (._2 :: Bool)) of {
+               ((True :: Bool), (True :: Bool)) ->
+                 (True :: Bool);
+               ((_ :: Bool), (_ :: Bool)) ->
+                 (False :: Bool);
+             }));
+
+foo1 :: Integer;
+foo1 = (\(x :: Integer) ->
+          (%(+) :: Integer -> Integer -> Integer) ((%(+) :: Integer -> Integer -> Integer) ((%(*) :: Integer -> Integer -> Integer) (.x :: Integer) (.x :: Integer)) ((%(*) :: Integer -> Integer -> Integer) 3 (.x :: Integer))) 2) 5;
+
+foo2 :: Integer -> Integer;
+foo2 = (\(_1 :: Integer) ->
+          case (._1 :: Integer) of {
+            (x :: Integer) ->
+              (%(+) :: Integer -> Integer -> Integer) ((%(+) :: Integer -> Integer -> Integer) ((%(*) :: Integer -> Integer -> Integer) (.x :: Integer) (.x :: Integer)) ((%(*) :: Integer -> Integer -> Integer) 3 (.x :: Integer))) 2;
+          });
+
+rfact :: Integer -> Integer;
+rfact = (\(_1 :: Integer) ->
+           case (._1 :: Integer) of {
+             (x :: Integer) ->
+               if (%(<) :: Integer -> Integer -> Bool) (.x :: Integer) 1
+                 then 1
+                 else (%(*) :: Integer -> Integer -> Integer) (.x :: Integer) ((%rfact :: Integer -> Integer) ((%(-) :: Integer -> Integer -> Integer) (.x :: Integer) 1));
+           });
+
+id :: forall a . a -> a;
+id = (\(_1 :: a) ->
+        case (._1 :: a) of {
+          (x :: a) ->
+            (.x :: a);
+        });
+
+data MaybeInteger =
+    NoInteger
+  | JustInteger Integer;
+
+fromMaybeInteger :: Integer -> MaybeInteger -> Integer;
+fromMaybeInteger = (\(_1 :: Integer) ->
+                      case (._1 :: Integer) of {
+                        (def :: Integer) ->
+                          (\(mi :: MaybeInteger) ->
+                             case (.mi :: MaybeInteger) of {
+                               (JustInteger :: Integer -> MaybeInteger) (i :: Integer) ->
+                                 (.i :: Integer);
+                               (NoInteger :: MaybeInteger) ->
+                                 (.def :: Integer);
+                             });
+                      });
+
+fromMaybeBool :: Bool -> Maybe Bool -> Bool;
+fromMaybeBool = (\(_1 :: Bool) ->
+                   case (._1 :: Bool) of {
+                     (def :: Bool) ->
+                       (\(mb :: Maybe Bool) ->
+                          case (.mb :: Maybe Bool) of {
+                            (Just :: Bool -> Maybe Bool) (b :: Bool) ->
+                              (.b :: Bool);
+                            (Nothing :: Maybe Bool) ->
+                              (.def :: Bool);
+                          });
+                   });
+
+multclause :: Integer -> Integer;
+multclause = (\(_1 :: Integer) ->
+                case (._1 :: Integer) of {
+                  2 ->
+                    10;
+                  3 ->
+                    20;
+                  4 ->
+                    30;
+                  5 ->
+                    40;
+                  (_ :: Integer) ->
+                    50;
+                });
+
+tupleswap :: forall a b . (a, b) -> (b, a);
+tupleswap = (\(_1 :: (a, b)) ->
+               case (._1 :: (a, b)) of {
+                 ((x :: a), (y :: b)) ->
+                   ((.y :: b), (.x :: a));
+               });
+
+listswaptop :: forall a . [a] -> [a];
+listswaptop = (\(_1 :: [a]) ->
+                 case (._1 :: [a]) of {
+                   ((:) :: a -> [a] -> [a]) (x :: a) (xs :: [a]) ->
+                     ((:) :: a -> [a] -> [a]) ((%head :: [a] -> a) (.xs :: [a])) (((:) :: a -> [a] -> [a]) (.x :: a) ((%tail :: [a] -> [a]) (.xs :: [a])));
+                 });
+
+listdifftop :: [Integer] -> Integer;
+listdifftop = (\(_1 :: [Integer]) ->
+                 case (._1 :: [Integer]) of {
+                   ((:) :: Integer -> [Integer] -> [Integer]) (x :: Integer) (((:) :: Integer -> [Integer] -> [Integer]) (y :: Integer) (_ :: [Integer])) ->
+                     (%(-) :: Integer -> Integer -> Integer) (.x :: Integer) (.y :: Integer);
+                 });
+
+sum2 :: Integer -> Integer -> Integer;
+sum2 = (\(_1 :: Integer) ->
+          (\(_2 :: Integer) ->
+             case ((._1 :: Integer), (._2 :: Integer)) of {
+               ((a :: Integer), (b :: Integer)) ->
+                 (%(+) :: Integer -> Integer -> Integer) (.a :: Integer) (.b :: Integer);
+             }));
+
+sum3 :: Integer -> Integer -> Integer -> Integer;
+sum3 = (\(_1 :: Integer) ->
+          (\(_2 :: Integer) ->
+             (\(_3 :: Integer) ->
+                case ((._1 :: Integer), (._2 :: Integer), (._3 :: Integer)) of {
+                  ((,,) :: Integer -> Integer -> Integer -> (Integer,
+                                                             Integer,
+                                                             Integer)) (a :: Integer) (b :: Integer) (c :: Integer) ->
+                    (%(+) :: Integer -> Integer -> Integer) ((%(+) :: Integer -> Integer -> Integer) (.a :: Integer) (.b :: Integer)) (.c :: Integer);
+                })));
+
+unary2int :: [()] -> Integer;
+unary2int = (\(_1 :: [()]) ->
+               case (._1 :: [()]) of {
+                 ([] :: [()]) ->
+                   0;
+                 ((:) :: () -> [()] -> [()]) (_ :: ()) (xs :: [()]) ->
+                   (%(+) :: Integer -> Integer -> Integer) 1 ((%unary2int :: [()] -> Integer) (.xs :: [()]));
+               });
+
+class Foo a where {
+  foo :: a -> Integer;
+};
+
+instance Foo Bool where {
+  foo = (\(_1 :: Bool) ->
+           case (._1 :: Bool) of {
+             (_ :: Bool) ->
+               1;
+           });
+};
+
+instance Foo Integer where {
+  foo = (\(_1 :: Integer) ->
+           case (._1 :: Integer) of {
+             (_ :: Integer) ->
+               2;
+           });
+};
+
+foofun :: forall a . (Foo a) => a -> Integer;
+foofun = (\(_1 :: a) ->
+            case (._1 :: a) of {
+              (x :: a) ->
+                (%(+) :: Integer -> Integer -> Integer) ((%(+) :: Integer -> Integer -> Integer) ((%(*) :: Integer -> Integer -> Integer) ((#{Foo a}foo :: a -> Integer) (.x :: a)) ((#{Foo a}foo :: a -> Integer) (.x :: a))) ((%(*) :: Integer -> Integer -> Integer) 3 ((#{Foo a}foo :: a -> Integer) (.x :: a)))) ((#{Foo Bool}foo :: Bool -> Integer) (True :: Bool));
+            });
+
+data Apple =
+    Apple Bool Integer;
+
+isgreen :: Apple -> Bool;
+isgreen = (\(_1 :: Apple) ->
+             case (._1 :: Apple) of {
+               (Apple :: Bool -> Integer -> Apple) (x :: Bool) (_ :: Integer) ->
+                 (.x :: Bool);
+             });
+
+numseeds :: Apple -> Integer;
+numseeds = (\(_1 :: Apple) ->
+              case (._1 :: Apple) of {
+                (Apple :: Bool -> Integer -> Apple) (_ :: Bool) (x :: Integer) ->
+                  (.x :: Integer);
+              });
+
+data Wonderful a =
+    Wonderful a Integer;
+
+thething :: forall a . Wonderful a -> a;
+thething = (\(_1 :: Wonderful a) ->
+              case (._1 :: Wonderful a) of {
+                (Wonderful :: a -> Integer -> Wonderful a) (x :: a) (_ :: Integer) ->
+                  (.x :: a);
+              });
+
+howgreat :: forall a . Wonderful a -> Integer;
+howgreat = (\(_1 :: Wonderful a) ->
+              case (._1 :: Wonderful a) of {
+                (Wonderful :: a -> Integer -> Wonderful a) (_ :: a) (x :: Integer) ->
+                  (.x :: Integer);
+              });
+
+class MultiFoo a b where {
+  multifoo :: a -> b -> Integer;
+};
+
+instance MultiFoo Bool Bool where {
+  multifoo = (\(_1 :: Bool) ->
+                (\(_2 :: Bool) ->
+                   case ((._1 :: Bool), (._2 :: Bool)) of {
+                     ((_ :: Bool), (_ :: Bool)) ->
+                       1;
+                   }));
+};
+
+instance MultiFoo Integer Integer where {
+  multifoo = (\(_1 :: Integer) ->
+                (\(_2 :: Integer) ->
+                   case ((._1 :: Integer), (._2 :: Integer)) of {
+                     ((_ :: Integer), (_ :: Integer)) ->
+                       2;
+                   }));
+};
+
+instance MultiFoo Bool Integer where {
+  multifoo = (\(_1 :: Bool) ->
+                (\(_2 :: Integer) ->
+                   case ((._1 :: Bool), (._2 :: Integer)) of {
+                     ((_ :: Bool), (_ :: Integer)) ->
+                       3;
+                   }));
+};
+
+instance MultiFoo Integer Bool where {
+  multifoo = (\(_1 :: Integer) ->
+                (\(_2 :: Bool) ->
+                   case ((._1 :: Integer), (._2 :: Bool)) of {
+                     ((_ :: Integer), (_ :: Bool)) ->
+                       4;
+                   }));
+};
+
+unused :: forall a . a -> Integer;
+unused = (\(_1 :: a) ->
+            case (._1 :: a) of {
+              (x :: a) ->
+                42;
+            });
+
+multifoofun :: forall a b . (MultiFoo a b) => a -> b -> Integer;
+multifoofun = (\(_1 :: a) ->
+                 (\(_2 :: b) ->
+                    case ((._1 :: a), (._2 :: b)) of {
+                      ((x :: a), (y :: b)) ->
+                        (%(+) :: Integer -> Integer -> Integer) ((%(+) :: Integer -> Integer -> Integer) ((%(*) :: Integer -> Integer -> Integer) ((#{MultiFoo a b}multifoo :: a -> b -> Integer) (.x :: a) (.y :: b)) ((#{MultiFoo a b}multifoo :: a -> b -> Integer) (.x :: a) (.y :: b))) ((%(*) :: Integer -> Integer -> Integer) 3 ((#{MultiFoo a b}multifoo :: a -> b -> Integer) (.x :: a) (.y :: b)))) ((#{MultiFoo Bool Bool}multifoo :: Bool -> Bool -> Integer) (True :: Bool) (False :: Bool));
+                    }));
+
+shadow :: Integer -> Integer;
+shadow = (\(x :: Integer) ->
+            (\(x :: Integer) ->
+               (%(*) :: Integer -> Integer -> Integer) 2 (.x :: Integer)) ((%(+) :: Integer -> Integer -> Integer) (.x :: Integer) 1));
+
+thedo :: Maybe Bool -> Maybe Integer;
+thedo = (\(_1 :: Maybe Bool) ->
+           case (._1 :: Maybe Bool) of {
+             (m :: Maybe Bool) ->
+               #{Monad Maybe}do {
+                 (b :: Bool) <- (.m :: Maybe Bool);
+                 if (.b :: Bool)
+                   then (#{Monad Maybe}return :: Integer -> Maybe Integer) 5
+                   else (Nothing :: Maybe Integer);
+               };
+           });

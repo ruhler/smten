@@ -8906,3 +8906,18 @@ I'm not sure there are a whole lot of them. Integer, Bool, Char, [], (,),
 And again, I think it's fairly clear we'll want some way to compile a module
 at a time and use imports and all that fun stuff. All in good time.
 
+Things to do when I come back to this:
+
+- add a declaration at a time from tests.out to Serif/tests.sri
+This will implement all the translations we need.
+
+- declare appropriate Decs for each thing we declare.
+
+- declare a function which is the list of all declarations:
+declarations :: [Env]
+declarations = ...
+
+- have the main function just print out prettily all the declarations.
+
+If I can get this far, I'll be in great shape.
+
