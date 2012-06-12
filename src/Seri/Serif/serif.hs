@@ -21,11 +21,15 @@ main = do
     seri <- parseDecs text
     let hs = serif seri
     output $ unlines [
+        "{-# LANGUAGE ExplicitForAll #-}",
+        "{-# LANGUAGE MultiParamTypeClasses #-}",
+        "import Prelude(Char, Integer, Bool)",
+        "import qualified Prelude",
         "import Seri.Lambda.IR",
         "import Seri.FrontEnd.Typed",
         "import Seri.Serif.Library",
         render (ppr hs),
-        "main :: IO ()",
-        "main = putStrLn \"hello!\""
+        "main :: Prelude.IO ()",
+        "main = Prelude.putStrLn \"hello!\""
         ]
 

@@ -174,10 +174,6 @@ decltyvar' vn =
 --
 --    _seriP_Sludge :: (SeriType a) => Typed Exp (a -> Foo)
 --    _seriP_Sludge = conE "Sludge"
---
--- Record type constructors are also supported, in which case the selector
--- functions will also be declared like normal seri values.
---
 decltype' :: Dec -> [Dec]
 decltype' (DataD [] dt vars cs _) =
  let vnames = map tyvarname vars
