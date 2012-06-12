@@ -55,7 +55,7 @@ lookupClassD (Env decls _) n =
 lookupInstD :: Env a -> Name -> [Type] -> Maybe Dec
 lookupInstD (Env decls _) n t =
   let theInstD :: Dec -> Bool
-      theInstD (InstD nm ts _) = n == nm && t == ts
+      theInstD (InstD (Class nm ts) _) = n == nm && t == ts
       theInstD _ = False
   in listToMaybe $ filter theInstD decls
 
@@ -77,7 +77,7 @@ lookupvar :: Env Exp -> Maybe (Type, Exp)
 lookupvar e@(Env _ (VarE (Sig n _) Declared)) = do
   (ValD (Sig _ t) v) <- lookupValD e n
   return (t, v)
-lookupvar e@(Env _ (VarE (Sig x _) (Instance n ts))) =
+lookupvar e@(Env _ (VarE (Sig x _) (Instance (Class n ts)))) =
   let mlook :: [Method] -> Maybe (Type, Exp)
       mlook [] = Nothing
       mlook ((Method nm body):ms) | nm == x = do
@@ -85,7 +85,7 @@ lookupvar e@(Env _ (VarE (Sig x _) (Instance n ts))) =
           return (t, body)
       mlook (m:ms) = mlook ms
   in do
-      InstD _ _ ms <- lookupInstD e n ts  
+      InstD _ ms <- lookupInstD e n ts  
       mlook ms
 
 withenv :: Env a -> b -> Env b
@@ -101,18 +101,18 @@ declarations m =
   let theenv = Env m ()
       qexp :: Exp -> [Dec]
       qexp (VarE (Sig n _) Declared) = maybeToList $ lookupValD theenv n
-      qexp (VarE (Sig n _) (Instance ni ts)) = catMaybes [lookupClassD theenv ni, lookupInstD theenv ni ts]
+      qexp (VarE (Sig n _) (Instance (Class ni ts))) = catMaybes [lookupClassD theenv ni, lookupInstD theenv ni ts]
       qexp e = []
 
       qtype :: Type -> [Dec]
       qtype (ConT n) = maybeToList $ lookupDataD theenv n
       qtype t = []
 
-      qpred :: Pred -> [Dec]
-      qpred (Pred n ts) = catMaybes [lookupClassD theenv n, lookupInstD theenv n ts]
+      qclass :: Class -> [Dec]
+      qclass (Class n ts) = catMaybes [lookupClassD theenv n, lookupInstD theenv n ts]
 
       query :: (Typeable a) => a -> [Dec]
-      query = extQ (extQ (mkQ [] qexp) qtype) qpred
+      query = extQ (extQ (mkQ [] qexp) qtype) qclass
   in everything union query
 
 -- minimize x

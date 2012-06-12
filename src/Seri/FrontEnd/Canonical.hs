@@ -35,6 +35,7 @@ instance Canonical Exp where
     canonical (UInfixE a op b) = canonical $ AppE (AppE op a) b
 
     canonical (LamE ps@[VarP x] a) = LamE ps (canonical a)
+    canonical (LamE [WildP] a) = canonical (LamE [VarP (mkName "__wild")] a)
 
     -- We convert lambda expressions with multiple arguments, such as
     --  \a b -> blah
@@ -42,19 +43,10 @@ instance Canonical Exp where
     --  \a -> (\b -> blah)
     canonical (LamE (x:xs@(_:_)) a) = LamE [x] (canonical $ LamE xs a)
 
-    -- We turn a tuple (a, b, ...) of N elements into
-    --  (,, ...) a b ...
-    canonical (TupE es)
-     = let n = length es
-           tupn = ConE (mkName $ "(" ++ replicate (n-1) ',' ++ ")")
-       in canonical (foldl AppE tupn es)
+    canonical (TupE es) = TupE (map canonical es)
 
     -- if statements desugared into case.
-    canonical (CondE p a b)
-      = canonical $ CaseE p [
-            Match (ConP (mkName "True") []) (NormalB a) [], 
-            Match (ConP (mkName "False") []) (NormalB b) []
-            ]
+    canonical (CondE p a b) = CondE (canonical p) (canonical a) (canonical b)
 
     canonical (CaseE e ms) = CaseE (canonical e) (canonical ms)
 
@@ -169,7 +161,8 @@ canonicalrec (DataD ctx n vars cs derv) =
         let mksig :: VarStrictType -> Dec
             mksig (fn, _, t) =
               let applied = appts $ (ConT n) : (map (VarT . tyvarname) vars)
-              in SigD fn (ForallT vars [] (arrowts [applied, t]))
+                  forall x = if null vars then x else ForallT vars [] x
+              in SigD fn (forall (arrowts [applied, t]))
 
             mkfun :: Int -> Dec
             mkfun i =

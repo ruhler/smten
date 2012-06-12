@@ -3,7 +3,7 @@
 
 module Seri.Lambda.IR (
     Name, Type(..), Pat(..), Match(..), Exp(..), Dec(..), Con(..),
-    Sig(..), Method(..), VarInfo(..), Pred(..),
+    Sig(..), Method(..), VarInfo(..), Class(..),
     ) where
 
 import Data.Generics
@@ -13,13 +13,13 @@ type Name = String
 data Type = ConT Name
           | AppT Type Type
           | VarT Name
-          | ForallT [Name] [Pred] Type     -- tyvars ctx type
+          | ForallT [Name] [Class] Type     -- tyvars ctx type
       deriving(Eq, Show, Data, Typeable)
 
-data Pred = Pred Name [Type]
+data Class = Class Name [Type]
       deriving(Eq, Show, Data, Typeable)
 
-data VarInfo = Bound | Declared | Instance Name [Type]
+data VarInfo = Bound | Declared | Instance Class
     deriving (Eq, Show, Data, Typeable)
 
 data Match = Match Pat Exp
@@ -58,6 +58,6 @@ data Method = Method Name Exp
 data Dec = ValD Sig Exp
          | DataD Name [Name] [Con]    -- name tyvars constrs
          | ClassD Name [Name] [Sig]   -- name tyvars sigs
-         | InstD Name [Type] [Method]
+         | InstD Class [Method]
      deriving (Eq, Show, Data, Typeable)
 

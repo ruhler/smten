@@ -38,4 +38,10 @@ querytest("query1")
 querytest("query2")
 querytest("if")
 querytest("complex")
+querytest("casenomatch")
+
+## Parser
+env.Command('Seri/Lambda/Parser.hs',
+            'Seri/Lambda/Parser.y',
+            "/home/ruhler/.cabal/bin/happy -o $TARGET -i${TARGET.dir}/Seri.info $SOURCE")
 

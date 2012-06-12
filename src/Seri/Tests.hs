@@ -76,7 +76,7 @@ tests = "Seri" ~: [
     "listlen" ~: IntegerE 3 `eqexp` [s| length [1, 5, 2] |],
     "ppr" ~: putStrLn (show (ppr (decls (typed [s| 21 |])))),
     "print env" ~: putStrLn (render (ppr theenv)),
-    "print and parse" ~: Right theenv
+    "print and happy parse" ~: Right theenv
         ~=? (parseDecs (render (ppr theenv)) :: Either String [Dec])
     ]
 

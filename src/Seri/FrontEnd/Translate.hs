@@ -79,12 +79,36 @@ mkexp (LamE [VarP nm] a) = do
     unbindname nm
     return $ apply 'S.lamE [string nm, LamE [VarP nm] a']
 
+mkexp (CondE p a b) = do
+    p' <- mkexp p
+    a' <- mkexp a
+    b' <- mkexp b
+    return $ apply 'S.ifE [p', a', b']
+
 mkexp (CaseE e matches) = do
     e' <- mkexp e
     ms <- mapM mkmatch matches
     return $ apply 'S.caseE [e', ListE ms]
 
-mkexp x = error $ "TODO: mkexp " ++ show x
+mkexp (TupE [a, b]) = do
+    a' <- mkexp a
+    b' <- mkexp b
+    return $ apply 'S.tup2E [a', b']
+
+mkexp (TupE [a, b, c]) = do
+    a' <- mkexp a
+    b' <- mkexp b
+    c' <- mkexp c
+    return $ apply 'S.tup3E [a', b', c']
+
+mkexp (TupE [a, b, c, d]) = do
+    a' <- mkexp a
+    b' <- mkexp b
+    c' <- mkexp c
+    d' <- mkexp d
+    return $ apply 'S.tup4E [a', b', c', d']
+
+mkexp x = error $ "TODO: Translate.mkexp " ++ show x
 
 mkmatch :: Match -> State UserState Exp
 mkmatch (Match p (NormalB e) [])

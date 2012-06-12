@@ -62,7 +62,7 @@ haskell builtin main e =
       hsDec (ClassD n vars sigs)
         = [H.ClassD [] (hsName n) (map (H.PlainTV . hsName) vars) [] (map hsSig sigs)]
 
-      hsDec (InstD n ts ms)
+      hsDec (InstD (Class n ts) ms)
         = [H.InstanceD [] (appts ((H.ConT (hsName n)):(map hsType ts))) (map hsMethod ms)] 
 
       hsSig :: Sig -> H.Dec
@@ -85,10 +85,10 @@ haskell builtin main e =
       hsType (AppT a b) = H.AppT (hsType a) (hsType b)
       hsType (VarT n) = H.VarT (hsName n)
       hsType (ForallT vars pred t) =
-        H.ForallT (map (H.PlainTV . hsName) vars) (map hsPred pred) (hsType t)
+        H.ForallT (map (H.PlainTV . hsName) vars) (map hsClass pred) (hsType t)
 
-      hsPred :: Pred -> H.Pred
-      hsPred (Pred nm ts) = H.ClassP (hsName nm) (map hsType ts)
+      hsClass :: Class -> H.Pred
+      hsClass (Class nm ts) = H.ClassP (hsName nm) (map hsType ts)
     
       hsHeader :: Doc
       hsHeader = text "{-# LANGUAGE ExplicitForAll #-}" $+$
