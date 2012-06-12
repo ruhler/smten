@@ -22,6 +22,9 @@ ctest_src = env.Command('ctest_c.c', ctest, '$SOURCE $TARGET')
 ctest_exe = env.Program('ctest_exe', ctest_src)
 #env.Default(env.Command('ctest_exe.out', ctest_exe, "$SOURCE > $TARGET"))
 
+## Monomorphic
+monomorphic = env.GHCProgram('monomorphic', 'Seri/Target/Monomorphic/monomorphic.hs')
+
 ## SMT run query
 runquery = env.GHCProgram('runquery', 'Seri/SMT/runquery.hs')
 env.Default(runquery)
@@ -33,6 +36,9 @@ def querytest(name):
     out = env.Command('%s.out' % name, [runquery, sri],
         '$SOURCE -d ${TARGET.dir}/%s.dbg ${SOURCES[1]} > $TARGET' % name)
     env.Default(out)
+    mono = env.Command('%s.mono.sri' % name, [monomorphic, sri], 
+        '$SOURCE < ${SOURCES[1]} > $TARGET')
+    env.Default(mono)
 
 querytest("query1")
 querytest("query2")

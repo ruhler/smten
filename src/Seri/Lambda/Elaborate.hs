@@ -7,6 +7,7 @@ import Data.Generics
 
 import Seri.Lambda.IR
 import Seri.Lambda.Env
+import Seri.Lambda.Typeof
 
 -- A reduction rule. Given a set of global declarations, a global reduction
 -- rule, and an expression, reduce the expression in some way. Returns Nothing
@@ -104,7 +105,7 @@ varredR = Rule $ \gr e ->
       v@(VarE (Sig _ ct) _)
         -> case (lookupvar $ withenv e v) of
                Nothing -> return Nothing
-               Just (pt, ve) -> return . Just $ treduces (tmatch pt ct) ve
+               Just (pt, ve) -> return . Just $ assign (assignments pt ct) ve
       _ -> return Nothing
         
 data MatchResult = Failed | Succeeded [(Name, Exp)] | Unknown
@@ -158,26 +159,4 @@ reduces vs e@(VarE (Sig vn _) _) =
     case lookup vn vs of
         (Just v) -> v
         Nothing -> e
-
--- tmatch poly concrete
--- Given a polymorphic type and a concrete type of the same form, return the
--- mapping from type variable name to concrete type.
-tmatch :: Type -> Type -> [(Name, Type)]
-tmatch (VarT n) t = [(n, t)]
-tmatch (AppT a b) (AppT a' b') = (tmatch a a') ++ (tmatch b b')
-tmatch (ForallT _ _ t) t' = tmatch t t'
-tmatch _ _ = []
-
--- treduces vs x
---  Replace each occurence of a variable type according to the given mapping
---  in x.
-treduces :: (Data a) => [(Name, Type)] -> a -> a
-treduces m =
-  let base :: Type -> Type
-      base t@(VarT n) = 
-        case lookup n m of
-            Just t' -> t'
-            Nothing -> t
-      base t = t
-  in everywhere $ mkT base
 

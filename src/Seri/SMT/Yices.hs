@@ -58,7 +58,7 @@ runQuery gr e = do
             lift $ hPutStrLn dh $ ">> check returned: " ++ show res 
             case res of 
                 Unknown _ -> return $ ConE (Sig "Unknown" (AppT (ConT "Answer") (typeof arg)))
-                Sat evidence -> return $ AppE (ConE (Sig "Satisfiable" (AppT (ConT "Answer") (typeof arg)))) (realize (assignments evidence) arg)
+                Sat evidence -> return $ AppE (ConE (Sig "Satisfiable" (AppT (ConT "Answer") (typeof arg)))) (realize (yassignments evidence) arg)
                 _ -> return $ ConE (Sig "Unsatisfiable" (AppT (ConT "Answer") (typeof arg)))
         (PrimE (Sig "free" (AppT (ConT "Query") t))) -> do
             fid <- gets ys_freeid
@@ -127,8 +127,8 @@ smtY =
 
 -- Given the evidence returned by a yices query, extract the free variable
 -- assignments.
-assignments :: [Y.ExpY] -> [(Integer, Exp)]
-assignments = concat . map assignment
+yassignments :: [Y.ExpY] -> [(Integer, Exp)]
+yassignments = concat . map assignment
 
 assignment :: Y.ExpY -> [(Integer, Exp)]
 assignment (Y.VarE ('f':'r':'e':'e':'_':id) Y.:= e)

@@ -6,6 +6,7 @@ module Seri.Lambda (
     module Seri.Lambda.Parser,
     module Seri.Lambda.Ppr,
     module Seri.Lambda.Typeof,
+    module Seri.Lambda.Utils,
   ) where
 
 import Seri.Lambda.Elaborate
@@ -14,4 +15,5 @@ import Seri.Lambda.IR
 import Seri.Lambda.Parser
 import Seri.Lambda.Ppr
 import Seri.Lambda.Typeof
+import Seri.Lambda.Utils
 
