@@ -63,7 +63,7 @@ gentype t = do
     poly <- gets ms_poly
     let (con, targs) = unfoldt t
     case lookupDataD (mkenv poly ()) con of
-        Nothing -> error $ "gentype: " ++ con ++ " not found"
+        Nothing -> error $ "gentype: " ++ con ++ " not found for " ++ render (ppr t)
         (Just (DataD _ tvars cs)) -> do 
             let suffix = typesuffix t
             let mkc :: Con -> M Con

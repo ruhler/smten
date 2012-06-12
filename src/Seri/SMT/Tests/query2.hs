@@ -23,7 +23,7 @@ declcommit
 theenv :: [Dec]
 theenv =
  let m = [s| main |]
-     e = minimize (typed m)
+     e = typed m
  in decls e
 
 main :: IO ()
