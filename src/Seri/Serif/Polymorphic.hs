@@ -1,6 +1,6 @@
 
 module Seri.Serif.Polymorphic (
-    tvarkind, kindsuf, concrete,
+    tvarkind, kindsuf, concrete, tyvars,
     ) where
 
 import qualified Language.Haskell.TH as H
@@ -23,6 +23,7 @@ tyvarsk i =
 tvarkind :: String -> Integer
 tvarkind s | s `elem` tyvarsk 0 = 0
 tvarkind s | s `elem` tyvarsk 1 = 1
+tvarkind s = error $ "no tyvar named " ++ show s
 
 -- Append "" to a string for kind 0
 --  and n for kind n

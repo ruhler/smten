@@ -16,7 +16,7 @@ serif ds =
   let sig = H.SigD (H.mkName "declarations") (H.AppT H.ListT (H.ConT ''Dec))
       impl = H.FunD (H.mkName "declarations") [
                 H.Clause [] (H.NormalB (H.ListE (map mksdec ds))) []]
-  in concat (map mkdec ds) ++ [sig, impl] 
+  in library ++ concat (map mkdec ds) ++ [sig, impl] 
 
 -- mkexp bound e
 --  bound - a list of bound names.
@@ -167,6 +167,14 @@ decltype dt vars cs =
     
       dtapp = foldl AppT (ConT dt) (map VarT vars)
 
+  in [data_D] ++ (declprimtype dt vars cs)
+
+-- Declare a data type without declaring the haskell version.
+--  Just the instance of SeriType and the constructors.
+declprimtype :: Name -> [Name] -> [Con] -> [H.Dec]
+declprimtype dt vars cs = 
+  let dtapp = foldl AppT (ConT dt) (map VarT vars)
+
       contextify :: Type -> Type
       contextify t = ForallT vars [] t
 
@@ -180,12 +188,36 @@ decltype dt vars cs =
             impl_P = H.FunD (vnm n) [H.Clause [] (H.NormalB (apply 'conE' [string n])) []]
         in [sig_P, impl_P]
 
-      stcls = mknm $ kindsuf (toInteger $ length vars) "SeriType"
-      stmeth = mknm $ kindsuf (toInteger $ length vars) "seritype"
-      stimpl = H.FunD stmeth [H.Clause [H.WildP] (H.NormalB (H.AppE (H.ConE 'ConT) (string dt))) []]
-      stinst = H.InstanceD [] (H.AppT (H.ConT stcls) (H.ConT (mknm dt))) [stimpl]
+      stinst = decltycon (toInteger $ length vars) dt
    
-  in [data_D, stinst] ++ (concat $ map declcon cs)
+  in stinst ++ (concat $ map declcon cs)
+
+-- Given the name of a type constructor and its kind, make a SeriType instance
+-- for it.
+decltycon :: Integer -> Name -> [H.Dec]
+decltycon k n =
+  let stcls = mknm $ kindsuf k "SeriType"
+      stmeth = mknm $ kindsuf k "seritype"
+      stimpl = H.FunD stmeth [H.Clause [H.WildP] (H.NormalB (H.AppE (H.ConE 'ConT) (string n))) []]
+      stinst = H.InstanceD [] (H.AppT (H.ConT stcls) (H.ConT (H.mkName n))) [stimpl]
+  in [stinst]
+
+decltyvar :: Name -> [H.Dec]
+decltyvar vn =
+  let nm = "VarT_" ++ vn
+      k = tvarkind vn
+      vars = map (\n -> H.PlainTV (mknm [n])) (take (fromInteger k) "abcd")
+      dataD = H.DataD [] (mknm nm) vars [H.NormalC (mknm nm) []] []
+
+      classname = mknm $ kindsuf k "SeriType"
+      methname = mknm $ kindsuf k "seritype"
+
+      polytype = (concrete (H.VarT (H.mkName vn)))
+
+      body = applyC 'VarT [string vn]
+      stimpl = H.FunD methname [H.Clause [H.WildP] (H.NormalB body ) []]
+      stinst = H.InstanceD [] (H.AppT (H.ConT classname) polytype) [stimpl]
+  in [dataD, stinst]
 
 -- declval n vars sigs
 -- Declare a class.
@@ -278,4 +310,20 @@ seritypeexp (ForallT vars preds t) =
      preds' = H.ListE $ map mkpred preds
  in applyC 'ForallT [vars', preds', seritypeexp t]
 seritypeexp t = apply 'seritype [H.SigE (H.VarE $ H.mkName "undefined") (concrete (mkty t))]
+
+library :: [H.Dec]
+library = concat [decltycon 0 "Integer",
+                  decltycon 0 "Char",
+                  declprimtype "Bool" [] [Con "True" [], Con "False" []],
+                  declprimtype "()" [] [Con "()" []],
+                  declprimtype "(,)" ["a", "b"] [
+                    Con "(,)" (map VarT ["a", "b"])],
+                  declprimtype "(,,)" ["a", "b", "c"] [
+                    Con "(,,)" (map VarT ["a", "b", "c"])],
+                  declprimtype "[]" ["a"] [
+                    Con "[]" [],
+                    Con ":" [VarT "a", AppT (ConT "[]") (VarT "a")]],
+                  concat $ map decltyvar (concat (map snd tyvars))
+                  ]
+
 
