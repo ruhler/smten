@@ -5,9 +5,10 @@
 module Seri.Target.Monomorphic.Monomorphic (monomorphic) where
 
 import Control.Monad.State
-import Data.List((\\))
+import Data.List((\\), nub)
 
 import Seri.Lambda
+import Seri.Utils.Ppr
 
 monomorphic :: Env Exp -> Env Exp
 monomorphic e =
@@ -43,7 +44,7 @@ finish = do
     dt <- gets ms_typed
     te <- gets ms_toexp
     de <- gets ms_exped
-    case (tt \\ dt, te \\ de) of
+    case (nub tt \\ dt, nub te \\ de) of
         ([], []) -> return ()
         (ts, es) -> do
             modify $ \ms -> ms { ms_totype = [], ms_toexp = [] }
@@ -169,25 +170,27 @@ monoall e = do
 -- Give the monomorphic name for an applied type
 mononametype :: Type -> Name
 mononametype (ConT n) = n
-mononametype (AppT a b) = mononametypes [a, b]
+mononametype (AppT a b) = mononametype a ++ "$" ++ mononametype b
 
-mononametypes :: [Type] -> Name
-mononametypes ts = foldl (\a b -> a ++ "$" ++ mononametype b) "" ts
+mksuffix :: [Type] -> Name
+mksuffix [] = ""
+mksuffix [t] = "$" ++ mononametype t
+mksuffix (t:ts) = foldl (\a b -> a ++ "$" ++ mononametype b) "" ts
 
 -- Given a concrete fully applied type,
 --  return the name suffix used for type and constructors of the type.
 typesuffix :: Type -> Name
-typesuffix = mononametypes . snd . unfoldt
+typesuffix = mksuffix . snd . unfoldt
 
 expsuffix :: Exp -> M Name
 expsuffix e@(VarE (Sig n t) Declared) = do
     poly <- gets ms_poly
     let Just (pt, _) = lookupvar (mkenv poly e)
-    return $ mononametypes (map snd (assignments pt t))
+    return $ mksuffix (map snd (assignments pt t))
 expsuffix e@(VarE (Sig n t) (Instance (Class _ cts))) = do
     poly <- gets ms_poly
     let Just (pt, _) = lookupvar (mkenv poly e)
-    return $ mononametypes (cts ++ map snd (assignments pt t))
+    return $ mksuffix (cts ++ map snd (assignments pt t))
     
 -- Unfold a concrete type.
 --  Foo a b ... c 
