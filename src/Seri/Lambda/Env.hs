@@ -2,7 +2,8 @@
 {-# LANGUAGE FlexibleInstances #-}
 
 module Seri.Lambda.Env (
-    Env(), val, mkenv, decls, lookupvar, withenv, minimize, sort
+    Env(), val, mkenv, decls, lookupvar, withenv, minimize, sort,
+    lookupDataD,
     ) where
 
 import Data.Generics

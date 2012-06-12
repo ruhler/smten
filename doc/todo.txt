@@ -10,4 +10,3 @@
     idea: is let the same thing as abstraction + application?
           could we just rewrite this as: (\foo -> foo + 40) 2
           would we want to?
-

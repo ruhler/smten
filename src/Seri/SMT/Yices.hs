@@ -13,6 +13,7 @@ import qualified Math.SMT.Yices.Syntax as Y
 
 import Seri.Target.Yices.Compiler
 import Seri.Target.Yices.Yices
+import Seri.Target.Monomorphic.Monomorphic
 
 import Seri.Lambda
 import Seri.Utils.Ppr
@@ -38,11 +39,11 @@ runCmds cmds = do
     lift $ sendCmds cmds ipc dh
 
 -- Tell yices about any types or expressions needed to refer to the given
--- object.
-declareNeeded :: (Data a) => Env a -> YicesMonad ()
+-- expression.
+declareNeeded :: Env Exp -> YicesMonad ()
 declareNeeded x = do
   decs <- gets ys_decls
-  let (pdecls, []) = sort $ decls (minimize x)
+  let (pdecls, _) = sort $ decls (monomorphic x)
   let newdecls = pdecls \\ decs
   modify $ \ys -> ys { ys_decls = decs ++ newdecls }
   runCmds (yDecs newdecls)
@@ -58,13 +59,13 @@ runQuery gr e = do
             lift $ hPutStrLn dh $ ">> check returned: " ++ show res 
             case res of 
                 Unknown _ -> return $ ConE (Sig "Unknown" (AppT (ConT "Answer") (typeof arg)))
-                Sat evidence -> return $ AppE (ConE (Sig "Satisfiable" (AppT (ConT "Answer") (typeof arg)))) (realize (assignments evidence) arg)
+                Sat evidence -> return $ AppE (ConE (Sig "Satisfiable" (AppT (ConT "Answer") (typeof arg)))) (realize (yassignments evidence) arg)
                 _ -> return $ ConE (Sig "Unsatisfiable" (AppT (ConT "Answer") (typeof arg)))
         (PrimE (Sig "free" (AppT (ConT "Query") t))) -> do
             fid <- gets ys_freeid
             modify $ \ys -> ys {ys_freeid = fid+1}
             
-            declareNeeded (withenv e t)
+            declareNeeded (withenv e (PrimE (Sig "foo" t)))
             runCmds [Y.DEFINE ("free_" ++ show fid, yType t) Nothing]
             return (AppE (PrimE (Sig "realize" (AppT (AppT (ConT "->") (AppT (ConT "Free") t)) t))) (AppE (ConE (Sig "Free" (AppT (AppT (ConT "->") (ConT "Integer")) (AppT (ConT "Free") t)))) (IntegerE fid)))
         (AppE (PrimE (Sig "assert" _)) p) -> do
@@ -127,8 +128,8 @@ smtY =
 
 -- Given the evidence returned by a yices query, extract the free variable
 -- assignments.
-assignments :: [Y.ExpY] -> [(Integer, Exp)]
-assignments = concat . map assignment
+yassignments :: [Y.ExpY] -> [(Integer, Exp)]
+yassignments = concat . map assignment
 
 assignment :: Y.ExpY -> [(Integer, Exp)]
 assignment (Y.VarE ('f':'r':'e':'e':'_':id) Y.:= e)

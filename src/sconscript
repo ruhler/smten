@@ -22,6 +22,9 @@ ctest_src = env.Command('ctest_c.c', ctest, '$SOURCE $TARGET')
 ctest_exe = env.Program('ctest_exe', ctest_src)
 #env.Default(env.Command('ctest_exe.out', ctest_exe, "$SOURCE > $TARGET"))
 
+## Monomorphic
+monomorphic = env.GHCProgram('monomorphic', 'Seri/Target/Monomorphic/monomorphic.hs')
+
 ## SMT run query
 runquery = env.GHCProgram('runquery', 'Seri/SMT/runquery.hs')
 env.Default(runquery)
