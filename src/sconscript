@@ -6,16 +6,6 @@ env['SRCDIR'] = Dir(".")
 env['GHCPATH'] = [Dir(".")]
 #env['GHCFLAGS'] = "-ddump-splices"
 
-## tests test
-tests = env.GHCProgram('tests')
-env.Default(env.Command('tests.out', tests, "$SOURCE > $TARGET"))
-
-## haskell back end tests.
-hstest = env.GHCProgram('hstest', 'Seri/Target/Haskell/tests.hs')
-hstest_src = env.Command('hstest_hs.hs', hstest, '$SOURCE $TARGET')
-hstest_exe = env.GHCProgram('hstest_exe', hstest_src)
-env.Default(env.Command('hstest_exe.out', hstest_exe, "$SOURCE > $TARGET"))
-
 ## C back end tests.
 ctest = env.GHCProgram('ctest', 'Seri/Target/C/tests.hs')
 ctest_src = env.Command('ctest_c.c', ctest, '$SOURCE $TARGET')
@@ -61,8 +51,16 @@ hs = env.Command('general.srif.hs', [serif, srif],
                 '$SOURCE -o $TARGET ${SOURCES[1]}')
 bin = env.GHCProgram('general', 'general.srif.hs')
 sri = env.Command('general.sri', bin, "$SOURCE > $TARGET")
-out = env.Command('general.out', [serie, sri], "$SOURCES > $TARGET")
+out = env.Command('general.out', [serie, sri],
+    "$SOURCE -o $TARGET -m testall ${SOURCES[1]}")
 env.Default(out)
+
+## haskell back end tests.
+hstest = env.GHCProgram('hstest', 'Seri/Target/Haskell/tests.hs')
+hstest_src = env.Command('hstest_hs.hs', [hstest, srif], '$SOURCES $TARGET')
+hstest_exe = env.GHCProgram('hstest_exe', hstest_src)
+env.Default(env.Command('hstest_exe.out', hstest_exe, "$SOURCE > $TARGET"))
+
 
 ## SMT Query Tests
 def querytest(name):

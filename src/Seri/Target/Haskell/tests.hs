@@ -5,21 +5,9 @@
 import System.Environment
 
 import Seri
-import Seri.Lib.Prelude
-import Seri.Lib.Tests
 import Seri.Target.Haskell.Haskell
 import Seri.Target.Haskell.Builtin
 import Seri.Target.Haskell.Builtins.Prelude
-
-[s|
-    allpassed :: Bool
-    allpassed = testall
-|]
-
-declcommit
-
-emain :: Env Exp
-emain = typed [s| allpassed |]
 
 hsMain :: Doc -> Doc
 hsMain me = 
@@ -36,7 +24,10 @@ builtin = builtins [preludeB, Builtin {
 main :: IO ()
 main = do
     args <- getArgs
-    let outfile = head args
+    let [infile, outfile] = args
+    text <- readFile infile
+    seri <- parseDecs text
+    let emain = mkenv seri (VarE (Sig "testall" UnknownT) Declared)
     let doc = haskell builtin hsMain emain
     writeFile outfile (show doc)
 
