@@ -1,12 +1,12 @@
 
 incr :: Integer -> Integer;
-incr a = (+) a 1;
+incr a = a + 1;
 
 main :: Query (Answer Integer);
 main = do {
     x <- free;
-    assert ((<) x 6);
-    assert ((>) (incr x) 5);
+    assert (x < 6);
+    assert (incr x > 5);
     query x;
 };
 

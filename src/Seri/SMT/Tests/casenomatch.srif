@@ -16,7 +16,7 @@ main :: Query (Answer Foo);
 main = do {
     f <- free;
     assert (isBar f);
-    assert ((==) 1 (defoo f));
+    assert (1 == defoo f);
     query f;
 };
 

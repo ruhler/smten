@@ -14,9 +14,7 @@
 
 - multi-clause instance methods probably don't work
 
-- infix operators
-    For now, they can require parenthesis to be fully associated correctly so
-    we don't have to worry about precedence.
-
 - infix list constructor for patterns and expressions
+
+- add layout support
 

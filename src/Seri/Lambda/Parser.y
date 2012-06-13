@@ -192,6 +192,8 @@ constr :: { Con }
 exp :: { Exp }
  : exp10
     { $1 }
+ | exp10 qop exp10
+    { AppE (AppE $2 $1) $3 }
 
 exp10 :: { Exp }
  : '\\' var_typed '->' exp
@@ -317,6 +319,10 @@ qvar :: { String }
     { $1 }
  | '(' qvarsym ')'
     { $2 }
+
+qop :: { Exp }
+ : qvarsym
+    { VarE (Sig $1 UnknownT) UnknownVI }
 
 qvarsym :: { String }
  : varsym

@@ -18,7 +18,7 @@ data Maybe a =
 instance Monad Maybe where {
   fail _ = Nothing;
   return = Just;
-  (>>) a b = (>>=) a (\_ -> b);
+  (>>) a b = a >>= (\_ -> b);
   (>>=) m f =
       case m of {
         Just x -> f x;
@@ -38,7 +38,7 @@ tail ((:) _ xs) = xs;
 
 length :: forall a . [a] -> Integer;
 length [] = 0;
-length ((:) x xs) = (+) 1 (length xs);
+length ((:) x xs) = 1 + length xs;
 
 (+) :: Integer -> Integer -> Integer;
 (+) = (@(+) :: Integer -> Integer -> Integer);

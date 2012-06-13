@@ -2,8 +2,8 @@
 main :: Query (Answer Integer);
 main = do {
     x <- free;
-    assert ((<) x 6);
-    assert ((>) x 4);
+    assert (x < 6);
+    assert (x > 4);
     query x;
 };
 

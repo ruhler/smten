@@ -7,12 +7,12 @@ defoo (Bar x) = x;
 defoo (Sludge b) = if b then 1 else 0;
 
 foo :: Integer -> Integer;
-foo x = (+) x 1;
+foo x = x + 1;
 
 scopedfail :: Query Integer;
 scopedfail = do {
     x <- free;
-    assert((<) x x);
+    assert(x < x);
     return x;
 };
 
@@ -22,7 +22,7 @@ main = do {
     assert b;
 
     x <- free;
-    assert ((==) (if (<) x 0 then x else foo x) 4);
+    assert ((if x < 0 then x else foo x) == 4);
 
     q <- queryS scopedfail;
     sf <- case q of {
@@ -31,7 +31,7 @@ main = do {
           };
 
     f <- free;
-    assert ((==) 2 (defoo f));
+    assert (2 == defoo f);
     query (b, x, sf, f);
 };
 
