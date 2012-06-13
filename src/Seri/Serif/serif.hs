@@ -27,7 +27,7 @@ main = do
         "import qualified Prelude",
         "import Seri.Lambda.IR",
         "import Seri.Utils.Ppr",
-        "import Seri.FrontEnd.Typed",
+        "import Seri.Serif.Typed",
         render (ppr hs),
         "main :: Prelude.IO ()",
         "main = Prelude.putStrLn (render (ppr declarations))"
