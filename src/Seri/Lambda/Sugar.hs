@@ -1,6 +1,6 @@
 
 module Seri.Lambda.Sugar (
-    ifE, Stmt(..), doE, tupE, tupP, Clause(..), clauseE, lamE,
+    ifE, Stmt(..), doE, tupE, tupP, Clause(..), clauseE, lamE, listE,
     ) where
 
 import Seri.Lambda.IR
@@ -73,4 +73,13 @@ clauseE clauses@(_:_) =
 lamE :: [Sig] -> Exp -> Exp
 lamE [] e = e
 lamE (x:xs) e = LamE x (lamE xs e)
+
+listE :: [Exp] -> Exp
+listE [x] =
+ let t = typeof x
+ in AppE (AppE (ConE (Sig ":" (arrowsT [t, listT t, listT t]))) x)
+         (ConE (Sig "[]" (listT t)))
+listE (x:xs) = 
+ let t = typeof x
+ in AppE (AppE (ConE (Sig ":" (arrowsT [t, listT t, listT t]))) x) (listE xs)
 

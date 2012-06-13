@@ -1,0 +1,7 @@
+
+fst :: forall a b . (a, b) -> a;
+fst (x, _) = x;
+
+snd :: forall a b . (a, b) -> b;
+snd (_, y) = y;
+

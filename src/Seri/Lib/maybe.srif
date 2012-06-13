@@ -1,0 +1,18 @@
+
+data Maybe a = Just a | Nothing;
+
+instance Monad Maybe where {
+    fail _ = Nothing;
+    return = Just;
+    (>>) a b = a >>= (\_ -> b);
+    (>>=) m f = 
+        case m of {
+            Just x -> f x;
+            Nothing -> Nothing;
+            };
+};
+
+fromMaybe :: forall a . a -> Maybe a -> a;
+fromMaybe _ (Just x) = x;
+fromMaybe x Nothing = x;
+

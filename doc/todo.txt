@@ -13,10 +13,8 @@
           not allowed.
 
 - multi-clause instance methods probably don't work
-
 - infix list constructor for patterns and expressions
-
 - add layout support
-
 - list literal expressions and patterns.
+- allow comments in .sri and .srif
 

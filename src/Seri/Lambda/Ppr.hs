@@ -20,6 +20,7 @@ isAtomT (ConT {}) = True
 isAtomT (VarT {}) = True
 isAtomT (AppT {}) = False
 isAtomT (ForallT {}) = False
+isAtomT (UnknownT {}) = True
 
 isArrowsT :: Type -> Bool
 isArrowsT (AppT (AppT (ConT "->") _) _) = True
@@ -54,6 +55,7 @@ instance Ppr Type where
             ctx _ = (parens . sep $ punctuate comma (map ppr preds)) <+> text "=>" 
         in text "forall" <+> hsep (map text vars)
               <+> text "." <+> ctx preds <+> ppr t
+    ppr UnknownT = text "?"
 
 
 isAtomE :: Exp -> Bool
@@ -73,6 +75,7 @@ pprname n | isOp n = parens (text n)
 pprname n = text n
 
 pprsig :: Doc -> Sig -> Doc
+pprsig s (Sig n UnknownT) = pprname n
 pprsig s (Sig n t) = parens (s <> pprname n <+> text "::" <+> (ppr t))
 
 sep2 :: Doc -> Doc -> Doc
@@ -127,6 +130,7 @@ instance Ppr Exp where
     ppr (VarE s Declared) = pprsig (text "%") s
     ppr (VarE s (Instance cls))
         = pprsig (text "#" <>  braces (ppr cls)) s
+    ppr (VarE s UnknownVI) = pprsig empty s
 
 instance Ppr Stmt where
     ppr (NoBindS e) = ppr e <> semi

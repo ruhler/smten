@@ -47,13 +47,27 @@ env.Default(seriftest_out)
 serie = env.GHCProgram('serie', 'Seri/Lambda/serie.hs')
 env.Default(serie)
 
-## sMT Query Tests
+srifprelude = ['Seri/Lib/bool.srif',
+               'Seri/Lib/integer.srif',
+               'Seri/Lib/list.srif',
+               'Seri/Lib/monad.srif',
+               'Seri/Lib/maybe.srif', 
+               'Seri/Lib/tuple.srif'] 
+srifsmt = 'Seri/SMT/smt.srif'
+
+## General tests
+srif = env.Substfile('general.all.srif', [srifprelude, 'Seri/Lib/tests.srif'])
+hs = env.Command('general.srif.hs', [serif, srif],
+                '$SOURCE -o $TARGET ${SOURCES[1]}')
+bin = env.GHCProgram('general', 'general.srif.hs')
+sri = env.Command('general.sri', bin, "$SOURCE > $TARGET")
+out = env.Command('general.out', [serie, sri], "$SOURCES > $TARGET")
+env.Default(out)
+
+## SMT Query Tests
 def querytest(name):
     srif = env.Substfile('%s.all.srif' % name,
-            ['Seri/Lib/integer.srif',
-                'Seri/Lib/monad.srif',
-                'Seri/SMT/smt.srif',
-                'Seri/SMT/Tests/%s.srif' % name])
+            [srifprelude, srifsmt, 'Seri/SMT/Tests/%s.srif' % name])
     hs = env.Command('%s.srif.hs' % name, [serif, srif],
                 '$SOURCE -o $TARGET ${SOURCES[1]}')
     bin = env.GHCProgram(name, hs)
@@ -67,4 +81,3 @@ querytest("query2")
 querytest("complex")
 querytest("if")
 querytest("casenomatch")
-

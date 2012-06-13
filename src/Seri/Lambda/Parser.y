@@ -226,6 +226,8 @@ aexp :: { Exp }
     { $2 }
  | '(' exp ',' exps_commasep ')'
     { tupE ($2 : $4) }
+ | '['  exps_commasep ']'
+    { listE $2 }
 
 -- TODO: Haskell doesn't allow a semicolon after the last alternative.
 alts :: { [Match] }
@@ -251,6 +253,12 @@ stmt :: { Stmt }
     { BindS $1 $3 }
 
 pat :: { Pat }
+ : pat10
+    { $1 }
+ | pat10 ':' pat
+    { ConP (Sig ":" UnknownT) [$1, $3] }
+
+pat10 :: { Pat }
  : gcon_typed apats
     { ConP $1 $2 }
  | apat
@@ -323,6 +331,8 @@ qvar :: { String }
 qop :: { Exp }
  : qvarsym
     { VarE (Sig $1 UnknownT) UnknownVI }
+ | qconop
+    { ConE (Sig $1 UnknownT) }
 
 qvarsym :: { String }
  : varsym
@@ -337,6 +347,10 @@ qcon :: { String }
     { $1 }
  | '(' gconsym ')'
     { $2 }
+
+qconop :: { String }
+ : gconsym
+    { $1 }
 
 gconsym :: { String }
  : ':'
@@ -584,6 +598,7 @@ lexer output = do
       (c:cs) | isSymbol c ->
           let (ns, rest) = span isSymbol cs
           in case (c:ns) of
+              "--" -> setText (dropWhile (/= '\n') rest) >> lexer output
               rop | rop `elem` (map fst reservedops) ->
                   many rop >> setText rest >> output (fromJust (lookup rop reservedops))
               op | head op == ':' -> many op >> setText rest >> output (TokenConSym op)
