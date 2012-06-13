@@ -1,9 +1,11 @@
 
 module Seri.Serif.Polymorphic (
-    tvarkind, kindsuf, concrete, tyvars,
+    tvarkind, kindsuf, concrete, concrete', tyvars, tyvarsk,
+    hconcrete, hconcrete',
     ) where
 
 import qualified Language.Haskell.TH as H
+import Seri.Lambda.IR
 
 -- All the type variables defined that we are allowed to use,
 -- indexed by kind.
@@ -36,15 +38,26 @@ kindsuf n x = x ++ show n
 --
 -- In other words, remove all ForallTs and replace all occurences of VarT
 -- "foo" with VarT_foo.
-concrete :: H.Type -> H.Type
+concrete :: Type -> Type
 concrete = concrete' []
 
 -- concrete' - same as concrete, but lets you leave a list of variable types
 -- unconcrete.
-concrete' :: [H.Name] -> H.Type -> H.Type
-concrete' ns (H.ForallT _ _ t) = concrete' ns t
-concrete' ns t@(H.VarT nm) | nm `elem` ns = t
-concrete' ns (H.VarT nm) = H.ConT $ (H.mkName ("VarT_" ++ H.nameBase nm))
-concrete' ns (H.AppT a b) = H.AppT (concrete' ns a) (concrete' ns b)
+concrete' :: [Name] -> Type -> Type
+concrete' ns (ForallT _ _ t) = concrete' ns t
+concrete' ns t@(VarT nm) | nm `elem` ns = t
+concrete' ns (VarT nm) = ConT $ "VarT_" ++ nm
+concrete' ns (AppT a b) = AppT (concrete' ns a) (concrete' ns b)
 concrete' ns t = t
 
+hconcrete :: H.Type -> H.Type
+hconcrete = hconcrete' []
+
+-- concrete' - same as concrete, but lets you leave a list of variable types
+-- unconcrete.
+hconcrete' :: [Name] -> H.Type -> H.Type
+hconcrete' ns (H.ForallT _ _ t) = hconcrete' ns t
+hconcrete' ns t@(H.VarT nm) | (H.nameBase nm) `elem` ns = t
+hconcrete' ns (H.VarT nm) = H.ConT $ H.mkName ("VarT_" ++ (H.nameBase nm))
+hconcrete' ns (H.AppT a b) = H.AppT (hconcrete' ns a) (hconcrete' ns b)
+hconcrete' ns t = t

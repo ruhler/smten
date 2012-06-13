@@ -54,5 +54,6 @@ env.Default(serif)
 seriftest_hs = env.Command('seriftest.hs', [serif, 'Seri/Serif/test.sri'],
                     '$SOURCE -o $TARGET ${SOURCES[1]}')
 seriftest = env.GHCProgram('seriftest', seriftest_hs)
-env.Default(seriftest)
+seriftest_out = env.Command('seriftest.out', seriftest, "$SOURCE > $TARGET")
+env.Default(seriftest_out)
 

@@ -2,7 +2,7 @@
 {-# LANGUAGE TemplateHaskell #-}
 
 module Seri.FrontEnd.Declarations.Utils (
-    tvarkind, stpred, valuetype, instidtype, texpify, seritypeexp,
+    stpred, valuetype, instidtype, texpify, seritypeexp,
     ) where
 
 import Language.Haskell.TH

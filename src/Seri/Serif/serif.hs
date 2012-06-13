@@ -26,9 +26,10 @@ main = do
         "import Prelude(Char, Integer, Bool, undefined)",
         "import qualified Prelude",
         "import Seri.Lambda.IR",
+        "import Seri.Utils.Ppr",
         "import Seri.FrontEnd.Typed",
         render (ppr hs),
         "main :: Prelude.IO ()",
-        "main = Prelude.putStrLn \"hello!\""
+        "main = Prelude.putStrLn (render (ppr declarations))"
         ]
 

@@ -4,11 +4,14 @@
 module Seri.Serif.Serif (serif)
   where
 
+import Data.List(transpose)
 
 import qualified Language.Haskell.TH as H
+
 import Seri.Lambda
 import Seri.Utils.Ppr
 import Seri.FrontEnd.Typed
+import Seri.Serif.Names
 import Seri.Serif.Polymorphic
 
 serif :: [Dec] -> [H.Dec]
@@ -47,9 +50,6 @@ mkmatch bound (Match p e) =
       vns = varps p
   in lamify vns (apply 'match [mkpat p, mkexp (vns ++ bound) e])
 
-mknm :: Name -> H.Name
-mknm = H.mkName . desymbol
-
 mkty :: Type -> H.Type
 mkty (ConT "->") = H.ArrowT
 mkty (ConT "()") = H.ConT (H.mkName "()")
@@ -59,7 +59,10 @@ mkty (ConT "[]") = H.ListT
 mkty (ConT nm) = H.ConT (mknm nm)
 mkty (AppT a b) = H.AppT (mkty a) (mkty b)
 mkty (VarT n) = H.VarT (mknm n)
-mkty t = error $ "TODO: mkty: " ++ render (ppr t)
+mkty (ForallT vars ctx t) =
+  let mkpred :: Class -> H.Pred
+      mkpred (Class n ts) = H.ClassP (clsnm n) (map mkty ts)
+  in H.ForallT (map (H.PlainTV . mknm) vars) (map mkpred ctx) (mkty t)
 
 mkdec :: Dec -> [H.Dec]
 mkdec (ValD (Sig n t) e) = declval n t e
@@ -86,53 +89,22 @@ applyC n es = foldl H.AppE (H.ConE n) es
 string :: Name -> H.Exp
 string n = H.LitE (H.StringL n)
 
-vnm :: Name -> H.Name
-vnm n = H.mkName ("_serifP_" ++ (desymbol n))
-
-vpnm :: Name -> H.Name
-vpnm n = H.mkName ("p_" ++ n)
-
-clsnm :: Name -> H.Name
-clsnm n = H.mkName ("SeriClass_" ++ (desymbol n))
-
--- Return the haskell type for a value declaration
+-- Return the type for a value declaration
 -- For example:
 --  input: forall a . (Ex a) => a -> Integer
---  output: forall a . (Eq a, SeriType a) => Typed Exp (a -> Integer)
+--  output: forall a . (SeriClass_Eq a, SeriType a) => Typed Exp (a -> Integer)
 vty :: Type -> H.Type
 vty (ForallT vns ctx t) =
  let mkpred :: Class -> H.Pred
      mkpred (Class n ts) = H.ClassP (clsnm n) (map mkty ts)
 
      ctx' = (map mkpred ctx) ++ (map stpred vns)
- in H.ForallT (map (H.PlainTV . mknm) vns) ctx' (texpify t)
-vty t = texpify t
-
-iidnm :: Name -> H.Name
-iidnm n = H.mkName ("_serifI_" ++ (desymbol n))
+ in H.ForallT (map (H.PlainTV . mknm) vns) ctx' (mkty $ texpify t)
+vty t = mkty $ texpify t
 
 iidty :: Type -> H.Type
 iidty (ForallT vns _ t) = H.ForallT (map (H.PlainTV . mknm) vns) [] (iidty t)
-iidty t = arrowts [texpify t, H.ConT ''VarInfo]
-
-desymbol :: String -> String
-desymbol s =
-  let syms = [
-          ('!', "__bang"), ('#', "__hash"), ('$', "__dollar"),
-          ('%', "__percent"), ('&', "__amp"), ('*', "__star"),
-          ('+', "__plus"), ('.', "__dot"), ('/', "__slash"),
-          ('<', "__lt"), ('=', "__eq"), ('>', "__gt"),
-          ('?', "__ques"), ('@', "__at"), ('\\', "__bslash"),
-          ('^', "__hat"), ('-', "__minus"), ('(', "__oparen"),
-          (',', "__comma"), (')', "__cparen"), (':', "__colon"),
-          ('[', "__obracket"), (']', "__cbracket")
-          ]
-    
-      ds :: Char -> String
-      ds c = case lookup c syms of
-                Just str -> str
-                Nothing -> [c]
-   in concat . map ds $ s
+iidty t = arrowts [mkty $ texpify t, H.ConT ''VarInfo]
 
 -- declval n ty e
 -- Declare a value.
@@ -192,15 +164,22 @@ declprimtype dt vars cs =
    
   in stinst ++ (concat $ map declcon cs)
 
--- Given the name of a type constructor and its kind, make a SeriType instance
--- for it.
 decltycon :: Integer -> Name -> [H.Dec]
 decltycon k n =
   let stcls = mknm $ kindsuf k "SeriType"
       stmeth = mknm $ kindsuf k "seritype"
       stimpl = H.FunD stmeth [H.Clause [H.WildP] (H.NormalB (H.AppE (H.ConE 'ConT) (string n))) []]
       stinst = H.InstanceD [] (H.AppT (H.ConT stcls) (H.ConT (H.mkName n))) [stimpl]
-  in [stinst]
+
+      body = applyC 'ConT [string n]
+      sig_S = H.SigD (tyctnm n) (H.ConT ''Type)
+      impl_S = H.ValD (H.VarP (tyctnm n)) (H.NormalB body) []
+
+      vars = replicate (fromInteger k) (H.ConT (H.mkName "()"))
+      sig_K = H.SigD (cvnm n) (foldl H.AppT (H.ConT $ mknm n) vars)
+      impl_K = H.ValD (H.VarP (cvnm n)) (H.NormalB (H.VarE (H.mkName "undefined"))) []
+
+  in [stinst, sig_S, impl_S, sig_K, impl_K]
 
 decltyvar :: Name -> [H.Dec]
 decltyvar vn =
@@ -212,12 +191,15 @@ decltyvar vn =
       classname = mknm $ kindsuf k "SeriType"
       methname = mknm $ kindsuf k "seritype"
 
-      polytype = (concrete (H.VarT (H.mkName vn)))
+      polytype = mkty (concrete (VarT vn))
 
       body = applyC 'VarT [string vn]
       stimpl = H.FunD methname [H.Clause [H.WildP] (H.NormalB body ) []]
       stinst = H.InstanceD [] (H.AppT (H.ConT classname) polytype) [stimpl]
-  in [dataD, stinst]
+
+      sig_S = H.SigD (tyctnm nm) (H.ConT ''Type)
+      impl_S = H.ValD (H.VarP (tyctnm nm)) (H.NormalB body) []
+  in [dataD, stinst, sig_S, impl_S]
 
 -- declval n vars sigs
 -- Declare a class.
@@ -235,25 +217,62 @@ declclass nm vars sigs =
 
       ctx = map stpred vars
       class_D = H.ClassD ctx (clsnm nm) (map (H.PlainTV . mknm) vars) [] (concat $ map mksig sigs)
-  in [class_D]
+
+      mkt :: Sig -> [H.Dec]
+      mkt (Sig n t) = 
+        let vararg :: Name -> Type
+            vararg v = appsT $ [VarT v] ++ replicate (fromInteger $ tvarkind v) (ConT "()")
+        
+            ty = mkty . arrowsT $ map vararg vars ++ [texpify (concrete' vars t)]
+            sig_T = H.SigD (mtynm n) (H.ForallT (map (H.PlainTV . mknm) vars) [] ty)
+            impl_T = H.FunD (mtynm n) [H.Clause [H.WildP] (H.NormalB (H.VarE (H.mkName "undefined"))) []]
+        in [sig_T, impl_T]
+
+      type_ds = concat $ map mkt sigs
+
+      mkvartinst :: [Name] -> [H.Dec]
+      mkvartinst varts =
+        let mkmeth :: Sig -> (Name, H.Exp)
+            mkmeth (Sig n _) = (n, H.VarE $ H.mkName "undefined")
+        in hdeclinst (Class nm (map (concrete . VarT) varts)) (map mkmeth sigs)
+
+      product :: [[a]] -> [[a]]
+      product [x] = [[y] | y <- x]
+      product (x:xs) = [y : p | y <- x, p <- product xs]
+
+      varts :: [[Name]]
+      varts = product $ map (tyvarsk . tvarkind) vars
+      vartinsts = map mkvartinst varts
+
+  in [class_D] ++ type_ds ++ concat vartinsts
 
 declinst :: Class -> [Method] -> [H.Dec]
-declinst (Class n ts) ms = 
-  let mkimpl :: Method -> [H.Dec]
-      mkimpl (Method n b) =
-        let p = H.ValD (H.VarP (vnm n)) (H.NormalB (mkexp [] b)) []
-        in [p]
+declinst cls@(Class n ts) ms = 
+  let mkimpl :: Method -> (Name, H.Exp)
+      mkimpl (Method n b) = (n, mkexp [] b)
+  in hdeclinst cls (map mkimpl ms)
+
+hdeclinst :: Class -> [(Name, H.Exp)] -> [H.Dec]
+hdeclinst (Class n ts) ms =
+  let itys = H.ListE $ map seritypeexp ts
+
+      mkimpl :: (Name, H.Exp) -> [H.Dec]
+      mkimpl (mn, e) =
+        let i = H.FunD (iidnm mn) [H.Clause [H.WildP] (H.NormalB (applyC 'Instance [applyC 'Class [string n, itys]])) []]
+            p = H.ValD (H.VarP (vnm mn)) (H.NormalB e) []
+        in [p, i]
 
       impls = concat $ map mkimpl ms
       t = foldl H.AppT (H.ConT $ clsnm n) (map mkty ts)
       inst_D = H.InstanceD [] t impls
   in [inst_D]
 
+
 -- texpify
 --   Given type: a
 --   Form type : Typed Exp a
-texpify :: Type -> H.Type
-texpify t = H.AppT (H.AppT (H.ConT ''Typed) (H.ConT ''Exp)) (mkty t)
+texpify :: Type -> Type
+texpify t = AppT (AppT (ConT "Typed") (ConT "Exp")) t
 
 -- arrowts 
 --  Turn a list of types [a, b, c, ...]
@@ -265,8 +284,7 @@ arrowts (x:xs) = H.AppT (H.AppT H.ArrowT x) (arrowts xs)
 -- Given a type variable, figure out what predicate we should add for it
 -- in the context.
 stpred :: Name -> H.Pred
-stpred v
- = H.ClassP (mknm (kindsuf (tvarkind v) "SeriType")) [H.VarT (mknm v)]
+stpred v = H.ClassP (mknm $ kindsuf (tvarkind v) "SeriType") [H.VarT (mknm v)]
 
 -- Get the list of variable pattern names in the given pattern.
 varps :: Pat -> [Name]
@@ -279,7 +297,7 @@ varps (IntegerP {}) = []
 -- seri declaration with types inferred.
 mksdec :: Dec -> H.Exp
 mksdec (ValD (Sig n t) e) =
-  let e' = apply 'typed [H.SigE (H.VarE (vnm n)) (concrete (vty t))]
+  let e' = apply 'typed [H.SigE (H.VarE (vnm n)) (hconcrete (vty t))]
   in applyC 'ValD [applyC 'Sig [string n, seritypeexp t], e']
 mksdec (DataD dt vars cs) =
   let mkscon (Con n ts) = applyC 'Con [string n, H.ListE (map seritypeexp ts)]
@@ -290,7 +308,8 @@ mksdec (ClassD n vars sigs) =
       dsigs = H.ListE (map mkdsig sigs)
   in applyC 'ClassD [string n, tyvars, dsigs]
 mksdec (InstD (Class n ts) ms) =
-  let mkmeth (Method n e) = apply 'method [string n]
+  let cvals = map (\(ConT tnm) -> H.VarE (cvnm tnm)) ts
+      mkmeth (Method n e) = apply 'method [string n, apply (mtynm n) cvals, mkexp [] e]
       ts' = H.ListE (map seritypeexp ts)
       ms' = H.ListE (map mkmeth ms)
   in applyC 'InstD [applyC 'Class [string n, ts'], ms']
@@ -309,7 +328,8 @@ seritypeexp (ForallT vars preds t) =
 
      preds' = H.ListE $ map mkpred preds
  in applyC 'ForallT [vars', preds', seritypeexp t]
-seritypeexp t = apply 'seritype [H.SigE (H.VarE $ H.mkName "undefined") (concrete (mkty t))]
+seritypeexp (ConT nm) = H.VarE (tyctnm nm)
+seritypeexp t = apply 'seritype [H.SigE (H.VarE $ H.mkName "undefined") (mkty $ concrete t)]
 
 library :: [H.Dec]
 library = concat [decltycon 0 "Integer",
