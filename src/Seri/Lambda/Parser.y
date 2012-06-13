@@ -16,9 +16,6 @@ import Seri.Utils.Ppr (Ppr(..), render)
 }
 
 %name seri_decls body
-%name seri_type type
-%name seri_exp exp
-%name seri_pat pat
 %tokentype { Token }
 %error { parseError }
 %monad { ParserMonad }
@@ -65,41 +62,39 @@ import Seri.Utils.Ppr (Ppr(..), render)
 
 %%
 
-body :: { [Dec] }
+body :: { [PDec] }
  : topdecls
     { $1 }
  | topdecls ';'
     { $1 }
 
-topdecls :: { [Dec] }
+topdecls :: { [PDec] }
  : topdecl
     { [$1] }
  | topdecls ';' topdecl
     { $1 ++ [$3] }
 
-topdecl :: { Dec }
+topdecl :: { PDec }
  : 'data' tycon tyvars '=' constrs
-    { DataD $2 $3 $5 }
+    { PDec (DataD $2 $3 $5) }
  | 'data' tycon '=' constrs
-    { DataD $2 [] $4 }
+    { PDec (DataD $2 [] $4) }
  | 'class' tycls tyvars 'where' '{' cdecls '}'
-    { ClassD $2 $3 $6}
+    { PDec (ClassD $2 $3 $6)}
  | 'class' tycls tyvars 'where' '{' cdecls ';' '}'
-    { ClassD $2 $3 $6}
+    { PDec (ClassD $2 $3 $6)}
  | 'instance' class 'where' '{' idecls '}'
-    { InstD $2 $5 }
+    { PDec (InstD $2 $5) }
  | 'instance' class 'where' '{' idecls ';' '}'
-    { InstD $2 $5 }
+    { PDec (InstD $2 $5) }
  | decl
     { $1 }
 
-decl :: { Dec }
- : gendecl ';' fundecl
-    { let Method n body = $3 in ValD $1 body }
-
-fundecl :: { Method }
- : funlhs rhs
-    { Method $1 $2 }
+decl :: { PDec }
+ : gendecl
+    { PSig $1 }
+ | funlhs rhs
+    { PClause $1 (Clause [] $2) }
 
 funlhs :: { Name }
  : var 
@@ -126,8 +121,8 @@ idecls :: { [Method] }
     { $1 ++ [$3] }
 
 idecl :: { Method }
- : fundecl
-    { $1 }
+ : funlhs rhs
+    { Method $1 $2 }
 
 gendecl :: { Sig }
  : var '::' type
@@ -585,10 +580,31 @@ lexer output = do
               op -> many op >> setText rest >> output (TokenVarSym op)
       cs -> failE $ "fail to lex: " ++ cs
 
+
+data PDec =
+    PDec Dec
+  | PSig Sig
+  | PClause Name Clause
+
+isPClause :: PDec -> Bool
+isPClause (PClause {}) = True
+isPClause _ = False
+
+coalesce :: (Monad m) => [PDec] -> m [Dec]
+coalesce [] = return []
+coalesce ((PSig s):ds) = do
+    let (ms, rds) = span isPClause ds
+    let d = ValD s (clauseE [c | PClause _ c <- ms]) 
+    rest <- coalesce rds
+    return (d:rest)
+coalesce ((PDec d):ds) = do
+    rest <- coalesce ds
+    return (d:rest)
+
 parseDecs :: (Monad m) => String -> m [Dec]
 parseDecs text =
     case (runState seri_decls (ParserState text 1 0 Nothing)) of
-        (ds, ParserState _ _ _ Nothing) -> return ds
+        (ds, ParserState _ _ _ Nothing) -> coalesce ds
         (_, ParserState _ _ _ (Just msg)) -> fail msg
 }
 

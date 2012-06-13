@@ -1,6 +1,6 @@
 
 module Seri.Lambda.Sugar (
-    ifE, Stmt(..), doE, tupE, tupP,
+    ifE, Stmt(..), doE, tupE, tupP, Clause(..), clauseE, lamE,
     ) where
 
 import Seri.Lambda.IR
@@ -30,6 +30,7 @@ doE cls ((BindS s e):stmts) =
                         (Instance cls)) e) f
 
 tupE :: [Exp] -> Exp
+tupE [x] = x
 tupE es@(_:_:_) =
     let n = length es
         name = "(" ++ replicate (n-1) ',' ++ ")"
@@ -38,6 +39,7 @@ tupE es@(_:_:_) =
     in foldl AppE (ConE (Sig name ttype)) es
 
 tupP :: [Pat] -> Pat
+tupP [p] = p
 tupP ps@(_:_:_) =
     let n = length ps
         name = "(" ++ replicate (n-1) ',' ++ ")"
@@ -45,3 +47,32 @@ tupP ps@(_:_:_) =
         ttype = arrowsT (types ++ [foldl AppT (ConT name) types])
     in ConP (Sig name ttype) ps
     
+
+data Clause = Clause [Pat] Exp
+    
+-- Given a set of function clauses, return a corresponding expression to
+-- implement those clauses.
+--  All clauses must have the same number of patterns.
+clauseE :: [Clause] -> Exp
+clauseE [Clause [] e] = e
+clauseE clauses@(_:_) = 
+  let Clause pats1 _ = head clauses
+      nargs = length pats1
+    
+      mkmatch :: Clause -> Match
+      mkmatch (Clause pats body) = Match (tupP pats) body
+
+      args = [[c] | c <- take nargs "abcdefghijklmnopqrstuvwxyz"]
+      casearg = tupE [VarE (Sig n (typeof p)) Bound | (n, p) <- zip args pats1]
+      caseexp = CaseE casearg (map mkmatch clauses)
+      lamargs = [Sig n (typeof p) | (n, p) <- zip args pats1]
+      
+  in lamE lamargs caseexp
+
+-- Multi-arg lambda expressions.
+--  Transforms \a b ... c -> e
+--        into \a -> \b -> ... \c -> e
+lamE :: [Sig] -> Exp -> Exp
+lamE [] e = e
+lamE (x:xs) e = LamE x (lamE xs e)
+
