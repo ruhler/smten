@@ -2,11 +2,7 @@ fst :: forall a b . (a, b) -> a;
 fst (x, _) = x;
 
 snd :: forall a b . (a, b) -> b;
-snd = (\(_1 :: (a, b)) ->
-         case (._1 :: (a, b)) of {
-           ((_ :: a), (y :: b)) ->
-             (.y :: b);
-         });
+snd (_, y) = y;
 
 class Monad m where {
   (>>=) :: forall a b . m a -> (a -> m b) -> m b;
@@ -20,66 +16,29 @@ data Maybe a =
   | Just a;
 
 instance Monad Maybe where {
-  fail = (\(_1 :: [Char]) ->
-            case (._1 :: [Char]) of {
-              (_ :: [Char]) ->
-                (Nothing :: Maybe a);
-            });
-  return = (Just :: a -> Maybe a);
-  (>>) = (\(_1 :: Maybe a) ->
-            (\(_2 :: Maybe b) ->
-               case ((._1 :: Maybe a), (._2 :: Maybe b)) of {
-                 ((a :: Maybe a), (b :: Maybe b)) ->
-                   #{Monad Maybe}do {
-                     (__wild :: a) <- (.a :: Maybe a);
-                     (.b :: Maybe b);
-                   };
-               }));
-  (>>=) = (\(_1 :: Maybe a) ->
-             (\(_2 :: a -> Maybe b) ->
-                case ((._1 :: Maybe a), (._2 :: a -> Maybe b)) of {
-                  ((m :: Maybe a), (f :: a -> Maybe b)) ->
-                    case (.m :: Maybe a) of {
-                      (Just :: a -> Maybe a) (x :: a) ->
-                        (.f :: a -> Maybe b) (.x :: a);
-                      (Nothing :: Maybe a) ->
-                        (Nothing :: Maybe b);
-                    };
-                }));
+  fail _ = Nothing;
+  return = Just;
+  (>>) a b = (>>=) a (\_ -> b);
+  (>>=) m f =
+      case m of {
+        Just x -> f x;
+        Nothing -> Nothing;
+      };
 };
 
 fromMaybe :: forall a . a -> Maybe a -> a;
-fromMaybe = (\(_1 :: a) ->
-               (\(_2 :: Maybe a) ->
-                  case ((._1 :: a), (._2 :: Maybe a)) of {
-                    ((_ :: a), (Just :: a -> Maybe a) (x :: a)) ->
-                      (.x :: a);
-                    ((x :: a), (Nothing :: Maybe a)) ->
-                      (.x :: a);
-                  }));
+fromMaybe _ (Just x) = x;
+fromMaybe x Nothing = x;
 
 head :: forall a . [a] -> a;
-head = (\(_1 :: [a]) ->
-          case (._1 :: [a]) of {
-            ((:) :: a -> [a] -> [a]) (x :: a) (_ :: [a]) ->
-              (.x :: a);
-          });
+head ((:) x _) = x;
 
 tail :: forall a . [a] -> [a];
-tail = (\(_1 :: [a]) ->
-          case (._1 :: [a]) of {
-            ((:) :: a -> [a] -> [a]) (_ :: a) (xs :: [a]) ->
-              (.xs :: [a]);
-          });
+tail ((:) _ xs) = xs;
 
 length :: forall a . [a] -> Integer;
-length = (\(_1 :: [a]) ->
-            case (._1 :: [a]) of {
-              ([] :: [a]) ->
-                0;
-              ((:) :: a -> [a] -> [a]) (x :: a) (xs :: [a]) ->
-                (%(+) :: Integer -> Integer -> Integer) 1 ((%length :: [a] -> Integer) (.xs :: [a]));
-            });
+length [] = 0;
+length ((:) x xs) = (+) 1 (length xs);
 
 (+) :: Integer -> Integer -> Integer;
 (+) = (@(+) :: Integer -> Integer -> Integer);
@@ -100,14 +59,8 @@ length = (\(_1 :: [a]) ->
 (==) = (@(==) :: Integer -> Integer -> Bool);
 
 (&&) :: Bool -> Bool -> Bool;
-(&&) = (\(_1 :: Bool) ->
-          (\(_2 :: Bool) ->
-             case ((._1 :: Bool), (._2 :: Bool)) of {
-               ((True :: Bool), (True :: Bool)) ->
-                 (True :: Bool);
-               ((_ :: Bool), (_ :: Bool)) ->
-                 (False :: Bool);
-             }));
+(&&) True True = True;
+(&&) _ _ = False;
 
 foo1 :: Integer;
 foo1 = (\(x :: Integer) ->
