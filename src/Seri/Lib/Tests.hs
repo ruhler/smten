@@ -42,12 +42,12 @@ import Seri.Lib.Prelude
 |]
 
 [s|
-    multclause :: Integer -> Integer
-    multclause 2 = 10
-    multclause 3 = 20
-    multclause 4 = 30   
-    multclause 5 = 40
-    multclause _ = 50
+    multiclause :: Integer -> Integer
+    multiclause 2 = 10
+    multiclause 3 = 20
+    multiclause 4 = 30   
+    multiclause 5 = 40
+    multiclause _ = 50
 |]
 
 [s|
@@ -153,5 +153,41 @@ declvartinst "MultiFoo" ["a", "b"]
     thedo m = do
         b <- m
         if b then return 5 else Nothing
+|]
+
+[s|
+    testall :: Bool
+    testall = (42 == (\x -> x*x+3*x+2) 5)
+           && (42 == (foo1))
+           && (42 == (foo2 5))
+           && (True)
+           && (23 == (if 6 < 4 then 42 else 23 ))   
+           && (5 == ((id id) 5))
+           && (5 == (fromMaybeInteger 10 (JustInteger 5)))
+           && (10 == (fromMaybeInteger 10 NoInteger))
+           && (fromMaybeBool False (Just True))
+           && (30 == (case (1+3) of
+                        2 -> 10
+                        3 -> 20
+                        4 -> 30
+                        5 -> 40
+                        _ -> 50))
+           && (30 == (multiclause 4))
+           && (30 == (snd (tupleswap (30, 40))))
+           && (20 == (listdifftop (listswaptop [10, 30, 50, 0])))
+           && (12 == (sum2 5 7))
+           && (20 == (sum3 5 7 8))
+           && (3 == (unary2int [(), (), ()]))
+           && (1 == (foo True))
+           && (2 == (foo 42))
+           && (5 == (foofun False))
+           && (11 == (foofun 5))
+           && (11 == (numseeds (Apple True 11)))
+           && (11 == (thething (Wonderful 11 32)))
+           && (42 == (unused True))
+--         && (10 == (multifoofun True 12))
+           && (8 == (shadow 3))
+           && (3 == (length [1, 5, 2]))
+
 |]
 

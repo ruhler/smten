@@ -13,11 +13,7 @@ import Seri.Target.Haskell.Builtins.Prelude
 
 [s|
     allpassed :: Bool
-    allpassed =
-           foo1 == 42
-        && unary2int [(), (), ()] == 3
-        && foofun False == 5
-        && foofun 5 == 11
+    allpassed = testall
 |]
 
 declcommit

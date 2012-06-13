@@ -56,7 +56,7 @@ tests = "Seri" ~: [
             5 -> 40 
             _ -> 50
         |],
-    "multclause" ~: IntegerE 30 `eqexp` [s| multclause 4 |],
+    "multiclause" ~: IntegerE 30 `eqexp` [s| multiclause 4 |],
     "tuples" ~: IntegerE 30 `eqexp` 
         [s| snd (tupleswap (30, 40)) |],
     "lists" ~: IntegerE 20 `eqexp` 
@@ -77,6 +77,7 @@ tests = "Seri" ~: [
     "ppr" ~: putStrLn (show (ppr (decls (typed [s| 21 |])))),
     "print env" ~: putStrLn (render (ppr theenv)),
     "print and happy parse" ~: Right theenv
-        ~=? (parseDecs (render (ppr theenv)) :: Either String [Dec])
+        ~=? (parseDecs (render (ppr theenv)) :: Either String [Dec]),
+    "testall" ~: trueE `eqexp` [s| testall |]
     ]
 
