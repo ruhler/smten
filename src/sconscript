@@ -45,6 +45,14 @@ srifprelude = ['Seri/Lib/bool.srif',
                'Seri/Lib/tuple.srif'] 
 srifsmt = 'Seri/SMT/smt.srif'
 
+## The SMT library
+smtlibsrif = env.Substfile('smtlib.all.srif', [srifprelude, srifsmt])
+smtlibhs = env.Command('smtlib.srif.hs', [serif, smtlibsrif],
+                '$SOURCE -o $TARGET ${SOURCES[1]}')
+smtlibbin = env.GHCProgram('smtlib', smtlibhs)
+smtlibsri = env.Command('smtlib.sri', smtlibbin, "$SOURCE > $TARGET")
+env.Default(smtlibsri)
+
 ## General tests
 srif = env.Substfile('general.all.srif', [srifprelude, 'Seri/Lib/tests.srif'])
 hs = env.Command('general.srif.hs', [serif, srif],

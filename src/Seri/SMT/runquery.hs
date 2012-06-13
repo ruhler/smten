@@ -28,13 +28,13 @@ main = do
 
     querytext <- input
     query <- parseDecs querytext
-    let e = (mkenv query (VarE (Sig "main" (AppT (ConT "Query") (ConT "?"))) Declared))
+    let e = mkenv query (VarE (Sig "main" UnknownT) Declared)
 
     let opts = (RunOptions dbg yices)
 
     putStrLn $ "Using YICES: " ++ show yices
     putStrLn $ "Using Options: " ++ show opts
 
-    result <- runYices queryR opts e
+    result <- runYices [] queryR opts e
     putStrLn $ render (ppr result)
 

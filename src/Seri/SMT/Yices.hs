@@ -105,11 +105,11 @@ data RunOptions = RunOptions {
     yicesexe :: FilePath
 } deriving(Show)
             
-runYices :: Rule YicesMonad -> RunOptions -> Env Exp -> IO Exp
-runYices gr opts e = do
+runYices :: [Y.CmdY] -> Rule YicesMonad -> RunOptions -> Env Exp -> IO Exp
+runYices primlib gr opts e = do
     dh <- openFile (fromMaybe "/dev/null" (debugout opts)) WriteMode
     ipc <- createYicesPipe (yicesexe opts) ["-tc"]
-    sendCmds (includes smtY) ipc dh
+    sendCmds (includes smtY ++ primlib) ipc dh
     (x, _) <- runStateT (runQuery gr e) (YicesState [] ipc dh 1)
     hClose dh
     return x
