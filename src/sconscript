@@ -43,6 +43,9 @@ seriftest = env.GHCProgram('seriftest', seriftest_hs)
 seriftest_out = env.Command('seriftest.out', seriftest, "$SOURCE > $TARGET")
 env.Default(seriftest_out)
 
+# Serie elaborator
+serie = env.GHCProgram('serie', 'Seri/Lambda/serie.hs')
+env.Default(serie)
 
 ## sMT Query Tests
 def querytest(name):
