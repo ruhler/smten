@@ -94,11 +94,13 @@ decl :: { PDec }
  : gendecl
     { PSig $1 }
  | funlhs rhs
-    { PClause $1 (Clause [] $2) }
+    { PClause (fst $1) (Clause (snd $1) $2) }
 
-funlhs :: { Name }
- : var 
-    { $1 } 
+funlhs :: { (Name, [Pat]) }
+ : var apats
+    { ($1, $2) } 
+ | var
+    { ($1, []) }
 
 rhs :: { Exp }
  : '=' exp
@@ -122,7 +124,7 @@ idecls :: { [Method] }
 
 idecl :: { Method }
  : funlhs rhs
-    { Method $1 $2 }
+    { Method (fst $1) (clauseE [Clause (snd $1) $2]) }
 
 gendecl :: { Sig }
  : var '::' type
@@ -594,6 +596,7 @@ coalesce :: (Monad m) => [PDec] -> m [Dec]
 coalesce [] = return []
 coalesce ((PSig s):ds) = do
     let (ms, rds) = span isPClause ds
+    -- TODO: verify the names for each clauses matches the name for the sig.
     let d = ValD s (clauseE [c | PClause _ c <- ms]) 
     rest <- coalesce rds
     return (d:rest)
