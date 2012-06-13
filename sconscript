@@ -1,5 +1,5 @@
 
-env = Environment(tools=['default', 'ghc'], toolpath=['scons'])
+env = Environment(tools=['default', 'ghc', 'textfile'], toolpath=['scons'])
 Export('env')
 
 # Host local configuration should all be in scons/local

@@ -1,0 +1,11 @@
+
+sign :: Integer -> Integer;
+sign a = if (<) a 0 then 0 else 1;
+
+main :: Query (Answer Integer);
+main = do {
+    x <- free;
+    assert ((==) (sign x) 0);
+    query x;
+};
+

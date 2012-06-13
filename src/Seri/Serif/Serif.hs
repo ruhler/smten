@@ -50,11 +50,15 @@ mkmatch bound (Match p e) =
       vns = varps p
   in lamify vns (apply 'match [mkpat p, mkexp (vns ++ bound) e])
 
+istuplecon :: Name -> Bool
+istuplecon n@('(':_:_) = last n == ')' && all (== ',') (tail (init n))
+istuplecon _ = False
+ 
+
 mkty :: Type -> H.Type
 mkty (ConT "->") = H.ArrowT
 mkty (ConT "()") = H.ConT (H.mkName "()")
-mkty (ConT "(,)") = H.TupleT 2
-mkty (ConT "(,,)") = H.TupleT 3
+mkty (ConT c) | istuplecon c = H.TupleT (length c - 1)
 mkty (ConT "[]") = H.ListT
 mkty (ConT nm) = H.ConT (mknm nm)
 mkty (AppT a b) = H.AppT (mkty a) (mkty b)
@@ -331,15 +335,20 @@ seritypeexp (ForallT vars preds t) =
 seritypeexp (ConT nm) = H.VarE (tyctnm nm)
 seritypeexp t = apply 'seritype [H.SigE (H.VarE $ H.mkName "undefined") (mkty $ concrete t)]
 
+decltuple :: Int -> [H.Dec]
+decltuple n = 
+  let nm = "(" ++ replicate (n-1) ',' ++ ")"
+      vars = [[c] | c <- take n "abcdefghi"]
+  in declprimtype nm vars [Con nm (map VarT vars)]
+
 library :: [H.Dec]
 library = concat [decltycon 0 "Integer",
                   decltycon 0 "Char",
                   declprimtype "Bool" [] [Con "True" [], Con "False" []],
                   declprimtype "()" [] [Con "()" []],
-                  declprimtype "(,)" ["a", "b"] [
-                    Con "(,)" (map VarT ["a", "b"])],
-                  declprimtype "(,,)" ["a", "b", "c"] [
-                    Con "(,,)" (map VarT ["a", "b", "c"])],
+                  decltuple 2,
+                  decltuple 3,
+                  decltuple 4,
                   declprimtype "[]" ["a"] [
                     Con "[]" [],
                     Con ":" [VarT "a", AppT (ConT "[]") (VarT "a")]],

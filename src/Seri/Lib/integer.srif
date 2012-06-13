@@ -1,0 +1,35 @@
+
+class Num a where {
+  (+) :: a -> a -> a;
+  (*) :: a -> a -> a;
+  (-) :: a -> a -> a;
+  negate :: a -> a;
+  abs :: a -> a;
+  signum :: a -> a;
+  fromInteger :: Integer -> a;
+};
+
+__prim_add_Integer :: Integer -> Integer -> Integer;
+__prim_add_Integer = (@__prim_add_Integer :: Integer -> Integer -> Integer);
+
+__prim_sub_Integer :: Integer -> Integer -> Integer;
+__prim_sub_Integer = (@__prim_sub_Integer :: Integer -> Integer -> Integer);
+
+__prim_mul_Integer :: Integer -> Integer -> Integer;
+__prim_mul_Integer = (@__prim_mul_Integer :: Integer -> Integer -> Integer);
+
+(<) :: Integer -> Integer -> Bool;
+(<) = (@(<) :: Integer -> Integer -> Bool);
+
+(>) :: Integer -> Integer -> Bool;
+(>) = (@(>) :: Integer -> Integer -> Bool);
+
+(==) :: Integer -> Integer -> Bool;
+(==) = (@(==) :: Integer -> Integer -> Bool);
+
+instance Num Integer where {
+  (+) = (%__prim_add_Integer :: Integer -> Integer -> Integer);
+  (-) = (%__prim_sub_Integer :: Integer -> Integer -> Integer);
+  (*) = (%__prim_mul_Integer :: Integer -> Integer -> Integer);
+};
+

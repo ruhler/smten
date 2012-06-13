@@ -29,20 +29,6 @@ monomorphic = env.GHCProgram('monomorphic', 'Seri/Target/Monomorphic/monomorphic
 runquery = env.GHCProgram('runquery', 'Seri/SMT/runquery.hs')
 env.Default(runquery)
 
-## SMT run query tests
-def querytest(name):
-    bin = env.GHCProgram(name, 'Seri/SMT/Tests/%s.hs' % name)
-    sri = env.Command('%s.sri' % name, bin, "$SOURCE > $TARGET")
-    out = env.Command('%s.out' % name, [runquery, sri],
-        '$SOURCE -d ${TARGET.dir}/%s.dbg ${SOURCES[1]} > $TARGET' % name)
-    env.Default(out)
-
-querytest("query1")
-querytest("query2")
-querytest("if")
-querytest("complex")
-querytest("casenomatch")
-
 ## Parser
 env.Command('Seri/Lambda/Parser.hs',
             'Seri/Lambda/Parser.y',
@@ -56,4 +42,26 @@ seriftest_hs = env.Command('seriftest.hs', [serif, 'Seri/Serif/test.srif'],
 seriftest = env.GHCProgram('seriftest', seriftest_hs)
 seriftest_out = env.Command('seriftest.out', seriftest, "$SOURCE > $TARGET")
 env.Default(seriftest_out)
+
+
+## sMT Query Tests
+def querytest(name):
+    srif = env.Substfile('%s.all.srif' % name,
+            ['Seri/Lib/integer.srif',
+                'Seri/Lib/monad.srif',
+                'Seri/SMT/smt.srif',
+                'Seri/SMT/Tests/%s.srif' % name])
+    hs = env.Command('%s.srif.hs' % name, [serif, srif],
+                '$SOURCE -o $TARGET ${SOURCES[1]}')
+    bin = env.GHCProgram(name, hs)
+    sri = env.Command('%s.sri' % name, bin, "$SOURCE > $TARGET")
+    out = env.Command('%s.out' % name, [runquery, sri],
+        '$SOURCE -d ${TARGET.dir}/%s.dbg ${SOURCES[1]} > $TARGET' % name)
+    env.Default(out)
+        
+querytest("query1")
+querytest("query2")
+querytest("complex")
+querytest("if")
+querytest("casenomatch")
 
