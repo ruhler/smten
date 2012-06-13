@@ -201,7 +201,9 @@ exp10 :: { Exp }
  | 'case' exp 'of' '{' alts '}'
     { CaseE $2 $5 }
  | '#' '{' class '}' 'do' '{' stmts exp ';' '}' 
-    { doE $3 ($7 ++ [NoBindS $8]) }
+    { doE (Instance $3) ($7 ++ [NoBindS $8]) }
+ | 'do' '{' stmts exp ';' '}'
+    { doE UnknownVI ($3 ++ [NoBindS $4]) }
  | fexp
     { $1 }
 

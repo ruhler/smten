@@ -5,8 +5,18 @@
 - Add support for list sequences
     example: [1..5]
 
-- Add support for let expressions
+- Add support for let expressions (?)
     example: let foo = 2 in foo + 40
-    idea: is let the same thing as abstraction + application?
-          could we just rewrite this as: (\foo -> foo + 40) 2
-          would we want to?
+    Translates to: case 2 of { foo -> foo + 40; }
+    Note: pattern matches in let should not be allowed, because we can't do
+          them lazily with this transformation. And recursive let blocks are
+          not allowed.
+
+- multi-clause instance methods probably don't work
+
+- infix operators
+    For now, they can require parenthesis to be fully associated correctly so
+    we don't have to worry about precedence.
+
+- infix list constructor for patterns and expressions
+

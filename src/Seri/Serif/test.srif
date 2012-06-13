@@ -305,13 +305,8 @@ shadow = (\(x :: Integer) ->
                (%(*) :: Integer -> Integer -> Integer) 2 (.x :: Integer)) ((%(+) :: Integer -> Integer -> Integer) (.x :: Integer) 1));
 
 thedo :: Maybe Bool -> Maybe Integer;
-thedo = (\(_1 :: Maybe Bool) ->
-           case (._1 :: Maybe Bool) of {
-             (m :: Maybe Bool) ->
-               #{Monad Maybe}do {
-                 (b :: Bool) <- (.m :: Maybe Bool);
-                 if (.b :: Bool)
-                   then (#{Monad Maybe}return :: Integer -> Maybe Integer) 5
-                   else (Nothing :: Maybe Integer);
-               };
-           });
+thedo m = do {
+    b <- m;
+    if b then return 5 else Nothing;
+  };
+

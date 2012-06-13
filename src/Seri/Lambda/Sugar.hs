@@ -17,17 +17,15 @@ data Stmt =
 
 
 -- De-sugar a do statement.
---  Class is the instance of Monad the do statement is for.
-doE :: Class -> [Stmt] -> Exp
-doE cls [NoBindS e] = e 
-doE cls ((NoBindS e):stmts) =
-    let rest = doE cls stmts
-    in AppE (AppE (VarE (Sig ">>" (arrowsT [typeof e, typeof rest, typeof rest]))
-                        (Instance cls)) e) rest
-doE cls ((BindS s e):stmts) =
-    let f = LamE s (doE cls stmts)
-    in AppE (AppE (VarE (Sig ">>=" (arrowsT [typeof e, typeof f, outputT (typeof f)]))
-                        (Instance cls)) e) f
+--  VariInfo is the instance of Monad the do statement is for.
+doE :: VarInfo -> [Stmt] -> Exp
+doE vi [NoBindS e] = e 
+doE vi ((NoBindS e):stmts) =
+    let rest = doE vi stmts
+    in AppE (AppE (VarE (Sig ">>" (arrowsT [typeof e, typeof rest, typeof rest])) vi) e) rest
+doE vi ((BindS s e):stmts) =
+    let f = LamE s (doE vi stmts)
+    in AppE (AppE (VarE (Sig ">>=" (arrowsT [typeof e, typeof f, outputT (typeof f)])) vi) e) f
 
 tupE :: [Exp] -> Exp
 tupE [x] = x
