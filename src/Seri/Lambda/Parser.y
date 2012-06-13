@@ -276,10 +276,14 @@ apat :: { Pat }
 var_typed :: { Sig }
  : '(' var  '::' type ')'
     { Sig $2 $4 }
+ | var
+    { Sig $1 UnknownT }
 
 gcon_typed :: { Sig }
  : '(' gcon '::' type ')'
     { Sig $2 $4 }
+ | gcon
+    { Sig $1 UnknownT }
 
 qvar_withinfo :: { Exp }
  : '(' '.' qvar '::' type ')'
@@ -290,6 +294,8 @@ qvar_withinfo :: { Exp }
     { VarE (Sig $3 $5) Declared }
  | '(' '#' '{' class '}' qvar '::' type ')' 
     { VarE (Sig $6 $8) (Instance $4) }
+ | qvar
+    { VarE (Sig $1 UnknownT) UnknownVI }
 
 gcon :: { String }
  : '(' ')'

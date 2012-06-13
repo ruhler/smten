@@ -1,8 +1,7 @@
 fst :: forall a b . (a, b) -> a;
-fst = (\(_1 :: (a, b)) ->
-         case (._1 :: (a, b)) of {
-           ((x :: a), (_ :: b)) ->
-             (.x :: a);
+fst = (\_1 ->
+         case (_1) of {
+           (x, _) -> x;
          });
 
 snd :: forall a b . (a, b) -> b;

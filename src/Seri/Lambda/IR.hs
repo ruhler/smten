@@ -14,12 +14,13 @@ data Type = ConT Name
           | AppT Type Type
           | VarT Name
           | ForallT [Name] [Class] Type     -- tyvars ctx type
+          | UnknownT
       deriving(Eq, Show, Data, Typeable)
 
 data Class = Class Name [Type]
       deriving(Eq, Show, Data, Typeable)
 
-data VarInfo = Bound | Declared | Instance Class
+data VarInfo = Bound | Declared | Instance Class | UnknownVI
     deriving (Eq, Show, Data, Typeable)
 
 data Match = Match Pat Exp
