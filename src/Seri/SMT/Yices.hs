@@ -11,11 +11,12 @@ import Control.Monad.State
 import Math.SMT.Yices.Pipe
 import qualified Math.SMT.Yices.Syntax as Y
 
+import Seri.Lambda
+import Seri.Target.Monomorphic.Monomorphic
+import Seri.Target.Elaborate
 import Seri.Target.Yices.Compiler
 import Seri.Target.Yices.Yices
-import Seri.Target.Monomorphic.Monomorphic
 
-import Seri.Lambda
 
 data YicesState = YicesState {
     ys_decls :: [Dec],

@@ -4,10 +4,10 @@ import System.Exit
 import System.Process
 
 import Seri
-import Seri.Lib.Prelude
+import Seri.Target.Elaborate
 import Seri.SMT.Yices
 
-queryR = preludeR
+queryR = elaborateR
 
 main :: IO ()
 main = do

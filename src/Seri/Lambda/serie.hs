@@ -2,7 +2,7 @@
 import System.Environment
 
 import Seri.Lambda
-import Seri.Lib.Prelude
+import Seri.Target.Elaborate
 
 main :: IO ()
 main = do
@@ -18,6 +18,6 @@ main = do
     text <- input
     seri <- parseDecs text
     let e = mkenv seri (VarE (Sig mainexp UnknownT) Declared)
-    elaborated <- elaborate preludeR e
+    elaborated <- elaborate elaborateR e
     output (pretty elaborated)
 

@@ -1,10 +1,8 @@
 
-{-# LANGUAGE QuasiQuotes #-}
-{-# LANGUAGE TemplateHaskell #-}
-
-module Seri.Lib.Integer where
+module Seri.Target.Elaborate.Integer (integerR) where
 
 import Seri.Lambda
+import Seri.Target.Elaborate.Elaborate
 
 integerR :: (Monad m) => Rule m
 integerR = Rule $ \gr e ->

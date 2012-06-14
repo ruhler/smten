@@ -10,8 +10,6 @@ import qualified Language.Haskell.TH.PprLib as H
 import qualified Language.Haskell.TH as H
 
 import Seri.Lambda as Seri
-import Seri.Lib.Prelude
-
 import Seri.Target.Haskell.Builtin
 
 -- haskell builtin main exp
