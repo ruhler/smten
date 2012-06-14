@@ -8,7 +8,6 @@ import Control.Monad.State
 import Data.List((\\), nub)
 
 import Seri.Lambda
-import Seri.Utils.Ppr
 
 monomorphic :: Env Exp -> Env Exp
 monomorphic e =
@@ -63,7 +62,7 @@ gentype t = do
     poly <- gets ms_poly
     let (con, targs) = unfoldt t
     case lookupDataD (mkenv poly ()) con of
-        Nothing -> error $ "gentype: " ++ con ++ " not found for " ++ render (ppr t)
+        Nothing -> error $ "gentype: " ++ con ++ " not found for " ++ pretty t
         (Just (DataD _ tvars cs)) -> do 
             let suffix = typesuffix t
             let mkc :: Con -> M Con

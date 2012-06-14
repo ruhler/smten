@@ -4,7 +4,9 @@
 
 import System.Environment
 
-import Seri
+import Language.Haskell.TH.PprLib
+
+import Seri.Lambda
 import Seri.Target.Haskell.Haskell
 import Seri.Target.Haskell.Builtin
 import Seri.Target.Haskell.Builtins.Prelude

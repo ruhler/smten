@@ -36,5 +36,5 @@ main = do
     putStrLn $ "Using Options: " ++ show opts
 
     result <- runYices [] queryR opts e
-    putStrLn $ render (ppr result)
+    putStrLn $ pretty result
 

@@ -11,7 +11,6 @@ import Control.Monad.State
 
 import Seri.Lambda.IR
 import Seri.Lambda.Sugar
-import Seri.Utils.Ppr (Ppr(..), render)
 
 }
 

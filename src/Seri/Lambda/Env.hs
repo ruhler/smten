@@ -12,7 +12,6 @@ import Data.Maybe
 
 import Seri.Lambda.IR
 import Seri.Lambda.Ppr
-import Seri.Utils.Ppr
 
 data Env x = Env {
     env :: [Dec],

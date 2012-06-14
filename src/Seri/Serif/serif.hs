@@ -1,9 +1,10 @@
 
 import System.Environment
 
-import Seri.Lambda
-import Seri.Utils.Ppr
+import Seri.Lambda(parseDecs)
 import Seri.Serif.Serif
+
+import Language.Haskell.TH
 
 
 main :: IO ()
@@ -26,10 +27,10 @@ main = do
         "import Prelude(Char, Integer, Bool, undefined)",
         "import qualified Prelude",
         "import Seri.Lambda.IR",
-        "import Seri.Utils.Ppr",
+        "import Seri.Lambda.Ppr",
         "import Seri.Serif.Typed",
-        render (ppr hs),
+        show (ppr hs),
         "main :: Prelude.IO ()",
-        "main = Prelude.putStrLn (render (ppr declarations))"
+        "main = Prelude.putStrLn (pretty declarations)"
         ]
 

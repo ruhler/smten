@@ -7,7 +7,6 @@ import qualified Math.SMT.Yices.Syntax as Y
 
 import Seri.Lambda
 import Seri.Target.Yices.Compiler
-import Seri.Utils.Ppr
 import Seri.Target.Haskell.Builtin
 
 

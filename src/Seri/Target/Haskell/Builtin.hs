@@ -3,9 +3,9 @@ module Seri.Target.Haskell.Builtin (
     Builtin(..), builtins,
  ) where
 
+import qualified Language.Haskell.TH.PprLib as H
 import qualified Language.Haskell.TH as H
 import Seri.Lambda
-import Seri.Utils.Ppr
 
 data Builtin = Builtin {
     -- Optionally give a builtin implementation for the given seri expression.
@@ -15,7 +15,7 @@ data Builtin = Builtin {
     maptype :: Type -> Maybe H.Type,
 
     -- Additional includes or imports to include in the target output code.
-    includes :: Doc
+    includes :: H.Doc
 }
 
 -- Compose builtins together.
@@ -33,7 +33,7 @@ builtins bs =
         compose a b = Builtin {
              mapexp = mergelookup (mapexp a) (mapexp b),
              maptype = mergelookup (maptype a) (maptype b),
-             includes = includes a $+$ includes b
+             includes = includes a H.$+$ includes b
            }
     in foldl1 compose bs
 

@@ -3,10 +3,10 @@ module Seri.Target.Haskell.Builtins.Integer (
     integerB
   ) where
 
+import qualified Language.Haskell.TH.PprLib as H
 import qualified Language.Haskell.TH as H
 
 import Seri.Lambda
-import Seri.Utils.Ppr
 import Seri.Target.Haskell.Builtin
 
 integerB :: Builtin
@@ -24,6 +24,6 @@ integerB =
   in Builtin {
      mapexp = me,
      maptype = mt,
-     includes = text "import qualified Seri.Target.Haskell.Lib.Integer as Integer"
+     includes = H.text "import qualified Seri.Target.Haskell.Lib.Integer as Integer"
   }
 

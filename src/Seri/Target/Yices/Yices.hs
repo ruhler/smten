@@ -6,12 +6,11 @@ import qualified Math.SMT.Yices.Syntax as Y
 import Seri.Lambda
 import Seri.Target.Yices.Compiler
 import Seri.Target.Yices.Builtins.Prelude
-import Seri.Utils.Ppr
 
 -- Translate a seri expression to a yices expression
 yExp :: Compiler -> Exp -> YCM Y.ExpY
 yExp _ (IntegerE x) = return $ Y.LitI x
-yExp _ e@(CaseE _ []) = fail $ "empty case statement: " ++ render (ppr e)
+yExp _ e@(CaseE _ []) = fail $ "empty case statement: " ++ pretty e
 yExp c (CaseE e ms) =
   let -- depat p e
       --    outputs: (predicate, bindings)
@@ -121,7 +120,7 @@ compile_dec c (DataD n [] cs) =
                                  (map (fromYCM . compile_type c c) ts))
     in [Y.DEFTYP n (Just (Y.DATATYPE (map con cs)))]
 compile_dec c d
-    = error $ "compile_dec: cannot compile to yices: " ++ render (ppr d)
+    = error $ "compile_dec: cannot compile to yices: " ++ pretty d
 
 compile_decs :: Compiler -> [Dec] -> [Y.CmdY]
 compile_decs c ds = concat $ map (compile_dec c) ds

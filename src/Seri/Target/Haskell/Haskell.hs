@@ -6,10 +6,11 @@ module Seri.Target.Haskell.Haskell (
 import Data.Char(isAlphaNum)
 import Data.Maybe(fromJust)
 
+import qualified Language.Haskell.TH.PprLib as H
 import qualified Language.Haskell.TH as H
+
 import Seri.Lambda as Seri
 import Seri.Lib.Prelude
-import Seri.Utils.Ppr
 
 import Seri.Target.Haskell.Builtin
 
@@ -21,7 +22,7 @@ import Seri.Target.Haskell.Builtin
 --         The input to the function is the haskell text for the compiled
 --         expression.
 --  exp - The expression to compile to haskell.
-haskell :: Builtin -> (Doc -> Doc) -> Env Exp -> Doc
+haskell :: Builtin -> (H.Doc -> H.Doc) -> Env Exp -> H.Doc
 haskell builtin main e =
   let hsName :: Name -> H.Name
       hsName = H.mkName
@@ -89,16 +90,16 @@ haskell builtin main e =
       hsClass :: Class -> H.Pred
       hsClass (Class nm ts) = H.ClassP (hsName nm) (map hsType ts)
     
-      hsHeader :: Doc
-      hsHeader = text "{-# LANGUAGE ExplicitForAll #-}" $+$
-                 text "{-# LANGUAGE MultiParamTypeClasses #-}" $+$
-                 text "import qualified Prelude"
+      hsHeader :: H.Doc
+      hsHeader = H.text "{-# LANGUAGE ExplicitForAll #-}" H.$+$
+                 H.text "{-# LANGUAGE MultiParamTypeClasses #-}" H.$+$
+                 H.text "import qualified Prelude"
 
       ds = concat $ map hsDec (decls e)
       me = hsExp $ val e
 
-  in hsHeader $+$
-     includes builtin $+$
-     ppr ds $+$
-     main (ppr me)
+  in hsHeader H.$+$
+     includes builtin H.$+$
+     H.ppr ds H.$+$
+     main (H.ppr me)
 

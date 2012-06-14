@@ -1,13 +1,17 @@
 
 {-# LANGUAGE FlexibleInstances #-}
 
-module Seri.Lambda.Ppr () where
+module Seri.Lambda.Ppr (Ppr(..), pretty, module Text.PrettyPrint.HughesPJ) where
 
 import Data.List(group, nub)
 
+import Text.PrettyPrint.HughesPJ
+
 import Seri.Lambda.IR
 import Seri.Lambda.Sugar
-import Seri.Utils.Ppr
+
+class Ppr a where
+    ppr :: a -> Doc
 
 tabwidth :: Int
 tabwidth = 2
@@ -198,3 +202,7 @@ instance Ppr [Dec] where
 
 instance Ppr Class where
     ppr (Class n ts) = text n <+> hsep (map ppr ts)
+
+pretty :: (Ppr a) => a -> String
+pretty = render . ppr
+

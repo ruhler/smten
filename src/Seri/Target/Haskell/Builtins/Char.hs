@@ -3,10 +3,11 @@ module Seri.Target.Haskell.Builtins.Char (
     charB
   ) where
 
+import qualified Language.Haskell.TH.PprLib as H
+import qualified Language.Haskell.TH as H
+
 import Seri
 import Seri.Target.Haskell.Builtin
-
-import qualified Language.Haskell.TH as H
 
 charB :: Builtin
 charB =
@@ -17,6 +18,6 @@ charB =
   in Builtin {
      mapexp = me,
      maptype = mt,
-     includes = empty
+     includes = H.empty
   }
 

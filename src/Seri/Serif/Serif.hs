@@ -9,7 +9,6 @@ import Data.List(transpose)
 import qualified Language.Haskell.TH as H
 
 import Seri.Lambda
-import Seri.Utils.Ppr
 import Seri.Serif.Typed
 import Seri.Serif.Names
 import Seri.Serif.Polymorphic

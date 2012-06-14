@@ -16,7 +16,6 @@ import Seri.Target.Yices.Yices
 import Seri.Target.Monomorphic.Monomorphic
 
 import Seri.Lambda
-import Seri.Utils.Ppr
 
 data YicesState = YicesState {
     ys_decls :: [Dec],
@@ -88,7 +87,7 @@ runQuery gr e = do
         (AppE (AppE (PrimE (Sig "nobind_query" _)) x) y) -> do
           runQuery gr (withenv e x)
           runQuery gr (withenv e y)
-        x -> error $ "unknown Query: " ++ render (ppr x)
+        x -> error $ "unknown Query: " ++ pretty x
 
 
 yType :: Type -> Y.TypY
@@ -119,10 +118,10 @@ smtY :: Compiler
 smtY =
   let ye :: Compiler -> Exp -> YCM Y.ExpY
       ye _ (AppE (PrimE (Sig "realize" _)) (AppE (ConE (Sig "Free" _)) (IntegerE id))) = return $ Y.VarE ("free_" ++ show id)
-      ye _ e = fail $ "smtY does not apply: " ++ render (ppr e)
+      ye _ e = fail $ "smtY does not apply: " ++ pretty e
 
       yt :: Compiler -> Type -> YCM Y.TypY
-      yt _ t = fail $ "smtY does not apply: " ++ render (ppr t)
+      yt _ t = fail $ "smtY does not apply: " ++ pretty t
   in compilers [Compiler [] ye yt, yicesY]
 
 
