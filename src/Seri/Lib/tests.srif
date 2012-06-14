@@ -122,6 +122,9 @@ thedo m = do {
     if b then return 5 else Nothing;
 };
 
+notand :: Bool;
+notand = True && False;
+
 testall :: Bool;
 testall = (42 == ((\x -> (((x*x) + (3*x)) + 2)) 5))
        && ((42 == (foo1))

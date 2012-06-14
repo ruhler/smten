@@ -115,6 +115,7 @@ match (ConP s ps) (AppE ae be) | not (null ps)
   = case (match (ConP s (init ps)) ae, match (last ps) be) of
         (Succeeded as, Succeeded bs) -> Succeeded (as ++ bs)
         (Failed, _) -> Failed
+        (Succeeded _, Failed) -> Failed
         _ -> Unknown
 match (IntegerP i) (IntegerE i') | i == i' = Succeeded []
 match (VarP (Sig nm _)) e = Succeeded [(nm, e)]

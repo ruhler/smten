@@ -2,6 +2,7 @@
 module Seri.SMT.Yices (RunOptions(..), runYices) where
 
 import Data.Generics
+import Data.Char(isUpper)
 import Data.List((\\))
 import Data.Maybe
 
@@ -145,6 +146,11 @@ antiyices :: (Monad m) => Y.ExpY -> m Exp
 antiyices (Y.LitB True) = return $ ConE (Sig "True" (ConT "Bool"))
 antiyices (Y.LitB False) = return $ ConE (Sig "False" (ConT "Bool"))
 antiyices (Y.LitI i) = return $ IntegerE i
+antiyices (Y.VarE n) | isUpper (head n) = return $ ConE (Sig n UnknownT)
+antiyices (Y.APP f [x]) = do
+    f' <- antiyices f
+    x' <- antiyices x
+    return $ AppE f' x'
 antiyices x = fail $ "TODO: antiyices: " ++ show x
 
 -- Apply free variable assignements to the given expression.
