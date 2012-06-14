@@ -29,7 +29,7 @@ serif = env.GHCProgram('serif', 'Seri/Serif/serif.hs')
 env.Default(serif)
 
 # Serie elaborator
-serie = env.GHCProgram('serie', 'Seri/Lambda/serie.hs')
+serie = env.GHCProgram('serie', 'Seri/Target/Elaborate/serie.hs')
 env.Default(serie)
 
 srifprelude = ['Seri/Lib/bool.srif',
@@ -56,7 +56,9 @@ bin = env.GHCProgram('general', 'general.srif.hs')
 sri = env.Command('general.sri', bin, "$SOURCE > $TARGET")
 out = env.Command('general.out', [serie, sri],
     "$SOURCE -o $TARGET -m testall ${SOURCES[1]}")
-env.Default(out)
+wnt = env.Command('general.wnt', [], "echo -n '(True :: Bool)' > $TARGET")
+cmp = env.Command('general.cmp', [out, wnt], "cmp $SOURCES > $TARGET")
+env.Default(cmp)
 
 ## haskell back end tests.
 hstest = env.GHCProgram('hstest', 'Seri/Target/Haskell/tests.hs')

@@ -31,10 +31,6 @@ main = do
     let e = mkenv query (VarE (Sig "main" UnknownT) Declared)
 
     let opts = (RunOptions dbg yices)
-
-    putStrLn $ "Using YICES: " ++ show yices
-    putStrLn $ "Using Options: " ++ show opts
-
     result <- runYices [] queryR opts e
     putStrLn $ pretty result
 
