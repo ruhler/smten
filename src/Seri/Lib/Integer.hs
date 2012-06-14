@@ -4,8 +4,7 @@
 
 module Seri.Lib.Integer where
 
-import Seri
-import Seri.Lib.Bool
+import Seri.Lambda
 
 integerR :: (Monad m) => Rule m
 integerR = Rule $ \gr e ->

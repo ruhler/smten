@@ -1,10 +1,17 @@
 
 module Seri.Lambda.Sugar (
+    trueE, falseE,
     ifE, Stmt(..), doE, tupE, tupP, Clause(..), clauseE, lamE, listE,
     ) where
 
 import Seri.Lambda.IR
 import Seri.Lambda.Types
+
+trueE :: Exp
+trueE = ConE (Sig "True" (ConT "Bool"))
+
+falseE :: Exp
+falseE = ConE (Sig "False" (ConT "Bool"))
 
 ifE :: Exp -> Exp -> Exp -> Exp
 ifE p a b = CaseE p [Match (ConP (Sig "True" (ConT "Bool")) []) a,
