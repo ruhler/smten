@@ -2,7 +2,7 @@
 import System.Environment
 
 import Seri.Lambda(parse)
-import Seri.Serif.Serif
+import Seri.Serif
 
 import Language.Haskell.TH
 

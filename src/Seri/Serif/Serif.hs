@@ -14,6 +14,10 @@ import Seri.Serif.Typed
 import Seri.Serif.Names
 import Seri.Serif.Polymorphic
 
+-- | Given a list of seri declarations, generate a list of haskell
+-- declarations which include the declaration of a haskell value
+-- 'declarations' of type [Dec] with type inferred and type checked versions
+-- of the given seri declarations.
 serif :: [Dec] -> [H.Dec]
 serif ds =
   let sig = H.SigD (H.mkName "declarations") (H.AppT H.ListT (H.ConT ''Dec))
