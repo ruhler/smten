@@ -9,7 +9,6 @@ import Data.Maybe(fromJust)
 import qualified Language.Haskell.TH as H
 import Seri.Lambda as Seri
 import Seri.Lib.Prelude
-import Seri.Utils.TH
 import Seri.Utils.Ppr
 
 import Seri.Target.Haskell.Builtin
@@ -63,7 +62,7 @@ haskell builtin main e =
         = [H.ClassD [] (hsName n) (map (H.PlainTV . hsName) vars) [] (map hsSig sigs)]
 
       hsDec (InstD (Class n ts) ms)
-        = [H.InstanceD [] (appts ((H.ConT (hsName n)):(map hsType ts))) (map hsMethod ms)] 
+        = [H.InstanceD [] (foldl H.AppT (H.ConT (hsName n)) (map hsType ts)) (map hsMethod ms)] 
 
       hsSig :: Sig -> H.Dec
       hsSig (Sig n t) =

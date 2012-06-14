@@ -4,7 +4,7 @@
 
 module Seri.Serif.Typed 
     (
-        Typed(..), typedas,
+        Typed(..),
         SeriType(..), SeriType1(..), SeriType2(..), SeriType3(..), SeriType4(..),
         integerE, caseE, conE, conE', varE, dvarE, lamE, appE,
         primitive, match, lamM, method,
