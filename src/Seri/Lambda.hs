@@ -5,7 +5,7 @@ module Seri.Lambda (
     module Seri.Lambda.IR,
     module Seri.Lambda.Parser,
     module Seri.Lambda.Ppr,
-    module Seri.Lambda.Typeof,
+    module Seri.Lambda.Types,
     module Seri.Lambda.Sugar,
   ) where
 
@@ -14,6 +14,6 @@ import Seri.Lambda.Env
 import Seri.Lambda.IR
 import Seri.Lambda.Parser
 import Seri.Lambda.Ppr(pretty)
-import Seri.Lambda.Typeof
+import Seri.Lambda.Types
 import Seri.Lambda.Sugar
 

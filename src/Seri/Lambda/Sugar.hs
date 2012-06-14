@@ -4,7 +4,7 @@ module Seri.Lambda.Sugar (
     ) where
 
 import Seri.Lambda.IR
-import Seri.Lambda.Typeof
+import Seri.Lambda.Types
 
 ifE :: Exp -> Exp -> Exp -> Exp
 ifE p a b = CaseE p [Match (ConP (Sig "True" (ConT "Bool")) []) a,

@@ -1,5 +1,5 @@
 
-module Seri.Lambda.Typeof (
+module Seri.Lambda.Types (
     Typeof(..), assign, assignments,
     appsT, arrowsT, outputT, listT,
     ) where

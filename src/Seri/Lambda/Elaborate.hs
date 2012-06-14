@@ -7,7 +7,7 @@ import Data.Generics
 
 import Seri.Lambda.IR
 import Seri.Lambda.Env
-import Seri.Lambda.Typeof
+import Seri.Lambda.Types
 
 -- A reduction rule. Given a set of global declarations, a global reduction
 -- rule, and an expression, reduce the expression in some way. Returns Nothing
