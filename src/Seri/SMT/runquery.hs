@@ -3,7 +3,7 @@ import System.Environment
 import System.Exit
 import System.Process
 
-import Seri
+import Seri.Lambda
 import Seri.Target.Elaborate
 import Seri.SMT.Yices
 

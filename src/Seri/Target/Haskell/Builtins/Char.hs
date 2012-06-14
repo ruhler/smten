@@ -6,7 +6,7 @@ module Seri.Target.Haskell.Builtins.Char (
 import qualified Language.Haskell.TH.PprLib as H
 import qualified Language.Haskell.TH as H
 
-import Seri
+import Seri.Lambda
 import Seri.Target.Haskell.Builtin
 
 charB :: Builtin
