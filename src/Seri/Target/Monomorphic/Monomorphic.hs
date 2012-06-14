@@ -52,17 +52,17 @@ finish = do
             modify $ \ms -> ms {
                 ms_typed = dt ++ ts,
                 ms_exped = de ++ es,
-                ms_mono = (ms_mono ms) ++ tds ++ eds
+                ms_mono = (ms_mono ms) ++ (concat tds) ++ eds
              }
             finish
 
 -- Generate a monomorphic declaration for the given concrete type.
-gentype :: Type -> M Dec
+gentype :: Type -> M [Dec]
 gentype t = do
     poly <- gets ms_poly
     let (con, targs) = unfoldt t
     case lookupDataD (mkenv poly ()) con of
-        Nothing -> error $ "gentype: " ++ con ++ " not found for " ++ pretty t
+        Nothing -> return []
         (Just (DataD _ tvars cs)) -> do 
             let suffix = typesuffix t
             let mkc :: Con -> M Con
@@ -70,7 +70,7 @@ gentype t = do
                     ts' <- mapM monotype ts
                     return (Con (n ++ suffix) ts')
             cs' <- mapM mkc (assign (zip tvars targs) cs)
-            return (DataD (con ++ suffix) [] cs')
+            return [DataD (con ++ suffix) [] cs']
 
 -- Generate a monomorphic declaration for the given concrete VarE.
 genexp :: Exp -> M Dec

@@ -3,8 +3,6 @@ data Query a = Query;
 
 data Answer a = Satisfiable a | Unsatisfiable | Unknown;
 
-data Free a = Free Integer;
-
 free :: forall a . Query a;
 free = (@free :: Query a);
 
