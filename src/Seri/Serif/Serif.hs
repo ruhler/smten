@@ -8,7 +8,8 @@ import Data.List(transpose)
 
 import qualified Language.Haskell.TH as H
 
-import Seri.Lambda
+import Seri.Lambda.IR
+import Seri.Lambda.Typeof
 import Seri.Serif.Typed
 import Seri.Serif.Names
 import Seri.Serif.Polymorphic

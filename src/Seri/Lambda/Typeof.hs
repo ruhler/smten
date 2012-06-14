@@ -1,10 +1,12 @@
 
-module Seri.Lambda.Typeof (Typeof(..), assign, assignments) where
+module Seri.Lambda.Typeof (
+    Typeof(..), assign, assignments,
+    appsT, arrowsT, outputT, listT,
+    ) where
 
 import Data.Generics
 
 import Seri.Lambda.IR
-import Seri.Lambda.Utils
 
 class Typeof a where
     -- Return the seri type of the given object, assuming the object is well
@@ -65,4 +67,26 @@ assign m =
             Nothing -> t
       base t = t
   in everywhere $ mkT base
+
+
+-- Give the list [a, b, ..., c]
+-- Return the type (a b ... c)
+appsT :: [Type] -> Type
+appsT = foldl1 AppT 
+
+-- Given the list [a, b, ..., c]
+-- Return the type (a -> b -> ... -> c)
+arrowsT :: [Type] -> Type
+arrowsT [t] = t
+arrowsT (t:ts) = AppT (AppT (ConT "->") t) (arrowsT ts)
+
+-- Given a type of the from (a -> b)
+-- Returns b
+outputT :: Type -> Type
+outputT (AppT (AppT (ConT "->") _) t) = t
+outputT t = t
+
+-- Given a type a, returns the type [a]
+listT :: Type -> Type
+listT t = AppT (ConT "[]") t
 

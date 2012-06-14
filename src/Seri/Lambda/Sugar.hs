@@ -5,7 +5,6 @@ module Seri.Lambda.Sugar (
 
 import Seri.Lambda.IR
 import Seri.Lambda.Typeof
-import Seri.Lambda.Utils
 
 ifE :: Exp -> Exp -> Exp -> Exp
 ifE p a b = CaseE p [Match (ConP (Sig "True" (ConT "Bool")) []) a,
