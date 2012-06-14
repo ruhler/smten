@@ -27,11 +27,6 @@ env.Command('Seri/Lambda/Parser.hs',
 ## Serif front end
 serif = env.GHCProgram('serif', 'Seri/Serif/serif.hs')
 env.Default(serif)
-seriftest_hs = env.Command('seriftest.hs', [serif, 'Seri/Serif/test.srif'],
-                    '$SOURCE -o $TARGET ${SOURCES[1]}')
-seriftest = env.GHCProgram('seriftest', seriftest_hs)
-seriftest_out = env.Command('seriftest.out', seriftest, "$SOURCE > $TARGET")
-env.Default(seriftest_out)
 
 # Serie elaborator
 serie = env.GHCProgram('serie', 'Seri/Lambda/serie.hs')
