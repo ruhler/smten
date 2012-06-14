@@ -1,9 +1,13 @@
 
 {-# LANGUAGE FlexibleInstances #-}
 
+-- | Definitions and utilities for working with seri environments. An
+-- environment captures an object in the context of a bunch of seri
+-- declarations.
 module Seri.Lambda.Env (
-    Env(), val, mkenv, decls, lookupvar, withenv, minimize, sort,
-    lookupDataD,
+    Env(), val, mkenv, withenv, decls,
+    lookupvar, lookupDataD,
+    minimize, sort,
     ) where
 
 import Data.Generics
@@ -21,13 +25,20 @@ data Env x = Env {
 instance (Ppr a) => Ppr (Env a) where
     ppr (Env ds x) = ppr ds $+$ ppr x
 
+-- | Construct an environment for 'x' with the given declarations.
 mkenv :: [Dec] -> x -> Env x
 mkenv ds x = Env ds x
 
+-- | Make an environment for an object 'b' which is the same as the given
+-- environment for object 'a'.
+withenv :: Env a -> b -> Env b
+withenv (Env m _) x = Env m x
+
+-- | Extract the declarations from an environment.
 decls :: Env x -> [Dec]
 decls x = env x
 
--- Look up a ValD with given Name in the given Environment.
+-- | Look up a ValD with given Name in the given Environment.
 lookupValD :: Env a -> Name -> Maybe Dec
 lookupValD (Env decls _) n =
   let theValD :: Dec -> Bool
@@ -35,7 +46,7 @@ lookupValD (Env decls _) n =
       theValD _ = False
   in listToMaybe $ filter theValD decls
 
--- Look up a DataD with given Name in the given Environment.
+-- | Look up a DataD with given Name in the given Environment.
 lookupDataD :: Env a -> Name -> Maybe Dec
 lookupDataD (Env decls _) n =
   let theDataD :: Dec -> Bool
@@ -43,7 +54,7 @@ lookupDataD (Env decls _) n =
       theDataD _ = False
   in listToMaybe $ filter theDataD decls
 
--- Look up a ClassD with given Name in the given Environment.
+-- | Look up a ClassD with given Name in the given Environment.
 lookupClassD :: Env a -> Name -> Maybe Dec
 lookupClassD (Env decls _) n =
   let theClassD :: Dec -> Bool
@@ -51,7 +62,7 @@ lookupClassD (Env decls _) n =
       theClassD _ = False
   in listToMaybe $ filter theClassD decls
 
--- Look up an InstD in the given Environment.
+-- | Look up an InstD in the given Environment.
 lookupInstD :: Env a -> Name -> [Type] -> Maybe Dec
 lookupInstD (Env decls _) n t =
   let theInstD :: Dec -> Bool
@@ -59,7 +70,7 @@ lookupInstD (Env decls _) n t =
       theInstD _ = False
   in listToMaybe $ filter theInstD decls
 
--- Look up the type of a method in the given class.
+-- | Look up the type of a method in the given class.
 lookupSig :: Env a -> Name -> Name -> Maybe Type
 lookupSig e cls meth =
   let sigInClass :: [Sig] -> Maybe Type
@@ -71,8 +82,10 @@ lookupSig e cls meth =
      sigInClass sigs
 
 
--- Given a VarE in an environment return the value of that variable as
+-- | Given a VarE in an environment return the value of that variable as
 -- determined by the environment.
+--
+-- Returns Nothing if the variable could not be found in the environment.
 lookupvar :: Env Exp -> Maybe (Type, Exp)
 lookupvar e@(Env _ (VarE (Sig n _) Declared)) = do
   (ValD (Sig _ t) v) <- lookupValD e n
@@ -87,9 +100,6 @@ lookupvar e@(Env _ (VarE (Sig x _) (Instance (Class n ts)))) =
   in do
       InstD _ ms <- lookupInstD e n ts  
       mlook ms
-
-withenv :: Env a -> b -> Env b
-withenv (Env m _) x = Env m x
 
 union :: (Eq a) => [a] -> [a] -> [a]
 union a b = nub $ a ++ b
@@ -115,8 +125,9 @@ declarations m =
       query = extQ (extQ (mkQ [] qexp) qtype) qclass
   in everything union query
 
--- minimize x
--- Return x under the smallest environment needed for x.
+-- | Minimize an environment.
+-- Remove any declarations in the environment not needed by the object in the
+-- environment.
 minimize :: (Data a) => Env a -> Env a
 minimize (Env m x) =
   let alldecls :: [Dec] -> [Dec]
@@ -128,7 +139,7 @@ minimize (Env m x) =
             else alldecls dds
   in Env (alldecls (declarations m x)) x
 
--- sort ds
+-- | sort ds
 -- Perform a topological sort of declarations ds by dependency.
 --   returns (sorted, mutual)
 --  sorted - the list of sorted declarations. Declarations earlier in the list

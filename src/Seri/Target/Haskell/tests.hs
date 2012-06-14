@@ -28,7 +28,7 @@ main = do
     args <- getArgs
     let [infile, outfile] = args
     text <- readFile infile
-    seri <- parseDecs text
+    seri <- parse text
     let emain = mkenv seri (VarE (Sig "testall" UnknownT) Declared)
     let doc = haskell builtin hsMain emain
     writeFile outfile (show doc)

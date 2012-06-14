@@ -2,7 +2,7 @@
 {
 
 -- vim: ft=haskell
-module Seri.Lambda.Parser (parseDecs) where
+module Seri.Lambda.Parser (parse) where
 
 import Data.Char hiding (isSymbol)
 import Data.Maybe
@@ -626,8 +626,8 @@ coalesce ((PDec d):ds) = do
     rest <- coalesce ds
     return (d:rest)
 
-parseDecs :: (Monad m) => String -> m [Dec]
-parseDecs text =
+parse :: (Monad m) => String -> m [Dec]
+parse text =
     case (runState seri_decls (ParserState text 1 0 Nothing)) of
         (ds, ParserState _ _ _ Nothing) -> coalesce ds
         (_, ParserState _ _ _ (Just msg)) -> fail msg

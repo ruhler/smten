@@ -1,7 +1,11 @@
 
 {-# LANGUAGE FlexibleInstances #-}
 
-module Seri.Lambda.Ppr (Ppr(..), pretty, module Text.PrettyPrint.HughesPJ) where
+-- | Pretty printer for core seri language.
+module Seri.Lambda.Ppr (
+    Ppr(..), pretty,
+    module Text.PrettyPrint.HughesPJ
+    ) where
 
 import Data.List(group, nub)
 
@@ -203,6 +207,7 @@ instance Ppr [Dec] where
 instance Ppr Class where
     ppr (Class n ts) = text n <+> hsep (map ppr ts)
 
+-- | Print an object very prettily.
 pretty :: (Ppr a) => a -> String
 pretty = render . ppr
 

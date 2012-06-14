@@ -1,46 +1,62 @@
 
 {-# LANGUAGE DeriveDataTypeable #-}
 
+-- | Definition of the abstract syntax for the Seri core lambda expressions.
 module Seri.Lambda.IR (
-    Name, Type(..), Pat(..), Match(..), Exp(..), Dec(..), Con(..),
-    Sig(..), Method(..), VarInfo(..), Class(..),
+    Name, Type(..), Sig(..), Class(..), 
+    Pat(..), Match(..),
+    VarInfo(..), Exp(..), 
+    Con(..), Method(..), Dec(..),
     ) where
 
 import Data.Generics
 
 type Name = String
 
-data Type = ConT Name
-          | AppT Type Type
-          | VarT Name
-          | ForallT [Name] [Class] Type     -- tyvars ctx type
+data Type = ConT Name                       -- ^ type constructor
+          | AppT Type Type                  -- ^ type application
+          | VarT Name                       -- ^ type variable
+          | ForallT [Name] [Class] Type     -- ^ forall vars . ctx => type
           | UnknownT
       deriving(Eq, Show, Data, Typeable)
 
+-- | 'Sig' is a name annotated with a type.
+data Sig = Sig Name Type
+    deriving(Eq, Show, Data, Typeable)
+
+
+-- | 'Class' represents a single predicate.
+-- For example, the predicate (MonadState s m) is represented with:
+-- > Class "MonadState" [VarT "s", VarT "m"]
 data Class = Class Name [Type]
       deriving(Eq, Show, Data, Typeable)
 
+-- | 'VarInfo' 
+-- Information about a variable.
+-- [@Bound@] The variable is locally bound by a lambda or pattern match.
+-- [@Declared@] The variable refers to a top level declaration.
+-- [@Instance@] The variable refers to a method of the given class instance.
+-- [@UnknownVI@] The information about the variable is unknown.
 data VarInfo = Bound | Declared | Instance Class | UnknownVI
     deriving (Eq, Show, Data, Typeable)
 
-data Match = Match Pat Exp
+data Match = Match Pat Exp      -- ^ p -> e
     deriving (Eq, Show, Data, Typeable)
 
-data Exp = IntegerE Integer
-         | PrimE Sig
-         | CaseE Exp [Match]
-         | AppE Exp Exp
-         | LamE Sig Exp
-         | ConE Sig
-         | VarE Sig VarInfo
+data Exp = IntegerE Integer         -- ^ integer literal
+         | PrimE Sig                -- ^ primitive 
+         | CaseE Exp [Match]        -- ^ case e of { ms }
+         | AppE Exp Exp             -- ^ f x
+         | LamE Sig Exp             -- ^ \x -> e
+         | ConE Sig                 -- ^ data constructor
+         | VarE Sig VarInfo         -- ^ variable
      deriving (Eq, Show, Data, Typeable)
 
+-- | Patterns.
 -- Note: The Type of ConP is the output type of the Type of the signature.
 --    For example: ConP (Sig "Foo" (Integer -> Food) [5]) has type Food.
---    (This makes sense for legacy reasons. It's not clear to me if it
---    continues to make sense now. Why not just have: ConP Type Name [Pat],
---    where the type is the data type the constructor belongs to? Maybe just
---    because it's more consistent with all the other kinds of names we type.)
+--    That is, the Sig type refers to the type of the data constructor before
+--    it is applied to any arguments.
 data Pat = ConP Sig [Pat]
          | VarP Sig
          | IntegerP Integer
@@ -50,15 +66,12 @@ data Pat = ConP Sig [Pat]
 data Con = Con Name [Type]
     deriving(Eq, Show, Data, Typeable)
 
-data Sig = Sig Name Type
-    deriving(Eq, Show, Data, Typeable)
-
 data Method = Method Name Exp
     deriving(Eq, Show, Data, Typeable)
 
-data Dec = ValD Sig Exp
-         | DataD Name [Name] [Con]    -- name tyvars constrs
-         | ClassD Name [Name] [Sig]   -- name tyvars sigs
-         | InstD Class [Method]
+data Dec = ValD Sig Exp               -- ^ nm :: ty ; nm = exp
+         | DataD Name [Name] [Con]    -- ^ data nm vars = 
+         | ClassD Name [Name] [Sig]   -- ^ class nm vars where { sigs }
+         | InstD Class [Method]       -- ^ instance cls where { meths }
      deriving (Eq, Show, Data, Typeable)
 

@@ -1,7 +1,7 @@
 
 import System.Environment
 
-import Seri.Lambda(parseDecs)
+import Seri.Lambda(parse)
 import Seri.Serif.Serif
 
 import Language.Haskell.TH
@@ -19,7 +19,7 @@ main = do
                x -> error $ "bad args: " ++ show x
 
     text <- input
-    seri <- parseDecs text
+    seri <- parse text
     let hs = serif seri
     output $ unlines [
         "{-# LANGUAGE ExplicitForAll #-}",

@@ -27,7 +27,7 @@ main = do
 
 
     querytext <- input
-    query <- parseDecs querytext
+    query <- parse querytext
     let e = mkenv query (VarE (Sig "main" UnknownT) Declared)
 
     let opts = (RunOptions dbg yices)

@@ -16,7 +16,7 @@ main = do
                x -> error $ "bad args: " ++ show x
 
     text <- input
-    seri <- parseDecs text
+    seri <- parse text
     let e = mkenv seri (VarE (Sig mainexp UnknownT) Declared)
     elaborated <- elaborate elaborateR e
     output (pretty elaborated)
