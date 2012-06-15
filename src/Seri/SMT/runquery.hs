@@ -12,12 +12,10 @@ queryR = elaborateR
 main :: IO ()
 main = do
     args <- getArgs
-    let (dbg, input) =
+    let (dbg, path, fin) =
             case args of
-               ["-d", dbgout, fin] -> (Just dbgout, readFile fin)
-               ["-d", dbgout] -> (Just dbgout, getContents)
-               [fin] -> (Nothing, readFile fin)
-               [] -> (Nothing, getContents)
+               ["-d", dbgout, "-i", path, fin] -> (Just dbgout, path, fin)
+               ["-i", path, fin] -> (Nothing, path, fin)
                x -> error $ "bad args: " ++ show x
 
     (ex, out, err) <- readProcessWithExitCode "which" ["yices"] ""
@@ -26,9 +24,8 @@ main = do
                 _ -> fail $ "Failed to find yices executable: " ++ err
 
 
-    querytext <- input
-    query <- parse querytext
-    let e = mkenv query (VarE (Sig "main" UnknownT) Declared)
+    query <- load [path] fin
+    let e = mkenv (flatten query) (VarE (Sig "main" UnknownT) Declared)
 
     let opts = (RunOptions dbg yices)
     result <- runYices [] queryR opts e

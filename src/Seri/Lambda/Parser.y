@@ -7,14 +7,12 @@ module Seri.Lambda.Parser (parse) where
 import Data.Char hiding (isSymbol)
 import Data.Maybe
 
-import Control.Monad.State
-
 import Seri.Lambda.IR
 import Seri.Lambda.Sugar
 
 }
 
-%name seri_decls body
+%name seri_module module
 %tokentype { Token }
 %error { parseError }
 %monad { ParserMonad }
@@ -57,15 +55,32 @@ import Seri.Lambda.Sugar
        'then'     { TokenThen }
        'else'     { TokenElse }
        'do'     { TokenDo }
-       EOF      { TokenEOF }
+       'module' { TokenModule }
+       'import' { TokenImport }
 
 %%
 
-body :: { [PDec] }
- : topdecls
-    { $1 }
- | topdecls ';'
-    { $1 }
+module :: { Module }
+ : 'module' modid 'where' body
+    { Module $2 (fst $4) (snd $4) }
+
+body :: { ([Import], [Dec]) }
+ : '{' impdecls ';' topdecls '}'
+    { ($2, coalesce $4) }
+ | '{' impdecls '}'
+    { ($2, []) }
+ | '{' topdecls '}'
+    { ([], coalesce $2) }
+
+impdecls :: { [Import] }
+ : impdecl 
+    { [$1] }
+ | impdecls ';' impdecl
+    { $1 ++ [$3] }
+
+impdecl :: { Import }
+ : 'import' modid
+    { Import $2 }
 
 topdecls :: { [PDec] }
  : topdecl
@@ -381,6 +396,12 @@ qconid :: { String }
   : conid
     { $1 }
 
+modid :: { String }
+ : conid
+    { $1 }
+ | modid '.' conid
+    { $1 ++ "." ++ $3 }
+
 qvarid :: { String }
   : varid  { $1 }
 
@@ -436,20 +457,37 @@ atypes :: { [Type] }
 
 {
 
-data ParserState = ParserState {
+data PS = PS {
     ps_text :: String,
     ps_line :: Integer,
     ps_column :: Integer,
-    ps_error :: Maybe String
+    ps_filename :: FilePath
 }
 
-type ParserMonad = State ParserState
+data ParserMonad a = ParserMonad {
+    runPM :: PS -> Either String (a, PS)
+}
+
+instance Monad ParserMonad where
+    return x = ParserMonad $ \ps -> Right (x, ps)
+    fail msg = ParserMonad $ \_ -> Left msg
+    (>>=) (ParserMonad x) f = ParserMonad $ \ps ->
+        case x ps of
+            Left msg -> Left msg
+            Right (a, ns) -> runPM (f a) ns
+
+gets :: (PS -> a) -> ParserMonad a
+gets f = ParserMonad $ \ps -> Right (f ps, ps)
+
+modify :: (PS -> PS) -> ParserMonad ()
+modify f = ParserMonad $ \ps -> Right ((), f ps)
 
 parseError :: Token -> ParserMonad a
 parseError tok = do
     ln <- gets ps_line
     cl <- gets ps_column
-    failE $ "error:" ++ show ln ++ ":" ++ show cl ++ ": parser error at " ++ show tok
+    fp <- gets ps_filename
+    failE $ fp ++ ":" ++ show ln ++ ":" ++ show cl ++ ": parser error at " ++ show tok
 
 data Token = 
        TokenOpenBracket
@@ -488,6 +526,8 @@ data Token =
      | TokenThen
      | TokenElse
      | TokenDo
+     | TokenModule
+     | TokenImport
      | TokenEOF
     deriving (Show)
 
@@ -549,13 +589,13 @@ keywords = [
     ("if", TokenIf),
     ("then", TokenThen),
     ("else", TokenElse),
-    ("do", TokenDo)
+    ("do", TokenDo),
+    ("module", TokenModule),
+    ("import", TokenImport)
     ]
 
 failE :: String -> ParserMonad a
-failE msg = do
-    modify $ \ps -> ps { ps_error = Just msg}
-    fail msg
+failE = fail
 
 -- advance a single column
 single :: ParserMonad ()
@@ -614,22 +654,19 @@ isPClause :: PDec -> Bool
 isPClause (PClause {}) = True
 isPClause _ = False
 
-coalesce :: (Monad m) => [PDec] -> m [Dec]
-coalesce [] = return []
-coalesce ((PSig s):ds) = do
+coalesce :: [PDec] -> [Dec]
+coalesce [] = []
+coalesce ((PSig s):ds) =
     let (ms, rds) = span isPClause ds
-    -- TODO: verify the names for each clauses matches the name for the sig.
-    let d = ValD s (clauseE [c | PClause _ c <- ms]) 
-    rest <- coalesce rds
-    return (d:rest)
-coalesce ((PDec d):ds) = do
-    rest <- coalesce ds
-    return (d:rest)
+        d = ValD s (clauseE [c | PClause _ c <- ms]) 
+        rest = coalesce rds
+    in (d:rest)
+coalesce ((PDec d):ds) = d : coalesce ds
 
-parse :: (Monad m) => String -> m [Dec]
-parse text =
-    case (runState seri_decls (ParserState text 1 0 Nothing)) of
-        (ds, ParserState _ _ _ Nothing) -> coalesce ds
-        (_, ParserState _ _ _ (Just msg)) -> fail msg
+parse :: FilePath -> String -> Either String Module
+parse fp text =
+ case (runPM seri_module (PS text 1 0 fp)) of
+    Left msg -> Left msg
+    Right (m, _) -> Right m
 }
 

@@ -1,4 +1,8 @@
 
+module Seri.SMT.SMT where {
+
+import Seri.Lib.Monad;
+
 data Query a = Query;
 
 data Answer a = Satisfiable a | Unsatisfiable | Unknown;
@@ -32,6 +36,7 @@ instance Monad Query where {
   (>>=) = (%bind_query :: Query a -> (a -> Query b) -> Query b);
   (>>) = (%nobind_query :: Query a -> Query b -> Query b);
   fail = (%fail_query :: [Char] -> Query a);
-};
+}
 
+}
 

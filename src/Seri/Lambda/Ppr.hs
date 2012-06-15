@@ -114,8 +114,8 @@ instance Ppr Exp where
     -- Special case for do statements
     ppr e | cando e =
         let (cls, stmts) = sugardo e
-        in text "#" <>  braces (ppr cls) <> text "do" <+> text "{" $$
-              nest tabwidth (vcat (map ppr stmts)) $$ text "}"
+        in text "#" <>  braces (ppr cls) <> text "do" <+> text "{"
+                $+$ nest tabwidth (vcat (map ppr stmts)) $+$ text "}"
 
     -- Special case for tuples
     ppr (AppE (AppE (ConE (Sig "(,)" _)) a) b) =
@@ -128,8 +128,8 @@ instance Ppr Exp where
     -- Normal cases
     ppr (IntegerE i) = integer i
     ppr (PrimE s) = pprsig (text "@") s
-    ppr (CaseE e ms) = text "case" <+> ppr e <+> text "of" <+> text "{" $$
-                            nest tabwidth (vcat (map ppr ms)) $$ text "}"
+    ppr (CaseE e ms) = text "case" <+> ppr e <+> text "of" <+> text "{"
+                        $+$ nest tabwidth (vcat (map ppr ms)) $+$ text "}"
     ppr (AppE a b) | isAtomE b = ppr a <+> ppr b
     ppr (AppE a b) = ppr a <+> (parens $ ppr b)
     ppr (LamE s b) = parens $ (text "\\" <> pprsig empty s <+> text "->") `sep2` ppr b
@@ -171,7 +171,6 @@ instance Ppr Pat where
     ppr (IntegerP i) = integer i
     ppr (WildP t) = pprsig empty (Sig "_" t)
 
-
 conlist :: [Con] -> Doc
 conlist [] = empty
 conlist (x:xs) = text " " <+> ppr x
@@ -179,18 +178,18 @@ conlist (x:xs) = text " " <+> ppr x
 
 instance Ppr Dec where
     ppr (ValD (Sig n t) e) = pprname n <+> text "::" <+> ppr t <> semi $$
-                             pprname n <+> text "=" <+> ppr e <> semi
+                             pprname n <+> text "=" <+> ppr e
     ppr (DataD n vs cs)
         = text "data" <+> text n <+> hsep (map text vs) <+> text "=" $$
-            (nest tabwidth (conlist cs)) <> semi
+            (nest tabwidth (conlist cs))
     ppr (ClassD n vs ss)
         = text "class" <+> text n <+> hsep (map text vs)
-                <+> text "where" <+> text "{" $$
-                    nest tabwidth (vcat (map ppr ss)) $$ text "}" <> semi
+                <+> text "where" <+> text "{"
+                $+$ nest tabwidth (vcat (map ppr ss)) $+$ text "}"
     ppr (InstD cls ms)
         = text "instance" <+> ppr cls
-                <+> text "where" <+> text "{" $$
-                    nest tabwidth (vcat (map ppr ms)) $$ text "}" <> semi
+                <+> text "where" <+> text "{"
+                $+$ nest tabwidth (vcat (map ppr ms)) $+$ text "}"
 
 instance Ppr Sig where
     ppr (Sig n t) = pprname n <+> text "::" <+> ppr t <> semi
@@ -202,10 +201,18 @@ instance Ppr Method where
     ppr (Method n e) = pprname n <+> text "=" <+> ppr e <> semi
 
 instance Ppr [Dec] where
-    ppr ds = vcat (map (\d -> ppr d $+$ text "") ds)
+    ppr ds = vcat (punctuate semi (map (\d -> ppr d $+$ text "") ds))
 
 instance Ppr Class where
     ppr (Class n ts) = text n <+> hsep (map ppr ts)
+
+instance Ppr Import where
+    ppr (Import n) = text "import" <+> text n <> semi
+
+instance Ppr Module where
+    ppr (Module n imps decs)
+        = text "module" <+> text n <+> text "where" <+> text "{"
+            $+$ nest tabwidth (vcat (map ppr imps) $+$ ppr decs) $+$ text "}"
 
 -- | Print an object very prettily.
 pretty :: (Ppr a) => a -> String

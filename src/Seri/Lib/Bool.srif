@@ -1,5 +1,9 @@
 
+module Seri.Lib.Bool where {
+
 (&&) :: Bool -> Bool -> Bool;
 (&&) True True = True;
-(&&) _ _ = False;
+(&&) _ _ = False
+
+}
 

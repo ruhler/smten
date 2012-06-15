@@ -1,4 +1,10 @@
 
+module Seri.SMT.Tests.Casenomatch where {
+
+import Seri.Lib.Integer;
+import Seri.Lib.Monad;
+import Seri.SMT.SMT;
+
 data Foo = Bar
          | Sludge Bool;
 
@@ -18,5 +24,7 @@ main = do {
     assert (isBar f);
     assert (1 == defoo f);
     query f;
-};
+}
+
+}
 

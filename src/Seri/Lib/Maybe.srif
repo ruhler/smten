@@ -1,4 +1,8 @@
 
+module Seri.Lib.Maybe where {
+
+import Seri.Lib.Monad;
+
 data Maybe a = Just a | Nothing;
 
 instance Monad Maybe where {
@@ -14,5 +18,7 @@ instance Monad Maybe where {
 
 fromMaybe :: forall a . a -> Maybe a -> a;
 fromMaybe _ (Just x) = x;
-fromMaybe x Nothing = x;
+fromMaybe x Nothing = x
+
+}
 

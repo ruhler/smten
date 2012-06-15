@@ -1,5 +1,13 @@
 
 -- vim: ft=haskell
+module Seri.Lib.Tests where {
+
+import Seri.Lib.Bool;
+import Seri.Lib.Integer;
+import Seri.Lib.List;
+import Seri.Lib.Maybe;
+import Seri.Lib.Monad;
+import Seri.Lib.Tuple;
 
 foo1 :: Integer;
 foo1 = (\x -> ((x*x)+(3*x))+2) 5;
@@ -156,5 +164,8 @@ testall = (42 == ((\x -> (((x*x) + (3*x)) + 2)) 5))
        && ((42 == (unused True))
        && ((19 == (multifoofun True 12))
        && ((8 == (shadow 3))
-       && (3 == (length [1, 5, 2]))))))))))))))))))))))))));
+       && (3 == (length [1, 5, 2]))))))))))))))))))))))))))
+
+}
+
 

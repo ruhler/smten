@@ -1,29 +1,40 @@
 
 {-# LANGUAGE TemplateHaskell #-}
 
-module Seri.Serif.Serif (serif)
+module Seri.Serif.Serif (serif, prelude)
   where
 
 import Data.List(transpose)
 
-import qualified Language.Haskell.TH as H
+import qualified Seri.Haskell as H
 
 import Seri.Lambda.IR
+import Seri.Lambda.Sugar(Module(..), Import(..))
 import Seri.Lambda.Types
 import Seri.Serif.Typed
 import Seri.Serif.Names
 import Seri.Serif.Polymorphic
 
--- | Given a list of seri declarations, generate a list of haskell
--- declarations which include the declaration of a haskell value
--- 'declarations' of type [Dec] with type inferred and type checked versions
--- of the given seri declarations.
-serif :: [Dec] -> [H.Dec]
-serif ds =
-  let sig = H.SigD (H.mkName "declarations") (H.AppT H.ListT (H.ConT ''Dec))
-      impl = H.FunD (H.mkName "declarations") [
-                H.Clause [] (H.NormalB (H.ListE (map mksdec ds))) []]
-  in library ++ concat (map mkdec ds) ++ [sig, impl] 
+-- | Given a seri module declaration, generate a corresponding haskell
+-- module declaration. The haskell module generated will export a variable 
+-- 'serimodule' of type Module representing a type inferred and checked version of
+-- the seri module.
+serif :: Module -> H.Module
+serif (Module n is ds) =
+  let -- definition of the 'module' value.
+      sig = H.SigD (H.mkName "serimodule") (H.ConT ''Module)
+      imports = [applyC 'Import [string n] | Import n <- is]
+      body = applyC 'Module [string n, H.ListE imports, H.ListE (map mksdec ds)]
+      impl = H.FunD (H.mkName "serimodule") [H.Clause [] (H.NormalB (body)) []]
+
+      -- the haskell Module
+      hdecs = concat (map mkdec ds)
+      himports = [H.Import False (H.mkName n) Nothing
+            (H.Hiding [H.ImportItemVar $ H.mkName "serimodule",
+                       H.ImportItemVar $ H.mkName "main"])
+            | Import n <- is]
+      prelude = H.Import False (H.mkName "Seri.Lib.Prelude") Nothing H.EmptySpec
+  in H.Module (H.mkName n) Nothing (header ++ (prelude : himports)) (hdecs ++ [sig, impl])
 
 -- mkexp bound e
 --  bound - a list of bound names.
@@ -345,8 +356,9 @@ decltuple n =
       vars = [[c] | c <- take n "abcdefghi"]
   in declprimtype nm vars [Con nm (map VarT vars)]
 
-library :: [H.Dec]
-library = concat [decltycon 0 "Integer",
+prelude :: H.Module
+prelude =
+ let decs = concat [decltycon 0 "Integer",
                   decltycon 0 "Char",
                   declprimtype "Bool" [] [Con "True" [], Con "False" []],
                   declprimtype "()" [] [Con "()" []],
@@ -358,5 +370,17 @@ library = concat [decltycon 0 "Integer",
                     Con ":" [VarT "a", AppT (ConT "[]") (VarT "a")]],
                   concat $ map decltyvar (concat (map snd tyvars))
                   ]
+
+ in H.Module (H.mkName "Seri.Lib.Prelude") Nothing header decs
+
+header :: [H.Import]
+header = [H.Import False (H.mkName "Prelude") Nothing
+            (H.Importing [H.ImportItemVar (H.mkName v)
+                            | v <- ["Integer", "Char", "Bool", "undefined"]]) ,
+          H.Import True (H.mkName "Prelude") Nothing H.EmptySpec,
+          H.Import False (H.mkName "Seri.Lambda.IR") Nothing H.EmptySpec,
+          H.Import False (H.mkName "Seri.Lambda.Sugar") Nothing H.EmptySpec,
+          H.Import False (H.mkName "Seri.Lambda.Ppr") Nothing H.EmptySpec,
+          H.Import False (H.mkName "Seri.Serif.Typed") Nothing H.EmptySpec]
 
 

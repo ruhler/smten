@@ -6,6 +6,7 @@ module Seri.Lambda.Sugar (
     Stmt(..), doE,
     Clause(..), clauseE,
     trueE, falseE, listE, tupE, tupP,
+    Module(..), Import(..), flatten,
     ) where
 
 import Seri.Lambda.IR
@@ -118,4 +119,20 @@ listE (x:xs) =
  let t = typeof x
      consT = arrowsT [t, listT t, listT t]
  in appsE [ConE (Sig ":" consT), x, listE xs]
+
+
+-- | Currently imports are restricted to the form:
+-- > import Foo.Bar
+-- No hiding or qualification is supported.
+data Import = Import Name
+    deriving(Show, Eq)
+
+data Module = Module Name [Import] [Dec]
+    deriving(Show, Eq)
+
+-- | Flatten a module hierarchy.
+-- This doesn't currently do much, but eventually it's expected it will
+-- implement name resolution and qualification of identifiers.
+flatten :: [Module] -> [Dec]
+flatten ms = concat [d | Module _ _ d <- ms]
 

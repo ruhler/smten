@@ -4,13 +4,8 @@ Import('env')
 
 env['SRCDIR'] = Dir(".")
 env['GHCPATH'] = [Dir(".")]
+env['LIBPATH'] = [Dir(".")]
 #env['GHCFLAGS'] = "-ddump-splices"
-
-## C back end tests.
-ctest = env.GHCProgram('ctest', 'Seri/Target/C/tests.hs')
-ctest_src = env.Command('ctest_c.c', ctest, '$SOURCE $TARGET')
-ctest_exe = env.Program('ctest_exe', ctest_src)
-#env.Default(env.Command('ctest_exe.out', ctest_exe, "$SOURCE > $TARGET"))
 
 ## Monomorphic
 monomorphic = env.GHCProgram('monomorphic', 'Seri/Target/Monomorphic/monomorphic.hs')
@@ -26,61 +21,72 @@ env.Command('Seri/Lambda/Parser.hs',
 
 ## Serif front end
 serif = env.GHCProgram('serif', 'Seri/Serif/serif.hs')
+env['SERIF'] = serif
 env.Default(serif)
 
 # Serie elaborator
 serie = env.GHCProgram('serie', 'Seri/Target/Elaborate/serie.hs')
 env.Default(serie)
 
-srifprelude = ['Seri/Lib/bool.srif',
-               'Seri/Lib/integer.srif',
-               'Seri/Lib/list.srif',
-               'Seri/Lib/monad.srif',
-               'Seri/Lib/maybe.srif', 
-               'Seri/Lib/tuple.srif'] 
-srifsmt = 'Seri/SMT/smt.srif'
+## The Seri library
+def dosrif(name):
+    return env.Command(name + ".hs", [serif, name + ".srif"],
+            "$SOURCE -o $TARGET ${SOURCES[1]}")
 
-## The SMT library
-smtlibsrif = env.Substfile('smtlib.all.srif', [srifprelude, srifsmt])
-smtlibhs = env.Command('smtlib.srif.hs', [serif, smtlibsrif],
-                '$SOURCE -o $TARGET ${SOURCES[1]}')
-smtlibbin = env.GHCProgram('smtlib', smtlibhs)
-smtlibsri = env.Command('smtlib.sri', smtlibbin, "$SOURCE > $TARGET")
-env.Default(smtlibsri)
+preludeexe = env.GHCProgram('Seri/Lib/Prelude.exe', 'Seri/Serif/prelude.hs')
+preludehs = env.Command('Seri/Lib/Prelude.hs', preludeexe, "$SOURCE > $TARGET")
+
+library = [
+    'Seri/Lib/Bool',
+    'Seri/Lib/Integer',
+    'Seri/Lib/List',
+    'Seri/Lib/Maybe',
+    'Seri/Lib/Monad',
+    'Seri/Lib/Tuple'
+    ]
+
+libraryhs = map(dosrif, library) + preludehs
+
+def dosri(name):
+    exe = env.GHCProgram(name + ".exe", name + ".hs",
+            GHCFLAGS="-main-is " + name.replace('/', '.') )
+    env.Depends(exe, libraryhs)
+    return env.Command(name + ".sri", exe, "$SOURCE > $TARGET")
+
+librarysri = map(dosri, library)
+dosrif('Seri/SMT/SMT')
+dosri('Seri/SMT/SMT')
+env.Default('Seri/SMT/SMT.sri')
+
 
 ## General tests
-srif = env.Substfile('general.all.srif', [srifprelude, 'Seri/Lib/tests.srif'])
-hs = env.Command('general.srif.hs', [serif, srif],
-                '$SOURCE -o $TARGET ${SOURCES[1]}')
-bin = env.GHCProgram('general', 'general.srif.hs')
-sri = env.Command('general.sri', bin, "$SOURCE > $TARGET")
-out = env.Command('general.out', [serie, sri],
-    "$SOURCE -o $TARGET -m testall ${SOURCES[1]}")
+dosrif('Seri/Lib/Tests')
+sri = dosri('Seri/Lib/Tests')
+out = env.Command('general.out', [serie, sri, librarysri],
+    "$SOURCE -o $TARGET -i $LIBPATH -m testall ${SOURCES[1]}")
 wnt = env.Command('general.wnt', [], "echo -n '(True :: Bool)' > $TARGET")
 cmp = env.Command('general.cmp', [out, wnt], "cmp $SOURCES > $TARGET")
 env.Default(cmp)
 
 ## haskell back end tests.
-hstest = env.GHCProgram('hstest', 'Seri/Target/Haskell/tests.hs')
-hstest_src = env.Command('hstest_hs.hs', [hstest, srif], '$SOURCES $TARGET')
-hstest_exe = env.GHCProgram('hstest_exe', hstest_src)
-env.Default(env.Command('hstest_exe.out', hstest_exe, "$SOURCE > $TARGET"))
+#hstest = env.GHCProgram('hstest', 'Seri/Target/Haskell/tests.hs')
+#hstest_src = env.Command('hstest_hs.hs', [hstest, sri],
+#    '$SOURCE -o $TARGET -i $LIBPATH ${SOURCES[1]}')
+#hstest_exe = env.GHCProgram('hstest_exe', hstest_src)
+#env.Default(env.Command('hstest_exe.out', hstest_exe, "$SOURCE > $TARGET"))
 
 
 ## SMT Query Tests
 def querytest(name):
-    srif = env.Substfile('%s.all.srif' % name,
-            [srifprelude, srifsmt, 'Seri/SMT/Tests/%s.srif' % name])
-    hs = env.Command('%s.srif.hs' % name, [serif, srif],
-                '$SOURCE -o $TARGET ${SOURCES[1]}')
-    bin = env.GHCProgram(name, hs)
-    sri = env.Command('%s.sri' % name, bin, "$SOURCE > $TARGET")
+    dosrif('Seri/SMT/Tests/' + name)
+    sri = dosri('Seri/SMT/Tests/' + name)
     out = env.Command('%s.out' % name, [runquery, sri],
-        '$SOURCE -d ${TARGET.dir}/%s.dbg ${SOURCES[1]} > $TARGET' % name)
+        '$SOURCE -d ${TARGET.dir}/%s.dbg -i $LIBPATH ${SOURCES[1]} > $TARGET' % name)
     env.Default(out)
         
-querytest("query1")
-querytest("query2")
-querytest("complex")
-querytest("if")
-querytest("casenomatch")
+querytest("Query1")
+querytest("Query2")
+querytest("Complex")
+querytest("If")
+querytest("Casenomatch")
+

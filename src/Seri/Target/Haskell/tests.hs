@@ -1,6 +1,4 @@
 
-{-# LANGUAGE TemplateHaskell #-}
-{-# LANGUAGE QuasiQuotes #-}
 
 import System.Environment
 
@@ -26,10 +24,12 @@ builtin = builtins [preludeB, Builtin {
 main :: IO ()
 main = do
     args <- getArgs
-    let [infile, outfile] = args
-    text <- readFile infile
-    seri <- parse text
-    let emain = mkenv seri (VarE (Sig "testall" UnknownT) Declared)
-    let doc = haskell builtin hsMain emain
-    writeFile outfile (show doc)
+    let ["-o", fout, fin] = args
+    text <- readFile fin
+    case parse fin text of
+        Right seri -> do
+            let emain = mkenv seri (VarE (Sig "testall" UnknownT) Declared)
+            let doc = haskell builtin hsMain emain
+            writeFile fout (show doc)
+        Left msg -> putStrLn msg >> exitFailure
 

@@ -1,8 +1,12 @@
 
+module Seri.Lib.Monad where {
+
 class Monad m where {
   (>>=) :: forall a b . m a -> (a -> m b) -> m b;
   (>>) :: forall a b . m a -> m b -> m b;
   return :: forall a . a -> m a;
   fail :: forall a . [Char] -> m a;
-};
+}
+
+}
 

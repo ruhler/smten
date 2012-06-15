@@ -1,4 +1,6 @@
 
+module Seri.Lib.Integer where {
+
 class Num a where {
   (+) :: a -> a -> a;
   (*) :: a -> a -> a;
@@ -31,5 +33,7 @@ instance Num Integer where {
   (+) = (%__prim_add_Integer :: Integer -> Integer -> Integer);
   (-) = (%__prim_sub_Integer :: Integer -> Integer -> Integer);
   (*) = (%__prim_mul_Integer :: Integer -> Integer -> Integer);
-};
+}
+
+}
 

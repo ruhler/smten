@@ -1,4 +1,10 @@
 
+module Seri.SMT.Tests.Complex where {
+
+import Seri.Lib.Integer;
+import Seri.Lib.Monad;
+import Seri.SMT.SMT;
+
 data Foo = Bar Integer
          | Sludge Bool;
 
@@ -33,5 +39,7 @@ main = do {
     f <- free;
     assert (2 == defoo f);
     query (b, x, sf, f);
-};
+}
+
+}
 

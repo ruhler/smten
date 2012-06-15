@@ -1,4 +1,10 @@
 
+module Seri.SMT.Tests.Query2 where {
+
+import Seri.Lib.Integer;
+import Seri.Lib.Monad;
+import Seri.SMT.SMT;
+
 incr :: Integer -> Integer;
 incr a = a + 1;
 
@@ -8,5 +14,7 @@ main = do {
     assert (x < 6);
     assert (incr x > 5);
     query x;
-};
+}
+
+}
 

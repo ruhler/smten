@@ -100,6 +100,7 @@ lookupvar e@(Env _ (VarE (Sig x _) (Instance (Class n ts)))) =
   in do
       InstD _ ms <- lookupInstD e n ts  
       mlook ms
+lookupvar e@(Env _ v) = error $ "lookupvar: " ++ pretty v
 
 union :: (Eq a) => [a] -> [a] -> [a]
 union a b = nub $ a ++ b
