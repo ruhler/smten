@@ -43,3 +43,73 @@ test it). Then try type inference.
 For tcl build system thing, start with just building it running all the
 commands every time.
 
+Sun Jun 17 11:37:20 EDT 2012
+
+Working on TCL build system thing.
+
+I want to build in a build directory.
+I want the build system to be described in its own directory... How about call
+that directory 'make'? And I can have a makefile to call the make script?
+
+Other words I could use:
+ make, build, construct, compile, ...
+tclbuild, tclmk.
+
+tclmk sounds good to me. Kind of a spoof on TCL/TK. Then it's clear it's tcl
+based and about making stuff. Or somewhat clear.
+
+
+Some questions to ask and answer:
+ - is there an easy way to copy a directory via links?
+   Perhaps some flag to cp -l?
+
+   Looks like cp -lr. Let me start with that.
+ - is there a way I can empty the environment?
+    $::env looks to be exactly what I want.
+ 
+    array unset ::env clears it. Cool.
+
+So, now we have the environment and the build directory set up. Time to try
+building things.
+
+The list of things I would like to build are:
++ Parser.y
+
++ serie
++ serif
++ monomorphic
++ runquery
+
++ *.hs for each *.srif
++ *.exe for each *.hs
++ *.sri for each *.exe
+
++ general test: compared against expected.
+- SMT query tests.
+
+Fine. Let's start one at a time.
+
+Parser.y
+
+Sun Jun 17 12:23:44 EDT 2012
+
+Hey look, I ran into a bug in the scons script. It wasn't building
+monomorphic. monomorphic is kind of out of date now. Perhaps I should remove
+it?
+
+The question is: what input does it take? A list of declarations? Or a module?
+Or what?
+
+Well, to work correctly, it needs the whole thing. So let's say it loads
+everything and monomorphises the flattened version. That should work fine.
+
+Sun Jun 17 12:28:26 EDT 2012
+
+I must say, I'm liking this build system so far. The only issue at this point
+is that it reruns all the ghc commands regardless, which takes a bit of time.
+But I'll get to that eventually. No need to worry about it now.
+
+Sun Jun 17 13:06:22 EDT 2012
+
+Okay, so I can build the whole thing now.
+

@@ -1,4 +1,4 @@
 
 all:
-	scons
+	tclsh tclmk/make.tcl
 
