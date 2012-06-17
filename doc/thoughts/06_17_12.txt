@@ -1,0 +1,45 @@
+
+Sun Jun 17 11:29:19 EDT 2012
+
+There are three things I would like to do which I think would be really cool.
+
+1. Get rid of scons for building.
+Instead, use a custom tcl based approach, which I can hopefully develop into a
+good library for building projects.
+
+The tcl based approach would work something like:
+ - run commands in an empty environment (populate environment explicitly)
+ - run them in sequential order.
+ - don't run a command if some checksum on its inputs hasn't changed since the
+   last time we ran the command.
+
+Where we have a library of ways to run commands, and checksum inputs, and do
+dependency checks and the like. I think this will be much simpler and more
+flexible and nicer all around than scons.
+
+2. Implement TypeChecking of Seri expressions.
+To start, just do type checking on a flattened declaration list. Eventually we
+may want to support modular typechecking, but don't worry about that now.
+
+I think this should be pretty easy to do.
+
+3. Implement Type inference of seri expressions.
+This will be trickier than type checking, but I think it's doable. Let me
+resurrect my previous implementation of the type inference and maybe it will
+be very straight forward.
+
+The combination of (2) and (3) mean I could get rid of serif entirely. The
+input language could be a strict subset of haskell. Then I don't have to worry
+about type annotations, or anything like that. It means what seri is, really,
+is a compiler for a subset of haskell which does more interesting stuff than
+compile just to C.
+
+What should I experiment with first today?
+
+I think first try the tcl build system thing.
+Then try type checking (and we can check programs after flattening to sort of
+test it). Then try type inference.
+ 
+For tcl build system thing, start with just building it running all the
+commands every time.
+
