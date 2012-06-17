@@ -18,9 +18,8 @@ proc run {args} {
 }
 
 # Create and set up a build directory for the build.
-run rm -rf build
 run mkdir -p build
-run cp -lr src build/src
+run cp -l -r -t build src
 
 # Generate the Seri Parser.hs from Parser.y
 run -ignorestderr $HAPPY -o build/src/Seri/Lambda/Parser.hs \
@@ -63,7 +62,10 @@ foreach {name} $sris {
 }
 
 foreach {name} $sris {
-    ghcprog $name.srigen $name.hs -main-is [string map {/ .} $name]
+    set module [string map {/ .} $name]
+    run sed -e s=@MODULE@=$module= build/src/Seri/Serif/srigen.hs.template \
+        > build/src/$name.srigen.hs
+    ghcprog $name.srigen $name.srigen.hs
     run build/src/$name.srigen > build/src/$name.sri
 }
 
@@ -75,10 +77,12 @@ run cmp build/src/tests.got build/src/tests.wnt
 
 # The SMT query tests
 proc querytest {name} {
+    set module Seri.SMT.Tests.$name
     run $::SERIF -o build/src/Seri/SMT/Tests/$name.hs \
          build/src/Seri/SMT/Tests/$name.srif
-    ghcprog Seri/SMT/Tests/$name.srigen Seri/SMT/Tests/$name.hs \
-         -main-is [string map {/ .} Seri/SMT/Tests/$name]
+    run sed -e s=@MODULE@=$module= build/src/Seri/Serif/srigen.hs.template \
+        > build/src/Seri/SMT/Tests/$name.srigen.hs
+    ghcprog Seri/SMT/Tests/$name.srigen Seri/SMT/Tests/$name.srigen.hs
     run build/src/Seri/SMT/Tests/$name.srigen \
          > build/src/Seri/SMT/Tests/$name.sri
     run $::RUNQUERY -d build/src/Seri/SMT/Tests/$name.dbg -i build/src \

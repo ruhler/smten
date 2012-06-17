@@ -22,9 +22,7 @@ main = do
             writeFile fout $ unlines [
                 "{-# LANGUAGE ExplicitForAll #-}",
                 "{-# LANGUAGE MultiParamTypeClasses #-}",
-                show (ppr hs),
-                "main :: Prelude.IO ()",
-                "main = Prelude.putStrLn (pretty serimodule)"
+                show (ppr hs)
                 ]
         Left msg -> do  
             putStrLn msg

@@ -30,8 +30,7 @@ serif (Module n is ds) =
       -- the haskell Module
       hdecs = concat (map mkdec ds)
       himports = [H.Import False (H.mkName n) Nothing
-            (H.Hiding [H.ImportItemVar $ H.mkName "serimodule",
-                       H.ImportItemVar $ H.mkName "main"])
+            (H.Hiding [H.ImportItemVar $ H.mkName "serimodule"])
             | Import n <- is]
       prelude = H.Import False (H.mkName "Seri.Lib.Prelude") Nothing H.EmptySpec
   in H.Module (H.mkName n) Nothing (header ++ (prelude : himports)) (hdecs ++ [sig, impl])

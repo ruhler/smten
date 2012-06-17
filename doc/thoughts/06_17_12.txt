@@ -136,3 +136,67 @@ Sun Jun 17 13:22:46 EDT 2012
 Okay, so I just have to clear each element at a time, because unsetting the
 entire env array has a special meaning in tcl. Good.
 
+Sun Jun 17 13:29:45 EDT 2012
+
+Cool! So the env thing works great now. The build works great.
+
+It takes 30 seconds at this point to build the whole thing. In order for this
+to be a viable build system, I need to not rerun commands unnecessarily. This
+is going to be a lot of work to implement, but I think it will totally be
+worth it.
+
+At this point, it's the ghc commands which take the most time to run. This
+means I should focus on not rerunning ghc commands which don't need to be
+rerun.
+
+One thing to do to start is, don't delete the entire directory every time I
+make. That means I should start by figuring out how to make the copy command
+work the way I want, which is: copy only if I need to. So, don't overwrite. We
+are linking anyway, so it should pick up changes anyway.
+
+Let me experiment with cp, see if I can't figure out how it works.
+
+Sun Jun 17 13:45:11 EDT 2012
+
+Now cp looks to work fine. The trouble is, we are having problems with
+conflicting definitions for main if we try to rebuilt something that's already
+built. I fear it has something to do with using -main-is the way I am.
+
+I'm trying to make Tests.srigen. But it says, for example, main is already
+defined in Bool.o.
+
+How about this, let me call what I was calling main in each of those generate.
+See if that doesn't help the issue.
+
+No, it doesn't help the issue.
+
+The problem is, I'm using a module both for it's main program and as a
+library. What I should really do is have a separate haskell program which has
+the main function for generating the .sri code. That will solve the issue I
+suspect.
+
+
+Sun Jun 17 13:56:36 EDT 2012
+
+Let me take a little break to think about how I want to do this first.
+
+Sun Jun 17 14:12:37 EDT 2012
+
+Simple. Have the .hs files export the _seriXXX stuff and serimodule. That's
+it. Then, for each .sri file I want to generate, write out a main program:
+
+Foo.srigen.hs:
+    import Seri.Lambda
+    import Foo
+    main :: IO ()
+    main = putStrLn $ pretty serimodule
+
+Hmm... That looks like a source like thing. So maybe I can have a template in
+the serif directory, copy it with substitution (using sed?). Yes. That would
+be good. @MODULE@ would be a fine thing to indicate the template.
+
+Sun Jun 17 14:22:02 EDT 2012
+
+Yup. That works. And the build time has gone down to about 14 seconds from
+scratch, 10 seconds not from built. Cool.
+
