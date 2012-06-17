@@ -3,3 +3,4 @@ scons/ghc.pyc
 scons/seri.pyc
 scons/local
 .sconsign.dblite
+tclmk/local.tcl

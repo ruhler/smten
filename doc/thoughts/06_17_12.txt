@@ -113,3 +113,26 @@ Sun Jun 17 13:06:22 EDT 2012
 
 Okay, so I can build the whole thing now.
 
+Sun Jun 17 13:07:16 EDT 2012
+
+I'm a little concerned though. For example, how did ghc know about where to
+find packages? I never told it... Is the environment leaking? Or does ghc just
+know?
+
+I fear we aren't clearing the environment the way I want us to be.
+
+Sun Jun 17 13:16:52 EDT 2012
+
+Yes, if I run the make command in env i, then ghc can't find the packages. So
+I must not have a clear environment.
+
+The mkfile, cp, rm, etc... might work because they are built in tcl commands.
+
+I wish I could set the environment inside tcl, but that doesn't seem to be
+working.
+
+Sun Jun 17 13:22:46 EDT 2012
+
+Okay, so I just have to clear each element at a time, because unsetting the
+entire env array has a special meaning in tcl. Good.
+

@@ -1,13 +1,21 @@
 
+# Explicitly initialize the environment.
+foreach key [array names ::env] {
+    array unset ::env $key
+}
+
+# Get infomation about the local environment.
+# local.tcl should set
+#   ::HAPPY - path to the happy executable
+#   ::GHC - path to ghc
+#   ::env(...) - needed environment variables, such as:
+#       PATH, GHC_PACKAGE_PATH
+source tclmk/local.tcl
+
 proc run {args} {
     puts $args
     exec {*}$args
 }
-
-# Explicitly initialize the environment.
-array unset ::env
-set HAPPY /home/ruhler/.cabal/bin/happy
-set GHC /usr/bin/ghc
 
 # Create and set up a build directory for the build.
 run rm -rf build
