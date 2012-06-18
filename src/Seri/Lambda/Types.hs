@@ -110,7 +110,7 @@ instance Typeof Pat where
 typeofCon :: Dec -> Name -> Maybe Type
 typeofCon (DataD dn vars cons) cn = do
     Con _ ts <- listToMaybe (filter (\(Con n _) -> n == cn) cons)
-    let ty = arrowsT (ts ++ [ConT dn])
+    let ty = arrowsT (ts ++ [appsT (ConT dn : map VarT vars)])
     if null vars
         then return $ ForallT vars [] ty
         else return ty

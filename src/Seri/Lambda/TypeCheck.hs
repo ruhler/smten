@@ -32,11 +32,12 @@ typecheck ds =
 
       checkdec d@(InstD cls ms) =
         let checkmeth :: Method -> Failable () 
-            checkmeth m@(Method n b) = do
+            checkmeth m@(Method n b) =
+              onfail (\s -> fail $ s ++ "\n in method " ++ n) $ do
                 checkexp [] b
                 texpected <- lookupmethtype cls n
-                if typeof b /= texpected
-                    then fail $ "expected type " ++ pretty texpected
+                if typeof b /= unforallT texpected
+                    then fail $ "checkmeth: expected type " ++ pretty (unforallT texpected)
                             ++ " but found type " ++ pretty (typeof b)
                             ++ " in Method " ++ pretty m
                     else return ()
@@ -57,7 +58,7 @@ typecheck ds =
          let assertpat w p =
                 if w == typeof p
                     then return () 
-                    else fail $ "expected type " ++ pretty w ++ " but found type " ++ pretty (typeof p) ++ " in pattern " ++ pretty p
+                    else fail $ "checkpat: expected type " ++ pretty w ++ " but found type " ++ pretty (typeof p) ++ " in pattern " ++ pretty p
          sequence [assertpat w p | (w, p) <- zip twants ps]
          return concated
       checkpat (VarP (Sig n t)) = return [(n, t)]
@@ -76,7 +77,9 @@ typecheck ds =
       lookupcontype (Sig "False" _) = return $ ConT "Bool"
       lookupcontype (Sig "[]" _) = return $ listT (VarT "a")
       lookupcontype (Sig ":" _) = return $ arrowsT [VarT "a", AppT (ConT "[]") (VarT "a"), AppT (ConT "[]") (VarT "a")]
+      lookupcontype (Sig "()" _) = return $ ConT "()"
       lookupcontype (Sig "(,)" _) = return $ arrowsT [VarT "a", VarT "b", AppT (AppT (ConT "(,)") (VarT "a")) (VarT "b")]
+      lookupcontype (Sig "(,,)" _) = return $ arrowsT [VarT "a", VarT "b", VarT "c",  AppT (AppT (AppT (ConT "(,,)") (VarT "a")) (VarT "b")) (VarT "c")]
       lookupcontype (Sig n ct) = do
          let dt = condt ct
          case (attemptM $ lookupDataD (mkenv ds ()) dt) of
@@ -125,7 +128,7 @@ typecheck ds =
             (AppT (AppT (ConT "->") a) _) ->
                 if a == typeof x
                     then return ()
-                    else fail $ "expected type " ++ pretty a ++
+                    else fail $ "checkexp app: expected type " ++ pretty a ++
                         " but got type " ++ pretty (typeof x) ++
                         " in expression " ++ pretty x
             t -> fail $ "expected function type, but got type " ++ pretty t ++ " in expression " ++ pretty f
@@ -149,11 +152,11 @@ typecheck ds =
                         ++ " but " ++ n ++ " has type " ++ pretty t
       checkexp tenv v@(VarE (Sig n t) (Instance cls)) = do
          texpected <- lookupmethtype cls n
-         if t /= texpected
-             then fail $ "expected type " ++ pretty texpected
+         if isSubType texpected t
+             then return ()
+             else fail $ "checkep: #var: expected type " ++ pretty (unforallT texpected)
                      ++ " but found type " ++ pretty t
                      ++ " in " ++ pretty v
-             else return ()
 
   in mapM_ checkdec ds
 

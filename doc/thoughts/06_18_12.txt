@@ -226,3 +226,9 @@ Mon Jun 18 19:02:12 EDT 2012
 
 Making progress. Just have to add more to figure out the bugs.
 
+Mon Jun 18 19:26:34 EDT 2012
+
+Okay, so now typecheck passes for the general tests, and stuff which is
+elaborated. I don't really know if it's correct unless I give it failing test
+cases, but this is a good start.
+
