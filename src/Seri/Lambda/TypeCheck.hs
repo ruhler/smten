@@ -14,23 +14,40 @@ type TypeEnv = [(String, Type)]
 
 -- Type check a flattened seri program.
 -- fails if there is an error.
-typecheck :: (Monad m) => [Dec] -> m ()
+typecheck :: [Dec] -> Failable ()
 typecheck ds = 
-  let checkdec :: (Monad m) => Dec -> m ()
-      checkdec (ValD (Sig n t) e) = do
+  let checkdec :: Dec -> Failable ()
+      checkdec d@(ValD (Sig n t) e) =
+        onfail (\s -> fail $ s ++ "\n in declaration " ++ pretty d) $ do
           checkexp [] e
-          if (typeof e /= t)
-            then fail $ "expecting type " ++ pretty t ++ " in expression "
+          if (typeof e /= (unforallT t))
+            then fail $ "checkdec: expecting type " ++ pretty (unforallT t) ++ " in expression "
                         ++ pretty e ++ " but found type " ++ pretty (typeof e)
             else return ()
-      checkdec d = error $ "TODO: checkdec " ++ pretty d
 
-      checkpat :: (Monad m) => Pat -> m [(Name, Type)]
+      -- TODO: shouldn't we check the type signatures don't have any partially
+      -- applied types?
+      checkdec (DataD {}) = return ()
+      checkdec (ClassD {}) = return ()
+
+      checkdec d@(InstD cls ms) =
+        let checkmeth :: Method -> Failable () 
+            checkmeth m@(Method n b) = do
+                checkexp [] b
+                texpected <- lookupmethtype cls n
+                if typeof b /= texpected
+                    then fail $ "expected type " ++ pretty texpected
+                            ++ " but found type " ++ pretty (typeof b)
+                            ++ " in Method " ++ pretty m
+                    else return ()
+        in onfail (\s -> fail $ s ++ "\n in declaration " ++ pretty d) $ do
+             mapM_ checkmeth ms
+      checkpat :: Pat -> Failable [(Name, Type)]
       checkpat p@(ConP s@(Sig _ ct) ps) = do
          texpected <- lookupcontype s
          if isSubType texpected ct
             then return ()
-            else fail $ "expecting type " ++ pretty texpected ++ ", but found type " ++ pretty ct
+            else fail $ "checkpat: expecting type " ++ pretty texpected ++ ", but found type " ++ pretty ct
          binds <- mapM checkpat ps
          let concated = concat binds
          if length concated /= length (nub (map fst concated))
@@ -48,32 +65,42 @@ typecheck ds =
       checkpat (WildP t) = return []
             
 
-      checkmatch :: (Monad m) => TypeEnv -> Match -> m ()
+      checkmatch :: TypeEnv -> Match -> Failable ()
       checkmatch tenv (Match p b) = do
         bindings <- checkpat p
         checkexp (bindings ++ tenv) b
 
       -- look up the type of the given data constructor in the environment.
-      lookupcontype :: (Monad m) => Sig -> m Type
+      lookupcontype :: Sig -> Failable Type
+      lookupcontype (Sig "True" _) = return $ ConT "Bool"
+      lookupcontype (Sig "False" _) = return $ ConT "Bool"
+      lookupcontype (Sig "[]" _) = return $ listT (VarT "a")
+      lookupcontype (Sig ":" _) = return $ arrowsT [VarT "a", AppT (ConT "[]") (VarT "a"), AppT (ConT "[]") (VarT "a")]
+      lookupcontype (Sig "(,)" _) = return $ arrowsT [VarT "a", VarT "b", AppT (AppT (ConT "(,)") (VarT "a")) (VarT "b")]
       lookupcontype (Sig n ct) = do
          let dt = condt ct
-         case dt of
-                "Bool" -> return $ ConT "Bool"
-                "(,)" -> return $ arrowsT [VarT "a", VarT "b",
-                            AppT (AppT (ConT "(,)") (VarT "a")) (VarT "b")]
-                _ -> case (attemptM $ lookupDataD (mkenv ds ()) dt) of
-                        Nothing -> fail $ "unable to find DataD for " ++ dt
-                        Just datad ->
-                            case typeofCon datad n of
-                                Nothing -> fail $ "unable to find constructor " ++ n ++ " in " ++ pretty datad
-                                Just t -> return t
+         case (attemptM $ lookupDataD (mkenv ds ()) dt) of
+            Nothing -> fail $ "unable to find DataD for " ++ dt
+            Just datad ->
+                case typeofCon datad n of
+                    Nothing -> fail $ "unable to find constructor " ++ n ++ " in " ++ pretty datad
+                    Just t -> return t
 
+      -- lookup the type of a method for the given class instance.
+      lookupmethtype :: Class -> Name -> Failable Type
+      lookupmethtype (Class n ts) mn = do
+          ClassD _ vars sigs <- lookupClassD (mkenv ds ()) n
+          case filter (\(Sig sn _) -> sn == mn) sigs of
+             [Sig _ t] -> return $ assign (zip vars ts) t
+             [] -> fail $ "unable to find method " ++ mn ++ " in class " ++ n
+             xs -> fail $ "multiple definitions of method " ++ mn ++ " in calss " ++ n
+          
       -- checkexp tenv e
       -- Type check an expression.
       --    tenv - a mapping from bound variable name to type
       --    e - the expression to typecheck
       --  fails if expression does not type check.
-      checkexp :: (Monad m) => TypeEnv -> Exp -> m ()
+      checkexp :: TypeEnv -> Exp -> Failable ()
       checkexp _ (IntegerE {}) = return ()
       checkexp _ (PrimE {}) = return ()
       checkexp tenv (CaseE e ms) = do
@@ -85,7 +112,7 @@ typecheck ds =
             else fail $ "Expected type " ++ pretty (typeof e)
                         ++ " in pattern " ++ pretty (head (badpattypes))
                         ++ " but found type " ++ pretty (typeof (head (badpattypes)))
-         let badmtypes = [e | typeof e /= typeof (head ms), Match _ e <- ms]
+         let badmtypes = filter (\e -> typeof e /= typeof (head ms)) [e | Match _ e <- ms]
          if null badmtypes
             then return ()
             else fail $ "Expected type " ++ pretty (typeof e)
@@ -107,15 +134,26 @@ typecheck ds =
          texpected <- lookupcontype s
          if isSubType texpected ct
             then return ()
-            else fail $ "expecting type " ++ pretty texpected ++ ", but found type " ++ pretty ct
+            else fail $ "checkexp: expecting type " ++ pretty texpected ++ ", but found type " ++ pretty ct
       checkexp tenv (VarE (Sig n t) Bound) =
          case lookup n tenv of
              Just t' | t == t' -> return ()
              Just t' -> fail $ "expected variable of type " ++ pretty t'
                         ++ " but " ++ n ++ " has type " ++ pretty t
              Nothing -> fail $ "unknown bound variable " ++ n
-      checkexp tenv v@(VarE (Sig n t) Declared) = error $ "TODO: checkexp Declared var: " ++ pretty v
-      checkexp tenv v@(VarE (Sig n t) (Instance _)) = error $ "TODO: checkexp Instance var: " ++ pretty v
+      checkexp tenv v@(VarE (Sig n t) Declared) = do
+         (texpected, _) <- lookupvar (mkenv ds v)
+         if isSubType texpected t
+             then return ()
+             else fail $ "expected variable of type " ++ pretty texpected
+                        ++ " but " ++ n ++ " has type " ++ pretty t
+      checkexp tenv v@(VarE (Sig n t) (Instance cls)) = do
+         texpected <- lookupmethtype cls n
+         if t /= texpected
+             then fail $ "expected type " ++ pretty texpected
+                     ++ " but found type " ++ pretty t
+                     ++ " in " ++ pretty v
+             else return ()
 
   in mapM_ checkdec ds
 

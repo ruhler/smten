@@ -173,4 +173,56 @@ error checking.
 
 Sounds good to me.
     
+Mon Jun 18 18:02:30 EDT 2012
+
+Okay, so I have failable now. Let me try to use it for type checking.
+1. Update from generic monad to Failable.
+2. catch an error at the declaration level, printing out the whole declaration
+for context.
+
+Mon Jun 18 18:17:25 EDT 2012
+
+Good. Next step: ClassD, InstanceD. What do I need to do to type check these?
+
+ClassD: just check the types are fully applied, right? I'm not sure.
+InstD: check the expressions type check and are subtypes of the corresponding
+class types for them.
+
+Let me skip the ClassD one for now. And do the InstD one.
+
+We should already, or eventually, have a function that given a name, Class,
+returns the expected type of that thing. Reuse that function here. Get the
+expected type of the method, verify that matches the implementation. Easy.
+
+Mon Jun 18 18:29:43 EDT 2012
+
+How to look up what a method type should be?
+
+Look up the class.
+Look up... I might already have some code for this. Let me check.
+
+There's something called lookupSig. 
+Takes an environment, a class name, a method name, returns the type.
+Note: this is the type in the class. But yes, that's what I want.
+
+But, I have to look up the class declaration anyway.
+
+Maybe better would be, given a ClassD, lookup a sig? That's more generally
+useful perhaps? Sounds good to me.
+
+Mon Jun 18 18:41:37 EDT 2012
+
+Good. Next up: declared variables.
+
+Let me look up the type in the environment with lookupvar. Verify that
+matches.
+
+Mon Jun 18 18:45:14 EDT 2012
+
+Problem now: can't find DataD for []. Should I hard code that?
+Yup.
+
+Mon Jun 18 19:02:12 EDT 2012
+
+Making progress. Just have to add more to figure out the bugs.
 

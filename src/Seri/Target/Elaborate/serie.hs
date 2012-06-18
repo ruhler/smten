@@ -1,6 +1,7 @@
 
 import System.Environment
 
+import Seri.Failable
 import Seri.Lambda
 import Seri.Target.Elaborate
 
@@ -16,7 +17,7 @@ main = do
 
     seri <- load [path] input
     let decs = flatten seri
-    --typecheck decs
+    --attemptM $ typecheck decs
     let e = mkenv decs (VarE (Sig mainexp UnknownT) Declared)
     elaborated <- elaborate elaborateR e
     output (pretty elaborated)

@@ -1,7 +1,7 @@
 
 -- | Utilities for working with Seri Types
 module Seri.Lambda.Types (
-    appsT, arrowsT, outputT, unarrowsT, listT, integerT,
+    appsT, arrowsT, outputT, unarrowsT, listT, integerT, unforallT,
     Typeof(..), typeofCon,
     assign, assignments,
     isSubType,
@@ -100,7 +100,7 @@ instance Typeof Match where
     typeof (Match _ e) = typeof e
 
 instance Typeof Pat where
-    typeof (ConP tn _) = outputT (typeof tn)
+    typeof (ConP tn _) = last $ unarrowsT (typeof tn)
     typeof (VarP tn) = typeof tn
     typeof (IntegerP _) = integerT
     typeof (WildP t) = t
@@ -138,3 +138,7 @@ isSubType t sub
      in length namenub == length assignnub && b
     
 
+-- | Extract the body of a ForallT.
+unforallT :: Type -> Type
+unforallT (ForallT _ _ t) = t
+unforallT t = t

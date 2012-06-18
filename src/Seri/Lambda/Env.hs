@@ -6,7 +6,7 @@
 -- declarations.
 module Seri.Lambda.Env (
     Env(), val, mkenv, withenv, decls,
-    lookupvar, lookupDataD,
+    lookupvar, lookupDataD, lookupClassD,
     minimize, sort,
     ) where
 
