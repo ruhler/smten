@@ -1,12 +1,17 @@
 
 -- | Utilities for working with Seri Types
 module Seri.Lambda.Types (
-    appsT, arrowsT, outputT, listT, integerT,
-    Typeof(..),
+    appsT, arrowsT, outputT, unarrowsT, listT, integerT,
+    Typeof(..), typeofCon,
     assign, assignments,
+    isSubType,
     ) where
 
+import Control.Monad.State
+import Data.List(nub)
+import Data.Maybe
 import Data.Generics
+
 import Seri.Lambda.IR
 
 -- | The Integer type
@@ -32,6 +37,13 @@ arrowsT (t:ts) = appsT [ConT "->", t, arrowsT ts]
 outputT :: Type -> Type
 outputT (AppT (AppT (ConT "->") _) t) = t
 outputT t = t
+
+-- | Given a type of the form (a -> b -> ... -> c),
+--  returns the list: [a, b, ..., c]
+unarrowsT :: Type -> [Type]
+unarrowsT (AppT (AppT (ConT "->") a) b) = a : (unarrowsT b)
+unarrowsT t = [t]
+
 
 -- | Given a type a, returns the type [a].
 listT :: Type -> Type
@@ -92,4 +104,37 @@ instance Typeof Pat where
     typeof (VarP tn) = typeof tn
     typeof (IntegerP _) = integerT
     typeof (WildP t) = t
+
+-- | Get the type of a constructor in the given Data declaration.
+-- Returns Nothing if there is no such constructor in the declaration.
+typeofCon :: Dec -> Name -> Maybe Type
+typeofCon (DataD dn vars cons) cn = do
+    Con _ ts <- listToMaybe (filter (\(Con n _) -> n == cn) cons)
+    let ty = arrowsT (ts ++ [ConT dn])
+    if null vars
+        then return $ ForallT vars [] ty
+        else return ty
+
+
+-- | isSubType t sub
+-- Return True if 'sub' is a concrete type of 't'.
+isSubType :: Type -> Type -> Bool
+isSubType t sub
+  = let isst :: Type -> Type -> State [(Name, Type)] Bool
+        isst (ConT n) (ConT n') = return (n == n')
+        isst (AppT a b) (AppT a' b') = do
+            ar <- isst a a'
+            br <- isst b b'
+            return (ar && br)
+        isst (VarT n) t = do
+            modify $ \l -> (n, t) : l
+            return True
+        isst (ForallT _ _ t) t' = isst t t'
+        isst _ _ = return False
+
+        (b, tyvars) = runState (isst t sub) []
+        assignnub = nub tyvars
+        namenub = nub (map fst assignnub)
+     in length namenub == length assignnub && b
+    
 

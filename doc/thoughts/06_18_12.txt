@@ -1,0 +1,176 @@
+
+Mon Jun 18 12:16:21 EDT 2012
+
+TypeChecking.
+
+
+Case:
+    case e of ms
+ - e must type check
+ - each match must type check
+    - patterns must type check
+    - bodies must type check under environment given by pattern
+ - each pattern must have same type as e
+ - each body must have same type
+
+Application
+    f x
+ - f must type check
+ - x must type check
+ - f must be of type (a -> b)
+ - x must be of type a.
+
+Lambda
+  \(n::t) -> e
+ - e must type check under environment where n has type t.
+
+Con
+ - type should match the type of the constructor given in the environment.
+    Specifically, they should be a subtype of the constructor types.
+
+ Question: what about the primitive type constructors? Like tuple and list? Do
+ have to have those be built in? Maybe I should provide somewhere for type
+ checking just a list of the built in constructors that I can look up against.
+
+Var Bound
+ - verify type equals that in the environment
+
+Var Declared
+ - verify type is a subtype of whatever the declared variable is declared to
+   be.
+
+Var Instance
+ - Type is a subtype of the type based on the instance.
+    so, Class + Definition gives expected type, assert it is a subtype.
+
+Pretty straight forward.
+
+There are some utility functions I'll want, which make make things easier.
+
+Assert Types Equal:
+ - given two objects which have types and can be printed, assert they are
+   equal, print out something pretty if they aren't.
+
+ err... I'm not so sure. Maybe see what all I use first, then factor out the
+common code.
+
+Assert subtype:
+ Given a type and a hopeful subtype, verify it is indeed a subtype.
+
+I have enough now. I should just get to the grunt work.
+
+Mon Jun 18 14:04:08 EDT 2012
+
+Let me do a typecheck in flatten. Then I can let the errors drive things.
+
+Mon Jun 18 14:12:34 EDT 2012
+
+Nope, typecheck does not want to be in sugar. Because it gives us a bad
+dependency on Sugar -> Typecheck -> Ppr -> Sugar.
+
+Let me put it in elaborate then.
+
+Mon Jun 18 14:19:51 EDT 2012
+
+Okay, so now the structure is there. Time to fix the errors a bit at a time.
+And ideally I should fix them the best way I can, and not hack all over the
+place.
+
+First question: how to checkdec a ValD?
+
+- Typecheck the expression with an empty type environment.
+- Verify the type of the expression is exactly equal to the type in the
+  signature. Easy.
+
+That's done. Next issue: ConE.
+
+How do I look up the type of the constructor?
+Well, I know it's type, hypothetically. Remember, I'm assuming a well typed
+expresison. So, get it's type, look up the DataD, lookup the constructor, then
+do the subtype check.
+
+What do I already have in place for looking up constructors?
+
+lookupDataD will give me the DataD. From that I can look for the Constructor
+(maybe we should provide a way to look up a constructor?)
+
+Given the Constructor and the dataD, I can form the expected type:
+  forall a b c . t1 -> t2 -> ... d
+
+So, what I want is, given a DataD and a constructor name, return the type of
+the constructor function. That can go in Types.hs.
+
+Now, what I should do for ConE is as follows:
+1. Look up the DataD (verify it is there)
+2. Ask what the type of the Constructor is
+3. Assert that the concrete type of the constructor is a subtype of the
+constructor type. Simple.
+
+Mon Jun 18 16:24:11 EDT 2012
+
+Problem: DataD for "(,)" doesn't exist in the environment.
+
+Either I should hard code it in, or I should add it to the environment.
+
+I feel like the easy way to make progress is to hard code it in.
+
+What I want is a function which takes a constructor Sig in an environment, and
+returns the name and type of that constructor.
+
+Ug. This is sadly annoying.
+
+Mon Jun 18 16:41:23 EDT 2012
+
+Next step: check match.
+
+How do we check a match?
+
+1. Check the pattern, should return bindings from name to type.
+2. Check the expression in the right type environment.
+
+Mon Jun 18 16:43:45 EDT 2012
+
+I should try to figure out a way to clean up type checking a bunch.
+
+Mon Jun 18 16:54:48 EDT 2012
+
+I really really wish it were cleaner. Maybe keep hacking at it to get a better
+idea of what I need, then clean it up? Or should I actually think about things
+ahead of time? Ug. Let me keep hacking. See how far I can get today.
+
+Mon Jun 18 17:11:07 EDT 2012
+
+So, here's another problem. Error messages.
+
+I need to have context. So, ideally, um... show more context somehow? The
+expression, the expression above that, and so on?
+
+This would work if I used an either type, or an error type of some sort and
+could append to the failure message.
+
+Mon Jun 18 17:17:55 EDT 2012
+
+Aha!. So this gives me an idea.
+
+I'm feeling not great about how hackish this is, but, here's an opportunity to
+clean up
+
+There are many functions I write throughout Seri that return an error in
+cases. Sometimes I return Maybe. Sometimes I return an arbitrary monad.
+Sometimes I return an Either. But there are issues, because Either String
+doesn't use Left msg for the fail implementation by default, which is really
+annoying, and I can't catch an error in an arbitrary monad to add type
+information to it, and Maybe doesn't give an error message.
+
+So how about I define a single Error monad that I can use?
+
+And have a function which converts to a generic monad. And a function that
+converts to an Either. So, take a break from what all I'm working on to do
+that.
+
+Then I can use that monad to catch errors and annotate them more precisely in
+error checking.
+
+Sounds good to me.
+    
+

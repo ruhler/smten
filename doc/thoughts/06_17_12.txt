@@ -200,3 +200,42 @@ Sun Jun 17 14:22:02 EDT 2012
 Yup. That works. And the build time has gone down to about 14 seconds from
 scratch, 10 seconds not from built. Cool.
 
+Sun Jun 17 14:25:07 EDT 2012
+
+10 seconds is maybe short enough now for me that I don't mind waiting that
+long each time I build. Can we switch over to this build system now then, and
+wait until I get really fed up before I go to implement the caching of ghc
+runs?
+
+Yes. Let me try that.
+
+Sun Jun 17 14:28:12 EDT 2012
+
+What's left now? Shall I try out type checking?
+
+How about this. I don't feel much like heavy implementation work right now.
+Let me instead retrieve and review the old type checking code, give some
+thoughts, then stew some.
+
+Sun Jun 17 14:35:51 EDT 2012
+
+Looks like nothing fancy. Typecheck I can rewrite from scratch.
+The difference in type inference is that we have declarations, but I think use
+the same algorithm: generate a bunch of constraints, solve those constraints.
+Hopefully it should work fine.
+
+Cool. So let me implement type checking first.
+
+typecheck :: (Monad m) => [Dec] -> m ()
+
+I think I'll want to have a version of typecheck which takes a type
+environment as input, where a type environment is a mapping from variable
+names to their types. That will make it easier to check variable types.
+
+Do I want to return the type of the subexpression when I typecheck
+expressions? Or just use typeof? I can use typeof.
+
+Sun Jun 17 15:03:13 EDT 2012
+
+Okay, so I don't feel much like working on this now, so I'll come back to it
+another time.

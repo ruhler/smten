@@ -15,7 +15,9 @@ main = do
                x -> error $ "bad args: " ++ show x
 
     seri <- load [path] input
-    let e = mkenv (flatten seri) (VarE (Sig mainexp UnknownT) Declared)
+    let decs = flatten seri
+    --typecheck decs
+    let e = mkenv decs (VarE (Sig mainexp UnknownT) Declared)
     elaborated <- elaborate elaborateR e
     output (pretty elaborated)
 

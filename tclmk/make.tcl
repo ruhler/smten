@@ -19,7 +19,7 @@ proc run {args} {
 
 # Create and set up a build directory for the build.
 run mkdir -p build
-run cp -l -r -t build src
+run cp -l -r -n -t build src
 
 # Generate the Seri Parser.hs from Parser.y
 run -ignorestderr $HAPPY -o build/src/Seri/Lambda/Parser.hs \
