@@ -5,6 +5,7 @@ module Seri.Target.Elaborate.Elaborate (
 
 import Data.Generics
 
+import Seri.Failable
 import Seri.Lambda
 
 -- A reduction rule. Given a set of global declarations, a global reduction
@@ -101,7 +102,7 @@ varredR :: (Monad m) => Rule m
 varredR = Rule $ \gr e ->
    case val e of
       v@(VarE (Sig _ ct) _)
-        -> case (lookupvar $ withenv e v) of
+        -> case (attemptM $ lookupvar (withenv e v)) of
                Nothing -> return Nothing
                Just (pt, ve) -> return . Just $ assign (assignments pt ct) ve
       _ -> return Nothing

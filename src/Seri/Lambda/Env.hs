@@ -14,6 +14,7 @@ import Data.Generics
 import Data.List(nub, partition)
 import Data.Maybe
 
+import Seri.Failable
 import Seri.Lambda.IR
 import Seri.Lambda.Ppr
 
@@ -38,44 +39,58 @@ withenv (Env m _) x = Env m x
 decls :: Env x -> [Dec]
 decls x = env x
 
+-- | theOneOf kind name predicate decls
+-- Common code for extracting a single declaration from a list.
+--  kind - the kind of declaration searched in (for error messages)
+--  name - the name of the declaration searched for (for error messages)
+--  predicate - a predicate which identifies the desired declaration
+--  decls - the declarations to search in.
+theOneOf :: String -> String -> (Dec -> Bool) -> [Dec] -> Failable Dec
+theOneOf kind n p ds =
+    case filter p ds of
+        [x] -> return x
+        [] -> fail $ kind ++ " for " ++ n ++ " not found"
+        xs -> fail $ "Multiple definitions for " ++ n ++ " found: " ++ concatMap pretty xs
+
+
 -- | Look up a ValD with given Name in the given Environment.
-lookupValD :: Env a -> Name -> Maybe Dec
+lookupValD :: Env a -> Name -> Failable Dec
 lookupValD (Env decls _) n =
   let theValD :: Dec -> Bool
       theValD (ValD (Sig nm _) _) = n == nm
       theValD _ = False
-  in listToMaybe $ filter theValD decls
-
+  in theOneOf "ValD" n theValD decls
+        
 -- | Look up a DataD with given Name in the given Environment.
-lookupDataD :: Env a -> Name -> Maybe Dec
+lookupDataD :: Env a -> Name -> Failable Dec
 lookupDataD (Env decls _) n =
   let theDataD :: Dec -> Bool
       theDataD (DataD nm _ _) = n == nm
       theDataD _ = False
-  in listToMaybe $ filter theDataD decls
+  in theOneOf "DataD" n theDataD decls
 
 -- | Look up a ClassD with given Name in the given Environment.
-lookupClassD :: Env a -> Name -> Maybe Dec
+lookupClassD :: Env a -> Name -> Failable Dec
 lookupClassD (Env decls _) n =
   let theClassD :: Dec -> Bool
       theClassD (ClassD nm _ _) = n == nm
       theClassD _ = False
-  in listToMaybe $ filter theClassD decls
+  in theOneOf "ClassD" n theClassD decls
 
 -- | Look up an InstD in the given Environment.
-lookupInstD :: Env a -> Name -> [Type] -> Maybe Dec
+lookupInstD :: Env a -> Name -> [Type] -> Failable Dec
 lookupInstD (Env decls _) n t =
   let theInstD :: Dec -> Bool
       theInstD (InstD (Class nm ts) _) = n == nm && t == ts
       theInstD _ = False
-  in listToMaybe $ filter theInstD decls
+  in theOneOf "InstD" n theInstD decls
 
 -- | Look up the type of a method in the given class.
-lookupSig :: Env a -> Name -> Name -> Maybe Type
+lookupSig :: Env a -> Name -> Name -> Failable Type
 lookupSig e cls meth =
-  let sigInClass :: [Sig] -> Maybe Type
-      sigInClass [] = Nothing
-      sigInClass ((Sig n t):_) | n == meth = Just t
+  let sigInClass :: [Sig] -> Failable Type
+      sigInClass [] = fail $ "method " ++ meth ++ " not found in class " ++ cls
+      sigInClass ((Sig n t):_) | n == meth = return t
       sigInClass (_:xs) = sigInClass xs
   in do
      ClassD _ _ sigs <- lookupClassD e cls
@@ -85,14 +100,14 @@ lookupSig e cls meth =
 -- | Given a VarE in an environment return the value of that variable as
 -- determined by the environment.
 --
--- Returns Nothing if the variable could not be found in the environment.
-lookupvar :: Env Exp -> Maybe (Type, Exp)
+-- Fails if the variable could not be found in the environment.
+lookupvar :: Env Exp -> Failable (Type, Exp)
 lookupvar e@(Env _ (VarE (Sig n _) Declared)) = do
   (ValD (Sig _ t) v) <- lookupValD e n
   return (t, v)
 lookupvar e@(Env _ (VarE (Sig x _) (Instance (Class n ts)))) =
-  let mlook :: [Method] -> Maybe (Type, Exp)
-      mlook [] = Nothing
+  let mlook :: [Method] -> Failable (Type, Exp)
+      mlook [] = fail $ "method " ++ x ++ " not found"
       mlook ((Method nm body):ms) | nm == x = do
           t <- lookupSig e n x
           return (t, body)
@@ -111,16 +126,16 @@ declarations :: (Data a) => [Dec] -> a -> [Dec]
 declarations m =
   let theenv = Env m ()
       qexp :: Exp -> [Dec]
-      qexp (VarE (Sig n _) Declared) = maybeToList $ lookupValD theenv n
-      qexp (VarE (Sig n _) (Instance (Class ni ts))) = catMaybes [lookupClassD theenv ni, lookupInstD theenv ni ts]
+      qexp (VarE (Sig n _) Declared) = attemptM $ lookupValD theenv n
+      qexp (VarE (Sig n _) (Instance (Class ni ts))) = catMaybes [attemptM $ lookupClassD theenv ni, attemptM $ lookupInstD theenv ni ts]
       qexp e = []
 
       qtype :: Type -> [Dec]
-      qtype (ConT n) = maybeToList $ lookupDataD theenv n
+      qtype (ConT n) = attemptM $ lookupDataD theenv n
       qtype t = []
 
       qclass :: Class -> [Dec]
-      qclass (Class n ts) = catMaybes [lookupClassD theenv n, lookupInstD theenv n ts]
+      qclass (Class n ts) = catMaybes [attemptM $ lookupClassD theenv n, attemptM $ lookupInstD theenv n ts]
 
       query :: (Typeable a) => a -> [Dec]
       query = extQ (extQ (mkQ [] qexp) qtype) qclass

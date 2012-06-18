@@ -3,6 +3,7 @@ module Seri.Lambda.TypeCheck (typecheck) where
 
 import Data.List(nub)
 
+import Seri.Failable
 import Seri.Lambda.Env
 import Seri.Lambda.IR
 import Seri.Lambda.Ppr
@@ -60,7 +61,7 @@ typecheck ds =
                 "Bool" -> return $ ConT "Bool"
                 "(,)" -> return $ arrowsT [VarT "a", VarT "b",
                             AppT (AppT (ConT "(,)") (VarT "a")) (VarT "b")]
-                _ -> case (lookupDataD (mkenv ds ()) dt) of
+                _ -> case (attemptM $ lookupDataD (mkenv ds ()) dt) of
                         Nothing -> fail $ "unable to find DataD for " ++ dt
                         Just datad ->
                             case typeofCon datad n of

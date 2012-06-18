@@ -7,6 +7,7 @@ module Seri.Target.Monomorphic.Monomorphic (monomorphic) where
 import Control.Monad.State
 import Data.List((\\), nub)
 
+import Seri.Failable
 import Seri.Lambda
 
 monomorphic :: Env Exp -> Env Exp
@@ -61,7 +62,7 @@ gentype :: Type -> M [Dec]
 gentype t = do
     poly <- gets ms_poly
     let (con, targs) = unfoldt t
-    case lookupDataD (mkenv poly ()) con of
+    case attemptM $ lookupDataD (mkenv poly ()) con of
         Nothing -> return []
         (Just (DataD _ tvars cs)) -> do 
             let suffix = typesuffix t
@@ -79,7 +80,7 @@ genexp v@(VarE (Sig n t) _) = do
     suffix <- expsuffix v
     let n' = n ++ suffix
     poly <- gets ms_poly
-    let Just (pt, e) = lookupvar (mkenv poly v)
+    (pt, e) <- attemptM $ lookupvar (mkenv poly v)
     e' <- monoexp $ assign (assignments pt t) e
     return $ ValD (Sig n' t') e'
 
@@ -184,11 +185,11 @@ typesuffix = mksuffix . snd . unfoldt
 expsuffix :: Exp -> M Name
 expsuffix e@(VarE (Sig n t) Declared) = do
     poly <- gets ms_poly
-    let Just (pt, _) = lookupvar (mkenv poly e)
+    (pt, _) <- attemptM $ lookupvar (mkenv poly e)
     return $ mksuffix (map snd (assignments pt t))
 expsuffix e@(VarE (Sig n t) (Instance (Class _ cts))) = do
     poly <- gets ms_poly
-    let Just (pt, _) = lookupvar (mkenv poly e)
+    (pt, _) <- attemptM $ lookupvar (mkenv poly e)
     return $ mksuffix (cts ++ map snd (assignments pt t))
     
 -- Unfold a concrete type.
