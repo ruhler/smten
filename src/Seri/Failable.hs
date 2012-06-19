@@ -1,7 +1,9 @@
 
 module Seri.Failable (
-    Failable(..), attemptM, onfail,,
+    Failable(..), attemptM, attemptIO, onfail,
     ) where
+
+import System.Exit
 
 data Failable a = Failable {
     attempt :: Either String a
@@ -21,10 +23,20 @@ attemptM :: (Monad m) => Failable a -> m a
 attemptM (Failable (Left msg)) = fail msg
 attemptM (Failable (Right a)) = return a
 
+-- | Attempt a failable computation in IO.
+-- Prints the error message and exits failure on failure.
+attemptIO :: Failable a -> IO a
+attemptIO (Failable (Left msg)) = do
+    putStrLn msg
+    exitFailure
+attemptIO (Failable (Right a)) = return a
+    
+
 -- | onfail f c
 -- Run computation c, if it fails, return the result of calling f on the error
 -- message from the failing c.
 onfail :: (String -> Failable a) -> Failable a -> Failable a
 onfail f (Failable (Left msg)) = f msg
 onfail f c = c
+
 

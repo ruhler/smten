@@ -4,9 +4,12 @@
 -- vim: ft=haskell
 module Seri.Lambda.Parser (parse) where
 
+import Control.Monad.State
+
 import Data.Char hiding (isSymbol)
 import Data.Maybe
 
+import Seri.Failable
 import Seri.Lambda.IR
 import Seri.Lambda.Sugar
 
@@ -464,23 +467,7 @@ data PS = PS {
     ps_filename :: FilePath
 }
 
-data ParserMonad a = ParserMonad {
-    runPM :: PS -> Either String (a, PS)
-}
-
-instance Monad ParserMonad where
-    return x = ParserMonad $ \ps -> Right (x, ps)
-    fail msg = ParserMonad $ \_ -> Left msg
-    (>>=) (ParserMonad x) f = ParserMonad $ \ps ->
-        case x ps of
-            Left msg -> Left msg
-            Right (a, ns) -> runPM (f a) ns
-
-gets :: (PS -> a) -> ParserMonad a
-gets f = ParserMonad $ \ps -> Right (f ps, ps)
-
-modify :: (PS -> PS) -> ParserMonad ()
-modify f = ParserMonad $ \ps -> Right ((), f ps)
+type ParserMonad = StateT PS Failable
 
 parseError :: Token -> ParserMonad a
 parseError tok = do
@@ -595,7 +582,7 @@ keywords = [
     ]
 
 failE :: String -> ParserMonad a
-failE = fail
+failE = lift . fail
 
 -- advance a single column
 single :: ParserMonad ()
@@ -663,10 +650,10 @@ coalesce ((PSig s):ds) =
     in (d:rest)
 coalesce ((PDec d):ds) = d : coalesce ds
 
-parse :: FilePath -> String -> Either String Module
-parse fp text =
- case (runPM seri_module (PS text 1 0 fp)) of
-    Left msg -> Left msg
-    Right (m, _) -> Right m
-}
+parse :: FilePath -> String -> Failable Module
+parse fp text = do
+    (m, _) <- runStateT seri_module (PS text 1 0 fp)
+    return m
+
+} 
 

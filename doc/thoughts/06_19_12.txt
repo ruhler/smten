@@ -137,3 +137,21 @@ Parser too. It would clean up the code for type inference.
 Okay, let me do this. Define FailableT, use it in the parser, switch to using
 it in TypeInfer, and continue forth.
 
+Tue Jun 19 12:46:56 EDT 2012
+
+Do I need a transformer? How about just nest them?
+
+Failable (m a)
+
+Then I can call fail. But then what I want to lift?
+
+liftf :: m a -> Failable (m a)
+liftf ...
+
+Is that what I really want? Yes, I think so.
+
+Try that?
+
+Yes.
+
+

@@ -3,6 +3,7 @@ module Seri.Lambda.Loader (load) where
 
 import System.Directory
 
+import Seri.Failable
 import Seri.Lambda.IR
 import Seri.Lambda.Parser
 import Seri.Lambda.Sugar
@@ -33,9 +34,7 @@ loadone :: SearchPath -> Name -> IO Module
 loadone sp n = do
     fname <- findmodule sp n
     text <- readFile fname
-    case parse fname text of
-        Left err -> putStrLn err >> fail "error"
-        Right m -> return m
+    attemptM $ parse fname text
       
 findmodule :: SearchPath -> Name -> IO FilePath
 findmodule [] n = fail $ "Module " ++ n ++ " not found"
@@ -59,8 +58,6 @@ findmodule (s:ss) n =
 load :: SearchPath -> FilePath -> IO [Module]
 load path mainmod = do
     maintext <- readFile mainmod
-    case parse mainmod maintext of
-        Right (main@(Module _ imps _)) ->
-            loads path [n | Import n <- imps] [main]
-        Left err -> putStrLn err >> fail "error"
+    main@(Module _ imps _)  <- attemptM $ parse mainmod maintext
+    loads path [n | Import n <- imps] [main]
 

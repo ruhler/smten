@@ -2,6 +2,7 @@
 import System.Environment
 import System.Exit
 
+import Seri.Failable
 import Seri.Lambda
 import Seri.Serif
 
@@ -16,15 +17,11 @@ main = do
                x -> error $ "bad args: " ++ show x
 
     text <- readFile fin
-    case (parse fin text) of
-        Right seri -> do
-            let hs = serif seri
-            writeFile fout $ unlines [
-                "{-# LANGUAGE ExplicitForAll #-}",
-                "{-# LANGUAGE MultiParamTypeClasses #-}",
-                show (ppr hs)
-                ]
-        Left msg -> do  
-            putStrLn msg
-            exitFailure
+    seri <- attemptIO $ parse fin text
+    let hs = serif seri
+    writeFile fout $ unlines [
+        "{-# LANGUAGE ExplicitForAll #-}",
+        "{-# LANGUAGE MultiParamTypeClasses #-}",
+        show (ppr hs)
+        ]
 
