@@ -1,0 +1,139 @@
+
+Tue Jun 19 10:50:54 EDT 2012
+
+Goal for today: implement type inference.
+
+The way to test type inference is to take as input the srif files, then output
+the sri files, and compare that to what serif does. Err... Except there are
+slight differences when it comes to modularity and such, so that may be
+inconvenient. But something like that.
+
+It would be good to have a way to pretty print with and without the type
+annotations, for testing purposes.
+
+So maybe the way to test type checking initially is to ...
+
+Why don't I just make unit tests? Those will be reusable, and specific.
+So, parse some simple declarations from a string, run type inference, run type
+check, verify the result is correct. I can use this to test both type
+inference and type checking, which will be very useful.
+
+Throughout all of this, it seems like allowing explicit type annotations in
+the parser and pretty printer will be very valuable for testing purposes. So
+don't get rid of those yet.
+
+Good. So it's settled then. Test using HUnit, by giving a type annotated
+expression and a non-type annotated expression and comparing the results.
+Maybe give poorly typed expressions and verify they don't type check.
+
+Sounds like a great plan. Let me get started.
+
+Step 1: Generate new type variables for all the UnknownTs in the expression.
+You know? I think this could be part of generating the type constraints from
+the expression. Just allocate a new type variable every time we encounter an
+UnknownT? Does that work? Hmm... perhaps I ought to keep it separate stages.
+
+With generics it's really easy to do anyway.
+
+Tue Jun 19 11:00:23 EDT 2012
+
+Okay, rough draft for that part is implemented.
+
+Next step: Generate a set of type constraints from the expression.
+
+Tue Jun 19 11:24:32 EDT 2012
+
+In generating the type constraints for type inference, it seems like I'm
+duplicating a lot of the type checking code. But, the type inference code
+looks much cleaner.
+
+Could I combine them? Reuse the same code? Or at least parts?
+
+The part to combine would be the generation of constraints.
+
+In the type inference, I generate a bunch of constraints, then I try to solve
+them. In the type checking, I generate a bunch of constraints, and I require
+that they are already satisfied.
+
+One thing that's worrisome though, is error messages. The type checking
+attempts to give good messages, but would it if I use the constraint based
+method?
+
+Maybe if I can figure out how to make it clear where the constraint came from.
+
+How about this. Keep them separate for now. Finish up doing the type inference
+as cleanly as I can. Then, when if the type inference really turns out to be
+clean, and I can figure out a good way to use it for type checking, then I can
+switch over then.
+
+Hmm... Maybe we could annotate each constraint with where it came from, or an
+error message to print out if it isn't satisfied. Then type inference: solve
+the constraints. Type checking: verify the constraints, and print the error on
+error.
+
+Anyway, back to type inference. 
+
+I need to add the constraints that all the bound patterns have the right type
+in match expressions, because I had forgotten that.
+
+Tue Jun 19 11:42:55 EDT 2012
+
+I think I should have something in Types.
+Given a pattern, returns the binding from Name to Type.
+
+Tue Jun 19 11:57:25 EDT 2012
+
+Cool. Things are getting cleaner. I like that.
+
+Next thing to figure out: what to do about ConE and declared variables and
+such?
+
+The requirement is that, the type of ConE being used is a subtype of the type
+of ConE in the environment.
+
+This can be checked easily enough I think.
+Get the type of the ConE from the environment. Replace all VarT's with newly
+allocated VarT's in a consistent way. Then assert that the new type has the
+same type as the ConE instance. Simple.
+
+Yes, I'm thinking more and more now that Type checking and type inference are
+really the same at the core, and should reuse a lot of the code. The only
+thing stopping me is figuring out how to come up with good error messages.
+
+But for each kind of constraint, I have all the info I need when I create the
+constraint. So that's not a problem. The only question is about how context
+works...
+
+Anyway, keep going. I can think of this as a rewrite of type checking if I
+want.
+
+Fine. How to do ConE the right way?
+
+I need the following:
+ - given the name of a constructor (can't rely on it's type now)
+    return the type of the constructor in the environment 
+
+Basically this means lookup up all the DataD, and all the constructors within
+then. That's maybe not so bad. How about this, add this to environment.
+
+Env Name -> Failable Type
+
+Look up the type of a data constructor.
+
+Tue Jun 19 12:35:51 EDT 2012
+
+Okay, I have that. Now to use it...
+
+I need to pass the environment to type check.
+What if we can't find the constructor in the environment? Then shouldn't type
+inference fail?
+
+The answer is yes. It should fail. So it should return a type Failable, and it
+should take an environment.
+
+Which means, we should have a FailableT monad. This would be useful in the
+Parser too. It would clean up the code for type inference.
+
+Okay, let me do this. Define FailableT, use it in the parser, switch to using
+it in TypeInfer, and continue forth.
+

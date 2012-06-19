@@ -232,3 +232,69 @@ Okay, so now typecheck passes for the general tests, and stuff which is
 elaborated. I don't really know if it's correct unless I give it failing test
 cases, but this is a good start.
 
+Mon Jun 18 19:27:45 EDT 2012
+
+What next now? Should I assume type checking is correct?
+Maybe I should write thoughts on how it could be made cleaner?
+Or clean it up if I can.
+
+It might be nice to have some unit test cases.
+
+Hmm...
+
+There was one thought on the library I'd like to put down.
+
+There are a couple places we refer to the built in declarations and data
+types.
+
+As a reminder, those are:
+
+ Integer, Char, Bool, (), tuple, list
+
+Bool, (), tuple, and list could all be declared in the IR, they just aren't
+supported in the syntax. Well, Bool is supported in the syntax. The reason I
+want it built in is... I don't remember, but I remember trying it and running
+into the issue. Something to do with the primitive comparison operations?
+
+Perhaps flatten or somewhere else could add those declarations into the IR?
+Or maybe we have them, we just don't print them out with pretty print? I don't
+know. Something to think about.
+
+Well, the type checker isn't so terribly awful. Getting type inference to work
+would be very cool. Then I could ditch serif.
+
+Note: the build system has been working out just swell.
+
+Maybe I can get started on type inference then.
+
+For type inference, I'm assuming you give all the top level declarations.
+That's fine with me. So we really only need to run type inference on
+expressions.
+
+So, typeinfer :: Exp -> Exp
+1. Generate new type variables for all the UnknownTs in the expression.
+2. Generate a set of type constraints from the expression.
+3. Solve the type constraints.
+4. Substitute the solution back into the expression.
+
+Somehow it would be nice to add a top level constraint so that the variable
+types it chooses are consistent with the forall, if any, in the signature.
+
+One thing that isn't figured out yet is how to come up with the UnknownVI.
+Somehow that feels like a separate step to me though.
+
+So, add a post processing phase, it figures out all the UnknownVI, after the
+types have been figured out, based on the environment. This shouldn't be hard.
+Good, so I can focus just on UnknownT for now.
+
+Type constraints are of the form one type equals another.
+
+Hey, this may actually not be so bad. The constraint solver can be reused from
+the code I already have possibly.
+
+Mon Jun 18 19:57:58 EDT 2012
+
+Cool. This is exciting. Let me start off tomorrow morning first thing, and
+given all the code I already have, I might be able to have type inference
+going by the end of the day. Ditch serif. That cleans up a bunch of stuff.
+

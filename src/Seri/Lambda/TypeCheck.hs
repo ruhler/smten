@@ -43,6 +43,7 @@ typecheck ds =
                     else return ()
         in onfail (\s -> fail $ s ++ "\n in declaration " ++ pretty d) $ do
              mapM_ checkmeth ms
+
       checkpat :: Pat -> Failable [(Name, Type)]
       checkpat p@(ConP s@(Sig _ ct) ps) = do
          texpected <- lookupcontype s

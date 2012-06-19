@@ -7,6 +7,7 @@ module Seri.Lambda.IR (
     Pat(..), Match(..),
     VarInfo(..), Exp(..), 
     Con(..), Method(..), Dec(..),
+    isDataD,
     ) where
 
 import Data.Generics
@@ -74,4 +75,9 @@ data Dec = ValD Sig Exp               -- ^ nm :: ty ; nm = exp
          | ClassD Name [Name] [Sig]   -- ^ class nm vars where { sigs }
          | InstD Class [Method]       -- ^ instance cls where { meths }
      deriving (Eq, Show, Data, Typeable)
+
+-- | Return True if the declaration is a Data Declaration
+isDataD :: Dec -> Bool
+isDataD (DataD {}) = True
+isDataD _ = False
 

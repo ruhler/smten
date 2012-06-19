@@ -7,6 +7,7 @@
 module Seri.Lambda.Env (
     Env(), val, mkenv, withenv, decls,
     lookupvar, lookupDataD, lookupClassD,
+    lookupDataConstructor,
     minimize, sort,
     ) where
 
@@ -17,6 +18,7 @@ import Data.Maybe
 import Seri.Failable
 import Seri.Lambda.IR
 import Seri.Lambda.Ppr
+import Seri.Lambda.Types
 
 data Env x = Env {
     env :: [Dec],
@@ -174,4 +176,19 @@ sort ds =
             ([], deps) -> (sorted, map fst unsorted)
             (indeps, deps) -> sorte (sorted ++ (map fst indeps)) deps
   in sorte [] dependencies
+
+-- | Given the name of a data constructor in the environment, return its type.
+lookupDataConstructor :: Env Name -> Failable Type
+lookupDataConstructor (Env _ "True") = return $ ConT "Bool"
+lookupDataConstructor (Env _ "False") = return $ ConT "Bool"
+lookupDataConstructor (Env _ "[]") = return $ listT (VarT "a")
+lookupDataConstructor (Env _ ":") = return $ arrowsT [VarT "a", AppT (ConT "[]") (VarT "a"), AppT (ConT "[]") (VarT "a")]
+lookupDataConstructor (Env _ "()") = return $ ConT "()"
+lookupDataConstructor (Env _ "(,)") = return $ arrowsT [VarT "a", VarT "b", AppT (AppT (ConT "(,)") (VarT "a")) (VarT "b")]
+lookupDataConstructor (Env _ "(,,)") = return $ arrowsT [VarT "a", VarT "b", VarT "c",  AppT (AppT (AppT (ConT "(,,)") (VarT "a")) (VarT "b")) (VarT "c")]
+lookupDataConstructor (Env decs n) = 
+    case catMaybes [typeofCon d n | d <- decs] of
+        [] -> fail $ "data constructor " ++ n ++ " not found in env"
+        [x] -> return x
+        xs -> fail $ "multiple data constructors with name " ++ n ++ " found in env"
 

@@ -3,7 +3,7 @@
 module Seri.Lambda.Types (
     appsT, arrowsT, outputT, unarrowsT, listT, integerT, unforallT,
     Typeof(..), typeofCon,
-    assign, assignments,
+    assign, assignments, bindingsP,
     isSubType,
     ) where
 
@@ -142,3 +142,11 @@ isSubType t sub
 unforallT :: Type -> Type
 unforallT (ForallT _ _ t) = t
 unforallT t = t
+
+-- | Extract the types of the variables bound by a pattern.
+bindingsP :: Pat -> [(Name, Type)]
+bindingsP (ConP _ ps) = concatMap bindingsP ps
+bindingsP (VarP (Sig n t)) = [(n, t)]
+bindingsP (IntegerP {}) = []
+bindingsP (WildP {}) = []
+
