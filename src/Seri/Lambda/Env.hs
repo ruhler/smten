@@ -7,7 +7,7 @@
 module Seri.Lambda.Env (
     Env(), val, mkenv, withenv, decls,
     lookupvar, lookupDataD, lookupClassD,
-    lookupDataConstructor,
+    lookupDataConstructor, lookupVarInfo,
     minimize, sort,
     ) where
 
@@ -191,4 +191,12 @@ lookupDataConstructor (Env decs n) =
         [] -> fail $ "data constructor " ++ n ++ " not found in env"
         [x] -> return x
         xs -> fail $ "multiple data constructors with name " ++ n ++ " found in env"
+
+-- | Look up VarInfo for the variable with given signature.
+-- Returns UnknownVI if the variable is not bound or declared.
+lookupVarInfo :: Env Sig -> VarInfo
+lookupVarInfo e@(Env ds (Sig n t))
+  = case (attemptM $ lookupValD e n) of
+        Just _ -> Declared
+        Nothing -> error $ "TODO: lookupVarInfo which isn't declared"
 

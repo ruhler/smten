@@ -1,0 +1,8 @@
+
+module Seri.Lambda.TypeTest where {
+
+fst :: forall a b . (a, b) -> a;
+fst (x, _) = x
+
+}
+

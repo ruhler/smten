@@ -158,6 +158,8 @@ typecheck ds =
              else fail $ "checkep: #var: expected type " ++ pretty (unforallT texpected)
                      ++ " but found type " ++ pretty t
                      ++ " in " ++ pretty v
+      checkexp _ v@(VarE (Sig n t) UnknownVI)
+        = fail $ "UnknownVI in expression " ++ pretty v
 
   in mapM_ checkdec ds
 

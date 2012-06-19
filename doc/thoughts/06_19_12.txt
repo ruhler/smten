@@ -154,4 +154,136 @@ Try that?
 
 Yes.
 
+Tue Jun 19 13:22:25 EDT 2012
+
+The end solution was to use StateT PS Failable. That works swell in the
+parser, it cleans things up nicely, and I don't have to worry about FailableT.
+
+Next: back to the type inference..
+
+I should add Decs to the environment.
+
+Tue Jun 19 13:32:54 EDT 2012
+
+Good. Now then, I have the type of the data constructor. Next I want to
+allocate new type variables for it.
+
+Tue Jun 19 13:46:59 EDT 2012
+
+Next step: what to do for declared variables?
+
+Well, it's obvious, no? Look up the declared variable, retype it, and do the
+assert that way.
+
+Same with instance, right?
+
+Tue Jun 19 13:58:49 EDT 2012
+
+There. That's fine. Expression constraint generation is all in place.
+I'm slightly worried about the Variable info. I wonder, do I really need that?
+Isn't that easy to infer? I don't know. I won't worry about it for now.
+
+Next I need a way to constrain patterns.
+
+Tue Jun 19 14:05:37 EDT 2012
+
+There, that wasn't so bad.
+
+Next step? 
+
+The constraint solver.
+
+Tue Jun 19 14:28:54 EDT 2012
+
+Okay, so I've got an initial version of that based on past code.
+
+All that's left is to substitute the solution back into the expression.
+
+Tue Jun 19 14:32:43 EDT 2012
+
+Code for that is there. Now all I need is to pull all the pieces together and
+see if it works, or what all the problems are.
+
+Tue Jun 19 14:36:53 EDT 2012
+
+Here's how to test it:
+
+Write a program called 'type', which takes serif and outputs sri. Then hard
+code an expected input and output. That can test the type checked cases.
+That's a good start.
+
+Tue Jun 19 16:32:02 EDT 2012
+
+Now it all compiles. Let me start with some simple examples from the library,
+ideally working up to all the test cases.
+
+Tue Jun 19 16:38:43 EDT 2012
+
+First problem: how to handle an UnknownVI? What?
+How to look up a Bound variable... why is that coming up?
+
+Tue Jun 19 16:43:48 EDT 2012
+
+Found that bug. Next problem: how to deal with UnknownVI...
+
+First question: do I need VI at all? Or is really just for convenience in
+compilers and such?
+
+To figure out if a variable is bound, it seems like you need to pass the list
+of bound variables down as you go. That could be annoying. Wouldn't it be
+nicer to only do that once, and keep the results cached for others to do?
+
+I dunno. Let me leave it in for now, and consider it's removal as a separate
+step. The logic for figuring out if the variable is bound, declared, or an
+instance.
+
+Okay, so when do I want to look this up? How about a preprocessing step?
+
+Keeps track of bound variables going down.
+Look up unbound variables in ValDs first, in ClassDs second.
+
+But! To figure out which instance it is, we need the type inference. So, let's
+do type inference first. Then look this stuff up, and it should be possible to
+figure out what instance (though a little complicated). I can make that a todo
+for now.
+
+So then, post inference is decided.
+
+Tue Jun 19 17:05:22 EDT 2012
+
+This would be much easier if I had a function for the environment which takes
+a name and returns a Maybe VarInfo. Yes, let me assume I have that.
+
+Tue Jun 19 17:11:04 EDT 2012
+
+Okay, now for the fun part... or, leave it as todo. Yes, that's nice...
+
+Good. Next issue: picking the right names for the variables based on the top
+level forall.
+
+Well, I could just use a symbol which makes the type inferernce's variables
+lesser known, and add the top level constraint. Shouldn't that do it?
+
+It's worth a try.
+
+The trouble is... this makes it harder for methods, because I have to look up
+the type signature. Do I have a way to do that already?
+
+lookupSig takes the class name and the method name. That's what we'll want to
+use, yes, then make the assignments from the class definition... ug. I don't
+much feel like this now. Let me put another TODO and come back to it later.
+
+Tue Jun 19 17:23:15 EDT 2012
+
+It didn't work. It didn't substitute a and b and such.
+
+Why not? Either the order is wrong, or it just won't.
+
+Let me look at the solution to the system, see what I find.
+
+Tue Jun 19 17:31:55 EDT 2012
+
+Wow! It actually works. That's pretty cool.
+
+Next I just need to test some more examples out, see what I find.
 

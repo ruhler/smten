@@ -37,10 +37,15 @@ ghcprog "serie" "Seri/Target/Elaborate/serie.hs"
 ghcprog "monomorphic" "Seri/Target/Monomorphic/monomorphic.hs"
 ghcprog "serif" "Seri/Serif/serif.hs"
 ghcprog "runquery" "Seri/SMT/runquery.hs"
+ghcprog "type" "Seri/Lambda/type.hs"
 
 set SERIE build/src/serie
 set SERIF build/src/serif
 set RUNQUERY build/src/runquery
+set TYPE build/src/type
+
+# Type Checking and Inference Test
+run $TYPE -o build/src/TypeTest.sri.got -i build/src build/src/Seri/Lambda/TypeTest.srif
 
 # Build the seri prelude
 ghcprog "prelude.srigen" "Seri/Serif/prelude.hs"
