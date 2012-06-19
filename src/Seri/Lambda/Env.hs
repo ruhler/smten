@@ -8,6 +8,7 @@ module Seri.Lambda.Env (
     Env(), val, mkenv, withenv, decls,
     lookupvar, lookupDataD, lookupClassD,
     lookupDataConstructor, lookupVarInfo,
+    lookupVarType,
     minimize, sort,
     ) where
 
@@ -80,12 +81,12 @@ lookupClassD (Env decls _) n =
   in theOneOf "ClassD" n theClassD decls
 
 -- | Look up an InstD in the given Environment.
-lookupInstD :: Env a -> Name -> [Type] -> Failable Dec
-lookupInstD (Env decls _) n t =
+lookupInstD :: Env a -> Class -> Failable Dec
+lookupInstD (Env decls _) (Class n t) =
   let theInstD :: Dec -> Bool
       theInstD (InstD (Class nm ts) _) = n == nm && t == ts
       theInstD _ = False
-  in theOneOf "InstD" n theInstD decls
+  in theOneOf "InstD" (pretty (Class n t)) theInstD decls
 
 -- | Look up the type of a method in the given class.
 lookupSig :: Env a -> Name -> Name -> Failable Type
@@ -107,7 +108,7 @@ lookupvar :: Env Exp -> Failable (Type, Exp)
 lookupvar e@(Env _ (VarE (Sig n _) Declared)) = do
   (ValD (Sig _ t) v) <- lookupValD e n
   return (t, v)
-lookupvar e@(Env _ (VarE (Sig x _) (Instance (Class n ts)))) =
+lookupvar e@(Env _ (VarE (Sig x _) (Instance cls@(Class n ts)))) =
   let mlook :: [Method] -> Failable (Type, Exp)
       mlook [] = fail $ "method " ++ x ++ " not found"
       mlook ((Method nm body):ms) | nm == x = do
@@ -115,9 +116,27 @@ lookupvar e@(Env _ (VarE (Sig x _) (Instance (Class n ts)))) =
           return (t, body)
       mlook (m:ms) = mlook ms
   in do
-      InstD _ ms <- lookupInstD e n ts  
+      InstD _ ms <- lookupInstD e cls
       mlook ms
 lookupvar e@(Env _ v) = error $ "lookupvar: " ++ pretty v
+
+-- | Given a VarE in an environment return the type of that variable as
+-- determined by the environment.
+--
+-- Fails if the variable could not be found in the environment.
+lookupVarType :: Env Exp -> Failable Type
+lookupVarType e@(Env _ (VarE (Sig n _) Declared)) = do
+  (ValD (Sig _ t) _) <- lookupValD e n
+  return t
+lookupVarType e@(Env _ (VarE (Sig x _) (Instance cls@(Class n ts)))) =
+  let mlook :: [Method] -> Failable (Type, Exp)
+      mlook [] = fail $ "method " ++ x ++ " not found"
+      mlook ((Method nm body):ms) | nm == x = do
+          t <- lookupSig e n x
+          return (t, body)
+      mlook (m:ms) = mlook ms
+  in lookupSig e n x
+lookupVarType e@(Env _ v) = error $ "lookupVarType: " ++ pretty v
 
 union :: (Eq a) => [a] -> [a] -> [a]
 union a b = nub $ a ++ b
@@ -129,7 +148,9 @@ declarations m =
   let theenv = Env m ()
       qexp :: Exp -> [Dec]
       qexp (VarE (Sig n _) Declared) = attemptM $ lookupValD theenv n
-      qexp (VarE (Sig n _) (Instance (Class ni ts))) = catMaybes [attemptM $ lookupClassD theenv ni, attemptM $ lookupInstD theenv ni ts]
+      qexp (VarE (Sig n _) (Instance cls@(Class ni ts)))
+        = catMaybes [attemptM $ lookupClassD theenv ni,
+                     attemptM $ lookupInstD theenv cls]
       qexp e = []
 
       qtype :: Type -> [Dec]
@@ -137,7 +158,9 @@ declarations m =
       qtype t = []
 
       qclass :: Class -> [Dec]
-      qclass (Class n ts) = catMaybes [attemptM $ lookupClassD theenv n, attemptM $ lookupInstD theenv n ts]
+      qclass cls@(Class n ts) = catMaybes [
+            attemptM $ lookupClassD theenv n,
+            attemptM $ lookupInstD theenv cls]
 
       query :: (Typeable a) => a -> [Dec]
       query = extQ (extQ (mkQ [] qexp) qtype) qclass
@@ -186,6 +209,9 @@ lookupDataConstructor (Env _ ":") = return $ arrowsT [VarT "a", AppT (ConT "[]")
 lookupDataConstructor (Env _ "()") = return $ ConT "()"
 lookupDataConstructor (Env _ "(,)") = return $ arrowsT [VarT "a", VarT "b", AppT (AppT (ConT "(,)") (VarT "a")) (VarT "b")]
 lookupDataConstructor (Env _ "(,,)") = return $ arrowsT [VarT "a", VarT "b", VarT "c",  AppT (AppT (AppT (ConT "(,,)") (VarT "a")) (VarT "b")) (VarT "c")]
+lookupDataConstructor (Env _ "(,,,)")
+    = return $ arrowsT [VarT "a", VarT "b", VarT "c", VarT "d",
+         AppT (AppT (AppT (AppT (ConT "(,,,)") (VarT "a")) (VarT "b")) (VarT "c")) (VarT "l")]
 lookupDataConstructor (Env decs n) = 
     case catMaybes [typeofCon d n | d <- decs] of
         [] -> fail $ "data constructor " ++ n ++ " not found in env"

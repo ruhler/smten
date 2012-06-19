@@ -45,8 +45,8 @@ typecheck ds =
              mapM_ checkmeth ms
 
       checkpat :: Pat -> Failable [(Name, Type)]
-      checkpat p@(ConP s@(Sig _ ct) ps) = do
-         texpected <- lookupcontype s
+      checkpat p@(ConP s@(Sig n ct) ps) = do
+         texpected <- lookupDataConstructor (mkenv ds n)
          if isSubType texpected ct
             then return ()
             else fail $ "checkpat: expecting type " ++ pretty texpected ++ ", but found type " ++ pretty ct
@@ -71,24 +71,6 @@ typecheck ds =
       checkmatch tenv (Match p b) = do
         bindings <- checkpat p
         checkexp (bindings ++ tenv) b
-
-      -- look up the type of the given data constructor in the environment.
-      lookupcontype :: Sig -> Failable Type
-      lookupcontype (Sig "True" _) = return $ ConT "Bool"
-      lookupcontype (Sig "False" _) = return $ ConT "Bool"
-      lookupcontype (Sig "[]" _) = return $ listT (VarT "a")
-      lookupcontype (Sig ":" _) = return $ arrowsT [VarT "a", AppT (ConT "[]") (VarT "a"), AppT (ConT "[]") (VarT "a")]
-      lookupcontype (Sig "()" _) = return $ ConT "()"
-      lookupcontype (Sig "(,)" _) = return $ arrowsT [VarT "a", VarT "b", AppT (AppT (ConT "(,)") (VarT "a")) (VarT "b")]
-      lookupcontype (Sig "(,,)" _) = return $ arrowsT [VarT "a", VarT "b", VarT "c",  AppT (AppT (AppT (ConT "(,,)") (VarT "a")) (VarT "b")) (VarT "c")]
-      lookupcontype (Sig n ct) = do
-         let dt = condt ct
-         case (attemptM $ lookupDataD (mkenv ds ()) dt) of
-            Nothing -> fail $ "unable to find DataD for " ++ dt
-            Just datad ->
-                case typeofCon datad n of
-                    Nothing -> fail $ "unable to find constructor " ++ n ++ " in " ++ pretty datad
-                    Just t -> return t
 
       -- lookup the type of a method for the given class instance.
       lookupmethtype :: Class -> Name -> Failable Type
@@ -135,7 +117,7 @@ typecheck ds =
             t -> fail $ "expected function type, but got type " ++ pretty t ++ " in expression " ++ pretty f
       checkexp tenv (LamE (Sig n t) e) = checkexp ((n, t):tenv) e
       checkexp _ c@(ConE s@(Sig n ct)) = do
-         texpected <- lookupcontype s
+         texpected <- lookupDataConstructor (mkenv ds n)
          if isSubType texpected ct
             then return ()
             else fail $ "checkexp: expecting type " ++ pretty texpected ++ ", but found type " ++ pretty ct
@@ -162,11 +144,4 @@ typecheck ds =
         = fail $ "UnknownVI in expression " ++ pretty v
 
   in mapM_ checkdec ds
-
--- Given the type of a data constructor, return the name of its type
--- constructor.
-condt :: Type -> Name
-condt (AppT (AppT (ConT "->") _) t) = condt t
-condt (AppT a b) = condt a
-condt (ConT n) = n
 

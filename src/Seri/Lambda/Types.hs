@@ -114,6 +114,7 @@ typeofCon (DataD dn vars cons) cn = do
     if null vars
         then return $ ForallT vars [] ty
         else return ty
+typeofCon _ _ = Nothing
 
 
 -- | isSubType t sub

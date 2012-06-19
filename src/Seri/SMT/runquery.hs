@@ -3,6 +3,7 @@ import System.Environment
 import System.Exit
 import System.Process
 
+import Seri.Failable
 import Seri.Lambda
 import Seri.Target.Elaborate
 import Seri.SMT.Yices
@@ -25,7 +26,13 @@ main = do
 
 
     query <- load [path] fin
-    let e = mkenv (flatten query) (VarE (Sig "main" UnknownT) Declared)
+    decs <- attemptIO $ typeinfer (flatten query)
+    attemptIO $ typecheck decs
+    if (decs /= flatten query)
+        then fail $ pretty decs ++ "\n does not equal: " ++ pretty (flatten query)
+        else return ()
+
+    let e = mkenv decs (VarE (Sig "main" UnknownT) Declared)
 
     let opts = (RunOptions dbg yices)
     result <- runYices [] queryR opts e

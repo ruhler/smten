@@ -144,7 +144,7 @@ instance Constrain Exp where
             Just t' -> addc t' t
             Nothing -> do
                 ve <- enved v
-                (vt, _) <- lift $ lookupvar ve
+                vt <- lift $ lookupVarType ve
                 rvt <- retype vt
                 addc rvt t
 
@@ -191,7 +191,7 @@ retype t = do
     retype' (VarT n) = do
         n' <- namefor n
         return (VarT n')
-    retype' (ForallT vars ctx t) = error $ "TODO: retype' ForallT"
+    retype' (ForallT _ _ t) = retype' t
     retype' UnknownT = return UnknownT
 
 -- If the given type is in the map, replace it, otherwise keep it unchanged.

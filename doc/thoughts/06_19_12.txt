@@ -287,3 +287,72 @@ Wow! It actually works. That's pretty cool.
 
 Next I just need to test some more examples out, see what I find.
 
+Tue Jun 19 17:35:33 EDT 2012
+
+Okay, good. Now, what's the next step here? How do I figure out what I want.
+
+Well... if I really want to dive into things, I'll get rid of serif now and
+see what happens.
+
+I have some time to work on this now. Shall I dive in and see what happens?
+
+Sure. I like that idea. Let me just dive in and fix the errors. Worst case I
+give up, revert getting rid of seri, but keep the changes to the type
+inference that I fixed.
+
+How will this look? We get rid of serif. We change the .srif files to .sri. We
+remove the calls to serif to generate the .sri, and just go directly. But we
+have to run type inference somewhere.
+
+Run type inference:
+ - in a call to serie
+ - in a call to runquery.
+
+Okay, sounds reasonable to me. Wish me luck.
+
+Tue Jun 19 17:45:38 EDT 2012
+
+First step: calling type inference in serie and runquery. This is on the
+already type checked and inferred, so it shouldn't be too hard to get going.
+
+First issue: retype' ForallT needs to be done.
+
+Why do we even get ForallT?
+Just skip it. Hide it. Unfold it.
+    
+Tue Jun 19 17:57:10 EDT 2012
+
+Next problem I don't handle right: contexts.
+
+What I should do is say...
+
+Well, if you pass a class which matches the ClassD, that should be allowed.
+Then I have to make sure in type check that all the instances exist.
+
+Tue Jun 19 18:11:04 EDT 2012
+
+Wait, no, that's not right. You could have any sort of context. So, hum...
+
+Where am I using this?
+
+I feel like what I should do is, given a name of a method, and a type of a
+method, look up the class, figure out based on the signature what the vars are
+for the class, and return that. Regardless of any instances. It shouldn't
+matter what the instances are.
+
+Where it matters what the instances are is in type check. Each instance has to
+be checked to be either declared or in a context.
+
+Tue Jun 19 18:44:51 EDT 2012
+
+Okay, so the issue is this: I'm calling lookupvar to get the type of a
+variable, but it's really meant to get the value of a variable.
+
+So I should have a lookupVarType function, which looks up the class to figure
+out the type, and doesn't look for the body.
+
+Tue Jun 19 19:10:57 EDT 2012
+
+Okay, so we are doing type inference and checking on already type inferred and
+type checked code, and that seems to go fine.
+

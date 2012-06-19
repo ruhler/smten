@@ -3,6 +3,7 @@ module Seri.Failable (
     Failable(..), attemptM, attemptIO, onfail,
     ) where
 
+import System.IO
 import System.Exit
 
 data Failable a = Failable {
@@ -27,7 +28,7 @@ attemptM (Failable (Right a)) = return a
 -- Prints the error message and exits failure on failure.
 attemptIO :: Failable a -> IO a
 attemptIO (Failable (Left msg)) = do
-    putStrLn msg
+    hPutStrLn stderr msg
     exitFailure
 attemptIO (Failable (Right a)) = return a
     
