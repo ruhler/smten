@@ -18,7 +18,7 @@ yExp c (CaseE e ms) =
       --                pattern p matches expression e
       --   bindings - a list of bindings made when p matches e.
       depat :: Pat -> Y.ExpY -> ([Y.ExpY], [((String, Maybe Y.TypY), Y.ExpY)])
-      depat (ConP (Sig n _) ps) e =
+      depat (ConP _ n ps) e =
         let (preds, binds) = unzip [depat p (Y.APP (Y.VarE (n ++ show i)) [e])
                                     | (p, i) <- zip ps [0..]]
             mypred = Y.APP (Y.VarE (n ++ "?")) [e]

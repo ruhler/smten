@@ -22,8 +22,8 @@ falseE = ConE (Sig "False" (ConT "Bool"))
 
 -- | if p then a else b
 ifE :: Exp -> Exp -> Exp -> Exp
-ifE p a b = CaseE p [Match (ConP (Sig "True" (ConT "Bool")) []) a,
-                     Match (ConP (Sig "False" (ConT "Bool")) []) b]
+ifE p a b = CaseE p [Match (ConP (ConT "Bool") "True" []) a,
+                     Match (ConP (ConT "Bool") "False" []) b]
 
 data Stmt = 
     BindS Sig Exp   -- ^ n <- e
@@ -71,8 +71,8 @@ tupP ps@(_:_:_) =
     let n = length ps
         name = "(" ++ replicate (n-1) ',' ++ ")"
         types = map typeof ps
-        ttype = arrowsT (types ++ [foldl AppT (ConT name) types])
-    in ConP (Sig name ttype) ps
+        ttype = foldl AppT (ConT name) types
+    in ConP ttype name ps
     
 
 data Clause = Clause [Pat] Exp

@@ -128,11 +128,11 @@ monomatch (Match p e) = do
     return $ Match p' e'
 
 monopat :: Pat -> M Pat
-monopat (ConP (Sig n t) ps) = do
-    let n' = n ++ typesuffix (outputT t)
+monopat (ConP t n ps) = do
+    let n' = n ++ typesuffix t
     t' <- monotype t
     ps' <- mapM monopat ps
-    return (ConP (Sig n' t') ps')
+    return (ConP t' n' ps')
 monopat (VarP (Sig n t)) = do
     t' <- monotype t
     return (VarP (Sig n t'))

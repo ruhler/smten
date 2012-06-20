@@ -89,7 +89,7 @@ mkdec (ClassD n vars sigs) = declclass n vars sigs
 mkdec (InstD cls ms) = declinst cls ms
 
 mkpat :: Pat -> H.Exp
-mkpat (ConP (Sig n _) ps) =
+mkpat (ConP _ n ps) =
   let mkpat' :: H.Exp -> [Pat] -> H.Exp
       mkpat' e [] = e
       mkpat' e (p:ps) = mkpat' (apply 'appP [e, mkpat p]) ps
@@ -307,7 +307,7 @@ stpred v = H.ClassP (mknm $ kindsuf (tvarkind v) "SeriType") [H.VarT (mknm v)]
 -- Get the list of variable pattern names in the given pattern.
 varps :: Pat -> [Name]
 varps (VarP (Sig nm _)) = [nm]
-varps (ConP _ ps) = concat (map varps ps)
+varps (ConP _ _ ps) = concat (map varps ps)
 varps (WildP {}) = []
 varps (IntegerP {}) = []
 

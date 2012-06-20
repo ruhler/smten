@@ -5,6 +5,8 @@ module Seri.Lambda.TypeInfer (
         typeinfer
     ) where
 
+import Debug.Trace
+
 import Control.Monad.State
 import Data.Generics
 
@@ -48,6 +50,9 @@ inferexp ds t e = do
  let (e', id) = runState (deunknown e) 1
  (_, TIS _ cons _ _) <- runStateT (addc (unforallT t) (typeof e') >> constrain e') (TIS id [] [] ds)
  sol <- solve cons
+ --trace ("e': " ++ pretty e') (return ())
+ --trace ("constraints: " ++ pretty cons) (return ())
+ --trace ("solution: " ++ pretty sol) (return ())
  return $ replace sol e'
 
 
@@ -146,11 +151,11 @@ instance Constrain Match where
         scoped (bindingsP p) (constrain e)
 
 instance Constrain Pat where
-    constrain (ConP (Sig n t) ps) = do
+    constrain (ConP t n ps) = do
         en <- enved n
         cty <- lift $ lookupDataConstructor en
         rcty <- retype cty
-        addc rcty t
+        addc rcty (arrowsT ((map typeof ps) ++ [t]))
         let pts = init (unarrowsT rcty)
         sequence_ [addc pt (typeof p) | (pt, p) <- zip pts ps]
     constrain (VarP s) = return ()

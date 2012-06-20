@@ -105,8 +105,8 @@ sugardo e = (undefined, [NoBindS e])
 
 instance Ppr Exp where
     -- Special case for if expressions
-    ppr (CaseE e [Match (ConP (Sig "True" (ConT "Bool")) []) a,
-                  Match (ConP (Sig "False" (ConT "Bool")) []) b])
+    ppr (CaseE e [Match (ConP (ConT "Bool") "True" []) a,
+                  Match (ConP (ConT "Bool") "False" []) b])
         = text "if" <+> ppr e $$ nest tabwidth (
                 text "then" <+> ppr a $$
                 text "else" <+> ppr b)
@@ -148,8 +148,8 @@ instance Ppr Match where
     ppr (Match p e) = (ppr p <+> text "->") `sep2` ppr e <> semi
 
 isAtomP :: Pat -> Bool
-isAtomP (ConP _ []) = True
-isAtomP (ConP _ _) = False
+isAtomP (ConP _ _ []) = True
+isAtomP (ConP {}) = False
 isAtomP (VarP {}) = True
 isAtomP (IntegerP {}) = True
 isAtomP (WildP {}) = True
@@ -159,14 +159,14 @@ isTuple n = ["(", ",", ")"] == nub (group n)
 
 instance Ppr Pat where
     -- special case for tuples
-    ppr (ConP (Sig n _) ps) | isTuple n = 
+    ppr (ConP _ n ps) | isTuple n = 
         parens . sep $ punctuate comma (map ppr ps)
         
     -- normal cases
-    ppr (ConP s ps) =
+    ppr (ConP t n ps) =
         let subp p | isAtomP p = ppr p
             subp p = parens (ppr p)
-        in pprsig empty s <+> hsep (map subp ps)
+        in pprsig empty (Sig n t) <+> hsep (map subp ps)
     ppr (VarP s) = pprsig empty s
     ppr (IntegerP i) = integer i
     ppr (WildP t) = pprsig empty (Sig "_" t)

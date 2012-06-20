@@ -100,7 +100,7 @@ instance Typeof Match where
     typeof (Match _ e) = typeof e
 
 instance Typeof Pat where
-    typeof (ConP tn _) = last $ unarrowsT (typeof tn)
+    typeof (ConP t _ _) = t
     typeof (VarP tn) = typeof tn
     typeof (IntegerP _) = integerT
     typeof (WildP t) = t
@@ -146,7 +146,7 @@ unforallT t = t
 
 -- | Extract the types of the variables bound by a pattern.
 bindingsP :: Pat -> [(Name, Type)]
-bindingsP (ConP _ ps) = concatMap bindingsP ps
+bindingsP (ConP _ _ ps) = concatMap bindingsP ps
 bindingsP (VarP (Sig n t)) = [(n, t)]
 bindingsP (IntegerP {}) = []
 bindingsP (WildP {}) = []

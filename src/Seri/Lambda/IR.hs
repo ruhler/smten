@@ -54,11 +54,9 @@ data Exp = IntegerE Integer         -- ^ integer literal
      deriving (Eq, Show, Data, Typeable)
 
 -- | Patterns.
--- Note: The Type of ConP is the output type of the Type of the signature.
---    For example: ConP (Sig "Foo" (Integer -> Food) [5]) has type Food.
---    That is, the Sig type refers to the type of the data constructor before
---    it is applied to any arguments.
-data Pat = ConP Sig [Pat]
+-- Note: The Type of ConP is the type of the fully applied Pattern, not the
+-- type of the constructor.
+data Pat = ConP Type Name [Pat]
          | VarP Sig
          | IntegerP Integer
          | WildP Type

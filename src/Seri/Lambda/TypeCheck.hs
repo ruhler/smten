@@ -45,7 +45,8 @@ typecheck ds =
              mapM_ checkmeth ms
 
       checkpat :: Pat -> Failable [(Name, Type)]
-      checkpat p@(ConP s@(Sig n ct) ps) = do
+      checkpat p@(ConP pt n ps) = do
+         let ct = arrowsT ((map typeof ps) ++ [pt])
          texpected <- lookupDataConstructor (mkenv ds n)
          if isSubType texpected ct
             then return ()

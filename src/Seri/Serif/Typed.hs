@@ -91,10 +91,11 @@ match :: Typed Pat a -> Typed Exp b -> Typed Match (a -> b)
 match (Typed p) (Typed e) = Typed $ Match p e
 
 conP :: (SeriType a) => Typed Exp a -> Name -> Typed Pat a
-conP _ n = withtype $ \t -> Typed $ ConP (Sig n t) []
+conP _ n = withtype $ \t -> Typed $ ConP t n []
 
-appP :: Typed Pat (a -> b) -> Typed Pat a -> Typed Pat b
-appP (Typed (ConP s ps)) (Typed x) = Typed $ ConP s (ps ++ [x])
+appP :: (SeriType b) => Typed Pat (a -> b) -> Typed Pat a -> Typed Pat b
+appP (Typed (ConP _ n ps)) (Typed x)
+ = withtype $ \t -> Typed $ ConP t n (ps ++ [x])
 
 wildP :: (SeriType a) => Typed Pat a
 wildP = withtype $ \t -> Typed (WildP t)

@@ -273,11 +273,11 @@ pat :: { Pat }
  : pat10
     { $1 }
  | pat10 ':' pat
-    { ConP (Sig ":" UnknownT) [$1, $3] }
+    { ConP UnknownT ":" [$1, $3] }
 
 pat10 :: { Pat }
  : gcon_typed apats
-    { ConP $1 $2 }
+    { let Sig n t = $1 in ConP t n $2 }
  | apat
     { $1 }
 
@@ -291,7 +291,7 @@ apat :: { Pat }
  : var_typed
     { let Sig n t = $1 in if n == "_" then WildP t else VarP $1 }
  | gcon_typed
-    { ConP $1 [] }
+    { let Sig n t = $1 in ConP t n [] }
  | '(' pat ')'
     { $2 }
  | '(' pat ',' pats_commasep ')'

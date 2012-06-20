@@ -26,3 +26,97 @@ Probably something to do with out the copy from build to source is done.
 And thus, the bug I thought was the problem turns out to really be the problem
 it would seem.
 
+Wed Jun 20 10:58:02 EDT 2012
+
+Next problem: head types aren't inferred correctly at all. Let's see if I can
+figure out what's going on.
+
+Aha, so, recursive constraints it would seem.
+Can I solve this?
+
+|| constraints: ~6: ~6
+|| ~2: ~3
+|| ~4: ~6
+|| [~7]: ~5
+|| ~7: ~4
+|| ~7 -> [~7] -> [~7]: ~3
+|| ~1: ~2
+|| [a] -> a: ~1 -> ~6
+
+
+~1: [a]
+~2: [a]
+~3: [a]
+~4: a
+~5: [a]
+~6: a
+~7: a
+~3: a -> [a] -> [a]
+
+Well, it's solvable. I can solve it. But apparently it's not solvable via the
+method I have.
+
+Oh. Maybe it isn't solvable:
+
+|| e': (\(a :: ~1) ->
+||    case (.a :: ~2) of {
+||      ((:) :: ~3) (x :: ~4) (_ :: ~5) ->
+||        (x :: ~6);
+||    })
+
+|| ~6: ~6       -- from case consistency
+|| ~2: ~3       -- wrong! Should be: ~2: ~3 ~4 ~5
+|| ~4: ~6       -- from variable x
+|| [~7]: ~5     -- from definition of :
+|| ~7: ~4       -- from definition of :
+|| ~7 -> [~7] -> [~7]: ~3   -- from definition of :
+|| ~1: ~2       -- from variable a
+|| [a] -> a: ~1 -> ~6       -- from top level definition.
+
+We have a bad constraint.
+
+Looks like an error in asserting the case expression has the same type as the
+pattern. The type of the pattern is bad.
+
+Oh, it's more subtle than that. Because we don't know the type of :, we think
+it's type is ~3, and not that ~3 is a -> b -> c, and that we should return the
+type c instead of the type ~3.
+
+Well, maybe this is a good reason to change the meaning of the type for a
+ConP? Is there some other way to work this out?
+
+If we have the type for the constructed thing for ConP, it's easy to figure
+out the type of the pattern: its just the type. And it's easy to figure out
+the type of the constructor involved: arrows of the args to the result. So I
+think that could do it fine.
+
+It just disturbs me that we put the Type and Name together, but the type
+doesn't refer to the type of the name.
+
+Perhaps I should change ConP to be: ConP Type Name [Pat]. Then it's more clear
+that Type is the type of the ConP and not the type of Name.
+
+Sounds good to me. Let me make the change next.
+
+Wed Jun 20 12:00:40 EDT 2012
+
+Question: do I want a different syntax for ConP now?
+
+Really we want the type to be on the pattern, but I fear an ambiguity. Let's
+not worry about this for now.
+
+Wed Jun 20 12:09:07 EDT 2012
+
+Trouble with serif: conP. Maybe I can assume the type is fully known, just use
+last $ unarrowsT. Okay?
+
+Actually, no, I needn't do that. I can always just return the type of the
+pattern.
+
+Wed Jun 20 12:14:17 EDT 2012
+
+That did it. Cool. No major problems making it work.
+
+I should bring the haskell target back up to date when I can, by the way.
+
+
