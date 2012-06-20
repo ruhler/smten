@@ -110,7 +110,7 @@ yicesY = compilers [preludeY, coreY]
 -- compile_dec
 --   Assumes the declaration is monomorphic.
 compile_dec :: Compiler -> Dec -> [Y.CmdY]
-compile_dec c (ValD (Sig n t) e) =
+compile_dec c (ValD (TopSig n [] t) e) =
     let yt = fromYCM $ compile_type c c t
         ye = fromYCM $ compile_exp c c e
     in [Y.DEFINE (yicesname n, yt) (Just ye)]

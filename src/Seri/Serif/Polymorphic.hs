@@ -44,7 +44,6 @@ concrete = concrete' []
 -- concrete' - same as concrete, but lets you leave a list of variable types
 -- unconcrete.
 concrete' :: [Name] -> Type -> Type
-concrete' ns (ForallT _ _ t) = concrete' ns t
 concrete' ns t@(VarT nm) | nm `elem` ns = t
 concrete' ns (VarT nm) = ConT $ "VarT_" ++ nm
 concrete' ns (AppT a b) = AppT (concrete' ns a) (concrete' ns b)

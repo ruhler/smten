@@ -48,7 +48,6 @@ import Seri.Lambda.Sugar
        consym   { TokenConSym $$ }
        integer  { TokenInteger $$ }
        'data'   { TokenData }
-       'forall' { TokenForall }
        'class'  { TokenClass }
        'instance'  { TokenInstance }
        'where'  { TokenWhere }
@@ -123,13 +122,13 @@ rhs :: { Exp }
  : '=' exp
     { $2 }
 
-cdecls :: { [Sig] }
+cdecls :: { [TopSig] }
  : cdecl
     { [$1] }
  | cdecls ';' cdecl
     { $1 ++ [$3] }
 
-cdecl :: { Sig }
+cdecl :: { TopSig }
  : gendecl
     { $1 }
 
@@ -143,17 +142,17 @@ idecl :: { Method }
  : funlhs rhs
     { Method (fst $1) (clauseE [Clause (snd $1) $2]) }
 
-gendecl :: { Sig }
+gendecl :: { TopSig }
  : var '::' type
-    { Sig $1 $3 }
+    { TopSig $1 [] $3 }
+ | var '::' context '=>' type
+    { TopSig $1 $3 $5 }
 
 type :: { Type }
  : btype
     { $1 } 
  | btype '->' type
     { AppT (AppT (ConT "->") $1) $3 }
- | forallty
-    { $1 }
 
 btype :: { Type }
  : atype
@@ -438,12 +437,6 @@ pats_commasep :: { [Pat] }
  | pats_commasep ',' pat
     { $1 ++ [$3] }
 
-forallty :: { Type }
- : 'forall' tyvars '.' type
-    { ForallT $2 [] $4 }
- | 'forall' tyvars '.' context '=>' type
-    { ForallT $2 $4 $6 }
-
 tyvars :: { [String] }
  : tyvar
     { [$1] }
@@ -567,7 +560,6 @@ reservedops = [
 keywords :: [(String, Token)]
 keywords = [         
     ("data", TokenData),
-    ("forall", TokenForall),
     ("class", TokenClass),
     ("instance", TokenInstance),
     ("where", TokenWhere),
@@ -634,7 +626,7 @@ lexer output = do
 
 data PDec =
     PDec Dec
-  | PSig Sig
+  | PSig TopSig
   | PClause Name Clause
 
 isPClause :: PDec -> Bool

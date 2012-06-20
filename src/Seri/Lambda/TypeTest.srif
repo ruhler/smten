@@ -1,10 +1,10 @@
 
 module Seri.Lambda.TypeTest where {
 
-fst :: forall a b . (a, b) -> a;
+fst :: (a, b) -> a;
 fst (x, _) = x;
 
-snd :: forall a b . (a, b) -> b;
+snd :: (a, b) -> b;
 snd (_, y) = y;
 
 (&&) :: Bool -> Bool -> Bool;
@@ -45,21 +45,21 @@ instance Num Integer where {
   (*) = (%__prim_mul_Integer :: Integer -> Integer -> Integer);
 };
 
-head :: forall a . [a] -> a;
+head :: [a] -> a;
 head (x:_) = x;
 
-tail :: forall a . [a] -> [a];
+tail :: [a] -> [a];
 tail (_:xs) = xs;
 
-length :: forall a . [a] -> Integer;
+length :: [a] -> Integer;
 length [] = 0;
 length (x:xs) = 1 + length xs;
 
 class Monad m where {
-  (>>=) :: forall a b . m a -> (a -> m b) -> m b;
-  (>>) :: forall a b . m a -> m b -> m b;
-  return :: forall a . a -> m a;
-  fail :: forall a . [Char] -> m a;
+  (>>=) :: m a -> (a -> m b) -> m b;
+  (>>) :: m a -> m b -> m b;
+  return :: a -> m a;
+  fail :: [Char] -> m a;
 };
 
 data Maybe a = Just a | Nothing;
@@ -75,7 +75,7 @@ instance Monad Maybe where {
             };
 };
 
-fromMaybe :: forall a . a -> Maybe a -> a;
+fromMaybe :: a -> Maybe a -> a;
 fromMaybe _ (Just x) = x;
 fromMaybe x Nothing = x
 

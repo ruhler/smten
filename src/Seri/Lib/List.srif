@@ -3,13 +3,13 @@ module Seri.Lib.List where {
 
 import Seri.Lib.Integer;
 
-head :: forall a . [a] -> a;
+head :: [a] -> a;
 head (x:_) = x;
 
-tail :: forall a . [a] -> [a];
+tail :: [a] -> [a];
 tail (_:xs) = xs;
 
-length :: forall a . [a] -> Integer;
+length :: [a] -> Integer;
 length [] = 0;
 length (x:xs) = 1 + length xs
 

@@ -34,7 +34,7 @@ loadone :: SearchPath -> Name -> IO Module
 loadone sp n = do
     fname <- findmodule sp n
     text <- readFile fname
-    attemptM $ parse fname text
+    attemptIO $ parse fname text
       
 findmodule :: SearchPath -> Name -> IO FilePath
 findmodule [] n = fail $ "Module " ++ n ++ " not found"
@@ -58,6 +58,6 @@ findmodule (s:ss) n =
 load :: SearchPath -> FilePath -> IO [Module]
 load path mainmod = do
     maintext <- readFile mainmod
-    main@(Module _ imps _)  <- attemptM $ parse mainmod maintext
+    main@(Module _ imps _)  <- attemptIO $ parse mainmod maintext
     loads path [n | Import n <- imps] [main]
 

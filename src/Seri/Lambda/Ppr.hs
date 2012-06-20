@@ -29,7 +29,6 @@ isAtomT (AppT (AppT (AppT (ConT "(,,)") a) b) c) = True
 isAtomT (ConT {}) = True
 isAtomT (VarT {}) = True
 isAtomT (AppT {}) = False
-isAtomT (ForallT {}) = False
 isAtomT (UnknownT {}) = True
 
 isArrowsT :: Type -> Bool
@@ -60,11 +59,6 @@ instance Ppr Type where
     ppr (VarT n) = text n
     ppr (AppT a b) | isAtomT b = ppr a <+> ppr b
     ppr (AppT a b) = ppr a <+> (parens $ ppr b)
-    ppr (ForallT vars preds t)
-      = let ctx [] = empty
-            ctx _ = (parens . sep $ punctuate comma (map ppr preds)) <+> text "=>" 
-        in text "forall" <+> hsep (map text vars)
-              <+> text "." <+> ctx preds <+> ppr t
     ppr UnknownT = text "?"
 
 
@@ -179,15 +173,15 @@ conlist (x:xs) = text " " <+> ppr x
                     $+$ vcat (map (\c -> text "|" <+> ppr c) xs)
 
 instance Ppr Dec where
-    ppr (ValD (Sig n t) e) = pprname n <+> text "::" <+> ppr t <> semi $$
-                             pprname n <+> text "=" <+> ppr e
+    ppr (ValD s@(TopSig n _ _) e)
+        = ppr s <> semi $$ pprname n <+> text "=" <+> ppr e
     ppr (DataD n vs cs)
         = text "data" <+> text n <+> hsep (map text vs) <+> text "=" $$
             (nest tabwidth (conlist cs))
     ppr (ClassD n vs ss)
         = text "class" <+> text n <+> hsep (map text vs)
                 <+> text "where" <+> text "{"
-                $+$ nest tabwidth (vcat (map ppr ss)) $+$ text "}"
+                $+$ nest tabwidth (vcat (punctuate semi (map ppr ss))) $+$ text "}"
     ppr (InstD cls ms)
         = text "instance" <+> ppr cls
                 <+> text "where" <+> text "{"
@@ -195,6 +189,12 @@ instance Ppr Dec where
 
 instance Ppr Sig where
     ppr (Sig n t) = pprname n <+> text "::" <+> ppr t <> semi
+
+instance Ppr TopSig where
+    ppr (TopSig n ctx t)
+      = pprname n <+> text "::" <+>
+               (if null ctx then empty else parens (sep (map ppr ctx)))
+              <+> ppr t
     
 instance Ppr Con where
     ppr (Con n ts) = text n <+> hsep (map ppr ts)

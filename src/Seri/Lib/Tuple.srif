@@ -1,10 +1,10 @@
 
 module Seri.Lib.Tuple where {
 
-fst :: forall a b . (a, b) -> a;
+fst :: (a, b) -> a;
 fst (x, _) = x;
 
-snd :: forall a b . (a, b) -> b;
+snd :: (a, b) -> b;
 snd (_, y) = y
 
 }

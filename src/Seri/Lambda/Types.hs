@@ -1,9 +1,9 @@
 
 -- | Utilities for working with Seri Types
 module Seri.Lambda.Types (
-    appsT, arrowsT, outputT, unarrowsT, listT, integerT, unforallT,
+    appsT, arrowsT, outputT, unarrowsT, listT, integerT,
     Typeof(..), typeofCon,
-    assign, assignments, bindingsP,
+    assign, assignments, bindingsP, varTs,
     isSubType,
     ) where
 
@@ -51,19 +51,10 @@ listT t = AppT (ConT "[]") t
 
 -- | assignments poly concrete
 -- Given a polymorphic type and a concrete type of the same form, return the
--- mapping from type variable name to concrete type. Assignments are returned
--- in order of how they are listed in the top level forall type, if any.
+-- mapping from type variable name to concrete type.
 assignments :: Type -> Type -> [(Name, Type)]
 assignments (VarT n) t = [(n, t)]
 assignments (AppT a b) (AppT a' b') = (assignments a a') ++ (assignments b b')
-assignments (ForallT vars _ t) t' =
-  let assigns = assignments t t'
-      
-      look :: Name -> (Name, Type)
-      look n = case lookup n assigns of
-                 Just t -> (n, t)
-                 Nothing -> error $ "assignment missing for var " ++ n
-  in map look vars
 assignments _ _ = []
 
 -- | assign vs x
@@ -110,10 +101,7 @@ instance Typeof Pat where
 typeofCon :: Dec -> Name -> Maybe Type
 typeofCon (DataD dn vars cons) cn = do
     Con _ ts <- listToMaybe (filter (\(Con n _) -> n == cn) cons)
-    let ty = arrowsT (ts ++ [appsT (ConT dn : map VarT vars)])
-    if null vars
-        then return $ ForallT vars [] ty
-        else return ty
+    return $ arrowsT (ts ++ [appsT (ConT dn : map VarT vars)])
 typeofCon _ _ = Nothing
 
 
@@ -130,7 +118,6 @@ isSubType t sub
         isst (VarT n) t = do
             modify $ \l -> (n, t) : l
             return True
-        isst (ForallT _ _ t) t' = isst t t'
         isst _ _ = return False
 
         (b, tyvars) = runState (isst t sub) []
@@ -139,15 +126,17 @@ isSubType t sub
      in length namenub == length assignnub && b
     
 
--- | Extract the body of a ForallT.
-unforallT :: Type -> Type
-unforallT (ForallT _ _ t) = t
-unforallT t = t
-
 -- | Extract the types of the variables bound by a pattern.
 bindingsP :: Pat -> [(Name, Type)]
 bindingsP (ConP _ _ ps) = concatMap bindingsP ps
 bindingsP (VarP (Sig n t)) = [(n, t)]
 bindingsP (IntegerP {}) = []
 bindingsP (WildP {}) = []
+
+-- List the variable type names in a given type.
+varTs :: Type -> [Name]
+varTs (ConT n) = []
+varTs (AppT a b) = nub $ varTs a ++ varTs b
+varTs (VarT n) = [n]
+varTs UnknownT = []
 

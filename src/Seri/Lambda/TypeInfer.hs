@@ -32,9 +32,9 @@ typeinfer ds = do
     
 -- Run inference on a single declaration, given the environment.
 inferdec :: [Dec] -> Dec -> Failable Dec
-inferdec ds (ValD (Sig n t) e) = do
+inferdec ds (ValD (TopSig n ctx t) e) = do
     e' <- inferexp ds t e
-    return $ ValD (Sig n t) e'
+    return $ ValD (TopSig n ctx t) e'
 inferdec ds d@(DataD {}) = return d
 inferdec ds d@(ClassD {}) = return d
 inferdec ds (InstD (Class cn ts) ms) =
@@ -53,7 +53,7 @@ inferexp ds t e = do
  let (e', id) = runState (deunknown e) 1
  let ticomp = do
          te' <- constrain e'
-         addc (unforallT t) te'
+         addc t te'
  (_, TIS _ cons _ _) <- runStateT ticomp (TIS id [] [] ds)
  sol <- solve cons
  --trace ("e': " ++ pretty e') (return ())
@@ -203,7 +203,6 @@ retype t = do
     retype' (VarT n) = do
         n' <- namefor n
         return (VarT n')
-    retype' (ForallT _ _ t) = retype' t
     retype' UnknownT = return UnknownT
 
 -- If the given type is in the map, replace it, otherwise keep it unchanged.

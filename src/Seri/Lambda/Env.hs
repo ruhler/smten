@@ -62,7 +62,7 @@ theOneOf kind n p ds =
 lookupValD :: Env a -> Name -> Failable Dec
 lookupValD (Env decls _) n =
   let theValD :: Dec -> Bool
-      theValD (ValD (Sig nm _) _) = n == nm
+      theValD (ValD (TopSig nm _ _) _) = n == nm
       theValD _ = False
   in theOneOf "ValD" n theValD decls
         
@@ -93,9 +93,9 @@ lookupInstD (Env decls _) (Class n t) =
 -- | Look up the type of a method in the given class.
 lookupSig :: Env a -> Name -> Name -> Failable Type
 lookupSig e cls meth =
-  let sigInClass :: [Sig] -> Failable Type
+  let sigInClass :: [TopSig] -> Failable Type
       sigInClass [] = fail $ "method " ++ meth ++ " not found in class " ++ cls
-      sigInClass ((Sig n t):_) | n == meth = return t
+      sigInClass ((TopSig n _ t):_) | n == meth = return t
       sigInClass (_:xs) = sigInClass xs
   in do
      ClassD _ _ sigs <- lookupClassD e cls
@@ -108,7 +108,7 @@ lookupSig e cls meth =
 -- Fails if the variable could not be found in the environment.
 lookupvar :: Env Exp -> Failable (Type, Exp)
 lookupvar e@(Env _ (VarE (Sig n _) Declared)) = do
-  (ValD (Sig _ t) v) <- lookupValD e n
+  (ValD (TopSig _ _ t) v) <- lookupValD e n
   return (t, v)
 lookupvar e@(Env _ (VarE (Sig x _) (Instance cls@(Class n ts)))) =
   let mlook :: [Method] -> Failable (Type, Exp)
@@ -131,13 +131,13 @@ lookupvar e@(Env _ v) = error $ "lookupvar: " ++ pretty v
 lookupVarType :: Env Name -> Failable Type
 lookupVarType e@(Env ds n)  = do
     case (attemptM $ lookupValD e n) of
-       Just (ValD (Sig _ t) _) -> return t
+       Just (ValD (TopSig _ _ t) _) -> return t
        Nothing ->
           let getSig :: Dec -> Maybe Type
               getSig (ClassD cn _ sigs) =
-                case filter (\(Sig sn _) -> sn == n) sigs of
+                case filter (\(TopSig sn _ _) -> sn == n) sigs of
                     [] -> Nothing
-                    [Sig _ t] -> Just t
+                    [TopSig _ _ t] -> Just t
               getSig _ = Nothing
 
               answer = listToMaybe (catMaybes (map getSig ds))
@@ -234,16 +234,16 @@ lookupVarInfo e@(Env ds (Sig n t))
         Nothing ->
           let getSig :: Dec -> Maybe (Name, [Name], Type)
               getSig (ClassD cn cts sigs) =
-                case filter (\(Sig sn _) -> sn == n) sigs of
+                case filter (\(TopSig sn _ _) -> sn == n) sigs of
                     [] -> Nothing
-                    [Sig _ t] -> Just (cn, cts, t)
+                    [TopSig _ _ t] -> Just (cn, cts, t)
               getSig _ = Nothing
 
               answer = listToMaybe (catMaybes (map getSig ds))
           in case answer of 
               Nothing -> Bound
               Just (cn, cts, st) ->
-                 let assigns = assignments (unforallT st) t
+                 let assigns = assignments st t
                      cts' = assign assigns (map VarT cts)
                  in Instance (Class cn cts')
 

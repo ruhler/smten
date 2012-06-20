@@ -82,7 +82,7 @@ genexp v@(VarE (Sig n t) _) = do
     poly <- gets ms_poly
     (pt, e) <- attemptM $ lookupvar (mkenv poly v)
     e' <- monoexp $ assign (assignments pt t) e
-    return $ ValD (Sig n' t') e'
+    return $ ValD (TopSig n' [] t') e'
 
 -- Translate a concretely typed expression to the appropriate monomorphic
 -- expression.
@@ -144,7 +144,6 @@ monopat (WildP t) = do
 -- Translate a concrete type to the appropriate monomorphic type.
 monotype :: Type -> M Type
 monotype (VarT {}) = error $ "variable type is not concrete"
-monotype (ForallT {}) = error $ "forall type is not concrete"
 monotype t@(ConT "Integer") = return t
 monotype t@(ConT "Bool") = return t
 monotype t@(ConT "()") = return t

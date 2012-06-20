@@ -18,7 +18,7 @@ foo2 x = ((x*x)+(3*x))+2;
 rfact :: Integer -> Integer;
 rfact x = if (x < 1) then 1 else x * rfact (x-1);
 
-id :: forall a . a -> a;
+id :: a -> a;
 id x = x;
 
 data MaybeInteger = NoInteger | JustInteger Integer;
@@ -44,10 +44,10 @@ multiclause 4 = 30;
 multiclause 5 = 40;
 multiclause _ = 50;
 
-tupleswap :: forall a b . (a, b) -> (b, a);
+tupleswap :: (a, b) -> (b, a);
 tupleswap (x, y) = (y, x);
 
-listswaptop :: forall a . [a] -> [a];
+listswaptop :: [a] -> [a];
 listswaptop (x:xs) = (head xs) : (x : (tail xs));
 
 listdifftop :: [Integer] -> Integer;
@@ -75,7 +75,7 @@ instance Foo Integer where {
     foo _ = 2;
 };
 
-foofun :: forall a . (Foo a) => a -> Integer;
+foofun :: (Foo a) => a -> Integer;
 foofun x = (((foo x)*(foo x)) + (3*(foo x))) + (foo True);
 
 -- TODO: define this with a record constructor
@@ -87,9 +87,9 @@ numseeds (Apple _ i) = i;
 
 -- TODO: define this with a record constructor
 data Wonderful a = Wonderful a Integer;
-thething :: forall a . Wonderful a -> a;
+thething :: Wonderful a -> a;
 thething (Wonderful x _) = x;
-howgreat :: forall a . Wonderful a -> Integer;
+howgreat :: Wonderful a -> Integer;
 howgreat (Wonderful _ x) = x;
 
 
@@ -113,10 +113,10 @@ instance MultiFoo Integer Bool where {
     multifoo _ _ = 4
 };
 
-unused :: forall a . a -> Integer;
+unused :: a -> Integer;
 unused x = 42;
 
-multifoofun :: forall a b . (MultiFoo a b) => a -> b -> Integer;
+multifoofun :: (MultiFoo a b) => a -> b -> Integer;
 multifoofun x y = (((multifoo x y) * (multifoo x y))
                     + (3 * (multifoo x y))) + (multifoo True False);
 

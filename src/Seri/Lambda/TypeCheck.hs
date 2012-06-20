@@ -17,11 +17,12 @@ type TypeEnv = [(String, Type)]
 typecheck :: [Dec] -> Failable ()
 typecheck ds = 
   let checkdec :: Dec -> Failable ()
-      checkdec d@(ValD (Sig n t) e) =
+      checkdec d@(ValD (TopSig n _ t) e) =
+        -- TODO: check the context
         onfail (\s -> fail $ s ++ "\n in declaration " ++ pretty d) $ do
           checkexp [] e
-          if (typeof e /= (unforallT t))
-            then fail $ "checkdec: expecting type " ++ pretty (unforallT t) ++ " in expression "
+          if (typeof e /= t)
+            then fail $ "checkdec: expecting type " ++ pretty t ++ " in expression "
                         ++ pretty e ++ " but found type " ++ pretty (typeof e)
             else return ()
 
@@ -36,8 +37,8 @@ typecheck ds =
               onfail (\s -> fail $ s ++ "\n in method " ++ n) $ do
                 checkexp [] b
                 texpected <- lookupmethtype cls n
-                if typeof b /= unforallT texpected
-                    then fail $ "checkmeth: expected type " ++ pretty (unforallT texpected)
+                if typeof b /= texpected
+                    then fail $ "checkmeth: expected type " ++ pretty texpected
                             ++ " but found type " ++ pretty (typeof b)
                             ++ " in Method " ++ pretty m
                     else return ()
@@ -77,8 +78,8 @@ typecheck ds =
       lookupmethtype :: Class -> Name -> Failable Type
       lookupmethtype (Class n ts) mn = do
           ClassD _ vars sigs <- lookupClassD (mkenv ds ()) n
-          case filter (\(Sig sn _) -> sn == mn) sigs of
-             [Sig _ t] -> return $ assign (zip vars ts) t
+          case filter (\(TopSig sn _ _) -> sn == mn) sigs of
+             [TopSig _ _ t] -> return $ assign (zip vars ts) t
              [] -> fail $ "unable to find method " ++ mn ++ " in class " ++ n
              xs -> fail $ "multiple definitions of method " ++ mn ++ " in calss " ++ n
           
@@ -138,7 +139,7 @@ typecheck ds =
          texpected <- lookupmethtype cls n
          if isSubType texpected t
              then return ()
-             else fail $ "checkep: #var: expected type " ++ pretty (unforallT texpected)
+             else fail $ "checkep: #var: expected type " ++ pretty texpected
                      ++ " but found type " ++ pretty t
                      ++ " in " ++ pretty v
       checkexp _ v@(VarE (Sig n t) UnknownVI)

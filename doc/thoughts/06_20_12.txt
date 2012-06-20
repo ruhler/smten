@@ -317,3 +317,17 @@ using it consistently at all, and we can easily derive it. Instead have a
 context associated with ValD and Class signatures. And really, for now, I just
 need it for ValD, add the Class signatures later if I feel like it.
 
+Wed Jun 20 17:09:34 EDT 2012
+
+Shall I try it now then? Ditch ForallT?
+
+I think that will make things much nicer. I'll probably want a way, given a
+type, to extract the var ts from it.
+
+I'll give it a try, and we'll find out what problems we run into that way.
+
+Wed Jun 20 17:45:40 EDT 2012
+
+First trouble is the annoyance of maintaining serif when I want to throw it
+away. Is now a good time to throw it away? Or should I try to maintain it?
+

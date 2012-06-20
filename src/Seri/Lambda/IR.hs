@@ -3,7 +3,7 @@
 
 -- | Definition of the abstract syntax for the Seri core lambda expressions.
 module Seri.Lambda.IR (
-    Name, Type(..), Sig(..), Class(..), 
+    Name, Type(..), Sig(..), TopSig(..), Class(..), Context,
     Pat(..), Match(..),
     VarInfo(..), Exp(..), 
     Con(..), Method(..), Dec(..),
@@ -17,7 +17,6 @@ type Name = String
 data Type = ConT Name                       -- ^ type constructor
           | AppT Type Type                  -- ^ type application
           | VarT Name                       -- ^ type variable
-          | ForallT [Name] [Class] Type     -- ^ forall vars . ctx => type
           | UnknownT
       deriving(Eq, Show, Data, Typeable)
 
@@ -25,6 +24,11 @@ data Type = ConT Name                       -- ^ type constructor
 data Sig = Sig Name Type
     deriving(Eq, Show, Data, Typeable)
 
+-- | 'TopSig' is a signature with a context.
+data TopSig = TopSig Name Context Type
+    deriving(Eq, Show, Data, Typeable)
+
+type Context = [Class]
 
 -- | 'Class' represents a single predicate.
 -- For example, the predicate (MonadState s m) is represented with:
@@ -68,9 +72,9 @@ data Con = Con Name [Type]
 data Method = Method Name Exp
     deriving(Eq, Show, Data, Typeable)
 
-data Dec = ValD Sig Exp               -- ^ nm :: ty ; nm = exp
+data Dec = ValD TopSig Exp       -- ^ nm :: ctx => ty ; nm = exp
          | DataD Name [Name] [Con]    -- ^ data nm vars = 
-         | ClassD Name [Name] [Sig]   -- ^ class nm vars where { sigs }
+         | ClassD Name [Name] [TopSig]   -- ^ class nm vars where { sigs }
          | InstD Class [Method]       -- ^ instance cls where { meths }
      deriving (Eq, Show, Data, Typeable)
 
