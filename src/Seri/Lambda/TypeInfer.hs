@@ -27,7 +27,7 @@ import Seri.Lambda.TypeSolver
 typeinfer :: [Dec] -> Failable [Dec]
 typeinfer ds = do
     ds' <- mapM (inferdec ds) ds
-    trace ("prevarize: " ++ pretty ds') (return ())
+    --trace ("prevarize: " ++ pretty ds') (return ())
     return $ varize ds'
     
 -- Run inference on a single declaration, given the environment.
@@ -50,11 +50,14 @@ infermethod ds (Method n e) = do
 inferexp :: [Dec] -> Type -> Exp -> Failable Exp
 inferexp ds t e = do
  let (e', id) = runState (deunknown e) 1
- (_, TIS _ cons _ _) <- runStateT (addc (unforallT t) (typeof e') >> constrain e') (TIS id [] [] ds)
+ let ticomp = do
+         te' <- constrain e'
+         addc (unforallT t) te'
+ (_, TIS _ cons _ _) <- runStateT ticomp (TIS id [] [] ds)
  sol <- solve cons
- trace ("e': " ++ pretty e') (return ())
- trace ("constraints: " ++ pretty cons) (return ())
- trace ("solution: " ++ pretty sol) (return ())
+ --trace ("e': " ++ pretty e') (return ())
+ --trace ("constraints: " ++ pretty cons) (return ())
+ --trace ("solution: " ++ pretty sol) (return ())
  return $ replace sol e'
 
 
@@ -113,30 +116,37 @@ enved x = do
 class Constrain a where
     -- | Generate type constraints for an expression, assuming no UnknownT types
     -- are in it.
-    constrain :: a -> TI ()
+    --
+    -- Returns the type of the thing being constrained.
+    constrain :: a -> TI Type
 
 instance Constrain Exp where
-    constrain (IntegerE {}) = return ()
-    constrain (PrimE {}) = return ()
+    constrain (IntegerE {}) = return integerT
+    constrain (PrimE (Sig _ t)) = return t
     constrain (CaseE e ms) = do
-        constrain e
-        mapM constrain ms
-        sequence_ [addc (typeof e) (typeof p) | Match p _ <- ms]
-        sequence_ [addc (typeof (head ms)) (typeof m) | m <- ms]
+        te <- constrain e
+        tps <- mapM constrain [p | Match p _ <- ms]
+        tms <- mapM constrain ms
+        sequence_ [addc te tp | tp <- tps]
+        sequence_ [addc (head tms) tm | tm <- tail tms]
+        return (head tms)
     constrain (AppE f x) = do
-        constrain f
-        constrain x
+        tf <- constrain f
+        tx <- constrain x
         it <- newvt
         ot <- newvt
-        addc (arrowsT [it, ot]) (typeof f)
-        addc it (typeof x)
+        addc (arrowsT [it, ot]) tf
+        addc it tx
+        return ot
     constrain (LamE (Sig n t) b) = do
-        scoped [(n, t)] (constrain b)
+        bt <- scoped [(n, t)] (constrain b)
+        return (arrowsT [t, bt])
     constrain (ConE (Sig n t)) = do
         en <- enved n
         cty <- lift $ lookupDataConstructor en
         rcty <- retype cty
         addc rcty t
+        return t
     constrain v@(VarE (Sig n t) _) = do
         tenv <- gets ti_tenv
         case lookup n tenv of
@@ -145,25 +155,27 @@ instance Constrain Exp where
                 ne <- enved n
                 vt <- lift $ lookupVarType ne
                 rvt <- retype vt
-                trace ("foo: " ++ pretty vt ++ ", " ++ pretty rvt) (return ())
+                --trace ("foo: " ++ pretty vt ++ ", " ++ pretty rvt) (return ())
                 addc rvt t
+        return t
 
+-- Only constrains the body. Doesn't constrain the patterns.
 instance Constrain Match where
-    constrain (Match p e) = do
-        constrain p
-        scoped (bindingsP p) (constrain e)
+    constrain (Match p e) = scoped (bindingsP p) (constrain e)
 
 instance Constrain Pat where
     constrain (ConP t n ps) = do
+        tps <- mapM constrain ps
         en <- enved n
         cty <- lift $ lookupDataConstructor en
         rcty <- retype cty
-        addc rcty (arrowsT ((map typeof ps) ++ [t]))
+        addc rcty (arrowsT (tps ++ [t]))
         let pts = init (unarrowsT rcty)
-        sequence_ [addc pt (typeof p) | (pt, p) <- zip pts ps]
-    constrain (VarP s) = return ()
-    constrain (IntegerP {}) = return ()
-    constrain (WildP {}) = return ()
+        sequence_ [addc pt tp | (pt, tp) <- zip pts tps]
+        return t
+    constrain (VarP (Sig _ t)) = return t
+    constrain (IntegerP {}) = return integerT
+    constrain (WildP t) = return t
 
 
 -- Given a type, return a new version of the type with new VarTs.

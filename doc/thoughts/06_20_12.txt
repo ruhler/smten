@@ -235,3 +235,13 @@ expression myself.
 But, I feel like, typeof should be able to assume a correct type. So let me do
 the former.
 
+Wed Jun 20 13:53:42 EDT 2012
+
+Yup, that fixed that issue nicely.
+
+But, apparently now the type inference differs from haskell's. Let's see how.
+
+Wed Jun 20 13:57:05 EDT 2012
+
+The difference is: I'm inferring Monad m for an instance instead of Monad
+Query.

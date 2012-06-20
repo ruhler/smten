@@ -1,15 +1,15 @@
 
 module Seri.Lambda.TypeTest where {
 
---fst :: forall a b . (a, b) -> a;
---fst (x, _) = x;
+fst :: forall a b . (a, b) -> a;
+fst (x, _) = x;
 
---snd :: forall a b . (a, b) -> b;
---snd (_, y) = y;
+snd :: forall a b . (a, b) -> b;
+snd (_, y) = y;
 
---(&&) :: Bool -> Bool -> Bool;
---(&&) True True = True;
---(&&) _ _ = False;
+(&&) :: Bool -> Bool -> Bool;
+(&&) True True = True;
+(&&) _ _ = False;
 
 class Num a where {
   (+) :: a -> a -> a;
@@ -30,14 +30,14 @@ __prim_sub_Integer = (@__prim_sub_Integer :: Integer -> Integer -> Integer);
 __prim_mul_Integer :: Integer -> Integer -> Integer;
 __prim_mul_Integer = (@__prim_mul_Integer :: Integer -> Integer -> Integer);
 
---(<) :: Integer -> Integer -> Bool;
---(<) = (@(<) :: Integer -> Integer -> Bool);
+(<) :: Integer -> Integer -> Bool;
+(<) = (@(<) :: Integer -> Integer -> Bool);
 
---(>) :: Integer -> Integer -> Bool;
---(>) = (@(>) :: Integer -> Integer -> Bool);
+(>) :: Integer -> Integer -> Bool;
+(>) = (@(>) :: Integer -> Integer -> Bool);
 
---(==) :: Integer -> Integer -> Bool;
---(==) = (@(==) :: Integer -> Integer -> Bool);
+(==) :: Integer -> Integer -> Bool;
+(==) = (@(==) :: Integer -> Integer -> Bool);
 
 instance Num Integer where {
   (+) = (%__prim_add_Integer :: Integer -> Integer -> Integer);
@@ -45,11 +45,11 @@ instance Num Integer where {
   (*) = (%__prim_mul_Integer :: Integer -> Integer -> Integer);
 };
 
---head :: forall a . [a] -> a;
---head (x:_) = x;
+head :: forall a . [a] -> a;
+head (x:_) = x;
 
---tail :: forall a . [a] -> [a];
---tail (_:xs) = xs;
+tail :: forall a . [a] -> [a];
+tail (_:xs) = xs;
 
 length :: forall a . [a] -> Integer;
 length [] = 0;
