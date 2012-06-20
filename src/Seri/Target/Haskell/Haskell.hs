@@ -12,16 +12,10 @@ import qualified Language.Haskell.TH as H
 import Seri.Lambda as Seri
 import Seri.Target.Haskell.Builtin
 
--- haskell builtin main exp
---  Compile the given expression and its environment to haskell.
---
---  builtin - a description of builtin things.
---  main - A function to generate the main function in the haskell code.
---         The input to the function is the haskell text for the compiled
---         expression.
---  exp - The expression to compile to haskell.
-haskell :: Builtin -> (H.Doc -> H.Doc) -> Env Exp -> H.Doc
-haskell builtin main e =
+-- haskell builtin decs
+--  Compile the given declarations to haskell.
+haskell :: Builtin -> Env Name -> H.Doc
+haskell builtin main =
   let hsName :: Name -> H.Name
       hsName = H.mkName
     
@@ -39,7 +33,7 @@ haskell builtin main e =
       hsMatch (Match p e) = H.Match (hsPat p) (H.NormalB $ hsExp e) []
     
       hsPat :: Pat -> H.Pat
-      hsPat (ConP (Sig n _) ps) = H.ConP (hsName n) (map hsPat ps)
+      hsPat (ConP _ n ps) = H.ConP (hsName n) (map hsPat ps)
       hsPat (VarP (Sig n _)) = H.VarP (hsName n)
       hsPat (IntegerP i) = H.LitP (H.IntegerL i)
       hsPat (WildP _) = H.WildP
@@ -48,9 +42,9 @@ haskell builtin main e =
       issymbol (h:_) = not $ isAlphaNum h || h == '_'
     
       hsDec :: Dec -> [H.Dec]
-      hsDec (ValD (Sig n t) e) =
+      hsDec (ValD (TopSig n c t) e) =
         let hsn = hsName $ if issymbol n then "(" ++ n ++ ")" else n
-            sig = H.SigD hsn (hsType t)
+            sig = H.SigD hsn (hsTopType c t)
             val = H.FunD hsn [H.Clause [] (H.NormalB (hsExp e)) []]
         in [sig, val]
 
@@ -63,10 +57,10 @@ haskell builtin main e =
       hsDec (InstD (Class n ts) ms)
         = [H.InstanceD [] (foldl H.AppT (H.ConT (hsName n)) (map hsType ts)) (map hsMethod ms)] 
 
-      hsSig :: Sig -> H.Dec
-      hsSig (Sig n t) =
+      hsSig :: TopSig -> H.Dec
+      hsSig (TopSig n c t) =
         let hsn = hsName $ if issymbol n then "(" ++ n ++ ")" else n
-        in H.SigD hsn (hsType t)
+        in H.SigD hsn (hsTopType c t)
 
       hsMethod :: Method -> H.Dec
       hsMethod (Method n e) =
@@ -82,8 +76,10 @@ haskell builtin main e =
       hsType (ConT n) = H.ConT (hsName n)
       hsType (AppT a b) = H.AppT (hsType a) (hsType b)
       hsType (VarT n) = H.VarT (hsName n)
-      hsType (ForallT vars pred t) =
-        H.ForallT (map (H.PlainTV . hsName) vars) (map hsClass pred) (hsType t)
+
+      hsTopType :: Context -> Type -> H.Type
+      hsTopType [] t = hsType t
+      hsTopType ctx t = H.ForallT (map (H.PlainTV . H.mkName) (varTs t)) (map hsClass ctx) (hsType t)
 
       hsClass :: Class -> H.Pred
       hsClass (Class nm ts) = H.ClassP (hsName nm) (map hsType ts)
@@ -93,11 +89,10 @@ haskell builtin main e =
                  H.text "{-# LANGUAGE MultiParamTypeClasses #-}" H.$+$
                  H.text "import qualified Prelude"
 
-      ds = concat $ map hsDec (decls e)
-      me = hsExp $ val e
+      ds = concat $ map hsDec (decls main)
 
-  in hsHeader H.$+$
-     includes builtin H.$+$
-     H.ppr ds H.$+$
-     main (H.ppr me)
+  in hsHeader H.$+$ includes builtin H.$+$ H.ppr ds H.$+$
+        H.text "main :: Prelude.IO ()" H.$+$
+        H.text "main = Prelude.putStrLn (Prelude.show ("
+        H.<+> H.text (val main) H.<+> H.text "))"
 

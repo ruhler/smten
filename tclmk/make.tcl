@@ -34,11 +34,13 @@ proc ghcprog {target source args} {
 }
 
 ghcprog "serie" "Seri/Target/Elaborate/serie.hs"
+ghcprog "serih" "Seri/Target/Haskell/serih.hs"
 ghcprog "monomorphic" "Seri/Target/Monomorphic/monomorphic.hs"
 ghcprog "runquery" "Seri/SMT/runquery.hs"
 ghcprog "type" "Seri/Lambda/type.hs"
 
 set SERIE build/src/serie
+set SERIH build/src/serih
 set RUNQUERY build/src/runquery
 set TYPE build/src/type
 
@@ -48,6 +50,15 @@ run $SERIE -o build/src/tests.got -i build/src -m testall \
     build/src/Seri/Lib/Tests.sri
 run echo -n "(True :: Bool)" > build/src/tests.wnt
 run cmp build/src/tests.got build/src/tests.wnt
+
+# Test the haskell target.
+set hsdir build/src/Seri/Target/Haskell
+run $SERIH -o $hsdir/hstests.hs -i build/src -m testall \
+    build/src/Seri/Lib/Tests.sri
+run -ignorestderr $GHC -o $hsdir/hstests -ibuild/src $hsdir/hstests.hs
+run ./$hsdir/hstests > $hsdir/hstests.got
+run echo "True" > $hsdir/hstests.wnt
+run cmp $hsdir/hstests.got $hsdir/hstests.wnt
 
 # The SMT query tests
 proc querytest {name} {

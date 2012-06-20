@@ -34,6 +34,7 @@ arrowsT [t] = t
 arrowsT (t:ts) = appsT [ConT "->", t, arrowsT ts]
 
 -- | Given a type of the form (a -> b), returns b.
+-- TODO: this should throw an error if the given type is not a function type.
 outputT :: Type -> Type
 outputT (AppT (AppT (ConT "->") _) t) = t
 outputT t = t

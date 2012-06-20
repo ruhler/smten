@@ -358,3 +358,34 @@ fine. Yes. That's better.
 
 Okay, here I go. Getting rid of serif. Wish me luck.
 
+Wed Jun 20 18:33:49 EDT 2012
+
+Hurray! Serif is gone. Nifty. That's cool.
+
+Wed Jun 20 18:39:53 EDT 2012
+
+I've accumulated a fair amount of todo items. Perhaps it's worth going over
+them to get a sense of where I am and where I'm going.
+
+- get haskell target back up to date
+- remove VarInfo from IR
+- reimplement TypeCheck making use of constraint generation from TypeInfer
+- need to test type checking more rigorously
+- clean up the interface to the Env module.
+- clean up things in general.
+
+Well, let me dive into things.
+
+First step: haskell compiler. It takes a module, loads the thing, spits out
+haskell code for the whole thing. Does not do modular compilation.
+
+Maybe have a program: serih. For the haskell back end, analogous to serie.
+
+Wed Jun 20 19:11:39 EDT 2012
+
+Well, so, the haskell back end is still a little messy. The problem is because
+we don't define the IO type, so we can't make a nice main function like we
+want.
+
+Oh well. At least it's compiling right. That's a start.
+
