@@ -124,19 +124,24 @@ lookupvar e@(Env _ v) = error $ "lookupvar: " ++ pretty v
 -- determined by the environment.
 --
 -- Fails if the variable could not be found in the environment.
-lookupVarType :: Env Exp -> Failable Type
-lookupVarType e@(Env _ (VarE (Sig n _) Declared)) = do
-  (ValD (Sig _ t) _) <- lookupValD e n
-  return t
-lookupVarType e@(Env _ (VarE (Sig x _) (Instance cls@(Class n ts)))) =
-  let mlook :: [Method] -> Failable (Type, Exp)
-      mlook [] = fail $ "method " ++ x ++ " not found"
-      mlook ((Method nm body):ms) | nm == x = do
-          t <- lookupSig e n x
-          return (t, body)
-      mlook (m:ms) = mlook ms
-  in lookupSig e n x
-lookupVarType e@(Env _ v) = error $ "lookupVarType: " ++ pretty v
+-- Note: if the variable is for a method of a class, returns the type
+-- signature given by the class, not any specific instance.
+lookupVarType :: Env Name -> Failable Type
+lookupVarType e@(Env ds n)  = do
+    case (attemptM $ lookupValD e n) of
+       Just (ValD (Sig _ t) _) -> return t
+       Nothing ->
+          let getSig :: Dec -> Maybe Type
+              getSig (ClassD cn _ sigs) =
+                case filter (\(Sig sn _) -> sn == n) sigs of
+                    [] -> Nothing
+                    [Sig _ t] -> Just t
+              getSig _ = Nothing
+
+              answer = listToMaybe (catMaybes (map getSig ds))
+          in case answer of
+                Just t -> return t
+                Nothing -> fail $ "lookupVarType: " ++ n
 
 union :: (Eq a) => [a] -> [a] -> [a]
 union a b = nub $ a ++ b
@@ -219,10 +224,24 @@ lookupDataConstructor (Env decs n) =
         xs -> fail $ "multiple data constructors with name " ++ n ++ " found in env"
 
 -- | Look up VarInfo for the variable with given signature.
--- Returns UnknownVI if the variable is not bound or declared.
+-- Returns Bound if the variable is not declared or an instance.
 lookupVarInfo :: Env Sig -> VarInfo
 lookupVarInfo e@(Env ds (Sig n t))
   = case (attemptM $ lookupValD e n) of
         Just _ -> Declared
-        Nothing -> error $ "TODO: lookupVarInfo which isn't declared"
+        Nothing ->
+          let getSig :: Dec -> Maybe (Name, [Name], Type)
+              getSig (ClassD cn cts sigs) =
+                case filter (\(Sig sn _) -> sn == n) sigs of
+                    [] -> Nothing
+                    [Sig _ t] -> Just (cn, cts, t)
+              getSig _ = Nothing
+
+              answer = listToMaybe (catMaybes (map getSig ds))
+          in case answer of 
+              Nothing -> Bound
+              Just (cn, cts, st) ->
+                 let assigns = assignments st t
+                     cts' = assign assigns (map VarT cts)
+                 in Instance (Class cn cts')
 

@@ -27,6 +27,7 @@ import Seri.Lambda.TypeSolver
 typeinfer :: [Dec] -> Failable [Dec]
 typeinfer ds = do
     ds' <- mapM (inferdec ds) ds
+    trace ("prevarize: " ++ pretty ds') (return ())
     return $ varize ds'
     
 -- Run inference on a single declaration, given the environment.
@@ -42,7 +43,8 @@ inferdec ds (InstD cls ms) = do
 
 infermethod :: [Dec] -> Method -> Failable Method
 infermethod ds (Method n e) = do
-    e' <- inferexp ds (error $ "TODO: get t for infermethod") e
+    t <- lookupVarType (mkenv ds n)
+    e' <- inferexp ds t e
     return (Method n e')
 
 inferexp :: [Dec] -> Type -> Exp -> Failable Exp
@@ -50,9 +52,9 @@ inferexp ds t e = do
  let (e', id) = runState (deunknown e) 1
  (_, TIS _ cons _ _) <- runStateT (addc (unforallT t) (typeof e') >> constrain e') (TIS id [] [] ds)
  sol <- solve cons
- --trace ("e': " ++ pretty e') (return ())
- --trace ("constraints: " ++ pretty cons) (return ())
- --trace ("solution: " ++ pretty sol) (return ())
+ trace ("e': " ++ pretty e') (return ())
+ trace ("constraints: " ++ pretty cons) (return ())
+ trace ("solution: " ++ pretty sol) (return ())
  return $ replace sol e'
 
 
@@ -140,9 +142,10 @@ instance Constrain Exp where
         case lookup n tenv of
             Just t' -> addc t' t
             Nothing -> do
-                ve <- enved v
-                vt <- lift $ lookupVarType ve
+                ne <- enved n
+                vt <- lift $ lookupVarType ne
                 rvt <- retype vt
+                trace ("foo: " ++ pretty vt ++ ", " ++ pretty rvt) (return ())
                 addc rvt t
 
 instance Constrain Match where
@@ -224,9 +227,8 @@ varize ds = map varizedec ds
     varizeexp bound (AppE a b) = AppE (varizeexp bound a) (varizeexp bound b)
     varizeexp bound (LamE (Sig n t) e) = LamE (Sig n t) (varizeexp (n : bound) e)
     varizeexp _ e@(ConE {}) = e
-    varizeexp bound (VarE (Sig n t) UnknownVI) | n `elem` bound = VarE (Sig n t) Bound
-    varizeexp _ (VarE s UnknownVI) = VarE s (lookupVarInfo (mkenv ds s))
-    varizeexp _ e@(VarE {}) = e
+    varizeexp bound (VarE (Sig n t) _) | n `elem` bound = VarE (Sig n t) Bound
+    varizeexp _ (VarE s _) = VarE s (lookupVarInfo (mkenv ds s))
 
     varizematch :: [Name] -> Match -> Match
     varizematch bound (Match p e) = Match p (varizeexp ((map fst (bindingsP p)) ++ bound) e)

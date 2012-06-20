@@ -21,3 +21,8 @@
 ** Verify we check for too many arguments in a ConP, or too few
 ** Verify we check for undefined variables
 
+- Do we need explicit forall?
+How about, instead, having ValD and Method have a context?
+Because the forall seems unused otherwise, and the variables are rather easily
+derived, don't you think?
+

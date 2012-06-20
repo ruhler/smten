@@ -119,4 +119,119 @@ That did it. Cool. No major problems making it work.
 
 I should bring the haskell target back up to date when I can, by the way.
 
+Wed Jun 20 12:21:46 EDT 2012
+
+Next problem: lookupVarType fails for a variable with UnknownVI. We use it for
+the variable (+).
+
+Well... what about varizing before type inference? Does it rely on type
+inference any?
+
+Err, well, yes, it could. But I haven't done it yet. Hmm... Except, the var
+type lookup doesn't need to know. So let me just add the case for that which
+looks for the class if there is one.
+
+Wed Jun 20 12:27:44 EDT 2012
+
+No. What I should really do is figure out how I really want to deal with
+instances correctly.
+
+First observation: we only need the class type when we call lookupVarType.
+
+So here's the proposal. Do varize first. Bound we can get. Declared we can
+get. The instances we can get, we just don't know which instance, so instead,
+make new variable types for the types in the class. Now we've gotten rid of
+all the unknown, the variable types are in place.
+
+Then ...
+
+You know what I'm asking myself now? Why include VarInfo in the IR at all?
+
+We know a bound type is bound based on the scope.
+We know a declared type is declared based on looking up in the environment.
+We know an instance is an instance based on lookup up in the environment.
+
+Compilers will have to keep track of bound variables, or assume any variable
+which is not declared or an instance is bound. That's fine withe me. We
+provide a function: Env Name -> Failable VarInfo to look up the VarInfo based
+on this. Or something like that.
+
+Now we don't need to annotate var info (we do need to annotate primitives).
+
+Okay, and there's also a clean way of transitioning the code over to this.
+
+1. Perform all type inference ignoring VarInfo. I shouldn't need to read any
+of the VarInfo.
+
+2. Post type inference, do varize, making use of my lookupVarInfo function.
+
+If I can make that work, then it seems likely we can get away without var
+info.
+
+Good. I like this idea. I think it makes things cleaner and easier. First
+step: Get rid of any reference to VarInfo in the type inference.
+
+Wed Jun 20 12:55:26 EDT 2012
+
+Good. Now we get to lookupVarInfo which isn't declared.
+
+Okay, so, how do I implement this?
+
+First we want to find it in a class.
+Then we want to, based on the type given, figure out the variable type
+assignments. Then we want to do the substitution of those in the class
+signature.
+
+Wed Jun 20 13:11:32 EDT 2012
+
+Err... build system bugs again?
+
+We are running into a TODO error: get t for infermethod.
+
+Okay, maybe that was just something not being triggered before that is now.
+Anyway, it didn't fix the problem. It looks like another problem with the type
+constraints:
+
+|| e': (\(a :: ~1) ->
+||    case (.a :: ~2) of {
+||      ([] :: ~3) ->
+||        0;
+||      ((:) :: ~4) (x :: ~5) (xs :: ~6) ->
+||        ((+) :: ~7) 1 ((length :: ~8) (xs :: ~9));
+||    })
+|| constraints:
+|| Integer: ~7          ?? this is wrong! Where's it from?
+|| Integer: Integer
+...
+Looks like a bug in lookupVarType?
+Wed Jun 20 13:26:11 EDT 2012
+
+lookupVarType is fine. How about retype?
+
+Wed Jun 20 13:29:44 EDT 2012
+
+Oh... I bet it's the same kind of problem I had before. Using outputT to
+figure out the output type of an application.
+
+Yup! That's the problem. Tricky...
+
+Problem is... typeof doesn't work unless it's well typed.
+
+Well, AppE is the only one that has this problem, and I can handle that right
+by introducing some more variables and constraints.
+
+Err. can I?
+
+Problem is I'm calling typeof match, or something like that, which calls
+typeof in the expression, which refers to the original expression, not the
+added constraints I have.
+
+Well, I can think of a couple of solutions.
+1. Don't use typeof in type inference. Instead return the type of the
+expression myself.
+
+2. Add more type information to typeof.
+
+But, I feel like, typeof should be able to assume a correct type. So let me do
+the former.
 
