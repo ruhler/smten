@@ -367,7 +367,7 @@ Wed Jun 20 18:39:53 EDT 2012
 I've accumulated a fair amount of todo items. Perhaps it's worth going over
 them to get a sense of where I am and where I'm going.
 
-- get haskell target back up to date
++ get haskell target back up to date
 - remove VarInfo from IR
 - reimplement TypeCheck making use of constraint generation from TypeInfer
 - need to test type checking more rigorously
@@ -388,4 +388,32 @@ we don't define the IO type, so we can't make a nice main function like we
 want.
 
 Oh well. At least it's compiling right. That's a start.
+
+Wed Jun 20 19:26:25 EDT 2012
+
+Haskell target is up to date. Next step...
+
+Try removing VarInfo. Because we have this lookupVarInfo thing which ought to
+completely replace it.
+
+Here are the steps for this:
+- Replace every reference to VarInfo currently with lookupVarInfo. This will
+  make sure we can get rid of it easily enough.
+- Get rid of VarInfo in the IR. It could be part of the environment.
+
+Easy. Let me check it out.
+
+Except... I don't really feel like doing this just now. Let me play with
+something fun instead, if there is such a thing.
+
+Maybe think about how to replace typecheck?
+
+Ug. I don't know. I'm kind of running low on steam today. Is there something
+little that I can do that would be useful?
+
+Wed Jun 20 19:35:39 EDT 2012
+
+Ah. I've a plan. Get rid of these silly warnings.
+
+implement negate, abs, signum, fromInteger for Integer.
 

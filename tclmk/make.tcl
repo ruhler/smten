@@ -35,7 +35,7 @@ proc ghcprog {target source args} {
 
 ghcprog "serie" "Seri/Target/Elaborate/serie.hs"
 ghcprog "serih" "Seri/Target/Haskell/serih.hs"
-ghcprog "monomorphic" "Seri/Target/Monomorphic/monomorphic.hs"
+ghcprog "serim" "Seri/Target/Monomorphic/serim.hs"
 ghcprog "runquery" "Seri/SMT/runquery.hs"
 ghcprog "type" "Seri/Lambda/type.hs"
 
