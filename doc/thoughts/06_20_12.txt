@@ -331,3 +331,30 @@ Wed Jun 20 17:45:40 EDT 2012
 First trouble is the annoyance of maintaining serif when I want to throw it
 away. Is now a good time to throw it away? Or should I try to maintain it?
 
+Wed Jun 20 18:15:14 EDT 2012
+
+Cool! So I removed ForallT. Happy. And serif even maybe works still.
+
+Next step? Test the tests I suppose.
+
+Wed Jun 20 18:19:34 EDT 2012
+
+Looks like it works! Hurray.
+
+Which means, the thing that's left next? Get rid of serif.
+
+What's the plan? Everyone should take .sri files as input.
+Remove serif entirely.
+
+I should have two version of pretty print. I need one which has the type
+annotations, but pretty print should also not include type annotations if they
+aren't needed.
+
+So, add a parameter to ppr indicating whether it should pretty print with type
+annotations or not. Have pretty, and prettyT.
+
+Or... for now just leave the type annotations, because we can parse them just
+fine. Yes. That's better.
+
+Okay, here I go. Getting rid of serif. Wish me luck.
+

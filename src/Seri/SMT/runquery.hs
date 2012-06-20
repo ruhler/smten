@@ -28,9 +28,6 @@ main = do
     query <- load [path] fin
     decs <- attemptIO $ typeinfer (flatten query)
     attemptIO $ typecheck decs
-    if (decs /= flatten query)
-        then fail $ pretty decs ++ "\n does not equal: " ++ pretty (flatten query)
-        else return ()
 
     let e = mkenv decs (VarE (Sig "main" UnknownT) Declared)
 

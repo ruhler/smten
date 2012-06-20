@@ -35,46 +35,15 @@ proc ghcprog {target source args} {
 
 ghcprog "serie" "Seri/Target/Elaborate/serie.hs"
 ghcprog "monomorphic" "Seri/Target/Monomorphic/monomorphic.hs"
-ghcprog "serif" "Seri/Serif/serif.hs"
 ghcprog "runquery" "Seri/SMT/runquery.hs"
 ghcprog "type" "Seri/Lambda/type.hs"
 
 set SERIE build/src/serie
-set SERIF build/src/serif
 set RUNQUERY build/src/runquery
 set TYPE build/src/type
 
-# Type Checking and Inference Test
-run $TYPE -o build/src/TypeTest.sri.got -i build/src build/src/Seri/Lambda/TypeTest.srif
-
-# Build the seri prelude
-ghcprog "prelude.srigen" "Seri/Serif/prelude.hs"
-run build/src/prelude.srigen > build/src/Seri/Lib/Prelude.hs
-
-# Build the .sri files
-set sris [list \
-    "Seri/Lib/Bool" \
-    "Seri/Lib/Integer" \
-    "Seri/Lib/List" \
-    "Seri/Lib/Maybe" \
-    "Seri/Lib/Monad" \
-    "Seri/Lib/Tuple" \
-    "Seri/Lib/Tests" \
-    "Seri/SMT/SMT"]
-
-foreach {name} $sris {
-    run $SERIF -o build/src/$name.hs build/src/$name.srif
-}
-
-foreach {name} $sris {
-    set module [string map {/ .} $name]
-    run sed -e s=@MODULE@=$module= build/src/Seri/Serif/srigen.hs.template \
-        > build/src/$name.srigen.hs
-    ghcprog $name.srigen $name.srigen.hs
-    run build/src/$name.srigen > build/src/$name.sri
-}
-
 # The general seri test
+run $TYPE -o build/src/tests.typed -i build/src build/src/Seri/Lib/Tests.sri
 run $SERIE -o build/src/tests.got -i build/src -m testall \
     build/src/Seri/Lib/Tests.sri
 run echo -n "(True :: Bool)" > build/src/tests.wnt
@@ -82,14 +51,6 @@ run cmp build/src/tests.got build/src/tests.wnt
 
 # The SMT query tests
 proc querytest {name} {
-    set module Seri.SMT.Tests.$name
-    run $::SERIF -o build/src/Seri/SMT/Tests/$name.hs \
-         build/src/Seri/SMT/Tests/$name.srif
-    run sed -e s=@MODULE@=$module= build/src/Seri/Serif/srigen.hs.template \
-        > build/src/Seri/SMT/Tests/$name.srigen.hs
-    ghcprog Seri/SMT/Tests/$name.srigen Seri/SMT/Tests/$name.srigen.hs
-    run build/src/Seri/SMT/Tests/$name.srigen \
-         > build/src/Seri/SMT/Tests/$name.sri
     run $::RUNQUERY -d build/src/Seri/SMT/Tests/$name.dbg -i build/src \
          build/src/Seri/SMT/Tests/$name.sri \
          > build/src/Seri/SMT/Tests/$name.out

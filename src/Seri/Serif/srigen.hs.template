@@ -1,7 +1,0 @@
-
-import Seri.Lambda
-import @MODULE@
-
-main :: IO ()
-main = putStrLn $ pretty serimodule
-
