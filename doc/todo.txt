@@ -16,3 +16,8 @@
 - add layout support
 - list literal patterns.
 
+- Test type inference and type checking
+** Verify we check for the instance or context for every method call
+** Verify we check for too many arguments in a ConP, or too few
+** Verify we check for undefined variables
+

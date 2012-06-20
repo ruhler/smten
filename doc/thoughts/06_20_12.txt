@@ -1,0 +1,28 @@
+
+Wed Jun 20 10:40:46 EDT 2012
+
+I have a hypothesis as to what the bug is.
+
+When we have an application, we split it into two constraints and solve them
+directly. But that means we don't substitute the result of the first
+constraint into the second.
+
+This may not be the bug I'm seeing, but it's certainly a bug, and it has an
+easy fix, so let me fix it and see what happens.
+
+Wed Jun 20 10:44:14 EDT 2012
+
+That wasn't the problem I'm seeing.
+
+Let me go through a step at a time, see what happens and if it makes sense to
+me or not. Again, going through the solution process, not the constraint
+process.
+
+Wed Jun 20 10:48:30 EDT 2012
+
+Erg... Apparently there's a problem with the build system. That's bad.
+Probably something to do with out the copy from build to source is done.
+
+And thus, the bug I thought was the problem turns out to really be the problem
+it would seem.
+

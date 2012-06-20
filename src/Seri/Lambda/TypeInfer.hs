@@ -5,8 +5,6 @@ module Seri.Lambda.TypeInfer (
         typeinfer
     ) where
 
-import Debug.Trace
-
 import Control.Monad.State
 import Data.Generics
 
@@ -51,12 +49,6 @@ inferexp ds t e = do
  (_, TIS _ cons _ _) <- runStateT (addc (unforallT t) (typeof e') >> constrain e') (TIS id [] [] ds)
  sol <- solve cons
  return $ replace sol e'
-
-instance Ppr [(Type, Type)] where
-    ppr ts =
-       let pprt (a, b) = ppr a <> text ":" <+> ppr b
-       in vcat (map pprt ts)
-    
 
 
 -- | Replace all UnknownT with new variable types.

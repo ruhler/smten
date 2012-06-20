@@ -120,7 +120,7 @@ typecheck ds =
          texpected <- lookupDataConstructor (mkenv ds n)
          if isSubType texpected ct
             then return ()
-            else fail $ "checkexp: expecting type " ++ pretty texpected ++ ", but found type " ++ pretty ct
+            else fail $ "checkexp: expecting type " ++ pretty texpected ++ ", but found type " ++ pretty ct ++ " in data constructor " ++ n
       checkexp tenv (VarE (Sig n t) Bound) =
          case lookup n tenv of
              Just t' | t == t' -> return ()

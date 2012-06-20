@@ -1,10 +1,13 @@
 
+{-# LANGUAGE FlexibleInstances #-}
+
 module Seri.Lambda.TypeSolver (solve) where
 
 import Control.Monad.State
 
 import Seri.Failable
 import Seri.Lambda.IR
+import Seri.Lambda.Ppr
 
 -- | Solve a type constraint system.
 -- Here's how we solve it:
@@ -42,7 +45,9 @@ finish = do
 --  Updates the current system and solution.
 single :: (Type, Type) -> Solver ()
 single (x, y) | x == y = return ()
-single (AppT a b, AppT c d) = single (a, c) >> single (b, d)
+single (AppT a b, AppT c d) = do
+    (sys, sol) <- get
+    put ((a,c) : (b,d) : sys, sol)
 single (a, b) | b `lessknown` a = single (b, a)
 single (a, b) = do
     (sys, sol) <- get
@@ -64,4 +69,10 @@ lessknown :: Type -> Type -> Bool
 lessknown (VarT a) (VarT b) = a > b
 lessknown (VarT _) _ = True
 lessknown a b = False
+
+instance Ppr [(Type, Type)] where
+    ppr ts =
+       let pprt (a, b) = ppr a <> text ":" <+> ppr b
+       in vcat (map pprt ts)
+    
 

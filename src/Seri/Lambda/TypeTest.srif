@@ -2,7 +2,24 @@
 module Seri.Lambda.TypeTest where {
 
 fst :: forall a b . (a, b) -> a;
-fst (x, _) = x
+fst (x, _) = x;
+
+snd :: forall a b . (a, b) -> b;
+snd (_, y) = y;
+
+(&&) :: Bool -> Bool -> Bool;
+(&&) True True = True;
+(&&) _ _ = False;
+
+head :: forall a . [a] -> a;
+head (x:_) = x;
+
+tail :: forall a . [a] -> [a];
+tail (_:xs) = xs
+
+--length :: forall a . [a] -> Integer;
+--length [] = 0;
+--length (x:xs) = 1 + length xs;
 
 }
 

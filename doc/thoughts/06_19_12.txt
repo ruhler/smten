@@ -356,3 +356,177 @@ Tue Jun 19 19:10:57 EDT 2012
 Okay, so we are doing type inference and checking on already type inferred and
 type checked code, and that seems to go fine.
 
+Shall I try making the leap now?
+
+Maybe do it one file at a time. For example, switch Tuple.srif to Tuple.sri...
+
+This means, move Tuple.srif to Tuple.sri, use serif to generate the .hs file,
+which is needed for running serif on the other things, but don't use serif to
+run the srigen thing.
+
+Or... add those to my type check.
+
+Yes, let me just add pieces to my type check test, flush out the problems I
+expect to encounter with regards to instance methods. Get all those to work,
+then do the transition.
+
+The other thing I need to do is come up with poorly typed programs, and verify
+the type checker gets them.
+
+Tue Jun 19 19:22:33 EDT 2012
+
+Yes, testing a little at a time is definitely the way to go. And we are
+exposing lots of potential bugs.
+
+Thus have me a plan for tomorrow: debug a little at a time by adding the
+library .srif files to TypeTest.srif and verifying it gives the right thing.
+
+I can start now, in what time I have available to me today.
+
+First problem: The definition of (&&)...
+
+Type inference is not complete. We have ~ types left in the expression.
+It also looks as if typeof may be returning the wrong type for case?
+
+
+No. Typeof is fine. The problem is we don't have a complete solution.
+True is getting type ~11, and elsewhere type ~12.
+
+It should be enough to print out the constraints and the solution. Or rather,
+the expression before constraints, the constraints, the solution, the
+expression after constraints. But start a bit at a time.
+
+|| e': (\(a :: ~1) ->
+||    (\(b :: ~2) ->
+||       case ((.a :: ~7), (.b :: ~8)) of {
+||         ((True :: ~13), (True :: ~14)) ->
+||           (True :: ~15);
+||         ((_ :: ~20), (_ :: ~21)) ->
+||           (False :: ~22);
+||       }))
+|| constraints:
+|| ~15: ~22                 -- from case type
+|| ~15: ~15                 -- from case type
+|| (~5, ~6): (~18, ~19)
+|| (~5, ~6): (~11, ~12) 
+|| Bool: ~22                -- from type of False
+|| ~32: ~21              
+|| ~31: ~20               
+|| ~31 -> ~32 -> (~31, ~32): ~16 -> ~17 -> (~18, ~19)
+|| Bool: ~15                -- from type of True
+|| ~30: ~14                
+|| ~29: ~13               
+|| ~29 -> ~30 -> (~29, ~30): ~9 -> ~10 -> (~11, ~12)
+|| ~27: ~8
+|| ~27 -> ~28: ~4 -> (~5, ~6)
+|| ~2: ~8       -- from variable type
+|| ~25: ~7
+|| ~25 -> ~26: ~3 -> ~4 -> (~5, ~6)
+|| ~1: ~7       -- from variable type
+|| ~23 -> ~24 -> (~23, ~24): ~3 -> ~4 -> (~5, ~6)
+|| Bool -> Bool -> Bool: ~1 -> ~2 -> ~15    -- from top level signature
+|| solution: ~2: Bool
+|| ~1: Bool
+|| ~24: ~12
+|| ~23: ~11
+|| ~12: Bool
+|| ~11: Bool
+|| ~25: Bool
+|| ~26: Bool -> (~11, ~12)
+|| ~3: Bool
+|| ~7: Bool
+|| ~27: Bool
+|| ~28: (~11, ~12)
+|| ~4: Bool
+|| ~8: Bool
+|| ~14: ~12
+|| ~13: ~11
+|| ~12: ~10
+|| ~9: ~11
+|| ~29: ~11
+|| ~30: ~10
+|| ~21: ~12
+|| ~20: ~11
+|| ~12: ~17
+|| ~11: ~16
+|| ~31: ~16
+|| ~32: ~17
+|| ~15: Bool
+|| ~19: ~12
+|| ~18: ~11
+|| ~6: ~12
+|| ~5: ~11
+|| ~22: Bool
+|| checkexp: expecting type a -> b -> (a, b), but found type Bool -> Bool -> (~11, ~12) in data constructor (,)
+||  in declaration (&&) :: Bool -> Bool -> Bool;
+|| (&&) = (\(a :: Bool) ->
+||           (\(b :: Bool) ->
+||              case ((.a :: Bool), (.b :: Bool)) of {
+||                ((True :: ~11), (True :: ~12)) ->
+||                  (True :: Bool);
+||                ((_ :: ~11), (_ :: ~12)) ->
+||                  (False :: Bool);
+||              }))
+
+
+How to deal with this?
+It's hard to figure out the constraints, because new type variables are
+introduced, and I'm not sure what they refer to.
+
+What should be easy is for me to figure out if the solver is failing to solve
+for info that we could solve given the constraints. So let me look for what I
+can say about ~11.
+
+|| (~Bool, ~6): (~18, ~19)
+|| (~Bool, ~6): (~11, ~12) 
+|| ~32: ~21              
+|| ~31: ~20               
+|| ~31 -> ~32 -> (~31, ~32): ~16 -> ~17 -> (~18, ~19)
+|| ~30: ~14                
+|| ~29: ~13               
+|| ~29 -> ~30 -> (~29, ~30): ~9 -> ~10 -> (~11, ~12)
+|| ~28: (~Bool, ~6)
+|| ~26: ~Bool -> (~Bool, ~6)
+|| ~Bool -> (~Bool, ~Bool): ~Bool -> (~Bool, ~6)
+
+1: Bool
+2: Bool
+3: Bool
+4: Bool
+5: Bool
+7: Bool
+8: Bool
+11: Bool
+15: Bool
+22: Bool
+23: Bool
+24: Bool
+25: Bool
+27: Bool
+
+Aha! So, it would seem to be a bug in the solver, because I claim there is a
+path to 11 being Bool from there.
+
+Let me look at the solutions generated then? 
+
+Aha. So, I think I see the bug.
+
+When we do the replacement from a solution, it looks like we do the
+replacement in the left hand side of the solution when we should not be. We
+should only do the replacement in the right hand side.
+
+Let me double check with the old type inference implementation.
+
+Huh? The old implementation appears to replace both source and target.
+
+No, the problem is the solution isn't fully updated. We have:
+    13 = 11 = Bool.
+
+But we should have 13 = Bool. Does this mean I'm not doing the replacement in
+the solution the way I should be?
+
+Tue Jun 19 19:59:41 EDT 2012
+
+Oh well. I have an idea of what the bug is now, I should be able to track it
+down tomorrow fairly easily.
+
