@@ -7,6 +7,8 @@ module Seri.Lambda.Ppr (
     module Text.PrettyPrint.HughesPJ
     ) where
 
+import Debug.Trace
+
 import Data.List(group, nub)
 
 import Text.PrettyPrint.HughesPJ
@@ -90,8 +92,8 @@ sep2 :: Doc -> Doc -> Doc
 sep2 a b = a $$ nest tabwidth b
 
 cando :: Exp -> Bool
-cando (AppE (AppE (VarE (Sig ">>" _) _) _) _) = True
-cando (AppE (AppE (VarE (Sig ">>=" _) _) _) (LamE _ _)) = True
+cando (AppE (AppE (VarE (Sig ">>" _) (Instance _)) _) _) = True
+cando (AppE (AppE (VarE (Sig ">>=" _) (Instance _)) _) (LamE _ _)) = True
 cando _ = False
 
 sugardo :: Exp -> (Class, [Stmt])

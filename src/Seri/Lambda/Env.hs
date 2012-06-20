@@ -12,6 +12,8 @@ module Seri.Lambda.Env (
     minimize, sort,
     ) where
 
+import Debug.Trace
+
 import Data.Generics
 import Data.List(nub, partition)
 import Data.Maybe
@@ -241,7 +243,7 @@ lookupVarInfo e@(Env ds (Sig n t))
           in case answer of 
               Nothing -> Bound
               Just (cn, cts, st) ->
-                 let assigns = assignments st t
+                 let assigns = assignments (unforallT st) t
                      cts' = assign assigns (map VarT cts)
                  in Instance (Class cn cts')
 

@@ -37,15 +37,16 @@ inferdec ds (ValD (Sig n t) e) = do
     return $ ValD (Sig n t) e'
 inferdec ds d@(DataD {}) = return d
 inferdec ds d@(ClassD {}) = return d
-inferdec ds (InstD cls ms) = do
-    ms' <- mapM (infermethod ds) ms
-    return (InstD cls ms)
-
-infermethod :: [Dec] -> Method -> Failable Method
-infermethod ds (Method n e) = do
-    t <- lookupVarType (mkenv ds n)
-    e' <- inferexp ds t e
-    return (Method n e')
+inferdec ds (InstD (Class cn ts) ms) =
+  let infermethod :: Method -> Failable Method
+      infermethod (Method n e) = do
+         t <- lookupVarType (mkenv ds n)
+         ClassD _ vars _ <- lookupClassD (mkenv ds ()) cn
+         e' <- inferexp ds (assign (zip vars ts) t) e
+         return (Method n e')
+  in do
+    ms' <- mapM infermethod ms
+    return (InstD (Class cn ts) ms')
 
 inferexp :: [Dec] -> Type -> Exp -> Failable Exp
 inferexp ds t e = do
@@ -155,7 +156,6 @@ instance Constrain Exp where
                 ne <- enved n
                 vt <- lift $ lookupVarType ne
                 rvt <- retype vt
-                --trace ("foo: " ++ pretty vt ++ ", " ++ pretty rvt) (return ())
                 addc rvt t
         return t
 

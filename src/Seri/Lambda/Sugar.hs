@@ -28,6 +28,7 @@ ifE p a b = CaseE p [Match (ConP (ConT "Bool") "True" []) a,
 data Stmt = 
     BindS Sig Exp   -- ^ n <- e
   | NoBindS Exp     -- ^ e
+    deriving(Eq, Show)
 
 -- | do { stmts }
 -- VarInfo specifies which instance of Monad the 'do' is for.

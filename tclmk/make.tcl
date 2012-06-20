@@ -28,9 +28,9 @@ run -ignorestderr $HAPPY -o build/src/Seri/Lambda/Parser.hs \
     
 # Build some haskell programs.
 proc ghcprog {target source args} {
-    run $::GHC --make -o build/src/$target \
+    run $::GHC --make -rtsopts -o build/src/$target \
         -ibuild/src \
-        build/src/$source {*}$args
+        build/src/$source {*}$args 
 }
 
 ghcprog "serie" "Seri/Target/Elaborate/serie.hs"

@@ -53,7 +53,31 @@ tail (_:xs) = xs;
 
 length :: forall a . [a] -> Integer;
 length [] = 0;
-length (x:xs) = 1 + length xs
+length (x:xs) = 1 + length xs;
+
+class Monad m where {
+  (>>=) :: forall a b . m a -> (a -> m b) -> m b;
+  (>>) :: forall a b . m a -> m b -> m b;
+  return :: forall a . a -> m a;
+  fail :: forall a . [Char] -> m a;
+};
+
+data Maybe a = Just a | Nothing;
+
+instance Monad Maybe where {
+    fail _ = Nothing;
+    return = Just;
+    (>>) a b = a >>= (\_ -> b);
+    (>>=) m f = 
+        case m of {
+            Just x -> f x;
+            Nothing -> Nothing;
+            };
+};
+
+fromMaybe :: forall a . a -> Maybe a -> a;
+fromMaybe _ (Just x) = x;
+fromMaybe x Nothing = x
 
 }
 
