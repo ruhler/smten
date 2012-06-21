@@ -6,10 +6,10 @@
 -- declarations.
 module Seri.Lambda.Env (
     Env(), val, mkenv, withenv, decls,
-    lookupvar, lookupDataD, lookupClassD,
-    lookupDataConstructor, lookupVarInfo,
-    lookupVarType,
     minimize, sort,
+    lookupVarType, lookupVarValue, lookupVar, lookupVarInfo,
+    lookupMethodType,
+    lookupDataD, lookupDataConType,
     ) where
 
 import Debug.Trace
@@ -66,9 +66,10 @@ lookupValD (Env decls _) n =
       theValD _ = False
   in theOneOf "ValD" n theValD decls
         
--- | Look up a DataD with given Name in the given Environment.
-lookupDataD :: Env a -> Name -> Failable Dec
-lookupDataD (Env decls _) n =
+-- | Look up a DataD with given type constructor Name in the given
+-- Environment.
+lookupDataD :: Env Name -> Failable Dec
+lookupDataD (Env decls n) =
   let theDataD :: Dec -> Bool
       theDataD (DataD nm _ _) = n == nm
       theDataD _ = False
@@ -102,32 +103,39 @@ lookupSig e cls meth =
      sigInClass sigs
 
 
--- | Given a VarE in an environment return the value of that variable as
--- determined by the environment.
+-- | Given a VarE in an environment return the polymorphic type and value of
+-- that variable as determined by the environment. For methods, the type
+-- returned is that of the class definition, not for any specific instance.
 --
 -- Fails if the variable could not be found in the environment.
-lookupvar :: Env Exp -> Failable (Type, Exp)
-lookupvar e@(Env _ (VarE (Sig n _) Declared)) = do
-  (ValD (TopSig _ _ t) v) <- lookupValD e n
-  return (t, v)
-lookupvar e@(Env _ (VarE (Sig x _) (Instance cls@(Class n ts)))) =
-  let mlook :: [Method] -> Failable (Type, Exp)
-      mlook [] = fail $ "method " ++ x ++ " not found"
-      mlook ((Method nm body):ms) | nm == x = do
-          t <- lookupSig e n x
-          return (t, body)
-      mlook (m:ms) = mlook ms
-  in do
-      InstD _ ms <- lookupInstD e cls
-      mlook ms
-lookupvar e@(Env _ v) = error $ "lookupvar: " ++ pretty v
+lookupVar :: Env Sig -> Failable (Type, Exp)
+lookupVar e@(Env _ s@(Sig n _)) = 
+    case (lookupVarInfo e) of
+        Declared -> do
+            (ValD (TopSig _ _ t) v) <- lookupValD e n
+            return (t, v)
+        (Instance cls@(Class cn ts)) ->
+            let mlook :: [Method] -> Failable (Type, Exp)
+                mlook [] = fail $ "method " ++ n ++ " not found"
+                mlook ((Method nm body):ms) | nm == n = do
+                    t <- lookupSig e cn n
+                    return (t, body)
+                mlook (m:ms) = mlook ms
+            in do
+                InstD _ ms <- lookupInstD e cls
+                mlook ms
+        _ -> fail $ "lookupVar: " ++ n ++ " not found in environment"
 
--- | Given a VarE in an environment return the type of that variable as
--- determined by the environment.
+-- | Look up the value of a variable in an environment.
+lookupVarValue :: Env Sig -> Failable Exp
+lookupVarValue s = lookupVar s >>= return . snd
+
+-- | Given a VarE in an environment, return the polymorphic type of that
+-- variable as determined by the environment. For methods of classes, the
+-- type returned is that in the class definition, not for any specific class
+-- instance.
 --
 -- Fails if the variable could not be found in the environment.
--- Note: if the variable is for a method of a class, returns the type
--- signature given by the class, not any specific instance.
 lookupVarType :: Env Name -> Failable Type
 lookupVarType e@(Env ds n)  = do
     case (attemptM $ lookupValD e n) of
@@ -145,6 +153,14 @@ lookupVarType e@(Env ds n)  = do
                 Just t -> return t
                 Nothing -> fail $ "lookupVarType: " ++ n
 
+-- | Given the name of a method and a specific class instance for the method,
+-- return the type of that method for the specific instance.
+lookupMethodType :: Env Name -> Class -> Failable Type
+lookupMethodType e@(Env ds n) (Class cn ts) = do
+    t <- lookupVarType e
+    ClassD _ vars _ <- lookupClassD (mkenv ds ()) cn
+    return $ assign (zip vars ts) t
+
 union :: (Eq a) => [a] -> [a] -> [a]
 union a b = nub $ a ++ b
 
@@ -161,7 +177,7 @@ declarations m =
       qexp e = []
 
       qtype :: Type -> [Dec]
-      qtype (ConT n) = attemptM $ lookupDataD theenv n
+      qtype (ConT n) = attemptM $ lookupDataD (withenv theenv n)
       qtype t = []
 
       qclass :: Class -> [Dec]
@@ -208,18 +224,18 @@ sort ds =
   in sorte [] dependencies
 
 -- | Given the name of a data constructor in the environment, return its type.
-lookupDataConstructor :: Env Name -> Failable Type
-lookupDataConstructor (Env _ "True") = return $ ConT "Bool"
-lookupDataConstructor (Env _ "False") = return $ ConT "Bool"
-lookupDataConstructor (Env _ "[]") = return $ listT (VarT "a")
-lookupDataConstructor (Env _ ":") = return $ arrowsT [VarT "a", AppT (ConT "[]") (VarT "a"), AppT (ConT "[]") (VarT "a")]
-lookupDataConstructor (Env _ "()") = return $ ConT "()"
-lookupDataConstructor (Env _ "(,)") = return $ arrowsT [VarT "a", VarT "b", AppT (AppT (ConT "(,)") (VarT "a")) (VarT "b")]
-lookupDataConstructor (Env _ "(,,)") = return $ arrowsT [VarT "a", VarT "b", VarT "c",  AppT (AppT (AppT (ConT "(,,)") (VarT "a")) (VarT "b")) (VarT "c")]
-lookupDataConstructor (Env _ "(,,,)")
+lookupDataConType :: Env Name -> Failable Type
+lookupDataConType (Env _ "True") = return $ ConT "Bool"
+lookupDataConType (Env _ "False") = return $ ConT "Bool"
+lookupDataConType (Env _ "[]") = return $ listT (VarT "a")
+lookupDataConType (Env _ ":") = return $ arrowsT [VarT "a", AppT (ConT "[]") (VarT "a"), AppT (ConT "[]") (VarT "a")]
+lookupDataConType (Env _ "()") = return $ ConT "()"
+lookupDataConType (Env _ "(,)") = return $ arrowsT [VarT "a", VarT "b", AppT (AppT (ConT "(,)") (VarT "a")) (VarT "b")]
+lookupDataConType (Env _ "(,,)") = return $ arrowsT [VarT "a", VarT "b", VarT "c",  AppT (AppT (AppT (ConT "(,,)") (VarT "a")) (VarT "b")) (VarT "c")]
+lookupDataConType (Env _ "(,,,)")
     = return $ arrowsT [VarT "a", VarT "b", VarT "c", VarT "d",
          AppT (AppT (AppT (AppT (ConT "(,,,)") (VarT "a")) (VarT "b")) (VarT "c")) (VarT "l")]
-lookupDataConstructor (Env decs n) = 
+lookupDataConType (Env decs n) = 
     case catMaybes [typeofCon d n | d <- decs] of
         [] -> fail $ "data constructor " ++ n ++ " not found in env"
         [x] -> return x

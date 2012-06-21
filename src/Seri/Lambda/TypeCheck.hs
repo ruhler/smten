@@ -36,7 +36,7 @@ typecheck ds =
             checkmeth m@(Method n b) =
               onfail (\s -> fail $ s ++ "\n in method " ++ n) $ do
                 checkexp [] b
-                texpected <- lookupmethtype cls n
+                texpected <- lookupMethodType (mkenv ds n) cls
                 if typeof b /= texpected
                     then fail $ "checkmeth: expected type " ++ pretty texpected
                             ++ " but found type " ++ pretty (typeof b)
@@ -48,7 +48,7 @@ typecheck ds =
       checkpat :: Pat -> Failable [(Name, Type)]
       checkpat p@(ConP pt n ps) = do
          let ct = arrowsT ((map typeof ps) ++ [pt])
-         texpected <- lookupDataConstructor (mkenv ds n)
+         texpected <- lookupDataConType (mkenv ds n)
          if isSubType texpected ct
             then return ()
             else fail $ "checkpat: expecting type " ++ pretty texpected ++ ", but found type " ++ pretty ct
@@ -74,15 +74,6 @@ typecheck ds =
         bindings <- checkpat p
         checkexp (bindings ++ tenv) b
 
-      -- lookup the type of a method for the given class instance.
-      lookupmethtype :: Class -> Name -> Failable Type
-      lookupmethtype (Class n ts) mn = do
-          ClassD _ vars sigs <- lookupClassD (mkenv ds ()) n
-          case filter (\(TopSig sn _ _) -> sn == mn) sigs of
-             [TopSig _ _ t] -> return $ assign (zip vars ts) t
-             [] -> fail $ "unable to find method " ++ mn ++ " in class " ++ n
-             xs -> fail $ "multiple definitions of method " ++ mn ++ " in calss " ++ n
-          
       -- checkexp tenv e
       -- Type check an expression.
       --    tenv - a mapping from bound variable name to type
@@ -119,7 +110,7 @@ typecheck ds =
             t -> fail $ "expected function type, but got type " ++ pretty t ++ " in expression " ++ pretty f
       checkexp tenv (LamE (Sig n t) e) = checkexp ((n, t):tenv) e
       checkexp _ c@(ConE s@(Sig n ct)) = do
-         texpected <- lookupDataConstructor (mkenv ds n)
+         texpected <- lookupDataConType (mkenv ds n)
          if isSubType texpected ct
             then return ()
             else fail $ "checkexp: expecting type " ++ pretty texpected ++ ", but found type " ++ pretty ct ++ " in data constructor " ++ n
@@ -130,13 +121,13 @@ typecheck ds =
                         ++ " but " ++ n ++ " has type " ++ pretty t
              Nothing -> fail $ "unknown bound variable " ++ n
       checkexp tenv v@(VarE (Sig n t) Declared) = do
-         (texpected, _) <- lookupvar (mkenv ds v)
+         texpected <- lookupVarType (mkenv ds n)
          if isSubType texpected t
              then return ()
              else fail $ "expected variable of type " ++ pretty texpected
                         ++ " but " ++ n ++ " has type " ++ pretty t
       checkexp tenv v@(VarE (Sig n t) (Instance cls)) = do
-         texpected <- lookupmethtype cls n
+         texpected <- lookupMethodType (mkenv ds n)cls
          if isSubType texpected t
              then return ()
              else fail $ "checkep: #var: expected type " ++ pretty texpected

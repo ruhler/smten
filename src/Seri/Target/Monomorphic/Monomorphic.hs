@@ -62,7 +62,7 @@ gentype :: Type -> M [Dec]
 gentype t = do
     poly <- gets ms_poly
     let (con, targs) = unfoldt t
-    case attemptM $ lookupDataD (mkenv poly ()) con of
+    case attemptM $ lookupDataD (mkenv poly con) of
         Nothing -> return []
         (Just (DataD _ tvars cs)) -> do 
             let suffix = typesuffix t
@@ -75,12 +75,12 @@ gentype t = do
 
 -- Generate a monomorphic declaration for the given concrete VarE.
 genexp :: Exp -> M Dec
-genexp v@(VarE (Sig n t) _) = do
+genexp v@(VarE s@(Sig n t) _) = do
     t' <- monotype t
     suffix <- expsuffix v
     let n' = n ++ suffix
     poly <- gets ms_poly
-    (pt, e) <- attemptM $ lookupvar (mkenv poly v)
+    (pt, e) <- attemptM $ lookupVar (mkenv poly s)
     e' <- monoexp $ assign (assignments pt t) e
     return $ ValD (TopSig n' [] t') e'
 
@@ -184,11 +184,11 @@ typesuffix = mksuffix . snd . unfoldt
 expsuffix :: Exp -> M Name
 expsuffix e@(VarE (Sig n t) Declared) = do
     poly <- gets ms_poly
-    (pt, _) <- attemptM $ lookupvar (mkenv poly e)
+    pt <- attemptM $ lookupVarType (mkenv poly n)
     return $ mksuffix (map snd (assignments pt t))
 expsuffix e@(VarE (Sig n t) (Instance (Class _ cts))) = do
     poly <- gets ms_poly
-    (pt, _) <- attemptM $ lookupvar (mkenv poly e)
+    pt <- attemptM $ lookupVarType (mkenv poly n)
     return $ mksuffix (cts ++ map snd (assignments pt t))
     
 -- Unfold a concrete type.

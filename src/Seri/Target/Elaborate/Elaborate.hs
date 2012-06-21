@@ -101,8 +101,8 @@ apprsubR = Rule $ \gr e ->
 varredR :: (Monad m) => Rule m
 varredR = Rule $ \gr e ->
    case val e of
-      v@(VarE (Sig _ ct) _)
-        -> case (attemptM $ lookupvar (withenv e v)) of
+      (VarE s@(Sig _ ct) _)
+        -> case (attemptM $ lookupVar (withenv e s)) of
                Nothing -> return Nothing
                Just (pt, ve) -> return . Just $ assign (assignments pt ct) ve
       _ -> return Nothing

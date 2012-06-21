@@ -1,0 +1,106 @@
+
+Thu Jun 21 10:54:22 EDT 2012
+
+Plan for this morning:
+
+1. Figure out what interfaces are used and ought to be used in accessing the
+environment.
+
+2. Switch to using those new interfaces.
+And try to not have the environment read the VarInfo from the IR.
+
+3. Remove VarInfo from the IR
+It can be moved into Env.
+
+
+That will be a good start. After that, I have thoughts on how to do type
+checking based on the solution to the type inference constraints, along with
+reasonable error messages.
+
+The overall goal is to clean up. Make the code simpler, better, cleaner.
+
+First step: The environment. How is it currently being used?
+
+- TypeCheck: Given a Class and a method name, returns the type of the method
+  for the specific instance the class identifies.
+Currently this is implemented in TypeCheck using lookupClassD.
+
+- TypeCheck: Given the name of a data constructor, return it's polymorphic
+  type.
+Currently implemented using lookupDataConstructor.
+
+- TypeCheck: Given a Declared variable, return it's polymorphic type.
+Currently implemented using lookupvar.
+
+- TypeInfer: Given a Class and method name, return the signature for the
+  specific instance of the class given.
+Same as in TypeCheck, only reimplemented in TypeInfer.
+
+- TypeInfer: Given the name of a constructor, return its polymorphic type.
+- TypeInfer: Given the name of a variable, return its polymorphic type.
+- TypeInfer: Given the name and type of a variable, return its VarInfo.
+
+Monomorphic: 
+- Given the name of a type constructor, return it's DataD definition.
+lookupDataD.
+- Given the Name and type of a variable, return its polymorphic type and
+  expression.
+- Given the name and type of a variable, return its polymorphic type
+
+Elaborate:
+- Given the name and type of a var, return it's polymorphic type and
+  expression.
+
+
+Okay, the summary is:
+- Class + Name -> Specific type of method
++lookupMethodType
+- Data Constructor Name -> Polymorphic Type
++lookupDataConstructorType
+- Type Constructor Name -> DataD definition
++lookupDataD
+- Variable Name -> Polymorphic Type
++lookupVarType
+- Variable Name -> Expression
+lookupVarValue
+- Variable Name + Type -> VarInfo
+lookupVarInfo
+- Variable Name + Type -> Type, Expression
+lookupVar
+
+Good. Let me work on this, a bit at a time.
+
+First step: get the external interface right.
+Second step: clean up the internal implementation.
+
+Thu Jun 21 11:54:09 EDT 2012
+
+Oops. Trouble. In order to look up the Expression for a variable, we have to
+know it's concrete type, to figure out which method instance to use.
+
+Let me adjust things to take case of that.
+Err... of course, if you had the Type, there's really no need to look up the
+type. Maybe what we want to have is the Class? But then, what if it isn't a
+method?
+
+I think we only need it when we know the types, so take as input a Sig. And
+then, since you know the type, just return the expression. That makes sense,
+right?
+
+Oh, no, so the thing is, we have a concrete type, lookupVar returns the
+polymorphic type. So that is valuable. Good. That makes me feel better.
+
+I can do this then.
+
+The signature should be: lookupVar :: Env Sig -> Failable (Type, Exp)
+
+How will I implement it?
+Look up the valD. If that works, return that.
+Otherwise assume it's a method...
+
+So given the Sig, lookup the Var Info, then use that like the current
+implementation does. Great. That sounds good to me.
+
+Thu Jun 21 12:12:27 EDT 2012
+
+There! All done with the external interface to the environment. Nifty.

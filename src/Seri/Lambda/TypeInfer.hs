@@ -37,16 +37,15 @@ inferdec ds (ValD (TopSig n ctx t) e) = do
     return $ ValD (TopSig n ctx t) e'
 inferdec ds d@(DataD {}) = return d
 inferdec ds d@(ClassD {}) = return d
-inferdec ds (InstD (Class cn ts) ms) =
+inferdec ds (InstD cls ms) =
   let infermethod :: Method -> Failable Method
       infermethod (Method n e) = do
-         t <- lookupVarType (mkenv ds n)
-         ClassD _ vars _ <- lookupClassD (mkenv ds ()) cn
-         e' <- inferexp ds (assign (zip vars ts) t) e
+         t <- lookupMethodType (mkenv ds n) cls
+         e' <- inferexp ds t e
          return (Method n e')
   in do
     ms' <- mapM infermethod ms
-    return (InstD (Class cn ts) ms')
+    return (InstD cls ms')
 
 inferexp :: [Dec] -> Type -> Exp -> Failable Exp
 inferexp ds t e = do
@@ -144,7 +143,7 @@ instance Constrain Exp where
         return (arrowsT [t, bt])
     constrain (ConE (Sig n t)) = do
         en <- enved n
-        cty <- lift $ lookupDataConstructor en
+        cty <- lift $ lookupDataConType en
         rcty <- retype cty
         addc rcty t
         return t
@@ -167,7 +166,7 @@ instance Constrain Pat where
     constrain (ConP t n ps) = do
         tps <- mapM constrain ps
         en <- enved n
-        cty <- lift $ lookupDataConstructor en
+        cty <- lift $ lookupDataConType en
         rcty <- retype cty
         addc rcty (arrowsT (tps ++ [t]))
         let pts = init (unarrowsT rcty)
