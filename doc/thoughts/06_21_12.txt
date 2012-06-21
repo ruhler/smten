@@ -126,3 +126,11 @@ Well, it seems to work fine now without VarInfo in the IR.
 Some things are cleaner, which is nice. I'll go with it unless I have a
 compelling reason not to later on.
 
+Thu Jun 21 12:52:40 EDT 2012
+
+Good. So first steps for today are done.
+
+Let me clean some more stuff up before thinking about cleaning up type
+checking.
+
+

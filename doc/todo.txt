@@ -26,5 +26,4 @@
 - Reimplement TypeCheck to make use of constraint generation from TypeInfer?
 
 - Understand all the conflicts in the parser.
-- Monomorphic should store Sigs on its todo list, not VarEs.
 

@@ -24,15 +24,14 @@ data MS = MS {
     -- Concrete types to make sure we monomorphize
     ms_totype :: [Type],
 
-    -- Concretely typed VarEs to make sure we monomorphize
-    --  TODO: this should be a list of [Sig], not [Exp]
-    ms_toexp :: [Exp],
+    -- Concretely typed variables to make sure we monomorphize
+    ms_toexp :: [Sig],
 
     -- Concrete types we already monomorphized
     ms_typed :: [Type],
 
-    -- VarEs we already monomorphized
-    ms_exped :: [Exp]
+    -- Variables we already monomorphized
+    ms_exped :: [Sig]
 }
 
 type M = State MS
@@ -50,7 +49,7 @@ finish = do
         (ts, es) -> do
             modify $ \ms -> ms { ms_totype = [], ms_toexp = [] }
             tds <- mapM gentype ts
-            eds <- mapM genexp es
+            eds <- mapM genval es
             modify $ \ms -> ms {
                 ms_typed = dt ++ ts,
                 ms_exped = de ++ es,
@@ -74,11 +73,11 @@ gentype t = do
             cs' <- mapM mkc (assign (zip tvars targs) cs)
             return [DataD (con ++ suffix) [] cs']
 
--- Generate a monomorphic declaration for the given concrete VarE.
-genexp :: Exp -> M Dec
-genexp v@(VarE s@(Sig n t)) = do
+-- Generate a monomorphic declaration for the given concrete variable
+genval :: Sig -> M Dec
+genval s@(Sig n t) = do
     t' <- monotype t
-    suffix <- expsuffix v
+    suffix <- valsuffix s
     let n' = n ++ suffix
     poly <- gets ms_poly
     (pt, e) <- attemptM $ lookupVar (mkenv poly s)
@@ -108,21 +107,21 @@ monoexp (ConE (Sig n t)) = do
     t' <- monotype t
     let n' = n ++ typesuffix (outputT t)
     return (ConE (Sig n' t'))
-monoexp e@(VarE s@(Sig n t)) = do
+monoexp (VarE s@(Sig n t)) = do
     poly <- gets ms_poly
     case lookupVarInfo (mkenv poly s) of
         Bound -> do
             t' <- monotype t
             return (VarE (Sig n t'))
         Declared -> do
-            modify $ \ms -> ms { ms_toexp = e : ms_toexp ms }
+            modify $ \ms -> ms { ms_toexp = s : ms_toexp ms }
             t' <- monotype t
-            suffix <- expsuffix e
+            suffix <- valsuffix s
             return (VarE (Sig (n ++ suffix) t'))
         (Instance (Class _ cts)) -> do
-            modify $ \ms -> ms { ms_toexp = e : ms_toexp ms }
+            modify $ \ms -> ms { ms_toexp = s : ms_toexp ms }
             t' <- monotype t
-            suffix <- expsuffix e
+            suffix <- valsuffix s
             return (VarE (Sig (n ++ suffix) t'))
 
 monomatch :: Match -> M Match
@@ -185,8 +184,8 @@ mksuffix (t:ts) = foldl (\a b -> a ++ "$" ++ mononametype b) "" ts
 typesuffix :: Type -> Name
 typesuffix = mksuffix . snd . unfoldt
 
-expsuffix :: Exp -> M Name
-expsuffix e@(VarE s@(Sig n t)) = do
+valsuffix :: Sig -> M Name
+valsuffix s@(Sig n t) = do
     poly <- gets ms_poly
     pt <- attemptM $ lookupVarType (mkenv poly n)
     case lookupVarInfo (mkenv poly s) of
