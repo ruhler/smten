@@ -83,7 +83,7 @@ instance Typeof Exp where
     typeof (AppE f _) = outputT (typeof f)
     typeof (LamE tn e) = arrowsT [typeof tn, typeof e]
     typeof (ConE tn) = typeof tn
-    typeof (VarE tn _) = typeof tn
+    typeof (VarE tn) = typeof tn
     
 instance Typeof Sig where
     typeof (Sig _ t) = t

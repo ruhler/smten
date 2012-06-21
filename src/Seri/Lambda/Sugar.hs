@@ -31,19 +31,18 @@ data Stmt =
     deriving(Eq, Show)
 
 -- | do { stmts }
--- VarInfo specifies which instance of Monad the 'do' is for.
 -- The final statement of the 'do' must be a NoBindS.
-doE :: VarInfo -> [Stmt] -> Exp
-doE _ [] = error $ "doE on empty list"
-doE vi [NoBindS e] = e 
-doE vi ((NoBindS e):stmts) =
-    let rest = doE vi stmts
+doE :: [Stmt] -> Exp
+doE [] = error $ "doE on empty list"
+doE [NoBindS e] = e 
+doE ((NoBindS e):stmts) =
+    let rest = doE stmts
         tbind = (arrowsT [typeof e, typeof rest, typeof rest])
-    in appsE [VarE (Sig ">>" tbind) vi, e, rest]
-doE vi ((BindS s e):stmts) =
-    let f = LamE s (doE vi stmts)
+    in appsE [VarE (Sig ">>" tbind), e, rest]
+doE ((BindS s e):stmts) =
+    let f = LamE s (doE stmts)
         tbind = (arrowsT [typeof e, typeof f, outputT (typeof f)])
-    in appsE [VarE (Sig ">>=" tbind) vi, e, f]
+    in appsE [VarE (Sig ">>=" tbind), e, f]
 
 -- | (a, b, ... )
 -- There must be at least one expression given.
@@ -94,7 +93,7 @@ clauseE clauses@(_:_) =
       mkmatch (Clause pats body) = Match (tupP pats) body
 
       args = [[c] | c <- take nargs "abcdefghijklmnopqrstuvwxyz"]
-      casearg = tupE [VarE (Sig n (typeof p)) Bound | (n, p) <- zip args pats1]
+      casearg = tupE [VarE (Sig n (typeof p)) | (n, p) <- zip args pats1]
       caseexp = CaseE casearg (map mkmatch clauses)
       lamargs = [Sig n (typeof p) | (n, p) <- zip args pats1]
       

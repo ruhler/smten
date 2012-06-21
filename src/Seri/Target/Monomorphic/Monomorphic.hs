@@ -25,6 +25,7 @@ data MS = MS {
     ms_totype :: [Type],
 
     -- Concretely typed VarEs to make sure we monomorphize
+    --  TODO: this should be a list of [Sig], not [Exp]
     ms_toexp :: [Exp],
 
     -- Concrete types we already monomorphized
@@ -75,7 +76,7 @@ gentype t = do
 
 -- Generate a monomorphic declaration for the given concrete VarE.
 genexp :: Exp -> M Dec
-genexp v@(VarE s@(Sig n t) _) = do
+genexp v@(VarE s@(Sig n t)) = do
     t' <- monotype t
     suffix <- expsuffix v
     let n' = n ++ suffix
@@ -107,19 +108,22 @@ monoexp (ConE (Sig n t)) = do
     t' <- monotype t
     let n' = n ++ typesuffix (outputT t)
     return (ConE (Sig n' t'))
-monoexp (VarE (Sig n t) Bound) = do
-    t' <- monotype t
-    return (VarE (Sig n t') Bound)
-monoexp e@(VarE (Sig n t) Declared) = do
-    modify $ \ms -> ms { ms_toexp = e : ms_toexp ms }
-    t' <- monotype t
-    suffix <- expsuffix e
-    return (VarE (Sig (n ++ suffix) t') Declared)
-monoexp e@(VarE (Sig n t) (Instance (Class _ cts))) = do
-    modify $ \ms -> ms { ms_toexp = e : ms_toexp ms }
-    t' <- monotype t
-    suffix <- expsuffix e
-    return (VarE (Sig (n ++ suffix) t') Declared)
+monoexp e@(VarE s@(Sig n t)) = do
+    poly <- gets ms_poly
+    case lookupVarInfo (mkenv poly s) of
+        Bound -> do
+            t' <- monotype t
+            return (VarE (Sig n t'))
+        Declared -> do
+            modify $ \ms -> ms { ms_toexp = e : ms_toexp ms }
+            t' <- monotype t
+            suffix <- expsuffix e
+            return (VarE (Sig (n ++ suffix) t'))
+        (Instance (Class _ cts)) -> do
+            modify $ \ms -> ms { ms_toexp = e : ms_toexp ms }
+            t' <- monotype t
+            suffix <- expsuffix e
+            return (VarE (Sig (n ++ suffix) t'))
 
 monomatch :: Match -> M Match
 monomatch (Match p e) = do
@@ -182,14 +186,14 @@ typesuffix :: Type -> Name
 typesuffix = mksuffix . snd . unfoldt
 
 expsuffix :: Exp -> M Name
-expsuffix e@(VarE (Sig n t) Declared) = do
+expsuffix e@(VarE s@(Sig n t)) = do
     poly <- gets ms_poly
     pt <- attemptM $ lookupVarType (mkenv poly n)
-    return $ mksuffix (map snd (assignments pt t))
-expsuffix e@(VarE (Sig n t) (Instance (Class _ cts))) = do
-    poly <- gets ms_poly
-    pt <- attemptM $ lookupVarType (mkenv poly n)
-    return $ mksuffix (cts ++ map snd (assignments pt t))
+    case lookupVarInfo (mkenv poly s) of
+        Declared ->
+            return $ mksuffix (map snd (assignments pt t))
+        Instance (Class _ cts) -> 
+            return $ mksuffix (cts ++ map snd (assignments pt t))
     
 -- Unfold a concrete type.
 --  Foo a b ... c 

@@ -5,7 +5,7 @@
 module Seri.Lambda.IR (
     Name, Type(..), Sig(..), TopSig(..), Class(..), Context,
     Pat(..), Match(..),
-    VarInfo(..), Exp(..), 
+    Exp(..), 
     Con(..), Method(..), Dec(..),
     isDataD,
     ) where
@@ -36,15 +36,6 @@ type Context = [Class]
 data Class = Class Name [Type]
       deriving(Eq, Show, Data, Typeable)
 
--- | 'VarInfo' 
--- Information about a variable.
--- [@Bound@] The variable is locally bound by a lambda or pattern match.
--- [@Declared@] The variable refers to a top level declaration.
--- [@Instance@] The variable refers to a method of the given class instance.
--- [@UnknownVI@] The information about the variable is unknown.
-data VarInfo = Bound | Declared | Instance Class | UnknownVI
-    deriving (Eq, Show, Data, Typeable)
-
 data Match = Match Pat Exp      -- ^ p -> e
     deriving (Eq, Show, Data, Typeable)
 
@@ -54,7 +45,7 @@ data Exp = IntegerE Integer         -- ^ integer literal
          | AppE Exp Exp             -- ^ f x
          | LamE Sig Exp             -- ^ \x -> e
          | ConE Sig                 -- ^ data constructor
-         | VarE Sig VarInfo         -- ^ variable
+         | VarE Sig                 -- ^ variable
      deriving (Eq, Show, Data, Typeable)
 
 -- | Patterns.

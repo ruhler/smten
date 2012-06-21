@@ -30,9 +30,9 @@ __prim_mul_Integer = (@__prim_mul_Integer :: Integer -> Integer -> Integer);
 (==) = (@(==) :: Integer -> Integer -> Bool);
 
 instance Num Integer where {
-  (+) = (%__prim_add_Integer :: Integer -> Integer -> Integer);
-  (-) = (%__prim_sub_Integer :: Integer -> Integer -> Integer);
-  (*) = (%__prim_mul_Integer :: Integer -> Integer -> Integer);
+  (+) = __prim_add_Integer;
+  (-) = __prim_sub_Integer;
+  (*) = __prim_mul_Integer;
   negate x = 0 - x;
   abs x = if x < 0 then negate x else x;
   fromInteger x = x;

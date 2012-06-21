@@ -114,27 +114,17 @@ typecheck ds =
          if isSubType texpected ct
             then return ()
             else fail $ "checkexp: expecting type " ++ pretty texpected ++ ", but found type " ++ pretty ct ++ " in data constructor " ++ n
-      checkexp tenv (VarE (Sig n t) Bound) =
+      checkexp tenv (VarE (Sig n t)) =
          case lookup n tenv of
              Just t' | t == t' -> return ()
              Just t' -> fail $ "expected variable of type " ++ pretty t'
                         ++ " but " ++ n ++ " has type " ++ pretty t
-             Nothing -> fail $ "unknown bound variable " ++ n
-      checkexp tenv v@(VarE (Sig n t) Declared) = do
-         texpected <- lookupVarType (mkenv ds n)
-         if isSubType texpected t
-             then return ()
-             else fail $ "expected variable of type " ++ pretty texpected
-                        ++ " but " ++ n ++ " has type " ++ pretty t
-      checkexp tenv v@(VarE (Sig n t) (Instance cls)) = do
-         texpected <- lookupMethodType (mkenv ds n)cls
-         if isSubType texpected t
-             then return ()
-             else fail $ "checkep: #var: expected type " ++ pretty texpected
-                     ++ " but found type " ++ pretty t
-                     ++ " in " ++ pretty v
-      checkexp _ v@(VarE (Sig n t) UnknownVI)
-        = fail $ "UnknownVI in expression " ++ pretty v
+             Nothing -> do
+                 texpected <- lookupVarType (mkenv ds n)
+                 if isSubType texpected t
+                     then return ()
+                     else fail $ "expected variable of type " ++ pretty texpected
+                                ++ " but " ++ n ++ " has type " ++ pretty t
 
   in mapM_ checkdec ds
 

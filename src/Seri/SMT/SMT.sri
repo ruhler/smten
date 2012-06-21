@@ -32,10 +32,10 @@ fail_query :: [Char] -> Query a;
 fail_query = (@fail_query :: [Char] -> Query a);
 
 instance Monad Query where {
-  return = (%return_query :: a -> Query a);
-  (>>=) = (%bind_query :: Query a -> (a -> Query b) -> Query b);
-  (>>) = (%nobind_query :: Query a -> Query b -> Query b);
-  fail = (%fail_query :: [Char] -> Query a);
+  return = return_query;
+  (>>=) = bind_query;
+  (>>) = nobind_query;
+  fail = fail_query;
 }
 
 }

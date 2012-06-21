@@ -101,7 +101,7 @@ apprsubR = Rule $ \gr e ->
 varredR :: (Monad m) => Rule m
 varredR = Rule $ \gr e ->
    case val e of
-      (VarE s@(Sig _ ct) _)
+      (VarE s@(Sig _ ct))
         -> case (attemptM $ lookupVar (withenv e s)) of
                Nothing -> return Nothing
                Just (pt, ve) -> return . Just $ assign (assignments pt ct) ve
@@ -155,7 +155,7 @@ reduces vs (CaseE e ms) =
 reduces vs (AppE a b) = AppE (reduces vs a) (reduces vs b)
 reduces vs e@(LamE (Sig ln t) b) = LamE (Sig ln t) (reduces (filter (\(n, _) -> n /= ln) vs) b)
 reduces _ e@(ConE _) = e
-reduces vs e@(VarE (Sig vn _) _) =
+reduces vs e@(VarE (Sig vn _)) =
     case lookup vn vs of
         (Just v) -> v
         Nothing -> e

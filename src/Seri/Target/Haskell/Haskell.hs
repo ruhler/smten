@@ -27,7 +27,7 @@ haskell builtin main =
       hsExp (AppE f x) = H.AppE (hsExp f) (hsExp x)
       hsExp (LamE (Sig n _) x) = H.LamE [H.VarP (hsName n)] (hsExp x)
       hsExp (ConE (Sig n _)) = H.ConE (hsName n)
-      hsExp (VarE (Sig n _) _) = H.VarE (hsName n)
+      hsExp (VarE (Sig n _)) = H.VarE (hsName n)
     
       hsMatch :: Match -> H.Match
       hsMatch (Match p e) = H.Match (hsPat p) (H.NormalB $ hsExp e) []

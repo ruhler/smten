@@ -37,8 +37,6 @@ import Seri.Lambda.Sugar
        '|'      { TokenBar }
        '='      { TokenEquals }
        '@'      { TokenAtSign }
-       '%'      { TokenPercent }
-       '#'      { TokenHash }
        ':'      { TokenColon }
        '\\'      { TokenBackSlash }
        '::'      { TokenDoubleColon }
@@ -218,10 +216,8 @@ exp10 :: { Exp }
     { ifE $2 $4 $6 }
  | 'case' exp 'of' '{' alts '}'
     { CaseE $2 $5 }
- | '#' '{' class '}' 'do' '{' stmts exp ';' '}' 
-    { doE (Instance $3) ($7 ++ [NoBindS $8]) }
  | 'do' '{' stmts exp ';' '}'
-    { doE UnknownVI ($3 ++ [NoBindS $4]) }
+    { doE ($3 ++ [NoBindS $4]) }
  | fexp
     { $1 }
 
@@ -311,16 +307,12 @@ gcon_typed :: { Sig }
     { Sig $1 UnknownT }
 
 qvar_withinfo :: { Exp }
- : '(' '.' qvar '::' type ')'
-    { VarE (Sig $3 $5) Bound }
+ : '(' qvar '::' type ')'
+    { VarE (Sig $2 $4) }
  | '(' '@' qvar '::' type ')'
     { PrimE (Sig $3 $5) }
- | '(' '%' qvar '::' type ')'
-    { VarE (Sig $3 $5) Declared }
- | '(' '#' '{' class '}' qvar '::' type ')' 
-    { VarE (Sig $6 $8) (Instance $4) }
  | qvar
-    { VarE (Sig $1 UnknownT) UnknownVI }
+    { VarE (Sig $1 UnknownT) }
 
 gcon :: { String }
  : '(' ')'
@@ -346,7 +338,7 @@ qvar :: { String }
 
 qop :: { Exp }
  : qvarsym
-    { VarE (Sig $1 UnknownT) UnknownVI }
+    { VarE (Sig $1 UnknownT) }
  | qconop
     { ConE (Sig $1 UnknownT) }
 
@@ -485,8 +477,6 @@ data Token =
      | TokenBar
      | TokenEquals
      | TokenAtSign
-     | TokenPercent
-     | TokenHash
      | TokenColon
      | TokenBackSlash
      | TokenDoubleColon
@@ -547,8 +537,6 @@ reservedops = [
     ("|", TokenBar),
     ("=", TokenEquals),
     ("@", TokenAtSign),
-    ("%", TokenPercent),
-    ("#", TokenHash),
     (":", TokenColon),
     ("\\", TokenBackSlash),
     ("->", TokenDashArrow),

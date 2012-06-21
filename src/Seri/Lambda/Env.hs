@@ -6,6 +6,7 @@
 -- declarations.
 module Seri.Lambda.Env (
     Env(), val, mkenv, withenv, decls,
+    VarInfo(..),
     minimize, sort,
     lookupVarType, lookupVarValue, lookupVar, lookupVarInfo,
     lookupMethodType,
@@ -30,6 +31,15 @@ data Env x = Env {
 
 instance (Ppr a) => Ppr (Env a) where
     ppr (Env ds x) = ppr ds $+$ ppr x
+
+-- | 'VarInfo' 
+-- Information about a variable.
+-- [@Bound@] The variable is locally bound by a lambda or pattern match.
+-- [@Declared@] The variable refers to a top level declaration.
+-- [@Instance@] The variable refers to a method of the given class instance.
+data VarInfo = Bound | Declared | Instance Class
+    deriving (Eq, Show)
+
 
 -- | Construct an environment for 'x' with the given declarations.
 mkenv :: [Dec] -> x -> Env x
@@ -170,10 +180,13 @@ declarations :: (Data a) => [Dec] -> a -> [Dec]
 declarations m =
   let theenv = Env m ()
       qexp :: Exp -> [Dec]
-      qexp (VarE (Sig n _) Declared) = attemptM $ lookupValD theenv n
-      qexp (VarE (Sig n _) (Instance cls@(Class ni ts)))
-        = catMaybes [attemptM $ lookupClassD theenv ni,
-                     attemptM $ lookupInstD theenv cls]
+      qexp (VarE s@(Sig n _)) =
+         case (lookupVarInfo (withenv theenv s)) of
+            Declared -> attemptM $ lookupValD theenv n
+            (Instance cls@(Class ni ts)) ->
+                catMaybes [attemptM $ lookupClassD theenv ni,
+                             attemptM $ lookupInstD theenv cls]
+            Bound -> []
       qexp e = []
 
       qtype :: Type -> [Dec]

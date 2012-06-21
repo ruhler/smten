@@ -86,18 +86,16 @@ sep2 :: Doc -> Doc -> Doc
 sep2 a b = a $$ nest tabwidth b
 
 cando :: Exp -> Bool
-cando (AppE (AppE (VarE (Sig ">>" _) (Instance _)) _) _) = True
-cando (AppE (AppE (VarE (Sig ">>=" _) (Instance _)) _) (LamE _ _)) = True
+cando (AppE (AppE (VarE (Sig ">>" _)) _) _) = True
+cando (AppE (AppE (VarE (Sig ">>=" _)) _) (LamE _ _)) = True
 cando _ = False
 
-sugardo :: Exp -> (Class, [Stmt])
-sugardo (AppE (AppE (VarE (Sig ">>" _) (Instance cls)) m) r) =
-  let (_, substmts) = sugardo r
-  in (cls, NoBindS m : substmts)
-sugardo (AppE (AppE (VarE (Sig ">>=" _) (Instance cls)) m) (LamE s r)) =
-  let (_, substmts) = sugardo r
-  in (cls, BindS s m : substmts)
-sugardo e = (undefined, [NoBindS e])
+sugardo :: Exp -> [Stmt]
+sugardo (AppE (AppE (VarE (Sig ">>" _)) m) r)
+    = NoBindS m : sugardo r
+sugardo (AppE (AppE (VarE (Sig ">>=" _)) m) (LamE s r))
+    = BindS s m : sugardo r
+sugardo e = [NoBindS e]
 
 instance Ppr Exp where
     -- Special case for if expressions
@@ -108,10 +106,9 @@ instance Ppr Exp where
                 text "else" <+> ppr b)
 
     -- Special case for do statements
-    ppr e | cando e =
-        let (cls, stmts) = sugardo e
-        in text "#" <>  braces (ppr cls) <> text "do" <+> text "{"
-                $+$ nest tabwidth (vcat (map ppr stmts)) $+$ text "}"
+    ppr e | cando e
+        = text "do" <+> text "{"
+                $+$ nest tabwidth (vcat (map ppr (sugardo e))) $+$ text "}"
 
     -- Special case for tuples
     ppr (AppE (AppE (ConE (Sig "(,)" _)) a) b) =
@@ -130,11 +127,7 @@ instance Ppr Exp where
     ppr (AppE a b) = ppr a <+> (parens $ ppr b)
     ppr (LamE s b) = parens $ (text "\\" <> pprsig empty s <+> text "->") `sep2` ppr b
     ppr (ConE s) = pprsig empty s
-    ppr (VarE s Bound) = pprsig (text ".") s
-    ppr (VarE s Declared) = pprsig (text "%") s
-    ppr (VarE s (Instance cls))
-        = pprsig (text "#" <>  braces (ppr cls)) s
-    ppr (VarE s UnknownVI) = pprsig empty s
+    ppr (VarE s) = pprsig empty s
 
 instance Ppr Stmt where
     ppr (NoBindS e) = ppr e <> semi

@@ -21,10 +21,10 @@
 ** Verify we check for too many arguments in a ConP, or too few
 ** Verify we check for undefined variables
 
-- Clean up exported function from Env.
-Figure out what info I actually need, and come up with the right interfaces.
-
-- Get rid of VarInfo in the IR, which I think is unnecessary.
+- Clean up Env lookup function implementations.
 
 - Reimplement TypeCheck to make use of constraint generation from TypeInfer?
+
+- Understand all the conflicts in the parser.
+- Monomorphic should store Sigs on its todo list, not VarEs.
 

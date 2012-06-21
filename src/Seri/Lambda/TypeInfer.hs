@@ -25,10 +25,7 @@ import Seri.Lambda.TypeSolver
 -- expression doesn't type check, so you should run typecheck after inference
 -- to make sure it's valid.
 typeinfer :: [Dec] -> Failable [Dec]
-typeinfer ds = do
-    ds' <- mapM (inferdec ds) ds
-    --trace ("prevarize: " ++ pretty ds') (return ())
-    return $ varize ds'
+typeinfer ds = mapM (inferdec ds) ds
     
 -- Run inference on a single declaration, given the environment.
 inferdec :: [Dec] -> Dec -> Failable Dec
@@ -147,7 +144,7 @@ instance Constrain Exp where
         rcty <- retype cty
         addc rcty t
         return t
-    constrain v@(VarE (Sig n t) _) = do
+    constrain v@(VarE (Sig n t)) = do
         tenv <- gets ti_tenv
         case lookup n tenv of
             Just t' -> addc t' t
@@ -214,35 +211,3 @@ replace m =
                 Nothing -> t
     in everywhere $ mkT base
             
-
--- Update any UnknownVI's in the given declarations.
--- This should be performed after type check, so the proper instance can be
--- chosen.
-varize :: [Dec] -> [Dec]
-varize ds = map varizedec ds
-  where
-    varizedec :: Dec -> Dec
-    varizedec (ValD s e) = ValD s (varizeexp [] e)
-    varizedec d@(DataD {}) = d
-    varizedec d@(ClassD {}) = d
-    varizedec d@(InstD cls ms) = InstD cls (map varizemeth ms)
-
-    varizemeth :: Method -> Method
-    varizemeth (Method n e) = Method n (varizeexp [] e)
-
-    varizeexp :: [Name] -> Exp -> Exp
-    varizeexp _ e@(IntegerE {}) = e
-    varizeexp _ e@(PrimE {}) = e
-    varizeexp bound (CaseE e ms) = CaseE (varizeexp bound e) (map (varizematch bound) ms)
-    varizeexp bound (AppE a b) = AppE (varizeexp bound a) (varizeexp bound b)
-    varizeexp bound (LamE (Sig n t) e) = LamE (Sig n t) (varizeexp (n : bound) e)
-    varizeexp _ e@(ConE {}) = e
-    varizeexp bound (VarE (Sig n t) _) | n `elem` bound = VarE (Sig n t) Bound
-    varizeexp _ (VarE s _) = VarE s (lookupVarInfo (mkenv ds s))
-
-    varizematch :: [Name] -> Match -> Match
-    varizematch bound (Match p e) = Match p (varizeexp ((map fst (bindingsP p)) ++ bound) e)
-        
-    
-
-

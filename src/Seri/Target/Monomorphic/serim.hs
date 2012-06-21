@@ -10,7 +10,7 @@ main = do
     let ["-i", path, fin] = args
 
     poly <- load [path] fin
-    let e = mkenv (flatten poly) (VarE (Sig "main" UnknownT) Declared)
+    let e = mkenv (flatten poly) (VarE (Sig "main" UnknownT))
     let mono = monomorphic e
     putStrLn $ pretty mono
 
