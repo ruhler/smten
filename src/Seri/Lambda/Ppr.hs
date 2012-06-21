@@ -64,7 +64,6 @@ instance Ppr Type where
 
 isAtomE :: Exp -> Bool
 isAtomE (IntegerE {}) = True
-isAtomE (PrimE {}) = True
 isAtomE (CaseE {}) = False
 isAtomE (AppE {}) = False
 isAtomE (LamE {}) = False
@@ -120,7 +119,6 @@ instance Ppr Exp where
 
     -- Normal cases
     ppr (IntegerE i) = integer i
-    ppr (PrimE s) = pprsig (text "@") s
     ppr (CaseE e ms) = text "case" <+> ppr e <+> text "of" <+> text "{"
                         $+$ nest tabwidth (vcat (map ppr ms)) $+$ text "}"
     ppr (AppE a b) | isAtomE b = ppr a <+> ppr b
@@ -179,6 +177,7 @@ instance Ppr Dec where
         = text "instance" <+> ppr cls
                 <+> text "where" <+> text "{"
                 $+$ nest tabwidth (vcat (map ppr ms)) $+$ text "}"
+    ppr (PrimD s) = ppr s
 
 instance Ppr Sig where
     ppr (Sig n t) = pprname n <+> text "::" <+> ppr t <> semi

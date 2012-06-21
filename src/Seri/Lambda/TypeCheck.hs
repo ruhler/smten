@@ -44,6 +44,7 @@ typecheck ds =
                     else return ()
         in onfail (\s -> fail $ s ++ "\n in declaration " ++ pretty d) $ do
              mapM_ checkmeth ms
+      checkdec d@(PrimD {}) = return ()
 
       checkpat :: Pat -> Failable [(Name, Type)]
       checkpat p@(ConP pt n ps) = do
@@ -81,7 +82,6 @@ typecheck ds =
       --  fails if expression does not type check.
       checkexp :: TypeEnv -> Exp -> Failable ()
       checkexp _ (IntegerE {}) = return ()
-      checkexp _ (PrimE {}) = return ()
       checkexp tenv (CaseE e ms) = do
          checkexp tenv e 
          mapM_ (checkmatch tenv) ms

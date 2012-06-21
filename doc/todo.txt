@@ -12,9 +12,13 @@
           them lazily with this transformation. And recursive let blocks are
           not allowed.
 
+- support for pattern guards?
+
 - multi-clause instance methods probably don't work
 - add layout support
 - list literal patterns.
+- support negative literals?
+- support record type constructors
 
 - Test type inference and type checking
 ** Verify we check for the instance or context for every method call
@@ -22,8 +26,11 @@
 ** Verify we check for undefined variables
 
 - Clean up Env lookup function implementations.
+- Should Env be it's own entity, rather than joined with some object?
 
 - Reimplement TypeCheck to make use of constraint generation from TypeInfer?
 
 - Understand all the conflicts in the parser.
+
+- Allow contexts in InstD
 

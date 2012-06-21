@@ -40,7 +40,6 @@ data Match = Match Pat Exp      -- ^ p -> e
     deriving (Eq, Show, Data, Typeable)
 
 data Exp = IntegerE Integer         -- ^ integer literal
-         | PrimE Sig                -- ^ primitive 
          | CaseE Exp [Match]        -- ^ case e of { ms }
          | AppE Exp Exp             -- ^ f x
          | LamE Sig Exp             -- ^ \x -> e
@@ -63,10 +62,11 @@ data Con = Con Name [Type]
 data Method = Method Name Exp
     deriving(Eq, Show, Data, Typeable)
 
-data Dec = ValD TopSig Exp       -- ^ nm :: ctx => ty ; nm = exp
-         | DataD Name [Name] [Con]    -- ^ data nm vars = 
-         | ClassD Name [Name] [TopSig]   -- ^ class nm vars where { sigs }
-         | InstD Class [Method]       -- ^ instance cls where { meths }
+data Dec = ValD TopSig Exp              -- ^ nm :: ctx => ty ; nm = exp
+         | DataD Name [Name] [Con]      -- ^ data nm vars = 
+         | ClassD Name [Name] [TopSig]  -- ^ class nm vars where { sigs }
+         | InstD Class [Method]         -- ^ instance cls where { meths }
+         | PrimD TopSig                 -- ^ nm :: ctx => ty ;
      deriving (Eq, Show, Data, Typeable)
 
 -- | Return True if the declaration is a Data Declaration

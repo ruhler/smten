@@ -22,7 +22,6 @@ haskell builtin main =
       hsExp :: Seri.Exp -> H.Exp
       hsExp e | mapexp builtin e /= Nothing = fromJust (mapexp builtin e)
       hsExp (IntegerE i) = H.SigE (H.LitE (H.IntegerL i)) (hsType (ConT "Integer"))
-      hsExp (PrimE (Sig n _)) = error $ "primitive " ++ n ++ " not defined for haskell target"
       hsExp (CaseE e ms) = H.CaseE (hsExp e) (map hsMatch ms)
       hsExp (AppE f x) = H.AppE (hsExp f) (hsExp x)
       hsExp (LamE (Sig n _) x) = H.LamE [H.VarP (hsName n)] (hsExp x)
@@ -56,6 +55,8 @@ haskell builtin main =
 
       hsDec (InstD (Class n ts) ms)
         = [H.InstanceD [] (foldl H.AppT (H.ConT (hsName n)) (map hsType ts)) (map hsMethod ms)] 
+
+      hsDec (PrimD {}) = []
 
       hsSig :: TopSig -> H.Dec
       hsSig (TopSig n c t) =

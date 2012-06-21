@@ -43,6 +43,7 @@ inferdec ds (InstD cls ms) =
   in do
     ms' <- mapM infermethod ms
     return (InstD cls ms')
+inferdec _ d@(PrimD {}) = return d
 
 inferexp :: [Dec] -> Type -> Exp -> Failable Exp
 inferexp ds t e = do
@@ -119,7 +120,6 @@ class Constrain a where
 
 instance Constrain Exp where
     constrain (IntegerE {}) = return integerT
-    constrain (PrimE (Sig _ t)) = return t
     constrain (CaseE e ms) = do
         te <- constrain e
         tps <- mapM constrain [p | Match p _ <- ms]

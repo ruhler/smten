@@ -35,9 +35,10 @@ instance (Ppr a) => Ppr (Env a) where
 -- | 'VarInfo' 
 -- Information about a variable.
 -- [@Bound@] The variable is locally bound by a lambda or pattern match.
+-- [@Primitive@] The variable is a primitive.
 -- [@Declared@] The variable refers to a top level declaration.
 -- [@Instance@] The variable refers to a method of the given class instance.
-data VarInfo = Bound | Declared | Instance Class
+data VarInfo = Bound | Primitive |  Declared | Instance Class
     deriving (Eq, Show)
 
 
@@ -75,6 +76,15 @@ lookupValD (Env decls _) n =
       theValD (ValD (TopSig nm _ _) _) = n == nm
       theValD _ = False
   in theOneOf "ValD" n theValD decls
+
+-- | Look up a PrimD with given Name in the given Environment.
+lookupPrimD :: Env Name -> Failable Dec
+lookupPrimD (Env decls n) =
+  let thePrimD :: Dec -> Bool
+      thePrimD (PrimD (TopSig nm _ _)) = n == nm
+      thePrimD _ = False
+  in theOneOf "PrimD" n thePrimD decls
+ 
         
 -- | Look up a DataD with given type constructor Name in the given
 -- Environment.
@@ -148,9 +158,10 @@ lookupVarValue s = lookupVar s >>= return . snd
 -- Fails if the variable could not be found in the environment.
 lookupVarType :: Env Name -> Failable Type
 lookupVarType e@(Env ds n)  = do
-    case (attemptM $ lookupValD e n) of
-       Just (ValD (TopSig _ _ t) _) -> return t
-       Nothing ->
+    case (attemptM $ lookupValD e n, attemptM $ lookupPrimD e) of
+       (Just (ValD (TopSig _ _ t) _), _) -> return t
+       (_, Just (PrimD (TopSig _ _ t))) -> return t
+       _ ->
           let getSig :: Dec -> Maybe Type
               getSig (ClassD cn _ sigs) =
                 case filter (\(TopSig sn _ _) -> sn == n) sigs of
@@ -255,12 +266,13 @@ lookupDataConType (Env decs n) =
         xs -> fail $ "multiple data constructors with name " ++ n ++ " found in env"
 
 -- | Look up VarInfo for the variable with given signature.
--- Returns Bound if the variable is not declared or an instance.
+-- Returns Bound if the variable is not declared or an instance or primitive.
 lookupVarInfo :: Env Sig -> VarInfo
 lookupVarInfo e@(Env ds (Sig n t))
-  = case (attemptM $ lookupValD e n) of
-        Just _ -> Declared
-        Nothing ->
+  = case (attemptM $ lookupValD e n, attemptM $ lookupPrimD (withenv e n)) of
+        (Just _, _) -> Declared
+        (_, Just _) -> Primitive
+        _ ->
           let getSig :: Dec -> Maybe (Name, [Name], Type)
               getSig (ClassD cn cts sigs) =
                 case filter (\(TopSig sn _ _) -> sn == n) sigs of

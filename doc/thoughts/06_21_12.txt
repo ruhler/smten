@@ -133,4 +133,189 @@ Good. So first steps for today are done.
 Let me clean some more stuff up before thinking about cleaning up type
 checking.
 
+Thu Jun 21 12:58:05 EDT 2012
+
+Let me, for the fun of it, understand all the parser conflicts. Maybe I can
+solve them too. There are rather a lot.
+
+Thu Jun 21 13:00:10 EDT 2012
+
+Let me start with reduce/reduce, which are supposedly the bad ones.
+
+Erg. I don't know. Let me actually not bother with this now.
+
+Err... so, um. What now?
+
+Thu Jun 21 13:23:42 EDT 2012
+
+Here's the plan. No need to do anything major. Test things. Clean things. Try
+to make it better, more robust.
+
+To help guide me, I can expand the library and see what issues come up.
+
+Before moving replacing TypeCheck with TypeInfer, I need to have tests of
+programs which don't type check. It's worth setting up a good test
+infrastructure.
+
+First test: multi-clause instance methods. Using signum.
+
+Ug. I don't feel like doing this. Let me do it anyway.
+
+The problem is with unary minus. Let me look in the grammar for how that's
+supposed to be handled.
+
+Oh, it can't be that hard.
+
+Ug. I don't know. Is it worth hacking something up? Or better to put it off
+until I'm willing to do it right? 
+
+I put it on the to do list. Let me focus on the multiclause instance problem
+first. Except... I'm not even sure I'll end up testing it. Ug!
+
+Thu Jun 21 14:41:25 EDT 2012
+
+Okay, working on tibby, gives me motivation for my seri work, which is very
+nice.
+
+One thing that's come up with tibby, and is certainly not specific to tibby,
+is a question: how to support polymorphic primitives?
+
+What all do I want to do? I want to have a context on the use of a primitive,
+so that, for example, we can say your argument must be an Interface, so we can
+call a proper method.
+
+Originally, with ForallT, I could write this down in the type of the
+primitive. But... it really didn't work out right. Because when we use the
+primitive, we want to give a concrete type, even if the primitive works for a
+polymorphic type.
+
+Another example of a polymorphic primitive is "error".
+
+It seems like we can support primitive types using the form:
+data Foo a b ... = Foo
+
+Except, that's not right, because you could use Foo to construct the type.
+
+So really, we want to allow empty data definitions if we want to use that
+strategy for primitive types:
+
+data Foo a b ... =  ;
+
+Now you can't construct or deconstruct a foo, so it really is like a primitive
+type. You can just call primitive functions on it, but you know it's kind.
+
+Could we do an analogous thing for primitive functions?
+
+Well, that would be like giving a type signature without a body.
+
+You know, this is interesting, because a type signature without a body is very
+much like what an interface file would look like in our modularity support.
+
+Which brings up another question: do we need to distinguish in the IR between
+a variable and a primitive?
+
+Currently the reason we distinguish is:
+ - it gives us a separate name space for primitives
+ - it lets a target report an error that it doesn't know about the primitive.
+
+A primitive is like a function without a body. That's all it is.
+
+What information would we put in an interface file, if we wanted to do that?
+
+Interface needs:
+ - ValD without the Body
+ - InstD without the Methods (empty body)
+ - Full class definitions
+ - Full data declarations
+
+If we had a PrimD, for example, that could be our ValD without the Body. Then
+an interface file is just a special case of a normal program, where all
+declared variables are treated as primitives.
+
+We don't have a separate namespace for primitives, but we don't really need
+it, and currently don't make use of it. The compiler can know about primitives
+using the PrimD declarations.
+
+Oh, the other way we take advantage of primitives is to know not to elaborate
+them further. But that doesn't really matter so much I don't think.
+
+Cool. I like this. Let me have PrimD be a primitive declaration. Just like
+ValD without the body.
+
+Could I have primitive instances to? No, don't worry about that. Primitive
+values can be used for that just fine.
+
+Hmm... one other idea would be, we don't need anything special for primitives
+at all if we support modularity. You just import a module like any other, and
+it uses the proper interface files. Modular type checking, modular type
+inference, modular compilation. All that works fine.
+
+What we have trouble with is...
+ elaboration: how do we load the needed module?  You can't do modular
+              elaboration.
+ monomorphic: how to monomorphize a polymorphic primitive?
+    Well, this is the same question as: how do you do modular
+    monomorphization? Can you?
+
+You know... modularity shouldn't be hard to support. There was the question
+about interface files: just use the .sri files themselves. If we want
+interface like files later on, we can just have the same syntax without the
+bodies.
+
+Either way, I need a way to have a ValD without a body. If I do it as ValD
+with a Maybe body or as a PrimD, whatever.
+
+Let me use PrimD for now. Let me also thinking about supporting modular type
+inference, modular type checking, modular haskell compilation. That would be
+cool, and should totally be doable.
+
+I need to stew. But I think the answers are at hand.
+
+Syntax for primitives is then easy: just have a ValD with an empty body. I can
+check the case in coalesce easily.
+
+Thu Jun 21 17:05:25 EDT 2012
+
+Idea: for modularity, an Env should be a list of Modules. When we load, we can
+load a module, which is the main module, and the list of other modules which
+is the environment it depends on.
+
+Anyway, that's something to think about later. Let me go ahead with this
+primitives thing, see how that works out. Then I'll try out the example Nirav
+would like for me to try out.
+
+Steps involved for PrimD thing:
+ + add PrimD to IR
+ + remove PrimE from IR
+ - remove '@' from the parser
+ - add support for PrimD to parser
+ - define primitives in the library using declarations instead of '@'
+
+I think that's pretty much it. I think it should be pretty straight forward.
+
+I may have to change the haskell target to do general expression replacement
+for builtins. I should do that eventually anyway, so it won't hurt to do it
+now.
+
+Let me give it a go.
+
+Thu Jun 21 19:08:56 EDT 2012
+
+There's something funny going on with the Complex query.
+It seems like we're getting three instances of foo, all with exactly the same
+bodies, but three different types: int -> int (expected), bool (??), int (??)
+
+Let me start by running serim on the query, see if that sheds any light. Is
+the problem with the monomorphizer?
+
+Thu Jun 21 19:16:58 EDT 2012
+
+Oh, it was really stupid. I used "foo" as a dummy variable. When it was a
+primitive, that was fine, but switching to a VarE, and it picked up my actual
+function called "foo". I switched to "", which should be less likely to be a
+really defined variable.
+
+There. That fixed things.
+
+No PrimE looks to be fine to me.
 

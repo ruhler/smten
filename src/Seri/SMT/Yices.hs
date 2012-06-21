@@ -53,7 +53,7 @@ runQuery :: Rule YicesMonad -> Env Exp -> YicesMonad Exp
 runQuery gr e = do
     elaborated <- elaborate gr e
     case elaborated of
-        (AppE (PrimE (Sig "query" _)) arg) -> do
+        (AppE (VarE (Sig "query" _)) arg) -> do
             dh <- gets ys_dh
             ipc <- gets ys_ipc
             res <- lift $ checkY ipc
@@ -62,31 +62,31 @@ runQuery gr e = do
                 Unknown _ -> return $ ConE (Sig "Unknown" (AppT (ConT "Answer") (typeof arg)))
                 Sat evidence -> return $ AppE (ConE (Sig "Satisfiable" (AppT (ConT "Answer") (typeof arg)))) (realize (yassignments evidence) arg)
                 _ -> return $ ConE (Sig "Unsatisfiable" (AppT (ConT "Answer") (typeof arg)))
-        (PrimE (Sig "free" (AppT (ConT "Query") t))) -> do
+        (VarE (Sig "free" (AppT (ConT "Query") t))) -> do
             fid <- gets ys_freeid
             modify $ \ys -> ys {ys_freeid = fid+1}
             
-            declareNeeded (withenv e (PrimE (Sig "foo" t)))
+            declareNeeded (withenv e (VarE (Sig "" t)))
             runCmds [Y.DEFINE ("free_" ++ show fid, yType t) Nothing]
-            return (AppE (PrimE (Sig "realize" (AppT (AppT (ConT "->") (AppT (ConT "Free") t)) t))) (AppE (ConE (Sig "Free" (AppT (AppT (ConT "->") (ConT "Integer")) (AppT (ConT "Free") t)))) (IntegerE fid)))
-        (AppE (PrimE (Sig "assert" _)) p) -> do
+            return (AppE (VarE (Sig "realize" (AppT (AppT (ConT "->") (AppT (ConT "Free") t)) t))) (AppE (ConE (Sig "Free" (AppT (AppT (ConT "->") (ConT "Integer")) (AppT (ConT "Free") t)))) (IntegerE fid)))
+        (AppE (VarE (Sig "assert" _)) p) -> do
             declareNeeded (withenv e p)
             runCmds [Y.ASSERT (yExp p)]
             return (ConE (Sig "()" (ConT "()")))
-        (AppE (PrimE (Sig "queryS" _)) q) -> do
+        (AppE (VarE (Sig "queryS" _)) q) -> do
             odecls <- gets ys_decls
             runCmds [Y.PUSH]
             x <- runQuery gr (withenv e q)
-            let q' = AppE (PrimE (Sig "query" undefined)) x
+            let q' = AppE (VarE (Sig "query" undefined)) x
             y <- runQuery gr (withenv e q')
             runCmds [Y.POP]
             modify $ \ys -> ys { ys_decls = odecls }
             return y
-        (AppE (PrimE (Sig "return_query" _)) x) -> return x
-        (AppE (AppE (PrimE (Sig "bind_query" _)) x) f) -> do
+        (AppE (VarE (Sig "return_query" _)) x) -> return x
+        (AppE (AppE (VarE (Sig "bind_query" _)) x) f) -> do
           result <- runQuery gr (withenv e x)
           runQuery gr (withenv e (AppE f result))
-        (AppE (AppE (PrimE (Sig "nobind_query" _)) x) y) -> do
+        (AppE (AppE (VarE (Sig "nobind_query" _)) x) y) -> do
           runQuery gr (withenv e x)
           runQuery gr (withenv e y)
         x -> error $ "unknown Query: " ++ pretty x
@@ -119,7 +119,7 @@ runYices primlib gr opts e = do
 smtY :: Compiler
 smtY =
   let ye :: Compiler -> Exp -> YCM Y.ExpY
-      ye _ (AppE (PrimE (Sig "realize" _)) (AppE (ConE (Sig "Free" _)) (IntegerE id))) = return $ Y.VarE ("free_" ++ show id)
+      ye _ (AppE (VarE (Sig "realize" _)) (AppE (ConE (Sig "Free" _)) (IntegerE id))) = return $ Y.VarE ("free_" ++ show id)
       ye _ e = fail $ "smtY does not apply: " ++ pretty e
 
       yt :: Compiler -> Type -> YCM Y.TypY
@@ -157,10 +157,10 @@ antiyices x = fail $ "TODO: antiyices: " ++ show x
 realize :: [(Integer, Exp)] -> Exp -> Exp
 realize as =
     let qexp :: Exp -> Exp
-        qexp (AppE (PrimE (Sig "realize" (AppT (AppT (ConT "->") (AppT (ConT "Free") t)) _))) (AppE (ConE (Sig "Free" (AppT (AppT (ConT "->") (ConT "Integer")) (AppT (ConT "Free") _)))) (IntegerE fid)))
+        qexp (AppE (VarE (Sig "realize" (AppT (AppT (ConT "->") (AppT (ConT "Free") t)) _))) (AppE (ConE (Sig "Free" (AppT (AppT (ConT "->") (ConT "Integer")) (AppT (ConT "Free") _)))) (IntegerE fid)))
             = case lookup fid as of
                 Just e -> e
-                Nothing -> (PrimE (Sig "undefined" t))
+                Nothing -> (VarE (Sig "undefined" t))
         qexp e = e
     in everywhere (mkT qexp)
 

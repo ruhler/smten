@@ -8,28 +8,13 @@ data Query a = Query;
 data Answer a = Satisfiable a | Unsatisfiable | Unknown;
 
 free :: Query a;
-free = (@free :: Query a);
-
 assert :: Bool -> Query ();
-assert = (@assert :: Bool -> Query ());
-
 query :: a -> Query (Answer a);
-query = (@query :: a -> Query (Answer a));
-
 queryS :: Query a -> Query (Answer a);
-queryS = (@queryS :: Query a -> Query (Answer a));
-
 return_query :: a -> Query a;
-return_query = (@return_query :: a -> Query a);
-
 nobind_query :: Query a -> Query b -> Query b;
-nobind_query = (@nobind_query :: Query a -> Query b -> Query b);
-
 bind_query :: Query a -> (a -> Query b) -> Query b;
-bind_query = (@bind_query :: Query a -> (a -> Query b) -> Query b);
-
 fail_query :: [Char] -> Query a;
-fail_query = (@fail_query :: [Char] -> Query a);
 
 instance Monad Query where {
   return = return_query;

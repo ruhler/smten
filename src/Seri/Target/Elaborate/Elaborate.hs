@@ -147,7 +147,6 @@ reduce n v e = reduces [(n, v)] e
 -- of variable n with v if (n, v) is in vs.
 reduces :: [(Name, Exp)] -> Exp -> Exp
 reduces _ e@(IntegerE _) = e
-reduces _ e@(PrimE _) = e
 reduces vs (CaseE e ms) =
     let reducematch :: Match -> Match
         reducematch (Match p b) = Match p (reduces vs b)

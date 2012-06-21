@@ -30,11 +30,11 @@ yIncludes = [
     ]
 
 yExp :: Compiler -> Exp -> YCM Y.ExpY
-yExp c (PrimE (Sig "__prim_add_Integer" _)) = return $ Y.VarE "__prim_add"
-yExp c (PrimE (Sig "__prim_sub_Integer" _)) = return $ Y.VarE "__prim_sub"
-yExp c (PrimE (Sig "<" _)) = return $ Y.VarE "__prim_lt"
-yExp c (PrimE (Sig ">" _)) = return $ Y.VarE "__prim_gt"
-yExp c (PrimE (Sig "==" _)) = return $ Y.VarE "__prim_eq"
+yExp c (VarE (Sig "__prim_add_Integer" _)) = return $ Y.VarE "__prim_add"
+yExp c (VarE (Sig "__prim_sub_Integer" _)) = return $ Y.VarE "__prim_sub"
+yExp c (VarE (Sig "<" _)) = return $ Y.VarE "__prim_lt"
+yExp c (VarE (Sig ">" _)) = return $ Y.VarE "__prim_gt"
+yExp c (VarE (Sig "==" _)) = return $ Y.VarE "__prim_eq"
 yExp _ _ = fail "integerY doesn't apply"
 
 yType :: Compiler -> Type -> YCM Y.TypY

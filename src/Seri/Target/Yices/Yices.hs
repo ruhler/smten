@@ -62,7 +62,6 @@ yExp c (LamE (Sig n t) e) = do
     return $ Y.LAMBDA [(n, fromYCM $ compile_type c c t)] e'
 yExp _ (ConE (Sig n _)) = return $ Y.VarE (yicesname n)
 yExp _ (VarE (Sig n _)) = return $ Y.VarE (yicesname n)
-yExp _ _ = fail "yicesY does not apply"
 
 -- Given a seri identifer, turn it into a valid yices identifier.
 -- TODO: hopefully our choice of names won't clash with the users choices...

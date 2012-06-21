@@ -36,7 +36,6 @@ import Seri.Lambda.Sugar
        '.'      { TokenPeriod }
        '|'      { TokenBar }
        '='      { TokenEquals }
-       '@'      { TokenAtSign }
        ':'      { TokenColon }
        '\\'      { TokenBackSlash }
        '::'      { TokenDoubleColon }
@@ -309,8 +308,6 @@ gcon_typed :: { Sig }
 qvar_withinfo :: { Exp }
  : '(' qvar '::' type ')'
     { VarE (Sig $2 $4) }
- | '(' '@' qvar '::' type ')'
-    { PrimE (Sig $3 $5) }
  | qvar
     { VarE (Sig $1 UnknownT) }
 
@@ -476,7 +473,6 @@ data Token =
      | TokenPeriod
      | TokenBar
      | TokenEquals
-     | TokenAtSign
      | TokenColon
      | TokenBackSlash
      | TokenDoubleColon
@@ -536,7 +532,6 @@ reservedops = [
     (".", TokenPeriod),
     ("|", TokenBar),
     ("=", TokenEquals),
-    ("@", TokenAtSign),
     (":", TokenColon),
     ("\\", TokenBackSlash),
     ("->", TokenDashArrow),
@@ -625,8 +620,10 @@ coalesce :: [PDec] -> [Dec]
 coalesce [] = []
 coalesce ((PSig s):ds) =
     let (ms, rds) = span isPClause ds
-        d = ValD s (clauseE [c | PClause _ c <- ms]) 
         rest = coalesce rds
+        d = case ms of
+                [] -> PrimD s
+                _ -> ValD s (clauseE [c | PClause _ c <- ms]) 
     in (d:rest)
 coalesce ((PDec d):ds) = d : coalesce ds
 

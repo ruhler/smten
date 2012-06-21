@@ -78,7 +78,6 @@ class Typeof a where
 
 instance Typeof Exp where
     typeof (IntegerE _) = integerT
-    typeof (PrimE tn) = typeof tn
     typeof (CaseE _ (m:_)) = typeof m
     typeof (AppE f _) = outputT (typeof f)
     typeof (LamE tn e) = arrowsT [typeof tn, typeof e]

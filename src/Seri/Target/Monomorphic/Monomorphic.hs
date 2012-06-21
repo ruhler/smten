@@ -88,9 +88,6 @@ genval s@(Sig n t) = do
 -- expression.
 monoexp :: Exp -> M Exp
 monoexp e@(IntegerE {}) = return e
-monoexp (PrimE (Sig n t)) = do
-    t' <- monotype t
-    return (PrimE (Sig n t'))
 monoexp (CaseE e ms) = do
     e' <- monoexp e
     ms' <- mapM monomatch ms
@@ -111,6 +108,9 @@ monoexp (VarE s@(Sig n t)) = do
     poly <- gets ms_poly
     case lookupVarInfo (mkenv poly s) of
         Bound -> do
+            t' <- monotype t
+            return (VarE (Sig n t'))
+        Primitive -> do
             t' <- monotype t
             return (VarE (Sig n t'))
         Declared -> do
