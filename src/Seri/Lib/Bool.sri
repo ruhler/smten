@@ -1,6 +1,10 @@
 
 module Seri.Lib.Bool where {
 
+not :: Bool -> Bool;
+not True = False;
+not False = True;
+
 (&&) :: Bool -> Bool -> Bool;
 (&&) True True = True;
 (&&) _ _ = False

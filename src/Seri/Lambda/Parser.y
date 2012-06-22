@@ -97,9 +97,9 @@ topdecl :: { PDec }
  | 'class' tycls tyvars 'where' '{' cdecls ';' '}'
     { PDec (ClassD $2 $3 $6)}
  | 'instance' class 'where' '{' idecls '}'
-    { PDec (InstD $2 $5) }
+    { PDec (InstD $2 (icoalesce $5)) }
  | 'instance' class 'where' '{' idecls ';' '}'
-    { PDec (InstD $2 $5) }
+    { PDec (InstD $2 (icoalesce $5)) }
  | decl
     { $1 }
 
@@ -129,15 +129,15 @@ cdecl :: { TopSig }
  : gendecl
     { $1 }
 
-idecls :: { [Method] }
+idecls :: { [(Name, Clause)] }
  : idecl
     { [$1] }
  | idecls ';' idecl
     { $1 ++ [$3] }
 
-idecl :: { Method }
+idecl :: { (Name, Clause) }
  : funlhs rhs
-    { Method (fst $1) (clauseE [Clause (snd $1) $2]) }
+    { (fst $1, Clause (snd $1) $2) }
 
 gendecl :: { TopSig }
  : var '::' type
@@ -626,6 +626,16 @@ coalesce ((PSig s):ds) =
                 _ -> ValD s (clauseE [c | PClause _ c <- ms]) 
     in (d:rest)
 coalesce ((PDec d):ds) = d : coalesce ds
+
+-- Merge clauses for the same method into a single method.
+icoalesce :: [(Name, Clause)] -> [Method]
+icoalesce [] = []
+icoalesce ((n, c):ms) =
+    let (me, rms) = span (\(n', _) -> n' == n) ms
+        rest = icoalesce rms
+        m = Method n (clauseE (c : map snd me))
+    in (m : rest)
+
 
 parse :: FilePath -> String -> Failable Module
 parse fp text = do

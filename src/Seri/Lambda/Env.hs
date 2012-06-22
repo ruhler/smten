@@ -172,7 +172,7 @@ lookupVarType e@(Env ds n)  = do
               answer = listToMaybe (catMaybes (map getSig ds))
           in case answer of
                 Just t -> return t
-                Nothing -> fail $ "lookupVarType: " ++ n
+                Nothing -> fail $ "lookupVarType: '" ++ n ++ "' not declared"
 
 -- | Given the name of a method and a specific class instance for the method,
 -- return the type of that method for the specific instance.

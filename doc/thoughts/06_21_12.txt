@@ -319,3 +319,36 @@ There. That fixed things.
 
 No PrimE looks to be fine to me.
 
+Thu Jun 21 19:20:13 EDT 2012
+
+Okay, that's done. Let me write up a sample SMT query for bluespec like stuff
+to have to show to Nirav tomorrow. Hopefully it works out easily enough.
+
+Thu Jun 21 19:21:39 EDT 2012
+
+I want to define a FIFO (one element).
+I want to define a state.
+I want to define some rules.
+
+Let's see how hard this is then.
+
+Thu Jun 21 19:58:46 EDT 2012
+
+Cool. So I have the query defined.
+
+Things I need to do before I can really try it out:
+
+- fix multiclause instance bug (when it shows up, which it should)
+- implement (/=)
+
+But I think this is pretty cool. Something fun to work on tomorrow morning.
+
+Fri Jun 22 11:06:57 EDT 2012
+
+I fixed the multiclause thing.
+Type checking is giving me useful errors! That's so nifty. It's caught a lot
+of bugs.
+
+Next thing I need: define /= for State. Which means I'll want to define the
+Eq class and give an instance of it. Too bad I don't have deriving clauses?
+

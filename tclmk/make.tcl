@@ -73,3 +73,5 @@ querytest "Complex"
 querytest "If"
 querytest "Casenomatch"
 
+#querytest "Bluespec"
+

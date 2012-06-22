@@ -1,0 +1,56 @@
+
+
+module Seri.SMT.Tests.FIFO where {
+
+import Seri.Lib.Monad;
+import Seri.Lib.Maybe;
+
+class FIFO f where {
+    clear :: f a;
+    enq :: f a -> a -> Maybe (f a);
+    deq :: f a -> Maybe (f a);
+    first :: f a -> Maybe a;
+};
+    
+-- A one element FIFO.
+data FIFO1 a = FIFO1_Empty
+             | FIFO1_Full a;
+
+instance FIFO FIFO1 where {
+    clear = FIFO1_Empty;
+
+    enq FIFO1_Empty x = Just (FIFO1_Full x);
+    enq (FIFO1_Full _) _ = Nothing;
+
+    deq FIFO1_Empty = Nothing;
+    deq (FIFO1_Full _) = Just FIFO1_Empty;
+
+    first FIFO1_Empty = Nothing;
+    first (FIFO1_Full x) = Just x;
+};
+
+-- A two element FIFO.
+--  When Full, the first element comes first.
+--      So: FIFO2_Full 1 2, will see 1 first, then 2 after dequeing 1.
+data FIFO2 a = FIFO2_Empty
+             | FIFO2_Single a
+             | FIFO2_Full a a;
+
+instance FIFO FIFO2 where {
+    clear = FIFO2_Empty;
+
+    enq FIFO2_Empty x = Just (FIFO2_Single x);
+    enq (FIFO2_Single y) x = Just (FIFO2_Full y x);
+    enq (FIFO2_Full _ _) _ = Nothing;
+
+    deq FIFO2_Empty = Nothing;
+    deq (FIFO2_Single _) = Just FIFO2_Empty;
+    deq (FIFO2_Full _ x) = Just (FIFO2_Single x);
+
+    first FIFO2_Empty = Nothing;
+    first (FIFO2_Single x) = Just x;
+    first (FIFO2_Full x _) = Just x;
+}
+
+}
+

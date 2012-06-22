@@ -1,0 +1,70 @@
+
+
+module Seri.SMT.Tests.Bluespec where {
+
+import Seri.Lib.Integer;
+import Seri.Lib.Monad;
+import Seri.SMT.SMT;
+
+import Seri.SMT.Tests.FIFO;
+
+-- The system state:
+-- a :: Integer
+-- f :: FIFO Integer
+-- b :: Integer
+-- TODO: have seri support record type constructors.
+data TState = TState Integer (FIFO2 Integer) Integer;
+
+a :: TState -> Integer;
+a (TState x _ _) = x;
+
+f :: TState -> FIFO2 Integer;
+f (TState _ x _) = x;
+    
+b :: TState -> Integer;
+b (TState _ _ x) = x;
+
+-- Rules:
+-- p: f.enq(a+1)
+p :: TState -> Maybe TState;
+p (TState a f b) = do {
+    f' <- enq f a ;
+    return (TState a f' b);
+};
+
+-- c: b <= f.first() + b; f.deq();
+-- TODO: Support let in a do statement in seri (?)
+c :: TState -> Maybe TState;
+c (TState a f b) = do {
+    v <- first f;
+    f' <- deq f;
+    return (TState a f' (v + b));
+};
+
+-- A couple specific compositions:
+ppc :: TState -> Maybe TState;
+ppc s = do {
+    s1 <- p s;
+    s2 <- p s1;
+    c s2;
+};
+
+pcp :: TState -> Maybe TState;
+pcp s = do {
+    s1 <- p s;
+    s2 <- c s1;
+    p s2;
+};
+
+-- Now for our query:
+--  Are the two compositions "equivalent"?
+--  That is, are they equivalent for all states s?
+question :: Query (Answer TState);
+question = do {
+    s <- free;
+    assert (ppc s /= pcp s);
+    query s; 
+}
+
+}
+

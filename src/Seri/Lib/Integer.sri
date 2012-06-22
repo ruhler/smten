@@ -1,13 +1,14 @@
 
 module Seri.Lib.Integer where {
 
+import Seri.Lib.Bool;
+
 class Num a where {
   (+) :: a -> a -> a;
   (*) :: a -> a -> a;
   (-) :: a -> a -> a;
   negate :: a -> a;
   abs :: a -> a;
-  signum :: a -> a;
   fromInteger :: Integer -> a;
 };
 
@@ -17,6 +18,9 @@ __prim_mul_Integer :: Integer -> Integer -> Integer;
 (<) :: Integer -> Integer -> Bool;
 (>) :: Integer -> Integer -> Bool;
 (==) :: Integer -> Integer -> Bool;
+
+(/=) :: Integer -> Integer -> Bool;
+(/=) a b = not (a == b);
 
 instance Num Integer where {
   (+) = __prim_add_Integer;
