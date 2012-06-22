@@ -19,9 +19,9 @@ yExp c (CaseE e ms) =
       --   bindings - a list of bindings made when p matches e.
       depat :: Pat -> Y.ExpY -> ([Y.ExpY], [((String, Maybe Y.TypY), Y.ExpY)])
       depat (ConP _ n ps) e =
-        let (preds, binds) = unzip [depat p (Y.APP (Y.VarE (n ++ show i)) [e])
+        let (preds, binds) = unzip [depat p (Y.APP (Y.VarE (yicesname n ++ show i)) [e])
                                     | (p, i) <- zip ps [0..]]
-            mypred = Y.APP (Y.VarE (n ++ "?")) [e]
+            mypred = Y.APP (Y.VarE (yicesname n ++ "?")) [e]
         in (mypred:(concat preds), concat binds)
       depat (VarP (Sig n t)) e = ([], [((n, runYCM $ compile_type c c t), e)])
       depat (IntegerP i) e = ([Y.LitI i Y.:= e], [])
@@ -90,6 +90,9 @@ yicesname ('^':cs) = "__hat" ++ yicesname cs
 yicesname ('|':cs) = "__bar" ++ yicesname cs
 yicesname ('-':cs) = "__dash" ++ yicesname cs
 yicesname ('~':cs) = "__tilde" ++ yicesname cs
+yicesname ('(':cs) = "__oparen" ++ yicesname cs
+yicesname (')':cs) = "__cparen" ++ yicesname cs
+yicesname (',':cs) = "__comma" ++ yicesname cs
 yicesname (c:cs) = c : yicesname cs
 
 yType :: Compiler -> Type -> YCM Y.TypY
@@ -98,7 +101,7 @@ yType c (AppT (AppT (ConT "->") a) b) = do
     a' <- compile_type c c a
     b' <- compile_type c c b
     return $ Y.ARR [a', b']
-yType _ _ = fail "yicesY does not apply"
+yType _ t = fail $ "yicesY does not apply to type: " ++ pretty t
 
 coreY :: Compiler
 coreY = Compiler [] yExp yType

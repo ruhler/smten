@@ -1,6 +1,7 @@
 
 module Seri.Lambda.TypeCheck (typecheck) where
 
+import Data.Generics
 import Data.List(nub)
 
 import Seri.Failable
@@ -17,14 +18,14 @@ type TypeEnv = [(String, Type)]
 typecheck :: [Dec] -> Failable ()
 typecheck ds = 
   let checkdec :: Dec -> Failable ()
-      checkdec d@(ValD (TopSig n _ t) e) =
-        -- TODO: check the context
+      checkdec d@(ValD (TopSig n c t) e) =
         onfail (\s -> fail $ s ++ "\n in declaration " ++ pretty d) $ do
           checkexp [] e
           if (typeof e /= t)
             then fail $ "checkdec: expecting type " ++ pretty t ++ " in expression "
                         ++ pretty e ++ " but found type " ++ pretty (typeof e)
             else return ()
+          instcheck ds c e
 
       -- TODO: shouldn't we check the type signatures don't have any partially
       -- applied types?
@@ -42,6 +43,8 @@ typecheck ds =
                             ++ " but found type " ++ pretty (typeof b)
                             ++ " in Method " ++ pretty m
                     else return ()
+                -- TODO: use the context from the signature
+                instcheck ds [] b
         in onfail (\s -> fail $ s ++ "\n in declaration " ++ pretty d) $ do
              mapM_ checkmeth ms
       checkdec d@(PrimD {}) = return ()
@@ -127,4 +130,21 @@ typecheck ds =
                                 ++ " but " ++ n ++ " has type " ++ pretty t
 
   in mapM_ checkdec ds
+
+-- | Verify all the needed class instances are either in the context or
+-- declared for the given expression.
+instcheck :: [Dec] -> Context -> Exp -> Failable ()
+instcheck ds c e = 
+    let base :: Exp -> Failable Exp
+        base e@(VarE s) =
+            case attemptM $ lookupVarInfo (mkenv ds s) of
+                Just (Instance cls) | cls `elem` c -> return e
+                Just (Instance cls) -> do
+                    lookupInstD (mkenv ds cls)
+                    return e
+                _ -> return e
+        base e = return e
+    in do
+        everywhereM (mkM base) e
+        return ()
 

@@ -343,12 +343,3 @@ Things I need to do before I can really try it out:
 
 But I think this is pretty cool. Something fun to work on tomorrow morning.
 
-Fri Jun 22 11:06:57 EDT 2012
-
-I fixed the multiclause thing.
-Type checking is giving me useful errors! That's so nifty. It's caught a lot
-of bugs.
-
-Next thing I need: define /= for State. Which means I'll want to define the
-Eq class and give an instance of it. Too bad I don't have deriving clauses?
-

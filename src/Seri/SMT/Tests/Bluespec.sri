@@ -15,6 +15,19 @@ import Seri.SMT.Tests.FIFO;
 -- TODO: have seri support record type constructors.
 data TState = TState Integer (FIFO2 Integer) Integer;
 
+instance Eq TState where {
+    (==) (TState a b c) (TState a' b' c')
+        = (a == a') && ((b == b') && (c == c'));
+    (/=) a b = not (a == b);
+};
+
+instance Eq (Maybe TState) where {
+    (==) Nothing Nothing = True;
+    (==) (Just a) (Just b) = a == b;
+    (/=) a b = not (a == b);
+};
+
+
 a :: TState -> Integer;
 a (TState x _ _) = x;
 
@@ -59,8 +72,8 @@ pcp s = do {
 -- Now for our query:
 --  Are the two compositions "equivalent"?
 --  That is, are they equivalent for all states s?
-question :: Query (Answer TState);
-question = do {
+main :: Query (Answer TState);
+main = do {
     s <- free;
     assert (ppc s /= pcp s);
     query s; 

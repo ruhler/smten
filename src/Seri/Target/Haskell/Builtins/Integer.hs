@@ -16,7 +16,7 @@ integerB =
       me (VarE (Sig "__prim_mul_Integer" _)) = Just (H.VarE $ H.mkName "Integer.*")
       me (VarE (Sig "<" _)) = Just (H.VarE $ H.mkName "Integer.<")
       me (VarE (Sig ">" _)) = Just (H.VarE $ H.mkName "Integer.>")
-      me (VarE (Sig "==" _)) = Just (H.VarE $ H.mkName "Integer.==")
+      me (VarE (Sig "__prim_eq_Integer" _)) = Just (H.VarE $ H.mkName "Integer.==")
       me _ = Nothing
 
       mt (ConT "Integer") = Just (H.ConT $ H.mkName "Integer.Integer")

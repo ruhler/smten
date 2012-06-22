@@ -12,7 +12,7 @@ import Seri.Lambda
 
 monomorphic :: Env Exp -> Env Exp
 monomorphic e =
-  fst $ runState (monoall $ val e) (MS (decls e) [] [] [] [] [])
+  fst $ runState (monoall $ val e) (MS (decls e) [] [] [] [] [] [])
 
 data MS = MS {
     -- declarations in the original polymorphic environment.
@@ -31,7 +31,10 @@ data MS = MS {
     ms_typed :: [Type],
 
     -- Variables we already monomorphized
-    ms_exped :: [Sig]
+    ms_exped :: [Sig],
+
+    -- List of locally bound variables.
+    ms_bound :: [Name]
 }
 
 type M = State MS
@@ -98,36 +101,46 @@ monoexp (AppE a b) = do
     return (AppE a' b')
 monoexp (LamE (Sig n t) e) = do
     t' <- monotype t
+    bound <- gets ms_bound
+    modify $ \ms -> ms { ms_bound = n : bound }
     e' <- monoexp e
+    modify $ \ms -> ms { ms_bound = bound }
     return (LamE (Sig n t') e')
 monoexp (ConE (Sig n t)) = do
     t' <- monotype t
     let n' = n ++ typesuffix (outputT t)
     return (ConE (Sig n' t'))
 monoexp (VarE s@(Sig n t)) = do
+    bound <- gets ms_bound
     poly <- gets ms_poly
-    case lookupVarInfo (mkenv poly s) of
-        Bound -> do
+    case (n `elem` bound, attemptM $ lookupVarInfo (mkenv poly s)) of
+        (True, _) -> do
             t' <- monotype t
             return (VarE (Sig n t'))
-        Primitive -> do
+        (_, Just Primitive) -> do
             t' <- monotype t
             return (VarE (Sig n t'))
-        Declared -> do
+        (_, Just Declared) -> do
             modify $ \ms -> ms { ms_toexp = s : ms_toexp ms }
             t' <- monotype t
             suffix <- valsuffix s
             return (VarE (Sig (n ++ suffix) t'))
-        (Instance (Class _ cts)) -> do
-            modify $ \ms -> ms { ms_toexp = s : ms_toexp ms }
+        (_, Just (Instance (Class _ cts))) -> do
+            modify (\ms -> ms { ms_toexp = s : ms_toexp ms })
             t' <- monotype t
             suffix <- valsuffix s
             return (VarE (Sig (n ++ suffix) t'))
+        _ -> do
+            t' <- monotype t
+            return (VarE (Sig n t'))
 
 monomatch :: Match -> M Match
 monomatch (Match p e) = do
     p' <- monopat p
+    bound <- gets ms_bound
+    modify $ \ms -> ms { ms_bound = map fst (bindingsP p) ++ bound }
     e' <- monoexp e
+    modify $ \ms -> ms { ms_bound = bound }
     return $ Match p' e'
 
 monopat :: Pat -> M Pat
@@ -188,10 +201,10 @@ valsuffix :: Sig -> M Name
 valsuffix s@(Sig n t) = do
     poly <- gets ms_poly
     pt <- attemptM $ lookupVarType (mkenv poly n)
-    case lookupVarInfo (mkenv poly s) of
-        Declared ->
+    case attemptM $ lookupVarInfo (mkenv poly s) of
+        Just Declared ->
             return $ mksuffix (map snd (assignments pt t))
-        Instance (Class _ cts) -> 
+        Just (Instance (Class _ cts)) -> 
             return $ mksuffix (cts ++ map snd (assignments pt t))
     
 -- Unfold a concrete type.

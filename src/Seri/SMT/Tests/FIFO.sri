@@ -16,6 +16,14 @@ class FIFO f where {
 data FIFO1 a = FIFO1_Empty
              | FIFO1_Full a;
 
+-- TODO: when we support contexts in instance declarations, make a generic Eq
+-- instance for this.
+instance Eq (FIFO1 Integer) where {
+    (==) FIFO1_Empty FIFO1_Empty = True;
+    (==) (FIFO1_Full a) (FIFO1_Full b) = a == b;
+    (/=) a b = not (a == b);
+};
+
 instance FIFO FIFO1 where {
     clear = FIFO1_Empty;
 
@@ -35,6 +43,16 @@ instance FIFO FIFO1 where {
 data FIFO2 a = FIFO2_Empty
              | FIFO2_Single a
              | FIFO2_Full a a;
+
+-- TODO: when we support contexts in instance declarations, make a generic Eq
+-- instance for this.
+instance Eq (FIFO2 Integer) where {
+    (==) FIFO2_Empty FIFO2_Empty = True;
+    (==) (FIFO2_Single a) (FIFO2_Single b) = a == b;
+    (==) (FIFO2_Full a b) (FIFO2_Full c d) = (a == c) && (b == d);
+
+    (/=) a b = not (a == b);
+};
 
 instance FIFO FIFO2 where {
     clear = FIFO2_Empty;

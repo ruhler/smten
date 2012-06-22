@@ -40,14 +40,16 @@ runCmds cmds = do
     lift $ sendCmds cmds ipc dh
 
 -- Tell yices about any types or expressions needed to refer to the given
--- expression.
-declareNeeded :: Env Exp -> YicesMonad ()
+-- expression, and return the monomorphized expression.
+declareNeeded :: Env Exp -> YicesMonad Exp
 declareNeeded x = do
   decs <- gets ys_decls
-  let (pdecls, _) = sort $ decls (monomorphic x)
+  let monoed = monomorphic x
+  let (pdecls, _) = sort $ decls monoed
   let newdecls = pdecls \\ decs
   modify $ \ys -> ys { ys_decls = decs ++ newdecls }
   runCmds (yDecs newdecls)
+  return (val monoed)
 
 runQuery :: Rule YicesMonad -> Env Exp -> YicesMonad Exp
 runQuery gr e = do
@@ -66,12 +68,12 @@ runQuery gr e = do
             fid <- gets ys_freeid
             modify $ \ys -> ys {ys_freeid = fid+1}
             
-            declareNeeded (withenv e (VarE (Sig "" t)))
+            declareNeeded (withenv e (VarE (Sig " ~dummy " t)))
             runCmds [Y.DEFINE ("free_" ++ show fid, yType t) Nothing]
-            return (AppE (VarE (Sig "realize" (AppT (AppT (ConT "->") (AppT (ConT "Free") t)) t))) (AppE (ConE (Sig "Free" (AppT (AppT (ConT "->") (ConT "Integer")) (AppT (ConT "Free") t)))) (IntegerE fid)))
+            return (AppE (VarE (Sig "~free" (arrowsT [integerT, t]))) (IntegerE fid))
         (AppE (VarE (Sig "assert" _)) p) -> do
-            declareNeeded (withenv e p)
-            runCmds [Y.ASSERT (yExp p)]
+            p' <- declareNeeded (withenv e p)
+            runCmds [Y.ASSERT (yExp p')]
             return (ConE (Sig "()" (ConT "()")))
         (AppE (VarE (Sig "queryS" _)) q) -> do
             odecls <- gets ys_decls
@@ -109,7 +111,13 @@ data RunOptions = RunOptions {
 runYices :: [Y.CmdY] -> Rule YicesMonad -> RunOptions -> Env Exp -> IO Exp
 runYices primlib gr opts e = do
     dh <- openFile (fromMaybe "/dev/null" (debugout opts)) WriteMode
+
+    -- We set NoBuffering, because otherwise the output gets chopped off for
+    -- longer outputs.
+    hSetBuffering dh NoBuffering
     ipc <- createYicesPipe (yicesexe opts) ["-tc"]
+    case ipc of
+        (Just hin, Just hout, _, _) -> hSetBuffering hin NoBuffering
     sendCmds (includes smtY ++ primlib) ipc dh
     (x, _) <- runStateT (runQuery gr e) (YicesState [] ipc dh 1)
     hClose dh
@@ -119,7 +127,7 @@ runYices primlib gr opts e = do
 smtY :: Compiler
 smtY =
   let ye :: Compiler -> Exp -> YCM Y.ExpY
-      ye _ (AppE (VarE (Sig "realize" _)) (AppE (ConE (Sig "Free" _)) (IntegerE id))) = return $ Y.VarE ("free_" ++ show id)
+      ye _ (AppE (VarE (Sig "~free" _)) (IntegerE id)) = return $ Y.VarE ("free_" ++ show id)
       ye _ e = fail $ "smtY does not apply: " ++ pretty e
 
       yt :: Compiler -> Type -> YCM Y.TypY
@@ -157,7 +165,7 @@ antiyices x = fail $ "TODO: antiyices: " ++ show x
 realize :: [(Integer, Exp)] -> Exp -> Exp
 realize as =
     let qexp :: Exp -> Exp
-        qexp (AppE (VarE (Sig "realize" (AppT (AppT (ConT "->") (AppT (ConT "Free") t)) _))) (AppE (ConE (Sig "Free" (AppT (AppT (ConT "->") (ConT "Integer")) (AppT (ConT "Free") _)))) (IntegerE fid)))
+        qexp (AppE (VarE (Sig "~free" (AppT (AppT (ConT "->") (ConT "Integer")) t))) (IntegerE fid))
             = case lookup fid as of
                 Just e -> e
                 Nothing -> (VarE (Sig "undefined" t))

@@ -7,7 +7,12 @@ not False = True;
 
 (&&) :: Bool -> Bool -> Bool;
 (&&) True True = True;
-(&&) _ _ = False
+(&&) _ _ = False;
+
+class Eq a where {
+   (==) :: a -> a -> Bool;
+   (/=) :: a -> a -> Bool;
+}
 
 }
 

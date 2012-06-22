@@ -11,10 +11,11 @@ foreach key [array names ::env] {
 #   ::env(...) - needed environment variables, such as:
 #       PATH, GHC_PACKAGE_PATH
 source tclmk/local.tcl
+set ::env(LANG) "en_US.UTF-8"
 
 proc run {args} {
     puts $args
-    exec {*}$args
+    exec {*}$args "2>@" stderr
 }
 
 # Create and set up a build directory for the build.
@@ -36,7 +37,7 @@ proc ghcprog {target source args} {
 ghcprog "serie" "Seri/Target/Elaborate/serie.hs"
 ghcprog "serih" "Seri/Target/Haskell/serih.hs"
 ghcprog "serim" "Seri/Target/Monomorphic/serim.hs"
-ghcprog "runquery" "Seri/SMT/runquery.hs"
+ghcprog "runquery" "Seri/SMT/runquery.hs" 
 ghcprog "type" "Seri/Lambda/type.hs"
 
 set SERIE build/src/serie
@@ -61,9 +62,9 @@ run echo "True" > $hsdir/hstests.wnt
 run cmp $hsdir/hstests.got $hsdir/hstests.wnt
 
 # The SMT query tests
-proc querytest {name} {
+proc querytest {name args} {
     run $::RUNQUERY -d build/src/Seri/SMT/Tests/$name.dbg -i build/src \
-         build/src/Seri/SMT/Tests/$name.sri \
+         build/src/Seri/SMT/Tests/$name.sri {*}$args \
          > build/src/Seri/SMT/Tests/$name.out
 }
 

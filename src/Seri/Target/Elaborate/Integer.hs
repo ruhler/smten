@@ -17,7 +17,7 @@ integerR = Rule $ \gr e ->
         -> return . Just $ if a < b then trueE else falseE
       (AppE (AppE (VarE (Sig ">" _)) (IntegerE a)) (IntegerE b))
         -> return . Just $ if a > b then trueE else falseE
-      (AppE (AppE (VarE (Sig "==" _)) (IntegerE a)) (IntegerE b))
+      (AppE (AppE (VarE (Sig "__prim_eq_Integer" _)) (IntegerE a)) (IntegerE b))
         -> return . Just $ if a == b then trueE else falseE
       _ -> return Nothing
 

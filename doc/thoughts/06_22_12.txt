@@ -1,0 +1,164 @@
+
+
+Fri Jun 22 11:06:57 EDT 2012
+
+I fixed the multiclause thing.
+Type checking is giving me useful errors! That's so nifty. It's caught a lot
+of bugs.
+
+Next thing I need: define /= for State. Which means I'll want to define the
+Eq class and give an instance of it. Too bad I don't have deriving clauses?
+
+Fri Jun 22 11:21:33 EDT 2012
+
+Problem with context! I should really fix this now, otherwise it will come
+back to bite me, many times, I'm sure.
+
+I try runquery, and we try to look up the instance, and it fails. At least it
+tells me what the problem is.
+
+I should fix this now in typecheck...
+
+How should it be done?
+
+Okay, here's what I'll do. I'll think about how to do it. Then continue
+working on the bluespec query to flesh out other todo items. Then, after
+things settle, I should come back and work on implementing instance checking.
+
+The idea is this: When we run type check, whenever we encounter a variable,
+look up its VarInfo. If it is an instance, then we need to check either that
+that instance belongs to the context, or it's in scope somewhere.
+
+Hey, so that's not too bad. I'll just add the context to the type checking
+monad... oh. It doesn't have one.
+
+I can add this to type inference more easily I think. Let me do that. Add the
+context to the inference monad... but I should really do this after merging
+the too...
+
+Anyway, whatever I decide to do, it's easy. Add the context to the scope of
+type checking. For each var, look up its info. If its an Instance, verify the
+class is either in the context or declared.
+
+Note, I should do this after type inference, because otherwise I may not yet
+know what the predicate is.
+
+Perhaps I can just make this a post-processing step. After type inference, it
+can stand on its own. It's just a Failable monadic everywhere kind of
+something with the context of the expression and the declarations in scope.
+
+Let me put it into TypeCheck for now, and hopefully remember to keep using it
+after merging type check and type inference.
+
+Fri Jun 22 11:44:18 EDT 2012
+
+There, that works just swell now. Good.
+
+Now I can move on to the test case.
+
+Fri Jun 22 11:46:45 EDT 2012
+
+Oh ho! So really I need contexts on instances for this to work out.
+Okay. That will be something important to add next. Let me bypass it for now
+though.
+
+Fri Jun 22 11:59:42 EDT 2012
+
+Okay, so this has exposed plenty of issues. That's a good sign at least. Or,
+it's good to flesh these issues out. My guess is they are mostly bugs in the
+monomorphizer.
+
+So, to check that, let me do the following. Let me print out the declarations
+that we monomorphize before sending to yices, both before and after
+monomorphization, and identify the bugs.
+
+First, some observations from the yices code I'm seeing:
+ - data types seem to be defined just fine.
+ - class instances look okay.
+ - for some reason I'm defining lots of 'a's and 'b's. All of the same body,
+   but with a different type.
+    a of type (FIFO2 Integer)
+    a of type TState
+    a of type Maybe$FIFO2$Integer
+    a of type int
+    But a should be of type:    a :: TState -> Integer
+  Similar with 'b'.
+
+ Then we crash because we try to send something we shouldn't.
+
+Fri Jun 22 12:16:57 EDT 2012
+
+I have a hypothesis.  Monomorphic uses VarInfo to figure out if it's bound,
+but you can't do that, because the way we generate VarInfo doesn't know of the
+variable declaration is shadowed by a local variable. We need to keep track of
+the set of bound variables in the monomorphizer and not look those up.
+
+Okay, that shouldn't be too bad. Let me try it out.
+
+Fri Jun 22 12:19:46 EDT 2012
+
+You know? This suggests to me we shouldn't have Bound in VarInfo, because we
+can't know. Instead allow VarInfo to fail, and the user can do what they want
+with it.
+
+Fri Jun 22 12:42:48 EDT 2012
+
+Ah, so now we have a silly bug. We forget take the monomorphic expression for
+assert predicates. That should be easy to fix.
+
+Fri Jun 22 12:47:32 EDT 2012
+
+Unfortunately, now we are monomorphizing realize (Free x), which I'd rather
+not have happen.
+
+This realize and Free thing... Maybe I should have a primitive function "free"
+instead of introducing a new data type.
+
+In fact, we could have: ~free :: Integer -> a, be a single primitive.
+Wouldn't that be much easier? I think so. Cool.
+
+Fri Jun 22 13:00:23 EDT 2012
+
+Okay, progress, but we seem to have gotten stuck in an infinite loop. In the
+pretty printer? Let me turn back on profiling and see if I can't get a hint of
+what's going on.
+
+Fri Jun 22 13:04:51 EDT 2012
+
+Looks like a problem in Math.SMT.Yices.Pipe? It's waiting for lines of output?
+
+Looks like Math.SMT.Yices showing of yices commands truncates if they are too
+long. Perhaps I can check out the source code to see if I can understand where
+this is coming from.
+
+So it sends a line which isn't complete, and yices is waiting for it to
+complete, and we are waiting for the response from yices, so it gets stuck in
+a deadlock.
+
+Myron had a suggestion: split the assertion into parts. That seems hackish to
+me though. Not very satisfactory. Let me see if I can identify the source of
+the problem by looking at the show code.
+
+Another thing I could try to do is condense the assertion by making the names
+of things a lot smaller.
+
+Fri Jun 22 13:54:23 EDT 2012
+
+Okay, cool. Figure that out. Set buffering mode different.
+Now the problem is, stderr isn't output by the build system, which is annoying
+where there can be bugs. Like now: for some reason "(,)" is getting into
+yices.
+
+Fri Jun 22 14:06:09 EDT 2012
+
+Okay, printed out stderr. Yes, lots of commas showing up. What's wrong?
+
+Fri Jun 22 14:07:27 EDT 2012
+
+The constructor "(,)", is not being renamed for some reason.
+
+Fri Jun 22 14:14:21 EDT 2012
+
+Fixed that. But now we have to make tuples work in general. How do I want to
+do that?
+

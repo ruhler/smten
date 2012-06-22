@@ -15,12 +15,14 @@ class Num a where {
 __prim_add_Integer :: Integer -> Integer -> Integer;
 __prim_sub_Integer :: Integer -> Integer -> Integer;
 __prim_mul_Integer :: Integer -> Integer -> Integer;
+__prim_eq_Integer :: Integer -> Integer -> Bool;
 (<) :: Integer -> Integer -> Bool;
 (>) :: Integer -> Integer -> Bool;
-(==) :: Integer -> Integer -> Bool;
 
-(/=) :: Integer -> Integer -> Bool;
-(/=) a b = not (a == b);
+instance Eq Integer where {
+    (==) = __prim_eq_Integer;
+    (/=) a b = not (a == b);
+};
 
 instance Num Integer where {
   (+) = __prim_add_Integer;

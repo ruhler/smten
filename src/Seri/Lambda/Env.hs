@@ -11,6 +11,7 @@ module Seri.Lambda.Env (
     lookupVarType, lookupVarValue, lookupVar, lookupVarInfo,
     lookupMethodType,
     lookupDataD, lookupDataConType,
+    lookupInstD,
     ) where
 
 import Debug.Trace
@@ -34,11 +35,10 @@ instance (Ppr a) => Ppr (Env a) where
 
 -- | 'VarInfo' 
 -- Information about a variable.
--- [@Bound@] The variable is locally bound by a lambda or pattern match.
 -- [@Primitive@] The variable is a primitive.
 -- [@Declared@] The variable refers to a top level declaration.
 -- [@Instance@] The variable refers to a method of the given class instance.
-data VarInfo = Bound | Primitive |  Declared | Instance Class
+data VarInfo = Primitive |  Declared | Instance Class
     deriving (Eq, Show)
 
 
@@ -104,8 +104,8 @@ lookupClassD (Env decls _) n =
   in theOneOf "ClassD" n theClassD decls
 
 -- | Look up an InstD in the given Environment.
-lookupInstD :: Env a -> Class -> Failable Dec
-lookupInstD (Env decls _) (Class n t) =
+lookupInstD :: Env Class -> Failable Dec
+lookupInstD (Env decls (Class n t)) =
   let theInstD :: Dec -> Bool
       theInstD (InstD (Class nm ts) _) = n == nm && t == ts
       theInstD _ = False
@@ -129,8 +129,10 @@ lookupSig e cls meth =
 --
 -- Fails if the variable could not be found in the environment.
 lookupVar :: Env Sig -> Failable (Type, Exp)
-lookupVar e@(Env _ s@(Sig n _)) = 
-    case (lookupVarInfo e) of
+lookupVar e@(Env _ s@(Sig n _)) = do
+    vi <- lookupVarInfo e
+    case vi of
+        Primitive -> fail $ "lookupVar: " ++ n ++ " is primitive"
         Declared -> do
             (ValD (TopSig _ _ t) v) <- lookupValD e n
             return (t, v)
@@ -142,9 +144,8 @@ lookupVar e@(Env _ s@(Sig n _)) =
                     return (t, body)
                 mlook (m:ms) = mlook ms
             in do
-                InstD _ ms <- lookupInstD e cls
+                InstD _ ms <- lookupInstD (withenv e cls)
                 mlook ms
-        _ -> fail $ "lookupVar: " ++ n ++ " not found in environment"
 
 -- | Look up the value of a variable in an environment.
 lookupVarValue :: Env Sig -> Failable Exp
@@ -192,12 +193,12 @@ declarations m =
   let theenv = Env m ()
       qexp :: Exp -> [Dec]
       qexp (VarE s@(Sig n _)) =
-         case (lookupVarInfo (withenv theenv s)) of
-            Declared -> attemptM $ lookupValD theenv n
-            (Instance cls@(Class ni ts)) ->
+         case (attemptM $ lookupVarInfo (withenv theenv s)) of
+            Just Declared -> attemptM $ lookupValD theenv n
+            Just (Instance cls@(Class ni ts)) ->
                 catMaybes [attemptM $ lookupClassD theenv ni,
-                             attemptM $ lookupInstD theenv cls]
-            Bound -> []
+                             attemptM $ lookupInstD (withenv theenv cls)]
+            _ -> []
       qexp e = []
 
       qtype :: Type -> [Dec]
@@ -207,7 +208,7 @@ declarations m =
       qclass :: Class -> [Dec]
       qclass cls@(Class n ts) = catMaybes [
             attemptM $ lookupClassD theenv n,
-            attemptM $ lookupInstD theenv cls]
+            attemptM $ lookupInstD (withenv theenv cls)]
 
       query :: (Typeable a) => a -> [Dec]
       query = extQ (extQ (mkQ [] qexp) qtype) qclass
@@ -266,12 +267,12 @@ lookupDataConType (Env decs n) =
         xs -> fail $ "multiple data constructors with name " ++ n ++ " found in env"
 
 -- | Look up VarInfo for the variable with given signature.
--- Returns Bound if the variable is not declared or an instance or primitive.
-lookupVarInfo :: Env Sig -> VarInfo
+-- Fails if the variable is not declared or an instance or primitive.
+lookupVarInfo :: Env Sig -> Failable VarInfo
 lookupVarInfo e@(Env ds (Sig n t))
   = case (attemptM $ lookupValD e n, attemptM $ lookupPrimD (withenv e n)) of
-        (Just _, _) -> Declared
-        (_, Just _) -> Primitive
+        (Just _, _) -> return Declared
+        (_, Just _) -> return Primitive
         _ ->
           let getSig :: Dec -> Maybe (Name, [Name], Type)
               getSig (ClassD cn cts sigs) =
@@ -282,9 +283,9 @@ lookupVarInfo e@(Env ds (Sig n t))
 
               answer = listToMaybe (catMaybes (map getSig ds))
           in case answer of 
-              Nothing -> Bound
+              Nothing -> fail $ "Variable " ++ n ++ " not found in the environment"
               Just (cn, cts, st) ->
                  let assigns = assignments st t
                      cts' = assign assigns (map VarT cts)
-                 in Instance (Class cn cts')
+                 in return $ Instance (Class cn cts')
 

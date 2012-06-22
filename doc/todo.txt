@@ -1,9 +1,13 @@
 
+- Allow contexts in InstD
 - support record type constructors
 - add layout support
 - list literal patterns.
 - support negative literals?
 - deriving Eq would be nice.
+- default methods in classes?
+- problems with pretty printing class predicates:
+    Eq (Maybe Integer) is printed as Eq Maybe Integer
 
 - line numbers for non-syntactic errors would be nice.
 
@@ -16,12 +20,12 @@
 
 - Clean up Env lookup function implementations.
 - Should Env be it's own entity, rather than joined with some object?
+Yes. Definitely. All this mkenv stuff is tiresome and adds nothing.
 
 - Reimplement TypeCheck to make use of constraint generation from TypeInfer?
 
 - Understand all the conflicts in the parser.
 
-- Allow contexts in InstD
 - String literals
     For example: fail "deq on empty fifo"
 
