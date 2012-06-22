@@ -47,6 +47,17 @@ haskell builtin env main =
             val = H.FunD hsn [H.Clause [] (H.NormalB (hsExp e)) []]
         in [sig, val]
 
+      -- Don't generate the following data types.
+      -- TODO: we should probably specify these cases elsewhere in the
+      -- Builtins, and not here. And we should probably get rid of this
+      -- entirely when modular compilation is supported. This is a hack.
+      hsDec (DataD "Bool" _ _) = []
+      hsDec (DataD "()" _ _) = []
+      hsDec (DataD "(,)" _ _) = []
+      hsDec (DataD "(,,)" _ _) = []
+      hsDec (DataD "(,,,)" _ _) = []
+      hsDec (DataD "[]" _ _) = []
+
       hsDec (DataD n tyvars constrs)    
         = [H.DataD [] (hsName n) (map (H.PlainTV . hsName) tyvars) (map hsCon constrs) []]
 

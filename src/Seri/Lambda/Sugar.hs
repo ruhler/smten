@@ -10,6 +10,7 @@ module Seri.Lambda.Sugar (
     ) where
 
 import Seri.Lambda.IR
+import Seri.Lambda.Prelude
 import Seri.Lambda.Types
 
 -- | True
@@ -134,5 +135,5 @@ data Module = Module Name [Import] [Dec]
 -- This doesn't currently do much, but eventually it's expected it will
 -- implement name resolution and qualification of identifiers.
 flatten :: [Module] -> [Dec]
-flatten ms = concat [d | Module _ _ d <- ms]
+flatten ms = prelude ++ concat [d | Module _ _ d <- ms]
 

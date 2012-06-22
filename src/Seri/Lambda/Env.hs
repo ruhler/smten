@@ -230,16 +230,6 @@ sort ds =
 
 -- | Given the name of a data constructor in the environment, return its type.
 lookupDataConType :: Env -> Name -> Failable Type
-lookupDataConType _ "True" = return $ ConT "Bool"
-lookupDataConType _ "False" = return $ ConT "Bool"
-lookupDataConType _ "[]" = return $ listT (VarT "a")
-lookupDataConType _ ":" = return $ arrowsT [VarT "a", AppT (ConT "[]") (VarT "a"), AppT (ConT "[]") (VarT "a")]
-lookupDataConType _ "()" = return $ ConT "()"
-lookupDataConType _ "(,)" = return $ arrowsT [VarT "a", VarT "b", AppT (AppT (ConT "(,)") (VarT "a")) (VarT "b")]
-lookupDataConType _ "(,,)" = return $ arrowsT [VarT "a", VarT "b", VarT "c",  AppT (AppT (AppT (ConT "(,,)") (VarT "a")) (VarT "b")) (VarT "c")]
-lookupDataConType _ "(,,,)"
-    = return $ arrowsT [VarT "a", VarT "b", VarT "c", VarT "d",
-         AppT (AppT (AppT (AppT (ConT "(,,,)") (VarT "a")) (VarT "b")) (VarT "c")) (VarT "l")]
 lookupDataConType decs n = 
     case catMaybes [typeofCon d n | d <- decs] of
         [] -> fail $ "data constructor " ++ n ++ " not found in env"

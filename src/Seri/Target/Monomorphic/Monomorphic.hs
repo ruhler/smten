@@ -108,7 +108,7 @@ monoexp (LamE (Sig n t) e) = do
     return (LamE (Sig n t') e')
 monoexp (ConE (Sig n t)) = do
     t' <- monotype t
-    let n' = n ++ typesuffix (outputT t)
+    let n' = n ++ typesuffix (last $ unarrowsT t)
     return (ConE (Sig n' t'))
 monoexp (VarE s@(Sig n t)) = do
     bound <- gets ms_bound
@@ -188,9 +188,7 @@ mononametype (ConT n) = n
 mononametype (AppT a b) = mononametype a ++ "$" ++ mononametype b
 
 mksuffix :: [Type] -> Name
-mksuffix [] = ""
-mksuffix [t] = "$" ++ mononametype t
-mksuffix (t:ts) = foldl (\a b -> a ++ "$" ++ mononametype b) "" ts
+mksuffix ts = foldl (\a b -> a ++ "$" ++ mononametype b) "" ts
 
 -- Given a concrete fully applied type,
 --  return the name suffix used for type and constructors of the type.

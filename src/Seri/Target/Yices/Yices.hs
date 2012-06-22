@@ -73,7 +73,6 @@ yicesname :: String -> String
 yicesname [] = []
 yicesname ('!':cs) = "__bang" ++ yicesname cs
 yicesname ('#':cs) = "__hash" ++ yicesname cs
-yicesname ('$':cs) = "__dollar" ++ yicesname cs
 yicesname ('%':cs) = "__percent" ++ yicesname cs
 yicesname ('&':cs) = "__amp" ++ yicesname cs
 yicesname ('*':cs) = "__star" ++ yicesname cs
@@ -96,7 +95,7 @@ yicesname (',':cs) = "__comma" ++ yicesname cs
 yicesname (c:cs) = c : yicesname cs
 
 yType :: Compiler -> Type -> YCM Y.TypY
-yType _ (ConT n) = return $ Y.VarT n
+yType _ (ConT n) = return $ Y.VarT (yicesname n)
 yType c (AppT (AppT (ConT "->") a) b) = do
     a' <- compile_type c c a
     b' <- compile_type c c b
@@ -118,9 +117,9 @@ compile_dec c (ValD (TopSig n [] t) e) =
     in [Y.DEFINE (yicesname n, yt) (Just ye)]
 compile_dec c (DataD n [] cs) =
     let con :: Con -> (String, [(String, Y.TypY)])
-        con (Con n ts) = (n, zip [n ++ show i | i <- [0..]]
+        con (Con n ts) = (yicesname n, zip [yicesname n ++ show i | i <- [0..]]
                                  (map (fromYCM . compile_type c c) ts))
-    in [Y.DEFTYP n (Just (Y.DATATYPE (map con cs)))]
+    in [Y.DEFTYP (yicesname n) (Just (Y.DATATYPE (map con cs)))]
 compile_dec c d
     = error $ "compile_dec: cannot compile to yices: " ++ pretty d
 

@@ -197,7 +197,7 @@ hard anyway.
 Hum. So, a grand vision is emerging.
 
 It looks like this:
-1. Change Env to be just [Dec], and pass it separately to the env commands.
+1+ Change Env to be just [Dec], and pass it separately to the env commands.
 2. Change Env to be [Module], make everything to work like that.
 3. Change type check and type inference to work on a Module at a time.
 4. Change the haskell target to work on a Module at a time.
@@ -215,4 +215,108 @@ It's a little round about, but it's certainly in the name of progress, and I
 suspect is easier than the alternative.
 
 Cool. I'm going to do it. Wish me luck.
+
+Fri Jun 22 16:18:22 EDT 2012
+
+Good. The Env switch has been made. Next step: Turn Env into a list of
+modules. See how that works out.
+
+I should no longer need to call flatten. We'll see how it goes.
+
+Fri Jun 22 16:22:29 EDT 2012
+
+Err... I'm not so sure I'm quite ready to dive into a change like this.
+
+It's not entirely trivial.
+
+Could I somehow start from the ground up?
+
+How do we want all of everything to work from a module perspective?
+
+- flatten no longer useful for anything (?)
+- load: Should return an Env, Module pair? Or just an Env?
+But you'd like to know which module you just loaded.
+
+I'm a little concerned that this may be a premature step. What I want to do
+ultimately depends on how I want to implement the true modularity support, in
+terms of qualified names and such.
+
+Perhaps I can put off this issue for now, and go ahead with having my prelude?
+
+For now define prelude as a list of declarations, and have flatten stick them
+in. That sounds reasonable to me.
+
+That way I jump to (5) and (6), and don't have to deal with modules just yet,
+as nice as that would be to have eventually.
+
+I don't actually think I need the modular compilation to make it work
+correctly. They should be orthogonal.
+
+Okay. That's decided. Let me try to make my prelude then, and see how it goes.
+
+Fri Jun 22 16:29:37 EDT 2012
+
+Actually, a better way to approach this would be to get Bool working, defined
+in Seri.Lib.Bool, don't you think? Try to do that, yet again?
+
+Yes. Let me try that.
+
+Fri Jun 22 16:33:55 EDT 2012
+
+Question: do I want to use my Bool in yices, or their bool?
+
+Let me just use theirs.
+
+Fri Jun 22 16:35:43 EDT 2012
+
+Oh. Now I remember again what the problem I was having is.
+The builtin Integer stuff depends on Bool for haskell, but Bool is not defined
+where the builtin integer stuff can see it.
+
+This problem goes away with modularity.
+
+This problem will also end up going away if I just don't declare Bool. So, be
+able to recognize that and declare nothing in the compiler.
+
+Okay, that worked. But really I should support it the right way. Then I can
+handle the rest of the cases properly. Ug.
+
+Fri Jun 22 17:28:45 EDT 2012
+
+Cool. Making progress. Fixing bugs.
+
+Looks like the tuple issue has gone away. Now I'm dealing with multi parameter
+data types issues, of which tuple 2 is one example.
+
+In particular, the constructors in yices appear not to support partial
+application.
+
+Well, there are two possible solutions which jump out:
+1. wrap the constructors in functions which take partially applied arguments.
+2. Compile fully applied constructors only.
+
+The problem with the first one is..., well, can we even do it?
+Err, yes, we can:
+
+foo a = \b -> \c -> ... -> Foo a b c ...
+
+It's slightly annoying. We have to come up with a name for constructors
+different from their base name.
+
+The problem with the second is, what if you want a partially applied
+constructor?
+
+Like, ((,) True), which you pass around as a function from a -> (Bool, a).
+I suppose you could always wrap this in a function call... that is, you could
+always create the partially applied function manually.
+
+I think the first is the right thing to do, but more tedious.
+
+Sigh. Okay, I'll do the first. Make a function called C... where C is the
+constructor function. Don't change ConP, but change ConE, and make sure to
+define C... for each constructor when declaring data types. Annoying, yes, but
+it should work out.
+
+I hope yices can handle big programs, because it's going to get some pretty
+big ones. That's what abstraction does for you...
 
