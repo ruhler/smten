@@ -48,3 +48,6 @@ Yes. Definitely. All this mkenv stuff is tiresome and adds nothing.
 - Would be nice for runquery to optionally take explicit yices path as input
 So I can play with tyices when needed, for example.
 
+- targets should have ways for builtins to generate declarations (or not) so
+  they can reuse existing builtins if desired.
+

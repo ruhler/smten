@@ -320,3 +320,35 @@ it should work out.
 I hope yices can handle big programs, because it's going to get some pretty
 big ones. That's what abstraction does for you...
 
+Fri Jun 22 18:17:27 EDT 2012
+
+Ug. More and more bugs to fix.
+
+The Bluespec test case is complaining it's expecting an expression. This is
+buried deep inside an expression. Who knows where it will work?
+
+But! The next immediate thing is... declareNeeded needs to work for both Types
+and Expressions, so I can get the monomorphic type back.
+
+Ug. I can hack around it if I want... But I really should have monomorphic
+work for types as well as expressions.
+
+Okay, groan. Here I go.
+
+Fri Jun 22 18:44:48 EDT 2012
+
+More problems. And I'm starting to hack at things, which is bad.
+
+The problem now: "Expression expected".
+
+So I have to figure out why an expression is expected, where it is expected,
+and why it wasn't found.
+
+Fri Jun 22 18:59:04 EDT 2012
+
+Something funny is going on.
+
+I don't know what it is. I have to simplify the expression until I can figure
+it out. Maybe I do a foldl instead of foldr somewhere? Or some such? I'll look
+into it, a bit at a time.
+

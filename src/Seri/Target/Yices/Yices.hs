@@ -60,7 +60,7 @@ yExp c (AppE a b) = do
 yExp c (LamE (Sig n t) e) = do
     e' <- compile_exp c c e
     return $ Y.LAMBDA [(n, fromYCM $ compile_type c c t)] e'
-yExp _ (ConE (Sig n _)) = return $ Y.VarE (yicesname n)
+yExp _ (ConE (Sig n _)) = return $ Y.VarE (yicesname (yicescon n))
 yExp _ (VarE (Sig n _)) = return $ Y.VarE (yicesname n)
 
 -- Given a seri identifer, turn it into a valid yices identifier.
@@ -71,8 +71,11 @@ yExp _ (VarE (Sig n _)) = return $ Y.VarE (yicesname n)
 -- approximation.
 yicesname :: String -> String
 yicesname [] = []
+-- TODO: renaming of 'not' should be part of builtins, it should not go here.
+yicesname "not" = "_not"
 yicesname ('!':cs) = "__bang" ++ yicesname cs
 yicesname ('#':cs) = "__hash" ++ yicesname cs
+yicesname ('$':cs) = "__dollar" ++ yicesname cs
 yicesname ('%':cs) = "__percent" ++ yicesname cs
 yicesname ('&':cs) = "__amp" ++ yicesname cs
 yicesname ('*':cs) = "__star" ++ yicesname cs
@@ -93,6 +96,11 @@ yicesname ('(':cs) = "__oparen" ++ yicesname cs
 yicesname (')':cs) = "__cparen" ++ yicesname cs
 yicesname (',':cs) = "__comma" ++ yicesname cs
 yicesname (c:cs) = c : yicesname cs
+
+-- Yices data constructors don't support partial application, so we wrap them in
+-- functions given by the following name.
+yicescon :: Name -> Name
+yicescon n = "C" ++ n
 
 yType :: Compiler -> Type -> YCM Y.TypY
 yType _ (ConT n) = return $ Y.VarT (yicesname n)
@@ -119,7 +127,32 @@ compile_dec c (DataD n [] cs) =
     let con :: Con -> (String, [(String, Y.TypY)])
         con (Con n ts) = (yicesname n, zip [yicesname n ++ show i | i <- [0..]]
                                  (map (fromYCM . compile_type c c) ts))
-    in [Y.DEFTYP (yicesname n) (Just (Y.DATATYPE (map con cs)))]
+
+        -- Wrap each constructor in a function which supports partial
+        -- application.
+        mkcons :: Con -> Y.CmdY
+        mkcons (Con cn ts) = 
+            let yts = [fromYCM $ compile_type c c t | t <- ts]
+
+                ft :: Y.TypY -> Y.TypY -> Y.TypY
+                ft a b = Y.ARR [a, b]
+
+                yt = foldr ft (Y.VarT (yicesname n)) yts
+
+                fe :: (Name, Y.TypY) -> Y.ExpY -> Y.ExpY
+                fe (n, t) e = Y.LAMBDA [(n, t)] e
+
+                names = [[c] | c <- take (length ts) "abcdefghijklmnop"]
+
+                body =  if null ts
+                          then Y.VarE (yicesname cn)
+                          else Y.APP (Y.VarE (yicesname cn)) (map Y.VarE names)
+                ye = foldr fe body (zip names yts)
+            in Y.DEFINE (yicesname (yicescon cn), yt) (Just ye)
+
+        deftype = Y.DEFTYP (yicesname n) (Just (Y.DATATYPE (map con cs)))
+        defcons = map mkcons cs
+    in deftype : defcons
 compile_dec c d
     = error $ "compile_dec: cannot compile to yices: " ++ pretty d
 

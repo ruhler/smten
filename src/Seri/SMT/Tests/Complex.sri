@@ -3,6 +3,7 @@ module Seri.SMT.Tests.Complex where {
 
 import Seri.Lib.Integer;
 import Seri.Lib.Monad;
+import Seri.Lib.Tuple;
 import Seri.SMT.SMT;
 
 data Foo = Bar Integer
@@ -22,6 +23,9 @@ scopedfail = do {
     return x;
 };
 
+tupfun :: (Integer, Bool) -> (Bool, Bool);
+tupfun (i, b) = (i < 2, not b);
+
 main :: Query (Answer (Bool, Integer, Bool, Foo));
 main = do {
     b <- free;
@@ -38,6 +42,11 @@ main = do {
 
     f <- free;
     assert (2 == defoo f);
+
+
+    t1 <- free;
+    assert (fst (tupfun t1));
+
     query (b, x, sf, f);
 }
 

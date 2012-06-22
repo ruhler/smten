@@ -2,7 +2,7 @@
 -- Monomorhpic Target
 --  Takes a polymorphic seri lambda expression, and compiles it to an
 --  equivalent monomorphic seri lambda expression.
-module Seri.Target.Monomorphic.Monomorphic (monomorphic) where
+module Seri.Target.Monomorphic.Monomorphic (Monomorphic(..)) where
 
 import Control.Monad.State
 import Data.List((\\), nub)
@@ -10,9 +10,14 @@ import Data.List((\\), nub)
 import Seri.Failable
 import Seri.Lambda
 
-monomorphic :: Env -> Exp -> (Env, Exp)
-monomorphic env e =
-  fst $ runState (monoall e) (MS env [] [] [] [] [] [])
+class Monomorphic a where
+    monomorphic :: Env -> a -> (Env, a)
+
+instance Monomorphic Exp where
+    monomorphic env e = fst $ runState (monoalle e) (MS env [] [] [] [] [] [])
+
+instance Monomorphic Type where
+    monomorphic env t = fst $ runState (monoallt t) (MS env [] [] [] [] [] [])
 
 data MS = MS {
     -- declarations in the original polymorphic environment.
@@ -175,12 +180,20 @@ monotype t = do
             return $ ConT (mononametype t)
 
 -- Monomorphize the given expression and its environment.
-monoall :: Exp -> M (Env, Exp)
-monoall e = do
+monoalle :: Exp -> M (Env, Exp)
+monoalle e = do
     e' <- monoexp e
     finish
     m <- gets ms_mono
     return (m, e')
+
+-- Monomorphize the given type and its environment.
+monoallt :: Type -> M (Env, Type)
+monoallt t = do
+    t' <- monotype t
+    finish
+    m <- gets ms_mono
+    return (m, t')
 
 -- Give the monomorphic name for an applied type
 mononametype :: Type -> Name

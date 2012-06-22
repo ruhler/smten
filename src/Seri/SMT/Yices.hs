@@ -41,7 +41,7 @@ runCmds cmds = do
 
 -- Tell yices about any types or expressions needed to refer to the given
 -- expression, and return the monomorphized expression.
-declareNeeded :: Env -> Exp -> YicesMonad Exp
+declareNeeded :: Monomorphic a => Env -> a -> YicesMonad a
 declareNeeded env x = do
   decs <- gets ys_decls
   let (mds, me) = monomorphic env x
@@ -68,8 +68,8 @@ runQuery gr env e = do
             fid <- gets ys_freeid
             modify $ \ys -> ys {ys_freeid = fid+1}
             
-            declareNeeded env (VarE (Sig " ~dummy " t))
-            runCmds [Y.DEFINE ("free_" ++ show fid, yType t) Nothing]
+            t' <- declareNeeded env t
+            runCmds [Y.DEFINE ("free_" ++ show fid, yType t') Nothing]
             return (AppE (VarE (Sig "~free" (arrowsT [integerT, t]))) (IntegerE fid))
         (AppE (VarE (Sig "assert" _)) p) -> do
             p' <- declareNeeded env p
