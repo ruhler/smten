@@ -29,9 +29,7 @@ main = do
     decs <- attemptIO $ typeinfer (flatten query)
     attemptIO $ typecheck decs
 
-    let e = mkenv decs (VarE (Sig "main" UnknownT))
-
     let opts = (RunOptions dbg yices)
-    result <- runYices [] queryR opts e
+    result <- runYices [] queryR opts decs (VarE (Sig "main" UnknownT))
     putStrLn $ pretty result
 

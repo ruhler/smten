@@ -37,7 +37,7 @@ typecheck ds =
             checkmeth m@(Method n b) =
               onfail (\s -> fail $ s ++ "\n in method " ++ n) $ do
                 checkexp [] b
-                texpected <- lookupMethodType (mkenv ds n) cls
+                texpected <- lookupMethodType ds n cls
                 if typeof b /= texpected
                     then fail $ "checkmeth: expected type " ++ pretty texpected
                             ++ " but found type " ++ pretty (typeof b)
@@ -52,7 +52,7 @@ typecheck ds =
       checkpat :: Pat -> Failable [(Name, Type)]
       checkpat p@(ConP pt n ps) = do
          let ct = arrowsT ((map typeof ps) ++ [pt])
-         texpected <- lookupDataConType (mkenv ds n)
+         texpected <- lookupDataConType ds n
          if isSubType texpected ct
             then return ()
             else fail $ "checkpat: expecting type " ++ pretty texpected ++ ", but found type " ++ pretty ct
@@ -113,7 +113,7 @@ typecheck ds =
             t -> fail $ "expected function type, but got type " ++ pretty t ++ " in expression " ++ pretty f
       checkexp tenv (LamE (Sig n t) e) = checkexp ((n, t):tenv) e
       checkexp _ c@(ConE s@(Sig n ct)) = do
-         texpected <- lookupDataConType (mkenv ds n)
+         texpected <- lookupDataConType ds n
          if isSubType texpected ct
             then return ()
             else fail $ "checkexp: expecting type " ++ pretty texpected ++ ", but found type " ++ pretty ct ++ " in data constructor " ++ n
@@ -123,7 +123,7 @@ typecheck ds =
              Just t' -> fail $ "expected variable of type " ++ pretty t'
                         ++ " but " ++ n ++ " has type " ++ pretty t
              Nothing -> do
-                 texpected <- lookupVarType (mkenv ds n)
+                 texpected <- lookupVarType ds n
                  if isSubType texpected t
                      then return ()
                      else fail $ "expected variable of type " ++ pretty texpected
@@ -137,10 +137,10 @@ instcheck :: [Dec] -> Context -> Exp -> Failable ()
 instcheck ds c e = 
     let base :: Exp -> Failable Exp
         base e@(VarE s) =
-            case attemptM $ lookupVarInfo (mkenv ds s) of
+            case attemptM $ lookupVarInfo ds s of
                 Just (Instance cls) | cls `elem` c -> return e
                 Just (Instance cls) -> do
-                    lookupInstD (mkenv ds cls)
+                    lookupInstD ds cls
                     return e
                 _ -> return e
         base e = return e

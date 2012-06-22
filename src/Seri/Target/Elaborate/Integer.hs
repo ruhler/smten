@@ -5,8 +5,8 @@ import Seri.Lambda
 import Seri.Target.Elaborate.Elaborate
 
 integerR :: (Monad m) => Rule m
-integerR = Rule $ \gr e ->
-    case val e of 
+integerR = Rule $ \gr env e ->
+    case e of 
       (AppE (AppE (VarE (Sig "__prim_add_Integer" _)) (IntegerE a)) (IntegerE b))
         -> return . Just $ IntegerE (a+b)
       (AppE (AppE (VarE (Sig "__prim_sub_Integer" _)) (IntegerE a)) (IntegerE b))

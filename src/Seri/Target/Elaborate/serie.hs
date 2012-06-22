@@ -18,7 +18,7 @@ main = do
     seri <- load [path] input
     decs <- attemptIO $ typeinfer (flatten seri)
     attemptIO $ typecheck decs
-    let e = mkenv decs (VarE (Sig mainexp UnknownT))
-    elaborated <- elaborate elaborateR e
+    let e = VarE (Sig mainexp UnknownT)
+    elaborated <- elaborate elaborateR decs e
     output (pretty elaborated)
 

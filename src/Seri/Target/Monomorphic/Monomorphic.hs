@@ -10,9 +10,9 @@ import Data.List((\\), nub)
 import Seri.Failable
 import Seri.Lambda
 
-monomorphic :: Env Exp -> Env Exp
-monomorphic e =
-  fst $ runState (monoall $ val e) (MS (decls e) [] [] [] [] [] [])
+monomorphic :: Env -> Exp -> (Env, Exp)
+monomorphic env e =
+  fst $ runState (monoall e) (MS env [] [] [] [] [] [])
 
 data MS = MS {
     -- declarations in the original polymorphic environment.
@@ -65,7 +65,7 @@ gentype :: Type -> M [Dec]
 gentype t = do
     poly <- gets ms_poly
     let (con, targs) = unfoldt t
-    case attemptM $ lookupDataD (mkenv poly con) of
+    case attemptM $ lookupDataD poly con of
         Nothing -> return []
         (Just (DataD _ tvars cs)) -> do 
             let suffix = typesuffix t
@@ -83,7 +83,7 @@ genval s@(Sig n t) = do
     suffix <- valsuffix s
     let n' = n ++ suffix
     poly <- gets ms_poly
-    (pt, e) <- attemptM $ lookupVar (mkenv poly s)
+    (pt, e) <- attemptM $ lookupVar poly s
     e' <- monoexp $ assign (assignments pt t) e
     return $ ValD (TopSig n' [] t') e'
 
@@ -113,7 +113,7 @@ monoexp (ConE (Sig n t)) = do
 monoexp (VarE s@(Sig n t)) = do
     bound <- gets ms_bound
     poly <- gets ms_poly
-    case (n `elem` bound, attemptM $ lookupVarInfo (mkenv poly s)) of
+    case (n `elem` bound, attemptM $ lookupVarInfo poly s) of
         (True, _) -> do
             t' <- monotype t
             return (VarE (Sig n t'))
@@ -175,12 +175,12 @@ monotype t = do
             return $ ConT (mononametype t)
 
 -- Monomorphize the given expression and its environment.
-monoall :: Exp -> M (Env Exp)
+monoall :: Exp -> M (Env, Exp)
 monoall e = do
     e' <- monoexp e
     finish
     m <- gets ms_mono
-    return (mkenv m e')
+    return (m, e')
 
 -- Give the monomorphic name for an applied type
 mononametype :: Type -> Name
@@ -200,8 +200,8 @@ typesuffix = mksuffix . snd . unfoldt
 valsuffix :: Sig -> M Name
 valsuffix s@(Sig n t) = do
     poly <- gets ms_poly
-    pt <- attemptM $ lookupVarType (mkenv poly n)
-    case attemptM $ lookupVarInfo (mkenv poly s) of
+    pt <- attemptM $ lookupVarType poly n
+    case attemptM $ lookupVarInfo poly s of
         Just Declared ->
             return $ mksuffix (map snd (assignments pt t))
         Just (Instance (Class _ cts)) -> 

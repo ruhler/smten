@@ -19,6 +19,6 @@ main = do
     seri <- load [path] input
     decs <- attemptIO $ typeinfer (flatten seri)
     attemptIO $ typecheck decs
-    let haskelled = haskell preludeB (mkenv decs me)
+    let haskelled = haskell preludeB decs me
     output (show haskelled)
 

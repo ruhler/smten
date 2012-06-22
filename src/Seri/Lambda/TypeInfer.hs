@@ -37,7 +37,7 @@ inferdec ds d@(ClassD {}) = return d
 inferdec ds (InstD cls ms) =
   let infermethod :: Method -> Failable Method
       infermethod (Method n e) = do
-         t <- lookupMethodType (mkenv ds n) cls
+         t <- lookupMethodType ds n cls
          e' <- inferexp ds t e
          return (Method n e')
   in do
@@ -75,7 +75,7 @@ data TIS = TIS {
     ti_varid :: Integer,        -- ^ The next free VarT id
     ti_cons :: [(Type, Type)],  -- ^ A list of accumulated type constraints
     ti_tenv :: [(Name, Type)],  -- ^ Types of bound variables in scope
-    ti_decs :: [Dec]            -- ^ The environment
+    ti_env :: Env               -- ^ The environment
 }
 
 type TI = StateT TIS Failable
@@ -106,11 +106,6 @@ scoped vars x = do
     modify $ \ti -> ti { ti_tenv = tenv }
     return r
 
-enved :: a -> TI (Env a)
-enved x = do
-    decs <- gets ti_decs
-    return $ mkenv decs x
-
 class Constrain a where
     -- | Generate type constraints for an expression, assuming no UnknownT types
     -- are in it.
@@ -139,8 +134,8 @@ instance Constrain Exp where
         bt <- scoped [(n, t)] (constrain b)
         return (arrowsT [t, bt])
     constrain (ConE (Sig n t)) = do
-        en <- enved n
-        cty <- lift $ lookupDataConType en
+        env <- gets ti_env
+        cty <- lift $ lookupDataConType env n
         rcty <- retype cty
         addc rcty t
         return t
@@ -149,8 +144,8 @@ instance Constrain Exp where
         case lookup n tenv of
             Just t' -> addc t' t
             Nothing -> do
-                ne <- enved n
-                vt <- lift $ lookupVarType ne
+                env <- gets ti_env
+                vt <- lift $ lookupVarType env n
                 rvt <- retype vt
                 addc rvt t
         return t
@@ -162,8 +157,8 @@ instance Constrain Match where
 instance Constrain Pat where
     constrain (ConP t n ps) = do
         tps <- mapM constrain ps
-        en <- enved n
-        cty <- lift $ lookupDataConType en
+        env <- gets ti_env
+        cty <- lift $ lookupDataConType env n
         rcty <- retype cty
         addc rcty (arrowsT (tps ++ [t]))
         let pts = init (unarrowsT rcty)

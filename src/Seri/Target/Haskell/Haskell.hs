@@ -14,8 +14,8 @@ import Seri.Target.Haskell.Builtin
 
 -- haskell builtin decs
 --  Compile the given declarations to haskell.
-haskell :: Builtin -> Env Name -> H.Doc
-haskell builtin main =
+haskell :: Builtin -> Env -> Name -> H.Doc
+haskell builtin env main =
   let hsName :: Name -> H.Name
       hsName = H.mkName
     
@@ -90,10 +90,10 @@ haskell builtin main =
                  H.text "{-# LANGUAGE MultiParamTypeClasses #-}" H.$+$
                  H.text "import qualified Prelude"
 
-      ds = concat $ map hsDec (decls main)
+      ds = concat $ map hsDec env
 
   in hsHeader H.$+$ includes builtin H.$+$ H.ppr ds H.$+$
         H.text "main :: Prelude.IO ()" H.$+$
         H.text "main = Prelude.putStrLn (Prelude.show ("
-        H.<+> H.text (val main) H.<+> H.text "))"
+        H.<+> H.text main H.<+> H.text "))"
 

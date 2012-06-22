@@ -17,53 +17,50 @@ data Rule m = Rule {
     run :: RuleBody m
 }
 
-type RuleBody m = (Rule m -> Env Exp -> m (Maybe Exp))
+type RuleBody m = (Rule m -> Env -> Exp -> m (Maybe Exp))
 
-runme :: Rule m -> Env Exp -> m (Maybe Exp)
+runme :: Rule m -> Env -> Exp -> m (Maybe Exp)
 runme r = run r r
-
-runmeenv :: Env x -> Rule m -> Exp -> m (Maybe Exp)
-runmeenv e r x = runme r (withenv e x)
 
 -- Combine a bunch of reduction rules.
 -- It tries each rule in turn, applying the first one which succeeds.
 rules :: (Monad m) => [Rule m] -> Rule m
-rules [] = Rule $ \_ _ -> return Nothing
-rules (r:rs) = Rule $ \gr e -> do
-  x <- run r gr e
+rules [] = Rule $ \_ _ _ -> return Nothing
+rules (r:rs) = Rule $ \gr env e -> do
+  x <- run r gr env e
   case x of
       Just e' -> return $ Just e'
-      Nothing -> run (rules rs) gr e
+      Nothing -> run (rules rs) gr env e
 
 -- elaborate decls prg
 -- Reduce the given expression as much as possible.
 --  rule - the reduction rule to use
 --  decls - gives the context under which to evaluate the expression.
 --  prg - is the expression to evaluate.
-elaborate :: (Monad m) => Rule m -> Env Exp -> m Exp
-elaborate r prg = do
-    x <- runme r prg
+elaborate :: (Monad m) => Rule m -> Env -> Exp -> m Exp
+elaborate r env prg = do
+    x <- runme r env prg
     case x of
-        Just e -> elaborate r (withenv prg e)
-        Nothing -> return $ val prg
+        Just e -> elaborate r env e
+        Nothing -> return prg
 
 -- coreR - The core reduction rules.
 coreR :: (Monad m) => Rule m
 coreR = rules [casesubR, caseredR, appredR, applsubR, apprsubR, varredR]
 
 casesubR :: (Monad m) => Rule m
-casesubR = Rule $ \gr e ->
-   case val e of
+casesubR = Rule $ \gr env e ->
+   case e of
       (CaseE x ms) -> do
-         x' <- runmeenv e gr x
+         x' <- runme gr env x
          return $ do
             vx' <- x'
             return $ CaseE vx' ms
       _ -> return Nothing
 
 caseredR :: (Monad m) => Rule m
-caseredR = Rule $ \gr e ->
-   case val e of
+caseredR = Rule $ \gr env e ->
+   case e of
       (CaseE x ((Match p b):ms))
          -> case (match p x) of
                 Failed -> return . Just $ CaseE x ms
@@ -72,37 +69,37 @@ caseredR = Rule $ \gr e ->
       _ -> return Nothing
 
 appredR :: (Monad m) => Rule m
-appredR = Rule $ \gr e ->
-   case val e of
+appredR = Rule $ \gr env e ->
+   case e of
       (AppE (LamE (Sig name _) body) b)
          -> return . Just $ reduce name b body
       _ -> return Nothing
 
 applsubR :: (Monad m) => Rule m
-applsubR = Rule $ \gr e ->
-   case val e of
+applsubR = Rule $ \gr env e ->
+   case e of
       (AppE a b) -> do
-          a' <- runmeenv e gr a
+          a' <- runme gr env a
           return $ do
               va' <- a'
               return $ AppE va' b
       _ -> return Nothing
 
 apprsubR :: (Monad m) => Rule m
-apprsubR = Rule $ \gr e ->
-   case val e of
+apprsubR = Rule $ \gr env e ->
+   case e of
       (AppE a b) -> do
-          b' <- runmeenv e gr b
+          b' <- runme gr env b
           return $ do
               vb' <- b'
               return $ AppE a vb'
       _ -> return Nothing
 
 varredR :: (Monad m) => Rule m
-varredR = Rule $ \gr e ->
-   case val e of
+varredR = Rule $ \gr env e ->
+   case e of
       (VarE s@(Sig _ ct))
-        -> case (attemptM $ lookupVar (withenv e s)) of
+        -> case (attemptM $ lookupVar env s) of
                Nothing -> return Nothing
                Just (pt, ve) -> return . Just $ assign (assignments pt ct) ve
       _ -> return Nothing

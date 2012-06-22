@@ -162,3 +162,57 @@ Fri Jun 22 14:14:21 EDT 2012
 Fixed that. But now we have to make tuples work in general. How do I want to
 do that?
 
+Fri Jun 22 14:31:11 EDT 2012
+
+Here's an observation: tuples would work just swell out of the box if they
+weren't a special case. If we had a DataD declaration for them.
+
+A lot of other special case stuff would go away with that too. And all the
+builtin types can be expressed in the IR, just not in the concrete syntax.
+
+So, what do you think about this: declare all the builtin types in some
+prelude module, defined in haskell, perhaps in Seri.Lambda.Prelude. Or
+something like that.
+
+Then I don't need any special cases at all, right?
+
+What are the issues with this?
+ - if they are pretty printed, the declarations will not be parseable. That
+   could be slightly annoying
+ - targets may need to have special cases for declaration so they don't try
+   declaring these in their language. But that really is a target specific
+   thing, so I don't think there is anything inherently wrong with the idea of
+   having the declarations in the environment.
+
+It works especially well with the idea of modular compilation and modular type
+checking and type inference, because we can just not compile the prelude
+module.
+
+I know I've tried this with Bool before and run into problems. But maybe the
+problems are just I need to have a way in the haskell target to not include
+declarations. Even easier would be to support modular compilation, which I
+could do if I supported modular type checking, which shouldn't really be that
+hard anyway.
+
+Hum. So, a grand vision is emerging.
+
+It looks like this:
+1. Change Env to be just [Dec], and pass it separately to the env commands.
+2. Change Env to be [Module], make everything to work like that.
+3. Change type check and type inference to work on a Module at a time.
+4. Change the haskell target to work on a Module at a time.
+5. Define a Seri.Lambda.Prelude module with these primitive data type
+declarations.
+6. Remove all the special cases I have for the primitive data type
+declarations.
+
+Now tuple will work just fine, without consideration, and the code will be
+notably cleaner. No?
+
+That sounds really cool to me. I should do it.
+
+It's a little round about, but it's certainly in the name of progress, and I
+suspect is easier than the alternative.
+
+Cool. I'm going to do it. Wish me luck.
+

@@ -41,19 +41,19 @@ runCmds cmds = do
 
 -- Tell yices about any types or expressions needed to refer to the given
 -- expression, and return the monomorphized expression.
-declareNeeded :: Env Exp -> YicesMonad Exp
-declareNeeded x = do
+declareNeeded :: Env -> Exp -> YicesMonad Exp
+declareNeeded env x = do
   decs <- gets ys_decls
-  let monoed = monomorphic x
-  let (pdecls, _) = sort $ decls monoed
+  let (mds, me) = monomorphic env x
+  let (pdecls, _) = sort mds
   let newdecls = pdecls \\ decs
   modify $ \ys -> ys { ys_decls = decs ++ newdecls }
   runCmds (yDecs newdecls)
-  return (val monoed)
+  return me
 
-runQuery :: Rule YicesMonad -> Env Exp -> YicesMonad Exp
-runQuery gr e = do
-    elaborated <- elaborate gr e
+runQuery :: Rule YicesMonad -> Env -> Exp -> YicesMonad Exp
+runQuery gr env e = do
+    elaborated <- elaborate gr env e
     case elaborated of
         (AppE (VarE (Sig "query" _)) arg) -> do
             dh <- gets ys_dh
@@ -68,29 +68,29 @@ runQuery gr e = do
             fid <- gets ys_freeid
             modify $ \ys -> ys {ys_freeid = fid+1}
             
-            declareNeeded (withenv e (VarE (Sig " ~dummy " t)))
+            declareNeeded env (VarE (Sig " ~dummy " t))
             runCmds [Y.DEFINE ("free_" ++ show fid, yType t) Nothing]
             return (AppE (VarE (Sig "~free" (arrowsT [integerT, t]))) (IntegerE fid))
         (AppE (VarE (Sig "assert" _)) p) -> do
-            p' <- declareNeeded (withenv e p)
+            p' <- declareNeeded env p
             runCmds [Y.ASSERT (yExp p')]
             return (ConE (Sig "()" (ConT "()")))
         (AppE (VarE (Sig "queryS" _)) q) -> do
             odecls <- gets ys_decls
             runCmds [Y.PUSH]
-            x <- runQuery gr (withenv e q)
+            x <- runQuery gr env q
             let q' = AppE (VarE (Sig "query" undefined)) x
-            y <- runQuery gr (withenv e q')
+            y <- runQuery gr env q'
             runCmds [Y.POP]
             modify $ \ys -> ys { ys_decls = odecls }
             return y
         (AppE (VarE (Sig "return_query" _)) x) -> return x
         (AppE (AppE (VarE (Sig "bind_query" _)) x) f) -> do
-          result <- runQuery gr (withenv e x)
-          runQuery gr (withenv e (AppE f result))
+          result <- runQuery gr env x
+          runQuery gr env (AppE f result)
         (AppE (AppE (VarE (Sig "nobind_query" _)) x) y) -> do
-          runQuery gr (withenv e x)
-          runQuery gr (withenv e y)
+          runQuery gr env x
+          runQuery gr env y
         x -> error $ "unknown Query: " ++ pretty x
 
 
@@ -108,8 +108,8 @@ data RunOptions = RunOptions {
     yicesexe :: FilePath
 } deriving(Show)
             
-runYices :: [Y.CmdY] -> Rule YicesMonad -> RunOptions -> Env Exp -> IO Exp
-runYices primlib gr opts e = do
+runYices :: [Y.CmdY] -> Rule YicesMonad -> RunOptions -> Env -> Exp -> IO Exp
+runYices primlib gr opts env e = do
     dh <- openFile (fromMaybe "/dev/null" (debugout opts)) WriteMode
 
     -- We set NoBuffering, because otherwise the output gets chopped off for
@@ -119,7 +119,7 @@ runYices primlib gr opts e = do
     case ipc of
         (Just hin, Just hout, _, _) -> hSetBuffering hin NoBuffering
     sendCmds (includes smtY ++ primlib) ipc dh
-    (x, _) <- runStateT (runQuery gr e) (YicesState [] ipc dh 1)
+    (x, _) <- runStateT (runQuery gr env e) (YicesState [] ipc dh 1)
     hClose dh
     return x
     
