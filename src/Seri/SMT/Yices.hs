@@ -9,8 +9,7 @@ import Data.Maybe
 import System.IO
 
 import Control.Monad.State
-import Math.SMT.Yices.Pipe
-import qualified Math.SMT.Yices.Syntax as Y
+import qualified Yices.Yices as Y
 
 import Seri.Lambda
 import Seri.Target.Monomorphic.Monomorphic
@@ -21,23 +20,23 @@ import Seri.Target.Yices.Yices
 
 data YicesState = YicesState {
     ys_decls :: [Dec],
-    ys_ipc :: YicesIPC,
+    ys_ctx :: Y.Context,
     ys_dh :: Handle,
     ys_freeid :: Integer
 }
 
 type YicesMonad = StateT YicesState IO
 
-sendCmds :: [Y.CmdY] -> YicesIPC -> Handle -> IO ()
-sendCmds cmds ipc dh = do
+sendCmds :: [Y.CmdY] -> Y.Context -> Handle -> IO ()
+sendCmds cmds ctx dh = do
     hPutStr dh (unlines (map show cmds))
-    runCmdsY' ipc cmds
+    Y.runCmds ctx cmds
 
 runCmds :: [Y.CmdY] -> YicesMonad ()
 runCmds cmds = do
-    ipc <- gets ys_ipc
+    ctx <- gets ys_ctx
     dh <- gets ys_dh
-    lift $ sendCmds cmds ipc dh
+    lift $ sendCmds cmds ctx dh
 
 -- Tell yices about any types or expressions needed to refer to the given
 -- expression, and return the monomorphized expression.
@@ -59,12 +58,12 @@ runQuery gr env e = do
     case elaborated of
         (AppE (VarE (Sig "query" _)) arg) -> do
             dh <- gets ys_dh
-            ipc <- gets ys_ipc
-            res <- lift $ checkY ipc
+            ctx <- gets ys_ctx
+            res <- lift $ Y.check ctx
             lift $ hPutStrLn dh $ ">> check returned: " ++ show res 
             case res of 
-                Unknown _ -> return $ ConE (Sig "Unknown" (AppT (ConT "Answer") (typeof arg)))
-                Sat evidence -> return $ AppE (ConE (Sig "Satisfiable" (AppT (ConT "Answer") (typeof arg)))) (realize (yassignments evidence) arg)
+                Y.Undefined -> return $ ConE (Sig "Unknown" (AppT (ConT "Answer") (typeof arg)))
+                Y.Satisfiable -> return $ AppE (ConE (Sig "Satisfiable" (AppT (ConT "Answer") (typeof arg)))) (realize (yassignments []) arg)
                 _ -> return $ ConE (Sig "Unsatisfiable" (AppT (ConT "Answer") (typeof arg)))
         (VarE (Sig "free" (AppT (ConT "Query") t))) -> do
             fid <- gets ys_freeid
@@ -117,11 +116,9 @@ runYices primlib gr opts env e = do
     -- We set NoBuffering, because otherwise the output gets chopped off for
     -- longer outputs.
     hSetBuffering dh NoBuffering
-    ipc <- createYicesPipe (yicesexe opts) ["-tc"]
-    case ipc of
-        (Just hin, Just hout, _, _) -> hSetBuffering hin NoBuffering
-    sendCmds (includes smtY ++ primlib) ipc dh
-    (x, _) <- runStateT (runQuery gr env e) (YicesState [] ipc dh 1)
+    ctx <- Y.mkContext
+    sendCmds (includes smtY ++ primlib) ctx dh
+    (x, _) <- runStateT (runQuery gr env e) (YicesState [] ctx dh 1)
     hClose dh
     return x
     

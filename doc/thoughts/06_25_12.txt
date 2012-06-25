@@ -77,3 +77,136 @@ Now problem with type checking in yices. Good.
 There is, however, a problem when run from the pipe instead of the .dbg out.
 It looks as if stuff may be getting chopped off again.
 
+So, let me go back to using tyices, see what it shows.
+
+Mon Jun 25 09:26:48 EDT 2012
+
+So... yices works fine if it's reading the input from a file, but as soon as
+it starts reading it from stdin, it gives off an error. This is a yices bug.
+Perhaps having to do with long lines?
+
+Perhaps I can work around it by passing some special command line arguments to
+yices. It seems like certainly using the ffi should fix this. It's just
+annoying.
+
+I don't see any options on the command line. I think it should work fine if I
+got rid of the -i flag, but that's not in my code, so it isn't easy to do...
+
+Unless I implemented my own createYicesPipe function... That's an interesting
+idea. Perhaps worth a try.
+
+Well, I can create the pipe that way. The trouble is, it doesn't work unless
+it's in interactive mode for some reason.
+
+
+Mon Jun 25 10:11:58 EDT 2012
+
+So, here's the plan. Let me look over the existing haskell ffi interfaces to
+yices, see if there are any that would be relatively easy to run beneath the
+yices syntax we are using.
+
+Other things that would be good to do today:
+ - support record constructors
+ - support contexts in instances
+ - support let in a do statement (if it makes sense semantically)
+
+And another thing I'll have to deal with eventually:
+ - demonomorphizing the evidence. This could be annoying.
+
+Oh, maybe I should note, it is long lines being chopped off. Or, at least, it
+really looks like that, because it runs out at 2**13 exactly.
+
+Is there an easy way to insert newlines? Would it work in interactive mode?
+No, you can't even insert newlines in interactive mode.
+
+So you'd just have to make the lines shorter somehow, which is really
+annoying, and I don't want to do.
+
+Is there some way to get rid of interactive mode? Not, I fear, if you want to
+be interactive still.
+
+Fine then. Let me look at the FFI interfaces, see if I can make any of those
+work.
+
+Mon Jun 25 10:50:01 EDT 2012
+
+Looks to me like neither yices painless nor yices easy have support for data
+type declarations. Though maybe I'm wrong. I need to look at the yices c-api
+to figure out how to do that.
+
+If the yices c-api supports it, I suspect yices painless makes the most sense
+to use. Not the edsl, but the low level stuff. Let me look up the yices c-api.
+
+The only thing I see in the c-api for data type declarations is:
+parse_command. Which takes a command as a string. Does painless have an
+interface to this?
+
+No. It doesn't. Perhaps I can add it myself. The tricky part is the
+string conversion.
+
+Hum...
+
+I think, then, the task is fairly straight forward. Use the low level
+yices-painless interface, be able to submit a list of Y.CmdY, and be able to
+submit a call to Y.check. That's the only interface we need. 
+
+If we need to support constructs that painless doesn't, do it through the
+parse command function, which I'll have to wrap myself if needed.
+
+Mon Jun 25 11:14:08 EDT 2012
+
+Okay, let me get started on this path.
+
+First step: figure out how to do my simple example in yices-painless directly.
+This will figure out the build information and all that annoying stuff.
+
+Mon Jun 25 11:52:20 EDT 2012
+
+Okay, so I can use the low level interface. That's good. I just had to patch
+up yices-painless to make it work :(. It's rather verbose.
+
+Anyway, it would also be nice, eventually, to read the model, but let me not
+worry about that so much right now. I can return an empty model to start.
+
+Okay, cool. I'm going to have lunch, then I'll come back and ...
+Try to implement the two functions: 
+ runCmdsY' :: ctx -> [Y.CmdY] -> IO ()
+ checkY :: ctx -> IO Result
+
+Hopefully it isn't too bad.
+ 
+Mon Jun 25 13:34:46 EDT 2012
+
+Looks like not so much is supported through the c api. Sadly. Including type
+and data definitions. But, there is a back door, which is the command,
+expression, and type parser functions. I pass a string, it executes them.
+
+I think this should be usable to solve the problem I'm having. We can easily
+come up with the string for the commands, because Show already gives us that.
+So we can default to that. If that works in general, then we should just use
+that in general. There is some concern, however, that it may not work for
+longer strings (but hopefully that's not the case).
+
+If it works in general, then really there's no need for yices painless. I can
+pull what I want and be done with it. Otherwise, we can use it for most
+things, and just use painless for the assert predicates, which are what tend
+to be long? I hope so.
+
+Let me start with reusing painless, and get rid of that later if it works.
+
+The interface:
+
+c_yices_parse_command :: Context -> String -> IO Bool
+
+Let me read enough about the FFI to figure out how to support char*.
+
+Oh, looks pretty easy. Cool. Let me try it out.
+
+Trouble: yices painless doesn't export the context, so I can't access it or
+make use of it.
+
+In other words, it seems to me, at this point, that yices painless is not
+contributing much. Especially if the only interface I need is parseCommand.
+
+Okay, let me try going this route.
+

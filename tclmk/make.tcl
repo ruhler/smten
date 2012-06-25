@@ -12,6 +12,7 @@ foreach key [array names ::env] {
 #       PATH, GHC_PACKAGE_PATH
 source tclmk/local.tcl
 set ::env(LANG) "en_US.UTF-8"
+set ::YICESLIB "/home/ruhler/local/lib/libyices.a"
 
 proc run {args} {
     puts $args
@@ -37,7 +38,7 @@ proc ghcprog {target source args} {
 ghcprog "serie" "Seri/Target/Elaborate/serie.hs"
 ghcprog "serih" "Seri/Target/Haskell/serih.hs"
 ghcprog "serim" "Seri/Target/Monomorphic/serim.hs"
-ghcprog "runquery" "Seri/SMT/runquery.hs" 
+ghcprog "runquery" "Seri/SMT/runquery.hs" $YICESLIB
 ghcprog "type" "Seri/Lambda/type.hs"
 
 set SERIE build/src/serie
@@ -74,5 +75,5 @@ querytest "Complex"
 querytest "If"
 querytest "Casenomatch"
 
-#querytest "Bluespec"
+querytest "Bluespec"
 
