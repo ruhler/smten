@@ -24,6 +24,8 @@ instance Eq TState where {
 instance Eq (Maybe TState) where {
     (==) Nothing Nothing = True;
     (==) (Just a) (Just b) = a == b;
+    (==) _ _ = False;
+
     (/=) a b = not (a == b);
 };
 
@@ -69,13 +71,17 @@ pcp s = do {
     p s2;
 };
 
+(==>) :: Bool -> Bool -> Bool;
+(==>) False _ = True;
+(==>) True x = x;
+
 -- Now for our query:
 --  Are the two compositions "equivalent"?
 --  That is, are they equivalent for all states s?
 main :: Query (Answer ());
 main = do {
-    b <- always (\s -> ppc s == pcp s);
-    assert b;
+    --always (\s -> (f s == FIFO2_Empty) ==> (ppc s == pcp s));
+    always (\s -> ppc s == pcp s);
     query ();
 }
 

@@ -228,3 +228,144 @@ Mon Jun 25 15:03:57 EDT 2012
 
 Found and fixed the problem.
 
+Now, thinking about this always thing...
+
+I think what we really want is something like...
+
+always :: (a -> Bool) -> Query ()
+
+Which fails if it's not the case that the predicate is always true. But we
+would also like info about what counter example there is.
+
+But if we return the counter example, it gets confusing. So, what I suggest
+is... Well, what I would like to do is have it fail with a pretty string if
+the predicate doesn't hold, where the string includes the counter example. But
+that requires we have a way to show 'a'.
+
+Should I have:
+
+always :: (Show a) => (a -> Bool) -> Query ()
+
+That way I can output the string if it fails. Err...
+
+An alternative would be something like:
+
+counterexample :: (a -> Bool) -> Query (Maybe a).
+
+Which checks if there is a counter example or not. But that may not be in the
+spirit of what Nirav is looking for.
+
+Anyway, having a counter example isn't helpful until I can actually read the
+evidence. Get the model back and interpret it.
+
+So, for now, let me use 'always' without outputting anything or returning
+anything.
+
+Mon Jun 25 15:23:30 EDT 2012
+
+No. I definitely need to show the evidence, otherwise I won't have any faith
+in my tool.
+
+Let's see if there's any easy way to get the evidence from the c api.
+
+I would like: given a variable name, return... ideally the string expression,
+which I could then try to parse.
+
+Err... it's not looking good. If I know it's a Bool, integer, scalar, bit
+vector, or Double, I can get the value. But if it's a user defined data type?
+No such luck. And given that is most often the case...
+
+hmm... Except, I can evaluate expressions under the model. So I can ask a
+whole bunch of questions to reconstruct what's going on, right? This may even
+work better as far as monomorphization goes. Because I can ask questions,
+which get monomorphized and answered, and I know what they mean at the top
+level. Performance may not be great, but maybe that doesn't matter. Don't
+worry about that right now.
+
+For example, how about my bluespec question?
+
+We get the answer that something is satisfiable.
+Now, what I really want is to determine the value of all the free variables in
+whatever you give me.
+
+So, given a free variable name and it's type, what questions can I ask to
+reconstruct its value?
+
+Well, what are the cases?
+
+Integer, Double, Bool, ... easy: extract the value directly.
+
+The more interesting question is... well, I guess functions will be
+interesting at some point, but let me not worry about that just now, because
+that sounds like a hard thing to worry about.
+
+User defined data types.
+
+You have a list of constructors. To figure out which constructor, just ask:
+ - is it constructor 0? constructor 1? constructor 2?... And go from there.
+
+So you can figure out all the constructor values. Unfortunately, that's all
+you can do. You can't get an integer value.
+
+This is a very unfortunate interface. I guess what I really want to do is
+temporarily redirect stdout to a string. Then I could just dump the whole
+model to a string and parse it like I was.
+
+Mon Jun 25 15:47:52 EDT 2012
+
+Well, there are other solutions, or work arounds. For example, I could
+implement my own version of yices based on the yices library which doesn't
+truncate lines. Then use that with the yices pipe code.
+
+Groan.
+
+Anyway, for now, let me just pollute stdout.
+
+Mon Jun 25 16:05:43 EDT 2012
+
+Okay, so... I get a funny result if I modify my bluespec query to have an
+implication that the fifo starts empty. It's still says there is a counter
+example, a case where the two compositions are not equal, and it gives
+evidence, but the evidence it returns doesn't make sense. It's not well typed.
+
+This is disturbing. And hmm... it seems a different implementation of the
+implication operator leads to a different result. That's disturbing to me.
+
+Could this be the nocasematch bug?
+
+Anyway, let's take a look at the evidence it's giving:
+
+s = TState {
+    a = 4,
+    b = 0,
+    f = f (...
+
+Trouble. What's Just__dollarTState0?
+
+Oh... I think I see what it's doing...
+
+s = TState {
+    a = 4,
+    b = 0,
+    f = f (fromJust Nothing)
+}
+
+Where:
+  fromJust Nothing = TState { a = 5, b = 0, f = fromJust Nothing }
+  f (fromJust Nothing) = FIFO_Single 0
+  
+That's... unpleasant. Clever. Sneaky. Unfair. Illegal even.
+
+It's like yices is saying: it's undefined what behavior you get if you
+improperly destruct a data type, so, for the purposes of satisfiability, we
+can do something undefined and define the behavior to be whatever we want.
+
+But... it shouldn't be allowed to do something undefined.
+
+Wait, but still, how can this satisfy the equality predicate?
+
+Aha! That's it. It's the nocasematch bug. I didn't completely specify
+equality on fifos.
+
+That did it.
+

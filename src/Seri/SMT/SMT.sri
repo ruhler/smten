@@ -24,18 +24,16 @@ instance Monad Query where {
   fail = fail_query;
 };
 
--- Check whether a predicate holds for every possible input.
---  Returns true if the predicate holds for every possible input,
---  Returns false otherwise.
-always :: (a -> Bool) -> Query Bool;
+-- Assert a predicate holds for every input.
+always :: (a -> Bool) -> Query ();
 always f = do {
     answer <- queryS (do {
         x <- free;
         assert (not (f x));
     });
     case answer of {
-        Unsatisfiable -> return True;
-        _ -> return False;
+        Unsatisfiable -> return ();
+        _ -> assert False;
     };
 }
 

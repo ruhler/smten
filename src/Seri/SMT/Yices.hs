@@ -103,8 +103,7 @@ yExp :: Exp -> Y.ExpY
 yExp e = fromYCM $ compile_exp smtY smtY e
 
 data RunOptions = RunOptions {
-    debugout :: Maybe FilePath,
-    yicesexe :: FilePath
+    debugout :: Maybe FilePath
 } deriving(Show)
             
 runYices :: [Y.CmdY] -> Rule YicesMonad -> RunOptions -> Env -> Exp -> IO Exp

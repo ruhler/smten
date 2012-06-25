@@ -21,6 +21,8 @@ data FIFO1 a = FIFO1_Empty
 instance Eq (FIFO1 Integer) where {
     (==) FIFO1_Empty FIFO1_Empty = True;
     (==) (FIFO1_Full a) (FIFO1_Full b) = a == b;
+    (==) _ _ = False;
+
     (/=) a b = not (a == b);
 };
 
@@ -50,6 +52,7 @@ instance Eq (FIFO2 Integer) where {
     (==) FIFO2_Empty FIFO2_Empty = True;
     (==) (FIFO2_Single a) (FIFO2_Single b) = a == b;
     (==) (FIFO2_Full a b) (FIFO2_Full c d) = (a == c) && (b == d);
+    (==) _ _ = False;
 
     (/=) a b = not (a == b);
 };

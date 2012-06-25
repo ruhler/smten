@@ -19,17 +19,11 @@ main = do
                ["-i", path, fin] -> (Nothing, path, fin)
                x -> error $ "bad args: " ++ show x
 
-    (ex, out, err) <- readProcessWithExitCode "which" ["yices"] ""
-    yices <- case (ex, out) of
-                (ExitSuccess, y) -> return $ head (words y)
-                _ -> fail $ "Failed to find yices executable: " ++ err
-
-
     query <- load [path] fin
     decs <- attemptIO $ typeinfer (flatten query)
     attemptIO $ typecheck decs
 
-    let opts = (RunOptions dbg yices)
+    let opts = (RunOptions dbg)
     result <- runYices [] queryR opts decs (VarE (Sig "main" UnknownT))
     putStrLn $ pretty result
 

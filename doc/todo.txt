@@ -18,17 +18,12 @@
 ** Verify we can't over apply a type, for example: Maybe Integer Bool.
 ** Verify we can't declare the same variable twice.
 
-- Clean up Env lookup function implementations.
-- Should Env be it's own entity, rather than joined with some object?
-Yes. Definitely. All this mkenv stuff is tiresome and adds nothing.
-
 - Reimplement TypeCheck to make use of constraint generation from TypeInfer?
 
 - Understand all the conflicts in the parser.
 
 - String literals
     For example: fail "deq on empty fifo"
-
 
 - Allow arbitrary patterns in lambda expression arguments.
     example: \(Foo x) -> x+1
@@ -45,9 +40,8 @@ Yes. Definitely. All this mkenv stuff is tiresome and adds nothing.
 
 - support for pattern guards?
 
-- Would be nice for runquery to optionally take explicit yices path as input
-So I can play with tyices when needed, for example.
-
 - targets should have ways for builtins to generate declarations (or not) so
   they can reuse existing builtins if desired.
+
+- fix casenomatch bug in yices code generation.
 

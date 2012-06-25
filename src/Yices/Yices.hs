@@ -15,8 +15,8 @@ import qualified Foreign.Concurrent as F
 import Math.SMT.Yices.Syntax
 
 data YContext
+data YModel
 data Context = Context (ForeignPtr YContext)
-
 
 type YBool = CInt
 
@@ -38,6 +38,15 @@ foreign import ccall unsafe "yices_parse_command"
 foreign import ccall unsafe "yices_check"
     c_yices_check :: Ptr YContext -> IO YBool
 
+foreign import ccall unsafe "yices_get_model"
+    c_yices_get_model :: Ptr YContext -> IO (Ptr YModel)
+
+foreign import ccall unsafe "yices_display_model"
+    c_yices_display_model :: Ptr YModel -> IO ()
+
+foreign import ccall unsafe "yices_enable_type_checker"
+    c_yices_enable_type_checker :: Bool -> IO ()
+
 data Result
     = Satisfiable
     | Unsatisfiable
@@ -52,6 +61,7 @@ toResult n
 
 mkContext :: IO Context
 mkContext = do
+    c_yices_enable_type_checker True
     ptr <- c_yices_mk_context
     fp  <- F.newForeignPtr ptr (c_yices_del_context ptr)
     return $! Context fp
@@ -71,5 +81,14 @@ runCmds ctx = mapM_ (runCmd ctx)
 check :: Context -> IO Result
 check (Context fp) = do
     res <- withForeignPtr fp c_yices_check
-    return (toResult res)
+    let result = toResult res
+    case result of
+        Satisfiable -> do
+           -- Print out the model for debugging.
+           -- TODO: it would be nice if we could read the model in a
+           -- meaningful way. I haven't figured out how to do that yet though.
+           model <- withForeignPtr fp c_yices_get_model
+           c_yices_display_model model
+        _ -> return ()
+    return result
 
