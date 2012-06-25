@@ -210,3 +210,21 @@ contributing much. Especially if the only interface I need is parseCommand.
 
 Okay, let me try going this route.
 
+Mon Jun 25 14:33:26 EDT 2012
+
+It works. Nifty.
+
+Now, it would be quite nice to have some form of evidence parsing. Just so
+when something is not satisfiable, it says so.
+
+It would probably also be useful to turn on type checking, and read errors if
+there are any.
+
+Mon Jun 25 14:53:19 EDT 2012
+
+Problem: multiple includes. Why does that happen?
+
+Mon Jun 25 15:03:57 EDT 2012
+
+Found and fixed the problem.
+

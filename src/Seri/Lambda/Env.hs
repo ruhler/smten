@@ -234,7 +234,7 @@ lookupDataConType decs n =
     case catMaybes [typeofCon d n | d <- decs] of
         [] -> fail $ "data constructor " ++ n ++ " not found in env"
         [x] -> return x
-        xs -> fail $ "multiple data constructors with name " ++ n ++ " found in env"
+        xs -> fail $ "multiple data constructors with name " ++ n ++ " found in env: " ++ pretty decs
 
 -- | Look up VarInfo for the variable with given signature.
 -- Fails if the variable is not declared or an instance or primitive.

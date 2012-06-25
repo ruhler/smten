@@ -72,11 +72,11 @@ pcp s = do {
 -- Now for our query:
 --  Are the two compositions "equivalent"?
 --  That is, are they equivalent for all states s?
-main :: Query (Answer TState);
+main :: Query (Answer ());
 main = do {
-    s <- free;
-    assert (ppc s /= pcp s);
-    query s; 
+    b <- always (\s -> ppc s == pcp s);
+    assert b;
+    query ();
 }
 
 }

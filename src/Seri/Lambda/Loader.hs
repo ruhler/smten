@@ -3,6 +3,8 @@ module Seri.Lambda.Loader (load) where
 
 import System.Directory
 
+import Data.List(nub)
+
 import Seri.Failable
 import Seri.Lambda.IR
 import Seri.Lambda.Parser
@@ -22,7 +24,7 @@ loads sp ns ms =
   let isLoaded :: Name -> Bool
       isLoaded n = n `elem` ([mn | Module mn _ _ <- ms])
 
-      needed = filter (not . isLoaded) ns
+      needed = nub $ filter (not . isLoaded) ns
   in do
     loaded <- mapM (loadone sp) needed
     let newimports = concat [i | Module _ i _ <- loaded]

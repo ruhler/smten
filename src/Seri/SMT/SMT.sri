@@ -1,6 +1,7 @@
 
 module Seri.SMT.SMT where {
 
+import Seri.Lib.Bool;
 import Seri.Lib.Monad;
 
 data Query a = Query;
@@ -21,6 +22,21 @@ instance Monad Query where {
   (>>=) = bind_query;
   (>>) = nobind_query;
   fail = fail_query;
+};
+
+-- Check whether a predicate holds for every possible input.
+--  Returns true if the predicate holds for every possible input,
+--  Returns false otherwise.
+always :: (a -> Bool) -> Query Bool;
+always f = do {
+    answer <- queryS (do {
+        x <- free;
+        assert (not (f x));
+    });
+    case answer of {
+        Unsatisfiable -> return True;
+        _ -> return False;
+    };
 }
 
 }
