@@ -41,10 +41,12 @@ runCmds cmds = do
 
 -- Tell yices about any types or expressions needed to refer to the given
 -- expression, and return the monomorphized expression.
-declareNeeded :: Monomorphic a => Env -> a -> YicesMonad a
+declareNeeded :: (Monomorphic a, Ppr a) => Env -> a -> YicesMonad a
 declareNeeded env x = do
   decs <- gets ys_decls
+  lift . putStrLn $ "poly: " ++ pretty x
   let (mds, me) = monomorphic env x
+  lift . putStrLn $ "mono: " ++ pretty me
   let (pdecls, _) = sort mds
   let newdecls = pdecls \\ decs
   modify $ \ys -> ys { ys_decls = decs ++ newdecls }

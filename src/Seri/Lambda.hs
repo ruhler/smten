@@ -15,7 +15,7 @@ import Seri.Lambda.Env
 import Seri.Lambda.IR
 import Seri.Lambda.Loader
 import Seri.Lambda.Parser
-import Seri.Lambda.Ppr(pretty)
+import Seri.Lambda.Ppr(Ppr, pretty)
 import Seri.Lambda.TypeCheck
 import Seri.Lambda.TypeInfer
 import Seri.Lambda.Types

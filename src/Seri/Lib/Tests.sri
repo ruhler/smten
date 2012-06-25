@@ -124,6 +124,9 @@ multifoofun x y = (((multifoo x y) * (multifoo x y))
 shadow :: Integer -> Integer;
 shadow = \x -> (\x -> 2*x) (x+1);
 
+caseshadow :: Integer -> Integer;
+caseshadow = \x -> (case 2*x of { x -> x; });
+
 thedo :: Maybe Bool -> Maybe Integer;
 thedo m = do {
     b <- m;
@@ -164,7 +167,8 @@ testall = (42 == ((\x -> (((x*x) + (3*x)) + 2)) 5))
        && ((42 == (unused True))
        && ((19 == (multifoofun True 12))
        && ((8 == (shadow 3))
-       && (3 == (length [1, 5, 2]))))))))))))))))))))))))))
+       && ((6 == (caseshadow 3))
+       && (3 == (length [1, 5, 2])))))))))))))))))))))))))))
 
 }
 

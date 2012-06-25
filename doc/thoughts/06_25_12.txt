@@ -1,0 +1,79 @@
+
+Mon Jun 25 08:44:15 EDT 2012
+
+We have a bug. Generated yices code reports an error.
+
+Goal today: understand and resolve this bug. By tedious reduction techniques.
+Slow and steady wins the race here, trust me.
+
+Mon Jun 25 08:46:30 EDT 2012
+
+Getting: invalid function argument, type mismatch.
+
+The argument is:
+    free_1 :: TState
+
+The function is:
+  (enq f)
+
+enq has type:
+    FIFO2 -> int -> Maybe FIFO2
+
+f has type:
+    FIFO2
+
+So yes. I would agree. There's something bad going on here.
+Perhaps a type error my type checker didn't catch?
+
+Let's look at the types of these corresponding things in the query.
+
+Looks like it is the call to the 'p' rule:
+  enq has type: FIFO2 -> int -> Maybe FIFO2
+  f has type: FIFO2
+  a has type: int
+
+So, the question is, how did 'a' get type TState?
+
+Or rather, how come 'a' is called 'free_1' and not 'a'? That looks to me to be
+the real problem. We are using the wrong name.
+
+Okay, well, I can divide and conquer here. There are a number of places the
+bug could be. Let me look at each in turn:
+
+1. The polymorphic lambda expression
+2. The monomorphic lambda expression
+3. The yices compiled expression
+
+We know (3) is wrong. But where is the bug introduced? This shouldn't be too
+hard to figure out. Just print out before and after monomorphization.
+
+The polymorphic lambda expression is wrong. Somewhere a substitution took
+place that shouldn't have I feel like.
+
+My hypothesis: 'a' is shadowing another 'a' of type TState, but the
+implementation isn't correctly handling it.
+
+There are a number of things I could do to make progress:
+- try renaming 'a' to something else, see if the problem doesn't go away.
+If it does go away, I'm on the right track.
+- look through elaboration code, verify case binding shadows are correct.
+- implement a case shadowing test case.
+- print out the typed, original query, verify it is correct.
+
+Aha. Looking through the elaborate code, we see there is a bug. Pattern
+bindings don't shadow properly.
+
+Let me write up a test case for this, verify it's wrong, fix the test case. I
+bet that's it.
+
+Yup. Test fails.
+Fixed the bug in elaborate.
+Now the test passes.
+
+let's check out the query now.
+
+Now problem with type checking in yices. Good.
+
+There is, however, a problem when run from the pipe instead of the .dbg out.
+It looks as if stuff may be getting chopped off again.
+
