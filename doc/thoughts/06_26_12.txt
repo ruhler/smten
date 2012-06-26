@@ -196,8 +196,9 @@ Tue Jun 26 12:05:21 EDT 2012
 Cool! It looks like it works.
 
 Next things to do:
- - test bad type where context if instance isn't met.
- - use opt construct in Parser.y for all the optional stuff.
+ + test bad type where context if instance isn't met.
+ + use opt construct in Parser.y for all the optional stuff.
 
 All after lunch.
+
 

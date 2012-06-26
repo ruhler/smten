@@ -64,11 +64,11 @@ module :: { Module }
     { Module $2 (fst $4) (snd $4) }
 
 body :: { ([Import], [Dec]) }
- : '{' impdecls ';' topdecls '}'
+ : '{' impdecls ';' topdecls opt(';') '}'
     { ($2, coalesce $4) }
- | '{' impdecls '}'
+ | '{' impdecls opt(';') '}'
     { ($2, []) }
- | '{' topdecls '}'
+ | '{' topdecls opt(';') '}'
     { ([], coalesce $2) }
 
 impdecls :: { [Import] }
@@ -88,18 +88,12 @@ topdecls :: { [PDec] }
     { $1 ++ $3 }
 
 topdecl :: { [PDec] }
- : 'data' tycon tyvars '=' constrs
-    { [PDec ds | ds <- recordD $2 $3 $5] }
- | 'data' tycon '=' constrs
-    { [PDec ds | ds <- recordD $2 [] $4] }
- | 'class' tycls tyvars 'where' '{' cdecls '}'
+ : 'data' tycon opt(tyvars) '=' constrs
+    { [PDec ds | ds <- recordD $2 (fromMaybe [] $3) $5] }
+ | 'class' tycls tyvars 'where' '{' cdecls opt(';') '}'
     { [PDec (ClassD $2 $3 $6)] }
- | 'class' tycls tyvars 'where' '{' cdecls ';' '}'
-    { [PDec (ClassD $2 $3 $6)] }
- | 'instance' class 'where' '{' idecls '}'
-    { [PDec (InstD [] $2 (icoalesce $5))] }
- | 'instance' context '=>' class 'where' '{' idecls '}'
-    { [PDec (InstD $2 $4 (icoalesce $7))] }
+ | 'instance' opt(context) class 'where' '{' idecls opt(';') '}'
+    { [PDec (InstD (fromMaybe [] $2) $3 (icoalesce $6))] }
  | decl
     { [$1] }
 
@@ -110,10 +104,8 @@ decl :: { PDec }
     { PClause (fst $1) (Clause (snd $1) $2) }
 
 funlhs :: { (Name, [Pat]) }
- : var apats
-    { ($1, $2) } 
- | var
-    { ($1, []) }
+ : var opt(apats)
+    { ($1, fromMaybe [] $2) } 
 
 rhs :: { Exp }
  : '=' exp
@@ -142,8 +134,8 @@ idecl :: { (Name, Clause) }
 gendecl :: { TopSig }
  : var '::' type
     { TopSig $1 [] $3 }
- | var '::' context '=>' type
-    { TopSig $1 $3 $5 }
+ | var '::' context type
+    { TopSig $1 $3 $4 }
 
 type :: { Type }
  : btype
@@ -182,7 +174,7 @@ gtycon :: { String }
     { "->" }
 
 context :: { [Class] }
- : '(' classes_commasep ')'
+ : '(' classes_commasep ')' '=>'
     { $2 }
 
 
@@ -197,10 +189,8 @@ constrs :: { [ConRec] }
     { $1 ++ [$3] }
 
 constr :: { ConRec }
- : con atypes
-    { NormalC $1 $2 }
- | con
-    { NormalC $1 [] }
+ : con opt(atypes)
+    { NormalC $1 (fromMaybe [] $2) }
  | con '{' fielddecls '}'
     { RecordC $1 $3 }
 
@@ -225,7 +215,7 @@ exp10 :: { Exp }
     { LamE $2 $4 }
  | 'if' exp 'then' exp 'else' exp
     { ifE $2 $4 $6 }
- | 'case' exp 'of' '{' alts '}'
+ | 'case' exp 'of' '{' alts opt(';') '}'
     { CaseE $2 $5 }
  | 'do' '{' stmts exp ';' '}'
     { doE ($3 ++ [NoBindS $4]) }
@@ -254,10 +244,10 @@ aexp :: { Exp }
 
 -- TODO: Haskell doesn't allow a semicolon after the last alternative.
 alts :: { [Match] }
- : alt ';'
+ : alt
     { [$1] }
- | alts alt ';'
-    { $1 ++ [$2] }
+ | alts ';' alt
+    { $1 ++ [$3] }
 
 alt :: { Match }
  : pat '->' exp
@@ -450,6 +440,11 @@ atypes :: { [Type] }
  | atypes atype
     { $1 ++ [$2] }
 
+opt(p)
+ : p
+    { Just $1 }
+ |  -- empty
+    { Nothing }
 
 
 {
