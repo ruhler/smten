@@ -18,17 +18,8 @@ data TState = TState {
 instance Eq TState where {
     (==) (TState a b c) (TState a' b' c')
         = (a == a') && ((b == b') && (c == c'));
-    (/=) a b = not (a == b);
+    (/=) a b = not (a == b)
 };
-
-instance Eq (Maybe TState) where {
-    (==) Nothing Nothing = True;
-    (==) (Just a) (Just b) = a == b;
-    (==) _ _ = False;
-
-    (/=) a b = not (a == b);
-};
-
 
 -- Rules:
 -- p: f.enq(a+1)

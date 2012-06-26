@@ -1,0 +1,10 @@
+
+module Seri.Lambda.Tests.BadType2 where {
+
+import Seri.Lib.Bool;
+
+foo :: Bool;
+foo = not 18
+
+}
+

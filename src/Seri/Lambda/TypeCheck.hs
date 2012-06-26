@@ -32,7 +32,7 @@ typecheck ds =
       checkdec (DataD {}) = return ()
       checkdec (ClassD {}) = return ()
 
-      checkdec d@(InstD cls ms) =
+      checkdec d@(InstD ctx cls ms) =
         let checkmeth :: Method -> Failable () 
             checkmeth m@(Method n b) =
               onfail (\s -> fail $ s ++ "\n in method " ++ n) $ do
@@ -44,7 +44,7 @@ typecheck ds =
                             ++ " in Method " ++ pretty m
                     else return ()
                 -- TODO: use the context from the signature
-                instcheck ds [] b
+                instcheck ds ctx b
         in onfail (\s -> fail $ s ++ "\n in declaration " ++ pretty d) $ do
              mapM_ checkmeth ms
       checkdec d@(PrimD {}) = return ()

@@ -1,0 +1,10 @@
+
+module Seri.Lambda.Tests.BadType1 where {
+
+import Seri.Lib.Bool;
+
+foo :: Integer;
+foo = True
+
+}
+

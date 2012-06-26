@@ -3,15 +3,30 @@ module Seri.Lib.List where {
 
 import Seri.Lib.Integer;
 
+-- TODO: error if list is empty.
 head :: [a] -> a;
 head (x:_) = x;
 
+-- TODO: error if list is empty.
 tail :: [a] -> [a];
 tail (_:xs) = xs;
 
+null :: [a] -> Bool;
+null [] = True;
+null (_:_) = False;
+
 length :: [a] -> Integer;
 length [] = 0;
-length (x:xs) = 1 + length xs
+length (_:l) = 1 + length l;
+
+-- TODO: error if list isn't big enough.
+(!!) :: [a] -> Integer -> a;
+(!!) (x:[]) 0 = x;
+(!!) (_:xs) n = xs !! (n-1);
+
+(++) :: [a] -> [a] -> [a];
+(++) [] x = x;
+(++) (x:xs) ys = x : (xs ++ ys)
 
 }
 

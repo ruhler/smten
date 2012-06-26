@@ -88,7 +88,8 @@ lookupClassD env n =
 lookupInstD :: Env -> Class -> Failable Dec
 lookupInstD env (Class n t) =
   let theInstD :: Dec -> Bool
-      theInstD (InstD (Class nm ts) _) = n == nm && t == ts
+      theInstD (InstD _ (Class nm ts) _)
+        = and $ (n == nm) : [isSubType p c | (p, c) <- zip ts t]
       theInstD _ = False
   in theOneOf "InstD" (pretty (Class n t)) theInstD env
 
@@ -125,8 +126,10 @@ lookupVar env s@(Sig n _) = do
                     return (t, body)
                 mlook (m:ms) = mlook ms
             in do
-                InstD _ ms <- lookupInstD env cls
-                mlook ms
+                InstD _ (Class _ pts) ms <- lookupInstD env cls
+                (t, e) <- mlook ms
+                let assigns = concat [assignments p c | (p, c) <- zip pts ts]
+                return (t, assign assigns e)
 
 -- | Look up the value of a variable in an environment.
 lookupVarValue :: Env -> Sig -> Failable Exp

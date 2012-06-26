@@ -65,7 +65,7 @@ data Method = Method Name Exp
 data Dec = ValD TopSig Exp              -- ^ nm :: ctx => ty ; nm = exp
          | DataD Name [Name] [Con]      -- ^ data nm vars = 
          | ClassD Name [Name] [TopSig]  -- ^ class nm vars where { sigs }
-         | InstD Class [Method]         -- ^ instance cls where { meths }
+         | InstD Context Class [Method] -- ^ instance ctx => cls where { meths }
          | PrimD TopSig                 -- ^ nm :: ctx => ty ;
      deriving (Eq, Show, Data, Typeable)
 

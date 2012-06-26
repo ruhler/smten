@@ -18,3 +18,186 @@ Remember the primary next goal: get Myron to use seri.
 Okay, let's start with record type constructors. I claim this isn't hard,
 so... let's try it out and see.
 
+Tue Jun 26 08:45:53 EDT 2012
+
+It wasn't hard. Now we support record constructors. Cool.
+
+What's next?
+
+Next, let me look at Myron's query more closely.
+
+Oh, another thing I can do after looking at Myron's query: my plan for
+extracting evidence.
+
+The idea is this: we can get primitive evidence: bool, int, double, etc...
+I have a way we can get user defined data type evidence from that. I don't
+have a way to get the evidence for an uninterpreted function, but ... save
+that for future todo I suppose.
+
+Here's the idea. We can execute a formula in the model. So, we can use this to
+figure out which constructor something is. Just ask: is it this constructor?
+Is it this one? and so on, until you find the constructor it is.
+
+Now, we know the constructor. Say we know the constructor is Foo.
+
+Then define some variables and make an assertion:
+
+define free_5 :: int
+define free_6 :: bool
+assert free1 = Foo free_5 free_6
+check
+
+This gives us a new model with simpler variables we can look up.
+
+Okay? So I can play with that in a bit. Again, doesn't work for functions...
+which is sad. But it's better than nothing?
+
+Anyway, on to Myron's query. Maybe I can write it up and rewrite my bluespec
+example to use that same form. Call it Bluespec2.
+
+Tue Jun 26 09:26:00 EDT 2012
+
+It would not be unreasonable to implement Myron's query, as he has implemented
+it, in seri. I don't need to do all the checks, but the first few.
+
+This will be a good test case for seri. We'll see if yices blows up on the
+query expressed my way.
+
+Tue Jun 26 10:16:37 EDT 2012
+
+I need the notion of an error. I need a primitive:
+  error :: [Char] -> a
+
+What's more, I have to handle this in yices.
+
+The reason I need it is... what happens if you take the head of an empty list?
+We need an error, because nothing else makes sense, and if we don't have an
+error, we'll run into the nocasematch bug when doing smt queries, and there's
+no way around it.
+
+I also really need contexts in instance methods. It's come up again and again
+and again. It's the big next thing for seri, in my opinion.
+
+I want both of these things before I can get Myron's sample query going
+reasonably.
+
+How about this. Let me finish a rough draft of Myron's sample query. That may
+bring up more interesting concerns. Then let me do these two things, which are
+two big things, but maybe they won't be so bad as I fear. Then let me get
+Myron's query working. That will be the (optimistic) goal for today.
+
+Sounds good to me.
+
+Tue Jun 26 10:36:23 EDT 2012
+
+Trouble is, it's very tedious to write out the whole thing. It would be, I
+feel like, much more productive translating directly from bcl.
+
+What I need to do is support errors and contexts. Then I believe seri will be
+ready to start doing Myron's queries.
+
+Cool. What's first then? Errors or contexts on instances?
+
+Let's go over each at a time.
+
+1. Contexts on instance.
+Modify the IR. Add to the Parser. This parts very easy.
+Elaborator doesn't have to change at all. Haskell target should be easy.
+I don't think Monomorphic has to change.
+
+There are two challenges with this, I expect. Identifying the correct instance
+for a class, and verifying in the type checker the extra constraints are met.
+
+How to identify the right instance?
+
+Currently the way we test Class instances are with equality.
+
+Foo Sludge Bar matches only Foo Sludge Bar.
+This is ... not right. For example,
+Foo Sludge Bar should match Foo Sludge a.
+
+So we have a subtyping kind of a relationship for matching instances. I don't
+think there's anything intrinsically difficult about this. I probably just
+want a predicate which says if there is a match, and maybe returns the
+bindings. This change may be isolated to lookupInstD. That would be cool.
+
+Now, what's needed in the type checker? Let's say I look up the InstD. It has
+a context. So I just have to verify recursively that the context requirement
+is met. Easy! No?
+
+So we're looking at, I feel like:
+ - add Context to InstD in IR and Parser 
+ - update lookupInstD to check for match instead of direct equality.
+ - update instcheck to check that the looked up InstD's context is
+   also met. We may want a function for doing the lookup that does this right,
+   chasing all dependencies and checking for recursion.
+
+Good. That sounds very doable. I would start with a test case, and use that to
+drive my work. An instance of Eq for Maybe would be a great example, that I
+could test in Test cases. I should also verify it fails to type check if I try
+to do equality for Maybe X when X isn't an instance of Eq...
+
+I really need a way to test poorly typed programs. It's worth thinking about
+that.
+
+Well, we can write lots of small .sri examples, run them on type, and assert
+the return code is an error. That's not so hard to do. I should set that up.
+
+Okay, so let me start by setting up the poorly typed test cases. I just need a
+couple.
+
+In fact, I have a list of things to test. Unfortunately I suspect most of
+those fail and I don't want to deal with them just now. So, the two tests I'll
+do...
+
+foo :: Integer;
+foo = True;
+
+And...
+
+foo :: Bool;
+foo = not 17;
+
+That will be a fine start.
+
+Tue Jun 26 11:09:36 EDT 2012
+
+Cool. Tests work great. I love tcl.
+
+Now then, let me implement Eq for Maybe and write a test for it. Both a poorly
+typed one and a well typed one? Maybe just a well typed one to start.
+
+Tue Jun 26 11:29:33 EDT 2012
+
+Good. Next step: how to check the subtype thing? Do I already have code for
+that somewhere?
+
+There's something called: isSubType. How about just use that?
+
+Tue Jun 26 11:54:07 EDT 2012
+
+There's a bug somewhere. I don't understand it.
+
+Just 18 == Just 18 is returning false.
+
+I know it's getting the right instance. But after that... what's going on?
+
+I think the way to debug this is: run serie on (Just 18 == Just 18), and have
+it trace out the expression at each step of the reduction. Then it ought to be
+clear.
+
+Oh. I see. That made it obvious. The expression we return from lookupVar can't
+refer to the type variables in the InstD. It has to have the concrete
+versions based on the class lookup. That's easy enough. Let me fix it up real
+quick like?
+
+Tue Jun 26 12:05:21 EDT 2012
+
+Cool! It looks like it works.
+
+Next things to do:
+ - test bad type where context if instance isn't met.
+ - use opt construct in Parser.y for all the optional stuff.
+
+All after lunch.
+

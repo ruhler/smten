@@ -34,7 +34,7 @@ inferdec ds (ValD (TopSig n ctx t) e) = do
     return $ ValD (TopSig n ctx t) e'
 inferdec ds d@(DataD {}) = return d
 inferdec ds d@(ClassD {}) = return d
-inferdec ds (InstD cls ms) =
+inferdec ds (InstD ctx cls ms) =
   let infermethod :: Method -> Failable Method
       infermethod (Method n e) = do
          t <- lookupMethodType ds n cls
@@ -42,7 +42,7 @@ inferdec ds (InstD cls ms) =
          return (Method n e')
   in do
     ms' <- mapM infermethod ms
-    return (InstD cls ms')
+    return (InstD ctx cls ms')
 inferdec _ d@(PrimD {}) = return d
 
 inferexp :: [Dec] -> Type -> Exp -> Failable Exp

@@ -21,7 +21,7 @@ instance Monad Query where {
   return = return_query;
   (>>=) = bind_query;
   (>>) = nobind_query;
-  fail = fail_query;
+  fail = fail_query
 };
 
 -- Assert a predicate holds for every input.

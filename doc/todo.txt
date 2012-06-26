@@ -16,6 +16,7 @@
 ** Verify we check for undefined variables
 ** Verify we can't over apply a type, for example: Maybe Integer Bool.
 ** Verify we can't declare the same variable twice.
+** Verify all clauses have to have the same number of args.
 
 - Reimplement TypeCheck to make use of constraint generation from TypeInfer?
 

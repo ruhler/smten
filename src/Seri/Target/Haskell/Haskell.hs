@@ -64,8 +64,11 @@ haskell builtin env main =
       hsDec (ClassD n vars sigs)
         = [H.ClassD [] (hsName n) (map (H.PlainTV . hsName) vars) [] (map hsSig sigs)]
 
-      hsDec (InstD (Class n ts) ms)
-        = [H.InstanceD [] (foldl H.AppT (H.ConT (hsName n)) (map hsType ts)) (map hsMethod ms)] 
+      hsDec (InstD ctx (Class n ts) ms) =
+        let ctx' = map hsClass ctx
+            ms' = map hsMethod ms
+            t = foldl H.AppT (H.ConT (hsName n)) (map hsType ts)
+        in [H.InstanceD ctx' t ms'] 
 
       hsDec (PrimD {}) = []
 

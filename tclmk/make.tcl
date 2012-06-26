@@ -53,6 +53,19 @@ run $SERIE -o build/src/tests.got -i build/src -m testall \
 run echo -n "(True :: Bool)" > build/src/tests.wnt
 run cmp build/src/tests.got build/src/tests.wnt
 
+# Poorly typed tests.
+proc badtypetest {name} {
+    set btdir "build/src/Seri/Lambda/Tests"
+    set cmd {run $::TYPE -o $btdir/$name.typed -i build/src $btdir/$name.sri}
+    if { [catch $cmd] == 0 } {
+        error "expected type error, but $name passed type check"
+    }
+}
+
+badtypetest "BadType1"
+badtypetest "BadType2"
+
+
 # Test the haskell target.
 set hsdir build/src/Seri/Target/Haskell
 run $SERIH -o $hsdir/hstests.hs -i build/src -m testall \

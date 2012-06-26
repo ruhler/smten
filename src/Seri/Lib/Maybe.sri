@@ -1,6 +1,7 @@
 
 module Seri.Lib.Maybe where {
 
+import Seri.Lib.Bool;
 import Seri.Lib.Monad;
 
 data Maybe a = Just a | Nothing;
@@ -13,12 +14,20 @@ instance Monad Maybe where {
         case m of {
             Just x -> f x;
             Nothing -> Nothing;
-            };
+            }
 };
 
 fromMaybe :: a -> Maybe a -> a;
 fromMaybe _ (Just x) = x;
-fromMaybe x Nothing = x
+fromMaybe x Nothing = x;
+
+instance (Eq a) => Eq (Maybe a) where {
+    (==) (Just x) (Just y) = (x == y);
+    (==) Nothing Nothing = True;
+    (==) _ _ = False;
+
+    (/=) a b = not (a == b)
+}
 
 }
 

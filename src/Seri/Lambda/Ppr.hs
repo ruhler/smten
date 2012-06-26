@@ -173,8 +173,10 @@ instance Ppr Dec where
         = text "class" <+> text n <+> hsep (map text vs)
                 <+> text "where" <+> text "{"
                 $+$ nest tabwidth (vcat (punctuate semi (map ppr ss))) $+$ text "}"
-    ppr (InstD cls ms)
-        = text "instance" <+> ppr cls
+    ppr (InstD ctx cls ms)
+        = text "instance"
+                <+> ppr ctx
+                <+> ppr cls
                 <+> text "where" <+> text "{"
                 $+$ nest tabwidth (vcat (map ppr ms)) $+$ text "}"
     ppr (PrimD s) = ppr s
@@ -184,9 +186,11 @@ instance Ppr Sig where
 
 instance Ppr TopSig where
     ppr (TopSig n ctx t)
-      = pprname n <+> text "::" <+>
-               (if null ctx then empty else parens (sep (map ppr ctx)))
-              <+> ppr t
+      = pprname n <+> text "::" <+> ppr ctx <+> ppr t
+
+instance Ppr Context where
+    ppr [] = empty
+    ppr xs = parens (sep (map ppr xs)) <+> text "=>"
     
 instance Ppr Con where
     ppr (Con n ts) = text n <+> hsep (map ppr ts)
@@ -198,7 +202,7 @@ instance Ppr [Dec] where
     ppr ds = vcat (punctuate semi (map (\d -> ppr d $+$ text "") ds))
 
 instance Ppr Class where
-    ppr (Class n ts) = text n <+> hsep (map ppr ts)
+    ppr (Class n ts) = ppr (foldl AppT (ConT n) ts)
 
 instance Ppr Import where
     ppr (Import n) = text "import" <+> text n <> semi

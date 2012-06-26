@@ -97,9 +97,9 @@ topdecl :: { [PDec] }
  | 'class' tycls tyvars 'where' '{' cdecls ';' '}'
     { [PDec (ClassD $2 $3 $6)] }
  | 'instance' class 'where' '{' idecls '}'
-    { [PDec (InstD $2 (icoalesce $5))] }
- | 'instance' class 'where' '{' idecls ';' '}'
-    { [PDec (InstD $2 (icoalesce $5))] }
+    { [PDec (InstD [] $2 (icoalesce $5))] }
+ | 'instance' context '=>' class 'where' '{' idecls '}'
+    { [PDec (InstD $2 $4 (icoalesce $7))] }
  | decl
     { [$1] }
 
