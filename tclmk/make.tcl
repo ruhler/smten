@@ -38,16 +38,16 @@ proc ghcprog {target source args} {
 ghcprog "serie" "Seri/Target/Elaborate/serie.hs"
 ghcprog "serih" "Seri/Target/Haskell/serih.hs"
 ghcprog "serim" "Seri/Target/Monomorphic/serim.hs"
-ghcprog "runquery" "Seri/SMT/runquery.hs" $YICESLIB
-ghcprog "type" "Seri/Lambda/type.hs"
+ghcprog "seriq" "Seri/SMT/seriq.hs" $YICESLIB
+ghcprog "serit" "Seri/Lambda/serit.hs"
 
 set SERIE build/src/serie
 set SERIH build/src/serih
-set RUNQUERY build/src/runquery
-set TYPE build/src/type
+set SERIQ build/src/seriq
+set SERIT build/src/serit
 
 # The general seri test
-run $TYPE -o build/src/tests.typed -i build/src build/src/Seri/Lib/Tests.sri
+run $SERIT -o build/src/tests.typed -i build/src build/src/Seri/Lib/Tests.sri
 run $SERIE -o build/src/tests.got -i build/src -m testall \
     build/src/Seri/Lib/Tests.sri
 run echo -n "(True :: Bool)" > build/src/tests.wnt
@@ -56,7 +56,7 @@ run cmp build/src/tests.got build/src/tests.wnt
 # Poorly typed tests.
 proc badtypetest {name} {
     set btdir "build/src/Seri/Lambda/Tests"
-    set cmd {run $::TYPE -o $btdir/$name.typed -i build/src $btdir/$name.sri}
+    set cmd {run $::SERIT -o $btdir/$name.typed -i build/src $btdir/$name.sri}
     if { [catch $cmd] == 0 } {
         error "expected type error, but $name passed type check"
     }
@@ -78,7 +78,7 @@ run cmp $hsdir/hstests.got $hsdir/hstests.wnt
 
 # The SMT query tests
 proc querytest {name args} {
-    run $::RUNQUERY -d build/src/Seri/SMT/Tests/$name.dbg -i build/src \
+    run $::SERIQ -d build/src/Seri/SMT/Tests/$name.dbg -i build/src \
          build/src/Seri/SMT/Tests/$name.sri {*}$args \
          > build/src/Seri/SMT/Tests/$name.out
 }
