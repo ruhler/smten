@@ -63,40 +63,6 @@ yExp c (LamE (Sig n t) e) = do
 yExp _ (ConE (Sig n _)) = return $ Y.VarE (yicesname (yicescon n))
 yExp _ (VarE (Sig n _)) = return $ Y.VarE (yicesname n)
 
--- Given a seri identifer, turn it into a valid yices identifier.
--- TODO: hopefully our choice of names won't clash with the users choices...
---
--- I don't have documentation for what yices allows in names, but it appears
--- symbols aren't allowed. So this just replaces each symbol with an ascii
--- approximation.
-yicesname :: String -> String
-yicesname [] = []
--- TODO: renaming of 'not' should be part of builtins, it should not go here.
-yicesname "not" = "_not"
-yicesname ('!':cs) = "__bang" ++ yicesname cs
-yicesname ('#':cs) = "__hash" ++ yicesname cs
-yicesname ('$':cs) = "__dollar" ++ yicesname cs
-yicesname ('%':cs) = "__percent" ++ yicesname cs
-yicesname ('&':cs) = "__amp" ++ yicesname cs
-yicesname ('*':cs) = "__star" ++ yicesname cs
-yicesname ('+':cs) = "__plus" ++ yicesname cs
-yicesname ('.':cs) = "__dot" ++ yicesname cs
-yicesname ('/':cs) = "__slash" ++ yicesname cs
-yicesname ('<':cs) = "__lt" ++ yicesname cs
-yicesname ('=':cs) = "__eq" ++ yicesname cs
-yicesname ('>':cs) = "__gt" ++ yicesname cs
-yicesname ('?':cs) = "__ques" ++ yicesname cs
-yicesname ('@':cs) = "__at" ++ yicesname cs
-yicesname ('\\':cs) = "__bslash" ++ yicesname cs
-yicesname ('^':cs) = "__hat" ++ yicesname cs
-yicesname ('|':cs) = "__bar" ++ yicesname cs
-yicesname ('-':cs) = "__dash" ++ yicesname cs
-yicesname ('~':cs) = "__tilde" ++ yicesname cs
-yicesname ('(':cs) = "__oparen" ++ yicesname cs
-yicesname (')':cs) = "__cparen" ++ yicesname cs
-yicesname (',':cs) = "__comma" ++ yicesname cs
-yicesname (c:cs) = c : yicesname cs
-
 -- Yices data constructors don't support partial application, so we wrap them in
 -- functions given by the following name.
 yicescon :: Name -> Name
@@ -110,52 +76,48 @@ yType c (AppT (AppT (ConT "->") a) b) = do
     return $ Y.ARR [a', b']
 yType _ t = fail $ "yicesY does not apply to type: " ++ pretty t
 
+-- yDec
+--   Assumes the declaration is monomorphic.
+yDec :: Compiler -> Dec -> YCM [Y.CmdY]
+yDec c (ValD (TopSig n [] t) e) = do
+    yt <- compile_type c c t
+    ye <- compile_exp c c e
+    return [Y.DEFINE (yicesname n, yt) (Just ye)]
+yDec c (DataD n [] cs) =
+    let con :: Con -> YCM (String, [(String, Y.TypY)])
+        con (Con n ts) = do 
+            ts' <- mapM (compile_type c c) ts
+            return (yicesname n, zip [yicesname n ++ show i | i <- [0..]] ts')
+
+        -- Wrap each constructor in a function which supports partial
+        -- application.
+        mkcons :: Con -> YCM Y.CmdY
+        mkcons (Con cn ts) = do
+            yts <- mapM (compile_type c c) ts
+            let ft a b = Y.ARR [a, b]
+            let yt = foldr ft (Y.VarT (yicesname n)) yts
+            let fe (n, t) e = Y.LAMBDA [(n, t)] e
+            let names = [[c] | c <- take (length ts) "abcdefghijklmnop"]
+            let body =  if null ts
+                          then Y.VarE (yicesname cn)
+                          else Y.APP (Y.VarE (yicesname cn)) (map Y.VarE names)
+            let ye = foldr fe body (zip names yts)
+            return $ Y.DEFINE (yicesname (yicescon cn), yt) (Just ye)
+    in do
+        cs' <- mapM con cs
+        let deftype = Y.DEFTYP (yicesname n) (Just (Y.DATATYPE cs'))
+        defcons <- mapM mkcons cs
+        return $ deftype : defcons
+yDec c d = fail $ "yicesY does not apply to dec: " ++ pretty d
+
 coreY :: Compiler
-coreY = Compiler [] yExp yType
+coreY = Compiler yExp yType yDec
 
 yicesY :: Compiler
 yicesY = compilers [preludeY, coreY]
             
--- compile_dec
---   Assumes the declaration is monomorphic.
-compile_dec :: Compiler -> Dec -> [Y.CmdY]
-compile_dec c (ValD (TopSig n [] t) e) =
-    let yt = fromYCM $ compile_type c c t
-        ye = fromYCM $ compile_exp c c e
-    in [Y.DEFINE (yicesname n, yt) (Just ye)]
-compile_dec c (DataD n [] cs) =
-    let con :: Con -> (String, [(String, Y.TypY)])
-        con (Con n ts) = (yicesname n, zip [yicesname n ++ show i | i <- [0..]]
-                                 (map (fromYCM . compile_type c c) ts))
-
-        -- Wrap each constructor in a function which supports partial
-        -- application.
-        mkcons :: Con -> Y.CmdY
-        mkcons (Con cn ts) = 
-            let yts = [fromYCM $ compile_type c c t | t <- ts]
-
-                ft :: Y.TypY -> Y.TypY -> Y.TypY
-                ft a b = Y.ARR [a, b]
-
-                yt = foldr ft (Y.VarT (yicesname n)) yts
-
-                fe :: (Name, Y.TypY) -> Y.ExpY -> Y.ExpY
-                fe (n, t) e = Y.LAMBDA [(n, t)] e
-
-                names = [[c] | c <- take (length ts) "abcdefghijklmnop"]
-
-                body =  if null ts
-                          then Y.VarE (yicesname cn)
-                          else Y.APP (Y.VarE (yicesname cn)) (map Y.VarE names)
-                ye = foldr fe body (zip names yts)
-            in Y.DEFINE (yicesname (yicescon cn), yt) (Just ye)
-
-        deftype = Y.DEFTYP (yicesname n) (Just (Y.DATATYPE (map con cs)))
-        defcons = map mkcons cs
-    in deftype : defcons
-compile_dec c d
-    = error $ "compile_dec: cannot compile to yices: " ++ pretty d
-
 compile_decs :: Compiler -> [Dec] -> [Y.CmdY]
-compile_decs c ds = concat $ map (compile_dec c) ds
+compile_decs c ds = fromYCM $ do
+    ds' <- mapM (compile_dec c c) ds
+    return $ concat ds'
 

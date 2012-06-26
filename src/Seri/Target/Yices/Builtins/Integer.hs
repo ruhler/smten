@@ -7,40 +7,41 @@ import qualified Math.SMT.Yices.Syntax as Y
 
 import Seri.Lambda
 import Seri.Target.Yices.Compiler
-import Seri.Target.Haskell.Builtin
 
+
+yExp :: Compiler -> Exp -> YCM Y.ExpY
+yExp _ _ = fail "integerY doesn't apply"
+
+yType :: Compiler -> Type -> YCM Y.TypY
+yType _ (ConT "Integer") = return (Y.VarT "int")
+yType _ _ = fail "integerY doesn't apply"
 
 -- defbinop name type op
 --   Define a primitive binary operation
 --   name - the name of the primitive
 --   type - the yices type of the primitive
---   op - the yices operator to use for the primitive.
+--   body - the body of the operation, referince args "a" and "b".
 defbinop :: String -> String -> String -> Y.CmdY
-defbinop name ty op =
-    Y.DEFINE (name, Y.VarT ty)
-        (Just (Y.VarE $ "(lambda (a::int) (lambda (b::int) (" ++ op ++ " a b)))"))
+defbinop name ty body =
+    Y.DEFINE (yicesname name, Y.VarT ty)
+        (Just (Y.VarE $ "(lambda (a::int) (lambda (b::int) " ++ body ++ "))"))
 
-yIncludes :: [Y.CmdY]
-yIncludes = [
-        defbinop "__prim_add" "(-> int (-> int int))" "+",
-        defbinop "__prim_sub" "(-> int (-> int int))" "-",
-        defbinop "__prim_lt" "(-> int (-> int bool))" "<",
-        defbinop "__prim_gt" "(-> int (-> int bool))" ">",
-        defbinop "__prim_eq" "(-> int (-> int bool))" "="
-    ]
-
-yExp :: Compiler -> Exp -> YCM Y.ExpY
-yExp c (VarE (Sig "__prim_add_Integer" _)) = return $ Y.VarE "__prim_add"
-yExp c (VarE (Sig "__prim_sub_Integer" _)) = return $ Y.VarE "__prim_sub"
-yExp c (VarE (Sig "<" _)) = return $ Y.VarE "__prim_lt"
-yExp c (VarE (Sig ">" _)) = return $ Y.VarE "__prim_gt"
-yExp c (VarE (Sig "__prim_eq_Integer" _)) = return $ Y.VarE "__prim_eq"
-yExp _ _ = fail "integerY doesn't apply"
-
-yType :: Compiler -> Type -> YCM Y.TypY
-yType _ (ConT "Integer") = return $ Y.VarT "int"
-yType _ _ = fail "integerY doesn't apply"
+yDec :: Compiler -> Dec -> YCM [Y.CmdY]
+yDec _ (PrimD (TopSig "__prim_add_Integer" _ _))
+ = return [defbinop "__prim_add_Integer" "(-> int (-> int int))" "(+ a b)"]
+yDec _ (PrimD (TopSig "__prim_sub_Integer" _ _))
+ = return [defbinop "__prim_sub_Integer" "(-> int (-> int int))" "(- a b)"]
+yDec _ (PrimD (TopSig "<" _ _))
+ = return [defbinop "<" "(-> int (-> int Bool))"
+        "(if (< a b) True False) "]
+yDec _ (PrimD (TopSig ">" _ _))
+ = return [defbinop ">" "(-> int (-> int Bool))"
+        "(if (> a b) True False) "]
+yDec _ (PrimD (TopSig "__prim_eq_Integer" _ _))
+ = return [defbinop "__prim_eq_Integer" "(-> int (-> int Bool))"
+        "(if (= a b) True False) "]
+yDec _ _ = fail "integerY doesn't apply"
 
 integerY :: Compiler
-integerY = Compiler yIncludes yExp yType
+integerY = Compiler yExp yType yDec
 

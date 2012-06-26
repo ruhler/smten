@@ -84,13 +84,16 @@ gentype t = do
 -- Generate a monomorphic declaration for the given concrete variable
 genval :: Sig -> M Dec
 genval s@(Sig n t) = do
-    t' <- monotype t
-    suffix <- valsuffix s
-    let n' = n ++ suffix
     poly <- gets ms_poly
-    (pt, e) <- attemptM $ lookupVar poly s
-    e' <- monoexp $ assign (assignments pt t) e
-    return $ ValD (TopSig n' [] t') e'
+    t' <- monotype t
+    case (attemptM $ lookupPrimD poly n) of
+        Just d -> return d
+        Nothing -> do
+            suffix <- valsuffix s
+            let n' = n ++ suffix
+            (pt, e) <- attemptM $ lookupVar poly s
+            e' <- monoexp $ assign (assignments pt t) e
+            return $ ValD (TopSig n' [] t') e'
 
 -- Translate a concretely typed expression to the appropriate monomorphic
 -- expression.
@@ -123,6 +126,7 @@ monoexp (VarE s@(Sig n t)) = do
             t' <- monotype t
             return (VarE (Sig n t'))
         (_, Just Primitive) -> do
+            modify $ \ms -> ms { ms_toexp = s : ms_toexp ms }
             t' <- monotype t
             return (VarE (Sig n t'))
         (_, Just Declared) -> do
@@ -166,8 +170,6 @@ monopat (WildP t) = do
 monotype :: Type -> M Type
 monotype (VarT {}) = error $ "variable type is not concrete"
 monotype t@(ConT "Integer") = return t
-monotype t@(ConT "Bool") = return t
-monotype t@(ConT "()") = return t
 monotype t = do
     poly <- gets ms_poly
     case unfoldt t of
@@ -226,4 +228,5 @@ unfoldt (ConT n) = (n, [])
 unfoldt (AppT a b)
   = let (n, args) = unfoldt a
     in (n, args ++ [b])
+unfoldt t = error $ "unfoldt: " ++ pretty t
 

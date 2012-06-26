@@ -201,4 +201,226 @@ Next things to do:
 
 All after lunch.
 
+Tue Jun 26 13:05:57 EDT 2012
+
+Let's talk about error now.
+
+We would like the notion of error. That is, some primitive function:
+ error :: String -> a.
+
+This is useful in code in general. But where we really want to use it is in
+yices for when a case statement doesn't match anything.
+
+It's probably easy to support errors in the elaborate module. I suppose for
+now we could just not elaborate error. Another option would be to fail in the
+elaborate monad. I don't think I need to worry about this much.
+
+Haskell target is easy too. Use the builtin error.
+
+What's not so easy is yices.
+
+Proposal: for each data type, Foo, I add an additional constructor: Foo-Error.
+I box integers and booleans.
+
+Primitive operators should return Error if either of their arguments are
+error. Case should return error if off the end.
+
+Is there anything else we need to do?
+Don't we automatically get error propagation because of the way case
+statements work?
+
+That would be cool if it were that easy.
+
+Now, if you get as a response to an SMT query that something is in Error, that
+means an error path is accessible in your design. That's something you want to
+know about.
+
+You know? It might actually be that easy.
+
+There are some steps here.
+I could go about this different ways. Maybe to start, don't have the error
+primitive? Just have the errors in yices, and only case can generate errors.
+Verify the nocasematch test does what I hope it will.
+
+Then I can add the error primitive without trouble, I'll probably want to add
+support for string literals, and I can use it in the right places in the
+library, namely head and tail and such.
+
+Fine. I think it's worth a try. Somehow I suspect I'll learn about some
+difficulties I didn't think of when I go to implement it for real.
+
+Steps:
+1. don't do anything special for Bool. That we we'll inherit the error stuff
+for it automatically.
+2. use a boxed Integer representation with an Error type.
+3. Generate Error type constructors and use them for no-match case.
+
+Wish me luck.
+
+Tue Jun 26 13:54:48 EDT 2012
+
+Well, so, we have this annoying thing again. The integer primitives depend on
+Bool being defined. It's the same problem I have in the haskell target, only
+even worse, perhaps, because yices needs declarations to come in the right
+order.
+
+Well, the solution is the same. I have to define Bool specially for the Yices
+target. I can still box it. But it will be like Integer. I declare it
+manually.
+
+It would be cool if somehow we could ...
+
+Oh. Now this is an interesting idea. Very interesting indeed.
+
+What if, in the compiler, we just had a special case for the primitive
+declarations? Don't ignore them, but use the primitive declarations to define
+them properly?
+
+In this case, I don't include any prelude or set of declarations up front. I
+only generate the primitive yices declarations when we need them. It includes
+them just at the right time.
+
+If I do this, then we don't have to do anything special for Bool. Because the
+__prim_integer_eq, or whatever it's called, depends on Bool, so when we sort
+it, it will go in the right place automatically.
+
+That's a cool idea.
+
+I'm tempted to say, then, that all we need in the Yices compiler is a way to
+rewrite declarations, so we can declare primitives properly. But that won't
+let us rewrite free variables the way I want, so keep yType and yExp in there
+too I think.
+
+And I can do the same thing for the haskell target, no?
+
+Do I still need includes?
+
+For yices, I think no. Because they don't have the notion of an import, and
+all declarations can be declared the way I want. There is not existing library
+to make use of.
+
+For haskell, I think we still want includes, because you might want to use an
+existing library.
+
+Okay, so here's what I should do.
+
+Replace the yIncludes field in the yices compiler with yDec.
+Generate declarations for each of the primitive declarations I want to
+support.
+
+Then finish dealing with the Boolean boxing issues, though I don't expect
+there to be any issues.
+
+Good. Sounds like a plan.
+
+Tue Jun 26 14:53:40 EDT 2012
+
+Well... sadness. Looks like... a bug in Yices? With regards to push and pop.
+
+So, I have to work around it somehow? I doubt they will fix it for me.
+
+Okay, so it looks like there is a workaround. It's ... rather a bit of a hack,
+I think, and rather annoying.
+
+The first type we define a type, define it as:
+
+(define-type Foo (datatype ...)).
+
+Remember all those things we have defined. Because the next time we define the
+type, we have to define it as:
+
+(define-type Foo)
+
+without the "datatype" part.
+
+Right? No?
+
+No. That's not true. Then it gives me a seg fault. Blah.
+
+Tue Jun 26 15:08:53 EDT 2012
+
+I think there's a workaround. One that's not too bad.
+
+The problem is with push and pop. The only thing we really want to use push
+and pop to protect against are assertions. So the only thing inside of push
+and pop should be assertions.
+
+This means I should do the following: collect assertions as they are made.
+Don't send them to yices right away. Instead, send them when check is
+called.
+
+Now, for queryS, don't send the push and pop commands ...
+
+It's not going to work, is it.
+
+Hmm... what if I turn off type checking? Does that fix it?
+
+Nope. Doesn't help.
+
+Well, by delaying assertions, I can make most things work. What I can't make
+work is when you use the result of a query, reading the evidence, and passing
+that in as...
+
+Or can I?
+
+Perhaps this has a really easy solution. It just means being a little verbose
+with yices, telling yices more things than it needs to know about.
+
+1. Monomorphize the query.
+2. Send yices all the declarations it could possibly need then. Because we
+know what they all are. We'll end up telling yices about more than it needs,
+potentially, but what harm does that do? No need to be lazy about things.
+
+In fact, it might be more efficient if we aren't lazy about telling yices
+about things. Then we don't have to keep remonomorphizing all the type.
+
+3. run the query as now.
+
+Yes. I think that's the answer. Probably a better way to go too anyway.
+
+Good. Let me try that and see if I can make it work.
+
+Tue Jun 26 15:21:32 EDT 2012
+
+This means we monomorphize before running in yices. Is that okay? Do we loose
+anything there?
+
+I don't think we do. Except, maybe, in reconstructing evidence. Does that
+matter? I'm not sure. Is it okay to have monomorphic evidence?
+
+Perhaps we should have a way to demonomorphize? Given the polymorphic
+environment, and a monomorphic expression, shouldn't we be able to do that?
+That would be nice...
+
+Tue Jun 26 15:36:09 EDT 2012
+
+Well, there's a problem. Which is we are picking up more than we need, which
+is a problem, because we are referencing polymorphic primitives that shouldn't
+be referenced.
+
+I really rather not tell yices about more than I need to... So, how do I
+figure out what I need to?
+
+The problem is, we don't know how to figure it out unless we assume the
+evidence returned isn't used, but the whole point is to have some evidence,
+or, it would be really nice to make use of the evidence.
+
+Well, one thing I could do is make it work in almost every case, and call it a
+yices bug if it doesn't. That's what would happen if I did the delayed
+assertion plan. Still give yices declarations lazily as needed. Just don't do
+the assert until the corresponding check. And maybe we get lucky.
+
+Or... what do you think about this: the problem comes when defining data
+types. So, what if we defined all the data types ahead of time, based on
+monomorphization. Then do everything else as I have been.
+
+That's actually probably not hard to do.
+
+Okay. Cool. This sounds like a plan. Let me go to it.
+
+Tue Jun 26 15:55:46 EDT 2012
+
+Well, that works for now at least. Good.
+
+And now the Bool thing works. Good.
 

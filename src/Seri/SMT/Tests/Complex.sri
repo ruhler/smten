@@ -1,6 +1,7 @@
 
 module Seri.SMT.Tests.Complex where {
 
+import Seri.Lib.Bool;
 import Seri.Lib.Integer;
 import Seri.Lib.Monad;
 import Seri.Lib.Tuple;

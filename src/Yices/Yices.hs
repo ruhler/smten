@@ -47,6 +47,9 @@ foreign import ccall unsafe "yices_display_model"
 foreign import ccall unsafe "yices_enable_type_checker"
     c_yices_enable_type_checker :: Bool -> IO ()
 
+foreign import ccall unsafe "yices_get_last_error_message"
+    c_yices_get_last_error_message :: IO CString
+
 data Result
     = Satisfiable
     | Unsatisfiable
@@ -73,7 +76,12 @@ runCmd (Context fp) cmd = do
             c_yices_parse_command yctx str
     if worked 
        then return ()
-       else fail $ "error sending command to yices" 
+       else do
+          cstr <- c_yices_get_last_error_message
+          msg <- peekCString cstr
+          fail $ show msg
+                    ++ "\n when running command: \n" 
+                    ++ show cmd
 
 runCmds :: Context -> [CmdY] -> IO ()
 runCmds ctx = mapM_ (runCmd ctx)

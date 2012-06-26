@@ -58,7 +58,7 @@ runQuery gr env e = do
             dh <- gets ys_dh
             ctx <- gets ys_ctx
             res <- lift $ Y.check ctx
-            lift $ hPutStrLn dh $ ">> check returned: " ++ show res 
+            lift $ hPutStrLn dh $ "; check returned: " ++ show res 
             case res of 
                 Y.Undefined -> return $ ConE (Sig "Unknown" (AppT (ConT "Answer") (typeof arg)))
                 Y.Satisfiable -> return $ AppE (ConE (Sig "Satisfiable" (AppT (ConT "Answer") (typeof arg)))) (realize (yassignments []) arg)
@@ -72,7 +72,7 @@ runQuery gr env e = do
             return (AppE (VarE (Sig "~free" (arrowsT [integerT, t]))) (IntegerE fid))
         (AppE (VarE (Sig "assert" _)) p) -> do
             p' <- declareNeeded env p
-            runCmds [Y.ASSERT (yExp p')]
+            runCmds [Y.ASSERT (yExp trueE Y.:= yExp p')]
             return (ConE (Sig "()" (ConT "()")))
         (AppE (VarE (Sig "queryS" _)) q) -> do
             odecls <- gets ys_decls
@@ -114,8 +114,20 @@ runYices primlib gr opts env e = do
     -- longer outputs.
     hSetBuffering dh NoBuffering
     ctx <- Y.mkContext
-    sendCmds (includes smtY ++ primlib) ctx dh
-    (x, _) <- runStateT (runQuery gr env e) (YicesState [] ctx dh 1)
+
+    hPutStrLn dh "; Primitives library:"
+    sendCmds primlib ctx dh
+
+    -- Declare all possibly needed data type definitions here.
+    -- This is to work around a bug in yices when declaring data types inside
+    -- a push/pop pair.
+    let mds = filter isDataD (fst $ monomorphic env e)
+    let pds = fst $ sort mds
+    hPutStrLn dh "\n; Data type definitions: "
+    sendCmds (yDecs pds) ctx dh
+
+    hPutStrLn dh "\n; Query: "
+    (x, _) <- runStateT (runQuery gr env e) (YicesState pds ctx dh 1)
     hClose dh
     return x
     
@@ -128,7 +140,11 @@ smtY =
 
       yt :: Compiler -> Type -> YCM Y.TypY
       yt _ t = fail $ "smtY does not apply: " ++ pretty t
-  in compilers [Compiler [] ye yt, yicesY]
+
+      yd :: Compiler -> Dec -> YCM [Y.CmdY]
+      yd _ d = fail $ "smtY does not apply: " ++ pretty d
+     
+  in compilers [Compiler ye yt yd, yicesY]
 
 
 -- Given the evidence returned by a yices query, extract the free variable

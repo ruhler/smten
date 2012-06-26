@@ -43,3 +43,5 @@
 
 - fix casenomatch bug in yices code generation.
 
+- modules shouldn't automatically export everything they import.
+

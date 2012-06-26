@@ -11,7 +11,7 @@ module Seri.Lambda.Env (
     lookupVarType, lookupVarValue, lookupVar, lookupVarInfo,
     lookupMethodType,
     lookupDataD, lookupDataConType,
-    lookupInstD,
+    lookupInstD, lookupPrimD,
     ) where
 
 import Debug.Trace
@@ -177,6 +177,7 @@ declarations env =
   let qexp :: Exp -> [Dec]
       qexp (VarE s@(Sig n _)) =
          case (attemptM $ lookupVarInfo env s) of
+            Just Primitive -> attemptM $ lookupPrimD env n
             Just Declared -> attemptM $ lookupValD env n
             Just (Instance cls@(Class ni ts)) ->
                 catMaybes [attemptM $ lookupClassD env ni,
