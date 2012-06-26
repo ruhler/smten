@@ -1,0 +1,13 @@
+
+module Seri.Lambda.Tests.InstCtx where {
+
+import Seri.Lib.Bool;
+import Seri.Lib.Maybe;
+
+data Foo = Foo | Bar;
+
+foo :: Maybe Foo -> Bool;
+foo m = m == Just Foo
+
+}
+

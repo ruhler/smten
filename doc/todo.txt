@@ -1,12 +1,9 @@
 
-- Allow contexts in InstD
 - add layout support
 - list literal patterns.
 - support negative literals?
 - deriving Eq would be nice.
 - default methods in classes?
-- problems with pretty printing class predicates:
-    Eq (Maybe Integer) is printed as Eq Maybe Integer
 
 - line numbers for non-syntactic errors would be nice.
 
@@ -39,6 +36,7 @@
           not allowed.
 
 - support for pattern guards?
+- support for pattern bindings: x@(...)
 
 - targets should have ways for builtins to generate declarations (or not) so
   they can reuse existing builtins if desired.

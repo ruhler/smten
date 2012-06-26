@@ -135,12 +135,18 @@ typecheck ds =
 -- declared for the given expression.
 instcheck :: [Dec] -> Context -> Exp -> Failable ()
 instcheck ds c e = 
-    let base :: Exp -> Failable Exp
+    let satisfied :: Class -> Failable ()
+        satisfied cls | cls `elem` c = return ()
+        satisfied cls@(Class _ ts) = do
+            InstD ctx (Class _ pts) _ <- lookupInstD ds cls
+            let assigns = concat [assignments p c | (p, c) <- zip pts ts]
+            mapM_ satisfied (assign assigns ctx)
+
+        base :: Exp -> Failable Exp
         base e@(VarE s) =
             case attemptM $ lookupVarInfo ds s of
-                Just (Instance cls) | cls `elem` c -> return e
                 Just (Instance cls) -> do
-                    lookupInstD ds cls
+                    satisfied cls
                     return e
                 _ -> return e
         base e = return e
