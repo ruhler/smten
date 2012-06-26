@@ -1,6 +1,5 @@
 
 - Allow contexts in InstD
-- support record type constructors
 - add layout support
 - list literal patterns.
 - support negative literals?

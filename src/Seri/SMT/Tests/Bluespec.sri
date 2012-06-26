@@ -9,11 +9,11 @@ import Seri.SMT.SMT;
 import Seri.SMT.Tests.FIFO;
 
 -- The system state:
--- a :: Integer
--- f :: FIFO Integer
--- b :: Integer
--- TODO: have seri support record type constructors.
-data TState = TState Integer (FIFO2 Integer) Integer;
+data TState = TState {
+    a :: Integer,
+    f :: FIFO2 Integer,
+    b :: Integer
+};
 
 instance Eq TState where {
     (==) (TState a b c) (TState a' b' c')
@@ -29,15 +29,6 @@ instance Eq (Maybe TState) where {
     (/=) a b = not (a == b);
 };
 
-
-a :: TState -> Integer;
-a (TState x _ _) = x;
-
-f :: TState -> FIFO2 Integer;
-f (TState _ x _) = x;
-    
-b :: TState -> Integer;
-b (TState _ _ x) = x;
 
 -- Rules:
 -- p: f.enq(a+1)

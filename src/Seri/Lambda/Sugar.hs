@@ -7,6 +7,7 @@ module Seri.Lambda.Sugar (
     Clause(..), clauseE,
     trueE, falseE, listE, tupE, tupP,
     Module(..), Import(..), flatten,
+    ConRec(..), recordD,
     ) where
 
 import Seri.Lambda.IR
@@ -136,4 +137,37 @@ data Module = Module Name [Import] [Dec]
 -- implement name resolution and qualification of identifiers.
 flatten :: [Module] -> [Dec]
 flatten ms = prelude ++ concat [d | Module _ _ d <- ms]
+
+
+-- Record type constructors.
+data ConRec = NormalC Name [Type]
+            | RecordC Name [(Name, Type)]
+    deriving(Eq, Show)
+
+-- Desugar record constructors from a data declaration.
+recordD :: Name -> [Name] -> [ConRec] -> [Dec]
+recordD nm vars cons =
+  let mkcon :: ConRec -> Con
+      mkcon (NormalC n ts) = Con n ts
+      mkcon (RecordC n ts) = Con n (map snd ts)
+
+      -- TODO: handle correctly the case where two different constructors
+      -- share the same accessor name.
+      mkaccs :: ConRec -> [Dec]
+      mkaccs (NormalC {}) = []
+      mkaccs (RecordC cn ts) = 
+        let mkacc :: ((Name, Type), Int) -> Dec
+            mkacc ((n, t), i) = 
+              let dt = appsT (ConT nm : map VarT vars)
+                  at = arrowsT [dt, t] 
+                  pat = ConP dt cn ([WildP pt | (_, pt) <- take i ts]
+                         ++ [VarP (Sig "x" t)]
+                         ++ [WildP pt | (_, pt) <- drop (i+1) ts])
+                  body = clauseE [Clause [pat] (VarE (Sig "x" t))]
+              in ValD (TopSig n [] at) body
+        in map mkacc (zip ts [0..])
+      
+      cons' = map mkcon cons
+      accs = concatMap mkaccs cons
+  in (DataD nm vars cons') : accs
 

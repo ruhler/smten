@@ -1,0 +1,20 @@
+
+Tue Jun 26 08:06:49 EDT 2012
+
+Goal for today?
+
+First step: support record type constructors. It's not hard, and it's useful.
+Have a DataDRec type, build that up, then be able to convert DataDRec to
+[Dec].
+
+I think, look into Myron's example query. The library, at least, is going to
+be the same as he has now. Try to understand what features and tests I should
+do to make it reasonable to express the library (appropriately) in seri.
+Perhaps adding support for Vectors and numeric types?
+
+Remember the primary next goal: get Myron to use seri.
+
+
+Okay, let's start with record type constructors. I claim this isn't hard,
+so... let's try it out and see.
+

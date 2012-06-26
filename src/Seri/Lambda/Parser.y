@@ -83,25 +83,25 @@ impdecl :: { Import }
 
 topdecls :: { [PDec] }
  : topdecl
-    { [$1] }
- | topdecls ';' topdecl
-    { $1 ++ [$3] }
-
-topdecl :: { PDec }
- : 'data' tycon tyvars '=' constrs
-    { PDec (DataD $2 $3 $5) }
- | 'data' tycon '=' constrs
-    { PDec (DataD $2 [] $4) }
- | 'class' tycls tyvars 'where' '{' cdecls '}'
-    { PDec (ClassD $2 $3 $6)}
- | 'class' tycls tyvars 'where' '{' cdecls ';' '}'
-    { PDec (ClassD $2 $3 $6)}
- | 'instance' class 'where' '{' idecls '}'
-    { PDec (InstD $2 (icoalesce $5)) }
- | 'instance' class 'where' '{' idecls ';' '}'
-    { PDec (InstD $2 (icoalesce $5)) }
- | decl
     { $1 }
+ | topdecls ';' topdecl
+    { $1 ++ $3 }
+
+topdecl :: { [PDec] }
+ : 'data' tycon tyvars '=' constrs
+    { [PDec ds | ds <- recordD $2 $3 $5] }
+ | 'data' tycon '=' constrs
+    { [PDec ds | ds <- recordD $2 [] $4] }
+ | 'class' tycls tyvars 'where' '{' cdecls '}'
+    { [PDec (ClassD $2 $3 $6)] }
+ | 'class' tycls tyvars 'where' '{' cdecls ';' '}'
+    { [PDec (ClassD $2 $3 $6)] }
+ | 'instance' class 'where' '{' idecls '}'
+    { [PDec (InstD $2 (icoalesce $5))] }
+ | 'instance' class 'where' '{' idecls ';' '}'
+    { [PDec (InstD $2 (icoalesce $5))] }
+ | decl
+    { [$1] }
 
 decl :: { PDec }
  : gendecl
@@ -190,17 +190,29 @@ class :: { Class }
  : qtycls atypes
     { Class $1 $2 }
 
-constrs :: { [Con] }
+constrs :: { [ConRec] }
  : constr
     { [$1] }
  | constrs '|' constr
     { $1 ++ [$3] }
 
-constr :: { Con }
+constr :: { ConRec }
  : con atypes
-    { Con $1 $2 }
+    { NormalC $1 $2 }
  | con
-    { Con $1 [] }
+    { NormalC $1 [] }
+ | con '{' fielddecls '}'
+    { RecordC $1 $3 }
+
+fielddecls :: { [(Name, Type)] }
+ : fielddecl
+    { [$1] }
+ | fielddecls ',' fielddecl
+    { $1 ++ [$3] }
+
+fielddecl :: { (Name, Type) }
+ : var '::' type
+    { ($1, $3) }
 
 exp :: { Exp }
  : exp10

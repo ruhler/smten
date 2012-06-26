@@ -78,20 +78,15 @@ instance Foo Integer where {
 foofun :: (Foo a) => a -> Integer;
 foofun x = (((foo x)*(foo x)) + (3*(foo x))) + (foo True);
 
--- TODO: define this with a record constructor
-data Apple = Apple Bool Integer;
-isgreen :: Apple -> Bool;
-isgreen (Apple b _) = b;
-numseeds :: Apple -> Integer;
-numseeds (Apple _ i) = i;
+data Apple = Apple {
+    isgreen :: Bool,
+    numseeds :: Integer
+};
 
--- TODO: define this with a record constructor
-data Wonderful a = Wonderful a Integer;
-thething :: Wonderful a -> a;
-thething (Wonderful x _) = x;
-howgreat :: Wonderful a -> Integer;
-howgreat (Wonderful _ x) = x;
-
+data Wonderful a = Wonderful {
+    thething :: a,
+    howgreat :: Integer
+};
 
 class MultiFoo a b where {
     multifoo :: a -> b -> Integer;

@@ -369,3 +369,35 @@ equality on fifos.
 
 That did it.
 
+Mon Jun 25 16:33:49 EDT 2012
+
+Maybe for the rest of the day I ought to just do some syntactic sugar. How
+about record constructors?
+
+I think it should be easy. What we want is...
+
+I suppose, given a record constructor, return a normal constructor and a set
+of ValD declarations.
+
+RCon -> (Con, [Dec])
+
+Then constr has type: (Con, [Dec])... But hopefully you won't have two with
+the same name... So that would be wrong.
+
+Erg. I don't feel like this right now.
+
+Oh. I know. Let me look at the format of a cabal package and see if I can't
+turn seri into one. That would be cool and fun.
+
+Mon Jun 25 16:56:05 EDT 2012
+
+Looks like it's pretty easy to make a cabal package. And it knows how to build
+the thing too. And it knows how to test the thing too.
+
+I'm not sure I want it to replace my build system. But it would be a nice
+output to my build system: generate the .tar.gz. Then I could distribute the
+package rather easily. Myron could install the package on his computer, for
+example.
+
+It's something to try anyway. Maybe tomorrow.
+
