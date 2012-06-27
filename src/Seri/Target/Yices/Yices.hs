@@ -39,11 +39,11 @@ yExp c (CaseE e ms) =
       --  outputs - the yices expression implementing the matches.
       dematch :: Y.ExpY -> [Match] -> YCM Y.ExpY
       dematch e [Match p b] = do
-          -- TODO: return an error condition of some sort if 
-          -- the predicate for the last match doesn't hold.
+          let ConT dn = typeof b
           b' <- compile_exp c c b
-          let (pred, bindings) = depat p e
-          return $ Y.LET bindings b'
+          let (preds, bindings) = depat p e
+          let pred = yand preds
+          return $ Y.IF pred (Y.LET bindings b') (Y.VarE $ yiceserr dn)
       dematch e ((Match p b):ms) = do
           bms <- dematch e ms
           b' <- compile_exp c c b
@@ -60,13 +60,17 @@ yExp c (AppE a b) = do
 yExp c (LamE (Sig n t) e) = do
     e' <- compile_exp c c e
     return $ Y.LAMBDA [(n, fromYCM $ compile_type c c t)] e'
-yExp _ (ConE (Sig n _)) = return $ Y.VarE (yicesname (yicescon n))
+yExp _ (ConE (Sig n _)) = return $ Y.VarE (yicescon n)
 yExp _ (VarE (Sig n _)) = return $ Y.VarE (yicesname n)
 
 -- Yices data constructors don't support partial application, so we wrap them in
 -- functions given by the following name.
 yicescon :: Name -> Name
-yicescon n = "C" ++ n
+yicescon n = yicesname $ "C" ++ n
+
+-- The name of the error constructor for a given type constructor name n.
+yiceserr :: Name -> Name
+yiceserr n = yicesname $ n ++ "~Error"
 
 yType :: Compiler -> Type -> YCM Y.TypY
 yType _ (ConT n) = return $ Y.VarT (yicesname n)
@@ -102,10 +106,11 @@ yDec c (DataD n [] cs) =
                           then Y.VarE (yicesname cn)
                           else Y.APP (Y.VarE (yicesname cn)) (map Y.VarE names)
             let ye = foldr fe body (zip names yts)
-            return $ Y.DEFINE (yicesname (yicescon cn), yt) (Just ye)
+            return $ Y.DEFINE (yicescon cn, yt) (Just ye)
     in do
         cs' <- mapM con cs
-        let deftype = Y.DEFTYP (yicesname n) (Just (Y.DATATYPE cs'))
+        let errc = (yiceserr n, [])
+        let deftype = Y.DEFTYP (yicesname n) (Just (Y.DATATYPE (cs' ++ [errc])))
         defcons <- mapM mkcons cs
         return $ deftype : defcons
 yDec c d = fail $ "yicesY does not apply to dec: " ++ pretty d

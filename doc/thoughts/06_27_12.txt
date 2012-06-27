@@ -1,0 +1,56 @@
+
+Wed Jun 27 08:36:24 EDT 2012
+
+1. Declare Foo-Error constructor for every data defined type.
+2. Box integer in a user defined data type.
+3. Return Foo-Error as the default case value in case expressions.
+
+Here I go with (1).
+
+(1) is done.
+
+Here I go with (2).
+
+What I need to do...
+- Each integer literal must be wrapped in a call to the constructor.
+That's easy.
+- The primitive integer functions need to extract the integer, and return an
+  error if there is an error.
+That's slightly tedious, but easy.
+- We need to declare the data type for integer.
+But we want to only do it once. This is a little tricky.
+
+I feel like a nice way to do it would be to have a DataD declaration in
+prelude for integer. Then I can just special case that in the compiler.
+
+data Integer = ;
+
+That's reasonable, right?
+
+The thing is, it means I'll want to special case it in the haskell target too.
+
+How about this. I may be able to get away with not supporting the integer
+error for my test cases. So I could skip to (3). Get that to work. Understand
+if there are other issues I need to be aware of.
+
+Then, overhaul the haskell target. Using a compiler like the yices target. Fix
+the primitives declarations issue. Define haskell primitives like I do in
+yices, based on the PrimD. Stop handling Bool specially.
+
+Then, add Integer and Char as primitive data type declarations. Then box
+Integer for the yices target.
+
+I think that makes sense to do.
+
+Okay, let me fix the case statement generation now then. Remember, we expect
+polymorphic. So every type is ConT "foo" that isn't a function type.
+
+Wed Jun 27 09:05:06 EDT 2012
+
+Well... so much for thinking it would work without defining Integer__...
+
+How about this. As a hack, I can declare the integer data type first...
+no. Don't hack.
+
+Let me save this. Do the haskell thing, then come back to fix this.
+

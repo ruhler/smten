@@ -424,3 +424,23 @@ Well, that works for now at least. Good.
 
 And now the Bool thing works. Good.
 
+Tue Jun 26 16:41:27 EDT 2012
+
+I think that's enough for today.
+
+Plan for tomorrow:
+1. Box Integer in a user defined data type:
+  Integer = Integer int | Integer-Error
+
+Hmm... I wonder if we should declare Integer as part of the prelude:
+ data Integer = ;
+
+To show that it's a builtin type kind of thing. Same with Char.
+
+2. Declare a Foo-Error constructor for every data defined type.
+Actually, I could probably just as easily do this now.
+
+3. Return  Foo-Error as the default case value in case expressions.
+
+Nothing big here. I think it should be fairly straight forward.
+

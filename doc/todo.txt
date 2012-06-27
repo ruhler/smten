@@ -18,6 +18,9 @@
 - Reimplement TypeCheck to make use of constraint generation from TypeInfer?
 
 - Understand all the conflicts in the parser.
+I suspect many of the reduce/reduce are from:
+    foo :: (Foo a) -> Sludge
+vs. foo :: (Foo a) => Sludge
 
 - String literals
     For example: fail "deq on empty fifo"
