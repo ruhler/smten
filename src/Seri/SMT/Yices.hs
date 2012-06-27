@@ -133,16 +133,16 @@ runYices primlib gr opts env e = do
     return x
     
 
-smtY :: Compiler
+smtY :: YCompiler
 smtY =
-  let ye :: Compiler -> Exp -> Failable Y.ExpY
+  let ye :: YCompiler -> Exp -> Failable Y.ExpY
       ye _ (AppE (VarE (Sig "~free" _)) (IntegerE id)) = return $ Y.VarE ("free_" ++ show id)
       ye _ e = fail $ "smtY does not apply: " ++ pretty e
 
-      yt :: Compiler -> Type -> Failable Y.TypY
+      yt :: YCompiler -> Type -> Failable Y.TypY
       yt _ t = fail $ "smtY does not apply: " ++ pretty t
 
-      yd :: Compiler -> Dec -> Failable [Y.CmdY]
+      yd :: YCompiler -> Dec -> Failable [Y.CmdY]
       yd _ d = fail $ "smtY does not apply: " ++ pretty d
      
   in compilers [Compiler ye yt yd, yicesY]

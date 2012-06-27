@@ -10,10 +10,10 @@ import Seri.Lambda
 import Seri.Target.Yices.Compiler
 
 
-yExp :: Compiler -> Exp -> Failable Y.ExpY
+yExp :: YCompiler -> Exp -> Failable Y.ExpY
 yExp _ _ = fail "integerY doesn't apply"
 
-yType :: Compiler -> Type -> Failable Y.TypY
+yType :: YCompiler -> Type -> Failable Y.TypY
 yType _ (ConT "Integer") = return (Y.VarT "int")
 yType _ _ = fail "integerY doesn't apply"
 
@@ -27,7 +27,7 @@ defbinop name ty body =
     Y.DEFINE (yicesname name, Y.VarT ty)
         (Just (Y.VarE $ "(lambda (a::int) (lambda (b::int) " ++ body ++ "))"))
 
-yDec :: Compiler -> Dec -> Failable [Y.CmdY]
+yDec :: YCompiler -> Dec -> Failable [Y.CmdY]
 yDec _ (PrimD (TopSig "__prim_add_Integer" _ _))
  = return [defbinop "__prim_add_Integer" "(-> int (-> int int))" "(+ a b)"]
 yDec _ (PrimD (TopSig "__prim_sub_Integer" _ _))
@@ -43,6 +43,6 @@ yDec _ (PrimD (TopSig "__prim_eq_Integer" _ _))
         "(if (= a b) True False) "]
 yDec _ _ = fail "integerY doesn't apply"
 
-integerY :: Compiler
+integerY :: YCompiler
 integerY = Compiler yExp yType yDec
 

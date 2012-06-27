@@ -5,6 +5,6 @@ import Seri.Target.Yices.Compiler
 
 import Seri.Target.Yices.Builtins.Integer
 
-preludeY :: Compiler
+preludeY :: YCompiler
 preludeY = compilers [integerY]
 

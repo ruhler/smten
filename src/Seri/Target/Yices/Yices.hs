@@ -9,7 +9,7 @@ import Seri.Target.Yices.Compiler
 import Seri.Target.Yices.Builtins.Prelude
 
 -- Translate a seri expression to a yices expression
-yExp :: Compiler -> Exp -> Failable Y.ExpY
+yExp :: YCompiler -> Exp -> Failable Y.ExpY
 yExp _ (IntegerE x) = return $ Y.LitI x
 yExp _ e@(CaseE _ []) = fail $ "empty case statement: " ++ pretty e
 yExp c (CaseE e ms) =
@@ -73,7 +73,7 @@ yicescon n = yicesname $ "C" ++ n
 yiceserr :: Name -> Name
 yiceserr n = yicesname $ n ++ "~Error"
 
-yType :: Compiler -> Type -> Failable Y.TypY
+yType :: YCompiler -> Type -> Failable Y.TypY
 yType _ (ConT n) = return $ Y.VarT (yicesname n)
 yType c (AppT (AppT (ConT "->") a) b) = do
     a' <- compile_type c c a
@@ -83,7 +83,7 @@ yType _ t = fail $ "yicesY does not apply to type: " ++ pretty t
 
 -- yDec
 --   Assumes the declaration is monomorphic.
-yDec :: Compiler -> Dec -> Failable [Y.CmdY]
+yDec :: YCompiler -> Dec -> Failable [Y.CmdY]
 yDec c (ValD (TopSig n [] t) e) = do
     yt <- compile_type c c t
     ye <- compile_exp c c e
@@ -116,13 +116,13 @@ yDec c (DataD n [] cs) =
         return $ deftype : defcons
 yDec c d = fail $ "yicesY does not apply to dec: " ++ pretty d
 
-coreY :: Compiler
+coreY :: YCompiler
 coreY = Compiler yExp yType yDec
 
-yicesY :: Compiler
+yicesY :: YCompiler
 yicesY = compilers [preludeY, coreY]
             
-compile_decs :: Compiler -> [Dec] -> [Y.CmdY]
+compile_decs :: YCompiler -> [Dec] -> [Y.CmdY]
 compile_decs c ds = surely $ do
     ds' <- mapM (compile_dec c c) ds
     return $ concat ds'

@@ -1,26 +1,14 @@
 
-module Seri.Target.Yices.Compiler (Compiler(..), compilers, yicesname) where
+module Seri.Target.Yices.Compiler (
+    YCompiler,
+    yicesname,
+    module Seri.Target.Compiler) where
 
-import Data.Maybe
-
-import Seri.Failable
-import Seri.Lambda
+import Seri.Target.Compiler
 import qualified Math.SMT.Yices.Syntax as Y
 
-data Compiler = Compiler {
-    compile_exp :: Compiler -> Exp -> Failable Y.ExpY,
-    compile_type :: Compiler -> Type -> Failable Y.TypY,
-    compile_dec :: Compiler -> Dec -> Failable [Y.CmdY]
-}
+type YCompiler = Compiler Y.ExpY Y.TypY Y.CmdY
 
-compilers :: [Compiler] -> Compiler
-compilers [c] = c
-compilers (r:rs) = 
-    let ye c e = compile_exp r c e <|> compile_exp (compilers rs) c e
-        yt c t = compile_type r c t <|> compile_type (compilers rs) c t
-        yd c d = compile_dec r c d <|> compile_dec (compilers rs) c d
-    in Compiler ye yt yd
-            
 -- Given a seri identifer, turn it into a valid yices identifier.
 -- TODO: hopefully our choice of names won't clash with the users choices...
 --
