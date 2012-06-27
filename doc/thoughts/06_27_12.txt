@@ -62,3 +62,24 @@ Replace "Builtins" with "Compiler".
 Let's keep includes in place for now.
 Otherwise make it look just like yices, with the partial compiler thing.
 
+Wed Jun 27 10:44:08 EDT 2012
+
+Ug. So, not surprisingly, I'm running into annoying issues.
+
+If you really want to do replacement for haskell, you want to replace patterns
+too. And have includes. And ... ug.
+
+I think I can hack around it by just a little bit of tedium for now, but it
+might be worth reconsidering this distributed compiler thing in the future.
+It's starting to look a lot like inheritance, which I don't much like.
+
+Wed Jun 27 10:52:36 EDT 2012
+
+Ug. This is really annoying. Having to write complex expressions in template
+haskell abstract syntax. It should be a library. But whenever I try to do the
+library, I run into the dependency issue.
+
+Wed Jun 27 10:57:37 EDT 2012
+
+Well, I'm pretty close. Just need show now...
+

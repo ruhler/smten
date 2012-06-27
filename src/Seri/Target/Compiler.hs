@@ -1,5 +1,8 @@
 
-module Seri.Target.Compiler (Compiler(..), compilers) where
+module Seri.Target.Compiler (
+    Compiler(..), compilers,
+    compile_decs
+    ) where
 
 import Data.Maybe
 
@@ -19,4 +22,9 @@ compilers (r:rs) =
         yt c t = compile_type r c t <|> compile_type (compilers rs) c t
         yd c d = compile_dec r c d <|> compile_dec (compilers rs) c d
     in Compiler ye yt yd
+
+compile_decs :: Compiler e t d -> [Dec] -> [d]
+compile_decs c ds = surely $ do
+    ds' <- mapM (compile_dec c c) ds
+    return $ concat ds'
 

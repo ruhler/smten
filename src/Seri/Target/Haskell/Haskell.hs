@@ -1,6 +1,6 @@
 
 module Seri.Target.Haskell.Haskell (
-    haskell
+    haskell, haskellH,
     ) where
 
 import Data.Char(isAlphaNum)
@@ -9,105 +9,132 @@ import Data.Maybe(fromJust)
 import qualified Language.Haskell.TH.PprLib as H
 import qualified Language.Haskell.TH as H
 
-import Seri.Lambda as Seri
-import Seri.Target.Haskell.Builtin
+import Seri.Failable
+import Seri.Lambda
+import Seri.Target.Haskell.Compiler
+import Seri.Target.Haskell.Builtins.Prelude
+
+hsName :: Name -> H.Name
+hsName = H.mkName
+
+hsExp :: HCompiler -> Exp -> Failable H.Exp
+hsExp c (IntegerE i) = do
+    t <- compile_type c c integerT
+    return $ H.SigE (H.LitE (H.IntegerL i)) t
+hsExp c (CaseE e ms) = do
+    e' <- compile_exp c c e
+    ms' <- mapM (hsMatch c) ms
+    return $ H.CaseE e' ms'
+hsExp c (AppE f x) = do
+    f' <- compile_exp c c f
+    x' <- compile_exp c c x
+    return $ H.AppE f' x'
+hsExp c (LamE (Sig n _) x) = do
+    x' <- compile_exp c c x
+    return $ H.LamE [H.VarP (hsName n)] x'
+hsExp c (ConE (Sig n _)) = return $ H.ConE (hsName n)
+hsExp c (VarE (Sig n _)) = return $ H.VarE (hsName n)
+
+hsMatch :: HCompiler -> Match -> Failable H.Match
+hsMatch c (Match p e) = do
+    let p' = hsPat p
+    e' <- compile_exp c c e
+    return $ H.Match p' (H.NormalB $ e') []
+    
+hsPat :: Pat -> H.Pat
+hsPat (ConP _ n ps) = H.ConP (hsName n) (map hsPat ps)
+hsPat (VarP (Sig n _)) = H.VarP (hsName n)
+hsPat (IntegerP i) = H.LitP (H.IntegerL i)
+hsPat (WildP _) = H.WildP
+
+hsType :: HCompiler -> Type -> Failable H.Type
+hsType c (ConT "->") = return H.ArrowT
+hsType c (ConT n) = return $ H.ConT (hsName n)
+hsType c (AppT a b) = do
+    a' <- compile_type c c a
+    b' <- compile_type c c b
+    return $ H.AppT a' b'
+hsType c (VarT n) = return $ H.VarT (hsName n)
+hsType c t = fail $ "coreH does not apply to type: " ++ pretty t
+
+hsTopType :: HCompiler -> Context -> Type -> Failable H.Type
+hsTopType c [] t = compile_type c c t
+hsTopType c ctx t = do
+    t' <- compile_type c c t
+    ctx' <- mapM (hsClass c) ctx
+    return $ H.ForallT (map (H.PlainTV . H.mkName) (varTs t)) ctx' t'
+
+hsClass :: HCompiler -> Class -> Failable H.Pred
+hsClass c (Class nm ts) = do
+    ts' <- mapM (compile_type c c) ts
+    return $ H.ClassP (hsName nm) ts'
+    
+hsMethod :: HCompiler -> Method -> Failable H.Dec
+hsMethod c (Method n e) = do
+    let hsn = hsName $ if issymbol n then "(" ++ n ++ ")" else n
+    e' <- compile_exp c c e
+    return $ H.ValD (H.VarP hsn) (H.NormalB e') []
+
+
+issymbol :: Name -> Bool
+issymbol (h:_) = not $ isAlphaNum h || h == '_'
+
+hsCon :: HCompiler -> Con -> Failable H.Con
+hsCon c (Con n tys) = do
+    ts <- mapM (compile_type c c) tys
+    return $ H.NormalC (hsName n) (map (\t -> (H.NotStrict, t)) ts)
+    
+hsSig :: HCompiler -> TopSig -> Failable H.Dec
+hsSig c (TopSig n ctx t) = do
+    let hsn = hsName $ if issymbol n then "(" ++ n ++ ")" else n
+    t' <- hsTopType c ctx t
+    return $ H.SigD hsn t'
+
+    
+hsDec :: HCompiler -> Dec -> Failable [H.Dec]
+hsDec c (ValD (TopSig n ctx t) e) = do
+    t' <- hsTopType c ctx t
+    e' <- compile_exp c c e
+    let hsn = hsName $ if issymbol n then "(" ++ n ++ ")" else n
+    let sig = H.SigD hsn t'
+    let val = H.FunD hsn [H.Clause [] (H.NormalB e') []]
+    return [sig, val]
+
+hsDec c (DataD n tyvars constrs) = do
+    cs <- mapM (hsCon c) constrs
+    return [H.DataD [] (hsName n) (map (H.PlainTV . hsName) tyvars) cs []]
+
+hsDec c (ClassD n vars sigs) = do
+    sigs' <- mapM (hsSig c) sigs
+    return $ [H.ClassD [] (hsName n) (map (H.PlainTV . hsName) vars) [] sigs']
+
+hsDec c (InstD ctx (Class n ts) ms) = do
+    ctx' <- mapM (hsClass c) ctx
+    ms' <- mapM (hsMethod c) ms
+    ts' <- mapM (compile_type c c) ts
+    let t = foldl H.AppT (H.ConT (hsName n)) ts'
+    return [H.InstanceD ctx' t ms'] 
+
+hsDec _ d = fail $ "coreH does not apply to dec: " ++ pretty d
+
+coreH :: HCompiler
+coreH = Compiler hsExp hsType hsDec
+
+haskellH :: HCompiler
+haskellH = compilers [preludeH, coreH]
 
 -- haskell builtin decs
 --  Compile the given declarations to haskell.
-haskell :: Builtin -> Env -> Name -> H.Doc
-haskell builtin env main =
-  let hsName :: Name -> H.Name
-      hsName = H.mkName
-    
-      hsExp :: Seri.Exp -> H.Exp
-      hsExp e | mapexp builtin e /= Nothing = fromJust (mapexp builtin e)
-      hsExp (IntegerE i) = H.SigE (H.LitE (H.IntegerL i)) (hsType (ConT "Integer"))
-      hsExp (CaseE e ms) = H.CaseE (hsExp e) (map hsMatch ms)
-      hsExp (AppE f x) = H.AppE (hsExp f) (hsExp x)
-      hsExp (LamE (Sig n _) x) = H.LamE [H.VarP (hsName n)] (hsExp x)
-      hsExp (ConE (Sig n _)) = H.ConE (hsName n)
-      hsExp (VarE (Sig n _)) = H.VarE (hsName n)
-    
-      hsMatch :: Match -> H.Match
-      hsMatch (Match p e) = H.Match (hsPat p) (H.NormalB $ hsExp e) []
-    
-      hsPat :: Pat -> H.Pat
-      hsPat (ConP _ n ps) = H.ConP (hsName n) (map hsPat ps)
-      hsPat (VarP (Sig n _)) = H.VarP (hsName n)
-      hsPat (IntegerP i) = H.LitP (H.IntegerL i)
-      hsPat (WildP _) = H.WildP
-         
-      issymbol :: Name -> Bool
-      issymbol (h:_) = not $ isAlphaNum h || h == '_'
-    
-      hsDec :: Dec -> [H.Dec]
-      hsDec (ValD (TopSig n c t) e) =
-        let hsn = hsName $ if issymbol n then "(" ++ n ++ ")" else n
-            sig = H.SigD hsn (hsTopType c t)
-            val = H.FunD hsn [H.Clause [] (H.NormalB (hsExp e)) []]
-        in [sig, val]
-
-      -- Don't generate the following data types.
-      -- TODO: we should probably specify these cases elsewhere in the
-      -- Builtins, and not here. And we should probably get rid of this
-      -- entirely when modular compilation is supported. This is a hack.
-      hsDec (DataD "Bool" _ _) = []
-      hsDec (DataD "()" _ _) = []
-      hsDec (DataD "(,)" _ _) = []
-      hsDec (DataD "(,,)" _ _) = []
-      hsDec (DataD "(,,,)" _ _) = []
-      hsDec (DataD "[]" _ _) = []
-
-      hsDec (DataD n tyvars constrs)    
-        = [H.DataD [] (hsName n) (map (H.PlainTV . hsName) tyvars) (map hsCon constrs) []]
-
-      hsDec (ClassD n vars sigs)
-        = [H.ClassD [] (hsName n) (map (H.PlainTV . hsName) vars) [] (map hsSig sigs)]
-
-      hsDec (InstD ctx (Class n ts) ms) =
-        let ctx' = map hsClass ctx
-            ms' = map hsMethod ms
-            t = foldl H.AppT (H.ConT (hsName n)) (map hsType ts)
-        in [H.InstanceD ctx' t ms'] 
-
-      hsDec (PrimD {}) = []
-
-      hsSig :: TopSig -> H.Dec
-      hsSig (TopSig n c t) =
-        let hsn = hsName $ if issymbol n then "(" ++ n ++ ")" else n
-        in H.SigD hsn (hsTopType c t)
-
-      hsMethod :: Method -> H.Dec
-      hsMethod (Method n e) =
-        let hsn = hsName $ if issymbol n then "(" ++ n ++ ")" else n
-        in H.ValD (H.VarP hsn) (H.NormalB (hsExp e)) []
-
-      hsCon :: Con -> H.Con
-      hsCon (Con n tys) = H.NormalC (hsName n) (map (\t -> (H.NotStrict, hsType t)) tys)
-    
-      hsType :: Type -> H.Type
-      hsType t | maptype builtin t /= Nothing = fromJust (maptype builtin t)
-      hsType (ConT "->") = H.ArrowT
-      hsType (ConT n) = H.ConT (hsName n)
-      hsType (AppT a b) = H.AppT (hsType a) (hsType b)
-      hsType (VarT n) = H.VarT (hsName n)
-
-      hsTopType :: Context -> Type -> H.Type
-      hsTopType [] t = hsType t
-      hsTopType ctx t = H.ForallT (map (H.PlainTV . H.mkName) (varTs t)) (map hsClass ctx) (hsType t)
-
-      hsClass :: Class -> H.Pred
-      hsClass (Class nm ts) = H.ClassP (hsName nm) (map hsType ts)
-    
-      hsHeader :: H.Doc
+haskell :: HCompiler -> Env -> Name -> H.Doc
+haskell c env main =
+  let hsHeader :: H.Doc
       hsHeader = H.text "{-# LANGUAGE ExplicitForAll #-}" H.$+$
                  H.text "{-# LANGUAGE MultiParamTypeClasses #-}" H.$+$
                  H.text "import qualified Prelude"
 
-      ds = concat $ map hsDec env
-
-  in hsHeader H.$+$ includes builtin H.$+$ H.ppr ds H.$+$
+      ds = compile_decs c env
+  in hsHeader H.$+$ H.ppr ds H.$+$
         H.text "main :: Prelude.IO ()" H.$+$
-        H.text "main = Prelude.putStrLn (Prelude.show ("
-        H.<+> H.text main H.<+> H.text "))"
+        H.text "main = Prelude.putStrLn (case "
+        H.<+> H.text main H.<+> H.text " of { True -> \"True\"; False -> \"False\"})"
 

@@ -1,5 +1,5 @@
 
-module Seri.Target.Yices.Yices (yicesY, compile_decs) where
+module Seri.Target.Yices.Yices (yicesY) where
 
 import qualified Math.SMT.Yices.Syntax as Y
 
@@ -122,8 +122,3 @@ coreY = Compiler yExp yType yDec
 yicesY :: YCompiler
 yicesY = compilers [preludeY, coreY]
             
-compile_decs :: YCompiler -> [Dec] -> [Y.CmdY]
-compile_decs c ds = surely $ do
-    ds' <- mapM (compile_dec c c) ds
-    return $ concat ds'
-
