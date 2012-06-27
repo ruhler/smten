@@ -14,33 +14,43 @@ yExp :: YCompiler -> Exp -> Failable Y.ExpY
 yExp _ _ = fail "integerY doesn't apply"
 
 yType :: YCompiler -> Type -> Failable Y.TypY
-yType _ (ConT "Integer") = return (Y.VarT "int")
 yType _ _ = fail "integerY doesn't apply"
 
--- defbinop name type op
---   Define a primitive binary operation
+-- defiop name type op
+--   Define a primitive binary integer operation.
 --   name - the name of the primitive
---   type - the yices type of the primitive
---   body - the body of the operation, referince args "a" and "b".
-defbinop :: String -> String -> String -> Y.CmdY
-defbinop name ty body =
-    Y.DEFINE (yicesname name, Y.VarT ty)
-        (Just (Y.VarE $ "(lambda (a::int) (lambda (b::int) " ++ body ++ "))"))
+--   op - the integer operation.
+defiop :: String -> String -> Y.CmdY
+defiop name op =
+    Y.DEFINE (yicesname name, Y.VarT "(-> Integer (-> Integer Integer))")
+        (Just (Y.VarE $ unlines [
+                "(lambda (a::Integer) (lambda (b::Integer)",
+                " (if (and (Integer? a) (Integer? b)) ",
+                "  (Integer (" ++ op ++ " (Integer0 a) (Integer0 b)))",
+                "  Integer__tildeError)))"]))
+
+-- defbop name type op
+--   Define a primitive binary integer predicate.
+--   name - the name of the primitive
+--   op - the predicate operator.
+defbop :: String -> String -> Y.CmdY
+defbop name op =
+    Y.DEFINE (yicesname name, Y.VarT "(-> Integer (-> Integer Bool))")
+        (Just (Y.VarE $ unlines [
+                "(lambda (a::Integer) (lambda (b::Integer)",
+                " (if (and (Integer? a) (Integer? b)) ",
+                "  (if (" ++ op ++ " (Integer0 a) (Integer0 b)) True False)",
+                "  Bool__tildeError)))"]))
 
 yDec :: YCompiler -> Dec -> Failable [Y.CmdY]
 yDec _ (PrimD (TopSig "__prim_add_Integer" _ _))
- = return [defbinop "__prim_add_Integer" "(-> int (-> int int))" "(+ a b)"]
+ = return [defiop "__prim_add_Integer" "+"]
 yDec _ (PrimD (TopSig "__prim_sub_Integer" _ _))
- = return [defbinop "__prim_sub_Integer" "(-> int (-> int int))" "(- a b)"]
-yDec _ (PrimD (TopSig "<" _ _))
- = return [defbinop "<" "(-> int (-> int Bool))"
-        "(if (< a b) True False) "]
-yDec _ (PrimD (TopSig ">" _ _))
- = return [defbinop ">" "(-> int (-> int Bool))"
-        "(if (> a b) True False) "]
+ = return [defbop "__prim_sub_Integer" "-"]
+yDec _ (PrimD (TopSig "<" _ _)) = return [defbop "<" "<"]
+yDec _ (PrimD (TopSig ">" _ _)) = return [defbop ">" ">"]
 yDec _ (PrimD (TopSig "__prim_eq_Integer" _ _))
- = return [defbinop "__prim_eq_Integer" "(-> int (-> int Bool))"
-        "(if (= a b) True False) "]
+ = return [defbop "__prim_eq_Integer" "="]
 yDec _ _ = fail "integerY doesn't apply"
 
 integerY :: YCompiler

@@ -83,3 +83,44 @@ Wed Jun 27 10:57:37 EDT 2012
 
 Well, I'm pretty close. Just need show now...
 
+Wed Jun 27 11:06:13 EDT 2012
+
+I hacked something together for the haskell thing. Enough, hopefully, to let
+me keep going. Back to the yices issue.
+
+What I'm going to do:
+1. define Integer as a data type in prelude.
+2. use that in yices to generate the boxed Integer type.
+
+It's as easy as that, no?
+
+Wed Jun 27 13:16:10 EDT 2012
+
+Integer is defined as a data type in prelude.
+Let me, in the yices compiler, generate the boxed type for it.
+
+Wed Jun 27 13:40:07 EDT 2012
+
+Well, so, here's an interesting question... does it work? Does it do what we
+want? What do we want it to do?
+
+Currently we treat Error as a different value. But what should happen if we
+assert an error? I don't know. Maybe I'll leave that for later. Currently I
+treat it as false. I could do other things with it too I suppose.
+
+Good. Everything's up and runnning again.
+
+Err... but now we have another problem.
+
+Your free variables could be errors. In which case, everything will return
+error?
+
+This is certainly not satisfactory. Perhaps I should assert that none of the
+free variables are errors?
+
+Ug. This gets messier and messier. I should ask for other people's opinions. I
+think I know the issues now.
+
+I don't know what to do. I don't know if I can check in my changes. This is
+going to need some thought and discussion.
+

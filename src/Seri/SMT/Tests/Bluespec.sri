@@ -62,8 +62,8 @@ pcp s = do {
 --  That is, are they equivalent for all states s?
 main :: Query (Answer ());
 main = do {
-    --always (\s -> (f s == FIFO2_Empty) ==> (ppc s == pcp s));
-    always (\s -> ppc s == pcp s);
+    always (\s -> (f s == FIFO2_Empty) ==> (ppc s == pcp s));
+    --always (\s -> ppc s == pcp s);
     query ();
 }
 

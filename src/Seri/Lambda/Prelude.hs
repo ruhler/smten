@@ -12,6 +12,8 @@ tuple i =
 
 prelude :: [Dec]
 prelude = [
+    DataD "Char" [] [],
+    DataD "Integer" [] [],
     DataD "()" [] [Con "()" []],
     tuple 2, tuple 3, tuple 4,
     DataD "[]" ["a"] [Con "[]" [], Con ":" [VarT "a", listT (VarT "a")]]

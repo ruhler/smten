@@ -169,7 +169,6 @@ monopat (WildP t) = do
 -- Translate a concrete type to the appropriate monomorphic type.
 monotype :: Type -> M Type
 monotype (VarT {}) = error $ "variable type is not concrete"
-monotype t@(ConT "Integer") = return t
 monotype t = do
     poly <- gets ms_poly
     case unfoldt t of

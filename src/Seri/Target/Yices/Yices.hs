@@ -10,7 +10,7 @@ import Seri.Target.Yices.Builtins.Prelude
 
 -- Translate a seri expression to a yices expression
 yExp :: YCompiler -> Exp -> Failable Y.ExpY
-yExp _ (IntegerE x) = return $ Y.LitI x
+yExp _ (IntegerE x) = return $ Y.APP (Y.VarE "Integer") [Y.LitI x]
 yExp _ e@(CaseE _ []) = fail $ "empty case statement: " ++ pretty e
 yExp c (CaseE e ms) =
   let -- depat p e
@@ -88,6 +88,11 @@ yDec c (ValD (TopSig n [] t) e) = do
     yt <- compile_type c c t
     ye <- compile_exp c c e
     return [Y.DEFINE (yicesname n, yt) (Just ye)]
+yDec c (DataD "Integer" _ _) =
+    let intc = ("Integer", [("Integer0", Y.VarT "int")])
+        errc = (yiceserr "Integer", [])
+        deftype = Y.DEFTYP "Integer" (Just (Y.DATATYPE [intc, errc]))
+    in return [deftype]
 yDec c (DataD n [] cs) =
     let con :: Con -> Failable (String, [(String, Y.TypY)])
         con (Con n ts) = do 

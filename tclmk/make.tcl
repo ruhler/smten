@@ -85,9 +85,9 @@ proc querytest {name args} {
 
 querytest "Query1"
 querytest "Query2"
-#querytest "Complex"
-#querytest "If"
-#querytest "Casenomatch"
+querytest "Complex"
+querytest "If"
+querytest "Casenomatch"
 
-#querytest "Bluespec"
+querytest "Bluespec"
 
