@@ -11,6 +11,7 @@ import System.IO
 import Control.Monad.State
 import qualified Yices.Yices as Y
 
+import Seri.Failable
 import Seri.Lambda
 import Seri.Target.Monomorphic.Monomorphic
 import Seri.Target.Elaborate
@@ -94,13 +95,13 @@ runQuery gr env e = do
 
 
 yType :: Type -> Y.TypY
-yType t = fromYCM $ compile_type smtY smtY t
+yType t = surely $ compile_type smtY smtY t
 
 yDecs :: [Dec] -> [Y.CmdY]
 yDecs = compile_decs smtY
 
 yExp :: Exp -> Y.ExpY
-yExp e = fromYCM $ compile_exp smtY smtY e
+yExp e = surely $ compile_exp smtY smtY e
 
 data RunOptions = RunOptions {
     debugout :: Maybe FilePath
@@ -134,14 +135,14 @@ runYices primlib gr opts env e = do
 
 smtY :: Compiler
 smtY =
-  let ye :: Compiler -> Exp -> YCM Y.ExpY
+  let ye :: Compiler -> Exp -> Failable Y.ExpY
       ye _ (AppE (VarE (Sig "~free" _)) (IntegerE id)) = return $ Y.VarE ("free_" ++ show id)
       ye _ e = fail $ "smtY does not apply: " ++ pretty e
 
-      yt :: Compiler -> Type -> YCM Y.TypY
+      yt :: Compiler -> Type -> Failable Y.TypY
       yt _ t = fail $ "smtY does not apply: " ++ pretty t
 
-      yd :: Compiler -> Dec -> YCM [Y.CmdY]
+      yd :: Compiler -> Dec -> Failable [Y.CmdY]
       yd _ d = fail $ "smtY does not apply: " ++ pretty d
      
   in compilers [Compiler ye yt yd, yicesY]

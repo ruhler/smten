@@ -5,14 +5,15 @@ module Seri.Target.Yices.Builtins.Integer (
 
 import qualified Math.SMT.Yices.Syntax as Y
 
+import Seri.Failable
 import Seri.Lambda
 import Seri.Target.Yices.Compiler
 
 
-yExp :: Compiler -> Exp -> YCM Y.ExpY
+yExp :: Compiler -> Exp -> Failable Y.ExpY
 yExp _ _ = fail "integerY doesn't apply"
 
-yType :: Compiler -> Type -> YCM Y.TypY
+yType :: Compiler -> Type -> Failable Y.TypY
 yType _ (ConT "Integer") = return (Y.VarT "int")
 yType _ _ = fail "integerY doesn't apply"
 
@@ -26,7 +27,7 @@ defbinop name ty body =
     Y.DEFINE (yicesname name, Y.VarT ty)
         (Just (Y.VarE $ "(lambda (a::int) (lambda (b::int) " ++ body ++ "))"))
 
-yDec :: Compiler -> Dec -> YCM [Y.CmdY]
+yDec :: Compiler -> Dec -> Failable [Y.CmdY]
 yDec _ (PrimD (TopSig "__prim_add_Integer" _ _))
  = return [defbinop "__prim_add_Integer" "(-> int (-> int int))" "(+ a b)"]
 yDec _ (PrimD (TopSig "__prim_sub_Integer" _ _))

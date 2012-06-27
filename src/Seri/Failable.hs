@@ -1,6 +1,6 @@
 
 module Seri.Failable (
-    Failable(..), attemptM, attemptIO, onfail,
+    Failable(..), attemptM, attemptIO, surely, onfail, (<|>),
     ) where
 
 import System.IO
@@ -31,6 +31,12 @@ attemptIO (Failable (Left msg)) = do
     hPutStrLn stderr msg
     exitFailure
 attemptIO (Failable (Right a)) = return a
+
+-- | Return the result of a failable computation sure to complete.
+-- It's an error if the computation fails.
+surely :: Failable a -> a
+surely (Failable (Right a)) = a
+surely (Failable (Left msg)) = error msg
     
 
 -- | onfail f c
@@ -40,4 +46,11 @@ onfail :: (String -> Failable a) -> Failable a -> Failable a
 onfail f (Failable (Left msg)) = f msg
 onfail f c = c
 
+-- | a <|> b
+--   Return the result of 'a' if it succeeds, otherwise the result of 'b'.
+(<|>) :: Failable a -> Failable a -> Failable a
+(<|>) a b =
+    case attemptM a of
+       Just x -> return x
+       Nothing -> b
 

@@ -1,55 +1,26 @@
 
-module Seri.Target.Yices.Compiler (
-    YCM(), runYCM, fromYCM, Compiler(..), compilers, yicesname) where
+module Seri.Target.Yices.Compiler (Compiler(..), compilers, yicesname) where
 
 import Data.Maybe
 
+import Seri.Failable
 import Seri.Lambda
 import qualified Math.SMT.Yices.Syntax as Y
 
--- Yices compiling monad.
-newtype YCM a = YCM (Either String a)
-
-instance Monad YCM where
-    -- fail: indicate the compiler does not support this expression.
-    fail msg = YCM (Left msg)
-    return = YCM . return
-    (>>=) (YCM mx) f = YCM $ do
-        x <- mx
-        let (YCM fx) = f x
-        fx
-
 data Compiler = Compiler {
-    compile_exp :: Compiler -> Exp -> YCM Y.ExpY,
-    compile_type :: Compiler -> Type -> YCM Y.TypY,
-    compile_dec :: Compiler -> Dec -> YCM [Y.CmdY]
+    compile_exp :: Compiler -> Exp -> Failable Y.ExpY,
+    compile_type :: Compiler -> Type -> Failable Y.TypY,
+    compile_dec :: Compiler -> Dec -> Failable [Y.CmdY]
 }
 
 compilers :: [Compiler] -> Compiler
 compilers [c] = c
 compilers (r:rs) = 
-    let ye c e = case compile_exp r c e of
-                    YCM (Right e') -> YCM (Right e')
-                    YCM (Left _) -> compile_exp (compilers rs) c e
-
-        yt c t = case compile_type r c t of
-                    YCM (Right t') -> YCM (Right t')
-                    YCM (Left _) -> compile_type (compilers rs) c t
-
-        yd c d = case compile_dec r c d of
-                    YCM (Right d') -> YCM (Right d')
-                    YCM (Left _) -> compile_dec (compilers rs) c d
+    let ye c e = compile_exp r c e <|> compile_exp (compilers rs) c e
+        yt c t = compile_type r c t <|> compile_type (compilers rs) c t
+        yd c d = compile_dec r c d <|> compile_dec (compilers rs) c d
     in Compiler ye yt yd
             
-
-runYCM :: (Monad m) => YCM a -> m a
-runYCM (YCM (Right v)) = return v
-runYCM (YCM (Left msg)) = fail msg
-
-fromYCM :: YCM a -> a
-fromYCM (YCM (Right v)) = v
-fromYCM (YCM (Left msg)) = error msg
-
 -- Given a seri identifer, turn it into a valid yices identifier.
 -- TODO: hopefully our choice of names won't clash with the users choices...
 --

@@ -54,3 +54,11 @@ no. Don't hack.
 
 Let me save this. Do the haskell thing, then come back to fix this.
 
+Wed Jun 27 09:07:19 EDT 2012
+
+Okay, haskell target.
+
+Replace "Builtins" with "Compiler".
+Let's keep includes in place for now.
+Otherwise make it look just like yices, with the partial compiler thing.
+

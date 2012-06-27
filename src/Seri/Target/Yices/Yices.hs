@@ -3,12 +3,13 @@ module Seri.Target.Yices.Yices (yicesY, compile_decs) where
 
 import qualified Math.SMT.Yices.Syntax as Y
 
+import Seri.Failable
 import Seri.Lambda
 import Seri.Target.Yices.Compiler
 import Seri.Target.Yices.Builtins.Prelude
 
 -- Translate a seri expression to a yices expression
-yExp :: Compiler -> Exp -> YCM Y.ExpY
+yExp :: Compiler -> Exp -> Failable Y.ExpY
 yExp _ (IntegerE x) = return $ Y.LitI x
 yExp _ e@(CaseE _ []) = fail $ "empty case statement: " ++ pretty e
 yExp c (CaseE e ms) =
@@ -23,7 +24,7 @@ yExp c (CaseE e ms) =
                                     | (p, i) <- zip ps [0..]]
             mypred = Y.APP (Y.VarE (yicesname n ++ "?")) [e]
         in (mypred:(concat preds), concat binds)
-      depat (VarP (Sig n t)) e = ([], [((n, runYCM $ compile_type c c t), e)])
+      depat (VarP (Sig n t)) e = ([], [((n, attemptM $ compile_type c c t), e)])
       depat (IntegerP i) e = ([Y.LitI i Y.:= e], [])
       depat (WildP _) _ = ([], [])
 
@@ -37,7 +38,7 @@ yExp c (CaseE e ms) =
       --    e - the expression being cased on
       --    ms - the remaining matches in the case statement.
       --  outputs - the yices expression implementing the matches.
-      dematch :: Y.ExpY -> [Match] -> YCM Y.ExpY
+      dematch :: Y.ExpY -> [Match] -> Failable Y.ExpY
       dematch e [Match p b] = do
           let ConT dn = typeof b
           b' <- compile_exp c c b
@@ -59,7 +60,7 @@ yExp c (AppE a b) = do
     return $ Y.APP a' [b']
 yExp c (LamE (Sig n t) e) = do
     e' <- compile_exp c c e
-    return $ Y.LAMBDA [(n, fromYCM $ compile_type c c t)] e'
+    return $ Y.LAMBDA [(n, surely $ compile_type c c t)] e'
 yExp _ (ConE (Sig n _)) = return $ Y.VarE (yicescon n)
 yExp _ (VarE (Sig n _)) = return $ Y.VarE (yicesname n)
 
@@ -72,7 +73,7 @@ yicescon n = yicesname $ "C" ++ n
 yiceserr :: Name -> Name
 yiceserr n = yicesname $ n ++ "~Error"
 
-yType :: Compiler -> Type -> YCM Y.TypY
+yType :: Compiler -> Type -> Failable Y.TypY
 yType _ (ConT n) = return $ Y.VarT (yicesname n)
 yType c (AppT (AppT (ConT "->") a) b) = do
     a' <- compile_type c c a
@@ -82,20 +83,20 @@ yType _ t = fail $ "yicesY does not apply to type: " ++ pretty t
 
 -- yDec
 --   Assumes the declaration is monomorphic.
-yDec :: Compiler -> Dec -> YCM [Y.CmdY]
+yDec :: Compiler -> Dec -> Failable [Y.CmdY]
 yDec c (ValD (TopSig n [] t) e) = do
     yt <- compile_type c c t
     ye <- compile_exp c c e
     return [Y.DEFINE (yicesname n, yt) (Just ye)]
 yDec c (DataD n [] cs) =
-    let con :: Con -> YCM (String, [(String, Y.TypY)])
+    let con :: Con -> Failable (String, [(String, Y.TypY)])
         con (Con n ts) = do 
             ts' <- mapM (compile_type c c) ts
             return (yicesname n, zip [yicesname n ++ show i | i <- [0..]] ts')
 
         -- Wrap each constructor in a function which supports partial
         -- application.
-        mkcons :: Con -> YCM Y.CmdY
+        mkcons :: Con -> Failable Y.CmdY
         mkcons (Con cn ts) = do
             yts <- mapM (compile_type c c) ts
             let ft a b = Y.ARR [a, b]
@@ -122,7 +123,7 @@ yicesY :: Compiler
 yicesY = compilers [preludeY, coreY]
             
 compile_decs :: Compiler -> [Dec] -> [Y.CmdY]
-compile_decs c ds = fromYCM $ do
+compile_decs c ds = surely $ do
     ds' <- mapM (compile_dec c c) ds
     return $ concat ds'
 
