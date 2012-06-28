@@ -88,6 +88,14 @@ querytest "Query2"
 querytest "Complex"
 querytest "If"
 querytest "Casenomatch"
-
 querytest "Bluespec"
+
+# The cabal package
+set wd [pwd]
+cd build/src
+run cabal sdist 
+cd $wd
+
+
+puts "BUILD COMPLETE"
 

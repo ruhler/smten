@@ -96,3 +96,27 @@ Thu Jun 28 10:58:24 EDT 2012
 
 There! All done. Case no match bug has now been resolved. Good enough for now.
 
+Thu Jun 28 11:04:50 EDT 2012
+
+Now what?
+
+My focus should be on whatever I think I need to support what Myron wants to
+do. That, or cleanup stuff.
+
+I think the most valuable thing I can do right now is...
+
+I should get Myron to spit me out a really simple bluespec query. Use that
+latest attempt, and try to replicate it in seri.
+
+I also think cleanup, driven by making a cabal package, would be very
+valuable.
+
+Thu Jun 28 11:36:03 EDT 2012
+
+So, let me have fun with cleanup via cabal package.
+
+First step: the core seri lambda library.
+
+I should describe the package. Try generating a .tar.gz from it. Try
+building that separately. See what all I get.
+

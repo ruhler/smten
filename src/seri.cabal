@@ -1,0 +1,26 @@
+name:                seri
+version:             0.1.0.0
+synopsis:            Seri language compilers and infrastructure
+-- description:         
+license:             AllRightsReserved
+license-file:        LICENSE
+author:              Richard Uhler
+maintainer:          ruhler@csail.mit.edu
+-- copyright:           
+category:            Language
+build-type:          Simple
+cabal-version:       >=1.8
+
+library
+  exposed-modules:     Seri.Failable, Seri.Lambda
+  other-modules:       Seri.Lambda.TypeCheck, Seri.Lambda.Parser, Seri.Lambda.Sugar, Seri.Lambda.Types, Seri.Lambda.TypeSolver, Seri.Lambda.Parser, Seri.Lambda.Prelude, Seri.Lambda.TypeInfer, Seri.Lambda.Env, Seri.Lambda.Loader, Seri.Lambda.IR, Seri.Lambda.Ppr
+  build-depends:       base ==4.5.*, yices ==0.0.*, template-haskell ==2.7.*, syb ==0.3.*, mtl ==2.1.*, directory ==1.1.*, pretty ==1.1.*, array ==0.4.*
+  build-tools:         happy
+
+executable serit
+  main-is:             Seri/Lambda/serit.hs
+  other-modules:       Seri.Failable, Seri.Lambda
+                       Seri.Lambda.TypeCheck, Seri.Lambda.Parser, Seri.Lambda.Sugar, Seri.Lambda.Types, Seri.Lambda.TypeSolver, Seri.Lambda.Parser, Seri.Lambda.Prelude, Seri.Lambda.TypeInfer, Seri.Lambda.Env, Seri.Lambda.Loader, Seri.Lambda.IR, Seri.Lambda.Ppr
+  build-depends:       base ==4.5.*, yices ==0.0.*, template-haskell ==2.7.*, syb ==0.3.*, mtl ==2.1.*, directory ==1.1.*, pretty ==1.1.*, array ==0.4.*
+  build-tools:         happy
+
