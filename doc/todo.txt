@@ -41,10 +41,5 @@ vs. foo :: (Foo a) => Sludge
 - support for pattern guards?
 - support for pattern bindings: x@(...)
 
-- targets should have ways for builtins to generate declarations (or not) so
-  they can reuse existing builtins if desired.
-
-- fix casenomatch bug in yices code generation.
-
 - modules shouldn't automatically export everything they import.
 

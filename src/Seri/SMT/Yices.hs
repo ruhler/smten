@@ -22,7 +22,8 @@ data YicesState = YicesState {
     ys_decls :: [Dec],
     ys_ctx :: Y.Context,
     ys_dh :: Handle,
-    ys_freeid :: Integer
+    ys_freeid :: Integer,
+    ys_ys :: YS
 }
 
 type YicesMonad = StateT YicesState IO
@@ -38,6 +39,12 @@ runCmds cmds = do
     dh <- gets ys_dh
     lift $ sendCmds cmds ctx dh
 
+-- Output a line to the debug output.
+debug :: String -> YicesMonad ()
+debug msg = do
+    dh <- gets ys_dh
+    lift $ hPutStrLn dh msg
+
 -- Tell yices about any types or expressions needed to refer to the given
 -- expression, and return the monomorphized expression.
 declareNeeded :: (Monomorphic a, Ppr a) => Env -> a -> YicesMonad a
@@ -47,7 +54,8 @@ declareNeeded env x = do
   let (pdecls, _) = sort mds
   let newdecls = pdecls \\ decs
   modify $ \ys -> ys { ys_decls = decs ++ newdecls }
-  runCmds (yDecs newdecls)
+  cmds <- yDecs newdecls
+  runCmds cmds
   return me
 
 freename :: Integer -> String
@@ -76,7 +84,9 @@ runQuery gr env e = do
             return (VarE (Sig (freename fid) t))
         (AppE (VarE (Sig "assert" _)) p) -> do
             p' <- declareNeeded env p
-            runCmds [Y.ASSERT (yExp trueE Y.:= yExp p')]
+            true <- yExp trueE
+            yp <- yExp p'
+            runCmds [Y.ASSERT (true Y.:= yp)]
             return (ConE (Sig "()" (ConT "()")))
         (AppE (VarE (Sig "queryS" _)) q) -> do
             odecls <- gets ys_decls
@@ -100,13 +110,20 @@ runQuery gr env e = do
 yType :: Type -> Y.TypY
 yType t = surely $ yicesT t
 
-yDecs :: [Dec] -> [Y.CmdY]
-yDecs ds = surely $ do
-    cmds <- mapM yicesD ds
+yDecs :: [Dec] -> YicesMonad [Y.CmdY]
+yDecs ds = do
+    ys <- gets ys_ys
+    (cmds, ys') <- lift . attemptIO $ runYCompiler (mapM yicesD ds) ys
+    modify $ \s -> s { ys_ys = ys' }
     return $ concat cmds
 
-yExp :: Exp -> Y.ExpY
-yExp e = surely $ yicesE e
+yExp :: Exp -> YicesMonad Y.ExpY
+yExp e = do
+    ys <- gets ys_ys
+    ((cmds, e'), ys') <- lift . attemptIO $ runYCompiler (yicesE e) ys
+    modify $ \s -> s { ys_ys = ys' }
+    runCmds cmds
+    return e'
 
 data RunOptions = RunOptions {
     debugout :: Maybe FilePath
@@ -124,16 +141,19 @@ runYices primlib gr opts env e = do
     hPutStrLn dh "; Primitives library:"
     sendCmds primlib ctx dh
 
-    -- Declare all possibly needed data type definitions here.
+    -- Declare all possibly needed data type definitions first.
     -- This is to work around a bug in yices when declaring data types inside
     -- a push/pop pair.
     let mds = filter isDataD (fst $ monomorphic env e)
     let pds = fst $ sort mds
-    hPutStrLn dh "\n; Data type definitions: "
-    sendCmds (yDecs pds) ctx dh
+    let query = do
+        cmds <- yDecs pds
+        debug "\n; Data type definitions: "
+        runCmds cmds
+        debug "\n; Query: "
+        runQuery gr env e
 
-    hPutStrLn dh "\n; Query: "
-    (x, _) <- runStateT (runQuery gr env e) (YicesState pds ctx dh 1)
+    (x, _) <- runStateT query (YicesState pds ctx dh 1 ys)
     hClose dh
     return x
     

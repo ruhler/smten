@@ -87,8 +87,12 @@ The steps:
 match the free variables declared in yices.
 3+ Merge the builtins for yices with the compiler itself.
 4+ De-extensibalize the yices target.
-5. Switch from Failable to a YCompiler monad.
-6. Collect statements in the YCompiler monad for these free error things.
+5+ Switch from Failable to a YCompiler monad.
+6+ Collect statements in the YCompiler monad for these free error things.
 
 Then I should be in pretty good shape.
+
+Thu Jun 28 10:58:24 EDT 2012
+
+There! All done. Case no match bug has now been resolved. Good enough for now.
 

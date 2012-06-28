@@ -1,10 +1,20 @@
 
-module Seri.Target.Yices.Yices (yicesN, yicesE, yicesT, yicesD) where
+module Seri.Target.Yices.Yices (
+    YS, ys, YCompiler, runYCompiler, yicesN, yicesE, yicesT, yicesD
+    ) where
 
 import qualified Math.SMT.Yices.Syntax as Y
 
+import Control.Monad.State
+
 import Seri.Failable
 import Seri.Lambda
+
+runYCompiler :: YCompiler a -> YS -> Failable (a, YS)
+runYCompiler = runStateT
+
+ys :: YS
+ys = YS [] 1
 
 -- | Convert a seri name to a yices name.
 yicesN :: String -> String
@@ -12,8 +22,14 @@ yicesN = yicesname
 
 -- | Compile a seri expression to a yices expression.
 -- The expression should be monomorphic.
-yicesE :: Exp -> Failable Y.ExpY
-yicesE = yExp
+-- Returns also a set of declarations that need to be made before using the
+-- expression.
+yicesE :: Exp -> YCompiler ([Y.CmdY], Y.ExpY)
+yicesE e = do
+    e' <- yExp e
+    cmds <- gets ys_cmds
+    modify $ \ys -> ys { ys_cmds = [] }
+    return (cmds, e')
 
 -- | Compile a seri type to a yices type
 -- The type should be monomorphic.
@@ -22,13 +38,38 @@ yicesT = yType
 
 -- | Compile a seri declarations to yices declarations.
 -- The declarations should be monomorphic and in dependency order.
-yicesD :: Dec -> Failable [Y.CmdY]
-yicesD = yDec
+yicesD :: Dec -> YCompiler [Y.CmdY]
+yicesD d = do
+    d' <- yDec d
+    cmds <- gets ys_cmds
+    modify $ \ys -> ys { ys_cmds = [] }
+    return (cmds ++ d')
+
+data YS = YS {
+    ys_cmds :: [Y.CmdY],   -- ^ Declarations needed for what was compiled
+    ys_errid :: Integer    -- ^ unique id to use for next free error variable
+}
+
+type YCompiler = StateT YS Failable
+
+yfail :: String -> YCompiler a
+yfail = lift . fail
+
+-- Given the argument type and output type of a free error variable, return
+-- the yices name of a newly defined one.
+yfreeerr :: Type -> Type -> YCompiler String
+yfreeerr it ot = do
+    t <- lift $ yType (arrowsT [it, ot])
+    id <- gets ys_errid
+    let nm = yicesname ("err~" ++ show id)
+    let cmd = Y.DEFINE (nm, t) Nothing
+    modify $ \ys -> ys { ys_cmds = cmd : ys_cmds ys, ys_errid = id+1 }
+    return nm
 
 -- Translate a seri expression to a yices expression
-yExp :: Exp -> Failable Y.ExpY
+yExp :: Exp -> YCompiler Y.ExpY
 yExp (IntegerE x) = return $ Y.LitI x
-yExp e@(CaseE _ []) = fail $ "empty case statement: " ++ pretty e
+yExp e@(CaseE _ []) = yfail $ "empty case statement: " ++ pretty e
 yExp (CaseE e ms) =
   let -- depat p e
       --    outputs: (predicate, bindings)
@@ -41,7 +82,9 @@ yExp (CaseE e ms) =
                                     | (p, i) <- zip ps [0..]]
             mypred = Y.APP (Y.VarE (yicesname n ++ "?")) [e]
         in (mypred:(concat preds), concat binds)
-      depat (VarP (Sig n t)) e = ([], [((n, attemptM $ yType t), e)])
+      depat (VarP (Sig n t)) e =
+        let 
+        in ([], [((n, attemptM $ yType t), e)])
       depat (IntegerP i) e = ([Y.LitI i Y.:= e], [])
       depat (WildP _) _ = ([], [])
 
@@ -55,13 +98,10 @@ yExp (CaseE e ms) =
       --    e - the expression being cased on
       --    ms - the remaining matches in the case statement.
       --  outputs - the yices expression implementing the matches.
-      dematch :: Y.ExpY -> [Match] -> Failable Y.ExpY
-      dematch e [Match p b] = do
-          -- TODO: don't assume the last alternative will always be taken.
-          let ConT dn = typeof b
-          b' <- yExp b
-          let (_, bindings) = depat p e
-          return $ Y.LET bindings b'
+      dematch :: Y.ExpY -> [Match] -> YCompiler Y.ExpY
+      dematch ye [] = do
+          errnm <- yfreeerr (typeof e) (typeof (head ms))
+          return $ Y.APP (Y.VarE errnm) [ye]
       dematch e ((Match p b):ms) = do
           bms <- dematch e ms
           b' <- yExp b
@@ -77,7 +117,7 @@ yExp (AppE a b) = do
     return $ Y.APP a' [b']
 yExp (LamE (Sig n t) e) = do
     e' <- yExp e
-    t' <- yType t
+    t' <- lift $ yType t
     return $ Y.LAMBDA [(n, t')] e'
 yExp (ConE (Sig n _)) = return $ Y.VarE (yicescon n)
 yExp (VarE (Sig n _)) = return $ Y.VarE (yicesname n)
@@ -97,25 +137,25 @@ yType t = fail $ "Cannot compile to yices: " ++ pretty t
 
 -- yDec
 --   Assumes the declaration is monomorphic.
-yDec :: Dec -> Failable [Y.CmdY]
+yDec :: Dec -> YCompiler [Y.CmdY]
 yDec (ValD (TopSig n [] t) e) = do
-    yt <- yType t
+    yt <- lift $ yType t
     ye <- yExp e
     return [Y.DEFINE (yicesname n, yt) (Just ye)]
 yDec (DataD "Integer" _ _) =
     let deftype = Y.DEFTYP "Integer" (Just (Y.VarT "int"))
     in return [deftype]
 yDec (DataD n [] cs) =
-    let con :: Con -> Failable (String, [(String, Y.TypY)])
+    let con :: Con -> YCompiler (String, [(String, Y.TypY)])
         con (Con n ts) = do 
-            ts' <- mapM yType ts
+            ts' <- lift $ mapM yType ts
             return (yicesname n, zip [yicesname n ++ show i | i <- [0..]] ts')
 
         -- Wrap each constructor in a function which supports partial
         -- application.
-        mkcons :: Con -> Failable Y.CmdY
+        mkcons :: Con -> YCompiler Y.CmdY
         mkcons (Con cn ts) = do
-            yts <- mapM yType ts
+            yts <- lift $ mapM yType ts
             let ft a b = Y.ARR [a, b]
             let yt = foldr ft (Y.VarT (yicesname n)) yts
             let fe (n, t) e = Y.LAMBDA [(n, t)] e
@@ -141,7 +181,7 @@ yDec (PrimD (TopSig ">" _ _)) = return [defbop ">" ">"]
 yDec (PrimD (TopSig "__prim_eq_Integer" _ _))
  = return [defbop "__prim_eq_Integer" "="]
 
-yDec d = fail $ "Cannot compile to yices: " ++ pretty d
+yDec d = yfail $ "Cannot compile to yices: " ++ pretty d
 
 -- defiop name type op
 --   Define a primitive binary integer operation.
