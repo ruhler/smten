@@ -1,7 +1,7 @@
 
 module Seri.Target.Yices.Compiler (
     YCompiler,
-    yicesname, yiceserr,
+    yicesname,
     module Seri.Target.Compiler) where
 
 import Seri.Target.Compiler
@@ -42,8 +42,4 @@ yicesname ('(':cs) = "__oparen" ++ yicesname cs
 yicesname (')':cs) = "__cparen" ++ yicesname cs
 yicesname (',':cs) = "__comma" ++ yicesname cs
 yicesname (c:cs) = c : yicesname cs
-
--- The name of the error constructor for a given type constructor name n.
-yiceserr :: String -> String
-yiceserr n = yicesname $ n ++ "~Error"
 

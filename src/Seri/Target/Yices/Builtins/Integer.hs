@@ -23,11 +23,8 @@ yType _ _ = fail "integerY doesn't apply"
 defiop :: String -> String -> Y.CmdY
 defiop name op =
     Y.DEFINE (yicesname name, Y.VarT "(-> Integer (-> Integer Integer))")
-        (Just (Y.VarE $ unlines [
-                "(lambda (a::Integer) (lambda (b::Integer)",
-                " (if (and (Integer? a) (Integer? b)) ",
-                "  (Integer (" ++ op ++ " (Integer0 a) (Integer0 b)))",
-                "  " ++ yiceserr "Integer" ++ ")))"]))
+        (Just (Y.VarE $
+            "(lambda (a::Integer) (lambda (b::Integer) (" ++ op ++ " a b)))"))
 
 -- defbop name type op
 --   Define a primitive binary integer predicate.
@@ -38,9 +35,7 @@ defbop name op =
     Y.DEFINE (yicesname name, Y.VarT "(-> Integer (-> Integer Bool))")
         (Just (Y.VarE $ unlines [
                 "(lambda (a::Integer) (lambda (b::Integer)",
-                " (if (and (Integer? a) (Integer? b)) ",
-                "  (if (" ++ op ++ " (Integer0 a) (Integer0 b)) True False)",
-                "  " ++ yiceserr "Bool" ++ ")))"]))
+                " (if (" ++ op ++ " a b) True False)))"]))
 
 yDec :: YCompiler -> Dec -> Failable [Y.CmdY]
 yDec _ (PrimD (TopSig "__prim_add_Integer" _ _))

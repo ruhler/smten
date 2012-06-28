@@ -10,7 +10,7 @@ import Seri.Target.Yices.Builtins.Prelude
 
 -- Translate a seri expression to a yices expression
 yExp :: YCompiler -> Exp -> Failable Y.ExpY
-yExp _ (IntegerE x) = return $ Y.APP (Y.VarE "Integer") [Y.LitI x]
+yExp _ (IntegerE x) = return $ Y.LitI x
 yExp _ e@(CaseE _ []) = fail $ "empty case statement: " ++ pretty e
 yExp c (CaseE e ms) =
   let -- depat p e
@@ -40,11 +40,11 @@ yExp c (CaseE e ms) =
       --  outputs - the yices expression implementing the matches.
       dematch :: Y.ExpY -> [Match] -> Failable Y.ExpY
       dematch e [Match p b] = do
+          -- TODO: don't assume the last alternative will always be taken.
           let ConT dn = typeof b
           b' <- compile_exp c c b
-          let (preds, bindings) = depat p e
-          let pred = yand preds
-          return $ Y.IF pred (Y.LET bindings b') (Y.VarE $ yiceserr dn)
+          let (_, bindings) = depat p e
+          return $ Y.LET bindings b'
       dematch e ((Match p b):ms) = do
           bms <- dematch e ms
           b' <- compile_exp c c b
@@ -85,9 +85,7 @@ yDec c (ValD (TopSig n [] t) e) = do
     ye <- compile_exp c c e
     return [Y.DEFINE (yicesname n, yt) (Just ye)]
 yDec c (DataD "Integer" _ _) =
-    let intc = ("Integer", [("Integer0", Y.VarT "int")])
-        errc = (yiceserr "Integer", [])
-        deftype = Y.DEFTYP "Integer" (Just (Y.DATATYPE [intc, errc]))
+    let deftype = Y.DEFTYP "Integer" (Just (Y.VarT "int"))
     in return [deftype]
 yDec c (DataD n [] cs) =
     let con :: Con -> Failable (String, [(String, Y.TypY)])
@@ -111,8 +109,7 @@ yDec c (DataD n [] cs) =
             return $ Y.DEFINE (yicescon cn, yt) (Just ye)
     in do
         cs' <- mapM con cs
-        let errc = (yiceserr n, [])
-        let deftype = Y.DEFTYP (yicesname n) (Just (Y.DATATYPE (cs' ++ [errc])))
+        let deftype = Y.DEFTYP (yicesname n) (Just (Y.DATATYPE cs'))
         defcons <- mapM mkcons cs
         return $ deftype : defcons
 yDec c d = fail $ "yicesY does not apply to dec: " ++ pretty d
