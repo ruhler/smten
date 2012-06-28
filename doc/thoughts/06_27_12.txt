@@ -124,3 +124,133 @@ think I know the issues now.
 I don't know what to do. I don't know if I can check in my changes. This is
 going to need some thought and discussion.
 
+Let me compose an email message. It will help clarify my thoughts.
+
+Wed Jun 27 14:33:29 EDT 2012
+
+Email composed and sent. I don't know the answer. Perhaps it's worth seriously
+digging into the issue. Finding all the counter examples and things that don't
+work the way you want and such.
+
+Wed Jun 27 14:42:39 EDT 2012
+
+Okay, I have a proposal. Here me out.
+
+If every case statement matches at least one alternative, then there's no
+possible way to introduce an error, and you would want the answer you get from
+yices to be as if there were none.
+
+This suggests, in this case, if we allow things to have errors, we should at
+least disallow free variables from being errors.
+
+Let's say we do that. Let's say we have an assertion for each free variable
+saying it is not an error. When could this possibly cause a problem? Only if
+we find something is unsatisfiable because you are forcing a free variable to
+not be an error when it otherwise would be.
+
+What does it mean if a free variable is an error? It must matter. So it must
+be used in an expression, so the overall expression must be ERROR, so the
+question is what assert ERROR means.
+
+I don't know. But I do thing asserting free variables aren't errors is better
+than what I'm doing now. So let me do that, and move on until I hear otherwise.
+
+Wed Jun 27 14:54:37 EDT 2012
+
+Problem with that: We also need to restrict all the components of a variable
+to not be errors! Otherwise we get things like
+ s = TState error error error
+
+So s is not an error. But it contains one.
+
+Is that reasonable? What I could do in the yices target (but now we're getting
+rather specific to the SMT runner, is that a problem?) is for each data type,
+define a predicate: Foo~hasError :: Foo -> bool. Then, instead of asserting
+that a data type is not an error, assert that it doesn't have an error
+anywhere inside it.
+
+I could do that. I suppose that's what I'll end up doing. It's not terrible.
+
+But, I have an idea. You know what we really want? What we really want is, if
+yices ever encounters an error, the result of the query should be
+(error :: Answser a). Just propagate the error out. Now that makes sense.
+Because it's like, you went to run a program and you hit an error. Now, maybe
+SMT tries running it all sorts of different ways, but if any of those ways
+leads to an error, we should report it as an error, no?
+
+Is there any way to make that work in yices?
+
+Well, maybe it's simple. Have a free boolean variable, call it is_error.
+
+For every assertion p made, do:
+ 
+assert( True? p || (Error? p && is_error))
+
+So, if you ever encounter an error, is_error is forced to true. Now, after
+every check, read is_error. If it's true, there was an error, return the
+error.
+
+Err... except, yices doesn't know that it should try to make p True before
+making p Error and is_error true. So it looks like we'll want an assertion
+anyway saying that free variables don't contain errors.
+
+Wed Jun 27 15:12:17 EDT 2012
+
+Hmm... Nirav has an interesting suggestion. Allocate a free variable for each
+case statement, and use that. Could I make this work out? In other words, an
+error could be anything.
+
+Hmm... Interesting.
+
+What would this mean? It would mean: I don't have to have a special error type
+for things. I don't have to assert things are or are not errors. I don't have
+to deal with assert ERROR. I just have to define a new free variable for each
+case statement, and let it be whatever it wants to be.
+
+Hey. That's pretty cool. I like that solution. Just... ug. Have to modify the
+compiler to collect a set of (freename,type) pairs to define the new free
+variables. And, what about cases inside of functions? Doesn't each need a
+fresh free variable? Otherwise two calls could link them together. Which means
+functions need to take as input the errors to use.
+
+I suppose that's doable. Annoying, very, but doable.
+
+I don't know. I don't feel comfortable doing anything about this now. It needs
+time to stew.
+
+Yup. Stew.
+
+Wed Jun 27 15:23:52 EDT 2012
+
+Okay, so I'm putting that issue on the table for the rest of the day.
+
+Let me now review where I am. What all things are still to do, still to be
+done, and so on and so forth. A high level progress report. That will be
+useful.
+
+- Handling of the nocasematch case.
+- Reading evidence
+- testing and syntactic stuff and general cleanup
+- implement typecheck using typeinfer?
+- full module support
+
+
+In terms of the next step: integration with Myron, I think the nocasematch
+issue is all that's left. Reading evidence would be nice, but not needed at
+this point, because we are really just asking yes or no questions.
+
+Ug. I'm really not into things right now.
+
+Maybe I can have some fun. Try to make a cabal package description. See if it
+works at all.
+
+Wed Jun 27 16:12:14 EDT 2012
+
+I started working on a cabal description. This will be good, because it will
+force me to have my package layout and things clear. I feel like I should
+start simple.
+
+Yup. And the first place to start, I think, is clear: Seri.Lambda, and serit.
+Make it so that works correctly. Then I can add more bits at a time.
+
+

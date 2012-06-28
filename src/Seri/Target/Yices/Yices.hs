@@ -69,10 +69,6 @@ yExp _ (VarE (Sig n _)) = return $ Y.VarE (yicesname n)
 yicescon :: Name -> Name
 yicescon n = yicesname $ "C" ++ n
 
--- The name of the error constructor for a given type constructor name n.
-yiceserr :: Name -> Name
-yiceserr n = yicesname $ n ++ "~Error"
-
 yType :: YCompiler -> Type -> Failable Y.TypY
 yType _ (ConT n) = return $ Y.VarT (yicesname n)
 yType c (AppT (AppT (ConT "->") a) b) = do

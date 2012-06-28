@@ -1,0 +1,80 @@
+
+Thu Jun 28 09:07:53 EDT 2012
+
+I have a proposal for the error problem.
+
+There are two approach I think reasonable.
+
+1. Nirav's approach: use a free variable for the error, suggesting it could
+take on any value.
+
+2. The query should return an error if an error was encountered.
+
+Implementing (1) almost automatically gives us (2), because we can check if
+the free variable is don't care or not to get (2).
+
+Thus, it makes sense to support (1) and decide about (2) later.
+
+The challenge with (1) is, we want to pick a different free variable for each
+instance of the expression. I didn't have a good way of doing that before, but
+I think I do now. Have the error be a function which takes as input the
+argument to the expression and a unique identifier for the call site.
+
+So we need one error function per type...
+Oh, maybe that's not true. Maybe we need one per input output pair...
+
+Hmm...
+
+Because you really want the value to depend on the expression being passed to
+it, and the call site.
+
+Well, that's slightly more annoying, but not terrible?
+But it suggests maybe we shouldn't do a free thing per type, but rather a free
+thing per site. And then we don't need to pass the site as an input.
+
+Okay? Clear? So any time I generate a case expression, I allocate a free
+variable which takes the case expression argument type to the case result
+type, and use that, applied to the argument.
+
+This works for both function definitions and expressions. I feel pretty
+confident this works in all the cases the way we want. We aren't overly
+restricting anything. We don't have to pass free variables into functions,
+which makes things simpler. We don't have to have a special Error type, or
+anything like that.
+
+What we do need to do, however, is modify the compiler slightly. When you
+generate an expression, it should collect a bunch of required definitions of
+free variables first and spit those out.
+
+Cool. I like this solution. I'll implement it.
+
+But first, we have the question of how the compilers should work. It doesn't
+make sense with this change to have the haskell target and the yices target
+use the same form of compiler.
+
+A problem with the existing design is you have to know about all the internals
+of the compiler to be able to extend it. That's not really... useful.
+
+For the haskell target, if we support modular compilation, then I don't
+believe we need to let anyone extend the compiler. You just implement your
+primitives in their own module which will be included. No problem.
+
+For the yices target... I'm not sure it makes sense right now to support
+extensibility. There's some thought that I could have a compiler monad which
+people could use. And some of the primitives will be to compile and expression
+and compile declarations, etc..., and it will refer to what's in the monad
+state to do the substitution. So that could work out more nicely than what I
+have now. I think that's worth trying if I need for the yices target to be
+extensible.
+
+I don't want to get too side tracked right now. Let me focus on the Error
+issue. Solve that. Rewrite the yices target to not use the shared compiler.
+Have a yices compiler monad, like I had before. This can collect the
+free definitions we need to make. And remove builtins. Just build the integer
+stuff right in.
+
+To make it easier, I can define Integer to be int. Let's keep Bool is nothing
+special right now.
+
+Good. I have a plan. Let me get to work, see what happens.
+

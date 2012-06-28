@@ -68,8 +68,12 @@ runQuery gr env e = do
             fid <- gets ys_freeid
             modify $ \ys -> ys {ys_freeid = fid+1}
             
-            t' <- declareNeeded env t
-            runCmds [Y.DEFINE ("free_" ++ show fid, yType t') Nothing]
+            -- TODO: what if the free variable is a function?
+            t'@(ConT dn) <- declareNeeded env t
+            let fname = "free_" ++ show fid
+            runCmds [
+                Y.DEFINE (fname, yType t') Nothing,
+                Y.ASSERT (Y.VarE fname Y.:/= (Y.VarE $ yiceserr dn))]
             return (AppE (VarE (Sig "~free" (arrowsT [integerT, t]))) (IntegerE fid))
         (AppE (VarE (Sig "assert" _)) p) -> do
             p' <- declareNeeded env p

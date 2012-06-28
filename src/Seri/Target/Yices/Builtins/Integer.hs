@@ -27,7 +27,7 @@ defiop name op =
                 "(lambda (a::Integer) (lambda (b::Integer)",
                 " (if (and (Integer? a) (Integer? b)) ",
                 "  (Integer (" ++ op ++ " (Integer0 a) (Integer0 b)))",
-                "  Integer__tildeError)))"]))
+                "  " ++ yiceserr "Integer" ++ ")))"]))
 
 -- defbop name type op
 --   Define a primitive binary integer predicate.
@@ -40,7 +40,7 @@ defbop name op =
                 "(lambda (a::Integer) (lambda (b::Integer)",
                 " (if (and (Integer? a) (Integer? b)) ",
                 "  (if (" ++ op ++ " (Integer0 a) (Integer0 b)) True False)",
-                "  Bool__tildeError)))"]))
+                "  " ++ yiceserr "Bool" ++ ")))"]))
 
 yDec :: YCompiler -> Dec -> Failable [Y.CmdY]
 yDec _ (PrimD (TopSig "__prim_add_Integer" _ _))
