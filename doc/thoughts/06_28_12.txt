@@ -120,3 +120,30 @@ First step: the core seri lambda library.
 I should describe the package. Try generating a .tar.gz from it. Try
 building that separately. See what all I get.
 
+Thu Jun 28 15:08:55 EDT 2012
+
+Okay, so it looks like I get what I want.
+
+But, I don't get the seri library... perhaps I should figure out how to add
+that?
+
+Or see what sort of fun documentation stuff I can do?
+
+Looks like I can generate some pretty nifty documentation. Cool.
+
+I think I may want to expose the individual Seri.Lambda packages, just to make
+organizational things clear.
+
+Anyway, let me complete the package as best I can.
+
++ add *.sri files somehow
++ how to build seriq given yices dependency?
+
+Wow. So, that's not so bad, now, is it?
+
+Let me try running it on a different computer.
+
+It doesn't work. I think trying to build both library and executables at the
+same time is a mistake. How about, ditch the executables for now? Worst case I
+can make them part of a separate seri-bin package.
+

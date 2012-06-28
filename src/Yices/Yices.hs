@@ -1,6 +1,8 @@
 
-{-# LANGUAGE ForeignFunctionInterface   #-}
+{-# LANGUAGE ForeignFunctionInterface #-}
+{-# LANGUAGE EmptyDataDecls  #-}
 
+-- | FFI Interface to yices 1.
 module Yices.Yices (
     Context, Result(..), mkContext, runCmds, check,
     module Math.SMT.Yices.Syntax
@@ -62,6 +64,7 @@ toResult n
     | n == yTrue  = Satisfiable
     | otherwise   = Undefined
 
+-- | Initialize a new context for interacting with yices.
 mkContext :: IO Context
 mkContext = do
     c_yices_enable_type_checker True
@@ -83,9 +86,11 @@ runCmd (Context fp) cmd = do
                     ++ "\n when running command: \n" 
                     ++ show cmd
 
+-- | Send a bunch of commands to yices.
 runCmds :: Context -> [CmdY] -> IO ()
 runCmds ctx = mapM_ (runCmd ctx)
 
+-- | Send a check command to yices and interpret the result.
 check :: Context -> IO Result
 check (Context fp) = do
     res <- withForeignPtr fp c_yices_check

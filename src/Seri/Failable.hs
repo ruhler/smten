@@ -1,4 +1,5 @@
 
+-- | A monad for dealing with computations which can fail.
 module Seri.Failable (
     Failable(..), attemptM, attemptIO, surely, onfail, (<|>),
     ) where

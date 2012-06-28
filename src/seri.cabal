@@ -10,17 +10,23 @@ maintainer:          ruhler@csail.mit.edu
 category:            Language
 build-type:          Simple
 cabal-version:       >=1.8
+data-files:          Seri/Lib/*.sri
+                     Seri/SMT/SMT.sri 
 
 library
-  exposed-modules:     Seri.Failable, Seri.Lambda
-  other-modules:       Seri.Lambda.TypeCheck, Seri.Lambda.Parser, Seri.Lambda.Sugar, Seri.Lambda.Types, Seri.Lambda.TypeSolver, Seri.Lambda.Parser, Seri.Lambda.Prelude, Seri.Lambda.TypeInfer, Seri.Lambda.Env, Seri.Lambda.Loader, Seri.Lambda.IR, Seri.Lambda.Ppr
-  build-depends:       base ==4.5.*, yices ==0.0.*, template-haskell ==2.7.*, syb ==0.3.*, mtl ==2.1.*, directory ==1.1.*, pretty ==1.1.*, array ==0.4.*
-  build-tools:         happy
-
-executable serit
-  main-is:             Seri/Lambda/serit.hs
-  other-modules:       Seri.Failable, Seri.Lambda
-                       Seri.Lambda.TypeCheck, Seri.Lambda.Parser, Seri.Lambda.Sugar, Seri.Lambda.Types, Seri.Lambda.TypeSolver, Seri.Lambda.Parser, Seri.Lambda.Prelude, Seri.Lambda.TypeInfer, Seri.Lambda.Env, Seri.Lambda.Loader, Seri.Lambda.IR, Seri.Lambda.Ppr
+  exposed-modules:     Seri.Failable,
+                       Seri.Lambda, Seri.Lambda.IR, Seri.Lambda.Sugar, Seri.Lambda.Ppr,
+                       Seri.Lambda.Types, Seri.Lambda.Env, Seri.Lambda.Prelude,
+                       Seri.Lambda.Parser,
+                       Seri.Lambda.TypeCheck, Seri.Lambda.TypeInfer, Seri.Lambda.TypeSolver,
+                       Seri.Lambda.Loader,
+                       Seri.Target.Elaborate, Seri.Target.Elaborate.Elaborate, Seri.Target.Elaborate.Integer,
+                       Seri.Target.Monomorphic.Monomorphic,
+                       Seri.Target.Haskell, Seri.Target.Haskell.Compiler, Seri.Target.Haskell.Haskell, Seri.Target.Haskell.Builtins.Prelude, Seri.Target.Haskell.Builtins.Integer,
+                       Seri.Target.Yices.Yices,
+                       Seri.SMT.Yices,
+                       Yices.Yices
+  other-modules:       
   build-depends:       base ==4.5.*, yices ==0.0.*, template-haskell ==2.7.*, syb ==0.3.*, mtl ==2.1.*, directory ==1.1.*, pretty ==1.1.*, array ==0.4.*
   build-tools:         happy
 

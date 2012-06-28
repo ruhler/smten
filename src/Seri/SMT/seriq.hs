@@ -1,7 +1,6 @@
 
 import System.Environment
 import System.Exit
-import System.Process
 
 import Seri.Failable
 import Seri.Lambda
