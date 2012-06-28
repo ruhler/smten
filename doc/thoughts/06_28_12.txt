@@ -78,3 +78,17 @@ special right now.
 
 Good. I have a plan. Let me get to work, see what happens.
 
+Thu Jun 28 09:29:42 EDT 2012
+
+The steps:
+
+1. Remove error implementation in yices. Go back to the old way for now.
+2+ Remove rewriting of ~free done in SMT. Just make the variable name itself
+match the free variables declared in yices.
+3. Merge the builtins for yices with the compiler itself.
+4. De-extensibalize the yices target.
+5. Switch from Failable to a YCompiler monad.
+6. Collect statements in the YCompiler monad for these free error things.
+
+Then I should be in pretty good shape.
+

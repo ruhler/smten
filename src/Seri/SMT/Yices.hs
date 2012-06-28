@@ -51,6 +51,9 @@ declareNeeded env x = do
   runCmds (yDecs newdecls)
   return me
 
+freename :: Integer -> String
+freename id = yicesname $ "free~" ++ show id
+
 runQuery :: Rule YicesMonad -> Env -> Exp -> YicesMonad Exp
 runQuery gr env e = do
     elaborated <- elaborate gr env e
@@ -60,21 +63,18 @@ runQuery gr env e = do
             ctx <- gets ys_ctx
             res <- lift $ Y.check ctx
             lift $ hPutStrLn dh $ "; check returned: " ++ show res 
+            -- TODO: interpret the evidence from the model.
             case res of 
                 Y.Undefined -> return $ ConE (Sig "Unknown" (AppT (ConT "Answer") (typeof arg)))
-                Y.Satisfiable -> return $ AppE (ConE (Sig "Satisfiable" (AppT (ConT "Answer") (typeof arg)))) (realize (yassignments []) arg)
+                Y.Satisfiable -> return $ AppE (ConE (Sig "Satisfiable" (AppT (ConT "Answer") (typeof arg)))) arg
                 _ -> return $ ConE (Sig "Unsatisfiable" (AppT (ConT "Answer") (typeof arg)))
         (VarE (Sig "free" (AppT (ConT "Query") t))) -> do
             fid <- gets ys_freeid
             modify $ \ys -> ys {ys_freeid = fid+1}
             
-            -- TODO: what if the free variable is a function?
-            t'@(ConT dn) <- declareNeeded env t
-            let fname = "free_" ++ show fid
-            runCmds [
-                Y.DEFINE (fname, yType t') Nothing,
-                Y.ASSERT (Y.VarE fname Y.:/= (Y.VarE $ yiceserr dn))]
-            return (AppE (VarE (Sig "~free" (arrowsT [integerT, t]))) (IntegerE fid))
+            t' <- declareNeeded env t
+            runCmds [Y.DEFINE (freename fid, yType t') Nothing]
+            return (VarE (Sig (freename fid) t))
         (AppE (VarE (Sig "assert" _)) p) -> do
             p' <- declareNeeded env p
             runCmds [Y.ASSERT (yExp trueE Y.:= yExp p')]
@@ -99,13 +99,13 @@ runQuery gr env e = do
 
 
 yType :: Type -> Y.TypY
-yType t = surely $ compile_type smtY smtY t
+yType t = surely $ compile_type yicesY yicesY t
 
 yDecs :: [Dec] -> [Y.CmdY]
-yDecs = compile_decs smtY
+yDecs = compile_decs yicesY
 
 yExp :: Exp -> Y.ExpY
-yExp e = surely $ compile_exp smtY smtY e
+yExp e = surely $ compile_exp yicesY yicesY e
 
 data RunOptions = RunOptions {
     debugout :: Maybe FilePath
@@ -136,56 +136,3 @@ runYices primlib gr opts env e = do
     hClose dh
     return x
     
-
-smtY :: YCompiler
-smtY =
-  let ye :: YCompiler -> Exp -> Failable Y.ExpY
-      ye _ (AppE (VarE (Sig "~free" _)) (IntegerE id)) = return $ Y.VarE ("free_" ++ show id)
-      ye _ e = fail $ "smtY does not apply: " ++ pretty e
-
-      yt :: YCompiler -> Type -> Failable Y.TypY
-      yt _ t = fail $ "smtY does not apply: " ++ pretty t
-
-      yd :: YCompiler -> Dec -> Failable [Y.CmdY]
-      yd _ d = fail $ "smtY does not apply: " ++ pretty d
-     
-  in compilers [Compiler ye yt yd, yicesY]
-
-
--- Given the evidence returned by a yices query, extract the free variable
--- assignments.
-yassignments :: [Y.ExpY] -> [(Integer, Exp)]
-yassignments = concat . map assignment
-
-assignment :: Y.ExpY -> [(Integer, Exp)]
-assignment (Y.VarE ('f':'r':'e':'e':'_':id) Y.:= e)
-    = case (antiyices e) of
-        Just e -> [(read id, e)]
-        Nothing -> []
-assignment (e Y.:= Y.VarE ('f':'r':'e':'e':'_':id))
-    = case (antiyices e) of
-        Just e -> [(read id, e)]
-        Nothing -> []
-
-antiyices :: (Monad m) => Y.ExpY -> m Exp
-antiyices (Y.LitB True) = return $ ConE (Sig "True" (ConT "Bool"))
-antiyices (Y.LitB False) = return $ ConE (Sig "False" (ConT "Bool"))
-antiyices (Y.LitI i) = return $ IntegerE i
-antiyices (Y.VarE n) | isUpper (head n) = return $ ConE (Sig n UnknownT)
-antiyices (Y.APP f [x]) = do
-    f' <- antiyices f
-    x' <- antiyices x
-    return $ AppE f' x'
-antiyices x = fail $ "TODO: antiyices: " ++ show x
-
--- Apply free variable assignements to the given expression.
-realize :: [(Integer, Exp)] -> Exp -> Exp
-realize as =
-    let qexp :: Exp -> Exp
-        qexp (AppE (VarE (Sig "~free" (AppT (AppT (ConT "->") (ConT "Integer")) t))) (IntegerE fid))
-            = case lookup fid as of
-                Just e -> e
-                Nothing -> (VarE (Sig "undefined" t))
-        qexp e = e
-    in everywhere (mkT qexp)
-
