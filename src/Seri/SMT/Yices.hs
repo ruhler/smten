@@ -15,7 +15,6 @@ import Seri.Failable
 import Seri.Lambda
 import Seri.Target.Monomorphic.Monomorphic
 import Seri.Target.Elaborate
-import Seri.Target.Yices.Compiler
 import Seri.Target.Yices.Yices
 
 
@@ -52,7 +51,7 @@ declareNeeded env x = do
   return me
 
 freename :: Integer -> String
-freename id = yicesname $ "free~" ++ show id
+freename id = yicesN $ "free~" ++ show id
 
 runQuery :: Rule YicesMonad -> Env -> Exp -> YicesMonad Exp
 runQuery gr env e = do
@@ -99,13 +98,15 @@ runQuery gr env e = do
 
 
 yType :: Type -> Y.TypY
-yType t = surely $ compile_type yicesY yicesY t
+yType t = surely $ yicesT t
 
 yDecs :: [Dec] -> [Y.CmdY]
-yDecs = compile_decs yicesY
+yDecs ds = surely $ do
+    cmds <- mapM yicesD ds
+    return $ concat cmds
 
 yExp :: Exp -> Y.ExpY
-yExp e = surely $ compile_exp yicesY yicesY e
+yExp e = surely $ yicesE e
 
 data RunOptions = RunOptions {
     debugout :: Maybe FilePath
