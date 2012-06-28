@@ -6,7 +6,6 @@ import qualified Math.SMT.Yices.Syntax as Y
 import Seri.Failable
 import Seri.Lambda
 import Seri.Target.Yices.Compiler
-import Seri.Target.Yices.Builtins.Prelude
 
 -- Translate a seri expression to a yices expression
 yExp :: YCompiler -> Exp -> Failable Y.ExpY
@@ -112,11 +111,41 @@ yDec c (DataD n [] cs) =
         let deftype = Y.DEFTYP (yicesname n) (Just (Y.DATATYPE cs'))
         defcons <- mapM mkcons cs
         return $ deftype : defcons
+
+-- Integer Primitives
+yDec _ (PrimD (TopSig "__prim_add_Integer" _ _))
+ = return [defiop "__prim_add_Integer" "+"]
+yDec _ (PrimD (TopSig "__prim_sub_Integer" _ _))
+ = return [defbop "__prim_sub_Integer" "-"]
+yDec _ (PrimD (TopSig "<" _ _)) = return [defbop "<" "<"]
+yDec _ (PrimD (TopSig ">" _ _)) = return [defbop ">" ">"]
+yDec _ (PrimD (TopSig "__prim_eq_Integer" _ _))
+ = return [defbop "__prim_eq_Integer" "="]
+
 yDec c d = fail $ "yicesY does not apply to dec: " ++ pretty d
 
-coreY :: YCompiler
-coreY = Compiler yExp yType yDec
-
 yicesY :: YCompiler
-yicesY = compilers [preludeY, coreY]
-            
+yicesY = Compiler yExp yType yDec
+
+
+-- defiop name type op
+--   Define a primitive binary integer operation.
+--   name - the name of the primitive
+--   op - the integer operation.
+defiop :: String -> String -> Y.CmdY
+defiop name op =
+    Y.DEFINE (yicesname name, Y.VarT "(-> Integer (-> Integer Integer))")
+        (Just (Y.VarE $
+            "(lambda (a::Integer) (lambda (b::Integer) (" ++ op ++ " a b)))"))
+
+-- defbop name type op
+--   Define a primitive binary integer predicate.
+--   name - the name of the primitive
+--   op - the predicate operator.
+defbop :: String -> String -> Y.CmdY
+defbop name op =
+    Y.DEFINE (yicesname name, Y.VarT "(-> Integer (-> Integer Bool))")
+        (Just (Y.VarE $ unlines [
+                "(lambda (a::Integer) (lambda (b::Integer)",
+                " (if (" ++ op ++ " a b) True False)))"]))
+
