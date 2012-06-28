@@ -10,9 +10,9 @@ foreach key [array names ::env] {
 #   ::GHC - path to ghc
 #   ::env(...) - needed environment variables, such as:
 #       PATH, GHC_PACKAGE_PATH
+#   ::YICESLIB - path the the yices library
 source tclmk/local.tcl
 set ::env(LANG) "en_US.UTF-8"
-set ::YICESLIB "/home/ruhler/local/lib/libyices.a"
 
 proc run {args} {
     puts $args
