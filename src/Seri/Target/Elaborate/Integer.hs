@@ -1,4 +1,5 @@
 
+-- | Rules for reducing integer primitives.
 module Seri.Target.Elaborate.Integer (integerR) where
 
 import Seri.Lambda

@@ -1,4 +1,5 @@
 
+-- | Target for reducing a seri expression to a normal form.
 module Seri.Target.Elaborate.Elaborate (
     Rule(..), rules, elaborate, coreR,
     ) where
@@ -8,7 +9,7 @@ import Data.Generics
 import Seri.Failable
 import Seri.Lambda
 
--- A reduction rule. Given a set of global declarations, a global reduction
+-- | A reduction rule. Given a set of global declarations, a global reduction
 -- rule, and an expression, reduce the expression in some way. Returns Nothing
 -- if the rule can't reduce the expression any, otherwise returns a reduced
 -- version of the expression.  It need not be fully reduced or anything like
@@ -22,7 +23,7 @@ type RuleBody m = (Rule m -> Env -> Exp -> m (Maybe Exp))
 runme :: Rule m -> Env -> Exp -> m (Maybe Exp)
 runme r = run r r
 
--- Combine a bunch of reduction rules.
+-- | Combine a bunch of reduction rules.
 -- It tries each rule in turn, applying the first one which succeeds.
 rules :: (Monad m) => [Rule m] -> Rule m
 rules [] = Rule $ \_ _ _ -> return Nothing
@@ -32,19 +33,19 @@ rules (r:rs) = Rule $ \gr env e -> do
       Just e' -> return $ Just e'
       Nothing -> run (rules rs) gr env e
 
--- elaborate decls prg
--- Reduce the given expression as much as possible.
---  rule - the reduction rule to use
---  decls - gives the context under which to evaluate the expression.
---  prg - is the expression to evaluate.
-elaborate :: (Monad m) => Rule m -> Env -> Exp -> m Exp
+-- | Reduce the given expression as much as possible.
+elaborate :: (Monad m)
+          => Rule m   -- ^ reduction rule to use
+          -> Env      -- ^ context under which to evaluate the expression
+          -> Exp      -- ^ expression to evaluate
+          -> m Exp
 elaborate r env prg = do
     x <- runme r env prg
     case x of
         Just e -> elaborate r env e
         Nothing -> return prg
 
--- coreR - The core reduction rules.
+-- | The core reduction rule.
 coreR :: (Monad m) => Rule m
 coreR = rules [casesubR, caseredR, appredR, applsubR, apprsubR, varredR]
 

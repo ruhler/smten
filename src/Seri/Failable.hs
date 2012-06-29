@@ -8,6 +8,8 @@ import System.IO
 import System.Exit
 
 data Failable a = Failable {
+    -- | Run a Failable computation, returning either a failure message or the
+    -- result of the computation.
     attempt :: Either String a
 }
 
@@ -40,16 +42,18 @@ surely (Failable (Right a)) = a
 surely (Failable (Left msg)) = error msg
     
 
--- | onfail f c
--- Run computation c, if it fails, return the result of calling f on the error
--- message from the failing c.
-onfail :: (String -> Failable a) -> Failable a -> Failable a
+-- | Run computation 'c', if it fails, return the result of calling 'f' on the
+-- error message from the failing 'c'.
+onfail :: (String -> Failable a) -- ^ f
+       -> Failable a             -- ^ c
+       -> Failable a
 onfail f (Failable (Left msg)) = f msg
 onfail f c = c
 
--- | a <|> b
---   Return the result of 'a' if it succeeds, otherwise the result of 'b'.
-(<|>) :: Failable a -> Failable a -> Failable a
+-- | Return the result of 'a' if it succeeds, otherwise the result of 'b'.
+(<|>) :: Failable a -- ^ a
+      -> Failable a -- ^ b
+      -> Failable a
 (<|>) a b =
     case attemptM a of
        Just x -> return x

@@ -45,3 +45,6 @@ vs. foo :: (Foo a) => Sludge
 
 - document in detail what features of haskell are not supported by seri
 
+- have common option parsing for serie, serih, seriq, serim, serit?
+- what happens if we realize a free integer variable which is a dont-care?
+

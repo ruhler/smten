@@ -115,3 +115,21 @@ Sounds like a week's worth of work, ish, to me.
 
 Anyway, let me start cleaning up seri as best I can.
 
+Fri Jun 29 13:35:08 EDT 2012
+
+Hmm... trouble is, it's hard to know what to clean up how.
+
+For the sake of being somewhat productive, given I'm not much in the mood for
+hard core thinking, let me start working on a new branch to support a yices 2
+target.
+
+Steps are:
+- an abstract syntax for yices2. Follow the language spec.
+I should be able to pretty print to valid yices2 syntax.
+- a raw yices2 FFI interface.
+- a yices2 FFI driver based on the abstract syntax.
+
+All this goes into the Yices2 directory. This should be plenty of hopefully
+not too mentally involved valuable busy work. It should last me the hour at
+least.
+
