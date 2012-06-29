@@ -4,7 +4,7 @@
 
 -- | FFI Interface to yices 1.
 module Yices.Yices (
-    Context, Result(..), mkContext, runCmds, check,
+    Context, Result(..), mkContext, runCmds, check, getIntegerValue,
     module Math.SMT.Yices.Syntax
     )
   where
@@ -18,6 +18,7 @@ import Math.SMT.Yices.Syntax
 
 data YContext
 data YModel
+data YDecl
 data Context = Context (ForeignPtr YContext)
 
 type YBool = CInt
@@ -51,6 +52,13 @@ foreign import ccall unsafe "yices_enable_type_checker"
 
 foreign import ccall unsafe "yices_get_last_error_message"
     c_yices_get_last_error_message :: IO CString
+
+foreign import ccall unsafe "yices_get_int_value"
+    c_yices_get_int_value :: Ptr YModel -> Ptr YDecl -> Ptr CLong -> IO CInt
+
+foreign import ccall unsafe "yices_get_var_decl_from_name"
+    c_yices_get_var_decl_from_name :: Ptr YContext -> CString -> IO (Ptr YDecl)
+                          
 
 data Result
     = Satisfiable
@@ -105,3 +113,17 @@ check (Context fp) = do
         _ -> return ()
     return result
 
+-- | Given the name of a free variable with integer type, return its value.
+getIntegerValue :: Context -> String -> IO Integer
+getIntegerValue (Context fp) nm = do
+    model <- withForeignPtr fp c_yices_get_model 
+    decl <- withCString nm $ \str ->
+                withForeignPtr fp $ \yctx ->
+                    c_yices_get_var_decl_from_name yctx str
+    x <- alloca $ \ptr -> do
+        ir <- c_yices_get_int_value model decl ptr
+        if ir == 1
+            then peek ptr
+            else error $ "yices get int value returned: " ++ show ir
+    return (toInteger x)
+    

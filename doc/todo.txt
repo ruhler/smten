@@ -43,3 +43,5 @@ vs. foo :: (Foo a) => Sludge
 
 - modules shouldn't automatically export everything they import.
 
+- document in detail what features of haskell are not supported by seri
+

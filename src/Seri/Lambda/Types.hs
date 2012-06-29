@@ -1,7 +1,7 @@
 
 -- | Utilities for working with Seri Types
 module Seri.Lambda.Types (
-    appsT, arrowsT, outputT, unarrowsT, listT, integerT,
+    appsT, arrowsT, outputT, unappsT, unarrowsT, listT, integerT,
     Typeof(..), typeofCon,
     assign, assignments, bindingsP, varTs,
     isSubType,
@@ -38,6 +38,12 @@ arrowsT (t:ts) = appsT [ConT "->", t, arrowsT ts]
 outputT :: Type -> Type
 outputT (AppT (AppT (ConT "->") _) t) = t
 outputT t = t
+
+-- | Given a type of the form (a b ... c),
+-- returns the list: [a, b, ..., c]
+unappsT :: Type -> [Type]
+unappsT (AppT a b) = (unappsT a) ++ [b]
+unappsT t = [t]
 
 -- | Given a type of the form (a -> b -> ... -> c),
 --  returns the list: [a, b, ..., c]

@@ -147,3 +147,29 @@ It doesn't work. I think trying to build both library and executables at the
 same time is a mistake. How about, ditch the executables for now? Worst case I
 can make them part of a separate seri-bin package.
 
+Thu Jun 28 17:11:45 EDT 2012
+
+Anyway, the cabal package is pretty cool. I like the documentation. It shows
+the organization and all that stuff.
+
+For cleanup, it might be worthwhile to read through the documentation and
+clean up the code based on what I find that way.
+
+Anyway, Myron's working on using Seri, so hopefully some progress will be made
+in that direction. I think cleaning would be valuable. As far as the next
+major thing to work on?
+
+What are all the major things left?
+
+- fix modularity
+- read evidence
+- implement typecheck with typeinfer (?)
+- target yices2
+- target pvs
+
+Ohh... and I finally found the yices2 documentation. So that should be fun to
+play with tomorrow.
+
+I'll stew on the big things, but I think mostly clean up and thinking about
+what comes next is good.
+

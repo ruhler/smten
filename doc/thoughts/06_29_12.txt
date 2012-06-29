@@ -1,0 +1,58 @@
+
+Fri Jun 29 08:19:32 EDT 2012
+
+I want to try evidence parsing. I think it shouldn't be too hard.
+
+We want a function which takes as input a name of a free variable and it's
+type, and in the YicesMonad returns it's value. Perhaps call it...
+
+realize :: String -> Type -> YicesMonad Exp
+
+The way it works is as follows:
+- if the Type is an integer, use the FFI call to look up the value and return
+  it. (This requires we add the get integer thing to the ffi interface)
+- if the Type is a function type, tough luck. We can't handle it yet.
+- if the Type is a variable type, something wrong is going on.
+- otherwise the type should be an applied type constructor:
+1. Extract the type constructor name
+2. For each data constructor for the given type:
+    3. send a push command to yices
+    4. allocate a free variable for each argument to the data constructor
+    5. assert the data constructor applied to its arguments equals the free
+       variable being realized
+    6. check the result
+        7. If satisfiable, for each argument, realize the argument. Then
+           pop and return the construction.
+        8. Otherwise, pop and continue to the next data constructor
+
+All very straight forward, no? Good. Let me try it.
+
+Fri Jun 29 08:32:29 EDT 2012
+
+I'll have to dig in deeper to figure out how to do the FFI interface for
+getting integers. For example, how to pass a pointer argument, and how to
+represent a c long in haskell. Let me come back to that. Because the rest of
+the algorithm should be easy enough given I have the right abstraction for
+getting an integer value.
+
+Fri Jun 29 08:45:09 EDT 2012
+
+Well, I made some little progress anyway. I'll keep working on it later.
+
+Fri Jun 29 09:49:48 EDT 2012
+
+Okay, so I have the code for it. What remains is the FFI thing. Let me see if
+it compiles now though.
+
+Oh, and there's one more thing I'll need. I'll need to call it. So I need the
+overall expression traversal (generics?) which replaces free variables.
+
+Yes. I should use generics. I'll implement this when I get to the office.
+
+Fri Jun 29 12:00:04 EDT 2012
+
+It works! That's pretty cool. Nifty.
+
+I could clean up the debug output a bit, and maybe don't need to dump the
+model now that we have the evidence, but ... cool. Time for lunch.
+
