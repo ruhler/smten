@@ -35,6 +35,11 @@ proc ghcprog {target source args} {
         build/src/$source {*}$args 
 }
 
+# Yices2  tests
+ghcprog "Yices2/Tests/bool_eqs2" "Yices2/Tests/bool_eqs2.hs"
+
+
+
 ghcprog "serie" "Seri/Target/Elaborate/serie.hs"
 ghcprog "serih" "Seri/Target/Haskell/serih.hs"
 ghcprog "serim" "Seri/Target/Monomorphic/serim.hs"
@@ -95,6 +100,7 @@ set wd [pwd]
 cd build/src
 run cabal sdist 
 cd $wd
+
 
 
 puts "BUILD COMPLETE"
