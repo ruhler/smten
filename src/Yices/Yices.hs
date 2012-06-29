@@ -102,16 +102,7 @@ runCmds ctx = mapM_ (runCmd ctx)
 check :: Context -> IO Result
 check (Context fp) = do
     res <- withForeignPtr fp c_yices_check
-    let result = toResult res
-    case result of
-        Satisfiable -> do
-           -- Print out the model for debugging.
-           -- TODO: it would be nice if we could read the model in a
-           -- meaningful way. I haven't figured out how to do that yet though.
-           model <- withForeignPtr fp c_yices_get_model
-           c_yices_display_model model
-        _ -> return ()
-    return result
+    return $ toResult res
 
 -- | Given the name of a free variable with integer type, return its value.
 getIntegerValue :: Context -> String -> IO Integer

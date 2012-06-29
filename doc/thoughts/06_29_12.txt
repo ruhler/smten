@@ -56,3 +56,62 @@ It works! That's pretty cool. Nifty.
 I could clean up the debug output a bit, and maybe don't need to dump the
 model now that we have the evidence, but ... cool. Time for lunch.
 
+Fri Jun 29 12:25:25 EDT 2012
+
+Here's what I want to do for the rest of the day.
+- read about yices2, try to understand it's interface, how to use it, what all
+  needs to change from the yices1 usage.
+- clean up. The interfaces, the documentation, the behavior.
+
+I think that's a fine goal for today. No need to go into modularity yet.
+Though it's okay for me to think about that.
+
+Cool. First step: a look at yices2.
+
+Notes:
+- No support for algebraic data types.
+So looks like I'll want to implement them using scalars for constructor tags
+and tuples. Too bad there aren't unions, but it should be plenty doable.
+- No support for lambdas
+
+The C api is pretty decent. It might be nice to use that.
+
+Really I've hit upon the big things. Algebraic data types and lambdas
+(function definitions).
+
+Algebraic data types can be implemented using tuples and scalars. The first
+field is the constructor flag. Then we can have a field for each tuple of
+constructor args after that. Hopefully that works out fine.
+
+The harder part is the lambdas. Without lambdas, we have to inline every thing
+we can. So we'll have some pretty big expressions. Probably want to inline and
+simplify. And, for those things that are recursive, introduce a free term
+for the result after we get tired of expanding it. I think it's doable, but it
+will be rather a bit of work.
+
+The good news, I suppose, is that it seems yices2 is a subset of yices1. So I
+could try getting these things to work in yices1 if I wanted to test out the
+ideas behind them.
+
+I don't think bluespec will be able to give us something that let's us fall
+back to yices2 if pvs doesn't work. I think the right direction to go would be
+to implement yices2 support directly.
+
+Hmm... Perhaps lambda isn't so hard to deal with. We break it down into two
+steps: inlining and approximating.
+
+Inlining is just a form of elaboration which does simplification inside if
+statements and such, and has some bound on recursive inlining so it doesn't
+get stuck. Given an expression in an environment, inline and simplify as much
+as possible. It should reduce to a normal form of some sort aside from the
+recursive functions. I can make this a generic seri utility.
+
+Approximating is specific to the yices target. It says, given a seri expression,
+whenever you reference a declared variable, create an uninterpreted term for
+that variable. Easy.
+
+I think moving to yices2 makes sense as a general direction to take next.
+Sounds like a week's worth of work, ish, to me.
+
+Anyway, let me start cleaning up seri as best I can.
+
