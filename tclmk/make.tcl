@@ -36,7 +36,8 @@ proc ghcprog {target source args} {
 }
 
 # Yices2  tests
-ghcprog "Yices2/Tests/bool_eqs2" "Yices2/Tests/bool_eqs2.hs"
+ghcprog "Yices2/Tests/bool_eqs2" "Yices2/Tests/bool_eqs2.hs" $YICES2LIB
+run ./build/src/Yices2/Tests/bool_eqs2
 
 
 

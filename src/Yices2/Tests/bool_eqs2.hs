@@ -1,4 +1,5 @@
 
+import qualified Yices2.Yices2 as Y
 import Yices2.Syntax
 
 query :: [Command]
@@ -25,5 +26,15 @@ query = [
     ]
 
 main :: IO ()
-main = putStrLn $ (pretty query)
+main = do
+    putStrLn "Pretty:"
+    putStrLn $ (pretty query)
+
+    putStrLn "Running..."
+    Y.init
+    ctx <- Y.mkctx
+    mapM (Y.run ctx) query
+    Y.exit
+
+    putStrLn "Done"
 

@@ -33,3 +33,9 @@ Things to do:
 
 That will be a good start.
 
+Mon Jul  2 10:03:35 EDT 2012
+
+Okay, so I have an initial FFI up and running that I can make use of. Enough
+is there, I think, that I can use the interface as is, adding to things ad
+TODOs are encountered.
+
