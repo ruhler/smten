@@ -16,6 +16,7 @@ import Seri.Failable
 import Seri.Lambda
 import Seri.Target.Monomorphic.Monomorphic
 import Seri.Target.Elaborate
+import Seri.Target.Inline
 import Seri.Target.Yices.Yices2
 
 
@@ -24,7 +25,8 @@ data YicesState = YicesState {
     ys_ctx :: Y.Context,
     ys_dh :: Handle,
     ys_freeid :: Integer,
-    ys_ys :: YS
+    ys_ys :: YS,
+    ys_idepth :: Integer
 }
 
 type YicesMonad = StateT YicesState IO
@@ -96,7 +98,9 @@ runQuery gr env e = do
             runCmds [Y.Define (yicesN free) (yType t') Nothing]
             return (VarE (Sig free t))
         (AppE (VarE (Sig "assert" _)) p) -> do
-            p' <- declareNeeded env p
+            idepth <- gets ys_idepth
+            let inlined = inline idepth env p
+            p' <- declareNeeded env inlined
             true <- yExp trueE
             yp <- yExp p'
             runCmds [Y.Assert (Y.eqE true yp)]
@@ -139,7 +143,8 @@ yExp e = do
     return e'
 
 data RunOptions = RunOptions {
-    debugout :: Maybe FilePath
+    debugout :: Maybe FilePath,
+    inlinedepth :: Integer
 } deriving(Show)
             
 runYices :: Rule YicesMonad -> RunOptions -> Env -> Exp -> IO Exp
@@ -152,7 +157,7 @@ runYices gr opts env e = do
     Y.init
     ctx <- Y.mkctx
     let mono = fst $ monomorphic env e
-    (x, _) <- runStateT (runQuery gr env e) (YicesState [] ctx dh 1 (ys mono))
+    (x, _) <- runStateT (runQuery gr env e) (YicesState [] ctx dh 1 (ys mono) (inlinedepth opts))
     hClose dh
     Y.exit
     return x

@@ -164,3 +164,26 @@ approximation. Then I'll implement inlining. Then I'll implement
 simplification (because otherwise we'll end up trying to compile lambdas,
 which would be bad).
 
+Mon Jul  2 15:58:41 EDT 2012
+
+Good. Now I have inlining. Now I'm running into the lambda problem.
+
+The trouble is, I'm seeing funny stuff. Stuff like:
+
+if (lam1 == lam2) ...
+
+Why would that happen? We should never be testing for equality of lambdas.
+
+Perhaps it will be more obvious when I try to do simplification, which is the
+next step.
+
+Hmm... Something happened. It's not working anymore. I don't understand.
+
+Are there problems with my build system?
+
+Looks like a mix between the lambda issue and perhaps reading a don't care
+integer value from a model, so let me get rid of the lambda issue first by
+implementing simplification.
+
+
+

@@ -205,7 +205,7 @@ yType t = fail $ "Cannot compile to yices: " ++ pretty t
 yDec :: Dec -> YCompiler [Y.Command]
 yDec (ValD (TopSig n [] t) _) = do
     -- TODO: should we allow this or not?
-    --error $ "Variable " ++ n ++ " has not been inlined"
+    error $ "Variable " ++ n ++ " has not been inlined"
     yt <- lift $ yType t
     return [Y.Define (yicesname n) yt Nothing]
 

@@ -121,27 +121,21 @@ monoexp (ConE (Sig n t)) = do
 monoexp (VarE s@(Sig n t)) = do
     bound <- gets ms_bound
     poly <- gets ms_poly
+    t' <- monotype t
     case (n `elem` bound, attemptM $ lookupVarInfo poly s) of
-        (True, _) -> do
-            t' <- monotype t
-            return (VarE (Sig n t'))
+        (True, _) -> return (VarE (Sig n t'))
         (_, Just Primitive) -> do
             modify $ \ms -> ms { ms_toexp = s : ms_toexp ms }
-            t' <- monotype t
             return (VarE (Sig n t'))
         (_, Just Declared) -> do
             modify $ \ms -> ms { ms_toexp = s : ms_toexp ms }
-            t' <- monotype t
             suffix <- valsuffix s
             return (VarE (Sig (n ++ suffix) t'))
         (_, Just (Instance (Class _ cts))) -> do
             modify (\ms -> ms { ms_toexp = s : ms_toexp ms })
-            t' <- monotype t
             suffix <- valsuffix s
             return (VarE (Sig (n ++ suffix) t'))
-        _ -> do
-            t' <- monotype t
-            return (VarE (Sig n t'))
+        _ -> return (VarE (Sig n t'))
 
 monomatch :: Match -> M Match
 monomatch (Match p e) = do
