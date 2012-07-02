@@ -1,0 +1,35 @@
+
+Mon Jul  2 08:23:56 EDT 2012
+
+How to do inlining for yices2.
+
+I think it should actually be very easy.
+
+1. Inline step.
+Given an expression, an environment, and an inline depth, inline each name up
+to the given depth. This is a simple generic transformation on the expression.
+No monads or anything needed.
+
+And that's it. There is fear that this will be doing many unnecessary inlines,
+but because haskell is lazy, that shouldn't actually be the case.
+
+The big question is, where should I implement this inlining? As another
+target. Perhaps Seri/Target/Inline.hs. It doesn't need it's own folder.
+
+Cool. I can wait a little bit before implementing this. Wait until I have a
+way to test it better.
+
+What all I plan to do today? I think yices2 is a valuable use of my time.
+Clearly Peter wants it. It's not so hard a thing. And I suspect if we run into
+problems with our queries, the first bit of advice we'll get is: switch to
+yices2. So, yices2 is the focus, and, of course, supporting Myron in his
+transition to seri whenever he needs it.
+
+Things to do:
+- wrap Y.check in Seri.SMT.Yices in something that prints to the debug file
+  more nicely. This is a cleanup step.
+- Implement enough of the yices2 FFI to support:
+    - sending of commands in the yices2 abstract syntax to yices
+
+That will be a good start.
+
