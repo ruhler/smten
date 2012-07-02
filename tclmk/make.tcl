@@ -98,9 +98,9 @@ querytest "Bluespec"
 
 # The SMT query2 tests
 proc query2test {name args} {
-    run $::SERIQ2 -d build/src/Seri/SMT/Tests/$name.dbg -i build/src \
+    run $::SERIQ2 -d build/src/Seri/SMT/Tests/$name.2.dbg -i build/src \
          build/src/Seri/SMT/Tests/$name.sri {*}$args \
-         > build/src/Seri/SMT/Tests/$name.out
+         > build/src/Seri/SMT/Tests/$name.2.out
 }
 
 query2test "Query1"

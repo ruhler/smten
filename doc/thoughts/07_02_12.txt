@@ -129,3 +129,38 @@ I have the rough draft of SMT.Yices2.
 So now I should be able to set up seriq2, and try Query1 using it. See if it
 works.
 
+Mon Jul  2 14:19:37 EDT 2012
+
+First annoying problem:
+ - selectE and updateTupleE take integers. I can't pass a function or a
+   defined thing for the index.
+ - updateTupleE has an off by one error. But I suppose if I always use
+   updateTupleE, and it adjusts, then that should be okay.
+
+This means that, at compile time, I have to know the index. Oh well. I suppose
+that's not too hard to do. Let me get to it.
+
+Mon Jul  2 14:47:52 EDT 2012
+
+Cool. So Query1 works as desired. Good.
+
+Next issue: Need to support primitive integer operations.
+
+Mon Jul  2 15:09:32 EDT 2012
+
+Here's a problem. We need to give the yices compiler the monomorphic
+environment, not the polymorphic. Well, I suppose that's not so hard. 
+
+Mon Jul  2 15:14:28 EDT 2012
+
+Well, it appears to be working.
+
+I'm slightly concerned that our approximations, which happen because we don't
+inline, will lead to quiet unexpected behavior and annoyance. Should I have it
+be an error for now? I would feel better doing that.
+
+Anyway, I'll check this in as it is now. Then I have it be an error to do any
+approximation. Then I'll implement inlining. Then I'll implement
+simplification (because otherwise we'll end up trying to compile lambdas,
+which would be bad).
+

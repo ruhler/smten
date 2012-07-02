@@ -6,7 +6,8 @@
 module Yices2.Syntax (
     Symbol, Command(..), Typedef(..), Type(..), Expression(..),
     VarDecl, Binding, ImmediateValue(..),
-    trueE, varE, integerE, selectE, eqE,
+    trueE, varE, integerE, selectE, eqE, andE, ifE, ltE, gtE,
+    addE, subE,
     tupleE, tupleUpdateE,
     pretty,
   ) where
@@ -82,8 +83,10 @@ tupleE :: [Expression] -> Expression
 tupleE [] = error "tupleE: empty list"
 tupleE args = FunctionE (varE "mk-tuple") args
 
+-- This takes care of a bug in yices2 where the index is off by one.
 tupleUpdateE :: Expression -> Integer -> Expression -> Expression
-tupleUpdateE tpl idx nv = FunctionE (varE "tuple-update") [tpl, integerE idx, nv]
+tupleUpdateE tpl idx nv
+    = FunctionE (varE "tuple-update") [ tpl, integerE (1 + idx), nv]
 
 andE :: [Expression] -> Expression
 andE [] = trueE
@@ -92,6 +95,18 @@ andE xs = FunctionE (varE "and") xs
 
 ifE :: Expression -> Expression -> Expression -> Expression
 ifE p a b = FunctionE (varE "if") [p, a, b]
+
+ltE :: Expression -> Expression -> Expression
+ltE a b = FunctionE (varE "<") [a, b]
+
+gtE :: Expression -> Expression -> Expression
+gtE a b = FunctionE (varE ">") [a, b]
+
+addE :: Expression -> Expression -> Expression
+addE a b = FunctionE (varE "+") [a, b]
+
+subE :: Expression -> Expression -> Expression
+subE a b = FunctionE (varE "-") [a, b]
 
 -- | Convert an abstract syntactic construct to concrete yices2 syntax.
 class Concrete a where
@@ -159,14 +174,17 @@ instance Concrete VarDecl where
     concrete (n, t) = text n <+> text "::" <+> concrete t
 
 instance Concrete Binding where
-    concrete (n, e) = text n <+> concrete e
+    concrete (n, e) = parens $ text n <+> concrete e
 
 instance Concrete ImmediateValue where
     concrete TrueV = text "true"
     concrete FalseV = text "false"
     concrete (VarV s) = text s
     concrete (RationalV r)
-        = integer (numerator r) <+> text "/" <+> integer (denominator r)
+        = integer (numerator r) <>
+            if denominator r == 1
+                then empty
+                else text "/" <> integer (denominator r)
 
 concretestr :: String -> Doc
 concretestr s = text (show s)

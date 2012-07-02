@@ -4,13 +4,19 @@ module Yices2.FFI (
     SMTStatus(..), toYSMTStatus, fromYSMTStatus,
     c_yices_init,
     c_yices_exit,
+    c_yices_print_error,
     c_yices_bool_type,
     c_yices_int_type,
+    c_yices_new_scalar_type,
+    c_yices_constant,
     c_yices_new_uninterpreted_type,
     c_yices_new_uninterpreted_term,
     c_yices_set_type_name,
     c_yices_set_term_name,
+    c_yices_get_type_by_name,
     c_yices_get_term_by_name,
+    c_yices_parse_type,
+    c_yices_parse_term,
     c_yices_eq,
     c_yices_or2,
     c_yices_xor2,
@@ -19,9 +25,12 @@ module Yices2.FFI (
     c_yices_free_context,
     c_yices_assert_formula,
     c_yices_check_context,
+    c_yices_push,
+    c_yices_pop,
     c_yices_get_model,
     c_yices_free_model,
     c_yices_get_int64_value,
+    c_fdopen,
     ) where
 
 import Data.Int
@@ -73,11 +82,20 @@ foreign import ccall unsafe "yices_init"
 foreign import ccall unsafe "yices_exit"
     c_yices_exit :: IO ()
 
+foreign import ccall unsafe "yices_print_error"
+    c_yices_print_error :: Ptr CFile -> IO ()
+
 foreign import ccall unsafe "yices_bool_type"
     c_yices_bool_type :: IO YType
 
 foreign import ccall unsafe "yices_int_type"
     c_yices_int_type :: IO YType
+
+foreign import ccall unsafe "yices_new_scalar_type"
+    c_yices_new_scalar_type :: Int32 -> IO YType
+
+foreign import ccall unsafe "yices_constant"
+    c_yices_constant :: YType -> Int32 -> IO YTerm
 
 foreign import ccall unsafe "yices_new_uninterpreted_type"
     c_yices_new_uninterpreted_type :: IO YType
@@ -91,8 +109,17 @@ foreign import ccall unsafe "yices_set_type_name"
 foreign import ccall unsafe "yices_set_term_name"
     c_yices_set_term_name :: YTerm -> CString -> IO ()
 
+foreign import ccall unsafe "yices_get_type_by_name"
+    c_yices_get_type_by_name :: CString -> IO YType
+
 foreign import ccall unsafe "yices_get_term_by_name"
     c_yices_get_term_by_name :: CString -> IO YTerm
+
+foreign import ccall unsafe "yices_parse_type"
+    c_yices_parse_type :: CString -> IO YType
+
+foreign import ccall unsafe "yices_parse_term"
+    c_yices_parse_term :: CString -> IO YTerm
 
 foreign import ccall unsafe "yices_eq"
     c_yices_eq :: YTerm -> YTerm -> IO YTerm
@@ -118,6 +145,12 @@ foreign import ccall unsafe "yices_assert_formula"
 foreign import ccall unsafe "yices_check_context"
     c_yices_check_context :: Ptr YContext -> Ptr YParam -> IO YSMTStatus
 
+foreign import ccall unsafe "yices_push"
+    c_yices_push :: Ptr YContext -> IO ()
+
+foreign import ccall unsafe "yices_pop"
+    c_yices_pop :: Ptr YContext -> IO ()
+
 foreign import ccall unsafe "yices_get_model"
     c_yices_get_model :: Ptr YContext -> Int32 -> IO (Ptr YModel)
 
@@ -126,4 +159,7 @@ foreign import ccall unsafe "yices_free_model"
 
 foreign import ccall unsafe "yices_get_int64_value"
     c_yices_get_int64_value :: Ptr YModel -> YTerm -> Ptr Int64 -> IO Int32
+
+foreign import ccall unsafe "fdopen"
+    c_fdopen :: CInt -> CString -> IO (Ptr CFile)
 

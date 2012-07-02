@@ -9,6 +9,7 @@ import Data.Maybe
 import System.IO
 
 import Control.Monad.State
+import qualified Yices2.Syntax as Y
 import qualified Yices2.Yices2 as Y
 
 import Seri.Failable
@@ -30,10 +31,10 @@ type YicesMonad = StateT YicesState IO
 
 sendCmds :: [Y.Command] -> Y.Context -> Handle -> IO ()
 sendCmds cmds ctx dh = do
-    hPutStr dh (unlines (map show cmds))
-    mapM (Y.run ctx) cmds
+    hPutStr dh (unlines (map Y.pretty cmds))
+    mapM_ (Y.run ctx) cmds
 
-runCmds :: [Y.Commands] -> YicesMonad ()
+runCmds :: [Y.Command] -> YicesMonad ()
 runCmds cmds = do
     ctx <- gets ys_ctx
     dh <- gets ys_dh
@@ -87,7 +88,7 @@ runQuery gr env e = do
                 Y.STATUS_SAT -> do
                     arg' <- realize arg
                     return $ AppE (ConE (Sig "Satisfiable" (AppT (ConT "Answer") (typeof arg)))) arg'
-                Y.UNSAT -> return $ ConE (Sig "Unsatisfiable" (AppT (ConT "Answer") (typeof arg)))
+                Y.STATUS_UNSAT -> return $ ConE (Sig "Unsatisfiable" (AppT (ConT "Answer") (typeof arg)))
                 _ -> return $ ConE (Sig "Unknown" (AppT (ConT "Answer") (typeof arg)))
         (VarE (Sig "free" (AppT (ConT "Query") t))) -> do
             t' <- declareNeeded env t
@@ -98,7 +99,7 @@ runQuery gr env e = do
             p' <- declareNeeded env p
             true <- yExp trueE
             yp <- yExp p'
-            runCmds [Y.Assert (eqE true yp)]
+            runCmds [Y.Assert (Y.eqE true yp)]
             return (ConE (Sig "()" (ConT "()")))
         (AppE (VarE (Sig "queryS" _)) q) -> do
             odecls <- gets ys_decls
@@ -119,7 +120,7 @@ runQuery gr env e = do
         x -> error $ "unknown Query: " ++ pretty x
 
 
-yType :: Type -> Y.TypY
+yType :: Type -> Y.Type
 yType t = surely $ yicesT t
 
 yDecs :: [Dec] -> YicesMonad [Y.Command]
@@ -150,7 +151,8 @@ runYices gr opts env e = do
     hSetBuffering dh NoBuffering
     Y.init
     ctx <- Y.mkctx
-    (x, _) <- runStateT query (YicesState pds ctx dh 1 ys)
+    let mono = fst $ monomorphic env e
+    (x, _) <- runStateT (runQuery gr env e) (YicesState [] ctx dh 1 (ys mono))
     hClose dh
     Y.exit
     return x
@@ -168,6 +170,7 @@ realizefree nm t | t == integerT = do
         _ -> error $ "realize free expected Satisfiable, but wasn't"
     ctx <- gets ys_ctx
     ival <- lift $ Y.getIntegerValue ctx (yicesN nm)
+    debug $ "; " ++ nm ++ " is " ++ show ival
     return (IntegerE ival)
 realizefree nm t@(AppT (AppT (ConT "->") _) _)
   = error $ "TODO: realizefree type " ++ pretty t
@@ -181,7 +184,7 @@ realizefree nm t =
             runCmds [Y.Define (yicesN f) (yType t) Nothing | (f, t) <- zip free ts]
             let args = [VarE (Sig n t) | (n, t) <- zip free ts]
             want <- yExp (appsE $ (ConE (Sig cn (ConT dt))) : args)
-            runCmds [Y.Assert (Y.eqE (Y.VarE (yicesN nm)) want)]
+            runCmds [Y.Assert (Y.eqE (Y.varE (yicesN nm)) want)]
             res <- check
             case res of
                 Y.STATUS_SAT -> do

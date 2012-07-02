@@ -181,6 +181,7 @@ realizefree nm t | t == integerT = do
         _ -> error $ "realize free expected Satisfiable, but wasn't"
     ctx <- gets ys_ctx
     ival <- lift $ Y.getIntegerValue ctx (yicesN nm)
+    debug $ "; " ++ nm ++ " is " ++ show ival
     return (IntegerE ival)
 realizefree nm t@(AppT (AppT (ConT "->") _) _)
   = error $ "TODO: realizefree type " ++ pretty t
