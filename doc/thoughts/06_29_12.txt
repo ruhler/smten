@@ -133,3 +133,29 @@ All this goes into the Yices2 directory. This should be plenty of hopefully
 not too mentally involved valuable busy work. It should last me the hour at
 least.
 
+Fri Jun 29 16:05:17 EDT 2012
+
+I wrote an abstract syntax and pretty printer. Probably has bugs, but it's a
+good first start.
+
+What's the next thing I need? Well, I'll want an FFI file, which has the raw
+FFI, but I don't think I want or need the entire thing. So I think I should
+drive it by the next higher level interface up. But, I have to decide what I
+want that to be.
+
+You would like to be able to run commands in yices. But you would also,
+probably, want to be able to get back the results of the commands. But you
+would also, I think, want to describe the commands in the abstract syntax.
+
+So here's what I propose. Have a way to run a command in the abstract syntax,
+which just submits the command and ignores the result. Then, as desired, for
+each of the kinds of commands I would want to run which return a result,
+add a specific function for it.
+
+The low level FFI I want to call Yices2.FFI. What should I call the higher
+level interface?
+
+How about... Yices2? Is that too boring?
+
+Sounds okay to me. I'll work on it next week when I come back.
+

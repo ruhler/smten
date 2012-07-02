@@ -39,6 +39,14 @@ runCmds cmds = do
     dh <- gets ys_dh
     lift $ sendCmds cmds ctx dh
 
+check :: YicesMonad Y.Result
+check = do
+    debug "(check)"
+    ctx <- gets ys_ctx
+    res <- lift $ Y.check ctx
+    debug $ "; check returned: " ++ show res
+    return res
+
 -- Output a line to the debug output.
 debug :: String -> YicesMonad ()
 debug msg = do
@@ -74,9 +82,7 @@ runQuery gr env e = do
     elaborated <- elaborate gr env e
     case elaborated of
         (AppE (VarE (Sig "query" _)) arg) -> do
-            ctx <- gets ys_ctx
-            res <- lift $ Y.check ctx
-            debug $ "; check returned: " ++ show res 
+            res <- check
             case res of 
                 Y.Undefined -> return $ ConE (Sig "Unknown" (AppT (ConT "Answer") (typeof arg)))
                 Y.Satisfiable -> do
@@ -169,12 +175,11 @@ runYices primlib gr opts env e = do
 realizefree :: String -> Type -> YicesMonad Exp
 realizefree nm t | t == integerT = do
     debug $ "; realize integer: " ++ nm
-    ctx <- gets ys_ctx
-    res <- lift $ Y.check ctx
-    debug $ "; check returned " ++ show res
+    res <- check
     case res of
         Y.Satisfiable -> return ()
         _ -> error $ "realize free expected Satisfiable, but wasn't"
+    ctx <- gets ys_ctx
     ival <- lift $ Y.getIntegerValue ctx (yicesN nm)
     return (IntegerE ival)
 realizefree nm t@(AppT (AppT (ConT "->") _) _)
@@ -190,9 +195,7 @@ realizefree nm t =
             let args = [VarE (Sig n t) | (n, t) <- zip free ts]
             want <- yExp (appsE $ (ConE (Sig cn (ConT dt))) : args)
             runCmds [Y.ASSERT (Y.VarE (yicesN nm) Y.:= want)]
-            ctx <- gets ys_ctx
-            res <- lift $ Y.check ctx
-            debug $ "; check returned: " ++ show res
+            res <- check
             case res of
                 Y.Satisfiable -> do
                     argvals <- sequence [realizefree n t | (n, t) <- zip free ts]
