@@ -100,7 +100,8 @@ runQuery gr env e = do
         (AppE (VarE (Sig "assert" _)) p) -> do
             idepth <- gets ys_idepth
             let inlined = inline idepth env p
-            p' <- declareNeeded env inlined
+            simplified <- elaborate simplifyR env inlined
+            p' <- declareNeeded env simplified
             true <- yExp trueE
             yp <- yExp p'
             runCmds [Y.Assert (Y.eqE true yp)]

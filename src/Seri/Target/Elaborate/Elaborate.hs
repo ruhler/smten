@@ -1,10 +1,11 @@
 
 -- | Target for reducing a seri expression to a normal form.
 module Seri.Target.Elaborate.Elaborate (
-    Rule(..), rules, elaborate, coreR,
+    Rule(..), rules, elaborate, coreR, simplifyR,
     ) where
 
 import Data.Generics
+import Data.Maybe(catMaybes, fromMaybe)
 
 import Seri.Failable
 import Seri.Lambda
@@ -49,6 +50,13 @@ elaborate r env prg = do
 coreR :: (Monad m) => Rule m
 coreR = rules [casesubR, caseredR, appredR, applsubR, apprsubR, varredR]
 
+-- | The core simplification rule.
+-- Simplification simplifies expressions inside lambdas and case statements,
+-- but does not perform variable substitution from the environment.
+simplifyR :: (Monad m) => Rule m
+simplifyR = rules [casesubR, caseredR, casesimpR, appredR, applsubR, apprsubR, lamsimpR]
+        
+
 casesubR :: (Monad m) => Rule m
 casesubR = Rule $ \gr env e ->
    case e of
@@ -59,12 +67,30 @@ casesubR = Rule $ \gr env e ->
             return $ CaseE vx' ms
       _ -> return Nothing
 
+casesimpR :: (Monad m) => Rule m
+casesimpR = Rule $ \gr env e ->
+    case e of
+      (CaseE x ms) -> do
+           ms' <- sequence [runme gr env b | Match _ b <- ms]
+           if null (catMaybes ms')
+              then return Nothing
+              else return (Just $ CaseE x [Match p (fromMaybe b b') | (Match p b, b') <- zip ms ms'])
+      _ -> return Nothing
+
 caseredR :: (Monad m) => Rule m
 caseredR = Rule $ \gr env e ->
    case e of
       (CaseE x ((Match p b):ms))
          -> case (match p x) of
-                Failed -> return . Just $ CaseE x ms
+                Failed ->
+                    -- Don't make a case statement empty, because we want to 
+                    -- keep enough information to determine the type of the
+                    -- case statement.
+                    -- TODO: maybe there's something better we could do?
+                    -- return a call to some error primitive or something?
+                    if null ms 
+                        then return Nothing
+                        else return . Just $ CaseE x ms
                 Succeeded vs -> return . Just $ reduces vs b
                 _ -> return Nothing
       _ -> return Nothing
@@ -95,6 +121,16 @@ apprsubR = Rule $ \gr env e ->
               vb' <- b'
               return $ AppE a vb'
       _ -> return Nothing
+
+lamsimpR :: (Monad m) => Rule m
+lamsimpR = Rule $ \gr env e ->
+    case e of
+       (LamE s b) -> do
+            b' <- runme gr env b
+            return $ do
+                vb' <- b'
+                return $ LamE s vb'
+       _ -> return Nothing
 
 varredR :: (Monad m) => Rule m
 varredR = Rule $ \gr env e ->

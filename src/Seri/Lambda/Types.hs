@@ -89,6 +89,7 @@ instance Typeof Exp where
     typeof (LamE tn e) = arrowsT [typeof tn, typeof e]
     typeof (ConE tn) = typeof tn
     typeof (VarE tn) = typeof tn
+    typeof e = error $ "typeof: " ++ show e
     
 instance Typeof Sig where
     typeof (Sig _ t) = t

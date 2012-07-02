@@ -185,5 +185,48 @@ Looks like a mix between the lambda issue and perhaps reading a don't care
 integer value from a model, so let me get rid of the lambda issue first by
 implementing simplification.
 
+Mon Jul  2 16:06:45 EDT 2012
+
+How to implement simplification?
+
+Simplification...
+
+It's the same, almost, as elaboration, except:
+ - no variable substitutions are done from the environment.
+ - simplification goes inside case and lambdas.
+
+So, add another elaboration rule. That can be used for simplification. Easy.
+
+Mon Jul  2 16:42:28 EDT 2012
+
+Good. It seems to be working... It also seems like a depth of 30 is not enough
+for the bluespec query? That's odd. Well, maybe there are lots of function
+calls, even though they aren't recursive.
+
+But there is a bug. A type error somehow. A lambda is ...
+
+Oh. I know the problem. I think. Do I?
+
+If we try to compile to yices:
+    (\n -> b) blah
+
+Now, I don't ever expect to see this, but if I did... that's the trouble it
+would cause.
+
+No. It looks like this lambda is the argument to an if statement.
+Looks almost like... \_ -> blah, where _ is a function?
+
+Well, whatever it is, I can pursue this tomorrow. I think the way to best
+pursue it would be dump out the predicate:
+- uninlined
+- inlined
+- simplified
+- yicesed
+
+It's going to be a bit messy. Use diff if needed. Look at it. Understand where
+the error is comming from (why do we have any lambdas at all?)
+
+Just for the fun of it, let me up my inline depth to like, 300, and see if
+that makes any difference. Nope. I'll figure this out tomorrow.
 
 
