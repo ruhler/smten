@@ -1,6 +1,8 @@
 
 module Yices2.Yices2 (
-    Yices2.Yices2.init, exit, mkctx, run
+    Yices2.Yices2.init, exit, mkctx, run,
+    SMTStatus(..),
+    getIntegerValue,
     ) where
 
 import Foreign
@@ -70,4 +72,17 @@ yterm (FunctionE (ImmediateE (VarV "xor")) [a, b]) = binterm c_yices_xor2 a b
 yterm (FunctionE (ImmediateE (VarV "and")) [a, b]) = binterm c_yices_and2 a b
 yterm e = error $ "TODO: yterm " ++ pretty e
 
+
+-- | Given the name of a free variable with integer type, return its value.
+getIntegerValue :: Context -> String -> IO Integer
+getIntegerValue (Context fp) nm = do
+    model <- withForeignPtr fp $ \yctx -> c_yices_get_model yctx 1
+    x <- alloca $ \ptr -> do
+        term <- yterm (varE nm)
+        ir <- c_yices_get_int64_value model term ptr
+        if ir == 0
+            then peek ptr
+            else error $ "yices2 get int64 value returned: " ++ show ir
+    c_yices_free_model model
+    return (toInteger x)
 

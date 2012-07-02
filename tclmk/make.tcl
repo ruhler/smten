@@ -39,17 +39,17 @@ proc ghcprog {target source args} {
 ghcprog "Yices2/Tests/bool_eqs2" "Yices2/Tests/bool_eqs2.hs" $YICES2LIB
 run ./build/src/Yices2/Tests/bool_eqs2
 
-
-
 ghcprog "serie" "Seri/Target/Elaborate/serie.hs"
 ghcprog "serih" "Seri/Target/Haskell/serih.hs"
 ghcprog "serim" "Seri/Target/Monomorphic/serim.hs"
 ghcprog "seriq" "Seri/SMT/seriq.hs" $YICESLIB
+ghcprog "seriq2" "Seri/SMT/seriq2.hs" $YICES2LIB
 ghcprog "serit" "Seri/Lambda/serit.hs"
 
 set SERIE build/src/serie
 set SERIH build/src/serih
 set SERIQ build/src/seriq
+set SERIQ2 build/src/seriq2
 set SERIT build/src/serit
 
 # The general seri test
@@ -95,6 +95,20 @@ querytest "Complex"
 querytest "If"
 querytest "Casenomatch"
 querytest "Bluespec"
+
+# The SMT query2 tests
+proc query2test {name args} {
+    run $::SERIQ2 -d build/src/Seri/SMT/Tests/$name.dbg -i build/src \
+         build/src/Seri/SMT/Tests/$name.sri {*}$args \
+         > build/src/Seri/SMT/Tests/$name.out
+}
+
+query2test "Query1"
+query2test "Query2"
+query2test "Complex"
+query2test "If"
+query2test "Casenomatch"
+query2test "Bluespec"
 
 # The cabal package
 set wd [pwd]

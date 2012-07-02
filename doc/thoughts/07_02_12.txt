@@ -46,10 +46,10 @@ Ideally we support both yices1 and yices2 at the same time. There's no reason
 we can't do this, it will just be annoying to have to maintain both of them.
 
 Yices2 steps:
-- implement a Yices2 target
++ implement a Yices2 target
 Same as yices1 target, except uses yices2 syntax and performs approximation
 (assumes totally inlined).
-- implement SMT.Yices2
++ implement SMT.Yices2
 Same as yices1, but uses the yices2 interface.
 - implement inlining
 - implement simplification
@@ -122,4 +122,10 @@ results I want.
 
 I bet I can get this working by the end of the day. That would be cool.
 
+Mon Jul  2 12:59:54 EDT 2012
+
+I have the rough draft of SMT.Yices2.
+
+So now I should be able to set up seriq2, and try Query1 using it. See if it
+works.
 
