@@ -39,3 +39,87 @@ Okay, so I have an initial FFI up and running that I can make use of. Enough
 is there, I think, that I can use the interface as is, adding to things ad
 TODOs are encountered.
 
+So, we have (lazily) a yices2 FFI. What are all the steps remaining to support
+a yices2 back end?
+
+Ideally we support both yices1 and yices2 at the same time. There's no reason
+we can't do this, it will just be annoying to have to maintain both of them.
+
+Yices2 steps:
+- implement a Yices2 target
+Same as yices1 target, except uses yices2 syntax and performs approximation
+(assumes totally inlined).
+- implement SMT.Yices2
+Same as yices1, but uses the yices2 interface.
+- implement inlining
+- implement simplification
+Because the inlined expressions will be pretty big otherwise.
+Note: This is a simplification which does not look up anything in the
+environment, so it doesn't need to worry about recursive functions or anything
+like that. All that was taken at the inline phase.
+
+Hey, cool, this should be pretty easy. And I can do initial tests without
+inlining, though that's probably a bit boring. Let me try it, and see what
+happens. Start without inlining or simplification. Add inlining. Then add
+simplification. Then I'll be done. I'll have yices2 up and running.
+
+Mon Jul  2 10:27:22 EDT 2012
+
+Oops! Forgot a major thing. Representing algebraic data types in yices.
+Well, I know how I want to represent them: as a tuple with one field for the
+tag, and one field for the values of each (non-empty?) constructor.
+
+Fine. Let me assume that representation, and see how hard it is to implement
+the yices2 compiler then.
+
+Mon Jul  2 10:49:05 EDT 2012
+
+Another problem: constructor applications. How to deal with those?
+
+I should unfold them completely. (I hope we don't have partial constructor
+application). Then, perhaps define an uninterpreted value for every data type,
+just for the convenience of constructing new ones. Do the construction via an
+update.
+
+Well, I actually need to get rid of partial application entirely too. So maybe
+I assume I do that in a separate step? Or have a case statement. If it's a
+function, make a function. If it's a constructor, make an update. That sounds
+good to me.
+ 
+Mon Jul  2 11:05:16 EDT 2012
+
+Trouble. In order to do a constructor, I have to know where in the tuple the
+data constructor is. So, looks like I want to pass the environment into the
+yices compiler. That seems fair enough.
+
+Mon Jul  2 11:37:15 EDT 2012
+
+Okay! So I have a rough draft of the yices2 compiler. The only issue currently
+known that I'll have to figure out is supporting a tupleE with no arguments.
+Either I can make it, like, bool, which just is never referenced? That might
+be easiest, since we don't have a builtin void type, and I don't know if we
+have defined an uninterpreted unit type yet.
+
+Or... I could just not have a field for that. Doesn't that make more sense?
+Cleaner. Simpler for yices2. Easier to read...
+
+Sure. Let me do try that.
+
+Mon Jul  2 11:56:22 EDT 2012
+
+There! Good. I like that. I think it will be clean.
+
+So now I have the rough draft of the yices2 compiler.
+
+What's the next step? Can I try it out yet? Or should I implement the driver
+first?
+
+Let me implement the driver first. Once I have the driver, I can implement a
+seriq2 which uses yices2 instead of yices1, and try it on all my examples to
+see what happens. That should expose bugs in the yices2 compiler, and the
+driver, and force us to do simplification and finally inlining to get the
+results I want.
+
+I bet I can get this working by the end of the day. That would be cool.
+
+

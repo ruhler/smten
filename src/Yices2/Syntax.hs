@@ -6,7 +6,8 @@
 module Yices2.Syntax (
     Symbol, Command(..), Typedef(..), Type(..), Expression(..),
     VarDecl, Binding, ImmediateValue(..),
-    varE,
+    trueE, varE, integerE, selectE, eqE,
+    tupleE, tupleUpdateE,
     pretty,
   ) where
 
@@ -62,8 +63,35 @@ data ImmediateValue =
   | VarV Symbol
   | RationalV Rational
 
+trueE :: Expression
+trueE = ImmediateE TrueV
+
 varE :: String -> Expression
 varE n = ImmediateE (VarV n)
+
+integerE :: Integer -> Expression
+integerE i = ImmediateE (RationalV (fromInteger i))
+
+selectE :: Expression -> Integer -> Expression
+selectE e i = FunctionE (varE "select") [e, integerE i]
+
+eqE :: Expression -> Expression -> Expression
+eqE a b = FunctionE (varE "=") [a, b]
+
+tupleE :: [Expression] -> Expression
+tupleE [] = error "tupleE: empty list"
+tupleE args = FunctionE (varE "mk-tuple") args
+
+tupleUpdateE :: Expression -> Integer -> Expression -> Expression
+tupleUpdateE tpl idx nv = FunctionE (varE "tuple-update") [tpl, integerE idx, nv]
+
+andE :: [Expression] -> Expression
+andE [] = trueE
+andE [x] = x
+andE xs = FunctionE (varE "and") xs
+
+ifE :: Expression -> Expression -> Expression -> Expression
+ifE p a b = FunctionE (varE "if") [p, a, b]
 
 -- | Convert an abstract syntactic construct to concrete yices2 syntax.
 class Concrete a where

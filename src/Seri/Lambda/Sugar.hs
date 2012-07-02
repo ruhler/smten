@@ -2,7 +2,7 @@
 -- | Constructor functions for desugaring higher level constructs into the
 -- core Seri IR.
 module Seri.Lambda.Sugar (
-    ifE, lamE, appsE,
+    ifE, lamE, appsE, unappsE,
     Stmt(..), doE,
     Clause(..), clauseE,
     trueE, falseE, listE, tupE, tupP,
@@ -109,6 +109,11 @@ lamE (x:xs) e = LamE x (lamE xs e)
 -- | (a b ... c)
 appsE :: [Exp] -> Exp
 appsE = foldl1 AppE
+
+-- | Given (a b ... c), returns [a, b, ..., c]
+unappsE :: Exp -> [Exp]
+unappsE (AppE a b) = unappsE a ++ [b]
+unappsE e = [e]
 
 -- | [a, b, ..., c]
 -- The list must be non-null so the type can properly be inferred.
