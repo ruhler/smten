@@ -89,7 +89,7 @@ yterm e = do
     if ye < 0 
         then do 
             withstderr $ \stderr -> c_yices_print_error stderr
-            error $ "yterm: " ++ pretty e
+            error $ "yterm error"
         else return ye
 
 -- | Given the name of a free variable with integer type, return its value.
@@ -97,11 +97,14 @@ getIntegerValue :: Context -> String -> IO Integer
 getIntegerValue (Context fp) nm = do
     model <- withForeignPtr fp $ \yctx -> c_yices_get_model yctx 1
     x <- alloca $ \ptr -> do
-        term <- yterm (varE nm)
-        ir <- c_yices_get_int64_value model term ptr
-        if ir == 0
-            then peek ptr
-            else error $ "yices2 get int64 value returned: " ++ show ir
-    c_yices_free_model model
-    return (toInteger x)
+            term <- yterm (varE nm)
+            ir <- c_yices_get_int64_value model term ptr
+            if ir == 0
+               then peek ptr
+               else error $ "yices2 get int64 value returned: " ++ show ir
+
+    -- Force evaluation of 'x', because we are getting seg faults, and I think
+    -- this might be the issue (though honestly, I don't really know)
+    case toInteger x of
+        v -> c_yices_free_model model >> return v
 

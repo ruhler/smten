@@ -102,8 +102,8 @@ runQuery gr env e = do
             let inlined = inline idepth env p
             simplified <- elaborate simplifyR env inlined
             p' <- declareNeeded env simplified
-            true <- yExp trueE
             yp <- yExp p'
+            true <- yExp trueE
             runCmds [Y.Assert (Y.eqE true yp)]
             return (ConE (Sig "()" (ConT "()")))
         (AppE (VarE (Sig "queryS" _)) q) -> do

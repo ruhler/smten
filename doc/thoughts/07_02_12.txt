@@ -228,5 +228,3 @@ the error is comming from (why do we have any lambdas at all?)
 
 Just for the fun of it, let me up my inline depth to like, 300, and see if
 that makes any difference. Nope. I'll figure this out tomorrow.
-
-

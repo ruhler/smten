@@ -1,0 +1,206 @@
+
+Tue Jul  3 08:16:52 EDT 2012
+
+Plan for today... to start. Understand the bug in the Bluespec query.
+
+How?
+
+Print out for each assertion:
+ - the polymorphic expression
+ - the inlined expression
+ - the simplified expression
+ - the monomorphic expression
+ - the yices expression
+
+Look over them, verify they make sense to me, or see what the issue is and
+report back.
+
+
+Tue Jul  3 08:29:45 EDT 2012
+
+I see a problem. The inliner is inlining local variables when it shouldn't be.
+
+Perhaps I can traverse from the top, and add a list of bound variables
+somewhere.
+
+Tue Jul  3 08:44:26 EDT 2012
+
+There's a problem with garbage collection. A bug that only occasionally shows
+up. I should figure out what it is. Perhaps the model pointer should be
+foreign? I'm not sure.
+
+And we run out of stack space... which is a bad sign. But let me see if
+inlining worked anyway.
+
+Tue Jul  3 08:49:33 EDT 2012
+
+We still run out of stack space, after 1G. So clearly something is wrong.
+
+Tue Jul  3 08:52:40 EDT 2012
+
+Looks like inline gets stuck in an infinite loop. Let me get rid of the use of
+generics, which I think are causing the problem.
+
+Tue Jul  3 09:06:33 EDT 2012
+
+Okay, so maybe I had a bug in the generics implementation that went away, but
+it's not so hard to do the whole inlining.
+
+So now we've gotten rid of all the lam things, which is good. Though inlining
+and simplifying seems to have taken a really long time.
+
+Now we run into another problem.
+
+Let me first review what inlining did, and make sure it looks right to me.
+
+Tue Jul  3 09:11:22 EDT 2012
+
+The inlining looks no so unreasonable.
+
+Now, let's take a look at the yices expression, see what's up there.
+
+err... it's really really big. Too big?
+
+Let me check out simplification and such and try to understand why the query
+is so massive.
+
+Tue Jul  3 09:34:21 EDT 2012
+
+I don't understand how the yices expression can be so massive, given the
+monomorphic expression really isn't. We're talking a couple hundred lines for
+the monomorphic expression, half a million lines for the yices expression.
+That doesn't make sense.
+
+I should try to look at it and understand, if I can.
+
+And now we're running into that seg fault again. Sigh.
+
+Tue Jul  3 09:59:35 EDT 2012
+
+Looks like all the time is being spent in concrete. It perhaps has a space
+leak or a memory leak or both. Then again... it may just be that concrete is
+forcing the evaluation of the inlining and simplification and such?
+
+Tue Jul  3 10:07:32 EDT 2012
+
+Here's an observation: There are some types which have a single constructor,
+such as tuple. These can be represented without a tag. This would simplify the
+generated yices code, clean it up. Avoid tag testing and tag updating and
+having to use a uidt for it, all of which leads to a bit of code.
+
+Oh... I think I see a potentially big issue.
+
+We duplicate big expressions in case statements.
+That is, I say something like:
+
+case x of
+    foo -> ...
+    bar -> ...
+    sludge -> ...
+
+And this turns into:
+if x == foo then
+ else if x == bar then
+  else ...
+
+The trouble is, 'x' could be a really big expression, and I'm duplicating it
+for every branch of a case statement. And, what's worse, 'x' itself could be a
+case statement which is duplicating some other big expression y, and now we
+have a combinatorial explosion. Thus explaining what I'm seeing and causing
+the blow up, and all sorts of sadness.
+
+I still think there are other bugs, but doing this simplification will be
+necessary, and will clarify things, hopefully, greatly.
+
+Cool. So, use let expressions to my advantage. How should this work?
+
+Well, I need to pick a variable name. And I wonder if there can be any scoping
+issues?
+
+I don't think so... unless we end up shadowing a user defined variable name.
+So don't use 'x', or anything like that, but something like ~c should be fine.
+The scope will only be in the if statements. We never need to see ~c in the
+body if the expression. And never in the statement predicates themselves, so
+everyone can share the same variable name.
+
+Good. So, here's the plan:
+
+case x of
+    foo -> ...
+    bar -> ...
+    sludge -> ...
+
+Becomes:
+
+let ~c = x
+in if ~c == foo then
+    else if ~c == bar then
+     else ...
+
+Should be trivial.
+
+Tue Jul  3 10:24:03 EDT 2012
+
+Yup! That helps. Let me see if I can figure out the yices problem now.
+
+I don't know. It says there is a type error. The type looks fine to me.
+
+Let me not use ~c for everything. Let me have a counter, and allocate new ones
+as needed.
+
+Tue Jul  3 11:11:00 EDT 2012
+
+That didn't solve the problem, but I think it's better to do anyway.
+
+How to figure out this problem? I have to reduce it to the simplest expression
+I can which still has the problem. Trying to construct the problem didn't
+work.
+
+Tue Jul  3 11:47:07 EDT 2012
+
+Hypothesis: TState is both a type and a constructor.
+Err... apparently not?
+
+For some reason, 
+ (select (select (foo :: TState) 2) 1)
+is not an integer.
+
+Tue Jul  3 12:05:26 EDT 2012
+
+Well, perhaps there's some other type error that I'm not catching, but rather
+hiding. I think... keep going, try to minimize the problem. Replace
+expressions with variables of the correct type. I bet if I go down deep
+enough, I'll figure out what the bug is. And if not, I'll at least have a
+small enough expression I can ask the sri people to take a look at.
+
+Tue Jul  3 12:41:00 EDT 2012
+
+Okay, let me dive in, reduce this expression methodically, see where it gets
+me.
+
+Tue Jul  3 12:54:21 EDT 2012
+
+I don't understand the problem. I can only think to take wild guess.
+
+How about... avoid having tuple1? Perhaps that causes issues?
+
+Tue Jul  3 13:07:04 EDT 2012
+
+I don't know. I don't know what to do.
+
+Hmm... here's an idea. I don't use anything specific to yices2. How about
+trying to run this under yices1?
+
+Oh. tuple-update is specific to yices2. Bummer.
+
+Tue Jul  3 13:24:02 EDT 2012
+
+I give up. It's too odd. Too strange.
+Let me ask the sri people for their opinion. It will at least get another set
+of eyes on the issue, and they can maybe see more inside stuff.
+
+Tue Jul  3 13:48:49 EDT 2012
+
+Okay, good. So I declare it a yices2 bug until further notice, and thus that
+the yices 2 target works correctly now? Perhaps.
+

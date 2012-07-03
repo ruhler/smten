@@ -15,7 +15,7 @@ runYCompiler :: YCompiler a -> YS -> Failable (a, YS)
 runYCompiler = runStateT
 
 ys :: Env -> YS
-ys e = YS e [] 1 1
+ys e = YS e [] 1 1 1
 
 -- | Convert a seri name to a yices name.
 yicesN :: String -> String
@@ -50,7 +50,8 @@ data YS = YS {
     ys_env :: Env,          -- ^ The environment.
     ys_cmds :: [Y.Command], -- ^ Declarations needed for what was compiled
     ys_errid :: Integer,    -- ^ unique id to use for next free error variable
-    ys_lamid :: Integer     -- ^ unique id to use for next free lambda variable
+    ys_lamid :: Integer,    -- ^ unique id to use for next free lambda variable
+    ys_caseid :: Integer    -- ^ unique id to use for next case arg variable
 }
 
 type YCompiler = StateT YS Failable
@@ -68,6 +69,13 @@ yfreeerr it ot = do
     let cmd = Y.Define nm t Nothing
     modify $ \ys -> ys { ys_cmds = cmd : ys_cmds ys, ys_errid = id+1 }
     return nm
+
+-- Get a new, free variable for use as a case argument variable.
+yfreecase :: YCompiler String
+yfreecase = do
+    id <- gets ys_caseid
+    modify $ \ys -> ys { ys_caseid = id+1 }
+    return $ yicesname ("c~" ++ show id)
 
 -- Translate a seri expression to a yices expression
 yExp :: Exp -> YCompiler Y.Expression
@@ -110,8 +118,13 @@ yExp (CaseE e ms) =
           let lete = if null bindings then b' else Y.LetE bindings b'
           return $ Y.ifE pred lete bms
   in do
+      -- The expression e' can get really big, so we don't want to duplicate
+      -- it when we use it to check for a pattern match in every alternative.
+      -- Instead we bind it to variable ~c and duplicate that instead.
       e' <- yExp e
-      dematch e' ms
+      cnm <- yfreecase
+      body <- dematch (Y.varE cnm) ms
+      return $ Y.LetE [(cnm, e')] body
 yExp e@(AppE a b) =
     case unappsE e of 
        ((ConE s):args) -> yCon s args

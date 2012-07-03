@@ -159,16 +159,16 @@ instance Concrete Type where
 instance Concrete Expression where
     concrete (ImmediateE iv) = concrete iv
     concrete (ForallE decls e)
-        = parens $ text "forall" <+> parens (hsep $ map concrete decls) <+> concrete e
+        = parens $ text "forall" <+> parens (sep $ map concrete decls) <+> concrete e
     concrete (ExistsE decls e)
-        = parens $ text "exists" <+> parens (hsep $ map concrete decls) <+> concrete e
+        = parens $ text "exists" <+> parens (sep $ map concrete decls) <+> concrete e
     concrete (LetE bindings e)
-        = parens $ text "let" <+> parens (hsep $ map concrete bindings) <+> concrete e
+        = parens $ sep [text "let", parens (sep $ map concrete bindings), concrete e]
     concrete (UpdateE f es e)
         = parens $ text "update" <+> concrete f
             <+> parens (hsep $ map concrete es) <+> concrete e
     concrete (FunctionE f args)
-        = parens $ concrete f <+> hsep (map concrete args)
+        = parens $ sep ((concrete f) : (map concrete args))
 
 instance Concrete VarDecl where
     concrete (n, t) = text n <+> text "::" <+> concrete t
