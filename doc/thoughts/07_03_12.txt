@@ -204,3 +204,24 @@ Tue Jul  3 13:48:49 EDT 2012
 Okay, good. So I declare it a yices2 bug until further notice, and thus that
 the yices 2 target works correctly now? Perhaps.
 
+The claim is, I support yices2. That will be good to have. The question is...
+now that I claim to support yices2, what should I do next?
+
+There's plenty of work I could do on the front end:
+ - clean up
+ - test and fix bugs
+ - improve modularity support
+ - add little features
+ - documentation
+
+There's some stuff to work on with SMT:
+ - tests and cleanup
+
+There's another big direction I could go:
+ - add a pvs target (should actually be fairly easy)
+
+I think what I'll do is the following.
+Document how the seri language differs from haskell. This will be good to
+understand, and will serve as a to do list, and may help serve as
+documentation for people other than me who want to use seri.
+

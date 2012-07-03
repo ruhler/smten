@@ -108,7 +108,7 @@ query2test "Query2"
 query2test "Complex"
 query2test "If"
 query2test "Casenomatch"
-query2test "Bluespec"
+#query2test "Bluespec"
 
 # The cabal package
 set wd [pwd]

@@ -2,7 +2,11 @@
 {
 
 -- vim: ft=haskell
-module Seri.Lambda.Parser (parse) where
+module Seri.Lambda.Parser (
+    -- * The Seri Language
+    -- $doc
+    parse
+    ) where
 
 import Control.Monad.State
 
@@ -103,14 +107,6 @@ decl :: { PDec }
  | funlhs rhs
     { PClause (fst $1) (Clause (snd $1) $2) }
 
-funlhs :: { (Name, [Pat]) }
- : var opt(apats)
-    { ($1, fromMaybe [] $2) } 
-
-rhs :: { Exp }
- : '=' exp
-    { $2 }
-
 cdecls :: { [TopSig] }
  : cdecl
     { [$1] }
@@ -154,10 +150,10 @@ atype :: { Type }
     { ConT $1 }
  | tyvar
     { VarT $1 }
- | '[' type ']'
-    { AppT (ConT "[]") $2 }
  | '(' types_commasep ')'
     { foldl AppT (ConT $ "(" ++ replicate (length $2 - 1) ',' ++ ")") $2 }
+ | '[' type ']'
+    { AppT (ConT "[]") $2 }
  | '(' type ')'
     { $2 }
 
@@ -168,15 +164,14 @@ gtycon :: { String }
     { "()" }
  | '[' ']'
     { "[]" }
- | '(' commas ')'
-    { "(" ++ $2 ++ ")" }
  | '(' '->' ')'
     { "->" }
+ | '(' commas ')'
+    { "(" ++ $2 ++ ")" }
 
 context :: { [Class] }
  : '(' classes_commasep ')' '=>'
     { $2 }
-
 
 class :: { Class }
  : qtycls atypes
@@ -203,6 +198,14 @@ fielddecls :: { [(Name, Type)] }
 fielddecl :: { (Name, Type) }
  : var '::' type
     { ($1, $3) }
+
+funlhs :: { (Name, [Pat]) }
+ : var opt(apats)
+    { ($1, fromMaybe [] $2) } 
+
+rhs :: { Exp }
+ : '=' exp
+    { $2 }
 
 exp :: { Exp }
  : exp10
@@ -242,7 +245,6 @@ aexp :: { Exp }
  | '['  exps_commasep ']'
     { listE $2 }
 
--- TODO: Haskell doesn't allow a semicolon after the last alternative.
 alts :: { [Match] }
  : alt
     { [$1] }
@@ -288,30 +290,18 @@ apat :: { Pat }
     { let Sig n t = $1 in if n == "_" then WildP t else VarP $1 }
  | gcon_typed
     { let Sig n t = $1 in ConP t n [] }
+ | integer
+    { IntegerP $1 }
  | '(' pat ')'
     { $2 }
  | '(' pat ',' pats_commasep ')'
     { tupP ($2 : $4) }
- | integer
-    { IntegerP $1 }
-
-var_typed :: { Sig }
- : '(' var  '::' type ')'
-    { Sig $2 $4 }
- | var
-    { Sig $1 UnknownT }
 
 gcon_typed :: { Sig }
  : '(' gcon '::' type ')'
     { Sig $2 $4 }
  | gcon
     { Sig $1 UnknownT }
-
-qvar_withinfo :: { Exp }
- : '(' qvar '::' type ')'
-    { VarE (Sig $2 $4) }
- | qvar
-    { VarE (Sig $1 UnknownT) }
 
 gcon :: { String }
  : '(' ')'
@@ -323,27 +313,29 @@ gcon :: { String }
  | qcon
     { $1 }
 
+var_typed :: { Sig }
+ : '(' var  '::' type ')'
+    { Sig $2 $4 }
+ | var
+    { Sig $1 UnknownT }
+
 var :: { String }
  : varid
     { $1 }
  | '(' varsym ')'
     { $2 }
 
+qvar_withinfo :: { Exp }
+ : '(' qvar '::' type ')'
+    { VarE (Sig $2 $4) }
+ | qvar
+    { VarE (Sig $1 UnknownT) }
+
 qvar :: { String }
  : qvarid
     { $1 }
  | '(' qvarsym ')'
     { $2 }
-
-qop :: { Exp }
- : qvarsym
-    { VarE (Sig $1 UnknownT) }
- | qconop
-    { ConE (Sig $1 UnknownT) }
-
-qvarsym :: { String }
- : varsym
-    { $1 }
 
 con :: { String }
  : conid
@@ -354,6 +346,17 @@ qcon :: { String }
     { $1 }
  | '(' gconsym ')'
     { $2 }
+
+
+qop :: { Exp }
+ : qvarsym
+    { VarE (Sig $1 UnknownT) }
+ | qconop
+    { ConE (Sig $1 UnknownT) }
+
+qvarsym :: { String }
+ : varsym
+    { $1 }
 
 qconop :: { String }
  : gconsym
@@ -642,6 +645,96 @@ icoalesce ((n, c):ms) =
         rest = icoalesce rms
         m = Method n (clauseE (c : map snd me))
     in (m : rest)
+
+-- $doc
+-- The Seri language is a subset of haskell. The following lists the
+-- differences between the Seri language and haskell as defined in the 
+-- Haskell 98 Language Report.
+--
+-- [@Things to implement eventually, perhaps@]
+--
+-- - Layout is not supported.
+--
+-- - Explicit module exports are not allowed.
+--
+-- - The module name must be specified explicitly. Main will not be inferred.
+--
+-- - Qualified imports are not allowed.
+--
+-- - Importing a module under a different name using 'as' is not allowed.
+--
+-- - Import specifications are not supported.
+--
+-- - Type synonyms
+--
+-- - Contexts in data declarations
+--
+-- - Deriving clauses in data declarations
+--
+-- - Newtype declarations
+--
+-- - Contexts in class declarations
+--
+-- - Default declarations.
+--
+-- - Pattern bindings (?)
+--
+-- - Empty class declarations.
+--
+-- - Default class methods implementations.
+--
+-- - Multiple vars in a type signature.
+-- 
+-- - fixity declarations.
+--
+-- - Qualified names.
+--
+-- - Unparenthesized contexts.
+--
+-- - ! in constructor declarations.
+--
+-- - infix constructors.
+--
+-- - 'where' clauses in expressions.
+--
+-- - pattern guards.
+--
+-- - expression type signatures.
+--
+-- - infix operations that require precedence knowledge.
+--
+-- - arithmetic sequences.
+--
+-- - list comprehension.
+--
+-- - left and right sections.
+--
+-- - labeled construction and update.
+--
+-- - let statements in do notation.
+--
+-- - list patterns
+--
+-- - irrefutable patterns
+-- 
+-- - variable operators, such as (a `foo` b).
+--
+-- - float, char, and string literals.
+--
+-- [@Things meant to be different from haskell@]
+--
+-- - Extra semicolons are often allowed.
+--
+-- - Multi-param type classes are supported.
+--
+-- - let expressions. These aren't supported because they require lazy
+-- matching, which maybe we won't ever support in seri.
+--
+-- [@Things that may go away@]
+--
+-- - variables and constructors can be typed explicitly using a type signature
+-- expression syntax. This is so pretty printed seri code with type
+-- information can be parsed back in as is.
 
 
 parse :: FilePath -> String -> Failable Module
