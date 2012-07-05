@@ -6,6 +6,7 @@ module Seri.Target.Elaborate.Elaborate (
 
 import Data.Generics
 import Data.Maybe(catMaybes, fromMaybe)
+import Data.List(nub, (\\))
 
 import Seri.Failable
 import Seri.Lambda
@@ -99,7 +100,9 @@ appredR :: (Monad m) => Rule m
 appredR = Rule $ \gr env e ->
    case e of
       (AppE (LamE (Sig name _) body) b)
-         -> return . Just $ reduce name b body
+         -> let body' = alpharename (free b \\ [name]) body
+                result = reduce name b body'
+            in return $ Just result
       _ -> return Nothing
 
 applsubR :: (Monad m) => Rule m
@@ -196,4 +199,73 @@ reduces vs e@(VarE (Sig vn _)) =
     case lookup vn vs of
         (Just v) -> v
         Nothing -> e
+
+-- | Return a list of the free variables in the given expression.
+free :: Exp -> [Name]
+free =
+  let free' :: [Name] -> Exp -> [Name]
+      free' _ (IntegerE {}) = []
+      free' bound (CaseE e ms) = 
+        let freem :: Match -> [Name]
+            freem (Match p b) = free' (map fst (bindingsP p) ++ bound) b
+        in nub $ concat (free' bound e : map freem ms)
+      free' bound (AppE a b) = free' bound a ++ free' bound b
+      free' bound (LamE (Sig n _) b) = free' (n:bound) b
+      free' bound (ConE {}) = []
+      free' bound (VarE (Sig n _)) | n `elem` bound = []
+      free' bound (VarE (Sig n _)) = [n]
+  in free' []
+
+-- | Return a list of all variables in the given expression.
+names :: Exp -> [Name]
+names (IntegerE {}) = []
+names (CaseE e ms) = 
+  let namesm :: Match -> [Name]
+      namesm (Match p b) = map fst (bindingsP p) ++ names b
+  in nub $ concat (names e : map namesm ms)
+names (AppE a b) = names a ++ names b
+names (LamE (Sig n _) b) = nub $ n : names b
+names (ConE {}) = []
+names (VarE (Sig n _)) = [n]
+
+-- | Rename any variable bindings in the given expression to names which do
+-- not belong to the given list.
+alpharename :: [Name] -> Exp -> Exp
+alpharename bad e =
+  let isgood :: String -> Bool
+      isgood s = not (s `elem` bad)
+
+      isgoodnew :: String -> Bool
+      isgoodnew s = isgood s && not (s `elem` names e)
+
+      -- get the new name for the given name.
+      newname :: String -> String
+      newname n | isgood n = n
+      newname n = head (filter isgoodnew [n ++ show i | i <- [0..]])
+    
+      repat :: Pat -> Pat
+      repat (ConP t n ps) = ConP t n (map repat ps)
+      repat (VarP (Sig n t)) = VarP (Sig (newname n) t)
+      repat p@(IntegerP {}) = p
+      repat p@(WildP {}) = p
+
+      rematch :: [Name] -> Match -> Match
+      rematch bound (Match p b) = 
+        let p' = repat p
+            b' = rename (map fst (bindingsP p) ++ bound) b
+        in Match p' b'
+
+      -- Do alpha renaming in an expression given the list of bound variable
+      -- names before renaming.
+      rename :: [Name] -> Exp -> Exp
+      rename _ e@(IntegerE {}) = e
+      rename bound (CaseE e ms)
+        = CaseE (rename bound e) (map (rematch bound) ms)
+      rename bound (AppE a b) = AppE (rename bound a) (rename bound b)
+      rename bound (LamE (Sig n t) b)
+        = LamE (Sig (newname n) t) (rename (n : bound) b)
+      rename _ e@(ConE {}) = e
+      rename bound (VarE (Sig n t)) | n `elem` bound = VarE (Sig (newname n) t) 
+      rename _ e@(VarE {}) = e
+  in rename [] e
 

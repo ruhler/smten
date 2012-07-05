@@ -83,10 +83,9 @@ tupleE :: [Expression] -> Expression
 tupleE [] = error "tupleE: empty list"
 tupleE args = FunctionE (varE "mk-tuple") args
 
--- This takes care of a bug in yices2 where the index is off by one.
 tupleUpdateE :: Expression -> Integer -> Expression -> Expression
 tupleUpdateE tpl idx nv
-    = FunctionE (varE "tuple-update") [ tpl, integerE (1 + idx), nv]
+    = FunctionE (varE "tuple-update") [tpl, integerE idx, nv]
 
 andE :: [Expression] -> Expression
 andE [] = trueE

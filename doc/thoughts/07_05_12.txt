@@ -1,0 +1,139 @@
+
+Thu Jul  5 08:33:12 EDT 2012
+
+A couple bugs in yices2 have supposedly been fixed, so I think that's worth
+getting working. Or at least trying out.
+
+Other than that, I think I should clean something, anything really, just to
+make progress cleaning.
+
+Other than that... I think now's a reasonable time to look into the modularity
+question in more depth. Think about how to do it right in the long term, even
+if I don't want to implement all that right now.
+
+Okay? Sounds like a plan.
+
+First step: get and try yicse2 update.
+
+Thu Jul  5 08:48:19 EDT 2012
+
+That seems to have resolved the issues I was having. Exposing new issues.
+
+There's some type bug I don't understand. It looks like, perhaps, there's a
+problem with shadowing.
+
+Let me dump out the poly, inlined, and simpl expressions, see if I can't
+identify where the issue first shows up.
+
+Thu Jul  5 08:57:10 EDT 2012
+
+In simpl, there's something called 'v'.
+In the yices expression, there's nothing called 'v'. I think somehow 'v' got
+renamed to 'x'?
+
+Oops. My mistake. Simplification gets rid of 'v'... oh. I bet I know what the
+problem is. I bet I have to do alpha renaming that I don't do...
+
+Can I come up with an example? One that I can test?
+
+Well, the problem is clearly in the seri stuff, not the yices stuff. And I'm
+pretty sure it's in simplification, but that means its in elaboration too.
+Because I have a variable 'x' with two different types in an expression. That
+is, I have a poorly typed expression.
+
+Here's the idea... Let me see if I can come up with an example.
+
+Consider the following expression of type:
+ Foo -> Bar -> Foo
+\(x::Foo) -> (\(y::Foo) -> (\(x::Bar) -> (y::Foo))) (x::Foo)
+
+If I simplify naively...
+
+\(x::Foo) -> (\(x::bar) -> (x::Foo))
+
+And now we have a poorly typed expression. We need some sort of alpha
+renaming.
+
+At the heart of the problem is, I'm substituting y gets x, but x conflicts
+with a name that is defined within the expression. So, perhaps what I want
+first, is to rename all the ...
+
+I want to do a substitution:
+  (\y -> foo) x
+
+This means, anywhere in foo where I define in a new scope a variable with name
+'x', I should rename it to something else.
+
+In general:
+  (\y -> foo) bar
+
+Let bar_free be the free names in bar.
+Any introduction of a new name in foo, via either lambda term or pattern
+binding, needs to be renamed to something that isn't in bar_free, before
+performing the substitution. Then I can substitute without worry.
+
+I think this wasn't a problem that showed up with elaboration, because I
+always perform the substitutions from the top down? 'bar' can't contain any
+free variables bound above, because then there's a lambda above, which means
+we would not have tried to do this substitution yet.
+
+Perhaps, then, I want two different kinds of lambda reduction rules. One for
+elaborate, and one for simplify. Or... just have them both do the work of
+simplify, which will work for elaborate fine, with just a possible performance
+penalty I can worry about later.
+
+Okay, so this is not so hard. I'll want two functions:
+
+free :: Exp -> [Name]
+Gets a list of the free variables in the given expression.
+
+alpharename :: [Name] -> Exp -> Exp
+Given a list of names that are bad, and an expression, rename each new name in
+the given expression that's bad with a name that isn't bad. Probably by
+appending a numeric suffix. So, x is renamed to x0, or x1, or some such.
+
+Fine. Shall I give it a try? Sure. I'll let you know what happens.
+
+Thu Jul  5 10:28:17 EDT 2012
+
+Brief interlude. Talked to Nirav.
+
+Next big goal should be pvs. It's just transforming seri declarations of data
+types and functions to pvs. Shouldn't be hard.
+
+There's also an idea to think about a paper. Story is: a way of describing
+generic smt queries, which can be targeted to different back ends, that you
+can interact with through haskell. As an example, we could implement in
+haskell a simple model checker that uses SMT via seri for brunt of its work,
+now people no longer have to worry about low level interfaces to SMT solvers.
+Or some such.
+
+Thu Jul  5 10:31:30 EDT 2012
+
+Implementing alpha renaming is annoying.
+
+What I want to do is... we have a list of bad names. And we should have a list
+of renames. LamE adds to the renames. Patterns add to the renames. VarEs are
+renamed if they are in the renames. It's not so bad.
+
+Thu Jul  5 10:55:05 EDT 2012
+
+Okay, so I implemented the rough draft. Let's see if it works at all.
+
+Hum. I get <<loop>>. That's not really what I want now, is it...
+
+Thu Jul  5 11:45:56 EDT 2012
+
+Fixed that bug, and others.
+
+Now I have the problem: I'm picking a new name which isn't bad, but it already
+exists in the expression, which we really don't want. A valid new name is...
+not bad, not a name in the existing expression.
+
+Thu Jul  5 11:57:26 EDT 2012
+
+Okay! Looks like I fixed that bug. But now we have another issue. yices1 and
+yices2 disagree on the bluespec query...
+
+Let me debug it after lunch.
+

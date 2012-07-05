@@ -98,9 +98,12 @@ runQuery gr env e = do
             runCmds [Y.Define (yicesN free) (yType t') Nothing]
             return (VarE (Sig free t))
         (AppE (VarE (Sig "assert" _)) p) -> do
+            --lift $ putStrLn $ "poly: " ++ pretty p
             idepth <- gets ys_idepth
             let inlined = inline idepth env p
+            --lift $ putStrLn $ "inli: " ++ pretty inlined
             simplified <- elaborate simplifyR env inlined
+            --lift $ putStrLn $ "simp: " ++ pretty simplified
             p' <- declareNeeded env simplified
             yp <- yExp p'
             true <- yExp trueE
