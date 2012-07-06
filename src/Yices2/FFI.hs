@@ -1,4 +1,7 @@
 
+{-# LANGUAGE EmptyDataDecls #-}
+{-# LANGUAGE ForeignFunctionInterface #-}
+
 module Yices2.FFI (
     YContext, YContextConfig, YParam, YType, YTerm,
     SMTStatus(..), toYSMTStatus, fromYSMTStatus,

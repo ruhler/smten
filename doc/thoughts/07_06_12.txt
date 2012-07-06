@@ -1,0 +1,109 @@
+
+Fri Jul  6 08:23:45 EDT 2012
+
+Goal for today: get pvs going.
+
+1. abstract syntax.
+Make it as simple as I need. If we need to add things later, we can add things
+later.
+
+2. target.
+
+I think some interesting issues will come up, in terms of importing and such.
+Let me start by doing a rough draft without worrying about these issues, then
+deal with them as they come up.
+
+I should try it out on the test library. If that compiles, and if I can prove
+that the tests pass in pvs, that would be great.
+
+Fri Jul  6 08:37:49 EDT 2012
+
+I'm not sure what constructs in the pvs syntax I'll need until I try compiling
+things. So let me start by trying to compile things. Let's start with
+expressions.
+
+IntegerE goes to NumberE.
+VarE goes to VarE.
+ConE goes to VarE.
+LamE goes to LambdaE.
+AppE goes to AppE.
+CaseE goes to ...
+
+So, all the expressions are straight forward except for case expressions.
+Let me think about how those should work. How should we implement pattern
+matching?
+
+We could always use the same method for yices: turn it into a big if else. But
+I think we really want to use Cases if we can. It's the higher level
+construct, doesn't generate extra proof requirements, things like that. The
+difference between Cases and my case statements, though, is they only match
+the outer level of a constructor. There is also an elses clause to fall back
+on. It's like the default constraint, but it generates some proof
+requirements.
+
+There's also a COND statement. It's like a list of if-else statements, but all
+conditions have to be disjoint.
+
+No. Sad as it is. I think the right way to go is using if-else statements like
+we do in yices2. That's the only thing, in general, to capture the sequential
+alternative behavior we want.
+
+Perhaps as future work we can try to recognize in the compiler when all the
+conditions are disjoint or each alternative uses a different constructor and
+generate higher level pvs code for that.
+
+This is not going to give us clean pvs code.
+
+The last detail to work out in the expression translation is... what to do on
+the final else branch. Is there a way to assert false, or generate a failing
+tcc or something like that? Return an error?
+
+Fri Jul  6 08:57:24 EDT 2012
+
+Oh, I have an idea. How about, for the last case, use the COND statement
+without an Else block. Then you have to prove that at least the last case will
+be taken. Good. Let me do it that way for now, or plan to, and see what issues
+come up.
+
+I'm concerned about this MEASURE function thing we need. It's higher level
+information which a programmer could easily supply, but I can't easily supply.
+And I use a lot of recursion.
+
+Let me worry about it when I get there.
+
+Okay? So I know what kinds of pvs expressions I want, and I know how I want to
+translate my expressions, so let me implement the little piece of code that
+does that.
+
+Fri Jul  6 09:26:03 EDT 2012
+
+I've written the rough draft code for expression translation.
+
+What's next? How about some rough draft code for declarations.
+
+ValD (TopSig n _ t) e
+ ConstDecl n : t = e
+DataD goes to DataS.
+ClassD goes to nothing.
+InstD goes to ConstDecls.
+
+Fri Jul  6 09:47:05 EDT 2012
+
+So that should work fun. I feel a little ug right now, so let me switch to
+another important seri task: distribution. The cabal package.
+
+Here's how I want to do it. Build all the haskell code with cabal. I need to
+do this to know that it will build correctly with cabal. Included in the
+generated code should be all the executables.
+
+So I build the cabal package, the docs, the distribution. That gives me
+executables which I can then use for tests.
+
+I'll build the cabal package with tcl. That should help keep me sane.
+
+To define things, I'd like a tcl function that does dependency analysis on
+haskell programs. So I specify the cabal contents as: a list of primary
+library files. The ones we expect people to import. The tcl script figures out
+all the other files needed. And a list of executables, the tcl script figures
+out all the other files needed.
+

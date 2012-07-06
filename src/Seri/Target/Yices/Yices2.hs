@@ -152,7 +152,9 @@ yExp e@(AppE a b) =
            a' <- yExp a
            b' <- yExp b
            return $ Y.FunctionE a' [b']
-yExp (LamE (Sig n xt) e) = do
+yExp l@(LamE (Sig n xt) e) = do
+    -- TODO: should we allow this or not?
+    error $ "lambda expression in yices2 target generation: " ++ pretty l
     t <- lift $ yType (arrowsT [xt, typeof e])
     id <- gets ys_lamid
     let nm = yicesname ("lam~" ++ show id)

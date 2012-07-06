@@ -137,3 +137,109 @@ yices2 disagree on the bluespec query...
 
 Let me debug it after lunch.
 
+Thu Jul  5 13:05:40 EDT 2012
+
+It's another bug in yices2. I'm confident of that. So I'll let this go until
+the bug is fixed.
+
+Thu Jul  5 13:07:07 EDT 2012
+
+Cool! On to the next step: pvs.
+
+The goal is to translate seri declarations to pvs. First step: some research.
+Figure out what all features pvs supports that I can make use of.
+
+In particular, look out for things like:
+ - algebraic data types
+ - polymorphism
+ - classes and overloading?
+ - pattern matching
+
+It might be good to try translating a bunch of things by hand first, just to
+get the hang of pvs.
+
+Once I get a feel for things, the steps are fairly straight forward.
+- define a pvs abstract syntax.
+- implement a pvs target.
+
+A great example, I think, would be to code up the Bluespec.sri query in pvs,
+and prove that, if they start in the empty state, the two compositions are
+equivalent. This should actually be fun.
+
+Thu Jul  5 13:16:53 EDT 2012
+
+Looks like data types can be defined just as in yices1, and they can be
+polymorphic.
+
+First step: implement FIFO2 in pvs. And maybe, for the fun of it, I can try to
+prove something. Prove that enq followed by deq is like a nop, but only if the
+fifo doesn't start full.
+
+Thu Jul  5 14:37:14 EDT 2012
+
+Okay, I have all the declarations for the bluespec example, I think. First
+step, I want to prove that:
+  forall states s, if (f s) is not the empty fifo, (ppc s = pcp s).
+  
+Thu Jul  5 14:57:13 EDT 2012
+
+Done. I used (grind). It did all the real work. Cool. So I have a proof.
+
+The next step?
+
+Well, so I have a sense now of the language. Of how to define data types and
+function types.
+
+I don't have a good sense of how overloading works. For instance, the =
+operator worked for my newly defined types without my saying how. Perhaps they
+have some facility in their overloading that I could leverage for type
+classes.
+
+Then I should start an abstract syntax. For now, just the constructs I need or
+expect to use.
+
+I'll need to put some thought into how to organize theories.
+
+Then go from there.
+
+In the meantime, my yices2 bug has supposedly been fixed. Let me try that out.
+
+Thu Jul  5 15:08:26 EDT 2012
+
+Yup. That fixed my bug. So yices2 is officially declared... working as well as
+yices1.
+
+Thu Jul  5 15:12:46 EDT 2012
+
+Next step: understand overloading in pvs.
+
+So, it looks like we can overload names and operators so long as the type
+signatures are different for each. This is good. So, to translate classes, we
+would do the following:
+ ClassD - ignored.
+ InstD - generate a regular function for each method with the signature from
+the class. Easy.
+
+Good.
+
+Also good: we have a summary of the grammar for pvs, which I can use as
+motivation for the structure of the abstract pvs syntax which I make.
+
+I'll have to think about how to deal with data types declared in their own
+modules and the needed importing statements. Perhaps I can just brute force
+and import every data type I've declared so far for every module. That seems
+not too unreasonable.
+
+Good!
+
+I think I'm ready to start on the abstract syntax for pvs.
+
+Thu Jul  5 16:01:09 EDT 2012
+
+The trouble is... there are a lot of constructs and things you can express in
+pvs that I won't ever want to express. Should I support these in the abstract
+syntax? Or take a subset?
+
+How about this, let me just have the subset I think I'll use. Don't worry
+about making it super general. See if that comes back to bite me later.
+

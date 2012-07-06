@@ -60,12 +60,19 @@ pcp s = do {
 -- Now for our query:
 --  Are the two compositions "equivalent"?
 --  That is, are they equivalent for all states s?
-main :: Query (Answer ());
-main = do {
+main1 :: Query (Answer ());
+main1 = do {
     always (\s -> (f s == FIFO2_Empty) ==> (ppc s == pcp s));
     --always (\s -> ppc s == pcp s);
     query ();
-}
+};
+
+main :: Query (Answer TState);
+main = do {
+    s <- free;
+    assert (not ((f s == FIFO2_Empty) ==> (ppc s == pcp s)));
+    query s;
+};
 
 }
 
