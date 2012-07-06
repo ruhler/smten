@@ -1,8 +1,9 @@
 
+-- | An interface to yices2.
 module Yices2.Yices2 (
     Context(),
-    Yices2.Yices2.init, exit, mkctx, run, check,
-    SMTStatus(..),
+    Yices2.Yices2.init, exit, mkctx, run,
+    SMTStatus(..), check,
     getIntegerValue,
     ) where
 
@@ -63,6 +64,7 @@ run (Context fp) Push = withForeignPtr fp c_yices_push
 run (Context fp) Pop = withForeignPtr fp c_yices_pop
 run _ cmd = error $ "TODO: run " ++ pretty cmd
 
+-- | Run (check) in the given context and return the resulting yices2 status.
 check :: Context -> IO SMTStatus
 check (Context fp) = do
     st <- withForeignPtr fp $ \yctx -> c_yices_check_context yctx nullPtr

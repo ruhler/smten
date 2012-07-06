@@ -2,6 +2,7 @@
 {-# LANGUAGE EmptyDataDecls #-}
 {-# LANGUAGE ForeignFunctionInterface #-}
 
+-- | Raw FFI interface to yices2.
 module Yices2.FFI (
     YContext, YContextConfig, YParam, YType, YTerm,
     SMTStatus(..), toYSMTStatus, fromYSMTStatus,

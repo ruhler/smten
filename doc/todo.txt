@@ -49,3 +49,4 @@ vs. foo :: (Foo a) => Sludge
 - apply inlining, simplification to yices1?
 - fix case arg duplication issue in yices1 like it was for yices2?
 
+- I still see a segfault sometimes when running seriq2.

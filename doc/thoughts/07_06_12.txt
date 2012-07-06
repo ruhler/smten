@@ -107,3 +107,16 @@ library files. The ones we expect people to import. The tcl script figures out
 all the other files needed. And a list of executables, the tcl script figures
 out all the other files needed.
 
+Fri Jul  6 13:53:42 EDT 2012
+
+I fixed up the cabal package, so it works, and generates everything, and is
+what we use to build. I suspect it's going to be very frustrating using it to
+build, because it compiles everything like 5 times and doesn't output errors
+relative to the top level directory (perhaps I can trick vim into figuring out
+how to find the directory by outputting a "cd" thing?).
+
+What's left for today is... back what we started with. pvs.
+
+But perhaps I can procrastinate by making the documentation better. For
+example, Yices2/* could be documented much better.
+

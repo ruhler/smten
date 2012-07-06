@@ -18,92 +18,110 @@ import Text.PrettyPrint.HughesPJ
 type Symbol = String
 
 data Command = 
-    DefineType Symbol (Maybe Typedef)
-  | Define Symbol Type (Maybe Expression)
-  | Assert Expression
-  | Exit | Check | Push | Pop | Reset | ShowModel
-  | Eval Expression
-  | Echo String
-  | Include String
-  | SetParam Symbol ImmediateValue
-  | ShowParam Symbol
-  | ShowParams
-  | ShowStats
-  | ResetStats
-  | SetTimeout Integer
-  | DumpContext
+    DefineType Symbol (Maybe Typedef)           -- ^ > (define-type <symbol> [<typedef>])
+  | Define Symbol Type (Maybe Expression)       -- ^ > (define <symbol> :: <type> [<expression>])
+  | Assert Expression                           -- ^ > (assert <expression>)
+  | Exit                                        -- ^ > (exit)
+  | Check                                       -- ^ > (check)
+  | Push                                        -- ^ > (push)
+  | Pop                                         -- ^ > (pop)
+  | Reset                                       -- ^ > (reset)
+  | ShowModel                                   -- ^ > (show-model)
+  | Eval Expression                             -- ^ > (eval <expression>)
+  | Echo String                                 -- ^ > (echo <string>)
+  | Include String                              -- ^ > (include <string>)
+  | SetParam Symbol ImmediateValue              -- ^ > (set-param <symbol> <immediate-value>)
+  | ShowParam Symbol                            -- ^ > (show-param <symbol>)
+  | ShowParams                                  -- ^ > (show-params)
+  | ShowStats                                   -- ^ > (show-stats)
+  | ResetStats                                  -- ^ > (reset-stats)
+  | SetTimeout Integer                          -- ^ > (set-timeout <number>)
+  | DumpContext                                 -- ^ > (dump-context)
 
 data Typedef =
-    ScalarTD [Symbol]
-  | NormalTD Type
+    NormalTD Type           -- ^ > <type>
+  | ScalarTD [Symbol]       -- ^ > (scalar <symbol> ... <symbol>)
     
 
 data Type = 
-    VarT Symbol
-  | TupleT [Type]
-  | ArrowT [Type]
-  | BitVectorT Integer
-  | IntegerT
-  | BoolT
-  | RealT
+    VarT Symbol             -- ^ > <symbol>
+  | TupleT [Type]           -- ^ > (tuple <type> ... <type>)
+  | ArrowT [Type]           -- ^ > (-> <type> ... <type> <type>)
+  | BitVectorT Integer      -- ^ > (bitvector <rational>)
+  | IntegerT                -- ^ > int
+  | BoolT                   -- ^ > bool
+  | RealT                   -- ^ > real
 
 data Expression =
-    ImmediateE ImmediateValue
-  | ForallE [VarDecl] Expression
-  | ExistsE [VarDecl] Expression
-  | LetE [Binding] Expression
-  | UpdateE Expression [Expression] Expression
-  | FunctionE Expression [Expression]
+    ImmediateE ImmediateValue           -- ^ > <immediate-value>
+  | ForallE [VarDecl] Expression        -- ^ > (forall (<var_decl> ... <var_decl>) <expression>)
+  | ExistsE [VarDecl] Expression        -- ^ > (exists (<var_decl> ... <var_decl>) <expression>)
+  | LetE [Binding] Expression           -- ^ > (let (<binding> ... <binding>) <expression>)
+  | UpdateE Expression [Expression] Expression  -- ^ > (update <expression> (<expression> ... <expression>) <expression>)
+  | FunctionE Expression [Expression]   -- ^ > (<function> <expression> ... <expression>)
 
-type VarDecl = (String, Type)
-type Binding = (String, Expression)
+type VarDecl = (String, Type)           -- ^ > <symbol> :: <type>
+type Binding = (String, Expression)     -- ^ > (<symbol> <expression>)
 
 data ImmediateValue =
-    TrueV 
-  | FalseV
-  | VarV Symbol
-  | RationalV Rational
+    TrueV               -- ^ > true
+  | FalseV              -- ^ > false
+  | RationalV Rational  -- ^ > <rational>
+  | VarV Symbol         -- ^ > symbol
 
+-- | > true
 trueE :: Expression
 trueE = ImmediateE TrueV
 
+-- | > A <symbol> expression.
 varE :: String -> Expression
 varE n = ImmediateE (VarV n)
 
+-- | An integer expression.
 integerE :: Integer -> Expression
 integerE i = ImmediateE (RationalV (fromInteger i))
 
+-- | > (select <tuple> i)
 selectE :: Expression -> Integer -> Expression
 selectE e i = FunctionE (varE "select") [e, integerE i]
 
+-- | > (= <expression> <expression>)
 eqE :: Expression -> Expression -> Expression
 eqE a b = FunctionE (varE "=") [a, b]
 
+-- | > (mk-tuple <term_1>  ... <term_n>)
 tupleE :: [Expression] -> Expression
 tupleE [] = error "tupleE: empty list"
 tupleE args = FunctionE (varE "mk-tuple") args
 
+-- | > (tuple-update <tuple> i <term>)
 tupleUpdateE :: Expression -> Integer -> Expression -> Expression
 tupleUpdateE tpl idx nv
     = FunctionE (varE "tuple-update") [tpl, integerE idx, nv]
 
+-- | > (and <term_1> ... <term_n>)
 andE :: [Expression] -> Expression
 andE [] = trueE
 andE [x] = x
 andE xs = FunctionE (varE "and") xs
 
+-- | > (if <expression> <expression> <expression>)
 ifE :: Expression -> Expression -> Expression -> Expression
 ifE p a b = FunctionE (varE "if") [p, a, b]
 
+-- | > (< <exprsesion> <expression>)
 ltE :: Expression -> Expression -> Expression
 ltE a b = FunctionE (varE "<") [a, b]
 
+-- | > (> <exprsesion> <expression>)
 gtE :: Expression -> Expression -> Expression
 gtE a b = FunctionE (varE ">") [a, b]
 
+-- | > (+ <exprsesion> <expression>)
 addE :: Expression -> Expression -> Expression
 addE a b = FunctionE (varE "+") [a, b]
 
+-- | > (- <exprsesion> <expression>)
 subE :: Expression -> Expression -> Expression
 subE a b = FunctionE (varE "-") [a, b]
 
@@ -188,6 +206,7 @@ instance Concrete ImmediateValue where
 concretestr :: String -> Doc
 concretestr s = text (show s)
 
+-- | Render abstract yices syntax to a concrete syntax string.
 pretty :: Concrete a => a -> String
 pretty x = render (concrete x)
 
