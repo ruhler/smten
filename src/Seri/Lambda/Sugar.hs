@@ -141,7 +141,7 @@ listE (x:xs) =
 letE :: [(Sig, Exp)] -> Exp -> Failable Exp
 letE [] x = return x
 letE ((Sig n t, v):bs) x =
-  let tobind = map ((\(Sig n _) -> n) . fst) bs
+  let tobind = n : map ((\(Sig n _) -> n) . fst) bs
       recursive = filter (\v -> v `elem` tobind) (free v)
   in if null recursive
         then do

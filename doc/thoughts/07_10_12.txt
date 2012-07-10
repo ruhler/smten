@@ -97,8 +97,8 @@ Okay, so here's what I propose.
   issue.
 2+ Switch to using soft links for the build directory, using find if that is 
 helpful. Or a tcl script if that's not so much harder.
-3. write a mutually recursive  let test
-4. write a self recursive  let test
+3+ write a mutually recursive  let test
+4+ write a self recursive  let test
 5. Change bindingsP to return a list of Sigs.
 And other things too, if that makes sense.
 6. Change free to return a list of sigs.
@@ -120,4 +120,17 @@ Now, how to do the linking?
 What directory do I want to be in?
 
 Okay, that seems to work. Cool.
+
+(3). mutually recursive let test. Should be easy.
+
+Done, and (4) done.
+
+And guess what! The yices2 bug magically disappeared when fixing (4). Which
+makes no sense at all, because I know we never call letE.
+
+Which means, the yices2 bug is a nondeterministic bug, probably related to
+memory management in the FFI or some such. Sadness.
+
+Oh, nope. It's not gone. It is nondeterministic though, and I guess I got
+lucky once.
 

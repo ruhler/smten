@@ -79,6 +79,8 @@ proc badtypetest {name} {
 badtypetest "BadType1"
 badtypetest "BadType2"
 badtypetest "InstCtx"
+badtypetest "LetRecM"
+badtypetest "LetRecS"
 
 
 # Test the haskell target.

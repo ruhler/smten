@@ -1,0 +1,15 @@
+
+
+module Seri.Lambda.Tests.LetRecS where {
+
+import Seri.Lib.Integer;
+
+-- Self recursive let blocks are not allowed.
+-- We shouldn't do any silent shadowing or such that would differ from haskell
+-- semantics.
+foo :: Integer -> Integer;
+foo a =
+  let { a = a + 1;
+      } in a;
+}
+
