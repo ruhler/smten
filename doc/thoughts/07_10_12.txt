@@ -1,0 +1,111 @@
+
+Tue Jul 10 09:11:31 EDT 2012
+
+There has been request for let expressions in seri.
+
+I've thought about this before. I don't want to support lazy pattern matching.
+I don't want to support recursive lets. But let expressions can still be very
+useful, right?
+
+The question is: can I implement them with the correct semantics? Or, can I
+support a subset of them which has the correct semantics? Or can I fudge the
+semantics?
+
+Note: pvs turns let expressions in to function applications. I've been
+proposing case statements, but I suppose function applications make as much
+sense, if not more, because they better capture what's going on.
+
+case foo of
+    x -> blah
+
+Is the same as
+   (\x -> blah) foo
+
+But the later captures that there is no possibility of failure, and only one
+variable is being bound, so I like that approach.
+
+I think I can match the haskell semantics if I restrict the let statement as
+follows:
+
+- no pattern match on the left hand side?
+Actually, is there a problem with that? I don't think there is. The match will
+be lazy, either with the case or the lambda application.
+
+Nope. There is a problem. It won't be lazy, with either the case or the
+lambda. Because the lambda turns into the case, and the case deconstructs
+right away.
+
+I think we could implement it as a lazy match though, if we wanted to.
+
+let (x, y) = foo
+in bar x y
+
+This can't be written
+  case foo of
+    (x, y) -> bar x y
+
+Because that's a strict match.
+
+But perhaps it could be written as
+  let x = case foo of
+            (x, y) -> x
+      y = case foo of
+            (x, y) -> y
+  in bar x y
+
+There.  Now the pattern match is lazy.
+
+And this isn't hard to do in general. Just say: for each binding in the
+pattern, create a new let statment of the form  
+    v = case e of
+          pattern -> v
+
+Simple.
+
+But, I don't need to do this now. I can support it later. For now we can just
+have variables on the left hand side, not generic patterns.
+
+The other concern: recursive let expressions. I should add a check for that in
+the type checker... or wherever it is I get rid of let expressions. Check in a
+list of bindings whether any expression has free a variable that is being
+defined. Reject that program.
+
+Good. I think this is doable, and I think it would be nice to have. Let me add
+it to sugar. I should also add a test verifying recursive let isn't allowed.
+Otherwise we could have subtle confusing things happening later on that are
+really annoying.
+
+Tue Jul 10 10:38:50 EDT 2012
+
+Something funny is going on.
+
+I really need to fix the build system to make symbolic links instead of hard
+links. Perhaps I can use find: first to make all the needed directories, then
+to link all the files?
+
+So what's happening is... I'm getting an error running yices2 on Bluespec. But
+the error only occurs using the FFI. It doesn't occur using yices directly. In
+it only started occurring after a change which had nothing at all to do with
+yices.
+
+There's also a segfault that happens occasionally. So I think the yices2 ffi
+has something wrong with it. Perhaps these issues are related? I don't know.
+
+Okay, so here's what I propose.
+
+1. Check in the change to add let expressions, even with the failing yices2
+  issue.
+2. Switch to using soft links for the build directory, using find if that is 
+helpful. Or a tcl script if that's not so much harder.
+3. write a mutually recursive  let test
+4. write a self recursive  let test
+5. Change bindingsP to return a list of Sigs.
+And other things too, if that makes sense.
+6. Change free to return a list of sigs.
+7. Implement a shadowmeth test to verify instd is only applied to free vars.
+8. Rewrite instcheck to make use of free to find what to do the checks on.
+9. If we still are having the yices issue:
+... try to figure out how to fix it? Maybe I'll have more ideas by then.
+
+Regardless, things should be cleaner after all this, so that's good.
+

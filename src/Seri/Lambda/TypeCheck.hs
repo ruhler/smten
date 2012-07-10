@@ -133,6 +133,8 @@ typecheck ds =
 
 -- | Verify all the needed class instances are either in the context or
 -- declared for the given expression.
+--
+-- TODO: dont' check bound variables!
 instcheck :: [Dec] -> Context -> Exp -> Failable ()
 instcheck ds c e = 
     let satisfied :: Class -> Failable ()

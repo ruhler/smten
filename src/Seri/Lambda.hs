@@ -8,6 +8,7 @@ module Seri.Lambda (
     module Seri.Lambda.TypeCheck,
     module Seri.Lambda.TypeInfer,
     module Seri.Lambda.Types,
+    module Seri.Lambda.Utils,
     module Seri.Lambda.Sugar,
   ) where
 
@@ -19,5 +20,6 @@ import Seri.Lambda.Ppr(Ppr, pretty)
 import Seri.Lambda.TypeCheck
 import Seri.Lambda.TypeInfer
 import Seri.Lambda.Types
+import Seri.Lambda.Utils
 import Seri.Lambda.Sugar
 

@@ -6,13 +6,18 @@ module Seri.Lambda.Sugar (
     Stmt(..), doE,
     Clause(..), clauseE,
     trueE, falseE, listE, tupE, tupP,
+    letE,
     Module(..), Import(..), flatten,
     ConRec(..), recordD,
     ) where
 
+import Data.List((\\))
+
+import Seri.Failable
 import Seri.Lambda.IR
 import Seri.Lambda.Prelude
 import Seri.Lambda.Types
+import Seri.Lambda.Utils
 
 -- | True
 trueE :: Exp
@@ -127,6 +132,22 @@ listE (x:xs) =
      consT = arrowsT [t, listT t, listT t]
  in appsE [ConE (Sig ":" consT), x, listE xs]
 
+-- |
+-- > let n1 = e1
+-- >     n2 = e2
+-- >     ...
+-- > in e
+-- Recursive bindings are not allowed.
+letE :: [(Sig, Exp)] -> Exp -> Failable Exp
+letE [] x = return x
+letE ((Sig n t, v):bs) x =
+  let tobind = map ((\(Sig n _) -> n) . fst) bs
+      recursive = filter (\v -> v `elem` tobind) (free v)
+  in if null recursive
+        then do
+            sub <- letE bs x
+            return (AppE (LamE (Sig n t) sub) v)
+        else fail $ "let expression is recursive in vars: " ++ show recursive
 
 -- | Currently imports are restricted to the form:
 -- > import Foo.Bar

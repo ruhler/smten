@@ -14,6 +14,16 @@ foreach key [array names ::env] {
 source tclmk/local.tcl
 set ::env(LANG) "en_US.UTF-8"
 
+proc indir {dir script} {
+    set wd [pwd]
+    puts "tclmk: Entering directory `$wd/$dir'"
+    cd $dir
+    eval $script
+    puts "tclmk: Leaving directory `$wd/$dir'"
+    cd $wd
+}
+
+
 proc run {args} {
     puts $args
     exec {*}$args "2>@" stderr
@@ -33,17 +43,16 @@ hrun cp -l -r -n -t build src
 source tclmk/haskell.tcl
 source tclmk/cabal.tcl
 cabal build/src/seri.cabal
-set wd [pwd]
 hrun mkdir -p build/home
-set ::env(HOME) $wd/build/home
-cd build/src
-hrun cabal configure --package-db $::PACKAGE_DB \
-    --extra-lib-dirs $::env(LD_LIBRARY_PATH) \
-    --with-happy=$HAPPY
-hrun cabal build
-hrun cabal haddock
-hrun cabal sdist
-cd $wd
+set ::env(HOME) [pwd]/build/home
+indir build/src {
+    hrun cabal configure --package-db $::PACKAGE_DB \
+        --extra-lib-dirs $::env(LD_LIBRARY_PATH) \
+        --with-happy=$::HAPPY
+    hrun cabal build
+    hrun cabal haddock
+    hrun cabal sdist
+}
     
 set SERIT build/src/dist/build/serit/serit
 set SERIE build/src/dist/build/serie/serie

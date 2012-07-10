@@ -52,6 +52,8 @@ import Seri.Lambda.Sugar
        'class'  { TokenClass }
        'instance'  { TokenInstance }
        'where'  { TokenWhere }
+       'let'  { TokenLet }
+       'in'  { TokenIn }
        'case'   { TokenCase }
        'of'     { TokenOf }
        'if'     { TokenIf }
@@ -116,6 +118,16 @@ cdecls :: { [TopSig] }
 cdecl :: { TopSig }
  : gendecl
     { $1 }
+
+ldecls :: { [(Sig, Exp)] }
+ : ldecl
+    { [$1] }
+ | ldecls ';' ldecl
+    { $1 ++ [$3] }
+
+ldecl :: { (Sig, Exp) }
+ : var_typed rhs
+    { ($1, $2) }
 
 idecls :: { [(Name, Clause)] }
  : idecl
@@ -216,6 +228,11 @@ exp :: { Exp }
 exp10 :: { Exp }
  : '\\' var_typed '->' exp
     { LamE $2 $4 }
+ | 'let' '{' ldecls opt(';') '}' 'in' exp
+    {% case attempt (letE $3 $7) of
+         Right v -> return v    
+         Left msg -> lfailE msg
+    }
  | 'if' exp 'then' exp 'else' exp
     { ifE $2 $4 $6 }
  | 'case' exp 'of' '{' alts opt(';') '}'
@@ -462,11 +479,14 @@ data PS = PS {
 type ParserMonad = StateT PS Failable
 
 parseError :: Token -> ParserMonad a
-parseError tok = do
+parseError tok = lfailE $ "parser error at " ++ show tok
+
+lfailE :: String -> ParserMonad a
+lfailE msg = do
     ln <- gets ps_line
     cl <- gets ps_column
     fp <- gets ps_filename
-    failE $ fp ++ ":" ++ show ln ++ ":" ++ show cl ++ ": parser error at " ++ show tok
+    failE $ fp ++ ":" ++ show ln ++ ":" ++ show cl ++ ": " ++ msg
 
 data Token = 
        TokenOpenBracket
@@ -496,6 +516,8 @@ data Token =
      | TokenClass
      | TokenInstance
      | TokenWhere
+     | TokenLet
+     | TokenIn
      | TokenCase
      | TokenOf
      | TokenIf
@@ -556,6 +578,8 @@ keywords = [
     ("class", TokenClass),
     ("instance", TokenInstance),
     ("where", TokenWhere),
+    ("let", TokenLet),
+    ("in", TokenIn),
     ("case", TokenCase),
     ("of", TokenOf),
     ("if", TokenIf),
