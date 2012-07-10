@@ -36,8 +36,8 @@ proc hrun {args} {
 }
 
 # Create and set up a build directory for the build.
-hrun mkdir -p build
-hrun cp -l -r -n -t build src
+hrun find src -type d -exec mkdir -p build/{} {;}
+hrun find src -type f -exec ln -sf [pwd]/{} build/{} {;}
 
 # The cabal package
 source tclmk/haskell.tcl
