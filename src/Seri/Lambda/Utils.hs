@@ -16,7 +16,7 @@ free =
       free' _ (IntegerE {}) = []
       free' bound (CaseE e ms) = 
         let freem :: Match -> [Name]
-            freem (Match p b) = free' (map fst (bindingsP p) ++ bound) b
+            freem (Match p b) = free' (map (\(Sig n _) -> n) (bindingsP p) ++ bound) b
         in nub $ concat (free' bound e : map freem ms)
       free' bound (AppE a b) = free' bound a ++ free' bound b
       free' bound (LamE (Sig n _) b) = free' (n:bound) b

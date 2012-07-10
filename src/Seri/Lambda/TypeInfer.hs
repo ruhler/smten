@@ -74,7 +74,7 @@ deunknown =
 data TIS = TIS {
     ti_varid :: Integer,        -- ^ The next free VarT id
     ti_cons :: [(Type, Type)],  -- ^ A list of accumulated type constraints
-    ti_tenv :: [(Name, Type)],  -- ^ Types of bound variables in scope
+    ti_tenv :: [Sig],           -- ^ Types of bound variables in scope
     ti_env :: Env               -- ^ The environment
 }
 
@@ -98,7 +98,7 @@ newvtn = do
     return ("~" ++ show id)
 
 -- | Run type checking with additional bound variable's in scope.
-scoped :: [(Name, Type)] -> TI a -> TI a
+scoped :: [Sig] -> TI a -> TI a
 scoped vars x = do
     tenv <- gets ti_tenv
     modify $ \ti -> ti { ti_tenv = vars ++ tenv }
@@ -131,7 +131,7 @@ instance Constrain Exp where
         addc it tx
         return ot
     constrain (LamE (Sig n t) b) = do
-        bt <- scoped [(n, t)] (constrain b)
+        bt <- scoped [Sig n t] (constrain b)
         return (arrowsT [t, bt])
     constrain (ConE (Sig n t)) = do
         env <- gets ti_env
@@ -141,7 +141,7 @@ instance Constrain Exp where
         return t
     constrain v@(VarE (Sig n t)) = do
         tenv <- gets ti_tenv
-        case lookup n tenv of
+        case lookup n (map (\(Sig n t) -> (n, t)) tenv) of
             Just t' -> addc t' t
             Nothing -> do
                 env <- gets ti_env

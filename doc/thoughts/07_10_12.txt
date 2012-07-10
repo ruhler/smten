@@ -99,7 +99,7 @@ Okay, so here's what I propose.
 helpful. Or a tcl script if that's not so much harder.
 3+ write a mutually recursive  let test
 4+ write a self recursive  let test
-5. Change bindingsP to return a list of Sigs.
+5+ Change bindingsP to return a list of Sigs.
 And other things too, if that makes sense.
 6. Change free to return a list of sigs.
 7. Implement a shadowmeth test to verify instd is only applied to free vars.

@@ -141,7 +141,7 @@ monomatch :: Match -> M Match
 monomatch (Match p e) = do
     p' <- monopat p
     bound <- gets ms_bound
-    modify $ \ms -> ms { ms_bound = map fst (bindingsP p) ++ bound }
+    modify $ \ms -> ms { ms_bound = bindingsP' p ++ bound }
     e' <- monoexp e
     modify $ \ms -> ms { ms_bound = bound }
     return $ Match p' e'

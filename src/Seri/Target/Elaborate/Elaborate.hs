@@ -187,7 +187,7 @@ reduces _ e@(IntegerE _) = e
 reduces vs (CaseE e ms) =
     let reducematch :: Match -> Match
         reducematch (Match p b) =
-         let bound = map fst (bindingsP p)
+         let bound = bindingsP' p
              vs' = filter (\(n, _) -> not (n `elem` bound)) vs
          in Match p (reduces vs' b)
     in CaseE (reduces vs e) (map reducematch ms)
@@ -205,7 +205,7 @@ names :: Exp -> [Name]
 names (IntegerE {}) = []
 names (CaseE e ms) = 
   let namesm :: Match -> [Name]
-      namesm (Match p b) = map fst (bindingsP p) ++ names b
+      namesm (Match p b) = bindingsP' p ++ names b
   in nub $ concat (names e : map namesm ms)
 names (AppE a b) = names a ++ names b
 names (LamE (Sig n _) b) = nub $ n : names b
@@ -236,7 +236,7 @@ alpharename bad e =
       rematch :: [Name] -> Match -> Match
       rematch bound (Match p b) = 
         let p' = repat p
-            b' = rename (map fst (bindingsP p) ++ bound) b
+            b' = rename (bindingsP' p ++ bound) b
         in Match p' b'
 
       -- Do alpha renaming in an expression given the list of bound variable

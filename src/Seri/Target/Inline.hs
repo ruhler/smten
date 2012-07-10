@@ -17,7 +17,7 @@ inline' bound depth env e =
         IntegerE {} -> e
         CaseE a ms ->
            let imatch (Match p b) =
-                let nbound = map fst (bindingsP p)
+                let nbound = bindingsP' p
                 in Match p (inline' (nbound ++ bound) depth env b)
            in CaseE (inme a) (map imatch ms)
         AppE a b -> AppE (inme a) (inme b)
