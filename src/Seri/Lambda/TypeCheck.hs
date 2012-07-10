@@ -9,6 +9,7 @@ import Seri.Lambda.Env
 import Seri.Lambda.IR
 import Seri.Lambda.Ppr
 import Seri.Lambda.Types
+import Seri.Lambda.Utils
 
 
 type TypeEnv = [(String, Type)]
@@ -144,15 +145,10 @@ instcheck ds c e =
             let assigns = concat [assignments p c | (p, c) <- zip pts ts]
             mapM_ satisfied (assign assigns ctx)
 
-        base :: Exp -> Failable Exp
-        base e@(VarE s) =
+        check :: Sig -> Failable ()
+        check s =
             case attemptM $ lookupVarInfo ds s of
-                Just (Instance cls) -> do
-                    satisfied cls
-                    return e
-                _ -> return e
-        base e = return e
-    in do
-        everywhereM (mkM base) e
-        return ()
+                Just (Instance cls) -> satisfied cls
+                _ -> return ()
+    in mapM_ check (free e)
 

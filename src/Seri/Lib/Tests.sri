@@ -138,6 +138,9 @@ testlet =
     bar = fudge + 3;
   } in bar + bar;
 
+shadowmeth :: Integer;
+shadowmeth = let { foo = 3; } in foo;
+
 
 testall :: Bool;
 testall = (42 == ((\x -> (((x*x) + (3*x)) + 2)) 5))
@@ -175,8 +178,9 @@ testall = (42 == ((\x -> (((x*x) + (3*x)) + 2)) 5))
        && ((8 == (shadow 3))
        && ((6 == (caseshadow 3))
        && ((12 == testlet)
+       && ((3 == shadowmeth)
        && (3 == (length [1, 5, 2]))
-       )))))))))))))))))))))))))))))
+       ))))))))))))))))))))))))))))))
 
 }
 

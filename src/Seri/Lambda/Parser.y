@@ -745,14 +745,18 @@ icoalesce ((n, c):ms) =
 --
 -- - float, char, and string literals.
 --
+-- - pattern matching in let expressions.
+--
+-- - recursive let expressions (?).
+--
 -- [@Things meant to be different from haskell@]
 --
 -- - Extra semicolons are often allowed.
 --
 -- - Multi-param type classes are supported.
 --
--- - let expressions. These aren't supported because they require lazy
--- matching, which maybe we won't ever support in seri.
+-- - variable signatures not accompanied by an implementation are allowed,
+-- indicating a primitive variable.
 --
 -- [@Things that may go away@]
 --

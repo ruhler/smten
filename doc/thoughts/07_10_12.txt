@@ -101,10 +101,10 @@ helpful. Or a tcl script if that's not so much harder.
 4+ write a self recursive  let test
 5+ Change bindingsP to return a list of Sigs.
 And other things too, if that makes sense.
-6. Change free to return a list of sigs.
-7. Implement a shadowmeth test to verify instd is only applied to free vars.
-8. Rewrite instcheck to make use of free to find what to do the checks on.
-9. If we still are having the yices issue:
+6+ Change free to return a list of sigs.
+7+ Implement a shadowmeth test to verify instd is only applied to free vars.
+8+ Rewrite instcheck to make use of free to find what to do the checks on.
+9+ If we still are having the yices issue:
 ... try to figure out how to fix it? Maybe I'll have more ideas by then.
 
 Regardless, things should be cleaner after all this, so that's good.

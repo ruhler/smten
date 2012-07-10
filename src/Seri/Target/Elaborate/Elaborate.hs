@@ -100,7 +100,8 @@ appredR :: (Monad m) => Rule m
 appredR = Rule $ \gr env e ->
    case e of
       (AppE (LamE (Sig name _) body) b)
-         -> let body' = alpharename (free b \\ [name]) body
+         -> let freenames = map (\(Sig n _) -> n) (free b)
+                body' = alpharename (freenames \\ [name]) body
                 result = reduce name b body'
             in return $ Just result
       _ -> return Nothing
