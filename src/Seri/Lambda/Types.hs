@@ -80,6 +80,9 @@ assign m =
 class Typeof a where
     -- | Return the seri type of the given object, assuming the object is well
     -- typed. Behavior is undefined if the object is not well typed.
+    --
+    -- TODO: it would be nice if behavior was "UnknownT" if the object is not
+    -- well typed.
     typeof :: a -> Type
 
 instance Typeof Exp where

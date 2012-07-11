@@ -12,6 +12,7 @@ tuple i =
 
 prelude :: [Dec]
 prelude = [
+    PrimD (TopSig "undefined" [] (VarT "a")),
     DataD "Char" [] [],
     DataD "Integer" [] [],
     DataD "()" [] [Con "()" []],

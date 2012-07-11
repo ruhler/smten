@@ -261,6 +261,11 @@ aexp :: { Exp }
     { tupE ($2 : $4) }
  | '['  exps_commasep ']'
     { listE $2 }
+ | aexp '{' opt(fbinds) '}'
+    { case $1 of
+        ConE s -> recordC s (fromMaybe [] $3)
+        x -> recordU x (fromMaybe [] $3)
+    }
 
 alts :: { [Match] }
  : alt
@@ -283,6 +288,17 @@ stmt :: { Stmt }
     { NoBindS $1 }
  | var_typed '<-' exp ';'
     { BindS $1 $3 }
+
+fbinds :: { [(Name, Exp)] }
+ : fbind 
+    { [$1] }
+ | fbinds ',' fbind
+    { $1 ++ [$3] }
+
+fbind :: { (Name, Exp) }
+ : qvar '=' exp
+    { ($1, $3) }
+
 
 pat :: { Pat }
  : pat10
@@ -733,8 +749,6 @@ icoalesce ((n, c):ms) =
 --
 -- - left and right sections.
 --
--- - labeled construction and update.
---
 -- - let statements in do notation.
 --
 -- - list patterns
@@ -758,11 +772,18 @@ icoalesce ((n, c):ms) =
 -- - variable signatures not accompanied by an implementation are allowed,
 -- indicating a primitive variable.
 --
--- [@Things that may go away@]
+-- [@Other Notes@]
 --
 -- - variables and constructors can be typed explicitly using a type signature
 -- expression syntax. This is so pretty printed seri code with type
--- information can be parsed back in as is.
+-- information can be parsed back in as is. You probably shouldn't rely on
+-- this behavior.
+--
+-- - record constructors define variables for an undefined version of the
+-- constructor (for Foo {}), and for updating (for x { foo = bar }).
+-- This is not part of the haskell spec, but is used for implementation
+-- purposes so label construction and update really is just syntactic sugar.
+-- Your probably shouldn't rely on this behavior.
 
 
 parse :: FilePath -> String -> Failable Module

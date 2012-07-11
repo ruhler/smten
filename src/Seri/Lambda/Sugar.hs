@@ -8,7 +8,7 @@ module Seri.Lambda.Sugar (
     trueE, falseE, listE, tupE, tupP,
     letE,
     Module(..), Import(..), flatten,
-    ConRec(..), recordD,
+    ConRec(..), recordD, recordC, recordU,
     ) where
 
 import Data.List((\\))
@@ -165,17 +165,40 @@ flatten :: [Module] -> [Dec]
 flatten ms = prelude ++ concat [d | Module _ _ d <- ms]
 
 
--- Record type constructors.
+-- | Record type constructors.
 data ConRec = NormalC Name [Type]
             | RecordC Name [(Name, Type)]
     deriving(Eq, Show)
 
--- Desugar record constructors from a data declaration.
+
+-- return the undef variable name for a given data constructor name.
+record_undefnm :: Name -> Name
+record_undefnm n = "__" ++ n ++ "_undef"
+
+-- return the updater for a given field.
+record_updnm :: Name -> Name
+record_updnm n = "__" ++ n ++ "_update"
+
+-- | Desugar record constructors from a data declaration.
+-- Generates:
+--   data declaration with normal constructors.
+--   accessor functions for every field.
+--   update functions for every field.
+--   An undef declaration for each constructor.
 recordD :: Name -> [Name] -> [ConRec] -> [Dec]
 recordD nm vars cons =
   let mkcon :: ConRec -> Con
       mkcon (NormalC n ts) = Con n ts
       mkcon (RecordC n ts) = Con n (map snd ts)
+
+      dt = appsT (ConT nm : map VarT vars)
+
+      mkundef :: Con -> Dec
+      mkundef (Con n ts) =
+        let undefnm = (record_undefnm n)
+            undefet = arrowsT $ ts ++ [dt]
+            undefe = appsE $ ConE (Sig n undefet) : [VarE (Sig "undefined" t) | t <- ts]
+        in ValD (TopSig undefnm [] dt) undefe
 
       -- TODO: handle correctly the case where two different constructors
       -- share the same accessor name.
@@ -184,16 +207,44 @@ recordD nm vars cons =
       mkaccs (RecordC cn ts) = 
         let mkacc :: ((Name, Type), Int) -> Dec
             mkacc ((n, t), i) = 
-              let dt = appsT (ConT nm : map VarT vars)
-                  at = arrowsT [dt, t] 
+              let at = arrowsT [dt, t] 
                   pat = ConP dt cn ([WildP pt | (_, pt) <- take i ts]
                          ++ [VarP (Sig "x" t)]
                          ++ [WildP pt | (_, pt) <- drop (i+1) ts])
                   body = clauseE [Clause [pat] (VarE (Sig "x" t))]
               in ValD (TopSig n [] at) body
         in map mkacc (zip ts [0..])
-      
+
+      mkupds :: ConRec -> [Dec]
+      mkupds (NormalC {}) = []
+      mkupds (RecordC cn ts) = 
+        let ct = arrowsT $ (map snd ts) ++ [dt]
+            mkupd :: ((Name, Type), Int) -> Dec
+            mkupd ((n, t), i) =
+              let ut = arrowsT [t, dt, dt]
+                  mypat = ConP dt cn (
+                            [VarP (Sig nm t) | (nm, t) <- take i ts]
+                            ++ [WildP t]
+                            ++ [VarP (Sig nm t) | (nm, t) <- drop (i+1) ts])
+                  myexp = appsE $ ConE (Sig cn ct) : [VarE (Sig n t) | (n, t) <- ts]
+                  body = clauseE [Clause [VarP (Sig n t), mypat] myexp]
+              in ValD (TopSig (record_updnm n) [] ut) body
+        in map mkupd (zip ts [0..])
+                            
       cons' = map mkcon cons
+      undefs = map mkundef cons'
       accs = concatMap mkaccs cons
-  in (DataD nm vars cons') : accs
+      upds = concatMap mkupds cons
+  in concat [[DataD nm vars cons'], undefs, accs, upds]
+
+-- | Desugar labelled update.
+recordU :: Exp -> [(Name, Exp)] -> Exp
+recordU e [] = e
+recordU e ((n, v):us) = 
+  appsE [VarE (Sig (record_updnm n) (arrowsT [typeof v, typeof e])),
+         v, recordU e us]
+
+-- | Desugar labelled constructors.
+recordC :: Sig -> [(Name, Exp)] -> Exp
+recordC (Sig cn ct) fields = recordU (VarE (Sig (record_undefnm cn) ct)) fields
 

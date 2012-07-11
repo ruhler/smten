@@ -172,6 +172,8 @@ testall = (42 == ((\x -> (((x*x) + (3*x)) + 2)) 5))
        && ((5 == (foofun False))
        && ((11 == (foofun 5))
        && ((11 == (numseeds (Apple True 11)))
+       && ((11 == (numseeds (Apple { numseeds = 11 })))
+       && ((8 == (numseeds ((Apple True 11) { numseeds = 8 })))
        && ((11 == (thething (Wonderful 11 32)))
        && ((42 == (unused True))
        && ((19 == (multifoofun True 12))
@@ -180,7 +182,7 @@ testall = (42 == ((\x -> (((x*x) + (3*x)) + 2)) 5))
        && ((12 == testlet)
        && ((3 == shadowmeth)
        && (3 == (length [1, 5, 2]))
-       ))))))))))))))))))))))))))))))
+       ))))))))))))))))))))))))))))))))
 
 }
 
