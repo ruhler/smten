@@ -13,7 +13,7 @@ import Seri.Lambda.Types
 free :: Exp -> [Sig]
 free =
   let free' :: [Name] -> Exp -> [Sig]
-      free' _ (IntegerE {}) = []
+      free' _ (LitE {}) = []
       free' bound (CaseE e ms) = 
         let freem :: Match -> [Sig]
             freem (Match p b) = free' (map (\(Sig n _) -> n) (bindingsP p) ++ bound) b

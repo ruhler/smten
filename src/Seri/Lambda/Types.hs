@@ -1,7 +1,8 @@
 
 -- | Utilities for working with Seri Types
 module Seri.Lambda.Types (
-    appsT, arrowsT, outputT, unappsT, unarrowsT, listT, integerT,
+    appsT, arrowsT, outputT, unappsT, unarrowsT,
+    listT, integerT, charT, stringT,
     Typeof(..), typeofCon,
     assign, assignments, bindingsP, bindingsP', varTs,
     isSubType,
@@ -17,6 +18,14 @@ import Seri.Lambda.IR
 -- | The Integer type
 integerT :: Type
 integerT = ConT "Integer"
+
+-- | The Char type
+charT :: Type
+charT = ConT "Char"
+
+-- | The String type
+stringT :: Type
+stringT = listT charT
 
 -- | Given the list of types [a, b, ..., c],
 -- Return the applications of those types: (a b ... c)
@@ -85,8 +94,12 @@ class Typeof a where
     -- well typed.
     typeof :: a -> Type
 
+instance Typeof Lit where
+    typeof (IntegerL {}) = integerT
+    typeof (CharL {}) = charT
+
 instance Typeof Exp where
-    typeof (IntegerE _) = integerT
+    typeof (LitE l) = typeof l
     typeof (CaseE _ (m:_)) = typeof m
     typeof (AppE f _) = outputT (typeof f)
     typeof (LamE tn e) = arrowsT [typeof tn, typeof e]

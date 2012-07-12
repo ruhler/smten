@@ -5,7 +5,7 @@
 module Seri.Lambda.IR (
     Name, Type(..), Sig(..), TopSig(..), Class(..), Context,
     Pat(..), Match(..),
-    Exp(..), 
+    Lit(..), Exp(..), 
     Con(..), Method(..), Dec(..),
     isDataD,
     ) where
@@ -39,7 +39,11 @@ data Class = Class Name [Type]
 data Match = Match Pat Exp      -- ^ p -> e
     deriving (Eq, Show, Data, Typeable)
 
-data Exp = IntegerE Integer         -- ^ integer literal
+data Lit = IntegerL Integer         -- ^ integer literal
+         | CharL Char               -- ^ character literal
+    deriving (Eq, Show, Data, Typeable)
+
+data Exp = LitE Lit                 -- ^ literal
          | CaseE Exp [Match]        -- ^ case e of { ms }
          | AppE Exp Exp             -- ^ f x
          | LamE Sig Exp             -- ^ \x -> e

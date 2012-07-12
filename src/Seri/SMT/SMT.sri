@@ -1,8 +1,7 @@
 
 module Seri.SMT.SMT where {
 
-import Seri.Lib.Bool;
-import Seri.Lib.Monad;
+import Seri.Lib.Prelude;
 
 data Query a = Query;
 

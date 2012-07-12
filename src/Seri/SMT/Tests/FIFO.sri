@@ -2,8 +2,7 @@
 
 module Seri.SMT.Tests.FIFO where {
 
-import Seri.Lib.Monad;
-import Seri.Lib.Maybe;
+import Seri.Lib.Prelude;
 
 class FIFO f where {
     clear :: f a;

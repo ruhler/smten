@@ -17,11 +17,10 @@ preludeH =
       mt _ (ConT "Char") = return $ H.ConT (H.mkName "Prelude.Char")
       mt _ t = fail $ "preludeH does not apply to type: " ++ pretty t
 
-      md _ (PrimD (TopSig "undefined" _ t)) = do
-        let e = H.VarE (H.mkName "Prelude.undefined")
-        let sig = H.SigD (H.mkName "undefined") (H.VarT (H.mkName "a"))
-        let val = H.FunD (H.mkName "undefined") [H.Clause [] (H.NormalB e) []]
-        return [sig, val]
+      md _ (PrimD (TopSig "error" _ t)) = do
+        let e = H.VarE (H.mkName "Prelude.error")
+        let val = H.FunD (H.mkName "error") [H.Clause [] (H.NormalB e) []]
+        return [val]
       md _ (DataD "Char" _ _) = return []
       md _ (DataD "Integer" _ _) = return []
       md _ (DataD "()" _ _) = return []

@@ -113,8 +113,12 @@ class Constrain a where
     -- Returns the type of the thing being constrained.
     constrain :: a -> TI Type
 
+instance Constrain Lit where
+    constrain (IntegerL {}) = return integerT
+    constrain (CharL {}) = return charT
+
 instance Constrain Exp where
-    constrain (IntegerE {}) = return integerT
+    constrain (LitE l) = constrain l
     constrain (CaseE e ms) = do
         te <- constrain e
         tps <- mapM constrain [p | Match p _ <- ms]

@@ -63,7 +63,7 @@ instance Ppr Type where
 
 
 isAtomE :: Exp -> Bool
-isAtomE (IntegerE {}) = True
+isAtomE (LitE {}) = True
 isAtomE (CaseE {}) = False
 isAtomE (AppE {}) = False
 isAtomE (LamE {}) = False
@@ -96,6 +96,10 @@ sugardo (AppE (AppE (VarE (Sig ">>=" _)) m) (LamE s r))
     = BindS s m : sugardo r
 sugardo e = [NoBindS e]
 
+instance Ppr Lit where
+    ppr (IntegerL i) = integer i
+    ppr (CharL c) = text (show c)
+
 instance Ppr Exp where
     -- Special case for if expressions
     ppr (CaseE e [Match (ConP (ConT "Bool") "True" []) a,
@@ -118,7 +122,7 @@ instance Ppr Exp where
         parens . sep $ punctuate comma (map ppr [a, b, c, d])
 
     -- Normal cases
-    ppr (IntegerE i) = integer i
+    ppr (LitE l) = ppr l
     ppr (CaseE e ms) = text "case" <+> ppr e <+> text "of" <+> text "{"
                         $+$ nest tabwidth (vcat (map ppr ms)) $+$ text "}"
     ppr (AppE a b) | isAtomE b = ppr a <+> ppr b

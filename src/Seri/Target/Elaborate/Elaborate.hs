@@ -156,7 +156,7 @@ match (ConP t n ps) (AppE ae be) | not (null ps)
         (Failed, _) -> Failed
         (Succeeded _, Failed) -> Failed
         _ -> Unknown
-match (IntegerP i) (IntegerE i') | i == i' = Succeeded []
+match (IntegerP i) (LitE (IntegerL i')) | i == i' = Succeeded []
 match (VarP (Sig nm _)) e = Succeeded [(nm, e)]
 match (WildP _) _ = Succeeded []
 match _ x | iswhnf x = Failed
@@ -166,7 +166,7 @@ match _ _ = Unknown
 --  Return True if the expression is in weak head normal form.
 --  TODO: how should we handle primitives?
 iswhnf :: Exp -> Bool
-iswhnf (IntegerE _) = True
+iswhnf (LitE _) = True
 iswhnf (LamE _ _) = True
 iswhnf x
  = let iscon :: Exp -> Bool
@@ -184,7 +184,7 @@ reduce n v e = reduces [(n, v)] e
 -- Perform multiple simultaneous beta reduction in exp, replacing occurrences
 -- of variable n with v if (n, v) is in vs.
 reduces :: [(Name, Exp)] -> Exp -> Exp
-reduces _ e@(IntegerE _) = e
+reduces _ e@(LitE _) = e
 reduces vs (CaseE e ms) =
     let reducematch :: Match -> Match
         reducematch (Match p b) =
@@ -203,7 +203,7 @@ reduces vs e@(VarE (Sig vn _)) =
 
 -- | Return a list of all variables in the given expression.
 names :: Exp -> [Name]
-names (IntegerE {}) = []
+names (LitE {}) = []
 names (CaseE e ms) = 
   let namesm :: Match -> [Name]
       namesm (Match p b) = bindingsP' p ++ names b
@@ -243,7 +243,7 @@ alpharename bad e =
       -- Do alpha renaming in an expression given the list of bound variable
       -- names before renaming.
       rename :: [Name] -> Exp -> Exp
-      rename _ e@(IntegerE {}) = e
+      rename _ e@(LitE {}) = e
       rename bound (CaseE e ms)
         = CaseE (rename bound e) (map (rematch bound) ms)
       rename bound (AppE a b) = AppE (rename bound a) (rename bound b)

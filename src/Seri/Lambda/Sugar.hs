@@ -5,8 +5,8 @@ module Seri.Lambda.Sugar (
     ifE, lamE, appsE, unappsE,
     Stmt(..), doE,
     Clause(..), clauseE,
-    trueE, falseE, listE, tupE, tupP,
-    letE,
+    trueE, falseE, boolE, listE, tupE, tupP,
+    letE, stringE, charE, integerE,
     Module(..), Import(..), flatten,
     ConRec(..), recordD, recordC, recordU,
     ) where
@@ -26,6 +26,11 @@ trueE = ConE (Sig "True" (ConT "Bool"))
 -- | False
 falseE :: Exp
 falseE = ConE (Sig "False" (ConT "Bool"))
+
+-- | Boolean expression
+boolE :: Bool -> Exp
+boolE True = trueE
+boolE False = falseE
 
 -- | if p then a else b
 ifE :: Exp -> Exp -> Exp -> Exp
@@ -148,6 +153,16 @@ letE ((Sig n t, v):bs) x =
             sub <- letE bs x
             return (AppE (LamE (Sig n t) sub) v)
         else fail $ "let expression is recursive in vars: " ++ show recursive
+
+integerE :: Integer -> Exp
+integerE i = LitE (IntegerL i)
+
+charE :: Char -> Exp
+charE c = LitE (CharL c)
+
+stringE :: [Char] -> Exp
+stringE [] = ConE (Sig "[]" (listT charT))
+stringE s = listE (map charE s)
 
 -- | Currently imports are restricted to the form:
 -- > import Foo.Bar

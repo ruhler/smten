@@ -18,9 +18,10 @@ hsName :: Name -> H.Name
 hsName = H.mkName
 
 hsExp :: HCompiler -> Exp -> Failable H.Exp
-hsExp c (IntegerE i) = do
+hsExp c (LitE (IntegerL i)) = do
     t <- compile_type c c integerT
     return $ H.SigE (H.LitE (H.IntegerL i)) t
+hsExp c (LitE (CharL i)) = return (H.LitE (H.CharL i))
 hsExp c (CaseE e ms) = do
     e' <- compile_exp c c e
     ms' <- mapM (hsMatch c) ms

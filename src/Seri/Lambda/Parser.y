@@ -45,9 +45,10 @@ import Seri.Lambda.Sugar
        '::'      { TokenDoubleColon }
        conid    { TokenConId $$ }
        varid    { TokenVarId $$ }
-       varsym   { TokenVarSym $$ }
+       varsymt  { TokenVarSym $$ }
        consym   { TokenConSym $$ }
        integer  { TokenInteger $$ }
+       string   { TokenString $$ }
        'data'   { TokenData }
        'class'  { TokenClass }
        'instance'  { TokenInstance }
@@ -253,8 +254,8 @@ aexp :: { Exp }
     { $1 }
  | gcon_typed
     { ConE $1 }
- | integer
-    { IntegerE $1 }
+ | literal
+    { $1 }
  | '(' exp ')'
     { $2 }
  | '(' exp ',' exps_commasep ')'
@@ -266,6 +267,12 @@ aexp :: { Exp }
         ConE s -> recordC s (fromMaybe [] $3)
         x -> recordU x (fromMaybe [] $3)
     }
+
+literal :: { Exp }
+ : integer
+    { integerE $1 }
+ | string
+    { stringE $1 }
 
 alts :: { [Match] }
  : alt
@@ -390,6 +397,12 @@ qop :: { Exp }
 qvarsym :: { String }
  : varsym
     { $1 }
+
+varsym :: { String }
+ : varsymt
+    { $1 }
+ | '.'
+    { "." }
 
 qconop :: { String }
  : gconsym
@@ -527,6 +540,7 @@ data Token =
      | TokenVarSym String
      | TokenConSym String
      | TokenInteger Integer
+     | TokenString String
      | TokenData
      | TokenForall
      | TokenClass
@@ -624,6 +638,31 @@ newline = modify $ \ps -> ps {ps_line = 1 + ps_line ps, ps_column = 0 }
 setText :: String -> ParserMonad ()
 setText txt = modify $ \ps -> ps {ps_text = txt }
 
+charescs :: [(Char, Char)]
+charescs = [('a', '\a'),
+            ('b', '\b'),
+            ('f', '\f'),
+            ('n', '\n'),
+            ('r', '\r'),
+            ('t', '\t'),
+            ('v', '\v'),
+            ('\\', '\\'),
+            ('"', '"'),
+            ('\'', '\'')]
+
+ischaresc :: Char -> Bool
+ischaresc c = c `elem` map fst charescs
+
+charesc :: Char -> Char
+charesc c = fromMaybe (error $ "invalid charesc: " ++ [c]) (lookup c charescs)
+
+lexstr :: String -> String -> ParserMonad Token
+lexstr ostr ('"':cs) = single >> setText cs >> return (TokenString ostr)
+lexstr ostr ('\\':e:cs) | ischaresc e
+ = single >> single >> lexstr (ostr ++ [charesc e]) cs
+lexstr ostr ('\\':cs) = error $ "todo: lex string escape: " ++ cs
+lexstr ostr (c:cs) = single >> lexstr (ostr ++ [c]) cs
+
 lexer :: (Token -> ParserMonad a) -> ParserMonad a
 lexer output = do
   let osingle t r = single >> setText r >> output t
@@ -654,7 +693,10 @@ lexer output = do
                   many rop >> setText rest >> output (fromJust (lookup rop reservedops))
               op | head op == ':' -> many op >> setText rest >> output (TokenConSym op)
               op -> many op >> setText rest >> output (TokenVarSym op)
+      ('"':cs) -> single >> lexstr "" cs >>= output
+          
       cs -> failE $ "fail to lex: " ++ cs
+
 
 
 data PDec =

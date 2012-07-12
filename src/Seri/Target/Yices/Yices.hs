@@ -68,7 +68,7 @@ yfreeerr it ot = do
 
 -- Translate a seri expression to a yices expression
 yExp :: Exp -> YCompiler Y.ExpY
-yExp (IntegerE x) = return $ Y.LitI x
+yExp (LitE (IntegerL x)) = return $ Y.LitI x
 yExp e@(CaseE _ []) = yfail $ "empty case statement: " ++ pretty e
 yExp (CaseE e ms) =
   let -- depat p e

@@ -1,8 +1,7 @@
 
 module Seri.SMT.Tests.If where {
 
-import Seri.Lib.Integer;
-import Seri.Lib.Monad;
+import Seri.Lib.Prelude;
 import Seri.SMT.SMT;
 
 sign :: Integer -> Integer;

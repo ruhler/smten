@@ -85,7 +85,7 @@ typecheck ds =
       --    e - the expression to typecheck
       --  fails if expression does not type check.
       checkexp :: TypeEnv -> Exp -> Failable ()
-      checkexp _ (IntegerE {}) = return ()
+      checkexp _ (LitE {}) = return ()
       checkexp tenv (CaseE e ms) = do
          checkexp tenv e 
          mapM_ (checkmatch tenv) ms

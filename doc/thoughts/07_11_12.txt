@@ -1,0 +1,69 @@
+
+Wed Jul 11 13:05:21 EDT 2012
+
+Next request: array support.
+
+There's also this question about...
+
+Let's say I have two arrays, and I want a function that says: check if these
+two arrays have the same first N elements.
+
+Can I write this as a function in seri? Sure:
+
+same 0 a b = true
+same 1 a b = same 0 a b && a[0] == b[0]
+
+But this is recursive. The question is, can we inline it in seri?
+
+The answer is, as long as we inline at least N, yes, because whenever we see
+same 0 a b, that should simplify to true, so we stop the recursion.
+
+That's good at least.
+
+Next step then: figure out how I want to add arrays.
+
+What do haskell arrays look like, for example?
+
+Array is constructed with bounds and initial elements. The bounds are
+specified with Ix,  but we could start more specific and just allow Integers
+as bounds.
+
+listArray can construct an array from a list. That's not hard given the array
+constructor.
+
+(!) to read an element.
+bounds gets the array bounds.
+(//) to update the array.
+
+And they give a haskell implementation which is a pair of bounds and a
+function mapping index to data...
+
+I believe this is the kind of interface we want, and it should work out okay.
+
+I hope so.
+
+I think what I should do is as follows: define Array completely inside seri,
+without any primitives. Then it should work automatically for everything I
+have: elaboration, haskell, etc... We don't require any special handling for
+it.
+
+Now, presumably yices is going to have problems with this representation,
+because we do something more general than we ought. That's fine, just
+overwrite the array definitions with something else. No?
+
+Let me try it. And, if it's not too much of a hassle, I think it would be good
+to define Ix like they do in the haskell report. Build up the library, expand
+the test cases, things like that?
+
+Well, I can start with integer to start. That should be plenty for now, and
+the functions will just be more general later.
+
+Ideally user code doesn't have to change later on. So, rather than
+Array b = MkArray (Integer, Integer) (Integer -> b),
+do:
+
+Array a b = MkArray (a, a) (a -> b),
+and only support the Integer versions.
+
+Cool. Let me try it.
+

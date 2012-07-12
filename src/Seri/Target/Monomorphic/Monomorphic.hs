@@ -98,7 +98,7 @@ genval s@(Sig n t) = do
 -- Translate a concretely typed expression to the appropriate monomorphic
 -- expression.
 monoexp :: Exp -> M Exp
-monoexp e@(IntegerE {}) = return e
+monoexp e@(LitE {}) = return e
 monoexp (CaseE e ms) = do
     e' <- monoexp e
     ms' <- mapM monomatch ms

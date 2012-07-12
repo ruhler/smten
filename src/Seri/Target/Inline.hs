@@ -14,7 +14,7 @@ inline' _ 0 _ e = e
 inline' bound depth env e =
   let inme = inline' bound depth env
   in case e of
-        IntegerE {} -> e
+        LitE {} -> e
         CaseE a ms ->
            let imatch (Match p b) =
                 let nbound = bindingsP' p

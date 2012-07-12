@@ -33,13 +33,6 @@ vs. foo :: (Foo a) => Sludge
 - Add support for list sequences
     example: [1..5]
 
-- Add support for let expressions (?)
-    example: let foo = 2 in foo + 40
-    Translates to: case 2 of { foo -> foo + 40; }
-    Note: pattern matches in let should not be allowed, because we can't do
-          them lazily with this transformation. And recursive let blocks are
-          not allowed.
-
 - support for pattern guards?
 - support for pattern bindings: x@(...)
 
@@ -52,5 +45,16 @@ vs. foo :: (Foo a) => Sludge
 - fix case arg duplication issue in yices1 like it was for yices2?
 
 - I still see a segfault sometimes when running seriq2.
-- checking for instances should only check for free variables! Not bound too.
+
+- functions with clauses in let would be nice.
+
+- string literals.
+- array comprehension.
+- error primitive.
+- pattern guards would be nice.
+
+- split Parser into: Grammar.y, Lexer.hs, Monad.hs
+Because it's getting way to big.
+
+- make LitE which has IntegerL and CharL.
 

@@ -180,7 +180,7 @@ realizefree nm t | t == integerT = do
     ctx <- gets ys_ctx
     ival <- lift $ Y.getIntegerValue ctx (yicesN nm)
     debug $ "; " ++ nm ++ " is " ++ show ival
-    return (IntegerE ival)
+    return (integerE ival)
 realizefree nm t@(AppT (AppT (ConT "->") _) _)
   = error $ "TODO: realizefree type " ++ pretty t
 realizefree nm t =
