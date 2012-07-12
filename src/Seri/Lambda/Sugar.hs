@@ -5,7 +5,7 @@ module Seri.Lambda.Sugar (
     ifE, lamE, appsE, unappsE,
     Stmt(..), doE,
     Clause(..), clauseE,
-    trueE, falseE, boolE, listE, tupE, tupP,
+    trueE, falseE, boolE, listE, listP, tupE, tupP,
     letE, stringE, charE, integerE,
     Module(..), Import(..), flatten,
     ConRec(..), recordD, recordC, recordU,
@@ -126,8 +126,8 @@ unappsE (AppE a b) = unappsE a ++ [b]
 unappsE e = [e]
 
 -- | [a, b, ..., c]
--- The list must be non-null so the type can properly be inferred.
 listE :: [Exp] -> Exp
+listE [] = ConE (Sig "[]" (listT UnknownT))
 listE [x] =
  let t = typeof x
      consT = arrowsT [t, listT t, listT t]
@@ -136,6 +136,15 @@ listE (x:xs) =
  let t = typeof x
      consT = arrowsT [t, listT t, listT t]
  in appsE [ConE (Sig ":" consT), x, listE xs]
+
+listP :: [Pat] -> Pat
+listP [] = ConP (listT UnknownT) "[]" []
+listP [x] =
+  let t = listT $ typeof x
+  in ConP t ":" [x, ConP t "[]" []]
+listP (x:xs) =
+  let t = listT $ typeof x
+  in ConP t ":" [x, listP xs]
 
 -- |
 -- > let n1 = e1

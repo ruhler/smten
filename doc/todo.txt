@@ -1,6 +1,5 @@
 
 - add layout support
-- list literal patterns.
 - support negative literals?
 - deriving Eq would be nice.
 - default methods in classes?
@@ -48,13 +47,9 @@ vs. foo :: (Foo a) => Sludge
 
 - functions with clauses in let would be nice.
 
-- string literals.
 - array comprehension.
-- error primitive.
 - pattern guards would be nice.
 
 - split Parser into: Grammar.y, Lexer.hs, Monad.hs
 Because it's getting way to big.
-
-- make LitE which has IntegerL and CharL.
 

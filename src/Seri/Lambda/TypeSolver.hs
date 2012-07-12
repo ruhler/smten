@@ -43,7 +43,11 @@ finish = do
 
 -- Solve a single constraint
 --  Updates the current system and solution.
+--
+-- Note: we ignore unsolvable constraints rather than throw an error here so
+-- the type checker can give more useful error messages.
 single :: (Type, Type) -> Solver ()
+single (a, b) | unsolvable (a, b) = return ()
 single (x, y) | x == y = return ()
 single (AppT a b, AppT c d) = do
     (sys, sol) <- get
@@ -54,6 +58,15 @@ single (a, b) = do
     let sys' = map (tpreplace a b) sys
     let sol' = map (tpreplace a b) sol
     put (sys', (a,b):sol')
+
+unsolvable :: (Type, Type) -> Bool
+unsolvable (UnknownT, _) = True
+unsolvable (_, UnknownT) = True
+unsolvable (ConT {}, AppT {}) = True
+unsolvable (AppT {}, ConT {}) = True
+unsolvable (ConT a, ConT b) | a /= b = True
+unsolvable _ = False
+
 
 tpreplace :: Type -> Type -> (Type, Type) -> (Type, Type)
 tpreplace k v (a, b) = (treplace k v a, treplace k v b)

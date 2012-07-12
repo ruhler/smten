@@ -3,6 +3,7 @@
 module Seri.Lib.Tests where {
 
 import Seri.Lib.Prelude;
+import Seri.Lib.Array;
 
 foo1 :: Integer;
 foo1 = (\x -> ((x*x)+(3*x))+2) 5;
@@ -130,6 +131,17 @@ testlet =
     bar = fudge + 3;
   } in bar + bar;
 
+arr :: Array Integer Integer;
+arr = array (0, 2) [(0, 42), (1, 12), (2, 19)];
+
+testarray :: Test ();
+testarray = do {
+    t "arrsub0" (42 == (arr ! 0));
+    t "arrsub1" (12 == (arr ! 1));
+    t "arrsub2" (19 == (arr ! 2));
+    t "arrupd" (23 == ((arr // [(1, 23)]) ! 1));
+    };
+
 shadowmeth :: Integer;
 shadowmeth = let { foo = 3; } in foo;
 
@@ -186,6 +198,7 @@ tests = do {
     t "F" (12 == testlet);
     t "G" (3 == shadowmeth);
     t "H" (3 == (length [1, 5, 2]));
+    testarray;
 };
 
 testall :: Bool;

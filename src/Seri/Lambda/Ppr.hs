@@ -96,6 +96,17 @@ sugardo (AppE (AppE (VarE (Sig ">>=" _)) m) (LamE s r))
     = BindS s m : sugardo r
 sugardo e = [NoBindS e]
 
+isStringLiteral :: Exp -> Bool
+isStringLiteral (ConE (Sig "[]" (AppT (ConT "[]") (ConT "Char")))) = True
+isStringLiteral (AppE (AppE (ConE (Sig ":" _)) (LitE (CharL _))) e) = isStringLiteral e
+isStringLiteral _ = False
+
+stringLiteral :: Exp -> String
+stringLiteral (ConE (Sig "[]" (AppT (ConT "[]") (ConT "Char")))) = ""
+stringLiteral (AppE (AppE (ConE (Sig ":" _)) (LitE (CharL c))) e)
+  = c : stringLiteral e
+stringLiteral e = error $ "not a string literal: " ++ show e
+
 instance Ppr Lit where
     ppr (IntegerL i) = integer i
     ppr (CharL c) = text (show c)
@@ -120,6 +131,9 @@ instance Ppr Exp where
         parens . sep $ punctuate comma (map ppr [a, b, c])
     ppr (AppE (AppE (AppE (AppE (ConE (Sig "(,,,)" _)) a) b) c) d) =
         parens . sep $ punctuate comma (map ppr [a, b, c, d])
+
+    -- Special case for string literals
+    ppr e | isStringLiteral e = text (show (stringLiteral e))
 
     -- Normal cases
     ppr (LitE l) = ppr l

@@ -1,0 +1,11 @@
+
+Thu Jul 12 12:55:36 EDT 2012
+
+Myron brought up an interesting point. If I define the Array entirely within
+the language, then it may be hard to recognize when I go to compile to yices
+if it's already been inlined and simplified a bunch.
+
+Ideally I can do it in the language and everything works fine, and the
+interface is what I want at least. So let me getting it working in the
+language, try it in an SMT query, and see what happens?
+

@@ -336,6 +336,8 @@ apat :: { Pat }
     { $2 }
  | '(' pat ',' pats_commasep ')'
     { tupP ($2 : $4) }
+ | '[' pats_commasep ']'
+    { listP $2 }
 
 gcon_typed :: { Sig }
  : '(' gcon '::' type ')'
