@@ -2,7 +2,7 @@
 
 module Seri.Lambda.Tests.LetRecM where {
 
-import Seri.Lib.Integer;
+import Seri.Lib.Prelude;
 
 -- Recursive let blocks are not allowed.
 -- We shouldn't do any silent shadowing or such that would differ from haskell

@@ -1,8 +1,7 @@
 
 module Seri.Lambda.Tests.InstCtx where {
 
-import Seri.Lib.Bool;
-import Seri.Lib.Maybe;
+import Seri.Lib.Prelude;
 
 data Foo = Foo | Bar;
 
