@@ -77,9 +77,9 @@ pprname :: String -> Doc
 pprname n | isOp n = parens (text n)
 pprname n = text n
 
-pprsig :: Doc -> Sig -> Doc
-pprsig s (Sig n UnknownT) = pprname n
-pprsig s (Sig n t) = parens (s <> pprname n <+> text "::" <+> (ppr t))
+pprsig :: Sig -> Doc
+pprsig (Sig n UnknownT) = pprname n
+pprsig (Sig n t) = parens (pprname n <+> text "::" <+> (ppr t))
 
 sep2 :: Doc -> Doc -> Doc
 sep2 a b = a $$ nest tabwidth b
@@ -106,6 +106,24 @@ stringLiteral (ConE (Sig "[]" (AppT (ConT "[]") (ConT "Char")))) = ""
 stringLiteral (AppE (AppE (ConE (Sig ":" _)) (LitE (CharL c))) e)
   = c : stringLiteral e
 stringLiteral e = error $ "not a string literal: " ++ show e
+
+isLet :: Exp -> Bool
+isLet (AppE (LamE {}) _) = True
+isLet e = False
+
+deLet :: Exp -> ([(Sig, Exp)], Exp)
+deLet (AppE (LamE s e) v) =
+  let (binds, body) = deLet e
+  in ((s, v) : binds, body)
+deLet e = ([], e)
+
+pprLet :: Exp -> Doc
+pprLet e = 
+  let (binds, body) = deLet e
+      pprbind (s, e) = pprsig s <+> text "=" <+> ppr e <+> semi
+  in text "let" <+> text "{"
+       $+$ nest tabwidth (vcat (map pprbind binds)) $+$ text "}"
+       <+> text "in" <+> ppr body
 
 instance Ppr Lit where
     ppr (IntegerL i) = integer i
@@ -135,19 +153,22 @@ instance Ppr Exp where
     -- Special case for string literals
     ppr e | isStringLiteral e = text (show (stringLiteral e))
 
+    -- Special case for let expressions
+    ppr e | isLet e = pprLet e
+
     -- Normal cases
     ppr (LitE l) = ppr l
     ppr (CaseE e ms) = text "case" <+> ppr e <+> text "of" <+> text "{"
                         $+$ nest tabwidth (vcat (map ppr ms)) $+$ text "}"
     ppr (AppE a b) | isAtomE b = ppr a <+> ppr b
     ppr (AppE a b) = ppr a <+> (parens $ ppr b)
-    ppr (LamE s b) = parens $ (text "\\" <> pprsig empty s <+> text "->") `sep2` ppr b
-    ppr (ConE s) = pprsig empty s
-    ppr (VarE s) = pprsig empty s
+    ppr (LamE s b) = parens $ (text "\\" <> pprsig s <+> text "->") `sep2` ppr b
+    ppr (ConE s) = pprsig s
+    ppr (VarE s) = pprsig s
 
 instance Ppr Stmt where
     ppr (NoBindS e) = ppr e <> semi
-    ppr (BindS s e) = pprsig empty s <+> text "<-" <+> ppr e <> semi
+    ppr (BindS s e) = pprsig s <+> text "<-" <+> ppr e <> semi
 
 instance Ppr Match where
     ppr (Match p e) = (ppr p <+> text "->") `sep2` ppr e <> semi
@@ -171,10 +192,10 @@ instance Ppr Pat where
     ppr (ConP t n ps) =
         let subp p | isAtomP p = ppr p
             subp p = parens (ppr p)
-        in pprsig empty (Sig n t) <+> hsep (map subp ps)
-    ppr (VarP s) = pprsig empty s
+        in pprsig (Sig n t) <+> hsep (map subp ps)
+    ppr (VarP s) = pprsig s
     ppr (IntegerP i) = integer i
-    ppr (WildP t) = pprsig empty (Sig "_" t)
+    ppr (WildP t) = pprsig (Sig "_" t)
 
 conlist :: [Con] -> Doc
 conlist [] = empty
