@@ -105,6 +105,7 @@ querytest "Complex"
 querytest "If"
 querytest "Casenomatch"
 querytest "Bluespec"
+querytest "Array"
 
 # The SMT query2 tests
 proc query2test {name args} {
@@ -119,6 +120,7 @@ query2test "Complex"
 query2test "If"
 query2test "Casenomatch"
 query2test "Bluespec"
+query2test "Array"
 
 puts "BUILD COMPLETE"
 

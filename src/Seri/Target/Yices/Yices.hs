@@ -5,6 +5,7 @@ module Seri.Target.Yices.Yices (
 
 import qualified Math.SMT.Yices.Syntax as Y
 
+import Data.Char (ord)
 import Control.Monad.State
 
 import Seri.Failable
@@ -14,7 +15,7 @@ runYCompiler :: YCompiler a -> YS -> Failable (a, YS)
 runYCompiler = runStateT
 
 ys :: YS
-ys = YS [] 1
+ys = YS [] 1 1
 
 -- | Convert a seri name to a yices name.
 yicesN :: String -> String
@@ -47,7 +48,8 @@ yicesD d = do
 
 data YS = YS {
     ys_cmds :: [Y.CmdY],   -- ^ Declarations needed for what was compiled
-    ys_errid :: Integer    -- ^ unique id to use for next free error variable
+    ys_errid :: Integer,   -- ^ unique id to use for next free error variable
+    ys_caseid :: Integer   -- ^ unique id to use for next case arg variable
 }
 
 type YCompiler = StateT YS Failable
@@ -55,20 +57,27 @@ type YCompiler = StateT YS Failable
 yfail :: String -> YCompiler a
 yfail = lift . fail
 
--- Given the argument type and output type of a free error variable, return
--- the yices name of a newly defined one.
-yfreeerr :: Type -> Type -> YCompiler String
-yfreeerr it ot = do
-    t <- lift $ yType (arrowsT [it, ot])
+-- Given the type a free error variable, return the yices name of a newly
+-- defined one.
+yfreeerr :: Type -> YCompiler String
+yfreeerr t = do
+    yt <- lift $ yType t
     id <- gets ys_errid
     let nm = yicesname ("err~" ++ show id)
-    let cmd = Y.DEFINE (nm, t) Nothing
+    let cmd = Y.DEFINE (nm, yt) Nothing
     modify $ \ys -> ys { ys_cmds = cmd : ys_cmds ys, ys_errid = id+1 }
     return nm
+
+yfreecase :: YCompiler String
+yfreecase = do
+    id <- gets ys_caseid
+    modify $ \ys -> ys { ys_caseid = id+1 }
+    return $ yicesname ("c~" ++ show id)
 
 -- Translate a seri expression to a yices expression
 yExp :: Exp -> YCompiler Y.ExpY
 yExp (LitE (IntegerL x)) = return $ Y.LitI x
+yExp (LitE (CharL c)) = return $ Y.LitI (fromIntegral $ ord c)
 yExp e@(CaseE _ []) = yfail $ "empty case statement: " ++ pretty e
 yExp (CaseE e ms) =
   let -- depat p e
@@ -100,7 +109,7 @@ yExp (CaseE e ms) =
       --  outputs - the yices expression implementing the matches.
       dematch :: Y.ExpY -> [Match] -> YCompiler Y.ExpY
       dematch ye [] = do
-          errnm <- yfreeerr (typeof e) (typeof (head ms))
+          errnm <- yfreeerr (arrowsT [typeof e, typeof (head ms)])
           return $ Y.APP (Y.VarE errnm) [ye]
       dematch e ((Match p b):ms) = do
           bms <- dematch e ms
@@ -110,7 +119,12 @@ yExp (CaseE e ms) =
           return $ Y.IF pred (Y.LET bindings b') bms
   in do
       e' <- yExp e
-      dematch e' ms
+      cnm <- yfreecase
+      body <- dematch (Y.VarE cnm) ms
+      return $ Y.LET [((cnm, Nothing), e')] body
+yExp e@(AppE (VarE (Sig "error" _)) _) = do
+    errnm <- yfreeerr (typeof e)
+    return $ Y.VarE errnm
 yExp (AppE a b) = do
     a' <- yExp a
     b' <- yExp b
@@ -145,6 +159,7 @@ yDec (ValD (TopSig n [] t) e) = do
 yDec (DataD "Integer" _ _) =
     let deftype = Y.DEFTYP "Integer" (Just (Y.VarT "int"))
     in return [deftype]
+yDec (DataD "Char" _ _) = return [Y.DEFTYP "Char" (Just (Y.VarT "int"))]
 yDec (DataD n [] cs) =
     let con :: Con -> YCompiler (String, [(String, Y.TypY)])
         con (Con n ts) = do 
@@ -175,11 +190,12 @@ yDec (DataD n [] cs) =
 yDec (PrimD (TopSig "__prim_add_Integer" _ _))
  = return [defiop "__prim_add_Integer" "+"]
 yDec (PrimD (TopSig "__prim_sub_Integer" _ _))
- = return [defbop "__prim_sub_Integer" "-"]
+ = return [defiop "__prim_sub_Integer" "-"]
 yDec (PrimD (TopSig "<" _ _)) = return [defbop "<" "<"]
 yDec (PrimD (TopSig ">" _ _)) = return [defbop ">" ">"]
 yDec (PrimD (TopSig "__prim_eq_Integer" _ _))
  = return [defbop "__prim_eq_Integer" "="]
+yDec (PrimD (TopSig "error" _ _)) = return []
 
 yDec d = yfail $ "Cannot compile to yices: " ++ pretty d
 

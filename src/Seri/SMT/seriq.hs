@@ -22,7 +22,7 @@ main = do
     decs <- attemptIO $ typeinfer (flatten query)
     attemptIO $ typecheck decs
 
-    let opts = (RunOptions dbg)
+    let opts = (RunOptions dbg 30)
     tmain <- attemptIO $ lookupVarType decs "main"
     result <- runYices [] queryR opts decs (VarE (Sig "main" tmain))
     putStrLn $ pretty result

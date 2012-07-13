@@ -40,9 +40,6 @@ vs. foo :: (Foo a) => Sludge
 - have common option parsing for serie, serih, seriq, serim, serit?
 - what happens if we realize a free integer variable which is a dont-care?
 
-- apply inlining, simplification to yices1?
-- fix case arg duplication issue in yices1 like it was for yices2?
-
 - I still see a segfault sometimes when running seriq2.
 
 - functions with clauses in let would be nice.
@@ -52,4 +49,21 @@ vs. foo :: (Foo a) => Sludge
 
 - split Parser into: Grammar.y, Lexer.hs, Monad.hs
 Because it's getting way to big.
+
+- move non-syntactic sugary stuff in Sugar.hs to Seri/Lib/Prelude.hs
+These are the constructors for building up complex expressions in haskell.
+
+- move TypeInfer, TypeCheck and TypeSolve into a Type/ folder?
+This might make a lot more sense after moving stuff in Types to Prelude.hs.
+
+- define Query as opaque type in SMT.sri, not as trivial type.
+
+- link Yices and Yices2 somehow so they can borrow code from each other more
+  easily?
+
+- realize shouldn't try to look up poly data type in mono environment!
+- interpret function evidence
+- interpret char evidence (?)
+
+- sugar let in pretty printing
 

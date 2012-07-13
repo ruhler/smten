@@ -15,6 +15,7 @@ import Seri.Failable
 import Seri.Lambda
 import Seri.Target.Monomorphic.Monomorphic
 import Seri.Target.Elaborate
+import Seri.Target.Inline
 import Seri.Target.Yices.Yices
 
 
@@ -23,7 +24,8 @@ data YicesState = YicesState {
     ys_ctx :: Y.Context,
     ys_dh :: Handle,
     ys_freeid :: Integer,
-    ys_ys :: YS
+    ys_ys :: YS,
+    ys_idepth :: Integer
 }
 
 type YicesMonad = StateT YicesState IO
@@ -64,7 +66,10 @@ declareNeeded :: (Monomorphic a, Ppr a) => Env -> a -> YicesMonad a
 declareNeeded env x = do
   decs <- gets ys_decls
   let (mds, me) = monomorphic env x
-  let (pdecls, _) = sort mds
+  let (pdecls, r) = sort mds
+  if null r
+      then return ()
+      else fail $ "yices recursive declarations not supported: " ++ pretty r
   let newdecls = pdecls \\ decs
   modify $ \ys -> ys { ys_decls = decs ++ newdecls }
   cmds <- yDecs newdecls
@@ -95,9 +100,12 @@ runQuery gr env e = do
             runCmds [Y.DEFINE (yicesN free, yType t') Nothing]
             return (VarE (Sig free t))
         (AppE (VarE (Sig "assert" _)) p) -> do
-            p' <- declareNeeded env p
-            true <- yExp trueE
+            idepth <- gets ys_idepth
+            let inlined = inline idepth env p
+            simplified <- elaborate simplifyR env inlined
+            p' <- declareNeeded env simplified
             yp <- yExp p'
+            true <- yExp trueE
             runCmds [Y.ASSERT (true Y.:= yp)]
             return (ConE (Sig "()" (ConT "()")))
         (AppE (VarE (Sig "queryS" _)) q) -> do
@@ -138,7 +146,8 @@ yExp e = do
     return e'
 
 data RunOptions = RunOptions {
-    debugout :: Maybe FilePath
+    debugout :: Maybe FilePath,
+    inlinedepth :: Integer
 } deriving(Show)
             
 runYices :: [Y.CmdY] -> Rule YicesMonad -> RunOptions -> Env -> Exp -> IO Exp
@@ -165,7 +174,7 @@ runYices primlib gr opts env e = do
         debug "\n; Query: "
         runQuery gr env e
 
-    (x, _) <- runStateT query (YicesState pds ctx dh 1 ys)
+    (x, _) <- runStateT query (YicesState pds ctx dh 1 ys (inlinedepth opts))
     hClose dh
     return x
     

@@ -6,6 +6,7 @@ module Seri.Target.Yices.Yices2 (
 import qualified Yices2.Syntax as Y
 
 import Control.Monad.State
+import Data.Char(ord)
 import Data.Maybe(catMaybes)
 
 import Seri.Failable
@@ -61,12 +62,12 @@ yfail = lift . fail
 
 -- Given the argument type and output type of a free error variable, return
 -- the yices name of a newly defined one.
-yfreeerr :: Type -> Type -> YCompiler String
-yfreeerr it ot = do
-    t <- lift $ yType (arrowsT [it, ot])
+yfreeerr :: Type -> YCompiler String
+yfreeerr t = do
+    yt <- lift $ yType t
     id <- gets ys_errid
     let nm = yicesname ("err~" ++ show id)
-    let cmd = Y.Define nm t Nothing
+    let cmd = Y.Define nm yt Nothing
     modify $ \ys -> ys { ys_cmds = cmd : ys_cmds ys, ys_errid = id+1 }
     return nm
 
@@ -80,6 +81,7 @@ yfreecase = do
 -- Translate a seri expression to a yices expression
 yExp :: Exp -> YCompiler Y.Expression
 yExp (LitE (IntegerL x)) = return $ Y.integerE x
+yExp (LitE (CharL c)) = return $ Y.integerE (fromIntegral $ ord c)
 yExp e@(CaseE _ []) = yfail $ "empty case statement: " ++ pretty e
 yExp (CaseE e ms) =
   let -- depat p e
@@ -108,7 +110,7 @@ yExp (CaseE e ms) =
       --  outputs - the yices expression implementing the matches.
       dematch :: Y.Expression -> [Match] -> YCompiler Y.Expression
       dematch ye [] = do
-          errnm <- yfreeerr (typeof e) (typeof (head ms))
+          errnm <- yfreeerr (arrowsT [typeof e, typeof (head ms)])
           return $ Y.FunctionE (Y.varE errnm) [ye]
       dematch e ((Match p b):ms) = do
           bms <- dematch e ms
@@ -128,6 +130,9 @@ yExp (CaseE e ms) =
 yExp e@(AppE a b) =
     case unappsE e of 
        ((ConE s):args) -> yCon s args
+       [VarE (Sig "error" _), _] -> do
+           errnm <- yfreeerr (typeof e)
+           return $ Y.varE errnm
        [VarE (Sig "<" _), a, b] -> do   
            a' <- yExp a
            b' <- yExp b
@@ -228,6 +233,10 @@ yDec (DataD "Integer" _ _) =
     let deftype = Y.DefineType "Integer" (Just (Y.NormalTD Y.IntegerT))
     in return [deftype]
 
+yDec (DataD "Char" _ _) =
+    let deftype = Y.DefineType "Char" (Just (Y.NormalTD Y.IntegerT))
+    in return [deftype]
+
 yDec (DataD n [] cs) =
     let conname :: Con -> String
         conname (Con n _) = yicesname n
@@ -250,6 +259,7 @@ yDec (PrimD (TopSig ">" _ _)) = return []
 yDec (PrimD (TopSig "__prim_add_Integer" _ _)) = return []
 yDec (PrimD (TopSig "__prim_sub_Integer" _ _)) = return []
 yDec (PrimD (TopSig "__prim_eq_Integer" _ _)) = return []
+yDec (PrimD (TopSig "error" _ _)) = return []
 
 yDec d = yfail $ "Cannot compile to yices: " ++ pretty d
 

@@ -12,12 +12,11 @@ import System.Posix.IO
 import Foreign
 import Foreign.C.String
 import Foreign.C.Types
-import qualified Foreign.Concurrent as F
 
 import Yices2.FFI
 import Yices2.Syntax
 
-data Context = Context (ForeignPtr YContext)
+data Context = Context (Ptr YContext)
 
 -- | Initialize yices.
 init :: IO ()
@@ -29,11 +28,12 @@ exit = c_yices_exit
 
 
 -- | Create a new yices2 context for assertions and such.
+-- TODO: this currently leaks context pointers!
+-- That should most certainly be fixed somehow.
 mkctx :: IO Context
 mkctx = do
     ptr <- c_yices_new_context nullPtr
-    fp <- F.newForeignPtr ptr (c_yices_free_context ptr)
-    return $! Context fp
+    return $! Context ptr
 
 -- | Run a single yices command, ignoring the result.
 run :: Context -> Command -> IO ()
@@ -55,26 +55,27 @@ run _ (Define s ty Nothing) = do
     ty' <- ytype ty
     term <- c_yices_new_uninterpreted_term ty'
     withCString s $ \str -> c_yices_set_term_name term str
-run (Context fp) (Assert p) = do
+run (Context yctx) (Assert p) = do
     p' <- yterm p
-    withForeignPtr fp $ \yctx -> c_yices_assert_formula yctx p'
+    putStr ""       -- this side steps a seg fault, i don't know why.
+    c_yices_assert_formula yctx p'
 run ctx Check = check ctx >> return ()
 run _ ShowModel = return ()
-run (Context fp) Push = withForeignPtr fp c_yices_push
-run (Context fp) Pop = withForeignPtr fp c_yices_pop
+run (Context yctx) Push = c_yices_push yctx
+run (Context yctx) Pop = c_yices_pop yctx
 run _ cmd = error $ "TODO: run " ++ pretty cmd
 
 -- | Run (check) in the given context and return the resulting yices2 status.
 check :: Context -> IO SMTStatus
-check (Context fp) = do
-    st <- withForeignPtr fp $ \yctx -> c_yices_check_context yctx nullPtr
-    return (fromYSMTStatus st)
+check (Context yctx) = do
+    st <- c_yices_check_context yctx nullPtr
+    return $! fromYSMTStatus st
 
 withstderr :: (Ptr CFile -> IO a) -> IO a
 withstderr f = do
     cf <- withCString "w" $ \str -> c_fdopen 2 str
     x <- f cf 
-    return x
+    return $! x
 
 ytype :: Type -> IO YType
 ytype t = do
@@ -83,7 +84,7 @@ ytype t = do
         then do
             withstderr $ \stderr -> c_yices_print_error stderr
             error $ "ytype: " ++ pretty t
-        else return yt
+        else return $! yt
 
 yterm :: Expression -> IO YTerm
 yterm e = do
@@ -92,21 +93,20 @@ yterm e = do
         then do 
             withstderr $ \stderr -> c_yices_print_error stderr
             error $ "yterm error"
-        else return ye
+        else return $! ye
 
 -- | Given the name of a free variable with integer type, return its value.
 getIntegerValue :: Context -> String -> IO Integer
-getIntegerValue (Context fp) nm = do
-    model <- withForeignPtr fp $ \yctx -> c_yices_get_model yctx 1
+getIntegerValue (Context yctx) nm = do
+    model <- c_yices_get_model yctx 1
     x <- alloca $ \ptr -> do
             term <- yterm (varE nm)
             ir <- c_yices_get_int64_value model term ptr
             if ir == 0
-               then peek ptr
+               then do 
+                  v <- peek ptr
+                  return $! v
                else error $ "yices2 get int64 value returned: " ++ show ir
-
-    -- Force evaluation of 'x', because we are getting seg faults, and I think
-    -- this might be the issue (though honestly, I don't really know)
-    case toInteger x of
-        v -> c_yices_free_model model >> return v
+    c_yices_free_model model
+    return $! toInteger x
 

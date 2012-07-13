@@ -39,6 +39,9 @@ bounds (MkArray b _) = b;
 indices :: Array Integer b -> [Integer];
 indices = range . bounds;
 
+assocs :: Array Integer b -> [(Integer, b)];
+assocs a = map (\i -> (i, a!i)) (indices a);
+
 (//) :: Array Integer b -> [(Integer, b)] -> Array Integer b;
 (//) a new_ivs =
   let {
@@ -46,6 +49,11 @@ indices = range . bounds;
     old_ivs = map (\i -> (i, a ! i))
                   (filter (\i -> (notElem i new_is)) (indices a));
   } in array (bounds a) (old_ivs ++ new_ivs);
+
+instance (Eq b) => Eq (Array Integer b) where {
+    (==) a b = (assocs a == assocs b);
+    (/=) a b = not (a == b);
+}
 
 }
 

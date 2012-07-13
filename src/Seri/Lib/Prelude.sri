@@ -6,6 +6,19 @@ class Eq a where {
    (/=) :: a -> a -> Bool;
 };
 
+instance (Eq a) => Eq [a] where {
+   (==) [] [] = True;
+   (==) (x:xs) (y:ys) = (x == y) && (xs == ys);
+   (==) _ _ = False;
+
+   (/=) a b = not (a == b);
+};
+
+instance (Eq a, Eq b) => Eq (a, b) where {
+   (==) a b = (fst a == fst b) && (snd a == snd b);
+   (/=) a b = not (a == b);
+};
+
 class Num a where {
   (+) :: a -> a -> a;
   (*) :: a -> a -> a;
@@ -88,6 +101,12 @@ instance Num Integer where {
 
 (<) :: Integer -> Integer -> Bool;
 (>) :: Integer -> Integer -> Bool;
+
+(<=) :: Integer -> Integer -> Bool;
+(<=) a b = (a == b) || (a < b);
+
+(>=) :: Integer -> Integer -> Bool;
+(>=) a b = (a == b) || (a > b);
 
 fst :: (a, b) -> a;
 fst (x, _) = x;

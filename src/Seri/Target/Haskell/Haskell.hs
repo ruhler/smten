@@ -131,6 +131,7 @@ haskell c env main =
   let hsHeader :: H.Doc
       hsHeader = H.text "{-# LANGUAGE ExplicitForAll #-}" H.$+$
                  H.text "{-# LANGUAGE MultiParamTypeClasses #-}" H.$+$
+                 H.text "{-# LANGUAGE FlexibleInstances #-}" H.$+$
                  H.text "import qualified Prelude"
 
       ds = compile_decs c env

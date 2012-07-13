@@ -1,0 +1,120 @@
+
+Fri Jul 13 09:20:03 EDT 2012
+
+Goal for today:
+1. get arrays working in smt, to the point where Myron should be able to use
+them without trouble.
+
+2. Add numeric types.
+Start with just numbers which can be tested for equality.
+Then think about how to add linear numeric type arithmetic, and how I can
+solve those in the type solver.
+
+Of course, if I feel like cleaning the code along the way (probably after
+arrays are shipped), that would certainly be a good thing.
+
+
+Fri Jul 13 09:41:25 EDT 2012
+
+Problem: Equality of two arrays, in smt, where one of the arrays is free. The
+problem is, we don't know the bound of the free array, so we can't inline away
+smta_eqn, which is recursive, so it isn't defined.
+
+One idea is, I could use the SMT solver to assert equality of arrays. Just ask
+if there exists an index in bounds of the array for which the arrays are
+unequal. There you have it, equality of arrays in smt.
+
+Unfortunately, this doesn't give us a way to evaluate statically if the arrays
+are equal, which we could do using the list definition.
+
+Even if we left smt arrays entirely primitives, I don't think you could test
+for equality in general using a yices expression. This may be the only way you
+could check for equality.
+
+You know what conclusion I'm arriving at? Dynamically sized unbounded objects
+are really hard to work with in smt queries. Be they lists or arrays or
+whatever. Because you need recursive functions to manipulate them, which
+aren't allowed. And though inlining can work in some cases, it can't work in
+general.
+
+Now, if, on the other hand, we used a bounded representation, then we should
+have no problem. And in this case, given that we kind of know our fifos are
+limited to size 2... it seems silly to use an unbounded representation for
+that.
+
+Okay, so let me try this query based equality check.
+
+Wait, first I want to check, so that was:
+assert (arr2 == arr), where arr2 is free. But if we flip it the other way
+around, then we ought to be able to statically inline everything. Let me see
+if that works...
+
+If it does... that would be sad.
+
+No. That doesn't fix it.
+
+We have another problem though, which is we can't realize a free fifo
+variable. Perhaps that doesn't matter. Maybe I shouldn't worry about that now.
+It's for two reasons: 1: we can't interpret a function 2: there's a bug in
+realize: the declarations it looks up are the polymorphic definitions, but it
+looks them up in the monomorphic environment, which doesn't work.
+
+Let's not try to read the evidence. Let's just try to make the assertion and
+see if it works or not.
+
+Fri Jul 13 10:21:12 EDT 2012
+
+Defining eq using Query doesn't work...
+
+Because, the input to the query is a free variable, but the output from the
+query isn't a function of that free variable. The free variable goes away.
+Then if we do an assertion... the assertion doesn't propagate back up.
+
+This is an interesting problem... It's a bit unintuitive a behavior if you ask
+me.
+
+Here's a case where using scoped queries to invert a "there exists" question
+gives you something different from a "forall"! Surprising...
+
+Hypothesis: it is not possible to test for equality of arrays if the bounds of
+one of the arrays is unknown.
+
+Well, but we should still be able to, if one of the arrays is unknown. But
+certainly not if both of the arrays are unknown. But isn't always one of the
+array bounds known?
+
+Okay, so let's say instead of making the array free, I make just its contents
+free, and the length is fixed. Shouldn't that solve all problems?
+
+Fri Jul 13 10:40:51 EDT 2012
+
+Okay, so that seems to fix things mostly.
+
+I've hit a bug in, I suspect, the yices2 FFI. We crash in the garbage
+collector.
+
+I'm not sure what I can do about this. Just look over the FFI, and anything
+that could cause problems.
+
+Fri Jul 13 10:53:43 EDT 2012
+
+Okay, so here's what I think the right solution is. Detect whenever I'm not
+generating a declaration because of it being recursive, and give an error. At
+least, try to do that. I fear it won't work for the list data type, but try it
+and see what happens. That way, at least, there's a distinction between a bug
+in my compiler, and something that I don't think I can support.
+
+Fri Jul 13 11:26:10 EDT 2012
+
+I don't know. It's still seg faulting :(. I just put in a stupid hack that
+makes the seg fault go away. That will have to do for now.
+
+Fri Jul 13 11:32:14 EDT 2012
+
+I put in an error message for mutually recursive stuff. That looks to be okay
+to me.
+
+Next steps before shipping:
+- pretty print let expressions.
+- add sugar for arrays
+

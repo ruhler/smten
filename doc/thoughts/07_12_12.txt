@@ -9,3 +9,124 @@ Ideally I can do it in the language and everything works fine, and the
 interface is what I want at least. So let me getting it working in the
 language, try it in an SMT query, and see what happens?
 
+Thu Jul 12 14:27:20 EDT 2012
+
+I'm trying to reason about how arrays will fail in yices, but I don't know.
+
+The data declaration has a function in it, which could cause trouble?
+
+What sorts of things do I need to test with arrays?
+
+Thu Jul 12 14:51:09 EDT 2012
+
+Okay, so I've run into trouble. Can't create a free array and compare it
+against a real array in yices. Because it requires we give the definition of
+equality for the arrays, which requires we tell yices about the list type,
+which we can't do because the list type is defined recursively.
+
+What are the options?
+
+- try inlining and simplification for yices1, see if it makes the problem go
+  away.
+We maybe want to be doing this anyway. Help yices out as much as we can. So I
+don't mind doing this. I... doubt it will work though. There's bound to be
+something we don't know. For example, we don't know statically the bounds of
+the free array variable. If we don't know the bounds, we don't know the
+indices, so we can't simplify away the function for the map used in assocs, so
+we need (!) declared, and it has list type in it? Except, it doesn't have list
+type in it...
+
+So, even though I can't think of a concrete reason why, I doubt this will
+solve the problem in general.
+
+- give an array library which doesn't depend on lists.
+This might not actually be so hard. Define an opaque data type for SMTArray,
+with functions: smtarray :: Integer -> SMTArray a,
+update :: SMTArray a -> Integer -> a -> SMTArray a,
+sub :: SMTArray a -> Integer -> a
+length :: SMTArray a -> Integer
+
+If I wanted, I could even provide library functions to convert back and forth
+from Array to SMTArray. Using this, we no longer have the list issue.
+
+Of course, it need not be primitive. It's just an array interface that doesn't
+require lists. But if it runs into other issues, perhaps it should be
+primitive anyway.
+
+I don't actually need any justification for introducing this type, as it would
+just be a more abstract array interface that people may actually want to
+use.
+
+- give an uninterpreted data type for list?
+What does this mean though?
+
+Oh... but you know? We really can define this in yices1. I've tried it.
+The trouble would be with yices2. Maybe we could define it in yices 2. So
+there's no reason not to include the definition of list. I'll have to think
+about the best way to handle this case in general. Maybe this gets us nowhere
+though, and isn't worth supporting in general.
+
+
+So, I think try the following.
+1. perform inlining and simplification in yices1 like we did for yices2.
+Then understand why it doesn't work. Presumably it's for a list issue.
+2. implement Seri.SMT.Array library which is a different array interface. It
+can be the same implementation idea, just without using lists. See how well
+this works.
+
+I honestly don't think there's any real hope behind defining the list data
+type.
+
+Okay. Fine. Let me try these things out and see what happens.
+
+(1) still needs the list type. Not sure why, because I don't see the
+simplified expression, but it doesn't surprise me.
+
+And here's a specific example: The range function can't be completely inlined,
+because we don't know the bounds. And that depends on the list type.
+
+Okay, so let me go for an SMT specific array type, see how that turns out.
+
+Thu Jul 12 15:57:07 EDT 2012
+
+We're still going to have a problem with comparing equality of these SMTArrays
+without having a bound on their size, right? I'm not sure.
+
+Thu Jul 12 16:18:12 EDT 2012
+
+Problem now: support compilation of error in yices.
+
+The really annoying part about it, though, is what am I supposed to do about
+string literals in yices?
+
+That is, what am I supposed to do about characters?
+
+Maybe I should just represent characters as integers, using their unicode
+value or some such. Does that seem reasonable to you?
+
+It seems reasonable enough to me. Then we'll want a way to read them from the
+evidence, but that shouldn't be too hard.
+
+Thu Jul 12 17:02:31 EDT 2012
+
+Ug. I'm just not feeling this right now.
+
+When I come back tomorrow:
+1. replace PrimD error declaration with nothing in yices1
+Yices1 should complain error is not declared.
+2. replace all (error x) expressions with an appropriately typed yerr thing,
+ignoring x.
+Yices1 will now complain about other things. Figure out what those are and fix
+them.
+
+Eventually, hopefully, SMTArrays will work in yices.
+Once we have those, start thinking about numeric types.
+
+The big question with numeric types will be how to express constraints like:
+
+concat :: Bit n -> Bit m -> Bit (n+m);
+
+And then, how to solve type constraints such as n+m = (n-1) + (m+1).
+
+Ought to be fun.
+
