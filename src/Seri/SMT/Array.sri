@@ -35,11 +35,11 @@ smta_upd arr k v =
             case (smta_inbounds arr i, i == k) of {
                 (True, True) -> v;
                 (True, False) -> smta_sub arr i;
-                --(False, _) -> error $ "smta_sub index out of bounds";
+                (False, _) -> error $ "smta_sub index out of bounds";
             };
     } in case smta_inbounds arr k of {
             True -> arr { smta_sub = newsub };
-            --_ -> error $ "smta_upd index out of bounds";
+            _ -> error $ "smta_upd index out of bounds";
     };
 
 -- | Return true if the first n elements the given arrays are the same.
@@ -49,7 +49,7 @@ smta_eqn 0 _ _ = True;
 smta_eqn i a b = 
   case smta_inbounds a (i-1) && smta_inbounds b (i-1) of {
       True -> (smta_sub a (i-1) == smta_sub b (i-1)) && smta_eqn (i-1) a b;
-      --_ -> error $ "smta_eqn arrays too small";
+      _ -> error $ "smta_eqn arrays too small";
   };
 
 instance (Eq a) => Eq (SMTArray a) where {

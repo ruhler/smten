@@ -118,3 +118,41 @@ Next steps before shipping:
 - pretty print let expressions.
 - add sugar for arrays
 
+Fri Jul 13 12:17:19 EDT 2012
+
+I started adding "sugar" for arrays. Here's my observation: I should just
+reuse the parser. Give the expressions in seri syntax and parse.
+
+One reason that might not work is if you want to take arguments. But we can
+add support for quasi quoting of anything that we can print pretty.
+
+The idea is: you give an expression and a string with a hole. I put into that
+hole the pretty printed expression, then reparse the whole thing.
+
+I worry maybe there's something that pretty printing and parsing back in will
+change in unpleasant ways, but then again, maybe it won't.
+
+So, for example, I propose something like:
+
+class (Pretty a) => With a where
+    with :: [a] -> String -> String
+
+Embeds an element into a hole.
+
+And we can say things like:
+
+parse (with [t] "SMTArray @1 -> Integer -> @1")
+And get back the parsed expression.
+
+That sounds cool to me.
+
+If you wanted to mix both types and expressions, you need to nest:
+
+parse (with [t] (with [e] ...)
+Oh, that will cause annoying issues with escapes. Sadly.
+
+How about:
+with [("@1", t)] (with [("@2", e)] "(foo :: @1) @2"
+
+Then you could give them names too.
+
