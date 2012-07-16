@@ -65,5 +65,9 @@ This might make a lot more sense after moving stuff in Types to Prelude.hs.
 - interpret function evidence
 - interpret char evidence (?)
 
-- sugar let in pretty printing
+- modularity support
+- give a better message if a declaration is multiply defined.
+Rather than: "this doesn't exist".
+I think it's a problem in the type checker? Check for my lookupVar calls and
+make sure I report the failing message.
 

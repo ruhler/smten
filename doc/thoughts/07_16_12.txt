@@ -1,0 +1,199 @@
+
+Mon Jul 16 08:59:00 EDT 2012
+
+What to do today?
+
+All the big things to be worked on:
+- support Myron in his integration.
+- modularity support.
+- numeric types support.
+- check into ctsrd repository.
+
+For the cstrd thing, I really need to just sit down with Nirav and ask:
+ - is this the right license to use (the right grant number and such)
+ - what is the name of the folder in the repository where I should put it.
+
+And just check it in.
+
+Mon Jul 16 09:09:26 EDT 2012
+
+I emailed Nirav asking where to check it in. I'll deal with that when he
+responds.
+
+I'll deal with Myron's requests as he requests.
+
+That leaves: modularity and numeric types.
+
+What has priority? I think modularity is very important. I think numeric types
+are somewhat important. Unfortunately, neither is easy.
+
+The trouble with numeric types is, it's not well define what we want. So,
+perhaps I should make a proposal and think about that first.
+
+What we ideally want with numeric types, even if it isn't entirely easy to
+implement:
+
+Augment the types with:
+ - numeric types: NumT Integer, and a syntax.
+ - numeric type operations:
+    NumOpT NumOp Type Type
+    NumOp : Add, Mul, Div, Min, Max, Log, Exp
+Augment class predicates with:
+ - Type = Type (?) (using ~ like haskell?)
+ - Type < Type (?) or other such operators?
+
+Let me read about ~ in ghc.
+    
+Yes, ghc has ~ for equality constraints, for the same sort of reason as I
+need: you can't tell locally that two things are equal? Um... maybe. I'm not
+sure.
+
+Mon Jul 16 10:02:16 EDT 2012
+
+Ran into a bug.
+
+If I use "error" for yices, even though error is going to get compiled away,
+so that the string argument doesn't matter, we still think we need to declare
+list for that. But we can't declare list, because it is recursively defined.
+
+Well, I can work around this particular case I'm running into... but really I
+should try to solve this better. Hum.
+
+No. Actually, I can't work around it in this case.
+
+Here's a hackish idea. Declare a list of characters...
+No. That won't work.
+
+Ug. Well, there's lots of options to think about. I'm not sure I like any of
+them, but let me list them to be clear.
+
+- ignore recursive declarations instead of throwing an error on them.
+That will work for error, but it won't work in other cases when you would like
+a nice error message.
+
+- ignore recursive data declarations instead of throwing an error on them, but
+  throw an error on recursive functions.
+That will work for error, and it gives better errors, but it won't work in
+other cases when you try to use recursive data declarations.
+
+- ignore [Char] instead of throwing an error on it.
+So strings are allowed, but again, bad things will happen if you try to use it
+outside of a call to error where it gets thrown away.
+
+- substitute all occurrences of error "foo" with yerror, or some such before
+  doing inlining and monomorphization.
+That would actually let us behave the way we want, but I feel like only the
+yices compiler should have to know about this special thing, because it deals
+with it.
+
+Perhaps inlining and simplification should take place in the yices target
+instead of the yices smt thing. Then it wouldn't be so bad for the yices
+target to do this substitution, then do inlining and simplification.
+
+This is a side point, but it would be really nice if we could inline as much
+as possible as needed, and detect when we can't inline away something because
+it is recursive, then throw an error that way.
+
+Okay, let me look at how we call into the yices target, and see what interface
+would be appropriate.
+
+Yices 1:
+ - declare all needed data types up front to work around that silly bug.
+ Needed is based on the query, but we don't expect to be able to compile the
+ query, because it should be simplified away as we make progress. This could
+cause problems later on...
+ - declare needed data types for a given object: exp or type, which is then
+   also compiled.
+But! We don't want to redeclare declarations of things every time. And the way
+we avoid redeclaring things is by having SMT keep track of the mono
+declarations already declared. It doesn't work to keep track of the yices
+declarations and eliminate that way, because each time you compile something
+using the yices target, it creates new names for error declarations and such,
+so that would be very messy.
+
+
+Honestly, inlining and simplification should be in the yices target, no? And
+monomorphization too? And sorting?
+
+Mon Jul 16 10:53:15 EDT 2012
+
+Okay, here's the solution. We make the yices target interface a little more
+general, and push more work into that.
+
+Here's the interface I propose:
+
+We have a yices target compilation monad.
+You initialize the monad with a polymorphic environment.
+
+It doesn't even need to be a monad. It can be a data type.
+
+Then you call in sequence:
+ yExp or yType, giving a specific expression or a specific type.
+ It returns a list of new yices declarations needed for the expression or
+ type, and the compiled expression or type.
+
+The yices target performs sorting, inlining, monomorphization, all that. It
+also replaces errors with an internal error thing.
+
+For smt yices1, we can pass as the first expression the main query, to get all
+the declarations we might need ahead of time. This is not ideal. It won't work
+right in every case, but it's no worse than we have now and slightly better,
+so that's a step in the right direction.
+
+For smt yices2, we just use it as needed.
+
+For stand alone yices compilation, you'll just call yExp once on the main
+expression. Though I'm not sure, honestly, that standalone ycies compilation
+makes sense, because we don't have a way to expression check, assert, etc...
+
+And that should nicely solve our error problem and clean things up a bit.
+
+The first step... Remove the failing case from the array test, verify things
+work again. Rewrite the yices1 target using this plan. Verify it still works,
+gather thoughts on if it is nicer or not.
+
+Reintroduce the failing array test. Added the error replacement. Verify that
+bug goes away. Then see what other issues there are. If we end up successful,
+then make the change to yices2 too.
+
+Oh, and you know what the great part about this is? It gives us a hook into
+the code before optimizations. That means we can replace any special builtin
+constructs that need to be replaced before optimizations. That's cool. That
+should be very useful.
+
+Okay. I have a plan. Let me get started.
+
+Mon Jul 16 11:21:54 EDT 2012
+
+I wrote up the interface to the new yices1 target. It looks okay.
+
+Next I should ask myself, how will I implement it?
+
+Given a new expression to compile, what will we do?
+
+1. inline the expression as much as possible in the polymorphic environment.
+2. simplify the expression.
+3. monomorphize the expression and environment.
+4. sort the environment.
+5. eliminate already declared declarations at the monomorphic level.
+6. compile all the declarations
+7. compile the object
+
+That's it. Fairly easy I should say...
+
+Let me implement it.
+
+Mon Jul 16 13:25:03 EDT 2012
+
+I ran into a bug I don't understand. An infinite loop in simplification. It
+happens when using this workaround to the yices1 bug with push and pop.
+
+My tests no longer exercise the push and pop bug, I suspect because we do
+inlining now. I think what I want to do is, get rid of the special code for
+that bug fix until we run into the problem again. Deal with it later.
+
+That should clean up the code a little, avoid the immediate bug, and let me
+make forward progress. If we run into the bug again in the future, we could
+try fixing the problem in yices1 directly, or just add back in this hack and
+deal with the consequences then. Good. I like that plan.
+

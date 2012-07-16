@@ -156,3 +156,129 @@ with [("@1", t)] (with [("@2", e)] "(foo :: @1) @2"
 
 Then you could give them names too.
 
+Fri Jul 13 14:39:30 EDT 2012
+
+Okay, array and let are shipped. Now to think about the next thing.
+
+The next thing is ...
+
+Numeric types.
+
+Why?
+Primarily: 
+- bitvectors
+- vectors in general
+
+The basic support is, I think, trivial. But let's go through and see.
+
+- Add to IR: NumT Integer, which is a numeric type.
+- Add to parser: integer as a legal type.
+- Add to pretty printer, and type solver the case for NumT.
+There's nothing hard about it. It can be treated just like a ConT for now, in
+fact.
+
+In fact... we could just parse a number as a ConT whose string name is the
+number, and then we would have "numeric" types.
+
+Except, there's more to it than that, because you want to do things with
+numeric types. Things like:
+
+- Extract the integer value of a numeric type.
+For example, we could have some class:
+ Numeric a where
+    valueof :: a -> Integer
+
+Then you can say things have to be numeric.
+
+Err... this would let you define your own instances of numeric, though, which
+seems strange to me. What, do we provide builtin instances of Numeric for any
+NumT?
+
+- form types with arithmetic 
+This is needed for primitives like:
+concat :: Bit n -> Bit m -> Bit (n+m)
+truncate :: Bit n -> Bit m, where m <= n
+extend :: Bit m -> Bit n, where m <= n
+ 
+Hmm... the yices primitives for bit vectors are poor motivators for this.
+Because it looks like yices bit vectors are not really typed differently, but
+rather constructed to have the right type, with dynamic checks for size.
+
+Either that, or you need dependent types to do things like:
+ extract :: (x : Bit n) (i : Integer) : Bit (n-i)
+
+Perhaps better motivation comes from bluespec.
+
+Relationship provisos:
+ - Add, Mul, Div, Max, Min, Log
+For defining types:
+ - Exp
+Example uses:
+ Mul - used to say how many bits in a vector of N, M bit elements: N*M
+     - or concat 
+ Add 1 x - append
+ 0 - a valid numeric type
+ Add m n - (++) of vectors
+ Log m i - for when i indexes into something with m elements,
+           or counting number of m elements: need i bits.
+ Max - for zip
+ Div x 2 - mapPairs function
+ Div m x - toChunks
+
+Fri Jul 13 16:00:20 EDT 2012
+
+A brief survey didn't find any obvious work already done on this that I could
+just steal from.
+
+So, what do I want, then? What do I need to support?
+
+Let's start by assuming I could do whatever crazy stuff in the compiler I
+wanted. How would I want to express things, ideally?
+
+I think you want a mini expression language for types:
+
+numbers, +, *, -, /,
+Maybe I can come up with symbols for min and max, maybe: & and |.
+for exp: **.
+for log: //.
+
+Or something like that.
+
+Then you have a way to access the value of a numeric type somehow...
+valueof.
+
+Then, maybe you want a way to say: this is a numeric type.
+
+valueof :: numeric n -> Integer
+
+That kind of thing?
+
+Or, maybe the value of a numeric type is just the corresponding integer?
+That's a little weird, but it could be cool. It's like, a numeric type is a
+subset of the Integer type and can be lifted? I don't know.
+
+I wonder if you also want constraints. If you can't always encode them
+directly in the type signature of something.
+
+Like, instead of:
+ concat :: Bit n -> Bit m -> Bit (n+m)
+ concat :: (k = n+m) => Bit n -> Bit m -> Bit k
+
+That perhaps puts more constraints on things that you couldn't otherwise
+specify. Like, maybe you want to say:
+
+ take5 :: Bit n -> Bit 5
+
+But, n has to be greater than 5, so we want a constraint:
+ take5 :: (n > 5) => Bit n -> Bit 5.
+
+And this suggests we may want comparison operators too in our constraints.
+
+Hum...
+
+And now there's been a call for modularity support in seri, which I think
+would be very very very good to have. I should think about how that could be
+made to work nicely.
+
+All things to think about this weekend, and I'll get back to you next week.
+

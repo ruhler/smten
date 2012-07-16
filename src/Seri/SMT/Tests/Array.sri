@@ -14,7 +14,12 @@ arrayworks = and [
     12 == smta_sub arr 1,
     19 == smta_sub arr 2];
 
-main :: Query (Answer (Integer, Integer));
+-- Return the sum of the first n elements in the array.
+arrsum :: Integer -> SMTArray Integer -> Integer;
+arrsum 0 _ = 0;
+arrsum n arr = smta_sub arr (n-1) + arrsum (n-1) arr;
+
+main :: Query (Answer (Integer, Integer, Integer, Integer));
 main = do {
     assert arrayworks;
 
@@ -28,7 +33,19 @@ main = do {
     y <- free;
     assert (y == smta_sub arr2 2);
 
-    query (x, y);
+    -- Test operations on free arrays.
+    -- z should be 2.
+    af <- smta_free 2;
+    assert (arrsum 2 (smta_upd af 0 5) == 7);
+    z <- free;
+    assert (z == smta_sub af 1);
+
+    -- free update index
+    w <- free;
+    assert (w == 0);
+    --assert (arrsum 3 (smta_upd arr w 0) == 61);
+
+    query (x, y, z, w);
 };
 
 }

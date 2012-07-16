@@ -49,13 +49,13 @@ elaborate r env prg = do
 
 -- | The core reduction rule.
 coreR :: (Monad m) => Rule m
-coreR = rules [casesubR, caseredR, appredR, applsubR, apprsubR, varredR]
+coreR = rules [casesubR, applsubR, apprsubR, varredR, caseredR, appredR]
 
 -- | The core simplification rule.
 -- Simplification simplifies expressions inside lambdas and case statements,
 -- but does not perform variable substitution from the environment.
 simplifyR :: (Monad m) => Rule m
-simplifyR = rules [casesubR, caseredR, casesimpR, appredR, applsubR, apprsubR, lamsimpR]
+simplifyR = rules [casesubR, casesimpR, applsubR, apprsubR, lamsimpR, caseredR, appredR]
         
 
 casesubR :: (Monad m) => Rule m

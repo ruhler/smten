@@ -24,6 +24,6 @@ main = do
 
     let opts = (RunOptions dbg 30)
     tmain <- attemptIO $ lookupVarType decs "main"
-    result <- runYices [] queryR opts decs (VarE (Sig "main" tmain))
+    result <- runYices queryR opts decs (VarE (Sig "main" tmain))
     putStrLn $ pretty result
 
