@@ -197,3 +197,287 @@ make forward progress. If we run into the bug again in the future, we could
 try fixing the problem in yices1 directly, or just add back in this hack and
 deal with the consequences then. Good. I like that plan.
 
+Mon Jul 16 13:30:50 EDT 2012
+
+Okay, now, with the new and improved yices1 code... Let me try out that error
+thing.
+
+Mon Jul 16 13:52:54 EDT 2012
+
+Trouble... the error thing is fragile. For example:
+ error $ "foo"
+
+doesn't get caught! That causes problems.
+We would like to simplify first. Okay, so let me just do it post
+simplification.
+
+Mon Jul 16 13:57:06 EDT 2012
+
+Well... so we run into a problem with yices1 seg faulting. Bummer.
+That's annoying. All that work, seemingly for nothing...
+
+So, what I have to do is as follows.
+1. generate as simple a failing yices1 case as I can.
+Send it in to figure out what's wrong.
+2. try the array test on yices2, see what shape that's it.
+
+I really hate how fragile this is. If only I could figure out a way to do
+recursive functions and recursive data types in general. Gar.
+
+Mon Jul 16 14:14:23 EDT 2012
+
+Ran into FFI bug again. Worked around it, again, by inserting putStr "". How
+awful.
+
+Anyway, yices2 can't handle the array thing, because it encounters a lambda in
+the definition of newsub.
+
+The lambda is almost exactly just a function update.
+
+\i -> if i == k then v else f i
+
+update f k v
+
+The difference is, I do some error checking in mine. I suppose that doesn't
+need to be there though, because the underlying function f should check it.
+
+Okay, so let's say we had an update primitive. Then this should be easy. But
+what's to say most SMT things will have an update primitive? And then, doesn't
+that mean I have to define update for elaboration and such?
+
+I could try to recognize update in the yices target? Then make sure to
+carefully craft my code so the yices target recognizes update. Or try to
+encapsulate that hand crafting in an update function which gets inlined?
+
+My goodness. This is so... fragile.
+
+I wonder if I can make it nicer. Perhaps using type classes in the front end?
+
+Hmm...
+
+Let's say I know what back end I want to target. Then it would be easy,
+because I know for each back end what primitives are defined.
+
+Okay, let's say we want to be more general. Then I want to make a generic
+function which I know will work for any back end... hmm...
+
+The problem is, we don't have any restriction currently about what is
+supported or not. The language works as if anything is supported.
+
+What I really want to do is be able to give a different implementation for
+different constructs depending on the back end. Then, for example, I could do
+something like:
+
+class SMTUpdate s where
+    update :: s -> ((a -> b) -> a -> b -> (a -> b))
+
+instance SMTUpdate Default where
+    update _ f k v = \x -> if x == k then v else f x
+
+instance SMTUpdate Yices where
+    update _ f k v = yices_prim_update f k v
+
+instance SMTUpdate Foo where
+    update _ = update Default
+
+
+How is this different from specifying a primiive update function and
+implementing it for each back end? Well, it lets us give an in-language
+implementation, which is nice. It let's us share that easily.
+    
+I don't know. Do you think it's better to recognize specially crafted
+expressions?
+
+I think it's hard to say until I get more target back ends, which may not
+happen any time soon. I think it is easier for the user if we can recognize
+the expressions correctly in the compiler. It's harder for the user if we
+can't.
+
+Okay, so how about this. Let me just have an "update" recognizer in the yices
+compiler. Ideally applied after simplification? That way we can recognize
+things which are optimized into updates? Or is it better to do before
+optimization, so the user can make it very clear when it wants you to
+recognize something?
+
+How hard is it to recognize the update function? How many ways could you
+express it?
+
+update f k v = \i -> if k == i then v else f i
+                        i == k
+
+Of course, trouble here is the notion of equality. If the user defines
+equality differently from how yices does, then this won't behave right. It
+will work for integers.
+ 
+I wonder... for what we need, we really know an upper bound on the array, so
+we might as well just use statically bounded arrays and not worry about any of
+this.
+
+On the flip side, I feel like function update could be leveraged to support
+lists in yices.
+
+A list is the pair: (head :: int, int -> a), assuming tail is 0.
+
+head applies the function.
+tail decrements the head pointer.
+cons increments the head pointer and does a function update.
+nil gives an arbitrary free function with head at 0.
+
+This has given me an idea with regards to the errorize thing I do in yices1.
+What if we supply an implementation for error, to make it no longer a
+primitive? Change it to a ValD, and the implementation is given as:
+error _ = ~error.
+
+Then the elaborator will simplify away the string argument for us.
+
+That idea comes up because I feel like I could give a different implementation
+of list for yices which makes use of the update primitive. I just need to
+rewrite the library a little bit. Though, it would work much better if we
+didn't have constructors. How can I rewrite a constructor to be a function?
+
+You know, if we had list implemented, we could implement arrays on top of
+lists. But who knows how well that would work for other SMT solvers?
+
+I don't know.
+
+Alternatively... i could just recognize the name update and turn it into a
+primitive before anything else in yices.
+
+I don't know. Nothing makes sense to me now.
+
+Perhaps I can go in more detail about what the problems I have are, and see if
+that gets us anywhere.
+
+The problem is, yices doesn't support everything seri supports in terms of
+constructs. Specifically:
+ - yices doesn't support mutually recursive data types
+ - yices doesn't support recursive functions
+ - yices2 doesn't support lambda expressions
+
+This causes a problem, because it means you can express things in seri that
+don't work in yices.
+
+More generally, for any SMT backend, there will presumably be things you can
+express in seri that you can't express in the backend. And these are likely
+different for each backend. Though I suspect other backends have the same
+trouble as yices does and more.
+
+That's the first problem. The next problem is, yices has primitives which can
+be used to support some of the things it otherwise couldn't. For example,
+update can be used to support... well, update, which doesn't work as you would
+naturally express it in seri, because it requires a lambda term. The bind here
+is, it seems that if you express things in a very particular manner, than
+things that otherwise wouldn't work in a given SMT backend may work in that
+back end.
+
+So, perhaps the real question is: how best to take advantage of specific SMT
+backend features? Perhaps more importantly, should these be visible and
+accessible to the user? The trouble is, what doesn't work that you can
+express in seri is visible to the user, by trial and error.
+
+I'm tempted to say: well, the problem will go away if we can just support
+everything in the backend that you can describe in seri. Then we can add as
+optimizations knowledge of these back end primitives, and you don't have to
+worry so much. But I don't think that is reasonable. I don't think we'll ever
+be able to support all the front end features in the back end.
+
+I need discussion. I need another opinion. Let me write up my thoughts and
+send them to Nirav.
+
+The header is: there are some constructs that can't be supported in SMT back
+ends. Recursive functions, recursive data types, lambda expressions, for
+example.
+
+There are extra features in some, such as update, which could be used to work
+around the limited support otherwise. Question is... how should we deal with
+this?
+
+Note: static elaboration works fine. Trouble comes when we try to do things
+with free variables inloved that the SMT has to know about.
+
+Using array example, look at some options:
+
+1. Don't support the feature in the backend.
+So, implement array in the language, if it can be inlined away, good for you,
+otherwise tough luck.
+
+Down side: a feature that could be made to work in a backend doesn't.
+
+2. Introduce primitives.
+So, have an "update" primitive. This primitive will be supported by the yices
+backend. Use it to implement array.
+
+But:
+- you also have to define the implementation of the primitive for elaboration.
+Which is slightly annoying, considering you ought to be able to implement it
+in the language... Well, maybe not so bad then? Just annoying.
+- there's nothing that says you can implement this primitive in another SMT
+  backend.
+This suggests you want the primitives to be much higher level. For example,
+have an array primitive. Now, for yices this is implemented using just the
+update primitive and seri stuff. For another back end it could use a
+completely different underlying primitive.
+
+3. Try to recognize construct.
+So, recognize when an update like thing is taking place in the yices compiler.
+
+This lets you have the feature. It means your code has to be implemented in a
+specific way which may not work in another back end. You do get to take
+advantage of the default implementation wherever it works though.
+
+...
+
+Here's an idea. What if we have a specific library of SMT constructs. Things
+such as:
+
+SMTArray
+SMTList
+etc... (though really those are the only two I can think of at this point that
+I would want).
+
+These declare abstract data types which can be accessed only through
+functions.
+
+Now, we provide a different implementation for each back end: elaborate,
+yices1, yices2, etc...
+
+Now, a back end may or may not support one of these... if it doesn't... that's
+unfortunate. The reason it is unfortunate is, depending on which you chose to
+implement some other construct, that other construct may or may not work.
+
+I feel like you could implement SMTList with SMTArray, or SMTArray with
+SMTList, though.
+
+Yes. Good. This is right. I think this is a reasonable solution.
+
+Unfortunately, it feels a little silly until we try porting to another back
+end. The only thing yices has that I want to take special advantage of is this
+function update.
+
+So, I propose this for a future vision. For the temporary vision, I propose I
+declare an SMTList and SMTArray, both with abstract data types, and whose
+implementation I have work using an update construct which is recognize by
+yices in the back end. Now we can use these sorts of constructs, because we
+know we are targeting yices.
+
+In summary, I've gone full circle and decided to recognize update, and
+recognize it just for integers, after simplification. And use this to
+implement first SMTArray, and then SMTList abstract data types.
+
+Here's the update construct I'll try to recognize in yices:
+
+update :: (Integer -> a) -> Integer -> a -> (Integer -> a);
+update ...
+
+So, just replace the definition of update with my own... or rather, turn it
+into a primitive. Before simplification.
+
+Okay, so let me try this out. Get it working for yices2 first?
+Oh, bugger. For it to work for yices2, I need to switch yices2 over to the
+same sort of interface I switched yices1 over to.
+
+Shall I?
+
+I think that would be a good idea. I can try doing a diff like thing to make
+it easier. I hope.
+

@@ -4,10 +4,13 @@ module Seri.Target.Yices.Yices (
     yicesN, yicesT, yicesE,
     ) where
 
+import Debug.Trace
+
 import qualified Math.SMT.Yices.Syntax as Y
 
 import Data.List ((\\))
 import Data.Char (ord)
+import Data.Generics
 import Control.Monad.State
 
 import Seri.Failable
@@ -64,7 +67,7 @@ yicesE e = do
     poly <- gets ys_poly
     let ie = inline idepth poly e
     se <- elaborate simplifyR poly ie
-    me <- compileNeeded se
+    me <- compileNeeded (errorize se)
     ye <- yExp me
     cmds <- gets ys_cmds
     modify $ \ys -> ys { ys_cmds = [] }
@@ -138,6 +141,10 @@ yExp (CaseE e ms) =
       depat (IntegerP i) e = ([Y.LitI i Y.:= e], [])
       depat (WildP _) _ = ([], [])
 
+      ylet :: [((String, Maybe Y.TypY), Y.ExpY)] -> Y.ExpY -> Y.ExpY
+      ylet [] e = e
+      ylet bindings e = Y.LET bindings e
+
       -- take the AND of a list of predicates in a reasonable way.
       yand :: [Y.ExpY] -> Y.ExpY
       yand [] = Y.VarE "true"
@@ -157,14 +164,14 @@ yExp (CaseE e ms) =
           b' <- yExp b
           let (preds, bindings) = depat p e
           let pred = yand preds
-          return $ Y.IF pred (Y.LET bindings b') bms
+          return $ Y.IF pred (ylet bindings b') bms
   in do
       e' <- yExp e
       cnm <- yfreecase
       body <- dematch (Y.VarE cnm) ms
-      return $ Y.LET [((cnm, Nothing), e')] body
-yExp e@(AppE (VarE (Sig "error" _)) _) = do
-    errnm <- yfreeerr (typeof e)
+      return $ ylet [((cnm, Nothing), e')] body
+yExp (VarE (Sig "~error" t)) = do
+    errnm <- yfreeerr t
     return $ Y.VarE errnm
 yExp (AppE a b) = do
     a' <- yExp a
@@ -240,6 +247,17 @@ yDec (PrimD (TopSig "__prim_eq_Integer" _ _))
 yDec (PrimD (TopSig "error" _ _)) = return ()
 
 yDec d = yfail $ "Cannot compile to yices: " ++ pretty d
+
+-- Replace all occurences of the "error" primitive with our own.
+-- This gets rid of the string argument, which we can't compile well to
+-- yices1, because it requires lists, which we don't support.
+errorize :: (Data a, Ppr a) => a -> a
+errorize =
+  let f :: Exp -> Exp
+      f e@(AppE (VarE (Sig "error" _)) _) = VarE (Sig "~error" (typeof e))
+      f x = x
+
+  in everywhere (mkT f)
 
 -- defiop name type op
 --   Define a primitive binary integer operation.

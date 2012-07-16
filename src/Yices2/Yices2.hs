@@ -32,6 +32,7 @@ exit = c_yices_exit
 -- That should most certainly be fixed somehow.
 mkctx :: IO Context
 mkctx = do
+    putStr ""
     ptr <- c_yices_new_context nullPtr
     return $! Context ptr
 
@@ -57,7 +58,6 @@ run _ (Define s ty Nothing) = do
     withCString s $ \str -> c_yices_set_term_name term str
 run (Context yctx) (Assert p) = do
     p' <- yterm p
-    putStr ""       -- this side steps a seg fault, i don't know why.
     c_yices_assert_formula yctx p'
 run ctx Check = check ctx >> return ()
 run _ ShowModel = return ()
