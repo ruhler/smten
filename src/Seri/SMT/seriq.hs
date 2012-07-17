@@ -1,4 +1,7 @@
 
+-- | Evaluate a seri SMT query using yices 1.
+module Main where
+
 import System.Environment
 import System.Exit
 

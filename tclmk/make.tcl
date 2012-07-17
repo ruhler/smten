@@ -50,7 +50,7 @@ indir build/src {
         --extra-lib-dirs $::env(LD_LIBRARY_PATH) \
         --with-happy=$::HAPPY
     hrun cabal build
-    hrun cabal haddock
+    hrun cabal haddock --executables
     hrun cabal sdist
 }
     

@@ -1,4 +1,6 @@
 
+-- | Compile a seri program to haskell.
+module Main where
 
 import System.Environment
 

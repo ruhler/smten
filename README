@@ -1,0 +1,59 @@
+Seri ReadMe
+===========
+Richard Uhler <ruhler@csail.mit.edu>
+July 17, 2012
+
+Configuring Seri for Build
+--------------------------
+Before building seri using the makefile, you must configure the build for your
+system. This is done by creating the file "tclmk/local.tcl" containing
+information about your system.
+
+The following variables should be set in tclmk/local.tcl:
+::HAPPY - The path to the happy executable for building the parser.
+::GHC - The path to ghc
+::PACKAGE_DB - The ghc package database to use when building the seri cabal package
+::env(PATH) - The PATH to use for executables
+::env(GHC_PACKAGE_PATH) - your ghc package path
+
+For example, tclmk/local.tcl might look like:
+
+=========================================
+set ::HAPPY /home/ruhler/.cabal/bin/happy
+set ::GHC /usr/bin/ghc
+set ::PACKAGE_DB "/var/lib/ghc/package.conf.d"
+set ::env(PATH) "/bin:/usr/bin:/home/ruhler/local/bin"
+set ::env(GHC_PACKAGE_PATH) "$::PACKAGE_DB:/home/ruhler/.ghc/x86_64-linux-7.4.1/package.conf.d"
+set ::env(LD_LIBRARY_PATH) "/home/ruhler/local/lib"
+=========================================
+
+Building Seri
+-------------
+Once seri is configured for build, it can be built by running `make`.
+
+The makefile generates a cabal package for seri, builds it, then runs some
+tests on the generated executables.
+
+Generated files of note:
+build/src/dist/doc/html/seri/index.html
+  - the generated haddoc documentation.
+build/src/dist/doc/html/seri/<exe>/Main.html
+  - documentation of the given executable
+build/src/dist/build/<exe>/<exe>
+  - the generated executable <exe>
+
+
+Trying Seri
+-----------
+After building seri you can try it out. For example, to run a simple query
+with yices 2:
+
+    ./build/src/dist/build/seriq2/seriq2 -d Query1.dbg -i build/src src/Seri/SMT/Tests/Query1.sri
+
+If it works, you should get the output:
+    (Satisfiable :: Answer Integer) 5
+
+And Query1.dbg will contain the yices2 query evaluated to get this result.
+
+Additional sample queries are available in the src/Seri/SMT/Tests/ directory.
+

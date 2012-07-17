@@ -1,4 +1,8 @@
 
+-- | Run type inference and type checking of the given seri program and print
+-- out the resulting typed expression.
+module Main where
+
 import System.Environment
 
 import Seri.Failable

@@ -1,4 +1,8 @@
 
+-- | Elaborate the main function of the given seri program and print out the
+-- result.
+module Main where
+
 import System.Environment
 
 import Seri.Failable
