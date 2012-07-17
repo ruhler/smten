@@ -48,7 +48,7 @@ vs. foo :: (Foo a) => Sludge
 - pattern guards would be nice.
 
 - split Parser into: Grammar.y, Lexer.hs, Monad.hs
-Because it's getting way to big.
+Because it's getting way too big.
 
 - move non-syntactic sugary stuff in Sugar.hs to Seri/Lib/Prelude.hs
 These are the constructors for building up complex expressions in haskell.
@@ -61,7 +61,6 @@ This might make a lot more sense after moving stuff in Types to Prelude.hs.
 - link Yices and Yices2 somehow so they can borrow code from each other more
   easily?
 
-- realize shouldn't try to look up poly data type in mono environment!
 - interpret function evidence
 - interpret char evidence (?)
 

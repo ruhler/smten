@@ -27,6 +27,20 @@ set ::env(GHC_PACKAGE_PATH) "$::PACKAGE_DB:/home/ruhler/.ghc/x86_64-linux-7.4.1/
 set ::env(LD_LIBRARY_PATH) "/home/ruhler/local/lib"
 =========================================
 
+Yices 1 and Yices 2
+~~~~~~~~~~~~~~~~~~~
+Seri requires both yices1 and yices2 be installed on the system. It looks
+for a yices1 library called "yices" and a yices2 library called "yices2".
+Because the yices 2 library is shipped as "yices", you will need to rename it
+or provide a link to it called "yices2".
+
+I also had trouble building the cabal package if the yices2 library appeared
+as a shared object.  So, for example, if you have libyices.so.2.0.2 installed,
+to create a "yices2" library suitable for use with seri, run the command:
+
+   ln -s libyices.so.2.0.2 libyices2.a 
+
+
 Building Seri
 -------------
 Once seri is configured for build, it can be built by running `make`.
