@@ -71,3 +71,6 @@ I think it's a problem in the type checker? Check for my lookupVar calls and
 make sure I report the failing message.
 
 - document the executables much better.
+
+- fix the yices2 FFI seg-faulting bug, if I can figure out what it is.
+

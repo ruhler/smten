@@ -76,3 +76,168 @@ No, now it appears to happen just after a free variable is made, not even in
 the FFI call?
 
 I don't know.
+
+Tue Jul 17 13:27:57 EDT 2012
+
+I checked in the code to ctsrd. We'll see what grief there arises from it.
+
+Next steps?
+
+I have a couple cleanup steps it would be nice to do. How about this.
+Understanding how to do modularity is going to take some stew time, but I
+think it really is the next big thing I want, even before numeric types.
+
+So let me brainstorm hard on the modularity, then take some time to do the
+cleanup.
+
+Modularity...
+
+Let me read about it in the haskell report, note anything that comes to mind.
+
+- top level declarations bring in both a qualified and unqualified version of
+  the entity
+- entities can be qualified or unqualified
+- the compiler has to look up everything it needs to for type checking and
+  instances and such, so in practice it seems we'll have to load in all the
+  modules at once, even to type check just one module.
+
+Humm... this is rather complicated.
+
+Let's start with this idea that entities can be used with different names...
+but the unqualified name is the same...
+
+One thing they say in the haskell report is, you could give each entity a
+unique name, change occurrences of the entity to be the unique name, and then
+merge all the modules into a single module... I'm beginning to think that may
+be the easiest way to handle modularity in seri. We have to read everything
+anyway. And that way, modules really are just syntactic sugar.
+
+I think you can do everything with that method. It's similar to what I have
+now in terms of flattening...
+
+In fact, we could just implement the flatten function to do this.
+
+The down side? Pretty printing is going to have fully qualified names
+everywhere, which is a big annoyance.
+
+Perhaps what I can do is... only qualify those names that need qualification.
+If an entity has a unique unqualified name, don't give it any prefix.
+
+This is going to be an issue for looking at any seri output. The generated
+yices code, for example, will inherit the names. So I think it's important to
+not over qualify things for readability.
+
+We can pick whatever unique names for things we want, really.
+
+Notice also, the abstract syntax doesn't have a requirement about names having
+certain case or any such thing. So really we could treat a qualifier as a true
+name... (there's why you need to distinguish between ConE and VarE in the
+abstract syntax, by the way).
+
+Okay, cool, so I'm feeling something here. I just need to come up with unique
+names for each entity, adding qualifiers if there is ambiguity. Then do the
+name resolution based on the import and export lists.
+
+I think it probably makes sense to fully qualify every entity as a first step.
+It may even make sense to dequalify entities as a post processing step, once
+we have flattened everything and can easily check for what would be ambiguous
+unqualified.
+
+Okay, so that sounds good. Don't worry about treating modules in a modular
+compilation sort of way. Just treat it as a naming thing.
+
+Each entity gets a unique name formed by: prefixing the module name to the
+entity where the entity is declared.
+
+Now, the more challenging part will be name resolution.
+
+Say we've read in all the modules, each is in its own module. Now I come
+across some name in the code...
+
+This could be a variable name. It could be a type name, a class name, a
+constructor. Any entity name.
+
+How do I discover the unique name for the entity being referred to?
+
+I have to look multiple places.
+
+1. If the name is unqualified:
+- look for it in the current module.
+- look for it in any imports which bring in unqualified names.
+When looking at imports which bring in unqualified names, I have to check:
+is it exported from that module, and if so, is it visible in that module
+(there will be some recursion here). Eventually we should end up with a module
+where it is declared.
+
+2. If the name is qualified:
+- look for it in the current module if it is qualified with the current module
+  name.
+- look for it in any imports which bring in that kind of qualified name.
+
+And by this, we can figure out for each entity what the unique name is, or if
+there is ambiguity, or if it isn't in scope. Assign each entity its unique
+name, then to flatten, give each of the declaration names the unique name.
+
+And that's it. The rest is just details. I can add things a little at a time,
+which is very good.
+
+And, as I say, we can do a post processing step to dequalify names as much as
+possible.
+
+I would suggest the following steps to take:
+1. Do name resolution using the currently supported Import statements. Assume
+everything is exported. And qualify all the entities with their unique name.
+
+I may find some import bugs now. But those should be easy to fix (unless we
+need to export an entire module, but I don't think that's the case). I should
+see fully qualified identifiers in generated code (which will be annoying).
+But everything should still work.
+
+2. Implement my dequalifier.
+Now generated code will look nice again.
+
+3. start to add additional import/export constructs as desired, a bit at a
+time.
+
+Probably want to start with:
+- explicit export lists
+- exporting modules
+- qualified imports
+- as imports
+
+And continue to add more as needed. I like this, because I don't have to
+support everything at once.
+
+So! There you are. I have a plan. It will be a bit tedious, but mostly
+straight forward. And it's an isolated change, which is really very nice.
+
+Cool. Let me stew, and in the meantime do some code cleanup which may be
+relevant.
+
+First bit of code cleanup: Split up in the parser.
+
+Tue Jul 17 16:29:16 EDT 2012
+
+I split up the parser, but I'm running into this GC bug again. Ug! There's a
+null pointer dereference in the garbage collector. I don't know why that is.
+
+What if I try leaking memory? I suppose my suspicion is something is either
+getting freed prematurely, or moved? Could it be a bug in ghc? That would be
+terrible. But I feel like ... it's either a bug in ghc, or I don't understand
+how foreign function interfaces work.
+
+I wonder... do you think the cstrings we are allocating could be too big?
+Perhaps I should stop using that interface for building up expressions? I'm
+sure terms shouldn't be a problem...
+
+How hard is it to try?
+
+I think it's not unreasonable to do. The annoying part is handling all the
+keywords. And certain things which take arrays as input.
+
+Okay, let me try it where I can. It just involves adding things, right?
+Simplify, see if the bug goes away.
+
+Let me work on it for the rest of today, see how much progress I make and if
+it helps anything.
+
