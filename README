@@ -62,7 +62,7 @@ Trying Seri
 After building seri you can try it out. For example, to run a simple query
 with yices 2:
 
-    ./build/src/dist/build/seriq2/seriq2 -d Query1.dbg -i build/src src/Seri/SMT/Tests/Query1.sri
+    ./build/src/dist/build/seriq2/seriq2 -d Query1.dbg -i src src/Seri/SMT/Tests/Query1.sri
 
 If it works, you should get the output:
     (Satisfiable :: Answer Integer) 5
