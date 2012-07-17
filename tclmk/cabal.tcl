@@ -62,6 +62,7 @@ proc cabal {fcabal} {
         puts $fout "  build-depends: [join $builddeps {, }]"
         puts $fout "  extra-libraries: [join $libs {, }]"
         puts $fout "  build-tools: happy"
+        puts $fout "  ghc-options: -rtsopts -dcore-lint -debug"
         puts $fout "  ghc-prof-options: -auto-all"
     }
     close $fout

@@ -36,7 +36,7 @@ compilation :: Integer         -- ^ inline depth
                -> Compilation
 compilation idepth poly = Compilation {
     ys_idepth = idepth,
-    ys_poly = poly,
+    ys_poly = rewrite poly,
     ys_decl = [],
     ys_cmds = [],
     ys_errid = 1,
@@ -65,7 +65,7 @@ yicesE e = do
     poly <- gets ys_poly
     let ie = inline idepth poly e
     se <- elaborate simplifyR poly ie
-    me <- compileNeeded (errorize se)
+    me <- compileNeeded se
     ye <- yExp me
     cmds <- gets ys_cmds
     modify $ \ys -> ys { ys_cmds = [] }
@@ -171,6 +171,11 @@ yExp (CaseE e ms) =
 yExp (VarE (Sig "~error" t)) = do
     errnm <- yfreeerr t
     return $ Y.VarE errnm
+yExp (AppE (AppE (AppE (VarE (Sig "update" _)) f) k) v) = do
+    f' <- yExp f
+    k' <- yExp k
+    v' <- yExp v
+    return $ Y.UPDATE_F f' [k'] v'
 yExp (AppE a b) = do
     a' <- yExp a
     b' <- yExp b
@@ -242,20 +247,28 @@ yDec (PrimD (TopSig "<" _ _)) = addcmds [defbop "<" "<"]
 yDec (PrimD (TopSig ">" _ _)) = addcmds [defbop ">" ">"]
 yDec (PrimD (TopSig "__prim_eq_Integer" _ _))
  = addcmds [defbop "__prim_eq_Integer" "="]
-yDec (PrimD (TopSig "error" _ _)) = return ()
+yDec (PrimD (TopSig "~error" _ _)) = return ()
+yDec (PrimD (TopSig "update" _ _)) = return ()
 
 yDec d = yfail $ "Cannot compile to yices: " ++ pretty d
 
--- Replace all occurences of the "error" primitive with our own.
--- This gets rid of the string argument, which we can't compile well to
--- yices1, because it requires lists, which we don't support.
-errorize :: (Data a, Ppr a) => a -> a
-errorize =
-  let f :: Exp -> Exp
-      f e@(AppE (VarE (Sig "error" _)) _) = VarE (Sig "~error" (typeof e))
-      f x = x
 
-  in everywhere (mkT f)
+-- Rewrite the (polymorphic) environment to handle yices specific things.
+rewrite :: Env -> Env
+rewrite env = 
+  let re :: Dec -> Dec
+
+      -- The primitive error turns into:
+      --    error _ = ~error
+      -- This way we dont need to support strings in yices to use error.
+      re (PrimD (TopSig "error" [] t)) =
+        let body = clauseE [Clause [WildP stringT] (VarE (Sig "~error" (VarT "a")))]
+        in ValD (TopSig "error" [] t) body
+      re x = x
+
+      builtin = [PrimD (TopSig "~error" [] (VarT "a"))]
+        
+  in builtin ++ map re env
 
 -- defiop name type op
 --   Define a primitive binary integer operation.

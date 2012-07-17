@@ -27,7 +27,6 @@ main = do {
     assert (arr == (smta_upd arr 1 x));
     
     arr2 <- smta_free 3;
-    --arr2 <- free;
     assert (arr2 == arr);
 
     y <- free;
@@ -42,8 +41,8 @@ main = do {
 
     -- free update index
     w <- free;
-    assert (w == 0);
-    --assert (arrsum 3 (smta_upd arr w 0) == 61);
+    assert ((w >= 0) && (w < 3));
+    assert (arrsum 3 (smta_upd arr w 0) == 61);
 
     query (x, y, z, w);
 };

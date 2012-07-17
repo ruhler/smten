@@ -29,34 +29,34 @@ yTrue  = 1
 yUndef = 0
 
 
-foreign import ccall unsafe "yices_mk_context"
+foreign import ccall "yices_mk_context"
     c_yices_mk_context  :: IO (Ptr YContext)
 
-foreign import ccall unsafe "yices_del_context"
+foreign import ccall "yices_del_context"
     c_yices_del_context :: Ptr YContext -> IO ()
 
-foreign import ccall unsafe "yices_parse_command"
+foreign import ccall "yices_parse_command"
     c_yices_parse_command :: Ptr YContext -> CString -> IO Bool
 
-foreign import ccall unsafe "yices_check"
+foreign import ccall "yices_check"
     c_yices_check :: Ptr YContext -> IO YBool
 
-foreign import ccall unsafe "yices_get_model"
+foreign import ccall "yices_get_model"
     c_yices_get_model :: Ptr YContext -> IO (Ptr YModel)
 
-foreign import ccall unsafe "yices_display_model"
+foreign import ccall "yices_display_model"
     c_yices_display_model :: Ptr YModel -> IO ()
 
-foreign import ccall unsafe "yices_enable_type_checker"
+foreign import ccall "yices_enable_type_checker"
     c_yices_enable_type_checker :: Bool -> IO ()
 
-foreign import ccall unsafe "yices_get_last_error_message"
+foreign import ccall "yices_get_last_error_message"
     c_yices_get_last_error_message :: IO CString
 
-foreign import ccall unsafe "yices_get_int_value"
+foreign import ccall "yices_get_int_value"
     c_yices_get_int_value :: Ptr YModel -> Ptr YDecl -> Ptr CLong -> IO CInt
 
-foreign import ccall unsafe "yices_get_var_decl_from_name"
+foreign import ccall "yices_get_var_decl_from_name"
     c_yices_get_var_decl_from_name :: Ptr YContext -> CString -> IO (Ptr YDecl)
                           
 

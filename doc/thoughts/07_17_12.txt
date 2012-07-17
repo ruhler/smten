@@ -27,3 +27,52 @@ something to talk about Wednesday at our weekly meeting.
 
 Clear? Good. Let me get started.
 
+Tue Jul 17 09:20:17 EDT 2012
+
+Fixed the bug. Looks like the error rewrite works just fine.
+
+Let me put in the update rewrite then, and use it.
+
+Tue Jul 17 09:26:30 EDT 2012
+
+Gah! This FFI bug is causing me major headaches. Why is it there? What am I
+possibly doing wrong?
+
+Tue Jul 17 09:39:16 EDT 2012
+
+Made all the calls safe. This could be part of the problem? I hope so.
+
+Tue Jul 17 10:02:11 EDT 2012
+
+Making all calls safe didn't help. I don't know what's up. It crashes in gc.
+I've seen it crash after starting a call to ytype. I'll keep an eye on it and
+see if that's a consistent thing.
+
+Anyway, problem with rewriting update. Elaborate in the SMT runner might get
+rid of the update expression, which we don't want. So it would seem to make
+more sense to just declare update as a primitive, sad as that is. Add it to
+the elaborator. Yices will already have it. Let me try making that work.
+
+Tue Jul 17 10:28:00 EDT 2012
+
+Okay, added the update primitive to both yices 1 and 2. It works. Aside from,
+that is, the seg fault I'm still getting in yices2.
+
+But there's an issue here. The problem is... we never statically elaborate
+update, when we probably could. We probably don't need to tell yices about it
+at all, but as long as we keep it a primitive we do. But if we startically
+elaborate update just partially...
+
+Okay, so don't do partial static elaboration of update. Add an update rule
+which only fully applies update. That will solve that annoyance.
+
+Tue Jul 17 10:29:55 EDT 2012
+
+The GC bug happens during ytype I think. Let me look closer at that.
+
+Tue Jul 17 10:49:57 EDT 2012
+
+No, now it appears to happen just after a free variable is made, not even in
+the FFI call?
+
+I don't know.
