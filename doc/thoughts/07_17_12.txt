@@ -241,3 +241,21 @@ Simplify, see if the bug goes away.
 Let me work on it for the rest of today, see how much progress I make and if
 it helps anything.
 
+Err... trouble is, I get the problem happening even when we don't have really
+big strings. So somehow that seems unlikely.
+
+Tue Jul 17 16:59:18 EDT 2012
+
+I tried leaking cstrings, but that didn't change anything...
+
+Tue Jul 17 17:11:51 EDT 2012
+
+Hmm... it seems the -A RTS option makes a difference. -A128k or smaller
+doesn't exhibit the crash, bigger does. May not be entirely related... but
+maybe can be used as a workaround?
+
+Except... that's not the case for others.
+
+I set it at -A4m. It seems to work just now. I don't have any confidence in
+this as a solution, but ug.
+

@@ -62,7 +62,10 @@ proc cabal {fcabal} {
         puts $fout "  build-depends: [join $builddeps {, }]"
         puts $fout "  extra-libraries: [join $libs {, }]"
         puts $fout "  build-tools: happy"
-        puts $fout "  ghc-options: -rtsopts -dcore-lint -debug"
+
+        # -A4m option is a hack around a segfault we see with seriq2.
+        # It is not at all understood, and not very fool proof.
+        puts $fout "  ghc-options: -with-rtsopts=-A4m -rtsopts -dcore-lint -debug"
         puts $fout "  ghc-prof-options: -auto-all"
     }
     close $fout
