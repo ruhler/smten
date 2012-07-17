@@ -481,3 +481,8 @@ Shall I?
 I think that would be a good idea. I can try doing a diff like thing to make
 it easier. I hope.
 
+Mon Jul 16 17:02:28 EDT 2012
+
+Okay, so I almost finished rewriting yices2 like we had for yices1. There's
+some issues left though to deal with tomorrow.
+

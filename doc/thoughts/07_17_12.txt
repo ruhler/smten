@@ -1,0 +1,29 @@
+
+Tue Jul 17 08:50:13 EDT 2012
+
+Bruno says he fixed the yices1 bug I was running into. I should try that out.
+
+Continuing this morning with the update to the yices2 target. It ran into a
+bug I haven't looked into yet.
+
+After I clear that up, the plan is to change the errorize thing, and instead
+rewrite the environment:
+
+PrimD "error"  turns into ValD "error" = \_ -> ~error
+
+Then, define update, and change
+ValD "update" into PrimD "update", and handle that in the yices back end.
+
+Now my array test should work in both yices1 and yices2.
+
+I think it's becoming more and more an issue that we need support for
+modularity. We need hiding. We need qualified names. I don't know how to
+implement this, but I should figure it out and do something about it. It can't
+be that hard. Just understand all the cases and what all can be done.
+
+Lastly, before it gets too late, I would like to check into the ctsrd
+repository, including a nice readme on how to get started. That so I have
+something to talk about Wednesday at our weekly meeting.
+
+Clear? Good. Let me get started.
+

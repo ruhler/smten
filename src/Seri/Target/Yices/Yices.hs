@@ -4,8 +4,6 @@ module Seri.Target.Yices.Yices (
     yicesN, yicesT, yicesE,
     ) where
 
-import Debug.Trace
-
 import qualified Math.SMT.Yices.Syntax as Y
 
 import Data.List ((\\))
