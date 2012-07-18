@@ -62,7 +62,7 @@ set SERIQ2 build/src/dist/build/seriq2/seriq2
 
 # The general seri test
 hrun $SERIT -o build/src/tests.typed -i build/src build/src/Seri/Lib/Tests.sri
-hrun $SERIE -o build/src/tests.got -i build/src -m testall \
+hrun $SERIE -o build/src/tests.got -i build/src -m Seri.Lib.Tests.testall \
     build/src/Seri/Lib/Tests.sri
 run echo -n "(True :: Bool)" > build/src/tests.wnt
 hrun cmp build/src/tests.got build/src/tests.wnt
@@ -95,6 +95,7 @@ hrun cmp $hsdir/hstests.got $hsdir/hstests.wnt
 # The SMT query tests
 proc querytest {name args} {
     run $::SERIQ -d build/src/Seri/SMT/Tests/$name.dbg -i build/src \
+         -m Seri.SMT.Tests.$name.main \
          build/src/Seri/SMT/Tests/$name.sri {*}$args \
          > build/src/Seri/SMT/Tests/$name.out
 }
@@ -110,6 +111,7 @@ querytest "Array"
 # The SMT query2 tests
 proc query2test {name args} {
     run $::SERIQ2 -d build/src/Seri/SMT/Tests/$name.2.dbg -i build/src \
+         -m Seri.SMT.Tests.$name.main \
          build/src/Seri/SMT/Tests/$name.sri {*}$args \
          > build/src/Seri/SMT/Tests/$name.2.out
 }

@@ -209,27 +209,27 @@ yExp (VarE (Sig "~error" t)) = do
 yExp e@(AppE a b) =
     case unappsE e of 
        ((ConE s):args) -> yCon s args
-       [VarE (Sig "<" _), a, b] -> do   
+       [VarE (Sig "Seri.Lib.Prelude.<" _), a, b] -> do   
            a' <- yExp a
            b' <- yExp b
            boxBool (Y.ltE a' b')
-       [VarE (Sig ">" _), a, b] -> do
+       [VarE (Sig "Seri.Lib.Prelude.>" _), a, b] -> do
            a' <- yExp a
            b' <- yExp b
            boxBool (Y.gtE a' b')
-       [VarE (Sig "__prim_add_Integer" _), a, b] -> do
+       [VarE (Sig "Seri.Lib.Prelude.__prim_add_Integer" _), a, b] -> do
            a' <- yExp a
            b' <- yExp b
            return (Y.addE a' b')
-       [VarE (Sig "__prim_sub_Integer" _), a, b] -> do
+       [VarE (Sig "Seri.Lib.Prelude.__prim_sub_Integer" _), a, b] -> do
            a' <- yExp a
            b' <- yExp b
            return (Y.subE a' b')
-       [VarE (Sig "__prim_eq_Integer" _), a, b] -> do
+       [VarE (Sig "Seri.Lib.Prelude.__prim_eq_Integer" _), a, b] -> do
            a' <- yExp a
            b' <- yExp b
            boxBool (Y.eqE a' b')
-       [VarE (Sig "update" _), f, k, v] -> do
+       [VarE (Sig "Seri.SMT.Array.update" _), f, k, v] -> do
            f' <- yExp f
            k' <- yExp k
            v' <- yExp v
@@ -326,13 +326,13 @@ yDec (DataD n [] cs) =
         let uidt = Y.Define (yicesuidt n) (Y.VarT (yicesname n)) Nothing
         addcmds [tag, dt, uidt]
 
-yDec (PrimD (TopSig "<" _ _)) = return ()
-yDec (PrimD (TopSig ">" _ _)) = return ()
-yDec (PrimD (TopSig "__prim_add_Integer" _ _)) = return ()
-yDec (PrimD (TopSig "__prim_sub_Integer" _ _)) = return ()
-yDec (PrimD (TopSig "__prim_eq_Integer" _ _)) = return ()
+yDec (PrimD (TopSig "Seri.Lib.Prelude.<" _ _)) = return ()
+yDec (PrimD (TopSig "Seri.Lib.Prelude.>" _ _)) = return ()
+yDec (PrimD (TopSig "Seri.Lib.Prelude.__prim_add_Integer" _ _)) = return ()
+yDec (PrimD (TopSig "Seri.Lib.Prelude.__prim_sub_Integer" _ _)) = return ()
+yDec (PrimD (TopSig "Seri.Lib.Prelude.__prim_eq_Integer" _ _)) = return ()
 yDec (PrimD (TopSig "~error" _ _)) = return ()
-yDec (PrimD (TopSig "update" _ _)) = return ()
+yDec (PrimD (TopSig "Seri.SMT.Array.update" _ _)) = return ()
 
 yDec d = yfail $ "Cannot compile to yices: " ++ pretty d
 
@@ -352,9 +352,9 @@ rewrite env =
       -- The primitive error turns into:
       --    error _ = ~error
       -- This way we dont need to support strings in yices to use error.
-      re (PrimD (TopSig "error" [] t)) =
+      re (PrimD (TopSig "Seri.Lib.Prelude.error" [] t)) =
         let body = clauseE [Clause [WildP stringT] (VarE (Sig "~error" (VarT "a")))]
-        in ValD (TopSig "error" [] t) body
+        in ValD (TopSig "Seri.Lib.Prelude.error" [] t) body
 
       re x = x
 

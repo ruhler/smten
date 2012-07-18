@@ -38,7 +38,8 @@
 -- | Pretty printer for core seri language.
 module Seri.Lambda.Ppr (
     Ppr(..), pretty,
-    module Text.PrettyPrint.HughesPJ
+    module Text.PrettyPrint.HughesPJ,
+    tabwidth,
     ) where
 
 import Debug.Trace
@@ -276,14 +277,6 @@ instance Ppr [Dec] where
 
 instance Ppr Class where
     ppr (Class n ts) = ppr (foldl AppT (ConT n) ts)
-
-instance Ppr Import where
-    ppr (Import n) = text "import" <+> text n <> semi
-
-instance Ppr Module where
-    ppr (Module n imps decs)
-        = text "module" <+> text n <+> text "where" <+> text "{"
-            $+$ nest tabwidth (vcat (map ppr imps) $+$ ppr decs) $+$ text "}"
 
 -- | Print an object very prettily.
 pretty :: (Ppr a) => a -> String

@@ -37,7 +37,6 @@ module Seri.Target.Haskell.Haskell (
     haskell, haskellH,
     ) where
 
-import Data.Char(isAlphaNum)
 import Data.Maybe(fromJust)
 
 import qualified Language.Haskell.TH.PprLib as H
@@ -47,9 +46,6 @@ import Seri.Failable
 import Seri.Lambda
 import Seri.Target.Haskell.Compiler
 import Seri.Target.Haskell.Builtins.Prelude
-
-hsName :: Name -> H.Name
-hsName = H.mkName
 
 hsExp :: HCompiler -> Exp -> Failable H.Exp
 hsExp c (LitE (IntegerL i)) = do
@@ -106,13 +102,10 @@ hsClass c (Class nm ts) = do
     
 hsMethod :: HCompiler -> Method -> Failable H.Dec
 hsMethod c (Method n e) = do
-    let hsn = hsName $ if issymbol n then "(" ++ n ++ ")" else n
+    let hsn = hsName n
     e' <- compile_exp c c e
     return $ H.ValD (H.VarP hsn) (H.NormalB e') []
 
-
-issymbol :: Name -> Bool
-issymbol (h:_) = not $ isAlphaNum h || h == '_'
 
 hsCon :: HCompiler -> Con -> Failable H.Con
 hsCon c (Con n tys) = do
@@ -121,16 +114,15 @@ hsCon c (Con n tys) = do
     
 hsSig :: HCompiler -> TopSig -> Failable H.Dec
 hsSig c (TopSig n ctx t) = do
-    let hsn = hsName $ if issymbol n then "(" ++ n ++ ")" else n
     t' <- hsTopType c ctx t
-    return $ H.SigD hsn t'
+    return $ H.SigD (hsName n) t'
 
     
 hsDec :: HCompiler -> Dec -> Failable [H.Dec]
 hsDec c (ValD (TopSig n ctx t) e) = do
     t' <- hsTopType c ctx t
     e' <- compile_exp c c e
-    let hsn = hsName $ if issymbol n then "(" ++ n ++ ")" else n
+    let hsn = hsName n
     let sig = H.SigD hsn t'
     let val = H.FunD hsn [H.Clause [] (H.NormalB e') []]
     return [sig, val]

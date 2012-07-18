@@ -53,7 +53,8 @@ main = do
                x -> error $ "bad args: " ++ show x
 
     seri <- load [path] input
-    decs <- attemptIO $ typeinfer (flatten seri)
+    flat <- attemptIO $ flatten seri
+    decs <- attemptIO $ typeinfer flat
     attemptIO $ typecheck decs
     let haskelled = haskell haskellH decs me
     output (show haskelled)

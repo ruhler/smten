@@ -50,17 +50,17 @@ apibop f e = error $ "not an integer binary operation: " ++ pretty e
 integerR :: (Monad m) => Rule m
 integerR = Rule $ \gr env e ->
     case e of 
-        _ | isibop "__prim_add_Integer" e ->
+        _ | isibop "Seri.Lib.Prelude.__prim_add_Integer" e ->
             return . Just $ apibop (\a b -> integerE (a+b)) e
-        _ | isibop "__prim_sub_Integer" e ->
+        _ | isibop "Seri.Lib.Prelude.__prim_sub_Integer" e ->
             return . Just $ apibop (\a b -> integerE (a-b)) e
-        _ | isibop "__prim_mul_Integer" e ->
+        _ | isibop "Seri.Lib.Prelude.__prim_mul_Integer" e ->
             return . Just $ apibop (\a b -> integerE (a*b)) e
-        _ | isibop "<" e ->
+        _ | isibop "Seri.Lib.Prelude.<" e ->
             return . Just $ apibop (\a b -> boolE (a < b)) e
-        _ | isibop ">" e ->
+        _ | isibop "Seri.Lib.Prelude.>" e ->
             return . Just $ apibop (\a b -> boolE (a > b)) e
-        _ | isibop "__prim_eq_Integer" e ->
+        _ | isibop "Seri.Lib.Prelude.__prim_eq_Integer" e ->
             return . Just $ apibop (\a b -> boolE (a == b)) e
         _ -> return Nothing
 

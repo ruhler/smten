@@ -71,3 +71,9 @@ make sure I report the failing message.
 
 - fix the yices2 FFI seg-faulting bug, if I can figure out what it is.
 
+- give an instance of Eq to Char
+- deriving Eq would be very nice.
+
+- give a nice message if there's a type ambiguity?
+That is, anything with ~?
+

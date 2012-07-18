@@ -53,7 +53,7 @@ main = do
                x -> error $ "bad args: " ++ show x
 
     seri <- load [path] input
-    let decs = flatten seri
+    decs <- attemptIO $ flatten seri
     decs' <- attemptIO $ typeinfer decs
     attemptIO $ typecheck decs'
     output $ pretty decs'

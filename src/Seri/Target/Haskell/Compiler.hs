@@ -34,9 +34,10 @@
 -------------------------------------------------------------------------------
 
 module Seri.Target.Haskell.Compiler (
-    HCompiler, Compiler(..), compilers, compile_decs
+    HCompiler, Compiler(..), compilers, compile_decs, hsName,
     ) where
 
+import Data.Char(isAlphaNum)
 import Data.Maybe
 
 import qualified Language.Haskell.TH.PprLib as H
@@ -66,4 +67,23 @@ compile_decs c ds = surely $ do
 
 
 type HCompiler = Compiler H.Exp H.Type H.Dec
+
+-- TODO: Here we just drop the qualified part of the name.
+-- This is a hack, requiring there are no modules which define an entity of
+-- the same name (unlikely...). Really we should form a proper haskell name
+-- for whatever this name is used for (varid, conid)
+hsName :: Name -> H.Name
+hsName =
+  let dequalify n = 
+        case break (== '.') n of
+            (n', []) -> n'
+            (_, ".") -> "."
+            (_, n') -> dequalify (tail n')
+      symify s = if issymbol s then "(" ++ s ++ ")" else s
+  in H.mkName . symify . dequalify
+
+issymbol :: Name -> Bool
+issymbol ('(':_) = False
+issymbol "[]" = False
+issymbol (h:_) = not $ isAlphaNum h || h == '_'
 

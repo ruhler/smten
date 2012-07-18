@@ -42,6 +42,7 @@ import Data.List(nub)
 import Seri.Failable
 import Seri.Lambda.IR
 import Seri.Lambda.Parser
+import Seri.Lambda.Modularity
 import Seri.Lambda.Sugar
 
 type SearchPath = [FilePath]

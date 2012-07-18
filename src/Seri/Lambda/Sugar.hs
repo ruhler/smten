@@ -39,7 +39,6 @@ module Seri.Lambda.Sugar (
     ifE, lamE, letE,
     Stmt(..), doE,
     Clause(..), clauseE,
-    Module(..), Import(..), flatten,
     ConRec(..), recordD, recordC, recordU,
     ) where
 
@@ -122,22 +121,6 @@ clauseE clauses@(_:_) =
       lamargs = [Sig n (typeof p) | (n, p) <- zip args pats1]
       
   in lamE lamargs caseexp
-
--- | Currently imports are restricted to the form:
--- > import Foo.Bar
--- No hiding or qualification is supported.
-data Import = Import Name
-    deriving(Show, Eq)
-
-data Module = Module Name [Import] [Dec]
-    deriving(Show, Eq)
-
--- | Flatten a module hierarchy.
--- This doesn't currently do much, but eventually it's expected it will
--- implement name resolution and qualification of identifiers.
-flatten :: [Module] -> [Dec]
-flatten ms = prelude ++ concat [d | Module _ _ d <- ms]
-
 
 -- | Record type constructors.
 data ConRec = NormalC Name [Type]

@@ -51,7 +51,7 @@ preludeH =
       mt _ (ConT "Char") = return $ H.ConT (H.mkName "Prelude.Char")
       mt _ t = fail $ "preludeH does not apply to type: " ++ pretty t
 
-      md _ (PrimD (TopSig "error" _ t)) = do
+      md _ (PrimD (TopSig "Seri.Lib.Prelude.error" _ t)) = do
         let e = H.VarE (H.mkName "Prelude.error")
         let val = H.FunD (H.mkName "error") [H.Clause [] (H.NormalB e) []]
         return [val]

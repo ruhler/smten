@@ -205,7 +205,7 @@ yExp (CaseE e ms) =
 yExp (VarE (Sig "~error" t)) = do
     errnm <- yfreeerr t
     return $ Y.VarE errnm
-yExp (AppE (AppE (AppE (VarE (Sig "update" _)) f) k) v) = do
+yExp (AppE (AppE (AppE (VarE (Sig "Seri.SMT.Array.update" _)) f) k) v) = do
     f' <- yExp f
     k' <- yExp k
     v' <- yExp v
@@ -273,16 +273,16 @@ yDec (DataD n [] cs) =
         addcmds $ deftype : defcons
 
 -- Integer Primitives
-yDec (PrimD (TopSig "__prim_add_Integer" _ _))
- = addcmds [defiop "__prim_add_Integer" "+"]
-yDec (PrimD (TopSig "__prim_sub_Integer" _ _))
- = addcmds [defiop "__prim_sub_Integer" "-"]
-yDec (PrimD (TopSig "<" _ _)) = addcmds [defbop "<" "<"]
-yDec (PrimD (TopSig ">" _ _)) = addcmds [defbop ">" ">"]
-yDec (PrimD (TopSig "__prim_eq_Integer" _ _))
- = addcmds [defbop "__prim_eq_Integer" "="]
+yDec (PrimD (TopSig "Seri.Lib.Prelude.__prim_add_Integer" _ _))
+ = addcmds [defiop "Seri.Lib.Prelude.__prim_add_Integer" "+"]
+yDec (PrimD (TopSig "Seri.Lib.Prelude.__prim_sub_Integer" _ _))
+ = addcmds [defiop "Seri.Lib.Prelude.__prim_sub_Integer" "-"]
+yDec (PrimD (TopSig "Seri.Lib.Prelude.<" _ _)) = addcmds [defbop "Seri.Lib.Prelude.<" "<"]
+yDec (PrimD (TopSig "Seri.Lib.Prelude.>" _ _)) = addcmds [defbop "Seri.Lib.Prelude.>" ">"]
+yDec (PrimD (TopSig "Seri.Lib.Prelude.__prim_eq_Integer" _ _))
+ = addcmds [defbop "Seri.Lib.Prelude.__prim_eq_Integer" "="]
 yDec (PrimD (TopSig "~error" _ _)) = return ()
-yDec (PrimD (TopSig "update" _ _)) = return ()
+yDec (PrimD (TopSig "Seri.SMT.Array.update" _ _)) = return ()
 
 yDec d = yfail $ "Cannot compile to yices: " ++ pretty d
 
@@ -295,9 +295,9 @@ rewrite env =
       -- The primitive error turns into:
       --    error _ = ~error
       -- This way we dont need to support strings in yices to use error.
-      re (PrimD (TopSig "error" [] t)) =
+      re (PrimD (TopSig "Seri.Lib.Prelude.error" [] t)) =
         let body = clauseE [Clause [WildP stringT] (VarE (Sig "~error" (VarT "a")))]
-        in ValD (TopSig "error" [] t) body
+        in ValD (TopSig "Seri.Lib.Prelude.error" [] t) body
       re x = x
 
       builtin = [PrimD (TopSig "~error" [] (VarT "a"))]

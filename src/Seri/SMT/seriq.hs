@@ -49,18 +49,19 @@ queryR = elaborateR
 main :: IO ()
 main = do
     args <- getArgs
-    let (dbg, path, fin) =
+    let (dbg, path, m, fin) =
             case args of
-               ["-d", dbgout, "-i", path, fin] -> (Just dbgout, path, fin)
-               ["-i", path, fin] -> (Nothing, path, fin)
+               ["-d", dbgout, "-i", path, "-m", m, fin]
+                    -> (Just dbgout, path, m, fin)
                x -> error $ "bad args: " ++ show x
 
     query <- load [path] fin
-    decs <- attemptIO $ typeinfer (flatten query)
+    flat <- attemptIO $ flatten query
+    decs <- attemptIO $ typeinfer flat
     attemptIO $ typecheck decs
 
     let opts = (RunOptions dbg 30)
-    tmain <- attemptIO $ lookupVarType decs "main"
-    result <- runYices queryR opts decs (VarE (Sig "main" tmain))
+    tmain <- attemptIO $ lookupVarType decs m
+    result <- runYices queryR opts decs (VarE (Sig m tmain))
     putStrLn $ pretty result
 

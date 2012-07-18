@@ -114,7 +114,7 @@ runQuery :: Rule YicesMonad -> Env -> Exp -> YicesMonad Exp
 runQuery gr env e = do
     elaborated <- elaborate gr env e
     case elaborated of
-        (AppE (VarE (Sig "query" _)) arg) -> do
+        (AppE (VarE (Sig "Seri.SMT.SMT.query" _)) arg) -> do
             res <- check
             case res of 
                 Y.Undefined -> return $ ConE (Sig "Unknown" (AppT (ConT "Answer") (typeof arg)))
@@ -122,28 +122,28 @@ runQuery gr env e = do
                     arg' <- realize env arg
                     return $ AppE (ConE (Sig "Satisfiable" (AppT (ConT "Answer") (typeof arg)))) arg'
                 _ -> return $ ConE (Sig "Unsatisfiable" (AppT (ConT "Answer") (typeof arg)))
-        (VarE (Sig "free" (AppT (ConT "Query") t))) -> do
+        (VarE (Sig "Seri.SMT.SMT.free" (AppT (ConT "Query") t))) -> do
             t' <- yicest t
             free <- freevar
             runCmds [Y.DEFINE (yicesN free, t') Nothing]
             return (VarE (Sig free t))
-        (AppE (VarE (Sig "assert" _)) p) -> do
+        (AppE (VarE (Sig "Seri.SMT.SMT.assert" _)) p) -> do
             yp <- yicese p
             true <- yicese trueE
             runCmds [Y.ASSERT (true Y.:= yp)]
             return (ConE (Sig "()" (ConT "()")))
-        (AppE (VarE (Sig "queryS" _)) q) -> do
+        (AppE (VarE (Sig "Seri.SMT.SMT.queryS" _)) q) -> do
             runCmds [Y.PUSH]
             x <- runQuery gr env q
-            let q' = AppE (VarE (Sig "query" undefined)) x
+            let q' = AppE (VarE (Sig "Seri.SMT.SMT.query" undefined)) x
             y <- runQuery gr env q'
             runCmds [Y.POP]
             return y
-        (AppE (VarE (Sig "return_query" _)) x) -> return x
-        (AppE (AppE (VarE (Sig "bind_query" _)) x) f) -> do
+        (AppE (VarE (Sig "Seri.SMT.SMT.return_query" _)) x) -> return x
+        (AppE (AppE (VarE (Sig "Seri.SMT.SMT.bind_query" _)) x) f) -> do
           result <- runQuery gr env x
           runQuery gr env (AppE f result)
-        (AppE (AppE (VarE (Sig "nobind_query" _)) x) y) -> do
+        (AppE (AppE (VarE (Sig "Seri.SMT.SMT.nobind_query" _)) x) y) -> do
           runQuery gr env x
           runQuery gr env y
         x -> error $ "unknown Query: " ++ pretty x

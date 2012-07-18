@@ -37,6 +37,7 @@ module Seri.Lambda (
     module Seri.Lambda.Env,
     module Seri.Lambda.IR,
     module Seri.Lambda.Loader,
+    module Seri.Lambda.Modularity,
     module Seri.Lambda.Parser,
     module Seri.Lambda.Prelude,
     module Seri.Lambda.Ppr,
@@ -50,6 +51,7 @@ module Seri.Lambda (
 import Seri.Lambda.Env
 import Seri.Lambda.IR
 import Seri.Lambda.Loader
+import Seri.Lambda.Modularity
 import Seri.Lambda.Parser
 import Seri.Lambda.Prelude
 import Seri.Lambda.Ppr(Ppr, pretty)

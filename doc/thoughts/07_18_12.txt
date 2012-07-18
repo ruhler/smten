@@ -28,5 +28,125 @@ Someone outside of GC changed it? Perhaps... yices2 changed it?
 One idea: try it with a different version of the compiler, see if it runs into
 the same problem. For example, 6. something?
 
-It's worth a try I suppose.
+It's worth a try I suppose. I can't get 6.10 to work on greenfield, but there
+is a later release of ghc, 7.4.2, which I'll give a try. Maybe it gives more
+information at least.
 
+It would be great if I could minimize the failing case. Perhaps it's worth
+trying to make something that behaves like the ffi does? ONly with my own C
+program? Given that that's what I think the problem is. If I have such a
+thing, then I can send it in as a bug report.
+
+Nope, 7.4.2 doesn't change anything.
+
+Wed Jul 18 10:02:45 EDT 2012
+
+Setting -H256m, or anything bigger than about 4m seems to help. Perhaps that's
+a reasonable long term work around? I'll leave it there for now, and we'll see
+if that avoids the problem... But really, you know it's not going to for
+complex things... sadness.
+
+Wed Jul 18 10:03:51 EDT 2012
+
+Okay, let me work on modularity.
+
+In particular, we have this thing called flatten. How should I implement it?
+
+Names which need to change:
+- VarE which is not bound
+- ConE
+- ConP
+- ConT
+- Class Name
+
+So I should recurse through the declarations and expressions.
+I think this should go into its own haskell module...
+
+Recurse through the declarations and expressions. Handle each name I
+encounter. Perhaps I can go one at a time? For example, start with just
+variables. Don't worry about constructors. Just to figure out how to make
+things work. I can qualify the variables.
+
+Okay, so I encounter a VarE name which is not bound.
+What do I do with this?
+
+The goal is: find the unique name for that entity. This means, figure out
+where it is defined.
+
+- the current module.
+- one of the imported modules. 
+
+Get the list of all of them. If there is only one, we are all set.
+
+So, I think we want a function: maybe call it... resolve? Which given an
+unqualified name and the current module name (and the module list), returns a
+list of the unique names this entity could refer to.
+
+If it's unique, good. Otherwise give an error.
+
+Then... replace the name with the unique name.
+
+Also change all the ValD and PrimD to their unique names.
+
+That should do it. That should get us started.
+
+Wed Jul 18 10:41:32 EDT 2012
+
+Myron asks can 'free' be a primitive of type 'a' instead of type 'Query a'?
+
+Does this cause problems?
+
+What if, for example, you did something like:
+
+let x = free
+in assert (x < x)
+
+According to the semantics of lambda calculus, this should be the same as:
+
+assert (free < free), 
+
+but that's not what you want here. You want to say that 'x' and 'x' refer to
+the same free variable.
+
+Using the Query monad however...
+
+x <- free
+assert (x < x)
+
+Now it's clear that 'x' and 'x' refer to the same thing.
+
+So I think that's the answer. It's not clear semantically what you want to
+say, it's not consistent with the functional language semantics to have free
+be a pure value.
+
+Basically, the monad is used to assign unique identifiers to each free
+variable.
+
+Wed Jul 18 15:11:07 EDT 2012
+
+Wow! It actually appears to be somewhat working. But there's an interesting
+issue... Now names are fully qualified. So, for example, the rules for
+reducing the primitive operations have to refer to the fully qualified
+primitive name.
+
+Now, honestly, I think this is a good thing. It's much safer. But it does mean
+that... I can't dequalify the way I wanted to and have it work out. Because
+people may be assuming things about fully qualified names. As a consequence...
+things are going to get really messy to read in outputs.
+
+Well... maybe worry about it when it becomes a problem.
+
+I do feel like this is a step in the right direction.
+
+Wed Jul 18 15:39:28 EDT 2012
+
+Now I'm running into an annoying problem. Because we add fully qualified
+names, we now don't have proper haskell names. Because 
+Seri.Lib.Prelude.==, for example, is not a valid identifier to use when
+declaring a function in haskell.
+
+Wed Jul 18 16:06:10 EDT 2012
+
+Ug, and now seriq has problems, because main isn't called main anymore, it's
+called something different. I suppose I should pass in main as an explicit
+argument.
