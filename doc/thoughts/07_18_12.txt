@@ -1,0 +1,32 @@
+
+Wed Jul 18 09:07:00 EDT 2012
+
+Goal for today? Overall it would be modularity.
+
+It would also be nice if I could get rid of this seg faulting bug, but I don't
+know what to do about that.
+
+I think it would be good to pull out stuff from Sugar which isn't really
+sugar. It could go into Seri.Lambda.Prelude... That is, if I don't want to
+move it out of Seri.Lambda.
+
+Let me start by organizing Sugar to collect what I think should be in Sugar,
+and what I would want to put in, say, Seri.Lambda.Prelude.
+
+Wed Jul 18 09:16:15 EDT 2012
+
+Running into the seg fault again. Is there, please, some way I can figure out
+what the problem is and fix it?
+
+Ideas?
+
+So what we observe is... somehow something is getting a null pointer in the GC
+environment which isn't expected. How could it get a null pointer?
+
+Someone outside of GC changed it? Perhaps... yices2 changed it?
+
+One idea: try it with a different version of the compiler, see if it runs into
+the same problem. For example, 6. something?
+
+It's worth a try I suppose.
+

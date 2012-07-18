@@ -41,6 +41,7 @@ import Data.Maybe
 
 import Seri.Failable
 import Seri.Lambda.IR
+import Seri.Lambda.Prelude
 import Seri.Lambda.Sugar
 
 import Seri.Lambda.Parser.Monad

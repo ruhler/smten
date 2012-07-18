@@ -47,9 +47,6 @@ vs. foo :: (Foo a) => Sludge
 - array comprehension.
 - pattern guards would be nice.
 
-- split Parser into: Grammar.y, Lexer.hs, Monad.hs
-Because it's getting way too big.
-
 - move non-syntactic sugary stuff in Sugar.hs to Seri/Lib/Prelude.hs
 These are the constructors for building up complex expressions in haskell.
 

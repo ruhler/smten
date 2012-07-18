@@ -36,11 +36,9 @@
 -- | Constructor functions for desugaring higher level constructs into the
 -- core Seri IR.
 module Seri.Lambda.Sugar (
-    ifE, lamE, appsE, unappsE,
+    ifE, lamE, letE,
     Stmt(..), doE,
     Clause(..), clauseE,
-    trueE, falseE, boolE, listE, listP, tupE, tupP,
-    letE, stringE, charE, integerE,
     Module(..), Import(..), flatten,
     ConRec(..), recordD, recordC, recordU,
     ) where
@@ -53,23 +51,34 @@ import Seri.Lambda.Prelude
 import Seri.Lambda.Types
 import Seri.Lambda.Utils
 
--- | True
-trueE :: Exp
-trueE = ConE (Sig "True" (ConT "Bool"))
-
--- | False
-falseE :: Exp
-falseE = ConE (Sig "False" (ConT "Bool"))
-
--- | Boolean expression
-boolE :: Bool -> Exp
-boolE True = trueE
-boolE False = falseE
-
 -- | if p then a else b
 ifE :: Exp -> Exp -> Exp -> Exp
 ifE p a b = CaseE p [Match (ConP (ConT "Bool") "True" []) a,
                      Match (ConP (ConT "Bool") "False" []) b]
+
+-- | \a b ... c -> e
+lamE :: [Sig] -> Exp -> Exp
+lamE [] e = e
+lamE (x:xs) e = LamE x (lamE xs e)
+
+-- |
+-- > let n1 = e1
+-- >     n2 = e2
+-- >     ...
+-- > in e
+-- Recursive bindings are not allowed.
+letE :: [(Sig, Exp)] -> Exp -> Failable Exp
+letE [] x = return x
+letE ((Sig n t, v):bs) x =
+  let tobind = n : map ((\(Sig n _) -> n) . fst) bs
+      recursive = filter (\(Sig v _) -> v `elem` tobind) (free v)
+  in if null recursive
+        then do
+            sub <- letE bs x
+            return (AppE (LamE (Sig n t) sub) v)
+        else fail $ "let expression is recursive in vars: " ++ show recursive
+
+
 
 data Stmt = 
     BindS Sig Exp   -- ^ n <- e
@@ -89,37 +98,6 @@ doE ((BindS s e):stmts) =
     let f = LamE s (doE stmts)
         tbind = (arrowsT [typeof e, typeof f, outputT (typeof f)])
     in appsE [VarE (Sig ">>=" tbind), e, f]
-
--- | (a, b, ... )
--- There must be at least one expression given.
---
--- If exactly one expression is given, that expression is returned without
--- tupling.
-tupE :: [Exp] -> Exp
-tupE [] = error $ "tupE on empty list"
-tupE [x] = x
-tupE es@(_:_:_) =
-    let n = length es
-        name = "(" ++ replicate (n-1) ',' ++ ")"
-        types = map typeof es
-        ttype = arrowsT (types ++ [foldl AppT (ConT name) types])
-    in foldl AppE (ConE (Sig name ttype)) es
-
--- | (a, b, ... )
--- There must be at least one pattern given.
---
--- If exactly one pattern is given, that pattern is returned without
--- tupling.
-tupP :: [Pat] -> Pat
-tupP [] = error $ "tupP on empty list"
-tupP [p] = p
-tupP ps@(_:_:_) =
-    let n = length ps
-        name = "(" ++ replicate (n-1) ',' ++ ")"
-        types = map typeof ps
-        ttype = foldl AppT (ConT name) types
-    in ConP ttype name ps
-    
 
 data Clause = Clause [Pat] Exp
     
@@ -144,68 +122,6 @@ clauseE clauses@(_:_) =
       lamargs = [Sig n (typeof p) | (n, p) <- zip args pats1]
       
   in lamE lamargs caseexp
-
--- | \a b ... c -> e
-lamE :: [Sig] -> Exp -> Exp
-lamE [] e = e
-lamE (x:xs) e = LamE x (lamE xs e)
-
--- | (a b ... c)
-appsE :: [Exp] -> Exp
-appsE = foldl1 AppE
-
--- | Given (a b ... c), returns [a, b, ..., c]
-unappsE :: Exp -> [Exp]
-unappsE (AppE a b) = unappsE a ++ [b]
-unappsE e = [e]
-
--- | [a, b, ..., c]
-listE :: [Exp] -> Exp
-listE [] = ConE (Sig "[]" (listT UnknownT))
-listE [x] =
- let t = typeof x
-     consT = arrowsT [t, listT t, listT t]
- in appsE [ConE (Sig ":" consT), x, ConE (Sig "[]" (listT t))]
-listE (x:xs) = 
- let t = typeof x
-     consT = arrowsT [t, listT t, listT t]
- in appsE [ConE (Sig ":" consT), x, listE xs]
-
-listP :: [Pat] -> Pat
-listP [] = ConP (listT UnknownT) "[]" []
-listP [x] =
-  let t = listT $ typeof x
-  in ConP t ":" [x, ConP t "[]" []]
-listP (x:xs) =
-  let t = listT $ typeof x
-  in ConP t ":" [x, listP xs]
-
--- |
--- > let n1 = e1
--- >     n2 = e2
--- >     ...
--- > in e
--- Recursive bindings are not allowed.
-letE :: [(Sig, Exp)] -> Exp -> Failable Exp
-letE [] x = return x
-letE ((Sig n t, v):bs) x =
-  let tobind = n : map ((\(Sig n _) -> n) . fst) bs
-      recursive = filter (\(Sig v _) -> v `elem` tobind) (free v)
-  in if null recursive
-        then do
-            sub <- letE bs x
-            return (AppE (LamE (Sig n t) sub) v)
-        else fail $ "let expression is recursive in vars: " ++ show recursive
-
-integerE :: Integer -> Exp
-integerE i = LitE (IntegerL i)
-
-charE :: Char -> Exp
-charE c = LitE (CharL c)
-
-stringE :: [Char] -> Exp
-stringE [] = ConE (Sig "[]" (listT charT))
-stringE s = listE (map charE s)
 
 -- | Currently imports are restricted to the form:
 -- > import Foo.Bar
