@@ -51,6 +51,29 @@ module Yices2.FFI (
     c_yices_set_term_name,
     c_yices_parse_type,
     c_yices_parse_term,
+
+    -- Term constructors
+    c_yices_true,
+    c_yices_false,
+    c_yices_rational64,
+    c_yices_eq,
+    c_yices_tuple,
+    c_yices_tuple_update,
+    c_yices_select,
+    c_yices_application,
+    c_yices_update,
+    c_yices_ite,
+    c_yices_arith_lt_atom,
+    c_yices_arith_gt_atom,
+    c_yices_add,
+    c_yices_sub,
+    c_yices_mul,
+    c_yices_or2,
+    c_yices_and2,
+    c_yices_xor2,
+    c_yices_and,
+
+    -- Working with contexts
     c_yices_new_context,
     c_yices_free_context,
     c_yices_assert_formula,
@@ -138,6 +161,64 @@ foreign import ccall "yices_parse_type"
 
 foreign import ccall "yices_parse_term"
     c_yices_parse_term :: CString -> IO YTerm
+
+
+foreign import ccall "yices_true"
+    c_yices_true ::  IO YTerm
+
+foreign import ccall "yices_false"
+    c_yices_false ::  IO YTerm
+
+foreign import ccall "yices_rational64"
+    c_yices_rational64 ::  Int64 -> Word64 -> IO YTerm
+
+foreign import ccall "yices_eq"
+    c_yices_eq :: YTerm -> YTerm -> IO YTerm
+
+foreign import ccall "yices_tuple"
+    c_yices_tuple :: Word32 -> Ptr YTerm -> IO YTerm
+
+foreign import ccall "yices_tuple_update"
+    c_yices_tuple_update :: YTerm -> Word32 -> YTerm -> IO YTerm
+
+foreign import ccall "yices_select"
+    c_yices_select :: Word32 -> YTerm -> IO YTerm
+
+foreign import ccall "yices_application"
+    c_yices_application :: YTerm -> Word32 -> Ptr YTerm -> IO YTerm
+
+foreign import ccall "yices_update"
+    c_yices_update :: YTerm -> Word32 -> Ptr YTerm -> YTerm -> IO YTerm
+
+foreign import ccall "yices_ite"
+    c_yices_ite :: YTerm -> YTerm -> YTerm -> IO YTerm
+
+foreign import ccall "yices_arith_lt_atom"
+    c_yices_arith_lt_atom :: YTerm -> YTerm -> IO YTerm
+
+foreign import ccall "yices_arith_gt_atom"
+    c_yices_arith_gt_atom :: YTerm -> YTerm -> IO YTerm
+
+foreign import ccall "yices_add"
+    c_yices_add :: YTerm -> YTerm -> IO YTerm
+
+foreign import ccall "yices_sub"
+    c_yices_sub :: YTerm -> YTerm -> IO YTerm
+
+foreign import ccall "yices_mul"
+    c_yices_mul :: YTerm -> YTerm -> IO YTerm
+
+foreign import ccall "yices_or2"
+    c_yices_or2 :: YTerm -> YTerm -> IO YTerm
+
+foreign import ccall "yices_and2"
+    c_yices_and2 :: YTerm -> YTerm -> IO YTerm
+
+foreign import ccall "yices_and"
+    c_yices_and :: Word32 -> Ptr YTerm -> IO YTerm
+
+foreign import ccall "yices_xor2"
+    c_yices_xor2 :: YTerm -> YTerm -> IO YTerm
 
 foreign import ccall "yices_new_context"
     c_yices_new_context :: Ptr YContextConfig -> IO (Ptr YContext)

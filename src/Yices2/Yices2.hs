@@ -41,6 +41,8 @@ module Yices2.Yices2 (
     getIntegerValue,
     ) where
 
+import Data.Ratio
+
 import Foreign
 import Foreign.C.String
 import Foreign.C.Types
@@ -122,8 +124,104 @@ ytype t = do
         else do
             return $! yt
 
+isbinop :: String -> Expression -> Bool
+isbinop nm (FunctionE (ImmediateE (VarV n)) [_, _]) = n == nm
+isbinop _ _ = False
+
+dobinop :: [(String, YTerm)] -> Expression -> (YTerm -> YTerm -> IO YTerm) -> IO YTerm
+dobinop s (FunctionE (ImmediateE (VarV _)) [a, b]) f = do
+    at <- ytermS s a
+    bt <- ytermS s b
+    f at bt
+
 yterm :: Expression -> IO YTerm
-yterm e = do
+yterm = ytermS []
+
+builtin :: [String]
+builtin = [
+    "true", "false", "if", "ite", "=", "/=", "distinct",
+    "or", "and", "not", "xor", "<=>", "=>", "mk-tuple",
+    "select", "tuple-update", "update",  "forall",  "exists",  "let",
+    "+", "-", "*", "/", "^",
+    "<", "<=", ">", ">=",
+    "mk-bv", "bv-add", "bv-sub", "bv-mul", "bv-neg", "bv-pow",
+    "bv-not", "bv-and", "bv-or", "bv-xor", "bv-nand", "bv-nor", "bv-xnor",
+    "bv-shift-left0", "bv-shift-left1", "bv-shift-right0", "bv-shift-right1",
+    "bv-ashift-right", "bv-rotate-left", "bv-rotate-right",
+    "bv-extract", "bv-concat", "bv-repeat",
+    "bv-sign-extend", "bv-zero-extend", "bv-ge", "bv-gt", "bv-le", "bv-lt",
+    "bv-sge", "bv-sgt", "bv-sle", "bv-slt", "bv-shl", "bv-lshr", "bv-ashr",
+    "bv-div", "bv-rem", "bv-sdiv", "bv-srem", "bv-smod",
+    "bv-redor", "bv-redand", "bv-comp"
+    ]
+
+
+-- Construct a yices term from the given expression with the given
+-- variable scope.
+ytermS :: [(String, YTerm)] -> Expression -> IO YTerm
+ytermS s e | isbinop "=" e = dobinop s e c_yices_eq
+ytermS s e | isbinop "<" e = dobinop s e c_yices_arith_lt_atom
+ytermS s e | isbinop ">" e = dobinop s e c_yices_arith_gt_atom
+ytermS s e | isbinop "+" e = dobinop s e c_yices_add
+ytermS s e | isbinop "-" e = dobinop s e c_yices_sub
+ytermS s e | isbinop "*" e = dobinop s e c_yices_mul
+ytermS s e | isbinop "or" e = dobinop s e c_yices_or2
+ytermS s e | isbinop "and" e = dobinop s e c_yices_and2
+ytermS s e | isbinop "xor" e = dobinop s e c_yices_xor2
+ytermS s (FunctionE (ImmediateE (VarV "tuple-update")) [a, ImmediateE (RationalV i), v]) = do
+    at <- ytermS s a
+    vt <- ytermS s v
+    c_yices_tuple_update at (fromInteger $ numerator i) vt
+ytermS s (FunctionE (ImmediateE (VarV "select")) [v, ImmediateE (RationalV i)]) = do
+    vt <- ytermS s v
+    c_yices_select (fromInteger $ numerator i) vt
+ytermS s (FunctionE (ImmediateE (VarV "if")) [p, a, b]) = do
+    pt <- ytermS s p 
+    at <- ytermS s a
+    bt <- ytermS s b
+    c_yices_ite pt at bt
+ytermS s (FunctionE (ImmediateE (VarV "mk-tuple")) args) = do
+    argst <- mapM (ytermS s) args
+    withArray argst $ c_yices_tuple (fromIntegral $ length argst)
+ytermS s (FunctionE (ImmediateE (VarV "and")) args) = do
+    argst <- mapM (ytermS s) args
+    withArray argst $ c_yices_and (fromIntegral $ length argst)
+ytermS s e@(FunctionE (ImmediateE (VarV f)) _) | f `elem` builtin = do
+    error $ "TODO: yterm builtin " ++ pretty e
+ytermS s (FunctionE f [a]) = do
+    ft <- ytermS s f
+    at <- ytermS s a 
+    withArray [at] $ c_yices_application ft 1
+ytermS s (UpdateE f args v) = do
+    ft <- ytermS s f
+    argst <- mapM (ytermS s) args
+    vt <- ytermS s v
+    withArray argst $ \arr -> c_yices_update ft (fromIntegral $ length argst) arr vt
+ytermS s (LetE bs e) = 
+  let mkvar :: (String, Expression) -> IO (String, YTerm)
+      mkvar (nm, e) = do
+        et <- ytermS s e
+        return (nm, et)
+  in do
+    vars <- mapM mkvar bs
+    ytermS (vars ++ s) e
+        
+ytermS _ (ImmediateE TrueV) = c_yices_true
+ytermS _ (ImmediateE FalseV) = c_yices_false
+ytermS _ (ImmediateE (RationalV r)) = do
+    c_yices_rational64 (fromInteger $ numerator r) (fromInteger $ denominator r)
+ytermS s e@(ImmediateE (VarV nm)) =
+    case lookup nm s of
+        Nothing -> ytermbystr e
+        Just t -> return t
+    
+ytermS _ e = error $ "TODO: yterm: " ++ pretty e
+
+
+-- | Construct a yices term for the given expression. This works by printing
+-- the expression to a string and passing the string over to yices to parse.
+ytermbystr :: Expression -> IO YTerm
+ytermbystr e = do
     ye <- withCString (pretty e) $ \str -> c_yices_parse_term str
     if ye < 0 
         then do 
