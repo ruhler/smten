@@ -56,17 +56,25 @@ elaborate :: Env   -- ^ context under which to evaluate the expression
 elaborate env e =
   case e of
     (LitE {}) -> e
-    (CaseE x (m:ms)) ->
+    (CaseE x ms) ->
         let rx = elaborate env x
-            Match p b = m
-           -- Don't make a case statement empty, because we want to 
-           -- keep enough information to determine the type of the
-           -- case statement.
-           -- TODO: maybe we should return "error" instead?
-        in case (match p rx, null ms) of
-              (Succeeded vs, _) -> elaborate env $ reduces vs b
-              (Failed, False) -> elaborate env (CaseE rx ms)
-              _ -> CaseE rx [Match p (simplify b) | Match p b <- (m:ms)]
+
+            -- Don't make a case statement empty, because we want to 
+            -- keep enough information to determine the type of the
+            -- case statement.
+            -- TODO: maybe we should return "error" instead?
+            domatch :: [Match] -> (MatchResult, Either Exp [Match])
+            domatch (m@(Match p b):ms) =
+                case match p rx of
+                  Failed ->
+                    if null ms
+                      then (Failed, Right [m])
+                      else domatch ms
+                  mr@(Succeeded {}) -> (mr, Left b)
+                  mr -> (mr, Right $ m:ms)
+        in case (domatch ms) of
+              (Succeeded vs, Left b) -> elaborate env $ reduces vs b
+              (_, Right ms') -> CaseE rx [Match p (simplify b) | Match p b <- ms']
     (AppE a b) ->
         case (elaborate env a, elaborate env b) of
           (AppE (VarE (Sig "Seri.Lib.Prelude.__prim_add_Integer" _)) (LitE (IntegerL ia)), (LitE (IntegerL ib))) -> integerE (ia + ib)
