@@ -322,10 +322,10 @@ stmts :: { [Stmt] }
     { $1 ++ [$2] }
 
 stmt :: { Stmt }
- : exp ';'
-    { NoBindS $1 }
- | var_typed '<-' exp ';'
+ : var_typed '<-' exp ';'
     { BindS $1 $3 }
+ | exp ';'
+    { NoBindS $1 }
 
 fbinds :: { [(Name, Exp)] }
  : fbind 

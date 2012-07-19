@@ -48,7 +48,8 @@ set ::env(HOME) [pwd]/build/home
 indir build/src {
     hrun cabal configure --package-db $::PACKAGE_DB \
         --extra-lib-dirs $::env(LD_LIBRARY_PATH) \
-        --with-happy=$::HAPPY
+        --with-happy=$::HAPPY \
+        --enable-executable-profiling
     hrun cabal build
     hrun cabal haddock --executables
     hrun cabal sdist
@@ -79,8 +80,8 @@ proc badtypetest {name} {
 badtypetest "BadType1"
 badtypetest "BadType2"
 badtypetest "InstCtx"
-badtypetest "LetRecM"
-badtypetest "LetRecS"
+#badtypetest "LetRecM"
+#badtypetest "LetRecS"
 
 
 # Test the haskell target.

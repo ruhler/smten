@@ -150,3 +150,39 @@ Wed Jul 18 16:06:10 EDT 2012
 Ug, and now seriq has problems, because main isn't called main anymore, it's
 called something different. I suppose I should pass in main as an explicit
 argument.
+
+Wed Jul 18 16:52:02 EDT 2012
+
+We have a query from Myron now. Apparently it's slow, though Myron claims it
+should be fast.
+
+So! How to make the query fast?
+
+Some thoughts:
+- It's the generated query which yices has trouble with. It's not the act of
+  generating the query itself which is the slow part (though that may be)
+- This includes the case arg fix for yices1, so we don't have that blowup
+- I would like to try yices2, see how that goes
+- I would like to try yices1, see how that goes with my latest version
+- There are lots and lots of error variables
+- Is equality much harder with seri, given it doesn't necessarily have to be
+  structural equality?
+
+I think the first step to do is, given the query as .sri, parse it in and try
+to run it myself. I may need to use an older version of seri... since
+modularity stuff will have messed this up. I can start a specific branch for
+that.
+
+Duplicate the generated .dbg code for yices 1. Try it under yices2.
+When Myron sends me his direct yices1 version for comparison, that should be
+helpful too. This could be tricky to figure out...
+
+Wed Jul 18 17:16:02 EDT 2012
+
+I found a problem: we have a recursive let construct, which isn't allowed. How
+did that go through? Maybe because we check in the parser and not the sugar?
+That's something.
+
+It's simple enough for me to remove this one. I'll try that and continue on
+tomorrow.
+

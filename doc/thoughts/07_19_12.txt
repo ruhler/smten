@@ -4,3 +4,61 @@ Thu Jul 19 09:39:12 EDT 2012
 So the query I generated completes. It says sat. It took a long time though.
 At least 30 minutes, and up to who knows how many hours.
 
+Thu Jul 19 09:47:17 EDT 2012
+
+Okay! So I got the sample query to compile now. Lots of bugs in the pretty
+printer and parser it would seem.
+
+Anyway... What's the next step? Try out yices2 I suppose?
+
+Thu Jul 19 10:00:52 EDT 2012
+
+So... interesting...
+
+yices2 takes like no time to call it sat, but takes rather a bit of time to
+generate the query.
+
+How about I try the latest version of yices1, see how that does.
+
+This is good though, because I can figure out using profiling in haskell
+what's taking so long with yices2 code generation.
+
+Updated yices1 doesn't seem to help majorly.
+
+If yices2 works though... that's good.
+
+Let me time how long to run the seriq2 thing.
+
+Thu Jul 19 10:20:12 EDT 2012
+
+It takes 47s to run seriq2, assuming we don't run into the GC bug. A big
+enough initial heap seems to help with that.
+
+The biggest performance problem currently is in the concretization of the
+really complicated yices expression.
+
+Wow. It really is massive. We're talking 60 thousand lines. I suspect we have
+a hard time allocating such a big string to pass to yices2... but also,
+printing out the expression as a string is tough. It may also be that, when we
+call concrete, we are forcing evaluation of the inlining and simplification
+which could be the real source of the problem.
+
+What's the solution here? What should we do?
+
+Well, one obvious thing stands out. concrete takes most of the time, so don't
+call concrete at all. That at least will rule things out. This means, don't
+output debug info (if -d isn't specified, we should not try to output debug
+info), and don't use the parse_term function to build up a yices term, but
+rather build up the expression in bits and pieces using the yices2 api.
+
+Hey, maybe this will help with the GC bug too? It's worth having the code
+around to do that. It's very easy to switch back to the existing parse
+implementation.
+
+Let me start by making debug truly optional. If no flag is specified, don't
+output anything at all. See how that improves things if any. Then implement
+the yices2 term thing.
+
+I think yices2 is a better bet for the long term anyway. Hopefully I can focus
+here. We'll see.
+
