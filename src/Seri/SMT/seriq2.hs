@@ -51,8 +51,8 @@ main = do
     args <- getArgs
     let (dbg, path, m, fin) =
             case args of
-               ["-d", dbgout, "-i", path, "-m", m, fin]
-                    -> (Just dbgout, path, m, fin)
+               ["-d", dbgout, "-i", path, "-m", m, fin] -> (Just dbgout, path, m, fin)
+               ["-i", path, "-m", m, fin] -> (Nothing, path, m, fin)
                x -> error $ "bad args: " ++ show x
 
     query <- load [path] fin

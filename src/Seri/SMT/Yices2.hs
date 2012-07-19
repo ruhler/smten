@@ -52,15 +52,16 @@ import Seri.Target.Yices.Yices2
 
 data YicesState = YicesState {
     ys_ctx :: Y.Context,
-    ys_dh :: Handle,
+    ys_dh :: Maybe Handle,
     ys_freeid :: Integer,
     ys_ys :: Compilation
 }
 
 type YicesMonad = StateT YicesState IO
 
-sendCmds :: [Y.Command] -> Y.Context -> Handle -> IO ()
-sendCmds cmds ctx dh = do
+sendCmds :: [Y.Command] -> Y.Context -> Maybe Handle -> IO ()
+sendCmds cmds ctx Nothing = mapM_ (Y.run ctx) cmds
+sendCmds cmds ctx (Just dh) = do
     hPutStr dh (unlines (map Y.pretty cmds))
     mapM_ (Y.run ctx) cmds
 
@@ -82,7 +83,9 @@ check = do
 debug :: String -> YicesMonad ()
 debug msg = do
     dh <- gets ys_dh
-    lift $ hPutStrLn dh msg
+    case dh of
+        Nothing -> return ()
+        Just h -> lift $ hPutStrLn h msg
 
 freevar = do
     fid <- gets ys_freeid
@@ -157,11 +160,13 @@ data RunOptions = RunOptions {
             
 runYices :: Rule YicesMonad -> RunOptions -> Env -> Exp -> IO Exp
 runYices gr opts env e = do
-    dh <- openFile (fromMaybe "/dev/null" (debugout opts)) WriteMode
+    dh <- case debugout opts of
+            Nothing -> return Nothing
+            Just dbgfile -> do
+                h <- openFile dbgfile WriteMode
+                hSetBuffering h NoBuffering
+                return (Just h)
 
-    -- We set NoBuffering, because otherwise the output gets chopped off for
-    -- longer outputs.
-    hSetBuffering dh NoBuffering
     Y.init
     ctx <- Y.mkctx
     let query = runQuery gr env e
@@ -171,7 +176,7 @@ runYices gr opts env e = do
         ys_freeid = 1,
         ys_ys = compilation (inlinedepth opts) env
     })
-    hClose dh
+    maybe (return ()) hClose dh
     Y.exit
     return x
     
