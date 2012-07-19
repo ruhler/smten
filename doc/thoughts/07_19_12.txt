@@ -1,0 +1,6 @@
+
+Thu Jul 19 09:39:12 EDT 2012
+
+So the query I generated completes. It says sat. It took a long time though.
+At least 30 minutes, and up to who knows how many hours.
+
