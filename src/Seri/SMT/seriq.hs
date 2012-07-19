@@ -44,8 +44,6 @@ import Seri.Lambda
 import Seri.Target.Elaborate
 import Seri.SMT.Yices
 
-queryR = elaborateR
-
 main :: IO ()
 main = do
     args <- getArgs
@@ -62,6 +60,6 @@ main = do
 
     let opts = (RunOptions dbg 30)
     tmain <- attemptIO $ lookupVarType decs m
-    result <- runYices queryR opts decs (VarE (Sig m tmain))
+    result <- runYices opts decs (VarE (Sig m tmain))
     putStrLn $ pretty result
 

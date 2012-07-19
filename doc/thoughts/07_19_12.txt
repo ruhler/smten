@@ -72,3 +72,141 @@ Thu Jul 19 10:40:57 EDT 2012
 Okay, so time to start implementing yterm again. Hopefully it's not too
 painful.
 
+Thu Jul 19 12:05:06 EDT 2012
+
+Now all the time is being spent in elaboration. Going through all the rules
+over and over again and such. I should think about what I can do to make this
+faster.
+
+One thing is just how it is expressed.
+Another is reducing the work by taking advantage of sharing in haskell.
+Let me think about it.
+
+Thu Jul 19 12:45:27 EDT 2012
+
+What to do about yices1? The elaboration improvement will help everything, but
+yices1 isn't going to change as long as the queries don't run fast.
+
+Here's an idea: run the yices2 generated query in yices1, see if that works
+better. If not... I suppose... I don't know. It's really hard to see inside
+these things.
+
+Thu Jul 19 13:56:30 EDT 2012
+
+Tried running the yices2 generated query in yices1. The only syntactic
+difference, it seems, is "tuple-update" is called "update" in yices1.
+
+That's interesting... It's like... should I just use the same back end for
+both yices1 and yices2? That same yices2 syntax?
+
+Well, regardless, yices1 still runs slow, and it still takes me longer to ask
+yices2 queries than I want. The question is, what should I focus on?
+
+If I focus on yices2, that work should be useful everywhere where yices1
+doesn't blow up.
+
+I think priority should be work on yices2. Also, the yices2 thing I know I can
+make progress on. The yices1 problem is a big black hole.
+
+Okay, fine. How about this, after I see how long it takes to execute the
+yices1 query, let me email Nirav and Peter asking about the importance of
+having yices1 stay working well.
+
+Okay, fine. How do I improve the performance of elaboration?
+
+Top time and allocation is spent in "rules", simplifyR.
+
+I suspect an easy way to simplify the whole rules thing and make things go
+much faster is to get rid of this distributed elaboration rules thing. We save
+lots of generates and checkings of maybes. And maybe, if the compiler is smart
+about how it does pattern matching, we win big there too.
+
+How all do we take advantage of distributed rules?
+- difference between elaborate and simplify
+simplify goes inside cases and lambdas, but doesn't do variable substitution
+from the environment. Perhaps we should pass some flags to elaborate to
+specify that behavior.
+
+- let's you put the declaration of integer primitives for the elaborate in a
+  different file from the rest of the elaboration.
+
+So really, we aren't making use of the distributed elaboration thing. At this
+point it's perhaps needless complexity. I feel like, honestly, what we'll want
+is some sort of preprocessor that lets you specify a bunch of rules separately
+and generates haskell code for the elaborator. That would let us have our
+zero-cost abstraction.
+
+So I'm willing to try making this change.
+
+What else could be going on?
+Well, when we make this change, it should be easier to tell if we are making
+use of sharing appropriately. Sharing should be done when?
+
+- In beta reduction, elaborate (or simplify) the argument before doing the
+  substitution. This is for lambdas and cases.
+- In variable substitution from the environment...
+You could have elaboration simplify everything first (lazily). That should
+avoid lots of repeated simplification. This should actually be easy to
+implement and worth while.
+
+So I think the next steps are mostly clear.
+
+Rewrite elaborate so it isn't distributed.
+It should take a parameter which says if it should simplify or elaborate.
+Any problem always simplifying inside of things? If not, then we may as well
+just have simplify/elaborate be the same thing. (A boolean flag may still be
+useful)
+
+The idea is: When going inside case branches which may not be taken or inside
+of lambdas, don't do variable lookups from the environment.
+
+Another thing we can do is, we can do things all together at once.
+
+For example, given an application. I don't have to say: oh, this is an
+application where the left hand argument is fully elaborated, so now I can
+simplify the right hand. Or some such. Instead I can say: here I have
+application. To simplify it, I'll first simplify the left hand side as much as
+possible, then the right hand side as much as possible, and put them together.
+I feel like we avoid a lot of searching this way.
+
+Cool. I'm excited. I think this will clean up the code and make it faster. We
+just loose this clunky distributed elaboration mechanism which is currently
+not being used by anyone. I think that's a fair trade. Let me try it out now.
+
+Thu Jul 19 14:33:04 EDT 2012
+
+We could have two kinds of functions. One is elaborate. The other is simplify.
+Simplify doesn't need any Env context. Elaboration does. Elaboration can make
+use of simplify: first it simplifies, then it applies variable whatever if
+needed. Good. I like this.
+
+Thu Jul 19 14:42:44 EDT 2012
+
+The problem with not having an incremental approach to elaborate is what
+happens if we have an infinite recursion. Haskell's laziness let's us get away
+with those things within expressions, but if you try to elaborate an infinite
+expression, then print out what you got... it's going to take a long time and
+not be pleasant.
+
+Hmm... you know... elaboration and inlining are related. Except... that
+doesn't help any.
+
+Okay, let's say elaborate doesn't do infinite recursion. Can it still work
+directly? I think maybe.
+
+Thu Jul 19 15:42:44 EDT 2012
+
+Well... so... I implemented it, and it's much cleaner and much simpler... and
+rather quite a bit slower. :(
+
+I don't understand why it's allocating 4 times as much memory, when I'm sure
+it ought to be doing less work. Is this a problem with lazy evaluation?
+
+Let me do some heap profiling, see if anything interesting comes up?
+
+Thu Jul 19 16:11:52 EDT 2012
+
+Heap profiling suggests at any given time we use less heap than we were
+before. That is, the heap profile doesn't look any worse... We must be doing
+more work somehow.
+

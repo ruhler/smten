@@ -35,7 +35,7 @@
 
 -- | Target for reducing a seri expression to a normal form.
 module Seri.Target.Elaborate.Elaborate (
-    Rule(..), rules, elaborate, coreR, simplifyR,
+    simplify, elaborate,
     ) where
 
 import Data.Generics
@@ -45,139 +45,47 @@ import Data.List(nub, (\\))
 import Seri.Failable
 import Seri.Lambda
 
--- | A reduction rule. Given a set of global declarations, a global reduction
--- rule, and an expression, reduce the expression in some way. Returns Nothing
--- if the rule can't reduce the expression any, otherwise returns a reduced
--- version of the expression.  It need not be fully reduced or anything like
--- that, just reduced in some part.
-data Rule m = Rule {
-    run :: RuleBody m
-}
-
-type RuleBody m = (Rule m -> Env -> Exp -> m (Maybe Exp))
-
-runme :: Rule m -> Env -> Exp -> m (Maybe Exp)
-runme r = run r r
-
--- | Combine a bunch of reduction rules.
--- It tries each rule in turn, applying the first one which succeeds.
-rules :: (Monad m) => [Rule m] -> Rule m
-rules [] = Rule $ \_ _ _ -> return Nothing
-rules (r:rs) = Rule $ \gr env e -> do
-  x <- run r gr env e
-  case x of
-      Just e' -> return $ Just e'
-      Nothing -> run (rules rs) gr env e
+-- | Simplify an expression as much as possible.
+simplify :: Exp -> Exp
+simplify = elaborate []
 
 -- | Reduce the given expression as much as possible.
-elaborate :: (Monad m)
-          => Rule m   -- ^ reduction rule to use
-          -> Env      -- ^ context under which to evaluate the expression
-          -> Exp      -- ^ expression to evaluate
-          -> m Exp
-elaborate r env prg = do
-    x <- runme r env prg
-    case x of
-        Just e -> elaborate r env e
-        Nothing -> return prg
-
--- | The core reduction rule.
-coreR :: (Monad m) => Rule m
-coreR = rules [casesubR, applsubR, apprsubR, varredR, caseredR, appredR]
-
--- | The core simplification rule.
--- Simplification simplifies expressions inside lambdas and case statements,
--- but does not perform variable substitution from the environment.
-simplifyR :: (Monad m) => Rule m
-simplifyR = rules [casesubR, casesimpR, applsubR, apprsubR, lamsimpR, caseredR, appredR]
-        
-
-casesubR :: (Monad m) => Rule m
-casesubR = Rule $ \gr env e ->
-   case e of
-      (CaseE x ms) -> do
-         x' <- runme gr env x
-         return $ do
-            vx' <- x'
-            return $ CaseE vx' ms
-      _ -> return Nothing
-
-casesimpR :: (Monad m) => Rule m
-casesimpR = Rule $ \gr env e ->
-    case e of
-      (CaseE x ms) -> do
-           ms' <- sequence [runme gr env b | Match _ b <- ms]
-           if null (catMaybes ms')
-              then return Nothing
-              else return (Just $ CaseE x [Match p (fromMaybe b b') | (Match p b, b') <- zip ms ms'])
-      _ -> return Nothing
-
-caseredR :: (Monad m) => Rule m
-caseredR = Rule $ \gr env e ->
-   case e of
-      (CaseE x ((Match p b):ms))
-         -> case (match p x) of
-                Failed ->
-                    -- Don't make a case statement empty, because we want to 
-                    -- keep enough information to determine the type of the
-                    -- case statement.
-                    -- TODO: maybe there's something better we could do?
-                    -- return a call to some error primitive or something?
-                    if null ms 
-                        then return Nothing
-                        else return . Just $ CaseE x ms
-                Succeeded vs -> return . Just $ reduces vs b
-                _ -> return Nothing
-      _ -> return Nothing
-
-appredR :: (Monad m) => Rule m
-appredR = Rule $ \gr env e ->
-   case e of
-      (AppE (LamE (Sig name _) body) b)
-         -> let freenames = map (\(Sig n _) -> n) (free b)
-                body' = alpharename (freenames \\ [name]) body
-                result = reduce name b body'
-            in return $ Just result
-      _ -> return Nothing
-
-applsubR :: (Monad m) => Rule m
-applsubR = Rule $ \gr env e ->
-   case e of
-      (AppE a b) -> do
-          a' <- runme gr env a
-          return $ do
-              va' <- a'
-              return $ AppE va' b
-      _ -> return Nothing
-
-apprsubR :: (Monad m) => Rule m
-apprsubR = Rule $ \gr env e ->
-   case e of
-      (AppE a b) -> do
-          b' <- runme gr env b
-          return $ do
-              vb' <- b'
-              return $ AppE a vb'
-      _ -> return Nothing
-
-lamsimpR :: (Monad m) => Rule m
-lamsimpR = Rule $ \gr env e ->
-    case e of
-       (LamE s b) -> do
-            b' <- runme gr env b
-            return $ do
-                vb' <- b'
-                return $ LamE s vb'
-       _ -> return Nothing
-
-varredR :: (Monad m) => Rule m
-varredR = Rule $ \gr env e ->
-   case e of
-      (VarE s@(Sig _ ct))
-        -> case (attemptM $ lookupVar env s) of
-               Nothing -> return Nothing
-               Just (pt, ve) -> return . Just $ assign (assignments pt ct) ve
-      _ -> return Nothing
+elaborate :: Env   -- ^ context under which to evaluate the expression
+          -> Exp   -- ^ expression to evaluate
+          -> Exp   -- ^ elaborated expression
+elaborate env e =
+  case e of
+    (LitE {}) -> e
+    (CaseE x (m:ms)) ->
+        let rx = elaborate env x
+            Match p b = m
+           -- Don't make a case statement empty, because we want to 
+           -- keep enough information to determine the type of the
+           -- case statement.
+           -- TODO: maybe we should return "error" instead?
+        in case (match p rx, null ms) of
+              (Succeeded vs, _) -> elaborate env $ reduces vs b
+              (Failed, False) -> elaborate env (CaseE rx ms)
+              _ -> CaseE rx [Match p (simplify b) | Match p b <- (m:ms)]
+    (AppE a b) ->
+        case (elaborate env a, elaborate env b) of
+          (AppE (VarE (Sig "Seri.Lib.Prelude.__prim_add_Integer" _)) (LitE (IntegerL ia)), (LitE (IntegerL ib))) -> integerE (ia + ib)
+          (AppE (VarE (Sig "Seri.Lib.Prelude.__prim_sub_Integer" _)) (LitE (IntegerL ia)), (LitE (IntegerL ib))) -> integerE (ia - ib)
+          (AppE (VarE (Sig "Seri.Lib.Prelude.__prim_mul_Integer" _)) (LitE (IntegerL ia)), (LitE (IntegerL ib))) -> integerE (ia * ib)
+          (AppE (VarE (Sig "Seri.Lib.Prelude.<" _)) (LitE (IntegerL ia)), (LitE (IntegerL ib))) -> boolE (ia < ib)
+          (AppE (VarE (Sig "Seri.Lib.Prelude.>" _)) (LitE (IntegerL ia)), (LitE (IntegerL ib))) -> boolE (ia > ib)
+          (AppE (VarE (Sig "Seri.Lib.Prelude.__prim_eq_Integer" _)) (LitE (IntegerL ia)), (LitE (IntegerL ib))) -> boolE (ia == ib)
+          (LamE (Sig name _) body, rb) ->
+             let freenames = map (\(Sig n _) -> n) (free rb)
+                 body' = alpharename (freenames \\ [name]) body
+             in elaborate env (reduce name rb body')
+          (ra, rb) -> AppE ra rb
+    (LamE s b) -> LamE s (simplify b)
+    (ConE s) -> e
+    (VarE s@(Sig _ ct)) ->
+        case (attemptM $ lookupVar env s) of
+          Nothing -> e
+          Just (pt, ve) -> elaborate env $ assign (assignments pt ct) ve
         
 data MatchResult = Failed | Succeeded [(Name, Exp)] | Unknown
 

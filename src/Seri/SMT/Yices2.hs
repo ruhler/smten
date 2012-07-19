@@ -114,10 +114,9 @@ yicese e = do
     runCmds cmds
     return ye
     
-runQuery :: Rule YicesMonad -> Env -> Exp -> YicesMonad Exp
-runQuery gr env e = do
-    elaborated <- elaborate gr env e
-    case elaborated of
+runQuery :: Env -> Exp -> YicesMonad Exp
+runQuery env e =
+    case elaborate env e of
         (AppE (VarE (Sig "Seri.SMT.SMT.query" _)) arg) -> do
             res <- check
             case res of 
@@ -138,18 +137,18 @@ runQuery gr env e = do
             return (ConE (Sig "()" (ConT "()")))
         (AppE (VarE (Sig "Seri.SMT.SMT.queryS" _)) q) -> do
             runCmds [Y.Push]
-            x <- runQuery gr env q
+            x <- runQuery env q
             let q' = AppE (VarE (Sig "Seri.SMT.SMT.query" undefined)) x
-            y <- runQuery gr env q'
+            y <- runQuery env q'
             runCmds [Y.Pop]
             return y
         (AppE (VarE (Sig "Seri.SMT.SMT.return_query" _)) x) -> return x
         (AppE (AppE (VarE (Sig "Seri.SMT.SMT.bind_query" _)) x) f) -> do
-          result <- runQuery gr env x
-          runQuery gr env (AppE f result)
+          result <- runQuery env x
+          runQuery env (AppE f result)
         (AppE (AppE (VarE (Sig "Seri.SMT.SMT.nobind_query" _)) x) y) -> do
-          runQuery gr env x
-          runQuery gr env y
+          runQuery env x
+          runQuery env y
         x -> error $ "unknown Query: " ++ pretty x
 
 
@@ -158,8 +157,8 @@ data RunOptions = RunOptions {
     inlinedepth :: Integer
 } deriving(Show)
             
-runYices :: Rule YicesMonad -> RunOptions -> Env -> Exp -> IO Exp
-runYices gr opts env e = do
+runYices :: RunOptions -> Env -> Exp -> IO Exp
+runYices opts env e = do
     dh <- case debugout opts of
             Nothing -> return Nothing
             Just dbgfile -> do
@@ -169,7 +168,7 @@ runYices gr opts env e = do
 
     Y.init
     ctx <- Y.mkctx
-    let query = runQuery gr env e
+    let query = runQuery env e
     (x, _) <- runStateT query (YicesState {
         ys_ctx = ctx,
         ys_dh = dh,

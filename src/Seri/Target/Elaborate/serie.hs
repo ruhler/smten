@@ -58,6 +58,6 @@ main = do
     decs <- attemptIO $ typeinfer flat
     attemptIO $ typecheck decs
     let e = VarE (Sig mainexp UnknownT)
-    elaborated <- elaborate elaborateR decs e
+    let elaborated = elaborate decs e
     output (pretty elaborated)
 
