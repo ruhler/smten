@@ -107,18 +107,46 @@ assignments (VarT n) t = [(n, t)]
 assignments (AppT a b) (AppT a' b') = (assignments a a') ++ (assignments b b')
 assignments _ _ = []
 
--- | assign vs x
---  Replace each occurence of a variable type according to the given mapping
---  in x.
-assign :: (Data a) => [(Name, Type)] -> a -> a
-assign m =
-  let base :: Type -> Type
-      base t@(VarT n) = 
-        case lookup n m of
-            Just t' -> t'
-            Nothing -> t
-      base t = t
-  in everywhere $ mkT base
+class Assign a where
+    assign :: [(Name, Type)] -> a -> a
+
+instance Assign Type where
+    assign _ t@(ConT {}) = t
+    assign m (AppT a b) = AppT (assign m a) (assign m b)
+    assign m t@(VarT n) =
+      case lookup n m of
+        Just t' -> t'
+        Nothing -> t
+    assign _ t@(UnknownT) = t
+
+instance Assign Exp where
+    assign _ e@(LitE {}) = e
+    assign m (CaseE x ms) = CaseE (assign m x) (assign m ms)
+    assign m (AppE a b) = AppE (assign m a) (assign m b)
+    assign m (LamE s b) = LamE (assign m s) (assign m b)
+    assign m (ConE s) = ConE (assign m s)
+    assign m (VarE s) = VarE (assign m s)
+
+instance Assign Match where
+    assign m (Match p b) = Match (assign m p) (assign m b)
+
+instance Assign Sig where
+    assign m (Sig n t) = Sig n (assign m t)
+
+instance Assign Pat where
+    assign m (ConP t n ps) = ConP (assign m t) n (assign m ps)
+    assign m (VarP s) = VarP (assign m s)
+    assign _ p@(IntegerP {}) = p
+    assign m (WildP t) = WildP (assign m t)
+
+instance (Assign a) => Assign [a] where
+    assign m = map (assign m)
+
+instance Assign Class where
+    assign m (Class n ts) = Class n (assign m ts)
+
+instance Assign Con where
+    assign m (Con n ts) = Con n (assign m ts)
 
 class Typeof a where
     -- | Return the seri type of the given object, assuming the object is well
