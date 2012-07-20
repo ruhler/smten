@@ -81,6 +81,10 @@ integerH =
       md c (PrimD s@(TopSig "Seri.Lib.Prelude.<" _ _)) = bprim c s "Prelude.<"
       md c (PrimD s@(TopSig "Seri.Lib.Prelude.>" _ _)) = bprim c s "Prelude.>"
       md c (PrimD s@(TopSig "Seri.Lib.Prelude.__prim_eq_Integer" _ _)) = bprim c s "Prelude.=="
+
+      -- TODO: why is eq_Char here? Why not have it in Char.hs or just merge
+      -- everything together into one?
+      md c (PrimD s@(TopSig "Seri.Lib.Prelude.__prim_eq_Char" _ _)) = bprim c s "Prelude.=="
       md _ d = fail $ "integerH does not apply to dec: " ++ pretty d
   in Compiler me mt md
 

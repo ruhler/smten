@@ -4,52 +4,6 @@ module Seri.SMT.Tests.BCL where {
 import Seri.Lib.Prelude;
 import Seri.SMT.SMT;
 
-instance Eq Bool where {
-  (==) = (\(a :: Bool) ->
-            (\(b :: Bool) ->
-               case ((a :: Bool), (b :: Bool)) of {
-                 ((True :: Bool), (True :: Bool)) ->
-                   (True :: Bool);
-                 ((False :: Bool), (False :: Bool)) ->
-                   (True :: Bool);
-                 ((_ :: Bool), (_ :: Bool)) ->
-                   (False :: Bool);
-               }));
-  (/=) = (\(a :: Bool) ->
-            (\(b :: Bool) ->
-               case ((a :: Bool), (b :: Bool)) of {
-                 ((a :: Bool), (b :: Bool)) ->
-                   (not :: Bool -> Bool) (((==) :: Bool -> Bool -> Bool) (a :: Bool) (b :: Bool));
-               }));
-}
-;
-__prim_eq_Char :: Char -> Char -> Bool
-;
-instance Eq Char where {
-  (==) = (__prim_eq_Char :: Char -> Char -> Bool);
-  (/=) = (\(a :: Char) ->
-            (\(b :: Char) ->
-               case ((a :: Char), (b :: Char)) of {
-                 ((a :: Char), (b :: Char)) ->
-                   (not :: Bool -> Bool) (((==) :: Char -> Char -> Bool) (a :: Char) (b :: Char));
-               }));
-}
-;
-instance Eq () where {
-  (==) = (\(a :: ()) ->
-            (\(b :: ()) ->
-               case ((a :: ()), (b :: ())) of {
-                 ((a :: ()), (b :: ())) ->
-                   (True :: Bool);
-               }));
-  (/=) = (\(a :: ()) ->
-            (\(b :: ()) ->
-               case ((a :: ()), (b :: ())) of {
-                 ((a :: ()), (b :: ())) ->
-                   (False :: Bool);
-               }));
-}
-;
 data FIFO a =
     FIFO Integer Integer Integer (Integer -> a) Bool Bool
 ;

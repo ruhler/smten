@@ -46,6 +46,13 @@ id x = x;
 
 data Bool = False | True;
 
+instance Eq Bool where {
+    (==) True b = b;
+    (==) False b = not b;
+
+    (/=) a b = not (a == b);
+};
+
 (&&) :: Bool -> Bool -> Bool;
 (&&) True x = x;
 (&&) False _ = False;
@@ -79,6 +86,17 @@ instance Monad Maybe where {
             }
 };
 
+instance Eq () where {
+    (==) _ _ = True;
+    (/=) _ _ = False;
+};
+
+__prim_eq_Char :: Char -> Char -> Bool;
+
+instance Eq Char where {
+    (==) = __prim_eq_Char;
+    (/=) a b = not (a == b);
+};
 
 __prim_eq_Integer :: Integer -> Integer -> Bool;
 

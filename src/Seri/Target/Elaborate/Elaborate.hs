@@ -83,6 +83,7 @@ elaborate env e =
                     else CaseE rx ms'
     AppE a b ->
         case (elaborate env a, elaborate env b) of
+          (AppE (VarE (Sig "Seri.Lib.Prelude.__prim_eq_Char" _)) (LitE (CharL ia)), (LitE (CharL ib))) -> boolE (ia == ib)
           (AppE (VarE (Sig "Seri.Lib.Prelude.__prim_add_Integer" _)) (LitE (IntegerL ia)), (LitE (IntegerL ib))) -> integerE (ia + ib)
           (AppE (VarE (Sig "Seri.Lib.Prelude.__prim_sub_Integer" _)) (LitE (IntegerL ia)), (LitE (IntegerL ib))) -> integerE (ia - ib)
           (AppE (VarE (Sig "Seri.Lib.Prelude.__prim_mul_Integer" _)) (LitE (IntegerL ia)), (LitE (IntegerL ib))) -> integerE (ia * ib)
