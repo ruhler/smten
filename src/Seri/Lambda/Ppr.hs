@@ -264,10 +264,13 @@ instance Ppr TopSig where
 
 instance Ppr Context where
     ppr [] = empty
-    ppr xs = parens (sep (map ppr xs)) <+> text "=>"
+    ppr xs = parens (sep (punctuate comma $ map ppr xs)) <+> text "=>"
     
 instance Ppr Con where
-    ppr (Con n ts) = text n <+> hsep (map ppr ts)
+    ppr (Con n ts) =
+      let pprt t | isAtomT t = ppr t
+          pprt t = parens (ppr t)
+      in text n <+> hsep (map pprt ts)
 
 instance Ppr Method where
     ppr (Method n e) = pprname n <+> text "=" <+> ppr e <> semi

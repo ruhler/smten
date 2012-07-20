@@ -228,3 +228,22 @@ You know what? I think the ytc change fixed the yices2 seg faulting. I bet it
 was something to do with allocating large strings. That's really cool. Let me
 assume that's solved until I hear otherwise.
 
+Fri Jul 20 13:25:02 EDT 2012
+
+How to test the pretty printer and parser?
+
+Well, I should think I should print and parse and see what happens. The
+problem is, modularity and builtins and such makes that not practical. That
+is, we print post flattened and want to parse pre flattened? It won't
+work.
+
+Having the ability to parse back in has been helpful though. Certainly pretty
+printing itself is helpful, as is parsing... I just can't seem to put them
+together.
+
+I mean, I can fix the pretty printer and parser bugs, but without a way to
+test them... That's annoying.
+
+I suppose just do manual testing for pretty printing now. The parse is easy to
+test.
+

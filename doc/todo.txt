@@ -68,12 +68,9 @@ That is, anything with ~?
 
 - pretty printer parser problems:
 ** don't print out builtin prelude?
-** in data constructors: a type (Foo -> Bar) doesn't get parenthesis
-** in data constructors: a type (Foo Bar) doesn't get parenthesis
 ** do notation <- doesn't work with explicit type (parser bug?)
 ** Foo Bar -> Sludge fails to parse.
 ** ppr can generate recursive lets, which we don't parse.
-** contexts need commas: (Eq a, Eq b), not (Eq a Eq b)
 ** parser doesn't parse foo :: (Foo Bar) -> ...
 Conflicts with (Foo Bar) => ... ?
 
