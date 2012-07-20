@@ -69,8 +69,5 @@ That is, anything with ~?
 - pretty printer parser problems:
 ** don't print out builtin prelude?
 ** do notation <- doesn't work with explicit type (parser bug?)
-** Foo Bar -> Sludge fails to parse.
 ** ppr can generate recursive lets, which we don't parse.
-** parser doesn't parse foo :: (Foo Bar) -> ...
-Conflicts with (Foo Bar) => ... ?
 

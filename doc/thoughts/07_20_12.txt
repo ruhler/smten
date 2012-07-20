@@ -247,3 +247,74 @@ test them... That's annoying.
 I suppose just do manual testing for pretty printing now. The parse is easy to
 test.
 
+Fri Jul 20 13:50:18 EDT 2012
+
+I think I want to merge the yices now. I think I know of a way we can do it,
+keeping as much code in common as possible, while still maintaining the
+ability to differentiate later on if desired.
+
+Here's the plan. Parameterize the Yices syntax based on whether it's yices1 or
+yices2? Maybe that's overkill.
+
+How I want it to work is...
+
+I have a syntax, which is my yices2 syntax, which I use for everything.
+(Means we can't have lambdas?)
+
+Oh... I want my pretty printer to take an argument: the yices version to use.
+The only difference is, whatever the difference is. It will be nice to have my
+own pretty printer for yices1 anyways, which doesn't use super long lines.
+
+An FFI for yices1. An FFI for yices2. Both using the syntax, ideally with the
+same interface.
+
+I can make them have the same interface. Restrict and generalize where needed.
+
+Err... it would be awesome if we had two different types somehow. A Yices1
+type, and a Yices2 type. Then use typeclasses to distinguish between them. But
+that doesn't work so well here, does it.
+
+Certainly the context is different. So something is different.
+
+I think...
+
+Have a Yices class:
+
+class Yices a where
+    version :: a -> Integer
+    mkYices :: IO a
+    run :: a -> Command -> IO ()
+    check :: a -> IO Result
+    getIntegerValue :: a -> String -> IO Integer
+
+That's not too bad.
+
+Now... pretty print takes a Command. But Command isn't parameterized by type,
+so how does it know which to use?
+
+The other idea is to annotate the syntax elements.
+
+Or just pass a yices version to everything.
+
+How about this. Have something called:
+
+YicesVersion = Yices1 | Yices2.
+
+Keep Command and friends as is.
+Implement pretty :: (Ppr a) => YicesVersion -> a -> String
+Compilation takes the yices version.
+
+Have a class:
+
+YicesFFI a where
+Same as above class, only version returns the version.
+
+runYices takes a version. It's a wrapper around something which calls mkYices
+with an explicit type sig depending on the version, and continues that way.
+
+Good! Sounds like a plan. Let me try it out. I'll use all the Yices2 stuff as
+a starting point.
+
+Um... this could use its own branch.
+
+

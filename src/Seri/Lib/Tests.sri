@@ -81,6 +81,9 @@ data Wonderful a = Wonderful {
     howgreat :: Integer
 };
 
+thegreatthing :: Wonderful Integer -> Integer;
+thegreatthing w = thething w + howgreat w;
+
 class MultiFoo a b where {
     multifoo :: a -> b -> Integer;
 };
