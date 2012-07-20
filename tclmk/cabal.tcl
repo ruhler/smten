@@ -33,8 +33,6 @@ proc cabal {fcabal} {
         {array ==0.4.*}
         {directory ==1.1.*}
         {template-haskell ==2.7.*}
-        {yices ==0.0.*}
-        {unix ==2.5.*}
     }
 
     set deps [dict create]
