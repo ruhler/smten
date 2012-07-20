@@ -1,0 +1,169 @@
+
+Fri Jul 20 09:10:33 EDT 2012
+
+Goal today: improve performance of the elaborator.
+
+Immediate question: why are we performing lookupVarInfo so many more times now
+than before simplifying the elaborator? I know I'm doing a lot more work than
+I have to. I should understand this before trying to speed up the
+lookupVarInfos.
+
+Side note: the yices queries I was running finished.
+
+yices2 - less than 1 second
+yices1, using yices2 query: 120 minutes
+yices1, using yices1 query: 266 minutes
+
+So, this suggests a future plan: ditch having a separate yices1 and yices2
+target and compiler. Just use the yices2, and have a way to dump the same
+syntax and do FFI to both yices1 and yices2.
+
+Okay then. Let's get started with the elaborator issue.
+
+Summary:
+ytc: Changed yices to use term constructor FFI.
+17 seconds to run the query, dominated by "rules". So I figured I'd simplify
+the elaborator. I simplified a lot, and it started going slower.
+
+A big difference is the number of times lookupVar is called.
+
+ytc:     150065 calls to lookupVar from the varredR rule.
+selab: 10250938 calls to lookupVar from elaborate. They should be the same.
+
+Why does selab have 2 orders of magnitude more? I'm almost certain this is the
+cause of performance drop from ytc to selab.
+
+What could it be?
+
+We are running a query. Everything is fully inlined and elaborated...
+
+It's perhaps interesting that the cause of this is in runQuery.elaborated, not
+in the yices compiler...
+
+Elaborate in selib is called 24283315 times. In ytc... it's only called 4778
+times. That's rather surprising... Oh. Not really, because we call it
+recursively. The runQuery is called 29 times in ytc, same as selib.
+
+Perhaps I ought to add more profiling sites. Try to identify when each
+specific elaborate rule fires.
+
+The other thing to do is look at the order in which rules are firing, and make
+sure they are the same? Let's see...
+
+Fri Jul 20 09:35:17 EDT 2012
+
+The order looks the same to me.
+
+Hmm... it would seem that we spend a lot of time looking up vars which aren't
+there! That's surprising to me. If we didn't waste time looking these up, we
+would end up doing less lookups.
+
+I wonder if simplifying inside lambdas and case matches is leading to this? I
+don't think it can, because I check for an empty environment... But it's worth
+a try getting rid of that.
+
+No. That causes other problems.
+
+How about asking what it is we are looking up and not finding.
+Is it primitives?
+
+It's free~1, free~2, and the primitive add and eq operators mostly.
+Now... why would we ever encounter primitive add and eq for var lookup? Isn't
+that only if we aren't fully applied?
+
+Let me see if ytc is similar.
+
+ytc is somewhat similar, but free~1 and free~2 and + happen 5 to 10 times more
+in selab.
+
+I should be able to make a trace log of what's going on in each, right? Every
+time we have a reduction, say what the reduction was... It may force us to
+evaluate things we wouldn't otherwise when printing unfortunately... But in
+the very least it would tell us what order things are being done in. And who
+knows, forcing early evaluation may lead to some interesting observations.
+
+Let me try to do this, and try to do it in such a way that the logs are
+comparable.
+
+Fri Jul 20 10:38:24 EDT 2012
+
+I feel like, if I could trace through the work that was being done, I could
+understand this more easily. The trouble is... observing things messes with
+laziness, which is, I think, a very important factor here.
+
+What if I printed out the core operations.
+So, for example:
+ case match failed
+ case match succeeded
+ prim +-*<>==
+ reduce name in lam
+ lookup var
+ 
+Do that in both selab and ytc, and I should be able to see the order in which
+things happen, and maybe follow the expression by hand (though that could be
+ugly). Perhaps on much simpler cases. That would be good. Find a simpler case
+I can better understand which shows the same performance issues. Step through,
+and really get a grasp of what's going on, and how they differ.
+
+Good. I like this plan. Let me try it out.
+
+Fri Jul 20 11:14:14 EDT 2012
+
+You know, I really think the issue may be that elaborate does simplification
+inside lambdas. What's the problem with that? We end up inlining variables
+which we haven't looked up. It forces us to do the lambda reduction before the
+inlining, which is exactly what we don't want.
+
+So, I feel like what I need is to really separate the notion of simplify and
+elaborate. Elaborate should just elaborate, do as little work as it can to get
+to the head form. Don't simplify inside cases and lets. Simplify should
+simplify as much as possible... Hmm... Perhaps the issue is that simplify
+doesn't necessarily simplify.
+
+Consider the following:
+
+\a -> (\b -> b + b) foo
+
+Elaborate would not reduce it any further.
+With simplify, though, it turns into:
+
+\a -> foo + foo
+
+Now, if foo is big and complicated, we have to evaluate it twice! We've lost
+our sharing.
+
+Aha. So I bet this is the issue. We shouldn't call simplify unless we really
+mean it... We shouldn't call simplify unless we know there isn't anything in
+the environment.
+
+Or rather... we shouldn't simplify unless we know we can't make further
+progress on the given names from the environment.
+
+What's the reason we want to simplify in the first place?
+
+It's so we can do things like:
+
+(\_ -> error~) "foo"
+
+Becomes (error~).
+
+Which thus removes "foo", and removes a requirement on lists.
+
+Okay. Here's the plan. Split simplify and elaborate into two parts.
+
+Elaborate is the same, only it doesn't go inside matches or lambdas.
+Simplify calls elaborate to get a head start, then goes inside lambdas and
+matches. Simple. I bet this is the issue.
+
+Fri Jul 20 11:44:17 EDT 2012
+
+Yup. That was it. Cool. Now the simplified elaborator makes more sense.
+
+Just one thing that's annoying: we have a lot of code duplicated. I should
+have a common function for elaborate and simplify. Let's say it takes a maybe
+environment: if Just, elaborate. if Nothing, simplify.
+
+Or... just check for an empty environment. That seems reasonable to me.
+
+Good. That works how I like. Let me clean up all this stuff now.
+

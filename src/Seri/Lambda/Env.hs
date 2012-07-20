@@ -81,7 +81,6 @@ theOneOf kind n p env =
     case filter p env of
         [x] -> return x
         [] -> fail $ kind ++ " for " ++ n ++ " not found"
-                ++ " in " ++ pretty env
         xs -> fail $ "Multiple definitions for " ++ n ++ " found: " ++ concatMap pretty xs
 
 

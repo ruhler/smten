@@ -98,7 +98,7 @@ yicesE e = do
     idepth <- gets ys_idepth
     poly <- gets ys_poly
     let ie = inline idepth poly e
-    let se = elaborate poly ie
+    let se = simplify ie
     me <- compileNeeded se
     ye <- yExp me
     cmds <- gets ys_cmds

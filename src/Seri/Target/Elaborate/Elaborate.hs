@@ -38,7 +38,8 @@ module Seri.Target.Elaborate.Elaborate (
     simplify, elaborate,
     ) where
 
-import Data.Generics
+import Debug.Trace
+
 import Data.Maybe(catMaybes, fromMaybe)
 import Data.List(nub, (\\))
 
@@ -50,13 +51,15 @@ simplify :: Exp -> Exp
 simplify = elaborate []
 
 -- | Reduce the given expression as much as possible.
+-- If the environment is empty, does further simplifications inside lambdas
+-- and matches.
 elaborate :: Env   -- ^ context under which to evaluate the expression
           -> Exp   -- ^ expression to evaluate
           -> Exp   -- ^ elaborated expression
 elaborate env e =
   case e of
-    (LitE {}) -> e
-    (CaseE x ms) ->
+    LitE {} -> e
+    CaseE x ms ->
         let rx = elaborate env x
 
             -- Don't make a case statement empty, because we want to 
@@ -74,8 +77,11 @@ elaborate env e =
                   mr -> (mr, Right $ m:ms)
         in case (domatch ms) of
               (Succeeded vs, Left b) -> elaborate env $ reduces vs b
-              (_, Right ms') -> CaseE rx [Match p (simplify b) | Match p b <- ms']
-    (AppE a b) ->
+              (_, Right ms') ->
+                if null env
+                    then CaseE rx [Match p (simplify b) | Match p b <- ms']
+                    else CaseE rx ms'
+    AppE a b ->
         case (elaborate env a, elaborate env b) of
           (AppE (VarE (Sig "Seri.Lib.Prelude.__prim_add_Integer" _)) (LitE (IntegerL ia)), (LitE (IntegerL ib))) -> integerE (ia + ib)
           (AppE (VarE (Sig "Seri.Lib.Prelude.__prim_sub_Integer" _)) (LitE (IntegerL ia)), (LitE (IntegerL ib))) -> integerE (ia - ib)
@@ -88,12 +94,14 @@ elaborate env e =
                  body' = alpharename (freenames \\ [name]) body
              in elaborate env (reduce name rb body')
           (ra, rb) -> AppE ra rb
-    (LamE s b) -> LamE s (simplify b)
-    (ConE s) -> e
-    (VarE s@(Sig _ ct)) ->
+    LamE s b | null env -> LamE s (simplify b)
+    LamE {} -> e
+    ConE {} -> e
+    VarE {} | null env -> e
+    VarE s@(Sig _ ct) ->
         case (attemptM $ lookupVar env s) of
           Nothing -> e
-          Just (pt, ve) -> elaborate env $ assign (assignments pt ct) ve
+          Just (pt, ve) -> elaborate env $ assign (assignments pt ct) ve 
         
 data MatchResult = Failed | Succeeded [(Name, Exp)] | Unknown
 

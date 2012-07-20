@@ -210,3 +210,36 @@ Heap profiling suggests at any given time we use less heap than we were
 before. That is, the heap profile doesn't look any worse... We must be doing
 more work somehow.
 
+Thu Jul 19 17:00:24 EDT 2012
+
+It looks like in the new elaborator, lookupVar is being called way more often
+than before. Now, I sort of expect this to be the case, because ...
+
+Oh. Maybe the problem is I call elaborate instead of simplify where I used to
+call simplify. It's doing an extra inline step? That's worth a try.
+
+The other idea is, don't call lookup var when we are doing simplify with an
+empty environment. 
+
+I can try them both.
+
+Thu Jul 19 17:14:22 EDT 2012
+
+They help, but not the main thing.
+
+It looks like, for ytc, we did var reduction 900,000, but only did a lookup
+150,000. But for selab, we do var lookup 820,000 times. Why don't we always
+have to look up when we have the var reduction rule? Was it doing something
+lazy that we aren't for some reason anymore?
+
+Let me look at the rule again.
+
+Thu Jul 19 17:19:31 EDT 2012
+
+Here's an idea: we are actually more strict with the simple evaluator.
+In particular: application forces elaboration of both arguments, whereas
+before maybe it didn't? And the value to not?
+
+Maybe it's a simple matter of moving the LamE case up?
+No. That made no difference.
+
