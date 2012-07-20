@@ -62,11 +62,7 @@ proc cabal {fcabal} {
         puts $fout "  build-depends: [join $builddeps {, }]"
         puts $fout "  extra-libraries: [join $libs {, }]"
         puts $fout "  build-tools: happy"
-
-        # -H option is a hack around a segfault we see with seriq2.
-        # It is not at all understood, and not very fool proof.
-        puts $fout "  ghc-options: -with-rtsopts=-H256m -rtsopts"
-        #puts $fout "  ghc-options: -with-rtsopts=-H256m -rtsopts -dcore-lint -debug"
+        puts $fout "  ghc-options: -rtsopts"
         puts $fout "  ghc-prof-options: -auto-all"
     }
     close $fout

@@ -167,3 +167,63 @@ Or... just check for an empty environment. That seems reasonable to me.
 
 Good. That works how I like. Let me clean up all this stuff now.
 
+Fri Jul 20 11:57:26 EDT 2012
+
+It's all cleaned up. Let's see if this helps Myron out any.
+I still haven't resolved the yices1 issue. Let me send an email about that.
+And I think I should simplify the yices target and SMT to use the same Yices
+kind of thing. Use the same simple syntax (yices2) and same target generation.
+That should save me a bunch of work and will, from what I've seen, perhaps
+make things go even faster.
+
+All you give up is lambdas which can't be inlined in yices1, but if they can't
+be inlined, yices1 can't handle them anyway.
+
+Fri Jul 20 12:49:18 EDT 2012
+
+What's next? I'm not sure what my priorities should be.
+
+Let me claim the yices2 performance is good enough, including the whole Seri
+elaboration process, until suggested otherwise.
+
+We have the yices1 performance problem to try and resolve. I have some ideas
+of what about Myron's direct implementation is different from my
+implementation that could be causing the blow up:
+- Assume no errors
+- Inline nothing (perhaps yices1 takes advantage of more info that way?)
+- Introduce primitive structural equality instead of (==)
+
+Other ways to make progress with that?
+- send the query to Bruno, see if he has any insight
+- read over Myron's query, look at how else it is different from what I
+  generate.
+
+It would be good if I can get a sense of what the issue is. Maybe, if all
+these things are easy to do, I should try them out and just see what happens.
+See if anything makes a major difference. That could take time, to see how
+long the queries take.
+
+Aside from that performance issue, there's some cleanup I'd like to do:
+- merge the two yices targets into one.
+- fix the parser and pretty printer problems (add a test case which pretty
+  prints, parses, and compares the result)
+- Fill out the Prelude with stuff Myron had to add for his query.
+- Check if yices2 seg faulting went away since ytc (should be easy to check).
+- Define Query as opaque type.
+- Move Infer, Check, and Solve into subdirectory of Type. Maybe move Types
+  into Prelude.
+
+And then there are the big things:
+- Modularity
+- Numeric types.
+
+Look, it's Friday. No immediate pressures. I should take this time to clean up
+as much as I can. When I get bored with cleanup, go back to thinking about
+numeric types and modularity.
+
+Fri Jul 20 13:03:13 EDT 2012
+
+You know what? I think the ytc change fixed the yices2 seg faulting. I bet it
+was something to do with allocating large strings. That's really cool. Let me
+assume that's solved until I hear otherwise.
+

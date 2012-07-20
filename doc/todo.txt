@@ -35,20 +35,13 @@ vs. foo :: (Foo a) => Sludge
 - support for pattern guards?
 - support for pattern bindings: x@(...)
 
-- modules shouldn't automatically export everything they import.
-
 - have common option parsing for serie, serih, seriq, serim, serit?
 - what happens if we realize a free integer variable which is a dont-care?
-
-- I still see a segfault sometimes when running seriq2.
 
 - functions with clauses in let would be nice.
 
 - array comprehension.
 - pattern guards would be nice.
-
-- move non-syntactic sugary stuff in Sugar.hs to Seri/Lib/Prelude.hs
-These are the constructors for building up complex expressions in haskell.
 
 - move TypeInfer, TypeCheck and TypeSolve into a Type/ folder?
 This might make a lot more sense after moving stuff in Types to Prelude.hs.
@@ -68,8 +61,6 @@ I think it's a problem in the type checker? Check for my lookupVar calls and
 make sure I report the failing message.
 
 - document the executables much better.
-
-- fix the yices2 FFI seg-faulting bug, if I can figure out what it is.
 
 - give an instance of Eq to Char
 - deriving Eq would be very nice.
