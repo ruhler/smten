@@ -126,8 +126,8 @@ topdecls :: { [PDec] }
     { $1 ++ $3 }
 
 topdecl :: { [PDec] }
- : 'data' tycon opt(tyvars) '=' constrs
-    { [PDec ds | ds <- recordD $2 (fromMaybe [] $3) $5] }
+ : 'data' tycon opt(tyvars) '=' opt(constrs)
+    { [PDec ds | ds <- recordD $2 (fromMaybe [] $3) (fromMaybe [] $5)] }
  | 'class' tycls tyvars 'where' '{' cdecls opt(';') '}'
     { [PDec (ClassD $2 $3 $6)] }
  | 'instance' opt(context) class 'where' '{' idecls opt(';') '}'

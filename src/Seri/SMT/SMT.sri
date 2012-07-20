@@ -3,7 +3,7 @@ module Seri.SMT.SMT where {
 
 import Seri.Lib.Prelude;
 
-data Query a = Query;
+data Query a = ;
 
 data Answer a = Satisfiable a | Unsatisfiable | Unknown;
 

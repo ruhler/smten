@@ -72,13 +72,11 @@ import Seri.Lambda.Parser.Grammar
 --
 -- - let statements in do notation.
 --
--- - list patterns
---
 -- - irrefutable patterns
 -- 
 -- - variable operators, such as (a `foo` b).
 --
--- - float, char, and string literals.
+-- - float literals.
 --
 -- - pattern matching in let expressions.
 --
@@ -92,6 +90,9 @@ import Seri.Lambda.Parser.Grammar
 --
 -- - variable signatures not accompanied by an implementation are allowed,
 -- indicating a primitive variable.
+--
+-- - Empty data declarations are supported, indicating a primitive type.
+--
 --
 -- [@Other Notes@]
 --

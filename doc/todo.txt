@@ -46,8 +46,6 @@ vs. foo :: (Foo a) => Sludge
 - move TypeInfer, TypeCheck and TypeSolve into a Type/ folder?
 This might make a lot more sense after moving stuff in Types to Prelude.hs.
 
-- define Query as opaque type in SMT.sri, not as trivial type.
-
 - link Yices and Yices2 somehow so they can borrow code from each other more
   easily?
 
