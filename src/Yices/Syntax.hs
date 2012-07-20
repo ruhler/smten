@@ -36,8 +36,11 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 
--- | An abstract syntax for yices2.
-module Yices2.Syntax (
+-- | An abstract syntax suitable for both yices 1 and yices 2.
+-- The syntax is restricted to what both yices1 and yices2 support, which is
+-- basically the same thing as what yices2 supports.
+module Yices.Syntax (
+    YicesVersion(..),
     Symbol, Command(..), Typedef(..), Type(..), Expression(..),
     VarDecl, Binding, ImmediateValue(..),
     trueE, varE, integerE, selectE, eqE, andE, ifE, ltE, gtE,
@@ -49,28 +52,17 @@ module Yices2.Syntax (
 import Data.Ratio
 import Text.PrettyPrint.HughesPJ
 
+data YicesVersion = Yices1 | Yices2 deriving(Show, Eq)
+
 type Symbol = String
 
 data Command = 
     DefineType Symbol (Maybe Typedef)           -- ^ > (define-type <symbol> [<typedef>])
   | Define Symbol Type (Maybe Expression)       -- ^ > (define <symbol> :: <type> [<expression>])
   | Assert Expression                           -- ^ > (assert <expression>)
-  | Exit                                        -- ^ > (exit)
   | Check                                       -- ^ > (check)
   | Push                                        -- ^ > (push)
   | Pop                                         -- ^ > (pop)
-  | Reset                                       -- ^ > (reset)
-  | ShowModel                                   -- ^ > (show-model)
-  | Eval Expression                             -- ^ > (eval <expression>)
-  | Echo String                                 -- ^ > (echo <string>)
-  | Include String                              -- ^ > (include <string>)
-  | SetParam Symbol ImmediateValue              -- ^ > (set-param <symbol> <immediate-value>)
-  | ShowParam Symbol                            -- ^ > (show-param <symbol>)
-  | ShowParams                                  -- ^ > (show-params)
-  | ShowStats                                   -- ^ > (show-stats)
-  | ResetStats                                  -- ^ > (reset-stats)
-  | SetTimeout Integer                          -- ^ > (set-timeout <number>)
-  | DumpContext                                 -- ^ > (dump-context)
 
 data Typedef =
     NormalTD Type           -- ^ > <type>
@@ -92,6 +84,7 @@ data Expression =
   | ExistsE [VarDecl] Expression        -- ^ > (exists (<var_decl> ... <var_decl>) <expression>)
   | LetE [Binding] Expression           -- ^ > (let (<binding> ... <binding>) <expression>)
   | UpdateE Expression [Expression] Expression  -- ^ > (update <expression> (<expression> ... <expression>) <expression>)
+  | TupleUpdateE Expression Integer Expression  -- ^ > (tuple-update <tuple> i <term>)
   | FunctionE Expression [Expression]   -- ^ > (<function> <expression> ... <expression>)
 
 type VarDecl = (String, Type)           -- ^ > <symbol> :: <type>
@@ -130,8 +123,7 @@ tupleE args = FunctionE (varE "mk-tuple") args
 
 -- | > (tuple-update <tuple> i <term>)
 tupleUpdateE :: Expression -> Integer -> Expression -> Expression
-tupleUpdateE tpl idx nv
-    = FunctionE (varE "tuple-update") [tpl, integerE idx, nv]
+tupleUpdateE = TupleUpdateE
 
 -- | > (and <term_1> ... <term_n>)
 andE :: [Expression] -> Expression
@@ -159,88 +151,75 @@ addE a b = FunctionE (varE "+") [a, b]
 subE :: Expression -> Expression -> Expression
 subE a b = FunctionE (varE "-") [a, b]
 
--- | Convert an abstract syntactic construct to concrete yices2 syntax.
+-- | Convert an abstract syntactic construct to concrete yices syntax.
 class Concrete a where
-    concrete :: a -> Doc
+    concrete :: YicesVersion -> a -> Doc
 
 instance Concrete Command where
-    concrete (DefineType s Nothing)
+    concrete v (DefineType s Nothing)
         = parens $ text "define-type" <+> text s
-    concrete (DefineType s (Just td))
-        = parens $ text "define-type" <+> text s <+> concrete td
-    concrete (Define s t Nothing)
-        = parens $ text "define" <+> text s <+> text "::" <+> concrete t
-    concrete (Define s t (Just e))
-        = parens $ text "define" <+> text s <+> text "::" <+> concrete t <+> concrete e
-    concrete (Assert e) = parens $ text "assert" <+> concrete e
-    concrete Exit = parens $ text "exit"
-    concrete Check = parens $ text "check"
-    concrete Push = parens $ text "push"
-    concrete Pop = parens $ text "pop"
-    concrete Reset = parens $ text "reset"
-    concrete ShowModel = parens $ text "show-model"
-    concrete (Eval e) = parens $ text "eval-model" <+> concrete e
-    concrete (Echo s) = parens $ text "echo" <+> concretestr s
-    concrete (Include s) = parens $ text "include" <+> concretestr s
-    concrete (SetParam s v)
-        = parens $ text "set-param" <+> text s <+> concrete v
-    concrete (ShowParam s) = parens $ text "show-param" <+> text s
-    concrete ShowParams = parens $ text "show-params"
-    concrete ShowStats = parens $ text "show-stats"
-    concrete ResetStats = parens $ text "reset-stats"
-    concrete (SetTimeout i) = parens $ text "set-timeout" <+> integer i
-    concrete DumpContext = parens $ text "dump-context"
+    concrete v (DefineType s (Just td))
+        = parens $ text "define-type" <+> text s <+> concrete v td
+    concrete v (Define s t Nothing)
+        = parens $ text "define" <+> text s <+> text "::" <+> concrete v t
+    concrete v (Define s t (Just e))
+        = parens $ text "define" <+> text s <+> text "::" <+> concrete v t <+> concrete v e
+    concrete v (Assert e) = parens $ text "assert" <+> concrete v e
+    concrete v Check = parens $ text "check"
+    concrete v Push = parens $ text "push"
+    concrete v Pop = parens $ text "pop"
 
 instance Concrete [Command] where
-    concrete cmds = vcat (map concrete cmds)
+    concrete v cmds = vcat (map (concrete v) cmds)
 
 instance Concrete Typedef where
-    concrete (ScalarTD ss) = parens $ text "scalar" <+> hsep (map text ss)
-    concrete (NormalTD t) = concrete t
+    concrete v (ScalarTD ss) = parens $ text "scalar" <+> hsep (map text ss)
+    concrete v (NormalTD t) = concrete v t
 
 instance Concrete Type where
-    concrete (VarT s) = text s
-    concrete (TupleT ts) = parens $ text "tuple" <+> hsep (map concrete ts)
-    concrete (ArrowT ts) = parens $ text "->" <+> hsep (map concrete ts)
-    concrete (BitVectorT i) = parens $ text "bitvector" <+> integer i
-    concrete IntegerT = text "int"
-    concrete BoolT = text "bool"
-    concrete RealT = text "real"
+    concrete v (VarT s) = text s
+    concrete v (TupleT ts) = parens $ text "tuple" <+> hsep (map (concrete v) ts)
+    concrete v (ArrowT ts) = parens $ text "->" <+> hsep (map (concrete v) ts)
+    concrete v (BitVectorT i) = parens $ text "bitvector" <+> integer i
+    concrete v IntegerT = text "int"
+    concrete v BoolT = text "bool"
+    concrete v RealT = text "real"
 
 instance Concrete Expression where
-    concrete (ImmediateE iv) = concrete iv
-    concrete (ForallE decls e)
-        = parens $ text "forall" <+> parens (sep $ map concrete decls) <+> concrete e
-    concrete (ExistsE decls e)
-        = parens $ text "exists" <+> parens (sep $ map concrete decls) <+> concrete e
-    concrete (LetE bindings e)
-        = parens $ sep [text "let", parens (sep $ map concrete bindings), concrete e]
-    concrete (UpdateE f es e)
-        = parens $ text "update" <+> concrete f
-            <+> parens (hsep $ map concrete es) <+> concrete e
-    concrete (FunctionE f args)
-        = parens $ sep ((concrete f) : (map concrete args))
+    concrete v (ImmediateE iv) = concrete v iv
+    concrete v (ForallE decls e)
+        = parens $ text "forall" <+> parens (sep $ map (concrete v) decls) <+> concrete v e
+    concrete v (ExistsE decls e)
+        = parens $ text "exists" <+> parens (sep $ map (concrete v) decls) <+> concrete v e
+    concrete v (LetE bindings e)
+        = parens $ sep [text "let", parens (sep $ map (concrete v) bindings), concrete v e]
+    concrete v (UpdateE f es e)
+        = parens $ text "update" <+> concrete v f
+            <+> parens (hsep $ map (concrete v) es) <+> concrete v e
+    concrete v (TupleUpdateE t i x)
+        = parens $ sep (
+            (text (if v == Yices1 then "update" else "update-tuple"))
+              : (map (concrete v) [t, integerE i, x]))
+    concrete v (FunctionE f args)
+        = parens $ sep ((concrete v f) : (map (concrete v) args))
 
 instance Concrete VarDecl where
-    concrete (n, t) = text n <+> text "::" <+> concrete t
+    concrete v (n, t) = text n <+> text "::" <+> concrete v t
 
 instance Concrete Binding where
-    concrete (n, e) = parens $ text n <+> concrete e
+    concrete v (n, e) = parens $ text n <+> concrete v e
 
 instance Concrete ImmediateValue where
-    concrete TrueV = text "true"
-    concrete FalseV = text "false"
-    concrete (VarV s) = text s
-    concrete (RationalV r)
+    concrete v TrueV = text "true"
+    concrete v FalseV = text "false"
+    concrete v (VarV s) = text s
+    concrete v (RationalV r)
         = integer (numerator r) <>
             if denominator r == 1
                 then empty
                 else text "/" <> integer (denominator r)
 
-concretestr :: String -> Doc
-concretestr s = text (show s)
-
 -- | Render abstract yices syntax to a concrete syntax string.
-pretty :: Concrete a => a -> String
-pretty x = render (concrete x)
+pretty :: Concrete a => YicesVersion -> a -> String
+pretty v x = render (concrete v x)
 

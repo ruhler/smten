@@ -33,15 +33,15 @@
 -- 
 -------------------------------------------------------------------------------
 
-module Seri.SMT.Yices2 (runYices2) where
+module Seri.SMT.Yices1 (runYices1) where
 
 import qualified Yices.Syntax as Y
 import qualified Yices.Yices as Y
-import qualified Yices.Yices2 as Y
+import qualified Yices.Yices1 as Y
 
 import Seri.SMT.Yices
 import Seri.Lambda
 
-runYices2 :: RunOptions -> Env -> Exp -> IO Exp
-runYices2 opts env e = (Y.mkYices :: IO Y.Yices2FFI) >>= runYices opts env e
+runYices1 :: RunOptions -> Env -> Exp -> IO Exp
+runYices1 opts env e = (Y.mkYices :: IO Y.Yices1FFI) >>= runYices opts env e
 

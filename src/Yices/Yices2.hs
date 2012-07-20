@@ -34,12 +34,7 @@
 -------------------------------------------------------------------------------
 
 -- | An interface to yices2.
-module Yices2.Yices2 (
-    Context(),
-    Yices2.Yices2.init, exit, mkctx, run,
-    SMTStatus(..), check,
-    getIntegerValue,
-    ) where
+module Yices.Yices2 (Yices2FFI()) where
 
 import Data.Ratio
 
@@ -47,66 +42,68 @@ import Foreign
 import Foreign.C.String
 import Foreign.C.Types
 
-import Yices2.FFI
-import Yices2.Syntax
+import Yices.FFI2
+import Yices.Syntax
+import Yices.Yices
 
+data Yices2FFI = Yices2FFI (Ptr YContext)
 
-data Context = Context (Ptr YContext)
+instance Yices Yices2FFI where
+    version _ = Yices2
 
--- | Initialize yices.
-init :: IO ()
-init = c_yices_init
+    -- TODO: this currently leaks context pointers!
+    -- That should most certainly be fixed somehow.
+    -- TODO: when do we call c_yices_exit?
+    mkYices = do
+        c_yices_init
+        ptr <- c_yices_new_context nullPtr
+        return $! Yices2FFI ptr
 
--- | Exit yices
-exit :: IO ()
-exit = c_yices_exit
+    run _ (DefineType s Nothing) = do
+        ty <- c_yices_new_uninterpreted_type
+        withCString s $ \str -> c_yices_set_type_name ty str
+    run _ (DefineType s (Just (NormalTD ty))) = do
+        ty' <- ytype ty
+        withCString s $ \str -> c_yices_set_type_name ty' str
+    run _ (DefineType s (Just (ScalarTD nms))) = do
+        scalar <- c_yices_new_scalar_type (fromIntegral $ length nms)
+        withCString s $ \str -> c_yices_set_type_name scalar str
+        let defnm :: (String, Int32) -> IO ()
+            defnm (nm, idx) = do
+                v <- c_yices_constant scalar idx
+                withCString nm $ \str -> c_yices_set_term_name v str
+        mapM_ defnm (zip nms [0..])
+    run _ (Define s ty Nothing) = do
+        ty' <- ytype ty
+        term <- c_yices_new_uninterpreted_term ty'
+        withCString s $ \str -> c_yices_set_term_name term str
+    run (Yices2FFI yctx) (Assert p) = do
+        p' <- yterm p
+        c_yices_assert_formula yctx p'
+    run ctx Check = check ctx >> return ()
+    run (Yices2FFI yctx) Push = do
+        c_yices_push yctx
+    run (Yices2FFI yctx) Pop = do
+        c_yices_pop yctx
+    run _ cmd = error $ "TODO: run " ++ pretty Yices2 cmd
 
+    check (Yices2FFI yctx) = do
+        st <- c_yices_check_context yctx nullPtr
+        return $! fromYSMTStatus st
 
--- | Create a new yices2 context for assertions and such.
--- TODO: this currently leaks context pointers!
--- That should most certainly be fixed somehow.
-mkctx :: IO Context
-mkctx = do
-    ptr <- c_yices_new_context nullPtr
-    return $! Context ptr
+    getIntegerValue (Yices2FFI yctx) nm = do
+        model <- c_yices_get_model yctx 1
+        x <- alloca $ \ptr -> do
+                term <- yterm (varE nm)
+                ir <- c_yices_get_int64_value model term ptr
+                if ir == 0
+                   then do 
+                      v <- peek ptr
+                      return $! v
+                   else error $ "yices2 get int64 value returned: " ++ show ir
+        c_yices_free_model model
+        return $! toInteger x
 
--- | Run a single yices command, ignoring the result.
-run :: Context -> Command -> IO ()
-run _ (DefineType s Nothing) = do
-    ty <- c_yices_new_uninterpreted_type
-    withCString s $ \str -> c_yices_set_type_name ty str
-run _ (DefineType s (Just (NormalTD ty))) = do
-    ty' <- ytype ty
-    withCString s $ \str -> c_yices_set_type_name ty' str
-run _ (DefineType s (Just (ScalarTD nms))) = do
-    scalar <- c_yices_new_scalar_type (fromIntegral $ length nms)
-    withCString s $ \str -> c_yices_set_type_name scalar str
-    let defnm :: (String, Int32) -> IO ()
-        defnm (nm, idx) = do
-            v <- c_yices_constant scalar idx
-            withCString nm $ \str -> c_yices_set_term_name v str
-    mapM_ defnm (zip nms [0..])
-run _ (Define s ty Nothing) = do
-    ty' <- ytype ty
-    term <- c_yices_new_uninterpreted_term ty'
-    withCString s $ \str -> c_yices_set_term_name term str
-run (Context yctx) (Assert p) = do
-    p' <- yterm p
-    c_yices_assert_formula yctx p'
-run ctx Check = check ctx >> return ()
-run _ ShowModel = do
-    return ()
-run (Context yctx) Push = do
-    c_yices_push yctx
-run (Context yctx) Pop = do
-    c_yices_pop yctx
-run _ cmd = error $ "TODO: run " ++ pretty cmd
-
--- | Run (check) in the given context and return the resulting yices2 status.
-check :: Context -> IO SMTStatus
-check (Context yctx) = do
-    st <- c_yices_check_context yctx nullPtr
-    return $! fromYSMTStatus st
 
 withstderr :: (Ptr CFile -> IO a) -> IO a
 withstderr f = do
@@ -116,11 +113,11 @@ withstderr f = do
 
 ytype :: Type -> IO YType
 ytype t = do
-    yt <- withCString (pretty t) $ \str -> c_yices_parse_type str
+    yt <- withCString (pretty Yices2 t) $ \str -> c_yices_parse_type str
     if yt < 0
         then do
             withstderr $ \stderr -> c_yices_print_error stderr
-            error $ "ytype: " ++ pretty t
+            error $ "ytype: " ++ pretty Yices2 t
         else do
             return $! yt
 
@@ -168,10 +165,6 @@ ytermS s e | isbinop "*" e = dobinop s e c_yices_mul
 ytermS s e | isbinop "or" e = dobinop s e c_yices_or2
 ytermS s e | isbinop "and" e = dobinop s e c_yices_and2
 ytermS s e | isbinop "xor" e = dobinop s e c_yices_xor2
-ytermS s (FunctionE (ImmediateE (VarV "tuple-update")) [a, ImmediateE (RationalV i), v]) = do
-    at <- ytermS s a
-    vt <- ytermS s v
-    c_yices_tuple_update at (fromInteger $ numerator i) vt
 ytermS s (FunctionE (ImmediateE (VarV "select")) [v, ImmediateE (RationalV i)]) = do
     vt <- ytermS s v
     c_yices_select (fromInteger $ numerator i) vt
@@ -187,11 +180,15 @@ ytermS s (FunctionE (ImmediateE (VarV "and")) args) = do
     argst <- mapM (ytermS s) args
     withArray argst $ c_yices_and (fromIntegral $ length argst)
 ytermS s e@(FunctionE (ImmediateE (VarV f)) _) | f `elem` builtin = do
-    error $ "TODO: yterm builtin " ++ pretty e
+    error $ "TODO: yterm builtin " ++ pretty Yices2 e
 ytermS s (FunctionE f [a]) = do
     ft <- ytermS s f
     at <- ytermS s a 
     withArray [at] $ c_yices_application ft 1
+ytermS s (TupleUpdateE a i v) = do
+    at <- ytermS s a
+    vt <- ytermS s v
+    c_yices_tuple_update at (fromInteger i) vt
 ytermS s (UpdateE f args v) = do
     ft <- ytermS s f
     argst <- mapM (ytermS s) args
@@ -215,32 +212,17 @@ ytermS s e@(ImmediateE (VarV nm)) =
         Nothing -> ytermbystr e
         Just t -> return t
     
-ytermS _ e = error $ "TODO: yterm: " ++ pretty e
+ytermS _ e = error $ "TODO: yterm: " ++ pretty Yices2 e
 
 
 -- | Construct a yices term for the given expression. This works by printing
 -- the expression to a string and passing the string over to yices to parse.
 ytermbystr :: Expression -> IO YTerm
 ytermbystr e = do
-    ye <- withCString (pretty e) $ \str -> c_yices_parse_term str
+    ye <- withCString (pretty Yices2 e) $ \str -> c_yices_parse_term str
     if ye < 0 
         then do 
             withstderr $ \stderr -> c_yices_print_error stderr
             error $ "yterm error"
         else return $! ye
-
--- | Given the name of a free variable with integer type, return its value.
-getIntegerValue :: Context -> String -> IO Integer
-getIntegerValue (Context yctx) nm = do
-    model <- c_yices_get_model yctx 1
-    x <- alloca $ \ptr -> do
-            term <- yterm (varE nm)
-            ir <- c_yices_get_int64_value model term ptr
-            if ir == 0
-               then do 
-                  v <- peek ptr
-                  return $! v
-               else error $ "yices2 get int64 value returned: " ++ show ir
-    c_yices_free_model model
-    return $! toInteger x
 

@@ -37,9 +37,8 @@
 {-# LANGUAGE ForeignFunctionInterface #-}
 
 -- | Raw FFI interface to yices2.
-module Yices2.FFI (
-    YContext, YContextConfig, YParam, YType, YTerm,
-    SMTStatus(..), toYSMTStatus, fromYSMTStatus,
+module Yices.FFI2 (
+    YContext, YContextConfig, YParam, YType, YTerm, fromYSMTStatus,
     c_yices_init,
     c_yices_exit,
     c_yices_print_error,
@@ -92,6 +91,8 @@ import Foreign
 import Foreign.C.String
 import Foreign.C.Types
 
+import Yices.Yices
+
 data YContext
 data YModel
 data YContextConfig
@@ -100,34 +101,10 @@ type YType = Int32
 type YTerm = Int32
 type YSMTStatus = CInt
 
-data SMTStatus = 
-    STATUS_IDLE
-  | STATUS_SEARCHING
-  | STATUS_UNKNOWN
-  | STATUS_SAT
-  | STATUS_UNSAT
-  | STATUS_INTERRUPTED
-  | STATUS_ERROR
-    deriving(Eq, Show)
-
-toYSMTStatus :: SMTStatus -> YSMTStatus
-toYSMTStatus STATUS_IDLE = 0
-toYSMTStatus STATUS_SEARCHING = 1
-toYSMTStatus STATUS_UNKNOWN = 2
-toYSMTStatus STATUS_SAT = 3
-toYSMTStatus STATUS_UNSAT = 4
-toYSMTStatus STATUS_INTERRUPTED = 5
-toYSMTStatus STATUS_ERROR = 6
-
-fromYSMTStatus :: YSMTStatus -> SMTStatus
-fromYSMTStatus 0 = STATUS_IDLE       
-fromYSMTStatus 1 = STATUS_SEARCHING  
-fromYSMTStatus 2 = STATUS_UNKNOWN    
-fromYSMTStatus 3 = STATUS_SAT        
-fromYSMTStatus 4 = STATUS_UNSAT      
-fromYSMTStatus 5 = STATUS_INTERRUPTED
-fromYSMTStatus 6 = STATUS_ERROR      
- 
+fromYSMTStatus :: YSMTStatus -> Result
+fromYSMTStatus 3 = Satisfiable
+fromYSMTStatus 4 = Unsatisfiable
+fromYSMTStatus _ = Undefined
 
 foreign import ccall "yices_init"
     c_yices_init :: IO ()

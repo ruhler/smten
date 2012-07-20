@@ -38,11 +38,12 @@ module Seri.Target.Yices.Yices (
     yicesN, yicesT, yicesE,
     ) where
 
-import qualified Math.SMT.Yices.Syntax as Y
+import qualified Yices.Syntax as Y
 
 import Data.List ((\\))
-import Data.Char (ord)
+import Data.Char(ord)
 import Data.Generics
+import Data.Maybe(catMaybes)
 import Control.Monad.State
 
 import Seri.Failable
@@ -53,25 +54,28 @@ import Seri.Target.Inline
 
 -- | A yices compilation object.
 data Compilation = Compilation {
-    ys_idepth :: Integer,  -- ^ Depth of inlining to perform
-    ys_poly :: Env,        -- ^ The polymorphic seri environment
-    ys_decl :: Env,        -- ^ Already declared (monomorphic) declarations
-    ys_cmds :: [Y.CmdY],   -- ^ Declarations needed for what was compiled
-    ys_errid :: Integer,   -- ^ unique id to use for next free error variable
-    ys_caseid :: Integer   -- ^ unique id to use for next case arg variable
+    ys_version :: Y.YicesVersion, -- ^ Version of yices to target
+    ys_idepth :: Integer,       -- ^ Depth of inlining to perform
+    ys_poly :: Env,             -- ^ The polymorphic seri environment
+    ys_mono :: Env,             -- ^ Already declared (monomorphic) declarations
+    ys_cmds :: [Y.Command],     -- ^ Declarations needed for what was compiled
+    ys_errid :: Integer,        -- ^ unique id to use for next free error variable
+    ys_caseid :: Integer        -- ^ unique id to use for next case arg variable
 }
 
 -- | Monad for performing additional yices compilation.
 type CompilationM = StateT Compilation Failable
 
 -- | Create a new yices compilation object.
-compilation :: Integer         -- ^ inline depth
+compilation :: Y.YicesVersion    -- ^ yices version to target
+               -> Integer      -- ^ inline depth
                -> Env          -- ^ polymorphic seri environment
                -> Compilation
-compilation idepth poly = Compilation {
+compilation version idepth poly = Compilation {
+    ys_version = version,
     ys_idepth = idepth,
     ys_poly = rewrite poly,
-    ys_decl = [],
+    ys_mono = [],
     ys_cmds = [],
     ys_errid = 1,
     ys_caseid = 1 
@@ -83,7 +87,7 @@ yicesN = yicesname
 
 -- | Compile a seri type to a yices type
 -- Returns a list of yices commands needed to use the compiled type.
-yicesT :: Type -> CompilationM ([Y.CmdY], Y.TypY)
+yicesT :: Type -> CompilationM ([Y.Command], Y.Type)
 yicesT t = do
    mt <- compileNeeded t 
    yt <- lift $ yType mt
@@ -93,7 +97,7 @@ yicesT t = do
 
 -- | Compile a seri expression to a yices expression.
 -- Returns a list of yices commands needed to use the compiled expressions.
-yicesE :: Exp -> CompilationM ([Y.CmdY], Y.ExpY)
+yicesE :: Exp -> CompilationM ([Y.Command], Y.Expression)
 yicesE e = do
     idepth <- gets ys_idepth
     poly <- gets ys_poly
@@ -112,7 +116,7 @@ runCompilation = runStateT
 yfail :: String -> CompilationM a
 yfail = lift . fail
 
-addcmds :: [Y.CmdY] -> CompilationM ()
+addcmds :: [Y.Command] -> CompilationM ()
 addcmds cmds = modify $ \ys -> ys { ys_cmds = ys_cmds ys ++ cmds }
 
 -- Given some object, compile everything in the environment needed for this
@@ -126,26 +130,25 @@ compileNeeded x = do
         then return ()  
         else yfail $ "yices recursive declarations not supported: "
                 ++ pretty r ++ ",\n needed for " ++ pretty x
-    decl <- gets ys_decl
+    decl <- gets ys_mono
     let ndecl = sorted \\ decl
+    modify $ \ys -> ys { ys_mono = decl ++ ndecl }
     mapM_ yDec ndecl
-    modify $ \ys -> ys { ys_decl = decl ++ ndecl }
     return mx
-    
-    
-    
 
--- Given the type a free error variable, return the yices name of a newly
--- defined one.
+
+-- Given the argument type and output type of a free error variable, return
+-- the yices name of a newly defined one.
 yfreeerr :: Type -> CompilationM String
 yfreeerr t = do
     yt <- lift $ yType t
     id <- gets ys_errid
     let nm = yicesname ("err~" ++ show id)
     modify $ \ys -> ys { ys_errid = id+1 }
-    addcmds [Y.DEFINE (nm, yt) Nothing]
+    addcmds [Y.Define nm yt Nothing]
     return nm
 
+-- Get a new, free variable for use as a case argument variable.
 yfreecase :: CompilationM String
 yfreecase = do
     id <- gets ys_caseid
@@ -153,9 +156,9 @@ yfreecase = do
     return $ yicesname ("c~" ++ show id)
 
 -- Translate a seri expression to a yices expression
-yExp :: Exp -> CompilationM Y.ExpY
-yExp (LitE (IntegerL x)) = return $ Y.LitI x
-yExp (LitE (CharL c)) = return $ Y.LitI (fromIntegral $ ord c)
+yExp :: Exp -> CompilationM Y.Expression
+yExp (LitE (IntegerL x)) = return $ Y.integerE x
+yExp (LitE (CharL c)) = return $ Y.integerE (fromIntegral $ ord c)
 yExp e@(CaseE _ []) = yfail $ "empty case statement: " ++ pretty e
 yExp (CaseE e ms) =
   let -- depat p e
@@ -163,128 +166,183 @@ yExp (CaseE e ms) =
       --   predicate - predicates indicating if the 
       --                pattern p matches expression e
       --   bindings - a list of bindings made when p matches e.
-      depat :: Pat -> Y.ExpY -> ([Y.ExpY], [((String, Maybe Y.TypY), Y.ExpY)])
-      depat (ConP _ n ps) e =
-        let (preds, binds) = unzip [depat p (Y.APP (Y.VarE (yicesname n ++ show i)) [e])
-                                    | (p, i) <- zip ps [0..]]
-            mypred = Y.APP (Y.VarE (yicesname n ++ "?")) [e]
-        in (mypred:(concat preds), concat binds)
-      depat (VarP (Sig n t)) e = ([], [((n, attemptM $ yType t), e)])
-      depat (IntegerP i) e = ([Y.LitI i Y.:= e], [])
-      depat (WildP _) _ = ([], [])
-
-      ylet :: [((String, Maybe Y.TypY), Y.ExpY)] -> Y.ExpY -> Y.ExpY
-      ylet [] e = e
-      ylet bindings e = Y.LET bindings e
-
-      -- take the AND of a list of predicates in a reasonable way.
-      yand :: [Y.ExpY] -> Y.ExpY
-      yand [] = Y.VarE "true"
-      yand [x] = x
-      yand xs = Y.AND xs
+      depat :: Pat -> Y.Expression -> CompilationM ([Y.Expression], [Y.Binding])
+      depat (ConP _ n []) e =
+        let mypred = Y.eqE (Y.selectE e yicesti) (Y.varE (yicesname n))
+        in return ([mypred], [])
+      depat (ConP _ n ps) e = do
+        ci <- yicesci n
+        let ce = Y.selectE e ci
+        depats <- sequence [depat p (Y.selectE ce i) | (p, i) <- zip ps [1..]]
+        let (preds, binds) = unzip depats
+        let mypred = Y.eqE (Y.selectE e yicesti) (Y.varE (yicesname n))
+        return (mypred:(concat preds), concat binds)
+      depat (VarP (Sig n t)) e = return ([], [(n, e)])
+      depat (IntegerP i) e = return ([Y.eqE (Y.integerE i) e], [])
+      depat (WildP _) _ = return ([], [])
 
       -- dematch e ms
       --    e - the expression being cased on
       --    ms - the remaining matches in the case statement.
       --  outputs - the yices expression implementing the matches.
-      dematch :: Y.ExpY -> [Match] -> CompilationM Y.ExpY
+      dematch :: Y.Expression -> [Match] -> CompilationM Y.Expression
       dematch ye [] = do
           errnm <- yfreeerr (arrowsT [typeof e, typeof (head ms)])
-          return $ Y.APP (Y.VarE errnm) [ye]
+          return $ Y.FunctionE (Y.varE errnm) [ye]
       dematch e ((Match p b):ms) = do
           bms <- dematch e ms
           b' <- yExp b
-          let (preds, bindings) = depat p e
-          let pred = yand preds
-          return $ Y.IF pred (ylet bindings b') bms
+          (preds, bindings) <- depat p e
+          let pred = Y.andE preds
+          let lete = if null bindings then b' else Y.LetE bindings b'
+          return $ Y.ifE pred lete bms
   in do
+      -- The expression e' can get really big, so we don't want to duplicate
+      -- it when we use it to check for a pattern match in every alternative.
+      -- Instead we bind it to variable ~c and duplicate that instead.
       e' <- yExp e
       cnm <- yfreecase
-      body <- dematch (Y.VarE cnm) ms
-      return $ ylet [((cnm, Nothing), e')] body
+      body <- dematch (Y.varE cnm) ms
+      return $ Y.LetE [(cnm, e')] body
 yExp (VarE (Sig "~error" t)) = do
     errnm <- yfreeerr t
-    return $ Y.VarE errnm
-yExp (AppE (AppE (AppE (VarE (Sig "Seri.SMT.Array.update" _)) f) k) v) = do
-    f' <- yExp f
-    k' <- yExp k
-    v' <- yExp v
-    return $ Y.UPDATE_F f' [k'] v'
-yExp (AppE a b) = do
-    a' <- yExp a
-    b' <- yExp b
-    return $ Y.APP a' [b']
-yExp (LamE (Sig n t) e) = do
-    e' <- yExp e
-    t' <- lift $ yType t
-    return $ Y.LAMBDA [(n, t')] e'
-yExp (ConE (Sig n _)) = return $ Y.VarE (yicescon n)
-yExp (VarE (Sig n _)) = return $ Y.VarE (yicesname n)
+    return $ Y.varE errnm
+yExp e@(AppE a b) =
+    case unappsE e of 
+       ((ConE s):args) -> yCon s args
+       [VarE (Sig "Seri.Lib.Prelude.<" _), a, b] -> do   
+           a' <- yExp a
+           b' <- yExp b
+           boxBool (Y.ltE a' b')
+       [VarE (Sig "Seri.Lib.Prelude.>" _), a, b] -> do
+           a' <- yExp a
+           b' <- yExp b
+           boxBool (Y.gtE a' b')
+       [VarE (Sig "Seri.Lib.Prelude.__prim_add_Integer" _), a, b] -> do
+           a' <- yExp a
+           b' <- yExp b
+           return (Y.addE a' b')
+       [VarE (Sig "Seri.Lib.Prelude.__prim_sub_Integer" _), a, b] -> do
+           a' <- yExp a
+           b' <- yExp b
+           return (Y.subE a' b')
+       [VarE (Sig "Seri.Lib.Prelude.__prim_eq_Integer" _), a, b] -> do
+           a' <- yExp a
+           b' <- yExp b
+           boxBool (Y.eqE a' b')
+       [VarE (Sig "Seri.SMT.Array.update" _), f, k, v] -> do
+           f' <- yExp f
+           k' <- yExp k
+           v' <- yExp v
+           return $ Y.UpdateE f' [k'] v'
+       _ -> do
+           a' <- yExp a
+           b' <- yExp b
+           return $ Y.FunctionE a' [b']
+yExp l@(LamE (Sig n xt) e) = 
+    error $ "lambda expression in yices2 target generation: " ++ pretty l
+yExp (ConE s) = yCon s []
+yExp (VarE (Sig n _)) = return $ Y.varE (yicesname n)
 
--- Yices data constructors don't support partial application, so we wrap them in
--- functions given by the following name.
-yicescon :: Name -> Name
-yicescon n = yicesname $ "C" ++ n
+-- Generate yices code for a fully applied constructor application.
+yCon :: Sig -> [Exp] -> CompilationM Y.Expression
+yCon (Sig n ct) args = do
+    let ConT dt = last $ unarrowsT ct
+    let tagged = Y.tupleUpdateE (Y.varE $ yicesuidt dt) yicesti (Y.varE $ yicesname n)
+    if null args
+        then return tagged
+        else do
+            args' <- mapM yExp args
+            ci <- yicesci n
+            return $ Y.tupleUpdateE tagged ci (Y.tupleE args')
 
-yType :: Type -> Failable Y.TypY
+-- Given the name of a data type, return an uninterpreted constant of that
+-- type.
+yicesuidt :: Name -> Name
+yicesuidt n = yicesname $ "uidt~" ++ n
+
+-- Given the name of a data type, return the name of it's tag type.
+yicestag :: Name -> Name
+yicestag n = yicesname $ "tag~" ++ n
+
+-- Given the name of a constructor, return the index for its fields in in the
+-- data types tuple.
+yicesci :: Name -> CompilationM Integer
+yicesci n =
+    let findidx :: Integer -> [Con] -> Failable Integer
+        findidx _ [] = fail $ "index for " ++ n ++ " not found"
+        findidx i ((Con cn []) : cs) = findidx i cs
+        findidx i ((Con cn _) : _) | n == cn = return i
+        findidx i (_ : cs) = findidx (i+1) cs
+    in do
+        env <- gets ys_mono
+        contype <- lift $ lookupDataConType env n
+        case last $ unarrowsT contype of
+            ConT dt -> do
+                (DataD _ _ cs) <- lift $ lookupDataD env dt
+                lift $ findidx 2 cs
+            x -> error $ "yicesci: contype: " ++ pretty x ++ " when lookup up " ++ n
+
+-- The tag index for a data type
+yicesti :: Integer
+yicesti = 1
+
+yType :: Type -> Failable Y.Type
 yType (ConT n) = return $ Y.VarT (yicesname n)
 yType (AppT (AppT (ConT "->") a) b) = do
     a' <- yType a
     b' <- yType b
-    return $ Y.ARR [a', b']
+    return $ Y.ArrowT [a', b']
 yType t = fail $ "Cannot compile to yices: " ++ pretty t
 
 -- yDec
 --   Assumes the declaration is monomorphic.
---   Adds itself to the cmds list.
 yDec :: Dec -> CompilationM ()
-yDec (ValD (TopSig n [] t) e) = do
-    yt <- lift $ yType t
-    ye <- yExp e
-    addcmds [Y.DEFINE (yicesname n, yt) (Just ye)]
+yDec (ValD (TopSig n [] t) _) = do
+    -- TODO: should we allow this or not?
+    error $ "Variable " ++ n ++ " has not been inlined"
+
 yDec (DataD "Integer" _ _) =
-    let deftype = Y.DEFTYP "Integer" (Just (Y.VarT "int"))
+    let deftype = Y.DefineType "Integer" (Just (Y.NormalTD Y.IntegerT))
     in addcmds [deftype]
-yDec (DataD "Char" _ _) = addcmds [Y.DEFTYP "Char" (Just (Y.VarT "int"))]
+
+yDec (DataD "Char" _ _) =
+    let deftype = Y.DefineType "Char" (Just (Y.NormalTD Y.IntegerT))
+    in addcmds [deftype]
+
 yDec (DataD n [] cs) =
-    let con :: Con -> CompilationM (String, [(String, Y.TypY)])
-        con (Con n ts) = do 
-            ts' <- lift $ mapM yType ts
-            return (yicesname n, zip [yicesname n ++ show i | i <- [0..]] ts')
+    let conname :: Con -> String
+        conname (Con n _) = yicesname n
 
-        -- Wrap each constructor in a function which supports partial
-        -- application.
-        mkcons :: Con -> CompilationM Y.CmdY
-        mkcons (Con cn ts) = do
-            yts <- lift $ mapM yType ts
-            let ft a b = Y.ARR [a, b]
-            let yt = foldr ft (Y.VarT (yicesname n)) yts
-            let fe (n, t) e = Y.LAMBDA [(n, t)] e
-            let names = [[c] | c <- take (length ts) "abcdefghijklmnop"]
-            let body =  if null ts
-                          then Y.VarE (yicesname cn)
-                          else Y.APP (Y.VarE (yicesname cn)) (map Y.VarE names)
-            let ye = foldr fe body (zip names yts)
-            return $ Y.DEFINE (yicescon cn, yt) (Just ye)
+        contype :: Con -> Failable (Maybe Y.Type)
+        contype (Con _ []) = return Nothing
+        contype (Con _ ts) = do 
+            ts' <- mapM yType ts
+            return $ Just (Y.TupleT ts')
     in do
-        cs' <- mapM con cs
-        let deftype = Y.DEFTYP (yicesname n) (Just (Y.DATATYPE cs'))
-        defcons <- mapM mkcons cs
-        addcmds $ deftype : defcons
+        cts <- lift $ mapM contype cs
+        let tag = Y.DefineType (yicestag n) (Just $ Y.ScalarTD (map conname cs))
+        let ttype = Y.TupleT (Y.VarT (yicestag n) : (catMaybes cts))
+        let dt = Y.DefineType (yicesname n) (Just $ Y.NormalTD ttype)
+        let uidt = Y.Define (yicesuidt n) (Y.VarT (yicesname n)) Nothing
+        addcmds [tag, dt, uidt]
 
--- Integer Primitives
-yDec (PrimD (TopSig "Seri.Lib.Prelude.__prim_add_Integer" _ _))
- = addcmds [defiop "Seri.Lib.Prelude.__prim_add_Integer" "+"]
-yDec (PrimD (TopSig "Seri.Lib.Prelude.__prim_sub_Integer" _ _))
- = addcmds [defiop "Seri.Lib.Prelude.__prim_sub_Integer" "-"]
-yDec (PrimD (TopSig "Seri.Lib.Prelude.<" _ _)) = addcmds [defbop "Seri.Lib.Prelude.<" "<"]
-yDec (PrimD (TopSig "Seri.Lib.Prelude.>" _ _)) = addcmds [defbop "Seri.Lib.Prelude.>" ">"]
-yDec (PrimD (TopSig "Seri.Lib.Prelude.__prim_eq_Integer" _ _))
- = addcmds [defbop "Seri.Lib.Prelude.__prim_eq_Integer" "="]
+yDec (PrimD (TopSig "Seri.Lib.Prelude.<" _ _)) = return ()
+yDec (PrimD (TopSig "Seri.Lib.Prelude.>" _ _)) = return ()
+yDec (PrimD (TopSig "Seri.Lib.Prelude.__prim_add_Integer" _ _)) = return ()
+yDec (PrimD (TopSig "Seri.Lib.Prelude.__prim_sub_Integer" _ _)) = return ()
+yDec (PrimD (TopSig "Seri.Lib.Prelude.__prim_eq_Integer" _ _)) = return ()
 yDec (PrimD (TopSig "~error" _ _)) = return ()
 yDec (PrimD (TopSig "Seri.SMT.Array.update" _ _)) = return ()
 
 yDec d = yfail $ "Cannot compile to yices: " ++ pretty d
+
+-- box a bool into a Bool.
+boxBool :: Y.Expression -> CompilationM Y.Expression
+boxBool e = do
+  true <- yExp trueE
+  false <- yExp falseE
+  return $ Y.ifE e true false
 
 
 -- Rewrite the (polymorphic) environment to handle yices specific things.
@@ -298,43 +356,17 @@ rewrite env =
       re (PrimD (TopSig "Seri.Lib.Prelude.error" [] t)) =
         let body = clauseE [Clause [WildP stringT] (VarE (Sig "~error" (VarT "a")))]
         in ValD (TopSig "Seri.Lib.Prelude.error" [] t) body
+
       re x = x
 
       builtin = [PrimD (TopSig "~error" [] (VarT "a"))]
         
   in builtin ++ map re env
 
--- defiop name type op
---   Define a primitive binary integer operation.
---   name - the name of the primitive
---   op - the integer operation.
-defiop :: String -> String -> Y.CmdY
-defiop name op =
-    Y.DEFINE (yicesname name, Y.VarT "(-> Integer (-> Integer Integer))")
-        (Just (Y.VarE $
-            "(lambda (a::Integer) (lambda (b::Integer) (" ++ op ++ " a b)))"))
-
--- defbop name type op
---   Define a primitive binary integer predicate.
---   name - the name of the primitive
---   op - the predicate operator.
-defbop :: String -> String -> Y.CmdY
-defbop name op =
-    Y.DEFINE (yicesname name, Y.VarT "(-> Integer (-> Integer Bool))")
-        (Just (Y.VarE $ unlines [
-                "(lambda (a::Integer) (lambda (b::Integer)",
-                " (if (" ++ op ++ " a b) True False)))"]))
-
-
 -- Given a seri identifer, turn it into a valid yices identifier.
 -- TODO: hopefully our choice of names won't clash with the users choices...
---
--- I don't have documentation for what yices allows in names, but it appears
--- symbols aren't allowed. So this just replaces each symbol with an ascii
--- approximation.
 yicesname :: String -> String
 yicesname [] = []
--- TODO: renaming of 'not' should be part of builtins, it should not go here.
 yicesname "not" = "_not"
 yicesname ('!':cs) = "__bang" ++ yicesname cs
 yicesname ('#':cs) = "__hash" ++ yicesname cs

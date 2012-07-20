@@ -43,6 +43,7 @@ import Seri.Failable
 import Seri.Lambda
 import Seri.Target.Elaborate
 import Seri.SMT.Yices
+import Seri.SMT.Yices1
 
 main :: IO ()
 main = do
@@ -60,6 +61,6 @@ main = do
 
     let opts = (RunOptions dbg 30)
     tmain <- attemptIO $ lookupVarType decs m
-    result <- runYices opts decs (VarE (Sig m tmain))
+    result <- runYices1 opts decs (VarE (Sig m tmain))
     putStrLn $ pretty result
 

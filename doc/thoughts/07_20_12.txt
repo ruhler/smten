@@ -317,4 +317,27 @@ a starting point.
 
 Um... this could use its own branch.
 
+Fri Jul 20 14:22:39 EDT 2012
+
+Trouble. I really am restricting the yices2 command set a bunch if I do that.
+So my syntax will not be useful in general as a yices2 syntax or a yices1
+syntax. It will mostly just be useful for the Seri, which tries to use both
+Yices1 and Yices2. Is that okay?
+
+Sure. I suppose I can extend it later if desired.
+
+Fri Jul 20 14:54:04 EDT 2012
+
+I'm concerned that I can't have Yices1 and Yices2 at the same time, because
+the libraries conflict. This means, while I can have common code, I should
+make sure runYices1 and runYices2 are accessed from different modules.
+
+Fri Jul 20 15:26:56 EDT 2012
+
+There! It works. Yices1 and Yices2 are now merged.
+
+I think... it's good for me not to be duplicating code, and to take advantages
+of improvements. I worry it's maybe a little bit of glombing things together
+which need not be glombed together... oh well. I can always change back if I
+want.
 
