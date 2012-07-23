@@ -58,6 +58,7 @@ data Token =
      | TokenBar
      | TokenEquals
      | TokenColon
+     | TokenHash
      | TokenBackSlash
      | TokenDoubleColon
      | TokenConId String
@@ -120,6 +121,7 @@ reservedops = [
     ("|", TokenBar),
     ("=", TokenEquals),
     (":", TokenColon),
+    ("#", TokenHash),
     ("\\", TokenBackSlash),
     ("->", TokenDashArrow),
     ("<-", TokenBindArrow),

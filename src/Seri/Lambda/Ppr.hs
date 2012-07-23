@@ -64,11 +64,17 @@ isAtomT (AppT (AppT (AppT (ConT "(,,)") a) b) c) = True
 isAtomT (ConT {}) = True
 isAtomT (VarT {}) = True
 isAtomT (AppT {}) = False
+isAtomT (NumT {}) = True
 isAtomT (UnknownT {}) = True
 
 isArrowsT :: Type -> Bool
 isArrowsT (AppT (AppT (ConT "->") _) _) = True
 isArrowsT _ = False
+
+instance Ppr NType where
+    ppr (ConNT i) = integer i
+    ppr (VarNT v) = text v
+    ppr (AppNT o a b) = parens (ppr a <+> text o <+> ppr b)
 
 instance Ppr Type where
     -- Special case for list
@@ -94,6 +100,7 @@ instance Ppr Type where
     ppr (VarT n) = text n
     ppr (AppT a b) | isAtomT b = ppr a <+> ppr b
     ppr (AppT a b) = ppr a <+> (parens $ ppr b)
+    ppr (NumT n) = text "#" <> ppr n
     ppr UnknownT = text "?"
 
 
@@ -237,14 +244,18 @@ conlist [] = empty
 conlist (x:xs) = text " " <+> ppr x
                     $+$ vcat (map (\c -> text "|" <+> ppr c) xs)
 
+instance Ppr TyVar where
+    ppr (NormalTV n) = text n
+    ppr (NumericTV n) = text "#" <> text n
+
 instance Ppr Dec where
     ppr (ValD s@(TopSig n _ _) e)
         = ppr s <> semi $$ pprname n <+> text "=" <+> ppr e
     ppr (DataD n vs cs)
-        = text "data" <+> text n <+> hsep (map text vs) <+> text "=" $$
+        = text "data" <+> text n <+> hsep (map ppr vs) <+> text "=" $$
             (nest tabwidth (conlist cs))
     ppr (ClassD n vs ss)
-        = text "class" <+> text n <+> hsep (map text vs)
+        = text "class" <+> text n <+> hsep (map ppr vs)
                 <+> text "where" <+> text "{"
                 $+$ nest tabwidth (vcat (punctuate semi (map ppr ss))) $+$ text "}"
     ppr (InstD ctx cls ms)

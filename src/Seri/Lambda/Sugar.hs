@@ -145,13 +145,13 @@ record_updnm n = "__" ++ n ++ "_update"
 --   accessor functions for every field.
 --   update functions for every field.
 --   An undef declaration for each constructor.
-recordD :: Name -> [Name] -> [ConRec] -> [Dec]
+recordD :: Name -> [TyVar] -> [ConRec] -> [Dec]
 recordD nm vars cons =
   let mkcon :: ConRec -> Con
       mkcon (NormalC n ts) = Con n ts
       mkcon (RecordC n ts) = Con n (map snd ts)
 
-      dt = appsT (ConT nm : map VarT vars)
+      dt = appsT (ConT nm : map tyVarType vars)
 
       mkundef :: Con -> Dec
       mkundef (Con n ts) =

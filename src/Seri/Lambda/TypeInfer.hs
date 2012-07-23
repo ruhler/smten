@@ -232,7 +232,20 @@ retype t = do
     retype' (VarT n) = do
         n' <- namefor n
         return (VarT n')
+    retype' (NumT n) = do
+        n' <- retypen n
+        return (NumT n')
     retype' UnknownT = return UnknownT
+
+    retypen :: NType -> StateT [(Name, Name)] TI NType
+    retypen t@(ConNT {}) = return t
+    retypen (VarNT n) = do
+        n' <- namefor n
+        return (VarNT n')
+    retypen (AppNT o a b) = do
+        a' <- retypen a
+        b' <- retypen b
+        return (AppNT o a' b')
 
 -- If the given type is in the map, replace it, otherwise keep it unchanged.
 replace :: (Data a) => [(Type, Type)] -> a -> a

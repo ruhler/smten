@@ -4,6 +4,7 @@ module Seri.Lib.Tests where {
 
 import Seri.Lib.Prelude;
 import Seri.Lib.Array;
+import Seri.Lib.Vector;
 
 foo1 :: Integer;
 foo1 = (\x -> ((x*x)+(3*x))+2) 5;

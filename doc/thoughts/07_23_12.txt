@@ -1,0 +1,481 @@
+
+Mon Jul 23 09:00:27 EDT 2012
+
+Numeric type proposal:
+
+Type = ...
+     | NumT Integer      -- ^ #0, #1, #2, ...
+     | NumOpT NumOp Type Type -- ^ <type> <op> <type>
+
+type NumOp = String
+    "+", "-", "*", etc... Or fixed. I don't know. Whatever works best I
+    suppose. If we can handle uninterpreted operators, then strings may make
+    sense.
+
+Exp = ...
+      ConE Sig  -- ^ Could also be: #1, #2, ...
+
+Primitive:
+valueof :: #n -> Integer,
+  where the #n notation is a primitive constraint on n to be a numeric type?
+ I don't want a user visible class like Numeric, because I'd rather it be a
+ builtin thing. But should we have this separate notation? Or should we use
+more traditional...
+
+valueof :: (# n) => n -> Integer
+
+Well, if we did it the other way...
+
+Maybe the thing to do is distinguish between VarT and NVarT. One is a type
+variable, the other is a numeric type variable. They are two distinct things.
+
+Why have them be two distinct things? So you can rule out Bit Integer, for
+example? So we can verify the kinds of types we encounter?
+
+
+What is enough? Let me just write down all the features in some proposal, then
+think about the implementation.
+
+- #0, #1, ... 
+Syntax for type constructors and data constructors of numeric types.
+
+- #v
+A numeric type variable. Has a distinct kind from a regular type variable.
+
+- (#m <op> #v)
+Numeric type operators.
++, *, -, etc...
+
+- valueof primitive
+valueof :: #n -> Integer
+
+- (<mt> <cop> <mt>) 
+Numeric type constraint.
+<, =, etc... To go in a class context.
+
+And that's it. The entire extension for numeric types.
+
+So, for example, now I can say things like:
+
+concat :: Bit #n -> Bit #m -> Bit (#n+#m)
+concat :: (#n + #m = #k) => Bit #n -> Bit #m -> Bit #k
+
+data Bits #n = Bits (Vector #n Bit)
+
+data Vector #n a = Vector #n [a]
+
+length :: Vector #n a -> Integer
+length (Vector n _) = valueof n
+
+
+Hmm... so it looks like we want a NVarE too then, for a variable of numeric
+type? Or maybe that doesn't matter here. Let's avoid it if we can.
+
+I think that's seems reasonable as a first attempt. I'll have to do kind
+checking, I think, but I already should be doing that and am not.
+
+Now... what all should change in the implementation?
+
+- kind checking. Make sure we have the right kinds of things. Only a numeric
+  kind type can be used where a numeric type variable is expected. Also make
+  sure types aren't over or under applied here. It might make sense to add
+  kind checking first, before numeric type checking, just to have that all in
+  place already.
+
+- Add knowledge of numeric constraints to the type solver and type checker.
+
+Let's start by thinking about the type checker.
+
+The type checker is going to ask things like: are these two numeric types
+equal. It has to check for that. We can no longer use simple structural
+equality. We now need to take into account the environment. That is, the
+context.
+
+Given a context and a check for equality, figure out a way to say if the types
+are equal or not. That's the main issue here. Having a separate numeric type
+solver module would likely be helpful.
+
+I think that's all we need in the type checker. How about the type solver?
+
+I think we'd like to do reduction in the type solver too if we can... But
+perhaps we can treat numeric types as opaque things. The solver maybe doesn't
+need to know if two numeric types are equal. It certainly shouldn't have to
+look up anything in the context I don't think. Just do a best effort.
+
+And I think those are the only major changes. If I have a numeric type
+checker, that's really the only hard part here, right?
+
+I suspect lots of things will come up when I try to implement this. Perhaps
+that's the best way to try and make things work.
+
+What's the numeric type checker interface?
+
+Given a context of comparison operations, and an equation for a type, it
+should say either: yes the equation holds, or no it does not (or rather, no, I
+can't show the equation holds). Maybe having three results: match, fail,
+unknown would be better.
+
+This all depends on the supported constraints and numeric type operators. If I
+start simple, it may be relatively simple. Otherwise it might get harder.
+
+Good. So, what do you say? Shall I dive in? I can come up with a reasonable
+test case... a Vector library.
+
+data Vector #n a = Vector #n [a]
+
+with all the functions and their numeric type constraints. And we'll see how
+things work or not.
+
+...
+
+You know? I'm beginning to wonder if we should have a typeclass for free.
+
+class Free a where
+    free :: Query a
+
+We could have a deriving implementation, which does the current thing, ish.
+This could actually make it much easier to realize things, because we could
+restrict primitive free to integers? Err... data constructors would be hard to
+deal with then though.
+
+The reason I mention is just because when you construct a free Vector, you
+really want to construct it with an assertion that the length of the list is
+equal to the value of the numeric type variable.
+
+Perhaps what we really want is a Valid class.
+class AssertValid a where   
+    assertvalid :: a -> Query ()
+
+Or 
+
+class IsValid a where
+    isvalid :: a -> Bool
+
+I suppose if I wanted, then, I could have "free" be of type:
+
+free :: (IsValid a) => Query a
+
+So it takes a and forces it to be valid. Of course, we could build that on top
+of what we have now.
+
+validFree :: (IsValid a) => Query a
+validFree = do
+    x <- free
+    assert (isValid x)
+    return x
+
+Good. So don't worry about that right now.
+
+I'll make a new branch for numeric types.
+
+Mon Jul 23 10:04:26 EDT 2012
+
+Question: how could I implement
+
+replicate :: a -> Vector #n a
+
+I don't have any way to get at the value of n.
+
+I suppose we could have a type class?
+
+class Replicate #n where
+    replicate :: a -> Vector #n a
+
+instance Replicate #0 where
+    replicate _ = []
+
+instance (Replicate (#n - 1)) => Replicate #n where
+    replicate a = Vector #n (a : (replicate a))
+
+Oh, there's another problem. How can we get at the constructor name to
+construct the numeric value? It's not in scope.
+
+We could provide another primitive function easily enough:
+
+numeric :: #n
+
+Now then, could this type check?
+
+Oh, we'd have to do it like this:
+
+    replicate a = cons (Vector numeric [a]) (replicate a)
+
+Now we have all the info we need. That's good.
+
+I have to ask... how much can we do using type classes and treating numeric
+types as opaque? For example.
+
+class Add #a #b #c where {}
+
+append :: (Add #a #b #c) => Vector #a x -> Vector #b x -> Vector #c x
+
+Err... I don't think that's the right way to go.
+    
+Hmm... I wonder...
+
+replicate a =
+  let n = numeric 
+  in Vector n (Prelude.replicate (valueof n) a)
+
+That's pretty cool. I like that trick. Things work better when numeric types
+have constructors and you can use a function like numeric to create them.
+
+Good. So I'll add that extra primitive numeric. It should be trivial to
+implement in the elaborator, because we know the concrete type. Harder would
+be like, implementing it in haskell. I guess just have a numeric type class in
+haskell with that as well as valueof as a primitive.
+
+Oh boy, supporting the haskell target for numeric types is going to be fun.
+Perhaps a binary representation would be most appropriate. Anyway, I have
+other things to worry about first.
+
+Goal, define Vector:
+
+data Vector #n a = Vector #n [a]
+
+replicate :: a -> Vector #n a
+nil :: Vector #0 a
+cons :: a -> Vector #n a -> Vector (#n+1) a
+append :: Vector #n a -> Vector #m a -> Vector #(n+m) a
+concat :: Vector #n (Vector #m a) -> Vector (#n*#m) a
+select :: Vector #n a -> Integer -> a
+update :: Vector #n a -> Integer -> a -> Vector #n a
+head :: Vector #n a -> a
+tail :: Vector #n a -> Vector (#n-1) a
+
+Question: what happens if you try to take the tail of an empty vector? I guess
+we should require numeric types to be positive. That's pretty cool.
+
+Yes, I think if I can implement this library and have it work out and catch
+when we have errors, that would be very good.
+
+I guess the most interesting one will be concat. How would I implement that?
+
+concat :: Vector #n (Vector #m a) -> Vector (#n*#m) a
+concat (Vector n (v:vs)) = append v (concat (Vector numeric vs))
+
+The type constraints generated are...
+
+Vector (#n*#m) a = Vector (#m + #k) a
+Vector #k a = Vector (#j*#m) a
+
+Do we have enough type information to solve this?
+
+n*m = m+k
+k = j*m
+
+k = (n-1)*m
+j = (n-1)
+
+I can do it with some symbolic evaluation.
+
+Cool. Who knows. We'll see what trouble we run into. I think I'm ready to get
+started with this.
+
+- start implementing Vector, 1 thing at a time.
+- extend the IR as needed.
+
+So, fairly easily driven by the vector implementation.
+
+Mon Jul 23 10:39:34 EDT 2012
+
+Here's a thought. If you have the numeric primitive, you don't need syntax for
+constructors? Um... I suppose syntax for constructors is still nice because
+they carry the information explicitly.
+
+Mon Jul 23 10:54:10 EDT 2012
+
+I implemented vector, assuming we had everything in place. It's not hard. It
+reads reasonably well.
+
+I'm a little annoyed at having to specify numeric and _ for all the numeric
+types everywhere. The only place we make use of the numeric thing is to get
+the length of the vector. I suppose that's fine.
+
+Of course... with our given implementation, you could just ask for the length
+of the list I suppose. Hmm...
+
+I take that back. We need it for replicate. It's probably better to have it
+there. Otherwise we have to resort to this undefined messiness.
+ 
+Okay, so here are the features I want to support:
+
+- Numeric type variables: #foo 
+- Numeric type constructors: #0, #1, ...
+- Numeric type data constructors: #0, #1, ...
+- numeric primitive
+- valueof primitive
+- + operator
+- * operator
+
+I think that's all we need for now.
+
+Mon Jul 23 11:17:24 EDT 2012
+
+Thinking about the syntax... what if we just used '#' to introduce a numeric
+type?
+
+So, instead of  (#m * #n), I would say: #(m*n). I think that might work out
+better for the syntax.
+
+Mon Jul 23 11:57:00 EDT 2012
+
+Hmm... Annoyance with handling numeric type data constructors. They aren't
+defined in the environment. And I'd rather not have them be. So it looks like
+I have to define them specially.
+
+Instead of worrying about that for now, let me just disallow them. I can use
+numeric until I need otherwise.
+
+Mon Jul 23 12:53:06 EDT 2012
+
+I need to implement equality of types and this isSubType check.
+
+The thing is, both type equality and isSubType now need to make use of the
+environment, right?
+
+I don't know.
+
+Mon Jul 23 13:00:21 EDT 2012
+
+Here's a question. Is this well typed: (undefined :: #8)?
+
+I suppose it ought to be.
+
+Mon Jul 23 13:02:17 EDT 2012
+
+I'm getting a type error:
+|| checkdec: expecting type a -> Vector #n a -> Vector #(n + 1) a in expression (\(a :: a) ->
+||    (\(b :: Vector #~26 a) ->
+||       case ((a :: a), (b :: Vector #~26 a)) of {
+||         ((x :: a), (Vector :: Vector #~26 a) (_ :: #~26) (l :: [a])) ->
+||           (Vector :: #(n + 1) -> [a] -> Vector #(n + 1) a) (Seri.Lib.Prelude.numeric :: #(n + 1)) (((:) :: a -> [a] -> [a]) (x :: a) (l :: [a]));
+||       })) but found type a -> Vector #~26 a -> Vector #(n + 1) a
+||  in declaration Seri.Lib.Vector.vcons :: a -> Vector #n a -> Vector #(n + 1) a;
+
+wnt: a -> Vector #n a -> Vector #(n+1) a
+got: a -> Vector #~26 a -> Vector #(n+1) a
+
+I don't understand. Why do we have the ambiguity?
+It seems the issue is, the expression is more general than the signature?
+Perhaps that's a problem with how I do type checking? Is that not allowed?
+
+Perhaps I should be using isSubType instead of equality. The signature should
+be a subType of the expression. But! The types should reflect the type in the
+signature, and the type checker can't do that. So I think this is a problem
+with the type inference engine. Why can't it tell that #~26 should be #n?
+
+Let me trace through the solver.
+
+I wonder if this is a bug in type inference. What does type checking know that
+type inference doesn't?
+
+Oh no, there is a bug. There must be, because I see in the solution:
+
+~2: Vector #~26 a, and I see in the system
+~2: Vector #n a
+
+So we should be able to solve Vector #~26 a = Vector #n a
+#~26 = n. let me try to see where things went wrong.
+
+Mon Jul 23 13:29:17 EDT 2012
+
+Okay, so there are two problems.
+
+The first is:
+
+#n is apparently less known than #~26, which i don't agree with.
+We don't do type substitution inside numeric types.
+
+Mon Jul 23 13:43:05 EDT 2012
+
+Okay, fixed those. Now we have a problem with vconcat.
+This is the fancy one that requires we know something about arithmetic I
+think. Let's see what it looks like in the type solver.
+
+Mon Jul 23 13:52:49 EDT 2012
+
+We have a couple problems here I think.
+
+First is, we have this constraint:
+
+#(a + (b*c)) = n*m
+
+Which we don't simplify anymore. In fact, the way we treat uninterpreted
+types, we would normally just ignore this as an invalid constraint. But it is
+possible for it to be satisfied.
+
+The constraint simplifies in solution eventually to:
+m + (a*m) = n*m
+
+We need to know about math in order to solve for:
+a = n-1
+
+Let's assume we could do that reduction somehow.
+Then the next issue is, we want to show our call to vappend is right:
+
+wnt: vappend :: Vector #n a -> Vector #m a -> Vector #(n+m) a
+got: vappend :: Vector #m a -> Vector #((n-1)*m) a -> Vector #(n*m) a
+
+Two things to note here: the names for the wnt and the names for the got are
+not in the same scope. It would really be nice if I did some renaming to make
+that clear in the error message. I was confused for a little bit there.
+
+The next note is: this is a complex isSubType kind of question that, if we
+were really smart, we should be able to verify. Why? It comes down to the
+following assignments... uh, let me rename things first to avoid confusion.
+
+wnt: vappend :: Vector #x a -> Vector #y a -> Vector #(x+y) a
+got: vappend :: Vector #m a -> Vector #((n-1)*m) a -> Vector #(n*m) a
+
+x: m
+y: ((n-1)*m)
+m + ((n-1)*m) ==? n*m
+
+So, once again, we run into a question about math. Can we show that, yes,
+indeed, m + (n-1)*m = n*m?
+
+Or, another way to ask it, can we let the user tell us that that is indeed the
+case?
+
+I haven't added the numeric type constraints for equality, lt, etc... Perhaps
+we don't need those at all? I don't know.
+
+Let me comment out this fancy case for now and come back to it in just a
+little bit.
+
+Mon Jul 23 14:04:42 EDT 2012
+
+Good. With that commented out, all the rest seems to work okay. None of those
+things require the use of math. That's actually pretty cool.
+
+But we are running into an annoying thing: haskell does not support numeric
+types. How do I compile numeric types to haskell?
+
+I'd really rather not deal with that question just now.
+
+The way to deal with it eventually, I suppose, is...
+
+Well, we can define a numeric type class. Translate the syntax. Types and
+constructors. Numeric, valueof, those should work fine.
+
+The hard part will be the constraints. How do we expression m+n?
+I suppose we could relax the types? Just call (m+n) k?
+
+This is something we'll want eventually. I'd just rather not deal with it
+right now.
+
+Good. So I can define some things with numeric types. Next I'd like to try
+running them. I want to show we need valueof and numeric implemented in the
+elaborator, and to implement them. I can do this with a test case.
+
+Other to do steps:
+
+- add support for numeric types in haskell target
+- add support for numeric types, specifically bit vectors, to yices.
+
+I wonder, should I be using functions for vectors instead of lists? We can't
+do much in yices with free vectors and such if they are built on top of lists.
+ 
+Let me not worry about that yet. Let me get elaboration working first.
+

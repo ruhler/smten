@@ -186,7 +186,7 @@ instance Typeof Pat where
 typeofCon :: Dec -> Name -> Maybe Type
 typeofCon (DataD dn vars cons) cn = do
     Con _ ts <- listToMaybe (filter (\(Con n _) -> n == cn) cons)
-    return $ arrowsT (ts ++ [appsT (ConT dn : map VarT vars)])
+    return $ arrowsT (ts ++ [appsT (ConT dn : map tyVarType vars)])
 typeofCon _ _ = Nothing
 
 
@@ -203,7 +203,19 @@ isSubType t sub
         isst (VarT n) t = do
             modify $ \l -> (n, t) : l
             return True
+        isst (NumT a) (NumT b) = isstn a b
         isst _ _ = return False
+
+        isstn :: NType -> NType -> State [(Name, Type)] Bool
+        isstn (ConNT n) (ConNT n') = return (n == n')
+        isstn (AppNT o a b) (AppNT o' a' b') = do
+            ar <- isstn a a'
+            br <- isstn b b'
+            return (o == o' && ar && br)
+        isstn (VarNT n) t = do
+            modify $ \l -> ('#':n, NumT t) : l
+            return True
+        isstn _ _ = return False
 
         (b, tyvars) = runState (isst t sub) []
         assignnub = nub tyvars

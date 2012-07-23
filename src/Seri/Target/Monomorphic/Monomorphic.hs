@@ -112,7 +112,7 @@ gentype t = do
                 mkc (Con n ts) = do
                     ts' <- mapM monotype ts
                     return (Con (n ++ suffix) ts')
-            cs' <- mapM mkc (assign (zip tvars targs) cs)
+            cs' <- mapM mkc (assign (zip (map tyVarName tvars) targs) cs)
             return [DataD (con ++ suffix) [] cs']
 
 -- Generate a monomorphic declaration for the given concrete variable

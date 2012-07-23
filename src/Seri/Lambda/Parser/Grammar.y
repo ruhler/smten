@@ -72,6 +72,7 @@ import Seri.Lambda.Parser.Lexer
        '|'      { TokenBar }
        '='      { TokenEquals }
        ':'      { TokenColon }
+       '#'      { TokenHash }
        '\\'      { TokenBackSlash }
        '::'      { TokenDoubleColon }
        conid    { TokenConId $$ }
@@ -192,13 +193,29 @@ btype :: { Type }
 atype :: { Type }
  : gtycon
     { ConT $1 }
- | tyvar
+ | tyvarnm
     { VarT $1 }
  | '(' types_commasep ')'
     { foldl AppT (ConT $ "(" ++ replicate (length $2 - 1) ',' ++ ")") $2 }
  | '[' type ']'
     { AppT (ConT "[]") $2 }
  | '(' type ')'
+    { $2 }
+ | '#' antype
+    { NumT $2 }
+
+ntype :: { NType }
+ : antype 
+    { $1 }
+ | antype varsym antype
+    { AppNT $2 $1 $3 }
+
+antype :: { NType }
+ : integer
+    { ConNT $1 }
+ | tyvarnm
+    { VarNT $1 }
+ | '(' ntype ')'
     { $2 }
 
 gtycon :: { String }
@@ -455,7 +472,7 @@ tycon :: { String }
  : conid
     { $1 }
 
-tyvar :: { String }
+tyvarnm :: { String }
  : varid
     { $1 }
 
@@ -510,7 +527,13 @@ pats_commasep :: { [Pat] }
  | pats_commasep ',' pat
     { $1 ++ [$3] }
 
-tyvars :: { [String] }
+tyvar :: { TyVar }
+ : tyvarnm
+    { NormalTV $1 }
+ | '#' tyvarnm
+    { NumericTV $2 }
+
+tyvars :: { [TyVar] }
  : tyvar
     { [$1] }
  | tyvars tyvar

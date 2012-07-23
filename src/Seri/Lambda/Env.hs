@@ -199,7 +199,7 @@ lookupMethodType :: Env -> Name -> Class -> Failable Type
 lookupMethodType e n (Class cn ts) = do
     t <- lookupVarType e n
     ClassD _ vars _ <- lookupClassD e cn
-    return $ assign (zip vars ts) t
+    return $ assign (zip (map tyVarName vars) ts) t
 
 union :: (Eq a) => [a] -> [a] -> [a]
 union a b = nub $ a ++ b
@@ -282,7 +282,7 @@ lookupVarInfo env (Sig n t)
         (Just _, _) -> return Declared
         (_, Just _) -> return Primitive
         _ ->
-          let getSig :: Dec -> Maybe (Name, [Name], Type)
+          let getSig :: Dec -> Maybe (Name, [TyVar], Type)
               getSig (ClassD cn cts sigs) =
                 case filter (\(TopSig sn _ _) -> sn == n) sigs of
                     [] -> Nothing
@@ -294,6 +294,6 @@ lookupVarInfo env (Sig n t)
               Nothing -> fail $ "Variable " ++ n ++ " not found in the environment"
               Just (cn, cts, st) ->
                  let assigns = assignments st t
-                     cts' = assign assigns (map VarT cts)
+                     cts' = assign assigns (map tyVarType cts)
                  in return $ Instance (Class cn cts')
 

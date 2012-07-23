@@ -129,11 +129,11 @@ hsDec c (ValD (TopSig n ctx t) e) = do
 
 hsDec c (DataD n tyvars constrs) = do
     cs <- mapM (hsCon c) constrs
-    return [H.DataD [] (hsName n) (map (H.PlainTV . hsName) tyvars) cs []]
+    return [H.DataD [] (hsName n) (map (H.PlainTV . hsName . tyVarName) tyvars) cs []]
 
 hsDec c (ClassD n vars sigs) = do
     sigs' <- mapM (hsSig c) sigs
-    return $ [H.ClassD [] (hsName n) (map (H.PlainTV . hsName) vars) [] sigs']
+    return $ [H.ClassD [] (hsName n) (map (H.PlainTV . hsName . tyVarName) vars) [] sigs']
 
 hsDec c (InstD ctx (Class n ts) ms) = do
     ctx' <- mapM (hsClass c) ctx

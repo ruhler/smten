@@ -1,6 +1,9 @@
 
 module Seri.Lib.Prelude where {
 
+valueof :: #n -> Integer;
+numeric :: #n;
+
 class Eq a where {
    (==) :: a -> a -> Bool;
    (/=) :: a -> a -> Bool;
@@ -178,6 +181,10 @@ length (_:l) = 1 + length l;
 foldr :: (a -> b -> b) -> b -> [a] -> b;
 foldr f z [] = z;
 foldr f z (x:xs) = f x (foldr f z xs);
+
+replicate :: Integer -> a -> [a];
+replicate 0 _ = [];
+replicate n x = x : (replicate (n-1) x);
 
 and :: [Bool] -> Bool;
 and = foldr (&&) True;

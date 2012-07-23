@@ -48,8 +48,8 @@ import Seri.Lambda.Types
 tuple :: Int -> Dec
 tuple i = 
   let name = "(" ++ replicate (i-1) ',' ++ ")"
-      vars = [[c] | c <- take i "abcdefghijklmnopqrstuvwxyz"]
-  in DataD name vars [Con name (map VarT vars)]
+      vars = [NormalTV [c] | c <- take i "abcdefghijklmnopqrstuvwxyz"]
+  in DataD name vars [Con name (map tyVarType vars)]
 
 prelude :: [Dec]
 prelude = [
@@ -57,7 +57,7 @@ prelude = [
     DataD "Integer" [] [],
     DataD "()" [] [Con "()" []],
     tuple 2, tuple 3, tuple 4,
-    DataD "[]" ["a"] [Con "[]" [], Con ":" [VarT "a", listT (VarT "a")]]
+    DataD "[]" [NormalTV "a"] [Con "[]" [], Con ":" [VarT "a", listT (VarT "a")]]
     ]
 
 -- | True

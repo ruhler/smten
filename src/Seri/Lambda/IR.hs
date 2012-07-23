@@ -37,20 +37,30 @@
 
 -- | Definition of the abstract syntax for the Seri core lambda expressions.
 module Seri.Lambda.IR (
-    Name, Type(..), Sig(..), TopSig(..), Class(..), Context,
+    Name, TyVar(..), NType(..), Type(..),
+    Sig(..), TopSig(..), Class(..), Context,
     Pat(..), Match(..),
     Lit(..), Exp(..), 
     Con(..), Method(..), Dec(..),
-    isDataD,
+    isDataD, tyVarType, tyVarName,
     ) where
 
 import Data.Generics
 
 type Name = String
 
+type NTOp = String
+
+-- | Numeric types.
+data NType = ConNT Integer   -- ^ numeric type (should be non-negative)
+           | VarNT Name      -- ^ numeric type variable
+           | AppNT NTOp NType NType -- ^ numeric type operator application
+       deriving (Eq, Show, Data, Typeable)
+
 data Type = ConT Name                       -- ^ type constructor
           | AppT Type Type                  -- ^ type application
           | VarT Name                       -- ^ type variable
+          | NumT NType                      -- ^ numeric type
           | UnknownT
       deriving(Eq, Show, Data, Typeable)
 
@@ -100,9 +110,13 @@ data Con = Con Name [Type]
 data Method = Method Name Exp
     deriving(Eq, Show, Data, Typeable)
 
+data TyVar = NormalTV Name
+           | NumericTV Name
+       deriving (Eq, Show, Data, Typeable)
+
 data Dec = ValD TopSig Exp              -- ^ nm :: ctx => ty ; nm = exp
-         | DataD Name [Name] [Con]      -- ^ data nm vars = 
-         | ClassD Name [Name] [TopSig]  -- ^ class nm vars where { sigs }
+         | DataD Name [TyVar] [Con]      -- ^ data nm vars = 
+         | ClassD Name [TyVar] [TopSig]  -- ^ class nm vars where { sigs }
          | InstD Context Class [Method] -- ^ instance ctx => cls where { meths }
          | PrimD TopSig                 -- ^ nm :: ctx => ty ;
      deriving (Eq, Show, Data, Typeable)
@@ -111,4 +125,14 @@ data Dec = ValD TopSig Exp              -- ^ nm :: ctx => ty ; nm = exp
 isDataD :: Dec -> Bool
 isDataD (DataD {}) = True
 isDataD _ = False
+
+-- | Convert a type variable to a variable type.
+tyVarType :: TyVar -> Type
+tyVarType (NormalTV n) = VarT n
+tyVarType (NumericTV n) = NumT (VarNT n)
+
+-- | Get the name of a type variable
+tyVarName :: TyVar -> Name
+tyVarName (NormalTV n) = n
+tyVarName (NumericTV n) = n
 

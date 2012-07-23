@@ -109,12 +109,20 @@ tpreplace k v (a, b) = (treplace k v a, treplace k v b)
 -- Replace every occurence of type k in x with type v.
 treplace :: Type -> Type -> Type -> Type
 treplace k v x | k == x = v
+treplace (NumT k) (NumT v) (NumT x) = NumT (tnreplace k v x)
 treplace k v (AppT a b) = AppT (treplace k v a) (treplace k v b)
 treplace _ _ x = x 
+
+tnreplace :: NType -> NType -> NType -> NType
+tnreplace k v x | k == x = v
+tnreplace k v (AppNT o a b) = AppNT o (tnreplace k v a) (tnreplace k v b)
+tnreplace _ _ x = x
 
 lessknown :: Type -> Type -> Bool
 lessknown (VarT a) (VarT b) = a > b
 lessknown (VarT _) _ = True
+lessknown (NumT (VarNT a)) (NumT (VarNT b)) = a > b
+lessknown (NumT (VarNT _)) (NumT _) = True
 lessknown a b = False
 
 instance Ppr [(Type, Type)] where
