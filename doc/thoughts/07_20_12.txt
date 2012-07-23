@@ -204,8 +204,8 @@ See if anything makes a major difference. That could take time, to see how
 long the queries take.
 
 Aside from that performance issue, there's some cleanup I'd like to do:
-- merge the two yices targets into one.
-- fix the parser and pretty printer problems (add a test case which pretty
++ merge the two yices targets into one.
++ fix the parser and pretty printer problems (add a test case which pretty
   prints, parses, and compares the result)
 + Fill out the Prelude with stuff Myron had to add for his query.
 + Check if yices2 seg faulting went away since ytc (should be easy to check).
@@ -340,4 +340,252 @@ I think... it's good for me not to be duplicating code, and to take advantages
 of improvements. I worry it's maybe a little bit of glombing things together
 which need not be glombed together... oh well. I can always change back if I
 want.
+
+Fri Jul 20 15:32:27 EDT 2012
+
+Nirav says the yices1 performance thing isn't so important to get stuck
+wasting time on. Good.
+
+What do you think about adding sugar for deriving Eq? That would be very nice
+to have, and not so much work, I don't think.
+
+Let me try that, then finish up with some thoughts on the next step for
+modularity and more thoughts on numeric types.
+
+Fri Jul 20 15:56:51 EDT 2012
+
+Ug, so I'm not in the mood to work out the types and such for deriving Eq.
+It's not hard. Just a bit tedious. I can come back to this later.
+
+Let me finish with some thoughts on modularity and numeric types.
+
+Fri Jul 20 15:59:19 EDT 2012
+
+Modularity.
+
+I think with the current version, it's possible to have two things with the
+same name in the same system, as long as the modules which define them aren't
+both imported in the same module that uses one of them. That's good. I haven't
+tested this, but I think that's what should happen.
+
+The next thing we really want, I think, is to have an explicit export list for
+values. Hmm... it would seem I'm not much in the mood for this either right
+now. I wonder if there is any low hanging fruit performance wise now. It
+shouldn't take 4 seconds to do Myron's query. It should be, like
+instantaneous, no?
+
+hum. Or maybe I should work on numeric types offline.
+
+There are many questions with numeric types. One thing you want to do with
+numeric types is get their value as an integer.
+
+This can be done using typeclasses, but to me it feels really cludgy, because
+you end up specifying "undefined" as an argument all over the place. Is there
+a neater way to do this?
+
+The real question is, say I have a type Bit n. Given an arbitrary type which
+could contain a numeric type, I'd like to figure out what that numeric type
+is. Or, maybe given an object which contains a numeric type.
+
+I suppose we could have numeric types have objects. Each one has a
+constructor. Then say Bit n carries around that object... But that's annoying.
+
+Maybe the real question is, how would you implement sizeof? You should be able
+to do it entirely within the language, I think.
+
+sizeof :: Bit n -> Integer
+
+If bit was defined as...
+
+data Bit n = Numeric n => Bit n [Bool]
+
+Then we could say:
+
+sizeof :: Bit n -> Integer
+sizeof (Bit l _) = valueof l
+
+The haskell way I would do would be something like:
+
+sizeof :: Bit n -> Integer
+sizeof b =
+  let ton :: Bit n -> n
+      ton _ = undefined
+  in valueof (ton b)
+
+It's not entirely unreasonable, but it is, in my mind, a bit of a hack. And we
+don't support type signatures in let bindings in seri at this point, so you'd
+have to pull the function outside to the top level.
+
+I could have a special syntax for it. Let's say valueof is a keyword. The
+syntax could be...
+
+valueof (Type -> Type) Exp
+
+For example:
+    valueof (Bit n -> n) b
+Says, get the value of the numeric type produced when given the given type.
+Constraints are: The expression must have the specified input type. The
+specified output type must be a numeric type.
+
+This is like a pattern match on types. Maybe we could just allow a pattern
+match on types like thing? Only, I feel like it would only be useful with
+valueof, so why not make valueof special?
+
+Of course, since the result is always expected to be as single type, we could
+have pattern matching.
+    valueof (Bit @) b
+
+If you had two numeric types, you might say...
+    valueof (Range @ _) r 
+    valueof (Range _ @) r
+
+That sort of thing.
+
+I think we should have a Numeric class built in?
+Are numeric types always in their own space? Or does it make sense for VarT to
+work on them? For example, I would think it doesn't make any sense to have 
+[8] as a valid type. That's interesting. So then maybe we could really make a
+special place for numeric types and restrict them to that special place?
+
+For example, I think we only ever use numeric types as a parameter to a data
+type. We certainly don't ever construct or deconstruct objects of that type.
+
+So let's say I have some syntax...
+In a data declaration, say a variable preceded with # is a numeric parameter.
+
+data Bit #n = ...
+
+We could have multiple...
+
+data BitPair #n #m = BitPair (Bit#n) (Bit#m)
+
+We can specify functions like:
+
+concat :: (m+n ~ k) => Bit#m -> Bit#n -> Bit#k
+
+We can get the value of something:
+
+sizeof :: Bit #n -> Integer
+sizeof b = valueof (Bit #) b
+
+Hmm...
+sizeof = valueof (Bit #)
+
+It's almost like valueof is some sort of sugar...
+
+Perhaps we should just have a sugar for type declarations?
+
+No...
+
+Maybe there's an idea that a numeric type can't stand on its own except in
+numeric type constraints. So: Bit#n -> n would not be allowed. Or, I guess,
+the n and #n could have different name spaces. Of course, this is trivial to
+get around using a unit type:
+
+data Unit#n = Unit
+
+Which you could then use instead. So that seems a silly restriction.
+
+Or! We could automatically generate numeric type functions for each numeric
+type parameter in our data declarations.
+
+data Bit#(n :: sizeof) = ...
+
+Declares both Bit, and declares a function of type:
+
+sizeof :: Bit#n -> Integer
+
+And provide the primitive valueof :: #n -> Integer?
+But no, we don't need that. We can give some prelude:
+
+data NumT #valueof = NumT
+
+And now, type numerals can be syntactic sugar for this NumT.
+
+Of course, if you have just this, you don't need valueof, because you can pass
+the numeric object around.
+
+Okay, so it sounds to me like what we want is:
+
+valueof :: #n -> Integer
+
+As a primitive.
+And you can construct an instance of a specific numeric type... um... with a
+numeric type data constructor: #8, #1, etc...
+
+(valueof #8) == 8
+
+sizeof (Bit n _) = valueof n
+
+Should valueof be strict in its argument? I suppose it would be nice if it
+weren't. Add more flexibility.
+
+Hmm... So it would seem I'm coming to settle somewhere.
+
+Numeric type constructor syntax:
+    #0, #1, #2, ...
+    NumT 0, NumT 1, NumT 2, ...
+    
+Numeric type data constructor syntax
+    #0, #1, #2, ...
+    ConE "#0", ConE "#1", ConE "#2", ...
+
+Numeric type constraint on variable type:
+    #n ...
+
+Why do we need that. Why not declare a builtin class?
+
+Perhaps the builtin class is called #.
+
+concat :: (#m, #n, #k) => Bit m -> Bit n -> Bit k
+
+Except, that would let us construct a Bit Integer, for example, which makes no
+sense. So, unless I want to have contexts in data type declarations, it may
+make sense to have the special syntax for this. And we want to do kind
+checking somewhere.
+
+Bit has kind: # -> *
+m has kind whatever.
+#m has kind #
+
+So we treat numeric type as a different kind of type? That makes sense to me.
+
+concat :: Bit m -> Bit n -> Bit k
+concat :: Bit m -> Bit n -> Bit (m+n)
+concat :: Bit #m -> Bit #n -> Bit #(m+n)
+concat :: (m+n = k) => Bit m -> Bit n -> Bit k
+
+Okay, how about this as a proposal:
+
+Abstract syntax:
+    Type = ...
+         | NumT Integers            -- ^ #0, #1, #2, ...
+         | NumOpT NumOp Type Type   -- ^ <type> <op> <type>
+
+    NumOpT = AddNT  -- ^ +
+             MulNT  -- ^ *
+             SubNT  -- ^ -
+             DivNT  -- ^ /
+             MinNT  -- ^ ∧ 
+             MaxNT  -- ^ ∨ 
+             LogNT  -- ^ //
+             ExpNT  -- ^ **
+
+    Class = ...
+          | NumCls NumClsOp Type Type
+
+    NumClsOp = EqNCO   -- ^ =
+               LtNCO   -- ^ <
+               GtNCO   -- ^ >
+               etc...
+
+The thing I hate is, we now have so much specific stuff hard wired into the
+IR. It just makes things so complicated.
+
+Like, literally, the syntax for numeric types alone is as big as the whole
+rest of the syntax.
+
+Oh well. I'll think about things. Perhaps we could have a numeric type prelude
+like thing and use names instead of symbols, and just don't interpret any of
+the symbols we don't know about.
 
