@@ -42,7 +42,7 @@ module Seri.Lambda.IR (
     Pat(..), Match(..),
     Lit(..), Exp(..), 
     Con(..), Method(..), Dec(..),
-    isDataD, tyVarType, tyVarName,
+    isDataD, tyVarType, tyVarName, nteval,
     ) where
 
 import Data.Generics
@@ -135,4 +135,12 @@ tyVarType (NumericTV n) = NumT (VarNT n)
 tyVarName :: TyVar -> Name
 tyVarName (NormalTV n) = n
 tyVarName (NumericTV n) = n
+
+-- | Evaluate a concrete numeric type.
+nteval :: NType -> Integer
+nteval (ConNT i) = i
+nteval (VarNT {}) = error $ "nteval: non-concrete numeric type"
+nteval (AppNT "+" a b) = nteval a + nteval b
+nteval (AppNT "*" a b) = nteval a * nteval b
+nteval (AppNT f a b) = error $ "unknown AppNT op: " ++ f
 

@@ -93,6 +93,8 @@ import Seri.Lambda.Parser.Grammar
 --
 -- - Empty data declarations are supported, indicating a primitive type.
 --
+-- - Numeric types are supported, introduced with the # symbol.
+--
 --
 -- [@Other Notes@]
 --

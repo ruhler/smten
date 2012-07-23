@@ -83,6 +83,10 @@ elaborate env e =
                     else CaseE rx ms'
     AppE a b ->
         case (elaborate env a, elaborate env b) of
+          (VarE (Sig "Seri.Lib.Prelude.valueof" t), _) ->
+             let NumT nt = head $ unarrowsT t
+             in integerE (nteval nt)
+          (VarE (Sig "Seri.Lib.Prelude.numeric" (NumT nt)), _) -> ConE (Sig ("#" ++ show (nteval nt)) (NumT nt))
           (AppE (VarE (Sig "Seri.Lib.Prelude.__prim_eq_Char" _)) (LitE (CharL ia)), (LitE (CharL ib))) -> boolE (ia == ib)
           (AppE (VarE (Sig "Seri.Lib.Prelude.__prim_add_Integer" _)) (LitE (IntegerL ia)), (LitE (IntegerL ib))) -> integerE (ia + ib)
           (AppE (VarE (Sig "Seri.Lib.Prelude.__prim_sub_Integer" _)) (LitE (IntegerL ia)), (LitE (IntegerL ib))) -> integerE (ia - ib)

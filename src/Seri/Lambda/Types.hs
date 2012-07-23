@@ -104,10 +104,14 @@ listT t = AppT (ConT "[]") t
 -- mapping from type variable name to concrete type.
 assignments :: Type -> Type -> [(Name, Type)]
 assignments (VarT n) t = [(n, t)]
+assignments (NumT (VarNT n)) t = [(n, t)]
+assignments (NumT (AppNT _ a b)) (NumT (AppNT _ a' b'))
+    = assignments (NumT a) (NumT a') ++ assignments (NumT b) (NumT b')
 assignments (AppT a b) (AppT a' b') = (assignments a a') ++ (assignments b b')
 assignments _ _ = []
 
 class Assign a where
+    -- Replace variable types with the given name with the given value.
     assign :: [(Name, Type)] -> a -> a
 
 instance Assign Type where
@@ -117,7 +121,16 @@ instance Assign Type where
       case lookup n m of
         Just t' -> t'
         Nothing -> t
+    assign m (NumT n) = NumT (assign m n)
     assign _ t@(UnknownT) = t
+
+instance Assign NType where
+    assign _ t@(ConNT {}) = t
+    assign m (AppNT o a b) = AppNT o (assign m a) (assign m b)
+    assign m t@(VarNT n) =
+        case lookup n m of
+            Just (NumT v) -> v
+            _ -> t
 
 instance Assign Exp where
     assign _ e@(LitE {}) = e

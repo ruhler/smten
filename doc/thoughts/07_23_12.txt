@@ -479,3 +479,22 @@ do much in yices with free vectors and such if they are built on top of lists.
  
 Let me not worry about that yet. Let me get elaboration working first.
 
+Mon Jul 23 14:30:32 EDT 2012
+
+Trouble with ... well, trouble. Trouble with vreplicate I suppose. Hmm...
+
+Okay, so I had the types messed up, which is what the type checker told me.
+
+Next issue: assign needs to support variable types.
+
+I need to make a decision about the name spaces for numeric type variables and
+non-numeric type variables. Do they share a namespace?
+
+If not, then assignments and assign need to collect both a
+[(Name,Type)] mapping and a [(Name, NType)] mapping. 
+
+If so, then we can have a single mapping, and just make sure all the numeric
+type names point to NumT types.
+
+I think they should share a namespace. It's too confusing otherwise.
+
