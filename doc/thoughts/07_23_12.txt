@@ -498,3 +498,76 @@ type names point to NumT types.
 
 I think they should share a namespace. It's too confusing otherwise.
 
+Mon Jul 23 14:58:52 EDT 2012
+
+Okay, added numeric and valueof to the elaborator. What all is next?
+
+The summary would be:
+- add support for numeric types to the haskell target
+- add support for numeric types to the yices back end (?)
+- add knowledge of math to the type inference and checker
+So that we can implement the vconcat function.
+- OR: add a way to tell the type inference and check explicit facts about
+  math.
+
+Here's an idea. Perhaps one way to tell the compiler about math explicitly is
+by introducing another primitive:
+
+ntid :: #n -> #m
+
+The behavior is: if #n and #m are the same, it is the identity function.
+Otherwise it is an error.
+
+This is trivial to implement in the elaborator. It gives us our dynamic check.
+We can use it to, for example, create specific instances of math info. Like
+what we need for concat
+
+m+(n-1)*m = n*m
+
+Can be described using a function:
+
+vconcatmath :: m+((n-1)*m) -> n*m
+vconcatmath = ntid
+
+That's pretty cool.
+
+I suppose in practice its more likely we'll just use ntid, sacrifice our
+static checking. Good. I like having that as a fall back for the numeric type
+thing. That's an easy thing to do.
+
+Mon Jul 23 15:23:45 EDT 2012
+
+You know what? ntid doesn't need to be primitive. I can implement it in the
+language.
+
+ntid :: #n -> #m;
+ntid n =
+  let m = numeric
+  in if valueof n == valueof m
+        then m
+        else error $ ...
+
+This relies on the fact that my lets are concretely typed and not polymorphic.
+I hope that's okay. I use it elsewhere too.
+
+The real question is... how can I use this to make concat work?
+
+I should do something about that constraint the type solver can't solve:
+
+#(a + (b*c)) = n*m
+
+It should ignore this. And I think it should go inside of numeric type
+applications if it can.
+
+So let me fix that in the type solver. Then implement ntid and try to use it
+to make concat typecheck in a reasonable way.
+
+Honestly, I think I like this better than having a context. Probably can't get
+away with not having a context forever though.
+
+Mon Jul 23 15:43:38 EDT 2012
+
+Well, that made the type checker happy. Using ntid. Trouble is... it's not
+clear to me I haven't introduced a bug because of it. I was hoping the math
+would be a little bit more clear.
+

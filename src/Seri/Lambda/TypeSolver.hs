@@ -86,6 +86,9 @@ single (x, y) | x == y = return ()
 single (AppT a b, AppT c d) = do
     (sys, sol) <- get
     put ((a,c) : (b,d) : sys, sol)
+single (NumT (AppNT _ a b), NumT (AppNT _ c d)) = do
+    (sys, sol) <- get
+    put ((NumT a, NumT c) : (NumT b, NumT d) : sys, sol)
 single (a, b) | b `lessknown` a = single (b, a)
 single (a, b) = do
     (sys, sol) <- get
@@ -93,14 +96,19 @@ single (a, b) = do
     let sol' = map (tpreplace a b) sol
     put (sys', (a,b):sol')
 
-unsolvable :: (Type, Type) -> Bool
-unsolvable (UnknownT, _) = True
-unsolvable (_, UnknownT) = True
-unsolvable (ConT {}, AppT {}) = True
-unsolvable (AppT {}, ConT {}) = True
-unsolvable (ConT a, ConT b) | a /= b = True
-unsolvable _ = False
+solvable :: (Type, Type) -> Bool
+solvable (VarT {}, _) = True
+solvable (_, VarT {}) = True
+solvable (ConT a, ConT b) = a == b
+solvable (AppT {}, AppT {}) = True
+solvable (NumT (VarNT {}), NumT {}) = True
+solvable (NumT {}, NumT (VarNT {})) = True
+solvable (NumT (ConNT a), NumT (ConNT b)) = a == b
+solvable (NumT (AppNT a _ _), NumT (AppNT b _ _)) = a == b
+solvable _ = False
 
+unsolvable :: (Type, Type) -> Bool
+unsolvable = not . solvable
 
 tpreplace :: Type -> Type -> (Type, Type) -> (Type, Type)
 tpreplace k v (a, b) = (treplace k v a, treplace k v b)

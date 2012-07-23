@@ -155,14 +155,14 @@ typecheck ds =
       checkexp tenv (VarE (Sig n t)) =
          case lookup n tenv of
              Just t' | t == t' -> return ()
-             Just t' -> fail $ "expected variable of type " ++ pretty t'
-                        ++ " but " ++ n ++ " has type " ++ pretty t
+             Just t' -> fail $ "expected variable of type:\n  " ++ pretty t'
+                        ++ "\nbut " ++ n ++ " has type:\n  " ++ pretty t
              Nothing -> do
                  texpected <- lookupVarType ds n
                  if isSubType texpected t
                      then return ()
-                     else fail $ "expected variable of type " ++ pretty texpected
-                                ++ " but " ++ n ++ " has type " ++ pretty t
+                     else fail $ "expected variable of type:\n  " ++ pretty texpected
+                                ++ "\nbut " ++ n ++ " has type:\n  " ++ pretty t
 
   in mapM_ checkdec ds
 

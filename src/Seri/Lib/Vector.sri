@@ -30,8 +30,11 @@ vtail (Vector _ l) = Vector numeric (tail l);
 vappend :: Vector #n a -> Vector #m a -> Vector #(n+m) a;
 vappend (Vector _ a) (Vector _ b) = Vector numeric (a ++ b);
 
---vconcat :: Vector #n (Vector #m a) -> Vector #(n*m) a;
---vconcat (Vector _ (v:vs)) = vappend v (vconcat (Vector numeric vs));
+ntvid :: Vector #n a -> Vector #m a;
+ntvid (Vector n xs) = Vector (ntid n) xs;
+
+vconcat :: Vector #n (Vector #m a) -> Vector #(n*m) a;
+vconcat (Vector _ (v:vs)) = ntvid $ vappend v (vconcat (Vector numeric vs));
 
 vlength :: Vector #n a -> Integer;
 vlength (Vector n _) = valueof n;
