@@ -37,6 +37,7 @@ module Seri.Target.Haskell.Haskell (
     haskell, haskellH,
     ) where
 
+import Data.List(nub)
 import Data.Maybe(fromJust)
 
 import qualified Language.Haskell.TH.PprLib as H
@@ -104,11 +105,13 @@ hsnt 0 = H.ConT (H.mkName "N__0")
 hsnt n = H.AppT (H.ConT (H.mkName $ "N__2p" ++ show (n `mod` 2))) (hsnt $ n `div` 2)
 
 hsTopType :: HCompiler -> Context -> Type -> Failable H.Type
-hsTopType c [] t = compile_type c c t
 hsTopType c ctx t = do
+    let ntvs = [H.ClassP (H.mkName "N__") [H.VarT (H.mkName n)] | n <- nvarTs t]
     t' <- compile_type c c t
     ctx' <- mapM (hsClass c) ctx
-    return $ H.ForallT (map (H.PlainTV . H.mkName) (varTs t)) ctx' t'
+    case ntvs ++ ctx' of
+        [] -> return t'
+        ctx'' -> return $ H.ForallT (map (H.PlainTV . H.mkName) (nvarTs t ++ varTs t)) ctx'' t'
 
 hsClass :: HCompiler -> Class -> Failable H.Pred
 hsClass c (Class nm ts) = do

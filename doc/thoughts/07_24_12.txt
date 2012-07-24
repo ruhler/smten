@@ -1,0 +1,323 @@
+
+Tue Jul 24 09:03:35 EDT 2012
+
+Trouble with modularity.
+
+My sugars: record constructors, do, etc...
+use unqualified names. This works before flattening, but if you are building
+up code you would like to use after flattening, the sugar doesn't work because
+we don't resolve the names.
+
+I'll need to figure out how to deal with that.
+
+Tue Jul 24 09:35:41 EDT 2012
+
+The other issue I'm going to run into is with numeric types in the haskell
+target. Haskell doesn't know about math.
+
+The thing is, currently neither does seri, but it works out okay because we
+use this ntid hack. We should be able to do the same in haskell. And even when
+we are smart enough not to need ntid for seri, we should still be able to make
+it work using ntid in haskell.
+
+This suggests to me I should have a N__ADD and N__MUL types. That is, like how
+we currently treat it in seri, the type: #(1+2) is different from the type
+#3, even thought really we want them to be the same.
+
+So I think we can take that route to support numeric types in the haskell back
+end. We still need to identify which type variables are numeric type variables
+and add to the context of a top sig that they are numeric. I'll do this next
+with numeric types.
+
+Tue Jul 24 09:44:31 EDT 2012
+
+More performance issues from Myron.
+
+The way Myron is asking queries is:
+1. Create a big environment of stuff.
+2. for each query to ask:
+  - construct the query in the Query monad
+  - send the environment and query to runYices, interpret the result
+
+We incur excess overhead here:
+- Type checking the entire environment for each query, instead of just once.
+- Sending the entire needed environment to yices multiple times, instead of
+  just once.
+
+The questions are:
+1. is there a better way to do it?
+2. is there a way to make this way work better?
+
+I feel like, ideally, the entire algorithm is in seri. The interaction is in
+seri. Inside the query monad. If you had that then, build up the environment,
+build up your query, run it (once), and see what happens. This avoids all the
+excess overhead.
+
+The thing is, you would like to call into haskell code. You want to interpret
+the queries using haskell.
+
+One way to make this work would be to have a way to implement a primitive
+function that the elaborator calls back into. Unfortunately, it's not so clear
+now how to do that in a clean way, given the simpler elaborate function...
+
+I could make the elaborate function take in a list of primitives. And have it
+work in an arbitrary monad. Any time it goes to make a function call, match
+that against something in the list, and execute the result to get the new
+expression.
+
+Perhaps we could use this to implement the yices thing too?
+
+I bet that would work. I bet that would clean things up a bit too. Maybe.
+
+The problem is, now you have to pass the set of builtins to everything. It's
+slightly annoying. I also fear the lookup will be slow. Perhaps we should use
+a map instead of an association list. Sure. That's easy enough. But don't
+worry about that until we get a performance problem with it.
+
+So, I think that would be the best thing to do. Let me propose that to Myron,
+make it extra easy to have a builtin primitive. He can call into haskell
+easily. Work in any monad.
+
+I'll try that. I think it will be better and cleaner regardless. And certainly
+better than this silly rules thing I had before for elaborate.
+
+Bet, let's say this doesn't work out for whatever reason as a solution. How
+can I make the existing way better?
+
+We want to be able to type check a bunch of stuff. The environment. Then
+flatten it. And have that as an environment.
+
+Then we want to have another... module? List of declarations? How about list
+of declarations... does it use name resolution? How about an option: 
+- Given a module of declarations and... a list of modules which is the
+  environment, flatten just that module of declarations, doing name resolution
+  and such.
+- Given a flattened, named resolved list of declarations, and an environment,
+  run type inference and type checking on just the flattened named resolved
+  list of declarations.
+
+Of course, at that point, I think the main query is just an expression, and so
+run type inference and type checking on the single expression in the
+environment.
+
+So, to support what Myron really wants to have:
+  flatten :: [Module] -> Module -> Failable [Dec]
+
+Just flattens the given module.
+That should be easy to do. Trivial, in fact.
+
+Now what should be done is:
+
+1. Load the libary from file. This is the hierarchical library.
+2. flatten, typeinfer, typecheck. This is the flat library.
+3. Generate a module with imports as needed for additional special lib.
+4. Flatten, infer, check the special lib into a flat special lib.
+Or you could just generate a flat special lib, infer and check specifically
+it.
+5. Generate a query... as an expression I should think. Or a module, or a list
+of flat declarations.
+6. Flatten, infer, typecheck.
+
+The point is, we want the ability to do the following:
+- flatten a single module, inside an environment of modules.
+- infer a single declaration or expression, inside an environment of decls.
+- check a single declaration or expression, inside an environment.
+
+I already have code for all of these things. I just need to expose it.
+
+And thus, all problems should be solved...
+
+All except for this question of what names the sugar should use.
+
+If you are in a module:
+(depends on imports)
+ - unqualified
+ - qualified as per import name
+
+If you are not in a module:
+ - unqiue name
+
+Well, as a hack, which could mostly work, just not in some special cases which
+I suppose I can catch, always generate the unique name, and allow specifying
+names using the unique name of Seri.Lib.Prelude.
+
+Or! Just do as was suggested, have the sugar which uses names take as input
+the prefix to use? Well... that doesn't really help, because we still don't
+know what prefix to use in the parser without interpreted imports.
+
+I think the best thing I can do for now is use the unique name for sugar
+things: Seri.Lib.Prelude.blah. And have the flattener accept the unique name.
+
+Cool.
+
+So now I have a nice plan of things to do today.
+
+- Have primitives be an argument to the elaborator.
+- Use this interface to implement the prelude builtins.
+- Use this interface to implement the SMT yices builtins.
+
+- support unique names in the flattener (don't have to support them in the
+  parser yet)
+- switch sugar to use unqiue names.
+
+- Expose interfaces for flatten, typeinfer, and typecheck which allow just
+  partial flatten, typeinfer and typecheck.
+
+Cool. Let me get to work.
+
+Tue Jul 24 10:27:33 EDT 2012
+
+I'm trying to think about how I want to organize builtins to elaborate.
+
+I feel like what I want to do is specify a bunch of patterns, and functions.
+And maybe the patterns don't match. Or maybe they do.
+
+But we usually want the arguments to be fully elaborated...
+
+Do you just want to match on the argument? No. That doesn't work out so well
+for multi argument functions.
+
+Let's say you just want to specify fully applied primitive functions, where
+you are passed the signature (for the type), and a list of fully elaborated
+arguments. Or, well, we could support partially applied. We don't know how
+many args there will be when you do the application. You can match what you
+want.
+
+Tue Jul 24 10:32:36 EDT 2012
+
+Okay, here's my proposal.
+
+In elaborate, first thing we do is:
+1. unappsE.
+2. elaborate all the unapped stuff.
+Careful if it's only a single argument though, because we could get stuck in
+an infinite loop...
+
+How about this. Match on unappsE.
+
+If it's a LitE, do nothing.
+If it's a CaseE, elaborate it.
+If it's a LamE, simplify or do nothing.
+If it's a ConE, do nothing.
+
+If it's an application of a LamE to something...
+Then it should only have one arg. Deal with that case.
+
+Otherwise... 
+it's a VarE, with zero or more arguments.
+
+Look up the VarE. If it's in the environment, inline the vare, elaborate the
+appsE.
+
+Hmm... This is not right. We can have anything as the first argument to the
+application.
+
+How about this.
+
+We want to elaborate it as it is now. It will elaborate as much as possible.
+In particular, if there are any arguments, those will be fully elaborated as
+much as possible.
+
+Then we want call unappsE on the elaborated version, pattern match against
+those for any primitives.
+
+If any primitives apply, elaborate the result (primitives which apply should
+promise to make some progress), otherwise just return the result.
+
+Easy! No?
+
+Good. I think I can do this.
+
+Tue Jul 24 11:41:43 EDT 2012
+
+For some reason I don't understand, when I run elaborate on the tests and
+print out errors, it claims we have an error too soon. We are hitting
+undefined.
+ 
+I wonder if it's not as lazy as it should be. Like... we shouldn't elaborate
+arguments until we need to maybe.
+
+Okay, so maybe I should assume arguments to primitives should be strict, but
+not otherwise? I don't get it.
+
+Oh. We are in a monad now. That sort of forces evaluation of some things
+sooner than you would want?
+
+This could cause problems for people trying to make use of the monad in the
+elaborator. If you don't properly enforce sequencing, for example, then what
+happens depends on elaboration order, which it shouldn't.
+
+I wonder if it makes more sense to keep elaboration pure. Then add some other
+hook which makes it easy to implement builtin monads?
+
+I could try a different approach for error. Use haskell's error instead of
+fail. Though it really would be nice if you could catch the error.
+
+No. That still doesn't work with the monad... I don't understand. When am I
+running into an error I shouldn't be?
+
+Let me undo my changes. I don't think this monad thing totally makes sense?
+
+Or rather, let me think about it and get back to you.
+
+I may be able to write a wrapper on top of elaborate which can deal with
+builtin monads. Much like we have for runYices, but more general. That can
+then accept primitives in the monad.
+
+Remember the goal here. I'd like to be able to specify a primitive which
+refers to my own haskell context.
+
+I don't know. I'll keep thinking.
+
+Tue Jul 24 12:47:48 EDT 2012
+
+I've been thinking. I think, it's pretty annoying to force the haskeller to
+write a primitive in seri which is called, with seri the top level driver.
+Much more useful would be haskell as the top level driver, and I think it
+would not be hard to do.
+
+I have this thing called runQuery. What I should do is expose that, and a way
+to run it. You want a way to say:
+
+- initialize a query: give it the environment and the initializes yices thing.
+- evaluate a query in the context, get the updated context and the result.
+
+That simple. Like we did for the yices target.
+
+We still want flatten, typecheck, and typeinfer to work on a subset of the
+given environment. That should give Myron everything he needs and wants, and
+is a reasonable way to do things.
+
+Perhaps what I should do is have a monad. Like, a Query monad in haskell. We
+have the following kind of interface:
+
+data Quierier
+
+mkQuerier :: RunOptions -> Env -> Quierier
+
+runQuery :: Querier -> Exp -> IO (Exp, Querier)
+
+Oh. I guess that's much simpler.
+
+And of course, it's easy to implement
+
+runYices = do
+    (x, _) <- runQuery (mkQuerier opts env) exp
+    return x
+
+So that sounds good to me.
+
+Thus, I don't need this builtins to elaborator thing, so I should revert the
+monad thing (and see if we still run into that error issue, which I'm curious
+about, but isn't a major thing at this point).
+
+Sounds good to me. These are just some minor changes.
+
+Tue Jul 24 17:08:40 EDT 2012
+
+Trouble with numeric types. The haskell target. My ntid trick doesn't work,
+because it leads to ambiguous types. I wonder if this means it doesn't work in
+my implementation either. I should try running vconcat and see what happens.
+We may end up with a call to numeric with a funny type, like ~134 or some
+such, which it doesn't know how to handle.
+

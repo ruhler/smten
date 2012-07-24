@@ -38,7 +38,7 @@ module Seri.Lambda.Types (
     appsT, arrowsT, outputT, unappsT, unarrowsT,
     listT, integerT, charT, stringT,
     Typeof(..), typeofCon,
-    assign, assignments, bindingsP, bindingsP', varTs,
+    assign, assignments, bindingsP, bindingsP', varTs, nvarTs,
     isSubType,
     ) where
 
@@ -247,10 +247,16 @@ bindingsP (WildP {}) = []
 bindingsP' :: Pat -> [Name]
 bindingsP' = map (\(Sig n _) -> n) . bindingsP
 
--- List the variable type names in a given type.
+-- | List the (non-numeric) variable type names in a given type.
 varTs :: Type -> [Name]
-varTs (ConT n) = []
 varTs (AppT a b) = nub $ varTs a ++ varTs b
 varTs (VarT n) = [n]
-varTs UnknownT = []
+varTs _ = []
+
+-- | List the numeric type variables in the given type.
+nvarTs :: Type -> [Name]
+nvarTs (AppT a b) = nub $ nvarTs a ++ nvarTs b
+nvarTs (NumT (AppNT _ a b)) = nub $ nvarTs (NumT a) ++ nvarTs (NumT b)
+nvarTs (NumT (VarNT n)) = [n]
+nvarTs _ = []
 

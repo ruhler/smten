@@ -57,56 +57,64 @@ elaborate :: Env   -- ^ context under which to evaluate the expression
           -> Exp   -- ^ expression to evaluate
           -> Exp   -- ^ elaborated expression
 elaborate env e =
-  case e of
-    LitE {} -> e
-    CaseE x ms ->
-        let rx = elaborate env x
+  let elaborated =
+        case e of
+          LitE {} -> e
+          CaseE x ms ->
+              let rx = elaborate env x
+   
+                  -- Don't make a case statement empty, because we want to 
+                  -- keep enough information to determine the type of the
+                  -- case statement.
+                  -- TODO: maybe we should return "error" instead?
+                  domatch :: [Match] -> (MatchResult, Either Exp [Match])
+                  domatch (m@(Match p b):ms) =
+                      case match p rx of
+                        Failed ->
+                          if null ms
+                            then (Failed, Right [m])
+                            else domatch ms
+                        mr@(Succeeded {}) -> (mr, Left b)
+                        mr -> (mr, Right $ m:ms)
+              in case (domatch ms) of
+                    (Succeeded vs, Left b) -> elaborate env $ reduces vs b
+                    (_, Right ms') ->
+                      if null env
+                          then CaseE rx [Match p (simplify b) | Match p b <- ms']
+                          else CaseE rx ms'
+          AppE a b ->
+              case (elaborate env a, elaborate env b) of
+                (LamE (Sig name _) body, rb) ->
+                   let freenames = map (\(Sig n _) -> n) (free rb)
+                       body' = alpharename (freenames \\ [name]) body
+                   in elaborate env (reduce name rb body')
+                (ra, rb) -> AppE ra rb
+          LamE s b | null env -> LamE s (simplify b)
+          LamE {} -> e
+          ConE {} -> e
+          VarE {} | null env -> e
+          VarE s@(Sig _ ct) ->
+              case (attemptM $ lookupVar env s) of
+                Nothing -> e
+                Just (pt, ve) -> elaborate env $ assign (assignments pt ct) ve 
 
-            -- Don't make a case statement empty, because we want to 
-            -- keep enough information to determine the type of the
-            -- case statement.
-            -- TODO: maybe we should return "error" instead?
-            domatch :: [Match] -> (MatchResult, Either Exp [Match])
-            domatch (m@(Match p b):ms) =
-                case match p rx of
-                  Failed ->
-                    if null ms
-                      then (Failed, Right [m])
-                      else domatch ms
-                  mr@(Succeeded {}) -> (mr, Left b)
-                  mr -> (mr, Right $ m:ms)
-        in case (domatch ms) of
-              (Succeeded vs, Left b) -> elaborate env $ reduces vs b
-              (_, Right ms') ->
-                if null env
-                    then CaseE rx [Match p (simplify b) | Match p b <- ms']
-                    else CaseE rx ms'
-    AppE a b ->
-        case (elaborate env a, elaborate env b) of
-          (VarE (Sig "Seri.Lib.Prelude.valueof" t), _) ->
+      deprimed =
+        case unappsE elaborated of
+          [VarE (Sig "Seri.Lib.Prelude.valueof" t), _] ->
              let NumT nt = head $ unarrowsT t
-             in integerE (nteval nt)
-          (VarE (Sig "Seri.Lib.Prelude.numeric" (NumT nt)), _) -> ConE (Sig ("#" ++ show (nteval nt)) (NumT nt))
-          (AppE (VarE (Sig "Seri.Lib.Prelude.__prim_eq_Char" _)) (LitE (CharL ia)), (LitE (CharL ib))) -> boolE (ia == ib)
-          (AppE (VarE (Sig "Seri.Lib.Prelude.__prim_add_Integer" _)) (LitE (IntegerL ia)), (LitE (IntegerL ib))) -> integerE (ia + ib)
-          (AppE (VarE (Sig "Seri.Lib.Prelude.__prim_sub_Integer" _)) (LitE (IntegerL ia)), (LitE (IntegerL ib))) -> integerE (ia - ib)
-          (AppE (VarE (Sig "Seri.Lib.Prelude.__prim_mul_Integer" _)) (LitE (IntegerL ia)), (LitE (IntegerL ib))) -> integerE (ia * ib)
-          (AppE (VarE (Sig "Seri.Lib.Prelude.<" _)) (LitE (IntegerL ia)), (LitE (IntegerL ib))) -> boolE (ia < ib)
-          (AppE (VarE (Sig "Seri.Lib.Prelude.>" _)) (LitE (IntegerL ia)), (LitE (IntegerL ib))) -> boolE (ia > ib)
-          (AppE (VarE (Sig "Seri.Lib.Prelude.__prim_eq_Integer" _)) (LitE (IntegerL ia)), (LitE (IntegerL ib))) -> boolE (ia == ib)
-          (LamE (Sig name _) body, rb) ->
-             let freenames = map (\(Sig n _) -> n) (free rb)
-                 body' = alpharename (freenames \\ [name]) body
-             in elaborate env (reduce name rb body')
-          (ra, rb) -> AppE ra rb
-    LamE s b | null env -> LamE s (simplify b)
-    LamE {} -> e
-    ConE {} -> e
-    VarE {} | null env -> e
-    VarE s@(Sig _ ct) ->
-        case (attemptM $ lookupVar env s) of
-          Nothing -> e
-          Just (pt, ve) -> elaborate env $ assign (assignments pt ct) ve 
+             in Just $ integerE (nteval nt)
+          [VarE (Sig "Seri.Lib.Prelude.numeric" (NumT nt)), _] -> Just $ ConE (Sig ("#" ++ show (nteval nt)) (NumT nt))
+          [VarE (Sig "Seri.Lib.Prelude.__prim_eq_Char" _), LitE (CharL ia), LitE (CharL ib)] -> Just $ boolE (ia == ib)
+          [VarE (Sig "Seri.Lib.Prelude.__prim_add_Integer" _), LitE (IntegerL ia), LitE (IntegerL ib)] -> Just $ integerE (ia + ib)
+          [VarE (Sig "Seri.Lib.Prelude.__prim_sub_Integer" _), LitE (IntegerL ia), LitE (IntegerL ib)] -> Just $ integerE (ia - ib)
+          [VarE (Sig "Seri.Lib.Prelude.__prim_mul_Integer" _), LitE (IntegerL ia), LitE (IntegerL ib)] -> Just $ integerE (ia * ib)
+          [VarE (Sig "Seri.Lib.Prelude.<" _), LitE (IntegerL ia), LitE (IntegerL ib)] -> Just $ boolE (ia < ib)
+          [VarE (Sig "Seri.Lib.Prelude.>" _), LitE (IntegerL ia), LitE (IntegerL ib)] -> Just $ boolE (ia > ib)
+          [VarE (Sig "Seri.Lib.Prelude.__prim_eq_Integer" _), LitE (IntegerL ia), LitE (IntegerL ib)] -> Just $ boolE (ia == ib)
+          _ -> Nothing
+  in case deprimed of
+       Just x -> elaborate env x
+       Nothing -> elaborated
         
 data MatchResult = Failed | Succeeded [(Name, Exp)] | Unknown
 

@@ -36,7 +36,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 
 module Seri.Lambda.TypeInfer (
-        typeinfer
+        typeinfer, typeinfer1,
     ) where
 
 import Debug.Trace
@@ -59,7 +59,11 @@ import Seri.Lambda.TypeSolver
 -- expression doesn't type check, so you should run typecheck after inference
 -- to make sure it's valid.
 typeinfer :: [Dec] -> Failable [Dec]
-typeinfer ds = mapM (inferdec ds) ds
+typeinfer ds = mapM (typeinfer1 ds) ds
+
+-- | Perform type inference on a single declaration in the given environment.
+typeinfer1 :: [Dec] -> Dec -> Failable Dec
+typeinfer1 = inferdec
     
 -- Run inference on a single declaration, given the environment.
 inferdec :: [Dec] -> Dec -> Failable Dec

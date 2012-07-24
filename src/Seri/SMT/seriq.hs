@@ -42,7 +42,6 @@ import System.Exit
 import Seri.Failable
 import Seri.Lambda
 import Seri.Target.Elaborate
-import Seri.SMT.Yices
 import Seri.SMT.Yices1
 
 main :: IO ()
@@ -61,6 +60,7 @@ main = do
 
     let opts = (RunOptions dbg 30)
     tmain <- attemptIO $ lookupVarType decs m
-    result <- runYices1 opts decs (VarE (Sig m tmain))
+    querier <- mkQuerier opts decs
+    (result, _) <- runQuery querier (VarE (Sig m tmain))
     putStrLn $ pretty result
 
