@@ -33,7 +33,7 @@
 -- 
 -------------------------------------------------------------------------------
 
-module Seri.Lambda.TypeCheck (typecheck) where
+module Seri.Lambda.TypeCheck (typecheck, typecheck1) where
 
 import Data.Generics
 import Data.List(nub)
@@ -48,10 +48,15 @@ import Seri.Lambda.Utils
 
 type TypeEnv = [(String, Type)]
 
--- Type check a flattened seri program.
--- fails if there is an error.
+-- | Type check a flattened seri program.
+-- Fails if there is an error.
 typecheck :: [Dec] -> Failable ()
-typecheck ds = 
+typecheck ds = mapM_ (typecheck1 ds) ds
+
+-- | Type check a single seri declaration in an environment.
+-- Fails if there is an error.
+typecheck1 :: [Dec] -> Dec -> Failable ()
+typecheck1 ds =
   let checkdec :: Dec -> Failable ()
       checkdec d@(ValD (TopSig n c t) e) =
         onfail (\s -> fail $ s ++ "\n in declaration " ++ pretty d) $ do
@@ -164,7 +169,7 @@ typecheck ds =
                      else fail $ "expected variable of type " ++ pretty texpected
                                 ++ " but " ++ n ++ " has type " ++ pretty t
 
-  in mapM_ checkdec ds
+  in checkdec
 
 -- | Verify all the needed class instances are either in the context or
 -- declared for the given expression.
