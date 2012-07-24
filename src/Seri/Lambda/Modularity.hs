@@ -37,7 +37,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 
 module Seri.Lambda.Modularity (
-    Module(..), Import(..), flatten,
+    Module(..), Import(..), flatten, flatten1,
     ) where
 
 import Control.Monad.State
@@ -219,9 +219,19 @@ resolve n =
       env <- gets qs_env
       lift $ r env me
 
--- | Flatten a module hierarchy.
+-- | Flatten a complete module hierarchy.
+-- Includes the builtin prelude.
 flatten :: [Module] -> Failable [Dec]
 flatten ms = do
-  (qualified, _) <- runStateT (mapM qualify ms) (QS ms (error "not in module") [])
-  return $ prelude ++ concat [d | Module _ _ d <- qualified]
+    ds <- mapM (flatten1 ms) ms
+    return $ concat (prelude:ds)
+
+-- | Flatten a single module.
+flatten1 :: [Module]    -- ^ The environment
+            -> Module   -- ^ The module to flatten
+            -> Failable [Dec] -- ^ Flattened declarations from the module
+flatten1 ms m = do
+  (Module _ _ d, _) <- runStateT (qualify m) (QS ms (error "not in module") [])
+  return d
+            
 
