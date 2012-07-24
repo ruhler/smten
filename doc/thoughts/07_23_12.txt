@@ -507,7 +507,7 @@ The summary would be:
 - add support for numeric types to the yices back end (?)
 - add knowledge of math to the type inference and checker
 So that we can implement the vconcat function.
-- OR: add a way to tell the type inference and check explicit facts about
++ OR: add a way to tell the type inference and check explicit facts about
   math.
 
 Here's an idea. Perhaps one way to tell the compiler about math explicitly is
@@ -569,5 +569,30 @@ Mon Jul 23 15:43:38 EDT 2012
 
 Well, that made the type checker happy. Using ntid. Trouble is... it's not
 clear to me I haven't introduced a bug because of it. I was hoping the math
-would be a little bit more clear.
+would be a little bit more clear. Maybe I can figure out how to make it more
+clear if I try a little harder.
+
+I think the next step is to support numeric types in the haskell back end. Let
+me have a library we'll link with for numeric types.
+
+N__# will be our synonyms for the types.
+Hopefully everything will work out the way I want.
+
+Mon Jul 23 16:52:22 EDT 2012
+
+I need to do a better job translating type signatures involving numeric types
+to haskell. I think, for example, we probably want the following translations:
+
+
+vnil :: Vector #0 a;
+vnil :: Vector N__0 a;
+
+vcons :: a -> Vector #n a -> Vector #(n+1) a;
+vcons :: (N__ n, N__ADD n N__1 m) => a -> Vector n a -> Vector m a;
+
+vappend :: Vector #n a -> Vector #m a -> Vector #(n+m) a;
+vappend :: (N__ n, N__ m, N__ k, N__ADD n m k)
+    => Vector n a -> Vector #m a -> Vector #(n+m) a;
+
+vconcat :: Vector #n (Vector #m a) -> Vector #(n*m) a;
 

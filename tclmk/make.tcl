@@ -85,13 +85,13 @@ badtypetest "InstCtx"
 
 
 # Test the haskell target.
-#set hsdir build/src/Seri/Target/Haskell
-#hrun $SERIH -o $hsdir/hstests.hs -i build/src -m testall \
-#    build/src/Seri/Lib/Tests.sri
-#hrun -ignorestderr $GHC -o $hsdir/hstests -ibuild/src $hsdir/hstests.hs
-#run ./$hsdir/hstests > $hsdir/hstests.got
-#run echo "True" > $hsdir/hstests.wnt
-#hrun cmp $hsdir/hstests.got $hsdir/hstests.wnt
+set hsdir build/src/Seri/Target/Haskell
+hrun $SERIH -o $hsdir/hstests.hs -i build/src -m testall \
+    build/src/Seri/Lib/Tests.sri
+hrun -ignorestderr $GHC -o $hsdir/hstests -ibuild/src $hsdir/hstests.hs
+run ./$hsdir/hstests > $hsdir/hstests.got
+run echo "True" > $hsdir/hstests.wnt
+hrun cmp $hsdir/hstests.got $hsdir/hstests.wnt
 
 # The SMT query tests
 proc querytest {name args} {

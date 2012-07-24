@@ -86,7 +86,22 @@ hsType c (AppT a b) = do
     b' <- compile_type c c b
     return $ H.AppT a' b'
 hsType c (VarT n) = return $ H.VarT (hsName n)
+hsType c (NumT (ConNT i)) = return $ hsnt i
+hsType c (NumT (VarNT n)) = return $ H.VarT (H.mkName n)
+hsType c (NumT (AppNT f a b)) = do
+    a' <- hsType c (NumT a)
+    b' <- hsType c (NumT b)
+    let f' = case f of
+                "+" -> H.ConT $ H.mkName "N__PLUS"
+                "*" -> H.ConT $ H.mkName "N__TIMES"
+                _ -> error $ "hsType TODO: AppNT " ++ f
+    return $ H.AppT (H.AppT f' a') b'
 hsType c t = fail $ "coreH does not apply to type: " ++ pretty t
+
+-- Return the numeric type corresponding to the given integer.
+hsnt :: Integer -> H.Type
+hsnt 0 = H.ConT (H.mkName "N__0")
+hsnt n = H.AppT (H.ConT (H.mkName $ "N__2p" ++ show (n `mod` 2))) (hsnt $ n `div` 2)
 
 hsTopType :: HCompiler -> Context -> Type -> Failable H.Type
 hsTopType c [] t = compile_type c c t
@@ -158,7 +173,8 @@ haskell c env main =
       hsHeader = H.text "{-# LANGUAGE ExplicitForAll #-}" H.$+$
                  H.text "{-# LANGUAGE MultiParamTypeClasses #-}" H.$+$
                  H.text "{-# LANGUAGE FlexibleInstances #-}" H.$+$
-                 H.text "import qualified Prelude"
+                 H.text "import qualified Prelude" H.$+$
+                 H.text "import Seri.Target.Haskell.Lib.Numeric"
 
       ds = compile_decs c env
   in hsHeader H.$+$ H.ppr ds H.$+$

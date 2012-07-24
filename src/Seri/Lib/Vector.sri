@@ -24,7 +24,7 @@ vupdate (Vector n l) i x = Vector n (update l i x);
 vhead :: Vector #n a -> a;
 vhead (Vector _ l) = head l;
 
-vtail :: Vector #n a -> Vector #(n-1) a;
+vtail :: Vector #(n+1) a -> Vector #n a;
 vtail (Vector _ l) = Vector numeric (tail l);
 
 vappend :: Vector #n a -> Vector #m a -> Vector #(n+m) a;
