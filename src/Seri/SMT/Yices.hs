@@ -33,7 +33,9 @@
 -- 
 -------------------------------------------------------------------------------
 
-module Seri.SMT.Yices (RunOptions(..), runYices) where
+module Seri.SMT.Yices (
+    RunOptions(..), Querier(), mkQuerier, runQuery,
+    ) where
 
 import Data.Generics
 import Data.Maybe
@@ -50,14 +52,15 @@ import Seri.Target.Elaborate
 import Seri.Target.Yices.Yices
 
 
-data YicesState y = YicesState {
+data Querier y = Querier {
     ys_ctx :: y,
     ys_dh :: Maybe Handle,
     ys_freeid :: Integer,
-    ys_ys :: Compilation
+    ys_ys :: Compilation,
+    ys_env :: Env
 }
 
-type YicesMonad y = StateT (YicesState y) IO
+type YicesMonad y = StateT (Querier y) IO
 
 sendCmds :: Y.Yices y => [Y.Command] -> y -> Maybe Handle -> IO ()
 sendCmds cmds ctx Nothing = mapM_ (Y.run ctx) cmds
@@ -115,8 +118,9 @@ yicese e = do
     runCmds cmds
     return ye
     
-runQuery :: Y.Yices y => Env -> Exp -> YicesMonad y Exp
-runQuery env e =
+runQueryM :: Y.Yices y => Exp -> YicesMonad y Exp
+runQueryM e = do
+    env <- gets ys_env
     case elaborate env e of
         (AppE (VarE (Sig "Seri.SMT.SMT.query" _)) arg) -> do
             res <- check
@@ -138,18 +142,18 @@ runQuery env e =
             return (ConE (Sig "()" (ConT "()")))
         (AppE (VarE (Sig "Seri.SMT.SMT.queryS" _)) q) -> do
             runCmds [Y.Push]
-            x <- runQuery env q
+            x <- runQueryM q
             let q' = AppE (VarE (Sig "Seri.SMT.SMT.query" undefined)) x
-            y <- runQuery env q'
+            y <- runQueryM q'
             runCmds [Y.Pop]
             return y
         (AppE (VarE (Sig "Seri.SMT.SMT.return_query" _)) x) -> return x
         (AppE (AppE (VarE (Sig "Seri.SMT.SMT.bind_query" _)) x) f) -> do
-          result <- runQuery env x
-          runQuery env (AppE f result)
+          result <- runQueryM x
+          runQueryM (AppE f result)
         (AppE (AppE (VarE (Sig "Seri.SMT.SMT.nobind_query" _)) x) y) -> do
-          runQuery env x
-          runQuery env y
+          runQueryM x
+          runQueryM y
         x -> error $ "unknown Query: " ++ pretty x
 
 data RunOptions = RunOptions {
@@ -157,8 +161,10 @@ data RunOptions = RunOptions {
     inlinedepth :: Integer
 } deriving(Show)
             
-runYices :: (Y.Yices y) => RunOptions -> Env -> Exp -> y -> IO Exp
-runYices opts env e ctx = do
+-- | Construct a Querier object for running queries with yices under the given
+-- seri environment.
+mkQuerier :: (Y.Yices y) => RunOptions -> Env -> y -> IO (Querier y)
+mkQuerier opts env ctx = do
     dh <- case debugout opts of
             Nothing -> return Nothing
             Just dbgfile -> do
@@ -166,16 +172,18 @@ runYices opts env e ctx = do
                 hSetBuffering h NoBuffering
                 return (Just h)
 
-    let query = runQuery env e
-    (x, _) <- runStateT query (YicesState {
+    return $ Querier {
         ys_ctx = ctx,
         ys_dh = dh,
         ys_freeid = 1,
-        ys_ys = compilation (Y.version ctx) (inlinedepth opts) env
-    })
-    maybe (return ()) hClose dh
-    return x
-    
+        ys_ys = compilation (Y.version ctx) (inlinedepth opts) env,
+        ys_env = env
+    }
+
+-- | Evaluate a query using the given environment.
+-- Returns the result of the query and the updated querier.
+runQuery :: (Y.Yices y) => Querier y -> Exp -> IO (Exp, Querier y)
+runQuery q e = runStateT (runQueryM e) q
 
 
 -- | Given a free variable name and corresponding seri type, return the value
