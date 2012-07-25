@@ -66,3 +66,5 @@ That is, anything with ~?
 ** ppr can generate recursive lets, which we don't parse.
 
 - fix querier interface to something less stupid.
+
+- single expression do statements not supported?

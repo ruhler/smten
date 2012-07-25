@@ -103,7 +103,7 @@ elaborate env e =
           [VarE (Sig "Seri.Lib.Prelude.valueof" t), _] ->
              let NumT nt = head $ unarrowsT t
              in Just $ integerE (nteval nt)
-          [VarE (Sig "Seri.Lib.Prelude.numeric" (NumT nt)), _] -> Just $ ConE (Sig ("#" ++ show (nteval nt)) (NumT nt))
+          [VarE (Sig "Seri.Lib.Prelude.numeric" (NumT nt))] -> Just $ ConE (Sig ("#" ++ show (nteval nt)) (NumT nt))
           [VarE (Sig "Seri.Lib.Prelude.__prim_eq_Char" _), LitE (CharL ia), LitE (CharL ib)] -> Just $ boolE (ia == ib)
           [VarE (Sig "Seri.Lib.Prelude.__prim_add_Integer" _), LitE (IntegerL ia), LitE (IntegerL ib)] -> Just $ integerE (ia + ib)
           [VarE (Sig "Seri.Lib.Prelude.__prim_sub_Integer" _), LitE (IntegerL ia), LitE (IntegerL ib)] -> Just $ integerE (ia - ib)

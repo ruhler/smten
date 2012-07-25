@@ -37,6 +37,7 @@ tdec :: #n -> #(n-1);
 tdec _ = numeric;
 
 vconcat :: Vector #n (Vector #m a) -> Vector #(n*m) a;
+vconcat (Vector n []) = Vector numeric [];
 vconcat (Vector n (v:vs)) = ntvid $ vappend v (vconcat (Vector (tdec n) vs));
 
 vlength :: Vector #n a -> Integer;

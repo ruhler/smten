@@ -149,10 +149,13 @@ testarray = do {
 v4 :: Vector #4 Bool;
 v4 = vreplicate True;
 
+v2x4 :: Vector #2 (Vector #4 Bool);
+v2x4 = vreplicate v4;
+
 testvector :: Test ();
 testvector = do {
     t "vecreplen" (4 == vlength v4);
-    t "vecdum" True;
+    t "vecconcat" (8 == vlength (vconcat v2x4));
     };
 
 shadowmeth :: Integer;

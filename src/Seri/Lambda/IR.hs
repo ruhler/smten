@@ -141,6 +141,7 @@ nteval :: NType -> Integer
 nteval (ConNT i) = i
 nteval (VarNT {}) = error $ "nteval: non-concrete numeric type"
 nteval (AppNT "+" a b) = nteval a + nteval b
+nteval (AppNT "-" a b) = nteval a - nteval b
 nteval (AppNT "*" a b) = nteval a * nteval b
-nteval (AppNT f a b) = error $ "unknown AppNT op: " ++ f
+nteval (AppNT f a b) = error $ "nteval: unknown AppNT op: " ++ f
 
