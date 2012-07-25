@@ -2,7 +2,7 @@
 -- | Library for supporting seri numeric types in the haskell target.
 module Seri.Target.Haskell.Lib.Numeric (
     N__(..), N__0(..), N__2p0(..), N__2p1(..),
-    N__PLUS(..), N__TIMES(..),
+    N__PLUS(..), N__MINUS(..), N__TIMES(..),
     ) where
 
 class N__ a where
@@ -13,6 +13,7 @@ data N__0 = N__0
 data N__2p0 n = N__2p0 n
 data N__2p1 n = N__2p1 n
 data N__PLUS a b = N__PLUS a b
+data N__MINUS a b = N__MINUS a b
 data N__TIMES a b = N__TIMES a b
 
 instance N__ N__0 where
@@ -30,6 +31,10 @@ instance (N__ n) => N__ (N__2p1 n) where
 instance (N__ a, N__ b) => N__ (N__PLUS a b) where
     valueof (N__PLUS a b) = valueof a + valueof b
     numeric = N__PLUS numeric numeric
+
+instance (N__ a, N__ b) => N__ (N__MINUS a b) where
+    valueof (N__MINUS a b) = valueof a - valueof b
+    numeric = N__MINUS numeric numeric
     
 instance (N__ a, N__ b) => N__ (N__TIMES a b) where
     valueof (N__TIMES a b) = valueof a * valueof b

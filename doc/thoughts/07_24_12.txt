@@ -321,3 +321,9 @@ my implementation either. I should try running vconcat and see what happens.
 We may end up with a call to numeric with a funny type, like ~134 or some
 such, which it doesn't know how to handle.
 
+Perhaps this issue would be solved if I made explicit the math I'm trying to
+use. That would tell haskell what types I expect it to use for the vtid thing.
+
+Yes, I should try doing that. I want to do it anyway, for safety reasons, or
+what have you.
+ 

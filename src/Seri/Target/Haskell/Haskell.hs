@@ -94,6 +94,7 @@ hsType c (NumT (AppNT f a b)) = do
     b' <- hsType c (NumT b)
     let f' = case f of
                 "+" -> H.ConT $ H.mkName "N__PLUS"
+                "-" -> H.ConT $ H.mkName "N__MINUS"
                 "*" -> H.ConT $ H.mkName "N__TIMES"
                 _ -> error $ "hsType TODO: AppNT " ++ f
     return $ H.AppT (H.AppT f' a') b'

@@ -33,8 +33,11 @@ vappend (Vector _ a) (Vector _ b) = Vector numeric (a ++ b);
 ntvid :: Vector #n a -> Vector #m a;
 ntvid (Vector n xs) = Vector (ntid n) xs;
 
+tdec :: #n -> #(n-1);
+tdec _ = numeric;
+
 vconcat :: Vector #n (Vector #m a) -> Vector #(n*m) a;
-vconcat (Vector _ (v:vs)) = ntvid $ vappend v (vconcat (Vector numeric vs));
+vconcat (Vector n (v:vs)) = ntvid $ vappend v (vconcat (Vector (tdec n) vs));
 
 vlength :: Vector #n a -> Integer;
 vlength (Vector n _) = valueof n;
