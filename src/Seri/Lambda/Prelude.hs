@@ -82,11 +82,11 @@ tupE :: [Exp] -> Exp
 tupE [] = error $ "tupE on empty list"
 tupE [x] = x
 tupE es@(_:_:_) =
-    let n = length es
-        name = "(" ++ replicate (n-1) ',' ++ ")"
-        types = map typeof es
-        ttype = arrowsT (types ++ [foldl AppT (ConT name) types])
-    in foldl AppE (ConE (Sig name ttype)) es
+  let n = length es
+      name = "(" ++ replicate (n-1) ',' ++ ")"
+      types = map typeof es
+      ttype = arrowsT (types ++ [tupT types])
+  in foldl AppE (ConE (Sig name ttype)) es
 
 -- | (a, b, ... )
 -- There must be at least one pattern given.

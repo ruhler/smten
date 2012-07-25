@@ -44,6 +44,7 @@ import Seri.Lambda.IR
 import Seri.Lambda.Modularity
 import Seri.Lambda.Prelude
 import Seri.Lambda.Sugar
+import Seri.Lambda.Types
 
 import Seri.Lambda.Parser.Monad
 import Seri.Lambda.Parser.Lexer
@@ -131,8 +132,10 @@ topdecl :: { [PDec] }
     { [PDec ds | ds <- recordD $2 (fromMaybe [] $3) (fromMaybe [] $5)] }
  | 'class' tycls tyvars 'where' '{' cdecls opt(';') '}'
     { [PDec (ClassD $2 $3 $6)] }
- | 'instance' opt(context) class 'where' '{' idecls opt(';') '}'
-    { [PDec (InstD (fromMaybe [] $2) $3 (icoalesce $6))] }
+ | 'instance' class 'where' '{' idecls opt(';') '}'
+    { [PDec (InstD [] $2 (icoalesce $5))] }
+ | 'instance' context class 'where' '{' idecls opt(';') '}'
+    { [PDec (InstD $2 $3 (icoalesce $6))] }
  | decl
     { [$1] }
 
@@ -196,11 +199,9 @@ atype :: { Type }
  | tyvarnm
     { VarT $1 }
  | '(' types_commasep ')'
-    { foldl AppT (ConT $ "(" ++ replicate (length $2 - 1) ',' ++ ")") $2 }
+    { tupT $2 }     -- takes care of '(' type ')' case too.
  | '[' type ']'
     { AppT (ConT "[]") $2 }
- | '(' type ')'
-    { $2 }
  | '#' antype
     { NumT $2 }
 
@@ -230,9 +231,16 @@ gtycon :: { String }
  | '(' commas ')'
     { "(" ++ $2 ++ ")" }
 
+-- context is treated as a btype to avoid conflicts like:
+--      (Foo Bar) -> ...
+-- vs.  (Foo Bar) => ...
+--
 context :: { [Class] }
- : '(' classes_commasep ')' '=>'
-    { $2 }
+ : btype '=>'
+    {% case attempt $ mkContext $1 of
+         Right x -> return x
+         Left msg -> lfailE msg
+    }
 
 class :: { Class }
  : qtycls atypes
@@ -509,12 +517,6 @@ types_commasep :: { [Type] }
  | types_commasep ',' type
     { $1 ++ [$3] }
 
-classes_commasep :: { [Class] }
- : class
-    { [$1] }
- | classes_commasep ',' class
-    { $1 ++ [$3] }
-
 exps_commasep :: { [Exp] }
  : exp
     { [$1] }
@@ -585,6 +587,21 @@ icoalesce ((n, c):ms) =
         rest = icoalesce rms
         m = Method n (clauseE (c : map snd me))
     in (m : rest)
+
+-- A context is parsed first as a type to avoid a reduce/reduce conflict. Here
+-- we turn that type back into a proper context.
+mkContext :: Type -> Failable [Class] 
+mkContext t = 
+  let mkclass :: Type -> Failable Class
+      mkclass t =
+        case unappsT t of
+          (ConT nm):ts -> return $ Class nm ts
+          _ -> fail $ "invalid context"
+
+      classes = untupT t
+  in mapM mkclass classes
+      
+      
 
 parse :: FilePath -> String -> Failable Module
 parse = runParser seri_module

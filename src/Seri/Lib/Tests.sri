@@ -161,6 +161,9 @@ testvector = do {
 shadowmeth :: Integer;
 shadowmeth = let { foo = 3; } in foo;
 
+parsenotctx :: (Maybe Integer -> Bool) -> Bool;
+parsenotctx = undefined;
+
 data Test a = Test a;
 instance Monad Test where {
     fail msg = error msg;

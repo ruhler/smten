@@ -36,7 +36,7 @@
 -- | Utilities for working with Seri Types
 module Seri.Lambda.Types (
     appsT, arrowsT, outputT, unappsT, unarrowsT,
-    listT, integerT, charT, stringT,
+    listT, integerT, charT, stringT, tupT, untupT,
     Typeof(..), typeofCon,
     assign, assignments, bindingsP, bindingsP', varTs, nvarTs,
     isSubType,
@@ -259,4 +259,21 @@ nvarTs (AppT a b) = nub $ nvarTs a ++ nvarTs b
 nvarTs (NumT (AppNT _ a b)) = nub $ nvarTs (NumT a) ++ nvarTs (NumT b)
 nvarTs (NumT (VarNT n)) = [n]
 nvarTs _ = []
+
+-- | (a, b, ...)
+-- There must be at least one type given.
+--
+-- If exactly one type is given, that type is returned without tupling.
+tupT :: [Type] -> Type
+tupT [] = error $ "tupT on empty list"
+tupT [x] = x
+tupT es = foldl AppT (ConT $ "(" ++ replicate (length es - 1) ',' ++ ")") es
+
+-- | Extract the types [a, b, c, ...] from a tuple type (a, b, c, ...)
+-- If the type is not a tuple type, that single type is returned.
+untupT :: Type -> [Type]
+untupT t = 
+   case unappsT t of
+      (ConT ('(':',':_)):ts -> ts
+      _ -> [t]
 
