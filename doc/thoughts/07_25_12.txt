@@ -1,0 +1,174 @@
+
+Wed Jul 25 09:34:12 EDT 2012
+
+Let me try being more precise about...
+
+Explicit math so I don't have ambiguous types in the expression.
+
+But really, typecheck should make sure we don't have any VarT or VarNT which
+is not bound in the type signature.
+
+So check that:
+
+null (avarTs (exp) \\ avarTs (type))
+  
+I should really do that first.
+
+The trouble is... it's kind of annoying to traverse an entire expression for
+avarTs. I'm getting tired of writing seri traversals.
+
+Wed Jul 25 09:58:51 EDT 2012
+
+Skipping the traversal, I'm still running into problems.
+
+This time, with the type solver. I don't think ntid is enough to get around my
+math problems. Because I'm coming up with a constraint:
+
+#n = #(~32+1)
+
+Now, I'd really like to solve this as:
+
+#~32: #(n-1)
+
+But we don't. We say, oh, now we know #n in terms of ~32, cool. Which isn't
+what I want.
+
+Can I be more clever in how I specify things?
+
+Yes. Apparently I can use 
+tdec :: #n -> #(n-1)
+
+where I can't use:
+
+tdec :: #(n+1) -> #n
+
+Whatever. Let me introduce - then. I'll probably want it anyway.
+
+Wed Jul 25 10:21:06 EDT 2012
+
+Okay! Looks like it works, both in seri and in haskell now. It does require
+some very... specific annotations of numeric types and such to work. I need to
+fix the type checker not to allow ambiguous types.
+
+But it works! We have a form of numeric types. I need to improve the type
+checker. Math issues can be worked around.
+
+What do you say? Pull it into the working tree? Anything more to do with
+numeric types besides fix up the type checker? Should I put math into the
+solver and type checker?
+
+I see no need to for now.
+
+Wed Jul 25 12:55:28 EDT 2012
+
+Let me pull numeric types into master.
+
+The next step is...
+
+Well, I think the next step is performance? Figure out why seri is slow?
+
+Or maintenance.
+
+Anyway, I have bcl up and running. It can generate realistic queries for me.
+Bigger queries. Then I can use that to drive performance improvements...
+
+I'd really rather not until there's a real performance problem, honestly...
+But low hanging fruit might be nice to get.
+
+To make this work, it would be nice to separate the queries out from bcl, make
+them fast on their own first. Once they are fast... but how fast do they need
+to be?
+
+Anyway, assuming the queries are obviously slower than we want, the trick
+would be: have an easy way in bcl to dump the queries to a .sri file. This
+means being able to read in pretty printed code. That would be useful for
+other reasons too.
+
+How about this... can I have another mode for the parser? Or just allow the
+parser to accept otherwise illegal syntax?
+
+The problems I'm going to have are:
+- unique types allowed in declarations.
+This is easy to allow in the parser.
+The flattener may need to handle it specially, but we maybe want it to handle
+it specially anyway, for dealing with sugar inside and outside of flattening.
+
+- builtins declared.
+They don't need to be.
+An easy fix here would be: don't pretty print the builtins.
+That should actually be a really easy fix.
+
+- No top level module.
+This would work fine if the parser inferred a top level main module. I'm not
+sure it's exactly what we want.
+
+The other option would be: don't parse in as a module, parse in as just a list
+of declarations. I guess it's equivalent to parsing and throwing away the
+import stuff.
+
+I really would rather not have to handle it specially though, but flattening
+will require that.
+
+Oh well. Anyway, let me generate one of Myron's big queries manually, and see
+how much work it is to manually turn it into something seriq2 will accept.
+
+Wed Jul 25 13:14:03 EDT 2012
+
+The other thing I can do is, just print them out as construct. In module form.
+Pre-flattening. That might be even better. Let me try that.
+
+Cool. I think that will work out just fine.
+
+Wed Jul 25 13:28:44 EDT 2012
+
+Problem with parser. We can't parse:
+
+foo :: (Foo Integer -> ...)
+Don't I have a test case for this?
+
+Good. I've managed to replicate the error.
+
+My suspicion: We expect a context, we think we are parsing a context, but then
+it turns out to be a type, because -> is not allowed in a context.
+
+How can I make it work?
+
+Wed Jul 25 14:04:59 EDT 2012
+
+Yes. I looked at the grammar info. Most of the reduce reduce conflicts are
+because of this problem.
+
+var '::' type
+var '::' context type
+
+But context and type look the same to start with.
+
+I feel like what we could do is...
+Parse a comma separated list of types, in parenthesis.
+Then parse a '->' or '=>'?
+
+How does the haskell parser handle this?
+
+Aha. So they parse a context as a type. You don't need comma separation. Then,
+given the type, your convert it to a context.
+
+I should do that.
+
+How to convert a type to a context?
+
+untupT it, to get a list of what should be classes.
+unappsT each of those, to get a class name and args.
+
+Easy.
+
+Shall I try it? I think so.
+
+Well, the reduce/reduce conflicts go away, but now I have a problem with
+instances with contexts. We assume we are getting a context, but we aren't, so
+when we... well, we should shift when we get a where, right?
+
+Not using 'opt' makes it work again, but introduces the conflict again too.
+Now we can't tell the difference between a class and a context (before it was
+a type and a context). Oh well. Maybe this helped make forward progress where
+I wanted it, and I can deal with the reduce/reduce problem later.
+

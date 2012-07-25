@@ -1,0 +1,71 @@
+
+module Seri.SMT.Tests.BCL.Portal where {
+
+import Seri.Lib.Prelude;
+
+data Portal a b = Portal{ dbx     :: Bool
+                        , istream :: (Integer -> a)
+                        , ptr     :: Integer
+                        , pid     :: Integer };
+
+
+instance (Eq a, Eq b) => Eq (Portal a b) where {
+  (==) a b = (dbx a == dbx b) && 
+             ((ptr a == ptr b) &&
+              ((pid a == pid b)));
+  (/=) a b = not (a == b);
+};
+
+mkPortal___Portal__Int_32__Int_32_ctor :: Integer -> Integer -> Integer -> Portal Integer Integer;
+mkPortal___Portal__Int_32__Int_32_ctor tx_sz rx_sz id = Portal False undefined 0 id;
+
+mkPortal___Portal__Int_32__Int_32_dimension :: Portal Integer Integer -> Portal Integer Integer -> Bool;
+mkPortal___Portal__Int_32__Int_32_dimension a b = True;
+
+mkPortal___Portal__Int_32__Int_32_eq :: Portal Integer Integer -> Portal Integer Integer -> Bool;
+mkPortal___Portal__Int_32__Int_32_eq a b = True;
+
+mkPortal___Portal__Int_32__Int_32_clear_dirty_bits :: Portal Integer Integer -> Portal Integer Integer;
+mkPortal___Portal__Int_32__Int_32_clear_dirty_bits a = a;
+
+mkPortal___Portal__Int_32__Int_32_idfn :: Portal Integer Integer -> Portal Integer Integer;
+mkPortal___Portal__Int_32__Int_32_idfn a = a;
+
+merge_p_mkPortal___Portal__Int_32__Int_32 :: Portal Integer Integer -> Portal Integer Integer -> Portal Integer Integer;
+merge_p_mkPortal___Portal__Int_32__Int_32 a b = a;
+
+peek_val_mkPortal___Portal__Int_32__Int_32 :: Portal Integer Integer -> Integer;
+peek_val_mkPortal___Portal__Int_32__Int_32 a = 0;
+
+peek_guard_mkPortal___Portal__Int_32__Int_32 :: Portal Integer Integer -> Bool;
+peek_guard_mkPortal___Portal__Int_32__Int_32 a = True;
+
+canPop_val_mkPortal___Portal__Int_32__Int_32 :: Portal Integer Integer -> Bool;
+canPop_val_mkPortal___Portal__Int_32__Int_32 a = True;
+
+canPop_guard_mkPortal___Portal__Int_32__Int_32 :: Portal Integer Integer -> Bool;
+canPop_guard_mkPortal___Portal__Int_32__Int_32 a = True;
+
+canPush_val_mkPortal___Portal__Int_32__Int_32 :: Portal Integer Integer -> Bool;
+canPush_val_mkPortal___Portal__Int_32__Int_32 a = True;
+
+canPush_guard_mkPortal___Portal__Int_32__Int_32 :: Portal Integer Integer -> Bool;
+canPush_guard_mkPortal___Portal__Int_32__Int_32 a = True;
+
+pop_mkPortal___Portal__Int_32__Int_32 :: Portal Integer Integer -> (Bool,Portal Integer Integer, ());
+pop_mkPortal___Portal__Int_32__Int_32 a = (True, a, ());
+
+push_mkPortal___Portal__Int_32__Int_32 :: Integer -> Portal Integer Integer -> (Bool,Portal Integer Integer, ());
+push_mkPortal___Portal__Int_32__Int_32 x a = (True, a, ());
+
+crank_mkPortal___Portal__Int_32__Int_32 :: Portal Integer Integer -> (Bool,Portal Integer Integer, ());
+crank_mkPortal___Portal__Int_32__Int_32 a = (True, a, ());
+
+canCrank_val_mkPortal___Portal__Int_32__Int_32 :: Portal Integer Integer -> Bool;
+canCrank_val_mkPortal___Portal__Int_32__Int_32 a = True;
+
+canCrank_guard_mkPortal___Portal__Int_32__Int_32 :: Portal Integer Integer -> Bool;
+canCrank_guard_mkPortal___Portal__Int_32__Int_32 a = True;
+
+
+}

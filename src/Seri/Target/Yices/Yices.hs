@@ -226,6 +226,10 @@ yExp e@(AppE a b) =
            a' <- yExp a
            b' <- yExp b
            return (Y.subE a' b')
+       [VarE (Sig "Seri.Lib.Prelude.__prim_mul_Integer" _), a, b] -> do
+           a' <- yExp a
+           b' <- yExp b
+           return (Y.mulE a' b')
        [VarE (Sig "Seri.Lib.Prelude.__prim_eq_Integer" _), a, b] -> do
            a' <- yExp a
            b' <- yExp b
@@ -331,6 +335,7 @@ yDec (PrimD (TopSig "Seri.Lib.Prelude.<" _ _)) = return ()
 yDec (PrimD (TopSig "Seri.Lib.Prelude.>" _ _)) = return ()
 yDec (PrimD (TopSig "Seri.Lib.Prelude.__prim_add_Integer" _ _)) = return ()
 yDec (PrimD (TopSig "Seri.Lib.Prelude.__prim_sub_Integer" _ _)) = return ()
+yDec (PrimD (TopSig "Seri.Lib.Prelude.__prim_mul_Integer" _ _)) = return ()
 yDec (PrimD (TopSig "Seri.Lib.Prelude.__prim_eq_Integer" _ _)) = return ()
 yDec (PrimD (TopSig "~error" _ _)) = return ()
 yDec (PrimD (TopSig "Seri.SMT.Array.update" _ _)) = return ()

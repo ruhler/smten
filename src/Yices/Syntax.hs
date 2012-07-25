@@ -44,7 +44,7 @@ module Yices.Syntax (
     Symbol, Command(..), Typedef(..), Type(..), Expression(..),
     VarDecl, Binding, ImmediateValue(..),
     trueE, varE, integerE, selectE, eqE, andE, ifE, ltE, gtE,
-    addE, subE,
+    addE, subE, mulE,
     tupleE, tupleUpdateE,
     pretty,
   ) where
@@ -150,6 +150,10 @@ addE a b = FunctionE (varE "+") [a, b]
 -- | > (- <exprsesion> <expression>)
 subE :: Expression -> Expression -> Expression
 subE a b = FunctionE (varE "-") [a, b]
+
+-- | > (- <exprsesion> <expression>)
+mulE :: Expression -> Expression -> Expression
+mulE a b = FunctionE (varE "*") [a, b]
 
 -- | Convert an abstract syntactic construct to concrete yices syntax.
 class Concrete a where
