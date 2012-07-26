@@ -57,37 +57,27 @@ elaborate :: Env   -- ^ context under which to evaluate the expression
           -> Exp   -- ^ expression to evaluate
           -> Exp   -- ^ elaborated expression
 elaborate env e =
-  let elaborated =
+  let elabme = elaborate env
+
+      elaborated =
         case e of
           LitE {} -> e
           CaseE x ms ->
-              let rx = elaborate env x
-   
-                  -- Don't make a case statement empty, because we want to 
-                  -- keep enough information to determine the type of the
-                  -- case statement.
-                  -- TODO: maybe we should return "error" instead?
-                  domatch :: [Match] -> (MatchResult, Either Exp [Match])
-                  domatch (m@(Match p b):ms) =
-                      case match p rx of
-                        Failed ->
-                          if null ms
-                            then (Failed, Right [m])
-                            else domatch ms
-                        mr@(Succeeded {}) -> (mr, Left b)
-                        mr -> (mr, Right $ m:ms)
-              in case (domatch ms) of
-                    (Succeeded vs, Left b) -> elaborate env $ reduces vs b
-                    (_, Right ms') ->
-                      if null env
-                          then CaseE rx [Match p (simplify b) | Match p b <- ms']
-                          else CaseE rx ms'
+            let rx = elabme x
+            in case (matches rx ms) of
+               -- TODO: return error if no alternative matches?
+               NoMatched -> CaseE x [last ms]
+               Matched vs b -> elabme $ reduces vs b
+               UnMatched ms' -> 
+                 if null env
+                     then CaseE rx [Match p (simplify b) | Match p b <- ms']
+                     else CaseE rx ms'
           AppE a b ->
-              case (elaborate env a, elaborate env b) of
+              case (elabme a, elabme b) of
                 (LamE (Sig name _) body, rb) ->
                    let freenames = map (\(Sig n _) -> n) (free rb)
                        body' = alpharename (freenames \\ [name]) body
-                   in elaborate env (reduce name rb body')
+                   in elabme (reduce name rb body')
                 (ra, rb) -> AppE ra rb
           LamE s b | null env -> LamE s (simplify b)
           LamE {} -> e
@@ -96,7 +86,7 @@ elaborate env e =
           VarE s@(Sig _ ct) ->
               case (attemptM $ lookupVar env s) of
                 Nothing -> e
-                Just (pt, ve) -> elaborate env $ assign (assignments pt ct) ve 
+                Just (pt, ve) -> elabme $ assign (assignments pt ct) ve 
 
       deprimed =
         case unappsE elaborated of
@@ -113,10 +103,23 @@ elaborate env e =
           [VarE (Sig "Seri.Lib.Prelude.__prim_eq_Integer" _), LitE (IntegerL ia), LitE (IntegerL ib)] -> Just $ boolE (ia == ib)
           _ -> Nothing
   in case deprimed of
-       Just x -> elaborate env x
+       Just x -> elabme x
        Nothing -> elaborated
         
 data MatchResult = Failed | Succeeded [(Name, Exp)] | Unknown
+data MatchesResult
+ = Matched [(Name, Exp)] Exp
+ | UnMatched [Match]
+ | NoMatched
+
+-- Match an expression against a sequence of alternatives.
+matches :: Exp -> [Match] -> MatchesResult
+matches _ [] = NoMatched
+matches x ms@((Match p b):_) =
+  case match p x of 
+    Failed -> matches x (tail ms)
+    Succeeded vs -> Matched vs b
+    Unknown -> UnMatched ms
 
 -- Match an expression against a pattern.
 match :: Pat -> Exp -> MatchResult
