@@ -37,6 +37,8 @@ module Seri.Target.Haskell.Compiler (
     HCompiler, Compiler(..), compilers, compile_decs, hsName,
     ) where
 
+import Control.Monad
+
 import Data.Char(isAlphaNum)
 import Data.Maybe
 
@@ -55,9 +57,9 @@ data Compiler e t d = Compiler {
 compilers :: [Compiler e t d] -> Compiler e t d
 compilers [c] = c
 compilers (r:rs) = 
-    let ye c e = compile_exp r c e <|> compile_exp (compilers rs) c e
-        yt c t = compile_type r c t <|> compile_type (compilers rs) c t
-        yd c d = compile_dec r c d <|> compile_dec (compilers rs) c d
+    let ye c e = compile_exp r c e `mplus` compile_exp (compilers rs) c e
+        yt c t = compile_type r c t `mplus` compile_type (compilers rs) c t
+        yd c d = compile_dec r c d `mplus` compile_dec (compilers rs) c d
     in Compiler ye yt yd
 
 compile_decs :: Compiler e t d -> [Dec] -> [d]

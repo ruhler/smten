@@ -118,7 +118,9 @@ yfail :: String -> CompilationM a
 yfail = lift . fail
 
 addcmds :: [Y.Command] -> CompilationM ()
-addcmds cmds = modify $ \ys -> ys { ys_cmds = ys_cmds ys ++ cmds }
+addcmds cmds = do
+    ys <- get
+    put $! ys { ys_cmds = ys_cmds ys ++ cmds }
 
 -- Given some object, compile everything in the environment needed for this
 -- object, and return the monomorphic object.

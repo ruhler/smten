@@ -35,8 +35,10 @@
 
 -- | A monad for dealing with computations which can fail.
 module Seri.Failable (
-    Failable(..), attemptM, attemptIO, surely, onfail, (<|>),
+    Failable(..), attemptM, attemptIO, surely, onfail,
     ) where
+
+import Control.Monad
 
 import System.IO
 import System.Exit
@@ -50,10 +52,17 @@ data Failable a = Failable {
 instance Monad Failable where
     return x = Failable $ Right x
     fail msg = Failable $ Left msg
-    (>>=) (Failable x) f = Failable $ 
+    (>>=) (Failable x) f = Failable $
         case x of
-            Left msg -> Left msg
             Right a -> attempt (f a)
+            Left msg -> Left msg
+
+instance MonadPlus Failable where
+    mzero = fail "Failable mzero"
+    mplus a b =
+      case attemptM a of
+         Just x -> return x
+         Nothing -> b
 
 -- | Attempt a failable computation in a Monad.
 -- fails in the monad if failable fails.
@@ -83,13 +92,4 @@ onfail :: (String -> Failable a) -- ^ f
        -> Failable a
 onfail f (Failable (Left msg)) = f msg
 onfail f c = c
-
--- | Return the result of 'a' if it succeeds, otherwise the result of 'b'.
-(<|>) :: Failable a -- ^ a
-      -> Failable a -- ^ b
-      -> Failable a
-(<|>) a b =
-    case attemptM a of
-       Just x -> return x
-       Nothing -> b
 

@@ -1,0 +1,515 @@
+
+Thu Jul 26 09:36:50 EDT 2012
+
+Status update.
+
+- Waiting for Bruno on yices2 seg fault for bcl progress
+- yices 1 black hole is being ignored for now
+- yices 1 push/pop bug sent to Bruno, no decent workaround found yet
+- elaborator performance issues:
+** take advantage of sharing somehow to reduce var lookups
+** use a better data structure to make var lookups cheaper
+- pvs target on back burner
+- lots of potential bugs to be fixed
+
+I want to start today on elaborator performance issues.
+Goal is to come up with a way to do sharing to reduce the amount of work the
+elaborator has to do.
+
+Profiling says: most of the time is spent in:
+ - 1. Lookup up variables:
+        lookupValD.theValD:         19.8    0.0
+        theOneOf:                   5.3     0.1
+        lookupVarInfo.answer        5.0    22.3
+
+ - 2. Calling into yices2:
+        check:                      16.4    0.0
+        addcmds:                    4.4    14.9
+
+ - 3. Running type inference
+
+I want to focus in (1) by reducing the number of lookups we have to make. That
+as opposed to reducing the time to make a lookup, which will be the next step.
+
+So, the question is... how can I leverage sharing in elaboration?
+
+And let me limit it to the simple (but I think still substantial) subset of
+sharing which is already explicitly expressed in the code.
+
+When do we end up elaborating expressions multiple times it is otherwise
+obvious they could be elaborated only once?
+
+1. Beta reductions: elaborate the argument fully before doing the reduction.
+
+(\a -> a a a a a) (foo bar)
+
+Elaborate (foo bar), then substitute. That way we share the (foo bar), in this
+case, 5 times.
+
+2. Beta reductions in case statements.
+Same thing as above, only with pattern matches.
+
+case foo bar of
+    Blah a -> a a a a a
+
+You could say elaborate foo bar fully, which I think is good. I wonder if
+that's enough though. Really we want to elaborate the matched variables fully
+too before doing the substitution.
+
+3. Inlining of variables.
+
+x = foo bar
+
+evaluate (x x x x x)
+
+We want to elaborate x fully before inlining. That is, inline the fully
+elaborated version of x.
+
+This gets more complicated when x is a function, and we have different
+arguments.
+
+x = \a -> ...
+
+What does it mean for 'x' to be fully elaborated?
+
+Do you go inside of lambdas and cases?
+
+One problem with going inside lambdas and cases is, if you have recursion,
+then going inside lambdas and cases could lead to an infinite data structure.
+Haskell can handle this because it is lazy, but it becomes rather annoying if
+you ever want to, for example, print out the entire expression.
+
+One thing you don't want to do is beta reductions with terms with free
+variables, because that could create more work for us:
+
+(\a -> a a a) (foo b)
+
+Should not have beta reduction performed on it, because elaboration of (foo b)
+would have to be repeated multiple times, and it could be a complex operation.
+Same goes for beta reductions from case statements.
+
+Another note: self inlining should take advantage of sharing too.
+
+Like, if you have a recursive something:
+
+foo = ... foo ...
+
+Inlining foo should inline the already elaborated one. So full elaboration is
+like a recursive thing:
+  let elaborated = elaborate (reduce "foo" elaborated)
+  in elaborated
+
+Well then, this brings me to a proposal.
+
+I propose there are two kinds of elaboration I want to perform.
+
+1. fully recursive.
+Elaborate everything, inline everything. The only thing we avoid is beta
+reduction with free variables in the arguments. This will lead to infinite
+objects.
+
+2. non fully recursive.
+Elaborate everything, but don't do inline recursion.
+
+Hmm... Do we really want (2)?
+
+If we don't do beta reduction with free variables... then the only place we
+use simplify is after full inlining, so we don't have the recursive problem.
+
+But if, for example, we get stuck on an error, then it will continue trying to
+elaborate the rest of the expression, and if any contain recursive calls, they
+will blow up. So we do need (2) for some things.
+
+Maybe change (2) to: elaborate, but don't go inside lambdas or cases. This is
+what we do for serie, and anything intending to give back an object which the
+user will view.
+
+Note: the elaborate causing the most trouble is the one in runQueryM. To
+figure out what the next query is, not elaboration of the actual query itself.
+
+Thu Jul 26 10:32:29 EDT 2012
+
+There's another issue too, which is re-elaboration. We end up calling
+elaborate lots of times on an already elaborated expression. Does that hurt
+us?
+
+No, I don't think it's the primary cause of hurt, unless we spend lots of time
+lookup up variables which aren't there because we are re-running elaboration
+so much.
+
+Thu Jul 26 10:56:37 EDT 2012
+
+The other thing it would be good to do is use a hash table for lookups. Some
+searching suggests Data.HashTable.ST.Basic is the one I want.
+
+It's in ST. Maybe what I can do is runST, which creates a HashTable, then
+returns the lookup function. Then I can just pass around a lookup function.
+
+In fact, I can abstract it away. So what I really want is something like:
+
+mkFastLookup :: Env -> (Sig -> Failable (Type, Exp))
+
+That's all I need. Then pass that function around with the environment when I
+do my lookups, namely for elaboration.
+
+Thu Jul 26 11:02:28 EDT 2012
+
+Okay, so I have a couple of proposals in. Shall I give them a try? See what
+happens?
+
+Why not?
+
+Versions of elaborate:
+- elaborate without going inside lambdas or cases.
+This is like minimum elaboration. Used by serie.
+
+- elaborate fully assuming a fully elaborated environment.
+Goes inside lambas and cases. Does everything except beta reduction with free
+variables.
+
+- generate a fully elaborated environment.
+
+When we create a querier, we store a fully elaborated environment.
+When we run elaboration, we do full elaboration.
+
+And the goal here is to see how many fewer times elaborate is called, or how
+many fewer times lookupVar is called.
+
+Okay? Fine. Wish me luck.
+
+Thu Jul 26 12:07:52 EDT 2012
+
+Needs some work.
+1. There's a bug in the yices1 code I should look into.
+What's different from before? Am I elaborating to little? Too much? Why?
+2. I think I should add extra info to figure out of an expression has a free
+variable or not. We only want to do beta reduction if the expression doesn't
+have a free variable (in lambdas and cases). For now I'm just doing the
+inefficient always do beta reduction, which should work, but I expect does
+more work than it ought to be doing.
+
+Thu Jul 26 12:57:23 EDT 2012
+
+They're both the same issue. (1) is running into the alpha renaming problem.
+This should go away if I don't do beta reduction on arguments with free
+variables, because it's those variables which are getting captured in bad
+ways.
+
+So let me just add another arg to elaborate, which is hidden, which is the
+free variables in scope. Before beta reduction, get the list of free
+variables, if any are in scope, don't do the reduction.
+
+That should, I believe, resolve the alpha renaming issue.
+
+Thu Jul 26 13:13:49 EDT 2012
+
+Well, so there's a problem.
+
+Let me try to understand it first better than I do now.
+
+Okay, so I have something like:
+    case free of
+      a -> (\f -> a) a
+
+We don't elaborate away the lambda, even though it's applied.
+
+One solution would be to fix the elaborator. I think a simpler one would be
+support applied lambdas in yices by using let. So let me take that route
+instead.
+
+Thu Jul 26 13:55:00 EDT 2012
+
+I think I have a bug in the elaborator. I think that's the real issue.
+
+We have the expression:
+  do f' <- enq f a
+     return (TState a f' b)
+
+This is getting elaborated to:
+
+case
+ case (
+    (\(f' :: FIFO2 Integer) -> (Just :: TState -> Maybe TState) ((TState :: Integer -> FIFO2 Integer -> Integer -> TState) (a :: Integer) (f' :: FIFO2 Integer) (b :: Integer))), (a :: Integer))
+    of {
+       (FIFO2_Full _ _, _) -> (Nothing :: Maybe (FIFO2 Integer));
+     }
+ of {
+  (Just :: Maybe (FIFO2 Integer)) (x :: FIFO2 Integer) ->
+    (Just :: TState -> Maybe TState) ((TState :: Integer -> FIFO2 Integer -> Integer -> TState) (a :: Integer) (x :: FIFO2 Integer) (b :: Integer));
+  (Nothing :: Maybe (FIFO2 Integer)) ->
+    (Nothing :: Maybe TState);
+};
+
+It's badly typed!
+
+I expect something like:
+
+(>>=) (enq f a) (\f' -> return (TState a f' b))
+
+case (enq f a) of
+  Just x -> Just (TState a x b)
+  Nothing -> Nothing
+
+Okay, so the body is there, but enq f a...
+
+enq f a
+
+    
+case (
+   (\(f' :: FIFO2 Integer) -> (Just :: TState -> Maybe TState) ((TState :: Integer -> FIFO2 Integer -> Integer -> TState) (a :: Integer) (f' :: FIFO2 Integer) (b :: Integer))), (a :: Integer))
+   of {
+      (FIFO2_Full _ _, _) -> (Nothing :: Maybe (FIFO2 Integer));
+    }
+
+When I expect:
+
+(\a -> \b ->
+  case (a, b) of
+    (FIFO2_Empty, x) -> Just (FIFO2_Single x);
+    (FIFO2_Single y, x) -> Just (FIFO2_Full y x);
+    (FIFO2_Full _ _, _) -> Nothing
+) f a
+
+(\b ->
+  case (f, b) of
+    (FIFO2_Empty, x) -> Just (FIFO2_Single x);
+    (FIFO2_Single y, x) -> Just (FIFO2_Full y x);
+    (FIFO2_Full _ _, _) -> Nothing
+) a
+
+case (f, a) of
+    (FIFO2_Empty, x) -> Just (FIFO2_Single x);
+    (FIFO2_Single y, x) -> Just (FIFO2_Full y x);
+    (FIFO2_Full _ _, _) -> Nothing
+    
+Very clearly something has gone wrong here.
+
+How can I track it down?
+     
+Oh. I see a bug. When I go inside a case statement for full elaboration, I
+need to indicate the free variables.
+
+Thu Jul 26 14:16:59 EDT 2012
+
+Okay, so that brings us to the next issue.
+
+Imagine we have the following expression:
+
+case free of 
+  c -> (let a = foo in \b -> blah a b) c
+
+I would like this to simplify to:
+
+case free of
+  c -> let a = foo in blah a c
+
+It desugars to:
+
+case free of
+  (c, d) -> ((\a -> (\b -> blah a b)) c) d
+
+What's going on here? Can we simplify?
+
+c, d are free
+
+Application:
+
+Simplify the arg:
+ (\a -> (\b -> blah a b)) c
+
+Application, but! because 'c' is free, we don't do it!
+
+So, it looks like the elaborator works the way I think it should.
+And looks like the problem is there...
+
+For the elaborator to simplify this, we need alpha renaming in general.
+
+The other question is, instead of the elaborator simplifying this, can the
+yices target simplify this?
+
+It should do something like:
+
+  (let a = c 
+  in (\b -> blah a b)) d
+
+Should simplify to...
+
+Hum.
+
+I think we need alpha renaming. I think this is a case where we want alpha
+renaming to be performed, because it can get rid of lambdas like the one here
+that otherwise would not be gotten rid of.
+
+But! I would argue we don't always want alpha renaming.
+
+So, perhaps we should introduce another elaboration mode.
+One which does alpha renaming. Another which doesn't.
+
+For now, let's just say Full does alpha renaming, but I'll make it very clear
+where and when I have to do the alpha renaming?
+
+Hopefully that will work.
+
+Thu Jul 26 14:59:12 EDT 2012
+
+Okay, that seems to have worked... but I'm not sure things are much faster
+yet.
+
+Let me get a profile, just to see where we are now.
+
+Thu Jul 26 15:04:02 EDT 2012
+
+Okay! so, minor improvements, but I think they are good ones.
+
+Next step is, hopefully, the big one.
+
+I want a function which does...
+Given an environment, return a new environment which is that environment where
+every value is fully elaborated.
+
+But, what I mean by fully elaborated is... no beta reduction if an expression
+contains any free variables?
+
+Or, perhaps I should do it in two steps. First is, fully elaborated. Like,
+fully fully. I fear we loose sharing here whenever we do beta reduction when
+the argument contains free variables.
+
+Perhaps what I should do is have rename return a boolean indicating if
+anything was renamed. So, do the rename, if anything was renamed, then don't
+finish the reduction.
+
+Anyway, I can get to that when I get to that.
+
+So the plan now is...
+
+elabfull :: Env -> Env
+fully elaborates every value thing.
+
+Then use that when I make the compilation thing, to speed up stuff.
+
+Sound good? Let's see what happens then.
+
+Thu Jul 26 15:45:36 EDT 2012
+
+It doesn't help. All this work... has done very little.
+
+Let me roll this back, as it's pretty clunky.
+
+Thu Jul 26 15:47:40 EDT 2012
+
+Okay, so either I didn't get the env elab thing right, or it just doesn't help
+as much as I want.
+
+Let's then switch gears and try to do this thing with the hash table for
+variable lookups.
+
+Because clearly lookups are what is taking the most time.
+
+So, I know what I want:
+
+mkFastLookup :: Env -> (Sig -> Failable (Type, Exp))
+
+Now then, how to construct it?
+
+I'll create a hash table. Now, for each declaration, I'll add some stuff to
+the hash table. I want to put onto the hash table functions I suppose. From
+Type to Failable (Type, Exp)
+
+PrimD: \_ -> fail $ "lookupVar: " ++ n ++ " is primitive"
+ValD (TopSig _ _ t) v: \_ -> (t, v)
+DataD: nothing
+ClassD:
+
+Well... you know, I could start by making the lookupVar implementation much
+cleaner, don't you think?
+
+But I don't understand. What does this return?
+
+I think for a specific instance, it returns the appropriate type?
+
+So, for example, if I lookup (+ "Integer -> Integer -> Integer"),
+oh, it has to know what the right thing expression to look up is.
+
+So, we return the type for the class, but we use the type to figure out which
+instance it belongs to.
+
+Perhaps we want to construct a couple hash tables?
+Because for classes, we don't know what the expression is.
+
+If I'm storing functions in each table though, that could make things easier?
+
+Well, to start, I think I can implement things better in Env. That would be
+good, because it would help all around. Maybe start out with that.
+
+Start with: lookupVarInfo.
+
+Linear search the environment (once):
+We can assume there's only one of each thing. The flattener will handle that
+for us.
+ - ValD - return Declared
+ - PrimD - return Primitive
+ - ClassD - look in each Sig
+      sig: - based on assignments, return Instance.
+
+That should help us a bit I suspect.
+
+Cool, let me try that out.
+
+If I can make it fast without fancy stuff, that would be cool.
+
+Thu Jul 26 16:26:44 EDT 2012
+
+Well, real time doesn't seem to have improved, but time spent in var lookup
+seems much improved, and the memory footprint seems to be much smaller, which
+is always nice.
+
+Let me read the latest profile, see what's taking time now.
+
+Thu Jul 26 16:31:08 EDT 2012
+
+60% query
+25% type inference
+10% loading (parser is slow?)
+5%  type check
+
+There abouts.
+
+Query breaks down as:
+ 25% check  (yices) 
+ 20% yicese
+
+Seri.Failable bind is getting rather a bit of slowness for some reason in
+yicesE. Am I using it so heavily? Perhaps we just have rather large
+expressions?
+
+addcmds.
+Some time in monomorphic. I bet we are doing more monomorphic than we need to.
+It might be good to allow partial monomorphism. Say: All this is already done,
+just do what rest you need to.
+
+The ffi seems to be taking up a bunch of time now. I suspect it's these big
+queries being sent to yices.
+
+Aha!
+
+Now I think I've got a place I can do better.
+
+lookupVar, when it calls lookupValD. If I make it look just like
+lookupVarInfo, instead of reusing lookupVarInfo, I can lookup the val right
+then. That ought to help a bunch?
+
+Well, maybe not, because we still spend a bunch of time in lookupVarInfo.
+Suggesting a hash map could still help us a bunch.
+
+Thu Jul 26 16:44:54 EDT 2012
+
+Another idea: don't search the entire environment for everything. Just search
+until we find something.
+
+Thu Jul 26 17:01:58 EDT 2012
+
+Did more minor changes, let's see how that looks now.
+
+I can do even better. For looking up the varInfo of a method, I can search for
+the ClassD and InstD together at the same time.
+

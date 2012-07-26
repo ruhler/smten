@@ -50,6 +50,8 @@ module Seri.Lambda.Env (
 
 import Debug.Trace
 
+import Control.Monad
+
 import Data.Generics
 import Data.List(nub, partition)
 import Data.Maybe
@@ -79,10 +81,8 @@ data VarInfo = Primitive |  Declared | Instance Class
 theOneOf :: String -> String -> (Dec -> Bool) -> Env -> Failable Dec
 theOneOf kind n p env =
     case filter p env of
-        [x] -> return x
         [] -> fail $ kind ++ " for " ++ n ++ " not found"
-        xs -> fail $ "Multiple definitions for " ++ n ++ " found: " ++ concatMap pretty xs
-
+        x -> return $ head x
 
 -- | Look up a ValD with given Name in the given Environment.
 lookupValD :: Env -> Name -> Failable Dec
@@ -145,25 +145,29 @@ lookupSig env cls meth =
 --
 -- Fails if the variable could not be found in the environment.
 lookupVar :: Env -> Sig -> Failable (Type, Exp)
-lookupVar env s@(Sig n _) = do
-    vi <- lookupVarInfo env s
-    case vi of
-        Primitive -> fail $ "lookupVar: " ++ n ++ " is primitive"
-        Declared -> do
-            (ValD (TopSig _ _ t) v) <- lookupValD env n
-            return (t, v)
-        (Instance cls@(Class cn ts)) ->
-            let mlook :: [Method] -> Failable (Type, Exp)
-                mlook [] = fail $ "method " ++ n ++ " not found"
-                mlook ((Method nm body):ms) | nm == n = do
-                    t <- lookupSig env cn n
-                    return (t, body)
-                mlook (m:ms) = mlook ms
-            in do
-                InstD _ (Class _ pts) ms <- lookupInstD env cls
-                (t, e) <- mlook ms
-                let assigns = concat [assignments p c | (p, c) <- zip pts ts]
-                return (t, assign assigns e)
+lookupVar env s@(Sig n t) =
+  let failed = fail $ "Variable " ++ n ++ " not found"
+
+      checkDec :: Dec -> Failable (Type, Exp)
+      checkDec (ValD (TopSig nm _ t) v) | nm == n = return (t, v)
+      checkDec (PrimD (TopSig nm _ _)) | nm == n
+            = fail $ "lookupVar: " ++ n ++ " is primitive"
+      checkDec (ClassD cn cts sigs) =
+         case filter (\(TopSig sn _ _) -> sn == n) sigs of
+            [] -> failed
+            [TopSig _ _ st] -> 
+                let ts = assign (assignments st t) (map tyVarType cts)
+
+                    mlook :: Method -> Failable Exp
+                    mlook (Method nm body) | nm == n = return body
+                    mlook _ = fail "mlook"
+                in do
+                    InstD _ (Class _ pts) ms <- lookupInstD env (Class cn ts)
+                    e <- msum (map mlook ms)
+                    let assigns = concat [assignments p c | (p, c) <- zip pts ts]
+                    return (st, assign assigns e)
+      checkDec _ = failed
+  in msum (map checkDec env)
 
 -- | Look up the value of a variable in an environment.
 lookupVarValue :: Env -> Sig -> Failable Exp
@@ -277,23 +281,19 @@ lookupDataConType decs n =
 -- | Look up VarInfo for the variable with given signature.
 -- Fails if the variable is not declared or an instance or primitive.
 lookupVarInfo :: Env -> Sig -> Failable VarInfo
-lookupVarInfo env (Sig n t)
-  = case (attemptM $ lookupValD env n, attemptM $ lookupPrimD env n) of
-        (Just _, _) -> return Declared
-        (_, Just _) -> return Primitive
-        _ ->
-          let getSig :: Dec -> Maybe (Name, [TyVar], Type)
-              getSig (ClassD cn cts sigs) =
-                case filter (\(TopSig sn _ _) -> sn == n) sigs of
-                    [] -> Nothing
-                    [TopSig _ _ t] -> Just (cn, cts, t)
-              getSig _ = Nothing
+lookupVarInfo env (Sig n t) =
+  let failed = fail $ "Variable " ++ n ++ " not found in environment"
 
-              answer = listToMaybe (catMaybes (map getSig env))
-          in case answer of 
-              Nothing -> fail $ "Variable " ++ n ++ " not found in the environment"
-              Just (cn, cts, st) ->
-                 let assigns = assignments st t
-                     cts' = assign assigns (map tyVarType cts)
-                 in return $ Instance (Class cn cts')
+      checkDec :: Dec -> Failable VarInfo
+      checkDec (ValD (TopSig nm _ _) _) | nm == n = return Declared
+      checkDec (PrimD (TopSig nm _ _)) | nm == n = return Primitive
+      checkDec (ClassD cn cts sigs) =
+         case filter (\(TopSig sn _ _) -> sn == n) sigs of
+            [] -> failed
+            [TopSig _ _ st] -> 
+                let assigns = assignments st t
+                    cts' = assign assigns (map tyVarType cts)
+                in return $ Instance (Class cn cts')
+      checkDec _ = failed
+  in msum (map checkDec env)
 
