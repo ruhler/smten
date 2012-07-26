@@ -286,10 +286,7 @@ exp10 :: { Exp }
  : '\\' var_typed '->' exp
     { LamE $2 $4 }
  | 'let' '{' ldecls opt(';') '}' 'in' exp
-    {% case attempt (letE $3 $7) of
-         Right v -> return v    
-         Left msg -> lfailE msg
-    }
+    { letE $3 $7 }
  | 'if' exp 'then' exp 'else' exp
     { ifE $2 $4 $6 }
  | 'case' exp 'of' '{' alts opt(';') '}'

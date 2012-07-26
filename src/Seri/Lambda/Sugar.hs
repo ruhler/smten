@@ -65,22 +65,9 @@ lamE (x:xs) e = LamE x (lamE xs e)
 -- >     n2 = e2
 -- >     ...
 -- > in e
--- TODO: Recursive bindings should not be allowed.
--- Currently we allow them, because the pretty printer has a bug where it
--- generates recursive let bindings, and for now I want to be able to parse
--- those back in.
-letE :: [(Sig, Exp)] -> Exp -> Failable Exp
-letE [] x = return x
-letE ((Sig n t, v):bs) x =
-  let tobind = n : map ((\(Sig n _) -> n) . fst) bs
-      recursive = filter (\(Sig v _) -> v `elem` tobind) (free v)
-  in if null recursive || True
-        then do
-            sub <- letE bs x
-            return (AppE (LamE (Sig n t) sub) v)
-        else fail $ "let expression is recursive in vars: " ++ show recursive
-
-
+letE :: [(Sig, Exp)] -> Exp -> Exp
+letE [] x = x
+letE ((Sig n t, v):bs) x = AppE (LamE (Sig n t) (letE bs x)) v
 
 data Stmt = 
     BindS Sig Exp   -- ^ n <- e

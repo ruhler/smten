@@ -35,7 +35,7 @@
 
 -- | Target for reducing a seri expression to a normal form.
 module Seri.Target.Elaborate.Elaborate (
-    simplify, elaborate,
+    Mode(..), elaborate,
     ) where
 
 import Debug.Trace
@@ -46,30 +46,42 @@ import Data.List(nub, (\\))
 import Seri.Failable
 import Seri.Lambda
 
--- | Simplify an expression as much as possible.
-simplify :: Exp -> Exp
-simplify = elaborate []
+-- | Simple elaboration doesn't do elaboration inside lambdas or unmatched
+-- case alternatives.
+--
+-- Full elaboration fully elaborations inside lambda expressions and case
+-- alternatives. A fully elaborated expression is potentially an infinite
+-- object.
+data Mode = Simple | Full
+    deriving (Show, Eq)
 
--- | Reduce the given expression as much as possible.
--- If the environment is empty, does further simplifications inside lambdas
--- and matches.
-elaborate :: Env   -- ^ context under which to evaluate the expression
+-- | Elaborate an expression under the given mode.
+elaborate :: Mode  -- ^ Elaboration mode
+          -> Env   -- ^ context under which to evaluate the expression
           -> Exp   -- ^ expression to evaluate
           -> Exp   -- ^ elaborated expression
-elaborate env e =
-  let elabme = elaborate env
+elaborate mode env = elaborate' mode env []
+
+elaborate' :: Mode  -- ^ Elaboration mode
+          -> Env   -- ^ context under which to evaluate the expression
+          -> [Name] -- ^ free variables in scope
+          -> Exp   -- ^ expression to evaluate
+          -> Exp   -- ^ elaborated expression
+elaborate' mode env freenms e =
+  let elabme = elaborate' mode env freenms
+      elabmenms nms = elaborate' mode env (nms ++ freenms)
+      elabmenm n = elabmenms [n]
   in case e of
        LitE {} -> e
        CaseE x ms ->
          let rx = elabme x
          in case (matches rx ms) of
             -- TODO: return error if no alternative matches?
-            NoMatched -> CaseE x [last ms]
-            Matched vs b -> elabme $ reduces vs b
-            UnMatched ms' -> 
-              if null env
-                  then CaseE rx [Match p (simplify b) | Match p b <- ms']
-                  else CaseE rx ms'
+            NoMatched -> CaseE rx [last ms]
+            Matched vs b -> elabme $ letE vs b
+            UnMatched ms' | mode == Simple -> CaseE rx ms'
+            UnMatched ms' | mode == Full ->
+                CaseE rx [Match p (elabmenms (bindingsP' p) b) | Match p b <- ms']
        AppE a b ->
            case (elabme a, elabme b) of
              (VarE (Sig "Seri.Lib.Prelude.valueof" t), _) ->
@@ -82,24 +94,25 @@ elaborate env e =
              (AppE (VarE (Sig "Seri.Lib.Prelude.<" _))                  (LitE (IntegerL ia)), LitE (IntegerL ib)) -> boolE (ia < ib)
              (AppE (VarE (Sig "Seri.Lib.Prelude.>" _))                  (LitE (IntegerL ia)), LitE (IntegerL ib)) -> boolE (ia > ib)
              (AppE (VarE (Sig "Seri.Lib.Prelude.__prim_eq_Integer" _))  (LitE (IntegerL ia)), LitE (IntegerL ib)) -> boolE (ia == ib)
+
              (LamE (Sig name _) body, rb) ->
-                let freenames = map (\(Sig n _) -> n) (free rb)
-                    body' = alpharename (freenames \\ [name]) body
-                in elabme (reduce name rb body')
+               let renamed = alpharename (deleteall name freenms) body
+               in elabme (reduce name rb renamed)
+
              (ra, rb) -> AppE ra rb
-       LamE s b | null env -> LamE s (simplify b)
-       LamE {} -> e
+       LamE {} | mode == Simple -> e
+       LamE s@(Sig n _) b | mode == Full -> LamE s (elabmenm n b)
        ConE {} -> e
        VarE (Sig "Seri.Lib.Prelude.numeric" (NumT nt)) -> ConE (Sig ("#" ++ show (nteval nt)) (NumT nt))
-       VarE {} | null env -> e
+       VarE (Sig n _) | n `elem` freenms -> e
        VarE s@(Sig _ ct) ->
            case (attemptM $ lookupVar env s) of
              Nothing -> e
              Just (pt, ve) -> elabme $ assign (assignments pt ct) ve 
         
-data MatchResult = Failed | Succeeded [(Name, Exp)] | Unknown
+data MatchResult = Failed | Succeeded [(Sig, Exp)] | Unknown
 data MatchesResult
- = Matched [(Name, Exp)] Exp
+ = Matched [(Sig, Exp)] Exp
  | UnMatched [Match]
  | NoMatched
 
@@ -122,7 +135,7 @@ match (ConP t n ps) (AppE ae be) | not (null ps)
         (Succeeded _, Failed) -> Failed
         _ -> Unknown
 match (IntegerP i) (LitE (IntegerL i')) | i == i' = Succeeded []
-match (VarP (Sig nm _)) e = Succeeded [(nm, e)]
+match (VarP s) e = Succeeded [(s, e)]
 match (WildP _) _ = Succeeded []
 match _ x | iswhnf x = Failed
 match _ _ = Unknown
@@ -181,6 +194,7 @@ names (VarE (Sig n _)) = [n]
 -- | Rename any variable bindings in the given expression to names which do
 -- not belong to the given list.
 alpharename :: [Name] -> Exp -> Exp
+alpharename [] e = e
 alpharename bad e =
   let isgood :: String -> Bool
       isgood s = not (s `elem` bad)
@@ -218,4 +232,9 @@ alpharename bad e =
       rename bound (VarE (Sig n t)) | n `elem` bound = VarE (Sig (newname n) t) 
       rename _ e@(VarE {}) = e
   in rename [] e
+
+deleteall :: Eq a => a -> [a] -> [a]
+deleteall k [] = []
+deleteall k (x:xs) | k == x = deleteall k xs
+deleteall k (x:xs) = x : deleteall k xs
 

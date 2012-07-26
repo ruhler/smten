@@ -38,6 +38,8 @@ module Seri.Target.Yices.Yices (
     yicesN, yicesT, yicesE,
     ) where
 
+import Debug.Trace
+
 import qualified Yices.Syntax as Y
 
 import Data.List ((\\))
@@ -101,10 +103,9 @@ yicesE :: Exp -> CompilationM ([Y.Command], Y.Expression)
 yicesE e = do
     idepth <- gets ys_idepth
     poly <- gets ys_poly
-    let ie = inline idepth poly e
-    let se = simplify ie
+    let se = elaborate Full poly e
     me <- compileNeeded se
-    ye <- yExp me
+    ye <- yExp me 
     cmds <- gets ys_cmds
     modify $ \ys -> ys { ys_cmds = [] }
     return (cmds, ye)
@@ -239,12 +240,16 @@ yExp e@(AppE a b) =
            k' <- yExp k
            v' <- yExp v
            return $ Y.UpdateE f' [k'] v'
+       [LamE (Sig n _) b, arg] -> do
+           arg' <- yExp arg
+           b' <- yExp b
+           return $ Y.LetE [(n, arg')] b'
        _ -> do
            a' <- yExp a
            b' <- yExp b
            return $ Y.FunctionE a' [b']
 yExp l@(LamE (Sig n xt) e) = 
-    error $ "lambda expression in yices2 target generation: " ++ pretty l
+    error $ "lambda expression in yices target generation: " ++ pretty l
 yExp (ConE s) = yCon s []
 yExp (VarE (Sig n _)) = return $ Y.varE (yicesname n)
 
