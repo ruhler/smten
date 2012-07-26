@@ -127,14 +127,20 @@ sep2 :: Doc -> Doc -> Doc
 sep2 a b = a $$ nest tabwidth b
 
 cando :: Exp -> Bool
+cando (AppE (AppE (VarE (Sig "Seri.Lib.Prelude.>>" _)) _) _) = True
 cando (AppE (AppE (VarE (Sig ">>" _)) _) _) = True
+cando (AppE (AppE (VarE (Sig "Seri.Lib.Prelude.>>=" _)) _) (LamE _ _)) = True
 cando (AppE (AppE (VarE (Sig ">>=" _)) _) (LamE _ _)) = True
 cando _ = False
 
 sugardo :: Exp -> [Stmt]
+sugardo (AppE (AppE (VarE (Sig "Seri.Lib.Prelude.>>" _)) m) r)
+    = NoBindS m : sugardo r
 sugardo (AppE (AppE (VarE (Sig ">>" _)) m) r)
     = NoBindS m : sugardo r
 sugardo (AppE (AppE (VarE (Sig ">>=" _)) m) (LamE s r))
+    = BindS s m : sugardo r
+sugardo (AppE (AppE (VarE (Sig "Seri.Lib.Prelude.>>=" _)) m) (LamE s r))
     = BindS s m : sugardo r
 sugardo e = [NoBindS e]
 

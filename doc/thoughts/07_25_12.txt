@@ -172,3 +172,151 @@ Now we can't tell the difference between a class and a context (before it was
 a type and a context). Oh well. Maybe this helped make forward progress where
 I wanted it, and I can deal with the reduce/reduce problem later.
 
+Wed Jul 25 15:16:16 EDT 2012
+
+Trouble. Looks like that yices1 bug is coming back to bite me. The one about
+not knowing the data type declarations ahead of time when doing push and pop.
+
+We can't redeclare after push/pop...
+
+Wed Jul 25 15:44:45 EDT 2012
+
+So, it looks like just the names of the tags are all that can't be redeclared.
+Could I, somehow... pick a different set of name for tags, and redeclare
+everything I need to for yices1?
+
+For example, let's say I have a list of disallowed tags. When we compile for
+yices1, any time I want to use a disallowed tag, I skip it, use an allowed
+one.
+
+It's very hacky, but ...
+
+The other option is to declare all data types ahead of time. But I don't know
+what those need to be, because I may not have all the info ahead of time...
+
+Another option would be, don't declare any types inside push/pop. Only allow
+assertions?
+
+But what if we have nested queryS? We have the same problem.
+But maybe in practice we don't have nested queryS?
+
+The nice thing about not declaring any types inside push/pop is, it should
+work for both yices1 and yices2 just fine.
+
+How would it work in practice?
+
+I'm inside a queryS. For every assertion I make, I can defer the assertion
+into some side thing. Because assertions don't return results.
+
+The problem really happens when I go to call query.. which calls check...
+I have to execute the query, call check, to figure out what the next query
+could be. So at that point I have to commit all the definitions.
+
+Now let's say you go on to make another assertion after your query. Or better
+yet, you go to make a new free variable after your query which is of a type we
+haven't seen before. Then we are stuck.
+
+That is... unless I am willy to: 1. pop. 2. define the data type. 3. reapply
+all our former assertions (which won't work because we have to redefine more
+stuff...) Sadness.
+
+With the current interface, I can't even try to define all the data types at
+the beginning.
+
+What if I defer the first push to the first call to assert. Would that at
+least fix things the way Myron is doing them?
+
+Hmm... I think I know a way I can avoid the problem for now, for the way Myron
+uses it. And it will work for both yices1 and yices2, without undue overhead.
+
+Don't apply any assertions until you call check.
+
+So, any time you get an assertion, no need to run it yet. Just add it to a
+list.
+
+Now, if you run into a queryS or a query, then before doing those things, we
+then compile all the assertions...
+
+No. The whole point is to have a context. So what I want to do is delay the
+call to push until I want to do a check.
+
+I may even want to do multiple pushes.
+
+Okay, so how about this:
+ assert: put it on a defer list
+ queryS:
+    - incr push count
+
+
+ug. I don't know.
+
+Let me wait. Perhaps things will get much nicer.
+
+Let me turn instead back to this performance problem with the elaborator for
+yices2. I have to sample queries which take longer than I would like. I can
+turn on profiling, see how I can reduce them a bit.
+
+Wed Jul 25 16:14:56 EDT 2012
+
+I had a thought. The only reason we need to tell yices about data types, now
+that we do full inlining, is so we can define free variables. That's it.
+
+I can tell, given a queryS, what all the possible types I need are, by just
+looking for all the types of the free function? Right? Yes. Because it is a
+concrete expression. Now, it may do different things depending on the result,
+but what it will not do is some type query I don't know about.
+
+I think that's it. And I think that's a fairly easy, reasonable, yices1/yices2
+applicable solution.
+
+And, it should work with my interface just fine...
+
+Okay, so here's the idea behind how it should work
+To execute a QueryS:
+ - traverse the query for the type of all calls to "free".
+ - compile each type using yicesT, run the commands returned, ignore the type
+   returned.
+ - push
+ - run the query
+ - pop
+
+It's that easy. The only hard part is this annoying part of finding all the
+types for free. Again, it really would be nice to have a generic query...
+
+I can use generics for the query. If it's slow, worry about that then.
+
+Cool! Now, I'm tempted to try this now, because it's so easy...
+
+Let me do it real quick like.
+
+Trouble. I forgot about errors. We need to know the type of every error that
+could fail, which, in general... before elaboration... could be too much.
+
+So I think this solution fails in general.
+
+In other words, for each case statement, we have to know it's input and output
+type. But really we want just the case statements yices1 has to know about.
+
+Could I elaborate the query first? Would that help simplify things? It's
+already fully inlined, so simplification ... but simplification doesn't do
+lambda reduction, does it? Maybe it does. Maybe if I elaborate it first, it
+will actually work.
+
+I don't understand. Why are we generating this err thing which I can't find in
+the query?
+
+Wed Jul 25 17:13:22 EDT 2012
+
+Oh. I know the problem. The problem is, we are asking for the polymorphic
+query before inlining. We really want to ask for the polymorphic query after
+inlining and simplification.
+
+Bugger. So much for that idea.
+
+What if I ran a mock query?
+
+Trouble is, we don't know how to deal with the result of check for a mock
+query.
+
+Oh well. So much for that idea.
+

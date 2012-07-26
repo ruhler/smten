@@ -202,7 +202,7 @@ instance Concrete Expression where
             <+> parens (hsep $ map (concrete v) es) <+> concrete v e
     concrete v (TupleUpdateE t i x)
         = parens $ sep (
-            (text (if v == Yices1 then "update" else "update-tuple"))
+            (text (if v == Yices1 then "update" else "tuple-update"))
               : (map (concrete v) [t, integerE i, x]))
     concrete v (FunctionE f args)
         = parens $ sep ((concrete v f) : (map (concrete v) args))
