@@ -58,53 +58,44 @@ elaborate :: Env   -- ^ context under which to evaluate the expression
           -> Exp   -- ^ elaborated expression
 elaborate env e =
   let elabme = elaborate env
-
-      elaborated =
-        case e of
-          LitE {} -> e
-          CaseE x ms ->
-            let rx = elabme x
-            in case (matches rx ms) of
-               -- TODO: return error if no alternative matches?
-               NoMatched -> CaseE x [last ms]
-               Matched vs b -> elabme $ reduces vs b
-               UnMatched ms' -> 
-                 if null env
-                     then CaseE rx [Match p (simplify b) | Match p b <- ms']
-                     else CaseE rx ms'
-          AppE a b ->
-              case (elabme a, elabme b) of
-                (LamE (Sig name _) body, rb) ->
-                   let freenames = map (\(Sig n _) -> n) (free rb)
-                       body' = alpharename (freenames \\ [name]) body
-                   in elabme (reduce name rb body')
-                (ra, rb) -> AppE ra rb
-          LamE s b | null env -> LamE s (simplify b)
-          LamE {} -> e
-          ConE {} -> e
-          VarE {} | null env -> e
-          VarE s@(Sig _ ct) ->
-              case (attemptM $ lookupVar env s) of
-                Nothing -> e
-                Just (pt, ve) -> elabme $ assign (assignments pt ct) ve 
-
-      deprimed =
-        case unappsE elaborated of
-          [VarE (Sig "Seri.Lib.Prelude.valueof" t), _] ->
-             let NumT nt = head $ unarrowsT t
-             in Just $ integerE (nteval nt)
-          [VarE (Sig "Seri.Lib.Prelude.numeric" (NumT nt))] -> Just $ ConE (Sig ("#" ++ show (nteval nt)) (NumT nt))
-          [VarE (Sig "Seri.Lib.Prelude.__prim_eq_Char" _), LitE (CharL ia), LitE (CharL ib)] -> Just $ boolE (ia == ib)
-          [VarE (Sig "Seri.Lib.Prelude.__prim_add_Integer" _), LitE (IntegerL ia), LitE (IntegerL ib)] -> Just $ integerE (ia + ib)
-          [VarE (Sig "Seri.Lib.Prelude.__prim_sub_Integer" _), LitE (IntegerL ia), LitE (IntegerL ib)] -> Just $ integerE (ia - ib)
-          [VarE (Sig "Seri.Lib.Prelude.__prim_mul_Integer" _), LitE (IntegerL ia), LitE (IntegerL ib)] -> Just $ integerE (ia * ib)
-          [VarE (Sig "Seri.Lib.Prelude.<" _), LitE (IntegerL ia), LitE (IntegerL ib)] -> Just $ boolE (ia < ib)
-          [VarE (Sig "Seri.Lib.Prelude.>" _), LitE (IntegerL ia), LitE (IntegerL ib)] -> Just $ boolE (ia > ib)
-          [VarE (Sig "Seri.Lib.Prelude.__prim_eq_Integer" _), LitE (IntegerL ia), LitE (IntegerL ib)] -> Just $ boolE (ia == ib)
-          _ -> Nothing
-  in case deprimed of
-       Just x -> elabme x
-       Nothing -> elaborated
+  in case e of
+       LitE {} -> e
+       CaseE x ms ->
+         let rx = elabme x
+         in case (matches rx ms) of
+            -- TODO: return error if no alternative matches?
+            NoMatched -> CaseE x [last ms]
+            Matched vs b -> elabme $ reduces vs b
+            UnMatched ms' -> 
+              if null env
+                  then CaseE rx [Match p (simplify b) | Match p b <- ms']
+                  else CaseE rx ms'
+       AppE a b ->
+           case (elabme a, elabme b) of
+             (VarE (Sig "Seri.Lib.Prelude.valueof" t), _) ->
+                let NumT nt = head $ unarrowsT t
+                in integerE (nteval nt)
+             (AppE (VarE (Sig "Seri.Lib.Prelude.__prim_eq_Char" _))     (LitE (CharL ia))   , LitE (CharL ib))    -> boolE (ia == ib)
+             (AppE (VarE (Sig "Seri.Lib.Prelude.__prim_add_Integer" _)) (LitE (IntegerL ia)), LitE (IntegerL ib)) -> integerE (ia + ib)
+             (AppE (VarE (Sig "Seri.Lib.Prelude.__prim_sub_Integer" _)) (LitE (IntegerL ia)), LitE (IntegerL ib)) -> integerE (ia - ib)
+             (AppE (VarE (Sig "Seri.Lib.Prelude.__prim_mul_Integer" _)) (LitE (IntegerL ia)), LitE (IntegerL ib)) -> integerE (ia * ib)
+             (AppE (VarE (Sig "Seri.Lib.Prelude.<" _))                  (LitE (IntegerL ia)), LitE (IntegerL ib)) -> boolE (ia < ib)
+             (AppE (VarE (Sig "Seri.Lib.Prelude.>" _))                  (LitE (IntegerL ia)), LitE (IntegerL ib)) -> boolE (ia > ib)
+             (AppE (VarE (Sig "Seri.Lib.Prelude.__prim_eq_Integer" _))  (LitE (IntegerL ia)), LitE (IntegerL ib)) -> boolE (ia == ib)
+             (LamE (Sig name _) body, rb) ->
+                let freenames = map (\(Sig n _) -> n) (free rb)
+                    body' = alpharename (freenames \\ [name]) body
+                in elabme (reduce name rb body')
+             (ra, rb) -> AppE ra rb
+       LamE s b | null env -> LamE s (simplify b)
+       LamE {} -> e
+       ConE {} -> e
+       VarE (Sig "Seri.Lib.Prelude.numeric" (NumT nt)) -> ConE (Sig ("#" ++ show (nteval nt)) (NumT nt))
+       VarE {} | null env -> e
+       VarE s@(Sig _ ct) ->
+           case (attemptM $ lookupVar env s) of
+             Nothing -> e
+             Just (pt, ve) -> elabme $ assign (assignments pt ct) ve 
         
 data MatchResult = Failed | Succeeded [(Name, Exp)] | Unknown
 data MatchesResult
