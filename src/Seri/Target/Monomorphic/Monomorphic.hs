@@ -45,7 +45,7 @@ import Seri.Failable
 import Seri.Lambda
 
 class Monomorphic a where
-    monomorphic :: Env -> a -> (Env, a)
+    monomorphic :: Env -> a -> ([Dec], a)
 
 instance Monomorphic Exp where
     monomorphic env e = fst $ runState (monoalle e) (MS env [] [] [] [] [] [])
@@ -55,7 +55,7 @@ instance Monomorphic Type where
 
 data MS = MS {
     -- declarations in the original polymorphic environment.
-    ms_poly :: [Dec],
+    ms_poly :: Env,
 
     -- compiled declarations in the target monomorphic environment.
     ms_mono :: [Dec],
@@ -209,7 +209,7 @@ monotype t = do
             return $ ConT (mononametype t)
 
 -- Monomorphize the given expression and its environment.
-monoalle :: Exp -> M (Env, Exp)
+monoalle :: Exp -> M ([Dec], Exp)
 monoalle e = do
     e' <- monoexp e
     finish
@@ -217,7 +217,7 @@ monoalle e = do
     return (m, e')
 
 -- Monomorphize the given type and its environment.
-monoallt :: Type -> M (Env, Type)
+monoallt :: Type -> M ([Dec], Type)
 monoallt t = do
     t' <- monotype t
     finish

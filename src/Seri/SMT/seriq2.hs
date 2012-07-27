@@ -55,12 +55,13 @@ main = do
 
     query <- load [path] fin
     flat <- attemptIO $ flatten query
-    decs <- attemptIO $ typeinfer flat
-    attemptIO $ typecheck decs
+    decs <- attemptIO $ typeinfer (mkEnv flat) flat
+    let env = mkEnv decs
+    attemptIO $ typecheck env decs
 
     let opts = (RunOptions dbg 30)
-    tmain <- attemptIO $ lookupVarType decs m
-    querier <- mkQuerier opts decs
+    tmain <- attemptIO $ lookupVarType env m
+    querier <- mkQuerier opts env
     (result, _) <- runQuery querier (VarE (Sig m tmain))
     putStrLn $ pretty result
 

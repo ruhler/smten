@@ -35,11 +35,9 @@
 
 {-# LANGUAGE FlexibleInstances #-}
 
--- | Definitions and utilities for working with seri environments. An
--- environment captures an object in the context of a bunch of seri
--- declarations.
+-- | Hopefully efficient queries regarding a seri environment.
 module Seri.Lambda.Env (
-    Env,
+    Env(), mkEnv, tweak,
     VarInfo(..),
     lookupVarType, lookupVarValue, lookupVar, lookupVarInfo,
     lookupMethodType,
@@ -53,7 +51,6 @@ import Debug.Trace
 import Control.Monad
 
 import Data.Generics
-import Data.List(nub, partition)
 import Data.Maybe
 
 import Seri.Failable
@@ -61,7 +58,19 @@ import Seri.Lambda.IR
 import Seri.Lambda.Ppr
 import Seri.Lambda.Types
 
-type Env = [Dec]
+-- | Env is an abstract data type representing information about a seri
+-- environment.
+newtype Env = Env [Dec]
+
+-- | Build a seri environment from the given list of declarations.
+mkEnv :: [Dec] -> Env
+mkEnv = Env
+
+-- | Make a small change to an environment.
+-- Add the given declarations to the environment, overwriting any existing
+-- conflicting ones.
+tweak :: [Dec] -> Env -> Env
+tweak tds (Env ds) = Env (tds ++ ds)
 
 -- | 'VarInfo' 
 -- Information about a variable.
@@ -79,8 +88,8 @@ data VarInfo = Primitive |  Declared | Instance Class
 --  predicate - a predicate which identifies the desired declaration
 --  env - the environment to search in.
 theOneOf :: String -> String -> (Dec -> Bool) -> Env -> Failable Dec
-theOneOf kind n p env =
-    case filter p env of
+theOneOf kind n p (Env decs) =
+    case filter p decs of
         [] -> fail $ kind ++ " for " ++ n ++ " not found"
         x -> return $ head x
 
@@ -145,7 +154,7 @@ lookupSig env cls meth =
 --
 -- Fails if the variable could not be found in the environment.
 lookupVar :: Env -> Sig -> Failable (Type, Exp)
-lookupVar env s@(Sig n t) =
+lookupVar env@(Env decs) s@(Sig n t) =
   let failed = fail $ "Variable " ++ n ++ " not found"
 
       checkDec :: Dec -> Failable (Type, Exp)
@@ -167,7 +176,7 @@ lookupVar env s@(Sig n t) =
                     let assigns = concat [assignments p c | (p, c) <- zip pts ts]
                     return (st, assign assigns e)
       checkDec _ = failed
-  in msum (map checkDec env)
+  in msum (map checkDec decs)
 
 -- | Look up the value of a variable in an environment.
 lookupVarValue :: Env -> Sig -> Failable Exp
@@ -180,7 +189,7 @@ lookupVarValue e s = lookupVar e s >>= return . snd
 --
 -- Fails if the variable could not be found in the environment.
 lookupVarType :: Env -> Name -> Failable Type
-lookupVarType e n  = do
+lookupVarType e@(Env decs) n  = do
     case (attemptM $ lookupValD e n, attemptM $ lookupPrimD e n) of
        (Just (ValD (TopSig _ _ t) _), _) -> return t
        (_, Just (PrimD (TopSig _ _ t))) -> return t
@@ -192,7 +201,7 @@ lookupVarType e n  = do
                     [TopSig _ _ t] -> Just t
               getSig _ = Nothing
 
-              answer = listToMaybe (catMaybes (map getSig e))
+              answer = listToMaybe (catMaybes (map getSig decs))
           in case answer of
                 Just t -> return t
                 Nothing -> fail $ "lookupVarType: '" ++ n ++ "' not declared"
@@ -207,7 +216,7 @@ lookupMethodType e n (Class cn ts) = do
 
 -- | Given the name of a data constructor in the environment, return its type.
 lookupDataConType :: Env -> Name -> Failable Type
-lookupDataConType decs n = 
+lookupDataConType (Env decs) n = 
     case catMaybes [typeofCon d n | d <- decs] of
         [] -> fail $ "data constructor " ++ n ++ " not found in env"
         [x] -> return x
@@ -216,7 +225,7 @@ lookupDataConType decs n =
 -- | Look up VarInfo for the variable with given signature.
 -- Fails if the variable is not declared or an instance or primitive.
 lookupVarInfo :: Env -> Sig -> Failable VarInfo
-lookupVarInfo env (Sig n t) =
+lookupVarInfo (Env decs) (Sig n t) =
   let failed = fail $ "Variable " ++ n ++ " not found in environment"
 
       checkDec :: Dec -> Failable VarInfo
@@ -230,5 +239,5 @@ lookupVarInfo env (Sig n t) =
                     cts' = assign assigns (map tyVarType cts)
                 in return $ Instance (Class cn cts')
       checkDec _ = failed
-  in msum (map checkDec env)
+  in msum (map checkDec decs)
 

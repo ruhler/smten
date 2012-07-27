@@ -54,7 +54,7 @@ main = do
 
     seri <- load [path] input
     decs <- attemptIO $ flatten seri
-    decs' <- attemptIO $ typeinfer decs
-    attemptIO $ typecheck decs'
+    decs' <- attemptIO $ typeinfer (mkEnv decs) decs
+    attemptIO $ typecheck (mkEnv decs') decs'
     output $ pretty decs'
 

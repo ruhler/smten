@@ -59,7 +59,8 @@ data Compilation = Compilation {
     ys_version :: Y.YicesVersion, -- ^ Version of yices to target
     ys_idepth :: Integer,       -- ^ Depth of inlining to perform
     ys_poly :: Env,             -- ^ The polymorphic seri environment
-    ys_mono :: Env,             -- ^ Already declared (monomorphic) declarations
+    ys_mono :: [Dec],           -- ^ Already declared (monomorphic) declarations
+    ys_monoe :: Env,            -- ^ The environment corresponding to ys_mono
     ys_cmds :: [Y.Command],     -- ^ Declarations needed for what was compiled
     ys_errid :: Integer,        -- ^ unique id to use for next free error variable
     ys_caseid :: Integer        -- ^ unique id to use for next case arg variable
@@ -76,8 +77,9 @@ compilation :: Y.YicesVersion    -- ^ yices version to target
 compilation version idepth poly = Compilation {
     ys_version = version,
     ys_idepth = idepth,
-    ys_poly = rewrite poly,
+    ys_poly = tweak tweakings poly,
     ys_mono = [],
+    ys_monoe = mkEnv [],
     ys_cmds = [],
     ys_errid = 1,
     ys_caseid = 1 
@@ -135,7 +137,9 @@ compileNeeded x = do
                 ++ pretty r ++ ",\n needed for " ++ pretty x
     decl <- gets ys_mono
     let ndecl = sorted \\ decl
-    modify $ \ys -> ys { ys_mono = decl ++ ndecl }
+    let nmono = decl ++ ndecl
+    -- TODO: should we use "tweak" to update ys_monoe?
+    modify $ \ys -> ys { ys_mono = nmono, ys_monoe = mkEnv nmono}
     mapM_ yDec ndecl
     return mx
 
@@ -276,7 +280,7 @@ yicesuidt n = yicesname $ "uidt~" ++ n
 yicestag :: Name -> Name
 yicestag n = yicesname $ "tag~" ++ n
 
--- Given the name of a constructor, return the index for its fields in in the
+-- Given the name of a constructor, return the index for its fields in the
 -- data types tuple.
 yicesci :: Name -> CompilationM Integer
 yicesci n =
@@ -286,11 +290,11 @@ yicesci n =
         findidx i ((Con cn _) : _) | n == cn = return i
         findidx i (_ : cs) = findidx (i+1) cs
     in do
-        env <- gets ys_mono
-        contype <- lift $ lookupDataConType env n
+        envr <- gets ys_monoe
+        contype <- lift $ lookupDataConType envr n
         case last $ unarrowsT contype of
             ConT dt -> do
-                (DataD _ _ cs) <- lift $ lookupDataD env dt
+                (DataD _ _ cs) <- lift $ lookupDataD envr dt
                 lift $ findidx 2 cs
             x -> error $ "yicesci: contype: " ++ pretty x ++ " when lookup up " ++ n
 
@@ -357,23 +361,17 @@ boxBool e = do
   return $ Y.ifE e true false
 
 
--- Rewrite the (polymorphic) environment to handle yices specific things.
-rewrite :: Env -> Env
-rewrite env = 
-  let re :: Dec -> Dec
-
-      -- The primitive error turns into:
-      --    error _ = ~error
-      -- This way we dont need to support strings in yices to use error.
-      re (PrimD (TopSig "Seri.Lib.Prelude.error" [] t)) =
-        let body = clauseE [Clause [WildP stringT] (VarE (Sig "~error" (VarT "a")))]
-        in ValD (TopSig "Seri.Lib.Prelude.error" [] t) body
-
-      re x = x
-
-      builtin = [PrimD (TopSig "~error" [] (VarT "a"))]
-        
-  in builtin ++ map re env
+-- Changes to the (polymorphic) declarations to handle yices specific things.
+-- The primitive error turns into:
+--    error _ = ~error
+-- This way we dont need to support strings in yices to use error.
+tweakings :: [Dec]
+tweakings =
+  let body = clauseE [Clause [WildP stringT] (VarE (Sig "~error" (VarT "a")))]
+      t = arrowsT [listT charT, VarT "a"]
+      errorv = ValD (TopSig "Seri.Lib.Prelude.error" [] t) body
+      errorp = PrimD (TopSig "~error" [] (VarT "a"))
+  in [errorv, errorp]
 
 -- Given a seri identifer, turn it into a valid yices identifier.
 -- TODO: hopefully our choice of names won't clash with the users choices...

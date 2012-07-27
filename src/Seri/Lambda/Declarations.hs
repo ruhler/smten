@@ -53,7 +53,7 @@ union a b = nub $ a ++ b
 
 -- declarations env x
 -- Return the set of declarations in the given environment a thing depends on.
-declarations :: (Data a) => Env -> a -> Env
+declarations :: (Data a) => Env -> a -> [Dec]
 declarations env =
   let qexp :: Exp -> [Dec]
       qexp (VarE s@(Sig n _)) =
@@ -82,7 +82,7 @@ declarations env =
 -- | Minimize an environment.
 -- Remove any declarations in the environment not needed by the object in the
 -- environment.
-minimize :: (Data a) => Env -> a -> Env
+minimize :: (Data a) => Env -> a -> [Dec]
 minimize m x =
   let alldecls :: [Dec] -> [Dec]
       alldecls d =
@@ -99,10 +99,12 @@ minimize m x =
 --  sorted - the list of sorted declarations. Declarations earlier in the list
 --           do not depend on declarations later in the list.
 --  mutual - a list of the remaining mutually dependent declarations from ds.
+--
+-- TODO: should this take an Env as input too?
 sort :: [Dec] -> ([Dec], [Dec])
 sort ds = 
   let dependencies :: [(Dec, [Dec])]
-      dependencies = [(d, declarations ds d) | d <- ds]
+      dependencies = [(d, declarations (mkEnv ds) d) | d <- ds]
 
       sorte :: [Dec] -> [(Dec, [Dec])] -> ([Dec], [Dec])
       sorte sorted unsorted = 

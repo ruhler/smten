@@ -55,9 +55,10 @@ main = do
 
     seri <- load [path] input
     flat <- attemptIO $ flatten seri
-    decs <- attemptIO $ typeinfer flat
-    attemptIO $ typecheck decs
+    decs <- attemptIO $ typeinfer (mkEnv flat) flat
+    let env = mkEnv decs
+    attemptIO $ typecheck env decs
     let e = VarE (Sig mainexp UnknownT)
-    let elaborated = elaborate Simple decs e
+    let elaborated = elaborate Simple env e
     output (pretty elaborated)
 

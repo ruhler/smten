@@ -36,7 +36,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 
 module Seri.Lambda.TypeInfer (
-        typeinfer, typeinfer1,
+        TypeInfer(..)
     ) where
 
 import Debug.Trace
@@ -51,45 +51,46 @@ import Seri.Lambda.Ppr
 import Seri.Lambda.Types
 import Seri.Lambda.TypeSolver
 
--- | Perform type inference on the given declarations.
--- Types UnknownT are inferred.
--- Variable info UnknownVI is inferred.
---
--- The returned expression may have incorrectly inferred types if the
--- expression doesn't type check, so you should run typecheck after inference
--- to make sure it's valid.
-typeinfer :: [Dec] -> Failable [Dec]
-typeinfer ds = mapM (typeinfer1 ds) ds
+class TypeInfer a where
+    -- | Perform type inference on the given object.
+    -- Types UnknownT are inferred.
+    --
+    -- The returned expression may have incorrectly inferred types if the
+    -- expression doesn't type check, so you should run typecheck after
+    -- inference to make sure it's valid.
+    typeinfer :: Env -> a -> Failable a
 
--- | Perform type inference on a single declaration in the given environment.
-typeinfer1 :: [Dec] -> Dec -> Failable Dec
-typeinfer1 = inferdec
+instance TypeInfer [Dec] where
+    typeinfer e = mapM (typeinfer e)
+
+instance TypeInfer Dec where
+    typeinfer = inferdec
     
 -- Run inference on a single declaration, given the environment.
-inferdec :: [Dec] -> Dec -> Failable Dec
-inferdec ds (ValD (TopSig n ctx t) e) = do
-    e' <- inferexp ds t e
+inferdec :: Env -> Dec -> Failable Dec
+inferdec env (ValD (TopSig n ctx t) e) = do
+    e' <- inferexp env t e
     return $ ValD (TopSig n ctx t) e'
-inferdec ds d@(DataD {}) = return d
-inferdec ds d@(ClassD {}) = return d
-inferdec ds (InstD ctx cls ms) =
+inferdec env d@(DataD {}) = return d
+inferdec env d@(ClassD {}) = return d
+inferdec env (InstD ctx cls ms) =
   let infermethod :: Method -> Failable Method
       infermethod (Method n e) = do
-         t <- lookupMethodType ds n cls
-         e' <- inferexp ds t e
+         t <- lookupMethodType env n cls
+         e' <- inferexp env t e
          return (Method n e')
   in do
     ms' <- mapM infermethod ms
     return (InstD ctx cls ms')
 inferdec _ d@(PrimD {}) = return d
 
-inferexp :: [Dec] -> Type -> Exp -> Failable Exp
-inferexp ds t e = do
+inferexp :: Env -> Type -> Exp -> Failable Exp
+inferexp env t e = do
  let (e', id) = runState (deunknown e) 1
  let ticomp = do
          te' <- constrain e'
          addc t te'
- (_, TIS _ cons _ _) <- runStateT ticomp (TIS id [] [] ds)
+ (_, TIS _ cons _ _) <- runStateT ticomp (TIS id [] [] env)
  sol <- solve cons
  --trace ("e': " ++ pretty e') (return ())
  --trace ("constraints: " ++ pretty cons) (return ())

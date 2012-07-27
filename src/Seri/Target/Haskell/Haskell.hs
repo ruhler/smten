@@ -171,7 +171,7 @@ haskellH = compilers [preludeH, coreH]
 
 -- haskell builtin decs
 --  Compile the given declarations to haskell.
-haskell :: HCompiler -> Env -> Name -> H.Doc
+haskell :: HCompiler -> [Dec] -> Name -> H.Doc
 haskell c env main =
   let hsHeader :: H.Doc
       hsHeader = H.text "{-# LANGUAGE ExplicitForAll #-}" H.$+$
