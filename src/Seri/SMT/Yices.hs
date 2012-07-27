@@ -33,11 +33,14 @@
 -- 
 -------------------------------------------------------------------------------
 
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE TypeSynonymInstances #-}
+
 module Seri.SMT.Yices (
-    RunOptions(..), Querier(), mkQuerier, runQuery,
+    RunOptions(..), SMTQuerier(), mkQuerier, runQuery,
     ) where
 
-import Data.Generics
 import Data.Maybe
 
 import System.IO
@@ -52,7 +55,7 @@ import Seri.Target.Elaborate
 import Seri.Target.Yices.Yices
 
 
-data Querier y = Querier {
+data SMTQuerier y = SMTQuerier {
     ys_ctx :: y,
     ys_dh :: Maybe Handle,
     ys_freeid :: Integer,
@@ -60,7 +63,7 @@ data Querier y = Querier {
     ys_env :: Env
 }
 
-type YicesMonad y = StateT (Querier y) IO
+type YicesMonad y = StateT (SMTQuerier y) IO
 
 sendCmds :: Y.Yices y => [Y.Command] -> y -> Maybe Handle -> IO ()
 sendCmds cmds ctx Nothing = mapM_ (Y.run ctx) cmds
@@ -161,9 +164,9 @@ data RunOptions = RunOptions {
     inlinedepth :: Integer
 } deriving(Show)
             
--- | Construct a Querier object for running queries with yices under the given
+-- | Construct a SMTQuerier object for running queries with yices under the given
 -- seri environment.
-mkQuerier :: (Y.Yices y) => RunOptions -> Env -> y -> IO (Querier y)
+mkQuerier :: (Y.Yices y) => RunOptions -> Env -> y -> IO (SMTQuerier y)
 mkQuerier opts env ctx = do
     dh <- case debugout opts of
             Nothing -> return Nothing
@@ -172,7 +175,7 @@ mkQuerier opts env ctx = do
                 hSetBuffering h NoBuffering
                 return (Just h)
 
-    return $ Querier {
+    return $ SMTQuerier {
         ys_ctx = ctx,
         ys_dh = dh,
         ys_freeid = 1,
@@ -182,7 +185,7 @@ mkQuerier opts env ctx = do
 
 -- | Evaluate a query using the given environment.
 -- Returns the result of the query and the updated querier.
-runQuery :: (Y.Yices y) => Querier y -> Exp -> IO (Exp, Querier y)
+runQuery :: (Y.Yices y) => SMTQuerier y -> Exp -> IO (Exp, SMTQuerier y)
 runQuery q e = runStateT (runQueryM e) q
 
 
@@ -229,12 +232,14 @@ realizefree env nm t =
     trycons cs
     
 
+data Realize = Realize Env
+
+instance (Y.Yices y) => TransformerM Realize (YicesMonad y) where
+    tm_Exp (Realize env) (VarE (Sig nm ty)) | isfreename nm = realizefree env nm ty
+    tm_Exp _ e = return e
+
 -- | Update the free variables in the given expression based on the current
 -- yices model.
 realize :: Y.Yices y => Env -> Exp -> YicesMonad y Exp
-realize env = 
-  let f :: Y.Yices y => Exp -> YicesMonad y Exp
-      f (VarE (Sig nm ty)) | isfreename nm = realizefree env nm ty
-      f e = return e
-  in everywhereM (mkM f)
+realize env = transformM (Realize env)
 

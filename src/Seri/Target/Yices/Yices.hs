@@ -44,7 +44,6 @@ import qualified Yices.Syntax as Y
 
 import Data.List ((\\))
 import Data.Char(ord)
-import Data.Generics
 import Data.Maybe(catMaybes)
 import Control.Monad.State
 

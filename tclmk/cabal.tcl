@@ -26,7 +26,6 @@ proc cabal {fcabal} {
 
     set builddeps {
         {base ==4.5.*}
-        {syb ==0.3.*}
         {mtl ==2.1.*}
         {pretty ==1.1.*}
         {array ==0.4.*}

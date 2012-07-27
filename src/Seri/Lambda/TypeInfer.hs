@@ -34,6 +34,7 @@
 -------------------------------------------------------------------------------
 
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 
 module Seri.Lambda.TypeInfer (
         TypeInfer(..)
@@ -42,10 +43,12 @@ module Seri.Lambda.TypeInfer (
 import Debug.Trace
 
 import Control.Monad.State
-import Data.Generics
+
+import Data.Maybe(fromMaybe)
 
 import Seri.Failable
 import Seri.Lambda.Env
+import Seri.Lambda.Generics
 import Seri.Lambda.IR
 import Seri.Lambda.Ppr
 import Seri.Lambda.Types
@@ -98,17 +101,19 @@ inferexp env t e = do
  return $ replace sol e'
 
 
+data DeUnknown = DeUnknown
+
+instance TransformerM DeUnknown (State Integer) where
+    tm_Type _ UnknownT = do
+        id <- get
+        put (id+1)
+        return (VarT $ "~" ++ show id)
+    tm_Type _ t = return t
+        
 -- | Replace all UnknownT with new variable types.
 -- State is the id of the next free type variable to use.
-deunknown :: (Data e) => e -> State Integer e
-deunknown =
-    let ununt UnknownT = do
-            id <- get
-            put (id+1)
-            return (VarT $ "~" ++ show id)
-        ununt t = return t
-    in everywhereM (mkM ununt) 
-
+deunknown :: Exp -> State Integer Exp
+deunknown = transformM DeUnknown
 
 data TIS = TIS {
     ti_varid :: Integer,        -- ^ The next free VarT id
@@ -252,13 +257,12 @@ retype t = do
         b' <- retypen b
         return (AppNT o a' b')
 
+data Replace = Replace [(Type, Type)]
+
+instance Transformer Replace where
+    t_Type (Replace m) t = fromMaybe t (lookup t m)
+
 -- If the given type is in the map, replace it, otherwise keep it unchanged.
-replace :: (Data a) => [(Type, Type)] -> a -> a
-replace m =
-    let base :: Type -> Type
-        base t =
-            case lookup t m of
-                Just t' -> t'
-                Nothing -> t
-    in everywhere $ mkT base
+replace :: [(Type, Type)] -> Exp -> Exp
+replace m = transform (Replace m)
             

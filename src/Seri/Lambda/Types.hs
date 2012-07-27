@@ -45,7 +45,6 @@ module Seri.Lambda.Types (
 import Control.Monad.State
 import Data.List(nub)
 import Data.Maybe
-import Data.Generics
 
 import Seri.Lambda.IR
 

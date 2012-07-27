@@ -37,7 +37,6 @@
 
 module Seri.Lambda.TypeCheck (TypeCheck(..)) where
 
-import Data.Generics
 import Data.List(nub)
 
 import Seri.Failable

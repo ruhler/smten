@@ -50,7 +50,6 @@ import Debug.Trace
 
 import Control.Monad
 
-import Data.Generics
 import Data.Maybe
 
 import Seri.Failable

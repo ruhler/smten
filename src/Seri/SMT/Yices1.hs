@@ -34,7 +34,7 @@
 -------------------------------------------------------------------------------
 
 module Seri.SMT.Yices1 (
-    Y.RunOptions(..), Y.Querier, mkQuerier, Y.runQuery)
+    Y.RunOptions(..), Y.SMTQuerier, mkQuerier, Y.runQuery)
     where
 
 import qualified Yices.Syntax as Y
@@ -44,6 +44,6 @@ import qualified Yices.Yices1 as Y
 import qualified Seri.SMT.Yices as Y
 import Seri.Lambda
 
-mkQuerier :: Y.RunOptions -> Env -> IO (Y.Querier Y.Yices1FFI)
+mkQuerier :: Y.RunOptions -> Env -> IO (Y.SMTQuerier Y.Yices1FFI)
 mkQuerier opts env = Y.mkYices >>= Y.mkQuerier opts env
 

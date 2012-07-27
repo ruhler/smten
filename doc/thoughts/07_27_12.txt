@@ -1,0 +1,372 @@
+
+Fri Jul 27 09:16:50 EDT 2012
+
+Okay! So Bruno fixed the seg fault in yices2. Now the bcl trivial test makes
+lots and lots and lots of queries, so it should be plenty of fodder for
+improving performance.
+
+I know how to improve the environment lookup thing. The idea is, the
+environment should be different than a list of declarations. An environment is
+something you can look up information in. It is static. You can form it from a
+list of declarations.
+
+env :: [Dec] -> Env
+
+Flatten returns a list of [Dec].
+typecheck, typeinfer, and elaborate all take in environments.
+
+typecheck and typeinfer should work on both Dec and [Dec], of type:
+
+typecheck :: Env -> a -> Failable ()
+typeinfer :: Env -> a -> Failable a
+
+Some of the targets likely will want to take an environment too.
+
+So, the way the queries will work:
+load the library modules.
+generate the local module.
+flatten them all into a list of [dec].
+type infer [dec] with (env [dec])
+type check [dec'] with (env [dec'])
+elaborate with (env [dec']).
+
+Once I have this sort of interface, it should be easy to rip out the behind
+the scenes of Env, switch to a HashMap interface, and watch the performance go
+way way up. I suspect after this, time will be dominated with yices related
+stuff.
+
+Cool. I'm going to get started.
+
+Fri Jul 27 09:23:27 EDT 2012
+
+First issue: we need to split up env from other things.
+
+Env should contain:
+ VarInfo, lookup*
+
+minimize and sort belong elsewhere.
+It belongs to... Declarations? Sounds good to me. Allow me to affect that
+change.
+
+Fri Jul 27 09:54:40 EDT 2012
+
+Here's an annoying thing. In the yices target, I want to modify the
+environment just slightly. Is there a decent way to do that? Should I expect a
+decent way to do that?
+
+Maybe I can have a function to modify an environment:
+
+tweak :: Env -> [Dec] -> Env
+
+But that seems messy. Is there any other way? Should I just do replacement in
+everything...
+
+The issue is, elaboration is going to leave calls to error, which is going to
+require string types that we don't really need.
+
+Well, what if I just define a dummy type? Hum...
+
+Let me just have tweak for now.
+
+Fri Jul 27 10:14:36 EDT 2012
+
+Wow. That actually went pretty smoothly. Now we have a difference between Env
+and Dec.
+
+Fri Jul 27 10:16:21 EDT 2012
+
+So then! I should now be ready to switch to a hash table. No?
+
+Let's first figure out what structures I want to make for efficient lookups.
+The most important thing to have fast lookups for is lookupVar. So let's start
+there and work our way out.
+
+LookupVar works as follows:
+ - if it's a ValD, just return it's type and value.
+ - if it's primitive fail.
+ - if it's a signature from a class...
+     We want the class declaration Class and the type of the function.
+     Given the type of the object, we then figure out the instance we are
+     looking for. Doing the instance check is harder, because we have to ask
+     for subtype, but maybe we want to map class name to a list of the
+     instances to limit our search.
+     Then we do some more work.
+
+So, what structures do we want?
+
+Name -> (Type, Exp)     For ValD only.
+Name -> [Dec]           Get list of instances for a given class name.
+Name -> Class           Get class for a method name.
+
+I think I could do a little better though.
+
+Name -> ValEntry
+
+Where
+
+ValEntry =
+    Value Type Exp      - for ValD
+    Method Type Class   - for method
+    Primitive Type      - for a primitive
+
+Then, have:
+
+Name -> [Dec]   for the list of instances for a given class.
+
+We have to check each class instance anyway, because we have to do a subtyping
+thing, but hopefully that's not too bad. Working for incremental progress
+here. Then looking up a signature in an instance should be easy, assuming we
+don't have many. I think that's valid.
+
+So! Start with two helper functions, which I can use for whatever I want to
+use them for.
+
+valInfo :: Name -> ValInfo
+insts :: Name -> [Dec]
+    
+Construct an environment to have these two lookup functions, then make use of
+them when I can.
+
+In fact, I can start with just valInfo. Just the one to get going, and go from
+there.
+
+Cool. Exciting. Let me try it out.
+
+Fri Jul 27 10:51:06 EDT 2012
+
+Hmm... Trouble with the hash table lookup. How can I pull it out of ST?
+
+I feel like I should be able to pull it out of ST... hmm... Maybe I can't?
+
+I don't think it can be done. In order to make it work, it's like we would
+have to know what all the ...
+Hmm... interesting.
+
+No. I was thinking maybe we could do:
+
+foo :: Name -> ValInfo
+foo x = runST (lookup x)
+
+Wait. Can't we do that? I wonder. Can you call runST inside an ST? I bet the
+'s' doesn't match up? Maybe it does? No. It can't.
+
+Look, this is silly. Let me just write my own hash table. I can start with
+someone else, then write my own.
+
+The interface I want is:
+
+-- Construct the initial one all at once.
+new :: (Eq k, Hashable k) => [(k, v)] -> Table k v
+lookup :: k -> Table k v -> Maybe v
+
+Simple.
+
+Fri Jul 27 12:14:42 EDT 2012
+
+Okay, I implemented my own hash table. It's very simple given my restricted
+use case, and hopefully fast too.
+
+After lunch I'll try using it.
+
+Fri Jul 27 13:13:35 EDT 2012
+
+Okay, using my hash table. Let me make a little more use of it before checking
+the performance consequences.
+
+But a thought for the future. Why not have one hash table with all the
+information about the name? What are the options?
+
+ValD - just return the ValD
+PrimD - just return the PrimD
+method - return: the class, list of all instances 
+Other - return: ClassD, or (DataD, Con), etc...?
+
+I don't know.
+
+Fri Jul 27 13:27:41 EDT 2012
+
+Another note, I should make sure everyone is asking the most specific
+questions they can, to avoid duplicate lookups.
+
+Fri Jul 27 13:38:36 EDT 2012
+
+Well, so... the profile looks much better, but it doesn't go so much faster as
+I hoped. Perhaps there is some funniness going on.
+
+Let's see what the profile looks like now.
+
+So! lookupVar takes like no time at all now, so I would say, switching to a
+hash table was a success. So even though I feel like I could make it even
+better... since it's not a big problem right now, I'll let it be as it is.
+
+Big things now:
+
+- check takes a long time for some reason
+I think it takes a bit of effort just to tell yices what the query is, because
+we have these big assertions.
+
+In yices 1 we could get around this using definitions for things instead of
+inlining. I dunno...
+
+- Failable >>= is taking a surprising amount of time.
+My suspicion: is it's being lazy. I should make it stricter, then we won't
+spend all that time allocating memory for thunks.
+
+- Type inference is now 30% of the program. It uses a couple generics things I
+  should switch to type classes. That should help a fair amount.
+
+Cool. So let me play with these things.
+
+Fri Jul 27 14:23:18 EDT 2012
+
+I think Failable >>= is getting blamed for someone else's work. The
+implementation couldn't be any more simpler. There's nothing to make strict.
+
+So let me move on to the next culprits?
+
+I don't know. Maybe we still do need to do work on the environment and it's
+just the profiler is throwing me off by throwing everything into bind.
+
+Anyway, let me try to root out these gfoldls, which appear prominently.
+
+First figure out where I use generics.
+Then try to figure out if I can have a generic replacement for it so I don't
+have to write out the traversal over and over and over again. This should at
+least make it more clear what's taking time.
+
+Uses of generics:
+ + Seri.SMT.Yices
+    everywhereM used to call realizefree on each VarE with the appropriate
+    name. This is a monadic transformation of expressions.
+ - Seri.Lambda.Declarations
+    everything: a query over Exp, Type, Class
+    Used in sorting and minimizing.
+ + Seri.Lambda.TypeInfer
+    everywhereM used to de-unknown types.
+    This is a monadic transformation of types.    
+ - Seri.Lambda.TypeInfer
+    everywhere: transformation on Types inside an expression.
+ - Seri.Lambda.Types
+    class Assign
+    This is a pure transformation of types and ntypes.
+    (could be made into just types)
+ - Seri.Lambda.Modularity
+    class Qualify
+    Monadic transformation, on Modules, TopSigs, and other funny stuff
+ - Seri.Lambda.Constrain
+    Like a monadic query? On all sorts of stuff.
+ - Seri.Lambda.Ppr
+    Query, on all sorts of stuff.
+    
+In summary, we have:
+ - Monadic transformation of expressions.
+ - Monadic transformation of types.
+ - Pure transformation of a bunch of stuff
+ - Very specific stuff
+
+I have an idea.
+
+Consider, for example, the class of Monadic transformations.
+
+What is it I want to specify? Well, we know from generics what I want to
+specify. For each type, I would like to give a specific monadic transformation
+that is applied to it after first recursing to children.
+
+Hmm...
+
+I feel like what I want is, like, a default implementation for things. Default
+implementation for a type is: don't do anything specific, just recurse on
+children.
+
+Then, I want to say: override for just this type to do non-standard stuff
+after the transformation.
+
+What if I had a class for generic transformations. It has two parameters:
+1. The thing the transformation is done to: Exp, Type, NType, etc...
+
+erg... no. that doesn't quite make sense.
+
+Could I make a function...
+
+Let's say my class is the transformation function.
+
+For example, start with pure transformations, just to simplify. What if I
+provided a function:
+
+class Transformer f where
+    transformation :: f -> 
+
+class Transform a where
+    everywhere :: (Transformer f) => f -> a -> a
+
+Ug. No. Wait... I can do better...
+
+class Transformer f where
+    tExp :: f -> Exp -> Exp
+    tType :: f -> Type -> Type
+    ...
+
+So the class Transformer captures information about all the possible things we
+could be traversing over. The variable 'f' stands for a dummy type just to
+name the function. We supply default values for everything which just recurse.
+
+Now, I can have another class:
+
+class Transformable a where
+    transform :: (Transformer f) => f -> a -> a
+
+which is implemented for each of those transformable things, by just calling
+the appropriate field for f.
+
+Now, when I want to create a new transformation, I make a dummy type to name
+it, I give an instance of Transformer for just those things I want to
+override. I use the default implementations otherwise.
+
+What do you think? I get everything static like I like, so it should be
+fastish. I specify only what I want. Everyone can reuse the default traversal
+code.
+
+Start with: Pure transformations.
+- Use for: Seri.Lambda.TypeInfer replace, and assign.
+
+That will test the waters.
+
+But! In a couple places I have an everywhereM thing. It might be good to start
+there, make sure it really does help performance.
+
+Good. I like that. Shall I try it?
+
+Fri Jul 27 15:37:26 EDT 2012
+
+Okay, started the implementation. Let's see if I can do what I want.
+realize. Then deunknown, right?
+
+Fri Jul 27 15:49:04 EDT 2012
+
+Trouble... I want to have a function closure... oh. wow. I can actually do
+that...
+
+Fri Jul 27 15:51:18 EDT 2012
+
+It works. That's actually kind of surprising to me.
+
+Anyway, it works. Now the question is... is it any faster?
+
+Answer is yes! Way faster cool.
+
+I should use this trick to get rid of everything else now then.
+
+Let me do the pure ones next, leveraging the monadic transform and the
+identity monad for now, if I can. Hmm... Can I?
+
+I fear it might not work out easily.
+
+Anyway, goal is to update replace in TypeInfer.
+
+Fri Jul 27 17:31:52 EDT 2012
+
+Okay, so I completely got rid of Data.Generics use now. That's cool. I think I
+actually like this better than syb? Well, it's certainly no worse, so that's
+cool. And the overall performance increase is... if not amazing, something
+anyway. Something less to worry about.
+

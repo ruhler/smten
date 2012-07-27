@@ -33,65 +33,62 @@
 -- 
 -------------------------------------------------------------------------------
 
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 
 -- | Utilities for working with seri declarations.
 module Seri.Lambda.Declarations (
     minimize, sort,
     ) where
 
-import Data.Generics
 import Data.List(nub, partition)
 import Data.Maybe
 
 import Seri.Failable
 import Seri.Lambda.Env
+import Seri.Lambda.Generics
 import Seri.Lambda.IR
 
-union :: (Eq a) => [a] -> [a] -> [a]
-union a b = nub $ a ++ b
+
+data Declarations = Declarations Env
+
+instance Querier Declarations [Dec] where
+    q_Exp (Declarations env) (VarE s@(Sig n _)) =
+       case (attemptM $ lookupVarInfo env s) of
+          Just Primitive -> attemptM $ lookupPrimD env n
+          Just Declared -> attemptM $ lookupValD env n
+          Just (Instance cls@(Class ni ts)) ->
+              catMaybes [attemptM $ lookupClassD env ni,
+                           attemptM $ lookupInstD env cls]
+          _ -> []
+    q_Exp _ e = []
+
+    q_Type (Declarations env) (ConT n) = attemptM $ lookupDataD env n
+    q_Type _ t = []
+
+    q_Class (Declarations env) cls@(Class n ts) = catMaybes [
+          attemptM $ lookupClassD env n,
+          attemptM $ lookupInstD env cls]
 
 -- declarations env x
 -- Return the set of declarations in the given environment a thing depends on.
-declarations :: (Data a) => Env -> a -> [Dec]
-declarations env =
-  let qexp :: Exp -> [Dec]
-      qexp (VarE s@(Sig n _)) =
-         case (attemptM $ lookupVarInfo env s) of
-            Just Primitive -> attemptM $ lookupPrimD env n
-            Just Declared -> attemptM $ lookupValD env n
-            Just (Instance cls@(Class ni ts)) ->
-                catMaybes [attemptM $ lookupClassD env ni,
-                             attemptM $ lookupInstD env cls]
-            _ -> []
-      qexp e = []
-
-      qtype :: Type -> [Dec]
-      qtype (ConT n) = attemptM $ lookupDataD env n
-      qtype t = []
-
-      qclass :: Class -> [Dec]
-      qclass cls@(Class n ts) = catMaybes [
-            attemptM $ lookupClassD env n,
-            attemptM $ lookupInstD env cls]
-
-      query :: (Typeable a) => a -> [Dec]
-      query = extQ (extQ (mkQ [] qexp) qtype) qclass
-  in everything union query
+declarations :: (Queriable a [Dec]) => Env -> a -> [Dec]
+declarations env x = nub $ query (Declarations env) x
 
 -- | Minimize an environment.
 -- Remove any declarations in the environment not needed by the object in the
 -- environment.
-minimize :: (Data a) => Env -> a -> [Dec]
+minimize :: (Queriable a [Dec]) => Env -> a -> [Dec]
 minimize m x =
   let alldecls :: [Dec] -> [Dec]
       alldecls d =
         let ds = declarations m d
-            dds = d `union` ds
+            dds = d ++ ds
         in if (length d == length dds)
             then d
             else alldecls dds
-  in alldecls (declarations m x)
+  in nub $ alldecls (declarations m x)
 
 -- | sort ds
 -- Perform a topological sort of declarations ds by dependency.
