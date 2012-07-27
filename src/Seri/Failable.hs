@@ -49,6 +49,9 @@ data Failable a = Failable {
     attempt :: Either String a
 }
 
+instance Functor Failable where
+    fmap f x = x >>= (return . f)
+
 instance Monad Failable where
     return x = Failable $ Right x
     fail msg = Failable $ Left msg
@@ -56,6 +59,7 @@ instance Monad Failable where
         case x of
             Right a -> attempt (f a)
             Left msg -> Left msg
+
 
 instance MonadPlus Failable where
     mzero = fail "Failable mzero"

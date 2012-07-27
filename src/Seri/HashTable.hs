@@ -56,11 +56,12 @@ sizes = [
     50331653, 100663319]
 
 -- | Construct a new table with the given key/value pair.
+-- The first value for each key in the list is stored.
 table :: (Hashable k) => [(k, v)] -> HashTable k v
 table elems =
   let s = head (filter (> (2 * length elems)) sizes ++ [last sizes])
       assocs = [(indexof s k, (k,v)) | (k, v) <- elems]
-  in HashTable s (accumArray (\e a -> a:e) [] (0, s) assocs)
+  in HashTable s (accumArray (\e a -> e ++ [a]) [] (0, s) assocs)
 
 -- | Lookup the value for the given key in the table.
 lookup :: (Eq k, Hashable k) => k -> HashTable k v -> Maybe v

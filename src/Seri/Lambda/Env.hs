@@ -54,7 +54,7 @@ import Data.Generics
 import Data.Maybe
 
 import Seri.Failable
-import Seri.HashTable
+import Seri.HashTable as HT
 import Seri.Lambda.IR
 import Seri.Lambda.Ppr
 import Seri.Lambda.Types
@@ -66,13 +66,12 @@ data Env = Env {
     e_decls :: [Dec],
 
     -- Fast access to info about values.
-    e_valinfos :: HashTable Name ValInfo
+    e_vitable :: HashTable Name ValInfo
 }
 
 -- | Information about a value name.
 data ValInfo 
- = PrimVI Type      -- ^ The value is a primitive with given type.
- | ValVI Type Exp   -- ^ The value is a ValD with given type and value.
+ = DecVI Dec     -- ^ The value is the given ValD or PrimD
  | ClassVI Name [TyVar] Type   -- ^ The value belongs to the given class and has given type.
     deriving (Eq, Show)
 
@@ -83,8 +82,8 @@ mkEnv decs = Env decs (table (vitable decs))
 vitable :: [Dec] -> [(Name, ValInfo)]
 vitable decs =
   let videc :: Dec -> [(Name, ValInfo)]
-      videc (ValD (TopSig n _ t) v) = [(n, (ValVI t v))]
-      videc (PrimD (TopSig n _ t)) = [(n, (PrimVI t))]
+      videc d@(ValD (TopSig n _ _) _) = [(n, (DecVI d))]
+      videc d@(PrimD (TopSig n _ _)) = [(n, (DecVI d))]
       videc (ClassD cn ts sigs) =  
         let isig :: TopSig -> (Name, ValInfo)
             isig (TopSig n _ t) = (n, ClassVI cn ts t)
@@ -96,6 +95,9 @@ vitable decs =
 -- | Make a small change to an environment.
 -- Add the given declarations to the environment, overwriting any existing
 -- conflicting ones.
+--
+-- TODO: if HashTable gave us a array-update like function, we could
+-- presumibly do this more cheaply.
 tweak :: [Dec] -> Env -> Env
 tweak tds e = mkEnv (tds ++ e_decls e)
 
@@ -123,18 +125,16 @@ theOneOf kind n p e =
 -- | Look up a ValD with given Name in the given Environment.
 lookupValD :: Env -> Name -> Failable Dec
 lookupValD env n =
-  let theValD :: Dec -> Bool
-      theValD (ValD (TopSig nm _ _) _) = n == nm
-      theValD _ = False
-  in theOneOf "ValD" n theValD env
+  case (HT.lookup n (e_vitable env)) of
+     Just (DecVI d@(ValD {})) -> return d
+     _ -> fail $ "lookupValD: " ++ n ++ " is not a ValD"
 
 -- | Look up a PrimD with given Name in the given Environment.
 lookupPrimD :: Env -> Name -> Failable Dec
 lookupPrimD env n =
-  let thePrimD :: Dec -> Bool
-      thePrimD (PrimD (TopSig nm _ _)) = n == nm
-      thePrimD _ = False
-  in theOneOf "PrimD" n thePrimD env
+  case (HT.lookup n (e_vitable env)) of
+     Just (DecVI d@(PrimD {})) -> return d
+     _ -> fail $ "lookupPrimD: " ++ n ++ " is not a PrimD"
  
         
 -- | Look up a DataD with given type constructor Name in the given
@@ -163,18 +163,6 @@ lookupInstD env (Class n t) =
       theInstD _ = False
   in theOneOf "InstD" (pretty (Class n t)) theInstD env
 
--- | Look up the type of a method in the given class.
-lookupSig :: Env -> Name -> Name -> Failable Type
-lookupSig env cls meth =
-  let sigInClass :: [TopSig] -> Failable Type
-      sigInClass [] = fail $ "method " ++ meth ++ " not found in class " ++ cls
-      sigInClass ((TopSig n _ t):_) | n == meth = return t
-      sigInClass (_:xs) = sigInClass xs
-  in do
-     ClassD _ _ sigs <- lookupClassD env cls
-     sigInClass sigs
-
-
 -- | Given a VarE in an environment return the polymorphic type and value of
 -- that variable as determined by the environment. For methods, the type
 -- returned is that of the class definition, not for any specific instance.
@@ -182,32 +170,25 @@ lookupSig env cls meth =
 -- Fails if the variable could not be found in the environment.
 lookupVar :: Env -> Sig -> Failable (Type, Exp)
 lookupVar env s@(Sig n t) =
-  let failed = fail $ "Variable " ++ n ++ " not found"
+  case HT.lookup n (e_vitable env) of
+     Just (DecVI (ValD (TopSig _ _ t) v)) -> return (t, v)
+     Just (DecVI (PrimD {})) -> fail $ "lookupVar: " ++ n ++ " is primitive"
+     Just (ClassVI cn cts st) ->
+        let ts = assign (assignments st t) (map tyVarType cts)
 
-      checkDec :: Dec -> Failable (Type, Exp)
-      checkDec (ValD (TopSig nm _ t) v) | nm == n = return (t, v)
-      checkDec (PrimD (TopSig nm _ _)) | nm == n
-            = fail $ "lookupVar: " ++ n ++ " is primitive"
-      checkDec (ClassD cn cts sigs) =
-         case filter (\(TopSig sn _ _) -> sn == n) sigs of
-            [] -> failed
-            [TopSig _ _ st] -> 
-                let ts = assign (assignments st t) (map tyVarType cts)
-
-                    mlook :: Method -> Failable Exp
-                    mlook (Method nm body) | nm == n = return body
-                    mlook _ = fail "mlook"
-                in do
-                    InstD _ (Class _ pts) ms <- lookupInstD env (Class cn ts)
-                    e <- msum (map mlook ms)
-                    let assigns = concat [assignments p c | (p, c) <- zip pts ts]
-                    return (st, assign assigns e)
-      checkDec _ = failed
-  in msum (map checkDec (e_decls env))
+            mlook :: Method -> Failable Exp
+            mlook (Method nm body) | nm == n = return body
+            mlook _ = fail "mlook"
+        in do
+            InstD _ (Class _ pts) ms <- lookupInstD env (Class cn ts)
+            e <- msum (map mlook ms)
+            let assigns = concat [assignments p c | (p, c) <- zip pts ts]
+            return (st, assign assigns e)
+     _ -> fail $ "lookupVar: " ++ n ++ " not found"
 
 -- | Look up the value of a variable in an environment.
 lookupVarValue :: Env -> Sig -> Failable Exp
-lookupVarValue e s = lookupVar e s >>= return . snd
+lookupVarValue e s = fmap snd $ lookupVar e s
 
 -- | Given a VarE in an environment, return the polymorphic type of that
 -- variable as determined by the environment. For methods of classes, the
@@ -216,55 +197,38 @@ lookupVarValue e s = lookupVar e s >>= return . snd
 --
 -- Fails if the variable could not be found in the environment.
 lookupVarType :: Env -> Name -> Failable Type
-lookupVarType e n  = do
-    case (attemptM $ lookupValD e n, attemptM $ lookupPrimD e n) of
-       (Just (ValD (TopSig _ _ t) _), _) -> return t
-       (_, Just (PrimD (TopSig _ _ t))) -> return t
-       _ ->
-          let getSig :: Dec -> Maybe Type
-              getSig (ClassD cn _ sigs) =
-                case filter (\(TopSig sn _ _) -> sn == n) sigs of
-                    [] -> Nothing
-                    [TopSig _ _ t] -> Just t
-              getSig _ = Nothing
-
-              answer = listToMaybe (catMaybes (map getSig (e_decls e)))
-          in case answer of
-                Just t -> return t
-                Nothing -> fail $ "lookupVarType: '" ++ n ++ "' not declared"
+lookupVarType env n = do
+  case HT.lookup n (e_vitable env) of
+    Just (DecVI (ValD (TopSig _ _ t) _)) -> return t
+    Just (DecVI (PrimD (TopSig _ _ t))) -> return t
+    Just (ClassVI _ _ t) -> return t
+    Nothing -> fail $ "lookupVarType: '" ++ n ++ "' not found"
 
 -- | Given the name of a method and a specific class instance for the method,
 -- return the type of that method for the specific instance.
 lookupMethodType :: Env -> Name -> Class -> Failable Type
-lookupMethodType e n (Class cn ts) = do
-    t <- lookupVarType e n
-    ClassD _ vars _ <- lookupClassD e cn
-    return $ assign (zip (map tyVarName vars) ts) t
+lookupMethodType env n (Class _ ts) = do
+    case HT.lookup n (e_vitable env) of
+        Just (ClassVI _ vars t) ->
+            return $ assign (zip (map tyVarName vars) ts) t
+        _ -> fail $ "lookupMethodType: " ++ n ++ " not found"
 
 -- | Given the name of a data constructor in the environment, return its type.
 lookupDataConType :: Env -> Name -> Failable Type
 lookupDataConType env n = 
     case catMaybes [typeofCon d n | d <- e_decls env] of
-        [] -> fail $ "data constructor " ++ n ++ " not found in env"
-        [x] -> return x
-        xs -> fail $ "multiple data constructors with name " ++ n
+        [] -> fail $ "lookupDataConType: " ++ n ++ " not found"
+        xs -> return $ head xs
 
 -- | Look up VarInfo for the variable with given signature.
 -- Fails if the variable is not declared or an instance or primitive.
 lookupVarInfo :: Env -> Sig -> Failable VarInfo
 lookupVarInfo env (Sig n t) =
-  let failed = fail $ "Variable " ++ n ++ " not found in environment"
-
-      checkDec :: Dec -> Failable VarInfo
-      checkDec (ValD (TopSig nm _ _) _) | nm == n = return Declared
-      checkDec (PrimD (TopSig nm _ _)) | nm == n = return Primitive
-      checkDec (ClassD cn cts sigs) =
-         case filter (\(TopSig sn _ _) -> sn == n) sigs of
-            [] -> failed
-            [TopSig _ _ st] -> 
-                let assigns = assignments st t
-                    cts' = assign assigns (map tyVarType cts)
-                in return $ Instance (Class cn cts')
-      checkDec _ = failed
-  in msum (map checkDec (e_decls env))
+  case HT.lookup n (e_vitable env) of
+     Just (DecVI (ValD {})) -> return Declared
+     Just (DecVI (PrimD {})) -> return Primitive
+     Just (ClassVI cn cts st) ->
+        let ts = assign (assignments st t) (map tyVarType cts)
+        in return $ Instance (Class cn ts)
+     _ -> fail $ "lookupVarInfo: " ++ n ++ " not found"
 
