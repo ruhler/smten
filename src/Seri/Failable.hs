@@ -43,7 +43,7 @@ import Control.Monad
 import System.IO
 import System.Exit
 
-data Failable a = Failable {
+newtype Failable a = Failable {
     -- | Run a Failable computation, returning either a failure message or the
     -- result of the computation.
     attempt :: Either String a
@@ -53,13 +53,11 @@ instance Functor Failable where
     fmap f x = x >>= (return . f)
 
 instance Monad Failable where
-    return x = Failable $ Right x
-    fail msg = Failable $ Left msg
-    (>>=) (Failable x) f = Failable $
-        case x of
-            Right a -> attempt (f a)
-            Left msg -> Left msg
+    return x = Failable (Right x)
+    fail msg = Failable (Left msg)
 
+    (>>=) (Failable (Right a)) f = f a
+    (>>=) (Failable (Left msg)) f = Failable (Left msg)
 
 instance MonadPlus Failable where
     mzero = fail "Failable mzero"
