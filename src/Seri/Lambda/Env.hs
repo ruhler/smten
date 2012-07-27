@@ -41,11 +41,11 @@
 module Seri.Lambda.Env (
     Env,
     VarInfo(..),
-    minimize, sort,
     lookupVarType, lookupVarValue, lookupVar, lookupVarInfo,
     lookupMethodType,
     lookupDataD, lookupDataConType,
     lookupInstD, lookupPrimD,
+    lookupValD, lookupClassD,
     ) where
 
 import Debug.Trace
@@ -204,71 +204,6 @@ lookupMethodType e n (Class cn ts) = do
     t <- lookupVarType e n
     ClassD _ vars _ <- lookupClassD e cn
     return $ assign (zip (map tyVarName vars) ts) t
-
-union :: (Eq a) => [a] -> [a] -> [a]
-union a b = nub $ a ++ b
-
--- declarations env x
--- Return the set of declarations in the given environment a thing depends on.
-declarations :: (Data a) => Env -> a -> Env
-declarations env =
-  let qexp :: Exp -> [Dec]
-      qexp (VarE s@(Sig n _)) =
-         case (attemptM $ lookupVarInfo env s) of
-            Just Primitive -> attemptM $ lookupPrimD env n
-            Just Declared -> attemptM $ lookupValD env n
-            Just (Instance cls@(Class ni ts)) ->
-                catMaybes [attemptM $ lookupClassD env ni,
-                             attemptM $ lookupInstD env cls]
-            _ -> []
-      qexp e = []
-
-      qtype :: Type -> [Dec]
-      qtype (ConT n) = attemptM $ lookupDataD env n
-      qtype t = []
-
-      qclass :: Class -> [Dec]
-      qclass cls@(Class n ts) = catMaybes [
-            attemptM $ lookupClassD env n,
-            attemptM $ lookupInstD env cls]
-
-      query :: (Typeable a) => a -> [Dec]
-      query = extQ (extQ (mkQ [] qexp) qtype) qclass
-  in everything union query
-
--- | Minimize an environment.
--- Remove any declarations in the environment not needed by the object in the
--- environment.
-minimize :: (Data a) => Env -> a -> Env
-minimize m x =
-  let alldecls :: [Dec] -> [Dec]
-      alldecls d =
-        let ds = declarations m d
-            dds = d `union` ds
-        in if (length d == length dds)
-            then d
-            else alldecls dds
-  in alldecls (declarations m x)
-
--- | sort ds
--- Perform a topological sort of declarations ds by dependency.
---   returns (sorted, mutual)
---  sorted - the list of sorted declarations. Declarations earlier in the list
---           do not depend on declarations later in the list.
---  mutual - a list of the remaining mutually dependent declarations from ds.
-sort :: [Dec] -> ([Dec], [Dec])
-sort ds = 
-  let dependencies :: [(Dec, [Dec])]
-      dependencies = [(d, declarations ds d) | d <- ds]
-
-      sorte :: [Dec] -> [(Dec, [Dec])] -> ([Dec], [Dec])
-      sorte sorted unsorted = 
-        let indep :: (Dec, [Dec]) -> Bool
-            indep (d, deps) = and [dp `elem` sorted | dp <- deps]
-        in case partition indep unsorted of
-            ([], deps) -> (sorted, map fst unsorted)
-            (indeps, deps) -> sorte (sorted ++ (map fst indeps)) deps
-  in sorte [] dependencies
 
 -- | Given the name of a data constructor in the environment, return its type.
 lookupDataConType :: Env -> Name -> Failable Type

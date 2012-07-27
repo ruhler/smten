@@ -34,6 +34,7 @@
 -------------------------------------------------------------------------------
 
 module Seri.Lambda (
+    module Seri.Lambda.Declarations,
     module Seri.Lambda.Env,
     module Seri.Lambda.IR,
     module Seri.Lambda.Loader,
@@ -48,6 +49,7 @@ module Seri.Lambda (
     module Seri.Lambda.Sugar,
   ) where
 
+import Seri.Lambda.Declarations
 import Seri.Lambda.Env
 import Seri.Lambda.IR
 import Seri.Lambda.Loader
