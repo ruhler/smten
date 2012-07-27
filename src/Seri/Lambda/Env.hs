@@ -54,23 +54,50 @@ import Data.Generics
 import Data.Maybe
 
 import Seri.Failable
+import Seri.HashTable
 import Seri.Lambda.IR
 import Seri.Lambda.Ppr
 import Seri.Lambda.Types
 
 -- | Env is an abstract data type representing information about a seri
 -- environment.
-newtype Env = Env [Dec]
+data Env = Env {
+    -- | All the original declarations.
+    e_decls :: [Dec],
+
+    -- Fast access to info about values.
+    e_valinfos :: HashTable Name ValInfo
+}
+
+-- | Information about a value name.
+data ValInfo 
+ = PrimVI Type      -- ^ The value is a primitive with given type.
+ | ValVI Type Exp   -- ^ The value is a ValD with given type and value.
+ | ClassVI Name [TyVar] Type   -- ^ The value belongs to the given class and has given type.
+    deriving (Eq, Show)
 
 -- | Build a seri environment from the given list of declarations.
 mkEnv :: [Dec] -> Env
-mkEnv = Env
+mkEnv decs = Env decs (table (vitable decs))
+
+vitable :: [Dec] -> [(Name, ValInfo)]
+vitable decs =
+  let videc :: Dec -> [(Name, ValInfo)]
+      videc (ValD (TopSig n _ t) v) = [(n, (ValVI t v))]
+      videc (PrimD (TopSig n _ t)) = [(n, (PrimVI t))]
+      videc (ClassD cn ts sigs) =  
+        let isig :: TopSig -> (Name, ValInfo)
+            isig (TopSig n _ t) = (n, ClassVI cn ts t)
+        in map isig sigs
+      videc (DataD {}) = []
+      videc (InstD {}) = []
+  in concat $ map videc decs
 
 -- | Make a small change to an environment.
 -- Add the given declarations to the environment, overwriting any existing
 -- conflicting ones.
 tweak :: [Dec] -> Env -> Env
-tweak tds (Env ds) = Env (tds ++ ds)
+tweak tds e = mkEnv (tds ++ e_decls e)
 
 -- | 'VarInfo' 
 -- Information about a variable.
@@ -88,8 +115,8 @@ data VarInfo = Primitive |  Declared | Instance Class
 --  predicate - a predicate which identifies the desired declaration
 --  env - the environment to search in.
 theOneOf :: String -> String -> (Dec -> Bool) -> Env -> Failable Dec
-theOneOf kind n p (Env decs) =
-    case filter p decs of
+theOneOf kind n p e =
+    case filter p (e_decls e) of
         [] -> fail $ kind ++ " for " ++ n ++ " not found"
         x -> return $ head x
 
@@ -154,7 +181,7 @@ lookupSig env cls meth =
 --
 -- Fails if the variable could not be found in the environment.
 lookupVar :: Env -> Sig -> Failable (Type, Exp)
-lookupVar env@(Env decs) s@(Sig n t) =
+lookupVar env s@(Sig n t) =
   let failed = fail $ "Variable " ++ n ++ " not found"
 
       checkDec :: Dec -> Failable (Type, Exp)
@@ -176,7 +203,7 @@ lookupVar env@(Env decs) s@(Sig n t) =
                     let assigns = concat [assignments p c | (p, c) <- zip pts ts]
                     return (st, assign assigns e)
       checkDec _ = failed
-  in msum (map checkDec decs)
+  in msum (map checkDec (e_decls env))
 
 -- | Look up the value of a variable in an environment.
 lookupVarValue :: Env -> Sig -> Failable Exp
@@ -189,7 +216,7 @@ lookupVarValue e s = lookupVar e s >>= return . snd
 --
 -- Fails if the variable could not be found in the environment.
 lookupVarType :: Env -> Name -> Failable Type
-lookupVarType e@(Env decs) n  = do
+lookupVarType e n  = do
     case (attemptM $ lookupValD e n, attemptM $ lookupPrimD e n) of
        (Just (ValD (TopSig _ _ t) _), _) -> return t
        (_, Just (PrimD (TopSig _ _ t))) -> return t
@@ -201,7 +228,7 @@ lookupVarType e@(Env decs) n  = do
                     [TopSig _ _ t] -> Just t
               getSig _ = Nothing
 
-              answer = listToMaybe (catMaybes (map getSig decs))
+              answer = listToMaybe (catMaybes (map getSig (e_decls e)))
           in case answer of
                 Just t -> return t
                 Nothing -> fail $ "lookupVarType: '" ++ n ++ "' not declared"
@@ -216,16 +243,16 @@ lookupMethodType e n (Class cn ts) = do
 
 -- | Given the name of a data constructor in the environment, return its type.
 lookupDataConType :: Env -> Name -> Failable Type
-lookupDataConType (Env decs) n = 
-    case catMaybes [typeofCon d n | d <- decs] of
+lookupDataConType env n = 
+    case catMaybes [typeofCon d n | d <- e_decls env] of
         [] -> fail $ "data constructor " ++ n ++ " not found in env"
         [x] -> return x
-        xs -> fail $ "multiple data constructors with name " ++ n ++ " found in env: " ++ pretty decs
+        xs -> fail $ "multiple data constructors with name " ++ n
 
 -- | Look up VarInfo for the variable with given signature.
 -- Fails if the variable is not declared or an instance or primitive.
 lookupVarInfo :: Env -> Sig -> Failable VarInfo
-lookupVarInfo (Env decs) (Sig n t) =
+lookupVarInfo env (Sig n t) =
   let failed = fail $ "Variable " ++ n ++ " not found in environment"
 
       checkDec :: Dec -> Failable VarInfo
@@ -239,5 +266,5 @@ lookupVarInfo (Env decs) (Sig n t) =
                     cts' = assign assigns (map tyVarType cts)
                 in return $ Instance (Class cn cts')
       checkDec _ = failed
-  in msum (map checkDec decs)
+  in msum (map checkDec (e_decls env))
 
