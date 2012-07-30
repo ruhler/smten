@@ -69,8 +69,11 @@ data Env = Env {
 }
 
 -- | Information about a value name.
+-- TODO: should DataD not be in this table, because we are never confused
+-- between a DataD and a value? I think so. I was just lazy when I added DataD
+-- here.
 data ValInfo 
- = DecVI Dec     -- ^ The value is the given ValD or PrimD
+ = DecVI Dec     -- ^ The value is the given ValD or PrimD or DataD
  | ClassVI Name [TyVar] Type   -- ^ The value belongs to the given class and has given type.
     deriving (Eq, Show)
 
@@ -81,13 +84,13 @@ mkEnv decs = Env decs (table (vitable decs))
 vitable :: [Dec] -> [(Name, ValInfo)]
 vitable decs =
   let videc :: Dec -> [(Name, ValInfo)]
-      videc d@(ValD (TopSig n _ _) _) = [(n, (DecVI d))]
-      videc d@(PrimD (TopSig n _ _)) = [(n, (DecVI d))]
+      videc d@(ValD (TopSig n _ _) _) = [(n, DecVI d)]
+      videc d@(PrimD (TopSig n _ _)) = [(n, DecVI d)]
       videc (ClassD cn ts sigs) =  
         let isig :: TopSig -> (Name, ValInfo)
             isig (TopSig n _ t) = (n, ClassVI cn ts t)
         in map isig sigs
-      videc (DataD {}) = []
+      videc d@(DataD n _ _) = [(n, DecVI d)]
       videc (InstD {}) = []
   in concat $ map videc decs
 
@@ -140,10 +143,9 @@ lookupPrimD env n =
 -- Environment.
 lookupDataD :: Env -> Name -> Failable Dec
 lookupDataD env n =
-  let theDataD :: Dec -> Bool
-      theDataD (DataD nm _ _) = n == nm
-      theDataD _ = False
-  in theOneOf "DataD" n theDataD env
+  case (HT.lookup n (e_vitable env)) of
+     Just (DecVI d@(DataD {})) -> return d  
+     _ -> fail $ "lookupDataD: " ++ n ++ " is not a DataD"
 
 -- | Look up a ClassD with given Name in the given Environment.
 lookupClassD :: Env -> Name -> Failable Dec

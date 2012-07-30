@@ -35,6 +35,7 @@
 
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE TypeSynonymInstances #-}
 
 module Seri.Lambda.TypeInfer (
         TypeInfer(..)

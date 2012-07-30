@@ -1,0 +1,173 @@
+
+Mon Jul 30 10:30:16 EDT 2012
+
+Goal for today: continuing the performance improvement.
+
+- Look over the GHC profiling options, see if there's anything interesting
+  there.
+- Make the SCCs explicit. So I don't get distracted by a bunch of useless
+  info, narrow in on what matters, and maybe this will make it so Failable.>>=
+  doesn't get assigned all the time?
+- Add more info to the environment hash tables to avoid linear searches.
+
+I think do that, and go from there.
+
+Mon Jul 30 10:38:07 EDT 2012
+
+No interesting new information about ghc profiling options.
+
+Let me try "auto" instead of "auto-all", see if that does anything useful.
+
+Mon Jul 30 10:48:51 EDT 2012
+
+Actually, the sample program I have is pretty fast. To get a better idea, let
+me update bcl to use the latest seri code. See how fast that looks now.
+Then...probably want to generate a much more lengthy example. Target 10-30
+seconds of runtime.
+
+Mon Jul 30 11:09:29 EDT 2012
+
+I ran profiling on BCL and BCL2. The profiles look very different!
+
+In BCL we spend a lot of time in Check I think.
+In BCL2 we spend most of the time in type inference, very little time in the
+query.
+
+All of which suggests... I need more realistic benchmarks. To really
+understand what the issue is. I should ideally profile bcl directly.
+
+Well, so, I'm working on it.
+
+Mon Jul 30 11:16:26 EDT 2012
+
+Okay, good, so resolved the yices installation problem (a recent release of
+parsec was causing problems. I went back to an older release and things worked
+fine).
+
+Now I can profile Myron's code directly, and also try out my latest
+changes.
+
+Mon Jul 30 11:25:45 EDT 2012
+
+Okay, so it looks faster now. I wish it would terminate somehow, instead of
+going forever. One of them terminated, right?
+
+Mon Jul 30 12:04:53 EDT 2012
+
+Okay, so I ran some profiling of the bcl code. Let me summarize how things
+look. It would be nice if I could reproduce this locally in seri. So, I think
+dump out a bunch of the queries, concatenate them together, run the profiler,
+see if I get the same kind of profile.
+
+Mon Jul 30 12:07:22 EDT 2012
+
+90% in runQuery
+60% of the time in check. So, waiting on yices. (But none of the allocation
+there)
+
+20% of the time in yicesE, 70% of the allocation is there.
+Most in yExp.
+
+yicesci is fairly big. It calls lookupDataD and lookupDataConType.
+
+yfreeerr is huge allocation wise. That seems strange to me. And pretty big run
+time wise. Perhaps it's forcing some evaluations? Is there laziness going on
+there? It claims the failable bind is slow.
+
+A bit of time spent in monomorphic. I should really avoid re-monomorphizing
+things over and over and over again.
+
+Elaborate gets a little bit of time.
+
+ytermS gets a bunch of time.
+ytermbystr is maybe getting more time than it should. Can I easily get rid of
+that?
+
+Okay, more time in elaborate, looks like beta reduction.
+
+type inference gets a bit of time, almost all spend in the solver, in type
+replacement. Perhaps there's a better way to do that?
+
+Parsing doesn't seem to be a problem at all.
+
+And that's about it.
+
+Let me see if I can't replicate this locally.
+
+Mon Jul 30 12:59:12 EDT 2012
+
+Cool, it's replicated.
+And, I think the SCCs are helping making things more precise. Perhaps.
+
+Anyway, now what?
+
+I'd really like to understand why failable is getting attributed to so much. 
+
+Perhaps add SCCs around yicesE where it is showing up.
+
+Mon Jul 30 13:12:54 EDT 2012
+
+The SCCs don't help any. Let me try something different then. Let me try
+reducing those things under >>=.
+
+subE, addE, assign, mplus, lookupVar.mlook, Yices2 syntax,
+depat, dematch, yicesname, yfreerr, yDec, lookupDataD,
+lookupDataConType, etc..
+
+Start with an easy fix.
+lookupDataD. Add another hash table, mapping DataD name to declarations.
+lookupDataConType. Add another hash table from Name to Type for data
+constructors
+
+Maybe start with just lookupDataD, because that's easiest. Goal is to see if
+this impacts the numbers given for >>= any.
+
+Mon Jul 30 13:26:00 EDT 2012
+
+Nope. Doesn't look like it made any significant difference at all. That's
+discouraging.
+
+What if I tried inlining bind? Can I do that?
+
+Or turning off auto sccs, see if we get a parent to catch it instead?
+
+Mon Jul 30 14:00:09 EDT 2012
+
+Perhaps the problem is StateT in conjunction with Failable.
+
+What if I make my own specialized monad for that? Be able to run a Failable
+thing in a reasonable way.
+
+That sounds like a reasonable thing to try to me. See what that does to
+performance overall.
+
+Mon Jul 30 14:15:39 EDT 2012
+
+Well, it didn't improve the performance any. Just renamed things?
+
+Mon Jul 30 14:29:41 EDT 2012
+
+Hmm... so how can I improve this any?
+We allocate lots of state...
+
+Do less inside the monad?
+
+Is there anywhere I can get away without it?
+
+Maybe let me try not every using modify, but a strict version of modify. Call
+it modifyS.
+
+No difference.
+
+Let me... uh... try to make something faster in yicesE? See if that makes any
+difference?
+
+Mon Jul 30 14:50:30 EDT 2012
+
+How about this. Let me see if I can make monomorphization incremental. That
+should be a big win here, no?
+
+Oh. This should be easy. We just expose the M monad like we did for queries.
+
+Shall I try this? Sure.
+

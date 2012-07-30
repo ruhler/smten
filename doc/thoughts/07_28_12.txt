@@ -1,0 +1,123 @@
+
+Sat Jul 28 09:18:55 EDT 2012
+
+Thoughts on the next steps performance wise:
+
+- >>= is getting a lot of time to it, including some lookupVar.mlook. I should
+  get rid of lookupVar.mlook, use a hash table approach instead, see how that
+improves things.
+
+- lookupDataD... use a hash table approach for that too.
+And lookupDataConType.
+
+Yes, I think I need to finish the hash table approach for everything, because
+even though it's not reported as a big problem... I think it is still.
+
+The trouble is, with >>= getting all the time, I don't know what else is
+important or not. I can only guess.
+
+- monomorphizing takes a while.
+I bet I'm doing more than I have to. Or maybe haskell lazy means we aren't...
+Perhaps I should use something better than // for equality testing? Or,
+really, I should provide monomorphizer with an existing monomorphized
+environment to avoid repeated work. That makes the most sense.
+
+- A lot of time constructing yices terms. Experiment with unsafe calls?
+Or read more about them to see if they should be acceptable. This may even be
+more important...
+
+I feel like one trouble is we send so much information to yices. It would be
+nice if we could send it less information, via sharing. So, instead of:
+
+assert (big long expression 1)
+assert (big long expression 2)
+
+Do something like:
+define E = big long expression
+assert (E 1)
+assert (E 2)
+
+That sort of thing. Cut the communication to yices in half.
+
+In elaboration:
+  pattern matching, beta reduction seem a little sluggish.
+  bindingsP...
+
+
+If I merge typeinference with typecheck... could I do that? That should reduce
+a bunch of duplicated effort. And simplify the interface.
+
+type replacement seems to be doing a bunch of equality check. Perhaps I can
+use a hash table like thing for that in the type solver?
+
+Sat Jul 28 20:06:39 EDT 2012
+
+Just for the fun of it, let me try unsafe foreign interface calls, see how big
+a difference it makes. We can do unsafe, because I know for sure yices doesn't
+call back into the haskell code.
+
+Not significant it turns out.
+
+Sat Jul 28 20:13:27 EDT 2012
+
+Let me look at treplace now. I don't think type inference is really on the
+critical path for long queries. Especially considering we should be able to
+construct them well typed, but it might be fun to see what's going on.
+
+Also, treplace ought to be implementable using my generics framework.
+
+treplace: takes a key, a value, and a substitution to make.
+
+Um... looks almost too trivial to require generics.
+
+Perhaps the trouble is we have to do it so many times? I don't know.
+
+Sat Jul 28 20:23:11 EDT 2012
+
+No, I think the  most important thing I can do for performance right now is
+fix the Env to do fast lookups for everything.
+
+Let me review all the reasons people want to look things up in the
+environment. See if I can limit the interface, or clarify it any, then
+implement it better.
+
+- lookupVarType 
+seriq uses thise ti figure out the type of main.
+typecheck uses to verify a variable type.
+
+- lookupDataD
+yices uses it to get at the constructors for a given data type.
+
+- lookupMethodType
+typecheck uses to verify each method of a class has the right type.
+That is, to know how to typecheck.
+
+This should be trivial to implement using the hash table. Am I doing it now?
+Yes. I'm using the hash table.
+
+Used also for inference of methods.
+
+- lookupDataConType
+Used by type check to verify ConP's have the right type. And ConE.
+Used in type inference too.
+
+- lookupInstD
+Used to look up a specific instance for instcheck.
+
+- lookupVarInfo
+used in instcheck to identify which things are instance.
+
+Sat Jul 28 20:32:45 EDT 2012
+
+Okay, so here's the funny use. Declarations.
+
+What we want is... given a variable:
+ - if it's a primitive, the PrimD.
+ - if it's a variable, the ValD
+ - if it's an instance, the ClassD and the InstD
+
+We also have:
+ - For a class, look up the ClassD and the InstD.
+
+Ug. And there's other funniness.
+

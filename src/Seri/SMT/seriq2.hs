@@ -53,15 +53,15 @@ main = do
                ["-i", path, "-m", m, fin] -> (Nothing, path, m, fin)
                x -> error $ "bad args: " ++ show x
 
-    query <- load [path] fin
-    flat <- attemptIO $ flatten query
-    decs <- attemptIO $ typeinfer (mkEnv flat) flat
-    let env = mkEnv decs
-    attemptIO $ typecheck env decs
+    query <- {-# SCC "LOAD" #-} load [path] fin
+    flat <- {-# SCC "FLATTEN" #-} attemptIO $ flatten query
+    decs <- {-# SCC "INFER" #-} attemptIO $ typeinfer (mkEnv flat) flat
+    let env = {-# SCC "MKENV" #-} mkEnv decs
+    {-# SCC "TYPECHECK" #-} attemptIO $ typecheck env decs
 
     let opts = (RunOptions dbg 30)
-    tmain <- attemptIO $ lookupVarType env m
-    querier <- mkQuerier opts env
-    (result, _) <- runQuery querier (VarE (Sig m tmain))
-    putStrLn $ pretty result
+    tmain <- {-# SCC "LOOKUPMAIN" #-} attemptIO $ lookupVarType env m
+    querier <- {-# SCC "MKQUERIER" #-} mkQuerier opts env
+    (result, _) <- {-# SCC "RUNQUERY" #-} runQuery querier (VarE (Sig m tmain))
+    {-# SCC "RESULT" #-} putStrLn $ pretty result
 
