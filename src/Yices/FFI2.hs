@@ -106,124 +106,124 @@ fromYSMTStatus 3 = Satisfiable
 fromYSMTStatus 4 = Unsatisfiable
 fromYSMTStatus _ = Undefined
 
-foreign import ccall "yices_init"
+foreign import ccall unsafe "yices_init"
     c_yices_init :: IO ()
 
-foreign import ccall "yices_exit"
+foreign import ccall unsafe "yices_exit"
     c_yices_exit :: IO ()
 
-foreign import ccall "yices_print_error"
+foreign import ccall unsafe "yices_print_error"
     c_yices_print_error :: Ptr CFile -> IO ()
 
-foreign import ccall "yices_new_scalar_type"
+foreign import ccall unsafe "yices_new_scalar_type"
     c_yices_new_scalar_type :: Int32 -> IO YType
 
-foreign import ccall "yices_constant"
+foreign import ccall unsafe "yices_constant"
     c_yices_constant :: YType -> Int32 -> IO YTerm
 
-foreign import ccall "yices_new_uninterpreted_type"
+foreign import ccall unsafe "yices_new_uninterpreted_type"
     c_yices_new_uninterpreted_type :: IO YType
 
-foreign import ccall "yices_new_uninterpreted_term"
+foreign import ccall unsafe "yices_new_uninterpreted_term"
     c_yices_new_uninterpreted_term :: YType -> IO YTerm
 
-foreign import ccall "yices_set_type_name"
+foreign import ccall unsafe "yices_set_type_name"
     c_yices_set_type_name :: YType -> CString -> IO ()
 
-foreign import ccall "yices_set_term_name"
+foreign import ccall unsafe "yices_set_term_name"
     c_yices_set_term_name :: YTerm -> CString -> IO ()
 
-foreign import ccall "yices_parse_type"
+foreign import ccall unsafe "yices_parse_type"
     c_yices_parse_type :: CString -> IO YType
 
-foreign import ccall "yices_parse_term"
+foreign import ccall unsafe "yices_parse_term"
     c_yices_parse_term :: CString -> IO YTerm
 
 
-foreign import ccall "yices_true"
+foreign import ccall unsafe "yices_true"
     c_yices_true ::  IO YTerm
 
-foreign import ccall "yices_false"
+foreign import ccall unsafe "yices_false"
     c_yices_false ::  IO YTerm
 
-foreign import ccall "yices_rational64"
+foreign import ccall unsafe "yices_rational64"
     c_yices_rational64 ::  Int64 -> Word64 -> IO YTerm
 
-foreign import ccall "yices_eq"
+foreign import ccall unsafe "yices_eq"
     c_yices_eq :: YTerm -> YTerm -> IO YTerm
 
-foreign import ccall "yices_tuple"
+foreign import ccall unsafe "yices_tuple"
     c_yices_tuple :: Word32 -> Ptr YTerm -> IO YTerm
 
-foreign import ccall "yices_tuple_update"
+foreign import ccall unsafe "yices_tuple_update"
     c_yices_tuple_update :: YTerm -> Word32 -> YTerm -> IO YTerm
 
-foreign import ccall "yices_select"
+foreign import ccall unsafe "yices_select"
     c_yices_select :: Word32 -> YTerm -> IO YTerm
 
-foreign import ccall "yices_application"
+foreign import ccall unsafe "yices_application"
     c_yices_application :: YTerm -> Word32 -> Ptr YTerm -> IO YTerm
 
-foreign import ccall "yices_update"
+foreign import ccall unsafe "yices_update"
     c_yices_update :: YTerm -> Word32 -> Ptr YTerm -> YTerm -> IO YTerm
 
-foreign import ccall "yices_ite"
+foreign import ccall unsafe "yices_ite"
     c_yices_ite :: YTerm -> YTerm -> YTerm -> IO YTerm
 
-foreign import ccall "yices_arith_lt_atom"
+foreign import ccall unsafe "yices_arith_lt_atom"
     c_yices_arith_lt_atom :: YTerm -> YTerm -> IO YTerm
 
-foreign import ccall "yices_arith_gt_atom"
+foreign import ccall unsafe "yices_arith_gt_atom"
     c_yices_arith_gt_atom :: YTerm -> YTerm -> IO YTerm
 
-foreign import ccall "yices_add"
+foreign import ccall unsafe "yices_add"
     c_yices_add :: YTerm -> YTerm -> IO YTerm
 
-foreign import ccall "yices_sub"
+foreign import ccall unsafe "yices_sub"
     c_yices_sub :: YTerm -> YTerm -> IO YTerm
 
-foreign import ccall "yices_mul"
+foreign import ccall unsafe "yices_mul"
     c_yices_mul :: YTerm -> YTerm -> IO YTerm
 
-foreign import ccall "yices_or2"
+foreign import ccall unsafe "yices_or2"
     c_yices_or2 :: YTerm -> YTerm -> IO YTerm
 
-foreign import ccall "yices_and2"
+foreign import ccall unsafe "yices_and2"
     c_yices_and2 :: YTerm -> YTerm -> IO YTerm
 
-foreign import ccall "yices_and"
+foreign import ccall unsafe "yices_and"
     c_yices_and :: Word32 -> Ptr YTerm -> IO YTerm
 
-foreign import ccall "yices_xor2"
+foreign import ccall unsafe "yices_xor2"
     c_yices_xor2 :: YTerm -> YTerm -> IO YTerm
 
-foreign import ccall "yices_new_context"
+foreign import ccall unsafe "yices_new_context"
     c_yices_new_context :: Ptr YContextConfig -> IO (Ptr YContext)
 
-foreign import ccall "yices_free_context"
+foreign import ccall unsafe "yices_free_context"
     c_yices_free_context :: Ptr YContext -> IO ()
 
-foreign import ccall "yices_assert_formula"
+foreign import ccall unsafe "yices_assert_formula"
     c_yices_assert_formula :: Ptr YContext -> YTerm -> IO ()
 
-foreign import ccall "yices_check_context"
+foreign import ccall unsafe "yices_check_context"
     c_yices_check_context :: Ptr YContext -> Ptr YParam -> IO YSMTStatus
 
-foreign import ccall "yices_push"
+foreign import ccall unsafe "yices_push"
     c_yices_push :: Ptr YContext -> IO ()
 
-foreign import ccall "yices_pop"
+foreign import ccall unsafe "yices_pop"
     c_yices_pop :: Ptr YContext -> IO ()
 
-foreign import ccall "yices_get_model"
+foreign import ccall unsafe "yices_get_model"
     c_yices_get_model :: Ptr YContext -> Int32 -> IO (Ptr YModel)
 
-foreign import ccall "yices_free_model"
+foreign import ccall unsafe "yices_free_model"
     c_yices_free_model :: Ptr YModel -> IO ()
 
-foreign import ccall "yices_get_int64_value"
+foreign import ccall unsafe "yices_get_int64_value"
     c_yices_get_int64_value :: Ptr YModel -> YTerm -> Ptr Int64 -> IO Int32
 
-foreign import ccall "fdopen"
+foreign import ccall unsafe "fdopen"
     c_fdopen :: CInt -> CString -> IO (Ptr CFile)
 

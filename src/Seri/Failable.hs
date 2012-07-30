@@ -57,7 +57,7 @@ instance Monad Failable where
     fail msg = Failable (Left msg)
 
     (>>=) (Failable (Right a)) f = f a
-    (>>=) (Failable (Left msg)) f = Failable (Left msg)
+    (>>=) (Failable (Left msg)) _ = Failable (Left msg)
 
 instance MonadPlus Failable where
     mzero = fail "Failable mzero"

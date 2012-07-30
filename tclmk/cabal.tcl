@@ -60,7 +60,7 @@ proc cabal {fcabal} {
         puts $fout "  extra-libraries: [join $libs {, }]"
         puts $fout "  build-tools: happy"
         puts $fout "  ghc-options: -rtsopts"
-        puts $fout "  ghc-prof-options: -auto-all"
+        #puts $fout "  ghc-prof-options: -auto"
     }
     close $fout
 }
