@@ -45,7 +45,7 @@ import qualified Yices.Syntax as Y
 import Data.List ((\\))
 import Data.Char(ord)
 import Data.Maybe(catMaybes)
-import Control.Monad.State
+import Control.Monad.State.Strict
 
 import Seri.Failable
 import Seri.Lambda
@@ -67,6 +67,18 @@ data Compilation = Compilation {
 
 -- | Monad for performing additional yices compilation.
 type CompilationM = StateT Compilation Failable
+
+-- | Strict gets.
+getsS :: (Compilation -> a) -> CompilationM a
+getsS f = do
+    s <- get
+    return $! f s
+
+-- | Strict modify
+modifyS :: (Compilation -> Compilation) -> CompilationM ()
+modifyS f = do
+    s <- get
+    put $! f s
 
 -- | Create a new yices compilation object.
 compilation :: Y.YicesVersion    -- ^ yices version to target
@@ -92,23 +104,23 @@ yicesN = yicesname
 -- Returns a list of yices commands needed to use the compiled type.
 yicesT :: Type -> CompilationM ([Y.Command], Y.Type)
 yicesT t = do
+   modifyS $ \ys -> ys { ys_cmds = [] }
    mt <- compileNeeded t 
+   cmds <- getsS ys_cmds
    yt <- lift $ yType mt
-   cmds <- gets ys_cmds
-   modify $ \ys -> ys { ys_cmds = [] }
    return (cmds, yt)
 
 -- | Compile a seri expression to a yices expression.
 -- Returns a list of yices commands needed to use the compiled expressions.
 yicesE :: Exp -> CompilationM ([Y.Command], Y.Expression)
 yicesE e = do
-    idepth <- gets ys_idepth
-    poly <- gets ys_poly
+    idepth <- getsS ys_idepth
+    poly <- getsS ys_poly
     let se = elaborate Full poly e
+    modifyS $ \ys -> ys { ys_cmds = [] }
     me <- compileNeeded se
     ye <- yExp me 
-    cmds <- gets ys_cmds
-    modify $ \ys -> ys { ys_cmds = [] }
+    cmds <- getsS ys_cmds
     return (cmds, ye)
 
 -- | Run a compilation.
@@ -119,26 +131,24 @@ yfail :: String -> CompilationM a
 yfail = lift . fail
 
 addcmds :: [Y.Command] -> CompilationM ()
-addcmds cmds = do
-    ys <- get
-    put $! ys { ys_cmds = ys_cmds ys ++ cmds }
+addcmds cmds = modifyS $ \ys -> ys { ys_cmds = ys_cmds ys ++ cmds }
 
 -- Given some object, compile everything in the environment needed for this
 -- object, and return the monomorphic object.
 compileNeeded :: (Monomorphic a, Ppr a) => a -> CompilationM a
 compileNeeded x = do
-    poly <- gets ys_poly
+    poly <- getsS ys_poly
     let (mdecs, mx) = monomorphic poly x
     let (sorted, r) = sort mdecs
     if null r
         then return ()  
         else yfail $ "yices recursive declarations not supported: "
                 ++ pretty r ++ ",\n needed for " ++ pretty x
-    decl <- gets ys_mono
+    decl <- getsS ys_mono
     let ndecl = sorted \\ decl
     let nmono = decl ++ ndecl
     -- TODO: should we use "tweak" to update ys_monoe?
-    modify $ \ys -> ys { ys_mono = nmono, ys_monoe = mkEnv nmono}
+    modifyS $ \ys -> ys { ys_mono = nmono, ys_monoe = mkEnv nmono}
     mapM_ yDec ndecl
     return mx
 
@@ -148,18 +158,18 @@ compileNeeded x = do
 yfreeerr :: Type -> CompilationM String
 yfreeerr t = do
     yt <- lift $ yType t
-    id <- gets ys_errid
+    id <- getsS ys_errid
     let nm = yicesname ("err~" ++ show id)
-    modify $ \ys -> ys { ys_errid = id+1 }
+    modifyS $ \ys -> ys { ys_errid = id+1 }
     addcmds [Y.Define nm yt Nothing]
     return nm
 
 -- Get a new, free variable for use as a case argument variable.
 yfreecase :: CompilationM String
 yfreecase = do
-    id <- gets ys_caseid
-    modify $ \ys -> ys { ys_caseid = id+1 }
-    return $ yicesname ("c~" ++ show id)
+    id <- getsS ys_caseid
+    modifyS $ \ys -> ys { ys_caseid = id+1 }
+    return $! yicesname ("c~" ++ show id)
 
 -- Translate a seri expression to a yices expression
 yExp :: Exp -> CompilationM Y.Expression
@@ -289,7 +299,7 @@ yicesci n =
         findidx i ((Con cn _) : _) | n == cn = return i
         findidx i (_ : cs) = findidx (i+1) cs
     in do
-        envr <- gets ys_monoe
+        envr <- getsS ys_monoe
         contype <- lift $ lookupDataConType envr n
         case last $ unarrowsT contype of
             ConT dt -> do

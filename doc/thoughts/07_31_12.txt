@@ -1,0 +1,90 @@
+
+Tue Jul 31 09:04:34 EDT 2012
+
+Plan for today: try to improve the >>= stats on the profile.
+
+I think we're being overly lazy. So try to find that and get rid of it.
+
+Plan:
+1. Try making the Compilation strict in its fields, under the hypothesis that
+we have a bunch of unevaluated thunks retaining lots of copies of this, which
+is eating up memory, causing the allocator to have to do lots more work, which
+is taking up a lot of time (and memory).
+
+2. Read through the rest of the yices target, looking for weird stuff. In
+particular, things like depat.
+
+Wish me luck.
+
+Tue Jul 31 09:13:09 EDT 2012
+
+(1) didn't help any.
+
+Tue Jul 31 09:18:40 EDT 2012
+
+Looks like we are leaking Compilation objects, when I expect we shouldn't be.
+We should only ever need just one. So let me focus on this.
+
+First step, figure out who is retaining the Compilation objects.
+
+The retainer profile says >>=, which really isn't so helpful. Let me
+investigate by hand.
+
+Things which have compilation objects:
+ - SMTQuerier - we should check if this is being leaked.
+ - call to runCompilation not evaluated? might hold onto ys.
+    in both yicest and yicese.
+
+In yices target:
+ - modify may hold onto it if it's lazy.
+    A strict modify would be useful.
+ - gets call to get the commands (or anything) may hold onto it if gets is lazy.
+    Perhaps a strict gets would be useful?
+
+SMTQuerier is not being leaked. Good. It shows what we want to see the
+Compilation look like: just one throughout.
+
+Tue Jul 31 09:36:20 EDT 2012
+
+Okay, so let me try everywhere to avoid leaking Compilation objects.
+
+Tue Jul 31 09:49:35 EDT 2012
+
+So all I could find to do was use getsS and modifyS everywhere.
+
+Tue Jul 31 09:53:03 EDT 2012
+
+Nope. Still leaking...
+
+Tue Jul 31 10:00:19 EDT 2012
+
+Got it! Not that it helped a whole lot, but at least it's clear >>= isn't a
+major issue anymore.
+
+But what was the change I made? I feel like I made a couple.
+
+1. Use Control.Monad.State.Strict instead of Control.Monad.State.
+2. Clear the cmds list before running instead of after running.
+
+let me go back to Control.Monad.State. That is, let me start undoing changes I
+made until I figure out the important difference.
+
+Tue Jul 31 10:10:50 EDT 2012
+
+You know what it looks like? It looks like we really didn't fix anything?
+Hmm... I don't understand. The profile says we didn't improve anything... But
+I swear we are leaking less, right?
+
+But depending on how I implement addcmds, it either gets the cost of
+performance and memory allocation, or >>= gets the cost.
+
+Tue Jul 31 10:17:47 EDT 2012
+
+Okay, so I definitely fixed the space leak, and using
+Control.Monad.State.Strict has something to do with it, though I don't
+entirely understand what's going on.
+
+The profiling info, however, doesn't seem to reflect that. Perhaps it wasn't
+costing us so much anyway. I don't know, but I think I should check this in
+anyway.
+

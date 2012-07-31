@@ -1,2 +1,7 @@
 build
 tclmk/local.tcl
+*.prof
+*.pdf
+*.ps
+*.hp
+*.aux

@@ -171,3 +171,117 @@ Oh. This should be easy. We just expose the M monad like we did for queries.
 
 Shall I try this? Sure.
 
+Mon Jul 30 15:12:33 EDT 2012
+
+For some reason, that made things way worse. What's with that?
+
+I don't understand. :(
+
+Mon Jul 30 15:18:50 EDT 2012
+
+Maybe it's time to start doing heap profiling? Because this doesn't make any
+sense at all to me. Let me try that, without this monomorphic fix which
+turned out not to be a fix at all.
+
+Mon Jul 30 15:30:08 EDT 2012
+
+Interesting heap...
+
+I see spikes for each of the 17 queries.
+In...  
+  >>=/yicesE/yicese/run...
+
+What is this "run" thing? It's runCmds.
+
+Maybe that's what's taking all the time? That's what is coming from >>=?
+
+Let me look at all the profiling info to see what I can see.
+I may want to redo the hc profile, to get the full stack trace for that memory
+allocation. Perhaps we have a temporary space leak, and just adding some
+strictness where it counts is all we need?
+
+Mon Jul 30 15:41:16 EDT 2012
+
+Okay, heap profiling says we have:
+
+Lots of lists, retained by >>=, from yicese.runCmds, left in the DRAG state.
+That is, referred to, but not read much. What are these from?
+
+Let's see the function.
+
+Well...  we have a bunch of commands in a list.
+Perhaps they aren't being sent, because of lift?
+
+let's do an experiment...
+
+No, that didn't do it.
+
+What does this have to do with >>=?
+
+Here's my hypothesis: we are leaking cmds? We aren't sending them to yices
+right away like we ought to be?
+
+But how can I force this?
+
+I would like to have more closure info shown in the profile report. How do I
+do that?
+
+Mon Jul 30 16:05:48 EDT 2012
+
+Oh, I was reading the label backwards.
+
+The problem is in yicesE bind.
+
+Well, we call bind in a number of places. Perhaps I can clarify somehow which
+bind it is? For example, with nested do?
+
+Mon Jul 30 16:17:36 EDT 2012
+
+Looks like it's the top level yicesE expression, not inside anything.
+I also see that RETURN isn't ever reached. Isn't that odd?
+
+Mon Jul 30 16:29:42 EDT 2012
+
+Anyway, there's only one place where we have >>= from this. That's when we run
+the compilation. So the question is... why don't we evaluate? Or, how can I
+force evaluation to get rid of the >>=?
+
+Mon Jul 30 17:19:26 EDT 2012
+
+The trouble is... we don't force the evaluation until we call query to get the
+result from yices. Everything else we do leading up to that is adding up
+assertions and running commands, but never reading their results.
+
+How can I force commands to run earlier? How can I get the expression to be
+evaluated much sooner? Is that really the problem I'm facing?
+
+I don't know... I don't understand.
+
+Let me summarize what I think is going on, and maybe things will become
+clearer later.
+
+We want to improve performance of queries.
+Profiling says:
+
+50% of time is spent in check.
+10% of time is spent in >>=, with 40% of the allocations.
+
+These are the primary contributers to the slowdown of the queries. After that
+comes type inference stuff, which we can amortize by doing more queries.
+
+The check call is waiting on yices2 for an answer. Ideally we spend almost all
+of our time here. Once we get to that point, the trick is to figure out how to
+ask better yices questions.
+
+For now, however, we're more interested in speeding up the seri code.
+
+Question: why is >>= taking 10% of the time, 40% of the allocation?
+Heap profiling shows for each call to 'check', we have a spike in the heap. A
+spike of lists which are retained by >>=. We make a number of assertions.
+Assertions don't get evaluated until check, just piling on more and more
+heap space.
+
+If we were eager, I would expect to have a little spike for each assertion,
+not one big spike for each query.
+
+

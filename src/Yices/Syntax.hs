@@ -63,10 +63,12 @@ data Command =
   | Check                                       -- ^ > (check)
   | Push                                        -- ^ > (push)
   | Pop                                         -- ^ > (pop)
+    deriving(Show, Eq)
 
 data Typedef =
     NormalTD Type           -- ^ > <type>
   | ScalarTD [Symbol]       -- ^ > (scalar <symbol> ... <symbol>)
+    deriving(Show, Eq)
     
 
 data Type = 
@@ -77,6 +79,7 @@ data Type =
   | IntegerT                -- ^ > int
   | BoolT                   -- ^ > bool
   | RealT                   -- ^ > real
+    deriving(Show, Eq)
 
 data Expression =
     ImmediateE ImmediateValue           -- ^ > <immediate-value>
@@ -86,6 +89,7 @@ data Expression =
   | UpdateE Expression [Expression] Expression  -- ^ > (update <expression> (<expression> ... <expression>) <expression>)
   | TupleUpdateE Expression Integer Expression  -- ^ > (tuple-update <tuple> i <term>)
   | FunctionE Expression [Expression]   -- ^ > (<function> <expression> ... <expression>)
+    deriving(Show, Eq)
 
 type VarDecl = (String, Type)           -- ^ > <symbol> :: <type>
 type Binding = (String, Expression)     -- ^ > (<symbol> <expression>)
@@ -95,6 +99,7 @@ data ImmediateValue =
   | FalseV              -- ^ > false
   | RationalV Rational  -- ^ > <rational>
   | VarV Symbol         -- ^ > symbol
+    deriving(Show, Eq)
 
 -- | > true
 trueE :: Expression
