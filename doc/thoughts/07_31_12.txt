@@ -368,3 +368,17 @@ we have big things. Use assign where we have little. It will almost always be
 little.
 
 Yup, that helps.
+
+Tue Jul 31 13:49:54 EDT 2012
+
+And doing fixassign makes a big difference. Cool.
+
+I wonder if there is a decent way to make it work on the system as well as the
+solution? I was saying I could ... well... depends on how much work it is to
+make a hash table. I suppose it's worth trying to use fixassign for the system
+too. Just do it before substitution.
+
+If that's too expensive, because we create too many hash tables, we could also
+try using a non-hashtable version of that. Even better, I suppose, would be to
+use a hashtable which supports fast inserting as well as updating.
+

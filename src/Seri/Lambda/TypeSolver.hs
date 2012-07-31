@@ -40,6 +40,7 @@ module Seri.Lambda.TypeSolver (solve) where
 import Control.Monad.State
 
 import Seri.Failable
+import Seri.HashTable
 import Seri.Lambda.IR
 import Seri.Lambda.Ppr
 import Seri.Lambda.Types
@@ -115,12 +116,20 @@ solvable _ = False
 unsolvable :: (Type, Type) -> Bool
 unsolvable = not . solvable
 
+-- | Apply assignments in the given table to the given type until a fixed point
+-- is reached.
+fixassignh :: HashTable Name Type -> Type -> Type
+fixassignh h t =
+  let t' = assignh h t
+  in if t == t'
+        then t
+        else fixassignh h t'
+
 -- | Given the solution, finalize it so each value is fully simplified.
 finalize :: [(Name, Type)] -> [(Name, Type)]
-finalize [] = []
-finalize ((nm, b):ts) = 
-  let nts = assign [(nm, b)] ts
-  in (nm, b) : finalize nts
+finalize ts =
+ let h = table ts
+ in map (\(n, t) -> (n, fixassignh h t)) ts
 
 lessknown :: Type -> Type -> Bool
 lessknown (VarT a) (VarT b) = a > b
