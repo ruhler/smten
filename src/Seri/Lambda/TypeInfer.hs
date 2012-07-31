@@ -99,7 +99,7 @@ inferexp env t e = do
  --trace ("e': " ++ pretty e') (return ())
  --trace ("constraints: " ++ pretty cons) (return ())
  --trace ("solution: " ++ pretty sol) (return ())
- return $ replace sol e'
+ return $ assign sol e'
 
 
 data DeUnknown = DeUnknown
@@ -258,12 +258,3 @@ retype t = do
         b' <- retypen b
         return (AppNT o a' b')
 
-data Replace = Replace [(Type, Type)]
-
-instance Transformer Replace where
-    t_Type (Replace m) t = fromMaybe t (lookup t m)
-
--- If the given type is in the map, replace it, otherwise keep it unchanged.
-replace :: [(Type, Type)] -> Exp -> Exp
-replace m = transform (Replace m)
-            

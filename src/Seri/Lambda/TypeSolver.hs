@@ -42,6 +42,7 @@ import Control.Monad.State
 import Seri.Failable
 import Seri.Lambda.IR
 import Seri.Lambda.Ppr
+import Seri.Lambda.Types
 
 -- | Solve a type constraint system.
 -- Here's how we solve it:
@@ -60,12 +61,12 @@ import Seri.Lambda.Ppr
 --    The solution set is returned.
 --
 --  Fails if the constraints are inconsistent.
-solve :: [(Type, Type)] -> Failable [(Type, Type)]
+solve :: [(Type, Type)] -> Failable [(Name, Type)]
 solve xs = return . finalize $ evalState finish (xs, [])
 
-type Solver = State ([(Type, Type)], [(Type, Type)])
+type Solver = State ([(Type, Type)], [(Name, Type)])
 
-finish :: Solver [(Type, Type)]
+finish :: Solver [(Name, Type)]
 finish = do
     (sys, sol) <- get
     case sys of
@@ -90,10 +91,15 @@ single (NumT (AppNT _ a b), NumT (AppNT _ c d)) = do
     (sys, sol) <- get
     put ((NumT a, NumT c) : (NumT b, NumT d) : sys, sol)
 single (a, b) | b `lessknown` a = single (b, a)
-single (a, b) = do
+single (VarT nm, b) = do
     (sys, sol) <- get
-    let sys' = map (tpreplace a b) sys
-    put (sys', (a,b):sol)
+    let sys' = assign [(nm, b)] sys
+    put (sys', (nm,b):sol)
+single (NumT (VarNT nm), b) = do
+    (sys, sol) <- get
+    let sys' = assign [(nm, b)] sys
+    put (sys', (nm,b):sol)
+single (a, b) = error $ "single: unexpected assignment: " ++ pretty a ++ ": " ++ pretty b
 
 solvable :: (Type, Type) -> Bool
 solvable (VarT {}, _) = True
@@ -110,27 +116,11 @@ unsolvable :: (Type, Type) -> Bool
 unsolvable = not . solvable
 
 -- | Given the solution, finalize it so each value is fully simplified.
-finalize :: [(Type, Type)] -> [(Type, Type)]
+finalize :: [(Name, Type)] -> [(Name, Type)]
 finalize [] = []
-finalize ((a, b):ts) = 
-  let nts = map (tpreplace a b) ts
-  in (a, b) : finalize nts
-
-tpreplace :: Type -> Type -> (Type, Type) -> (Type, Type)
-tpreplace k v (a, b) = (treplace k v a, treplace k v b)
-
--- treplace k v x
--- Replace every occurence of type k in x with type v.
-treplace :: Type -> Type -> Type -> Type
-treplace k v x | k == x = v
-treplace (NumT k) (NumT v) (NumT x) = NumT (tnreplace k v x)
-treplace k v (AppT a b) = AppT (treplace k v a) (treplace k v b)
-treplace _ _ x = x 
-
-tnreplace :: NType -> NType -> NType -> NType
-tnreplace k v x | k == x = v
-tnreplace k v (AppNT o a b) = AppNT o (tnreplace k v a) (tnreplace k v b)
-tnreplace _ _ x = x
+finalize ((nm, b):ts) = 
+  let nts = assign [(nm, b)] ts
+  in (nm, b) : finalize nts
 
 lessknown :: Type -> Type -> Bool
 lessknown (VarT a) (VarT b) = a > b

@@ -289,3 +289,48 @@ can.
 
 First step: switch to (Name, Type) map for the solution.
 
+Tue Jul 31 11:51:37 EDT 2012
+
+Hey, and once we do that, it's easy to reuse assign instead of rewriting our
+own. I like that.
+
+Not a significant performance change. We do use more memory now, I think
+because assign takes a list instead of a single element.
+
+Here's an idea: assign should take a hash table (it can convert the list into
+a hash table to make it a transparent change).
+
+Then, try to have lots of arguments.
+
+In the solution: easy: do my fixed point thing. I bet that's cheaper than the
+current thing. Just run until we get equality. That should be fine.
+
+In the system we can do it too, maybe. Idea is... err... maybe not. Maybe I
+should wait on that?
+
+Well, what would be really nice is if we had a function: given the mapping,
+and something assignable, continued to do the assignments until nothing
+changed.
+
+Now, this I can use for the solution and the system. The solution: just map it
+over everything. I only need to create a single hash table. I bet it solves
+pretty quickly. I don't think we have any really deep constraints.
+
+For the system: just do this before calling single based on the existing
+solution...
+
+That sounds appealing to me. Let me try it after lunch.
+
+So, remember the plan:
+
+1. Make assign turn the list into a hash table before doing the assignments.
+So, maybe have an assignh which is the class method, and a generic assign
+function which wraps assignh in a call to making a hash table.
+
+This could speed things up in its own right, hopefully it will.
+
+2. Make my assign full thing, probably just need it for the type solver. Use
+that for the solution and the system as described. Easy!
+
+Let me have lunch first, then I'll try this out.
+

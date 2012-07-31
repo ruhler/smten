@@ -160,6 +160,12 @@ instance Assign Class where
 instance Assign Con where
     assign m (Con n ts) = Con n (assign m ts)
 
+instance (Assign a, Assign b) => Assign (a, b) where
+    assign m (a, b) = (assign m a, assign m b)
+
+instance Assign Char where
+    assign _ c = c
+
 class Typeof a where
     -- | Return the seri type of the given object, assuming the object is well
     -- typed. Behavior is undefined if the object is not well typed.
