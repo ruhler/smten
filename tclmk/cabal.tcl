@@ -32,6 +32,7 @@ proc cabal {fcabal} {
         {directory ==1.1.*}
         {template-haskell ==2.7.*}
         {hashable ==1.1.*}
+        {containers ==0.5.*}
     }
 
     set deps [dict create]

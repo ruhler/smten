@@ -39,8 +39,10 @@ module Seri.Lambda.TypeSolver (solve) where
 
 import Control.Monad.State
 
+import qualified Data.Map as Map
+
 import Seri.Failable
-import Seri.HashTable
+import Seri.HashTable as HT
 import Seri.Lambda.IR
 import Seri.Lambda.Ppr
 import Seri.Lambda.Types
@@ -63,18 +65,19 @@ import Seri.Lambda.Types
 --
 --  Fails if the constraints are inconsistent.
 solve :: [(Type, Type)] -> Failable [(Name, Type)]
-solve xs = return . finalize $ evalState finish (xs, [])
+solve xs = return . finalize $ evalState finish (xs, Map.empty)
 
-type Solver = State ([(Type, Type)], [(Name, Type)])
+type Solver = State ([(Type, Type)], Map.Map Name Type)
 
-finish :: Solver [(Name, Type)]
+finish :: Solver (Map.Map Name Type)
 finish = do
     (sys, sol) <- get
     case sys of
         [] -> return sol
-        (x:xs) -> do
+        ((a, b):xs) -> do
             put (xs, sol)
-            single x
+            let l = \n -> Map.lookup n sol
+            single (fixassign l a, fixassign l b)
             finish
 
 -- Solve a single constraint
@@ -94,12 +97,10 @@ single (NumT (AppNT _ a b), NumT (AppNT _ c d)) = do
 single (a, b) | b `lessknown` a = single (b, a)
 single (VarT nm, b) = do
     (sys, sol) <- get
-    let sys' = assign [(nm, b)] sys
-    put (sys', (nm,b):sol)
+    put (sys, Map.insert nm b sol)
 single (NumT (VarNT nm), b) = do
     (sys, sol) <- get
-    let sys' = assign [(nm, b)] sys
-    put (sys', (nm,b):sol)
+    put (sys, Map.insert nm b sol)
 single (a, b) = error $ "single: unexpected assignment: " ++ pretty a ++ ": " ++ pretty b
 
 solvable :: (Type, Type) -> Bool
@@ -118,18 +119,20 @@ unsolvable = not . solvable
 
 -- | Apply assignments in the given table to the given type until a fixed point
 -- is reached.
-fixassignh :: HashTable Name Type -> Type -> Type
-fixassignh h t =
-  let t' = assignh h t
+fixassign :: (Name -> Maybe Type) -> Type -> Type
+fixassign l t =
+  let t' = assignl l t
   in if t == t'
         then t
-        else fixassignh h t'
+        else fixassign l t'
 
 -- | Given the solution, finalize it so each value is fully simplified.
-finalize :: [(Name, Type)] -> [(Name, Type)]
-finalize ts =
- let h = table ts
- in map (\(n, t) -> (n, fixassignh h t)) ts
+finalize :: Map.Map Name Type -> [(Name, Type)]
+finalize m =
+ let ts = Map.assocs m
+     h = table ts
+     l n = HT.lookup n h
+ in map (\(n, t) -> (n, fixassign l t)) ts
 
 lessknown :: Type -> Type -> Bool
 lessknown (VarT a) (VarT b) = a > b

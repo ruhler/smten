@@ -382,3 +382,25 @@ If that's too expensive, because we create too many hash tables, we could also
 try using a non-hashtable version of that. Even better, I suppose, would be to
 use a hashtable which supports fast inserting as well as updating.
 
+Tue Jul 31 13:58:29 EDT 2012
+
+Hmm... now we have a bit of overhead with creating the hash table. So what
+should I do? Try assocs instead?
+
+But why would this be any better? The advantage with the hash table is we have
+lots of names looked up in parallel. The problem here is that my hash table
+doesn't support incremental updates very efficiently. Creating lots and lots
+of hash tables is expensive.
+
+Tue Jul 31 14:02:39 EDT 2012
+
+Here's a simple idea: use a Data.Map for the solution set. That should fix my
+problem just swell.
+
+Tue Jul 31 14:21:43 EDT 2012
+
+Yup! That solves the type inference problem, I would say.
+
+It may make sense, actually, to dump the hash table entirely for a hash map.
+Let me try that.
+

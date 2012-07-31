@@ -38,7 +38,7 @@ module Seri.Lambda.Types (
     appsT, arrowsT, outputT, unappsT, unarrowsT,
     listT, integerT, charT, stringT, tupT, untupT,
     Typeof(..), typeofCon,
-    assign, assignh, assignments, bindingsP, bindingsP', varTs, nvarTs,
+    assign, assignl, assignments, bindingsP, bindingsP', varTs, nvarTs,
     isSubType,
     ) where
 
@@ -46,7 +46,6 @@ import Control.Monad.State
 import Data.List(nub)
 import Data.Maybe
 
-import Seri.HashTable as HT
 import Seri.Lambda.IR
 import Seri.Lambda.Generics
 
@@ -112,45 +111,30 @@ assignments (AppT a b) (AppT a' b') = (assignments a a') ++ (assignments b b')
 assignments _ _ = []
 
 
-newtype Assign = Assign [(Name, Type)]
+newtype Assign = Assign (Name -> Maybe Type)
 
 instance Transformer Assign where
-    t_Type (Assign m) t@(VarT n) =
-      case Prelude.lookup n m of
+    t_Type (Assign lookup) t@(VarT n) =
+      case lookup n of
         Just t' -> t'
         Nothing -> t
     t_Type _ t = t
 
-    t_NType (Assign m) t@(VarNT n) =
-      case Prelude.lookup n m of
+    t_NType (Assign lookup) t@(VarNT n) =
+      case lookup n of
         Just (NumT t') -> t'
         Nothing -> t
     t_NType _ t = t
 
 -- | Replace all variable types and numeric variable types with the given
--- values.
+-- values. Takes a generic lookup function.
+assignl :: Transformable a => (Name -> Maybe Type) -> a -> a
+assignl lookup = transform (Assign lookup)
+
+-- | Replace all variable types and numeric variable types with the given
+-- values. Uses association list lookup.
 assign :: Transformable a => [(Name, Type)] -> a -> a
-assign m = transform (Assign m)
-
-newtype AssignH = AssignH (HashTable Name Type)
-
-instance Transformer AssignH where
-    t_Type (AssignH m) t@(VarT n) =
-      case HT.lookup n m of
-        Just t' -> t'
-        Nothing -> t
-    t_Type _ t = t
-
-    t_NType (AssignH m) t@(VarNT n) =
-      case HT.lookup n m of
-        Just (NumT t') -> t'
-        Nothing -> t
-    t_NType _ t = t
-
--- | Replace all variable types and numeric variable types with the given
--- values.
-assignh :: Transformable a => HashTable Name Type -> a -> a
-assignh m = transform (AssignH m)
+assign m = assignl (\n -> Prelude.lookup n m)
 
 class Typeof a where
     -- | Return the seri type of the given object, assuming the object is well
