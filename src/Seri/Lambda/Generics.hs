@@ -210,23 +210,89 @@ class Transformer a where
     -- TODO: add more parts of the IR as needed.
     t_NType :: a -> NType -> NType
     t_Type :: a -> Type -> Type
+    t_Exp :: a -> Exp -> Exp
+    t_Pat :: a -> Pat -> Pat
+    t_Sig :: a -> Sig -> Sig
+    t_Match :: a -> Match -> Match
+    t_Class :: a -> Class -> Class
+    t_Dec :: a -> Dec -> Dec
+    t_TopSig :: a -> TopSig -> TopSig
+    t_Con :: a -> Con -> Con
+    t_Method :: a -> Method -> Method
 
-    -- Default to no transformation.
+    -- Everything defaults to no transformation.
     t_NType _ = id
     t_Type _ = id
-
-data PureTransformer f = PureTransformer f
-
-instance (Transformer f) => TransformerM (PureTransformer f) Identity where
-    tm_NType (PureTransformer f) x = return (t_NType f x)
-    tm_Type (PureTransformer f) x = return (t_Type f x)
+    t_Exp _ = id
+    t_Pat _ = id
+    t_Sig _ = id
+    t_Match _ = id
+    t_Class _ = id
+    t_Dec _ = id
+    t_TopSig _ = id
+    t_Con _ = id
+    t_Method _ = id
 
 class Transformable a where
     transform :: (Transformer f) => f -> a -> a
 
-instance (TransformableM a Identity) => Transformable a where
-    transform f x = runIdentity (transformM (PureTransformer f) x)
+instance  Transformable Type where
+    transform f (AppT a b) = t_Type f $ AppT (transform f a) (transform f b)
+    transform f (NumT n) = t_Type f $ NumT (transform f n)
+    transform f t = t_Type f t
 
+instance Transformable NType where
+    transform f (AppNT op a b)
+        = t_NType f $ AppNT op (transform f a) (transform f b)
+    transform f t = t_NType f t
+
+instance Transformable Exp where
+    transform f e@(LitE {}) = t_Exp f e
+    transform f (CaseE e ms) = t_Exp f $ CaseE (transform f e) (transform f ms)
+    transform f (AppE a b) = t_Exp f $ AppE (transform f a) (transform f b)
+    transform f (LamE s b) = t_Exp f $ LamE (transform f s) (transform f b)
+    transform f (ConE s) = t_Exp f $ ConE (transform f s)
+    transform f (VarE s) = t_Exp f $ VarE (transform f s)
+
+instance Transformable Pat where
+    transform f (ConP t n ps) = t_Pat f $ ConP (transform f t) n (transform f ps)
+    transform f (VarP s) = t_Pat f $ VarP (transform f s)
+    transform f p@(IntegerP {}) = t_Pat f p
+    transform f (WildP t) = t_Pat f $ WildP (transform f t)
+
+instance Transformable Sig where
+    transform f (Sig n t) = t_Sig f $ Sig n (transform f t)
+
+instance (Transformable a) => Transformable [a] where
+    transform f = map (transform f)
+
+instance Transformable Match where
+    transform f (Match p b) = t_Match f $ Match (transform f p) (transform f b)
+
+instance Transformable Class where
+    transform f (Class n ts) = t_Class f $ Class n (transform f ts)
+
+instance Transformable Dec where
+    transform f (ValD ts e) = t_Dec f $ ValD (transform f ts) (transform f e)
+    transform f (DataD n vars cons) = t_Dec f $ DataD n vars (transform f cons)
+    transform f (ClassD n vars sigs) = t_Dec f $ ClassD n vars (transform f sigs)
+    transform f (InstD ctx cls ms) = t_Dec f $ InstD (transform f ctx) (transform f cls) (transform f ms)
+    transform f (PrimD ts) = t_Dec f $ PrimD (transform f ts)
+
+instance Transformable TopSig where
+    transform f (TopSig n ctx t) = t_TopSig f $ TopSig n (transform f ctx) (transform f t)
+
+instance Transformable Con where
+    transform f (Con n ts) = t_Con f $ Con n (transform f ts)
+
+instance Transformable Method where
+    transform f (Method n e) = t_Method f $ Method n (transform f e)
+
+instance (Transformable a, Transformable b) => Transformable (a, b) where
+    transform f (a, b) = (transform f a, transform f b)
+
+instance Transformable Char where
+    transform f c = c
 
 -- | Generic queries of seri stuff.
 class (Monoid m) => Querier a m where

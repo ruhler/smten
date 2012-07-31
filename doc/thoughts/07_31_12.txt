@@ -350,3 +350,8 @@ the Assign implementation or not. I think it's much simpler, much cleaner,
 much easier to maintain, avoiding a lot of redundancy... But it's slower. Is
 that okay?
 
+Tue Jul 31 13:23:42 EDT 2012
+
+Well, it recovered some stuff, but not everything. Oh well. I'll keep it like
+this for now.
+
