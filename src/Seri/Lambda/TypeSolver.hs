@@ -42,7 +42,6 @@ import Control.Monad.State
 import qualified Data.Map as Map
 
 import Seri.Failable
-import Seri.HashTable as HT
 import Seri.Lambda.IR
 import Seri.Lambda.Ppr
 import Seri.Lambda.Types
@@ -64,7 +63,7 @@ import Seri.Lambda.Types
 --    The solution set is returned.
 --
 --  Fails if the constraints are inconsistent.
-solve :: [(Type, Type)] -> Failable [(Name, Type)]
+solve :: [(Type, Type)] -> Failable (Map.Map Name Type)
 solve xs = return . finalize $ evalState finish (xs, Map.empty)
 
 type Solver = State ([(Type, Type)], Map.Map Name Type)
@@ -127,12 +126,8 @@ fixassign l t =
         else fixassign l t'
 
 -- | Given the solution, finalize it so each value is fully simplified.
-finalize :: Map.Map Name Type -> [(Name, Type)]
-finalize m =
- let ts = Map.assocs m
-     h = table ts
-     l n = HT.lookup n h
- in map (\(n, t) -> (n, fixassign l t)) ts
+finalize :: Map.Map Name Type -> Map.Map Name Type
+finalize m = Map.map (fixassign (flip Map.lookup m)) m
 
 lessknown :: Type -> Type -> Bool
 lessknown (VarT a) (VarT b) = a > b
