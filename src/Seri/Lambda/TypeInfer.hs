@@ -48,6 +48,7 @@ import Control.Monad.State
 import Data.Maybe(fromMaybe)
 
 import Seri.Failable
+import Seri.HashTable(table)
 import Seri.Lambda.Env
 import Seri.Lambda.Generics
 import Seri.Lambda.IR
@@ -99,7 +100,7 @@ inferexp env t e = do
  --trace ("e': " ++ pretty e') (return ())
  --trace ("constraints: " ++ pretty cons) (return ())
  --trace ("solution: " ++ pretty sol) (return ())
- return $ assign sol e'
+ return $ assignh (table sol) e'
 
 
 data DeUnknown = DeUnknown

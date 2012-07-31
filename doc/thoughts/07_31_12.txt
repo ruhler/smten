@@ -355,3 +355,16 @@ Tue Jul 31 13:23:42 EDT 2012
 Well, it recovered some stuff, but not everything. Oh well. I'll keep it like
 this for now.
 
+Tue Jul 31 13:33:00 EDT 2012
+
+Switching to a hashtable didn't really help so much. Perhaps I should just
+give the option. Using generics, it's easy enough to have both options
+available.
+
+Then again, it didn't hurt too much either, did it?
+
+Let me just have two implementations. assign, and assignh. Use assignh where
+we have big things. Use assign where we have little. It will almost always be
+little.
+
+Yup, that helps.

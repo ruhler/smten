@@ -38,7 +38,7 @@ module Seri.Lambda.Types (
     appsT, arrowsT, outputT, unappsT, unarrowsT,
     listT, integerT, charT, stringT, tupT, untupT,
     Typeof(..), typeofCon,
-    assign, assignments, bindingsP, bindingsP', varTs, nvarTs,
+    assign, assignh, assignments, bindingsP, bindingsP', varTs, nvarTs,
     isSubType,
     ) where
 
@@ -46,6 +46,7 @@ import Control.Monad.State
 import Data.List(nub)
 import Data.Maybe
 
+import Seri.HashTable as HT
 import Seri.Lambda.IR
 import Seri.Lambda.Generics
 
@@ -111,23 +112,45 @@ assignments (AppT a b) (AppT a' b') = (assignments a a') ++ (assignments b b')
 assignments _ _ = []
 
 
-data Assign = Assign [(Name, Type)]
+newtype Assign = Assign [(Name, Type)]
 
 instance Transformer Assign where
     t_Type (Assign m) t@(VarT n) =
-      case lookup n m of
+      case Prelude.lookup n m of
         Just t' -> t'
         Nothing -> t
     t_Type _ t = t
 
     t_NType (Assign m) t@(VarNT n) =
-      case lookup n m of
+      case Prelude.lookup n m of
         Just (NumT t') -> t'
         Nothing -> t
     t_NType _ t = t
 
+-- | Replace all variable types and numeric variable types with the given
+-- values.
 assign :: Transformable a => [(Name, Type)] -> a -> a
 assign m = transform (Assign m)
+
+newtype AssignH = AssignH (HashTable Name Type)
+
+instance Transformer AssignH where
+    t_Type (AssignH m) t@(VarT n) =
+      case HT.lookup n m of
+        Just t' -> t'
+        Nothing -> t
+    t_Type _ t = t
+
+    t_NType (AssignH m) t@(VarNT n) =
+      case HT.lookup n m of
+        Just (NumT t') -> t'
+        Nothing -> t
+    t_NType _ t = t
+
+-- | Replace all variable types and numeric variable types with the given
+-- values.
+assignh :: Transformable a => HashTable Name Type -> a -> a
+assignh m = transform (AssignH m)
 
 class Typeof a where
     -- | Return the seri type of the given object, assuming the object is well
