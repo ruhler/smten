@@ -47,6 +47,7 @@ import Data.List(nub)
 import Data.Maybe
 
 import Seri.Lambda.IR
+import Seri.Lambda.Generics
 
 -- | The Integer type
 integerT :: Type
@@ -109,62 +110,24 @@ assignments (NumT (AppNT _ a b)) (NumT (AppNT _ a' b'))
 assignments (AppT a b) (AppT a' b') = (assignments a a') ++ (assignments b b')
 assignments _ _ = []
 
-class Assign a where
-    -- Replace variable types with the given name with the given value.
-    assign :: [(Name, Type)] -> a -> a
 
-instance Assign Type where
-    assign _ t@(ConT {}) = t
-    assign m (AppT a b) = AppT (assign m a) (assign m b)
-    assign m t@(VarT n) =
+data Assign = Assign [(Name, Type)]
+
+instance Transformer Assign where
+    t_Type (Assign m) t@(VarT n) =
       case lookup n m of
         Just t' -> t'
         Nothing -> t
-    assign m (NumT n) = NumT (assign m n)
-    assign _ t@(UnknownT) = t
+    t_Type _ t = t
 
-instance Assign NType where
-    assign _ t@(ConNT {}) = t
-    assign m (AppNT o a b) = AppNT o (assign m a) (assign m b)
-    assign m t@(VarNT n) =
-        case lookup n m of
-            Just (NumT v) -> v
-            _ -> t
+    t_NType (Assign m) t@(VarNT n) =
+      case lookup n m of
+        Just (NumT t') -> t'
+        Nothing -> t
+    t_NType _ t = t
 
-instance Assign Exp where
-    assign _ e@(LitE {}) = e
-    assign m (CaseE x ms) = CaseE (assign m x) (assign m ms)
-    assign m (AppE a b) = AppE (assign m a) (assign m b)
-    assign m (LamE s b) = LamE (assign m s) (assign m b)
-    assign m (ConE s) = ConE (assign m s)
-    assign m (VarE s) = VarE (assign m s)
-
-instance Assign Match where
-    assign m (Match p b) = Match (assign m p) (assign m b)
-
-instance Assign Sig where
-    assign m (Sig n t) = Sig n (assign m t)
-
-instance Assign Pat where
-    assign m (ConP t n ps) = ConP (assign m t) n (assign m ps)
-    assign m (VarP s) = VarP (assign m s)
-    assign _ p@(IntegerP {}) = p
-    assign m (WildP t) = WildP (assign m t)
-
-instance (Assign a) => Assign [a] where
-    assign m = map (assign m)
-
-instance Assign Class where
-    assign m (Class n ts) = Class n (assign m ts)
-
-instance Assign Con where
-    assign m (Con n ts) = Con n (assign m ts)
-
-instance (Assign a, Assign b) => Assign (a, b) where
-    assign m (a, b) = (assign m a, assign m b)
-
-instance Assign Char where
-    assign _ c = c
+assign :: Transformable a => [(Name, Type)] -> a -> a
+assign m = transform (Assign m)
 
 class Typeof a where
     -- | Return the seri type of the given object, assuming the object is well

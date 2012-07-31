@@ -57,6 +57,7 @@ import Seri.Lambda.IR
 -- functions. It's value is discarded unused.
 class (Monad m) => TransformerM a m where
     -- TODO: add more parts of the IR as needed.
+    tm_NType :: a -> NType -> m NType
     tm_Type :: a -> Type -> m Type
     tm_Exp :: a -> Exp -> m Exp
     tm_Pat :: a -> Pat -> m Pat
@@ -69,6 +70,7 @@ class (Monad m) => TransformerM a m where
     tm_Method :: a -> Method -> m Method
 
     -- Everything defaults to no transformation.
+    tm_NType _ = return
     tm_Type _ = return
     tm_Exp _ = return
     tm_Pat _ = return
@@ -91,7 +93,17 @@ instance (Monad m) => TransformableM Type m where
         a' <- transformM f a
         b' <- transformM f b
         tm_Type f (AppT a' b')
+    transformM f (NumT n) = do
+        n' <- transformM f n
+        tm_Type f (NumT n')
     transformM f t = tm_Type f t
+
+instance (Monad m) => TransformableM NType m where
+    transformM f (AppNT op a b) = do
+        a' <- transformM f a
+        b' <- transformM f b
+        tm_NType f (AppNT op a' b')
+    transformM f t = tm_NType f t
 
 instance (Monad m) => TransformableM Exp m where
     transformM f e@(LitE {}) = tm_Exp f e
@@ -181,19 +193,32 @@ instance (Monad m) => TransformableM Method m where
     transformM f (Method n e) = do
         e' <- transformM f e
         tm_Method f (Method n e')
+
+instance (Monad m, TransformableM a m, TransformableM b m)
+    => TransformableM (a, b) m where
+    transformM f (a, b) = do
+        a' <- transformM f a
+        b' <- transformM f b
+        return (a', b')
+
+instance (Monad m) => TransformableM Char m where
+    transformM f c = return c
         
 
 -- | Same as TransformerM, only for pure transformations instead of monadic.
 class Transformer a where
     -- TODO: add more parts of the IR as needed.
+    t_NType :: a -> NType -> NType
     t_Type :: a -> Type -> Type
 
     -- Default to no transformation.
+    t_NType _ = id
     t_Type _ = id
 
 data PureTransformer f = PureTransformer f
 
 instance (Transformer f) => TransformerM (PureTransformer f) Identity where
+    tm_NType (PureTransformer f) x = return (t_NType f x)
     tm_Type (PureTransformer f) x = return (t_Type f x)
 
 class Transformable a where

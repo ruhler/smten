@@ -334,3 +334,19 @@ that for the solution and the system as described. Easy!
 
 Let me have lunch first, then I'll try this out.
 
+Tue Jul 31 13:05:17 EDT 2012
+
+I changed Assign to use generics. Unhappily, that slowed things down. Also it
+allocates a lot more memory. I think that's because we piggy back on top of
+TransformM instead of implementing transform directly. It may make sense for
+me to just implement transform directly for everything.
+
+If generics are slow... we should figure out how to make them fast. Perhaps I
+can have a preprocessor step to do it for me.
+
+Let me try implementing Transform directly, and see if that solves this
+slowdown I'm seeing. Otherwise... I don't know if I should keep the change of
+the Assign implementation or not. I think it's much simpler, much cleaner,
+much easier to maintain, avoiding a lot of redundancy... But it's slower. Is
+that okay?
+
