@@ -60,10 +60,17 @@ data Compilation = Compilation {
     ys_poly :: Env,             -- ^ The polymorphic seri environment
     ys_mono :: [Dec],           -- ^ Already declared (monomorphic) declarations
     ys_monoe :: Env,            -- ^ The environment corresponding to ys_mono
-    ys_cmds :: [Y.Command],     -- ^ Declarations needed for what was compiled
+
+    -- | Declarations needed for what was compiled, stored in reverse order
+    -- for efficiency sake.
+    ys_cmdsr :: [Y.Command],
     ys_errid :: Integer,        -- ^ unique id to use for next free error variable
     ys_caseid :: Integer        -- ^ unique id to use for next case arg variable
 }
+
+-- Get the commands in forward order.
+ys_cmds :: Compilation -> [Y.Command]
+ys_cmds = reverse . ys_cmdsr
 
 -- | Monad for performing additional yices compilation.
 type CompilationM = StateT Compilation Failable
@@ -91,7 +98,7 @@ compilation version idepth poly = Compilation {
     ys_poly = tweak tweakings poly,
     ys_mono = [],
     ys_monoe = mkEnv [],
-    ys_cmds = [],
+    ys_cmdsr = [],
     ys_errid = 1,
     ys_caseid = 1 
 }
@@ -104,7 +111,7 @@ yicesN = yicesname
 -- Returns a list of yices commands needed to use the compiled type.
 yicesT :: Type -> CompilationM ([Y.Command], Y.Type)
 yicesT t = do
-   modifyS $ \ys -> ys { ys_cmds = [] }
+   modifyS $ \ys -> ys { ys_cmdsr = [] }
    mt <- compileNeeded t 
    cmds <- getsS ys_cmds
    yt <- lift $ yType mt
@@ -117,7 +124,7 @@ yicesE e = do
     idepth <- getsS ys_idepth
     poly <- getsS ys_poly
     let se = elaborate Full poly e
-    modifyS $ \ys -> ys { ys_cmds = [] }
+    modifyS $ \ys -> ys { ys_cmdsr = [] }
     me <- compileNeeded se
     ye <- yExp me 
     cmds <- getsS ys_cmds
@@ -130,8 +137,9 @@ runCompilation = runStateT
 yfail :: String -> CompilationM a
 yfail = lift . fail
 
+-- | Append a list of commands in order to the commands specified so far.
 addcmds :: [Y.Command] -> CompilationM ()
-addcmds cmds = modifyS $ \ys -> ys { ys_cmds = ys_cmds ys ++ cmds }
+addcmds cmds = modifyS $ \ys -> ys { ys_cmdsr = (reverse cmds) ++ ys_cmdsr ys}
 
 -- Given some object, compile everything in the environment needed for this
 -- object, and return the monomorphic object.

@@ -88,3 +88,72 @@ The profiling info, however, doesn't seem to reflect that. Perhaps it wasn't
 costing us so much anyway. I don't know, but I think I should check this in
 anyway.
 
+Tue Jul 31 10:21:28 EDT 2012
+
+Now what?
+
+Our profile now has:
+50% check
+9% addcmds (35% alloc)
+8% treplace (17% alloc)
+8% ==
+
+All at the top.
+
+Tue Jul 31 10:23:12 EDT 2012
+
+ytype is taking some amount of time. We could probably switch to using the
+specific type interfaces for that instead of pretty printing. It's called a
+lot, so it would be good to make it fast.
+
+lookupDataConType could be made faster leveraging the hash table.
+
+addcmds is getting lots of time an memory assigned to it. Why?
+
+Monomorphic takes some time. I still feel like we should be able to reduce a
+lot of work here by allowing incremental monomorphization. Perhaps it will
+work better now that I've fixed this space leak, and I can make sure I don't
+have the same space leak problem.
+
+We could see if we are leaking MS from monomorphic. I don't see it as a huge
+problem at this point.
+
+Try to not use ytermbystr? It seems like pretty printing has more overhead
+than I would expect.
+
+In elaborate, beta reduction is the primary culprit. I feel like we could do
+simultaneous reductions for case matches to speed things up.
+
+Type inference takes a ton of time. Why is that?
+It's mostly in the solver, in type replacement. Perhaps I can figure out a
+better way to do that? Reduce the number of times it's called? Be lazy about
+the replacement? Can I have smaller systems somehow?
+
+For example, what if I did a pre-pass to simplify as many constraints as
+possible, like the trivial constraints? Are there many of those?
+
+So, we have a number of small things to look into. I think just do each at a
+time, squeeze out more performance, in a cleanish kind of way if I can.
+
+Tue Jul 31 10:43:24 EDT 2012
+
+First goal: tackle addcmds.
+
+What could the cost be coming from?
+Well, 
+ - ys_cmds forces ys?
+ - lots and lots of repeated concatenation? (Which we don't need to do at all.
+
+Oh... Look. We are appending commands.
+That explains it. We have this whole big long list of commands, and we append
+a couple to the back.
+
+The answer? Use a reverse list. Prepend the commands. Then, always reverse
+them when they are returned. Easy.
+
+So this should be simple. Let me try it.
+
+Tue Jul 31 10:53:52 EDT 2012
+
+Yup! That was it. That helped a good deal.
+
