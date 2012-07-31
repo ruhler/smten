@@ -61,7 +61,7 @@ import Seri.Lambda.Ppr
 --
 --  Fails if the constraints are inconsistent.
 solve :: [(Type, Type)] -> Failable [(Type, Type)]
-solve xs = return . fst $ runState finish (xs, [])
+solve xs = return . finalize $ evalState finish (xs, [])
 
 type Solver = State ([(Type, Type)], [(Type, Type)])
 
@@ -93,8 +93,7 @@ single (a, b) | b `lessknown` a = single (b, a)
 single (a, b) = do
     (sys, sol) <- get
     let sys' = map (tpreplace a b) sys
-    let sol' = map (tpreplace a b) sol
-    put (sys', (a,b):sol')
+    put (sys', (a,b):sol)
 
 solvable :: (Type, Type) -> Bool
 solvable (VarT {}, _) = True
@@ -109,6 +108,13 @@ solvable _ = False
 
 unsolvable :: (Type, Type) -> Bool
 unsolvable = not . solvable
+
+-- | Given the solution, finalize it so each value is fully simplified.
+finalize :: [(Type, Type)] -> [(Type, Type)]
+finalize [] = []
+finalize ((a, b):ts) = 
+  let nts = map (tpreplace a b) ts
+  in (a, b) : finalize nts
 
 tpreplace :: Type -> Type -> (Type, Type) -> (Type, Type)
 tpreplace k v (a, b) = (treplace k v a, treplace k v b)

@@ -157,3 +157,135 @@ Tue Jul 31 10:53:52 EDT 2012
 
 Yup! That was it. That helped a good deal.
 
+What next?
+
+Type inference is next after check on the profiling... It's worth looking into
+this to see if there are any easy solutions.
+
+I do think not using pretty in the yices2 interface should have a decent
+impact too, even with type inference dominating so much...
+
+Okay, so here's the plan. I'll look at the type inference thing. See if there
+is anything obvious. If so, try to reduce it. If not, then move onto the ytype
+and yterm thing: don't use pretty.
+
+Tue Jul 31 10:58:50 EDT 2012
+
+Okay, type inference. Here's the thing.
+
+We come up with equations of the form: a = b
+Then we make the replacement, anywhere you see a in the system and the
+solution (both of which are big), replace it with b.
+
+And we do this over and over and over and over and over again.
+
+Is there some way to reduce the number of replacements we have to perform?
+Could we group them together? Try to replace a lot at once? Use a hashtable to
+perform the lookup efficiently and avoid equality checks?
+
+What if we used a table and pointers?
+
+Ah... there's an idea, no? Make use of sharing as much as possible.
+
+So, instead of saying:
+
+foo = bar sludge
+
+Change everything with foo to bar sludge.
+Now change everything with bar to baz.
+
+We could say: 
+Change everything with bar to baz.
+Now change everything with foo to baz sludge.
+
+Wouldn't that be much better?
+
+Hmm...
+
+We add all the constraints to the solution. Why do the replacement as we go?
+Why not just wait until we have all the constraints, knowing they form some
+sort of order, and make replacements after that? If we know the order, it may
+even be automatically efficient in same way to do that.
+
+I think we do want to do full substitution in the system as we go to solve it.
+But we can at least start by cutting things in half.
+
+Okay, this sounds good to me as something to try. Here's the idea:
+
+- Don't perform replacement in the solution until the very end.
+
+At the very end, we should have a mapping of the form
+a: b
+
+Where b only refers to elements earlier in the mapping, not later.
+
+To finalize the solution set, we should do something like:
+
+Oh, I should fix the above statement.
+
+At some place in the solution, if we have:
+
+a: b
+
+That means that there is no reference to a above in the solution.
+
+So, to finalize:
+
+Replace all instances of b with a in all following formulas. Then finalize the
+rest (after the substitutions). Simple. I'll try this out.
+
+The other thing to look into is how efficient the replacement routine is.
+
+One question is: do we ever have anything other than  VarT or a VarNT on the
+left hand side? If so, no reason to do general equality. In fact, we could
+just have the solution be from name to value. That would limit the scope of
+replacements required... It's just like assign. And we could reuse assign.
+
+Let me try that next, after this solution fix thing.
+
+Tue Jul 31 11:20:06 EDT 2012
+
+It works, but it doesn't make a significant difference in this case. Probably
+most of the constraints are of the form a: Integer, or a: Bool, so we don't
+save that much. I'll keep it in though.
+
+Let me investigate more this idea of having the solution be a mapping from
+String to Type? I'm not sure it will actually help all that much.
+
+Is there some way we can take advantage of hash tables? If we can map from
+name to type...
+
+Let me focus on the finalization still, because that's still a big chunk of
+the time being spent. We just do so many comparisons.
+
+I think we could do better if we do some sharing.
+
+Okay, so here's how it should work, I think.
+
+Have the mapping be from Name to Type in the solution.
+
+Now, to finalize, we use a fixed point like algorithm.
+
+Repeatedly until we reach a fixed point (maybe haskell can do this for us
+automatically using fix?):
+1. Make a hash table out of the solution set.
+2. Traverse the solution set, looking up each VarT or VarNT in the hash table
+and making the replacement. 
+This gives you a new solution set.
+
+I don't think fix will work. But maybe we could be smarter.
+
+Keep track of whether something was updated or not. If nothing was updated, we
+are done?
+
+Why is this a better solution than what I have?
+
+Because we don't check N different things against each occurrence of a
+variable. Instead each occurrence of a variable gets just a handful. However
+many are needed to converge, and I expect we will converge rather quickly.
+
+It would be nice if I could use fix to implement this... But I don't think we
+can.
+
+First step: switch to (Name, Type) map for the solution.
+
