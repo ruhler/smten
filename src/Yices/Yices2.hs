@@ -36,6 +36,7 @@
 -- | An interface to yices2.
 module Yices.Yices2 (Yices2FFI()) where
 
+import Data.List(genericLength)
 import Data.Ratio
 
 import Foreign
@@ -112,7 +113,22 @@ withstderr f = do
     return $! x
 
 ytype :: Type -> IO YType
-ytype t = do
+ytype (VarT s) = withCString s c_yices_get_type_by_name
+ytype (TupleT ts) = do
+    ts' <- mapM ytype ts
+    withArray ts' $ c_yices_tuple_type (genericLength ts)
+ytype (ArrowT ts) = do
+    tr <- ytype (last ts)
+    ts' <- mapM ytype (init ts)
+    withArray ts' $ \arr -> c_yices_function_type (genericLength ts') arr tr
+ytype (BitVectorT i) = c_yices_bv_type (fromIntegral i)
+ytype (IntegerT) = c_yices_int_type
+ytype (BoolT) = c_yices_bool_type
+ytype (RealT) = c_yices_real_type
+    
+
+ytypebystr :: Type -> IO YType
+ytypebystr t = do
     yt <- withCString (pretty Yices2 t) $ \str -> c_yices_parse_type str
     if yt < 0
         then do
@@ -209,8 +225,8 @@ ytermS _ (ImmediateE (RationalV r)) = do
     c_yices_rational64 (fromInteger $ numerator r) (fromInteger $ denominator r)
 ytermS s e@(ImmediateE (VarV nm)) =
     case lookup nm s of
-        Nothing -> ytermbystr e
-        Just t -> return t
+        Nothing -> withCString nm c_yices_get_term_by_name
+        Just t -> return t 
     
 ytermS _ e = error $ "TODO: yterm: " ++ pretty Yices2 e
 

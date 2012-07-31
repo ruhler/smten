@@ -404,3 +404,38 @@ Yup! That solves the type inference problem, I would say.
 It may make sense, actually, to dump the hash table entirely for a hash map.
 Let me try that.
 
+Tue Jul 31 14:30:50 EDT 2012
+
+Cool, type inference is now a solved problem, I would say.
+
+64% check.
+3% elaborate.
+...
+
+I think the next step is clear though. Avoid using ytermbystr if at all
+possible. For both expressions and types.
+
+Tue Jul 31 15:44:23 EDT 2012
+
+We use ytermbystr for variables.
+Hmm... So, these are not local variables. They are globally defined things.
+The question is, how in the c api do I access these?
+
+It's just yices term by name. Easy, no?
+
+The other thing I'll want to change after this is constructing types.
+
+Tue Jul 31 15:50:56 EDT 2012
+
+ytermbystr works just swell. Cool. Now let me investigate types.
+
+Hmm... profiling shows not using ytermbystr to be slower... though I think
+really it is faster, it just doesn't know it. It just seems that allocating
+the CString takes a bit of memory. That may just be the way things are.
+
+Tue Jul 31 16:17:55 EDT 2012
+
+I changed ytype to use the c api. Again, it uses less memory, and relatively
+less time, but the profiler says things have slowed down... I don't know
+what's up with that, but I think I'll keep the change for now.
+

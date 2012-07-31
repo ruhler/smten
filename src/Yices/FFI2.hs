@@ -48,8 +48,18 @@ module Yices.FFI2 (
     c_yices_new_uninterpreted_term,
     c_yices_set_type_name,
     c_yices_set_term_name,
+    c_yices_get_type_by_name,
+    c_yices_get_term_by_name,
     c_yices_parse_type,
     c_yices_parse_term,
+
+    -- Type constructors
+    c_yices_tuple_type,
+    c_yices_function_type,  
+    c_yices_bv_type,
+    c_yices_int_type,
+    c_yices_bool_type,
+    c_yices_real_type,
 
     -- Term constructors
     c_yices_true,
@@ -133,12 +143,35 @@ foreign import ccall unsafe "yices_set_type_name"
 foreign import ccall unsafe "yices_set_term_name"
     c_yices_set_term_name :: YTerm -> CString -> IO ()
 
+foreign import ccall unsafe "yices_get_type_by_name"
+    c_yices_get_type_by_name :: CString -> IO YType
+
+foreign import ccall unsafe "yices_get_term_by_name"
+    c_yices_get_term_by_name :: CString -> IO YTerm
+
 foreign import ccall unsafe "yices_parse_type"
     c_yices_parse_type :: CString -> IO YType
 
 foreign import ccall unsafe "yices_parse_term"
     c_yices_parse_term :: CString -> IO YTerm
 
+foreign import ccall unsafe "yices_tuple_type"
+    c_yices_tuple_type :: Word32 -> Ptr YType -> IO YType
+    
+foreign import ccall unsafe "yices_function_type"
+    c_yices_function_type :: Word32 -> Ptr YType -> YType -> IO YType  
+
+foreign import ccall unsafe "yices_bv_type"
+    c_yices_bv_type :: Word32 -> IO YType
+
+foreign import ccall unsafe "yices_int_type"
+    c_yices_int_type :: IO YType
+
+foreign import ccall unsafe "yices_bool_type"
+    c_yices_bool_type :: IO YType
+
+foreign import ccall unsafe "yices_real_type"
+    c_yices_real_type :: IO YType
 
 foreign import ccall unsafe "yices_true"
     c_yices_true ::  IO YTerm
