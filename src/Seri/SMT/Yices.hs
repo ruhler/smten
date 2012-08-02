@@ -41,6 +41,7 @@ module Seri.SMT.Yices (
     RunOptions(..), SMTQuerier(), mkQuerier, runQuery,
     ) where
 
+import qualified Data.Map as Map
 import Data.Maybe
 
 import System.IO
@@ -60,7 +61,14 @@ data SMTQuerier y = SMTQuerier {
     ys_dh :: Maybe Handle,
     ys_freeid :: Integer,
     ys_ys :: Compilation,
-    ys_env :: Env
+    ys_env :: Env,
+
+    -- yices can't redefine names when run directly, so even though it's not a
+    -- problem with the C api, we make sure we don't ever try to redefine the
+    -- same top level name. This map stores, for each previously defined top
+    -- level name, an integer that can be appended to it to get a new version
+    -- of the name that hasn't been defined yet.
+    ys_topnms :: Map.Map Name Integer
 }
 
 type YicesMonad y = StateT (SMTQuerier y) IO
@@ -120,16 +128,24 @@ yicese e = do
     modify $ \s -> s { ys_ys = ys' }
     runCmds cmds
     return ye
+
+topname :: Y.Yices y => Name -> YicesMonad y Name
+topname n = do
+    m <- gets ys_topnms
+    let (id, m') = Map.insertLookupWithKey (\_ -> (+)) n 1 m
+    modify $ \ys -> ys { ys_topnms = m' }
+    return $ n ++ "~t" ++ show (fromMaybe 0 id)
     
 runQueryM :: Y.Yices y => Exp -> YicesMonad y Exp
 runQueryM e = do
     env <- gets ys_env
     case elaborate Simple env e of
         (AppE (LamE (Sig n t) b) x) -> do
+            n' <- topname n
             t' <- yicest t
             x' <- yicese x
-            runCmds [Y.Define (yicesN n) t' (Just x')]
-            runQueryM b
+            runCmds [Y.Define (yicesN n') t' (Just x')]
+            runQueryM (rename n n' b)
         (AppE (VarE (Sig "Seri.SMT.SMT.query" _)) arg) -> do
             res <- check
             case res of 
@@ -185,7 +201,8 @@ mkQuerier opts env ctx = do
         ys_dh = dh,
         ys_freeid = 1,
         ys_ys = compilation (Y.version ctx) (inlinedepth opts) env,
-        ys_env = env
+        ys_env = env,
+        ys_topnms = Map.empty
     }
 
 -- | Evaluate a query using the given environment.
@@ -247,4 +264,25 @@ instance (Y.Yices y) => TransformerM Realize (YicesMonad y) where
 -- yices model.
 realize :: Y.Yices y => Env -> Exp -> YicesMonad y Exp
 realize env = transformM (Realize env)
+
+
+-- Rename free variables in the given expression with the given key name to
+-- the given value name.
+rename :: Name -> Name -> Exp -> Exp
+rename k v | k == v = id
+rename k v = 
+  let re e@(LitE {}) = e
+      re (CaseE x ms) = CaseE (re x) (map rm ms)
+      re (AppE a b) = AppE (re a) (re b)
+      re e@(LamE (Sig n _) b) | k == n = e
+      re (LamE s b) = LamE s (re b)
+      re e@(ConE {}) = e
+      re (VarE (Sig n t)) | n == k = VarE (Sig v t)
+      re e@(VarE {}) = e
+
+      rm m@(Match p _) | k `elem` bindingsP' p = m
+      rm (Match p b) = Match p (re b)
+  in re
+
+
 

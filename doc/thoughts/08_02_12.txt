@@ -201,3 +201,50 @@ things? No... that's not what I want...
 Will the heap elaborator solve this issue? I don't think so. That's annoying.
 How about an email to Bruno?
 
+Thu Aug  2 10:32:10 EDT 2012
+
+What I should do is manually rename the variables. That's not hard to do. Just
+annoying. But I'll want it for the heap evaluator anyway. Keep a set of names,
+and only rename it if needed. Write the rename traversal...
+
+Thu Aug  2 10:41:38 EDT 2012
+
+To do this more nicely, how about have a generic rename routine to rename free
+variables? Oh, but that's not what alpha-renaming does. alpha-renaming is
+different. Sigh.
+
+Thu Aug  2 11:15:52 EDT 2012
+
+Odd bug... For some reason, I'm using a type as an argument to a tuple update!
+Yices, not surprisingly, is not happy with it. But why am I doing it?
+
+Anyway, this renaming thing looks like it will work out just fine. I'm glad
+about that. Also looks like yices does much better with the sharing, so we'll
+definitely try to milk this possibility with the heap next.
+
+But... what's going on here?
+
+Somehow (Bool, Bool) is being treated as an object.
+
+No, wait, that's not it. Unless it's a naming issue where tags can't have the
+same names as types.
+
+Thu Aug  2 11:23:53 EDT 2012
+
+Same bug happens with Bluespec test, we just don't see it when we run seri for
+some reason. Perhaps I should be doing better error checking?
+
+Anyway, again it's a tuple thing...
+
+I don't seem to have the same problem with TState...
+
+Was this a problem with older versions of yices?
+
+Apparently yes. What happened?
+
+Thu Aug  2 12:05:29 EDT 2012
+
+Okay, so I'm officially convinced now this is a yices2 bug. I sent out a
+report. Until I hear back... I think I should have fun with the heap
+elaborator.
+
