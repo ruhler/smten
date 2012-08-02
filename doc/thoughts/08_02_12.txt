@@ -1,0 +1,203 @@
+
+Thu Aug  2 08:37:00 EDT 2012
+
+I had more thoughts. I don't think this heap elaborator will solve all my
+problems. I think I need to work out my problems first, then there will be a
+path to switch to the heap elaborator later to improve performance.
+
+What am I thinking?
+
+The heap elaborator works best if you can give it an expression to elaborate
+and have it elaborate the whole thing. It doesn't do so well for repeated
+elaboration of parts of the same expression, because you have to rebuild the
+heap over and over again. Either that, or you have to expose the internals of
+the heap to the user, which is very not nice.
+
+We can make good use of it, however, if we give it as an expression to
+elaborate the predicate to assertions.
+
+So, it makes sense to have a simple elaborator which really is as lazy as can
+be. This we can use to drive the query monad, which for now is like trivial to
+elaborate, because we aren't doing any fancy stuff to figure out what the next
+questions to ask are.
+
+I suspect the heap elaborator will do a much better job capturing sharing then
+my hacks to the full elaborator. The heap elaborator could also be used in
+serie if desired, but it's good to have the simple elaborator around still.
+
+Perhaps the heap elaborator could be made lazy, so it doesn't build a heap for
+parts of an expression until you ask to elaborate them... That might be a way
+to replace the simple elaborator with the heap elaborator while maintaining
+both performance and the proper abstraction when using it in an interactive
+way like we do to run queries.
+
+In summary: heap elaborator has great potential, but ultimately we still need
+a simple elaboration which is lazy enough not to simplify assertion predicates
+any. So I should focus on getting that work, before the heap elaborator.
+
+What are the current problems facing this solution?
+- The Array SMT test hangs, no idea why.
+- The BCL3 SMT test has an error, because a lambda term shows up.
+
+The two problems, I suspect, are completely unrelated, but should both be
+understood.
+
+To understand the array problem: run the array test with profiling turned on.
+Let it run for a good while, then look at the profile to see where it's stuck.
+Narrow things down from there.
+
+To understand the bcl3 problem: look at the error message, figure out the case
+I'm not covering of separated lambdas from arguments.
+
+That's the plan. Let me get started.
+
+Thu Aug  2 08:53:59 EDT 2012
+
+The array test is running. I'll give it a while.
+
+The BCL3 problem is the following case:
+
+let f =  (let a = ... in \x -> ...)
+in f x
+   
+We did all that work to push the lambdas in, and now...
+
+Options: beta reduce any expression which contains a LamE anywhere in it.
+Err... that's not going to work. We'll end up getting rid of any sharing.
+
+It looks like, in this case, you want to lift the lambda out. It's like the
+opposite direction as before :(.
+
+You know what? I'm thinking the pursuit of this sharing elaborator is not
+worth my time. Better to go to the heap elaborator, which we want to do
+eventually, should be higher performance, easier to implement, and rather more
+effective in capturing sharing.
+
+This does not really go against what I proposed just before... well, sort of,
+but it was a hole in what I said. Which is... the problem with bcl3 is a bug
+in the sharing implementation, not a bug in the lazy simplification
+implementation.
+
+What I should really do, before going on to implement the heap elaborator, is
+make sure the expressions the yices target is getting to simplify are fully
+un-elaborated.
+
+Thu Aug  2 09:00:29 EDT 2012
+
+So, the array test conked out. Looks like an infinite loop doing:
+
+elaborate
+ alpharename
+ deleteall
+
+Perhaps I can add SCCs to figure out which annotation is the problem.
+
+Meanwhile, I had another idea for how to fix the sharing in the full
+elaborator. Beta-reduce any arg which has a function type, rather than
+just top level lambdas. That should hopefully get what I want.
+
+Thu Aug  2 09:14:49 EDT 2012
+
+Well, that fixed the BCL3 problem. But it doesn't seem as if the performance
+has improved any. Let's look again at the size of the query.
+
+Thu Aug  2 09:21:20 EDT 2012
+
+Well, so yes, BCL3 has sharing implemented now. It still takes yices the same
+(small) amount of time to execute it with just 1 question. It's hard to say
+about performance. But we only cut the query in half, from 9M down to 5M. Not
+quite as much sharing as I would have liked, that's for sure.
+
+Perhaps the heap elaborator can do much much better. Actually, I suspect it
+probably can do significantly better, because it shares things involving
+lambdas instead of duplicating them.
+
+Let me also check that the yices target is getting the nicest arguments it can
+to elaborate.
+
+Thu Aug  2 09:28:54 EDT 2012
+
+It's close. The problem is, we do beta reduction for things not involving free
+variables, and those arguments get elaborated before being reduced, which
+means inlining of variables.
+
+Better to be lazy? Like, what if I don't elaborate before being reduced?
+
+Yet again, it seems like a heap elaborator could help us here. Let me try
+that. Meanwhile... more info on the array case?
+
+It's beta reduction getting array stopped. Let me try not to do silly things
+and somehow force progress.
+
+I'm afraid we could be getting into some loop of beta reduce / push in / beta
+reduce / push in, or something like that.
+
+Thu Aug  2 09:34:51 EDT 2012
+
+Okay, I see how something could lead to an infinite loop. Trying to fix...
+
+Thu Aug  2 09:37:21 EDT 2012
+
+Looks like I really can't not elaborate before subsitution in the elaborator,
+otherwise things will take forever.
+
+We still have the Array bug.
+
+Here's what I want to do:
+1. Fix the array bug.
+Now everything should compile. BCL3 should work. We have some sharing in.
+2. Test performance.
+For 17 queries:
+ - size of nonshared query
+ - size of shared query
+ - performance of nonshared query in yices
+ - performance of shared query in yices
+ - performance of nonshared query in seri
+ - performance of shared query in seri
+
+And come to some conclusions.
+ 
+
+
+Thu Aug  2 09:52:24 EDT 2012
+
+I don't know what the problem is with array. Let me just ignore it for now?
+
+Look at the performance stuff. Perhaps I can avoid tracking down the problem
+if I switch over to a heap evaluator entirely.
+
+Thu Aug  2 10:06:36 EDT 2012
+
+Started with performance:
+shared:
+  seri: 7 seconds without profiling
+  yices: doesn't work because we can't redefine symbols :(
+         that's bad. Maybe I can hack around it by just making up new names.
+         That would be valuable.
+  most time spent: a lot in free. So the elaborator is slow again. Only 38% in
+  check now.
+    
+noshared:
+  seri: 34 seconds without profiling
+  yices: 11 seconds
+  almost all time spent in check.
+  
+In other words... I think it's safe to say we want to do sharing. It speeds
+things up by almost 5x here. And I bet, if we do the heap elaborator, not only
+will performance of elaboration go way up, thus improving the shared case more
+(because it's spending a lot of time in elaboration), also we should be able
+to take advantage of that much more sharing.
+
+Cool.
+
+Not sure what to do about yices2 defining symbols with new names it shouldn't
+be...
+
+Unless... Can I push the definition of a symbol inside a query?
+
+How about this, what if I collected a context of terms, which I insert into
+things? No... that's not what I want...
+
+Will the heap elaborator solve this issue? I don't think so. That's annoying.
+How about an email to Bruno?
+

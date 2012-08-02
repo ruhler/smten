@@ -52,7 +52,7 @@ free =
         let freem :: Match -> [Sig]
             freem (Match p b) = free' (map (\(Sig n _) -> n) (bindingsP p) ++ bound) b
         in nub $ concat (free' bound e : map freem ms)
-      free' bound (AppE a b) = free' bound a ++ free' bound b
+      free' bound (AppE a b) = nub $ free' bound a ++ free' bound b
       free' bound (LamE (Sig n _) b) = free' (n:bound) b
       free' bound (ConE {}) = []
       free' bound (VarE (Sig n _)) | n `elem` bound = []

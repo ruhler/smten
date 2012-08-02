@@ -439,3 +439,107 @@ I changed ytype to use the c api. Again, it uses less memory, and relatively
 less time, but the profiler says things have slowed down... I don't know
 what's up with that, but I think I'll keep the change for now.
 
+Tue Jul 31 16:19:34 EDT 2012
+
+Well, check is up to 75%. 
+elaborate is back up there, at 2.6%, 5.4% allocation.
+
+Basically, according to the profiling, check dominates, everything else is far
+far behind. So I think I'm about where I want to be.
+
+Myron's complaining about smt_diamond. Let me run profiling on that with bcl
+to get an idea of what's wrong. Where is all the time being spent?
+
+Tue Jul 31 16:36:34 EDT 2012
+
+The profile for smt_diamond looks just like the profile for my BCL3 test.
+That's good, it means I've been working on the right things.
+
+Looks like yices is just slow?
+
+Well... now I should really try an honest test. Which is see how long it takes
+to run the yices2 query directly in yices. Compare that with my running time.
+
+To get a first sense, let me try that (without profiling) on BCL3.
+
+Tue Jul 31 16:39:56 EDT 2012
+
+Without profiling, the seriq2 full thing takes: 33 seconds.
+
+Tue Jul 31 16:51:30 EDT 2012
+
+With debugging on... wow. This is one really really big query.
+
+We'll see how long it takes to just dump it to a file. It doesn't surprise me
+we spend a bunch of time in check, given how large the query is.
+
+So, questions will be... how can we make the query smaller. For yices2, an
+option is: Define constants as constants where-ever possible.
+
+I could also take a look at the query itself in seri, and see if there is any
+sharing or such that could be taken advantage of.
+
+Tue Jul 31 16:57:55 EDT 2012
+
+Using yices directly on the 300M query, it takes 13 seconds. So... 13 seconds
+in raw yices, 33 seconds in seri. Is that reasonable?
+
+Tue Jul 31 17:15:11 EDT 2012
+
+So... what are we to do about how slow it is?
+
+Oh yes, I remember. Let me take a look at the seri queries being asked, and
+see if anything interesting shows up.
+
+Tue Jul 31 17:22:11 EDT 2012
+
+Well, we ask very similar questions, but they aren't the same. Things like:
+
+aa == bb?
+ab == ba?
+ac == ca?
+etc...
+
+So I'm not sure how much sharing can be gotten from that.
+
+One thing to try, just for the heck of it, is assuming no errors. See how that
+affects performance.
+
+What constants could I recognize? Would that help any for sharing? If we
+defined a bunch of constants?
+
+Hmm....
+
+For example... bound things could turn into constants, right? Maybe?
+
+But then, how do we apply a function to a constant? We can't really. I'm not
+sure if that's what's responsible for all the time anyway.
+
+Hmm...
+
+Structural equality is another idea. Try to use that wherever possible?
+
+Hmm... you know, we could have a deriving Eq thing, and we could derive an
+equality that is a primitive structural equality that yices understands? Well,
+not quite. That doesn't allow internal user defined equality.
+
+Can I think of anything else?
+
+Let me list all the things I can think of now, and I'll stew on it and get
+back to you.
+
+Ideas for why yices2 goes slower than Myron wants:
+- Assume all cases will match something. (easy to try)
+- Use structural equality instead of user defined equality.
+- Common sub expressions should be defined as yices constants.
+- In yices1, take advantage of functions.
+- Use primitive and, not, or, etc... operations instead of user defined.
+- Don't box bools.
+- Use function-update primitive?
+- Make sure the same questions are really being asked.
+- Use let expression instead of over-beta reducing.
+
+That's all I can think of for now. Some of these are pretty easy to try. It
+would be worth giving them a try, even if they are ugly or hackish, just to
+get a better sense of the performance issues.
+

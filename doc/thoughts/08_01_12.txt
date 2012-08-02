@@ -1,0 +1,518 @@
+
+Wed Aug  1 08:56:59 EDT 2012
+
+So! I had a thought, which I think is really going to be the trick here. The
+thing that fixes the yices blow up.
+
+We should try to express sharing in the yices query as much as possible.
+
+For the first, major part of this, I suggest not doing beta reduction if the
+argument contains free variables. Instead use a let expression.
+
+So, instead of compiling
+ (\a -> a a a) (... free~1 ...)
+
+as 
+  (... free~1 ...) (... free~1 ...) (... free~1 ...)
+
+Compile it as 
+  let a = (... free~1 ...)
+  in a a a
+
+I believe this could lead to an exponential reduction in the size of the
+query, which should make everyone much happier in general.
+
+There are other opportunities for sharing, but I think this is the best one to
+start with. It's the core one, which should make the biggest difference, and I
+suspect it's the easiest one to look at.
+
+First I can do a sort of sanity like check. Take a look at the generated
+query. What I hope to see is, in the big expressions, the free variables are
+used in duplicated expressions a lot. Big duplicated expressions. If there are
+big duplicated expressions, we can hopefully reduce them with sharing.
+
+Wed Aug  1 09:01:50 EDT 2012
+
+Yup! That's exactly what I'm seeing. I bet this is the problem.
+
+What's the fix?
+
+Well, everything happens inside the yices target.
+
+yicesE... Does an elaborate Full. So, ideally elaborate Full would just not
+reduce if there are free variables in the argument. It's that simple.
+
+Then I have to add support for applied lambdas to the yices target. Perhaps I
+already have added that? Yup. I've already added that. So it should be a
+simple change, I hope. And let's see what it comes up with.
+
+Wed Aug  1 09:12:55 EDT 2012
+
+First issue: Seri.Lib.Prelude.error is considered free. But we do want to
+reduce that, because it's a primitive.
+
+Perhaps I should look up each free name? It's fine if it's a primitive.
+
+Wed Aug  1 09:20:09 EDT 2012
+
+Now we have a problem in running the query. Because we don't fully elaborate,
+we get a query of the form:
+  let x = free~1
+  in assert (...)
+
+And I don't know how to process that.
+
+In this case, I don't see any problem, because free~1 is no more complicated
+than x.
+
+We really want a beta reduction to occur here, even though there is a free
+variable.
+
+How should I indicate that?
+ - do beta reduce if free for Simple reduction?
+ - add a flag to the mode saying whether or not to beta reduce a free?
+
+How about this. If there is a free in Simple, it's only for cases like this,
+so it shouldn't matter if I beta reduce then. It's a little hackish, but let's
+try it out.
+
+Wed Aug  1 09:24:24 EDT 2012
+
+More trouble now... I think this is what I was afraid of.
+
+\a ->
+(\b -> case (a, b) of
+        (True, x) -> x
+        (False, _) -> False)
+
+Looks like the implementation of &&. Now, why is this not reduced?
+
+((\a -> (\b -> blah)) x) y
+
+Reduces to...
+(let a = x in (\b -> blah)) y
+
+So maybe it's not a reduction problem, but rather a let recognition problem?
+
+But it's a different sort of let somehow.
+
+Normally multiple lets are like:
+
+let a = x
+    b = y
+in blah
+
+let a = x
+in let b = y
+   in blah
+
+(\a -> (\b -> blah) y) x
+
+But we are getting
+(\a -> (\b -> blah)) x y
+
+Is there an obvious transformation I can make here?
+
+(let a = x
+ in \b -> blah a) y
+
+Here's what I do... I rename a in the let expression
+
+(let a' = x
+ in \b -> blah a') y
+
+Now I transform 
+    (let bs e) y
+into
+    (let bs' (e' y))
+
+Or, perhaps, I just have to relax my beta reduction constraints some. The goal
+is to not reduce in such a way as to make expressions more complicated. Well,
+the following kinds of reductions don't make anything more complicated:
+
+- If the free variable appears less than twice in the body of the lambda.
+- If the argument is simple: constant, variable, constructor?
+
+Wed Aug  1 10:16:06 EDT 2012
+
+Talked with Nirav. He suggested a nice solution as a way to allow full
+elaboration while maintaining sharing is to use a heap structure. Basically
+put every subexpression on a heap, and change expressions to be pointers to
+other expressions on the heap. Do full reduction on this heap structure. When
+done, the pointers capture all the sharing.
+
+This would avoid any annoyance of renaming or these issues with lets, and make
+things easy. And, perhaps, we end up taking advantage of sharing that we
+weren't before in the elaborator.
+
+I think that sounds like I good idea to try. But it's certainly non-trivial.
+So the question is, can I make the let issue go away, just to get a sense of
+how much it will improve things. Then think more about rewriting the
+elaborator to use a heap style.
+
+
+Okay, so let me start hacking up the let, trying to work around problems as
+they show up.
+
+The most general solution would be... Do the renaming.
+
+What exactly does this mean? Let's call it part of the elaborator, after we've
+found we can't inline something?
+
+Here's the rule that we'll have:
+
+((\a -> f a) x) y
+
+Means, the body of the argument will be a function.
+Means the body of the lambda (or case, we should do this for case too) will be
+a function. So push the argument in as deep as we can.
+
+Looks like, then, the rule is:
+
+ AppE (AppE (LamE s b) x) y
+
+Turns into:
+      (AppE (LamE s (AppE b y)) x)
+
+Which is now clearly a nested let.
+The renaming we need to do is:
+    y could contain free variables which we don't want to capture in the
+    lambda. So, alpha-rename (LamE s b) to avoid capturing variables in y.
+
+The other condition where this will come up is in case statements.
+
+AppE (AppE (caseE e ms) x) y
+
+Turns into:
+      (AppE (CaseE e (...)) x)
+
+Where ... means, for every match of the form
+    Match p b, this turns into: Match p (App p b).
+
+And the renaming we have to do is:
+    rename the pattern variables in p and the body b in each match to avoid
+    capturing variables in y.
+
+I think that should do it just fine.
+Let me start with the LamE case, and deal with the CaseE case if that comes
+up. Good news is, I think these reduction rules don't conflict with anything
+else. They are a last resort sort of thing.
+
+Wed Aug  1 10:40:14 EDT 2012
+
+Looks like that worked. Now I need the CaseE thing.
+
+Wed Aug  1 10:54:50 EDT 2012
+
+Hmm... looks like a bug. A bug in the pretty printer?
+
+(\a -> (\b -> foo b) a) x
+
+is printed out as:
+
+(\a -> (\b -> foo b a x))
+
+?
+
+I think, actually, the problem is we are pushing inside primitives when we
+shouldn't be.
+
+Wed Aug  1 12:53:39 EDT 2012
+
+Okay, fixed that issue. It was a bug. Now adding more cases... but I haven't
+caught them all yet. Let me see what's up now.
+
+Wed Aug  1 13:26:35 EDT 2012
+
+Oh, now it's the case of using functions for arrays instead of the yices
+update primitive I think. Let me see if that solves it.
+
+Wed Aug  1 13:28:04 EDT 2012
+
+Well... that made the bug I was seeing go away, and now we can run the test.
+The trouble is... it still takes just as long to run.
+
+Let me generate the debug version, see if we made any improvements at all in
+the generated query.
+
+Wed Aug  1 13:54:58 EDT 2012
+
+Hmm... trouble. It seems like we aren't getting the sharing I expect to get in
+the generated query. Why?
+
+Maybe I should do some test cases that will make it more clear. Test sharing
+explicitly rather than working in BCL. I like that idea.
+
+So, what is an example of the kind of sharing we would like to do?
+
+assert (foo (free~1 && free~2)
+
+where:
+ foo = a && a && a && a && a.
+
+The hope is that this turns into:
+
+ let a = free~1 && free~2
+ in a && a && a && a && a.
+
+Not:
+ (free~1 && ...) && ... etc...
+
+Wed Aug  1 14:03:47 EDT 2012
+
+Well, good news, I guess, is we aren't doing the sharing I expect in this
+simple case, so it should be easy to figure out why we aren't doing it here,
+and there's still hope this will make things much better.
+
+What's going on? Why do we not get sharing here?
+
+Wed Aug  1 14:10:03 EDT 2012
+
+Problem was: We were doing the beta reduction during Simple elaboration. My
+bad. A bug.
+
+So now we do sharing, but there's seems to be an issue with one of my test
+queries hanging. 
+
+Perhaps I can ignore that for now, see if the BCL3 query works or is any
+simpler.
+
+Ah, but trouble is, to get the query we need to do this sort of beta
+reduction. Just, not for everything.
+
+How about this then, Simple should avoid reducing arguments to functions?
+
+Hmm... do we understand the problem?
+
+I want the argument to assert to not be simplified at all when simplifying to
+figure out what the next query is. I just don't know how to make primitives
+work unless we do that full elaboration? Hmm...
+
+Okay, so the proposal is this:
+ Goal: Simple does as little as possible elaboration. So, in particular, to
+ elaborate an application... elaborate the function. If it's a
+ primitive, attempt to elaborate the arguments. If it's not a primitive, then
+ don't elaborate the argument to the function until we have to.
+
+Wed Aug  1 14:23:23 EDT 2012
+
+Okay, let me try to do this incrementally. First step: go back to full beta
+reduction, just try to not reduce arguments for Simple reduction. Once that
+works, I can try putting back the reduction, see how that looks.
+
+Wed Aug  1 15:07:54 EDT 2012
+
+I don't know. Things aren't coming together the way I want. They aren't
+working out.
+
+The problem is: I want to do the reduction in Simple, not in...
+
+Hmm... assert is a primitive, so the arg is being evaluated, which I don't
+actually want. Interesting...
+
+Wed Aug  1 15:21:30 EDT 2012
+
+It's not working. With sharing added, it doesn't work, and the expressions are
+bigger than before. I suspect because it's not getting evaluated the right
+way. Gar!
+
+I need to take a step back and think about what's going on here.
+
+Here's the issue as I see it:
+
+I can change the (Full) elaborator to support sharing. The way to do this is:
+don't do beta reduction if the argument is complex with free variables. We
+also need some hacks to push arguments and functions together for this to
+work.
+
+The problem is, for this to be useful, we need to have a completely
+unelaborated argument to assert.
+
+Well, so, it seems like what we want to do is change the simple elaborator so
+that it doesn't elaborate the argument to a function unless it has to. I feel
+like this is what I've done.
+
+So, a couple of questions remain unanswered:
+1. Why does it fail the array and vector test cases?
+2. Why does it fail the Array smt test case?
+3. Why does it make the query that much bigger?
+
+And the answer to these? I have to look into it and understand what's going
+on. One at a time.
+
+I'm going to take a little break from this, then try to figure things out
+systematically.
+
+Regardless of what's up, it is my expectation that sharing should strictly
+shrink the size of the queries. If that's not the case, then something is up
+that I need to understand.
+
+Wed Aug  1 16:12:49 EDT 2012
+
+Okay, had a nice break, right? Time to look at this more closely.
+
+Wed Aug  1 16:14:40 EDT 2012
+
+arrsub0 doesn't elaborate. Why?
+
+42 == (arr ! 0)
+
+So, looks like the second argument to __prim_eq_Integer was never elaborated.
+Why? I say elabme...
+
+Okay, so it looks to me like the problem now is with matching Cases...
+Or rather, constructors. If we have a constructor application, we do want to
+elaborate it fully.
+
+I see the issue. How should I fix it?
+
+Problem is: for Query, I want to do a reduction with a free variable,
+otherwise we end up with lets and I can't go inside... So I say, well, let
+Simple do reduction with a free variable. But then Simple goes and does
+reductions inside my assertion predicate, which I definitely don't want. So I
+say, okay, fine, have Simple do reductions with free variables, but don't go
+into arguments prematurely. But then it fails to elaborate fully for case
+statements.
+
+I feel like I could continue the chain... but there must be some higher level
+notion of what I want that I can clarify.
+
+Maybe the issue is I need more pushing? I'm getting something like:
+
+let foo = ... free~ ...
+in assert p
+
+It would be nice if I could change this to:
+
+assert (let foo = ... free~ ... in p)
+
+Then I could do the query. Simple can just not do reductions with free
+variables, and everything is solved, no?
+
+I suppose it's worth a try.
+
+But! It's not quite right, because we really want to refer to foo in later
+queries too. So really, I want this beta reduction to occur.
+
+Can the heap evaluator help at all with this?
+
+Ug. Ug Ug.
+
+Could I change how I implement elaboration of the primitives for query?
+
+Like, if they happened inside of the elaborator, and I used the heap
+elaborator, then I could evaluate full, and to reduce assert, I get the
+expression, deshare it, pass it to yices...
+
+That actually sounds somewhat reasonable to me.
+
+I wonder... using this heap elaborator, could we also avoid the infinite
+recursion problem? Er... probably not. It would be nice to not have two modes
+of elaboration.
+
+With a heap elaborator... I don't know. The real reason we have two modes is
+because one gives up if it can't go further, the other knows it can't go
+further (we have free variables and such), but tries to simplify as much as
+possible anyway.
+
+
+Okay, let me revisit the idea of having Simple elaboration really do as little
+work as it can. So we don't elaborate things fully until we need to. When do
+we need to? When we try to do a pattern match on them. When we have a
+primitive. So, take what I have now and go the next step? Err...
+
+First off, I'm not going to write any more code today, because I have to
+understand what should happen first, and I really don't understand.
+
+Let's say I have the heap elaborator, and I want to implement two modes of
+elaboration: Simple, and Full, just like we have now. Only, in this one Simple
+is really going to be as lazy as can be.
+
+How should we implement Simple?
+LitE is done.
+CaseE: pattern match. The pattern matcher will elaborate as needed
+(maybe I can do that now?)
+AppE f x: Elaborate the function:
+  LamE - reduce. No need to elaborate x first.
+  valueof prim - Go, no need to elaborate x.
+  AppE (binary prim) a - elaborate a, elaborate x,
+    Try to match args and reduce. If args don't fully elaborate... Return as
+    much of them elaborated as elaborated
+LamE: done
+ConE: done
+VarE numeric: reduce
+VarE inlinable: inline it, hashing up the shared stuff from the inliner then.
+VarE else: done
+
+
+Cool. So, what are the interesting points here?
+1. We do beta reduction of unelaborated arguments.
+It doesn't cost us anything extra, because we keep track of sharing.
+2. Case pattern match is lazy: don't elaborate until we need to match it.
+
+What is the difference between Simple and Full?
+Full: Go inside LamE and unmatched CaseE, and elaborate those full too.
+
+Next question: how to add builtins like for Query? Do we get to keep sharing
+somehow, or do we have to loose the sharing?
+
+We could keep sharing if we can somehow give the elaborator the rules for
+dealing with Query primitives.
+
+Reduce free: Just need the type, no trouble... but we also need bind of some
+sort. Some way to enforce the order. Maybe the rule should include bind:
+
+free >>= \f -> ...
+
+Is reduced as:
+
+(\f -> ...) free~, but changing the monad.
+
+But, what's to keep us from doing things out of order? Do the functions
+enforce things correctly the way we want? They may...
+
+But some primitives you want in the monad, others you don't?
+
+Why do I feel like I've tried that before without success? Doing elaboration
+in a monad?
+
+If I do full elaboration, then, because of things like free, and the way beta
+reduction works, we get back an HExp in an environment. Now I could use my
+current SMT.Yices strategy to advance that HExp.
+
+I don't know. I'll go home and think about it a bunch, and maybe something
+will be clearer tomorrow.
+
+Wed Aug  1 18:32:24 EDT 2012
+
+Okay, I think I've got it figured out.
+
+We can do heap elaborator just fine. Use STRefs for the pointers.
+
+But, the key insight is how to handle the queries.
+
+Err... well, maybe think more about the heap thing later.
+
+The insight now is, we can treat
+
+let foo = bar
+in blah
+
+As a valid query. Easy. Just send the command:
+
+Define foo bar
+Then run the rest of the query.
+
+So I should change it back to when Simple fully reduced, with the sharing
+implemented, and maybe try it out real quick like.
+
+
+Wed Aug  1 18:39:00 EDT 2012
+
+Hmm... still have trouble with Array test. Let me get back to that.
+
+Wed Aug  1 18:43:53 EDT 2012
+
+Bummer. Still more problems. Looks like there's more sharing trouble. Oh well.
+More thoughts tonight.
+

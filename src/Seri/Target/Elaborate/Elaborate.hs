@@ -47,7 +47,8 @@ import Seri.Failable
 import Seri.Lambda
 
 -- | Simple elaboration doesn't do elaboration inside lambdas or unmatched
--- case alternatives.
+-- case alternatives, or arguments to functions which aren't primitive or
+-- lambdas.
 --
 -- Full elaboration fully elaborations inside lambda expressions and case
 -- alternatives. A fully elaborated expression is potentially an infinite
@@ -71,6 +72,28 @@ elaborate' mode env freenms e =
   let elabme = elaborate' mode env freenms
       elabmenms nms = elaborate' mode env (nms ++ freenms)
       elabmenm n = elabmenms [n]
+        
+      isprim :: Sig -> Bool
+      isprim s = case (attemptM $ lookupVarInfo env s) of
+                    Just _ -> True
+                    Nothing -> False
+
+      isfunt :: Type -> Bool
+      isfunt t = 
+        case unarrowsT t of
+            _:_:_ -> True
+            _ -> False
+            
+
+      -- return True if the given beta reduction should be applied with the
+      -- given argument.
+      shouldreduce :: Exp -> Bool
+      shouldreduce (LitE {}) = True
+      shouldreduce (VarE {}) = True
+      shouldreduce x | null (filter (not . isprim) (free x)) = True
+      shouldreduce x | isfunt (typeof x) = True
+      shouldreduce _ = False
+
   in case e of
        LitE {} -> e
        CaseE x ms ->
@@ -87,7 +110,7 @@ elaborate' mode env freenms e =
              (VarE (Sig "Seri.Lib.Prelude.valueof" t), _) ->
                 let NumT nt = head $ unarrowsT t
                 in integerE (nteval nt)
-             (AppE (VarE (Sig "Seri.Lib.Prelude.__prim_eq_Char" _))     (LitE (CharL ia))   , LitE (CharL ib))    -> boolE (ia == ib)
+             (AppE (VarE (Sig "Seri.Lib.Prelude.__prim_eq_Char" _)) (LitE (CharL ia)), LitE (CharL ib)) -> boolE (ia == ib)
              (AppE (VarE (Sig "Seri.Lib.Prelude.__prim_add_Integer" _)) (LitE (IntegerL ia)), LitE (IntegerL ib)) -> integerE (ia + ib)
              (AppE (VarE (Sig "Seri.Lib.Prelude.__prim_sub_Integer" _)) (LitE (IntegerL ia)), LitE (IntegerL ib)) -> integerE (ia - ib)
              (AppE (VarE (Sig "Seri.Lib.Prelude.__prim_mul_Integer" _)) (LitE (IntegerL ia)), LitE (IntegerL ib)) -> integerE (ia * ib)
@@ -95,10 +118,28 @@ elaborate' mode env freenms e =
              (AppE (VarE (Sig "Seri.Lib.Prelude.>" _))                  (LitE (IntegerL ia)), LitE (IntegerL ib)) -> boolE (ia > ib)
              (AppE (VarE (Sig "Seri.Lib.Prelude.__prim_eq_Integer" _))  (LitE (IntegerL ia)), LitE (IntegerL ib)) -> boolE (ia == ib)
 
-             (LamE (Sig name _) body, rb) ->
-               let renamed = alpharename (deleteall name freenms) body
+             -- Only do reduction if there are no free variables in the
+             -- argument. Otherwise things can blow up in unhappy ways.
+             (LamE (Sig name _) body, rb) | shouldreduce rb ->
+               let renamed = {-# SCC "BR" #-} alpharename (deleteall name freenms) body
                in elabme (reduce name rb renamed)
 
+             -- Push application inside lambdas where possible.
+             -- Rewrite:    ((\a -> b) x) y
+             --             ((\a -> b y) x)
+             -- With proper renaming.
+             (AppE e@(LamE {}) x, y) ->
+                let LamE s b = {-# SCC "PUSHL" #-} alpharename freenms e
+                in AppE (elabme $ LamE s (AppE b y)) x
+
+             -- Push application inside case where possible.
+             -- Rewrite:   (case x of { p1 -> m1; p2 -> m2 ; ... }) y
+             --            (case x of { p1 -> m1 y; p2 -> m2 y; ... })
+             -- With proper renaming
+             (e@(CaseE {}), y) ->
+                let CaseE x ms = {-# SCC "PUSHE" #-} alpharename freenms e
+                in elabme $ CaseE x [Match p (AppE b y) | Match p b <- ms]
+            
              (ra, rb) -> AppE ra rb
        LamE {} | mode == Simple -> e
        LamE s@(Sig n _) b | mode == Full -> LamE s (elabmenm n b)

@@ -291,8 +291,11 @@ exp10 :: { Exp }
     { ifE $2 $4 $6 }
  | 'case' exp 'of' '{' alts opt(';') '}'
     { CaseE $2 $5 }
- | 'do' '{' stmts exp ';' '}'
-    { doE ($3 ++ [NoBindS $4]) }
+ | 'do' '{' stmts '}'
+    {% case last $3 of
+         NoBindS _ -> return $ doE $3
+         _ -> lfailE "last statement in do must be an expression"
+    }
  | fexp
     { $1 }
 

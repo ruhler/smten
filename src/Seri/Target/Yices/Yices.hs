@@ -75,6 +75,14 @@ ys_cmds = reverse . ys_cmdsr
 -- | Monad for performing additional yices compilation.
 type CompilationM = StateT Compilation Failable
 
+-- When a compilation fails, append the given string to the error message.
+confail :: String -> CompilationM a -> CompilationM a
+confail m x = do
+    s <- get
+    (v, s') <- lift $ onfail (\msg -> fail $ msg ++ "\n" ++ m) $ runStateT x s
+    put s'
+    return v
+
 -- | Strict gets.
 getsS :: (Compilation -> a) -> CompilationM a
 getsS f = do
@@ -125,8 +133,8 @@ yicesE e = do
     poly <- getsS ys_poly
     let se = elaborate Full poly e
     modifyS $ \ys -> ys { ys_cmdsr = [] }
-    me <- compileNeeded se
-    ye <- yExp me 
+    me <- confail ("When compiling " ++ pretty se) $ compileNeeded se
+    ye <- confail ("When compiling " ++ pretty se) $ yExp me
     cmds <- getsS ys_cmds
     return (cmds, ye)
 
@@ -272,7 +280,7 @@ yExp e@(AppE a b) =
            b' <- yExp b
            return $ Y.FunctionE a' [b']
 yExp l@(LamE (Sig n xt) e) = 
-    error $ "lambda expression in yices target generation: " ++ pretty l
+    yfail $ "lambda expression in yices target generation: " ++ pretty l
 yExp (ConE s) = yCon s []
 yExp (VarE (Sig n _)) = return $ Y.varE (yicesname n)
 

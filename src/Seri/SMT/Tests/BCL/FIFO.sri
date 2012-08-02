@@ -2,6 +2,7 @@
 module Seri.SMT.Tests.BCL.FIFO where {
 
 import Seri.Lib.Prelude;
+import Seri.SMT.Array;
 
 data FIFO a = FIFO{ max_cnt :: Integer
                   , enq_idx :: Integer
@@ -40,7 +41,7 @@ enq_FIFO_a x fifo = let {
                ma = max_cnt fifo;
                ar = arr fifo; 
                new_ei = if (ei == ma) then 0 else (ei + 1);
-               new_ar = \idx -> if (idx == ei) then x else (ar idx);
+               new_ar = update ar ei x
              } in  (notFull_val_FIFO_a fifo, fifo{enq_idx=new_ei,arr=new_ar,mod_enq=True}, ());
  
 

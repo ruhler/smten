@@ -1,0 +1,20 @@
+
+
+module Seri.SMT.Tests.Share where {
+
+import Seri.Lib.Prelude;
+import Seri.SMT.SMT;
+
+veryand :: Bool -> Bool;
+veryand a = a && (a && (a && a));
+
+main :: Query (Answer Bool);
+main = do {
+    x <- free;
+    y <- free;
+    assert (veryand (x && y));
+    query x;
+}
+
+}
+

@@ -125,6 +125,11 @@ runQueryM :: Y.Yices y => Exp -> YicesMonad y Exp
 runQueryM e = do
     env <- gets ys_env
     case elaborate Simple env e of
+        (AppE (LamE (Sig n t) b) x) -> do
+            t' <- yicest t
+            x' <- yicese x
+            runCmds [Y.Define (yicesN n) t' (Just x')]
+            runQueryM b
         (AppE (VarE (Sig "Seri.SMT.SMT.query" _)) arg) -> do
             res <- check
             case res of 

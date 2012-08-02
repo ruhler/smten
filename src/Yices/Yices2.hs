@@ -77,7 +77,10 @@ instance Yices Yices2FFI where
     run _ (Define s ty Nothing) = do
         ty' <- ytype ty
         term <- c_yices_new_uninterpreted_term ty'
-        withCString s $ \str -> c_yices_set_term_name term str
+        withCString s $ c_yices_set_term_name term
+    run _ (Define s _ (Just e)) = do
+        term <- yterm e
+        withCString s $ c_yices_set_term_name term
     run (Yices2FFI yctx) (Assert p) = do
         p' <- yterm p
         c_yices_assert_formula yctx p'
@@ -86,7 +89,6 @@ instance Yices Yices2FFI where
         c_yices_push yctx
     run (Yices2FFI yctx) Pop = do
         c_yices_pop yctx
-    run _ cmd = error $ "TODO: run " ++ pretty Yices2 cmd
 
     check (Yices2FFI yctx) = do
         st <- c_yices_check_context yctx nullPtr

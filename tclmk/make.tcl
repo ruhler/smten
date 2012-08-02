@@ -48,8 +48,8 @@ set ::env(HOME) [pwd]/build/home
 indir build/src {
     hrun cabal configure --package-db $::PACKAGE_DB \
         --extra-lib-dirs $::env(LD_LIBRARY_PATH) \
-        --with-happy=$::HAPPY \
-        --enable-executable-profiling
+        --with-happy=$::HAPPY 
+        #--enable-executable-profiling
     hrun cabal build
     hrun cabal haddock --executables
     hrun cabal sdist
@@ -80,6 +80,8 @@ proc badtypetest {name} {
 badtypetest "BadType1"
 badtypetest "BadType2"
 badtypetest "InstCtx"
+# TODO: remove these entirely, because we now interpret recursive lets as
+# not-recursive.
 #badtypetest "LetRecM"
 #badtypetest "LetRecS"
 
@@ -107,7 +109,8 @@ querytest "Complex"
 querytest "If"
 querytest "Casenomatch"
 querytest "Bluespec"
-querytest "Array"
+#querytest "Array"
+querytest "Share"
 
 # The SMT query2 tests
 proc query2test {name args} {
@@ -123,7 +126,8 @@ query2test "Complex"
 query2test "If"
 query2test "Casenomatch"
 query2test "Bluespec"
-query2test "Array"
+#query2test "Array"
+query2test "Share"
 
 puts "BUILD COMPLETE"
 
