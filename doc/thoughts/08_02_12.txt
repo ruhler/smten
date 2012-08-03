@@ -248,3 +248,284 @@ Okay, so I'm officially convinced now this is a yices2 bug. I sent out a
 report. Until I hear back... I think I should have fun with the heap
 elaborator.
 
+Thu Aug  2 12:32:44 EDT 2012
+
+Okay! Now for the fun stuff, eh? A heap elaborator.
+
+Firstly, I should probably have some thoughts.
+
+Can we make it cheap to do partial elaboration with the heap elaborator? Like
+the kind of thing we do for running yices queries?
+
+Idea is: take an Exp, translate to HExp, elaborate under the heap part way,
+translate back to Exp, do a little work, then get a new expression and so on.
+
+Can we be lazy in translating to the heap, so if we don't need to, we never
+touch subexpressions? That would be nice.
+
+One idea: have as a constructor of HExp, something which is just Exp. Don't
+heapify it until we try to elaborate it.
+
+So, this should work fine, unless we have free variables being shared in the
+expression, right? If it's a LamE, and we are sharing the argument, doesn't
+that mean we have to heapify the entire body?
+
+Well, maybe it does. Maybe it doesn't. How about this, let me not worry about
+it for now. Implement the heap elaborator without caring... see how well we
+perform doing the translations back and forth... maybe I can be lazy if I want
+though? That might be nice. See if there's a performance issue.
+
+The first target use of the heap elaborator will be:
+ serie - because we can
+ yicese full elaborate - to get better sharing.
+
+The last question is if it can replace what we have for run query. That's
+certainly easy enough to try.
+
+Good. The next question is, can we somehow keep things as scoped as possible?
+I feel like we ought to be able to keep things fully scoped.
+
+Maybe the way to make that work is to ... hmm...
+
+The real question will be, how do we deheapify?
+
+Let's say pointers are all STRefs. I have an expression, it has a bunch of
+STRefs in it. How to deheapify?
+
+One idea is: deheapify all the sub expressions, then return a let. The problem
+is, we might loose sharing this way. We might try to deheapify the same sub
+expression twice, which would be bad.
+
+Okay, so here's an idea. Let's only deheapify those expressions which occur in
+multiple different sub branches. Or rather, recursively traverse the entire
+children expression to figure out if a reference happens in both children. If
+so, deheapify that reference first. Any isolated to a single child can be
+dealt with by the child.
+
+It seems like we could do this with a two pass algorithm like thing.
+
+First step: Ask children for their set of common sub expressions, combine
+those together, and return it.
+
+Now, at the top level we get a list of all the common sub expressions. We want
+to push back ones that are not in common between the two... So, any common
+between two children, you take ownership of.
+
+That seems...messy. Like a lot of work. More work than I would like. But I
+think it would give a very nicely cleaned and elaborated expression. Fully
+inlined except where sharing could happen, which is nice.
+
+Can I think of a better way to do this?
+
+Going from the top down, the challenge is: given a set of children, figure out
+all references referred to by both children.
+
+Perhaps dynamic programming could be useful here?
+
+No, I think what I first explained is the right way to go to start. Two
+passes: first pass we collect at each node the entire set of reference by its
+children. Second pass, given a list of references removed because they are
+available at a higher level, find the intersection of children, make those
+part of a let, remove them from children, recursively.
+
+This could be a little annoying if I don't have a place to hold the
+information about sharing along side the expressions for the final algorithm.
+Perhaps I should add a parameter with each expression which is an annotation
+for the node?
+
+The other question is, can we somehow maintain this information as we
+elaborate? That might be harder...
+
+Fine. I'll go with this for now.
+
+What is the high level algorithm for this then?
+
+Let's assume I'm lazy in heapifying.
+That means we want the following:
+
+elaborate :: Mode -> Env -> Exp -> Exp
+
+Which make make use of ST, and possibly state.
+The state during elaboration will be the environment, and maybe also a mapping
+from declared Sig to shared object, so we can have that kind of sharing too. I
+like that.
+
+If we have an Unheapified expression, we can just make one of those, then
+elaborate the heapified expression.
+
+How to elaborate a heapified expression? There are cases:
+
+elaborateH :: HExp -> HeapM HExp
+
+LitEH - do nothing.
+CaseEH e ms - do a lazy pattern match: so try to match the first pattern. That
+will elaborate as needed. If it succeeds, turn it into LamEH and elaborate
+that. If it fails, dump the head, elaborate the rest. If it's unknown,
+depending on the mode, either we are done now, or elaborate all the case
+alternatives first as much as possible.
+AppEH a b - elaborate a, see if it's a Lambda or primitive and act
+appropriately.
+LamEH s b - etc...
+
+In other words, it's all just like the existing elaborator. There's just some
+indirection to walk through.
+
+How to do beta reduction? We have an arg, on the heap. If we totally heapify
+in the first place, we could do all beta reduction at once during
+heapification. If we want to be lazy, then wait to do beta reduction until we
+have to, but its' all the same. Just substitute the pointer.
+ 
+We could do explicitly lazy reduction. Associate with each subexpression a
+mapping from variable name to STRef. That might be a little silly though.
+
+I think I should not worry about being lazy yet. I should just fully heapify
+ahead of time. Then beta reduction is done during heapification? Well, not
+fully. What if we just have a lone Lambda? We can't do any reduction until we
+know what the argument to it is.
+
+So wait until we know the argument before doing any reduction, so beta reduce
+at elaboration.
+
+Good. Fine. Are we all set? Shall I dive in, see what I learn?
+
+Oh wait. First I should read about STRefs.
+
+I need a reference with the following property:
+ - I can make a set of references
+ - I can get a unique name from a reference.
+
+Can you do that with STRef?
+
+STRef has Equality defined. But looks like no name or hash or comparison.
+Can I show an STRef? Probably bad to rely on it.
+
+Looks like no. Can't make a set of STRefs.
+
+Alternatively, I could give a name to each of my references. So a reference is
+a name and an STRef. The name can be a number. I can use that for hashing and
+comparison and naming. Easy solution.
+
+Fine then. Let me start writing code. Maybe I can get a rough draft going by
+the end of the day.
+
+Thu Aug  2 13:24:16 EDT 2012
+
+Question: full elaboration can lead to infinite data structures?
+
+The only place for recursion is with declarations. If I use a hash table
+mapping for that, then we can end up with cycles in the graph. If there are
+cycles in the graph, I should try to figure out how to break them...
+
+Let me not worry about cycles right now. Though I should pay attention to them
+eventually. I'm going for a little bit at a time here.
+
+Thu Aug  2 13:48:05 EDT 2012
+
+I wrote down heapify. No trouble here, though I pushed much of the grunt work
+into stubbed out helper functions.
+
+How about implementing the core elaborator, elabH?
+
+Thu Aug  2 14:28:04 EDT 2012
+
+There's a question of what should be on the heap and what should be inline.
+For example, we never need to store a literal on a heap, because it's as
+simple as a reference.
+
+The trouble with mixing them up, as I am now, is we have to explicitly
+dereference everything after elaboration. This is slightly annoying.
+
+Perhaps best would be to say: we always pass around references. We elaborate a
+reference (it doesn't return anything, just makes sure the thing referred to
+is elaborated as desired). Then I can have a dereference thing to look up the
+value of a reference.
+
+This makes it clearer I think. And easier, for example to implement
+primitives: Once we find we have a primitive, elaborate the arguments fully,
+dereference them, if we can do a reduction, do a reduction, otherwise do
+nothing.
+
+Okay, but you still would like an Exp -> Exp kind of thing, right? Otherwise
+we have to explicitly update the results?
+
+Let me think through how these things will work.
+ LitEH ... well, we certainly want the derferenced thing to do the case match
+ on, like I have now. We could return a Maybe, to say: don't update this.
+
+ CaseEH: matches will update x as much as it cares to, that's good. If we do
+ the match... then we change ourself? That makes sense to do.
+
+ AppEH: VarE... we can change ourself.
+
+
+Yes, better to make everything a reference. We'll want references to constants
+anyway, because what starts as a complex expression could be reduced to a
+constant.
+
+Okay, change I'm going to make:
+ - Every thing refers to references to expressions.
+ - elaborate updates a reference in place (or not), it doesn't return
+   anything.
+
+Yes, I think that looks better now.
+
+Thu Aug  2 15:03:27 EDT 2012
+
+Hmm... how do we do beta reduction?
+
+The problem is, the body could be shared across multiple applications. This
+means, basically, we have to duplicate the body, right? But ideally we could
+reuse common parts of the expression.
+
+Well... it seems fairly clear what I should do. Have reduce return a maybe
+reference. Nothing means there was nothing to do: use the original reference.
+Something means there was a change. Propagate up the nothings as appropriate.
+
+Thu Aug  2 15:34:11 EDT 2012
+
+Beta reduction is pretty messy, but I wrote down the rough draft code for it.
+
+Using a heap structure certainly makes the code... messier I would say.
+
+Thu Aug  2 15:43:24 EDT 2012
+
+Okay, so now the code for elaborate has been written down.
+
+What things remain?
+- deheapify
+- declared
+- little stub functions.
+
+How about start with deheapify, because I think declared will just be tedious.
+deheapify is much more interesting.
+
+How will it work? I've already said the algorithm:
+1. Get the set of each reference each expression has.
+Note: references to VarEH, ConEH, and Lit shouldn't be included in the count.
+So perhaps we should ask people to return their own reference too, or not, as
+appropriate.
+
+Where will I put these?
+How about with each reference? Then I can ask each reference for it's set
+of referred, and we can use a Maybe type just to make sure they set it right,
+if you want. Or error initially... Well, Maybe is good, because we can see
+things like: oh, this guy already did it. That is, we can leverage sharing
+again, hurray!
+
+So, we have a function to update the set of all children pointers for each
+reference, self included. That's a simple traversal function.
+
+Then, we have the function which, assuming this reference info is updated (or
+not assuming, updating as it goes?) generates the lets. The input to the
+function is the set of reference an expression doesn't have to worry about.
+
+Fine. That's doable too. Let me start writing and see how far I get. I don't
+think I'll have the rough draft done today, but I can get it pretty close.
+
+Thu Aug  2 17:22:57 EDT 2012
+
+I implemented reachable, it caches the results. It also doesn't include things
+like references to VarE, ConE, LitE in the set.
+
+Given that, deheapify should be real easy, no?
+

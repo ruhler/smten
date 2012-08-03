@@ -1,0 +1,56 @@
+
+Fri Aug  3 08:46:45 EDT 2012
+
+Goal for today: get the heap elaborator up and running. Status is: I started
+writting the rough draft of code. There's more code to write to finish the
+rough draft. So, looks like the plan is:
+
++ finish writing the rough draft of deheapify
+- finish writing the stub functions
+- get it to compile
+- test it out.
+
+I suspect lot's of problems will come up that need to be addressed.
+
+Oh, and I thought of a way to hopefully support lazy heapification and
+deheapification so we can easily go back and forth for unelaborated
+expressions. This will be a later step, but let me write down my thoughts:
+
+We add another kind of heap expression: AtomEH. It holds: a pure seri
+expression and a mapping of beta reductions to do on the seri expression.
+
+To perform beta reduction: just add to the mapping.
+To heapify: start with an empty mapping.
+To deheapify: make lets out of the beta reductions and use the body as is.
+To elaborate: heapify the expression (so, unfold by one step), copy the beta
+reduction mapping to each subexpression, then elaborate that.
+
+Simple. Easy.
+
+What we're doing here is being explicitly lazy, and I think that could help us
+win big later on for switching over entirely to the new elaborator.
+
+Fri Aug  3 09:07:51 EDT 2012
+
+Trouble with recursive definitions: we'll get stuck inlining. I either need to
+make it refer to itself, or be lazy about inlining recursive functions. If I
+do heapification lazily as proposed above, then this should come for free I
+think. Maybe I should do that first.
+
+Fri Aug  3 09:17:42 EDT 2012
+
+If do use the lazy approach above, identifying bound variables will have to
+change. We should pass with the unheapified thing a set of all currently bound
+variables as well as the beta reductions.
+
+Fri Aug  3 09:26:14 EDT 2012
+
+Okay, so the rough draft is all written down.
+
+I'm sure it won't work, because of the problem with recursion. We'll just get
+stuck in an infinite loop. But hopefully it's close. Let me check stuff in,
+just to save it, then rewrite with my lazy proposal and try to clean things up
+along the way. Then try to compile and run?
+
+Okay. Hopefully I'll get somewhere eventually.
+
