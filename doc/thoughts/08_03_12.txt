@@ -54,3 +54,327 @@ along the way. Then try to compile and run?
 
 Okay. Hopefully I'll get somewhere eventually.
 
+Fri Aug  3 09:32:21 EDT 2012
+
+Hmm... one problem. With atoms, we don't know how many times a variable is
+referenced, or if it's not referenced at all. This means we assume beta
+reduced variables are referenced when they may not be. Is that a problem?
+
+Honestly? Probably not.
+
+Fri Aug  3 10:22:44 EDT 2012
+
+Trouble... How do we do beta reduction now?
+
+My claim is just push the reductions down.
+
+Okay, so I want to elaborate an expression which is a variable which has
+reductions to be done to it. How do I do that? Don't I want to keep the
+sharing? But then we end up with pointers to pointers to pointers to ... and
+so on. Is that okay?
+
+When do I dereference them?
+
+Bugger. For beta reduction we want to change pointers. Anyone who pointed to
+this variable before, should now point to this value.
+
+So, I should do beta reduction at heapify, no? To heapify a variable with beta
+reduction means to do the replacement there and then, right? That we way
+guarantee we never have an AtomEH VarE, and there's nothing to worry about.
+
+This means we should probably inline declared at heapify too.
+
+Now things are getting really messy, the way I'm doing explicit lazy
+evaluation, with everything stacking on top of one another.
+
+Ug. This seems way too complicated to me.
+
+Okay, let's have an invariant then: VarE in an AtomEH is a free variable. It
+can't be otherwise. Beta reduction is done at heapification or
+deheapification as appropriate.
+
+Fri Aug  3 10:33:44 EDT 2012
+
+We still have a problem though, because heapify returns an expression, not a
+reference, and for VarE, we want it to return a reference.
+
+Fri Aug  3 10:46:33 EDT 2012
+
+I think I need to go back to the drawing board. Work things out on paper.
+These issues with references and such. Take time away from coding.
+
+Make sure I have a clear understanding of:
+- how beta reduction works
+- how to deal with references to references
+- how to deal with recursive functions
+- how expensive it is to deheapify an unelaborated, heapified expression.
+
+Fri Aug  3 12:15:03 EDT 2012
+
+The consequences of my thoughts:
+
+1.
+Allow chaining of reference. So you can have a reference to a reference to a
+reference to a ...
+
+Without this, it's hard to do sharing in all cases easily. The downside is not
+so downside: abstract following a chain into readRef.
+
+We can also have an elaboration rule for chained references. This may obviate
+the need for chained reading of reference. The rule is:
+
+elaborate r, where r has value:
+ RefE x
+    where x has value
+       RefE y
+is: write r (RefE y).
+
+Okay, so it doesn't obviate need for chained reading, because we can't do
+directly adjascent.
+
+Oh, but what we could have is a rule for each construct:
+
+ FooE r
+   where r has value
+      RefE y
+is: write r (FooE y)
+
+That's much more general. Then that should obviate the need for chained
+reading, so long as we promise to only read fully elaborated things. Which I
+think is a fair promise.
+
+Good. So, slightly annoying, but readily doable.
+
+2.
+It is the job of elaborate to lookup a declared variable, not heapify.
+This is easy to do now that we allow chained references. Elaborate should take
+as an extra parameter the list of bound (free?) names so it knows whether it
+should look for something in the environment.
+
+And because of this, we can have a loop in the graph for recursive
+functions... maybe? Depends on beta reduction. But if we are lazy, I'm really
+hoping it doesn't matter.
+
+Oh, I know the solution. Because we do lazy evaluation, the only way the loop
+will be a problem is if you have an infinite recursion?
+
+Wait, so if it's a recursive function...
+
+Case: Simple elaboration.
+
+You won't try to elaborate the recursive call until already doing beta
+reduction...
+
+Unless, of course, you do something silly like:
+
+foo :: Integer
+foo = foo + 1
+
+In which case there will be a loop, which we maybe want to detect, or just go
+into an infinite loop. I'm fine with that.
+
+So, doing beta reduction will make a copy, so we don't have a self loop.
+
+For Full elaboration, I'm assuming you don't have any unelaborable recursive
+calls anyway. So this won't cause any more problem than we have now.
+
+3. For fast deheapification of a new heapified object: do explicit lazy
+heapification. This lets us take advantage of the higher level knowledge
+(which ghc doesn't know about) that (deheapify (heapify x)) = x.
+
+I wonder if ghc rewrite rules can be used for that sort of thing.
+
+I fear that ST will make it so we can't do the laziness I want, because we
+have to force an order.
+
+So, explicit lazy heapification. And how do we express this? Have an expression
+which is: HeapifyE Exp. Trivial. And the elaboration of that expression can
+call heapify to unroll it.
+
+Again, we take advantage here of the fact that:
+
+deheapify (HeapifyE e) = e.
+
+4. Beta reduction is how I've already implemented it. Make a copy of the
+graph, sharing where-ever possible.
+
+The thing is, for lazy heapify to be useful, we need to have lazy reduction,
+right?
+
+That is, the question is, how do you do (reduce k v (HeapifyE e))?
+
+If reduce isn't explicitly lazy, we could just say: heapify e, then reduce.
+But that will traverse the entire thing, undoing the laziness of HeapifyE.
+Alternatively, lets make reduce explicitly lazy.
+
+reduce k v (HeapifyE e) = ReduceE k v (HeapifyE e)
+
+Now, this means reduce is unrolled once by elaboration. To unroll
+ReduceE k v (HeapifyE e) once, heapify e, and reduce in there.
+
+If reduce returns a new reference, then make a RefE, otherwise just return the
+underlying object unchanged.
+
+So, now we have the question, how to deheapify (ReduceE k v x)?
+
+Well, it's just 
+  let k = @v
+  in <x>
+
+Where <x> is deheapified x, and @v is the name for the shared value v.
+
+Very easy.
+
+And thus, I claim, I have the answer to all problems that I've seen so far:
+- beta reduction works like I have, only is explicitly lazy
+- references to references are allowed, and elaborated away (by extra
+  elaboration rules for any expression which holds a reference)
+- recursive functions will work out just fine, because we only lookup on
+  elaborate.
+- it's not expensive at all to deheapify an unelaborated, heapified
+  expression.
+
+And we get to keep all the sharing we could hope for, I think.
+
+Cool! Is it clear what I want now? Shall I make another attempt?
+
+Okay. Wish me luck. Maybe I can have something running by the end of today.
+
+Fri Aug  3 12:58:08 EDT 2012
+
+Trouble: how to reduce lazily and still make use of lots of sharing?
+
+We need to know if the key appears anywhere in the expression. If it does not,
+then do nothing, else... unroll the reduction. The trouble with this is, we
+are going to ask over and over and over again if the key appears anywhere in
+the expression. That would be rather bad.
+
+Could we cache the information somehow? Only look it up once? That is, look up
+the info when we first create the ReduceEH expression? I bet we could...
+
+And here's how it would work: We need a data structure which looks just like
+expression. At every node we have a boolean indicating if the variable is
+referred to from there on or not.
+
+Now, ReduceEH can say: if the answer at this node is: No, it doesn't appear,
+then do nothing, you're done. If the answer is: yes, it does appear, then case
+on the shape of the expression, which should match the shape of the cache, so
+you can just reuse the cache for the subexpression.
+
+And! Good news is, this is an optimization I can easily hold off on until later.
+
+Good. So, now reduce has the shape...
+reduce :: key -> value -> ExpR -> 
+
+Hmm... So, there are two kinds of reduces it would seem. The thing I just
+mentioned should be how to reduce a HeapifyE.
+
+Oh, so where do we store the cache then? I suppose it could be a maybe cache,
+which is only ... what? Now I'm rather confused.
+
+Question is, how to elaborate ReduceE.
+Answer is: call reduce on the key, value, reference.
+The result should be... an expression. This expression could be a RefE? Or
+should the... no, the result should be a new reference?
+
+No. The result should be an expression, which could be a RefE.
+
+How to implement reduce?
+How to keep sharing?
+
+Okay, this is where the cache comes in, eventually. For now, we'll just do
+things terribly inefficiently... Err, that makes me not feel great. If the
+cache isn't too hard, then I should do that.
+
+So, without the cache, it goes like this:
+reducable :: key -> value -> ref -> bool
+Ask whether any reduction will be done or not. With the cache, this is just a
+cache lookup, otherwise it is a traversal of the entire expression. That is,
+both a traversal of ExpH, and, when we get to a HeapifyEH, a traversal of Exp.
+
+How do we ask reducable of ReduceEH?
+Well, we ask reducable in the key, and then, as long as the keys aren't the
+same, reducable in the body. That's easy.
+
+reduce :: key -> value -> ref -> ref
+
+Gives the reduced expression. Assumes some reduction will be done. Or, does
+reduction regardless of if anything will be done.
+
+So, to elaborate ReduceEH k v ref, we'll say:
+  if reducable
+    then reduce k v ref
+    else ref
+
+And, when we have the cache, we can have it be an extra argument to ReduceEH.
+
+ReduceEH reducable k v ref:
+    if (reducable)  
+       then reduce reducable k v ref
+       else ref
+
+Good. No cache for now! I can figure that out later, once things work. But do
+know, I suspect a lot of time to be spent in reducable, and that's what time
+we can eliminate fairly easily I hope.
+
+And I should note, reduce only does one level. It sticks in ReduceEH where it
+can.
+
+Good.
+
+Fri Aug  3 13:28:29 EDT 2012
+
+Okay, so heapify looks good to me now.
+Next big thing is elaborate, right?
+
++ elaborate
++ reduce
+- deheapify
+- match
+
+Fri Aug  3 13:44:40 EDT 2012
+
+Observation:
+ReduceEH s v b is equivalent to
+AppEH (LamEH s b) v 
+
+So, let's not have an extra case then!
+
+It just means that reduce will insert AppEHs instead of fully reducing.
+
+Fri Aug  3 14:06:10 EDT 2012
+
+Okay, so I've written down elaborate. It's pretty complex, but... what can you
+do?
+
+Next step... is, I suppose, reducable and reduce.
+
+Fri Aug  3 14:30:35 EDT 2012
+
+More trouble: reduce of Heapify...
+
+We said before, it should lead to elaboration, right? heapify the expression,
+then do reduction there. Oh... I think I get it.
+
+Okay, so reduce is written down now.
+
+Next on my list to do is deheapify.
+
+Fri Aug  3 14:45:31 EDT 2012
+
+Okay, heapify was in pretty good shape as it was.
+
+Next steps:
+- matches
+- mkBinding
+
+Err... I have a suspicion this isn't going to work out when I first run it.
+There are going to be flaws and bugs. I should try the simplest test cases
+first. Hopefully I can. If not, write some simple ones first by hand to test
+things.
+
+Fri Aug  3 15:24:50 EDT 2012
+
+Okay, those two things have been implemented. Now it's just a matter of...
+getting things to compile?
+
