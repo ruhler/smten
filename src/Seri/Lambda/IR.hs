@@ -51,22 +51,22 @@ type NTOp = String
 data NType = ConNT Integer   -- ^ numeric type (should be non-negative)
            | VarNT Name      -- ^ numeric type variable
            | AppNT NTOp NType NType -- ^ numeric type operator application
-       deriving (Eq, Show)
+       deriving (Eq, Ord, Show)
 
 data Type = ConT Name                       -- ^ type constructor
           | AppT Type Type                  -- ^ type application
           | VarT Name                       -- ^ type variable
           | NumT NType                      -- ^ numeric type
           | UnknownT
-      deriving(Eq, Show)
+      deriving(Eq, Ord, Show)
 
 -- | 'Sig' is a name annotated with a type.
 data Sig = Sig Name Type
-    deriving(Eq, Show)
+    deriving(Eq, Ord, Show)
 
 -- | 'TopSig' is a signature with a context.
 data TopSig = TopSig Name Context Type
-    deriving(Eq, Show)
+    deriving(Eq, Ord, Show)
 
 type Context = [Class]
 
@@ -74,14 +74,14 @@ type Context = [Class]
 -- For example, the predicate (MonadState s m) is represented with:
 -- > Class "MonadState" [VarT "s", VarT "m"]
 data Class = Class Name [Type]
-      deriving(Eq, Show)
+      deriving(Eq, Ord, Show)
 
 data Match = Match Pat Exp      -- ^ p -> e
-    deriving (Eq, Show)
+    deriving (Eq, Ord, Show)
 
 data Lit = IntegerL Integer         -- ^ integer literal
          | CharL Char               -- ^ character literal
-    deriving (Eq, Show)
+    deriving (Eq, Ord, Show)
 
 data Exp = LitE Lit                 -- ^ literal
          | CaseE Exp [Match]        -- ^ case e of { ms }
@@ -89,7 +89,7 @@ data Exp = LitE Lit                 -- ^ literal
          | LamE Sig Exp             -- ^ \x -> e
          | ConE Sig                 -- ^ data constructor
          | VarE Sig                 -- ^ variable
-     deriving (Eq, Show)
+     deriving (Eq, Ord, Show)
 
 -- | Patterns.
 -- Note: The Type of ConP is the type of the fully applied Pattern, not the
@@ -98,24 +98,24 @@ data Pat = ConP Type Name [Pat]
          | VarP Sig
          | IntegerP Integer
          | WildP Type
-     deriving (Eq, Show)
+     deriving (Eq, Ord, Show)
 
 data Con = Con Name [Type]
-    deriving(Eq, Show)
+    deriving(Eq, Ord, Show)
 
 data Method = Method Name Exp
-    deriving(Eq, Show)
+    deriving(Eq, Ord, Show)
 
 data TyVar = NormalTV Name
            | NumericTV Name
-       deriving (Eq, Show)
+       deriving (Eq, Ord, Show)
 
 data Dec = ValD TopSig Exp              -- ^ nm :: ctx => ty ; nm = exp
          | DataD Name [TyVar] [Con]      -- ^ data nm vars = 
          | ClassD Name [TyVar] [TopSig]  -- ^ class nm vars where { sigs }
          | InstD Context Class [Method] -- ^ instance ctx => cls where { meths }
          | PrimD TopSig                 -- ^ nm :: ctx => ty ;
-     deriving (Eq, Show)
+     deriving (Eq, Ord, Show)
 
 -- | Return True if the declaration is a Data Declaration
 isDataD :: Dec -> Bool

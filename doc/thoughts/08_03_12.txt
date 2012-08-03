@@ -378,3 +378,21 @@ Fri Aug  3 15:24:50 EDT 2012
 Okay, those two things have been implemented. Now it's just a matter of...
 getting things to compile?
 
+Cool! Time to compile and see what all things I messed up.
+
+Let me switch to using it for serie to drive things.
+
+Fri Aug  3 15:52:29 EDT 2012
+
+So, I had said ReduceEH s b v is the same as AppEH (LamEH s b) v...
+
+But that's not quite true, because needs the first argument to be a reference,
+not a direct expression.
+
+Fri Aug  3 17:06:03 EDT 2012
+
+Well! It compiles now, which is good, I suppose. Not surprisingly, it appears
+not to work.
+
+Let me play with some little expressions at a time and see how that goes.
+
