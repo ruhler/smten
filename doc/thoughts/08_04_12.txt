@@ -1,0 +1,226 @@
+
+Sat Aug  4 12:09:57 EDT 2012
+
+Debugging heap elaborator.
+
+Observation:
+
+The expression: (\x -> (x*x) + 1) 5;
+
+Elaborates to: 
+    __prim_add_Integer 25 (let { x = 5 ; in 1} );
+
+Which itself elaborates to 26.
+
+So, it looks like the trouble here is not so much trouble with some of the
+elaboration rules. It's more that we don't finish elaborating fully when we
+ought to.
+
+Let me read through and double check that I always call elabH on r again after
+performing some sort of reduction.
+
+Sat Aug  4 12:17:34 EDT 2012
+
+Looks to me like every branch which could make more progress does.
+
+So switch to a better mode of debugging...
+
+Perhaps I can trace through by hand? Maybe that will help?
+
+Sure, it's worth a try.
+
+Let me try to write a log of the reference values, to keep the history in
+tact.
+
+~1: HeapifyEH: (\x -> (x*x) +  1) 5
+~2: HeapifyEH: (\x -> (x*x) + 1)
+~3: HeapifyEH: 5
+~1: AppEH ~2 ~3
+
+elab ~2:
+
+Sat Aug  4 12:25:46 EDT 2012
+
+Aha! I know what debugging information I want to print out.
+
+Any time we write a reference, print out:
+~ID: value
+
+Then I should see this created, and it should be obvious, hopefully, what's
+going on. Let me try that.
+
+Sat Aug  4 13:44:49 EDT 2012
+
+Oh ho... hum?
+
+For some reason we have HeapifyEH 25, which I don't expect.
+
+Oh. That looks like it. integerEH and boolEH should use literals, not Heapify!
+Because they are expected to be fully elaborated.
+
+Okay, I can fix that.
+
+Sat Aug  4 13:48:49 EDT 2012
+
+Good. That was the first bug.
+
+Let's see if I can find another.
+
+Sat Aug  4 13:50:55 EDT 2012
+
+I suspect the problem is with recursion. Let me try that out in my foo test.
+
+Well, factorial works just fine... That's odd.
+
+Sat Aug  4 13:54:08 EDT 2012
+
+Aha, I bet the problem is with case statements.
+
+Sat Aug  4 14:02:03 EDT 2012
+
+No... We get stuck in an infinite loop somehow...
+
+Here's the deal:
+
+elab ~3 makes no real progress, but continues to elaborate in a loop.
+
+First, let's figure out what ~3 is. Then let's figure out how it elaborates,
+and why no progress is made. It's a pretty tight loop.
+
+
+~3: RefEH ~20
+~20: AppEH ~17 ~19
+~19: AppEH ~18 ~7
+~18: LamEH b :: Bool; ~9
+~17: AppEH ~16 ~7
+~16: LamEH b :: Bool; ~13
+~13: LamEH a :: [Char]; ~12
+~12: HeapifyEH case ((a :: [Char]), (b :: Bool)) of {
+  ((msg :: [Char]), (True :: Bool)) ->
+    (Seri.Lib.Prelude.return :: () -> Test ()) (() :: ());
+  ((msg :: [Char]), (False :: Bool)) ->
+    (Seri.Lib.Prelude.fail :: [Char] -> Test ()) (msg :: [Char]);
+}
+~9: HeapifyEH "0"
+~7: HeapifyEH (True :: Bool)
+
+Oh, something funny seems to be going on here...
+Let me inline some stuff to see what's up.
+
+~3:
+~20: AppEH
+~17:   (AppEH 
+~16:      (\b ->
+~13:            \a ->
+~12:                   case (a, b) ...)
+~7:       True)
+~19:   (AppEH 
+~18:      (\b -> "0")
+~7:       True)
+
+Okay, so that's a perfectly normal kind of an expression, right?
+Except... it seems a little odd to me, is all.
+
+((\b -> \a -> ...) True) ((\b -> "0") True)
+
+No, that's okay. We did some reduction of b it looks like.
+
+Good. Now, how does this elaborate?
+
+|| elab ~3
+|| elab ~17
+|| elab ~16
+(reduce b ~7 ~16
+|| ~21: LamEH b :: Bool; ~12
+|| ~22: AppEH ~21 ~7
+|| ~23: LamEH a :: [Char]; ~22
+|| ~17: RefEH ~23
+|| elab ~17
+(reduce a ~19 ~22)
+|| ~24: LamEH a :: [Char]; ~21
+|| ~25: AppEH ~24 ~19
+|| ~26: LamEH a :: [Char]; ~7
+|| ~27: AppEH ~26 ~19
+|| ~28: AppEH ~25 ~27
+|| ~3: RefEH ~28
+
+
+After first reduction
+~3:
+~20: AppEH
+~17:
+~23:   (\a -> 
+~22:        (AppEH
+~21:          (\b -> case ... )
+~7:           True))
+~19:   (AppEH 
+~18:      (\b -> "0")
+~7:       True)
+
+
+After second reduction
+~3:
+~28: AppEH
+~25:   AppEH
+~24:     (\a -> \b -> case ... )
+~19:     (AppEH 
+~18:        (\b -> "0")
+~7:         True)
+~27:   AppEH
+~26:     (\a -> True)
+~19:     (AppEH 
+~18:        (\b -> "0")
+~7:         True)
+
+Okay, that actually looks correct. What's next?
+
+|| elab ~3
+|| elab ~25
+|| elab ~24
+(reduce a ~19 ~21 
+|| ~29: LamEH a :: [Char]; ~12
+|| ~30: AppEH ~29 ~19
+|| ~31: LamEH b :: Bool; ~30
+|| ~25: RefEH ~31
+|| elab ~25
+
+Looks good:
+~3:
+~28: AppEH
+~25:
+~31:  \b ->
+~30:       App
+~29:          (\a ->
+~12:             case ...)
+              ~19    
+~27:   AppEH
+~26:     (\a -> True)
+~19:     (AppEH 
+~18:        (\b -> "0")
+~7:         True)
+
+(reduce 
+|| ~32: LamEH b :: Bool; ~29
+|| ~33: AppEH ~32 ~27
+|| ~34: LamEH b :: Bool; ~19
+|| ~35: AppEH ~34 ~27
+|| ~36: AppEH ~33 ~35
+
+Which gets us back where we started? Or... it seems to be doing so, except
+will still have the arg ~19 making its way inside...
+
+Erg. It's still not clear to me what's going on. We are reducing always,
+right? Or just going back and forth?
+
+So I changed the way LamEH is reduced. Actually do a reduction, don't be lazy,
+because it's being lazy that causes problems? I'm not sure. But it seems to
+have fixed that issue. Let me start doing more tests, see how they go now.
+
+Sat Aug  4 15:15:47 EDT 2012
+
+So, everything looks to be working except:
+- the array tests are slow
+- arrupd hangs??
+
+Yes, looks like arrupd hangs.
+

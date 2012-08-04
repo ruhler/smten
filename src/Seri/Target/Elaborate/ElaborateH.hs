@@ -43,6 +43,10 @@ module Seri.Target.Elaborate.ElaborateH (
     Mode(..), elaborate,
     ) where
 
+import Prelude hiding (print)
+
+import Debug.Trace
+
 import Control.Monad.ST
 import Control.Monad.State
 
@@ -110,6 +114,25 @@ data ExpH s
   | RefEH (ExpR s)
   | HeapifyEH Exp
 
+printr :: ExpR s -> String
+printr (ExpR id _) = "~" ++ show id
+
+print :: ExpH s -> String
+print e = 
+  let printms [] = ""
+      printms (m:ms) = printm m ++ "; " ++ printms ms
+      printm (MatchH p b) = pretty p ++ " -> " ++ printr b
+  in case e of
+       LitEH l -> pretty l
+       CaseEH r ms -> "CaseEH " ++ printr r ++ " " ++ printms ms
+       AppEH a b -> "AppEH " ++ printr a ++ " " ++ printr b 
+       LamEH s b -> "LamEH " ++ pretty s ++ " " ++ printr b
+       ConEH s -> "ConEH " ++ pretty s
+       VarEH s -> "VarEH " ++ pretty s
+       RefEH r -> "RefEH " ++ printr r
+       HeapifyEH e -> "HeapifyEH " ++ pretty e
+
+    
 data MatchH s = MatchH Pat (ExpR s)
 
 heapify :: Exp -> ElabH s (ExpH s)
@@ -145,6 +168,7 @@ elabH :: [Sig] -> ExpR s -> ElabH s ()
 elabH free r = do
   mode <- gets es_mode
   e <- readRef r
+  --case (trace ("elab " ++ printr r) e) of
   case e of
     LitEH {} -> return ()
     CaseEH x ms -> do
@@ -284,7 +308,7 @@ reduce s@(Sig n _) v r = do
         mkRef $ AppEH a' b'
     LamEH (Sig nm _) _ | nm == n -> return r
     LamEH ls b -> do
-        b' <- reduceEH s v b
+        b' <- reduce s v b
         mkRef $ LamEH ls b'
     ConEH {} -> return r
     VarEH (Sig nm _) | nm == n -> return v
@@ -301,7 +325,9 @@ mkRef e = do
     id <- gets es_nid
     modify $ \es -> es { es_nid = id+1 }
     r <- liftST $ newSTRef (e, Nothing)
-    return $ ExpR id r
+    let er = ExpR id r
+    --trace (printr er ++ ": " ++ print e) (return er)
+    return er
 
 
 -- | Read a reference.
@@ -317,7 +343,8 @@ readRef r = do
     _ -> return v
 
 writeRef :: ExpR s -> (ExpH s) -> ElabH s ()
-writeRef (ExpR _ r) e = liftST $ writeSTRef r (e, Nothing)
+writeRef er@(ExpR id r) e = --trace (printr er ++ ": " ++ print e) $
+    liftST $ writeSTRef r (e, Nothing)
     
 readReachable :: ExpR s -> ElabH s (Maybe (Set.Set (ExpR s)))
 readReachable (ExpR _ r) = fmap snd $ liftST $ readSTRef r
@@ -526,8 +553,18 @@ letEH ((s, v):bs) x = do
     mkRef (AppEH r v)
 
 integerEH :: Integer -> ExpH s
-integerEH i = HeapifyEH (integerE i)
+integerEH i = LitEH (IntegerL i)
 
+-- | True
+trueEH :: ExpH s
+trueEH = ConEH (Sig "True" (ConT "Bool"))
+
+-- | False
+falseEH :: ExpH s
+falseEH = ConEH (Sig "False" (ConT "Bool"))
+
+-- | Boolean expression
 boolEH :: Bool -> ExpH s
-boolEH b = HeapifyEH (boolE b)
+boolEH True = trueEH
+boolEH False = falseEH
 

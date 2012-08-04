@@ -396,3 +396,58 @@ not to work.
 
 Let me play with some little expressions at a time and see how that goes.
 
+Fri Aug  3 17:12:46 EDT 2012
+
+Good, some problems that I should be able to fix somehow.
+
+The way we elaborate the following is odd:
+
+    main = (\x -> (((x*x) + (3*x)) + 2)) 5;
+
+It elaborates to:
+
+let {
+  ((~4) :: Integer) = 5 ;
+} in (Seri.Lib.Prelude.__prim_add_Integer :: Integer -> Integer -> Integer)
+       ((Seri.Lib.Prelude.__prim_add_Integer :: Integer -> Integer -> Integer)
+          25
+          (let { (x :: Integer) = 5 ; }
+           in (Seri.Lib.Prelude.* :: Integer -> Integer -> Integer)
+                3 (x :: Integer)))
+       (let { (x :: Integer) = 5 ; } in 2)
+
+What's funny about this? Err... a lot of stuff.
+
+First off: ~4 is defined...
+  but it has an integer value,
+  and nobody refers to it.
+
+I suspect the problem here is somehow ~4 was a reference which got to the
+bindings, but then rather than use the reference ~4, we just read the value 5.
+
+Second off:
+  let which wouldn't do reduction, such as:
+    let x = 5 in 2
+ or let ~4 = 5 in ...
+ should reduce further.
+
+Also
+  let x = 5 in 3 * x
+  should reduce...
+
+It feels like beta reduction isn't happening for some reason.
+
+It would be really nice if I could print out an HExp somehow. To help me
+debug.
+
+So, for example...
+
+Oh, but heapification is lazy. That's annoying.
+
+Still looks like a bug in beta reduction to me. Like... beta reduction isn't
+reducing all the way. It's... not working. Like, maybe reducable doesn't work.
+
+But I'll have to debug things later.
+
+Sort of cool...
+
