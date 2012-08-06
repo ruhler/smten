@@ -326,7 +326,7 @@ aexp :: { Exp }
 
 literal :: { Exp }
  : integer
-    { integerE $1 }
+    { numberE $1 }
  | string
     { stringE $1 }
 

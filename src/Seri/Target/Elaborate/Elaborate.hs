@@ -43,6 +43,7 @@ import Debug.Trace
 import Data.Maybe(catMaybes, fromMaybe)
 import Data.List(nub, (\\))
 
+import Seri.Bit
 import Seri.Failable
 import Seri.Lambda
 
@@ -111,12 +112,18 @@ elaborate' mode env freenms e =
                 let NumT nt = head $ unarrowsT t
                 in integerE (nteval nt)
              (AppE (VarE (Sig "Seri.Lib.Prelude.__prim_eq_Char" _)) (LitE (CharL ia)), LitE (CharL ib)) -> boolE (ia == ib)
+             (AppE (VarE (Sig "Seri.Lib.Prelude.__prim_eq_Integer" _))  (LitE (IntegerL ia)), LitE (IntegerL ib)) -> boolE (ia == ib)
              (AppE (VarE (Sig "Seri.Lib.Prelude.__prim_add_Integer" _)) (LitE (IntegerL ia)), LitE (IntegerL ib)) -> integerE (ia + ib)
              (AppE (VarE (Sig "Seri.Lib.Prelude.__prim_sub_Integer" _)) (LitE (IntegerL ia)), LitE (IntegerL ib)) -> integerE (ia - ib)
              (AppE (VarE (Sig "Seri.Lib.Prelude.__prim_mul_Integer" _)) (LitE (IntegerL ia)), LitE (IntegerL ib)) -> integerE (ia * ib)
              (AppE (VarE (Sig "Seri.Lib.Prelude.<" _))                  (LitE (IntegerL ia)), LitE (IntegerL ib)) -> boolE (ia < ib)
              (AppE (VarE (Sig "Seri.Lib.Prelude.>" _))                  (LitE (IntegerL ia)), LitE (IntegerL ib)) -> boolE (ia > ib)
-             (AppE (VarE (Sig "Seri.Lib.Prelude.__prim_eq_Integer" _))  (LitE (IntegerL ia)), LitE (IntegerL ib)) -> boolE (ia == ib)
+             -- TODO: there has got to be a better way to specify this than
+             -- writing it all out. Pattern abstractions anyone?
+             (AppE (VarE (Sig "Seri.Lib.Bit.__prim_eq_Bit" _)) (AppE (VarE (Sig "Seri.Lib.Bit.__prim_fromInteger_Bit" (AppT _ (AppT _ (NumT w))))) (LitE (IntegerL ia))), AppE (VarE (Sig "Seri.Lib.Bit.__prim_fromInteger_Bit" _)) (LitE (IntegerL ib))) -> boolE $ mkBit (nteval w) ia == mkBit (nteval w) ib
+             (AppE (VarE (Sig "Seri.Lib.Bit.__prim_add_Bit" _)) (AppE (VarE (Sig "Seri.Lib.Bit.__prim_fromInteger_Bit" (AppT _ (AppT _ (NumT w))))) (LitE (IntegerL ia))), AppE (VarE (Sig "Seri.Lib.Bit.__prim_fromInteger_Bit" _)) (LitE (IntegerL ib))) -> AppE (VarE (Sig "Seri.Lib.Bit.__prim_fromInteger_Bit" (arrowsT [integerT, bitT (nteval w)]))) (integerE $ bv_value (mkBit (nteval w) ia + mkBit (nteval w) ib))
+             (AppE (VarE (Sig "Seri.Lib.Bit.__prim_sub_Bit" _)) (AppE (VarE (Sig "Seri.Lib.Bit.__prim_fromInteger_Bit" (AppT _ (AppT _ (NumT w))))) (LitE (IntegerL ia))), AppE (VarE (Sig "Seri.Lib.Bit.__prim_fromInteger_Bit" _)) (LitE (IntegerL ib))) -> AppE (VarE (Sig "Seri.Lib.Bit.__prim_fromInteger_Bit" (arrowsT [integerT, bitT (nteval w)]))) (integerE $ bv_value (mkBit (nteval w) ia - mkBit (nteval w) ib))
+             (AppE (VarE (Sig "Seri.Lib.Bit.__prim_mul_Bit" _)) (AppE (VarE (Sig "Seri.Lib.Bit.__prim_fromInteger_Bit" (AppT _ (AppT _ (NumT w))))) (LitE (IntegerL ia))), AppE (VarE (Sig "Seri.Lib.Bit.__prim_fromInteger_Bit" _)) (LitE (IntegerL ib))) -> AppE (VarE (Sig "Seri.Lib.Bit.__prim_fromInteger_Bit" (arrowsT [integerT, bitT (nteval w)]))) (integerE $ bv_value (mkBit (nteval w) ia * mkBit (nteval w) ib))
 
              -- Only do reduction if there are no free variables in the
              -- argument. Otherwise things can blow up in unhappy ways.

@@ -1,0 +1,29 @@
+
+module Seri.Lib.Bit where {
+
+import Seri.Lib.Prelude;
+
+data Bit #n = ;
+
+__prim_eq_Bit :: Bit #n -> Bit #n -> Bool;
+__prim_add_Bit :: Bit #n -> Bit #n -> Bit #n;
+__prim_sub_Bit :: Bit #n -> Bit #n -> Bit #n;
+__prim_mul_Bit :: Bit #n -> Bit #n -> Bit #n;
+__prim_fromInteger_Bit :: Integer -> Bit #n;
+
+instance Eq (Bit #n) where {
+    (==) = __prim_eq_Bit;
+    (/=) a b = not (a == b);
+};
+
+instance Num (Bit #n) where {
+   (+) = __prim_add_Bit;
+   (-) = __prim_sub_Bit;
+   (*) = __prim_mul_Bit;
+   negate = error "todo: negate for Bit #n";
+   abs = error "todo: abs for Bit #n";
+   fromInteger = __prim_fromInteger_Bit;
+};
+
+}
+

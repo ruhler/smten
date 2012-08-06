@@ -36,7 +36,7 @@
 -- | Utilities for working with Seri Types
 module Seri.Lambda.Types (
     appsT, arrowsT, outputT, unappsT, unarrowsT,
-    listT, integerT, charT, stringT, tupT, untupT,
+    listT, integerT, bitT, charT, stringT, tupT, untupT,
     Typeof(..), typeofCon,
     assign, assignl, assignments, bindingsP, bindingsP', varTs, nvarTs,
     isSubType,
@@ -52,6 +52,9 @@ import Seri.Lambda.Generics
 -- | The Integer type
 integerT :: Type
 integerT = ConT "Integer"
+
+bitT :: Integer -> Type
+bitT w = AppT (ConT "Bit") (NumT (ConNT w))
 
 -- | The Char type
 charT :: Type

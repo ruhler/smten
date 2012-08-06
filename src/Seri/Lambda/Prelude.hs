@@ -39,7 +39,7 @@ module Seri.Lambda.Prelude (
     prelude,
     appsE, unappsE, 
     trueE, falseE, boolE, listE, listP, tupE, tupP,
-    stringE, charE, integerE,
+    stringE, charE, integerE, numberE,
     ) where
 
 import Seri.Lambda.IR
@@ -126,6 +126,9 @@ listP (x:xs) =
 
 integerE :: Integer -> Exp
 integerE i = LitE (IntegerL i)
+
+numberE :: Integer -> Exp
+numberE i = AppE (VarE (Sig "fromInteger" (arrowsT [integerT, UnknownT]))) (integerE i)
 
 charE :: Char -> Exp
 charE c = LitE (CharL c)

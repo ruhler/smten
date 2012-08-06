@@ -16,6 +16,7 @@
 ** Verify recursive lets aren't allowed
 ** Verify recursive definitions in lets aren't allowed (self recursion)
 ** Verify ambiguous types aren't allowed
+** Verify a type constructor used has been declared somewhere.
 
 - Reimplement TypeCheck to make use of constraint generation from TypeInfer?
 

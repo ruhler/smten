@@ -33,33 +33,45 @@
 -- 
 -------------------------------------------------------------------------------
 
--- | Elaborate the main function of the given seri program and print out the
--- result.
-module Main where
+-- | Bit vector library. Widths are specified dynamically instead of enforced
+-- statically to avoid complications with numeric types in haskell. But all
+-- operations assume properly related widths.
+module Seri.Bit (Bit(), bv_width, bv_value, mkBit) where
 
-import System.Environment
+import Data.Bits
 
-import Seri.Failable
-import Seri.Lambda
---import Seri.Target.Elaborate.ElaborateH
-import Seri.Target.Elaborate
+data Bit = Bit {
+    bv_width :: Integer,
+    bv_value :: Integer
+} deriving (Show)
 
-main :: IO ()
-main = do
-    args <- getArgs
-    let (output, path, mainexp, input) =
-            case args of
-               ["-o", fout, "-i", path, "-m", me, fin] ->
-                    (writeFile fout, path, me, fin)
-               ["-i", path, fin] -> (putStrLn, path, "main", fin)
-               x -> error $ "bad args: " ++ show x
+-- | Construct a bit vector of the given width and value.
+-- Truncates the value as appropriate to fit in the given width.
+mkBit :: Integer -> Integer -> Bit
+mkBit width value = Bit width (mkMask width .&. value)
 
-    seri <- load [path] input
-    flat <- attemptIO $ flatten seri
-    decs <- attemptIO $ typeinfer (mkEnv flat) flat
-    let env = mkEnv decs
-    attemptIO $ typecheck env decs
-    let e = VarE (Sig mainexp UnknownT)
-    let elaborated = elaborate Simple env e
-    output (pretty elaborated)
+-- Mask for the given width number
+mkMask :: Integer -> Integer
+mkMask i = (shiftL 1 (fromInteger i)) - 1
+
+instance Eq Bit where
+    (==) (Bit _ a) (Bit _ b) = a == b
+
+instance Num Bit where
+    (+) (Bit w a) (Bit _ b) = mkBit w (a+b)
+    (*) (Bit w a) (Bit _ b) = mkBit w (a*b)
+    (-) (Bit w a) (Bit _ b) = mkBit w (a-b)
+    fromInteger i = error $ "fromInteger for Bit with unspecified width"
+    abs = error "todo: abs Bit"
+    signum = error "todo: signum Bit"
+    
+instance Bits Bit where
+    (.&.) (Bit w a) (Bit _ b) = mkBit w (a .&. b)
+    (.|.) (Bit w a) (Bit _ b) = mkBit w (a .|. b)
+    xor (Bit w a) (Bit _ b) = mkBit w (a `xor` b)
+    complement (Bit w a) = mkBit w (complement a)
+    shift (Bit w a) i = mkBit w (shift a i)
+    rotate = error $ "TODO: Bit rotate"
+    bitSize (Bit w _) = fromInteger w
+    isSigned _ = False
 

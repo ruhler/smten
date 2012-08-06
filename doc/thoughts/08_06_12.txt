@@ -76,3 +76,96 @@ Anyway, good news is, without checking for reducable, it's much faster. Like,
 an order of magnitude. So I'll leave it there for now, work on bit vectors (in
 the original elaborator?) and then come back to this.
 
+Mon Aug  6 12:21:04 EDT 2012
+
+Oh, I should note, the problem with the Array smt test is not from the heap
+elaborator, because we don't use the heap elaborator for it.
+
+I could try switching to the heap elaborator entirely, but I have a feel it
+won't work right for full elaboration because of the need for alpha renaming,
+and I don't want to deal with that right now, so for now, leave it buggy? It
+works on BCL3, which is what those people care about.
+
+Mon Aug  6 12:22:34 EDT 2012
+
+Fine, so... bit vector library. I can implement some tests and such. Get the
+ball rolling.
+
+First thing to try out?
+- *, +, -, concat...
+
+I don't know.
+
+We can represent a bit vector in the elaborator as:
+(fromInteger i), of the right type.
+
+Let me come up with a test case. How about this, make a 3 bit vector,
+increment it so it loops around, count how many increments that takes.
+
+Also, I can have an SMT test for it: create a couple bit vectors, assert
+something about their and and or, then see what we get for them.
+
+Cool. Sounds like a plan to me. Let me get started.
+
+Mon Aug  6 12:54:22 EDT 2012
+
+Okay, so now I have to figure out how to implement bits in haskell. This will
+be useful both for the haskell target library and for the elaborators.
+
+First thing I need:
+- a Bit data type, whose type includes the width.
+- equality, add, sub, mul, fromInteger.
+
+In the elaborator, we don't need a data type for it, we can just use
+fromInteger. So perhaps what I want are just the raw bitvector operations,
+done to integers.
+
+And maybe they can take the width as input?
+
+equality is just integer equality (assuming I always keep the integer properly
+truncated).
+
+add would be something like:
+
+Bit.add :: Integer -> Integer -> Integer -> Integer
+
+Where the first argument is the width of the addition.
+
+The way it works? Um... how do we deal with negative numbers?
+
+Shouldn't it just be: have a function that, given an integer, truncates it to
+a given bit width. Deal with negative integers and such appropriately.
+
+Then all the operations are: do the integer operation and truncate the result.
+
+Sounds good to me.
+
+Mon Aug  6 13:05:28 EDT 2012
+
+I double checked. Doesn't look like there is already a suitable library in
+haskell for bit vectors that supports arithmetic.
+
+I should note, though, Integer is an instance of Bits...
+
+I could define something which is an instance of bits. That may actually be
+easier than always having to pass stuff around.
+
+Okay, how about a non-statically typed bit vector library:
+
+Bit = Bit { width :: Integer, value :: Integer }
+
+I make it an instance of Bits, and we are all set. I can use that as the
+target library and so on. Sounds good to me.
+
+Mon Aug  6 13:27:26 EDT 2012
+
+Okay, so I have my sample target library. Now I should be able to do this.
+
+Mon Aug  6 13:49:48 EDT 2012
+
+I added *, +, -, == to the elaborator. It's messy, but I think it works.
+
+Next step: add it to the haskell target.
+
+
+

@@ -46,7 +46,6 @@ import qualified Language.Haskell.TH as H
 import Seri.Failable
 import Seri.Lambda
 import Seri.Target.Haskell.Compiler
-import Seri.Target.Haskell.Builtins.Prelude
 
 hsExp :: HCompiler -> Exp -> Failable H.Exp
 hsExp c (LitE (IntegerL i)) = do
@@ -76,6 +75,7 @@ hsMatch c (Match p e) = do
 hsPat :: Pat -> H.Pat
 hsPat (ConP _ n ps) = H.ConP (hsName n) (map hsPat ps)
 hsPat (VarP (Sig n _)) = H.VarP (hsName n)
+--hsPat (IntegerP i) = H.SigP (H.LitP (H.IntegerL i)) (H.ConT $ H.mkName "Integer")
 hsPat (IntegerP i) = H.LitP (H.IntegerL i)
 hsPat (WildP _) = H.WildP
 
@@ -155,11 +155,12 @@ hsDec c (ClassD n vars sigs) = do
     return $ [H.ClassD [] (hsName n) (map (H.PlainTV . hsName . tyVarName) vars) [] sigs']
 
 hsDec c (InstD ctx (Class n ts) ms) = do
+    let ntvs = [H.ClassP (H.mkName "N__") [H.VarT (H.mkName n)] | n <- concat $ map nvarTs ts]
     ctx' <- mapM (hsClass c) ctx
     ms' <- mapM (hsMethod c) ms
     ts' <- mapM (compile_type c c) ts
     let t = foldl H.AppT (H.ConT (hsName n)) ts'
-    return [H.InstanceD ctx' t ms'] 
+    return [H.InstanceD (ntvs ++ ctx') t ms'] 
 
 hsDec _ d = fail $ "coreH does not apply to dec: " ++ pretty d
 
@@ -178,11 +179,78 @@ haskell c env main =
                  H.text "{-# LANGUAGE MultiParamTypeClasses #-}" H.$+$
                  H.text "{-# LANGUAGE FlexibleInstances #-}" H.$+$
                  H.text "import qualified Prelude" H.$+$
-                 H.text "import Seri.Target.Haskell.Lib.Numeric"
+                 H.text "import Seri.Target.Haskell.Lib.Numeric" H.$+$
+                 H.text "import Seri.Target.Haskell.Lib.Bit"
 
       ds = compile_decs c env
   in hsHeader H.$+$ H.ppr ds H.$+$
         H.text "main :: Prelude.IO ()" H.$+$
         H.text "main = Prelude.putStrLn (case "
         H.<+> H.text main H.<+> H.text " of { True -> \"True\"; False -> \"False\"})"
+
+
+-- | Declare a primitive seri implemented with the given haskell expression.
+prim :: HCompiler -> TopSig -> H.Exp -> Failable [H.Dec]
+prim c s@(TopSig nm ctx t) b = do
+  let hsn = hsName nm
+  sig <- hsSig c s
+  let val = H.FunD hsn [H.Clause [] (H.NormalB b) []]
+  return [sig, val]
+
+vare :: String -> H.Exp
+vare n = H.VarE (H.mkName n)
+
+-- | Declare a binary predicate primitive in haskell.
+bprim :: HCompiler -> TopSig -> String -> Failable [H.Dec]
+bprim c s@(TopSig nm _ t) b = do    
+  let hsn = hsName nm
+  sig <- hsSig c s
+  let val = H.FunD hsn [H.Clause
+          [H.VarP (H.mkName "a"), H.VarP (H.mkName "b")]
+              (H.NormalB (
+                  H.CondE (H.AppE (H.AppE (vare b) (vare "a")) (vare "b"))
+                          (H.ConE (H.mkName "True"))
+                          (H.ConE (H.mkName "False"))
+              )) []]
+  return [sig, val]
+
+
+preludeH :: HCompiler
+preludeH =
+  let me _ e = fail $ "preludeH does not apply to exp: " ++ pretty e
+
+      mt _ (ConT "Char") = return $ H.ConT (H.mkName "Prelude.Char")
+      mt _ (ConT "Integer") = return $ H.ConT (H.mkName "Prelude.Integer")
+      mt _ t = fail $ "preludeH does not apply to type: " ++ pretty t
+
+      md _ (PrimD (TopSig "Seri.Lib.Prelude.error" _ t)) = do
+        let e = H.VarE (H.mkName "Prelude.error")
+        let val = H.FunD (H.mkName "error") [H.Clause [] (H.NormalB e) []]
+        return [val]
+      md _ (DataD "Char" _ _) = return []
+      md _ (DataD "Integer" _ _) = return []
+      md _ (DataD "()" _ _) = return []
+      md _ (DataD "(,)" _ _) = return []
+      md _ (DataD "(,,)" _ _) = return []
+      md _ (DataD "(,,,)" _ _) = return []
+      md _ (DataD "[]" _ _) = return []
+      md c (PrimD s@(TopSig "Seri.Lib.Prelude.__prim_add_Integer" _ _)) = prim c s (vare "Prelude.+")
+      md c (PrimD s@(TopSig "Seri.Lib.Prelude.__prim_sub_Integer" _ _)) = prim c s (vare "Prelude.-")
+      md c (PrimD s@(TopSig "Seri.Lib.Prelude.__prim_mul_Integer" _ _)) = prim c s (vare "Prelude.*")
+      md c (PrimD s@(TopSig "Seri.Lib.Prelude.<" _ _)) = bprim c s "Prelude.<"
+      md c (PrimD s@(TopSig "Seri.Lib.Prelude.>" _ _)) = bprim c s "Prelude.>"
+      md c (PrimD s@(TopSig "Seri.Lib.Prelude.__prim_eq_Integer" _ _)) = bprim c s "Prelude.=="
+      md c (PrimD s@(TopSig "Seri.Lib.Prelude.__prim_eq_Char" _ _)) = bprim c s "Prelude.=="
+      md c (PrimD s@(TopSig "Seri.Lib.Prelude.valueof" _ _)) = return []
+      md c (PrimD s@(TopSig "Seri.Lib.Prelude.numeric" _ _)) = return []
+
+      md c (DataD "Bit" _ _) = return []
+      md c (PrimD s@(TopSig "Seri.Lib.Bit.__prim_fromInteger_Bit" _ _)) = prim c s (vare "Prelude.fromInteger")
+      md c (PrimD s@(TopSig "Seri.Lib.Bit.__prim_eq_Bit" _ _)) = bprim c s "Prelude.=="
+      md c (PrimD s@(TopSig "Seri.Lib.Bit.__prim_add_Bit" _ _)) = prim c s (vare "Prelude.+")
+      md c (PrimD s@(TopSig "Seri.Lib.Bit.__prim_sub_Bit" _ _)) = prim c s (vare "Prelude.-")
+      md c (PrimD s@(TopSig "Seri.Lib.Bit.__prim_mul_Bit" _ _)) = prim c s (vare "Prelude.*")
+
+      md _ d = fail $ "preludeH does not apply to dec: " ++ pretty d
+  in Compiler me mt md
 

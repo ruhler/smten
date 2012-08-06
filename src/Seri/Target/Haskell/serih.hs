@@ -41,7 +41,6 @@ import System.Environment
 import Seri.Failable
 import Seri.Lambda
 import Seri.Target.Haskell
-import Seri.Target.Haskell.Builtins.Prelude
 
 main :: IO ()
 main = do
