@@ -168,8 +168,8 @@ elabH :: [Sig] -> ExpR s -> ElabH s ()
 elabH free r = do
   mode <- gets es_mode
   e <- readRef r
-  case (trace ("elab " ++ printr r) e) of
-  --case e of
+  --case (trace ("elab " ++ printr r) e) of
+  case e of
     LitEH {} -> return ()
     CaseEH x ms -> do
        elabH free x
@@ -285,8 +285,8 @@ mkRef e = do
     modify $ \es -> es { es_nid = id+1 }
     r <- liftST $ newSTRef (e, Nothing)
     let er = ExpR id r
-    trace (printr er ++ ": " ++ print e) (return er)
-    --return er
+    --trace (printr er ++ ": " ++ print e) (return er)
+    return er
 
 
 -- | Read a reference.
@@ -302,7 +302,7 @@ readRef r = do
     _ -> return v
 
 writeRef :: ExpR s -> (ExpH s) -> ElabH s ()
-writeRef er@(ExpR id r) e = trace (printr er ++ ": " ++ print e) $
+writeRef er@(ExpR id r) e = --trace (printr er ++ ": " ++ print e) $
     liftST $ writeSTRef r (e, Nothing)
     
 readReachable :: ExpR s -> ElabH s (Maybe (Set.Set (ExpR s)))
@@ -381,14 +381,9 @@ instance Reachable (ExpR s) s where
             writeReachable r rs'
             return rs'
 
--- Name to use for a reference
-rname :: ExpR s -> Name
-rname 
-
 -- Given the set of references which can be assumed to be in scope, deheapify
 -- an expression.
 deheapify :: Set.Set (ExpR s) -> (ExpR s) -> ElabH s Exp
-deheapify f r | r `Set.member` f = return (VarE (Sig (rname r) _))
 deheapify f r = do
   e <- readRef r 
   case e of
@@ -508,8 +503,9 @@ elaborateST mode env e = evalStateT (elaborateH e) (ES env mode Map.empty 1)
 
 elaborate :: Mode -> Env -> Exp -> Exp
 elaborate mode env e =
-  let elabed = runST $ elaborateST mode env (trace ("elab: " ++ pretty e) e)
-  in trace ("elabed: " ++ pretty elabed) elabed
+  runST $ elaborateST mode env e
+  --let elabed = runST $ elaborateST mode env (trace ("elab: " ++ pretty e) e)
+  --in trace ("elabed: " ++ pretty elabed) elabed
 
 letEH :: [(Sig, ExpR s)] -> ExpR s -> ElabH s (ExpR s)
 letEH [] x = return x
