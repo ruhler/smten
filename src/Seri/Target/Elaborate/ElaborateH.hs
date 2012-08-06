@@ -202,6 +202,7 @@ elabH free r = do
                         case bv of
                             LitEH lb -> binaryPrim n la lb r
                             _ -> return ()
+                     _ | mode == Full -> elabH free b
                      _ -> return ()
                 _ -> return ()
           LamEH s@(Sig n _) body -> do
@@ -270,7 +271,7 @@ reduce s@(Sig n _) v r = do
         ms' <- mapM rm ms 
         mkRef $ CaseEH x' ms'
     AppEH a b -> do
-        a' <- reduceEH s v a
+        a' <- reduce s v a
         b' <- reduceEH s v b
         mkRef $ AppEH a' b'
     LamEH (Sig nm _) _ | nm == n -> return r
@@ -510,7 +511,9 @@ elaborateST :: Mode -> Env -> Exp -> ST s Exp
 elaborateST mode env e = evalStateT (elaborateH e) (ES env mode Map.empty 1)
 
 elaborate :: Mode -> Env -> Exp -> Exp
-elaborate mode env e = runST $ elaborateST mode env e
+elaborate mode env e =
+  let elabed = runST $ elaborateST mode env (trace ("elab: " ++ pretty e) e)
+  in trace ("elabed: " ++ pretty elabed) elabed
 
 letEH :: [(Sig, ExpR s)] -> ExpR s -> ElabH s (ExpR s)
 letEH [] x = return x
