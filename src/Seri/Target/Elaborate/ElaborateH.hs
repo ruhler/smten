@@ -205,14 +205,10 @@ elabH free r = do
                      _ -> return ()
                 _ -> return ()
           LamEH s@(Sig n _) body -> do
-            p <- reducable n body
-            if p
-              then do
-                rr <- reduce s b body 
-                writeRef r $ RefEH rr
-                elabH free r
-              else writeRef r (RefEH body) >> elabH free r
-                    
+            rr <- reduce s b body 
+            writeRef r $ RefEH rr
+            elabH free r
+
           _ | mode == Full -> elabH free b
           _ -> return ()
     LamEH {} | mode == Simple -> return ()
@@ -244,38 +240,6 @@ elabH free r = do
         writeRef r heapified
         elabH free r
 
--- | Return true if there is an occurence of the given signature free in the
--- given expression. In other words, say if beta reduction on the given
--- variable would do anything or not.
---
--- TODO: I expect this to be a slow operation to do over and over and over and
--- over again. We can reduce the complexity if we build up a cache of the
--- results at each intermediate expression first, then just traverse from that
--- cache and read the answer.
-reducable :: Name -> ExpR s -> ElabH s Bool
-reducable n r = do
-  e <- readRef r
-  case e of
-    LitEH {} -> return False
-    CaseEH x ms ->
-      let rm (MatchH p _) | n `elem` bindingsP' p = return False
-          rm (MatchH _ b) = reducable n b
-      in do
-        rx <- reducable n x
-        rms <- mapM rm ms
-        return $ or (rx:rms)
-    AppEH a b -> do
-        ra <- reducable n a
-        rb <- reducable n b
-        return $ ra || rb
-    LamEH (Sig nm _) _ | nm == n -> return False
-    LamEH _ b -> reducable n b
-    ConEH {} -> return False
-    VarEH (Sig nm _) | nm == n -> return True
-    VarEH {} -> return False
-    RefEH r -> reducable n r
-    HeapifyEH exp -> return $ reducableE n exp
-
 -- | Reducable predicate for pure seri expressions.
 reducableE :: Name -> Exp -> Bool
 reducableE n exp = n `elem` [nm | Sig nm _ <- free exp]
@@ -288,6 +252,9 @@ reduceEH s v b = do
 -- reduce n v e
 -- Replace occurences of n with v in the expression e.
 -- Returns a reference to the new expression with replacements.
+--
+-- TODO: if the reduced expression is the same as the original, we could just
+-- return the original to capture more sharing.
 reduce :: Sig -> ExpR s -> ExpR s -> ElabH s (ExpR s)
 reduce s@(Sig n _) v r = do
   e <- readRef r

@@ -1,0 +1,78 @@
+
+Mon Aug  6 10:06:29 EDT 2012
+
+Plan for today:
+
+1. Update version of yices, see if that bug was fixed.
+2. finish implementing the free cache thing.
+3. Fix whatever needs to be fixed for heap elaborator:
+- should work on all tests (include array test) 
+- should work when used as elaborator in SMT.Yices
+- should work when used as full elaborator in yices target
+- See what sorts of savings we get on performance, sharing for BCL3 with 17
+  queries.
+
+If that works, probably want to start on bit vectors, to try and get Jacob's
+ATS dump running in seri (though I'm not sure what I can do with it...)
+
+Here I go.
+
+Mon Aug  6 10:19:00 EDT 2012
+
+(1): bug was fixed. Good. Cool. One less thing to worry about. Now back to my
+elaborator implementation.
+
+Mon Aug  6 10:22:19 EDT 2012
+
+Okay, I have the code for constructing the cache implemented... Now I just
+need to add it to: 
+ - argument to reduce
+ - from there, argument to whoever calls reduce (LamEH)
+ - from there, whoever constructs LamEH (heapify)
+ - from there, whoever calls heapify: HeapifyEH.
+
+And I think we're all set then.
+
+Mon Aug  6 10:32:54 EDT 2012
+
+Err... I'm worried.
+Can we ever substute in something with a free variable?
+I think we can, we we do full elaboration, in which case, we need to do alpha
+renaming, don't we?
+
+Ug. Let me worry about that when it comes up.
+
+Mon Aug  6 11:45:24 EDT 2012
+
+Nirav says the optimization isn't worth it. I should not attempt to share
+between different beta reductions of the same function. Anyway, we simplify
+the function before doing the beta reduction? Well... we don't go inside the
+lambda to simplify it. Perhaps we should? I don't know. Erg.
+
+Anyway, makes sense to make things work before worrying about this
+optimization. Skip the reduction check, no need for the free cache. I'll see
+how bad performance is after that.
+
+But first, Nirav wants a bit vector library, with some examples working
+through yices. Make bit vectors primitive. I should be able to do that fairly
+reasonably. And also, shouldn't be hard to simplify and roll back the beta
+reduction optimization.
+
+Perhaps just use the simple optimization: if after reduction the result is
+unchanged, don't return a new reference, just return the old one. Assume
+HExpifies need reduction done to them. Or... I suppose, as a first step, I
+could just call reducableE on those to check, and if that's too slow, then
+change the implementation of reducableE to be true.
+
+Cool. Sounds like a plan.
+
+Mon Aug  6 12:16:43 EDT 2012
+
+Note: we still don't pass the array update test or the array smt tests. They
+get stuck in infinite loops. I'll look at those again later, after
+implementing Bit vector support.
+
+Anyway, good news is, without checking for reducable, it's much faster. Like,
+an order of magnitude. So I'll leave it there for now, work on bit vectors (in
+the original elaborator?) and then come back to this.
+

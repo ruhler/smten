@@ -224,3 +224,149 @@ So, everything looks to be working except:
 
 Yes, looks like arrupd hangs.
 
+Sat Aug  4 15:29:56 EDT 2012
+
+Let me look at some performance things. Where is all the time being spent?
+
+- reading references
+- testing for reducable (expected)
+
+In fact, almost all the time is in checking for reducable. So the next thing I
+should do is to build up my cache for that, as I proposed before.
+
+Yup. 99% of the time is spent in reducable!
+
+Not so much of that is spent in checking reducability of expressions it
+seems...
+
+We can compare references for equality. Reducable returns the same reference
+if nothing has changed.
+
+Why not have reducable check itself, after trying to reduce expressions, if
+they have changed or not? If all the sub expressions are the same... That is,
+if the expression I'm going to return is the same as the one I'm reducing,
+then return the old one, for sharing purposes.
+
+That would work fine, except for the question of what I should do when I run
+into heapify. How to know if it is reducable? Well, as a first step, I can
+call reducableE on that expression.
+
+Umm... a cache would probably be better though. We could look up immediately
+if something is reducable, no? Rather than having to traverse the entire
+expression...
+
+One idea is... what we really want to know is, for a given expression (or
+reference to an expression), what are the free variables? If we knew that,
+then I could just ask at reduction time:
+If I'm reducing something that isn't free, I'm done. Otherwise, do the
+reduction. What if I cached the free variables for each expression?
+
+Erm. For heapified expressions, though, we would like to cache the
+intermediate free variable stuff somehow.
+
+Let's say I have the cache as a separate object. How should the cache look?
+And can that cache be reused for both Exp and ExpH?
+
+The cache should, for each node, the set of free variables.
+In addition...
+
+Node = Node [Name] Struct
+
+Struct =
+   Leaf
+ | Case Node [Node]
+ | App Node Node
+ | Lam Node
+
+Of course, when descending into a lambda, it should be obvious what change to
+make (?). The free variables are those free in the parent, plus the bound
+variable... if that's referred to. So no, it's not obvious how to go down. It
+is obvious how to go up though: the free variables in the parent are those in
+the child minus the bound. I'm not sure we need to optimize for that. Just an
+observation.
+
+Okay, so I'm confident I can make a cache.
+
+I should have this be an argument to reduce. I should make reduce explicitly
+lazy, with a ReduceEH expression, which takes a cache. So we should create the
+cache when we do the reduction the first time? For the parent node?
+
+Alternatively, each reference could keep track of information about its
+expression... but again, we want a cache in order to support heapify easily
+enough...
+
+Perhaps heapify should take the cache as input? Then each other kind of
+expression can just keep track of it's node? Or, each expression could keep an
+entire cache, for consistency, and they can share? Erm...
+
+Or we could just always assume reducable. It means less sharing...
+
+Two kinds of sharing like this:
+- beta reductions with different arguments: parts of the expression not
+  involving the argument can be shared, parts involving the argument must be
+  copied.
+- inlining polymorphic declarations with different concrete types: parse of
+  the expression not involving the type can be shared, parts involving the
+  type must be copied.
+
+Honestly, they both could have the same kind of sharing potential. Perhaps
+first, just to get off the ground, I should assume reducable... and, well make
+a best effort at sharing using equality. Equality of ExpH should be pretty
+quick, because we don't have to traverse. Just check pointer equality and
+such.
+
+Yes. I think that's perhaps a better way to start? And we can use reducableE?
+
+Well, but caching is better, because we don't even have to traverse an
+expression if we know it contains no free variables with the given name. That
+could be a big win...
+
+I think I should figure out how to do the caching.
+
+We do reductions on lambda bodies. Maybe we can store the cache with the
+lambda? Store it with the lambda (for reduce), and store it with the HeapifyE
+(for generating lambdas quickly).
+
+Question: what changes the state of the cache?
+
+Well, if we keep the cache only with lambda and heapify... what creates a
+heapify?
+
+VarE inlining: build the cache then
+heapify: use the cache given
+elaborateH: build the cache then
+
+All those are easy.
+
+LamEH:
+ heapify: we have the cache
+ reduceEH: reduce has the cache
+
+I think all those should work
+I'll have to think about the reduce ones.
+If you reduce in a lambda that doesn't match, the returned lambda has the same
+free, except no longer s. So I'll want a way to go through the entire cache
+and delete s from it where appropriate, but other than that, it's fine.
+For the reduceEH call... it's just a question about b, I can use the cache to
+figure that out. Good. That should work out okay.
+
+A little messy, but doable. Proposal is: have a cache, store the cache at
+every LamEH and every HeapifyEH. This cache is used in heapify and reduce.
+
+In reduce, we basically ask at the top given the cache: do we need this?
+
+One concern is the cache will be big, duplicating a lot of information. I
+wonder if we can store the information in diff form.
+
+So we have a list at the top level. Now, the list of free for the children is
+related to the list of free for the parent.
+
+AppE a b: Some names are free in a, some free in b, some free in both.
+We know those free in both from the parent. Maybe just store those free in a
+that aren't free in b?
+
+No. That's probably a waste. Just build up the sets. That will be fine, and
+hopefully help with sharing.
+
+Cool. I'll try this next when I get a chance.
+
