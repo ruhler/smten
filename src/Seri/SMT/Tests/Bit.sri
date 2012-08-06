@@ -1,0 +1,16 @@
+
+module Seri.SMT.Tests.Bit where {
+
+import Seri.Lib.Prelude;
+import Seri.Lib.Bit;
+import Seri.SMT.SMT;
+
+main :: Query (Answer (Bit #3));
+main = do {
+    x <- free;
+    assert ((x + 1) == 0);
+    query x;
+}
+
+}
+

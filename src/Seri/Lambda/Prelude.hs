@@ -39,7 +39,7 @@ module Seri.Lambda.Prelude (
     prelude,
     appsE, unappsE, 
     trueE, falseE, boolE, listE, listP, tupE, tupP,
-    stringE, charE, integerE, numberE,
+    stringE, charE, integerE, numberE, bitE,
     ) where
 
 import Seri.Lambda.IR
@@ -129,6 +129,9 @@ integerE i = LitE (IntegerL i)
 
 numberE :: Integer -> Exp
 numberE i = AppE (VarE (Sig "fromInteger" (arrowsT [integerT, UnknownT]))) (integerE i)
+
+bitE :: Integer -> Integer -> Exp
+bitE w v = AppE (VarE (Sig "Seri.Lib.Bit.__prim_fromInteger_Bit" (arrowsT [integerT, AppT (ConT "Bit") (NumT (ConNT w))]))) (integerE v)
 
 charE :: Char -> Exp
 charE c = LitE (CharL c)

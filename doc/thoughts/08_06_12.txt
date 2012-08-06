@@ -167,5 +167,23 @@ I added *, +, -, == to the elaborator. It's messy, but I think it works.
 
 Next step: add it to the haskell target.
 
+Mon Aug  6 14:20:01 EDT 2012
 
+Okay, that seems to work. What's the next things to implement?
+
+I guess, ideally, we should try it out in SMT.
+
+I propose we try the following:
+
+x <- free
+assert (x + 1 == bit3 0)
+
+And make sure it returns 7.
+
+Mon Aug  6 14:27:39 EDT 2012
+
+Ug. Trouble. How do we handle bit vectors in the monomorphizer? Considering
+it's the kind of thing, for yices, we actually don't want to monomorphize...
+
+Okay, turn it into "#n" for the integer n. That's fine with me.
 

@@ -87,6 +87,9 @@ foreign import ccall "yices_get_last_error_message"
 foreign import ccall "yices_get_int_value"
     c_yices_get_int_value :: Ptr YModel -> Ptr YDecl -> Ptr CLong -> IO CInt
 
+foreign import ccall "yices_get_bitvector_value"
+    c_yices_get_bitvector_value :: Ptr YModel -> Ptr YDecl -> CUInt -> Ptr CInt -> IO CInt
+
 foreign import ccall "yices_get_var_decl_from_name"
     c_yices_get_var_decl_from_name :: Ptr YContext -> CString -> IO (Ptr YDecl)
                           
@@ -134,4 +137,20 @@ instance Yices Yices1FFI where
                 then peek ptr
                 else error $ "yices get int value returned: " ++ show ir
         return (toInteger x)
+
+    getBitVectorValue (Yices1FFI fp) w nm = do
+        model <- withForeignPtr fp c_yices_get_model 
+        decl <- withCString nm $ \str ->
+                    withForeignPtr fp $ \yctx ->
+                        c_yices_get_var_decl_from_name yctx str
+        bits <- allocaArray (fromInteger w) $ \ptr -> do
+            ir <- c_yices_get_bitvector_value model decl (fromInteger w) ptr
+            if ir == 1
+                then peekArray (fromInteger w) ptr
+                else error $ "yices get bit vector value returned: " ++ show ir
+        return (bvInteger bits)
+
+bvInteger :: [CInt] -> Integer
+bvInteger [] = 0
+bvInteger (x:xs) = bvInteger xs * 2 + (fromIntegral x)
         

@@ -224,6 +224,16 @@ realizefree _ nm t | t == integerT = do
     ival <- lift $ Y.getIntegerValue ctx (yicesN nm)
     debug $ "; " ++ nm ++ " is " ++ show ival
     return (integerE ival)
+realizefree _ nm (AppT (ConT "Bit") (NumT (ConNT w))) = do
+    debug $ "; realize Bit " ++ show w ++ ": " ++ nm
+    res <- check
+    case res of
+        Y.Satisfiable -> return ()  
+        _ -> error $ "realize free expected Satisfiable, but wasn't"
+    ctx <- gets ys_ctx
+    bval <- lift $ Y.getBitVectorValue ctx w (yicesN nm)
+    debug $ "; " ++ nm ++ " has value " ++ show bval
+    return (bitE w bval)
 realizefree _ nm t@(AppT (AppT (ConT "->") _) _)
   = error $ "TODO: realizefree type " ++ pretty t
 realizefree env nm t =

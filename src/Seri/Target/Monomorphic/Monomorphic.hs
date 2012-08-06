@@ -227,6 +227,7 @@ monoallt t = do
 -- Give the monomorphic name for an applied type
 mononametype :: Type -> Name
 mononametype (ConT n) = n
+mononametype (NumT n) = ntname n
 mononametype (AppT a b) = mononametype a ++ "$" ++ mononametype b
 
 mksuffix :: [Type] -> Name
@@ -246,12 +247,16 @@ valsuffix s@(Sig n t) = do
             return $ mksuffix (map snd (assignments pt t))
         Just (Instance (Class _ cts)) -> 
             return $ mksuffix (cts ++ map snd (assignments pt t))
+
+ntname :: NType -> Name
+ntname n = "#" ++ show (nteval n)
     
 -- Unfold a concrete type.
 --  Foo a b ... c 
 --   Is turned into ("Foo", [a, b, ... c])
 unfoldt :: Type -> (Name, [Type])
 unfoldt (ConT n) = (n, [])
+unfoldt (NumT n) = (ntname n, [])
 unfoldt (AppT a b)
   = let (n, args) = unfoldt a
     in (n, args ++ [b])
