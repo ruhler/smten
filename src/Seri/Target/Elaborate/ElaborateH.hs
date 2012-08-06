@@ -168,8 +168,8 @@ elabH :: [Sig] -> ExpR s -> ElabH s ()
 elabH free r = do
   mode <- gets es_mode
   e <- readRef r
-  --case (trace ("elab " ++ printr r) e) of
-  case e of
+  case (trace ("elab " ++ printr r) e) of
+  --case e of
     LitEH {} -> return ()
     CaseEH x ms -> do
        elabH free x
@@ -241,15 +241,6 @@ elabH free r = do
         writeRef r heapified
         elabH free r
 
--- | Reducable predicate for pure seri expressions.
-reducableE :: Name -> Exp -> Bool
-reducableE n exp = n `elem` [nm | Sig nm _ <- free exp]
-
-reduceEH :: Sig -> ExpR s -> ExpR s -> ElabH s (ExpR s)
-reduceEH s v b = do
-    r <- mkRef $ LamEH s b
-    mkRef $ AppEH r v
-            
 -- reduce n v e
 -- Replace occurences of n with v in the expression e.
 -- Returns a reference to the new expression with replacements.
@@ -264,15 +255,15 @@ reduce s@(Sig n _) v r = do
     CaseEH x ms ->
       let rm m@(MatchH p _) | n `elem` bindingsP' p = return m
           rm (MatchH p b) = do
-            b' <- reduceEH s v b
+            b' <- reduce s v b
             return (MatchH p b')
       in do
-        x' <- reduceEH s v x
+        x' <- reduce s v x
         ms' <- mapM rm ms 
         mkRef $ CaseEH x' ms'
     AppEH a b -> do
         a' <- reduce s v a
-        b' <- reduceEH s v b
+        b' <- reduce s v b
         mkRef $ AppEH a' b'
     LamEH (Sig nm _) _ | nm == n -> return r
     LamEH ls b -> do
@@ -294,8 +285,8 @@ mkRef e = do
     modify $ \es -> es { es_nid = id+1 }
     r <- liftST $ newSTRef (e, Nothing)
     let er = ExpR id r
-    --trace (printr er ++ ": " ++ print e) (return er)
-    return er
+    trace (printr er ++ ": " ++ print e) (return er)
+    --return er
 
 
 -- | Read a reference.
@@ -311,7 +302,7 @@ readRef r = do
     _ -> return v
 
 writeRef :: ExpR s -> (ExpH s) -> ElabH s ()
-writeRef er@(ExpR id r) e = --trace (printr er ++ ": " ++ print e) $
+writeRef er@(ExpR id r) e = trace (printr er ++ ": " ++ print e) $
     liftST $ writeSTRef r (e, Nothing)
     
 readReachable :: ExpR s -> ElabH s (Maybe (Set.Set (ExpR s)))
@@ -390,9 +381,14 @@ instance Reachable (ExpR s) s where
             writeReachable r rs'
             return rs'
 
+-- Name to use for a reference
+rname :: ExpR s -> Name
+rname 
+
 -- Given the set of references which can be assumed to be in scope, deheapify
 -- an expression.
 deheapify :: Set.Set (ExpR s) -> (ExpR s) -> ElabH s Exp
+deheapify f r | r `Set.member` f = return (VarE (Sig (rname r) _))
 deheapify f r = do
   e <- readRef r 
   case e of

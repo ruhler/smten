@@ -312,3 +312,56 @@ So, what's the observation here? Besides that I should get more sleep at
 night, because I do stupid things if I don't: premature optimization is a
 waste.
 
+Mon Aug  6 17:19:51 EDT 2012
+
+Unfortunately, getting rid of deheapify and making reduce not lazy don't work.
+We get stuck in an infinite loop.
+
+I should try to go just a step at a time. First make reduce strict. Then
+deheapify. Or, if that doesn't work, go the other way around.
+
+Mon Aug  6 17:23:23 EDT 2012
+
+Making reduce strict works fine. Let me continue along this line.
+
+let x = free~1
+in do
+    assert (x < 6)
+    assert (x > 4)
+    query x
+
+Is now turned into:
+
+let ~3 = free~1
+in nobind_Query (assert (free~1 < 6))
+                (do
+                    assert (free~1 > 4)
+                    query free~1)
+
+Good, that's better. But still we have this funny ~3 thing. What's with that?
+Why is that being made into a let?
+
+Let's look at deheapify to find out.
+
+It must be considered a reachable reference...
+
+Mon Aug  6 17:36:08 EDT 2012
+
+It is considered reachable, because it's a HeapifyEH. We don't refer to it,
+because ...
+
+Because something is wrong...
+
+When do I ever refer to a reference in scope?
+I should do that when I call RefEH, not deheapify?
+
+So this is a bug in deheapify.
+
+Ah yes, I just never actually refer to the variables I define in let like I
+should be. We build up this sharing and then ignore it.
+
+In order to return the right thing, I need to keep track of the type of
+expression a reference refers to. Or have some way to reconstruct it.
+
+Okay, I'll do that first thing tomorrow or some such.
+
