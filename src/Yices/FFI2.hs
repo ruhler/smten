@@ -86,6 +86,11 @@ module Yices.FFI2 (
     c_yices_bvadd,
     c_yices_bvsub,
     c_yices_bvmul,
+    c_yices_bvand,
+    c_yices_bvor,
+    c_yices_zero_extend,
+    c_yices_bvshl,
+    c_yices_shift_left0,
 
     -- Working with contexts
     c_yices_new_context,
@@ -98,6 +103,7 @@ module Yices.FFI2 (
     c_yices_free_model,
     c_yices_get_int64_value,
     c_yices_get_bv_value,
+    c_yices_print_model,
     c_fdopen,
     ) where
 
@@ -249,6 +255,20 @@ foreign import ccall unsafe "yices_bvsub"
 foreign import ccall unsafe "yices_bvmul"
     c_yices_bvmul :: YTerm -> YTerm -> IO YTerm
 
+foreign import ccall unsafe "yices_bvand"
+    c_yices_bvand :: YTerm -> YTerm -> IO YTerm
+
+foreign import ccall unsafe "yices_bvor"
+    c_yices_bvor :: YTerm -> YTerm -> IO YTerm
+
+foreign import ccall unsafe "yices_zero_extend"
+    c_yices_zero_extend :: YTerm -> Word32 -> IO YTerm
+
+foreign import ccall unsafe "yices_bvshl"
+    c_yices_bvshl :: YTerm -> YTerm -> IO YTerm
+
+foreign import ccall unsafe "yices_shift_left0"
+    c_yices_shift_left0 :: YTerm -> Word32 -> IO YTerm
 
 foreign import ccall unsafe "yices_new_context"
     c_yices_new_context :: Ptr YContextConfig -> IO (Ptr YContext)
@@ -279,6 +299,9 @@ foreign import ccall unsafe "yices_get_int64_value"
 
 foreign import ccall unsafe "yices_get_bv_value"
     c_yices_get_bv_value :: Ptr YModel -> YTerm -> Ptr Int32 -> IO Int32
+
+foreign import ccall unsafe "yices_print_model"
+    c_yices_print_model :: Ptr CFile -> Ptr YModel -> IO ()
 
 foreign import ccall unsafe "fdopen"
     c_fdopen :: CInt -> CString -> IO (Ptr CFile)

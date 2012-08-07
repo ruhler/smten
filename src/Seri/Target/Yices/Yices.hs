@@ -274,8 +274,21 @@ yExp e@(AppE a b) =
            a' <- yExp a
            b' <- yExp b
            return (Y.bvaddE a' b')
+       [VarE (Sig "Seri.Lib.Bit.__prim_or_Bit" _), a, b] -> do
+           a' <- yExp a
+           b' <- yExp b
+           return (Y.bvorE a' b')
+       -- TODO: should we allow shifting by an amount not statically
+       -- determined? In that case, I think we need to convert the second
+       -- argument to a bit vector in order to use yices bvshl function.
+       [VarE (Sig "Seri.Lib.Bit.__prim_lsh_Bit" _), a, (LitE (IntegerL v))] -> do
+           a' <- yExp a
+           return (Y.bvshiftLeft0E a' v)
        [VarE (Sig "Seri.Lib.Bit.__prim_fromInteger_Bit" (AppT _ (ConT ('B':'i':'t':'$':'#':v)))), LitE (IntegerL x)] -> do
            return (Y.mkbvE (read v) x)
+       [VarE (Sig "Seri.Lib.Bit.__prim_zeroExtend_Bit" (AppT (AppT _ (ConT ('B':'i':'t':'$':'#':sw))) (ConT ('B':'i':'t':'$':'#':tw)))), a] -> do
+           a' <- yExp a
+           return (Y.bvzeroExtendE a' (read tw - read sw))
        [VarE (Sig "Seri.SMT.Array.update" _), f, k, v] -> do
            f' <- yExp f
            k' <- yExp k
@@ -359,6 +372,7 @@ yDec (DataD "Integer" _ _) =
 yDec (DataD "Char" _ _) =
     let deftype = Y.DefineType "Char" (Just (Y.NormalTD Y.IntegerT))
     in addcmds [deftype]
+
 yDec (DataD bv@('B':'i':'t':'$':'#':v) _ _) =
     let deftype = Y.DefineType (yicesname bv) (Just (Y.NormalTD (Y.BitVectorT (read v))))
     in addcmds [deftype]
@@ -391,6 +405,9 @@ yDec (PrimD (TopSig "Seri.Lib.Bit.__prim_sub_Bit" _ _)) = return ()
 yDec (PrimD (TopSig "Seri.Lib.Bit.__prim_mul_Bit" _ _)) = return ()
 yDec (PrimD (TopSig "Seri.Lib.Bit.__prim_eq_Bit" _ _)) = return ()
 yDec (PrimD (TopSig "Seri.Lib.Bit.__prim_fromInteger_Bit" _ _)) = return ()
+yDec (PrimD (TopSig "Seri.Lib.Bit.__prim_zeroExtend_Bit" _ _)) = return ()
+yDec (PrimD (TopSig "Seri.Lib.Bit.__prim_lsh_Bit" _ _)) = return ()
+yDec (PrimD (TopSig "Seri.Lib.Bit.__prim_or_Bit" _ _)) = return ()
 yDec (PrimD (TopSig "~error" _ _)) = return ()
 yDec (PrimD (TopSig "Seri.SMT.Array.update" _ _)) = return ()
 

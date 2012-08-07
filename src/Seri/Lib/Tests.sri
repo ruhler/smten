@@ -162,9 +162,15 @@ testvector = do {
 bit3 :: Integer -> Bit #3;
 bit3 = fromInteger;
 
+bit5 :: Integer -> Bit #5;
+bit5 = fromInteger;
+
 testbit :: Test ();
 testbit = do {
     t "bit simple" (bit3 0 == ((bit3 7) + 1));
+    t "bit zeroext" (bit5 7 == bv_zero_extend (bit3 (0-1)));
+    t "bit or" (bit5 30 == bv_or (bit5 18) (bit5 12));
+    t "bit lsh" (bit5 10 == bv_lsh (bit5 5) 1);
     };
 
 shadowmeth :: Integer;

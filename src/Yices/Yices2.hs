@@ -109,6 +109,7 @@ instance Yices Yices2FFI where
 
     getBitVectorValue (Yices2FFI yctx) w nm = do
         model <- c_yices_get_model yctx 1
+        --withstderr $ \stderr -> c_yices_print_model stderr model
         bits <- allocaArray (fromInteger w) $ \ptr -> do
             term <- yterm (varE nm)
             ir <- c_yices_get_bv_value model term ptr
@@ -202,6 +203,9 @@ ytermS s e | isbinop "xor" e = dobinop s e c_yices_xor2
 ytermS s e | isbinop "bv-add" e = dobinop s e c_yices_bvadd
 ytermS s e | isbinop "bv-sub" e = dobinop s e c_yices_bvsub
 ytermS s e | isbinop "bv-mul" e = dobinop s e c_yices_bvmul
+ytermS s e | isbinop "bv-or" e = dobinop s e c_yices_bvor
+ytermS s e | isbinop "bv-and" e = dobinop s e c_yices_bvand
+ytermS s e | isbinop "bv-shl" e = dobinop s e c_yices_bvshl
 ytermS s (FunctionE (ImmediateE (VarV "select")) [v, ImmediateE (RationalV i)]) = do
     vt <- ytermS s v
     c_yices_select (fromInteger $ numerator i) vt
@@ -215,6 +219,12 @@ ytermS s (FunctionE (ImmediateE (VarV "mk-tuple")) args) = do
     withArray argst $ c_yices_tuple (fromIntegral $ length argst)
 ytermS s (FunctionE (ImmediateE (VarV "mk-bv")) [ImmediateE (RationalV w), ImmediateE (RationalV v)]) = do
     c_yices_bvconst_uint64 (fromInteger $ numerator w) (fromInteger $ numerator v)
+ytermS s (FunctionE (ImmediateE (VarV "bv-zero-extend")) [a, ImmediateE (RationalV n)]) = do
+    at <- ytermS s a
+    c_yices_zero_extend at (fromInteger $ numerator n)
+ytermS s (FunctionE (ImmediateE (VarV "bv-shift-left0")) [a, ImmediateE (RationalV n)]) = do
+    at <- ytermS s a
+    c_yices_shift_left0 at (fromInteger $ numerator n)
 ytermS s (FunctionE (ImmediateE (VarV "and")) args) = do
     argst <- mapM (ytermS s) args
     withArray argst $ c_yices_and (fromIntegral $ length argst)

@@ -9,7 +9,7 @@ numeric :: #n;
 
 -- Numeric type identity.
 -- Checks dynamically if the two numeric types are the same. If so, acts as
--- the identity function, otherwise returns and error.
+-- the identity function, otherwise returns an error.
 ntid :: #n -> #m;
 ntid n = 
   let { m = numeric }

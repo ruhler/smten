@@ -180,7 +180,8 @@ haskell c env main =
                  H.text "{-# LANGUAGE FlexibleInstances #-}" H.$+$
                  H.text "import qualified Prelude" H.$+$
                  H.text "import Seri.Target.Haskell.Lib.Numeric" H.$+$
-                 H.text "import Seri.Target.Haskell.Lib.Bit"
+                 H.text "import qualified Seri.Target.Haskell.Lib.Bit as Bit" H.$+$
+                 H.text "import Seri.Target.Haskell.Lib.Bit(Bit)"
 
       ds = compile_decs c env
   in hsHeader H.$+$ H.ppr ds H.$+$
@@ -250,6 +251,9 @@ preludeH =
       md c (PrimD s@(TopSig "Seri.Lib.Bit.__prim_add_Bit" _ _)) = prim c s (vare "Prelude.+")
       md c (PrimD s@(TopSig "Seri.Lib.Bit.__prim_sub_Bit" _ _)) = prim c s (vare "Prelude.-")
       md c (PrimD s@(TopSig "Seri.Lib.Bit.__prim_mul_Bit" _ _)) = prim c s (vare "Prelude.*")
+      md c (PrimD s@(TopSig "Seri.Lib.Bit.__prim_or_Bit" _ _)) = prim c s (vare "Bit.or")
+      md c (PrimD s@(TopSig "Seri.Lib.Bit.__prim_lsh_Bit" _ _)) = prim c s (vare "Bit.lsh")
+      md c (PrimD s@(TopSig "Seri.Lib.Bit.__prim_zeroExtend_Bit" _ _)) = prim c s (vare "Bit.zeroExtend")
 
       md _ d = fail $ "preludeH does not apply to dec: " ++ pretty d
   in Compiler me mt md

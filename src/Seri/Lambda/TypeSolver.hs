@@ -37,6 +37,8 @@
 
 module Seri.Lambda.TypeSolver (solve) where
 
+import Debug.Trace
+
 import Control.Monad.State
 
 import qualified Data.Map as Map
@@ -90,9 +92,7 @@ single (x, y) | x == y = return ()
 single (AppT a b, AppT c d) = do
     (sys, sol) <- get
     put ((a,c) : (b,d) : sys, sol)
-single (NumT (AppNT _ a b), NumT (AppNT _ c d)) = do
-    (sys, sol) <- get
-    put ((NumT a, NumT c) : (NumT b, NumT d) : sys, sol)
+single (NumT (AppNT _ _ _), NumT (AppNT _ _ _)) = return ()
 single (a, b) | b `lessknown` a = single (b, a)
 single (VarT nm, b) = do
     (sys, sol) <- get
@@ -141,4 +141,9 @@ instance Ppr [(Type, Type)] where
        let pprt (a, b) = ppr a <> text ":" <+> ppr b
        in vcat (map pprt ts)
     
+instance Ppr (Map.Map Name Type) where
+    ppr m = 
+        let pprt :: (Name, Type) -> Doc
+            pprt (a, b) = text a <> text ":" <+> ppr b
+        in vcat (map pprt (Map.assocs m))
 

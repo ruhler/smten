@@ -46,7 +46,8 @@ module Yices.Syntax (
     trueE, varE, integerE, selectE, eqE, andE, ifE, ltE, gtE,
     addE, subE, mulE,
     tupleE, tupleUpdateE,
-    mkbvE, bvaddE,
+    mkbvE, bvaddE, bvorE, bvshiftLeft0E,
+    bvzeroExtendE, bvshlE,
     pretty,
   ) where
 
@@ -166,6 +167,18 @@ mkbvE w b = FunctionE (varE "mk-bv") [integerE w, integerE b]
 
 bvaddE :: Expression -> Expression -> Expression
 bvaddE a b = FunctionE (varE "bv-add") [a, b]
+
+bvorE :: Expression -> Expression -> Expression
+bvorE a b = FunctionE (varE "bv-or") [a, b]
+
+bvshiftLeft0E :: Expression -> Integer -> Expression
+bvshiftLeft0E a b = FunctionE (varE "bv-shift-left0") [a, integerE b]
+
+bvshlE :: Expression -> Expression -> Expression
+bvshlE a b = FunctionE (varE "bv-shl") [a, b]
+
+bvzeroExtendE :: Expression -> Integer -> Expression
+bvzeroExtendE a b = FunctionE (varE "bv-zero-extend") [a, integerE b]
 
 -- | Convert an abstract syntactic construct to concrete yices syntax.
 class Concrete a where
