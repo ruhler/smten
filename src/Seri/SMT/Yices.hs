@@ -167,7 +167,7 @@ runQueryM e = do
         (AppE (VarE (Sig "Seri.SMT.SMT.queryS" _)) q) -> do
             runCmds [Y.Push]
             x <- runQueryM q
-            let q' = AppE (VarE (Sig "Seri.SMT.SMT.query" undefined)) x
+            let q' = AppE (VarE (Sig "Seri.SMT.SMT.query" UnknownT)) x
             y <- runQueryM q'
             runCmds [Y.Pop]
             return y

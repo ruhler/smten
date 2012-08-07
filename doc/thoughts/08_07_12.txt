@@ -1,0 +1,71 @@
+
+Tue Aug  7 09:20:23 EDT 2012
+
+Goal for today: make the heap elaborator work the way I want it.
+
+Let me start clean slate, assume it works reasonably well. Just make sure it
+works exactly as I want, and fix problems as I see them.
+
+First step: Query1.
+
+Tue Aug  7 09:26:01 EDT 2012
+
+Query1 looks great to me.
+
+Next step... Query2?
+Why not?
+
+Query2 looks fine.
+
+Complex...
+
+Is looking okay. It's hard to look through everything by hand.
+How about, let me jump to the trouble spots.
+
+Ah, in Complex, good. Claim is, Seri.Lib.Prelude.not is not defined. Question
+is, why didn't I elaborate that away?
+
+We are doing a full elaboration. Let me see...
+
+Tue Aug  7 09:43:26 EDT 2012
+
+The problem is, we aren't elaborating inside the alternatives of a case
+statement if we don't know which alternative will be taken. For full
+elaboration, that's wrong.
+
+Tue Aug  7 09:49:08 EDT 2012
+
+I wonder if the problem is the case statement isn't being matched. We have:
+
+free~1 :: (Integer, Bool)
+
+As the expression, and (i, b) as the pattern. This should match, right?
+
+I feel like it would be nice if case statements which don't match are
+indicated somehow.
+
+Tue Aug  7 10:10:16 EDT 2012
+
+Well, we go to look up Seri.Lib.Prelude.<, but we don't find it in the
+environment? What's with that?
+
+Tue Aug  7 10:17:48 EDT 2012
+
+Oh, Seri.Lib.Prelude.< is primitive. That's not the one to be worrying about.
+The real worry is, why don't we elaborate not?
+
+Tue Aug  7 10:23:12 EDT 2012
+
+Oh, I think I found it.  If it's an application, and the first argument is an
+application, but the first argument of that application is not a primitive...
+then when full elaborating, we should still elaborate the second argument.
+
+Tue Aug  7 10:26:12 EDT 2012
+
+Next problem: Bluespec query doesn't compile?
+
+Tue Aug  7 10:27:08 EDT 2012
+
+Okay, I recognize this problem. Now we have to worry about alpha renaming.
+Much sadness.
+

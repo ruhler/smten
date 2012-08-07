@@ -365,3 +365,25 @@ expression a reference refers to. Or have some way to reconstruct it.
 
 Okay, I'll do that first thing tomorrow or some such.
 
+Mon Aug  6 17:58:23 EDT 2012
+
+Problem with not making heapify lazy has something to do with heapifying
+variables we've just inlined.
+
+What could the problem be? Are we trying to inline infinite expressions?
+That's the only thing I could think of.
+
+But this is simple elaboration, so we can't be, can we?
+
+We aren't getting stuck in heapify. We are getting stuck in reduce. Something
+that must have been stopped before when trying to reduce a heapify expression?
+
+Oh. Hmm... Maybe, um...
+
+Let's say we have a recursive function. It refers to itself. Reduce isn't
+lazy. It's going to do full reduction. But if it tries to reduce...
+
+Is this an alpha renaming issue?
+
+I don't know. Let me look at it tomorrow.
+

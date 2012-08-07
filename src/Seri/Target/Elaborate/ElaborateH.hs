@@ -141,18 +141,18 @@ heapify e =
     LitE l -> return $ LitEH l
     CaseE x ms ->
       let hm (Match p b) = do
-             b' <- mkRef (HeapifyEH b)
+             b' <- heapify b >>= mkRef
              return (MatchH p b')
       in do
-         x' <- mkRef (HeapifyEH x)
+         x' <- heapify x >>= mkRef
          ms' <- mapM hm ms
          return $ CaseEH x' ms'
     AppE a b -> do
-        a' <- mkRef (HeapifyEH a)
-        b' <- mkRef (HeapifyEH b)
+        a' <- heapify a >>= mkRef
+        b' <- heapify b >>= mkRef
         return (AppEH a' b')
     LamE s b -> do
-        b' <- mkRef (HeapifyEH b)
+        b' <- heapify b >>= mkRef
         return (LamEH s b')
     VarE s -> return (VarEH s)
     ConE s -> return (ConEH s)
@@ -176,15 +176,16 @@ elabH free r = do
        mr <- matches free x ms
        case mr of
          -- TODO: return error if no alternative matches?
-         NoMatched -> writeRef r $ CaseEH x [last ms]
+         NoMatched -> error $ "Case did not match"
          Matched vs b -> do
             lete <- letEH vs b
             writeRef r (RefEH lete)
             elabH free r
-         UnMatched ms' | mode == Simple -> writeRef r $ CaseEH x ms'
-         UnMatched ms' | mode == Full -> 
-            let elabmH (MatchH p b) = elabH (bindingsP p ++ free) b
-            in mapM_ elabmH ms'
+         UnMatched ms' -> do
+            writeRef r $ CaseEH x ms'
+            if mode == Full
+                then sequence_ [elabH (bindingsP p ++ free) b | MatchH p b <- ms']
+                else return ()
     AppEH a b -> do
         av <- elabHed free a
         case av of
@@ -204,6 +205,7 @@ elabH free r = do
                             _ -> return ()
                      _ | mode == Full -> elabH free b
                      _ -> return ()
+                _ | mode == Full -> elabH free b
                 _ -> return ()
           LamEH s@(Sig n _) body -> do
             rr <- reduce s b body 
@@ -494,7 +496,7 @@ iswhnf x
 
 elaborateH :: Exp -> ElabH s Exp
 elaborateH e = do
-    r <- mkRef (HeapifyEH e)
+    r <- heapify e >>= mkRef
     elabH [] r
     deheapify Set.empty r
 
@@ -504,7 +506,7 @@ elaborateST mode env e = evalStateT (elaborateH e) (ES env mode Map.empty 1)
 elaborate :: Mode -> Env -> Exp -> Exp
 elaborate mode env e =
   runST $ elaborateST mode env e
-  --let elabed = runST $ elaborateST mode env (trace ("elab: " ++ pretty e) e)
+  --let elabed = runST $ elaborateST mode env (trace ("elab " ++ show mode ++ ": " ++ pretty e) e)
   --in trace ("elabed: " ++ pretty elabed) elabed
 
 letEH :: [(Sig, ExpR s)] -> ExpR s -> ElabH s (ExpR s)
