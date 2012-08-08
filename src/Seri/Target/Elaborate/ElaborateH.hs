@@ -50,6 +50,7 @@ import Debug.Trace
 import Control.Monad.ST
 import Control.Monad.State
 
+import Data.Maybe (fromMaybe)
 import Data.Monoid
 import Data.STRef
 import qualified Data.Map as Map
@@ -75,13 +76,24 @@ data ES s = ES {
     es_decls :: Map.Map Sig (ExpR s),
 
     -- next available unique id to use
-    es_nid :: ID
+    es_nid :: ID,
+
+    -- unique name map. Maps name to an integer which can be appended to it to
+    -- make a unique name.
+    es_unique :: Map.Map Name Integer
 }
 
 type ElabH s a = StateT (ES s) (ST s) a
 
 liftST :: ST s a -> ElabH s a
 liftST = lift
+
+newname :: Name -> ElabH s Name
+newname n = do
+    m <- gets es_unique
+    let (id, m') = Map.insertLookupWithKey (\_ -> (+)) n 1 m
+    modify $ \es -> es { es_unique = m' }
+    return $ n ++ "~" ++ show (fromMaybe 0 id)
 
 type ID = Integer
 
@@ -99,11 +111,6 @@ instance Eq (ExpR s) where
 instance Ord (ExpR s) where
     (<=) (ExpR a _) (ExpR b _) = a <= b
 
--- | Heapify is made explicitly lazy.
--- This is so we can very efficiently deheapify an unelaborated heapified
--- expression.
---
--- deheapify (HeapifyEH e) ==> e
 data ExpH s
   = LitEH Lit
   | CaseEH (ExpR s) [MatchH s]
@@ -135,26 +142,44 @@ print e =
     
 data MatchH s = MatchH Pat (ExpR s)
 
-heapify :: Exp -> ElabH s (ExpH s)
-heapify e =
+-- | Heapify an expression, given a rename mapping for bound variables.
+heapify :: Map.Map Name Name -> Exp -> ElabH s (ExpH s)
+heapify m e =
   case e of
     LitE l -> return $ LitEH l
     CaseE x ms ->
-      let hm (Match p b) = do
-             b' <- heapify b >>= mkRef
-             return (MatchH p b')
+      let repat :: Map.Map Name Name -> Pat -> Pat 
+          repat m (ConP t n ps) = ConP t n (map (repat m) ps)
+          repat m p@(VarP (Sig n t)) =
+            case Map.lookup n m of
+                Just n' -> VarP (Sig n' t)
+                Nothing -> p
+          repat m p@(IntegerP {}) = p
+          repat m p@(WildP {}) = p
+
+          hm (Match p b) = do
+             let nms = bindingsP' p
+             nms' <- mapM newname nms
+             let m' = Map.union (Map.fromList (zip nms nms')) m
+             b' <- heapify m' b >>= mkRef
+             return (MatchH (repat m' p) b')
       in do
-         x' <- heapify x >>= mkRef
+         x' <- heapify m x >>= mkRef
          ms' <- mapM hm ms
          return $ CaseEH x' ms'
     AppE a b -> do
-        a' <- heapify a >>= mkRef
-        b' <- heapify b >>= mkRef
+        a' <- heapify m a >>= mkRef
+        b' <- heapify m b >>= mkRef
         return (AppEH a' b')
-    LamE s b -> do
-        b' <- heapify b >>= mkRef
-        return (LamEH s b')
-    VarE s -> return (VarEH s)
+    LamE (Sig n t) b -> do
+        n' <- newname n
+        let m' = Map.insert n n' m
+        b' <- heapify m' b >>= mkRef
+        return (LamEH (Sig n' t) b')
+    VarE s@(Sig n t) ->
+        case Map.lookup n m of
+            Just n' -> return (VarEH (Sig n' t))
+            Nothing -> return (VarEH s)
     ConE s -> return (ConEH s)
 
 elabHed :: [Sig] -> ExpR s -> ElabH s (ExpH s)
@@ -239,7 +264,7 @@ elabH free r = do
         RefEH y -> writeRef r xv
         _ -> return ()
     HeapifyEH exp -> do
-        heapified <- heapify exp
+        heapified <- heapify Map.empty exp
         writeRef r heapified
         elabH free r
 
@@ -276,7 +301,7 @@ reduce s@(Sig n _) v r = do
     VarEH {} -> return r
     RefEH x -> reduce s v x
     HeapifyEH exp -> do
-        x <- heapify exp
+        x <- heapify Map.empty exp
         writeRef r x
         reduce s v r
 
@@ -496,12 +521,12 @@ iswhnf x
 
 elaborateH :: Exp -> ElabH s Exp
 elaborateH e = do
-    r <- heapify e >>= mkRef
+    r <- heapify Map.empty e >>= mkRef
     elabH [] r
     deheapify Set.empty r
 
 elaborateST :: Mode -> Env -> Exp -> ST s Exp
-elaborateST mode env e = evalStateT (elaborateH e) (ES env mode Map.empty 1)
+elaborateST mode env e = evalStateT (elaborateH e) (ES env mode Map.empty 1 Map.empty)
 
 elaborate :: Mode -> Env -> Exp -> Exp
 elaborate mode env e =
