@@ -278,17 +278,27 @@ yExp e@(AppE a b) =
            a' <- yExp a
            b' <- yExp b
            return (Y.bvorE a' b')
+       [VarE (Sig "Seri.Lib.Bit.__prim_and_Bit" _), a, b] -> do
+           a' <- yExp a
+           b' <- yExp b
+           return (Y.bvandE a' b')
        -- TODO: should we allow shifting by an amount not statically
        -- determined? In that case, I think we need to convert the second
        -- argument to a bit vector in order to use yices bvshl function.
        [VarE (Sig "Seri.Lib.Bit.__prim_lsh_Bit" _), a, (LitE (IntegerL v))] -> do
            a' <- yExp a
            return (Y.bvshiftLeft0E a' v)
+       [VarE (Sig "Seri.Lib.Bit.__prim_rshl_Bit" _), a, (LitE (IntegerL v))] -> do
+           a' <- yExp a
+           return (Y.bvshiftRight0E a' v)
        [VarE (Sig "Seri.Lib.Bit.__prim_fromInteger_Bit" (AppT _ (ConT ('B':'i':'t':'$':'#':v)))), LitE (IntegerL x)] -> do
            return (Y.mkbvE (read v) x)
        [VarE (Sig "Seri.Lib.Bit.__prim_zeroExtend_Bit" (AppT (AppT _ (ConT ('B':'i':'t':'$':'#':sw))) (ConT ('B':'i':'t':'$':'#':tw)))), a] -> do
            a' <- yExp a
            return (Y.bvzeroExtendE a' (read tw - read sw))
+       [VarE (Sig "Seri.Lib.Bit.__prim_trucate_Bit" (AppT (AppT _ (ConT ('B':'i':'t':'$':'#':sw))) (ConT ('B':'i':'t':'$':'#':tw)))), a] -> do
+           a' <- yExp a
+           return (Y.bvextractE a' 0 (read tw - 1))
        [VarE (Sig "Seri.SMT.Array.update" _), f, k, v] -> do
            f' <- yExp f
            k' <- yExp k
@@ -406,8 +416,11 @@ yDec (PrimD (TopSig "Seri.Lib.Bit.__prim_mul_Bit" _ _)) = return ()
 yDec (PrimD (TopSig "Seri.Lib.Bit.__prim_eq_Bit" _ _)) = return ()
 yDec (PrimD (TopSig "Seri.Lib.Bit.__prim_fromInteger_Bit" _ _)) = return ()
 yDec (PrimD (TopSig "Seri.Lib.Bit.__prim_zeroExtend_Bit" _ _)) = return ()
+yDec (PrimD (TopSig "Seri.Lib.Bit.__prim_trucate_Bit" _ _)) = return ()
 yDec (PrimD (TopSig "Seri.Lib.Bit.__prim_lsh_Bit" _ _)) = return ()
+yDec (PrimD (TopSig "Seri.Lib.Bit.__prim_rshl_Bit" _ _)) = return ()
 yDec (PrimD (TopSig "Seri.Lib.Bit.__prim_or_Bit" _ _)) = return ()
+yDec (PrimD (TopSig "Seri.Lib.Bit.__prim_and_Bit" _ _)) = return ()
 yDec (PrimD (TopSig "~error" _ _)) = return ()
 yDec (PrimD (TopSig "Seri.SMT.Array.update" _ _)) = return ()
 

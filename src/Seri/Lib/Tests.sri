@@ -171,6 +171,7 @@ testbit = do {
     t "bit zeroext" (bit5 7 == bv_zero_extend (bit3 (0-1)));
     t "bit or" (bit5 30 == bv_or (bit5 18) (bit5 12));
     t "bit lsh" (bit5 10 == bv_lsh (bit5 5) 1);
+    t "bit extract" (bit3 3 == bv_extract (bit5 7) 1);
     };
 
 shadowmeth :: Integer;

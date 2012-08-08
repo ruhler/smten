@@ -252,8 +252,11 @@ preludeH =
       md c (PrimD s@(TopSig "Seri.Lib.Bit.__prim_sub_Bit" _ _)) = prim c s (vare "Prelude.-")
       md c (PrimD s@(TopSig "Seri.Lib.Bit.__prim_mul_Bit" _ _)) = prim c s (vare "Prelude.*")
       md c (PrimD s@(TopSig "Seri.Lib.Bit.__prim_or_Bit" _ _)) = prim c s (vare "Bit.or")
+      md c (PrimD s@(TopSig "Seri.Lib.Bit.__prim_and_Bit" _ _)) = prim c s (vare "Bit.and")
       md c (PrimD s@(TopSig "Seri.Lib.Bit.__prim_lsh_Bit" _ _)) = prim c s (vare "Bit.lsh")
+      md c (PrimD s@(TopSig "Seri.Lib.Bit.__prim_rshl_Bit" _ _)) = prim c s (vare "Bit.rshl")
       md c (PrimD s@(TopSig "Seri.Lib.Bit.__prim_zeroExtend_Bit" _ _)) = prim c s (vare "Bit.zeroExtend")
+      md c (PrimD s@(TopSig "Seri.Lib.Bit.__prim_truncate_Bit" _ _)) = prim c s (vare "Bit.truncate")
 
       md _ d = fail $ "preludeH does not apply to dec: " ++ pretty d
   in Compiler me mt md

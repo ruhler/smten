@@ -1,7 +1,11 @@
 
 -- | Library for supporting bit vectors in the haskell target.
 module Seri.Target.Haskell.Lib.Bit(
-    Bit(), Seri.Target.Haskell.Lib.Bit.or, lsh, zeroExtend,
+    Bit(),
+    Seri.Target.Haskell.Lib.Bit.or,
+    Seri.Target.Haskell.Lib.Bit.and,
+    lsh, rshl, zeroExtend,
+    Seri.Target.Haskell.Lib.Bit.truncate,
     ) where
 
 import Data.Bits
@@ -27,11 +31,22 @@ instance (N__ n) => Num (Bit n) where
 or :: N__ n => Bit n -> Bit n -> Bit n
 or (Bit w a) (Bit _ b) = Bit w (a .|. b)
 
+and :: N__ n => Bit n -> Bit n -> Bit n
+and (Bit w a) (Bit _ b) = Bit w (a .&. b)
+
 lsh :: N__ n => Bit n -> Integer -> Bit n
 lsh (Bit w a) x = Bit w (a `shiftL` fromInteger x)
+
+rshl :: N__ n => Bit n -> Integer -> Bit n
+rshl (Bit w a) x = Bit w (a `shiftR` fromInteger x)
 
 zeroExtend :: (N__ n, N__ m) => Bit n -> Bit m
 zeroExtend (Bit n a)
  = let m = numeric
    in Bit m (B.bv_zero_extend (valueof m - valueof n) a)
+
+truncate :: (N__ n, N__ m) => Bit n -> Bit m
+truncate (Bit n a)
+ = let m = numeric
+   in Bit m (B.bv_truncate (valueof m) a)
 

@@ -91,6 +91,8 @@ module Yices.FFI2 (
     c_yices_zero_extend,
     c_yices_bvshl,
     c_yices_shift_left0,
+    c_yices_shift_right0,
+    c_yices_bvextract,
 
     -- Working with contexts
     c_yices_new_context,
@@ -269,6 +271,12 @@ foreign import ccall unsafe "yices_bvshl"
 
 foreign import ccall unsafe "yices_shift_left0"
     c_yices_shift_left0 :: YTerm -> Word32 -> IO YTerm
+
+foreign import ccall unsafe "yices_shift_right0"
+    c_yices_shift_right0 :: YTerm -> Word32 -> IO YTerm
+
+foreign import ccall unsafe "yices_bvextract"
+    c_yices_bvextract :: YTerm -> Word32 -> Word32 -> IO YTerm
 
 foreign import ccall unsafe "yices_new_context"
     c_yices_new_context :: Ptr YContextConfig -> IO (Ptr YContext)

@@ -222,9 +222,15 @@ ytermS s (FunctionE (ImmediateE (VarV "mk-bv")) [ImmediateE (RationalV w), Immed
 ytermS s (FunctionE (ImmediateE (VarV "bv-zero-extend")) [a, ImmediateE (RationalV n)]) = do
     at <- ytermS s a
     c_yices_zero_extend at (fromInteger $ numerator n)
+ytermS s (FunctionE (ImmediateE (VarV "bv-extract")) [a, ImmediateE (RationalV i), ImmediateE (RationalV j)]) = do
+    at <- ytermS s a
+    c_yices_bvextract at (fromInteger $ numerator i) (fromInteger $ numerator j)
 ytermS s (FunctionE (ImmediateE (VarV "bv-shift-left0")) [a, ImmediateE (RationalV n)]) = do
     at <- ytermS s a
     c_yices_shift_left0 at (fromInteger $ numerator n)
+ytermS s (FunctionE (ImmediateE (VarV "bv-shift-right0")) [a, ImmediateE (RationalV n)]) = do
+    at <- ytermS s a
+    c_yices_shift_right0 at (fromInteger $ numerator n)
 ytermS s (FunctionE (ImmediateE (VarV "and")) args) = do
     argst <- mapM (ytermS s) args
     withArray argst $ c_yices_and (fromIntegral $ length argst)

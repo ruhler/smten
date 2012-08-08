@@ -8,7 +8,7 @@ import Seri.SMT.SMT;
 bityx :: Bit #(2+3);
 bityx = 15;
 
-main :: Query (Answer (Bit#3, Bit #2));
+main :: Query (Answer (Bit#3, Bit #2, Bit #3));
 main = do {
     -- x is 'b111
     x <- free;
@@ -17,7 +17,12 @@ main = do {
     -- y is 'b01
     y <- free;
     assert (bv_concat y x == bityx);
-    query (x, y);
+
+    -- z is 'b011
+    z <- free;
+    assert (z == bv_extract bityx 2);
+
+    query (x, y, z);
 }
 
 }

@@ -11,8 +11,11 @@ __prim_sub_Bit :: Bit #n -> Bit #n -> Bit #n;
 __prim_mul_Bit :: Bit #n -> Bit #n -> Bit #n;
 __prim_fromInteger_Bit :: Integer -> Bit #n;
 __prim_zeroExtend_Bit :: Bit #n -> Bit #m;
+__prim_truncate_Bit :: Bit #n -> Bit #m;
 __prim_lsh_Bit :: Bit #n -> Integer -> Bit #n;
+__prim_rshl_Bit :: Bit #n -> Integer -> Bit #n;
 __prim_or_Bit :: Bit #n -> Bit #n -> Bit #n;
+__prim_and_Bit :: Bit #n -> Bit #n -> Bit #n;
 
 
 instance Eq (Bit #n) where {
@@ -38,11 +41,20 @@ bv_sizeof x = valueof (bv_ntype x);
 bv_lsh :: Bit #n -> Integer -> Bit #n;
 bv_lsh = __prim_lsh_Bit;
 
+bv_rshl :: Bit #n -> Integer -> Bit #n;
+bv_rshl = __prim_rshl_Bit;
+
 bv_or :: Bit #n -> Bit #n -> Bit #n;
 bv_or = __prim_or_Bit;
 
+bv_and :: Bit #n -> Bit #n -> Bit #n;
+bv_and = __prim_and_Bit;
+
 bv_zero_extend :: Bit #n -> Bit #m;
 bv_zero_extend = __prim_zeroExtend_Bit;
+
+bv_truncate :: Bit #n -> Bit #m;
+bv_truncate = __prim_truncate_Bit;
 
 bv_concat :: Bit #n -> Bit #m -> Bit #(n+m);
 bv_concat a b = 
@@ -51,6 +63,11 @@ bv_concat a b =
     a' = bv_zero_extend a;
     b' = bv_zero_extend b;
   } in bv_or (bv_lsh a' bw) b';
+
+-- Extract m bits from the given vector, with the least significant bit to be
+-- extract specified in the argument. The most significant bit is inferred.
+bv_extract :: Bit #n -> Integer -> Bit #m;
+bv_extract a x = bv_truncate (bv_rshl a x);
 
 }
 
