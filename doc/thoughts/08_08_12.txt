@@ -297,3 +297,62 @@ the two, because it is so different? Yes. I believe that is the case.
 Wed Aug  8 17:14:29 EDT 2012
 
 Okay, so, implemented inline. Let's see how that looks now.
+
+Wed Aug  8 17:21:54 EDT 2012
+
+First issue: Seri.Lib.Prelude.< is appearing on its own, not fully applied.
+This is because of the sharing.
+
+So I think the big thing we want to fix next is:
+
+do not share simple values: Vars, Cons, etc...
+
+This should be...
+
+How about this. Have deheapr return an Expression. For complex expressions,
+that will be rvar of the reference. But it should also check for simple
+expressions, inline them directly, and don't even put them in the list of
+declarations. Good!
+
+Wed Aug  8 17:34:31 EDT 2012
+
+Good, that works well. Making progress.
+
+Trouble now is, we end up with:
+
+ let ~3 = < free~1
+ in ~3 x
+
+Now, there are two issues with this. The first is, because ~3 is only referred
+to once, it seems like we ought to inline it, no? Yes.  Even if something is
+complicated, it ought to be inlined if it is only ever used once.
+
+The next problem is: < is primitive, and thus has to be fully applied, which
+means we have to inline it if necessary to make it fully applied, even if that
+reduces sharing.
+
+So, for example,
+
+let x = < 4
+in or (x 3) (x 2)
+
+We want to remove the sharing you've given, and turn it into:
+
+or (< 4 3) (< 4 2)
+
+Of course, this is only if it's partially applied...
+
+Okay, so the proposal is this: anything that has a function type needs to be
+inlined. That, I believe, is the correct behavior I want.
+
+I should document that that's what I'm doing in SNF.
+
+Wed Aug  8 17:45:15 EDT 2012
+
+Good. Next thing I'll want: In general, I think, is to make bindings as local
+as possible. In particular, if a reference is only used once, inline it, even
+if it is complicated.
+
+Also, looks like some more bugs to iron out. But this is definitely headed in
+the right direction.
+

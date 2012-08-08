@@ -364,6 +364,11 @@ binaryPrim "Seri.Lib.Prelude.>" (IntegerL a) (IntegerL b) r = writeRef r $ boolE
 binaryPrim "Seri.Lib.Prelude.__prim_eq_Integer" (IntegerL a) (IntegerL b) r = writeRef r $ boolEH (a == b)
 binaryPrim _ _ _ _ = return ()
 
+isfunt :: Type -> Bool
+isfunt t = 
+  case unarrowsT t of
+      _:_:_ -> True
+      _ -> False
         
 -- Given the set of references which can be assumed to be in scope, deheapify
 -- an expression, sharing complex expressions wherever possible.
@@ -371,43 +376,52 @@ deheapify :: ExpR s -> ElabH s Exp
 deheapify r =
   let -- | Deheapify the given reference and any references it depends on,
       -- adding the deheapfied result to the state in the right order.
-      deheapr :: ExpR s -> StateT [(ExpR s, Exp)] (ElabH s) ()
+      -- Returns an expression to use to represent this.
+      deheapr :: ExpR s -> StateT [(ExpR s, Exp)] (ElabH s) Exp
       deheapr r = do
-        done <- get
-        case lookup r done of
-            Just _ -> return ()
-            Nothing -> do
-              e <- lift $ readRef1 r
-              e' <- deheap e
-              modify $ (:) (r, e')
+        e <- lift $ readRef r
+        case e of
+            LitEH l -> return (LitE l)
+            VarEH s -> return (VarE s)
+            ConEH s -> return (ConE s)
+            _ | isfunt (rtype r) -> lift $ inline r
+            _ -> do
+                done <- get
+                case lookup r done of
+                    Just _ -> return (rvar r)
+                    Nothing -> do
+                      e <- lift $ readRef1 r
+                      e' <- deheap e
+                      modify $ (:) (r, e')
+                      return (rvar r)
 
       deheap :: ExpH s -> StateT [(ExpR s, Exp)] (ElabH s) Exp
       deheap (LitEH l) = return (LitE l)
       deheap (CaseEH x ms) =
         let deheapm (MatchH p b) = do
-              deheapr b 
-              return (Match p (rvar b))
+              b' <- deheapr b 
+              return (Match p b')
         in do
-            deheapr x
+            x' <- deheapr x
             ms' <- mapM deheapm ms
-            return (CaseE (rvar x) ms')
+            return (CaseE x' ms')
       deheap (AppEH a b) = do
-        deheapr a
-        deheapr b
-        return (AppE (rvar a) (rvar b))
+        a' <- deheapr a
+        b' <- deheapr b
+        return (AppE a' b')
       deheap (LamEH s b) = do
-        deheapr b
-        return (LamE s (rvar b))
+        b' <- deheapr b
+        return (LamE s b')
       deheap (ConEH s) = return (ConE s)
       deheap (VarEH s) = return (VarE s)
       deheap (RefEH x) = do
-        deheapr x
-        return (rvar x)
+        x' <- deheapr x
+        return x'
       deheap (HeapifyEH x) = return x
   in do
-     deheaped <- execStateT (deheapr r) []
+     (e, deheaped) <- runStateT (deheapr r) []
      let rbindings = [(rsig r, e) | (r, e) <- deheaped]
-     return (letE (reverse (tail rbindings)) (snd (head rbindings)))
+     return $ letE (reverse rbindings) e
 
 -- Completely inline all references in the given expression.
 -- TODO: Perhaps performance can be improved if we cache inlinings of
