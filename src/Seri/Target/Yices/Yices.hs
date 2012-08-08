@@ -131,7 +131,7 @@ yicesE :: Exp -> CompilationM ([Y.Command], Y.Expression)
 yicesE e = do
     idepth <- getsS ys_idepth
     poly <- getsS ys_poly
-    let se = elaborate Full poly e
+    let se = elaborate SNF poly e
     modifyS $ \ys -> ys { ys_cmdsr = [] }
     me <- confail ("When compiling " ++ pretty se) $ compileNeeded se
     ye <- confail ("When compiling " ++ pretty se) $ yExp me

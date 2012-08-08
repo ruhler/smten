@@ -1,0 +1,299 @@
+
+Wed Aug  8 09:19:53 EDT 2012
+
+Next steps for heap elaborator:
+- uniquify to avoid alpha renaming issue
+- deheapify references as actual references instead of inlining everything.
+
+First thing first, because it's a matter of correctness. The other is just a
+matter of sharing in yices. It will be interesting to see how much of a
+difference the second item makes, considering it's almost the entire reason we
+switched to the heap based elaborator.
+
+How to implement uniquify?
+
+Goal is: any variable bound by a lambda or a pattern will be renamed to a
+unique name. I think, for clarity, it would be nice to keep a mapping from
+name to uniquifier, so we can have things like a_1, a_2, b_1, b_2, etc..
+instead of having one big uniquifier: a_1, a_2, b_3, b_4. Make this part of
+the monad, and have a way to withdraw a new name with a given base.
+
+Next I have to rename all uses of the variable. So, I think, heapify should
+take a scope, mapping original name to new name. Whenever we cross a lambda or
+a pattern match, we add new names to the scope. Whenever we get a variable, we
+lookup the name, and if it's there, make the replacement. Easy.
+
+Let me get to work then.
+
+Wed Aug  8 09:53:00 EDT 2012
+
+Okay, so the code is written down. Let's see if it works.
+
+I'm slightly worried about how HeapifyEH is handled. I'm always passing an
+empty map to that. Hopefully that's the right way to go. I think it is, given
+that heapify does a complete heapification. The only way we introduce a
+HeapifyEH is at a top level expression, which shouldn't be referring to any
+free variables which could otherwise be bound.
+
+Wed Aug  8 09:55:52 EDT 2012
+
+Looks like that fixed the bluespec renaming issue. Array still seems to be
+having trouble... I should figure out what's wrong with that. But, later.
+
+First, trouble with Share under yices1...
+
+Wed Aug  8 09:59:10 EDT 2012
+
+I suspect it's related to not having enough type info. We have ambiguous types
+because I don't use the references I make like I should. Let me fix that
+first.
+
+Wed Aug  8 10:55:23 EDT 2012
+
+Hmm... This could be slightly more detailed than I thought.
+
+deheapify calls readRef. That means it should never return a RefE, ever.
+So does elabH, as it happens, so the case for dealing with RefE for that is
+also bogus.
+
+I think I should start with a basic, dumb implementation.
+After the dumb implementation, we'll want to make it smarter:
+
+- All simple expressions (literal, var, con, etc...) should be inlined.
+- Don't chain references. There's no reason to say stuff like:
+        let a = b
+        in foo a
+    Just say: foo b.
+  Well, I could imagine there are reasons you would want to do that, like, to
+  avoid renaming all the variables in the expression, but I don't think that's
+  the case with my implementation.
+
+Honestly, I think the best approach I can take here is really to start stupid.
+Make that work. The only downside to stupid is the code is a little unclear,
+and the expressions a little more complicated. But it should be much more
+straight-forward to implement.
+
+Let me think about this on paper (because it's meeting time), and get back to
+you.
+
+Wed Aug  8 14:12:27 EDT 2012
+
+Got distracted. I'll think about this here right now.
+
+Starting stupid. We have a graph (acyclic?) of expressions. Some things are
+references...
+
+The question is: how to perform deheapification. Let's say, again, I'm stupid.
+How will I do it?
+
+Well, really stupid would be:
+
+Generate one giant let statement with all the references reachable anywhere in
+the program. Sort them in topological order. For every expression, put it's
+reference instead of a body.
+
+But that seems a little silly, and perhaps more work and... not the way I want
+to do it, so let me see if I can jump ahead to the next step: local lets.
+
+I don't define the reference until I encounter a construct where that
+reference is used in two separate sub expressions. Then I define it there, and
+not anywhere underneath.
+
+Hmm... I should start with the really stupid thing first, then going to this
+makes sense as a first simplification. The simplification is easy: take as
+input a list of already defined references, if it's already defined, use it.
+And you define a reference if it is used in multiple children. The rest stays
+the same?
+
+Okay, starting really really stupid, which could get annoying, but I think
+there is some non-trivial stuff in it I haven't thought about yet.
+
+How to do deheapification of an expression?
+
+1. For each immediate reference, if it hasn't already been defined, define it
+recursively. Then refer to it.
+
+Okay, so not so bad. We just have to keep track of what we've already defined
+or not. So, sounds like we want a map from reference to Exp? Err... not just a
+map though, it has to be sorted. So, sounds like we want a set of references
+that have already been done?
+
+Wed Aug  8 14:31:59 EDT 2012
+
+Okay, worked it out on paper. Stupidest version, which I should definitely
+start with.
+
+We want a function of the form:
+
+deheapifyM :: ExpH -> State [(ExpR, Exp)] Exp
+
+Where the state is a list of already deheapified references, sorted in order
+of dependence. For performance reasons, let's say an element on the list
+depends on elements later on the list, so we'll reverse the list before making
+bindings and passing it to let.
+
+How do we construct this list? It may make sense to have another function of
+the form: ExpR -> State [(ExpR, Exp)] ()
+
+What it does is: add ExpR to the list and everything it depends on.
+So, basically: if it's in the list, do nothing, otherwise add it's children to
+the list and everything they depend on, then add it to the list.
+
+Yes. That's perfect. Call this on your main function, then you can have
+everything be a let, and the expression can just be the last variable. Fine.
+Good. Well and done.
+
+I want to try this, because I think it is straight forward, useful, clear.
+I'll try it in just a second, in fact.
+
+But first, just a brief brainstorm of how we can keep things as locally bound
+as possible...
+
+We want to do this test: is this shared in two different places or not?
+
+Or, maybe the real question is: how many expressions come after me that don't
+depend on me? Err... I don't know. You know what? Let me wait on this until I
+have something working. That might clarify things in important ways.
+
+Wed Aug  8 14:53:59 EDT 2012
+
+An issue which has come up: we really would like each reference to be
+associated with a Type. Now, if we know the Exp this reference points to, we
+can just call typeof on that. But I wonder if it would be easier just to
+associate each reference with a type? That would be, call typeof when we call
+mkRef?
+
+It looks to me like we always have this information. So I think that would
+certainly be worthwhile.
+
+Or, I suppose, you could argue its cheaper to be lazy about getting the type
+information, because then we can do it on smaller (elaborated) expressions. I
+honestly don't think it makes a big difference, so for now... I suppose it's a
+smaller change to be lazy.
+
+Ug. No. I should do it the cleaner way. Associate each reference with a type.
+
+Maybe do that first then, as a separate step. Yes, good.
+
+Wed Aug  8 15:09:20 EDT 2012
+
+Good, that step wasn't too hard. Let me continue on with stupid
+implementation.
+
+Wed Aug  8 15:14:26 EDT 2012
+
+I'm going to run into trouble with reusing names. Say I do elaborate, it
+partially elaborates, leaves all these ~1, ~2, ... Then say I elaborate a
+subexpression (which could refer to ~1, ~2, ...), then I can't use ~1 and ~2
+again! I have to chose things which are not free in the given expression.
+
+That's really sad.
+
+How about, let me get things going, see the problem in action, then deal with
+it in whatever way I feel is appropriate.
+
+Wed Aug  8 15:21:38 EDT 2012
+
+Okay, so, stupid is written down. Let me try it out and see what happens.
+
+Wed Aug  8 15:33:49 EDT 2012
+
+Good, progress. Now we have a couple issues.
+
+Say we have a heaped expression:
+
+~1: True
+
+This prints out currently as:
+
+let ~1 = True
+in ~1
+
+And the trouble is, this isn't elaborated all the way!
+
+This is easily fixed...
+
+Good. Now, that leads to the next trouble:
+
+~1: RefEH ~2
+~2: True
+
+Now elaborates to:
+
+let ~2 = True
+in ~2
+
+Which is, again what we don't want.
+
+I wonder if this is the same sort of problem as above, that can be fixed in a
+generic way. 
+
+What's the problem? We are having references to non-complex expressions. But
+non-complex expressions should all be inlined. Hmm... what if we have sharing
+in the elaborated expression which we don't want to express because of
+elaboration?
+
+Like: let bar = Bar True
+      in Foo bar bar
+
+This captures the sharing of bar, but we don't want to return this as a result
+of elaboration, because it's not fully elaborated when it could be. But we do
+want to return it as a result to a yices query, perhaps, because it has
+sharing...
+
+Yes. I claim we want to give this to yices with sharing in place.
+
+Here's what I'm thinking. Perhaps we really have two kinds of elaboration,
+which are rather different (though they can leverage the same underlying
+elaborator).
+
+1. Reduce to head normal form:
+ConE optionally applied to arguments.
+LamE 
+Builtin with too few arguments.
+
+This is what we want for serie, and it is what we want for the Query monad
+runner. Lazy as possible.
+
+2. Reduce to normal form with explicit sharing:
+This is what we want for yices... But note, this is not exactly reducing to
+normal form, because, with sharing, we could end up with things not in head
+normal form, which means it's not in normal form. So, maybe I can make up my
+own, call it: sharing normal form?
+
+Yes. Sharing normal form, but I should read about spineless, tagless gmachine
+to figure out what the technical term for it is. It is certainly not a weak
+head normal form.
+
+Good. I like this.
+
+So I should change my elaboration mode names.
+
+But, what does this mean for my implementation?
+
+The difference during elaboration is clear, just the difference between Simple
+and Full that I already use. There is a distinction in deheapification too,
+however.
+
+I'm tempted to say... for weak head normal form, deheapification does full
+inlining, like I had before. For sharing normal form, deheapification does not
+do inlining, it shares complex expressions.
+
+Why can I say weak head normal form does not do any sharing? Because...
+consider the result:
+
+let x = blah
+in foo x
+
+Could be reduced to: foo blah.
+
+Good.
+
+Let me write this up.
+
+Modes should be: WHNF, and SNF. Probably don't want to share deheapify among
+the two, because it is so different? Yes. I believe that is the case.
+
+Wed Aug  8 17:14:29 EDT 2012
+
+Okay, so, implemented inline. Let's see how that looks now.

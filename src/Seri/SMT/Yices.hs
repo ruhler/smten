@@ -139,7 +139,7 @@ topname n = do
 runQueryM :: Y.Yices y => Exp -> YicesMonad y Exp
 runQueryM e = do
     env <- gets ys_env
-    case elaborate Simple env e of
+    case elaborate WHNF env e of
         (AppE (LamE (Sig n t) b) x) -> do
             n' <- topname n
             t' <- yicest t

@@ -59,13 +59,9 @@ import qualified Data.Set as Set
 import Seri.Failable
 import Seri.Lambda
 
--- | Simple elaboration does as little elaboration as possible once it's clear
--- progress can't be made.
---
--- Full elaboration fully elaborates everything.
--- A fully elaborated expression will be an infinite object if there is a
--- recursive call that can't be statically elaborated.
-data Mode = Simple | Full
+data Mode =
+      WHNF      -- ^ Reduce to weak head normal form
+    | SNF       -- ^ Reduce to sharing normal form
     deriving (Show, Eq)
 
 data ES s = ES {
@@ -83,7 +79,7 @@ data ES s = ES {
     es_unique :: Map.Map Name Integer
 }
 
-type ElabH s a = StateT (ES s) (ST s) a
+type ElabH s = StateT (ES s) (ST s)
 
 liftST :: ST s a -> ElabH s a
 liftST = lift
@@ -100,16 +96,15 @@ type ID = Integer
 -- | A reference to an expression.
 -- This is annotated with 
 --  ID - A unique identifier for the reference.
---  STRef - A pointer to the expression refered to
---  Set - The set of references refered to anywhere within the expression this
---  refers to. This is used during the deheapification phase only.
-data ExpR s = ExpR ID (STRef s (ExpH s, Maybe (Set.Set (ExpR s))))
+--  Type - the type of thing the reference points to.
+--  STRef - A pointer to the expression refered to by the reference.
+data ExpR s = ExpR ID Type (STRef s (ExpH s))
 
 instance Eq (ExpR s) where
-    (==) (ExpR a _) (ExpR b _) = (a == b)
+    (==) (ExpR a _ _) (ExpR b _ _) = (a == b)
 
 instance Ord (ExpR s) where
-    (<=) (ExpR a _) (ExpR b _) = a <= b
+    (<=) (ExpR a _ _) (ExpR b _ _) = a <= b
 
 data ExpH s
   = LitEH Lit
@@ -122,7 +117,20 @@ data ExpH s
   | HeapifyEH Exp
 
 printr :: ExpR s -> String
-printr (ExpR id _) = "~" ++ show id
+printr (ExpR id _ _) = "~" ++ show id
+
+-- Variable name to use for the given reference in the deheapified expression.
+rname :: ExpR s -> Name
+rname = printr
+
+rtype :: ExpR s -> Type
+rtype r@(ExpR _ t _) = t
+
+rsig :: ExpR s -> Sig
+rsig r = Sig (rname r) (rtype r)
+
+rvar :: ExpR s -> Exp
+rvar r = VarE (rsig r)
 
 print :: ExpH s -> String
 print e = 
@@ -161,26 +169,33 @@ heapify m e =
              let nms = bindingsP' p
              nms' <- mapM newname nms
              let m' = Map.union (Map.fromList (zip nms nms')) m
-             b' <- heapify m' b >>= mkRef
+             b' <- heapifyr m' b
              return (MatchH (repat m' p) b')
       in do
-         x' <- heapify m x >>= mkRef
+         x' <- heapifyr m x
          ms' <- mapM hm ms
          return $ CaseEH x' ms'
     AppE a b -> do
-        a' <- heapify m a >>= mkRef
-        b' <- heapify m b >>= mkRef
+        a' <- heapifyr m a
+        b' <- heapifyr m b
         return (AppEH a' b')
     LamE (Sig n t) b -> do
         n' <- newname n
         let m' = Map.insert n n' m
-        b' <- heapify m' b >>= mkRef
+        b' <- heapifyr m' b
         return (LamEH (Sig n' t) b')
     VarE s@(Sig n t) ->
         case Map.lookup n m of
             Just n' -> return (VarEH (Sig n' t))
             Nothing -> return (VarEH s)
     ConE s -> return (ConEH s)
+
+-- Same as heapify, but makes a new reference to the expression and returns
+-- that.
+heapifyr :: Map.Map Name Name -> Exp -> ElabH s (ExpR s)
+heapifyr m e = do
+    e' <- heapify m e
+    mkRef (typeof e) e'
 
 elabHed :: [Sig] -> ExpR s -> ElabH s (ExpH s)
 elabHed free r = elabH free r >> readRef r
@@ -208,7 +223,7 @@ elabH free r = do
             elabH free r
          UnMatched ms' -> do
             writeRef r $ CaseEH x ms'
-            if mode == Full
+            if mode == SNF
                 then sequence_ [elabH (bindingsP p ++ free) b | MatchH p b <- ms']
                 else return ()
     AppEH a b -> do
@@ -228,18 +243,18 @@ elabH free r = do
                         case bv of
                             LitEH lb -> binaryPrim n la lb r
                             _ -> return ()
-                     _ | mode == Full -> elabH free b
+                     _ | mode == SNF -> elabH free b
                      _ -> return ()
-                _ | mode == Full -> elabH free b
+                _ | mode == SNF -> elabH free b
                 _ -> return ()
           LamEH s@(Sig n _) body -> do
             rr <- reduce s b body 
             writeRef r $ RefEH rr
             elabH free r
 
-          _ | mode == Full -> elabH free b
+          _ | mode == SNF -> elabH free b
           _ -> return ()
-    LamEH {} | mode == Simple -> return ()
+    LamEH {} | mode == WHNF -> return ()
     LamEH s b -> elabH (s:free) b
     ConEH {} -> return ()
     VarEH (Sig "Seri.Lib.Prelude.numeric" (NumT nt)) ->
@@ -254,15 +269,12 @@ elabH free r = do
               case (attemptM $ lookupVar env s) of
                  Nothing -> return ()
                  Just (pt, ve) -> do 
-                    er <- mkRef $ HeapifyEH (assign (assignments pt ct) ve)
+                    let ve' = (assign (assignments pt ct) ve)
+                    er <- mkRef (typeof ve') $ HeapifyEH ve'
                     modify $ \es -> es { es_decls = Map.insert s er decls }
                     writeRef r (RefEH er)
                     elabH free r
-    RefEH x -> do
-      xv <- elabHed free x
-      case xv of
-        RefEH y -> writeRef r xv
-        _ -> return ()
+    RefEH x -> error $ "readRef returned RefEH in elabH"
     HeapifyEH exp -> do
         heapified <- heapify Map.empty exp
         writeRef r heapified
@@ -287,38 +299,38 @@ reduce s@(Sig n _) v r = do
       in do
         x' <- reduce s v x
         ms' <- mapM rm ms 
-        mkRef $ CaseEH x' ms'
+        mkRef (rtype r) $ CaseEH x' ms'
     AppEH a b -> do
         a' <- reduce s v a
         b' <- reduce s v b
-        mkRef $ AppEH a' b'
+        mkRef (rtype r) $ AppEH a' b'
     LamEH (Sig nm _) _ | nm == n -> return r
     LamEH ls b -> do
         b' <- reduce s v b
-        mkRef $ LamEH ls b'
+        mkRef (rtype r) $ LamEH ls b'
     ConEH {} -> return r
     VarEH (Sig nm _) | nm == n -> return v
     VarEH {} -> return r
-    RefEH x -> reduce s v x
+    RefEH x -> error $ "readRef returned RefEH in reduce"
     HeapifyEH exp -> do
         x <- heapify Map.empty exp
         writeRef r x
         reduce s v r
 
 -- | Make and return a reference to the given expression.
-mkRef :: ExpH s -> ElabH s (ExpR s)
-mkRef e = do
+mkRef :: Type -> ExpH s -> ElabH s (ExpR s)
+mkRef t e = do
     id <- gets es_nid
     modify $ \es -> es { es_nid = id+1 }
-    r <- liftST $ newSTRef (e, Nothing)
-    let er = ExpR id r
+    r <- liftST $ newSTRef e
+    let er = ExpR id t r
     --trace (printr er ++ ": " ++ print e) (return er)
     return er
 
 
 -- | Read a reference.
 readRef1 :: ExpR s -> ElabH s (ExpH s)
-readRef1 (ExpR _ r) = fmap fst $ liftST $ readSTRef r
+readRef1 (ExpR _ _ r) = liftST $ readSTRef r
 
 -- | Read a reference, following chains to the end.
 readRef :: ExpR s -> ElabH s (ExpH s)
@@ -329,16 +341,8 @@ readRef r = do
     _ -> return v
 
 writeRef :: ExpR s -> (ExpH s) -> ElabH s ()
-writeRef er@(ExpR id r) e = --trace (printr er ++ ": " ++ print e) $
-    liftST $ writeSTRef r (e, Nothing)
-    
-readReachable :: ExpR s -> ElabH s (Maybe (Set.Set (ExpR s)))
-readReachable (ExpR _ r) = fmap snd $ liftST $ readSTRef r
-
-writeReachable :: ExpR s -> Set.Set (ExpR s) -> ElabH s ()
-writeReachable (ExpR _ r) s = liftST $ do
-  (e, _) <- readSTRef r
-  writeSTRef r (e, Just s)
+writeRef er@(ExpR _ _ r) e = --trace (printr er ++ ": " ++ print e) $
+    liftST $ writeSTRef r e
 
 isBinaryPrim :: Name -> Bool
 isBinaryPrim n = n `elem` [
@@ -361,97 +365,79 @@ binaryPrim "Seri.Lib.Prelude.__prim_eq_Integer" (IntegerL a) (IntegerL b) r = wr
 binaryPrim _ _ _ _ = return ()
 
         
-class Reachable a s where
-  -- Return the set of complex references reachable from the given object.
-  -- Also updates the cache of reachable objects.
-  reachable :: a -> ElabH s (Set.Set (ExpR s))
-
-instance (Reachable a s) => Reachable [a] s where 
-  reachable xs = fmap Set.unions $ mapM reachable xs
-
-instance Reachable (ExpH s) s where
-  reachable e = 
-    case e of 
-        LitEH {} -> return Set.empty
-        CaseEH x ms -> do
-            rx <- reachable x
-            rms <- reachable ms
-            return (Set.union rx rms)
-        AppEH a b -> do
-            ra <- reachable a
-            rb <- reachable b
-            return (Set.union ra rb)
-        LamEH s b -> reachable b
-        ConEH {} -> return Set.empty
-        VarEH {} -> return Set.empty
-        RefEH x -> reachable x
-        HeapifyEH {} -> return Set.empty
-
-instance Reachable (MatchH s) s where
-  reachable (MatchH p b) = reachable b
-
-instance Reachable (ExpR s) s where
-  reachable r =
-    let isComplex (CaseEH {}) = True
-        isComplex (AppEH {}) = True
-        isComplex (LamEH {}) = True
-        isComplex (HeapifyEH {}) = True
-        isComplex _ = False
-    in do
-        mrs <- readReachable r
-        case mrs of
-          Just rs -> return rs
-          Nothing -> do
-            v <- readRef r
-            rs <- reachable v
-            let rs' = if isComplex v then Set.insert r rs else rs
-            writeReachable r rs'
-            return rs'
-
 -- Given the set of references which can be assumed to be in scope, deheapify
--- an expression.
-deheapify :: Set.Set (ExpR s) -> (ExpR s) -> ElabH s Exp
-deheapify f r = do
-  e <- readRef r 
-  case e of
-    LitEH l -> return (LitE l)
-    CaseEH x ms -> do
-        rx <- reachable x
-        rms <- reachable ms
-        let shared = Set.intersection rx rms
-        let dohere = Set.difference shared f
-        bindings <- mapM (mkBinding f) (Set.elems dohere)
-        xdh <- deheapify (Set.intersection rx shared) x
-        msdh <- mapM (deheapifym (Set.intersection rms shared)) ms
-        return $ letE bindings (CaseE xdh msdh)
-    AppEH a b -> do
-        ra <- reachable a
-        rb <- reachable b
-        let shared = Set.intersection ra rb
-        let dohere = Set.difference shared f
-        bindings <- mapM (mkBinding f) (Set.elems dohere)
-        adh <- deheapify (Set.intersection ra shared) a
-        bdh <- deheapify (Set.intersection rb shared) b
-        return $ letE bindings (AppE adh bdh)
-    LamEH s b -> do
-        bdh <- deheapify f b
-        return $ LamE s bdh
-    ConEH s -> return (ConE s)
-    VarEH s -> return (VarE s)
-    RefEH x -> deheapify f x
-    HeapifyEH exp -> return exp
+-- an expression, sharing complex expressions wherever possible.
+deheapify :: ExpR s -> ElabH s Exp
+deheapify r =
+  let -- | Deheapify the given reference and any references it depends on,
+      -- adding the deheapfied result to the state in the right order.
+      deheapr :: ExpR s -> StateT [(ExpR s, Exp)] (ElabH s) ()
+      deheapr r = do
+        done <- get
+        case lookup r done of
+            Just _ -> return ()
+            Nothing -> do
+              e <- lift $ readRef1 r
+              e' <- deheap e
+              modify $ (:) (r, e')
 
-deheapifym :: Set.Set (ExpR s) -> MatchH s -> ElabH s Match
-deheapifym f (MatchH p b) = do
-    bdh <- deheapify f b
-    return (Match p bdh)
+      deheap :: ExpH s -> StateT [(ExpR s, Exp)] (ElabH s) Exp
+      deheap (LitEH l) = return (LitE l)
+      deheap (CaseEH x ms) =
+        let deheapm (MatchH p b) = do
+              deheapr b 
+              return (Match p (rvar b))
+        in do
+            deheapr x
+            ms' <- mapM deheapm ms
+            return (CaseE (rvar x) ms')
+      deheap (AppEH a b) = do
+        deheapr a
+        deheapr b
+        return (AppE (rvar a) (rvar b))
+      deheap (LamEH s b) = do
+        deheapr b
+        return (LamE s (rvar b))
+      deheap (ConEH s) = return (ConE s)
+      deheap (VarEH s) = return (VarE s)
+      deheap (RefEH x) = do
+        deheapr x
+        return (rvar x)
+      deheap (HeapifyEH x) = return x
+  in do
+     deheaped <- execStateT (deheapr r) []
+     let rbindings = [(rsig r, e) | (r, e) <- deheaped]
+     return (letE (reverse (tail rbindings)) (snd (head rbindings)))
+
+-- Completely inline all references in the given expression.
+-- TODO: Perhaps performance can be improved if we cache inlinings of
+-- expressions?
+inline :: ExpR s -> ElabH s Exp
+inline r = do
+    e <- readRef r
+    case e of
+        LitEH l -> return (LitE l)
+        CaseEH x ms ->
+            let inlinem (MatchH p b) = do
+                    b' <- inline b
+                    return (Match p b')
+            in do
+                x' <- inline x
+                ms' <- mapM inlinem ms
+                return (CaseE x' ms')
+        AppEH a b -> do
+            a' <- inline a
+            b' <- inline b
+            return (AppE a' b')
+        LamEH s b -> do
+            b' <- inline b
+            return (LamE s b')
+        ConEH s -> return (ConE s)
+        VarEH s -> return (VarE s)
+        RefEH {} -> error $ "readRef returned RefEH in inline"
+        HeapifyEH x -> return x
+
     
-
-mkBinding :: Set.Set (ExpR s) -> ExpR s -> ElabH s (Sig, Exp)
-mkBinding f r@(ExpR id _) = do
-   e <- deheapify f r
-   return (Sig ("~" ++ show id) (typeof e), e)
-
 data MatchesResult s
  = Matched [(Sig, ExpR s)] (ExpR s)
  | UnMatched [MatchH s]
@@ -521,25 +507,28 @@ iswhnf x
 
 elaborateH :: Exp -> ElabH s Exp
 elaborateH e = do
-    r <- heapify Map.empty e >>= mkRef
+    r <- heapifyr Map.empty e
     elabH [] r
-    deheapify Set.empty r
+    mode <- gets es_mode
+    case mode of
+        WHNF -> inline r
+        SNF -> deheapify r
 
 elaborateST :: Mode -> Env -> Exp -> ST s Exp
 elaborateST mode env e = evalStateT (elaborateH e) (ES env mode Map.empty 1 Map.empty)
 
 elaborate :: Mode -> Env -> Exp -> Exp
 elaborate mode env e =
-  runST $ elaborateST mode env e
-  --let elabed = runST $ elaborateST mode env (trace ("elab " ++ show mode ++ ": " ++ pretty e) e)
-  --in trace ("elabed: " ++ pretty elabed) elabed
+  --runST $ elaborateST mode env e
+  let elabed = runST $ elaborateST mode env (trace ("elab " ++ show mode ++ ": " ++ pretty e) e)
+  in trace ("elabed: " ++ pretty elabed) elabed
 
 letEH :: [(Sig, ExpR s)] -> ExpR s -> ElabH s (ExpR s)
 letEH [] x = return x
 letEH ((s, v):bs) x = do
     sub <- letEH bs x
-    r <- mkRef $ LamEH s sub
-    mkRef (AppEH r v)
+    r <- mkRef (arrowsT [rtype v, rtype x]) $ LamEH s sub
+    mkRef (rtype x) (AppEH r v)
 
 integerEH :: Integer -> ExpH s
 integerEH i = LitEH (IntegerL i)

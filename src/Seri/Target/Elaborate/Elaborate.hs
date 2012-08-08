@@ -48,14 +48,8 @@ import Seri.Bit
 import Seri.Failable
 import Seri.Lambda
 
--- | Simple elaboration doesn't do elaboration inside lambdas or unmatched
--- case alternatives, or arguments to functions which aren't primitive or
--- lambdas.
---
--- Full elaboration fully elaborations inside lambda expressions and case
--- alternatives. A fully elaborated expression is potentially an infinite
--- object.
-data Mode = Simple | Full
+data Mode = WHNF -- ^ elaborate to weak head normal form.
+          | SNF  -- ^ elaborate to sharing normal form.
     deriving (Show, Eq)
 
 -- | Elaborate an expression under the given mode.
@@ -104,8 +98,8 @@ elaborate' mode env freenms e =
             -- TODO: return error if no alternative matches?
             NoMatched -> CaseE rx [last ms]
             Matched vs b -> elabme $ letE vs b
-            UnMatched ms' | mode == Simple -> CaseE rx ms'
-            UnMatched ms' | mode == Full ->
+            UnMatched ms' | mode == WHNF -> CaseE rx ms'
+            UnMatched ms' | mode == SNF ->
                 CaseE rx [Match p (elabmenms (bindingsP' p) b) | Match p b <- ms']
        AppE a b ->
            case (elabme a, elabme b) of
@@ -155,8 +149,8 @@ elaborate' mode env freenms e =
                 in elabme $ CaseE x [Match p (AppE b y) | Match p b <- ms]
             
              (ra, rb) -> AppE ra rb
-       LamE {} | mode == Simple -> e
-       LamE s@(Sig n _) b | mode == Full -> LamE s (elabmenm n b)
+       LamE {} | mode == WHNF -> e
+       LamE s@(Sig n _) b | mode == SNF -> LamE s (elabmenm n b)
        ConE {} -> e
        VarE (Sig "Seri.Lib.Prelude.numeric" (NumT nt)) -> ConE (Sig ("#" ++ show (nteval nt)) (NumT nt))
        VarE (Sig n _) | n `elem` freenms -> e
