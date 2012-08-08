@@ -187,3 +187,203 @@ it's the kind of thing, for yices, we actually don't want to monomorphize...
 
 Okay, turn it into "#n" for the integer n. That's fine with me.
 
+Mon Aug  6 15:47:24 EDT 2012
+
+Cool! So the basic stuff is there, the path for bit vectors through yices.
+Honestly, I'd rather do the rest lazily. Hopefully that's okay.
+
+Can I move on to the elaborator? Figure out what this bug is? I think I
+should. At least for the rest of today. That will be good.
+
+1. Figure out array bug.
+2. Try using heap elaborator for everything, see how it works (I expect
+failures in full reduction do to alpha renaming issues).
+
+Oh, I need to also add bit vector support to the heap elaborator. Ug. Let me
+do that tomorrow morning, because I don't feel like doing it now.
+
+Mon Aug  6 16:09:35 EDT 2012
+
+Trouble: it's going to be hard to debug this array thing. I can't step through
+thousands of elaboration steps by hand to figure out what's going on.
+
+I could try changing things randomly? Try being less lazy with reduce...
+
+Or, don't let reduces pass each other. So, reduce of reduceEH should force the
+reduceEH a step then reduce?
+
+Mon Aug  6 16:16:14 EDT 2012
+
+Well, I managed to break the loop by changing a reduceEH to a reduce. I'm not
+sure if that totally defeats the purpose of wanting reduceEH to be lazy in the
+first place.
+
+Now we run into the full elaboration troubles.
+
+We aren't doing full inlining for some reason.
+
+Let me print out expressions before and after full inlining, just to see what
+we get, and if it looks okay to me.
+
+Mon Aug  6 16:35:50 EDT 2012
+
+Trouble is with alpha renaming. We are capturing a variable we shouldn't be
+capturing? Oh, no, that may not be the issue yet. No, there's something else
+first. It's like, we just don't finish. We don't go into the second argument
+of elaboration for (<) in the full mode.
+
+Let me check out the code, see if that's expected.
+
+Yup. I see the trouble here.
+
+Mon Aug  6 16:45:18 EDT 2012
+
+Looks like the Complex test gets stuck. Sadness.
+
+And the simple query test is doing strange things I don't expect.
+
+Question, why do I want beta reduction to be lazy?
+
+If I do a beta reduction, we know I'm going to want to elaborate the whole
+thing, so I may as well reduce the whole thing?
+
+I suppose that's not entirely true. Say I have something like:
+
+(\x -> foo x sludge) bar
+
+I don't want to necessarily reduce sludge yet.
+
+Whatever. Anyway, I should try to figure out what's up with Query1. Figure out
+what I would like to see, what I expect to see, what I am seeing, and why.
+
+Here's what I would like to see:
+
+First assertion: 
+    assert (free~1 < 6)
+
+Second assertion:
+    assert (free~1 > 4)
+
+What I'm actually seeing:
+
+Mon Aug  6 17:00:13 EDT 2012
+
+First issue:
+
+let x = free~1
+in do
+    assert (x < 6)
+    assert (x > 4)
+    query x
+
+Is turned into:
+
+let ~3 = free~1
+in nobind_Query (let x = free~1 in assert (x < 6))
+                (let x = free~1 in do
+                    assert (x > 4)
+                    query x)
+
+There are a couple of issues with this.
+1. Lazy reduction seems... odd here. Why do we want to do lazy reduction?
+Oh, yes, I remember, it was a performance concern... Something to let us
+lazily heapify. In particular, we want the argument to assert to be very
+eazily deheapified?
+
+Except... the argument, if unevaluated, is going to be so small anyway, the
+cost of deheapifying is like, not much at all. So I think I shouldn't bother.
+
+There is an easy fix here, which I think I should do: don't reduce lazily.
+
+2. What's up with ~3? Why do we declare it and then not use it?
+
+Let me start with don't reduce lazily. Because now that I think of it, that
+seems silly. And... maybe even deheapify lazily is silly. Because, in
+particular, deheapify doesn't do inlining like it did at one point. So
+anything that isn't evaluated is going to be simple, and thus cheap to heapify
+and deheapify.
+
+What do you think? Dump lazy reduce and heapification?
+
+Sounds like a plan to me. I can always add it back if we end up spending a lot
+of time in deheapification.
+
+So, what's the observation here? Besides that I should get more sleep at
+night, because I do stupid things if I don't: premature optimization is a
+waste.
+
+Mon Aug  6 17:19:51 EDT 2012
+
+Unfortunately, getting rid of deheapify and making reduce not lazy don't work.
+We get stuck in an infinite loop.
+
+I should try to go just a step at a time. First make reduce strict. Then
+deheapify. Or, if that doesn't work, go the other way around.
+
+Mon Aug  6 17:23:23 EDT 2012
+
+Making reduce strict works fine. Let me continue along this line.
+
+let x = free~1
+in do
+    assert (x < 6)
+    assert (x > 4)
+    query x
+
+Is now turned into:
+
+let ~3 = free~1
+in nobind_Query (assert (free~1 < 6))
+                (do
+                    assert (free~1 > 4)
+                    query free~1)
+
+Good, that's better. But still we have this funny ~3 thing. What's with that?
+Why is that being made into a let?
+
+Let's look at deheapify to find out.
+
+It must be considered a reachable reference...
+
+Mon Aug  6 17:36:08 EDT 2012
+
+It is considered reachable, because it's a HeapifyEH. We don't refer to it,
+because ...
+
+Because something is wrong...
+
+When do I ever refer to a reference in scope?
+I should do that when I call RefEH, not deheapify?
+
+So this is a bug in deheapify.
+
+Ah yes, I just never actually refer to the variables I define in let like I
+should be. We build up this sharing and then ignore it.
+
+In order to return the right thing, I need to keep track of the type of
+expression a reference refers to. Or have some way to reconstruct it.
+
+Okay, I'll do that first thing tomorrow or some such.
+
+Mon Aug  6 17:58:23 EDT 2012
+
+Problem with not making heapify lazy has something to do with heapifying
+variables we've just inlined.
+
+What could the problem be? Are we trying to inline infinite expressions?
+That's the only thing I could think of.
+
+But this is simple elaboration, so we can't be, can we?
+
+We aren't getting stuck in heapify. We are getting stuck in reduce. Something
+that must have been stopped before when trying to reduce a heapify expression?
+
+Oh. Hmm... Maybe, um...
+
+Let's say we have a recursive function. It refers to itself. Reduce isn't
+lazy. It's going to do full reduction. But if it tries to reduce...
+
+Is this an alpha renaming issue?
+
+I don't know. Let me look at it tomorrow.
+

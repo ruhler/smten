@@ -41,7 +41,6 @@ import System.Environment
 
 import Seri.Failable
 import Seri.Lambda
---import Seri.Target.Elaborate.ElaborateH
 import Seri.Target.Elaborate
 
 main :: IO ()

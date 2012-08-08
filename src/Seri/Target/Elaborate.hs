@@ -34,8 +34,8 @@
 -------------------------------------------------------------------------------
 
 module Seri.Target.Elaborate(
-    module Seri.Target.Elaborate.Elaborate,
+    module Elaborate
     ) where
 
-import Seri.Target.Elaborate.Elaborate
+import Seri.Target.Elaborate.ElaborateH as Elaborate
 

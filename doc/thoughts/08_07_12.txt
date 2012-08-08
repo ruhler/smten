@@ -1,0 +1,335 @@
+
+Tue Aug  7 09:20:23 EDT 2012
+
+Goal for today: make the heap elaborator work the way I want it.
+
+Let me start clean slate, assume it works reasonably well. Just make sure it
+works exactly as I want, and fix problems as I see them.
+
+First step: Query1.
+
+Tue Aug  7 09:26:01 EDT 2012
+
+Query1 looks great to me.
+
+Next step... Query2?
+Why not?
+
+Query2 looks fine.
+
+Complex...
+
+Is looking okay. It's hard to look through everything by hand.
+How about, let me jump to the trouble spots.
+
+Ah, in Complex, good. Claim is, Seri.Lib.Prelude.not is not defined. Question
+is, why didn't I elaborate that away?
+
+We are doing a full elaboration. Let me see...
+
+Tue Aug  7 09:43:26 EDT 2012
+
+The problem is, we aren't elaborating inside the alternatives of a case
+statement if we don't know which alternative will be taken. For full
+elaboration, that's wrong.
+
+Tue Aug  7 09:49:08 EDT 2012
+
+I wonder if the problem is the case statement isn't being matched. We have:
+
+free~1 :: (Integer, Bool)
+
+As the expression, and (i, b) as the pattern. This should match, right?
+
+I feel like it would be nice if case statements which don't match are
+indicated somehow.
+
+Tue Aug  7 10:10:16 EDT 2012
+
+Well, we go to look up Seri.Lib.Prelude.<, but we don't find it in the
+environment? What's with that?
+
+Tue Aug  7 10:17:48 EDT 2012
+
+Oh, Seri.Lib.Prelude.< is primitive. That's not the one to be worrying about.
+The real worry is, why don't we elaborate not?
+
+Tue Aug  7 10:23:12 EDT 2012
+
+Oh, I think I found it.  If it's an application, and the first argument is an
+application, but the first argument of that application is not a primitive...
+then when full elaborating, we should still elaborate the second argument.
+
+Tue Aug  7 10:26:12 EDT 2012
+
+Next problem: Bluespec query doesn't compile?
+
+Tue Aug  7 10:27:08 EDT 2012
+
+Okay, I recognize this problem. Now we have to worry about alpha renaming.
+Much sadness.
+
+First question... Can't I do away with the alpha renaming problem? Why does
+this come up? Can I do something so I don't have to worry about it? Perhaps as
+a part of heapify? Especially now that we no longer care about lazy
+heapification?
+
+Okay, first step, understand what the problem is.
+
+Could be:
+
+We have a lambda expression as follows. It doesn't have any argument... Why
+would it not have any argument? This shouldn't happen in our case. I don't
+think this is the problem I'm seeing.
+
+\b -> (\a -> (\b -> b + a)) b
+
+Much more likely is the problem with case statements:
+
+case (free~1) of
+    b -> (\a -> (b -> b + a)) b
+    _ -> blah
+
+Good. This is certainly a potential problem. We don't know what will match, so
+we can't do any sort of reduction... We can't. Even if we had lazy matching,
+what would it look like?
+
+So, we say fine, I don't know which alternative to pick, but I can certainly
+simplify the alternatives. Starting with the first one:
+
+(\a -> (b -> b + a)) b
+
+Is a simple application. I can do the reduction:
+
+b -> b + b
+
+Uh oh! We've captured the name 'b' in a bad way.
+
+Okay, so we want to avoid the problem. I say, just make up unique names for
+the variables. Do a uniquify pass at the same time we do heapify. Any time we
+get to a lambda, give the argument a unique name, any time we get to a
+variable, renaming it according to the name map. Simple. No need to rename at
+run time. It shouldn't cost us much at all to do.
+
+And the only time we use HeapifyEH is for a top level entity... I don't know
+that that matters actually.
+
+Question is, how can we pick names in a meaningful way that's somewhat
+readable? I think, just have a map from name to integer which is the unique
+version for that name.
+
+We do have to worry about names on inline. So we should be unique across the
+entire environment of things.
+
+What about recursive functions? Won't we have name duplicates there?
+
+Hmm... Is there another way I can be lazy?
+
+For example, the trouble comes when I go inside a lambda or a case, where we
+have a free variable we are going into. What we want to do is say: we have
+this free variable 'b', say, which must not be captured by anybody. So, 'b'
+becomes reserved, and any time you run into an expression referring to 'b',
+you must use a different name?
+
+That sounds harder than a single uniquification phase. But I am worried about
+recursive functions.
+
+Well, it should be simple, really. When we are doing beta reduction, look at
+all the free variables... oh. That could be costly with all our references...
+A single uniqification pass would be better.
+
+Other forms of sharing are also a problem here.
+
+Let me see if I can come up with an example.
+
+let foo = \a -> (\b -> a b)
+in foo foo
+
+(\a -> (\b -> a b)) (\a -> (\b -> a b))...
+
+Ug. Maybe what I want is, when I do beta reduction, come up with a new name?
+
+\a -> (\b -> \b + a)) b
+
+Turns into...
+
+No. Not quite.
+
+Really, we want to keep track of the free names in reduction. Free names in
+the argument. And give reduce a rename map. But ug, I'd rather not...
+
+I could instead try to rename the free variables, but that won't work if, for
+example, they are given outside of everything? Hmm...
+
+case .. of
+    b -> \a -> (\b -> \b + a)) b
+
+I get to 'b', I say, I don't want this to be captured badly, so let me give it
+a new name. First do the transformation:
+
+case .. of
+   b -> 
+        let b~ = b
+        in \a -> (\b -> \b + a)) b~
+
+But that doesn't help us any, does it.
+
+Hmm...
+
+Let me figure out why this uniqification won't work. If all variable names are
+unique, we don't have to worry about alpha renaming. When I heapify, I can
+give everything a unique name. But, the fear is, some sharing will allow you
+to have two names which should mean something different, but don't.
+
+I don't know. Let it stew.
+
+Tue Aug  7 16:21:27 EDT 2012
+
+Stewing suggest...
+
+Without recursive functions, I think it might be possible, but extremely
+unlikely to have a renaming issue after uniqification. With recursive
+functions, it's very easy to have a renaming issue.
+
+I have a proposal though. Use De Bruijn indices. We choose our own
+representation for expressions in the elaborator, just variables, or, more
+specifically, bound variables to be the De Bruijn index. Construct them at
+time of heapify (which means we should know at heapify what variables are
+bound).
+
+So, we need to figure out a number of things here.
+
+1. how to construct the expressions with proper index
+2. how to deheapify the expressions with indices
+3. how to perform beta reduction
+4. how this solves the alpha renaming problem.
+
+
+So, let's use my fun example:
+
+\b -> (\a -> (\b -> a + b)) b
+
+Is an expression. When we construct this, we rewrite it as:
+
+\b -> (\a -> (\b -> @1 + @0)) @0
+
+The construction, I think, is easy. Maintain a map from bound name to its
+index. Any time you enter a lambda, add it's mapping to 0, increment all the
+other mappings. Now, just lookup the variable in the mapping to figure out
+what index to use.
+
+Now, now that we have it in this form... how do we do beta reduction?
+
+The argument contains @0... err... and this needs to be renamed doesn't it...
+
+That's bad. Because the argument could contain a whole bunch of references,
+and they all need to be incremented any time I beta reduce inside a lambda.
+That doesn't improve anything I don't think.
+
+Oh well, back to the drawing board I suppose. I feel like unique names almost
+perfectly solve the problem. Just that issue with sharing and recursion...
+
+Well, I could implement the uniqification, and not worry about it until we run
+into problems. It's a better solution than we have now at least?
+
+I wonder if we could be very clever...
+
+Let's say, whenever we create a lambda, we do a beta substitution right then,
+for a new RefE. So we create a reference to some to-be filled thing.
+
+Now, you want to do a beta reduction. Well, the high level idea is: set the
+value of the RefE, and you automatically have complete beta reduction.
+
+The problem with this approach is: what happens if you apply the lambda twice,
+in two different places, with different arguments? That is, can we somehow
+make a copy of the lambda to deal with different applications of it?
+
+Or... it seems the problem is not knowing what the argument to something is.
+Right, this happens in two places: going inside lambda when the argument is
+not fully determined, or: going inside case, again, when the argument is not
+fully determined. Well, what if I gave a dummy name for the argument?
+
+For example:
+
+\b -> (\a -> (\b -> a + b)) b
+
+I want to elaborate this. We have no argument, because it hasn't been applied.
+I want to "fully" elaborate it anyway.
+
+So, make a dummy argument, give it a brand new, unique name, and do an
+application, and put it inside a lambda?
+
+The idea is, we can do a renaming like:
+
+\b* -> ((\b -> blah) b*)
+
+Where suppose b* is a unique name. Now, how can I simplify this?
+
+I can go into \b* without concern, because b* is a unique name, I know it
+won't be captured by anything else, or accidentally capture anything else.
+
+\b* ->
+(\b -> (\a -> (\b -> a + b)) b) b*
+
+Now I can do the reduction I couldn't before:
+
+\b* ->
+ (\a -> (\b -> a + b)) b*
+
+Continue to simplify:
+
+\b* ->
+ (\b -> b* + b)
+
+Until we are all simplified, and we end up with:
+
+\b* -> (\b -> b* + b)
+
+Which is exactly what we wanted. Though here we may go further too.
+
+\b* -> (\b** -> (\b -> b* + b) b**)
+\b* -> (\b** -> (b* + b**))
+
+Which is what we want.
+
+Question... will this work for case statements?
+
+case blah of
+    b -> (\a -> (\b -> a + b)) b 
+    _ -> ...
+
+I want to go inside, but I don't know what the value of b will be... Let me go
+back a second. Is what I've done above the same as renaming? With the only
+difference that we leverage reduction to do the renaming for us? What if I
+just renamed b directly?
+
+\b -> (\a -> (\b -> a + b)) b
+
+rename to:
+
+\b* -> (\a -> (\b -> a + b)) b*
+
+simplifies to:
+\b* -> \b -> b* + b
+
+Sure. So, we can rename pattern variables too.
+
+case blah of
+    b* -> (\a -> (\b -> a + b)) b*
+    _ -> ...
+
+Does this handle the recursive case correctly? I think it may, because it
+doesn't do renaming until we go elaborating. Of course... hmm...
+
+Interesting observation: if you encounter a recursive function in full
+elaboration, you've got some big problems. Thus, I think it's fair to assume
+that won't be the case.
+
+Thus... we can just give everything unique names from the start. No need to
+do it lazily. Cool. So that's the solution. Give unique names in heapify.
+
+I need to remember, also, to add type info to the references, or whatever, so
+that I can actually have them refer to a defined variable rather than inlining
+directly. That's a sharing/performance thing for yices. It doesn't matter for
+correctness or performance for straight up elaboration.
+

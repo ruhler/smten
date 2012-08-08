@@ -144,7 +144,7 @@ testarray = do {
     t "arrsub0" (42 == (arr ! 0));
     t "arrsub1" (12 == (arr ! 1));
     t "arrsub2" (19 == (arr ! 2));
-    --t "arrupd" (23 == ((arr // [(1, 23)]) ! 1));
+    t "arrupd" (23 == ((arr // [(1, 23)]) ! 1));
     };
 
 v4 :: Vector #4 Bool;
@@ -195,8 +195,8 @@ t msg False = fail msg;
 integer :: Integer -> Integer;
 integer = id;
 
-tests :: Test ();
-tests = do {
+testbasic :: Test ();
+testbasic = do {
     t "a" (integer 42 == (\x -> (((x*x) + (3*x)) + 2)) 5);
     t "b" (42 == (foo1));
     t "c" (42 == (foo2 5));
@@ -236,9 +236,14 @@ tests = do {
     t "F" (12 == testlet);
     t "G" (3 == shadowmeth);
     t "H" (3 == (length [integer 1, 5, 2]));
+};
+
+tests :: Test ();
+tests = do {
+    testbasic;
     testarray;
     testvector;
-    testbit;
+    --testbit;
 };
 
 testall :: Bool;
