@@ -43,8 +43,6 @@ module Seri.Target.Elaborate.ElaborateH (
     Mode(..), elaborate,
     ) where
 
-import Prelude hiding (print)
-
 import Debug.Trace
 
 import Control.Monad.ST
@@ -84,6 +82,11 @@ type ElabH s = StateT (ES s) (ST s)
 liftST :: ST s a -> ElabH s a
 liftST = lift
 
+writeER :: ExpR s -> ER s -> ElabH s ()
+writeER r@(ExpR _ _ str) x =
+  --traceShow (r, x) $ 
+  liftST $ writeSTRef str x
+
 newname :: Name -> ElabH s Name
 newname n = do
     m <- gets es_unique
@@ -94,11 +97,22 @@ newname n = do
 type ID = Integer
 
 data ER s = ER {
-    er_exp :: ExpH s
-}
+    -- The expression pointed to be the reference.
+    er_exp :: ExpH s,
+
+    -- The longest common prefix from the root to this expression.
+    -- This is used for deheapification only. The root is at the tail position
+    -- of the list.
+    er_loc :: Maybe [ExpR s],
+
+    -- List of declarations made so far at this node. The earlier declarations
+    -- in the list depend on the later declarations in the list.
+    -- This is used for deheapfication only.
+    er_decls :: [(ExpR s, Exp)]
+} deriving (Show)
 
 er :: ExpH s -> ER s
-er e = ER e
+er e = ER e Nothing []
 
 -- | A reference to an expression.
 -- This is annotated with 
@@ -124,12 +138,12 @@ data ExpH s
   | RefEH (ExpR s)
   | HeapifyEH Exp
 
-printr :: ExpR s -> String
-printr (ExpR id _ _) = "~" ++ show id
+instance Show (ExpR s) where
+    show (ExpR id _ _) = "~" ++ show id
 
 -- Variable name to use for the given reference in the deheapified expression.
 rname :: ExpR s -> Name
-rname = printr
+rname = show
 
 rtype :: ExpR s -> Type
 rtype r@(ExpR _ t _) = t
@@ -140,23 +154,23 @@ rsig r = Sig (rname r) (rtype r)
 rvar :: ExpR s -> Exp
 rvar r = VarE (rsig r)
 
-print :: ExpH s -> String
-print e = 
-  let printms [] = ""
-      printms (m:ms) = printm m ++ "; " ++ printms ms
-      printm (MatchH p b) = pretty p ++ " -> " ++ printr b
-  in case e of
-       LitEH l -> pretty l
-       CaseEH r ms -> "CaseEH " ++ printr r ++ " " ++ printms ms
-       AppEH a b -> "AppEH " ++ printr a ++ " " ++ printr b 
-       LamEH s b -> "LamEH " ++ pretty s ++ " " ++ printr b
-       ConEH s -> "ConEH " ++ pretty s
-       VarEH s -> "VarEH " ++ pretty s
-       RefEH r -> "RefEH " ++ printr r
-       HeapifyEH e -> "HeapifyEH " ++ pretty e
+instance Show (ExpH s) where
+    show e = 
+      case e of
+        LitEH l -> pretty l
+        CaseEH r ms -> "CaseEH " ++ show r ++ " " ++ show ms
+        AppEH a b -> "AppEH " ++ show a ++ " " ++ show b 
+        LamEH s b -> "LamEH " ++ pretty s ++ " " ++ show b
+        ConEH s -> "ConEH " ++ pretty s
+        VarEH s -> "VarEH " ++ pretty s
+        RefEH r -> "RefEH " ++ show r
+        HeapifyEH e -> "HeapifyEH " ++ pretty e
 
     
 data MatchH s = MatchH Pat (ExpR s)
+
+instance Show (MatchH s) where
+    show (MatchH p b) = pretty p ++ " -> " ++ show b ++ ";"
 
 -- | Heapify an expression, given a rename mapping for bound variables.
 heapify :: Map.Map Name Name -> Exp -> ElabH s (ExpH s)
@@ -216,7 +230,6 @@ elabH :: [Sig] -> ExpR s -> ElabH s ()
 elabH free r = do
   mode <- gets es_mode
   e <- readRef r
-  --case (trace ("elab " ++ printr r) e) of
   case e of
     LitEH {} -> return ()
     CaseEH x ms -> do
@@ -332,8 +345,8 @@ mkRef t e = do
     modify $ \es -> es { es_nid = id+1 }
     r <- liftST $ newSTRef (er e)
     let er = ExpR id t r
-    --trace (printr er ++ ": " ++ print e) (return er)
-    return er
+    do --traceShow (er, e)
+       return er
 
 
 -- | Read a reference.
@@ -348,9 +361,22 @@ readRef r = do
     RefEH x -> readRef x
     _ -> return v
 
+readDest :: ExpR s -> ElabH s (Maybe (ExpR s))
+readDest (ExpR _ _ r) = do
+    loc <- fmap er_loc $ liftST $ readSTRef r
+    return $ do
+        l <- loc
+        if null l then Nothing else return (head l)
+
+readDecls :: ExpR s -> ElabH s [(ExpR s, Exp)]
+readDecls (ExpR _ _ r) = fmap er_decls $ liftST $ readSTRef r
+
+addDecl :: ExpR s -> (ExpR s, Exp) -> ElabH s ()
+addDecl (ExpR _ _ r) x = do
+    liftST $ modifySTRef r $ \er -> er { er_decls = x : er_decls er}
+
 writeRef :: ExpR s -> (ExpH s) -> ElabH s ()
-writeRef x@(ExpR _ _ r) e = --trace (printr x ++ ": " ++ print e) $
-    liftST $ writeSTRef r (er e)
+writeRef r e = writeER r (er e)
 
 isBinaryPrim :: Name -> Bool
 isBinaryPrim n = n `elem` [
@@ -383,27 +409,34 @@ isfunt t =
 deheapify :: ExpR s -> ElabH s Exp
 deheapify r =
   let -- | Deheapify the given reference and any references it depends on,
-      -- adding the deheapfied result to the state in the right order.
+      -- adding the deheapfied result to the proper node in the right order.
       -- Returns an expression to use to represent this.
-      deheapr :: ExpR s -> StateT [(ExpR s, Exp)] (ElabH s) Exp
+      deheapr :: ExpR s -> ElabH s Exp
       deheapr r = do
-        e <- lift $ readRef r
+        e <- readRef r
         case e of
             LitEH l -> return (LitE l)
             VarEH s -> return (VarE s)
             ConEH s -> return (ConE s)
-            _ | isfunt (rtype r) -> lift $ inline r
             _ -> do
-                done <- get
+                let makeme = do
+                        e <- readRef1 r
+                        body <- deheap e
+                        decls <- readDecls r
+                        let rbindings = [(rsig r, e) | (r, e) <- decls]
+                        return $ letE (reverse rbindings) body
+                Just dest <- readDest r
+                done <- readDecls dest
                 case lookup r done of
                     Just _ -> return (rvar r)
-                    Nothing -> do
-                      e <- lift $ readRef1 r
-                      e' <- deheap e
-                      modify $ (:) (r, e')
+                    _ | isfunt (rtype r) -> makeme
+                    _ | dest == r -> makeme
+                    _ -> do 
+                      e' <- makeme
+                      addDecl dest (r, e')
                       return (rvar r)
 
-      deheap :: ExpH s -> StateT [(ExpR s, Exp)] (ElabH s) Exp
+      deheap :: ExpH s -> ElabH s Exp
       deheap (LitEH l) = return (LitE l)
       deheap (CaseEH x ms) =
         let deheapm (MatchH p b) = do
@@ -427,9 +460,8 @@ deheapify r =
         return x'
       deheap (HeapifyEH x) = return x
   in do
-     (e, deheaped) <- runStateT (deheapr r) []
-     let rbindings = [(rsig r, e) | (r, e) <- deheaped]
-     return $ letE (reverse rbindings) e
+     updateLoc [] r
+     deheapr r
 
 -- Completely inline all references in the given expression.
 -- TODO: Perhaps performance can be improved if we cache inlinings of
@@ -541,9 +573,9 @@ elaborateST mode env e = evalStateT (elaborateH e) (ES env mode Map.empty 1 Map.
 
 elaborate :: Mode -> Env -> Exp -> Exp
 elaborate mode env e =
-  --runST $ elaborateST mode env e
-  let elabed = runST $ elaborateST mode env (trace ("elab " ++ show mode ++ ": " ++ pretty e) e)
-  in trace ("elabed: " ++ pretty elabed) elabed
+  runST $ elaborateST mode env e
+  --let elabed = runST $ elaborateST mode env (trace ("elab " ++ show mode ++ ": " ++ pretty e) e)
+  --in trace ("elabed: " ++ pretty elabed) elabed
 
 letEH :: [(Sig, ExpR s)] -> ExpR s -> ElabH s (ExpR s)
 letEH [] x = return x
@@ -568,3 +600,34 @@ boolEH :: Bool -> ExpH s
 boolEH True = trueEH
 boolEH False = falseEH
 
+
+-- Identify the location where this expression should be defined.
+-- Updates the er_loc field for each reference.
+updateLoc :: [ExpR s] -> ExpR s -> ElabH s ()
+updateLoc path r@(ExpR _ _ str)  =
+  let lprefix :: (Eq a) => [a] -> [a] -> [a]
+      lprefix (a:as) (b:bs) | a == b = a : lprefix as bs
+      lprefix _ _ = []
+    
+      -- The path list is stored in reverse order.
+      pprefix :: [ExpR s] -> [ExpR s] -> [ExpR s]
+      pprefix a b = reverse (lprefix (reverse a) (reverse b))
+
+  in do
+    let path' = r:path
+    er <- liftST $ readSTRef str
+    writeER r $ er { er_loc = Just (maybe path' (pprefix path') (er_loc er)) }
+    e <- readRef1 r
+    case e of
+        LitEH {} -> return ()
+        CaseEH x ms -> 
+            let domatch (MatchH _ b) = updateLoc path' b
+            in updateLoc path' x >> mapM_ domatch ms
+        AppEH a b -> do
+            updateLoc path' a
+            updateLoc path' b
+        LamEH _ b -> updateLoc path' b
+        ConEH {} -> return ()
+        VarEH {} -> return ()
+        RefEH x -> updateLoc path' x
+        HeapifyEH {} -> return ()

@@ -1,0 +1,388 @@
+
+Thu Aug  9 09:47:39 EDT 2012
+
+Thoughts on how to handle tightly bound let generation in deheapification:
+
+1. Annotate each reference with the longest path from the root node that
+is shared by all paths from the root node to that reference.
+
+For example, if you can reach some expression with that paths:
+
+a,b,c,d
+a,b,e,f
+
+Then annotate it with a,b. This is where the binding should be made.
+
+To do this annotation, do a graph search, any time you encounter a reference,
+update its annotation with what's common between the current path to reach it
+and whatever other info was there.
+
+2. deheapify.
+Now deheapification works like this:
+1. deheapify an expression as we do now.
+2. remove any references in the list of required decls which have the same
+prefix as the current location and put those bindings in a let expression at
+that point.
+
+You end up with a single expression with the lets you need. It should work
+just swell.
+
+But! Note... this really isn't the main priority, because the only thing it
+gets us is nicer code to read. It shouldn't affect performance or quality of
+sharing or anything like that.
+
+So, instead, for the next step: figure out what this bug I'm running into is.
+
+Thu Aug  9 12:02:26 EDT 2012
+
+Okay, I see the issue. But I'll have to think about it.
+
+We had something like:
+
+\b -> foo b
+
+And we decided to turn it into:
+
+let x = foo b
+in \b -> x
+
+Which is clearly wrong.
+ 
+Hmm... Let me think about this...
+
+If we did tight bindings, this would not be a problem, because we would have:
+
+\b -> let x = foo b in x
+
+Or, rather, in this case, just: \b -> foo b.
+
+I suspect that is a reasonable solution, especially considering I want to do
+it anyway.
+
+Are there other solutions? Err... I think tight bindings makes the most sense.
+
+So let me try implementing tight bindings, and see how it goes.
+
+Reminder of how it works:
+
+Each STRef points not only to an ExpH, but also to a list of ExpR, which is
+the common prefix. It should actually be a maybe list, so we can initialize it
+properly. This is only used during deheapification.
+
+We have a prep stage where we set those all properly. It's just a graph
+traversal. Then, for deheapification, add a post processing stage to add all
+the lets. This should be done in deheapr.
+
+Question: does this handle the case of where there's only a single reference
+to the expression, in which case we should just inline it? That is, return the
+expression instead of returning a reference to the expression.
+
+No. I don't think it does.
+
+Perhaps we should make a slight change. Let's say, for example, we have
+something like:
+
+let foo = ...
+    bar = foo
+in bar bar
+
+This should really reduce to:
+
+let foo = ...
+in foo foo
+
+Or, perhaps better:
+
+let bar = ...
+in bar bar
+
+And this, even though there are two paths to foo: left.bar and right.bar.
+
+The thing is, even though there are two paths to foo, they both come through
+the same parent. So, perhaps what's most important to keep track of is: which
+single parent is common to all references? Rather than which path is common to
+them all?
+
+Or maybe we want different information?
+
+Bah. Okay, let me do one thing at a time.
+
+Ug.
+
+Consider this case, before I do the brute force thing:
+
+let foo = ...
+    bar = foo foo
+in bar bar
+
+With the way I want to implement tightly bound stuff, this is what we get.
+foo is referred to twice in the main expression from different places.
+
+Erg. Really, don't I want to do a bottom up traversal? Isn't that much better
+than top down?
+
+It's like...
+
+I get to bar, then I say: is foo used anywhere else outside of this
+expression?
+
+If I had all the paths that lead to foo, I would see they always come from
+bar.
+
+Perhaps, then, what we really want is: who are all the immediate parents of an
+expression, and how many times does the parent use the expression. Um... that
+doesn't make sense, asking how many times a parent uses an expression. Err...
+maybe it does. Okay, I think it could.
+
+If an expression is only referred to once, it will have a single parent which
+refers to it once, so inline it.
+
+If an expression is used by two different parents, then the expression has to
+be defined before all those parents. In particular, it should be define at the
+common ancestor to all those parents.
+
+Thu Aug  9 13:50:41 EDT 2012
+
+Well, we're back to my original problem.
+
+So I put in the code to figure out all the references that could be reached
+from a given place. Now the trouble is, say I have two references a and b,
+which can both be reached from a given place. So I need bindings for a and b,
+but, one of those may depend on the other. I have to get the order right
+somehow.
+
+This is why I feel like I need to do a bottom up traversal, not top down.
+
+Okay. I can do that. I now have the set of reachable. Let me pass down the set
+of references which are used somewhere else in the expression. It starts
+empty.
+
+So, if I'm a reference, I only need to add myself to the set of bindings if
+I'm shared (in which case, I may also already be done). If I'm not shared,
+then I'm going to be returning myself directly, so
+
+1. stash the set of declarations
+deheapr both of my children
+
+er...
+
+Cases:
+
+- Inlinable: inline it, and we're done.
+- shared reference: do exactly what we currently do.
+- not shared reference:
+???
+
+How about
+1. stash the declarations.
+2. deheap myself.
+3. partition declarations into shared and not shared.
+No. that won't work. That's not really what we want...
+
+What if we associated with each expression the list of declarations for it.
+So I pass to deheapr a mapping from reference to the reference where it should
+be declared.
+
+I do the traversal like now, but rather than adding elements to state, we add
+elements to the appropriate reference. I deheap me, it gives a new expression
+and a bunch of bindings, I read all the bindings, set myself to be a let, and
+return a variable pointing to me.
+
+If I don't have a share point, it means I'm never shared, so I just return
+myself as is.
+
+Understood?
+
+I think, maybe... It just might work. Let me work through some examples to see
+how it looks.
+
+Good. I think this will work, I think it will even mostly work the way I want.
+It could be tricky to implement though, unfortunately.
+
+Let's see, what we want is a map from reference to where it is shared...
+
+I can do this with the reachable traversal, no? Using paths? Makes things even
+easier, doesn't it?
+
+Idea is this: instead of including the reachable set of references from each
+reference, for each reference, return the longest common prefix from the root.
+
+This is a simple traversal and update. If I'm clever, I can maybe identify the
+first common parent.
+
+Bah. Don't be clever. Just take the common prefix for now. Be clever later if
+I really care so much.
+
+Now when I go through the child of the longest common prefix is where I should
+put myself.
+
+Don't worry about optimizations right now. One step at a time. Just figure out
+how to make this work like this.
+
+I have a proposal then. Can I convince myself it will work?
+
+Let me review the proposal.
+
+1. Perform a traversal from the root node. Pass down the path from the root.
+For every reference you reach: set its path to the longest common prefix of
+the current path and the previous path, if any.
+
+2. Perform a bottom up traversal from the root node.
+For a given reference:
+- if it is inlinable, inline it, return the inlined expression.
+- otherwise, 
+    let the destination for this expression be the last reference it its
+    common path
+    lookup this reference in the destination.
+        If found, return a variable to myself.
+        If not found:
+            deheap this expression, 
+            make a let binding based on my declarations.
+            write myself to my destination
+            return a variable to myself.
+
+If there is no destination, it means it is the root node. Return the let bound
+expression directly instead of writing it anywhere. Perhaps I can make a dummy
+node to avoid this special case at the root.
+
+Each Reference needs to point to:
+- the ExpH, for elaboration and traversal and such like we have
+- a Maybe [ExpR], which is the longest common prefix.
+- a [(ExpR, Exp)], which are the declarations needed to be defined here.
+
+
+Of course, I'm really tempted to get these last optimizations, which is a bad
+bad thing. So let me say what my plan for the optimizations is, then ignore
+the planned optimizations.
+
+Plan is:
+
+1. Also annotate each reference with a Boolean indicating if the reference has
+been visited more than once or not. If a reference is only ever visited once,
+no need to return a vare, just return the expression directly.
+
+2. Don't traverse nodes which have already been traversed. So when looking for
+common prefix, if you reach a node whose prefix is not Nothing, then yes,
+update that node, but don't do traversal from there, because we already know
+who he will visit.
+
+Perfect! That's should do the trick. And those are pretty easy to do. Good.
+
+But again, I'll ignore those to start.
+
+Fine. What's the plan? How should I go about this?
+
+1. Turn the STRef data into a labelled constructor, to help with documentation.
+Start by just having the one field which is the expression, make everything
+work with that. Then add the two additional fields.
+
+2. Implement the first traversal. Should be pretty easy.
+3. Update heapify.
+
+And that's it. Then, when that works, I can try out the optimizations easily
+enough.
+
+Do you think I can do this all today? It would certainly be nice to have this
+elaborator done once and for all. err, probably can't get it done today, but I
+can get it mostly done.
+
+Wish me luck.
+
+Thu Aug  9 15:05:46 EDT 2012
+
+Okay, findLoc. How do I implement it?
+
+I get to a reference.
+
+1. Read the reference.
+2. Update the common path.
+3. Traverse to its children
+
+Fine. That traversal is implemented. Now all I have to do is update deheapify.
+
+Thu Aug  9 15:39:43 EDT 2012
+
+There. The code is all written.  I'll be amazed if it works.
+
+This is a terribly complicated elaborator. I should split it up into different
+files if it every works properly.
+
+Thu Aug  9 15:58:21 EDT 2012
+
+One bug: the path should include the expression itself, which means some
+things may have themselves as their own destination. That means we return the
+expression directly instead of writing to itself.
+
+Thu Aug  9 16:00:45 EDT 2012
+
+Wow. Is it working?
+
+Nope. Not working. It's over inlining, as the Share test captures.
+
+Thu Aug  9 16:15:40 EDT 2012
+
+How should I debug this?
+
+I want to keep an eye on everything in the heap.
+
+How about, have something called readER, writeER, modifyER. And have those do
+the tracing?
+
+Okay, so I simplified my sharing test case to do quadruple. And it doesn't
+work. It's broken. It gives a bogus error. And it also doesn't share. Let me
+try to figure out what's up.
+
+Thu Aug  9 16:56:54 EDT 2012
+
+Maybe the problem is if it's a function type, I'm inlining. Perhaps what I
+should be doing in... just one level of inline, not full inline?
+
+Otherwise we get something like:
+
+let x = free~1 * free~2
+    f = \a -> a + a + a + a,
+in f x
+
+
+ and the 'a' reference some expressions with free variables, and those are all
+inlined?
+
+I still don't understand.
+
+Thu Aug  9 17:25:16 EDT 2012
+
+Elaboration is totally correct. We get just the sharing I want.
+
+Now, let me try to understand deheapification.
+
+Updating locations is perfectly correct. No trouble there.
+
+The problem is in deheapification. It's like we just inline everything all
+away all at once...
+
+Let me look at what I expect it to do.
+
+Thu Aug  9 17:46:58 EDT 2012
+
+Aha! A little debugging makes it rather clear what's going on.
+
+It is as I suspected. We are inlining a function, when we should really just
+be returning it directly. I think I can fix that easily enough.
+
+Oh, and I might want to pick an example yices can handle. I have an idea.
+
+Thu Aug  9 17:50:08 EDT 2012
+
+Aha! It totally works.
+
+Let me turn off this silly tracing and try to figure out what's up.
+
+Assuming this works, next steps are:
+- does it work for Array? why or why not?
+- add bit vector support to make it work on bit.
+- see how well it works on BCL3 compared to non-heap elaborator
+
+Thu Aug  9 17:54:29 EDT 2012
+
+Array doesn't work anymore. Oh well. Let me check out BCL3 performance.
+

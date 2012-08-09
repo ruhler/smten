@@ -111,7 +111,7 @@ querytest "Casenomatch"
 querytest "Bluespec"
 #querytest "Array"
 querytest "Share"
-querytest "Bit"
+#querytest "Bit"
 
 # The SMT query2 tests
 proc query2test {name args} {
@@ -129,7 +129,7 @@ query2test "Casenomatch"
 query2test "Bluespec"
 #query2test "Array"
 query2test "Share"
-query2test "Bit"
+#query2test "Bit"
 
 puts "BUILD COMPLETE"
 
