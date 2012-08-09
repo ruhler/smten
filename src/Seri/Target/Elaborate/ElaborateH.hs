@@ -93,12 +93,20 @@ newname n = do
 
 type ID = Integer
 
+data ER s = ER {
+    er_exp :: ExpH s
+}
+
+er :: ExpH s -> ER s
+er e = ER e
+
 -- | A reference to an expression.
 -- This is annotated with 
 --  ID - A unique identifier for the reference.
 --  Type - the type of thing the reference points to.
---  STRef - A pointer to the expression refered to by the reference.
-data ExpR s = ExpR ID Type (STRef s (ExpH s))
+--  STRef - A pointer to the expression refered to by the reference, and some
+--  bookeeping information.
+data ExpR s = ExpR ID Type (STRef s (ER s))
 
 instance Eq (ExpR s) where
     (==) (ExpR a _ _) (ExpR b _ _) = (a == b)
@@ -322,7 +330,7 @@ mkRef :: Type -> ExpH s -> ElabH s (ExpR s)
 mkRef t e = do
     id <- gets es_nid
     modify $ \es -> es { es_nid = id+1 }
-    r <- liftST $ newSTRef e
+    r <- liftST $ newSTRef (er e)
     let er = ExpR id t r
     --trace (printr er ++ ": " ++ print e) (return er)
     return er
@@ -330,7 +338,7 @@ mkRef t e = do
 
 -- | Read a reference.
 readRef1 :: ExpR s -> ElabH s (ExpH s)
-readRef1 (ExpR _ _ r) = liftST $ readSTRef r
+readRef1 (ExpR _ _ r) = fmap er_exp $ liftST $ readSTRef r
 
 -- | Read a reference, following chains to the end.
 readRef :: ExpR s -> ElabH s (ExpH s)
@@ -341,8 +349,8 @@ readRef r = do
     _ -> return v
 
 writeRef :: ExpR s -> (ExpH s) -> ElabH s ()
-writeRef er@(ExpR _ _ r) e = --trace (printr er ++ ": " ++ print e) $
-    liftST $ writeSTRef r e
+writeRef x@(ExpR _ _ r) e = --trace (printr x ++ ": " ++ print e) $
+    liftST $ writeSTRef r (er e)
 
 isBinaryPrim :: Name -> Bool
 isBinaryPrim n = n `elem` [
