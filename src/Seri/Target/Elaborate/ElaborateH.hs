@@ -77,6 +77,10 @@ data ES s = ES {
     es_unique :: Map.Map Name Integer
 }
 
+debug :: (Show x) => x -> a -> a
+--debug = traceShow
+debug _ = id
+
 type ElabH s = StateT (ES s) (ST s)
 
 liftST :: ST s a -> ElabH s a
@@ -84,8 +88,7 @@ liftST = lift
 
 writeER :: ExpR s -> ER s -> ElabH s ()
 writeER r@(ExpR _ _ str) x =
-  --traceShow (r, x) $ 
-  liftST $ writeSTRef str x
+  debug (r, x) $ liftST $ writeSTRef str x
 
 newname :: Name -> ElabH s Name
 newname n = do
@@ -249,8 +252,7 @@ elabH free r = do
       setElabed r
       mode <- gets es_mode
       e <- readRef1 r
-      --case (traceShow ("elab", r) e) of
-      case e of
+      case (debug ("elab", r) e) of
         LitEH {} -> return ()
         CaseEH x ms -> do
            elabH free x
@@ -327,8 +329,7 @@ elabH free r = do
 reduce :: Sig -> ExpR s -> ExpR s -> ElabH s (ExpR s)
 reduce s@(Sig n _) v r = do
   e <- readRef r
-  case e of
-  --case (traceShow ("reduce", pretty s, v, r) e) of
+  case (debug ("reduce", pretty s, v, r) e) of
     LitEH {} -> return r
     CaseEH x ms ->
       let rm m@(MatchH p _) | n `elem` bindingsP' p = return m
@@ -364,8 +365,7 @@ mkRef t e = do
     modify $ \es -> es { es_nid = id+1 }
     r <- liftST $ newSTRef (er e False)
     let er = ExpR id t r
-    do --traceShow (er, e)
-        return er
+    debug (er, e) $ return er
 
 
 -- | Read a reference.
@@ -599,9 +599,8 @@ elaborateST mode env e = evalStateT (elaborateH e) (ES env mode Map.empty 1 Map.
 
 elaborate :: Mode -> Env -> Exp -> Exp
 elaborate mode env e =
-  runST $ elaborateST mode env e
-  --let elabed = runST $ elaborateST mode env (trace ("elab " ++ show mode ++ ": " ++ pretty e) e)
-  --in trace ("elabed: " ++ pretty elabed) elabed
+  let elabed = runST $ elaborateST mode env (debug ("elab ", mode, pretty e) e)
+  in debug ("elabed: ", pretty elabed) elabed
 
 letEH :: [(Sig, ExpR s)] -> ExpR s -> ElabH s (ExpR s)
 letEH [] x = return x

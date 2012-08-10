@@ -258,3 +258,84 @@ problem. One I haven't looked into yet.
 
 I should look into that next. But this first problem is, I would say, solved.
 
+Fri Aug 10 13:50:57 EDT 2012
+
+Okay! So, what's the status of things now, eh?
+
+I bet we have some major space leaks. That's the first issue.
+
+The second issue is this Array query problem.
+
+As much as I want to start working on performance, I should really figure out
+this Array issue first.
+
+Oh... Wait. It's not been solved? That's actually what I was working on
+solving originally. I didn't make progress?
+
+Okay, let's check out the state of that again.
+
+Fri Aug 10 14:30:12 EDT 2012
+
+Well... it looks like my fix for the previous bug is a problem here? We are
+still stuck in elaborating foldr. So we go down, we get to "foldr", we make
+the loop. We now try to elaborate with the loop. It says: I'm all elaborated.
+
+So now we do a reduction: we apply foldr to f as per the leaf. That gives us a
+new expression for the leaf, where f is inlined into itself. We elaborate
+that, get to the leaf, do the application there...
+
+In other words, we are going to go forever. The reason our recursive check
+doesn't help is because reduction makes a new copy of the expression for us
+which we will happily elaborate.
+
+Sigh.
+
+What should I do about this now?
+
+Well, one idea is... we don't want to do full reduction before beta reduction.
+That's what's causing issues here.
+
+I wonder if I could rewrite foldr to avoid this problem. That's not a long
+term solution, because I should be able to elaborate poorly written code
+anyway.
+
+Another idea is: when you do SNF elaboration, start by attempting WHNF
+elaboration? In our case, ...
+
+Or just take the performance hit and be lazy about elaborating functions for
+SNF. The idea here is: if you use SNF, it is assumed you won't try to
+elaborate big recursive things that are unbounded. So WHNF first should let
+you do the full thing without worry about recursion.
+
+That's a bit unsettling to me though. I'd really like to detect recursion and
+say: oh boy, this is recursive, we've got trouble here. Let's leave it
+untouched.
+
+Fri Aug 10 14:54:04 EDT 2012
+
+I think the right thing to do is as follows: detect infinite recursion. So,
+enhance the tag. The tag is either:
+  Unelaborated, Elaborating, or Elaborated
+
+If Unelaborated: mark as Elaborating and elaborate.
+If Elaborating: error: loop.
+If Elaborated: return as is.
+
+And for SNF, we should not try to fully elaborate functions before beta
+reduction.
+
+This means we loose sharing.
+
+I wonder if we could hack around the problem. What if, for Full, avoid
+elaborating, and avoid reducing an expression which is being elaborated.
+
+Ug. I have no idea.
+
+Well, hmm... I know the problem. It doesn't really matter if the heap
+elaborator isn't any better than my previous elaborator (though I think the
+previous one has the same problem). So why not let this stew, avoid running
+the Array test which triggers it, mark down that there is a problem, and try
+to make the heap elaborator go really fast.
+
+How does that sound to you? Reasonable? Sure.
+
