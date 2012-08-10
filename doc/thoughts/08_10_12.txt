@@ -1,0 +1,260 @@
+
+Fri Aug 10 09:44:33 EDT 2012
+
+Goal: figure out why the heap elaborator is so darn slow.
+
+Example to use: BCL3. It would perhaps be nice if I could get a version that
+finishes. Maybe limit it to one query? See how long that takes.
+
+Fri Aug 10 09:51:10 EDT 2012
+
+I think BCL3 might be stuck in an infinite loop. Even with one query, it
+takes more than 5 minutes. It should be taking, like, less than a second.
+
+Fri Aug 10 10:02:47 EDT 2012
+
+Let's say there's a bug. How do I track it down?
+
+Could it be the same as the array bug? Or is it just really slow?
+
+If it's really slow... how slow? How do I figure out what's wrong?
+
+We know it involves case statements and elaboration, right?
+
+- I can try the tag thing.
+- I can try to figure out the array bug. That would probably be valuable.
+
+Okay, here's what I'll do. I'll run BCL3 in the background, without tracing,
+time it, see how long it takes, see if it ever finishes. That will give me an
+idea of whether there is a bug, or it's just slow.
+
+In the meantime, I'll look more closely at the array bug, see what I see, and
+if I can't fix it. Then go from there.
+
+Fri Aug 10 10:17:52 EDT 2012
+
+BCL3 runs out of stack space. Array definitely gets stuck in an infinite loop
+I should figure out first. It's not a terribly complicated expression, either.
+
+We get stuck in a loop. Something which references foldr, but doesn't actually
+try to look it up. Something that does variable renaming, because in each
+iteration, it's like all we do is rename.
+
+Fri Aug 10 10:50:02 EDT 2012
+
+Well, so, the problem with Array is clear.
+
+We call and. And calls foldr. So we attempt to do a full elaboration of foldr,
+before applying the argument to it.
+
+This is bad, because foldr is recursive, so we end up getting to foldr again,
+and we just keep traversing forever.
+
+Specifically, the way we look up variables, with HeapifyE and such, is that
+the variable foldr points to a HeapifyE expression. Because we call readRef,
+it bypasses the reference to the HeapifyE when doing elaboration, so that
+never gets updated, and we continue to try heapifying foldr over and over and
+over and over and over again.
+
+Good. Problem's clear. What's the solution?
+
+You know? I have an idea. What if, for a test case, I try to elaborate the
+Seri.Lib.Tests under SNF? It should certainly not get stuck in an infinite
+loop, but it might now.
+
+But maybe I just don't have the same test...
+
+No, it works fine with WHNF simplification.
+
+Okay, what are my options for solving this issue?
+
+Brainstorm:
+- Don't readRef past references, so we'll update the simplified variables to
+  references rather than reheapifying over and over and over again.
+- Don't elaborate functions fully before applying. Elaborate to weak head
+  normal form only
+- Add recursion detection to elaborator, if SNF, and we find ourselves
+  trying to elaborate an expression we are currently elaborating, just return,
+  because it would be infinite otherwise.
+
+This is probably related to the need to have a HeapifyEH expression, when
+really I feel like I shouldn't need it, and I would rather not have it.
+
+Let's think about each of these things.
+
+1. Don't readRef past references. This is important, because when you read
+past a reference, you evaluate something, but then only update the evaluation
+at where it is used, not where it's from. We loose sharing.
+
+Example:
+
+~1 = foo bar sludge ...
+~2 = ~1
+~3 = ~1
+
+If I elaborate ~2, we'll end up with:
+
+~1 = foo bar sludge ...
+~2 = simple
+~3 = ~1
+
+Now, if you go to elaborate ~3, we have to reelaborate ~1 again.
+
+What we really want is:
+
+~1 = simple
+~2 = ~1
+~3 = ~1
+
+So yes, we should make this change, then make sure everything still works, and
+ideally have a rule for reducing long chains of references. Good.
+
+Now, a consequence of this will be, we don't overheapify. I should be able to
+do heapification all at once. Don't lazily heapify. Because what pointed to
+HeapifyEH will now be updated after heapification is done. This, I expect,
+should lead to the same problems as not using lazy heapification. What were
+those again? I should take a look and see if I can understand it.
+
+Next: Don't elaborate functions fully before applying... Well, we really would
+like to if we can, to avoid duplicate work after reductions. So I don't agree
+with this.
+
+But! if we add this recursion detection to the elaborate, and in SNF, when we
+find ourselves trying to elaborate ourselves, just return, because otherwise
+we could get stuck in an infinite elaboration.
+
+This is nice, too, because it avoids infinite objects. So we can print stuff
+out and not worry.
+
+Cool. So I think I have the solution. Hopefully it will work. It consists of a
+number of parts.
+
+1. don't readRef past references for elaboration.
+2. add tag to references to indicate if they have been fully elaborated or
+not.
+I say: set the tag at the start of elabH. Clear it whenever we do:
+writeRef r blah >> elabH free r. Perhaps give a function for this: reelabH.
+3. we shouldn't need lazy heapification anymore.
+
+
+Good. Here's how I'll do this.
+
+1: try getting rid of lazy heapification, see what errors it causes, and if I
+understand them or not.
+
+2. don't readRef past references.
+3. add tag.
+
+Wish me luck.
+
+Fri Aug 10 11:13:44 EDT 2012
+
+Not using lazy heapification, we have problems with WHNF. Probably because it
+makes a loop in the graph which we try elaborating. We don't get a loop with
+lazy heapification, because we create a new graph and only elaborate it as
+much as is needed? I don't know, this concerns my slightly, but I suspect
+recursion detection will deal with it just fine.
+
+Fri Aug 10 11:37:42 EDT 2012
+
+Um, so, it doesn't work yet. We still get stuck in an infinite loop.
+
+I'm worried about how we are supposed to do beta reduction and inlining and
+deheapification and updateLoc all in the process of loops in the graph.
+
+Perhaps I shouldn't allow loops in the graph. The only way we can get a loop
+in a graph is when we look up a variable. But I'm still not sure this solves
+anything.
+
+What I should really do is understand what the problem really is that I'm
+facing right now.
+
+Fri Aug 10 11:50:39 EDT 2012
+
+Okay, so I made a simple test case of it. Looks to have something to do with
+sharing of an array.
+
+Fri Aug 10 12:28:07 EDT 2012
+
+We get into an infinite recursion trying to reduce something in filter.
+
+So, we apply something to filter, Because we have done some elaboration
+already on filter, it points to itself. How to do reduction then?
+
+Isn't the answer the same as before? Just mark it as being reduced. You
+shouldn't have to go inside recursively to find all the occurrences of the
+argument... Except, really you want to use the reduced reference that you pick
+up, not ...
+
+Hum. Let me look at what filter looks like. Draw out the graph. Then look at
+the reduction being done. Look at how I would do it. It seems as if we may
+want to recreate a new copy of filter with a cycle in it still.
+
+Fri Aug 10 12:53:04 EDT 2012
+
+Something funny is up I fear. Let me see who made filter into a loop.
+
+Here's what happened. We had filter, with filter as a var in the leaf. The
+pure thing. Now, we apply it to something, which shares the var "filter" in
+the leaf, and that is elaborated, which looks up the var in the leaf, and thus
+forms the cycle in the pure filter function, even though an applied filter
+function was elaborated. That makes sense.
+
+Then, when we try to do a beta reduction on the pure filter, we run into the
+infinite loop.
+
+What are my options? What is right, what is wrong, what should be done about
+it?
+
+I think I have a strong grasp of the problem now.
+
+Brainstorm:
+- Maybe don't share the var in the beta reduced function, so we don't make a
+  loop in the first place?
+- Reduce lazily?
+Because really, we are trying to reduce where we...
+
+Oh wait. That's a bug, isn't it? Maybe? Maybe not?
+
+Perhaps the problem is: we know there will be no reductions to be performed
+inside the "filter" leaf... or, at least, there shouldn't be, because it
+scopes the variables its own way. Except, it's a different thing we are
+reducing. We are substituting in "j", which has nothing to do with filter at
+all. So we are attempting to substitute into an infinite expression, and it
+takes a long time to do that.
+
+How can we deal with this problem?
+
+Idea: avoid an infinite expression. That is, avoid a loop. But we already know
+we would like to be able to handle loops in order to support full elaboration.
+Unless we can promise to keep the variable reference to "filter" as just a
+variable. Only unroll it as many times as we need. Do we loose sharing that
+way? Perhaps not. We just wait to share until we need to.
+
+So, here's the proposal: Reduce should not share vares across different
+applications, because then elaboration of one could lead to a loop. Claim is,
+you can't have elaboration lead to a loop otherwise?
+
+Loop happens when you elaborate inside a recursive function, reach a recursive
+call...
+
+No. I don't think my proposal will fix anything. I think it will just push the
+problem to other cases.
+
+Well, it fixes things in this case. Maybe that's good enough for now?
+
+Fri Aug 10 13:36:56 EDT 2012
+
+Well, that seems to fix all the problems I was having. Let's leave it at that
+for now.
+
+Fri Aug 10 13:41:30 EDT 2012
+
+No. The array test still fails. It doesn't surprise me. I think it's exactly
+this same reason.
+
+Oh, wait, No. I should be clear. The array problem could be a different
+problem. One I haven't looked into yet.
+
+I should look into that next. But this first problem is, I would say, solved.
+

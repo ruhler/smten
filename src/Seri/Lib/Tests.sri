@@ -236,6 +236,7 @@ testbasic = do {
     t "F" (12 == testlet);
     t "G" (3 == shadowmeth);
     t "H" (3 == (length [integer 1, 5, 2]));
+    t "I" (and [True, True, True]);
 };
 
 tests :: Test ();

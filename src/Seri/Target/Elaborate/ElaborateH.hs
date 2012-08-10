@@ -100,6 +100,9 @@ data ER s = ER {
     -- The expression pointed to be the reference.
     er_exp :: ExpH s,
 
+    -- True if the expression is fully elaborated.
+    er_elabed :: Bool,
+
     -- The longest common prefix from the root to this expression.
     -- This is used for deheapification only. The root is at the tail position
     -- of the list.
@@ -111,8 +114,8 @@ data ER s = ER {
     er_decls :: [(ExpR s, Exp)]
 } deriving (Show)
 
-er :: ExpH s -> ER s
-er e = ER e Nothing []
+er :: ExpH s -> Bool -> ER s
+er e elabed = ER e elabed Nothing []
 
 -- | A reference to an expression.
 -- This is annotated with 
@@ -136,7 +139,6 @@ data ExpH s
   | ConEH Sig
   | VarEH Sig
   | RefEH (ExpR s)
-  | HeapifyEH Exp
 
 instance Show (ExpR s) where
     show (ExpR id _ _) = "~" ++ show id
@@ -164,7 +166,6 @@ instance Show (ExpH s) where
         ConEH s -> "ConEH " ++ pretty s
         VarEH s -> "VarEH " ++ pretty s
         RefEH r -> "RefEH " ++ show r
-        HeapifyEH e -> "HeapifyEH " ++ pretty e
 
     
 data MatchH s = MatchH Pat (ExpR s)
@@ -222,84 +223,100 @@ heapifyr m e = do
 elabHed :: [Sig] -> ExpR s -> ElabH s (ExpH s)
 elabHed free r = elabH free r >> readRef r
 
+-- Indicate the given expression is a partially elaborated value for the given
+-- reference, end complete the elaboration.
+reelabH :: [Sig] -> ExpR s -> ExpH s -> ElabH s ()
+reelabH free r e = do
+    writeRef False r e
+    elabH free r
+
+-- Indicate the given expression is the fully elaborated value for the given
+-- reference.
+elabedH :: ExpR s -> ExpH s -> ElabH s ()
+elabedH = writeRef True
+     
+
 -- Elaborate the expression referred to by the given reference, given a list
 -- of the free variables in the expression. By "free" here, we mean variables
 -- which are in the expression which should not be looked up in the top level
 -- declarations of the environment.
 elabH :: [Sig] -> ExpR s -> ElabH s ()
 elabH free r = do
-  mode <- gets es_mode
-  e <- readRef r
-  case e of
-    LitEH {} -> return ()
-    CaseEH x ms -> do
-       elabH free x
-       mr <- matches free x ms
-       case mr of
-         -- TODO: return error if no alternative matches?
-         NoMatched -> error $ "Case did not match"
-         Matched vs b -> do
-            lete <- letEH vs b
-            writeRef r (RefEH lete)
-            elabH free r
-         UnMatched ms' -> do
-            writeRef r $ CaseEH x ms'
-            if mode == SNF
-                then sequence_ [elabH (bindingsP p ++ free) b | MatchH p b <- ms']
-                else return ()
-    AppEH a b -> do
-        av <- elabHed free a
-        case av of
-          VarEH (Sig "Seri.Lib.Prelude.valueof" t) ->
-             let NumT nt = head $ unarrowsT t
-             in writeRef r $ integerEH (nteval nt)
-          AppEH p x ->  do -- Handle binary primitives
-             pv <- readRef p
-             case pv of
-                VarEH (Sig n _) | isBinaryPrim n -> do
-                   xv <- elabHed free x
-                   case xv of
-                     LitEH la -> do
-                        bv <- elabHed free b
-                        case bv of
-                            LitEH lb -> binaryPrim n la lb r
-                            _ -> return ()
-                     _ | mode == SNF -> elabH free b
-                     _ -> return ()
-                _ | mode == SNF -> elabH free b
+  done <- isElabed r
+  if done
+    then return ()
+    else do
+      setElabed r
+      mode <- gets es_mode
+      e <- readRef1 r
+      --case (traceShow ("elab", r) e) of
+      case e of
+        LitEH {} -> return ()
+        CaseEH x ms -> do
+           elabH free x
+           mr <- matches free x ms
+           case mr of
+             -- TODO: return error if no alternative matches?
+             NoMatched -> error $ "Case did not match"
+             Matched vs b -> do
+                lete <- letEH vs b
+                reelabH free r (RefEH lete)
+             UnMatched ms' -> do
+                elabedH r $ CaseEH x ms'
+                if mode == SNF
+                    then sequence_ [elabH (bindingsP p ++ free) b | MatchH p b <- ms']
+                    else return ()
+        AppEH a b -> do
+            av <- elabHed free a
+            case av of
+              VarEH (Sig "Seri.Lib.Prelude.valueof" t) ->
+                 let NumT nt = head $ unarrowsT t
+                 in elabedH r $ integerEH (nteval nt)
+              AppEH p x ->  do -- Handle binary primitives
+                 pv <- readRef p
+                 case pv of
+                    VarEH (Sig n _) | isBinaryPrim n -> do
+                       xv <- elabHed free x
+                       case xv of
+                         LitEH la -> do
+                            bv <- elabHed free b
+                            case bv of
+                                LitEH lb -> binaryPrim n la lb r
+                                _ -> return ()
+                         _ | mode == SNF -> elabH free b
+                         _ -> return ()
+                    _ | mode == SNF -> elabH free b
+                    _ -> return ()
+              LamEH s@(Sig n _) body -> do
+                rr <- reduce s b body 
+                reelabH free r $ RefEH rr
+      
+              _ | mode == SNF -> elabH free b
+              _ -> return ()
+        LamEH {} | mode == WHNF -> return ()
+        LamEH s b -> elabH (s:free) b
+        ConEH {} -> return ()
+        VarEH (Sig "Seri.Lib.Prelude.numeric" (NumT nt)) ->
+            elabedH r $ ConEH (Sig ("#" ++ show (nteval nt)) (NumT nt))
+        VarEH s | s `elem` free -> return ()
+        VarEH s@(Sig _ ct) -> do
+            env <- gets es_env
+            decls <- gets es_decls
+            case Map.lookup s decls of
+                Just x -> reelabH free r (RefEH x)
+                Nothing ->
+                  case (attemptM $ lookupVar env s) of
+                     Nothing -> return ()
+                     Just (pt, ve) -> do 
+                        let ve' = (assign (assignments pt ct) ve)
+                        er <- heapifyr Map.empty ve'
+                        modify $ \es -> es { es_decls = Map.insert s er decls }
+                        reelabH free r (RefEH er)
+        RefEH x -> do
+            v <- elabHed free x
+            case v of
+                RefEH y -> elabedH r v
                 _ -> return ()
-          LamEH s@(Sig n _) body -> do
-            rr <- reduce s b body 
-            writeRef r $ RefEH rr
-            elabH free r
-
-          _ | mode == SNF -> elabH free b
-          _ -> return ()
-    LamEH {} | mode == WHNF -> return ()
-    LamEH s b -> elabH (s:free) b
-    ConEH {} -> return ()
-    VarEH (Sig "Seri.Lib.Prelude.numeric" (NumT nt)) ->
-        writeRef r $ ConEH (Sig ("#" ++ show (nteval nt)) (NumT nt))
-    VarEH s | s `elem` free -> return ()
-    VarEH s@(Sig _ ct) -> do
-        env <- gets es_env
-        decls <- gets es_decls
-        case Map.lookup s decls of
-            Just x -> writeRef r (RefEH x) >> elabH free r
-            Nothing ->
-              case (attemptM $ lookupVar env s) of
-                 Nothing -> return ()
-                 Just (pt, ve) -> do 
-                    let ve' = (assign (assignments pt ct) ve)
-                    er <- mkRef (typeof ve') $ HeapifyEH ve'
-                    modify $ \es -> es { es_decls = Map.insert s er decls }
-                    writeRef r (RefEH er)
-                    elabH free r
-    RefEH x -> error $ "readRef returned RefEH in elabH"
-    HeapifyEH exp -> do
-        heapified <- heapify Map.empty exp
-        writeRef r heapified
-        elabH free r
 
 -- reduce n v e
 -- Replace occurences of n with v in the expression e.
@@ -311,6 +328,7 @@ reduce :: Sig -> ExpR s -> ExpR s -> ElabH s (ExpR s)
 reduce s@(Sig n _) v r = do
   e <- readRef r
   case e of
+  --case (traceShow ("reduce", pretty s, v, r) e) of
     LitEH {} -> return r
     CaseEH x ms ->
       let rm m@(MatchH p _) | n `elem` bindingsP' p = return m
@@ -331,27 +349,37 @@ reduce s@(Sig n _) v r = do
         mkRef (rtype r) $ LamEH ls b'
     ConEH {} -> return r
     VarEH (Sig nm _) | nm == n -> return v
-    VarEH {} -> return r
+
+    -- Return a new reference here. Otherwise someone else could cause the var
+    -- to be elaborated, leading to a cycle in a recursive function, which
+    -- doesn't work when trying to do beta reduction.
+    VarEH s -> mkRef (rtype r) $ VarEH s
+
     RefEH x -> error $ "readRef returned RefEH in reduce"
-    HeapifyEH exp -> do
-        x <- heapify Map.empty exp
-        writeRef r x
-        reduce s v r
 
 -- | Make and return a reference to the given expression.
 mkRef :: Type -> ExpH s -> ElabH s (ExpR s)
 mkRef t e = do
     id <- gets es_nid
     modify $ \es -> es { es_nid = id+1 }
-    r <- liftST $ newSTRef (er e)
+    r <- liftST $ newSTRef (er e False)
     let er = ExpR id t r
     do --traceShow (er, e)
-       return er
+        return er
 
 
 -- | Read a reference.
 readRef1 :: ExpR s -> ElabH s (ExpH s)
 readRef1 (ExpR _ _ r) = fmap er_exp $ liftST $ readSTRef r
+
+isElabed :: ExpR s -> ElabH s Bool
+isElabed (ExpR _ _ r) = fmap er_elabed $ liftST $ readSTRef r
+
+setElabed :: ExpR s -> ElabH s ()
+setElabed r@(ExpR _ _ str) = do
+    er <- liftST $ readSTRef str
+    writeER r (er { er_elabed = True } )
+    
 
 -- | Read a reference, following chains to the end.
 readRef :: ExpR s -> ElabH s (ExpH s)
@@ -375,8 +403,8 @@ addDecl :: ExpR s -> (ExpR s, Exp) -> ElabH s ()
 addDecl (ExpR _ _ r) x = do
     liftST $ modifySTRef r $ \er -> er { er_decls = x : er_decls er}
 
-writeRef :: ExpR s -> (ExpH s) -> ElabH s ()
-writeRef r e = writeER r (er e)
+writeRef :: Bool -> ExpR s -> (ExpH s) -> ElabH s ()
+writeRef done r e = writeER r (er e done)
 
 isBinaryPrim :: Name -> Bool
 isBinaryPrim n = n `elem` [
@@ -389,13 +417,13 @@ isBinaryPrim n = n `elem` [
    "Seri.Lib.Prelude.__prim_eq_Integer"]
 
 binaryPrim :: Name -> Lit -> Lit -> ExpR s -> ElabH s ()
-binaryPrim "Seri.Lib.Prelude.__prim_eq_Char" (CharL a) (CharL b) r = writeRef r $ boolEH (a == b)
-binaryPrim "Seri.Lib.Prelude.__prim_add_Integer" (IntegerL a) (IntegerL b) r = writeRef r $ integerEH (a + b)
-binaryPrim "Seri.Lib.Prelude.__prim_sub_Integer" (IntegerL a) (IntegerL b) r = writeRef r $ integerEH (a - b)
-binaryPrim "Seri.Lib.Prelude.__prim_mul_Integer" (IntegerL a) (IntegerL b) r = writeRef r $ integerEH (a * b)
-binaryPrim "Seri.Lib.Prelude.<" (IntegerL a) (IntegerL b) r = writeRef r $ boolEH (a < b)
-binaryPrim "Seri.Lib.Prelude.>" (IntegerL a) (IntegerL b) r = writeRef r $ boolEH (a > b)
-binaryPrim "Seri.Lib.Prelude.__prim_eq_Integer" (IntegerL a) (IntegerL b) r = writeRef r $ boolEH (a == b)
+binaryPrim "Seri.Lib.Prelude.__prim_eq_Char" (CharL a) (CharL b) r = elabedH r $ boolEH (a == b)
+binaryPrim "Seri.Lib.Prelude.__prim_add_Integer" (IntegerL a) (IntegerL b) r = elabedH r $ integerEH (a + b)
+binaryPrim "Seri.Lib.Prelude.__prim_sub_Integer" (IntegerL a) (IntegerL b) r = elabedH r $ integerEH (a - b)
+binaryPrim "Seri.Lib.Prelude.__prim_mul_Integer" (IntegerL a) (IntegerL b) r = elabedH r $ integerEH (a * b)
+binaryPrim "Seri.Lib.Prelude.<" (IntegerL a) (IntegerL b) r = elabedH r $ boolEH (a < b)
+binaryPrim "Seri.Lib.Prelude.>" (IntegerL a) (IntegerL b) r = elabedH r $ boolEH (a > b)
+binaryPrim "Seri.Lib.Prelude.__prim_eq_Integer" (IntegerL a) (IntegerL b) r = elabedH r $ boolEH (a == b)
 binaryPrim _ _ _ _ = return ()
 
 isfunt :: Type -> Bool
@@ -458,7 +486,6 @@ deheapify r =
       deheap (RefEH x) = do
         x' <- deheapr x
         return x'
-      deheap (HeapifyEH x) = return x
   in do
      updateLoc [] r
      deheapr r
@@ -489,7 +516,6 @@ inline r = do
         ConEH s -> return (ConE s)
         VarEH s -> return (VarE s)
         RefEH {} -> error $ "readRef returned RefEH in inline"
-        HeapifyEH x -> return x
 
     
 data MatchesResult s
@@ -630,4 +656,3 @@ updateLoc path r@(ExpR _ _ str)  =
         ConEH {} -> return ()
         VarEH {} -> return ()
         RefEH x -> updateLoc path' x
-        HeapifyEH {} -> return ()

@@ -386,3 +386,16 @@ Thu Aug  9 17:54:29 EDT 2012
 
 Array doesn't work anymore. Oh well. Let me check out BCL3 performance.
 
+Thu Aug  9 17:59:39 EDT 2012
+
+Well, perhaps not surprisingly, it isn't doing too well performance wise. Let
+me just start a heap profile, and see how that looks.
+
+Thu Aug  9 18:05:06 EDT 2012
+
+Not sure what the slowdown is, I'll look into it tomorrow.
+
+Looks like all the time is spent in the elaborator at this point. And almost
+no time in check. I don't think we managed to elaborate the first big
+predicate yet.
+
