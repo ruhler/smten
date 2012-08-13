@@ -1,0 +1,241 @@
+
+Mon Aug 13 09:11:08 EDT 2012
+
+Goal: Fix performance of the heap elaborator. Ideally in a systematic way.
+
+Current snapshot of performance:
+
+Looks like all the time not spent in check is spent in elaboration. Don't have
+to worry about heapification or deheapification.
+
+50% time, 80% allocation. Looks like we've got more space leaks to deal with.
+
+elabHed has a lot amount of allocation and time just for it. That seems
+strange to me.
+
+mkRef has a fair amount of allocation just for it. That seems strange to me,
+unless that's the expected allocation of the new reference.
+
+match takes a bit of time. odd...
+
+reduce has a lot of time and allocation.
+
+Mon Aug 13 09:22:41 EDT 2012
+
+Let's start with the biggest culprit: elabHed.
+
+It's a terribly simple function.... That's odd.
+
+Oh. It's probably being inlined. That would be annoying.
+
+Anyway, let's see what type of things it is elaboratoring. Perhaps that will
+give some insight into what it's leaking. We should do the same for mkRef,
+which is leaking lots too.
+
+Mon Aug 13 09:29:10 EDT 2012
+
+elabHed... is allocating a bunch of ExpH. Not a ton. At most, like 1M's worth
+for a query. I don't see thunks there. That could be normal?
+
+We could look at what elabHed is retaining. That might be an interesting
+question? Or... look at what all is being allocated in total?
+
+Let me add some more cost centers, get a better idea of how things break down
+in elabH.
+
+Mon Aug 13 09:51:05 EDT 2012
+
+Looks like most of the allocation comes from the CASE branch of elaboration.
+
+mkRef is allocating mostly ExpR. That might actually be expected, just because
+we are creating so many references to expressions. It is called, like, 2.5
+million times in the worst usage. And this is by reduce.
+
+Here's an idea: when reducing for case statements, don't convert to lambda
+first, do all the reductions simultaneously. That could cut the reductions in
+half.
+
+And it looks like all the mkRef trouble is from calls to reduce.
+ 
+Mon Aug 13 10:00:34 EDT 2012
+
+Hmm... looks like the problem with CASE is in UNMATCHED mostly?
+
+Now readRef1 shows up the most... Let's see what it's allocating.
+
+Mon Aug 13 10:12:22 EDT 2012
+
+Okay, so I think I'm making some progress.
+
+If you look at the type of memory allocated by the elaborator, almost all of
+it is from ExpRs. ER, ExpR, Type, Integer, MUT_VAR_CLEAN, STRef.
+
+So, let's see who is retaining ExpRs?
+
+Is there a way to figure out if we have the same number of ExpRs as ER?
+
+Well, it looks close. Let's see who's retaining ExpRs first. Then see who is
+retaining ERs. Try to clean those up if possible.
+
+Mon Aug 13 10:17:14 EDT 2012
+
+Retaining ERs is: reduce, mkRef. But mostly reduce. And reduce.rm.
+
+I should be able to get rid of this leak. We should, ideally, not be retaining
+anything.
+
+Mon Aug 13 10:23:16 EDT 2012
+
+I don't understand. For a strict state monad combined with ST... if I say
+something like:
+
+y <- foo x
+return y
+
+Is it possible for that to leak 'x'? Or does it force the value of y?
+
+Perhaps I should experiment...
+
+Mon Aug 13 10:31:52 EDT 2012
+
+What I want is, I think, every FooEH object should hold an ExpR directly, not
+a thunk. And then... every ExpR should hold a ExpH directly, not a thunk. If
+we can make that happen, then we should be in decent shape I think.
+
+How can I make that happen? I feel like ! on data type fields should help, but
+every time I've tried that, it hasn't made any difference. Well, let me try
+again, see if it does anything.
+
+Mon Aug 13 10:42:10 EDT 2012
+
+Nope. Just made things worse. Hum.
+
+I don't know what's being made into thunks or why. I fear that mkRef, and
+reduce, and all that is done entirely lazily, when I want it to be done
+entirely strictly. How can I force that? How can I make the result of reduce
+be fully evaluated?
+
+What if I had a deepSeq for my heap. You give it a reference, it returns the
+reference fully, deeply, elaborated. Can I do that? Would that help anything?
+
+So, ST is not strict in values. That means when we say readSTRef or
+writeSTRef, we could be reading or writing a thunk. But... we can't hide
+something like reduce on the thunk, can we? Because it uses ST. It could
+create things in ST?
+
+Mon Aug 13 11:35:50 EDT 2012
+
+Nirav pointed out some funniness in the queries I'm generating. Lots of silly
+duplications. I should figure out what those are. I might have better luck
+with that than this lazy issue... Who knows. Let me take a look at it
+anyway, just to get a feel for what the issue is.
+
+Query things I'm seeing:
+
+let x = blah in x
+
+This is silly. Where does this come from?
+
+Looks like:
+  case free of
+    (x, _) -> x
+
+Well, I see why that's leading to the generated code it is.  It's a yices
+specific thing I think. We could recognize it specially if we wanted. I'm not
+sure it will make so much of a difference. I suppose it's worth a try.
+
+But it's not the problem with the heap elaborator. Just something else to keep
+in mind for later.
+
+What to do about the memory leaks in the heap elaborator?
+
+Let me focus on the specific problem: REDUCE_APP
+
+REDUCE_APP is retaining ExpRs.
+
+do
+ a' <- reduce s v a
+ b' <- reduce s v b
+ mkRef (rtype r) $ AppEH a' b'
+
+What leaks here?
+ - a leaks if reduction hasn't happened yet.
+ - b leaks, if reduction hasn't happened yet.
+ - a', b' don't leak, because we need them. But! It could be marked as leaking
+   if we don't ... No. They shouldn't leak because they are on the AppEH,
+right?
+ - We leak r! In the call to (rtype r). That's bad.
+
+How can I force that?
+
+We return (mkRef ... ...) as a thunk. That's also an issue. Who figures that
+out?
+
+Okay, so someone wants the result of reduce. To figure it out, we have to read
+r and figure out the type is AppEH. But then we just return a thunk. No need
+even to evaluate the do block, we leak a, b, r.
+
+So, I have to look at who uses the result of reduce, and make sure they force
+it to at least weak head normal form. Even then, though, we leak r through the
+type. We leak a, b, perhaps, through the expression.
+
+Users of reduce:
+ LamEH - we very quickly reelabH it, which should force the ExpR.
+ reduce.rm - we don't force the result.
+ reduce - recursive calls, as we know, don't force anything.
+
+And that's it.
+
+Okay, so let me try this, as an experiment:
+1. Make a function which, given a reference, returns the reference after
+having completely, deeply, elaborated it. So, read all the references, case on
+them. Also make sure the types and ids are seqed. Then call this after the
+LamEH call to reduce. Do this, and see what it does, if anything.
+
+Mon Aug 13 12:40:15 EDT 2012
+
+Well, it looks like it did something. Takes longer, more memory allocated, but
+less leaking... Lovely.
+
+Gah! Ug.
+
+Let me try to fix the yices thing to make the query less silly, print that
+out, then look to see if there is more stupidity in the generated query.
+
+I should also recognize nested lets.
+
+Mon Aug 13 12:57:11 EDT 2012
+
+Nested lets didn't work out, because I guess the bindings don't take effect
+until the body of the let.
+
+But the other change: let x = blah in x, now written as blah, cuts down the
+query from 74M to 66M. That's good.
+
+What else do I see?
+
+- We don't need to define a new case variable if the argument to the case is
+simple, such as free~1.
+
+- Make the WHNF elaborator be sharing. Or have that option so different
+  assertions can make use of sharing. I bet that helps a bunch.
+
+- inline bools... but again, I don't think this is the most important thing at
+  this point. I should be working on the elaborator.
+
+Mon Aug 13 13:37:55 EDT 2012
+
+Okay, let me be more structured in how I do this.
+
+1. Looks like the simplified yices query doesn't work for debugging. Figure
+out when I broke that and fix it. Check in the changes to the yices target.
+
+2. Reduce multiple things at a time for case reduction. That should improve
+performance significantly.
+
+3. Go back to profiling, brainstorm how to improve performance.
+
+Mon Aug 13 13:58:10 EDT 2012
+
+The bug was switching to SWHNF. I wonder why...
+

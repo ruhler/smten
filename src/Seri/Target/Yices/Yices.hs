@@ -226,16 +226,19 @@ yExp (CaseE e ms) =
           b' <- yExp b
           (preds, bindings) <- depat p e
           let pred = Y.andE preds
-          let lete = if null bindings then b' else Y.LetE bindings b'
+          let lete = if null bindings then b' else yLetE bindings b'
           return $ Y.ifE pred lete bms
   in do
       -- The expression e' can get really big, so we don't want to duplicate
       -- it when we use it to check for a pattern match in every alternative.
       -- Instead we bind it to variable ~c and duplicate that instead.
       e' <- yExp e
-      cnm <- yfreecase
-      body <- dematch (Y.varE cnm) ms
-      return $ Y.LetE [(cnm, e')] body
+      case e' of
+         Y.ImmediateE {} -> dematch e' ms
+         _ -> do
+            cnm <- yfreecase
+            body <- dematch (Y.varE cnm) ms
+            return $ yLetE [(cnm, e')] body
 yExp (VarE (Sig "~error" t)) = do
     errnm <- yfreeerr t
     return $ Y.varE errnm
@@ -307,7 +310,7 @@ yExp e@(AppE a b) =
        [LamE (Sig n _) b, arg] -> do
            arg' <- yExp arg
            b' <- yExp b
-           return $ Y.LetE [(n, arg')] b'
+           return $ yLetE [(n, arg')] b'
        _ -> do
            a' <- yExp a
            b' <- yExp b
@@ -316,6 +319,13 @@ yExp l@(LamE (Sig n xt) e) =
     yfail $ "lambda expression in yices target generation: " ++ pretty l
 yExp (ConE s) = yCon s []
 yExp (VarE (Sig n _)) = return $ Y.varE (yicesname n)
+
+-- Let expression in yices.
+-- Tries to do simplification of the let so queries don't look quite so ugly.
+yLetE :: [Y.Binding] -> Y.Expression -> Y.Expression
+yLetE [] e = e
+yLetE [(n, e)] (Y.ImmediateE (Y.VarV n')) | n == n' = e
+yLetE bs e = Y.LetE bs e
 
 -- Generate yices code for a fully applied constructor application.
 yCon :: Sig -> [Exp] -> CompilationM Y.Expression
