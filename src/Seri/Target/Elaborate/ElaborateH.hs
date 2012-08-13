@@ -108,7 +108,7 @@ type ID = Integer
 
 data ER s = ER {
     -- The expression pointed to be the reference.
-    er_exp :: ExpH s,
+    er_exp :: (ExpH s),
 
     -- True if the expression is fully elaborated.
     er_elabed :: Bool,
@@ -260,22 +260,22 @@ elabH free r@(ExpR _ _ str) = do
       mode <- gets es_mode
       e <- readRef1 r
       case (debug ("elab", r) e) of
-        LitEH {} -> return ()
-        CaseEH x ms -> do
+        LitEH {} -> {-# SCC "LIT" #-} return ()
+        CaseEH x ms -> {-# SCC "CASE" #-} do
            elabH free x
            mr <- matches free x ms
            case mr of
              -- TODO: return error if no alternative matches?
              NoMatched -> error $ "Case did not match"
-             Matched vs b -> do
+             Matched vs b -> {-# SCC "MATCHED" #-} do
                 lete <- letEH vs b
                 reelabH free r (RefEH lete)
-             UnMatched ms' -> do
+             UnMatched ms' -> {-# SCC "UNMATCHED" #-} do
                 elabedH r $ CaseEH x ms'
                 if mode == SNF
                     then sequence_ [elabH (bindingsP p ++ free) b | MatchH p b <- ms']
                     else return ()
-        AppEH a b -> do
+        AppEH a b -> {-# SCC "APP" #-} do
             av <- elabHed free a
             case av of
               VarEH (Sig "Seri.Lib.Prelude.valueof" t) ->
@@ -303,12 +303,12 @@ elabH free r@(ExpR _ _ str) = do
               _ | mode == SNF -> elabH free b
               _ -> return ()
         LamEH {} | mode == WHNF -> return ()
-        LamEH s b -> elabH (s:free) b
+        LamEH s b -> {-# SCC "LAM" #-} elabH (s:free) b
         ConEH {} -> return ()
         VarEH (Sig "Seri.Lib.Prelude.numeric" (NumT nt)) ->
             elabedH r $ ConEH (Sig ("#" ++ show (nteval nt)) (NumT nt))
         VarEH s | s `elem` free -> return ()
-        VarEH s@(Sig _ ct) -> do
+        VarEH s@(Sig _ ct) -> {-# SCC "VAR" #-} do
             env <- gets es_env
             decls <- gets es_decls
             case Map.lookup s decls of
@@ -321,7 +321,7 @@ elabH free r@(ExpR _ _ str) = do
                         er <- heapifyr Map.empty ve'
                         modifyS $ \es -> es { es_decls = Map.insert s er decls }
                         reelabH free r (RefEH er)
-        RefEH x -> do
+        RefEH x -> {-# SCC "REF" #-} do
             v <- elabHed free x
             case v of
                 RefEH y -> elabedH r v
@@ -338,7 +338,7 @@ reduce s@(Sig n _) v r = do
   e <- readRef r
   case (debug ("reduce", pretty s, v, r) e) of
     LitEH {} -> return r
-    CaseEH x ms ->
+    CaseEH x ms -> {-# SCC "REDUCE_CASE" #-}
       let rm m@(MatchH p _) | n `elem` bindingsP' p = return m
           rm (MatchH p b) = do
             b' <- reduce s v b
@@ -347,12 +347,12 @@ reduce s@(Sig n _) v r = do
         x' <- reduce s v x
         ms' <- mapM rm ms 
         mkRef (rtype r) $ CaseEH x' ms'
-    AppEH a b -> do
+    AppEH a b -> {-# SCC "REDUCE_APP" #-} do
         a' <- reduce s v a
         b' <- reduce s v b
-        mkRef (rtype r) $ AppEH a' b'
+        mkRef (rtype r) $! AppEH a' b'
     LamEH (Sig nm _) _ | nm == n -> return r
-    LamEH ls b -> do
+    LamEH ls b -> {-# SCC "REDUCE_LAM" #-} do
         b' <- reduce s v b
         mkRef (rtype r) $ LamEH ls b'
     ConEH {} -> return r
@@ -666,3 +666,25 @@ updateLoc path r@(ExpR _ _ str)  =
         ConEH {} -> return ()
         VarEH {} -> return ()
         RefEH x -> updateLoc path' x
+
+-- Force thunks in a reference deeply.
+-- Hopefully this helps avoid space leak issues.
+refseq :: ExpR s -> ElabH s a -> ElabH s a
+refseq r@(ExpR id t str) x = do
+  e <- readRef1 r
+  case (id `seq` t `seq` e) of
+    LitEH l -> x
+    CaseEH m ms ->
+      let refmseq :: MatchH s -> ElabH s a -> ElabH s a
+          refmseq (MatchH _ b) x = refseq b x
+
+          refmseqs :: [MatchH s] -> ElabH s a -> ElabH s a
+          refmseqs [] x = x
+          refmseqs (m:ms) x = refmseqs ms $ refmseq m x
+      in refmseqs ms $ refseq m x
+    AppEH a b -> refseq b $ refseq a x
+    LamEH _ b -> refseq b x
+    ConEH {} -> x
+    VarEH {} -> x
+    RefEH b -> refseq b x
+

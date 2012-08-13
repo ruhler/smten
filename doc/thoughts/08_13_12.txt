@@ -239,3 +239,9 @@ Mon Aug 13 13:58:10 EDT 2012
 
 The bug was switching to SWHNF. I wonder why...
 
+Anyway, that was the bug there.
+
+Now, SWHNF is a good potential future thing. For now, let me move on to (2).
+
+
+
