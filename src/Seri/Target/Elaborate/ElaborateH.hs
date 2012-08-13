@@ -268,8 +268,8 @@ elabH free r@(ExpR _ _ str) = do
              -- TODO: return error if no alternative matches?
              NoMatched -> error $ "Case did not match"
              Matched vs b -> {-# SCC "MATCHED" #-} do
-                lete <- letEH vs b
-                reelabH free r (RefEH lete)
+                rr <- reduce [(n, b) | (Sig n _, b) <- vs] b
+                reelabH free r (RefEH rr)
              UnMatched ms' -> {-# SCC "UNMATCHED" #-} do
                 elabedH r $ CaseEH x ms'
                 if mode == SNF
@@ -296,8 +296,8 @@ elabH free r@(ExpR _ _ str) = do
                          _ -> return ()
                     _ | mode == SNF -> elabH free b
                     _ -> return ()
-              LamEH s@(Sig n _) body -> do
-                rr <- reduce s b body 
+              LamEH (Sig n _) body -> do
+                rr <- reduce [(n, b)] body 
                 reelabH free r $ RefEH rr
       
               _ | mode == SNF -> elabH free b
@@ -333,35 +333,36 @@ elabH free r@(ExpR _ _ str) = do
 --
 -- TODO: if the reduced expression is the same as the original, we could just
 -- return the original to capture more sharing.
-reduce :: Sig -> ExpR s -> ExpR s -> ElabH s (ExpR s)
-reduce s@(Sig n _) v r = do
+reduce :: [(Name, ExpR s)] -> ExpR s -> ElabH s (ExpR s)
+reduce [] r = return r
+reduce m r = do
   e <- readRef r
-  case (debug ("reduce", pretty s, v, r) e) of
+  case (debug ("reduce", m, r) e) of
     LitEH {} -> return r
     CaseEH x ms -> {-# SCC "REDUCE_CASE" #-}
-      let rm m@(MatchH p _) | n `elem` bindingsP' p = return m
-          rm (MatchH p b) = do
-            b' <- reduce s v b
+      let rm (MatchH p b) = do
+            b' <- reduce (filter (\(n, _) -> n `notElem` (bindingsP' p)) m) b
             return (MatchH p b')
       in do
-        x' <- reduce s v x
+        x' <- reduce m x
         ms' <- mapM rm ms 
         mkRef (rtype r) $ CaseEH x' ms'
     AppEH a b -> {-# SCC "REDUCE_APP" #-} do
-        a' <- reduce s v a
-        b' <- reduce s v b
+        a' <- reduce m a
+        b' <- reduce m b
         mkRef (rtype r) $! AppEH a' b'
-    LamEH (Sig nm _) _ | nm == n -> return r
-    LamEH ls b -> {-# SCC "REDUCE_LAM" #-} do
-        b' <- reduce s v b
-        mkRef (rtype r) $ LamEH ls b'
+    LamEH s@(Sig nm _) b -> {-# SCC "REDUCE_LAM" #-} do
+        b' <- reduce (filter (\(n, _) -> n /= nm) m) b
+        mkRef (rtype r) $ LamEH s b'
     ConEH {} -> return r
-    VarEH (Sig nm _) | nm == n -> return v
-
-    -- Return a new reference here. Otherwise someone else could cause the var
-    -- to be elaborated, leading to a cycle in a recursive function, which
-    -- doesn't work when trying to do beta reduction.
-    VarEH s -> mkRef (rtype r) $ VarEH s
+    VarEH s@(Sig nm _) ->
+      case lookup nm m of
+         Just v -> return v
+         Nothing -> 
+            -- Return a new reference here. Otherwise someone else could cause
+            -- the var to be elaborated, leading to a cycle in a recursive
+            -- function, which doesn't work when trying to do beta reduction.
+            mkRef (rtype r) $ VarEH s
 
     RefEH x -> error $ "readRef returned RefEH in reduce"
 
@@ -377,8 +378,8 @@ mkRef t e = do
 
 -- | Read a reference.
 readRef1 :: ExpR s -> ElabH s (ExpH s)
-readRef1 (ExpR _ _ r) = do
-    er <- lift $ readSTRef r
+readRef1 (ExpR _ _ r) = lift $ do
+    er <- readSTRef r
     return $! er_exp er
 
 isElabed :: ExpR s -> ElabH s Bool

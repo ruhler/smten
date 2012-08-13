@@ -243,5 +243,56 @@ Anyway, that was the bug there.
 
 Now, SWHNF is a good potential future thing. For now, let me move on to (2).
 
+Mon Aug 13 14:09:23 EDT 2012
 
+Actually, better yet, let me skip to (3).
 
+Review of profile:
+
+readRef1 has lots of time and memory.
+APP has lots of time, some memory.
+mkRef has lots of time, tons of memory.
+== has lots of time (no memory).
+UNMATCH has lots of time, lots of memory.
+elabH has lots of time, tons of memory.
+
+And so on.
+
+Mon Aug 13 14:17:34 EDT 2012
+
+30% of the time is in reduce. That's impressive.
+
+That also would justify sharing reduce for multiple bindings in case
+reduction.
+
+Question: why does mkRef take 4.3% time, 12% allocation? What is it
+allocating? Let me break it down into parts to see.
+
+Mon Aug 13 14:27:01 EDT 2012
+
+Okay, so, we are allocating all the references: ExpR, STRef. Not surprising it
+takes up memory.
+
+Mon Aug 13 14:45:40 EDT 2012
+
+What if we do beta reduction a little differently.
+
+For each Lambda, represent it as:
+
+LamEH ExpR ExpR
+
+The first ExpR is a reference to the variable, and the body has already done
+the reduction. Now, for beta reduction, all you have to do is update the
+variable reference? Yes. That should work. As long as the LamEH isn't
+shared... Oh. Yes. So if the LamEH is shared, then that runs into problems.
+What we really want is (App (Lam ...) ...). That's where the substitution is
+unique. Bugger. Fundamentally we have to copy the lambda body for each
+different application.
+
+Well, regardless, doing all the case reductions at the same time should help,
+so let me try that, see how much difference it makes. Just for the sake of
+some improvement.
+
+Mon Aug 13 15:04:58 EDT 2012
+
+Well, certainly it's improved, so I see no reason not to commit this change.
