@@ -46,7 +46,7 @@ module Seri.Target.Elaborate.ElaborateH (
 import Debug.Trace
 
 import Control.Monad.ST
-import Control.Monad.State
+import Control.Monad.State.Strict
 
 import Data.Maybe (fromMaybe)
 import Data.Monoid
@@ -83,19 +83,26 @@ debug _ = id
 
 type ElabH s = StateT (ES s) (ST s)
 
-liftST :: ST s a -> ElabH s a
-liftST = lift
-
 writeER :: ExpR s -> ER s -> ElabH s ()
 writeER r@(ExpR _ _ str) x =
-  debug (r, x) $ liftST $ writeSTRef str x
+  debug (r, x) $ lift $ writeSTRef str x
 
 newname :: Name -> ElabH s Name
 newname n = do
     m <- gets es_unique
     let (id, m') = Map.insertLookupWithKey (\_ -> (+)) n 1 m
-    modify $ \es -> es { es_unique = m' }
+    modifyS $ \es -> es { es_unique = m' }
     return $ n ++ "~" ++ show (fromMaybe 0 id)
+
+modifyS :: (MonadState s m) => (s -> s) -> m ()
+modifyS f = do
+    x <- get
+    put $! f x
+
+getsS :: (MonadState s m) => (s -> a) -> m a
+getsS f = do
+    x <- get
+    return $! f x
 
 type ID = Integer
 
@@ -244,7 +251,7 @@ elabedH = writeRef True
 -- which are in the expression which should not be looked up in the top level
 -- declarations of the environment.
 elabH :: [Sig] -> ExpR s -> ElabH s ()
-elabH free r = do
+elabH free r@(ExpR _ _ str) = do
   done <- isElabed r
   if done
     then return ()
@@ -312,7 +319,7 @@ elabH free r = do
                      Just (pt, ve) -> do 
                         let ve' = (assign (assignments pt ct) ve)
                         er <- heapifyr Map.empty ve'
-                        modify $ \es -> es { es_decls = Map.insert s er decls }
+                        modifyS $ \es -> es { es_decls = Map.insert s er decls }
                         reelabH free r (RefEH er)
         RefEH x -> do
             v <- elabHed free x
@@ -361,25 +368,28 @@ reduce s@(Sig n _) v r = do
 -- | Make and return a reference to the given expression.
 mkRef :: Type -> ExpH s -> ElabH s (ExpR s)
 mkRef t e = do
-    id <- gets es_nid
-    modify $ \es -> es { es_nid = id+1 }
-    r <- liftST $ newSTRef (er e False)
+    id <- getsS es_nid
+    modifyS $ \es -> es { es_nid = id + 1}
+    r <- lift $ newSTRef (er e False)
     let er = ExpR id t r
     debug (er, e) $ return er
 
 
 -- | Read a reference.
 readRef1 :: ExpR s -> ElabH s (ExpH s)
-readRef1 (ExpR _ _ r) = fmap er_exp $ liftST $ readSTRef r
+readRef1 (ExpR _ _ r) = do
+    er <- lift $ readSTRef r
+    return $! er_exp er
 
 isElabed :: ExpR s -> ElabH s Bool
-isElabed (ExpR _ _ r) = fmap er_elabed $ liftST $ readSTRef r
+isElabed (ExpR _ _ r) = do
+    er <- lift $ readSTRef r
+    return $! er_elabed er
 
 setElabed :: ExpR s -> ElabH s ()
 setElabed r@(ExpR _ _ str) = do
-    er <- liftST $ readSTRef str
-    writeER r (er { er_elabed = True } )
-    
+    er <- lift $ readSTRef str
+    writeER r $! er { er_elabed = True }
 
 -- | Read a reference, following chains to the end.
 readRef :: ExpR s -> ElabH s (ExpH s)
@@ -391,17 +401,18 @@ readRef r = do
 
 readDest :: ExpR s -> ElabH s (Maybe (ExpR s))
 readDest (ExpR _ _ r) = do
-    loc <- fmap er_loc $ liftST $ readSTRef r
+    loc <- fmap er_loc $ lift $ readSTRef r
     return $ do
         l <- loc
         if null l then Nothing else return (head l)
 
 readDecls :: ExpR s -> ElabH s [(ExpR s, Exp)]
-readDecls (ExpR _ _ r) = fmap er_decls $ liftST $ readSTRef r
+readDecls (ExpR _ _ r) = fmap er_decls $ lift $ readSTRef r
 
 addDecl :: ExpR s -> (ExpR s, Exp) -> ElabH s ()
-addDecl (ExpR _ _ r) x = do
-    liftST $ modifySTRef r $ \er -> er { er_decls = x : er_decls er}
+addDecl (ExpR _ _ r) x = lift $ do
+    er <- readSTRef r
+    writeSTRef r $! er { er_decls = x : er_decls er}
 
 writeRef :: Bool -> ExpR s -> (ExpH s) -> ElabH s ()
 writeRef done r e = writeER r (er e done)
@@ -640,8 +651,8 @@ updateLoc path r@(ExpR _ _ str)  =
 
   in do
     let path' = r:path
-    er <- liftST $ readSTRef str
-    writeER r $ er { er_loc = Just (maybe path' (pprefix path') (er_loc er)) }
+    er <- lift $ readSTRef str
+    writeER r $! er { er_loc = Just (maybe path' (pprefix path') (er_loc er)) }
     e <- readRef1 r
     case e of
         LitEH {} -> return ()

@@ -339,3 +339,49 @@ to make the heap elaborator go really fast.
 
 How does that sound to you? Reasonable? Sure.
 
+Fri Aug 10 15:13:14 EDT 2012
+
+Looking into performance.
+Working with 9 queries in BCL3.
+
+nheap:
+ 6.145s to run with profiling compiled in but off.
+ 36M yices query generated.
+
+heap:
+ 24.772s to run with profiling compiled in but off.
+ 74M yices query generated.
+
+So...maybe not so fruitful, eh?
+
+Ug. I don't know why I wasted my time with this.
+
+What I should do is count words, not look at the resulting file size. That
+will be more informative.
+
+Except... we still get the same results.
+
+nheap looks to be spending a lot of time in alpha renaming and checking of
+if we should reduce it or not (which looks for free variables in the
+arguments).
+
+I feel like the heap elaborator does the sharing much more cleanly, so let me
+give it a shot. Maybe it can be made faster without too much work.
+
+First, let's see if we are leaking any ES. The answer should be no. We expect
+at most 1 at a time.
+
+Fri Aug 10 15:39:42 EDT 2012
+
+Yes, we are leaking ES. In mkRef it looks like.
+
+I see a modify, which could be part of the problem.
+
+My debug code may not be helping a lot.
+
+The cause of the leak could be either: id holds on, or modify holds on.
+
+Got rid of the modify. Let's see if id still holds on...
+
+That helped. We still have some leaking though.
+
