@@ -85,9 +85,10 @@ elaborate' mode env freenms e =
       -- given argument.
       shouldreduce :: Exp -> Bool
       shouldreduce (LitE {}) = True
+      shouldreduce (ConE {}) = True
       shouldreduce (VarE {}) = True
-      shouldreduce x | null (filter (not . isprim) (free x)) = True
       shouldreduce x | isfunt (typeof x) = True
+      shouldreduce x | null (filter (not . isprim) (free x)) = True
       shouldreduce _ = False
 
   in case e of

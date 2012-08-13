@@ -296,3 +296,209 @@ some improvement.
 Mon Aug 13 15:04:58 EDT 2012
 
 Well, certainly it's improved, so I see no reason not to commit this change.
+
+Committed. Now, reduce still takes up 13% time, 32% allocation still. All of
+this is from straight beta reduction, not from case pattern matching
+reduction.
+
+Does anything generate an application of a lambda? I feel like the answer is
+no. The only thing that does is inlining of a variable from the environment?
+
+Well, or things like:
+
+let f = \a -> ...
+in f x + f y
+
+Bummer. But... what if I can make it more likely? Then I could ... I don't
+know. The idea is, you really want to duplicate as little as possible when
+doing beta application. If a function is only applied once, then only make
+one version of it in memory, don't make a copy of it.
+
+Another idea is to do beta reduction lazily. The value of this is, we can say:
+
+reduce m (ReduceE m' e) = reduce (m++m') e
+
+So we are combining our lookups, and reducing the number of traversals we
+make, and reducing the number of expressions we duplicate for the same reason.
+That sounds valuable to me.
+
+How hard is this? Elaborating ReduceEH is just calling reduce, which does a
+single level of reduction, and elaborating the result. Deheapification can
+also apply the reduce. Err... it's slightly annoying though. Unless elaborate
+fully gets rid of the lazy reduce, but then where is the laziness used?
+
+Mon Aug 13 15:35:14 EDT 2012
+
+Summarizing again the profiling:
+
+APP: 40/66
+CASE: 13/21
+UNMATCHED: 6.5/9
+matches: 4.0/7.7
+reduce: 13/33
+elabHed 6.1/7.4
+
+Brainstorm:
+- space leaks?
+- flatten case statements to make matching easier?
+- lazy beta reduction to avoid needless copies of things?
+- cache free variables to avoid needless reduction?
+- avoid copy for beta reduction with a single use of lambda?
+- do beta reduction when possible at heapify time?
+- Higher order abstract syntax representation for lambdas?
+
+Hmm... higher order abstract syntax representation for lambdas made at
+heapify?
+
+So, LamEH holds (\ExpR -> ExpR). You give an arg, it gives the result. Beta
+application is just function application.
+
+How can I build this up? heapify has to return a function... or... make it a
+lazy heapification?
+
+heapify :: [(Name, ExpR)] -> Exp -> ExpR
+
+Then just do: LamEH (\r -> heapify n r e)
+
+What's the value here? We don't duplicate anything that doesn't need to be
+duplicated? It's like a lazy reduction/heapification...
+
+Hmm... And, I can always inline it easily enough...
+
+But how do you elaborate the body? Stuff it into the lambda I suppose.
+
+\r -> elaborate (f r)
+
+What will this representation give over what I do currently? We lazily
+construct the heap version of the expression, and we reconstruct it for each
+different application. So I avoid an extra copy of the expression. But that's
+really all I can think of.
+
+You know what? I think that would actually help. It would certainly be fun to
+try, see what issues come up, and see how much of a difference it makes. I'm
+basically getting rid of the reduce entirely, which should make us 10% faster
+for free? At least it does lazy reduction for free, but unfortunately, we
+still stack reductions on top of each other, right?
+
+
+Mon Aug 13 17:24:04 EDT 2012
+
+Here's another idea. What if I kept things in sharing form, as in, with let
+expressions directly. Like, in my nheap elaborator?
+
+So, to elaborate a beta reduction... don't do anything! We just keep it in
+shared form. But, err... that is, we keep it like that, then go into the body.
+Elaborate the body with a scope which points the name to its value, and inline
+that when we get there. The one thing we do need to do is simplifications
+where you have: let x = blah in foo, where foo doesn't make any reference to
+x, should be just foo.
+
+As an added bonus, this leaves us with the lets we want, all in the right
+place.
+
+I suppose my real question is, do I think the heap elaborator will be faster
+than the non-heap elaborator? Or in any way better? And the answer now, is,
+currently? I don't think so. Too complicated. Too many reference allocated...
+
+Another question... can I use HOAS in the non-heap elaborator? Have a modified
+kind of expression, just like the original, only with LamE represented as a
+function? Well... that's kind of what my idea of having a scope is, right?
+
+Let me take a look at the non-heap elaborator, review where it is slow.
+
+Mon Aug 13 17:33:41 EDT 2012
+
+Yes, the non-heap elaborator is in much better shape, and has room for
+improvement. Most of it's time is spent in alpha renaming, reduce,
+should-reduce...
+
+Let's say I did a separate uniquification pass. Then I wouldn't have to worry
+about alpha renaming...
+
+Let's say I don't actually perform any reduction in the sharing form. Then I
+don't have to worry about alpha renaming, do I? The idea is, elaboration takes
+place in a scope, so I'm elaborating...
+
+Let me use my tried and true alpha renaming example:
+
+
+\b -> (\a -> (\b -> (a + b))) b
+
+I go inside... but now I have a scope:
+
+b: VarE b
+a: VarE b
+b: VarE b
+
+a turns into: "b", but it turns into the wrong "b", unfortunately.
+Except, I could do alpha renaming as soon as I see that "b" is in scope?
+
+inscope: b
+
+Except, as I've run into many times before, we don't know who all is in scope.
+I should just do a separate renaming step, and not worry about this?
+
+
+How about my sharing test.
+
+quadruple a = a + (a + (a + a))
+
+Elaborate: quadruple (x-y)
+
+(\a -> a + (a + (a + a))) (x-y)
+
+let a = (x-y)
+in a + (a + (a + a))
+
+But, if a should be reduced, then we want to do the reduction.
+
+Mon Aug 13 17:45:27 EDT 2012
+
+Wait a second, we already only do beta reduction if there are no free
+variables in the argument. If that's the case, then we don't have to worry
+about alpha renaming, we can't capture anything.
+
+Let me try that out.
+
+Oh, not quite. Because if the argument is a function type, we are going to
+reduce it anyway.
+
+Or again, don't do the reduction, just add something in scope? Perform
+evaluation with a scope...
+
+I feel like this should speed things up a bunch. Reduction becomes trivial:
+constant time. Do we still need renaming? I would love it if we didn't...
+Well, if we are going to do uniqification, we could do it at the same time.
+
+elaborate with a scope... doesn't help make use of sharing though. Not unless
+we elaborate the argument in the scope?
+
+And doesn't that become our heap structure, just like that? Isn't that a
+better kind of heap elaborator?
+
+So, I propose a new heap elaborator. Elaboration happens in an environment
+mapping variable name to expression?
+
+Or... better yet, do a translation into a representation which is just like
+the IR, only for Lambdas use HOAS. That avoids the need for alpha renaming,
+right? Let haskell do all the work. Beta reduction is function application.
+It's all pure... Do we maintain sharing? How do we elaborate a lambda, for
+example, that's in HOAS form?
+
+Oh, easy, stick the elaboration into the lambda function.
+
+So, reduction becomes trivial. We basically are doing all the reduction at the
+conversion.
+
+I don't know. It may not work out the way I want.
+
+
+let's try it out on our old alpha renaming friend at least:
+
+\b -> (\a -> (\b -> (a + b))) b
+
+Names are unique, because there are no names? I can make up my own names when
+I go to print it? When I go to convert back?
+
+
+
