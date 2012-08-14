@@ -1,0 +1,121 @@
+
+Tue Aug 14 08:59:05 EDT 2012
+
+nheap is slow because of searching for free variables and alpha renaming. The
+problem with doing a uniquification pass is, I fear, it puts a sequence
+requirement on elaboration which I'd rather not do.
+
+There is a way, I think, I could get away without the uniqification pass,
+without alpha renaming, and with sharing of reductions. You have a scope, for
+beta reduction, you just put the argument in scope and elaborate the body
+under that scope. We make sure everything on scope is elaborated. Now, when
+you get to a variable, you can look it up in scope. If it's simple, inline it,
+if it's not simple, then don't inline it.
+
+The key thing for alpha renaming is: never try to elaborate a variable
+referred to on the scope under the scope, because the meaning of the variable
+could be from a different scope.
+
+Things we do to reduce:
+- beta reduction: just put the argument on the scope after elaborating it.
+  Easy.
+- primitive literal operations: literals will be inlined, so that's fine.
+- primitive bit operations: we can have a special case to inline bit vectors.
+- pattern matching: var, wild, integer all are easy. The trouble is with
+  constructors...
+
+Say we have something on scope:
+
+foo: Blah a b c
+
+Where a, b, c are free variables which could belong to another scope.
+
+Now we want to pattern match against this, say: Blah _ v _. So, you could say,
+yes, clearly this is a match, and now add to scope v points to b. The problem
+is, we don't know which b v is referring to? Is that really a problem?
+
+I should think about this more. I think this has potential to really speed up
+the non-heap elaborator, which, I think, honestly, is a lot more promising at
+this point than the heap elaborator.
+
+Another thought on the heap elaborator. We could make heapify pure if we
+wanted by having references be ST computations which return expressions rather
+than STRefs. You don't perform the computation until you need to. That could
+give us the sharing we want.
+
+I had another, little idea I want to try out with the nonheap elaborator. For
+case matches, which takes up, if not a whole ton of time, some bit of time.
+Unfold the expression for a constructor match. Match the constructor (or not),
+then match each sub element. That way, at least, it should be obvious...
+
+Wait, the real question is, do we need this check for iswhnf. Because, if it
+is whnf, wouldn't it have already failed?  That's worth checking.
+
+Like, if we assume it's well typed, which I think is fair to do... then iswhnf
+does nothing, right? Let's look at the cases where it is true.
+
+1. LitE. Then the pattern is IntegerP, and I added a case to detect that
+failure.
+2. LamE. Then the pattern can't be LitE or ConE, so it must have matched.
+3. iscon: it must have been a constructor, and I added a case to detect that.
+
+Tue Aug 14 09:36:47 EDT 2012
+
+Okay, so I simplified the pattern matching. Profiling says it takes more
+memory, and noticeably less time (gar).
+
+Let me pursue this question about shared reduction/alpha renaming.
+
+The main cost we have is asking if we should reduce an expression. This
+requires looking up the free variables in the argument.
+
+After that, alpha renaming is rather expensive.
+
+I suppose I could focus on alpha renaming performance, try to improve that...
+
+Tue Aug 14 10:27:52 EDT 2012
+
+I tried to improve it. No progress. Blah.
+
+Clearly the thing to improve with the nheap elaborator is the shouldreduce
+predicate. In particular, the case where we check to see if there are any free
+variables in the argument to be careful about.
+
+Tue Aug 14 10:47:14 EDT 2012
+
+Just an update:
+
+nheap on BCL3 with 9 queries:
+ no profiling compiled: 4.4
+ run in yices: 1.7
+
+So we are within a factor of 2-3.
+
+I feel like we could improve that, but it will be complicated and lead to not
+very great improvements. I also have to worry about the infinite elaboration
+bug.
+
+Let me take a closer look at the generated query, see if there is any sharing
+I expect to see that I'm not. Why is the query so darn big?
+
+Tue Aug 14 11:18:42 EDT 2012
+
+Looks like the query is so big because we do a lot of repeated applications of
+a complex function to different arguments.
+
+But! I did an experiment with errors. If we assume no errors, the yices query
+is 2/3 the size, takes half the time to run in seriq2, but takes almost an
+order of magnitude less time in yices (5x improvement)... This could be
+important.
+
+And then, elaborate really becomes costly in seriq...
+
+Note: with yices1, we should be able to make very simple queries by taking
+advantage of lambdas. Perhaps we could get back to what Myron wants...
+
+Hmm... what to do about this error thing...
+
+Tue Aug 14 11:47:49 EDT 2012
+
+I think it would be nice to have a runtime option for it. Let me add that in.
+

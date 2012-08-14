@@ -57,6 +57,7 @@ import Seri.Target.Inline
 data Compilation = Compilation {
     ys_version :: Y.YicesVersion, -- ^ Version of yices to target
     ys_idepth :: Integer,       -- ^ Depth of inlining to perform
+    ys_nocaseerr :: Bool,       -- ^ Assume an alternative will match in each case expression
     ys_poly :: Env,             -- ^ The polymorphic seri environment
     ys_mono :: [Dec],           -- ^ Already declared (monomorphic) declarations
     ys_monoe :: Env,            -- ^ The environment corresponding to ys_mono
@@ -98,11 +99,13 @@ modifyS f = do
 -- | Create a new yices compilation object.
 compilation :: Y.YicesVersion    -- ^ yices version to target
                -> Integer      -- ^ inline depth
+               -> Bool         -- ^ nocase err?
                -> Env          -- ^ polymorphic seri environment
                -> Compilation
-compilation version idepth poly = Compilation {
+compilation version idepth nocaseerr poly = Compilation {
     ys_version = version,
     ys_idepth = idepth,
+    ys_nocaseerr = nocaseerr,
     ys_poly = tweak tweakings poly,
     ys_mono = [],
     ys_monoe = mkEnv [],
@@ -192,53 +195,59 @@ yExp :: Exp -> CompilationM Y.Expression
 yExp (LitE (IntegerL x)) = return $ Y.integerE x
 yExp (LitE (CharL c)) = return $ Y.integerE (fromIntegral $ ord c)
 yExp e@(CaseE _ []) = yfail $ "empty case statement: " ++ pretty e
-yExp (CaseE e ms) =
-  let -- depat p e
-      --    outputs: (predicate, bindings)
-      --   predicate - predicates indicating if the 
-      --                pattern p matches expression e
-      --   bindings - a list of bindings made when p matches e.
-      depat :: Pat -> Y.Expression -> CompilationM ([Y.Expression], [Y.Binding])
-      depat (ConP _ n []) e =
-        let mypred = Y.eqE (Y.selectE e yicesti) (Y.varE (yicesname n))
-        in return ([mypred], [])
-      depat (ConP _ n ps) e = do
-        ci <- yicesci n
-        let ce = Y.selectE e ci
-        depats <- sequence [depat p (Y.selectE ce i) | (p, i) <- zip ps [1..]]
-        let (preds, binds) = unzip depats
-        let mypred = Y.eqE (Y.selectE e yicesti) (Y.varE (yicesname n))
-        return (mypred:(concat preds), concat binds)
-      depat (VarP (Sig n t)) e = return ([], [(n, e)])
-      depat (IntegerP i) e = return ([Y.eqE (Y.integerE i) e], [])
-      depat (WildP _) _ = return ([], [])
+yExp (CaseE e ms) = do
+  nocaseerr <- gets ys_nocaseerr
+  (let -- depat p e
+     --    outputs: (predicate, bindings)
+     --   predicate - predicates indicating if the 
+     --                pattern p matches expression e
+     --   bindings - a list of bindings made when p matches e.
+     depat :: Pat -> Y.Expression -> CompilationM ([Y.Expression], [Y.Binding])
+     depat (ConP _ n []) e =
+       let mypred = Y.eqE (Y.selectE e yicesti) (Y.varE (yicesname n))
+       in return ([mypred], [])
+     depat (ConP _ n ps) e = do
+       ci <- yicesci n
+       let ce = Y.selectE e ci
+       depats <- sequence [depat p (Y.selectE ce i) | (p, i) <- zip ps [1..]]
+       let (preds, binds) = unzip depats
+       let mypred = Y.eqE (Y.selectE e yicesti) (Y.varE (yicesname n))
+       return (mypred:(concat preds), concat binds)
+     depat (VarP (Sig n t)) e = return ([], [(n, e)])
+     depat (IntegerP i) e = return ([Y.eqE (Y.integerE i) e], [])
+     depat (WildP _) _ = return ([], [])
 
-      -- dematch e ms
-      --    e - the expression being cased on
-      --    ms - the remaining matches in the case statement.
-      --  outputs - the yices expression implementing the matches.
-      dematch :: Y.Expression -> [Match] -> CompilationM Y.Expression
-      dematch ye [] = do
-          errnm <- yfreeerr (arrowsT [typeof e, typeof (head ms)])
-          return $ Y.FunctionE (Y.varE errnm) [ye]
-      dematch e ((Match p b):ms) = do
-          bms <- dematch e ms
-          b' <- yExp b
-          (preds, bindings) <- depat p e
-          let pred = Y.andE preds
-          let lete = if null bindings then b' else yLetE bindings b'
-          return $ Y.ifE pred lete bms
-  in do
-      -- The expression e' can get really big, so we don't want to duplicate
-      -- it when we use it to check for a pattern match in every alternative.
-      -- Instead we bind it to variable ~c and duplicate that instead.
-      e' <- yExp e
-      case e' of
-         Y.ImmediateE {} -> dematch e' ms
-         _ -> do
-            cnm <- yfreecase
-            body <- dematch (Y.varE cnm) ms
-            return $ yLetE [(cnm, e')] body
+     -- dematch e ms
+     --    e - the expression being cased on
+     --    ms - the remaining matches in the case statement.
+     --  outputs - the yices expression implementing the matches.
+     dematch :: Y.Expression -> [Match] -> CompilationM Y.Expression
+     dematch ye [] = do
+         errnm <- yfreeerr (arrowsT [typeof e, typeof (head ms)])
+         return $ Y.FunctionE (Y.varE errnm) [ye]
+     dematch e [Match p b] | nocaseerr = do
+         b' <- yExp b
+         (_, bindings) <- depat p e
+         return $ yLetE bindings b'
+     dematch e ((Match p b):ms) = do
+         bms <- dematch e ms
+         b' <- yExp b
+         (preds, bindings) <- depat p e
+         let pred = Y.andE preds
+         let lete = yLetE bindings b'
+         return $ Y.ifE pred lete bms
+   in do
+       -- The expression e' can get really big, so we don't want to duplicate
+       -- it when we use it to check for a pattern match in every alternative.
+       -- Instead we bind it to variable ~c and duplicate that instead.
+       e' <- yExp e
+       case e' of
+          Y.ImmediateE {} -> dematch e' ms
+          _ -> do
+             cnm <- yfreecase
+             body <- dematch (Y.varE cnm) ms
+             return $ yLetE [(cnm, e')] body
+   )
 yExp (VarE (Sig "~error" t)) = do
     errnm <- yfreeerr t
     return $ Y.varE errnm

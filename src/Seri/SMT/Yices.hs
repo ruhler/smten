@@ -182,7 +182,8 @@ runQueryM e = do
 
 data RunOptions = RunOptions {
     debugout :: Maybe FilePath,
-    inlinedepth :: Integer
+    inlinedepth :: Integer,
+    nocaseerr :: Bool
 } deriving(Show)
             
 -- | Construct a SMTQuerier object for running queries with yices under the given
@@ -200,7 +201,7 @@ mkQuerier opts env ctx = do
         ys_ctx = ctx,
         ys_dh = dh,
         ys_freeid = 1,
-        ys_ys = compilation (Y.version ctx) (inlinedepth opts) env,
+        ys_ys = compilation (Y.version ctx) (inlinedepth opts) (nocaseerr opts) env,
         ys_env = env,
         ys_topnms = Map.empty
     }
