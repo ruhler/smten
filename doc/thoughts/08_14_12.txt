@@ -523,4 +523,33 @@ elaborator is even more of an issue, and yices even less of an issue. Sigh.
 I should note: I thought we fixed the array test case, but it's still got some
 bug somewhere. Just a different one from before, I suppose.
 
+Should I try and figure out what the bug is and fix it?
+
+The answer is: yes! I should. It shouldn't be too hard to figure out, eh? It
+would be really cool if I didn't have this bug to worry about.
+
+Tue Aug 14 16:18:42 EDT 2012
+
+Anyway... what's next? Separate out delambdafication?
+
+How does delambdafication work?
+
+So, we have things in a sharing form. It needs to do the following:
+
+- push application inside lambdas where possible (renaming as appropriate)
+- push application inside case where possible (renaming as appropriate).
+- perform beta reduction on function type arguments.
+
+Can I make it separate? Or do they need to be together?
+
+I should be able to make it a separate pass. It should be a separate pass,
+because this has nothing to do with sharing. It's a kind of anti-sharing. So,
+let me see if I can make this work.
+
+Tue Aug 14 17:33:57 EDT 2012
+
+Wow. Delambdafication as a separate pass actually works. That surprises me.
+It's a good thing though. It should be separate. And hopefully it can make
+easier both delambdafication and elaboration.
+
 

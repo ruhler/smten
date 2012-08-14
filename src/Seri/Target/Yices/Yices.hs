@@ -52,6 +52,7 @@ import Seri.Lambda
 import Seri.Target.Monomorphic.Monomorphic
 import Seri.Target.Elaborate
 import Seri.Target.Inline
+import Seri.Target.Delambdafy
 
 -- | A yices compilation object.
 data Compilation = Compilation {
@@ -135,9 +136,10 @@ yicesE e = do
     idepth <- getsS ys_idepth
     poly <- getsS ys_poly
     let se = elaborate SNF poly e
+    let senl = delambdafy se
     modifyS $ \ys -> ys { ys_cmdsr = [] }
-    me <- confail ("When compiling " ++ pretty se) $ compileNeeded se
-    ye <- confail ("When compiling " ++ pretty se) $ yExp me
+    me <- confail ("When compiling " ++ pretty senl) $ compileNeeded senl
+    ye <- confail ("When compiling " ++ pretty senl) $ yExp me
     cmds <- getsS ys_cmds
     return (cmds, ye)
 

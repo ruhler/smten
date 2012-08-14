@@ -33,7 +33,7 @@
 -- 
 -------------------------------------------------------------------------------
 
--- | Target for reducing a seri expression to a normal form.
+-- | Target for elaborating seri expressions.
 module Seri.Target.Elaborate.Elaborate (
     Mode(..), elaborate,
     ) where
@@ -75,20 +75,12 @@ elaborate' mode env freenms e =
                     Just _ -> True
                     Nothing -> False
 
-      isfunt :: Type -> Bool
-      isfunt t = 
-        case unarrowsT t of
-            _:_:_ -> True
-            _ -> False
-            
-
       -- return True if the given beta reduction should be applied with the
       -- given argument.
       shouldreduce :: Exp -> Bool
       shouldreduce (LitE {}) = True
       shouldreduce (ConE {}) = True
       shouldreduce (VarE {}) = True
-      shouldreduce x | isfunt (typeof x) = True
       shouldreduce x | null (filter (not . isprim) (free x)) = True
       shouldreduce _ = False
 
@@ -134,22 +126,6 @@ elaborate' mode env freenms e =
                let renamed = {-# SCC "BR" #-} alpharename (deleteall name freenms) body
                in elabme (reduce name rb renamed)
 
-             -- Push application inside lambdas where possible.
-             -- Rewrite:    ((\a -> b) x) y
-             --             ((\a -> b y) x)
-             -- With proper renaming.
-             (AppE e@(LamE {}) x, y) ->
-                let LamE s b = {-# SCC "PUSHL" #-} alpharename freenms e
-                in AppE (elabme $ LamE s (AppE b y)) (elabme x)
-
-             -- Push application inside case where possible.
-             -- Rewrite:   (case x of { p1 -> m1; p2 -> m2 ; ... }) y
-             --            (case x of { p1 -> m1 y; p2 -> m2 y; ... })
-             -- With proper renaming
-             (e@(CaseE {}), y) ->
-                let CaseE x ms = {-# SCC "PUSHE" #-} alpharename freenms e
-                in elabme $ CaseE x [Match p (AppE b y) | Match p b <- ms]
-            
              (ra, rb) -> AppE (elabme ra) rb
        LamE {} | mode == WHNF -> e
        LamE s@(Sig n _) b | mode == SNF -> LamE s (elabmenm n b)
