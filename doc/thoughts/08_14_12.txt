@@ -473,7 +473,7 @@ Okay, here's the plan.
 
 1. Try to clean up the nheap elaborator as much as I can. The easier it is to
 understand and change, the better.
-- Elaborate functions just to WHNF before applying the lambda, not full
++ Elaborate functions just to WHNF before applying the lambda, not full
   elaboration. This should fix the array bug. I will be interested to see how
   it affects performance.
 - make delambdafication a separate step if reasonable.
@@ -483,4 +483,20 @@ understand and change, the better.
 else.
 
 This should simplify the code a bunch too, I hope. That will be good.
+
+
+Tue Aug 14 14:37:28 EDT 2012
+
+Elaborated functions to just WHNF before reduction: made a huge difference.
+
+In fact, now things besides elaboration are starting to pop up. Namely,
+monomorphization. It might be worth taking a look there, to see if we have a
+space leak or anything in monomorphization. Anything easy to fix.
+
+High level profile summary:
+
+elaborate:      32.5   36.4
+check:          23.2    0.0
+monomorphize:   11.9   26.2
+runCmds:        11.9    8.3
 

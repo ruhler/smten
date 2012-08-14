@@ -198,28 +198,22 @@ match _ _ = Unknown
 -- reduce n v exp
 -- Perform beta reduction in exp, replacing occurrences of variable n with v.
 reduce :: Name -> Exp -> Exp -> Exp
-reduce n v e = reduces [(n, v)] e
-
--- reduces vs exp
--- Perform multiple simultaneous beta reduction in exp, replacing occurrences
--- of variable n with v if (n, v) is in vs.
-reduces :: [(Name, Exp)] -> Exp -> Exp
-reduces _ e@(LitE _) = e
-reduces vs (CaseE e ms) =
-    let reducematch :: Match -> Match
-        reducematch (Match p b) =
-         let bound = bindingsP' p
-             vs' = filter (\(n, _) -> not (n `elem` bound)) vs
-         in Match p (reduces vs' b)
-    in CaseE (reduces vs e) (map reducematch ms)
-reduces vs (AppE a b) = AppE (reduces vs a) (reduces vs b)
-reduces vs e@(LamE (Sig ln t) b)
-  = LamE (Sig ln t) (reduces (filter (\(n, _) -> n /= ln) vs) b)
-reduces _ e@(ConE _) = e
-reduces vs e@(VarE (Sig vn _)) =
-    case lookup vn vs of
-        (Just v) -> v
-        Nothing -> e
+reduce n v =
+  let reduceme e =
+        case e of
+           LitE {} -> e
+           CaseE e ms ->
+             let reducematch :: Match -> Match
+                 reducematch m@(Match p _) | n `elem` (bindingsP' p) = m
+                 reducematch (Match p b) = Match p (reduceme b)
+             in CaseE (reduceme e) (map reducematch ms)
+           AppE a b -> AppE (reduceme a) (reduceme b)
+           LamE (Sig nm t) b | n == nm -> e
+           LamE s b -> LamE s (reduceme b)
+           ConE {} -> e
+           VarE (Sig nm _) | n == nm -> v
+           VarE {} -> e
+  in reduceme
 
 -- | Return a list of all variables in the given expression.
 names :: Exp -> [Name]
