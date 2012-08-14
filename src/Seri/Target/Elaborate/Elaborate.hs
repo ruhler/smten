@@ -215,7 +215,8 @@ reduce n v =
            VarE {} -> e
   in reduceme
 
--- | Return a list of all variables in the given expression.
+-- | Return a list of all local variable names introduced in the given
+-- expression.
 names :: Exp -> [Name]
 names (LitE {}) = []
 names (CaseE e ms) = 
@@ -225,7 +226,7 @@ names (CaseE e ms) =
 names (AppE a b) = names a ++ names b
 names (LamE (Sig n _) b) = nub $ n : names b
 names (ConE {}) = []
-names (VarE (Sig n _)) = [n]
+names (VarE (Sig n _)) = []
 
 -- | Rename any variable bindings in the given expression to names which do
 -- not belong to the given list.
