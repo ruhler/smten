@@ -206,6 +206,9 @@ ytermS s e | isbinop "bv-mul" e = dobinop s e c_yices_bvmul
 ytermS s e | isbinop "bv-or" e = dobinop s e c_yices_bvor
 ytermS s e | isbinop "bv-and" e = dobinop s e c_yices_bvand
 ytermS s e | isbinop "bv-shl" e = dobinop s e c_yices_bvshl
+ytermS s (FunctionE (ImmediateE (VarV "not")) [e]) = do
+    et <- ytermS s e
+    c_yices_not et
 ytermS s (FunctionE (ImmediateE (VarV "select")) [v, ImmediateE (RationalV i)]) = do
     vt <- ytermS s v
     c_yices_select (fromInteger $ numerator i) vt

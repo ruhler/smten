@@ -500,3 +500,27 @@ check:          23.2    0.0
 monomorphize:   11.9   26.2
 runCmds:        11.9    8.3
 
+Tue Aug 14 15:15:42 EDT 2012
+
+Can my plan for reduction and alpha renaming actually work? I fear it may not.
+
+Tue Aug 14 15:19:49 EDT 2012
+
+First, how about I try using primitive yices booleans, rather than boxed ones?
+How hard would that be?
+
+No need to box booleans.
+Define True as true. Define False as false.
+Define True? as ... err, I dunno.
+
+I could try it, see what happens, what issues come up.
+
+Tue Aug 14 15:38:59 EDT 2012
+
+Looks like that helped yices a whole bunch (1.5s -> 1.0s). So now the
+elaborator is even more of an issue, and yices even less of an issue. Sigh.
+
+I should note: I thought we fixed the array test case, but it's still got some
+bug somewhere. Just a different one from before, I suppose.
+
+

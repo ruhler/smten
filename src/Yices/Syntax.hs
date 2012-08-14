@@ -43,7 +43,7 @@ module Yices.Syntax (
     YicesVersion(..),
     Symbol, Command(..), Typedef(..), Type(..), Expression(..),
     VarDecl, Binding, ImmediateValue(..),
-    trueE, varE, integerE, selectE, eqE, andE, ifE, ltE, gtE,
+    trueE, falseE, notE, varE, integerE, selectE, eqE, andE, ifE, ltE, gtE,
     addE, subE, mulE,
     tupleE, tupleUpdateE,
     mkbvE, bvaddE, bvorE, bvandE, bvshiftLeft0E, bvshiftRight0E,
@@ -106,6 +106,14 @@ data ImmediateValue =
 -- | > true
 trueE :: Expression
 trueE = ImmediateE TrueV
+
+-- | > false
+falseE :: Expression
+falseE = ImmediateE FalseV
+
+-- | > not e
+notE :: Expression -> Expression
+notE e = FunctionE (varE "not") [e]
 
 -- | > A <symbol> expression.
 varE :: String -> Expression

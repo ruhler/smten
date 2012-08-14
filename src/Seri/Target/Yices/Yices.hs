@@ -203,6 +203,8 @@ yExp (CaseE e ms) = do
      --                pattern p matches expression e
      --   bindings - a list of bindings made when p matches e.
      depat :: Pat -> Y.Expression -> CompilationM ([Y.Expression], [Y.Binding])
+     depat (ConP _ "True" []) e = return ([e], [])
+     depat (ConP _ "False" []) e = return ([Y.notE e], [])
      depat (ConP _ n []) e =
        let mypred = Y.eqE (Y.selectE e yicesti) (Y.varE (yicesname n))
        in return ([mypred], [])
@@ -257,11 +259,11 @@ yExp e@(AppE a b) =
        [VarE (Sig "Seri.Lib.Prelude.<" _), a, b] -> do   
            a' <- yExp a
            b' <- yExp b
-           boxBool (Y.ltE a' b')
+           return (Y.ltE a' b')
        [VarE (Sig "Seri.Lib.Prelude.>" _), a, b] -> do
            a' <- yExp a
            b' <- yExp b
-           boxBool (Y.gtE a' b')
+           return (Y.gtE a' b')
        [VarE (Sig "Seri.Lib.Prelude.__prim_add_Integer" _), a, b] -> do
            a' <- yExp a
            b' <- yExp b
@@ -277,11 +279,11 @@ yExp e@(AppE a b) =
        [VarE (Sig "Seri.Lib.Prelude.__prim_eq_Integer" _), a, b] -> do
            a' <- yExp a
            b' <- yExp b
-           boxBool (Y.eqE a' b')
+           return (Y.eqE a' b')
        [VarE (Sig "Seri.Lib.Bit.__prim_eq_Bit" _), a, b] -> do
            a' <- yExp a
            b' <- yExp b
-           boxBool (Y.eqE a' b')
+           return (Y.eqE a' b')
        [VarE (Sig "Seri.Lib.Bit.__prim_add_Bit" _), a, b] -> do
            a' <- yExp a
            b' <- yExp b
@@ -338,6 +340,8 @@ yLetE bs e = Y.LetE bs e
 
 -- Generate yices code for a fully applied constructor application.
 yCon :: Sig -> [Exp] -> CompilationM Y.Expression
+yCon (Sig "True" _) [] = return Y.trueE
+yCon (Sig "False" _) [] = return Y.falseE
 yCon (Sig n ct) args = do
     let ConT dt = last $ unarrowsT ct
     let tagged = Y.tupleUpdateE (Y.varE $ yicesuidt dt) yicesti (Y.varE $ yicesname n)
@@ -402,6 +406,10 @@ yDec (DataD "Char" _ _) =
     let deftype = Y.DefineType "Char" (Just (Y.NormalTD Y.IntegerT))
     in addcmds [deftype]
 
+yDec (DataD "Bool" _ _) =
+    let deftype = Y.DefineType "Bool" (Just (Y.NormalTD Y.BoolT))
+    in addcmds [deftype]
+
 yDec (DataD bv@('B':'i':'t':'$':'#':v) _ _) =
     let deftype = Y.DefineType (yicesname bv) (Just (Y.NormalTD (Y.BitVectorT (read v))))
     in addcmds [deftype]
@@ -444,14 +452,6 @@ yDec (PrimD (TopSig "~error" _ _)) = return ()
 yDec (PrimD (TopSig "Seri.SMT.Array.update" _ _)) = return ()
 
 yDec d = yfail $ "Cannot compile to yices: " ++ pretty d
-
--- box a bool into a Bool.
-boxBool :: Y.Expression -> CompilationM Y.Expression
-boxBool e = do
-  true <- yExp trueE
-  false <- yExp falseE
-  return $ Y.ifE e true false
-
 
 -- Changes to the (polymorphic) declarations to handle yices specific things.
 -- The primitive error turns into:

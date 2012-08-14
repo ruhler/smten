@@ -65,6 +65,7 @@ module Yices.FFI2 (
     c_yices_true,
     c_yices_false,
     c_yices_rational64,
+    c_yices_not,
     c_yices_eq,
     c_yices_tuple,
     c_yices_tuple_update,
@@ -195,6 +196,9 @@ foreign import ccall unsafe "yices_false"
 
 foreign import ccall unsafe "yices_rational64"
     c_yices_rational64 ::  Int64 -> Word64 -> IO YTerm
+
+foreign import ccall unsafe "yices_not"
+    c_yices_not ::  YTerm -> IO YTerm
 
 foreign import ccall unsafe "yices_eq"
     c_yices_eq :: YTerm -> YTerm -> IO YTerm
