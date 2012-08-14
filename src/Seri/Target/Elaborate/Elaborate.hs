@@ -68,7 +68,7 @@ elaborate' mode env freenms e =
   let elabme = elaborate' mode env freenms
       elabmeWHNF = elaborate' WHNF env freenms
       elabmenms nms = elaborate' mode env (nms ++ freenms)
-      elabmenm n = elabmenms [n]
+      elabmenm n = elaborate' mode env (n:freenms)
         
       isprim :: Sig -> Bool
       isprim s = case (attemptM $ lookupVarInfo env s) of
