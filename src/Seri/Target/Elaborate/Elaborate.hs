@@ -177,31 +177,22 @@ matches x ms@((Match p b):_) =
 
 -- Match an expression against a pattern.
 match :: Pat -> Exp -> MatchResult
-match (ConP _ nm []) (ConE (Sig n _)) | n == nm = Succeeded []
-match (ConP t n ps) (AppE ae be) | not (null ps)
-  = case (match (ConP t n (init ps)) ae, match (last ps) be) of
-        (Succeeded as, Succeeded bs) -> Succeeded (as ++ bs)
-        (Failed, _) -> Failed
-        (Succeeded _, Failed) -> Failed
-        _ -> Unknown
+match (ConP _ nm ps) e =
+  case unappsE e of
+    ((ConE (Sig n _)):_) | n /= nm -> Failed
+    ((ConE {}):args) ->
+       let mrs = [match p e | (p, e) <- zip ps args]
+           join (Succeeded as) (Succeeded bs) = Succeeded (as ++ bs)
+           join Failed _ = Failed
+           join (Succeeded _) Failed = Failed
+           join _ _ = Unknown
+       in foldl join (Succeeded []) mrs
+    _ -> Unknown
 match (IntegerP i) (LitE (IntegerL i')) | i == i' = Succeeded []
+match (IntegerP i) (LitE {}) = Failed
 match (VarP s) e = Succeeded [(s, e)]
 match (WildP _) _ = Succeeded []
-match _ x | iswhnf x = Failed
 match _ _ = Unknown
-
--- iswhnf exp
---  Return True if the expression is in weak head normal form.
---  TODO: how should we handle primitives?
-iswhnf :: Exp -> Bool
-iswhnf (LitE _) = True
-iswhnf (LamE _ _) = True
-iswhnf x
- = let iscon :: Exp -> Bool
-       iscon (ConE _) = True
-       iscon (AppE f _) = iscon f
-       iscon _ = False
-   in iscon x
 
 -- reduce n v exp
 -- Perform beta reduction in exp, replacing occurrences of variable n with v.
