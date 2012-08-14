@@ -66,6 +66,7 @@ elaborate' :: Mode  -- ^ Elaboration mode
           -> Exp   -- ^ elaborated expression
 elaborate' mode env freenms e =
   let elabme = elaborate' mode env freenms
+      elabmeWHNF = elaborate' WHNF env freenms
       elabmenms nms = elaborate' mode env (nms ++ freenms)
       elabmenm n = elabmenms [n]
         
@@ -103,7 +104,7 @@ elaborate' mode env freenms e =
             UnMatched ms' | mode == SNF ->
                 CaseE rx [Match p (elabmenms (bindingsP' p) b) | Match p b <- ms']
        AppE a b ->
-           case (elabme a, elabme b) of
+           case (elabmeWHNF a, elabme b) of
              (VarE (Sig "Seri.Lib.Prelude.valueof" t), _) ->
                 let NumT nt = head $ unarrowsT t
                 in integerE (nteval nt)
@@ -139,7 +140,7 @@ elaborate' mode env freenms e =
              -- With proper renaming.
              (AppE e@(LamE {}) x, y) ->
                 let LamE s b = {-# SCC "PUSHL" #-} alpharename freenms e
-                in AppE (elabme $ LamE s (AppE b y)) x
+                in AppE (elabme $ LamE s (AppE b y)) (elabme x)
 
              -- Push application inside case where possible.
              -- Rewrite:   (case x of { p1 -> m1; p2 -> m2 ; ... }) y
@@ -149,7 +150,7 @@ elaborate' mode env freenms e =
                 let CaseE x ms = {-# SCC "PUSHE" #-} alpharename freenms e
                 in elabme $ CaseE x [Match p (AppE b y) | Match p b <- ms]
             
-             (ra, rb) -> AppE ra rb
+             (ra, rb) -> AppE (elabme ra) rb
        LamE {} | mode == WHNF -> e
        LamE s@(Sig n _) b | mode == SNF -> LamE s (elabmenm n b)
        ConE {} -> e

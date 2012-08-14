@@ -119,3 +119,368 @@ Tue Aug 14 11:47:49 EDT 2012
 
 I think it would be nice to have a runtime option for it. Let me add that in.
 
+Tue Aug 14 12:22:42 EDT 2012
+
+Okay, I want to spend some time now diving deep into a proposed new
+elaborator. Based on the nheap elaborator, but using a scope to hopefully make
+reduction much cheaper and avoid any need for alpha renaming, the two things
+which are slowing nheap down the most.
+
+But I want to try and understand this from scratch, rather than a modification
+on the previous attempt.
+
+Let me start by ignoring case statements and pattern matching. Get functions
+and reduction to work first.
+
+Let's also distinguish between elaboration modes:
+ WHNF - don't traverse into bodies of lambdas or alternatives
+ HNF - do traverse into bodies of lambdas or alternatives
+ S - share complex expressions wherever possible.
+ NS - don't share complex expressions.
+
+The difference between S and NS is, I believe, a post processing step. The
+difference between WHNF and HNF is obvious during elaboration. The two kinds
+of modes are, I believe orthogonal.
+
+What's more, I feel like the only difference between S and NS that matters to
+us is, well... honestly? Perhaps none. We could just have our elaborator
+produce a sharing elaborator. So don't worry about that distinction at this
+time. In particular, favor sharing whereever possible.
+
+Good.
+
+A big part of my new proposal is to have a scope. Let's assume a scope
+structure, mapping names to elaborated expressions.
+
+Elaborate will take as input... or ideally just have in a closure somewhere,
+the mode of elaboration and the environment. No need to be passing those
+around recursively anywhere. It will take a context, which does need to be
+passed around, and the expression to elaborate.
+
+
+How to perform elaboration:
+- LitE
+Trivial. It's elaborated. Done. Easy.
+
+- CaseE
+I'm not going to worry about this yet.
+
+- AppE
+1. elaborate the function to WHNF (not Full!), haskelly lazily.
+No need to elaborate the argument yet.
+Cases:
+ - function is Seri.Lib.Prelude.valueof: return the appropriate integer.
+ - function is a unary primitive:
+     like __prim_zeroExtend_Bit, __prim_truncate_Bit
+     Elaborate the argument fully, haskelly lazily, and get its value.
+     Apply the primitive if the argument is reduced enough.
+     Otherwise: ...
+
+This brings up a first important point. What if we have a VarE argument to a
+primitive, which points to a primitive?
+
+Options: have it elaborate to the primitive, that's fine. No problem there. So
+there is no special case here to worry about.
+
+    Otherwise: Return the application of unary predicate with elaborated
+    argument.
+    
+ - function is a binary predicate.
+     elaborate first argument as much as possible.
+     if it's elaborated enough:
+        elaborate second argument as much as possible.
+            if it's elaborate enough: apply the primitive.
+            otherwise: return application with as elaborated as we have
+     otherwise:
+        if WHNF: return application with as elaborated as we have
+           HNF: elaborate second argument as much as possible,
+                then return application with elaborated args.
+     In particular, the choice here is: if the first argument isn't elaborated
+     enough, don't even attempt to elaborate the second. Aha! But we should if
+     we are doing full elaboration.
+ - function is a lambda
+     1. elaborate argument as much as possible.
+        Note: we aren't really being lazy here. But this is how we get our
+        HOAS-like sharing, so I think this is important.
+     2. put the argument on scope: mapping name to value.
+     3. elaborate the body under the new scope.
+     4. if we should inline the argument, inline it,
+        otherwise: return the application of elaborated arg to lambda.
+
+        When we should inline it:
+           - when it never appears in body (MUST)
+           - when it appears once in body, if it won't be captured (MAY)
+           - when it is LitE, ConE (MAY)
+           - when it is VarE, if it won't be captured (MAY)
+    
+        Question: what if the type of the argument is a function lambda? For
+        yices, do we want to inline that too?
+    
+        Note: we can allow inlining which will be captured if we perform
+        renaming.
+
+        Lot's of choices here, which could impact things.
+
+ - else: if WHNF, return application of elaborated function to unelaborated arg
+         if NF, elaborate arg, return that application.
+
+Question: do we need to push applications inside lambdas? Or is that somehow
+taken care of already? This is a yices specific thing. The goal is to always
+have fully applied primitives and such.
+
+Consider the following example:
+
+((\a -> (\b -> a+b)) x) y
+
+How does this fully elaborate?
+
+Application, start with argument
+Application, start with argument
+Lambda: go inside.
+Lambda: go inside.
+Nothing we can do.
+Application:
+
+hmm... now it seems a shame here, to fully elaborate inside before doing the
+application. Because we go all the way inside, find we can't do more, then go
+back inside to do the application.
+
+The reason for this is: what if the function is shared?
+If it's shared, it will already have been fully elaborated, because the only
+way we can get sharing is through application, where the argument is already
+evaluated. Thus: only weak head elaborate the function to an argument!
+
+This suggests we will want to pass around the mode as an argument to
+elaboration, so we can change it to WHNF for this.
+
+Question: what if the lambda in WHNF has some sharing? So it doesn't look like
+a function? What if it's a variable, for example?
+
+Let's look at the following cases, for example:
+
+1. ((\a -> (\b -> a+b)) x) y
+2. (let a = x in \b -> a + b) y
+
+1.
+function is in weak head normal form. Elaborate x, say to x, add to scope,
+elaborate:
+
+a: x
+\b -> a + b
+
+We may or may not inline. Let's say we don't.
+This is as elaborated as we'll get.
+
+Result is... just like (2). The function is not a Lambda, but only because of
+sharing. What should we do here?
+
+Options:
+- don't share. Force true WHNF, then do application.
+But that's bad, because x could be really complicated, and appear multiple
+times, so we don't want to duplicate it.
+- go inside the sharing.
+
+a: x
+(\b -> a + b) y
+
+a: x
+b: y
+a + b
+
+Which is what we want. So yes, we want this kind of a rule.
+
+Any concern about name capturing issues?
+What if our argument refers to a free variable? Can that be captured?
+
+Answer should be: no, the argument is fully elaborated?
+
+Consider, for example:
+
+\a -> ((\a -> b) x) a)
+
+We go inside. We push. We get:
+\a -> ((\a -> b a) x)
+
+This is wrong!
+
+That's bad.
+
+Oh. But maybe this isn't a problem?
+
+Except that, we don't have a name to give a.
+
+Hmm... This is trouble some. But it is giving me another idea.
+
+What if we do application like follows:
+1. Elaborate the argument, push it on a stack.
+2. Lambda adds mapping from name to stack location.
+
+Primitives: read stack?
+
+Erg. I'm not sure that makes any sense.
+
+I feel like this is a problem of delambdafication. Perhaps delambdafication
+should be a separate step? Not part of elaboration?
+
+Then we can share lambdas and not worry about this kind of thing.
+
+Okay, let me push on then, if I can. Assuming we'll make delambdafication
+another thing?
+
+Maybe I should figure out how to implement the delambdafication phase first?
+
+Let's push on with elaboration. I want to figure out how things will work.
+
+- LamE
+If WHNF mode, do nothing.
+Else: add to scope: n => VarE n, elaborate body under new scope
+      return a lambda with the elaborated body.
+
+- ConE
+return as is.
+
+VarE
+- if nullary primitive, deal with it.
+- if in scope and simple, inline it.
+- if not in scope, but in env: look it up in environment, return elaborated
+- else: return as is.
+
+Okay, so that's the meat. We should be able to ask about alpha renaming, then
+about case statements.
+
+Alpha renaming case:
+
+\b -> (\a -> \b -> a+b) b
+
+b: VarE b
+a: VarE b
+b: VarE b
+a+b
+
+Turns into:
+
+\b -> let a = b
+      in (\b -> a + b)
+          
+Which is, rather, the same as before. But it looks right to me. We don't have
+a name capture problem.
+
+Okay, fine. Now, how do we deal with case statements?
+
+Elaborate the argument fully first.
+
+For a given match:
+
+VarP: matches, just turn it into a lambda.
+WildP: matches, just ignore the argument.
+IntegerP: either matches fails or not.
+ConP...
+
+We have to look up in scope, because it's not going to elaborate? Why not
+allow it to elaborate? It could have some sharing in it.
+
+let foo = blah
+in Foo foo foo
+
+But that's not a problem, really. I say inline constructor applications like
+this.
+
+The concern is, one of the arguments could have a free variable which will be
+captured. Will I ever try to elaborate it? The free variable?
+
+I think the answer is no, so nothing to worry about here?
+
+Well, the real question is, when do we ever try to re-elaborate something?
+Just after lookups, so this shouldn't be a problem.
+
+Why is alpha renaming currently a problem, and what about what I've done makes
+it go away?
+
+\b -> (\a -> \b -> a + b) (Foo b b)
+
+\b ->
+    (\a -> \b -> a + b) (Foo b b)
+
+\b ->
+    \b -> (Foo b b) + b
+
+Um... that's a problem. The only reason it isn't a problem is if I only do the
+lookup for a case match. Because then we only make references to parts of the
+expression, we don't inline it.
+
+So, I feel like a more general solution is: have a way to look up the unshared
+version of an expression, used in pattern matching and primitive reductions.
+
+\b -> (\a -> \b -> case a of {Foo v _ -> v} + b) (Foo b b)
+
+b: VarE b
+a: Foo b b
+b: VarE b
+v: VarE b (wrong one!)
+
+Nope. This won't work.
+
+I'd like this to elaborate to:
+
+\b -> (\b1 -> b + b1)
+
+The only way that can happen is if I give a new name to something.
+
+So, we could give new names when we go into a lambda, if something is already
+in scope?
+
+\b -> (\a -> \b -> case a of {Foo v _ -> v} + b) (Foo b b)
+
+b: VarE b
+a: Foo b b
+b: VarE b'
+v: VarE b
+in b' + b
+
+But this only works if I actually inline the second b...
+
+Hmm... so, maybe I can try to adapt my existing algorithm to do this lazy
+reduction and renaming. Rather than start from scratch all over.
+
+How does it work?
+
+We pass around a scope.
+Lambda reduction just adds to the scope. But, it makes sure to add a fresh
+name to the scope. So, if 'b' is in scope, and the lambda expression is for
+'b', well, then, we say anytime from now on we see 'b', inline it as 'b1'.
+
+Any time we see something that referred to 'b', we'll just inline it once, and
+so it will be right.
+
+So, we pick new names when we need to because something is in scope. All names
+in scope (on the left hand side) will be unique? No. That's not true. But
+we'll have shadowing, and keep them straight some how. Always inline VarE if
+it is in scope. That's just doing our beta reduction... Oh. Wait. Only inline
+if we should reduce? I can leave that unchanged for now. We still pay for
+looking for free, but reduction is cheaper, and alpha renaming is cheaper.
+
+Function arguments should go to WHNF, not full, right? yes, because we
+elaborate them after reduction anyway.
+
+That, at least, sounds like a reasonable plan to me. This is complicated,
+sadly, so I don't know if it will work, but I can make progress at least, no?
+
+It would be great if I could separate out delambdification...
+
+Tue Aug 14 14:17:11 EDT 2012
+
+Okay, here's the plan.
+
+1. Try to clean up the nheap elaborator as much as I can. The easier it is to
+understand and change, the better.
+- Elaborate functions just to WHNF before applying the lambda, not full
+  elaboration. This should fix the array bug. I will be interested to see how
+  it affects performance.
+- make delambdafication a separate step if reasonable.
+- make primitive elaboration more lazy?
+
+2. Pass around a scope. Use this for reductions and renaming. Change nothing
+else.
+
+This should simplify the code a bunch too, I hope. That will be good.
+
