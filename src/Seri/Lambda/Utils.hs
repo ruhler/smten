@@ -34,7 +34,7 @@
 -------------------------------------------------------------------------------
 
 module Seri.Lambda.Utils (
-    free
+    free, free'
     ) where
 
 import Data.List(nub)
@@ -58,4 +58,20 @@ free =
       free' bound (VarE (Sig n _)) | n `elem` bound = []
       free' bound (VarE s) = [s]
   in free' []
+
+-- | Return a collection of the free variable names in the given expression.
+free' :: Exp -> [Name]
+free' =
+  let fr :: [Name] -> Exp -> [Name]
+      fr _ (LitE {}) = []
+      fr bound (CaseE e ms) = 
+        let freem :: Match -> [Name]
+            freem (Match p b) = fr (bindingsP' p ++ bound) b
+        in concat (fr bound e : map freem ms)
+      fr bound (AppE a b) = fr bound a ++ fr bound b
+      fr bound (LamE (Sig n _) b) = fr (n:bound) b
+      fr bound (ConE {}) = []
+      fr bound (VarE (Sig n _)) | n `elem` bound = []
+      fr bound (VarE (Sig n _)) = [n]
+  in nub . fr []
 

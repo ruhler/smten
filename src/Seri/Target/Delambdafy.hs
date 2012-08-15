@@ -46,59 +46,49 @@ import Seri.Lambda
 delambdafy :: Exp -> Exp
 delambdafy = delambdafy' []
 
-delambdafy' :: [Name] -> Exp -> Exp
-delambdafy' nms e = 
+delambdafy' :: [(Name, Exp)] -> Exp -> Exp
+delambdafy' reds e = 
   case e of
     LitE {} -> e
     CaseE x ms ->
-      let ms' = [Match p (delambdafy' (bindingsP' p ++ nms) b) | Match p b <- ms]
-      in CaseE (delambdafy' nms x) ms'
+      let dom (Match p b) = 
+            let sigs = bindingsP p
+                names = [n | Sig n _ <- sigs]
+                nreds = [(n, VarE s) | s@(Sig n _) <- sigs]
+            in Match p (delambdafy' (nreds++reds) b)
+          ms' = map dom ms 
+      in CaseE (delambdafy' reds x) ms'
 
-    -- Always perform beta reduction if the argument is a function type.
-    AppE (LamE (Sig name _) b) x | isfunt (typeof x) ->
-       let renamed = alpharename (deleteall name nms) b
-       in delambdafy' nms (reduce name x renamed)
+    AppE a b ->
+     case (delambdafy' reds a, delambdafy' reds b) of
+        -- Always perform beta reduction if the argument is a function type.
+        (l@(LamE {}), x) | isfunt (typeof x) ->
+           let LamE (Sig name _) b = alpharename (free' x) l
+           in delambdafy' ((name, x):reds) b
 
-    -- Push application inside lambdas where possible.
-    -- Rewrite:    ((\a -> b) x) y
-    --             ((\a -> b y) x)
-    -- With proper renaming.
-    AppE (AppE c@(LamE {}) x) y ->
-       let LamE s b = alpharename nms c
-       in delambdafy' nms $ AppE (LamE s (AppE b y)) x
+        -- Push application inside lambdas where possible.
+        -- Rewrite:    ((\a -> b) x) y
+        --             ((\a -> b y) x)
+        -- With proper renaming.
+        (AppE c@(LamE {}) x, y) ->
+           let LamE s b = alpharename (free' y) c
+           in delambdafy' reds $ AppE (LamE s (AppE b y)) x
 
-    -- Push application inside of case where possible.
-    -- Rewrite:   (case x of { p1 -> m1; p2 -> m2 ; ... }) y
-    --            (case x of { p1 -> m1 y; p2 -> m2 y; ... })
-    -- With proper renaming
-    AppE c@(CaseE {}) y -> 
-      let CaseE x ms = alpharename nms c
-      in delambdafy' nms $ CaseE x [Match p (AppE b y) | Match p b <- ms]
+        -- Push application inside of case where possible.
+        -- Rewrite:   (case x of { p1 -> m1; p2 -> m2 ; ... }) y
+        --            (case x of { p1 -> m1 y; p2 -> m2 y; ... })
+        -- With proper renaming
+        (c@(CaseE {}), y) -> 
+          let CaseE x ms = alpharename (free' y) c
+          in delambdafy' reds $ CaseE x [Match p (AppE b y) | Match p b <- ms]
     
-    AppE a b -> AppE (delambdafy' nms a) (delambdafy' nms b)
-    LamE s@(Sig n t) b -> LamE s (delambdafy' (n:nms) b)
+        (a, b) -> AppE a b
+    LamE s@(Sig n t) b -> LamE s (delambdafy' ((n, VarE s):reds) b)
     ConE {} -> e
-    VarE {} -> e
-
--- reduce n v exp
--- Perform beta reduction in exp, replacing occurrences of variable n with v.
-reduce :: Name -> Exp -> Exp -> Exp
-reduce n v =
-  let reduceme e =
-        case e of
-           LitE {} -> e
-           CaseE e ms ->
-             let reducematch :: Match -> Match
-                 reducematch m@(Match p _) | n `elem` (bindingsP' p) = m
-                 reducematch (Match p b) = Match p (reduceme b)
-             in CaseE (reduceme e) (map reducematch ms)
-           AppE a b -> AppE (reduceme a) (reduceme b)
-           LamE (Sig nm t) b | n == nm -> e
-           LamE s b -> LamE s (reduceme b)
-           ConE {} -> e
-           VarE (Sig nm _) | n == nm -> v
-           VarE {} -> e
-  in reduceme
+    VarE (Sig n t) ->
+      case lookup n reds of
+         Just v -> v
+         Nothing -> e
 
 -- | Return a list of all local variable names introduced in the given
 -- expression.

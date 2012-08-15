@@ -552,4 +552,106 @@ Wow. Delambdafication as a separate pass actually works. That surprises me.
 It's a good thing though. It should be separate. And hopefully it can make
 easier both delambdafication and elaboration.
 
+Tue Aug 14 17:39:51 EDT 2012
+
+Okay, so, now I have this.  Can I make either elaboration or delambdafication
+easier? I feel like delambdafication would be a good place to try and start,
+because it's so much simpler, but has the reduction and renaming I want to get
+rid of.
+
+Tue Aug 14 18:43:38 EDT 2012
+
+I had a thought. I shouldn't have to do any alpha renaming in the elaborator
+now, because I'm not inlining functions which could contain free variables. 
+
+Currently the only things I reduce which have free variables are VarE. This is
+to avoid sillyness like:
+
+let a = b
+in a a a
+
+Which is just as well written as: b b b
+
+But! I bet we gain more from not having to do alpha renaming than the cost of
+an extra variable.
+
+Also, we could add a special case to reduce which does the reduction of the
+variable as long as there isn't a naming conflict. Then, in most cases, we
+avoid that issue.
+
+I'm so going to try this.
+
+Okay, looks like we run into a bug in the delambdafier. That's okay. I can fix
+that.
+
+Odd. It claims to be slower. Like somehow delambdafication has to do more work
+then?
+
+Let me try the special case for reduce, see if that helps any.
+
+Um... special case for reduce has the problem that it will lead to infinite
+elaboration.
+
+Tue Aug 14 18:59:59 EDT 2012
+
+Oh well, back to the drawing board I suppose.
+
+Tue Aug 14 21:34:11 EDT 2012
+
+Tried inlining reductions into delambdification. It didn't really change
+anything, which I suppose isn't surprising, considering how little reductions
+cost us in delambdification. There the whole thing is alpha renaming.
+
+Wed Aug 15 08:21:24 EDT 2012
+
+With my reduction thing, time spent in delambdify is mostly from alpha
+renaming.
+
+I could make a free cache. Would that help?
+
+It would help in elaborate to detect free variables.
+
+It would ... not really help with alpharenaming so much.
+
+
+Okay, new idea. Let me see if I can convince myself it will work.
+
+We have a uniqify function: [Name] -> Exp -> Exp. Given an expression, renames
+all lambdas to something not in the given list of free variables.
+
+This uniqify is local, not global. This means two lambdas down a different
+path may be given the same name. Is that a problem?
+
+AppE (\s -> blah) (\s -> blah)
+
+No, because the bindings aren't free. You will never capture a free variable,
+because the lambda has a name different from any free variable.
+
+AppE (\x -> \s -> x+s) (\s -> blah)
+
+\s -> (\s -> blah) s
+
+Oh. Here's an example where that may not work.
+
+AppE (\x -> \s -> x (s+1)) (\s -> add 1)
+
+\s -> (\s -> add 1) (s+1)
+
+For delambdification, we push the argument s inside:
+
+\s -> (\s -> add 1 (s+1))
+
+Where we have just captured the s. Sadness.
+
+How much does it hurt us if we use "free" instead of what's in scope in
+delambdafy? That's more appropriate. Perhaps a better thing to do is improve
+the performance of alpharename?
+
+Okay, here's the plan.
+
+1. Try using "free" instead of tracking free variables. It will have to do a
+lot more traversal, which is sad, but it's more correct, and may reduce the
+amount of renaming we have to do, and then we don't have to keep track of
+free, which should help, I think.
+
 
