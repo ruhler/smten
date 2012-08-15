@@ -223,7 +223,10 @@ bindingsP (WildP {}) = []
 
 -- | Extract the names of the variables bound by a pattern.
 bindingsP' :: Pat -> [Name]
-bindingsP' = map (\(Sig n _) -> n) . bindingsP
+bindingsP' (ConP _ _ ps) = concatMap bindingsP' ps
+bindingsP' (VarP (Sig n _)) = [n]
+bindingsP' (IntegerP {}) = []
+bindingsP' (WildP {}) = []
 
 -- | List the (non-numeric) variable type names in a given type.
 varTs :: Type -> [Name]

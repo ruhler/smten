@@ -75,15 +75,6 @@ elaborate' mode env freenms e =
                     Just _ -> True
                     Nothing -> False
 
-      -- return True if the given beta reduction should be applied with the
-      -- given argument.
-      shouldreduce :: Exp -> Bool
-      shouldreduce (LitE {}) = True
-      shouldreduce (ConE {}) = True
-      shouldreduce (VarE {}) = True
-      shouldreduce x | null (filter (not . isprim) (free x)) = True
-      shouldreduce _ = False
-
   in case e of
        LitE {} -> e
        CaseE x ms ->
@@ -122,9 +113,22 @@ elaborate' mode env freenms e =
 
              -- Only do reduction if there are no free variables in the
              -- argument. Otherwise things can blow up in unhappy ways.
-             (LamE (Sig name _) body, rb) | shouldreduce rb ->
-               let renamed = {-# SCC "BR" #-} alpharename (deleteall name freenms) body
-               in elabme (reduce name rb renamed)
+             (l@(LamE {}), rb) ->
+               let fr = free rb
+
+                   -- return True if the given beta reduction should be applied with the
+                   -- given argument.
+                   shouldreduce = 
+                     case rb of
+                        (LitE {}) -> True
+                        (ConE {}) -> True
+                        (VarE {}) -> True
+                        _ -> null (filter (not . isprim) fr)
+
+                   LamE (Sig name _) body = alpharename [n | Sig n _ <- fr] l
+               in if shouldreduce
+                     then elabme (reduce name rb body)
+                     else AppE (elabme l) rb
 
              (ra, rb) -> AppE (elabme ra) rb
        LamE {} | mode == WHNF -> e
@@ -245,9 +249,4 @@ alpharename bad e =
       rename bound (VarE (Sig n t)) | n `elem` bound = VarE (Sig (newname n) t) 
       rename _ e@(VarE {}) = e
   in rename [] e
-
-deleteall :: Eq a => a -> [a] -> [a]
-deleteall k [] = []
-deleteall k (x:xs) | k == x = deleteall k xs
-deleteall k (x:xs) = x : deleteall k xs
 

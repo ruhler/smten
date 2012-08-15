@@ -1,0 +1,164 @@
+
+Wed Aug 15 07:56:17 EDT 2012
+
+Goal for today: fix alpharenaming/reduction issue in elaborator/delambdafier.
+
+Starting in the delambdafier, I think, because it's much simpler, but still
+runs into all the interesting issues.
+
+Also, consider HOAS. Can I make use of it somehow?
+
+The idea behind HOAS is, I think, exactly what I'm trying to do. Beta
+reduction should just be a function call... in fact, that's what I did in the
+delambdafier, but alpha renaming was more of an issue there. It may have more
+success in the elaborator.
+
+So, that's something to try, but first I would like to take a stab at alpha
+renaming in the delambdafier. If I can figure that out in a nice way, then I
+think I'm set for the elaborator too (if we find that needs renaming).
+
+I know the concern with alpha renaming. Whenever an expression moves inside a
+lambda (because we pushed it inside the lambda, or because of beta reduction),
+there is a change the lambda captures a free variable in that expression that
+it shouldn't.
+
+I have a proposal from before. Let me put that up as a straw man.
+
+The idea is: don't allow shadowed variables. Don't allow duplicates in scope?
+
+Erm... I should try an example. And one that we may find in delambdafy.
+
+Cases in delambdafy:
+
+1. beta reduction of a function type with free variables which could be
+  captured
+2. pushing application inside a lambda. We know the one possible name that
+could be captured, if that helps any. 
+3. pushing application inside a case. We know the set of possible names that
+could be captured, from the pattern bindings.
+
+The idea is: do we know what free names are in scope?
+
+There are cases to consider.
+
+1. The free name is declared.
+This isn't a problem in delambdafication, because we assume full inlining? At
+least, we do the way I use it. But in general, this is something we would have
+to worry about.
+
+2. The free name is from going inside a lambda.
+Then we know about the name.
+
+3. The free name was made up from outside. So it's not in the environment, and
+we don't know about it.
+This is annoying. We could perhaps get around it by requiring the user to tell
+us about it. This is kind of like case (1).
+
+I feel like I want to solve just (2), but in reality, to do things right, we
+should handle all (1, 2, 3).
+
+This means, the only way I can know what needs to be renamed is by doing a
+traversal throughout the expression. We could do that up front as a single
+pass perhaps.
+
+That's an interesting idea. It goes like this: do a preliminary pass.
+
+1. alpha rename the entire expression, getting rid of free names. Now all
+lambdas are unique, and can't capture anything?
+
+Well, that's only if you do the renaming in such a way as to make it unique.
+
+But this is certainly doable. The question is, will it gain us anything? Is it
+worth the whole big renaming, exploring the entire expression, just to avoid
+renaming in intermediate places?
+
+Well, here's something: that uniqification could be shared by elaboration and
+delambdafy. I bet that makes sense to do. It could also be shared by both
+heaps...
+
+Wait. Can we share it in the elaborator? Not until after we've inlined,
+otherwise we don't know what all things are free or not, right?
+
+One solution to that would be: uniqify every expression in the environment
+(lazily). So, we could have a way to uniqify an environment. A way to uniqify
+an expression. But that won't work, because inlining causes sharing again
+which could lead to name clashes. We have to uniqifiy lazily.
+
+Can we locally pick new names for things? If so, I'm tempted to just always
+pick a new name for every lambda that we go by?
+
+ug.
+
+
+Wed Aug 15 08:21:24 EDT 2012
+
+With my reduction thing, time spent in delambdify is mostly from alpha
+renaming.
+
+I could make a free cache. Would that help?
+
+It would help in elaborate to detect free variables.
+
+It would ... not really help with alpharenaming so much.
+
+
+Okay, new idea. Let me see if I can convince myself it will work.
+
+We have a uniqify function: [Name] -> Exp -> Exp. Given an expression, renames
+all lambdas to something not in the given list of free variables.
+
+This uniqify is local, not global. This means two lambdas down a different
+path may be given the same name. Is that a problem?
+
+AppE (\s -> blah) (\s -> blah)
+
+No, because the bindings aren't free. You will never capture a free variable,
+because the lambda has a name different from any free variable.
+
+AppE (\x -> \s -> x+s) (\s -> blah)
+
+\s -> (\s -> blah) s
+
+Oh. Here's an example where that may not work.
+
+AppE (\x -> \s -> x (s+1)) (\s -> add 1)
+
+\s -> (\s -> add 1) (s+1)
+
+For delambdification, we push the argument s inside:
+
+\s -> (\s -> add 1 (s+1))
+
+Where we have just captured the s. Sadness.
+
+How much does it hurt us if we use "free" instead of what's in scope in
+delambdafy? That's more appropriate. Perhaps a better thing to do is improve
+the performance of alpharename?
+
+Okay, here's the plan.
+
+1. Try using "free" instead of tracking free variables. It will have to do a
+lot more traversal, which is sad, but it's more correct, and may reduce the
+amount of renaming we have to do, and then we don't have to keep track of
+free, which should help, I think.
+
+Wed Aug 15 08:55:57 EDT 2012
+
+Idea to make free faster: use a Set instead of a list of names. That should
+help nub, right?
+
+Also, make bindingsP' better.
+
+Wed Aug 15 09:15:44 EDT 2012
+
+It made things worse to use a Set instead of a list. Bummer.
+
+Wed Aug 15 09:23:28 EDT 2012
+
+Well, I don't know. I could try doing the reduce thing in elaborate. Maybe
+that will help. That's like a HOAS kind of thing. And if we divorce it from
+alpha renaming, it should work fine, functionally speaking.
+
+The trouble is, reduce doesn't actually cost us that much. Most of the time is
+spent in alpha renaming.
+
