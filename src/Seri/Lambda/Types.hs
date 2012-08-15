@@ -37,7 +37,7 @@
 module Seri.Lambda.Types (
     appsT, arrowsT, outputT, unappsT, unarrowsT,
     listT, integerT, bitT, charT, stringT, tupT, untupT,
-    Typeof(..), typeofCon,
+    Typeof(..),
     assign, assignl, assignments, bindingsP, bindingsP', varTs, nvarTs,
     isSubType,
     ) where
@@ -171,15 +171,6 @@ instance Typeof Pat where
     typeof (VarP tn) = typeof tn
     typeof (IntegerP _) = integerT
     typeof (WildP t) = t
-
--- | Get the type of a constructor in the given Data declaration.
--- Returns Nothing if there is no such constructor in the declaration.
-typeofCon :: Dec -> Name -> Maybe Type
-typeofCon (DataD dn vars cons) cn = do
-    Con _ ts <- listToMaybe (filter (\(Con n _) -> n == cn) cons)
-    return $ arrowsT (ts ++ [appsT (ConT dn : map tyVarType vars)])
-typeofCon _ _ = Nothing
-
 
 -- | isSubType t sub
 -- Return True if 'sub' is a concrete type of 't'.
