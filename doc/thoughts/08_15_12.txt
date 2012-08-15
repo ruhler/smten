@@ -395,3 +395,24 @@ Wed Aug 15 16:10:43 EDT 2012
 Looks like even something as simple as changing the order of the case
 statement makes a difference. Perhaps I should use nested cases.
 
+Wed Aug 15 16:35:42 EDT 2012
+
+Here's an idea. Perhaps I can take advantage of HOAS. Or at least see if it
+has anything fancy to provide.
+
+It's very costly to do assignment of types when concretizing a polymorphic
+variable. I wonder why. I wonder how common this is...
+
+Anyway, some ideas to improve the condition are:
+- Implement assign directly
+- Make sure we catch the easy case of no assignments being made.
+- Do the assignment in HOAS form on the environment, have an environment
+  function which can do this for you, and see if it really does take advantage
+  of sharing.
+
+Wed Aug 15 16:41:33 EDT 2012
+
+Did the second. I should have done that before. That was easy and saved a
+bunch.
+
+

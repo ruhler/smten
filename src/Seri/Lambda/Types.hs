@@ -137,6 +137,7 @@ assignl lookup = transform (Assign lookup)
 -- | Replace all variable types and numeric variable types with the given
 -- values. Uses association list lookup.
 assign :: Transformable a => [(Name, Type)] -> a -> a
+assign [] = id
 assign m = assignl (\n -> Prelude.lookup n m)
 
 class Typeof a where
