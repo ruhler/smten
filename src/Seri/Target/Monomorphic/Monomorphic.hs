@@ -38,7 +38,7 @@
 --  equivalent monomorphic seri lambda expression.
 module Seri.Target.Monomorphic.Monomorphic (Monomorphic(..)) where
 
-import Control.Monad.State
+import Control.Monad.State.Strict
 import Data.List((\\), nub)
 
 import Seri.Failable
@@ -78,6 +78,16 @@ data MS = MS {
 
 type M = State MS
 
+modifyS :: (MonadState s m) => (s -> s) -> m ()
+modifyS f = do
+    x <- get
+    put $! f x
+
+getsS :: (MonadState s m) => (s -> a) -> m a
+getsS f = do
+    x <- get
+    return $! f x
+
 -- finish
 --  Finish generating declarations for all the needed concrete types and VarEs
 finish :: M ()
@@ -89,10 +99,10 @@ finish = do
     case (nub tt \\ dt, nub te \\ de) of
         ([], []) -> return ()
         (ts, es) -> do
-            modify $ \ms -> ms { ms_totype = [], ms_toexp = [] }
+            modifyS $ \ms -> ms { ms_totype = [], ms_toexp = [] }
             tds <- mapM gentype ts
             eds <- mapM genval es
-            modify $ \ms -> ms {
+            modifyS $ \ms -> ms {
                 ms_typed = dt ++ ts,
                 ms_exped = de ++ es,
                 ms_mono = (ms_mono ms) ++ (concat tds) ++ eds
@@ -144,9 +154,9 @@ monoexp (AppE a b) = do
 monoexp (LamE (Sig n t) e) = do
     t' <- monotype t
     bound <- gets ms_bound
-    modify $ \ms -> ms { ms_bound = n : bound }
+    modifyS $ \ms -> ms { ms_bound = n : bound }
     e' <- monoexp e
-    modify $ \ms -> ms { ms_bound = bound }
+    modifyS $ \ms -> ms { ms_bound = bound }
     return (LamE (Sig n t') e')
 monoexp (ConE (Sig n t)) = do
     t' <- monotype t
@@ -159,14 +169,14 @@ monoexp (VarE s@(Sig n t)) = do
     case (n `elem` bound, attemptM $ lookupVarInfo poly s) of
         (True, _) -> return (VarE (Sig n t'))
         (_, Just Primitive) -> do
-            modify $ \ms -> ms { ms_toexp = s : ms_toexp ms }
+            modifyS $ \ms -> ms { ms_toexp = s : ms_toexp ms }
             return (VarE (Sig n t'))
         (_, Just Declared) -> do
-            modify $ \ms -> ms { ms_toexp = s : ms_toexp ms }
+            modifyS $ \ms -> ms { ms_toexp = s : ms_toexp ms }
             suffix <- valsuffix s
             return (VarE (Sig (n ++ suffix) t'))
         (_, Just (Instance (Class _ cts))) -> do
-            modify (\ms -> ms { ms_toexp = s : ms_toexp ms })
+            modifyS (\ms -> ms { ms_toexp = s : ms_toexp ms })
             suffix <- valsuffix s
             return (VarE (Sig (n ++ suffix) t'))
         _ -> return (VarE (Sig n t'))
@@ -175,9 +185,9 @@ monomatch :: Match -> M Match
 monomatch (Match p e) = do
     p' <- monopat p
     bound <- gets ms_bound
-    modify $ \ms -> ms { ms_bound = bindingsP' p ++ bound }
+    modifyS $ \ms -> ms { ms_bound = bindingsP' p ++ bound }
     e' <- monoexp e
-    modify $ \ms -> ms { ms_bound = bound }
+    modifyS $ \ms -> ms { ms_bound = bound }
     return $ Match p' e'
 
 monopat :: Pat -> M Pat
@@ -204,7 +214,7 @@ monotype t = do
             targsmono <- mapM monotype targs
             return $ foldl AppT (ConT "->") targsmono
         (_, targs) -> do
-            modify $ \ms -> ms { ms_totype = t : ms_totype ms }
+            modifyS $ \ms -> ms { ms_totype = t : ms_totype ms }
             targsmono <- mapM monotype targs
             return $ ConT (mononametype t)
 

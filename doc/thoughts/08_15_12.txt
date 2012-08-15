@@ -290,3 +290,81 @@ primitives? Except, I'm almost positive you can't pick a name for our
 primitives, because they all have a "." in them. So that shouldn't be a
 problem. That's cool. Let me try this.
 
+Wed Aug 15 14:42:19 EDT 2012
+
+Cool. Good. I think, perhaps, alpha renaming and reduction are no longer the
+top concerns. Let me look at the profile now, see what I see.
+
+check: 9.6, it's on the top now, which is good.
+elaborate': 8.9, where is this from? Pattern matching?
+>>=: 5.7, what does this mean?
+==: 4.7, where is this from?
+
+lookupDataConType is fairly bad, I should take a look at that again, make sure
+it uses hash tables as appropriate.
+
+yExp.dematch
+yCon looks expensive.
+
+elaborate': 24 total. That's big.
+reducern: 2.4
+assign: 4.1, that's pretty big.
+lookupVar: 3.5: uses lookupInstD, make sure that's done efficiently in the
+environment.
+
+hasNonPrimFree: 3.4
+ Much of which is isprim: so, lookupVarInfo.
+
+delambdafy: 12.5
+  Mostly alpha renaming.
+  Not surprising. Perhaps I can make that better, like I did for elaborate.
+  free' also.
+
+Monomorphic: 16! That's a lot. I should look into this more closely. Space
+leaks perhaps? Did I already check for those?
+
+runCmds:  11.90
+Wow. That's a lot of time there.
+ 
+
+So, the long and short of it is: beta reduction and alpha renaming is no
+longer a prime target. We are seeing a big smattering of things which could be
+contributing here and there to the time. That's good, I think. It means I've
+been making improvements.
+
+The cost of == comes from finish in monomorphic finish. I bet I can improve
+that a bit. And some in 'free' used in type checking.
+
+Good. So I think I might leave elaboration alone for the time being.
+
+Wed Aug 15 15:03:42 EDT 2012
+
+Let's take a look at that monomorphic == and see if we can't reduce that cost
+any.
+
+I know one thing about monomorphizing, is I don't have it incremental, when I
+could, which you would think should save me a bunch of repeated work. When I
+tried making it incremental, however, it slowed things way down. I think
+because of problems with strictness. Let me work on making it faster as is,
+get it tuned, then, if it's still a problem, try making it incremental.
+
+Wed Aug 15 15:05:25 EDT 2012
+
+The == must be coming from nub. I can make a smarter nub, right?
+
+Also, I'm probably leaking monomorphic state. It would be worth fixing that
+now.
+
+Wed Aug 15 15:07:56 EDT 2012
+
+Hmm... the == isn't doing stupid things. It may make sense to switch to using
+a set? If things don't need to be ordered.
+
+First, though, strictness stuff. Let's see who leaks MS.
+
+Looks like monotype and monoexp.
+
+Wed Aug 15 15:13:34 EDT 2012
+
+Good. Fixed that.
+
