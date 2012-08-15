@@ -70,11 +70,6 @@ elaborate' mode env freenms e =
       elabmenms nms = elaborate' mode env (nms ++ freenms)
       elabmenm n = elaborate' mode env (n:freenms)
         
-      isprim :: Sig -> Bool
-      isprim s = case (attemptM $ lookupVarInfo env s) of
-                    Just _ -> True
-                    Nothing -> False
-
       hasNonPrimFree :: [Name] -> Exp -> Bool
       hasNonPrimFree nms e =
          case e of
@@ -87,15 +82,13 @@ elaborate' mode env freenms e =
            LamE (Sig n _) b -> hasNonPrimFree (n:nms) b
            ConE {} -> False
            VarE (Sig n _) | n `elem` nms -> False
-           VarE s -> not (isprim s)
-            
-      shouldreduce :: Exp -> Bool
-      shouldreduce (VarE {}) = True
-      shouldreduce x = not (hasNonPrimFree [] x)
-
+           VarE s -> 
+             case (attemptM $ lookupVarInfo env s) of
+                Just _ -> False
+                Nothing -> True
   in case e of
-       LitE {} -> e
-       CaseE x ms ->
+       LitE {} -> {-# SCC "LIT" #-} e
+       CaseE x ms -> {-# SCC "CASE" #-}
          let rx = elabme x
          in case (matches rx ms) of
             -- TODO: return error if no alternative matches?
@@ -104,8 +97,19 @@ elaborate' mode env freenms e =
             UnMatched ms' | mode == WHNF -> CaseE rx ms'
             UnMatched ms' | mode == SNF ->
                 CaseE rx [Match p (elabmenms (bindingsP' p) b) | Match p b <- ms']
-       AppE a b ->
+       AppE a b -> {-# SCC "APP" #-}
            case (elabmeWHNF a, elabme b) of
+             -- Only do reduction if there are no free variables in the
+             -- argument. Otherwise things can blow up in unhappy ways.
+             -- This does not require alpha renaming.
+             (LamE (Sig name _) body, rb) | not (hasNonPrimFree [] rb) ->
+                elabme (reduce name rb body)
+    
+             -- But do inline simple variables.
+             -- This requires alpha renaming.
+             (LamE (Sig name _) body, rb@(VarE {})) ->
+                 elabme (reducern [(name, rb)] body)
+
              (VarE (Sig "Seri.Lib.Prelude.valueof" t), _) ->
                 let NumT nt = head $ unarrowsT t
                 in integerE (nteval nt)
@@ -129,24 +133,13 @@ elaborate' mode env freenms e =
              (AppE (VarE (Sig "Seri.Lib.Bit.__prim_lsh_Bit" _)) (AppE (VarE (Sig "Seri.Lib.Bit.__prim_fromInteger_Bit" (AppT _ (AppT _ (NumT w))))) (LitE (IntegerL ia))), LitE (IntegerL ib)) -> AppE (VarE (Sig "Seri.Lib.Bit.__prim_fromInteger_Bit" (arrowsT [integerT, bitT (nteval w)]))) (integerE $ bv_value (bv_make (nteval w) ia `shiftL` fromInteger ib))
              (AppE (VarE (Sig "Seri.Lib.Bit.__prim_rshl_Bit" _)) (AppE (VarE (Sig "Seri.Lib.Bit.__prim_fromInteger_Bit" (AppT _ (AppT _ (NumT w))))) (LitE (IntegerL ia))), LitE (IntegerL ib)) -> AppE (VarE (Sig "Seri.Lib.Bit.__prim_fromInteger_Bit" (arrowsT [integerT, bitT (nteval w)]))) (integerE $ bv_value (bv_make (nteval w) ia `shiftR` fromInteger ib))
 
-             -- Only do reduction if there are no free variables in the
-             -- argument. Otherwise things can blow up in unhappy ways.
-             -- This does not require alpha renaming.
-             (LamE (Sig name _) body, rb) | not (hasNonPrimFree [] rb) ->
-                elabme (reduce name rb body)
-    
-             -- But do inline simple variables.
-             -- This requires alpha renaming.
-             (LamE (Sig name _) body, rb@(VarE {})) ->
-                 elabme (reducern [(name, rb)] body)
-
              (ra, rb) -> AppE (elabme ra) rb
-       LamE {} | mode == WHNF -> e
-       LamE s@(Sig n _) b | mode == SNF -> LamE s (elabmenm n b)
-       ConE {} -> e
-       VarE (Sig "Seri.Lib.Prelude.numeric" (NumT nt)) -> ConE (Sig ("#" ++ show (nteval nt)) (NumT nt))
-       VarE (Sig n _) | n `elem` freenms -> e
-       VarE s@(Sig _ ct) ->
+       LamE {} | mode == WHNF -> {-# SCC "LAM_WHNF" #-} e
+       LamE s@(Sig n _) b | mode == SNF -> {-# SCC "LAM_SNF" #-} LamE s (elabmenm n b)
+       ConE {} -> {-# SCC "CON" #-} e
+       VarE (Sig "Seri.Lib.Prelude.numeric" (NumT nt)) -> {-# SCC "NUMERIC" #-} ConE (Sig ("#" ++ show (nteval nt)) (NumT nt))
+       VarE (Sig n _) | n `elem` freenms -> {-# SCC "VAR_FREE" #-} e
+       VarE s@(Sig _ ct) -> {-# SCC "VAR_LOOKUP" #-}
            case (attemptM $ lookupVar env s) of
              Nothing -> e
              Just (pt, ve) -> elabme $ assign (assignments pt ct) ve 

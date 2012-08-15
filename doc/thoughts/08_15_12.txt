@@ -377,3 +377,21 @@ Wed Aug 15 15:25:42 EDT 2012
 
 Looks like a reasonable, but small, improvement. I'll keep it.
 
+Wed Aug 15 15:42:14 EDT 2012
+
+Okay, how do I figure out where all the elaborate time is being spent?
+
+Wed Aug 15 16:04:07 EDT 2012
+
+I did a little test which is: remove the bitvector primitives from the
+elaborator and check performance. It does make some difference it turns out,
+to have big long lists. So... maybe I can encapsulate it in a function? Maybe
+we want a hash table or something to look up the primitives?
+
+I'm not sure what I can do about this.
+
+Wed Aug 15 16:10:43 EDT 2012
+
+Looks like even something as simple as changing the order of the case
+statement makes a difference. Perhaps I should use nested cases.
+
