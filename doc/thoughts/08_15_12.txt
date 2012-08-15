@@ -226,4 +226,53 @@ Some new thoughts.
 
 Cool. Let me go to work then. I'm feeling hopeful.
 
+Wed Aug 15 13:06:40 EDT 2012
+
+I'm going to try joining reduction and alpha renaming now.
+
+Let me review how it should work.
+
+1. Write a hasfree function to work on expressions.
+2. reduction need not take a list of free. Instead, whenever it gets to a
+lambda which doesn't shadow the reduction, check if the argument being reduced 
+has the free variable. If so, rename the variable, and start reducing that
+too.
+
+Trivial. Simple. Easy.
+
+3. for shouldreduce, write a function which is: has non-prim free. Use that
+instead of building up a list of all the free variables.
+
+I'm hopeful. Very hopeful...
+
+Wed Aug 15 13:27:57 EDT 2012
+
+Some trouble.
+
+Firstly: I have to make sure my renamed things don't themselves get captured.
+Secondly: Even after making the substition, I have more to do...
+
+This suggests to me that reduce should really be a multi-reduce thing. And
+just check for empty reduction as a special case.
+
+Wed Aug 15 13:58:26 EDT 2012
+
+Ug. So, this has turned out to be a little messier than I hoped. We'll see if
+it leads to any performance improvement. Also keep in mind, I may want to try
+caching the free names in expressions if we end up calling hasfree too many
+times.
+
+Wed Aug 15 14:06:39 EDT 2012
+
+There! I think I've got it now. Ug. That's a bit of work. I would be rather
+surprised if it works at all.
+
+Anyway, there we have reduction, let me switch to using it, see if it works,
+and see how performance goes.
+
+Wed Aug 15 14:19:19 EDT 2012
+
+Well, it appears to work, and I think the code is cleaner, or at least,
+shorter, because we only do a single traversal. But it didn't really make any
+performance difference...
 
