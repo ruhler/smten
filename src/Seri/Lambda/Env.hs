@@ -65,7 +65,12 @@ data Env = Env {
     e_decls :: [Dec],
 
     -- Fast access to info about values.
-    e_vitable :: HashTable Name ValInfo
+    e_vitable :: HashTable Name ValInfo,
+
+    -- Fast access to info about data constructors.
+    -- Returns the type of a data constructor.
+    e_dctable :: HashTable Name Type
+
 }
 
 -- | Information about a value name.
@@ -79,7 +84,7 @@ data ValInfo
 
 -- | Build a seri environment from the given list of declarations.
 mkEnv :: [Dec] -> Env
-mkEnv decs = Env decs (table (vitable decs))
+mkEnv decs = Env decs (table (vitable decs)) (table (dctable decs))
 
 vitable :: [Dec] -> [(Name, ValInfo)]
 vitable decs =
@@ -93,6 +98,16 @@ vitable decs =
       videc d@(DataD n _ _) = [(n, DecVI d)]
       videc (InstD {}) = []
   in concat $ map videc decs
+
+dctable :: [Dec] -> [(Name, Type)]
+dctable decs =
+  let dcdec :: Dec -> [(Name, Type)]
+      dcdec d@(DataD dn vars cs) =
+        let dccon :: Con -> (Name, Type)
+            dccon (Con n ts) = (n, arrowsT (ts ++ [appsT (ConT dn : map tyVarType vars)]))
+        in map dccon cs
+      dcdec _ = []
+  in concat $ map dcdec decs
 
 -- | Make a small change to an environment.
 -- Add the given declarations to the environment, overwriting any existing
@@ -217,9 +232,9 @@ lookupMethodType env n (Class _ ts) = do
 -- | Given the name of a data constructor in the environment, return its type.
 lookupDataConType :: Env -> Name -> Failable Type
 lookupDataConType env n = 
-    case catMaybes [typeofCon d n | d <- e_decls env] of
-        [] -> fail $ "lookupDataConType: " ++ n ++ " not found"
-        xs -> return $ head xs
+    case HT.lookup n (e_dctable env) of
+        Just t -> return t
+        _ -> fail $ "lookupDataConType: " ++ n ++ " not found"
 
 -- | Look up VarInfo for the variable with given signature.
 -- Fails if the variable is not declared or an instance or primitive.
