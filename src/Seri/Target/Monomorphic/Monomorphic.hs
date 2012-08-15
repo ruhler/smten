@@ -39,7 +39,7 @@
 module Seri.Target.Monomorphic.Monomorphic (Monomorphic(..)) where
 
 import Control.Monad.State.Strict
-import Data.List((\\), nub)
+import qualified Data.Set as Set
 
 import Seri.Failable
 import Seri.Lambda
@@ -48,10 +48,10 @@ class Monomorphic a where
     monomorphic :: Env -> a -> ([Dec], a)
 
 instance Monomorphic Exp where
-    monomorphic env e = fst $ runState (monoalle e) (MS env [] [] [] [] [] [])
+    monomorphic env e = fst $ runState (monoalle e) (MS env [] Set.empty Set.empty Set.empty Set.empty [])
 
 instance Monomorphic Type where
-    monomorphic env t = fst $ runState (monoallt t) (MS env [] [] [] [] [] [])
+    monomorphic env t = fst $ runState (monoallt t) (MS env [] Set.empty Set.empty Set.empty Set.empty [])
 
 data MS = MS {
     -- declarations in the original polymorphic environment.
@@ -61,16 +61,16 @@ data MS = MS {
     ms_mono :: [Dec],
 
     -- Concrete types to make sure we monomorphize
-    ms_totype :: [Type],
+    ms_totype :: Set.Set Type,
 
     -- Concretely typed variables to make sure we monomorphize
-    ms_toexp :: [Sig],
+    ms_toexp :: Set.Set Sig,
 
     -- Concrete types we already monomorphized
-    ms_typed :: [Type],
+    ms_typed :: Set.Set Type,
 
     -- Variables we already monomorphized
-    ms_exped :: [Sig],
+    ms_exped :: Set.Set Sig,
 
     -- List of locally bound variables.
     ms_bound :: [Name]
@@ -83,11 +83,6 @@ modifyS f = do
     x <- get
     put $! f x
 
-getsS :: (MonadState s m) => (s -> a) -> m a
-getsS f = do
-    x <- get
-    return $! f x
-
 -- finish
 --  Finish generating declarations for all the needed concrete types and VarEs
 finish :: M ()
@@ -96,15 +91,15 @@ finish = do
     dt <- gets ms_typed
     te <- gets ms_toexp
     de <- gets ms_exped
-    case (nub tt \\ dt, nub te \\ de) of
-        ([], []) -> return ()
+    case (tt Set.\\ dt, te Set.\\ de) of
+        (a, b) | Set.null a && Set.null b -> return ()
         (ts, es) -> do
-            modifyS $ \ms -> ms { ms_totype = [], ms_toexp = [] }
-            tds <- mapM gentype ts
-            eds <- mapM genval es
+            modifyS $ \ms -> ms { ms_totype = Set.empty, ms_toexp = Set.empty }
+            tds <- mapM gentype (Set.elems ts)
+            eds <- mapM genval (Set.elems es)
             modifyS $ \ms -> ms {
-                ms_typed = dt ++ ts,
-                ms_exped = de ++ es,
+                ms_typed = Set.union dt ts,
+                ms_exped = Set.union de es,
                 ms_mono = (ms_mono ms) ++ (concat tds) ++ eds
              }
             finish
@@ -169,14 +164,14 @@ monoexp (VarE s@(Sig n t)) = do
     case (n `elem` bound, attemptM $ lookupVarInfo poly s) of
         (True, _) -> return (VarE (Sig n t'))
         (_, Just Primitive) -> do
-            modifyS $ \ms -> ms { ms_toexp = s : ms_toexp ms }
+            modifyS $ \ms -> ms { ms_toexp = Set.insert s (ms_toexp ms) }
             return (VarE (Sig n t'))
         (_, Just Declared) -> do
-            modifyS $ \ms -> ms { ms_toexp = s : ms_toexp ms }
+            modifyS $ \ms -> ms { ms_toexp = Set.insert s (ms_toexp ms) }
             suffix <- valsuffix s
             return (VarE (Sig (n ++ suffix) t'))
         (_, Just (Instance (Class _ cts))) -> do
-            modifyS (\ms -> ms { ms_toexp = s : ms_toexp ms })
+            modifyS (\ms -> ms { ms_toexp = Set.insert s (ms_toexp ms) })
             suffix <- valsuffix s
             return (VarE (Sig (n ++ suffix) t'))
         _ -> return (VarE (Sig n t'))
@@ -214,7 +209,7 @@ monotype t = do
             targsmono <- mapM monotype targs
             return $ foldl AppT (ConT "->") targsmono
         (_, targs) -> do
-            modifyS $ \ms -> ms { ms_totype = t : ms_totype ms }
+            modifyS $ \ms -> ms { ms_totype = Set.insert t (ms_totype ms) }
             targsmono <- mapM monotype targs
             return $ ConT (mononametype t)
 

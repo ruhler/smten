@@ -368,3 +368,12 @@ Wed Aug 15 15:13:34 EDT 2012
 
 Good. Fixed that.
 
+Wed Aug 15 15:17:47 EDT 2012
+
+Looks like monomorphic doesn't need order. Let me try using sets instead of
+lists. Because we're doing lots of tests for equality.
+
+Wed Aug 15 15:25:42 EDT 2012
+
+Looks like a reasonable, but small, improvement. I'll keep it.
+
