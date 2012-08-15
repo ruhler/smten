@@ -116,8 +116,6 @@ elaborate' mode env freenms e =
              (l@(LamE {}), rb) ->
                let fr = free rb
 
-                   -- return True if the given beta reduction should be applied with the
-                   -- given argument.
                    shouldreduce = 
                      case rb of
                         (LitE {}) -> True
@@ -195,18 +193,27 @@ reduce n v =
            VarE {} -> e
   in reduceme
 
--- | Return a list of all local variable names introduced in the given
--- expression.
-names :: Exp -> [Name]
-names (LitE {}) = []
-names (CaseE e ms) = 
-  let namesm :: Match -> [Name]
-      namesm (Match p b) = bindingsP' p ++ names b
-  in nub $ concat (names e : map namesm ms)
-names (AppE a b) = names a ++ names b
-names (LamE (Sig n _) b) = nub $ n : names b
-names (ConE {}) = []
-names (VarE (Sig n _)) = []
+-- Return True if the given expression binds the given name in a lambda term
+-- somewhere.
+hasname :: Name -> Exp -> Bool
+hasname n =
+  let hn :: Exp -> Bool
+      hn (LitE {}) = False
+      hn (CaseE e ms) =
+        let hnp :: Pat -> Bool
+            hnp (ConP _ _ ps) = any hnp ps
+            hnp (VarP (Sig nm _)) = n == nm
+            hnp (IntegerP {}) = False
+            hnp (WildP {}) = False
+            
+            hnm :: Match -> Bool
+            hnm (Match p b) = hnp p || hn b
+        in hn e || any hnm ms
+      hn (AppE a b) = hn a || hn b
+      hn (LamE (Sig nm _) b) = nm == n || hn b
+      hn (ConE {}) = False
+      hn (VarE {}) = False
+  in hn
 
 -- | Rename any variable bindings in the given expression to names which do
 -- not belong to the given list.
@@ -217,7 +224,7 @@ alpharename bad e =
       isgood s = not (s `elem` bad)
 
       isgoodnew :: String -> Bool
-      isgoodnew s = isgood s && not (s `elem` names e)
+      isgoodnew s = isgood s && not (hasname s e)
 
       -- get the new name for the given name.
       newname :: String -> String

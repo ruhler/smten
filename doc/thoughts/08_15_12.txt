@@ -162,3 +162,68 @@ alpha renaming, it should work fine, functionally speaking.
 The trouble is, reduce doesn't actually cost us that much. Most of the time is
 spent in alpha renaming.
 
+Wed Aug 15 10:58:17 EDT 2012
+
+Okay! So I have two proposals which I believe are promising.
+
+1. Combine alpharename and reduce in elaborate.
+Relatively simple change. We always do alpharename and reduce together anyway.
+This will hopefully save us a traversal.
+
+Change reduce to do any necessary renaming. Pass it as an extra argument the
+free variables in the argument being reduced.
+
+Reduce stays the same aside from the following: any time we are about to enter
+a lambda, if the lambda has the same name as a free variable, pick a new name
+for it, and start reducing that name to.
+
+Reduce should now work on multiple arguments again. This could be useful for
+case statements later on, or not. I don't think it matters much.
+
+I think this sounds very promising to me. The cost of alpharenaming hopefully
+mostly goes away, the lowish cost of reduction hopefully stays low, and we
+save a bunch of traversals and such.
+
+2. HOAS.
+Represent LamE as a function from Exp to Exp.
+
+This is more complicated than proposal (1), but could pay off. How it works:
+
+1. Translate Exp to this new representation. Do it at the start, and any time
+we inline a variable.
+
+The function will be: \x -> reduce n x b, where n is the bound name, and b is
+the body of the lambda.
+
+2. Do elaboration as normal. Don't worry about beta reduction. Reduce is just
+application of the lambda. HOAS will maybe save us something here? It's hard
+for me to imagine how, but at least we skip alpha renaming.
+
+3. Translate representation back to Exp. This is where we have to deal with
+alpha renaming. We choose the names for the lambdas that are still around. We
+should just choose fresh, new names. Names that aren't free. So, do a
+traversal, get the list of free names, then pick new names based on that.
+
+The value of this approach: we only have to do alpha renaming once.
+
+I don't honestly think the HOAS part will save us much, but that's fine. We
+can at least do really cheap renaming when represented as HOAS. At least, I
+think it's cheap? Oh, I suppose not. It's just the same as reduction. I'll
+think about it.
+
+Wed Aug 15 12:50:02 EDT 2012
+
+Some new thoughts.
+
+- The HOAS stuff can be made to work with combined reduction/alpha renaming
+  just fine I think. I should try that first if reduction/alpha renaming join
+  helps.
+
+- Be more specific about what I want from things.
+  For example, instead of: n `elem` free e, do something like hasfree n e. 
+
+  That way I avoid making a list of things.
+
+Cool. Let me go to work then. I'm feeling hopeful.
+
+
