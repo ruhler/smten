@@ -276,3 +276,10 @@ Well, it appears to work, and I think the code is cleaner, or at least,
 shorter, because we only do a single traversal. But it didn't really make any
 performance difference...
 
+Wed Aug 15 14:29:09 EDT 2012
+
+Here's an idea: have two versions of reduce. One which does renaming, one
+which doesn't. And the one which does, it can do only single renaming if
+needed: because the only time we do beta reduction with a free variable is if
+it is a VarE! I'll try that next.
+

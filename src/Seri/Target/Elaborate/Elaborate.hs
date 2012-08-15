@@ -75,12 +75,23 @@ elaborate' mode env freenms e =
                     Just _ -> True
                     Nothing -> False
 
-      shouldreduce x = 
-        case x of
-           (LitE {}) -> True
-           (ConE {}) -> True
-           (VarE {}) -> True
-           _ -> null (filter (not . isprim) (free x))
+      hasNonPrimFree :: [Name] -> Exp -> Bool
+      hasNonPrimFree nms e =
+         case e of
+           LitE {} -> False
+           CaseE x ms ->
+             let hm :: Match -> Bool
+                 hm (Match p b) = hasNonPrimFree (bindingsP' p ++ nms) b
+             in hasNonPrimFree nms x || any hm ms
+           AppE a b -> hasNonPrimFree nms a || hasNonPrimFree nms b
+           LamE (Sig n _) b -> hasNonPrimFree (n:nms) b
+           ConE {} -> False
+           VarE (Sig n _) | n `elem` nms -> False
+           VarE s -> not (isprim s)
+            
+      shouldreduce :: Exp -> Bool
+      shouldreduce (VarE {}) = True
+      shouldreduce x = not (hasNonPrimFree [] x)
 
   in case e of
        LitE {} -> e
