@@ -131,8 +131,14 @@ elaborate' mode env freenms e =
 
              -- Only do reduction if there are no free variables in the
              -- argument. Otherwise things can blow up in unhappy ways.
-             (LamE (Sig name _) body, rb) | shouldreduce rb ->
-                 elabme (reduce [(name, rb)] body)
+             -- This does not require alpha renaming.
+             (LamE (Sig name _) body, rb) | not (hasNonPrimFree [] rb) ->
+                elabme (reduce name rb body)
+    
+             -- But do inline simple variables.
+             -- This requires alpha renaming.
+             (LamE (Sig name _) body, rb@(VarE {})) ->
+                 elabme (reducern [(name, rb)] body)
 
              (ra, rb) -> AppE (elabme ra) rb
        LamE {} | mode == WHNF -> e
@@ -202,12 +208,12 @@ hasfree n =
       hn (VarE (Sig nm _)) = nm == n
   in hn
 
--- reduce n v exp
+-- reducern n v exp
 -- Perform beta reduction in exp, replacing occurrences of variable n with v.
 -- This does alpha-renaming where needed.
-reduce :: [(Name, Exp)] -> Exp -> Exp
-reduce [] e = e
-reduce m e =
+reducern :: [(Name, Exp)] -> Exp -> Exp
+reducern [] e = e
+reducern m e =
      -- Given: a list of names being bound
      --        the things to be reduced
      -- Return: - a list of updated names needed for those things being bound
@@ -236,15 +242,36 @@ reduce m e =
                    repat (VarP s) = VarP (fromMaybe s (lookup s rename))
                    repat p@(IntegerP {}) = p
                    repat p@(WildP {}) = p
-               in Match (if null rename then p else repat p) (reduce m' b)
-         in CaseE (reduce m e) (map rm ms)
-       AppE a b -> AppE (reduce m a) (reduce m b)
+               in Match (if null rename then p else repat p) (reducern m' b)
+         in CaseE (reducern m e) (map rm ms)
+       AppE a b -> AppE (reducern m a) (reducern m b)
        LamE s b ->
          let (rename, m') = renames [s]
-         in LamE (fromMaybe s (lookup s rename)) (reduce m' b)
+         in LamE (fromMaybe s (lookup s rename)) (reducern m' b)
        ConE {} -> e
        VarE (Sig nm t) ->
          case lookup nm m of
             Just v -> v
             Nothing -> e
+
+-- reduce n v exp
+-- Perform beta reduction in exp, replacing occurrences of variable n with v.
+-- This does not do any renaming.
+reduce :: Name -> Exp -> Exp -> Exp
+reduce n v =
+  let reduceme e =
+        case e of
+           LitE {} -> e
+           CaseE e ms ->
+             let reducematch :: Match -> Match
+                 reducematch m@(Match p _) | n `elem` (bindingsP' p) = m
+                 reducematch (Match p b) = Match p (reduceme b)
+             in CaseE (reduceme e) (map reducematch ms)
+           AppE a b -> AppE (reduceme a) (reduceme b)
+           LamE (Sig nm t) b | n == nm -> e
+           LamE s b -> LamE s (reduceme b)
+           ConE {} -> e
+           VarE (Sig nm _) | n == nm -> v
+           VarE {} -> e
+  in reduceme
 

@@ -283,3 +283,10 @@ which doesn't. And the one which does, it can do only single renaming if
 needed: because the only time we do beta reduction with a free variable is if
 it is a VarE! I'll try that next.
 
+Wed Aug 15 14:36:31 EDT 2012
+
+Oh, but that's wrong, because we still need to rename to avoid capture of
+primitives? Except, I'm almost positive you can't pick a name for our
+primitives, because they all have a "." in them. So that shouldn't be a
+problem. That's cool. Let me try this.
+
