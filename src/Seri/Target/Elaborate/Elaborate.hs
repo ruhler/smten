@@ -69,6 +69,8 @@ elaborate' mode env freenms e =
       elabmeWHNF = elaborate' WHNF env freenms
       elabmenms nms = elaborate' mode env (nms ++ freenms)
       elabmenm n = elaborate' mode env (n:freenms)
+
+      dontshare = True
         
       hasNonPrimFree :: [Name] -> Exp -> Bool
       hasNonPrimFree nms e =
@@ -108,6 +110,10 @@ elaborate' mode env freenms e =
              -- But do inline simple variables.
              -- This requires alpha renaming.
              (LamE (Sig name _) body, rb@(VarE {})) ->
+                 elabme (reducern [(name, rb)] body)
+
+             -- Reduce everything else too if we don't want sharing.
+             (LamE (Sig name _) body, rb) | dontshare ->
                  elabme (reducern [(name, rb)] body)
 
              (VarE (Sig "Seri.Lib.Prelude.valueof" t), _) ->

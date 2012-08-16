@@ -170,8 +170,252 @@ work? (unlikely...).
 Thu Aug 16 11:39:25 EDT 2012
 
 Issues to face:
- - support for character literal patterns.
+1. support for character literal patterns.
 
 I'll want to change IntegerP to LitP. It's sort of annoying... but for the
 better.
+
+Thu Aug 16 11:59:21 EDT 2012
+
+Done.
+
+2. concat hasn't been implemented yet?
+
+Thu Aug 16 12:05:43 EDT 2012
+
+Okay! Making progress. Library appears to be in place now.
+
+Now to face the expected problems. It thinks it needs to know about a list of
+cells. Why do I think it shouldn't have to know about a list of cells?
+
+Let me start by doing simple things.
+Given a full board, print it out, see how it prints.
+Then check isvalid works correctly.
+
+Then I should be in good enough shape to debug the SMT issues.
+
+Thu Aug 16 12:38:44 EDT 2012
+
+Looks like isvalid hangs. Let me start simpler. Rows. Cols. Boxes.
+
+Thu Aug 16 12:40:15 EDT 2012
+
+Aha. looks like boxes hangs.
+
+Thu Aug 16 12:59:40 EDT 2012
+
+Okay, found and fixed the bug. I was using 'm' instead of 'n'.
+
+Now it looks like isvalid works. Shall I try to do the SMT thing?
+
+Sure.
+
+Thu Aug 16 13:00:38 EDT 2012
+
+It thinks it needs a list of cells.
+
+I have this fear that the issue is we are trying to do sharing. We don't
+inline a list with free variables, because we want to do sharing, but because
+we don't inline it, we have to know about lists, and that we can't do in
+yices?
+
+Thu Aug 16 13:13:09 EDT 2012
+
+I think that's the issue. The elaborator wants to share vs, because it is a
+complex expression. In this case, it is only referred to in one place, but
+it could just as easily be something referred to in multiple places.
+
+If we didn't do sharing... then there would probably be no issue at all.
+
+In fact, I can test this out.
+
+Thu Aug 16 13:17:52 EDT 2012
+
+Yup! If I turn off sharing, everything works just fine... it's just rather a
+bit slow.
+
+Bummer. Hum... How do I deal with this?
+
+Thu Aug 16 13:25:15 EDT 2012
+
+Just for note, without sharing, diabolical:
+ 8 second in yices.
+ 4.5 seconds in seri! (that's pretty cool I think).
+
+But, sharing should be much better in yices, I would expect.
+
+Thu Aug 16 13:35:51 EDT 2012
+
+I would like to know what kinds of expressions can and can't be expressed to
+yices. What kinds of things.
+
+Brainstorm:
+- recursive data types are not supported.
+- recursive functions are not supported.
+- not totally inlined expressions are not supported.
+
+I think the last two points turn out to be the same thing.
+
+Now, what's the problem with recursive functions? Just to be clear?
+
+Well, what I expect to have happen is, a recursive function can't be totally
+inlined. Probably what happens currently, if I do full elaboration, is it will
+just get stuck in an infinite loop. I can give this a try.
+
+What function should I use?
+
+f 0 = 1
+f x = 1 + f (x-1)
+
+Looks like: incr.
+
+incr 0 = 1
+incr x = 1 + (incr (x-1)).
+
+Thu Aug 16 13:41:40 EDT 2012
+
+Yup. That's the behavior I get, just what I expected.
+
+So then, what does this all mean?
+
+Can I detect the problem?
+
+Here's a question: can I represent recursive data structures in yices?
+
+I think not.
+
+Can I detect non-yicesable expressions? Well, the inline thing has no
+trouble...
+
+Thu Aug 16 13:54:14 EDT 2012
+
+You know, an interesting observation: the lambda I'm getting here is not from
+sharing inside an expression, but from sharing across yices assertions. Now, I
+think this is a good thing, mostly, but in this case, the only place it is
+used is in a Return! So in this case, yices doesn't have to know about it at
+all...
+
+I wonder if we could somehow push the shared variable down? Or just don't
+share there... that's worth a try.
+
+So, claim is, weak head normal form should never try to share?
+
+That's an interesting idea... Worth a try?
+
+Thu Aug 16 14:01:09 EDT 2012
+
+In the case of sudoku, there's no difference. Looks like that was the only
+sharing opportunity?
+
+Let me see if it makes a difference with BCL3.
+
+Want to compare:
+- Always Share
+- Don't share WHNF
+- Don't share ever
+
+For sudoku:
+- Always Share: Fails
+- Don't share WHNF: 8Mb
+- Don't share ever: 8Mb
+
+So, don't share WHNF is equivalent to don't share ever.
+
+For BCL3:
+- Always Share: 1.0 seconds
+- Don't share WHNF: 1.5 seconds
+- Don't share ever: 1.5 seconds
+
+Thu Aug 16 14:07:17 EDT 2012
+
+Well... I'm waiting for those numbers to come in.
+
+What now?
+
+Well, I have my sudoku example. And it shows off data types just swell I
+think. Or, maybe not really? I guess not really. Maybe if I add another,
+different representation for things underneath: like representing a row as a
+bit vector? Or is it, representing a cell as a bit vector, where we promise
+only one bit is set. To test for uniqueness, take the logical 'or' of each
+cell, and make sure it gives you each bit set. That's cheap to do.
+
+Thu Aug 16 14:14:23 EDT 2012
+
+Here's a thought: I could add a flag to elaboration mode: Sharing or not. This
+way, we get more granularity. If you are doing normal form reduction, when it
+tries to go to weak head normal form for the arguments, it can keep sharing.
+That might be an in-between kind of thing. So the only place I won't use
+sharing is for running the Query monad. This, sadly, will still reduce
+sharing, potentially a lot. That is, it's not really what I want, ultimately.
+
+What I ultimately want is: share anything you can that yices knows how to deal
+with.
+
+Another, unrelated thought: I bet if I look at the generated yices queries, I
+can do lots of little simplifications which could lead to a reasonable
+performance improvement. Things like: make "not", "&&" primitives. Recognize
+if statements, do: (assert foo) instead of (assert (= true foo)). For data
+types with a single constructor, don't use a tag. For constructors with a
+single field, don't use a tuple. Those kinds of things. They'll make the
+queries more readable too.
+
+Thu Aug 16 14:24:28 EDT 2012
+
+I wonder if in this case, I can just rewrite things so it doesn't look like
+there is sharing of a list? That's an interesting idea. But... not
+sustainable, and I don't think it's actually doable.
+
+Thu Aug 16 14:28:11 EDT 2012
+
+Numbers finally came in. Looks like we really want the top level sharing if we
+can get it at all.
+
+Thu Aug 16 14:29:41 EDT 2012
+
+So here's an idea. We can give elaborate a predicate to control sharing.
+
+For full sharing: p = \_ -> True. Says: share everything we can.
+For no sharing: p = \_ -> False. Says: never share.
+For yices: p x = not (isfunt (typeof x) || unyicesable x)
+
+Where, I suppose, for the time being, unyicesable looks for... reference to a
+recursive data type or a name in the environment. But we don't know what are
+free or not, so that may not work. So maybe: looks for a recursive data type?
+
+Thu Aug 16 15:08:51 EDT 2012
+
+Talked with Nirav.
+
+Thoughts are:
+
+- Don't get stuck on this sharing issue. We can turn sharing off for now if
+  it's a problem.
+
+- Double check that strange result I got where using Seri is faster than
+  running yices on the generated query.
+
+- It could be worth at some point trying to implement my sudoku solver in
+  yices1 directly. Compare the performance of that with my seri version.
+
+- Nirav thinks the big next thing to do is: make it easy to interface seri
+  with haskell:
+
+  Have a way to pack and unpack haskell values to seri.
+  Have a way (using quasi quoters perhaps) to write seri functions.
+  Have a way to run a query using seri.
+
+I should also check for myself how much difference sharing makes to
+performance. If it's really tiny, then just turn it off. It's possible it
+could be tiny.
+
+Okay, so here's my proposal for the rest of today:
+
+1. Clean up and check in the sudoku stuff.
+2. Update yices2 libraries so everyone is pointing to (2.1.0).
+3. Run some numbers, with profiling not compiled in:
+    BCL3 x Sudoku, Share x Noshare, yices-2.1.0 x yices x seriq x seriq2
+
+Then think about how I can make it easy to interface seri with haskell. Using
+sudoku would be a good concrete example to try out: how could I implement a
+sudoku solver in haskell that uses seri as a library?
 

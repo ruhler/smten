@@ -51,6 +51,18 @@ class Monad m where {
   fail :: [Char] -> m a;
 };
 
+sequence :: Monad m => [m a] -> m [a];
+sequence [] = return [];
+sequence (x:xs) = do {
+    v <- x;
+    vs <- sequence xs;
+    return (v:vs);
+};
+
+mapM :: Monad m => (a -> m b) -> [a] -> m [b];
+mapM f as = sequence (map f as);
+
+
 id :: a -> a;
 id x = x;
 
@@ -170,6 +182,9 @@ filter p (x:xs) =
     then (x : filter p xs)
     else filter p xs;
 
+concat :: [[a]] -> [a];
+concat xss = foldr (++) [] xss;
+
 head :: [a] -> a;
 head (x:_) = x;
 head [] = error "Prelude.head: empty list";
@@ -198,6 +213,19 @@ foldr f z (x:xs) = f x (foldr f z xs);
 replicate :: Integer -> a -> [a];
 replicate 0 _ = [];
 replicate n x = x : (replicate (n-1) x);
+
+take :: Integer -> [a] -> [a];
+take 0 _ = [];
+take _ [] = [];
+take n (x:xs) = x : take (n-1) xs;
+
+drop :: Integer -> [a] -> [a];
+drop 0 xs = xs;
+drop _ [] = [];
+drop n (_:xs) = drop (n-1) xs;
+
+splitAt :: Integer -> [a] -> ([a],[a]);
+splitAt n xs = (take n xs, drop n xs);
 
 and :: [Bool] -> Bool;
 and = foldr (&&) True;

@@ -41,6 +41,8 @@ module Seri.SMT.Yices (
     RunOptions(..), SMTQuerier(), mkQuerier, runQuery,
     ) where
 
+import Debug.Trace
+
 import qualified Data.Map as Map
 import Data.Maybe
 
@@ -140,7 +142,7 @@ runQueryM :: Y.Yices y => Exp -> YicesMonad y Exp
 runQueryM e = do
     env <- gets ys_env
     case elaborate WHNF env e of
-        (AppE (LamE (Sig n t) b) x) -> do
+        e@(AppE (LamE s@(Sig n t) b) x) -> do
             n' <- topname n
             t' <- yicest t
             x' <- yicese x

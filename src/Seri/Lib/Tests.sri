@@ -239,12 +239,21 @@ testbasic = do {
     t "I" (and [True, True, True]);
 };
 
+testprelude :: Test ();
+testprelude = do {
+   t "p.take" ([integer 8, 3] == take 2 [8, 3, 5, 1]); 
+   t "p.drop" ([integer 5, 1] == drop 2 [8, 3, 5, 1]); 
+   t "p.splitAt" (([integer 8, 3], [5, 1]) == splitAt 2 [8, 3, 5, 1]); 
+   t "p.concat" ([integer 8, 3, 5, 1, 2, 5] == concat [[8, 3], [5], [1, 2, 5]]);
+};
+
 tests :: Test ();
 tests = do {
     testbasic;
+    testprelude;
     testarray;
     testvector;
-    --testbit;
+    testbit;
 };
 
 testall :: Bool;
