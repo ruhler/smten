@@ -155,6 +155,16 @@ stringLiteral (AppE (AppE (ConE (Sig ":" _)) (LitE (CharL c))) e)
   = c : stringLiteral e
 stringLiteral e = error $ "not a string literal: " ++ show e
 
+isListLiteral :: Exp -> Bool
+isListLiteral (ConE (Sig "[]" (AppT (ConT "[]") _))) = True
+isListLiteral (AppE (AppE (ConE (Sig ":" _)) _) e) = isListLiteral e
+isListLiteral _ = False
+
+listLiteral :: Exp -> [Exp]
+listLiteral (ConE (Sig "[]" (AppT (ConT "[]") _))) = []
+listLiteral (AppE (AppE (ConE (Sig ":" _)) x) e) = x : listLiteral e
+listLiteral e = error $ "not a list literal: " ++ show e
+
 isLet :: Exp -> Bool
 isLet (AppE (LamE {}) _) = True
 isLet e = False
@@ -200,6 +210,9 @@ instance Ppr Exp where
 
     -- Special case for string literals
     ppr e | isStringLiteral e = text (show (stringLiteral e))
+
+    -- Special case for list literals
+    ppr e | isListLiteral e = sep $ [text "["] ++ punctuate comma (map ppr (listLiteral e)) ++ [text "]"]
 
     -- Special case for let expressions
     ppr e | isLet e = pprLet e

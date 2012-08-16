@@ -1,0 +1,116 @@
+
+Thu Aug 16 08:03:22 EDT 2012
+
+What's the goal for today?
+
+Well, I really ought to start working on slides... What I need, what I want,
+is an example. That's all I need. One good example.
+
+It should:
+- involve a complex query, expressed easily with abstractions. Ideally making
+  use of pattern matching, perhaps lists, functions, things like that.
+- once I solve the complex query, it would be good if I could then ask a
+  sequence of similar queries, based on the results I get, to find more
+  information.
+
+For example, maybe something like sudoku.
+
+Initial query: what is the solution.
+Refinement...: Maybe you could ask something like how many squares can you
+take away and still have a unique solution. But I'm not sure that could work
+out.
+
+Other examples: you have a state transition system. State is described using a
+user defined data type. Then you have some transition functions. Now you can
+ask: is it always the case that this sequence of transitions is the same as
+this other sequence of transitions.
+
+But, what's the refinement?
+
+A fifo is a cool thing to express as an example. You define a fifo as a data
+structure and transitions on it. That can be part of your state...
+
+I feel like maybe graph traversal could be a nice simple example. So you use
+the SMT solver to ask: can you get from a to b, perhaps. Then, for
+refinement...
+
+Could we do a mini-model checker? Like a really simple, abstract refinement
+kind of thing?
+
+I really would prefer simple, cute, easy to understand.
+
+I'll keep thinking about it.
+
+Thu Aug 16 09:09:41 EDT 2012
+
+Okay, so there are some things I want to show. Perhaps a single example is not
+best for them all.
+
+How about the following:
+
+1. Implement a sudoku solver.
+Shows:
+ - how to use the query monad to form queries.
+ - that we can read evidence
+ - * that queries are expressed at at high level
+    ex: assert (isValid board)
+    not: assert (sum of row1 = 9 && sum of row2 == 9 && ...)
+    And mention that this is important for the formal verification stuff we
+    want to do?
+ - that we can deal with lists, other funny stuff not expressable in SMT as
+   long as it is statically elaborated away
+
+Summary: this is like: yes we can do all the SMT stuff you want to do, in a
+much nicer way.
+
+2. Implement a findAll function. Given a predicate, return all solutions to
+that predicate.
+ - shows interactive use of SMT solver
+ - shows how common things can be described as libraries
+    for ex: mention I could use this on my sudoku solver too, as is.
+
+ - Also: it might be nice to come up with an example here which involves free
+   variables of user defined type, to show off that capability.
+
+Summary: and we can do more than you usually think of doing with an SMT
+solver.
+
+I think those would be too good examples. Hopefully they both work.
+The rest can be things like: current issues, open up to questions, plans for
+use with bluespec, implementation details if desired, big things that turned
+out to be important for implementation.
+
+Sounds good to me. I think getting these examples going has priority over
+performance.
+
+Let me start with the allQ query on a simple example. Let's find all even
+integers between 3 and 7. Verify that works.
+
+Then come up with a more interesting data type. Perhaps... weekdays? No.
+That's just scalar. Nothing hard about that. How about: every pair of weekdays
+satisfying some sort of predicate? I suppose it's always a predicate of
+something. Perhaps encode an Instruction: has opcode (constructor), and
+fields: source, destination, etc... which may differ from instruction to
+instruction. The predicate? Um... we would kind of like to avoid too many
+choices.
+
+And actually, having a few different examples would be good here, to show we
+can reuse the allQ for lots of different things. Good. Let me try it out then.
+
+Thu Aug 16 10:08:18 EDT 2012
+
+Nirav's suggestion for examples:
+
+Try to make the representation of a cell in a sudoku solver abstract. So, it
+could be: Integer, or BitVector, or 9 tuple of bool, or whatever. The user
+doesn't care, but we can change it underneath and reduce, for example, a
+SMT question to SAT, or something like that. Change the underlying
+representation, and ideally have the expert know the best underlying
+representation for the different back ends?
+
+Also: maxsat is a possible interactive query example. Have an evaluation
+function for a free variable, find an example of something which evaluates to
+a bigger number until we find the best.
+
+Anyway, I've got to work out my bugs now to make all this stuff work.
+

@@ -142,7 +142,10 @@ elaborate' mode env freenms e =
        VarE s@(Sig _ ct) -> {-# SCC "VAR_LOOKUP" #-}
            case (attemptM $ lookupVar env s) of
              Nothing -> e
-             Just (pt, ve) -> elabme $ assign (assignments pt ct) ve 
+             Just (pt, ve) -> elabme $ assignexp (assignments pt ct) ve 
+
+assignexp :: [(Name, Type)] -> Exp -> Exp
+assignexp = assign
         
 data MatchResult = Failed | Succeeded [(Sig, Exp)] | Unknown
 data MatchesResult

@@ -415,4 +415,11 @@ Wed Aug 15 16:41:33 EDT 2012
 Did the second. I should have done that before. That was easy and saved a
 bunch.
 
+Let me try writing down assign directly, as a type class, and see if it helps?
+Or, what I'm supposed to do, according to Nirav, is make an Exp specific one.
+I should try that, see if that makes any difference.
+
+Wed Aug 15 16:46:29 EDT 2012
+
+I can't tell. I'll leave it. It reduces memory usage at least.
 

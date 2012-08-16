@@ -124,7 +124,7 @@ yicesN = yicesname
 yicesT :: Type -> CompilationM ([Y.Command], Y.Type)
 yicesT t = do
    modifyS $ \ys -> ys { ys_cmdsr = [] }
-   mt <- compileNeeded t 
+   mt <- confail ("When compiling " ++ pretty t) $ compileNeeded t 
    cmds <- getsS ys_cmds
    yt <- lift $ yType mt
    return (cmds, yt)

@@ -94,6 +94,7 @@ single (AppT a b, AppT c d) = do
     put ((a,c) : (b,d) : sys, sol)
 single (NumT (AppNT _ _ _), NumT (AppNT _ _ _)) = return ()
 single (a, b) | b `lessknown` a = single (b, a)
+single (VarT nm, b) | hasVarT nm b = return ()
 single (VarT nm, b) = do
     (sys, sol) <- get
     put (sys, Map.insert nm b sol)
@@ -101,6 +102,16 @@ single (NumT (VarNT nm), b) = do
     (sys, sol) <- get
     put (sys, Map.insert nm b sol)
 single (a, b) = error $ "single: unexpected assignment: " ++ pretty a ++ ": " ++ pretty b
+
+-- Return true if the given VarT name appears anywhere in the given type.
+hasVarT :: Name -> Type -> Bool
+hasVarT nm t =
+  case t of
+    ConT {} -> False
+    AppT a b -> hasVarT nm a || hasVarT nm b
+    VarT n -> nm == n
+    NumT {} -> False
+    UnknownT -> False
 
 solvable :: (Type, Type) -> Bool
 solvable (VarT {}, _) = True
