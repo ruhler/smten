@@ -67,6 +67,7 @@ data Token =
      | TokenConSym String
      | TokenInteger Integer
      | TokenString String
+     | TokenChar Char
      | TokenData
      | TokenForall
      | TokenClass
@@ -203,6 +204,14 @@ lexer output = do
               op | head op == ':' -> many op >> setText rest >> output (TokenConSym op)
               op -> many op >> setText rest >> output (TokenVarSym op)
       ('"':cs) -> single >> lexstr "" cs >>= output
+      ('\'':'\\':c:'\'':cs) | ischaresc c -> do
+         many "'\\?'"
+         setText cs
+         output (TokenChar (charesc c))
+      ('\'':c:'\'':cs) -> do
+         many "'?'"
+         setText cs
+         output (TokenChar c)
           
       cs -> failE $ "fail to lex: " ++ cs
 

@@ -81,6 +81,7 @@ import Seri.Lambda.Parser.Lexer
        varsymt  { TokenVarSym $$ }
        consym   { TokenConSym $$ }
        integer  { TokenInteger $$ }
+       char     { TokenChar $$ }
        string   { TokenString $$ }
        'data'   { TokenData }
        'class'  { TokenClass }
@@ -327,6 +328,8 @@ aexp :: { Exp }
 literal :: { Exp }
  : integer
     { numberE $1 }
+ | char
+    { charE $1 }
  | string
     { stringE $1 }
 
@@ -388,6 +391,8 @@ apat :: { Pat }
     { let Sig n t = $1 in ConP t n [] }
  | integer
     { LitP (IntegerL $1) }
+ | char
+    { LitP (CharL $1) }
  | '(' pat ')'
     { $2 }
  | '(' pat ',' pats_commasep ')'
