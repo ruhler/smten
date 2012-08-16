@@ -215,7 +215,7 @@ instance Constrain Pat where
         sequence_ [addc pt tp | (pt, tp) <- zip pts tps]
         return t
     constrain (VarP (Sig _ t)) = return t
-    constrain (IntegerP {}) = return integerT
+    constrain (LitP l) = return (typeof l)
     constrain (WildP t) = return t
 
 

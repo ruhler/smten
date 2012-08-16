@@ -175,8 +175,8 @@ match (ConP _ nm ps) e =
            join _ _ = Unknown
        in foldl join (Succeeded []) mrs
     _ -> Unknown
-match (IntegerP i) (LitE (IntegerL i')) | i == i' = Succeeded []
-match (IntegerP i) (LitE {}) = Failed
+match (LitP l) (LitE l') | l == l' = Succeeded []
+match (LitP {}) (LitE {}) = Failed
 match (VarP s) e = Succeeded [(s, e)]
 match (WildP _) _ = Succeeded []
 match _ _ = Unknown
@@ -191,7 +191,7 @@ hasfree n =
         let hnp :: Pat -> Bool
             hnp (ConP _ _ ps) = any hnp ps
             hnp (VarP (Sig nm _)) = n == nm
-            hnp (IntegerP {}) = False
+            hnp (LitP {}) = False
             hnp (WildP {}) = False
             
             hnm :: Match -> Bool
@@ -236,7 +236,7 @@ reducern m e =
                    repat :: Pat -> Pat
                    repat (ConP t n ps) = ConP t n (map repat ps)
                    repat (VarP s) = VarP (fromMaybe s (lookup s rename))
-                   repat p@(IntegerP {}) = p
+                   repat p@(LitP {}) = p
                    repat p@(WildP {}) = p
                in Match (if null rename then p else repat p) (reducern m' b)
          in CaseE (reducern m e) (map rm ms)

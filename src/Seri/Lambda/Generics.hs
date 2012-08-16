@@ -134,7 +134,7 @@ instance (Monad m) => TransformableM Pat m where
     transformM f (VarP s) = do
         s' <- transformM f s
         tm_Pat f (VarP s')
-    transformM f p@(IntegerP {}) = tm_Pat f p
+    transformM f p@(LitP {}) = tm_Pat f p
     transformM f (WildP t) = do
         t' <- transformM f t
         tm_Pat f (WildP t')
@@ -257,7 +257,7 @@ instance Transformable Exp where
 instance Transformable Pat where
     transform f (ConP t n ps) = t_Pat f $ ConP (transform f t) n (transform f ps)
     transform f (VarP s) = t_Pat f $ VarP (transform f s)
-    transform f p@(IntegerP {}) = t_Pat f p
+    transform f p@(LitP {}) = t_Pat f p
     transform f (WildP t) = t_Pat f $ WildP (transform f t)
 
 instance Transformable Sig where

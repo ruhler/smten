@@ -170,7 +170,7 @@ instance Typeof Match where
 instance Typeof Pat where
     typeof (ConP t _ _) = t
     typeof (VarP tn) = typeof tn
-    typeof (IntegerP _) = integerT
+    typeof (LitP l) = typeof l
     typeof (WildP t) = t
 
 -- | isSubType t sub
@@ -210,14 +210,14 @@ isSubType t sub
 bindingsP :: Pat -> [Sig]
 bindingsP (ConP _ _ ps) = concatMap bindingsP ps
 bindingsP (VarP s) = [s]
-bindingsP (IntegerP {}) = []
+bindingsP (LitP {}) = []
 bindingsP (WildP {}) = []
 
 -- | Extract the names of the variables bound by a pattern.
 bindingsP' :: Pat -> [Name]
 bindingsP' (ConP _ _ ps) = concatMap bindingsP' ps
 bindingsP' (VarP (Sig n _)) = [n]
-bindingsP' (IntegerP {}) = []
+bindingsP' (LitP {}) = []
 bindingsP' (WildP {}) = []
 
 -- | List the (non-numeric) variable type names in a given type.

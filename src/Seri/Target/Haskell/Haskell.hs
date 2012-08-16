@@ -47,11 +47,12 @@ import Seri.Failable
 import Seri.Lambda
 import Seri.Target.Haskell.Compiler
 
+hsLit :: Lit -> H.Lit
+hsLit (IntegerL i) = H.IntegerL i
+hsLit (CharL c) = H.CharL c
+
 hsExp :: HCompiler -> Exp -> Failable H.Exp
-hsExp c (LitE (IntegerL i)) = do
-    t <- compile_type c c integerT
-    return $ H.SigE (H.LitE (H.IntegerL i)) t
-hsExp c (LitE (CharL i)) = return (H.LitE (H.CharL i))
+hsExp c (LitE l) = return (H.LitE (hsLit l))
 hsExp c (CaseE e ms) = do
     e' <- compile_exp c c e
     ms' <- mapM (hsMatch c) ms
@@ -75,8 +76,7 @@ hsMatch c (Match p e) = do
 hsPat :: Pat -> H.Pat
 hsPat (ConP _ n ps) = H.ConP (hsName n) (map hsPat ps)
 hsPat (VarP (Sig n _)) = H.VarP (hsName n)
---hsPat (IntegerP i) = H.SigP (H.LitP (H.IntegerL i)) (H.ConT $ H.mkName "Integer")
-hsPat (IntegerP i) = H.LitP (H.IntegerL i)
+hsPat (LitP l) = H.LitP (hsLit l)
 hsPat (WildP _) = H.WildP
 
 hsType :: HCompiler -> Type -> Failable H.Type

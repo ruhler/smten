@@ -114,3 +114,64 @@ a bigger number until we find the best.
 
 Anyway, I've got to work out my bugs now to make all this stuff work.
 
+Thu Aug 16 10:34:16 EDT 2012
+
+The AllQ thing seems to work now. I just had to implement it correctly.
+An interesting thing to remember: when you make a query, it does not set the
+value of free variables. So if 'x' is the free variable, and I query 'x',
+later references to 'x' will still have it as free! I have to look at the
+queried value.
+
+That seems a bit strange from the point of view of referential transparency
+and such. Or from the language point of view.
+
+Oh well. Shall I try implementing a sudoku solver then? Just to see how it
+works. See if it can actually be done...
+
+Assume 9x9 for now. And because I have pretty printing of lists now, it should
+be fine to just return a string representation of the board. This should be a
+nice test of seri...
+
+Thu Aug 16 10:49:15 EDT 2012
+
+How do I want to do this? Sudoku?
+
+For example: how do I want to encode the assertions?
+
+One way is: have a single predicate: is valid, which checks if a board is
+valid, and all the cells are valid.
+
+Another ways is, for example, to construct the board with proper assumptions
+about its validity. Like, create free cells with assertions about their
+validity. Now we have a board, we already know all the cells are valid.
+
+Then make an assertion for each group.
+
+Is that better than one big assertion?
+
+Let me mix things up. Let me create a free cell, and assert it's free right
+then?
+
+I suppose the question is, what do you want to reuse from code that works with
+when you don't use SMT.
+
+Okay, I'll do it like this. Create a free Cell, make the appropriate assertion
+then. Then have a predicate for the board constraints, assuming all its cells
+are valid. That makes sense to do, I think.
+
+Thu Aug 16 11:38:18 EDT 2012
+
+Okay, so I have the rough draft of sudoku written down. I don't think there's
+a chance it will work yet. I should start with testing small parts of things.
+
+But, I'll try it and see what happens anyway. Who knows, it could actually
+work? (unlikely...).
+
+Thu Aug 16 11:39:25 EDT 2012
+
+Issues to face:
+ - support for character literal patterns.
+
+I'll want to change IntegerP to LitP. It's sort of annoying... but for the
+better.
+

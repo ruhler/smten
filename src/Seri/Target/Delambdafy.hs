@@ -100,7 +100,7 @@ hasname n =
         let hnp :: Pat -> Bool
             hnp (ConP _ _ ps) = any hnp ps
             hnp (VarP (Sig nm _)) = n == nm
-            hnp (IntegerP {}) = False
+            hnp (LitP {}) = False
             hnp (WildP {}) = False
             
             hnm :: Match -> Bool
@@ -131,7 +131,7 @@ alpharename bad e =
       repat :: Pat -> Pat
       repat (ConP t n ps) = ConP t n (map repat ps)
       repat (VarP (Sig n t)) = VarP (Sig (newname n) t)
-      repat p@(IntegerP {}) = p
+      repat p@(LitP {}) = p
       repat p@(WildP {}) = p
 
       rematch :: [Name] -> Match -> Match

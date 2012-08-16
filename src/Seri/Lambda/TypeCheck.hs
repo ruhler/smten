@@ -111,7 +111,7 @@ instance TypeCheck Dec where
              sequence [assertpat w p | (w, p) <- zip twants ps]
              return concated
           checkpat (VarP (Sig n t)) = return [(n, t)]
-          checkpat (IntegerP i) = return []
+          checkpat (LitP i) = return []
           checkpat (WildP t) = return []
                 
 

@@ -238,7 +238,7 @@ isAtomP :: Pat -> Bool
 isAtomP (ConP _ _ []) = True
 isAtomP (ConP {}) = False
 isAtomP (VarP {}) = True
-isAtomP (IntegerP {}) = True
+isAtomP (LitP {}) = True
 isAtomP (WildP {}) = True
 
 isTuple :: String -> Bool
@@ -255,7 +255,7 @@ instance Ppr Pat where
             subp p = parens (ppr p)
         in pprsig (Sig n t) <+> hsep (map subp ps)
     ppr (VarP s) = pprsig s
-    ppr (IntegerP i) = integer i
+    ppr (LitP l) = ppr l
     ppr (WildP t) = pprsig (Sig "_" t)
 
 conlist :: [Con] -> Doc

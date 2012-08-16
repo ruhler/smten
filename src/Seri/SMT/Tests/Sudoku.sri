@@ -1,0 +1,138 @@
+
+module Seri.SMT.Tests.Sudoku where {
+
+import Seri.Lib.Prelude;
+import Seri.SMT.SMT;
+
+-- The size of the sudoku.
+-- (nxn)x(nxn)
+n :: Integer;
+n = 3;
+
+-- The square of the sudoku size.
+m :: Integer;
+m = n*n;
+
+data Cell = Cell Integer;
+
+instance Eq Cell where {
+    (==) (Cell a) (Cell b) = (a == b);
+    (/=) (Cell a) (Cell b) = (a /= b);
+};
+
+mkCell :: Integer -> Cell;
+mkCell = Cell;
+
+freeCell :: Query Cell;
+freeCell = do {
+    x <- free;
+    assert ((x > 0) && (x <= m));
+    return (Cell x);
+};
+
+readCell :: Char -> Query Cell;
+readCell '1' = return (mkCell 1);
+readCell '2' = return (mkCell 2);
+readCell '3' = return (mkCell 3);
+readCell '4' = return (mkCell 4);
+readCell '5' = return (mkCell 5);
+readCell '6' = return (mkCell 6);
+readCell '7' = return (mkCell 7);
+readCell '8' = return (mkCell 8);
+readCell '9' = return (mkCell 9);
+readCell '.' = freeCell;
+readCell c = error ("readCell: " ++ [c]);
+
+printCell :: Cell -> Char;
+printCell (Cell 1) = '1';
+printCell (Cell 2) = '2';
+printCell (Cell 3) = '3';
+printCell (Cell 4) = '4';
+printCell (Cell 5) = '5';
+printCell (Cell 6) = '6';
+printCell (Cell 7) = '7';
+printCell (Cell 8) = '8';
+printCell (Cell 9) = '9';
+printCell _ = '?';
+
+-- Return true if all elements in the list are unique.
+unique :: (Eq a) => [a] -> Bool;
+unique [] = True;
+unique (x:xs) = notElem x xs && unique xs;
+
+data Board = Board [[Cell]];
+
+print :: Board -> [[Char]];
+print (Board cells) = map (\row -> map printCell row) cells;
+
+rows :: Board -> [[Cell]];
+rows (Board x) = x;
+
+cols :: Board -> [[Cell]];
+cols (Board x) = transpose x;
+
+transpose :: [[Cell]] -> [[Cell]];
+transpose [] = [];
+transpose ([]:_) = [];
+transpose xs = (map head xs) : transpose (map tail xs);
+
+boxes :: Board -> [[Cell]];
+boxes (Board rows) = 
+  let {
+    brows = breakup m rows;
+  } in concat (map boxes' brows);
+
+-- Given just 'm' rows, return the m boxes in those m rows.
+boxes' :: [[Cell]] -> [[Cell]];
+boxes' [] = [];
+boxes' xs = 
+  let {
+    b = concat (map (take m) xs);
+    bs = map (drop m) xs;
+  } in b : (boxes' bs);
+
+-- Break a list up into a bunch of lists of the given length.
+breakup :: Integer -> [a] -> [[a]];
+breakup _ [] = [];
+breakup n xs =
+  case splitAt n xs of {
+     (a, b) -> a : (breakup n b);
+  };
+
+isvalid :: Board -> Bool;
+isvalid b = all unique (concat [rows b, cols b, boxes b]);
+
+readRow :: [Char] -> Query [Cell];
+readRow = mapM readCell;
+
+readBoard :: [[Char]] -> Query Board;
+readBoard rows = do {
+    brows <- mapM readRow rows;
+    return (Board brows);
+};
+
+sample :: [[Char]];
+sample =
+  ["2....1.38",
+   "........5",
+   ".7...6...",
+   ".......13",
+   ".981..257",
+   "31....8..",
+   "9..8...2.",
+   ".5..69784",
+   "4..25...."];
+
+main :: Query [[Char]];
+main = do {
+    board <- readBoard sample;
+    assert (isvalid board);
+    result <- query board;
+    case result of {
+       Satisfiable v -> return (print v);
+       _ -> return ["no solution"];
+    };
+};
+
+}
+

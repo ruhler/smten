@@ -96,7 +96,7 @@ data Exp = LitE Lit                 -- ^ literal
 -- type of the constructor.
 data Pat = ConP Type Name [Pat]
          | VarP Sig
-         | IntegerP Integer
+         | LitP Lit
          | WildP Type
      deriving (Eq, Ord, Show)
 

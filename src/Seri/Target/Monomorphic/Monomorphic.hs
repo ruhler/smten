@@ -194,7 +194,7 @@ monopat (ConP t n ps) = do
 monopat (VarP (Sig n t)) = do
     t' <- monotype t
     return (VarP (Sig n t'))
-monopat p@(IntegerP {}) = return p
+monopat p@(LitP {}) = return p
 monopat (WildP t) = do
     t' <- monotype t
     return (WildP t')

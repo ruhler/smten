@@ -218,7 +218,8 @@ yExp (CaseE e ms) = do
        let mypred = Y.eqE (Y.selectE e yicesti) (Y.varE (yicesname n))
        return (mypred:(concat preds), concat binds)
      depat (VarP (Sig n t)) e = return ([], [(n, e)])
-     depat (IntegerP i) e = return ([Y.eqE (Y.integerE i) e], [])
+     depat (LitP (IntegerL i)) e = return ([Y.eqE (Y.integerE i) e], [])
+     depat (LitP (CharL c)) e = return ([Y.eqE (Y.integerE (fromIntegral $ ord c)) e], [])
      depat (WildP _) _ = return ([], [])
 
      -- dematch e ms

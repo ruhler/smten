@@ -387,7 +387,7 @@ apat :: { Pat }
  | gcon_typed
     { let Sig n t = $1 in ConP t n [] }
  | integer
-    { IntegerP $1 }
+    { LitP (IntegerL $1) }
  | '(' pat ')'
     { $2 }
  | '(' pat ',' pats_commasep ')'
