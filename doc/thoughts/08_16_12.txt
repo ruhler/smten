@@ -410,12 +410,81 @@ could be tiny.
 
 Okay, so here's my proposal for the rest of today:
 
-1. Clean up and check in the sudoku stuff.
-2. Update yices2 libraries so everyone is pointing to (2.1.0).
+1+ Clean up and check in the sudoku stuff.
+2+ Update yices2 libraries so everyone is pointing to (2.1.0).
 3. Run some numbers, with profiling not compiled in:
     BCL3 x Sudoku, Share x Noshare, yices-2.1.0 x yices x seriq x seriq2
 
 Then think about how I can make it easy to interface seri with haskell. Using
 sudoku would be a good concrete example to try out: how could I implement a
 sudoku solver in haskell that uses seri as a library?
+
+Thu Aug 16 15:34:38 EDT 2012
+
+Waiting for some debug output. Let me give some thoughts.
+
+How to make it really easy to interface Seri with haskell... Could we make a
+haskell monad?
+
+We could if we had some way to represent a free variable of any type. That's
+slightly annoying...
+
+So, I could make an expression which uses Free, if I lift all the data
+types... But for recursive data types, that's not easy to do. We basically
+want to describe an expression which can have a Free variable anywhere inside
+of it.
+
+Let's say you as the user are willing to do this. Construct an expression
+which may contain free variables, you'll have to have a different kind of type
+for things in order to handle it.
+
+Ug. That's kind of the whole point of monads though, isn't it? Isn't it nicer
+to describe the monad in seri?
+
+Assertions involve free variables. Queries involve free variables.
+
+What's easy is the following:
+
+- You write a query entirely in seri.
+Ideally we have the ability to slice in haskell objects to the query. That
+would be nice. Otherwise, just have a way to do application, because you could
+describe that sort of thing that way:
+
+For example:
+
+myquery a = app [s| \a -> do { blah blah referring to a } |] (pack a)
+
+
+Thu Aug 16 16:02:33 EDT 2012
+
+Performance results are in:
+
+BCL3 noshare seriq2: 3m04s
+BCL3   share seriq2: 6s
+BCL3 noshare yices2: 1.4s
+BCL3   share yices2: 1s
+Sudoku noshare seriq2: 7s
+Sudoku noshare yices2: 8s
+Sudoku noshare seriq: 15s
+Sudoku noshare yices: 0.15s
+
+The rest didn't finish. They all failed for some reason or another.
+
+What's the observation here? Sharing doesn't make a whole lot of difference in
+the generated yices query, but it makes a difference, some cases hugely, in
+the seri elaborator. That's probably not so surprising... But maybe a little?
+
+Like, maybe I should walk through elaboration of something and see where all
+the time is spent. I have this funny feeling we are spending lots of time
+elaborating already elaborated expressions. The sharing implementation perhaps
+just cuts down on this.
+
+This suggests to me: don't worry about sharing in the generated query. Just
+figure out how to not repeat elaboration work in the elaborator. I think, for
+example, if we annotated each expression in elaboration with it's state:
+unelaborated, WHNF, or NF, then we can save ourself a whole bunch of work.
+That should be the next step in performance for the elaborator.
+
+If it turns out sharing doesn't make that much difference, may as well not do
+it... given how it complicates things.
 

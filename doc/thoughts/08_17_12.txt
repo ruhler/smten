@@ -1,0 +1,237 @@
+
+Fri Aug 17 09:45:38 EDT 2012
+
+What am I working on today?
+
+I need a presentation for next week. Sudoku solver works. AllQ example
+works.
+
+There are bugs:
+ - sharing doesn't work with sudoku solver
+ - yices1 push/pop bug
+
+Nirav would like to see a smooth integration with Haskell.
+
+How to make it easy to use Seri with haskell?
+
+We need some libraries. Libraries are specified in seri files which are read
+in and loaded. These are text files somewhere. It's slightly annoying to have
+to deal with text files. It would be nice if we had a standard library
+available as a haskell list of declarations. It may also be nice to have a
+tool which, given a .sri file, generates a haskell file with a reference to
+the loaded set of declarations?
+
+There's also the question of what level you want to be writing things at.
+
+What kinds of things do I want to be able to do:
+- pack Haskell objects into seri objects
+For standard haskell objects, requires seri prelude in environment when used.
+I think packed objects should be flattened and well typed by construction.
+
+- define how to pack user defined haskell objects into seri objects
+Requires a user seri library corresponding to the user defined haskell
+objects.
+
+Given a haskell data type declaration, we ought to be able to auto generate an
+instance of pack/unpack and the needed seri declarations.
+
+If it's easy to write seri functions (queries), and easy to pack and unpack
+haskell data types, then I think using seri from haskell is easy... ish?
+
+Let me walk through how I would implement the sudoku solver in haskell, with
+seri as a library.
+
+1. I want to be given a [String] in haskell.
+2. I want to convert that to a Board in haskell?
+Oops! Trouble. How can we convert it to a Board in haskell with free
+variables? Haskell doesn't have the notion of a free variable. Which is a
+whole part of the problem.
+
+Well, I could pack the [String] to seri, then ask my query, then unpack. But
+that's not really so nice is it, because, basically, the whole thing has to be
+done in seri.
+
+One thing I could do instead is give a way to explicitly describe free
+variables in haskell.
+
+data Free a = ...
+
+The idea is... Free a  represents something of type 'a' that may contain free
+variables.
+
+Unfortunately, this doesn't work out too well, does it? Because, say you want
+a list of integers with free variables. The type should be: Free [Integer]? Or
+should it be: Free [Free Integer]? Which is much more annoying.
+
+Well, say we had some magical thing where, you given me a haskell object,
+perhaps some complex data type, and I return to it a haskell object of a
+corresponding new data type where each field is potentially marked as free.
+
+Well, now I could provide a haskell monad for queries.
+
+free :: Query (Free a)
+assert :: Free Bool -> Query ()
+query :: Free a -> Query (Maybe a)
+
+The query monad has a little state counter to give ids to free variables. You
+can lift data types into free things.
+
+lift :: a -> Free a
+
+free is implemented as returning something marked as free with the given id.
+assert is implemented as...
+
+Oh, no. Problems. Because assert may be some complex expression. So basically
+you have to rewrite all the functions you want to use to deal with free
+objects. Now, I wonder... if we did this, maybe we can figure out the
+functions? And you can write any function that is seriable, as it were?
+
+I just need a rich enough set of primitive functions.
+
+add :: Free Integer -> Free Integer -> Free Integer
+add (Concrete a) (Concrete b) = Concrete (a + b)
+add a b = PrimAdd a b
+
+Now, you can end up with a rather complex expression for a Free Integer, or a
+Free Boolean, but, because all the primitives are there in the definition of
+the Free object, we can just as easily convert those to the appropriate
+query...
+
+Wow. This may actually be cool. Better than current seri. Why? Because we
+reuse haskell's type inference, type checking, compiler, elaborator. And it's
+explicit for the user how things are represented. What things are primitives,
+and what aren't.
+
+We may want to use GADTs so things type properly.
+
+I think this is worth pursuing. Even though at leaves much of my work over the
+summer as obsolete.
+
+Let me start with a simple query example.
+ 
+main :: Query (Answer Integer);
+main = do {
+    x <- free;
+    assert (x < 6);
+    assert (x > 4);
+    query x;
+}
+
+
+How would we represent this in my proposed scheme?
+
+
+data Free a where
+  FInteger :: Integer -> Free Integer 
+  FBool :: Bool -> Free Bool
+  FLessThan :: Free Integer -> Free Integer -> Free Bool
+  FGreaterThan :: Free Integer -> Free Integer -> Free Bool
+  FFree :: ID -> Free a
+
+class Concrete a where
+  concrete :: a -> Free a
+
+Here is where we specify ways to describe data structures.
+
+instance Concrete Integer where
+  concrete = FInteger
+
+instance Concrete Bool where
+  concrete = FBool
+
+instance Ord (Free Integer) where
+  (<) a b = ...
+
+Okay, so that won't work. We can't use the standard type classes. Because we
+need to return Free Bool, not Bool. But we can define our own type classes.
+
+class FOrd a where
+  (<) :: Free a -> Free b -> Free Bool
+
+And we could have instances of those.
+  
+free :: Query (Free a)
+free = do
+  id <- gets q_id
+  modify $ \q -> q { q_id = id +1 }
+  smt_newfree id
+  return (FFree)
+
+assert :: Free Bool -> Query ()
+assert p = smt_assert p
+
+query :: Free a -> Query (Answer a)
+query x = smt_query x
+
+...
+
+So, this suggests we would like to annotate the Query monad with the type of
+SMT solver to use. Now, for each SMT solver we want, we just have to implement
+these functions: smt_free, smt_assert, smt_query. These look at the free
+object and make everything work. Perhaps we should associate the smt solver
+with the Free variable? That way we could limit what things you can express
+for each solver, or how to express those things.
+
+instance Num (Free Integer) where
+  to get integer literals.
+
+main = do 
+    x <- free
+    assert (x F.< 6)
+    assert (x F.> 4)
+    query x;
+
+And we provide the top level function:
+
+runQuery :: Query a -> IO a
+
+Which probably depends on the SMT solver you want to use.
+
+So, maybe have:
+
+runQuery :: SMT -> Query a -> IO a
+
+So you give it the SMT solver you want to use.
+
+Now, this totally works. You allocate free and make assertions in the monad.
+You can lift to Free variables, with a representation of your choice (probably
+want to make the lifting SMT specific?)
+
+Wow. This is so much simpler than all the work I've done. It does use GADTs...
+but the library can all be specified in haskell. It's much easier to use from
+haskell. No need for template haskell (except for boiler plate stuff)...
+
+What about data structures?
+
+Like, say I want a Tuple of potentially integers? The type should be:
+Free (Integer, Integer). Okay, so have:
+
+FTuple :: Free a -> Free b -> Free (a, b).
+
+That's easy enough.
+
+And now things are done in libraries. Like, how to represent a data structure.
+If you want to represent it using tuples with tags like I did, or some other
+way.
+
+Now, I wonder if we could define Free as a class instead of a single data
+object. That forces it to be abstract. And this way, we can implement freeify
+in different ways for different SMT solvers, and have different underlying
+representations. Just have enough common stuff that each one can represent,
+and you can build common libraries for all SMT representations that way.
+
+Shall I work on the prototype? Have something I can demonstrate to Nirav?
+
+I have already done a lot of hard work. But this seems like a much easier
+solution, no?
+
+Okay, here's what I propose. Mock up a simple prototype (assuming a single SMT
+back end, namely, yices2). Try to replicate my simple queries. Then try to
+implement Sudoku solver in it. If it works, then I'll have something to show
+Nirav, and we can see what to do from there. If I find out why it doesn't
+work, that's also helpful.
+
+Okay, I'm going to try it. Let's say inside of Seri/Haskell.
+
+Wish me luck. This could get a little intense.
+
