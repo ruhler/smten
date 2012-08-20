@@ -1,0 +1,177 @@
+
+Mon Aug 20 11:35:53 EDT 2012
+
+Talked with Nirav... about Seri vs. Enoch.
+
+What it seems like, really, is that the only reason I prefer Enoch to Seri
+is...
+
+Enoch is more efficient. It's more low level. It's less expressive. On the
+simple examples I tried, it works, so that's nicer.
+
+But, if the elaborator for Seri wasn't so slow, wouldn't we want Seri for
+sure? Seri is much more flexible, we can take advantage of many more things. I
+just have to do the grunt work in the compiler.
+
+Pattern matching, let, higher order functions. Not having something called
+"Free" which is different from anything else.
+
+For Seri, I could compile my queries all to haskell if I wanted, for
+performance, rather than interpreting them? Maybe?
+
+The problem with unexpressable stuff can be easily dealt with. If you try to
+express something (such as infinite recursion) that can't be expressed in the
+SMT solver, then the Query should return Unknown. Easy. Clean. Then, if you do
+find an SMT solver which can handle it, you can return a useful value. So
+there's nothing wrong there but the need to handle things a little better in
+seri.
+
+Seri has full expressiveness. I just need to work on implementation. And
+that's how things should be.
+
+The other concern, I suppose, with Seri, is how to integrate it with haskell.
+But, if you had a quoter for writing a seri module, or a programmatic way to
+write a seri module, it's not that bad, is it?
+
+Just some grunt work to do?
+
+I need to add support for more solvers. That much is clear. Interesting stuff
+should happen then.
+
+In particular, I should treat yices1 as a different solver than yices2, and
+take advantage of everything it can do.
+
+Fine. Whatever.
+
+The Enoch issue is resolved I think. Continue with Seri. Continue also with
+Enoch, and see what things I can do in one I can't do in the other. That will
+be valuable for research sake anyway.
+
+Goal this week: come up with a clear presentation of my seri thesis proposal.
+
+Goal for today and tomorrow: slides!
+
+I should try to touch on all the issues we raised with Nirav. Um... what are
+all those?
+
+- Can we use multiple SMT solvers to answer a single question?
+As in, if each knows how to answer a different part of the question.
+
+- Can we do higher level sharing if the SMT solver doesn't support it?
+Things like: (x = y -> f x = f y), if the tool doesn't know that.
+
+- Support for querying functions
+
+There's this other idea too. This idea that maybe we shouldn't have a query
+monad (though I'm not sure what that means, or how it could work). Where you
+can embed "free" variables and assertions inside expressions and values.
+That's a whole different idea though. I don't think it makes so much sense.
+How can you distinguish between different free variables? You could if you
+gave them names: free :: Name -> a. I don't like this as much though.
+
+
+Anyway, fine. What's the presentation I want to give Thursday/Friday?
+
+I need to say what I'm doing and why. I should try to write down the list of
+everything you can do with this.
+
+Mon Aug 20 13:09:44 EDT 2012
+
+Presentation.... proposal:
+
+1. Title: Seri, high level user language for SMT
+2. Sudoku Example, right away (just the important parts)
+Point out the nifty things that are taking place here (to be summarized on
+next slide (or maybe as flags that pop up?)):
+(I should have a picture of a board, to explain the constraints, and map that
+to the code I'm writing)
+3.
+- polymorphism
+- user defined data types (not so interesting in this case, but doable)
+- pattern matching
+- type class overloading (for equality)
+- functions: box, rows, unique, etc...
+- lists, strings, characters
+- recursive functions
+- higher level query (assert isvalid)
+
+* Very easy to ask queries
+
+4. allQ example
+- Shows how we can ask a sequence of queries, basing the next question on the
+  result of the previous query.
+- This is a library we can reuse. We could use it on the Sudoku solver, for
+  example (but that doesn't really make sense).
+  You could imagine a max-sat like thing too.
+
+* Can interact with the tool, so easy to write higher level algorithms.
+
+5. Supporting variety of SMT targets (future work ish)
+The queries above implemented, run in yices1 and yices2.
+- query can run under any supported smt solver
+(in this case, need tuple (but could use bit vector?), integer, but we can
+easily rewrite to not use integer, for example)
+
+Um... I think, don't use integer in my example. Change to an enum. This way I
+can say tuple, vector required? Or show it's easy to change, is that
+better? I need to try this.
+
+- recognize high level constructs and how best to represent them in target:
+  ex: array as function? bit vector? tuple? (bad example)
+- send query to a bunch of solvers and return first result (portfolio)
+
+
+Mon Aug 20 13:38:40 EDT 2012
+
+I switched to an enum. I think that's better. It's faster. Shows off pattern
+matching and algebraic types better. Doesn't require integer solver. Could be
+implemented with tuples or bit vectors underneath, which is good to be able to
+say.
+
+Mon Aug 20 13:54:09 EDT 2012
+
+Another thing I should say is: how much work is it to change the Cell data
+type. And the choice of representation I should work with is: Cells
+implemented as bit vector or implemented as enum (or implemented as integer).
+
+The annoying thing about bit vectors is... unless I do things right, we get
+stuck with 9x9. Hopefully that's not too big an issue. And I can make it
+polymorphic if I want.
+
+Okay, let me try this third implementation. Then I've really got to start
+making slides.
+
+Audience we say: knows SMT, is maybe fuzzy on haskell.
+
+Mon Aug 20 14:27:39 EDT 2012
+
+So I implemented the third implementation. It's about twice as fast. It's not
+so clean to present, but, oh well.
+
+I think, start with the enum method. Show that, only thing you need to change,
+are the abstract functions for cell. You don't need to change the high level
+query or anything.
+
+Fine. So we'll revisit sudoku after allQ, to talk about different SMT solvers,
+and to talk about the future directions? Er... but really this is to talk
+about how easy things are for the user to change. So it should go after the
+presentation of sudoku, and my list of nifty things.
+
+Then go on to allQ.
+
+Okay then, I need to get going on slides!
+
+I fear I won't have flexibility if I try to use powerpoint. I can't work on
+things or change them last minute at all easily. Better to go beamer, I hate
+to say.
+
+It's doable... not overly pleasant. I think that's a better option though than
+powerpoint, which I can't work on or present. I hope it's not too hard.
+
+My slides are: code samples and bulleted lists.
+
+A picture of a sudoku board would be nice too though. Ug.
+
+Okay, let me design the slides first. That may help me make my decision.
+
+
