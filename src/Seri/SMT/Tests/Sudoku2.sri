@@ -1,5 +1,5 @@
 
-module Seri.SMT.Tests.Sudoku where {
+module Seri.SMT.Tests.Sudoku2 where {
 
 import Seri.Lib.Prelude;
 import Seri.SMT.SMT;
@@ -13,47 +13,46 @@ n = 3;
 m :: Integer;
 m = n*n;
 
-data Cell = Cell Integer;
+data Cell = C1 | C2 | C3 | C4 | C5 | C6 | C7 | C8 | C9;
 
 instance Eq Cell where {
-    (==) (Cell a) (Cell b) = (a == b);
-    (/=) (Cell a) (Cell b) = (a /= b);
-};
+    (==) C1 C1 = True;
+    (==) C2 C2 = True;
+    (==) C3 C3 = True;
+    (==) C4 C4 = True;
+    (==) C5 C5 = True;
+    (==) C6 C6 = True;
+    (==) C7 C7 = True;
+    (==) C8 C8 = True;
+    (==) C9 C9 = True;
+    (==) _ _ = False;
 
-mkCell :: Integer -> Cell;
-mkCell = Cell;
-
-freeCell :: Query Cell;
-freeCell = do {
-    x <- free;
-    assert ((x > 0) && (x <= m));
-    return (Cell x);
+    (/=) a b = not (a == b);
 };
 
 readCell :: Char -> Query Cell;
-readCell '1' = return (mkCell 1);
-readCell '2' = return (mkCell 2);
-readCell '3' = return (mkCell 3);
-readCell '4' = return (mkCell 4);
-readCell '5' = return (mkCell 5);
-readCell '6' = return (mkCell 6);
-readCell '7' = return (mkCell 7);
-readCell '8' = return (mkCell 8);
-readCell '9' = return (mkCell 9);
-readCell '.' = freeCell;
+readCell '1' = return C1;
+readCell '2' = return C2;
+readCell '3' = return C3;
+readCell '4' = return C4;
+readCell '5' = return C5;
+readCell '6' = return C6;
+readCell '7' = return C7;
+readCell '8' = return C8;
+readCell '9' = return C9;
+readCell '.' = free;
 readCell c = error ("readCell: " ++ [c]);
 
 printCell :: Cell -> Char;
-printCell (Cell 1) = '1';
-printCell (Cell 2) = '2';
-printCell (Cell 3) = '3';
-printCell (Cell 4) = '4';
-printCell (Cell 5) = '5';
-printCell (Cell 6) = '6';
-printCell (Cell 7) = '7';
-printCell (Cell 8) = '8';
-printCell (Cell 9) = '9';
-printCell _ = '?';
+printCell C1 = '1';
+printCell C2 = '2';
+printCell C3 = '3';
+printCell C4 = '4';
+printCell C5 = '5';
+printCell C6 = '6';
+printCell C7 = '7';
+printCell C8 = '8';
+printCell C9 = '9';
 
 -- Return true if all elements in the list are unique.
 unique :: (Eq a) => [a] -> Bool;

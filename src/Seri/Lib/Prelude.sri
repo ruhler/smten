@@ -231,7 +231,7 @@ and :: [Bool] -> Bool;
 and = foldr (&&) True;
 
 or :: [Bool] -> Bool;
-or = foldr (||) True;
+or = foldr (||) False;
 
 any :: (a -> Bool) -> [a] -> Bool;
 any p = or . map p;

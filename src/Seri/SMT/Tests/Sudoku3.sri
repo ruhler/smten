@@ -1,7 +1,8 @@
 
-module Seri.SMT.Tests.Sudoku where {
+module Seri.SMT.Tests.Sudoku3 where {
 
 import Seri.Lib.Prelude;
+import Seri.Lib.Bit;
 import Seri.SMT.SMT;
 
 -- The size of the sudoku.
@@ -13,52 +14,85 @@ n = 3;
 m :: Integer;
 m = n*n;
 
-data Cell = Cell Integer;
+data Cell = Cell (Bit#9);
 
 instance Eq Cell where {
     (==) (Cell a) (Cell b) = (a == b);
-    (/=) (Cell a) (Cell b) = (a /= b);
+    (/=) a b = not (a == b);
 };
-
-mkCell :: Integer -> Cell;
-mkCell = Cell;
 
 freeCell :: Query Cell;
 freeCell = do {
     x <- free;
-    assert ((x > 0) && (x <= m));
-    return (Cell x);
+    assert (isValidCell x);
+    return x;
 };
 
+c1 :: Cell;
+c1 = Cell 1;
+
+c2 :: Cell;
+c2 = Cell 2;
+
+c3 :: Cell;
+c3 = Cell 4;
+
+c4 :: Cell;
+c4 = Cell 8;
+
+c5 :: Cell;
+c5 = Cell 16;
+
+c6 :: Cell;
+c6 = Cell 32;
+
+c7 :: Cell;
+c7 = Cell 64;
+
+c8 :: Cell;
+c8 = Cell 128;
+
+c9 :: Cell;
+c9 = Cell 256;
+
+isValidCell :: Cell -> Bool;
+isValidCell c = elem c [c1, c2, c3, c4, c5, c6, c7, c8, c9];
+
 readCell :: Char -> Query Cell;
-readCell '1' = return (mkCell 1);
-readCell '2' = return (mkCell 2);
-readCell '3' = return (mkCell 3);
-readCell '4' = return (mkCell 4);
-readCell '5' = return (mkCell 5);
-readCell '6' = return (mkCell 6);
-readCell '7' = return (mkCell 7);
-readCell '8' = return (mkCell 8);
-readCell '9' = return (mkCell 9);
+readCell '1' = return c1;
+readCell '2' = return c2;
+readCell '3' = return c3;
+readCell '4' = return c4;
+readCell '5' = return c5;
+readCell '6' = return c6;
+readCell '7' = return c7;
+readCell '8' = return c8;
+readCell '9' = return c9;
 readCell '.' = freeCell;
 readCell c = error ("readCell: " ++ [c]);
 
 printCell :: Cell -> Char;
-printCell (Cell 1) = '1';
-printCell (Cell 2) = '2';
-printCell (Cell 3) = '3';
-printCell (Cell 4) = '4';
-printCell (Cell 5) = '5';
-printCell (Cell 6) = '6';
-printCell (Cell 7) = '7';
-printCell (Cell 8) = '8';
-printCell (Cell 9) = '9';
-printCell _ = '?';
+printCell c = 
+       if c == c1 then '1'
+  else if c == c2 then '2'
+  else if c == c3 then '3'
+  else if c == c4 then '4'
+  else if c == c5 then '5'
+  else if c == c6 then '6'
+  else if c == c7 then '7'
+  else if c == c8 then  '8'
+  else '9';
+
+join :: [Bit #n] -> Bit #n;
+join [] = 0;
+join (x:xs) = bv_or x (join xs);
+
+value :: Cell -> Bit #9;
+value (Cell x) = x;
 
 -- Return true if all elements in the list are unique.
-unique :: (Eq a) => [a] -> Bool;
-unique [] = True;
-unique (x:xs) = notElem x xs && unique xs;
+unique :: [Cell] -> Bool;
+unique cells = join (map value cells) == 511;
 
 data Board = Board [[Cell]];
 

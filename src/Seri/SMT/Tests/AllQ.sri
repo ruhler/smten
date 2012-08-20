@@ -12,8 +12,8 @@ allQ p = do {
   r <- query x;
   case r of {
      Satisfiable v -> do {
-        xs <- allQ (\a -> (p a) && (a /= v));
-        return (v:xs);
+        vs <- allQ (\a -> (p a) && (a /= v));
+        return (v:vs);
         };
      _ -> return [];
   };
