@@ -12,21 +12,38 @@
 \end{frame}
 
 \begin{frame}{Sudoku in Seri}
+\begin{overprint}
+\onslide<1> \includegraphics[width=\textwidth]{input1}
+\onslide<2> \includegraphics[width=\textwidth]{input2}
+\end{overprint}
 \end{frame}
  
 \begin{frame}{Representing and Reading the Board}
+\includegraphics[width=\textwidth]{parser}
 \end{frame}
 
 \begin{frame}{The Sudoku Constraints}
+\includegraphics[width=\textwidth]{isvalid}
 \end{frame}
 
 \begin{frame}{The Sudoku Solver}
+\includegraphics[width=\textwidth]{main}
+\begin{itemize}
+\item Yices1: 1m15s
+\item Yices2: 1.6s
+\end{itemize}
 \end{frame}
 
 \begin{frame}{A Different Cell Representation}
+\includegraphics[width=\textwidth]{bitcell}
+\begin{itemize}
+\item Yices1: 3m53s
+\item Yices2: 1.0s
+\end{itemize}
 \end{frame}
 
 \begin{frame}{Interactive Queries}
+\includegraphics[width=\textwidth]{allq}
 \end{frame}
 
 \begin{frame}{Leveraging Different SMT Solvers}

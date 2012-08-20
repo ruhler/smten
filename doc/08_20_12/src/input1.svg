@@ -1,0 +1,304 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   xmlns:dc="http://purl.org/dc/elements/1.1/"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   width="552.50342"
+   height="241.29492"
+   id="svg2"
+   version="1.1"
+   inkscape:version="0.48.1 r9760"
+   sodipodi:docname="input.svg">
+  <defs
+     id="defs4">
+    <style
+       id="style6"
+       type="text/css">
+		.blank { fill: #FFFFFF; }
+		text {
+			font-family: &quot;Helvetica&quot;, sans-serif;
+			fill: black;
+			text-anchor: middle;
+			font-size: 75px;
+		}
+		path.thickl { fill: none; stroke: #000000; stroke-width: 8; }
+		path.thinl  { fill: none; stroke: #000000; stroke-width: 3; }
+	</style>
+  </defs>
+  <sodipodi:namedview
+     id="base"
+     pagecolor="#ffffff"
+     bordercolor="#666666"
+     borderopacity="1.0"
+     inkscape:pageopacity="0.0"
+     inkscape:pageshadow="2"
+     inkscape:zoom="0.7"
+     inkscape:cx="192.28584"
+     inkscape:cy="194.58158"
+     inkscape:document-units="px"
+     inkscape:current-layer="layer2"
+     showgrid="false"
+     fit-margin-top="0"
+     fit-margin-left="0"
+     fit-margin-right="0"
+     fit-margin-bottom="0"
+     inkscape:window-width="1123"
+     inkscape:window-height="812"
+     inkscape:window-x="441"
+     inkscape:window-y="213"
+     inkscape:window-maximized="0" />
+  <metadata
+     id="metadata7">
+    <rdf:RDF>
+      <cc:Work
+         rdf:about="">
+        <dc:format>image/svg+xml</dc:format>
+        <dc:type
+           rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
+        <dc:title></dc:title>
+      </cc:Work>
+    </rdf:RDF>
+  </metadata>
+  <g
+     inkscape:groupmode="layer"
+     id="layer2"
+     inkscape:label="Layer"
+     style="display:none">
+    <flowRoot
+       xml:space="preserve"
+       id="flowRoot3168"
+       style="font-size:18px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;display:inline;font-family:Bitstream Vera Sans;-inkscape-font-specification:Bitstream Vera Sans"
+       transform="translate(-37.375,-44.356524)"><flowRegion
+         id="flowRegion3170"><rect
+           id="rect3172"
+           width="338.40109"
+           height="279.81226"
+           x="37.375645"
+           y="40.189331"
+           style="font-size:18px" /></flowRegion><flowPara
+         id="flowPara3174"
+         style="font-size:18px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Bitstream Vera Sans Mono;-inkscape-font-specification:Bitstream Vera Sans Mono">diabolical :: [[Char]];</flowPara><flowPara
+         style="font-size:18px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Bitstream Vera Sans Mono;-inkscape-font-specification:Bitstream Vera Sans Mono"
+         id="flowPara3176">diabolical =</flowPara><flowPara
+         style="font-size:18px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Bitstream Vera Sans Mono;-inkscape-font-specification:Bitstream Vera Sans Mono"
+         id="flowPara3178">     [&quot;.9.7..86.&quot;,</flowPara><flowPara
+         style="font-size:18px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Bitstream Vera Sans Mono;-inkscape-font-specification:Bitstream Vera Sans Mono"
+         id="flowPara3180">      &quot;.31..5.2.&quot;,</flowPara><flowPara
+         style="font-size:18px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Bitstream Vera Sans Mono;-inkscape-font-specification:Bitstream Vera Sans Mono"
+         id="flowPara3182">      &quot;8.6......&quot;,</flowPara><flowPara
+         style="font-size:18px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Bitstream Vera Sans Mono;-inkscape-font-specification:Bitstream Vera Sans Mono"
+         id="flowPara3184">      &quot;..7.5...6&quot;,</flowPara><flowPara
+         style="font-size:18px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Bitstream Vera Sans Mono;-inkscape-font-specification:Bitstream Vera Sans Mono"
+         id="flowPara3186">      &quot;...3.7...&quot;,</flowPara><flowPara
+         style="font-size:18px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Bitstream Vera Sans Mono;-inkscape-font-specification:Bitstream Vera Sans Mono"
+         id="flowPara3188">      &quot;5...1.7..&quot;,</flowPara><flowPara
+         style="font-size:18px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Bitstream Vera Sans Mono;-inkscape-font-specification:Bitstream Vera Sans Mono"
+         id="flowPara3190">      &quot;......1.9&quot;,</flowPara><flowPara
+         style="font-size:18px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Bitstream Vera Sans Mono;-inkscape-font-specification:Bitstream Vera Sans Mono"
+         id="flowPara3192">      &quot;.2.6..35.&quot;,</flowPara><flowPara
+         style="font-size:18px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Bitstream Vera Sans Mono;-inkscape-font-specification:Bitstream Vera Sans Mono"
+         id="flowPara3194">      &quot;.54..8.7.&quot;];</flowPara></flowRoot>  </g>
+  <g
+     inkscape:label="Layer 1"
+     inkscape:groupmode="layer"
+     id="layer1"
+     transform="translate(-84.85217,-61.000433)"
+     style="display:inline">
+    <g
+       id="g3114"
+       transform="matrix(0.26211453,0,0,0.26211453,387.95361,50.590629)">
+      <rect
+         height="900"
+         width="900"
+         y="50"
+         x="50"
+         class="blank"
+         id="diagram"
+         style="fill:#ffffff" />
+      <path
+         d="M 50,50 H 950 V 950 H 50 z m 100,0 V 950 M 250,50 V 950 M 450,50 V 950 M 550,50 V 950 M 750,50 V 950 M 850,50 V 950 M 50,150 H 950 M 50,250 H 950 M 50,450 H 950 M 50,550 H 950 M 50,750 H 950 M 50,850 h 900"
+         class="thinl"
+         id="l-thin"
+         inkscape:connector-curvature="0"
+         style="fill:none;stroke:#000000;stroke-width:3" />
+      <path
+         d="M 50,350 H 950 M 50,650 H 950 M 350,50 V 950 M 650,50 v 900"
+         class="thickl"
+         id="l-thick"
+         inkscape:connector-curvature="0"
+         style="fill:none;stroke:#000000;stroke-width:8" />
+      <g
+         transform="translate(0,30)"
+         id="text">
+        <text
+           style="font-size:75px;text-anchor:middle;fill:#000000;font-family:'&quot;Helvetica&quot;, sans-serif'"
+           id="text12"
+           y="100"
+           x="195.65288">9</text>
+        <text
+           style="font-size:75px;text-anchor:middle;fill:#000000;font-family:'&quot;Helvetica&quot;, sans-serif'"
+           id="text14"
+           y="100.03662"
+           x="395.29984">7</text>
+        <text
+           style="font-size:75px;text-anchor:middle;fill:#000000;font-family:'&quot;Helvetica&quot;, sans-serif'"
+           id="text16"
+           y="199.46899"
+           x="195.5247">3</text>
+        <text
+           style="font-size:75px;text-anchor:middle;fill:#000000;font-family:'&quot;Helvetica&quot;, sans-serif'"
+           id="text18"
+           y="300"
+           x="292.68936">6</text>
+        <text
+           style="font-size:75px;text-anchor:middle;fill:#000000;font-family:'&quot;Helvetica&quot;, sans-serif'"
+           id="text20"
+           y="400.03662"
+           x="293.07388">7</text>
+        <text
+           style="font-size:75px;text-anchor:middle;fill:#000000;font-family:'&quot;Helvetica&quot;, sans-serif'"
+           id="text22"
+           y="399.50562"
+           x="495.95895">5</text>
+        <text
+           style="font-size:75px;text-anchor:middle;fill:#000000;font-family:'&quot;Helvetica&quot;, sans-serif'"
+           id="text24"
+           y="499.96338"
+           x="395.31815">3</text>
+        <text
+           style="font-size:75px;text-anchor:middle;fill:#000000;font-family:'&quot;Helvetica&quot;, sans-serif'"
+           id="text26"
+           y="500"
+           x="594.17767">7</text>
+        <text
+           style="font-size:75px;text-anchor:middle;fill:#000000;font-family:'&quot;Helvetica&quot;, sans-serif'"
+           id="text28"
+           y="599.46899"
+           x="103.75603">5</text>
+        <text
+           style="font-size:75px;text-anchor:middle;fill:#000000;font-family:'&quot;Helvetica&quot;, sans-serif'"
+           id="text30"
+           y="700.03662"
+           x="697.07574">1</text>
+        <text
+           style="font-size:75px;text-anchor:middle;fill:#000000;font-family:'&quot;Helvetica&quot;, sans-serif'"
+           id="text32"
+           y="900.53101"
+           x="801.4386">7</text>
+        <text
+           x="697.75323"
+           y="100"
+           id="text3013"
+           style="font-size:75px;text-anchor:middle;fill:#000000;font-family:'&quot;Helvetica&quot;, sans-serif'">8</text>
+        <text
+           style="font-size:75px;text-anchor:middle;fill:#000000;font-family:'&quot;Helvetica&quot;, sans-serif'"
+           id="text3015"
+           y="100"
+           x="801.05408">6</text>
+        <text
+           x="292.28653"
+           y="199.50562"
+           id="text3017"
+           style="font-size:75px;text-anchor:middle;fill:#000000;font-family:'&quot;Helvetica&quot;, sans-serif'">1</text>
+        <text
+           style="font-size:75px;text-anchor:middle;fill:#000000;font-family:'&quot;Helvetica&quot;, sans-serif'"
+           id="text3019"
+           y="198.97461"
+           x="594.43402">5</text>
+        <text
+           x="802.3175"
+           y="200"
+           id="text3021"
+           style="font-size:75px;text-anchor:middle;fill:#000000;font-family:'&quot;Helvetica&quot;, sans-serif'">2</text>
+        <text
+           x="103.38982"
+           y="300"
+           id="text3023"
+           style="font-size:75px;text-anchor:middle;fill:#000000;font-family:'&quot;Helvetica&quot;, sans-serif'">8</text>
+        <text
+           style="font-size:75px;text-anchor:middle;fill:#000000;font-family:'&quot;Helvetica&quot;, sans-serif'"
+           x="898.62152"
+           y="400"
+           id="text3025">6</text>
+        <text
+           x="494.91525"
+           y="600"
+           id="text3027"
+           style="font-size:75px;text-anchor:middle;fill:#000000;font-family:'&quot;Helvetica&quot;, sans-serif'">1</text>
+        <text
+           style="font-size:75px;text-anchor:middle;fill:#000000;font-family:'&quot;Helvetica&quot;, sans-serif'"
+           id="text3029"
+           y="600"
+           x="697.8631">7</text>
+        <text
+           x="899.15253"
+           y="700"
+           id="text3031"
+           style="font-size:75px;text-anchor:middle;fill:#000000;font-family:'&quot;Helvetica&quot;, sans-serif'">9</text>
+        <text
+           style="font-size:75px;text-anchor:middle;fill:#000000;font-family:'&quot;Helvetica&quot;, sans-serif'"
+           id="text3033"
+           y="798.5509"
+           x="801.69495">5</text>
+        <text
+           x="697.88141"
+           y="799.04529"
+           id="text3035"
+           style="font-size:75px;text-anchor:middle;fill:#000000;font-family:'&quot;Helvetica&quot;, sans-serif'">3</text>
+        <text
+           style="font-size:75px;text-anchor:middle;fill:#000000;font-family:'&quot;Helvetica&quot;, sans-serif'"
+           id="text3037"
+           y="799.04529"
+           x="394.91531">6</text>
+        <text
+           x="196.3853"
+           y="799.57629"
+           id="text3039"
+           style="font-size:75px;text-anchor:middle;fill:#000000;font-family:'&quot;Helvetica&quot;, sans-serif'">2</text>
+        <text
+           x="594.06781"
+           y="900.49438"
+           id="text3041"
+           style="font-size:75px;text-anchor:middle;fill:#000000;font-family:'&quot;Helvetica&quot;, sans-serif'">8</text>
+        <text
+           style="font-size:75px;text-anchor:middle;fill:#000000;font-family:'&quot;Helvetica&quot;, sans-serif'"
+           id="text3043"
+           y="900.53101"
+           x="293.22037">4</text>
+        <text
+           x="195.76274"
+           y="900"
+           id="text3045"
+           style="font-size:75px;text-anchor:middle;fill:#000000;font-family:'&quot;Helvetica&quot;, sans-serif'">5</text>
+      </g>
+    </g>
+    <flowRoot
+       xml:space="preserve"
+       id="flowRoot3148"
+       style="font-size:18px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans;-inkscape-font-specification:Bitstream Vera Sans"><flowRegion
+         id="flowRegion3150"><rect
+           id="rect3152"
+           width="334.3605"
+           height="255.56859"
+           x="50.507626"
+           y="55.341621"
+           style="font-size:18px" /></flowRegion><flowPara
+         id="flowPara3154"></flowPara></flowRoot>    <flowRoot
+       xml:space="preserve"
+       id="flowRoot3156"
+       style="font-size:18px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans;-inkscape-font-specification:Bitstream Vera Sans"><flowRegion
+         id="flowRegion3158"><rect
+           id="rect3160"
+           width="356.58386"
+           height="257.5889"
+           x="40.406101"
+           y="57.361927"
+           style="font-size:18px" /></flowRegion><flowPara
+         id="flowPara3162"></flowPara></flowRoot>  </g>
+</svg>
