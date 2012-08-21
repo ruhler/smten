@@ -13,14 +13,27 @@
     \titlepage
 \end{frame}
 
-\begin{frame}{A Sudoku Solver Implemented in Seri}
+\begin{frame}{How to Implement a Sudoku Solver}
 \begin{overprint}
 \onslide<1> \includegraphics[width=\textwidth]{input1}
 \onslide<2> \includegraphics[width=\textwidth]{input2}
 \end{overprint}
 \end{frame}
+
+\begin{frame}{How to Implement a Sudoku Solver}
+\begin{overprint}
+\onslide<1> \includegraphics[width=\textwidth]{current1}
+\onslide<2> \includegraphics[width=\textwidth]{current2}
+\onslide<3> \includegraphics[width=\textwidth]{current3}
+\onslide<4> \includegraphics[width=\textwidth]{current4}
+\onslide<5> \includegraphics[width=\textwidth]{current5}
+\onslide<6> \includegraphics[width=\textwidth]{current6}
+\onslide<7> \includegraphics[width=\textwidth]{current7}
+\onslide<8> \includegraphics[width=\textwidth]{current8}
+\end{overprint}
+\end{frame}
  
-\begin{frame}{Representing and Reading the Board}
+\begin{frame}{The Parser in Seri}
 \begin{overprint}
 \onslide<1> \includegraphics[width=\textwidth]{parser1}
 \onslide<2> \includegraphics[width=\textwidth]{parser2}
@@ -54,11 +67,13 @@
 \onslide<2> \includegraphics[width=0.9\textwidth]{main2}
 \onslide<3-> \includegraphics[width=0.9\textwidth]{main3}
 \end{overprint}
-\onslide<4>
+\onslide<4->
 \begin{itemize}
 \item Yices1: 1m15s
 \item Yices2: 1.6s
 \end{itemize}
+\onslide<5>
+\alert{No change in source code going from Yices1 to Yices2!}
 \end{frame}
 
 \begin{frame}{A Different Cell Representation}
@@ -73,40 +88,18 @@
 \end{overprint}
 \onslide<8>
 \begin{itemize}
-\item Yices1: 3m53s
-\item Yices2: 1.0s
+\item Yices1: 3m53s (was 1m15s)
+\item Yices2: 1.0s  (was 1.6s)
 \end{itemize}
 \end{frame}
 
-\begin{frame}{Interactive Queries}
+\begin{frame}{Interactive and Reusable Queries}
 \begin{overprint}
 \onslide<1> \includegraphics[width=0.8\textwidth]{allq1}
 \onslide<2> \includegraphics[width=0.8\textwidth]{allq2}
 \onslide<3> \includegraphics[width=0.8\textwidth]{allq3}
 \onslide<4> \includegraphics[width=0.8\textwidth]{allq4}
 \end{overprint}
-\end{frame}
-
-\begin{frame}{Leveraging Different SMT Solvers}
-\begin{block}{Our queries are independent of the SMT solver used}
-Yices1 and Yices2 currently supported.
-\end{block}
-\pause
-\begin{block}{Future Goals}
-    \begin{itemize}
-        \item Leverage the strength of specific solvers.
-        \begin{example}{How to represent datatypes:}
-        \begin{itemize}
-            \item directly (yices1)
-            \item using tuples (yices2)
-            \item using bit vectors
-            \item some other way?
-        \end{itemize}
-        \end{example}
-
-        \item Run query on array of solvers simultaneously.
-    \end{itemize}
-\end{block}
 \end{frame}
 
 \begin{frame}{Current Status, Future Plans}
@@ -120,8 +113,9 @@ Yices1 and Yices2 currently supported.
 \begin{block}{Future Work (Ph.D. Thesis)}
     \begin{itemize}
         \item Improve performance of elaborator
+        \item Optimize generated queries
         \item Add support for more solvers
-        \item Integrate tool seamlessly with haskell
+        \item Integrate tool with haskell
         \item Explore implementation of formal tools, such as model checkers,
               built in Seri with reusable library components
     \end{itemize}
