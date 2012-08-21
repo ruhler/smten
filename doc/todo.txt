@@ -26,9 +26,6 @@ I suspect many of the reduce/reduce are from:
     foo :: (Foo a) -> Sludge
 vs. foo :: (Foo a) => Sludge
 
-- String literals
-    For example: fail "deq on empty fifo"
-
 - Allow arbitrary patterns in lambda expression arguments.
     example: \(Foo x) -> x+1
 
@@ -56,7 +53,6 @@ This might make a lot more sense after moving stuff in Types to Prelude.hs.
 
 - document the executables much better.
 
-- give an instance of Eq to Char
 - deriving Eq would be very nice.
 
 - give a nice message if there's a type ambiguity?
