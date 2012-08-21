@@ -25,10 +25,10 @@
      inkscape:pageopacity="0.0"
      inkscape:pageshadow="2"
      inkscape:zoom="1.979899"
-     inkscape:cx="219.37705"
-     inkscape:cy="35.100993"
+     inkscape:cx="230.74127"
+     inkscape:cy="196.7254"
      inkscape:document-units="px"
-     inkscape:current-layer="layer2"
+     inkscape:current-layer="layer1"
      showgrid="false"
      fit-margin-top="0"
      fit-margin-left="0"
@@ -87,9 +87,14 @@
          id="flowPara3369">    r <flowSpan
    style="fill:#808000"
    id="flowSpan3013">&lt;-</flowSpan> query x</flowPara><flowPara
-         id="flowPara3371"><flowSpan
+         id="flowPara3035"><flowSpan
    style="fill:#808000"
-   id="flowSpan3777">    case</flowSpan> r of </flowPara><flowPara
+   id="flowSpan3777">    case</flowSpan> r <flowSpan
+   style="fill:#808000"
+   id="flowSpan3033">of</flowSpan></flowPara><flowPara
+         id="flowPara3050">        Unsatisfiable <flowSpan
+   style="fill:#808000"
+   id="flowSpan3052">-&gt;</flowSpan> return [] </flowPara><flowPara
          id="flowPara3373">        Satisfiable v <flowSpan
    style="fill:#808000"
    id="flowSpan3015">-&gt; do</flowSpan></flowPara><flowPara
@@ -107,9 +112,7 @@
          id="flowPara3377">            return (v<flowSpan
    style="fill:#808000"
    id="flowSpan3027">:</flowSpan>vs)</flowPara><flowPara
-         id="flowPara3385">        _ <flowSpan
-   style="fill:#808000"
-   id="flowSpan3779">-&gt;</flowSpan> return []</flowPara></flowRoot>  </g>
+         id="flowPara3385" /></flowRoot>  </g>
   <g
      inkscape:groupmode="layer"
      id="layer2"
