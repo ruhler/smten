@@ -9,8 +9,8 @@
    xmlns="http://www.w3.org/2000/svg"
    xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
    xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
-   width="552.50342"
-   height="241.29492"
+   width="501.07486"
+   height="241.14551"
    id="svg2"
    version="1.1"
    inkscape:version="0.48.1 r9760"
@@ -38,11 +38,11 @@
      borderopacity="1.0"
      inkscape:pageopacity="0.0"
      inkscape:pageshadow="2"
-     inkscape:zoom="0.7"
-     inkscape:cx="192.28584"
-     inkscape:cy="194.58158"
+     inkscape:zoom="1.4"
+     inkscape:cx="136.48406"
+     inkscape:cy="102.71612"
      inkscape:document-units="px"
-     inkscape:current-layer="layer2"
+     inkscape:current-layer="layer1"
      showgrid="false"
      fit-margin-top="0"
      fit-margin-left="0"
@@ -50,8 +50,8 @@
      fit-margin-bottom="0"
      inkscape:window-width="1123"
      inkscape:window-height="812"
-     inkscape:window-x="441"
-     inkscape:window-y="213"
+     inkscape:window-x="208"
+     inkscape:window-y="78"
      inkscape:window-maximized="0" />
   <metadata
      id="metadata7">
@@ -66,53 +66,14 @@
     </rdf:RDF>
   </metadata>
   <g
-     inkscape:groupmode="layer"
-     id="layer2"
-     inkscape:label="Layer"
-     style="display:inline">
-    <flowRoot
-       xml:space="preserve"
-       id="flowRoot3168"
-       style="font-size:18px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;display:inline;font-family:Bitstream Vera Sans;-inkscape-font-specification:Bitstream Vera Sans"
-       transform="translate(-37.375,-44.356524)"><flowRegion
-         id="flowRegion3170"><rect
-           id="rect3172"
-           width="338.40109"
-           height="279.81226"
-           x="37.375645"
-           y="40.189331"
-           style="font-size:18px" /></flowRegion><flowPara
-         id="flowPara3174"
-         style="font-size:18px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Bitstream Vera Sans Mono;-inkscape-font-specification:Bitstream Vera Sans Mono">diabolical :: [[Char]];</flowPara><flowPara
-         style="font-size:18px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Bitstream Vera Sans Mono;-inkscape-font-specification:Bitstream Vera Sans Mono"
-         id="flowPara3176">diabolical =</flowPara><flowPara
-         style="font-size:18px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Bitstream Vera Sans Mono;-inkscape-font-specification:Bitstream Vera Sans Mono"
-         id="flowPara3178">     [&quot;.9.7..86.&quot;,</flowPara><flowPara
-         style="font-size:18px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Bitstream Vera Sans Mono;-inkscape-font-specification:Bitstream Vera Sans Mono"
-         id="flowPara3180">      &quot;.31..5.2.&quot;,</flowPara><flowPara
-         style="font-size:18px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Bitstream Vera Sans Mono;-inkscape-font-specification:Bitstream Vera Sans Mono"
-         id="flowPara3182">      &quot;8.6......&quot;,</flowPara><flowPara
-         style="font-size:18px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Bitstream Vera Sans Mono;-inkscape-font-specification:Bitstream Vera Sans Mono"
-         id="flowPara3184">      &quot;..7.5...6&quot;,</flowPara><flowPara
-         style="font-size:18px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Bitstream Vera Sans Mono;-inkscape-font-specification:Bitstream Vera Sans Mono"
-         id="flowPara3186">      &quot;...3.7...&quot;,</flowPara><flowPara
-         style="font-size:18px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Bitstream Vera Sans Mono;-inkscape-font-specification:Bitstream Vera Sans Mono"
-         id="flowPara3188">      &quot;5...1.7..&quot;,</flowPara><flowPara
-         style="font-size:18px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Bitstream Vera Sans Mono;-inkscape-font-specification:Bitstream Vera Sans Mono"
-         id="flowPara3190">      &quot;......1.9&quot;,</flowPara><flowPara
-         style="font-size:18px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Bitstream Vera Sans Mono;-inkscape-font-specification:Bitstream Vera Sans Mono"
-         id="flowPara3192">      &quot;.2.6..35.&quot;,</flowPara><flowPara
-         style="font-size:18px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Bitstream Vera Sans Mono;-inkscape-font-specification:Bitstream Vera Sans Mono"
-         id="flowPara3194">      &quot;.54..8.7.&quot;];</flowPara></flowRoot>  </g>
-  <g
-     inkscape:label="Layer 1"
+     inkscape:label="input1"
      inkscape:groupmode="layer"
      id="layer1"
      transform="translate(-84.85217,-61.000433)"
      style="display:inline">
     <g
        id="g3114"
-       transform="matrix(0.26211453,0,0,0.26211453,387.95361,50.590629)">
+       transform="matrix(0.26211453,0,0,0.26211453,336.52504,50.590629)">
       <rect
          height="900"
          width="900"
@@ -289,7 +250,7 @@
            x="50.507626"
            y="55.341621"
            style="font-size:18px" /></flowRegion><flowPara
-         id="flowPara3154"></flowPara></flowRoot>    <flowRoot
+         id="flowPara3154" /></flowRoot>    <flowRoot
        xml:space="preserve"
        id="flowRoot3156"
        style="font-size:18px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans;-inkscape-font-specification:Bitstream Vera Sans"><flowRegion
@@ -300,5 +261,67 @@
            x="40.406101"
            y="57.361927"
            style="font-size:18px" /></flowRegion><flowPara
-         id="flowPara3162"></flowPara></flowRoot>  </g>
+         id="flowPara3162" /></flowRoot>  </g>
+  <g
+     inkscape:groupmode="layer"
+     id="layer2"
+     inkscape:label="input2"
+     style="display:inline"
+     transform="translate(264.38542,2.302751)">
+    <flowRoot
+       xml:space="preserve"
+       id="flowRoot3168"
+       style="font-size:18px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;display:inline;font-family:Bitstream Vera Sans;-inkscape-font-specification:Bitstream Vera Sans"
+       transform="translate(-301.76042,-46.659275)"><flowRegion
+         id="flowRegion3170"><rect
+           id="rect3172"
+           width="338.40109"
+           height="279.81226"
+           x="37.375645"
+           y="40.189331"
+           style="font-size:18px" /></flowRegion><flowPara
+         id="flowPara3174"
+         style="font-size:18px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Bitstream Vera Sans Mono;-inkscape-font-specification:Bitstream Vera Sans Mono">diabolical <flowSpan
+   style="fill:#808000"
+   id="flowSpan3038">::</flowSpan> [[Char]]</flowPara><flowPara
+         style="font-size:18px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Bitstream Vera Sans Mono;-inkscape-font-specification:Bitstream Vera Sans Mono"
+         id="flowPara3176">diabolical <flowSpan
+   style="fill:#808000"
+   id="flowSpan3040">=</flowSpan></flowPara><flowPara
+         style="font-size:18px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Bitstream Vera Sans Mono;-inkscape-font-specification:Bitstream Vera Sans Mono"
+         id="flowPara3178">     [<flowSpan
+   style="fill:#800080"
+   id="flowSpan3042">&quot;.9.7..86.&quot;</flowSpan>,</flowPara><flowPara
+         style="font-size:18px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Bitstream Vera Sans Mono;-inkscape-font-specification:Bitstream Vera Sans Mono"
+         id="flowPara3180"><flowSpan
+   style="fill:#800080"
+   id="flowSpan3044">      &quot;.31..5.2.&quot;</flowSpan>,</flowPara><flowPara
+         style="font-size:18px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Bitstream Vera Sans Mono;-inkscape-font-specification:Bitstream Vera Sans Mono"
+         id="flowPara3182"><flowSpan
+   style="fill:#800080"
+   id="flowSpan3046">      &quot;8.6......&quot;</flowSpan>,</flowPara><flowPara
+         style="font-size:18px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Bitstream Vera Sans Mono;-inkscape-font-specification:Bitstream Vera Sans Mono"
+         id="flowPara3184"><flowSpan
+   style="fill:#800080"
+   id="flowSpan3048">      &quot;..7.5...6&quot;</flowSpan>,</flowPara><flowPara
+         style="font-size:18px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Bitstream Vera Sans Mono;-inkscape-font-specification:Bitstream Vera Sans Mono"
+         id="flowPara3186"><flowSpan
+   style="fill:#800080"
+   id="flowSpan3050">      &quot;...3.7...&quot;</flowSpan>,</flowPara><flowPara
+         style="font-size:18px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Bitstream Vera Sans Mono;-inkscape-font-specification:Bitstream Vera Sans Mono"
+         id="flowPara3188"><flowSpan
+   style="fill:#800080"
+   id="flowSpan3052">      &quot;5...1.7..&quot;</flowSpan>,</flowPara><flowPara
+         style="font-size:18px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Bitstream Vera Sans Mono;-inkscape-font-specification:Bitstream Vera Sans Mono"
+         id="flowPara3190"><flowSpan
+   style="fill:#800080"
+   id="flowSpan3054">      &quot;......1.9&quot;</flowSpan>,</flowPara><flowPara
+         style="font-size:18px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Bitstream Vera Sans Mono;-inkscape-font-specification:Bitstream Vera Sans Mono"
+         id="flowPara3192"><flowSpan
+   style="fill:#800080"
+   id="flowSpan3056">      &quot;.2.6..35.&quot;</flowSpan>,</flowPara><flowPara
+         style="font-size:18px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Bitstream Vera Sans Mono;-inkscape-font-specification:Bitstream Vera Sans Mono"
+         id="flowPara3194"><flowSpan
+   style="fill:#800080"
+   id="flowSpan3058">      &quot;.54..8.7.&quot;</flowSpan>]</flowPara></flowRoot>  </g>
 </svg>

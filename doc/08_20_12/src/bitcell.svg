@@ -9,12 +9,13 @@
    xmlns="http://www.w3.org/2000/svg"
    xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
    xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
-   width="475.22461"
-   height="445.05176"
+   width="496.6084"
+   height="411.7879"
    id="svg3268"
    version="1.1"
    inkscape:version="0.48.1 r9760"
-   sodipodi:docname="New document 8">
+   sodipodi:docname="bitcell.svg"
+   style="display:inline">
   <defs
      id="defs3270" />
   <sodipodi:namedview
@@ -25,19 +26,19 @@
      inkscape:pageopacity="0.0"
      inkscape:pageshadow="2"
      inkscape:zoom="0.98994949"
-     inkscape:cx="356.58589"
-     inkscape:cy="192.2154"
+     inkscape:cx="56.068421"
+     inkscape:cy="190.0525"
      inkscape:document-units="px"
-     inkscape:current-layer="layer1"
+     inkscape:current-layer="layer4"
      showgrid="false"
      fit-margin-top="0"
      fit-margin-left="0"
      fit-margin-right="0"
      fit-margin-bottom="0"
-     inkscape:window-width="1015"
-     inkscape:window-height="761"
-     inkscape:window-x="418"
-     inkscape:window-y="176"
+     inkscape:window-width="1349"
+     inkscape:window-height="846"
+     inkscape:window-x="101"
+     inkscape:window-y="70"
      inkscape:window-maximized="0" />
   <metadata
      id="metadata3273">
@@ -47,15 +48,16 @@
         <dc:format>image/svg+xml</dc:format>
         <dc:type
            rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
-        <dc:title></dc:title>
+        <dc:title />
       </cc:Work>
     </rdf:RDF>
   </metadata>
   <g
-     inkscape:label="Layer 1"
+     inkscape:label="data"
      inkscape:groupmode="layer"
      id="layer1"
-     transform="translate(-28.5625,-45.106524)">
+     transform="translate(-28.5625,-45.106524)"
+     style="display:none">
     <flowRoot
        xml:space="preserve"
        id="flowRoot3276"
@@ -66,46 +68,180 @@
            height="831.42853"
            x="28.571428"
            y="40.933613" /></flowRegion><flowPara
-         id="flowPara3282"
-         style="font-size:18px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Bitstream Vera Sans Mono;-inkscape-font-specification:Bitstream Vera Sans Mono">data Cell = Cell (Bit #9)</flowPara><flowPara
-         id="flowPara3284"
-         style="font-size:18px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Bitstream Vera Sans Mono;-inkscape-font-specification:Bitstream Vera Sans Mono" /><flowPara
-         id="flowPara3286"
-         style="font-size:18px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Bitstream Vera Sans Mono;-inkscape-font-specification:Bitstream Vera Sans Mono">instance Eq Cell where</flowPara><flowPara
-         id="flowPara3288"
-         style="font-size:18px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Bitstream Vera Sans Mono;-inkscape-font-specification:Bitstream Vera Sans Mono">    (==) (Cell a) (Cell b) = (a == b)</flowPara><flowPara
-         id="flowPara3290"
-         style="font-size:18px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Bitstream Vera Sans Mono;-inkscape-font-specification:Bitstream Vera Sans Mono" /><flowPara
-         id="flowPara3292"
-         style="font-size:18px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Bitstream Vera Sans Mono;-inkscape-font-specification:Bitstream Vera Sans Mono">freeCell :: Query Cell</flowPara><flowPara
-         id="flowPara3294"
-         style="font-size:18px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Bitstream Vera Sans Mono;-inkscape-font-specification:Bitstream Vera Sans Mono">freeCell = do</flowPara><flowPara
-         id="flowPara3296"
-         style="font-size:18px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Bitstream Vera Sans Mono;-inkscape-font-specification:Bitstream Vera Sans Mono">    x &lt;- free</flowPara><flowPara
-         id="flowPara3298"
-         style="font-size:18px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Bitstream Vera Sans Mono;-inkscape-font-specification:Bitstream Vera Sans Mono">    assert (isValidCell x)</flowPara><flowPara
-         id="flowPara3300"
-         style="font-size:18px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Bitstream Vera Sans Mono;-inkscape-font-specification:Bitstream Vera Sans Mono">    return x</flowPara><flowPara
-         id="flowPara3302"
-         style="font-size:18px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Bitstream Vera Sans Mono;-inkscape-font-specification:Bitstream Vera Sans Mono" /><flowPara
-         id="flowPara3310"
-         style="font-size:18px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Bitstream Vera Sans Mono;-inkscape-font-specification:Bitstream Vera Sans Mono">join :: [Bit #n] -&gt; Bit #n</flowPara><flowPara
-         id="flowPara3306"
-         style="font-size:18px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Bitstream Vera Sans Mono;-inkscape-font-specification:Bitstream Vera Sans Mono">join [] = 0</flowPara><flowPara
-         id="flowPara3314"
-         style="font-size:18px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Bitstream Vera Sans Mono;-inkscape-font-specification:Bitstream Vera Sans Mono">join (x:xs) = bv_or x (join xs)</flowPara><flowPara
-         id="flowPara3316"
-         style="font-size:18px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Bitstream Vera Sans Mono;-inkscape-font-specification:Bitstream Vera Sans Mono" /><flowPara
-         id="flowPara3318"
-         style="font-size:18px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Bitstream Vera Sans Mono;-inkscape-font-specification:Bitstream Vera Sans Mono">value :: Cell -&gt; Bit #9</flowPara><flowPara
-         id="flowPara3320"
-         style="font-size:18px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Bitstream Vera Sans Mono;-inkscape-font-specification:Bitstream Vera Sans Mono">value (Cell x) = x</flowPara><flowPara
-         id="flowPara3322"
-         style="font-size:18px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Bitstream Vera Sans Mono;-inkscape-font-specification:Bitstream Vera Sans Mono" /><flowPara
-         id="flowPara3324"
-         style="font-size:18px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Bitstream Vera Sans Mono;-inkscape-font-specification:Bitstream Vera Sans Mono">unique :: [Cell] -&gt; Bool</flowPara><flowPara
-         style="font-size:18px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Bitstream Vera Sans Mono;-inkscape-font-specification:Bitstream Vera Sans Mono"
-         id="flowPara3326">unique cells = join (map value cells) == 511</flowPara><flowPara
          id="flowPara3308"
+         style="font-size:18px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Bitstream Vera Sans Mono;-inkscape-font-specification:Bitstream Vera Sans Mono"><flowSpan
+   style="fill:#008000"
+   id="flowSpan3012">data</flowSpan> Cell <flowSpan
+   style="fill:#808000"
+   id="flowSpan3006">=</flowSpan> Cell (Bit <flowSpan
+   style="fill:#808000"
+   id="flowSpan3008">#</flowSpan><flowSpan
+   style="fill:#800080"
+   id="flowSpan3060">9</flowSpan>)</flowPara></flowRoot>  </g>
+  <g
+     inkscape:groupmode="layer"
+     id="layer2"
+     inkscape:label="eq"
+     style="display:none">
+    <flowRoot
+       style="font-size:36px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;display:inline;font-family:Bitstream Vera Sans;-inkscape-font-specification:Bitstream Vera Sans"
+       id="flowRoot3062"
+       xml:space="preserve"
+       transform="translate(-28.5625,-10.761337)"><flowRegion
+         id="flowRegion3064"><rect
+           y="40.933613"
+           x="28.571428"
+           height="831.42853"
+           width="677.14282"
+           id="rect3066" /></flowRegion><flowPara
+         style="font-size:18px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Bitstream Vera Sans Mono;-inkscape-font-specification:Bitstream Vera Sans Mono"
+         id="flowPara3080"><flowSpan
+   id="flowSpan3082"
+   style="fill:#008000">instance</flowSpan> Eq Cell <flowSpan
+   id="flowSpan3084"
+   style="fill:#008000">where</flowSpan></flowPara><flowPara
+         id="flowPara3154"
+         style="font-size:18px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Bitstream Vera Sans Mono;-inkscape-font-specification:Bitstream Vera Sans Mono">    (<flowSpan
+   id="flowSpan3088"
+   style="fill:#808000">==</flowSpan>) (Cell a) (Cell b) <flowSpan
+   id="flowSpan3090"
+   style="fill:#808000">=</flowSpan> (a <flowSpan
+   id="flowSpan3092"
+   style="fill:#808000">==</flowSpan> b)</flowPara><flowPara
+         style="font-size:18px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Bitstream Vera Sans Mono;-inkscape-font-specification:Bitstream Vera Sans Mono"
+         id="flowPara3162" /></flowRoot>  </g>
+  <g
+     inkscape:groupmode="layer"
+     id="layer3"
+     inkscape:label="free"
+     style="display:none">
+    <flowRoot
+       xml:space="preserve"
+       id="flowRoot3164"
+       style="font-size:36px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;display:inline;font-family:Bitstream Vera Sans;-inkscape-font-specification:Bitstream Vera Sans"
+       transform="translate(-28.5625,48.83766)"><flowRegion
+         id="flowRegion3166"><rect
+           id="rect3168"
+           width="677.14282"
+           height="831.42853"
+           x="28.571428"
+           y="40.933613" /></flowRegion><flowPara
+         id="flowPara3198"
+         style="font-size:18px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Bitstream Vera Sans Mono;-inkscape-font-specification:Bitstream Vera Sans Mono">freeCell <flowSpan
+   style="fill:#808000"
+   id="flowSpan3200">::</flowSpan> Query Cell</flowPara><flowPara
+         id="flowPara3202"
+         style="font-size:18px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Bitstream Vera Sans Mono;-inkscape-font-specification:Bitstream Vera Sans Mono">freeCell <flowSpan
+   style="fill:#808000"
+   id="flowSpan3204">=</flowSpan> do</flowPara><flowPara
+         id="flowPara3206"
+         style="font-size:18px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Bitstream Vera Sans Mono;-inkscape-font-specification:Bitstream Vera Sans Mono">    x <flowSpan
+   style="fill:#808000"
+   id="flowSpan3208">&lt;-</flowSpan> free</flowPara><flowPara
+         id="flowPara3210"
+         style="font-size:18px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Bitstream Vera Sans Mono;-inkscape-font-specification:Bitstream Vera Sans Mono">    assert (isValidCell x)</flowPara><flowPara
+         style="font-size:18px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Bitstream Vera Sans Mono;-inkscape-font-specification:Bitstream Vera Sans Mono"
+         id="flowPara3256">    return x</flowPara><flowPara
+         id="flowPara3264"
          style="font-size:18px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Bitstream Vera Sans Mono;-inkscape-font-specification:Bitstream Vera Sans Mono" /></flowRoot>  </g>
+  <g
+     inkscape:groupmode="layer"
+     id="layer4"
+     inkscape:label="join"
+     style="display:none">
+    <flowRoot
+       style="font-size:36px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;display:inline;font-family:Bitstream Vera Sans;-inkscape-font-specification:Bitstream Vera Sans"
+       id="flowRoot3266"
+       xml:space="preserve"
+       transform="translate(-28.5625,177.12704)"><flowRegion
+         id="flowRegion3268"><rect
+           y="40.933613"
+           x="28.571428"
+           height="831.42853"
+           width="677.14282"
+           id="rect3270" /></flowRegion><flowPara
+         style="font-size:18px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Bitstream Vera Sans Mono;-inkscape-font-specification:Bitstream Vera Sans Mono"
+         id="flowPara3319">join <flowSpan
+   id="flowSpan3321"
+   style="fill:#808000">::</flowSpan> [Bit <flowSpan
+   id="flowSpan3323"
+   style="fill:#808000">#</flowSpan>n] -&gt; Bit <flowSpan
+   id="flowSpan3325"
+   style="fill:#808000">#</flowSpan>n</flowPara><flowPara
+         style="font-size:18px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Bitstream Vera Sans Mono;-inkscape-font-specification:Bitstream Vera Sans Mono"
+         id="flowPara3327">join [] = <flowSpan
+   style="fill:#800080"
+   id="flowSpan3052">0</flowSpan></flowPara><flowPara
+         id="flowPara3359"
+         style="font-size:18px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Bitstream Vera Sans Mono;-inkscape-font-specification:Bitstream Vera Sans Mono">join (x<flowSpan
+   id="flowSpan3331"
+   style="fill:#808000">:</flowSpan>xs) <flowSpan
+   id="flowSpan3333"
+   style="fill:#808000">=</flowSpan> bv_or x (join xs)</flowPara><flowPara
+         style="font-size:18px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Bitstream Vera Sans Mono;-inkscape-font-specification:Bitstream Vera Sans Mono"
+         id="flowPara3367" /></flowRoot>  </g>
+  <g
+     inkscape:groupmode="layer"
+     id="layer5"
+     inkscape:label="value"
+     style="display:none">
+    <flowRoot
+       xml:space="preserve"
+       id="flowRoot3369"
+       style="font-size:36px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;display:inline;font-family:Bitstream Vera Sans;-inkscape-font-specification:Bitstream Vera Sans"
+       transform="translate(-28.5625,267.03061)"><flowRegion
+         id="flowRegion3371"><rect
+           id="rect3373"
+           width="677.14282"
+           height="831.42853"
+           x="28.571428"
+           y="40.933613" /></flowRegion><flowPara
+         id="flowPara3439"
+         style="font-size:18px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Bitstream Vera Sans Mono;-inkscape-font-specification:Bitstream Vera Sans Mono">value <flowSpan
+   style="fill:#808000"
+   id="flowSpan3441">::</flowSpan> Cell <flowSpan
+   style="fill:#808000"
+   id="flowSpan3443">-&gt;</flowSpan> Bit <flowSpan
+   style="fill:#808000"
+   id="flowSpan3445">#</flowSpan><flowSpan
+   style="fill:#800080"
+   id="flowSpan3447">9</flowSpan></flowPara><flowPara
+         style="font-size:18px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Bitstream Vera Sans Mono;-inkscape-font-specification:Bitstream Vera Sans Mono"
+         id="flowPara3461">value (Cell x) <flowSpan
+   style="fill:#808000"
+   id="flowSpan3451">=</flowSpan> x</flowPara><flowPara
+         id="flowPara3469"
+         style="font-size:18px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Bitstream Vera Sans Mono;-inkscape-font-specification:Bitstream Vera Sans Mono" /></flowRoot>  </g>
+  <g
+     inkscape:groupmode="layer"
+     id="layer6"
+     inkscape:label="unique"
+     style="display:none">
+    <flowRoot
+       style="font-size:36px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;display:inline;font-family:Bitstream Vera Sans;-inkscape-font-specification:Bitstream Vera Sans"
+       id="flowRoot3471"
+       xml:space="preserve"
+       transform="translate(-28.5625,326.62962)"><flowRegion
+         id="flowRegion3473"><rect
+           y="40.933613"
+           x="28.571428"
+           height="831.42853"
+           width="677.14282"
+           id="rect3475" /></flowRegion><flowPara
+         style="font-size:18px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Bitstream Vera Sans Mono;-inkscape-font-specification:Bitstream Vera Sans Mono"
+         id="flowPara3557">unique <flowSpan
+   id="flowSpan3559"
+   style="fill:#808000">::</flowSpan> [Cell] <flowSpan
+   id="flowSpan3561"
+   style="fill:#808000">-&gt;</flowSpan> Bool</flowPara><flowPara
+         id="flowPara3563"
+         style="font-size:18px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Bitstream Vera Sans Mono;-inkscape-font-specification:Bitstream Vera Sans Mono">unique cells <flowSpan
+   id="flowSpan3565"
+   style="fill:#808000">=</flowSpan> join (map value cells) <flowSpan
+   id="flowSpan3567"
+   style="fill:#808000">== </flowSpan><flowSpan
+   style="fill:#800080"
+   id="flowSpan3569">0x1ff</flowSpan></flowPara><flowPara
+         style="font-size:18px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Bitstream Vera Sans Mono;-inkscape-font-specification:Bitstream Vera Sans Mono"
+         id="flowPara3571" /></flowRoot>  </g>
 </svg>
