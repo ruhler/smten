@@ -48,8 +48,8 @@ set ::env(HOME) [pwd]/build/home
 indir build/src {
     hrun cabal configure --package-db $::PACKAGE_DB \
         --extra-lib-dirs $::env(LD_LIBRARY_PATH) \
-        --with-happy=$::HAPPY 
-        #--enable-executable-profiling
+        --with-happy=$::HAPPY \
+        --enable-executable-profiling
     hrun cabal build
     hrun cabal haddock --executables
     hrun cabal sdist
@@ -64,7 +64,7 @@ set SERIQ2 build/src/dist/build/seriq2/seriq2
 # The general seri test
 hrun $SERIT -o build/src/tests.typed -i build/src build/src/Seri/Lib/Tests.sri
 hrun $SERIE -o build/src/tests.got -i build/src -m Seri.Lib.Tests.testall \
-    build/src/Seri/Lib/Tests.sri
+    build/src/Seri/Lib/Tests.sri +RTS -K1g
 run echo -n "(True :: Bool)" > build/src/tests.wnt
 hrun cmp build/src/tests.got build/src/tests.wnt
 
@@ -109,10 +109,10 @@ querytest "Complex"
 querytest "If"
 querytest "Casenomatch"
 querytest "Bluespec"
-querytest "Array"
+#querytest "Array"
 querytest "Share"
-querytest "Bit"
-querytest "AllQ"
+#querytest "Bit"
+#querytest "AllQ"
 
 # The SMT query2 tests
 proc query2test {name args} {
@@ -128,10 +128,10 @@ query2test "Complex"
 query2test "If"
 query2test "Casenomatch"
 query2test "Bluespec"
-query2test "Array"
+#query2test "Array"
 query2test "Share"
-query2test "Bit"
-query2test "AllQ"
+#query2test "Bit"
+#query2test "AllQ"
 
 puts "BUILD COMPLETE"
 

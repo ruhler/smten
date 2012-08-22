@@ -173,5 +173,3 @@ My slides are: code samples and bulleted lists.
 A picture of a sudoku board would be nice too though. Ug.
 
 Okay, let me design the slides first. That may help me make my decision.
-
-

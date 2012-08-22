@@ -1,0 +1,438 @@
+
+Mon Aug 20 21:03:00 EDT 2012
+
+The elaborator is slow. I want it faster. This is a big performance concern
+with seri.
+
+I tried a heap elaborator, and it slowed things down.
+
+I tried a bunch of different stuff.
+
+I want to take my experience, and try to do the elaborator right. Or at least,
+in a way I feel good about, that should also be fast.
+
+First step is to really understand the algorithm I'm going to use, and the
+details, and how it handles all the cases properly.
+
+The big thing we want to take advantage of is sharing. Elaboration of a shared
+expression should only happen once.
+
+Expressions are shared only through the use of variables.
+
+- top level declarations are variables
+- lambdas introduce variables
+- pattern matches introduce variables
+
+That's it. No other sharing is done. We don't do common sub-expression
+elimination.
+
+So sharing should only be done for variables, and at the granularity of the
+variable.
+
+So, I propose a central part of the elaborator be that elaboration happens in
+a context. Call it a heap if you like. This context maps variable names in
+scope to their value. But, this value is also annotated with the state of the
+expression: unelaborated, WHNF, or NF. This way we avoid re-evaluating the
+expression over and over and over again.
+
+When do we add elements to this heap? We have the following cases:
+
+- when you reach a variable which is a top level declaration not already in
+  the heap.
+Lookup the value of the declaration, do the variable type assignment, then add
+that to the heap. Notice: for different types we'll have different values, so
+the heap should really contain a mapping from Sig to value.
+
+- when you reach a beta reduction:
+Add the argument to the heap under the given name. This may shadow an existing
+item in the context. That's okay.
+
+- when you do a case: you'll add arguments to the heap.
+
+Note: this heap is shared across different subexpressions. This means it will
+be part of monad state. The elaborator will run in a monad. When adding a
+variable to the heap, execute the subexpression under the heap, then remove
+the variable from the heap, restoring whatever was there for that variable
+before, but keeping the rest of the heap in tact.
+
+Fine. Now, I guess we have a number of cases to look at. Perhaps it makes most
+sense to look at each in turn.
+
+But I'm going to go out of order, because case statements are hard to deal
+with.
+
+LitE - this is fully elaborated. Return itself. Done. Easy.
+ConE - this is fully elaborated. Return itself, Done. Easy.
+AppE a b 
+ 1. elaborate 'a' to weak head normal form. 
+ 2. Case on 'a'
+    LitE - not possible, that would be poorly typed
+    ConE - This is constructor application....
+        if goal is weak head normal form, we are done
+        if goal is normal form, elaborate 'b' to normal form and we are done
+    CaseE - uh... Means there must be some free variable in the case statement
+            or other reason it couldn't be finished.
+        if goal is weak head normal form, we are done
+        if goal is normal form, elaborate a' and 'b' to normal form and we are done    
+    AppE - this could be a constructor application, or a primitive
+           application, or application to a free variable. We have to look at
+           what's being applied.
+
+            If a Literal is being applied, that's a bug.
+            If a ConE is being applied, whnf done, nf elaborate args
+            If a CaseE, whnf done, nf elaborate case and args to nf
+            If a AppE ... could be constructor application or primitive again.
+            This is kind of like a recursive thing I suppose...
+    LamE - perform beta reduction as follows:
+           1. add argument to scope under given name    
+           2. elaborate body with this scope
+           3. We have the following cases for the result:
+             a. the result does not refer to the argument after elaboration
+                - then return the result, done
+             b. the result refers to the argument once after elaboration
+                - then inline the argument and return the result
+             c. the result refers to the argument multiple times after elaboration
+                - then return a let statement with the argument still shared.
+           4. remove the argument from the context
+
+           Question: how do we figure out how many times the variable is
+           referred to in the elaborated expression?
+           Options are:
+            - traverse the expression to check.
+            - have elaboration return the free variables in the expression as
+              a mapping from free variable to 0, 1, or many
+
+           I don't know which would cost more performance wise. Allocating
+           lots of memory to keep track of the free variables returned, and
+           joining them and such, or traversing a potentially large
+           expression. I feel like returning the free variables in a map ought
+           to be better, but who knows.
+
+           Perhaps there's another way. Perhaps we can mark in the context how
+           many times the expression is visited and left untouched. My worry
+           here is, we may end up visiting it multiple times when it only
+           really appears once, for example, if the first time is from WHNF
+           and the second time is from NF elaboration.
+
+           Another question is: how do we inline the expression if that's what
+           we decide we want to do? Another traversal?
+
+           One option would be to save this for a final pass, after all
+           elaboration is done. That way we can do all the reductions with a
+           single traversal, which should save us. I think this is what we
+           should do. But, we still need to know if the variable is referenced
+           at all, to know if it isn't, in which case the lambda reduction is
+           done.
+
+           If it's a fully elaborated object, it's a cheap check to figure out
+           if the variable appears or not. The concern is if it contains free
+           variables, then traversal could be costly.
+
+           I think, perhaps, the best way to keep track of if it is used or
+           not is to have a field in the heap saying so. When we encounter it,
+           if we use it, we mark that. If it's not used, it will never be
+           marked. If it is inlined don't mark it. In rare cases we may end up
+           double marking. I don't care. I don't think that matters. We will
+           never mark if the expression isn't referred to, so long as we are
+           properly lazy, which we ought to be.
+    
+           Good! As for the inlining... If we have attributes, we could mark
+           the argument as needing inlining or not.
+          
+
+            
+    VarE 
+
+
+
+Tue Aug 21 09:26:07 EDT 2012
+
+It turns out the approach above is messy. Messy because we don't know if a
+function is in weak head normal form, being shared as a variable, expressed as
+a let statement. There are so many cases, it makes the head spin.
+
+Let me explore a different approach. The HOAS approach. Because I've heard
+good things about HOAS, and I think it could make things much cleaner.
+
+The idea is: we have an alternate representation for an expression. It's just
+like we have now, except the LamE is changed to: LamE Sig (Exp -> Exp).
+
+The first thing we do is convert Exp to this form. My hope is the
+initial expression to elaborate will be small, because it is the high level
+expression. It shouldn't be expensive to do this one time translation.
+
+The interesting cases in the translation are:
+
+LamE Sig Exp
+
+Is changed to: LamE' Sig (\x -> reduce n x b)
+
+Again, the reduction should be cheap, because the expression b is small.
+Hmm... I suppose we should also translate that.
+
+LamE' Sig (\x -> translate $ reduce n x b)
+
+VarE - if it's a primitive, we can replace it with the appropriate function.
+For example:
+
+VarE ("Seri.Lib.Prelude.+") 
+ Turns into:
+
+LamE (Sig "a" Integer)  \a ->
+   LamE (Sig "b" Integer) \b ->
+      case (a, b) of
+        (LitE (IntegerL ai), LitE (IntegerL bi)) -> integerE (ai + bi)
+        _ -> appsE (VarE "Seri.Lib.Prelude.+") [a, b]
+
+VarE with top level decl turns reads the value and translates that.
+
+To elaborate a LamE with function f, just do: \x -> elaborate (f x).
+
+To elaborate AppE, elaborate the argument, then apply it to the LamE which is
+the argument to the AppE.
+
+This gives us a fully elaborated thing. It doesn't maintain sharing in the
+output... but! As I've seen, I don't really think sharing makes that much of a
+difference in yices.
+
+Tue Aug 21 11:40:20 EDT 2012
+
+The big questions that remain: do we have to worry about alpha renaming? And
+how to implement pattern matching?
+
+I think we don't have to worry about alpha renaming until we go to
+un-translate the expression.
+
+Because we don't use the names until then. When we build up the expression,
+there's no false capturing. Things are left as haskell functions with
+anonymous names.
+
+All we have to do is make sure, for any LamE in the elaborated expression (of
+which there are, hopefully... ideally... none?) that we pick fresh names. We
+can do a single pass to compute the free names in the expression, then pick
+names that aren't free.
+
+Perhaps we should do that single pass as we do the initial translation. I can
+be conservative here. I just want to see every free name so I can avoid it.
+
+Use the LamE names as a suggestion, just make sure they are fresh.
+
+Finally, before I can write down the proposal in full, how to deal with CaseE
+statements?
+
+1. Elaborate the argument (haskelly lazily)
+I feel like we should leave the match bodies as they are: Exp. After we make a
+match, turn them into LetE, then translate that to Exp', then elaborate that.
+
+Otherwise, it's just the same as we have already.
+
+Or we could translate the match bodies ahead of time, assuming application in
+the right order. When we do the match, make a bunch of applications. That's
+fine.
+
+Okay. So, I have the entire proposal, right? It's pretty simple, right?
+
+Let's summarize:
+
+We have a new data type for expressions:
+
+data ExpH = LitEH Lit
+         | CaseEH ExpH [MatchH]
+         | AppEH ExpH ExpH
+         | LamEH Sig (ExpH -> ExpH)
+         | ConEH Sig
+         | VarEH Sig
+
+data MatchH = MatchH Pat ExpH   -- ^ type of ExpH is \x y ... -> b, where
+                                -- x,y, ... are the bound variables
+
+Steps of elaboration are:
+
+1. translate Exp to ExpH
+LamEH turns into: \x -> reduce n x b
+VarEH primitives: turn into an appropriate LamEH
+VarEH declared: inline and translate
+VarEH free of function type: wrap in a lambda so it's fully applied.
+Match: turn body into lambdas
+    translate (LamE Sig (LamE Sig ... (reduce ... body)), one for each
+    pattern variable.
+
+No monad needed. This is a pure translation.
+We end up doing multiple variable lookups in the environment, fine.
+
+2. elaborate under this structure.
+LitEH - done
+CaseEH - elaborate arg, try to match, if match: apply bound
+variables. to the lambdas.
+AppEH - do the application (the argument should be a LamEH!)
+LamEH - \x -> elaborate (f x) - so delay the elaboration until we get an arg.
+ConEH - nothing to do
+VarEH - is free, nothing to do
+
+no monad needed. This is a pure translation.
+
+3. get the set of free variables in the elaborated expression
+For LamE, just do (free (f LitEH 0)) or some other bogus expression.
+
+no monad needed. This is a pure query.
+
+4. translate ExpH to Exp
+For LamE, pick a fresh variable name, then do (translate (f (VarE name))).
+
+This needs a monad to keep track of fresh variables.
+
+
+Now remember, this has no sharing in the elaborated expression. But the
+thought is, the sharing helps the elaborator performance more than it helps
+yices, so that hopefully doesn't matter too much. And perhaps, when we see
+this working, it will be more clear how to keep sharing information? Just
+don't do the beta reduction for complex arguments with free variables, for
+example. Then you are left with explicit sharing.
+
+Also note: I'm worried about elaboration to WHNF, like in the SMT query monad.
+We elaborate a bit, then a bit more, then a bit more, and so on. This means
+translating and untranslating and retranslating and reuntranslating
+expressions over and over and over again potentially.
+
+If we could keep explicit sharing, this wouldn't be much of a problem. It may
+still not be much of a problem, assuming the expressions are not elaborated,
+in which case they should stay simple, and translating is cheap.
+
+Another question is... maybe I could do the query stuff under the ExpH
+representation?
+
+All things to worry about later though. I would like to try this and see how
+it compares with my current approach. I like how simple it is.
+
+Oh, and update on CaseE. Matches should be stored as:
+
+MatchH = MatchH Pat ([(Name, ExpH)] -> ExpH), and just do a multi-reduction.
+The match generates the match, we do all reduction at once, without the
+arguments being re-evaluated.
+
+Except, err... here's a problem. Don't we end up elaborating things over and
+over again? We elaborate an argument before beta reduction. Then, we elaborate
+the body containing that argument, so any time we encounter that argument, we
+try to elaborate it again!
+
+That sounds bad to me. So, we may want to annotate certain things as already
+being elaborated. That way we don't elaborate them again.
+
+This could be done with a dummy thing
+
+ElabedEH ExpH
+
+Which just indicates: this is an expression which has been elaborated. So, to
+elaborate it, just return the expression? Or tag complex expressions with a
+flag indicating their state of elaboration. I think that would be valuable.
+Have this flag for LamEH, AppEH, and CaseEH.
+
+Good. I think everything is clear now. I'd like to give it a try. I already
+have much of the code. It's clean. It has the potential to be high performing.
+
+Shall I try it? At least until I run into unexpected issues?
+
+
+Tue Aug 21 13:35:11 EDT 2012
+
+An issue... let's say we don't elaborate args all the way before substituting
+them into things, or checking for pattern matches or such. Then we could end
+up doing duplicated work.
+
+So, we should always elaborate before beta reduction, and before case
+matching. We still want tags to know how much something has been reduced...
+
+How about functions? Do we want to elaborate them to WHNF or NF before doing
+the beta reduction?
+
+Well... we don't have to worry, do we? If it's a lambda, it turns into \f ->
+elaborate, so we only elaborate after substitution, which is exactly what we
+want.
+
+So! Always elaborate as much as we can before doing any substitution. That
+should work out just fine.
+
+On the flip side, this means for primitives and case matches, I should be able
+to assume the argument is already fully elaborated? Yes?
+
+Not clear.
+
+Tue Aug 21 17:20:37 EDT 2012
+
+Some trouble... reduce needs to be done before or after toh? I think after,
+because the function takes as input an ExpH. I wonder if that has other
+consequences I should consider. Allow me to ponder.
+
+But, anyway, if this works, it's certainly a much cleaner implementation,
+which I really like.
+
+Wed Aug 22 07:41:20 EDT 2012
+
+I'm concerned. It seems like reduce has to be done after toh, because we are
+substituting in ExpH. But then... the way we do reduce for lambdas and cases,
+it seems like we end up reducing after beta reduction, which means we could
+capture things we shouldn't be :(
+
+Wed Aug 22 08:56:48 EDT 2012
+
+Aha! I know a solution. It's a good one too. Better even than the original
+plan. toh should do the reduction. Then we do all the reductions all at once.
+Best possible scenario.
+
+Let me see if I can make it work out.
+
+Wed Aug 22 09:46:52 EDT 2012
+
+So.. there are some issues.
+
+Seems to work okay for basic and prelude tests. That's a good sign.
+Having some trouble when there are free variables.
+
+Two things:
+1. We wrap each primitive in a full application. But if it's already wrapped
+in an application, that's silly! It bloats the expressions a bunch, and makes
+things hard to debug.
+
+So... maybe we should look for if it's already fully applied? Wait, does that
+make any sense at all?
+
+Or, maybe the real thing is, I should be returning something that makes more
+sense if we don't do full elaboration. But once I put the lambdas there...
+
+2. We seem to have an alpha renaming issue. Why aren't pattern bindings being
+given fresh names the way I expect? Neither the pattern, nor the use...
+
+That is, I'm seeing 'x' show up a lot as a case variable.
+
+
+Wed Aug 22 09:51:51 EDT 2012
+
+Okay, found a bug there. That's good. Maybe things will work now.
+
+No... that didn't fix things the way I wanted... For reason the subsitution
+isn't being done right?
+
+Oh, I see the bug.
+
+Wed Aug 22 09:59:31 EDT 2012
+
+Cool! It's mostly working now.
+
+Just some corner cases to debug:
+ testarray
+ testvector
+ testbit
+ Array
+ Bit
+ AllQ
+ BCL3
+
+Wed Aug 22 10:12:57 EDT 2012
+
+Starting with the array... concern... we have an infinite loop of inlining?
+Could that happen?
+
+Wed Aug 22 10:15:40 EDT 2012
+
+Looks like our old friend the filter loop. That's something to think about.
+
