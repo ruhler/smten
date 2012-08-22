@@ -1,0 +1,174 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   xmlns:dc="http://purl.org/dc/elements/1.1/"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   width="516.01465"
+   height="355.0166"
+   id="svg3347"
+   version="1.1"
+   inkscape:version="0.48.1 r9760"
+   sodipodi:docname="allq1.svg">
+  <defs
+     id="defs3349" />
+  <sodipodi:namedview
+     id="base"
+     pagecolor="#ffffff"
+     bordercolor="#666666"
+     borderopacity="1.0"
+     inkscape:pageopacity="0.0"
+     inkscape:pageshadow="2"
+     inkscape:zoom="1.979899"
+     inkscape:cx="230.74127"
+     inkscape:cy="196.7254"
+     inkscape:document-units="px"
+     inkscape:current-layer="layer1"
+     showgrid="false"
+     fit-margin-top="0"
+     fit-margin-left="0"
+     fit-margin-right="0"
+     fit-margin-bottom="0"
+     inkscape:window-width="1588"
+     inkscape:window-height="971"
+     inkscape:window-x="90"
+     inkscape:window-y="79"
+     inkscape:window-maximized="0" />
+  <metadata
+     id="metadata3352">
+    <rdf:RDF>
+      <cc:Work
+         rdf:about="">
+        <dc:format>image/svg+xml</dc:format>
+        <dc:type
+           rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
+        <dc:title></dc:title>
+      </cc:Work>
+    </rdf:RDF>
+  </metadata>
+  <g
+     inkscape:label="allq"
+     inkscape:groupmode="layer"
+     id="layer1"
+     transform="translate(-71.4375,-73.669024)"
+     style="display:inline">
+    <flowRoot
+       xml:space="preserve"
+       id="flowRoot3355"
+       style="font-size:18px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans Mono;-inkscape-font-specification:Bitstream Vera Sans Mono"><flowRegion
+         id="flowRegion3357"><rect
+           id="rect3359"
+           width="620"
+           height="442.85715"
+           x="71.428574"
+           y="69.505043"
+           style="font-size:18px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Bitstream Vera Sans Mono;-inkscape-font-specification:Bitstream Vera Sans Mono" /></flowRegion><flowPara
+         id="flowPara3361">allQ <flowSpan
+   style="fill:#808000"
+   id="flowSpan3001">::</flowSpan> (Eq a) <flowSpan
+   style="fill:#808000"
+   id="flowSpan3003">=&gt;</flowSpan> (a <flowSpan
+   style="fill:#808000"
+   id="flowSpan3005">-&gt;</flowSpan> Bool) <flowSpan
+   style="fill:#808000"
+   id="flowSpan3007">-&gt;</flowSpan> Query [a]</flowPara><flowPara
+         id="flowPara3363">allQ p <flowSpan
+   style="fill:#808000"
+   id="flowSpan3009">= do</flowSpan></flowPara><flowPara
+         id="flowPara3365">    x <flowSpan
+   style="fill:#808000"
+   id="flowSpan3011">&lt;-</flowSpan> free</flowPara><flowPara
+         id="flowPara3367">    assert (p x)</flowPara><flowPara
+         id="flowPara3369">    r <flowSpan
+   style="fill:#808000"
+   id="flowSpan3013">&lt;-</flowSpan> query x</flowPara><flowPara
+         id="flowPara3035"><flowSpan
+   style="fill:#808000"
+   id="flowSpan3777">    case</flowSpan> r <flowSpan
+   style="fill:#808000"
+   id="flowSpan3033">of</flowSpan></flowPara><flowPara
+         id="flowPara3050">        Unsatisfiable <flowSpan
+   style="fill:#808000"
+   id="flowSpan3052">-&gt;</flowSpan> return [] </flowPara><flowPara
+         id="flowPara3373">        Satisfiable v <flowSpan
+   style="fill:#808000"
+   id="flowSpan3015">-&gt; do</flowSpan></flowPara><flowPara
+         id="flowPara3375">            vs <flowSpan
+   style="fill:#808000"
+   id="flowSpan3017">&lt;-</flowSpan> allQ (<flowSpan
+   style="fill:#808000"
+   id="flowSpan3021">\</flowSpan>a <flowSpan
+   style="fill:#808000"
+   id="flowSpan3019">-&gt;</flowSpan> (p a) <flowSpan
+   style="fill:#808000"
+   id="flowSpan3023">&amp;&amp;</flowSpan> (a <flowSpan
+   style="fill:#808000"
+   id="flowSpan3025">/=</flowSpan> v))</flowPara><flowPara
+         id="flowPara3377">            return (v<flowSpan
+   style="fill:#808000"
+   id="flowSpan3027">:</flowSpan>vs)</flowPara><flowPara
+         id="flowPara3385" /></flowRoot>  </g>
+  <g
+     inkscape:groupmode="layer"
+     id="layer2"
+     inkscape:label="predicate"
+     style="display:none">
+    <flowRoot
+       style="font-size:18px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans Mono;-inkscape-font-specification:Bitstream Vera Sans Mono"
+       id="flowRoot3053"
+       xml:space="preserve"
+       transform="translate(-71.4375,173.31328)"><flowRegion
+         id="flowRegion3055"><rect
+           style="font-size:18px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Bitstream Vera Sans Mono;-inkscape-font-specification:Bitstream Vera Sans Mono"
+           y="69.505043"
+           x="71.428574"
+           height="442.85715"
+           width="620"
+           id="rect3057" /></flowRegion><flowPara
+         id="flowPara3109">predicate <flowSpan
+   id="flowSpan3111"
+   style="fill:#808000">::</flowSpan> Integer <flowSpan
+   id="flowSpan3113"
+   style="fill:#808000">-&gt;</flowSpan> Bool</flowPara><flowPara
+         id="flowPara3135">predicate x <flowSpan
+   id="flowSpan3117"
+   style="fill:#808000">=</flowSpan> (x <flowSpan
+   id="flowSpan3119"
+   style="fill:#808000">&gt;</flowSpan><flowSpan
+   id="flowSpan3121"
+   style="fill:#800080"> 3</flowSpan>) <flowSpan
+   id="flowSpan3123"
+   style="fill:#808000">&amp;&amp;</flowSpan> (x <flowSpan
+   id="flowSpan3125"
+   style="fill:#808000">&lt;</flowSpan><flowSpan
+   id="flowSpan3127"
+   style="fill:#800080"> 6</flowSpan>)</flowPara></flowRoot>  </g>
+  <g
+     inkscape:groupmode="layer"
+     id="layer3"
+     inkscape:label="main"
+     style="display:none">
+    <flowRoot
+       xml:space="preserve"
+       id="flowRoot3139"
+       style="font-size:18px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans Mono;-inkscape-font-specification:Bitstream Vera Sans Mono"
+       transform="translate(-71.4375,242.00365)"><flowRegion
+         id="flowRegion3141"><rect
+           id="rect3143"
+           width="620"
+           height="442.85715"
+           x="71.428574"
+           y="69.505043"
+           style="font-size:18px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Bitstream Vera Sans Mono;-inkscape-font-specification:Bitstream Vera Sans Mono" /></flowRegion><flowPara
+         id="flowPara3217">main <flowSpan
+   style="fill:#808000"
+   id="flowSpan3219">::</flowSpan> Query [Integer]</flowPara><flowPara
+         id="flowPara3221">main <flowSpan
+   style="fill:#808000"
+   id="flowSpan3223">=</flowSpan> allQ predicate</flowPara></flowRoot>  </g>
+</svg>
