@@ -40,18 +40,14 @@ module Seri.Target.Elaborate.Elaborate3 (
     Mode(..), elaborate,
     ) where
 
-import Control.Monad.State.Strict
-
-
-import Data.Char(isDigit)
 import Data.Bits
-import Data.List(dropWhileEnd)
 import Data.Maybe(fromMaybe)
-import qualified Data.Map as Map
 
 import Seri.Bit
 import Seri.Failable
 import Seri.Lambda
+
+import Seri.Target.Elaborate.Fresh3
 
 data Mode = WHNF -- ^ elaborate to weak head normal form.
           | SNF  -- ^ elaborate to sharing normal form.
@@ -157,7 +153,7 @@ elaborate mode env exp =
             Nothing -> VarEH (ES_Some SNF) s
 
       -- Translate back to the normal Exp representation
-      toe :: ExpH -> State (Map.Map Name Integer) Exp
+      toe :: ExpH -> Fresh Exp
       toe (LitEH l) = return (LitE l)
       toe (CaseEH _ x ms) = 
         let toem (MatchH p f) = do
@@ -184,7 +180,7 @@ elaborate mode env exp =
 
       exph = toh [] exp
       elabed = elab exph
-      done = evalState (toe elabed) (freshmap (free' exp))
+      done = runFresh (toe elabed) (free' exp)
   in --trace ("elaborate " ++ show mode ++ ": " ++ pretty exp ++ "\nto: " ++ pretty done)
      done
 
@@ -264,32 +260,4 @@ biniprim s f =
          (LitEH (IntegerL ai), LitEH (IntegerL bi)) -> f ai bi
          _ -> AppEH (ES_Some WHNF) (AppEH (ES_Some WHNF) (VarEH (ES_Some SNF) s) a) b
 
-
--- Fresh names
---
--- We store a mapping from name to number such that the concatenation of the
--- name and the number is guaranteed to be a fresh name, and the
--- concatenation of the name and any higher number is guaranteed to be a
--- fresh name.
-
--- return a fresh name based on the given name.
-fresh :: Sig -> State (Map.Map Name Integer) Sig
-fresh s@(Sig n t) = do
-   let nbase = dropWhileEnd isDigit n
-   m <- get
-   let (id, m') = Map.insertLookupWithKey (\_ -> (+)) nbase 1 m
-   put $! m'
-   case id of
-      Nothing -> return $ Sig nbase t
-      Just x -> return $ Sig (nbase ++ show x) t
-
--- construct the initial fresh map for use with fresh variables.
-freshmap :: [Name] -> Map.Map Name Integer
-freshmap [] = Map.empty
-freshmap (n:ns) =
-  let m = freshmap ns
-      (digits, rest) = span isDigit (reverse n)
-      num = if null digits then 0 else read (reverse digits)
-      base = reverse rest
-  in Map.insertWith max base (num+1) m
 
