@@ -436,3 +436,44 @@ Wed Aug 22 10:15:40 EDT 2012
 
 Looks like our old friend the filter loop. That's something to think about.
 
+I can understand this is a problem for elaborating to NF recursive functions
+with free arguments... but why doesn't it get elaborated away?
+
+Well, one problem is, it could be hard to debug this, because it is an
+infinite expression we have, even though we are lazy...
+
+I could try to simplify the failing case. That may help.
+
+Wed Aug 22 11:56:01 EDT 2012
+
+Oh! I think I know the problem. In free I give bogus arguments, so it can't
+match and that could be bad.
+
+So, solution: figure out the free variables first. Easy!
+
+let me try it out.
+
+Um... doesn't seem to have helped. But I think it is important, and an
+improvement, so I'll keep that.
+
+Wed Aug 22 15:22:07 EDT 2012
+
+Oops! I think I found the issue. Or, the bug anywhere. When we match, we have
+to match against all the arguments of the constructor, which means we need to
+have evaluated all of those, otherwise we won't end up matching.
+
+So, weak head normal form should do application against all args, right?
+
+Let me try it out.
+
+That fixed that problem. let's see how things are now.
+
+Wed Aug 22 15:30:26 EDT 2012
+
+Problems now are:
+  Array
+  testbit (bit not implemented yet)
+  AllQ
+  BCL3
+
+I'll have to look into it to understand the issue. But, good bug fix.
