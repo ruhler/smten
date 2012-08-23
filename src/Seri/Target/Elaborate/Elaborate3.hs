@@ -53,10 +53,6 @@ import Seri.Bit
 import Seri.Failable
 import Seri.Lambda
 
---import Debug.Trace
-trace :: String -> a -> a
-trace _ = id
-
 data Mode = WHNF -- ^ elaborate to weak head normal form.
           | SNF  -- ^ elaborate to sharing normal form.
     deriving (Show, Eq, Ord)
@@ -90,22 +86,22 @@ elaborate :: Mode  -- ^ Elaboration mode
 elaborate mode env exp =
   let -- translate to our HOAS expression representation
       toh :: [(Name, ExpH)] -> Exp -> ExpH
-      toh _ (LitE l) = trace ("toh " ++ pretty l) LitEH l
-      toh m (CaseE x ms) = trace ("toh case") $
-        let tomh (Match p b) = trace ("toh match " ++ pretty p ++ "->  ...") $ MatchH p (\bnd -> (toh (bnd ++ m) b))
+      toh _ (LitE l) = LitEH l
+      toh m (CaseE x ms) = 
+        let tomh (Match p b) = MatchH p (\bnd -> (toh (bnd ++ m) b))
         in CaseEH ES_None (toh m x) (map tomh ms)
-      toh m (AppE a b) = trace ("toh app") $ AppEH ES_None (toh m a) (toh m b)
-      toh m (LamE s@(Sig n t) b) = trace ("toh lam " ++ pretty s) $ LamEH (ES_Some WHNF) s (\x -> toh ((n, x):m) b)
-      toh _ (ConE s) = trace ("toh con" ++ pretty s) $ ConEH s
-      toh _ (VarE (Sig "Seri.Lib.Prelude.valueof" t)) = trace "toh valueof" $
+      toh m (AppE a b) = AppEH ES_None (toh m a) (toh m b)
+      toh m (LamE s@(Sig n t) b) = LamEH (ES_Some WHNF) s (\x -> toh ((n, x):m) b)
+      toh _ (ConE s) = ConEH s
+      toh _ (VarE (Sig "Seri.Lib.Prelude.valueof" t)) = 
         let [NumT nt, it] = unarrowsT t
         in LamEH (ES_Some SNF) (Sig "_" (NumT nt)) $ \_ -> integerEH (nteval nt)
-      toh _ (VarE s@(Sig "Seri.Lib.Prelude.__prim_eq_Integer" _)) = trace ("toh " ++ pretty s) $ biniprim s (\a b -> boolEH (a == b))
-      toh _ (VarE s@(Sig "Seri.Lib.Prelude.__prim_add_Integer" _)) = trace ("toh " ++ pretty s) $ biniprim s (\a b -> integerEH (a + b))
-      toh _ (VarE s@(Sig "Seri.Lib.Prelude.__prim_sub_Integer" _)) = trace ("toh " ++ pretty s) $ biniprim s (\a b -> integerEH (a - b))
-      toh _ (VarE s@(Sig "Seri.Lib.Prelude.__prim_mul_Integer" _)) = trace ("toh " ++ pretty s) $ biniprim s (\a b -> integerEH (a * b))
-      toh _ (VarE s@(Sig "Seri.Lib.Prelude.<" _)) = trace ("toh " ++ pretty s) $ biniprim s (\a b -> boolEH (a < b))
-      toh _ (VarE s@(Sig "Seri.Lib.Prelude.>" _)) = trace ("toh " ++ pretty s) $ biniprim s (\a b -> boolEH (a > b))
+      toh _ (VarE s@(Sig "Seri.Lib.Prelude.__prim_eq_Integer" _)) = biniprim s (\a b -> boolEH (a == b))
+      toh _ (VarE s@(Sig "Seri.Lib.Prelude.__prim_add_Integer" _)) = biniprim s (\a b -> integerEH (a + b))
+      toh _ (VarE s@(Sig "Seri.Lib.Prelude.__prim_sub_Integer" _)) = biniprim s (\a b -> integerEH (a - b))
+      toh _ (VarE s@(Sig "Seri.Lib.Prelude.__prim_mul_Integer" _)) = biniprim s (\a b -> integerEH (a * b))
+      toh _ (VarE s@(Sig "Seri.Lib.Prelude.<" _)) = biniprim s (\a b -> boolEH (a < b))
+      toh _ (VarE s@(Sig "Seri.Lib.Prelude.>" _)) = biniprim s (\a b -> boolEH (a > b))
 
       toh _ (v@(VarE (Sig "Seri.Lib.Bit.__prim_zeroExtend_Bit" _))) = error $ "toh todo: " ++ pretty v
       toh _ (v@(VarE (Sig "Seri.Lib.Bit.__prim_truncate_Bit" _))) = error $ "toh todo: " ++ pretty v
@@ -118,10 +114,11 @@ elaborate mode env exp =
       toh _ (v@(VarE (Sig "Seri.Lib.Bit.__prim_and_Bit" _))) = error $ "toh todo: " ++ pretty v
       toh _ (v@(VarE (Sig "Seri.Lib.Bit.__prim_lsh_Bit" _))) = error $ "toh todo: " ++ pretty v
       toh _ (v@(VarE (Sig "Seri.Lib.Bit.__prim_rshl_Bit" _))) = error $ "toh todo: " ++ pretty v
-      toh _ (v@(VarE (Sig "Seri.Lib.Prelude.numeric" _))) = error $ "toh todo: " ++ pretty v
+      toh _ (VarE (Sig "Seri.Lib.Prelude.numeric" (NumT nt))) = ConEH (Sig ("#" ++ show (nteval nt)) (NumT nt))
+
       --toh _ (v@(VarE (Sig "Seri.Lib.Prelude.error" _))) = error $ "toh todo: " ++ pretty v
 
-      toh m (VarE s@(Sig n _)) = trace ("toh var " ++ pretty s) $ 
+      toh m (VarE s@(Sig n _)) =
         case (lookup n m) of
             Just v -> v
             Nothing -> VarEH ES_None s
@@ -129,32 +126,32 @@ elaborate mode env exp =
 
       -- elaborate the given expression
       elab :: ExpH -> ExpH
-      elab e@(LitEH l) = trace ("elab " ++ pretty l) e
-      elab e@(CaseEH (ES_Some m) _ _) | mode <= m = trace "elab case done" e
-      elab (CaseEH (ES_Some WHNF) x ms) = trace "elab case WHNF->SNF" $
+      elab e@(LitEH l) = e
+      elab e@(CaseEH (ES_Some m) _ _) | mode <= m = e
+      elab (CaseEH (ES_Some WHNF) x ms) =
         let elabm :: MatchH -> MatchH
-            elabm (MatchH p f) = trace ("elab match" ++ pretty p) $ MatchH p (\m -> elab (f m))
+            elabm (MatchH p f) = MatchH p (\m -> elab (f m))
         in CaseEH (ES_Some SNF) (elab x) (map elabm ms)
-      elab (CaseEH _ x ms) = trace "elab case" $
+      elab (CaseEH _ x ms) =
         let x' = elab x
         in case matches x' ms of
              NoMatched -> error $ "case no match"
-             Matched e -> trace "elab matched" $ elab e
-             UnMatched ms' | mode == WHNF -> trace "elab unmatched WHNF" $ CaseEH (ES_Some WHNF) x' ms'
-             UnMatched ms' | mode == SNF -> trace "elab unmatched SNF" $
+             Matched e -> elab e
+             UnMatched ms' | mode == WHNF -> CaseEH (ES_Some WHNF) x' ms'
+             UnMatched ms' | mode == SNF -> 
                 let elabm :: MatchH -> MatchH
-                    elabm (MatchH p f) = trace ("elabm " ++ pretty p) $ MatchH p (\m -> elab (f m))
+                    elabm (MatchH p f) = MatchH p (\m -> elab (f m))
                 in CaseEH (ES_Some SNF) x' (map elabm ms')
-      elab e@(AppEH (ES_Some m) _ _) | mode <= m = trace "elab app done" e
+      elab e@(AppEH (ES_Some m) _ _) | mode <= m = e
       elab (AppEH _ a b) = 
-        case (elab a) of
-            LamEH _ s f -> trace ("elab lam " ++ pretty s) $ elab (f (elab b))
-            a' -> trace "elab app" $ AppEH (ES_Some mode) a' (elab b)
-      elab e@(LamEH (ES_Some m) _ _) | mode <= m = trace "elab lam done" e
-      elab (LamEH _ s f) = trace ("elab lam " ++ pretty s) $ LamEH (ES_Some mode) s (\x -> elab (f x))
-      elab e@(ConEH s) = trace ("elab con " ++ pretty s) e
-      elab e@(VarEH (ES_Some m) s) | mode <= m = trace ("elab var done " ++ pretty s) e
-      elab e@(VarEH _ s@(Sig n ct)) = trace ("elab var " ++ pretty s) $
+        case (elab a, elab b) of
+            (LamEH _ s f, b') -> elab (f b')
+            (a', b') -> AppEH (ES_Some mode) a' b'
+      elab e@(LamEH (ES_Some m) _ _) | mode <= m = e
+      elab (LamEH _ s f) = LamEH (ES_Some mode) s (\x -> elab (f x))
+      elab e@(ConEH s) = e
+      elab e@(VarEH (ES_Some m) s) | mode <= m = e
+      elab e@(VarEH _ s@(Sig n ct)) =
         case (attemptM $ lookupVar env s) of
             Just (pt, ve) -> elab $ toh [] $ assignexp (assignments pt ct) ve
             Nothing -> VarEH (ES_Some SNF) s
@@ -188,7 +185,7 @@ elaborate mode env exp =
       exph = toh [] exp
       elabed = elab exph
       done = evalState (toe elabed) (freshmap (free' exp))
-  in trace ("elaborate " ++ show mode ++ ": " ++ pretty exp ++ "\nto: " ++ pretty done)
+  in --trace ("elaborate " ++ show mode ++ ": " ++ pretty exp ++ "\nto: " ++ pretty done)
      done
 
 
@@ -277,7 +274,7 @@ biniprim s f =
 
 -- return a fresh name based on the given name.
 fresh :: Sig -> State (Map.Map Name Integer) Sig
-fresh s@(Sig n t) = trace ("fresh " ++ pretty s) $ do
+fresh s@(Sig n t) = do
    let nbase = dropWhileEnd isDigit n
    m <- get
    let (id, m') = Map.insertLookupWithKey (\_ -> (+)) nbase 1 m
@@ -295,4 +292,4 @@ freshmap (n:ns) =
       num = if null digits then 0 else read (reverse digits)
       base = reverse rest
   in Map.insertWith max base (num+1) m
-      
+
