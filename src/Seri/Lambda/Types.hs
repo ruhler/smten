@@ -51,14 +51,14 @@ import Seri.Lambda.Generics
 
 -- | The Integer type
 integerT :: Type
-integerT = ConT "Integer"
+integerT = ConT (name "Integer")
 
 bitT :: Integer -> Type
-bitT w = AppT (ConT "Bit") (NumT (ConNT w))
+bitT w = AppT (ConT (name "Bit")) (NumT (ConNT w))
 
 -- | The Char type
 charT :: Type
-charT = ConT "Char"
+charT = ConT (name "Char")
 
 -- | The String type
 stringT :: Type
@@ -77,12 +77,12 @@ appsT ts = foldl1 AppT ts
 arrowsT :: [Type] -> Type
 arrowsT [] = error $ "arrowsT applied to empty list"
 arrowsT [t] = t
-arrowsT (t:ts) = appsT [ConT "->", t, arrowsT ts]
+arrowsT (t:ts) = appsT [ConT (name "->"), t, arrowsT ts]
 
 -- | Given a type of the form (a -> b), returns b.
 -- TODO: this should throw an error if the given type is not a function type.
 outputT :: Type -> Type
-outputT (AppT (AppT (ConT "->") _) t) = t
+outputT (AppT (AppT (ConT ar) _) t) | ar == (name "->") = t
 outputT t = t
 
 -- | Given a type of the form (a b ... c),
@@ -94,13 +94,13 @@ unappsT t = [t]
 -- | Given a type of the form (a -> b -> ... -> c),
 --  returns the list: [a, b, ..., c]
 unarrowsT :: Type -> [Type]
-unarrowsT (AppT (AppT (ConT "->") a) b) = a : (unarrowsT b)
+unarrowsT (AppT (AppT (ConT ar) a) b) | ar == name "->"  = a : (unarrowsT b)
 unarrowsT t = [t]
 
 
 -- | Given a type a, returns the type [a].
 listT :: Type -> Type
-listT t = AppT (ConT "[]") t
+listT t = AppT (ConT (name "[]")) t
 
 -- | assignments poly concrete
 -- Given a polymorphic type and a concrete type of the same form, return the
@@ -196,7 +196,7 @@ isSubType t sub
             br <- isstn b b'
             return (o == o' && ar && br)
         isstn (VarNT n) t = do
-            modify $ \l -> ('#':n, NumT t) : l
+            modify $ \l -> (ncons '#' n, NumT t) : l
             return True
         isstn _ _ = return False
 
@@ -240,13 +240,13 @@ nvarTs _ = []
 tupT :: [Type] -> Type
 tupT [] = error $ "tupT on empty list"
 tupT [x] = x
-tupT es = foldl AppT (ConT $ "(" ++ replicate (length es - 1) ',' ++ ")") es
+tupT es = foldl AppT (ConT $ name $ "(" ++ replicate (length es - 1) ',' ++ ")") es
 
 -- | Extract the types [a, b, c, ...] from a tuple type (a, b, c, ...)
 -- If the type is not a tuple type, that single type is returned.
 untupT :: Type -> [Type]
 untupT t = 
    case unappsT t of
-      (ConT ('(':',':_)):ts -> ts
+      (ConT tn):ts | (ntake 2 tn == name "(,") -> ts
       _ -> [t]
 

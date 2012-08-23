@@ -47,26 +47,26 @@ import Seri.Lambda.Types
 
 tuple :: Int -> Dec
 tuple i = 
-  let name = "(" ++ replicate (i-1) ',' ++ ")"
-      vars = [NormalTV [c] | c <- take i "abcdefghijklmnopqrstuvwxyz"]
-  in DataD name vars [Con name (map tyVarType vars)]
+  let nm = name $ "(" ++ replicate (i-1) ',' ++ ")"
+      vars = [NormalTV (name [c]) | c <- take i "abcdefghijklmnopqrstuvwxyz"]
+  in DataD nm vars [Con nm (map tyVarType vars)]
 
 prelude :: [Dec]
 prelude = [
-    DataD "Char" [] [],
-    DataD "Integer" [] [],
-    DataD "()" [] [Con "()" []],
+    DataD (name "Char") [] [],
+    DataD (name "Integer") [] [],
+    DataD (name "()") [] [Con (name "()") []],
     tuple 2, tuple 3, tuple 4,
-    DataD "[]" [NormalTV "a"] [Con "[]" [], Con ":" [VarT "a", listT (VarT "a")]]
+    DataD (name "[]") [NormalTV (name "a")] [Con (name "[]") [], Con (name ":") [VarT (name "a"), listT (VarT (name "a"))]]
     ]
 
 -- | True
 trueE :: Exp
-trueE = ConE (Sig "True" (ConT "Bool"))
+trueE = ConE (Sig (name "True") (ConT (name "Bool")))
 
 -- | False
 falseE :: Exp
-falseE = ConE (Sig "False" (ConT "Bool"))
+falseE = ConE (Sig (name "False") (ConT (name "Bool")))
 
 -- | Boolean expression
 boolE :: Bool -> Exp
@@ -83,10 +83,10 @@ tupE [] = error $ "tupE on empty list"
 tupE [x] = x
 tupE es@(_:_:_) =
   let n = length es
-      name = "(" ++ replicate (n-1) ',' ++ ")"
+      nm = name $ "(" ++ replicate (n-1) ',' ++ ")"
       types = map typeof es
       ttype = arrowsT (types ++ [tupT types])
-  in foldl AppE (ConE (Sig name ttype)) es
+  in foldl AppE (ConE (Sig nm ttype)) es
 
 -- | (a, b, ... )
 -- There must be at least one pattern given.
@@ -98,46 +98,46 @@ tupP [] = error $ "tupP on empty list"
 tupP [p] = p
 tupP ps@(_:_:_) =
     let n = length ps
-        name = "(" ++ replicate (n-1) ',' ++ ")"
+        nm = name $ "(" ++ replicate (n-1) ',' ++ ")"
         types = map typeof ps
-        ttype = foldl AppT (ConT name) types
-    in ConP ttype name ps
+        ttype = foldl AppT (ConT nm) types
+    in ConP ttype nm ps
     
 -- | [a, b, ..., c]
 listE :: [Exp] -> Exp
-listE [] = ConE (Sig "[]" (listT UnknownT))
+listE [] = ConE (Sig (name "[]") (listT UnknownT))
 listE [x] =
  let t = typeof x
      consT = arrowsT [t, listT t, listT t]
- in appsE [ConE (Sig ":" consT), x, ConE (Sig "[]" (listT t))]
+ in appsE [ConE (Sig (name ":") consT), x, ConE (Sig (name "[]") (listT t))]
 listE (x:xs) = 
  let t = typeof x
      consT = arrowsT [t, listT t, listT t]
- in appsE [ConE (Sig ":" consT), x, listE xs]
+ in appsE [ConE (Sig (name ":") consT), x, listE xs]
 
 listP :: [Pat] -> Pat
-listP [] = ConP (listT UnknownT) "[]" []
+listP [] = ConP (listT UnknownT) (name "[]") []
 listP [x] =
   let t = listT $ typeof x
-  in ConP t ":" [x, ConP t "[]" []]
+  in ConP t (name ":") [x, ConP t (name "[]") []]
 listP (x:xs) =
   let t = listT $ typeof x
-  in ConP t ":" [x, listP xs]
+  in ConP t (name ":") [x, listP xs]
 
 integerE :: Integer -> Exp
 integerE i = LitE (IntegerL i)
 
 numberE :: Integer -> Exp
-numberE i = AppE (VarE (Sig "fromInteger" (arrowsT [integerT, UnknownT]))) (integerE i)
+numberE i = AppE (VarE (Sig (name "fromInteger") (arrowsT [integerT, UnknownT]))) (integerE i)
 
 bitE :: Integer -> Integer -> Exp
-bitE w v = AppE (VarE (Sig "Seri.Lib.Bit.__prim_fromInteger_Bit" (arrowsT [integerT, AppT (ConT "Bit") (NumT (ConNT w))]))) (integerE v)
+bitE w v = AppE (VarE (Sig (name "Seri.Lib.Bit.__prim_fromInteger_Bit") (arrowsT [integerT, AppT (ConT (name "Bit")) (NumT (ConNT w))]))) (integerE v)
 
 charE :: Char -> Exp
 charE c = LitE (CharL c)
 
 stringE :: [Char] -> Exp
-stringE [] = ConE (Sig "[]" (listT charT))
+stringE [] = ConE (Sig (name "[]") (listT charT))
 stringE s = listE (map charE s)
 
 -- | (a b ... c)

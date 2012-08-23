@@ -33,6 +33,7 @@ proc cabal {fcabal} {
         {template-haskell ==2.7.*}
         {hashable ==1.1.*}
         {containers ==0.5.*}
+        {bytestring ==0.9.*}
     }
 
     set deps [dict create]

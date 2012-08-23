@@ -58,9 +58,9 @@ tabwidth :: Int
 tabwidth = 2
 
 isAtomT :: Type -> Bool
-isAtomT (AppT (ConT "[]") _) = True
-isAtomT (AppT (AppT (ConT "(,)") a) b) = True
-isAtomT (AppT (AppT (AppT (ConT "(,,)") a) b) c) = True
+isAtomT (AppT (ConT n) _) | n == name "[]" = True
+isAtomT (AppT (AppT (ConT n) a) b) | n == name "(,)" = True
+isAtomT (AppT (AppT (AppT (ConT n) a) b) c) | n == name "(,,)" = True
 isAtomT (ConT {}) = True
 isAtomT (VarT {}) = True
 isAtomT (AppT {}) = False
@@ -68,36 +68,39 @@ isAtomT (NumT {}) = True
 isAtomT (UnknownT {}) = True
 
 isArrowsT :: Type -> Bool
-isArrowsT (AppT (AppT (ConT "->") _) _) = True
+isArrowsT (AppT (AppT (ConT n) _) _) | n == name "->" = True
 isArrowsT _ = False
+
+instance Ppr Name where
+    ppr = text . unname
 
 instance Ppr NType where
     ppr (ConNT i) = integer i
-    ppr (VarNT v) = text v
+    ppr (VarNT v) = ppr v
     ppr (AppNT o a b) = parens (ppr a <+> text o <+> ppr b)
 
 instance Ppr Type where
     -- Special case for list
-    ppr (AppT (ConT "[]") t) = text "[" <> ppr t <> text "]"
+    ppr (AppT (ConT n) t) | n == name "[]" = text "[" <> ppr t <> text "]"
     
     -- Special case for tuples
-    ppr (AppT (AppT (ConT "(,)") a) b)
+    ppr (AppT (AppT (ConT n) a) b) | n == name "(,)"
         = parens . sep $ punctuate comma (map ppr [a, b])
-    ppr (AppT (AppT (AppT (ConT "(,,)") a) b) c)
+    ppr (AppT (AppT (AppT (ConT n) a) b) c) | n == name "(,,)"
         = parens . sep $ punctuate comma (map ppr [a, b, c])
-    ppr (AppT (AppT (AppT (AppT (ConT "(,,,)") a) b) c) d)
+    ppr (AppT (AppT (AppT (AppT (ConT n) a) b) c) d) | n == name "(,,,)"
         = parens . sep $ punctuate comma (map ppr [a, b, c, d])
 
     -- Special case for ->
-    ppr (AppT (AppT (ConT "->") a) b) | isArrowsT a
+    ppr (AppT (AppT (ConT n) a) b) | n == name "->" && isArrowsT a
         = parens (ppr a) <+> text "->" <+> ppr b
-    ppr (AppT (AppT (ConT "->") a) b)
+    ppr (AppT (AppT (ConT n) a) b) | n == name "->"
         = ppr a <+> text "->" <+> ppr b
-    ppr (ConT "->") = text "(->)"
+    ppr (ConT n) | n == name "->" = text "(->)"
 
     -- Normal cases
-    ppr (ConT n) = text n
-    ppr (VarT n) = text n
+    ppr (ConT n) = ppr n
+    ppr (VarT n) = ppr n
     ppr (AppT a b) | isAtomT b = ppr a <+> ppr b
     ppr (AppT a b) = ppr a <+> (parens $ ppr b)
     ppr (NumT n) = text "#" <> ppr n
@@ -112,12 +115,12 @@ isAtomE (LamE {}) = False
 isAtomE (ConE {}) = True
 isAtomE (VarE {}) = True
 
-isOp :: String -> Bool
-isOp (c:_) = c `elem` ":!#$%&*+./<=>?@\\^|-~"
+isOp :: Name -> Bool
+isOp n = nhead n `elem` ":!#$%&*+./<=>?@\\^|-~"
 
-pprname :: String -> Doc
-pprname n | isOp n = parens (text n)
-pprname n = text n
+pprname :: Name -> Doc
+pprname n | isOp n = parens (ppr n)
+pprname n = ppr n
 
 pprsig :: Sig -> Doc
 pprsig (Sig n UnknownT) = pprname n
@@ -127,42 +130,42 @@ sep2 :: Doc -> Doc -> Doc
 sep2 a b = a $$ nest tabwidth b
 
 cando :: Exp -> Bool
-cando (AppE (AppE (VarE (Sig "Seri.Lib.Prelude.>>" _)) _) _) = True
-cando (AppE (AppE (VarE (Sig ">>" _)) _) _) = True
-cando (AppE (AppE (VarE (Sig "Seri.Lib.Prelude.>>=" _)) _) (LamE _ _)) = True
-cando (AppE (AppE (VarE (Sig ">>=" _)) _) (LamE _ _)) = True
+cando (AppE (AppE (VarE (Sig n _)) _) _) | n == name "Seri.Lib.Prelude.>>" = True
+cando (AppE (AppE (VarE (Sig n _)) _) _) | n == name ">>" = True
+cando (AppE (AppE (VarE (Sig n _)) _) (LamE _ _)) | n == name "Seri.Lib.Prelude.>>=" = True
+cando (AppE (AppE (VarE (Sig n _)) _) (LamE _ _)) | n == name ">>=" = True
 cando _ = False
 
 sugardo :: Exp -> [Stmt]
-sugardo (AppE (AppE (VarE (Sig "Seri.Lib.Prelude.>>" _)) m) r)
+sugardo (AppE (AppE (VarE (Sig n _)) m) r) | n == name "Seri.Lib.Prelude.>>"
     = NoBindS m : sugardo r
-sugardo (AppE (AppE (VarE (Sig ">>" _)) m) r)
+sugardo (AppE (AppE (VarE (Sig n _)) m) r) | n == name ">>"
     = NoBindS m : sugardo r
-sugardo (AppE (AppE (VarE (Sig ">>=" _)) m) (LamE s r))
+sugardo (AppE (AppE (VarE (Sig n _)) m) (LamE s r)) | n == name ">>="
     = BindS s m : sugardo r
-sugardo (AppE (AppE (VarE (Sig "Seri.Lib.Prelude.>>=" _)) m) (LamE s r))
+sugardo (AppE (AppE (VarE (Sig n _)) m) (LamE s r)) | n == name "Seri.Lib.Prelude.>>="
     = BindS s m : sugardo r
 sugardo e = [NoBindS e]
 
 isStringLiteral :: Exp -> Bool
-isStringLiteral (ConE (Sig "[]" (AppT (ConT "[]") (ConT "Char")))) = True
-isStringLiteral (AppE (AppE (ConE (Sig ":" _)) (LitE (CharL _))) e) = isStringLiteral e
+isStringLiteral (ConE (Sig n (AppT (ConT nt) (ConT nc)))) | n == name "[]" && nt == name "[]" && nc == name "Char" = True
+isStringLiteral (AppE (AppE (ConE (Sig n _)) (LitE (CharL _))) e) | n == name ":" = isStringLiteral e
 isStringLiteral _ = False
 
 stringLiteral :: Exp -> String
-stringLiteral (ConE (Sig "[]" (AppT (ConT "[]") (ConT "Char")))) = ""
-stringLiteral (AppE (AppE (ConE (Sig ":" _)) (LitE (CharL c))) e)
+stringLiteral (ConE (Sig n (AppT (ConT nt) (ConT nc)))) | n == name "[]" && nt == name "[]" && nc == name "Char" = ""
+stringLiteral (AppE (AppE (ConE (Sig n _)) (LitE (CharL c))) e) | n == name ":"
   = c : stringLiteral e
 stringLiteral e = error $ "not a string literal: " ++ show e
 
 isListLiteral :: Exp -> Bool
-isListLiteral (ConE (Sig "[]" (AppT (ConT "[]") _))) = True
-isListLiteral (AppE (AppE (ConE (Sig ":" _)) _) e) = isListLiteral e
+isListLiteral (ConE (Sig n (AppT (ConT nt) _))) | n == name "[]" && nt == name "[]" = True
+isListLiteral (AppE (AppE (ConE (Sig n _)) _) e) | n == name ":" = isListLiteral e
 isListLiteral _ = False
 
 listLiteral :: Exp -> [Exp]
-listLiteral (ConE (Sig "[]" (AppT (ConT "[]") _))) = []
-listLiteral (AppE (AppE (ConE (Sig ":" _)) x) e) = x : listLiteral e
+listLiteral (ConE (Sig n (AppT (ConT nt) _))) | n == name "[]" && nt == name "[]" = []
+listLiteral (AppE (AppE (ConE (Sig n _)) x) e) | n == name ":" = x : listLiteral e
 listLiteral e = error $ "not a list literal: " ++ show e
 
 isLet :: Exp -> Bool
@@ -189,8 +192,8 @@ instance Ppr Lit where
 
 instance Ppr Exp where
     -- Special case for if expressions
-    ppr (CaseE e [Match (ConP (ConT "Bool") "True" []) a,
-                  Match (ConP (ConT "Bool") "False" []) b])
+    ppr (CaseE e [Match (ConP _ nt []) a,
+                  Match (ConP _ nf []) b]) | nt == name "True" && nf == name "False"
         = text "if" <+> ppr e $$ nest tabwidth (
                 text "then" <+> ppr a $$
                 text "else" <+> ppr b)
@@ -201,11 +204,11 @@ instance Ppr Exp where
                 $+$ nest tabwidth (vcat (map ppr (sugardo e))) $+$ text "}"
 
     -- Special case for tuples
-    ppr (AppE (AppE (ConE (Sig "(,)" _)) a) b) =
+    ppr (AppE (AppE (ConE (Sig n _)) a) b) | n == name "(,)" =
         parens . sep $ punctuate comma (map ppr [a, b])
-    ppr (AppE (AppE (AppE (ConE (Sig "(,,)" _)) a) b) c) =
+    ppr (AppE (AppE (AppE (ConE (Sig n _)) a) b) c) | n == name "(,,)" =
         parens . sep $ punctuate comma (map ppr [a, b, c])
-    ppr (AppE (AppE (AppE (AppE (ConE (Sig "(,,,)" _)) a) b) c) d) =
+    ppr (AppE (AppE (AppE (AppE (ConE (Sig n _)) a) b) c) d) | n == name "(,,,)" =
         parens . sep $ punctuate comma (map ppr [a, b, c, d])
 
     -- Special case for string literals
@@ -241,8 +244,8 @@ isAtomP (VarP {}) = True
 isAtomP (LitP {}) = True
 isAtomP (WildP {}) = True
 
-isTuple :: String -> Bool
-isTuple n = ["(", ",", ")"] == nub (group n)
+isTuple :: Name -> Bool
+isTuple n = ["(", ",", ")"] == nub (group (unname n))
 
 instance Ppr Pat where
     -- special case for tuples
@@ -256,7 +259,7 @@ instance Ppr Pat where
         in pprsig (Sig n t) <+> hsep (map subp ps)
     ppr (VarP s) = pprsig s
     ppr (LitP l) = ppr l
-    ppr (WildP t) = pprsig (Sig "_" t)
+    ppr (WildP t) = pprsig (Sig (name "_") t)
 
 conlist :: [Con] -> Doc
 conlist [] = empty
@@ -264,17 +267,17 @@ conlist (x:xs) = text " " <+> ppr x
                     $+$ vcat (map (\c -> text "|" <+> ppr c) xs)
 
 instance Ppr TyVar where
-    ppr (NormalTV n) = text n
-    ppr (NumericTV n) = text "#" <> text n
+    ppr (NormalTV n) = ppr n
+    ppr (NumericTV n) = text "#" <> ppr n
 
 instance Ppr Dec where
     ppr (ValD s@(TopSig n _ _) e)
         = ppr s <> semi $$ pprname n <+> text "=" <+> ppr e
     ppr (DataD n vs cs)
-        = text "data" <+> text n <+> hsep (map ppr vs) <+> text "=" $$
+        = text "data" <+> ppr n <+> hsep (map ppr vs) <+> text "=" $$
             (nest tabwidth (conlist cs))
     ppr (ClassD n vs ss)
-        = text "class" <+> text n <+> hsep (map ppr vs)
+        = text "class" <+> ppr n <+> hsep (map ppr vs)
                 <+> text "where" <+> text "{"
                 $+$ nest tabwidth (vcat (punctuate semi (map ppr ss))) $+$ text "}"
     ppr (InstD ctx cls ms)
@@ -300,7 +303,7 @@ instance Ppr Con where
     ppr (Con n ts) =
       let pprt t | isAtomT t = ppr t
           pprt t = parens (ppr t)
-      in text n <+> hsep (map pprt ts)
+      in ppr n <+> hsep (map pprt ts)
 
 instance Ppr Method where
     ppr (Method n e) = pprname n <+> text "=" <+> ppr e <> semi

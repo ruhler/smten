@@ -58,7 +58,7 @@ main = do
     decs <- attemptIO $ typeinfer (mkEnv flat) flat
     let env = mkEnv decs
     attemptIO $ typecheck env decs
-    let e = VarE (Sig mainexp UnknownT)
+    let e = VarE (Sig (name mainexp) UnknownT)
     let elaborated = elaborate WHNF env e
     output (pretty elaborated)
 

@@ -89,28 +89,28 @@ elaborate mode env exp =
       toh m (AppE a b) = AppEH ES_None (toh m a) (toh m b)
       toh m (LamE s@(Sig n t) b) = LamEH (ES_Some WHNF) s (\x -> toh ((n, x):m) b)
       toh _ (ConE s) = ConEH s
-      toh _ (VarE (Sig "Seri.Lib.Prelude.valueof" t)) = 
+      toh _ (VarE (Sig n t)) | n == name "Seri.Lib.Prelude.valueof" = 
         let [NumT nt, it] = unarrowsT t
-        in LamEH (ES_Some SNF) (Sig "_" (NumT nt)) $ \_ -> integerEH (nteval nt)
-      toh _ (VarE s@(Sig "Seri.Lib.Prelude.__prim_eq_Integer" _)) = biniprim s (\a b -> boolEH (a == b))
-      toh _ (VarE s@(Sig "Seri.Lib.Prelude.__prim_add_Integer" _)) = biniprim s (\a b -> integerEH (a + b))
-      toh _ (VarE s@(Sig "Seri.Lib.Prelude.__prim_sub_Integer" _)) = biniprim s (\a b -> integerEH (a - b))
-      toh _ (VarE s@(Sig "Seri.Lib.Prelude.__prim_mul_Integer" _)) = biniprim s (\a b -> integerEH (a * b))
-      toh _ (VarE s@(Sig "Seri.Lib.Prelude.<" _)) = biniprim s (\a b -> boolEH (a < b))
-      toh _ (VarE s@(Sig "Seri.Lib.Prelude.>" _)) = biniprim s (\a b -> boolEH (a > b))
+        in LamEH (ES_Some SNF) (Sig (name "_") (NumT nt)) $ \_ -> integerEH (nteval nt)
+      toh _ (VarE s@(Sig n _)) | n == name "Seri.Lib.Prelude.__prim_eq_Integer" = biniprim s (\a b -> boolEH (a == b))
+      toh _ (VarE s@(Sig n _)) | n == name "Seri.Lib.Prelude.__prim_add_Integer" = biniprim s (\a b -> integerEH (a + b))
+      toh _ (VarE s@(Sig n _)) | n == name "Seri.Lib.Prelude.__prim_sub_Integer" = biniprim s (\a b -> integerEH (a - b))
+      toh _ (VarE s@(Sig n _)) | n == name "Seri.Lib.Prelude.__prim_mul_Integer" = biniprim s (\a b -> integerEH (a * b))
+      toh _ (VarE s@(Sig n _)) | n == name "Seri.Lib.Prelude.<" = biniprim s (\a b -> boolEH (a < b))
+      toh _ (VarE s@(Sig n _)) | n == name "Seri.Lib.Prelude.>" = biniprim s (\a b -> boolEH (a > b))
 
-      toh _ (v@(VarE (Sig "Seri.Lib.Bit.__prim_zeroExtend_Bit" _))) = error $ "toh todo: " ++ pretty v
-      toh _ (v@(VarE (Sig "Seri.Lib.Bit.__prim_truncate_Bit" _))) = error $ "toh todo: " ++ pretty v
-      toh _ (v@(VarE (Sig "Seri.Lib.Prelude.__prim_eq_Char" _))) = error $ "toh todo: " ++ pretty v
-      toh _ (v@(VarE (Sig "Seri.Lib.Bit.__prim_eq_Bit" _))) = error $ "toh todo: " ++ pretty v
-      toh _ (v@(VarE (Sig "Seri.Lib.Bit.__prim_add_Bit" _))) = error $ "toh todo: " ++ pretty v
-      toh _ (v@(VarE (Sig "Seri.Lib.Bit.__prim_sub_Bit" _))) = error $ "toh todo: " ++ pretty v
-      toh _ (v@(VarE (Sig "Seri.Lib.Bit.__prim_mul_Bit" _))) = error $ "toh todo: " ++ pretty v
-      toh _ (v@(VarE (Sig "Seri.Lib.Bit.__prim_or_Bit" _))) = error $ "toh todo: " ++ pretty v
-      toh _ (v@(VarE (Sig "Seri.Lib.Bit.__prim_and_Bit" _))) = error $ "toh todo: " ++ pretty v
-      toh _ (v@(VarE (Sig "Seri.Lib.Bit.__prim_lsh_Bit" _))) = error $ "toh todo: " ++ pretty v
-      toh _ (v@(VarE (Sig "Seri.Lib.Bit.__prim_rshl_Bit" _))) = error $ "toh todo: " ++ pretty v
-      toh _ (VarE (Sig "Seri.Lib.Prelude.numeric" (NumT nt))) = ConEH (Sig ("#" ++ show (nteval nt)) (NumT nt))
+      toh _ (v@(VarE (Sig n _))) | n == name "Seri.Lib.Bit.__prim_zeroExtend_Bit" = error $ "toh todo: " ++ pretty v
+      toh _ (v@(VarE (Sig n _))) | n == name "Seri.Lib.Bit.__prim_truncate_Bit" = error $ "toh todo: " ++ pretty v
+      toh _ (v@(VarE (Sig n _))) | n == name "Seri.Lib.Prelude.__prim_eq_Char" = error $ "toh todo: " ++ pretty v
+      toh _ (v@(VarE (Sig n _))) | n == name "Seri.Lib.Bit.__prim_eq_Bit" = error $ "toh todo: " ++ pretty v
+      toh _ (v@(VarE (Sig n _))) | n == name "Seri.Lib.Bit.__prim_add_Bit" = error $ "toh todo: " ++ pretty v
+      toh _ (v@(VarE (Sig n _))) | n == name "Seri.Lib.Bit.__prim_sub_Bit" = error $ "toh todo: " ++ pretty v
+      toh _ (v@(VarE (Sig n _))) | n == name "Seri.Lib.Bit.__prim_mul_Bit" = error $ "toh todo: " ++ pretty v
+      toh _ (v@(VarE (Sig n _))) | n == name "Seri.Lib.Bit.__prim_or_Bit" = error $ "toh todo: " ++ pretty v
+      toh _ (v@(VarE (Sig n _))) | n == name "Seri.Lib.Bit.__prim_and_Bit" = error $ "toh todo: " ++ pretty v
+      toh _ (v@(VarE (Sig n _))) | n == name "Seri.Lib.Bit.__prim_lsh_Bit" = error $ "toh todo: " ++ pretty v
+      toh _ (v@(VarE (Sig n _))) | n == name "Seri.Lib.Bit.__prim_rshl_Bit" = error $ "toh todo: " ++ pretty v
+      toh _ (VarE (Sig n (NumT nt))) | n == name "Seri.Lib.Prelude.numeric" = ConEH (Sig (name "#" `nappend` name (show (nteval nt))) (NumT nt))
 
       --toh _ (v@(VarE (Sig "Seri.Lib.Prelude.error" _))) = error $ "toh todo: " ++ pretty v
 
@@ -235,10 +235,10 @@ integerEH :: Integer -> ExpH
 integerEH = LitEH . IntegerL 
 
 trueEH :: ExpH
-trueEH = ConEH (Sig "True" (ConT "Bool"))
+trueEH = ConEH (Sig (name "True") (ConT (name "Bool")))
 
 falseEH :: ExpH
-falseEH = ConEH (Sig "False" (ConT "Bool"))
+falseEH = ConEH (Sig (name "False") (ConT (name "Bool")))
 
 -- | Boolean expression
 boolEH :: Bool -> ExpH
@@ -254,8 +254,8 @@ unappsEH e = [e]
 --  f - primitive implementation
 biniprim :: Sig -> (Integer -> Integer -> ExpH) -> ExpH
 biniprim s f =
-  LamEH (ES_Some WHNF) (Sig "a" integerT) $ \a ->
-    LamEH (ES_Some WHNF) (Sig "b" integerT) $ \b ->
+  LamEH (ES_Some WHNF) (Sig (name "a") integerT) $ \a ->
+    LamEH (ES_Some WHNF) (Sig (name "b") integerT) $ \b ->
       case (a, b) of
          (LitEH (IntegerL ai), LitEH (IntegerL bi)) -> f ai bi
          _ -> AppEH (ES_Some WHNF) (AppEH (ES_Some WHNF) (VarEH (ES_Some SNF) s) a) b

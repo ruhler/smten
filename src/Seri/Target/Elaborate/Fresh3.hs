@@ -59,7 +59,7 @@ fresh :: Sig -> Fresh Sig
 fresh s@(Sig _ t) = do
    id <- get
    put $! id + 1
-   return (Sig ("~E" ++ show id) t)
+   return (Sig (name "~E" `nappend` name (show id)) t)
 
 runFresh :: Fresh a -> [Name] -> a
 runFresh x nms = evalState x 0

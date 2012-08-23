@@ -56,6 +56,6 @@ main = do
     decs <- attemptIO $ typeinfer (mkEnv flat) flat
     let env = mkEnv decs
     attemptIO $ typecheck env decs
-    let haskelled = haskell haskellH decs me
+    let haskelled = haskell haskellH decs (name me)
     output (show haskelled)
 

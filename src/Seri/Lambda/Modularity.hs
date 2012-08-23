@@ -58,15 +58,15 @@ data Module = Module Name [Import] [Dec]
     deriving(Show, Eq)
 
 instance Ppr Import where
-    ppr (Import n) = text "import" <+> text n <> semi
+    ppr (Import n) = text "import" <+> ppr n <> semi
 
 instance Ppr Module where
     ppr (Module n imps decs)
-        = text "module" <+> text n <+> text "where" <+> text "{"
+        = text "module" <+> ppr n <+> text "where" <+> text "{"
             $+$ nest tabwidth (vcat (map ppr imps) $+$ ppr decs) $+$ text "}"
 
 lookupModule :: Name -> [Module] -> Failable Module
-lookupModule n [] = fail $ "module " ++ n ++ " not found"
+lookupModule n [] = fail $ "module " ++ pretty n ++ " not found"
 lookupModule n (m@(Module nm _ _) : _) | (n == nm) = return m
 lookupModule n (_:ms) = lookupModule n ms
 
@@ -78,7 +78,7 @@ data QS = QS {
 
 type QualifyM = StateT QS Failable
 
-mename :: QualifyM String
+mename :: QualifyM Name
 mename = do
     Module n _ _ <- gets qs_me
     return n 
@@ -110,7 +110,7 @@ instance Qualify Module where
 instance Qualify TopSig where
     qualify (TopSig nm ctx t) = do
         menm <- mename
-        let nm' = menm ++ "." ++ nm
+        let nm' = menm `nappend` name "." `nappend` nm
         ctx' <- qualify ctx
         t' <- qualify t
         return (TopSig nm' ctx' t')
@@ -206,14 +206,14 @@ resolve n =
       r :: [Module] -> Module -> Failable Name
       r env me@(Module menm imports _) = 
         let immediate :: Module -> [Name]
-            immediate (Module mnm _ ds) = map (const (mnm ++ "." ++ n)) (filter (hasName n) ds)
+            immediate (Module mnm _ ds) = map (const (mnm `nappend` name "." `nappend` n)) (filter (hasName n) ds)
         in do
             imported <- mapM (\(Import mn) -> lookupModule mn env) imports
             let names = map immediate (me : imported)
             case concat names of
-                [] -> fail $ "'" ++ n ++ "' not found in module " ++ menm
+                [] -> fail $ "'" ++ pretty n ++ "' not found in module " ++ pretty menm
                 [x] -> return x
-                xs -> fail $ "'" ++ n ++ "' is ambiguious: " ++ show xs
+                xs -> fail $ "'" ++ pretty n ++ "' is ambiguious: " ++ show xs
   in do
       me <- gets qs_me
       env <- gets qs_env

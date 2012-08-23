@@ -117,16 +117,16 @@ hasname n =
 alpharename :: [Name] -> Exp -> Exp
 alpharename [] e = e
 alpharename bad e =
-  let isgood :: String -> Bool
+  let isgood :: Name -> Bool
       isgood s = not (s `elem` bad)
 
-      isgoodnew :: String -> Bool
+      isgoodnew :: Name -> Bool
       isgoodnew s = isgood s && not (hasname s e)
 
       -- get the new name for the given name.
-      newname :: String -> String
+      newname :: Name -> Name
       newname n | isgood n = n
-      newname n = head (filter isgoodnew [n ++ show i | i <- [0..]])
+      newname n = head (filter isgoodnew [n `nappend` name (show i) | i <- [0..]])
     
       repat :: Pat -> Pat
       repat (ConP t n ps) = ConP t n (map repat ps)

@@ -155,6 +155,6 @@ instance Ppr [(Type, Type)] where
 instance Ppr (Map.Map Name Type) where
     ppr m = 
         let pprt :: (Name, Type) -> Doc
-            pprt (a, b) = text a <> text ":" <+> ppr b
+            pprt (a, b) = ppr a <> text ":" <+> ppr b
         in vcat (map pprt (Map.assocs m))
 

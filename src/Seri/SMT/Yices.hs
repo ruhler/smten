@@ -103,17 +103,17 @@ debug msg = do
         Nothing -> return ()
         Just h -> lift $ hPutStrLn h msg
 
-freevar :: YicesMonad y String
+freevar :: YicesMonad y Name
 freevar = do
     fid <- gets ys_freeid
     modify $ \ys -> ys { ys_freeid = fid+1 }
     return $ freename fid
 
-freename :: Integer -> String
-freename id = "free~" ++ show id
+freename :: Integer -> Name
+freename id = name $ "free~" ++ show id
 
-isfreename :: String -> Bool
-isfreename nm = "free~" == take 5 nm
+isfreename :: Name -> Bool
+isfreename nm = name "free~" == ntake 5 nm
 
 yicest :: Y.Yices y => Type -> YicesMonad y Y.Type
 yicest t = do
@@ -136,7 +136,7 @@ topname n = do
     m <- gets ys_topnms
     let (id, m') = Map.insertLookupWithKey (\_ -> (+)) n 1 m
     modify $ \ys -> ys { ys_topnms = m' }
-    return $ n ++ "~t" ++ show (fromMaybe 0 id)
+    return $ n `nappend` name "~t" `nappend` name (show (fromMaybe 0 id))
     
 runQueryM :: Y.Yices y => Exp -> YicesMonad y Exp
 runQueryM e = do
@@ -148,36 +148,36 @@ runQueryM e = do
             x' <- yicese x
             runCmds [Y.Define (yicesN n') t' (Just x')]
             runQueryM (rename n n' b)
-        (AppE (VarE (Sig "Seri.SMT.SMT.query" _)) arg) -> do
+        (AppE (VarE (Sig n _)) arg) | n == name "Seri.SMT.SMT.query" -> do
             res <- check
             case res of 
                 Y.Satisfiable -> do
                     arg' <- realize env arg
-                    return $ AppE (ConE (Sig "Satisfiable" (AppT (ConT "Answer") (typeof arg)))) arg'
-                Y.Unsatisfiable-> return $ ConE (Sig "Unsatisfiable" (AppT (ConT "Answer") (typeof arg)))
-                _ -> return $ ConE (Sig "Unknown" (AppT (ConT "Answer") (typeof arg)))
-        (VarE (Sig "Seri.SMT.SMT.free" (AppT (ConT "Query") t))) -> do
+                    return $ AppE (ConE (Sig (name "Satisfiable") (AppT (ConT (name "Answer")) (typeof arg)))) arg'
+                Y.Unsatisfiable-> return $ ConE (Sig (name "Unsatisfiable") (AppT (ConT (name "Answer")) (typeof arg)))
+                _ -> return $ ConE (Sig (name "Unknown") (AppT (ConT (name "Answer")) (typeof arg)))
+        (VarE (Sig n (AppT _ t))) | n == name "Seri.SMT.SMT.free" -> do
             t' <- yicest t
             free <- freevar
             runCmds [Y.Define (yicesN free) t' Nothing]
             return (VarE (Sig free t))
-        (AppE (VarE (Sig "Seri.SMT.SMT.assert" _)) p) -> do
+        (AppE (VarE (Sig n _)) p) | n == name "Seri.SMT.SMT.assert" -> do
             yp <- yicese p
             true <- yicese trueE
             runCmds [Y.Assert (Y.eqE true yp)]
-            return (ConE (Sig "()" (ConT "()")))
-        (AppE (VarE (Sig "Seri.SMT.SMT.queryS" _)) q) -> do
+            return (ConE (Sig (name "()") (ConT (name "()"))))
+        (AppE (VarE (Sig n _)) q) | n == name "Seri.SMT.SMT.queryS" -> do
             runCmds [Y.Push]
             x <- runQueryM q
-            let q' = AppE (VarE (Sig "Seri.SMT.SMT.query" UnknownT)) x
+            let q' = AppE (VarE (Sig (name "Seri.SMT.SMT.query") UnknownT)) x
             y <- runQueryM q'
             runCmds [Y.Pop]
             return y
-        (AppE (VarE (Sig "Seri.SMT.SMT.return_query" _)) x) -> return x
-        (AppE (AppE (VarE (Sig "Seri.SMT.SMT.bind_query" _)) x) f) -> do
+        (AppE (VarE (Sig n _)) x) | n == name "Seri.SMT.SMT.return_query" -> return x
+        (AppE (AppE (VarE (Sig n _)) x) f) | n == name "Seri.SMT.SMT.bind_query" -> do
           result <- runQueryM x
           runQueryM (AppE f result)
-        (AppE (AppE (VarE (Sig "Seri.SMT.SMT.nobind_query" _)) x) y) -> do
+        (AppE (AppE (VarE (Sig n _)) x) y) | n == name "Seri.SMT.SMT.nobind_query" -> do
           runQueryM x
           runQueryM y
         x -> error $ "unknown Query: " ++ pretty x
@@ -216,33 +216,33 @@ runQuery q e = runStateT (runQueryM e) q
 
 -- | Given a free variable name and corresponding seri type, return the value
 -- of that free variable from the yices model.
-realizefree :: Y.Yices y => Env -> String -> Type -> YicesMonad y Exp
+realizefree :: Y.Yices y => Env -> Name -> Type -> YicesMonad y Exp
 realizefree _ nm t | t == integerT = do
-    debug $ "; realize integer: " ++ nm
+    debug $ "; realize integer: " ++ pretty nm
     res <- check
     case res of
         Y.Satisfiable -> return ()
         _ -> error $ "realize free expected Satisfiable, but wasn't"
     ctx <- gets ys_ctx
     ival <- lift $ Y.getIntegerValue ctx (yicesN nm)
-    debug $ "; " ++ nm ++ " is " ++ show ival
+    debug $ "; " ++ pretty nm ++ " is " ++ show ival
     return (integerE ival)
-realizefree _ nm (AppT (ConT "Bit") (NumT (ConNT w))) = do
-    debug $ "; realize Bit " ++ show w ++ ": " ++ nm
+realizefree _ nm (AppT (ConT n) (NumT (ConNT w))) | n == name "Bit" = do
+    debug $ "; realize Bit " ++ show w ++ ": " ++ pretty nm
     res <- check
     case res of
         Y.Satisfiable -> return ()  
         _ -> error $ "realize free expected Satisfiable, but wasn't"
     ctx <- gets ys_ctx
     bval <- lift $ Y.getBitVectorValue ctx w (yicesN nm)
-    debug $ "; " ++ nm ++ " has value " ++ show bval
+    debug $ "; " ++ pretty nm ++ " has value " ++ show bval
     return (bitE w bval)
-realizefree _ nm t@(AppT (AppT (ConT "->") _) _)
+realizefree _ nm t@(AppT (AppT (ConT n) _) _) | n == name "->"
   = error $ "TODO: realizefree type " ++ pretty t
 realizefree env nm t =
   let ConT dt = head $ unappsT t
       trycons :: Y.Yices y => [Con] -> YicesMonad y Exp
-      trycons [] = return $ VarE (Sig "undefined" t)
+      trycons [] = return $ VarE (Sig (name "undefined") t)
       trycons (Con cn ts : cs) = do
             runCmds [Y.Push]
             free <- sequence $ replicate (length ts) freevar
@@ -262,7 +262,7 @@ realizefree env nm t =
                     trycons cs
             
   in do
-    debug $ "; realize: " ++ nm ++ " :: " ++ pretty t
+    debug $ "; realize: " ++ pretty nm ++ " :: " ++ pretty t
     DataD _ _ cs <- lift . attemptIO $ lookupDataD env dt
     trycons cs
     

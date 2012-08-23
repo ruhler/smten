@@ -116,9 +116,9 @@ gentype t = do
             let mkc :: Con -> M Con
                 mkc (Con n ts) = do
                     ts' <- mapM monotype ts
-                    return (Con (n ++ suffix) ts')
+                    return (Con (n `nappend` suffix) ts')
             cs' <- mapM mkc (assign (zip (map tyVarName tvars) targs) cs)
-            return [DataD (con ++ suffix) [] cs']
+            return [DataD (con `nappend` suffix) [] cs']
 
 -- Generate a monomorphic declaration for the given concrete variable
 genval :: Sig -> M Dec
@@ -129,7 +129,7 @@ genval s@(Sig n t) = do
         Just d -> return d
         Nothing -> do
             suffix <- valsuffix s
-            let n' = n ++ suffix
+            let n' = n `nappend` suffix
             (pt, e) <- attemptM $ lookupVar poly s
             e' <- monoexp $ assign (assignments pt t) e
             return $ ValD (TopSig n' [] t') e'
@@ -155,7 +155,7 @@ monoexp (LamE (Sig n t) e) = do
     return (LamE (Sig n t') e')
 monoexp (ConE (Sig n t)) = do
     t' <- monotype t
-    let n' = n ++ typesuffix (last $ unarrowsT t)
+    let n' = n `nappend` typesuffix (last $ unarrowsT t)
     return (ConE (Sig n' t'))
 monoexp (VarE s@(Sig n t)) = do
     bound <- gets ms_bound
@@ -169,11 +169,11 @@ monoexp (VarE s@(Sig n t)) = do
         (_, Just Declared) -> do
             modifyS $ \ms -> ms { ms_toexp = Set.insert s (ms_toexp ms) }
             suffix <- valsuffix s
-            return (VarE (Sig (n ++ suffix) t'))
+            return (VarE (Sig (n `nappend` suffix) t'))
         (_, Just (Instance (Class _ cts))) -> do
             modifyS (\ms -> ms { ms_toexp = Set.insert s (ms_toexp ms) })
             suffix <- valsuffix s
-            return (VarE (Sig (n ++ suffix) t'))
+            return (VarE (Sig (n `nappend` suffix) t'))
         _ -> return (VarE (Sig n t'))
 
 monomatch :: Match -> M Match
@@ -187,7 +187,7 @@ monomatch (Match p e) = do
 
 monopat :: Pat -> M Pat
 monopat (ConP t n ps) = do
-    let n' = n ++ typesuffix t
+    let n' = n `nappend` typesuffix t
     t' <- monotype t
     ps' <- mapM monopat ps
     return (ConP t' n' ps')
@@ -205,9 +205,9 @@ monotype (VarT {}) = error $ "variable type is not concrete"
 monotype t = do
     poly <- gets ms_poly
     case unfoldt t of
-        ("->", targs) -> do
+        (n, targs) | n == name "->" -> do
             targsmono <- mapM monotype targs
-            return $ foldl AppT (ConT "->") targsmono
+            return $ foldl AppT (ConT (name "->")) targsmono
         (_, targs) -> do
             modifyS $ \ms -> ms { ms_totype = Set.insert t (ms_totype ms) }
             targsmono <- mapM monotype targs
@@ -233,10 +233,10 @@ monoallt t = do
 mononametype :: Type -> Name
 mononametype (ConT n) = n
 mononametype (NumT n) = ntname n
-mononametype (AppT a b) = mononametype a ++ "$" ++ mononametype b
+mononametype (AppT a b) = mononametype a `nappend` name "$" `nappend` mononametype b
 
 mksuffix :: [Type] -> Name
-mksuffix ts = foldl (\a b -> a ++ "$" ++ mononametype b) "" ts
+mksuffix ts = foldl (\a b -> a `nappend` name "$" `nappend` mononametype b) (name "") ts
 
 -- Given a concrete fully applied type,
 --  return the name suffix used for type and constructors of the type.
@@ -254,7 +254,7 @@ valsuffix s@(Sig n t) = do
             return $ mksuffix (cts ++ map snd (assignments pt t))
 
 ntname :: NType -> Name
-ntname n = "#" ++ show (nteval n)
+ntname n = name "#" `nappend` name (show (nteval n))
     
 -- Unfold a concrete type.
 --  Foo a b ... c 

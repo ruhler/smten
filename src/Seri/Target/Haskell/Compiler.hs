@@ -76,15 +76,17 @@ type HCompiler = Compiler H.Exp H.Type H.Dec
 -- for whatever this name is used for (varid, conid)
 hsName :: Name -> H.Name
 hsName =
-  let dequalify n = 
+  let dequalify :: String -> String
+      dequalify n = 
         case break (== '.') n of
             (n', []) -> n'
             (_, ".") -> "."
             (_, n') -> dequalify (tail n')
+      symify :: String -> String
       symify s = if issymbol s then "(" ++ s ++ ")" else s
-  in H.mkName . symify . dequalify
+  in H.mkName . symify . dequalify . pretty
 
-issymbol :: Name -> Bool
+issymbol :: String -> Bool
 issymbol ('(':_) = False
 issymbol "[]" = False
 issymbol (h:_) = not $ isAlphaNum h || h == '_'

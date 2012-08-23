@@ -44,6 +44,7 @@ import Seri.Lambda.IR
 import Seri.Lambda.Parser
 import Seri.Lambda.Modularity
 import Seri.Lambda.Sugar
+import Seri.Lambda.Ppr
 
 type SearchPath = [FilePath]
 
@@ -74,12 +75,12 @@ loadone sp n = do
     attemptIO $ parse fname text
       
 findmodule :: SearchPath -> Name -> IO FilePath
-findmodule [] n = fail $ "Module " ++ n ++ " not found"
+findmodule [] n = fail $ "Module " ++ pretty n ++ " not found"
 findmodule (s:ss) n =
  let dirify :: Name -> FilePath
-     dirify [] = []
-     dirify ('.':r) = '/' : dirify r
-     dirify (c:r) = c : dirify r
+     dirify n | nnull n = []
+     dirify n | nhead n == '.' = '/' : dirify (ntail n)
+     dirify n = nhead n : dirify (ntail n)
 
      fp = s ++ "/" ++ dirify n ++ ".sri"
  in do

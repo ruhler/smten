@@ -102,7 +102,7 @@ import Seri.Lambda.Parser.Lexer
 
 module :: { Module }
  : 'module' modid 'where' body
-    { Module $2 (fst $4) (snd $4) }
+    { Module (name $2) (fst $4) (snd $4) }
 
 body :: { ([Import], [Dec]) }
  : '{' impdecls ';' topdecls opt(';') '}'
@@ -120,7 +120,7 @@ impdecls :: { [Import] }
 
 impdecl :: { Import }
  : 'import' modid
-    { Import $2 }
+    { Import (name $2) }
 
 topdecls :: { [PDec] }
  : topdecl
@@ -130,9 +130,9 @@ topdecls :: { [PDec] }
 
 topdecl :: { [PDec] }
  : 'data' tycon opt(tyvars) '=' opt(constrs)
-    { [PDec ds | ds <- recordD $2 (fromMaybe [] $3) (fromMaybe [] $5)] }
+    { [PDec ds | ds <- recordD (name $2) (fromMaybe [] $3) (fromMaybe [] $5)] }
  | 'class' tycls tyvars 'where' '{' cdecls opt(';') '}'
-    { [PDec (ClassD $2 $3 $6)] }
+    { [PDec (ClassD (name $2) $3 $6)] }
  | 'instance' class 'where' '{' idecls opt(';') '}'
     { [PDec (InstD [] $2 (icoalesce $5))] }
  | 'instance' context class 'where' '{' idecls opt(';') '}'
@@ -178,15 +178,15 @@ idecl :: { (Name, Clause) }
 
 gendecl :: { TopSig }
  : var '::' type
-    { TopSig $1 [] $3 }
+    { TopSig (name $1) [] $3 }
  | var '::' context type
-    { TopSig $1 $3 $4 }
+    { TopSig (name $1) $3 $4 }
 
 type :: { Type }
  : btype
     { $1 } 
  | btype '->' type
-    { AppT (AppT (ConT "->") $1) $3 }
+    { AppT (AppT (ConT (name "->")) $1) $3 }
 
 btype :: { Type }
  : atype
@@ -196,13 +196,13 @@ btype :: { Type }
 
 atype :: { Type }
  : gtycon
-    { ConT $1 }
+    { ConT (name $1) }
  | tyvarnm
-    { VarT $1 }
+    { VarT (name $1) }
  | '(' types_commasep ')'
     { tupT $2 }     -- takes care of '(' type ')' case too.
  | '[' type ']'
-    { AppT (ConT "[]") $2 }
+    { AppT (ConT (name "[]")) $2 }
  | '#' antype
     { NumT $2 }
 
@@ -216,7 +216,7 @@ antype :: { NType }
  : integer
     { ConNT $1 }
  | tyvarnm
-    { VarNT $1 }
+    { VarNT (name $1) }
  | '(' ntype ')'
     { $2 }
 
@@ -245,7 +245,7 @@ context :: { [Class] }
 
 class :: { Class }
  : qtycls atypes
-    { Class $1 $2 }
+    { Class (name $1) $2 }
 
 constrs :: { [ConRec] }
  : constr
@@ -255,9 +255,9 @@ constrs :: { [ConRec] }
 
 constr :: { ConRec }
  : con opt(atypes)
-    { NormalC $1 (fromMaybe [] $2) }
+    { NormalC (name $1) (fromMaybe [] $2) }
  | con '{' fielddecls '}'
-    { RecordC $1 $3 }
+    { RecordC (name $1) $3 }
 
 fielddecls :: { [(Name, Type)] }
  : fielddecl
@@ -267,11 +267,11 @@ fielddecls :: { [(Name, Type)] }
 
 fielddecl :: { (Name, Type) }
  : var '::' type
-    { ($1, $3) }
+    { (name $1, $3) }
 
 funlhs :: { (Name, [Pat]) }
  : var opt(apats)
-    { ($1, fromMaybe [] $2) } 
+    { (name $1, fromMaybe [] $2) } 
 
 rhs :: { Exp }
  : '=' exp
@@ -363,14 +363,14 @@ fbinds :: { [(Name, Exp)] }
 
 fbind :: { (Name, Exp) }
  : qvar '=' exp
-    { ($1, $3) }
+    { (name $1, $3) }
 
 
 pat :: { Pat }
  : pat10
     { $1 }
  | pat10 ':' pat
-    { ConP UnknownT ":" [$1, $3] }
+    { ConP UnknownT (name ":") [$1, $3] }
 
 pat10 :: { Pat }
  : gcon_typed apats
@@ -386,7 +386,7 @@ apats :: { [Pat] }
 
 apat :: { Pat }
  : var_typed
-    { let Sig n t = $1 in if n == "_" then WildP t else VarP $1 }
+    { let Sig n t = $1 in if n == (name "_") then WildP t else VarP $1 }
  | gcon_typed
     { let Sig n t = $1 in ConP t n [] }
  | integer
@@ -402,9 +402,9 @@ apat :: { Pat }
 
 gcon_typed :: { Sig }
  : '(' gcon '::' type ')'
-    { Sig $2 $4 }
+    { Sig (name $2) $4 }
  | gcon
-    { Sig $1 UnknownT }
+    { Sig (name $1) UnknownT }
 
 gcon :: { String }
  : '(' ')'
@@ -418,9 +418,9 @@ gcon :: { String }
 
 var_typed :: { Sig }
  : '(' var  '::' type ')'
-    { Sig $2 $4 }
+    { Sig (name $2) $4 }
  | var
-    { Sig $1 UnknownT }
+    { Sig (name $1) UnknownT }
 
 var :: { String }
  : varid
@@ -430,9 +430,9 @@ var :: { String }
 
 qvar_withinfo :: { Exp }
  : '(' qvar '::' type ')'
-    { VarE (Sig $2 $4) }
+    { VarE (Sig (name $2) $4) }
  | qvar
-    { VarE (Sig $1 UnknownT) }
+    { VarE (Sig (name $1) UnknownT) }
 
 qvar :: { String }
  : qvarid
@@ -453,9 +453,9 @@ qcon :: { String }
 
 qop :: { Exp }
  : qvarsym
-    { VarE (Sig $1 UnknownT) }
+    { VarE (Sig (name $1) UnknownT) }
  | qconop
-    { ConE (Sig $1 UnknownT) }
+    { ConE (Sig (name $1) UnknownT) }
 
 qvarsym :: { String }
  : varsym
@@ -536,9 +536,9 @@ pats_commasep :: { [Pat] }
 
 tyvar :: { TyVar }
  : tyvarnm
-    { NormalTV $1 }
+    { NormalTV (name $1) }
  | '#' tyvarnm
-    { NumericTV $2 }
+    { NumericTV (name $2) }
 
 tyvars :: { [TyVar] }
  : tyvar

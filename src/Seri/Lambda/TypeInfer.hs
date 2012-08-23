@@ -109,7 +109,7 @@ instance TransformerM DeUnknown (State Integer) where
     tm_Type _ UnknownT = do
         id <- get
         put (id+1)
-        return (VarT $ "~" ++ show id)
+        return (VarT . name $ "~" ++ show id)
     tm_Type _ t = return t
         
 -- | Replace all UnknownT with new variable types.
@@ -141,7 +141,7 @@ newvtn :: TI Name
 newvtn = do
     id <- gets ti_varid
     modify $ \ti -> ti { ti_varid = (id + 1) }
-    return ("~" ++ show id)
+    return . name $ ("~" ++ show id)
 
 -- | Run type checking with additional bound variable's in scope.
 scoped :: [Sig] -> TI a -> TI a

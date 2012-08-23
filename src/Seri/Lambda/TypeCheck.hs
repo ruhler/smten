@@ -52,7 +52,7 @@ class TypeCheck a where
     typecheck :: Env -> a -> Failable ()
 
 
-type TypeEnv = [(String, Type)]
+type TypeEnv = [(Name, Type)]
 
 instance TypeCheck [Dec] where
     typecheck e = mapM_ (typecheck e)
@@ -77,7 +77,7 @@ instance TypeCheck Dec where
           checkdec d@(InstD ctx cls ms) =
             let checkmeth :: Method -> Failable () 
                 checkmeth m@(Method n b) =
-                  onfail (\s -> fail $ s ++ "\n in method " ++ n) $ do
+                  onfail (\s -> fail $ s ++ "\n in method " ++ pretty n) $ do
                     checkexp [] b
                     texpected <- lookupMethodType env n cls
                     if typeof b /= texpected
@@ -146,7 +146,7 @@ instance TypeCheck Dec where
              checkexp tenv f
              checkexp tenv x
              case typeof f of
-                (AppT (AppT (ConT "->") a) _) ->
+                (AppT (AppT (ConT n) a) _) | n == name "->" ->
                     if a == typeof x
                         then return ()
                         else fail $ "checkexp app: expected type " ++ pretty a ++
@@ -158,18 +158,18 @@ instance TypeCheck Dec where
              texpected <- lookupDataConType env n
              if isSubType texpected ct
                 then return ()
-                else fail $ "checkexp: expecting type " ++ pretty texpected ++ ", but found type " ++ pretty ct ++ " in data constructor " ++ n
+                else fail $ "checkexp: expecting type " ++ pretty texpected ++ ", but found type " ++ pretty ct ++ " in data constructor " ++ pretty n
           checkexp tenv (VarE (Sig n t)) =
              case lookup n tenv of
                  Just t' | t == t' -> return ()
                  Just t' -> fail $ "expected variable of type:\n  " ++ pretty t'
-                            ++ "\nbut " ++ n ++ " has type:\n  " ++ pretty t
+                            ++ "\nbut " ++ pretty n ++ " has type:\n  " ++ pretty t
                  Nothing -> do
                      texpected <- lookupVarType env n
                      if isSubType texpected t
                          then return ()
                          else fail $ "expected variable of type:\n  " ++ pretty texpected
-                                    ++ "\nbut " ++ n ++ " has type:\n  " ++ pretty t
+                                    ++ "\nbut " ++ pretty n ++ " has type:\n  " ++ pretty t
 
       in checkdec
 

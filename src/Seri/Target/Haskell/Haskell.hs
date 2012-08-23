@@ -80,7 +80,7 @@ hsPat (LitP l) = H.LitP (hsLit l)
 hsPat (WildP _) = H.WildP
 
 hsType :: HCompiler -> Type -> Failable H.Type
-hsType c (ConT "->") = return H.ArrowT
+hsType c (ConT n) | n == name "->" = return H.ArrowT
 hsType c (ConT n) = return $ H.ConT (hsName n)
 hsType c (AppT a b) = do
     a' <- compile_type c c a
@@ -88,7 +88,7 @@ hsType c (AppT a b) = do
     return $ H.AppT a' b'
 hsType c (VarT n) = return $ H.VarT (hsName n)
 hsType c (NumT (ConNT i)) = return $ hsnt i
-hsType c (NumT (VarNT n)) = return $ H.VarT (H.mkName n)
+hsType c (NumT (VarNT n)) = return $ H.VarT (H.mkName (pretty n))
 hsType c (NumT (AppNT f a b)) = do
     a' <- hsType c (NumT a)
     b' <- hsType c (NumT b)
@@ -107,12 +107,12 @@ hsnt n = H.AppT (H.ConT (H.mkName $ "N__2p" ++ show (n `mod` 2))) (hsnt $ n `div
 
 hsTopType :: HCompiler -> Context -> Type -> Failable H.Type
 hsTopType c ctx t = do
-    let ntvs = [H.ClassP (H.mkName "N__") [H.VarT (H.mkName n)] | n <- nvarTs t]
+    let ntvs = [H.ClassP (H.mkName "N__") [H.VarT (H.mkName (pretty n))] | n <- nvarTs t]
     t' <- compile_type c c t
     ctx' <- mapM (hsClass c) ctx
     case ntvs ++ ctx' of
         [] -> return t'
-        ctx'' -> return $ H.ForallT (map (H.PlainTV . H.mkName) (nvarTs t ++ varTs t)) ctx'' t'
+        ctx'' -> return $ H.ForallT (map (H.PlainTV . H.mkName . pretty) (nvarTs t ++ varTs t)) ctx'' t'
 
 hsClass :: HCompiler -> Class -> Failable H.Pred
 hsClass c (Class nm ts) = do
@@ -155,7 +155,7 @@ hsDec c (ClassD n vars sigs) = do
     return $ [H.ClassD [] (hsName n) (map (H.PlainTV . hsName . tyVarName) vars) [] sigs']
 
 hsDec c (InstD ctx (Class n ts) ms) = do
-    let ntvs = [H.ClassP (H.mkName "N__") [H.VarT (H.mkName n)] | n <- concat $ map nvarTs ts]
+    let ntvs = [H.ClassP (H.mkName "N__") [H.VarT (H.mkName (pretty n))] | n <- concat $ map nvarTs ts]
     ctx' <- mapM (hsClass c) ctx
     ms' <- mapM (hsMethod c) ms
     ts' <- mapM (compile_type c c) ts
@@ -187,7 +187,7 @@ haskell c env main =
   in hsHeader H.$+$ H.ppr ds H.$+$
         H.text "main :: Prelude.IO ()" H.$+$
         H.text "main = Prelude.putStrLn (case "
-        H.<+> H.text main H.<+> H.text " of { True -> \"True\"; False -> \"False\"})"
+        H.<+> H.text (pretty main) H.<+> H.text " of { True -> \"True\"; False -> \"False\"})"
 
 
 -- | Declare a primitive seri implemented with the given haskell expression.
@@ -220,43 +220,44 @@ preludeH :: HCompiler
 preludeH =
   let me _ e = fail $ "preludeH does not apply to exp: " ++ pretty e
 
-      mt _ (ConT "Char") = return $ H.ConT (H.mkName "Prelude.Char")
-      mt _ (ConT "Integer") = return $ H.ConT (H.mkName "Prelude.Integer")
+      mt _ (ConT n) | n == name "Char" = return $ H.ConT (H.mkName "Prelude.Char")
+      mt _ (ConT n) | n == name "Integer" = return $ H.ConT (H.mkName "Prelude.Integer")
       mt _ t = fail $ "preludeH does not apply to type: " ++ pretty t
 
-      md _ (PrimD (TopSig "Seri.Lib.Prelude.error" _ t)) = do
+      md _ (PrimD (TopSig n _ t)) | n == name "Seri.Lib.Prelude.error" = do
         let e = H.VarE (H.mkName "Prelude.error")
         let val = H.FunD (H.mkName "error") [H.Clause [] (H.NormalB e) []]
         return [val]
-      md _ (DataD "Char" _ _) = return []
-      md _ (DataD "Integer" _ _) = return []
-      md _ (DataD "()" _ _) = return []
-      md _ (DataD "(,)" _ _) = return []
-      md _ (DataD "(,,)" _ _) = return []
-      md _ (DataD "(,,,)" _ _) = return []
-      md _ (DataD "[]" _ _) = return []
-      md c (PrimD s@(TopSig "Seri.Lib.Prelude.__prim_add_Integer" _ _)) = prim c s (vare "Prelude.+")
-      md c (PrimD s@(TopSig "Seri.Lib.Prelude.__prim_sub_Integer" _ _)) = prim c s (vare "Prelude.-")
-      md c (PrimD s@(TopSig "Seri.Lib.Prelude.__prim_mul_Integer" _ _)) = prim c s (vare "Prelude.*")
-      md c (PrimD s@(TopSig "Seri.Lib.Prelude.<" _ _)) = bprim c s "Prelude.<"
-      md c (PrimD s@(TopSig "Seri.Lib.Prelude.>" _ _)) = bprim c s "Prelude.>"
-      md c (PrimD s@(TopSig "Seri.Lib.Prelude.__prim_eq_Integer" _ _)) = bprim c s "Prelude.=="
-      md c (PrimD s@(TopSig "Seri.Lib.Prelude.__prim_eq_Char" _ _)) = bprim c s "Prelude.=="
-      md c (PrimD s@(TopSig "Seri.Lib.Prelude.valueof" _ _)) = return []
-      md c (PrimD s@(TopSig "Seri.Lib.Prelude.numeric" _ _)) = return []
+      md _ (DataD n _ _) | n `elem` [
+        name "Char",
+        name "Integer",
+        name "()",
+        name "(,)",
+        name "(,,)",
+        name "(,,,)",
+        name "[]"] = return []
+      md c (PrimD s@(TopSig n _ _)) | n == name "Seri.Lib.Prelude.__prim_add_Integer" = prim c s (vare "Prelude.+")
+      md c (PrimD s@(TopSig n _ _)) | n == name "Seri.Lib.Prelude.__prim_sub_Integer" = prim c s (vare "Prelude.-")
+      md c (PrimD s@(TopSig n _ _)) | n == name "Seri.Lib.Prelude.__prim_mul_Integer" = prim c s (vare "Prelude.*")
+      md c (PrimD s@(TopSig n _ _)) | n == name "Seri.Lib.Prelude.<" = bprim c s "Prelude.<"
+      md c (PrimD s@(TopSig n _ _)) | n == name "Seri.Lib.Prelude.>" = bprim c s "Prelude.>"
+      md c (PrimD s@(TopSig n _ _)) | n == name "Seri.Lib.Prelude.__prim_eq_Integer" = bprim c s "Prelude.=="
+      md c (PrimD s@(TopSig n _ _)) | n == name "Seri.Lib.Prelude.__prim_eq_Char" = bprim c s "Prelude.=="
+      md c (PrimD s@(TopSig n _ _)) | n == name "Seri.Lib.Prelude.valueof" = return []
+      md c (PrimD s@(TopSig n _ _)) | n == name "Seri.Lib.Prelude.numeric" = return []
 
-      md c (DataD "Bit" _ _) = return []
-      md c (PrimD s@(TopSig "Seri.Lib.Bit.__prim_fromInteger_Bit" _ _)) = prim c s (vare "Prelude.fromInteger")
-      md c (PrimD s@(TopSig "Seri.Lib.Bit.__prim_eq_Bit" _ _)) = bprim c s "Prelude.=="
-      md c (PrimD s@(TopSig "Seri.Lib.Bit.__prim_add_Bit" _ _)) = prim c s (vare "Prelude.+")
-      md c (PrimD s@(TopSig "Seri.Lib.Bit.__prim_sub_Bit" _ _)) = prim c s (vare "Prelude.-")
-      md c (PrimD s@(TopSig "Seri.Lib.Bit.__prim_mul_Bit" _ _)) = prim c s (vare "Prelude.*")
-      md c (PrimD s@(TopSig "Seri.Lib.Bit.__prim_or_Bit" _ _)) = prim c s (vare "Bit.or")
-      md c (PrimD s@(TopSig "Seri.Lib.Bit.__prim_and_Bit" _ _)) = prim c s (vare "Bit.and")
-      md c (PrimD s@(TopSig "Seri.Lib.Bit.__prim_lsh_Bit" _ _)) = prim c s (vare "Bit.lsh")
-      md c (PrimD s@(TopSig "Seri.Lib.Bit.__prim_rshl_Bit" _ _)) = prim c s (vare "Bit.rshl")
-      md c (PrimD s@(TopSig "Seri.Lib.Bit.__prim_zeroExtend_Bit" _ _)) = prim c s (vare "Bit.zeroExtend")
-      md c (PrimD s@(TopSig "Seri.Lib.Bit.__prim_truncate_Bit" _ _)) = prim c s (vare "Bit.truncate")
+      md c (DataD n _ _) | n == name "Bit" = return []
+      md c (PrimD s@(TopSig n _ _)) | n == name "Seri.Lib.Bit.__prim_fromInteger_Bit" = prim c s (vare "Prelude.fromInteger")
+      md c (PrimD s@(TopSig n _ _)) | n == name "Seri.Lib.Bit.__prim_eq_Bit" = bprim c s "Prelude.=="
+      md c (PrimD s@(TopSig n _ _)) | n == name "Seri.Lib.Bit.__prim_add_Bit" = prim c s (vare "Prelude.+")
+      md c (PrimD s@(TopSig n _ _)) | n == name "Seri.Lib.Bit.__prim_sub_Bit" = prim c s (vare "Prelude.-")
+      md c (PrimD s@(TopSig n _ _)) | n == name "Seri.Lib.Bit.__prim_mul_Bit" = prim c s (vare "Prelude.*")
+      md c (PrimD s@(TopSig n _ _)) | n == name "Seri.Lib.Bit.__prim_or_Bit" = prim c s (vare "Bit.or")
+      md c (PrimD s@(TopSig n _ _)) | n == name "Seri.Lib.Bit.__prim_and_Bit" = prim c s (vare "Bit.and")
+      md c (PrimD s@(TopSig n _ _)) | n == name "Seri.Lib.Bit.__prim_lsh_Bit" = prim c s (vare "Bit.lsh")
+      md c (PrimD s@(TopSig n _ _)) | n == name "Seri.Lib.Bit.__prim_rshl_Bit" = prim c s (vare "Bit.rshl")
+      md c (PrimD s@(TopSig n _ _)) | n == name "Seri.Lib.Bit.__prim_zeroExtend_Bit" = prim c s (vare "Bit.zeroExtend")
+      md c (PrimD s@(TopSig n _ _)) | n == name "Seri.Lib.Bit.__prim_truncate_Bit" = prim c s (vare "Bit.truncate")
 
       md _ d = fail $ "preludeH does not apply to dec: " ++ pretty d
   in Compiler me mt md

@@ -116,8 +116,8 @@ compilation version idepth nocaseerr poly = Compilation {
 }
 
 -- | Convert a seri name to a yices name.
-yicesN :: String -> String
-yicesN = yicesname
+yicesN :: Name -> String
+yicesN = yicesname . pretty
 
 -- | Compile a seri type to a yices type
 -- Returns a list of yices commands needed to use the compiled type.
@@ -205,19 +205,19 @@ yExp (CaseE e ms) = do
      --                pattern p matches expression e
      --   bindings - a list of bindings made when p matches e.
      depat :: Pat -> Y.Expression -> CompilationM ([Y.Expression], [Y.Binding])
-     depat (ConP _ "True" []) e = return ([e], [])
-     depat (ConP _ "False" []) e = return ([Y.notE e], [])
+     depat (ConP _ n []) e | n == name "True" = return ([e], [])
+     depat (ConP _ n []) e | n == name "False" = return ([Y.notE e], [])
      depat (ConP _ n []) e =
-       let mypred = Y.eqE (Y.selectE e yicesti) (Y.varE (yicesname n))
+       let mypred = Y.eqE (Y.selectE e yicesti) (Y.varE (yicesname (pretty n)))
        in return ([mypred], [])
      depat (ConP _ n ps) e = do
        ci <- yicesci n
        let ce = Y.selectE e ci
        depats <- sequence [depat p (Y.selectE ce i) | (p, i) <- zip ps [1..]]
        let (preds, binds) = unzip depats
-       let mypred = Y.eqE (Y.selectE e yicesti) (Y.varE (yicesname n))
+       let mypred = Y.eqE (Y.selectE e yicesti) (Y.varE (yicesname (pretty n)))
        return (mypred:(concat preds), concat binds)
-     depat (VarP (Sig n t)) e = return ([], [(n, e)])
+     depat (VarP (Sig n t)) e = return ([], [(pretty n, e)])
      depat (LitP (IntegerL i)) e = return ([Y.eqE (Y.integerE i) e], [])
      depat (LitP (CharL c)) e = return ([Y.eqE (Y.integerE (fromIntegral $ ord c)) e], [])
      depat (WildP _) _ = return ([], [])
@@ -253,70 +253,70 @@ yExp (CaseE e ms) = do
              body <- dematch (Y.varE cnm) ms
              return $ yLetE [(cnm, e')] body
    )
-yExp (VarE (Sig "~error" t)) = do
+yExp (VarE (Sig n t)) | n == name "~error" = do
     errnm <- yfreeerr t
     return $ Y.varE errnm
 yExp e@(AppE a b) =
     case unappsE e of 
        ((ConE s):args) -> yCon s args
-       [VarE (Sig "Seri.Lib.Prelude.<" _), a, b] -> do   
+       [VarE (Sig n _), a, b] | n == name "Seri.Lib.Prelude.<" -> do   
            a' <- yExp a
            b' <- yExp b
            return (Y.ltE a' b')
-       [VarE (Sig "Seri.Lib.Prelude.>" _), a, b] -> do
+       [VarE (Sig n _), a, b] | n == name "Seri.Lib.Prelude.>" -> do
            a' <- yExp a
            b' <- yExp b
            return (Y.gtE a' b')
-       [VarE (Sig "Seri.Lib.Prelude.__prim_add_Integer" _), a, b] -> do
+       [VarE (Sig n _), a, b] | n == name "Seri.Lib.Prelude.__prim_add_Integer" -> do
            a' <- yExp a
            b' <- yExp b
            return (Y.addE a' b')
-       [VarE (Sig "Seri.Lib.Prelude.__prim_sub_Integer" _), a, b] -> do
+       [VarE (Sig n _), a, b] | n == name "Seri.Lib.Prelude.__prim_sub_Integer" -> do
            a' <- yExp a
            b' <- yExp b
            return (Y.subE a' b')
-       [VarE (Sig "Seri.Lib.Prelude.__prim_mul_Integer" _), a, b] -> do
+       [VarE (Sig n _), a, b] | n == name "Seri.Lib.Prelude.__prim_mul_Integer" -> do
            a' <- yExp a
            b' <- yExp b
            return (Y.mulE a' b')
-       [VarE (Sig "Seri.Lib.Prelude.__prim_eq_Integer" _), a, b] -> do
+       [VarE (Sig n _), a, b] | n == name "Seri.Lib.Prelude.__prim_eq_Integer" -> do
            a' <- yExp a
            b' <- yExp b
            return (Y.eqE a' b')
-       [VarE (Sig "Seri.Lib.Bit.__prim_eq_Bit" _), a, b] -> do
+       [VarE (Sig n _), a, b] | n == name "Seri.Lib.Bit.__prim_eq_Bit" -> do
            a' <- yExp a
            b' <- yExp b
            return (Y.eqE a' b')
-       [VarE (Sig "Seri.Lib.Bit.__prim_add_Bit" _), a, b] -> do
+       [VarE (Sig n _), a, b] | n == name "Seri.Lib.Bit.__prim_add_Bit" -> do
            a' <- yExp a
            b' <- yExp b
            return (Y.bvaddE a' b')
-       [VarE (Sig "Seri.Lib.Bit.__prim_or_Bit" _), a, b] -> do
+       [VarE (Sig n _), a, b] | n == name "Seri.Lib.Bit.__prim_or_Bit" -> do
            a' <- yExp a
            b' <- yExp b
            return (Y.bvorE a' b')
-       [VarE (Sig "Seri.Lib.Bit.__prim_and_Bit" _), a, b] -> do
+       [VarE (Sig n _), a, b] | n == name "Seri.Lib.Bit.__prim_and_Bit" -> do
            a' <- yExp a
            b' <- yExp b
            return (Y.bvandE a' b')
        -- TODO: should we allow shifting by an amount not statically
        -- determined? In that case, I think we need to convert the second
        -- argument to a bit vector in order to use yices bvshl function.
-       [VarE (Sig "Seri.Lib.Bit.__prim_lsh_Bit" _), a, (LitE (IntegerL v))] -> do
+       [VarE (Sig n _), a, (LitE (IntegerL v))] | n == name "Seri.Lib.Bit.__prim_lsh_Bit" -> do
            a' <- yExp a
            return (Y.bvshiftLeft0E a' v)
-       [VarE (Sig "Seri.Lib.Bit.__prim_rshl_Bit" _), a, (LitE (IntegerL v))] -> do
+       [VarE (Sig n _), a, (LitE (IntegerL v))] | n == name "Seri.Lib.Bit.__prim_rshl_Bit" -> do
            a' <- yExp a
            return (Y.bvshiftRight0E a' v)
-       [VarE (Sig "Seri.Lib.Bit.__prim_fromInteger_Bit" (AppT _ (ConT ('B':'i':'t':'$':'#':v)))), LitE (IntegerL x)] -> do
-           return (Y.mkbvE (read v) x)
-       [VarE (Sig "Seri.Lib.Bit.__prim_zeroExtend_Bit" (AppT (AppT _ (ConT ('B':'i':'t':'$':'#':sw))) (ConT ('B':'i':'t':'$':'#':tw)))), a] -> do
+       [VarE (Sig n (AppT _ (ConT bn))), LitE (IntegerL x)] | n == name "Seri.Lib.Bit.__prim_fromInteger_Bit" -> do
+           return (Y.mkbvE (bitnum bn) x)
+       [VarE (Sig n (AppT (AppT _ (ConT sw)) (ConT tw))), a] | n == name "Seri.Lib.Bit.__prim_zeroExtend_Bit" -> do
            a' <- yExp a
-           return (Y.bvzeroExtendE a' (read tw - read sw))
-       [VarE (Sig "Seri.Lib.Bit.__prim_trucate_Bit" (AppT (AppT _ (ConT ('B':'i':'t':'$':'#':sw))) (ConT ('B':'i':'t':'$':'#':tw)))), a] -> do
+           return (Y.bvzeroExtendE a' (bitnum tw - bitnum sw))
+       [VarE (Sig n (AppT (AppT _ (ConT sw)) (ConT tw))), a] | n == name "Seri.Lib.Bit.__prim_trucate_Bit" -> do
            a' <- yExp a
-           return (Y.bvextractE a' 0 (read tw - 1))
-       [VarE (Sig "Seri.SMT.Array.update" _), f, k, v] -> do
+           return (Y.bvextractE a' 0 (bitnum tw - 1))
+       [VarE (Sig n _), f, k, v] | n == name "Seri.SMT.Array.update" -> do
            f' <- yExp f
            k' <- yExp k
            v' <- yExp v
@@ -324,7 +324,7 @@ yExp e@(AppE a b) =
        [LamE (Sig n _) b, arg] -> do
            arg' <- yExp arg
            b' <- yExp b
-           return $ yLetE [(n, arg')] b'
+           return $ yLetE [(pretty n, arg')] b'
        _ -> do
            a' <- yExp a
            b' <- yExp b
@@ -332,7 +332,7 @@ yExp e@(AppE a b) =
 yExp l@(LamE (Sig n xt) e) = 
     yfail $ "lambda expression in yices target generation: " ++ pretty l
 yExp (ConE s) = yCon s []
-yExp (VarE (Sig n _)) = return $ Y.varE (yicesname n)
+yExp (VarE (Sig n _)) = return $ Y.varE (yicesname (pretty n))
 
 -- Let expression in yices.
 -- Tries to do simplification of the let so queries don't look quite so ugly.
@@ -343,11 +343,11 @@ yLetE bs e = Y.LetE bs e
 
 -- Generate yices code for a fully applied constructor application.
 yCon :: Sig -> [Exp] -> CompilationM Y.Expression
-yCon (Sig "True" _) [] = return Y.trueE
-yCon (Sig "False" _) [] = return Y.falseE
+yCon (Sig n _) [] | n == name "True" = return Y.trueE
+yCon (Sig n _) [] | n == name "False" = return Y.falseE
 yCon (Sig n ct) args = do
     let ConT dt = last $ unarrowsT ct
-    let tagged = Y.tupleUpdateE (Y.varE $ yicesuidt dt) yicesti (Y.varE $ yicesname n)
+    let tagged = Y.tupleUpdateE (Y.varE $ yicesuidt dt) yicesti (Y.varE $ yicesname (pretty n))
     if null args
         then return tagged
         else do
@@ -357,19 +357,19 @@ yCon (Sig n ct) args = do
 
 -- Given the name of a data type, return an uninterpreted constant of that
 -- type.
-yicesuidt :: Name -> Name
-yicesuidt n = yicesname $ "uidt~" ++ n
+yicesuidt :: Name -> String
+yicesuidt n = yicesname $ "uidt~" ++ pretty n
 
 -- Given the name of a data type, return the name of it's tag type.
-yicestag :: Name -> Name
-yicestag n = yicesname $ "tag~" ++ n
+yicestag :: Name -> String
+yicestag n = yicesname $ "tag~" ++ pretty n
 
 -- Given the name of a constructor, return the index for its fields in the
 -- data types tuple.
 yicesci :: Name -> CompilationM Integer
 yicesci n =
     let findidx :: Integer -> [Con] -> Failable Integer
-        findidx _ [] = fail $ "index for " ++ n ++ " not found"
+        findidx _ [] = fail $ "index for " ++ pretty n ++ " not found"
         findidx i ((Con cn []) : cs) = findidx i cs
         findidx i ((Con cn _) : _) | n == cn = return i
         findidx i (_ : cs) = findidx (i+1) cs
@@ -380,15 +380,15 @@ yicesci n =
             ConT dt -> do
                 (DataD _ _ cs) <- lift $ lookupDataD envr dt
                 lift $ findidx 2 cs
-            x -> error $ "yicesci: contype: " ++ pretty x ++ " when lookup up " ++ n
+            x -> error $ "yicesci: contype: " ++ pretty x ++ " when lookup up " ++ pretty n
 
 -- The tag index for a data type
 yicesti :: Integer
 yicesti = 1
 
 yType :: Type -> Failable Y.Type
-yType (ConT n) = return $ Y.VarT (yicesname n)
-yType (AppT (AppT (ConT "->") a) b) = do
+yType (ConT n) = return $ Y.VarT (yicesname (pretty n))
+yType (AppT (AppT (ConT n) a) b) | n == name "->"  = do
     a' <- yType a
     b' <- yType b
     return $ Y.ArrowT [a', b']
@@ -399,27 +399,27 @@ yType t = fail $ "Cannot compile to yices: " ++ pretty t
 yDec :: Dec -> CompilationM ()
 yDec (ValD (TopSig n [] t) _) = do
     -- TODO: should we allow this or not?
-    error $ "Variable " ++ n ++ " has not been inlined"
+    error $ "Variable " ++ pretty n ++ " has not been inlined"
 
-yDec (DataD "Integer" _ _) =
+yDec (DataD n _ _) | n == name "Integer"  =
     let deftype = Y.DefineType "Integer" (Just (Y.NormalTD Y.IntegerT))
     in addcmds [deftype]
 
-yDec (DataD "Char" _ _) =
+yDec (DataD n _ _) | n == name "Char" =
     let deftype = Y.DefineType "Char" (Just (Y.NormalTD Y.IntegerT))
     in addcmds [deftype]
 
-yDec (DataD "Bool" _ _) =
+yDec (DataD n _ _) | n == name "Bool" =
     let deftype = Y.DefineType "Bool" (Just (Y.NormalTD Y.BoolT))
     in addcmds [deftype]
 
-yDec (DataD bv@('B':'i':'t':'$':'#':v) _ _) =
-    let deftype = Y.DefineType (yicesname bv) (Just (Y.NormalTD (Y.BitVectorT (read v))))
+yDec (DataD bv _ _) | ntake 5 bv == name "Bit$#" =
+    let deftype = Y.DefineType (yicesname (pretty bv)) (Just (Y.NormalTD (Y.BitVectorT (bitnum bv))))
     in addcmds [deftype]
 
 yDec (DataD n [] cs) =
     let conname :: Con -> String
-        conname (Con n _) = yicesname n
+        conname (Con n _) = yicesname (pretty n)
 
         contype :: Con -> Failable (Maybe Y.Type)
         contype (Con _ []) = return Nothing
@@ -430,29 +430,29 @@ yDec (DataD n [] cs) =
         cts <- lift $ mapM contype cs
         let tag = Y.DefineType (yicestag n) (Just $ Y.ScalarTD (map conname cs))
         let ttype = Y.TupleT (Y.VarT (yicestag n) : (catMaybes cts))
-        let dt = Y.DefineType (yicesname n) (Just $ Y.NormalTD ttype)
-        let uidt = Y.Define (yicesuidt n) (Y.VarT (yicesname n)) Nothing
+        let dt = Y.DefineType (yicesname (pretty n)) (Just $ Y.NormalTD ttype)
+        let uidt = Y.Define (yicesuidt n) (Y.VarT (yicesname (pretty n))) Nothing
         addcmds [tag, dt, uidt]
 
-yDec (PrimD (TopSig "Seri.Lib.Prelude.<" _ _)) = return ()
-yDec (PrimD (TopSig "Seri.Lib.Prelude.>" _ _)) = return ()
-yDec (PrimD (TopSig "Seri.Lib.Prelude.__prim_add_Integer" _ _)) = return ()
-yDec (PrimD (TopSig "Seri.Lib.Prelude.__prim_sub_Integer" _ _)) = return ()
-yDec (PrimD (TopSig "Seri.Lib.Prelude.__prim_mul_Integer" _ _)) = return ()
-yDec (PrimD (TopSig "Seri.Lib.Prelude.__prim_eq_Integer" _ _)) = return ()
-yDec (PrimD (TopSig "Seri.Lib.Bit.__prim_add_Bit" _ _)) = return ()
-yDec (PrimD (TopSig "Seri.Lib.Bit.__prim_sub_Bit" _ _)) = return ()
-yDec (PrimD (TopSig "Seri.Lib.Bit.__prim_mul_Bit" _ _)) = return ()
-yDec (PrimD (TopSig "Seri.Lib.Bit.__prim_eq_Bit" _ _)) = return ()
-yDec (PrimD (TopSig "Seri.Lib.Bit.__prim_fromInteger_Bit" _ _)) = return ()
-yDec (PrimD (TopSig "Seri.Lib.Bit.__prim_zeroExtend_Bit" _ _)) = return ()
-yDec (PrimD (TopSig "Seri.Lib.Bit.__prim_trucate_Bit" _ _)) = return ()
-yDec (PrimD (TopSig "Seri.Lib.Bit.__prim_lsh_Bit" _ _)) = return ()
-yDec (PrimD (TopSig "Seri.Lib.Bit.__prim_rshl_Bit" _ _)) = return ()
-yDec (PrimD (TopSig "Seri.Lib.Bit.__prim_or_Bit" _ _)) = return ()
-yDec (PrimD (TopSig "Seri.Lib.Bit.__prim_and_Bit" _ _)) = return ()
-yDec (PrimD (TopSig "~error" _ _)) = return ()
-yDec (PrimD (TopSig "Seri.SMT.Array.update" _ _)) = return ()
+yDec (PrimD (TopSig n _ _)) | n == name "Seri.Lib.Prelude.<" = return ()
+yDec (PrimD (TopSig n _ _)) | n == name "Seri.Lib.Prelude.>" = return ()
+yDec (PrimD (TopSig n _ _)) | n == name "Seri.Lib.Prelude.__prim_add_Integer" = return ()
+yDec (PrimD (TopSig n _ _)) | n == name "Seri.Lib.Prelude.__prim_sub_Integer" = return ()
+yDec (PrimD (TopSig n _ _)) | n == name "Seri.Lib.Prelude.__prim_mul_Integer" = return ()
+yDec (PrimD (TopSig n _ _)) | n == name "Seri.Lib.Prelude.__prim_eq_Integer" = return ()
+yDec (PrimD (TopSig n _ _)) | n == name "Seri.Lib.Bit.__prim_add_Bit" = return ()
+yDec (PrimD (TopSig n _ _)) | n == name "Seri.Lib.Bit.__prim_sub_Bit" = return ()
+yDec (PrimD (TopSig n _ _)) | n == name "Seri.Lib.Bit.__prim_mul_Bit" = return ()
+yDec (PrimD (TopSig n _ _)) | n == name "Seri.Lib.Bit.__prim_eq_Bit" = return ()
+yDec (PrimD (TopSig n _ _)) | n == name "Seri.Lib.Bit.__prim_fromInteger_Bit" = return ()
+yDec (PrimD (TopSig n _ _)) | n == name "Seri.Lib.Bit.__prim_zeroExtend_Bit" = return ()
+yDec (PrimD (TopSig n _ _)) | n == name "Seri.Lib.Bit.__prim_trucate_Bit" = return ()
+yDec (PrimD (TopSig n _ _)) | n == name "Seri.Lib.Bit.__prim_lsh_Bit" = return ()
+yDec (PrimD (TopSig n _ _)) | n == name "Seri.Lib.Bit.__prim_rshl_Bit" = return ()
+yDec (PrimD (TopSig n _ _)) | n == name "Seri.Lib.Bit.__prim_or_Bit" = return ()
+yDec (PrimD (TopSig n _ _)) | n == name "Seri.Lib.Bit.__prim_and_Bit" = return ()
+yDec (PrimD (TopSig n _ _)) | n == name "~error" = return ()
+yDec (PrimD (TopSig n _ _)) | n == name "Seri.SMT.Array.update" = return ()
 
 yDec d = yfail $ "Cannot compile to yices: " ++ pretty d
 
@@ -462,10 +462,10 @@ yDec d = yfail $ "Cannot compile to yices: " ++ pretty d
 -- This way we dont need to support strings in yices to use error.
 tweakings :: [Dec]
 tweakings =
-  let body = clauseE [Clause [WildP stringT] (VarE (Sig "~error" (VarT "a")))]
-      t = arrowsT [listT charT, VarT "a"]
-      errorv = ValD (TopSig "Seri.Lib.Prelude.error" [] t) body
-      errorp = PrimD (TopSig "~error" [] (VarT "a"))
+  let body = clauseE [Clause [WildP stringT] (VarE (Sig (name "~error") (VarT (name "a"))))]
+      t = arrowsT [listT charT, VarT (name "a")]
+      errorv = ValD (TopSig (name "Seri.Lib.Prelude.error") [] t) body
+      errorp = PrimD (TopSig (name "~error") [] (VarT (name "a")))
   in [errorv, errorp]
 
 -- Given a seri identifer, turn it into a valid yices identifier.
@@ -494,4 +494,8 @@ yicesname ('(':cs) = "__oparen" ++ yicesname cs
 yicesname (')':cs) = "__cparen" ++ yicesname cs
 yicesname (',':cs) = "__comma" ++ yicesname cs
 yicesname (c:cs) = c : yicesname cs
+
+bitnum :: Name -> Integer
+bitnum n = read (drop 5 (pretty n))
+
 

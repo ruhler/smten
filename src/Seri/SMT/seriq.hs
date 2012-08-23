@@ -60,8 +60,8 @@ main = do
     attemptIO $ typecheck env decs
 
     let opts = (RunOptions dbg 30 True)
-    tmain <- attemptIO $ lookupVarType env m
+    tmain <- attemptIO $ lookupVarType env (name m)
     querier <- mkQuerier opts env
-    (result, _) <- runQuery querier (VarE (Sig m tmain))
+    (result, _) <- runQuery querier (VarE (Sig (name m) tmain))
     putStrLn $ pretty result
 

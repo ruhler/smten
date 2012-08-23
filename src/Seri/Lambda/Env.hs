@@ -144,14 +144,14 @@ lookupValD :: Env -> Name -> Failable Dec
 lookupValD env n =
   case (HT.lookup n (e_vitable env)) of
      Just (DecVI d@(ValD {})) -> return d
-     _ -> fail $ "lookupValD: " ++ n ++ " is not a ValD"
+     _ -> fail $ "lookupValD: " ++ pretty n ++ " is not a ValD"
 
 -- | Look up a PrimD with given Name in the given Environment.
 lookupPrimD :: Env -> Name -> Failable Dec
 lookupPrimD env n =
   case (HT.lookup n (e_vitable env)) of
      Just (DecVI d@(PrimD {})) -> return d
-     _ -> fail $ "lookupPrimD: " ++ n ++ " is not a PrimD"
+     _ -> fail $ "lookupPrimD: " ++ pretty n ++ " is not a PrimD"
  
         
 -- | Look up a DataD with given type constructor Name in the given
@@ -160,7 +160,7 @@ lookupDataD :: Env -> Name -> Failable Dec
 lookupDataD env n =
   case (HT.lookup n (e_vitable env)) of
      Just (DecVI d@(DataD {})) -> return d  
-     _ -> fail $ "lookupDataD: " ++ n ++ " is not a DataD"
+     _ -> fail $ "lookupDataD: " ++ pretty n ++ " is not a DataD"
 
 -- | Look up a ClassD with given Name in the given Environment.
 lookupClassD :: Env -> Name -> Failable Dec
@@ -168,7 +168,7 @@ lookupClassD env n =
   let theClassD :: Dec -> Bool
       theClassD (ClassD nm _ _) = n == nm
       theClassD _ = False
-  in theOneOf "ClassD" n theClassD env
+  in theOneOf "ClassD" (pretty n) theClassD env
 
 -- | Look up an InstD in the given Environment.
 lookupInstD :: Env -> Class -> Failable Dec
@@ -188,7 +188,7 @@ lookupVar :: Env -> Sig -> Failable (Type, Exp)
 lookupVar env s@(Sig n t) =
   case HT.lookup n (e_vitable env) of
      Just (DecVI (ValD (TopSig _ _ t) v)) -> return (t, v)
-     Just (DecVI (PrimD {})) -> fail $ "lookupVar: " ++ n ++ " is primitive"
+     Just (DecVI (PrimD {})) -> fail $ "lookupVar: " ++ pretty n ++ " is primitive"
      Just (ClassVI cn cts st) ->
         let ts = assign (assignments st t) (map tyVarType cts)
 
@@ -200,7 +200,7 @@ lookupVar env s@(Sig n t) =
             e <- msum (map mlook ms)
             let assigns = concat [assignments p c | (p, c) <- zip pts ts]
             return (st, assign assigns e)
-     _ -> fail $ "lookupVar: " ++ n ++ " not found"
+     _ -> fail $ "lookupVar: " ++ pretty n ++ " not found"
 
 -- | Look up the value of a variable in an environment.
 lookupVarValue :: Env -> Sig -> Failable Exp
@@ -218,7 +218,7 @@ lookupVarType env n = do
     Just (DecVI (ValD (TopSig _ _ t) _)) -> return t
     Just (DecVI (PrimD (TopSig _ _ t))) -> return t
     Just (ClassVI _ _ t) -> return t
-    Nothing -> fail $ "lookupVarType: '" ++ n ++ "' not found"
+    Nothing -> fail $ "lookupVarType: '" ++ pretty n ++ "' not found"
 
 -- | Given the name of a method and a specific class instance for the method,
 -- return the type of that method for the specific instance.
@@ -227,14 +227,14 @@ lookupMethodType env n (Class _ ts) = do
     case HT.lookup n (e_vitable env) of
         Just (ClassVI _ vars t) ->
             return $ assign (zip (map tyVarName vars) ts) t
-        _ -> fail $ "lookupMethodType: " ++ n ++ " not found"
+        _ -> fail $ "lookupMethodType: " ++ pretty n ++ " not found"
 
 -- | Given the name of a data constructor in the environment, return its type.
 lookupDataConType :: Env -> Name -> Failable Type
 lookupDataConType env n = 
     case HT.lookup n (e_dctable env) of
         Just t -> return t
-        _ -> fail $ "lookupDataConType: " ++ n ++ " not found"
+        _ -> fail $ "lookupDataConType: " ++ pretty n ++ " not found"
 
 -- | Look up VarInfo for the variable with given signature.
 -- Fails if the variable is not declared or an instance or primitive.
@@ -246,5 +246,5 @@ lookupVarInfo env (Sig n t) =
      Just (ClassVI cn cts st) ->
         let ts = assign (assignments st t) (map tyVarType cts)
         in return $ Instance (Class cn ts)
-     _ -> fail $ "lookupVarInfo: " ++ n ++ " not found"
+     _ -> fail $ "lookupVarInfo: " ++ pretty n ++ " not found"
 

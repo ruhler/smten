@@ -52,8 +52,8 @@ import Seri.Lambda.Utils
 
 -- | if p then a else b
 ifE :: Exp -> Exp -> Exp -> Exp
-ifE p a b = CaseE p [Match (ConP (ConT "Bool") "True" []) a,
-                     Match (ConP (ConT "Bool") "False" []) b]
+ifE p a b = CaseE p [Match (ConP (ConT (name "Bool")) (name "True") []) a,
+                     Match (ConP (ConT (name "Bool")) (name "False") []) b]
 
 -- | \a b ... c -> e
 lamE :: [Sig] -> Exp -> Exp
@@ -82,11 +82,11 @@ doE [NoBindS e] = e
 doE ((NoBindS e):stmts) =
     let rest = doE stmts
         tbind = (arrowsT [typeof e, typeof rest, typeof rest])
-    in appsE [VarE (Sig ">>" tbind), e, rest]
+    in appsE [VarE (Sig (name ">>") tbind), e, rest]
 doE ((BindS s e):stmts) =
     let f = LamE s (doE stmts)
         tbind = (arrowsT [typeof e, typeof f, outputT (typeof f)])
-    in appsE [VarE (Sig ">>=" tbind), e, f]
+    in appsE [VarE (Sig (name ">>=") tbind), e, f]
 
 data Clause = Clause [Pat] Exp
     
@@ -105,7 +105,7 @@ clauseE clauses@(_:_) =
       mkmatch :: Clause -> Match
       mkmatch (Clause pats body) = Match (tupP pats) body
 
-      args = [[c] | c <- take nargs "abcdefghijklmnopqrstuvwxyz"]
+      args = [name [c] | c <- take nargs "abcdefghijklmnopqrstuvwxyz"]
       casearg = tupE [VarE (Sig n (typeof p)) | (n, p) <- zip args pats1]
       caseexp = CaseE casearg (map mkmatch clauses)
       lamargs = [Sig n (typeof p) | (n, p) <- zip args pats1]
@@ -120,11 +120,11 @@ data ConRec = NormalC Name [Type]
 
 -- return the undef variable name for a given data constructor name.
 record_undefnm :: Name -> Name
-record_undefnm n = "__" ++ n ++ "_undef"
+record_undefnm n = name "__" `nappend` n `nappend` name "_undef"
 
 -- return the updater for a given field.
 record_updnm :: Name -> Name
-record_updnm n = "__" ++ n ++ "_update"
+record_updnm n = name "__" `nappend` n `nappend` name "_update"
 
 -- | Desugar record constructors from a data declaration.
 -- Generates:
@@ -144,7 +144,7 @@ recordD nm vars cons =
       mkundef (Con n ts) =
         let undefnm = (record_undefnm n)
             undefet = arrowsT $ ts ++ [dt]
-            undefe = appsE $ ConE (Sig n undefet) : [VarE (Sig "undefined" t) | t <- ts]
+            undefe = appsE $ ConE (Sig n undefet) : [VarE (Sig (name "undefined") t) | t <- ts]
         in ValD (TopSig undefnm [] dt) undefe
 
       -- TODO: handle correctly the case where two different constructors
@@ -156,9 +156,9 @@ recordD nm vars cons =
             mkacc ((n, t), i) = 
               let at = arrowsT [dt, t] 
                   pat = ConP dt cn ([WildP pt | (_, pt) <- take i ts]
-                         ++ [VarP (Sig "x" t)]
+                         ++ [VarP (Sig (name "x") t)]
                          ++ [WildP pt | (_, pt) <- drop (i+1) ts])
-                  body = clauseE [Clause [pat] (VarE (Sig "x" t))]
+                  body = clauseE [Clause [pat] (VarE (Sig (name "x") t))]
               in ValD (TopSig n [] at) body
         in map mkacc (zip ts [0..])
 
