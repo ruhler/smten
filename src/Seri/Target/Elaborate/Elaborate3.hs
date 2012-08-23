@@ -119,6 +119,23 @@ elaborate mode env exp =
             Just v -> v
             Nothing -> VarEH ES_None s
          
+     
+      
+      doReduce :: ExpH -> Bool
+      doReduce _ = True
+      --doReduce = doReduce' False
+
+      doReduce' :: Bool -> ExpH -> Bool
+      doReduce' _ (LitEH {}) = True
+      doReduce' _ (CaseEH {}) = False
+      doReduce' _ (AppEH _ a b) = doReduce' True a && doReduce' True b
+      doReduce' _ (LamEH {}) = True
+      doReduce' _ (ConEH {}) = True
+      doReduce' False (VarEH _ s) = True
+      doReduce' True (VarEH _ s) =
+        case (attemptM $ lookupVarInfo env s) of
+            Just _ -> True
+            Nothing -> False
 
       -- elaborate the given expression
       elab :: ExpH -> ExpH
@@ -141,7 +158,7 @@ elaborate mode env exp =
       elab e@(AppEH (ES_Some m) _ _) | mode <= m = e
       elab (AppEH _ a b) = 
         case (elab a, elab b) of
-            (LamEH _ s f, b') -> elab (f b')
+            (LamEH _ s f, b') | doReduce b' -> elab (f b')
             (a', b') -> AppEH (ES_Some mode) a' b'
       elab e@(LamEH (ES_Some m) _ _) | mode <= m = e
       elab (LamEH _ s f) = LamEH (ES_Some mode) s (\x -> elab (f x))
@@ -259,5 +276,4 @@ biniprim s f =
       case (a, b) of
          (LitEH (IntegerL ai), LitEH (IntegerL bi)) -> f ai bi
          _ -> AppEH (ES_Some WHNF) (AppEH (ES_Some WHNF) (VarEH (ES_Some SNF) s) a) b
-
 

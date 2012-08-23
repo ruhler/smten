@@ -105,3 +105,31 @@ okay, I know a quick check.
 
 And see if this helps with the Sharing benchmark too.
 
+Thu Aug 23 17:59:57 EDT 2012
+
+The trouble is... what about things like string literals? And list literals?
+Those are complex expressions, one could argue, but shouldn't I inline
+them?
+
+Really the test we want is: does it have any free variables in it. But... how
+can I figure that out? Can't I not figure that out until after converting back
+to a regular expression?
+
+I really was so hopeful about this elaborator...
+
+Thu Aug 23 18:16:52 EDT 2012
+
+Well! So it turns out not overly inlining is a big deal. I have a hack for
+when I inline, which isn't so nice, but it makes a huge difference in
+performance.
+
+Of course... for Sudoku we have the sharing problem again with the list thing.
+That's sad.
+
+Okay, so here's really what I should do.
+
+Compare performance of: noshare in Elaborator against noshare in Elaborator3.
+That should tell me which is better performance, and which has the potential
+to be better performing.
+
+
