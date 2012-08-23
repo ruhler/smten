@@ -1,0 +1,107 @@
+
+Thu Aug 23 11:37:42 EDT 2012
+
+Goal for today?
+
+Look into the elaborator issue. It would be great if I could get BCL3 working
+properly, get some idea of the performance.
+
+Thu Aug 23 11:38:15 EDT 2012
+
+Let me start with the AllQ query, because that shouldn't be too hard to make
+work.
+
+Thu Aug 23 11:51:51 EDT 2012
+
+Looks like it's trying to do elaboration inside a case before we've made a
+query to yices to know what the answer should be. That's ... not what I want.
+
+Thu Aug 23 12:00:04 EDT 2012
+
+So, it's elaborating too far. We want to do WHNF elaboration, but it's going
+inside of the case which does or does not match?
+
+Thu Aug 23 12:01:18 EDT 2012
+
+What it ought to do is go to the primitive Seri.SMT.SMT.bind_query primitive,
+then stop...
+
+Except, as we know, for pattern matching, we want to elaborate all the
+arguments in weak head normal form too...
+
+So it should be:
+
+bind_query (free) (\x -> ...)
+
+And it shouldn't go any further.
+
+And, well, that's all good and fine, but consider this ... has an infinite
+loop in allQ, which we end up unfolding and folding again. But that
+unfold/fold is infinite!
+
+Yes. That appears to be the problem. toh is infinite, and we aren't lazy (when
+we ought to be)
+
+So, I should make it so we are explicitly lazy in toh. Have an ExpEH which is
+a lazy call to toh?
+
+Or, perhaps we can be lazy about inlining? Ideally I'd like to be totally
+lazy: don't change anything we don't have to, but this could not work out with
+new names and reductions. But, inlining is different. We can be lazy about
+that, because we don't have to reduce inside things which are inlined...
+
+Here's the plan. Have something called DVarEH, which is a declared variable.
+We can even cache the looked up and substituted value. When you try to
+elaborate it, you call toh on its value. If you don't try to elaborate it, it
+stays as it was, then, when you go to toe it, it stays as is.
+
+That sounds reasonable to me.
+
+Thu Aug 23 12:12:10 EDT 2012
+
+Err... so it may be cleaner to just leave variables as variables that are
+declared until elaboration. We don't need to add a constructor, we can save
+the initial lookup if not needed. Let me try that out instead. I worry we'll
+do more lookups than necessary, but maybe not.
+
+I suppose the real concern is continuously looking up free variables. So
+perhaps what I ought to do is have a flag for free variables saying if they
+have been elaborated or not. That way we can avoid the extra lookup once we
+try to elaborate free variables that aren't declared. 
+
+Good. Sounds like a plan to me.
+
+Thu Aug 23 12:22:33 EDT 2012
+
+Looks like that fixed that bug. Cool.
+
+Nifty! Array works, AllQ works.
+
+Remaining is: Bit (i have to add the primitives)
+              BCL3 (let me try it now!)
+
+Thu Aug 23 12:24:44 EDT 2012
+
+looks like BCL3 works. And sudoku?
+
+Sudoku works!
+
+Okay, but, trouble was... BCL3 was slower than I wanted it to be. Much slower.
+And I suspect that's because of inlining everything...
+
+Thu Aug 23 13:26:27 EDT 2012
+
+Well, now things are slower because we have lots of free variable names to
+think up. So fresh is slow (I could make it faster by not trying to use the
+debugging based names). And I still think we do lots of inlining which we
+shouldn't.
+
+Let me try to tackle that later problem. Don't inline something if it is
+"complex". Leave it as a variable and see how that works?
+
+But how can I do that? After elaboration, everything is already inlined.
+
+okay, I know a quick check.
+
+And see if this helps with the Sharing benchmark too.
+
