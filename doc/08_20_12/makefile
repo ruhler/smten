@@ -3,6 +3,7 @@ images := \
 	input1 input2\
 	current1 current2 current3 current4\
 	current5 current6 current7 current8\
+	current9 current10 current11\
 	parser1 parser2 parser3 parser4 parser5 parser6 parser7 parser8\
 	isvalid1 isvalid2 isvalid3 isvalid4 isvalid5\
 	isvalid6 isvalid7 isvalid8 isvalid9 isvalid10\
