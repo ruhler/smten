@@ -67,8 +67,8 @@ delambdafy' reds e =
            in delambdafy' ((name, x):reds) b
 
         -- Push application inside lambdas where possible.
-        -- Rewrite:    ((\a -> b) x) y
-        --             ((\a -> b y) x)
+        -- Rewrite:    ((\a -> f) x) y
+        --             ((\a -> f y) x)
         -- With proper renaming.
         (AppE c@(LamE {}) x, y) ->
            let LamE s b = alpharename (free' y) c

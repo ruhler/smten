@@ -132,4 +132,29 @@ Compare performance of: noshare in Elaborator against noshare in Elaborator3.
 That should tell me which is better performance, and which has the potential
 to be better performing.
 
+Thu Aug 23 20:04:02 EDT 2012
+
+Well, noshare, elab3 does much better. With share, they are the same. Good
+news is, I can switch over entirely to elab3, which I think is a cleaner
+implementation, without any loss. Well... except for the generated queries get
+a little bit uglier.
+
+To make the queries really clean, I need to always inline when there are 0 or
+1 uses of the variable.
+
+Performance summary for elab3 with sharing:
+
+
+elab:           16.6 15.2
+runCmds:        16.5  5.6
+mono:           15.9 25.6
+delambidfy:     11.7 15.5
+typeinfer:       3.8  3.5
+load:            2.8  4.0
+flatten:         1.0  0.5
+
+But! Remember, sudoku doesn't work with sharing turned on.
+
+So... looks like I'm back to where I was before: just work on little things
+for performance.
 

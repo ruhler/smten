@@ -70,7 +70,7 @@ elaborate' mode env freenms e =
       elabmenms nms = elaborate' mode env (nms ++ freenms)
       elabmenm n = elaborate' mode env (n:freenms)
 
-      dontshare = True
+      dontshare = False
         
       hasNonPrimFree :: [Name] -> Exp -> Bool
       hasNonPrimFree nms e =
@@ -116,36 +116,36 @@ elaborate' mode env freenms e =
              (LamE (Sig name _) body, rb) | dontshare ->
                  elabme (reducern [(name, rb)] body)
 
-             (VarE (Sig "Seri.Lib.Prelude.valueof" t), _) ->
+             (VarE (Sig n t), _) | n == name "Seri.Lib.Prelude.valueof" ->
                 let NumT nt = head $ unarrowsT t
                 in integerE (nteval nt)
-             (VarE (Sig "Seri.Lib.Bit.__prim_zeroExtend_Bit" (AppT _ (AppT _ (NumT wt)))), (AppE (VarE (Sig "Seri.Lib.Bit.__prim_fromInteger_Bit" (AppT _ (AppT _ (NumT ws))))) (LitE (IntegerL ia)))) -> AppE (VarE (Sig "Seri.Lib.Bit.__prim_fromInteger_Bit" (arrowsT [integerT, bitT (nteval wt)]))) (integerE $ bv_value (bv_zero_extend (nteval wt - nteval ws) (bv_make (nteval ws) ia)))
-             (VarE (Sig "Seri.Lib.Bit.__prim_truncate_Bit" (AppT _ (AppT _ (NumT wt)))), (AppE (VarE (Sig "Seri.Lib.Bit.__prim_fromInteger_Bit" (AppT _ (AppT _ (NumT ws))))) (LitE (IntegerL ia)))) -> AppE (VarE (Sig "Seri.Lib.Bit.__prim_fromInteger_Bit" (arrowsT [integerT, bitT (nteval wt)]))) (integerE $ bv_value (bv_truncate (nteval wt) (bv_make (nteval ws) ia)))
-             (AppE (VarE (Sig "Seri.Lib.Prelude.__prim_eq_Char" _)) (LitE (CharL ia)), LitE (CharL ib)) -> boolE (ia == ib)
-             (AppE (VarE (Sig "Seri.Lib.Prelude.__prim_eq_Integer" _))  (LitE (IntegerL ia)), LitE (IntegerL ib)) -> boolE (ia == ib)
-             (AppE (VarE (Sig "Seri.Lib.Prelude.__prim_add_Integer" _)) (LitE (IntegerL ia)), LitE (IntegerL ib)) -> integerE (ia + ib)
-             (AppE (VarE (Sig "Seri.Lib.Prelude.__prim_sub_Integer" _)) (LitE (IntegerL ia)), LitE (IntegerL ib)) -> integerE (ia - ib)
-             (AppE (VarE (Sig "Seri.Lib.Prelude.__prim_mul_Integer" _)) (LitE (IntegerL ia)), LitE (IntegerL ib)) -> integerE (ia * ib)
-             (AppE (VarE (Sig "Seri.Lib.Prelude.<" _))                  (LitE (IntegerL ia)), LitE (IntegerL ib)) -> boolE (ia < ib)
-             (AppE (VarE (Sig "Seri.Lib.Prelude.>" _))                  (LitE (IntegerL ia)), LitE (IntegerL ib)) -> boolE (ia > ib)
+--             (VarE (Sig "Seri.Lib.Bit.__prim_zeroExtend_Bit" (AppT _ (AppT _ (NumT wt)))), (AppE (VarE (Sig "Seri.Lib.Bit.__prim_fromInteger_Bit" (AppT _ (AppT _ (NumT ws))))) (LitE (IntegerL ia)))) -> AppE (VarE (Sig "Seri.Lib.Bit.__prim_fromInteger_Bit" (arrowsT [integerT, bitT (nteval wt)]))) (integerE $ bv_value (bv_zero_extend (nteval wt - nteval ws) (bv_make (nteval ws) ia)))
+--             (VarE (Sig "Seri.Lib.Bit.__prim_truncate_Bit" (AppT _ (AppT _ (NumT wt)))), (AppE (VarE (Sig "Seri.Lib.Bit.__prim_fromInteger_Bit" (AppT _ (AppT _ (NumT ws))))) (LitE (IntegerL ia)))) -> AppE (VarE (Sig "Seri.Lib.Bit.__prim_fromInteger_Bit" (arrowsT [integerT, bitT (nteval wt)]))) (integerE $ bv_value (bv_truncate (nteval wt) (bv_make (nteval ws) ia)))
+             (AppE (VarE (Sig n _)) (LitE (CharL ia)), LitE (CharL ib)) | n == name "Seri.Lib.Prelude.__prim_eq_Char" -> boolE (ia == ib)
+             (AppE (VarE (Sig n _))  (LitE (IntegerL ia)), LitE (IntegerL ib)) | n == name "Seri.Lib.Prelude.__prim_eq_Integer" -> boolE (ia == ib)
+             (AppE (VarE (Sig n _)) (LitE (IntegerL ia)), LitE (IntegerL ib)) | n == name "Seri.Lib.Prelude.__prim_add_Integer" -> integerE (ia + ib)
+             (AppE (VarE (Sig n _)) (LitE (IntegerL ia)), LitE (IntegerL ib)) | n == name "Seri.Lib.Prelude.__prim_sub_Integer" -> integerE (ia - ib)
+             (AppE (VarE (Sig n _)) (LitE (IntegerL ia)), LitE (IntegerL ib)) | n == name "Seri.Lib.Prelude.__prim_mul_Integer" -> integerE (ia * ib)
+             (AppE (VarE (Sig n _)) (LitE (IntegerL ia)), LitE (IntegerL ib)) | n == name "Seri.Lib.Prelude.<" -> boolE (ia < ib)
+             (AppE (VarE (Sig n _)) (LitE (IntegerL ia)), LitE (IntegerL ib)) | n == name "Seri.Lib.Prelude.>" -> boolE (ia > ib)
              -- TODO: there has got to be a better way to specify this than
              -- writing it all out. Pattern abstractions anyone?
-             (AppE (VarE (Sig "Seri.Lib.Bit.__prim_eq_Bit" _)) (AppE (VarE (Sig "Seri.Lib.Bit.__prim_fromInteger_Bit" (AppT _ (AppT _ (NumT w))))) (LitE (IntegerL ia))), AppE (VarE (Sig "Seri.Lib.Bit.__prim_fromInteger_Bit" _)) (LitE (IntegerL ib))) -> boolE $ bv_make (nteval w) ia == bv_make (nteval w) ib
-             (AppE (VarE (Sig "Seri.Lib.Bit.__prim_add_Bit" _)) (AppE (VarE (Sig "Seri.Lib.Bit.__prim_fromInteger_Bit" (AppT _ (AppT _ (NumT w))))) (LitE (IntegerL ia))), AppE (VarE (Sig "Seri.Lib.Bit.__prim_fromInteger_Bit" _)) (LitE (IntegerL ib))) -> AppE (VarE (Sig "Seri.Lib.Bit.__prim_fromInteger_Bit" (arrowsT [integerT, bitT (nteval w)]))) (integerE $ bv_value (bv_make (nteval w) ia + bv_make (nteval w) ib))
-             (AppE (VarE (Sig "Seri.Lib.Bit.__prim_sub_Bit" _)) (AppE (VarE (Sig "Seri.Lib.Bit.__prim_fromInteger_Bit" (AppT _ (AppT _ (NumT w))))) (LitE (IntegerL ia))), AppE (VarE (Sig "Seri.Lib.Bit.__prim_fromInteger_Bit" _)) (LitE (IntegerL ib))) -> AppE (VarE (Sig "Seri.Lib.Bit.__prim_fromInteger_Bit" (arrowsT [integerT, bitT (nteval w)]))) (integerE $ bv_value (bv_make (nteval w) ia - bv_make (nteval w) ib))
-             (AppE (VarE (Sig "Seri.Lib.Bit.__prim_mul_Bit" _)) (AppE (VarE (Sig "Seri.Lib.Bit.__prim_fromInteger_Bit" (AppT _ (AppT _ (NumT w))))) (LitE (IntegerL ia))), AppE (VarE (Sig "Seri.Lib.Bit.__prim_fromInteger_Bit" _)) (LitE (IntegerL ib))) -> AppE (VarE (Sig "Seri.Lib.Bit.__prim_fromInteger_Bit" (arrowsT [integerT, bitT (nteval w)]))) (integerE $ bv_value (bv_make (nteval w) ia * bv_make (nteval w) ib))
-             (AppE (VarE (Sig "Seri.Lib.Bit.__prim_or_Bit" _)) (AppE (VarE (Sig "Seri.Lib.Bit.__prim_fromInteger_Bit" (AppT _ (AppT _ (NumT w))))) (LitE (IntegerL ia))), AppE (VarE (Sig "Seri.Lib.Bit.__prim_fromInteger_Bit" _)) (LitE (IntegerL ib))) -> AppE (VarE (Sig "Seri.Lib.Bit.__prim_fromInteger_Bit" (arrowsT [integerT, bitT (nteval w)]))) (integerE $ bv_value (bv_make (nteval w) ia .|. bv_make (nteval w) ib))
-             (AppE (VarE (Sig "Seri.Lib.Bit.__prim_and_Bit" _)) (AppE (VarE (Sig "Seri.Lib.Bit.__prim_fromInteger_Bit" (AppT _ (AppT _ (NumT w))))) (LitE (IntegerL ia))), AppE (VarE (Sig "Seri.Lib.Bit.__prim_fromInteger_Bit" _)) (LitE (IntegerL ib))) -> AppE (VarE (Sig "Seri.Lib.Bit.__prim_fromInteger_Bit" (arrowsT [integerT, bitT (nteval w)]))) (integerE $ bv_value (bv_make (nteval w) ia .&. bv_make (nteval w) ib))
-             (AppE (VarE (Sig "Seri.Lib.Bit.__prim_lsh_Bit" _)) (AppE (VarE (Sig "Seri.Lib.Bit.__prim_fromInteger_Bit" (AppT _ (AppT _ (NumT w))))) (LitE (IntegerL ia))), LitE (IntegerL ib)) -> AppE (VarE (Sig "Seri.Lib.Bit.__prim_fromInteger_Bit" (arrowsT [integerT, bitT (nteval w)]))) (integerE $ bv_value (bv_make (nteval w) ia `shiftL` fromInteger ib))
-             (AppE (VarE (Sig "Seri.Lib.Bit.__prim_rshl_Bit" _)) (AppE (VarE (Sig "Seri.Lib.Bit.__prim_fromInteger_Bit" (AppT _ (AppT _ (NumT w))))) (LitE (IntegerL ia))), LitE (IntegerL ib)) -> AppE (VarE (Sig "Seri.Lib.Bit.__prim_fromInteger_Bit" (arrowsT [integerT, bitT (nteval w)]))) (integerE $ bv_value (bv_make (nteval w) ia `shiftR` fromInteger ib))
+--             (AppE (VarE (Sig "Seri.Lib.Bit.__prim_eq_Bit" _)) (AppE (VarE (Sig "Seri.Lib.Bit.__prim_fromInteger_Bit" (AppT _ (AppT _ (NumT w))))) (LitE (IntegerL ia))), AppE (VarE (Sig "Seri.Lib.Bit.__prim_fromInteger_Bit" _)) (LitE (IntegerL ib))) -> boolE $ bv_make (nteval w) ia == bv_make (nteval w) ib
+--             (AppE (VarE (Sig "Seri.Lib.Bit.__prim_add_Bit" _)) (AppE (VarE (Sig "Seri.Lib.Bit.__prim_fromInteger_Bit" (AppT _ (AppT _ (NumT w))))) (LitE (IntegerL ia))), AppE (VarE (Sig "Seri.Lib.Bit.__prim_fromInteger_Bit" _)) (LitE (IntegerL ib))) -> AppE (VarE (Sig "Seri.Lib.Bit.__prim_fromInteger_Bit" (arrowsT [integerT, bitT (nteval w)]))) (integerE $ bv_value (bv_make (nteval w) ia + bv_make (nteval w) ib))
+--             (AppE (VarE (Sig "Seri.Lib.Bit.__prim_sub_Bit" _)) (AppE (VarE (Sig "Seri.Lib.Bit.__prim_fromInteger_Bit" (AppT _ (AppT _ (NumT w))))) (LitE (IntegerL ia))), AppE (VarE (Sig "Seri.Lib.Bit.__prim_fromInteger_Bit" _)) (LitE (IntegerL ib))) -> AppE (VarE (Sig "Seri.Lib.Bit.__prim_fromInteger_Bit" (arrowsT [integerT, bitT (nteval w)]))) (integerE $ bv_value (bv_make (nteval w) ia - bv_make (nteval w) ib))
+--             (AppE (VarE (Sig "Seri.Lib.Bit.__prim_mul_Bit" _)) (AppE (VarE (Sig "Seri.Lib.Bit.__prim_fromInteger_Bit" (AppT _ (AppT _ (NumT w))))) (LitE (IntegerL ia))), AppE (VarE (Sig "Seri.Lib.Bit.__prim_fromInteger_Bit" _)) (LitE (IntegerL ib))) -> AppE (VarE (Sig "Seri.Lib.Bit.__prim_fromInteger_Bit" (arrowsT [integerT, bitT (nteval w)]))) (integerE $ bv_value (bv_make (nteval w) ia * bv_make (nteval w) ib))
+--             (AppE (VarE (Sig "Seri.Lib.Bit.__prim_or_Bit" _)) (AppE (VarE (Sig "Seri.Lib.Bit.__prim_fromInteger_Bit" (AppT _ (AppT _ (NumT w))))) (LitE (IntegerL ia))), AppE (VarE (Sig "Seri.Lib.Bit.__prim_fromInteger_Bit" _)) (LitE (IntegerL ib))) -> AppE (VarE (Sig "Seri.Lib.Bit.__prim_fromInteger_Bit" (arrowsT [integerT, bitT (nteval w)]))) (integerE $ bv_value (bv_make (nteval w) ia .|. bv_make (nteval w) ib))
+--             (AppE (VarE (Sig "Seri.Lib.Bit.__prim_and_Bit" _)) (AppE (VarE (Sig "Seri.Lib.Bit.__prim_fromInteger_Bit" (AppT _ (AppT _ (NumT w))))) (LitE (IntegerL ia))), AppE (VarE (Sig "Seri.Lib.Bit.__prim_fromInteger_Bit" _)) (LitE (IntegerL ib))) -> AppE (VarE (Sig "Seri.Lib.Bit.__prim_fromInteger_Bit" (arrowsT [integerT, bitT (nteval w)]))) (integerE $ bv_value (bv_make (nteval w) ia .&. bv_make (nteval w) ib))
+--             (AppE (VarE (Sig "Seri.Lib.Bit.__prim_lsh_Bit" _)) (AppE (VarE (Sig "Seri.Lib.Bit.__prim_fromInteger_Bit" (AppT _ (AppT _ (NumT w))))) (LitE (IntegerL ia))), LitE (IntegerL ib)) -> AppE (VarE (Sig "Seri.Lib.Bit.__prim_fromInteger_Bit" (arrowsT [integerT, bitT (nteval w)]))) (integerE $ bv_value (bv_make (nteval w) ia `shiftL` fromInteger ib))
+--             (AppE (VarE (Sig "Seri.Lib.Bit.__prim_rshl_Bit" _)) (AppE (VarE (Sig "Seri.Lib.Bit.__prim_fromInteger_Bit" (AppT _ (AppT _ (NumT w))))) (LitE (IntegerL ia))), LitE (IntegerL ib)) -> AppE (VarE (Sig "Seri.Lib.Bit.__prim_fromInteger_Bit" (arrowsT [integerT, bitT (nteval w)]))) (integerE $ bv_value (bv_make (nteval w) ia `shiftR` fromInteger ib))
 
              (ra, rb) -> AppE (elabme ra) rb
-       LamE {} | mode == WHNF -> {-# SCC "LAM_WHNF" #-} e
-       LamE s@(Sig n _) b | mode == SNF -> {-# SCC "LAM_SNF" #-} LamE s (elabmenm n b)
-       ConE {} -> {-# SCC "CON" #-} e
-       VarE (Sig "Seri.Lib.Prelude.numeric" (NumT nt)) -> {-# SCC "NUMERIC" #-} ConE (Sig ("#" ++ show (nteval nt)) (NumT nt))
-       VarE (Sig n _) | n `elem` freenms -> {-# SCC "VAR_FREE" #-} e
-       VarE s@(Sig _ ct) -> {-# SCC "VAR_LOOKUP" #-}
+       LamE {} | mode == WHNF -> e
+       LamE s@(Sig n _) b | mode == SNF -> LamE s (elabmenm n b)
+       ConE {} -> e
+       VarE (Sig n (NumT nt)) | n == name "Seri.Lib.Prelude.numeric" -> ConE (Sig (name "#" `nappend` name  (show (nteval nt))) (NumT nt))
+       VarE (Sig n _) | n `elem` freenms -> e
+       VarE s@(Sig _ ct) ->
            case (attemptM $ lookupVar env s) of
              Nothing -> e
              Just (pt, ve) -> elabme $ assignexp (assignments pt ct) ve 
@@ -228,7 +228,7 @@ reducern m e =
         let nsnames = [n | Sig n _ <- ns]
             m' = filter (\(n, _) -> n `notElem` nsnames) m
             badname n = any (\(_, v) -> hasfree n v) m'
-            newname n = head (filter (\n' -> not (badname n') && n' `notElem` nsnames) [n ++  show i | i <- [0..]])
+            newname n = head (filter (\n' -> not (badname n') && n' `notElem` nsnames) [n `nappend` name (show i) | i <- [0..]])
             bads = filter (\(Sig n _) -> badname n) ns
             rename = [(s, Sig (newname n) t) | s@(Sig n t) <- bads]
             updates = [(n, VarE s) | (Sig n _, s) <- rename]
