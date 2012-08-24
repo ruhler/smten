@@ -1,0 +1,39 @@
+
+Fri Aug 24 10:45:52 EDT 2012
+
+Aha! So, good progress yesterday. One more thing to try today: have a hash map
+for primitives. That will be cool.
+
+Also, try Sudoku with sharing. I think the varuse thing may work around that
+particular bug, which would be neat.
+
+Plan:
+1. Add support for bit vectors in HOAS elaborator
+2. Use a hash table for primitives in HOAS elaborator
+3. Try out the Sudoku's see if they all work
+4. Remove old elaborators entirely
+5. Clean up Fresh. We just need the 2: Fast and Pretty.
+
+At this point, I'll call seri stable for the purposes of todays presentation.
+I need to work fast.
+
+Gather more numbers:
+- Sudokus, BCL3: yices1 vs yices2 vs seriq vs seriq2
+
+Update and review presentation.
+
+
+Lots to do today, let me get going.
+
+First step: bit vector primitives.
+
+Actually... I could probably switch to a hash table first, since I have the
+todos in place. Yes. Let me try that.
+
+Fri Aug 24 11:02:49 EDT 2012
+
+I tried the hash table. I'm not convinced it's any faster. But I'll leave it
+in, because it is cleaner, and should support better the addition of lots more
+primitives.
+
+
