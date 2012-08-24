@@ -37,5 +37,5 @@ module Seri.Target.Elaborate(
     module Elaborate
     ) where
 
-import Seri.Target.Elaborate.Elaborate3 as Elaborate
+import Seri.Target.Elaborate.Elaborate as Elaborate
 

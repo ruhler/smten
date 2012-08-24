@@ -33,7 +33,7 @@
 -- 
 -------------------------------------------------------------------------------
 
-module Seri.Target.Elaborate.Fresh2 (
+module Seri.Target.Elaborate.FreshFast (
     Fresh, runFresh, fresh,
     ) where
 
@@ -56,21 +56,11 @@ type Fresh = State Integer
 
 -- return a fresh name based on the given name.
 fresh :: Sig -> Fresh Sig
-fresh s@(Sig n t) = do
+fresh s@(Sig _ t) = do
    id <- get
    put $! id + 1
-   return (Sig (n ++ show id) t)
+   return (Sig (name "~E" `nappend` name (show id)) t)
 
 runFresh :: Fresh a -> [Name] -> a
-runFresh x nms = evalState x (freshmap nms)
-
--- construct the initial fresh map for use with fresh variables.
-freshmap :: [Name] -> Integer
-freshmap ns =
-  let idof :: Name -> Integer
-      idof n = 
-        let digits = takeWhile isDigit (reverse n)
-        in if null digits then 0 else read (reverse digits)
-  in 1 + foldr (\a b -> max (idof a) b) 0 ns
-
+runFresh x nms = evalState x 0
 
