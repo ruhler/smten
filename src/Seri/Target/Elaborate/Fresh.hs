@@ -57,13 +57,13 @@ type Fresh = State (Map.Map Name Integer)
 -- return a fresh name based on the given name.
 fresh :: Sig -> Fresh Sig
 fresh s@(Sig n t) = do
-   let nbase = dropWhileEnd isDigit n
+   let nbase = name $ dropWhileEnd isDigit (unname n)
    m <- get
    let (id, m') = Map.insertLookupWithKey (\_ -> (+)) nbase 1 m
    put $! m'
    case id of
       Nothing -> return $ Sig nbase t
-      Just x -> return $ Sig (nbase ++ show x) t
+      Just x -> return $ Sig (nbase `nappend` name (show x)) t
 
 runFresh :: Fresh a -> [Name] -> a
 runFresh x nms = evalState x (freshmap nms)
@@ -73,9 +73,9 @@ freshmap :: [Name] -> Map.Map Name Integer
 freshmap [] = Map.empty
 freshmap (n:ns) =
   let m = freshmap ns
-      (digits, rest) = span isDigit (reverse n)
+      (digits, rest) = span isDigit (reverse (unname n))
       num = if null digits then 0 else read (reverse digits)
-      base = reverse rest
+      base = name $ reverse rest
   in Map.insertWith max base (num+1) m
 
 

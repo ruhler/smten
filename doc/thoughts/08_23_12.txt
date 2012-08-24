@@ -158,3 +158,17 @@ But! Remember, sudoku doesn't work with sharing turned on.
 So... looks like I'm back to where I was before: just work on little things
 for performance.
 
+Fri Aug 24 00:24:15 EDT 2012
+
+I put in 2 things.
+- shouldReduce machinery for cases in addition to lambdas.
+- check varuse to know if should inline complex expressions.
+
+The upside is: It's a little faster, and the Share test works as desired.
+
+Looks like delambidfy time has almost entirely gone away as a result! That's
+pretty nifty.
+
+Good stuff. So, all I have to do is add support for the bit vector literals,
+and this can completely replace the old elaborator. Hurray!
+
