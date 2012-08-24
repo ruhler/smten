@@ -101,9 +101,11 @@ elaborate mode env exp =
                   Just v -> v
                   Nothing -> VarEH ES_None s
          
+      dontshare = True
      
       shouldReduce :: VarUse -> ExpH -> Bool
-      shouldReduce = shouldReduce' False
+      shouldReduce vu e | dontshare = True
+      shouldReduce vu e = shouldReduce' False vu e
 
       shouldReduce' :: Bool -> VarUse -> ExpH -> Bool
       shouldReduce' _ _ (LitEH {}) = True

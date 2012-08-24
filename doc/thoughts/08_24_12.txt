@@ -8,9 +8,9 @@ Also, try Sudoku with sharing. I think the varuse thing may work around that
 particular bug, which would be neat.
 
 Plan:
-1. Add support for bit vectors in HOAS elaborator
-2. Use a hash table for primitives in HOAS elaborator
-3. Try out the Sudoku's see if they all work
+1+ Add support for bit vectors in HOAS elaborator
+2+ Use a hash table for primitives in HOAS elaborator
+3x Try out the Sudoku's see if they all work
 4. Remove old elaborators entirely
 5. Clean up Fresh. We just need the 2: Fast and Pretty.
 
@@ -52,4 +52,10 @@ Let me be guided by my tests.
 Fri Aug 24 11:44:54 EDT 2012
 
 There! Bit vectors are implemented.
+
+Fri Aug 24 11:48:44 EDT 2012
+
+Let me double check that sudoku works still with sharing turned off.
+
+Yup. That is the case.
 
