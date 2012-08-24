@@ -1,16 +1,32 @@
 
+-- The Seri SMT primitives and common declarations.
 module Seri.SMT.SMT where {
 
 import Seri.Lib.Prelude;
 
+-- Query is the primitive query monad.
 data Query a = ;
 
 data Answer a = Satisfiable a | Unsatisfiable | Unknown;
 
+-- Return a new free variable.
 free :: Query a;
+
+-- Assert the given boolean is true.
 assert :: Bool -> Query ();
+
+-- Ask the SMT solver if there is an assignment to the free variables in the
+-- context such that all assertions are satisfied. If there is a satisfying
+-- assignment, evaluates the argument under that assignment and returns the
+-- concrete result.
 query :: a -> Query (Answer a);
+
+-- Execute a scoped query.
+-- The given query is evaluated, and the result passed to "query". Assertions
+-- in the given query are.
 queryS :: Query a -> Query (Answer a);
+
+-- The Query monad primitives
 return_query :: a -> Query a;
 nobind_query :: Query a -> Query b -> Query b;
 bind_query :: Query a -> (a -> Query b) -> Query b;

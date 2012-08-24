@@ -27,7 +27,7 @@ main = do {
     assert (arr == (smta_upd arr 1 x));
     
     arr2 <- smta_free 3;
-    --assert (arr2 == arr);
+    assert (arr2 == arr);
 
     y <- free;
     assert (y == smta_sub arr2 2);

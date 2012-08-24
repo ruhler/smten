@@ -1,7 +1,7 @@
 Seri ReadMe
 ===========
 Richard Uhler <ruhler@csail.mit.edu>
-July 17, 2012
+August 24, 2012
 
 Configuring Seri for Build
 --------------------------
@@ -15,6 +15,7 @@ The following variables should be set in tclmk/local.tcl:
 ::PACKAGE_DB - The ghc package database to use when building the seri cabal package
 ::env(PATH) - The PATH to use for executables
 ::env(GHC_PACKAGE_PATH) - your ghc package path
+::env(LD_LIBRARY_PATH) - the ld library path
 
 For example, tclmk/local.tcl might look like:
 
@@ -36,9 +37,10 @@ or provide a link to it called "yices2".
 
 I also had trouble building the cabal package if the yices2 library appeared
 as a shared object.  So, for example, if you have libyices.so.2.0.2 installed,
-to create a "yices2" library suitable for use with seri, run the command:
+to create a "yices2" library suitable for use with seri, run the commands:
 
    ln -s libyices.so.2.0.2 libyices2.a 
+   ln -s libyices.so.2.0.2 libyices.so.2.0 
 
 
 Building Seri
@@ -62,7 +64,7 @@ Trying Seri
 After building seri you can try it out. For example, to run a simple query
 with yices 2:
 
-    ./build/src/dist/build/seriq2/seriq2 -d Query1.dbg -i src src/Seri/SMT/Tests/Query1.sri
+    ./build/src/dist/build/seriq2/seriq2 -d Query1.dbg -i src -m Seri.SMT.Tests.Query1.main src/Seri/SMT/Tests/Query1.sri
 
 If it works, you should get the output:
     (Satisfiable :: Answer Integer) 5

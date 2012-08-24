@@ -109,7 +109,6 @@ instance Yices Yices2FFI where
 
     getBitVectorValue (Yices2FFI yctx) w nm = do
         model <- c_yices_get_model yctx 1
-        --withstderr $ \stderr -> c_yices_print_model stderr model
         bits <- allocaArray (fromInteger w) $ \ptr -> do
             term <- yterm (varE nm)
             ir <- c_yices_get_bv_value model term ptr
