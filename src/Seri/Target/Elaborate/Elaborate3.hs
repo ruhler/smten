@@ -255,18 +255,6 @@ unappsEH :: ExpH -> [ExpH]
 unappsEH (AppEH _ a b) = unappsEH a ++ [b]
 unappsEH e = [e]
 
--- Binary integer primitive.
---  s - signature of the primitive
---  f - primitive implementation
-biniprim :: Sig -> (Integer -> Integer -> ExpH) -> ExpH
-biniprim s f =
-  LamEH (ES_Some WHNF) VU_Single (Sig (name "a") integerT) $ \a ->
-    LamEH (ES_Some WHNF) VU_Single (Sig (name "b") integerT) $ \b ->
-      case (a, b) of
-         (LitEH (IntegerL ai), LitEH (IntegerL bi)) -> f ai bi
-         _ -> AppEH (ES_Some WHNF) (AppEH (ES_Some WHNF) (VarEH (ES_Some SNF) s) a) b
-
-
 data VarUse = VU_None | VU_Single | VU_Multi
     deriving (Eq, Show)
 
@@ -313,19 +301,82 @@ primitives = HT.table $ [
 
       (name "Seri.Lib.Prelude.numeric", \(Sig _ (NumT nt)) -> ConEH (Sig (name "#" `nappend` name (show (nteval nt))) (NumT nt))),
 
-      (name "Seri.Lib.Bit.__prim_zeroExtend_Bit", primtodo),
-      (name "Seri.Lib.Bit.__prim_truncate_Bit", primtodo),
-      (name "Seri.Lib.Prelude.__prim_eq_Char", primtodo),
-      (name "Seri.Lib.Bit.__prim_eq_Bit", primtodo),
-      (name "Seri.Lib.Bit.__prim_add_Bit", primtodo),
-      (name "Seri.Lib.Bit.__prim_sub_Bit", primtodo),
-      (name "Seri.Lib.Bit.__prim_mul_Bit", primtodo),
-      (name "Seri.Lib.Bit.__prim_or_Bit", primtodo),
-      (name "Seri.Lib.Bit.__prim_and_Bit", primtodo),
-      (name "Seri.Lib.Bit.__prim_lsh_Bit", primtodo),
-      (name "Seri.Lib.Bit.__prim_rshl_Bit", primtodo)
+      (name "Seri.Lib.Bit.__prim_zeroExtend_Bit", \s@(Sig _ t) ->
+        let [ta, AppT _ (NumT wt)] = unarrowsT t
+        in LamEH (ES_Some WHNF) VU_Single (Sig (name "a") ta) $ \a ->
+            case (unbit a) of
+              Just av -> bitEH $ bv_zero_extend (nteval wt - bv_width av) av
+              _ -> AppEH (ES_Some WHNF) (VarEH (ES_Some SNF) s) a
+        ),
+      (name "Seri.Lib.Bit.__prim_truncate_Bit", \s@(Sig _ t) ->
+        let [ta, AppT _ (NumT wt)] = unarrowsT t
+        in LamEH (ES_Some WHNF) VU_Single (Sig (name "a") ta) $ \a ->
+            case (unbit a) of
+              Just av -> bitEH $ bv_truncate (nteval wt) av
+              _ -> AppEH (ES_Some WHNF) (VarEH (ES_Some SNF) s) a
+        ),
+      (name "Seri.Lib.Prelude.__prim_eq_Char", \s -> bincprim s (\a b -> boolEH (a == b))),
+      (name "Seri.Lib.Bit.__prim_eq_Bit", \s -> binbprim s (\a b -> boolEH (a == b))),
+      (name "Seri.Lib.Bit.__prim_add_Bit", \s -> binbprim s (\a b -> bitEH (a + b))),
+      (name "Seri.Lib.Bit.__prim_sub_Bit", \s -> binbprim s (\a b -> bitEH (a - b))),
+      (name "Seri.Lib.Bit.__prim_mul_Bit", \s -> binbprim s (\a b -> bitEH (a * b))),
+      (name "Seri.Lib.Bit.__prim_or_Bit", \s -> binbprim s (\a b -> bitEH (a .|. b))),
+      (name "Seri.Lib.Bit.__prim_and_Bit", \s -> binbprim s (\a b -> bitEH (a .&. b))),
+      (name "Seri.Lib.Bit.__prim_lsh_Bit", \s -> binbiprim s (\a b -> bitEH (a `shiftL` fromInteger b))),
+      (name "Seri.Lib.Bit.__prim_rshl_Bit", \s -> binbiprim s (\a b -> bitEH (a `shiftR` fromInteger b)))
    ] 
 
-primtodo :: Sig -> ExpH
-primtodo s = error $ "todo: prim: " ++ pretty s
+unbit :: ExpH -> Maybe Bit
+unbit (AppEH _ (VarEH _ (Sig fib (AppT _ (AppT _ (NumT w))))) (LitEH (IntegerL v))) | fib == name "Seri.Lib.Bit.__prim_fromInteger_Bit"
+ = Just (bv_make (nteval w) v)
+unbit _ = Nothing
 
+bitEH :: Bit -> ExpH
+bitEH b = AppEH (ES_Some SNF) (VarEH (ES_Some SNF) (Sig (name "Seri.Lib.Bit.__prim_fromInteger_Bit") (arrowsT [integerT, bitT (bv_width b)]))) (integerEH $ bv_value b)
+
+-- Binary integer primitive.
+--  s - signature of the primitive
+--  f - primitive implementation
+biniprim :: Sig -> (Integer -> Integer -> ExpH) -> ExpH
+biniprim s f =
+  LamEH (ES_Some WHNF) VU_Single (Sig (name "a") integerT) $ \a ->
+    LamEH (ES_Some WHNF) VU_Single (Sig (name "b") integerT) $ \b ->
+      case (a, b) of
+         (LitEH (IntegerL ai), LitEH (IntegerL bi)) -> f ai bi
+         _ -> AppEH (ES_Some WHNF) (AppEH (ES_Some WHNF) (VarEH (ES_Some SNF) s) a) b
+
+-- Binary character primitive.
+--  s - signature of the primitive
+--  f - primitive implementation
+bincprim :: Sig -> (Char -> Char -> ExpH) -> ExpH
+bincprim s f =
+  LamEH (ES_Some WHNF) VU_Single (Sig (name "a") charT) $ \a ->
+    LamEH (ES_Some WHNF) VU_Single (Sig (name "b") charT) $ \b ->
+      case (a, b) of
+         (LitEH (CharL av), LitEH (CharL bv)) -> f av bv
+         _ -> AppEH (ES_Some WHNF) (AppEH (ES_Some WHNF) (VarEH (ES_Some SNF) s) a) b
+
+
+-- Binary bitvector primitive.
+--  s - signature of the primitive
+--  f - primitive implementation
+binbprim :: Sig -> (Bit -> Bit -> ExpH) -> ExpH
+binbprim s@(Sig n t) f =
+  let [ta, tb, _] = unarrowsT t
+  in LamEH (ES_Some WHNF) VU_Single (Sig (name "a") ta) $ \a ->
+       LamEH (ES_Some WHNF) VU_Single (Sig (name "b") tb) $ \b ->
+         case (unbit a, unbit b) of
+            (Just av, Just bv) -> f av bv
+            _ -> AppEH (ES_Some WHNF) (AppEH (ES_Some WHNF) (VarEH (ES_Some SNF) s) a) b
+
+-- Binary bitvector/integer primitive.
+--  s - signature of the primitive
+--  f - primitive implementation
+binbiprim :: Sig -> (Bit -> Integer -> ExpH) -> ExpH
+binbiprim s@(Sig n t) f =
+  let [ta, tb, _] = unarrowsT t
+  in LamEH (ES_Some WHNF) VU_Single (Sig (name "a") ta) $ \a ->
+       LamEH (ES_Some WHNF) VU_Single (Sig (name "b") tb) $ \b ->
+         case (unbit a, b) of
+            (Just av, LitEH (IntegerL bv)) -> f av bv
+            _ -> AppEH (ES_Some WHNF) (AppEH (ES_Some WHNF) (VarEH (ES_Some SNF) s) a) b

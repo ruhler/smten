@@ -36,4 +36,20 @@ I tried the hash table. I'm not convinced it's any faster. But I'll leave it
 in, because it is cleaner, and should support better the addition of lots more
 primitives.
 
+Fri Aug 24 11:04:03 EDT 2012
+
+Let me try out sudoku.
+
+Nope. Doesn't work. Sadness. It actually looks even worse. There are a couple
+things not being inlined now that I would have expected.
+
+Oh well. It was worth a hope.
+
+Back to the original plan: support for bitvector primitives.
+
+Let me be guided by my tests.
+
+Fri Aug 24 11:44:54 EDT 2012
+
+There! Bit vectors are implemented.
 

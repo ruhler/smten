@@ -237,6 +237,8 @@ testbasic = do {
     t "G" (3 == shadowmeth);
     t "H" (3 == (length [integer 1, 5, 2]));
     t "I" (and [True, True, True]);
+    t "J" ('A' == 'A');
+    t "K" ('A' /= 'B');
 };
 
 testprelude :: Test ();
@@ -253,7 +255,7 @@ tests = do {
     testprelude;
     testarray;
     testvector;
-    --testbit;
+    testbit;
 };
 
 testall :: Bool;
