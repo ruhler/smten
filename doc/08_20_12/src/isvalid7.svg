@@ -1,0 +1,358 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   xmlns:dc="http://purl.org/dc/elements/1.1/"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   width="628.8125"
+   height="471.73904"
+   id="svg3188"
+   version="1.1"
+   inkscape:version="0.48.1 r9760"
+   sodipodi:docname="isvalid6.svg">
+  <defs
+     id="defs3190" />
+  <sodipodi:namedview
+     id="base"
+     pagecolor="#ffffff"
+     bordercolor="#666666"
+     borderopacity="1.0"
+     inkscape:pageopacity="0.0"
+     inkscape:pageshadow="2"
+     inkscape:zoom="0.98994949"
+     inkscape:cx="297.7732"
+     inkscape:cy="241.2815"
+     inkscape:document-units="px"
+     inkscape:current-layer="layer10"
+     showgrid="false"
+     inkscape:window-width="1537"
+     inkscape:window-height="908"
+     inkscape:window-x="143"
+     inkscape:window-y="87"
+     inkscape:window-maximized="0"
+     fit-margin-top="0"
+     fit-margin-left="0"
+     fit-margin-right="0"
+     fit-margin-bottom="0"
+     showguides="true"
+     inkscape:guide-bbox="true" />
+  <metadata
+     id="metadata3193">
+    <rdf:RDF>
+      <cc:Work
+         rdf:about="">
+        <dc:format>image/svg+xml</dc:format>
+        <dc:type
+           rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
+        <dc:title></dc:title>
+      </cc:Work>
+    </rdf:RDF>
+  </metadata>
+  <g
+     inkscape:groupmode="layer"
+     id="layer10"
+     inkscape:label="empty"
+     style="display:inline" />
+  <g
+     inkscape:label="eq"
+     inkscape:groupmode="layer"
+     id="layer1"
+     transform="translate(-63.65625,-71)"
+     style="display:inline">
+    <flowRoot
+       xml:space="preserve"
+       id="flowRoot3196"
+       style="font-size:36px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans;-inkscape-font-specification:Bitstream Vera Sans"><flowRegion
+         id="flowRegion3198"><rect
+           id="rect3200"
+           width="657.14288"
+           height="565.71429"
+           x="68.571426"
+           y="75.219322" /></flowRegion><flowPara
+         id="flowPara3202"
+         style="font-size:18px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Bitstream Vera Sans Mono;-inkscape-font-specification:Bitstream Vera Sans Mono"><flowSpan
+   style="fill:#008000"
+   id="flowSpan4353">instance</flowSpan> Eq Cell <flowSpan
+   style="fill:#008000"
+   id="flowSpan4355">where</flowSpan></flowPara><flowPara
+         id="flowPara3204"
+         style="font-size:18px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Bitstream Vera Sans Mono;-inkscape-font-specification:Bitstream Vera Sans Mono">    (<flowSpan
+   style="fill:#808000"
+   id="flowSpan4357">==</flowSpan>) C1 C1 <flowSpan
+   style="fill:#808000"
+   id="flowSpan4365">=</flowSpan> True</flowPara><flowPara
+         id="flowPara3206"
+         style="font-size:18px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Bitstream Vera Sans Mono;-inkscape-font-specification:Bitstream Vera Sans Mono">    (<flowSpan
+   style="fill:#808000"
+   id="flowSpan4359">==</flowSpan>) C2 C2 <flowSpan
+   style="fill:#808000"
+   id="flowSpan4367">=</flowSpan> True</flowPara><flowPara
+         id="flowPara3208"
+         style="font-size:18px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Bitstream Vera Sans Mono;-inkscape-font-specification:Bitstream Vera Sans Mono">    ...</flowPara><flowPara
+         id="flowPara3210"
+         style="font-size:18px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Bitstream Vera Sans Mono;-inkscape-font-specification:Bitstream Vera Sans Mono">    (<flowSpan
+   style="fill:#808000"
+   id="flowSpan4361">==</flowSpan>) C9 C9 <flowSpan
+   style="fill:#808000"
+   id="flowSpan4369">=</flowSpan> True</flowPara><flowPara
+         style="font-size:18px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Bitstream Vera Sans Mono;-inkscape-font-specification:Bitstream Vera Sans Mono"
+         id="flowPara3248">    (<flowSpan
+   style="fill:#808000"
+   id="flowSpan4363">==</flowSpan>) _ _ <flowSpan
+   style="fill:#808000"
+   id="flowSpan4371">=</flowSpan> False</flowPara></flowRoot>  </g>
+  <g
+     inkscape:groupmode="layer"
+     id="layer2"
+     inkscape:label="unique"
+     style="display:inline">
+    <flowRoot
+       style="font-size:36px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans;-inkscape-font-specification:Bitstream Vera Sans"
+       id="flowRoot3119"
+       xml:space="preserve"
+       transform="translate(-63.65625,83.55334)"><flowRegion
+         id="flowRegion3121"><rect
+           y="75.219322"
+           x="68.571426"
+           height="565.71429"
+           width="657.14288"
+           id="rect3123" /></flowRegion><flowPara
+         style="font-size:18px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Bitstream Vera Sans Mono;-inkscape-font-specification:Bitstream Vera Sans Mono"
+         id="flowPara3139">unique <flowSpan
+   style="fill:#808000"
+   id="flowSpan4373">::</flowSpan> (Eq a) <flowSpan
+   style="fill:#808000"
+   id="flowSpan4375">=&gt;</flowSpan> [a] <flowSpan
+   style="fill:#808000"
+   id="flowSpan4377">-&gt;</flowSpan> Bool</flowPara><flowPara
+         style="font-size:18px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Bitstream Vera Sans Mono;-inkscape-font-specification:Bitstream Vera Sans Mono"
+         id="flowPara3141">unique [] <flowSpan
+   style="fill:#808000"
+   id="flowSpan4379">=</flowSpan> True</flowPara><flowPara
+         id="flowPara3167"
+         style="font-size:18px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Bitstream Vera Sans Mono;-inkscape-font-specification:Bitstream Vera Sans Mono">unique (x<flowSpan
+   style="fill:#808000"
+   id="flowSpan4381">:</flowSpan>xs) <flowSpan
+   style="fill:#808000"
+   id="flowSpan4385">=</flowSpan> notElem x xs <flowSpan
+   style="fill:#808000"
+   id="flowSpan4383">&amp;&amp;</flowSpan> unique xs</flowPara></flowRoot>  </g>
+  <g
+     inkscape:groupmode="layer"
+     id="layer3"
+     inkscape:label="row"
+     style="display:inline">
+    <flowRoot
+       xml:space="preserve"
+       id="flowRoot3169"
+       style="font-size:36px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans;-inkscape-font-specification:Bitstream Vera Sans"
+       transform="translate(-63.65625,171.43661)"><flowRegion
+         id="flowRegion3171"><rect
+           id="rect3173"
+           width="657.14288"
+           height="565.71429"
+           x="68.571426"
+           y="75.219322" /></flowRegion><flowPara
+         style="font-size:18px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Bitstream Vera Sans Mono;-inkscape-font-specification:Bitstream Vera Sans Mono"
+         id="flowPara3197">rows <flowSpan
+   style="fill:#808000"
+   id="flowSpan4387">::</flowSpan> Board <flowSpan
+   style="fill:#808000"
+   id="flowSpan4389">-&gt;</flowSpan> [[Cell]]</flowPara><flowPara
+         style="font-size:18px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Bitstream Vera Sans Mono;-inkscape-font-specification:Bitstream Vera Sans Mono"
+         id="flowPara3217">rows (Board x) <flowSpan
+   style="fill:#808000"
+   id="flowSpan4391">=</flowSpan> x</flowPara></flowRoot>  </g>
+  <g
+     inkscape:groupmode="layer"
+     id="layer4"
+     inkscape:label="cols"
+     style="display:inline">
+    <flowRoot
+       style="font-size:36px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans;-inkscape-font-specification:Bitstream Vera Sans"
+       id="flowRoot3219"
+       xml:space="preserve"
+       transform="translate(-63.65625,229.01531)"><flowRegion
+         id="flowRegion3221"><rect
+           y="75.219322"
+           x="68.571426"
+           height="565.71429"
+           width="657.14288"
+           id="rect3223" /></flowRegion><flowPara
+         id="flowPara3253"
+         style="font-size:18px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Bitstream Vera Sans Mono;-inkscape-font-specification:Bitstream Vera Sans Mono">cols <flowSpan
+   style="fill:#808000"
+   id="flowSpan4393">::</flowSpan> Board <flowSpan
+   style="fill:#808000"
+   id="flowSpan4395">-&gt;</flowSpan> [[Cell]]</flowPara><flowPara
+         id="flowPara3267"
+         style="font-size:18px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Bitstream Vera Sans Mono;-inkscape-font-specification:Bitstream Vera Sans Mono">cols (Board x) <flowSpan
+   style="fill:#808000"
+   id="flowSpan4397">=</flowSpan> transpose x</flowPara></flowRoot>  </g>
+  <g
+     inkscape:groupmode="layer"
+     id="layer5"
+     inkscape:label="boxes"
+     style="display:inline">
+    <flowRoot
+       xml:space="preserve"
+       id="flowRoot3269"
+       style="font-size:36px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans;-inkscape-font-specification:Bitstream Vera Sans"
+       transform="translate(-63.65625,284.5737)"><flowRegion
+         id="flowRegion3271"><rect
+           id="rect3273"
+           width="657.14288"
+           height="565.71429"
+           x="68.571426"
+           y="75.219322" /></flowRegion><flowPara
+         style="font-size:18px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Bitstream Vera Sans Mono;-inkscape-font-specification:Bitstream Vera Sans Mono"
+         id="flowPara3309">boxes <flowSpan
+   style="fill:#808000"
+   id="flowSpan4399">::</flowSpan> Board <flowSpan
+   style="fill:#808000"
+   id="flowSpan4401">-&gt;</flowSpan> [[Cell]]</flowPara><flowPara
+         style="font-size:18px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Bitstream Vera Sans Mono;-inkscape-font-specification:Bitstream Vera Sans Mono"
+         id="flowPara3317">boxes <flowSpan
+   style="fill:#808000"
+   id="flowSpan4403">=</flowSpan> ...</flowPara></flowRoot>  </g>
+  <g
+     inkscape:groupmode="layer"
+     id="layer6"
+     inkscape:label="isvalid"
+     style="display:inline">
+    <flowRoot
+       style="font-size:36px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans;-inkscape-font-specification:Bitstream Vera Sans"
+       id="flowRoot3319"
+       xml:space="preserve"
+       transform="translate(-63.65625,343.16255)"><flowRegion
+         id="flowRegion3321"><rect
+           y="75.219322"
+           x="68.571426"
+           height="565.71429"
+           width="657.14288"
+           id="rect3323" /></flowRegion><flowPara
+         id="flowPara3365"
+         style="font-size:18px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Bitstream Vera Sans Mono;-inkscape-font-specification:Bitstream Vera Sans Mono">isvalid <flowSpan
+   style="fill:#808000"
+   id="flowSpan4405">::</flowSpan> Board -&gt; Bool</flowPara><flowPara
+         id="flowPara3367"
+         style="font-size:18px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Bitstream Vera Sans Mono;-inkscape-font-specification:Bitstream Vera Sans Mono">isvalid b <flowSpan
+   style="fill:#808000"
+   id="flowSpan4407">=</flowSpan> all unique (concat [rows b, cols b, boxes b])</flowPara></flowRoot>  </g>
+  <g
+     inkscape:groupmode="layer"
+     id="layer7"
+     inkscape:label="ad-hoc"
+     style="display:none">
+    <g
+       transform="translate(-63.65625,-71)"
+       id="g4346">
+      <text
+         sodipodi:linespacing="125%"
+         id="text3250"
+         y="103.82894"
+         x="380.82751"
+         style="font-size:24px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#800000;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans;-inkscape-font-specification:Bitstream Vera Sans"
+         xml:space="preserve"><tspan
+           style="font-size:22px"
+           y="103.82894"
+           x="380.82751"
+           id="tspan3252"
+           sodipodi:role="line">ad-hoc polymoprhism</tspan><tspan
+           style="font-size:22px"
+           id="tspan3258"
+           y="131.32895"
+           x="380.82751"
+           sodipodi:role="line">    (overloading)</tspan></text>
+      <rect
+         y="71.504066"
+         x="64.649765"
+         height="148.49243"
+         width="268.70059"
+         id="rect3254"
+         style="fill:none;stroke:#800000;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" />
+      <path
+         sodipodi:nodetypes="cc"
+         inkscape:connector-curvature="0"
+         id="path3256"
+         d="m 399.01026,123.02184 -65.65992,7.07107"
+         style="fill:none;stroke:#800000;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" />
+    </g>
+  </g>
+  <g
+     inkscape:groupmode="layer"
+     id="layer8"
+     inkscape:label="recursive"
+     style="display:none">
+    <g
+       id="g4340"
+       transform="translate(-63.65625,-75.04061)">
+      <text
+         xml:space="preserve"
+         style="font-size:24px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#800000;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans;-inkscape-font-specification:Bitstream Vera Sans"
+         x="422.24377"
+         y="190.70206"
+         id="text3260"
+         sodipodi:linespacing="125%"><tspan
+           style="font-size:22px"
+           id="tspan3272"
+           sodipodi:role="line"
+           x="422.24377"
+           y="190.70206">recursive functions</tspan></text>
+      <rect
+         style="fill:none;stroke:#800000;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+         id="rect3266"
+         width="500.02554"
+         height="73.741135"
+         x="64.649757"
+         y="233.12846" />
+      <path
+         sodipodi:nodetypes="cc"
+         style="fill:none;stroke:#800000;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+         d="m 418.20315,204.8442 -39.56927,28.31228"
+         id="path3268"
+         inkscape:connector-curvature="0" />
+    </g>
+  </g>
+  <g
+     inkscape:groupmode="layer"
+     id="layer9"
+     inkscape:label="higher"
+     style="display:none">
+    <g
+       style="display:inline"
+       id="g4334"
+       transform="translate(-63.65625,-68.979695)">
+      <text
+         sodipodi:linespacing="125%"
+         id="text3276"
+         y="437.17926"
+         x="427.29453"
+         style="font-size:24px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#800000;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans;-inkscape-font-specification:Bitstream Vera Sans"
+         xml:space="preserve"><tspan
+           style="font-size:22px"
+           y="437.17926"
+           x="427.29453"
+           sodipodi:role="line"
+           id="tspan3278">higher order functions</tspan></text>
+      <rect
+         y="483.64627"
+         x="64.164024"
+         height="56.568512"
+         width="627.79047"
+         id="rect3280"
+         style="fill:none;stroke:#800000;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" />
+      <path
+         sodipodi:nodetypes="cc"
+         inkscape:connector-curvature="0"
+         id="path3282"
+         d="M 423.25391,451.32142 374.58275,483.4117"
+         style="fill:none;stroke:#800000;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" />
+    </g>
+  </g>
+</svg>

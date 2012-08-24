@@ -1,0 +1,344 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   xmlns:dc="http://purl.org/dc/elements/1.1/"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   width="616.86053"
+   height="411.40829"
+   id="svg2"
+   version="1.1"
+   inkscape:version="0.48.1 r9760"
+   sodipodi:docname="parser5.svg">
+  <defs
+     id="defs4" />
+  <sodipodi:namedview
+     id="base"
+     pagecolor="#ffffff"
+     bordercolor="#666666"
+     borderopacity="1.0"
+     inkscape:pageopacity="0.0"
+     inkscape:pageshadow="2"
+     inkscape:zoom="0.98994949"
+     inkscape:cx="48.906111"
+     inkscape:cy="256.56081"
+     inkscape:document-units="px"
+     inkscape:current-layer="layer8"
+     showgrid="false"
+     fit-margin-top="0"
+     fit-margin-left="0"
+     fit-margin-right="0"
+     fit-margin-bottom="0"
+     inkscape:window-width="1378"
+     inkscape:window-height="937"
+     inkscape:window-x="105"
+     inkscape:window-y="88"
+     inkscape:window-maximized="0" />
+  <metadata
+     id="metadata7">
+    <rdf:RDF>
+      <cc:Work
+         rdf:about="">
+        <dc:format>image/svg+xml</dc:format>
+        <dc:type
+           rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
+        <dc:title></dc:title>
+      </cc:Work>
+    </rdf:RDF>
+  </metadata>
+  <g
+     inkscape:groupmode="layer"
+     id="layer8"
+     inkscape:label="empty"
+     style="display:inline" />
+  <g
+     inkscape:label="data"
+     inkscape:groupmode="layer"
+     id="layer1"
+     transform="translate(-39.90625,-28.5625)"
+     style="display:inline">
+    <flowRoot
+       xml:space="preserve"
+       id="flowRoot2985"
+       style="font-size:18px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans;-inkscape-font-specification:Bitstream Vera Sans"><flowRegion
+         id="flowRegion2987"><rect
+           id="rect2989"
+           width="582.85712"
+           height="417.14285"
+           x="82.85714"
+           y="55.219326"
+           style="font-size:18px" /></flowRegion><flowPara
+         id="flowPara2991" /></flowRoot>    <flowRoot
+       xml:space="preserve"
+       id="flowRoot2993"
+       style="font-size:36px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans;-inkscape-font-specification:Bitstream Vera Sans"><flowRegion
+         id="flowRegion2995"><rect
+           id="rect2997"
+           width="618.21338"
+           height="464.67017"
+           x="48.487324"
+           y="37.158875" /></flowRegion><flowPara
+         id="flowPara2999"
+         style="font-size:18px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Bitstream Vera Sans Mono;-inkscape-font-specification:Bitstream Vera Sans Mono"><flowSpan
+   style="fill:#008000"
+   id="flowSpan3026">data</flowSpan> Cell <flowSpan
+   style="fill:#808000"
+   id="flowSpan3030">=</flowSpan> C1 <flowSpan
+   style="fill:#808000"
+   id="flowSpan3034">|</flowSpan> C2 <flowSpan
+   style="fill:#808000"
+   id="flowSpan3036">|</flowSpan> C3 <flowSpan
+   style="fill:#808000"
+   id="flowSpan3038">|</flowSpan> C4 <flowSpan
+   style="fill:#808000"
+   id="flowSpan3040">|</flowSpan> C5 <flowSpan
+   style="fill:#808000"
+   id="flowSpan3042">|</flowSpan> C6 <flowSpan
+   style="fill:#808000"
+   id="flowSpan3044">|</flowSpan> C7 <flowSpan
+   style="fill:#808000"
+   id="flowSpan3046">|</flowSpan> C8 <flowSpan
+   style="fill:#808000"
+   id="flowSpan3048">|</flowSpan> C9</flowPara><flowPara
+         style="font-size:18px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Bitstream Vera Sans Mono;-inkscape-font-specification:Bitstream Vera Sans Mono"
+         id="flowPara3104"><flowSpan
+   style="fill:#008000"
+   id="flowSpan3028">data</flowSpan> Board <flowSpan
+   style="fill:#808000"
+   id="flowSpan3032">=</flowSpan> Board [[Cell]]</flowPara></flowRoot>  </g>
+  <g
+     inkscape:groupmode="layer"
+     id="layer2"
+     inkscape:label="readcell"
+     style="display:inline">
+    <flowRoot
+       style="font-size:36px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;display:inline;font-family:Bitstream Vera Sans;-inkscape-font-specification:Bitstream Vera Sans"
+       id="flowRoot3096"
+       xml:space="preserve"
+       transform="translate(-39.90625,16.894365)"><flowRegion
+         id="flowRegion3098"><rect
+           y="37.158875"
+           x="48.487324"
+           height="464.67017"
+           width="618.21338"
+           id="rect3100" /></flowRegion><flowPara
+         id="flowPara3130"
+         style="font-size:18px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Bitstream Vera Sans Mono;-inkscape-font-specification:Bitstream Vera Sans Mono" /><flowPara
+         id="flowPara3132"
+         style="font-size:18px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Bitstream Vera Sans Mono;-inkscape-font-specification:Bitstream Vera Sans Mono">readCell <flowSpan
+   id="flowSpan3134"
+   style="fill:#808000">::</flowSpan> Char <flowSpan
+   id="flowSpan3136"
+   style="fill:#808000">-&gt;</flowSpan> Query Cell</flowPara><flowPara
+         id="flowPara3138"
+         style="font-size:18px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Bitstream Vera Sans Mono;-inkscape-font-specification:Bitstream Vera Sans Mono">readCell <flowSpan
+   id="flowSpan3140"
+   style="fill:#800080">'1'</flowSpan><flowSpan
+   id="flowSpan3142"
+   style="fill:#808000"> =</flowSpan> return C1</flowPara><flowPara
+         id="flowPara3144"
+         style="font-size:18px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Bitstream Vera Sans Mono;-inkscape-font-specification:Bitstream Vera Sans Mono">readCell <flowSpan
+   id="flowSpan3146"
+   style="fill:#800080">'2'</flowSpan><flowSpan
+   id="flowSpan3148"
+   style="fill:#808000"> =</flowSpan> return C2</flowPara><flowPara
+         id="flowPara3150"
+         style="font-size:18px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Bitstream Vera Sans Mono;-inkscape-font-specification:Bitstream Vera Sans Mono">...</flowPara><flowPara
+         id="flowPara3152"
+         style="font-size:18px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Bitstream Vera Sans Mono;-inkscape-font-specification:Bitstream Vera Sans Mono">readCell <flowSpan
+   id="flowSpan3154"
+   style="fill:#800080">'9'</flowSpan><flowSpan
+   id="flowSpan3156"
+   style="fill:#808000"> =</flowSpan> return C9</flowPara><flowPara
+         id="flowPara3158"
+         style="font-size:18px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Bitstream Vera Sans Mono;-inkscape-font-specification:Bitstream Vera Sans Mono">readCell <flowSpan
+   id="flowSpan3160"
+   style="fill:#800080">'.'</flowSpan><flowSpan
+   id="flowSpan3162"
+   style="fill:#808000"> =</flowSpan> free</flowPara><flowPara
+         id="flowPara3202"
+         style="font-size:18px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Bitstream Vera Sans Mono;-inkscape-font-specification:Bitstream Vera Sans Mono">readCell  c  <flowSpan
+   id="flowSpan3166"
+   style="fill:#808000">=</flowSpan> error (<flowSpan
+   id="flowSpan3168"
+   style="fill:#800080">&quot;readCell:&quot;</flowSpan><flowSpan
+   id="flowSpan3170"
+   style="fill:#808000"> ++</flowSpan> [c])</flowPara></flowRoot>  </g>
+  <g
+     inkscape:groupmode="layer"
+     id="layer3"
+     inkscape:label="free"
+     style="display:inline">
+    <g
+       transform="translate(-39.90625,-28.5625)"
+       style="display:inline"
+       id="g3088">
+      <flowRoot
+         transform="translate(-126.55622,109.24005)"
+         style="font-size:22px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#008000;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans;-inkscape-font-specification:Bitstream Vera Sans"
+         id="flowRoot3157"
+         xml:space="preserve"><flowRegion
+           id="flowRegion3159"><rect
+             style="font-size:22px;fill:#008000"
+             y="91.707115"
+             x="494.97476"
+             height="96.97464"
+             width="289.91379"
+             id="rect3161" /></flowRegion><flowPara
+           style="font-size:22px;fill:#008000"
+           id="flowPara3163">introduce a free variable</flowPara></flowRoot>      <rect
+         y="215.95587"
+         x="206.07112"
+         height="25.253839"
+         width="52.527935"
+         id="rect3165"
+         style="fill:none;stroke:#008000;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" />
+      <path
+         inkscape:connector-curvature="0"
+         id="path3167"
+         d="m 359.10923,222.01678 -101.01524,5.05077"
+         style="fill:none;stroke:#008000;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+         sodipodi:nodetypes="cc" />
+    </g>
+  </g>
+  <g
+     inkscape:groupmode="layer"
+     id="layer4"
+     inkscape:label="readrow"
+     style="display:inline">
+    <flowRoot
+       xml:space="preserve"
+       id="flowRoot3204"
+       style="font-size:36px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;display:inline;font-family:Bitstream Vera Sans;-inkscape-font-specification:Bitstream Vera Sans"
+       transform="translate(-39.90625,195.69137)"><flowRegion
+         id="flowRegion3206"><rect
+           id="rect3208"
+           width="618.21338"
+           height="464.67017"
+           x="48.487324"
+           y="37.158875" /></flowRegion><flowPara
+         style="font-size:18px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Bitstream Vera Sans Mono;-inkscape-font-specification:Bitstream Vera Sans Mono"
+         id="flowPara3280" /><flowPara
+         style="font-size:18px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Bitstream Vera Sans Mono;-inkscape-font-specification:Bitstream Vera Sans Mono"
+         id="flowPara3282">readRow <flowSpan
+   style="fill:#808000"
+   id="flowSpan3284">::</flowSpan> [Char] <flowSpan
+   style="fill:#808000"
+   id="flowSpan3286">-&gt;</flowSpan> Query [Cell]</flowPara><flowPara
+         style="font-size:18px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Bitstream Vera Sans Mono;-inkscape-font-specification:Bitstream Vera Sans Mono"
+         id="flowPara3310">readRow <flowSpan
+   style="fill:#808000"
+   id="flowSpan3290">=</flowSpan> mapM readCell</flowPara></flowRoot>  </g>
+  <g
+     inkscape:groupmode="layer"
+     id="layer5"
+     inkscape:label="readboard"
+     style="display:inline">
+    <flowRoot
+       style="font-size:36px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;display:inline;font-family:Bitstream Vera Sans;-inkscape-font-specification:Bitstream Vera Sans"
+       id="flowRoot3312"
+       xml:space="preserve"
+       transform="translate(-39.90625,285.59494)"><flowRegion
+         id="flowRegion3314"><rect
+           y="37.158875"
+           x="48.487324"
+           height="464.67017"
+           width="618.21338"
+           id="rect3316" /></flowRegion><flowPara
+         id="flowPara3402"
+         style="font-size:18px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Bitstream Vera Sans Mono;-inkscape-font-specification:Bitstream Vera Sans Mono">readBoard <flowSpan
+   id="flowSpan3404"
+   style="fill:#808000">::</flowSpan> [[Char]] <flowSpan
+   id="flowSpan3406"
+   style="fill:#808000">-&gt;</flowSpan> Query Board</flowPara><flowPara
+         id="flowPara3408"
+         style="font-size:18px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Bitstream Vera Sans Mono;-inkscape-font-specification:Bitstream Vera Sans Mono">readBoard rows <flowSpan
+   id="flowSpan3410"
+   style="fill:#808000">=</flowSpan> do</flowPara><flowPara
+         id="flowPara3412"
+         style="font-size:18px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Bitstream Vera Sans Mono;-inkscape-font-specification:Bitstream Vera Sans Mono">    brows <flowSpan
+   id="flowSpan3414"
+   style="fill:#808000">&lt;-</flowSpan> mapM readRow rows</flowPara><flowPara
+         id="flowPara3416"
+         style="font-size:18px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Bitstream Vera Sans Mono;-inkscape-font-specification:Bitstream Vera Sans Mono">    return (Board brows)</flowPara><flowPara
+         id="flowPara3418"
+         style="font-size:18px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Bitstream Vera Sans Mono;-inkscape-font-specification:Bitstream Vera Sans Mono" /></flowRoot>  </g>
+  <g
+     inkscape:groupmode="layer"
+     id="layer6"
+     inkscape:label="algebraic"
+     style="display:none">
+    <g
+       transform="translate(-39.90625,-28.5625)"
+       style="display:inline"
+       id="g3072">
+      <flowRoot
+         transform="translate(-79.079056,12.265409)"
+         style="font-size:22px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans;-inkscape-font-specification:Bitstream Vera Sans"
+         id="flowRoot3123"
+         xml:space="preserve"><flowRegion
+           id="flowRegion3125"><rect
+             style="font-size:22px"
+             y="91.707115"
+             x="494.97476"
+             height="98.994942"
+             width="265.67014"
+             id="rect3127" /></flowRegion><flowPara
+           style="font-size:22px;fill:#800000"
+           id="flowPara3129">algebraic data types</flowPara></flowRoot>      <rect
+         y="29.077654"
+         x="40.406101"
+         height="61.619305"
+         width="605.08136"
+         id="rect3133"
+         style="fill:none;stroke:#800000;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" />
+      <path
+         inkscape:connector-curvature="0"
+         id="path3135"
+         d="M 412.64731,112.92031 389.41381,90.696959"
+         style="fill:none;stroke:#800000;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" />
+    </g>
+  </g>
+  <g
+     inkscape:groupmode="layer"
+     id="layer7"
+     inkscape:label="pattern"
+     style="display:none">
+    <g
+       transform="translate(-39.90625,-28.5625)"
+       style="display:inline"
+       id="g3080">
+      <flowRoot
+         xml:space="preserve"
+         id="flowRoot3137"
+         style="font-size:22px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans;-inkscape-font-specification:Bitstream Vera Sans"
+         transform="translate(-164.94202,70.854257)"><flowRegion
+           id="flowRegion3139"><rect
+             id="rect3141"
+             width="265.67014"
+             height="98.994942"
+             x="494.97476"
+             y="91.707115"
+             style="font-size:22px" /></flowRegion><flowPara
+           id="flowPara3143"
+           style="font-size:22px;fill:#800000">pattern matching</flowPara></flowRoot>      <rect
+         style="fill:none;stroke:#800000;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+         id="rect3145"
+         width="41.416252"
+         height="142.43153"
+         x="142.4315"
+         y="126.05229" />
+      <path
+         sodipodi:nodetypes="cc"
+         style="fill:none;stroke:#800000;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+         d="M 317.69297,179.59038 185.363,181.61069"
+         id="path3147"
+         inkscape:connector-curvature="0" />
+    </g>
+  </g>
+</svg>

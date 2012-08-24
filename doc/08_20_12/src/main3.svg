@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   xmlns:dc="http://purl.org/dc/elements/1.1/"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   width="504.86133"
+   height="239.06294"
+   id="svg3303"
+   version="1.1"
+   inkscape:version="0.48.1 r9760"
+   sodipodi:docname="main2.svg">
+  <defs
+     id="defs3305" />
+  <sodipodi:namedview
+     id="base"
+     pagecolor="#ffffff"
+     bordercolor="#666666"
+     borderopacity="1.0"
+     inkscape:pageopacity="0.0"
+     inkscape:pageshadow="2"
+     inkscape:zoom="1.979899"
+     inkscape:cx="171.55055"
+     inkscape:cy="102.2613"
+     inkscape:document-units="px"
+     inkscape:current-layer="layer1"
+     showgrid="false"
+     fit-margin-top="0"
+     fit-margin-left="0"
+     fit-margin-right="0"
+     fit-margin-bottom="0"
+     inkscape:window-width="1388"
+     inkscape:window-height="941"
+     inkscape:window-x="141"
+     inkscape:window-y="51"
+     inkscape:window-maximized="0" />
+  <metadata
+     id="metadata3308">
+    <rdf:RDF>
+      <cc:Work
+         rdf:about="">
+        <dc:format>image/svg+xml</dc:format>
+        <dc:type
+           rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
+        <dc:title></dc:title>
+      </cc:Work>
+    </rdf:RDF>
+  </metadata>
+  <g
+     inkscape:label="Layer 1"
+     inkscape:groupmode="layer"
+     id="layer1"
+     transform="translate(-91.4375,-59.387774)"
+     style="display:inline">
+    <flowRoot
+       xml:space="preserve"
+       id="flowRoot3311"
+       style="font-size:36px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans;-inkscape-font-specification:Bitstream Vera Sans"><flowRegion
+         id="flowRegion3313"><rect
+           id="rect3315"
+           width="520"
+           height="517.14288"
+           x="91.428574"
+           y="55.219326" /></flowRegion><flowPara
+         id="flowPara3317"
+         style="font-size:18px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Bitstream Vera Sans Mono;-inkscape-font-specification:Bitstream Vera Sans Mono">solve <flowSpan
+   style="fill:#808000"
+   id="flowSpan3087">::</flowSpan> [[Char]] <flowSpan
+   style="fill:#808000"
+   id="flowSpan3089">-&gt;</flowSpan> Query [[Char]]</flowPara><flowPara
+         id="flowPara3319"
+         style="font-size:18px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Bitstream Vera Sans Mono;-inkscape-font-specification:Bitstream Vera Sans Mono">solve input <flowSpan
+   style="fill:#808000"
+   id="flowSpan3091">= do</flowSpan></flowPara><flowPara
+         id="flowPara3321"
+         style="font-size:18px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Bitstream Vera Sans Mono;-inkscape-font-specification:Bitstream Vera Sans Mono">    board <flowSpan
+   style="fill:#808000"
+   id="flowSpan3093">&lt;-</flowSpan> readBoard input</flowPara><flowPara
+         id="flowPara3323"
+         style="font-size:18px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Bitstream Vera Sans Mono;-inkscape-font-specification:Bitstream Vera Sans Mono">    assert (isvalid board)</flowPara><flowPara
+         id="flowPara3325"
+         style="font-size:18px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Bitstream Vera Sans Mono;-inkscape-font-specification:Bitstream Vera Sans Mono">    result <flowSpan
+   style="fill:#808000"
+   id="flowSpan3095">&lt;-</flowSpan> query board</flowPara><flowPara
+         id="flowPara3327"
+         style="font-size:18px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Bitstream Vera Sans Mono;-inkscape-font-specification:Bitstream Vera Sans Mono"><flowSpan
+   style="fill:#808000"
+   id="flowSpan3012">    case</flowSpan> result <flowSpan
+   style="fill:#808000"
+   id="flowSpan3020">of</flowSpan></flowPara><flowPara
+         style="font-size:18px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Bitstream Vera Sans Mono;-inkscape-font-specification:Bitstream Vera Sans Mono"
+         id="flowPara3014">        Unsatisfiable <flowSpan
+   style="fill:#808000"
+   id="flowSpan3016">-&gt;</flowSpan> return [<flowSpan
+   style="fill:#800080"
+   id="flowSpan3018">&quot;no solution&quot;</flowSpan>]</flowPara><flowPara
+         id="flowPara3329"
+         style="font-size:18px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Bitstream Vera Sans Mono;-inkscape-font-specification:Bitstream Vera Sans Mono">        Satisfiable v <flowSpan
+   style="fill:#808000"
+   id="flowSpan3099">-&gt;</flowSpan> return (print v)</flowPara><flowPara
+         style="font-size:18px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Bitstream Vera Sans Mono;-inkscape-font-specification:Bitstream Vera Sans Mono"
+         id="flowPara3337">        </flowPara></flowRoot>  </g>
+  <g
+     inkscape:groupmode="layer"
+     id="layer2"
+     inkscape:label="Layer"
+     style="display:inline">
+    <flowRoot
+       style="font-size:36px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Vera Sans;-inkscape-font-specification:Bitstream Vera Sans"
+       id="flowRoot2996"
+       xml:space="preserve"
+       transform="translate(-91.4375,143.14782)"><flowRegion
+         id="flowRegion2998"><rect
+           y="55.219326"
+           x="91.428574"
+           height="517.14288"
+           width="520"
+           id="rect3000" /></flowRegion><flowPara
+         id="flowPara3020"
+         style="font-size:18px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Bitstream Vera Sans Mono;-inkscape-font-specification:Bitstream Vera Sans Mono">main <flowSpan
+   style="fill:#808000"
+   id="flowSpan3105">::</flowSpan> Query [[Char]]</flowPara><flowPara
+         id="flowPara3022"
+         style="font-size:18px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Bitstream Vera Sans Mono;-inkscape-font-specification:Bitstream Vera Sans Mono">main <flowSpan
+   style="fill:#808000"
+   id="flowSpan3107">=</flowSpan> solve diabolical</flowPara></flowRoot>  </g>
+</svg>

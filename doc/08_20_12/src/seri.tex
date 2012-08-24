@@ -1,0 +1,126 @@
+\documentclass{beamer}
+\setbeamertemplate{navigation symbols}{}
+\setbeamertemplate{itemize item}[ball]
+\setbeamertemplate{itemize subitem}[circle]
+
+\title{Seri}
+\subtitle{A High-Level User Language for SMT Queries}
+\author{Richard Uhler}
+
+\begin{document}
+
+\begin{frame}
+    \titlepage
+\end{frame}
+
+\begin{frame}{How to Implement a Sudoku Solver}
+\begin{overprint}
+\onslide<1> \includegraphics[width=\textwidth]{input1}
+\onslide<2> \includegraphics[width=\textwidth]{input2}
+\end{overprint}
+\end{frame}
+
+\begin{frame}{How to Implement a Sudoku Solver}
+\begin{overprint}
+\onslide<1> \includegraphics[width=\textwidth]{current1}
+\onslide<2> \includegraphics[width=\textwidth]{current2}
+\onslide<3> \includegraphics[width=\textwidth]{current3}
+\onslide<4> \includegraphics[width=\textwidth]{current4}
+\onslide<5> \includegraphics[width=\textwidth]{current5}
+\onslide<6> \includegraphics[width=\textwidth]{current6}
+\onslide<7> \includegraphics[width=\textwidth]{current7}
+\onslide<8> \includegraphics[width=\textwidth]{current8}
+\end{overprint}
+\end{frame}
+ 
+\begin{frame}{The Parser in Seri}
+\begin{overprint}
+\onslide<1> \includegraphics[width=\textwidth]{parser1}
+\onslide<2> \includegraphics[width=\textwidth]{parser2}
+\onslide<3> \includegraphics[width=\textwidth]{parser3}
+\onslide<4> \includegraphics[width=\textwidth]{parser4}
+\onslide<5> \includegraphics[width=\textwidth]{parser5}
+\onslide<6> \includegraphics[width=\textwidth]{parser6}
+\onslide<7> \includegraphics[width=\textwidth]{parser7}
+\onslide<8> \includegraphics[width=\textwidth]{parser8}
+\end{overprint}
+\end{frame}
+
+\begin{frame}{The Sudoku Constraints}
+\begin{overprint}
+\onslide<1> \includegraphics[width=\textwidth]{isvalid1}
+\onslide<2> \includegraphics[width=\textwidth]{isvalid2}
+\onslide<3> \includegraphics[width=\textwidth]{isvalid3}
+\onslide<4> \includegraphics[width=\textwidth]{isvalid4}
+\onslide<5> \includegraphics[width=\textwidth]{isvalid5}
+\onslide<6> \includegraphics[width=\textwidth]{isvalid6}
+\onslide<7> \includegraphics[width=\textwidth]{isvalid7}
+\onslide<8> \includegraphics[width=\textwidth]{isvalid8}
+\onslide<9> \includegraphics[width=\textwidth]{isvalid9}
+\onslide<10> \includegraphics[width=\textwidth]{isvalid10}
+\end{overprint}
+\end{frame}
+
+\begin{frame}{The Sudoku Solver}
+\begin{overprint}
+\onslide<1> \includegraphics[width=0.9\textwidth]{main1}
+\onslide<2> \includegraphics[width=0.9\textwidth]{main2}
+\onslide<3-> \includegraphics[width=0.9\textwidth]{main3}
+\end{overprint}
+\onslide<4->
+\begin{itemize}
+\item Yices1: 1m15s
+\item Yices2: 1.6s
+\end{itemize}
+\onslide<5>
+\alert{No change in source code going from Yices1 to Yices2!}
+\end{frame}
+
+\begin{frame}{A Different Cell Representation}
+\begin{overprint}
+\onslide<1> \includegraphics[width=0.7\textwidth]{bitcell1}
+\onslide<2> \includegraphics[width=0.7\textwidth]{bitcell2}
+\onslide<3> \includegraphics[width=0.7\textwidth]{bitcell3}
+\onslide<4> \includegraphics[width=0.7\textwidth]{bitcell4}
+\onslide<5> \includegraphics[width=0.7\textwidth]{bitcell5}
+\onslide<6> \includegraphics[width=0.7\textwidth]{bitcell6}
+\onslide<7-> \includegraphics[width=0.7\textwidth]{bitcell7}
+\end{overprint}
+\onslide<8>
+\begin{itemize}
+\item Yices1: 3m53s (was 1m15s)
+\item Yices2: 1.0s  (was 1.6s)
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Interactive and Reusable Queries}
+\begin{overprint}
+\onslide<1> \includegraphics[width=0.8\textwidth]{allq1}
+\onslide<2> \includegraphics[width=0.8\textwidth]{allq2}
+\onslide<3> \includegraphics[width=0.8\textwidth]{allq3}
+\onslide<4> \includegraphics[width=0.8\textwidth]{allq4}
+\end{overprint}
+\end{frame}
+
+\begin{frame}{Current Status, Future Plans}
+\begin{block}{Current Status}
+    \begin{itemize}
+        \item Yices1, Yices2 supported
+        \item All queries shown work
+    \end{itemize}
+\end{block}
+\pause
+\begin{block}{Future Work (Ph.D. Thesis)}
+    \begin{itemize}
+        \item Improve performance of elaborator
+        \item Optimize generated queries
+        \item Add support for more solvers
+        \item Integrate tool with haskell
+        \item Explore implementation of formal tools, such as model checkers,
+              built in Seri with reusable library components
+    \end{itemize}
+\end{block}
+\end{frame}
+
+\end{document}
+

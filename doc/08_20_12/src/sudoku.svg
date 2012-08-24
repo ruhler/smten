@@ -1,0 +1,228 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   xmlns:dc="http://purl.org/dc/elements/1.1/"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xml:lang="en-US"
+   version="1.0"
+   viewBox="0 0 1000 1000"
+   width="1000"
+   height="1000"
+   id="svg2"
+   inkscape:version="0.48.1 r9760"
+   sodipodi:docname="sudoku.svg">
+  <metadata
+     id="metadata36">
+    <rdf:RDF>
+      <cc:Work
+         rdf:about="">
+        <dc:format>image/svg+xml</dc:format>
+        <dc:type
+           rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
+      </cc:Work>
+    </rdf:RDF>
+  </metadata>
+  <sodipodi:namedview
+     pagecolor="#ffffff"
+     bordercolor="#666666"
+     borderopacity="1"
+     objecttolerance="10"
+     gridtolerance="10"
+     guidetolerance="10"
+     inkscape:pageopacity="0"
+     inkscape:pageshadow="2"
+     inkscape:window-width="1256"
+     inkscape:window-height="828"
+     id="namedview34"
+     showgrid="false"
+     inkscape:zoom="0.472"
+     inkscape:cx="1193.0251"
+     inkscape:cy="429.13759"
+     inkscape:window-x="424"
+     inkscape:window-y="222"
+     inkscape:window-maximized="0"
+     inkscape:current-layer="text" />
+  <defs
+     id="defs4">
+    <style
+       type="text/css"
+       id="style6">
+		.blank { fill: #FFFFFF; }
+		text {
+			font-family: &quot;Helvetica&quot;, sans-serif;
+			fill: black;
+			text-anchor: middle;
+			font-size: 75px;
+		}
+		path.thickl { fill: none; stroke: #000000; stroke-width: 8; }
+		path.thinl  { fill: none; stroke: #000000; stroke-width: 3; }
+	</style>
+  </defs>
+  <!-- Main diagram -->
+  <rect
+     id="diagram"
+     class="blank"
+     x="50"
+     y="50"
+     width="900"
+     height="900" />
+  <!-- Grid lines -->
+  <path
+     id="l-thin"
+     class="thinl"
+     d="  M 50 50  h 900  v 900  h -900  Z  M 150 50 v 900  M 250 50 v 900  M 450 50 v 900  M 550 50 v 900  M 750 50 v 900  M 850 50 v 900  M 50 150 h 900  M 50 250 h 900  M 50 450 h 900  M 50 550 h 900  M 50 750 h 900  M 50 850 h 900 " />
+  <!-- Block lines -->
+  <path
+     id="l-thick"
+     class="thickl"
+     d="  M 50 350 h 900  M 50 650 h 900  M 350 50 v 900  M 650 50 v 900 " />
+  <!-- Ocean's SudokuDG11 Puzzle -->
+  <g
+     id="text"
+     transform="translate(0,30)">
+    <text
+       x="195.65288"
+       y="100"
+       id="text12"
+       style="font-size:75px;text-anchor:middle;fill:#000000;font-family:'&quot;Helvetica&quot;, sans-serif'">9</text>
+    <text
+       x="395.29984"
+       y="100.03662"
+       id="text14"
+       style="font-size:75px;text-anchor:middle;fill:#000000;font-family:'&quot;Helvetica&quot;, sans-serif'">7</text>
+    <text
+       x="195.5247"
+       y="199.46899"
+       id="text16"
+       style="font-size:75px;text-anchor:middle;fill:#000000;font-family:'&quot;Helvetica&quot;, sans-serif'">3</text>
+    <text
+       x="292.68936"
+       y="300"
+       id="text18"
+       style="font-size:75px;text-anchor:middle;fill:#000000;font-family:'&quot;Helvetica&quot;, sans-serif'">6</text>
+    <text
+       x="293.07388"
+       y="400.03662"
+       id="text20"
+       style="font-size:75px;text-anchor:middle;fill:#000000;font-family:'&quot;Helvetica&quot;, sans-serif'">7</text>
+    <text
+       x="495.95895"
+       y="399.50562"
+       id="text22"
+       style="font-size:75px;text-anchor:middle;fill:#000000;font-family:'&quot;Helvetica&quot;, sans-serif'">5</text>
+    <text
+       x="395.31815"
+       y="499.96338"
+       id="text24"
+       style="font-size:75px;text-anchor:middle;fill:#000000;font-family:'&quot;Helvetica&quot;, sans-serif'">3</text>
+    <text
+       x="594.17767"
+       y="500"
+       id="text26"
+       style="font-size:75px;text-anchor:middle;fill:#000000;font-family:'&quot;Helvetica&quot;, sans-serif'">7</text>
+    <text
+       x="103.75603"
+       y="599.46899"
+       id="text28"
+       style="font-size:75px;text-anchor:middle;fill:#000000;font-family:'&quot;Helvetica&quot;, sans-serif'">5</text>
+    <text
+       x="697.07574"
+       y="700.03662"
+       id="text30"
+       style="font-size:75px;text-anchor:middle;fill:#000000;font-family:'&quot;Helvetica&quot;, sans-serif'">1</text>
+    <text
+       x="801.4386"
+       y="900.53101"
+       id="text32"
+       style="font-size:75px;text-anchor:middle;fill:#000000;font-family:'&quot;Helvetica&quot;, sans-serif'">7</text>
+    <text
+       style="font-size:75px;text-anchor:middle;fill:#000000;font-family:'&quot;Helvetica&quot;, sans-serif'"
+       id="text3013"
+       y="100"
+       x="697.75323">8</text>
+    <text
+       x="801.05408"
+       y="100"
+       id="text3015"
+       style="font-size:75px;text-anchor:middle;fill:#000000;font-family:'&quot;Helvetica&quot;, sans-serif'">6</text>
+    <text
+       style="font-size:75px;text-anchor:middle;fill:#000000;font-family:'&quot;Helvetica&quot;, sans-serif'"
+       id="text3017"
+       y="199.50562"
+       x="292.28653">1</text>
+    <text
+       x="594.43402"
+       y="198.97461"
+       id="text3019"
+       style="font-size:75px;text-anchor:middle;fill:#000000;font-family:'&quot;Helvetica&quot;, sans-serif'">5</text>
+    <text
+       style="font-size:75px;text-anchor:middle;fill:#000000;font-family:'&quot;Helvetica&quot;, sans-serif'"
+       id="text3021"
+       y="200"
+       x="802.3175">2</text>
+    <text
+       style="font-size:75px;text-anchor:middle;fill:#000000;font-family:'&quot;Helvetica&quot;, sans-serif'"
+       id="text3023"
+       y="300"
+       x="103.38982">8</text>
+    <text
+       id="text3025"
+       y="400"
+       x="898.62152"
+       style="font-size:75px;text-anchor:middle;fill:#000000;font-family:'&quot;Helvetica&quot;, sans-serif'">6</text>
+    <text
+       style="font-size:75px;text-anchor:middle;fill:#000000;font-family:'&quot;Helvetica&quot;, sans-serif'"
+       id="text3027"
+       y="600"
+       x="494.91525">1</text>
+    <text
+       x="697.8631"
+       y="600"
+       id="text3029"
+       style="font-size:75px;text-anchor:middle;fill:#000000;font-family:'&quot;Helvetica&quot;, sans-serif'">7</text>
+    <text
+       style="font-size:75px;text-anchor:middle;fill:#000000;font-family:'&quot;Helvetica&quot;, sans-serif'"
+       id="text3031"
+       y="700"
+       x="899.15253">9</text>
+    <text
+       x="801.69495"
+       y="798.5509"
+       id="text3033"
+       style="font-size:75px;text-anchor:middle;fill:#000000;font-family:'&quot;Helvetica&quot;, sans-serif'">5</text>
+    <text
+       style="font-size:75px;text-anchor:middle;fill:#000000;font-family:'&quot;Helvetica&quot;, sans-serif'"
+       id="text3035"
+       y="799.04529"
+       x="697.88141">3</text>
+    <text
+       x="394.91531"
+       y="799.04529"
+       id="text3037"
+       style="font-size:75px;text-anchor:middle;fill:#000000;font-family:'&quot;Helvetica&quot;, sans-serif'">6</text>
+    <text
+       style="font-size:75px;text-anchor:middle;fill:#000000;font-family:'&quot;Helvetica&quot;, sans-serif'"
+       id="text3039"
+       y="799.57629"
+       x="196.3853">2</text>
+    <text
+       style="font-size:75px;text-anchor:middle;fill:#000000;font-family:'&quot;Helvetica&quot;, sans-serif'"
+       id="text3041"
+       y="900.49438"
+       x="594.06781">8</text>
+    <text
+       x="293.22037"
+       y="900.53101"
+       id="text3043"
+       style="font-size:75px;text-anchor:middle;fill:#000000;font-family:'&quot;Helvetica&quot;, sans-serif'">4</text>
+    <text
+       style="font-size:75px;text-anchor:middle;fill:#000000;font-family:'&quot;Helvetica&quot;, sans-serif'"
+       id="text3045"
+       y="900"
+       x="195.76274">5</text>
+  </g>
+</svg>
