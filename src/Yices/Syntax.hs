@@ -208,73 +208,109 @@ bvextractE a i j = FunctionE (varE "bv-extract") [a, integerE i, integerE j]
 
 -- | Convert an abstract syntactic construct to concrete yices syntax.
 class Concrete a where
-    concrete :: YicesVersion -> a -> Doc
+    concrete :: YicesVersion -> a -> [String]
+
+indent :: [String] -> [String]
+indent = map ((:) ' ')
 
 instance Concrete Command where
     concrete v (DefineType s Nothing)
-        = parens $ text "define-type" <+> text s
+        = ["(define-type " ++ s ++ ")"]
     concrete v (DefineType s (Just td))
-        = parens $ text "define-type" <+> text s <+> concrete v td
+        = ["(define-type " ++ s]
+          ++ indent (concrete v td)
+          ++ [")"]
     concrete v (Define s t Nothing)
-        = parens $ text "define" <+> text s <+> text "::" <+> concrete v t
+        = ["(define " ++ s ++ " ::"]
+          ++ indent (concrete v t)
+          ++ [")"]
     concrete v (Define s t (Just e))
-        = parens $ text "define" <+> text s <+> text "::" <+> concrete v t <+> concrete v e
-    concrete v (Assert e) = parens $ text "assert" <+> concrete v e
-    concrete v Check = parens $ text "check"
-    concrete v Push = parens $ text "push"
-    concrete v Pop = parens $ text "pop"
+        = ["(define " ++ s ++ " ::"]
+          ++ indent (concrete v t)
+          ++ indent (concrete v e)
+          ++ [")"]
+    concrete v (Assert e)
+        = ["(assert"]
+          ++ indent (concrete v e)
+          ++ [")"]
+    concrete v Check = ["(check)"]
+    concrete v Push = ["(push)"]
+    concrete v Pop = ["(pop)"]
 
 instance Concrete [Command] where
-    concrete v cmds = vcat (map (concrete v) cmds)
+    concrete v cmds = concat $ map (concrete v) cmds
 
 instance Concrete Typedef where
-    concrete v (ScalarTD ss) = parens $ text "scalar" <+> hsep (map text ss)
+    concrete v (ScalarTD ss) = ["(scalar " ++ concat (map ((:) ' ') ss) ++ ")"]
     concrete v (NormalTD t) = concrete v t
 
 instance Concrete Type where
-    concrete v (VarT s) = text s
-    concrete v (TupleT ts) = parens $ text "tuple" <+> hsep (map (concrete v) ts)
-    concrete v (ArrowT ts) = parens $ text "->" <+> hsep (map (concrete v) ts)
-    concrete v (BitVectorT i) = parens $ text "bitvector" <+> integer i
-    concrete v IntegerT = text "int"
-    concrete v BoolT = text "bool"
-    concrete v RealT = text "real"
+    concrete v (VarT s) = [s]
+    concrete v (TupleT ts)
+      = ["(tuple"]
+        ++ indent (concat $ map (concrete v) ts)
+        ++ [")"]
+    concrete v (ArrowT ts)
+      = ["(->"]
+        ++ indent (concat $ map (concrete v) ts)
+        ++ [")"]
+    concrete v (BitVectorT i) = ["(bitvector " ++ show i ++ ")"]
+    concrete v IntegerT = ["int"]
+    concrete v BoolT = ["bool"]
+    concrete v RealT = ["real"]
 
 instance Concrete Expression where
     concrete v (ImmediateE iv) = concrete v iv
     concrete v (ForallE decls e)
-        = parens $ text "forall" <+> parens (sep $ map (concrete v) decls) <+> concrete v e
+        = ["(forall"]
+          ++ indent (["("] ++ indent (concat $ map (concrete v) decls) ++ [")"])
+          ++ indent (concrete v e)
+          ++ [")"]
     concrete v (ExistsE decls e)
-        = parens $ text "exists" <+> parens (sep $ map (concrete v) decls) <+> concrete v e
+        = ["(exists"]
+          ++ indent (["("] ++ indent (concat $ map (concrete v) decls) ++ [")"])
+          ++ indent (concrete v e)
+          ++ [")"]
     concrete v (LetE bindings e)
-        = parens $ sep [text "let", parens (sep $ map (concrete v) bindings), concrete v e]
+        = ["(let"]
+          ++ indent (["("] ++ indent (concat $ map (concrete v) bindings) ++ [")"])
+          ++ indent (concrete v e)
+          ++ [")"]
     concrete v (UpdateE f es e)
-        = parens $ text "update" <+> concrete v f
-            <+> parens (hsep $ map (concrete v) es) <+> concrete v e
+        = ["(update"]
+          ++ indent (concrete v f)
+          ++ indent (["("] ++ indent (concat $ map (concrete v) es) ++ [")"])
+          ++ indent (concrete v e)
+          ++ [")"]
     concrete v (TupleUpdateE t i x)
-        = parens $ sep (
-            (text (if v == Yices1 then "update" else "tuple-update"))
-              : (map (concrete v) [t, integerE i, x]))
+        = [(if v == Yices1 then "(update" else "(tuple-update")]
+          ++ indent (concrete v t)
+          ++ indent [show i]
+          ++ indent (concrete v x)
+          ++ [")"]
     concrete v (FunctionE f args)
-        = parens $ sep ((concrete v f) : (map (concrete v) args))
+        = ["("]
+          ++ indent (concrete v f)
+          ++ indent (concat $ map (concrete v) args)
+          ++ [")"]
 
 instance Concrete VarDecl where
-    concrete v (n, t) = text n <+> text "::" <+> concrete v t
+    concrete v (n, t) = [n ++ " ::"] ++ indent (concrete v t)
 
 instance Concrete Binding where
-    concrete v (n, e) = parens $ text n <+> concrete v e
+    concrete v (n, e) = ["(" ++ n] ++ indent (concrete v e) ++ [")"]
 
 instance Concrete ImmediateValue where
-    concrete v TrueV = text "true"
-    concrete v FalseV = text "false"
-    concrete v (VarV s) = text s
+    concrete v TrueV = ["true"]
+    concrete v FalseV = ["false"]
+    concrete v (VarV s) = [s]
     concrete v (RationalV r)
-        = integer (numerator r) <>
+        = [show (numerator r) ++
             if denominator r == 1
-                then empty
-                else text "/" <> integer (denominator r)
+                then ""
+                else "/" ++ show (denominator r)]
 
 -- | Render abstract yices syntax to a concrete syntax string.
 pretty :: Concrete a => YicesVersion -> a -> String
-pretty v x = render (concrete v x)
+pretty v x = unlines (concrete v x)
 
