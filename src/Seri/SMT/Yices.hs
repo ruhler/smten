@@ -50,6 +50,7 @@ import System.IO
 
 import Control.Monad.State
 import qualified Yices.Syntax as Y
+import qualified Yices.Pretty as Y
 import qualified Yices.Yices as Y
 
 import Seri.Failable

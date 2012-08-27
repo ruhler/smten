@@ -46,6 +46,7 @@ import qualified Foreign.Concurrent as F
 
 import Yices.Yices
 import Yices.Syntax
+import Yices.Pretty
 
 data YContext
 data YModel
