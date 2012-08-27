@@ -43,7 +43,7 @@ module Yices.Syntax (
     YicesVersion(..),
     Symbol, Command(..), Typedef(..), Type(..), Expression(..),
     VarDecl, Binding, ImmediateValue(..),
-    trueE, falseE, notE, varE, integerE, selectE, eqE, andE, ifE, ltE, gtE,
+    trueE, falseE, notE, varE, integerE, selectE, eqE, andE, orE, ifE, ltE, gtE,
     addE, subE, mulE,
     tupleE, tupleUpdateE,
     mkbvE, bvaddE, bvorE, bvandE, bvshiftLeft0E, bvshiftRight0E,
@@ -129,6 +129,7 @@ selectE e i = FunctionE (varE "select") [e, integerE i]
 
 -- | > (= <expression> <expression>)
 eqE :: Expression -> Expression -> Expression
+eqE a b | a == trueE = b
 eqE a b = FunctionE (varE "=") [a, b]
 
 -- | > (mk-tuple <term_1>  ... <term_n>)
@@ -142,12 +143,33 @@ tupleUpdateE = TupleUpdateE
 
 -- | > (and <term_1> ... <term_n>)
 andE :: [Expression] -> Expression
-andE [] = trueE
-andE [x] = x
-andE xs = FunctionE (varE "and") xs
+andE es = 
+  let flatten :: Expression -> [Expression]
+      flatten e | e == trueE = []
+      flatten (FunctionE f xs) | f == varE "and" = concat $ map flatten xs
+      flatten e = [e]
+  in case (concat $ map flatten es) of
+      [] -> trueE
+      [x] -> x
+      xs -> FunctionE (varE "and") xs
+
+-- | > (or <term_1> ... <term_n>)
+orE :: [Expression] -> Expression
+orE es =
+  let flatten :: Expression -> [Expression]
+      flatten e | e == falseE = []
+      flatten (FunctionE f xs) | f == varE "or" = concat $ map flatten xs
+      flatten e = [e]
+  in case (concat $ map flatten es) of
+        [] -> falseE
+        [x] -> x
+        xs -> FunctionE (varE "or") xs
 
 -- | > (if <expression> <expression> <expression>)
 ifE :: Expression -> Expression -> Expression -> Expression
+ifE p a b | a == trueE = orE [p, b]
+ifE p a b | a == falseE && b == trueE = notE p
+ifE p a b | b == falseE = andE [p, a]
 ifE p a b = FunctionE (varE "if") [p, a, b]
 
 -- | > (< <exprsesion> <expression>)
