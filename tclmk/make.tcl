@@ -80,10 +80,6 @@ proc badtypetest {name} {
 badtypetest "BadType1"
 badtypetest "BadType2"
 badtypetest "InstCtx"
-# TODO: remove these entirely, because we now interpret recursive lets as
-# not-recursive.
-#badtypetest "LetRecM"
-#badtypetest "LetRecS"
 
 
 # Test the haskell target.
