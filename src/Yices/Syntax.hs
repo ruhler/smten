@@ -33,9 +33,6 @@
 -- 
 -------------------------------------------------------------------------------
 
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE TypeSynonymInstances #-}
-
 -- | An abstract syntax suitable for both yices 1 and yices 2.
 -- The syntax is restricted to what both yices1 and yices2 support, which is
 -- basically the same thing as what yices2 supports.
@@ -43,16 +40,12 @@ module Yices.Syntax (
     YicesVersion(..),
     Symbol, Command(..), Typedef(..), Type(..), Expression(..),
     VarDecl, Binding, ImmediateValue(..),
-    trueE, falseE, notE, varE, integerE, selectE, eqE, andE, ifE, ltE, gtE,
+    trueE, falseE, notE, varE, integerE, selectE, eqE, andE, orE, ifE, ltE, gtE,
     addE, subE, mulE,
     tupleE, tupleUpdateE,
     mkbvE, bvaddE, bvorE, bvandE, bvshiftLeft0E, bvshiftRight0E,
     bvzeroExtendE, bvextractE, bvshlE,
-    pretty,
   ) where
-
-import Data.Ratio
-import Text.PrettyPrint.HughesPJ
 
 data YicesVersion = Yices1 | Yices2 deriving(Show, Eq)
 
@@ -129,6 +122,7 @@ selectE e i = FunctionE (varE "select") [e, integerE i]
 
 -- | > (= <expression> <expression>)
 eqE :: Expression -> Expression -> Expression
+eqE a b | a == trueE = b
 eqE a b = FunctionE (varE "=") [a, b]
 
 -- | > (mk-tuple <term_1>  ... <term_n>)
@@ -142,12 +136,33 @@ tupleUpdateE = TupleUpdateE
 
 -- | > (and <term_1> ... <term_n>)
 andE :: [Expression] -> Expression
-andE [] = trueE
-andE [x] = x
-andE xs = FunctionE (varE "and") xs
+andE es = 
+  let flatten :: Expression -> [Expression]
+      flatten e | e == trueE = []
+      flatten (FunctionE f xs) | f == varE "and" = concat $ map flatten xs
+      flatten e = [e]
+  in case (concat $ map flatten es) of
+      [] -> trueE
+      [x] -> x
+      xs -> FunctionE (varE "and") xs
+
+-- | > (or <term_1> ... <term_n>)
+orE :: [Expression] -> Expression
+orE es =
+  let flatten :: Expression -> [Expression]
+      flatten e | e == falseE = []
+      flatten (FunctionE f xs) | f == varE "or" = concat $ map flatten xs
+      flatten e = [e]
+  in case (concat $ map flatten es) of
+        [] -> falseE
+        [x] -> x
+        xs -> FunctionE (varE "or") xs
 
 -- | > (if <expression> <expression> <expression>)
 ifE :: Expression -> Expression -> Expression -> Expression
+ifE p a b | a == trueE = orE [p, b]
+ifE p a b | a == falseE && b == trueE = notE p
+ifE p a b | b == falseE = andE [p, a]
 ifE p a b = FunctionE (varE "if") [p, a, b]
 
 -- | > (< <exprsesion> <expression>)
@@ -205,76 +220,4 @@ bvzeroExtendE a b = FunctionE (varE "bv-zero-extend") [a, integerE b]
 -- | > (bv-extract a i j)
 bvextractE :: Expression -> Integer -> Integer -> Expression
 bvextractE a i j = FunctionE (varE "bv-extract") [a, integerE i, integerE j]
-
--- | Convert an abstract syntactic construct to concrete yices syntax.
-class Concrete a where
-    concrete :: YicesVersion -> a -> Doc
-
-instance Concrete Command where
-    concrete v (DefineType s Nothing)
-        = parens $ text "define-type" <+> text s
-    concrete v (DefineType s (Just td))
-        = parens $ text "define-type" <+> text s <+> concrete v td
-    concrete v (Define s t Nothing)
-        = parens $ text "define" <+> text s <+> text "::" <+> concrete v t
-    concrete v (Define s t (Just e))
-        = parens $ text "define" <+> text s <+> text "::" <+> concrete v t <+> concrete v e
-    concrete v (Assert e) = parens $ text "assert" <+> concrete v e
-    concrete v Check = parens $ text "check"
-    concrete v Push = parens $ text "push"
-    concrete v Pop = parens $ text "pop"
-
-instance Concrete [Command] where
-    concrete v cmds = vcat (map (concrete v) cmds)
-
-instance Concrete Typedef where
-    concrete v (ScalarTD ss) = parens $ text "scalar" <+> hsep (map text ss)
-    concrete v (NormalTD t) = concrete v t
-
-instance Concrete Type where
-    concrete v (VarT s) = text s
-    concrete v (TupleT ts) = parens $ text "tuple" <+> hsep (map (concrete v) ts)
-    concrete v (ArrowT ts) = parens $ text "->" <+> hsep (map (concrete v) ts)
-    concrete v (BitVectorT i) = parens $ text "bitvector" <+> integer i
-    concrete v IntegerT = text "int"
-    concrete v BoolT = text "bool"
-    concrete v RealT = text "real"
-
-instance Concrete Expression where
-    concrete v (ImmediateE iv) = concrete v iv
-    concrete v (ForallE decls e)
-        = parens $ text "forall" <+> parens (sep $ map (concrete v) decls) <+> concrete v e
-    concrete v (ExistsE decls e)
-        = parens $ text "exists" <+> parens (sep $ map (concrete v) decls) <+> concrete v e
-    concrete v (LetE bindings e)
-        = parens $ sep [text "let", parens (sep $ map (concrete v) bindings), concrete v e]
-    concrete v (UpdateE f es e)
-        = parens $ text "update" <+> concrete v f
-            <+> parens (hsep $ map (concrete v) es) <+> concrete v e
-    concrete v (TupleUpdateE t i x)
-        = parens $ sep (
-            (text (if v == Yices1 then "update" else "tuple-update"))
-              : (map (concrete v) [t, integerE i, x]))
-    concrete v (FunctionE f args)
-        = parens $ sep ((concrete v f) : (map (concrete v) args))
-
-instance Concrete VarDecl where
-    concrete v (n, t) = text n <+> text "::" <+> concrete v t
-
-instance Concrete Binding where
-    concrete v (n, e) = parens $ text n <+> concrete v e
-
-instance Concrete ImmediateValue where
-    concrete v TrueV = text "true"
-    concrete v FalseV = text "false"
-    concrete v (VarV s) = text s
-    concrete v (RationalV r)
-        = integer (numerator r) <>
-            if denominator r == 1
-                then empty
-                else text "/" <> integer (denominator r)
-
--- | Render abstract yices syntax to a concrete syntax string.
-pretty :: Concrete a => YicesVersion -> a -> String
-pretty v x = render (concrete v x)
 

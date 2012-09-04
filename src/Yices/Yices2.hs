@@ -45,6 +45,7 @@ import Foreign.C.Types
 
 import Yices.FFI2
 import Yices.Syntax
+import Yices.Pretty
 import Yices.Yices
 
 data Yices2FFI = Yices2FFI (Ptr YContext)
