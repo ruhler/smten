@@ -108,6 +108,22 @@ instance Yices Yices2FFI where
         c_yices_free_model model
         return $! toInteger x
 
+    getBoolValue (Yices2FFI yctx) nm = do
+        model <- c_yices_get_model yctx 1
+        x <- alloca $ \ptr -> do
+                term <- yterm (varE nm)
+                ir <- c_yices_get_bool_value model term ptr
+                if ir == 0
+                   then do 
+                      v <- peek ptr
+                      return v
+                   else error $ "yices2 get bool value returned: " ++ show ir
+        c_yices_free_model model
+        case x of
+            0 -> return False
+            1 -> return True
+            _ -> error $ "yices2 get bool value got: " ++ show x
+        
     getBitVectorValue (Yices2FFI yctx) w nm = do
         model <- c_yices_get_model yctx 1
         bits <- allocaArray (fromInteger w) $ \ptr -> do
@@ -193,6 +209,7 @@ builtin = [
 ytermS :: [(String, YTerm)] -> Expression -> IO YTerm
 ytermS s e | isbinop "=" e = dobinop s e c_yices_eq
 ytermS s e | isbinop "<" e = dobinop s e c_yices_arith_lt_atom
+ytermS s e | isbinop "<=" e = dobinop s e c_yices_arith_leq_atom
 ytermS s e | isbinop ">" e = dobinop s e c_yices_arith_gt_atom
 ytermS s e | isbinop "+" e = dobinop s e c_yices_add
 ytermS s e | isbinop "-" e = dobinop s e c_yices_sub

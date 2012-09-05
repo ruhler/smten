@@ -217,7 +217,21 @@ runQuery q e = runStateT (runQueryM e) q
 
 -- | Given a free variable name and corresponding seri type, return the value
 -- of that free variable from the yices model.
+--
+-- Assumes:
+--   Integers, Bools, and Bit vectors are implemented directly using the
+--   corresponding yices primitives. (Should I not be assuming this?)
 realizefree :: Y.Yices y => Env -> Name -> Type -> YicesMonad y Exp
+realizefree _ nm t | t == boolT = do
+    debug $ "; realize bool: " ++ pretty nm
+    res <- check
+    case res of
+        Y.Satisfiable -> return ()
+        _ -> error $ "realize free expected Satisfiable, but wasn't"
+    ctx <- gets ys_ctx
+    bval <- lift $ Y.getBoolValue ctx (yicesN nm)
+    debug $ "; " ++ pretty nm ++ " is " ++ show bval
+    return (boolE bval)
 realizefree _ nm t | t == integerT = do
     debug $ "; realize integer: " ++ pretty nm
     res <- check

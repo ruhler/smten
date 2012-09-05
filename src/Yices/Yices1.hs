@@ -85,6 +85,9 @@ foreign import ccall "yices_enable_type_checker"
 foreign import ccall "yices_get_last_error_message"
     c_yices_get_last_error_message :: IO CString
 
+foreign import ccall "yices_get_value"
+    c_yices_get_value :: Ptr YModel -> Ptr YDecl -> IO YBool
+
 foreign import ccall "yices_get_int_value"
     c_yices_get_int_value :: Ptr YModel -> Ptr YDecl -> Ptr CLong -> IO CInt
 
@@ -138,6 +141,17 @@ instance Yices Yices1FFI where
                 then peek ptr
                 else error $ "yices get int value returned: " ++ show ir
         return (toInteger x)
+
+    getBoolValue (Yices1FFI fp) nm = do
+        model <- withForeignPtr fp c_yices_get_model 
+        decl <- withCString nm $ \str ->
+                    withForeignPtr fp $ \yctx ->
+                        c_yices_get_var_decl_from_name yctx str
+        br <- c_yices_get_value model decl
+        case br of
+          _ | br == yTrue -> return True
+          _ | br == yFalse -> return False
+          _ | br == yUndef -> error $ "yices get value returned undef"
 
     getBitVectorValue (Yices1FFI fp) w nm = do
         model <- withForeignPtr fp c_yices_get_model 

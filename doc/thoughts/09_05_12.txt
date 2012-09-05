@@ -1,0 +1,59 @@
+
+Wed Sep  5 18:08:43 EDT 2012
+
+I have a plan for how to tackle this bug in the way we realize values of
+algebraic data types. And I think it's a fairly nice solution that doesn't
+depend on how those data types are represented internally.
+
+The concept is simple: just don't create any free objects of a complex data
+type. Instead, create expressions corresponding to those free objects.
+
+Let's remember the problem. The problem is: I have a free variable of type
+Maybe, for example. How do I figure out what it's value is? The current
+solution is: let me assert it is equivalent to Just foo for some variable foo,
+if so, then I'll figure out what foo is, if not, then it must be nothing. The
+trouble is, we are adding assertions, we are requiring more checks. These
+assertions and checks could change the model yices has built up, and it could
+change it in inconsistent ways. That's very bad.
+
+Perhaps I can come up with a test case to demonstrate that. Or I can just fix
+the problem...
+
+The solution is as I said. Add some logic to the SMT runner, the
+implementation of the "free" primitive. Instead of defining a new free
+variable:
+  (define free1 :: Maybe$Integer)
+And returning the expression:
+  free1
+
+I'll define a few free variables:
+  (define free1 :: Bool)
+  (define free2 :: Integer)
+And return the expression: 
+  if free1 then Just free2 else Nothing
+
+And there you have it! Nothing else to change. Now we should never encounter a
+free variable other than one of type: Bool, Integer, or BitVector, of all
+which we can (and must) read using the api to the solver.
+
+And that's it. Perhaps elaboration could somehow be smart and simplify away
+things when obvious. I kind of doubt it, but I don't think that matters.
+
+Cool. So... shall I try it? It would be interesting to see if it affects
+performance at all one way or another, so perhaps I should set up a test for
+that? It would be nice if I had a benchmark suite that I could run every time
+I make a change, but... this is a correctness thing, not a performance thing,
+so no need to worry about performance here, unless something terrible goes
+wrong.
+
+Cool. Steps are:
+1. Read booleans directly using the C api (I think I implemented this for
+enoch. Maybe I can just merge that change in).
+2. Change the implementation of free based on the data type. We may need to
+look up data type information, but we should have all that.
+
+To test it out... well, test and see if things work. And look at the Complex
+debug output? Or it should be obvious.
+
+Cool. Let me get started.
+

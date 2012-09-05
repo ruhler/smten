@@ -62,11 +62,11 @@ prelude = [
 
 -- | True
 trueE :: Exp
-trueE = ConE (Sig (name "True") (ConT (name "Bool")))
+trueE = ConE (Sig (name "True") boolT)
 
 -- | False
 falseE :: Exp
-falseE = ConE (Sig (name "False") (ConT (name "Bool")))
+falseE = ConE (Sig (name "False") boolT)
 
 -- | Boolean expression
 boolE :: Bool -> Exp

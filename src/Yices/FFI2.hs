@@ -74,6 +74,7 @@ module Yices.FFI2 (
     c_yices_update,
     c_yices_ite,
     c_yices_arith_lt_atom,
+    c_yices_arith_leq_atom,
     c_yices_arith_gt_atom,
     c_yices_add,
     c_yices_sub,
@@ -104,6 +105,7 @@ module Yices.FFI2 (
     c_yices_pop,
     c_yices_get_model,
     c_yices_free_model,
+    c_yices_get_bool_value,
     c_yices_get_int64_value,
     c_yices_get_bv_value,
     c_yices_print_model,
@@ -224,6 +226,9 @@ foreign import ccall unsafe "yices_ite"
 foreign import ccall unsafe "yices_arith_lt_atom"
     c_yices_arith_lt_atom :: YTerm -> YTerm -> IO YTerm
 
+foreign import ccall unsafe "yices_arith_leq_atom"
+    c_yices_arith_leq_atom :: YTerm -> YTerm -> IO YTerm
+
 foreign import ccall unsafe "yices_arith_gt_atom"
     c_yices_arith_gt_atom :: YTerm -> YTerm -> IO YTerm
 
@@ -305,6 +310,9 @@ foreign import ccall unsafe "yices_get_model"
 
 foreign import ccall unsafe "yices_free_model"
     c_yices_free_model :: Ptr YModel -> IO ()
+
+foreign import ccall unsafe "yices_get_bool_value"
+    c_yices_get_bool_value :: Ptr YModel -> YTerm -> Ptr Int32 -> IO Int32
 
 foreign import ccall unsafe "yices_get_int64_value"
     c_yices_get_int64_value :: Ptr YModel -> YTerm -> Ptr Int64 -> IO Int32
