@@ -38,7 +38,7 @@
 module Seri.Lambda.Prelude (
     prelude,
     appsE, unappsE, 
-    trueE, falseE, boolE, listE, listP, tupE, tupP,
+    unitE, trueE, falseE, boolE, listE, listP, tupE, tupP,
     stringE, charE, integerE, numberE, bitE,
     ) where
 
@@ -59,6 +59,10 @@ prelude = [
     tuple 2, tuple 3, tuple 4,
     DataD (name "[]") [NormalTV (name "a")] [Con (name "[]") [], Con (name ":") [VarT (name "a"), listT (VarT (name "a"))]]
     ]
+
+-- | > ()
+unitE :: Exp
+unitE = ConE (Sig (name "()") unitT)
 
 -- | True
 trueE :: Exp

@@ -22,6 +22,7 @@ proc cabal {fcabal} {
         serih Seri/Target/Haskell/serih.hs {}
         seriq Seri/SMT/seriq.hs yices
         seriq2 Seri/SMT/seriq2.hs yices2
+        enoch Seri/Enoch/enoch.hs yices2
     }
 
     set builddeps {

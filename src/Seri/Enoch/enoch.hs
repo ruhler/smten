@@ -1,9 +1,12 @@
 
 import Prelude hiding ((<), (>))
-import Seri.Lambda
+
+import Seri.Failable
+import Seri.Lambda hiding (free, query)
 
 import Seri.Enoch.Enoch
 import Seri.Enoch.Prelude
+import Seri.Enoch.SMT
 
 q1 :: Query (Answer Integer)
 q1 = do
@@ -14,6 +17,11 @@ q1 = do
 
 main :: IO ()
 main = do
-    runQuery env q1 >>= (putStrLn . show)
-    
+    lib <- load ["src"] "src/Seri/SMT/SMT.sri"
+    flat <- attemptIO $ flatten lib
+    typed <- attemptIO $ typeinfer (mkEnv flat) flat
+    let env = mkEnv typed
+    attemptIO $ typecheck env typed
 
+    runQuery (RunOptions (Just "build/src/Seri/Enoch/q1.dbg") True) env q1 >>= (putStrLn . show)
+    

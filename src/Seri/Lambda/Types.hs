@@ -36,7 +36,7 @@
 -- | Utilities for working with Seri Types
 module Seri.Lambda.Types (
     appsT, arrowsT, outputT, unappsT, unarrowsT,
-    boolT, listT, integerT, bitT, charT, stringT, tupT, untupT,
+    unitT, boolT, listT, integerT, bitT, charT, stringT, tupT, untupT,
     Typeof(..),
     assign, assignl, assignments, bindingsP, bindingsP', varTs, nvarTs,
     isSubType,
@@ -96,6 +96,10 @@ unappsT t = [t]
 unarrowsT :: Type -> [Type]
 unarrowsT (AppT (AppT (ConT ar) a) b) | ar == name "->"  = a : (unarrowsT b)
 unarrowsT t = [t]
+
+-- | The unit type: ()
+unitT :: Type
+unitT = ConT (name "()")
 
 -- | The boolean type
 boolT :: Type

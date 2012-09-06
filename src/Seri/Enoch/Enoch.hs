@@ -3,11 +3,13 @@ module Seri.Enoch.Enoch (
     TExp(..), Seriable(..), unpack',
  ) where
 
+import Data.Maybe (fromMaybe)
+
 import Seri.Lambda
 
 -- | Typed Exp.
 -- A Seri expression corresponding to a haskell object of type 'a'
-data TExp a = Exp
+data TExp a = TExp Exp
 
 class Seriable a where
     -- Convert a haskell object to its seri representation.
@@ -21,6 +23,6 @@ class Seriable a where
     serit :: a -> Type
 
 
-unpack' :: TExp a -> a
+unpack' :: (Seriable a) => TExp a -> a
 unpack' = fromMaybe (error "unpack' failed") . unpack
 
