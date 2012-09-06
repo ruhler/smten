@@ -1,4 +1,7 @@
 
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE TypeSynonymInstances #-}
+
 module Seri.Enoch.SMT (
     Query, Answer(..), 
     free, assert, query, run, run',
@@ -19,13 +22,22 @@ data Answer a =
   | Unknown
     deriving (Eq, Show)
 
-instance (Seriable a) => Seriable (Answer a) where
-    pack (Satisfiable x) =
-      let ct = arrowsT [serit x, ConT (name "Answer")]
+instance SeriableT1 Answer where
+    serit1 x = ConT (name "Answer")
 
-          con :: TExp (a -> Answer a)
-          con = TExp $ ConE (Sig (name "Satisfiable") ct)
-      in apply con (pack x)
+instance (SeriableE a) => SeriableE (Answer a) where
+    pack (Satisfiable x) =
+      let satE :: (SeriableT a) => TExp (a -> Answer a)
+          satE = conE "Satisfiable"
+      in apply satE (pack x)
+    pack Unsatisfiable =
+      let unsatE :: (SeriableT a) => TExp (Answer a)
+          unsatE = conE "Unsatisfiable"
+      in unsatE
+    pack Unknown =
+      let unknownE :: (SeriableT a) => TExp (Answer a)
+          unknownE = conE "Unknown"
+      in unknownE
 
     unpack (TExp (AppE (ConE (Sig n _)) x)) | n == name "Satisfiable" = do
         a <- unpack (TExp x)
@@ -34,51 +46,29 @@ instance (Seriable a) => Seriable (Answer a) where
     unpack (TExp (ConE (Sig n _))) | n == name "Unknown" = return Unknown
     unpack _ = Nothing
 
-    serit x =
-      let t :: Answer a -> a
-          t _ = undefined
-      in appsT [ConT (name "Answer"), serit (t x)]
                 
 
 type Query = StateT Y.SMTQuerier IO
 
-queryT :: Type -> Type
-queryT t = appsT [ConT (name "Query"), t]
+instance SeriableT1 Query where
+    serit1 _ = ConT (name "Query")
 
-free :: (Seriable a) => Query (TExp a)
+free :: (SeriableT a) => Query (TExp a)
 free = 
-  let t1 :: (Seriable a) => a -> (Type -> b) -> b
-      t1 x f = f (serit x)
-
-      t2 :: Query (TExp a) -> a
-      t2 _ = undefined
-
-      freeE :: Type -> Query (TExp a)
-      freeE t = run (TExp $ VarE (Sig (name "Seri.SMT.SMT.free") (queryT t)))
-
-      me = t1 (t2 me) freeE
-  in me
+    let freeE :: (SeriableT a) => TExp (Query a)
+        freeE = varE "Seri.SMT.SMT.free"
+    in run freeE
 
 assert :: TExp Bool -> Query ()
 assert p =
-  let ty = arrowsT [boolT, queryT unitT]
-      
-      assertE :: TExp (Bool -> Query ())
-      assertE = TExp $ VarE (Sig (name "Seri.SMT.SMT.assert") ty)
+  let assertE :: TExp (Bool -> Query ())
+      assertE = varE "Seri.SMT.SMT.assert"
   in run' (apply assertE p)
 
-query :: (Seriable a) => TExp a -> Query (Answer a)
+query :: (SeriableE a) => TExp a -> Query (Answer a)
 query x = 
-  let t1 :: TExp a -> a
-      t1 _ = undefined
-
-      t2 :: TExp a -> Answer a
-      t2 _ = undefined
-
-      ty = arrowsT [serit (t1 x), queryT (serit (t2 x))]
-
-      queryE :: TExp (a -> Query (Answer a))
-      queryE = TExp $ (VarE (Sig (name "Seri.SMT.SMT.query") ty))
+  let queryE :: (SeriableT a) => TExp (a -> Query (Answer a))
+      queryE = varE "Seri.SMT.SMT.query"
   in run' (apply queryE x)
 
 run :: TExp (Query a) -> Query (TExp a)
@@ -88,7 +78,7 @@ run (TExp x) = do
      put s'
      return (TExp r)
 
-run' :: (Seriable a) => TExp (Query a) -> Query a
+run' :: (SeriableE a) => TExp (Query a) -> Query a
 run' x = fmap unpack' $ run x
 
 runQuery :: Y.RunOptions -> Env -> Query a -> IO a
@@ -96,5 +86,3 @@ runQuery opts env q = do
     querier <- Y.mkQuerier opts env
     evalStateT q querier
     
-    
-

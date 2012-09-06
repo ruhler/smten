@@ -65,7 +65,6 @@ That is, anything with ~?
 
 - fix querier interface to something less stupid.
 
-- print yices syntax prettier: using 80 cols where possible
 - Yices1 should redefine SMTQuerier specialied for FFI1
 - somewhere it would be nice to have a convenience function for:
     load, flatten, infer, typecheck all at once into an environment.
