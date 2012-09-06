@@ -18,6 +18,11 @@ build/pres.xx: src/seri.tex $(images_pdf)
 	cp -l src/seri.tex build/
 	cd build ; pdflatex -halt-on-error seri.tex
 
+build/handout.xx: src/handout.tex $(images_pdf)
+	mkdir -p build
+	cp -l src/handout.tex build/
+	cd build ; pdflatex -halt-on-error handout.tex
+
 build/%.pdf: src/%.svg
 	inkscape -d 600 -A $@ $<
 

@@ -63,6 +63,10 @@ class Yices a where
     -- value.
     getIntegerValue :: a -> String -> IO Integer
 
+    -- | Given the name of a free variable with bool type, return its
+    -- value.
+    getBoolValue :: a -> String -> IO Bool
+
     -- | Given the width and name of a free variable with bit vector type,
     -- return its value as a positive integer.
     getBitVectorValue :: a -> Integer -> String -> IO Integer

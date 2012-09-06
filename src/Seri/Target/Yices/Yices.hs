@@ -57,7 +57,6 @@ import Seri.Target.Delambdafy
 -- | A yices compilation object.
 data Compilation = Compilation {
     ys_version :: Y.YicesVersion, -- ^ Version of yices to target
-    ys_idepth :: Integer,       -- ^ Depth of inlining to perform
     ys_nocaseerr :: Bool,       -- ^ Assume an alternative will match in each case expression
     ys_poly :: Env,             -- ^ The polymorphic seri environment
     ys_mono :: [Dec],           -- ^ Already declared (monomorphic) declarations
@@ -99,13 +98,11 @@ modifyS f = do
 
 -- | Create a new yices compilation object.
 compilation :: Y.YicesVersion    -- ^ yices version to target
-               -> Integer      -- ^ inline depth
                -> Bool         -- ^ nocase err?
                -> Env          -- ^ polymorphic seri environment
                -> Compilation
-compilation version idepth nocaseerr poly = Compilation {
+compilation version nocaseerr poly = Compilation {
     ys_version = version,
-    ys_idepth = idepth,
     ys_nocaseerr = nocaseerr,
     ys_poly = tweak tweakings poly,
     ys_mono = [],
@@ -133,7 +130,6 @@ yicesT t = do
 -- Returns a list of yices commands needed to use the compiled expressions.
 yicesE :: Exp -> CompilationM ([Y.Command], Y.Expression)
 yicesE e = do
-    idepth <- getsS ys_idepth
     poly <- getsS ys_poly
     let se = elaborate SNF poly e
     let senl = delambdafy se

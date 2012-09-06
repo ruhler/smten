@@ -40,7 +40,8 @@ module Yices.Syntax (
     YicesVersion(..),
     Symbol, Command(..), Typedef(..), Type(..), Expression(..),
     VarDecl, Binding, ImmediateValue(..),
-    trueE, falseE, notE, varE, integerE, selectE, eqE, andE, orE, ifE, ltE, gtE,
+    boolE, trueE, falseE, notE, varE, integerE, selectE, eqE,
+    andE, orE, ifE, ltE, leqE, gtE,
     addE, subE, mulE,
     tupleE, tupleUpdateE,
     mkbvE, bvaddE, bvorE, bvandE, bvshiftLeft0E, bvshiftRight0E,
@@ -103,6 +104,10 @@ trueE = ImmediateE TrueV
 -- | > false
 falseE :: Expression
 falseE = ImmediateE FalseV
+
+boolE :: Bool -> Expression
+boolE True = trueE
+boolE False = falseE
 
 -- | > not e
 notE :: Expression -> Expression
@@ -168,6 +173,10 @@ ifE p a b = FunctionE (varE "if") [p, a, b]
 -- | > (< <exprsesion> <expression>)
 ltE :: Expression -> Expression -> Expression
 ltE a b = FunctionE (varE "<") [a, b]
+
+-- | > (<= <exprsesion> <expression>)
+leqE :: Expression -> Expression -> Expression
+leqE a b = FunctionE (varE "<=") [a, b]
 
 -- | > (> <exprsesion> <expression>)
 gtE :: Expression -> Expression -> Expression

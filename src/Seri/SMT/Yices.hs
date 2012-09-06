@@ -50,7 +50,7 @@ import System.IO
 
 import Control.Monad.State
 import qualified Yices.Syntax as Y
-import qualified Yices.Pretty as Y
+import qualified Yices.Concrete as Y
 import qualified Yices.Yices as Y
 
 import Seri.Failable
@@ -157,11 +157,7 @@ runQueryM e = do
                     return $ AppE (ConE (Sig (name "Satisfiable") (AppT (ConT (name "Answer")) (typeof arg)))) arg'
                 Y.Unsatisfiable-> return $ ConE (Sig (name "Unsatisfiable") (AppT (ConT (name "Answer")) (typeof arg)))
                 _ -> return $ ConE (Sig (name "Unknown") (AppT (ConT (name "Answer")) (typeof arg)))
-        (VarE (Sig n (AppT _ t))) | n == name "Seri.SMT.SMT.free" -> do
-            t' <- yicest t
-            free <- freevar
-            runCmds [Y.Define (yicesN free) t' Nothing]
-            return (VarE (Sig free t))
+        (VarE (Sig n (AppT _ t))) | n == name "Seri.SMT.SMT.free" -> makefree t
         (AppE (VarE (Sig n _)) p) | n == name "Seri.SMT.SMT.assert" -> do
             yp <- yicese p
             true <- yicese trueE
@@ -185,7 +181,6 @@ runQueryM e = do
 
 data RunOptions = RunOptions {
     debugout :: Maybe FilePath,
-    inlinedepth :: Integer,
     nocaseerr :: Bool
 } deriving(Show)
             
@@ -204,7 +199,7 @@ mkQuerier opts env ctx = do
         ys_ctx = ctx,
         ys_dh = dh,
         ys_freeid = 1,
-        ys_ys = compilation (Y.version ctx) (inlinedepth opts) (nocaseerr opts) env,
+        ys_ys = compilation (Y.version ctx) (nocaseerr opts) env,
         ys_env = env,
         ys_topnms = Map.empty
     }
@@ -212,61 +207,75 @@ mkQuerier opts env ctx = do
 -- | Evaluate a query using the given environment.
 -- Returns the result of the query and the updated querier.
 runQuery :: (Y.Yices y) => SMTQuerier y -> Exp -> IO (Exp, SMTQuerier y)
-runQuery q e = runStateT (runQueryM e) q
+runQuery q e = do
+    (e', q') <- runStateT (runQueryM e) q
+    return (elaborate WHNF (ys_env q') e', q')
 
+isPrimT :: Type -> Bool
+isPrimT t | t == boolT = True
+isPrimT t | t == integerT = True
+isPrimT (AppT (ConT n) _) | n == name "Bit" = True
+isPrimT t | head (unappsT t) == ConT (name "->") = True
+isPrimT _ = False
+
+-- | Make a free value of the given type.
+makefree :: Y.Yices y => Type -> YicesMonad y Exp
+makefree t | isPrimT t = do
+  t' <- yicest t
+  free <- freevar
+  runCmds [Y.Define (yicesN free) t' Nothing]
+  return (VarE (Sig free t))
+makefree t = do
+  let (ConT dt):args = unappsT t
+  env <- gets ys_env
+  DataD _ vars cs <- lift . attemptIO $ lookupDataD env dt
+  (let mkcon :: Y.Yices y => Con -> YicesMonad y Exp
+       mkcon (Con cn ts) = 
+         let ts' = assign (zip (map tyVarName vars) args) ts
+         in do
+             argvals <- mapM makefree ts'
+             return $ appsE ((ConE (Sig cn (arrowsT (ts' ++ [t])))):argvals)
+  
+       mkcons :: Y.Yices y => [Con] -> YicesMonad y Exp
+       mkcons [] = error $ "makefree on DataD with no constructors: " ++ pretty t
+       mkcons [c] = mkcon c
+       mkcons (c:cs) = do
+         isthis <- makefree boolT
+         this <- mkcon c
+         rest <- mkcons cs
+         return $ ifE isthis this rest
+   in do
+       v <- mkcons cs
+       debug $ "; makefree " ++ pretty t ++ ": " ++ pretty v
+       return v
+   )
 
 -- | Given a free variable name and corresponding seri type, return the value
 -- of that free variable from the yices model.
+--
+-- Assumes:
+--   Integers, Bools, and Bit vectors are implemented directly using the
+--   corresponding yices primitives. (Should I not be assuming this?)
 realizefree :: Y.Yices y => Env -> Name -> Type -> YicesMonad y Exp
+realizefree _ nm t | t == boolT = do
+    ctx <- gets ys_ctx
+    bval <- lift $ Y.getBoolValue ctx (yicesN nm)
+    debug $ "; " ++ pretty nm ++ " is " ++ show bval
+    return (boolE bval)
 realizefree _ nm t | t == integerT = do
-    debug $ "; realize integer: " ++ pretty nm
-    res <- check
-    case res of
-        Y.Satisfiable -> return ()
-        _ -> error $ "realize free expected Satisfiable, but wasn't"
     ctx <- gets ys_ctx
     ival <- lift $ Y.getIntegerValue ctx (yicesN nm)
     debug $ "; " ++ pretty nm ++ " is " ++ show ival
     return (integerE ival)
 realizefree _ nm (AppT (ConT n) (NumT (ConNT w))) | n == name "Bit" = do
-    debug $ "; realize Bit " ++ show w ++ ": " ++ pretty nm
-    res <- check
-    case res of
-        Y.Satisfiable -> return ()  
-        _ -> error $ "realize free expected Satisfiable, but wasn't"
     ctx <- gets ys_ctx
     bval <- lift $ Y.getBitVectorValue ctx w (yicesN nm)
     debug $ "; " ++ pretty nm ++ " has value " ++ show bval
     return (bitE w bval)
-realizefree _ nm t@(AppT (AppT (ConT n) _) _) | n == name "->"
+realizefree _ _ t@(AppT (AppT (ConT n) _) _) | n == name "->"
   = error $ "TODO: realizefree type " ++ pretty t
-realizefree env nm t =
-  let ConT dt = head $ unappsT t
-      trycons :: Y.Yices y => [Con] -> YicesMonad y Exp
-      trycons [] = return $ VarE (Sig (name "undefined") t)
-      trycons (Con cn ts : cs) = do
-            runCmds [Y.Push]
-            free <- sequence $ replicate (length ts) freevar
-            yts <- mapM yicest ts
-            runCmds [Y.Define (yicesN f) yt Nothing | (f, yt) <- zip free yts]
-            let args = [VarE (Sig n t) | (n, t) <- zip free ts]
-            want <- yicese (appsE $ (ConE (Sig cn (ConT dt))) : args)
-            runCmds [Y.Assert (Y.eqE (Y.varE (yicesN nm)) want)]
-            res <- check
-            case res of
-                Y.Satisfiable -> do
-                    argvals <- sequence [realizefree env n t | (n, t) <- zip free ts]
-                    runCmds [Y.Pop]
-                    return (appsE $ (ConE (Sig cn (ConT dt))) : argvals)
-                _ -> do
-                    runCmds [Y.Pop]
-                    trycons cs
-            
-  in do
-    debug $ "; realize: " ++ pretty nm ++ " :: " ++ pretty t
-    DataD _ _ cs <- lift . attemptIO $ lookupDataD env dt
-    trycons cs
-    
+realizefree _ _ t
+  = error $ "unexpected realizefree type: " ++ pretty t
 
 data Realize = Realize Env
 

@@ -45,7 +45,7 @@ import Foreign.C.Types
 
 import Yices.FFI2
 import Yices.Syntax
-import Yices.Pretty
+import Yices.Concrete
 import Yices.Yices
 
 data Yices2FFI = Yices2FFI (Ptr YContext)
@@ -108,6 +108,28 @@ instance Yices Yices2FFI where
         c_yices_free_model model
         return $! toInteger x
 
+    getBoolValue (Yices2FFI yctx) nm = do
+        model <- c_yices_get_model yctx 1
+        x <- alloca $ \ptr -> do
+                term <- yterm (varE nm)
+                ir <- c_yices_get_bool_value model term ptr
+                case ir of
+                   _ | ir == (-1) -> do
+                      -- -1 means we don't care, so just return the equivalent
+                      -- of False.
+                      return 0
+
+                   0 -> do 
+                      v <- peek ptr
+                      return v
+
+                   _ -> error $ "yices2 get bool value returned: " ++ show ir
+        c_yices_free_model model
+        case x of
+            0 -> return False
+            1 -> return True
+            _ -> error $ "yices2 get bool value got: " ++ show x
+        
     getBitVectorValue (Yices2FFI yctx) w nm = do
         model <- c_yices_get_model yctx 1
         bits <- allocaArray (fromInteger w) $ \ptr -> do
@@ -148,7 +170,7 @@ ytype (RealT) = c_yices_real_type
 
 ytypebystr :: Type -> IO YType
 ytypebystr t = do
-    yt <- withCString (pretty Yices2 t) $ \str -> c_yices_parse_type str
+    yt <- withCString (concrete Yices2 t) $ \str -> c_yices_parse_type str
     if yt < 0
         then do
             withstderr $ \stderr -> c_yices_print_error stderr
@@ -193,6 +215,7 @@ builtin = [
 ytermS :: [(String, YTerm)] -> Expression -> IO YTerm
 ytermS s e | isbinop "=" e = dobinop s e c_yices_eq
 ytermS s e | isbinop "<" e = dobinop s e c_yices_arith_lt_atom
+ytermS s e | isbinop "<=" e = dobinop s e c_yices_arith_leq_atom
 ytermS s e | isbinop ">" e = dobinop s e c_yices_arith_gt_atom
 ytermS s e | isbinop "+" e = dobinop s e c_yices_add
 ytermS s e | isbinop "-" e = dobinop s e c_yices_sub
@@ -237,6 +260,9 @@ ytermS s (FunctionE (ImmediateE (VarV "bv-shift-right0")) [a, ImmediateE (Ration
 ytermS s (FunctionE (ImmediateE (VarV "and")) args) = do
     argst <- mapM (ytermS s) args
     withArray argst $ c_yices_and (fromIntegral $ length argst)
+ytermS s (FunctionE (ImmediateE (VarV "or")) args) = do
+    argst <- mapM (ytermS s) args
+    withArray argst $ c_yices_or (fromIntegral $ length argst)
 ytermS s e@(FunctionE (ImmediateE (VarV f)) _) | f `elem` builtin = do
     error $ "TODO: yterm builtin " ++ pretty Yices2 e
 ytermS s (FunctionE f [a]) = do
@@ -277,7 +303,7 @@ ytermS _ e = error $ "TODO: yterm: " ++ pretty Yices2 e
 -- the expression to a string and passing the string over to yices to parse.
 ytermbystr :: Expression -> IO YTerm
 ytermbystr e = do
-    ye <- withCString (pretty Yices2 e) $ \str -> c_yices_parse_term str
+    ye <- withCString (concrete Yices2 e) $ \str -> c_yices_parse_term str
     if ye < 0 
         then do 
             withstderr $ \stderr -> c_yices_print_error stderr
