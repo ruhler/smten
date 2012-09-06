@@ -114,7 +114,7 @@ instance Yices Yices1FFI where
         return $! Yices1FFI fp
 
     run (Yices1FFI fp) cmd = do
-        worked <- withCString (pretty Yices1 cmd) $ \str -> do
+        worked <- withCString (concrete Yices1 cmd) $ \str -> do
               withForeignPtr fp $ \yctx ->
                 c_yices_parse_command yctx str
         if worked 

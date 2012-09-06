@@ -170,7 +170,7 @@ ytype (RealT) = c_yices_real_type
 
 ytypebystr :: Type -> IO YType
 ytypebystr t = do
-    yt <- withCString (pretty Yices2 t) $ \str -> c_yices_parse_type str
+    yt <- withCString (concrete Yices2 t) $ \str -> c_yices_parse_type str
     if yt < 0
         then do
             withstderr $ \stderr -> c_yices_print_error stderr
@@ -303,7 +303,7 @@ ytermS _ e = error $ "TODO: yterm: " ++ pretty Yices2 e
 -- the expression to a string and passing the string over to yices to parse.
 ytermbystr :: Expression -> IO YTerm
 ytermbystr e = do
-    ye <- withCString (pretty Yices2 e) $ \str -> c_yices_parse_term str
+    ye <- withCString (concrete Yices2 e) $ \str -> c_yices_parse_term str
     if ye < 0 
         then do 
             withstderr $ \stderr -> c_yices_print_error stderr

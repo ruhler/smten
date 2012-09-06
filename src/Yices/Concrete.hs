@@ -3,7 +3,7 @@
 {-# LANGUAGE TypeSynonymInstances #-}
 
 -- | Print yices syntax concretely
-module Yices.Concrete (pretty) where
+module Yices.Concrete (concrete, pretty) where
 
 import Control.Monad.State.Strict
 import Data.Ratio
@@ -20,7 +20,7 @@ type ConcreteM = State CS
 
 -- | Convert an abstract syntactic construct to concrete yices syntax.
 class Concrete a where
-    concrete :: a -> ConcreteM ()
+    concreteM :: a -> ConcreteM ()
 
 incr :: Integer -> Integer
 incr = (+ 1)
@@ -57,75 +57,81 @@ group str elems = do
     line $ "(" ++ str
     
 instance Concrete Command where
-    concrete  (DefineType s Nothing)
+    concreteM  (DefineType s Nothing)
       = line $ "(define-type " ++ s ++ ")"
-    concrete  (DefineType s (Just td))
-      = group ("define-type " ++ s) [concrete td]
-    concrete  (Define s t Nothing)
-      = group ("define " ++ s ++ " ::") [concrete t]
-    concrete  (Define s t (Just e))
-      = group ("define " ++ s ++ " ::") [concrete t, concrete e]
-    concrete  (Assert e)
-      = group "assert" [concrete e]
-    concrete Check = line "(check)"
-    concrete Push = line "(push)"
-    concrete Pop = line "(pop)"
+    concreteM  (DefineType s (Just td))
+      = group ("define-type " ++ s) [concreteM td]
+    concreteM  (Define s t Nothing)
+      = group ("define " ++ s ++ " ::") [concreteM t]
+    concreteM  (Define s t (Just e))
+      = group ("define " ++ s ++ " ::") [concreteM t, concreteM e]
+    concreteM  (Assert e)
+      = group "assert" [concreteM e]
+    concreteM Check = line "(check)"
+    concreteM Push = line "(push)"
+    concreteM Pop = line "(pop)"
 
 instance Concrete [Command] where
-    concrete cmds = mapM_ concrete (reverse cmds)
+    concreteM cmds = mapM_ concreteM (reverse cmds)
 
 instance Concrete Typedef where
-    concrete (ScalarTD ss) = do
+    concreteM (ScalarTD ss) = do
       line $ "(scalar " ++ concat (map ((:) ' ') ss) ++ ")"
-    concrete (NormalTD t) = concrete t
+    concreteM (NormalTD t) = concreteM t
 
 instance Concrete Type where
-    concrete (VarT s) = line s
-    concrete (TupleT ts) = group "tuple" (map concrete ts)
-    concrete (ArrowT ts) = group "->" (map concrete ts)
-    concrete (BitVectorT i) = line $ "(bitvector " ++ show i ++ ")"
-    concrete IntegerT = line "int"
-    concrete BoolT = line "bool"
-    concrete RealT = line "real"
+    concreteM (VarT s) = line s
+    concreteM (TupleT ts) = group "tuple" (map concreteM ts)
+    concreteM (ArrowT ts) = group "->" (map concreteM ts)
+    concreteM (BitVectorT i) = line $ "(bitvector " ++ show i ++ ")"
+    concreteM IntegerT = line "int"
+    concreteM BoolT = line "bool"
+    concreteM RealT = line "real"
 
 instance Concrete Expression where
-    concrete (ImmediateE iv) = concrete iv
-    concrete (ForallE decls e) = do
-      group "forall" [group "" (map concrete decls), concrete e]
-    concrete (ExistsE decls e) = do
-      group "exists" [group "" (map concrete decls), concrete e]
-    concrete (LetE bindings e) = do
-      group "let" [group "" (map concrete bindings), concrete e]
-    concrete (UpdateE f es e) = do
-      group "update" [concrete f, group "" (map concrete es), concrete e]
-    concrete (TupleUpdateE t i x) = do
+    concreteM (ImmediateE iv) = concreteM iv
+    concreteM (ForallE decls e) = do
+      group "forall" [group "" (map concreteM decls), concreteM e]
+    concreteM (ExistsE decls e) = do
+      group "exists" [group "" (map concreteM decls), concreteM e]
+    concreteM (LetE bindings e) = do
+      group "let" [group "" (map concreteM bindings), concreteM e]
+    concreteM (UpdateE f es e) = do
+      group "update" [concreteM f, group "" (map concreteM es), concreteM e]
+    concreteM (TupleUpdateE t i x) = do
       v <- gets cs_version
       let gn = if v == Yices1
                 then "update"
                 else "tuple-update"
-      group gn [concrete t, line (show i), concrete x]
-    concrete (FunctionE f args) = do
-      group "" (concrete f : map concrete args)
+      group gn [concreteM t, line (show i), concreteM x]
+    concreteM (FunctionE f args) = do
+      group "" (concreteM f : map concreteM args)
 
 instance Concrete VarDecl where
-    concrete (n, t) = do
-        indent $ concrete t
+    concreteM (n, t) = do
+        indent $ concreteM t
         line $ n ++ " ::"
 
 instance Concrete Binding where
-    concrete (n, e) = group n [concrete e]
+    concreteM (n, e) = group n [concreteM e]
 
 instance Concrete ImmediateValue where
-    concrete TrueV = line "true"
-    concrete FalseV = line "false"
-    concrete (VarV s) = line s
-    concrete (RationalV r) = do
+    concreteM TrueV = line "true"
+    concreteM FalseV = line "false"
+    concreteM (VarV s) = line s
+    concreteM (RationalV r) = do
       line $ show (numerator r) ++
                 if denominator r == 1
                     then ""
                     else "/" ++ show (denominator r)
 
--- | Render abstract yices syntax to a concrete syntax string.
+-- | Render abstract yices syntax to a concreteM syntax string meant to be
+-- read by a human.
 pretty :: Concrete a => YicesVersion -> a -> String
-pretty v x = evalState (concrete x >> gets cs_output) (CS v 0 "")
+pretty v x = evalState (concreteM x >> gets cs_output) (CS v 0 "")
+
+-- | Render abstract yices syntax to a concreteM syntax string meant to be
+-- read by a machine.
+concrete :: Concrete a => YicesVersion -> a -> String
+concrete = pretty
 

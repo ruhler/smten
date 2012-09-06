@@ -200,3 +200,12 @@ Good. I like that.
 
 So let me start with the group primitive.
 
+Wed Sep  5 21:08:30 EDT 2012
+
+Cool. I like group. It makes the code much nicer.
+
+Next step... I think I should differentiate between pretty and concrete.
+
+When to call pretty: error messages and debug.
+When to call concrete: bystr stuff in Yices1 and Yices2 apis.
+
