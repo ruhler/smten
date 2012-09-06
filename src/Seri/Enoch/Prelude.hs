@@ -2,7 +2,9 @@
 {-# LANGUAGE FlexibleInstances #-}
 
 module Seri.Enoch.Prelude (
-    apply, apply2, (<), (>),    
+    apply, apply2,
+    conE, varE, varE1, varE2,
+    (<), (>),
  ) where
 
 import Prelude hiding ((<), (>))
@@ -27,14 +29,6 @@ instance SeriableE Integer where
     unpack (TExp (LitE (IntegerL i))) = Just i
     unpack _ = Nothing
 
-instance Num (TExp Integer) where
-    fromInteger = pack . fromInteger
-    (+) = error $ "todo: (+) for TExp Integer"
-    (*) = error $ "todo: (*) for TExp Integer"
-    (-) = error $ "todo: (-) for TExp Integer"
-    abs = error $ "todo: abs for TExp Integer"
-    signum = error $ "todo: signum for TExp Integer"
-
 instance SeriableT Bool where
     serit _ = boolT
 
@@ -54,15 +48,50 @@ apply (TExp f) (TExp x) = TExp $ AppE f x
 apply2 :: TExp (a -> b -> c) -> TExp a -> TExp b -> TExp c
 apply2 f a b = apply (apply f a) b
 
+-- | Make a TExp with the given type out of a variable with the given name.
+varE :: (SeriableT a) => String -> TExp a
+varE nm =
+  let t :: TExp a -> a
+      t _ = undefined
+
+      me = TExp $ VarE (Sig (name nm) (serit (t me)))
+  in me
+
+-- | Make a unary function from a variable name.
+varE1 :: (SeriableT a, SeriableT b) => String -> TExp a -> TExp b
+varE1 nm = 
+  let f :: (SeriableT a, SeriableT b) => TExp (a -> b)
+      f = varE nm
+  in apply f
+
+-- | Make a binary function from a variable name.
+varE2 :: (SeriableT a, SeriableT b, SeriableT c)
+         => String -> TExp a -> TExp b -> TExp c
+varE2 nm =
+  let f :: (SeriableT a, SeriableT b, SeriableT c) => TExp (a -> b -> c)
+      f = varE nm
+  in apply2 f
+
+-- | Make a TExp with the given type out of a constructor with the given name.
+conE :: (SeriableT a) => String -> TExp a
+conE nm =
+  let t :: TExp a -> a
+      t _ = undefined
+
+      me = TExp $ ConE (Sig (name nm) (serit (t me)))
+  in me
+
+instance Num (TExp Integer) where
+    fromInteger = pack . fromInteger
+    (+) = varE2 "Seri.Lib.Prelude.+"
+    (*) = varE2 "Seri.Lib.Prelude.*"
+    (-) = varE2 "Seri.Lib.Prelude.-"
+    abs = error $ "todo: abs for TExp Integer"
+    signum = error $ "todo: signum for TExp Integer"
+
 (<) :: TExp Integer -> TExp Integer -> TExp Bool
-(<) =
-  let ltE :: TExp (Integer -> Integer -> Bool)
-      ltE = varE "Seri.Lib.Prelude.<"
-  in apply2 ltE
+(<) = varE2 "Seri.Lib.Prelude.<"
 
 (>) :: TExp Integer -> TExp Integer -> TExp Bool
-(>) =
-  let gtE :: TExp (Integer -> Integer -> Bool)
-      gtE = varE "Seri.Lib.Prelude.>"
-  in apply2 gtE
+(>) = varE2 "Seri.Lib.Prelude.>"
 

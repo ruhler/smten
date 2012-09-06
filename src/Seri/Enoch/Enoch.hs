@@ -5,7 +5,7 @@ module Seri.Enoch.Enoch (
     TExp(..),
     SeriableT(..), SeriableT1(..), SeriableT2(..),
     SeriableE(..),
-    unpack', varE, conE,
+    unpack',
  ) where
 
 import Data.Maybe (fromMaybe)
@@ -58,22 +58,4 @@ class (SeriableT a) => SeriableE a where
 -- Throws an error if the sery expression is of the wrong type.
 unpack' :: (SeriableE a) => TExp a -> a
 unpack' = fromMaybe (error "unpack' failed") . unpack
-
--- | Make a TExp with the given type out of a variable with the given name.
-varE :: (SeriableT a) => String -> TExp a
-varE nm =
-  let t :: TExp a -> a
-      t _ = undefined
-
-      me = TExp $ VarE (Sig (name nm) (serit (t me)))
-  in me
-
--- | Make a TExp with the given type out of a constructor with the given name.
-conE :: (SeriableT a) => String -> TExp a
-conE nm =
-  let t :: TExp a -> a
-      t _ = undefined
-
-      me = TExp $ ConE (Sig (name nm) (serit (t me)))
-  in me
 

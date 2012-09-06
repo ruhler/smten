@@ -15,6 +15,17 @@ q1 = do
     assert (x > 4)
     query x
 
+
+incr :: TExp Integer -> TExp Integer
+incr x = x + 1
+
+q2 :: Query (Answer Integer)
+q2 = do
+    x <- free
+    assert (x < 6)
+    assert (incr x > 5)
+    query x
+
 main :: IO ()
 main = do
     lib <- load ["src"] "src/Seri/SMT/SMT.sri"
@@ -23,5 +34,8 @@ main = do
     let env = mkEnv typed
     attemptIO $ typecheck env typed
 
-    runQuery (RunOptions (Just "build/src/Seri/Enoch/q1.dbg") True) env q1 >>= (putStrLn . show)
+    let try nm q = runQuery (RunOptions (Just $ "build/src/Seri/Enoch/" ++ nm ++ ".dbg") True) env q >>= (putStrLn . show)
+
+    try "q1" q1
+    try "q2" q2
     
