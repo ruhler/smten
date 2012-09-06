@@ -65,5 +65,3 @@ That is, anything with ~?
 
 - fix querier interface to something less stupid.
 
-- inline depth is ignored now, so remove it from Yices, seriq?
-

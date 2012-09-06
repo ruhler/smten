@@ -2,8 +2,8 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 
--- | Print yices syntax prettily
-module Yices.Pretty (pretty) where
+-- | Print yices syntax concretely
+module Yices.Concrete (pretty) where
 
 import Control.Monad.State.Strict
 import Data.Ratio

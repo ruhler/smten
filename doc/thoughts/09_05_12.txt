@@ -163,3 +163,40 @@ Oh well. Oh well.
 
 Cool.
 
+Wed Sep  5 20:39:31 EDT 2012
+
+Let me deal with concrete yices syntax.
+
+I want the following changes:
+
+- When printing pretty, clump things together onto a single line as long as
+  the line takes up less than about 80 characters
+- When not printing pretty, don't ident or clump.
+
+So, we have two modes. Let's say "concrete" and "pretty". The "concrete" mode
+is used for the bystr methods, when passing things to the machine. The
+"pretty" mode is used for debug and human readable stuff.
+
+That way we should be fast without debug, and we should be pretty with debug.
+
+Add a flag to say if we are pretty or not. If not pretty, line should use a 
+space separator, not a newline. And we shouldn't indent at all if not pretty.
+
+That's the first change I should make. I should demonstrate marked performance
+improvement with yices1 with this with debug turned off. In particular, indent
+should cost us nothing.
+
+The next change to make is, when pretty, clumping lines together. But how
+should I implement this in a not completely unreasonable way performance
+wise? And while still sharing code with non-pretty?
+
+Well, the groups are always denoted by parenthesized things. So maybe I should
+add a construct called "group"? If non-pretty, group does nothing special. If
+pretty, then what group does is: compile the group on its own. If the result
+is small, recompile the group using non-pretty. There. Easy. Simple. A little
+slow, but not majorly.
+
+Good. I like that.
+
+So let me start with the group primitive.
+
