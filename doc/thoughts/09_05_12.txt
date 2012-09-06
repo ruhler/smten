@@ -57,3 +57,109 @@ debug output? Or it should be obvious.
 
 Cool. Let me get started.
 
+Wed Sep  5 18:45:38 EDT 2012
+
+Step 1 is done. Now for step 2. I hope it's not too hard.
+
+Here's what we should do. If the type is bool, or int, or bit, do what we do
+now. Otherwise, the type is an algebraic data type. Look up the definition.
+Recursively allocate the expression...
+
+So I may want to pull this out into its own function. Perhaps makefree.
+
+makefree :: Type -> Query Exp
+
+Wed Sep  5 18:51:10 EDT 2012
+
+So then... um, how do I implement this?
+
+I'm given a type. It could be an applied type. It could be a function type.
+But I want to assume it's an algebraic data type. So I should look up it's
+constructors somehow. I should get a list of constructors.
+
+Now, given a list of constructors, I should do the following:
+- if there are no constructors... error?
+- if there is a single constructor, makefree for each field, and return those
+  applied to the constructor.
+- if there are multiple constructors
+  make a free boolean which says it's the first constructor.
+  make free variables for each field, return those applied to the constructor.
+  make the expression which is what you get with the rest of the constructors.
+  Return an if statement.
+
+Seems not too bad, right?
+
+Let me see how I can look up the list of constructors. And remember, this is a
+fully applied thing. 
+
+I can look up the data constructor. See if it's there. If not, for now, just
+throw an error.
+
+Wed Sep  5 19:26:30 EDT 2012
+
+Okay, so making progress. Some issues.
+
+1. For reading the debug output, it would be really nice if I compressed
+lines. I know how to do it: do a pre-traversal of the syntax tree, compressing
+things that look like they'll take less than 80ish characters into a single
+VarE. I should definitely do this. As a next step.
+
+2. Problem with the Bluespec query. I'm getting: variable type is not
+concrete. What's that coming from? Somehow I must be referring to a variable
+type that hasn't been assigned when making things.
+
+
+Wed Sep  5 19:38:02 EDT 2012
+
+Um, so, something changed, and I don't know what, because whatever the problem
+was went away. I don't know what it was.
+
+Now we have a new problem: allocating a free function?
+Or, rather, allocating a free variable which contains a function?
+
+For some reason we try looking up a function. I don't know why...
+
+Wed Sep  5 19:42:19 EDT 2012
+
+Okay, so functions are primitive types. That's done.
+
+Now... get bool value is returning -1? What is this, a don't care?
+
+And only in yices2... Suspicious.
+
+Ah yes. It is possible, because we aren't lazy in querying values of in
+realize. So I should just allow that, and have it be undefined. But... does
+our api support that? Should we instead pick a random value? Or return a Maybe
+Bool? I would rather return a Maybe bool. Or... a Failable Bool. That's even
+better. Okay. Let me do that. Then, if it fails, just make an Undefined value.
+
+Wed Sep  5 19:54:16 EDT 2012
+
+Turns out we can distinguish between error and don't care. So I just return
+False for don't care. It's easier than changing the interface.
+
+And now all the tests pass... I need to try out sudoku and BCL3.
+
+Wed Sep  5 19:57:36 EDT 2012
+
+Tried BCL3... wow. Apparently this makes a huge performance difference. Like,
+memory allocation goes down by a factor of 3. I don't get that at all. Not one
+bit. But I suppose I'll take it. That seems very... strange...
+
+Wed Sep  5 20:07:35 EDT 2012
+
+Well, anyway, things work now. I'll check it in.
+
+I do have one concern, which is that it seems like this chain of if statements
+may not be the best way to represent things. Like, better to have an enum and
+a case statement, no? Or an integer. Or a tag. Or something? I'm not sure.
+
+I fear that enums like C1 | C2 | C3 | ... | C9 are going to lead to
+complex-ish expressions. Basically:
+
+ if free1 then C1 else if free2 then C2 else if free3 then C3 else ...
+
+Oh well. Oh well.
+
+Cool.
+

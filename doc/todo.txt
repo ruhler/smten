@@ -65,12 +65,5 @@ That is, anything with ~?
 
 - fix querier interface to something less stupid.
 
-- single expression do statements not supported?
-
-- Can't read evidence by making assertions!
-It could cause yices to try another solution. If there are multiple solutions,
-we might get a mix of results from the different solutions, which would be
-wrong.
-
 - inline depth is ignored now, so remove it from Yices, seriq?
 

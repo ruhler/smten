@@ -83,6 +83,7 @@ module Yices.FFI2 (
     c_yices_and2,
     c_yices_xor2,
     c_yices_and,
+    c_yices_or,
 
     c_yices_bvconst_uint64,
     c_yices_bvadd,
@@ -249,6 +250,9 @@ foreign import ccall unsafe "yices_and2"
 
 foreign import ccall unsafe "yices_and"
     c_yices_and :: Word32 -> Ptr YTerm -> IO YTerm
+
+foreign import ccall unsafe "yices_or"
+    c_yices_or :: Word32 -> Ptr YTerm -> IO YTerm
 
 foreign import ccall unsafe "yices_xor2"
     c_yices_xor2 :: YTerm -> YTerm -> IO YTerm

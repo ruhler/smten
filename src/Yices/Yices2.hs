@@ -113,11 +113,17 @@ instance Yices Yices2FFI where
         x <- alloca $ \ptr -> do
                 term <- yterm (varE nm)
                 ir <- c_yices_get_bool_value model term ptr
-                if ir == 0
-                   then do 
+                case ir of
+                   _ | ir == (-1) -> do
+                      -- -1 means we don't care, so just return the equivalent
+                      -- of False.
+                      return 0
+
+                   0 -> do 
                       v <- peek ptr
                       return v
-                   else error $ "yices2 get bool value returned: " ++ show ir
+
+                   _ -> error $ "yices2 get bool value returned: " ++ show ir
         c_yices_free_model model
         case x of
             0 -> return False
@@ -254,6 +260,9 @@ ytermS s (FunctionE (ImmediateE (VarV "bv-shift-right0")) [a, ImmediateE (Ration
 ytermS s (FunctionE (ImmediateE (VarV "and")) args) = do
     argst <- mapM (ytermS s) args
     withArray argst $ c_yices_and (fromIntegral $ length argst)
+ytermS s (FunctionE (ImmediateE (VarV "or")) args) = do
+    argst <- mapM (ytermS s) args
+    withArray argst $ c_yices_or (fromIntegral $ length argst)
 ytermS s e@(FunctionE (ImmediateE (VarV f)) _) | f `elem` builtin = do
     error $ "TODO: yterm builtin " ++ pretty Yices2 e
 ytermS s (FunctionE f [a]) = do
