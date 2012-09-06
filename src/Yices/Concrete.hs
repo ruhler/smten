@@ -12,6 +12,7 @@ import Yices.Syntax
 
 data CS = CS {
     cs_version :: YicesVersion,
+    cs_pretty :: Bool,
     cs_indent :: Integer,
     cs_output :: String
 }
@@ -32,11 +33,15 @@ modifyS f = do
 
 indent :: ConcreteM a -> ConcreteM a
 indent x = do
-    ident <- gets cs_indent
-    modifyS $ \cs -> cs {cs_indent = incr $! ident }
-    r <- x
-    modify $ \cs -> cs { cs_indent = ident }
-    return r
+    nice <- gets cs_pretty
+    if nice
+      then do
+        ident <- gets cs_indent
+        modifyS $ \cs -> cs {cs_indent = incr $! ident }
+        r <- x
+        modify $ \cs -> cs { cs_indent = ident }
+        return r
+      else x
 
 indented :: Integer -> String -> String
 indented 0 s = s
@@ -46,7 +51,8 @@ line :: String -> ConcreteM ()
 line str = do
     cs <- get
     let ident = cs_indent cs
-    put $! cs { cs_output = indented ident $! (str ++ ('\n' : (cs_output cs))) }
+    let sep = if cs_pretty cs then '\n' else ' '
+    put $! cs { cs_output = indented ident $! (str ++ (sep : (cs_output cs))) }
 
 -- | Given the name of an element e and a list of components [a, b, ...],
 -- generate a the grouping: (e a b ...)
@@ -128,10 +134,10 @@ instance Concrete ImmediateValue where
 -- | Render abstract yices syntax to a concreteM syntax string meant to be
 -- read by a human.
 pretty :: Concrete a => YicesVersion -> a -> String
-pretty v x = evalState (concreteM x >> gets cs_output) (CS v 0 "")
+pretty v x = evalState (concreteM x >> gets cs_output) (CS v True 0 "")
 
 -- | Render abstract yices syntax to a concreteM syntax string meant to be
 -- read by a machine.
 concrete :: Concrete a => YicesVersion -> a -> String
-concrete = pretty
+concrete v x = evalState (concreteM x >> gets cs_output) (CS v False 0 "")
 
