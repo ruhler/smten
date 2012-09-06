@@ -246,7 +246,8 @@ makefree t = do
          return $ ifE isthis this rest
    in do
        v <- mkcons cs
-       debug $ "; makefree " ++ pretty t ++ ": " ++ pretty v
+       debug $ "; makefree " ++ pretty t ++ ":"
+       debug . unlines . (map (';':)) . lines . pretty $ v
        return v
    )
 
