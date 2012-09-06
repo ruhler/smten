@@ -47,27 +47,26 @@ line str = do
     cs <- get
     let ident = cs_indent cs
     put $! cs { cs_output = indented ident $! (str ++ ('\n' : (cs_output cs))) }
+
+-- | Given the name of an element e and a list of components [a, b, ...],
+-- generate a the grouping: (e a b ...)
+group :: String -> [ConcreteM ()] -> ConcreteM ()
+group str elems = do
+    line ")"
+    indent $ sequence (reverse elems)
+    line $ "(" ++ str
     
 instance Concrete Command where
-    concrete  (DefineType s Nothing) = do
-      line $ "(define-type " ++ s ++ ")"
-    concrete  (DefineType s (Just td)) = do
-      line ")"
-      indent (concrete td)
-      line $ "(define-type " ++ s
-    concrete  (Define s t Nothing) = do
-      line ")"
-      indent (concrete t)
-      line $ "(define " ++ s ++ " ::"
-    concrete  (Define s t (Just e)) = do
-      line ")"
-      indent (concrete e)
-      indent (concrete t)
-      line $ "(define " ++ s ++ " ::"
-    concrete  (Assert e) = do
-      line ")"
-      indent (concrete e)
-      line "(assert"
+    concrete  (DefineType s Nothing)
+      = line $ "(define-type " ++ s ++ ")"
+    concrete  (DefineType s (Just td))
+      = group ("define-type " ++ s) [concrete td]
+    concrete  (Define s t Nothing)
+      = group ("define " ++ s ++ " ::") [concrete t]
+    concrete  (Define s t (Just e))
+      = group ("define " ++ s ++ " ::") [concrete t, concrete e]
+    concrete  (Assert e)
+      = group "assert" [concrete e]
     concrete Check = line "(check)"
     concrete Push = line "(push)"
     concrete Pop = line "(pop)"
@@ -82,14 +81,8 @@ instance Concrete Typedef where
 
 instance Concrete Type where
     concrete (VarT s) = line s
-    concrete (TupleT ts) = do
-      line ")"
-      indent (mapM concrete (reverse ts))
-      line "(tuple"
-    concrete (ArrowT ts) = do
-      line ")"
-      indent (mapM concrete (reverse ts))
-      line "(->"
+    concrete (TupleT ts) = group "tuple" (map concrete ts)
+    concrete (ArrowT ts) = group "->" (map concrete ts)
     concrete (BitVectorT i) = line $ "(bitvector " ++ show i ++ ")"
     concrete IntegerT = line "int"
     concrete BoolT = line "bool"
@@ -98,52 +91,21 @@ instance Concrete Type where
 instance Concrete Expression where
     concrete (ImmediateE iv) = concrete iv
     concrete (ForallE decls e) = do
-      line ")"
-      indent (concrete e)
-      indent $ do
-        line ")"
-        indent (mapM concrete (reverse decls))
-        line "("
-      line "(forall"
+      group "forall" [group "" (map concrete decls), concrete e]
     concrete (ExistsE decls e) = do
-      line ")"
-      indent (concrete e)
-      indent $ do
-        line ")"
-        indent (mapM concrete (reverse decls))
-        line "("
-      line "(exists"
+      group "exists" [group "" (map concrete decls), concrete e]
     concrete (LetE bindings e) = do
-      line ")"
-      indent (concrete e)
-      indent $ do
-        line ")"
-        indent (mapM concrete (reverse bindings))
-        line "("
-      line "(let"
+      group "let" [group "" (map concrete bindings), concrete e]
     concrete (UpdateE f es e) = do
-      line ")"
-      indent (concrete e)
-      indent $ do
-        line ")"
-        indent (mapM concrete (reverse es))
-        line "("
-      indent (concrete f)
-      line "(update"
+      group "update" [concrete f, group "" (map concrete es), concrete e]
     concrete (TupleUpdateE t i x) = do
-      line ")"
-      indent (concrete x)
-      indent (line (show i))
-      indent (concrete t)
       v <- gets cs_version
-      if v == Yices1
-        then line "(update"
-        else line "(tuple-update"
+      let gn = if v == Yices1
+                then "update"
+                else "tuple-update"
+      group gn [concrete t, line (show i), concrete x]
     concrete (FunctionE f args) = do
-          line ")"
-          indent (mapM concrete (reverse args))
-          indent (concrete f)
-          line "("
+      group "" (concrete f : map concrete args)
 
 instance Concrete VarDecl where
     concrete (n, t) = do
@@ -151,10 +113,7 @@ instance Concrete VarDecl where
         line $ n ++ " ::"
 
 instance Concrete Binding where
-    concrete (n, e) = do
-      line ")"
-      indent $ concrete e
-      line $ "(" ++ n
+    concrete (n, e) = group n [concrete e]
 
 instance Concrete ImmediateValue where
     concrete TrueV = line "true"
