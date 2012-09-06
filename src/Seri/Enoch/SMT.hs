@@ -39,11 +39,11 @@ instance (SeriableE a) => SeriableE (Answer a) where
           unknownE = conE "Unknown"
       in unknownE
 
-    unpack (TExp (AppE (ConE (Sig n _)) x)) | n == name "Satisfiable" = do
+    unpack (TExp (AppE (ConE (Sig n _)) x)) | n Prelude.== name "Satisfiable" = do
         a <- unpack (TExp x)
         return $ Satisfiable a
-    unpack (TExp (ConE (Sig n _))) | n == name "Unsatisfiable" = return Unsatisfiable
-    unpack (TExp (ConE (Sig n _))) | n == name "Unknown" = return Unknown
+    unpack (TExp (ConE (Sig n _))) | n Prelude.== name "Unsatisfiable" = return Unsatisfiable
+    unpack (TExp (ConE (Sig n _))) | n Prelude.== name "Unknown" = return Unknown
     unpack _ = Nothing
 
                 

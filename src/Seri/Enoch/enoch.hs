@@ -1,5 +1,5 @@
 
-import Prelude hiding ((<), (>))
+import Prelude hiding ((==), (<), (>))
 
 import Seri.Failable
 import Seri.Lambda hiding (free, query)
@@ -26,6 +26,16 @@ q2 = do
     assert (incr x > 5)
     query x
 
+quadruple :: TExp Integer -> TExp Integer
+quadruple a = a + a + a + a
+
+share :: Query (Answer Integer)
+share = do
+    x <- free
+    y <- free
+    assert (quadruple (x - y) == 24)
+    query x
+
 main :: IO ()
 main = do
     lib <- load ["src"] "src/Seri/SMT/SMT.sri"
@@ -38,4 +48,5 @@ main = do
 
     try "q1" q1
     try "q2" q2
+    try "share" share
     

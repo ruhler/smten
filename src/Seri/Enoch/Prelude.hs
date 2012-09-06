@@ -4,10 +4,10 @@
 module Seri.Enoch.Prelude (
     apply, apply2,
     conE, varE, varE1, varE2,
-    (<), (>),
+    (==), (<), (>),
  ) where
 
-import Prelude hiding ((<), (>))
+import Prelude hiding ((==), (<), (>))
 import qualified Prelude
 
 import Seri.Lambda
@@ -18,7 +18,7 @@ instance SeriableT () where
 
 instance SeriableE () where
     pack () = TExp unitE
-    unpack (TExp e) | e == unitE = Just ()
+    unpack (TExp e) | e Prelude.== unitE = Just ()
     unpack _ = Nothing
 
 instance SeriableT Integer where
@@ -88,6 +88,9 @@ instance Num (TExp Integer) where
     (-) = varE2 "Seri.Lib.Prelude.-"
     abs = error $ "todo: abs for TExp Integer"
     signum = error $ "todo: signum for TExp Integer"
+
+(==) :: TExp Integer -> TExp Integer -> TExp Bool
+(==) = varE2 "Seri.Lib.Prelude.=="
 
 (<) :: TExp Integer -> TExp Integer -> TExp Bool
 (<) = varE2 "Seri.Lib.Prelude.<"
