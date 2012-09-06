@@ -209,3 +209,19 @@ Next step... I think I should differentiate between pretty and concrete.
 When to call pretty: error messages and debug.
 When to call concrete: bystr stuff in Yices1 and Yices2 apis.
 
+Wed Sep  5 21:20:11 EDT 2012
+
+Good. So there's one last thing to do. Which is the clumping.
+
+Here is how it should work. Change "group". Say: if not pretty, do what I do
+now. If pretty, then... 
+ - move the text so far aside
+ - make the expression pretty with zero indent...
+
+err... what I want to say is: if it's small, switch to non-pretty (which is
+prettier when small), otherwise stick to pretty. But how do we know if it's
+small?
+
+I don't know. Let me think about it and get back to you another time.
+
+
