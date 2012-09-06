@@ -59,7 +59,7 @@ main = do
     let env = {-# SCC "MKENV" #-} mkEnv decs
     {-# SCC "TYPECHECK" #-} attemptIO $ typecheck env decs
 
-    let opts = (RunOptions dbg 30 True)
+    let opts = (RunOptions dbg True)
     tmain <- {-# SCC "LOOKUPMAIN" #-} attemptIO $ lookupVarType env (name m)
     querier <- {-# SCC "MKQUERIER" #-} mkQuerier opts env
     (result, _) <- {-# SCC "RUNQUERY" #-} runQuery querier (VarE (Sig (name m) tmain))
