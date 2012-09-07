@@ -227,3 +227,8 @@ it's better in the long run anyway I suspect.
 
 Next... let's see if we can't get enoch going in a reasonable way now.
 
+Fri Sep  7 16:23:15 EDT 2012
+
+Okay, so enoch is up and running. Now I should finally be able to implement
+the realize thing I want for enoch to make sudoku work nicely...
+

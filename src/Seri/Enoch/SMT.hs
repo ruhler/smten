@@ -4,7 +4,8 @@
 
 module Seri.Enoch.SMT (
     Query, Answer(..), runQuery, RunOptions(..),
-    free, assert, query, run, run',
+    free, assert, Seri.Enoch.SMT.realize, run, run',
+    queryR, query,
  ) where
 
 import Data.Functor
@@ -56,11 +57,14 @@ assert p =
       assertE = varE "Seri.SMT.SMT.assert"
   in run' (apply assertE p)
 
+realize :: (SeriableE a) => TExp a -> Realize a
+realize (TExp x) = unpack' . TExp <$> Q.realize x
+
+queryR :: Realize a -> Query (Answer a)
+queryR = Q.query
+
 query :: (SeriableE a) => TExp a -> Query (Answer a)
-query x = 
-  let queryE :: (SeriableT a) => TExp (a -> Query (Answer a))
-      queryE = varE "Seri.SMT.SMT.query"
-  in run' (apply queryE x)
+query = queryR . Seri.Enoch.SMT.realize
 
 run :: TExp (Query a) -> Query (TExp a)
 run (TExp x) = TExp <$> Q.run x

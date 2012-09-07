@@ -29,12 +29,16 @@ q2 = do
 quadruple :: TExp Integer -> TExp Integer
 quadruple a = a + a + a + a
 
-share :: Query (Answer Integer)
+share :: Query (Answer (Integer, Integer))
 share = do
     x <- free
     y <- free
     assert (quadruple (x - y) == 24)
-    query x
+    assert (y > 0)
+    queryR $ do
+      xv <- realize x
+      yv <- realize y
+      return (xv, yv)
 
 main :: IO ()
 main = do
