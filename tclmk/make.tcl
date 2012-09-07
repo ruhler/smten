@@ -60,6 +60,7 @@ set SERIE build/src/dist/build/serie/serie
 set SERIH build/src/dist/build/serih/serih
 set SERIQ2 build/src/dist/build/seriq2/seriq2
 set ENOCH build/src/dist/build/enoch/enoch
+set SUDOKU build/src/dist/build/sudoku/sudoku
 
 # The general seri test
 hrun $SERIT -o build/src/tests.typed -i build/src build/src/Seri/Lib/Tests.sri
@@ -110,8 +111,9 @@ query2test "Share"
 query2test "Bit"
 query2test "AllQ"
 
-# The Enoch Test
-run $::ENOCH > build/src/Seri/Enoch/enoch.out
+# The enoch tests
+hrun $::ENOCH
+hrun $::SUDOKU
 
 puts "BUILD COMPLETE"
 
