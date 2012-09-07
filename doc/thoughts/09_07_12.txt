@@ -220,3 +220,10 @@ hack and fix things later? No... I should do them now...
 
 Let me think about it.
 
+Fri Sep  7 16:10:47 EDT 2012
+
+Okay, first step is done. It's nice I think. Too bad about loosing yices1, but
+it's better in the long run anyway I suspect.
+
+Next... let's see if we can't get enoch going in a reasonable way now.
+

@@ -3,24 +3,18 @@
 {-# LANGUAGE TypeSynonymInstances #-}
 
 module Seri.Enoch.SMT (
-    Query, Answer(..), 
+    Query, Answer(..), runQuery, RunOptions(..),
     free, assert, query, run, run',
-    runQuery, Y.RunOptions(..),
  ) where
 
-import Control.Monad.State.Strict
+import Data.Functor
 
 import Seri.Lambda hiding (free, query)
+import Seri.SMT.Query hiding (free, assert, query)
+import qualified Seri.SMT.Query as Q
+import qualified Seri.SMT.Run as Q
 import Seri.Enoch.Enoch
 import Seri.Enoch.Prelude
-
-import qualified Seri.SMT.Yices2 as Y
-
-data Answer a =
-    Satisfiable a
-  | Unsatisfiable
-  | Unknown
-    deriving (Eq, Show)
 
 instance SeriableT1 Answer where
     serit1 x = ConT (name "Answer")
@@ -47,9 +41,6 @@ instance (SeriableE a) => SeriableE (Answer a) where
     unpack _ = Nothing
 
                 
-
-type Query = StateT Y.SMTQuerier IO
-
 instance SeriableT1 Query where
     serit1 _ = ConT (name "Query")
 
@@ -72,17 +63,8 @@ query x =
   in run' (apply queryE x)
 
 run :: TExp (Query a) -> Query (TExp a)
-run (TExp x) = do
-     s <- get
-     (r, s') <- liftIO $ Y.runQuery s x
-     put s'
-     return (TExp r)
+run (TExp x) = TExp <$> Q.run x
 
 run' :: (SeriableE a) => TExp (Query a) -> Query a
-run' x = fmap unpack' $ run x
+run' x = unpack' <$> run x
 
-runQuery :: Y.RunOptions -> Env -> Query a -> IO a
-runQuery opts env q = do
-    querier <- Y.mkQuerier opts env
-    evalStateT q querier
-    
