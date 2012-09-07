@@ -37,13 +37,16 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 
-module Seri.SMT.Yices (
-    RunOptions(..), SMTQuerier(), mkQuerier, runQuery,
+module Seri.SMT.Query (
+    Answer(..), Query, Realize, 
+    query, queryS, free, assert, realize,
+    RunOptions(..), runQuery,
+    envQ,
     ) where
 
 import Debug.Trace
 
-import qualified Data.Map as Map
+import Data.Functor
 import Data.Maybe
 
 import System.IO
@@ -52,43 +55,40 @@ import Control.Monad.State
 import qualified Yices.Syntax as Y
 import qualified Yices.Concrete as Y
 import qualified Yices.Yices as Y
+import qualified Yices.Yices2 as Y
 
 import Seri.Failable
-import Seri.Lambda
-import Seri.Target.Elaborate
+import Seri.Lambda hiding (free, query)
 import Seri.Target.Yices.Yices
 
 
-data SMTQuerier y = SMTQuerier {
-    ys_ctx :: y,
+data YS = YS {
+    ys_ctx :: Y.Yices2FFI,
     ys_dh :: Maybe Handle,
     ys_freeid :: Integer,
     ys_ys :: Compilation,
-    ys_env :: Env,
-
-    -- yices can't redefine names when run directly, so even though it's not a
-    -- problem with the C api, we make sure we don't ever try to redefine the
-    -- same top level name. This map stores, for each previously defined top
-    -- level name, an integer that can be appended to it to get a new version
-    -- of the name that hasn't been defined yet.
-    ys_topnms :: Map.Map Name Integer
+    ys_env :: Env
 }
 
-type YicesMonad y = StateT (SMTQuerier y) IO
+type Query = StateT YS IO
+type Realize = Query
 
-sendCmds :: Y.Yices y => [Y.Command] -> y -> Maybe Handle -> IO ()
+data Answer a = Satisfiable a | Unsatisfiable | Unknown
+    deriving (Eq, Show)
+
+sendCmds :: [Y.Command] -> Y.Yices2FFI -> Maybe Handle -> IO ()
 sendCmds cmds ctx Nothing = mapM_ (Y.run ctx) cmds
 sendCmds cmds ctx (Just dh) = do
     hPutStr dh (unlines (map (Y.pretty (Y.version ctx)) cmds))
     mapM_ (Y.run ctx) cmds
 
-runCmds :: Y.Yices y => [Y.Command] -> YicesMonad y ()
+runCmds :: [Y.Command] -> Query ()
 runCmds cmds = do
     ctx <- gets ys_ctx
     dh <- gets ys_dh
     lift $ sendCmds cmds ctx dh
 
-check :: (Y.Yices y) => YicesMonad y Y.Result
+check :: Query Y.Result
 check = do
     ctx <- gets ys_ctx
     debug (Y.pretty (Y.version ctx) Y.Check)
@@ -97,14 +97,14 @@ check = do
     return res
 
 -- Output a line to the debug output.
-debug :: String -> YicesMonad y ()
+debug :: String -> Query ()
 debug msg = do
     dh <- gets ys_dh
     case dh of
         Nothing -> return ()
         Just h -> lift $ hPutStrLn h msg
 
-freevar :: YicesMonad y Name
+freevar :: Query Name
 freevar = do
     fid <- gets ys_freeid
     modify $ \ys -> ys { ys_freeid = fid+1 }
@@ -116,7 +116,7 @@ freename id = name $ "free~" ++ show id
 isfreename :: Name -> Bool
 isfreename nm = name "free~" == ntake 5 nm
 
-yicest :: Y.Yices y => Type -> YicesMonad y Y.Type
+yicest :: Type -> Query Y.Type
 yicest t = do
     ys <- gets ys_ys 
     ((cmds, yt), ys') <- lift . attemptIO $ runCompilation (yicesT t) ys
@@ -124,7 +124,7 @@ yicest t = do
     runCmds cmds
     return yt
 
-yicese :: Y.Yices y => Exp -> YicesMonad y Y.Expression
+yicese :: Exp -> Query Y.Expression
 yicese e = do
     ys <- gets ys_ys 
     ((cmds, ye), ys') <- lift . attemptIO $ runCompilation (yicesE e) ys
@@ -132,62 +132,37 @@ yicese e = do
     runCmds cmds
     return ye
 
-topname :: Y.Yices y => Name -> YicesMonad y Name
-topname n = do
-    m <- gets ys_topnms
-    let (id, m') = Map.insertLookupWithKey (\_ -> (+)) n 1 m
-    modify $ \ys -> ys { ys_topnms = m' }
-    return $ n `nappend` name "~t" `nappend` name (show (fromMaybe 0 id))
-    
-runQueryM :: Y.Yices y => Exp -> YicesMonad y Exp
-runQueryM e = do
-    env <- gets ys_env
-    case elaborate WHNF env e of
-        e@(AppE (LamE s@(Sig n t) b) x) -> do
-            n' <- topname n
-            t' <- yicest t
-            x' <- yicese x
-            runCmds [Y.Define (yicesN n') t' (Just x')]
-            runQueryM (rename n n' b)
-        (AppE (VarE (Sig n _)) arg) | n == name "Seri.SMT.SMT.query" -> do
-            res <- check
-            case res of 
-                Y.Satisfiable -> do
-                    arg' <- realize arg
-                    return $ AppE (ConE (Sig (name "Satisfiable") (AppT (ConT (name "Answer")) (typeof arg)))) arg'
-                Y.Unsatisfiable-> return $ ConE (Sig (name "Unsatisfiable") (AppT (ConT (name "Answer")) (typeof arg)))
-                _ -> return $ ConE (Sig (name "Unknown") (AppT (ConT (name "Answer")) (typeof arg)))
-        (VarE (Sig n (AppT _ t))) | n == name "Seri.SMT.SMT.free" -> makefree t
-        (AppE (VarE (Sig n _)) p) | n == name "Seri.SMT.SMT.assert" -> do
-            yp <- yicese p
-            true <- yicese trueE
-            runCmds [Y.Assert (Y.eqE true yp)]
-            return (ConE (Sig (name "()") (ConT (name "()"))))
-        (AppE (VarE (Sig n _)) q) | n == name "Seri.SMT.SMT.queryS" -> do
-            runCmds [Y.Push]
-            x <- runQueryM q
-            let q' = AppE (VarE (Sig (name "Seri.SMT.SMT.query") UnknownT)) x
-            y <- runQueryM q'
-            runCmds [Y.Pop]
-            return y
-        (AppE (VarE (Sig n _)) x) | n == name "Seri.SMT.SMT.return_query" -> return x
-        (AppE (AppE (VarE (Sig n _)) x) f) | n == name "Seri.SMT.SMT.bind_query" -> do
-          result <- runQueryM x
-          runQueryM (AppE f result)
-        (AppE (AppE (VarE (Sig n _)) x) y) | n == name "Seri.SMT.SMT.nobind_query" -> do
-          runQueryM x
-          runQueryM y
-        x -> error $ "unknown Query: " ++ pretty x
+query :: Realize a -> Query (Answer a)
+query r = do
+  res <- check
+  case res of 
+      Y.Satisfiable -> Satisfiable <$> r
+      Y.Unsatisfiable -> return Unsatisfiable
+      _ -> return Unknown
+
+free :: Type -> Query Exp
+free = makefree
+
+assert :: Exp -> Query ()
+assert p = do
+  yp <- yicese p
+  runCmds [Y.Assert yp]
+
+queryS :: Query a -> Query a
+queryS q = do
+  runCmds [Y.Push]
+  v <- q
+  runCmds [Y.Pop]
+  return v
 
 data RunOptions = RunOptions {
     debugout :: Maybe FilePath,
     nocaseerr :: Bool
 } deriving(Show)
             
--- | Construct a SMTQuerier object for running queries with yices under the given
--- seri environment.
-mkQuerier :: (Y.Yices y) => RunOptions -> Env -> y -> IO (SMTQuerier y)
-mkQuerier opts env ctx = do
+mkYS :: RunOptions -> Env -> IO YS
+mkYS opts env = do
+    ctx <- Y.mkYices
     dh <- case debugout opts of
             Nothing -> return Nothing
             Just dbgfile -> do
@@ -195,21 +170,19 @@ mkQuerier opts env ctx = do
                 hSetBuffering h NoBuffering
                 return (Just h)
 
-    return $ SMTQuerier {
+    return $ YS {
         ys_ctx = ctx,
         ys_dh = dh,
         ys_freeid = 1,
         ys_ys = compilation (Y.version ctx) (nocaseerr opts) env,
-        ys_env = env,
-        ys_topnms = Map.empty
+        ys_env = env
     }
 
 -- | Evaluate a query using the given environment.
--- Returns the result of the query and the updated querier.
-runQuery :: (Y.Yices y) => SMTQuerier y -> Exp -> IO (Exp, SMTQuerier y)
-runQuery q e = do
-    (e', q') <- runStateT (runQueryM e) q
-    return (elaborate WHNF (ys_env q') e', q')
+runQuery :: RunOptions -> Env -> Query a -> IO a
+runQuery opts env q = do
+    ys <- mkYS opts env
+    evalStateT q ys
 
 isPrimT :: Type -> Bool
 isPrimT t | t == boolT = True
@@ -219,7 +192,7 @@ isPrimT t | head (unappsT t) == ConT (name "->") = True
 isPrimT _ = False
 
 -- | Make a free value of the given type.
-makefree :: Y.Yices y => Type -> YicesMonad y Exp
+makefree :: Type -> Query Exp
 makefree t | isPrimT t = do
   t' <- yicest t
   free <- freevar
@@ -229,14 +202,14 @@ makefree t = do
   let (ConT dt):args = unappsT t
   env <- gets ys_env
   DataD _ vars cs <- lift . attemptIO $ lookupDataD env dt
-  (let mkcon :: Y.Yices y => Con -> YicesMonad y Exp
+  (let mkcon :: Con -> Query Exp
        mkcon (Con cn ts) = 
          let ts' = assign (zip (map tyVarName vars) args) ts
          in do
              argvals <- mapM makefree ts'
              return $ appsE ((ConE (Sig cn (arrowsT (ts' ++ [t])))):argvals)
   
-       mkcons :: Y.Yices y => [Con] -> YicesMonad y Exp
+       mkcons :: [Con] -> Query Exp
        mkcons [] = error $ "makefree on DataD with no constructors: " ++ pretty t
        mkcons [c] = mkcon c
        mkcons (c:cs) = do
@@ -257,7 +230,7 @@ makefree t = do
 -- Assumes:
 --   Integers, Bools, and Bit vectors are implemented directly using the
 --   corresponding yices primitives. (Should I not be assuming this?)
-realizefree :: Y.Yices y => Env -> Name -> Type -> YicesMonad y Exp
+realizefree :: Env -> Name -> Type -> Query Exp
 realizefree _ nm t | t == boolT = do
     ctx <- gets ys_ctx
     bval <- lift $ Y.getBoolValue ctx (yicesN nm)
@@ -278,38 +251,20 @@ realizefree _ _ t@(AppT (AppT (ConT n) _) _) | n == name "->"
 realizefree _ _ t
   = error $ "unexpected realizefree type: " ++ pretty t
 
-data Realize = Realize Env
+data RealizeT = RealizeT Env
 
-instance (Y.Yices y) => TransformerM Realize (YicesMonad y) where
-    tm_Exp (Realize env) (VarE (Sig nm ty)) | isfreename nm = realizefree env nm ty
+instance TransformerM RealizeT Query where
+    tm_Exp (RealizeT env) (VarE (Sig nm ty)) | isfreename nm = realizefree env nm ty
     tm_Exp _ e = return e
 
 -- | Update the free variables in the given expression based on the current
 -- yices model.
 -- This requires (and assumes) check was just called and return satisfiable.
-realize :: Y.Yices y => Exp -> YicesMonad y Exp
+realize :: Exp -> Realize Exp
 realize e = do
     env <- gets ys_env
-    transformM (Realize env) e
+    transformM (RealizeT env) e
 
-
--- Rename free variables in the given expression with the given key name to
--- the given value name.
-rename :: Name -> Name -> Exp -> Exp
-rename k v | k == v = id
-rename k v = 
-  let re e@(LitE {}) = e
-      re (CaseE x ms) = CaseE (re x) (map rm ms)
-      re (AppE a b) = AppE (re a) (re b)
-      re e@(LamE (Sig n _) b) | k == n = e
-      re (LamE s b) = LamE s (re b)
-      re e@(ConE {}) = e
-      re (VarE (Sig n t)) | n == k = VarE (Sig v t)
-      re e@(VarE {}) = e
-
-      rm m@(Match p _) | k `elem` bindingsP' p = m
-      rm (Match p b) = Match p (re b)
-  in re
-
-
+envQ :: Query Env
+envQ = gets ys_env
 

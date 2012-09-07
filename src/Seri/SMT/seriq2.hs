@@ -42,7 +42,8 @@ import System.Exit
 import Seri.Failable
 import Seri.Lambda
 import Seri.Target.Elaborate
-import Seri.SMT.Yices2
+import Seri.SMT.Query
+import Seri.SMT.Run
 
 main :: IO ()
 main = do
@@ -53,15 +54,14 @@ main = do
                ["-i", path, "-m", m, fin] -> (Nothing, path, m, fin)
                x -> error $ "bad args: " ++ show x
 
-    query <- {-# SCC "LOAD" #-} load [path] fin
-    flat <- {-# SCC "FLATTEN" #-} attemptIO $ flatten query
-    decs <- {-# SCC "INFER" #-} attemptIO $ typeinfer (mkEnv flat) flat
-    let env = {-# SCC "MKENV" #-} mkEnv decs
-    {-# SCC "TYPECHECK" #-} attemptIO $ typecheck env decs
+    query <- load [path] fin
+    flat <- attemptIO $ flatten query
+    decs <- attemptIO $ typeinfer (mkEnv flat) flat
+    let env = mkEnv decs
+    attemptIO $ typecheck env decs
 
     let opts = (RunOptions dbg True)
-    tmain <- {-# SCC "LOOKUPMAIN" #-} attemptIO $ lookupVarType env (name m)
-    querier <- {-# SCC "MKQUERIER" #-} mkQuerier opts env
-    (result, _) <- {-# SCC "RUNQUERY" #-} runQuery querier (VarE (Sig (name m) tmain))
-    {-# SCC "RESULT" #-} putStrLn $ pretty result
+    tmain <- attemptIO $ lookupVarType env (name m)
+    result <- runQuery opts env (run $ VarE (Sig (name m) tmain))
+    putStrLn $ pretty (elaborate WHNF env result)
 

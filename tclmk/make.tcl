@@ -58,9 +58,7 @@ indir build/src {
 set SERIT build/src/dist/build/serit/serit
 set SERIE build/src/dist/build/serie/serie
 set SERIH build/src/dist/build/serih/serih
-set SERIQ build/src/dist/build/seriq/seriq
 set SERIQ2 build/src/dist/build/seriq2/seriq2
-set ENOCH build/src/dist/build/enoch/enoch
 
 # The general seri test
 hrun $SERIT -o build/src/tests.typed -i build/src build/src/Seri/Lib/Tests.sri
@@ -92,25 +90,6 @@ run ./$hsdir/hstests > $hsdir/hstests.got
 run echo "True" > $hsdir/hstests.wnt
 hrun cmp $hsdir/hstests.got $hsdir/hstests.wnt
 
-# The SMT query tests
-proc querytest {name args} {
-    run $::SERIQ -d build/src/Seri/SMT/Tests/$name.dbg -i build/src \
-         -m Seri.SMT.Tests.$name.main \
-         build/src/Seri/SMT/Tests/$name.sri {*}$args \
-         > build/src/Seri/SMT/Tests/$name.out
-}
-
-querytest "Query1"
-querytest "Query2"
-querytest "Complex"
-querytest "If"
-querytest "Casenomatch"
-querytest "Bluespec"
-querytest "Array"
-querytest "Share"
-querytest "Bit"
-querytest "AllQ"
-
 # The SMT query2 tests
 proc query2test {name args} {
     run $::SERIQ2 -d build/src/Seri/SMT/Tests/$name.2.dbg -i build/src \
@@ -129,9 +108,6 @@ query2test "Array"
 query2test "Share"
 query2test "Bit"
 query2test "AllQ"
-
-# The Enoch Test
-run $::ENOCH > build/src/Seri/Enoch/enoch.out
 
 puts "BUILD COMPLETE"
 
