@@ -1,0 +1,29 @@
+
+Thu Sep  6 20:10:24 EDT 2012
+
+Working on enoch, which is looking very nice right now.
+
+One thing I would like to do is demonstrate the different ways you can use
+enoch/seri to mix haskell and seri code. I think the share query is a great
+example. The different things I can do, which I should do at some point (but
+not now, because it seems more like grunt work, and it's late) are:
+
+- share with quadruple as a haskell function
+Inlines everything, smt solver can't see sharing.
+
+- share with quadruple as a lamE
+quadruple defined in haskell, but looks clunky
+
+- share with quadruple defined in seri
+and "imported" to haskell using varE. Looks great, but requires external code
+be written.
+
+- share with quadruple defined using a quasi-quoter
+Looks good, no external code required, but I'm not sure how I can make sure
+the types are correct. We don't have access to the environment at this point,
+so I don't know what the types of variables should be.
+
+
+Fine. What do I want to do now then? Nothing. I've worked too much on this
+today already. I need a break.
+

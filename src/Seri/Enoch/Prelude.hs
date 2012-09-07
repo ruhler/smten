@@ -4,10 +4,11 @@
 module Seri.Enoch.Prelude (
     apply, apply2,
     conE, varE, varE1, varE2,
-    (==), (<), (>),
+    (==), (/=), (<), (>), (<=), (>=), (&&),
+    ite,
  ) where
 
-import Prelude hiding ((==), (<), (>))
+import Prelude hiding (Eq(..), (<), (>), (<=), (>=), (&&))
 import qualified Prelude
 
 import Seri.Lambda
@@ -89,12 +90,30 @@ instance Num (TExp Integer) where
     abs = error $ "todo: abs for TExp Integer"
     signum = error $ "todo: signum for TExp Integer"
 
-(==) :: TExp Integer -> TExp Integer -> TExp Bool
+-- This assumes there's a Seri instance of Eq for the object. Is that okay?
+(==) :: (SeriableT a) => TExp a -> TExp a -> TExp Bool
 (==) = varE2 "Seri.Lib.Prelude.=="
+
+-- This assumes there's a Seri instance of Eq for the object. Is that okay?
+(/=) :: (SeriableT a) => TExp a -> TExp a -> TExp Bool
+(/=) = varE2 "Seri.Lib.Prelude./="
 
 (<) :: TExp Integer -> TExp Integer -> TExp Bool
 (<) = varE2 "Seri.Lib.Prelude.<"
 
 (>) :: TExp Integer -> TExp Integer -> TExp Bool
 (>) = varE2 "Seri.Lib.Prelude.>"
+
+(<=) :: TExp Integer -> TExp Integer -> TExp Bool
+(<=) = varE2 "Seri.Lib.Prelude.<="
+
+(>=) :: TExp Integer -> TExp Integer -> TExp Bool
+(>=) = varE2 "Seri.Lib.Prelude.>="
+
+(&&) :: TExp Bool -> TExp Bool -> TExp Bool
+(&&) = varE2 "Seri.Lib.Prelude.&&"
+
+ite :: TExp Bool -> TExp a -> TExp a -> TExp a
+ite (TExp p) (TExp a) (TExp b) = TExp $ ifE p a b
+
 

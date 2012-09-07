@@ -1,0 +1,222 @@
+
+Fri Sep  7 08:45:17 EDT 2012
+
+Enoch is going to run into issues. The same ones the old enoch did. So maybe
+it's not as pretty as I hoped.
+
+Because, for example, for sudoku we want to query a board of free cells, but
+seri shouldn't have to know about the board representation.
+
+Fundamentally what we want is a transformation of types. 
+
+TExp a -> a
+[TExp a] -> [a]
+
+That sort of thing. It seems like the way to do that is with a multi-param
+type class, as I did for the original enoch, but then we have all the
+annoyance and ambiguity problems that I hate.
+
+But! I think there may be another way. The observation is this. There are only
+certain kinds of transformations you want. Only certain kinds you can do.
+
+Because if I have some complex structure with a (TExp a) in it somewhere, and I
+want to turn it into a concrete haskell structure, that means I have that same
+complex structure with an (a) in it where we had a (TExp a) before, which
+means the structure is parameterized in the possibly-free value.
+
+So then, I'm claiming we have the following cases of things we want to
+realize:
+
+TExp a -> a
+(Functor m) => m (TExp a) -> m a
+(Functor2 m) => m (TExp a) (TExp b) -> m a b
+
+And so on. I don't know if Functor2 exists, but the meaning is clear:
+
+fmap2 :: (a -> a') -> (b -> b') -> m a b -> m a' b'
+
+So, maybe all I need is to have:
+ query :: TExp a -> Query (Answer a)
+ query1 :: (Functor m) => m (TExp a) -> Query (Answer (m a))
+ query2 :: (Functor2 m) => m (TExp a) (TExp b) -> Query (Answer (m a b))
+
+And so on. I should read up on what library stuff there is for Functors, see
+if there is such a thing as a Functor2.
+
+This may not be as general as I want though. What I would really like is to
+say: I can query something that is any of these things or contains any of
+these things. So, for example, we could have:
+
+ queryX :: (Functor m, n) => m (n (TExp a)) -> Query (Answer (m (n a)))
+
+Now, how I can implement this on top of the existing sery querier interface is
+a different question. It seems we need an unsafe realize function.
+
+Things to think about... I think these are pretty important things to think
+about, but I may just be procrastinating writing my proposal...
+
+Fri Sep  7 09:30:14 EDT 2012
+
+I think I may have a better solution. This would be easy if you could call a
+realize function:
+
+  realize :: TExp a -> Query a
+
+Because then you could do the traversal yourself:
+
+realizeBoard :: [[TExp a]] -> Query [[a]]
+realizeBoard = mapM realizeRow
+
+realizeRow :: [TExp a] -> Query [a]
+realizeRow = mapM realize
+
+And, in particular, you could define realize things for functors and functor2s
+and whatever you want.
+
+The reason I don't like this is because it's not safe. We don't want to call
+realize until a check has been called, and then, I think, we want to do it all
+at once. We want to associate a realize with a check.
+
+Well, that's not so very hard to do now, is it? Just give a monad that can
+only be run during realize. (I might look at using a Functor or an Applicative
+Functor instead of Monad in case Monad is more than we need).
+
+Have
+
+data Realize a = ...
+instance Monad Realize
+
+realize :: TExp a -> Realize a
+
+query :: Realize a -> Query (Answer a)
+
+That's all you need!
+
+
+While I'm on this topic, thinking about safety and such... in the current
+setting it's possible for a free variable to escape the Query monad. For
+example, you can say:  runQuery (free). Now that seems dangerous. You get back
+a TExp with a free inside which has no more meaning anymore.
+
+We could make it safer by having runQuery force a check or something like
+that. Perhaps it could be as easy as realize. I don't know. Something to keep
+in mind.
+
+Cool. I think this is a reasonable solution to the realization problem.
+
+Fri Sep  7 09:55:13 EDT 2012
+
+Another thing we can do is make free part of SeriableT? The default can be to
+use the primitive free, so you don't even need to worry. But then you can
+override it with extra assertions if desired. That's something I can add
+later if I see the same sort of thing happening a lot.
+
+Actually... I should do it. But... maybe after sudoku and my proposal are up
+and running...
+
+Fine. So I have my plan. I'll have to change the underlying quierier interface
+to support realization as a separate step, but that doesn't have to change the
+seri language. It's just added functionality which I've already got
+implemented which I'm exposing.
+
+I think I should go and implement sudoku next, and everything that's needed,
+like the old enoch sudoku:
+
+- Cells represented as Integers in seri (they can be an enum in haskell)
+- All functions directly inline, etc...
+
+I know everything I have to do.
+
+Fri Sep  7 11:57:24 EDT 2012
+
+So it looks like it's a little bit messy exposing a realize function, because
+we have to expose the monad?
+
+Or, rather, things just seem overall messy with how they all are...
+
+Is it worth time cleaning this up now? I probably had better, otherwise bad
+things will happen later on.
+
+And I think I can keep realize safe this way...
+
+There seems to be lots of duplication of stuff to me, but ... that's because
+we have the monad in Seri, we have it without types, and we have it with
+types.
+
+The thing is... dealing with the Seri monad should be entirely back end
+agnostic, as long as each backend provides the appropriate primitives. So I
+think it does make sense to change this thing I was thinking of. Adding
+another layer of indirection as it were. But it will take time and effort,
+perhaps all day? And that worries me slightly, because I really do need to
+work on writing.
+
+Let me write down what I'm proposing, then think about it over lunch.
+
+I want each back end to provide the following interface:
+
+err.. it would be easy if I didn't want to support he ability to run partial
+queries with intermediate results. The problem is that monads don't compose
+nicely. Well, maybe if I make everything an instance of liftIO, then you just
+program using the outer level monad you want to use, and it saves state
+internally. Let me try using that, because I feel like it would be a nicer
+interface if it could be used.
+
+So the proposal is this:
+
+-- Seri/SMT/<Backend>.hs
+-- Each different back end should support this interface
+
+data Query a = ...
+instance Monad Query where ...
+
+data Realize a = ...
+instance Monad Realize where ...
+realize :: Exp -> Realize Exp
+
+query :: Realize a -> Query (Answer a)
+free :: Type -> Query Exp
+assert :: Exp -> Query ()
+queryS :: Query a -> Query a
+runQuery :: Options -> Env -> Query a -> IO a
+
+Note: I've changed queryS, because i'm not consistent. The problem is, calls
+to query and queryS can leak free variables. Before I said: I won't leak free
+variables from queryS, I'll force realization, but now, even then we can leak
+free variables (with this interface). Perhaps queryS still has the same seri
+language type, but not here.
+
+Um... perhaps we need to make this a type class so other things can be generic
+on top of it. For now I can start with just one implementation? Start with
+yices2, or make yices2 versus yices1 an option (linking problems?). Later on
+it should be certainly different.
+
+-- Seri/SMT/Query.hs
+-- run :: (Exp (Query a)) -> Query (Exp a)
+run :: Exp -> Query Exp
+
+This does elaboration and stuff, checking for the primitive queries, calling
+the backend as appropriate.
+
+-- Seri/Enoch/SMT
+The same interface as the Backend, only with type annotations, and built on
+top of the back end.
+
+Actually, it's the very same Query monad as the back end, just a different
+interface on top of that which deals with the type annotations.
+
+realize :: (SeriableT a) => TExp a -> Realize a
+    (combines realize with unpack
+free :: Query (TExp Exp)
+assert :: (TExp Bool) -> Query ()
+run :: TExp (Query a) -> Query (TExp a)
+
+and so on.
+
+Hmm... This is quite a change. Eventually I'll want a multi-param type class
+with functional dependencies (sigh). For now, just support yices2.
+
+Of course... so long as the Query interface is unchanged, I could put in a
+hack and fix things later? No... I should do them now...
+
+Let me think about it.
+

@@ -153,7 +153,7 @@ runQueryM e = do
             res <- check
             case res of 
                 Y.Satisfiable -> do
-                    arg' <- realize env arg
+                    arg' <- realize arg
                     return $ AppE (ConE (Sig (name "Satisfiable") (AppT (ConT (name "Answer")) (typeof arg)))) arg'
                 Y.Unsatisfiable-> return $ ConE (Sig (name "Unsatisfiable") (AppT (ConT (name "Answer")) (typeof arg)))
                 _ -> return $ ConE (Sig (name "Unknown") (AppT (ConT (name "Answer")) (typeof arg)))
@@ -286,8 +286,11 @@ instance (Y.Yices y) => TransformerM Realize (YicesMonad y) where
 
 -- | Update the free variables in the given expression based on the current
 -- yices model.
-realize :: Y.Yices y => Env -> Exp -> YicesMonad y Exp
-realize env = transformM (Realize env)
+-- This requires (and assumes) check was just called and return satisfiable.
+realize :: Y.Yices y => Exp -> YicesMonad y Exp
+realize e = do
+    env <- gets ys_env
+    transformM (Realize env) e
 
 
 -- Rename free variables in the given expression with the given key name to
