@@ -44,10 +44,7 @@ module Seri.SMT.Query (
     envQ,
     ) where
 
-import Debug.Trace
-
 import Data.Functor
-import Data.Maybe
 
 import System.IO
 
@@ -70,6 +67,8 @@ data YS = YS {
     ys_env :: Env
 }
 
+-- TODO: these should probably be newtypes, so that the user doesn't have
+-- access to their internals.
 type Query = StateT YS IO
 type Realize = Query
 
@@ -132,6 +131,8 @@ yicese e = do
     runCmds cmds
     return ye
 
+-- | Check if the current assertions are satisfiable. If so, runs the given
+-- realize computation and returns that as the body of the Answer.
 query :: Realize a -> Query (Answer a)
 query r = do
   res <- check
@@ -140,14 +141,56 @@ query r = do
       Y.Unsatisfiable -> return Unsatisfiable
       _ -> return Unknown
 
-free :: Type -> Query Exp
-free = makefree
+isPrimT :: Type -> Bool
+isPrimT t | t == boolT = True
+isPrimT t | t == integerT = True
+isPrimT (AppT (ConT n) _) | n == name "Bit" = True
+isPrimT t | head (unappsT t) == ConT (name "->") = True
+isPrimT _ = False
 
+-- | Allocate a free expression of the given type.
+free :: Type -> Query Exp
+free t | isPrimT t = do
+  t' <- yicest t
+  free <- freevar
+  runCmds [Y.Define (yicesN free) t' Nothing]
+  return (VarE (Sig free t))
+free t = do
+  let (ConT dt):args = unappsT t
+  env <- gets ys_env
+  DataD _ vars cs <- lift . attemptIO $ lookupDataD env dt
+  (let mkcon :: Con -> Query Exp
+       mkcon (Con cn ts) = 
+         let ts' = assign (zip (map tyVarName vars) args) ts
+         in do
+             argvals <- mapM free ts'
+             return $ appsE ((ConE (Sig cn (arrowsT (ts' ++ [t])))):argvals)
+  
+       mkcons :: [Con] -> Query Exp
+       mkcons [] = error $ "free on DataD with no constructors: " ++ pretty t
+       mkcons [c] = mkcon c
+       mkcons (c:cs) = do
+         isthis <- free boolT
+         this <- mkcon c
+         rest <- mkcons cs
+         return $ ifE isthis this rest
+   in do
+       v <- mkcons cs
+       debug $ "; free " ++ pretty t ++ ":"
+       debug . unlines . (map (';':)) . lines . pretty $ v
+       return v
+   )
+
+-- | Assert the given seri boolean expression.
 assert :: Exp -> Query ()
 assert p = do
   yp <- yicese p
   runCmds [Y.Assert yp]
 
+-- | Run the given query in its own scope and return the result.
+-- Note: it's possible to leak free variables with this function.
+-- You should not return anything from the first query which could contain a
+-- free variable, otherwise who knows what will happen.
 queryS :: Query a -> Query a
 queryS q = do
   runCmds [Y.Push]
@@ -156,7 +199,12 @@ queryS q = do
   return v
 
 data RunOptions = RunOptions {
+    -- | Optionally output debug info to the given file.
     debugout :: Maybe FilePath,
+
+    -- | When True, assume in every case expression some alternative will
+    -- match. This is not always a safe assumption, and can lead to odd
+    -- answers, but it does improve performance a lot.
     nocaseerr :: Bool
 } deriving(Show)
             
@@ -179,50 +227,14 @@ mkYS opts env = do
     }
 
 -- | Evaluate a query using the given environment.
+-- Note: it's possible to leak free variables with this function.
+-- You should not return anything from the first query which could contain a
+-- free variable, otherwise who knows what will happen.
 runQuery :: RunOptions -> Env -> Query a -> IO a
 runQuery opts env q = do
     ys <- mkYS opts env
     evalStateT q ys
 
-isPrimT :: Type -> Bool
-isPrimT t | t == boolT = True
-isPrimT t | t == integerT = True
-isPrimT (AppT (ConT n) _) | n == name "Bit" = True
-isPrimT t | head (unappsT t) == ConT (name "->") = True
-isPrimT _ = False
-
--- | Make a free value of the given type.
-makefree :: Type -> Query Exp
-makefree t | isPrimT t = do
-  t' <- yicest t
-  free <- freevar
-  runCmds [Y.Define (yicesN free) t' Nothing]
-  return (VarE (Sig free t))
-makefree t = do
-  let (ConT dt):args = unappsT t
-  env <- gets ys_env
-  DataD _ vars cs <- lift . attemptIO $ lookupDataD env dt
-  (let mkcon :: Con -> Query Exp
-       mkcon (Con cn ts) = 
-         let ts' = assign (zip (map tyVarName vars) args) ts
-         in do
-             argvals <- mapM makefree ts'
-             return $ appsE ((ConE (Sig cn (arrowsT (ts' ++ [t])))):argvals)
-  
-       mkcons :: [Con] -> Query Exp
-       mkcons [] = error $ "makefree on DataD with no constructors: " ++ pretty t
-       mkcons [c] = mkcon c
-       mkcons (c:cs) = do
-         isthis <- makefree boolT
-         this <- mkcon c
-         rest <- mkcons cs
-         return $ ifE isthis this rest
-   in do
-       v <- mkcons cs
-       debug $ "; makefree " ++ pretty t ++ ":"
-       debug . unlines . (map (';':)) . lines . pretty $ v
-       return v
-   )
 
 -- | Given a free variable name and corresponding seri type, return the value
 -- of that free variable from the yices model.
@@ -265,6 +277,7 @@ realize e = do
     env <- gets ys_env
     transformM (RealizeT env) e
 
+-- | Return the environment the query is running under.
 envQ :: Query Env
 envQ = gets ys_env
 

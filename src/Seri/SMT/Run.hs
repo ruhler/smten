@@ -33,25 +33,14 @@
 -- 
 -------------------------------------------------------------------------------
 
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE TypeSynonymInstances #-}
+module Seri.SMT.Run (run) where
 
-module Seri.SMT.Run (
-    run
-    ) where
-
-import Debug.Trace
-
-import Data.Maybe
-
-import System.IO
-
-import Seri.Failable
 import Seri.Lambda hiding (free, query)
 import Seri.SMT.Query
 import Seri.Target.Elaborate
 
+-- | Given a Seri expression of type Query a,
+-- returns the Seri expression of type a which results from running the query.
 run :: Exp -> Query Exp
 run e = do
     env <- envQ
