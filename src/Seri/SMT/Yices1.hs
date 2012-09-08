@@ -33,8 +33,8 @@
 -- 
 -------------------------------------------------------------------------------
 
-module Seri.SMT.Yices2 (
-    RunOptions(..), runYices2,
+module Seri.SMT.Yices1 (
+    RunOptions(..), runYices1,
     ) where
 
 import Seri.Failable
@@ -42,10 +42,10 @@ import Seri.Lambda
 import Seri.SMT.Yices
 
 import Yices.Yices
-import Yices.Yices2
+import Yices.Yices1
 
-runYices2 :: RunOptions -> Env -> QueryY Yices2FFI a -> IO a
-runYices2 opts env q = do
+runYices1 :: RunOptions -> Env -> QueryY Yices1FFI a -> IO a
+runYices1 opts env q = do
     y <- mkYices
     runYices y opts env q
 

@@ -33,19 +33,35 @@
 -- 
 -------------------------------------------------------------------------------
 
-module Seri.SMT.Yices2 (
-    RunOptions(..), runYices2,
-    ) where
+-- | Evaluate a seri SMT query using yices 1.
+module Main where
+
+import System.Environment
+import System.Exit
 
 import Seri.Failable
 import Seri.Lambda
-import Seri.SMT.Yices
+import Seri.Target.Elaborate
+import Seri.SMT.Query
+import Seri.SMT.Yices1
 
-import Yices.Yices
-import Yices.Yices2
+main :: IO ()
+main = do
+    args <- getArgs
+    let (dbg, path, m, fin) =
+            case args of
+               ["-d", dbgout, "-i", path, "-m", m, fin] -> (Just dbgout, path, m, fin)
+               ["-i", path, "-m", m, fin] -> (Nothing, path, m, fin)
+               x -> error $ "bad args: " ++ show x
 
-runYices2 :: RunOptions -> Env -> QueryY Yices2FFI a -> IO a
-runYices2 opts env q = do
-    y <- mkYices
-    runYices y opts env q
+    query <- load [path] fin
+    flat <- attemptIO $ flatten query
+    decs <- attemptIO $ typeinfer (mkEnv flat) flat
+    let env = mkEnv decs
+    attemptIO $ typecheck env decs
+
+    let opts = (RunOptions dbg True)
+    tmain <- attemptIO $ lookupVarType env (name m)
+    result <- runYices1 opts env (run $ VarE (Sig (name m) tmain))
+    putStrLn $ pretty (elaborate WHNF env result)
 

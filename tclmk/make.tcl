@@ -58,6 +58,7 @@ indir build/src {
 set SERIT build/src/dist/build/serit/serit
 set SERIE build/src/dist/build/serie/serie
 set SERIH build/src/dist/build/serih/serih
+set SERIQ1 build/src/dist/build/seriq1/seriq1
 set SERIQ2 build/src/dist/build/seriq2/seriq2
 set ENOCH build/src/dist/build/enoch/enoch
 set SUDOKU build/src/dist/build/sudoku/sudoku
@@ -91,6 +92,25 @@ hrun -ignorestderr $GHC -o $hsdir/hstests -ibuild/src $hsdir/hstests.hs
 run ./$hsdir/hstests > $hsdir/hstests.got
 run echo "True" > $hsdir/hstests.wnt
 hrun cmp $hsdir/hstests.got $hsdir/hstests.wnt
+
+# The SMT query1 tests
+proc query1test {name args} {
+    run $::SERIQ1 -d build/src/Seri/SMT/Tests/$name.1.dbg -i build/src \
+         -m Seri.SMT.Tests.$name.main \
+         build/src/Seri/SMT/Tests/$name.sri {*}$args \
+         > build/src/Seri/SMT/Tests/$name.1.out
+}
+
+query1test "Query1"
+query1test "Query2"
+query1test "Complex"
+query1test "If"
+query1test "Casenomatch"
+query1test "Bluespec"
+query1test "Array"
+query1test "Share"
+query1test "Bit"
+query1test "AllQ"
 
 # The SMT query2 tests
 proc query2test {name args} {
