@@ -3,7 +3,7 @@
 {-# LANGUAGE TypeSynonymInstances #-}
 
 module Seri.Enoch.SMT (
-    Query, Answer(..), runQuery, RunOptions(..),
+    Query, Answer(..), 
     free, assert, Seri.Enoch.SMT.realize, run, run',
     queryR, query,
  ) where
@@ -11,9 +11,8 @@ module Seri.Enoch.SMT (
 import Data.Functor
 
 import Seri.Lambda hiding (free, query)
-import Seri.SMT.Query hiding (free, assert, query)
+import Seri.SMT.Query hiding (free, assert, query, run)
 import qualified Seri.SMT.Query as Q
-import qualified Seri.SMT.Run as Q
 import Seri.Enoch.Enoch
 import Seri.Enoch.Prelude
 
@@ -41,34 +40,36 @@ instance (SeriableE a) => SeriableE (Answer a) where
     unpack (TExp (ConE (Sig n _))) | n Prelude.== name "Unknown" = return Unknown
     unpack _ = Nothing
 
-                
-instance SeriableT1 Query where
+-- Dummy query type with instance of SeriableT.
+data QueryT a = QueryT
+
+instance SeriableT1 QueryT where
     serit1 _ = ConT (name "Query")
 
-free :: (SeriableT a) => Query (TExp a)
+free :: (Query q, SeriableT a) => q (TExp a)
 free = 
-    let freeE :: (SeriableT a) => TExp (Query a)
+    let freeE :: (SeriableT a) => TExp (QueryT a)
         freeE = varE "Seri.SMT.SMT.free"
     in run freeE
 
-assert :: TExp Bool -> Query ()
+assert :: (Query q) => TExp Bool -> q ()
 assert p =
-  let assertE :: TExp (Bool -> Query ())
+  let assertE :: TExp (Bool -> QueryT ())
       assertE = varE "Seri.SMT.SMT.assert"
   in run' (apply assertE p)
 
-realize :: (SeriableE a) => TExp a -> Realize a
+realize :: (Query q, SeriableE a) => TExp a -> Realize q a
 realize (TExp x) = unpack' . TExp <$> Q.realize x
 
-queryR :: Realize a -> Query (Answer a)
+queryR :: (Query q) => Realize q a -> q (Answer a)
 queryR = Q.query
 
-query :: (SeriableE a) => TExp a -> Query (Answer a)
+query :: (Query q, SeriableE a) => TExp a -> q (Answer a)
 query = queryR . Seri.Enoch.SMT.realize
 
-run :: TExp (Query a) -> Query (TExp a)
+run :: (Query q) => TExp (QueryT a) -> q (TExp a)
 run (TExp x) = TExp <$> Q.run x
 
-run' :: (SeriableE a) => TExp (Query a) -> Query a
+run' :: (Query q, SeriableE a) => TExp (QueryT a) -> q a
 run' x = unpack' <$> run x
 

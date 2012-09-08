@@ -7,8 +7,9 @@ import Seri.Lambda hiding (free, query)
 import Seri.Enoch.Enoch
 import Seri.Enoch.Prelude
 import Seri.Enoch.SMT
+import Seri.SMT.Yices2
 
-q1 :: Query (Answer Integer)
+q1 :: (Query q) => q (Answer Integer)
 q1 = do
     x <- free
     assert (x < 6)
@@ -19,7 +20,7 @@ q1 = do
 incr :: TExp Integer -> TExp Integer
 incr x = x + 1
 
-q2 :: Query (Answer Integer)
+q2 :: (Query q) => q (Answer Integer)
 q2 = do
     x <- free
     assert (x < 6)
@@ -29,7 +30,7 @@ q2 = do
 quadruple :: TExp Integer -> TExp Integer
 quadruple a = a + a + a + a
 
-share :: Query (Answer (Integer, Integer))
+share :: (Query q) => q (Answer (Integer, Integer))
 share = do
     x <- free
     y <- free
@@ -48,7 +49,7 @@ main = do
     let env = mkEnv typed
     attemptIO $ typecheck env typed
 
-    let try nm q = runQuery (RunOptions (Just $ "build/src/Seri/Enoch/" ++ nm ++ ".dbg") True) env q >>= (putStrLn . show)
+    let try nm q = runYices2 (RunOptions (Just $ "build/src/Seri/Enoch/" ++ nm ++ ".dbg") True) env q >>= (putStrLn . show)
 
     try "q1" q1
     try "q2" q2

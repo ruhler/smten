@@ -29,4 +29,22 @@ Sat Sep  8 09:17:58 EDT 2012
 Wow. Making && a primitive makes the generated sudoku query look very nice.
 And I bet I can make it even nicer if || and not are primitives.
 
+Sat Sep  8 09:32:52 EDT 2012
+
+It looks much nicer. There's still an issue where we have a case statement or
+something where the arg is only used once that I don't inline and is slightly
+messy. I'll perhaps look into that later.
+
+Now I want to see if I can switch to a generic query interface.
+
+Sat Sep  8 13:00:01 EDT 2012
+
+Switched to a generic query interface. It's not too bad, just annoying to have
+to say: (Query q) => ... q ...  everywhere instead of ... Query ...
+
+You'd think they could have a special syntax for that in haskell. Anytime you
+use a class name as a constructor in a type, change it to define a fresh type
+variable of that class.
+
+Anyway... fine. The real trick will be adding back support for yices1.
 

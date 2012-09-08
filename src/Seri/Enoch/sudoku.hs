@@ -8,6 +8,7 @@ import Seri.Lambda hiding (free, query)
 import Seri.Enoch.Enoch
 import Seri.Enoch.Prelude
 import Seri.Enoch.SMT
+import Seri.SMT.Yices2
 
 
 -- The size of the sudoku.
@@ -21,13 +22,13 @@ m = n*n
 
 type Cell = Integer
 
-freeCell :: Query (TExp Cell)
+freeCell :: (Query q) => q (TExp Cell)
 freeCell = do
     x <- free
     assert ((x > 0) && (x <= pack m))
     return x
 
-readCell :: Char -> Query (TExp Cell);
+readCell :: (Query q) => Char -> q (TExp Cell);
 readCell '1' = return (pack 1);
 readCell '2' = return (pack 2);
 readCell '3' = return (pack 3);
@@ -100,10 +101,10 @@ all f (x:xs) = ite (f x) (all f xs) (pack False)
 isvalid :: [[TExp Cell]] -> TExp Bool;
 isvalid b = all unique (concat [rows b, cols b, boxes b]);
 
-readRow :: [Char] -> Query [TExp Cell];
+readRow :: (Query q) => [Char] -> q [TExp Cell];
 readRow = mapM readCell;
 
-readBoard :: [[Char]] -> Query [[TExp Cell]]
+readBoard :: (Query q) => [[Char]] -> q [[TExp Cell]]
 readBoard rows = mapM readRow rows;
 
 easy :: [[Char]];
@@ -142,7 +143,7 @@ diabolical =
      ".2.6..35.",
      ".54..8.7."];
 
-solve :: Query [[Char]];
+solve :: (Query q) => q [[Char]];
 solve = do
     board <- readBoard diabolical
     assert (isvalid board)
@@ -158,5 +159,5 @@ main = do
     typed <- attemptIO $ typeinfer (mkEnv flat) flat
     let env = mkEnv typed
     attemptIO $ typecheck env typed
-    runQuery (RunOptions (Just "build/src/Seri/Enoch/sudoku.dbg") True) env solve >>= mapM_ putStrLn
+    runYices2 (RunOptions (Just "build/src/Seri/Enoch/sudoku.dbg") True) env solve >>= mapM_ putStrLn
 
