@@ -66,14 +66,17 @@ data ExpH = LitEH Lit
           | LamEH EState VarUse Sig (ExpH -> ExpH)
           | ConEH Sig
           | VarEH EState Sig
-    deriving(Show)
+    deriving(Eq, Show)
 
 instance Show (a -> ExpH) where
     show _ = "(function)"
 
+instance Eq (a -> ExpH) where
+    (==) _ _ = False
+
 
 data MatchH = MatchH Pat [VarUse] ([(Name, ExpH)] -> ExpH)
-    deriving (Show)
+    deriving (Eq, Show)
 
 
 
@@ -295,7 +298,30 @@ primitives = HT.table $ [
       (name "Seri.Lib.Prelude.__prim_sub_Integer", \s -> biniprim s (\a b -> integerEH (a - b))),
       (name "Seri.Lib.Prelude.__prim_mul_Integer", \s -> biniprim s (\a b -> integerEH (a * b))),
       (name "Seri.Lib.Prelude.<", \s -> biniprim s (\a b -> boolEH (a < b))),
+      (name "Seri.Lib.Prelude.<=", \s -> biniprim s (\a b -> boolEH (a <= b))),
       (name "Seri.Lib.Prelude.>", \s -> biniprim s (\a b -> boolEH (a > b))),
+      (name "Seri.Lib.Prelude.&&", \s -> 
+        LamEH (ES_Some WHNF) VU_Single (Sig (name "a") boolT) $ \a ->
+          LamEH (ES_Some WHNF) VU_Single (Sig (name "b") boolT) $ \b ->
+            case () of
+              _ | a == trueEH -> b
+              _ | a == falseEH -> falseEH
+              _ -> AppEH (ES_Some WHNF) (AppEH (ES_Some WHNF) (VarEH (ES_Some SNF) s) a) b),
+
+      (name "Seri.Lib.Prelude.||", \s -> 
+        LamEH (ES_Some WHNF) VU_Single (Sig (name "a") boolT) $ \a ->
+          LamEH (ES_Some WHNF) VU_Single (Sig (name "b") boolT) $ \b ->
+            case () of
+              _ | a == trueEH -> trueEH
+              _ | a == falseEH -> b
+              _ -> AppEH (ES_Some WHNF) (AppEH (ES_Some WHNF) (VarEH (ES_Some SNF) s) a) b),
+
+      (name "Seri.Lib.Prelude.not", \s -> 
+        LamEH (ES_Some WHNF) VU_Single (Sig (name "a") boolT) $ \a ->
+          case () of
+            _ | a == trueEH -> falseEH
+            _ | a == falseEH -> trueEH
+            _ -> AppEH (ES_Some WHNF) (VarEH (ES_Some SNF) s) a),
 
       (name "Seri.Lib.Prelude.valueof", \(Sig n t) ->
         let [NumT nt, it] = unarrowsT t

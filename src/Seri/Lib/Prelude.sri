@@ -81,17 +81,25 @@ instance Eq Bool where {
     (/=) a b = not (a == b);
 };
 
+-- && as a primitive
 (&&) :: Bool -> Bool -> Bool;
-(&&) True x = x;
-(&&) False _ = False;
+
+-- && as not a primitive
+(&&#) :: Bool -> Bool -> Bool;
+(&&#) True x = x;
+(&&#) False _ = False;
 
 (||) :: Bool -> Bool -> Bool;
-(||) True _ = True;
-(||) False x = x;
+
+(||#) :: Bool -> Bool -> Bool;
+(||#) True _ = True;
+(||#) False x = x;
 
 not :: Bool -> Bool;
-not True = False;
-not False = True;
+
+not_ :: Bool -> Bool;
+not_ True = False;
+not_ False = True;
 
 data Maybe a = Nothing | Just a;
 
@@ -149,7 +157,7 @@ instance Num Integer where {
 (>) :: Integer -> Integer -> Bool;
 
 (<=) :: Integer -> Integer -> Bool;
-(<=) a b = (a == b) || (a < b);
+--(<=) a b = (a == b) || (a < b);
 
 (>=) :: Integer -> Integer -> Bool;
 (>=) a b = (a == b) || (a > b);

@@ -237,3 +237,129 @@ Fri Sep  7 16:36:30 EDT 2012
 I did the realize thing... perhaps all that's left now is to finish
 implementing sudoku? Let's give it a try.
 
+Fri Sep  7 16:47:49 EDT 2012
+
+There! So, using generic query makes this certainly reasonable I think. The
+sudoku implementation looks very nice.
+
+The generated query is rather a bit messy, unfortunately. I think because &&
+is not being mapped to a primitive in yices2. Perhaps I can recognize that
+construct in the compiler. That should help performance a bunch I should
+think. Also, don't use a tag if there is only one constructor in a data
+structure.
+
+But cool. I think things are in pretty good shape now, aside from no longer
+supporting yices1. Because I don't support yices1 anymore... I probably
+shouldn't commit this to the master branch.
+
+I know how to add support for yices1 back though. It's just a little messy.
+
+Okay, so, for the rest of today, I want to take a look at why the generated
+sudoku query is so ugly. Specifically, the assertion for the cell to be valid.
+
+What I want to see:
+
+(assert (and (> x 0) (< x 9)))
+
+
+What I actually see:
+
+(assert
+ (let
+  (
+   (c~2
+    (tuple-update
+     (tuple-update
+      uidt~__oparen__comma__cparen$Bool$Bool
+      1
+      __oparen__comma__cparen$Bool$Bool
+     )
+     2
+     (
+      mk-tuple
+      (> free~1 0) 
+      (let
+       (
+        (c~1
+         (tuple-update
+          (tuple-update
+           uidt~__oparen__comma__cparen$Bool$Bool
+           1
+           __oparen__comma__cparen$Bool$Bool
+          )
+          2
+          (mk-tuple (= free~1 9) (< free~1 9)) 
+         )
+        )
+       )
+       (
+        or
+        (
+         and
+         (= (select c~1 1) __oparen__comma__cparen$Bool$Bool) 
+         (select (select c~1 2) 1) 
+        )
+        (select (select c~1 2) 2) 
+       )
+      )
+     )
+    )
+   )
+  )
+  (
+   and
+   (= (select c~2 1) __oparen__comma__cparen$Bool$Bool) 
+   (select (select c~2 2) 1) 
+   (select (select c~2 2) 2) 
+  )
+ )
+)
+
+Let's figure out what this means...
+
+Okay, so I printed out pre-yices. There are a few issues here.
+
+First: <= is defined in terms of == and <.
+Second: || is not primitive:
+    case (a, b) of
+        (True, _) -> True
+        (False, c) -> c
+Third: && is not primitive:
+    case (a, b) of
+        (True, c) -> c
+        (False, _) -> False
+
+
+So! The question is... how should we handle this?
+
+- We could have lots more primitives in the elaborator.
+- We could reconstruct these primitives in the yices compiler.
+
+The problem with more primitives is: we have to implement more primitives for
+every back end: elaborator, haskell, yices, etc...
+
+We used to have the problem that we couldn't do partial simplification of the
+primitives, or did we? Anyway, I think we can do fine here now. We can do this
+check in the primitive and only reduce if it makes things simpler.
+
+If we reconstruct these primitives in the yices compiler? Well... we maybe
+want to reconstruct them elsewhere too, it seems a shame not to share that.
+
+If I kept these three things as primitives, this would do what I wanted.
+
+Hmm... you know... I could also treat them as primitives in the elaborator
+while still having the library definitions. That way we can do elaboration,
+simplification, but still leave it as a variable which can be recognized by
+yices, right? If I can do that, I should try that first, because it's all the
+benefits of the primitive in the elaborator and yices, without the requirement
+of requiring haskell to know about it (but haskell can know about it if it
+wants).
+
+Interesting.
+
+Let me take a look in the elaborator, maybe try this out for <= and see what
+it does, or if it works, or what.
+
+Trouble is, the monomorphizer doesn't recognize it as a primitive, so it
+inlines it. Let me think about this some more on my walk.
+

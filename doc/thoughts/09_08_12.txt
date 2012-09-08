@@ -1,0 +1,32 @@
+
+Sat Sep  8 08:45:06 EDT 2012
+
+A couple thoughts.
+
+1. Make <= a primitive. And, in general, more primitives aren't bad. But one
+thing I can do, to make it easier for people who don't want to provide all
+those primitives (though I can't really think of who that would be) is to
+implement them in a separate Seri.Lib.Primitives.sri file, so you can use, for
+example: VarE "Seri.Lib.Primitives.<=" ... if you want that default
+implementation.
+
+We want to use primitives instead of try to recognize the constructs because,
+for example, monomorphization changes things we don't want it to change.
+
+2. We can make the query typeclass simple. Don't have it associated with some
+Realize type, because it's pretty obvious to me they will be the same under
+the covers. I'll just define a generic Realize q = Realize q, which is a
+wrapper around the query. The main Query interface will not export the
+constructor, but each of the backends can access it. Now we have a simple,
+single parameter type class, which is easy to use. Hurray! 
+
+Let me start by making <= a primitive. See how hard it is. It's a natural
+primitive anyway. Then see how much nicer the sudoku query looks. Other
+primitives we'll want include && and || and not.
+
+Sat Sep  8 09:17:58 EDT 2012
+
+Wow. Making && a primitive makes the generated sudoku query look very nice.
+And I bet I can make it even nicer if || and not are primitives.
+
+

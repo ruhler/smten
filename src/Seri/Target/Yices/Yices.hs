@@ -259,10 +259,25 @@ yExp e@(AppE a b) =
            a' <- yExp a
            b' <- yExp b
            return (Y.ltE a' b')
+       [VarE (Sig n _), a, b] | n == name "Seri.Lib.Prelude.<=" -> do   
+           a' <- yExp a
+           b' <- yExp b
+           return (Y.leqE a' b')
        [VarE (Sig n _), a, b] | n == name "Seri.Lib.Prelude.>" -> do
            a' <- yExp a
            b' <- yExp b
            return (Y.gtE a' b')
+       [VarE (Sig n _), a, b] | n == name "Seri.Lib.Prelude.&&" -> do
+           a' <- yExp a
+           b' <- yExp b
+           return (Y.andE [a', b'])
+       [VarE (Sig n _), a, b] | n == name "Seri.Lib.Prelude.||" -> do
+           a' <- yExp a
+           b' <- yExp b
+           return (Y.orE [a', b'])
+       [VarE (Sig n _), a] | n == name "Seri.Lib.Prelude.not" -> do
+           a' <- yExp a
+           return (Y.notE a')
        [VarE (Sig n _), a, b] | n == name "Seri.Lib.Prelude.__prim_add_Integer" -> do
            a' <- yExp a
            b' <- yExp b
@@ -431,7 +446,11 @@ yDec (DataD n [] cs) =
         addcmds [tag, dt, uidt]
 
 yDec (PrimD (TopSig n _ _)) | n == name "Seri.Lib.Prelude.<" = return ()
+yDec (PrimD (TopSig n _ _)) | n == name "Seri.Lib.Prelude.<=" = return ()
 yDec (PrimD (TopSig n _ _)) | n == name "Seri.Lib.Prelude.>" = return ()
+yDec (PrimD (TopSig n _ _)) | n == name "Seri.Lib.Prelude.&&" = return ()
+yDec (PrimD (TopSig n _ _)) | n == name "Seri.Lib.Prelude.||" = return ()
+yDec (PrimD (TopSig n _ _)) | n == name "Seri.Lib.Prelude.not" = return ()
 yDec (PrimD (TopSig n _ _)) | n == name "Seri.Lib.Prelude.__prim_add_Integer" = return ()
 yDec (PrimD (TopSig n _ _)) | n == name "Seri.Lib.Prelude.__prim_sub_Integer" = return ()
 yDec (PrimD (TopSig n _ _)) | n == name "Seri.Lib.Prelude.__prim_mul_Integer" = return ()

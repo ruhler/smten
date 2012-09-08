@@ -240,7 +240,11 @@ preludeH =
       md c (PrimD s@(TopSig n _ _)) | n == name "Seri.Lib.Prelude.__prim_sub_Integer" = prim c s (vare "Prelude.-")
       md c (PrimD s@(TopSig n _ _)) | n == name "Seri.Lib.Prelude.__prim_mul_Integer" = prim c s (vare "Prelude.*")
       md c (PrimD s@(TopSig n _ _)) | n == name "Seri.Lib.Prelude.<" = bprim c s "Prelude.<"
+      md c (PrimD s@(TopSig n _ _)) | n == name "Seri.Lib.Prelude.<=" = bprim c s "Prelude.<="
       md c (PrimD s@(TopSig n _ _)) | n == name "Seri.Lib.Prelude.>" = bprim c s "Prelude.>"
+      md c (PrimD s@(TopSig n _ _)) | n == name "Seri.Lib.Prelude.&&" = prim c s (vare "&&#")
+      md c (PrimD s@(TopSig n _ _)) | n == name "Seri.Lib.Prelude.||" = prim c s (vare "||#")
+      md c (PrimD s@(TopSig n _ _)) | n == name "Seri.Lib.Prelude.not" = prim c s (vare "not_")
       md c (PrimD s@(TopSig n _ _)) | n == name "Seri.Lib.Prelude.__prim_eq_Integer" = bprim c s "Prelude.=="
       md c (PrimD s@(TopSig n _ _)) | n == name "Seri.Lib.Prelude.__prim_eq_Char" = bprim c s "Prelude.=="
       md c (PrimD s@(TopSig n _ _)) | n == name "Seri.Lib.Prelude.valueof" = return []
