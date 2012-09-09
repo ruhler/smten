@@ -1,5 +1,8 @@
 
 import Prelude hiding (fst, snd, (==), (<), (>))
+import qualified Prelude
+
+import Data.Functor
 
 import Seri.Failable
 import Seri.Lambda hiding (free, query)
@@ -55,6 +58,40 @@ qtuple = do
     assert (fst x == 1)
     query (snd x)
 
+data Foo = Bar Integer
+         | Sludge Bool
+    deriving(Show)
+
+instance SeriableT Foo where
+    serit _ = ConT (name "Foo")
+
+instance SeriableE Foo where
+    pack (Bar x) = 
+      let bar :: TExp (Integer -> Foo)
+          bar = conE "Bar"
+      in apply bar (pack x)
+    pack (Sludge x) = 
+      let sludge :: TExp (Bool -> Foo)
+          sludge = conE "Sludge"
+      in apply sludge (pack x)
+
+    unpack (TExp (AppE (ConE (Sig n _)) x)) | n Prelude.== name "Bar"
+      = Bar <$> unpack (TExp x)
+    unpack (TExp (AppE (ConE (Sig n _)) x)) | n Prelude.== name "Sludge"
+      = Sludge <$> unpack (TExp x)
+    unpack _ = Nothing
+      
+
+defoo :: TExp Foo -> TExp Integer
+defoo = varE1 "Seri.Enoch.Enoch.defoo"
+
+quserdata :: (Query q) => q (Answer Foo)
+quserdata = do
+    f <- free
+    assert (2 == defoo f)
+    query f
+
+
 main :: IO ()
 main = do
     lib <- load ["src"] "src/Seri/Enoch/Enoch.sri"
@@ -70,4 +107,5 @@ main = do
     try "share_haskell" $ share quadruple
     try "share_seri" $ share quadrupleS
     try "qtuple" $ qtuple
+    try "quserdata" $ quserdata
     
