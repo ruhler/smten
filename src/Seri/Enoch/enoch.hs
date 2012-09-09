@@ -1,5 +1,5 @@
 
-import Prelude hiding (fst, snd, (==), (<), (>))
+import Prelude hiding (fst, snd, (/=), (==), (<), (>), (&&))
 import qualified Prelude
 
 import Data.Functor
@@ -91,6 +91,22 @@ quserdata = do
     assert (2 == defoo f)
     query f
 
+allQ :: (Query q, SeriableE a) => (TExp a -> TExp Bool) -> q [a]
+allQ p = do
+    x <- free
+    assert (p x)
+    r <- query x
+    case r of
+       Satisfiable v -> do
+          vs <- allQ (\a -> (p a) && (a /= pack v))
+          return (v:vs)
+       _ -> return []
+
+pred1 :: TExp Integer -> TExp Bool
+pred1 x = (x > 3) && (x < 6)
+
+qallQ :: (Query q) => q [Integer]
+qallQ = allQ pred1
 
 main :: IO ()
 main = do
@@ -108,4 +124,5 @@ main = do
     try "share_seri" $ share quadrupleS
     try "qtuple" $ qtuple
     try "quserdata" $ quserdata
+    try "qallQ" $ qallQ
     
