@@ -1,5 +1,5 @@
 
-import Prelude hiding ((==), (<), (>))
+import Prelude hiding (fst, snd, (==), (<), (>))
 
 import Seri.Failable
 import Seri.Lambda hiding (free, query)
@@ -27,23 +27,37 @@ q2 = do
     assert (incr x > 5)
     query x
 
+-- This quadruple inlines the argument completely. The SMT solver doesn't see
+-- the sharing between the different instances of 'a'.
 quadruple :: TExp Integer -> TExp Integer
 quadruple a = a + a + a + a
 
-share :: (Query q) => q (Answer (Integer, Integer))
-share = do
+-- This quadruple exposes the sharing to the SMT solver (if sharing is
+-- turned on in the elaborator).
+quadrupleS :: TExp Integer -> TExp Integer
+quadrupleS = varE1 "Seri.Enoch.Enoch.quadruple"
+
+share :: (Query q) => (TExp Integer -> TExp Integer) -> q (Answer (Integer, Integer))
+share f = do
     x <- free
     y <- free
-    assert (quadruple (x - y) == 24)
+    assert (f (x - y) == 24)
     assert (y > 0)
     queryR $ do
       xv <- realize x
       yv <- realize y
       return (xv, yv)
 
+qtuple :: (Query q) => q (Answer Integer)
+qtuple = do
+    p <- free
+    let x = (ite p (pack (1, 3)) (pack (2, 4))) :: TExp (Integer, Integer)
+    assert (fst x == 1)
+    query (snd x)
+
 main :: IO ()
 main = do
-    lib <- load ["src"] "src/Seri/SMT/SMT.sri"
+    lib <- load ["src"] "src/Seri/Enoch/Enoch.sri"
     flat <- attemptIO $ flatten lib
     typed <- attemptIO $ typeinfer (mkEnv flat) flat
     let env = mkEnv typed
@@ -53,5 +67,7 @@ main = do
 
     try "q1" q1
     try "q2" q2
-    try "share" share
+    try "share_haskell" $ share quadruple
+    try "share_seri" $ share quadrupleS
+    try "qtuple" $ qtuple
     

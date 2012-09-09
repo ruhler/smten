@@ -63,9 +63,9 @@ That is, anything with ~?
 ** do notation <- doesn't work with explicit type (parser bug?)
 ** ppr can generate recursive lets, which we don't parse.
 
-- fix querier interface to something less stupid.
-
-- Yices1 should redefine SMTQuerier specialied for FFI1
 - somewhere it would be nice to have a convenience function for:
     load, flatten, infer, typecheck all at once into an environment.
+
+- Figure out how to re-enable sharing for SMT queries.
+There's an annoyance with sharing across commands I have to work out.
 

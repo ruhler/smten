@@ -1,0 +1,12 @@
+
+-- Seri declarations for the enoch.hs test case.
+module Seri.Enoch.Enoch where {
+
+import Seri.Lib.Prelude;
+import Seri.SMT.SMT;
+
+quadruple :: Integer -> Integer;
+quadruple a = a + (a + (a + a));
+
+}
+

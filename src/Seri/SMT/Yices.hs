@@ -257,4 +257,5 @@ instance (Y.Yices y) => Query (QueryY y) where
       transformM (RealizeT env) e
 
   envQ = gets ys_env
+  envR = Realize envQ
 

@@ -50,6 +50,7 @@ import Text.PrettyPrint.HughesPJ
 
 import Seri.Lambda.IR
 import Seri.Lambda.Sugar
+import Seri.Lambda.Prelude
 
 class Ppr a where
     ppr :: a -> Doc
@@ -204,12 +205,8 @@ instance Ppr Exp where
                 $+$ nest tabwidth (vcat (map ppr (sugardo e))) $+$ text "}"
 
     -- Special case for tuples
-    ppr (AppE (AppE (ConE (Sig n _)) a) b) | n == name "(,)" =
-        parens . sep $ punctuate comma (map ppr [a, b])
-    ppr (AppE (AppE (AppE (ConE (Sig n _)) a) b) c) | n == name "(,,)" =
-        parens . sep $ punctuate comma (map ppr [a, b, c])
-    ppr (AppE (AppE (AppE (AppE (ConE (Sig n _)) a) b) c) d) | n == name "(,,,)" =
-        parens . sep $ punctuate comma (map ppr [a, b, c, d])
+    ppr e | length (untupE e) > 1 = 
+        parens . sep $ punctuate comma (map ppr (untupE e))
 
     -- Special case for string literals
     ppr e | isStringLiteral e = text (show (stringLiteral e))

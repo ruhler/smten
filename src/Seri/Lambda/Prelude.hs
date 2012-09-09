@@ -38,10 +38,11 @@
 module Seri.Lambda.Prelude (
     prelude,
     appsE, unappsE, 
-    unitE, trueE, falseE, boolE, listE, listP, tupE, tupP,
+    unitE, trueE, falseE, boolE, listE, listP, tupE, tupP, untupE,
     stringE, charE, integerE, numberE, bitE,
     ) where
 
+import Data.List(nub, group)
 import Seri.Lambda.IR
 import Seri.Lambda.Types
 
@@ -91,6 +92,18 @@ tupE es@(_:_:_) =
       types = map typeof es
       ttype = arrowsT (types ++ [tupT types])
   in foldl AppE (ConE (Sig nm ttype)) es
+
+-- | Given tuple (a, b, ... )
+-- Returns the list of expressions [a, b, ...]
+-- If the given expression is not a tuple, it's value is returned as a
+-- singleton list.
+untupE :: Exp -> [Exp]
+untupE x =
+  let isTuple :: Name -> Bool
+      isTuple n = ["(", ",", ")"] == nub (group (unname n))
+  in case unappsE x of
+        (ConE (Sig n _)):args | isTuple n && (length (unname n) == (length args+1)) -> args
+        _ -> [x]
 
 -- | (a, b, ... )
 -- There must be at least one pattern given.

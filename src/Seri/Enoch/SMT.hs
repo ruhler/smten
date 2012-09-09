@@ -15,6 +15,7 @@ import Seri.SMT.Query hiding (free, assert, query, run)
 import qualified Seri.SMT.Query as Q
 import Seri.Enoch.Enoch
 import Seri.Enoch.Prelude
+import Seri.Target.Elaborate
 
 instance SeriableT1 Answer where
     serit1 x = ConT (name "Answer")
@@ -59,7 +60,9 @@ assert p =
   in run' (apply assertE p)
 
 realize :: (Query q, SeriableE a) => TExp a -> Realize q a
-realize (TExp x) = unpack' . TExp <$> Q.realize x
+realize (TExp x) = do
+  env <- envR
+  unpack' . TExp . elaborate WHNF env <$> Q.realize x
 
 queryR :: (Query q) => Realize q a -> q (Answer a)
 queryR = Q.query
@@ -71,5 +74,8 @@ run :: (Query q) => TExp (QueryT a) -> q (TExp a)
 run (TExp x) = TExp <$> Q.run x
 
 run' :: (Query q, SeriableE a) => TExp (QueryT a) -> q a
-run' x = unpack' <$> run x
+run' x = do
+  env <- envQ
+  TExp v <- run x
+  return $ unpack' (TExp (elaborate WHNF env v))
 

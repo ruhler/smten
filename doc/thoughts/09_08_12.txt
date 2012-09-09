@@ -48,3 +48,11 @@ variable of that class.
 
 Anyway... fine. The real trick will be adding back support for yices1.
 
+Sat Sep  8 13:24:29 EDT 2012
+
+We have support for yices1 now. Everything looks great, I merged into the
+master branch. Now what?
+
+I suppose fill out the rest of the enoch tests, which means I should make an
+Enoch.sri file for that stuff. That's not too bad.
+

@@ -57,5 +57,8 @@ class (SeriableT a) => SeriableE a where
 -- | Unpack assuming the seri expression is of the right type.
 -- Throws an error if the sery expression is of the wrong type.
 unpack' :: (SeriableE a) => TExp a -> a
-unpack' = fromMaybe (error "unpack' failed") . unpack
+unpack' t@(TExp x) =
+ case unpack t of
+    Just v -> v
+    Nothing -> error $ "unpack' failed on " ++ pretty x
 

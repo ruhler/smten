@@ -68,6 +68,7 @@ class (Functor q, Monad q) => Query q where
 
     -- | Return the environment the query is running under.
     envQ :: q Env
+    envR :: Realize q Env
 
 
 -- | Given a Seri expression of type Query a,

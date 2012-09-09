@@ -4,11 +4,11 @@
 module Seri.Enoch.Prelude (
     apply, apply2,
     conE, varE, varE1, varE2,
-    (==), (/=), (<), (>), (<=), (>=), (&&),
+    fst, snd, (==), (/=), (<), (>), (<=), (>=), (&&),
     ite,
  ) where
 
-import Prelude hiding (Eq(..), (<), (>), (<=), (>=), (&&))
+import Prelude hiding (fst, snd, Eq(..), (<), (>), (<=), (>=), (&&))
 import qualified Prelude
 
 import Seri.Lambda
@@ -42,6 +42,22 @@ instance SeriableE Bool where
 
 instance SeriableT2 (->) where
     serit2 _ = ConT (name "->")
+
+instance SeriableT2 (,) where
+    serit2 _ = ConT (name "(,)")
+
+instance (SeriableE a, SeriableE b) => SeriableE (a, b) where
+    pack (a, b) =
+      let TExp a' = pack a
+          TExp b' = pack b
+      in TExp $ tupE [a', b']
+    unpack (TExp x) =
+      case (untupE x) of
+        [a, b] -> do
+           a' <- unpack (TExp a)
+           b' <- unpack (TExp b)
+           return (a', b')
+        _ -> Nothing
 
 apply :: TExp (a -> b) -> TExp a -> TExp b
 apply (TExp f) (TExp x) = TExp $ AppE f x
@@ -116,4 +132,9 @@ instance Num (TExp Integer) where
 ite :: TExp Bool -> TExp a -> TExp a -> TExp a
 ite (TExp p) (TExp a) (TExp b) = TExp $ ifE p a b
 
+fst :: (SeriableT a, SeriableT b) => TExp (a, b) -> TExp a
+fst = varE1 "Seri.Lib.Prelude.fst"
+
+snd :: (SeriableT a, SeriableT b) => TExp (a, b) -> TExp b
+snd = varE1 "Seri.Lib.Prelude.snd"
 
