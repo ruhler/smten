@@ -1,0 +1,115 @@
+
+module Seri.SMT.Tests.Squares.Squares where {
+
+import Seri.Lib.Prelude;
+import Seri.Lib.Bit;
+import Seri.SMT.SMT;
+
+import Seri.SMT.Tests.Squares.Prelude;
+import Seri.SMT.Tests.Squares.Reg;
+import Seri.SMT.Tests.Squares.FIFO2;
+
+-- Lambda Calculus description for the following bluespec module.
+-- Generates the sequence of squares: 1, 4, 9, 16, ...
+-- module mkSquares
+--   Reg#(Bit#(32)) odds <- mkReg(1)
+--   Reg#(Bit#(32)) squares <- mkReg(0)
+-- 
+--   FIFO#(Bit#(32)) pipeQ <- mkFIFO()
+-- 
+--   rule produce
+--     pipeQ.enq(odds)
+--     odds <= odds + 2
+-- 
+--   rule consume
+--     squares <= pipeQ.first() + squares
+--     pipeQ.deq()
+
+data MOD_mkSquares = MOD_mkSquares {
+  inst_odds :: MOD_mkReg (Bit #32),
+  inst_squares :: MOD_mkReg (Bit #32),
+  inst_pipeQ :: MOD_mkFIFO (Bit #32)
+};
+
+instance State MOD_mkSquares where {
+  newState (MOD_mkSquares odds1 squares1 pipeQ1)
+    = let {
+        odds = newState odds1;
+        squares = newState squares1;
+        pipeQ = newState pipeQ1;
+      } in MOD_mkSquares odds squares pipeQ;
+
+  parMerge (MOD_mkSquares odds1 squares1 pipeQ1) (MOD_mkSquares odds2 squares2 pipeQ2)
+    = let {
+        (g1, odds) = parMerge odds1 odds2;
+        (g2, squares) = parMerge squares1 squares2;
+        (g3, pipeQ) = parMerge pipeQ1 pipeQ2;
+      } in (g1 && (g2 && g3), MOD_mkSquares odds squares pipeQ);
+
+  seqMerge (MOD_mkSquares odds1 squares1 pipeQ1) (MOD_mkSquares odds2 squares2 pipeQ2)
+    = let {
+        odds = seqMerge odds1 odds2;
+        squares = seqMerge squares1 squares2;
+        pipeQ = seqMerge pipeQ1 pipeQ2;
+      } in MOD_mkSquares odds squares pipeQ;
+};
+
+instance Eq MOD_mkSquares where {
+    (==) (MOD_mkSquares a1 b1 c1) (MOD_mkSquares a2 b2 c2) = and [a1 == a2, b1 == b2, c1 == c2];
+    (/=) a b = not (a == b);
+};
+
+ctor_mkSquares :: MOD_mkSquares;
+ctor_mkSquares =
+  MOD_mkSquares {
+    inst_odds = ctor_mkReg 1,
+    inst_squares = ctor_mkReg 0,
+    inst_pipeQ = ctor_mkFIFO
+  };
+
+rule_RL_produce_mkSquares :: MOD_mkSquares -> (Bool, MOD_mkSquares);
+rule_RL_produce_mkSquares =
+  \s0 ->
+     let {
+       (g1, s1_odds, v1) = meth_read_mkReg (inst_odds s0);
+       s1 = s0 { inst_odds = s1_odds};
+       (g2, s2_pipeQ) = meth_enq_mkFIFO (inst_pipeQ s1) v1;
+       s2 = s1 { inst_pipeQ = s2_pipeQ };
+       (g3, s3_odds) = meth_write_mkReg (inst_odds s2) (v1 + 2);
+       s3 = s2 { inst_odds = s3_odds };
+     } in (and [g1, g2, g3], s3);
+
+rule_RL_consume_mkSquares :: MOD_mkSquares -> (Bool, MOD_mkSquares);
+rule_RL_consume_mkSquares =
+  \s0 ->
+     let {
+       (g1, s1_pipeQ, v1) = meth_first_mkFIFO (inst_pipeQ s0);
+       s1 = s0 { inst_pipeQ = s1_pipeQ};
+       (g2, s2_squares, v2) = meth_read_mkReg (inst_squares s1);
+       s2 = s1 { inst_squares = s2_squares };
+       (g3, s3_squares) = meth_write_mkReg (inst_squares s2) (v1 + v2);
+       s3 = s2 { inst_squares = s3_squares };
+       (g4, s4_pipeQ) = meth_deq_mkFIFO (inst_pipeQ s3);
+       s4 = s3 { inst_pipeQ = s4_pipeQ };
+     } in (and [g1, g2, g3, g4], s4);
+
+-- Return an example state demonstrating produce and consume are not mutually
+-- exclusive.
+produce_consume_not_me :: Query (Answer (MOD_mkSquares));
+produce_consume_not_me = do {
+    s <- free;
+    assert (fst (rule_RL_produce_mkSquares s) && fst (rule_RL_consume_mkSquares s));
+    query s;
+};
+
+-- produce consume
+pc :: MOD_mkSquares -> (Bool, MOD_mkSquares);
+pc = rule_RL_produce_mkSquares <$> rule_RL_consume_mkSquares;
+
+main :: Query ((Bool, MOD_mkSquares));
+main = return ((pc <$> (pc <$> (pc <$> pc))) ctor_mkSquares);
+
+}
+
+
+

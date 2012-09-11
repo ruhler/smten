@@ -1,0 +1,212 @@
+
+Sun Sep  9 11:03:04 EDT 2012
+
+I wonder, can I implement a generic pack and unpack, assuming we have Data
+defined? It seems like all the information should be there. That's the last
+missing piece of making seri usable (I think).
+
+
+Here's an example of what GHC will give me:
+
+    data T a b = C1 a b | C2 deriving (Typeable, Data)
+
+   GHC will generate an instance that is equivalent to
+
+    instance (Data a, Data b) => Data (T a b) where
+        gfoldl k z (C1 a b) = z C1 `k` a `k` b
+        gfoldl k z C2       = z C2
+
+        gunfold k z c = case constrIndex c of
+                            1 -> k (k (z C1))
+                            2 -> z C2
+
+        toConstr (C1 _ _) = con_C1
+        toConstr C2       = con_C2
+
+        dataTypeOf _ = ty_T
+
+    con_C1 = mkConstr ty_T "C1" [] Prefix
+    con_C2 = mkConstr ty_T "C2" [] Prefix
+    ty_T   = mkDataType "Module.T" [con_C1, con_C2]
+
+Let's assume we do SeriableT ourselves. That's easy.
+
+Start with pack...
+
+Here's a sample pack implementation:
+    pack (Satisfiable x) =
+      let satE :: (SeriableT a) => TExp (a -> Answer a)
+          satE = conE "Satisfiable"
+      in apply satE (pack x)
+    pack Unsatisfiable =
+      let unsatE :: (SeriableT a) => TExp (Answer a)
+          unsatE = conE "Unsatisfiable"
+      in unsatE
+    pack Unknown =
+      let unknownE :: (SeriableT a) => TExp (Answer a)
+          unknownE = conE "Unknown"
+      in unknownE
+
+So... looks like we want something like:
+
+k seems to be a mix of pack and apply.
+z seems to be the conE like constructor transformation.
+
+What are the types?
+
+z :: Foo -> ??
+k :: ?? -> x -> 
+
+
+Sun Sep  9 13:04:02 EDT 2012
+
+First I need to figure out: fold or unfold?
+
+Conceptually: Fold goes from a constructor to name + arg list
+              Unfold goes from name + arg list to constructor
+
+That's really the information I need to do this.
+
+pack: is fold.
+Get name + (packed) arg list
+Make constructor from name and types of arg list and serit.
+
+The question is... how do I really get name + arg list for Data?
+
+
+Name: toConstr x, extract the name. Easy.
+Args: gfold with 
+        z :: a -> [Exp]
+        z _ = []
+        k :: (Data a) => [Exp] -> a -> [Exp]
+        k xs x = xs ++ [pack x]
+
+That easy! I can totally do this.
+
+I should start with implementing gpack, figure that out before attempting
+gunpack.
+
+Sun Sep  9 13:30:52 EDT 2012
+
+Okay... let's see.
+
+k :: c (d -> b) -> d -> c b
+
+c is []
+b is Exp
+d is generic data
+I'm not sure why it takes a list of functions instead of a list of Exps.
+
+z _ = []. That's correct.
+
+This should totally work. Let me try it out. I'll have to work out the types,
+but that should be doable.
+
+Sun Sep  9 13:35:43 EDT 2012
+
+Another issue that's going to come up: how to deal with the base cases, like
+Integer, and Char and stuff... That should show up somehow...
+    
+Sun Sep  9 13:43:34 EDT 2012
+
+Trouble: the generic pack assumes all sub components have Data, and that
+that's the conversion we want to use. So, basically, the user doesn't get to
+override things. I fear this won't work in general :(.
+
+Perhaps we should just force Data to be used and gpack and gunpack always? I
+don't know. I'll have to think about it. Anyway, let me try to make this work
+first.
+
+Sun Sep  9 18:29:43 EDT 2012
+
+Trouble... I don't understand gfoldl.
+
+Issues:
+
+z: I thought it should be: a -> [Exp], but it really should be: a -> [a] based
+on the given signature.
+
+Which is the same issue as...
+
+In k, we can't return a list of Exp. It has to be a polymorphic something,
+that works for all objects of type b.
+
+Perhaps it's just a bit higher order than I want. Maybe TExp will help.
+
+For example, let's say that c is [] . TExp.
+Now how would things look?
+
+k :: (Data d) => [TExp (d -> b)] -> d -> [TExp b]
+z :: g -> [TExp g]
+
+Huh? I'm not understanding. Maybe I need to look at some examples.
+
+Looks like z is supposed to be a type constructor (I may need to define my
+own). k takes a continuation of that type and some immediate argument, and
+returns the final result. Okay... I think I understand something a little
+better now...
+
+Let me define 
+
+Foo a = Foo [Exp]
+z = Foo
+
+k (Foo xs) d = Foo (xs ++ [gpack' d])
+
+Then, at the end, I just extract Foo. There! That should do it...
+Let me try that out.
+
+Sun Sep  9 18:48:50 EDT 2012
+
+Okay! Making progress. Now, I need a special case for integer...
+How do I handle that?
+
+Looks like I can get the constructor representation, and I can know if it's
+algebraic?
+
+Sun Sep  9 19:00:00 EDT 2012
+
+More trouble... I don't have a way to enforce that all components of the
+expression are instances of SeriableT. That means I have to define my own
+generic gserit and use that instead.
+
+You know? Somehow I feel like it would be much easier to use template haskell
+and have my own derive SeriableT and SeriableE. Yes... I think so.
+
+This just has too many issues with it. The real issue is, everything has to be
+inside Data d, and we have to support all Data d. What I really want is a
+different subset of allowed things.
+
+Sun Sep  9 19:16:16 EDT 2012
+
+Reading about some GHC language extensions. Perhaps Generic programming will
+be more suitable?
+
+I want that:
+ - user can define explicit instance if desired
+ - user can use default instance, if desired
+ - default instance makes use of sub-user defined instances.
+
+No... Generic doesn't give me what I want either.
+
+I should just use template haskell. We get:
+
+derive_SeriableT ''Foo
+derive_SeriableE ''Foo
+
+That kind of thing. That's fine with me.
+
+Should I do it now? Sure. Let me try at least.
+
+Sun Sep  9 20:00:58 EDT 2012
+
+Starting with just pack.
+
+derive_pack derives:
+pack_Foo for data type Foo.
+
+I think I implemented it for nullary type constructors. But there's a bug with
+loading the yices2 library I'll have to figure out before I can make it work.
+Sigh.
+
+

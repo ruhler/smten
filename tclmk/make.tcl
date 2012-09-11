@@ -101,6 +101,15 @@ proc query1test {name args} {
          > build/src/Seri/SMT/Tests/$name.1.out
 }
 
+# The SMT query2 tests
+proc query2test {name args} {
+    run $::SERIQ2 -d build/src/Seri/SMT/Tests/$name.2.dbg -i build/src \
+         -m Seri.SMT.Tests.$name.main \
+         build/src/Seri/SMT/Tests/$name.sri {*}$args \
+         > build/src/Seri/SMT/Tests/$name.2.out
+}
+
+
 query1test "Query1"
 query1test "Query2"
 query1test "Complex"
@@ -111,14 +120,6 @@ query1test "Array"
 query1test "Share"
 query1test "Bit"
 query1test "AllQ"
-
-# The SMT query2 tests
-proc query2test {name args} {
-    run $::SERIQ2 -d build/src/Seri/SMT/Tests/$name.2.dbg -i build/src \
-         -m Seri.SMT.Tests.$name.main \
-         build/src/Seri/SMT/Tests/$name.sri {*}$args \
-         > build/src/Seri/SMT/Tests/$name.2.out
-}
 
 query2test "Query1"
 query2test "Query2"

@@ -78,9 +78,11 @@ import Seri.Lambda.Parser.Grammar
 --
 -- - float literals.
 --
--- - pattern matching in let expressions.
+-- - lazy pattern matching in let expressions. Currently pattern matching in
+-- let expressions is strict, which probably ought to be fixed.
 --
--- - recursive let expressions (?).
+-- - recursive let expressions (?). Currently let expressions are sequential,
+-- not recursive.
 --
 -- [@Things meant to be different from haskell@]
 --

@@ -156,14 +156,14 @@ cdecl :: { TopSig }
  : gendecl
     { $1 }
 
-ldecls :: { [(Sig, Exp)] }
+ldecls :: { [(Pat, Exp)] }
  : ldecl
     { [$1] }
  | ldecls ';' ldecl
     { $1 ++ [$3] }
 
-ldecl :: { (Sig, Exp) }
- : var_typed rhs
+ldecl :: { (Pat, Exp) }
+ : pat rhs
     { ($1, $2) }
 
 idecls :: { [(Name, Clause)] }

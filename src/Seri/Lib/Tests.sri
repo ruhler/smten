@@ -180,6 +180,13 @@ shadowmeth = let { foo = 3; } in foo;
 parsenotctx :: (Maybe Integer -> Bool) -> Bool;
 parsenotctx = undefined;
 
+patternlet :: Integer;
+patternlet = 
+  let { 
+    (a, b) = (1, 5);
+  } in a + b;
+
+
 data Test a = Test a;
 instance Monad Test where {
     fail msg = error msg;
@@ -239,6 +246,7 @@ testbasic = do {
     t "I" (and [True, True, True]);
     t "J" ('A' == 'A');
     t "K" ('A' /= 'B');
+    t "L" (6 == patternlet);
 };
 
 testprelude :: Test ();

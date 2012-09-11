@@ -20,12 +20,16 @@ instance Eq TState where {
     (/=) a b = not (a == b)
 };
 
+-- The initial state.
+s0 :: TState;
+s0 = TState 1 FIFO2_Empty 0;
+
 -- Rules:
--- p: f.enq(a+1)
+-- p: f.enq(a+2)
 p :: TState -> Maybe TState;
 p (TState a f b) = do {
     f' <- enq f a ;
-    return (TState a f' b);
+    return (TState (a + 2) f' b);
 };
 
 -- c: b <= f.first() + b; f.deq();

@@ -65,9 +65,10 @@ lamE (x:xs) e = LamE x (lamE xs e)
 -- >     n2 = e2
 -- >     ...
 -- > in e
-letE :: [(Sig, Exp)] -> Exp -> Exp
+letE :: [(Pat, Exp)] -> Exp -> Exp
 letE [] x = x
-letE ((Sig n t, v):bs) x = AppE (LamE (Sig n t) (letE bs x)) v
+letE ((VarP (Sig n t), v):bs) x = AppE (LamE (Sig n t) (letE bs x)) v
+letE ((p, v):bs) x = CaseE v [Match p (letE bs x)]
 
 data Stmt = 
     BindS Sig Exp   -- ^ n <- e
