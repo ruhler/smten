@@ -83,6 +83,7 @@ data Token =
      | TokenDo
      | TokenModule
      | TokenImport
+     | TokenDeriving
      | TokenEOF
     deriving (Show)
 
@@ -145,7 +146,8 @@ keywords = [
     ("else", TokenElse),
     ("do", TokenDo),
     ("module", TokenModule),
-    ("import", TokenImport)
+    ("import", TokenImport),
+    ("deriving", TokenDeriving)
     ]
 
 charescs :: [(Char, Char)]

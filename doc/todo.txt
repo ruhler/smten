@@ -1,7 +1,6 @@
 
 - add layout support
 - support negative literals?
-- deriving Eq would be nice.
 - default methods in classes?
 
 - line numbers for non-syntactic errors would be nice.
@@ -53,8 +52,6 @@ This might make a lot more sense after moving stuff in Types to Prelude.hs.
 
 - document the executables much better.
 
-- deriving Eq would be very nice.
-
 - give a nice message if there's a type ambiguity?
 That is, anything with ~?
 
@@ -68,4 +65,9 @@ That is, anything with ~?
 
 - Figure out how to re-enable sharing for SMT queries.
 There's an annoyance with sharing across commands I have to work out.
+
+- let statements (with pattern matching) in do blocks.
+- Variable operators: `foo`.
+
+
 

@@ -7,7 +7,7 @@ import Seri.SMT.Tests.Squares.Prelude;
 data MOD_mkReg a = MOD_mkReg {
    modified :: Bool,
    value :: a
-};
+} deriving (Eq);
 
 instance State (MOD_mkReg a) where {
     newState r = r { modified = False };
@@ -19,11 +19,6 @@ instance State (MOD_mkReg a) where {
       } in (g, s);
 
     seqMerge a b = if modified b then b else a;
-};
-
-instance (Eq a) => Eq (MOD_mkReg a) where {
-    (==) a b = (value a == value b);
-    (/=) a b = not (a == b);
 };
 
 ctor_mkReg :: a -> MOD_mkReg a;

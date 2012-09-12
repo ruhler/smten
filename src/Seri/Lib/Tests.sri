@@ -186,6 +186,9 @@ patternlet =
     (a, b) = (1, 5);
   } in a + b;
 
+data DerivedEq a = DEq1 a | DEq2 a a
+    deriving (Eq);
+
 
 data Test a = Test a;
 instance Monad Test where {
@@ -247,6 +250,8 @@ testbasic = do {
     t "J" ('A' == 'A');
     t "K" ('A' /= 'B');
     t "L" (6 == patternlet);
+    t "M" (DEq2 (integer 5) 9 == DEq2 5 9);
+    t "N" (DEq1 (integer 5) /= DEq2 5 9);
 };
 
 testprelude :: Test ();

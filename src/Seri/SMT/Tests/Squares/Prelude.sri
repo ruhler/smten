@@ -35,5 +35,10 @@ class State s where {
       (g3, s3) = parMerge s1 s2;
     } in (and [g1, g2, g3], seqMerge s0 s3);
 
+-- Multiple sequential composition.
+seq :: [(s -> (Bool, s))] -> s -> (Bool, s);
+seq [x] = x;
+seq (x:xs) = x <$> seq xs;
+
 }
 

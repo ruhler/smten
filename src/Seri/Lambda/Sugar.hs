@@ -40,6 +40,7 @@ module Seri.Lambda.Sugar (
     Stmt(..), doE,
     Clause(..), clauseE,
     ConRec(..), recordD, recordC, recordU,
+    --deriveEq,
     ) where
 
 import Data.List((\\))
@@ -128,13 +129,14 @@ record_updnm :: Name -> Name
 record_updnm n = name "__" `nappend` n `nappend` name "_update"
 
 -- | Desugar record constructors from a data declaration.
+-- Also handles deriving construts.
 -- Generates:
 --   data declaration with normal constructors.
 --   accessor functions for every field.
 --   update functions for every field.
 --   An undef declaration for each constructor.
-recordD :: Name -> [TyVar] -> [ConRec] -> [Dec]
-recordD nm vars cons =
+recordD :: Name -> [TyVar] -> [ConRec] -> [String] -> [Dec]
+recordD nm vars cons derivings =
   let mkcon :: ConRec -> Con
       mkcon (NormalC n ts) = Con n ts
       mkcon (RecordC n ts) = Con n (map snd ts)
@@ -183,7 +185,8 @@ recordD nm vars cons =
       undefs = map mkundef cons'
       accs = concatMap mkaccs cons
       upds = concatMap mkupds cons
-  in concat [[DataD nm vars cons'], undefs, accs, upds]
+      derivations = [derive d nm vars cons' | d <- derivings]
+  in concat [[DataD nm vars cons'], derivations, undefs, accs, upds]
 
 -- | Desugar labelled update.
 recordU :: Exp -> [(Name, Exp)] -> Exp
@@ -195,4 +198,30 @@ recordU e ((n, v):us) =
 -- | Desugar labelled constructors.
 recordC :: Sig -> [(Name, Exp)] -> Exp
 recordC (Sig cn ct) fields = recordU (VarE (Sig (record_undefnm cn) ct)) fields
+
+-- Derive an instance of Eq (before flattening and inference) for the given
+-- data type declaration.
+deriveEq :: Name -> [TyVar] -> [Con] -> Dec
+deriveEq dn vars cs = 
+  let dt = appsT (ConT dn : map tyVarType vars)
+      mkcon :: Con -> Clause
+      mkcon (Con cn ts) = 
+        let fields1 = [Sig (name $ [c, '1']) t | (t, c) <- zip ts "abcdefghijklmnopqrstuvwxyz"]
+            fields2 = [Sig (name $ [c, '2']) t | (t, c) <- zip ts "abcdefghijklmnopqrstuvwxyz"]
+            p1 = ConP dt cn [VarP s | s <- fields1]
+            p2 = ConP dt cn [VarP s | s <- fields2]
+            body = AppE (VarE (Sig (name "and") UnknownT))
+                        (listE [appsE [VarE (Sig (name "==") UnknownT), VarE a, VarE b] | (a, b) <- zip fields1 fields2])
+        in Clause [p1, p2] body
+
+      def = Clause [WildP UnknownT, WildP UnknownT] falseE
+      ctx = [Class (name "Eq") [tyVarType c] | c <- vars]
+      eqclauses = map mkcon cs ++ [def]
+      eq = Method (name "==") (clauseE eqclauses)
+      ne = Method (name "/=") (VarE (Sig (name "/=#") UnknownT))
+  in InstD ctx (Class (name "Eq") [dt]) [eq, ne]
+
+derive :: String -> Name -> [TyVar] -> [Con] -> Dec
+derive "Eq" = deriveEq
+derive x = error $ "deriving " ++ show x ++ " not supported in seri"
 

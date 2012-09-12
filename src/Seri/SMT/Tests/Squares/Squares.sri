@@ -29,7 +29,7 @@ data MOD_mkSquares = MOD_mkSquares {
   inst_odds :: MOD_mkReg (Bit #32),
   inst_squares :: MOD_mkReg (Bit #32),
   inst_pipeQ :: MOD_mkFIFO (Bit #32)
-};
+} deriving (Eq);
 
 instance State MOD_mkSquares where {
   newState (MOD_mkSquares odds1 squares1 pipeQ1)
@@ -52,11 +52,6 @@ instance State MOD_mkSquares where {
         squares = seqMerge squares1 squares2;
         pipeQ = seqMerge pipeQ1 pipeQ2;
       } in MOD_mkSquares odds squares pipeQ;
-};
-
-instance Eq MOD_mkSquares where {
-    (==) (MOD_mkSquares a1 b1 c1) (MOD_mkSquares a2 b2 c2) = and [a1 == a2, b1 == b2, c1 == c2];
-    (/=) a b = not (a == b);
 };
 
 ctor_mkSquares :: MOD_mkSquares;
@@ -93,23 +88,48 @@ rule_RL_consume_mkSquares =
        s4 = s3 { inst_pipeQ = s4_pipeQ };
      } in (and [g1, g2, g3, g4], s4);
 
+-- Some rule sequences.
+p :: MOD_mkSquares -> (Bool, MOD_mkSquares);
+p = rule_RL_produce_mkSquares;
+
+c :: MOD_mkSquares -> (Bool, MOD_mkSquares);
+c = rule_RL_consume_mkSquares;
+
+pc :: MOD_mkSquares -> (Bool, MOD_mkSquares);
+pc = p <$> c;
+
+ppc :: MOD_mkSquares -> (Bool, MOD_mkSquares);
+ppc = seq [p, p, c];
+
+pcp :: MOD_mkSquares -> (Bool, MOD_mkSquares);
+pcp = seq [p, c, p];
+
 -- Return an example state demonstrating produce and consume are not mutually
 -- exclusive.
 produce_consume_not_me :: Query (Answer (MOD_mkSquares));
 produce_consume_not_me = do {
     s <- free;
-    assert (fst (rule_RL_produce_mkSquares s) && fst (rule_RL_consume_mkSquares s));
+    assert (fst (p s) && fst (c s));
     query s;
 };
 
--- produce consume
-pc :: MOD_mkSquares -> (Bool, MOD_mkSquares);
-pc = rule_RL_produce_mkSquares <$> rule_RL_consume_mkSquares;
+-- Test of two rule results are equivalent.
+-- This is the Maybe eq, which ignores the state as appropriate.
+req :: (Eq s) => (Bool, s) -> (Bool, s) -> Bool;
+req (True, a) (True, b) = a == b;
+req (False, _) (False, _) = True;
+req _ _ = False;
 
-main :: Query ((Bool, MOD_mkSquares));
-main = return ((pc <$> (pc <$> (pc <$> pc))) ctor_mkSquares);
+-- Return an example state demonstrating ppc and pcp aren't always equivalent.
+ppc_pcp_ne :: Query (Answer (MOD_mkSquares));
+ppc_pcp_ne = do {
+    s <- free;
+    assert (not (req (pcp s) (ppc s)));
+    query (s);
+};
+
+main :: Query (Answer (MOD_mkSquares));
+main = ppc_pcp_ne;
 
 }
-
-
 

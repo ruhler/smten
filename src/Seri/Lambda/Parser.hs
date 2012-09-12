@@ -30,7 +30,7 @@ import Seri.Lambda.Parser.Grammar
 --
 -- - Contexts in data declarations
 --
--- - Deriving clauses in data declarations
+-- - Only Eq is supported in deriving clauses for data declarations.
 --
 -- - Newtype declarations
 --

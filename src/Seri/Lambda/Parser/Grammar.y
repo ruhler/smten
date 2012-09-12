@@ -97,6 +97,7 @@ import Seri.Lambda.Parser.Lexer
        'do'     { TokenDo }
        'module' { TokenModule }
        'import' { TokenImport }
+       'deriving' { TokenDeriving }
 
 %%
 
@@ -129,8 +130,12 @@ topdecls :: { [PDec] }
     { $1 ++ $3 }
 
 topdecl :: { [PDec] }
- : 'data' tycon opt(tyvars) '=' opt(constrs)
-    { [PDec ds | ds <- recordD (name $2) (fromMaybe [] $3) (fromMaybe [] $5)] }
+ : 'data' tycon opt(tyvars) '=' opt(constrs) opt(deriving)
+    { let { tyvars = fromMaybe [] $3;
+            constrs = fromMaybe [] $5;
+            derives = fromMaybe [] $6;
+      } in [PDec ds | ds <- recordD (name $2) tyvars constrs derives]
+    }
  | 'class' tycls tyvars 'where' '{' cdecls opt(';') '}'
     { [PDec (ClassD (name $2) $3 $6)] }
  | 'instance' class 'where' '{' idecls opt(';') '}'
@@ -139,6 +144,10 @@ topdecl :: { [PDec] }
     { [PDec (InstD $2 $3 (icoalesce $6))] }
  | decl
     { [$1] }
+
+deriving :: { [String] }
+ : 'deriving' '(' qtycls_commasep ')'
+    { $3 }
 
 decl :: { PDec }
  : gendecl
@@ -515,6 +524,12 @@ commas :: { String }
     { "," }
  | commas ','
     { ',':$1 }
+
+qtycls_commasep :: { [String] }
+ : qtycls 
+    { [$1] }
+ | qtycls_commasep ',' qtycls
+    { $1 ++ [$3] }
 
 types_commasep :: { [Type] }
  : type
