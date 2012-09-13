@@ -363,6 +363,8 @@ stmt :: { Stmt }
     { BindS $1 $3 }
  | exp ';'
     { NoBindS $1 }
+ | 'let' ldecl ';'
+    { LetS (fst $2) (snd $2) }
 
 fbinds :: { [(Name, Exp)] }
  : fbind 

@@ -69,11 +69,46 @@ lamE (x:xs) e = LamE x (lamE xs e)
 letE :: [(Pat, Exp)] -> Exp -> Exp
 letE [] x = x
 letE ((VarP (Sig n t), v):bs) x = AppE (LamE (Sig n t) (letE bs x)) v
-letE ((p, v):bs) x = CaseE v [Match p (letE bs x)]
+letE ((p, e):bs) x =
+  let -- Here we implement lazy pattern matching.
+      -- for example, given:
+      --    let (a, b) = foo bar in ...
+      --
+      -- We desugar this into:
+      --    let __e = foo bar
+      --        a = case __e of
+      --               (a, _) -> a
+      --        b = case __e of
+      --               (_, b) -> b
+      --
+      -- The reason for introducing the variable __e is to avoid duplicating
+      -- the expression, which could be complex.
+      --
+      -- The reason we replace unused variable patterns with wildcard patterns
+      -- is to avoid ambiguous types (is this really an issue though?) and
+      -- because it is better code? Not sure totally if this is worth it.
+
+      devpat :: Sig -> Pat -> Pat
+      devpat keep =
+        let dp :: Pat -> Pat
+            dp (ConP t n ps) = ConP t n (map dp ps)
+            dp p@(VarP s) | s == keep = p
+            dp p@(VarP (Sig _ t)) = WildP t
+            dp p@(LitP {}) = p
+            dp p@(WildP {}) = p
+        in dp
+      
+      vars = bindingsP p
+
+      -- TODO: I hope we aren't shadowing someone's use of the variable "__e".
+      evar = Sig (name "__e") (typeof e)
+      vals = [(VarP v, CaseE (VarE evar) [Match (devpat v p) (VarE v)]) | v <- vars]
+  in letE ((VarP evar, e):vals) (letE bs x)
 
 data Stmt = 
     BindS Sig Exp   -- ^ n <- e
   | NoBindS Exp     -- ^ e
+  | LetS Pat Exp    -- ^ let p = e
     deriving(Eq, Show)
 
 -- | do { stmts }
@@ -81,6 +116,9 @@ data Stmt =
 doE :: [Stmt] -> Exp
 doE [] = error $ "doE on empty list"
 doE [NoBindS e] = e 
+doE ((LetS p e):stmts) =
+    let rest = doE stmts
+    in letE [(p, e)] rest
 doE ((NoBindS e):stmts) =
     let rest = doE stmts
         tbind = (arrowsT [typeof e, typeof rest, typeof rest])

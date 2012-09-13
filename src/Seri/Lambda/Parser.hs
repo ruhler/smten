@@ -78,9 +78,6 @@ import Seri.Lambda.Parser.Grammar
 --
 -- - float literals.
 --
--- - lazy pattern matching in let expressions. Currently pattern matching in
--- let expressions is strict, which probably ought to be fixed.
---
 -- - recursive let expressions (?). Currently let expressions are sequential,
 -- not recursive.
 --
