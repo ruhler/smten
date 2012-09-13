@@ -143,9 +143,9 @@ sugardo (AppE (AppE (VarE (Sig n _)) m) r) | n == name "Seri.Lib.Prelude.>>"
 sugardo (AppE (AppE (VarE (Sig n _)) m) r) | n == name ">>"
     = NoBindS m : sugardo r
 sugardo (AppE (AppE (VarE (Sig n _)) m) (LamE s r)) | n == name ">>="
-    = BindS s m : sugardo r
+    = BindS (VarP s) m : sugardo r
 sugardo (AppE (AppE (VarE (Sig n _)) m) (LamE s r)) | n == name "Seri.Lib.Prelude.>>="
-    = BindS s m : sugardo r
+    = BindS (VarP s) m : sugardo r
 sugardo e = [NoBindS e]
 
 isStringLiteral :: Exp -> Bool
@@ -229,7 +229,7 @@ instance Ppr Exp where
 
 instance Ppr Stmt where
     ppr (NoBindS e) = ppr e <> semi
-    ppr (BindS s e) = pprsig s <+> text "<-" <+> ppr e <> semi
+    ppr (BindS p e) = ppr p <+> text "<-" <+> ppr e <> semi
 
 instance Ppr Match where
     ppr (Match p e) = (ppr p <+> text "->") `sep2` ppr e <> semi

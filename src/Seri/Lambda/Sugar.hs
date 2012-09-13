@@ -57,9 +57,13 @@ ifE p a b = CaseE p [Match (ConP (ConT (name "Bool")) (name "True") []) a,
                      Match (ConP (ConT (name "Bool")) (name "False") []) b]
 
 -- | \a b ... c -> e
-lamE :: [Sig] -> Exp -> Exp
+lamE :: [Pat] -> Exp -> Exp
 lamE [] e = e
-lamE (x:xs) e = LamE x (lamE xs e)
+lamE (VarP x : xs) e = LamE x (lamE xs e)
+lamE (p : xs) e =
+ let -- TODO: I hope this doesn't shadow anyone's variable use...
+     x = Sig (name "__e") (typeof p)
+ in LamE x (CaseE (VarE x) [Match p (lamE xs e)])
 
 -- |
 -- > let n1 = e1
@@ -106,7 +110,7 @@ letE ((p, e):bs) x =
   in letE ((VarP evar, e):vals) (letE bs x)
 
 data Stmt = 
-    BindS Sig Exp   -- ^ n <- e
+    BindS Pat Exp   -- ^ n <- e
   | NoBindS Exp     -- ^ e
   | LetS Pat Exp    -- ^ let p = e
     deriving(Eq, Show)
@@ -123,8 +127,8 @@ doE ((NoBindS e):stmts) =
     let rest = doE stmts
         tbind = (arrowsT [typeof e, typeof rest, typeof rest])
     in appsE [VarE (Sig (name ">>") tbind), e, rest]
-doE ((BindS s e):stmts) =
-    let f = LamE s (doE stmts)
+doE ((BindS p e):stmts) =
+    let f = lamE [p] (doE stmts)
         tbind = (arrowsT [typeof e, typeof f, outputT (typeof f)])
     in appsE [VarE (Sig (name ">>=") tbind), e, f]
 
@@ -148,7 +152,7 @@ clauseE clauses@(_:_) =
       args = [name [c] | c <- take nargs "abcdefghijklmnopqrstuvwxyz"]
       casearg = tupE [VarE (Sig n (typeof p)) | (n, p) <- zip args pats1]
       caseexp = CaseE casearg (map mkmatch clauses)
-      lamargs = [Sig n (typeof p) | (n, p) <- zip args pats1]
+      lamargs = [VarP (Sig n (typeof p)) | (n, p) <- zip args pats1]
       
   in lamE lamargs caseexp
 

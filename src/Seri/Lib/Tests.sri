@@ -186,6 +186,12 @@ patternlet =
     (a, b) = (1, 5);
   } in a + b;
 
+--patterndo :: Maybe Integer;
+--patterndo = do {
+--  (a, _) <- Just (1, integer 4);
+--  return a;
+--};
+
 data DerivedEq a = DEq1 a | DEq2 a a
     deriving (Eq);
 
@@ -252,6 +258,7 @@ testbasic = do {
     t "L" (6 == patternlet);
     t "M" (DEq2 (integer 5) 9 == DEq2 5 9);
     t "N" (DEq1 (integer 5) /= DEq2 5 9);
+    --t "O" (Just 1 == patterndo);
 };
 
 testprelude :: Test ();

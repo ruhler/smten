@@ -17,6 +17,7 @@
 ** Verify ambiguous types aren't allowed
 ** Verify a type constructor used has been declared somewhere.
 ** Verify a free variable in an expression is not allowed.
+** Verify all methods have been defined for a class instance.
 
 - Reimplement TypeCheck to make use of constraint generation from TypeInfer?
 
@@ -58,7 +59,6 @@ That is, anything with ~?
 - pretty printer parser problems:
 ** don't print out builtin prelude?
 ** do notation <- doesn't work with explicit type (parser bug?)
-** ppr can generate recursive lets, which we don't parse.
 
 - somewhere it would be nice to have a convenience function for:
     load, flatten, infer, typecheck all at once into an environment.

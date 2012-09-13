@@ -1,0 +1,91 @@
+
+module Seri.SMT.Tests.Squares2.Prelude where {
+
+import Seri.Lib.Prelude;
+
+data Action s a = Action {
+   runAction :: (s -> Maybe (s, a))
+};
+
+execAction :: Action s a -> s -> Maybe s;
+execAction a s = do {
+  sv <- runAction a s;
+  return (fst sv);
+};
+
+instance Monad (Action s) where {
+    (>>=) (Action x) f = Action $ \s -> do {
+        sv <- x s;
+        let (s', v) = sv;
+        runAction (f v) s';
+    };
+
+    (>>) a b = a >>= (\_ -> b);
+        
+    return v = Action (\s -> return (s, v));
+    fail msg = Action (\s -> fail msg);
+};
+
+get :: Action s s;
+get = Action (\s -> return (s, s));
+
+gets :: (s -> a) -> Action s a;
+gets f = do {
+  s <- get;
+  return (f s);
+};
+
+put :: s -> Action s ();
+put s = Action (\_ -> return (s, ()));
+
+modify :: (s -> s) -> Action s ();
+modify f = do {
+  s <- get;
+  put (f s);
+};
+
+liftA :: (s -> t) -> (t -> s -> s) -> Action t a -> Action s a;
+liftA get upd x = Action $ \s -> do {
+    let t = get s;
+    tv <- runAction x t;
+    let (t', v) = tv;
+    return (upd t' s, v);
+};
+
+class State s where {
+    -- clear all modified bits
+    newState :: s -> s;
+
+    -- Select appropriate part of the states to keep for parallel composition
+    parMerge :: s -> s -> Maybe s;
+
+    -- Copy new updates back on the old state
+    seqMerge :: s -> s -> s;
+    
+};
+
+-- Sequential rule composition.
+(<$>) :: Action s () -> Action s () -> Action s ();
+(<$>) a b = a >> b;
+
+-- Parallel rule composition.
+(<|>) :: (State s) => Action s () -> Action s () -> Action s ();
+(<|>) a b = Action $ \s -> do {
+  let ns = newState s;
+  s1 <- execAction a ns;
+  s2 <- execAction b ns;
+  s3 <- parMerge s1 s2;
+  return (seqMerge s s3, ());
+};
+
+when :: Bool -> Action s a -> Action s a;
+when False _ = fail "when fail";
+when True q = q;
+
+-- Multiple sequential composition.
+seq :: [Action s ()] -> Action s ();
+seq [x] = x;
+seq (x:xs) = x <$> seq xs;
+
+}
+

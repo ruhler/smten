@@ -78,6 +78,13 @@ data QS = QS {
 
 type QualifyM = StateT QS Failable
 
+onfailq :: (String -> QualifyM a) -> QualifyM a -> QualifyM a
+onfailq f q = do
+   s <- get
+   case (attempt $ runStateT q s) of
+     Left msg -> f msg
+     Right (v, s') -> put s' >> return v
+
 mename :: QualifyM Name
 mename = do
     Module n _ _ <- gets qs_me
@@ -116,10 +123,11 @@ instance Qualify TopSig where
         return (TopSig nm' ctx' t')
 
 instance Qualify Dec where
-    qualify (ValD ts body) = do
-        ts' <- qualify ts
-        body' <- qualify body
-        return (ValD ts' body')
+    qualify d@(ValD ts body) = 
+        onfailq (\msg -> fail (msg ++ "\n when flattening " ++ pretty d)) $ do
+           ts' <- qualify ts
+           body' <- qualify body
+           return (ValD ts' body')
 
     -- TODO: qualify type and data constructors.
     qualify d@(DataD {}) = return d

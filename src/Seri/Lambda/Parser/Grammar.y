@@ -360,7 +360,7 @@ stmts :: { [Stmt] }
 
 stmt :: { Stmt }
  : var_typed '<-' exp ';'
-    { BindS $1 $3 }
+    { BindS (VarP $1) $3 }
  | exp ';'
     { NoBindS $1 }
  | 'let' ldecl ';'

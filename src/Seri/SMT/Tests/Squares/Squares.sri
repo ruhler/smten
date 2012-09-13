@@ -129,13 +129,19 @@ ppc_pcp_ne = do {
     query (s);
 };
 
+isEven :: Bit #n -> Bool;
+isEven b = (bv_and b 1) == 0;
+
+isOdd :: Bit #n -> Bool;
+isOdd b = (bv_and b 1) == 1;
+
 -- Do a model check.
 model :: Model (MOD_mkSquares);
 model = Model {
   rules = [("p", rule_RL_produce_mkSquares),
            ("c", rule_RL_consume_mkSquares)],
   initial = (\s -> s == ctor_mkSquares),
-  target = (\s -> value (inst_squares s) == 9)
+  target = (\s -> (value (inst_squares s)) == 9)
 };
 
 mctest :: Query (Answer (MOD_mkSquares, MOD_mkSquares, [[Char]]));
