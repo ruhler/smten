@@ -151,7 +151,7 @@ instance Yices Yices1FFI where
         case br of
           _ | br == yTrue -> return True
           _ | br == yFalse -> return False
-          _ | br == yUndef -> error $ "yices get value returned undef"
+          _ | br == yUndef -> return False
 
     getBitVectorValue (Yices1FFI fp) w nm = do
         model <- withForeignPtr fp c_yices_get_model 

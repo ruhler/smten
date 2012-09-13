@@ -22,9 +22,11 @@ assert :: Bool -> Query ();
 query :: a -> Query (Answer a);
 
 -- Execute a scoped query.
--- The given query is evaluated, and the result passed to "query". Assertions
--- in the given query are.
-queryS :: Query a -> Query (Answer a);
+-- No assertions or free variables declared in the given query affect the
+-- context of this query.
+-- Warning: It is possible to return free variables from the given query which
+-- have no meaning in the context of this query. You should not do this.
+queryS :: Query a -> Query a;
 
 -- The Query monad primitives
 return_query :: a -> Query a;
@@ -45,6 +47,7 @@ always f = do {
     answer <- queryS (do {
         x <- free;
         assert (not (f x));
+        query ();
     });
     case answer of {
         Unsatisfiable -> return ();

@@ -88,10 +88,7 @@ run e = do
         (AppE (VarE (Sig n _)) p) | n == name "Seri.SMT.SMT.assert" -> do
             assert p
             return (ConE (Sig (name "()") (ConT (name "()"))))
-        (AppE (VarE (Sig n _)) q) | n == name "Seri.SMT.SMT.queryS" -> do
-            queryS $ do
-                x <- run q
-                run $ AppE (VarE (Sig (name "Seri.SMT.SMT.query") UnknownT)) x
+        (AppE (VarE (Sig n _)) q) | n == name "Seri.SMT.SMT.queryS" -> queryS $ run q
         (AppE (VarE (Sig n _)) x) | n == name "Seri.SMT.SMT.return_query" -> return x
         (AppE (AppE (VarE (Sig n _)) x) f) | n == name "Seri.SMT.SMT.bind_query" -> do
           result <- run x

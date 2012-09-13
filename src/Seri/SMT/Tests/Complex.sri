@@ -14,11 +14,11 @@ defoo (Sludge b) = if b then 1 else 0;
 foo :: Integer -> Integer;
 foo x = x + 1;
 
-scopedfail :: Query Integer;
+scopedfail :: Query (Answer Integer);
 scopedfail = do {
     x <- free;
     assert(x < x);
-    return x;
+    query x;
 };
 
 tupfun :: (Integer, Bool) -> (Bool, Bool);
