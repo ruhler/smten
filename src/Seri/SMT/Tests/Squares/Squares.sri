@@ -8,6 +8,7 @@ import Seri.SMT.SMT;
 import Seri.SMT.Tests.Squares.Prelude;
 import Seri.SMT.Tests.Squares.Reg;
 import Seri.SMT.Tests.Squares.FIFO2;
+import Seri.SMT.Tests.Squares.ModelChecker;
 
 -- Lambda Calculus description for the following bluespec module.
 -- Generates the sequence of squares: 1, 4, 9, 16, ...
@@ -128,8 +129,20 @@ ppc_pcp_ne = do {
     query (s);
 };
 
-main :: Query (Answer (MOD_mkSquares));
-main = ppc_pcp_ne;
+-- Do a model check.
+model :: Model (MOD_mkSquares);
+model = Model {
+  rules = [("p", rule_RL_produce_mkSquares),
+           ("c", rule_RL_consume_mkSquares)],
+  initial = (\s -> s == ctor_mkSquares),
+  target = (\s -> value (inst_squares s) == 9)
+};
+
+mctest :: Query (Answer (MOD_mkSquares, MOD_mkSquares, [[Char]]));
+mctest = check model 10;
+
+main :: Query (Answer (MOD_mkSquares, MOD_mkSquares, [[Char]]));
+main = mctest;
 
 }
 

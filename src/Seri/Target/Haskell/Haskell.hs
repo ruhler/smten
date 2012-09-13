@@ -235,6 +235,11 @@ preludeH =
         name "(,)",
         name "(,,)",
         name "(,,,)",
+        name "(,,,,)",
+        name "(,,,,,)",
+        name "(,,,,,,)",
+        name "(,,,,,,,)",
+        name "(,,,,,,,,)",
         name "[]"] = return []
       md c (PrimD s@(TopSig n _ _)) | n == name "Seri.Lib.Prelude.__prim_add_Integer" = prim c s (vare "Prelude.+")
       md c (PrimD s@(TopSig n _ _)) | n == name "Seri.Lib.Prelude.__prim_sub_Integer" = prim c s (vare "Prelude.-")

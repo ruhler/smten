@@ -73,6 +73,9 @@ id x = x;
 (.) :: (b -> c) -> (a -> b) -> a -> c;
 (.) f g = \x -> f (g x);
 
+flip :: (a -> b -> c) -> b -> a -> c;
+flip f x y = f y x;
+
 ($) :: (a -> b) -> a -> b;
 ($) f x = f x;
 
@@ -205,6 +208,10 @@ length (_:l) = 1 + length l;
 (!!) (x:[]) 0 = x;
 (!!) (_:xs) n = xs !! (n-1);
 
+foldl :: (a -> b -> a) -> a -> [b] -> a;
+foldl f z [] = z;
+foldl f z (x:xs) = foldl f (f z x) xs;
+
 foldr :: (a -> b -> b) -> b -> [a] -> b;
 foldr f z [] = z;
 foldr f z (x:xs) = f x (foldr f z xs);
@@ -225,6 +232,9 @@ drop n (_:xs) = drop (n-1) xs;
 
 splitAt :: Integer -> [a] -> ([a],[a]);
 splitAt n xs = (take n xs, drop n xs);
+
+reverse :: [a] -> [a];
+reverse =  foldl (flip (:)) [];
 
 and :: [Bool] -> Bool;
 and = foldr (&&) True;

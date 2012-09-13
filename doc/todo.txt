@@ -68,5 +68,6 @@ There's an annoyance with sharing across commands I have to work out.
 
 - let statements (with pattern matching) in do blocks.
 - Variable operators: `foo`.
+- pattern matching in do bind notation.
 
 
