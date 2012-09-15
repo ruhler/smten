@@ -13,31 +13,31 @@ import qualified Seri.Enoch.Prelude as S
 
 derive_SeriableT :: Name -> Q [Dec]
 derive_SeriableT nm = do
-  -- TODO: support data types with type variables
-  TyConI (DataD _ _ [] _ _) <- reify nm
-  let ty = (AppT (ConT ''SeriableT) (ConT nm))
+  TyConI (DataD _ _ vars _ _) <- reify nm
+  let vn = if null vars then "" else show (length vars)
+  let ty = AppT (ConT (mkName $ "SeriableT" ++ vn)) (ConT nm)
   let body = AppE (ConE 'S.ConT) (AppE (VarE 'S.name) (LitE (StringL (nameBase nm))))
-  let dec = FunD 'serit [Clause [WildP] (NormalB body) []]
+  let dec = FunD (mkName $ "serit" ++ vn) [Clause [WildP] (NormalB body) []]
   return [InstanceD [] ty [dec]]
 
 derive_SeriableE :: Name -> Q [Dec]
 derive_SeriableE nm = do
-  -- TODO: support data types with type variables
-  TyConI (DataD _ _ [] cs _) <- reify nm
-  let ty = (AppT (ConT ''SeriableE) (ConT nm))
-  return [InstanceD [] ty (concat [derive_pack nm cs, derive_unpack nm cs])]
+  TyConI (DataD _ _ vars cs _) <- reify nm
+  let ctx = [ClassP ''SeriableE [VarT v] | PlainTV v <- vars]
+  let ty = AppT (ConT ''SeriableE) (foldl AppT (ConT nm) [VarT v | PlainTV v <- vars])
+  return [InstanceD ctx ty (concat [derive_pack nm vars cs, derive_unpack nm vars cs])]
   
   
 -- Given the name of a type constructor Foo, produces the pack function:
 --  pack :: Foo -> TExp Foo
-derive_pack :: Name -> [Con] -> [Dec]
-derive_pack nm cs =
+derive_pack :: Name -> [TyVarBndr] -> [Con] -> [Dec]
+derive_pack nm vars cs =
   let -- Each data constructor has it's own clause in the pack function.
       -- A constructor of the form:
-      --    Bar Sludge Fudge
+      --    Bar Sludge a
       -- Maps to the clause:
       --    *** (Bar a b) =
-      --      let con :: TExp (Sludge -> Fudge -> Foo)
+      --      let con :: TExp (Sludge -> a -> Foo a)
       --          con = conE "Bar"
       --          
       --          TExp con_ = con
@@ -50,7 +50,7 @@ derive_pack nm cs =
             pat = ConP cnm (map VarP args)
             connm = mkName "con"
             con_nm = mkName "con_"
-            consig = SigD connm (AppT (ConT ''TExp) (arrowsT (map snd ts ++ [ConT nm])))
+            consig = SigD connm (AppT (ConT ''TExp) (arrowsT (map snd ts ++ [foldl AppT (ConT nm) [VarT v | PlainTV v <- vars]])))
             conbody = ValD (VarP connm) (NormalB $ AppE (VarE 'S.conE) (LitE (StringL (nameBase cnm)))) []
             con_ = ValD (ConP 'TExp [VarP con_nm]) (NormalB $ VarE connm) []
             decls = [consig, conbody, con_]
@@ -64,8 +64,8 @@ derive_pack nm cs =
     
 -- Given the name of a type constructor Foo, produces the unpack function:
 --  unpack :: TExp Foo -> Maybe Foo
-derive_unpack :: Name -> [Con] -> [Dec]
-derive_unpack nm cs =
+derive_unpack :: Name -> [TyVarBndr] -> [Con] -> [Dec]
+derive_unpack nm vars cs =
   let -- Each data constructor has it's own match in the unpack case expr.
       -- A constructor of the form:
       --    Bar Sludge Fudge
