@@ -51,7 +51,7 @@ import Seri.Failable
 import qualified Seri.HashTable as HT
 import Seri.Lambda
 
-import Seri.Target.Elaborate.FreshPretty
+import Seri.Target.Elaborate.FreshFast
 
 data Mode = WHNF -- ^ elaborate to weak head normal form.
           | SNF  -- ^ elaborate to sharing normal form.

@@ -35,7 +35,7 @@
 
 -- | A monad for dealing with computations which can fail.
 module Seri.Failable (
-    Failable(..), attemptM, attemptIO, surely, onfail,
+    Failable, throw, attempt, attemptM, attemptIO, surely, onfail,
     ) where
 
 import Control.Monad
@@ -43,55 +43,42 @@ import Control.Monad
 import System.IO
 import System.Exit
 
-newtype Failable a = Failable {
-    -- | Run a Failable computation, returning either a failure message or the
-    -- result of the computation.
-    attempt :: Either String a
-}
+type Failable = Either String
 
-instance Functor Failable where
-    fmap f x = x >>= (return . f)
+-- | Throw an error with the given error message.
+throw :: String -> Failable a
+throw = Left
 
-instance Monad Failable where
-    return x = Failable (Right x)
-    fail msg = Failable (Left msg)
-
-    (>>=) (Failable (Right a)) f = f a
-    (>>=) (Failable (Left msg)) _ = Failable (Left msg)
-
-instance MonadPlus Failable where
-    mzero = fail "Failable mzero"
-    mplus a b =
-      case attemptM a of
-         Just x -> return x
-         Nothing -> b
+-- | Run a Failable computation, returning either a failure message or the
+-- result of the computation.
+attempt :: Failable a -> Either String a
+attempt = id
 
 -- | Attempt a failable computation in a Monad.
 -- fails in the monad if failable fails.
 attemptM :: (Monad m) => Failable a -> m a
-attemptM (Failable (Left msg)) = fail msg
-attemptM (Failable (Right a)) = return a
+attemptM (Left msg) = fail msg
+attemptM (Right a) = return a
 
 -- | Attempt a failable computation in IO.
 -- Prints the error message and exits failure on failure.
 attemptIO :: Failable a -> IO a
-attemptIO (Failable (Left msg)) = do
+attemptIO (Left msg) = do
     hPutStrLn stderr msg
     exitFailure
-attemptIO (Failable (Right a)) = return a
+attemptIO (Right a) = return a
 
 -- | Return the result of a failable computation sure to complete.
 -- It's an error if the computation fails.
 surely :: Failable a -> a
-surely (Failable (Right a)) = a
-surely (Failable (Left msg)) = error msg
+surely (Right a) = a
+surely (Left msg) = error msg
     
-
 -- | Run computation 'c', if it fails, return the result of calling 'f' on the
 -- error message from the failing 'c'.
 onfail :: (String -> Failable a) -- ^ f
        -> Failable a             -- ^ c
        -> Failable a
-onfail f (Failable (Left msg)) = f msg
+onfail f (Left msg) = f msg
 onfail f c = c
 

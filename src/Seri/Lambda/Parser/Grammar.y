@@ -618,7 +618,7 @@ mkContext t =
       mkclass t =
         case unappsT t of
           (ConT nm):ts -> return $ Class nm ts
-          _ -> fail $ "invalid context"
+          _ -> throw $ "invalid context"
 
       classes = untupT t
   in mapM mkclass classes

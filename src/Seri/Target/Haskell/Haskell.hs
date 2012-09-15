@@ -98,7 +98,7 @@ hsType c (NumT (AppNT f a b)) = do
                 "*" -> H.ConT $ H.mkName "N__TIMES"
                 _ -> error $ "hsType TODO: AppNT " ++ f
     return $ H.AppT (H.AppT f' a') b'
-hsType c t = fail $ "coreH does not apply to type: " ++ pretty t
+hsType c t = throw $ "coreH does not apply to type: " ++ pretty t
 
 -- Return the numeric type corresponding to the given integer.
 hsnt :: Integer -> H.Type
@@ -162,7 +162,7 @@ hsDec c (InstD ctx (Class n ts) ms) = do
     let t = foldl H.AppT (H.ConT (hsName n)) ts'
     return [H.InstanceD (ntvs ++ ctx') t ms'] 
 
-hsDec _ d = fail $ "coreH does not apply to dec: " ++ pretty d
+hsDec _ d = throw $ "coreH does not apply to dec: " ++ pretty d
 
 coreH :: HCompiler
 coreH = Compiler hsExp hsType hsDec
@@ -218,11 +218,11 @@ bprim c s@(TopSig nm _ t) b = do
 
 preludeH :: HCompiler
 preludeH =
-  let me _ e = fail $ "preludeH does not apply to exp: " ++ pretty e
+  let me _ e = throw $ "preludeH does not apply to exp: " ++ pretty e
 
       mt _ (ConT n) | n == name "Char" = return $ H.ConT (H.mkName "Prelude.Char")
       mt _ (ConT n) | n == name "Integer" = return $ H.ConT (H.mkName "Prelude.Integer")
-      mt _ t = fail $ "preludeH does not apply to type: " ++ pretty t
+      mt _ t = throw $ "preludeH does not apply to type: " ++ pretty t
 
       md _ (PrimD (TopSig n _ t)) | n == name "Seri.Lib.Prelude.error" = do
         let e = H.VarE (H.mkName "Prelude.error")
@@ -268,6 +268,6 @@ preludeH =
       md c (PrimD s@(TopSig n _ _)) | n == name "Seri.Lib.Bit.__prim_zeroExtend_Bit" = prim c s (vare "Bit.zeroExtend")
       md c (PrimD s@(TopSig n _ _)) | n == name "Seri.Lib.Bit.__prim_truncate_Bit" = prim c s (vare "Bit.truncate")
 
-      md _ d = fail $ "preludeH does not apply to dec: " ++ pretty d
+      md _ d = throw $ "preludeH does not apply to dec: " ++ pretty d
   in Compiler me mt md
 

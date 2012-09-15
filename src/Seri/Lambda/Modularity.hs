@@ -66,7 +66,7 @@ instance Ppr Module where
             $+$ nest tabwidth (vcat (map ppr imps) $+$ ppr decs) $+$ text "}"
 
 lookupModule :: Name -> [Module] -> Failable Module
-lookupModule n [] = fail $ "module " ++ pretty n ++ " not found"
+lookupModule n [] = throw $ "module " ++ pretty n ++ " not found"
 lookupModule n (m@(Module nm _ _) : _) | (n == nm) = return m
 lookupModule n (_:ms) = lookupModule n ms
 
@@ -124,7 +124,7 @@ instance Qualify TopSig where
 
 instance Qualify Dec where
     qualify d@(ValD ts body) = 
-        onfailq (\msg -> fail (msg ++ "\n when flattening " ++ pretty d)) $ do
+        onfailq (\msg -> lift $ throw (msg ++ "\n when flattening " ++ pretty d)) $ do
            ts' <- qualify ts
            body' <- qualify body
            return (ValD ts' body')
@@ -219,9 +219,9 @@ resolve n =
             imported <- mapM (\(Import mn) -> lookupModule mn env) imports
             let names = map immediate (me : imported)
             case concat names of
-                [] -> fail $ "'" ++ pretty n ++ "' not found in module " ++ pretty menm
+                [] -> throw $ "'" ++ pretty n ++ "' not found in module " ++ pretty menm
                 [x] -> return x
-                xs -> fail $ "'" ++ pretty n ++ "' is ambiguious: " ++ show xs
+                xs -> throw $ "'" ++ pretty n ++ "' is ambiguious: " ++ show xs
   in do
       me <- gets qs_me
       env <- gets qs_env

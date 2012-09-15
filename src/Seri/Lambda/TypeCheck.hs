@@ -61,10 +61,10 @@ instance TypeCheck Dec where
     typecheck env =
       let checkdec :: Dec -> Failable ()
           checkdec d@(ValD (TopSig n c t) e) =
-            onfail (\s -> fail $ s ++ "\n in declaration " ++ pretty d) $ do
+            onfail (\s -> throw $ s ++ "\n in declaration " ++ pretty d) $ do
               checkexp [] e
               if (typeof e /= t)
-                then fail $ "checkdec: expecting type " ++ pretty t ++ " in expression "
+                then throw $ "checkdec: expecting type " ++ pretty t ++ " in expression "
                             ++ pretty e ++ " but found type " ++ pretty (typeof e)
                 else return ()
               instcheck env c e
@@ -77,17 +77,17 @@ instance TypeCheck Dec where
           checkdec d@(InstD ctx cls ms) =
             let checkmeth :: Method -> Failable () 
                 checkmeth m@(Method n b) =
-                  onfail (\s -> fail $ s ++ "\n in method " ++ pretty n) $ do
+                  onfail (\s -> throw $ s ++ "\n in method " ++ pretty n) $ do
                     checkexp [] b
                     texpected <- lookupMethodType env n cls
                     if typeof b /= texpected
-                        then fail $ "checkmeth: expected type " ++ pretty texpected
+                        then throw $ "checkmeth: expected type " ++ pretty texpected
                                 ++ " but found type " ++ pretty (typeof b)
                                 ++ " in Method " ++ pretty m
                         else return ()
                     -- TODO: use the context from the signature
                     instcheck env ctx b
-            in onfail (\s -> fail $ s ++ "\n in declaration " ++ pretty d) $ do
+            in onfail (\s -> throw $ s ++ "\n in declaration " ++ pretty d) $ do
                  mapM_ checkmeth ms
           checkdec d@(PrimD {}) = return ()
 
@@ -97,17 +97,17 @@ instance TypeCheck Dec where
              texpected <- lookupDataConType env n
              if isSubType texpected ct
                 then return ()
-                else fail $ "checkpat: expecting type " ++ pretty texpected ++ ", but found type " ++ pretty ct
+                else throw $ "checkpat: expecting type " ++ pretty texpected ++ ", but found type " ++ pretty ct
              binds <- mapM checkpat ps
              let concated = concat binds
              if length concated /= length (nub (map fst concated))
-                then fail $ "VarP appears multiple times in " ++ pretty p
+                then throw $ "VarP appears multiple times in " ++ pretty p
                 else return ()
              let twants = init (unarrowsT ct)
              let assertpat w p =
                     if w == typeof p
                         then return () 
-                        else fail $ "checkpat: expected type " ++ pretty w ++ " but found type " ++ pretty (typeof p) ++ " in pattern " ++ pretty p
+                        else throw $ "checkpat: expected type " ++ pretty w ++ " but found type " ++ pretty (typeof p) ++ " in pattern " ++ pretty p
              sequence [assertpat w p | (w, p) <- zip twants ps]
              return concated
           checkpat (VarP (Sig n t)) = return [(n, t)]
@@ -133,13 +133,13 @@ instance TypeCheck Dec where
              let badpattypes = filter (\p -> typeof e /= typeof p) [p | Match p _ <- ms]
              if null badpattypes
                 then return ()
-                else fail $ "Expected type " ++ pretty (typeof e)
+                else throw $ "Expected type " ++ pretty (typeof e)
                             ++ " in pattern " ++ pretty (head (badpattypes))
                             ++ " but found type " ++ pretty (typeof (head (badpattypes)))
              let badmtypes = filter (\e -> typeof e /= typeof (head ms)) [e | Match _ e <- ms]
              if null badmtypes
                 then return ()
-                else fail $ "Expected type " ++ pretty (typeof e)
+                else throw $ "Expected type " ++ pretty (typeof e)
                             ++ " in match expression " ++ pretty (head (badmtypes))
                             ++ " but found type " ++ pretty (typeof (head (badmtypes)))
           checkexp tenv (AppE f x) = do    
@@ -149,26 +149,26 @@ instance TypeCheck Dec where
                 (AppT (AppT (ConT n) a) _) | n == name "->" ->
                     if a == typeof x
                         then return ()
-                        else fail $ "checkexp app: expected type " ++ pretty a ++
+                        else throw $ "checkexp app: expected type " ++ pretty a ++
                             " but got type " ++ pretty (typeof x) ++
                             " in expression " ++ pretty x
-                t -> fail $ "expected function type, but got type " ++ pretty t ++ " in expression " ++ pretty f
+                t -> throw $ "expected function type, but got type " ++ pretty t ++ " in expression " ++ pretty f
           checkexp tenv (LamE (Sig n t) e) = checkexp ((n, t):tenv) e
           checkexp _ c@(ConE s@(Sig n ct)) = do
              texpected <- lookupDataConType env n
              if isSubType texpected ct
                 then return ()
-                else fail $ "checkexp: expecting type " ++ pretty texpected ++ ", but found type " ++ pretty ct ++ " in data constructor " ++ pretty n
+                else throw $ "checkexp: expecting type " ++ pretty texpected ++ ", but found type " ++ pretty ct ++ " in data constructor " ++ pretty n
           checkexp tenv (VarE (Sig n t)) =
              case lookup n tenv of
                  Just t' | t == t' -> return ()
-                 Just t' -> fail $ "expected variable of type:\n  " ++ pretty t'
+                 Just t' -> throw $ "expected variable of type:\n  " ++ pretty t'
                             ++ "\nbut " ++ pretty n ++ " has type:\n  " ++ pretty t
                  Nothing -> do
                      texpected <- lookupVarType env n
                      if isSubType texpected t
                          then return ()
-                         else fail $ "expected variable of type:\n  " ++ pretty texpected
+                         else throw $ "expected variable of type:\n  " ++ pretty texpected
                                     ++ "\nbut " ++ pretty n ++ " has type:\n  " ++ pretty t
 
       in checkdec

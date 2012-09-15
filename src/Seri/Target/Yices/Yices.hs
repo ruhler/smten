@@ -80,7 +80,7 @@ type CompilationM = StateT Compilation Failable
 confail :: String -> CompilationM a -> CompilationM a
 confail m x = do
     s <- get
-    (v, s') <- lift $ onfail (\msg -> fail $ msg ++ "\n" ++ m) $ runStateT x s
+    (v, s') <- lift $ onfail (\msg -> throw $ msg ++ "\n" ++ m) $ runStateT x s
     put s'
     return v
 
@@ -144,7 +144,7 @@ runCompilation :: CompilationM a -> Compilation -> Failable (a, Compilation)
 runCompilation = runStateT
 
 yfail :: String -> CompilationM a
-yfail = lift . fail
+yfail = lift . throw
 
 -- | Append a list of commands in order to the commands specified so far.
 addcmds :: [Y.Command] -> CompilationM ()
@@ -380,7 +380,7 @@ yicestag n = yicesname $ "tag~" ++ pretty n
 yicesci :: Name -> CompilationM Integer
 yicesci n =
     let findidx :: Integer -> [Con] -> Failable Integer
-        findidx _ [] = fail $ "index for " ++ pretty n ++ " not found"
+        findidx _ [] = throw $ "index for " ++ pretty n ++ " not found"
         findidx i ((Con cn []) : cs) = findidx i cs
         findidx i ((Con cn _) : _) | n == cn = return i
         findidx i (_ : cs) = findidx (i+1) cs
@@ -403,7 +403,7 @@ yType (AppT (AppT (ConT n) a) b) | n == name "->"  = do
     a' <- yType a
     b' <- yType b
     return $ Y.ArrowT [a', b']
-yType t = fail $ "Cannot compile to yices: " ++ pretty t
+yType t = throw $ "Cannot compile to yices: " ++ pretty t
 
 -- yDec
 --   Assumes the declaration is monomorphic.

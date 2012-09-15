@@ -1,0 +1,39 @@
+
+Sat Sep 15 11:30:28 EDT 2012
+
+Thinking about replacing the Failable monad with an error monad.
+
+They really are the same kind of idea.
+
+Here's my problem with the Error and MonadError from the library:
+ - It's too general. I only use String, I don't want to even think about
+   having a different kind of Error at this point.
+ - I don't like the names of things
+ - I need a way to accumulate errors
+
+The reason to want to switch away from what I have now is...
+ - Using a class means onfail and things like that automatically lift to
+   State monads and IO and such.
+ - I can use Either instead of a newtype Either.
+
+I think I should make my own class. Don't have "fail" be the error. Have
+"throw" be the error. I can make Maybe an instance, I can specialize it to
+Strings. How do I accumulate errors though... For example, for IO? Maybe I
+need to make a FailableT.
+
+In other words, it would seem I want exactly what is provided by the library,
+except with different names, specialized for String, and with a way to
+accumulate errors...
+
+How about define typedefs and dummy classes and that sort of thing?
+
+I suppose the very least I can do is make Failable a typedef for Either
+String, and switch to throw instead of fail.
+
+Sat Sep 15 11:56:34 EDT 2012
+
+Well, using Either directly certainly seems to work well enough. Let me keep
+it like that for now.
+
+I wonder if profiling gives us better info now...
+

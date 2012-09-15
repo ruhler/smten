@@ -61,7 +61,7 @@ runParser p fp text = do
 
 -- | Fail with a message.
 failE :: String -> ParserMonad a
-failE = lift . fail
+failE = lift . throw
 
 -- | Fail with a message augmented with location information.
 lfailE :: String -> ParserMonad a

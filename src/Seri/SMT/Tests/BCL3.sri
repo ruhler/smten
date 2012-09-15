@@ -502,7 +502,8 @@ module Seri.SMT.Tests.BCL3 where {
                    (assert :: Bool -> Query ()) (fst3 s_equiv1_0);
                    (assert :: Bool -> Query ()) ((==) s_equiv0_0 s_equiv1_0);
                    (assert :: Bool -> Query ()) ((&&) (fst3 s_equiv0_2) ((||) (not (fst3 s_equiv1_2)) (not (mkTestBench_eq (snd3 s_equiv0_2) (snd3 s_equiv1_2)))));
-                 })
+                   query ();
+                })
   
 ;
   main2 :: Query (Answer ());
@@ -537,7 +538,8 @@ module Seri.SMT.Tests.BCL3 where {
                    (assert :: Bool -> Query ()) (fst3 s_equiv1_0);
                    (assert :: Bool -> Query ()) ((==) s_equiv0_0 s_equiv1_0);
                    (assert :: Bool -> Query ()) ((&&) (fst3 s_equiv0_2) ((||) (not (fst3 s_equiv1_2)) (not (mkTestBench_eq (snd3 s_equiv0_2) (snd3 s_equiv1_2)))));
-                 })
+                   query ();
+                })
   
 ;
   main3 :: Query (Answer ());
@@ -572,7 +574,8 @@ module Seri.SMT.Tests.BCL3 where {
                    (assert :: Bool -> Query ()) (fst3 s_equiv1_0);
                    (assert :: Bool -> Query ()) ((==) s_equiv0_0 s_equiv1_0);
                    (assert :: Bool -> Query ()) ((&&) (fst3 s_equiv0_2) ((||) (not (fst3 s_equiv1_2)) (not (mkTestBench_eq (snd3 s_equiv0_2) (snd3 s_equiv1_2)))));
-                 })
+                   query ();
+                })
   
 ;
   main4 :: Query (Answer ());
@@ -607,7 +610,8 @@ module Seri.SMT.Tests.BCL3 where {
                    (assert :: Bool -> Query ()) (fst3 s_equiv1_0);
                    (assert :: Bool -> Query ()) ((==) s_equiv0_0 s_equiv1_0);
                    (assert :: Bool -> Query ()) ((&&) (fst3 s_equiv0_2) ((||) (not (fst3 s_equiv1_2)) (not (mkTestBench_eq (snd3 s_equiv0_2) (snd3 s_equiv1_2)))));
-                 })
+                   query ();
+                })
   
 ;
   main5 :: Query (Answer ());
@@ -642,7 +646,8 @@ module Seri.SMT.Tests.BCL3 where {
                    (assert :: Bool -> Query ()) (fst3 s_equiv1_0);
                    (assert :: Bool -> Query ()) ((==) s_equiv0_0 s_equiv1_0);
                    (assert :: Bool -> Query ()) ((&&) (fst3 s_equiv0_2) ((||) (not (fst3 s_equiv1_2)) (not (mkTestBench_eq (snd3 s_equiv0_2) (snd3 s_equiv1_2)))));
-                 })
+                   query ();
+                })
   
 ;
   main6 :: Query (Answer ());
@@ -677,7 +682,8 @@ module Seri.SMT.Tests.BCL3 where {
                    (assert :: Bool -> Query ()) (fst3 s_equiv1_0);
                    (assert :: Bool -> Query ()) ((==) s_equiv0_0 s_equiv1_0);
                    (assert :: Bool -> Query ()) ((&&) (fst3 s_equiv0_2) ((||) (not (fst3 s_equiv1_2)) (not (mkTestBench_eq (snd3 s_equiv0_2) (snd3 s_equiv1_2)))));
-                 })
+                   query ();
+                })
   
 ;
   main7 :: Query (Answer ());
@@ -712,7 +718,8 @@ module Seri.SMT.Tests.BCL3 where {
                    (assert :: Bool -> Query ()) (fst3 s_equiv1_0);
                    (assert :: Bool -> Query ()) ((==) s_equiv0_0 s_equiv1_0);
                    (assert :: Bool -> Query ()) ((&&) (fst3 s_equiv0_2) ((||) (not (fst3 s_equiv1_2)) (not (mkTestBench_eq (snd3 s_equiv0_2) (snd3 s_equiv1_2)))));
-                 })
+                   query ();
+                })
   
 ;
   main8 :: Query (Answer ());
@@ -747,7 +754,8 @@ module Seri.SMT.Tests.BCL3 where {
                    (assert :: Bool -> Query ()) (fst3 s_equiv1_0);
                    (assert :: Bool -> Query ()) ((==) s_equiv0_0 s_equiv1_0);
                    (assert :: Bool -> Query ()) ((&&) (fst3 s_equiv0_2) ((||) (not (fst3 s_equiv1_2)) (not (mkTestBench_eq (snd3 s_equiv0_2) (snd3 s_equiv1_2)))));
-                 })
+                   query ();
+                })
   
 ;
   main9 :: Query (Answer ());
@@ -782,7 +790,8 @@ module Seri.SMT.Tests.BCL3 where {
                    (assert :: Bool -> Query ()) (fst3 s_equiv1_0);
                    (assert :: Bool -> Query ()) ((==) s_equiv0_0 s_equiv1_0);
                    (assert :: Bool -> Query ()) ((&&) (fst3 s_equiv0_2) ((||) (not (fst3 s_equiv1_2)) (not (mkTestBench_eq (snd3 s_equiv0_2) (snd3 s_equiv1_2)))));
-                 })
+                   query ();
+                })
   
 ;
   main10 :: Query (Answer ());
@@ -817,7 +826,8 @@ module Seri.SMT.Tests.BCL3 where {
                    (assert :: Bool -> Query ()) (fst3 s_equiv1_0);
                    (assert :: Bool -> Query ()) ((==) s_equiv0_0 s_equiv1_0);
                    (assert :: Bool -> Query ()) ((&&) (fst3 s_equiv0_2) ((||) (not (fst3 s_equiv1_2)) (not (mkTestBench_eq (snd3 s_equiv0_2) (snd3 s_equiv1_2)))));
-                 })
+                   query ();
+                })
   
 ;
   main11 :: Query (Answer ());
@@ -852,7 +862,8 @@ module Seri.SMT.Tests.BCL3 where {
                    (assert :: Bool -> Query ()) (fst3 s_equiv1_0);
                    (assert :: Bool -> Query ()) ((==) s_equiv0_0 s_equiv1_0);
                    (assert :: Bool -> Query ()) ((&&) (fst3 s_equiv0_2) ((||) (not (fst3 s_equiv1_2)) (not (mkTestBench_eq (snd3 s_equiv0_2) (snd3 s_equiv1_2)))));
-                 })
+                   query ();
+                })
   
 ;
   main12 :: Query (Answer ());
@@ -887,7 +898,8 @@ module Seri.SMT.Tests.BCL3 where {
                    (assert :: Bool -> Query ()) (fst3 s_equiv1_0);
                    (assert :: Bool -> Query ()) ((==) s_equiv0_0 s_equiv1_0);
                    (assert :: Bool -> Query ()) ((&&) (fst3 s_equiv0_2) ((||) (not (fst3 s_equiv1_2)) (not (mkTestBench_eq (snd3 s_equiv0_2) (snd3 s_equiv1_2)))));
-                 })
+                   query ();
+                })
   
 ;
   main13 :: Query (Answer ());
@@ -922,7 +934,8 @@ module Seri.SMT.Tests.BCL3 where {
                    (assert :: Bool -> Query ()) (fst3 s_equiv1_0);
                    (assert :: Bool -> Query ()) ((==) s_equiv0_0 s_equiv1_0);
                    (assert :: Bool -> Query ()) ((&&) (fst3 s_equiv0_2) ((||) (not (fst3 s_equiv1_2)) (not (mkTestBench_eq (snd3 s_equiv0_2) (snd3 s_equiv1_2)))));
-                 })
+                   query ();
+                })
   
 ;
   main14 :: Query (Answer ());
@@ -957,7 +970,8 @@ module Seri.SMT.Tests.BCL3 where {
                    (assert :: Bool -> Query ()) (fst3 s_equiv1_0);
                    (assert :: Bool -> Query ()) ((==) s_equiv0_0 s_equiv1_0);
                    (assert :: Bool -> Query ()) ((&&) (fst3 s_equiv0_2) ((||) (not (fst3 s_equiv1_2)) (not (mkTestBench_eq (snd3 s_equiv0_2) (snd3 s_equiv1_2)))));
-                 })
+                   query ();
+                })
   
 ;
   main15 :: Query (Answer ());
@@ -992,7 +1006,8 @@ module Seri.SMT.Tests.BCL3 where {
                    (assert :: Bool -> Query ()) (fst3 s_equiv1_0);
                    (assert :: Bool -> Query ()) ((==) s_equiv0_0 s_equiv1_0);
                    (assert :: Bool -> Query ()) ((&&) (fst3 s_equiv0_2) ((||) (not (fst3 s_equiv1_2)) (not (mkTestBench_eq (snd3 s_equiv0_2) (snd3 s_equiv1_2)))));
-                 })
+                   query ();
+                })
   
 ;
   main16 :: Query (Answer ());
@@ -1027,7 +1042,8 @@ module Seri.SMT.Tests.BCL3 where {
                    (assert :: Bool -> Query ()) (fst3 s_equiv1_0);
                    (assert :: Bool -> Query ()) ((==) s_equiv0_0 s_equiv1_0);
                    (assert :: Bool -> Query ()) ((&&) (fst3 s_equiv0_2) ((||) (not (fst3 s_equiv1_2)) (not (mkTestBench_eq (snd3 s_equiv0_2) (snd3 s_equiv1_2)))));
-                 })
+                   query ();
+                })
   
 ;
   main17 :: Query (Answer ());
@@ -1074,7 +1090,8 @@ module Seri.SMT.Tests.BCL3 where {
                    (assert :: Bool -> Query ()) (fst3 s_equiv1_0);
                    (assert :: Bool -> Query ()) ((==) s_equiv0_0 s_equiv1_0);
                    (assert :: Bool -> Query ()) ((&&) (fst3 s_equiv0_3) ((||) (not (fst3 s_equiv1_3)) (not (mkTestBench_eq (snd3 s_equiv0_3) (snd3 s_equiv1_3)))));
-                 })
+                   query ();
+                })
   
 ;
   main18 :: Query (Answer ());
@@ -1121,7 +1138,8 @@ module Seri.SMT.Tests.BCL3 where {
                    (assert :: Bool -> Query ()) (fst3 s_equiv1_0);
                    (assert :: Bool -> Query ()) ((==) s_equiv0_0 s_equiv1_0);
                    (assert :: Bool -> Query ()) ((&&) (fst3 s_equiv0_3) ((||) (not (fst3 s_equiv1_3)) (not (mkTestBench_eq (snd3 s_equiv0_3) (snd3 s_equiv1_3)))));
-                 })
+                   query ();
+                })
   
 ;
   main19 :: Query (Answer ());
@@ -1168,7 +1186,8 @@ module Seri.SMT.Tests.BCL3 where {
                    (assert :: Bool -> Query ()) (fst3 s_equiv1_0);
                    (assert :: Bool -> Query ()) ((==) s_equiv0_0 s_equiv1_0);
                    (assert :: Bool -> Query ()) ((&&) (fst3 s_equiv0_3) ((||) (not (fst3 s_equiv1_3)) (not (mkTestBench_eq (snd3 s_equiv0_3) (snd3 s_equiv1_3)))));
-                 })
+                   query ();
+                })
   
 ;
   main20 :: Query (Answer ());
@@ -1215,7 +1234,8 @@ module Seri.SMT.Tests.BCL3 where {
                    (assert :: Bool -> Query ()) (fst3 s_equiv1_0);
                    (assert :: Bool -> Query ()) ((==) s_equiv0_0 s_equiv1_0);
                    (assert :: Bool -> Query ()) ((&&) (fst3 s_equiv0_3) ((||) (not (fst3 s_equiv1_3)) (not (mkTestBench_eq (snd3 s_equiv0_3) (snd3 s_equiv1_3)))));
-                 })
+                   query ();
+                })
   
 ;
   main21 :: Query (Answer ());
@@ -1262,7 +1282,8 @@ module Seri.SMT.Tests.BCL3 where {
                    (assert :: Bool -> Query ()) (fst3 s_equiv1_0);
                    (assert :: Bool -> Query ()) ((==) s_equiv0_0 s_equiv1_0);
                    (assert :: Bool -> Query ()) ((&&) (fst3 s_equiv0_3) ((||) (not (fst3 s_equiv1_3)) (not (mkTestBench_eq (snd3 s_equiv0_3) (snd3 s_equiv1_3)))));
-                 })
+                   query ();
+                })
   
 ;
   main22 :: Query (Answer ());
@@ -1309,7 +1330,8 @@ module Seri.SMT.Tests.BCL3 where {
                    (assert :: Bool -> Query ()) (fst3 s_equiv1_0);
                    (assert :: Bool -> Query ()) ((==) s_equiv0_0 s_equiv1_0);
                    (assert :: Bool -> Query ()) ((&&) (fst3 s_equiv0_3) ((||) (not (fst3 s_equiv1_3)) (not (mkTestBench_eq (snd3 s_equiv0_3) (snd3 s_equiv1_3)))));
-                 })
+                   query ();
+                })
   
 ;
   main23 :: Query (Answer ());
@@ -1356,7 +1378,8 @@ module Seri.SMT.Tests.BCL3 where {
                    (assert :: Bool -> Query ()) (fst3 s_equiv1_0);
                    (assert :: Bool -> Query ()) ((==) s_equiv0_0 s_equiv1_0);
                    (assert :: Bool -> Query ()) ((&&) (fst3 s_equiv0_3) ((||) (not (fst3 s_equiv1_3)) (not (mkTestBench_eq (snd3 s_equiv0_3) (snd3 s_equiv1_3)))));
-                 })
+                   query ();
+                })
   
 ;
   main24 :: Query (Answer ());
@@ -1403,7 +1426,8 @@ module Seri.SMT.Tests.BCL3 where {
                    (assert :: Bool -> Query ()) (fst3 s_equiv1_0);
                    (assert :: Bool -> Query ()) ((==) s_equiv0_0 s_equiv1_0);
                    (assert :: Bool -> Query ()) ((&&) (fst3 s_equiv0_3) ((||) (not (fst3 s_equiv1_3)) (not (mkTestBench_eq (snd3 s_equiv0_3) (snd3 s_equiv1_3)))));
-                 })
+                   query ();
+                })
   
 ;
   main25 :: Query (Answer ());
@@ -1450,7 +1474,8 @@ module Seri.SMT.Tests.BCL3 where {
                    (assert :: Bool -> Query ()) (fst3 s_equiv1_0);
                    (assert :: Bool -> Query ()) ((==) s_equiv0_0 s_equiv1_0);
                    (assert :: Bool -> Query ()) ((&&) (fst3 s_equiv0_3) ((||) (not (fst3 s_equiv1_3)) (not (mkTestBench_eq (snd3 s_equiv0_3) (snd3 s_equiv1_3)))));
-                 })
+                   query ();
+                })
   
 ;
   main26 :: Query (Answer ());
@@ -1497,7 +1522,8 @@ module Seri.SMT.Tests.BCL3 where {
                    (assert :: Bool -> Query ()) (fst3 s_equiv1_0);
                    (assert :: Bool -> Query ()) ((==) s_equiv0_0 s_equiv1_0);
                    (assert :: Bool -> Query ()) ((&&) (fst3 s_equiv0_3) ((||) (not (fst3 s_equiv1_3)) (not (mkTestBench_eq (snd3 s_equiv0_3) (snd3 s_equiv1_3)))));
-                 })
+                   query ();
+                })
   
 ;
   main27 :: Query (Answer ());
@@ -1544,7 +1570,8 @@ module Seri.SMT.Tests.BCL3 where {
                    (assert :: Bool -> Query ()) (fst3 s_equiv1_0);
                    (assert :: Bool -> Query ()) ((==) s_equiv0_0 s_equiv1_0);
                    (assert :: Bool -> Query ()) ((&&) (fst3 s_equiv0_3) ((||) (not (fst3 s_equiv1_3)) (not (mkTestBench_eq (snd3 s_equiv0_3) (snd3 s_equiv1_3)))));
-                 })
+                   query ();
+                })
   
 ;
   main28 :: Query (Answer ());
@@ -1591,7 +1618,8 @@ module Seri.SMT.Tests.BCL3 where {
                    (assert :: Bool -> Query ()) (fst3 s_equiv1_0);
                    (assert :: Bool -> Query ()) ((==) s_equiv0_0 s_equiv1_0);
                    (assert :: Bool -> Query ()) ((&&) (fst3 s_equiv0_3) ((||) (not (fst3 s_equiv1_3)) (not (mkTestBench_eq (snd3 s_equiv0_3) (snd3 s_equiv1_3)))));
-                 })
+                   query ();
+                })
   
 ;
   main29 :: Query (Answer ());
@@ -1638,7 +1666,8 @@ module Seri.SMT.Tests.BCL3 where {
                    (assert :: Bool -> Query ()) (fst3 s_equiv1_0);
                    (assert :: Bool -> Query ()) ((==) s_equiv0_0 s_equiv1_0);
                    (assert :: Bool -> Query ()) ((&&) (fst3 s_equiv0_3) ((||) (not (fst3 s_equiv1_3)) (not (mkTestBench_eq (snd3 s_equiv0_3) (snd3 s_equiv1_3)))));
-                 })
+                   query ();
+                })
   
 ;
   main30 :: Query (Answer ());
@@ -1685,7 +1714,8 @@ module Seri.SMT.Tests.BCL3 where {
                    (assert :: Bool -> Query ()) (fst3 s_equiv1_0);
                    (assert :: Bool -> Query ()) ((==) s_equiv0_0 s_equiv1_0);
                    (assert :: Bool -> Query ()) ((&&) (fst3 s_equiv0_3) ((||) (not (fst3 s_equiv1_3)) (not (mkTestBench_eq (snd3 s_equiv0_3) (snd3 s_equiv1_3)))));
-                 })
+                   query ();
+                })
   
 ;
   main31 :: Query (Answer ());
@@ -1732,7 +1762,8 @@ module Seri.SMT.Tests.BCL3 where {
                    (assert :: Bool -> Query ()) (fst3 s_equiv1_0);
                    (assert :: Bool -> Query ()) ((==) s_equiv0_0 s_equiv1_0);
                    (assert :: Bool -> Query ()) ((&&) (fst3 s_equiv0_3) ((||) (not (fst3 s_equiv1_3)) (not (mkTestBench_eq (snd3 s_equiv0_3) (snd3 s_equiv1_3)))));
-                 })
+                   query ();
+                })
   
 ;
   main32 :: Query (Answer ());
@@ -1779,7 +1810,8 @@ module Seri.SMT.Tests.BCL3 where {
                    (assert :: Bool -> Query ()) (fst3 s_equiv1_0);
                    (assert :: Bool -> Query ()) ((==) s_equiv0_0 s_equiv1_0);
                    (assert :: Bool -> Query ()) ((&&) (fst3 s_equiv0_3) ((||) (not (fst3 s_equiv1_3)) (not (mkTestBench_eq (snd3 s_equiv0_3) (snd3 s_equiv1_3)))));
-                 })
+                   query ();
+                })
   
 ;
   main33 :: Query (Answer ());
@@ -1826,7 +1858,8 @@ module Seri.SMT.Tests.BCL3 where {
                    (assert :: Bool -> Query ()) (fst3 s_equiv1_0);
                    (assert :: Bool -> Query ()) ((==) s_equiv0_0 s_equiv1_0);
                    (assert :: Bool -> Query ()) ((&&) (fst3 s_equiv0_3) ((||) (not (fst3 s_equiv1_3)) (not (mkTestBench_eq (snd3 s_equiv0_3) (snd3 s_equiv1_3)))));
-                 })
+                   query ();
+                })
   
 ;
   main34 :: Query (Answer ());
@@ -1873,7 +1906,8 @@ module Seri.SMT.Tests.BCL3 where {
                    (assert :: Bool -> Query ()) (fst3 s_equiv1_0);
                    (assert :: Bool -> Query ()) ((==) s_equiv0_0 s_equiv1_0);
                    (assert :: Bool -> Query ()) ((&&) (fst3 s_equiv0_3) ((||) (not (fst3 s_equiv1_3)) (not (mkTestBench_eq (snd3 s_equiv0_3) (snd3 s_equiv1_3)))));
-                 })
+                   query ();
+                })
   
 ;
   main35 :: Query (Answer ());
@@ -1920,7 +1954,8 @@ module Seri.SMT.Tests.BCL3 where {
                    (assert :: Bool -> Query ()) (fst3 s_equiv1_0);
                    (assert :: Bool -> Query ()) ((==) s_equiv0_0 s_equiv1_0);
                    (assert :: Bool -> Query ()) ((&&) (fst3 s_equiv0_3) ((||) (not (fst3 s_equiv1_3)) (not (mkTestBench_eq (snd3 s_equiv0_3) (snd3 s_equiv1_3)))));
-                 })
+                   query ();
+                })
   
 ;
   main36 :: Query (Answer ());
@@ -1967,7 +2002,8 @@ module Seri.SMT.Tests.BCL3 where {
                    (assert :: Bool -> Query ()) (fst3 s_equiv1_0);
                    (assert :: Bool -> Query ()) ((==) s_equiv0_0 s_equiv1_0);
                    (assert :: Bool -> Query ()) ((&&) (fst3 s_equiv0_3) ((||) (not (fst3 s_equiv1_3)) (not (mkTestBench_eq (snd3 s_equiv0_3) (snd3 s_equiv1_3)))));
-                 })
+                   query ();
+                })
   
 ;
   main37 :: Query (Answer ());
@@ -2014,7 +2050,8 @@ module Seri.SMT.Tests.BCL3 where {
                    (assert :: Bool -> Query ()) (fst3 s_equiv1_0);
                    (assert :: Bool -> Query ()) ((==) s_equiv0_0 s_equiv1_0);
                    (assert :: Bool -> Query ()) ((&&) (fst3 s_equiv0_3) ((||) (not (fst3 s_equiv1_3)) (not (mkTestBench_eq (snd3 s_equiv0_3) (snd3 s_equiv1_3)))));
-                 })
+                   query ();
+                })
   
 ;
   main38 :: Query (Answer ());
@@ -2061,7 +2098,8 @@ module Seri.SMT.Tests.BCL3 where {
                    (assert :: Bool -> Query ()) (fst3 s_equiv1_0);
                    (assert :: Bool -> Query ()) ((==) s_equiv0_0 s_equiv1_0);
                    (assert :: Bool -> Query ()) ((&&) (fst3 s_equiv0_3) ((||) (not (fst3 s_equiv1_3)) (not (mkTestBench_eq (snd3 s_equiv0_3) (snd3 s_equiv1_3)))));
-                 })
+                   query ();
+                })
   
 ;
   main39 :: Query (Answer ());
@@ -2108,7 +2146,8 @@ module Seri.SMT.Tests.BCL3 where {
                    (assert :: Bool -> Query ()) (fst3 s_equiv1_0);
                    (assert :: Bool -> Query ()) ((==) s_equiv0_0 s_equiv1_0);
                    (assert :: Bool -> Query ()) ((&&) (fst3 s_equiv0_3) ((||) (not (fst3 s_equiv1_3)) (not (mkTestBench_eq (snd3 s_equiv0_3) (snd3 s_equiv1_3)))));
-                 })
+                   query ();
+                })
   
 ;
   main40 :: Query (Answer ());
@@ -2155,7 +2194,8 @@ module Seri.SMT.Tests.BCL3 where {
                    (assert :: Bool -> Query ()) (fst3 s_equiv1_0);
                    (assert :: Bool -> Query ()) ((==) s_equiv0_0 s_equiv1_0);
                    (assert :: Bool -> Query ()) ((&&) (fst3 s_equiv0_3) ((||) (not (fst3 s_equiv1_3)) (not (mkTestBench_eq (snd3 s_equiv0_3) (snd3 s_equiv1_3)))));
-                 })
+                   query ();
+                })
   
 ;
   main41 :: Query (Answer ());
@@ -2202,7 +2242,8 @@ module Seri.SMT.Tests.BCL3 where {
                    (assert :: Bool -> Query ()) (fst3 s_equiv1_0);
                    (assert :: Bool -> Query ()) ((==) s_equiv0_0 s_equiv1_0);
                    (assert :: Bool -> Query ()) ((&&) (fst3 s_equiv0_3) ((||) (not (fst3 s_equiv1_3)) (not (mkTestBench_eq (snd3 s_equiv0_3) (snd3 s_equiv1_3)))));
-                 })
+                   query ();
+                })
   
 ;
   main42 :: Query (Answer ());
@@ -2249,7 +2290,8 @@ module Seri.SMT.Tests.BCL3 where {
                    (assert :: Bool -> Query ()) (fst3 s_equiv1_0);
                    (assert :: Bool -> Query ()) ((==) s_equiv0_0 s_equiv1_0);
                    (assert :: Bool -> Query ()) ((&&) (fst3 s_equiv0_3) ((||) (not (fst3 s_equiv1_3)) (not (mkTestBench_eq (snd3 s_equiv0_3) (snd3 s_equiv1_3)))));
-                 })
+                   query ();
+                })
   
 ;
   main43 :: Query (Answer ());
@@ -2296,7 +2338,8 @@ module Seri.SMT.Tests.BCL3 where {
                    (assert :: Bool -> Query ()) (fst3 s_equiv1_0);
                    (assert :: Bool -> Query ()) ((==) s_equiv0_0 s_equiv1_0);
                    (assert :: Bool -> Query ()) ((&&) (fst3 s_equiv0_3) ((||) (not (fst3 s_equiv1_3)) (not (mkTestBench_eq (snd3 s_equiv0_3) (snd3 s_equiv1_3)))));
-                 })
+                   query ();
+                })
   
 ;
   main44 :: Query (Answer ());
@@ -2343,7 +2386,8 @@ module Seri.SMT.Tests.BCL3 where {
                    (assert :: Bool -> Query ()) (fst3 s_equiv1_0);
                    (assert :: Bool -> Query ()) ((==) s_equiv0_0 s_equiv1_0);
                    (assert :: Bool -> Query ()) ((&&) (fst3 s_equiv0_3) ((||) (not (fst3 s_equiv1_3)) (not (mkTestBench_eq (snd3 s_equiv0_3) (snd3 s_equiv1_3)))));
-                 })
+                   query ();
+                })
   
 ;
   main45 :: Query (Answer ());
@@ -2390,7 +2434,8 @@ module Seri.SMT.Tests.BCL3 where {
                    (assert :: Bool -> Query ()) (fst3 s_equiv1_0);
                    (assert :: Bool -> Query ()) ((==) s_equiv0_0 s_equiv1_0);
                    (assert :: Bool -> Query ()) ((&&) (fst3 s_equiv0_3) ((||) (not (fst3 s_equiv1_3)) (not (mkTestBench_eq (snd3 s_equiv0_3) (snd3 s_equiv1_3)))));
-                 })
+                   query ();
+                })
   
 ;
   main46 :: Query (Answer ());
@@ -2437,7 +2482,8 @@ module Seri.SMT.Tests.BCL3 where {
                    (assert :: Bool -> Query ()) (fst3 s_equiv1_0);
                    (assert :: Bool -> Query ()) ((==) s_equiv0_0 s_equiv1_0);
                    (assert :: Bool -> Query ()) ((&&) (fst3 s_equiv0_3) ((||) (not (fst3 s_equiv1_3)) (not (mkTestBench_eq (snd3 s_equiv0_3) (snd3 s_equiv1_3)))));
-                 })
+                   query ();
+                })
   
 ;
   main47 :: Query (Answer ());
@@ -2484,7 +2530,8 @@ module Seri.SMT.Tests.BCL3 where {
                    (assert :: Bool -> Query ()) (fst3 s_equiv1_0);
                    (assert :: Bool -> Query ()) ((==) s_equiv0_0 s_equiv1_0);
                    (assert :: Bool -> Query ()) ((&&) (fst3 s_equiv0_3) ((||) (not (fst3 s_equiv1_3)) (not (mkTestBench_eq (snd3 s_equiv0_3) (snd3 s_equiv1_3)))));
-                 })
+                   query ();
+                })
   
 ;
   main48 :: Query (Answer ());
@@ -2531,7 +2578,8 @@ module Seri.SMT.Tests.BCL3 where {
                    (assert :: Bool -> Query ()) (fst3 s_equiv1_0);
                    (assert :: Bool -> Query ()) ((==) s_equiv0_0 s_equiv1_0);
                    (assert :: Bool -> Query ()) ((&&) (fst3 s_equiv0_3) ((||) (not (fst3 s_equiv1_3)) (not (mkTestBench_eq (snd3 s_equiv0_3) (snd3 s_equiv1_3)))));
-                 })
+                   query ();
+                })
   
 ;
 
