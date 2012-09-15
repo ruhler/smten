@@ -65,26 +65,8 @@ data Foo = Bar Integer
          | Sludge Bool
     deriving(Show)
 
-derive_pack ''Foo
-derive_unpack ''Foo
-
-instance SeriableT Foo where
-    serit _ = ConT (name "Foo")
-
-instance SeriableE Foo where
-    pack = pack_Foo
-    unpack = unpack_Foo
-
---    unpack (TExp e) =
---      case unappsE e of
---        [ConE (Sig n _), x] | n Prelude.== name "Bar" -> do
---          x' <- unpack (TExp x)
---          return (Bar x')
---        [ConE (Sig n _), x] | n Prelude.== name "Sludge" -> do
---          x' <- unpack (TExp x)
---          return (Sludge x')
---        _ -> Nothing
-      
+derive_SeriableT ''Foo
+derive_SeriableE ''Foo
 
 defoo :: TExp Foo -> TExp Integer
 defoo = varE1 "Seri.Enoch.Enoch.defoo"

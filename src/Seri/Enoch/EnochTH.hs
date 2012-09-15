@@ -3,19 +3,35 @@
 
 -- | Template Haskell utilities for enoch.
 module Seri.Enoch.EnochTH ( 
-    derive_pack, derive_unpack,
+    derive_SeriableT, derive_SeriableE,
  ) where 
 
 import Language.Haskell.TH
 import Seri.Enoch.Enoch
 import qualified Seri.Lambda as S
 import qualified Seri.Enoch.Prelude as S
-  
 
+derive_SeriableT :: Name -> Q [Dec]
+derive_SeriableT nm = do
+  -- TODO: support data types with type variables
+  TyConI (DataD _ _ [] _ _) <- reify nm
+  let ty = (AppT (ConT ''SeriableT) (ConT nm))
+  let body = AppE (ConE 'S.ConT) (AppE (VarE 'S.name) (LitE (StringL (nameBase nm))))
+  let dec = FunD 'serit [Clause [WildP] (NormalB body) []]
+  return [InstanceD [] ty [dec]]
+
+derive_SeriableE :: Name -> Q [Dec]
+derive_SeriableE nm = do
+  -- TODO: support data types with type variables
+  TyConI (DataD _ _ [] cs _) <- reify nm
+  let ty = (AppT (ConT ''SeriableE) (ConT nm))
+  return [InstanceD [] ty (concat [derive_pack nm cs, derive_unpack nm cs])]
+  
+  
 -- Given the name of a type constructor Foo, produces the pack function:
---  pack_Foo :: Foo -> TExp Foo
-derive_pack :: Name -> Q [Dec]
-derive_pack nm =
+--  pack :: Foo -> TExp Foo
+derive_pack :: Name -> [Con] -> [Dec]
+derive_pack nm cs =
   let -- Each data constructor has it's own clause in the pack function.
       -- A constructor of the form:
       --    Bar Sludge Fudge
@@ -42,15 +58,14 @@ derive_pack nm =
             body = LetE decls exp
         in Clause [pat] (NormalB body) []
       mkcon (RecC nm vsts) = mkcon (NormalC nm (map (\(_, s, t) -> (s, t)) vsts))
-  in do
-    -- TODO: support data types with type variables
-    TyConI (DataD _ _ [] cs _) <- reify nm
-    return [FunD (mkName $ "pack_" ++ nameBase nm) (map mkcon cs)]
+
+      dec = FunD 'pack (map mkcon cs)
+  in [dec]
     
 -- Given the name of a type constructor Foo, produces the unpack function:
---  unpack_Foo :: TExp Foo -> Maybe Foo
-derive_unpack :: Name -> Q [Dec]
-derive_unpack nm =
+--  unpack :: TExp Foo -> Maybe Foo
+derive_unpack :: Name -> [Con] -> [Dec]
+derive_unpack nm cs =
   let -- Each data constructor has it's own match in the unpack case expr.
       -- A constructor of the form:
       --    Bar Sludge Fudge
@@ -73,10 +88,8 @@ derive_unpack nm =
       defaultmatch :: Match
       defaultmatch = Match WildP (NormalB (ConE 'Nothing)) []
 
-  in do
-    -- TODO: support data types with type variables
-    TyConI (DataD _ _ [] cs _) <- reify nm
-    let body = CaseE (AppE (VarE 'S.unappsE) (VarE (mkName "e"))) (map mkcon cs ++ [defaultmatch])
-    let clause = Clause [ConP 'TExp [VarP (mkName "e")]] (NormalB body) []
-    return [FunD (mkName $ "unpack_" ++ nameBase nm) [clause]]
+      body = CaseE (AppE (VarE 'S.unappsE) (VarE (mkName "e"))) (map mkcon cs ++ [defaultmatch])
+      clause = Clause [ConP 'TExp [VarP (mkName "e")]] (NormalB body) []
+      dec = FunD 'unpack [clause]
+  in [dec]
 
