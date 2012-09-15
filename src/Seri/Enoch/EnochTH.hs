@@ -3,7 +3,7 @@
 
 -- | Template Haskell utilities for enoch.
 module Seri.Enoch.EnochTH ( 
-    derive_pack,
+    derive_pack, derive_unpack,
  ) where 
 
 import Language.Haskell.TH
@@ -47,3 +47,36 @@ derive_pack nm =
     TyConI (DataD _ _ [] cs _) <- reify nm
     return [FunD (mkName $ "pack_" ++ nameBase nm) (map mkcon cs)]
     
+-- Given the name of a type constructor Foo, produces the unpack function:
+--  unpack_Foo :: TExp Foo -> Maybe Foo
+derive_unpack :: Name -> Q [Dec]
+derive_unpack nm =
+  let -- Each data constructor has it's own match in the unpack case expr.
+      -- A constructor of the form:
+      --    Bar Sludge Fudge
+      -- Maps to the clause:
+      --    [ConE (Sig n _), a, b] | n == name "Bar" -> do
+      --      a' <- unpack (TExp a)
+      --      b' <- unpack (TExp b)
+      --      return (Bar a' b')
+      mkcon :: Con -> Match
+      mkcon (NormalC cnm ts) =   
+        let args = [mkName [c] | c <- take (length ts) "abcdefghijklmnopqrstuvwxyz"]
+            args' = [mkName (c:'\'':[]) | c <- take (length ts) "abcdefghijklmnopqrstuvwxyz"]
+            pat = ListP (ConP 'S.ConE [ConP 'S.Sig [VarP (mkName "nm"), WildP]] : map VarP args)
+            guard = NormalG $ AppE (AppE (VarE '(==)) (VarE (mkName "nm"))) (AppE (VarE 'S.name) (LitE (StringL (nameBase cnm))))
+            stmts = [BindS (VarP x') (AppE (VarE 'unpack) (AppE (ConE 'TExp) (VarE x))) | (x, x') <- zip args args']
+            body = DoE $ stmts ++ [NoBindS (AppE (VarE 'return) (foldl AppE (ConE cnm) (map VarE args')))]
+        in Match pat (GuardedB [(guard, body)]) []
+      mkcon (RecC nm vsts) = mkcon (NormalC nm (map (\(_, s, t) -> (s, t)) vsts))
+
+      defaultmatch :: Match
+      defaultmatch = Match WildP (NormalB (ConE 'Nothing)) []
+
+  in do
+    -- TODO: support data types with type variables
+    TyConI (DataD _ _ [] cs _) <- reify nm
+    let body = CaseE (AppE (VarE 'S.unappsE) (VarE (mkName "e"))) (map mkcon cs ++ [defaultmatch])
+    let clause = Clause [ConP 'TExp [VarP (mkName "e")]] (NormalB body) []
+    return [FunD (mkName $ "unpack_" ++ nameBase nm) [clause]]
+

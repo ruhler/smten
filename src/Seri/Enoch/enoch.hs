@@ -66,26 +66,24 @@ data Foo = Bar Integer
     deriving(Show)
 
 derive_pack ''Foo
+derive_unpack ''Foo
 
 instance SeriableT Foo where
     serit _ = ConT (name "Foo")
 
 instance SeriableE Foo where
     pack = pack_Foo
---  pack (Bar x) = 
---    let bar :: TExp (Integer -> Foo)
---        bar = conE "Bar"
---    in apply bar (pack x)
---  pack (Sludge x) = 
---    let sludge :: TExp (Bool -> Foo)
---        sludge = conE "Sludge"
---    in apply sludge (pack x)
+    unpack = unpack_Foo
 
-    unpack (TExp (AppE (ConE (Sig n _)) x)) | n Prelude.== name "Bar"
-      = Bar <$> unpack (TExp x)
-    unpack (TExp (AppE (ConE (Sig n _)) x)) | n Prelude.== name "Sludge"
-      = Sludge <$> unpack (TExp x)
-    unpack _ = Nothing
+--    unpack (TExp e) =
+--      case unappsE e of
+--        [ConE (Sig n _), x] | n Prelude.== name "Bar" -> do
+--          x' <- unpack (TExp x)
+--          return (Bar x')
+--        [ConE (Sig n _), x] | n Prelude.== name "Sludge" -> do
+--          x' <- unpack (TExp x)
+--          return (Sludge x')
+--        _ -> Nothing
       
 
 defoo :: TExp Foo -> TExp Integer
