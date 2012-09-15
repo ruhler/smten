@@ -31,16 +31,17 @@ set ::env(LD_LIBRARY_PATH) "/home/ruhler/local/lib"
 Yices 1 and Yices 2
 ~~~~~~~~~~~~~~~~~~~
 Seri requires both yices1 and yices2 be installed on the system. It looks
-for a yices1 library called "yices" and a yices2 library called "yices2".
-Because the yices 2 library is shipped as "yices", you will need to rename it
-or provide a link to it called "yices2".
+for a yices1 library called "yices1" and a yices2 library called "yices2".
+Because the yices libraries are both shiped as "yices", you will need to
+rename them or provide a link to "yices1" and "yices2".
 
-I also had trouble building the cabal package if the yices2 library appeared
-as a shared object.  So, for example, if you have libyices.so.2.0.2 installed,
-to create a "yices2" library suitable for use with seri, run the commands:
+So, for example, if you have libyices.a for yices1 and libyices.so.2.1.0 for
+yices2 installed, to create the "yices1" and "yices2" libraries suitable for
+use with seri, run the commands:
 
-   ln -s libyices.so.2.0.2 libyices2.a 
-   ln -s libyices.so.2.0.2 libyices.so.2.0 
+   ln -s libyices.a libyices1.a
+   ln -s libyices.so.2.1.0 libyices2.so
+   ln -s libyices.so.2.1.0 libyices.so.2.0 
 
 
 Building Seri

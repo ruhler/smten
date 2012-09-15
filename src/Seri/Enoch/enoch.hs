@@ -1,4 +1,6 @@
 
+--{-# LANGUAGE TemplateHaskell #-}
+
 import Prelude hiding (fst, snd, (/=), (==), (<), (>), (&&))
 import qualified Prelude
 
@@ -8,6 +10,7 @@ import Seri.Failable
 import Seri.Lambda hiding (free, query)
 
 import Seri.Enoch.Enoch
+import Seri.Enoch.EnochTH
 import Seri.Enoch.Prelude
 import Seri.Enoch.SMT
 import Seri.SMT.Yices2
@@ -62,10 +65,13 @@ data Foo = Bar Integer
          | Sludge Bool
     deriving(Show)
 
+--derive_pack ''Foo
+
 instance SeriableT Foo where
     serit _ = ConT (name "Foo")
 
 instance SeriableE Foo where
+--    pack = pack_Foo
     pack (Bar x) = 
       let bar :: TExp (Integer -> Foo)
           bar = conE "Bar"
