@@ -8,6 +8,8 @@ module Seri.Enoch.EnochTH (
 
 import Language.Haskell.TH
 import Seri.Enoch.Enoch
+import qualified Seri.Lambda as S
+import qualified Seri.Enoch.Prelude as S
   
 
 -- Given the name of a type constructor Foo, produces the pack function:
@@ -33,10 +35,10 @@ derive_pack nm =
             connm = mkName "con"
             con_nm = mkName "con_"
             consig = SigD connm (AppT (ConT ''TExp) (arrowsT (map snd ts ++ [ConT nm])))
-            conbody = ValD (VarP connm) (NormalB $ AppE (VarE 'conE) (LitE (StringL (nameBase cnm)))) []
+            conbody = ValD (VarP connm) (NormalB $ AppE (VarE 'S.conE) (LitE (StringL (nameBase cnm)))) []
             con_ = ValD (ConP 'TExp [VarP con_nm]) (NormalB $ VarE connm) []
             decls = [consig, conbody, con_]
-            exp = AppE (ConE 'TExp) (AppE (VarE 'appsE) (ListE $ VarE con_nm : map (\a -> AppE (VarE 'pack) (VarE a)) args))
+            exp = AppE (ConE 'TExp) (AppE (VarE 'S.appsE) (ListE $ VarE con_nm : map (\a -> AppE (VarE 'packE) (VarE a)) args))
             body = LetE decls exp
         in Clause [pat] (NormalB body) []
       mkcon (RecC nm vsts) = mkcon (NormalC nm (map (\(_, s, t) -> (s, t)) vsts))

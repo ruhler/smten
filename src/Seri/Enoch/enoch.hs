@@ -1,5 +1,5 @@
 
---{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TemplateHaskell #-}
 
 import Prelude hiding (fst, snd, (/=), (==), (<), (>), (&&))
 import qualified Prelude
@@ -65,21 +65,21 @@ data Foo = Bar Integer
          | Sludge Bool
     deriving(Show)
 
---derive_pack ''Foo
+derive_pack ''Foo
 
 instance SeriableT Foo where
     serit _ = ConT (name "Foo")
 
 instance SeriableE Foo where
---    pack = pack_Foo
-    pack (Bar x) = 
-      let bar :: TExp (Integer -> Foo)
-          bar = conE "Bar"
-      in apply bar (pack x)
-    pack (Sludge x) = 
-      let sludge :: TExp (Bool -> Foo)
-          sludge = conE "Sludge"
-      in apply sludge (pack x)
+    pack = pack_Foo
+--  pack (Bar x) = 
+--    let bar :: TExp (Integer -> Foo)
+--        bar = conE "Bar"
+--    in apply bar (pack x)
+--  pack (Sludge x) = 
+--    let sludge :: TExp (Bool -> Foo)
+--        sludge = conE "Sludge"
+--    in apply sludge (pack x)
 
     unpack (TExp (AppE (ConE (Sig n _)) x)) | n Prelude.== name "Bar"
       = Bar <$> unpack (TExp x)
