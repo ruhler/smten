@@ -51,19 +51,17 @@ instance (SeriableE a, SeriableE b) => SeriableE (a, b) where
       let TExp a' = pack a
           TExp b' = pack b
       in TExp $ tupE [a', b']
-    unpack (TExp x) =
-      case (untupE x) of
-        [a, b] -> do
-           a' <- unpack (TExp a)
-           b' <- unpack (TExp b)
-           return (a', b')
-        _ -> Nothing
+    unpack (TExp x) = do
+      [a, b] <- deTupE x
+      a' <- unpack (TExp a)
+      b' <- unpack (TExp b)
+      return (a', b')
 
 apply :: TExp (a -> b) -> TExp a -> TExp b
-apply (TExp f) (TExp x) = TExp $ AppE f x
+apply (TExp f) (TExp x) = TExp $ AppE f [x]
 
 apply2 :: TExp (a -> b -> c) -> TExp a -> TExp b -> TExp c
-apply2 f a b = apply (apply f a) b
+apply2 (TExp f) (TExp a) (TExp b) = TExp $ AppE f [a, b]
 
 -- | Make a TExp with the given type out of a variable with the given name.
 varE :: (SeriableT a) => String -> TExp a

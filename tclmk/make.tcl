@@ -132,9 +132,9 @@ query2test "Share"
 query2test "Bit"
 query2test "AllQ"
 
-## The enoch tests
-#hrun $::ENOCH
-#hrun $::SUDOKU
+# The enoch tests
+hrun $::ENOCH
+hrun $::SUDOKU
 
 puts "BUILD COMPLETE"
 

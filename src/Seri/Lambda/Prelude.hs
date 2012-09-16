@@ -38,7 +38,8 @@
 module Seri.Lambda.Prelude (
     prelude,
     appsE, unappsE, deApp2E,
-    unitE, trueE, falseE, boolE, listE, listP, deListE, tupE, tupP, untupE,
+    unitE, trueE, falseE, boolE, listE, listP, deListE,
+    tupE, tupP, deTupE,
     stringE, deStringE, charE, deCharE, integerE, numberE, bitE,
     ) where
 
@@ -95,17 +96,12 @@ tupE es@(_:_:_) =
       ttype = arrowsT (types ++ [tupT types])
   in AppE (ConE (Sig nm ttype)) es
 
--- | Given tuple (a, b, ... )
--- Returns the list of expressions [a, b, ...]
--- If the given expression is not a tuple, it's value is returned as a
--- singleton list.
-untupE :: Exp -> [Exp]
-untupE x =
-  let isTuple :: Name -> Bool
-      isTuple n = ["(", ",", ")"] == nub (group (unname n))
-  in case unappsE x of
-        (ConE (Sig n _)):args | isTuple n && (length (unname n) == (length args+1)) -> args
-        _ -> [x]
+-- TODO: support arbitrary length tuples.
+deTupE :: Exp -> Maybe [Exp]
+deTupE (AppE (ConE (Sig n _)) [a, b]) | n == name "(,)" = Just [a, b]
+deTupE (AppE (ConE (Sig n _)) [a, b, c]) | n == name "(,,)" = Just [a, b, c]
+deTupE (AppE (ConE (Sig n _)) [a, b, c, d]) | n == name "(,,,)" = Just [a, b, c, d]
+deTupE _ = Nothing
 
 -- | (a, b, ... )
 -- There must be at least one pattern given.

@@ -178,8 +178,7 @@ instance Ppr Exp where
                 $+$ nest tabwidth (vcat (map ppr (sugardo e))) $+$ text "}"
 
     -- Special case for tuples
-    ppr e | length (untupE e) > 1 = 
-        parens . sep $ punctuate comma (map ppr (untupE e))
+    ppr e | Just xs <- deTupE e = parens . sep $ punctuate comma (map ppr xs)
 
     -- Special case for string literals
     ppr e | Just str <- deStringE e = text (show str)

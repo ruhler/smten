@@ -22,9 +22,9 @@ proc cabal {fcabal} {
         serih Seri/Target/Haskell/serih.hs {}
         seriq1 Seri/SMT/seriq1.hs yices1
         seriq2 Seri/SMT/seriq2.hs yices2
+        enoch Seri/Enoch/enoch.hs yices2
+        sudoku Seri/Enoch/sudoku.hs yices2
     }
-#        enoch Seri/Enoch/enoch.hs yices2
-#        sudoku Seri/Enoch/sudoku.hs yices2
 
     set builddeps {
         {base ==4.5.*}
