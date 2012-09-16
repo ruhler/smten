@@ -39,7 +39,7 @@
 -- core Seri IR.
 module Seri.Lambda.Sugar (
     caseE, deCaseE, trueP, falseP, ifE, deIfE, lamE, deLamE, letE, deLetE,
-    Stmt(..), doE,
+    Stmt(..), doE, clauseE,
     ConRec(..), recordD, recordC, recordU,
     --deriveEq,
     ) where
@@ -60,8 +60,8 @@ import Seri.Lambda.Utils
 caseE :: Exp -> [Match] -> Exp
 caseE x ms = AppE (LaceE ms) [x]
 
-deCaseE :: Exp -> Maybe (Exp, [Match])
-deCaseE (AppE (LaceE ms) [x]) = Just (x, ms)
+deCaseE :: Exp -> Maybe ([Exp], [Match])
+deCaseE (AppE (LaceE ms@(Match ps _ : _)) xs) | length ps == length xs = Just (xs, ms)
 deCaseE _ = Nothing
 
 
@@ -77,7 +77,7 @@ ifE p a b = caseE p [Match [trueP] a, Match [falseP] b]
 
 deIfE :: Exp -> Maybe (Exp, Exp, Exp)
 deIfE e = do
-  (p, [Match [t] a, Match [f] b]) <- deCaseE e
+  ([p], [Match [t] a, Match [f] b]) <- deCaseE e
   guard $ t == trueP
   guard $ f == falseP
   return (p, a, b)
@@ -135,6 +135,10 @@ doE ((BindS p e):stmts) =
         f = lamE $ Match [p] rest
         tbind = (arrowsT [typeof e, typeof f, typeof rest])
     in appsE [VarE (Sig (name ">>=") tbind), e, f]
+
+clauseE :: [Match] -> Exp
+clauseE [Match [] e] = e
+clauseE ms = LaceE ms
     
 -- | Record type constructors.
 data ConRec = NormalC Name [Type]

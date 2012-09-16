@@ -168,8 +168,8 @@ instance Ppr Exp where
               text "else" <+> ppr b)
 
     -- Special case for case expressions
-    ppr e | Just (x, ms) <- deCaseE e
-          = text "case" <+> ppr x <+> text "of" <+> text "{"
+    ppr e | Just (xs, ms) <- deCaseE e
+          = text "case" <+> sep (punctuate comma (map ppr xs)) <+> text "of" <+> text "{"
               $+$ nest tabwidth (vcat (map ppr ms)) $+$ text "}"
 
     -- Special case for do statements

@@ -65,10 +65,10 @@ set SUDOKU build/src/dist/build/sudoku/sudoku
 
 # The general seri test
 hrun $SERIT -o build/src/tests.typed -i build/src build/src/Seri/Lib/Tests.sri
-#hrun $SERIE -o build/src/tests.got -i build/src -m Seri.Lib.Tests.testall \
-#    build/src/Seri/Lib/Tests.sri +RTS -K1g
-#run echo -n "(True :: Bool)" > build/src/tests.wnt
-#hrun cmp build/src/tests.got build/src/tests.wnt
+hrun $SERIE -o build/src/tests.got -i build/src -m Seri.Lib.Tests.testall \
+    build/src/Seri/Lib/Tests.sri +RTS -K1g
+run echo -n "(True :: Bool)" > build/src/tests.wnt
+hrun cmp build/src/tests.got build/src/tests.wnt
 
 # Poorly typed tests.
 proc badtypetest {name} {
