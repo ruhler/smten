@@ -153,7 +153,7 @@ decl :: { PDec }
  : gendecl
     { PSig $1 }
  | funlhs rhs
-    { PClause (fst $1) (Clause (snd $1) $2) }
+    { PClause (fst $1) (Match (snd $1) $2) }
 
 cdecls :: { [TopSig] }
  : cdecl
@@ -175,15 +175,15 @@ ldecl :: { (Pat, Exp) }
  : pat rhs
     { ($1, $2) }
 
-idecls :: { [(Name, Clause)] }
+idecls :: { [(Name, Match)] }
  : idecl
     { [$1] }
  | idecls ';' idecl
     { $1 ++ [$3] }
 
-idecl :: { (Name, Clause) }
+idecl :: { (Name, Match) }
  : funlhs rhs
-    { (fst $1, Clause (snd $1) $2) }
+    { (fst $1, Match (snd $1) $2) }
 
 gendecl :: { TopSig }
  : var '::' type
@@ -290,17 +290,17 @@ exp :: { Exp }
  : exp10
     { $1 }
  | exp10 qop exp10
-    { AppE (AppE $2 $1) $3 }
+    { AppE $2 [$1, $3] }
 
 exp10 :: { Exp }
  : '\\' var_typed '->' exp
-    { LamE $2 $4 }
+    { lamE $ Match [VarP $2] $4 }
  | 'let' '{' ldecls opt(';') '}' 'in' exp
     { letE $3 $7 }
  | 'if' exp 'then' exp 'else' exp
     { ifE $2 $4 $6 }
  | 'case' exp 'of' '{' alts opt(';') '}'
-    { CaseE $2 $5 }
+    { caseE $2 $5 }
  | 'do' '{' stmts '}'
     {% case last $3 of
          NoBindS _ -> return $ doE $3
@@ -313,7 +313,7 @@ fexp :: { Exp }
  : aexp
     { $1 }
  | fexp aexp
-    { AppE $1 $2 }
+    { AppE $1 [$2] }
 
 aexp :: { Exp }
  : qvar_withinfo
@@ -350,7 +350,7 @@ alts :: { [Match] }
 
 alt :: { Match }
  : pat '->' exp
-    { Match $1 $3 }
+    { Match [$1] $3 }
 
 stmts :: { [Stmt] }
  : stmt 
@@ -584,7 +584,7 @@ parseError tok = lfailE $ "parser error at " ++ show tok
 data PDec =
     PDec Dec
   | PSig TopSig
-  | PClause Name Clause
+  | PClause Name Match
 
 isPClause :: PDec -> Bool
 isPClause (PClause {}) = True
@@ -597,17 +597,17 @@ coalesce ((PSig s):ds) =
         rest = coalesce rds
         d = case ms of
                 [] -> PrimD s
-                _ -> ValD s (clauseE [c | PClause _ c <- ms]) 
+                _ -> ValD s (LaceE [c | PClause _ c <- ms]) 
     in (d:rest)
 coalesce ((PDec d):ds) = d : coalesce ds
 
 -- Merge clauses for the same method into a single method.
-icoalesce :: [(Name, Clause)] -> [Method]
+icoalesce :: [(Name, Match)] -> [Method]
 icoalesce [] = []
 icoalesce ((n, c):ms) =
     let (me, rms) = span (\(n', _) -> n' == n) ms
         rest = icoalesce rms
-        m = Method n (clauseE (c : map snd me))
+        m = Method n (LaceE (c : map snd me))
     in (m : rest)
 
 -- A context is parsed first as a type to avoid a reduce/reduce conflict. Here

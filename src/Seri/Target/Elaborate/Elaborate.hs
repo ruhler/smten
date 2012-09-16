@@ -61,11 +61,10 @@ data EState = ES_None | ES_Some Mode
     deriving (Show, Eq)
 
 data ExpH = LitEH Lit
-          | CaseEH EState ExpH [MatchH]
-          | AppEH EState ExpH ExpH
-          | LamEH EState VarUse Sig (ExpH -> ExpH)
           | ConEH Sig
           | VarEH EState Sig
+          | AppEH EState ExpH [ExpH]
+          | LaceEH EState [MatchH]
     deriving(Eq, Show)
 
 instance Show (a -> ExpH) where
@@ -75,7 +74,7 @@ instance Eq (a -> ExpH) where
     (==) _ _ = False
 
 
-data MatchH = MatchH Pat [VarUse] ([(Name, ExpH)] -> ExpH)
+data MatchH = MatchH [Pat] [VarUse] ([(Name, ExpH)] -> ExpH)
     deriving (Eq, Show)
 
 
@@ -90,11 +89,6 @@ elaborate mode env exp =
   let -- translate to our HOAS expression representation
       toh :: [(Name, ExpH)] -> Exp -> ExpH
       toh _ (LitE l) = LitEH l
-      toh m (CaseE x ms) = 
-        let tomh (Match p b) = MatchH p [varuse n b | n <- bindingsP' p] (\bnd -> (toh (bnd ++ m) b))
-        in CaseEH ES_None (toh m x) (map tomh ms)
-      toh m (AppE a b) = AppEH ES_None (toh m a) (toh m b)
-      toh m (LamE s@(Sig n t) b) = LamEH (ES_Some WHNF) (varuse n b) s (\x -> toh ((n, x):m) b)
       toh _ (ConE s) = ConEH s
       toh m (VarE s@(Sig n _)) =
         case (HT.lookup n primitives) of
@@ -103,61 +97,52 @@ elaborate mode env exp =
               case (lookup n m) of
                   Just v -> v
                   Nothing -> VarEH ES_None s
+      toh m (AppE f xs) = AppEH ES_None (toh m f) (map (toh m) xs)
+      toh m (LaceE ms) = 
+        let tomh (Match ps b) = MatchH ps [varuse n b | n <- concatMap bindingsP' ps] (\bnd -> (toh (bnd ++ m) b))
+        in LaceEH ES_None (map tomh ms)
          
       dontshare = True
      
       shouldReduce :: VarUse -> ExpH -> Bool
       shouldReduce vu e | dontshare = True
-      shouldReduce vu e = shouldReduce' False vu e
 
-      shouldReduce' :: Bool -> VarUse -> ExpH -> Bool
-      shouldReduce' _ _ (LitEH {}) = True
-      shouldReduce' _ _ (LamEH {}) = True
-      shouldReduce' _ _ (ConEH {}) = True
-      shouldReduce' False _ (VarEH {}) = True
-      shouldReduce' _ VU_None _ = True
-      shouldReduce' _ VU_Single _ = True
-      shouldReduce' _ _ (CaseEH {}) = False
-      shouldReduce' _ vu (AppEH _ a b) = shouldReduce' True vu a && shouldReduce' True vu b
-      shouldReduce' True _ (VarEH _ s) =
-        case (attemptM $ lookupVarInfo env s) of
-            Just _ -> True
-            Nothing -> False
-
-      -- Match an expression against a sequence of alternatives.
-      matches :: ExpH -> [MatchH] -> MatchesResult
-      matches _ [] = NoMatched
-      matches x ms@((MatchH p vus f):_) =
-        case match p x of 
-          Failed -> matches x (tail ms)
+      -- Match expressions against a sequence of alternatives.
+      matchms :: [ExpH] -> [MatchH] -> MatchesResult
+      matchms _ [] = NoMatched
+      matchms xs ms@((MatchH ps vus f):_) =
+        case matchps ps xs of 
+          Failed -> matchms xs (tail ms)
           Succeeded vs -> 
             let vs' = zip vus vs
                 (red, nored) = partition (\(vu, (_, b)) -> shouldReduce vu b) vs'
                 letEH :: [(VarUse, (Sig, ExpH))] -> [(Sig, ExpH)] -> ([(Name, ExpH)] -> ExpH) -> ExpH
                 letEH [] rs f = elab (f [(n, e) | (Sig n _, e) <- rs])
-                letEH ((vu, (s, v)):bs) rs f = AppEH ES_None (LamEH (ES_Some mode) vu s (\x -> letEH bs ((s, x):rs) f)) v
+                letEH ((vu, (s, v)):bs) rs f = AppEH ES_None (LaceEH (ES_Some mode) [MatchH [VarP s] [vu] (\[x] -> letEH bs ((s, x):rs) f)) [v]
             in Matched $ letEH nored (map snd red) f
           Unknown -> UnMatched ms
      
-      -- Match an expression against a pattern.
+      -- Match expressions against patterns.
+      matchps :: [Pat] -> [ExpH] -> MatchResult
+      matchps ps args =
+        let mrs = [match p e | (p, e) <- zip ps args]
+            join (Succeeded as) (Succeeded bs) = Succeeded (as ++ bs)
+            join Failed _ = Failed
+            join (Succeeded _) Failed = Failed
+            join _ _ = Unknown
+        in foldl join (Succeeded []) mrs
+
       match :: Pat -> ExpH -> MatchResult
       match (ConP _ nm ps) e =
         case unappsEH e of
           ((ConEH (Sig n _)):_) | n /= nm -> Failed
-          ((ConEH {}):args) ->
-             let mrs = [match p e | (p, e) <- zip ps args]
-                 join (Succeeded as) (Succeeded bs) = Succeeded (as ++ bs)
-                 join Failed _ = Failed
-                 join (Succeeded _) Failed = Failed
-                 join _ _ = Unknown
-             in foldl join (Succeeded []) mrs
+          ((ConEH {}):args) -> matchps ps args
           _ -> Unknown
       match (LitP l) (LitEH l') | l == l' = Succeeded []
       match (LitP {}) (LitEH {}) = Failed
       match (VarP s) e = Succeeded [(s, e)]
       match (WildP _) _ = Succeeded []
       match _ _ = Unknown
-
 
       -- elaborate the given expression
       elab :: ExpH -> ExpH
@@ -169,7 +154,7 @@ elaborate mode env exp =
         in CaseEH (ES_Some SNF) (elab x) (map elabm ms)
       elab (CaseEH _ x ms) =
         let x' = elab x
-        in case matches x' ms of
+        in case matchms x' ms of
              NoMatched -> error $ "case no match"
              Matched e -> elab e
              UnMatched ms' | mode == WHNF -> CaseEH (ES_Some WHNF) x' ms'

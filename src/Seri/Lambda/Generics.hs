@@ -107,24 +107,19 @@ instance (Monad m) => TransformableM NType m where
 
 instance (Monad m) => TransformableM Exp m where
     transformM f e@(LitE {}) = tm_Exp f e
-    transformM f (CaseE e ms) = do
-        e' <- transformM f e
-        ms' <- transformM f ms
-        tm_Exp f (CaseE e' ms')
-    transformM f (AppE a b) = do
-        a' <- transformM f a
-        b' <- transformM f b
-        tm_Exp f (AppE a' b')
-    transformM f (LamE s b) = do
-        s' <- transformM f s
-        b' <- transformM f b
-        tm_Exp f (LamE s' b')
     transformM f (ConE s) = do
         s' <- transformM f s
         tm_Exp f (ConE s')
     transformM f (VarE s) = do
         s' <- transformM f s
         tm_Exp f (VarE s')
+    transformM f (LaceE ms) = do
+        ms' <- transformM f ms
+        tm_Exp f (LaceE ms')
+    transformM f (AppE a b) = do
+        a' <- transformM f a
+        b' <- transformM f b
+        tm_Exp f (AppE a' b')
 
 instance (Monad m) => TransformableM Pat m where
     transformM f (ConP t n ps) = do
@@ -248,11 +243,10 @@ instance Transformable NType where
 
 instance Transformable Exp where
     transform f e@(LitE {}) = t_Exp f e
-    transform f (CaseE e ms) = t_Exp f $ CaseE (transform f e) (transform f ms)
-    transform f (AppE a b) = t_Exp f $ AppE (transform f a) (transform f b)
-    transform f (LamE s b) = t_Exp f $ LamE (transform f s) (transform f b)
     transform f (ConE s) = t_Exp f $ ConE (transform f s)
     transform f (VarE s) = t_Exp f $ VarE (transform f s)
+    transform f (AppE a b) = t_Exp f $ AppE (transform f a) (transform f b)
+    transform f (LaceE ms) = t_Exp f $ LaceE (transform f ms)
 
 instance Transformable Pat where
     transform f (ConP t n ps) = t_Pat f $ ConP (transform f t) n (transform f ps)

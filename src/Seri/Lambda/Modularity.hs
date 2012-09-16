@@ -41,6 +41,7 @@ module Seri.Lambda.Modularity (
     ) where
 
 import Control.Monad.State
+import Data.Functor
 
 import Seri.Lambda.IR
 import Seri.Lambda.Ppr
@@ -155,23 +156,9 @@ instance Qualify Type where
     qualify ty = return ty
 
 instance Qualify Exp where
-    qualify e@(LitE {}) = return e
-    qualify (CaseE e ms) = do
-        e' <- qualify e
-        ms' <- mapM qualify ms
-        return (CaseE e' ms')
-    qualify (AppE a b) = do
-        a' <- qualify a
-        b' <- qualify b
-        return (AppE a' b')
-    qualify (LamE (Sig n t) b) = do
-        t' <- qualify t
-        b' <- withbound [n] (qualify b)
-        return (LamE (Sig n t') b')
-
     -- TODO: qualify data constructors
+    qualify e@(LitE {}) = return e
     qualify e@(ConE {}) = return e
-
     qualify (VarE (Sig n t)) = do
         t' <- qualify t
         bound <- isbound n
@@ -180,12 +167,18 @@ instance Qualify Exp where
             else do
                 n' <- resolve n
                 return (VarE (Sig n' t'))
+    qualify (AppE f xs) = do
+        f' <- qualify f
+        xs' <- mapM qualify xs
+        return (AppE f' xs')
+    qualify (LaceE ms) = LaceE <$> mapM qualify ms
+
 
 instance Qualify Match where
-    qualify (Match p m) = do
-        p' <- qualify p
-        m' <- withbound (bindingsP' p) $ qualify m 
-        return (Match p' m')
+    qualify (Match ps m) = do
+        ps' <- mapM qualify ps
+        m' <- withbound (concatMap bindingsP' ps) $ qualify m 
+        return (Match ps' m')
 
 instance Qualify Pat where
     -- TODO: qualify patterns

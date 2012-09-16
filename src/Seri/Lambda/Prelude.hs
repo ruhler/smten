@@ -37,12 +37,14 @@
 -- seri expressions based on the prelude.
 module Seri.Lambda.Prelude (
     prelude,
-    appsE, unappsE, 
-    unitE, trueE, falseE, boolE, listE, listP, tupE, tupP, untupE,
-    stringE, charE, integerE, numberE, bitE,
+    appsE, unappsE, deApp2E,
+    unitE, trueE, falseE, boolE, listE, listP, deListE, tupE, tupP, untupE,
+    stringE, deStringE, charE, deCharE, integerE, numberE, bitE,
     ) where
 
-import Data.List(nub, group)
+import Control.Monad
+
+import Data.List (nub, group)
 import Seri.Lambda.IR
 import Seri.Lambda.Types
 
@@ -91,7 +93,7 @@ tupE es@(_:_:_) =
       nm = name $ "(" ++ replicate (n-1) ',' ++ ")"
       types = map typeof es
       ttype = arrowsT (types ++ [tupT types])
-  in foldl AppE (ConE (Sig nm ttype)) es
+  in AppE (ConE (Sig nm ttype)) es
 
 -- | Given tuple (a, b, ... )
 -- Returns the list of expressions [a, b, ...]
@@ -132,6 +134,14 @@ listE (x:xs) =
      consT = arrowsT [t, listT t, listT t]
  in appsE [ConE (Sig (name ":") consT), x, listE xs]
 
+deListE :: Exp -> Maybe [Exp]
+deListE (ConE (Sig n _)) | n == name "[]" = Just []
+deListE e = do
+  (ConE (Sig n _), x, xse) <- deApp2E e
+  guard (n == name ":")
+  xs <- deListE xse
+  return (x:xs)
+
 listP :: [Pat] -> Pat
 listP [] = ConP (listT UnknownT) (name "[]") []
 listP [x] =
@@ -145,24 +155,40 @@ integerE :: Integer -> Exp
 integerE i = LitE (IntegerL i)
 
 numberE :: Integer -> Exp
-numberE i = AppE (VarE (Sig (name "fromInteger") (arrowsT [integerT, UnknownT]))) (integerE i)
+numberE i = AppE (VarE (Sig (name "fromInteger") (arrowsT [integerT, UnknownT]))) [integerE i]
 
 bitE :: Integer -> Integer -> Exp
-bitE w v = AppE (VarE (Sig (name "Seri.Lib.Bit.__prim_fromInteger_Bit") (arrowsT [integerT, AppT (ConT (name "Bit")) (NumT (ConNT w))]))) (integerE v)
+bitE w v = AppE (VarE (Sig (name "Seri.Lib.Bit.__prim_fromInteger_Bit") (arrowsT [integerT, AppT (ConT (name "Bit")) (NumT (ConNT w))]))) [integerE v]
 
 charE :: Char -> Exp
 charE c = LitE (CharL c)
 
-stringE :: [Char] -> Exp
+deCharE :: Exp -> Maybe Char
+deCharE (LitE (CharL c)) = Just c
+deCharE _ = Nothing
+
+stringE :: String -> Exp
 stringE [] = ConE (Sig (name "[]") (listT charT))
 stringE s = listE (map charE s)
 
+deStringE :: Exp -> Maybe String
+deStringE e = do
+  xs <- deListE e
+  mapM deCharE xs
+            
+deApp2E :: Exp -> Maybe (Exp, Exp, Exp)
+deApp2E (AppE f [a, b]) = Just (f, a, b)
+deApp2E (AppE (AppE f [a]) [b]) = Just (f, a, b)
+deApp2E _ = Nothing
+
+
 -- | (a b ... c)
 appsE :: [Exp] -> Exp
-appsE = foldl1 AppE
+appsE [f] = f
+appsE (f:xs) = AppE f xs
 
 -- | Given (a b ... c), returns [a, b, ..., c]
 unappsE :: Exp -> [Exp]
-unappsE (AppE a b) = unappsE a ++ [b]
+unappsE (AppE a bs) = unappsE a ++ bs
 unappsE e = [e]
 

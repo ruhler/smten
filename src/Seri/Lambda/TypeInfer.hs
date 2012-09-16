@@ -165,24 +165,6 @@ instance Constrain Lit where
 
 instance Constrain Exp where
     constrain (LitE l) = constrain l
-    constrain (CaseE e ms) = do
-        te <- constrain e
-        tps <- mapM constrain [p | Match p _ <- ms]
-        tms <- mapM constrain ms
-        sequence_ [addc te tp | tp <- tps]
-        sequence_ [addc (head tms) tm | tm <- tail tms]
-        return (head tms)
-    constrain (AppE f x) = do
-        tf <- constrain f
-        tx <- constrain x
-        it <- newvt
-        ot <- newvt
-        addc (arrowsT [it, ot]) tf
-        addc it tx
-        return ot
-    constrain (LamE (Sig n t) b) = do
-        bt <- scoped [Sig n t] (constrain b)
-        return (arrowsT [t, bt])
     constrain (ConE (Sig n t)) = do
         env <- gets ti_env
         cty <- lift $ lookupDataConType env n
@@ -199,10 +181,24 @@ instance Constrain Exp where
                 rvt <- retype vt
                 addc rvt t
         return t
+    constrain (AppE f xs) = do
+        tf <- constrain f
+        txs <- mapM constrain xs
+        its <- mapM (const newvt) txs
+        ot <- newvt
+        addc (arrowsT $ its ++ [ot]) tf
+        sequence_ [addc it tx | (it, tx) <- zip its txs]
+        return ot
+    constrain (LaceE ms) = do
+        tps <- mapM (mapM constrain) [ps | Match ps _ <- ms]
+        tms <- mapM constrain ms
+        sequence_ [mapM (uncurry addc) (zip (head tps) tp) | tp <- tail tps]
+        sequence_ [addc (head tms) tm | tm <- tail tms]
+        return (arrowsT (head tps ++ [head tms]))
 
 -- Only constrains the body. Doesn't constrain the patterns.
 instance Constrain Match where
-    constrain (Match p e) = scoped (bindingsP p) (constrain e)
+    constrain (Match ps e) = scoped (concatMap bindingsP ps) (constrain e)
 
 instance Constrain Pat where
     constrain (ConP t n ps) = do

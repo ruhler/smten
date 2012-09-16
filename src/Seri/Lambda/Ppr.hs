@@ -33,6 +33,7 @@
 -- 
 -------------------------------------------------------------------------------
 
+{-# LANGUAGE PatternGuards #-}
 {-# LANGUAGE FlexibleInstances #-}
 
 -- | Pretty printer for core seri language.
@@ -110,11 +111,10 @@ instance Ppr Type where
 
 isAtomE :: Exp -> Bool
 isAtomE (LitE {}) = True
-isAtomE (CaseE {}) = False
-isAtomE (AppE {}) = False
-isAtomE (LamE {}) = False
 isAtomE (ConE {}) = True
 isAtomE (VarE {}) = True
+isAtomE (AppE {}) = False
+isAtomE (LaceE {}) = False
 
 isOp :: Name -> Bool
 isOp n = nhead n `elem` ":!#$%&*+./<=>?@\\^|-~"
@@ -131,61 +131,30 @@ sep2 :: Doc -> Doc -> Doc
 sep2 a b = a $$ nest tabwidth b
 
 cando :: Exp -> Bool
-cando (AppE (AppE (VarE (Sig n _)) _) _) | n == name "Seri.Lib.Prelude.>>" = True
-cando (AppE (AppE (VarE (Sig n _)) _) _) | n == name ">>" = True
-cando (AppE (AppE (VarE (Sig n _)) _) (LamE _ _)) | n == name "Seri.Lib.Prelude.>>=" = True
-cando (AppE (AppE (VarE (Sig n _)) _) (LamE _ _)) | n == name ">>=" = True
-cando _ = False
+cando e = case sugardo e of
+            [NoBindS _] -> False
+            _ -> True
+
+-- Return Just the arguments to the given binary function if it has the given
+-- name, otherwise nothing.
+binary :: Name -> Exp -> Maybe (Exp, Exp)
+binary nm e | Just (VarE (Sig n _), a, b) <- deApp2E e
+            , n == nm
+            = Just (a, b)
+binary _ _ = Nothing
 
 sugardo :: Exp -> [Stmt]
-sugardo (AppE (AppE (VarE (Sig n _)) m) r) | n == name "Seri.Lib.Prelude.>>"
+sugardo e | Just (m, r) <- binary (name "Seri.Lib.Prelude.>>") e
     = NoBindS m : sugardo r
-sugardo (AppE (AppE (VarE (Sig n _)) m) r) | n == name ">>"
+sugardo e | Just (m, r) <- binary (name ">>") e
     = NoBindS m : sugardo r
-sugardo (AppE (AppE (VarE (Sig n _)) m) (LamE s r)) | n == name ">>="
-    = BindS (VarP s) m : sugardo r
-sugardo (AppE (AppE (VarE (Sig n _)) m) (LamE s r)) | n == name "Seri.Lib.Prelude.>>="
-    = BindS (VarP s) m : sugardo r
+sugardo e | Just (m, f) <- binary (name ">>=") e
+          , Just (Match [p] r) <- deLamE f
+    = BindS p m : sugardo r
+sugardo e | Just (m, f) <- binary (name "Seri.Lib.Prelude.>>=") e
+          , Just (Match [p] r) <- deLamE f
+    = BindS p m : sugardo r
 sugardo e = [NoBindS e]
-
-isStringLiteral :: Exp -> Bool
-isStringLiteral (ConE (Sig n (AppT (ConT nt) (ConT nc)))) | n == name "[]" && nt == name "[]" && nc == name "Char" = True
-isStringLiteral (AppE (AppE (ConE (Sig n _)) (LitE (CharL _))) e) | n == name ":" = isStringLiteral e
-isStringLiteral _ = False
-
-stringLiteral :: Exp -> String
-stringLiteral (ConE (Sig n (AppT (ConT nt) (ConT nc)))) | n == name "[]" && nt == name "[]" && nc == name "Char" = ""
-stringLiteral (AppE (AppE (ConE (Sig n _)) (LitE (CharL c))) e) | n == name ":"
-  = c : stringLiteral e
-stringLiteral e = error $ "not a string literal: " ++ show e
-
-isListLiteral :: Exp -> Bool
-isListLiteral (ConE (Sig n (AppT (ConT nt) _))) | n == name "[]" && nt == name "[]" = True
-isListLiteral (AppE (AppE (ConE (Sig n _)) _) e) | n == name ":" = isListLiteral e
-isListLiteral _ = False
-
-listLiteral :: Exp -> [Exp]
-listLiteral (ConE (Sig n (AppT (ConT nt) _))) | n == name "[]" && nt == name "[]" = []
-listLiteral (AppE (AppE (ConE (Sig n _)) x) e) | n == name ":" = x : listLiteral e
-listLiteral e = error $ "not a list literal: " ++ show e
-
-isLet :: Exp -> Bool
-isLet (AppE (LamE {}) _) = True
-isLet e = False
-
-deLet :: Exp -> ([(Sig, Exp)], Exp)
-deLet (AppE (LamE s e) v) =
-  let (binds, body) = deLet e
-  in ((s, v) : binds, body)
-deLet e = ([], e)
-
-pprLet :: Exp -> Doc
-pprLet e = 
-  let (binds, body) = deLet e
-      pprbind (s, e) = pprsig s <+> text "=" <+> ppr e <+> semi
-  in text "let" <+> text "{"
-       $+$ nest tabwidth (vcat (map pprbind binds)) $+$ text "}"
-       <+> text "in" <+> ppr body
 
 instance Ppr Lit where
     ppr (IntegerL i) = integer i
@@ -193,11 +162,15 @@ instance Ppr Lit where
 
 instance Ppr Exp where
     -- Special case for if expressions
-    ppr (CaseE e [Match (ConP _ nt []) a,
-                  Match (ConP _ nf []) b]) | nt == name "True" && nf == name "False"
-        = text "if" <+> ppr e $$ nest tabwidth (
-                text "then" <+> ppr a $$
-                text "else" <+> ppr b)
+    ppr e | Just (p, a, b) <- deIfE e
+          = text "if" <+> ppr p $$ nest tabwidth (
+              text "then" <+> ppr a $$
+              text "else" <+> ppr b)
+
+    -- Special case for case expressions
+    ppr e | Just (x, ms) <- deCaseE e
+          = text "case" <+> ppr x <+> text "of" <+> text "{"
+              $+$ nest tabwidth (vcat (map ppr ms)) $+$ text "}"
 
     -- Special case for do statements
     ppr e | cando e
@@ -209,30 +182,44 @@ instance Ppr Exp where
         parens . sep $ punctuate comma (map ppr (untupE e))
 
     -- Special case for string literals
-    ppr e | isStringLiteral e = text (show (stringLiteral e))
+    ppr e | Just str <- deStringE e = text (show str)
 
     -- Special case for list literals
-    ppr e | isListLiteral e = sep $ [text "["] ++ punctuate comma (map ppr (listLiteral e)) ++ [text "]"]
+    ppr e | Just elems <- deListE e = sep $ [text "["] ++ punctuate comma (map ppr elems) ++ [text "]"]
 
     -- Special case for let expressions
-    ppr e | isLet e = pprLet e
+    ppr e | Just (binds, body) <- deLetE e
+          = let pprbind (p, e) = ppr p <+> text "=" <+> ppr e <+> semi
+            in text "let" <+> text "{"
+                $+$ nest tabwidth (vcat (map pprbind binds)) $+$ text "}"
+                <+> text "in" <+> ppr body
+
+    -- Special case for lambda expressions
+    ppr e | Just (Match ps b) <- deLamE e
+          = parens $ (text "\\" <> sep (map ppr ps) <+> text "->") `sep2` ppr b
 
     -- Normal cases
     ppr (LitE l) = ppr l
-    ppr (CaseE e ms) = text "case" <+> ppr e <+> text "of" <+> text "{"
-                        $+$ nest tabwidth (vcat (map ppr ms)) $+$ text "}"
-    ppr (AppE a b) | isAtomE b = ppr a <+> ppr b
-    ppr (AppE a b) = ppr a <+> (parens $ ppr b)
-    ppr (LamE s b) = parens $ (text "\\" <> pprsig s <+> text "->") `sep2` ppr b
     ppr (ConE s) = pprsig s
     ppr (VarE s) = pprsig s
+    ppr (AppE f xs) = 
+      let pprx x | isAtomE x = ppr x
+          pprx x = (parens $ ppr x)
+      in sep (ppr f : map pprx xs)
+    ppr (LaceE ms)
+          = text "case" <+> text "of" <+> text "{"
+              $+$ nest tabwidth (vcat (map ppr ms)) $+$ text "}"
+       
 
 instance Ppr Stmt where
     ppr (NoBindS e) = ppr e <> semi
     ppr (BindS p e) = ppr p <+> text "<-" <+> ppr e <> semi
 
 instance Ppr Match where
-    ppr (Match p e) = (ppr p <+> text "->") `sep2` ppr e <> semi
+    ppr (Match ps e) = (ppr ps <+> text "->") `sep2` ppr e <> semi
+
+instance Ppr [Pat] where
+    ppr ps = sep $ punctuate comma (map ppr ps)
 
 isAtomP :: Pat -> Bool
 isAtomP (ConP _ _ []) = True

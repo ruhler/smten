@@ -65,10 +65,10 @@ set SUDOKU build/src/dist/build/sudoku/sudoku
 
 # The general seri test
 hrun $SERIT -o build/src/tests.typed -i build/src build/src/Seri/Lib/Tests.sri
-hrun $SERIE -o build/src/tests.got -i build/src -m Seri.Lib.Tests.testall \
-    build/src/Seri/Lib/Tests.sri +RTS -K1g
-run echo -n "(True :: Bool)" > build/src/tests.wnt
-hrun cmp build/src/tests.got build/src/tests.wnt
+#hrun $SERIE -o build/src/tests.got -i build/src -m Seri.Lib.Tests.testall \
+#    build/src/Seri/Lib/Tests.sri +RTS -K1g
+#run echo -n "(True :: Bool)" > build/src/tests.wnt
+#hrun cmp build/src/tests.got build/src/tests.wnt
 
 # Poorly typed tests.
 proc badtypetest {name} {
@@ -84,57 +84,57 @@ badtypetest "BadType2"
 badtypetest "InstCtx"
 
 
-# Test the haskell target.
-set hsdir build/src/Seri/Target/Haskell
-hrun $SERIH -o $hsdir/hstests.hs -i build/src -m testall \
-    build/src/Seri/Lib/Tests.sri
-hrun -ignorestderr $GHC -o $hsdir/hstests -ibuild/src $hsdir/hstests.hs
-run ./$hsdir/hstests > $hsdir/hstests.got
-run echo "True" > $hsdir/hstests.wnt
-hrun cmp $hsdir/hstests.got $hsdir/hstests.wnt
-
-# The SMT query1 tests
-proc query1test {name args} {
-    run $::SERIQ1 -d build/src/Seri/SMT/Tests/$name.1.dbg -i build/src \
-         -m Seri.SMT.Tests.$name.main \
-         build/src/Seri/SMT/Tests/$name.sri {*}$args \
-         > build/src/Seri/SMT/Tests/$name.1.out
-}
-
-# The SMT query2 tests
-proc query2test {name args} {
-    run $::SERIQ2 -d build/src/Seri/SMT/Tests/$name.2.dbg -i build/src \
-         -m Seri.SMT.Tests.$name.main \
-         build/src/Seri/SMT/Tests/$name.sri {*}$args \
-         > build/src/Seri/SMT/Tests/$name.2.out
-}
-
-
-query1test "Query1"
-query1test "Query2"
-query1test "Complex"
-query1test "If"
-query1test "Casenomatch"
-query1test "Bluespec"
-query1test "Array"
-query1test "Share"
-query1test "Bit"
-query1test "AllQ"
-
-query2test "Query1"
-query2test "Query2"
-query2test "Complex"
-query2test "If"
-query2test "Casenomatch"
-query2test "Bluespec"
-query2test "Array"
-query2test "Share"
-query2test "Bit"
-query2test "AllQ"
-
-# The enoch tests
-hrun $::ENOCH
-hrun $::SUDOKU
+## Test the haskell target.
+#set hsdir build/src/Seri/Target/Haskell
+#hrun $SERIH -o $hsdir/hstests.hs -i build/src -m testall \
+#    build/src/Seri/Lib/Tests.sri
+#hrun -ignorestderr $GHC -o $hsdir/hstests -ibuild/src $hsdir/hstests.hs
+#run ./$hsdir/hstests > $hsdir/hstests.got
+#run echo "True" > $hsdir/hstests.wnt
+#hrun cmp $hsdir/hstests.got $hsdir/hstests.wnt
+#
+## The SMT query1 tests
+#proc query1test {name args} {
+#    run $::SERIQ1 -d build/src/Seri/SMT/Tests/$name.1.dbg -i build/src \
+#         -m Seri.SMT.Tests.$name.main \
+#         build/src/Seri/SMT/Tests/$name.sri {*}$args \
+#         > build/src/Seri/SMT/Tests/$name.1.out
+#}
+#
+## The SMT query2 tests
+#proc query2test {name args} {
+#    run $::SERIQ2 -d build/src/Seri/SMT/Tests/$name.2.dbg -i build/src \
+#         -m Seri.SMT.Tests.$name.main \
+#         build/src/Seri/SMT/Tests/$name.sri {*}$args \
+#         > build/src/Seri/SMT/Tests/$name.2.out
+#}
+#
+#
+#query1test "Query1"
+#query1test "Query2"
+#query1test "Complex"
+#query1test "If"
+#query1test "Casenomatch"
+#query1test "Bluespec"
+#query1test "Array"
+#query1test "Share"
+#query1test "Bit"
+#query1test "AllQ"
+#
+#query2test "Query1"
+#query2test "Query2"
+#query2test "Complex"
+#query2test "If"
+#query2test "Casenomatch"
+#query2test "Bluespec"
+#query2test "Array"
+#query2test "Share"
+#query2test "Bit"
+#query2test "AllQ"
+#
+## The enoch tests
+#hrun $::ENOCH
+#hrun $::SUDOKU
 
 puts "BUILD COMPLETE"
 

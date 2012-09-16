@@ -116,9 +116,9 @@ instance TypeCheck Dec where
                 
 
           checkmatch :: TypeEnv -> Match -> Failable ()
-          checkmatch tenv (Match p b) = do
-            bindings <- checkpat p
-            checkexp (bindings ++ tenv) b
+          checkmatch tenv (Match ps b) = do
+            bindings <- mapM checkpat ps
+            checkexp (concat bindings ++ tenv) b
 
           -- checkexp tenv e
           -- Type check an expression.
@@ -127,38 +127,13 @@ instance TypeCheck Dec where
           --  fails if expression does not type check.
           checkexp :: TypeEnv -> Exp -> Failable ()
           checkexp _ (LitE {}) = return ()
-          checkexp tenv (CaseE e ms) = do
-             checkexp tenv e 
-             mapM_ (checkmatch tenv) ms
-             let badpattypes = filter (\p -> typeof e /= typeof p) [p | Match p _ <- ms]
-             if null badpattypes
-                then return ()
-                else throw $ "Expected type " ++ pretty (typeof e)
-                            ++ " in pattern " ++ pretty (head (badpattypes))
-                            ++ " but found type " ++ pretty (typeof (head (badpattypes)))
-             let badmtypes = filter (\e -> typeof e /= typeof (head ms)) [e | Match _ e <- ms]
-             if null badmtypes
-                then return ()
-                else throw $ "Expected type " ++ pretty (typeof e)
-                            ++ " in match expression " ++ pretty (head (badmtypes))
-                            ++ " but found type " ++ pretty (typeof (head (badmtypes)))
-          checkexp tenv (AppE f x) = do    
-             checkexp tenv f
-             checkexp tenv x
-             case typeof f of
-                (AppT (AppT (ConT n) a) _) | n == name "->" ->
-                    if a == typeof x
-                        then return ()
-                        else throw $ "checkexp app: expected type " ++ pretty a ++
-                            " but got type " ++ pretty (typeof x) ++
-                            " in expression " ++ pretty x
-                t -> throw $ "expected function type, but got type " ++ pretty t ++ " in expression " ++ pretty f
-          checkexp tenv (LamE (Sig n t) e) = checkexp ((n, t):tenv) e
+
           checkexp _ c@(ConE s@(Sig n ct)) = do
              texpected <- lookupDataConType env n
              if isSubType texpected ct
                 then return ()
                 else throw $ "checkexp: expecting type " ++ pretty texpected ++ ", but found type " ++ pretty ct ++ " in data constructor " ++ pretty n
+
           checkexp tenv (VarE (Sig n t)) =
              case lookup n tenv of
                  Just t' | t == t' -> return ()
@@ -170,6 +145,39 @@ instance TypeCheck Dec where
                          then return ()
                          else throw $ "expected variable of type:\n  " ++ pretty texpected
                                     ++ "\nbut " ++ pretty n ++ " has type:\n  " ++ pretty t
+
+          checkexp tenv (AppE f [x]) = do    
+             checkexp tenv f
+             checkexp tenv x
+             case typeof f of
+                (AppT (AppT (ConT n) a) _) | n == name "->" ->
+                    if a == typeof x
+                        then return ()
+                        else throw $ "checkexp app: expected type " ++ pretty a ++
+                            " but got type " ++ pretty (typeof x) ++
+                            " in expression " ++ pretty x
+                t -> throw $ "expected function type, but got type " ++ pretty t ++ " in expression " ++ pretty f
+          checkexp tenv (AppE f (x:xs)) = checkexp tenv (AppE (AppE f [x]) xs)
+
+          checkexp tenv (LaceE []) = throw "Empty lace expression"
+          checkexp tenv (LaceE ms@(Match ps1 _ : _)) = do
+             mapM_ (checkmatch tenv) ms
+             let pattypes = map typeof ps1
+             let badpattypes = filter (\ps -> pattypes /= map typeof ps) [ps | Match ps _ <- tail ms]
+             if null badpattypes
+                then return ()
+                else
+                  let printtypes ts = render (sep $ punctuate comma (map ppr ts))
+                  in throw $ "Expected types " ++ printtypes pattypes
+                            ++ " in pattern " ++ pretty (head (badpattypes))
+                            ++ " but found types " ++ printtypes (head (badpattypes))
+             let badmtypes = filter (\e -> typeof e /= typeof (head ms)) [e | Match _ e <- ms]
+             if null badmtypes
+                then return ()
+                else throw $ "Expected type " ++ pretty (typeof (head ms))
+                            ++ " in match expression " ++ pretty (head (badmtypes))
+                            ++ " but found type " ++ pretty (typeof (head (badmtypes)))
+          checkexp tenv e = error $ "checkexp: " ++ show e
 
       in checkdec
 

@@ -35,7 +35,7 @@
 
 -- | Utilities for working with Seri Types
 module Seri.Lambda.Types (
-    appsT, arrowsT, outputT, unappsT, unarrowsT,
+    appsT, arrowsT, unappsT, unarrowsT,
     unitT, boolT, listT, integerT, bitT, charT, stringT, tupT, untupT,
     Typeof(..),
     assign, assignl, assignments, bindingsP, bindingsP', varTs, nvarTs,
@@ -78,12 +78,6 @@ arrowsT :: [Type] -> Type
 arrowsT [] = error $ "arrowsT applied to empty list"
 arrowsT [t] = t
 arrowsT (t:ts) = appsT [ConT (name "->"), t, arrowsT ts]
-
--- | Given a type of the form (a -> b), returns b.
--- TODO: this should throw an error if the given type is not a function type.
-outputT :: Type -> Type
-outputT (AppT (AppT (ConT ar) _) t) | ar == (name "->") = t
-outputT t = t
 
 -- | Given a type of the form (a b ... c),
 -- returns the list: [a, b, ..., c]
@@ -161,12 +155,15 @@ instance Typeof Lit where
 
 instance Typeof Exp where
     typeof (LitE l) = typeof l
-    typeof (CaseE _ (m:_)) = typeof m
-    typeof (AppE f _) = outputT (typeof f)
-    typeof (LamE tn e) = arrowsT [typeof tn, typeof e]
     typeof (ConE tn) = typeof tn
     typeof (VarE tn) = typeof tn
-    typeof e = error $ "typeof: " ++ show e
+    typeof e@(AppE f xs) = 
+      let fts = unarrowsT (typeof f)
+      in case (drop (length xs) fts) of
+            [] -> UnknownT
+            ts -> arrowsT ts
+    typeof (LaceE []) = UnknownT
+    typeof (LaceE (Match ps b:_)) = arrowsT (map typeof ps ++ [typeof b])
     
 instance Typeof Sig where
     typeof (Sig _ t) = t

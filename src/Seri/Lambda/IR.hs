@@ -103,7 +103,7 @@ type Context = [Class]
 data Class = Class Name [Type]
       deriving(Eq, Ord, Show)
 
-data Match = Match Pat Exp      -- ^ p -> e
+data Match = Match [Pat] Exp      -- ^ p1, p2, ... -> e
     deriving (Eq, Ord, Show)
 
 data Lit = IntegerL Integer         -- ^ integer literal
@@ -111,11 +111,10 @@ data Lit = IntegerL Integer         -- ^ integer literal
     deriving (Eq, Ord, Show)
 
 data Exp = LitE Lit                 -- ^ literal
-         | CaseE Exp [Match]        -- ^ case e of { ms }
-         | AppE Exp Exp             -- ^ f x
-         | LamE Sig Exp             -- ^ \x -> e
          | ConE Sig                 -- ^ data constructor
          | VarE Sig                 -- ^ variable
+         | LaceE [Match]            -- ^ lambda-case
+         | AppE Exp [Exp]             -- ^ f x y ...
      deriving (Eq, Ord, Show)
 
 -- | Patterns.

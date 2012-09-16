@@ -1,0 +1,231 @@
+
+Sun Sep 16 09:20:41 EDT 2012
+
+I was reading up on proposals for Haskell', and among the interesting ideas is
+lambda-case. It's a case statement without the argument.
+
+I believe this would be good to use in my seri IR.
+Why? Because application, lambda, and case statements all overlap.
+
+(\x -> foo x) a
+
+and
+
+case a of
+    x -> foo x
+
+Are two different ways of expressing exactly the same thing.
+
+Both case and lambda does some sort of name binding, both application with
+lambda and case involve beta reduction. There is a lot of code in the
+elaborator which is common between beta reduction and case application.
+
+So the proposal is this. Replace LamE and CaseE with a single... Let's call it
+LamE still, which takes a list of matches:
+
+LamE [Match]
+
+Err... Actually, to avoid confusion, I should give it a different name...
+
+LCaseE ?
+MatchE ?
+LamatchE?
+
+Err... AbsE?
+
+What's it doing? It's doing abstraction and pattern matching...
+
+It's not lambda and not case, because those have known meanings. Perhaps I can
+call it... BindE? No...
+
+Anyway, not sure what to call it, but I think this is an improvement. For now
+just call it LCaseE.
+
+CaseE x ms    ===     AppE (LCaseE ms) x
+LamE s b      ===     LCaseE [Match (VarP s) b]
+
+We lose no information at all. We reduce the number of constructors in the IR
+by one. We don't have to duplicate code for beta reduction and name binding.
+
+LaceE ... oh, I like that name. Use it.
+
+And there are many places where this would be the perfect construct. For
+example, in multi-clause function definitions and lambdas with pattern
+matching we currently have to introduce a dummy name to get at the pattern
+matching of case.
+
+I think this is totally a good idea. So I'm going to try it out. It will be a
+bit of work to change the existing implementation, but I think it should be
+worth it in terms of simplicity.
+
+Another thing I want to mention is haskell 2010 supports pattern guards, which
+give a pattern abstraction kind of thing. That is, they support pattern
+matching on abstract data types. This might be a good opportunity to try this
+out. For example, we could make the IR an abstract data type...
+
+I think it's too much to worry about all at once, but it's something to keep
+in mind.
+
+Cool. I'm going to try this out.
+
+First step: get serit and serie to work again under this new ir.
+
+Sun Sep 16 09:54:29 EDT 2012
+
+Started working on this. The code seems to be getting simpler, which is good.
+
+Now, I've run into the multi-clause thing, and there's a slight annoyance.
+
+What we are doing is:
+
+foo pa1 pb1 = e1
+foo pa2 pb2 = e2
+
+Has to be translated as:
+
+foo = \a b -> case (a, b) of
+                (pa1, pb1) -> e1
+                (pa2, pb2) -> e2
+
+And that's annoying. The problem is, because case only supports a single
+argument, we have to combine everything together in an unpleasant way.
+
+Question is... can we have the LaceE support multiple arguments? Does that
+make sense to do? Nirav was always telling me that's one way to make the
+elaborator faster... But here it's more natural...
+
+There's no problem with a representation like that. Instead of Match, use
+Clause. Or just make Match into a clause.
+
+Match = Match [Pat] Exp
+
+This makes it easy to do multi argument lambdas as just a single case.
+It lets us do multi-clause functions trivially.
+
+How do you do elaboration?
+
+Well, you can just wait until the number of arguments to your function matches
+the number of patterns before attempting a match.
+
+There's also a question of how I'm going to pretty print these things. We can
+turn it into a case if we have enough args. We can turn it into a lambda if
+there is only one match. But if there are multiple matches and not fully
+applied, we need to introduce names to go to case...
+
+So support a new syntax for this expression.
+
+lace args of 
+  matches
+
+
+And in this case, allow the number of args to be less than the number of
+patterns in order to make a function. Is that too confusing?
+
+If I use this, then I could get rid of case and lambda syntax. Or... perhaps
+we require all arguments be present, just using _ for those to be applied?
+
+Case can be described using lace.
+
+\x -> foo x
+
+Becomes:
+
+lace _ of { x -> foo x }
+                  
+Not quite so nice... but we can have the sugar still anyway.
+
+For example:
+
+&& :: Bool -> Bool -> Bool;
+&& = lace _, _ of {
+       True, x -> x
+       False, _ -> False;
+};
+
+Um... Maybe I'm not so much a fan of how the arguments are specified.
+We could allow case to have these '_' arguments.
+
+Then have a syntax assuming no arguments.
+
+&& = \ { True, x -> x
+       ; False, _ -> False }
+
+And we no longer need support for multi-clause functions.
+
+&& = lace _, _ of {
+        True, x -> x;
+        False, _ -> False;
+    }
+
+I don't know. We can introduce names, because they are used only locally, so
+long as we can pick names the user isn't allowed to pick. Then turn it into a
+case statement. So I don't really have to worry about this now. I can still
+have the internal representation be a mutli-arg lace.
+
+Okay. Let me try this now then.
+
+Question. Now that we have multi-arg laces, should we have multi-arg
+applications too?
+
+AppE Exp [Exp]?
+
+We can certainly easily enough represent a single version...
+We want an easy way to make sure we have as many arguments as we need. It lets
+us do simultaneous reduction.
+
+We can have an elaboration step which turns:
+
+AppE (AppE f xs) ys
+
+Into: AppE f (xs ++ ys)
+
+I see no reason not to do this while I'm in the midst of rewriting everything
+anyway... This should save on memory too perhaps? appsE is the same now as
+AppE, except that AppE takes the function as a separate argument.
+
+Let me just remind myself about what sorts of reasons I may have for not
+wanting to do this. In the IR we want two things, which aren't always in
+agreement: 1. High level information. 2. simplicity.
+
+So, for example, we don't want to have an if statement, because it doesn't add
+any high level information you can't get with case statement, but it does add
+another case to worry about.
+
+Adding multiple arguments to AppE would have caused problems, if lambda is
+only single argument, because then things would have gotten more complicated,
+perhaps. But with lambda (or lace, as the case may be) having multiple
+arguments, it doesn't seem any more complex, and we have higher level
+information. Well, not really higher level, but more compact. We can avoid
+lots of folds and unfolds.
+
+There is one slight problem. And it's what I showed above. There are two
+representations for: f a b.
+
+AppE f [a, b]
+
+And:
+
+AppE (AppE f [a]) [b]
+
+I don't like that one bit.
+
+Oh well. Let me go with it anyway, because I can't think of a concrete example
+where that actually causes more problems than I already have. We can always
+canonicalize the representation.
+
+Good. Let me get on this way now then.
+
+Sun Sep 16 10:54:14 EDT 2012
+
+Oh... I should totally use pattern guards to implement pretty printing. That
+is the perfect opportunity to try them out.
+
+Sun Sep 16 13:20:52 EDT 2012
+
+Okay! Well, wow. I've managed to get serit up and running, hopefully
+correctly. I pretty print lace as: case of { ... }
+I may wish to add that syntax to my parser.
+
+I do think this is an improvement. It's just a whole lot of work...
+I think it's lunch time now.
+

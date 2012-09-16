@@ -48,30 +48,16 @@ free :: Exp -> [Sig]
 free =
   let free' :: [Name] -> Exp -> [Sig]
       free' _ (LitE {}) = []
-      free' bound (CaseE e ms) = 
-        let freem :: Match -> [Sig]
-            freem (Match p b) = free' (map (\(Sig n _) -> n) (bindingsP p) ++ bound) b
-        in nub $ concat (free' bound e : map freem ms)
-      free' bound (AppE a b) = nub $ free' bound a ++ free' bound b
-      free' bound (LamE (Sig n _) b) = free' (n:bound) b
-      free' bound (ConE {}) = []
+      free' _ (ConE {}) = []
       free' bound (VarE (Sig n _)) | n `elem` bound = []
-      free' bound (VarE s) = [s]
+      free' _ (VarE s) = [s]
+      free' bound (AppE a bs) = nub $ free' bound a ++ concat (map (free' bound) bs)
+      free' bound (LaceE ms) =
+        let freem :: Match -> [Sig]
+            freem (Match ps b) = free' (map (\(Sig n _) -> n) (concat (map bindingsP ps)) ++ bound) b
+        in nub $ concat (map freem ms)
   in free' []
 
--- | Return a collection of the free variable names in the given expression.
 free' :: Exp -> [Name]
-free' =
-  let fr :: [Name] -> Exp -> [Name]
-      fr _ (LitE {}) = []
-      fr bound (CaseE e ms) = 
-        let freem :: Match -> [Name]
-            freem (Match p b) = fr (bindingsP' p ++ bound) b
-        in concat (fr bound e : map freem ms)
-      fr bound (AppE a b) = fr bound a ++ fr bound b
-      fr bound (LamE (Sig n _) b) = fr (n:bound) b
-      fr bound (ConE {}) = []
-      fr bound (VarE (Sig n _)) | n `elem` bound = []
-      fr bound (VarE (Sig n _)) = [n]
-  in nub . fr []
+free' e = [n | Sig n _ <- free e]
 
