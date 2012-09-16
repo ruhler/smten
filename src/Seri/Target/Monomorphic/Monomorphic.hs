@@ -138,21 +138,6 @@ genval s@(Sig n t) = do
 -- expression.
 monoexp :: Exp -> M Exp
 monoexp e@(LitE {}) = return e
-monoexp (CaseE e ms) = do
-    e' <- monoexp e
-    ms' <- mapM monomatch ms
-    return (CaseE e' ms')
-monoexp (AppE a b) = do
-    a' <- monoexp a
-    b' <- monoexp b
-    return (AppE a' b')
-monoexp (LamE (Sig n t) e) = do
-    t' <- monotype t
-    bound <- gets ms_bound
-    modifyS $ \ms -> ms { ms_bound = n : bound }
-    e' <- monoexp e
-    modifyS $ \ms -> ms { ms_bound = bound }
-    return (LamE (Sig n t') e')
 monoexp (ConE (Sig n t)) = do
     t' <- monotype t
     let n' = n `nappend` typesuffix (last $ unarrowsT t)
@@ -175,15 +160,22 @@ monoexp (VarE s@(Sig n t)) = do
             suffix <- valsuffix s
             return (VarE (Sig (n `nappend` suffix) t'))
         _ -> return (VarE (Sig n t'))
+monoexp (AppE a bs) = do
+    a' <- monoexp a
+    bs' <- mapM monoexp bs
+    return (AppE a' bs')
+monoexp (LaceE ms) = do
+    ms' <- mapM monomatch ms
+    return (LaceE ms')
 
 monomatch :: Match -> M Match
-monomatch (Match p e) = do
-    p' <- monopat p
+monomatch (Match ps e) = do
+    ps' <- mapM monopat ps
     bound <- gets ms_bound
-    modifyS $ \ms -> ms { ms_bound = bindingsP' p ++ bound }
+    modifyS $ \ms -> ms { ms_bound = concatMap bindingsP' ps ++ bound }
     e' <- monoexp e
     modifyS $ \ms -> ms { ms_bound = bound }
-    return $ Match p' e'
+    return $ Match ps' e'
 
 monopat :: Pat -> M Pat
 monopat (ConP t n ps) = do

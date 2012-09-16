@@ -33,6 +33,8 @@
 -- 
 -------------------------------------------------------------------------------
 
+{-# LANGUAGE PatternGuards #-}
+
 -- | Target for making sure any lambdas are fully applied if possible in a
 -- seri expression.
 module Seri.Target.Delambdafy (
@@ -50,45 +52,31 @@ delambdafy' :: [(Name, Exp)] -> Exp -> Exp
 delambdafy' reds e = 
   case e of
     LitE {} -> e
-    CaseE x ms ->
+    ConE {} -> e
+    VarE (Sig n _) | Just v <- lookup n reds -> v
+    VarE {} -> e
+
+    AppE a bs ->
+     case (delambdafy' reds a, map (delambdafy' reds) bs) of
+        -- Push application inside laces where possible.
+        -- Rewrite:    ((\a -> f) x) y
+        --             ((\a -> f y) x)
+        -- With proper renaming.
+        (AppE c@(LaceE {}) x, y) ->
+           let intom (Match ps b) = Match ps (AppE b y)
+               LaceE ms = alpharename (concatMap free' y) c
+           in delambdafy' reds $ AppE (LaceE (map intom ms)) x
+
+        (a, b) -> AppE a b
+
+    LaceE ms ->
       let dom (Match p b) = 
-            let sigs = bindingsP p
+            let sigs = concatMap bindingsP p
                 names = [n | Sig n _ <- sigs]
                 nreds = [(n, VarE s) | s@(Sig n _) <- sigs]
             in Match p (delambdafy' (nreds++reds) b)
           ms' = map dom ms 
-      in CaseE (delambdafy' reds x) ms'
-
-    AppE a b ->
-     case (delambdafy' reds a, delambdafy' reds b) of
-        -- Always perform beta reduction if the argument is a function type.
-        (l@(LamE {}), x) | isfunt (typeof x) ->
-           let LamE (Sig name _) b = alpharename (free' x) l
-           in delambdafy' ((name, x):reds) b
-
-        -- Push application inside lambdas where possible.
-        -- Rewrite:    ((\a -> f) x) y
-        --             ((\a -> f y) x)
-        -- With proper renaming.
-        (AppE c@(LamE {}) x, y) ->
-           let LamE s b = alpharename (free' y) c
-           in delambdafy' reds $ AppE (LamE s (AppE b y)) x
-
-        -- Push application inside of case where possible.
-        -- Rewrite:   (case x of { p1 -> m1; p2 -> m2 ; ... }) y
-        --            (case x of { p1 -> m1 y; p2 -> m2 y; ... })
-        -- With proper renaming
-        (c@(CaseE {}), y) -> 
-          let CaseE x ms = alpharename (free' y) c
-          in delambdafy' reds $ CaseE x [Match p (AppE b y) | Match p b <- ms]
-    
-        (a, b) -> AppE a b
-    LamE s@(Sig n t) b -> LamE s (delambdafy' ((n, VarE s):reds) b)
-    ConE {} -> e
-    VarE (Sig n t) ->
-      case lookup n reds of
-         Just v -> v
-         Nothing -> e
+      in LaceE ms'
 
 -- Return True if the given expression binds the given name in a lambda term
 -- somewhere.
@@ -96,7 +84,10 @@ hasname :: Name -> Exp -> Bool
 hasname n =
   let hn :: Exp -> Bool
       hn (LitE {}) = False
-      hn (CaseE e ms) =
+      hn (ConE {}) = False
+      hn (VarE {}) = False
+      hn (AppE a b) = hn a || any hn b
+      hn (LaceE ms) =
         let hnp :: Pat -> Bool
             hnp (ConP _ _ ps) = any hnp ps
             hnp (VarP (Sig nm _)) = n == nm
@@ -104,12 +95,8 @@ hasname n =
             hnp (WildP {}) = False
             
             hnm :: Match -> Bool
-            hnm (Match p b) = hnp p || hn b
-        in hn e || any hnm ms
-      hn (AppE a b) = hn a || hn b
-      hn (LamE (Sig nm _) b) = nm == n || hn b
-      hn (ConE {}) = False
-      hn (VarE {}) = False
+            hnm (Match p b) = any hnp p || hn b
+        in any hnm ms
   in hn
 
 -- | Rename any variable bindings in the given expression to names which do
@@ -135,23 +122,21 @@ alpharename bad e =
       repat p@(WildP {}) = p
 
       rematch :: [Name] -> Match -> Match
-      rematch bound (Match p b) = 
-        let p' = repat p
-            b' = rename (bindingsP' p ++ bound) b
-        in Match p' b'
+      rematch bound (Match ps b) = 
+        let ps' = map repat ps
+            b' = rename (concatMap bindingsP' ps ++ bound) b
+        in Match ps' b'
 
       -- Do alpha renaming in an expression given the list of bound variable
       -- names before renaming.
       rename :: [Name] -> Exp -> Exp
       rename _ e@(LitE {}) = e
-      rename bound (CaseE e ms)
-        = CaseE (rename bound e) (map (rematch bound) ms)
-      rename bound (AppE a b) = AppE (rename bound a) (rename bound b)
-      rename bound (LamE (Sig n t) b)
-        = LamE (Sig (newname n) t) (rename (n : bound) b)
       rename _ e@(ConE {}) = e
       rename bound (VarE (Sig n t)) | n `elem` bound = VarE (Sig (newname n) t) 
       rename _ e@(VarE {}) = e
+      rename bound (AppE a b) = AppE (rename bound a) (map (rename bound) b)
+      rename bound (LaceE ms)
+        = LaceE (map (rematch bound) ms)
   in rename [] e
 
 

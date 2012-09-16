@@ -93,45 +93,45 @@ run ./$hsdir/hstests > $hsdir/hstests.got
 run echo "True" > $hsdir/hstests.wnt
 hrun cmp $hsdir/hstests.got $hsdir/hstests.wnt
 
-## The SMT query1 tests
-#proc query1test {name args} {
-#    run $::SERIQ1 -d build/src/Seri/SMT/Tests/$name.1.dbg -i build/src \
-#         -m Seri.SMT.Tests.$name.main \
-#         build/src/Seri/SMT/Tests/$name.sri {*}$args \
-#         > build/src/Seri/SMT/Tests/$name.1.out
-#}
-#
-## The SMT query2 tests
-#proc query2test {name args} {
-#    run $::SERIQ2 -d build/src/Seri/SMT/Tests/$name.2.dbg -i build/src \
-#         -m Seri.SMT.Tests.$name.main \
-#         build/src/Seri/SMT/Tests/$name.sri {*}$args \
-#         > build/src/Seri/SMT/Tests/$name.2.out
-#}
-#
-#
-#query1test "Query1"
-#query1test "Query2"
-#query1test "Complex"
-#query1test "If"
-#query1test "Casenomatch"
-#query1test "Bluespec"
+# The SMT query1 tests
+proc query1test {name args} {
+    run $::SERIQ1 -d build/src/Seri/SMT/Tests/$name.1.dbg -i build/src \
+         -m Seri.SMT.Tests.$name.main \
+         build/src/Seri/SMT/Tests/$name.sri {*}$args \
+         > build/src/Seri/SMT/Tests/$name.1.out
+}
+
+# The SMT query2 tests
+proc query2test {name args} {
+    run $::SERIQ2 -d build/src/Seri/SMT/Tests/$name.2.dbg -i build/src \
+         -m Seri.SMT.Tests.$name.main \
+         build/src/Seri/SMT/Tests/$name.sri {*}$args \
+         > build/src/Seri/SMT/Tests/$name.2.out
+}
+
+
+query1test "Query1"
+query1test "Query2"
+query1test "Complex"
+query1test "If"
+query1test "Casenomatch"
+query1test "Bluespec"
 #query1test "Array"
-#query1test "Share"
-#query1test "Bit"
-#query1test "AllQ"
-#
-#query2test "Query1"
-#query2test "Query2"
-#query2test "Complex"
-#query2test "If"
-#query2test "Casenomatch"
-#query2test "Bluespec"
+query1test "Share"
+query1test "Bit"
+query1test "AllQ"
+
+query2test "Query1"
+query2test "Query2"
+query2test "Complex"
+query2test "If"
+query2test "Casenomatch"
+query2test "Bluespec"
 #query2test "Array"
-#query2test "Share"
-#query2test "Bit"
-#query2test "AllQ"
-#
+query2test "Share"
+query2test "Bit"
+query2test "AllQ"
+
 ## The enoch tests
 #hrun $::ENOCH
 #hrun $::SUDOKU
