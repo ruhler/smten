@@ -19,8 +19,8 @@ proc cabal {fcabal} {
     set exes {
         serit Seri/Lambda/serit.hs {}
         serie Seri/Target/Elaborate/serie.hs {}
+        serih Seri/Target/Haskell/serih.hs {}
     }
-#        serih Seri/Target/Haskell/serih.hs {}
 #        seriq1 Seri/SMT/seriq1.hs yices1
 #        seriq2 Seri/SMT/seriq2.hs yices2
 #        enoch Seri/Enoch/enoch.hs yices2

@@ -173,6 +173,7 @@ stringE s = listE (map charE s)
 
 deStringE :: Exp -> Maybe String
 deStringE e = do
+  guard $ typeof e == stringT
   xs <- deListE e
   mapM deCharE xs
             

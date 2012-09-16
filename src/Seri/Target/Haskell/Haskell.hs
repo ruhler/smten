@@ -33,6 +33,8 @@
 -- 
 -------------------------------------------------------------------------------
 
+{-# LANGUAGE PatternGuards #-}
+
 module Seri.Target.Haskell.Haskell (
     haskell, haskellH,
     ) where
@@ -52,24 +54,40 @@ hsLit (IntegerL i) = H.IntegerL i
 hsLit (CharL c) = H.CharL c
 
 hsExp :: HCompiler -> Exp -> Failable H.Exp
+hsExp c e | Just str <- deStringE e = return $ H.LitE (H.StringL str)
+hsExp c e | Just xs <- deListE e = do
+  xs' <- mapM (compile_exp c c) xs
+  return $ H.ListE xs'
+hsExp c e | Just (es, ms) <- deCaseE e = do
+  es' <- mapM (compile_exp c c) es
+  ms' <- mapM (hsMatch c) ms
+  return $ H.CaseE (H.TupE es') ms'
+
+hsExp c e | Just (Match ps b) <- deLamE e = do
+  let ps' = map hsPat ps
+  b' <- compile_exp c c b
+  return $ H.LamE ps' b'
+
 hsExp c (LitE l) = return (H.LitE (hsLit l))
-hsExp c (CaseE e ms) = do
-    e' <- compile_exp c c e
-    ms' <- mapM (hsMatch c) ms
-    return $ H.CaseE e' ms'
-hsExp c (AppE f x) = do
-    f' <- compile_exp c c f
-    x' <- compile_exp c c x
-    return $ H.AppE f' x'
-hsExp c (LamE (Sig n _) x) = do
-    x' <- compile_exp c c x
-    return $ H.LamE [H.VarP (hsName n)] x'
 hsExp c (ConE (Sig n _)) = return $ H.ConE (hsName n)
 hsExp c (VarE (Sig n _)) = return $ H.VarE (hsName n)
+hsExp c (AppE f xs) = do
+    f' <- compile_exp c c f
+    xs' <- mapM (compile_exp c c) xs
+    return $ foldl H.AppE f' xs'
+    
+-- Make a lace look like case by introducing dummy variables
+-- TODO: hopefully we don't shadow any names here.
+hsExp c e@(LaceE ms@(Match ps _ : _)) =
+    let nms = [name $ '_':'_':c:[] | c <- take (length ps) "abcdefghijklmnopqrstuvwxyz"]
+        dummyps = [VarP (Sig n UnknownT) | n <- nms]
+        dummyargs = [VarE (Sig n UnknownT) | n <- nms]
+        body = AppE e dummyargs
+    in hsExp c (lamE $ Match dummyps body) 
 
 hsMatch :: HCompiler -> Match -> Failable H.Match
-hsMatch c (Match p e) = do
-    let p' = hsPat p
+hsMatch c (Match ps e) = do
+    let p' = H.TupP $ map hsPat ps
     e' <- compile_exp c c e
     return $ H.Match p' (H.NormalB $ e') []
     

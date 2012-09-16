@@ -84,15 +84,15 @@ badtypetest "BadType2"
 badtypetest "InstCtx"
 
 
-## Test the haskell target.
-#set hsdir build/src/Seri/Target/Haskell
-#hrun $SERIH -o $hsdir/hstests.hs -i build/src -m testall \
-#    build/src/Seri/Lib/Tests.sri
-#hrun -ignorestderr $GHC -o $hsdir/hstests -ibuild/src $hsdir/hstests.hs
-#run ./$hsdir/hstests > $hsdir/hstests.got
-#run echo "True" > $hsdir/hstests.wnt
-#hrun cmp $hsdir/hstests.got $hsdir/hstests.wnt
-#
+# Test the haskell target.
+set hsdir build/src/Seri/Target/Haskell
+hrun $SERIH -o $hsdir/hstests.hs -i build/src -m testall \
+    build/src/Seri/Lib/Tests.sri
+hrun -ignorestderr $GHC -o $hsdir/hstests -ibuild/src $hsdir/hstests.hs
+run ./$hsdir/hstests > $hsdir/hstests.got
+run echo "True" > $hsdir/hstests.wnt
+hrun cmp $hsdir/hstests.got $hsdir/hstests.wnt
+
 ## The SMT query1 tests
 #proc query1test {name args} {
 #    run $::SERIQ1 -d build/src/Seri/SMT/Tests/$name.1.dbg -i build/src \
