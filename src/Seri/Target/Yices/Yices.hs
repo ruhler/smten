@@ -255,6 +255,7 @@ yExp e | Just (xs, ms) <- deCaseE e = do
 yExp (VarE (Sig n t)) | n == name "~error" = do
     errnm <- yfreeerr t
     return $ Y.varE errnm
+yExp (AppE a []) = yExp a
 yExp e@(AppE a b) =
     case unappsE e of 
        ((ConE s):args) -> yCon s args
@@ -336,9 +337,9 @@ yExp e@(AppE a b) =
            v' <- yExp v
            return $ Y.UpdateE f' [k'] v'
        _ -> do
-           a' <- yExp a
-           b' <- mapM yExp b
-           return $ Y.FunctionE a' b'
+           a' <- yExp (AppE a (init b))
+           b' <- yExp (last b)
+           return $ Y.FunctionE a' [b']
 yExp (LitE (IntegerL x)) = return $ Y.integerE x
 yExp (LitE (CharL c)) = return $ Y.integerE (fromIntegral $ ord c)
 yExp l@(LaceE ms) = 

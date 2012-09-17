@@ -298,4 +298,17 @@ Sun Sep 16 20:04:15 EDT 2012
 
 Yup! That was the trouble. Let's see what all more bugs we have now.
 
+Sun Sep 16 20:15:35 EDT 2012
+
+And same problem with yices target. I can fix that.
+
+Sun Sep 16 20:27:59 EDT 2012
+
+Problem fixed. Everything works again now.
+
+Trouble is... sadly... it's worse performing on BCL. From 5.5 to 7.8 seconds.
+Not terrible... But still... Unfortunate.
+
+Well, I ought to be able to figure out what's up with that, as performance
+becomes problematic.
 
