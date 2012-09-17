@@ -161,7 +161,7 @@ tyVarName (NumericTV n) = n
 -- | Evaluate a concrete numeric type.
 nteval :: NType -> Integer
 nteval (ConNT i) = i
-nteval (VarNT {}) = error $ "nteval: non-concrete numeric type"
+nteval v@(VarNT {}) = error $ "nteval: non-concrete numeric type: " ++ show v
 nteval (AppNT "+" a b) = nteval a + nteval b
 nteval (AppNT "-" a b) = nteval a - nteval b
 nteval (AppNT "*" a b) = nteval a * nteval b

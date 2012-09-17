@@ -50,7 +50,6 @@ main = do
             case args of
                ["-o", fout, "-i", path, "-m", me, fin] ->
                     (writeFile fout, path, me, fin)
-               ["-i", path, fin] -> (putStrLn, path, "main", fin)
                x -> error $ "bad args: " ++ show x
 
     seri <- load [path] input

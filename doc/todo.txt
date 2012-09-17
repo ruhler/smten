@@ -69,4 +69,8 @@ There's an annoyance with sharing across commands I have to work out.
 - Variable operators: `foo`.
 - pattern matching in do bind notation.
 
+- Implement enough math somewhere to know that
+  Bit #3  -> Bit #4 -> Bit #7 is a valid subtype of
+  Bit #m  -> Bit #n -> Bit #(m+n)
 
+  Because otherwise bitvector concatentation is really annoying to use.
