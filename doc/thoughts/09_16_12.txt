@@ -312,3 +312,10 @@ Not terrible... But still... Unfortunate.
 Well, I ought to be able to figure out what's up with that, as performance
 becomes problematic.
 
+What do you think? Should I merge this to the master branch?
+
+Let me sleep on it. I think I will, because there is a lot of good stuff about
+this: we get rid of duplicated code, we reduce the number of IR constructors,
+we clean up with pattern guards, we got rid of unused code which was
+cluttering things up.
+
