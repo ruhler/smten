@@ -229,3 +229,73 @@ I may wish to add that syntax to my parser.
 I do think this is an improvement. It's just a whole lot of work...
 I think it's lunch time now.
 
+Sun Sep 16 18:41:45 EDT 2012
+
+Okay! Where are we now...
+
+The bulk of the work has been done. This does indeed reduce duplicate code.
+
+I'm not convinced multi-arg apps is the nicest thing, but I think it fits
+better with multi-pattern case than single arg app. So I'll leave it in.
+
+I threw out sharing code in the elaborator, because I didn't want to deal with
+it. If I want to add that back later... I'll have to add it back later.
+
+Pattern guards are very very nice. A lot of code cleanup has come from those.
+
+There's some bugs. Certainly in the elaborator, maybe in the delambdifier.
+They manifest in the array examples. I need to work out those issues before I
+can switch this over to the master branch.
+
+It's slightly unfortunate that we now pretty print syntax we have no hope of
+parsing at this point. I hope that's okay? I may need to deal with the issue
+later.
+
+Sun Sep 16 18:55:38 EDT 2012
+
+How do I find this bug? It's an array bug. I need to step through elaboration
+somehow. Figure out what didn't elaborate as expected.
+
+How about wrap elab: show pre and post elaboration. That should make things
+more clear.
+
+Sun Sep 16 19:43:15 EDT 2012
+
+Oh... here's something interesting.
+
+The issue is we have:
+
+
+(\MkArray _ f -> f)
+(MkArray (0, 2) (\j -> ...))
+
+And that application wasn't reduced.
+
+But... do you see the problem? The lambda looks like it takes 3 arguments
+when it should only be taking 1, and when it is given just one.
+
+Well... this could be an issue with the pretty printer. Patterns which are not
+atomic must have parenthesis in lambdas.
+
+Let me look a little more to see if I can see more info. Otherwise I'll fix
+the pretty printer and then see what's up.
+
+Sun Sep 16 19:58:10 EDT 2012
+
+Okay, I think I figured it out.
+
+We have something of this form:
+
+(\(Foo f) -> f) x y
+
+So, LaceE, takes 1 argument, is applied to 2!
+
+So, what we should really do is, apply as many arguments as the lambda takes,
+if we have enough. If there are any arguments left over, then apply those to
+the result.
+
+Sun Sep 16 20:04:15 EDT 2012
+
+Yup! That was the trouble. Let's see what all more bugs we have now.
+
+

@@ -134,14 +134,15 @@ elaborate mode env exp =
         case (attemptM $ lookupVar env s) of
             Just (pt, ve) -> elab $ toh [] $ assignexp (assignments pt ct) ve
             Nothing -> VarEH (ES_Some SNF) s
+      elab (AppEH _ x []) = elab x
       elab e@(AppEH (ES_Some m) _ _) | mode <= m = e
       elab (AppEH _ f xs) = 
         case (elab f, map elab xs) of
             (AppEH _ f largs, rargs) -> elab (AppEH ES_None f (largs ++ rargs))
-            (LaceEH _ ms@(MatchH ps _ : _), args) | length args == length ps ->
-               case matchms args ms of
+            (LaceEH _ ms@(MatchH ps _ : _), args) | length args >= length ps ->
+               case matchms (take (length ps) args) ms of
                  NoMatched -> error $ "case no match"
-                 Matched e -> elab e
+                 Matched e -> elab (AppEH ES_None e (drop (length ps) args))
                  UnMatched ms' -> AppEH (ES_Some mode) (LaceEH (ES_Some mode) ms') args
             (a', b') -> AppEH (ES_Some mode) a' b'
 
@@ -174,8 +175,7 @@ elaborate mode env exp =
       exph = toh [] exp
       elabed = elab exph
       done = runFresh (toe elabed) (free' exp)
-  in --trace ("elaborate " ++ show mode ++ ": " ++ pretty exp ++ "\nto: " ++ pretty done)
-     done
+  in done
 
 
 assignexp :: [(Name, Type)] -> Exp -> Exp

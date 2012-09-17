@@ -194,8 +194,10 @@ instance Ppr Exp where
                 <+> text "in" <+> ppr body
 
     -- Special case for lambda expressions
-    ppr e | Just (Match ps b) <- deLamE e
-          = parens $ (text "\\" <> sep (map ppr ps) <+> text "->") `sep2` ppr b
+    ppr e | Just (Match ps b) <- deLamE e =
+      let pprx x | isAtomP x = ppr x
+          pprx x = (parens $ ppr x)
+      in parens $ (text "\\" <> sep (map pprx ps) <+> text "->") `sep2` ppr b
 
     -- Normal cases
     ppr (LitE l) = ppr l

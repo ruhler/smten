@@ -142,9 +142,9 @@ arr = array (0, 2) [(0, 42), (1, 12), (2, 19)];
 testarray :: Test ();
 testarray = do {
     t "arrsub0" (42 == (arr ! 0));
-    --t "arrsub1" (12 == (arr ! 1));
-    --t "arrsub2" (19 == (arr ! 2));
-    --t "arrupd" (23 == ((arr // [(1, 23)]) ! 1));
+    t "arrsub1" (12 == (arr ! 1));
+    t "arrsub2" (19 == (arr ! 2));
+    t "arrupd" (23 == ((arr // [(1, 23)]) ! 1));
     };
 
 v4 :: Vector #4 Bool;
@@ -273,7 +273,7 @@ tests :: Test ();
 tests = do {
     testbasic;
     testprelude;
-    --testarray;
+    testarray;
     testvector;
     testbit;
 };
