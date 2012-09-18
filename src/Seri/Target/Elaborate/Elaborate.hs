@@ -239,6 +239,11 @@ primitives = HT.table $ [
       (name "Seri.Lib.Bit.__prim_and_Bit", \s -> binbprim s (\a b -> bitEH (a .&. b))),
       (name "Seri.Lib.Bit.__prim_lsh_Bit", \s -> binbiprim s (\a b -> bitEH (a `shiftL` fromInteger b))),
       (name "Seri.Lib.Bit.__prim_rshl_Bit", \s -> binbiprim s (\a b -> bitEH (a `shiftR` fromInteger b))),
+      (name "Seri.Lib.Bit.__prim_extract_Bit", \s@(Sig _ t) ->
+         binbiprim s (\a j ->
+            let AppT _ (NumT wt) = last $ unarrowsT t
+                i = j + (nteval wt) - 1
+            in bitEH (bv_extract i j a))),
       (name "Seri.Lib.Prelude.&&", \s -> 
         LaceEH (ES_Some WHNF) [
           MatchH [VarP $ Sig (name "a") boolT, VarP $ Sig (name "b") boolT] $

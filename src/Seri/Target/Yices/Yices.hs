@@ -238,6 +238,7 @@ yExp e | Just (xs, ms) <- deCaseE e = do
          return $ Y.ifE pred lete bms
 
      givename :: (Y.Expression, Char) -> CompilationM ([Y.Binding], Y.Expression)
+     givename (e, _) = return ([], e)   -- for one time use only. deleteme.
      givename (e@Y.ImmediateE {}, _) = return ([], e)
      givename (e, c) = do
         cnm <- yfreecase c
@@ -328,9 +329,14 @@ yExp e@(AppE a b) =
        [VarE (Sig n (AppT (AppT _ (ConT sw)) (ConT tw))), a] | n == name "Seri.Lib.Bit.__prim_zeroExtend_Bit" -> do
            a' <- yExp a
            return (Y.bvzeroExtendE a' (bitnum tw - bitnum sw))
-       [VarE (Sig n (AppT (AppT _ (ConT sw)) (ConT tw))), a] | n == name "Seri.Lib.Bit.__prim_trucate_Bit" -> do
+       [VarE (Sig n (AppT (AppT _ (ConT sw)) (ConT tw))), a] | n == name "Seri.Lib.Bit.__prim_truncate_Bit" -> do
            a' <- yExp a
-           return (Y.bvextractE a' 0 (bitnum tw - 1))
+           return (Y.bvextractE (bitnum tw - 1) 0 a')
+       [VarE (Sig n _), x, LitE (IntegerL i)] | n == name "Seri.Lib.Bit.__prim_extract_Bit" -> do
+           let ConT sw = typeof x
+           let ConT tw = typeof e
+           x' <- yExp x
+           return (Y.bvextractE (i + bitnum tw - 1) i x')
        [VarE (Sig n _), f, k, v] | n == name "Seri.SMT.Array.update" -> do
            f' <- yExp f
            k' <- yExp k
@@ -463,7 +469,8 @@ yDec (PrimD (TopSig n _ _)) | n == name "Seri.Lib.Bit.__prim_mul_Bit" = return (
 yDec (PrimD (TopSig n _ _)) | n == name "Seri.Lib.Bit.__prim_eq_Bit" = return ()
 yDec (PrimD (TopSig n _ _)) | n == name "Seri.Lib.Bit.__prim_fromInteger_Bit" = return ()
 yDec (PrimD (TopSig n _ _)) | n == name "Seri.Lib.Bit.__prim_zeroExtend_Bit" = return ()
-yDec (PrimD (TopSig n _ _)) | n == name "Seri.Lib.Bit.__prim_trucate_Bit" = return ()
+yDec (PrimD (TopSig n _ _)) | n == name "Seri.Lib.Bit.__prim_truncate_Bit" = return ()
+yDec (PrimD (TopSig n _ _)) | n == name "Seri.Lib.Bit.__prim_extract_Bit" = return ()
 yDec (PrimD (TopSig n _ _)) | n == name "Seri.Lib.Bit.__prim_lsh_Bit" = return ()
 yDec (PrimD (TopSig n _ _)) | n == name "Seri.Lib.Bit.__prim_rshl_Bit" = return ()
 yDec (PrimD (TopSig n _ _)) | n == name "Seri.Lib.Bit.__prim_or_Bit" = return ()

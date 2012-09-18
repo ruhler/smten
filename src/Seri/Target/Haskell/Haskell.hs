@@ -285,6 +285,7 @@ preludeH =
       md c (PrimD s@(TopSig n _ _)) | n == name "Seri.Lib.Bit.__prim_rshl_Bit" = prim c s (vare "Bit.rshl")
       md c (PrimD s@(TopSig n _ _)) | n == name "Seri.Lib.Bit.__prim_zeroExtend_Bit" = prim c s (vare "Bit.zeroExtend")
       md c (PrimD s@(TopSig n _ _)) | n == name "Seri.Lib.Bit.__prim_truncate_Bit" = prim c s (vare "Bit.truncate")
+      md c (PrimD s@(TopSig n _ _)) | n == name "Seri.Lib.Bit.__prim_extract_Bit" = prim c s (vare "Bit.extract")
 
       md _ d = throw $ "preludeH does not apply to dec: " ++ pretty d
   in Compiler me mt md

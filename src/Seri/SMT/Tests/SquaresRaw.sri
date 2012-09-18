@@ -139,7 +139,7 @@ squares_write :: Bit #32 -> Bit #133 -> Bit #134;
 squares_write v s = bit1 1 <> mks (odds s) (bit1 1 <> v) (pipeQ s);
 
 pipeQ_enq :: Bit #32 -> Bit #133 -> Bit #134;
-pipeQ_deq v s =
+pipeQ_enq v s =
   let {
     pq = pipeQ s;
   } in if ((fvalid1 pq == 1) && (fvalid2 pq == 1))
@@ -153,7 +153,7 @@ pipeQ_deq s =
   let {
     pq = pipeQ s;
   } in if ((fvalid1 pq == 1) && (fvalid2 pq == 1))
-        then bit1 1 <> mks (odds s) (squares s) (fmake 1 1 (fdata1 pq) 0 0)
+        then bit1 1 <> mks (odds s) (squares s) (fmake 1 1 (fdata2 pq) 0 0)
         else if (fvalid1 pq == 1)
                 then bit1 1 <> mks (odds s) (squares s) (fmake 1 0 0 0 0)
                 else 0;
@@ -213,6 +213,14 @@ pcpc = pc <$> pc;
 
 pcpcpc :: (Bit #133 -> Bit #134);
 pcpcpc = pcpc <$> pc;
+
+buggy :: Query (Answer (Bit #133, Bit #32));
+buggy = do {
+    s <- free;
+    v <- free;
+    assert (pipeQ_enq v s == 0);
+    query (s, v);
+};
 
 main :: Bit #134;
 main = pcpcpc state_init;

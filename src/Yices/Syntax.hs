@@ -212,10 +212,12 @@ bvandE a b = FunctionE (varE "bv-and") [a, b]
 
 -- | > (bv-shift-left0 a i)
 bvshiftLeft0E :: Expression -> Integer -> Expression
+bvshiftLeft0E a 0 = a
 bvshiftLeft0E a b = FunctionE (varE "bv-shift-left0") [a, integerE b]
 
 -- | > (bv-shift-right0 a i)
 bvshiftRight0E :: Expression -> Integer -> Expression
+bvshiftRight0E a 0 = a
 bvshiftRight0E a b = FunctionE (varE "bv-shift-right0") [a, integerE b]
 
 -- | > (bv-shl a b)
@@ -226,7 +228,7 @@ bvshlE a b = FunctionE (varE "bv-shl") [a, b]
 bvzeroExtendE :: Expression -> Integer -> Expression
 bvzeroExtendE a b = FunctionE (varE "bv-zero-extend") [a, integerE b]
 
--- | > (bv-extract a i j)
-bvextractE :: Expression -> Integer -> Integer -> Expression
-bvextractE a i j = FunctionE (varE "bv-extract") [a, integerE i, integerE j]
+-- | > (bv-extract end begin bv)
+bvextractE :: Integer -> Integer -> Expression -> Expression
+bvextractE i j x = FunctionE (varE "bv-extract") [integerE i, integerE j, x]
 

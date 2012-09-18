@@ -248,9 +248,13 @@ ytermS s (FunctionE (ImmediateE (VarV "mk-bv")) [ImmediateE (RationalV w), Immed
 ytermS s (FunctionE (ImmediateE (VarV "bv-zero-extend")) [a, ImmediateE (RationalV n)]) = do
     at <- ytermS s a
     c_yices_zero_extend at (fromInteger $ numerator n)
-ytermS s (FunctionE (ImmediateE (VarV "bv-extract")) [a, ImmediateE (RationalV i), ImmediateE (RationalV j)]) = do
-    at <- ytermS s a
-    c_yices_bvextract at (fromInteger $ numerator i) (fromInteger $ numerator j)
+
+-- syntax for bv-extract is: bv-extract end begin bv
+-- for the c api, we have: bvextract bv begin end
+ytermS s (FunctionE (ImmediateE (VarV "bv-extract")) [ImmediateE (RationalV end), ImmediateE (RationalV begin), x]) = do
+    xt <- ytermS s x
+    c_yices_bvextract xt (fromInteger $ numerator begin) (fromInteger $ numerator end)
+
 ytermS s (FunctionE (ImmediateE (VarV "bv-shift-left0")) [a, ImmediateE (RationalV n)]) = do
     at <- ytermS s a
     c_yices_shift_left0 at (fromInteger $ numerator n)

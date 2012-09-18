@@ -6,6 +6,7 @@ module Seri.Target.Haskell.Lib.Bit(
     Seri.Target.Haskell.Lib.Bit.and,
     lsh, rshl, zeroExtend,
     Seri.Target.Haskell.Lib.Bit.truncate,
+    Seri.Target.Haskell.Lib.Bit.extract,
     ) where
 
 import Data.Bits
@@ -49,4 +50,10 @@ truncate :: (N__ n, N__ m) => Bit n -> Bit m
 truncate (Bit n a)
  = let m = numeric
    in Bit m (B.bv_truncate (valueof m) a)
+
+extract :: (N__ n, N__ m) => Bit n -> Integer -> Bit m
+extract (Bit n a) j
+ = let m = numeric
+   in Bit m (B.bv_extract (valueof m + j - 1) j a)
+  
 
