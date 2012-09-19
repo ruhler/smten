@@ -48,17 +48,17 @@ class Monomorphic a where
     monomorphic :: Env -> a -> ([Dec], a)
 
 instance Monomorphic Exp where
-    monomorphic env e = fst $ runState (monoalle e) (MS env [] Set.empty Set.empty Set.empty Set.empty [])
+    monomorphic env e = fst $ runState (monoalle e) (MS env Set.empty Set.empty Set.empty Set.empty Set.empty [])
 
 instance Monomorphic Type where
-    monomorphic env t = fst $ runState (monoallt t) (MS env [] Set.empty Set.empty Set.empty Set.empty [])
+    monomorphic env t = fst $ runState (monoallt t) (MS env Set.empty Set.empty Set.empty Set.empty Set.empty [])
 
 data MS = MS {
     -- declarations in the original polymorphic environment.
     ms_poly :: Env,
 
     -- compiled declarations in the target monomorphic environment.
-    ms_mono :: [Dec],
+    ms_mono :: Set.Set Dec,
 
     -- Concrete types to make sure we monomorphize
     ms_totype :: Set.Set Type,
@@ -100,7 +100,7 @@ finish = do
             modifyS $ \ms -> ms {
                 ms_typed = Set.union dt ts,
                 ms_exped = Set.union de es,
-                ms_mono = (ms_mono ms) ++ (concat tds) ++ eds
+                ms_mono = (ms_mono ms) `Set.union` (Set.fromList $ (concat tds) ++ eds)
              }
             finish
 
@@ -211,7 +211,7 @@ monoalle e = do
     e' <- monoexp e
     finish
     m <- gets ms_mono
-    return (m, e')
+    return (Set.elems m, e')
 
 -- Monomorphize the given type and its environment.
 monoallt :: Type -> M ([Dec], Type)
@@ -219,7 +219,7 @@ monoallt t = do
     t' <- monotype t
     finish
     m <- gets ms_mono
-    return (m, t')
+    return (Set.elems m, t')
 
 -- Give the monomorphic name for an applied type
 mononametype :: Type -> Name

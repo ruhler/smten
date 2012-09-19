@@ -75,8 +75,6 @@ There's an annoyance with sharing across commands I have to work out.
 
   Because otherwise bitvector concatentation is really annoying to use.
 
-- yices generates duplicate Bit$__hash32 definitions for SquaresRaw, so we
-  can't run the debug code. Bad.
 - seriq2 for SquaresRaw... result differs from yices1 and yices2. Why?
-- bv_extract should be a primitive.
+  seriq1 seg faults on that same example...
 

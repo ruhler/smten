@@ -1,0 +1,26 @@
+
+Tue Sep 18 11:48:33 EDT 2012
+
+Looking into this bug with multiple Bit vector data type definitions.
+
+It looks like the monomorphic is returning duplicate declarations of the bit#n
+types and of the primitives. These duplications are not being eliminated.
+
+Question: why is monomorphic returning duplicated declarations? Isn't that a
+bug?
+
+Is the monomorphizer doing a lot more work than it ought to be?
+
+Is there something odd with the implementation of sets used by monomorphic?
+
+I can hack around the issue, but I should really understand why it's behaving
+different than I think it should.
+
+Tue Sep 18 21:04:50 EDT 2012
+
+It's because we do a mapM over the set, which goes from a set to a list, and
+we can end up with more duplicates.
+
+I'm just making the list of declarations a set now. That should clear that up
+well enough.
+

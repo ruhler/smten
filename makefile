@@ -3,8 +3,8 @@ all:
 	tclsh8.5 tclmk/make.tcl
 
 test:
-	./build/src/dist/build/serie/serie \
-		-o foo.out -i src \
+	./build/src/dist/build/seriq1/seriq1 \
+		-d foo.dbg -i src \
 		-m Seri.SMT.Tests.SquaresRaw.main \
 		src/Seri/SMT/Tests/SquaresRaw.sri
 

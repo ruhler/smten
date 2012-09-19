@@ -238,7 +238,6 @@ yExp e | Just (xs, ms) <- deCaseE e = do
          return $ Y.ifE pred lete bms
 
      givename :: (Y.Expression, Char) -> CompilationM ([Y.Binding], Y.Expression)
-     givename (e, _) = return ([], e)   -- for one time use only. deleteme.
      givename (e@Y.ImmediateE {}, _) = return ([], e)
      givename (e, c) = do
         cnm <- yfreecase c

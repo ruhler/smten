@@ -222,8 +222,8 @@ buggy = do {
     query (s, v);
 };
 
-main :: Bit #134;
-main = pcpcpc state_init;
+main :: Query (Answer (Bit #133, Bit #32));
+main = buggy;
 
 }
 
