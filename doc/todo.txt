@@ -76,5 +76,13 @@ There's an annoyance with sharing across commands I have to work out.
   Because otherwise bitvector concatentation is really annoying to use.
 
 - seriq2 for SquaresRaw... result differs from yices1 and yices2. Why?
-  seriq1 seg faults on that same example...
+  seriq1 seg faults on that same example randomly
+    (in GC evacuate at end of prog)
+
+- Add back support for sharing in generated queries
+
+- Merge delambdafication with the elaborator? Perhaps as a flag?
+    It makes sense to have  that all in one place.
+
+- Use the yices1 native interface where possible
 
