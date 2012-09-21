@@ -15,8 +15,8 @@ import Seri.SMT.SMT;
 --
 --  x has type a
 --  c has type b
-sketch2qbf :: [a] -> (b -> a -> Bool) -> Query (Answer b);
-sketch2qbf xs p = do {
+sketch2qbf' :: [a] -> (b -> a -> Bool) -> Query (Answer b);
+sketch2qbf' xs p = do {
   -- Find some concrete 'c' which satisfies the predicate for all existing
   -- examples.
   c <- free;
@@ -31,18 +31,21 @@ sketch2qbf xs p = do {
       rx <- query x;
       case rx of {
         Unsatisfiable -> return (Satisfiable cv);
-        Satisfiable xv -> sketch2qbf (xv:xs) p;
+        Satisfiable xv -> sketch2qbf' (xv:xs) p;
       };
     };
   };
 };
+
+sketch2qbf :: (b -> a -> Bool) -> Query (Answer b);
+sketch2qbf = sketch2qbf' [];
   
 p1 :: Integer -> Integer -> Bool;
 p1 4 _ = True;
 p1 c x = (c+x) > 2;
 
 main :: Query (Answer Integer);
-main = sketch2qbf [0] p1;
+main = sketch2qbf p1;
 
 }
 

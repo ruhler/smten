@@ -131,6 +131,7 @@ query2test "Array"
 query2test "Share"
 query2test "Bit"
 query2test "AllQ"
+query2test "AllQ2"
 
 # The enoch tests
 hrun $::ENOCH

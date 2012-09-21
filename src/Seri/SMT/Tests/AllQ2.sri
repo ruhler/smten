@@ -1,5 +1,5 @@
 
-module Seri.SMT.Tests.AllQ where {
+module Seri.SMT.Tests.AllQ2 where {
 
 import Seri.Lib.Prelude;
 import Seri.SMT.SMT;
@@ -9,10 +9,18 @@ allQ :: (Eq a) => (a -> Bool) -> Query [a];
 allQ p = do {
   x <- free;
   assert (p x);
+  allQ' x;
+};
+
+-- Find all different satisfying assignments to the given free variable in the
+-- current context.
+allQ' :: (Eq a) => a -> Query [a];
+allQ' x = do {
   r <- query x;
   case r of {
      Satisfiable v -> do {
-        vs <- allQ (\a -> (p a) && (a /= v));
+        assert (x /= v);
+        vs <- allQ' x;
         return (v:vs);
         };
      _ -> return [];
