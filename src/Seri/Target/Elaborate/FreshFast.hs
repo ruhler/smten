@@ -38,6 +38,7 @@ module Seri.Target.Elaborate.FreshFast (
     ) where
 
 import Control.Monad.State.Strict
+import Data.ByteString.Char8 as S
 
 import Data.Char(isDigit)
 import Data.List(dropWhileEnd)
@@ -45,22 +46,30 @@ import qualified Data.Map as Map
 
 import Seri.Lambda
 
--- Fresh names
---
--- We store a mapping from name to number such that the concatenation of the
--- name and the number is guaranteed to be a fresh name, and the
--- concatenation of the name and any higher number is guaranteed to be a
--- fresh name.
-
-type Fresh = State Integer
+type Fresh = State Name
 
 -- return a fresh name based on the given name.
 fresh :: Sig -> Fresh Sig
 fresh s@(Sig _ t) = do
    id <- get
-   put $! id + 1
-   return (Sig (name $ "~E" ++ show id) t)
+   put $! incrnm id
+   return (Sig id t)
 
 runFresh :: Fresh a -> [Name] -> a
-runFresh x nms = evalState x 0
+runFresh x nms = evalState x (name "~E1")
+
+-- TODO: this assumes name is a Char8 bytestring.
+-- Is that a bad idea?
+-- 
+-- Name is of the form "~E<num>"
+-- We want to increment the number.
+incrnm :: Name -> Name
+incrnm n = 
+  let start = S.init n
+      end = S.last n
+  in case end of
+        'E' -> name "~E1"
+        '9' -> S.snoc (incrnm start) '0'
+        _ -> S.snoc start (succ end)
+        
 

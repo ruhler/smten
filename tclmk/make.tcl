@@ -48,7 +48,7 @@ set ::env(HOME) [pwd]/build/home
 indir build/src {
     hrun cabal configure --package-db $::PACKAGE_DB \
         --extra-lib-dirs $::env(LD_LIBRARY_PATH) \
-        --with-happy=$::HAPPY
+        --with-happy=$::HAPPY 
         #--enable-executable-profiling
     hrun cabal build
     #hrun cabal haddock --executables

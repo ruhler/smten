@@ -232,4 +232,48 @@ Good. Let me implement it as its own target. It can be useful for whatever
 reasons. It will operate on Exps. Somehow we'll have to come up with fresh
 variable names, which is potentially annoying, but fine.
 
+Sat Sep 22 14:21:39 EDT 2012
+
+Some thoughts... I have to worry about naming. I need to pick a consistent set
+of new names so that we don't have to recognize alpha-equivalent things.
+
+So, return a map from subexpression to list of names which would be captured
+at that point in the expression. Then just pick the first name from a fixed
+scheme that doesn't belong to that set. So long as I always do that... one
+would hope I would be okay?
+
+Erg. It's not clear. It's fuzzy.
+
+This is why it really would be nice if I could get potential common
+subexpressions and names to use for them from the elaborator. Perhaps the
+elaborator can just build up a table of the expressions it inlined and what to
+call them? I don't know.
+
+But! I got started thinking about names, and as we know, FreshFast takes up a
+bunch of time in the profiler. And I really feel like it shouldn't.
+
+Anyway, I want to experiment with not threading a single name through, but
+generating sets of infinite names, partitioning them into still-disjoint sets,
+and passing them down in a purely functional way.
+
+I have two ideas for these infinite sets. One is just take an infinite list of
+names. To split in two: take every other element, and you get two new infinite
+lists.
+
+The other, which I think is more promising, is an integer and an increment. To
+take a new name: use the integer, increment by the increment. To split into
+two: one person gets the integer and double the increment, the other gets the
+incremented integer and double the increment. And it works naturally for
+splitting into more than two. I think I should start with that generator.
+
+Implement it, compare to the current technique.
+
+Let me give it a try.
+
+Sat Sep 22 15:04:51 EDT 2012
+
+It's notably slower. 7 seconds up to 9. Or 11 up to 15. Or however you want
+to look at it. More allocation. And it's messier too, if you ask me.
+
+So, good to know. Let me ditch this method then.
 
