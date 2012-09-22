@@ -56,20 +56,23 @@ fresh s@(Sig _ t) = do
    return (Sig id t)
 
 runFresh :: Fresh a -> [Name] -> a
-runFresh x nms = evalState x (name "~E1")
+runFresh x nms = evalState x (name "~Ea")
 
 -- TODO: this assumes name is a Char8 bytestring.
 -- Is that a bad idea?
 -- 
 -- Name is of the form "~E<num>"
 -- We want to increment the number.
+--
+-- Only, instead of numbers made of digits, we use numbers made of lowercase
+-- letters (which gives us more options before extending the string size)
 incrnm :: Name -> Name
 incrnm n = 
   let start = S.init n
       end = S.last n
   in case end of
-        'E' -> name "~E1"
-        '9' -> S.snoc (incrnm start) '0'
+        'z' -> S.snoc (incrnm start) 'a'
+        'E' -> name "~Ea"
         _ -> S.snoc start (succ end)
         
 
