@@ -1,0 +1,149 @@
+
+Sat Sep 22 08:56:57 EDT 2012
+
+I think I've come to some important observations about sharing.
+
+I think sharing the way I've proposed it will not work. That is, general
+purpose sharing, where we just stop elaborating if we see an opportunity to
+share. The problem is, this has no regard for what can be simplified or
+reduced later on. We'll share lists, queries, anything.
+
+That's not what we want. What we really want is: elaborate everything fully as
+much as possible. Then, from whatever's left, recognize what is shared. This
+is why we first switched to the heap elaborator idea. That's sort of how it
+works.
+
+Okay, well, really there are two kinds of sharings I want to distniguish
+between:
+
+- Sharings within assertions.
+Assertions are the only large expressions passed to yices. We want to fully
+elaborate the assertion predicates, then share what's left to be shared.
+
+- Sharing across assertions.
+If you have a complex expression shared across assertions (as Myron does for
+BCL3), you want to define it as a top level variable.
+
+I think the first one will be much easier to figure out, and I should probably
+focus on getting it right first before attempting the second. The second will
+be doable, perhaps... but after more insight.
+
+So, start with the first one. One way to look at what I want to do is: fully
+inline and elaborate an expression, then do common subexpression elimination
+to identify the sharing. The value of this is, it's fully inlined, and we get
+full sharing back. The downside is, I suspect it will be terribly costly to do
+full common subexpression elimination.
+
+But, it's a good starting point, and perhaps worth a try, because if it does
+turn out to be not so bad...
+
+We have to remember the purpose of sharing. It's to improve performance.
+That's it. So any sharing technique I identify will have to improve
+performance over not sharing.
+
+Anyway, I think it's worth trying common subexpression elimination. This could
+be useful for seri in general to have lying around. But I don't expect it to
+be a viable final solution. It may give insight into things.
+
+The real dream is... we know potential sharing opportunities based on the high
+level expressions. Any time we inline a variable or do a beta reduction, we
+have information linking together multiple expressions as shared.
+
+So, imagine, for example, we had some way to annotate expressions with
+additional information. What if, every time we do beta reduction, we annotate
+each expression being reduced with some unique ID. For example, in share:
+
+quadruple a = a + a + a + a
+
+assert (quadruple (quadruple (x+y)))
+
+After partial inlining becomes...
+
+assert (quadruple ((1: x+y) + (1: x+y) + (1: x+y) + (1: x+y)))
+
+After full inlining becomes...
+
+assert:
+  (2: ((1: x+y) + (1: x+y) + (1: x+y) + (1: x+y)))
++ (2: ((1: x+y) + (1: x+y) + (1: x+y) + (1: x+y)))
++ (2: ((1: x+y) + (1: x+y) + (1: x+y) + (1: x+y)))
++ (2: ((1: x+y) + (1: x+y) + (1: x+y) + (1: x+y)))
+    
+Now common subexpression elimination for this is much easier, because the
+candidates are all labeled. Perhaps I can use Nirav's tying the knot thing.
+
+Here's how it works. We go through the expression. Any time we encounter an
+annotation, we add it to a table with the value of that annotation, and
+counting how many times that annotation is encountered. At the end, we want to
+share anything that is encountered multiple times. We can do the replacement
+while we do the count via tying the knot.
+
+That way, common subexpression elimination becomes a single traversal, and we
+only have to traverse common expressions a single time.
+
+In fact, the job of common subexpression elimination could be to generate
+these annotations in the first place.
+
+You know what's the worst part? If we had access to the GHC pointers, we could
+piggy back off those, because the sharing is already there. Just ask which
+pointers are the same, use those as the annotations. Is there a way to do
+that? It's rather hackish, I know, just ... wishful thinking I suppose.
+
+Because somehow I need a way to annotate expressions otherwise. Which means
+changing the definition of Exp to be something unpleasantly more complicated.
+
+But, on the other hand, it is the case that annotations for expressions would
+often come in handy. Like, this comes up over and over and over and over and
+over and over again.
+
+It would be useful for a bunch of stuff. Source code locations. Caching
+variable uses. It's just not quite clear how to organize that and manage that
+information.
+
+GHC pointers are a bad idea. With GC and such these will move around. So
+scratch that thought from my mind. We need to do this in the language.
+
+Perhaps we could have a parallel structure on the side to keep track of this
+info, but it seems like that would be rather difficult to keep in line with
+the expression.
+
+So, options seem to be:
+- Make Exp and everyone who uses it parameterized by some attribute type 'a'
+Then anyone who wants to put in an attribute can. I worry it won't compose so
+well.
+
+- Add a known attribute type A to each Exp.
+This could either be something we agree upon that everyone knows about and
+uses. For example, it could have a field for source location, a field for
+expression identifier, a field for access. Whatever. The problem with that
+is, you have to change A every time you want to add or change an expression,
+which... ug. I don't like it.
+
+Or... have a map of dynamic attributes. Map from attribute name to Dynamic,
+and use some module based prefix to avoid name clashes.
+
+That gives you the flexibility, while also letting you avoid collisions by
+different modules.
+
+There will be a cost to accessing this attribute map...
+
+I don't know. It's a little bit scary to me.
+
+I really hate Haskell's type class realization. This sort of thing would be so
+much easier if there was a notion of a java-like interface and object.
+
+Anyway, I need to think about this a bunch, so I'm going to think about it a
+bunch then get back to you on my decision.  Then try it out. Perhaps it's
+worth trying common subexpression elimination (which really isn't so hard:
+just have a table from subexpression to unique ID, traverse the expression
+updating that table, at the end you're done, everything is annotated just how
+you like). Hmm... that suggests that CSE is... well, you have a hash table,
+then if there are N subexpressions, of depth M each, then M*N. Actually,
+that's really not so bad, is it.
+
+Hmm... That suggests, perhaps I could just do CSE? It's worth a try anyway.
+Then maybe I don't need an attribute. And I could try out tying the not?
+
+Except, you would really like it to be a bottom up kind of thing. Perhaps I
+could arrange for that too.
+

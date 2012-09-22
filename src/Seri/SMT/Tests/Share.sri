@@ -8,12 +8,12 @@ import Seri.SMT.SMT;
 quadruple :: Integer -> Integer;
 quadruple a = a + (a + (a + a));
 
-main :: Query (Answer Integer);
+main :: Query (Answer (Integer, Integer));
 main = do {
     x <- free;
     y <- free;
-    assert (quadruple (x - y) == 24);
-    query x;
+    assert (quadruple (quadruple (x - y)) == 32);
+    query (x, y);
 }
 
 }

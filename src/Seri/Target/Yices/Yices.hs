@@ -190,6 +190,17 @@ yfreecase c = do
 
 -- Translate a seri expression to a yices expression
 yExp :: Exp -> CompilationM Y.Expression
+yExp e | Just (VarP (Sig n _), v, x) <- deLet1E e = do
+    v' <- yExp v
+    x' <- yExp x
+    return (Y.letE [(yicesname (unname n), v')] x')
+
+yExp e | Just (p, a, b) <- deIfE e = do
+  p' <- yExp p
+  a' <- yExp a
+  b' <- yExp b
+  return (Y.ifE p' a' b') 
+
 yExp e | Just (xs, ms) <- deCaseE e = do
   nocaseerr <- gets ys_nocaseerr
   (let -- depat p e
@@ -226,13 +237,13 @@ yExp e | Just (xs, ms) <- deCaseE e = do
      dematch es [Match ps b] | nocaseerr = do
          b' <- yExp b
          bindings <- concatMap snd <$> mapM (uncurry depat) (zip ps es)
-         return $ yLetE bindings b'
+         return $ Y.letE bindings b'
      dematch es ((Match ps b):ms) = do
          bms <- dematch es ms
          b' <- yExp b
          (preds, bindings) <- unzip <$> mapM (uncurry depat) (zip ps es)
          let pred = Y.andE (concat preds)
-         let lete = yLetE (concat bindings) b'
+         let lete = Y.letE (concat bindings) b'
          return $ Y.ifE pred lete bms
 
      givename :: (Y.Expression, Char) -> CompilationM ([Y.Binding], Y.Expression)
@@ -248,7 +259,7 @@ yExp e | Just (xs, ms) <- deCaseE e = do
        es' <- mapM yExp xs
        (binds, es'') <- unzip <$> mapM givename (zip es' "abcdefghijklmnopqrstuvwxyz")
        body <- dematch es'' ms
-       return $ yLetE (concat binds) body
+       return $ Y.letE (concat binds) body
    )
 yExp (VarE (Sig n t)) | n == name "~error" = do
     errnm <- yfreeerr t
@@ -349,13 +360,6 @@ yExp l@(LaceE ms) =
     yfail $ "lambda expression in yices target generation: " ++ pretty l
 yExp (ConE s) = yCon s []
 yExp (VarE (Sig n _)) = return $ Y.varE (yicesname (pretty n))
-
--- Let expression in yices.
--- Tries to do simplification of the let so queries don't look quite so ugly.
-yLetE :: [Y.Binding] -> Y.Expression -> Y.Expression
-yLetE [] e = e
-yLetE [(n, e)] (Y.ImmediateE (Y.VarV n')) | n == n' = e
-yLetE bs e = Y.LetE bs e
 
 -- Generate yices code for a fully applied constructor application.
 yCon :: Sig -> [Exp] -> CompilationM Y.Expression

@@ -40,6 +40,7 @@ module Yices.Syntax (
     YicesVersion(..),
     Symbol, Command(..), Typedef(..), Type(..), Expression(..),
     VarDecl, Binding, ImmediateValue(..),
+    letE,
     boolE, trueE, falseE, notE, varE, integerE, selectE, eqE,
     andE, orE, ifE, ltE, leqE, gtE,
     addE, subE, mulE,
@@ -231,4 +232,9 @@ bvzeroExtendE a b = FunctionE (varE "bv-zero-extend") [a, integerE b]
 -- | > (bv-extract end begin bv)
 bvextractE :: Integer -> Integer -> Expression -> Expression
 bvextractE i j x = FunctionE (varE "bv-extract") [integerE i, integerE j, x]
+
+letE :: [Binding] -> Expression -> Expression
+letE [] e = e
+letE [(n, e)] (ImmediateE (VarV n')) | n == n' = e
+letE bs e = LetE bs e
 

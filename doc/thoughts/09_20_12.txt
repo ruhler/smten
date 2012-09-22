@@ -1,0 +1,207 @@
+
+Thu Sep 20 18:15:02 EDT 2012
+
+Goal: merge delambdafication with the elaborator. Because I think they really
+need to be one and the same.
+
+I can make it a flag in the elaborator if I don't think it's a good thing to
+do in general.
+
+What is the cost of delambdification in the elaborator?
+
+Just one case. That's it.
+
+((case of
+   p1 -> b1
+   p2 -> b2
+    ...) x) y
+
+One wonders if I really need delamdafication. I'll check it first. If not, I
+can just add it later. But I need to test on BCL3. Let me check now.
+
+Thu Sep 20 18:21:44 EDT 2012
+
+Looks like no need. So let me get rid of that now.
+
+This may only come up when you have sharing. I suppose, then, that that would
+be the next step: add back sharing, then worry about this.
+
+Thu Sep 20 18:29:12 EDT 2012
+
+How can I add back in sharing? I think this is the most important thing.
+
+Well... it's like this. We want the user to control what sort of sharing is
+allowed. That means the elaborator takes a predicate. For purposes of
+modularity, abstraction, etc... that should be an Exp -> Bool. In practice, in
+the elaborator, it will be an ExpH -> Bool, but I think the one can easily be
+converted to the other, so maybe don't worry yet about performance troubles.
+
+The idea is, when there is an opportunity to maintain sharing, let the user
+decide to share or not.
+
+When is there an opportunity? There is an opportunity when there is an
+application with a complex argument and which would be substituted more than
+once.
+
+For example, take yices. When could we not share for yices? Simple: we can't
+share if the expression contains an unapplied lambda, or if it contains some
+datatype not representable in yices, namely lists or recursive datatypes.
+
+I think there are a few steps here.
+
+First, add back sharing. I can hardcode the predicate for now of when to
+share? And see what happens and deal with it when it does happen?
+
+But I know it's going to happen...
+
+What are the components involved in sharing?
+- predicate which determines when to share or not
+- way to evaluate when variables are used more than once or not
+- in Query, a way to define variables in case we have a lambda for the query.
+
+
+Here's a question. What if I have something like:
+
+query = do
+  x <- free
+  if x
+    then query1
+    else query2
+    
+There's no way I can handle this. I have to know what x is. This is another
+kind of a leak. And it's rather unfortunate that you can write something like
+this.
+
+Not that you would ever want to do something like this. But I could see you
+doing it by mistake. You almost wish you could do a static check to figure out
+if something is concrete or not. Because non-concrete stuff should only be
+used in limited places.
+
+This is like, using SMT queries to solve queries kind of thing. I don't know.
+
+It is good to recognize that you can express things which aren't meaningful. I
+don't know what to do about that though.
+
+Anyway, I'll ignore that for now.
+
+Looking at the things needed for sharing, even if your predicate is always to
+share, you need a way to allow sharing or not in different situations?
+
+How about this. I think sharing makes sense to do on its own branch. Then I
+can take my time to add it back in.
+
+First place to do sharing: Get the share test to work again.
+
+So here's what I'll do. I'll hard code a predicate which says when to share.
+I'll make it so I can switch on and off sharing just by changing that
+predicate. That will be the first step.
+
+Show that: with sharing on, we have lots of sharing in the share test.
+
+Then we'll see that, actually, we have more sharing than we want. Then go and
+implement the VarUse thing. I don't have to cache varuse yet. Only if I see
+that calculating VarUse takes up a lot of time.
+
+At this point, share should look the way I want.
+
+Next I want to try out BCL3 and Sudoku and friends. Fix up any issues that
+come up. Add "define" to Query if needed so that running the query monad makes
+sense (perhaps using queryS to avoid renaming?)
+
+I'll likely want to refine the predicate. If I can come up with a generic
+one for yices, maybe use it. Otherwise, make it a parameter and use what I
+want when.
+
+Cool. Good. Let me get to work then. This first bit will be rather tricky I
+fear.
+
+Thu Sep 20 18:57:53 EDT 2012
+
+When do we share?
+
+We share when we have:
+
+let x = blah
+in ...
+
+Which is the same as saying...
+
+(\x -> ...) blah
+
+Which is the same as saying...
+
+case blah of
+  x -> ...
+
+Or, in other words, when we do a beta reduction. When we make a pattern match.
+
+So, when we make a pattern match, I expect to get a list of (name, value)
+pairs which we apply to some function, right?
+
+Yes. When a match succeeds.
+
+Currently we call f. Now what I want to do instead is...
+
+Partition into those for reduction and those not for reduction.
+
+Uh oh. We have to be careful here, because I make assumptions about argument
+orders in the list. So I should maintain that order.
+
+So we have  a list of: (name, value) pairs. Some of those values I don't want
+to apply?
+
+Oh. Some of those values, I want to leave as functions.
+
+So, like, if I have a list [("a", a), ("b", b), ("c", c)]
+And let's say I want to share b. Then what I want to do is, instead of having:
+
+(f [("a", a), ("b", b), ("c", c)]) be the match result. I want to have:
+
+(\x -> f [("a", a), ("b", x), ("c", c)]) b
+
+Be the result. See? I just leave the sharing explicit.
+
+It's the same thing. That's not so hard then, is it?
+
+What is the representation for that really like though?
+
+AppEH (LaceEH [MatchH (VarP "b") $ \m -> f (m ++ red)) [b]
+
+Okay, so ditch the requirement to keep things in order. I can fix the
+primitives so they don't assume that. This is actually easy then.
+
+Succeeded vs -> 
+  partition into reduce, and noreduce sets.
+  If noreduce is empty, return f vs
+  Otherwise, return:
+    AppEH (LaceEH [MatchH (map VarP (fst noreduce))] $ \m -> f (m ++ reduce))
+(map snd noreduce)
+
+Easy! Cool. Let me try it out then.
+
+Thu Sep 20 19:25:34 EDT 2012
+
+Cool. I think it works.
+
+I definitely need to pass sharing as an argument though, so, for example,
+serie can avoid sharing and really get to weak head normal form while seriq
+can preserve sharing.
+
+This is a good first step. That was easy enough. Next is to add back the
+VarUse thing or add the argument for a sharing predicate.
+
+Thu Sep 20 21:33:11 EDT 2012
+
+I added back VarUse, and now we have a predicate for sharing.
+
+Next steps will be:
+- Add a define method to the Query monad:
+define :: Name -> Exp -> Query ()
+
+Use this with queryS to support let expressions in running the query monad.
+
+- Continue to refine the yices sharing predicate until it works for
+  everything.
+
+But I'm tired now, so I'll come back to this another time.
+

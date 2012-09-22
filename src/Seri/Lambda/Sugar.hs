@@ -38,7 +38,8 @@
 -- | Constructor functions for desugaring higher level constructs into the
 -- core Seri IR.
 module Seri.Lambda.Sugar (
-    caseE, deCaseE, trueP, falseP, ifE, deIfE, lamE, deLamE, letE, deLetE,
+    caseE, deCaseE, trueP, falseP, ifE, deIfE,
+    lamE, deLamE, letE, deLet1E, deLetE,
     Stmt(..), doE, clauseE,
     ConRec(..), recordD, recordC, recordU,
     --deriveEq,
@@ -101,10 +102,15 @@ letE :: [(Pat, Exp)] -> Exp -> Exp
 letE [] x = x
 letE ((p, e):bs) x = AppE (lamE $ Match [p] (letE bs x)) [e]
 
+-- Match against a single let binding.
+deLet1E :: Exp -> Maybe (Pat, Exp, Exp)
+deLet1E (AppE f [e]) | Just (Match [p] x) <- deLamE f = Just (p, e, x)
+deLet1E _ = Nothing
+
 unLetE :: Exp -> ([(Pat, Exp)], Exp)
-unLetE (AppE f [e]) | Just (Match [p] rest) <- deLamE f
-                    , let (bs, x) = unLetE rest
-                    = ((p, e):bs, x)
+unLetE e | Just (p, v, rest) <- deLet1E e
+         , let (bs, x) = unLetE rest
+         = ((p, v):bs, x)
 unLetE x = ([], x)
 
 deLetE :: Exp -> Maybe ([(Pat, Exp)], Exp)

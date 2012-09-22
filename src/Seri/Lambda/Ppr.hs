@@ -161,6 +161,13 @@ instance Ppr Lit where
     ppr (CharL c) = text (show c)
 
 instance Ppr Exp where
+    -- Special case for let expressions
+    ppr e | Just (binds, body) <- deLetE e
+          = let pprbind (p, e) = ppr p <+> text "=" <+> ppr e <+> semi
+            in text "let" <+> text "{"
+                $+$ nest tabwidth (vcat (map pprbind binds)) $+$ text "}"
+                <+> text "in" <+> ppr body
+
     -- Special case for if expressions
     ppr e | Just (p, a, b) <- deIfE e
           = text "if" <+> ppr p $$ nest tabwidth (
@@ -185,13 +192,6 @@ instance Ppr Exp where
 
     -- Special case for list literals
     ppr e | Just elems <- deListE e = sep $ [text "["] ++ punctuate comma (map ppr elems) ++ [text "]"]
-
-    -- Special case for let expressions
-    ppr e | Just (binds, body) <- deLetE e
-          = let pprbind (p, e) = ppr p <+> text "=" <+> ppr e <+> semi
-            in text "let" <+> text "{"
-                $+$ nest tabwidth (vcat (map pprbind binds)) $+$ text "}"
-                <+> text "in" <+> ppr body
 
     -- Special case for lambda expressions
     ppr e | Just (Match ps b) <- deLamE e =

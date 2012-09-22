@@ -1,0 +1,69 @@
+
+Fri Sep 21 19:06:56 EDT 2012
+
+Trouble with sharing.
+
+So I do 'define', so 
+
+define f :: Foo = blah
+
+I run the query. The result refers to 'f'. But that gets left as 'f', because
+we don't look its value up! I don't understand. Why didn't I have this problem
+before?
+
+Do I add 'f' to the environment?
+
+Let me see what I used to do.
+
+I'm doing exactly what I used to. I think, maybe, before, I didn't run into
+this issue for some, unknown reason? Maybe because I wasn't sharing these
+particular things? Or, perhaps, because I had disabled sharing before doing
+lots of other changes which would have made it break had I not already
+disabled it.
+
+Anyway, this is stuff I would like to share. I just need to put the value of
+'f' in this case in the environment. In other words, I need to tweak the
+environment. And ideally the tweak is local.
+
+Well... I can push this inside of the query monad. Have define really be a
+letQ kind of thing. letq name value (Query a) -> Query a. It can tweak then
+untweak the environment.
+
+Fine. Let me try that then.
+
+Fri Sep 21 20:44:08 EDT 2012
+
+Okay, that appears to work.
+
+But the array test isn't working?
+
+- Array test fails: runs out of stack space? (Infinite loop?)
+- 2QBF fails: Can't share list type
+    Sharing xs, the list of integers.
+    This is silly. yices clearly doesn't need to know about this list.
+    It's like... can we just do sharing within assertions, and not across
+    them?
+- Sudoku fails: unknown query (case statement)
+    case (let f = ... in f firstrow : map f lastrows) of
+      [] -> return []
+      (x:xs) -> do
+        v <- x
+        vs <- ...
+  Again, blatant case of: let's please not share across queries.
+       
+    
+- BCL3 fails: infinite loop?
+
+So, I think what I really want is... WHNF should be as lazy as possible so we
+don't destroy sharing. Is that possible? I should step through the Share test,
+and figure out why not sharing with WHNF seems to destroy everything.
+
+Probably because we really aren't lazy. We elaborate everything everywhere?
+
+It would be good to print out how much elaboration is being done in which
+steps, see if it's what I expect. Maybe I haven't really figured out the right
+way to do this yet. Maybe it needs more thought.
+
+Maybe I should require a free variable in the argument somewhere? That's what
+I should share? Complex with a free variable?
+

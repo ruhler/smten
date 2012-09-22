@@ -55,6 +55,7 @@ import Seri.Failable
 import Seri.Lambda hiding (free, query)
 import Seri.SMT.Query
 import Seri.SMT.Realize
+import Seri.Target.Elaborate
 import Seri.Target.Yices.Yices
 
 
