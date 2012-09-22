@@ -147,3 +147,89 @@ Then maybe I don't need an attribute. And I could try out tying the not?
 Except, you would really like it to be a bottom up kind of thing. Perhaps I
 could arrange for that too.
 
+Sat Sep 22 10:29:51 EDT 2012
+
+Okay, so, working out the crazy, tying-the-knot scheme for common
+subexpression elimination.
+
+I want a function, which behaves as follows...
+
+Inputs:
+- A mapping from common expression to name for all common
+subexpressions. This is the result that we are passing in as input.
+- An expression on which to perform common subexpression elimination.
+
+Outputs:
+- A new expression with common subexpression elimination performed on it.
+- The set of all subexpressions in that expression which are available to be
+  common (aka, they don't depend on a locally defined variable).
+
+Err... I don't think the tying the knot thing is going to work. Perhaps I
+should start by thinking of doing this in two passes.
+
+Yes. That will be better. And anyway, two passes isn't so bad, is it?
+
+So, change it to:
+
+pass1: given an expression, return an expression which has no common
+subexpressions in it, and a set of expressions available to be common (they
+don't depend on a local variable).
+
+pass2: given an expression, and a mapping from common subexpressions to names,
+replace every occurrence of a subexpression in the list with the given
+variable name.
+
+And, like I say, if I'm clever, maybe I can combine the two passes into one,
+but don't worry about that now.
+
+The implementation of pass2 is trivial. No need to worry about that.
+
+Here's how we do pass1:
+
+For LitE, ConE, VarE, just return yourself, with a singleton set with
+yourself. Easy. Actually, you can return yourself with an empty set.
+
+For AppE...
+
+Just for clarity, let me assume only a single argument.
+
+Apply pass1 to both arguments.
+You get back new expressions, and a set of common expressions for each.
+
+Take the intersection of these two sets. Anything in the intersection is
+common. Make up names for these common subexpressions, wrap the expression
+around a let statement, and apply pass2 to each to do the substitution. Return
+that expression, and for the set of available...
+
+Return the union of the two sets + yourself. Easy!
+
+And it extends in a naturalish way to more arguments. I just have to do
+pair-wise intersection. Or perhaps nicer would be a way to count how many
+occurrences each subexpression has, drop those with only 1 occurrence, and
+what's left are the ones to make common subexpressions. Yes, that's fine.
+
+Now, for LaceE...
+
+Well, we'll do pass1 for each Match, and treat it like AppE. No problem.
+
+Now, for Match: do CSE for it's body, then remove from the set of CSE any
+expression which has one of the given bound pattern variables as free.
+
+And that's it!
+
+Simple. Straight-forward. We get nesting. No need to worry about things not
+being in scope. It will do a fine job. I should totally implement this.
+
+After I do that, I should ask if I can tie the knot. That is, merge pass1 and
+pass2. It would be nice if I could, because we reduce the complexity. We have
+just a single traversal, right? I bet that would work...
+
+Wow. This could actually be an effective way to do CSE. Especially with tying
+the knot, if that can be made to work. It's just a single, linear traversal
+like thing.
+
+Good. Let me implement it as its own target. It can be useful for whatever
+reasons. It will operate on Exps. Somehow we'll have to come up with fresh
+variable names, which is potentially annoying, but fine.
+
+

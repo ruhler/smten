@@ -14,12 +14,7 @@ n = 3;
 m :: Integer;
 m = n*n;
 
-data Cell = Cell (Bit#9);
-
-instance Eq Cell where {
-    (==) (Cell a) (Cell b) = (a == b);
-    (/=) a b = not (a == b);
-};
+data Cell = Cell { bits :: Bit#9 } deriving(Eq);
 
 freeCell :: Query Cell;
 freeCell = do {
@@ -80,19 +75,15 @@ printCell c =
   else if c == c5 then '5'
   else if c == c6 then '6'
   else if c == c7 then '7'
-  else if c == c8 then  '8'
+  else if c == c8 then '8'
   else '9';
 
-join :: [Bit #n] -> Bit #n;
-join [] = 0;
-join (x:xs) = bv_or x (join xs);
-
-value :: Cell -> Bit #9;
-value (Cell x) = x;
+join :: [Cell] -> Bit #9;
+join xs = foldl bv_or 0 (map bits xs);
 
 -- Return true if all elements in the list are unique.
 unique :: [Cell] -> Bool;
-unique cells = join (map value cells) == 511;
+unique cells = join cells == 511;
 
 data Board = Board [[Cell]];
 
