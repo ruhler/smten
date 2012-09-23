@@ -63,9 +63,6 @@ That is, anything with ~?
 - somewhere it would be nice to have a convenience function for:
     load, flatten, infer, typecheck all at once into an environment.
 
-- Figure out how to re-enable sharing for SMT queries.
-There's an annoyance with sharing across commands I have to work out.
-
 - Variable operators: `foo`.
 - pattern matching in do bind notation.
 
@@ -79,10 +76,8 @@ There's an annoyance with sharing across commands I have to work out.
   seriq1 seg faults on that same example randomly
     (in GC evacuate at end of prog)
 
-- Add back support for sharing in generated queries
-
-- Merge delambdafication with the elaborator? Perhaps as a flag?
-    It makes sense to have  that all in one place.
+- Add support for sharing in generated queries
+  Or otherwise improve performance of seri...
 
 - Use the yices1 native interface where possible
 

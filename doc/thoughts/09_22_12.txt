@@ -277,3 +277,55 @@ to look at it. More allocation. And it's messier too, if you ask me.
 
 So, good to know. Let me ditch this method then.
 
+Sat Sep 22 15:59:39 EDT 2012
+
+I managed to speed up the generation of fresh names considerably by storing a
+name itself, and incrementing that directly instead of make an integer and
+showing it into a name every time. So now fresh name generation appears not to
+be a big problem.
+
+For BCL3, the big problem now is elaboration.
+
+For Sudoku... I think it's too small. But most time is spent in check.
+
+So, the thing about sharing is...
+
+The whole point of sharing is to improve performance. If it doesn't improve
+performance... well, perhaps it's slightly useful for debugging generated
+queries, but other than that, it's useless.
+
+But! I should only be doing it if it will make a big difference in
+performance.
+
+Now, we've already said that to do sharing properly, I have to do full
+elaboration regardless. So, the fastest I can make elaboration is how it is
+now, without added stuff for sharing.
+
+Which means, the only way sharing will benefit performance is in how long it
+takes yices to run, or how long it takes to send commands to yices.
+
+Which means... sharing will be important when the time for (check) or
+(sendCmds) dominates, and not before then.
+
+For BCL3, the bottleneck is still in the elaborator, so that's what I should
+focus on before sharing. And because I suspect that is more likely to help
+than adding the complexity of sharing, I should, for now, put off my attempts
+at sharing, sad as that may seem.
+
+But, if I do that, it means the value of Seri is really only in interpreting
+datatypes, right? Because otherwise you just use a DSEL in haskell. Oh, and
+making it nicer to write, in which case, template haskell would be more
+appropriate?
+
+Ah, but datatypes are important. So leave that there. And I can always add
+back in sharing later on once it turns out to be the bottleneck. Nifty.
+
+Sat Sep 22 16:55:35 EDT 2012
+
+So... what's taking so long in the elaborator?
+
+I don't know. I would really like more benchmarks before I focus on making it
+better. The interesting things need lots of stuff though.
+
+
+
