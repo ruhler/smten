@@ -103,8 +103,8 @@ ppc = seq [p, p, c];
 pcp :: Action MOD_mkSquares ();
 pcp = seq [p, c, p];
 
-main :: Maybe MOD_mkSquares;
-main = execAction (seq [pc, pc, pc, pc]) ctor_mkSquares;
+main :: Query (Answer MOD_mkSquares);
+main = not_mutually_exclusive p c;
 
 }
 

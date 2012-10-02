@@ -1,0 +1,44 @@
+
+Thu Sep 27 15:53:30 EDT 2012
+
+Looks like we are facing a delambdafication bug which I wasn't seeing before
+for whatever reason.
+
+The example is clear:
+
+(case free1 of
+  ... -> f
+  ... -> g) x
+
+And I want to rewrite this as:
+
+case free1 of
+  ... -> f x
+  ... -> g x
+
+Actually, what we really would like to do is share x. Do something like:
+
+let x' = x
+in case free1 of
+      ... -> f x'
+      ... -> g x'
+
+But let me not worry about that right now. Let me fix the bug first.
+
+As I said when I got rid of delambdafication, let me put this in the
+elaborator. If I want to, I can make a flag. Otherwise I can just always do it
+as an elaboration step.
+
+Now, how does this look in the elaborator?
+
+(LaceE
+   ... -> f
+   ... -> g
+) free1 x
+
+So, look for a Lace which is applied to too many arguments which doesn't match
+anything. Take the tail arguments which are too many, and apply those inside
+each match.
+
+  
+

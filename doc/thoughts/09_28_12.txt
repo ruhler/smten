@@ -1,0 +1,54 @@
+
+Fri Sep 28 16:48:48 EDT 2012
+
+I've been thinking about how I can make yices1 work the way I want: using
+yices1 data types and top level function declarations, and what have you.
+
+In other words: elaborating minimally in seri, to take advantage of the yices
+elaborator, because the claim is that could be better.
+
+Here are the main points which have come up:
+
+1. To figure out what the Query is to ask, we have to have a WHNF elaboration
+which is as lazy as possible.
+
+It must be lazy to expose all the sharing and high level information available
+to the SMT solver. The current elaborator is not lazy in elaboration, other
+than how it piggy backs off of haskell's laziness.
+
+I think I should start by not worrying about sharing elaboration of
+expressions. Don't worry about performance. Make it lazy.
+
+Later on I can add back sharing using Haskell thunks by passing around
+functions which can return the shared expression unelaborated, elaborated, or
+elaborated in some special form.
+
+2. I can use an environment to allow lazy elaboration.
+So, for example, if we have:
+  let x = ...
+  in ...
+
+Put x = ... in the environment, then execute the body with that. This is what
+should be done in the 'run' function so that both the elaborator and the SMT
+solver have access to 'x', as appropriate for how 'x' is used.
+
+3. After WHNF elaboration, we have the following problem: Given an environment
+and expression, compile it to yices. I don't know about the details, but the
+idea is this:
+
+Elaborate an expression to either: 
+ - Something represented in yices if possible.
+ - A seri expression.
+
+Do this recursively. The idea is, for a given expression, elaborate it's
+children in this manner, if all children can be expressed in yices, and this
+is an expression which can be expressed in yices, return it as is, otherwise
+perform a reduction of the expression, and apply the elaboration to the
+result.
+
+We do the same for the top level declarations: inline them only if they can't
+be expressed in yices1.
+
+So that's the plan. It's got lots of details. But I think it will be doable
+and expose the sharing I want to the SMT solver the way I want.
+

@@ -131,6 +131,7 @@ instance Yices Yices2FFI where
             _ -> error $ "yices2 get bool value got: " ++ show x
         
     getBitVectorValue (Yices2FFI yctx) w nm = do
+        putStrLn $ "get bv value for " ++ nm ++ " of width " ++ show w
         model <- c_yices_get_model yctx 1
         bits <- allocaArray (fromInteger w) $ \ptr -> do
             term <- yterm (varE nm)
@@ -138,6 +139,7 @@ instance Yices Yices2FFI where
             if ir == 0
                 then peekArray (fromInteger w) ptr
                 else error $ "yices2 get bit vector value returned: " ++ show ir
+        putStrLn $ "got bits: " ++ show bits
         c_yices_free_model model
         return $! bvInteger bits
         

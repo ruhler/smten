@@ -1,0 +1,188 @@
+
+Mon Oct  1 07:33:59 EDT 2012
+
+I want to start implementing my yices proposal from the other day. I should
+call it something else. Call it my partial elaborator. There are a number of
+steps involved. It is too much to try all at once. So I propose the following
+kind of route:
+
+1. Implement a partial elaborator for yices2. Use it for elaborating the
+expression passed to assert. This will help me figure out partial elaboration.
+So, with this, what I hope to see is expressions like: 5+6, which remain
+unelaborated by seri and passed to yices.
+
+It's not at all clear this will improve performance, but it's exactly the same
+idea I'll want to use when using yices1 properly and Z3, and all those. Assume
+they have a better elaborator and are higher performance at that sort of stuff
+than seri is. Otherwise I would just always generate the low level I already
+have (which is also an option).
+
+Also, at this point, reuse the yicesE function as a predicate to determine if
+an expression is acceptable to yices2 or not in the partial elaboration. I
+know it will be terribly slow to start (or maybe not?), but that's exactly
+the info I want, and to get things off the ground I should reuse it.
+
+Hmm... what will this partial elaborator look like given this predicate to
+test if a Seri expression can be compiled to yices?
+
+I think the first test should be: can this be compiled to yices. If so, we are
+done, don't do anything with it, return the expression as is.
+
+Otherwise... deal with the children... I don't know. Perhaps I should write a
+new elaborator from scratch, one not based on the heap elaborator. The way it
+would work is: elaborate the children, and combine them the right way. But it
+would also have checks for the high level yices expressions. So it seems like
+that won't work so well with the existing yicesE predicate...
+
+The other thing I could do would be to add another mode to the existing
+elaborator which only performs one step...
+
+I think I should just write a new elaborator from scratch for yices2. It will
+work on expressions directly, if they can be represented as yices expressions,
+it will return them unchanged (probably with a flag indicating that),
+otherwise it will perform an elaboration step and try again.
+
+2. Make WHNF elaborator as lazy as possible.
+I won't see the behavior I want from (1) until the current elaborator is made
+much more lazy. It should be as lazy as possible, in order to keep around high
+level sharing info that we may want to pass on to yices.
+
+I think this should be fairly straight forward. Just have to be careful about
+how I do pattern matching, that sort of thing. Perhaps I'll need to add an
+explicit lazy Exp somewhere? Again, don't worry about elaborator performance.
+
+I could do this step on its own, by looking at elaboration traces by hand. For
+example, for the share test, and other things.
+
+
+3. Data types and lambdas for yices1
+After (1) and (2) are done (which is certainly a non-trivial amount of work).
+I should have the infrastructure set up that I want. Now make another version
+of (1) for yices1 which knows about data types and lambdas.
+
+This involves changing the partial elaborator to support lambdas, and making a
+yices1 syntax with more of the yices1 features.
+
+4. Environment elaboration for yices1
+Task (3) was just for expressions. Now we want to make the jump to
+environments. Keep the environment in tact as much as possible. Perform
+partial elaboration on the environment, and preserve that in the yices back
+end.
+
+5. Now...
+
+Mon Oct  1 17:04:41 EDT 2012
+
+Looking at the delambdafication bug. I got one version. The case version. Now
+there's another version of it I have to deal with:
+
+let f = \a -> foo a
+in f x
+
+I want to rewrite this as...
+
+let a = x
+in foo x
+
+How does this come up? Is it different from the previous version of
+delambdafication?
+
+Hmm... so it looks as follows:
+
+(case of { f -> f x }) (case of { a -> foo a })
+
+Well... that's a little weird...
+
+Or, more generally...
+
+How do we get this? Why isn't the let statement inlined? What happened to beta
+reduction?
+
+Oh. Really we have:
+
+let f = case free1 of
+            Empty -> Action (\s -> ...)
+            Single -> Action (\s -> ...)
+in f s0
+
+Notice: 'f' is not a lambda, so we can't do beta reduction. Instead, 'f' is a
+case.
+
+So... perhaps the thing to do is to generalize how we do beta application?
+
+Wait. I don't understand why we don't catch this. What's going on here?
+
+What we really have is:
+
+case (case free1 of
+        Empty -> Action (\s -> ...)
+        Single -> Action (\s -> ...)) of
+ Action f -> f s0
+
+Oh... I see now. That makes a difference.
+
+We can't do the match, because the argument isn't fully elaborated. What we
+really need to do, though, is make this a case by case thing. Rewrite it as:
+
+case free1 of
+   Empty -> (case Action (\s -> ...) of f -> f s0)
+   Single -> (case Action (\s -> ...) of f -> f s0)
+
+And simplify that. This to me looks similar to the kind of thing I would like
+done for our data types, going inside of if statements.
+
+I think this is a separate kind of thing I need to do.
+
+Um... more generally:
+
+ case (case foo of { p1 -> m1 ; p2 -> m2 ; ... }) of
+    P1 -> M1 ;
+    P2 -> M2 ;
+    ...
+
+To:
+
+ case foo of
+    p1 -> case m1 of
+            P1 -> M1
+            P2 -> M2
+            ...
+    p2 -> case m2 of
+            P1 -> M1
+            P2 -> M2
+            ...
+    ...
+
+That's certainly a duplication. Is it in every case better? Can we get stuck
+in loops? No, I think it's better?
+
+Let me go a little deeper, and desugar the case.
+
+
+ (case of
+    P1 -> M1 ;
+    P2 -> M2 ;
+    ...)
+ (case of { p1 -> m1 ; p2 -> m2 ; ... } foo)
+
+To:
+
+ (case of
+    p1 -> (case of
+            P1 -> M1
+            P2 -> M2
+            ...) m1
+    p2 -> (case of
+            P1 -> M1
+            P2 -> M2
+            ...) m2
+    ...)
+ foo
+
+
+This is a pretty ugly blowup. I think I should try it. But I'll try it later.
+Tomorrow perhaps. I wish I could convince myself both of these transformations
+make every expression either simpler, or are in some sense monotonic. I'll try
+again thinking about it later.
+
+

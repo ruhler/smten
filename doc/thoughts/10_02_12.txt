@@ -1,0 +1,153 @@
+
+Tue Oct  2 08:48:15 EDT 2012
+
+Thought more about delambdafication.
+
+There are two kinds of delambdafications it seems I need to do.
+
+One is what I just implemented:
+
+(case free1 of
+    p1 -> f
+    p2 -> g
+    ...) x
+
+Turns into:
+
+case free1 of
+  p1 -> f x
+  p2 -> g x
+
+I believe this transformation makes sense to do. It happens when there are
+more arguments to the case than patterns. During normal elaboration we have to
+do this anyway for whichever case was chosen. I think it makes sense to do
+this before trying to match the case, then it's like delambdafication is built
+in. Because we are always eliminating the extra arguments from case statements
+from the outside, I believe it is a monotonic transformation, pushing
+arguments inside. So I feel fine about this. And I should consider doing it as
+a part of normal elaboration.
+
+The other kind of delambdafication I'm less sure of. I think it makes sense to
+do in some cases, but in others it could lead to a lot of duplication. Notice
+the first kind doesn't need to lead to any duplication, because we can give
+a name to the argument x and only duplicate the name.
+
+The transformation is this:
+
+ case (case free1 of
+          p1 -> m1  
+          p2 -> m2
+          ...) of
+    P1 -> M1
+    P2 -> M2
+    ...
+
+Is transformed to:
+
+ case free1 of
+    p1 -> case m1 of
+            P1 -> M1
+            P2 -> M2
+            ...
+    p2 -> case m2 of
+            P1 -> M1
+            P2 -> M2
+            ...
+
+The hope is, m1 can be matched against one of the patterns, and m2 can be
+matched against one of the patterns, so this is simplified.
+
+This would handle the case I always wanted to handle, where we define a free
+complex value as a case statement, and do a case on that. In that case, we end
+up simplifying things.
+
+Is this a transformation which makes sense?
+
+We can look at it a little differently.
+
+(case of
+  P1 -> M1
+  P2 -> M2
+  ...) 
+ .
+(case of
+  p1 -> m1
+  p2 -> m2
+  ...
+)
+
+This is a function composition of lace statements. We can reduce that to:
+
+case of
+  p1 -> case m1 of
+         P1 -> M1
+         P2 -> M2
+         ...
+  p2 -> case m2 of
+         P1 -> M1
+         P2 -> M2
+         ...
+
+I think this is what I want, and seems to make sense for single argument
+cases. But what about multi-argument cases?
+
+Multiple arguments to the inside case are easy, just pass them all to the
+outside case:
+
+case (case a b ... of
+        pa pb ... -> m1
+        pa pb ... -> m2) of
+  P1 -> M1
+  P2 -> M2
+  ...
+
+case a b ... of
+   pa pb ... ->
+     case m1 of
+      P1 -> M1
+      P2 -> M2
+      ...
+   pa pb ... ->
+      case m2 of
+      P1 -> M1
+      P2 -> M2
+      ...
+
+No problem. What about multiple arguments to the outside case? Well... that
+shouldn't matter, should it? Just treat it as a function.
+
+ case (case free1 of
+          p1 -> m1  
+          p2 -> m2
+          ...) a b ... of
+    P1 pa pb -> M1
+    P2 pa pb -> M2
+    ...
+
+Is the same as:
+   
+ (case (case free1 of
+          p1 -> m1  
+          p2 -> m2
+          ...) of
+    P1 pa pb -> M1
+    P2 pa pb -> M2
+    ...) a b ...
+
+So do it like that, make the transformation of the inside, then we'll push the
+other arguments in. That sounds fine to me.
+
+Good. Now, let me start with the simplest version. How do I recognize this in
+the elaborator?
+
+It's a LaceE whose first argument is a LaceE after elaboration. That should be
+easy to detect.
+
+Good. So here's what I'm going to do. I want to start by updating the other
+delambdafication? To be used in general. I'll make sure it works, then check
+it in.
+
+Then I'll attempt to implement this delambdafication. See if it works. Then
+report back. I'll spend no more than 25 minutes on this right now. Wish me
+luck.
+

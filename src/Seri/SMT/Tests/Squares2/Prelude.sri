@@ -2,6 +2,7 @@
 module Seri.SMT.Tests.Squares2.Prelude where {
 
 import Seri.Lib.Prelude;
+import Seri.SMT.SMT;
 
 data Action s a = Action {
    runAction :: (s -> Maybe (s, a))
@@ -86,6 +87,15 @@ when True q = q;
 seq :: [Action s ()] -> Action s ();
 seq [x] = x;
 seq (x:xs) = x <$> seq xs;
+
+-- Return a state under which the two given rules are not mutually exclusive.
+not_mutually_exclusive :: (Eq s) => Action s () -> Action s () -> Query (Answer s);
+not_mutually_exclusive a b = do {
+  s <- free;
+  assert (runAction a s /= Nothing);
+  assert (runAction b s /= Nothing);
+  query s;
+};
 
 }
 

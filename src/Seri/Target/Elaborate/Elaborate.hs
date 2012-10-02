@@ -53,7 +53,7 @@ import Seri.Failable
 import qualified Seri.HashTable as HT
 import Seri.Lambda
 
-import Seri.Target.Elaborate.FreshFast
+import Seri.Target.Elaborate.FreshPretty
 
 data Mode = WHNF -- ^ elaborate to weak head normal form.
           | SNF  -- ^ elaborate to sharing normal form.
@@ -88,7 +88,11 @@ elaborate :: Mode  -- ^ Elaboration mode
           -> Exp   -- ^ expression to evaluate
           -> Exp   -- ^ elaborated expression
 elaborate mode env exp =
-  let -- translate to our HOAS expression representation
+  let -- Flag specifying if we should delambdafy or not.
+      -- TODO: make this a parameter to the elaborator?
+      delambdafy = True
+
+      -- translate to our HOAS expression representation
       toh :: [(Sig, ExpH)] -> Exp -> ExpH
       toh _ (LitE l) = LitEH l
       toh _ (ConE s) = ConEH s
@@ -136,16 +140,36 @@ elaborate mode env exp =
             Nothing -> VarEH (ES_Some SNF) s
       elab (AppEH _ x []) = elab x
       elab e@(AppEH (ES_Some m) _ _) | mode <= m = e
-      elab (AppEH _ f xs) = 
+      elab e@(AppEH _ f xs) = 
         case (elab f, map elab xs) of
             (AppEH _ f largs, rargs) -> elab (AppEH ES_None f (largs ++ rargs))
             (LaceEH _ ms@(MatchH ps _ : _), args) | length args >= length ps ->
-               case matchms (take (length ps) args) ms of
-                 NoMatched -> error $ "case no match"
-                 Matched e -> elab (AppEH ES_None e (drop (length ps) args))
-                 UnMatched ms' -> AppEH (ES_Some mode) (LaceEH (ES_Some mode) ms') args
-            (a', b') -> AppEH (ES_Some mode) a' b'
+               let -- Apply the given arguments to the body of the match.
+                   appm :: [ExpH] -> MatchH -> MatchH
+                   appm [] m = m
+                   appm xs (MatchH p f) = MatchH p (\m -> AppEH ES_None (f m) xs)
 
+                   (largs, rargs) = splitAt (length ps) args
+
+                   -- Push all extra arguments into the matches.
+                   -- This serves two purposes. It applies the extra arguments
+                   -- to which ever alternative matches, and it performs a
+                   -- delambdafication in case there are no matches.
+                   -- That is, it rewrites:
+                   --  (case foo of
+                   --     ... -> f
+                   --     ... -> g) x
+                   --
+                   -- As:
+                   --  case foo of
+                   --     ... -> f x
+                   --     ... -> g x
+                   ams = map (appm rargs) ms
+               in case matchms largs ams of
+                    NoMatched -> error $ "case no match"
+                    Matched e -> elab e
+                    UnMatched ms' -> AppEH (ES_Some mode) (LaceEH (ES_Some mode) ms') largs
+            (a', b') -> AppEH (ES_Some mode) a' b'
       elab e@(LaceEH (ES_Some m) _) | mode <= m = e
       elab e@(LaceEH _ ms) | mode == WHNF = e
       elab (LaceEH _ ms) =

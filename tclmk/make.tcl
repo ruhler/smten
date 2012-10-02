@@ -104,7 +104,7 @@ proc query1test {name args} {
 # The SMT query2 tests
 proc query2test {name args} {
     run $::SERIQ2 -d build/src/Seri/SMT/Tests/$name.2.dbg -i build/src \
-         -m Seri.SMT.Tests.$name.main \
+         -m Seri.SMT.Tests.[string map {/ .} $name].main \
          build/src/Seri/SMT/Tests/$name.sri {*}$args \
          > build/src/Seri/SMT/Tests/$name.2.out
 }
@@ -132,6 +132,7 @@ query2test "Share"
 query2test "Bit"
 query2test "AllQ"
 query2test "AllQ2"
+query2test "Squares2/Squares"
 
 # The enoch tests
 hrun $::ENOCH
