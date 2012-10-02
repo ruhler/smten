@@ -151,3 +151,167 @@ Then I'll attempt to implement this delambdafication. See if it works. Then
 report back. I'll spend no more than 25 minutes on this right now. Wish me
 luck.
 
+AppE LaceE [LaceE, a, ...]
+
+In some cases, the first LaceE could match. When can you match a case? Only
+when you have a wild card or a variable.
+
+case (case free1 of
+        p1 -> m1
+        p2 -> m2
+        ...)
+   x -> foo x
+
+Turns into:
+
+case free1 of
+  p1 -> case m1 of
+            x -> foo x
+  p2 -> case m2 of  
+            x -> foo x
+
+I suppose that's not so bad. So may as well perform that translation.
+
+AppE LaceE [LaceE, a, ...]
+
+Is changed to...
+
+AppE LaceE [a, ...]
+
+after elaboration of all the arguments.
+
+Where now the extra lace is pushed inside the first one. That seems okay to
+me. We make an application simpler.
+
+Tue Oct  2 09:36:01 EDT 2012
+
+Hmm... Trouble. I'm getting the arguments out of order somehow.
+
+It was:
+
+(case of {pa pb -> ...}) (case of {px py -> ...} x y) a b
+
+Hmm... I don't think I'm doing it right.
+It's not: App Lace [Lace, a, b, ...]
+
+It's really:
+
+App Lace [App Lace [x, y], a, b]
+
+So try matching against that. It's not deep.
+
+And I'm going to...
+
+(case of {px py -> case of {pa pb -> ...{}) x y a b
+
+Cool. That makes sense.
+
+Tue Oct  2 09:47:04 EDT 2012
+
+Trouble. 
+
+It seems to mostly work. There's a bug in array update.
+But there's a bug in queries too.
+
+I'm getting a query of the form:
+
+if free
+  then let f = ...
+       in do ...
+  else let f = ...
+       in do
+
+In other words, we have a query which is:
+
+let f = if free
+          then Foo free
+          else Bar free
+in do
+  assert ...
+
+So, this is exactly the simplification I was wanting to do before, only now
+it's back firing, because we are moving the Query inside of the if statement:
+
+if free
+   then let f = Foo free
+        in do assert ...
+   else let f = Bar free
+        in do assert ...
+
+
+Which is certainly not what I want!
+ 
+What are my options? I suppose only do this transformation of the mode is full
+elaboration. See if that helps?
+            
+No, that doesn't fix it. We actually introduce lambdas with this approach.
+
+I could try applying the arguments [a, b] internally. How about I try that...
+
+Tue Oct  2 10:06:06 EDT 2012
+
+That didn't fix the bug I'm seeing, though I think it should be done anyway.
+
+The bug I'm seeing may just be another kind of bug I didn't know about yet. I
+should note, this delambdafication step makes a huge difference in the
+generated query for algebraic data types. Though less so for sudoku for
+whatever reason.
+
+Anyway, let me look at the current bug...
+
+It looks like we don't finish elaboration. We have 
+
+(\get upd -> ...) (\foo -> ...) (\bar -> ...)
+
+I don't know why we don't apply the lambda.
+
+I think the trouble is, it looks like our case thing, so we don't match it.
+Perhaps I should try matching first, before doing this delambdafication.
+
+I think that's likely the case.
+
+Well, I'll think about it some more. I have to get to work on my proposal now.
+
+Tue Oct  2 15:18:17 EDT 2012
+
+Going to think about the delambdafication problem. I want to understand the
+issue and fix it properly. Not just guess.
+
+My hypothesis is matching a lambda doesn't work, because it's considered a
+delambdafication opportunity.
+
+So, for example, we can ask, how would I elaborate:
+
+(\f -> f 3) (\x -> x + 1)
+
+In SNF.
+
+Well, remember what this looks like:
+
+App (Lace [f -> f 3]) [Lace [x -> x + 1]]
+
+If you inline it, it should easily reduce to 4:
+
+A couple notes. First: we don't currently catch this case in our delambdafier,
+because we aren't applying the second argument.
+
+What do we really have here?
+
+if free~6
+  then (\get upd -> ...) (\a -> ...) (\b -> ...)
+else 
+
+ug. This is a bit complicated.
+
+Tue Oct  2 15:33:34 EDT 2012
+
+I'm going to try to simplify the bug.
+
+erg. not sure how to do that.
+
+Tue Oct  2 15:39:57 EDT 2012
+
+So I tried just waiting until I find I can't elaborate to do the second
+delambdafication step. That seems to have fixed the bugs I was running into...
+
+
