@@ -33,12 +33,15 @@
 -- 
 -------------------------------------------------------------------------------
 
+{-# LANGUAGE FlexibleContexts #-}
+
 -- | A monad for dealing with computations which can fail.
 module Seri.Failable (
     Failable, throw, attempt, attemptM, attemptIO, surely, onfail,
     ) where
 
 import Control.Monad
+import Control.Monad.Error
 
 import System.IO
 import System.Exit
@@ -46,8 +49,8 @@ import System.Exit
 type Failable = Either String
 
 -- | Throw an error with the given error message.
-throw :: String -> Failable a
-throw = Left
+throw :: (MonadError String m) => String -> m a
+throw = throwError
 
 -- | Run a Failable computation, returning either a failure message or the
 -- result of the computation.
@@ -76,9 +79,9 @@ surely (Left msg) = error msg
     
 -- | Run computation 'c', if it fails, return the result of calling 'f' on the
 -- error message from the failing 'c'.
-onfail :: (String -> Failable a) -- ^ f
-       -> Failable a             -- ^ c
-       -> Failable a
-onfail f (Left msg) = f msg
-onfail f c = c
+onfail :: (MonadError String m)
+       => (String -> m a) -- ^ f
+       -> m a             -- ^ c
+       -> m a
+onfail = flip catchError
 

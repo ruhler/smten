@@ -33,6 +33,7 @@
 -- 
 -------------------------------------------------------------------------------
 
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 
 -- | Hopefully efficient queries regarding a seri environment.
@@ -49,6 +50,7 @@ module Seri.Lambda.Env (
 import Debug.Trace
 
 import Control.Monad
+import Control.Monad.Error
 
 import Data.Maybe
 
@@ -156,7 +158,7 @@ lookupPrimD env n =
         
 -- | Look up a DataD with given type constructor Name in the given
 -- Environment.
-lookupDataD :: Env -> Name -> Failable Dec
+lookupDataD :: (MonadError String m) => Env -> Name -> m Dec
 lookupDataD env n =
   case (HT.lookup n (e_vitable env)) of
      Just (DecVI d@(DataD {})) -> return d  
@@ -230,7 +232,7 @@ lookupMethodType env n (Class _ ts) = do
         _ -> throw $ "lookupMethodType: " ++ pretty n ++ " not found"
 
 -- | Given the name of a data constructor in the environment, return its type.
-lookupDataConType :: Env -> Name -> Failable Type
+lookupDataConType :: (MonadError String m) => Env -> Name -> m Type
 lookupDataConType env n = 
     case HT.lookup n (e_dctable env) of
         Just t -> return t

@@ -33,6 +33,7 @@
 -- 
 -------------------------------------------------------------------------------
 
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE PatternGuards #-}
 
 module Seri.Target.Yices.Yices (
@@ -48,7 +49,9 @@ import Data.List ((\\))
 import Data.Char(ord)
 import Data.Maybe(catMaybes)
 import Data.Functor
+
 import Control.Monad.State.Strict
+import Control.Monad.Error
 
 import Seri.Failable
 import Seri.Lambda
@@ -78,21 +81,11 @@ ys_cmds = reverse . ys_cmdsr
 type CompilationM = StateT Compilation Failable
 
 -- When a compilation fails, append the given string to the error message.
-confail :: String -> CompilationM a -> CompilationM a
-confail m x = do
-    s <- get
-    (v, s') <- lift $ onfail (\msg -> throw $ msg ++ "\n" ++ m) $ runStateT x s
-    put s'
-    return v
-
--- | Strict gets.
-getsS :: (Compilation -> a) -> CompilationM a
-getsS f = do
-    s <- get
-    return $! f s
+confail :: (MonadError String m) => String -> m a -> m a
+confail m = onfail (\msg -> throw $ msg ++ "\n" ++ m)
 
 -- | Strict modify
-modifyS :: (Compilation -> Compilation) -> CompilationM ()
+modifyS :: (MonadState s m) => (s -> s) -> m ()
 modifyS f = do
     s <- get
     put $! f s
@@ -119,49 +112,49 @@ yicesN = yicesname . pretty
 
 -- | Compile a seri type to a yices type
 -- Returns a list of yices commands needed to use the compiled type.
-yicesT :: Type -> CompilationM ([Y.Command], Y.Type)
+yicesT :: (MonadError String m, MonadState Compilation m)
+          => Type -> m ([Y.Command], Y.Type)
 yicesT t = do
    modifyS $ \ys -> ys { ys_cmdsr = [] }
    mt <- confail ("When compiling " ++ pretty t) $ compileNeeded t 
-   cmds <- getsS ys_cmds
-   yt <- lift $ yType mt
+   cmds <- gets ys_cmds
+   yt <- yType mt
    return (cmds, yt)
 
 -- | Compile a seri expression to a yices expression.
 -- Returns a list of yices commands needed to use the compiled expressions.
-yicesE :: Exp -> CompilationM ([Y.Command], Y.Expression)
+yicesE :: (Functor m, MonadError String m, MonadState Compilation m)
+          => Exp -> m ([Y.Command], Y.Expression)
 yicesE e = do
-    poly <- getsS ys_poly
+    poly <- gets ys_poly
     let se = elaborate SNF poly e
     modifyS $ \ys -> ys { ys_cmdsr = [] }
     me <- confail ("When compiling " ++ pretty se) $ compileNeeded se
     ye <- confail ("When compiling " ++ pretty se) $ yExp me
-    cmds <- getsS ys_cmds
+    cmds <- gets ys_cmds
     return (cmds, ye)
 
 -- | Run a compilation.
 runCompilation :: CompilationM a -> Compilation -> Failable (a, Compilation)
 runCompilation = runStateT
 
-yfail :: String -> CompilationM a
-yfail = lift . throw
-
 -- | Append a list of commands in order to the commands specified so far.
-addcmds :: [Y.Command] -> CompilationM ()
+addcmds :: (MonadState Compilation m) => [Y.Command] -> m ()
 addcmds cmds = modifyS $ \ys -> ys { ys_cmdsr = (reverse cmds) ++ ys_cmdsr ys}
 
 -- Given some object, compile everything in the environment needed for this
 -- object, and return the monomorphic object.
-compileNeeded :: (Monomorphic a, Ppr a) => a -> CompilationM a
+compileNeeded :: (MonadError String m, MonadState Compilation m,
+                  Monomorphic a, Ppr a) => a -> m a
 compileNeeded x = do
-    poly <- getsS ys_poly
+    poly <- gets ys_poly
     let (mdecs, mx) = monomorphic poly x
     let (sorted, r) = sort mdecs
     if null r
         then return ()  
-        else yfail $ "yices recursive declarations not supported: "
+        else throw $ "yices recursive declarations not supported: "
                 ++ pretty r ++ ",\n needed for " ++ pretty x
-    decl <- getsS ys_mono
+    decl <- gets ys_mono
     let ndecl = sorted \\ decl
     let nmono = decl ++ ndecl
     -- TODO: should we use "tweak" to update ys_monoe?
@@ -172,24 +165,25 @@ compileNeeded x = do
 
 -- Given the argument type and output type of a free error variable, return
 -- the yices name of a newly defined one.
-yfreeerr :: Type -> CompilationM String
+yfreeerr :: (MonadError String m, MonadState Compilation m) => Type -> m String
 yfreeerr t = do
-    yt <- lift $ yType t
-    id <- getsS ys_errid
+    yt <- yType t
+    id <- gets ys_errid
     let nm = yicesname ("err~" ++ show id)
     modifyS $ \ys -> ys { ys_errid = id+1 }
     addcmds [Y.Define nm yt Nothing]
     return nm
 
 -- Get a new, free variable for use as a case argument variable.
-yfreecase :: Char -> CompilationM String
+yfreecase :: (MonadState Compilation m) => Char -> m String
 yfreecase c = do
-    id <- getsS ys_caseid
+    id <- gets ys_caseid
     modifyS $ \ys -> ys { ys_caseid = id+1 }
     return $! yicesname (['c', c, '~'] ++ show id)
 
 -- Translate a seri expression to a yices expression
-yExp :: Exp -> CompilationM Y.Expression
+yExp :: (Functor m, MonadError String m, MonadState Compilation m)
+      => Exp -> m Y.Expression
 yExp e | Just (VarP (Sig n _), v, x) <- deLet1E e = do
     v' <- yExp v
     x' <- yExp x
@@ -208,7 +202,8 @@ yExp e | Just (xs, ms) <- deCaseE e = do
      --   predicate - predicates indicating if the 
      --                pattern p matches expression e
      --   bindings - a list of bindings made when p matches e.
-     depat :: Pat -> Y.Expression -> CompilationM ([Y.Expression], [Y.Binding])
+     depat :: (MonadError String m, MonadState Compilation m)
+              => Pat -> Y.Expression -> m ([Y.Expression], [Y.Binding])
      depat (ConP _ n []) e | n == name "True" = return ([e], [])
      depat (ConP _ n []) e | n == name "False" = return ([Y.notE e], [])
      depat (ConP _ n []) e =
@@ -230,7 +225,8 @@ yExp e | Just (xs, ms) <- deCaseE e = do
      --    es - the expressions being cased on
      --    ms - the remaining matches in the case statement.
      --  outputs - the yices expression implementing the matches.
-     dematch :: [Y.Expression] -> [Match] -> CompilationM Y.Expression
+     dematch :: (Functor m, MonadError String m, MonadState Compilation m)
+                => [Y.Expression] -> [Match] -> m Y.Expression
      dematch ye [] = do
          errnm <- yfreeerr (arrowsT $ map typeof xs ++ [typeof (head ms)])
          return $ Y.FunctionE (Y.varE errnm) ye
@@ -246,7 +242,8 @@ yExp e | Just (xs, ms) <- deCaseE e = do
          let lete = Y.letE (concat bindings) b'
          return $ Y.ifE pred lete bms
 
-     givename :: (Y.Expression, Char) -> CompilationM ([Y.Binding], Y.Expression)
+     givename :: (MonadState Compilation m)
+                 => (Y.Expression, Char) -> m ([Y.Binding], Y.Expression)
      givename (e@Y.ImmediateE {}, _) = return ([], e)
      givename (e, c) = do
         cnm <- yfreecase c
@@ -357,12 +354,13 @@ yExp e@(AppE a b) =
 yExp (LitE (IntegerL x)) = return $ Y.integerE x
 yExp (LitE (CharL c)) = return $ Y.integerE (fromIntegral $ ord c)
 yExp l@(LaceE ms) = 
-    yfail $ "lambda expression in yices target generation: " ++ pretty l
+    throw $ "lambda expression in yices target generation: " ++ pretty l
 yExp (ConE s) = yCon s []
 yExp (VarE (Sig n _)) = return $ Y.varE (yicesname (pretty n))
 
 -- Generate yices code for a fully applied constructor application.
-yCon :: Sig -> [Exp] -> CompilationM Y.Expression
+yCon :: (Functor m, MonadError String m, MonadState Compilation m)
+        => Sig -> [Exp] -> m Y.Expression
 yCon (Sig n _) [] | n == name "True" = return Y.trueE
 yCon (Sig n _) [] | n == name "False" = return Y.falseE
 yCon (Sig n ct) args = do
@@ -386,27 +384,28 @@ yicestag n = yicesname $ "tag~" ++ pretty n
 
 -- Given the name of a constructor, return the index for its fields in the
 -- data types tuple.
-yicesci :: Name -> CompilationM Integer
+yicesci :: (MonadError String m, MonadState Compilation m)
+            => Name -> m Integer
 yicesci n =
-    let findidx :: Integer -> [Con] -> Failable Integer
+    let findidx :: (MonadError String m) => Integer -> [Con] -> m Integer
         findidx _ [] = throw $ "index for " ++ pretty n ++ " not found"
         findidx i ((Con cn []) : cs) = findidx i cs
         findidx i ((Con cn _) : _) | n == cn = return i
         findidx i (_ : cs) = findidx (i+1) cs
     in do
-        envr <- getsS ys_monoe
-        contype <- lift $ lookupDataConType envr n
+        envr <- gets ys_monoe
+        contype <- lookupDataConType envr n
         case last $ unarrowsT contype of
             ConT dt -> do
-                (DataD _ _ cs) <- lift $ lookupDataD envr dt
-                lift $ findidx 2 cs
+                (DataD _ _ cs) <- lookupDataD envr dt
+                findidx 2 cs
             x -> error $ "yicesci: contype: " ++ pretty x ++ " when lookup up " ++ pretty n
 
 -- The tag index for a data type
 yicesti :: Integer
 yicesti = 1
 
-yType :: Type -> Failable Y.Type
+yType :: (MonadError String m) => Type -> m Y.Type
 yType (ConT n) = return $ Y.VarT (yicesname (pretty n))
 yType (AppT (AppT (ConT n) a) b) | n == name "->"  = do
     a' <- yType a
@@ -416,7 +415,7 @@ yType t = throw $ "Cannot compile to yices: " ++ pretty t
 
 -- yDec
 --   Assumes the declaration is monomorphic.
-yDec :: Dec -> CompilationM ()
+yDec :: (MonadError String m, MonadState Compilation m) => Dec -> m ()
 yDec (ValD (TopSig n [] t) _) = do
     -- TODO: should we allow this or not?
     error $ "Variable " ++ pretty n ++ " has not been inlined"
@@ -441,13 +440,13 @@ yDec (DataD n [] cs) =
     let conname :: Con -> String
         conname (Con n _) = yicesname (pretty n)
 
-        contype :: Con -> Failable (Maybe Y.Type)
+        contype :: (MonadError String m) => Con -> m (Maybe Y.Type)
         contype (Con _ []) = return Nothing
         contype (Con _ ts) = do 
             ts' <- mapM yType ts
             return $ Just (Y.TupleT ts')
     in do
-        cts <- lift $ mapM contype cs
+        cts <- mapM contype cs
         let tag = Y.DefineType (yicestag n) (Just $ Y.ScalarTD (map conname cs))
         let ttype = Y.TupleT (Y.VarT (yicestag n) : (catMaybes cts))
         let dt = Y.DefineType (yicesname (pretty n)) (Just $ Y.NormalTD ttype)
@@ -479,7 +478,7 @@ yDec (PrimD (TopSig n _ _)) | n == name "Seri.Lib.Bit.__prim_and_Bit" = return (
 yDec (PrimD (TopSig n _ _)) | n == name "~error" = return ()
 yDec (PrimD (TopSig n _ _)) | n == name "Seri.SMT.Array.update" = return ()
 
-yDec d = yfail $ "Cannot compile to yices: " ++ pretty d
+yDec d = throw $ "Cannot compile to yices: " ++ pretty d
 
 -- Changes to the (polymorphic) declarations to handle yices specific things.
 -- The primitive error turns into:
