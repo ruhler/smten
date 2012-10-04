@@ -36,7 +36,10 @@
 -- Monomorhpic Target
 --  Takes a polymorphic seri lambda expression, and compiles it to an
 --  equivalent monomorphic seri lambda expression.
-module Seri.Target.Monomorphic.Monomorphic (Monomorphic(..)) where
+module Seri.Target.Monomorphic.Monomorphic (Monomorphic(..),
+  -- TODO: expose mononametype as a nicer interface, I put it here as a hack
+  -- for use in the yices target.
+  mononametype) where
 
 import Control.Monad.State.Strict
 import qualified Data.Set as Set

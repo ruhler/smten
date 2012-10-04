@@ -112,7 +112,11 @@ isfreename nm = name "free~" == ntake 5 nm
 yicest :: (Y.Yices y) => Type -> QueryY y Y.Type
 yicest t = do
     ys <- gets ys_ys 
-    ((cmds, yt), ys') <- lift . attemptIO $ runCompilation (yicesT t) ys
+    let mkyt = do
+          yt <- yicesT t
+          cmds <- yicesD
+          return (cmds, yt)
+    ((cmds, yt), ys') <- lift . attemptIO $ runCompilation mkyt ys
     modify $ \s -> s { ys_ys = ys' }
     runCmds cmds
     return yt
@@ -120,7 +124,11 @@ yicest t = do
 yicese :: (Y.Yices y) => Exp -> QueryY y Y.Expression
 yicese e = do
     ys <- gets ys_ys 
-    ((cmds, ye), ys') <- lift . attemptIO $ runCompilation (yicesE e) ys
+    let mkye = do
+          ye <- yicesE e
+          cmds <- yicesD
+          return (cmds, ye)
+    ((cmds, ye), ys') <- lift . attemptIO $ runCompilation mkye ys
     modify $ \s -> s { ys_ys = ys' }
     runCmds cmds
     return ye

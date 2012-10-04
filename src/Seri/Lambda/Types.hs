@@ -33,10 +33,12 @@
 -- 
 -------------------------------------------------------------------------------
 
+{-# LANGUAGE PatternGuards #-}
+
 -- | Utilities for working with Seri Types
 module Seri.Lambda.Types (
-    appsT, arrowsT, unappsT, unarrowsT,
-    unitT, boolT, listT, integerT, bitT, charT, stringT, tupT, untupT,
+    appsT, arrowsT, unappsT, unarrowsT, deArrowT,
+    unitT, boolT, listT, integerT, bitT, deBitT, charT, stringT, tupT, untupT,
     Typeof(..),
     assign, assignl, assignments, bindingsP, bindingsP', varTs, nvarTs,
     isSubType,
@@ -55,6 +57,10 @@ integerT = ConT (name "Integer")
 
 bitT :: Integer -> Type
 bitT w = AppT (ConT (name "Bit")) (NumT (ConNT w))
+
+deBitT :: Type -> Maybe Integer
+deBitT (AppT (ConT n) (NumT w)) | n == name "Bit" = Just (nteval w)
+deBitT _ = Nothing
 
 -- | The Char type
 charT :: Type
@@ -88,8 +94,13 @@ unappsT t = [t]
 -- | Given a type of the form (a -> b -> ... -> c),
 --  returns the list: [a, b, ..., c]
 unarrowsT :: Type -> [Type]
-unarrowsT (AppT (AppT (ConT ar) a) b) | ar == name "->"  = a : (unarrowsT b)
+unarrowsT t | Just (a, b) <- deArrowT t = a : (unarrowsT b)
 unarrowsT t = [t]
+
+-- | Given a type of the form (a -> b), return (a, b)
+deArrowT :: Type -> Maybe (Type, Type)
+deArrowT (AppT (AppT (ConT ar) a) b) | ar == name "->" = Just (a, b)
+deArrowT _ = Nothing
 
 -- | The unit type: ()
 unitT :: Type
