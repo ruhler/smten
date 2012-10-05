@@ -5,8 +5,8 @@ all:
 test:
 	./build/src/dist/build/seriq2/seriq2 \
 		-d foo.dbg -i src \
-		-m Seri.SMT.Tests.Sudoku2.main \
-		src/Seri/SMT/Tests/Sudoku2.sri
+		-m Seri.SMT.Tests.Array.main \
+		src/Seri/SMT/Tests/Array.sri +RTS -K1g -p
 
 
 clean:

@@ -132,12 +132,13 @@ yCon :: Sig -> [Exp] -> CompilationM Y.Expression
 yCon (Sig n _) [] | n == name "True" = return Y.trueE
 yCon (Sig n _) [] | n == name "False" = return Y.falseE
 yCon (Sig n ct) args = do
-    let ConT dt = last $ unarrowsT ct
-    let tagged = Y.tupleUpdateE (Y.varE $ yicesuidt dt) yicesti (Y.varE $ yicesN n)
+    let dt = last $ unarrowsT ct
+    yicesT dt   -- make sure uidt~dt is defined.
+    let tagged = Y.tupleUpdateE (Y.varE $ yicesuidt (mononametype dt)) yicesti (Y.varE $ yicesN n)
     if null args
         then return tagged
         else do
-            args' <- mapM yicesE args
+            args' <- mapM yicesE' args
             ci <- yicesci n
             return $ Y.tupleUpdateE tagged ci (Y.tupleE args')
 
@@ -162,7 +163,7 @@ yicesci n =
     in do
         env <- gets ys_poly
         contype <- lift $ lookupDataConType env n
-        case last $ unarrowsT contype of
+        case head . unappsT . last . unarrowsT $ contype of
             ConT dt -> do
                 (DataD _ _ cs) <- lift $ lookupDataD env dt
                 lift $ findidx 2 cs
@@ -224,7 +225,7 @@ yicesT t = do
 -- compiled. Does not add the type to the types map (that's done by yicesT).
 yicesT' :: Type -> CompilationM Y.Type
 yicesT' t | Just (a, b) <- deArrowT t = Y.ArrowT <$> mapM yicesT [a, b] 
-yicesT' t | (ConT nm : args) <- unarrowsT t =
+yicesT' t | (ConT nm : args) <- unappsT t =
   let contype :: Con -> CompilationM (Maybe Y.Type)
       contype (Con _ []) = return Nothing
       contype (Con _ ts) = Just . Y.TupleT <$> mapM yicesT ts
@@ -233,7 +234,8 @@ yicesT' t | (ConT nm : args) <- unarrowsT t =
     DataD _ vars vcs <- lift $ lookupDataD poly nm
     let n = mononametype t
     let yn = yicesN n
-    let cs = assign (zip (map tyVarName vars) args) vcs
+    let assignments = (zip (map tyVarName vars) args)
+    let cs = assign assignments vcs
     cts <- mapM contype cs
     let tag = Y.DefineType (yicestag n) (Just $ Y.ScalarTD [yicesN cn | Con cn _ <- cs])
     let ttype = Y.TupleT (Y.VarT (yicestag n) : (catMaybes cts))
@@ -247,18 +249,26 @@ yicesT' t = yfail $ "yicesT: " ++ pretty t ++ " not supported"
 -- Before using the returned expression, the yicesD function should be called
 -- to get the required yices declarations.
 yicesE :: Exp -> CompilationM Y.Expression
-yicesE e | Just (VarP (Sig n _), v, x) <- deLet1E e = do
-    v' <- yicesE v
-    x' <- yicesE x
+yicesE e = do
+  poly <- gets ys_poly
+  let se = elaborate SNF poly e
+  yicesE' se
+
+-- | Compile a seri expression to yices, assuming the expression can be
+-- represented as is in yices without further elaboration.
+yicesE' :: Exp -> CompilationM Y.Expression
+yicesE' e | Just (VarP (Sig n _), v, x) <- deLet1E e = do
+    v' <- yicesE' v
+    x' <- yicesE' x
     return (Y.letE [(yicesN n, v')] x')
 
-yicesE e | Just (p, a, b) <- deIfE e = do
-  p' <- yicesE p
-  a' <- yicesE a
-  b' <- yicesE b
+yicesE' e | Just (p, a, b) <- deIfE e = do
+  p' <- yicesE' p
+  a' <- yicesE' a
+  b' <- yicesE' b
   return (Y.ifE p' a' b') 
 
-yicesE e | Just (xs, ms) <- deCaseE e = do
+yicesE' e | Just (xs, ms) <- deCaseE e = do
   nocaseerr <- gets ys_nocaseerr
   (let -- depat p e
      --    outputs: (predicate, bindings)
@@ -292,12 +302,12 @@ yicesE e | Just (xs, ms) <- deCaseE e = do
          errnm <- yfreeerr (arrowsT $ map typeof xs ++ [typeof (head ms)])
          return $ Y.FunctionE (Y.varE errnm) ye
      dematch es [Match ps b] | nocaseerr = do
-         b' <- yicesE b
+         b' <- yicesE' b
          bindings <- concatMap snd <$> mapM (uncurry depat) (zip ps es)
          return $ Y.letE bindings b'
      dematch es ((Match ps b):ms) = do
          bms <- dematch es ms
-         b' <- yicesE b
+         b' <- yicesE' b
          (preds, bindings) <- unzip <$> mapM (uncurry depat) (zip ps es)
          let pred = Y.andE (concat preds)
          let lete = Y.letE (concat bindings) b'
@@ -313,84 +323,87 @@ yicesE e | Just (xs, ms) <- deCaseE e = do
        -- them when we use them it to check for a pattern match in every
        -- alternative. Instead we bind them to variables ~ca, ~cb, ... and
        -- duplicate that instead.
-       es' <- mapM yicesE xs
+       es' <- mapM yicesE' xs
        (binds, es'') <- unzip <$> mapM givename (zip es' "abcdefghijklmnopqrstuvwxyz")
        body <- dematch es'' ms
        return $ Y.letE (concat binds) body
    )
-yicesE (AppE a []) = yicesE a
-yicesE e@(AppE a b) =
+yicesE' (AppE a []) = yicesE' a
+yicesE' e@(AppE a b) =
     case unappsE e of 
        ((ConE s):args) -> yCon s args
-       [VarE (Sig n t), _] | n == name "Seri.Lib.Prelude.error" -> do
-           errnm <- yfreeerr t
-           return $ Y.varE errnm
+       [VarE (Sig n t), _]
+            | n == name "Seri.Lib.Prelude.error"
+            , Just (_, dt) <- deArrowT t
+            -> do errnm <- yfreeerr dt
+                  return $ Y.varE errnm
        [VarE (Sig n _), a, b] | n == name "Seri.Lib.Prelude.<" -> do   
-           a' <- yicesE a
-           b' <- yicesE b
+           a' <- yicesE' a
+           b' <- yicesE' b
            return (Y.ltE a' b')
        [VarE (Sig n _), a, b] | n == name "Seri.Lib.Prelude.<=" -> do   
-           a' <- yicesE a
-           b' <- yicesE b
+           a' <- yicesE' a
+           b' <- yicesE' b
            return (Y.leqE a' b')
        [VarE (Sig n _), a, b] | n == name "Seri.Lib.Prelude.>" -> do
-           a' <- yicesE a
-           b' <- yicesE b
+           a' <- yicesE' a
+           b' <- yicesE' b
            return (Y.gtE a' b')
        [VarE (Sig n _), a, b] | n == name "Seri.Lib.Prelude.&&" -> do
-           a' <- yicesE a
-           b' <- yicesE b
+           a' <- yicesE' a
+           b' <- yicesE' b
            return (Y.andE [a', b'])
        [VarE (Sig n _), a, b] | n == name "Seri.Lib.Prelude.||" -> do
-           a' <- yicesE a
-           b' <- yicesE b
+           a' <- yicesE' a
+           b' <- yicesE' b
            return (Y.orE [a', b'])
        [VarE (Sig n _), a] | n == name "Seri.Lib.Prelude.not" -> do
-           a' <- yicesE a
+           a' <- yicesE' a
            return (Y.notE a')
        [VarE (Sig n _), a, b] | n == name "Seri.Lib.Prelude.__prim_add_Integer" -> do
-           a' <- yicesE a
-           b' <- yicesE b
+           a' <- yicesE' a
+           b' <- yicesE' b
            return (Y.addE a' b')
        [VarE (Sig n _), a, b] | n == name "Seri.Lib.Prelude.__prim_sub_Integer" -> do
-           a' <- yicesE a
-           b' <- yicesE b
+           a' <- yicesE' a
+           b' <- yicesE' b
            return (Y.subE a' b')
        [VarE (Sig n _), a, b] | n == name "Seri.Lib.Prelude.__prim_mul_Integer" -> do
-           a' <- yicesE a
-           b' <- yicesE b
+           a' <- yicesE' a
+           b' <- yicesE' b
            return (Y.mulE a' b')
        [VarE (Sig n _), a, b] | n == name "Seri.Lib.Prelude.__prim_eq_Integer" -> do
-           a' <- yicesE a
-           b' <- yicesE b
+           a' <- yicesE' a
+           b' <- yicesE' b
            return (Y.eqE a' b')
        [VarE (Sig n _), a, b] | n == name "Seri.Lib.Bit.__prim_eq_Bit" -> do
-           a' <- yicesE a
-           b' <- yicesE b
+           a' <- yicesE' a
+           b' <- yicesE' b
            return (Y.eqE a' b')
        [VarE (Sig n _), a, b] | n == name "Seri.Lib.Bit.__prim_add_Bit" -> do
-           a' <- yicesE a
-           b' <- yicesE b
+           a' <- yicesE' a
+           b' <- yicesE' b
            return (Y.bvaddE a' b')
        [VarE (Sig n _), a, b] | n == name "Seri.Lib.Bit.__prim_or_Bit" -> do
-           a' <- yicesE a
-           b' <- yicesE b
+           a' <- yicesE' a
+           b' <- yicesE' b
            return (Y.bvorE a' b')
        [VarE (Sig n _), a, b] | n == name "Seri.Lib.Bit.__prim_and_Bit" -> do
-           a' <- yicesE a
-           b' <- yicesE b
+           a' <- yicesE' a
+           b' <- yicesE' b
            return (Y.bvandE a' b')
        -- TODO: should we allow shifting by an amount not statically
        -- determined? In that case, I think we need to convert the second
        -- argument to a bit vector in order to use yices bvshl function.
        [VarE (Sig n _), a, (LitE (IntegerL v))] | n == name "Seri.Lib.Bit.__prim_lsh_Bit" -> do
-           a' <- yicesE a
+           a' <- yicesE' a
            return (Y.bvshiftLeft0E a' v)
        [VarE (Sig n _), a, (LitE (IntegerL v))] | n == name "Seri.Lib.Bit.__prim_rshl_Bit" -> do
-           a' <- yicesE a
+           a' <- yicesE' a
            return (Y.bvshiftRight0E a' v)
-       [VarE (Sig n bt), LitE (IntegerL x)]
+       [VarE (Sig n t), LitE (IntegerL x)]
             | n == name "Seri.Lib.Bit.__prim_fromInteger_Bit"
+            , Just (_, bt) <- deArrowT t
             , Just w <- deBitT bt
             -> return (Y.mkbvE w x)
        [VarE (Sig n t), a]
@@ -399,32 +412,32 @@ yicesE e@(AppE a b) =
             , Just sw <- deBitT bs
             , Just tw <- deBitT bt
             -> do
-               a' <- yicesE a
+               a' <- yicesE' a
                return (Y.bvzeroExtendE a' (tw - sw))
        [VarE (Sig n t), a]
             | n == name "Seri.Lib.Bit.__prim_truncate_Bit"
             , Just (_, bt) <- deArrowT t
             , Just tw <- deBitT bt
-            -> Y.bvextractE (tw - 1) 0 <$> yicesE a
+            -> Y.bvextractE (tw - 1) 0 <$> yicesE' a
        [VarE (Sig n _), x, LitE (IntegerL i)]
             | n == name "Seri.Lib.Bit.__prim_extract_Bit"
             , Just tw <- deBitT (typeof e)
-            -> Y.bvextractE (i + tw - 1) i <$> yicesE x
+            -> Y.bvextractE (i + tw - 1) i <$> yicesE' x
        [VarE (Sig n _), f, k, v] | n == name "Seri.SMT.Array.update" -> do
-           f' <- yicesE f
-           k' <- yicesE k
-           v' <- yicesE v
+           f' <- yicesE' f
+           k' <- yicesE' k
+           v' <- yicesE' v
            return $ Y.UpdateE f' [k'] v'
        _ -> do
-           a' <- yicesE (AppE a (init b))
-           b' <- yicesE (last b)
+           a' <- yicesE' (AppE a (init b))
+           b' <- yicesE' (last b)
            return $ Y.FunctionE a' [b']
-yicesE (LitE (IntegerL x)) = return $ Y.integerE x
-yicesE (LitE (CharL c)) = return $ Y.integerE (fromIntegral $ ord c)
-yicesE l@(LaceE ms) = 
+yicesE' (LitE (IntegerL x)) = return $ Y.integerE x
+yicesE' (LitE (CharL c)) = return $ Y.integerE (fromIntegral $ ord c)
+yicesE' l@(LaceE ms) = 
     yfail $ "lambda expression in yices target generation: " ++ pretty l
-yicesE (ConE s) = yCon s []
-yicesE (VarE (Sig n _)) = return $ Y.varE (yicesN n)
+yicesE' (ConE s) = yCon s []
+yicesE' (VarE (Sig n _)) = return $ Y.varE (yicesN n)
 
 
 -- | Take the list of yices declarations made so far.
