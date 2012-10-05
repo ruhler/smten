@@ -33,6 +33,7 @@
 -- 
 -------------------------------------------------------------------------------
 
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE PatternGuards #-}
 
 module Seri.Target.Yices.Yices (
@@ -50,7 +51,9 @@ import Data.List ((\\))
 import Data.Char(ord)
 import Data.Maybe(catMaybes)
 import Data.Functor
+
 import Control.Monad.State.Strict
+import Control.Monad.Error
 
 import Seri.Failable
 import Seri.Lambda
@@ -105,9 +108,6 @@ compilation version nocaseerr poly = Compilation {
 runCompilation :: CompilationM a -> Compilation -> Failable (a, Compilation)
 runCompilation = runStateT
 
-yfail :: String -> CompilationM a
-yfail = lift . throw
-
 -- Given the argument type and output type of a free error variable, return
 -- the yices name of a newly defined one.
 yfreeerr :: Type -> CompilationM String
@@ -154,18 +154,18 @@ yicestag n = yicesname $ "tag~" ++ pretty n
 -- data types tuple.
 yicesci :: Name -> CompilationM Integer
 yicesci n =
-    let findidx :: Integer -> [Con] -> Failable Integer
+    let findidx :: (MonadError String m) => Integer -> [Con] -> m Integer
         findidx _ [] = throw $ "index for " ++ pretty n ++ " not found"
         findidx i ((Con cn []) : cs) = findidx i cs
         findidx i ((Con cn _) : _) | n == cn = return i
         findidx i (_ : cs) = findidx (i+1) cs
     in do
         env <- gets ys_poly
-        contype <- lift $ lookupDataConType env n
+        contype <- lookupDataConType env n
         case head . unappsT . last . unarrowsT $ contype of
             ConT dt -> do
-                (DataD _ _ cs) <- lift $ lookupDataD env dt
-                lift $ findidx 2 cs
+                (DataD _ _ cs) <- lookupDataD env dt
+                findidx 2 cs
             x -> error $ "yicesci: contype: " ++ pretty x ++ " when lookup up " ++ pretty n
 
 -- The tag index for a data type
@@ -230,7 +230,7 @@ yicesT' t | (ConT nm : args) <- unappsT t =
       contype (Con _ ts) = Just . Y.TupleT <$> mapM yicesT ts
   in do
     poly <- gets ys_poly
-    DataD _ vars vcs <- lift $ lookupDataD poly nm
+    DataD _ vars vcs <- lookupDataD poly nm
     let n = mononametype t
     let yn = yicesN n
     let assignments = (zip (map tyVarName vars) args)
@@ -242,7 +242,7 @@ yicesT' t | (ConT nm : args) <- unappsT t =
     let uidt = Y.Define (yicesuidt n) (Y.VarT yn) Nothing
     addcmds [tag, dt, uidt]
     return (Y.VarT yn)
-yicesT' t = yfail $ "yicesT: " ++ pretty t ++ " not supported"
+yicesT' t = throw $ "yicesT: " ++ pretty t ++ " not supported"
 
 -- | Compile a seri expression to a yices expression.
 -- Before using the returned expression, the yicesD function should be called
@@ -434,7 +434,7 @@ yicesE' e@(AppE a b) =
 yicesE' (LitE (IntegerL x)) = return $ Y.integerE x
 yicesE' (LitE (CharL c)) = return $ Y.integerE (fromIntegral $ ord c)
 yicesE' l@(LaceE ms) = 
-    yfail $ "lambda expression in yices target generation: " ++ pretty l
+    throw $ "lambda expression in yices target generation: " ++ pretty l
 yicesE' (ConE s) = yCon s []
 yicesE' (VarE (Sig n _)) = return $ Y.varE (yicesN n)
 
