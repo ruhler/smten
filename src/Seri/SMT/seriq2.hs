@@ -63,5 +63,5 @@ main = do
     let opts = (RunOptions dbg True)
     tmain <- attemptIO $ lookupVarType env (name m)
     result <- runYices2 opts env (run $ VarE (Sig (name m) tmain))
-    putStrLn $ pretty (elaborate WHNF env result)
+    putStrLn $ pretty (elabwhnf env result)
 

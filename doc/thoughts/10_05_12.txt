@@ -190,3 +190,7 @@ anymore, right? So can I please get rid of it? I don't think it's a very good
 implementation anyway. That makes sense. All except that one function which I
 want to pull into the yices target.
 
+Fri Oct  5 10:15:56 EDT 2012
+
+Good. The monomorphizer is now gone. Good riddance.
+

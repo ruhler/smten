@@ -58,6 +58,6 @@ main = do
     let env = mkEnv decs
     attemptIO $ typecheck env decs
     let e = VarE (Sig (name mainexp) UnknownT)
-    let elaborated = elaborate WHNF env e
+    let elaborated = elabwhnf env e
     output (pretty elaborated)
 

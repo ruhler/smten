@@ -38,7 +38,7 @@
 
 -- | Target for elaborating seri expressions.
 module Seri.Target.Elaborate.Elaborate (
-    Mode(..), elaborate,
+    Mode(..), elabwhnf, elaborate,
     ) where
 
 import Debug.Trace
@@ -79,8 +79,9 @@ instance Eq (a -> ExpH) where
     (==) _ _ = False
 
 
-
-
+-- Weak head normal form elaboration
+elabwhnf :: Env -> Exp -> Exp
+elabwhnf = elaborate WHNF
 
 -- | Elaborate an expression under the given mode.
 elaborate :: Mode  -- ^ Elaboration mode

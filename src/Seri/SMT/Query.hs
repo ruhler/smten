@@ -76,7 +76,7 @@ class (Functor q, Monad q) => Query q where
 run :: (Query q) => Exp -> q Exp
 run e = do
     env <- envQ
-    case elaborate WHNF env e of
+    case elabwhnf env e of
         (AppE (VarE (Sig n _)) [arg]) | n == name "Seri.SMT.SMT.query" -> do
             res <- query (realize arg)
             case res of 

@@ -41,7 +41,7 @@ assert p =
 realize :: (Query q, SeriableE a) => TExp a -> Realize q a
 realize (TExp x) = do
   env <- envR
-  unpack' . TExp . elaborate WHNF env <$> Q.realize x
+  unpack' . TExp . elabwhnf env <$> Q.realize x
 
 queryR :: (Query q) => Realize q a -> q (Answer a)
 queryR = Q.query
@@ -56,5 +56,5 @@ run' :: (Query q, SeriableE a) => TExp (QueryT a) -> q a
 run' x = do
   env <- envQ
   TExp v <- run x
-  return $ unpack' (TExp (elaborate WHNF env v))
+  return $ unpack' (TExp (elabwhnf env v))
 
