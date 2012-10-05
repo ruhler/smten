@@ -54,7 +54,6 @@ import Control.Monad.State.Strict
 
 import Seri.Failable
 import Seri.Lambda
-import Seri.Target.Monomorphic.Monomorphic
 import Seri.Target.Elaborate
 
 -- | A yices compilation object.
@@ -449,3 +448,12 @@ yicesD = do
   modifyS $ \ys -> ys { ys_cmdsr = [] }
   return cmds
 
+-- Give the monomorphic name for an applied type
+mononametype :: Type -> Name
+mononametype (ConT n) = n
+mononametype (NumT n) = ntname n
+mononametype (AppT a b) = mononametype a `nappend` name "$" `nappend` mononametype b
+
+ntname :: NType -> Name
+ntname n = name "#" `nappend` name (show (nteval n))
+    

@@ -1,0 +1,221 @@
+
+Wed Oct  3 08:49:30 EDT 2012
+
+Here's what I want to try real quick like, for the partial elaborator:
+
+Pass a predicate to my current elaborating indicating whether it should
+elaborate an expression or no. Before every elaboration attempt, I'll call
+this predicate.
+
+Then pass as a predicate a successful yices compilation. See if that works. So
+we won't elaborate anything that can be expressed in yices2.
+
+I think I'll need to couple it with lazy elaboration. That will be the next
+step. Then verify we have sharing in the share...
+
+Wed Oct  3 09:10:11 EDT 2012
+
+It's taking really a long time for query1. I think much too long.
+
+Let me try using allelab first, see if it still has problems. If so, there's a
+bug. Otherwise... let me trace the pelab predicate, see how many times it is
+being called, and on what.
+
+Wed Oct  3 09:28:37 EDT 2012
+
+It was a bug. I had an infinite recursion. I fixed that.
+
+So now it works. But it's really slow, for example, on the Bluespec query. I
+knew it would be slow. That's not really the point of this exercise. It will
+be possible to rewrite hopefully in a manner which is much less slow.
+
+Some observations:
+
+This leads to more complex expressions, because we don't do any simplification
+in the expression. In a sense, that's what we want. But is it?
+
+The idea is: yices should be more efficient at doing these things than seri
+is, for whatever reason. If you believe that to be the case, then this makes
+sense, I suppose.
+
+The important thing is that this way we preserve all the high level sharing
+information and expose that to yices. Even if it is silly.
+
+In practice, I wonder if there isn't a middle ground. Some way to say: what we
+really want is to elaborate anything that we can that doesn't remove knowledge
+of sharing. So, really, it seems like you want to say:
+
+- if elaborating this expression does not destroy sharing, elaborate it.
+- if elaborating this expression does destroy sharing...
+-- if this express can be represented in yices, don't elaborate it
+--    otherwise elaborate it
+
+That way we get the best of all worlds. The simplifications from seri (which I
+have a gut feeling really do make a big difference) and the high level
+information passed to yices.
+
+Places where sharing is destroyed:
+* looking up a value in the environment
+* beta substitution with multiple uses of the variable
+* delambdafication: pushing extra args into case
+* delambdafication: composing cases
+
+
+Ah, so we actually can reuse the sharing stuff I had done before. But the key
+is this: don't share if you can't express that information to yices, using a
+predicate like I have now.
+
+Cool. I'm glad I tried this out and came to these thoughts. Let me let this
+stew a bit more before deciding what I want to do with it.
+
+Wed Oct  3 16:35:18 EDT 2012
+
+Okay, so the observation is: we want to do full simplification in all cases
+except when we loose information about sharing. In those cases where we loose
+information about sharing, we must be willing to loose that information if the
+SMT solver can't deal with it.
+
+I've looked at ways to maintain sharing. I've looked at ways to specify what
+an SMT solver can deal with or not. The base ideas are there. I just need to
+put them all together in a reasonable way. Perhaps I should just brainstorm
+now a proposal, and see where it gets me.
+
+1. WHNF elaboration must be as lazy as possible.
+Otherwise we'll loose sharing information at that level, which would be bad.
+
+I think this is fairly straight forward. It can be tested on the current
+implementation.
+
+At this level, we don't need any delambdafication or other special stuff.
+At this level... we don't need sharing? Or do we?
+
+I suppose you could imagine something like:
+
+let foo = ...
+in do
+  assert (foo > 3)
+  assert (foo < 6)
+  query foo
+
+In this case, to execute the query, you want to get at the assertion
+primitive, but that requires inlining foo if we don't support sharing in WHNF,
+which we don't want to do.
+
+So, it seems like even for WHNF evaluation, we want to preserve some form of
+sharing.
+
+Here's an idea. What if we had a way to do elaboration as follows:
+1. Elaborate (WHNF) with sharing. So it keeps as much sharing as it can, and
+doesn't necessarily reach WHNF.
+2. Elaborate a single step.
+It does not keep sharing.
+
+Now, with those two, presumably you can build a WHNF elaboration without
+sharing using the following:
+
+1. Elaborate with sharing
+2. Elaborate a single step
+3. If progress made: go to step 1, else finish.
+
+Or just have a flag passed to the elaborate of whether it should do sharing or
+not...
+
+But now let's consider this for our partial elaborator. What we can do is:
+look at the expression. If you can't compile that kind of expression to yices,
+perform a single step of elaboration and repeat. If you can, elaborate the
+subexpressions to yices with this algorithm, if any of them fail to compile to
+yices, elaborate it a step and try again?
+
+That is, you seem to have more control over the elaboration process. Not sure
+how HOAS fits in.
+
+Anyway, that was just a thought. It seems to me like I should be able to
+identify those elaboration steps which lead to duplication and those which
+don't, and fairly easily have a flag to turn it on or off. If we are as lazy
+as possible in our elaboration, this will hopefully not hurt us.
+
+Another observation: currently we use elaboration as a building block for
+elaborating expressions in the Query monad. What if the elaborator had direct
+support for elaboration in the query monad? Treat query primitives the same as
+other primitives. That way we don't have to go in and out of the HOAS
+elaborator all the time. Surely that will be good for performance. Perhaps
+there's some way I can provide a nice abstraction for specifying primitives to
+the elaborator.
+
+In this case, the elaborator should be: Exp -> Query Exp. And instead of
+thinking as elaborating in the query monad, it probably makes sense to think
+of it as building up a (Query Exp) object.
+
+That's an interesting experiment to run on my own.
+
+The way you specify primitives are...
+As a function taking as input a list of arguments, which perhaps are turned
+into Exps (because in the base case, those are simple to express as Exps), and
+either returning an evaluated result, or not matching. In some cases you can
+return one of the arguments.
+
+Let me write down another idea I had, which could be related to this.
+
+The issue is: you want multiparameter typeclasses with dependencies, but it's
+such a big pain to deal with. What if we instead combine all the different
+types of the dependency into one structure, and then reduce it to a single
+type?
+
+For example, consider Query. Really the Query type class has two components:
+Query and Realize. The way I've implemented now is to assume you implement
+Realize as a Query, but that's kind of unpleasant. The other way to do it
+would be with multiparam type classes.
+
+But what if, instead, I use phantom types?
+
+data QueryM = {}
+data Realize = {}
+
+class (Monad (q QueryM), Monad (q Realize)) => Query q where
+  query :: q Realize a -> q QueryM (Answer a)
+  free :: Type -> q QueryM Exp
+  env :: q a Env
+
+Now, to implement this, you would have something like:
+
+data Query t a = QM a | R a
+
+Where QM and R are data types for QueryM and Realize respectively, and t is a
+phantom type which does the type checking you need. So if t is Realize, that
+means the R constructor is valid, if t is QueryM, that means the QM
+constructor is valid. You could use a GADT to make this more formal in the
+type system.
+
+Now, the reason this is relevant is, I could make the IR an abstract type.
+Have an abstract Exp, an abstract Dec, etc, using this method. Then have
+abstract functions for working with Exp and ExpH in the same way, and you can
+do everything you want like that. Who knows if it's really worth it, but it's
+a thought...
+
+
+Anyway, back to the original problem.
+
+The other big thing I have to understand is how to do elaboration of the
+environment. This would be useful for elaboration in general, so we have
+sharing across top level declarations.
+
+Options are: perform elaboration on the entire environment... Or do some sort
+of monomorphization and minimization to identify all the top level
+declarations we could possibly need, then elaborate all of those, then
+elaborate the expression and share by not inlining a top level declaration.
+
+Or we could elaborate each top level declaration to a haskell function which
+takes the type assignments and produces the elaborated expression. I still
+worry about recursive functions and hitting a <<loop>>.
+
+Hmm... Well, I've written down lots of ideas. The trouble is, everything is
+still very fuzzy. Let me ponder more. It would be nice if I can come up with
+some clear, concrete things to try implementing.
+
+For example: 
+1. elaboration with a "share" flag
+2. sharing of top level declarations in elaboration
+3. elaborating query monad as part of elaborator
+
+Something like that.
+

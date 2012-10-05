@@ -1,0 +1,289 @@
+
+Thu Oct  4 08:45:31 EDT 2012
+
+I figured out what I should do.
+
+Don't worry about sharing vs. not sharing in WHNF yet. It doesn't make sense
+to do that until we can do something useful about it.
+
+Don't worry about sharing top level declarations for the same reason.
+
+Don't worry about elaborating query monad as part of elaborator, because it's
+only a performance thing anyway.
+
+The thing to do as the next step is:
+
+Do not call elaborate SNF in yices target. Instead directly compile the
+expression. This will not work at first, because there are some things the
+yices target can't support. With guidance from my test cases, add to the yices
+target where needed extra elaboration.
+
+This extra elaboration should be implemented in a library not specific to
+yices. For example, I can imagine having a beta-reduce function:
+
+reduce :: [(Name, Exp)] -> Exp -> Exp
+
+Things like that.
+
+Once things work (or even before?), I can add extra elaboration to simplify
+things that make sense to simplify.
+
+Notice a couple of things here. First, we no longer use the monomorphizer. It
+will be interesting to see how that comes out in the code. Is the yices target
+doing monomorphization? Perhaps we should provide a monomorphizing library?
+Second... not sure what the second thing is.
+
+But I think this will be good. Let me try it out, see what happens.
+
+Thu Oct  4 08:56:19 EDT 2012
+
+Hmm... so this isn't a trivial change. Let me think about things first.
+
+The yices target exposes 3 things.
+
+yicesN - that can remain unchanged.
+yicesT, yicesE.
+
+yicesT returns a type, but also may update the environment. Fine.
+yicesE returns an expression, but also may update the environment. Fine.
+
+So I'll want to change yicesT to add to the command list as needed for each
+type it compiles. We also need some sort of sorting to make sure we give the
+commands in the right order, but that should be taken care of if we do a depth
+first traversal.
+
+So, to compile a type, we do as follows:
+- ConT ...
+We need some sort of monomorphization here. So I would like to reuse the
+monomorphizer.
+
+The idea is we have a couple of steps
+1. monomorphize the type, and any types needed for it.
+2. Now it's either a function type or constructor, so do the simple
+translation.
+
+Perhaps we should assemble a map from Type to Y.Type? This will be all the
+types we have defined in the context so far.
+
+Then, when we get a type, either look it up, or compile it anew and collect
+the new definitions. That sounds good to me. We can keep type definitions
+separate from other ones as desired.
+
+So, we're talking about keeping a map from seri type to Y.Type to record what
+(seri) types have been declared to yices. Good.
+
+Now then, how do we go about working with expressions?
+
+An expression does not require a type. If I'm doing full inlining (which I
+should do in the first attempt), we don't require what have you anyway, but! I
+can do the same exact thing as with types. Have a map from variable (with
+signature) to Yices expression. Inlined would just be the complex express, not
+inlined would be a variable pointing to the appropriate name (I could do that
+for types too, just inline the type entirely if I wanted).
+
+Cool! So looks like we keep track of a couple things: types compiled so far,
+top level variables compiled so far. Compiling new types or new variables may
+introduce new declarations, so we'll want to accumulate those.
+
+I no longer worry about declarations, because we just compile expressions and
+define things lazily when needed.
+
+It's perfect! I think this will be much cleaner, and probably more efficient
+too.
+
+Let me try it out then. Now that I know the plan.
+
+Thu Oct  4 09:20:50 EDT 2012
+
+About already compiled declared variables... most of these will be functions,
+so we can't define them directly, we have to inline them. So should I even
+have this around?
+
+Perhaps for top-level non-function based things. Sure, why not. Eventually we
+ought to be able to define them just fine too. In yices1, and now that yices2
+supports function declarations if I can figure out how to use them.
+
+Thu Oct  4 09:31:31 EDT 2012
+
+Okay, how to implement yicesT?
+
+First: lookup the type, see if we've already dealt with it. If so, we are
+done.
+
+Next, what are the cases?
+
+1. It's a function application. Compile the components and return as
+appropriate.
+2. It's a fully applied constructor. Get the components, compile them all, and
+whatever we need for the data type, form a declaration for the type name, add
+it to the types map, and return the Y.VarT.
+
+So the data type one is more work, as we'll need to lookup things in the
+environment to figure out what all types it depends on and declare it. Take a
+look at the existing way we declare data types, pull that code.
+
+At the end, I have to remember to add the result to the map.
+
+Thu Oct  4 10:14:27 EDT 2012
+
+Okay! Rough draft of the type translation is written down. Cool. I like it.
+
+Can I do a quick rough draft of expressions and see what happens? I would like
+to.
+
+Thu Oct  4 10:21:48 EDT 2012
+
+There! I think I have all the rough draft code in place. Let me get it to
+compile, try it out, see if at least Query1 works. After that, I really need
+to work on writing, and come back to this later today.
+
+I think this is a good improvement though. We'll see how well it works.
+
+Thu Oct  4 10:40:57 EDT 2012
+
+Looks like it works for Query1 and Query2. It gets stuck at Complex, because
+it isn't inlining the function 'foo'. That's where we need elaboration. Good.
+This is where I wanted to be, there's is where I wanted to get. I have to work
+on other stuff now, but I'll come back to this.
+
+Just a couple of thoughts first.
+
+It's very annoying working with CompilationM inside of QueryY. Having to
+manually thread the state and that sort of thing.
+
+Could I modify the yices target so that, instead of working on CompilationM,
+it can work on any (MonadState Compilation m, Error m)? Then make QueryY an
+instance of MonadState for Compilation, by extracting and updating the
+appropriate field, and make it an instance of Error if it isn't already?
+
+That would be cool. That would be nice... I think that's worth a try once
+things have stabilized a bit.
+
+Thu Oct  4 15:45:58 EDT 2012
+
+Current state: we have a variable, the goal is to inline the variable. After
+inlining it, I think it will turn into a let expression which we can compile
+to yices directly (but which I'll eventually want to inline, because it
+doesn't hurt sharing).
+
+So, given a variable, how do I know to inline it?
+
+Well, the deal is, somehow I have to recognize the difference between a free
+variable, a primitive, and a variable.
+
+Well, primitives we know all statically. No trouble there.
+Free variables we know, because we defined them all. So I could keep a set of
+free variables. Of course, we could just assume free variables aren't in the
+environment, so look up a variable in the environment, and if it's not there,
+then it's a free variable.
+
+That's all well and good, except somehow I need to distinguish between global
+variables and local variables.  For example, what if there is a variable 'foo'
+in the environment, and a variable 'foo' defined locally. I want to return
+'foo', not do an inline. So... how do I do this?
+
+The easiest way, I think, would be to keep track of the set of bound
+variables.
+
+Hmm... remember that 'vars' thing I had and just got rid of? How about we use
+that? For both global and local variables?
+
+No, that's dangerous, because we define global variables once, and local
+variables in a scoped fashion.
+
+Let me just keep around a set of local variables as I compile. When I see a
+lone variable, if it's in scope, use it. Otherwise if it's in the environment,
+inline it, otherwise it's a free variable, use it.
+
+There is an alternative...
+
+We could keep a map of variables: map name to yices expression. We'll use this
+map for both local variables and global. The way it works is compile all the
+global variables ahead of time, lazily, and shadow those with local variables.
+Then all you have to do is look up the variable in the scope.
+
+The trouble there is, how do we know when to define a variable? We don't want
+to define everything. We don't want to define things unless they are used.
+
+Well, the map can be explicitly lazy.
+
+This, to me, seems problematic. So let me not do it for now.
+
+Instead I can have two maps.
+
+Global variables: Sig -> Maybe Y.Exp
+Local Variables: Name
+
+We fill in the global variables map lazily, adding new commands as we add
+entries to the map.
+
+That's fine. But there's another issue.
+
+Say I have a VarE which is 'foo', I replace it with: \x -> x + 1. Then what?
+If I try to compile that to yices as is, it won't work, it will fail.
+
+Similarly, what if in the process of defining global variables, it fails? Then
+have we included other global variables which we don't end up using? I suppose
+that's easy enough to catch.
+
+So, say we do this and it fails, well, then we go up a step and try again? But
+then that will fail. So we go up a step again? That, finally, could work. But
+now we've got this terrible quadratic like behavior where we are going back
+and forth up and down.
+
+And this isn't like: oh, my subcomponent failed, now I should elaborate. It's
+because we are looking at a subcomponent in isolation instead of in a context
+where it could work just fine.
+
+Perhaps we could special case it. Look for an application to a variable, and
+ask if that's a top level declaration, and if so, look it up there?
+
+I don't know. I need to stew on this.
+
+I want to compile: 
+  foo free~2
+
+So we try to compile f, and it sees a 'foo', so it inlines that and then tries
+to compile (\x -> x + 1), but fails, because it can't. But if failure doesn't
+return the simplified (\x -> x + 1), there's no way we can ever get back,
+because we can't simplify 'foo free~2', can we? And even if we can, we don't
+want to duplicate the work in looking up 'foo', do we?
+
+Maybe that's what happens. We look up foo, we try to compile it, we can't. So
+then we have this application which doesn't compile, the reasons are either:
+the function didn't compile, or the argument didn't compile... but in this
+case, it's possible the function doesn't compile but the whole application
+does. So simplify the application? Do the inlining? But that's not at all what
+we want to do!
+
+Perhaps we need to have this idea, then, of under what circumstances something
+can compile? Like, application can compile only if: 
+  Function is a lambda (then it turns into a let)
+  Function is a primitive
+  Argument compiles.
+
+Or, if they don't, we could try doing beta reduction and see if that helps.
+
+Ug. I don't know what to do about this. It would seem the problem still
+remains hard...
+  
+Thu Oct  4 19:59:18 EDT 2012
+
+I tried turning the yices target into MonadState and MonadError (on the master
+branch). It actually makes the yices target nicer in ways. A lot less lifts,
+and more generic code. The trouble is, it doesn't very cleanly lift to the
+QueryM monad, because QueryM is IO of YS, and the unfortunate thing is,
+MonadState and MonadError use functional dependencies, so a monad can't be an
+instance of both MonadError String and MonadError IO, for instance. Or worse,
+it can't be an instance of both MonadState YS and MonadState Compilation.
+
+I think what I need to do then is define a newtype wrapper around QueryM and
+implement instances of MonadError and MonadState, then run that...
+
+Let me try that out at least. Hopefully it's not too hard?
+
+Thu Oct  4 20:24:28 EDT 2012
+
+Actually, it looks like it would be easy, except that the QueryY monad isn't a
+proper ErrorMonad for Strings. So I won't bother with that for now.
+

@@ -1,0 +1,192 @@
+
+Fri Oct  5 08:20:37 EDT 2012
+
+Lots of thoughts. Let me list them, then get to the latest ones.
+
+* We can do a preprocessing pass to determine which top level variables can be
+  expressed in yices and which can't. Those that can't we immediately inline.
+
+So, maybe not so many after all...
+
+
+But the main one is this:
+
+Claim: we know all the things that can't be expressed to yices based on type
+alone.
+
+Let me brainstorm what things can't be expressed in yices.
+
+* Lists or other recursive data types
+* Lambda expressions (they have a function type)
+* Recursive functions
+
+Here's another claim: Given an expression which has a type which is supported
+by yices, combining the expression with some other in an elaboration process
+will not make it more easily expressible in yices.
+
+Or, in other words, I can't treat it like an atom of some sort, in isolation.
+That sounds pretty powerful to me...
+
+So this idea is forming in my head... I haven't quite grasped it yet, let me
+try to flush it out:
+
+Before translating to yices, perform elaboration in Seri.
+
+We want full elaboration, minus sharing where yices supports that sharing.
+
+Places with sharing:
+* all top level declarations must be assumed to be shared, because they could
+  be used later on without us knowing.
+* beta reduction with multiple uses
+* Pushing extra args into case (but we can always introduce a variable for
+  this if we want to avoid sharing at the seri level)
+* delambdafication: Note, I think we can also share this by introducing a
+  (function type) variable for the case statement. That's interesting...
+
+I think that's all.
+
+Let's assume we express the sharing for delambdafication using beta reduction.
+That leaves two places with sharing: top level declarations and beta reduction
+with multiple uses.
+
+Now, the claim is as follow:
+
+Given a top level declaration, if it has a type which is supported, we can
+leave it as shared.
+
+Hmm... but what if the type is Int -> Int, and it's the factorial function,
+and it is recursive, and we support Int->Int but not recursive? That's the
+case for yices1. I don't think I have to worry about it for yices2, because
+yices2 doesn't support Int->Int (though it actually probably does now... I
+should look into that). Perhaps we have a special check for top level
+declarations to see if they are recursive or not. So if it has a decent type,
+and it's not recursive, then leave it at the top level, otherwise inline it.
+Simple. I'm not going to worry about sharing subexpressions of it. The user
+can encode that directly if they want.
+
+Given a beta reduction...
+
+(a -> b) -> a -> b
+
+If the type 'a' is supported, then don't inline. Otherwise do inline.
+
+You know what? I think that could be it... That would be really cool...
+
+So now the idea is as follows. We have an elaborator, it takes as input a
+predicate on types, and perhaps a flag asking about recursion (though maybe it
+makes sense for now to just assume recursion isn't supported). It does check
+for sharing opportunities in beta reduction (using VarUse, whatever). It fully
+elaborates, but keeps sharing where indicated.
+
+After we do this elaboration, pass the result back to the yices compiler, it
+can compile directly, anything that isn't supported could not have been
+inlined away.
+
+We get efficient elaboration, efficient compilation, clean decomposition. It's
+perfect. It's like... too easy?
+
+Okay, so it won't be easy, but it's not harder than anything I've already
+tried for sharing support.
+
+I think this will work. I think it makes sense.
+
+One thing: if I really don't want seri to do any more elaboration than it has
+to, I can use the same trick, only only elaborate when you encounter a type
+which isn't supported?
+
+Err... not clear. That may not work out so well.
+
+Okay, this brings up an important question. Ooh... something I didn't think
+about.
+
+Let's say we have function application:
+
+(Int -> Int) Int
+
+The overall type is Int, which is supported, so we don't need to elaborate
+this... So what's the issue then?
+
+The issue is, now I'm traversing into the (Int -> Int) function, which itself
+may contain, internally, some (List -> Int) function which does need to be
+inlined. Does that cause any problems?
+
+What if the Int -> Int is implemented as (Int -> Int -> Int) Int? Then we want
+to ask, can we share the int -> int -> int?
+
+I'm still not sure. Remember, we are only asking about shared variables, and
+shared variables are the only places where we have an expression not in
+context, where inlining could make a difference. So, we only have to ask this
+question at places where inlining is an option.
+
+I think this could work. I think, at least, it's in good enough shape to try
+it out and see if it works or not and why not.
+
+I like the work I did on yelab. I think it cleans up the yices target a lot,
+makes it more efficient, avoids this silly monomorphizer. I think I can keep
+it all, the only difference is, I want to perform this special full
+elaboration before passing to the yices target. That's easy enough to do. I
+just need a wrapper function.
+
+So here's what I suggest.
+
+1. Add back full elaboration to the yices target as a preprocessing step. Now
+yelab should work for all query tests. See how performance improves or not
+from the previous version (I'm hoping to see a noticable improvement, but who
+knows).
+
+2. Add back sharing to the full elaborator on beta reduction, with a predicate
+which checks for legal types.
+
+3. Make the whnf elaborator as lazy as possible, so we see sharing in the
+share test, for example.
+
+Umm... these steps aren't clear to me. The order, that is. Let me just think
+of it as a list of things to do to make this work.
+
+4. Add support for top level declarations to yices, assuming they can be
+expressed in yices, and share top level declarations in the full elaborator
+when types match and it isn't recursive.
+
+5. Consider preserving some sharing in whnf elaboration?
+
+And then I think I've got what I want: full supported sharing is expressed,
+everything else is inlined. And it's done in a back-end agnostic way. Then
+I'll be in a position to try out yices1, where I just get to allow lambda
+expressions and the whole world is happy.
+
+Let me start on this now and see how far I get before I have to go into the
+office and start working on my intro4.
+
+Step 1: Mergeing yelab with master.
+
+Fri Oct  5 09:30:08 EDT 2012
+
+I had some bugs to fix. Fixed those. It seems to be working fine now.
+
+There is one issue, which is the Array test runs out of stack space. I wonder
+if I have an infinite loop there? Or just a memory leak? Let's see if
+expanding the stack space helps any.
+
+Fri Oct  5 09:33:01 EDT 2012
+
+Looks like an infinite loop to me, in the contype function.
+
+The problem is we have a recursive data structure. A list. And we can't handle
+that. This isn't so much a problem of contype, as a question of, where is that
+list coming from?
+
+Fri Oct  5 09:45:47 EDT 2012
+
+Found the bug and fixed it. I was using the wrong type for the error
+primitive. I want the return type, not the function type.
+
+So now this works. Cool! I should try out the performance on BCL3 and see how
+it looks.
+
+Fri Oct  5 10:09:49 EDT 2012
+
+Performance is better now. Oh... and hey... I don't need the monomorphizer
+anymore, right? So can I please get rid of it? I don't think it's a very good
+implementation anyway. That makes sense. All except that one function which I
+want to pull into the yices target.
+
