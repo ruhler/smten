@@ -194,3 +194,20 @@ Fri Oct  5 10:15:56 EDT 2012
 
 Good. The monomorphizer is now gone. Good riddance.
 
+Fri Oct  5 10:24:53 EDT 2012
+
+The next step is clear. The goal is to add back sharing in elaboration of SNF.
+
+Let me be more specific. Whenever we have a beta reduction with some argument
+a, the argument should reduced if any of the following hold:
+
+1. The argument is used less than 2 times
+2. The argument is a VarE, ConE, or LitE
+3. The argument type does not satisfy the predicate for compiler support
+ - this predicate is passed as an argument to elaboration. For the yices
+   compiler the predicate is: the type is not a recursive type or a function
+   type.
+
+
+
+
