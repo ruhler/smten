@@ -144,7 +144,7 @@ elaborate mode env exp =
       elab e@(AppEH _ f xs) = 
         case (elab f, map elab xs) of
             (AppEH _ f largs, rargs) -> elab (AppEH ES_None f (largs ++ rargs))
-            (LaceEH _ ms@(MatchH ps _ : _), args) | length args >= length ps ->
+            (LaceEH _ ms@(MatchH ps _ : _), args) | length args > length ps ->
                let -- Apply the given arguments to the body of the match.
                    appm :: [ExpH] -> MatchH -> MatchH
                    appm [] m = m
@@ -166,37 +166,40 @@ elaborate mode env exp =
                    --     ... -> f x
                    --     ... -> g x
                    ams = map (appm rargs) ms
-               in case matchms largs ams of
-                    NoMatched -> error $ "case no match"
-                    Matched e -> elab e
-                    UnMatched ms' ->
-                      case largs of
-                        (AppEH _ (LaceEH _ bms) largs : rargs) | mode == SNF, delambdafy ->
-                          let -- Perform a delambdafication.
-                              -- Rewrites:
-                              --    case (case foo of
-                              --             p1 -> m1  
-                              --             p2 -> m2
-                              --             ...) of
-                              --       P1 -> M1
-                              --       P2 -> M2
-                              --       ...
-                              --    
-                              -- As:
-                              --    case foo of
-                              --       p1 -> case m1 of
-                              --               P1 -> M1
-                              --               P2 -> M2
-                              --               ...
-                              --       p2 -> case m2 of
-                              --               P1 -> M1
-                              --               P2 -> M2
-                              --               ...
-                              (lrargs, rrargs) = splitAt (length ps) rargs
-                              rematch :: MatchH -> MatchH 
-                              rematch (MatchH ps f) = MatchH ps $ \m -> AppEH ES_None (LaceEH ES_None ms') (f m : lrargs)
-                          in elab $ AppEH ES_None (LaceEH ES_None (map rematch bms)) (largs ++ rrargs)
-                        _ -> AppEH (ES_Some mode) (LaceEH (ES_Some mode) ms') largs
+               in elab $ AppEH ES_None (LaceEH ES_None ams) largs
+
+            (LaceEH _ ms@(MatchH ps _ : _), args) | length args == length ps ->
+               case matchms args ms of
+                 NoMatched -> error $ "case no match"
+                 Matched e -> elab e
+                 UnMatched ms' ->
+                   case args of
+                     (AppEH _ (LaceEH _ bms) largs : rargs) | mode == SNF, delambdafy ->
+                       let -- Perform a delambdafication.
+                           -- Rewrites:
+                           --    case (case foo of
+                           --             p1 -> m1  
+                           --             p2 -> m2
+                           --             ...) of
+                           --       P1 -> M1
+                           --       P2 -> M2
+                           --       ...
+                           --    
+                           -- As:
+                           --    case foo of
+                           --       p1 -> case m1 of
+                           --               P1 -> M1
+                           --               P2 -> M2
+                           --               ...
+                           --       p2 -> case m2 of
+                           --               P1 -> M1
+                           --               P2 -> M2
+                           --               ...
+                           (lrargs, rrargs) = splitAt (length ps) rargs
+                           rematch :: MatchH -> MatchH 
+                           rematch (MatchH ps f) = MatchH ps $ \m -> AppEH ES_None (LaceEH ES_None ms') (f m : lrargs)
+                       in elab $ AppEH ES_None (LaceEH ES_None (map rematch bms)) (largs ++ rrargs)
+                     _ -> AppEH (ES_Some mode) (LaceEH (ES_Some mode) ms') args
             (a', b') -> AppEH (ES_Some mode) a' b'
       elab e@(LaceEH (ES_Some m) _) | mode <= m = e
       elab e@(LaceEH _ ms) | mode == WHNF = e

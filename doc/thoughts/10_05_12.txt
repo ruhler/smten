@@ -209,5 +209,43 @@ a, the argument should reduced if any of the following hold:
    type.
 
 
+Fri Oct  5 10:35:49 EDT 2012
+
+Good news: my old sharing code is still in the repository. Grep for share in
+the git log to find it.
+
+Before I try adding back in that sharing code, I want to make sure the
+delambdafication phases don't inline away something that should be shared.
+
+Let's look at the first case.
+
+We have: App Lace Args, and there are too many args.
+
+If I copy the arguments into each match... that's bad. Instead I want to give
+names to the arguments?
+
+(case foo of
+    ... -> f
+    ... -> g) (blah blah blah)
+
+case foo of
+    ... -> f (blah blah blah)
+    ... -> g (blah blah blah)
+
+let x = (blah blah blah)
+in case foo of
+      ... -> f x
+      ... -> g x
+
+I want the later case.
+
+So it seems I should make up a variable name, it doesn't matter which, because
+we'll do delambdafication later on anyway and it's a local thing. Perhaps call
+the variable "_x". Or, "_a", "_b", ... down the alphabet for each one being
+shared. That sounds good to me. Have this be a separate elaboration step. Then
+we can choose to inline them or not, then we can evaluate the case with proper
+arguments.
+
+Sounds good to me.
 
 
