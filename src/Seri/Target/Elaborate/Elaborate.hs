@@ -78,6 +78,21 @@ instance Show (a -> ExpH) where
 instance Eq (a -> ExpH) where
     (==) _ _ = False
 
+instance Typeof ExpH where
+    typeof (LitEH l) = typeof l
+    typeof (ConEH s) = typeof s
+    typeof (VarEH _ s) = typeof s
+    typeof (AppEH _ f xs) =
+        let fts = unarrowsT (typeof f)
+        in case (drop (length xs) fts) of
+              [] -> UnknownT
+              ts -> arrowsT ts
+    typeof (LaceEH _ []) = UnknownT
+    typeof (LaceEH _ (MatchH ps b:_)) =
+      let bindings = concatMap bindingsP ps
+          bt = typeof (b (zip bindings (map (VarEH ES_None) bindings)))
+      in arrowsT (map typeof ps ++ [bt])
+
 
 -- Weak head normal form elaboration
 elabwhnf :: Env -> Exp -> Exp
@@ -159,14 +174,21 @@ elaborate mode env exp =
                    -- That is, it rewrites:
                    --  (case foo of
                    --     ... -> f
-                   --     ... -> g) x
+                   --     ... -> g) (blah blah blah)
                    --
                    -- As:
+                   --  let _a = (blah blah blah)
                    --  case foo of
-                   --     ... -> f x
-                   --     ... -> g x
-                   ams = map (appm rargs) ms
-               in elab $ AppEH ES_None (LaceEH ES_None ams) largs
+                   --     ... -> f _a
+                   --     ... -> g _a
+                   nms = [name ['_', c] | c <- "abcdefghijklmnopqrstuvwxyz"]
+                   tys = map typeof rargs
+                   pats = [VarP $ Sig n t | (n, t) <- zip nms tys]
+                   lam = LaceEH ES_None [MatchH pats $ \m -> 
+                           let ams = map (appm (map snd m)) ms
+                           in AppEH ES_None (LaceEH ES_None ams) largs
+                         ]
+               in elab $ AppEH ES_None lam rargs
 
             (LaceEH _ ms@(MatchH ps _ : _), args) | length args == length ps ->
                case matchms args ms of
@@ -414,3 +436,5 @@ binbiprim s@(Sig n t) f =
               (Just av, LitEH (IntegerL bv)) -> f av bv
               _ -> AppEH (ES_Some WHNF) (VarEH (ES_Some SNF) s) [a, b]
       ]
+
+

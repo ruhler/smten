@@ -248,4 +248,29 @@ arguments.
 
 Sounds good to me.
 
+Fri Oct  5 11:26:18 EDT 2012
+
+Cool. Looks like it will work great. No trouble with choice of name, because
+it's only for debugging purposes.
+
+I ran into one issue though, which I'll have to think about. In order to
+create the lambda, I have to know the types of all the arguments, and the
+arguments at this point are ExpH. Can I implement an instance of Typeof for
+ExpH? Does that make sense to do? I suspect I'll want that anyway to do this
+type predicate test...
+
+Let me think about it.
+
+Fri Oct  5 11:57:19 EDT 2012
+
+I should implement Typeof. It will work just fine. Just mirror how Typeof is
+implemented for regular Exp. Including for lambdas, which makes use of the
+patterns to figure out input types and such.
+
+Let me try to do this real quicklike and see what happens.
+
+Fri Oct  5 12:03:23 EDT 2012
+
+Looks like it works. Cool. Let me check this in, have lunch, then come back to
+this after putting serious effort into intro4.
 
