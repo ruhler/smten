@@ -69,6 +69,18 @@ data ExpH = LitEH Lit
           | LaceEH EState [MatchH]
     deriving(Eq, Show)
 
+-- | MatchH is a list of patterns a function describing the body of the match.
+-- This function takes as input an association list containing a mapping from
+-- Sig to expression. The Sigs correspond to the signatures of all the
+-- variables bound by all the patterns, in order from left to right of
+-- occurence of pattern and variable within the pattern. The expression is the
+-- bound value of that.
+--
+-- For example, the case expression:
+--  case Just (Foo 1 4), Foo 2 5 of
+--      Just (Foo a b), Foo c d -> a + b + c + d
+--  The argument to this matches function would be:
+--      [("a", 1), ("b", 4), ("c", 2), ("d", 5)]
 data MatchH = MatchH [Pat] ([(Sig, ExpH)] -> ExpH)
     deriving (Eq, Show)
 
@@ -199,28 +211,36 @@ elaborate mode env exp =
                      (AppEH _ (LaceEH _ bms) largs : rargs) | mode == SNF, delambdafy ->
                        let -- Perform a delambdafication.
                            -- Rewrites:
-                           --    case (case foo of
-                           --             p1 -> m1  
-                           --             p2 -> m2
-                           --             ...) of
-                           --       P1 -> M1
-                           --       P2 -> M2
-                           --       ...
+                           --    (blah blah) (case foo of
+                           --                   p1 -> m1  
+                           --                   p2 -> m2
+                           --                   ...)
                            --    
                            -- As:
+                           --    let _f = (blah blah)
                            --    case foo of
-                           --       p1 -> case m1 of
-                           --               P1 -> M1
-                           --               P2 -> M2
-                           --               ...
-                           --       p2 -> case m2 of
-                           --               P1 -> M1
-                           --               P2 -> M2
-                           --               ...
+                           --       p1 -> _f m1
+                           --       p2 -> _f m2
+                           --
+                           -- TODO: this is suspect. For example, if the
+                           -- function _f is not strict in the argument, this
+                           -- transformation is wrong, because it makes f
+                           -- strict in the argument. But, we've already
+                           -- elaborated anything we could, so if f is not
+                           -- strict in the argument, wouldn't this already go
+                           -- away? I'm not sure.
                            (lrargs, rrargs) = splitAt (length ps) rargs
-                           rematch :: MatchH -> MatchH 
-                           rematch (MatchH ps f) = MatchH ps $ \m -> AppEH ES_None (LaceEH ES_None ms') (f m : lrargs)
-                       in elab $ AppEH ES_None (LaceEH ES_None (map rematch bms)) (largs ++ rrargs)
+
+                           rematch :: ExpH -> MatchH -> MatchH 
+                           rematch f (MatchH ps b) = MatchH ps $ \m -> AppEH ES_None f (b m : lrargs)
+
+                           f = LaceEH ES_None ms'
+                           pat = VarP $ Sig (name "_f") (typeof f)
+                           lam = LaceEH ES_None [MatchH [pat] $ \m ->
+                                    AppEH ES_None (LaceEH ES_None (map (rematch (snd (head m))) bms)) (largs ++ rrargs)
+                                    ]
+                       in elab $ AppEH ES_None lam [f]
+
                      _ -> AppEH (ES_Some mode) (LaceEH (ES_Some mode) ms') args
             (a', b') -> AppEH (ES_Some mode) a' b'
       elab e@(LaceEH (ES_Some m) _) | mode <= m = e
