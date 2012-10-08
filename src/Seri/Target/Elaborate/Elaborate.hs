@@ -176,6 +176,7 @@ elaborate mode env exp =
                         then map elab ueargs
                         else ueargs
         in case (elab f) of
+            f'@(ConEH s) -> AppEH (ES_Some mode) f' (map elab args)
             AppEH _ f largs -> elab (AppEH ES_None f (largs ++ args))
             LaceEH _ ms@(MatchH ps _ : _) | length args > length ps ->
                let -- Apply the given arguments to the body of the match.
