@@ -1,0 +1,121 @@
+
+Sun Oct  7 11:11:25 EDT 2012
+
+Next steps:
+
+1. Understand the bug in the bitvector tests.
+Hopefully I can show it's what I expect: we only do whnf elaboration for
+outermost pattern matches, not for inner pattern matches.
+
+2. Remove call to elaborate args in application, move it to pattern matching.
+This should fix the bitvector tests.
+
+3. Write a note about how we are loosing performance, and we could do better
+making use of haskell's laziness in an appropriate way.
+
+Sun Oct  7 11:15:20 EDT 2012
+
+1. Yup. Looks like we are trying to do:
+
+case (fromInteger 0 == fromInteger 7 + 1) of
+  True ->
+
+But because we only elaborate one step, the case sees something like... I'm
+not sure what?
+
+Oh, maybe we try == for Bit, and the arguments aren't elaborated?
+
+I don't know. Let me try changing the elaborator as in (2) and see if that
+helps.
+
+Sun Oct  7 11:31:54 EDT 2012
+
+I see what happened. Not only do we force evaluation on pattern matching, we
+also force it for arguments to primitives. This is going to require a slight
+adjustment to the code layout, because the primitives need to move inside
+elab... or, alternatively... Arguments to the match function should be
+elaborated.
+ 
+Sun Oct  7 16:04:37 EDT 2012
+
+Okay, I've got everything figured out.
+
+1. Only elaborate when:
+a. matching a constructor or literal pattern
+b. when performing a primitive operation.
+
+That's it.
+
+This is the first step. To make this work I need to either move primitives
+into the elaborate function, or pull other stuff out. I think it will be
+easier to move primitives into the elaborate function, so I'll start with
+that.
+
+2. Implement speculative elaboration as described in my notebook. Easy,
+simple, sweet.
+
+3. Do speculative elaboration on top level declared variables.
+
+Now we should have all the sharing we can in terms of elaboration, so the
+elaborate should be nice and fast. And it's still entirely lazy. It's
+wonderful.
+
+Okay, now on to (1). Wish me luck.
+
+Perhaps I should go back to a working version first and make it work there.
+
+Sun Oct  7 16:20:59 EDT 2012
+
+I'm still running into the same issues as before, even though I do elaborate
+at the right time. What's going on?
+
+Let me investigate with some smarter tracing...
+
+Looks like a bug with __prim_eq_Bit.
+
+So, we have fromInteger x, but x is in its unelaborated form. That's easy
+enough to fix.
+
+Sun Oct  7 16:25:02 EDT 2012
+
+So I want to match: __prim_fromInteger_Bit #
+
+Do I have pattern guards for that yet?
+
+Sun Oct  7 16:28:47 EDT 2012
+
+Cool. That was the bug. Works now. Though I wonder if I'm duplicating some
+elaboration at this point? Like, the elaboration of the argument to
+__prim_fromInteger_Bit.
+
+I should probably just make Bit a literal...
+
+Sun Oct  7 16:32:16 EDT 2012
+
+Okay, so now the problem is, primitives have to do elaboration of arguments if
+it is SNF. That's slightly annoying...
+
+Sun Oct  7 16:45:38 EDT 2012
+
+There are still some missing calls to elab for SNF, I'll have to track them
+down. But this seems close to me.
+
+Let me try to track down these last annoying bits:
+
+- Bluespec, Array.
+
+Sun Oct  7 16:57:38 EDT 2012
+
+I got the bluespec one. Now what's up with Array getting stuck in an infinite
+loop? I don't feel like working it out now.
+
+Sun Oct  7 18:15:03 EDT 2012
+
+I cleaned things up a bunch by elaborating for SNF before application. We
+still seem to have a bug in Array. Let me turn on the profiler to see if I can
+spot it.
+
+Sun Oct  7 19:15:52 EDT 2012
+
+I don't know what the issue is. Clearly its stuck in a loop somewhere.
+

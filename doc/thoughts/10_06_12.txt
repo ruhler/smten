@@ -1,0 +1,105 @@
+
+Sat Oct  6 11:34:04 EDT 2012
+
+What's the next step? I think the next step is to do sharing of beta
+reduction.
+
+Let me be more specific.
+
+I already previously figured out how to do sharing based on a predicate. So
+reincorporate that back into the current elaborator. I'll want to do this in
+its own branch, because this is some heavy lifting kind of changes.
+
+Incorporate what I had before, and now take as an argument a predicate on
+types: Type -> Bool, saying whether we shouldn't share that kind of type or
+not.
+
+And that's it. I've already done the work, I just have to merge it in. Apply
+the predicate. Easy. We'll see what bugs we run into.
+
+Let me start working on this and see how far I get.
+
+Sat Oct  6 12:23:30 EDT 2012
+
+I added back sharing. For now the yices predicate is hardcoded.
+
+To make this really work now, I need to make elaboration as lazy as possible,
+or otherwise figure out how to make share share.
+
+Sat Oct  6 12:24:59 EDT 2012
+
+Okay, let me try to understand what's going on, and target my fixes to that.
+
+The goal: make the Share test share in practice.
+
+Let me start by looking at what the elaborator does, and try to figure out why
+we aren't already sharing.
+
+Sat Oct  6 13:17:38 EDT 2012
+
+I see the step that messes stuff up. Let me see if I can figure out why it's
+messing stuff up.
+
+let y = free2 
+in (>>) (assert (blah y)) (query (free1, y))
+
+Is being elaborated to:
+
+nobind_query (assert (........)) (query (free1, free2))
+
+So, the question here is, why did we elaborate the argument to assert?
+  
+Looks to me like first elaboration step goes to:
+
+
+(>>) (assert (blah free2)) (query (free1, free2))
+
+That's right. Now what happens to this?
+
+We elaborate f: (>>) becomes query_nobind
+We elaborate args.
+
+In particular, we elaborate assert (blah free2).
+Which itself elaborates the function assert, which is a primitive, and
+(blah free2)
+
+Which leads to this case:
+
+(a', b') -> AppEH a' b'
+
+So here we are not lazy.
+
+You could ask, what should we do if a function doesn't turn into a lambda?
+Then we should return it as far as it elaborated, but don't elaborate the
+arguments. This is easy enough. Change b' to b.
+
+Now, that should be fine, except there will be trouble when implementing
+matching. That's okay, I'll want to change how I implement match. Matching
+should elaborate lazily.
+
+But that's fine, because we can use the elaborated args when doing the match,
+and fall back to the unelaborated ones otherwise. Won't that work?
+
+Let me try it out and see what bad stuff happens.
+
+Sat Oct  6 13:30:22 EDT 2012
+
+Well, this certainly fixes the sharing problem in the Share test. The trouble
+is, it breaks something else. Let me figure out what it broke and why, and
+figure out how I can fix that.
+
+The seri lib tests don't work. Looks like an array test. Let me comment that
+out for now. The bit tests also don't work.
+
+The bluespec test also fails. Seri.Lib.Prelude.+ isn't defined. So, don't be
+lazy if we are doing SNF.
+
+Sat Oct  6 13:43:53 EDT 2012
+
+A couple of things:
+- It looks like Sharing isn't exposed very often. We only see it in the Share
+  benchmark and Squares benchmark. In the Squares benchmark, the shared query
+  is actually larger.
+- I saw a case where a single use was being shared. Why?
+- Still have to fix bugs in array, bitvector, and Array.
+

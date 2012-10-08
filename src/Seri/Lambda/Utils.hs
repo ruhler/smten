@@ -34,10 +34,12 @@
 -------------------------------------------------------------------------------
 
 module Seri.Lambda.Utils (
-    free, free'
+    free, free',
+    Uses(..), uses
     ) where
 
 import Data.List(nub)
+import Data.Monoid
 
 import Seri.Lambda.IR
 import Seri.Lambda.Types
@@ -61,3 +63,36 @@ free =
 free' :: Exp -> [Name]
 free' e = [n | Sig n _ <- free e]
 
+data Uses = NoUse | SingleUse | MultiUse
+    deriving(Eq, Show)
+
+instance Num Uses where
+  fromInteger 0 = NoUse
+  fromInteger 1 = SingleUse
+  fromInteger _ = MultiUse
+
+  (+) NoUse x = x
+  (+) SingleUse NoUse = SingleUse
+  (+) SingleUse _ = MultiUse
+  (+) MultiUse _ = MultiUse
+
+  (*) = error "* Uses"
+  abs = error "abs Uses"
+  signum = error "signum Uses"
+
+-- Return the number of times a variable is used in the given expression.
+uses :: (Num n) => Name -> Exp -> n
+uses n =
+  let uses' :: (Num n) => Exp -> n
+      uses' (LitE {}) = 0
+      uses' (ConE {}) = 0  
+      uses' (VarE (Sig nm _)) | nm == n = 1
+      uses' (VarE {}) = 0
+      uses' (AppE a bs) = uses' a + sum (map uses' bs)
+      uses' (LaceE ms) = 
+        let usesm :: (Num n) => Match -> n
+            usesm (Match ps _) | n `elem` concatMap bindingsP' ps = 0
+            usesm (Match _ b) = uses' b
+        in sum (map usesm ms)
+  in uses'
+      

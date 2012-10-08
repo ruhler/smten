@@ -1,0 +1,115 @@
+
+Mon Oct  8 10:02:49 EDT 2012
+
+Bug in Array test. Elaboration gets stuck in an infinite loop.
+
+I have some ideas, but they don't really make much sense. It shouldn't be
+getting stuck in an infinite loop.
+
+I think the way to understand what's going on is to trace elaboration.
+Tedious, but generally effective. So let me do that and let you know what I
+find.
+
+Mon Oct  8 11:04:23 EDT 2012
+
+Observations:
+
+- arr is shared, so we can't figure out what its length is.
+I bet if I make SMTArray an unsupported yices type (because it is unsupported,
+isn't it?), then it would work fine
+
+- >= isn't a primitive yet. It ought to be.
+
+No... not share SMTArray didn't help. There must be another issue. Which
+means, I suppose, I should keep tracing the elaboration.
+
+Mon Oct  8 11:12:32 EDT 2012
+
+Oh, actually, yes, not sharing SMTArray did help. I just messed up the first
+time I tried it.
+
+So, here's what I think happened. We shared the smt array, so we couldn't
+figure out what length it was, so we got stuck in an infinite recursion in
+figuring out the length.
+
+Um... this is concerning. Because the issue isn't really with SMTArray in this
+case, is it? The issue is, because of sharing, we can't resolve recursion.
+
+Say, for example, instead, that I do something like:
+
+let pv = (1, 2)
+in fact (fst pv) + fact (snd pv)
+
+Here is a shared tuple. We can easily represent the type in yices. But,
+because we are sharing, we suddenly have this recursive function we don't know
+how to bound.
+
+This suggests its not enough to look at the object being shared. You must also
+consider the way it is used.
+
+Maybe in this case we could say: we shouldn't share pv, because it is a
+concrete value. The same would have gone for the SMTArray. It was a concrete
+value, so no need to share it. But you might think the SMT solver can do
+better knowing about the sharing, even if it is a concrete value...
+
+Well, it would seem the sharing saga continues.
+
+Mon Oct  8 11:22:54 EDT 2012
+
+What now? All my test cases pass again. And we make use of some sharing.
+
+Now... I should test both Sudoku and BCL3. How much you want to bet they don't
+work?
+
+And then I suppose I could implement my speculative elaboration scheme.
+Or... my sharing of top level declaration scheme? Or a mix of the both? Try to
+see how well we can improve performance?
+
+Mon Oct  8 11:27:05 EDT 2012
+
+Well, seems I was right. Neither Sudoku nor BCL3 work.
+
+Sudoku probably tries to share a list or something, and gets stuck in an
+infinite loop. BCL3 has a lambda: \x -> 0. Now that should never happen. That
+goes back to the VarUse bug. It seems we approximate VarUse, when really we
+should probably check them when we choose to share or not.
+
+Well, I can ditch the sharing effort for now, keep the infrastructure in
+place, and just disable the sharing predicate. Then work on performance. I'm
+fairly confident that elaboration is as lazy as we want now.
+
+Mon Oct  8 11:43:57 EDT 2012
+
+Hey! So looking at performance between master and this share branch with
+sharing disabled. This share branch is much faster! Like, 6 seconds for BCL3
+goes down to 4. The memory allocations are reduced from 6 million to 3
+million.
+
+Because WHNF is lazy, we are dealing with much smaller expressions every time
+we convert to ExpH. That's my hypothesis for the improvement.
+
+And this is without my plan for speculative elaboration and sharing of top
+level declaration elaboration. Cool.
+
+That's almost justification itself of merging with the share branch.
+
+Yes. Let me put a comment to the effect that sharing doesn't really work yet?
+Or should I just get rid of the sharing stuff entirely? Take advantage of the
+performance improvement without the annoyance of sharing? I've done this sort
+of thing before...
+
+Because clearly sharing doesn't work.
+
+Okay, how about this. Merge from the share branch, but get rid of sharing
+specific stuff, but also leave the share branch there.
+
+That sounds like a plan to me. Cool... So I need to use that trick.. squash.
+
+Mon Oct  8 12:01:23 EDT 2012
+
+There is one issue, which is, now that we are lazy... Are we too lazy? Because
+arguments to constructors aren't elaborated in whnf, which is bad for printing
+results.
+
+Let me deal with this later.
+

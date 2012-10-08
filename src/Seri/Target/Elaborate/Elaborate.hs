@@ -45,6 +45,7 @@ import Debug.Trace
 
 import Data.Bits
 import Data.Functor
+import Data.List(genericLength, partition)
 import Data.Maybe(fromMaybe)
 import Data.Monoid
 
@@ -53,7 +54,7 @@ import Seri.Failable
 import qualified Seri.HashTable as HT
 import Seri.Lambda
 
-import Seri.Target.Elaborate.FreshPretty
+import Seri.Target.Elaborate.FreshFast
 
 data Mode = WHNF -- ^ elaborate to weak head normal form.
           | SNF  -- ^ elaborate to sharing normal form.
@@ -146,16 +147,18 @@ elaborate mode env exp =
       matchps ps args = mconcat [match p e | (p, e) <- zip ps args]
 
       match :: Pat -> ExpH -> MatchResult
-      match (ConP _ nm ps) e =
-        case unappsEH e of
+      match p@(ConP _ nm ps) e =
+        case unappsEH (elab e) of
           ((ConEH (Sig n _)):_) | n /= nm -> Failed
           ((ConEH {}):args) -> matchps ps args
           _ -> Unknown
-      match (LitP l) (LitEH l') | l == l' = Succeeded []
-      match (LitP {}) (LitEH {}) = Failed
+      match (LitP l) e | LitEH l' <- elab e
+        = if l == l' 
+            then Succeeded []
+            else Failed
       match (VarP s) e = Succeeded [(s, e)]
       match (WildP _) _ = Succeeded []
-      match _ _ = Unknown
+      match p e = Unknown
 
       -- elaborate the given expression
       elab :: ExpH -> ExpH
@@ -168,10 +171,13 @@ elaborate mode env exp =
             Nothing -> VarEH (ES_Some SNF) s
       elab (AppEH _ x []) = elab x
       elab e@(AppEH (ES_Some m) _ _) | mode <= m = e
-      elab e@(AppEH _ f xs) = 
-        case (elab f, map elab xs) of
-            (AppEH _ f largs, rargs) -> elab (AppEH ES_None f (largs ++ rargs))
-            (LaceEH _ ms@(MatchH ps _ : _), args) | length args > length ps ->
+      elab e@(AppEH _ f ueargs) = 
+        let args = if mode == SNF 
+                        then map elab ueargs
+                        else ueargs
+        in case (elab f) of
+            AppEH _ f largs -> elab (AppEH ES_None f (largs ++ args))
+            LaceEH _ ms@(MatchH ps _ : _) | length args > length ps ->
                let -- Apply the given arguments to the body of the match.
                    appm :: [ExpH] -> MatchH -> MatchH
                    appm [] m = m
@@ -202,7 +208,7 @@ elaborate mode env exp =
                          ]
                in elab $ AppEH ES_None lam rargs
 
-            (LaceEH _ ms@(MatchH ps _ : _), args) | length args == length ps ->
+            LaceEH _ ms@(MatchH ps _ : _) | length args == length ps ->
                case matchms args ms of
                  NoMatched -> error $ "case no match"
                  Matched e -> elab e
@@ -241,11 +247,12 @@ elaborate mode env exp =
                                     ]
                        in elab $ AppEH ES_None lam [f]
 
+                     args' | mode == SNF -> AppEH (ES_Some mode) (LaceEH (ES_Some mode) ms') args'
                      _ -> AppEH (ES_Some mode) (LaceEH (ES_Some mode) ms') args
-            (a', b') -> AppEH (ES_Some mode) a' b'
+            f' -> AppEH (ES_Some mode) f' args
       elab e@(LaceEH (ES_Some m) _) | mode <= m = e
       elab e@(LaceEH _ ms) | mode == WHNF = e
-      elab (LaceEH _ ms) =
+      elab e@(LaceEH _ ms) = 
         let elabm :: MatchH -> MatchH
             elabm (MatchH p f) = MatchH p (\m -> elab (f m))
         in LaceEH (ES_Some mode) (map elabm ms)
@@ -269,10 +276,160 @@ elaborate mode env exp =
               return (Match ps' b)
         in LaceE <$> mapM toem ms
 
+      -- Binary integer primitive.
+      --  s - signature of the primitive
+      --  f - primitive implementation
+      biniprim :: Sig -> (Integer -> Integer -> ExpH) -> ExpH
+      biniprim s f =
+        LaceEH (ES_Some WHNF) [
+          MatchH [VarP $ Sig (name "a") integerT, VarP $ Sig (name "b") integerT] $ 
+            \[(_, a), (_, b)] -> 
+               case (elab a, elab b) of
+                  (LitEH (IntegerL ai), LitEH (IntegerL bi)) -> f ai bi
+                  _ -> AppEH (ES_Some WHNF) (VarEH (ES_Some SNF) s) [a, b]
+          ]
+   
+      -- Binary character primitive.
+      --  s - signature of the primitive
+      --  f - primitive implementation
+      bincprim :: Sig -> (Char -> Char -> ExpH) -> ExpH
+      bincprim s f =
+        LaceEH (ES_Some WHNF) [
+          MatchH [VarP $ Sig (name "a") charT, VarP $ Sig (name "b") charT] $
+            \[(_, a), (_, b)] ->
+               case (elab a, elab b) of
+                  (LitEH (CharL av), LitEH (CharL bv)) -> f av bv
+                  _ -> AppEH (ES_Some WHNF) (VarEH (ES_Some SNF) s) [a, b]
+          ]
+
+      -- Extract a Bit from an expression of the form: __prim_frominteger_Bit v
+      -- The expression should be elaborated already.
+      unbit :: ExpH -> Maybe Bit
+      unbit (AppEH _ (VarEH _ (Sig fib (AppT _ (AppT _ (NumT w))))) [ve])
+        | fib == name "Seri.Lib.Bit.__prim_fromInteger_Bit"
+        , LitEH (IntegerL v) <- elab ve
+        = Just (bv_make (nteval w) v)
+      unbit _ = Nothing
+
+   
+      -- Binary bitvector primitive.
+      --  s - signature of the primitive
+      --  f - primitive implementation
+      binbprim :: Sig -> (Bit -> Bit -> ExpH) -> ExpH
+      binbprim s@(Sig n t) f =
+        let [ta, tb, _] = unarrowsT t
+        in LaceEH (ES_Some WHNF) [
+             MatchH [VarP $ Sig (name "a") ta, VarP $ Sig (name "b") tb] $ 
+               \[(_, a), (_, b)] ->
+                 case (elab a, elab b) of
+                    (a', b') | Just av <- unbit a'
+                             , Just bv <- unbit b'
+                             -> f av bv
+                    _ -> AppEH (ES_Some WHNF) (VarEH (ES_Some SNF) s) [a, b]
+             ]
+   
+      -- Binary bitvector/integer primitive.
+      --  s - signature of the primitive
+      --  f - primitive implementation
+      binbiprim :: Sig -> (Bit -> Integer -> ExpH) -> ExpH
+      binbiprim s@(Sig n t) f =
+        let [ta, tb, _] = unarrowsT t
+        in LaceEH (ES_Some WHNF) [
+            MatchH [VarP $ Sig (name "a") ta, VarP $ Sig (name "b") tb] $
+              \[(_, a), (_, b)] ->
+                 case (elab a, elab b) of
+                    (a', LitEH (IntegerL bv))
+                      | Just av <- unbit a'
+                      -> f av bv
+                    _ -> AppEH (ES_Some WHNF) (VarEH (ES_Some SNF) s) [a, b]
+            ]
+
+
+
+      primitives :: HT.HashTable Name (Sig -> ExpH)
+      primitives = HT.table $ [
+            (name "Seri.Lib.Prelude.__prim_eq_Integer", \s -> biniprim s (\a b -> boolEH (a == b))),
+            (name "Seri.Lib.Prelude.__prim_add_Integer", \s -> biniprim s (\a b -> integerEH (a + b))),
+            (name "Seri.Lib.Prelude.__prim_sub_Integer", \s -> biniprim s (\a b -> integerEH (a - b))),
+            (name "Seri.Lib.Prelude.__prim_mul_Integer", \s -> biniprim s (\a b -> integerEH (a * b))),
+            (name "Seri.Lib.Prelude.<", \s -> biniprim s (\a b -> boolEH (a < b))),
+            (name "Seri.Lib.Prelude.<=", \s -> biniprim s (\a b -> boolEH (a <= b))),
+            (name "Seri.Lib.Prelude.>", \s -> biniprim s (\a b -> boolEH (a > b))),
+            (name "Seri.Lib.Prelude.__prim_eq_Char", \s -> bincprim s (\a b -> boolEH (a == b))),
+            (name "Seri.Lib.Bit.__prim_eq_Bit", \s -> binbprim s (\a b -> boolEH (a == b))),
+            (name "Seri.Lib.Bit.__prim_add_Bit", \s -> binbprim s (\a b -> bitEH (a + b))),
+            (name "Seri.Lib.Bit.__prim_sub_Bit", \s -> binbprim s (\a b -> bitEH (a - b))),
+            (name "Seri.Lib.Bit.__prim_mul_Bit", \s -> binbprim s (\a b -> bitEH (a * b))),
+            (name "Seri.Lib.Bit.__prim_or_Bit", \s -> binbprim s (\a b -> bitEH (a .|. b))),
+            (name "Seri.Lib.Bit.__prim_and_Bit", \s -> binbprim s (\a b -> bitEH (a .&. b))),
+            (name "Seri.Lib.Bit.__prim_lsh_Bit", \s -> binbiprim s (\a b -> bitEH (a `shiftL` fromInteger b))),
+            (name "Seri.Lib.Bit.__prim_rshl_Bit", \s -> binbiprim s (\a b -> bitEH (a `shiftR` fromInteger b))),
+            (name "Seri.Lib.Bit.__prim_extract_Bit", \s@(Sig _ t) ->
+               binbiprim s (\a j ->
+                  let AppT _ (NumT wt) = last $ unarrowsT t
+                      i = j + (nteval wt) - 1
+                  in bitEH (bv_extract i j a))),
+            (name "Seri.Lib.Prelude.&&", \s -> 
+              LaceEH (ES_Some WHNF) [
+                MatchH [VarP $ Sig (name "a") boolT, VarP $ Sig (name "b") boolT] $
+                  \[(_, a), (_, b)] ->
+                    case (elab a) of
+                      av | av == trueEH -> b
+                      av | av == falseEH -> falseEH
+                      _ -> AppEH (ES_Some WHNF) (VarEH (ES_Some SNF) s) [a, b]
+                ]),
+            (name "Seri.Lib.Prelude.||", \s -> 
+              LaceEH (ES_Some WHNF) [
+                MatchH [VarP $ Sig (name "a") boolT, VarP $ Sig (name "b") boolT] $
+                  \[(_, a), (_, b)] ->
+                    case (elab a) of
+                      av | av == trueEH -> trueEH
+                      av | av == falseEH -> b
+                      _ -> AppEH (ES_Some WHNF) (VarEH (ES_Some SNF) s) [a, b]
+                ]),
+            (name "Seri.Lib.Prelude.not", \s -> 
+              LaceEH (ES_Some WHNF) [
+                MatchH [VarP $ Sig (name "a") boolT] $
+                  \[(_, a)] ->
+                    case (elab a) of
+                      av | av == trueEH -> falseEH
+                      av | av == falseEH -> trueEH
+                      _ -> AppEH (ES_Some WHNF) (VarEH (ES_Some SNF) s) [a]
+                ]),
+            (name "Seri.Lib.Prelude.valueof", \(Sig n t) ->
+              let [NumT nt, it] = unarrowsT t
+              in LaceEH (ES_Some SNF) [
+                  MatchH [VarP $ Sig (name "_") (NumT nt)] $
+                    \_ -> integerEH (nteval nt)
+                  ]),
+            (name "Seri.Lib.Prelude.numeric", \(Sig _ (NumT nt)) -> ConEH (Sig (name "#" `nappend` name (show (nteval nt))) (NumT nt))),
+            (name "Seri.Lib.Bit.__prim_zeroExtend_Bit", \s@(Sig _ t) ->
+              let [ta, AppT _ (NumT wt)] = unarrowsT t
+              in LaceEH (ES_Some WHNF) [
+                   MatchH [VarP $ Sig (name "a") ta] $
+                     \[(_, a)] ->
+                       case (elab a) of
+                         a' | Just av <- unbit a' -> bitEH $ bv_zero_extend (nteval wt - bv_width av) av
+                         _ -> AppEH (ES_Some WHNF) (VarEH (ES_Some SNF) s) [a]
+                   ]),
+            (name "Seri.Lib.Bit.__prim_truncate_Bit", \s@(Sig _ t) ->
+              let [ta, AppT _ (NumT wt)] = unarrowsT t
+              in LaceEH (ES_Some WHNF) [
+                   MatchH [VarP $ Sig (name "a") ta] $
+                     \[(_, a)] ->
+                       case (elab a) of
+                         a' | Just av <- unbit a' -> bitEH $ bv_truncate (nteval wt) av
+                         _ -> AppEH (ES_Some WHNF) (VarEH (ES_Some SNF) s) [a]
+                   ])
+            ]
+
+
       exph = toh [] exp
       elabed = elab exph
       done = runFresh (toe elabed) (free' exp)
-  in done
+  in --trace ("elab " ++ show mode ++ ": " ++ pretty exp) $
+     --trace ("To: " ++ pretty done) $
+     done
 
 
 assignexp :: [(Name, Type)] -> Exp -> Exp
@@ -318,143 +475,6 @@ unappsEH :: ExpH -> [ExpH]
 unappsEH (AppEH _ a xs) = unappsEH a ++ xs
 unappsEH e = [e]
 
-primitives :: HT.HashTable Name (Sig -> ExpH)
-primitives = HT.table $ [
-      (name "Seri.Lib.Prelude.__prim_eq_Integer", \s -> biniprim s (\a b -> boolEH (a == b))),
-      (name "Seri.Lib.Prelude.__prim_add_Integer", \s -> biniprim s (\a b -> integerEH (a + b))),
-      (name "Seri.Lib.Prelude.__prim_sub_Integer", \s -> biniprim s (\a b -> integerEH (a - b))),
-      (name "Seri.Lib.Prelude.__prim_mul_Integer", \s -> biniprim s (\a b -> integerEH (a * b))),
-      (name "Seri.Lib.Prelude.<", \s -> biniprim s (\a b -> boolEH (a < b))),
-      (name "Seri.Lib.Prelude.<=", \s -> biniprim s (\a b -> boolEH (a <= b))),
-      (name "Seri.Lib.Prelude.>", \s -> biniprim s (\a b -> boolEH (a > b))),
-      (name "Seri.Lib.Prelude.__prim_eq_Char", \s -> bincprim s (\a b -> boolEH (a == b))),
-      (name "Seri.Lib.Bit.__prim_eq_Bit", \s -> binbprim s (\a b -> boolEH (a == b))),
-      (name "Seri.Lib.Bit.__prim_add_Bit", \s -> binbprim s (\a b -> bitEH (a + b))),
-      (name "Seri.Lib.Bit.__prim_sub_Bit", \s -> binbprim s (\a b -> bitEH (a - b))),
-      (name "Seri.Lib.Bit.__prim_mul_Bit", \s -> binbprim s (\a b -> bitEH (a * b))),
-      (name "Seri.Lib.Bit.__prim_or_Bit", \s -> binbprim s (\a b -> bitEH (a .|. b))),
-      (name "Seri.Lib.Bit.__prim_and_Bit", \s -> binbprim s (\a b -> bitEH (a .&. b))),
-      (name "Seri.Lib.Bit.__prim_lsh_Bit", \s -> binbiprim s (\a b -> bitEH (a `shiftL` fromInteger b))),
-      (name "Seri.Lib.Bit.__prim_rshl_Bit", \s -> binbiprim s (\a b -> bitEH (a `shiftR` fromInteger b))),
-      (name "Seri.Lib.Bit.__prim_extract_Bit", \s@(Sig _ t) ->
-         binbiprim s (\a j ->
-            let AppT _ (NumT wt) = last $ unarrowsT t
-                i = j + (nteval wt) - 1
-            in bitEH (bv_extract i j a))),
-      (name "Seri.Lib.Prelude.&&", \s -> 
-        LaceEH (ES_Some WHNF) [
-          MatchH [VarP $ Sig (name "a") boolT, VarP $ Sig (name "b") boolT] $
-            \[(_, a), (_, b)] ->
-              case () of
-                _ | a == trueEH -> b
-                _ | a == falseEH -> falseEH
-                _ -> AppEH (ES_Some WHNF) (VarEH (ES_Some SNF) s) [a, b]
-          ]),
-      (name "Seri.Lib.Prelude.||", \s -> 
-        LaceEH (ES_Some WHNF) [
-          MatchH [VarP $ Sig (name "a") boolT, VarP $ Sig (name "b") boolT] $
-            \[(_, a), (_, b)] ->
-              case () of
-                _ | a == trueEH -> trueEH
-                _ | a == falseEH -> b
-                _ -> AppEH (ES_Some WHNF) (VarEH (ES_Some SNF) s) [a, b]
-          ]),
-      (name "Seri.Lib.Prelude.not", \s -> 
-        LaceEH (ES_Some WHNF) [
-          MatchH [VarP $ Sig (name "a") boolT] $
-            \[(_, a)] ->
-              case () of
-                _ | a == trueEH -> falseEH
-                _ | a == falseEH -> trueEH
-                _ -> AppEH (ES_Some WHNF) (VarEH (ES_Some SNF) s) [a]
-          ]),
-      (name "Seri.Lib.Prelude.valueof", \(Sig n t) ->
-        let [NumT nt, it] = unarrowsT t
-        in LaceEH (ES_Some SNF) [
-            MatchH [VarP $ Sig (name "_") (NumT nt)] $
-              \_ -> integerEH (nteval nt)
-            ]),
-      (name "Seri.Lib.Prelude.numeric", \(Sig _ (NumT nt)) -> ConEH (Sig (name "#" `nappend` name (show (nteval nt))) (NumT nt))),
-      (name "Seri.Lib.Bit.__prim_zeroExtend_Bit", \s@(Sig _ t) ->
-        let [ta, AppT _ (NumT wt)] = unarrowsT t
-        in LaceEH (ES_Some WHNF) [
-             MatchH [VarP $ Sig (name "a") ta] $
-               \[(_, a)] ->
-                 case (unbit a) of
-                   Just av -> bitEH $ bv_zero_extend (nteval wt - bv_width av) av
-                   _ -> AppEH (ES_Some WHNF) (VarEH (ES_Some SNF) s) [a]
-             ]),
-      (name "Seri.Lib.Bit.__prim_truncate_Bit", \s@(Sig _ t) ->
-        let [ta, AppT _ (NumT wt)] = unarrowsT t
-        in LaceEH (ES_Some WHNF) [
-             MatchH [VarP $ Sig (name "a") ta] $
-               \[(_, a)] ->
-                 case (unbit a) of
-                   Just av -> bitEH $ bv_truncate (nteval wt) av
-                   _ -> AppEH (ES_Some WHNF) (VarEH (ES_Some SNF) s) [a]
-             ])
-      ]
-
-unbit :: ExpH -> Maybe Bit
-unbit (AppEH _ (VarEH _ (Sig fib (AppT _ (AppT _ (NumT w))))) [LitEH (IntegerL v)]) | fib == name "Seri.Lib.Bit.__prim_fromInteger_Bit"
- = Just (bv_make (nteval w) v)
-unbit _ = Nothing
-
 bitEH :: Bit -> ExpH
 bitEH b = AppEH (ES_Some SNF) (VarEH (ES_Some SNF) (Sig (name "Seri.Lib.Bit.__prim_fromInteger_Bit") (arrowsT [integerT, bitT (bv_width b)]))) [integerEH $ bv_value b]
-
--- Binary integer primitive.
---  s - signature of the primitive
---  f - primitive implementation
-biniprim :: Sig -> (Integer -> Integer -> ExpH) -> ExpH
-biniprim s f =
-  LaceEH (ES_Some WHNF) [
-    MatchH [VarP $ Sig (name "a") integerT, VarP $ Sig (name "b") integerT] $ 
-      \[(_, a), (_, b)] -> 
-         case (a, b) of
-            (LitEH (IntegerL ai), LitEH (IntegerL bi)) -> f ai bi
-            _ -> AppEH (ES_Some WHNF) (VarEH (ES_Some SNF) s) [a, b]
-    ]
-
--- Binary character primitive.
---  s - signature of the primitive
---  f - primitive implementation
-bincprim :: Sig -> (Char -> Char -> ExpH) -> ExpH
-bincprim s f =
-  LaceEH (ES_Some WHNF) [
-    MatchH [VarP $ Sig (name "a") charT, VarP $ Sig (name "b") charT] $
-      \[(_, a), (_, b)] ->
-         case (a, b) of
-            (LitEH (CharL av), LitEH (CharL bv)) -> f av bv
-            _ -> AppEH (ES_Some WHNF) (VarEH (ES_Some SNF) s) [a, b]
-    ]
-
--- Binary bitvector primitive.
---  s - signature of the primitive
---  f - primitive implementation
-binbprim :: Sig -> (Bit -> Bit -> ExpH) -> ExpH
-binbprim s@(Sig n t) f =
-  let [ta, tb, _] = unarrowsT t
-  in LaceEH (ES_Some WHNF) [
-       MatchH [VarP $ Sig (name "a") ta, VarP $ Sig (name "b") tb] $ 
-         \[(_, a), (_, b)] ->
-           case (unbit a, unbit b) of
-              (Just av, Just bv) -> f av bv
-              _ -> AppEH (ES_Some WHNF) (VarEH (ES_Some SNF) s) [a, b]
-       ]
-
--- Binary bitvector/integer primitive.
---  s - signature of the primitive
---  f - primitive implementation
-binbiprim :: Sig -> (Bit -> Integer -> ExpH) -> ExpH
-binbiprim s@(Sig n t) f =
-  let [ta, tb, _] = unarrowsT t
-  in LaceEH (ES_Some WHNF) [
-      MatchH [VarP $ Sig (name "a") ta, VarP $ Sig (name "b") tb] $
-        \[(_, a), (_, b)] ->
-           case (unbit a, b) of
-              (Just av, LitEH (IntegerL bv)) -> f av bv
-              _ -> AppEH (ES_Some WHNF) (VarEH (ES_Some SNF) s) [a, b]
-      ]
-
 
