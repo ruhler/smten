@@ -113,3 +113,166 @@ results.
 
 Let me deal with this later.
 
+Mon Oct  8 12:13:52 EDT 2012
+
+I dealt with that one thing.
+
+Now, should I have some fun and try to improve performance some more?
+
+If you look at the top consumer of time and allocation, you find: toh.
+
+It's exactly what would benefit if we shared toh across all the used top level
+declarations.
+
+The question is, how do we figure out what all the used top level declarations
+are? Ideally in a way which is totally lazy.
+
+Once I get that list, then the rest is easy. Call toh on each entry looked up
+in the environment. Then, all future lookups should be in this map.
+
+One option is to call toh, lazily, for every variable declared in the
+environment. And turn it into a function from Type to ExpH. That's not hard to
+do if I can get a list of everything in the environment. The downside here is,
+we have to look at everything in the environment...
+
+It should be fine if I make a new hash table from the environment.
+
+The other option is to...
+
+Well, I suppose I could minimize the environment first. Then look up all
+variables based on that.
+
+It would be nice if I could share this information across elaborations.
+
+Yes. I think that will be the way to go.
+
+So here's what I propose, for now.
+
+Write a function, separate from elaboration, which takes as input an Env and,
+perhaps, a mode, and returns a structure, maybe ElabEnv, which is an
+elaboration environment. This structure will be a hash table from Variable
+name to (Type -> ExpH) function, where toh has already been done, and,
+potentially in the future, speculative elaboration has already been done.
+
+For my first attempt, just call this every time I do elaboration. If
+performance of building this structure is poor, or maybe regardless, then take
+this as an argument to elaboration.
+
+Let me add a function to the environment of the form:
+
+foo :: Env -> (Name -> v) -> HashTable Name v
+
+Or... I suppose you could just do:
+
+variables :: Env -> [Name]
+
+Yes, and from there the rest is simple.
+
+Mon Oct  8 16:20:53 EDT 2012
+
+Actually, that's maybe not the best way to go. Because some variable names
+have completely different implementations.
+
+This leads me to think, maybe the next thing to do for performance is
+reorganize the environment to make it faster to look up methods.
+
+Currently we look up a method as follows:
+1. Look up the class it belongs to.
+2. Search through every Instance for an instance where
+  a. The class matches, and
+  b. the type is a subtype of that instance.
+
+That's pretty bad.
+
+What I would love to have is a map from Sig to Exp. The issue is, the Sig may
+not match perfectly, because of this subtyping thing.
+
+It's a little unfortunate, because some Sig's do match perfectly, and it would
+be nice if we could look those up directly.
+
+There's also the issue of polymorphic types.
+
+How about this. Let's say each implementation for a variable has a type, which
+may be polymorphic or concrete. And these types are disjoint, in a sense. No
+Sig should be able to match multiple. Some are concrete.
+
+Often they are concrete. Often they are polymorphic.
+
+So I propose the following structure:
+
+First we look up the name:
+
+Name -> ...
+
+Then we look for concrete types:
+
+Type -> ...
+
+If that fails, then we have a linear search through the polymorphic types:
+
+[Type] 
+
+To check for subtypes.
+
+That's an idea.
+
+I wonder if we could have a tree instead of a linear search through types.
+
+Given some variable 'a', the kinds of things it could be are:
+ Maybe Char, [Char], Char, Integer, ... concrete
+ Maybe a, [] a, ... polymorphic
+
+But that seems more than I need to get into right now.
+
+So, let's say we had this structure. Then I could use the same structure for
+looking up ExpH, and this time, we really only have to do the ExpH once for
+each different implementation.
+
+To make things easier to start, what I could do is just map Name to a list of
+Type, and do isSubTyping on that. For normal variables which aren't class
+methods, you would have a single Type to check against. So it specializes
+reasonably well.
+
+Okay, so here's what I'll do. Split DataDs into their own hash table in the
+environment. Now, var info will be a table mapping name to:
+
+ValD - in case its a normal value definition: TopSig, Exp
+PrimD - in case its a normal primitive definition: TopSig
+Method - Includes:
+ - polymorphic Type
+ - The class it belongs to
+ - An AL list of [(Type, Exp)], for each instance.
+
+That's the info we want.
+
+Now, this table can be polymorphic in the type of expression if I do it right.
+It can be shared. (Maybe I should put this specific part of the environment in
+its own module?). Every place you see Exp can turn into ExpH.
+
+What ElabEnv should have, then, is just this table with ExpH.  And those ExpH
+can be speculatively elaborated if desired.
+
+Now then, how can I build up this table?
+
+I'll want some sort of accumulative map? I want a way to accumulate info about
+instance methods.
+
+I could filter out all InstD from the environment?
+
+Maybe what happens is: each InstD returns a map from name to singleton list of
+(Type, Exp). Then these are accumulated into one big map from Name to
+[(Type, Exp)]. Then, for each class method, I look up the list in this table.
+
+Yes. That sounds good to me.
+
+Except... The InstD doesn't know the type necessarily. So really it should
+return a map from [Type] to Exp, where [Type] identifies the specific
+instance. Then we can do the assignments when we get to the class part.
+
+Yes. Good. I like this. Let me try it next, see if it improves the performance
+of the elaborator any as is. Then I can consider pulling the code out into its
+own module, and having some way of having an ExpH version of it.
+
+And, who knows, maybe later on we could have a Yices version of it? Or that
+sort of thing... That would be cool.
+

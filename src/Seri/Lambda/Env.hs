@@ -52,7 +52,10 @@ import Debug.Trace
 import Control.Monad
 import Control.Monad.Error
 
+import Data.Functor
+import Data.List(partition)
 import Data.Maybe
+import qualified Data.Map as Map
 
 import Seri.Failable
 import Seri.HashTable as HT
@@ -81,7 +84,10 @@ data Env = Env {
 -- here.
 data ValInfo 
  = DecVI Dec     -- ^ The value is the given ValD or PrimD or DataD
- | ClassVI Name [TyVar] Type   -- ^ The value belongs to the given class and has given type.
+
+ -- | The value belongs to the given class and has given type.
+ -- Gives also the list of implementations for each instance of the class.
+ | ClassVI Name [TyVar] Type [([Type], Exp)]
     deriving (Eq, Show)
 
 -- | Build a seri environment from the given list of declarations.
@@ -90,16 +96,30 @@ mkEnv decs = Env decs (table (vitable decs)) (table (dctable decs))
 
 vitable :: [Dec] -> [(Name, ValInfo)]
 vitable decs =
-  let videc :: Dec -> [(Name, ValInfo)]
+  let isinst :: Dec -> Bool
+      isinst (InstD {}) = True
+      isinst _ = False
+
+      (insts, notinsts) = partition isinst decs
+
+      mkinst :: Dec -> Map.Map Name [([Type], Exp)]
+      mkinst (InstD _ (Class _ tys) ms)
+        = Map.fromList [(n, [(tys, e)]) | Method n e <- ms]
+      mkinst _ = Map.empty
+
+      methods :: Map.Map Name [([Type], Exp)]
+      methods = Map.unionsWith (++) (map mkinst insts)
+
+      videc :: Dec -> [(Name, ValInfo)]
       videc d@(ValD (TopSig n _ _) _) = [(n, DecVI d)]
       videc d@(PrimD (TopSig n _ _)) = [(n, DecVI d)]
       videc (ClassD cn ts sigs) =  
         let isig :: TopSig -> (Name, ValInfo)
-            isig (TopSig n _ t) = (n, ClassVI cn ts t)
+            isig (TopSig n _ t) = (n, ClassVI cn ts t (fromMaybe [] (Map.lookup n methods)))
         in map isig sigs
       videc d@(DataD n _ _) = [(n, DecVI d)]
       videc (InstD {}) = []
-  in concat $ map videc decs
+  in concat $ map videc notinsts
 
 dctable :: [Dec] -> [(Name, Type)]
 dctable decs =
@@ -191,22 +211,22 @@ lookupVar env s@(Sig n t) =
   case HT.lookup n (e_vitable env) of
      Just (DecVI (ValD (TopSig _ _ t) v)) -> return (t, v)
      Just (DecVI (PrimD {})) -> throw $ "lookupVar: " ++ pretty n ++ " is primitive"
-     Just (ClassVI cn cts st) ->
+     Just (ClassVI cn cts st meths) ->
         let ts = assign (assignments st t) (map tyVarType cts)
 
-            mlook :: Method -> Failable Exp
-            mlook (Method nm body) | nm == n = return body
-            mlook _ = throw "mlook"
+            theMeth :: ([Type], exp) -> Bool
+            theMeth (x, _) = and [isSubType p c | (p, c) <- zip x ts]
         in do
-            InstD _ (Class _ pts) ms <- lookupInstD env (Class cn ts)
-            e <- msum (map mlook ms)
+            (pts, e) <- case filter theMeth meths of 
+                            [x] -> return x
+                            _ -> throw $ "method implementation not found for: " ++ pretty s
             let assigns = concat [assignments p c | (p, c) <- zip pts ts]
             return (st, assign assigns e)
      _ -> throw $ "lookupVar: " ++ pretty n ++ " not found"
 
 -- | Look up the value of a variable in an environment.
 lookupVarValue :: Env -> Sig -> Failable Exp
-lookupVarValue e s = fmap snd $ lookupVar e s
+lookupVarValue e s = snd <$> lookupVar e s
 
 -- | Given a VarE in an environment, return the polymorphic type of that
 -- variable as determined by the environment. For methods of classes, the
@@ -219,7 +239,7 @@ lookupVarType env n = do
   case HT.lookup n (e_vitable env) of
     Just (DecVI (ValD (TopSig _ _ t) _)) -> return t
     Just (DecVI (PrimD (TopSig _ _ t))) -> return t
-    Just (ClassVI _ _ t) -> return t
+    Just (ClassVI _ _ t _) -> return t
     Nothing -> throw $ "lookupVarType: '" ++ pretty n ++ "' not found"
 
 -- | Given the name of a method and a specific class instance for the method,
@@ -227,7 +247,7 @@ lookupVarType env n = do
 lookupMethodType :: Env -> Name -> Class -> Failable Type
 lookupMethodType env n (Class _ ts) = do
     case HT.lookup n (e_vitable env) of
-        Just (ClassVI _ vars t) ->
+        Just (ClassVI _ vars t _) ->
             return $ assign (zip (map tyVarName vars) ts) t
         _ -> throw $ "lookupMethodType: " ++ pretty n ++ " not found"
 
@@ -245,7 +265,7 @@ lookupVarInfo env (Sig n t) =
   case HT.lookup n (e_vitable env) of
      Just (DecVI (ValD {})) -> return Declared
      Just (DecVI (PrimD {})) -> return Primitive
-     Just (ClassVI cn cts st) ->
+     Just (ClassVI cn cts st _) ->
         let ts = assign (assignments st t) (map tyVarType cts)
         in return $ Instance (Class cn ts)
      _ -> throw $ "lookupVarInfo: " ++ pretty n ++ " not found"
