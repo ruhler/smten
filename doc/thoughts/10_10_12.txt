@@ -1,0 +1,105 @@
+
+Wed Oct 10 15:47:13 EDT 2012
+
+Okay, here's the next target with Seri.
+
+I'm going to give an SMTLIB2 backend with support for QF_BV.
+This is exactly what we'll want for using STP (actually, STP allows arrays
+too).
+
+And I should be able to try it out with any other SMTLIB2 solver, which is
+nice.
+
+No support for integers. So only my bitvector test will work. And I should be
+able to make the Squares test work too. But for that to work, we have to
+encode data types as bitvectors. That should be fine.
+
+I'll need an smtlib2 syntax. Maybe I can use the one from the haskell
+package. Yes. Sounds good to me.
+
+Let me get started. I'll want an SMTLib query monad which knows how to
+communicate with an SMTLib solver. I probably have to go text-based interface
+here. I can use the same interface as Yices does, only with the SMTLIB syntax.
+
+Perhaps I can make an abstract abstract syntax for the Query monad? The query
+monad needs the following to work:
+
+- a way to pretty print a list of commands
+- a way to run a list of commands
+- a way to call check and get the result
+- a way to compile a seri type to the syntax
+- a way to compile a seri expression to the syntax
+- a way to get bool, int, and bitvector values
+- a way to define a free variable
+- a way to construct an if statement (or can I construct it in seri and just
+  reuse the compiler?)
+- a way to assert 
+- a way to push and pop
+
+In other words... It seems like I can define better what it means to be an
+SMT solver, and share the Query monad across them all.
+
+So, maybe I can clarify the interface first, then plug in STP with that
+directly. That sounds like fun.
+
+Let me propose an interface then. And ask what assumptions am I making here?
+
+Not too many I don't think. The big majority of stuff goes into the target.
+
+One thing I should try: don't use an if statement directly, compile the if
+statement using the target.
+
+The other thing we'll want is a abstract syntax which is not specifically
+yices.
+
+Oh, I already do the if statement thing right. Cool.
+
+And you know what? This is like a chance for me to make use of my idea for
+multiparam type classes using GADTs.
+
+Wed Oct 10 16:28:52 EDT 2012
+
+Cool. I think this will work.
+
+One observation. We really have a mix here between two interfaces, so I may as
+well form those interfaces separately first, then combine them. The one
+interface is the solver interfaces, currently the Yices class. The other
+interface is the target interface, currently Compilation: compilation, yicesT,
+yicesN, yicesE, yicesD.
+
+So let me start with the interaction interface, worry about compilation later?
+
+The idea is, to interface with an SMT solver, we need the following:
+
+- A way to create a context for interaction (initialize, get a pointer, spawn
+  a process, whatever:
+create :: IO (a Context)
+
+- A way to run a command
+run :: a Context -> a Command -> IO ()
+
+- Check
+check :: a Context -> IO Result
+
+Ways to get values:
+
+getIntegerValue :: a Context -> String -> IO Integer
+getBoolValue :: a Context -> String -> IO Bool
+getBitVectorValue :: a Context -> Integer -> String -> IO Integer
+
+What has to change to make this work for Yices? Well, for some reason I have
+this thing called 'version', to get the yices version. Why do I need that?
+
+I currently use it for two reasons
+- pretty printing (for debug). I can just change to a specialized pretty
+  printer.
+- in the yices target, but it's unused...
+
+So let me get rid of that.
+
+The yices target has to assume something about the syntax. Hmm...
+
+Well, at least I've identified a couple things to fix:
+1. remove reference to yices version from yices target.
+2. change 'version' in Yices class to 'pretty'.
+

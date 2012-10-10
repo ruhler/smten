@@ -164,7 +164,7 @@ mkYS ctx opts env = do
         ys_ctx = ctx,
         ys_dh = dh,
         ys_freeid = 1,
-        ys_ys = compilation (Y.version ctx) (nocaseerr opts) env,
+        ys_ys = compilation (nocaseerr opts) env,
         ys_env = env
     }
 

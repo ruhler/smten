@@ -61,7 +61,6 @@ import Seri.Target.Elaborate
 
 -- | A yices compilation object.
 data Compilation = Compilation {
-    ys_version :: Y.YicesVersion, -- ^ Version of yices to target
     ys_nocaseerr :: Bool,       -- ^ Assume an alternative will match in each case expression
     ys_poly :: Env,             -- ^ The polymorphic seri environment
 
@@ -90,12 +89,10 @@ modifyS f = do
     put $! f s
 
 -- | Create a new yices compilation object.
-compilation :: Y.YicesVersion    -- ^ yices version to target
-               -> Bool         -- ^ nocase err?
+compilation :: Bool         -- ^ nocase err?
                -> Env          -- ^ polymorphic seri environment
                -> Compilation
-compilation version nocaseerr poly = Compilation {
-    ys_version = version,
+compilation nocaseerr poly = Compilation {
     ys_nocaseerr = nocaseerr,
     ys_poly = poly,
     ys_types = Map.empty,
