@@ -103,3 +103,176 @@ Well, at least I've identified a couple things to fix:
 1. remove reference to yices version from yices target.
 2. change 'version' in Yices class to 'pretty'.
 
+Wed Oct 10 16:42:45 EDT 2012
+
+Did (1). Let me hold off on (2) just for the moment.
+
+I had another idea. For talking to the SMT solver...
+
+I do a lot of little optimizations in Yices.Syntax which could be shared. What
+if we made syntax a class. Or, better yet, have Syntax, and have a different
+class for each SMTLIB theory, which could be combined together into logics.
+
+But then, why do we need a class? Can't we have one abstract syntax? One
+abstract syntax, and specialize each interface, each pretty printer?
+
+The trouble here is I'm not focused on one thing. I'm jumping all around on
+all sorts of different possibilities.
+
+Let me focus in on a concrete thing I want to do: add support for STP via
+SMTLIB2.0.
+
+The observation is: I should be able to reuse a whole lot from the yices stuff
+I do.
+
+In fact, the only thing fundamentally different is that we don't have tuples,
+so data types must be represented as packed bit vectors or in some other
+manner.
+
+Wed Oct 10 18:01:52 EDT 2012
+
+Okay, so an idea is forming.
+
+Each kind of theory has a type class, with different possible implementations.
+
+For example... bit vectors.
+
+Bit Vectors:
+ - primitive (builtin) or based on bools
+
+Data Types:
+ - primitive, built on tuples, built on bitvectors, ...
+
+So, each theory has a class, there can be primitive support for it, or I can
+provide a different implementation built up on another theory. Each theory
+could have also a "not supported" instance.
+
+So, the way this works is, I have a single compiler. That's what's currently
+called yices. It uses the top level theories: Core, Bitvector, Integer,
+Datatype, through their interfaces.
+
+So I'm envisioning the following sorts of modules:
+
+Syntax: a generic abstract syntax supporting all of the theories. Everyone
+will share this abstract syntax. For those solvers that don't support some
+theory, we will assume an expression won't be created with that part of the
+syntax.
+
+Interface: each solver will have its own interface. This is what currently is
+the Yices class. It has methods for creating a context, pretty printing a
+syntax, running commands, calling check, and reading evidence.
+
+Theories:
+  Bitvector, integer, datatype, tuple, core, etc...
+  Classes describing the theories. There will also be a number of instances:
+  primitive ones built on top of Syntax, dummy ones for not supported, and
+  other implementing theories based on other theories.
+
+Logic: a logic is a configuration specifying how to implement every theory
+(some of which may not be supported).
+
+Compiler: The compiler takes a Seri type or expression and compiles it to the
+Syntax using a given Logic.
+
+Query: The query monad I have now.
+
+Now then, what you do to run a query is you specify: A Logic and a Solver.
+(Some logics may be incompatible with some solvers). You run that way.
+
+Now, with this setup, I can easily imagine supporting lots of different SMT
+solvers, it's easy to add a new solver, we don't have to duplicate any code
+between solvers or theories. We can do a portfolio approach nicely. We can do
+what we've been dreaming of in terms of specifying a Logic, and automatically
+making that work.
+
+This would be a great next goal to have. But I don't think I should jump to it
+right away all in one step. Try to transform the structure of what I have to
+that.
+
+Cool. I think that's a fine next target. And have the driver be adding support
+to STP via SMTLIB2.0.
+
+Let me think wildly now about the next step. Because there's something I'm
+seeing which I don't entirely like.
+
+The question is: how much work is it to add a new theory?
+
+Under the setup above, the way I would add a new theory is as follows:
+
+1. Expose the theory to the user by defining new Seri primitives.
+2. Add the Theory for the class to the Seri infrastructure
+3. Update the compiler to map the theory primitives to the given theory.
+4. Implement some instances of the theory.
+5. Update all the logics to deal with that theory appropriately.
+
+That's a lot of work to add a theory. Now, maybe it's not so bad, for someone
+like me, but it doesn't seem like something a Seri user can do inside of the
+Seri language. Perhaps that's okay? Experts adding theories dig into the
+compiler itself. And perhaps there's a good way to break the compiler into
+libraries.
+
+Hey, that's actually pretty cool.
+
+While I'm thinking of it, I should note that all a Logic is is the choice of
+instance to use for every theory.
+
+Nice. I think this is a good next direction for Seri to take. Stop worrying
+about performance and sharing. Focus on reorganizing it like this.
+
+How to go about it? Well, one observation is, yices can support bitvectors
+just like STP, so I should be able to start with just the yices solver, make
+Squares and Bit test work under that solver using Q_BF. Then plug in the STP
+solver and watch it work.
+
+I'll want a solver independent abstract syntax eventually. The syntax I have
+now should work fine for STP, so don't worry about changing that.
+
+What I want to introduce is the notion of a data type theory. Define the data
+type theory. Define an instance built on top of tuples. Define an instance
+built on top of bit vectors.
+
+So it seems like the thing to do to start is try to define and start using
+theories. Define a bitvector theory, define a primitive instance, parameterize
+the compiler by the bitvector instance. Define a tuple theory, same thing.
+Define a datatype theory, implement an instance built on top of tuples and
+core... Define a core theory. Define an integer theory.
+
+Now I'll have all these theories, and mostly built on top of the Syntax. I can
+start to make the syntax more generic, base it off of SMTLIB2. It would be
+cool if I could make the syntax entirely abstract using pattern guards... But
+maybe that won't be efficient. Don't get too caught up in that.
+
+If I organize things right, it should be very easy to get lots of theories and
+solvers plugged into seri and off the ground. Spiffy. Nifty.
+
+Let me start with core theory.
+
+Core:
+ - Bool type
+ - &&, ||, not
+ - let
+ - if
+
+
+Note another thing, I can give instances of theories which are simplifiers,
+built on top of other theories. That way I can do the syntactic simplification
+I currently do for the yices syntax very cleanly.
+
+Fun. So, tomorrow, or whenever I get a chance:
+1. in Seri/SMT/Theories/, define the Core theory as above
+2. define the primitive Syntax for the theory (call it CoreSyntax, or some
+such and replace existing parts of the Yices syntax with it).
+3. give the primitive instance of Core.
+
+Next:
+4. Define Integer theory
+5. Define syntax for integer theory
+6. give the primitive instance of integer
+
+
+Hmm... I'm concerned, because it's not clear to me the different ways you
+would implement these theories. How do I make a general enough interface for
+it? So, maybe don't start with classes just yet, just have the interfaces
+which the target can use. Don't make a typeclass until we have different
+instances.
+
