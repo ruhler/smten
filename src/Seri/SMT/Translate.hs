@@ -36,7 +36,8 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE PatternGuards #-}
 
-module Seri.Target.Yices.Yices (
+-- Translate a Seri expression to SMT.
+module Seri.SMT.Translate (
     Compilation(), compilation, CompilationM, runCompilation,
     smtN, smtT, smtE, smtD,
     ) where

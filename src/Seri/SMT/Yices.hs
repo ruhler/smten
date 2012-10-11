@@ -55,8 +55,8 @@ import Seri.Failable
 import Seri.Lambda hiding (free, query)
 import Seri.SMT.Query
 import Seri.SMT.Realize
+import Seri.SMT.Translate
 import Seri.Target.Elaborate
-import Seri.Target.Yices.Yices
 
 
 data (SMT.Solver y) => YS y = YS {
