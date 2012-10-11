@@ -48,7 +48,6 @@ import System.IO
 
 import Control.Monad.State
 import qualified Yices.Syntax as Y
-import qualified Yices.Concrete as Y
 import qualified Yices.Yices as Y
 
 import Seri.Failable
@@ -72,7 +71,7 @@ type QueryY y = StateT (YS y) IO
 sendCmds :: (Y.Yices y) => [Y.Command] -> y -> Maybe Handle -> IO ()
 sendCmds cmds ctx Nothing = mapM_ (Y.run ctx) cmds
 sendCmds cmds ctx (Just dh) = do
-    hPutStr dh (unlines (map (Y.pretty (Y.version ctx)) cmds))
+    hPutStr dh (unlines (map (Y.pretty ctx) cmds))
     mapM_ (Y.run ctx) cmds
 
 runCmds :: (Y.Yices y) => [Y.Command] -> QueryY y ()
@@ -84,7 +83,7 @@ runCmds cmds = do
 check :: (Y.Yices y) => QueryY y Y.Result
 check = do
     ctx <- gets ys_ctx
-    debug (Y.pretty (Y.version ctx) Y.Check)
+    debug (Y.pretty ctx Y.Check)
     res <- lift $ Y.check ctx
     debug $ "; check returned: " ++ show res
     return res

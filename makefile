@@ -4,9 +4,9 @@ all:
 
 test:
 	./build/src/dist/build/seriq2/seriq2 \
-		-i src \
-		-m Seri.SMT.Tests.BCL3.main \
-		src/Seri/SMT/Tests/BCL3.sri +RTS -p
+		-d foo.dbg -i src \
+		-m Seri.SMT.Tests.Sudoku3.main \
+		src/Seri/SMT/Tests/Sudoku3.sri +RTS -p
 
 
 clean:

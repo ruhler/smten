@@ -47,8 +47,8 @@ data Result
     deriving (Eq, Ord, Enum, Bounded, Read, Show)
 
 class Yices a where
-    -- | Return the version of yices this interface works with.
-    version :: a -> YicesVersion
+    -- | Print a command in pretty syntax for debugging purposes.
+    pretty :: a -> Command -> String
 
     -- | Create a new yices context for interacting with yices.
     mkYices :: IO a 

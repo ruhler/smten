@@ -37,7 +37,6 @@
 -- The syntax is restricted to what both yices1 and yices2 support, which is
 -- basically the same thing as what yices2 supports.
 module Yices.Syntax (
-    YicesVersion(..),
     Symbol, Command(..), Typedef(..), Type(..), Expression(..),
     VarDecl, Binding, ImmediateValue(..),
     letE,
@@ -48,8 +47,6 @@ module Yices.Syntax (
     mkbvE, bvaddE, bvorE, bvandE, bvshiftLeft0E, bvshiftRight0E,
     bvzeroExtendE, bvextractE, bvshlE,
   ) where
-
-data YicesVersion = Yices1 | Yices2 deriving(Show, Eq)
 
 type Symbol = String
 

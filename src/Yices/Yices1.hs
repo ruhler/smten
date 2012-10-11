@@ -46,7 +46,7 @@ import qualified Foreign.Concurrent as F
 
 import Yices.Yices
 import Yices.Syntax
-import Yices.Concrete
+import qualified Yices.Concrete as YC
 
 data YContext
 data YModel
@@ -105,7 +105,7 @@ toResult n
     | otherwise   = Undefined
 
 instance Yices Yices1FFI where
-    version _ = Yices1
+    pretty _ = YC.pretty YC.Yices1
 
     mkYices = do
         c_yices_enable_type_checker True
@@ -114,7 +114,7 @@ instance Yices Yices1FFI where
         return $! Yices1FFI fp
 
     run (Yices1FFI fp) cmd = do
-        worked <- withCString (concrete Yices1 cmd) $ \str -> do
+        worked <- withCString (YC.concrete YC.Yices1 cmd) $ \str -> do
               withForeignPtr fp $ \yctx ->
                 c_yices_parse_command yctx str
         if worked 
@@ -124,7 +124,7 @@ instance Yices Yices1FFI where
               msg <- peekCString cstr
               fail $ show msg
                         ++ "\n when running command: \n" 
-                        ++ pretty Yices1 cmd
+                        ++ YC.pretty YC.Yices1 cmd
 
     check (Yices1FFI fp) = do
         res <- withForeignPtr fp c_yices_check

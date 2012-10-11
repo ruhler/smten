@@ -45,13 +45,13 @@ import Foreign.C.Types
 
 import Yices.FFI2
 import Yices.Syntax
-import Yices.Concrete
+import qualified Yices.Concrete as YC
 import Yices.Yices
 
 data Yices2FFI = Yices2FFI (Ptr YContext)
 
 instance Yices Yices2FFI where
-    version _ = Yices2
+    pretty _ = YC.pretty YC.Yices2
 
     -- TODO: this currently leaks context pointers!
     -- That should most certainly be fixed somehow.
@@ -170,11 +170,11 @@ ytype (RealT) = c_yices_real_type
 
 ytypebystr :: Type -> IO YType
 ytypebystr t = do
-    yt <- withCString (concrete Yices2 t) $ \str -> c_yices_parse_type str
+    yt <- withCString (YC.concrete YC.Yices2 t) $ \str -> c_yices_parse_type str
     if yt < 0
         then do
             withstderr $ \stderr -> c_yices_print_error stderr
-            error $ "ytype: " ++ pretty Yices2 t
+            error $ "ytype: " ++ YC.pretty YC.Yices2 t
         else do
             return $! yt
 
@@ -268,7 +268,7 @@ ytermS s (FunctionE (ImmediateE (VarV "or")) args) = do
     argst <- mapM (ytermS s) args
     withArray argst $ c_yices_or (fromIntegral $ length argst)
 ytermS s e@(FunctionE (ImmediateE (VarV f)) _) | f `elem` builtin = do
-    error $ "TODO: yterm builtin " ++ pretty Yices2 e
+    error $ "TODO: yterm builtin " ++ YC.pretty YC.Yices2 e
 ytermS s (FunctionE f [a]) = do
     ft <- ytermS s f
     at <- ytermS s a 
@@ -300,14 +300,14 @@ ytermS s e@(ImmediateE (VarV nm)) =
         Nothing -> withCString nm c_yices_get_term_by_name
         Just t -> return t 
     
-ytermS _ e = error $ "TODO: yterm: " ++ pretty Yices2 e
+ytermS _ e = error $ "TODO: yterm: " ++ YC.pretty YC.Yices2 e
 
 
 -- | Construct a yices term for the given expression. This works by printing
 -- the expression to a string and passing the string over to yices to parse.
 ytermbystr :: Expression -> IO YTerm
 ytermbystr e = do
-    ye <- withCString (concrete Yices2 e) $ \str -> c_yices_parse_term str
+    ye <- withCString (YC.concrete YC.Yices2 e) $ \str -> c_yices_parse_term str
     if ye < 0 
         then do 
             withstderr $ \stderr -> c_yices_print_error stderr

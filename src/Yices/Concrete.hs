@@ -3,7 +3,10 @@
 {-# LANGUAGE TypeSynonymInstances #-}
 
 -- | Print yices syntax concretely
-module Yices.Concrete (concrete, pretty) where
+module Yices.Concrete (
+    YicesVersion(..),
+    concrete, pretty
+  ) where
 
 import Control.Monad.State.Strict
 import Data.Ratio
@@ -13,6 +16,8 @@ import Yices.Syntax
 
 bigsize :: Integer
 bigsize = 80
+
+data YicesVersion = Yices1 | Yices2 deriving(Show, Eq)
 
 data SmallSize = Big | Small Integer
     deriving (Eq, Show)
