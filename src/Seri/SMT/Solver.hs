@@ -33,9 +33,9 @@
 -- 
 -------------------------------------------------------------------------------
 
--- | A Yices FFI interface common to Yices1 and Yices2.
-module Yices.Yices (
-    Result(..), Yices(..),
+-- | An SMT solver interface
+module Seri.SMT.Solver (
+    Result(..), Solver(..),
     ) where
 
 import Seri.SMT.Syntax
@@ -46,14 +46,16 @@ data Result
     | Undefined
     deriving (Eq, Ord, Enum, Bounded, Read, Show)
 
-class Yices a where
+class Solver a where
     -- | Print a command in pretty syntax for debugging purposes.
+    -- The command should be printed in a concrete syntax understood by the
+    -- solver so the user can try running the generated query directly.
     pretty :: a -> Command -> String
 
-    -- | Create a new yices context for interacting with yices.
-    mkYices :: IO a 
+    -- | Create a new context for interacting with the solver.
+    initialize :: IO a 
 
-    -- | Run a single yices command, ignoring the result.
+    -- | Run a single command, ignoring the result.
     run :: a -> Command -> IO ()
 
     -- | Run (check) and return the result.

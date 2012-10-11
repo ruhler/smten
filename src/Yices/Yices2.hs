@@ -46,17 +46,17 @@ import Foreign.C.Types
 import Yices.FFI2
 import Seri.SMT.Syntax
 import qualified Yices.Concrete as YC
-import Yices.Yices
+import Seri.SMT.Solver
 
 data Yices2FFI = Yices2FFI (Ptr YContext)
 
-instance Yices Yices2FFI where
+instance Solver Yices2FFI where
     pretty _ = YC.pretty YC.Yices2
 
     -- TODO: this currently leaks context pointers!
     -- That should most certainly be fixed somehow.
     -- TODO: when do we call c_yices_exit?
-    mkYices = do
+    initialize = do
         c_yices_init
         ptr <- c_yices_new_context nullPtr
         return $! Yices2FFI ptr

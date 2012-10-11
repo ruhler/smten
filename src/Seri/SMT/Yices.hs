@@ -48,10 +48,8 @@ import System.IO
 
 import Control.Monad.State
 
--- TODO: change qualified name from Y to SMT to reflect that it is now a
--- generic syntax, not a yices specific one.
-import qualified Seri.SMT.Syntax as Y
-import qualified Yices.Yices as Y
+import qualified Seri.SMT.Syntax as SMT
+import qualified Seri.SMT.Solver as SMT
 
 import Seri.Failable
 import Seri.Lambda hiding (free, query)
@@ -61,7 +59,7 @@ import Seri.Target.Elaborate
 import Seri.Target.Yices.Yices
 
 
-data (Y.Yices y) => YS y = YS {
+data (SMT.Solver y) => YS y = YS {
     ys_ctx :: y,
     ys_dh :: Maybe Handle,
     ys_freeid :: Integer,
@@ -71,35 +69,35 @@ data (Y.Yices y) => YS y = YS {
 
 type QueryY y = StateT (YS y) IO
 
-sendCmds :: (Y.Yices y) => [Y.Command] -> y -> Maybe Handle -> IO ()
-sendCmds cmds ctx Nothing = mapM_ (Y.run ctx) cmds
+sendCmds :: (SMT.Solver y) => [SMT.Command] -> y -> Maybe Handle -> IO ()
+sendCmds cmds ctx Nothing = mapM_ (SMT.run ctx) cmds
 sendCmds cmds ctx (Just dh) = do
-    hPutStr dh (unlines (map (Y.pretty ctx) cmds))
-    mapM_ (Y.run ctx) cmds
+    hPutStr dh (unlines (map (SMT.pretty ctx) cmds))
+    mapM_ (SMT.run ctx) cmds
 
-runCmds :: (Y.Yices y) => [Y.Command] -> QueryY y ()
+runCmds :: (SMT.Solver y) => [SMT.Command] -> QueryY y ()
 runCmds cmds = do
     ctx <- gets ys_ctx
     dh <- gets ys_dh
     lift $ sendCmds cmds ctx dh
 
-check :: (Y.Yices y) => QueryY y Y.Result
+check :: (SMT.Solver y) => QueryY y SMT.Result
 check = do
     ctx <- gets ys_ctx
-    debug (Y.pretty ctx Y.Check)
-    res <- lift $ Y.check ctx
+    debug (SMT.pretty ctx SMT.Check)
+    res <- lift $ SMT.check ctx
     debug $ "; check returned: " ++ show res
     return res
 
 -- Output a line to the debug output.
-debug :: (Y.Yices y) => String -> QueryY y ()
+debug :: (SMT.Solver y) => String -> QueryY y ()
 debug msg = do
     dh <- gets ys_dh
     case dh of
         Nothing -> return ()
         Just h -> lift $ hPutStrLn h msg
 
-freevar :: (Y.Yices y) => QueryY y Name
+freevar :: (SMT.Solver y) => QueryY y Name
 freevar = do
     fid <- gets ys_freeid
     modify $ \ys -> ys { ys_freeid = fid+1 }
@@ -111,7 +109,7 @@ freename id = name $ "free~" ++ show id
 isfreename :: Name -> Bool
 isfreename nm = name "free~" == ntake 5 nm
 
-yicest :: (Y.Yices y) => Type -> QueryY y Y.Type
+yicest :: (SMT.Solver y) => Type -> QueryY y SMT.Type
 yicest t = do
     ys <- gets ys_ys 
     let mkyt = do
@@ -123,7 +121,7 @@ yicest t = do
     runCmds cmds
     return yt
 
-yicese :: (Y.Yices y) => Exp -> QueryY y Y.Expression
+yicese :: (SMT.Solver y) => Exp -> QueryY y SMT.Expression
 yicese e = do
     ys <- gets ys_ys 
     let mkye = do
@@ -153,7 +151,7 @@ data RunOptions = RunOptions {
     nocaseerr :: Bool
 } deriving(Show)
             
-mkYS :: (Y.Yices y) => y -> RunOptions -> Env -> IO (YS y)
+mkYS :: (SMT.Solver y) => y -> RunOptions -> Env -> IO (YS y)
 mkYS ctx opts env = do
     dh <- case debugout opts of
             Nothing -> return Nothing
@@ -174,7 +172,7 @@ mkYS ctx opts env = do
 -- Note: it's possible to leak free variables with this function.
 -- You should not return anything from the first query which could contain a
 -- free variable, otherwise who knows what will happen.
-runYices :: (Y.Yices y) => y -> RunOptions -> Env -> QueryY y a -> IO a
+runYices :: (SMT.Solver y) => y -> RunOptions -> Env -> QueryY y a -> IO a
 runYices ctx opts env q = do
     ys <- mkYS ctx opts env
     evalStateT q ys
@@ -186,20 +184,20 @@ runYices ctx opts env q = do
 -- Assumes:
 --   Integers, Bools, and Bit vectors are implemented directly using the
 --   corresponding yices primitives. (Should I not be assuming this?)
-realizefree :: (Y.Yices y) => Env -> Name -> Type -> QueryY y Exp
+realizefree :: (SMT.Solver y) => Env -> Name -> Type -> QueryY y Exp
 realizefree _ nm t | t == boolT = do
     ctx <- gets ys_ctx
-    bval <- lift $ Y.getBoolValue ctx (yicesN nm)
+    bval <- lift $ SMT.getBoolValue ctx (yicesN nm)
     debug $ "; " ++ pretty nm ++ " is " ++ show bval
     return (boolE bval)
 realizefree _ nm t | t == integerT = do
     ctx <- gets ys_ctx
-    ival <- lift $ Y.getIntegerValue ctx (yicesN nm)
+    ival <- lift $ SMT.getIntegerValue ctx (yicesN nm)
     debug $ "; " ++ pretty nm ++ " is " ++ show ival
     return (integerE ival)
 realizefree _ nm (AppT (ConT n) (NumT (ConNT w))) | n == name "Bit" = do
     ctx <- gets ys_ctx
-    bval <- lift $ Y.getBitVectorValue ctx w (yicesN nm)
+    bval <- lift $ SMT.getBitVectorValue ctx w (yicesN nm)
     debug $ "; " ++ pretty nm ++ " has value " ++ show bval
     return (bitE w bval)
 realizefree _ _ t@(AppT (AppT (ConT n) _) _) | n == name "->"
@@ -209,36 +207,36 @@ realizefree _ _ t
 
 data RealizeT = RealizeT Env
 
-instance (Y.Yices y) => TransformerM RealizeT (QueryY y) where
+instance (SMT.Solver y) => TransformerM RealizeT (QueryY y) where
     tm_Exp (RealizeT env) (VarE (Sig nm ty)) | isfreename nm = realizefree env nm ty
     tm_Exp _ e = return e
 
 
-instance (Y.Yices y) => Query (QueryY y) where
+instance (SMT.Solver y) => Query (QueryY y) where
   query r = do
     res <- check
     case res of 
-        Y.Satisfiable -> Satisfiable <$> runRealize r
-        Y.Unsatisfiable -> return Unsatisfiable
+        SMT.Satisfiable -> Satisfiable <$> runRealize r
+        SMT.Unsatisfiable -> return Unsatisfiable
         _ -> return Unknown
   
   free t | isPrimT t = do
     t' <- yicest t
     free <- freevar
-    runCmds [Y.Define (yicesN free) t' Nothing]
+    runCmds [SMT.Define (yicesN free) t' Nothing]
     return (VarE (Sig free t))
   free t = do
     let (ConT dt):args = unappsT t
     env <- gets ys_env
     DataD _ vars cs <- lift . attemptIO $ lookupDataD env dt
-    (let mkcon :: (Y.Yices y) => Con -> QueryY y Exp
+    (let mkcon :: (SMT.Solver y) => Con -> QueryY y Exp
          mkcon (Con cn ts) = 
            let ts' = assign (zip (map tyVarName vars) args) ts
            in do
                argvals <- mapM free ts'
                return $ appsE ((ConE (Sig cn (arrowsT (ts' ++ [t])))):argvals)
     
-         mkcons :: (Y.Yices y) => [Con] -> QueryY y Exp
+         mkcons :: (SMT.Solver y) => [Con] -> QueryY y Exp
          mkcons [] = error $ "free on DataD with no constructors: " ++ pretty t
          mkcons [c] = mkcon c
          mkcons (c:cs) = do
@@ -255,12 +253,12 @@ instance (Y.Yices y) => Query (QueryY y) where
 
   assert p = do
     yp <- yicese p
-    runCmds [Y.Assert yp]
+    runCmds [SMT.Assert yp]
 
   queryS q = do
-    runCmds [Y.Push]
+    runCmds [SMT.Push]
     v <- q
-    runCmds [Y.Pop]
+    runCmds [SMT.Pop]
     return v
 
   realize e = Realize $ do

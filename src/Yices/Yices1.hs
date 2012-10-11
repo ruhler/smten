@@ -44,7 +44,7 @@ import Foreign.C.String
 import Foreign.C.Types
 import qualified Foreign.Concurrent as F
 
-import Yices.Yices
+import Seri.SMT.Solver
 import Seri.SMT.Syntax
 import qualified Yices.Concrete as YC
 
@@ -104,10 +104,10 @@ toResult n
     | n == yTrue  = Satisfiable
     | otherwise   = Undefined
 
-instance Yices Yices1FFI where
+instance Solver Yices1FFI where
     pretty _ = YC.pretty YC.Yices1
 
-    mkYices = do
+    initialize = do
         c_yices_enable_type_checker True
         ptr <- c_yices_mk_context
         fp  <- F.newForeignPtr ptr (c_yices_del_context ptr)

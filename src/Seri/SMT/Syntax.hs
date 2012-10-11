@@ -40,13 +40,20 @@
 module Seri.SMT.Syntax (
     Symbol, Command(..), Typedef(..), Type(..), Expression(..),
     VarDecl, Binding, ImmediateValue(..),
-    letE,
-    boolE, trueE, falseE, notE, varE, integerE, selectE, eqE,
-    andE, orE, ifE, ltE, leqE, gtE,
-    addE, subE, mulE,
-    tupleE, tupleUpdateE,
+
+    -- * Core
+    letE, eqE, ifE, varE,
+    boolE, trueE, falseE, notE, andE, orE,
+
+    -- * Integer
+    integerE, ltE, leqE, gtE, addE, subE, mulE,
+
+    -- * Bit Vector
     mkbvE, bvaddE, bvorE, bvandE, bvshiftLeft0E, bvshiftRight0E,
     bvzeroExtendE, bvextractE, bvshlE,
+
+    -- * Tuple
+    tupleE, tupleUpdateE, selectE,
   ) where
 
 type Symbol = String
@@ -60,12 +67,14 @@ data Command =
   | Pop                                         -- ^ > (pop)
     deriving(Show, Eq)
 
+-- TODO: this typedef thing is specific to yices.
+-- We only have it because you can't inline a scalar type. Try to figure out a
+-- better way of expressing this, or get rid of it if we can.
 data Typedef =
     NormalTD Type           -- ^ > <type>
   | ScalarTD [Symbol]       -- ^ > (scalar <symbol> ... <symbol>)
     deriving(Show, Eq)
     
-
 data Type = 
     VarT Symbol             -- ^ > <symbol>
   | TupleT [Type]           -- ^ > (tuple <type> ... <type>)
@@ -96,6 +105,10 @@ data ImmediateValue =
   | VarV Symbol         -- ^ > symbol
     deriving(Show, Eq)
 
+-- | > A <symbol> expression.
+varE :: String -> Expression
+varE n = ImmediateE (VarV n)
+
 -- | > true
 trueE :: Expression
 trueE = ImmediateE TrueV
@@ -111,10 +124,6 @@ boolE False = falseE
 -- | > not e
 notE :: Expression -> Expression
 notE e = FunctionE (varE "not") [e]
-
--- | > A <symbol> expression.
-varE :: String -> Expression
-varE n = ImmediateE (VarV n)
 
 -- | An integer expression.
 integerE :: Integer -> Expression

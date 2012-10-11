@@ -119,7 +119,7 @@ import Foreign
 import Foreign.C.String
 import Foreign.C.Types
 
-import Yices.Yices
+import Seri.SMT.Solver(Result(..))
 
 data YContext
 data YModel
