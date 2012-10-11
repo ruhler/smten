@@ -38,7 +38,7 @@
 
 module Seri.Target.Yices.Yices (
     Compilation(), compilation, CompilationM, runCompilation,
-    yicesN, yicesT, yicesE, yicesD,
+    smtN, smtT, smtE, smtD,
     ) where
 
 import Debug.Trace
@@ -60,7 +60,7 @@ import Seri.Lambda
 import Seri.Strict
 import Seri.Target.Elaborate
 
--- | A yices compilation object.
+-- | An SMT compilation object.
 data Compilation = Compilation {
     ys_nocaseerr :: Bool,       -- ^ Assume an alternative will match in each case expression
     ys_poly :: Env,             -- ^ The polymorphic seri environment
@@ -76,14 +76,14 @@ data Compilation = Compilation {
     ys_caseid :: Integer        -- ^ unique id to use for next case arg variable
 }
 
--- | Monad for performing additional yices compilation.
+-- | Monad for performing additional smt compilation.
 type CompilationM = StateT Compilation Failable
 
 -- | Append a list of commands in order to the commands specified so far.
 addcmds :: [SMT.Command] -> CompilationM ()
 addcmds cmds = modifyS $ \ys -> ys { ys_cmdsr = (reverse cmds) ++ ys_cmdsr ys}
 
--- | Create a new yices compilation object.
+-- | Create a new smt compilation object.
 compilation :: Bool         -- ^ nocase err?
                -> Env          -- ^ polymorphic seri environment
                -> Compilation
@@ -101,10 +101,10 @@ runCompilation :: CompilationM a -> Compilation -> Failable (a, Compilation)
 runCompilation = runStateT
 
 -- Given the argument type and output type of a free error variable, return
--- the yices name of a newly defined one.
+-- the smt name of a newly defined one.
 yfreeerr :: Type -> CompilationM String
 yfreeerr t = do
-    yt <- yicesT t
+    yt <- smtT t
     id <- gets ys_errid
     let nm = "err~" ++ show id
     modifyS $ \ys -> ys { ys_errid = id+1 }
@@ -118,34 +118,34 @@ yfreecase c = do
     modifyS $ \ys -> ys { ys_caseid = id+1 }
     return $! ['c', c, '~'] ++ show id
 
--- Generate yices code for a fully applied constructor application.
+-- Generate smt code for a fully applied constructor application.
 yCon :: Sig -> [Exp] -> CompilationM SMT.Expression
 yCon (Sig n _) [] | n == name "True" = return SMT.trueE
 yCon (Sig n _) [] | n == name "False" = return SMT.falseE
 yCon (Sig n ct) args = do
     let dt = last $ unarrowsT ct
-    yicesT dt   -- make sure uidt~dt is defined.
-    let tagged = SMT.tupleUpdateE (SMT.varE $ yicesuidt (mononametype dt)) yicesti (SMT.varE $ yicesN n)
+    smtT dt   -- make sure uidt~dt is defined.
+    let tagged = SMT.tupleUpdateE (SMT.varE $ smtuidt (mononametype dt)) smtti (SMT.varE $ smtN n)
     if null args
         then return tagged
         else do
-            args' <- mapM yicesE' args
-            ci <- yicesci n
+            args' <- mapM smtE' args
+            ci <- smtci n
             return $ SMT.tupleUpdateE tagged ci (SMT.tupleE args')
 
 -- Given the name of a data type, return an uninterpreted constant of that
 -- type.
-yicesuidt :: Name -> String
-yicesuidt n = "uidt~" ++ unname n
+smtuidt :: Name -> String
+smtuidt n = "uidt~" ++ unname n
 
 -- Given the name of a data type, return the name of it's tag type.
-yicestag :: Name -> String
-yicestag n = "tag~" ++ unname n
+smttag :: Name -> String
+smttag n = "tag~" ++ unname n
 
 -- Given the name of a constructor, return the index for its fields in the
 -- data types tuple.
-yicesci :: Name -> CompilationM Integer
-yicesci n =
+smtci :: Name -> CompilationM Integer
+smtci n =
     let findidx :: (MonadError String m) => Integer -> [Con] -> m Integer
         findidx _ [] = throw $ "index for " ++ pretty n ++ " not found"
         findidx i ((Con cn []) : cs) = findidx i cs
@@ -158,81 +158,81 @@ yicesci n =
             ConT dt -> do
                 (DataD _ _ cs) <- lookupDataD env dt
                 findidx 2 cs
-            x -> error $ "yicesci: contype: " ++ pretty x ++ " when lookup up " ++ pretty n
+            x -> error $ "smtci: contype: " ++ pretty x ++ " when lookup up " ++ pretty n
 
 -- The tag index for a data type
-yicesti :: Integer
-yicesti = 1
+smtti :: Integer
+smtti = 1
 
 -- | Convert a seri name to an SMT name.
-yicesN :: Name -> String
-yicesN = unname
+smtN :: Name -> String
+smtN = unname
 
--- | Compile a seri type to a yices type
--- Before using the returned type, the yicesD function should be called to
--- get the required yices declarations.
-yicesT :: Type -> CompilationM SMT.Type
-yicesT t | t == boolT = return SMT.BoolT
-yicesT t | t == integerT = return SMT.IntegerT
-yicesT t | t == charT = return SMT.IntegerT
-yicesT t | Just w <- deBitT t = return $ SMT.BitVectorT w
-yicesT t = do
+-- | Compile a seri type to a smt type
+-- Before using the returned type, the smtD function should be called to
+-- get the required smt declarations.
+smtT :: Type -> CompilationM SMT.Type
+smtT t | t == boolT = return SMT.BoolT
+smtT t | t == integerT = return SMT.IntegerT
+smtT t | t == charT = return SMT.IntegerT
+smtT t | Just w <- deBitT t = return $ SMT.BitVectorT w
+smtT t = do
   tys <- gets ys_types
   case Map.lookup t tys of
      Just ty -> return ty
      Nothing -> do
-        ty <- yicesT' t
+        ty <- smtT' t
         modifyS $ \ys -> ys { ys_types = Map.insert t ty (ys_types ys) }
         return ty
 
--- | Compile a seri type to a yices type assuming it hasn't already been
--- compiled. Does not add the type to the types map (that's done by yicesT).
-yicesT' :: Type -> CompilationM SMT.Type
-yicesT' t | Just (a, b) <- deArrowT t = SMT.ArrowT <$> mapM yicesT [a, b] 
-yicesT' t | (ConT nm : args) <- unappsT t =
+-- | Compile a seri type to a smt type assuming it hasn't already been
+-- compiled. Does not add the type to the types map (that's done by smtT).
+smtT' :: Type -> CompilationM SMT.Type
+smtT' t | Just (a, b) <- deArrowT t = SMT.ArrowT <$> mapM smtT [a, b] 
+smtT' t | (ConT nm : args) <- unappsT t =
   let contype :: Con -> CompilationM (Maybe SMT.Type)
       contype (Con _ []) = return Nothing
-      contype (Con _ ts) = Just . SMT.TupleT <$> mapM yicesT ts
+      contype (Con _ ts) = Just . SMT.TupleT <$> mapM smtT ts
   in do
     poly <- gets ys_poly
     DataD _ vars vcs <- lookupDataD poly nm
     let n = mononametype t
-    let yn = yicesN n
+    let yn = smtN n
     let assignments = (zip (map tyVarName vars) args)
     let cs = assign assignments vcs
     cts <- mapM contype cs
-    let tag = SMT.DefineType (yicestag n) (Just $ SMT.ScalarTD [yicesN cn | Con cn _ <- cs])
-    let ttype = SMT.TupleT (SMT.VarT (yicestag n) : (catMaybes cts))
+    let tag = SMT.DefineType (smttag n) (Just $ SMT.ScalarTD [smtN cn | Con cn _ <- cs])
+    let ttype = SMT.TupleT (SMT.VarT (smttag n) : (catMaybes cts))
     let dt = SMT.DefineType yn (Just $ SMT.NormalTD ttype)
-    let uidt = SMT.Define (yicesuidt n) (SMT.VarT yn) Nothing
+    let uidt = SMT.Define (smtuidt n) (SMT.VarT yn) Nothing
     addcmds [tag, dt, uidt]
     return (SMT.VarT yn)
-yicesT' t = throw $ "yicesT: " ++ pretty t ++ " not supported"
+smtT' t = throw $ "smtT: " ++ pretty t ++ " not supported"
 
--- | Compile a seri expression to a yices expression.
--- Before using the returned expression, the yicesD function should be called
--- to get the required yices declarations.
-yicesE :: Exp -> CompilationM SMT.Expression
-yicesE e = do
+-- | Compile a seri expression to a smt expression.
+-- Before using the returned expression, the smtD function should be called
+-- to get the required smt declarations.
+smtE :: Exp -> CompilationM SMT.Expression
+smtE e = do
   poly <- gets ys_poly
   let se = elaborate SNF poly e
-  yicesE' se
+  smtE' se
 
--- | Compile a seri expression to yices, assuming the expression can be
--- represented as is in yices without further elaboration.
-yicesE' :: Exp -> CompilationM SMT.Expression
-yicesE' e | Just (VarP (Sig n _), v, x) <- deLet1E e = do
-    v' <- yicesE' v
-    x' <- yicesE' x
-    return (SMT.letE [(yicesN n, v')] x')
+-- | Compile a seri expression to smt, assuming the expression can be
+-- represented as is in smt without further elaboration.
+smtE' :: Exp -> CompilationM SMT.Expression
+smtE' e | Just (VarP (Sig n _), v, x) <- deLet1E e = do
+    v' <- smtE' v
+    x' <- smtE' x
+    return (SMT.letE [(smtN n, v')] x')
 
-yicesE' e | Just (p, a, b) <- deIfE e = do
-  p' <- yicesE' p
-  a' <- yicesE' a
-  b' <- yicesE' b
+smtE' e | Just (p, a, b) <- deIfE e = do
+  p' <- smtE' p
+  a' <- smtE' a
+  b' <- smtE' b
   return (SMT.ifE p' a' b') 
 
-yicesE' e | Just (xs, ms) <- deCaseE e = do
+smtE' e | Just (xs, ms) <- deCaseE e = do
   nocaseerr <- gets ys_nocaseerr
   (let -- depat p e
      --    outputs: (predicate, bindings)
@@ -243,14 +243,14 @@ yicesE' e | Just (xs, ms) <- deCaseE e = do
      depat (ConP _ n []) e | n == name "True" = return ([e], [])
      depat (ConP _ n []) e | n == name "False" = return ([SMT.notE e], [])
      depat (ConP _ n []) e =
-       let mypred = SMT.eqE (SMT.selectE e yicesti) (SMT.varE (yicesN n))
+       let mypred = SMT.eqE (SMT.selectE e smtti) (SMT.varE (smtN n))
        in return ([mypred], [])
      depat (ConP _ n ps) e = do
-       ci <- yicesci n
+       ci <- smtci n
        let ce = SMT.selectE e ci
        depats <- sequence [depat p (SMT.selectE ce i) | (p, i) <- zip ps [1..]]
        let (preds, binds) = unzip depats
-       let mypred = SMT.eqE (SMT.selectE e yicesti) (SMT.varE (yicesN n))
+       let mypred = SMT.eqE (SMT.selectE e smtti) (SMT.varE (smtN n))
        return (mypred:(concat preds), concat binds)
      depat (VarP (Sig n t)) e = return ([], [(pretty n, e)])
      depat (LitP (IntegerL i)) e = return ([SMT.eqE (SMT.integerE i) e], [])
@@ -260,18 +260,18 @@ yicesE' e | Just (xs, ms) <- deCaseE e = do
      -- dematch es ms
      --    es - the expressions being cased on
      --    ms - the remaining matches in the case statement.
-     --  outputs - the yices expression implementing the matches.
+     --  outputs - the smt expression implementing the matches.
      dematch :: [SMT.Expression] -> [Match] -> CompilationM SMT.Expression
      dematch ye [] = do
          errnm <- yfreeerr (arrowsT $ map typeof xs ++ [typeof (head ms)])
          return $ SMT.FunctionE (SMT.varE errnm) ye
      dematch es [Match ps b] | nocaseerr = do
-         b' <- yicesE' b
+         b' <- smtE' b
          bindings <- concatMap snd <$> mapM (uncurry depat) (zip ps es)
          return $ SMT.letE bindings b'
      dematch es ((Match ps b):ms) = do
          bms <- dematch es ms
-         b' <- yicesE' b
+         b' <- smtE' b
          (preds, bindings) <- unzip <$> mapM (uncurry depat) (zip ps es)
          let pred = SMT.andE (concat preds)
          let lete = SMT.letE (concat bindings) b'
@@ -287,13 +287,13 @@ yicesE' e | Just (xs, ms) <- deCaseE e = do
        -- them when we use them it to check for a pattern match in every
        -- alternative. Instead we bind them to variables ~ca, ~cb, ... and
        -- duplicate that instead.
-       es' <- mapM yicesE' xs
+       es' <- mapM smtE' xs
        (binds, es'') <- unzip <$> mapM givename (zip es' "abcdefghijklmnopqrstuvwxyz")
        body <- dematch es'' ms
        return $ SMT.letE (concat binds) body
    )
-yicesE' (AppE a []) = yicesE' a
-yicesE' e@(AppE a b) =
+smtE' (AppE a []) = smtE' a
+smtE' e@(AppE a b) =
     case unappsE e of 
        ((ConE s):args) -> yCon s args
        [VarE (Sig n t), _]
@@ -302,68 +302,68 @@ yicesE' e@(AppE a b) =
             -> do errnm <- yfreeerr dt
                   return $ SMT.varE errnm
        [VarE (Sig n _), a, b] | n == name "Seri.Lib.Prelude.<" -> do   
-           a' <- yicesE' a
-           b' <- yicesE' b
+           a' <- smtE' a
+           b' <- smtE' b
            return (SMT.ltE a' b')
        [VarE (Sig n _), a, b] | n == name "Seri.Lib.Prelude.<=" -> do   
-           a' <- yicesE' a
-           b' <- yicesE' b
+           a' <- smtE' a
+           b' <- smtE' b
            return (SMT.leqE a' b')
        [VarE (Sig n _), a, b] | n == name "Seri.Lib.Prelude.>" -> do
-           a' <- yicesE' a
-           b' <- yicesE' b
+           a' <- smtE' a
+           b' <- smtE' b
            return (SMT.gtE a' b')
        [VarE (Sig n _), a, b] | n == name "Seri.Lib.Prelude.&&" -> do
-           a' <- yicesE' a
-           b' <- yicesE' b
+           a' <- smtE' a
+           b' <- smtE' b
            return (SMT.andE [a', b'])
        [VarE (Sig n _), a, b] | n == name "Seri.Lib.Prelude.||" -> do
-           a' <- yicesE' a
-           b' <- yicesE' b
+           a' <- smtE' a
+           b' <- smtE' b
            return (SMT.orE [a', b'])
        [VarE (Sig n _), a] | n == name "Seri.Lib.Prelude.not" -> do
-           a' <- yicesE' a
+           a' <- smtE' a
            return (SMT.notE a')
        [VarE (Sig n _), a, b] | n == name "Seri.Lib.Prelude.__prim_add_Integer" -> do
-           a' <- yicesE' a
-           b' <- yicesE' b
+           a' <- smtE' a
+           b' <- smtE' b
            return (SMT.addE a' b')
        [VarE (Sig n _), a, b] | n == name "Seri.Lib.Prelude.__prim_sub_Integer" -> do
-           a' <- yicesE' a
-           b' <- yicesE' b
+           a' <- smtE' a
+           b' <- smtE' b
            return (SMT.subE a' b')
        [VarE (Sig n _), a, b] | n == name "Seri.Lib.Prelude.__prim_mul_Integer" -> do
-           a' <- yicesE' a
-           b' <- yicesE' b
+           a' <- smtE' a
+           b' <- smtE' b
            return (SMT.mulE a' b')
        [VarE (Sig n _), a, b] | n == name "Seri.Lib.Prelude.__prim_eq_Integer" -> do
-           a' <- yicesE' a
-           b' <- yicesE' b
+           a' <- smtE' a
+           b' <- smtE' b
            return (SMT.eqE a' b')
        [VarE (Sig n _), a, b] | n == name "Seri.Lib.Bit.__prim_eq_Bit" -> do
-           a' <- yicesE' a
-           b' <- yicesE' b
+           a' <- smtE' a
+           b' <- smtE' b
            return (SMT.eqE a' b')
        [VarE (Sig n _), a, b] | n == name "Seri.Lib.Bit.__prim_add_Bit" -> do
-           a' <- yicesE' a
-           b' <- yicesE' b
+           a' <- smtE' a
+           b' <- smtE' b
            return (SMT.bvaddE a' b')
        [VarE (Sig n _), a, b] | n == name "Seri.Lib.Bit.__prim_or_Bit" -> do
-           a' <- yicesE' a
-           b' <- yicesE' b
+           a' <- smtE' a
+           b' <- smtE' b
            return (SMT.bvorE a' b')
        [VarE (Sig n _), a, b] | n == name "Seri.Lib.Bit.__prim_and_Bit" -> do
-           a' <- yicesE' a
-           b' <- yicesE' b
+           a' <- smtE' a
+           b' <- smtE' b
            return (SMT.bvandE a' b')
        -- TODO: should we allow shifting by an amount not statically
        -- determined? In that case, I think we need to convert the second
-       -- argument to a bit vector in order to use yices bvshl function.
+       -- argument to a bit vector in order to use smt bvshl function.
        [VarE (Sig n _), a, (LitE (IntegerL v))] | n == name "Seri.Lib.Bit.__prim_lsh_Bit" -> do
-           a' <- yicesE' a
+           a' <- smtE' a
            return (SMT.bvshiftLeft0E a' v)
        [VarE (Sig n _), a, (LitE (IntegerL v))] | n == name "Seri.Lib.Bit.__prim_rshl_Bit" -> do
-           a' <- yicesE' a
+           a' <- smtE' a
            return (SMT.bvshiftRight0E a' v)
        [VarE (Sig n t), LitE (IntegerL x)]
             | n == name "Seri.Lib.Bit.__prim_fromInteger_Bit"
@@ -376,39 +376,39 @@ yicesE' e@(AppE a b) =
             , Just sw <- deBitT bs
             , Just tw <- deBitT bt
             -> do
-               a' <- yicesE' a
+               a' <- smtE' a
                return (SMT.bvzeroExtendE a' (tw - sw))
        [VarE (Sig n t), a]
             | n == name "Seri.Lib.Bit.__prim_truncate_Bit"
             , Just (_, bt) <- deArrowT t
             , Just tw <- deBitT bt
-            -> SMT.bvextractE (tw - 1) 0 <$> yicesE' a
+            -> SMT.bvextractE (tw - 1) 0 <$> smtE' a
        [VarE (Sig n _), x, LitE (IntegerL i)]
             | n == name "Seri.Lib.Bit.__prim_extract_Bit"
             , Just tw <- deBitT (typeof e)
-            -> SMT.bvextractE (i + tw - 1) i <$> yicesE' x
+            -> SMT.bvextractE (i + tw - 1) i <$> smtE' x
        [VarE (Sig n _), f, k, v] | n == name "Seri.SMT.Array.update" -> do
-           f' <- yicesE' f
-           k' <- yicesE' k
-           v' <- yicesE' v
+           f' <- smtE' f
+           k' <- smtE' k
+           v' <- smtE' v
            return $ SMT.UpdateE f' [k'] v'
        _ -> do
-           a' <- yicesE' (AppE a (init b))
-           b' <- yicesE' (last b)
+           a' <- smtE' (AppE a (init b))
+           b' <- smtE' (last b)
            return $ SMT.FunctionE a' [b']
-yicesE' (LitE (IntegerL x)) = return $ SMT.integerE x
-yicesE' (LitE (CharL c)) = return $ SMT.integerE (fromIntegral $ ord c)
-yicesE' l@(LaceE ms) = 
-    throw $ "lambda expression in yices target generation: " ++ pretty l
-yicesE' (ConE s) = yCon s []
-yicesE' (VarE (Sig n _)) = return $ SMT.varE (yicesN n)
+smtE' (LitE (IntegerL x)) = return $ SMT.integerE x
+smtE' (LitE (CharL c)) = return $ SMT.integerE (fromIntegral $ ord c)
+smtE' l@(LaceE ms) = 
+    throw $ "lambda expression in smt target generation: " ++ pretty l
+smtE' (ConE s) = yCon s []
+smtE' (VarE (Sig n _)) = return $ SMT.varE (smtN n)
 
 
--- | Take the list of yices declarations made so far.
+-- | Take the list of smt declarations made so far.
 -- The returned list does not include any of the previously taken declarations
--- by calling yicesD.
-yicesD :: CompilationM [SMT.Command]
-yicesD = do
+-- by calling smtD.
+smtD :: CompilationM [SMT.Command]
+smtD = do
   cmds <- gets $ reverse . ys_cmdsr
   modifyS $ \ys -> ys { ys_cmdsr = [] }
   return cmds

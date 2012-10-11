@@ -109,24 +109,24 @@ freename id = name $ "free~" ++ show id
 isfreename :: Name -> Bool
 isfreename nm = name "free~" == ntake 5 nm
 
-yicest :: (SMT.Solver y) => Type -> QueryY y SMT.Type
-yicest t = do
+smtt :: (SMT.Solver y) => Type -> QueryY y SMT.Type
+smtt t = do
     ys <- gets ys_ys 
     let mkyt = do
-          yt <- yicesT t
-          cmds <- yicesD
+          yt <- smtT t
+          cmds <- smtD
           return (cmds, yt)
     ((cmds, yt), ys') <- lift . attemptIO $ runCompilation mkyt ys
     modify $ \s -> s { ys_ys = ys' }
     runCmds cmds
     return yt
 
-yicese :: (SMT.Solver y) => Exp -> QueryY y SMT.Expression
-yicese e = do
+smte :: (SMT.Solver y) => Exp -> QueryY y SMT.Expression
+smte e = do
     ys <- gets ys_ys 
     let mkye = do
-          ye <- yicesE e
-          cmds <- yicesD
+          ye <- smtE e
+          cmds <- smtD
           return (cmds, ye)
     ((cmds, ye), ys') <- lift . attemptIO $ runCompilation mkye ys
     modify $ \s -> s { ys_ys = ys' }
@@ -179,25 +179,25 @@ runYices ctx opts env q = do
 
 
 -- | Given a free variable name and corresponding seri type, return the value
--- of that free variable from the yices model.
+-- of that free variable from the smt model.
 --
 -- Assumes:
 --   Integers, Bools, and Bit vectors are implemented directly using the
---   corresponding yices primitives. (Should I not be assuming this?)
+--   corresponding smt primitives. (Should I not be assuming this?)
 realizefree :: (SMT.Solver y) => Env -> Name -> Type -> QueryY y Exp
 realizefree _ nm t | t == boolT = do
     ctx <- gets ys_ctx
-    bval <- lift $ SMT.getBoolValue ctx (yicesN nm)
+    bval <- lift $ SMT.getBoolValue ctx (smtN nm)
     debug $ "; " ++ pretty nm ++ " is " ++ show bval
     return (boolE bval)
 realizefree _ nm t | t == integerT = do
     ctx <- gets ys_ctx
-    ival <- lift $ SMT.getIntegerValue ctx (yicesN nm)
+    ival <- lift $ SMT.getIntegerValue ctx (smtN nm)
     debug $ "; " ++ pretty nm ++ " is " ++ show ival
     return (integerE ival)
 realizefree _ nm (AppT (ConT n) (NumT (ConNT w))) | n == name "Bit" = do
     ctx <- gets ys_ctx
-    bval <- lift $ SMT.getBitVectorValue ctx w (yicesN nm)
+    bval <- lift $ SMT.getBitVectorValue ctx w (smtN nm)
     debug $ "; " ++ pretty nm ++ " has value " ++ show bval
     return (bitE w bval)
 realizefree _ _ t@(AppT (AppT (ConT n) _) _) | n == name "->"
@@ -221,9 +221,9 @@ instance (SMT.Solver y) => Query (QueryY y) where
         _ -> return Unknown
   
   free t | isPrimT t = do
-    t' <- yicest t
+    t' <- smtt t
     free <- freevar
-    runCmds [SMT.Define (yicesN free) t' Nothing]
+    runCmds [SMT.Define (smtN free) t' Nothing]
     return (VarE (Sig free t))
   free t = do
     let (ConT dt):args = unappsT t
@@ -252,7 +252,7 @@ instance (SMT.Solver y) => Query (QueryY y) where
      )
 
   assert p = do
-    yp <- yicese p
+    yp <- smte p
     runCmds [SMT.Assert yp]
 
   queryS q = do
