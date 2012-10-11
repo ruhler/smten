@@ -106,7 +106,7 @@ yfreeerr :: Type -> CompilationM String
 yfreeerr t = do
     yt <- yicesT t
     id <- gets ys_errid
-    let nm = yicesname ("err~" ++ show id)
+    let nm = "err~" ++ show id
     modifyS $ \ys -> ys { ys_errid = id+1 }
     addcmds [SMT.Define nm yt Nothing]
     return nm
@@ -116,7 +116,7 @@ yfreecase :: Char -> CompilationM String
 yfreecase c = do
     id <- gets ys_caseid
     modifyS $ \ys -> ys { ys_caseid = id+1 }
-    return $! yicesname (['c', c, '~'] ++ show id)
+    return $! ['c', c, '~'] ++ show id
 
 -- Generate yices code for a fully applied constructor application.
 yCon :: Sig -> [Exp] -> CompilationM SMT.Expression
@@ -136,11 +136,11 @@ yCon (Sig n ct) args = do
 -- Given the name of a data type, return an uninterpreted constant of that
 -- type.
 yicesuidt :: Name -> String
-yicesuidt n = yicesname $ "uidt~" ++ pretty n
+yicesuidt n = "uidt~" ++ unname n
 
 -- Given the name of a data type, return the name of it's tag type.
 yicestag :: Name -> String
-yicestag n = yicesname $ "tag~" ++ pretty n
+yicestag n = "tag~" ++ unname n
 
 -- Given the name of a constructor, return the index for its fields in the
 -- data types tuple.
@@ -164,36 +164,9 @@ yicesci n =
 yicesti :: Integer
 yicesti = 1
 
--- Given a seri identifer, turn it into a valid yices identifier.
--- TODO: hopefully our choice of names won't clash with the users choices...
-yicesname :: String -> String
-yicesname [] = []
-yicesname "not" = "_not"
-yicesname ('!':cs) = "__bang" ++ yicesname cs
-yicesname ('#':cs) = "__hash" ++ yicesname cs
-yicesname ('%':cs) = "__percent" ++ yicesname cs
-yicesname ('&':cs) = "__amp" ++ yicesname cs
-yicesname ('*':cs) = "__star" ++ yicesname cs
-yicesname ('+':cs) = "__plus" ++ yicesname cs
-yicesname ('.':cs) = "__dot" ++ yicesname cs
-yicesname ('/':cs) = "__slash" ++ yicesname cs
-yicesname ('<':cs) = "__lt" ++ yicesname cs
-yicesname ('=':cs) = "__eq" ++ yicesname cs
-yicesname ('>':cs) = "__gt" ++ yicesname cs
-yicesname ('?':cs) = "__ques" ++ yicesname cs
-yicesname ('@':cs) = "__at" ++ yicesname cs
-yicesname ('\\':cs) = "__bslash" ++ yicesname cs
-yicesname ('^':cs) = "__hat" ++ yicesname cs
-yicesname ('|':cs) = "__bar" ++ yicesname cs
-yicesname ('-':cs) = "__dash" ++ yicesname cs
-yicesname ('(':cs) = "__oparen" ++ yicesname cs
-yicesname (')':cs) = "__cparen" ++ yicesname cs
-yicesname (',':cs) = "__comma" ++ yicesname cs
-yicesname (c:cs) = c : yicesname cs
-
--- | Convert a seri name to a yices name.
+-- | Convert a seri name to an SMT name.
 yicesN :: Name -> String
-yicesN = yicesname . unname
+yicesN = unname
 
 -- | Compile a seri type to a yices type
 -- Before using the returned type, the yicesD function should be called to

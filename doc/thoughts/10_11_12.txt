@@ -1,0 +1,33 @@
+
+Thu Oct 11 15:19:14 EDT 2012
+
+I'm working on making things more generic. So, the Yices context, Yices
+syntax, Yices target, and Yices query are all being made generic.
+
+I've done the context and the syntax. Though the syntax hasn't been cleanly
+done yet and will need some work.
+
+The next step is the yices target.
+
+Ones question which comes up is this function: yicesN. Translating a user type
+into a type suitable for the back end. This seems like a very yices specific
+thing to me. It also seems like it is a syntax kind of thing? Or a Solver kind
+of thing?
+
+In other words, the SMT target wants to pick whatever names it wants, and it's
+taking as input whatever names it gets from previous people. It's not until we
+go to talk to yices directly, or STP, or whatever back end that we need to
+change these names to be appropriate identifiers.
+
+So let me move this to Concrete, and probably to the FFI interface too,
+otherwise crazy stuff could happen.
+
+In fact, I almost feel like I could reuse Name for the SMT syntax.
+
+um. One step at a time I suppose.
+
+Thu Oct 11 15:47:12 EDT 2012
+
+I removed yicesname, and it seems to work fine still. Interesting... Let me
+leave it like that until I run into trouble.
+

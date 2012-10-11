@@ -196,4 +196,3 @@ pretty v x = evalState (concreteM x >> gets cs_output) (CS v True 0 0 "")
 concrete :: Concrete a => YicesVersion -> a -> String
 concrete v x = evalState (concreteM x >> gets cs_output) (CS v False 0 0 "")
 
-
