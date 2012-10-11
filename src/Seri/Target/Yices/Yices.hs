@@ -57,6 +57,7 @@ import Control.Monad.Error
 
 import Seri.Failable
 import Seri.Lambda
+import Seri.Strict
 import Seri.Target.Elaborate
 
 -- | A yices compilation object.
@@ -81,12 +82,6 @@ type CompilationM = StateT Compilation Failable
 -- | Append a list of commands in order to the commands specified so far.
 addcmds :: [SMT.Command] -> CompilationM ()
 addcmds cmds = modifyS $ \ys -> ys { ys_cmdsr = (reverse cmds) ++ ys_cmdsr ys}
-
--- | Strict modify
-modifyS :: (Compilation -> Compilation) -> CompilationM ()
-modifyS f = do
-    s <- get
-    put $! f s
 
 -- | Create a new yices compilation object.
 compilation :: Bool         -- ^ nocase err?

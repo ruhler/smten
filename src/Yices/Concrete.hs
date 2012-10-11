@@ -12,6 +12,7 @@ import Control.Monad.State.Strict
 import Data.Ratio
 import Data.List(genericLength)
 
+import Seri.Strict
 import Seri.SMT.Syntax
 
 bigsize :: Integer
@@ -58,11 +59,6 @@ class Concrete a where
 
 incr :: Integer -> Integer
 incr = (+ 1)
-
-modifyS :: (CS -> CS) -> ConcreteM ()
-modifyS f = do
-    cs <- get
-    put $! f cs
 
 indent :: ConcreteM a -> ConcreteM a
 indent x = do
