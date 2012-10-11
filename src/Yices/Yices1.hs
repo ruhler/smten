@@ -45,7 +45,7 @@ import Foreign.C.Types
 import qualified Foreign.Concurrent as F
 
 import Yices.Yices
-import Yices.Syntax
+import Seri.SMT.Syntax
 import qualified Yices.Concrete as YC
 
 data YContext

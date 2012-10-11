@@ -2,7 +2,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 
--- | Print yices syntax concretely
+-- | Print SMT syntax to a concrete yices syntax.
 module Yices.Concrete (
     YicesVersion(..),
     concrete, pretty
@@ -12,7 +12,7 @@ import Control.Monad.State.Strict
 import Data.Ratio
 import Data.List(genericLength)
 
-import Yices.Syntax
+import Seri.SMT.Syntax
 
 bigsize :: Integer
 bigsize = 80

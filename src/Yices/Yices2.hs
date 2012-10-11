@@ -44,7 +44,7 @@ import Foreign.C.String
 import Foreign.C.Types
 
 import Yices.FFI2
-import Yices.Syntax
+import Seri.SMT.Syntax
 import qualified Yices.Concrete as YC
 import Yices.Yices
 

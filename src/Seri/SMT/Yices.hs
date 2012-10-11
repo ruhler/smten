@@ -47,7 +47,10 @@ import Data.Functor
 import System.IO
 
 import Control.Monad.State
-import qualified Yices.Syntax as Y
+
+-- TODO: change qualified name from Y to SMT to reflect that it is now a
+-- generic syntax, not a yices specific one.
+import qualified Seri.SMT.Syntax as Y
 import qualified Yices.Yices as Y
 
 import Seri.Failable

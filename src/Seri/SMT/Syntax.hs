@@ -33,10 +33,11 @@
 -- 
 -------------------------------------------------------------------------------
 
--- | An abstract syntax suitable for both yices 1 and yices 2.
--- The syntax is restricted to what both yices1 and yices2 support, which is
--- basically the same thing as what yices2 supports.
-module Yices.Syntax (
+-- | An abstract syntax for SMT solvers.
+--
+-- TODO: this was originally a syntax targeted for Yices2. The plan is to
+-- slowly morph it into a syntax based on SMTLIB2.0.
+module Seri.SMT.Syntax (
     Symbol, Command(..), Typedef(..), Type(..), Expression(..),
     VarDecl, Binding, ImmediateValue(..),
     letE,

@@ -38,7 +38,7 @@ module Yices.Yices (
     Result(..), Yices(..),
     ) where
 
-import Yices.Syntax
+import Seri.SMT.Syntax
 
 data Result
     = Satisfiable
