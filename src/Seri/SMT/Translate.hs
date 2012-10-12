@@ -59,7 +59,7 @@ import Control.Monad.Error
 import Seri.Failable
 import Seri.Lambda
 import Seri.Strict
-import Seri.Target.Elaborate
+import Seri.Elaborate
 
 -- | An SMT compilation object.
 data Compilation = Compilation {

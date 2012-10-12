@@ -1,6 +1,6 @@
 
 -- | Library for supporting seri numeric types in the haskell target.
-module Seri.Target.Haskell.Lib.Numeric (
+module Seri.Haskell.Lib.Numeric (
     N__(..), N__0(..), N__2p0(..), N__2p1(..),
     N__PLUS(..), N__MINUS(..), N__TIMES(..),
     ) where

@@ -35,7 +35,7 @@
 
 {-# LANGUAGE PatternGuards #-}
 
-module Seri.Target.Haskell.Haskell (
+module Seri.Haskell.Haskell (
     haskell, haskellH,
     ) where
 
@@ -47,7 +47,7 @@ import qualified Language.Haskell.TH as H
 
 import Seri.Failable
 import Seri.Lambda
-import Seri.Target.Haskell.Compiler
+import Seri.Haskell.Compiler
 
 hsLit :: Lit -> H.Lit
 hsLit (IntegerL i) = H.IntegerL i
@@ -197,9 +197,9 @@ haskell c env main =
                  H.text "{-# LANGUAGE MultiParamTypeClasses #-}" H.$+$
                  H.text "{-# LANGUAGE FlexibleInstances #-}" H.$+$
                  H.text "import qualified Prelude" H.$+$
-                 H.text "import Seri.Target.Haskell.Lib.Numeric" H.$+$
-                 H.text "import qualified Seri.Target.Haskell.Lib.Bit as Bit" H.$+$
-                 H.text "import Seri.Target.Haskell.Lib.Bit(Bit)"
+                 H.text "import Seri.Haskell.Lib.Numeric" H.$+$
+                 H.text "import qualified Seri.Haskell.Lib.Bit as Bit" H.$+$
+                 H.text "import Seri.Haskell.Lib.Bit(Bit)"
 
       ds = compile_decs c env
   in hsHeader H.$+$ H.ppr ds H.$+$

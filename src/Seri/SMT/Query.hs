@@ -56,7 +56,7 @@ import qualified Seri.SMT.Solver as SMT
 import Seri.Failable
 import Seri.Lambda hiding (free, query)
 import Seri.SMT.Translate
-import Seri.Target.Elaborate
+import Seri.Elaborate
 
 
 data Answer a = Satisfiable a | Unsatisfiable | Unknown

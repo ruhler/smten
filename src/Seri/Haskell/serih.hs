@@ -33,20 +33,19 @@
 -- 
 -------------------------------------------------------------------------------
 
--- | Elaborate the main function of the given seri program and print out the
--- result.
+-- | Compile a seri program to haskell.
 module Main where
 
 import System.Environment
 
 import Seri.Failable
 import Seri.Lambda
-import Seri.Target.Elaborate
+import Seri.Haskell
 
 main :: IO ()
 main = do
     args <- getArgs
-    let (output, path, mainexp, input) =
+    let (output, path, me, input) =
             case args of
                ["-o", fout, "-i", path, "-m", me, fin] ->
                     (writeFile fout, path, me, fin)
@@ -57,7 +56,6 @@ main = do
     decs <- attemptIO $ typeinfer (mkEnv flat) flat
     let env = mkEnv decs
     attemptIO $ typecheck env decs
-    let e = VarE (Sig (name mainexp) UnknownT)
-    let elaborated = elabwhnf env e
-    output (pretty elaborated)
+    let haskelled = haskell haskellH decs (name me)
+    output (show haskelled)
 

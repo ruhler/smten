@@ -33,29 +33,46 @@
 -- 
 -------------------------------------------------------------------------------
 
--- | Compile a seri program to haskell.
-module Main where
+module Seri.Elaborate.FreshFast (
+    Fresh, runFresh, fresh,
+    ) where
 
-import System.Environment
+import Control.Monad.State.Strict
+import Data.ByteString.Char8 as S
 
-import Seri.Failable
+import Data.Char(isDigit)
+import Data.List(dropWhileEnd)
+import qualified Data.Map as Map
+
 import Seri.Lambda
-import Seri.Target.Haskell
 
-main :: IO ()
-main = do
-    args <- getArgs
-    let (output, path, me, input) =
-            case args of
-               ["-o", fout, "-i", path, "-m", me, fin] ->
-                    (writeFile fout, path, me, fin)
-               x -> error $ "bad args: " ++ show x
+type Fresh = State Name
 
-    seri <- load [path] input
-    flat <- attemptIO $ flatten seri
-    decs <- attemptIO $ typeinfer (mkEnv flat) flat
-    let env = mkEnv decs
-    attemptIO $ typecheck env decs
-    let haskelled = haskell haskellH decs (name me)
-    output (show haskelled)
+-- return a fresh name based on the given name.
+fresh :: Sig -> Fresh Sig
+fresh s@(Sig _ t) = do
+   id <- get
+   put $! incrnm id
+   return (Sig id t)
+
+runFresh :: Fresh a -> [Name] -> a
+runFresh x nms = evalState x (name "~Ea")
+
+-- TODO: this assumes name is a Char8 bytestring.
+-- Is that a bad idea?
+-- 
+-- Name is of the form "~E<num>"
+-- We want to increment the number.
+--
+-- Only, instead of numbers made of digits, we use numbers made of lowercase
+-- letters (which gives us more options before extending the string size)
+incrnm :: Name -> Name
+incrnm n = 
+  let start = S.init n
+      end = S.last n
+  in case end of
+        'z' -> S.snoc (incrnm start) 'a'
+        'E' -> name "~Ea"
+        _ -> S.snoc start (succ end)
+        
 

@@ -1,18 +1,18 @@
 
 -- | Library for supporting bit vectors in the haskell target.
-module Seri.Target.Haskell.Lib.Bit(
+module Seri.Haskell.Lib.Bit(
     Bit(),
-    Seri.Target.Haskell.Lib.Bit.or,
-    Seri.Target.Haskell.Lib.Bit.and,
+    Seri.Haskell.Lib.Bit.or,
+    Seri.Haskell.Lib.Bit.and,
     lsh, rshl, zeroExtend,
-    Seri.Target.Haskell.Lib.Bit.truncate,
-    Seri.Target.Haskell.Lib.Bit.extract,
+    Seri.Haskell.Lib.Bit.truncate,
+    Seri.Haskell.Lib.Bit.extract,
     ) where
 
 import Data.Bits
 
 import qualified Seri.Bit as B
-import Seri.Target.Haskell.Lib.Numeric
+import Seri.Haskell.Lib.Numeric
 
 data Bit n = Bit n B.Bit
 

@@ -6,7 +6,7 @@ import Seri.Lambda hiding (free, query)
 import Seri.SMT.Query
 import Seri.SMT.Solver (Solver)
 
-import Seri.Target.Elaborate
+import Seri.Elaborate
 
 -- | Given a Seri expression of type Query a,
 -- returns the Seri expression of type a which results from running the query.

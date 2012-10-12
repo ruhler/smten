@@ -85,7 +85,7 @@ badtypetest "InstCtx"
 
 
 # Test the haskell target.
-set hsdir build/src/Seri/Target/Haskell
+set hsdir build/src/Seri/Haskell
 hrun $SERIH -o $hsdir/hstests.hs -i build/src -m testall \
     build/src/Seri/Lib/Tests.sri
 hrun -ignorestderr $GHC -o $hsdir/hstests -ibuild/src $hsdir/hstests.hs

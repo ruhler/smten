@@ -37,7 +37,7 @@
 {-# LANGUAGE PatternGuards #-}
 
 -- | Target for elaborating seri expressions.
-module Seri.Target.Elaborate.Elaborate (
+module Seri.Elaborate.Elaborate (
     Mode(..), elabwhnf, elaborate,
     ) where
 
@@ -54,7 +54,7 @@ import Seri.Failable
 import qualified Seri.HashTable as HT
 import Seri.Lambda
 
-import Seri.Target.Elaborate.FreshFast
+import Seri.Elaborate.FreshFast
 
 data Mode = WHNF -- ^ elaborate to weak head normal form.
           | SNF  -- ^ elaborate to sharing normal form.

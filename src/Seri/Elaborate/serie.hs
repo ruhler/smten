@@ -33,9 +33,31 @@
 -- 
 -------------------------------------------------------------------------------
 
-module Seri.Target.Haskell (
-    module Seri.Target.Haskell.Haskell
-    ) where
+-- | Elaborate the main function of the given seri program and print out the
+-- result.
+module Main where
 
-import Seri.Target.Haskell.Haskell
-    
+import System.Environment
+
+import Seri.Failable
+import Seri.Lambda
+import Seri.Elaborate
+
+main :: IO ()
+main = do
+    args <- getArgs
+    let (output, path, mainexp, input) =
+            case args of
+               ["-o", fout, "-i", path, "-m", me, fin] ->
+                    (writeFile fout, path, me, fin)
+               x -> error $ "bad args: " ++ show x
+
+    seri <- load [path] input
+    flat <- attemptIO $ flatten seri
+    decs <- attemptIO $ typeinfer (mkEnv flat) flat
+    let env = mkEnv decs
+    attemptIO $ typecheck env decs
+    let e = VarE (Sig (name mainexp) UnknownT)
+    let elaborated = elabwhnf env e
+    output (pretty elaborated)
+

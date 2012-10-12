@@ -33,49 +33,61 @@
 -- 
 -------------------------------------------------------------------------------
 
-module Seri.Target.Elaborate.FreshPretty (
-    Fresh, runFresh, fresh,
+module Seri.Haskell.Compiler (
+    HCompiler, Compiler(..), compilers, compile_decs, hsName,
     ) where
 
-import Control.Monad.State.Strict
+import Control.Monad
 
-import Data.Char(isDigit)
-import Data.List(dropWhileEnd)
-import qualified Data.Map as Map
+import Data.Char(isAlphaNum)
+import Data.Maybe
 
+import qualified Language.Haskell.TH.PprLib as H
+import qualified Language.Haskell.TH as H
+
+import Seri.Failable
 import Seri.Lambda
 
--- Fresh names
---
--- We store a mapping from name to number such that the concatenation of the
--- name and the number is guaranteed to be a fresh name, and the
--- concatenation of the name and any higher number is guaranteed to be a
--- fresh name.
+data Compiler e t d = Compiler {
+    compile_exp :: Compiler e t d -> Exp -> Failable e,
+    compile_type :: Compiler e t d -> Type -> Failable t,
+    compile_dec :: Compiler e t d -> Dec -> Failable [d]
+}
 
-type Fresh = State (Map.Map Name Integer)
+compilers :: [Compiler e t d] -> Compiler e t d
+compilers [c] = c
+compilers (r:rs) = 
+    let ye c e = compile_exp r c e `mplus` compile_exp (compilers rs) c e
+        yt c t = compile_type r c t `mplus` compile_type (compilers rs) c t
+        yd c d = compile_dec r c d `mplus` compile_dec (compilers rs) c d
+    in Compiler ye yt yd
 
--- return a fresh name based on the given name.
-fresh :: Sig -> Fresh Sig
-fresh s@(Sig n t) = do
-   let nbase = name $ dropWhileEnd isDigit (unname n)
-   m <- get
-   let (id, m') = Map.insertLookupWithKey (\_ -> (+)) nbase 1 m
-   put $! m'
-   case id of
-      Nothing -> return $ Sig nbase t
-      Just x -> return $ Sig (nbase `nappend` name (show x)) t
+compile_decs :: Compiler e t d -> [Dec] -> [d]
+compile_decs c ds = surely $ do
+    ds' <- mapM (compile_dec c c) ds
+    return $ concat ds'
 
-runFresh :: Fresh a -> [Name] -> a
-runFresh x nms = evalState x (freshmap nms)
 
--- construct the initial fresh map for use with fresh variables.
-freshmap :: [Name] -> Map.Map Name Integer
-freshmap [] = Map.empty
-freshmap (n:ns) =
-  let m = freshmap ns
-      (digits, rest) = span isDigit (reverse (unname n))
-      num = if null digits then 0 else read (reverse digits)
-      base = name $ reverse rest
-  in Map.insertWith max base (num+1) m
+type HCompiler = Compiler H.Exp H.Type H.Dec
 
+-- TODO: Here we just drop the qualified part of the name.
+-- This is a hack, requiring there are no modules which define an entity of
+-- the same name (unlikely...). Really we should form a proper haskell name
+-- for whatever this name is used for (varid, conid)
+hsName :: Name -> H.Name
+hsName =
+  let dequalify :: String -> String
+      dequalify n = 
+        case break (== '.') n of
+            (n', []) -> n'
+            (_, ".") -> "."
+            (_, n') -> dequalify (tail n')
+      symify :: String -> String
+      symify s = if issymbol s then "(" ++ s ++ ")" else s
+  in H.mkName . symify . dequalify . pretty
+
+issymbol :: String -> Bool
+issymbol ('(':_) = False
+issymbol "[]" = False
+issymbol (h:_) = not $ isAlphaNum h || h == '_'
 

@@ -19,7 +19,7 @@ import qualified Seri.SMT.Run as Q
 import Seri.Enoch.Enoch
 import Seri.Enoch.EnochTH
 import Seri.Enoch.Prelude
-import Seri.Target.Elaborate
+import Seri.Elaborate
 
 derive_SeriableT ''Answer
 derive_SeriableE ''Answer
