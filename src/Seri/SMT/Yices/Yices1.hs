@@ -37,7 +37,7 @@
 {-# LANGUAGE EmptyDataDecls  #-}
 
 -- | FFI Interface to yices 1.
-module Yices.Yices1 (Yices1FFI()) where
+module Seri.SMT.Yices.Yices1 (Yices1FFI(), yices1) where
 
 import Foreign
 import Foreign.C.String
@@ -46,7 +46,9 @@ import qualified Foreign.Concurrent as F
 
 import Seri.SMT.Solver
 import Seri.SMT.Syntax
-import qualified Yices.Concrete as YC
+import qualified Seri.SMT.Yices.Concrete as YC
+
+import qualified Seri.SMT.Query as Q
 
 data YContext
 data YModel
@@ -169,3 +171,6 @@ bvInteger :: [CInt] -> Integer
 bvInteger [] = 0
 bvInteger (x:xs) = bvInteger xs * 2 + (fromIntegral x)
         
+yices1 :: Q.Query Yices1FFI a -> Q.Query Yices1FFI a
+yices1 = id
+

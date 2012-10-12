@@ -4,7 +4,7 @@
 {-# LANGUAGE TemplateHaskell #-}
 
 module Seri.Enoch.SMT (
-    Query, Answer(..), 
+    Query, Answer(..), RunOptions(..), runQuery,
     free, assert, Seri.Enoch.SMT.realize, run, run',
     queryR, query,
  ) where

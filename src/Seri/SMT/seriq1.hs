@@ -43,7 +43,8 @@ import Seri.Failable
 import Seri.Lambda
 import Seri.Target.Elaborate
 import Seri.SMT.Run
-import Seri.SMT.Yices1
+import Seri.SMT.Query
+import Seri.SMT.Yices.Yices1
 
 main :: IO ()
 main = do
@@ -62,6 +63,6 @@ main = do
 
     let opts = (RunOptions dbg True)
     tmain <- attemptIO $ lookupVarType env (name m)
-    result <- runYices1 opts env (run $ VarE (Sig (name m) tmain))
+    result <- runQuery opts env (yices1 . run $ VarE (Sig (name m) tmain))
     putStrLn $ pretty (elabwhnf env result)
 

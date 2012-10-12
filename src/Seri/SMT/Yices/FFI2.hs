@@ -37,7 +37,7 @@
 {-# LANGUAGE ForeignFunctionInterface #-}
 
 -- | Raw FFI interface to yices2.
-module Yices.FFI2 (
+module Seri.SMT.Yices.FFI2 (
     YContext, YContextConfig, YParam, YType, YTerm, fromYSMTStatus,
     c_yices_init,
     c_yices_exit,

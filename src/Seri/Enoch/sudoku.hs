@@ -9,7 +9,7 @@ import Seri.Enoch.Enoch
 import Seri.Enoch.Prelude
 import Seri.Enoch.SMT
 import Seri.SMT.Solver (Solver)
-import Seri.SMT.Yices2
+import Seri.SMT.Yices.Yices2
 
 
 -- The size of the sudoku.
@@ -160,5 +160,5 @@ main = do
     typed <- attemptIO $ typeinfer (mkEnv flat) flat
     let env = mkEnv typed
     attemptIO $ typecheck env typed
-    runYices2 (RunOptions (Just "build/src/Seri/Enoch/sudoku.dbg") True) env solve >>= mapM_ putStrLn
+    runQuery (RunOptions (Just "build/src/Seri/Enoch/sudoku.dbg") True) env (yices2 solve) >>= mapM_ putStrLn
 

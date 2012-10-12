@@ -34,7 +34,7 @@
 -------------------------------------------------------------------------------
 
 -- | An interface to yices2.
-module Yices.Yices2 (Yices2FFI()) where
+module Seri.SMT.Yices.Yices2 (Yices2FFI(), yices2) where
 
 import Data.List(genericLength)
 import Data.Ratio
@@ -43,10 +43,11 @@ import Foreign
 import Foreign.C.String
 import Foreign.C.Types
 
-import Yices.FFI2
+import Seri.SMT.Yices.FFI2
 import Seri.SMT.Syntax
-import qualified Yices.Concrete as YC
+import qualified Seri.SMT.Yices.Concrete as YC
 import Seri.SMT.Solver
+import qualified Seri.SMT.Query as Q
 
 data Yices2FFI = Yices2FFI (Ptr YContext)
 
@@ -313,4 +314,7 @@ ytermbystr e = do
             withstderr $ \stderr -> c_yices_print_error stderr
             error $ "yterm error"
         else return $! ye
+
+yices2 :: Q.Query Yices2FFI a -> Q.Query Yices2FFI a
+yices2 = id
 

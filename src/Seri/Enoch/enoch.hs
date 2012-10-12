@@ -14,7 +14,7 @@ import Seri.Enoch.EnochTH
 import Seri.Enoch.Prelude
 import Seri.Enoch.SMT
 import Seri.SMT.Solver (Solver)
-import Seri.SMT.Yices2
+import Seri.SMT.Yices.Yices2
 
 q1 :: (Solver s) => Query s (Answer Integer)
 q1 = do
@@ -103,7 +103,7 @@ main = do
     let env = mkEnv typed
     attemptIO $ typecheck env typed
 
-    let try nm q = runYices2 (RunOptions (Just $ "build/src/Seri/Enoch/" ++ nm ++ ".dbg") True) env q >>= (putStrLn . show)
+    let try nm q = runQuery (RunOptions (Just $ "build/src/Seri/Enoch/" ++ nm ++ ".dbg") True) env (yices2 q) >>= (putStrLn . show)
 
     try "q1" q1
     try "q2" q2

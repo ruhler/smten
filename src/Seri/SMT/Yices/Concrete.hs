@@ -3,7 +3,7 @@
 {-# LANGUAGE TypeSynonymInstances #-}
 
 -- | Print SMT syntax to a concrete yices syntax.
-module Yices.Concrete (
+module Seri.SMT.Yices.Concrete (
     YicesVersion(..),
     concrete, pretty
   ) where

@@ -179,8 +179,9 @@ mkYS ctx opts env = do
 -- Note: it's possible to leak free variables with this function.
 -- You should not return anything from the first query which could contain a
 -- free variable, otherwise who knows what will happen.
-runQuery :: (SMT.Solver s) => s -> RunOptions -> Env -> Query s a -> IO a
-runQuery ctx opts env q = do
+runQuery :: (SMT.Solver s) => RunOptions -> Env -> Query s a -> IO a
+runQuery opts env q = do
+    ctx <- SMT.initialize
     qs <- mkYS ctx opts env
     evalStateT q qs
 
