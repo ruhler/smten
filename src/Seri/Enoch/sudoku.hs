@@ -8,6 +8,7 @@ import Seri.Lambda hiding (free, query)
 import Seri.Enoch.Enoch
 import Seri.Enoch.Prelude
 import Seri.Enoch.SMT
+import Seri.SMT.Solver (Solver)
 import Seri.SMT.Yices2
 
 
@@ -22,13 +23,13 @@ m = n*n
 
 type Cell = Integer
 
-freeCell :: (Query q) => q (TExp Cell)
+freeCell :: (Solver s) => Query s (TExp Cell)
 freeCell = do
     x <- free
     assert ((x > 0) && (x <= pack m))
     return x
 
-readCell :: (Query q) => Char -> q (TExp Cell);
+readCell :: (Solver s) => Char -> Query s (TExp Cell);
 readCell '1' = return (pack 1);
 readCell '2' = return (pack 2);
 readCell '3' = return (pack 3);
@@ -101,10 +102,10 @@ all f (x:xs) = ite (f x) (all f xs) (pack False)
 isvalid :: [[TExp Cell]] -> TExp Bool;
 isvalid b = all unique (concat [rows b, cols b, boxes b]);
 
-readRow :: (Query q) => [Char] -> q [TExp Cell];
+readRow :: (Solver s) => [Char] -> Query s [TExp Cell];
 readRow = mapM readCell;
 
-readBoard :: (Query q) => [[Char]] -> q [[TExp Cell]]
+readBoard :: (Solver s) => [[Char]] -> Query s [[TExp Cell]]
 readBoard rows = mapM readRow rows;
 
 easy :: [[Char]];
@@ -143,7 +144,7 @@ diabolical =
      ".2.6..35.",
      ".54..8.7."];
 
-solve :: (Query q) => q [[Char]];
+solve :: (Solver s) => Query s [[Char]];
 solve = do
     board <- readBoard diabolical
     assert (isvalid board)

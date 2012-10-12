@@ -13,9 +13,10 @@ import Seri.Enoch.Enoch
 import Seri.Enoch.EnochTH
 import Seri.Enoch.Prelude
 import Seri.Enoch.SMT
+import Seri.SMT.Solver (Solver)
 import Seri.SMT.Yices2
 
-q1 :: (Query q) => q (Answer Integer)
+q1 :: (Solver s) => Query s (Answer Integer)
 q1 = do
     x <- free
     assert (x < 6)
@@ -26,7 +27,7 @@ q1 = do
 incr :: TExp Integer -> TExp Integer
 incr x = x + 1
 
-q2 :: (Query q) => q (Answer Integer)
+q2 :: (Solver s) => Query s (Answer Integer)
 q2 = do
     x <- free
     assert (x < 6)
@@ -43,7 +44,7 @@ quadruple a = a + a + a + a
 quadrupleS :: TExp Integer -> TExp Integer
 quadrupleS = varE1 "Seri.Enoch.Enoch.quadruple"
 
-share :: (Query q) => (TExp Integer -> TExp Integer) -> q (Answer (Integer, Integer))
+share :: (Solver s) => (TExp Integer -> TExp Integer) -> Query s (Answer (Integer, Integer))
 share f = do
     x <- free
     y <- free
@@ -54,7 +55,7 @@ share f = do
       yv <- realize y
       return (xv, yv)
 
-qtuple :: (Query q) => q (Answer Integer)
+qtuple :: (Solver s) => Query s (Answer Integer)
 qtuple = do
     p <- free
     let x = (ite p (pack (1, 3)) (pack (2, 4))) :: TExp (Integer, Integer)
@@ -71,13 +72,13 @@ derive_SeriableE ''Foo
 defoo :: TExp Foo -> TExp Integer
 defoo = varE1 "Seri.Enoch.Enoch.defoo"
 
-quserdata :: (Query q) => q (Answer Foo)
+quserdata :: (Solver s) => Query s (Answer Foo)
 quserdata = do
     f <- free
     assert (2 == defoo f)
     query f
 
-allQ :: (Query q, SeriableE a) => (TExp a -> TExp Bool) -> q [a]
+allQ :: (Solver s, SeriableE a) => (TExp a -> TExp Bool) -> Query s [a]
 allQ p = do
     x <- free
     assert (p x)
@@ -91,7 +92,7 @@ allQ p = do
 pred1 :: TExp Integer -> TExp Bool
 pred1 x = (x > 3) && (x < 6)
 
-qallQ :: (Query q) => q [Integer]
+qallQ :: (Solver s) => Query s [Integer]
 qallQ = allQ pred1
 
 main :: IO ()

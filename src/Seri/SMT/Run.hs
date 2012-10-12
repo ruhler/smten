@@ -4,12 +4,13 @@ module Seri.SMT.Run (run) where
 
 import Seri.Lambda hiding (free, query)
 import Seri.SMT.Query
+import Seri.SMT.Solver (Solver)
 
 import Seri.Target.Elaborate
 
 -- | Given a Seri expression of type Query a,
 -- returns the Seri expression of type a which results from running the query.
-run :: (Query q) => Exp -> q Exp
+run :: (Solver s) => Exp -> Query s Exp
 run e = do
     env <- envQ
     case elabwhnf env e of

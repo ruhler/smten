@@ -13,6 +13,7 @@ import Data.Functor
 
 import Seri.Lambda hiding (free, query)
 import Seri.SMT.Query hiding (free, assert, query)
+import Seri.SMT.Solver (Solver)
 import qualified Seri.SMT.Query as Q
 import qualified Seri.SMT.Run as Q
 import Seri.Enoch.Enoch
@@ -27,33 +28,33 @@ derive_SeriableE ''Answer
 data QueryT a = QueryT
 derive_SeriableT ''QueryT
 
-free :: (Query q, SeriableT a) => q (TExp a)
+free :: (Solver s, SeriableT a) => Query s (TExp a)
 free = 
     let freeE :: (SeriableT a) => TExp (QueryT a)
         freeE = varE "Seri.SMT.SMT.free"
     in run freeE
 
-assert :: (Query q) => TExp Bool -> q ()
+assert :: (Solver s) => TExp Bool -> Query s ()
 assert p =
   let assertE :: TExp (Bool -> QueryT ())
       assertE = varE "Seri.SMT.SMT.assert"
   in run' (apply assertE p)
 
-realize :: (Query q, SeriableE a) => TExp a -> Realize q a
+realize :: (Solver s, SeriableE a) => TExp a -> Realize (Query s) a
 realize (TExp x) = do
   env <- envR
   unpack' . TExp . elabwhnf env <$> Q.realize x
 
-queryR :: (Query q) => Realize q a -> q (Answer a)
+queryR :: (Solver s) => Realize (Query s) a -> Query s (Answer a)
 queryR = Q.query
 
-query :: (Query q, SeriableE a) => TExp a -> q (Answer a)
+query :: (Solver s, SeriableE a) => TExp a -> Query s (Answer a)
 query = queryR . Seri.Enoch.SMT.realize
 
-run :: (Query q) => TExp (QueryT a) -> q (TExp a)
+run :: (Solver s) => TExp (QueryT a) -> Query s (TExp a)
 run (TExp x) = TExp <$> Q.run x
 
-run' :: (Query q, SeriableE a) => TExp (QueryT a) -> q a
+run' :: (Solver s, SeriableE a) => TExp (QueryT a) -> Query s a
 run' x = do
   env <- envQ
   TExp v <- run x

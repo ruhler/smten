@@ -39,12 +39,12 @@ module Seri.SMT.Yices1 (
 
 import Seri.Failable
 import Seri.Lambda
-import Seri.SMT.Yices
+import Seri.SMT.Query
 
 import Seri.SMT.Solver
 import Yices.Yices1
 
-runYices1 :: RunOptions -> Env -> QueryY Yices1FFI a -> IO a
+runYices1 :: RunOptions -> Env -> Query Yices1FFI a -> IO a
 runYices1 opts env q = do
     y <- initialize
     runYices y opts env q
