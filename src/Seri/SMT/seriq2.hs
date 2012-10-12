@@ -42,7 +42,7 @@ import System.Exit
 import Seri.Failable
 import Seri.Lambda
 import Seri.Target.Elaborate
-import Seri.SMT.Query
+import Seri.SMT.Run
 import Seri.SMT.Yices2
 
 main :: IO ()

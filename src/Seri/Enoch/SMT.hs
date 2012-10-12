@@ -12,8 +12,9 @@ module Seri.Enoch.SMT (
 import Data.Functor
 
 import Seri.Lambda hiding (free, query)
-import Seri.SMT.Query hiding (free, assert, query, run)
+import Seri.SMT.Query hiding (free, assert, query)
 import qualified Seri.SMT.Query as Q
+import qualified Seri.SMT.Run as Q
 import Seri.Enoch.Enoch
 import Seri.Enoch.EnochTH
 import Seri.Enoch.Prelude
