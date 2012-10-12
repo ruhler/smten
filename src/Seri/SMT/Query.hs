@@ -34,6 +34,7 @@
 -------------------------------------------------------------------------------
 
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 
@@ -61,20 +62,9 @@ import Seri.Target.Elaborate
 data Answer a = Satisfiable a | Unsatisfiable | Unknown
     deriving (Eq, Show)
 
-data Realize s a = Realize {
+newtype Realize s a = Realize {
     runRealize :: Query s a
-}
-
-instance Functor (Realize s) where
-    fmap f x = Realize (f <$> runRealize x)
-
-instance Monad (Realize s) where
-    fail = Realize . fail
-    return = Realize . return
-    (>>=) (Realize x) f = Realize $ do
-        v <- x
-        runRealize (f v)
-
+} deriving (Functor, Monad)
 
 data (SMT.Solver y) => YS y = YS {
     ys_ctx :: y,
