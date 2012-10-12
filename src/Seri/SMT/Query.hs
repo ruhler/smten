@@ -54,13 +54,26 @@ import qualified Seri.SMT.Solver as SMT
 
 import Seri.Failable
 import Seri.Lambda hiding (free, query)
-import Seri.SMT.Realize
 import Seri.SMT.Translate
 import Seri.Target.Elaborate
 
 
 data Answer a = Satisfiable a | Unsatisfiable | Unknown
     deriving (Eq, Show)
+
+data Realize s a = Realize {
+    runRealize :: Query s a
+}
+
+instance Functor (Realize s) where
+    fmap f x = Realize (f <$> runRealize x)
+
+instance Monad (Realize s) where
+    fail = Realize . fail
+    return = Realize . return
+    (>>=) (Realize x) f = Realize $ do
+        v <- x
+        runRealize (f v)
 
 
 data (SMT.Solver y) => YS y = YS {
@@ -218,7 +231,7 @@ instance (SMT.Solver y) => TransformerM RealizeT (Query y) where
 
 -- | Check if the current assertions are satisfiable. If so, runs the given
 -- realize computation and returns that as the body of the Answer.
-query :: (SMT.Solver y) => Realize (Query y) a -> Query y (Answer a)
+query :: (SMT.Solver y) => Realize y a -> Query y (Answer a)
 query r = do
   res <- check
   case res of 
@@ -278,7 +291,7 @@ queryS q = do
 
 -- | Update the free variables in the given expression based on the current
 -- yices model.
-realize :: (SMT.Solver y) => Exp -> Realize (Query y) Exp
+realize :: (SMT.Solver y) => Exp -> Realize y Exp
 realize e = Realize $ do
     env <- gets ys_env
     transformM (RealizeT env) e
@@ -287,6 +300,6 @@ realize e = Realize $ do
 envQ :: (SMT.Solver y) => Query y Env
 envQ = gets ys_env
 
-envR :: (SMT.Solver y) => Realize (Query y) Env
+envR :: (SMT.Solver y) => Realize y Env
 envR = Realize envQ
 

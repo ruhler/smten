@@ -40,12 +40,12 @@ assert p =
       assertE = varE "Seri.SMT.SMT.assert"
   in run' (apply assertE p)
 
-realize :: (Solver s, SeriableE a) => TExp a -> Realize (Query s) a
+realize :: (Solver s, SeriableE a) => TExp a -> Realize s a
 realize (TExp x) = do
   env <- envR
   unpack' . TExp . elabwhnf env <$> Q.realize x
 
-queryR :: (Solver s) => Realize (Query s) a -> Query s (Answer a)
+queryR :: (Solver s) => Realize s a -> Query s (Answer a)
 queryR = Q.query
 
 query :: (Solver s, SeriableE a) => TExp a -> Query s (Answer a)
