@@ -47,5 +47,5 @@ import Yices.Yices1
 runYices1 :: RunOptions -> Env -> Query Yices1FFI a -> IO a
 runYices1 opts env q = do
     y <- initialize
-    runYices y opts env q
+    runQuery y opts env q
 

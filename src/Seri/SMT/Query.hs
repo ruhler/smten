@@ -40,7 +40,7 @@
 
 module Seri.SMT.Query (
     Answer(..), Realize(), 
-    RunOptions(..), runYices,
+    RunOptions(..), runQuery,
     Query, query, free, assert, queryS, realize, envQ, envR,
     ) where
 
@@ -66,48 +66,48 @@ newtype Realize s a = Realize {
     runRealize :: Query s a
 } deriving (Functor, Monad)
 
-data (SMT.Solver y) => YS y = YS {
-    ys_ctx :: y,
-    ys_dh :: Maybe Handle,
-    ys_freeid :: Integer,
-    ys_ys :: Compilation,
-    ys_env :: Env
+data (SMT.Solver s) => QS s = QS {
+    qs_ctx :: s,
+    qs_dh :: Maybe Handle,
+    qs_freeid :: Integer,
+    qs_qs :: Compilation,
+    qs_env :: Env
 }
 
-type Query y = StateT (YS y) IO
+type Query s = StateT (QS s) IO
 
-sendCmds :: (SMT.Solver y) => [SMT.Command] -> y -> Maybe Handle -> IO ()
+sendCmds :: (SMT.Solver s) => [SMT.Command] -> s -> Maybe Handle -> IO ()
 sendCmds cmds ctx Nothing = mapM_ (SMT.run ctx) cmds
 sendCmds cmds ctx (Just dh) = do
     hPutStr dh (unlines (map (SMT.pretty ctx) cmds))
     mapM_ (SMT.run ctx) cmds
 
-runCmds :: (SMT.Solver y) => [SMT.Command] -> Query y ()
+runCmds :: (SMT.Solver s) => [SMT.Command] -> Query s ()
 runCmds cmds = do
-    ctx <- gets ys_ctx
-    dh <- gets ys_dh
+    ctx <- gets qs_ctx
+    dh <- gets qs_dh
     lift $ sendCmds cmds ctx dh
 
-check :: (SMT.Solver y) => Query y SMT.Result
+check :: (SMT.Solver s) => Query s SMT.Result
 check = do
-    ctx <- gets ys_ctx
+    ctx <- gets qs_ctx
     debug (SMT.pretty ctx SMT.Check)
     res <- lift $ SMT.check ctx
     debug $ "; check returned: " ++ show res
     return res
 
 -- Output a line to the debug output.
-debug :: (SMT.Solver y) => String -> Query y ()
+debug :: (SMT.Solver s) => String -> Query s ()
 debug msg = do
-    dh <- gets ys_dh
+    dh <- gets qs_dh
     case dh of
         Nothing -> return ()
         Just h -> lift $ hPutStrLn h msg
 
-freevar :: (SMT.Solver y) => Query y Name
+freevar :: (SMT.Solver s) => Query s Name
 freevar = do
-    fid <- gets ys_freeid
-    modify $ \ys -> ys { ys_freeid = fid+1 }
+    fid <- gets qs_freeid
+    modify $ \qs -> qs { qs_freeid = fid+1 }
     return $ freename fid
 
 freename :: Integer -> Name
@@ -116,27 +116,27 @@ freename id = name $ "free~" ++ show id
 isfreename :: Name -> Bool
 isfreename nm = name "free~" == ntake 5 nm
 
-smtt :: (SMT.Solver y) => Type -> Query y SMT.Type
+smtt :: (SMT.Solver s) => Type -> Query s SMT.Type
 smtt t = do
-    ys <- gets ys_ys 
+    qs <- gets qs_qs 
     let mkyt = do
           yt <- smtT t
           cmds <- smtD
           return (cmds, yt)
-    ((cmds, yt), ys') <- lift . attemptIO $ runCompilation mkyt ys
-    modify $ \s -> s { ys_ys = ys' }
+    ((cmds, yt), qs') <- lift . attemptIO $ runCompilation mkyt qs
+    modify $ \s -> s { qs_qs = qs' }
     runCmds cmds
     return yt
 
-smte :: (SMT.Solver y) => Exp -> Query y SMT.Expression
+smte :: (SMT.Solver s) => Exp -> Query s SMT.Expression
 smte e = do
-    ys <- gets ys_ys 
+    qs <- gets qs_qs 
     let mkye = do
           ye <- smtE e
           cmds <- smtD
           return (cmds, ye)
-    ((cmds, ye), ys') <- lift . attemptIO $ runCompilation mkye ys
-    modify $ \s -> s { ys_ys = ys' }
+    ((cmds, ye), qs') <- lift . attemptIO $ runCompilation mkye qs
+    modify $ \s -> s { qs_qs = qs' }
     runCmds cmds
     return ye
 
@@ -158,7 +158,7 @@ data RunOptions = RunOptions {
     nocaseerr :: Bool
 } deriving(Show)
             
-mkYS :: (SMT.Solver y) => y -> RunOptions -> Env -> IO (YS y)
+mkYS :: (SMT.Solver s) => s -> RunOptions -> Env -> IO (QS s)
 mkYS ctx opts env = do
     dh <- case debugout opts of
             Nothing -> return Nothing
@@ -167,22 +167,22 @@ mkYS ctx opts env = do
                 hSetBuffering h NoBuffering
                 return (Just h)
 
-    return $ YS {
-        ys_ctx = ctx,
-        ys_dh = dh,
-        ys_freeid = 1,
-        ys_ys = compilation (nocaseerr opts) env,
-        ys_env = env
+    return $ QS {
+        qs_ctx = ctx,
+        qs_dh = dh,
+        qs_freeid = 1,
+        qs_qs = compilation (nocaseerr opts) env,
+        qs_env = env
     }
 
 -- | Evaluate a query using the given environment.
 -- Note: it's possible to leak free variables with this function.
 -- You should not return anything from the first query which could contain a
 -- free variable, otherwise who knows what will happen.
-runYices :: (SMT.Solver y) => y -> RunOptions -> Env -> Query y a -> IO a
-runYices ctx opts env q = do
-    ys <- mkYS ctx opts env
-    evalStateT q ys
+runQuery :: (SMT.Solver s) => s -> RunOptions -> Env -> Query s a -> IO a
+runQuery ctx opts env q = do
+    qs <- mkYS ctx opts env
+    evalStateT q qs
 
 
 -- | Given a free variable name and corresponding seri type, return the value
@@ -191,19 +191,19 @@ runYices ctx opts env q = do
 -- Assumes:
 --   Integers, Bools, and Bit vectors are implemented directly using the
 --   corresponding smt primitives. (Should I not be assuming this?)
-realizefree :: (SMT.Solver y) => Env -> Name -> Type -> Query y Exp
+realizefree :: (SMT.Solver s) => Env -> Name -> Type -> Query s Exp
 realizefree _ nm t | t == boolT = do
-    ctx <- gets ys_ctx
+    ctx <- gets qs_ctx
     bval <- lift $ SMT.getBoolValue ctx (smtN nm)
     debug $ "; " ++ pretty nm ++ " is " ++ show bval
     return (boolE bval)
 realizefree _ nm t | t == integerT = do
-    ctx <- gets ys_ctx
+    ctx <- gets qs_ctx
     ival <- lift $ SMT.getIntegerValue ctx (smtN nm)
     debug $ "; " ++ pretty nm ++ " is " ++ show ival
     return (integerE ival)
 realizefree _ nm (AppT (ConT n) (NumT (ConNT w))) | n == name "Bit" = do
-    ctx <- gets ys_ctx
+    ctx <- gets qs_ctx
     bval <- lift $ SMT.getBitVectorValue ctx w (smtN nm)
     debug $ "; " ++ pretty nm ++ " has value " ++ show bval
     return (bitE w bval)
@@ -214,14 +214,14 @@ realizefree _ _ t
 
 data RealizeT = RealizeT Env
 
-instance (SMT.Solver y) => TransformerM RealizeT (Query y) where
+instance (SMT.Solver s) => TransformerM RealizeT (Query s) where
     tm_Exp (RealizeT env) (VarE (Sig nm ty)) | isfreename nm = realizefree env nm ty
     tm_Exp _ e = return e
 
 
 -- | Check if the current assertions are satisfiable. If so, runs the given
 -- realize computation and returns that as the body of the Answer.
-query :: (SMT.Solver y) => Realize y a -> Query y (Answer a)
+query :: (SMT.Solver s) => Realize s a -> Query s (Answer a)
 query r = do
   res <- check
   case res of 
@@ -230,7 +230,7 @@ query r = do
       _ -> return Unknown
 
 -- | Allocate a free expression of the given type.
-free :: (SMT.Solver y) => Type -> Query y Exp
+free :: (SMT.Solver s) => Type -> Query s Exp
 free t | isPrimT t = do
   t' <- smtt t
   free <- freevar
@@ -238,16 +238,16 @@ free t | isPrimT t = do
   return (VarE (Sig free t))
 free t = do
   let (ConT dt):args = unappsT t
-  env <- gets ys_env
+  env <- gets qs_env
   DataD _ vars cs <- lift . attemptIO $ lookupDataD env dt
-  (let mkcon :: (SMT.Solver y) => Con -> Query y Exp
+  (let mkcon :: (SMT.Solver s) => Con -> Query s Exp
        mkcon (Con cn ts) = 
          let ts' = assign (zip (map tyVarName vars) args) ts
          in do
              argvals <- mapM free ts'
              return $ appsE ((ConE (Sig cn (arrowsT (ts' ++ [t])))):argvals)
   
-       mkcons :: (SMT.Solver y) => [Con] -> Query y Exp
+       mkcons :: (SMT.Solver s) => [Con] -> Query s Exp
        mkcons [] = error $ "free on DataD with no constructors: " ++ pretty t
        mkcons [c] = mkcon c
        mkcons (c:cs) = do
@@ -263,7 +263,7 @@ free t = do
    )
 
 -- | Assert the given seri boolean expression.
-assert :: (SMT.Solver y) => Exp -> Query y ()
+assert :: (SMT.Solver s) => Exp -> Query s ()
 assert p = do
   yp <- smte p
   runCmds [SMT.Assert yp]
@@ -272,7 +272,7 @@ assert p = do
 -- Note: it's possible to leak free variables with this function.
 -- You should not return anything from the first query which could contain a
 -- free variable, otherwise who knows what will happen.
-queryS :: (SMT.Solver y) => Query y a -> Query y a
+queryS :: (SMT.Solver s) => Query s a -> Query s a
 queryS q = do
   runCmds [SMT.Push]
   v <- q
@@ -280,16 +280,16 @@ queryS q = do
   return v
 
 -- | Update the free variables in the given expression based on the current
--- yices model.
-realize :: (SMT.Solver y) => Exp -> Realize y Exp
+-- model.
+realize :: (SMT.Solver s) => Exp -> Realize s Exp
 realize e = Realize $ do
-    env <- gets ys_env
+    env <- gets qs_env
     transformM (RealizeT env) e
 
 -- | Return the environment the query is running under.
-envQ :: (SMT.Solver y) => Query y Env
-envQ = gets ys_env
+envQ :: (SMT.Solver s) => Query s Env
+envQ = gets qs_env
 
-envR :: (SMT.Solver y) => Realize y Env
+envR :: (SMT.Solver s) => Realize s Env
 envR = Realize envQ
 
