@@ -1,0 +1,551 @@
+module Seri.SMT.Tests.BCL3Small where {
+  import Seri.Lib.Prelude;
+  import Seri.SMT.Tests.BCL.FIFO;
+  import Seri.SMT.Tests.BCL.Tuple;
+  import Seri.SMT.Tests.BCL.Reg;
+  import Seri.SMT.Tests.BCL.Portal;
+  import Seri.SMT.SMT;
+  data MkSizedFIFOF___FIFOFF__Int_32_BCC =
+      MkSizedFIFOF___FIFOFF__Int_32_BCC (FIFO Integer)
+  ;
+  __mkSizedFIFOF___FIFOFF__Int_32_BCC_undef :: MkSizedFIFOF___FIFOFF__Int_32_BCC;
+  __mkSizedFIFOF___FIFOFF__Int_32_BCC_undef = (MkSizedFIFOF___FIFOFF__Int_32_BCC :: FIFO Integer -> MkSizedFIFOF___FIFOFF__Int_32_BCC) (undefined :: FIFO Integer)
+  ;
+  mkSizedFIFOF___FIFOFF__Int_32_BCC_f :: MkSizedFIFOF___FIFOFF__Int_32_BCC -> FIFO Integer;
+  mkSizedFIFOF___FIFOFF__Int_32_BCC_f = (\(a :: MkSizedFIFOF___FIFOFF__Int_32_BCC) ->
+                                           case (a :: MkSizedFIFOF___FIFOFF__Int_32_BCC) of {
+                                             (MkSizedFIFOF___FIFOFF__Int_32_BCC :: MkSizedFIFOF___FIFOFF__Int_32_BCC) (x :: FIFO Integer) ->
+                                               (x :: FIFO Integer);
+                                           })
+  ;
+  __mkSizedFIFOF___FIFOFF__Int_32_BCC_f_update :: FIFO Integer -> MkSizedFIFOF___FIFOFF__Int_32_BCC -> MkSizedFIFOF___FIFOFF__Int_32_BCC;
+  __mkSizedFIFOF___FIFOFF__Int_32_BCC_f_update = (\(a :: FIFO Integer) ->
+                                                    (\(b :: MkSizedFIFOF___FIFOFF__Int_32_BCC) ->
+                                                       case ((a :: FIFO Integer),
+                                                             (b :: MkSizedFIFOF___FIFOFF__Int_32_BCC)) of {
+                                                         ((mkSizedFIFOF___FIFOFF__Int_32_BCC_f :: FIFO Integer),
+                                                          (MkSizedFIFOF___FIFOFF__Int_32_BCC :: MkSizedFIFOF___FIFOFF__Int_32_BCC) (_ :: FIFO Integer)) ->
+                                                           (MkSizedFIFOF___FIFOFF__Int_32_BCC :: FIFO Integer -> MkSizedFIFOF___FIFOFF__Int_32_BCC) (mkSizedFIFOF___FIFOFF__Int_32_BCC_f :: FIFO Integer);
+                                                       }))
+  ;
+  mkSizedFIFOF___FIFOFF__Int_32_BCC_ctor :: Integer -> MkSizedFIFOF___FIFOFF__Int_32_BCC;
+  mkSizedFIFOF___FIFOFF__Int_32_BCC_ctor = (\_elam1 ->
+                                              MkSizedFIFOF___FIFOFF__Int_32_BCC (mkUGSizedFIFOF__FIFO__Int_32_ctor _elam1))
+  ;
+  mkSizedFIFOF___FIFOFF__Int_32_BCC_dimension :: MkSizedFIFOF___FIFOFF__Int_32_BCC -> MkSizedFIFOF___FIFOFF__Int_32_BCC -> Bool;
+  mkSizedFIFOF___FIFOFF__Int_32_BCC_dimension = (\a ->
+                                                   (\b ->
+                                                      let {
+                                                        f_rv = mkUGSizedFIFOF__FIFO__Int_32_dimension (mkSizedFIFOF___FIFOFF__Int_32_BCC_f a) (mkSizedFIFOF___FIFOFF__Int_32_BCC_f b) ;
+                                                      } in (&&) f_rv (True :: Bool)))
+  ;
+  mkSizedFIFOF___FIFOFF__Int_32_BCC_eq :: MkSizedFIFOF___FIFOFF__Int_32_BCC -> MkSizedFIFOF___FIFOFF__Int_32_BCC -> Bool;
+  mkSizedFIFOF___FIFOFF__Int_32_BCC_eq = (\a ->
+                                            (\b ->
+                                               let {
+                                                 f_rv = mkUGSizedFIFOF__FIFO__Int_32_eq (mkSizedFIFOF___FIFOFF__Int_32_BCC_f a) (mkSizedFIFOF___FIFOFF__Int_32_BCC_f b) ;
+                                               } in (&&) f_rv (True :: Bool)))
+  ;
+  mkSizedFIFOF___FIFOFF__Int_32_BCC_clear_dirty_bits :: MkSizedFIFOF___FIFOFF__Int_32_BCC -> MkSizedFIFOF___FIFOFF__Int_32_BCC;
+  mkSizedFIFOF___FIFOFF__Int_32_BCC_clear_dirty_bits = (\a ->
+                                                          let {
+                                                            f_new = mkUGSizedFIFOF__FIFO__Int_32_clear_dirty_bits (mkSizedFIFOF___FIFOFF__Int_32_BCC_f a) ;
+                                                          } in MkSizedFIFOF___FIFOFF__Int_32_BCC f_new)
+  ;
+  mkSizedFIFOF___FIFOFF__Int_32_BCC_idfn :: MkSizedFIFOF___FIFOFF__Int_32_BCC -> MkSizedFIFOF___FIFOFF__Int_32_BCC;
+  mkSizedFIFOF___FIFOFF__Int_32_BCC_idfn = (\a ->
+                                              let {
+                                                f_new = mkUGSizedFIFOF__FIFO__Int_32_idfn (mkSizedFIFOF___FIFOFF__Int_32_BCC_f a) ;
+                                              } in MkSizedFIFOF___FIFOFF__Int_32_BCC f_new)
+  ;
+  instance Eq MkSizedFIFOF___FIFOFF__Int_32_BCC where {
+    (==) = (\a ->
+              (\b ->
+                 (==) (mkSizedFIFOF___FIFOFF__Int_32_BCC_f a) (mkSizedFIFOF___FIFOFF__Int_32_BCC_f b)));
+    (/=) = (\a ->
+              (\b ->
+                 not ((==) a b)));
+  }
+  ;
+  merge_p_mkSizedFIFOF___FIFOFF__Int_32_BCC :: MkSizedFIFOF___FIFOFF__Int_32_BCC -> MkSizedFIFOF___FIFOFF__Int_32_BCC -> MkSizedFIFOF___FIFOFF__Int_32_BCC;
+  merge_p_mkSizedFIFOF___FIFOFF__Int_32_BCC = (\_a ->
+                                                 (\_b ->
+                                                    MkSizedFIFOF___FIFOFF__Int_32_BCC (merge_p_mkUGSizedFIFOF__FIFO__Int_32 (mkSizedFIFOF___FIFOFF__Int_32_BCC_f _a) (mkSizedFIFOF___FIFOFF__Int_32_BCC_f _b))))
+  ;
+  f_upd__Void_mkSizedFIFOF___FIFOFF__Int_32_BCC :: (FIFO Integer -> (Bool,
+                                                                     FIFO Integer,
+                                                                     ())) -> MkSizedFIFOF___FIFOFF__Int_32_BCC -> (Bool,
+                                                                                                                   MkSizedFIFOF___FIFOFF__Int_32_BCC,
+                                                                                                                   ());
+  f_upd__Void_mkSizedFIFOF___FIFOFF__Int_32_BCC = (\a ->
+                                                     (\s ->
+                                                        let {
+                                                          tup = a (mkSizedFIFOF___FIFOFF__Int_32_BCC_f s) ;
+                                                        } in (fst3 tup,
+                                                              __mkSizedFIFOF___FIFOFF__Int_32_BCC_f_update (snd3 tup) s,
+                                                              trd3 tup)))
+  ;
+  f_notEmpty_val_mkSizedFIFOF___FIFOFF__Int_32_BCC :: MkSizedFIFOF___FIFOFF__Int_32_BCC -> Bool;
+  f_notEmpty_val_mkSizedFIFOF___FIFOFF__Int_32_BCC = (\st ->
+                                                        notEmpty_val_mkUGSizedFIFOF__FIFO__Int_32 (mkSizedFIFOF___FIFOFF__Int_32_BCC_f st))
+  ;
+  f_notEmpty_guard_mkSizedFIFOF___FIFOFF__Int_32_BCC :: MkSizedFIFOF___FIFOFF__Int_32_BCC -> Bool;
+  f_notEmpty_guard_mkSizedFIFOF___FIFOFF__Int_32_BCC = (\st ->
+                                                          notEmpty_guard_mkUGSizedFIFOF__FIFO__Int_32 (mkSizedFIFOF___FIFOFF__Int_32_BCC_f st))
+  ;
+  f_notFull_val_mkSizedFIFOF___FIFOFF__Int_32_BCC :: MkSizedFIFOF___FIFOFF__Int_32_BCC -> Bool;
+  f_notFull_val_mkSizedFIFOF___FIFOFF__Int_32_BCC = (\st ->
+                                                       notFull_val_mkUGSizedFIFOF__FIFO__Int_32 (mkSizedFIFOF___FIFOFF__Int_32_BCC_f st))
+  ;
+  f_notFull_guard_mkSizedFIFOF___FIFOFF__Int_32_BCC :: MkSizedFIFOF___FIFOFF__Int_32_BCC -> Bool;
+  f_notFull_guard_mkSizedFIFOF___FIFOFF__Int_32_BCC = (\st ->
+                                                         notFull_guard_mkUGSizedFIFOF__FIFO__Int_32 (mkSizedFIFOF___FIFOFF__Int_32_BCC_f st))
+  ;
+  f_clear_mkSizedFIFOF___FIFOFF__Int_32_BCC :: MkSizedFIFOF___FIFOFF__Int_32_BCC -> (Bool,
+                                                                                     MkSizedFIFOF___FIFOFF__Int_32_BCC,
+                                                                                     ());
+  f_clear_mkSizedFIFOF___FIFOFF__Int_32_BCC = (\st ->
+                                                 f_upd__Void_mkSizedFIFOF___FIFOFF__Int_32_BCC clear_mkUGSizedFIFOF__FIFO__Int_32 st)
+  ;
+  f_first_val_mkSizedFIFOF___FIFOFF__Int_32_BCC :: MkSizedFIFOF___FIFOFF__Int_32_BCC -> Integer;
+  f_first_val_mkSizedFIFOF___FIFOFF__Int_32_BCC = (\st ->
+                                                     first_val_mkUGSizedFIFOF__FIFO__Int_32 (mkSizedFIFOF___FIFOFF__Int_32_BCC_f st))
+  ;
+  f_first_guard_mkSizedFIFOF___FIFOFF__Int_32_BCC :: MkSizedFIFOF___FIFOFF__Int_32_BCC -> Bool;
+  f_first_guard_mkSizedFIFOF___FIFOFF__Int_32_BCC = (\st ->
+                                                       (&&) (notEmpty_guard_mkUGSizedFIFOF__FIFO__Int_32 (mkSizedFIFOF___FIFOFF__Int_32_BCC_f st)) ((&&) (notEmpty_val_mkUGSizedFIFOF__FIFO__Int_32 (mkSizedFIFOF___FIFOFF__Int_32_BCC_f st)) (first_guard_mkUGSizedFIFOF__FIFO__Int_32 (mkSizedFIFOF___FIFOFF__Int_32_BCC_f st))))
+  ;
+  f_deq_mkSizedFIFOF___FIFOFF__Int_32_BCC :: MkSizedFIFOF___FIFOFF__Int_32_BCC -> (Bool,
+                                                                                   MkSizedFIFOF___FIFOFF__Int_32_BCC,
+                                                                                   ());
+  f_deq_mkSizedFIFOF___FIFOFF__Int_32_BCC = (\st ->
+                                               let {
+                                                 st = st ;
+                                                 gv = (&&) (notEmpty_guard_mkUGSizedFIFOF__FIFO__Int_32 (mkSizedFIFOF___FIFOFF__Int_32_BCC_f st)) (notEmpty_val_mkUGSizedFIFOF__FIFO__Int_32 (mkSizedFIFOF___FIFOFF__Int_32_BCC_f st)) ;
+                                                 ov = f_upd__Void_mkSizedFIFOF___FIFOFF__Int_32_BCC deq_mkUGSizedFIFOF__FIFO__Int_32 st ;
+                                               } in ((&&) gv (fst3 ov), snd3 ov, trd3 ov))
+  ;
+  f_enq_mkSizedFIFOF___FIFOFF__Int_32_BCC :: Integer -> MkSizedFIFOF___FIFOFF__Int_32_BCC -> (Bool,
+                                                                                              MkSizedFIFOF___FIFOFF__Int_32_BCC,
+                                                                                              ());
+  f_enq_mkSizedFIFOF___FIFOFF__Int_32_BCC = (\_elam2 ->
+                                               (\st ->
+                                                  let {
+                                                    st = st ;
+                                                    gv = (&&) (notFull_guard_mkUGSizedFIFOF__FIFO__Int_32 (mkSizedFIFOF___FIFOFF__Int_32_BCC_f st)) (notFull_val_mkUGSizedFIFOF__FIFO__Int_32 (mkSizedFIFOF___FIFOFF__Int_32_BCC_f st)) ;
+                                                    ov = f_upd__Void_mkSizedFIFOF___FIFOFF__Int_32_BCC (enq_mkUGSizedFIFOF__FIFO__Int_32 _elam2) st ;
+                                                  } in ((&&) gv (fst3 ov), snd3 ov, trd3 ov)))
+  ;
+  data MkTestBench =
+      MkTestBench (Reg Integer) (Reg Integer) MkSizedFIFOF___FIFOFF__Int_32_BCC MkSizedFIFOF___FIFOFF__Int_32_BCC MkSizedFIFOF___FIFOFF__Int_32_BCC MkSizedFIFOF___FIFOFF__Int_32_BCC
+  ;
+  __mkTestBench_undef :: MkTestBench;
+  __mkTestBench_undef = (MkTestBench :: Reg Integer -> Reg Integer -> MkSizedFIFOF___FIFOFF__Int_32_BCC -> MkSizedFIFOF___FIFOFF__Int_32_BCC -> MkSizedFIFOF___FIFOFF__Int_32_BCC -> MkSizedFIFOF___FIFOFF__Int_32_BCC -> MkTestBench) (undefined :: Reg Integer) (undefined :: Reg Integer) (undefined :: MkSizedFIFOF___FIFOFF__Int_32_BCC) (undefined :: MkSizedFIFOF___FIFOFF__Int_32_BCC) (undefined :: MkSizedFIFOF___FIFOFF__Int_32_BCC) (undefined :: MkSizedFIFOF___FIFOFF__Int_32_BCC)
+  ;
+  mkTestBench_sink :: MkTestBench -> Reg Integer;
+  mkTestBench_sink = (\(a :: MkTestBench) ->
+                        case (a :: MkTestBench) of {
+                          (MkTestBench :: MkTestBench) (x :: Reg Integer) (_ :: Reg Integer) (_ :: MkSizedFIFOF___FIFOFF__Int_32_BCC) (_ :: MkSizedFIFOF___FIFOFF__Int_32_BCC) (_ :: MkSizedFIFOF___FIFOFF__Int_32_BCC) (_ :: MkSizedFIFOF___FIFOFF__Int_32_BCC) ->
+                            (x :: Reg Integer);
+                        })
+  ;
+  mkTestBench_source :: MkTestBench -> Reg Integer;
+  mkTestBench_source = (\(a :: MkTestBench) ->
+                          case (a :: MkTestBench) of {
+                            (MkTestBench :: MkTestBench) (_ :: Reg Integer) (x :: Reg Integer) (_ :: MkSizedFIFOF___FIFOFF__Int_32_BCC) (_ :: MkSizedFIFOF___FIFOFF__Int_32_BCC) (_ :: MkSizedFIFOF___FIFOFF__Int_32_BCC) (_ :: MkSizedFIFOF___FIFOFF__Int_32_BCC) ->
+                              (x :: Reg Integer);
+                          })
+  ;
+  mkTestBench_w :: MkTestBench -> MkSizedFIFOF___FIFOFF__Int_32_BCC;
+  mkTestBench_w = (\(a :: MkTestBench) ->
+                     case (a :: MkTestBench) of {
+                       (MkTestBench :: MkTestBench) (_ :: Reg Integer) (_ :: Reg Integer) (x :: MkSizedFIFOF___FIFOFF__Int_32_BCC) (_ :: MkSizedFIFOF___FIFOFF__Int_32_BCC) (_ :: MkSizedFIFOF___FIFOFF__Int_32_BCC) (_ :: MkSizedFIFOF___FIFOFF__Int_32_BCC) ->
+                         (x :: MkSizedFIFOF___FIFOFF__Int_32_BCC);
+                     })
+  ;
+  mkTestBench_z :: MkTestBench -> MkSizedFIFOF___FIFOFF__Int_32_BCC;
+  mkTestBench_z = (\(a :: MkTestBench) ->
+                     case (a :: MkTestBench) of {
+                       (MkTestBench :: MkTestBench) (_ :: Reg Integer) (_ :: Reg Integer) (_ :: MkSizedFIFOF___FIFOFF__Int_32_BCC) (x :: MkSizedFIFOF___FIFOFF__Int_32_BCC) (_ :: MkSizedFIFOF___FIFOFF__Int_32_BCC) (_ :: MkSizedFIFOF___FIFOFF__Int_32_BCC) ->
+                         (x :: MkSizedFIFOF___FIFOFF__Int_32_BCC);
+                     })
+  ;
+  mkTestBench_y :: MkTestBench -> MkSizedFIFOF___FIFOFF__Int_32_BCC;
+  mkTestBench_y = (\(a :: MkTestBench) ->
+                     case (a :: MkTestBench) of {
+                       (MkTestBench :: MkTestBench) (_ :: Reg Integer) (_ :: Reg Integer) (_ :: MkSizedFIFOF___FIFOFF__Int_32_BCC) (_ :: MkSizedFIFOF___FIFOFF__Int_32_BCC) (x :: MkSizedFIFOF___FIFOFF__Int_32_BCC) (_ :: MkSizedFIFOF___FIFOFF__Int_32_BCC) ->
+                         (x :: MkSizedFIFOF___FIFOFF__Int_32_BCC);
+                     })
+  ;
+  mkTestBench_x :: MkTestBench -> MkSizedFIFOF___FIFOFF__Int_32_BCC;
+  mkTestBench_x = (\(a :: MkTestBench) ->
+                     case (a :: MkTestBench) of {
+                       (MkTestBench :: MkTestBench) (_ :: Reg Integer) (_ :: Reg Integer) (_ :: MkSizedFIFOF___FIFOFF__Int_32_BCC) (_ :: MkSizedFIFOF___FIFOFF__Int_32_BCC) (_ :: MkSizedFIFOF___FIFOFF__Int_32_BCC) (x :: MkSizedFIFOF___FIFOFF__Int_32_BCC) ->
+                         (x :: MkSizedFIFOF___FIFOFF__Int_32_BCC);
+                     })
+  ;
+  __mkTestBench_sink_update :: Reg Integer -> MkTestBench -> MkTestBench;
+  __mkTestBench_sink_update = (\(a :: Reg Integer) ->
+                                 (\(b :: MkTestBench) ->
+                                    case ((a :: Reg Integer), (b :: MkTestBench)) of {
+                                      ((mkTestBench_sink :: Reg Integer),
+                                       (MkTestBench :: MkTestBench) (_ :: Reg Integer) (mkTestBench_source :: Reg Integer) (mkTestBench_w :: MkSizedFIFOF___FIFOFF__Int_32_BCC) (mkTestBench_z :: MkSizedFIFOF___FIFOFF__Int_32_BCC) (mkTestBench_y :: MkSizedFIFOF___FIFOFF__Int_32_BCC) (mkTestBench_x :: MkSizedFIFOF___FIFOFF__Int_32_BCC)) ->
+                                        (MkTestBench :: Reg Integer -> Reg Integer -> MkSizedFIFOF___FIFOFF__Int_32_BCC -> MkSizedFIFOF___FIFOFF__Int_32_BCC -> MkSizedFIFOF___FIFOFF__Int_32_BCC -> MkSizedFIFOF___FIFOFF__Int_32_BCC -> MkTestBench) (mkTestBench_sink :: Reg Integer) (mkTestBench_source :: Reg Integer) (mkTestBench_w :: MkSizedFIFOF___FIFOFF__Int_32_BCC) (mkTestBench_z :: MkSizedFIFOF___FIFOFF__Int_32_BCC) (mkTestBench_y :: MkSizedFIFOF___FIFOFF__Int_32_BCC) (mkTestBench_x :: MkSizedFIFOF___FIFOFF__Int_32_BCC);
+                                    }))
+  ;
+  __mkTestBench_source_update :: Reg Integer -> MkTestBench -> MkTestBench;
+  __mkTestBench_source_update = (\(a :: Reg Integer) ->
+                                   (\(b :: MkTestBench) ->
+                                      case ((a :: Reg Integer), (b :: MkTestBench)) of {
+                                        ((mkTestBench_source :: Reg Integer),
+                                         (MkTestBench :: MkTestBench) (mkTestBench_sink :: Reg Integer) (_ :: Reg Integer) (mkTestBench_w :: MkSizedFIFOF___FIFOFF__Int_32_BCC) (mkTestBench_z :: MkSizedFIFOF___FIFOFF__Int_32_BCC) (mkTestBench_y :: MkSizedFIFOF___FIFOFF__Int_32_BCC) (mkTestBench_x :: MkSizedFIFOF___FIFOFF__Int_32_BCC)) ->
+                                          (MkTestBench :: Reg Integer -> Reg Integer -> MkSizedFIFOF___FIFOFF__Int_32_BCC -> MkSizedFIFOF___FIFOFF__Int_32_BCC -> MkSizedFIFOF___FIFOFF__Int_32_BCC -> MkSizedFIFOF___FIFOFF__Int_32_BCC -> MkTestBench) (mkTestBench_sink :: Reg Integer) (mkTestBench_source :: Reg Integer) (mkTestBench_w :: MkSizedFIFOF___FIFOFF__Int_32_BCC) (mkTestBench_z :: MkSizedFIFOF___FIFOFF__Int_32_BCC) (mkTestBench_y :: MkSizedFIFOF___FIFOFF__Int_32_BCC) (mkTestBench_x :: MkSizedFIFOF___FIFOFF__Int_32_BCC);
+                                      }))
+  ;
+  __mkTestBench_w_update :: MkSizedFIFOF___FIFOFF__Int_32_BCC -> MkTestBench -> MkTestBench;
+  __mkTestBench_w_update = (\(a :: MkSizedFIFOF___FIFOFF__Int_32_BCC) ->
+                              (\(b :: MkTestBench) ->
+                                 case ((a :: MkSizedFIFOF___FIFOFF__Int_32_BCC),
+                                       (b :: MkTestBench)) of {
+                                   ((mkTestBench_w :: MkSizedFIFOF___FIFOFF__Int_32_BCC),
+                                    (MkTestBench :: MkTestBench) (mkTestBench_sink :: Reg Integer) (mkTestBench_source :: Reg Integer) (_ :: MkSizedFIFOF___FIFOFF__Int_32_BCC) (mkTestBench_z :: MkSizedFIFOF___FIFOFF__Int_32_BCC) (mkTestBench_y :: MkSizedFIFOF___FIFOFF__Int_32_BCC) (mkTestBench_x :: MkSizedFIFOF___FIFOFF__Int_32_BCC)) ->
+                                     (MkTestBench :: Reg Integer -> Reg Integer -> MkSizedFIFOF___FIFOFF__Int_32_BCC -> MkSizedFIFOF___FIFOFF__Int_32_BCC -> MkSizedFIFOF___FIFOFF__Int_32_BCC -> MkSizedFIFOF___FIFOFF__Int_32_BCC -> MkTestBench) (mkTestBench_sink :: Reg Integer) (mkTestBench_source :: Reg Integer) (mkTestBench_w :: MkSizedFIFOF___FIFOFF__Int_32_BCC) (mkTestBench_z :: MkSizedFIFOF___FIFOFF__Int_32_BCC) (mkTestBench_y :: MkSizedFIFOF___FIFOFF__Int_32_BCC) (mkTestBench_x :: MkSizedFIFOF___FIFOFF__Int_32_BCC);
+                                 }))
+  ;
+  __mkTestBench_z_update :: MkSizedFIFOF___FIFOFF__Int_32_BCC -> MkTestBench -> MkTestBench;
+  __mkTestBench_z_update = (\(a :: MkSizedFIFOF___FIFOFF__Int_32_BCC) ->
+                              (\(b :: MkTestBench) ->
+                                 case ((a :: MkSizedFIFOF___FIFOFF__Int_32_BCC),
+                                       (b :: MkTestBench)) of {
+                                   ((mkTestBench_z :: MkSizedFIFOF___FIFOFF__Int_32_BCC),
+                                    (MkTestBench :: MkTestBench) (mkTestBench_sink :: Reg Integer) (mkTestBench_source :: Reg Integer) (mkTestBench_w :: MkSizedFIFOF___FIFOFF__Int_32_BCC) (_ :: MkSizedFIFOF___FIFOFF__Int_32_BCC) (mkTestBench_y :: MkSizedFIFOF___FIFOFF__Int_32_BCC) (mkTestBench_x :: MkSizedFIFOF___FIFOFF__Int_32_BCC)) ->
+                                     (MkTestBench :: Reg Integer -> Reg Integer -> MkSizedFIFOF___FIFOFF__Int_32_BCC -> MkSizedFIFOF___FIFOFF__Int_32_BCC -> MkSizedFIFOF___FIFOFF__Int_32_BCC -> MkSizedFIFOF___FIFOFF__Int_32_BCC -> MkTestBench) (mkTestBench_sink :: Reg Integer) (mkTestBench_source :: Reg Integer) (mkTestBench_w :: MkSizedFIFOF___FIFOFF__Int_32_BCC) (mkTestBench_z :: MkSizedFIFOF___FIFOFF__Int_32_BCC) (mkTestBench_y :: MkSizedFIFOF___FIFOFF__Int_32_BCC) (mkTestBench_x :: MkSizedFIFOF___FIFOFF__Int_32_BCC);
+                                 }))
+  ;
+  __mkTestBench_y_update :: MkSizedFIFOF___FIFOFF__Int_32_BCC -> MkTestBench -> MkTestBench;
+  __mkTestBench_y_update = (\(a :: MkSizedFIFOF___FIFOFF__Int_32_BCC) ->
+                              (\(b :: MkTestBench) ->
+                                 case ((a :: MkSizedFIFOF___FIFOFF__Int_32_BCC),
+                                       (b :: MkTestBench)) of {
+                                   ((mkTestBench_y :: MkSizedFIFOF___FIFOFF__Int_32_BCC),
+                                    (MkTestBench :: MkTestBench) (mkTestBench_sink :: Reg Integer) (mkTestBench_source :: Reg Integer) (mkTestBench_w :: MkSizedFIFOF___FIFOFF__Int_32_BCC) (mkTestBench_z :: MkSizedFIFOF___FIFOFF__Int_32_BCC) (_ :: MkSizedFIFOF___FIFOFF__Int_32_BCC) (mkTestBench_x :: MkSizedFIFOF___FIFOFF__Int_32_BCC)) ->
+                                     (MkTestBench :: Reg Integer -> Reg Integer -> MkSizedFIFOF___FIFOFF__Int_32_BCC -> MkSizedFIFOF___FIFOFF__Int_32_BCC -> MkSizedFIFOF___FIFOFF__Int_32_BCC -> MkSizedFIFOF___FIFOFF__Int_32_BCC -> MkTestBench) (mkTestBench_sink :: Reg Integer) (mkTestBench_source :: Reg Integer) (mkTestBench_w :: MkSizedFIFOF___FIFOFF__Int_32_BCC) (mkTestBench_z :: MkSizedFIFOF___FIFOFF__Int_32_BCC) (mkTestBench_y :: MkSizedFIFOF___FIFOFF__Int_32_BCC) (mkTestBench_x :: MkSizedFIFOF___FIFOFF__Int_32_BCC);
+                                 }))
+  ;
+  __mkTestBench_x_update :: MkSizedFIFOF___FIFOFF__Int_32_BCC -> MkTestBench -> MkTestBench;
+  __mkTestBench_x_update = (\(a :: MkSizedFIFOF___FIFOFF__Int_32_BCC) ->
+                              (\(b :: MkTestBench) ->
+                                 case ((a :: MkSizedFIFOF___FIFOFF__Int_32_BCC),
+                                       (b :: MkTestBench)) of {
+                                   ((mkTestBench_x :: MkSizedFIFOF___FIFOFF__Int_32_BCC),
+                                    (MkTestBench :: MkTestBench) (mkTestBench_sink :: Reg Integer) (mkTestBench_source :: Reg Integer) (mkTestBench_w :: MkSizedFIFOF___FIFOFF__Int_32_BCC) (mkTestBench_z :: MkSizedFIFOF___FIFOFF__Int_32_BCC) (mkTestBench_y :: MkSizedFIFOF___FIFOFF__Int_32_BCC) (_ :: MkSizedFIFOF___FIFOFF__Int_32_BCC)) ->
+                                     (MkTestBench :: Reg Integer -> Reg Integer -> MkSizedFIFOF___FIFOFF__Int_32_BCC -> MkSizedFIFOF___FIFOFF__Int_32_BCC -> MkSizedFIFOF___FIFOFF__Int_32_BCC -> MkSizedFIFOF___FIFOFF__Int_32_BCC -> MkTestBench) (mkTestBench_sink :: Reg Integer) (mkTestBench_source :: Reg Integer) (mkTestBench_w :: MkSizedFIFOF___FIFOFF__Int_32_BCC) (mkTestBench_z :: MkSizedFIFOF___FIFOFF__Int_32_BCC) (mkTestBench_y :: MkSizedFIFOF___FIFOFF__Int_32_BCC) (mkTestBench_x :: MkSizedFIFOF___FIFOFF__Int_32_BCC);
+                                 }))
+  ;
+  mkTestBench_ctor :: MkTestBench;
+  mkTestBench_ctor = MkTestBench (mkReg__Reg__Int_32_ctor 0) (mkReg__Reg__Int_32_ctor 0) (mkSizedFIFOF___FIFOFF__Int_32_BCC_ctor 1) (mkSizedFIFOF___FIFOFF__Int_32_BCC_ctor 1) (mkSizedFIFOF___FIFOFF__Int_32_BCC_ctor 1) (mkSizedFIFOF___FIFOFF__Int_32_BCC_ctor 1)
+  ;
+  mkTestBench_dimension :: MkTestBench -> MkTestBench -> Bool;
+  mkTestBench_dimension = (\a ->
+                             (\b ->
+                                let {
+                                  x_rv = mkSizedFIFOF___FIFOFF__Int_32_BCC_dimension (mkTestBench_x a) (mkTestBench_x b) ;
+                                  y_rv = mkSizedFIFOF___FIFOFF__Int_32_BCC_dimension (mkTestBench_y a) (mkTestBench_y b) ;
+                                  z_rv = mkSizedFIFOF___FIFOFF__Int_32_BCC_dimension (mkTestBench_z a) (mkTestBench_z b) ;
+                                  w_rv = mkSizedFIFOF___FIFOFF__Int_32_BCC_dimension (mkTestBench_w a) (mkTestBench_w b) ;
+                                  source_rv = mkReg__Reg__Int_32_dimension (mkTestBench_source a) (mkTestBench_source b) ;
+                                  sink_rv = mkReg__Reg__Int_32_dimension (mkTestBench_sink a) (mkTestBench_sink b) ;
+                                } in (&&) x_rv ((&&) y_rv ((&&) z_rv ((&&) w_rv ((&&) source_rv ((&&) sink_rv (True :: Bool))))))))
+  ;
+  mkTestBench_eq :: MkTestBench -> MkTestBench -> Bool;
+  mkTestBench_eq = (\a ->
+                      (\b ->
+                         let {
+                           x_rv = mkSizedFIFOF___FIFOFF__Int_32_BCC_eq (mkTestBench_x a) (mkTestBench_x b) ;
+                           y_rv = mkSizedFIFOF___FIFOFF__Int_32_BCC_eq (mkTestBench_y a) (mkTestBench_y b) ;
+                           z_rv = mkSizedFIFOF___FIFOFF__Int_32_BCC_eq (mkTestBench_z a) (mkTestBench_z b) ;
+                           w_rv = mkSizedFIFOF___FIFOFF__Int_32_BCC_eq (mkTestBench_w a) (mkTestBench_w b) ;
+                           source_rv = mkReg__Reg__Int_32_eq (mkTestBench_source a) (mkTestBench_source b) ;
+                           sink_rv = mkReg__Reg__Int_32_eq (mkTestBench_sink a) (mkTestBench_sink b) ;
+                         } in (&&) x_rv ((&&) y_rv ((&&) z_rv ((&&) w_rv ((&&) source_rv ((&&) sink_rv (True :: Bool))))))))
+  ;
+  mkTestBench_clear_dirty_bits :: MkTestBench -> MkTestBench;
+  mkTestBench_clear_dirty_bits = (\a ->
+                                    let {
+                                      x_new = mkSizedFIFOF___FIFOFF__Int_32_BCC_clear_dirty_bits (mkTestBench_x a) ;
+                                      y_new = mkSizedFIFOF___FIFOFF__Int_32_BCC_clear_dirty_bits (mkTestBench_y a) ;
+                                      z_new = mkSizedFIFOF___FIFOFF__Int_32_BCC_clear_dirty_bits (mkTestBench_z a) ;
+                                      w_new = mkSizedFIFOF___FIFOFF__Int_32_BCC_clear_dirty_bits (mkTestBench_w a) ;
+                                      source_new = mkReg__Reg__Int_32_clear_dirty_bits (mkTestBench_source a) ;
+                                      sink_new = mkReg__Reg__Int_32_clear_dirty_bits (mkTestBench_sink a) ;
+                                    } in MkTestBench sink_new source_new w_new z_new y_new x_new)
+  ;
+  mkTestBench_idfn :: MkTestBench -> MkTestBench;
+  mkTestBench_idfn = (\a ->
+                        let {
+                          x_new = mkSizedFIFOF___FIFOFF__Int_32_BCC_idfn (mkTestBench_x a) ;
+                          y_new = mkSizedFIFOF___FIFOFF__Int_32_BCC_idfn (mkTestBench_y a) ;
+                          z_new = mkSizedFIFOF___FIFOFF__Int_32_BCC_idfn (mkTestBench_z a) ;
+                          w_new = mkSizedFIFOF___FIFOFF__Int_32_BCC_idfn (mkTestBench_w a) ;
+                          source_new = mkReg__Reg__Int_32_idfn (mkTestBench_source a) ;
+                          sink_new = mkReg__Reg__Int_32_idfn (mkTestBench_sink a) ;
+                        } in MkTestBench sink_new source_new w_new z_new y_new x_new)
+  ;
+  instance Eq MkTestBench where {
+    (==) = (\a ->
+              (\b ->
+                 (&&) ((==) (mkTestBench_x a) (mkTestBench_x b)) ((&&) ((==) (mkTestBench_y a) (mkTestBench_y b)) ((&&) ((==) (mkTestBench_z a) (mkTestBench_z b)) ((&&) ((==) (mkTestBench_w a) (mkTestBench_w b)) ((&&) ((==) (mkTestBench_source a) (mkTestBench_source b)) ((==) (mkTestBench_sink a) (mkTestBench_sink b))))))));
+    (/=) = (\a ->
+              (\b ->
+                 not ((==) a b)));
+  }
+  ;
+  merge_p_mkTestBench :: MkTestBench -> MkTestBench -> MkTestBench;
+  merge_p_mkTestBench = (\_a ->
+                           (\_b ->
+                              MkTestBench (merge_p_mkReg__Reg__Int_32 (mkTestBench_sink _a) (mkTestBench_sink _b)) (merge_p_mkReg__Reg__Int_32 (mkTestBench_source _a) (mkTestBench_source _b)) (merge_p_mkSizedFIFOF___FIFOFF__Int_32_BCC (mkTestBench_w _a) (mkTestBench_w _b)) (merge_p_mkSizedFIFOF___FIFOFF__Int_32_BCC (mkTestBench_z _a) (mkTestBench_z _b)) (merge_p_mkSizedFIFOF___FIFOFF__Int_32_BCC (mkTestBench_y _a) (mkTestBench_y _b)) (merge_p_mkSizedFIFOF___FIFOFF__Int_32_BCC (mkTestBench_x _a) (mkTestBench_x _b))))
+  ;
+  x_upd__Void_mkTestBench :: (MkSizedFIFOF___FIFOFF__Int_32_BCC -> (Bool,
+                                                                    MkSizedFIFOF___FIFOFF__Int_32_BCC,
+                                                                    ())) -> MkTestBench -> (Bool,
+                                                                                            MkTestBench,
+                                                                                            ());
+  x_upd__Void_mkTestBench = (\a ->
+                               (\s ->
+                                  let {
+                                    tup = a (mkTestBench_x s) ;
+                                  } in (fst3 tup, __mkTestBench_x_update (snd3 tup) s, trd3 tup)))
+  ;
+  y_upd__Void_mkTestBench :: (MkSizedFIFOF___FIFOFF__Int_32_BCC -> (Bool,
+                                                                    MkSizedFIFOF___FIFOFF__Int_32_BCC,
+                                                                    ())) -> MkTestBench -> (Bool,
+                                                                                            MkTestBench,
+                                                                                            ());
+  y_upd__Void_mkTestBench = (\a ->
+                               (\s ->
+                                  let {
+                                    tup = a (mkTestBench_y s) ;
+                                  } in (fst3 tup, __mkTestBench_y_update (snd3 tup) s, trd3 tup)))
+  ;
+  source_upd__Void_mkTestBench :: (Reg Integer -> (Bool,
+                                                   Reg Integer,
+                                                   ())) -> MkTestBench -> (Bool, MkTestBench, ());
+  source_upd__Void_mkTestBench = (\a ->
+                                    (\s ->
+                                       let {
+                                         tup = a (mkTestBench_source s) ;
+                                       } in (fst3 tup,
+                                             __mkTestBench_source_update (snd3 tup) s,
+                                             trd3 tup)))
+  ;
+  z_upd__Void_mkTestBench :: (MkSizedFIFOF___FIFOFF__Int_32_BCC -> (Bool,
+                                                                    MkSizedFIFOF___FIFOFF__Int_32_BCC,
+                                                                    ())) -> MkTestBench -> (Bool,
+                                                                                            MkTestBench,
+                                                                                            ());
+  z_upd__Void_mkTestBench = (\a ->
+                               (\s ->
+                                  let {
+                                    tup = a (mkTestBench_z s) ;
+                                  } in (fst3 tup, __mkTestBench_z_update (snd3 tup) s, trd3 tup)))
+  ;
+  w_upd__Void_mkTestBench :: (MkSizedFIFOF___FIFOFF__Int_32_BCC -> (Bool,
+                                                                    MkSizedFIFOF___FIFOFF__Int_32_BCC,
+                                                                    ())) -> MkTestBench -> (Bool,
+                                                                                            MkTestBench,
+                                                                                            ());
+  w_upd__Void_mkTestBench = (\a ->
+                               (\s ->
+                                  let {
+                                    tup = a (mkTestBench_w s) ;
+                                  } in (fst3 tup, __mkTestBench_w_update (snd3 tup) s, trd3 tup)))
+  ;
+  sink_upd__Void_mkTestBench :: (Reg Integer -> (Bool,
+                                                 Reg Integer,
+                                                 ())) -> MkTestBench -> (Bool, MkTestBench, ());
+  sink_upd__Void_mkTestBench = (\a ->
+                                  (\s ->
+                                     let {
+                                       tup = a (mkTestBench_sink s) ;
+                                     } in (fst3 tup,
+                                           __mkTestBench_sink_update (snd3 tup) s,
+                                           trd3 tup)))
+  ;
+  comp_s__Void__Void_mkTestBench :: (MkTestBench -> (Bool,
+                                                     MkTestBench,
+                                                     ())) -> (() -> MkTestBench -> (Bool,
+                                                                                    MkTestBench,
+                                                                                    ())) -> MkTestBench -> (Bool,
+                                                                                                            MkTestBench,
+                                                                                                            ());
+  comp_s__Void__Void_mkTestBench = (\a1 ->
+                                      (\a2 ->
+                                         (\st ->
+                                            let {
+                                              a1_tup = a1 st ;
+                                              a1_p = fst3 a1_tup ;
+                                              a1_st = snd3 a1_tup ;
+                                              a1_rv = trd3 a1_tup ;
+                                              a2_tup = a2 a1_rv a1_st ;
+                                              a2_p = fst3 a2_tup ;
+                                              a2_st = snd3 a2_tup ;
+                                              a2_rv = trd3 a2_tup ;
+                                            } in ((&&) a1_p a2_p, a2_st, a2_rv))))
+  ;
+  comp_p__Void__Void_mkTestBench :: (MkTestBench -> (Bool,
+                                                     MkTestBench,
+                                                     ())) -> (() -> MkTestBench -> (Bool,
+                                                                                    MkTestBench,
+                                                                                    ())) -> MkTestBench -> (Bool,
+                                                                                                            MkTestBench,
+                                                                                                            ());
+  comp_p__Void__Void_mkTestBench = (\a1 ->
+                                      (\a2 ->
+                                         (\st ->
+                                            let {
+                                              a1_tup = a1 st ;
+                                              a1_p = fst3 a1_tup ;
+                                              a1_st = snd3 a1_tup ;
+                                              a1_rv = trd3 a1_tup ;
+                                              a2_tup = a2 a1_rv st ;
+                                              a2_p = fst3 a2_tup ;
+                                              a2_st = snd3 a2_tup ;
+                                              a2_rv = trd3 a2_tup ;
+                                            } in ((&&) a1_p a2_p,
+                                                  merge_p_mkTestBench a1_st a2_st,
+                                                  a2_rv))))
+  ;
+  d_mkTestBench :: MkTestBench -> (Bool, MkTestBench, ());
+  d_mkTestBench = (\st ->
+                     let {
+                       st = mkTestBench_clear_dirty_bits st ;
+                       st = st ;
+                       gv = (&&) (_read_guard_mkReg__Reg__Int_32 (mkTestBench_sink st)) ((&&) (f_first_guard_mkSizedFIFOF___FIFOFF__Int_32_BCC (mkTestBench_z st)) (f_first_guard_mkSizedFIFOF___FIFOFF__Int_32_BCC (mkTestBench_w st))) ;
+                       ov = comp_p__Void__Void_mkTestBench (sink_upd__Void_mkTestBench (_write_mkReg__Reg__Int_32 ((+) ((+) (_read_val_mkReg__Reg__Int_32 (mkTestBench_sink st)) (f_first_val_mkSizedFIFOF___FIFOFF__Int_32_BCC (mkTestBench_z st))) (f_first_val_mkSizedFIFOF___FIFOFF__Int_32_BCC (mkTestBench_w st))))) ((\_ ->
+                                                                                                                                                                                                                                                                                                                               (\st ->
+                                                                                                                                                                                                                                                                                                                                  comp_p__Void__Void_mkTestBench (z_upd__Void_mkTestBench f_deq_mkSizedFIFOF___FIFOFF__Int_32_BCC) ((\_ ->
+                                                                                                                                                                                                                                                                                                                                                                                                                                       (\st ->
+                                                                                                                                                                                                                                                                                                                                                                                                                                          w_upd__Void_mkTestBench f_deq_mkSizedFIFOF___FIFOFF__Int_32_BCC st))) st))) st ;
+                     } in ((&&) gv (fst3 ov), snd3 ov, trd3 ov))
+  ;
+  c_mkTestBench :: MkTestBench -> (Bool, MkTestBench, ());
+  c_mkTestBench = (\st ->
+                     let {
+                       st = mkTestBench_clear_dirty_bits st ;
+                     } in comp_s__Void__Void_mkTestBench ((\st ->
+                                                             let {
+                                                               gv = f_first_guard_mkSizedFIFOF___FIFOFF__Int_32_BCC (mkTestBench_y st) ;
+                                                               ov = w_upd__Void_mkTestBench (f_enq_mkSizedFIFOF___FIFOFF__Int_32_BCC ((+) (f_first_val_mkSizedFIFOF___FIFOFF__Int_32_BCC (mkTestBench_y st)) 1)) st ;
+                                                             } in ((&&) gv (fst3 ov),
+                                                                   snd3 ov,
+                                                                   trd3 ov))) ((\_ ->
+                                                                                  (\st ->
+                                                                                     y_upd__Void_mkTestBench f_deq_mkSizedFIFOF___FIFOFF__Int_32_BCC st))) st)
+  ;
+  b_mkTestBench :: MkTestBench -> (Bool, MkTestBench, ());
+  b_mkTestBench = (\st ->
+                     let {
+                       st = mkTestBench_clear_dirty_bits st ;
+                     } in comp_s__Void__Void_mkTestBench ((\st ->
+                                                             let {
+                                                               gv = f_first_guard_mkSizedFIFOF___FIFOFF__Int_32_BCC (mkTestBench_x st) ;
+                                                               ov = z_upd__Void_mkTestBench (f_enq_mkSizedFIFOF___FIFOFF__Int_32_BCC ((+) (f_first_val_mkSizedFIFOF___FIFOFF__Int_32_BCC (mkTestBench_x st)) 1)) st ;
+                                                             } in ((&&) gv (fst3 ov),
+                                                                   snd3 ov,
+                                                                   trd3 ov))) ((\_ ->
+                                                                                  (\st ->
+                                                                                     x_upd__Void_mkTestBench f_deq_mkSizedFIFOF___FIFOFF__Int_32_BCC st))) st)
+  ;
+  a_mkTestBench :: MkTestBench -> (Bool, MkTestBench, ());
+  a_mkTestBench = (\st ->
+                     let {
+                       st = mkTestBench_clear_dirty_bits st ;
+                       st = st ;
+                       gv = _read_guard_mkReg__Reg__Int_32 (mkTestBench_source st) ;
+                       ov = comp_p__Void__Void_mkTestBench (x_upd__Void_mkTestBench (f_enq_mkSizedFIFOF___FIFOFF__Int_32_BCC (_read_val_mkReg__Reg__Int_32 (mkTestBench_source st)))) ((\_ ->
+                                                                                                                                                                                          (\st ->
+                                                                                                                                                                                             comp_p__Void__Void_mkTestBench (y_upd__Void_mkTestBench (f_enq_mkSizedFIFOF___FIFOFF__Int_32_BCC (_read_val_mkReg__Reg__Int_32 (mkTestBench_source st)))) ((\_ ->
+                                                                                                                                                                                                                                                                                                                                                           (\st ->
+                                                                                                                                                                                                                                                                                                                                                              source_upd__Void_mkTestBench (_write_mkReg__Reg__Int_32 ((+) (_read_val_mkReg__Reg__Int_32 (mkTestBench_source st)) 1)) st))) st))) st ;
+                     } in ((&&) gv (fst3 ov), snd3 ov, trd3 ov))
+  
+;
+  main1 :: Query (Answer ());
+  main1 = queryS (do {
+                   s_equiv0_0 <- (free :: Query (Bool, MkTestBench, ()));
+                   s_equiv0_1 <- return (let {
+                                           tup = d_mkTestBench (snd3 s_equiv0_0) ;
+                                         } in ((&&) (fst3 s_equiv0_0) (fst3 tup),
+                                               snd3 tup,
+                                               trd3 tup));
+                   s_equiv0_2 <- return (let {
+                                           tup = d_mkTestBench (snd3 s_equiv0_1) ;
+                                         } in ((&&) (fst3 s_equiv0_1) (fst3 tup),
+                                               snd3 tup,
+                                               trd3 tup));
+                   s_equiv1_0 <- (free :: Query (Bool, MkTestBench, ()));
+                   s_equiv1_1 <- return (let {
+                                           tup = d_mkTestBench (snd3 s_equiv1_0) ;
+                                         } in ((&&) (fst3 s_equiv1_0) (fst3 tup),
+                                               snd3 tup,
+                                               trd3 tup));
+                   s_equiv1_2 <- return (let {
+                                           tup = d_mkTestBench (snd3 s_equiv1_1) ;
+                                         } in ((&&) (fst3 s_equiv1_1) (fst3 tup),
+                                               snd3 tup,
+                                               trd3 tup));
+                   (assert :: Bool -> Query ()) (True :: Bool);
+                   (assert :: Bool -> Query ()) (mkTestBench_dimension mkTestBench_ctor (snd3 s_equiv0_0));
+                   (assert :: Bool -> Query ()) (fst3 s_equiv0_0);
+                   (assert :: Bool -> Query ()) (True :: Bool);
+                   (assert :: Bool -> Query ()) (mkTestBench_dimension mkTestBench_ctor (snd3 s_equiv1_0));
+                   (assert :: Bool -> Query ()) (fst3 s_equiv1_0);
+                   (assert :: Bool -> Query ()) ((==) s_equiv0_0 s_equiv1_0);
+                   (assert :: Bool -> Query ()) ((&&) (fst3 s_equiv0_2) ((||) (not (fst3 s_equiv1_2)) (not (mkTestBench_eq (snd3 s_equiv0_2) (snd3 s_equiv1_2)))));
+                   query ();
+                })
+  
+;
+  main2 :: Query (Answer ());
+  main2 = queryS (do {
+                   s_equiv0_0 <- (free :: Query (Bool, MkTestBench, ()));
+                   s_equiv0_1 <- return (let {
+                                           tup = d_mkTestBench (snd3 s_equiv0_0) ;
+                                         } in ((&&) (fst3 s_equiv0_0) (fst3 tup),
+                                               snd3 tup,
+                                               trd3 tup));
+                   s_equiv0_2 <- return (let {
+                                           tup = c_mkTestBench (snd3 s_equiv0_1) ;
+                                         } in ((&&) (fst3 s_equiv0_1) (fst3 tup),
+                                               snd3 tup,
+                                               trd3 tup));
+                   s_equiv1_0 <- (free :: Query (Bool, MkTestBench, ()));
+                   s_equiv1_1 <- return (let {
+                                           tup = c_mkTestBench (snd3 s_equiv1_0) ;
+                                         } in ((&&) (fst3 s_equiv1_0) (fst3 tup),
+                                               snd3 tup,
+                                               trd3 tup));
+                   s_equiv1_2 <- return (let {
+                                           tup = d_mkTestBench (snd3 s_equiv1_1) ;
+                                         } in ((&&) (fst3 s_equiv1_1) (fst3 tup),
+                                               snd3 tup,
+                                               trd3 tup));
+                   (assert :: Bool -> Query ()) (True :: Bool);
+                   (assert :: Bool -> Query ()) (mkTestBench_dimension mkTestBench_ctor (snd3 s_equiv0_0));
+                   (assert :: Bool -> Query ()) (fst3 s_equiv0_0);
+                   (assert :: Bool -> Query ()) (True :: Bool);
+                   (assert :: Bool -> Query ()) (mkTestBench_dimension mkTestBench_ctor (snd3 s_equiv1_0));
+                   (assert :: Bool -> Query ()) (fst3 s_equiv1_0);
+                   (assert :: Bool -> Query ()) ((==) s_equiv0_0 s_equiv1_0);
+                   (assert :: Bool -> Query ()) ((&&) (fst3 s_equiv0_2) ((||) (not (fst3 s_equiv1_2)) (not (mkTestBench_eq (snd3 s_equiv0_2) (snd3 s_equiv1_2)))));
+                   query ();
+                })
+  
+;
+
+  main :: Query (Answer ());
+  main = do {
+    main1;
+    main2;
+  };
+}

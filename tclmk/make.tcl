@@ -133,6 +133,10 @@ query2test "Bit"
 query2test "AllQ"
 query2test "AllQ2"
 query2test "Squares2/Squares"
+query2test "BCL3Small"
+query2test "Sudoku"
+query2test "Sudoku2"
+query2test "Sudoku3"
 
 # The enoch tests
 hrun $::ENOCH
