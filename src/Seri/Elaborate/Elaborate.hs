@@ -251,23 +251,26 @@ elaborate mode env exp =
         in LaceEH (ES_Some mode) (map elabm ms)
 
       -- Translate back to the normal Exp representation
-      toe :: ExpH -> Fresh Exp
-      toe (LitEH l) = return (LitE l)
-      toe (ConEH s) = return (ConE s)
-      toe (VarEH _ s) = return (VarE s)
-      toe (AppEH _ f xs) = do
-        f' <- toe f
-        xs' <- mapM toe xs
+      toeM :: ExpH -> Fresh Exp
+      toeM (LitEH l) = return (LitE l)
+      toeM (ConEH s) = return (ConE s)
+      toeM (VarEH _ s) = return (VarE s)
+      toeM (AppEH _ f xs) = do
+        f' <- toeM f
+        xs' <- mapM toeM xs
         return (AppE f' xs')
-      toe (LaceEH _ ms) = 
+      toeM (LaceEH _ ms) = 
         let toem (MatchH ps f) = do
               let sigs = concatMap bindingsP ps
               sigs' <- mapM fresh sigs
               let rename = zip sigs sigs'
               let ps' = map (repat (zip sigs sigs')) ps
-              b <- toe (f [(s, VarEH ES_None s') | (s, s') <- rename])
+              b <- toeM (f [(s, VarEH ES_None s') | (s, s') <- rename])
               return (Match ps' b)
         in LaceE <$> mapM toem ms
+    
+      toe :: ExpH -> Exp
+      toe e = runFresh (toeM e) (free' exp)
 
       -- Binary integer primitive.
       --  s - signature of the primitive
@@ -419,7 +422,7 @@ elaborate mode env exp =
 
       exph = toh [] exp
       elabed = elab exph
-      done = runFresh (toe elabed) (free' exp)
+      done = toe elabed
   in --trace ("elab " ++ show mode ++ ": " ++ pretty exp) $
      --trace ("To: " ++ pretty done) $
      done
