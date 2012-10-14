@@ -54,7 +54,7 @@ import Seri.Failable
 import qualified Seri.HashTable as HT
 import Seri.Lambda
 
-import Seri.Elaborate.FreshFast
+import Seri.Elaborate.FreshPretty
 
 data Mode = WHNF -- ^ elaborate to weak head normal form.
           | SNF  -- ^ elaborate to sharing normal form.
@@ -210,7 +210,7 @@ elaborate mode env exp =
                  NoMatched -> error $ "case no match"
                  Matched e -> elab e
                  UnMatched ms' ->
-                   let delambdafy :: ExpH -> [ExpH] -> ExpH
+                   let delambdafy :: ExpH -> [ExpH] -> Maybe ExpH
                        delambdafy f (AppEH _ (LaceEH _ bms) cargs : fargs) | mode == SNF =
                            let -- Perform a delambdafication.
                                -- Rewrites:
@@ -239,9 +239,14 @@ elaborate mode env exp =
                                lam = LaceEH ES_None [MatchH [pat] $ \m ->
                                         AppEH ES_None (LaceEH ES_None (map (rematch (snd (head m))) bms)) (cargs ++ fargs)
                                         ]
-                           in elab $ AppEH ES_None lam [f]
-                       delambdafy f args = AppEH (ES_Some mode) f args
-                   in delambdafy (LaceEH (ES_Some mode) ms') args
+                           in Just (elab $ AppEH ES_None lam [f])
+                       delambdafy f (x:xs) | mode == SNF = delambdafy (AppEH (ES_Some mode) f [x]) xs
+                       delambdafy f [] = Nothing
+
+                       f = LaceEH (ES_Some mode) ms'
+                       undelambdafied = AppEH (ES_Some mode) f args
+                       delambdafied = delambdafy f args
+                   in fromMaybe undelambdafied delambdafied
             f' -> AppEH (ES_Some mode) f' args
       elab e@(LaceEH (ES_Some m) _) | mode <= m = e
       elab e@(LaceEH _ ms) | mode == WHNF = e
