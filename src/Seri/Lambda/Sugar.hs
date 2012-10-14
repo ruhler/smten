@@ -80,7 +80,7 @@ deIfE :: Exp -> Maybe (Exp, Exp, Exp)
 deIfE e = do
   ([p], [Match [t] a, Match [f] b]) <- deCaseE e
   guard $ t == trueP
-  guard $ f == falseP
+  guard $ f == falseP || f == WildP boolT
   return (p, a, b)
 
 -- | \a b ... c -> e
