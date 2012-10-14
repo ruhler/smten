@@ -32,12 +32,10 @@ smta_inbounds :: SMTArray a -> Integer -> Bool;
 smta_inbounds arr i = (i >= 0) && (i < smta_length arr);
 
 -- | Set the value of the element at the given position of the array.
+-- Does not do a bounds check, because that was causing issues with the
+-- current implementation of seri.
 smta_upd :: SMTArray a -> Integer -> a -> SMTArray a;
-smta_upd arr k v =
-    case smta_inbounds arr k of {
-       True -> arr { smta_sub = update (smta_sub arr) k v };
-       _ -> error $ "smta_upd index out of bounds";
-    };
+smta_upd arr k v = arr { smta_sub = update (smta_sub arr) k v };
 
 -- | Return true if the first n elements the given arrays are the same.
 -- It's an error if either of the arrays doesn't have at least n elements.
