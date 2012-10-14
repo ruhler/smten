@@ -215,19 +215,19 @@ elaborate mode env exp =
                  Matched e -> elab e
                  UnMatched ms' ->
                    case args of
-                     (AppEH _ (LaceEH _ bms) largs : rargs) | mode == SNF, delambdafy ->
+                     (AppEH _ (LaceEH _ bms) cargs : fargs) | mode == SNF, delambdafy ->
                        let -- Perform a delambdafication.
                            -- Rewrites:
                            --    (blah blah) (case foo of
                            --                   p1 -> m1  
                            --                   p2 -> m2
-                           --                   ...)
+                           --                   ...) x y z
                            --    
                            -- As:
                            --    let _f = (blah blah)
-                           --    case foo of
-                           --       p1 -> _f m1
-                           --       p2 -> _f m2
+                           --    in (case foo of
+                           --          p1 -> _f m1
+                           --          p2 -> _f m2) x y z
                            --
                            -- TODO: this is suspect. For example, if the
                            -- function _f is not strict in the argument, this
@@ -236,15 +236,13 @@ elaborate mode env exp =
                            -- elaborated anything we could, so if f is not
                            -- strict in the argument, wouldn't this already go
                            -- away? I'm not sure.
-                           (lrargs, rrargs) = splitAt (length ps) rargs
-
                            rematch :: ExpH -> MatchH -> MatchH 
-                           rematch f (MatchH ps b) = MatchH ps $ \m -> AppEH ES_None f (b m : lrargs)
+                           rematch f (MatchH ps b) = MatchH ps $ \m -> AppEH ES_None f [b m]
 
                            f = LaceEH ES_None ms'
                            pat = VarP $ Sig (name "_f") (typeof f)
                            lam = LaceEH ES_None [MatchH [pat] $ \m ->
-                                    AppEH ES_None (LaceEH ES_None (map (rematch (snd (head m))) bms)) (largs ++ rrargs)
+                                    AppEH ES_None (LaceEH ES_None (map (rematch (snd (head m))) bms)) (cargs ++ fargs)
                                     ]
                        in elab $ AppEH ES_None lam [f]
 
