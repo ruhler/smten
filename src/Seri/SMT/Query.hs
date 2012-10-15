@@ -158,8 +158,8 @@ data RunOptions = RunOptions {
     nocaseerr :: Bool
 } deriving(Show)
             
-mkYS :: (SMT.Solver s) => s -> RunOptions -> Env -> IO (QS s)
-mkYS ctx opts env = do
+mkQS :: (SMT.Solver s) => s -> RunOptions -> Env -> IO (QS s)
+mkQS ctx opts env = do
     dh <- case debugout opts of
             Nothing -> return Nothing
             Just dbgfile -> do
@@ -182,7 +182,7 @@ mkYS ctx opts env = do
 runQuery :: (SMT.Solver s) => RunOptions -> Env -> Query s a -> IO a
 runQuery opts env q = do
     ctx <- SMT.initialize
-    qs <- mkYS ctx opts env
+    qs <- mkQS ctx opts env
     evalStateT q qs
 
 

@@ -131,6 +131,7 @@ andE es =
   in case (concat $ map flatten es) of
       [] -> trueE
       [x] -> x
+      xs | any (== falseE) xs -> falseE
       xs -> FunctionE (varE "and") xs
 
 -- | > (or <term_1> ... <term_n>)
@@ -143,13 +144,19 @@ orE es =
   in case (concat $ map flatten es) of
         [] -> falseE
         [x] -> x
+        xs | any (== trueE) xs -> trueE
         xs -> FunctionE (varE "or") xs
 
 -- | > (if <expression> <expression> <expression>)
 ifE :: Expression -> Expression -> Expression -> Expression
 ifE p a b | a == trueE = orE [p, b]
-ifE p a b | a == falseE && b == trueE = notE p
+ifE p a b | a == falseE = andE [notE p, b]
+ifE p a b | b == trueE = orE [notE p, a]
 ifE p a b | b == falseE = andE [p, a]
+ifE p a b | a == b = a
+ifE p (FunctionE vif [p2, a, _]) b
+    | vif == varE "if" && p == p2
+    = ifE p a b
 ifE p a b = FunctionE (varE "if") [p, a, b]
 
 -- | > (< <exprsesion> <expression>)

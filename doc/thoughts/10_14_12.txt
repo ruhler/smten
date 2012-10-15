@@ -179,6 +179,13 @@ There ought to be a better way to do that.
 2. Remove unnecessary data-type things in SMT.Syntax.
 
 
+Sun Oct 14 20:41:52 EDT 2012
 
+There. All cleaned up. I think.
 
+Now what?
+
+I'll have to think about it.
+
+I suppose adding STP now should be relatively simple. And Z3.
 

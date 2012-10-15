@@ -1,0 +1,84 @@
+
+Mon Oct 15 08:14:11 EDT 2012
+
+What now?
+
+I think the next step is to get STP to work. To start, make a pretty printer
+for SMTLIB2.0 (based on the yices pretty printer, because it's almost exactly
+the same), generate the sudoku query with that, run it under STP directly,
+and see what happens.
+
+If that works, then I can figure out how to parse evidence from STP. Then
+implement an STP interface. At that point, STP should be working.
+
+Mon Oct 15 08:21:52 EDT 2012
+
+I'm looking through the generated queries. They actually look very nice.
+Some comments:
+
+if free1
+  then if free1 
+     then a
+     else b
+  else c
+
+This ought to simplify to:
+
+if free1
+    then a
+    else c
+
+(for Bluespec)
+
+And:
+
+if free1
+   then false
+   else b
+
+This ought to simplify to:
+ (not free1) && b
+
+(For Sudoku2)
+
+Mon Oct 15 08:45:32 EDT 2012
+
+Thinking about these syntactic simplifications...
+
+What do you think about reducing boolean expressions to conjunctive normal
+form? That should simplify it a bunch, right?
+
+Well, I suppose, so long as we don't loose information about sharing.
+
+Do I know how to do that?
+
+Let's say we have a formula with AND, OR, NOT, and IF
+
+First, we can represent IF as
+
+if p
+  then b
+  else c
+
+as: (p AND b) OR ((NOT p) AND c)
+
+The trouble is, we have replication there.
+
+This is like, the same sharing problem I have with Seri. You want to inline to
+simplify, but if that doesn't work, you want to share.
+
+I'll not touch this for now.
+
+Err... there are lots of silly simplifications we could do, and I bet if I
+reduced to some normal form... Or bdds. Or something? Wouldn't that be nicer?
+I'm not sure.
+
+Mon Oct 15 09:06:10 EDT 2012
+
+Anyway, that's fun, but not so important, again, because performance isn't a
+big deal at this point. And if it is, I know what I can do in the elaborator
+to speed up elaboration (memoize toh for declarations, do speculative
+elaboration).
+
+Let me trudge on to STP then.
+
