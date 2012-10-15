@@ -116,10 +116,6 @@ group str elems = do
     line $ "(" ++ str
     
 instance Concrete Command where
-    concreteM  (DefineType s Nothing)
-      = line $ "(define-type " ++ s ++ ")"
-    concreteM  (DefineType s (Just td))
-      = clump $ group ("define-type " ++ s) [concreteM td]
     concreteM  (Define s t Nothing)
       = clump $ group ("define " ++ s ++ " ::") [concreteM t]
     concreteM  (Define s t (Just e))
@@ -134,31 +130,19 @@ instance Concrete [Command] where
     concreteM cmds = mapM_ concreteM (reverse cmds)
 
 instance Concrete Type where
-    concreteM (VarT s) = line s
-    concreteM (TupleT ts) = clump $ group "tuple" (map concreteM ts)
     concreteM (ArrowT ts) = clump $ group "->" (map concreteM ts)
     concreteM (BitVectorT i) = line $ "(bitvector " ++ show i ++ ")"
     concreteM IntegerT = line "int"
     concreteM BoolT = line "bool"
-    concreteM RealT = line "real"
 
 instance Concrete Expression where
     concreteM (ImmediateE iv) = concreteM iv
-    concreteM (ForallE decls e) = clump $ 
-      group "forall" [group "" (map concreteM decls), concreteM e]
-    concreteM (ExistsE decls e) = clump $ 
-      group "exists" [group "" (map concreteM decls), concreteM e]
     concreteM (LetE bindings e) = clump $ 
       group "let" [group "" (map concreteM bindings), concreteM e]
     concreteM (UpdateE f es e) = clump $ 
       group "update" [concreteM f, group "" (map concreteM es), concreteM e]
     concreteM (FunctionE f args) = clump $ 
       group "" (concreteM f : map concreteM args)
-
-instance Concrete VarDecl where
-    concreteM (n, t) = clump $ do
-        indent $ concreteM t
-        line $ n ++ " ::"
 
 instance Concrete Binding where
     concreteM (n, e) = clump $ group n [concreteM e]

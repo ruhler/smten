@@ -62,12 +62,6 @@ instance Solver Yices2FFI where
         ptr <- c_yices_new_context nullPtr
         return $! Yices2FFI ptr
 
-    run _ (DefineType s Nothing) = do
-        ty <- c_yices_new_uninterpreted_type
-        withCString s $ \str -> c_yices_set_type_name ty str
-    run _ (DefineType s (Just ty)) = do
-        ty' <- ytype ty
-        withCString s $ \str -> c_yices_set_type_name ty' str
     run _ (Define s ty Nothing) = do
         ty' <- ytype ty
         term <- c_yices_new_uninterpreted_term ty'
@@ -147,10 +141,6 @@ withstderr f = do
     return $! x
 
 ytype :: Type -> IO YType
-ytype (VarT s) = withCString s c_yices_get_type_by_name
-ytype (TupleT ts) = do
-    ts' <- mapM ytype ts
-    withArray ts' $ c_yices_tuple_type (genericLength ts)
 ytype (ArrowT ts) = do
     tr <- ytype (last ts)
     ts' <- mapM ytype (init ts)
@@ -158,7 +148,6 @@ ytype (ArrowT ts) = do
 ytype (BitVectorT i) = c_yices_bv_type (fromIntegral i)
 ytype (IntegerT) = c_yices_int_type
 ytype (BoolT) = c_yices_bool_type
-ytype (RealT) = c_yices_real_type
     
 
 ytypebystr :: Type -> IO YType

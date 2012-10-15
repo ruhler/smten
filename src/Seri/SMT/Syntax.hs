@@ -38,7 +38,7 @@
 -- TODO: clean this up.
 module Seri.SMT.Syntax (
     Symbol, Command(..), Type(..), Expression(..),
-    VarDecl, Binding, ImmediateValue(..),
+    Binding, ImmediateValue(..),
 
     -- * Core
     letE, eqE, ifE, varE,
@@ -55,8 +55,7 @@ module Seri.SMT.Syntax (
 type Symbol = String
 
 data Command = 
-    DefineType Symbol (Maybe Type)              -- ^ > (define-type <symbol> [<typedef>])
-  | Define Symbol Type (Maybe Expression)       -- ^ > (define <symbol> :: <type> [<expression>])
+    Define Symbol Type (Maybe Expression)       -- ^ > (define <symbol> :: <type> [<expression>])
   | Assert Expression                           -- ^ > (assert <expression>)
   | Check                                       -- ^ > (check)
   | Push                                        -- ^ > (push)
@@ -64,25 +63,19 @@ data Command =
     deriving(Show, Eq)
 
 data Type = 
-    VarT Symbol             -- ^ > <symbol>
-  | TupleT [Type]           -- ^ > (tuple <type> ... <type>)
-  | ArrowT [Type]           -- ^ > (-> <type> ... <type> <type>)
+    ArrowT [Type]           -- ^ > (-> <type> ... <type> <type>)
   | BitVectorT Integer      -- ^ > (bitvector <rational>)
   | IntegerT                -- ^ > int
   | BoolT                   -- ^ > bool
-  | RealT                   -- ^ > real
     deriving(Show, Eq)
 
 data Expression =
     ImmediateE ImmediateValue           -- ^ > <immediate-value>
-  | ForallE [VarDecl] Expression        -- ^ > (forall (<var_decl> ... <var_decl>) <expression>)
-  | ExistsE [VarDecl] Expression        -- ^ > (exists (<var_decl> ... <var_decl>) <expression>)
   | LetE [Binding] Expression           -- ^ > (let (<binding> ... <binding>) <expression>)
   | UpdateE Expression [Expression] Expression  -- ^ > (update <expression> (<expression> ... <expression>) <expression>)
   | FunctionE Expression [Expression]   -- ^ > (<function> <expression> ... <expression>)
     deriving(Show, Eq)
 
-type VarDecl = (String, Type)           -- ^ > <symbol> :: <type>
 type Binding = (String, Expression)     -- ^ > (<symbol> <expression>)
 
 data ImmediateValue =

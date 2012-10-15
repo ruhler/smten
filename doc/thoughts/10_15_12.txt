@@ -82,3 +82,21 @@ elaboration).
 
 Let me trudge on to STP then.
 
+Mon Oct 15 09:19:56 EDT 2012
+
+Perhaps the first thing I should do is simplify the syntax even more.
+
+No Define, or Declare or Tuple or anything like that needed, right?
+
+Commands are just: push, pop, check, assert.
+
+Let me see if I can't get rid of some.
+
+No. I can't get rid of define, because I need a way to define free variables.
+
+Mon Oct 15 09:28:42 EDT 2012
+
+I think, perhaps, I should have Concrete be a multi-parameter type class?
+There's a lot of stuff in it which should be reused for all pretty printers,
+and a lot which can be shared.
+
