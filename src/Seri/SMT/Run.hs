@@ -24,7 +24,7 @@ run e = do
         (VarE (Sig n (AppT _ t))) | n == name "Seri.SMT.SMT.free" -> free t
         (AppE (VarE (Sig n _)) [p]) | n == name "Seri.SMT.SMT.assert" -> do
             assert p
-            return (ConE (Sig (name "()") (ConT (name "()"))))
+            return unitE
         (AppE (VarE (Sig n _)) [q]) | n == name "Seri.SMT.SMT.queryS" -> queryS $ run q
         (AppE (VarE (Sig n _)) [x]) | n == name "Seri.SMT.SMT.return_query" -> return x
         (AppE (VarE (Sig n _)) [x, f]) | n == name "Seri.SMT.SMT.bind_query" -> do

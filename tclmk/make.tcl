@@ -58,6 +58,7 @@ indir build/src {
 set SERIT build/src/dist/build/serit/serit
 set SERIE build/src/dist/build/serie/serie
 set SERIH build/src/dist/build/serih/serih
+set SERIO build/src/dist/build/serio/serio
 set SERIQ1 build/src/dist/build/seriq1/seriq1
 set SERIQ2 build/src/dist/build/seriq2/seriq2
 set ENOCH build/src/dist/build/enoch/enoch
@@ -137,6 +138,16 @@ query2test "BCL3Small"
 query2test "Sudoku"
 query2test "Sudoku2"
 query2test "Sudoku3"
+
+# The IO tests
+proc iotest {name args} {
+    run $::SERIO -i build/src \
+         -m Seri.IO.Tests.[string map {/ .} $name].main \
+         build/src/Seri/IO/Tests/$name.sri {*}$args \
+         > build/src/Seri/IO/Tests/$name.out
+}
+
+iotest "Simple"
 
 # The enoch tests
 hrun $::ENOCH

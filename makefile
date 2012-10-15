@@ -3,10 +3,10 @@ all:
 	tclsh8.5 tclmk/make.tcl
 
 test:
-	./build/src/dist/build/seriq2/seriq2 \
+	./build/src/dist/build/serio/serio \
 		-i src \
-		-m Seri.SMT.Tests.Sudoku2.main \
-		src/Seri/SMT/Tests/Sudoku2.sri +RTS -p
+		-m Seri.IO.Tests.Simple.main \
+		src/Seri/IO/Tests/Simple.sri +RTS -p
 
 
 clean:

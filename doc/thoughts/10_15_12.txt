@@ -100,3 +100,24 @@ I think, perhaps, I should have Concrete be a multi-parameter type class?
 There's a lot of stuff in it which should be reused for all pretty printers,
 and a lot which can be shared.
 
+Mon Oct 15 16:34:06 EDT 2012
+
+This is kind of a digression, but it would be really nice to have an IO
+monad in seri. How much work would it be to add that?
+
+I would do just what I did for the Query monad, only with IO.
+
+The first primitives I think I want:
+  putStrLn
+
+Or, perhaps: putStr. I can build putStrLn on top of that.
+
+putStr :: String -> IO ()
+runQuery :: Query a -> IO a
+
+That handles output just fine.
+Then all I need is... a way to do input. So, read from a file or getContents.
+But that's less common, so no need to worry about that for now.
+
+Cool. Easy. Let me get started then. Dive in, see if it works or not.
+
