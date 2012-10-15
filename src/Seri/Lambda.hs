@@ -34,6 +34,7 @@
 -------------------------------------------------------------------------------
 
 module Seri.Lambda (
+    loadenv,
     module Seri.Lambda.Declarations,
     module Seri.Lambda.Env,
     module Seri.Lambda.Generics,
@@ -64,4 +65,17 @@ import Seri.Lambda.TypeInfer
 import Seri.Lambda.Types
 import Seri.Lambda.Utils
 import Seri.Lambda.Sugar
+
+import Seri.Failable
+
+-- Load a program into an environment.
+-- Performs module flattening, type inference, and type checking.
+loadenv :: SearchPath -> FilePath -> IO Env
+loadenv path fin = do
+    query <- load path fin
+    flat <- attemptIO $ flatten query
+    decs <- attemptIO $ typeinfer (mkEnv flat) flat
+    let env = mkEnv decs
+    attemptIO $ typecheck env decs
+    return env
 

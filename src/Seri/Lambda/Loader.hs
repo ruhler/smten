@@ -33,7 +33,7 @@
 -- 
 -------------------------------------------------------------------------------
 
-module Seri.Lambda.Loader (load) where
+module Seri.Lambda.Loader (SearchPath, load) where
 
 import System.Directory
 

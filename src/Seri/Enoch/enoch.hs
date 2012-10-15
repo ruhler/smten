@@ -97,12 +97,7 @@ qallQ = allQ pred1
 
 main :: IO ()
 main = do
-    lib <- load ["src"] "src/Seri/Enoch/Enoch.sri"
-    flat <- attemptIO $ flatten lib
-    typed <- attemptIO $ typeinfer (mkEnv flat) flat
-    let env = mkEnv typed
-    attemptIO $ typecheck env typed
-
+    env <- loadenv ["src"] "src/Seri/Enoch/Enoch.sri"
     let try nm q = runQuery (RunOptions (Just $ "build/src/Seri/Enoch/" ++ nm ++ ".dbg") True) env (yices2 q) >>= (putStrLn . show)
 
     try "q1" q1

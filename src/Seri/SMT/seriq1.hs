@@ -55,11 +55,7 @@ main = do
                ["-i", path, "-m", m, fin] -> (Nothing, path, m, fin)
                x -> error $ "bad args: " ++ show x
 
-    query <- load [path] fin
-    flat <- attemptIO $ flatten query
-    decs <- attemptIO $ typeinfer (mkEnv flat) flat
-    let env = mkEnv decs
-    attemptIO $ typecheck env decs
+    env <- loadenv [path] fin
 
     let opts = (RunOptions dbg True)
     tmain <- attemptIO $ lookupVarType env (name m)

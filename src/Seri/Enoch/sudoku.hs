@@ -155,10 +155,6 @@ solve = do
 
 main :: IO ()
 main = do
-    lib <- load ["src"] "src/Seri/SMT/SMT.sri"
-    flat <- attemptIO $ flatten lib
-    typed <- attemptIO $ typeinfer (mkEnv flat) flat
-    let env = mkEnv typed
-    attemptIO $ typecheck env typed
+    env <- loadenv ["src"] "src/Seri/SMT/SMT.sri"
     runQuery (RunOptions (Just "build/src/Seri/Enoch/sudoku.dbg") True) env (yices2 solve) >>= mapM_ putStrLn
 

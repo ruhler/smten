@@ -52,11 +52,7 @@ main = do
                ["-i", path, "-m", m, fin] -> (path, m, fin)
                x -> error $ "bad args: " ++ show x
 
-    prg <- load [path] fin
-    flat <- attemptIO $ flatten prg
-    decs <- attemptIO $ typeinfer (mkEnv flat) flat
-    let env = mkEnv decs
-    attemptIO $ typecheck env decs
+    env <- loadenv [path] fin
 
     tmain <- attemptIO $ lookupVarType env (name m)
     run env (VarE (Sig (name m) tmain))

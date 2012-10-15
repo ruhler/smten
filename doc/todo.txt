@@ -60,9 +60,6 @@ That is, anything with ~?
 ** don't print out builtin prelude?
 ** do notation <- doesn't work with explicit type (parser bug?)
 
-- somewhere it would be nice to have a convenience function for:
-    load, flatten, infer, typecheck all at once into an environment.
-
 - Variable operators: `foo`.
 - pattern matching in do bind notation.
 

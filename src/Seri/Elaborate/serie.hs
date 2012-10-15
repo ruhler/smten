@@ -52,11 +52,8 @@ main = do
                     (writeFile fout, path, me, fin)
                x -> error $ "bad args: " ++ show x
 
-    seri <- load [path] input
-    flat <- attemptIO $ flatten seri
-    decs <- attemptIO $ typeinfer (mkEnv flat) flat
-    let env = mkEnv decs
-    attemptIO $ typecheck env decs
+    env <- loadenv [path] input
+
     let e = VarE (Sig (name mainexp) UnknownT)
     let elaborated = elabwhnf env e
     output (pretty elaborated)

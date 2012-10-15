@@ -121,3 +121,32 @@ But that's less common, so no need to worry about that for now.
 
 Cool. Easy. Let me get started then. Dive in, see if it works or not.
 
+Mon Oct 15 17:03:29 EDT 2012
+
+It works! That is... it works with putStr.
+
+The runQuery primitive is harder. Because we have to know which SMT solver to
+use, and we might want to specify under what options it runs.
+
+If I get rid of support for errors in SMT translation, we won't need that
+option.
+
+But what if you do want a debugging output? Should there be a way to specify
+that programatically in seri?
+
+And, again, how do you choose which solver to use?
+
+Ideally you have a command line flag. Or, perhaps even better, an argument to
+runQuery which says which solver to use. That would be fine, if yices1 and
+yices2 could be used together in the same binary...
+
+I would like to replace seriq1 and seriq2 with this IO approach. It's cleaner.
+We can generate prettier outputs. We could even do all the tests in a single
+Seri program...
+
+I suppose I could have: serio-yices1, serio-yices2, serio-stp, serio-z3,
+etc...
+
+I see no reason not to pass a (Maybe FilePath) for debugging purposes when you
+run a query.
+
