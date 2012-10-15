@@ -37,6 +37,10 @@
 {-# LANGUAGE EmptyDataDecls  #-}
 
 -- | FFI Interface to yices 1.
+--
+-- NOTE: This assumes all the symbols from the yices1 library starting with
+-- yices_ have been renamed to yices1_. This is so yices1 and yices2 can
+-- coexist.
 module Seri.SMT.Yices.Yices1 (Yices1FFI(), yices1) where
 
 import Foreign
@@ -63,40 +67,40 @@ yTrue  = 1
 yUndef = 0
 
 
-foreign import ccall "yices_mk_context"
+foreign import ccall "yices1_mk_context"
     c_yices_mk_context  :: IO (Ptr YContext)
 
-foreign import ccall "yices_del_context"
+foreign import ccall "yices1_del_context"
     c_yices_del_context :: Ptr YContext -> IO ()
 
-foreign import ccall "yices_parse_command"
+foreign import ccall "yices1_parse_command"
     c_yices_parse_command :: Ptr YContext -> CString -> IO Bool
 
-foreign import ccall "yices_check"
+foreign import ccall "yices1_check"
     c_yices_check :: Ptr YContext -> IO YBool
 
-foreign import ccall "yices_get_model"
+foreign import ccall "yices1_get_model"
     c_yices_get_model :: Ptr YContext -> IO (Ptr YModel)
 
-foreign import ccall "yices_display_model"
+foreign import ccall "yices1_display_model"
     c_yices_display_model :: Ptr YModel -> IO ()
 
-foreign import ccall "yices_enable_type_checker"
+foreign import ccall "yices1_enable_type_checker"
     c_yices_enable_type_checker :: Bool -> IO ()
 
-foreign import ccall "yices_get_last_error_message"
+foreign import ccall "yices1_get_last_error_message"
     c_yices_get_last_error_message :: IO CString
 
-foreign import ccall "yices_get_value"
+foreign import ccall "yices1_get_value"
     c_yices_get_value :: Ptr YModel -> Ptr YDecl -> IO YBool
 
-foreign import ccall "yices_get_int_value"
+foreign import ccall "yices1_get_int_value"
     c_yices_get_int_value :: Ptr YModel -> Ptr YDecl -> Ptr CLong -> IO CInt
 
-foreign import ccall "yices_get_bitvector_value"
+foreign import ccall "yices1_get_bitvector_value"
     c_yices_get_bitvector_value :: Ptr YModel -> Ptr YDecl -> CUInt -> Ptr CInt -> IO CInt
 
-foreign import ccall "yices_get_var_decl_from_name"
+foreign import ccall "yices1_get_var_decl_from_name"
     c_yices_get_var_decl_from_name :: Ptr YContext -> CString -> IO (Ptr YDecl)
                           
 

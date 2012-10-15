@@ -150,3 +150,28 @@ etc...
 I see no reason not to pass a (Maybe FilePath) for debugging purposes when you
 run a query.
 
+Mon Oct 15 17:27:05 EDT 2012
+
+Okay, so to start... ug! It would be so great if all the SMT solvers could
+work together, then for runQuery I could specify explicitly which one to use
+in Seri, and I only need the one big serio executable for all the seri stuff.
+
+Mon Oct 15 17:32:14 EDT 2012
+
+Looks like I can play tricks to make yices1 and yices2 work together.
+
+The most promising seems to be: objcopy using --redefine-sym old=new.
+Then I can define a new yices1 static library whose exported symbols are
+redefined to use a yices1 prefix like thing.
+
+If I can do that, then that would be wonderful, because I could have a single
+serio executable for everything very nicely.
+
+Let me experiment with this just a little.
+
+Mon Oct 15 17:49:12 EDT 2012
+
+I think it works!
+
+Cool. So, I'll try putting them together in serio and see if it works. Nifty.
+

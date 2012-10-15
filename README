@@ -35,11 +35,16 @@ for a yices1 library called "yices1" and a yices2 library called "yices2".
 Because the yices libraries are both shiped as "yices", you will need to
 rename them or provide a link to "yices1" and "yices2".
 
+Additionally, in order to use both yices1 and yices2 libraries in a single
+executable, seri assumes the symbols in the yices1 library have been renamed
+so that prefixes yices_ are now yices1_. The rename map is included in the doc
+directory.
+
 So, for example, if you have libyices.a for yices1 and libyices.so.2.1.0 for
 yices2 installed, to create the "yices1" and "yices2" libraries suitable for
 use with seri, run the commands:
 
-   ln -s libyices.a libyices1.a
+   objcopy --redefine-syms=doc/yicse1rename.txt libyices.a libyices1.a
    ln -s libyices.so.2.1.0 libyices2.so
    ln -s libyices.so.2.1.0 libyices.so.2.0 
 
