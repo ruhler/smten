@@ -66,9 +66,6 @@ data Compilation = Compilation {
     ys_nocaseerr :: Bool,       -- ^ Assume an alternative will match in each case expression
     ys_poly :: Env,             -- ^ The polymorphic seri environment
 
-    -- | map of already compiled types
-    ys_types :: Map.Map Type SMT.Type,
-
     -- | Declarations needed for what was compiled, stored in reverse order
     -- for efficiency sake.
     ys_cmdsr :: [SMT.Command],
@@ -91,7 +88,6 @@ compilation :: Bool         -- ^ nocase err?
 compilation nocaseerr poly = Compilation {
     ys_nocaseerr = nocaseerr,
     ys_poly = poly,
-    ys_types = Map.empty,
     ys_cmdsr = [],
     ys_errid = 1,
     ys_caseid = 1 
@@ -137,20 +133,7 @@ smtT t | t == boolT = return SMT.BoolT
 smtT t | t == integerT = return SMT.IntegerT
 smtT t | t == charT = return SMT.IntegerT
 smtT t | Just w <- deBitT t = return $ SMT.BitVectorT w
-smtT t = do
-  tys <- gets ys_types
-  case Map.lookup t tys of
-     Just ty -> return ty
-     Nothing -> do
-        ty <- smtT' t
-        modifyS $ \ys -> ys { ys_types = Map.insert t ty (ys_types ys) }
-        return ty
-
--- | Compile a seri type to a smt type assuming it hasn't already been
--- compiled. Does not add the type to the types map (that's done by smtT).
-smtT' :: Type -> CompilationM SMT.Type
-smtT' t | Just (a, b) <- deArrowT t = SMT.ArrowT <$> mapM smtT [a, b] 
-smtT' t = throw $ "smtT: " ++ pretty t ++ " not supported"
+smtT t | Just (a, b) <- deArrowT t = SMT.ArrowT <$> mapM smtT [a, b] 
 
 -- | Compile a seri expression to a smt expression.
 -- Before using the returned expression, the smtD function should be called
