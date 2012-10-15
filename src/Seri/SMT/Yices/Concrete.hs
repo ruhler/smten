@@ -3,8 +3,10 @@
 {-# LANGUAGE TypeSynonymInstances #-}
 
 -- | Print SMT syntax to a concrete yices syntax.
+--
+-- For all the abstract syntactic constructs supported by Seri.SMT.Syntax,
+-- yices1 and yices2 have the same concrete syntax.
 module Seri.SMT.Yices.Concrete (
-    YicesVersion(..),
     concrete, pretty
   ) where
 
@@ -17,8 +19,6 @@ import Seri.SMT.Syntax
 
 bigsize :: Integer
 bigsize = 80
-
-data YicesVersion = Yices1 | Yices2 deriving(Show, Eq)
 
 data SmallSize = Big | Small Integer
     deriving (Eq, Show)
@@ -37,7 +37,6 @@ instance Num SmallSize where
 
 
 data CS = CS {
-    cs_version :: YicesVersion,
     cs_pretty :: Bool,
 
     -- We want to clump together into one line anything that fits within some
@@ -106,8 +105,7 @@ clump x = do
                 -- It's small, so without pretty it will still look nice.
                 -- Re-run the output that way.
                 put cs
-                v <- gets cs_version
-                line $ evalState (x >> gets cs_output) (CS v False 0 0 "")
+                line $ evalState (x >> gets cs_output) (CS False 0 0 "")
 
 -- | Given the name of an element e and a list of components [a, b, ...],
 -- generate a the grouping: (e a b ...)
@@ -135,11 +133,6 @@ instance Concrete Command where
 instance Concrete [Command] where
     concreteM cmds = mapM_ concreteM (reverse cmds)
 
-instance Concrete Typedef where
-    concreteM (ScalarTD ss) = do
-      line $ "(scalar " ++ concat (map ((:) ' ') ss) ++ ")"
-    concreteM (NormalTD t) = concreteM t
-
 instance Concrete Type where
     concreteM (VarT s) = line s
     concreteM (TupleT ts) = clump $ group "tuple" (map concreteM ts)
@@ -159,12 +152,6 @@ instance Concrete Expression where
       group "let" [group "" (map concreteM bindings), concreteM e]
     concreteM (UpdateE f es e) = clump $ 
       group "update" [concreteM f, group "" (map concreteM es), concreteM e]
-    concreteM (TupleUpdateE t i x) = clump $ do
-      v <- gets cs_version
-      let gn = if v == Yices1
-                then "update"
-                else "tuple-update"
-      group gn [concreteM t, line (show i), concreteM x]
     concreteM (FunctionE f args) = clump $ 
       group "" (concreteM f : map concreteM args)
 
@@ -188,11 +175,11 @@ instance Concrete ImmediateValue where
 
 -- | Render abstract yices syntax to a concreteM syntax string meant to be
 -- read by a human.
-pretty :: Concrete a => YicesVersion -> a -> String
-pretty v x = evalState (concreteM x >> gets cs_output) (CS v True 0 0 "")
+pretty :: Concrete a => a -> String
+pretty x = evalState (concreteM x >> gets cs_output) (CS True 0 0 "")
 
 -- | Render abstract yices syntax to a concreteM syntax string meant to be
 -- read by a machine.
-concrete :: Concrete a => YicesVersion -> a -> String
-concrete v x = evalState (concreteM x >> gets cs_output) (CS v False 0 0 "")
+concrete :: Concrete a => a -> String
+concrete x = evalState (concreteM x >> gets cs_output) (CS False 0 0 "")
 

@@ -35,10 +35,9 @@
 
 -- | An abstract syntax for SMT solvers.
 --
--- TODO: this was originally a syntax targeted for Yices2. The plan is to
--- slowly morph it into a syntax based on SMTLIB2.0.
+-- TODO: clean this up.
 module Seri.SMT.Syntax (
-    Symbol, Command(..), Typedef(..), Type(..), Expression(..),
+    Symbol, Command(..), Type(..), Expression(..),
     VarDecl, Binding, ImmediateValue(..),
 
     -- * Core
@@ -51,15 +50,12 @@ module Seri.SMT.Syntax (
     -- * Bit Vector
     mkbvE, bvaddE, bvorE, bvandE, bvshiftLeft0E, bvshiftRight0E,
     bvzeroExtendE, bvextractE, bvshlE,
-
-    -- * Tuple
-    tupleE, tupleUpdateE, selectE,
   ) where
 
 type Symbol = String
 
 data Command = 
-    DefineType Symbol (Maybe Typedef)           -- ^ > (define-type <symbol> [<typedef>])
+    DefineType Symbol (Maybe Type)              -- ^ > (define-type <symbol> [<typedef>])
   | Define Symbol Type (Maybe Expression)       -- ^ > (define <symbol> :: <type> [<expression>])
   | Assert Expression                           -- ^ > (assert <expression>)
   | Check                                       -- ^ > (check)
@@ -67,14 +63,6 @@ data Command =
   | Pop                                         -- ^ > (pop)
     deriving(Show, Eq)
 
--- TODO: this typedef thing is specific to yices.
--- We only have it because you can't inline a scalar type. Try to figure out a
--- better way of expressing this, or get rid of it if we can.
-data Typedef =
-    NormalTD Type           -- ^ > <type>
-  | ScalarTD [Symbol]       -- ^ > (scalar <symbol> ... <symbol>)
-    deriving(Show, Eq)
-    
 data Type = 
     VarT Symbol             -- ^ > <symbol>
   | TupleT [Type]           -- ^ > (tuple <type> ... <type>)
@@ -91,7 +79,6 @@ data Expression =
   | ExistsE [VarDecl] Expression        -- ^ > (exists (<var_decl> ... <var_decl>) <expression>)
   | LetE [Binding] Expression           -- ^ > (let (<binding> ... <binding>) <expression>)
   | UpdateE Expression [Expression] Expression  -- ^ > (update <expression> (<expression> ... <expression>) <expression>)
-  | TupleUpdateE Expression Integer Expression  -- ^ > (tuple-update <tuple> i <term>)
   | FunctionE Expression [Expression]   -- ^ > (<function> <expression> ... <expression>)
     deriving(Show, Eq)
 
@@ -129,23 +116,10 @@ notE e = FunctionE (varE "not") [e]
 integerE :: Integer -> Expression
 integerE i = ImmediateE (RationalV (fromInteger i))
 
--- | > (select <tuple> i)
-selectE :: Expression -> Integer -> Expression
-selectE e i = FunctionE (varE "select") [e, integerE i]
-
 -- | > (= <expression> <expression>)
 eqE :: Expression -> Expression -> Expression
 eqE a b | a == trueE = b
 eqE a b = FunctionE (varE "=") [a, b]
-
--- | > (mk-tuple <term_1>  ... <term_n>)
-tupleE :: [Expression] -> Expression
-tupleE [] = error "tupleE: empty list"
-tupleE args = FunctionE (varE "mk-tuple") args
-
--- | > (tuple-update <tuple> i <term>)
-tupleUpdateE :: Expression -> Integer -> Expression -> Expression
-tupleUpdateE = TupleUpdateE
 
 -- | > (and <term_1> ... <term_n>)
 andE :: [Expression] -> Expression

@@ -107,7 +107,7 @@ toResult n
     | otherwise   = Undefined
 
 instance Solver Yices1FFI where
-    pretty _ = YC.pretty YC.Yices1
+    pretty _ = YC.pretty 
 
     initialize = do
         c_yices_enable_type_checker True
@@ -116,7 +116,7 @@ instance Solver Yices1FFI where
         return $! Yices1FFI fp
 
     run (Yices1FFI fp) cmd = do
-        worked <- withCString (YC.concrete YC.Yices1 cmd) $ \str -> do
+        worked <- withCString (YC.concrete cmd) $ \str -> do
               withForeignPtr fp $ \yctx ->
                 c_yices_parse_command yctx str
         if worked 
@@ -126,7 +126,7 @@ instance Solver Yices1FFI where
               msg <- peekCString cstr
               fail $ show msg
                         ++ "\n when running command: \n" 
-                        ++ YC.pretty YC.Yices1 cmd
+                        ++ YC.pretty cmd
 
     check (Yices1FFI fp) = do
         res <- withForeignPtr fp c_yices_check

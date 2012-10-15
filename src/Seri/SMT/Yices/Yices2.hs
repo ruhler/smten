@@ -52,7 +52,7 @@ import qualified Seri.SMT.Query as Q
 data Yices2FFI = Yices2FFI (Ptr YContext)
 
 instance Solver Yices2FFI where
-    pretty _ = YC.pretty YC.Yices2
+    pretty _ = YC.pretty
 
     -- TODO: this currently leaks context pointers!
     -- That should most certainly be fixed somehow.
@@ -65,17 +65,9 @@ instance Solver Yices2FFI where
     run _ (DefineType s Nothing) = do
         ty <- c_yices_new_uninterpreted_type
         withCString s $ \str -> c_yices_set_type_name ty str
-    run _ (DefineType s (Just (NormalTD ty))) = do
+    run _ (DefineType s (Just ty)) = do
         ty' <- ytype ty
         withCString s $ \str -> c_yices_set_type_name ty' str
-    run _ (DefineType s (Just (ScalarTD nms))) = do
-        scalar <- c_yices_new_scalar_type (fromIntegral $ length nms)
-        withCString s $ \str -> c_yices_set_type_name scalar str
-        let defnm :: (String, Int32) -> IO ()
-            defnm (nm, idx) = do
-                v <- c_yices_constant scalar idx
-                withCString nm $ \str -> c_yices_set_term_name v str
-        mapM_ defnm (zip nms [0..])
     run _ (Define s ty Nothing) = do
         ty' <- ytype ty
         term <- c_yices_new_uninterpreted_term ty'
@@ -171,11 +163,11 @@ ytype (RealT) = c_yices_real_type
 
 ytypebystr :: Type -> IO YType
 ytypebystr t = do
-    yt <- withCString (YC.concrete YC.Yices2 t) $ \str -> c_yices_parse_type str
+    yt <- withCString (YC.concrete t) $ \str -> c_yices_parse_type str
     if yt < 0
         then do
             withstderr $ \stderr -> c_yices_print_error stderr
-            error $ "ytype: " ++ YC.pretty YC.Yices2 t
+            error $ "ytype: " ++ YC.pretty t
         else do
             return $! yt
 
@@ -269,15 +261,11 @@ ytermS s (FunctionE (ImmediateE (VarV "or")) args) = do
     argst <- mapM (ytermS s) args
     withArray argst $ c_yices_or (fromIntegral $ length argst)
 ytermS s e@(FunctionE (ImmediateE (VarV f)) _) | f `elem` builtin = do
-    error $ "TODO: yterm builtin " ++ YC.pretty YC.Yices2 e
+    error $ "TODO: yterm builtin " ++ YC.pretty e
 ytermS s (FunctionE f [a]) = do
     ft <- ytermS s f
     at <- ytermS s a 
     withArray [at] $ c_yices_application ft 1
-ytermS s (TupleUpdateE a i v) = do
-    at <- ytermS s a
-    vt <- ytermS s v
-    c_yices_tuple_update at (fromInteger i) vt
 ytermS s (UpdateE f args v) = do
     ft <- ytermS s f
     argst <- mapM (ytermS s) args
@@ -301,14 +289,14 @@ ytermS s e@(ImmediateE (VarV nm)) =
         Nothing -> withCString nm c_yices_get_term_by_name
         Just t -> return t 
     
-ytermS _ e = error $ "TODO: yterm: " ++ YC.pretty YC.Yices2 e
+ytermS _ e = error $ "TODO: yterm: " ++ YC.pretty e
 
 
 -- | Construct a yices term for the given expression. This works by printing
 -- the expression to a string and passing the string over to yices to parse.
 ytermbystr :: Expression -> IO YTerm
 ytermbystr e = do
-    ye <- withCString (YC.concrete YC.Yices2 e) $ \str -> c_yices_parse_term str
+    ye <- withCString (YC.concrete e) $ \str -> c_yices_parse_term str
     if ye < 0 
         then do 
             withstderr $ \stderr -> c_yices_print_error stderr
