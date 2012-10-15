@@ -120,50 +120,10 @@ yfreecase c = do
     return $! ['c', c, '~'] ++ show id
 
 -- Generate smt code for a fully applied constructor application.
-yCon :: Sig -> [Exp] -> CompilationM SMT.Expression
-yCon (Sig n _) [] | n == name "True" = return SMT.trueE
-yCon (Sig n _) [] | n == name "False" = return SMT.falseE
-yCon (Sig n ct) args = do
-    let dt = last $ unarrowsT ct
-    smtT dt   -- make sure uidt~dt is defined.
-    let tagged = SMT.tupleUpdateE (SMT.varE $ smtuidt (mononametype dt)) smtti (SMT.varE $ smtN n)
-    if null args
-        then return tagged
-        else do
-            args' <- mapM smtE' args
-            ci <- smtci n
-            return $ SMT.tupleUpdateE tagged ci (SMT.tupleE args')
-
--- Given the name of a data type, return an uninterpreted constant of that
--- type.
-smtuidt :: Name -> String
-smtuidt n = "uidt~" ++ unname n
-
--- Given the name of a data type, return the name of it's tag type.
-smttag :: Name -> String
-smttag n = "tag~" ++ unname n
-
--- Given the name of a constructor, return the index for its fields in the
--- data types tuple.
-smtci :: Name -> CompilationM Integer
-smtci n =
-    let findidx :: (MonadError String m) => Integer -> [Con] -> m Integer
-        findidx _ [] = throw $ "index for " ++ pretty n ++ " not found"
-        findidx i ((Con cn []) : cs) = findidx i cs
-        findidx i ((Con cn _) : _) | n == cn = return i
-        findidx i (_ : cs) = findidx (i+1) cs
-    in do
-        env <- gets ys_poly
-        contype <- lookupDataConType env n
-        case head . unappsT . last . unarrowsT $ contype of
-            ConT dt -> do
-                (DataD _ _ cs) <- lookupDataD env dt
-                findidx 2 cs
-            x -> error $ "smtci: contype: " ++ pretty x ++ " when lookup up " ++ pretty n
-
--- The tag index for a data type
-smtti :: Integer
-smtti = 1
+smtC :: Sig -> [Exp] -> CompilationM SMT.Expression
+smtC (Sig n _) [] | n == name "True" = return SMT.trueE
+smtC (Sig n _) [] | n == name "False" = return SMT.falseE
+smtC s _ = error $ "smtC: " ++ pretty s
 
 -- | Convert a seri name to an SMT name.
 smtN :: Name -> String
@@ -190,24 +150,6 @@ smtT t = do
 -- compiled. Does not add the type to the types map (that's done by smtT).
 smtT' :: Type -> CompilationM SMT.Type
 smtT' t | Just (a, b) <- deArrowT t = SMT.ArrowT <$> mapM smtT [a, b] 
-smtT' t | (ConT nm : args) <- unappsT t =
-  let contype :: Con -> CompilationM (Maybe SMT.Type)
-      contype (Con _ []) = return Nothing
-      contype (Con _ ts) = Just . SMT.TupleT <$> mapM smtT ts
-  in do
-    poly <- gets ys_poly
-    DataD _ vars vcs <- lookupDataD poly nm
-    let n = mononametype t
-    let yn = smtN n
-    let assignments = (zip (map tyVarName vars) args)
-    let cs = assign assignments vcs
-    cts <- mapM contype cs
-    let tag = SMT.DefineType (smttag n) (Just $ SMT.ScalarTD [smtN cn | Con cn _ <- cs])
-    let ttype = SMT.TupleT (SMT.VarT (smttag n) : (catMaybes cts))
-    let dt = SMT.DefineType yn (Just $ SMT.NormalTD ttype)
-    let uidt = SMT.Define (smtuidt n) (SMT.VarT yn) Nothing
-    addcmds [tag, dt, uidt]
-    return (SMT.VarT yn)
 smtT' t = throw $ "smtT: " ++ pretty t ++ " not supported"
 
 -- | Compile a seri expression to a smt expression.
@@ -243,20 +185,11 @@ smtE' e | Just (xs, ms) <- deCaseE e = do
      depat :: Pat -> SMT.Expression -> CompilationM ([SMT.Expression], [SMT.Binding])
      depat (ConP _ n []) e | n == name "True" = return ([e], [])
      depat (ConP _ n []) e | n == name "False" = return ([SMT.notE e], [])
-     depat (ConP _ n []) e =
-       let mypred = SMT.eqE (SMT.selectE e smtti) (SMT.varE (smtN n))
-       in return ([mypred], [])
-     depat (ConP _ n ps) e = do
-       ci <- smtci n
-       let ce = SMT.selectE e ci
-       depats <- sequence [depat p (SMT.selectE ce i) | (p, i) <- zip ps [1..]]
-       let (preds, binds) = unzip depats
-       let mypred = SMT.eqE (SMT.selectE e smtti) (SMT.varE (smtN n))
-       return (mypred:(concat preds), concat binds)
      depat (VarP (Sig n t)) e = return ([], [(pretty n, e)])
      depat (LitP (IntegerL i)) e = return ([SMT.eqE (SMT.integerE i) e], [])
      depat (LitP (CharL c)) e = return ([SMT.eqE (SMT.integerE (fromIntegral $ ord c)) e], [])
      depat (WildP _) _ = return ([], [])
+     depat p x = error $ "depat: " ++ pretty p
 
      -- dematch es ms
      --    es - the expressions being cased on
@@ -296,7 +229,7 @@ smtE' e | Just (xs, ms) <- deCaseE e = do
 smtE' (AppE a []) = smtE' a
 smtE' e@(AppE a b) =
     case unappsE e of 
-       ((ConE s):args) -> yCon s args
+       ((ConE s):args) -> smtC s args
        [VarE (Sig n t), _]
             | n == name "Seri.Lib.Prelude.error"
             , Just (_, dt) <- deArrowT t
@@ -401,7 +334,7 @@ smtE' (LitE (IntegerL x)) = return $ SMT.integerE x
 smtE' (LitE (CharL c)) = return $ SMT.integerE (fromIntegral $ ord c)
 smtE' l@(LaceE ms) = 
     throw $ "lambda expression in smt target generation: " ++ pretty l
-smtE' (ConE s) = yCon s []
+smtE' (ConE s) = smtC s []
 smtE' (VarE (Sig n _)) = return $ SMT.varE (smtN n)
 
 
@@ -414,12 +347,3 @@ smtD = do
   modifyS $ \ys -> ys { ys_cmdsr = [] }
   return cmds
 
--- Give the monomorphic name for an applied type
-mononametype :: Type -> Name
-mononametype (ConT n) = n
-mononametype (NumT n) = ntname n
-mononametype (AppT a b) = mononametype a `nappend` name "$" `nappend` mononametype b
-
-ntname :: NType -> Name
-ntname n = name "#" `nappend` name (show (nteval n))
-    
