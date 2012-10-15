@@ -1,0 +1,89 @@
+
+Fri Oct 12 15:43:19 EDT 2012
+
+Next step: try to get rid of case statements in the ... smt translation is
+what it's called now (formerly yices target).
+
+I'll do this in its own branch, because I'm not entirely convinced it can be
+done. I'm hoping all I have to do is add this extra delambdafication thing and
+maybe expand the notion of if statement and I'll be set.
+
+After this works, I can merge in and clean up the syntax and such. Then add
+support for STP and Z3. At that point, I'll be in very good shape to start
+exploring more things.
+
+Fri Oct 12 16:18:14 EDT 2012
+
+First step: Array.  I expanded the notion of an if statement to support:
+
+case foo of
+  True -> ...
+  _ -> ...
+
+Which, as far as I'm concerned, is exactly the same as:
+
+case foo of
+  True -> ...
+  False -> ...
+
+That's led to a new issue in the array test.
+
+For some reason we have a lambda expression. Let me see if I can figure it
+out.
+
+I don't understand. It's a let statement. Why aren't we treating it as a let?
+
+Hmm... Actually, it looks like:
+
+let SMTArray _ x = error "smt array index out of bounds"
+in x 2
+
+Or...
+
+(case of
+   SMTArray _ x -> x 2) (error "smt array index out of bounds"))
+
+Fri Oct 12 16:39:58 EDT 2012
+
+I don't know. Something fishy is going on here.
+
+Oh. Maybe it's simple?
+
+We have:
+
+let Foo f = error "blah"
+in f x
+
+Where f is a function. Ideally we would inline this to...
+
+To what? That's exactly the problem. We can't inline it.
+
+So I get that we can't inline it. What I don't get is... why...
+
+Oh. Maybe this turns up as a case statement?
+
+case (error "blah") of
+   Foo f -> f x
+
+And I can't deal with it anywhere.
+
+Let me think about that some more.
+
+Fri Oct 12 17:25:42 EDT 2012
+
+Oh! I see the issue. My let statements don't support pattern bindings.
+
+We have:
+  let Foo f = error
+  in f x
+
+I do indeed think I can't support this without data types.
+
+The same issue comes up for error in other ways too:
+
+case error of
+    Foo x -> ...
+    Bar y -> ...
+
+That's not going to simplify any.
+

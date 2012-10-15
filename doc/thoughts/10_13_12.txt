@@ -1,0 +1,126 @@
+
+Sat Oct 13 15:52:05 EDT 2012
+
+Here's the decision with regards to the array error: I'll just side step it.
+Because I don't know how to deal with "error" yet anyway, and I don't want to
+get bogged down.
+
+One choice is just to return Unknown. I can do that pretty easily in general
+for any SMT query which doesn't compile properly. I don't want to do that
+during the development stages though, because I'd rather not hide bugs.
+
+So I'll just change the implementation of SMT.Array to not check for out of
+bounds. That should get rid of the error and I can justify it as being part of
+SMT.Array, which is intended for SMT solvers.
+
+As far as the bluespec error I expect to see next, I'll just need a function,
+call it delambdafy, which takes a funtion f and set of args x, y, z, tests if
+the first arg x is a case, then delambdafies, otherwise calls itself
+recursively on function (f x) with args y and z.
+
+Cool. Let me code this up then.
+
+Sat Oct 13 16:23:20 EDT 2012
+
+Working on delambdafication. I'll have to think about it more.
+
+Sat Oct 13 18:59:11 EDT 2012
+
+When do we want to do delambdafication? It's not really an appropriate name I
+don't think. Really we want to do it for any arguments to any function which
+is a case statement.
+
+So not just lambda functions, but primitive functions too. For example, you
+could imagine something like;
+
+prim_add_Integer free1 (case free2 of { p1 -> x; p2 -> y })
+
+And this you would potentially want to rewrite as a case statement,
+distributing the prim_add_Integer.
+
+On the other hand, that doesn't actually help us at all in terms of
+elaboration, because we can represent the primitive just fine as it is. Can't
+we? I suppose it doesn't hurt either though.
+
+So here's what I propose. Let me separate elab into two stages. Elab proper:
+which is the core elaboration, and delambdafication. We'll do delambdafication
+after every elaboration, any time we see a function application, looking for
+arguments which are case statements.
+
+Is that okay? I'm not sure. Let me give it a try.
+
+How will delambdafication work? We are looking for arguments which are fully
+applied laces statements. That is, the number of patterns matches the number
+of arguments:
+
+f (case a, b of ...)
+
+Turns into:
+
+case a, b of (f ...)
+
+Let me code this up and see how it goes.
+
+Sat Oct 13 19:20:02 EDT 2012
+
+Okay, I think I did it right. Maybe not. Let me try and see.
+
+Sat Oct 13 19:31:07 EDT 2012
+
+Wow. It works!
+
+Unbelievable...
+
+Sat Oct 13 19:38:54 EDT 2012
+
+Doesn't work on BCL3 or sudoku anymore though. That's sad.
+
+I'm making a small BCL3 test case to put as part of my build tests. Because I
+need that.
+
+Of course, the problem with this is, it blows up the queries big time, which
+is scary. But shouldn't it simplify things? I don't remember.
+
+Sat Oct 13 19:53:33 EDT 2012
+
+I think, maybe, I should only do this for lace functions, not primitives.
+Because it doesn't help any with primitives.
+
+It's also not necessary with if statements, because I can represent those.
+
+Sat Oct 13 20:01:19 EDT 2012
+
+Switched to doing it only for Lace functions.
+Now I'm getting this kind of thing:
+
+case (free~1 :: Bool), (free~30 :: Bool) of {
+  (False :: Bool), (False :: Bool) ->
+    (True :: Bool);
+  (True :: Bool), (True :: Bool) ->
+    (True :: Bool);
+  (_ :: Bool), (_ :: Bool) ->
+    (False :: Bool);
+}
+
+
+But I should be able to represent this easily. it's the same as:
+
+
+((not free1) && (not free30))
+
+Note, this does not involve data types, so I could try translating it. Is that
+why it worked before for BCL3?
+
+Tried Sudoku. Sudoku and Sudoku2 encounter a "case no match". Sudoku3 hangs.
+
+Sigh.
+
+Let me try going back to just the first argument, not the rest. See if BCL3
+and Sudoku work again then.
+
+Sat Oct 13 20:10:56 EDT 2012
+
+After the array test was fixed: Sudoku works, Sudoku3 works, Sudoku2 doesn't.
+And BCL3 doesn't.
+
+Ug. I'm going to come back to this when I can think properly.

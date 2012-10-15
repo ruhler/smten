@@ -218,65 +218,54 @@ smtE' e@(AppE a b) =
             , Just (_, dt) <- deArrowT t
             -> do errnm <- yfreeerr dt
                   return $ SMT.varE errnm
-       [VarE (Sig n _), a, b] | n == name "Seri.Lib.Prelude.<" -> do   
-           a' <- smtE' a
-           b' <- smtE' b
-           return (SMT.ltE a' b')
-       [VarE (Sig n _), a, b] | n == name "Seri.Lib.Prelude.<=" -> do   
-           a' <- smtE' a
-           b' <- smtE' b
-           return (SMT.leqE a' b')
-       [VarE (Sig n _), a, b] | n == name "Seri.Lib.Prelude.>" -> do
-           a' <- smtE' a
-           b' <- smtE' b
-           return (SMT.gtE a' b')
-       [VarE (Sig n _), a, b] | n == name "Seri.Lib.Prelude.&&" -> do
-           a' <- smtE' a
-           b' <- smtE' b
-           return (SMT.andE [a', b'])
-       [VarE (Sig n _), a, b] | n == name "Seri.Lib.Prelude.||" -> do
-           a' <- smtE' a
-           b' <- smtE' b
-           return (SMT.orE [a', b'])
-       [VarE (Sig n _), a] | n == name "Seri.Lib.Prelude.not" -> do
-           a' <- smtE' a
-           return (SMT.notE a')
-       [VarE (Sig n _), a, b] | n == name "Seri.Lib.Prelude.__prim_add_Integer" -> do
-           a' <- smtE' a
-           b' <- smtE' b
-           return (SMT.addE a' b')
-       [VarE (Sig n _), a, b] | n == name "Seri.Lib.Prelude.__prim_sub_Integer" -> do
-           a' <- smtE' a
-           b' <- smtE' b
-           return (SMT.subE a' b')
-       [VarE (Sig n _), a, b] | n == name "Seri.Lib.Prelude.__prim_mul_Integer" -> do
-           a' <- smtE' a
-           b' <- smtE' b
-           return (SMT.mulE a' b')
-       [VarE (Sig n _), a, b] | n == name "Seri.Lib.Prelude.__prim_eq_Integer" -> do
-           a' <- smtE' a
-           b' <- smtE' b
-           return (SMT.eqE a' b')
-       [VarE (Sig n _), a, b] | n == name "Seri.Lib.Bit.__prim_eq_Bit" -> do
-           a' <- smtE' a
-           b' <- smtE' b
-           return (SMT.eqE a' b')
-       [VarE (Sig n _), a, b] | n == name "Seri.Lib.Bit.__prim_add_Bit" -> do
-           a' <- smtE' a
-           b' <- smtE' b
-           return (SMT.bvaddE a' b')
-       [VarE (Sig n _), a, b] | n == name "Seri.Lib.Bit.__prim_or_Bit" -> do
-           a' <- smtE' a
-           b' <- smtE' b
-           return (SMT.bvorE a' b')
-       [VarE (Sig n _), a, b] | n == name "Seri.Lib.Bit.__prim_and_Bit" -> do
-           a' <- smtE' a
-           b' <- smtE' b
-           return (SMT.bvandE a' b')
+       [VarE (Sig n _), a, b]
+          | n == name "Seri.Lib.Prelude.<"
+          -> binary SMT.ltE a b
+       [VarE (Sig n _), a, b]
+          | n == name "Seri.Lib.Prelude.<="
+          -> binary SMT.leqE a b
+       [VarE (Sig n _), a, b]
+          | n == name "Seri.Lib.Prelude.>"
+          -> binary SMT.gtE a b
+       [VarE (Sig n _), a, b]
+          | n == name "Seri.Lib.Prelude.&&"
+          -> binary (\x y -> SMT.andE [x, y]) a b
+       [VarE (Sig n _), a, b]
+          | n == name "Seri.Lib.Prelude.||"
+          -> binary (\x y -> SMT.orE [x, y]) a b
+       [VarE (Sig n _), a]
+          | n == name "Seri.Lib.Prelude.not"
+          -> SMT.notE <$> smtE' a
+       [VarE (Sig n _), a, b]
+          | n == name "Seri.Lib.Prelude.__prim_add_Integer"
+          -> binary SMT.addE a b
+       [VarE (Sig n _), a, b]
+          | n == name "Seri.Lib.Prelude.__prim_sub_Integer"
+          -> binary SMT.subE a b
+       [VarE (Sig n _), a, b]
+          | n == name "Seri.Lib.Prelude.__prim_mul_Integer"
+          -> binary SMT.mulE a b
+       [VarE (Sig n _), a, b]
+          | n == name "Seri.Lib.Prelude.__prim_eq_Integer"
+          -> binary SMT.eqE a b
+       [VarE (Sig n _), a, b]
+          | n == name "Seri.Lib.Bit.__prim_eq_Bit"
+          -> binary SMT.eqE a b
+       [VarE (Sig n _), a, b]
+          | n == name "Seri.Lib.Bit.__prim_add_Bit"
+          -> binary SMT.bvaddE a b
+       [VarE (Sig n _), a, b]
+          | n == name "Seri.Lib.Bit.__prim_or_Bit"
+          -> binary SMT.bvorE a b
+       [VarE (Sig n _), a, b]
+          | n == name "Seri.Lib.Bit.__prim_and_Bit"
+          -> binary SMT.bvandE a b
        -- TODO: should we allow shifting by an amount not statically
        -- determined? In that case, I think we need to convert the second
        -- argument to a bit vector in order to use smt bvshl function.
-       [VarE (Sig n _), a, (LitE (IntegerL v))] | n == name "Seri.Lib.Bit.__prim_lsh_Bit" -> do
+       [VarE (Sig n _), a, (LitE (IntegerL v))]
+          | n == name "Seri.Lib.Bit.__prim_lsh_Bit"
+          -> do
            a' <- smtE' a
            return (SMT.bvshiftLeft0E a' v)
        [VarE (Sig n _), a, (LitE (IntegerL v))] | n == name "Seri.Lib.Bit.__prim_rshl_Bit" -> do
@@ -329,4 +318,11 @@ smtD = do
   cmds <- gets $ reverse . ys_cmdsr
   modifyS $ \ys -> ys { ys_cmdsr = [] }
   return cmds
+
+binary :: (SMT.Expression -> SMT.Expression -> SMT.Expression)
+           -> Exp -> Exp -> CompilationM SMT.Expression
+binary f a b = do
+    a' <- smtE' a
+    b' <- smtE' b
+    return $! (f a' b')
 

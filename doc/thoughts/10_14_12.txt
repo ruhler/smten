@@ -1,0 +1,184 @@
+
+Sun Oct 14 09:43:08 EDT 2012
+
+Okay, so here's the deal. I need to figure some stuff out.
+
+Before removing case statement support, what was the status?
+
+Bluespec: multi-case with second arg complex, so match isn't made
+Array: modified if expr case: case foo of { True -> ..., _ -> ... }
+BCL3: complex boolean case: case a, b of {False, False -> ..., True, True -> ... }
+Sudoku: no case statement
+Sudoku2: multi-case with second arg complex
+Sudoku3: no case statement
+
+Sun Oct 14 09:56:10 EDT 2012
+
+So, I feel like we need the following solutions:
+1. recognize modified if expr (easy)
+2. support case statements on booleans
+3. handle multi-case with subsequent arg complex
+4. Remove bounds check in SMTArray
+
+And the thought is, if I do all of these things, then all my problems ought to
+go away. Unless they introduce new ones, which may be the case.
+
+I think I should ... start over somehow. Start from the master branch. Merge
+things in a bit at a time.
+
+1+ Make BCL3 test case small.
+2+ Add Sudoku to test cases
+3+ Recognize complex if statement
+4. Do single-arg delambdafication as I do in noelab
+5. Do multi-arg delambdafication
+6. Remove user data type case statement support.
+
+And see if that gets me where I want to go. I've done all the individual
+pieces. Hopefully now of the individual pieces is causes what the problem is,
+and I can work them all together.
+
+Sun Oct 14 11:01:36 EDT 2012
+
+Working on single-arg delambdafiction thing.
+
+The difference between master and noelab is...
+
+master knows f is a LaceEH. So, for example, say we have a two argument lace:
+
+(case of { pa, pb -> ... }) (case foo, bar of { pA, pB -> ... }) bexp
+
+Which actually means:
+
+(case of { pa, pb -> ... }) ((case of { pA, pB -> ... }) foo bar) bexp cexp
+
+f = case of { pa, pb -> ... }
+largs = [foo, bar]
+rargs = [bexp, cexp]
+
+lrargs = [bexp, cexp]
+
+This is wrong. This is a bug in master elaborate. Interesting...
+
+But, anyway, in other words, this puts bexp and cexp inside the body of the
+matches.
+
+Or, said another way:
+
+f (case foo of { pa -> ma, pb -> mb }) x y z
+
+Is rewritten as:
+
+case foo of { 
+    pa -> f ma x y z
+    pb -> f mb x y z
+}
+
+Let me experiment with the master elaborate version to see if I can make it
+work more like I want. Or at least experiment with it.
+
+The other option would be:
+
+(case foo of { 
+    pa -> f ma
+    pb -> f mb
+} x y z
+
+Now, I think the two should be the same, because of our other delambdafication
+pass which pushes extra arguments into case statements.
+
+If I am going to push things in now, I should give names for them. I would
+rather not.
+
+So, let me try not pushing them in in the master branch and if that still
+works as expected.
+
+Sun Oct 14 11:12:48 EDT 2012
+
+First I'll try pushing all args to f into the body of the case.
+
+That works fine.
+
+Now I'll try pushing no args to f into the body of the case.
+
+Sun Oct 14 11:15:29 EDT 2012
+
+That works fine. Good. I'll stick with that approach then.
+
+Okay, so what's the issue now?
+
+I want to have it handle multi-args. That is, what if there are other
+arguments...
+
+When does that case show up?
+
+case (Just bar), (if free1 then Just a else Just b) of {
+    Just x, Just y -> ...
+    _, _ -> ...
+}
+
+So, we tried doing the match, but it didn't work, because we had the if
+statement.
+
+Now, what I do to check is, I ask: is the first argument a case statement (or
+an if statement...).
+
+What I don't do is check the rest of the arguments.
+
+Um. Hmm...
+
+I don't understand why my last approach didn't work.
+
+Shall I try again? That is, check for delambdafication after the evaluation of
+every expression during SNF elaboration? Start with the single case, and see
+if that works or no?
+
+The thing is, it's clear where we are that that's where we should do this, so
+I'd rather stick with this if I can. How to turn it into multiarg?
+
+I need a function, delambdafy, which does it for me.
+
+Sun Oct 14 11:54:58 EDT 2012
+
+I don't know. I don't know why multiarg doesn't work.
+
+What I would like to do is see all the places where delambdafication occurs,
+and the result after delambdafication. That should give me a better idea of
+what's going on.
+
+Sun Oct 14 15:02:55 EDT 2012
+
+Hmm... it maybe works now?
+
+interesting...
+
+Let's see how Bluespec, Array, Sudoku, and BCL3 look now in terms of case
+statements left over.
+
+Sun Oct 14 15:05:25 EDT 2012
+
+I think I did it! I'm not quite sure what I did... maybe don't make any
+changes at all if no delambdafication could be done.
+
+Cool! So, we still have some case statements less, but they are all about
+booleans. The next step will be to try and cut away the case support that
+isn't based on booleans.
+
+Sun Oct 14 20:14:40 EDT 2012
+
+Cleaned every thing up and integrated into the master branch. This is really
+cool.
+
+Working on some more cleanup while I have the chance:
+
+1. common structure in Translate:
+    a' <- foo a
+    b' <- foo b
+    return (bar a' b')
+There ought to be a better way to do that.
+
+2. Remove unnecessary data-type things in SMT.Syntax.
+
+
+
+
+
