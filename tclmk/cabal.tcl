@@ -21,8 +21,7 @@ proc cabal {fcabal} {
         serie Seri/Elaborate/serie.hs {}
         serih Seri/Haskell/serih.hs {}
         serio Seri/IO/serio.hs {}
-        seriq1 Seri/SMT/seriq1.hs yices1
-        seriq2 Seri/SMT/seriq2.hs yices2
+        seriq Seri/SMT/seriq.hs {yices1 yices2}
         enoch Seri/Enoch/enoch.hs yices2
         sudoku Seri/Enoch/sudoku.hs yices2
     }

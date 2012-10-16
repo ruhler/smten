@@ -59,6 +59,7 @@ set SERIT build/src/dist/build/serit/serit
 set SERIE build/src/dist/build/serie/serie
 set SERIH build/src/dist/build/serih/serih
 set SERIO build/src/dist/build/serio/serio
+set SERIQ build/src/dist/build/seriq/seriq
 set SERIQ1 build/src/dist/build/seriq1/seriq1
 set SERIQ2 build/src/dist/build/seriq2/seriq2
 set ENOCH build/src/dist/build/enoch/enoch
@@ -95,49 +96,46 @@ run echo "True" > $hsdir/hstests.wnt
 hrun cmp $hsdir/hstests.got $hsdir/hstests.wnt
 
 # The SMT query1 tests
-proc query1test {name args} {
-    run $::SERIQ1 -d build/src/Seri/SMT/Tests/$name.1.dbg -i build/src \
-         -m Seri.SMT.Tests.$name.main \
-         build/src/Seri/SMT/Tests/$name.sri {*}$args \
-         > build/src/Seri/SMT/Tests/$name.1.out
-}
-
-# The SMT query2 tests
-proc query2test {name args} {
-    run $::SERIQ2 -d build/src/Seri/SMT/Tests/$name.2.dbg -i build/src \
+proc querytest {solver name} {
+    run $::SERIQ \
+         -s $solver \
+         -d build/src/Seri/SMT/Tests/$name.$solver.dbg \
+         -i build/src \
          -m Seri.SMT.Tests.[string map {/ .} $name].main \
-         build/src/Seri/SMT/Tests/$name.sri {*}$args \
-         > build/src/Seri/SMT/Tests/$name.2.out
+         build/src/Seri/SMT/Tests/$name.sri \
+         > build/src/Seri/SMT/Tests/$name.$solver.out
 }
 
+proc yices1test {name} { querytest Yices1 $name }
+proc yices2test {name} { querytest Yices2 $name }
 
-query1test "Query1"
-query1test "Query2"
-query1test "Complex"
-query1test "If"
-query1test "Bluespec"
-query1test "Array"
-query1test "Share"
-query1test "Tuple"
-query1test "Bit"
-query1test "AllQ"
+yices1test "Query1"
+yices1test "Query2"
+yices1test "Complex"
+yices1test "If"
+yices1test "Bluespec"
+yices1test "Array"
+yices1test "Share"
+yices1test "Tuple"
+yices1test "Bit"
+yices1test "AllQ"
 
-query2test "Query1"
-query2test "Query2"
-query2test "Complex"
-query2test "If"
-query2test "Bluespec"
-query2test "Array"
-query2test "Share"
-query2test "Tuple"
-query2test "Bit"
-query2test "AllQ"
-query2test "AllQ2"
-query2test "Squares2/Squares"
-query2test "BCL3Small"
-query2test "Sudoku"
-query2test "Sudoku2"
-query2test "Sudoku3"
+yices2test "Query1"
+yices2test "Query2"
+yices2test "Complex"
+yices2test "If"
+yices2test "Bluespec"
+yices2test "Array"
+yices2test "Share"
+yices2test "Tuple"
+yices2test "Bit"
+yices2test "AllQ"
+yices2test "AllQ2"
+yices2test "Squares2/Squares"
+yices2test "BCL3Small"
+yices2test "Sudoku"
+yices2test "Sudoku2"
+yices2test "Sudoku3"
 
 # The IO tests
 proc iotest {name args} {

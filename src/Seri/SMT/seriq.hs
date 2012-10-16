@@ -33,7 +33,8 @@
 -- 
 -------------------------------------------------------------------------------
 
--- | Evaluate a seri SMT query using yices 1.
+-- | Evaluate a seri SMT query.
+-- Supports yices1 and yices2 solvers.
 module Main where
 
 import System.Environment
@@ -45,20 +46,29 @@ import Seri.Elaborate
 import Seri.SMT.Run
 import Seri.SMT.Query
 import Seri.SMT.Yices.Yices1
+import Seri.SMT.Yices.Yices2
+
+data Solver = Yices1 | Yices2 
+    deriving (Show, Read, Eq)
 
 main :: IO ()
 main = do
     args <- getArgs
-    let (dbg, path, m, fin) =
+    let (solver, dbg, path, m, fin) =
             case args of
-               ["-d", dbgout, "-i", path, "-m", m, fin] -> (Just dbgout, path, m, fin)
-               ["-i", path, "-m", m, fin] -> (Nothing, path, m, fin)
+               ["-s", s, "-d", dbgout, "-i", path, "-m", m, fin] ->
+                  (read s, Just dbgout, path, m, fin)
+               ["-s", s, "-i", path, "-m", m, fin] ->
+                  (read s, Nothing, path, m, fin)
                x -> error $ "bad args: " ++ show x
 
     env <- loadenv [path] fin
 
     let opts = (RunOptions dbg True)
     tmain <- attemptIO $ lookupVarType env (name m)
-    result <- runQuery opts env (yices1 . run $ VarE (Sig (name m) tmain))
+    let query = VarE (Sig (name m) tmain)
+    result <- case solver of
+                Yices1 -> runQuery opts env (yices1 . run $ query)
+                Yices2 -> runQuery opts env (yices2 . run $ query)
     putStrLn $ pretty (elabwhnf env result)
 

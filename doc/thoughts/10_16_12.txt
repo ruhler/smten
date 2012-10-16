@@ -1,0 +1,14 @@
+
+Tue Oct 16 16:50:15 EDT 2012
+
+Lot's of changes in store. This is really exciting. I'll go a little bit at a
+time.
+
+First task: test the renaming of yices1 library symbols. I want to merge
+seriq1 and seriq2 into a single executable and verify it works.
+
+I can start by implementing seriq, with the added flag for --yices1 or
+--yices2. Or, perhaps, --smt yices1 --smt yices2.
+
+Get that to work. Replace seriq1 and seriq2, then remove seriq1 and seriq2.
+
