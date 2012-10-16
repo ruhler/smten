@@ -51,23 +51,40 @@ import Seri.SMT.Yices.Yices2
 data Solver = Yices1 | Yices2 
     deriving (Show, Read, Eq)
 
+data Args = Args {
+    solver :: Solver,
+    include :: FilePath,
+    main_is :: String,
+    input :: FilePath,
+    debug :: Maybe FilePath
+} deriving (Show, Read, Eq)
+
 main :: IO ()
 main = do
-    args <- getArgs
-    let (solver, dbg, path, m, fin) =
-            case args of
-               ["-s", s, "-d", dbgout, "-i", path, "-m", m, fin] ->
-                  (read s, Just dbgout, path, m, fin)
-               ["-s", s, "-i", path, "-m", m, fin] ->
-                  (read s, Nothing, path, m, fin)
-               x -> error $ "bad args: " ++ show x
+    cmdline <- getArgs
+    let args = case cmdline of
+                  ["-s", s, "-d", dbgout, "-i", path, "-m", m, fin] ->
+                     Args { solver = read s,
+                            include = path,
+                            main_is = m,
+                            input = fin,
+                            debug = Just dbgout
+                          }
+                  ["-s", s, "-i", path, "-m", m, fin] ->
+                     Args { solver = read s,
+                            include = path,
+                            main_is = m,
+                            input = fin,
+                            debug = Nothing
+                          }
+                  x -> error $ "bad args: " ++ show x
+    
+    env <- loadenv [include args] (input args)
 
-    env <- loadenv [path] fin
-
-    let opts = (RunOptions dbg True)
-    tmain <- attemptIO $ lookupVarType env (name m)
-    let query = VarE (Sig (name m) tmain)
-    result <- case solver of
+    let opts = (RunOptions (debug args) True)
+    tmain <- attemptIO $ lookupVarType env (name (main_is args))
+    let query = VarE (Sig (name (main_is args)) tmain)
+    result <- case (solver args) of
                 Yices1 -> runQuery opts env (yices1 . run $ query)
                 Yices2 -> runQuery opts env (yices2 . run $ query)
     putStrLn $ pretty (elabwhnf env result)

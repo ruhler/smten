@@ -12,3 +12,51 @@ I can start by implementing seriq, with the added flag for --yices1 or
 
 Get that to work. Replace seriq1 and seriq2, then remove seriq1 and seriq2.
 
+Tue Oct 16 17:05:39 EDT 2012
+
+It works. Cool!
+
+What do I want to do next?
+
+Well, ideally I could reduce the executables even more. I see two approaches:
+make one big seri executable with flags to specify mode as smt, haskell, type,
+or io. The benefit of this is:
+* We only have to compile a single executable (practically probably very
+  useful)
+* We can share argument parsing and such.
+
+I think I'll want this eventually.
+
+The approach, which is complementary in a sense, is incorporate the smt
+execution into IO by defining runYices1 and runYices2 primitives.
+
+Both are a bit annoying, the former for parsing arguments in a nice way, the
+later for translating run options between seri and haskell. Though enoch in
+theory should help in the later case.
+
+Tue Oct 16 17:20:07 EDT 2012
+
+I'm looking at the cmdargs haskell package. It looks like this has the sort of
+thing I want. The question is mostly, can I figure out how to use it. Let me
+try it out on, say seriq, and see what happens.
+
+The information I want is:
+* solver: Yices1 or Yices2
+  mandatory, no default
+* debug: file path
+  optional, defaults to Nothing
+* include: file path
+  mandatory, no default
+* main: string
+  mandatory, no default
+* File: file path
+  mandatory, no default
+
+Let me start by making a data type representing this information, constructing
+that manually, then switching to cmdargs.
+
+Tue Oct 16 17:27:54 EDT 2012
+
+First step works swell.
+
+
