@@ -99,10 +99,10 @@ hrun cmp $hsdir/hstests.got $hsdir/hstests.wnt
 proc querytest {solver name} {
     run $::SERIQ \
          -s $solver \
-         -d build/src/Seri/SMT/Tests/$name.$solver.dbg \
          -i build/src \
          -m Seri.SMT.Tests.[string map {/ .} $name].main \
-         build/src/Seri/SMT/Tests/$name.sri \
+         -f build/src/Seri/SMT/Tests/$name.sri \
+         -d build/src/Seri/SMT/Tests/$name.$solver.dbg \
          > build/src/Seri/SMT/Tests/$name.$solver.out
 }
 

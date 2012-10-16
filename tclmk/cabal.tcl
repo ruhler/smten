@@ -36,6 +36,8 @@ proc cabal {fcabal} {
         {hashable ==1.1.*}
         {containers ==0.5.*}
         {bytestring ==0.9.*}
+        {cmdargs ==0.10.*}
+        {syb ==0.3.*}
     }
 
     set deps [dict create]

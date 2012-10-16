@@ -33,12 +33,17 @@
 -- 
 -------------------------------------------------------------------------------
 
+{-# LANGUAGE DeriveDataTypeable #-}
+
 -- | Evaluate a seri SMT query.
 -- Supports yices1 and yices2 solvers.
 module Main where
 
+import Data.Generics
+
 import System.Environment
 import System.Exit
+import qualified System.Console.CmdArgs.Implicit as A
 
 import Seri.Failable
 import Seri.Lambda
@@ -49,37 +54,42 @@ import Seri.SMT.Yices.Yices1
 import Seri.SMT.Yices.Yices2
 
 data Solver = Yices1 | Yices2 
-    deriving (Show, Read, Eq)
+    deriving (Show, Eq, Typeable, Data)
 
 data Args = Args {
     solver :: Solver,
     include :: FilePath,
     main_is :: String,
-    input :: FilePath,
+    file :: FilePath,
     debug :: Maybe FilePath
-} deriving (Show, Read, Eq)
+} deriving (Show, Eq, Data, Typeable)
+
+argspec :: Args
+argspec = Args { 
+    solver = Yices2
+       A.&= A.help "SMT solver to use"
+       A.&= A.typ "SOLVER",
+    include = "."
+       A.&= A.help "Seri include path" 
+       A.&= A.typDir,
+    main_is = "Main.main"
+       A.&= A.help "Fully qualified top-level function to use",
+    file = "Main.sri"
+       A.&= A.help "Input .sri file"
+       A.&= A.typFile,
+    debug = Nothing
+       A.&= A.help "Debug file to output"
+       A.&= A.typFile
+    } A.&=
+    A.verbosity A.&=
+    A.help "Run a satseri SMT query" A.&=
+    A.summary "Satseri v0.0.1" 
 
 main :: IO ()
 main = do
-    cmdline <- getArgs
-    let args = case cmdline of
-                  ["-s", s, "-d", dbgout, "-i", path, "-m", m, fin] ->
-                     Args { solver = read s,
-                            include = path,
-                            main_is = m,
-                            input = fin,
-                            debug = Just dbgout
-                          }
-                  ["-s", s, "-i", path, "-m", m, fin] ->
-                     Args { solver = read s,
-                            include = path,
-                            main_is = m,
-                            input = fin,
-                            debug = Nothing
-                          }
-                  x -> error $ "bad args: " ++ show x
-    
-    env <- loadenv [include args] (input args)
+    args <- A.cmdArgs argspec
+
+    env <- loadenv [include args] (file args)
 
     let opts = (RunOptions (debug args) True)
     tmain <- attemptIO $ lookupVarType env (name (main_is args))

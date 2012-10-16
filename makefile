@@ -3,10 +3,11 @@ all:
 	tclsh8.5 tclmk/make.tcl
 
 test:
-	./build/src/dist/build/serio/serio \
+	./build/src/dist/build/seriq/seriq \
+		-d foo.dbg \
 		-i src \
-		-m Seri.IO.Tests.Simple.main \
-		src/Seri/IO/Tests/Simple.sri +RTS -p
+		-m Seri.SMT.Tests.Query1.main \
+		-f src/Seri/SMT/Tests/Query1.sri
 
 
 clean:

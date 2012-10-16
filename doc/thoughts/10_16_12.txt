@@ -59,4 +59,21 @@ Tue Oct 16 17:27:54 EDT 2012
 
 First step works swell.
 
+Tue Oct 16 18:03:24 EDT 2012
+
+Okay, finally figured out this cmdargs thing.
+
+Some issues:
+* uses defaults for things if flags aren't given, which is annoying. I'd
+  rather it give an error
+* using argument position doesn't seem to work properly. Not sure why.
+
+But! It works, and it works reasonably well, and it looks like modes are
+support, so I could naturally use this for a haskell mode, io mode, smt mode,
+type mode. That's nice.
+
+Certainly better than parsing by hand.
+
+Let me play just a little bit with this before checking in and calling it a
+night.
 
