@@ -52,9 +52,6 @@ main = do
                ["-i", path, fin] -> (putStrLn, path, fin)
                x -> error $ "bad args: " ++ show x
 
-    seri <- load [path] input
-    decs <- attemptIO $ flatten seri
-    decs' <- attemptIO $ typeinfer (mkEnv decs) decs
-    attemptIO $ typecheck (mkEnv decs') decs'
-    output $ pretty decs'
+    env <- loadenv [path] input
+    output $ pretty env
 

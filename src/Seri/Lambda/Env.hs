@@ -270,3 +270,6 @@ lookupVarInfo env (Sig n t) =
         in return $ Instance (Class cn ts)
      _ -> throw $ "lookupVarInfo: " ++ pretty n ++ " not found"
 
+instance Ppr Env where
+   ppr e = ppr $ e_decls e
+
