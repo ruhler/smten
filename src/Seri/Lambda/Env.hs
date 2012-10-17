@@ -45,6 +45,7 @@ module Seri.Lambda.Env (
     lookupDataD, lookupDataConType,
     lookupInstD, lookupPrimD,
     lookupValD, lookupClassD,
+    getDecls,
     ) where
 
 import Debug.Trace
@@ -272,4 +273,7 @@ lookupVarInfo env (Sig n t) =
 
 instance Ppr Env where
    ppr e = ppr $ e_decls e
+
+getDecls :: Env -> [Dec]
+getDecls = e_decls
 

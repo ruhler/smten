@@ -35,8 +35,7 @@
 
 {-# LANGUAGE DeriveDataTypeable #-}
 
--- | Evaluate a seri SMT query.
--- Supports yices1 and yices2 solvers.
+-- | Main seri executable.
 module Main where
 
 import Data.Generics
@@ -48,15 +47,23 @@ import qualified System.Console.CmdArgs.Implicit as A
 import Seri.Failable
 import Seri.Lambda
 import Seri.Elaborate
-import Seri.SMT.Run
-import Seri.SMT.Query
-import Seri.SMT.Yices.Yices1
-import Seri.SMT.Yices.Yices2
+
+import qualified Seri.SMT.Run as Q
+import qualified Seri.SMT.Query as Q
+import qualified Seri.SMT.Yices.Yices1 as Q
+import qualified Seri.SMT.Yices.Yices2 as Q
+
+import qualified Seri.IO.Run as I
+import Seri.Haskell
+
+data Run = Query | Io | Pure | Type | Haskell
+    deriving (Show, Eq, Typeable, Data)
 
 data Solver = Yices1 | Yices2 
     deriving (Show, Eq, Typeable, Data)
 
 data Args = Args {
+    run :: Run,
     solver :: Solver,
     include :: FilePath,
     main_is :: String,
@@ -66,6 +73,12 @@ data Args = Args {
 
 argspec :: Args
 argspec = Args { 
+    run = A.enum [Query A.&= A.help "Run a seri program in the Query monad",
+                  Io A.&= A.help "Run a seri program in the IO monad",
+                  Pure A.&= A.help "Elaborate a pure seri program to WHNF",
+                  Type A.&= A.help "Type infer and check a seri program",
+                  Haskell A.&= A.help "Compile a seri program to Haskell"]
+       A.&= A.typ "RUN MODE",
     solver = Yices2
        A.&= A.help "SMT solver to use"
        A.&= A.typ "SOLVER",
@@ -82,8 +95,8 @@ argspec = Args {
        A.&= A.typFile
     } A.&=
     A.verbosity A.&=
-    A.help "Run a satseri SMT query" A.&=
-    A.summary "Satseri v0.0.1" 
+    A.help "Compile/Run a seri program" A.&=
+    A.summary "seri v0.0.1" 
 
 main :: IO ()
 main = do
@@ -91,11 +104,26 @@ main = do
 
     env <- loadenv [include args] (file args)
 
-    let opts = (RunOptions (debug args) True)
-    tmain <- attemptIO $ lookupVarType env (name (main_is args))
-    let query = VarE (Sig (name (main_is args)) tmain)
-    result <- case (solver args) of
-                Yices1 -> runQuery opts env (yices1 . run $ query)
-                Yices2 -> runQuery opts env (yices2 . run $ query)
-    putStrLn $ pretty (elabwhnf env result)
+    let nmain = name (main_is args)
+    let getmain = do
+        tmain <- attemptIO $ lookupVarType env nmain
+        return $ VarE (Sig (name (main_is args)) tmain)
+
+    case (run args) of
+        Query -> do
+            m <- getmain
+            let opts = (Q.RunOptions (debug args) True)
+            result <- case (solver args) of
+                        Yices1 -> Q.runQuery opts env (Q.yices1 . Q.run $ m)
+                        Yices2 -> Q.runQuery opts env (Q.yices2 . Q.run $ m)
+            putStrLn $ pretty (elabwhnf env result)
+        Io -> do 
+            m <- getmain
+            I.run env m
+            return ()
+        Pure -> do
+            m <- getmain
+            putStrLn . pretty $ elabwhnf env m
+        Type -> putStrLn . pretty $ env
+        Haskell -> putStrLn . show $ haskell haskellH (getDecls env) nmain
 

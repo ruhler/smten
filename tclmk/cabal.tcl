@@ -17,11 +17,7 @@ proc cabal {fcabal} {
 
     # exe hsfile libraries
     set exes {
-        serit Seri/Lambda/serit.hs {}
-        serie Seri/Elaborate/serie.hs {}
-        serih Seri/Haskell/serih.hs {}
-        serio Seri/IO/serio.hs {}
-        seriq Seri/SMT/seriq.hs {yices1 yices2}
+        seri Seri/seri.hs {yices1 yices2}
         enoch Seri/Enoch/enoch.hs yices2
         sudoku Seri/Enoch/sudoku.hs yices2
     }

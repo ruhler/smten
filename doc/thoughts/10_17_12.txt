@@ -1,0 +1,39 @@
+
+Wed Oct 17 08:32:50 EDT 2012
+
+I have 30 minutes this morning to work. I'm going to make a 'seri' executable
+which, for now, combines serio and seriq.
+
+Wed Oct 17 08:39:22 EDT 2012
+
+Question is... do I want to try using modes? What would the modes be?
+
+seri type 
+seri haskell
+seri query
+seri io
+
+But so much of the other stuff is shared, it really seems a waste not to keep
+it that way? I suppose I could define a data type with the shared data? Err...
+
+Alternatively, I can specify the mode as a flag.
+
+--run=Type or Haskell or Query or Io
+
+Yes, that sounds reasonable to me.
+
+Let me write it up then.
+
+Wed Oct 17 09:22:41 EDT 2012
+
+Okay, so I took a little more than 30 minutes, but this is good now. I have a
+single seri executable which can do everything. I like it. Wonderful.
+
+The next thing I'll want to play with is... probably a runYices1 and runYices2
+IO primitives for seri so I don't need this --query option and everything can
+be done in IO.
+
+Of course, now that I have IO, I could also get rid of pure and run my tests
+in IO... Just a thought.
+
+

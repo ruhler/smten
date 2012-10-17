@@ -35,7 +35,6 @@ vs. foo :: (Foo a) => Sludge
 - support for pattern guards?
 - support for pattern bindings: x@(...)
 
-- have common option parsing for serie, serih, seriq, serim, serit?
 - what happens if we realize a free integer variable which is a dont-care?
 
 - functions with clauses in let would be nice.
