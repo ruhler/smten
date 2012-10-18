@@ -77,3 +77,7 @@ That is, anything with ~?
 
 - Use the yices1 native interface where possible
 
+* Don't require yices1 and yices2 to be installed to build or use seri
+    If a solver isn't installed, just give a runtime error when you try to
+    use it. (As per request of Nirav)
+

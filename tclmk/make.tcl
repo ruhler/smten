@@ -46,10 +46,12 @@ cabal build/src/seri.cabal
 hrun mkdir -p build/home
 set ::env(HOME) [pwd]/build/home
 indir build/src {
+    # Add the flag --enable-executable-profiling to this command to enable
+    # profiling.
     hrun cabal configure --package-db $::PACKAGE_DB \
         --extra-lib-dirs $::env(LD_LIBRARY_PATH) \
-        --with-happy=$::HAPPY 
-        #--enable-executable-profiling
+        --with-happy=$::HAPPY
+
     hrun cabal build
     #hrun cabal haddock --executables
     hrun cabal sdist

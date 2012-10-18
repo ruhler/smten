@@ -1,7 +1,7 @@
 Seri ReadMe
 ===========
 Richard Uhler <ruhler@csail.mit.edu>
-August 24, 2012
+October 18, 2012
 
 Configuring Seri for Build
 --------------------------
@@ -56,10 +56,68 @@ Once seri is configured for build, it can be built by running `make`.
 The makefile generates a cabal package for seri, builds it, then runs some
 tests on the generated executables.
 
+As of October 18th, 2012, Seri requires the following haskell packages:
+
+* base ==4.5.*
+* mtl ==2.1.* 
+* pretty ==1.1.*
+* array ==0.4.*
+* directory ==1.1.*
+* template-haskell ==2.7.*
+* hashable ==1.1.*
+* containers ==0.5.*
+* bytestring ==0.9.*
+* cmdargs ==0.10.*
+* syb ==0.3.*
+
 Generated files of note:
 build/src/dist/build/seri/seri
   - the generated seri executable
 
+Trouble Shooting
+~~~~~~~~~~~~~~~~
+Build Error: Cannot find normal object file
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+When building for the first time, executable profiling must be disabled,
+otherwise an error such as 'cannot find normal object file' will be reported.
+To ensure executable profiling is disabled in the build script, remove the
+flag "--enable-executable-profiling" from cabal command in tclmk/make.tcl if
+it is present.
+
+Build Error: yices2 library not found
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Verify first the yices2 library is properly installed on your system. You can
+do this by compiling and running the following program:
+
+----------
+#include <stdio.h>
+
+int main()
+{
+    yices_init();
+    int tv = yices_true();
+    int fv = yices_false();
+    printf("true-value: %i, false-value: %i\n", tv, fv);
+    yices_exit();
+    return 0;
+}
+----------
+
+You may need to add the library path to your C-compile, for example, with:
+    
+    gcc yices2test.c -L/home/ruhler/local/lib -lyices2 
+
+You may need to set your LD_LIBRARY_PATH to find the library at runtime:
+    
+    export LD_LIBRARY_PATH=/home/ruhler/local/lib
+    ./a.out
+    >>> true-value: 2, false-value: 3
+
+Once you have verified yices2 is install and working on your system, double
+check that:
+* tclmk/local.tcl has the right LD_LIBRARY_PATH set
+* Your cabal config (typically in ~/.cabal/config) has the appropriate
+  extra-lib-dirs flag set
 
 Trying Seri
 -----------
