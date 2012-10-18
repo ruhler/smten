@@ -39,6 +39,8 @@ module Seri.Haskell.Haskell (
     haskell, haskellH,
     ) where
 
+import Debug.Trace
+
 import Data.List(nub)
 import Data.Maybe(fromJust)
 
@@ -54,7 +56,15 @@ hsLit (IntegerL i) = H.IntegerL i
 hsLit (CharL c) = H.CharL c
 
 hsExp :: HCompiler -> Exp -> Failable H.Exp
-hsExp c e | Just str <- deStringE e = return $ H.LitE (H.StringL str)
+
+-- String literals:
+-- TODO: the template haskell pretty printer doesn't print strings correctly
+-- if they contain newlines, thus, we can't print those as string literals.
+-- When they fix the template haskell pretty printer, that special case should
+-- be removed here.
+hsExp c e | Just str <- deStringE e
+          , '\n' `notElem` str
+          = return $ H.LitE (H.StringL str)
 hsExp c e | Just xs <- deListE e = do
   xs' <- mapM (compile_exp c c) xs
   return $ H.ListE xs'
@@ -204,9 +214,7 @@ haskell c env main =
       ds = compile_decs c env
   in hsHeader H.$+$ H.ppr ds H.$+$
         H.text "main :: Prelude.IO ()" H.$+$
-        H.text "main = Prelude.putStrLn (case "
-        H.<+> H.text (pretty main) H.<+> H.text " of { True -> \"True\"; False -> \"False\"})"
-
+        H.text "main = " H.<+> H.text (pretty main)
 
 -- | Declare a primitive seri implemented with the given haskell expression.
 prim :: HCompiler -> TopSig -> H.Exp -> Failable [H.Dec]
@@ -240,6 +248,7 @@ preludeH =
 
       mt _ (ConT n) | n == name "Char" = return $ H.ConT (H.mkName "Prelude.Char")
       mt _ (ConT n) | n == name "Integer" = return $ H.ConT (H.mkName "Prelude.Integer")
+      mt _ (ConT n) | n == name "IO" = return $ H.ConT (H.mkName "Prelude.IO")
       mt _ t = throw $ "preludeH does not apply to type: " ++ pretty t
 
       md _ (PrimD (TopSig n _ t)) | n == name "Seri.Lib.Prelude.error" = do
@@ -258,7 +267,8 @@ preludeH =
         name "(,,,,,,)",
         name "(,,,,,,,)",
         name "(,,,,,,,,)",
-        name "[]"] = return []
+        name "[]",
+        name "IO"] = return []
       md c (PrimD s@(TopSig n _ _)) | n == name "Seri.Lib.Prelude.__prim_add_Integer" = prim c s (vare "Prelude.+")
       md c (PrimD s@(TopSig n _ _)) | n == name "Seri.Lib.Prelude.__prim_sub_Integer" = prim c s (vare "Prelude.-")
       md c (PrimD s@(TopSig n _ _)) | n == name "Seri.Lib.Prelude.__prim_mul_Integer" = prim c s (vare "Prelude.*")
@@ -286,6 +296,12 @@ preludeH =
       md c (PrimD s@(TopSig n _ _)) | n == name "Seri.Lib.Bit.__prim_zeroExtend_Bit" = prim c s (vare "Bit.zeroExtend")
       md c (PrimD s@(TopSig n _ _)) | n == name "Seri.Lib.Bit.__prim_truncate_Bit" = prim c s (vare "Bit.truncate")
       md c (PrimD s@(TopSig n _ _)) | n == name "Seri.Lib.Bit.__prim_extract_Bit" = prim c s (vare "Bit.extract")
+
+      md c (PrimD s@(TopSig n _ _)) | n == name "Seri.IO.IO.return_io" = prim c s (vare "Prelude.return")
+      md c (PrimD s@(TopSig n _ _)) | n == name "Seri.IO.IO.bind_io" = prim c s (vare "Prelude.>>=")
+      md c (PrimD s@(TopSig n _ _)) | n == name "Seri.IO.IO.nobind_io" = prim c s (vare "Prelude.>>")
+      md c (PrimD s@(TopSig n _ _)) | n == name "Seri.IO.IO.fail_io" = prim c s (vare "Prelude.fail")
+      md c (PrimD s@(TopSig n _ _)) | n == name "Seri.IO.IO.putStr" = prim c s (vare "Prelude.putStr")
 
       md _ d = throw $ "preludeH does not apply to dec: " ++ pretty d
   in Compiler me mt md

@@ -6,6 +6,7 @@ import Seri.Lib.Prelude;
 import Seri.Lib.Array;
 import Seri.Lib.Vector;
 import Seri.Lib.Bit;
+import Seri.IO.IO;
 
 foo1 :: Integer;
 foo1 = (\x -> ((x*x)+(3*x))+2) 5;
@@ -259,6 +260,7 @@ testbasic = do {
     t "M" (DEq2 (integer 5) 9 == DEq2 5 9);
     t "N" (DEq1 (integer 5) /= DEq2 5 9);
     --t "O" (Just 1 == patterndo);
+    t "P" (length "foo\n" == 4); 
 };
 
 testprelude :: Test ();
@@ -278,10 +280,10 @@ tests = do {
     testbit;
 };
 
-testall :: Bool;
-testall =
+testallio :: IO ();
+testallio =
     case tests of {
-        Test () -> True;
+        Test () -> putStrLn "PASSED";
     };
 
 }

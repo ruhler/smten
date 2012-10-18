@@ -241,7 +241,7 @@ elaborate mode env exp =
                                         ]
                            in Just (elab $ AppEH ES_None lam [f])
                        delambdafy f (x:xs) | mode == SNF = delambdafy (AppEH (ES_Some mode) f [x]) xs
-                       delambdafy f [] = Nothing
+                       delambdafy f x = Nothing
 
                        f = LaceEH (ES_Some mode) ms'
                        undelambdafied = AppEH (ES_Some mode) f args
@@ -349,6 +349,15 @@ elaborate mode env exp =
 
       primitives :: HT.HashTable Name (Sig -> ExpH)
       primitives = HT.table $ [
+            (name "Seri.Lib.Prelude.error", \s ->
+                LaceEH (ES_Some WHNF) [
+                    MatchH [VarP $ Sig (name "msg") stringT] $ 
+                      \[(_, msg)] ->
+                          case mode of
+                             WHNF | Just str <- deStringE (toe msg) -> error $ "Seri.error: " ++ str
+                             _ -> AppEH (ES_Some WHNF) (VarEH (ES_Some SNF) s) [msg]
+                       ]
+              ),
             (name "Seri.Lib.Prelude.__prim_eq_Integer", \s -> biniprim s (\a b -> boolEH (a == b))),
             (name "Seri.Lib.Prelude.__prim_add_Integer", \s -> biniprim s (\a b -> integerEH (a + b))),
             (name "Seri.Lib.Prelude.__prim_sub_Integer", \s -> biniprim s (\a b -> integerEH (a - b))),

@@ -56,7 +56,7 @@ import qualified Seri.SMT.Yices.Yices2 as Q
 import qualified Seri.IO.Run as I
 import Seri.Haskell
 
-data Run = Query | Io | Pure | Type | Haskell
+data Run = Query | Io | Type | Haskell
     deriving (Show, Eq, Typeable, Data)
 
 data Solver = Yices1 | Yices2 
@@ -75,7 +75,6 @@ argspec :: Args
 argspec = Args { 
     run = A.enum [Query A.&= A.help "Run a seri program in the Query monad",
                   Io A.&= A.help "Run a seri program in the IO monad",
-                  Pure A.&= A.help "Elaborate a pure seri program to WHNF",
                   Type A.&= A.help "Type infer and check a seri program",
                   Haskell A.&= A.help "Compile a seri program to Haskell"]
        A.&= A.typ "RUN MODE",
@@ -121,9 +120,6 @@ main = do
             m <- getmain
             I.run env m
             return ()
-        Pure -> do
-            m <- getmain
-            putStrLn . pretty $ elabwhnf env m
         Type -> putStrLn . pretty $ env
         Haskell -> putStrLn . show $ haskell haskellH (getDecls env) nmain
 

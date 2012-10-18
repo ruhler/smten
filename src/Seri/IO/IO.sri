@@ -2,16 +2,12 @@
 module Seri.IO.IO where {
 
 import Seri.Lib.Prelude;
-import Seri.SMT.SMT;
 
 -- Primitive IO monad
 data IO a = ;
 
 -- Print a string to stdout.
 putStr :: [Char] -> IO ();
-
--- Evaluate an SMT query.
-runQuery :: Query a -> IO a;
 
 -- The IO monad primitives
 return_io :: a -> IO a;

@@ -64,12 +64,12 @@ run $SERI --type \
     --include build/src \
     -f build/src/Seri/Lib/Tests.sri \
     > build/src/tests.typed
-run $SERI --pure \
+run $SERI --io \
     --include build/src \
-    -m Seri.Lib.Tests.testall \
+    -m Seri.Lib.Tests.testallio \
     -f build/src/Seri/Lib/Tests.sri \
     > build/src/tests.got 
-run echo "(True :: Bool)" > build/src/tests.wnt
+run echo "PASSED" > build/src/tests.wnt
 hrun cmp build/src/tests.got build/src/tests.wnt
 
 # Poorly typed tests.
@@ -96,12 +96,12 @@ badtypetest "InstCtx"
 set hsdir build/src/Seri/Haskell
 run $SERI --haskell \
     --include build/src \
-    -m testall \
+    -m testallio \
     -f build/src/Seri/Lib/Tests.sri \
     > $hsdir/hstests.hs
 hrun -ignorestderr $GHC -o $hsdir/hstests -ibuild/src $hsdir/hstests.hs
 run ./$hsdir/hstests > $hsdir/hstests.got
-run echo "True" > $hsdir/hstests.wnt
+run echo "PASSED" > $hsdir/hstests.wnt
 hrun cmp $hsdir/hstests.got $hsdir/hstests.wnt
 
 # The SMT query1 tests
