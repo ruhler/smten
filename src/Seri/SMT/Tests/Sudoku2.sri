@@ -13,22 +13,8 @@ n = 3;
 m :: Integer;
 m = n*n;
 
-data Cell = C1 | C2 | C3 | C4 | C5 | C6 | C7 | C8 | C9;
-
-instance Eq Cell where {
-    (==) C1 C1 = True;
-    (==) C2 C2 = True;
-    (==) C3 C3 = True;
-    (==) C4 C4 = True;
-    (==) C5 C5 = True;
-    (==) C6 C6 = True;
-    (==) C7 C7 = True;
-    (==) C8 C8 = True;
-    (==) C9 C9 = True;
-    (==) _ _ = False;
-
-    (/=) a b = not (a == b);
-};
+data Cell = C1 | C2 | C3 | C4 | C5 | C6 | C7 | C8 | C9
+    deriving(Eq, Free);
 
 readCell :: Char -> Query Cell;
 readCell '1' = return C1;

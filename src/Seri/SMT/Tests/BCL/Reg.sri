@@ -2,9 +2,10 @@
 module Seri.SMT.Tests.BCL.Reg where {
 
 import Seri.Lib.Prelude;
+import Seri.SMT.SMT;
 
 data Reg a = Reg { db :: Bool
-                 , val :: a };
+                 , val :: a } deriving (Free);
 
 clear_dirty_bits_Reg_a :: Reg a -> Reg a;
 clear_dirty_bits_Reg_a a = Reg False (val a);

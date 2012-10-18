@@ -2,6 +2,7 @@
 module Seri.SMT.Tests.Squares2.FIFO2 where {
 
 import Seri.Lib.Prelude;
+import Seri.SMT.SMT;
 import Seri.SMT.Tests.Squares2.Prelude;
 import Seri.SMT.Tests.Squares2.Reg;
 
@@ -9,11 +10,11 @@ data FIFO2 a =
     FIFO2_Empty
   | FIFO2_Single a
   | FIFO2_Full a a
-    deriving (Eq);
+    deriving (Eq, Free);
 
 data MOD_mkFIFO a = MOD_mkFIFO {
     elems :: MOD_mkReg (FIFO2 a)
-} deriving (Eq);
+} deriving (Eq, Free);
 
 on_elems :: Action (MOD_mkReg (FIFO2 a)) b -> Action (MOD_mkFIFO a) b;
 on_elems = liftA elems __elems_update;

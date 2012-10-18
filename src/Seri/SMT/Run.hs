@@ -21,7 +21,7 @@ run e = do
                     return $ AppE (ConE (Sig (name "Satisfiable") (AppT (ConT (name "Answer")) (typeof arg)))) [arg']
                 Unsatisfiable -> return $ ConE (Sig (name "Unsatisfiable") (AppT (ConT (name "Answer")) (typeof arg)))
                 _ -> return $ ConE (Sig (name "Unknown") (AppT (ConT (name "Answer")) (typeof arg)))
-        (VarE (Sig n (AppT _ t))) | n == name "Seri.SMT.SMT.free" -> free t
+        (VarE (Sig n (AppT _ t))) | n == name "Seri.SMT.SMT.__prim_free" -> free t
         (AppE (VarE (Sig n _)) [p]) | n == name "Seri.SMT.SMT.assert" -> do
             assert p
             return unitE

@@ -3,6 +3,7 @@
 module Seri.SMT.SMT where {
 
 import Seri.Lib.Prelude;
+import Seri.Lib.Bit;
 
 -- Query is the primitive query monad.
 data Query a = ;
@@ -10,7 +11,66 @@ data Query a = ;
 data Answer a = Satisfiable a | Unsatisfiable | Unknown;
 
 -- Return a new free variable.
-free :: Query a;
+-- Note: this is depricated. Don't use it if you can avoid it.
+__prim_free :: Query a;
+
+-- Return a new free boolean
+-- TODO: make it a primitive for real instead of using __prim_free.
+__prim_free_Bool :: Query Bool;
+__prim_free_Bool = __prim_free;
+
+-- Return a new free integer
+-- TODO: make it a primitive for real instead of using __prim_free.
+__prim_free_Integer :: Query Integer;
+__prim_free_Integer = __prim_free;
+
+-- Return a new free bit vector
+-- TODO: make it a primitive for real instead of using __prim_free.
+__prim_free_Bit :: Query (Bit #n);
+__prim_free_Bit = __prim_free;
+
+class Free a where {
+    -- Return a free variable of the given type.
+    free :: Query a;
+};
+
+instance Free () where {
+    free = return ();
+};
+
+instance Free Bool where {
+    free = __prim_free_Bool;
+};
+
+instance Free Integer where {
+    free = __prim_free_Integer;
+};
+
+instance Free (Bit #n) where {
+    free = __prim_free_Bit;
+};
+
+instance (Free a, Free b) => Free (a, b) where {
+    free = do {
+        a <- free;
+        b <- free;
+        return (a, b);
+    };
+};
+
+instance (Free a, Free b, Free c) => Free (a, b, c) where {
+    free = do {
+        a <- free;
+        b <- free;
+        c <- free;  
+        return (a, b, c);
+    };
+};
+
+-- TODO: how should we deal with free functions?
+instance (Free a, Free b) => Free (a -> b) where {
+    free = __prim_free;
+};
 
 -- Assert the given boolean is true.
 assert :: Bool -> Query ();
@@ -40,20 +100,6 @@ instance Monad Query where {
   (>>) = nobind_query;
   fail = fail_query
 };
-
--- Assert a predicate holds for every input.
-always :: (a -> Bool) -> Query ();
-always f = do {
-    answer <- queryS (do {
-        x <- free;
-        assert (not (f x));
-        query ();
-    });
-    case answer of {
-        Unsatisfiable -> return ();
-        _ -> assert False;
-    };
-}
 
 }
 

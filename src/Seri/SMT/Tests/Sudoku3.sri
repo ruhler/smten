@@ -14,7 +14,7 @@ n = 3;
 m :: Integer;
 m = n*n;
 
-data Cell = Cell { bits :: Bit#9 } deriving(Eq);
+data Cell = Cell { bits :: Bit#9 } deriving(Eq, Free);
 
 freeCell :: Query Cell;
 freeCell = do {

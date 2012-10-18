@@ -4,7 +4,7 @@ module Seri.SMT.Tests.Sketch2QBF2 where {
 import Seri.Lib.Prelude;
 import Seri.SMT.SMT;
 
-sketch2qbf' :: b -> (b -> a -> Bool) -> Query (Answer b);
+sketch2qbf' :: (Free a) => b -> (b -> a -> Bool) -> Query (Answer b);
 sketch2qbf' c p = do {
   rc <- query c;
   case rc of {
@@ -24,7 +24,7 @@ sketch2qbf' c p = do {
   };
 };
 
-sketch2qbf :: (b -> a -> Bool) -> Query (Answer b);
+sketch2qbf :: (Free a, Free b) => (b -> a -> Bool) -> Query (Answer b);
 sketch2qbf p = do {
   c <- free;
   sketch2qbf' c p;

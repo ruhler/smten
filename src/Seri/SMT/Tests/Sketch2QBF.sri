@@ -15,7 +15,7 @@ import Seri.SMT.SMT;
 --
 --  x has type a
 --  c has type b
-sketch2qbf' :: [a] -> (b -> a -> Bool) -> Query (Answer b);
+sketch2qbf' :: (Free a, Free b) => [a] -> (b -> a -> Bool) -> Query (Answer b);
 sketch2qbf' xs p = do {
   -- Find some concrete 'c' which satisfies the predicate for all existing
   -- examples.
@@ -37,7 +37,7 @@ sketch2qbf' xs p = do {
   };
 };
 
-sketch2qbf :: (b -> a -> Bool) -> Query (Answer b);
+sketch2qbf :: (Free a, Free b) => (b -> a -> Bool) -> Query (Answer b);
 sketch2qbf = sketch2qbf' [];
   
 p1 :: Integer -> Integer -> Bool;

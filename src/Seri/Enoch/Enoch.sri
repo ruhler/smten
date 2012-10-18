@@ -9,7 +9,7 @@ quadruple :: Integer -> Integer;
 quadruple a = a + (a + (a + a));
 
 data Foo = Bar Integer
-         | Sludge Bool;
+         | Sludge Bool deriving(Free);
 
 defoo :: Foo -> Integer;
 defoo (Bar x) = x;

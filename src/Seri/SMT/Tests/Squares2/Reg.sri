@@ -2,12 +2,13 @@
 module Seri.SMT.Tests.Squares2.Reg where {
 
 import Seri.Lib.Prelude;
+import Seri.SMT.SMT;
 import Seri.SMT.Tests.Squares2.Prelude;
 
 data MOD_mkReg a = MOD_mkReg {
    modified :: Bool,
    value :: a
-} deriving (Eq);
+} deriving (Eq, Free);
 
 instance State (MOD_mkReg a) where {
     newState r = r { modified = False };

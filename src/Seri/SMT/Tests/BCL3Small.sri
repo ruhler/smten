@@ -7,6 +7,7 @@ module Seri.SMT.Tests.BCL3Small where {
   import Seri.SMT.SMT;
   data MkSizedFIFOF___FIFOFF__Int_32_BCC =
       MkSizedFIFOF___FIFOFF__Int_32_BCC (FIFO Integer)
+        deriving (Free)
   ;
   __mkSizedFIFOF___FIFOFF__Int_32_BCC_undef :: MkSizedFIFOF___FIFOFF__Int_32_BCC;
   __mkSizedFIFOF___FIFOFF__Int_32_BCC_undef = (MkSizedFIFOF___FIFOFF__Int_32_BCC :: FIFO Integer -> MkSizedFIFOF___FIFOFF__Int_32_BCC) (undefined :: FIFO Integer)
@@ -138,6 +139,7 @@ module Seri.SMT.Tests.BCL3Small where {
   ;
   data MkTestBench =
       MkTestBench (Reg Integer) (Reg Integer) MkSizedFIFOF___FIFOFF__Int_32_BCC MkSizedFIFOF___FIFOFF__Int_32_BCC MkSizedFIFOF___FIFOFF__Int_32_BCC MkSizedFIFOF___FIFOFF__Int_32_BCC
+        deriving (Free)
   ;
   __mkTestBench_undef :: MkTestBench;
   __mkTestBench_undef = (MkTestBench :: Reg Integer -> Reg Integer -> MkSizedFIFOF___FIFOFF__Int_32_BCC -> MkSizedFIFOF___FIFOFF__Int_32_BCC -> MkSizedFIFOF___FIFOFF__Int_32_BCC -> MkSizedFIFOF___FIFOFF__Int_32_BCC -> MkTestBench) (undefined :: Reg Integer) (undefined :: Reg Integer) (undefined :: MkSizedFIFOF___FIFOFF__Int_32_BCC) (undefined :: MkSizedFIFOF___FIFOFF__Int_32_BCC) (undefined :: MkSizedFIFOF___FIFOFF__Int_32_BCC) (undefined :: MkSizedFIFOF___FIFOFF__Int_32_BCC)

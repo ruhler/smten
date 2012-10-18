@@ -24,7 +24,7 @@ smta_new i = SMTArray i (error $ "undefined smt array element");
 -- Declare a free array with the given length.
 smta_free :: Integer -> Query (SMTArray a);
 smta_free i = do {
-    f <- free;
+    f <- __prim_free;
     return (SMTArray i f);
 };
 

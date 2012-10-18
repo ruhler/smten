@@ -3,13 +3,14 @@ module Seri.SMT.Tests.BCL.FIFO where {
 
 import Seri.Lib.Prelude;
 import Seri.SMT.Array;
+import Seri.SMT.SMT;
 
 data FIFO a = FIFO{ max_cnt :: Integer
                   , enq_idx :: Integer
                   , deq_idx :: Integer
                   , arr     :: (Integer -> a)
                   , mod_enq :: Bool
-                  , mod_deq :: Bool };
+                  , mod_deq :: Bool } deriving (Free);
 
 
 notEmpty_val_FIFO_a :: FIFO a -> Bool;

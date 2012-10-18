@@ -89,7 +89,7 @@ seq [x] = x;
 seq (x:xs) = x <$> seq xs;
 
 -- Return a state under which the two given rules are not mutually exclusive.
-not_mutually_exclusive :: (Eq s) => Action s () -> Action s () -> Query (Answer s);
+not_mutually_exclusive :: (Free s, Eq s) => Action s () -> Action s () -> Query (Answer s);
 not_mutually_exclusive a b = do {
   s <- free;
   assert (runAction a s /= Nothing);

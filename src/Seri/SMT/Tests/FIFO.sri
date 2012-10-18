@@ -3,6 +3,7 @@
 module Seri.SMT.Tests.FIFO where {
 
 import Seri.Lib.Prelude;
+import Seri.SMT.SMT;
 
 class FIFO f where {
     clear :: f a;
@@ -41,16 +42,8 @@ instance FIFO FIFO1 where {
 --      So: FIFO2_Full 1 2, will see 1 first, then 2 after dequeing 1.
 data FIFO2 a = FIFO2_Empty
              | FIFO2_Single a
-             | FIFO2_Full a a;
-
-instance (Eq a) => Eq (FIFO2 a) where {
-    (==) FIFO2_Empty FIFO2_Empty = True;
-    (==) (FIFO2_Single a) (FIFO2_Single b) = a == b;
-    (==) (FIFO2_Full a b) (FIFO2_Full c d) = (a == c) && (b == d);
-    (==) _ _ = False;
-
-    (/=) a b = not (a == b)
-};
+             | FIFO2_Full a a
+    deriving (Eq, Free);
 
 instance FIFO FIFO2 where {
     clear = FIFO2_Empty;

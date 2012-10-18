@@ -42,7 +42,6 @@ module Seri.Lambda.Sugar (
     lamE, deLamE, letE, deLet1E, deLetE,
     Stmt(..), doE, clauseE,
     ConRec(..), recordD, recordC, recordU,
-    --deriveEq,
     ) where
 
 import Control.Monad
@@ -253,7 +252,83 @@ deriveEq dn vars cs =
       ne = Method (name "/=") (VarE (Sig (name "/=#") UnknownT))
   in InstD ctx (Class (name "Eq") [dt]) [eq, ne]
 
+-- Derive an instance of Free (before flattening and inference) for the given
+-- data type declaration.
+--
+-- TODO: this should only work for non-recursive data types!
+--
+-- For example:
+--   data Foo = Bar Integer Integer
+--            | Sludge Bool
+--            | Wedge
+--
+-- Derives something of the form:
+--   free = do
+--      isBar <- free
+--      isSludge <- free
+--      aBar <- free 
+--      bBar <- free 
+--      aSludge <- free
+--      return (
+--         case isbar issludge of
+--           True _ -> Bar aBar bBar
+--           _ True -> Sludge aSludge
+--           _ _ -> Wedge
+deriveFree :: Name -> [TyVar] -> [Con] -> Dec
+deriveFree dn vars cs =
+  let dt = appsT (ConT dn : map tyVarType vars)
+
+      mkTag :: Con -> Sig
+      mkTag (Con nm _) = Sig (name "is" `nappend` nm) boolT
+
+      mkFields :: Con -> [Sig]
+      mkFields (Con nm ts)
+        = [Sig (name [c] `nappend` nm) t
+             | (t, c) <- zip ts "abcdefghijklmnopqrstuvwxyz"]
+
+      mkCon :: Con -> Exp
+      mkCon c@(Con nm ts) = 
+        let fields = mkFields c
+        in appsE (ConE (Sig nm UnknownT) : map VarE fields)
+
+      -- Generate the case patterns given there are n cases.
+      -- The patterns are:
+      --    True _ _ ...
+      --    _ True _ ...
+      --    _ _ True ...
+      --    _ _ _ ...
+      --
+      mkPats :: Int -> [[Pat]]
+      mkPats n = 
+        let mkPats' :: Int -> [[Pat]]
+            mkPats' 0 = []
+            mkPats' m = 
+              let subp = mkPats' (m-1)
+                  augmented = map (++ [WildP boolT]) subp
+                  newrow = replicate (m-1) (WildP boolT) ++ [trueP]
+              in augmented ++ [newrow]
+        in map init $ mkPats' n
+
+      tags = map mkTag (init cs)
+      fields = concat (map mkFields cs)
+      freevars = [BindS (VarP s) (VarE (Sig (name "free") UnknownT))
+                    | s <- tags ++ fields]
+      pats = mkPats (length cs)
+      bodies = map mkCon cs
+      lace = LaceE [Match p b | (p, b) <- zip pats bodies]
+      value = appsE (lace : map VarE tags)
+      rtn = NoBindS $ appsE [VarE (Sig (name "return") UnknownT),
+             if null tags
+                then head bodies
+                else value]
+      stmts = freevars ++ [rtn]
+      free = Method (name "free") (doE stmts)
+      ctx = [Class (name "Free") [tyVarType c] | c <- vars]
+  in InstD ctx (Class (name "Free") [dt]) [free]
+
+
 derive :: String -> Name -> [TyVar] -> [Con] -> Dec
 derive "Eq" = deriveEq
+derive "Free" = deriveFree
 derive x = error $ "deriving " ++ show x ++ " not supported in seri"
 
