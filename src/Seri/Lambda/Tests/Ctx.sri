@@ -1,0 +1,20 @@
+
+module Seri.Lambda.Tests.Ctx where {
+
+import Seri.Lib.Prelude;
+
+class Blah a where {
+    blah :: a -> Bool;
+};
+
+useblah :: (Blah a) => a -> Integer;
+useblah x = if blah x then 0 else 1;
+
+data Foo = Foo | Bar;
+
+-- This should not type check, because there is no instance of Blah for Foo.
+foo :: Foo -> Integer;
+foo x = useblah x;
+
+}
+

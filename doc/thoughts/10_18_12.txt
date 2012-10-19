@@ -1,0 +1,57 @@
+
+Thu Oct 18 13:56:41 EDT 2012
+
+Here's the plan for the next hour.
+
+Replace the 'free' primitive with: 
+  free_Integer, free_Bit, and free_Bool.
+
+Then introduce a 'Free' type class.
+
+This could take a sequence of changes, so I'll do the work on a new branch.
+
+I might run into trouble with support for free functions as are used in the
+Array test. Temporarally I can leave the old free primitive as __free, or some
+such.
+
+What are the steps here?
+
+1. Switch to new interface
+* Rename 'free' primitive as '__prim_free', mark it deprecated
+* Implement __prim_free_Integer, __prim_free_Bit, __prim_free__Bool,
+  Currently on top of __prim_free.
+* Define Free class, give instances for integer, bit, and bool.
+
+2. Implement __prim_free_* as a real primitive
+3. Implement deriving for Free
+4. Figure out how to deal with whatever still remains which relies on
+__prim_free. Then remove __prim_free.
+
+That's it. Then I'm done. Here I go.
+
+Thu Oct 18 14:21:39 EDT 2012
+
+I'm running into a strange bug. Looks like a bug in the type checker.
+
+The type checker isn't verifying that MOD_mkSquares is an instance of Free
+when I use not_mutually_exclusive. Why don't I catch that?
+
+Oh. Because I'm not calling a method directly, but rather a function which has
+the context. So, really, I need to check the context for every free
+variable...
+
+This sounds like a non-trivial amount of work to me. Like something that
+should be fixed as a separate step. It's easy enough. For each variable
+associate a context requirement. I can have a way to look that info up in the
+environment, and verify those classes are satisfied.
+
+Fine. I'll put this off for now then. But mark it as TODO.
+
+Thu Oct 18 17:23:49 EDT 2012
+
+Finally got this whole free thing working. 
+
+Issues:
+* don't allow deriving of recursive data types?
+* how to deal with free functions?
+

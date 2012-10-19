@@ -40,7 +40,7 @@
 module Seri.Lambda.Env (
     Env(), mkEnv, tweak,
     VarInfo(..),
-    lookupVarType, lookupVarValue, lookupVar, lookupVarInfo,
+    lookupVarType, lookupVarValue, lookupVar, lookupVarInfo, lookupVarContext,
     lookupMethodType,
     lookupDataD, lookupDataConType,
     lookupInstD, lookupPrimD,
@@ -88,7 +88,9 @@ data ValInfo
 
  -- | The value belongs to the given class and has given type.
  -- Gives also the list of implementations for each instance of the class.
- | ClassVI Name [TyVar] Type [([Type], Exp)]
+ -- The context is the context for the specific method, it does not include
+ -- the class itself.
+ | ClassVI Name [TyVar] Context Type [([Type], Exp)]
     deriving (Eq, Show)
 
 -- | Build a seri environment from the given list of declarations.
@@ -116,7 +118,7 @@ vitable decs =
       videc d@(PrimD (TopSig n _ _)) = [(n, DecVI d)]
       videc (ClassD cn ts sigs) =  
         let isig :: TopSig -> (Name, ValInfo)
-            isig (TopSig n _ t) = (n, ClassVI cn ts t (fromMaybe [] (Map.lookup n methods)))
+            isig (TopSig n ctx t) = (n, ClassVI cn ts ctx t (fromMaybe [] (Map.lookup n methods)))
         in map isig sigs
       videc d@(DataD n _ _) = [(n, DecVI d)]
       videc (InstD {}) = []
@@ -212,7 +214,7 @@ lookupVar env s@(Sig n t) =
   case HT.lookup n (e_vitable env) of
      Just (DecVI (ValD (TopSig _ _ t) v)) -> return (t, v)
      Just (DecVI (PrimD {})) -> throw $ "lookupVar: " ++ pretty n ++ " is primitive"
-     Just (ClassVI cn cts st meths) ->
+     Just (ClassVI cn cts _ st meths) ->
         let ts = assign (assignments st t) (map tyVarType cts)
 
             theMeth :: ([Type], exp) -> Bool
@@ -240,7 +242,7 @@ lookupVarType env n = do
   case HT.lookup n (e_vitable env) of
     Just (DecVI (ValD (TopSig _ _ t) _)) -> return t
     Just (DecVI (PrimD (TopSig _ _ t))) -> return t
-    Just (ClassVI _ _ t _) -> return t
+    Just (ClassVI _ _ _ t _) -> return t
     Nothing -> throw $ "lookupVarType: '" ++ pretty n ++ "' not found"
 
 -- | Given the name of a method and a specific class instance for the method,
@@ -248,7 +250,7 @@ lookupVarType env n = do
 lookupMethodType :: Env -> Name -> Class -> Failable Type
 lookupMethodType env n (Class _ ts) = do
     case HT.lookup n (e_vitable env) of
-        Just (ClassVI _ vars t _) ->
+        Just (ClassVI _ vars _ t _) ->
             return $ assign (zip (map tyVarName vars) ts) t
         _ -> throw $ "lookupMethodType: " ++ pretty n ++ " not found"
 
@@ -266,10 +268,24 @@ lookupVarInfo env (Sig n t) =
   case HT.lookup n (e_vitable env) of
      Just (DecVI (ValD {})) -> return Declared
      Just (DecVI (PrimD {})) -> return Primitive
-     Just (ClassVI cn cts st _) ->
+     Just (ClassVI cn cts _ st _) ->
         let ts = assign (assignments st t) (map tyVarType cts)
         in return $ Instance (Class cn ts)
      _ -> throw $ "lookupVarInfo: " ++ pretty n ++ " not found"
+
+-- | Look up the context specified for the given variable with given
+-- signature.
+-- Fails if the variable is not declared.
+lookupVarContext :: Env -> Sig -> Failable Context
+lookupVarContext env (Sig n t) = 
+  case HT.lookup n (e_vitable env) of
+     Just (DecVI (ValD (TopSig _ ctx st) _)) ->
+        return $ assign (assignments st t) ctx
+     Just (DecVI (PrimD (TopSig _ ctx st))) ->
+        return $ assign (assignments st t) ctx
+     Just (ClassVI cn cts ctx st _) ->
+        return $ assign (assignments st t) (Class cn (map tyVarType cts) : ctx)
+     _ -> throw $ "lookupVarContext: " ++ pretty n ++ " not found"
 
 instance Ppr Env where
    ppr e = ppr $ e_decls e
