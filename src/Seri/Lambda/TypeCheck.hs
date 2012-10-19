@@ -193,9 +193,8 @@ instcheck env c e =
             mapM_ satisfied (assign assigns ctx)
 
         check :: Sig -> Failable ()
-        check s =
-            case attemptM $ lookupVarInfo env s of
-                Just (Instance cls) -> satisfied cls
-                _ -> return ()
+        check s = do
+            ctx <- lookupVarContext env s
+            mapM_ satisfied ctx
     in mapM_ check (free e)
 

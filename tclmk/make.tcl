@@ -91,6 +91,7 @@ proc badtypetest {name} {
 
 badtypetest "BadType1"
 badtypetest "BadType2"
+badtypetest "Ctx"
 badtypetest "InstCtx"
 
 
