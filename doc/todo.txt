@@ -80,3 +80,12 @@ That is, anything with ~?
     If a solver isn't installed, just give a runtime error when you try to
     use it. (As per request of Nirav)
 
+* Don't allow deriving of Free for recursive data types
+* Figure out how to give an instance of Free for just those function types
+  that we support
+* Get rid of the __prim_free primitive
+* Add STP as a solver
+* Add Z3 as a solver
+* Implement runYices1, runYices2, etc... seri primitives
+** then remove --query option from seri executable
+

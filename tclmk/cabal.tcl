@@ -30,7 +30,7 @@ proc cabal {fcabal} {
         {directory ==1.1.*}
         {template-haskell ==2.7.*}
         {hashable ==1.1.*}
-        {containers ==0.5.*}
+        {containers ==0.4.*}
         {bytestring ==0.9.*}
         {cmdargs ==0.10.*}
         {syb ==0.3.*}
