@@ -33,8 +33,8 @@
 -- 
 -------------------------------------------------------------------------------
 
--- | An interface to yices2.
-module Seri.SMT.Yices.Yices2 (Yices2FFI(), yices2) where
+-- | Backend for the Yices2 solver
+module Seri.SMT.Yices.Yices2 (Yices2(), yices2) where
 
 import Data.List(genericLength)
 import Data.Ratio
@@ -49,9 +49,9 @@ import qualified Seri.SMT.Yices.Concrete as YC
 import Seri.SMT.Solver
 import qualified Seri.SMT.Query as Q
 
-data Yices2FFI = Yices2FFI (Ptr YContext)
+data Yices2 = Yices2 (Ptr YContext)
 
-instance Solver Yices2FFI where
+instance Solver Yices2 where
     pretty _ = YC.pretty
 
     -- TODO: this currently leaks context pointers!
@@ -60,7 +60,7 @@ instance Solver Yices2FFI where
     initialize = do
         c_yices_init
         ptr <- c_yices_new_context nullPtr
-        return $! Yices2FFI ptr
+        return $! Yices2 ptr
 
     run _ (Define s ty Nothing) = do
         ty' <- ytype ty
@@ -69,20 +69,20 @@ instance Solver Yices2FFI where
     run _ (Define s _ (Just e)) = do
         term <- yterm e
         withCString s $ c_yices_set_term_name term
-    run (Yices2FFI yctx) (Assert p) = do
+    run (Yices2 yctx) (Assert p) = do
         p' <- yterm p
         c_yices_assert_formula yctx p'
     run ctx Check = check ctx >> return ()
-    run (Yices2FFI yctx) Push = do
+    run (Yices2 yctx) Push = do
         c_yices_push yctx
-    run (Yices2FFI yctx) Pop = do
+    run (Yices2 yctx) Pop = do
         c_yices_pop yctx
 
-    check (Yices2FFI yctx) = do
+    check (Yices2 yctx) = do
         st <- c_yices_check_context yctx nullPtr
         return $! fromYSMTStatus st
 
-    getIntegerValue (Yices2FFI yctx) nm = do
+    getIntegerValue (Yices2 yctx) nm = do
         model <- c_yices_get_model yctx 1
         x <- alloca $ \ptr -> do
                 term <- yterm (varE nm)
@@ -95,7 +95,7 @@ instance Solver Yices2FFI where
         c_yices_free_model model
         return $! toInteger x
 
-    getBoolValue (Yices2FFI yctx) nm = do
+    getBoolValue (Yices2 yctx) nm = do
         model <- c_yices_get_model yctx 1
         x <- alloca $ \ptr -> do
                 term <- yterm (varE nm)
@@ -117,7 +117,7 @@ instance Solver Yices2FFI where
             1 -> return True
             _ -> error $ "yices2 get bool value got: " ++ show x
         
-    getBitVectorValue (Yices2FFI yctx) w nm = do
+    getBitVectorValue (Yices2 yctx) w nm = do
         model <- c_yices_get_model yctx 1
         bits <- allocaArray (fromInteger w) $ \ptr -> do
             term <- yterm (varE nm)
@@ -292,6 +292,6 @@ ytermbystr e = do
             error $ "yterm error"
         else return $! ye
 
-yices2 :: Q.Query Yices2FFI a -> Q.Query Yices2FFI a
+yices2 :: Q.Query Yices2 a -> Q.Query Yices2 a
 yices2 = id
 

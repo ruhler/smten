@@ -36,12 +36,12 @@
 {-# LANGUAGE ForeignFunctionInterface #-}
 {-# LANGUAGE EmptyDataDecls  #-}
 
--- | FFI Interface to yices 1.
+-- | Backend for the Yices1 Solver
 --
 -- NOTE: This assumes all the symbols from the yices1 library starting with
 -- yices_ have been renamed to yices1_. This is so yices1 and yices2 can
 -- coexist.
-module Seri.SMT.Yices.Yices1 (Yices1FFI(), yices1) where
+module Seri.SMT.Yices.Yices1 (Yices1(), yices1) where
 
 import Foreign
 import Foreign.C.String
@@ -57,7 +57,7 @@ import qualified Seri.SMT.Query as Q
 data YContext
 data YModel
 data YDecl
-data Yices1FFI = Yices1FFI (ForeignPtr YContext)
+data Yices1 = Yices1 (ForeignPtr YContext)
 
 type YBool = CInt
 
@@ -110,16 +110,16 @@ toResult n
     | n == yTrue  = Satisfiable
     | otherwise   = Undefined
 
-instance Solver Yices1FFI where
+instance Solver Yices1 where
     pretty _ = YC.pretty 
 
     initialize = do
         c_yices_enable_type_checker True
         ptr <- c_yices_mk_context
         fp  <- F.newForeignPtr ptr (c_yices_del_context ptr)
-        return $! Yices1FFI fp
+        return $! Yices1 fp
 
-    run (Yices1FFI fp) cmd = do
+    run (Yices1 fp) cmd = do
         worked <- withCString (YC.concrete cmd) $ \str -> do
               withForeignPtr fp $ \yctx ->
                 c_yices_parse_command yctx str
@@ -132,11 +132,11 @@ instance Solver Yices1FFI where
                         ++ "\n when running command: \n" 
                         ++ YC.pretty cmd
 
-    check (Yices1FFI fp) = do
+    check (Yices1 fp) = do
         res <- withForeignPtr fp c_yices_check
         return $ toResult res
 
-    getIntegerValue (Yices1FFI fp) nm = do
+    getIntegerValue (Yices1 fp) nm = do
         model <- withForeignPtr fp c_yices_get_model 
         decl <- withCString nm $ \str ->
                     withForeignPtr fp $ \yctx ->
@@ -148,7 +148,7 @@ instance Solver Yices1FFI where
                 else error $ "yices get int value returned: " ++ show ir
         return (toInteger x)
 
-    getBoolValue (Yices1FFI fp) nm = do
+    getBoolValue (Yices1 fp) nm = do
         model <- withForeignPtr fp c_yices_get_model 
         decl <- withCString nm $ \str ->
                     withForeignPtr fp $ \yctx ->
@@ -159,7 +159,7 @@ instance Solver Yices1FFI where
           _ | br == yFalse -> return False
           _ | br == yUndef -> return False
 
-    getBitVectorValue (Yices1FFI fp) w nm = do
+    getBitVectorValue (Yices1 fp) w nm = do
         model <- withForeignPtr fp c_yices_get_model 
         decl <- withCString nm $ \str ->
                     withForeignPtr fp $ \yctx ->
@@ -175,6 +175,6 @@ bvInteger :: [CInt] -> Integer
 bvInteger [] = 0
 bvInteger (x:xs) = bvInteger xs * 2 + (fromIntegral x)
         
-yices1 :: Q.Query Yices1FFI a -> Q.Query Yices1FFI a
+yices1 :: Q.Query Yices1 a -> Q.Query Yices1 a
 yices1 = id
 
