@@ -53,6 +53,7 @@ proc cabal {fcabal} {
     puts $fout "  exposed-modules: [join $libmods {, }]"
     puts $fout "  build-depends: [join $builddeps {, }]"
     puts $fout "  build-tools: happy"
+    puts $fout "  extra-libraries: yices1 yices2"
 
     foreach {exe file libs} $exes {
         puts $fout "executable $exe"
