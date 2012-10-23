@@ -95,10 +95,14 @@ pred1 x = (x > 3) && (x < 6)
 qallQ :: (Solver s) => Query s [Integer]
 qallQ = allQ pred1
 
+env :: Env
+env = $(loadenvth ["."] "Seri/Enoch/Enoch.sri")
+
+try :: (Show a) => String -> Query Yices2 a -> IO ()
+try nm q = runQuery (RunOptions (Just $ "build/src/Seri/Enoch/" ++ nm ++ ".dbg") True) env q >>= (putStrLn . show)
+
 main :: IO ()
 main = do
-    env <- loadenv ["src"] "src/Seri/Enoch/Enoch.sri"
-    let try nm q = runQuery (RunOptions (Just $ "build/src/Seri/Enoch/" ++ nm ++ ".dbg") True) env (yices2 q) >>= (putStrLn . show)
 
     try "q1" q1
     try "q2" q2

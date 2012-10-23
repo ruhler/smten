@@ -1,12 +1,15 @@
 
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TypeSynonymInstances #-}
 
 -- | Template Haskell utilities for enoch.
 module Seri.Enoch.EnochTH ( 
-    derive_SeriableT, derive_SeriableE,
+    derive_SeriableT, derive_SeriableE, loadenvth
  ) where 
 
 import Language.Haskell.TH
+import Language.Haskell.TH.Syntax
+
 import Seri.Enoch.Enoch
 import qualified Seri.Lambda as S
 import qualified Seri.Enoch.Prelude as S
@@ -92,4 +95,76 @@ derive_unpack nm vars cs =
       clause = Clause [ConP 'TExp [VarP (mkName "e")]] (NormalB body) []
       dec = FunD 'unpack [clause]
   in [dec]
+
+
+-- Load a seri environment at compile time.
+-- Performs type checking on the environment statically.
+-- Returns an expression of type Env.
+loadenvth :: S.SearchPath -> FilePath -> Q Exp
+loadenvth path fin = do
+    env <- runIO $ S.loadenv path fin
+    let decls = S.getDecls env
+    [| S.mkEnv decls |]
+
+instance Lift S.Dec where
+    lift (S.ValD t e) = [| S.ValD t e |]
+    lift (S.DataD n vars cs) = [| S.DataD n vars cs |]
+    lift (S.ClassD n vars ts) = [| S.ClassD n vars ts |]
+    lift (S.InstD ctx cls ms) = [| S.InstD ctx cls ms |]
+    lift (S.PrimD ts) = [| S.PrimD ts |]
+
+instance Lift S.TopSig where
+    lift (S.TopSig n c t) = [| S.TopSig n c t |]
+
+instance Lift S.Type where
+    lift (S.ConT n) = [| S.ConT n |]
+    lift (S.AppT a b) = [| S.AppT a b |]
+    lift (S.VarT n) = [| S.VarT n |]
+    lift (S.NumT n) = [| S.NumT n |]
+    lift (S.UnknownT) = [| S.UnknownT |]
+
+instance Lift S.NType where
+    lift (S.ConNT i) = [| S.ConNT i |]
+    lift (S.VarNT n) = [| S.VarNT n |]
+    lift (S.AppNT op a b) = [| S.AppNT op a b |]
+
+instance Lift S.Pat where
+    lift (S.ConP t n ps) = [| S.ConP t n ps |]
+    lift (S.VarP s) = [| S.VarP s |]
+    lift (S.LitP l) = [| S.LitP l |]
+    lift (S.WildP t) = [| S.WildP t |]
+
+instance Lift S.Lit where
+    lift (S.IntegerL i) = [| S.IntegerL i |]
+    lift (S.CharL c) = [| S.CharL c |]
+
+instance Lift S.Sig where
+    lift (S.Sig n t) = [| S.Sig n t |]
+
+instance Lift S.Match where
+    lift (S.Match ps e) = [| S.Match ps e |]
+    
+
+instance Lift S.Exp where
+    lift (S.LitE l) = [| S.LitE l |]
+    lift (S.ConE s) = [| S.ConE s |]
+    lift (S.VarE s) = [| S.VarE s |]
+    lift (S.LaceE ms) = [| S.LaceE ms |]
+    lift (S.AppE f xs) = [| S.AppE f xs |]
+
+instance Lift S.Name where
+    lift s = let str = S.unname s in [| S.name str |]
+
+instance Lift S.TyVar where
+    lift (S.NormalTV n) = [| S.NormalTV n |]
+    lift (S.NumericTV n) = [| S.NumericTV n |]
+    
+instance Lift S.Con where
+    lift (S.Con n ts) = [| S.Con n ts |]
+
+instance Lift S.Class where
+    lift (S.Class n ts) = [| S.Class n ts |]
+
+instance Lift S.Method where
+    lift (S.Method n e) = [| S.Method n e |]
 

@@ -1,0 +1,159 @@
+
+Sat Oct 20 08:53:33 EDT 2012
+
+A couple things.
+
+First, steps to take to resolve this template haskell package loading issue:
+
+1. disable yices1 (should be easy enough)
+See if enoch works now
+
+2. disable yices2, use just yices1
+See if enoch works now
+
+3. change back to original yices1 library
+See if enoch works now
+
+After that, hopefully I'll have learned something interesting.
+
+The other thing...
+
+How can we deal with free functions?
+
+Hypothesis: you can build it on top of regular free variables.
+
+For example:
+
+  (a+b) -> c
+
+Can be implemented as:
+    fa <- free  -- (a -> c)
+    fb <- free  -- (b -> c)
+    return $ \x -> if isLeft x 
+                then fa (left x)
+                else fb (right x)
+
+In particular, if a or b is unit, this simplifies:
+  (True+False) -> c:
+
+   c1 <- free
+   c2 <- free
+   return $ \x -> if x then c1 else c2;
+            
+So we can automatically do (bool -> a) for any Free a.
+
+
+  (a*b) -> c:
+
+  f = free (a -> b -> c)
+  return $ \(a, b) -> f a b
+
+So, there are only two challenges left:
+
+  Integer -> c
+  Bit #n -> c
+
+Let me just consider the Integer case, because the same solution can be used
+for Bit.
+
+Well, if we have:
+  Integer -> (a -> b), where a is a support intput type, we could change it to:
+  a -> (Integer -> b), which simplifies the problem. 
+
+  But that doesn't complete the issue.
+
+Let me digress. First, look at:
+
+  a -> (b*c)
+
+Can be implemented as:
+
+  fb <- free -- (a -> b)
+  fc <- free -- (a -> c)
+  return $ \x -> (fb x, fc x)
+
+  a -> (b+c)
+
+Can be implemented as:
+  f <- free -- (a -> (bool*b*c))
+  return $ \x -> case (f x) of
+                    (True, b, _) -> b
+                    (False, _, c) -> c
+
+So, perhaps we can use this to build up backwards for integers.
+
+Err... actually, I think this is what I already do in a sense? Well, not
+exactly. It's slightly different.
+
+ So, now we can support
+
+  Integer -> (a*c), so long as we have (Integer -> a) and (Integer -> c)
+  And similar.
+
+  So, assuming I have: (Integer -> Bool), and (Integer -> Integer). Am I all
+  set then?
+
+  How could we do (Integer -> Integer -> Integer)?
+  Well, for integers we could always map two integers with some technique into
+  one, because the space is big enough.
+
+  For example, given integers 'a', 'b', we can form an integer 'c'? Maybe?
+  Maybe not? No, we should be able to. Here's how. We just define a mapping:
+
+  0 == (0, 0)
+  1 == (0, 1)
+  2 == (1, 0)
+  3 == (1, 1)
+  4 == (1, 2)
+ 
+  nope. That won't work.
+  So, for integer and bit, we may need better support for free functions.
+
+
+Anyway, let me play with the template haskell issue, see how far I can get.
+
+1. Disable yices1.
+  
+Now it works fine.
+
+2. Disable yices2.
+
+Doesn't even work in my build system. Looks like enoch does not work with
+yices1 at all, and that's the problem I'm seeing.
+
+3. Go back to unmodified yices1 library.
+
+Same problem as the modified library.
+
+Well, so, here's what we've learned: there's a problem with the yices1 static
+library that's been shipped, so that it doesn't work with template haskell.
+Something, perhaps, to do with weak references?
+
+Does yices1 have a shared library?
+
+No.
+
+Okay, so here's what I propose.
+
+I will make my own yices1 shared object file, that uses just the yices1
+functions I need, and I'll call them yices1 something or other. I will
+statically link in the shipped yices library to this shared library, and
+hopefully that will all be internal to the shared library so we won't have any
+name conflicts.
+
+Then I'll see if that works. If so, ship this with seri? Or ship the code and
+the way to build it, or whatever.
+
+Let me give this a try.
+
+Sat Oct 20 09:52:01 EDT 2012
+
+Interesting! I can't make the shared object, because gcc gives me an error for
+the same symbol template haskell does, saying it can't do it. Recompile yices1
+with -fPIC or some such.
+
+Well, I don't know.
+
+I have to go now, but I'll think on this. I think there are more things I can
+look at and try, now that I have this lead.
+

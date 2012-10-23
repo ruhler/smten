@@ -12,7 +12,7 @@ proc cabal {fcabal} {
         category Language
         build-type Simple
         cabal-version >=1.8
-        data-files {Seri/Lib/*.sri Seri/SMT/SMT.sri}
+        data-files {Seri/Lib/*.sri Seri/SMT/*.sri Seri/Enoch/*.sri}
     }
 
     # exe hsfile libraries

@@ -89,3 +89,8 @@ That is, anything with ~?
 * Implement runYices1, runYices2, etc... seri primitives
 ** then remove --query option from seri executable
 
+* For enoch, provide a template haskell function to load an environment. This
+  way you can load, type check, and link sri code at compile time. 
+  (as per request of Nirav). I feel like a function
+    loadenvth :: SearchPath -> FilePath -> Q Exp
+  Where the type of the Exp is either [Module], or Env, or some combination.
