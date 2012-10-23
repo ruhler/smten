@@ -50,7 +50,6 @@ import Seri.Elaborate
 
 import qualified Seri.SMT.Run as Q
 import qualified Seri.SMT.Query as Q
-import qualified Seri.SMT.Yices.Yices1 as Q
 import qualified Seri.SMT.Yices.Yices2 as Q
 
 import qualified Seri.IO.Run as I
@@ -113,7 +112,7 @@ main = do
             m <- getmain
             let opts = (Q.RunOptions (debug args) True)
             result <- case (solver args) of
-                        Yices1 -> Q.runQuery opts env (Q.yices1 . Q.run $ m)
+                        Yices1 -> error $ "this build of seri does not support yices1"
                         Yices2 -> Q.runQuery opts env (Q.yices2 . Q.run $ m)
             putStrLn $ pretty (elabwhnf env result)
         Io -> do 

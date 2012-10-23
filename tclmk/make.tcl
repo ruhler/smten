@@ -118,19 +118,7 @@ proc querytest {solver name} {
          > build/src/Seri/SMT/Tests/$name.$solver.out
 }
 
-proc yices1test {name} { querytest Yices1 $name }
 proc yices2test {name} { querytest Yices2 $name }
-
-yices1test "Query1"
-yices1test "Query2"
-yices1test "Complex"
-yices1test "If"
-yices1test "Bluespec"
-yices1test "Array"
-yices1test "Share"
-yices1test "Tuple"
-yices1test "Bit"
-yices1test "AllQ"
 
 yices2test "Query1"
 yices2test "Query2"

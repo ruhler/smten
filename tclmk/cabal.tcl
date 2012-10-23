@@ -17,7 +17,7 @@ proc cabal {fcabal} {
 
     # exe hsfile libraries
     set exes {
-        seri Seri/seri.hs {yices1 yices2}
+        seri Seri/seri.hs yices2
         enoch Seri/Enoch/enoch.hs yices2
         sudoku Seri/Enoch/sudoku.hs yices2
     }
@@ -53,7 +53,7 @@ proc cabal {fcabal} {
     puts $fout "  exposed-modules: [join $libmods {, }]"
     puts $fout "  build-depends: [join $builddeps {, }]"
     puts $fout "  build-tools: happy"
-    puts $fout "  extra-libraries: yices1 yices2"
+    puts $fout "  extra-libraries: yices2"
 
     foreach {exe file libs} $exes {
         puts $fout "executable $exe"
