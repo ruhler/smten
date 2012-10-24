@@ -3,7 +3,7 @@
 proc cabal {fcabal} {
     set props {
         name seri
-        version 0.1.0.0
+        version 0.1.1.0
         synopsis {Seri language compilers and infrastructure}
         license AllRightsReserved
         license-file LICENSE

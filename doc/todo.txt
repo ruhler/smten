@@ -94,7 +94,7 @@ That is, anything with ~?
 * Add static check for concreteness of queries
 
 * default Main module if no given?
-* '---' should still be a comment 
 * support type synonyms? 
 * support polymorphic declarations in let bindings?
+* allow empty record definitions: data Foo = Foo {}
 

@@ -89,6 +89,9 @@ data Wonderful a = Wonderful {
 thegreatthing :: Wonderful Integer -> Integer;
 thegreatthing w = thething w + howgreat w;
 
+-- record type construction with no fields
+data EmptyRecord = EmptyRecord {};
+
 class MultiFoo a b where {
     multifoo :: a -> b -> Integer;
 };

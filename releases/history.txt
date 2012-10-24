@@ -1,0 +1,17 @@
+
+Oct 24, 2012
+  seri-0.1.1.0
+
+  Changes from seri-0.1.0.0:
+  * Add support for comments with more than 2 dashes
+  * Add support for generic type signature expressions
+  * Add git revision info to seri.cabal file
+  * Implemented loadenvth to load seri environment at compile time
+
+
+Oct 22, 2012
+  seri-0.1.0.0.tar.gz
+ 
+  Initial release of Seri package. Yices1 support is disabled, as it doesn't
+  get along well with Enoch yet.
+

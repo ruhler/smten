@@ -265,8 +265,8 @@ constrs :: { [ConRec] }
 constr :: { ConRec }
  : con opt(atypes)
     { NormalC (name $1) (fromMaybe [] $2) }
- | con '{' fielddecls '}'
-    { RecordC (name $1) $3 }
+ | con '{' opt(fielddecls) '}'
+    { RecordC (name $1) (fromMaybe [] $3) }
 
 fielddecls :: { [(Name, Type)] }
  : fielddecl
