@@ -12,6 +12,7 @@ proc cabal {fcabal} {
         category Language
         build-type Simple
         cabal-version >=1.8
+        stability experimental
         data-files {Seri/Lib/*.sri Seri/SMT/*.sri Seri/Enoch/*.sri}
     }
 
@@ -48,6 +49,13 @@ proc cabal {fcabal} {
     foreach {n v} $props {
         puts $fout "$n: $v"
     }
+
+    puts $fout "source-repository this"
+    puts $fout "  type: git"
+    puts $fout "  location: /afs/csail.mit.edu/u/r/ruhler/git/seri"
+    set branch [lindex [exec git status | head -1] 3]
+    puts $fout "  branch: $branch"
+    puts $fout "  tag: [exec cat .git/refs/heads/$branch]"
 
     puts $fout library
     puts $fout "  exposed-modules: [join $libmods {, }]"

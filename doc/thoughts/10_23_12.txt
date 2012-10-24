@@ -1,0 +1,67 @@
+
+Tue Oct 23 16:51:10 EDT 2012
+
+Goal: Implement a static check to determine if the arguments to runQuery and
+queryS are concrete.
+
+The question is... how can I do this? I think it's just like a type checking
+kind of thing, with type inference too. But these are hopefully much easier
+kinds of constraints. We can assume we have already done normal type checking.
+
+So, given a fully typechecked expression, how can I verify this property I
+want?
+
+Well, we have a function. Given an expression, I want to know if it is
+concrete or not. Let's start there.
+
+So, for example, the following is fine:
+
+foo :: Integer -> Integer
+foo = ...
+
+do
+   x <- free
+   if (foo 3)
+      then assert (x > 3)
+      else assert (x < 4)
+
+But the following is not:
+
+do
+   x <- free
+   if (foo x)
+      then assert (x > 3)
+      else assert (x < 4)
+
+Is this a type inference? Is there an easier way to figure it out?
+        
+I would like to keep it separate, because I don't want to bake too much SMT 
+specific stuff into seri. I suppose I have it baked into the elaborator with
+this SNF form (which I should reinterpret to be SMT normal form).
+
+(>>=) free
+  (\x -> if (foo x)
+           then assert (x > 3)
+           else assert (x < 4))
+
+This is the expression I have. It's a function. The question is, ... is this a
+concrete query?
+
+Okay, so that's easy enough. For a function to be a concrete query, we need
+that the function and all it's args are concrete. Let's look one at a time...
+
+Well, bind is a special case, right? So it's not just a top down thing, you
+have to do some inference.
+
+(>>=) :: Query a -> (a -> Query b) -> Query b
+
+Sigh. This looks hard. Almost as if I want to augment the type system.
+
+Anyway, maybe I can abstract this somehow. I know it type checks, so let me
+change it to: ... no, I don't know a good way to do this. Conceptually it is
+just type inference of a special kind. The constraints come from the query
+primitives. I ought to just reuse my type inference and type checking
+infrastructure.
+
+Sigh.
+
