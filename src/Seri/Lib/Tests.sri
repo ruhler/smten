@@ -8,6 +8,8 @@ import Seri.Lib.Vector;
 import Seri.Lib.Bit;
 import Seri.IO.IO;
 
+------ This is a comment with lots of dashes
+
 foo1 :: Integer;
 foo1 = (\x -> ((x*x)+(3*x))+2) 5;
 
