@@ -1,0 +1,26 @@
+
+Wed Oct 24 10:14:31 EDT 2012
+
+There has been a request for type signature expressions in Seri.
+
+ (e :: t)
+
+Which is the same as expression (e), only with explicit type t.
+
+It seems like we can make this into a syntactic sugar:
+
+ (e :: t) is desugared into (AppE (VarE (Sig "id" (arrowsT [t, t]))) e)
+
+That seems like it should work okay to me. I can replace the old
+interpretation of a typed name. That may even help the parsing a bit. Or it
+may lead to disaster, I don't know.
+
+Let me try it out. And I can use it to explicitly type some integers in my
+test case.
+
+Wed Oct 24 10:44:53 EDT 2012
+
+It appears to be working well enough. Cool.
+
+Let me also check out the comments issue while I'm at it.
+

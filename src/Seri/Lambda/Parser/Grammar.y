@@ -289,6 +289,8 @@ rhs :: { Exp }
 exp :: { Exp }
  : exp10
     { $1 }
+ | exp10 '::' type
+    { typeE $1 $3 }
  | exp10 qop exp10
     { AppE $2 [$1, $3] }
 
@@ -316,10 +318,10 @@ fexp :: { Exp }
     { AppE $1 [$2] }
 
 aexp :: { Exp }
- : qvar_withinfo
-    { $1 }
- | gcon_typed
-    { ConE $1 }
+ : qvar
+    { VarE (Sig (name $1) UnknownT) }
+ | gcon
+    { ConE (Sig (name $1) UnknownT) }
  | literal
     { $1 }
  | '(' exp ')'
@@ -438,12 +440,6 @@ var :: { String }
     { $1 }
  | '(' varsym ')'
     { $2 }
-
-qvar_withinfo :: { Exp }
- : '(' qvar '::' type ')'
-    { VarE (Sig (name $2) $4) }
- | qvar
-    { VarE (Sig (name $1) UnknownT) }
 
 qvar :: { String }
  : qvarid
