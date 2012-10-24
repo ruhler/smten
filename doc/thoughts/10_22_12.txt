@@ -1,0 +1,22 @@
+
+Mon Oct 22 09:45:27 EDT 2012
+
+Looked more into the yices1 problem I'm having.
+
+It seems _S_empty_rep_storage is used for representing the empty STL string,
+and needs to be statically handled by the linker. This causes problems with
+dynamic linking.
+
+Is there some other way I can handle it?
+
+I have to figure out how to use the -R flag in ld. Point it to some address
+with no value? With a bunch of zeros?
+
+Mon Oct 22 10:35:36 EDT 2012
+
+I don't know how to make it work. Perhaps, for now, I'll just have to disable
+support for yices1? Or don't do Enoch and yices1 all at once? I don't know how
+to avoid that, other than getting rid of yices1.
+
+Ack! Ug! Gar!
+

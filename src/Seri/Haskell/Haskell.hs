@@ -80,7 +80,11 @@ hsExp c e | Just (Match ps b) <- deLamE e = do
 
 hsExp c (LitE l) = return (H.LitE (hsLit l))
 hsExp c (ConE (Sig n _)) = return $ H.ConE (hsName n)
-hsExp c (VarE (Sig n _)) = return $ H.VarE (hsName n)
+hsExp c (VarE (Sig n t)) | unknowntype t = return $ H.VarE (hsName n)
+hsExp c (VarE (Sig n t)) = do
+    -- Give explicit type signature to make sure there are no type ambiguities
+    ht <- compile_type c c t
+    return $ H.SigE (H.VarE (hsName n)) ht
 hsExp c (AppE f xs) = do
     f' <- compile_exp c c f
     xs' <- mapM (compile_exp c c) xs
@@ -305,4 +309,12 @@ preludeH =
 
       md _ d = throw $ "preludeH does not apply to dec: " ++ pretty d
   in Compiler me mt md
+
+unknowntype :: Type -> Bool
+unknowntype (ConT {}) = False
+unknowntype (AppT a b) = unknowntype a || unknowntype b
+unknowntype (VarT {}) = True
+unknowntype (NumT {}) = True    -- TODO: this may not be unknown, right?
+unknowntype UnknownT = True
+
 

@@ -1,0 +1,87 @@
+
+Fri Oct 19 08:09:24 EDT 2012
+
+I fixed that bug in the type checker dealing with contexts. That's nice.
+
+What are the next steps for newfree?
+
+Implement the __prim_integer, __prim_bit and __prim_bool primitives directly.
+
+But you know, I'm not really sure how to deal with function types yet, and it
+seems like, before I figure that out, perhaps it's not worth wasting my effort
+to do this.
+
+I do think this is a better interface to use. We don't loose anything. It's a
+little more verbose for the user, because he has to assert that things can be
+made free and what to derive, but I think that's acceptable. And we hopefully
+avoid this infinite recursion thing.
+
+Fine. I'll merge this with master, continue to use the interface, and think
+about how best to handle, for example, user defined functions. This is also
+something which will depend on the back-end SMT solver support, so perhaps
+priority in this case should go to adding support for STP and Z3, and thinking
+about how to express theory requirements in seri.
+
+Fri Oct 19 08:19:29 EDT 2012
+
+Let me go over again, just to try and keep straight, what the next steps are
+to work with Seri. Um, I'll add them directly to the todo file.
+
+Fri Oct 19 17:16:42 EDT 2012
+
+Trouble.
+
+Goal is: user should be able to install seri cabal package, then build
+enoch.hs, for example, by just running ghc.
+
+Problem is: it doesn't work. We get errors loading the seri package for
+template haskell.
+
+Well, I made some progress. I discovered that we can pass the libraries seri
+needs on the ghc command line to tell it about them. I've convinced myself
+splitting seri up into multiple packages won't actually help any. So long as
+you want to use SMT with Enoch, you will need to import the SMT package, which
+will have this same issue.
+
+So, what am I to do? I have to figure out what this issue is that I'm running
+into.
+
+Let me... play around with it? See what happens?
+
+Fri Oct 19 17:30:26 EDT 2012
+
+Looks like we have worse problems. I can't even run a program which doesn't
+make use of Enoch (seri.hs). It doesn't find the libraries. Ug.
+
+Fri Oct 19 17:54:39 EDT 2012
+
+Okay, so I have an idea.
+
+I'm going to provide my own library for each solver. Library is the wrong
+word. It will be my own c code. Which should get linked directly into the
+object file. And what it will do is: look for the actual library dynamically.
+
+Except, that won't fix the yices1 problem :(
+
+What if I try building a shared object?
+
+Fri Oct 19 18:18:06 EDT 2012
+
+Oh, found the bug. Or, one of them anyway. I forgot to specify the seri
+library depends on yices1 and yices2. When I fix that, seri.hs works fine.
+
+But! Now I'm back to that same enoch error I was running into before when
+specifying yices1 and yices2 manually.
+
+The question is, is this a consequence of the library renaming? How could I
+test that?
+
+I fear it may be...
+
+Let me play around a little with objcopy. For example, it has this prefix
+thing, that may work better? I just don't know what it means for something to
+be weak.
+
+What I should do is, try using yices1 without including yices2, and see if we
+have the same issue without yices1 renaming.
+

@@ -97,10 +97,10 @@ import Seri.Lambda.Parser.Grammar
 --
 -- [@Other Notes@]
 --
--- - variables and constructors can be typed explicitly using a type signature
--- expression syntax. This is so pretty printed seri code with type
--- information can be parsed back in as is. You probably shouldn't rely on
--- this behavior.
+-- - variables and constructors in patterns can be typed explicitly using a
+-- type signature expression syntax. This is so pretty printed seri code with
+-- type information can be parsed back in as is. You probably shouldn't rely
+-- on this behavior. (Signature expressions for expressions are supported).
 --
 -- - record constructors define variables for an undefined version of the
 -- constructor (for Foo {}), and for updating (for x { foo = bar }).

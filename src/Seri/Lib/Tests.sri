@@ -8,6 +8,8 @@ import Seri.Lib.Vector;
 import Seri.Lib.Bit;
 import Seri.IO.IO;
 
+------ This is a comment with lots of dashes
+
 foo1 :: Integer;
 foo1 = (\x -> ((x*x)+(3*x))+2) 5;
 
@@ -209,66 +211,63 @@ t :: [Char] -> Bool -> Test ();
 t msg True = return ();
 t msg False = fail msg;
 
-integer :: Integer -> Integer;
-integer = id;
-
 testbasic :: Test ();
 testbasic = do {
-    t "a" (integer 42 == (\x -> (((x*x) + (3*x)) + 2)) 5);
+    t "a" ((42 :: Integer) == (\x -> (((x*x) + (3*x)) + 2)) 5);
     t "b" (42 == (foo1));
     t "c" (42 == (foo2 5));
     t "d" (True);
-    t "e" (integer 23 == (if 6 < 4 then 42 else 23 ));
-    t "f" (integer 5 == ((id id) 5));
+    t "e" ((23 :: Integer) == (if 6 < 4 then 42 else 23 ));
+    t "f" ((5 :: Integer) == ((id id) 5));
     t "g" (5 == (fromMaybeInteger 10 (JustInteger 5)));
     t "h" (10 == (fromMaybeInteger 10 NoInteger));
     t "i" (fromMaybeBool False (Just True));
-    t "j" (Just (integer 18) == Just 18);
-    t "k" (Just (integer 18) /= Just 16);
-    t "l" (Just (integer 18) /= Nothing);
-    t "m" (integer 30 == (case (integer 1+3) of {
+    t "j" (Just (18 :: Integer) == Just 18);
+    t "k" (Just (18 :: Integer) /= Just 16);
+    t "l" (Just (18 :: Integer) /= Nothing);
+    t "m" ((30 :: Integer) == (case ((1+3) :: Integer) of {
                             2 -> 10;
                             3 -> 20;
                             4 -> 30;
                             5 -> 40;
                             _ -> 50; }));
     t "n" (30 == (multiclause 4));
-    t "o" (30 == (snd (tupleswap (integer 30, integer 40))));
-    t "p" (integer 20 == (listdifftop (listswaptop [10, 30, 50, 0])));
+    t "o" (30 == (snd (tupleswap (30 :: Integer, 40 :: Integer))));
+    t "p" ((20 :: Integer) == (listdifftop (listswaptop [10, 30, 50, 0])));
     t "q" (12 == (sum2 5 7));
     t "r" (20 == (sum3 5 7 8));
     t "s" (3 == (unary2int [(), (), ()]));
     t "t" (1 == (foo True));
-    t "u" (2 == (foo (integer 42)));
+    t "u" (2 == (foo (42 :: Integer)));
     t "v" (5 == (foofun False));
-    t "w" (11 == (foofun (integer 5)));
+    t "w" (11 == (foofun (5 :: Integer)));
     t "x" (11 == (numseeds (Apple True 11)));
     t "y" (11 == (numseeds (Apple { numseeds = 11 })));
     t "z" (8 == (numseeds ((Apple True 11) { numseeds = 8 })));
-    t "A" (integer 11 == (thething (Wonderful 11 32)));
+    t "A" ((11 :: Integer) == (thething (Wonderful 11 32)));
     t "B" (42 == (unused True));
-    t "C" (19 == (multifoofun True (integer 12)));
+    t "C" (19 == (multifoofun True (12 :: Integer)));
     t "D" (8 == (shadow 3));
     t "E" (6 == (caseshadow 3));
     t "F" (12 == testlet);
     t "G" (3 == shadowmeth);
-    t "H" (3 == (length [integer 1, 5, 2]));
+    t "H" (3 == (length [1 :: Integer, 5, 2]));
     t "I" (and [True, True, True]);
     t "J" ('A' == 'A');
     t "K" ('A' /= 'B');
     t "L" (6 == patternlet);
-    t "M" (DEq2 (integer 5) 9 == DEq2 5 9);
-    t "N" (DEq1 (integer 5) /= DEq2 5 9);
+    t "M" (DEq2 (5 :: Integer) 9 == DEq2 5 9);
+    t "N" (DEq1 (5 :: Integer) /= DEq2 5 9);
     --t "O" (Just 1 == patterndo);
     t "P" (length "foo\n" == 4); 
 };
 
 testprelude :: Test ();
 testprelude = do {
-   t "p.take" ([integer 8, 3] == take 2 [8, 3, 5, 1]); 
-   t "p.drop" ([integer 5, 1] == drop 2 [8, 3, 5, 1]); 
-   t "p.splitAt" (([integer 8, 3], [5, 1]) == splitAt 2 [8, 3, 5, 1]); 
-   t "p.concat" ([integer 8, 3, 5, 1, 2, 5] == concat [[8, 3], [5], [1, 2, 5]]);
+   t "p.take" ([8 :: Integer, 3] == take 2 [8, 3, 5, 1]); 
+   t "p.drop" ([5 :: Integer, 1] == drop 2 [8, 3, 5, 1]); 
+   t "p.splitAt" (([8 :: Integer, 3], [5, 1]) == splitAt 2 [8, 3, 5, 1]); 
+   t "p.concat" ([8 :: Integer, 3, 5, 1, 2, 5] == concat [[8, 3], [5], [1, 2, 5]]);
 };
 
 tests :: Test ();

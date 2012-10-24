@@ -40,6 +40,7 @@
 module Seri.Lambda.Sugar (
     caseE, deCaseE, trueP, falseP, ifE, deIfE,
     lamE, deLamE, letE, deLet1E, deLetE,
+    typeE,
     Stmt(..), doE, clauseE,
     ConRec(..), recordD, recordC, recordU,
     ) where
@@ -331,4 +332,14 @@ derive :: String -> Name -> [TyVar] -> [Con] -> Dec
 derive "Eq" = deriveEq
 derive "Free" = deriveFree
 derive x = error $ "deriving " ++ show x ++ " not supported in seri"
+
+-- | Type signature expression, of form: (e :: t)
+-- Assigns the given type to the given expression.
+--
+-- For constructors and variables, we update the signatures directly.
+-- For other expressions, we desugar to: ((id :: (t -> t)) e)
+typeE :: Exp -> Type -> Exp
+typeE (ConE (Sig n _)) t = ConE (Sig n t)
+typeE (VarE (Sig n _)) t = VarE (Sig n t)
+typeE e t = AppE (VarE (Sig (name "id") (arrowsT [t, t]))) [e]
 

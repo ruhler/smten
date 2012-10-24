@@ -200,7 +200,8 @@ lexer output = do
       (c:cs) | isSymbol c ->
           let (ns, rest) = span isSymbol cs
           in case (c:ns) of
-              "--" -> setText (dropWhile (/= '\n') rest) >> lexer output
+              s@(_:_:_) | all (== '-') s ->
+                  setText (dropWhile (/= '\n') rest) >> lexer output
               rop | rop `elem` (map fst reservedops) ->
                   many rop >> setText rest >> output (fromJust (lookup rop reservedops))
               op | head op == ':' -> many op >> setText rest >> output (TokenConSym op)
