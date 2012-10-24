@@ -24,3 +24,79 @@ It appears to be working well enough. Cool.
 
 Let me also check out the comments issue while I'm at it.
 
+Wed Oct 24 16:14:14 EDT 2012
+
+I'm tempted to take a stab at layout. I think the Haskell 2010 spec gives a
+fairly detailed description (aka, implementation) of it that I could use.
+
+The idea is this. You have a stream of tokens, you inject a few meta tokens
+into the stream:
+  {n} - when you don't see an expected '{', insert this token where n is the
+      indentation of the next lexeme
+  <n> - the indentation for a first lexeme of a line
+
+Then we have a stack based algorithm algorithm which takes as input this
+augmented stream and injects appropriate new tokens and gets rid of the meta
+tokens.
+  
+This can't be so hard to implement. It really can't.
+
+The annoying issue is, I don't generate the tokens as a list, I pull them one
+at a time, in a continuation format. In particular, we associate the source
+position with where we currently are, not with any specific token.
+
+So, either I convert to a stream and use the Haskell spec, or I convert the
+haskell spec to work with this.
+
+Let me investigate the haskell spec a little.
+
+Assume we maintain a stack of integers as required.
+
+The processing is as follows:
+
+Get a token.
+* if the token is <n>, and the top of the stack is m = n, insert a ';'
+* if the token is <n>, and the top of the stack is m > n, insert a '}', and
+  pop the stack, and do not consume the input token.
+* otherwise if the token is <n>, ignore it
+* if the token is {n}, and the top of the stack is m > n, insert '{' and push
+  {n} on the stack
+* if the token is {n} and the stack is empty, insert '{' and push {n} on the
+  stack
+* otherwise if the token is {n}, insert '{}' and continue with <n> as the next
+  token
+* if the token is } and the stack is 0, pass through
+* otherwise if the token is } it's a parse error
+* if the token is '{', insert it, and push 0 on the stack
+* otherwise, ... uh oh, here's a hard part, push } if t introduces a parse
+  error. Maybe don't include this one to start. Maybe I can use an error monad
+  to catch this case
+
+In other words, this seems doable to me. I'll want to split into a couple
+phases: get next input, and process next input. That will let me insert single
+inputs.
+
+Of course, really things are twisted slightly, which is I give a function
+which consumes the next output. So, how will that work? Well, we have the
+processing function as I want: (Token -> ParserMonad a)... um, not really. I
+don't think it is that big a deal. I'll figure out how to make it work.
+
+Layout should be done in the lexer. I'll have a couple streams: prelayout and
+postlayout. For now, they are the identity I suppose?
+
+I see the following steps:
+
+* Declare LayoutBrace and LayoutLine tokens
+* Generate LayoutBrace and LayoutLine tokens in the prelayout lexer
+* Implement the layout processor
+
+This can be done in a few steps. Get the structure right, then implement the
+layout processor, just to verify I can implement it, then implement the layout
+generation.
+
+Or implement layout token generation first and don't do anything with it (just
+consume it)
+
+Or I can do everything all at once. How about this. I'll try to do everything
+all at once (on a separate branch), and see how it goes. Wish me luck.
+
