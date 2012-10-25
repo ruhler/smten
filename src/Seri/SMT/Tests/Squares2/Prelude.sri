@@ -17,7 +17,7 @@ execAction a s = do {
 instance Monad (Action s) where {
     (>>=) (Action x) f = Action $ \s -> do {
         sv <- x s;
-        let (s', v) = sv;
+        let { (s', v) = sv };
         runAction (f v) s';
     };
 
@@ -47,9 +47,9 @@ modify f = do {
 
 liftA :: (s -> t) -> (t -> s -> s) -> Action t a -> Action s a;
 liftA get upd x = Action $ \s -> do {
-    let t = get s;
+    let { t = get s };
     tv <- runAction x t;
-    let (t', v) = tv;
+    let { (t', v) = tv };
     return (upd t' s, v);
 };
 
@@ -72,7 +72,7 @@ class State s where {
 -- Parallel rule composition.
 (<|>) :: (State s) => Action s () -> Action s () -> Action s ();
 (<|>) a b = Action $ \s -> do {
-  let ns = newState s;
+  let { ns = newState s };
   s1 <- execAction a ns;
   s2 <- execAction b ns;
   s3 <- parMerge s1 s2;

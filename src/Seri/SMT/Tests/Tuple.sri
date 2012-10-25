@@ -17,7 +17,7 @@ main = do {
     assert (fst (tupfun t1));
 
     p <- free;
-    let x = choose p;
+    let { x = choose p; };
     assert (fst x == 1);
     query (t1, snd x);
 }

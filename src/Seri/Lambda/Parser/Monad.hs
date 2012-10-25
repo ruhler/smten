@@ -37,7 +37,8 @@
 module Seri.Lambda.Parser.Monad (
     Location(..), Token(..), ParserMonad, runParser,
     failE, lfailE, 
-    single, many, newline, getText, setText, getLoc,
+    single, many, newline, getText, setText, getLoc, getTLoc, saveLoc,
+    expectBrace, setExpectBrace,
     lpush, ltop, lpop, tpush, tnext,
     ) where
 
@@ -90,19 +91,21 @@ data Token =
      | TokenEOF
      | TokenLayoutBrace Integer
      | TokenLayoutLine Integer
-    deriving (Show)
+    deriving (Eq, Show)
 
 data Location = Location {
     line :: Integer,
     column :: Integer
-}
+} deriving (Eq, Show)
 
 data PS = PS {
     ps_text :: String,          -- ^ remaining text to be parsed
     ps_loc :: Location,         -- ^ current location
+    ps_tloc :: Location,        -- ^ location of the start of the previous token
     ps_filename :: FilePath,    -- ^ name of file being parsed
     ps_lstack :: [Integer],     -- ^ The layout stack
-    ps_tbuffer :: [Token]       -- ^ The token buffer
+    ps_tbuffer :: [Token],      -- ^ The token buffer
+    ps_ebrace :: Bool           -- ^ True if we expect a brace next
 }
 
 type ParserMonad = StateT PS Failable
@@ -110,7 +113,7 @@ type ParserMonad = StateT PS Failable
 -- | Run a parser given the name and text of the file to parse.
 runParser :: ParserMonad a -> FilePath -> String -> Failable a
 runParser p fp text = do
-    (m, _) <- runStateT p (PS text (Location 1 0) fp [] [])
+    (m, _) <- runStateT p (PS text (Location 1 0) (Location 0 0) fp [] [] True)
     return m
 
 -- | Fail with a message.
@@ -160,6 +163,14 @@ setText txt = modify $ \ps -> ps { ps_text = txt }
 getLoc :: ParserMonad Location
 getLoc = gets ps_loc
 
+-- | Get the start of the previous token location
+getTLoc :: ParserMonad Location
+getTLoc = gets ps_tloc
+
+-- | Save the current location as the state of the previous token location.
+saveLoc :: ParserMonad ()
+saveLoc = modify $ \ps -> ps { ps_tloc = ps_loc ps }
+
 -- | Return the top of the layout stack
 ltop :: ParserMonad (Maybe Integer)
 ltop = do
@@ -196,4 +207,12 @@ tnext = do
         x:xs -> do
             modify $ \ps -> ps { ps_tbuffer = xs }
             return $ Just x
+
+-- | Return True if an open brace is expected as the next token.
+expectBrace :: ParserMonad Bool
+expectBrace = gets ps_ebrace
+
+-- | Indicate whether we expect an open brace as the next token.
+setExpectBrace :: Bool -> ParserMonad ()
+setExpectBrace b = modify $ \ps -> ps { ps_ebrace = b }
 

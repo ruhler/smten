@@ -39,6 +39,8 @@ module Seri.Lambda.Parser.Lexer (
     lexer,
     ) where
 
+import Debug.Trace
+
 import Prelude hiding (lex)
 import Data.Char hiding (isSymbol)
 import Data.Functor
@@ -135,74 +137,94 @@ lexstr ostr ('\\':cs) = error $ "todo: lex string escape: " ++ cs
 lexstr ostr (c:cs) = single >> lexstr (ostr ++ [c]) cs
 
 -- Read the next token from the input stream.
--- Returns also the location of the start of the token.
-lex :: ParserMonad (Token, Location)
+-- Updates the tloc with the location of the start of the token.
+lex :: ParserMonad Token
 lex = do
-  let osingle t l r = single >> setText r >> return (t, l)
+  let osingle t r = single >> setText r >> return t
   text <- getText
-  loc <- getLoc
+  saveLoc
   case text of
-      [] -> return (TokenEOF, loc)
-      (c:cs) | Just tok <- (lookup c singles) -> osingle tok loc cs
+      [] -> return TokenEOF
+      (c:cs) | Just tok <- (lookup c singles) -> osingle tok cs
       ('\n':cs) -> newline >> setText cs >> lex
       (c:cs) | isSpace c -> single >> setText cs >> lex
       (c:cs) | isLarge c ->
           let (ns, rest) = span isIdChar cs
-          in many (c:ns) >> setText rest >> return (TokenConId (c:ns), loc)
+          in many (c:ns) >> setText rest >> return (TokenConId (c:ns))
       (c:cs) | isSmall c ->
           let (ns, rest) = span isIdChar cs
           in case (c:ns) of
               kw | Just tok <- lookup kw keywords ->
-                  many kw >> setText rest >> return (tok, loc)
-              id -> many id >> setText rest >> return (TokenVarId id, loc)
+                  many kw >> setText rest >> return tok
+              id -> many id >> setText rest >> return (TokenVarId id)
       (c:cs) | isDigit c ->
           let (ns, rest) = span isDigit cs
-          in many (c:ns) >> setText rest >> return (TokenInteger (read (c:ns)), loc)
+          in many (c:ns) >> setText rest >> return (TokenInteger (read (c:ns)))
       (c:cs) | isSymbol c ->
           let (ns, rest) = span isSymbol cs
           in case (c:ns) of
               s@(_:_:_) | all (== '-') s ->
                   setText (dropWhile (/= '\n') rest) >> lex
               rop | Just tok <- lookup rop reservedops ->
-                  many rop >> setText rest >> return (tok, loc)
-              op | head op == ':' -> many op >> setText rest >> return (TokenConSym op, loc)
-              op -> many op >> setText rest >> return (TokenVarSym op, loc)
+                  many rop >> setText rest >> return tok
+              op | head op == ':' -> many op >> setText rest >> return (TokenConSym op)
+              op -> many op >> setText rest >> return (TokenVarSym op)
       ('"':cs) -> do
          single 
          tok <- lexstr "" cs
-         return (tok, loc)
+         return tok
       ('\'':'\\':c:'\'':cs) | ischaresc c -> do
          many "'\\?'"
          setText cs
-         return (TokenChar (charesc c), loc)
+         return (TokenChar (charesc c))
       ('\'':c:'\'':cs) -> do
          many "'?'"
          setText cs
-         return (TokenChar c, loc)
+         return (TokenChar c)
           
       cs -> failE $ "fail to lex: " ++ cs
 
+debug :: (Monad m) => String -> m ()
+debug msg = --trace msg
+            (return ())
+
+-- Augment the token stream from the lexer with {n} and <n> tokens for layout
+-- processing as described in the Haskell 2010 report, section 10.3
+prelayout :: ParserMonad Token
+prelayout = do
+    ploc <- getTLoc
+    ebrace <- expectBrace
+    tok <- lex
+    cloc <- getTLoc
+    debug $ "LEX: " ++ show (tok, ploc, cloc)
+    setExpectBrace (tok `elem` [TokenLet, TokenWhere, TokenDo, TokenOf])
+    case (ebrace, tok) of
+        (True, TokenEOF) -> return (TokenLayoutBrace 0)
+        (True, t) | not (t == TokenOpenBrace
+                         || (t == TokenModule && line ploc == 0)) -> do
+            tpush t
+            return (TokenLayoutBrace (column cloc))
+        (_, t) | line cloc > line ploc && column cloc /= 0 -> do
+            tpush t
+            return (TokenLayoutLine (column cloc))
+        (_, t) -> return t
+    
+
 -- Get the next token to read.
--- Takes from the token buffer first, then from lexing the input.
+-- Takes from the token buffer first, then from the prelayout token stream.
 token :: ParserMonad Token
 token = do
     tbufnext <- tnext    
     case tbufnext of
         Just t -> return t
-        Nothing -> fst <$> lex
-
--- Augment the token stream from the lexer with {n} and <n> tokens for layout
--- processing as described in the Haskell 2010 report, section 10.3
---
--- TODO: actually do prelayout processing
-prelayout :: ParserMonad Token
-prelayout = token
+        Nothing -> prelayout
 
 -- Perform layout processing as described in the Haskell 2010 report,
 -- section 10.3
 layout :: ParserMonad Token
 layout = do
-  tok <- prelayout
+  tok <- token
+  debug $ "PRELAYOUT: " ++ show tok
   top <- ltop
   case (tok, top) of
     (TokenLayoutLine n, Just m) | m == n -> do
@@ -242,6 +264,8 @@ layout = do
         
 
 lexer :: (Token -> ParserMonad a) -> ParserMonad a
-lexer = (>>=) layout
-
+lexer output = do
+    t <- layout
+    debug $ "POSTLAYOUT: " ++ show t
+    output t
 
