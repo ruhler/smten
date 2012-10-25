@@ -35,7 +35,7 @@
 
 -- | Parser monad used in seri parsing.
 module Seri.Lambda.Parser.Monad (
-    Token(..), ParserMonad, runParser,
+    Location(..), Token(..), ParserMonad, runParser,
     failE, lfailE, 
     single, many, newline, getText, setText,
     lpush, ltop, lpop, tpush, tnext,
@@ -92,10 +92,14 @@ data Token =
      | TokenLayoutLine Integer
     deriving (Show)
 
+data Location = Location {
+    line :: Integer,
+    column :: Integer
+}
+
 data PS = PS {
     ps_text :: String,          -- ^ remaining text to be parsed
-    ps_line :: Integer,         -- ^ current line number
-    ps_column :: Integer,       -- ^ current column number
+    ps_loc :: Location,         -- ^ current location
     ps_filename :: FilePath,    -- ^ name of file being parsed
     ps_lstack :: [Integer],     -- ^ The layout stack
     ps_tbuffer :: [Token]       -- ^ The token buffer
@@ -106,7 +110,7 @@ type ParserMonad = StateT PS Failable
 -- | Run a parser given the name and text of the file to parse.
 runParser :: ParserMonad a -> FilePath -> String -> Failable a
 runParser p fp text = do
-    (m, _) <- runStateT p (PS text 1 0 fp [] [])
+    (m, _) <- runStateT p (PS text (Location 1 0) fp [] [])
     return m
 
 -- | Fail with a message.
@@ -116,14 +120,18 @@ failE = lift . throw
 -- | Fail with a message augmented with location information.
 lfailE :: String -> ParserMonad a
 lfailE msg = do
-    ln <- gets ps_line
-    cl <- gets ps_column
+    ln <- gets (line . ps_loc)
+    cl <- gets (column . ps_loc)
     fp <- gets ps_filename
     failE $ fp ++ ":" ++ show ln ++ ":" ++ show cl ++ ": " ++ msg
 
 -- | advance a single column
 single :: ParserMonad ()
-single = modify $ \ps -> ps {ps_column = 1 + ps_column ps }
+single = do
+    col <- gets (column . ps_loc)
+    modify $ \ps -> ps {
+        ps_loc = (ps_loc ps) { column = 1 + col }
+    }
 
 -- | Advance a single column for each character in the given string.
 many :: String -> ParserMonad ()
@@ -131,7 +139,14 @@ many = mapM_ (const single)
 
 -- | Advance to the next line
 newline :: ParserMonad ()
-newline = modify $ \ps -> ps {ps_line = 1 + ps_line ps, ps_column = 0 }
+newline = do
+    ln <- gets (line . ps_loc)
+    modify $ \ps -> ps {
+        ps_loc = Location {
+            line = 1 + ln,
+            column = 0
+        }
+    }
 
 -- | get the remaining text to parse.
 getText :: ParserMonad String
