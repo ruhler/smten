@@ -113,7 +113,7 @@ type ParserMonad = StateT PS Failable
 -- | Run a parser given the name and text of the file to parse.
 runParser :: ParserMonad a -> FilePath -> String -> Failable a
 runParser p fp text = do
-    (m, _) <- runStateT p (PS text (Location 1 0) (Location 0 0) fp [] [] True)
+    (m, _) <- runStateT p (PS text (Location 1 1) (Location 0 1) fp [] [] True)
     return m
 
 -- | Fail with a message.
@@ -147,7 +147,7 @@ newline = do
     modify $ \ps -> ps {
         ps_loc = Location {
             line = 1 + ln,
-            column = 0
+            column = 1
         }
     }
 

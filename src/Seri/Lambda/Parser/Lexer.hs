@@ -204,7 +204,7 @@ prelayout = do
                          || (t == TokenModule && line ploc == 0)) -> do
             tpush t
             return (TokenLayoutBrace (column cloc))
-        (_, t) | line cloc > line ploc && column cloc /= 0 -> do
+        (_, t) | line cloc > line ploc -> do
             tpush t
             return (TokenLayoutLine (column cloc))
         (_, t) -> return t

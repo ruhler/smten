@@ -1,11 +1,9 @@
 
-module Seri.Lib.Maybe where {
+module Seri.Lib.Maybe where
 
-import Seri.Lib.Prelude;
+import Seri.Lib.Prelude
 
-fromMaybe :: a -> Maybe a -> a;
-fromMaybe _ (Just x) = x;
-fromMaybe x Nothing = x;
-
-}
+fromMaybe :: a -> Maybe a -> a
+fromMaybe _ (Just x) = x
+fromMaybe x Nothing = x
 

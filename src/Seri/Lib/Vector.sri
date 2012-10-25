@@ -1,52 +1,50 @@
 
-module Seri.Lib.Vector where {
+module Seri.Lib.Vector where
 
-import Seri.Lib.Prelude;
+import Seri.Lib.Prelude
 
-data Vector #n a = Vector #n [a];
+data Vector #n a = Vector #n [a]
 
-vnil :: Vector #0 a;
-vnil = Vector numeric [];
+vnil :: Vector #0 a
+vnil = Vector numeric []
 
-vcons :: a -> Vector #n a -> Vector #(n+1) a;
-vcons x (Vector _ l) = Vector numeric (x:l);
+vcons :: a -> Vector #n a -> Vector #(n+1) a
+vcons x (Vector _ l) = Vector numeric (x:l)
 
-vselect :: Vector #n a -> Integer -> a;
-vselect (Vector _ l) i = l !! i;
+vselect :: Vector #n a -> Integer -> a
+vselect (Vector _ l) i = l !! i
 
-update :: [a] -> Integer -> a -> [a];
-update (_:ls) 0 x = (x:ls);
-update (l:ls) i x = (l:(update ls (i-1) x));
+update :: [a] -> Integer -> a -> [a]
+update (_:ls) 0 x = (x:ls)
+update (l:ls) i x = (l:(update ls (i-1) x))
 
-vupdate :: Vector #n a -> Integer -> a -> Vector #n a;
-vupdate (Vector n l) i x = Vector n (update l i x);
+vupdate :: Vector #n a -> Integer -> a -> Vector #n a
+vupdate (Vector n l) i x = Vector n (update l i x)
 
-vhead :: Vector #n a -> a;
-vhead (Vector _ l) = head l;
+vhead :: Vector #n a -> a
+vhead (Vector _ l) = head l
 
-vtail :: Vector #(n+1) a -> Vector #n a;
-vtail (Vector _ l) = Vector numeric (tail l);
+vtail :: Vector #(n+1) a -> Vector #n a
+vtail (Vector _ l) = Vector numeric (tail l)
 
-vappend :: Vector #n a -> Vector #m a -> Vector #(n+m) a;
-vappend (Vector _ a) (Vector _ b) = Vector numeric (a ++ b);
+vappend :: Vector #n a -> Vector #m a -> Vector #(n+m) a
+vappend (Vector _ a) (Vector _ b) = Vector numeric (a ++ b)
 
-ntvid :: Vector #n a -> Vector #m a;
-ntvid (Vector n xs) = Vector (ntid n) xs;
+ntvid :: Vector #n a -> Vector #m a
+ntvid (Vector n xs) = Vector (ntid n) xs
 
-tdec :: #n -> #(n-1);
-tdec _ = numeric;
+tdec :: #n -> #(n-1)
+tdec _ = numeric
 
-vconcat :: Vector #n (Vector #m a) -> Vector #(n*m) a;
-vconcat (Vector n []) = Vector numeric [];
-vconcat (Vector n (v:vs)) = ntvid $ vappend v (vconcat (Vector (tdec n) vs));
+vconcat :: Vector #n (Vector #m a) -> Vector #(n*m) a
+vconcat (Vector n []) = Vector numeric []
+vconcat (Vector n (v:vs)) = ntvid $ vappend v (vconcat (Vector (tdec n) vs))
 
-vlength :: Vector #n a -> Integer;
-vlength (Vector n _) = valueof n;
+vlength :: Vector #n a -> Integer
+vlength (Vector n _) = valueof n
 
-vreplicate :: a -> Vector #n a;
+vreplicate :: a -> Vector #n a
 vreplicate x =
- let { n = numeric }
- in Vector n (replicate (valueof n) x);
-
-}
+ let n = numeric
+ in Vector n (replicate (valueof n) x)
 
