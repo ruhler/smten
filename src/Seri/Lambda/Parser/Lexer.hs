@@ -34,7 +34,7 @@
 -------------------------------------------------------------------------------
 
 module Seri.Lambda.Parser.Lexer (
-    Token(..), lexer,
+    lexer,
     ) where
 
 import Prelude hiding (lex)
@@ -42,51 +42,6 @@ import Data.Char hiding (isSymbol)
 import Data.Maybe (fromMaybe, fromJust)
 
 import Seri.Lambda.Parser.Monad
-
-data Token = 
-       TokenOpenBracket
-     | TokenCloseBracket
-     | TokenOpenParen
-     | TokenCloseParen
-     | TokenOpenBrace
-     | TokenCloseBrace
-     | TokenDashArrow
-     | TokenBindArrow
-     | TokenEqualsArrow
-     | TokenComma
-     | TokenSemicolon
-     | TokenPeriod
-     | TokenBar
-     | TokenEquals
-     | TokenColon
-     | TokenHash
-     | TokenBackSlash
-     | TokenDoubleColon
-     | TokenConId String
-     | TokenVarId String
-     | TokenVarSym String
-     | TokenConSym String
-     | TokenInteger Integer
-     | TokenString String
-     | TokenChar Char
-     | TokenData
-     | TokenForall
-     | TokenClass
-     | TokenInstance
-     | TokenWhere
-     | TokenLet
-     | TokenIn
-     | TokenCase
-     | TokenOf
-     | TokenIf
-     | TokenThen
-     | TokenElse
-     | TokenDo
-     | TokenModule
-     | TokenImport
-     | TokenDeriving
-     | TokenEOF
-    deriving (Show)
 
 isSmall :: Char -> Bool
 isSmall '_' = True
@@ -176,7 +131,7 @@ lexstr ostr ('\\':e:cs) | ischaresc e
 lexstr ostr ('\\':cs) = error $ "todo: lex string escape: " ++ cs
 lexstr ostr (c:cs) = single >> lexstr (ostr ++ [c]) cs
 
--- Get the next token
+-- Read the next token from the input stream.
 lex :: ParserMonad Token
 lex = do
   let osingle t r = single >> setText r >> return t
@@ -220,7 +175,66 @@ lex = do
           
       cs -> failE $ "fail to lex: " ++ cs
 
+-- Get the next token to read.
+-- Takes from the token buffer first, then from lexing the input.
+token :: ParserMonad Token
+token = do
+    tbufnext <- tnext    
+    case tbufnext of
+        Just t -> return t
+        Nothing -> lex
+
+-- Augment the token stream from the lexer with {n} and <n> tokens for layout
+-- processing as described in the Haskell 2010 report, section 10.3
+--
+-- TODO: actually do prelayout processing
+prelayout :: ParserMonad Token
+prelayout = token
+
+-- Perform layout processing as described in the Haskell 2010 report,
+-- section 10.3
+layout :: ParserMonad Token
+layout = do
+  tok <- prelayout
+  top <- ltop
+  case (tok, top) of
+    (TokenLayoutLine n, Just m) | m == n -> do
+        return TokenSemicolon
+    (TokenLayoutLine n, Just m) | n < m -> do
+        tpush tok
+        lpop
+        return TokenCloseBrace
+    (TokenLayoutLine n, _) -> layout
+    (TokenLayoutBrace n, Just m) | n > m -> do
+        lpush n
+        return TokenOpenBrace
+    (TokenLayoutBrace n, Nothing) | n > 0 -> do
+        lpush n
+        return TokenOpenBrace
+    (TokenLayoutBrace n, _) -> do
+        -- Note: we push 0 so that when the close brace is processed by layout
+        -- it goes through directly.
+        lpush 0
+        tpush TokenCloseBrace
+        tpush $ TokenLayoutLine n
+        return TokenOpenBrace
+    (TokenCloseBrace, Just 0) -> do
+        lpop
+        return TokenCloseBrace
+    (TokenCloseBrace, _) -> do
+        lfailE "Parser error at '}' in layout processing"
+    (TokenOpenBrace, _) -> do
+        lpush 0
+        return TokenOpenBrace
+    -- Note: the parser inserts close brace on parser-error when needed.
+    (TokenEOF, Nothing) -> return TokenEOF
+    (TokenEOF, Just m) | m /= 0 -> do
+        lpop
+        return TokenCloseBrace
+    (t, _) -> return t
+        
+
 lexer :: (Token -> ParserMonad a) -> ParserMonad a
-lexer = (>>=) lex
+lexer = (>>=) layout
 
 

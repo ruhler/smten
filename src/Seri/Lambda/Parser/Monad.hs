@@ -35,20 +35,70 @@
 
 -- | Parser monad used in seri parsing.
 module Seri.Lambda.Parser.Monad (
-    ParserMonad, runParser,
+    Token(..), ParserMonad, runParser,
     failE, lfailE, 
     single, many, newline, getText, setText,
+    lpush, ltop, lpop, tpush, tnext,
     ) where
 
 import Control.Monad.State
 
 import Seri.Failable
 
+data Token = 
+       TokenOpenBracket
+     | TokenCloseBracket
+     | TokenOpenParen
+     | TokenCloseParen
+     | TokenOpenBrace
+     | TokenCloseBrace
+     | TokenDashArrow
+     | TokenBindArrow
+     | TokenEqualsArrow
+     | TokenComma
+     | TokenSemicolon
+     | TokenPeriod
+     | TokenBar
+     | TokenEquals
+     | TokenColon
+     | TokenHash
+     | TokenBackSlash
+     | TokenDoubleColon
+     | TokenConId String
+     | TokenVarId String
+     | TokenVarSym String
+     | TokenConSym String
+     | TokenInteger Integer
+     | TokenString String
+     | TokenChar Char
+     | TokenData
+     | TokenForall
+     | TokenClass
+     | TokenInstance
+     | TokenWhere
+     | TokenLet
+     | TokenIn
+     | TokenCase
+     | TokenOf
+     | TokenIf
+     | TokenThen
+     | TokenElse
+     | TokenDo
+     | TokenModule
+     | TokenImport
+     | TokenDeriving
+     | TokenEOF
+     | TokenLayoutBrace Integer
+     | TokenLayoutLine Integer
+    deriving (Show)
+
 data PS = PS {
     ps_text :: String,          -- ^ remaining text to be parsed
     ps_line :: Integer,         -- ^ current line number
     ps_column :: Integer,       -- ^ current column number
-    ps_filename :: FilePath     -- ^ name of file being parsed
+    ps_filename :: FilePath,    -- ^ name of file being parsed
+    ps_lstack :: [Integer],     -- ^ The layout stack
+    ps_tbuffer :: [Token]       -- ^ The token buffer
 }
 
 type ParserMonad = StateT PS Failable
@@ -56,7 +106,7 @@ type ParserMonad = StateT PS Failable
 -- | Run a parser given the name and text of the file to parse.
 runParser :: ParserMonad a -> FilePath -> String -> Failable a
 runParser p fp text = do
-    (m, _) <- runStateT p (PS text 1 0 fp)
+    (m, _) <- runStateT p (PS text 1 0 fp [] [])
     return m
 
 -- | Fail with a message.
@@ -91,4 +141,42 @@ getText = gets ps_text
 setText :: String -> ParserMonad ()
 setText txt = modify $ \ps -> ps { ps_text = txt }
 
+
+
+-- | Return the top of the layout stack
+ltop :: ParserMonad (Maybe Integer)
+ltop = do
+    stack <- gets ps_lstack
+    case stack of
+        [] -> return Nothing
+        (x:_) -> return (Just x)
+
+-- | Push an element onto the top of the layout stack
+lpush :: Integer -> ParserMonad ()
+lpush n = modify $ \ps -> ps { ps_lstack = n : (ps_lstack ps) }
+
+-- | Pop an element off the top of the layout stack.
+lpop :: ParserMonad ()
+lpop = modify $ \ps -> ps {
+    ps_lstack = case ps_lstack ps of
+                   [] -> error "lpop on empty layout stack in ParserMonad"
+                   _:xs -> xs
+    }
+
+-- | Push a token onto the back of the token buffer, to be returned before
+-- any further lexical analysis of the input text.
+--
+-- Tokens come out in the order they are tpushed (FIFO, not LIFO).
+tpush :: Token -> ParserMonad ()
+tpush t = modify $ \ps -> ps { ps_tbuffer = ps_tbuffer ps ++ [t] }
+
+-- Take the next token, if any, from the token buffer.
+tnext :: ParserMonad (Maybe Token)
+tnext = do
+    buf <- gets ps_tbuffer
+    case buf of
+        [] -> return Nothing
+        x:xs -> do
+            modify $ \ps -> ps { ps_tbuffer = xs }
+            return $ Just x
 
