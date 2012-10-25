@@ -37,7 +37,7 @@
 module Seri.Lambda.Parser.Monad (
     Location(..), Token(..), ParserMonad, runParser,
     failE, lfailE, 
-    single, many, newline, getText, setText,
+    single, many, newline, getText, setText, getLoc,
     lpush, ltop, lpop, tpush, tnext,
     ) where
 
@@ -156,7 +156,9 @@ getText = gets ps_text
 setText :: String -> ParserMonad ()
 setText txt = modify $ \ps -> ps { ps_text = txt }
 
-
+-- | Get the current location
+getLoc :: ParserMonad Location
+getLoc = gets ps_loc
 
 -- | Return the top of the layout stack
 ltop :: ParserMonad (Maybe Integer)

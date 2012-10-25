@@ -33,13 +33,16 @@
 -- 
 -------------------------------------------------------------------------------
 
+{-# LANGUAGE PatternGuards #-}
+
 module Seri.Lambda.Parser.Lexer (
     lexer,
     ) where
 
 import Prelude hiding (lex)
 import Data.Char hiding (isSymbol)
-import Data.Maybe (fromMaybe, fromJust)
+import Data.Functor
+import Data.Maybe (fromMaybe)
 
 import Seri.Lambda.Parser.Monad
 
@@ -132,46 +135,50 @@ lexstr ostr ('\\':cs) = error $ "todo: lex string escape: " ++ cs
 lexstr ostr (c:cs) = single >> lexstr (ostr ++ [c]) cs
 
 -- Read the next token from the input stream.
-lex :: ParserMonad Token
+-- Returns also the location of the start of the token.
+lex :: ParserMonad (Token, Location)
 lex = do
-  let osingle t r = single >> setText r >> return t
+  let osingle t l r = single >> setText r >> return (t, l)
   text <- getText
+  loc <- getLoc
   case text of
-      [] -> return TokenEOF
-      (c:cs) | (c `elem` (map fst singles)) ->
-          osingle (fromJust (lookup c singles)) cs
+      [] -> return (TokenEOF, loc)
+      (c:cs) | Just tok <- (lookup c singles) -> osingle tok loc cs
       ('\n':cs) -> newline >> setText cs >> lex
       (c:cs) | isSpace c -> single >> setText cs >> lex
       (c:cs) | isLarge c ->
           let (ns, rest) = span isIdChar cs
-          in many (c:ns) >> setText rest >> (return $ TokenConId (c:ns))
+          in many (c:ns) >> setText rest >> return (TokenConId (c:ns), loc)
       (c:cs) | isSmall c ->
           let (ns, rest) = span isIdChar cs
           in case (c:ns) of
-              kw | kw `elem` (map fst keywords) ->
-                  many kw >> setText rest >> return (fromJust (lookup kw keywords))
-              id -> many id >> setText rest >> return (TokenVarId id)
+              kw | Just tok <- lookup kw keywords ->
+                  many kw >> setText rest >> return (tok, loc)
+              id -> many id >> setText rest >> return (TokenVarId id, loc)
       (c:cs) | isDigit c ->
           let (ns, rest) = span isDigit cs
-          in many (c:ns) >> setText rest >> return (TokenInteger (read (c:ns)))
+          in many (c:ns) >> setText rest >> return (TokenInteger (read (c:ns)), loc)
       (c:cs) | isSymbol c ->
           let (ns, rest) = span isSymbol cs
           in case (c:ns) of
               s@(_:_:_) | all (== '-') s ->
                   setText (dropWhile (/= '\n') rest) >> lex
-              rop | rop `elem` (map fst reservedops) ->
-                  many rop >> setText rest >> return (fromJust (lookup rop reservedops))
-              op | head op == ':' -> many op >> setText rest >> return (TokenConSym op)
-              op -> many op >> setText rest >> return (TokenVarSym op)
-      ('"':cs) -> single >> lexstr "" cs
+              rop | Just tok <- lookup rop reservedops ->
+                  many rop >> setText rest >> return (tok, loc)
+              op | head op == ':' -> many op >> setText rest >> return (TokenConSym op, loc)
+              op -> many op >> setText rest >> return (TokenVarSym op, loc)
+      ('"':cs) -> do
+         single 
+         tok <- lexstr "" cs
+         return (tok, loc)
       ('\'':'\\':c:'\'':cs) | ischaresc c -> do
          many "'\\?'"
          setText cs
-         return (TokenChar (charesc c))
+         return (TokenChar (charesc c), loc)
       ('\'':c:'\'':cs) -> do
          many "'?'"
          setText cs
-         return (TokenChar c)
+         return (TokenChar c, loc)
           
       cs -> failE $ "fail to lex: " ++ cs
 
@@ -182,7 +189,7 @@ token = do
     tbufnext <- tnext    
     case tbufnext of
         Just t -> return t
-        Nothing -> lex
+        Nothing -> fst <$> lex
 
 -- Augment the token stream from the lexer with {n} and <n> tokens for layout
 -- processing as described in the Haskell 2010 report, section 10.3
