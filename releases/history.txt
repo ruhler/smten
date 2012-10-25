@@ -1,4 +1,10 @@
 
+Oct 25, 2012
+  seri-0.1.1.1
+
+  Changes from seri-0.1.1.0:
+  * Allow empty record constructors such as: data Foo = Foo {}
+
 Oct 24, 2012
   seri-0.1.1.0
 
@@ -10,7 +16,7 @@ Oct 24, 2012
 
 
 Oct 22, 2012
-  seri-0.1.0.0.noyices1.tar.gz
+  seri-0.1.0.0.tar.gz
  
   Initial release of Seri package. Yices1 support is disabled, as it doesn't
   get along well with Enoch yet.

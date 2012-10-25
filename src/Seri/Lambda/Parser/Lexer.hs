@@ -37,6 +37,7 @@ module Seri.Lambda.Parser.Lexer (
     Token(..), lexer,
     ) where
 
+import Prelude hiding (lex)
 import Data.Char hiding (isSymbol)
 import Data.Maybe (fromMaybe, fromJust)
 
@@ -175,48 +176,51 @@ lexstr ostr ('\\':e:cs) | ischaresc e
 lexstr ostr ('\\':cs) = error $ "todo: lex string escape: " ++ cs
 lexstr ostr (c:cs) = single >> lexstr (ostr ++ [c]) cs
 
-lexer :: (Token -> ParserMonad a) -> ParserMonad a
-lexer output = do
-  let osingle t r = single >> setText r >> output t
+-- Get the next token
+lex :: ParserMonad Token
+lex = do
+  let osingle t r = single >> setText r >> return t
   text <- getText
   case text of
-      [] -> output TokenEOF
+      [] -> return TokenEOF
       (c:cs) | (c `elem` (map fst singles)) ->
           osingle (fromJust (lookup c singles)) cs
-      ('\n':cs) -> newline >> setText cs >> lexer output
-      (c:cs) | isSpace c -> single >> setText cs >> lexer output
+      ('\n':cs) -> newline >> setText cs >> lex
+      (c:cs) | isSpace c -> single >> setText cs >> lex
       (c:cs) | isLarge c ->
           let (ns, rest) = span isIdChar cs
-          in many (c:ns) >> setText rest >> (output $ TokenConId (c:ns))
+          in many (c:ns) >> setText rest >> (return $ TokenConId (c:ns))
       (c:cs) | isSmall c ->
           let (ns, rest) = span isIdChar cs
           in case (c:ns) of
               kw | kw `elem` (map fst keywords) ->
-                  many kw >> setText rest >> output (fromJust (lookup kw keywords))
-              id -> many id >> setText rest >> output (TokenVarId id)
+                  many kw >> setText rest >> return (fromJust (lookup kw keywords))
+              id -> many id >> setText rest >> return (TokenVarId id)
       (c:cs) | isDigit c ->
           let (ns, rest) = span isDigit cs
-          in many (c:ns) >> setText rest >> output (TokenInteger (read (c:ns)))
+          in many (c:ns) >> setText rest >> return (TokenInteger (read (c:ns)))
       (c:cs) | isSymbol c ->
           let (ns, rest) = span isSymbol cs
           in case (c:ns) of
               s@(_:_:_) | all (== '-') s ->
-                  setText (dropWhile (/= '\n') rest) >> lexer output
+                  setText (dropWhile (/= '\n') rest) >> lex
               rop | rop `elem` (map fst reservedops) ->
-                  many rop >> setText rest >> output (fromJust (lookup rop reservedops))
-              op | head op == ':' -> many op >> setText rest >> output (TokenConSym op)
-              op -> many op >> setText rest >> output (TokenVarSym op)
-      ('"':cs) -> single >> lexstr "" cs >>= output
+                  many rop >> setText rest >> return (fromJust (lookup rop reservedops))
+              op | head op == ':' -> many op >> setText rest >> return (TokenConSym op)
+              op -> many op >> setText rest >> return (TokenVarSym op)
+      ('"':cs) -> single >> lexstr "" cs
       ('\'':'\\':c:'\'':cs) | ischaresc c -> do
          many "'\\?'"
          setText cs
-         output (TokenChar (charesc c))
+         return (TokenChar (charesc c))
       ('\'':c:'\'':cs) -> do
          many "'?'"
          setText cs
-         output (TokenChar c)
+         return (TokenChar c)
           
       cs -> failE $ "fail to lex: " ++ cs
 
+lexer :: (Token -> ParserMonad a) -> ParserMonad a
+lexer = (>>=) lex
 
 
