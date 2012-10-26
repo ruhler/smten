@@ -1,16 +1,13 @@
 
-module Seri.SMT.Tests.Query1 where {
+module Seri.SMT.Tests.Query1 where
 
-import Seri.Lib.Prelude;
-import Seri.SMT.SMT;
+import Seri.Lib.Prelude
+import Seri.SMT.SMT
 
-main :: Query (Answer Integer);
-main = do {
-    x <- free;
-    assert (x < 6);
-    assert (x > 4);
-    query x;
-}
-
-}
+main :: Query (Answer Integer)
+main = do
+    x <- free
+    assert (x < 6)
+    assert (x > 4)
+    query x
 

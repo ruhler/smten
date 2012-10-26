@@ -191,12 +191,10 @@ lpop = modify $ \ps -> ps {
                    _:xs -> xs
     }
 
--- | Push a token onto the back of the token buffer, to be returned before
+-- | Push a token onto the front of the token buffer, to be returned before
 -- any further lexical analysis of the input text.
---
--- Tokens come out in the order they are tpushed (FIFO, not LIFO).
 tpush :: Token -> ParserMonad ()
-tpush t = modify $ \ps -> ps { ps_tbuffer = ps_tbuffer ps ++ [t] }
+tpush t = modify $ \ps -> ps { ps_tbuffer = t : ps_tbuffer ps }
 
 -- Take the next token, if any, from the token buffer.
 tnext :: ParserMonad (Maybe Token)

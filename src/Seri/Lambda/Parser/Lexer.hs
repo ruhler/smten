@@ -244,8 +244,8 @@ layout = do
         -- Note: we push 0 so that when the close brace is processed by layout
         -- it goes through directly.
         lpush 0
-        tpush TokenCloseBrace
         tpush $ TokenLayoutLine n
+        tpush TokenCloseBrace
         return TokenOpenBrace
     (TokenCloseBrace, Just 0) -> do
         lpop

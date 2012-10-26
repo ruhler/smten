@@ -1,26 +1,23 @@
 
-module Seri.SMT.Tests.Tuple where {
+module Seri.SMT.Tests.Tuple where
 
-import Seri.Lib.Prelude;
-import Seri.SMT.SMT;
+import Seri.Lib.Prelude
+import Seri.SMT.SMT
 
-tupfun :: (Integer, Bool) -> (Bool, Bool);
-tupfun (i, b) = (i < 2, not b);
+tupfun :: (Integer, Bool) -> (Bool, Bool)
+tupfun (i, b) = (i < 2, not b)
 
-choose :: Bool -> (Integer, Integer);
-choose True = (1, 3);
-choose False = (2, 4);
+choose :: Bool -> (Integer, Integer)
+choose True = (1, 3)
+choose False = (2, 4)
 
-main :: Query (Answer ((Integer, Bool), Integer));
-main = do {
-    t1 <- free;
-    assert (fst (tupfun t1));
+main :: Query (Answer ((Integer, Bool), Integer))
+main = do
+    t1 <- free
+    assert (fst (tupfun t1))
 
-    p <- free;
-    let { x = choose p; };
-    assert (fst x == 1);
-    query (t1, snd x);
-}
-
-}
+    p <- free
+    let x = choose p
+    assert (fst x == 1)
+    query (t1, snd x)
 

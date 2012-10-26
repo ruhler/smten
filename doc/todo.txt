@@ -1,5 +1,4 @@
 
-- add layout support
 - support negative literals?
 - default methods in classes?
 
@@ -89,14 +88,18 @@ That is, anything with ~?
 * Implement runYices1, runYices2, etc... seri primitives
 ** then remove --query option from seri executable
 
-* Add support for layout in seri
 * Add static check for exhaustive case statements
 * Add static check for concreteness of queries
 
 * default Main module if no given?
 * support type synonyms? 
 * support polymorphic declarations in let bindings?
-* allow empty record definitions: data Foo = Foo {}
 
 * print out source code locations for type errors
+* support parser-error layout rule.
+    For example: (let foo = bar in foo x)
+
+* Define SMT theory classes and add a solver phantom type to free and Query.
+    This makes more sense when we have solvers supporting different theories,
+    so probably want to hold off until then.
 

@@ -7,8 +7,7 @@ test:
 		-s Yices2 \
 		-d foo.dbg \
 		--include src \
-		-m Seri.Lib.Tests.testallio \
-		-f src/Seri/Lib/LayoutTest.sri
+		-f Foo.sri
 
 clean:
 	rm -rf build

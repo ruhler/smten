@@ -1,10 +1,8 @@
 
-module Seri.Lambda.Tests.BadType1 where {
+module Seri.Lambda.Tests.BadType1 where
 
-import Seri.Lib.Prelude;
+import Seri.Lib.Prelude
 
-foo :: Integer;
+foo :: Integer
 foo = True
-
-}
 

@@ -19,19 +19,17 @@ __prim_or_Bit :: Bit #n -> Bit #n -> Bit #n
 __prim_and_Bit :: Bit #n -> Bit #n -> Bit #n
 
 
-instance Eq (Bit #n) where {
-    (==) = __prim_eq_Bit;
-    (/=) a b = not (a == b);
-}
+instance Eq (Bit #n) where
+    (==) = __prim_eq_Bit
+    (/=) a b = not (a == b)
 
-instance Num (Bit #n) where {
-   (+) = __prim_add_Bit;
-   (-) = __prim_sub_Bit;
-   (*) = __prim_mul_Bit;
-   negate = error "todo: negate for Bit #n";
-   abs = error "todo: abs for Bit #n";
-   fromInteger = __prim_fromInteger_Bit;
-}
+instance Num (Bit #n) where
+   (+) = __prim_add_Bit
+   (-) = __prim_sub_Bit
+   (*) = __prim_mul_Bit
+   negate = error "todo: negate for Bit #n"
+   abs = error "todo: abs for Bit #n"
+   fromInteger = __prim_fromInteger_Bit
 
 bv_ntype :: Bit #n -> #n
 bv_ntype _ = numeric
@@ -59,11 +57,10 @@ bv_truncate = __prim_truncate_Bit
 
 bv_concat :: Bit #n -> Bit #m -> Bit #(n+m)
 bv_concat a b = 
-  let {
-    bw = bv_sizeof b;
-    a' = bv_zero_extend a;
-    b' = bv_zero_extend b;
-  } in bv_or (bv_lsh a' bw) b'
+  let bw = bv_sizeof b
+      a' = bv_zero_extend a
+      b' = bv_zero_extend b
+  in bv_or (bv_lsh a' bw) b'
 
 -- Extract m bits from the given vector, with the least significant bit to be
 -- extract specified in the argument. The most significant bit is inferred.

@@ -1,72 +1,71 @@
 
-module Seri.SMT.Tests.Sudoku3 where {
+module Seri.SMT.Tests.Sudoku3 where
 
-import Seri.Lib.Prelude;
-import Seri.Lib.Bit;
-import Seri.SMT.SMT;
+import Seri.Lib.Prelude
+import Seri.Lib.Bit
+import Seri.SMT.SMT
 
 -- The size of the sudoku.
 -- (nxn)x(nxn)
-n :: Integer;
-n = 3;
+n :: Integer
+n = 3
 
 -- The square of the sudoku size.
-m :: Integer;
-m = n*n;
+m :: Integer
+m = n*n
 
-data Cell = Cell { bits :: Bit#9 } deriving(Eq, Free);
+data Cell = Cell { bits :: Bit#9 } deriving(Eq, Free)
 
-freeCell :: Query Cell;
-freeCell = do {
-    x <- free;
-    assert (isValidCell x);
-    return x;
-};
+freeCell :: Query Cell
+freeCell = do
+    x <- free
+    assert (isValidCell x)
+    return x
 
-c1 :: Cell;
-c1 = Cell 1;
+c1 :: Cell
+c1 = Cell 1
 
-c2 :: Cell;
-c2 = Cell 2;
+c2 :: Cell
+c2 = Cell 2
 
-c3 :: Cell;
-c3 = Cell 4;
+c3 :: Cell
+c3 = Cell 4
 
-c4 :: Cell;
-c4 = Cell 8;
+c4 :: Cell
+c4 = Cell 8
 
-c5 :: Cell;
-c5 = Cell 16;
+c5 :: Cell
+c5 = Cell 16
 
-c6 :: Cell;
-c6 = Cell 32;
+c6 :: Cell
+c6 = Cell 32
 
-c7 :: Cell;
-c7 = Cell 64;
+c7 :: Cell
+c7 = Cell 64
 
-c8 :: Cell;
-c8 = Cell 128;
+c8 :: Cell
+c8 = Cell 128
 
-c9 :: Cell;
-c9 = Cell 256;
+c9 :: Cell
+c9 = Cell 256
 
-isValidCell :: Cell -> Bool;
-isValidCell c = elem c [c1, c2, c3, c4, c5, c6, c7, c8, c9];
+isValidCell :: Cell -> Bool
+isValidCell c = elem c [c1, c2, c3, c4, c5, c6, c7, c8, c9]
 
-readCell :: Char -> Query Cell;
-readCell '1' = return c1;
-readCell '2' = return c2;
-readCell '3' = return c3;
-readCell '4' = return c4;
-readCell '5' = return c5;
-readCell '6' = return c6;
-readCell '7' = return c7;
-readCell '8' = return c8;
-readCell '9' = return c9;
-readCell '.' = freeCell;
-readCell c = error ("readCell: " ++ [c]);
+readCell :: Char -> Query Cell
+readCell '1' = return c1
+readCell '2' = return c2
+readCell '3' = return c3
+readCell '4' = return c4
+readCell '5' = return c5
+readCell '6' = return c6
+readCell '7' = return c7
+readCell '8' = return c8
+readCell '9' = return c9
+readCell '.' = freeCell
+readCell c = error ("readCell: " ++ [c])
 
-printCell :: Cell -> Char;
+printCell :: Cell -> Char
 printCell c = 
        if c == c1 then '1'
   else if c == c2 then '2'
@@ -76,68 +75,64 @@ printCell c =
   else if c == c6 then '6'
   else if c == c7 then '7'
   else if c == c8 then '8'
-  else '9';
+  else '9'
 
-join :: [Cell] -> Bit #9;
-join xs = foldl bv_or 0 (map bits xs);
+join :: [Cell] -> Bit #9
+join xs = foldl bv_or 0 (map bits xs)
 
 -- Return true if all elements in the list are unique.
-unique :: [Cell] -> Bool;
-unique cells = join cells == 511;
+unique :: [Cell] -> Bool
+unique cells = join cells == 511
 
-data Board = Board [[Cell]];
+data Board = Board [[Cell]]
 
-print :: Board -> [[Char]];
-print (Board cells) = map (\row -> map printCell row) cells;
+print :: Board -> [[Char]]
+print (Board cells) = map (\row -> map printCell row) cells
 
-rows :: Board -> [[Cell]];
-rows (Board x) = x;
+rows :: Board -> [[Cell]]
+rows (Board x) = x
 
-cols :: Board -> [[Cell]];
-cols (Board x) = transpose x;
+cols :: Board -> [[Cell]]
+cols (Board x) = transpose x
 
-transpose :: [[a]] -> [[a]];
-transpose [] = [];
-transpose ([]:_) = [];
-transpose xs = (map head xs) : transpose (map tail xs);
+transpose :: [[a]] -> [[a]]
+transpose [] = []
+transpose ([]:_) = []
+transpose xs = (map head xs) : transpose (map tail xs)
 
-boxes :: Board -> [[Cell]];
+boxes :: Board -> [[Cell]]
 boxes (Board rows) = 
-  let {
-    brows = breakup n rows;
-  } in concat (map boxes' brows);
+  let brows = breakup n rows
+  in concat (map boxes' brows)
 
 -- Given just 'm' rows, return the m boxes in those m rows.
-boxes' :: [[a]] -> [[a]];
-boxes' [] = [];
-boxes' ([]:_) = [];
+boxes' :: [[a]] -> [[a]]
+boxes' [] = []
+boxes' ([]:_) = []
 boxes' xs = 
-  let {
-    b = concat (map (take n) xs);
-    bs = map (drop n) xs;
-  } in b : (boxes' bs);
+  let b = concat (map (take n) xs)
+      bs = map (drop n) xs
+  in b : (boxes' bs)
 
 -- Break a list up into a bunch of lists of the given length.
-breakup :: Integer -> [a] -> [[a]];
-breakup _ [] = [];
+breakup :: Integer -> [a] -> [[a]]
+breakup _ [] = []
 breakup n xs =
-  case splitAt n xs of {
-     (a, b) -> a : (breakup n b);
-  };
+  case splitAt n xs of
+     (a, b) -> a : (breakup n b)
 
-isvalid :: Board -> Bool;
-isvalid b = all unique (concat [rows b, cols b, boxes b]);
+isvalid :: Board -> Bool
+isvalid b = all unique (concat [rows b, cols b, boxes b])
 
-readRow :: [Char] -> Query [Cell];
-readRow = mapM readCell;
+readRow :: [Char] -> Query [Cell]
+readRow = mapM readCell
 
-readBoard :: [[Char]] -> Query Board;
-readBoard rows = do {
-    brows <- mapM readRow rows;
-    return (Board brows);
-};
+readBoard :: [[Char]] -> Query Board
+readBoard rows = do
+    brows <- mapM readRow rows
+    return (Board brows)
 
-easy :: [[Char]];
+easy :: [[Char]]
 easy =
   ["2....1.38",
    "........5",
@@ -147,9 +142,9 @@ easy =
    "31....8..",
    "9..8...2.",
    ".5..69784",
-   "4..25...."];
+   "4..25...."]
 
-solved :: [[Char]];
+solved :: [[Char]]
 solved =
   ["249571638",
    "861432975",
@@ -159,9 +154,9 @@ solved =
    "314725869",
    "937814526",
    "152369784",
-   "486257391"];
+   "486257391"]
 
-diabolical :: [[Char]];
+diabolical :: [[Char]]
 diabolical = 
     [".9.7..86.",
      ".31..5.2.",
@@ -171,18 +166,14 @@ diabolical =
      "5...1.7..",
      "......1.9",
      ".2.6..35.",
-     ".54..8.7."];
+     ".54..8.7."]
 
-main :: Query [[Char]];
-main = do {
-    board <- readBoard diabolical;
-    assert (isvalid board);
-    result <- query board;
-    case result of {
-       Satisfiable v -> return (print v);
-       _ -> return ["no solution"];
-    };
-};
-
-}
+main :: Query [[Char]]
+main = do
+    board <- readBoard diabolical
+    assert (isvalid board)
+    result <- query board
+    case result of
+       Satisfiable v -> return (print v)
+       _ -> return ["no solution"]
 

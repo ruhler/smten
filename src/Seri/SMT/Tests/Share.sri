@@ -1,20 +1,17 @@
 
 
-module Seri.SMT.Tests.Share where {
+module Seri.SMT.Tests.Share where
 
-import Seri.Lib.Prelude;
-import Seri.SMT.SMT;
+import Seri.Lib.Prelude
+import Seri.SMT.SMT
 
-quadruple :: Integer -> Integer;
-quadruple a = a + (a + (a + a));
+quadruple :: Integer -> Integer
+quadruple a = a + (a + (a + a))
 
-main :: Query (Answer (Integer, Integer));
-main = do {
-    x <- free;
-    y <- free;
-    assert (quadruple (quadruple (x - y)) == 32);
-    query (x, y);
-}
-
-}
+main :: Query (Answer (Integer, Integer))
+main = do
+    x <- free
+    y <- free
+    assert (quadruple (quadruple (x - y)) == 32)
+    query (x, y)
 

@@ -1,293 +1,269 @@
 
 -- vim: ft=haskell
-module Seri.Lib.Tests where {
+module Seri.Lib.Tests where
 
-import Seri.Lib.Prelude;
-import Seri.Lib.Array;
-import Seri.Lib.Vector;
-import Seri.Lib.Bit;
-import Seri.IO.IO;
+import Seri.Lib.Prelude
+import Seri.Lib.Array
+import Seri.Lib.Vector
+import Seri.Lib.Bit
+import Seri.IO.IO
 
 ------ This is a comment with lots of dashes
 
-foo1 :: Integer;
-foo1 = (\x -> ((x*x)+(3*x))+2) 5;
+foo1 :: Integer
+foo1 = (\x -> ((x*x)+(3*x))+2) 5
 
-foo2 :: Integer -> Integer;
-foo2 x = ((x*x)+(3*x))+2;
+foo2 :: Integer -> Integer
+foo2 x = ((x*x)+(3*x))+2
 
-rfact :: Integer -> Integer;
-rfact x = if (x < 1) then 1 else x * rfact (x-1);
+rfact :: Integer -> Integer
+rfact x = if (x < 1) then 1 else x * rfact (x-1)
 
-data MaybeInteger = NoInteger | JustInteger Integer;
+data MaybeInteger = NoInteger | JustInteger Integer
 
-fromMaybeInteger :: Integer -> MaybeInteger -> Integer;
+fromMaybeInteger :: Integer -> MaybeInteger -> Integer
 fromMaybeInteger def = \mi ->
-    case mi of {
-        JustInteger i -> i;
-        NoInteger -> def;
-    };
+    case mi of
+        JustInteger i -> i
+        NoInteger -> def
 
-fromMaybeBool :: Bool -> Maybe Bool -> Bool;
+fromMaybeBool :: Bool -> Maybe Bool -> Bool
 fromMaybeBool def = \mb ->
-    case mb of {
-        Just b -> b;
-        Nothing -> def;
-    };
+    case mb of
+        Just b -> b
+        Nothing -> def
 
-multiclause :: Integer -> Integer;
-multiclause 2 = 10;
-multiclause 3 = 20;
-multiclause 4 = 30;
-multiclause 5 = 40;
-multiclause _ = 50;
+multiclause :: Integer -> Integer
+multiclause 2 = 10
+multiclause 3 = 20
+multiclause 4 = 30
+multiclause 5 = 40
+multiclause _ = 50
 
-tupleswap :: (a, b) -> (b, a);
-tupleswap (x, y) = (y, x);
+tupleswap :: (a, b) -> (b, a)
+tupleswap (x, y) = (y, x)
 
-listswaptop :: [a] -> [a];
-listswaptop (x:xs) = (head xs) : (x : (tail xs));
+listswaptop :: [a] -> [a]
+listswaptop (x:xs) = (head xs) : (x : (tail xs))
 
-listdifftop :: [Integer] -> Integer;
-listdifftop (x:y:_) = x - y;
+listdifftop :: [Integer] -> Integer
+listdifftop (x:y:_) = x - y
 
-sum2 :: Integer -> Integer -> Integer;
-sum2 a b = a + b;
+sum2 :: Integer -> Integer -> Integer
+sum2 a b = a + b
 
-sum3 :: Integer -> Integer -> Integer -> Integer;
-sum3 a b c = (a + b) + c;
+sum3 :: Integer -> Integer -> Integer -> Integer
+sum3 a b c = (a + b) + c
 
-unary2int :: [()] -> Integer;
-unary2int [] = 0;
-unary2int (_:xs) = 1 + unary2int xs;
+unary2int :: [()] -> Integer
+unary2int [] = 0
+unary2int (_:xs) = 1 + unary2int xs
 
-class Foo a where {
-    foo :: a -> Integer;
-};
+class Foo a where
+    foo :: a -> Integer
 
-instance Foo Bool where {
+instance Foo Bool where
     foo _ = 1
-};
 
-instance Foo Integer where {
+instance Foo Integer where
     foo _ = 2
-};
 
-foofun :: (Foo a) => a -> Integer;
-foofun x = (((foo x)*(foo x)) + (3*(foo x))) + (foo True);
+foofun :: (Foo a) => a -> Integer
+foofun x = (((foo x)*(foo x)) + (3*(foo x))) + (foo True)
 
 data Apple = Apple {
     isgreen :: Bool,
     numseeds :: Integer
-};
+}
 
 data Wonderful a = Wonderful {
     thething :: a,
     howgreat :: Integer
-};
-
-thegreatthing :: Wonderful Integer -> Integer;
-thegreatthing w = thething w + howgreat w;
-
--- record type construction with no fields
-data EmptyRecord = EmptyRecord {};
-
-class MultiFoo a b where {
-    multifoo :: a -> b -> Integer;
-};
-
-instance MultiFoo Bool Bool where {
-    multifoo _ _ = 1
-};
-
-instance MultiFoo Integer Integer where {
-    multifoo _ _ = 2
-};
-
-instance MultiFoo Bool Integer where {
-    multifoo _ _ = 3
-};
-
-instance MultiFoo Integer Bool where {
-    multifoo _ _ = 4
-};
-
-unused :: a -> Integer;
-unused x = 42;
-
-multifoofun :: (MultiFoo a b) => a -> b -> Integer;
-multifoofun x y = (((multifoo x y) * (multifoo x y))
-                    + (3 * (multifoo x y))) + (multifoo True False);
-
--- shadow x = 2*(x+1)
-shadow :: Integer -> Integer;
-shadow = \x -> (\x -> 2*x) (x+1);
-
-caseshadow :: Integer -> Integer;
-caseshadow = \x -> (case 2*x of { x -> x; });
-
-thedo :: Maybe Bool -> Maybe Integer;
-thedo m = do {
-    b <- m;
-    if b then return 5 else Nothing;
-};
-
-notand :: Bool;
-notand = True && False;
-
-testlet :: Integer;
-testlet = 
-  let {
-    fudge = 1 + 2;
-    bar = fudge + 3;
-  } in bar + bar;
-
-arr :: Array Integer Integer;
-arr = array (0, 2) [(0, 42), (1, 12), (2, 19)];
-
-testarray :: Test ();
-testarray = do {
-    t "arrsub0" (42 == (arr ! 0));
-    t "arrsub1" (12 == (arr ! 1));
-    t "arrsub2" (19 == (arr ! 2));
-    t "arrupd" (23 == ((arr // [(1, 23)]) ! 1));
-    };
-
-v4 :: Vector #4 Bool;
-v4 = vreplicate True;
-
-v2x4 :: Vector #2 (Vector #4 Bool);
-v2x4 = vreplicate v4;
-
-testvector :: Test ();
-testvector = do {
-    t "vecreplen" (4 == vlength v4);
-    t "vecconcat" (8 == vlength (vconcat v2x4));
-    };
-
-bit3 :: Integer -> Bit #3;
-bit3 = fromInteger;
-
-bit5 :: Integer -> Bit #5;
-bit5 = fromInteger;
-
-testbit :: Test ();
-testbit = do {
-    t "bit simple" (bit3 0 == ((bit3 7) + 1));
-    t "bit zeroext" (bit5 7 == bv_zero_extend (bit3 (0-1)));
-    t "bit or" (bit5 30 == bv_or (bit5 18) (bit5 12));
-    t "bit lsh" (bit5 10 == bv_lsh (bit5 5) 1);
-    t "bit extract" (bit3 3 == bv_extract (bit5 7) 1);
-    };
-
-shadowmeth :: Integer;
-shadowmeth = let { foo = 3; } in foo;
-
-parsenotctx :: (Maybe Integer -> Bool) -> Bool;
-parsenotctx = undefined;
-
-patternlet :: Integer;
-patternlet = 
-  let { 
-    (a, b) = (1, 5);
-  } in a + b;
-
---patterndo :: Maybe Integer;
---patterndo = do {
---  (a, _) <- Just (1, integer 4);
---  return a;
---};
-
-data DerivedEq a = DEq1 a | DEq2 a a
-    deriving (Eq);
-
-
-data Test a = Test a;
-instance Monad Test where {
-    fail msg = error msg;
-    return x = Test x;
-    (>>) a b = a >>= (\_ -> b);
-    (>>=) (Test x) f = f x;
-};
-    
-t :: [Char] -> Bool -> Test ();
-t msg True = return ();
-t msg False = fail msg;
-
-testbasic :: Test ();
-testbasic = do {
-    t "a" ((42 :: Integer) == (\x -> (((x*x) + (3*x)) + 2)) 5);
-    t "b" (42 == (foo1));
-    t "c" (42 == (foo2 5));
-    t "d" (True);
-    t "e" ((23 :: Integer) == (if 6 < 4 then 42 else 23 ));
-    t "f" ((5 :: Integer) == ((id id) 5));
-    t "g" (5 == (fromMaybeInteger 10 (JustInteger 5)));
-    t "h" (10 == (fromMaybeInteger 10 NoInteger));
-    t "i" (fromMaybeBool False (Just True));
-    t "j" (Just (18 :: Integer) == Just 18);
-    t "k" (Just (18 :: Integer) /= Just 16);
-    t "l" (Just (18 :: Integer) /= Nothing);
-    t "m" ((30 :: Integer) == (case ((1+3) :: Integer) of {
-                            2 -> 10;
-                            3 -> 20;
-                            4 -> 30;
-                            5 -> 40;
-                            _ -> 50; }));
-    t "n" (30 == (multiclause 4));
-    t "o" (30 == (snd (tupleswap (30 :: Integer, 40 :: Integer))));
-    t "p" ((20 :: Integer) == (listdifftop (listswaptop [10, 30, 50, 0])));
-    t "q" (12 == (sum2 5 7));
-    t "r" (20 == (sum3 5 7 8));
-    t "s" (3 == (unary2int [(), (), ()]));
-    t "t" (1 == (foo True));
-    t "u" (2 == (foo (42 :: Integer)));
-    t "v" (5 == (foofun False));
-    t "w" (11 == (foofun (5 :: Integer)));
-    t "x" (11 == (numseeds (Apple True 11)));
-    t "y" (11 == (numseeds (Apple { numseeds = 11 })));
-    t "z" (8 == (numseeds ((Apple True 11) { numseeds = 8 })));
-    t "A" ((11 :: Integer) == (thething (Wonderful 11 32)));
-    t "B" (42 == (unused True));
-    t "C" (19 == (multifoofun True (12 :: Integer)));
-    t "D" (8 == (shadow 3));
-    t "E" (6 == (caseshadow 3));
-    t "F" (12 == testlet);
-    t "G" (3 == shadowmeth);
-    t "H" (3 == (length [1 :: Integer, 5, 2]));
-    t "I" (and [True, True, True]);
-    t "J" ('A' == 'A');
-    t "K" ('A' /= 'B');
-    t "L" (6 == patternlet);
-    t "M" (DEq2 (5 :: Integer) 9 == DEq2 5 9);
-    t "N" (DEq1 (5 :: Integer) /= DEq2 5 9);
-    --t "O" (Just 1 == patterndo);
-    t "P" (length "foo\n" == 4); 
-};
-
-testprelude :: Test ();
-testprelude = do {
-   t "p.take" ([8 :: Integer, 3] == take 2 [8, 3, 5, 1]); 
-   t "p.drop" ([5 :: Integer, 1] == drop 2 [8, 3, 5, 1]); 
-   t "p.splitAt" (([8 :: Integer, 3], [5, 1]) == splitAt 2 [8, 3, 5, 1]); 
-   t "p.concat" ([8 :: Integer, 3, 5, 1, 2, 5] == concat [[8, 3], [5], [1, 2, 5]]);
-};
-
-tests :: Test ();
-tests = do {
-    testbasic;
-    testprelude;
-    testarray;
-    testvector;
-    testbit;
-};
-
-testallio :: IO ();
-testallio =
-    case tests of {
-        Test () -> putStrLn "PASSED";
-    };
-
 }
 
+thegreatthing :: Wonderful Integer -> Integer
+thegreatthing w = thething w + howgreat w
+
+-- record type construction with no fields
+data EmptyRecord = EmptyRecord {}
+
+class MultiFoo a b where
+    multifoo :: a -> b -> Integer
+
+instance MultiFoo Bool Bool where
+    multifoo _ _ = 1
+
+instance MultiFoo Integer Integer where
+    multifoo _ _ = 2
+
+instance MultiFoo Bool Integer where
+    multifoo _ _ = 3
+
+instance MultiFoo Integer Bool where
+    multifoo _ _ = 4
+
+unused :: a -> Integer
+unused x = 42
+
+multifoofun :: (MultiFoo a b) => a -> b -> Integer
+multifoofun x y = (((multifoo x y) * (multifoo x y))
+                    + (3 * (multifoo x y))) + (multifoo True False)
+
+-- shadow x = 2*(x+1)
+shadow :: Integer -> Integer
+shadow = \x -> (\x -> 2*x) (x+1)
+
+caseshadow :: Integer -> Integer
+caseshadow = \x -> (case 2*x of { x -> x; })
+
+thedo :: Maybe Bool -> Maybe Integer
+thedo m = do
+    b <- m
+    if b then return 5 else Nothing
+
+notand :: Bool
+notand = True && False
+
+testlet :: Integer
+testlet = 
+  let fudge = 1 + 2
+      bar = fudge + 3
+  in bar + bar
+
+arr :: Array Integer Integer
+arr = array (0, 2) [(0, 42), (1, 12), (2, 19)]
+
+testarray :: Test ()
+testarray = do
+    t "arrsub0" (42 == (arr ! 0))
+    t "arrsub1" (12 == (arr ! 1))
+    t "arrsub2" (19 == (arr ! 2))
+    t "arrupd" (23 == ((arr // [(1, 23)]) ! 1))
+
+v4 :: Vector #4 Bool
+v4 = vreplicate True
+
+v2x4 :: Vector #2 (Vector #4 Bool)
+v2x4 = vreplicate v4
+
+testvector :: Test ()
+testvector = do
+    t "vecreplen" (4 == vlength v4)
+    t "vecconcat" (8 == vlength (vconcat v2x4))
+
+bit3 :: Integer -> Bit #3
+bit3 = fromInteger
+
+bit5 :: Integer -> Bit #5
+bit5 = fromInteger
+
+testbit :: Test ()
+testbit = do
+    t "bit simple" (bit3 0 == ((bit3 7) + 1))
+    t "bit zeroext" (bit5 7 == bv_zero_extend (bit3 (0-1)))
+    t "bit or" (bit5 30 == bv_or (bit5 18) (bit5 12))
+    t "bit lsh" (bit5 10 == bv_lsh (bit5 5) 1)
+    t "bit extract" (bit3 3 == bv_extract (bit5 7) 1)
+
+shadowmeth :: Integer
+shadowmeth = let { foo = 3; } in foo
+
+parsenotctx :: (Maybe Integer -> Bool) -> Bool
+parsenotctx = undefined
+
+patternlet :: Integer
+patternlet = 
+  let (a, b) = (1, 5)
+  in a + b
+
+--patterndo :: Maybe Integer
+--patterndo = do
+--  (a, _) <- Just (1, integer 4)
+--  return a
+
+data DerivedEq a = DEq1 a | DEq2 a a
+    deriving (Eq)
+
+
+data Test a = Test a
+instance Monad Test where
+    fail msg = error msg
+    return x = Test x
+    (>>) a b = a >>= (\_ -> b)
+    (>>=) (Test x) f = f x
+    
+t :: [Char] -> Bool -> Test ()
+t msg True = return ()
+t msg False = fail msg
+
+testbasic :: Test ()
+testbasic = do
+    t "a" ((42 :: Integer) == (\x -> (((x*x) + (3*x)) + 2)) 5)
+    t "b" (42 == (foo1))
+    t "c" (42 == (foo2 5))
+    t "d" (True)
+    t "e" ((23 :: Integer) == (if 6 < 4 then 42 else 23 ))
+    t "f" ((5 :: Integer) == ((id id) 5))
+    t "g" (5 == (fromMaybeInteger 10 (JustInteger 5)))
+    t "h" (10 == (fromMaybeInteger 10 NoInteger))
+    t "i" (fromMaybeBool False (Just True))
+    t "j" (Just (18 :: Integer) == Just 18)
+    t "k" (Just (18 :: Integer) /= Just 16)
+    t "l" (Just (18 :: Integer) /= Nothing)
+    t "m" ((30 :: Integer) == (case ((1+3) :: Integer) of
+                                    2 -> 10
+                                    3 -> 20
+                                    4 -> 30
+                                    5 -> 40
+                                    _ -> 50
+                              ))
+    t "n" (30 == (multiclause 4))
+    t "o" (30 == (snd (tupleswap (30 :: Integer, 40 :: Integer))))
+    t "p" ((20 :: Integer) == (listdifftop (listswaptop [10, 30, 50, 0])))
+    t "q" (12 == (sum2 5 7))
+    t "r" (20 == (sum3 5 7 8))
+    t "s" (3 == (unary2int [(), (), ()]))
+    t "t" (1 == (foo True))
+    t "u" (2 == (foo (42 :: Integer)))
+    t "v" (5 == (foofun False))
+    t "w" (11 == (foofun (5 :: Integer)))
+    t "x" (11 == (numseeds (Apple True 11)))
+    t "y" (11 == (numseeds (Apple { numseeds = 11 })))
+    t "z" (8 == (numseeds ((Apple True 11) { numseeds = 8 })))
+    t "A" ((11 :: Integer) == (thething (Wonderful 11 32)))
+    t "B" (42 == (unused True))
+    t "C" (19 == (multifoofun True (12 :: Integer)))
+    t "D" (8 == (shadow 3))
+    t "E" (6 == (caseshadow 3))
+    t "F" (12 == testlet)
+    t "G" (3 == shadowmeth)
+    t "H" (3 == (length [1 :: Integer, 5, 2]))
+    t "I" (and [True, True, True])
+    t "J" ('A' == 'A')
+    t "K" ('A' /= 'B')
+    t "L" (6 == patternlet)
+    t "M" (DEq2 (5 :: Integer) 9 == DEq2 5 9)
+    t "N" (DEq1 (5 :: Integer) /= DEq2 5 9)
+    --t "O" (Just 1 == patterndo)
+    t "P" (length "foo\n" == 4);
+
+testprelude :: Test ()
+testprelude = do
+   t "p.take" ([8 :: Integer, 3] == take 2 [8, 3, 5, 1])
+   t "p.drop" ([5 :: Integer, 1] == drop 2 [8, 3, 5, 1])
+   t "p.splitAt" (([8 :: Integer, 3], [5, 1]) == splitAt 2 [8, 3, 5, 1])
+   t "p.concat" ([8 :: Integer, 3, 5, 1, 2, 5] == concat [[8, 3], [5], [1, 2, 5]])
+
+tests :: Test ()
+tests = do
+    testbasic
+    testprelude
+    testarray
+    testvector
+    testbit
+
+testallio :: IO ()
+testallio =
+    case tests of
+        Test () -> putStrLn "PASSED"
 

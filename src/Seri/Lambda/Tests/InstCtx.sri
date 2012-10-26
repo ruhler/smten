@@ -1,15 +1,13 @@
 
-module Seri.Lambda.Tests.InstCtx where {
+module Seri.Lambda.Tests.InstCtx where
 
-import Seri.Lib.Prelude;
+import Seri.Lib.Prelude
 
-data Foo = Foo | Bar;
+data Foo = Foo | Bar
 
 -- The Maybe type instance of Eq has a context.
 -- We expect this not to type check because there is no instance of Eq for
 -- Foo, even though there is an instance for Maybe.
-foo :: Maybe Foo -> Bool;
-foo m = m == Just Foo;
-
-}
+foo :: Maybe Foo -> Bool
+foo m = m == Just Foo
 

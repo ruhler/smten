@@ -1,18 +1,15 @@
 
-module Seri.SMT.Tests.If where {
+module Seri.SMT.Tests.If where
 
-import Seri.Lib.Prelude;
-import Seri.SMT.SMT;
+import Seri.Lib.Prelude
+import Seri.SMT.SMT
 
-sign :: Integer -> Integer;
-sign a = if a < 0 then 0 else 1;
+sign :: Integer -> Integer
+sign a = if a < 0 then 0 else 1
 
-main :: Query (Answer Integer);
-main = do {
-    x <- free;
-    assert (sign x == 0);
-    query x;
-}
-
-}
+main :: Query (Answer Integer)
+main = do
+    x <- free
+    assert (sign x == 0)
+    query x
 

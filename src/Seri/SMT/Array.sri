@@ -2,56 +2,51 @@
 -- | An array library which works better in SMT queries.
 -- It works better than the haskell Array library because it doesn't involve
 -- lists, which cause problems for SMT.
-module Seri.SMT.Array where {
+module Seri.SMT.Array where
 
-import Seri.Lib.Prelude;
-import Seri.SMT.SMT;
+import Seri.Lib.Prelude
+import Seri.SMT.SMT
 
 -- Primitive function update:
---   update f k v = \i -> if k == i then v else f i;
-update :: (Integer -> a) -> Integer -> a -> (Integer -> a);
+--   update f k v = \i -> if k == i then v else f i
+update :: (Integer -> a) -> Integer -> a -> (Integer -> a)
 
 data SMTArray a = SMTArray {
     smta_length :: Integer,
     smta_sub :: (Integer -> a)
-};
+}
 
 -- | Construct a new array of types 'a' of given length.
 -- The elements of the array are initialied to undefined.
-smta_new :: Integer -> SMTArray a;
-smta_new i = SMTArray i (error $ "undefined smt array element");
+smta_new :: Integer -> SMTArray a
+smta_new i = SMTArray i (error $ "undefined smt array element")
 
 -- Declare a free array with the given length.
-smta_free :: Integer -> Query (SMTArray a);
-smta_free i = do {
-    f <- __prim_free;
-    return (SMTArray i f);
-};
+smta_free :: Integer -> Query (SMTArray a)
+smta_free i = do
+    f <- __prim_free
+    return (SMTArray i f)
 
-smta_inbounds :: SMTArray a -> Integer -> Bool;
-smta_inbounds arr i = (i >= 0) && (i < smta_length arr);
+smta_inbounds :: SMTArray a -> Integer -> Bool
+smta_inbounds arr i = (i >= 0) && (i < smta_length arr)
 
 -- | Set the value of the element at the given position of the array.
 -- Does not do a bounds check, because that was causing issues with the
 -- current implementation of seri.
-smta_upd :: SMTArray a -> Integer -> a -> SMTArray a;
-smta_upd arr k v = arr { smta_sub = update (smta_sub arr) k v };
+smta_upd :: SMTArray a -> Integer -> a -> SMTArray a
+smta_upd arr k v = arr { smta_sub = update (smta_sub arr) k v }
 
 -- | Return true if the first n elements the given arrays are the same.
 -- It's an error if either of the arrays doesn't have at least n elements.
-smta_eqn :: (Eq a) => Integer -> SMTArray a -> SMTArray a -> Bool;
-smta_eqn 0 _ _ = True;
+smta_eqn :: (Eq a) => Integer -> SMTArray a -> SMTArray a -> Bool
+smta_eqn 0 _ _ = True
 smta_eqn i a b = 
-  case smta_inbounds a (i-1) && smta_inbounds b (i-1) of {
-      True -> (smta_sub a (i-1) == smta_sub b (i-1)) && smta_eqn (i-1) a b;
-      _ -> error $ "smta_eqn arrays too small";
-  };
+  case smta_inbounds a (i-1) && smta_inbounds b (i-1) of
+      True -> (smta_sub a (i-1) == smta_sub b (i-1)) && smta_eqn (i-1) a b
+      _ -> error $ "smta_eqn arrays too small"
 
-instance (Eq a) => Eq (SMTArray a) where {
+instance (Eq a) => Eq (SMTArray a) where
     (==) a b = (smta_length a == smta_length b)
-               && (smta_eqn (smta_length a) a b);
-    (/=) a b = not (a == b);
-};
-
-}
+               && (smta_eqn (smta_length a) a b)
+    (/=) a b = not (a == b)
 

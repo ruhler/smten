@@ -1,11 +1,9 @@
 
-module Seri.IO.Tests.Simple where {
+module Seri.IO.Tests.Simple where
 
-import Seri.Lib.Prelude;
-import Seri.IO.IO;
+import Seri.Lib.Prelude
+import Seri.IO.IO
 
-main :: IO ();
-main = putStrLn "hello, world";
-
-}
+main :: IO ()
+main = putStrLn "hello, world"
 

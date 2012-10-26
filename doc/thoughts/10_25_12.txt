@@ -1,0 +1,196 @@
+
+Thu Oct 25 07:43:57 EDT 2012
+
+Trouble. I messed up the continuation thing.
+
+The way it works is, I believe, you produce a single output at each call to
+the lexer. You don't produce all the outputs.
+
+So, can I make that work that way? The question is, how can I output multiple
+tokens? I need to have a bypass path or cache or stack of tokens that I draw
+from in the lexer first.
+
+And how can I output no tokens? That's in order to drop a <n> token.
+
+Yes, so I mis-interpreted how the continuation thing works when writing the
+layout rules. I'll have to rethink things.
+
+The first observation I want to make is, I don't make use of the continuation,
+and it is confusing. So I should change my lexer to be of type
+ParserMonad Token, and use it that way.
+
+Let me do that now, on the master branch.
+
+Thu Oct 25 07:57:22 EDT 2012
+
+Okay, I've done that. Now, what can we say about doing layout now?
+
+It's easy to get rid of a token, just call lex again.
+It's not so easy to duplicate a token. In other words... I need to have a
+token store which I draw from first, before doing additional lexing.
+
+So, we have a token store, and a layout stack added to the parser state.
+If there's anything in the token store, I use that as the next token.
+Otherwise I continue on.
+
+I'll wrap the lexer in a layout rule to do layout processing. It will have
+access to the stack and the next token, and can do appropriate things, given
+we have this layout store.
+
+In other words, it may need to get a token, then introduce a couple new ones.
+
+The lexer also needs some internal state saying:
+ - did we just get a layout token: of, let, or where?
+ - did we just get a new token on the line.
+
+That's easy enough to add. The lex function will use the token store too,
+when it wants to output multiple tokens, such as a {n} token and a <n> token.
+
+Good. So I want to make the following changes to the parser monad:
+
+* add brace_expected field
+* add newline field
+* add token buffer for
+* add layout stack
+
+Changes to make:
+
+* pull from token buffer first
+* implement brace_expected and newline fields. We may want some helper
+  functions to update these fields appropriately whenever returning a token.
+* output {n} and <n> tokens
+* implement wrapper layout processor
+
+I think, use happy's error thing to implement layout as they do. Instead of
+close brace, use a rule which could be close brace or error.
+
+Okay, well, it's all planned out. I would expect it to take an hour or so to
+implement.
+
+Thu Oct 25 08:57:40 EDT 2012
+
+Some updates on the design plan for layout.
+
+1. The main lex function should return location information with each token,
+saying where the token starts. This should be easy enough to do on a per token
+basis. It means we won't need to explicitly keep track of whether a token is
+the first token on a line, because it's clear by just comparing the location
+for that token to the location for the previous token. Though I guess we would
+need to store that info then...
+
+2. I shouldn't have to change the main lex routine at all to support layout. I
+just need to wrap it.
+
+First wrapper: call it a token processor? Or some such. It will do the
+following:
+* if there are any tokens in the token buffer, return those.
+* otherwise, call lex, and analyze the token it returns.
+* inject {n} or <n> as needed
+
+Second wrapper: call it a layout processor:
+* do layout processing as before. It should be easy now.
+
+That will be cool. I think I can do this, but now it's more involved, so I
+should wait until later today, and go a step at a time. I like that I can keep
+the layout implementation separate from the non-layout implementation. That's
+how it ought to be.
+
+Thu Oct 25 17:43:07 EDT 2012
+
+Okay! I think I've written down the rules. Let's see if it works. I don't
+think there's any chance it will... Or, at least, I'll have to step through
+things to understand how it works and see why it doesn't work.
+
+Thu Oct 25 17:47:14 EDT 2012
+
+Surprise surprise! It doesn't work. :(
+
+I'll want to output the following streams:
+* raw token stream with locations
+* token stream going into layout processor
+* token stream coming out of layout processor
+
+Then trace through to figure out what's up.
+
+Thu Oct 25 18:14:43 EDT 2012
+
+Okay, so we can parse code which doesn't make use of layout. That's a good
+start. Let me try using layout a bit at a time, see how it works, or doesn't.
+
+Thu Oct 25 18:20:30 EDT 2012
+
+The problem is, I'm not confident enough with how layout is supposed to work
+to know if it works or not.
+
+Let me try out their layout example, shall I, and see if I can make that
+work?
+
+Sample code:
+
+---------
+module Seri.Lib.LayoutTest where
+
+data Stack a = Empty 
+             | MkStack a (Stack a)
+ 
+push :: a -> Stack a -> Stack a
+push x s = MkStack x s
+-----------
+
+Expected pre layout stream:
+ 
+---------
+module Seri.Lib.LayoutTest where
+
+{0}data Stack a = Empty 
+<13>              | MkStack a (Stack a)
+ 
+<0>push :: a -> Stack a -> Stack a
+<0>push x s = MkStack x s
+-----------
+
+Expected post layout stream:
+
+---------
+module Seri.Lib.LayoutTest where
+
+{data Stack a = Empty 
+                  | MkStack a (Stack a)
+ 
+;push :: a -> Stack a -> Stack a
+;push x s = MkStack x s
+}
+-----------
+
+The funny thing I'm getting is a PRELAYOUT close brace after 'data'. How is
+that possible? Where is that coming from?
+
+Well, here's an issue. The first column should be column 1, not column 0. Let
+me change that and see if it helps any.
+
+Thu Oct 25 18:46:02 EDT 2012
+
+Hey! That seems to have helped!
+
+Cool.
+
+Thu Oct 25 18:54:11 EDT 2012
+
+Well, so, it would seem it sort of works.
+
+The good news is: it works everywhere it worked before.
+The bad news is: it doesn't work everywhere you expect yet.
+
+It does work in some cases, which are nice to have.
+
+So, what do I want to do?
+
+The path to take here is: convert all my seri code to use layout. Fix bugs as
+they arise.
+
+They will continue to arise. When should I merge layout with the master branch?
+
+Well, given it works on everything it worked on before, I see no reason not to
+merge with the main branch now. I don't think layout support is ready for
+primetime yet though. As in, I shouldn't advertise it as being there.
+

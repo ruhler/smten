@@ -303,7 +303,7 @@ exp10 :: { Exp }
     { ifE $2 $4 $6 }
  | 'case' exp 'of' '{' alts opt(';') '}'
     { caseE $2 $5 }
- | 'do' '{' stmts '}'
+ | 'do' '{' stmts opt(';') '}'
     {% case last $3 of
          NoBindS _ -> return $ doE $3
          _ -> lfailE "last statement in do must be an expression"
@@ -357,15 +357,15 @@ alt :: { Match }
 stmts :: { [Stmt] }
  : stmt 
     { [$1] }
- | stmts stmt
-    { $1 ++ [$2] }
+ | stmts ';' stmt
+    { $1 ++ [$3] }
 
 stmt :: { Stmt }
- : var_typed '<-' exp ';'
+ : var_typed '<-' exp
     { BindS (VarP $1) $3 }
- | exp ';'
+ | exp 
     { NoBindS $1 }
- | 'let' '{' ldecl opt(';') '}' ';'
+ | 'let' '{' ldecl opt(';') '}'
     { LetS (fst $3) (snd $3) }
 
 fbinds :: { [(Name, Exp)] }
