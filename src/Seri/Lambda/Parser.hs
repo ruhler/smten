@@ -14,11 +14,7 @@ import Seri.Lambda.Parser.Grammar
 --
 -- [@Things to implement eventually, perhaps@]
 --
--- - Layout is not supported.
---
 -- - Explicit module exports are not allowed.
---
--- - The module name must be specified explicitly. Main will not be inferred.
 --
 -- - Qualified imports are not allowed.
 --
@@ -60,8 +56,6 @@ import Seri.Lambda.Parser.Grammar
 --
 -- - pattern guards.
 --
--- - expression type signatures.
---
 -- - infix operations that require precedence knowledge.
 --
 -- - arithmetic sequences.
@@ -69,8 +63,6 @@ import Seri.Lambda.Parser.Grammar
 -- - list comprehension.
 --
 -- - left and right sections.
---
--- - let statements in do notation.
 --
 -- - irrefutable patterns
 -- 
@@ -106,4 +98,5 @@ import Seri.Lambda.Parser.Grammar
 -- constructor (for Foo {}), and for updating (for x { foo = bar }).
 -- This is not part of the haskell spec, but is used for implementation
 -- purposes so label construction and update really is just syntactic sugar.
--- Your probably shouldn't rely on this behavior.
+-- You probably shouldn't rely on this behavior.
+

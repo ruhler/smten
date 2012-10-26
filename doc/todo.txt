@@ -91,7 +91,6 @@ That is, anything with ~?
 * Add static check for exhaustive case statements
 * Add static check for concreteness of queries
 
-* default Main module if no given?
 * support type synonyms? 
 * support polymorphic declarations in let bindings?
 

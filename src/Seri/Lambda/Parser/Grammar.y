@@ -104,6 +104,10 @@ import Seri.Lambda.Parser.Lexer
 module :: { Module }
  : 'module' modid 'where' body
     { Module (name $2) (fst $4) (snd $4) }
+ | body
+    -- TODO: we should export only 'main' explicitly when explicit exports are
+    -- supported
+    { Module (name "Main") (fst $1) (snd $1) }
 
 body :: { ([Import], [Dec]) }
  : '{' impdecls ';' topdecls opt(';') '}'
