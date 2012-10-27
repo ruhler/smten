@@ -1,0 +1,12 @@
+
+module Seri.IO.SMT where
+
+import Seri.Lib.Prelude
+import Seri.IO.IO
+import Seri.SMT.SMT
+
+-- Run an SMT Query using yices2
+-- If the first argument is not Nothing, debugging will be enabled, outputting
+-- to the given file.
+runYices2 :: Maybe [Char] -> Query a -> IO a
+

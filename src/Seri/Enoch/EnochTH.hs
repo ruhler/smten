@@ -61,6 +61,7 @@ derive_pack nm vars cs =
             body = LetE decls exp
         in Clause [pat] (NormalB body) []
       mkcon (RecC nm vsts) = mkcon (NormalC nm (map (\(_, s, t) -> (s, t)) vsts))
+      mkcon (InfixC ta n tb) = mkcon $ NormalC n [ta, tb]
 
       dec = FunD 'pack (map mkcon cs)
   in [dec]
@@ -87,6 +88,7 @@ derive_unpack nm vars cs =
             body = DoE $ stmts ++ [NoBindS (AppE (VarE 'return) (foldl AppE (ConE cnm) (map VarE args')))]
         in Match pat (GuardedB [(guard, body)]) []
       mkcon (RecC nm vsts) = mkcon (NormalC nm (map (\(_, s, t) -> (s, t)) vsts))
+      mkcon (InfixC ta n tb) = mkcon $ NormalC n [ta, tb]
 
       defaultmatch :: Match
       defaultmatch = Match WildP (NormalB (ConE 'Nothing)) []

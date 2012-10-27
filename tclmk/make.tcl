@@ -56,10 +56,20 @@ indir build/src {
     #hrun cabal haddock --executables
     hrun cabal sdist
 }
+
+# The seri executable
+
+hrun $::HAPPY build/src/Seri/Lambda/Parser/Grammar.y
+hrun ghc -ignore-package seri -o build/seri -ibuild/src/ src/Seri/seri.hs \
+    -L$::env(LD_LIBRARY_PATH) -lyices1_dummy -lyices2
+hrun ghc -ignore-package seri -o build/enoch -ibuild/src/ src/Seri/Enoch/enoch.hs \
+    -L$::env(LD_LIBRARY_PATH) -lyices1_dummy -lyices2
+hrun ghc -ignore-package seri -o build/sudoku -ibuild/src/ src/Seri/Enoch/sudoku.hs \
+    -L$::env(LD_LIBRARY_PATH) -lyices1_dummy -lyices2
     
-set SERI build/src/dist/build/seri/seri
-set ENOCH build/src/dist/build/enoch/enoch
-set SUDOKU build/src/dist/build/sudoku/sudoku
+set SERI build/seri
+set ENOCH build/enoch
+set SUDOKU build/sudoku
 
 # The general seri test
 run $SERI --type \
@@ -121,16 +131,16 @@ proc querytest {solver name} {
 proc yices1test {name} { querytest Yices1 $name }
 proc yices2test {name} { querytest Yices2 $name }
 
-yices1test "Query1"
-yices1test "Query2"
-yices1test "Complex"
-yices1test "If"
-yices1test "Bluespec"
-yices1test "Array"
-yices1test "Share"
-yices1test "Tuple"
-yices1test "Bit"
-yices1test "AllQ"
+#yices1test "Query1"
+#yices1test "Query2"
+#yices1test "Complex"
+#yices1test "If"
+#yices1test "Bluespec"
+#yices1test "Array"
+#yices1test "Share"
+#yices1test "Tuple"
+#yices1test "Bit"
+#yices1test "AllQ"
 
 yices2test "Query1"
 yices2test "Query2"
@@ -159,6 +169,7 @@ proc iotest {name args} {
 }
 
 iotest "Simple"
+iotest "Query"
 
 # The enoch tests
 hrun $::ENOCH

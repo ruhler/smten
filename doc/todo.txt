@@ -102,3 +102,4 @@ That is, anything with ~?
     This makes more sense when we have solvers supporting different theories,
     so probably want to hold off until then.
 
+* Report an error if module name doesn't match source file name.

@@ -1,0 +1,23 @@
+
+module Seri.IO.Tests.Query where
+
+import Seri.Lib.Prelude
+import Seri.SMT.SMT
+import Seri.IO.IO
+import Seri.IO.SMT
+
+q :: Query (Answer Integer)
+q = do
+    x <- free
+    assert (x < 6)
+    assert (x > 4)
+    query x
+
+main :: IO ()
+main = do
+    r <- runYices2 (Just "build/src/Seri/IO/Tests/Query.Yices2.dbg") q
+    case r of
+        Satisfiable 5 -> putStrLn "x is 5"
+        Satisfiable _ -> putStrLn "x is ??"
+        Unsatisfiable -> putStrLn "No such x?"
+

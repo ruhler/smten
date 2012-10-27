@@ -1,9 +1,16 @@
 
+{-# LANGUAGE PatternGuards #-}
+
 -- | Run a Seri Exp of type IO in the haskell IO monad.
 module Seri.IO.Run (run) where
 
 import Seri.Lambda
 import Seri.Elaborate
+import Seri.Enoch.Enoch
+import Seri.Enoch.Seriables
+import Seri.SMT.Query
+import qualified Seri.SMT.Run
+import Seri.SMT.Yices.Yices2
 
 -- | Given a Seri expression of type IO a,
 -- returns the Seri expression of type a which results from running the IO
@@ -16,8 +23,10 @@ run env e = do
                 Just str -> putStr str
                 Nothing -> error $ "putStr: expected string, got: " ++ pretty arg
             return unitE
---        (AppE (VarE (Sig n _)) [arg]) | n == name "Seri.IO.IO.runQuery" -> do
---            runQuery (RunOptions Nothing True) env (Seri.SMT.run arg)
+        (AppE (VarE (Sig n _)) [debug, query])
+            | n == name "Seri.IO.SMT.runYices2"
+            , Just dbg <- unpack (TExp debug :: TExp (Maybe String))
+            -> runQuery (RunOptions dbg True) env (yices2 $ Seri.SMT.Run.run query)
         (AppE (VarE (Sig n _)) [x]) | n == name "Seri.IO.IO.return_io" -> return x
         (AppE (VarE (Sig n _)) [x, f]) | n == name "Seri.IO.IO.bind_io" -> do
           result <- run env x

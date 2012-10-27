@@ -66,7 +66,7 @@ newtype Realize s a = Realize {
     runRealize :: Query s a
 } deriving (Functor, Monad)
 
-data (SMT.Solver s) => QS s = QS {
+data QS s = QS {
     qs_ctx :: s,
     qs_dh :: Maybe Handle,
     qs_freeid :: Integer,

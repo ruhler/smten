@@ -18,9 +18,9 @@ proc cabal {fcabal} {
 
     # exe hsfile libraries
     set exes {
-        seri Seri/seri.hs {yices1 yices2}
-        enoch Seri/Enoch/enoch.hs yices2
-        sudoku Seri/Enoch/sudoku.hs yices2
+        seri Seri/seri.hs {}
+        enoch Seri/Enoch/enoch.hs {}
+        sudoku Seri/Enoch/sudoku.hs {}
     }
 
     set builddeps {
@@ -61,18 +61,19 @@ proc cabal {fcabal} {
     puts $fout "  exposed-modules: [join $libmods {, }]"
     puts $fout "  build-depends: [join $builddeps {, }]"
     puts $fout "  build-tools: happy"
-    puts $fout "  extra-libraries: yices1 yices2"
 
-    foreach {exe file libs} $exes {
-        puts $fout "executable $exe"
-        puts $fout "  main-is: $file"
-        puts $fout "  other-modules: [join [dict get $deps $exe] {, }]"
-        puts $fout "  build-depends: [join $builddeps {, }]"
-        puts $fout "  extra-libraries: [join $libs {, }]"
-        puts $fout "  build-tools: happy"
-        puts $fout "  ghc-options: -rtsopts"
-        puts $fout "  ghc-prof-options: -auto-all"
-    }
+    # Don't build any executables, because cabal can't handle mixing of the
+    # yices1 library and template haskell.
+#    foreach {exe file libs} $exes {
+#        puts $fout "executable $exe"
+#        puts $fout "  main-is: $file"
+#        puts $fout "  other-modules: [join [dict get $deps $exe] {, }]"
+#        puts $fout "  build-depends: [join $builddeps {, }]"
+#        puts $fout "  extra-libraries: [join $libs {, }]"
+#        puts $fout "  build-tools: happy"
+#        puts $fout "  ghc-options: -rtsopts"
+#        puts $fout "  ghc-prof-options: -auto-all"
+#    }
     close $fout
 }
 

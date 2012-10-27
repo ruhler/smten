@@ -30,6 +30,15 @@ instance SeriableE Integer where
     unpack (TExp (LitE (IntegerL i))) = Just i
     unpack _ = Nothing
 
+instance SeriableT Char where
+    serit _ = charT
+
+instance SeriableE Char where
+    pack = TExp . charE
+    unpack (TExp (LitE (CharL c))) = Just c
+    unpack _ = Nothing
+
+
 instance SeriableT Bool where
     serit _ = boolT
 
