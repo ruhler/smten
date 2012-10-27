@@ -60,12 +60,16 @@ indir build/src {
 # The seri executable
 
 hrun $::HAPPY build/src/Seri/Lambda/Parser/Grammar.y
-hrun ghc -ignore-package seri -o build/seri -ibuild/src/ src/Seri/seri.hs \
-    -L$::env(LD_LIBRARY_PATH) -lyices1_dummy -lyices2
-hrun ghc -ignore-package seri -o build/enoch -ibuild/src/ src/Seri/Enoch/enoch.hs \
-    -L$::env(LD_LIBRARY_PATH) -lyices1_dummy -lyices2
-hrun ghc -ignore-package seri -o build/sudoku -ibuild/src/ src/Seri/Enoch/sudoku.hs \
-    -L$::env(LD_LIBRARY_PATH) -lyices1_dummy -lyices2
+
+proc ghcexe {name path} {
+    hrun ghc -ignore-package seri -o build/$name \
+        -ibuild/src/ -hidir build/src -odir build/src $path \
+        -L$::env(LD_LIBRARY_PATH) -lyices1_dummy -lyices2
+}
+
+ghcexe seri src/Seri/seri.hs
+ghcexe enoch src/Seri/Enoch/enoch.hs
+ghcexe sudoku src/Seri/Enoch/sudoku.hs
     
 set SERI build/seri
 set ENOCH build/enoch
