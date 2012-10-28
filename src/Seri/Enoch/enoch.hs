@@ -96,7 +96,7 @@ qallQ :: (Solver s) => Query s [Integer]
 qallQ = allQ pred1
 
 env :: Env
-env = $(loadenvth ["src"] "src/Seri/Enoch/Enoch.sri")
+env = $(loadenvth ["."] "Seri/Enoch/Enoch.sri")
 
 try :: (Show a) => String -> Query Yices2 a -> IO ()
 try nm q = runQuery (RunOptions (Just $ "build/src/Seri/Enoch/" ++ nm ++ ".dbg") True) env q >>= (putStrLn . show)

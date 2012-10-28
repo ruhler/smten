@@ -61,19 +61,23 @@ indir build/src {
 
 hrun $::HAPPY build/src/Seri/Lambda/Parser/Grammar.y
 
-proc ghcexe {name path} {
-    hrun ghc -ignore-package seri -o build/$name \
-        -ibuild/src/ -hidir build/src -odir build/src $path \
-        -L$::env(LD_LIBRARY_PATH) -lyices1_dummy -lyices2
-}
 
-ghcexe seri src/Seri/seri.hs
-ghcexe enoch src/Seri/Enoch/enoch.hs
-ghcexe sudoku src/Seri/Enoch/sudoku.hs
+indir build/src {
+    proc ghcexe {name path} {
+        hrun ghc -o $name $path/$name.hs \
+            -L$::env(LD_LIBRARY_PATH) -lyices1_dummy -lyices2
+        hrun ghc -o $name $path/$name.hs \
+            -L$::env(LD_LIBRARY_PATH) -lyices1 -lyices2
+    }
+
+    ghcexe seri Seri
+    ghcexe enoch Seri/Enoch
+    ghcexe sudoku Seri/Enoch
+}
     
-set SERI build/seri
-set ENOCH build/enoch
-set SUDOKU build/sudoku
+set SERI build/src/seri
+set ENOCH build/src/enoch
+set SUDOKU build/src/sudoku
 
 # The general seri test
 run $SERI --type \
@@ -135,16 +139,16 @@ proc querytest {solver name} {
 proc yices1test {name} { querytest Yices1 $name }
 proc yices2test {name} { querytest Yices2 $name }
 
-#yices1test "Query1"
-#yices1test "Query2"
-#yices1test "Complex"
-#yices1test "If"
-#yices1test "Bluespec"
-#yices1test "Array"
-#yices1test "Share"
-#yices1test "Tuple"
-#yices1test "Bit"
-#yices1test "AllQ"
+yices1test "Query1"
+yices1test "Query2"
+yices1test "Complex"
+yices1test "If"
+yices1test "Bluespec"
+yices1test "Array"
+yices1test "Share"
+yices1test "Tuple"
+yices1test "Bit"
+yices1test "AllQ"
 
 yices2test "Query1"
 yices2test "Query2"
