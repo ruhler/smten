@@ -1,7 +1,7 @@
 Seri ReadMe
 ===========
 Richard Uhler <ruhler@csail.mit.edu>
-October 18, 2012
+October 27, 2012
 
 Configuring Seri for Build
 --------------------------
@@ -12,9 +12,7 @@ information about your system.
 The following variables should be set in tclmk/local.tcl:
 ::HAPPY - The path to the happy executable for building the parser.
 ::GHC - The path to ghc
-::PACKAGE_DB - The ghc package database to use when building the seri cabal package
 ::env(PATH) - The PATH to use for executables
-::env(GHC_PACKAGE_PATH) - your ghc package path
 ::env(LD_LIBRARY_PATH) - the ld library path
 
 For example, tclmk/local.tcl might look like:
@@ -22,9 +20,7 @@ For example, tclmk/local.tcl might look like:
 =========================================
 set ::HAPPY /home/ruhler/.cabal/bin/happy
 set ::GHC /usr/bin/ghc
-set ::PACKAGE_DB "/var/lib/ghc/package.conf.d"
 set ::env(PATH) "/bin:/usr/bin:/home/ruhler/local/bin"
-set ::env(GHC_PACKAGE_PATH) "$::PACKAGE_DB:/home/ruhler/.ghc/x86_64-linux-7.4.1/package.conf.d"
 set ::env(LD_LIBRARY_PATH) "/home/ruhler/local/lib"
 =========================================
 
@@ -35,16 +31,34 @@ for a yices1 library called "yices1" and a yices2 library called "yices2".
 Because the yices libraries are both shiped as "yices", you will need to
 rename them or provide a link to "yices1" and "yices2".
 
-Additionally, in order to use both yices1 and yices2 libraries in a single
-executable, seri assumes the symbols in the yices1 library have been renamed
-so that prefixes yices_ are now yices1_. The rename map is included in the doc
-directory.
+In order to use both yices1 and yices2 libraries in a single executable, seri
+assumes the symbols in the yices1 library have been renamed so that prefixes
+yices_ are now yices1_. The rename map is included in the doc directory.
 
-So, for example, if you have libyices.a for yices1 and libyices.so.2.1.0 for
-yices2 installed, to create the "yices1" and "yices2" libraries suitable for
-use with seri, run the commands:
+Due to issues with the yices1 library and template haskell, seri also requires
+a yices1_dummy library which exports the yices1_ symbols. The source for this
+library is included in the distribution in src/yices1_dummy.c. By default, the
+seri package uses this yices1_dummy library, not the real yices1 solver. If
+you don't want to use yices1, that's fine. If you want to use yices1, you
+should build your program in two steps:
+
+1. Compile the program, but don't link.
+    ghc -c foo.hs
+This uses the yices1_dummy library for template haskell calls
+
+2. Compile the program, and link with the true yices1 library.
+    ghc -o foo foo.hs -lHSseri-0.1.1.1 -lyices1
+This reuses the already compiled version of foo from before, and now that
+template haskell doesn't need to run, it's safe to link against the real
+yices1 library. You should using the desired version of the seri package in
+place of 0.1.1.1 used in the above example.
+
+In summary, if you have libyices.a for yices1 and libyices.so.2.1.0 for
+yices2 installed, to create the "yices1", "yices1_dummy" and "yices2"
+libraries suitable for use with seri, run the commands:
 
    objcopy --redefine-syms=doc/yicse1rename.txt libyices.a libyices1.a
+   gcc -o libyices1_dummy.so -fPIC -shared src/yices1_dummy.c
    ln -s libyices.so.2.1.0 libyices2.so
    ln -s libyices.so.2.1.0 libyices.so.2.0 
 
@@ -53,10 +67,12 @@ Building Seri
 -------------
 Once seri is configured for build, it can be built by running `make`.
 
-The makefile generates a cabal package for seri, builds it, then runs some
-tests on the generated executables.
+The makefile generates a cabal package for seri, installs the cabal package in
+a pretend home directory, compiles some programs against the installed
+package, then runs some tests on the generated executables. During the process
+of installation, required packages will automatically be installed as well.
 
-As of October 18th, 2012, Seri requires the following haskell packages:
+As of October 27th, 2012, Seri requires the following haskell packages:
 
 * base ==4.5.*
 * mtl ==2.1.* 
@@ -65,14 +81,15 @@ As of October 18th, 2012, Seri requires the following haskell packages:
 * directory ==1.1.*
 * template-haskell ==2.7.*
 * hashable ==1.1.*
-* containers ==0.5.*
+* containers ==0.4.*
 * bytestring ==0.9.*
 * cmdargs ==0.10.*
 * syb ==0.3.*
 
 Generated files of note:
-build/src/dist/build/seri/seri
-  - the generated seri executable
+build/src/seri:: the generated seri executable
+build/src/dist/seri-<version>.tar.gz:: the cabal distribution package
+build/src/dist/doc/html/seri/index.html:: generated library documentation
 
 Trouble Shooting
 ~~~~~~~~~~~~~~~~
@@ -124,7 +141,7 @@ Trying Seri
 After building seri you can try it out. For example, to run a simple query
 with yices 2:
 
-    ./build/src/dist/build/seri/seri --query -s Yices2 -d Query1.dbg --include src -m Seri.SMT.Tests.Query1.main -f src/Seri/SMT/Tests/Query1.sri
+    ./build/src/seri --query -s Yices2 -d Query1.dbg --include src -m Seri.SMT.Tests.Query1.main -f src/Seri/SMT/Tests/Query1.sri
 
 If it works, you should get the output:
     (Satisfiable :: Answer Integer) 5

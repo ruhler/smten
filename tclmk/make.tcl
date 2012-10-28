@@ -8,9 +8,7 @@ foreach key [array names ::env] {
 # local.tcl should set
 #   ::HAPPY - path to the happy executable
 #   ::GHC - path to ghc
-#   ::env(...) - needed environment variables, such as:
-#       PATH, GHC_PACKAGE_PATH
-#   ::PACKAGE_DB - package-db to use for cabal 
+#   ::env(...) - needed environment variables, such as: ATH
 source tclmk/local.tcl
 set ::env(LANG) "en_US.UTF-8"
 
@@ -40,34 +38,30 @@ hrun find src -type d -exec mkdir -p build/{} {;}
 hrun find src -type f -exec ln -sf [pwd]/{} build/{} {;}
 
 # The cabal package
+set ::VERSION 0.1.1.1
 source tclmk/haskell.tcl
 source tclmk/cabal.tcl
 cabal build/src/seri.cabal
 hrun mkdir -p build/home
 set ::env(HOME) [pwd]/build/home
 indir build/src {
+    hrun cabal update
+
     # Add the flag --enable-executable-profiling to this command to enable
     # profiling.
-    hrun cabal configure --package-db $::PACKAGE_DB \
+    hrun cabal install \
         --extra-lib-dirs $::env(LD_LIBRARY_PATH) \
         --with-happy=$::HAPPY
 
-    hrun cabal build
-    #hrun cabal haddock --executables
+    hrun cabal haddock
     hrun cabal sdist
 }
 
-# The seri executable
-
-hrun $::HAPPY build/src/Seri/Lambda/Parser/Grammar.y
-
-
-indir build/src {
+indir build {
     proc ghcexe {name path} {
-        hrun ghc -o $name $path/$name.hs \
-            -L$::env(LD_LIBRARY_PATH) -lyices1_dummy -lyices2
-        hrun ghc -o $name $path/$name.hs \
-            -L$::env(LD_LIBRARY_PATH) -lyices1 -lyices2
+        hrun ghc -c src/$path/$name.hs
+        hrun ghc -o src/$name src/$path/$name.hs \
+            -L$::env(LD_LIBRARY_PATH) -lHSseri-$::VERSION -lyices1
     }
 
     ghcexe seri Seri

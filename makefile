@@ -11,6 +11,6 @@ test:
 		-f src/Seri/SMT/Tests/Query1.sri
 
 clean:
-	rm -rf build
+	rm -rf build/src
 
 

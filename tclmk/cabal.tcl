@@ -3,7 +3,7 @@
 proc cabal {fcabal} {
     set props {
         name seri
-        version 0.1.1.1
+        version $::VERSION
         synopsis {Seri language compilers and infrastructure}
         license AllRightsReserved
         license-file LICENSE
@@ -16,11 +16,12 @@ proc cabal {fcabal} {
         data-files {Seri/Lib/*.sri Seri/SMT/*.sri Seri/Enoch/*.sri}
     }
 
-    # exe hsfile libraries
+    # exe hsfiles.
+    # These determine which modules should be included in the seri library.
     set exes {
-        seri Seri/seri.hs {}
-        enoch Seri/Enoch/enoch.hs {}
-        sudoku Seri/Enoch/sudoku.hs {}
+        Seri/seri.hs
+        Seri/Enoch/enoch.hs
+        Seri/Enoch/sudoku.hs
     }
 
     set builddeps {
@@ -37,17 +38,15 @@ proc cabal {fcabal} {
         {syb ==0.3.*}
     }
 
-    set deps [dict create]
     set libmods [list]
-    foreach {exe file libs} $exes {
+    foreach {file} $exes {
         set mods [dict keys [hsdepends src "build/src/$file"]]
-        dict set deps $exe $mods
         set libmods [lsort -uniq [concat $libmods $mods]]
     }
 
     set fout [open $fcabal "w"]
     foreach {n v} $props {
-        puts $fout "$n: $v"
+        puts $fout [subst "$n: $v"]
     }
 
     puts $fout "source-repository this"
@@ -63,18 +62,6 @@ proc cabal {fcabal} {
     puts $fout "  build-tools: happy"
     puts $fout "  extra-libraries: yices1_dummy yices2"
 
-    # Don't build any executables, because cabal can't handle mixing of the
-    # yices1 library and template haskell.
-#    foreach {exe file libs} $exes {
-#        puts $fout "executable $exe"
-#        puts $fout "  main-is: $file"
-#        puts $fout "  other-modules: [join [dict get $deps $exe] {, }]"
-#        puts $fout "  build-depends: [join $builddeps {, }]"
-#        puts $fout "  extra-libraries: [join $libs {, }]"
-#        puts $fout "  build-tools: happy"
-#        puts $fout "  ghc-options: -rtsopts"
-#        puts $fout "  ghc-prof-options: -auto-all"
-#    }
     close $fout
 }
 
