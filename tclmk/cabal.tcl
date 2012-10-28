@@ -61,6 +61,7 @@ proc cabal {fcabal} {
     puts $fout "  exposed-modules: [join $libmods {, }]"
     puts $fout "  build-depends: [join $builddeps {, }]"
     puts $fout "  build-tools: happy"
+    puts $fout "  extra-libraries: yices1_dummy yices2"
 
     # Don't build any executables, because cabal can't handle mixing of the
     # yices1 library and template haskell.
