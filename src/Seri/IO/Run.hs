@@ -10,6 +10,7 @@ import Seri.Enoch.Enoch
 import Seri.Enoch.Seriables
 import Seri.SMT.Query
 import qualified Seri.SMT.Run
+import Seri.SMT.Yices.Yices1
 import Seri.SMT.Yices.Yices2
 
 -- | Given a Seri expression of type IO a,
@@ -23,6 +24,10 @@ run env e = do
                 Just str -> putStr str
                 Nothing -> error $ "putStr: expected string, got: " ++ pretty arg
             return unitE
+        (AppE (VarE (Sig n _)) [debug, query])
+            | n == name "Seri.IO.SMT.runYices1"
+            , Just dbg <- unpack (TExp debug :: TExp (Maybe String))
+            -> runQuery (RunOptions dbg True) env (yices1 $ Seri.SMT.Run.run query)
         (AppE (VarE (Sig n _)) [debug, query])
             | n == name "Seri.IO.SMT.runYices2"
             , Just dbg <- unpack (TExp debug :: TExp (Maybe String))

@@ -13,11 +13,19 @@ q = do
     assert (x > 4)
     query x
 
-main :: IO ()
-main = do
-    r <- runYices2 (Just "build/src/Seri/IO/Tests/Query.Yices2.dbg") q
+showAnswer :: Answer Integer -> IO ()
+showAnswer r =
     case r of
         Satisfiable 5 -> putStrLn "x is 5"
         Satisfiable _ -> putStrLn "x is ??"
         Unsatisfiable -> putStrLn "No such x?"
+
+main :: IO ()
+main = do
+    putStrLn "Running yices1..."
+    r1 <- runYices1 (Just "build/src/Seri/IO/Tests/Query.Yices1.dbg") q
+    showAnswer r1
+    putStrLn "Running yices2..."
+    r2 <- runYices2 (Just "build/src/Seri/IO/Tests/Query.Yices2.dbg") q
+    showAnswer r2
 
