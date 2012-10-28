@@ -4,6 +4,8 @@ module Seri.SMT.Tests.Squares2.Squares where {
 import Seri.Lib.Prelude;
 import Seri.Lib.Bit;
 import Seri.SMT.SMT;
+import Seri.IO.IO;
+import Seri.IO.SMT;
 
 import Seri.SMT.Tests.Squares2.Prelude;
 import Seri.SMT.Tests.Squares2.Reg;
@@ -30,6 +32,15 @@ data MOD_mkSquares = MOD_mkSquares {
   inst_squares :: MOD_mkReg (Bit #32),
   inst_pipeQ :: MOD_mkFIFO (Bit #32)
 } deriving (Eq, Free);
+
+instance Show MOD_mkSquares where {
+    show (MOD_mkSquares a b c) = concat [
+        "MOD_mkSquares { ",
+        "inst_odds = ", show a, ", ",
+        "inst_squares = ", show b, ", ",
+        "inst_pipeQ = ", show c, " }"
+      ];
+};
 
 on_odds :: Action (MOD_mkReg (Bit #32)) a -> Action MOD_mkSquares a;
 on_odds = liftA inst_odds __inst_odds_update;
@@ -103,8 +114,15 @@ ppc = seq [p, p, c];
 pcp :: Action MOD_mkSquares ();
 pcp = seq [p, c, p];
 
-main :: Query (Answer MOD_mkSquares);
-main = not_mutually_exclusive p c;
+qmain :: Query (Answer MOD_mkSquares);
+qmain = not_mutually_exclusive p c;
+
+main :: IO ();
+main = do {
+    putStr "yices2...";
+    r1 <- runYices2 (Just "build/src/Seri/SMT/Tests/Squares2/Squares.yices2.dbg") qmain;
+    putStrLn (show r1);
+};
 
 }
 

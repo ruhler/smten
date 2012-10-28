@@ -10,6 +10,14 @@ data MOD_mkReg a = MOD_mkReg {
    value :: a
 } deriving (Eq, Free);
 
+instance (Show a) => Show (MOD_mkReg a) where {
+    show (MOD_mkReg a b) = concat [
+        "MOD_mkReg { ",
+        "modified = ", show a, ", ",
+        "value = ", show b, " }"
+      ];
+};
+
 instance State (MOD_mkReg a) where {
     newState r = r { modified = False };
 

@@ -50,7 +50,10 @@ data Bit = Bit {
     -- | The value is stored as the smallest positive integer representing the
     -- bits of the bit vector.
     bv_value :: Integer
-} deriving (Show)
+}
+
+instance Show Bit where
+    show (Bit w v) = show w ++ "'d" ++ show v
 
 -- | Construct a bit vector of the given width and value.
 -- Truncates the value as appropriate to fit in the given width.

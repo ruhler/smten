@@ -45,6 +45,12 @@ data FIFO2 a = FIFO2_Empty
              | FIFO2_Full a a
     deriving (Eq, Free);
 
+instance (Show a) => Show (FIFO2 a) where {
+    show FIFO2_Empty = "FIFO2_Empty";
+    show (FIFO2_Single x) = "FIFO2_Single " ++ show x;
+    show (FIFO2_Full x y) = concat ["FIFO2_Full ", show x, " ", show y];
+};
+
 instance FIFO FIFO2 where {
     clear = FIFO2_Empty;
 

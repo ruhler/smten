@@ -3,6 +3,8 @@ module Seri.SMT.Tests.AllQ where
 
 import Seri.Lib.Prelude
 import Seri.SMT.SMT
+import Seri.IO.IO
+import Seri.IO.SMT
 
 -- Find a list of all values satisfing the given predicate.
 allQ :: (Eq a, Free a) => (a -> Bool) -> Query [a]
@@ -22,6 +24,15 @@ pred1 x = (x > 3) && (x < 8)
 pred2 :: Integer -> Bool
 pred2 x = False
 
-main :: Query [Integer]
-main = allQ pred1
+qmain :: Query [Integer]
+qmain = allQ pred1
 
+main :: IO ()
+main = do
+    putStr "yices1..."
+    r1 <- runYices1 (Just "build/src/Seri/SMT/Tests/AllQ.yices1.dbg") qmain
+    putStrLn (show r1)
+
+    putStr "yices2..."
+    r2 <- runYices2 (Just "build/src/Seri/SMT/Tests/AllQ.yices2.dbg") qmain
+    putStrLn (show r2)

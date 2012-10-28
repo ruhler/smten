@@ -4,6 +4,8 @@ module Seri.SMT.Tests.Array where
 import Seri.Lib.Prelude
 import Seri.SMT.Array
 import Seri.SMT.SMT
+import Seri.IO.IO
+import Seri.IO.SMT
 
 arr :: SMTArray Integer
 arr = smta_upd (smta_upd (smta_upd (smta_new 3) 0 42) 1 12) 2 19
@@ -19,8 +21,8 @@ arrsum :: Integer -> SMTArray Integer -> Integer
 arrsum 0 _ = 0
 arrsum n arr = smta_sub arr (n-1) + arrsum (n-1) arr
 
-main :: Query (Answer (Integer, Integer, Integer, Integer))
-main = do
+qmain :: Query (Answer (Integer, Integer, Integer, Integer))
+qmain = do
     assert arrayworks
 
     x <- free
@@ -46,3 +48,12 @@ main = do
 
     query (x, y, z, w)
 
+main :: IO ()
+main = do
+    putStr "yices1..."
+    r1 <- runYices1 (Just "build/src/Seri/SMT/Tests/Array.yices1.dbg") qmain
+    putStrLn (show r1)
+
+    putStr "yices2..."
+    r2 <- runYices2 (Just "build/src/Seri/SMT/Tests/Array.yices2.dbg") qmain
+    putStrLn (show r2)

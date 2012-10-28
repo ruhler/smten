@@ -12,9 +12,22 @@ data FIFO2 a =
   | FIFO2_Full a a
     deriving (Eq, Free);
 
+instance (Show a) => Show (FIFO2 a) where {
+    show FIFO2_Empty = "FIFO2_Empty";
+    show (FIFO2_Single x) = "FIFO2_Single " ++ show x;
+    show (FIFO2_Full x y) = concat ["FIFO2_Full ", show x, " ", show y];
+};
+
 data MOD_mkFIFO a = MOD_mkFIFO {
     elems :: MOD_mkReg (FIFO2 a)
 } deriving (Eq, Free);
+
+instance (Show a) => Show (MOD_mkFIFO a) where {
+    show (MOD_mkFIFO x) = concat [
+        "MOD_mkFIFO { ",
+        "elems = ", show x, " }"    
+      ];
+};
 
 on_elems :: Action (MOD_mkReg (FIFO2 a)) b -> Action (MOD_mkFIFO a) b;
 on_elems = liftA elems __elems_update;

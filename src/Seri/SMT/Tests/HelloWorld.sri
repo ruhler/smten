@@ -1,0 +1,20 @@
+
+module Seri.SMT.Tests.HelloWorld where
+
+import Seri.Lib.Prelude
+import Seri.SMT.SMT
+import Seri.IO.IO
+import Seri.IO.SMT
+
+qmain :: Query (Answer Integer)
+qmain = do
+    x <- free
+    assert (x < 6)
+    assert (x > 4)
+    query x
+
+main :: IO ()
+main = do
+    r2 <- runYices2 (Just "HelloWorld.dbg") qmain
+    putStrLn (show r2)
+

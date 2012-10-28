@@ -3,10 +3,16 @@ module Seri.SMT.Tests.Complex where
 
 import Seri.Lib.Prelude
 import Seri.SMT.SMT
+import Seri.IO.IO
+import Seri.IO.SMT
 
 data Foo = Bar Integer
          | Sludge Bool
     deriving (Free)
+
+instance Show Foo where
+    show (Bar i) = "Bar " ++ show i
+    show (Sludge b) = "Sludge " ++ show b
 
 defoo :: Foo -> Integer
 defoo (Bar x) = x
@@ -21,8 +27,8 @@ scopedfail = do
     assert(x < x)
     query x
 
-main :: Query (Answer (Bool, Integer, Bool, Foo))
-main = do
+qmain :: Query (Answer (Bool, Integer, Bool, Foo))
+qmain = do
     b <- free
     assert b
 
@@ -39,3 +45,12 @@ main = do
 
     query (b, x, sf, f)
 
+main :: IO ()
+main = do
+    putStr "yices1..."
+    r1 <- runYices1 (Just "build/src/Seri/SMT/Tests/Complex.yices1.dbg") qmain
+    putStrLn (show r1)
+
+    putStr "yices2..."
+    r2 <- runYices2 (Just "build/src/Seri/SMT/Tests/Complex.yices2.dbg") qmain
+    putStrLn (show r2)

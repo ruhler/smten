@@ -50,37 +50,26 @@ import Seri.Elaborate
 
 import qualified Seri.SMT.Run as Q
 import qualified Seri.SMT.Query as Q
-import qualified Seri.SMT.Yices.Yices1 as Q
-import qualified Seri.SMT.Yices.Yices2 as Q
 
 import qualified Seri.IO.Run as I
 import Seri.Haskell
 
-data Run = Query | Io | Type | Haskell
-    deriving (Show, Eq, Typeable, Data)
-
-data Solver = Yices1 | Yices2 
+data Run = Io | Type | Haskell
     deriving (Show, Eq, Typeable, Data)
 
 data Args = Args {
     run :: Run,
-    solver :: Solver,
     include :: FilePath,
     main_is :: String,
-    file :: FilePath,
-    debug :: Maybe FilePath
+    file :: FilePath
 } deriving (Show, Eq, Data, Typeable)
 
 argspec :: Args
 argspec = Args { 
-    run = A.enum [Query A.&= A.help "Run a seri program in the Query monad",
-                  Io A.&= A.help "Run a seri program in the IO monad",
+    run = A.enum [Io A.&= A.help "Run a seri program in the IO monad",
                   Type A.&= A.help "Type infer and check a seri program",
                   Haskell A.&= A.help "Compile a seri program to Haskell"]
        A.&= A.typ "RUN MODE",
-    solver = Yices2
-       A.&= A.help "SMT solver to use"
-       A.&= A.typ "SOLVER",
     include = "."
        A.&= A.help "Seri include path" 
        A.&= A.typDir,
@@ -88,14 +77,11 @@ argspec = Args {
        A.&= A.help "Fully qualified top-level function to use",
     file = "Main.sri"
        A.&= A.help "Input .sri file"
-       A.&= A.typFile,
-    debug = Nothing
-       A.&= A.help "Debug file to output"
        A.&= A.typFile
     } A.&=
     A.verbosity A.&=
     A.help "Compile/Run a seri program" A.&=
-    A.summary "seri v0.0.1" 
+    A.summary "seri v0.1.1.1" 
 
 main :: IO ()
 main = do
@@ -104,20 +90,11 @@ main = do
     env <- loadenv [include args] (file args)
 
     let nmain = name (main_is args)
-    let getmain = do
-        tmain <- attemptIO $ lookupVarType env nmain
-        return $ VarE (Sig (name (main_is args)) tmain)
 
     case (run args) of
-        Query -> do
-            m <- getmain
-            let opts = (Q.RunOptions (debug args) True)
-            result <- case (solver args) of
-                        Yices1 -> Q.runQuery opts env (Q.yices1 . Q.run $ m)
-                        Yices2 -> Q.runQuery opts env (Q.yices2 . Q.run $ m)
-            putStrLn $ pretty (elabwhnf env result)
         Io -> do 
-            m <- getmain
+            tmain <- attemptIO $ lookupVarType env nmain
+            let m = VarE (Sig (name (main_is args)) tmain)
             I.run env m
             return ()
         Type -> putStrLn . pretty $ env

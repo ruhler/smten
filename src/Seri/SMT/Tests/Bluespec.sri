@@ -4,6 +4,8 @@ module Seri.SMT.Tests.Bluespec where
 
 import Seri.Lib.Prelude
 import Seri.SMT.SMT
+import Seri.IO.IO
+import Seri.IO.SMT
 
 import Seri.SMT.Tests.FIFO
 
@@ -13,6 +15,15 @@ data TState = TState {
     f :: FIFO2 Integer,
     b :: Integer
 } deriving (Eq, Free)
+
+instance Show TState where
+    show (TState a f b) = concat [
+        "TState { ",
+        "a = ", show a, ", ",
+        "f = ", show f, ", ",
+        "b = ", show b, "}"
+      ]
+     
 
 -- The initial state.
 s0 :: TState
@@ -65,15 +76,25 @@ always f = do
 -- Now for our query:
 --  Are the two compositions "equivalent"?
 --  That is, are they equivalent for all states s?
-main1 :: Query (Answer ())
-main1 = do
+qmain1 :: Query (Answer ())
+qmain1 = do
     always (\s -> (f s == FIFO2_Empty) ==> (ppc s == pcp s))
     --always (\s -> ppc s == pcp s)
     query ()
 
-main :: Query (Answer TState)
-main = do
+qmain :: Query (Answer TState)
+qmain = do
     s <- free
     assert (not ((f s == FIFO2_Empty) ==> (ppc s == pcp s)))
     query s
+
+main :: IO ()
+main = do
+    putStr "yices1..."
+    r1 <- runYices1 (Just "build/src/Seri/SMT/Tests/Bluespec.yices1.dbg") qmain
+    putStrLn (show r1)
+
+    putStr "yices2..."
+    r2 <- runYices2 (Just "build/src/Seri/SMT/Tests/Bluespec.yices2.dbg") qmain
+    putStrLn (show r2)
 

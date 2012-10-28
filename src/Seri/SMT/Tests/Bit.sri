@@ -4,12 +4,14 @@ module Seri.SMT.Tests.Bit where
 import Seri.Lib.Prelude
 import Seri.Lib.Bit
 import Seri.SMT.SMT
+import Seri.IO.IO
+import Seri.IO.SMT
 
 bityx :: Bit #(2+3)
 bityx = 15
 
-main :: Query (Answer (Bit#3, Bit #2, Bit #3))
-main = do
+qmain :: Query (Answer (Bit#3, Bit #2, Bit #3))
+qmain = do
     -- x is 'b111
     x <- free
     assert (((x :: Bit #3) + 1) == 0)
@@ -24,3 +26,12 @@ main = do
 
     query (x, y, z)
 
+main :: IO ()
+main = do
+    putStr "yices1..."
+    r1 <- runYices1 (Just "build/src/Seri/SMT/Tests/Bit.yices1.dbg") qmain
+    putStrLn (show r1)
+
+    putStr "yices2..."
+    r2 <- runYices2 (Just "build/src/Seri/SMT/Tests/Bit.yices2.dbg") qmain
+    putStrLn (show r2)

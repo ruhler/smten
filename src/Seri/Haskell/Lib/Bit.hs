@@ -16,6 +16,9 @@ import Seri.Haskell.Lib.Numeric
 
 data Bit n = Bit n B.Bit
 
+instance Show (Bit n) where
+    show (Bit _ b) = show b
+
 instance (N__ n) => Eq (Bit n) where
     (==) (Bit _ a) (Bit _ b) = a == b
 

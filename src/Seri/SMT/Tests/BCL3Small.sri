@@ -5,6 +5,8 @@ module Seri.SMT.Tests.BCL3Small where {
   import Seri.SMT.Tests.BCL.Reg;
   import Seri.SMT.Tests.BCL.Portal;
   import Seri.SMT.SMT;
+  import Seri.IO.IO;
+  import Seri.IO.SMT;
   data MkSizedFIFOF___FIFOFF__Int_32_BCC =
       MkSizedFIFOF___FIFOFF__Int_32_BCC (FIFO Integer)
         deriving (Free)
@@ -545,9 +547,17 @@ module Seri.SMT.Tests.BCL3Small where {
   
 ;
 
-  main :: Query (Answer ());
-  main = do {
+  qmain :: Query (Answer ());
+  qmain = do {
     main1;
     main2;
   };
+
+main :: IO ();
+main = do {
+    putStr "yices2...";
+    r1 <- runYices2 (Just "build/src/Seri/SMT/Tests/BCL3Small.yices2.dbg") qmain;
+    putStrLn (show r1);
+};
+
 }

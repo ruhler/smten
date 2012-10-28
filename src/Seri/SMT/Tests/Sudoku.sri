@@ -3,6 +3,8 @@ module Seri.SMT.Tests.Sudoku where
 
 import Seri.Lib.Prelude
 import Seri.SMT.SMT
+import Seri.IO.IO
+import Seri.IO.SMT
 
 -- The size of the sudoku.
 -- (nxn)x(nxn)
@@ -142,12 +144,17 @@ diabolical =
      ".2.6..35.",
      ".54..8.7."]
 
-main :: Query [[Char]]
-main = do
+qmain :: Query [[Char]]
+qmain = do
     board <- readBoard diabolical
     assert (isvalid board)
     result <- query board
     case result of
        Satisfiable v -> return (print v)
        _ -> return ["no solution"]
+
+main :: IO ()
+main = do
+    r <- runYices2 (Just "build/src/Seri/SMT/Tests/Sudoku.yices2.dbg") qmain
+    mapM_ putStrLn r
 

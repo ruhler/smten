@@ -4,14 +4,25 @@ module Seri.SMT.Tests.Share where
 
 import Seri.Lib.Prelude
 import Seri.SMT.SMT
+import Seri.IO.IO
+import Seri.IO.SMT
 
 quadruple :: Integer -> Integer
 quadruple a = a + (a + (a + a))
 
-main :: Query (Answer (Integer, Integer))
-main = do
+qmain :: Query (Answer (Integer, Integer))
+qmain = do
     x <- free
     y <- free
     assert (quadruple (quadruple (x - y)) == 32)
     query (x, y)
 
+main :: IO ()
+main = do
+    putStr "yices1..."
+    r1 <- runYices1 (Just "build/src/Seri/SMT/Tests/Share.yices1.dbg") qmain
+    putStrLn (show r1)
+
+    putStr "yices2..."
+    r2 <- runYices2 (Just "build/src/Seri/SMT/Tests/Share.yices2.dbg") qmain
+    putStrLn (show r2)

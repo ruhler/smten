@@ -139,14 +139,14 @@ check that:
 Trying Seri
 -----------
 After building seri you can try it out. For example, to run a simple query
-with yices 2:
+using yices2:
 
-    ./build/src/seri --query -s Yices2 -d Query1.dbg --include src -m Seri.SMT.Tests.Query1.main -f src/Seri/SMT/Tests/Query1.sri
+    ./build/src/seri --io --include src -m Seri.SMT.Tests.HelloWorld.main -f src/Seri/SMT/Tests/HelloWorld.sri
 
 If it works, you should get the output:
-    (Satisfiable :: Answer Integer) 5
+    Satisfiable 5
 
-And Query1.dbg will contain the yices2 query evaluated to get this result.
+And HelloWorld.dbg will contain the yices2 query evaluated to get this result.
 
 Additional sample queries are available in the src/Seri/SMT/Tests/ directory.
 
