@@ -243,3 +243,11 @@ elem x = any (\v -> v == x)
 notElem :: (Eq a) => a -> [a] -> Bool
 notElem x = all (\v -> v /= x)
 
+class Show a where
+    show :: a -> [Char]
+
+__prim_show_Integer :: Integer -> [Char]
+
+instance Show Integer where
+    show = __prim_show_Integer
+

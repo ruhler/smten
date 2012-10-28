@@ -10,6 +10,11 @@ data Query a =
 
 data Answer a = Satisfiable a | Unsatisfiable | Unknown
 
+instance (Show a) => Show (Answer a) where
+    show (Satisfiable x) = "Satisfiable " ++ show x
+    show Unsatisfiable = "Unsatisfiable"
+    show Unknown = "Unknown"
+
 -- Return a new free variable.
 -- Note: this is depricated. Don't use it if you can avoid it.
 __prim_free :: Query a

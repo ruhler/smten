@@ -345,7 +345,8 @@ elaborate mode env exp =
                     _ -> AppEH (ES_Some WHNF) (VarEH (ES_Some SNF) s) [a, b]
             ]
 
-
+      stringEH :: String -> ExpH
+      stringEH str = toh [] (stringE str)
 
       primitives :: HT.HashTable Name (Sig -> ExpH)
       primitives = HT.table $ [
@@ -362,6 +363,14 @@ elaborate mode env exp =
             (name "Seri.Lib.Prelude.__prim_add_Integer", \s -> biniprim s (\a b -> integerEH (a + b))),
             (name "Seri.Lib.Prelude.__prim_sub_Integer", \s -> biniprim s (\a b -> integerEH (a - b))),
             (name "Seri.Lib.Prelude.__prim_mul_Integer", \s -> biniprim s (\a b -> integerEH (a * b))),
+            (name "Seri.Lib.Prelude.__prim_show_Integer", \s ->
+                LaceEH (ES_Some WHNF) [
+                    MatchH [VarP $ Sig (name "a") integerT] $ 
+                        \[(_, a)] ->
+                            case (elab a) of
+                                LitEH (IntegerL ai) -> stringEH (show ai)
+                                _ -> AppEH (ES_Some WHNF) (VarEH (ES_Some SNF) s) [a]
+                    ]),
             (name "Seri.Lib.Prelude.<", \s -> biniprim s (\a b -> boolEH (a < b))),
             (name "Seri.Lib.Prelude.<=", \s -> biniprim s (\a b -> boolEH (a <= b))),
             (name "Seri.Lib.Prelude.>", \s -> biniprim s (\a b -> boolEH (a > b))),

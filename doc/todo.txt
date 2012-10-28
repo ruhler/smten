@@ -16,6 +16,7 @@
 ** Verify a type constructor used has been declared somewhere.
 ** Verify a free variable in an expression is not allowed.
 ** Verify all methods have been defined for a class instance.
+** Verify you can't refer to a nonexistent type
 
 - Reimplement TypeCheck to make use of constraint generation from TypeInfer?
 
@@ -85,8 +86,7 @@ That is, anything with ~?
 * Get rid of the __prim_free primitive
 * Add STP as a solver
 * Add Z3 as a solver
-* Implement runYices1, runYices2, etc... seri primitives
-** then remove --query option from seri executable
+* remove --query option from seri executable
 
 * Add static check for exhaustive case statements
 * Add static check for concreteness of queries

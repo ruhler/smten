@@ -1,0 +1,169 @@
+
+Fri Oct 26 09:05:19 EDT 2012
+
+There is a bug with layout.
+
+It seems no-indent after a brace isn't allowed.
+
+For example:
+
+------------
+module Foo where
+
+import Seri.Lib.Prelude
+
+data E = E1 | E2
+
+class ValE a where
+    vale :: E -> a
+
+foo :: E
+foo = E1
+-------------
+
+Expected prelayout stream:
+
+------------
+<1>module Foo where
+
+{1}import Seri.Lib.Prelude
+
+<1>data E = E1 | E2
+
+<1>class ValE a where
+    {5}vale :: E -> a
+
+<1>foo :: E
+<1>foo = E1
+-------------
+
+Expected postlayout stream:
+
+------------
+module Foo where
+
+{import Seri.Lib.Prelude
+
+;data E = E1 | E2
+
+;class ValE a where
+    {vale :: E -> a
+
+};foo :: E
+;foo = E1
+}
+-------------
+
+Let's see what I'm really getting.
+
+Looks like prelayout is fine. Must be a post layout issue.
+
+The issue is, we output the close brace after the class, but then we fail to
+output a semicolon. Let me look at where that semicolon is supposed to come
+from.
+
+The question is, what happens when we get <1>, given we've got a {5} on the
+stack?
+
+The idea is, you get <1> with 5 on the stack, so you output '}', you pop the
+stack, then you push the <1> token. Hmm... note that this token needs to be
+pushed to the front, not the back of the token buffer... Maybe that's what
+I've messed up.
+
+Okay, I think that explains it. Let's have tpush always push to the front of
+the queue, which makes more sense, because we want always to put in the front.
+
+Fri Oct 26 09:21:43 EDT 2012
+
+That seems to have fixed it. Cool.
+
+Fri Oct 26 09:30:12 EDT 2012
+
+Layout issues:
+* do statements don't layout right?
+* don't handle parse error brace insertion, so single line let and if probably
+  don't work: case foo of x -> x, for example. or (let foo = bar in x foo)
+
+Fri Oct 26 09:38:08 EDT 2012
+
+Looking at the do issue:
+
+---------
+module Foo where
+
+import Seri.Lib.Prelude
+
+data E = E1 | E2
+
+bar :: Maybe E
+bar = do
+    return E1
+
+foo :: E
+foo = E1
+---------
+
+---------
+<1>module Foo where
+
+{1}import Seri.Lib.Prelude
+
+<1>data E = E1 | E2
+
+<1>bar :: Maybe E
+<1>bar = do
+    {5}return E1
+
+<1>foo :: E
+<1>foo = E1
+---------
+
+---------
+module Foo where
+
+{import Seri.Lib.Prelude
+
+;data E = E1 | E2
+
+;bar :: Maybe E
+;bar = do
+    {return E1
+
+};foo :: E
+;foo = E1
+}
+---------
+
+This one looks like a bug in the parser.
+
+Fri Oct 26 10:02:45 EDT 2012
+
+Yup. And it looks like layout mostly works now! Cool.
+
+Fri Oct 26 11:55:45 EDT 2012
+
+I wonder if it would be hard to implement type synonyms. It should be a
+modularity thing, so type synonyms are resolved when you do module flattening.
+
+So here's the idea: The type checker knows about synonyms regardless of
+whether they are in scope or not. Exporting a type synonym from a module just
+says whether you can refer to the name or not.
+
+So, in addition to all the declarations, I should build up a map of type
+synonyms to expected values (they may have variables). I should find
+everywhere a type synonym is used, and replace it (it must be fully
+applied). Sounds easy enough to me. That seems like a reasonable next thing to
+support in seri.
+
+Fri Oct 26 16:10:52 EDT 2012
+
+Another way I could support type synonyms, perhaps more cleanly, is to just
+build up a map in the Parser monad. Any time I see a type synonym declaration,
+add it to the map.
+
+Hmm... I don't really feel so much like working on type synonym support right
+now. Is there something else it would be more pleasant to work on?
+
+How about this yices1 library issue. Or even look into what I could do with
+a GHC plugin.
+
