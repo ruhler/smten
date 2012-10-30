@@ -1,4 +1,5 @@
 
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TemplateHaskell #-}
 
 module Seri.Enoch.Seriables () where

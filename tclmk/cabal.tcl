@@ -52,7 +52,7 @@ proc cabal {fcabal} {
     puts $fout "source-repository this"
     puts $fout "  type: git"
     puts $fout "  location: /afs/csail.mit.edu/u/r/ruhler/git/seri"
-    set branch [lindex [exec git status -sb | head -1] 1]
+    set branch [lindex [exec git branch | grep "*"] 1]
     puts $fout "  branch: $branch"
     puts $fout "  tag: [exec cat .git/refs/heads/$branch]"
 

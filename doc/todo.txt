@@ -113,4 +113,5 @@ That is, anything with ~?
 * share code common to the different sudoku solvers
 * Have the sudoku solver use IO to read the input board
 
+* Don't require ScopedTypeVariables in derive_SeriableE.
 
