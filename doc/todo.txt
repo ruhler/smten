@@ -86,7 +86,6 @@ That is, anything with ~?
 * Get rid of the __prim_free primitive
 * Add STP as a solver
 * Add Z3 as a solver
-* remove --query option from seri executable
 
 * Add static check for exhaustive case statements
 * Add static check for concreteness of queries
@@ -103,3 +102,15 @@ That is, anything with ~?
     so probably want to hold off until then.
 
 * Report an error if module name doesn't match source file name.
+* auto derive Show
+* Move .sri files to their own directory
+** change Seri.Lib.Prelude to just Prelude
+** automatically import Prelude
+** try to match the haskell module hierarchy
+
+* add phantom type to Query and Free which indicates the theories supported by
+  a solver
+* share code common to the different sudoku solvers
+* Have the sudoku solver use IO to read the input board
+
+

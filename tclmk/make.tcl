@@ -75,25 +75,24 @@ set SUDOKU build/src/sudoku
 
 # The general seri test
 run $SERI --type \
-    --include build/src \
-    -f build/src/Seri/Lib/Tests.sri \
+    --include src/sri \
+    -f src/sri/Seri/Lib/Tests.sri \
     > build/src/tests.typed
 run $SERI --io \
-    --include build/src \
+    --include src/sri \
     -m Seri.Lib.Tests.testallio \
-    -f build/src/Seri/Lib/Tests.sri \
+    -f src/sri/Seri/Lib/Tests.sri \
     > build/src/tests.got 
 run echo "PASSED" > build/src/tests.wnt
 hrun cmp build/src/tests.got build/src/tests.wnt
 
 # Poorly typed tests.
 proc badtypetest {name} {
-    set btdir "build/src/Seri/Lambda/Tests"
     set cmd {
         run $::SERI --type \
-            --include build/src \
-            -f $btdir/$name.sri \
-            > $btdir/$name.typed
+            --include src/sri \
+            -f src/Seri/Lambda/Tests/$name.sri \
+            > "build/src/$name.typed"
         }
 
     if { [catch $cmd] == 0 } {
@@ -110,9 +109,9 @@ badtypetest "InstCtx"
 # Test the haskell target.
 set hsdir build/src/Seri/Haskell
 run $SERI --haskell \
-    --include build/src \
+    --include src/sri \
     -m testallio \
-    -f build/src/Seri/Lib/Tests.sri \
+    -f src/sri/Seri/Lib/Tests.sri \
     > $hsdir/hstests.hs
 hrun -ignorestderr $GHC -o $hsdir/hstests -ibuild/src $hsdir/hstests.hs
 run ./$hsdir/hstests > $hsdir/hstests.got
@@ -122,9 +121,9 @@ hrun cmp $hsdir/hstests.got $hsdir/hstests.wnt
 # The SMT query tests
 proc smttest {name} {
     run $::SERI --io \
-         --include=build/src \
+         --include src/sri \
          -m Seri.SMT.Tests.[string map {/ .} $name].main \
-         -f build/src/Seri/SMT/Tests/$name.sri \
+         -f src/sri/Seri/SMT/Tests/$name.sri \
          > build/src/Seri/SMT/Tests/$name.out
 }
 
@@ -148,9 +147,9 @@ smttest "Sudoku3"
 # The IO tests
 proc iotest {name args} {
     run $::SERI --io \
-         --include=build/src \
+         --include src/sri \
          -m Seri.IO.Tests.[string map {/ .} $name].main \
-         -f build/src/Seri/IO/Tests/$name.sri {*}$args \
+         -f src/sri/Seri/IO/Tests/$name.sri {*}$args \
          > build/src/Seri/IO/Tests/$name.out
 }
 

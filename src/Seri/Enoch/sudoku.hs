@@ -1,4 +1,6 @@
 
+{-# LANGUAGE TemplateHaskell #-}
+
 import Prelude hiding ((>), (==), (/=), (<=), notElem, print, (&&), all)
 
 import Data.List(transpose)
@@ -6,6 +8,7 @@ import Data.List(transpose)
 import Seri.Failable
 import Seri.Lambda hiding (free, query)
 import Seri.Enoch.Enoch
+import Seri.Enoch.EnochTH
 import Seri.Enoch.Prelude
 import Seri.Enoch.SMT
 import Seri.SMT.Solver (Solver)
@@ -153,8 +156,9 @@ solve = do
        Satisfiable v -> return (print v)
        _ -> return ["no solution"]
 
+env :: Env
+env = $(loadenvth ["src/sri"] "src/sri/Seri/SMT/SMT.sri")
+
 main :: IO ()
-main = do
-    env <- loadenv ["src"] "src/Seri/SMT/SMT.sri"
-    runQuery (RunOptions (Just "build/src/Seri/Enoch/sudoku.dbg") True) env (yices2 solve) >>= mapM_ putStrLn
+main = runQuery (RunOptions (Just "build/src/Seri/Enoch/sudoku.dbg") True) env (yices2 solve) >>= mapM_ putStrLn
 

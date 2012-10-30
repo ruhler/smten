@@ -141,12 +141,12 @@ Trying Seri
 After building seri you can try it out. For example, to run a simple query
 using yices2:
 
-    ./build/src/seri --io --include src -m Seri.SMT.Tests.HelloWorld.main -f src/Seri/SMT/Tests/HelloWorld.sri
+    ./build/src/seri --io --include src/sri -m Seri.SMT.Tests.HelloWorld.main -f src/sri/Seri/SMT/Tests/HelloWorld.sri
 
 If it works, you should get the output:
     Satisfiable 5
 
 And HelloWorld.dbg will contain the yices2 query evaluated to get this result.
 
-Additional sample queries are available in the src/Seri/SMT/Tests/ directory.
+Additional sample queries are available in the src/sri/Seri/SMT/Tests/ directory.
 

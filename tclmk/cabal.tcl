@@ -13,7 +13,7 @@ proc cabal {fcabal} {
         build-type Simple
         cabal-version >=1.8
         stability experimental
-        data-files {Seri/Lib/*.sri Seri/SMT/*.sri Seri/Enoch/*.sri}
+        data-files {[string map {src/sri sri "\n" " "} [exec find src/sri -name "*.sri"]]}
     }
 
     # exe hsfiles.
@@ -52,7 +52,7 @@ proc cabal {fcabal} {
     puts $fout "source-repository this"
     puts $fout "  type: git"
     puts $fout "  location: /afs/csail.mit.edu/u/r/ruhler/git/seri"
-    set branch [lindex [exec git status | head -1] 3]
+    set branch [lindex [exec git status -sb | head -1] 1]
     puts $fout "  branch: $branch"
     puts $fout "  tag: [exec cat .git/refs/heads/$branch]"
 
