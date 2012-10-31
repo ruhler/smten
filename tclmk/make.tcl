@@ -65,8 +65,8 @@ indir build {
     }
 
     ghcexe seri Seri
-    ghcexe enoch Seri/Enoch
-    ghcexe sudoku Seri/Enoch
+    #ghcexe enoch Seri/Enoch
+    #ghcexe sudoku Seri/Enoch
 }
     
 set SERI build/src/seri
@@ -158,8 +158,8 @@ iotest "Simple"
 iotest "Query"
 
 # The enoch tests
-hrun $::ENOCH
-hrun $::SUDOKU
+#hrun $::ENOCH
+#hrun $::SUDOKU
 
 puts "BUILD COMPLETE"
 

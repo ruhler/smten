@@ -60,7 +60,7 @@ proc cabal {fcabal} {
     puts $fout "  exposed-modules: [join $libmods {, }]"
     puts $fout "  build-depends: [join $builddeps {, }]"
     puts $fout "  build-tools: happy"
-    puts $fout "  extra-libraries: yices1_dummy yices2"
+    puts $fout "  extra-libraries: stp stdc++ yices1_dummy yices2"
 
     close $fout
 }

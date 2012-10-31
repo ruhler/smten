@@ -4,9 +4,9 @@ all:
 
 test:
 	./build/src/seri --io \
-		--include src \
-		-m Seri.SMT.Tests.HelloWorld.main \
-		-f src/Seri/SMT/Tests/HelloWorld.sri
+		--include src/sri \
+		-m Seri.SMT.Tests.Core.main \
+		-f src/sri/Seri/SMT/Tests/Core.sri
 
 clean:
 	rm -rf build/src
