@@ -1,0 +1,49 @@
+
+Tue Oct 30 08:26:23 EDT 2012
+
+I wanted to move all the .sri files into their own directory. I feel like
+that's a cleaner way to do things.
+
+There is some trouble though. For cabal to see these, they need to be under
+the src directory, right? I suppose that's no so bad.
+
+Okay, I'll move them there.
+
+Tue Oct 30 09:59:43 EDT 2012
+
+Okay, fine. I suppose I'll work on slowly cleaning this up. The trouble is, it
+doesn't really feel like much in the way of forward progress to me. Just
+moving things around.
+
+Perhaps I should put more focus on STP. Because the real things I want to
+figure out are:
+
+* How to express which theories a Query requires.
+* Supporting free functions in a meaningful way
+* Support for STP and Z3 and a SAT solver of some sort
+
+That would get the language to a point where I use it the way I envision it
+should be used.
+
+Other things are things like:
+
+* case analysis to disallow error
+* handle errors properly
+* static analysis to detect non-concrete queries or leaky queries
+
+I don't know.
+
+I'd rather not be cleaning things up forever... I need to mix in some real
+progress. Unfortunately, I don't feel like the static analysis and bug stuff
+is real progress, because I can just write rational queries manually for now.
+
+So, really, if I have free time, I ought to work on... STP.
+
+Or, you know what? If it's easier, why not try to plug in a SAT solver? I'm
+not so sure it will be easier. Okay, so try STP seriously first. Then, if I
+run into problems, move onto a SAT solver to see if it is any easier.
+
+That should be the leading priority right now. With cleanup operations as we
+go on the side.
+
+

@@ -34,11 +34,9 @@
 -------------------------------------------------------------------------------
 
 -- | An abstract syntax for SMT solvers.
---
--- TODO: clean this up.
 module Seri.SMT.Syntax (
     Symbol, Command(..), Type(..), Expression(..),
-    Binding, ImmediateValue(..),
+    Binding, Literal(..),
 
     -- * Core
     letE, eqE, ifE, varE,
@@ -55,11 +53,11 @@ module Seri.SMT.Syntax (
 type Symbol = String
 
 data Command = 
-    Define Symbol Type (Maybe Expression)       -- ^ > (define <symbol> :: <type> [<expression>])
-  | Assert Expression                           -- ^ > (assert <expression>)
-  | Check                                       -- ^ > (check)
-  | Push                                        -- ^ > (push)
-  | Pop                                         -- ^ > (pop)
+    Declare Symbol Type       -- ^ Declare a free variable of the given type
+  | Assert Expression         -- ^ > (assert <expression>)
+  | Check                     -- ^ > (check)
+  | Push                      -- ^ > (push)
+  | Pop                       -- ^ > (pop)
     deriving(Show, Eq)
 
 data Type = 
@@ -70,75 +68,73 @@ data Type =
     deriving(Show, Eq)
 
 data Expression =
-    ImmediateE ImmediateValue           -- ^ > <immediate-value>
-  | LetE [Binding] Expression           -- ^ > (let (<binding> ... <binding>) <expression>)
-  | UpdateE Expression [Expression] Expression  -- ^ > (update <expression> (<expression> ... <expression>) <expression>)
-  | FunctionE Expression [Expression]   -- ^ > (<function> <expression> ... <expression>)
+    LitE Literal
+  | VarE Symbol
+  | LetE [Binding] Expression
+  | AppE Expression [Expression]
+  | UpdateE Expression [Expression] Expression
     deriving(Show, Eq)
 
-type Binding = (String, Expression)     -- ^ > (<symbol> <expression>)
+type Binding = (String, Expression)
 
-data ImmediateValue =
-    TrueV               -- ^ > true
-  | FalseV              -- ^ > false
-  | RationalV Rational  -- ^ > <rational>
-  | VarV Symbol         -- ^ > symbol
+data Literal =
+    BoolL Bool
+  | IntegerL Integer
     deriving(Show, Eq)
 
 -- | > A <symbol> expression.
 varE :: String -> Expression
-varE n = ImmediateE (VarV n)
+varE n = VarE n
 
 -- | > true
 trueE :: Expression
-trueE = ImmediateE TrueV
+trueE = LitE (BoolL True)
 
 -- | > false
 falseE :: Expression
-falseE = ImmediateE FalseV
+falseE = LitE (BoolL False)
 
 boolE :: Bool -> Expression
-boolE True = trueE
-boolE False = falseE
+boolE b = LitE (BoolL b)
 
 -- | > not e
 notE :: Expression -> Expression
-notE e = FunctionE (varE "not") [e]
+notE e = AppE (varE "not") [e]
 
 -- | An integer expression.
 integerE :: Integer -> Expression
-integerE i = ImmediateE (RationalV (fromInteger i))
+integerE i = LitE (IntegerL i)
 
 -- | > (= <expression> <expression>)
 eqE :: Expression -> Expression -> Expression
 eqE a b | a == trueE = b
-eqE a b = FunctionE (varE "=") [a, b]
+eqE a b = AppE (varE "=") [a, b]
 
 -- | > (and <term_1> ... <term_n>)
 andE :: [Expression] -> Expression
 andE es = 
   let flatten :: Expression -> [Expression]
       flatten e | e == trueE = []
-      flatten (FunctionE f xs) | f == varE "and" = concat $ map flatten xs
+      flatten (AppE f xs) | f == varE "and" = concat $ map flatten xs
       flatten e = [e]
   in case (concat $ map flatten es) of
       [] -> trueE
       [x] -> x
       xs | any (== falseE) xs -> falseE
-      xs -> FunctionE (varE "and") xs
+      xs -> AppE (varE "and") xs
 
 -- | > (or <term_1> ... <term_n>)
 orE :: [Expression] -> Expression
 orE es =
   let flatten :: Expression -> [Expression]
       flatten e | e == falseE = []
-      flatten (FunctionE f xs) | f == varE "or" = concat $ map flatten xs
+      flatten (AppE f xs) | f == varE "or" = concat $ map flatten xs
       flatten e = [e]
   in case (concat $ map flatten es) of
         [] -> falseE
         [x] -> x
         xs | any (== trueE) xs -> trueE
-        xs -> FunctionE (varE "or") xs
+        xs -> AppE (varE "or") xs
 
 -- | > (if <expression> <expression> <expression>)
 ifE :: Expression -> Expression -> Expression -> Expression
@@ -147,75 +143,75 @@ ifE p a b | a == falseE = andE [notE p, b]
 ifE p a b | b == trueE = orE [notE p, a]
 ifE p a b | b == falseE = andE [p, a]
 ifE p a b | a == b = a
-ifE p (FunctionE vif [p2, a, _]) b
+ifE p (AppE vif [p2, a, _]) b
     | vif == varE "if" && p == p2
     = ifE p a b
-ifE p a b = FunctionE (varE "if") [p, a, b]
+ifE p a b = AppE (varE "if") [p, a, b]
 
 -- | > (< <exprsesion> <expression>)
 ltE :: Expression -> Expression -> Expression
-ltE a b = FunctionE (varE "<") [a, b]
+ltE a b = AppE (varE "<") [a, b]
 
 -- | > (<= <exprsesion> <expression>)
 leqE :: Expression -> Expression -> Expression
-leqE a b = FunctionE (varE "<=") [a, b]
+leqE a b = AppE (varE "<=") [a, b]
 
 -- | > (> <exprsesion> <expression>)
 gtE :: Expression -> Expression -> Expression
-gtE a b = FunctionE (varE ">") [a, b]
+gtE a b = AppE (varE ">") [a, b]
 
 -- | > (+ <exprsesion> <expression>)
 addE :: Expression -> Expression -> Expression
-addE a b = FunctionE (varE "+") [a, b]
+addE a b = AppE (varE "+") [a, b]
 
 -- | > (- <exprsesion> <expression>)
 subE :: Expression -> Expression -> Expression
-subE a b = FunctionE (varE "-") [a, b]
+subE a b = AppE (varE "-") [a, b]
 
 -- | > (* <exprsesion> <expression>)
 mulE :: Expression -> Expression -> Expression
-mulE a b = FunctionE (varE "*") [a, b]
+mulE a b = AppE (varE "*") [a, b]
 
 -- | > (mk-bv w b)
 mkbvE :: Integer -> Integer -> Expression
-mkbvE w b = FunctionE (varE "mk-bv") [integerE w, integerE b]
+mkbvE w b = AppE (varE "mk-bv") [integerE w, integerE b]
 
 -- | > (bv-add a b)
 bvaddE :: Expression -> Expression -> Expression
-bvaddE a b = FunctionE (varE "bv-add") [a, b]
+bvaddE a b = AppE (varE "bv-add") [a, b]
 
 -- | > (bv-or a b)
 bvorE :: Expression -> Expression -> Expression
-bvorE a b = FunctionE (varE "bv-or") [a, b]
+bvorE a b = AppE (varE "bv-or") [a, b]
 
 -- | > (bv-and a b)
 bvandE :: Expression -> Expression -> Expression
-bvandE a b = FunctionE (varE "bv-and") [a, b]
+bvandE a b = AppE (varE "bv-and") [a, b]
 
 -- | > (bv-shift-left0 a i)
 bvshiftLeft0E :: Expression -> Integer -> Expression
 bvshiftLeft0E a 0 = a
-bvshiftLeft0E a b = FunctionE (varE "bv-shift-left0") [a, integerE b]
+bvshiftLeft0E a b = AppE (varE "bv-shift-left0") [a, integerE b]
 
 -- | > (bv-shift-right0 a i)
 bvshiftRight0E :: Expression -> Integer -> Expression
 bvshiftRight0E a 0 = a
-bvshiftRight0E a b = FunctionE (varE "bv-shift-right0") [a, integerE b]
+bvshiftRight0E a b = AppE (varE "bv-shift-right0") [a, integerE b]
 
 -- | > (bv-shl a b)
 bvshlE :: Expression -> Expression -> Expression
-bvshlE a b = FunctionE (varE "bv-shl") [a, b]
+bvshlE a b = AppE (varE "bv-shl") [a, b]
 
 -- | > (bv-zero-extend a w)
 bvzeroExtendE :: Expression -> Integer -> Expression
-bvzeroExtendE a b = FunctionE (varE "bv-zero-extend") [a, integerE b]
+bvzeroExtendE a b = AppE (varE "bv-zero-extend") [a, integerE b]
 
 -- | > (bv-extract end begin bv)
 bvextractE :: Integer -> Integer -> Expression -> Expression
-bvextractE i j x = FunctionE (varE "bv-extract") [integerE i, integerE j, x]
+bvextractE i j x = AppE (varE "bv-extract") [integerE i, integerE j, x]
 
 letE :: [Binding] -> Expression -> Expression
 letE [] e = e
-letE [(n, e)] (ImmediateE (VarV n')) | n == n' = e
+letE [(n, e)] (VarE n') | n == n' = e
 letE bs e = LetE bs e
 

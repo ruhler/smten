@@ -45,7 +45,7 @@ cabal build/src/seri.cabal
 hrun mkdir -p build/home
 set ::env(HOME) [pwd]/build/home
 indir build/src {
-    hrun cabal update
+    #hrun cabal update
 
     # Add the flag --enable-executable-profiling to this command to enable
     # profiling.
@@ -53,7 +53,7 @@ indir build/src {
         --extra-lib-dirs $::env(LD_LIBRARY_PATH) \
         --with-happy=$::HAPPY
 
-    hrun cabal haddock
+    #hrun cabal haddock
     hrun cabal sdist
 }
 
@@ -127,6 +127,7 @@ proc smttest {name} {
          > build/src/Seri/SMT/Tests/$name.out
 }
 
+smttest "Core"
 smttest "Query1"
 smttest "Query2"
 smttest "Complex"

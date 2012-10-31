@@ -235,7 +235,7 @@ free :: (SMT.Solver s) => Type -> Query s Exp
 free t | isPrimT t = do
   t' <- smtt t
   free <- freevar
-  runCmds [SMT.Define (smtN free) t' Nothing]
+  runCmds [SMT.Declare (smtN free) t']
   return (VarE (Sig free t))
 free t = do
   let (ConT dt):args = unappsT t

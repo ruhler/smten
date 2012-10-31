@@ -116,10 +116,8 @@ group str elems = do
     line $ "(" ++ str
     
 instance Concrete Command where
-    concreteM  (Define s t Nothing)
+    concreteM  (Declare s t)
       = clump $ group ("define " ++ s ++ " ::") [concreteM t]
-    concreteM  (Define s t (Just e))
-      = clump $ group ("define " ++ s ++ " ::") [concreteM t, concreteM e]
     concreteM  (Assert e)
       = clump $ group "assert" [concreteM e]
     concreteM Check = line "(check)"
@@ -136,26 +134,22 @@ instance Concrete Type where
     concreteM BoolT = line "bool"
 
 instance Concrete Expression where
-    concreteM (ImmediateE iv) = concreteM iv
+    concreteM (LitE l) = concreteM l
+    concreteM (VarE s) = line s
     concreteM (LetE bindings e) = clump $ 
       group "let" [group "" (map concreteM bindings), concreteM e]
+    concreteM (AppE f args) = clump $ 
+      group "" (concreteM f : map concreteM args)
     concreteM (UpdateE f es e) = clump $ 
       group "update" [concreteM f, group "" (map concreteM es), concreteM e]
-    concreteM (FunctionE f args) = clump $ 
-      group "" (concreteM f : map concreteM args)
 
 instance Concrete Binding where
     concreteM (n, e) = clump $ group n [concreteM e]
 
-instance Concrete ImmediateValue where
-    concreteM TrueV = line "true"
-    concreteM FalseV = line "false"
-    concreteM (VarV s) = line s
-    concreteM (RationalV r) = do
-      line $ show (numerator r) ++
-                if denominator r == 1
-                    then ""
-                    else "/" ++ show (denominator r)
+instance Concrete Literal where
+    concreteM (BoolL True) = line "true"
+    concreteM (BoolL False) = line "false"
+    concreteM (IntegerL i) = line (show i)
 
 -- | Render abstract yices syntax to a concreteM syntax string meant to be
 -- read by a human.

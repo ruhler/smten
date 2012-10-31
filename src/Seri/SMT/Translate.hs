@@ -105,7 +105,7 @@ yfreeerr t = do
     id <- gets ys_errid
     let nm = "err~" ++ show id
     modifyS $ \ys -> ys { ys_errid = id+1 }
-    addcmds [SMT.Define nm yt Nothing]
+    addcmds [SMT.Declare nm yt]
     return nm
 
 -- Get a new, free variable for use as a case argument variable.
@@ -181,7 +181,7 @@ smtE' e | Just (xs, ms) <- deCaseE e = do
      dematch :: [SMT.Expression] -> [Match] -> CompilationM SMT.Expression
      dematch ye [] = do
          errnm <- yfreeerr (arrowsT $ map typeof xs ++ [typeof (head ms)])
-         return $ SMT.FunctionE (SMT.varE errnm) ye
+         return $ SMT.AppE (SMT.varE errnm) ye
      dematch es [Match ps b] | nocaseerr = do
          b' <- smtE' b
          bindings <- concatMap snd <$> mapM (uncurry depat) (zip ps es)
@@ -195,7 +195,8 @@ smtE' e | Just (xs, ms) <- deCaseE e = do
          return $ SMT.ifE pred lete bms
 
      givename :: (SMT.Expression, Char) -> CompilationM ([SMT.Binding], SMT.Expression)
-     givename (e@SMT.ImmediateE {}, _) = return ([], e)
+     givename (e@SMT.LitE {}, _) = return ([], e)
+     givename (e@SMT.VarE {}, _) = return ([], e)
      givename (e, c) = do
         cnm <- yfreecase c
         return ([(cnm, e)], SMT.varE cnm)
@@ -301,7 +302,7 @@ smtE' e@(AppE a b) =
        _ -> do
            a' <- smtE' (AppE a (init b))
            b' <- smtE' (last b)
-           return $ SMT.FunctionE a' [b']
+           return $ SMT.AppE a' [b']
 smtE' (LitE (IntegerL x)) = return $ SMT.integerE x
 smtE' (LitE (CharL c)) = return $ SMT.integerE (fromIntegral $ ord c)
 smtE' l@(LaceE ms) = 

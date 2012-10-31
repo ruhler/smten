@@ -62,12 +62,9 @@ instance Solver Yices2 where
         ptr <- c_yices_new_context nullPtr
         return $! Yices2 ptr
 
-    run _ (Define s ty Nothing) = do
+    run _ (Declare s ty) = do
         ty' <- ytype ty
         term <- c_yices_new_uninterpreted_term ty'
-        withCString s $ c_yices_set_term_name term
-    run _ (Define s _ (Just e)) = do
-        term <- yterm e
         withCString s $ c_yices_set_term_name term
     run (Yices2 yctx) (Assert p) = do
         p' <- yterm p
@@ -161,11 +158,11 @@ ytypebystr t = do
             return $! yt
 
 isbinop :: String -> Expression -> Bool
-isbinop nm (FunctionE (ImmediateE (VarV n)) [_, _]) = n == nm
+isbinop nm (AppE (VarE n) [_, _]) = n == nm
 isbinop _ _ = False
 
 dobinop :: [(String, YTerm)] -> Expression -> (YTerm -> YTerm -> IO YTerm) -> IO YTerm
-dobinop s (FunctionE (ImmediateE (VarV _)) [a, b]) f = do
+dobinop s (AppE (VarE _) [a, b]) f = do
     at <- ytermS s a
     bt <- ytermS s b
     f at bt
@@ -211,47 +208,47 @@ ytermS s e | isbinop "bv-mul" e = dobinop s e c_yices_bvmul
 ytermS s e | isbinop "bv-or" e = dobinop s e c_yices_bvor
 ytermS s e | isbinop "bv-and" e = dobinop s e c_yices_bvand
 ytermS s e | isbinop "bv-shl" e = dobinop s e c_yices_bvshl
-ytermS s (FunctionE (ImmediateE (VarV "not")) [e]) = do
+ytermS s (AppE (VarE "not") [e]) = do
     et <- ytermS s e
     c_yices_not et
-ytermS s (FunctionE (ImmediateE (VarV "select")) [v, ImmediateE (RationalV i)]) = do
+ytermS s (AppE (VarE "select") [v, LitE (IntegerL i)]) = do
     vt <- ytermS s v
-    c_yices_select (fromInteger $ numerator i) vt
-ytermS s (FunctionE (ImmediateE (VarV "if")) [p, a, b]) = do
+    c_yices_select (fromInteger i) vt
+ytermS s (AppE (VarE "if") [p, a, b]) = do
     pt <- ytermS s p 
     at <- ytermS s a
     bt <- ytermS s b
     c_yices_ite pt at bt
-ytermS s (FunctionE (ImmediateE (VarV "mk-tuple")) args) = do
+ytermS s (AppE (VarE "mk-tuple") args) = do
     argst <- mapM (ytermS s) args
     withArray argst $ c_yices_tuple (fromIntegral $ length argst)
-ytermS s (FunctionE (ImmediateE (VarV "mk-bv")) [ImmediateE (RationalV w), ImmediateE (RationalV v)]) = do
-    c_yices_bvconst_uint64 (fromInteger $ numerator w) (fromInteger $ numerator v)
-ytermS s (FunctionE (ImmediateE (VarV "bv-zero-extend")) [a, ImmediateE (RationalV n)]) = do
+ytermS s (AppE (VarE "mk-bv") [LitE (IntegerL w), LitE (IntegerL v)]) = do
+    c_yices_bvconst_uint64 (fromInteger w) (fromInteger v)
+ytermS s (AppE (VarE "bv-zero-extend") [a, LitE (IntegerL n)]) = do
     at <- ytermS s a
-    c_yices_zero_extend at (fromInteger $ numerator n)
+    c_yices_zero_extend at (fromInteger n)
 
 -- syntax for bv-extract is: bv-extract end begin bv
 -- for the c api, we have: bvextract bv begin end
-ytermS s (FunctionE (ImmediateE (VarV "bv-extract")) [ImmediateE (RationalV end), ImmediateE (RationalV begin), x]) = do
+ytermS s (AppE (VarE "bv-extract") [LitE (IntegerL end), LitE (IntegerL begin), x]) = do
     xt <- ytermS s x
-    c_yices_bvextract xt (fromInteger $ numerator begin) (fromInteger $ numerator end)
+    c_yices_bvextract xt (fromInteger begin) (fromInteger end)
 
-ytermS s (FunctionE (ImmediateE (VarV "bv-shift-left0")) [a, ImmediateE (RationalV n)]) = do
+ytermS s (AppE (VarE "bv-shift-left0") [a, LitE (IntegerL n)]) = do
     at <- ytermS s a
-    c_yices_shift_left0 at (fromInteger $ numerator n)
-ytermS s (FunctionE (ImmediateE (VarV "bv-shift-right0")) [a, ImmediateE (RationalV n)]) = do
+    c_yices_shift_left0 at (fromInteger n)
+ytermS s (AppE (VarE "bv-shift-right0") [a, LitE (IntegerL n)]) = do
     at <- ytermS s a
-    c_yices_shift_right0 at (fromInteger $ numerator n)
-ytermS s (FunctionE (ImmediateE (VarV "and")) args) = do
+    c_yices_shift_right0 at (fromInteger n)
+ytermS s (AppE (VarE "and") args) = do
     argst <- mapM (ytermS s) args
     withArray argst $ c_yices_and (fromIntegral $ length argst)
-ytermS s (FunctionE (ImmediateE (VarV "or")) args) = do
+ytermS s (AppE (VarE "or") args) = do
     argst <- mapM (ytermS s) args
     withArray argst $ c_yices_or (fromIntegral $ length argst)
-ytermS s e@(FunctionE (ImmediateE (VarV f)) _) | f `elem` builtin = do
+ytermS s e@(AppE (VarE f) _) | f `elem` builtin = do
     error $ "TODO: yterm builtin " ++ YC.pretty e
-ytermS s (FunctionE f [a]) = do
+ytermS s (AppE f [a]) = do
     ft <- ytermS s f
     at <- ytermS s a 
     withArray [at] $ c_yices_application ft 1
@@ -269,11 +266,10 @@ ytermS s (LetE bs e) =
     vars <- mapM mkvar bs
     ytermS (vars ++ s) e
         
-ytermS _ (ImmediateE TrueV) = c_yices_true
-ytermS _ (ImmediateE FalseV) = c_yices_false
-ytermS _ (ImmediateE (RationalV r)) = do
-    c_yices_rational64 (fromInteger $ numerator r) (fromInteger $ denominator r)
-ytermS s e@(ImmediateE (VarV nm)) =
+ytermS _ (LitE (BoolL True)) = c_yices_true
+ytermS _ (LitE (BoolL False)) = c_yices_false
+ytermS _ (LitE (IntegerL i)) = c_yices_int64 (fromInteger i)
+ytermS s e@(VarE nm) =
     case lookup nm s of
         Nothing -> withCString nm c_yices_get_term_by_name
         Just t -> return t 

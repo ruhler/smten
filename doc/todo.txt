@@ -103,10 +103,10 @@ That is, anything with ~?
 
 * Report an error if module name doesn't match source file name.
 * auto derive Show
-* Move .sri files to their own directory
-** change Seri.Lib.Prelude to just Prelude
-** automatically import Prelude
-** try to match the haskell module hierarchy
+
+* change Seri.Lib.Prelude to just Prelude
+* automatically import Prelude
+* try to match the haskell module hierarchy
 
 * add phantom type to Query and Free which indicates the theories supported by
   a solver

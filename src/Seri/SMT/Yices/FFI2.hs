@@ -64,7 +64,7 @@ module Seri.SMT.Yices.FFI2 (
     -- Term constructors
     c_yices_true,
     c_yices_false,
-    c_yices_rational64,
+    c_yices_int64,
     c_yices_not,
     c_yices_eq,
     c_yices_tuple,
@@ -197,8 +197,8 @@ foreign import ccall unsafe "yices_true"
 foreign import ccall unsafe "yices_false"
     c_yices_false ::  IO YTerm
 
-foreign import ccall unsafe "yices_rational64"
-    c_yices_rational64 ::  Int64 -> Word64 -> IO YTerm
+foreign import ccall unsafe "yices_int64"
+    c_yices_int64 :: Int64 ->  IO YTerm
 
 foreign import ccall unsafe "yices_not"
     c_yices_not ::  YTerm -> IO YTerm
