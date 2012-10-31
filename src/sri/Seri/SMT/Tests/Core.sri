@@ -24,3 +24,7 @@ main = do
     r2 <- runYices2 (Just "build/src/Seri/SMT/Tests/Core.yices2.dbg") qmain
     putStrLn (show r2)
 
+    putStrLn "stp..."
+    r3 <- runSTP (Just "build/src/Seri/SMT/Tests/Core.stp.dbg") qmain
+    putStrLn (show r3)
+

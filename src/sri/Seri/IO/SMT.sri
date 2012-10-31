@@ -15,3 +15,8 @@ runYices1 :: Maybe [Char] -> Query a -> IO a
 -- to the given file.
 runYices2 :: Maybe [Char] -> Query a -> IO a
 
+-- Run an SMT Query using stp
+-- If the first argument is not Nothing, debugging will be enabled, outputting
+-- to the given file.
+runSTP :: Maybe [Char] -> Query a -> IO a
+

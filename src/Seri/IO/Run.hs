@@ -12,6 +12,7 @@ import Seri.SMT.Query
 import qualified Seri.SMT.Run
 import Seri.SMT.Yices.Yices1
 import Seri.SMT.Yices.Yices2
+import Seri.SMT.STP.STP
 
 -- | Given a Seri expression of type IO a,
 -- returns the Seri expression of type a which results from running the IO
@@ -32,6 +33,10 @@ run env e = do
             | n == name "Seri.IO.SMT.runYices2"
             , Just dbg <- unpack (TExp debug :: TExp (Maybe String))
             -> runQuery (RunOptions dbg True) env (yices2 $ Seri.SMT.Run.run query)
+        (AppE (VarE (Sig n _)) [debug, query])
+            | n == name "Seri.IO.SMT.runSTP"
+            , Just dbg <- unpack (TExp debug :: TExp (Maybe String))
+            -> runQuery (RunOptions dbg True) env (stp $ Seri.SMT.Run.run query)
         (AppE (VarE (Sig n _)) [x]) | n == name "Seri.IO.IO.return_io" -> return x
         (AppE (VarE (Sig n _)) [x, f]) | n == name "Seri.IO.IO.bind_io" -> do
           result <- run env x
