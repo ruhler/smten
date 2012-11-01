@@ -33,70 +33,67 @@
 -- 
 -------------------------------------------------------------------------------
 
-{-# LANGUAGE DeriveDataTypeable #-}
+module Seri.Lambda.Loader (SearchPath, load) where
 
--- | Main seri executable.
-module Main where
+import System.Directory
 
-import Data.Generics
-
-import System.Environment
-import System.Exit
-import qualified System.Console.CmdArgs.Implicit as A
+import Data.List(nub)
 
 import Seri.Failable
-import Seri.Lambda
-import Seri.Elaborate
+import Seri.Lambda.IR
+import Seri.Lambda.Parser
+import Seri.Lambda.Modularity
+import Seri.Lambda.Sugar
+import Seri.Lambda.Ppr
 
-import qualified Seri.SMT.Run as Q
-import qualified Seri.SMT.Query as Q
+type SearchPath = [FilePath]
 
-import qualified Seri.IO.Run as I
-import Seri.Haskell
+-- | Load a bunch of modules.
+-- Loads as many modules as are needed based on the import list and imports in
+-- any modules which are loaded.
+loads :: SearchPath
+      -> [Name]     -- ^ List of module names to load
+      -> [Module]   -- ^ List of modules already loaded
+      -> IO [Module]
+loads _ [] ms = return ms
+loads sp ns ms =
+  let isLoaded :: Name -> Bool
+      isLoaded n = n `elem` ([mn | Module mn _ _ <- ms])
 
-data Run = Io | Type | Haskell
-    deriving (Show, Eq, Typeable, Data)
+      needed = nub $ filter (not . isLoaded) ns
+  in do
+    loaded <- mapM (loadone sp) needed
+    let newimports = concat [i | Module _ i _ <- loaded]
+    let newnames = [n | Import n <- newimports]
+    loads sp newnames (loaded ++ ms)
 
-data Args = Args {
-    run :: Run,
-    include :: FilePath,
-    main_is :: String,
-    file :: FilePath
-} deriving (Show, Eq, Data, Typeable)
+-- | Load a single module with the given name.
+loadone :: SearchPath -> Name -> IO Module
+loadone sp n = do
+    fname <- findmodule sp n
+    text <- readFile fname
+    attemptIO $ parse fname text
+      
+findmodule :: SearchPath -> Name -> IO FilePath
+findmodule [] n = fail $ "Module " ++ pretty n ++ " not found"
+findmodule (s:ss) n =
+ let dirify :: Name -> FilePath
+     dirify n | nnull n = []
+     dirify n | nhead n == '.' = '/' : dirify (ntail n)
+     dirify n = nhead n : dirify (ntail n)
 
-argspec :: Args
-argspec = Args { 
-    run = A.enum [Io A.&= A.help "Run a seri program in the IO monad",
-                  Type A.&= A.help "Type infer and check a seri program",
-                  Haskell A.&= A.help "Compile a seri program to Haskell"]
-       A.&= A.typ "RUN MODE",
-    include = "."
-       A.&= A.help "Seri include path" 
-       A.&= A.typDir,
-    main_is = "Main.main"
-       A.&= A.help "Fully qualified top-level function to use",
-    file = "Main.sri"
-       A.&= A.help "Input .sri file"
-       A.&= A.typFile
-    } A.&=
-    A.verbosity A.&=
-    A.help "Compile/Run a seri program" A.&=
-    A.summary "seri v0.1.1.1" 
+     fp = s ++ "/" ++ dirify n ++ ".sri"
+ in do
+    exists <- doesFileExist fp
+    if exists
+        then return fp
+        else findmodule ss n
 
-main :: IO ()
-main = do
-    args <- A.cmdArgs argspec
-
-    env <- loadenv [include args] (file args)
-
-    let nmain = name (main_is args)
-
-    case (run args) of
-        Io -> do 
-            tmain <- attemptIO $ lookupVarType env nmain
-            let m = VarE (Sig (name (main_is args)) tmain)
-            I.run env m
-            return ()
-        Type -> putStrLn . pretty $ env
-        Haskell -> putStrLn . show $ haskell haskellH (getDecls env) nmain
+-- | Load the complete module hierarchy needed for the sri file specified in
+-- the given path.
+load :: SearchPath -> FilePath -> IO [Module]
+load path mainmod = do
+    maintext <- readFile mainmod
+    main@(Module _ imps _)  <- attemptIO $ parse mainmod maintext
+    loads path [n | Import n <- imps] [main]
 

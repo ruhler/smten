@@ -8,7 +8,7 @@ foreach key [array names ::env] {
 # local.tcl should set
 #   ::HAPPY - path to the happy executable
 #   ::GHC - path to ghc
-#   ::env(...) - needed environment variables, such as: ATH
+#   ::env(...) - needed environment variables, such as: PATH
 source tclmk/local.tcl
 set ::env(LANG) "en_US.UTF-8"
 
@@ -34,63 +34,74 @@ proc hrun {args} {
 }
 
 # Create and set up a build directory for the build.
-hrun find src -type d -exec mkdir -p build/{} {;}
-hrun find src -type f -exec ln -sf [pwd]/{} build/{} {;}
+hrun mkdir -p build/home build/seri-bin build/Squares2
 
-# The cabal package
-set ::VERSION 0.1.1.1
-source tclmk/haskell.tcl
-source tclmk/cabal.tcl
-cabal build/src/seri.cabal
-hrun mkdir -p build/home
 set ::env(HOME) [pwd]/build/home
-indir build/src {
-    #hrun cabal update
+#hrun cabal update
 
+# The seri package
+indir seri {
     # Add the flag --enable-executable-profiling to this command to enable
     # profiling.
     hrun cabal install \
-        --extra-lib-dirs $::env(LD_LIBRARY_PATH) \
-        --with-happy=$::HAPPY
+        --builddir ../build/seri \
+        --with-happy=$::HAPPY \
+        --force-reinstalls 
 
-    #hrun cabal haddock
-    hrun cabal sdist
+    #hrun cabal haddock --builddir ../build/seri
+    hrun cabal sdist --builddir ../build/seri
 }
 
-indir build {
-    proc ghcexe {name path} {
-        hrun ghc -c src/$path/$name.hs
-        hrun ghc -o src/$name src/$path/$name.hs \
-            -L$::env(LD_LIBRARY_PATH) -lHSseri-$::VERSION -lyices1
-    }
+# The seri-smt package
+indir seri-smt {
+    # Add the flag --enable-executable-profiling to this command to enable
+    # profiling.
+    hrun cabal install \
+        --builddir ../build/seri-smt \
+        --extra-lib-dirs $::env(LD_LIBRARY_PATH) \
+        --force-reinstalls 
 
-    ghcexe seri Seri
-    #ghcexe enoch Seri/Enoch
-    #ghcexe sudoku Seri/Enoch
+    #hrun cabal haddock --builddir ../build/seri-smt
+    hrun cabal sdist --builddir ../build/seri-smt
+}
+
+# The binary executables
+indir build/seri-bin {
+    hrun ln -sf ../../seri-bin/seri.hs seri.hs
+    hrun ghc -o seri seri.hs
+
+    hrun ln -sf ../../seri-bin/enoch.hs enoch.hs
+    hrun ghc -o enoch enoch.hs
+
+    hrun ln -sf ../../seri-bin/sudoku.hs sudoku.hs
+    hrun ghc -o sudoku sudoku.hs
 }
     
-set SERI build/src/seri
-set ENOCH build/src/enoch
-set SUDOKU build/src/sudoku
+set SERI build/seri-bin/seri
+set ENOCH build/seri-bin/enoch
+set SUDOKU build/seri-bin/sudoku
+
+set SRI_SERI seri/sri
+set SRI_SMT seri-smt/sri
 
 # The general seri test
 run $SERI --type \
-    --include src/sri \
-    -f src/sri/Seri/Lib/Tests.sri \
-    > build/src/tests.typed
+    --include $::SRI_SERI --include $::SRI_SMT \
+    -f $::SRI_SERI/Seri/Lib/Tests.sri \
+    > build/tests.typed
 run $SERI --io \
-    --include src/sri \
+    --include $::SRI_SERI --include $::SRI_SMT \
     -m Seri.Lib.Tests.testallio \
-    -f src/sri/Seri/Lib/Tests.sri \
-    > build/src/tests.got 
-run echo "PASSED" > build/src/tests.wnt
-hrun cmp build/src/tests.got build/src/tests.wnt
+    -f $::SRI_SERI/Seri/Lib/Tests.sri \
+    > build/tests.got 
+run echo "PASSED" > build/tests.wnt
+hrun cmp build/tests.got build/tests.wnt
 
 # Poorly typed tests.
 proc badtypetest {name} {
     set cmd {
         run $::SERI --type \
-            --include src/sri \
+            --include $::SRI_SERI --include $::SRI_SMT \
             -f src/Seri/Lambda/Tests/$name.sri \
             > "build/src/$name.typed"
         }
@@ -107,13 +118,13 @@ badtypetest "InstCtx"
 
 
 # Test the haskell target.
-set hsdir build/src/Seri/Haskell
+set hsdir build/
 run $SERI --haskell \
-    --include src/sri \
+    --include $::SRI_SERI --include $::SRI_SMT \
     -m testallio \
-    -f src/sri/Seri/Lib/Tests.sri \
+    -f $::SRI_SERI/Seri/Lib/Tests.sri \
     > $hsdir/hstests.hs
-hrun -ignorestderr $GHC -o $hsdir/hstests -ibuild/src $hsdir/hstests.hs
+hrun -ignorestderr $GHC -o $hsdir/hstests $hsdir/hstests.hs
 run ./$hsdir/hstests > $hsdir/hstests.got
 run echo "PASSED" > $hsdir/hstests.wnt
 hrun cmp $hsdir/hstests.got $hsdir/hstests.wnt
@@ -121,10 +132,10 @@ hrun cmp $hsdir/hstests.got $hsdir/hstests.wnt
 # The SMT query tests
 proc smttest {name} {
     run $::SERI --io \
-         --include src/sri \
+         --include $::SRI_SERI --include $::SRI_SMT \
          -m Seri.SMT.Tests.[string map {/ .} $name].main \
-         -f src/sri/Seri/SMT/Tests/$name.sri \
-         > build/src/Seri/SMT/Tests/$name.out
+         -f $::SRI_SMT/Seri/SMT/Tests/$name.sri \
+         > build/$name.out
 }
 
 smttest "Core"
@@ -148,18 +159,18 @@ smttest "Sudoku3"
 # The IO tests
 proc iotest {name args} {
     run $::SERI --io \
-         --include src/sri \
+        --include $::SRI_SERI --include $::SRI_SMT \
          -m Seri.IO.Tests.[string map {/ .} $name].main \
-         -f src/sri/Seri/IO/Tests/$name.sri {*}$args \
-         > build/src/Seri/IO/Tests/$name.out
+         -f $::SRI_SMT/Seri/IO/Tests/$name.sri {*}$args \
+         > build/$name.out
 }
 
 iotest "Simple"
 iotest "Query"
 
 # The enoch tests
-#hrun $::ENOCH
-#hrun $::SUDOKU
+hrun $::ENOCH
+hrun $::SUDOKU
 
 puts "BUILD COMPLETE"
 

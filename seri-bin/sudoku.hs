@@ -157,7 +157,7 @@ solve = do
        _ -> return ["no solution"]
 
 env :: Env
-env = $(loadenvth ["src/sri"] "src/sri/Seri/SMT/SMT.sri")
+env = $(loadenvth ["../../seri/sri", "../../seri-smt/sri"] "../../seri-smt/sri/Seri/SMT/SMT.sri")
 
 main :: IO ()
 main = runQuery (RunOptions (Just "build/src/Seri/Enoch/sudoku.dbg") True) env (yices2 solve) >>= mapM_ putStrLn
