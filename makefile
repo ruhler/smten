@@ -9,6 +9,6 @@ test:
 		-f src/sri/Seri/SMT/Tests/Sudoku2.sri
 
 clean:
-	rm -rf build/src
+	rm -rf build/seri-smt build/seri build/seri-bin build/test
 
 

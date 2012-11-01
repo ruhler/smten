@@ -99,7 +99,7 @@ env :: Env
 env = $(loadenvth ["../../seri/sri", "../../seri-smt/sri"] "../../seri/sri/Seri/Enoch/Enoch.sri")
 
 try :: (Show a) => String -> Query Yices2 a -> IO ()
-try nm q = runQuery (RunOptions (Just $ "build/src/Seri/Enoch/" ++ nm ++ ".dbg") True) env q >>= (putStrLn . show)
+try nm q = runQuery (RunOptions (Just $ "build/test/" ++ nm ++ ".dbg") True) env q >>= (putStrLn . show)
 
 main :: IO ()
 main = do

@@ -119,6 +119,6 @@ That is, anything with ~?
   described by SMTLIB2
 * Remove bv-zero-extend from SMT syntax, use SMTLIB2 alternative
 
-* build script is leaving seri.o and seri.hi in the src/ directory, why isn't
-  this left in the build/ directory instead?
+* don't hardcode build/test output directory into SMT and IO tests
+* clean up tclmk script: maybe separate into init, build, and test sections.
 

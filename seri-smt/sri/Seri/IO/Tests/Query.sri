@@ -16,10 +16,10 @@ q = do
 main :: IO ()
 main = do
     putStrLn "Running yices1..."
-    r1 <- runYices1 (Just "build/src/Seri/IO/Tests/Query.Yices1.dbg") q
+    r1 <- runYices1 (Just "build/test/Query.Yices1.dbg") q
     putStrLn $ show r1
 
     putStrLn "Running yices2..."
-    r2 <- runYices2 (Just "build/src/Seri/IO/Tests/Query.Yices2.dbg") q
+    r2 <- runYices2 (Just "build/test/Query.Yices2.dbg") q
     putStrLn $ show r2
 

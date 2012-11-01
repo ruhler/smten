@@ -7,7 +7,6 @@ foreach key [array names ::env] {
 # Get infomation about the local environment.
 # local.tcl should set
 #   ::HAPPY - path to the happy executable
-#   ::GHC - path to ghc
 #   ::env(...) - needed environment variables, such as: PATH
 source tclmk/local.tcl
 set ::env(LANG) "en_US.UTF-8"
@@ -34,10 +33,11 @@ proc hrun {args} {
 }
 
 # Create and set up a build directory for the build.
-hrun mkdir -p build/home build/seri-bin build/Squares2
+hrun mkdir -p build/home build/seri-bin build/test build/test/Squares2
 
 set ::env(HOME) [pwd]/build/home
-#hrun cabal update
+hrun cabal update
+hrun cabal install cmdargs syb
 
 # The seri package
 indir seri {
@@ -88,14 +88,14 @@ set SRI_SMT seri-smt/sri
 run $SERI --type \
     --include $::SRI_SERI --include $::SRI_SMT \
     -f $::SRI_SERI/Seri/Lib/Tests.sri \
-    > build/tests.typed
+    > build/test/tests.typed
 run $SERI --io \
     --include $::SRI_SERI --include $::SRI_SMT \
     -m Seri.Lib.Tests.testallio \
     -f $::SRI_SERI/Seri/Lib/Tests.sri \
-    > build/tests.got 
-run echo "PASSED" > build/tests.wnt
-hrun cmp build/tests.got build/tests.wnt
+    > build/test/tests.got 
+run echo "PASSED" > build/test/tests.wnt
+hrun cmp build/test/tests.got build/test/tests.wnt
 
 # Poorly typed tests.
 proc badtypetest {name} {
@@ -103,7 +103,7 @@ proc badtypetest {name} {
         run $::SERI --type \
             --include $::SRI_SERI --include $::SRI_SMT \
             -f src/Seri/Lambda/Tests/$name.sri \
-            > "build/src/$name.typed"
+            > "build/test/$name.typed"
         }
 
     if { [catch $cmd] == 0 } {
@@ -118,13 +118,13 @@ badtypetest "InstCtx"
 
 
 # Test the haskell target.
-set hsdir build/
+set hsdir build/test
 run $SERI --haskell \
     --include $::SRI_SERI --include $::SRI_SMT \
     -m testallio \
     -f $::SRI_SERI/Seri/Lib/Tests.sri \
     > $hsdir/hstests.hs
-hrun -ignorestderr $GHC -o $hsdir/hstests $hsdir/hstests.hs
+hrun -ignorestderr ghc -o $hsdir/hstests $hsdir/hstests.hs
 run ./$hsdir/hstests > $hsdir/hstests.got
 run echo "PASSED" > $hsdir/hstests.wnt
 hrun cmp $hsdir/hstests.got $hsdir/hstests.wnt
@@ -135,7 +135,7 @@ proc smttest {name} {
          --include $::SRI_SERI --include $::SRI_SMT \
          -m Seri.SMT.Tests.[string map {/ .} $name].main \
          -f $::SRI_SMT/Seri/SMT/Tests/$name.sri \
-         > build/$name.out
+         > build/test/$name.out
 }
 
 smttest "Core"
@@ -162,7 +162,7 @@ proc iotest {name args} {
         --include $::SRI_SERI --include $::SRI_SMT \
          -m Seri.IO.Tests.[string map {/ .} $name].main \
          -f $::SRI_SMT/Seri/IO/Tests/$name.sri {*}$args \
-         > build/$name.out
+         > build/test/$name.out
 }
 
 iotest "Simple"

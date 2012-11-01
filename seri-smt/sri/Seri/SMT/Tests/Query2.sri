@@ -19,10 +19,10 @@ qmain = do
 main :: IO ()
 main = do
     putStrLn "yices1..."
-    r1 <- runYices1 (Just "build/src/Seri/SMT/Tests/Query2.yices1.dbg") qmain
+    r1 <- runYices1 (Just "build/test/Query2.yices1.dbg") qmain
     putStrLn (show r1)
 
     putStrLn "yices2..."
-    r2 <- runYices2 (Just "build/src/Seri/SMT/Tests/Query2.yices2.dbg") qmain
+    r2 <- runYices2 (Just "build/test/Query2.yices2.dbg") qmain
     putStrLn (show r2)
 

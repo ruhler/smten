@@ -120,7 +120,7 @@ qmain = not_mutually_exclusive p c;
 main :: IO ();
 main = do {
     putStr "yices2...";
-    r1 <- runYices2 (Just "build/src/Seri/SMT/Tests/Squares2/Squares.yices2.dbg") qmain;
+    r1 <- runYices2 (Just "build/test/Squares2/Squares.yices2.dbg") qmain;
     putStrLn (show r1);
 };
 

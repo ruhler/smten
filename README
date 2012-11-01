@@ -1,7 +1,7 @@
 Seri ReadMe
 ===========
 Richard Uhler <ruhler@csail.mit.edu>
-October 27, 2012
+November 1, 2012
 
 Configuring Seri for Build
 --------------------------
@@ -11,7 +11,6 @@ information about your system.
 
 The following variables should be set in tclmk/local.tcl:
 ::HAPPY - The path to the happy executable for building the parser.
-::GHC - The path to ghc
 ::env(PATH) - The PATH to use for executables
 ::env(LD_LIBRARY_PATH) - the ld library path
 
@@ -19,7 +18,6 @@ For example, tclmk/local.tcl might look like:
 
 =========================================
 set ::HAPPY /home/ruhler/.cabal/bin/happy
-set ::GHC /usr/bin/ghc
 set ::env(PATH) "/bin:/usr/bin:/home/ruhler/local/bin"
 set ::env(LD_LIBRARY_PATH) "/home/ruhler/local/lib"
 =========================================
@@ -35,61 +33,34 @@ In order to use both yices1 and yices2 libraries in a single executable, seri
 assumes the symbols in the yices1 library have been renamed so that prefixes
 yices_ are now yices1_. The rename map is included in the doc directory.
 
-Due to issues with the yices1 library and template haskell, seri also requires
-a yices1_dummy library which exports the yices1_ symbols. The source for this
-library is included in the distribution in src/yices1_dummy.c. By default, the
-seri package uses this yices1_dummy library, not the real yices1 solver. If
-you don't want to use yices1, that's fine. If you want to use yices1, you
-should build your program in two steps:
-
-1. Compile the program, but don't link.
-    ghc -c foo.hs
-This uses the yices1_dummy library for template haskell calls
-
-2. Compile the program, and link with the true yices1 library.
-    ghc -o foo foo.hs -lHSseri-0.1.1.1 -lyices1
-This reuses the already compiled version of foo from before, and now that
-template haskell doesn't need to run, it's safe to link against the real
-yices1 library. You should using the desired version of the seri package in
-place of 0.1.1.1 used in the above example.
-
 In summary, if you have libyices.a for yices1 and libyices.so.2.1.0 for
-yices2 installed, to create the "yices1", "yices1_dummy" and "yices2"
-libraries suitable for use with seri, run the commands:
+yices2 installed, to create the "yices1" and "yices2" libraries suitable for
+use with seri, run the commands:
 
    objcopy --redefine-syms=doc/yicse1rename.txt libyices.a libyices1.a
-   gcc -o libyices1_dummy.so -fPIC -shared src/yices1_dummy.c
    ln -s libyices.so.2.1.0 libyices2.so
    ln -s libyices.so.2.1.0 libyices.so.2.0 
+
+STP
+~~~
+Seri requires you have the STP library installed on your system to build.
 
 
 Building Seri
 -------------
 Once seri is configured for build, it can be built by running `make`.
 
-The makefile generates a cabal package for seri, installs the cabal package in
-a pretend home directory, compiles some programs against the installed
-package, then runs some tests on the generated executables. During the process
-of installation, required packages will automatically be installed as well.
-
-As of October 27th, 2012, Seri requires the following haskell packages:
-
-* base ==4.5.*
-* mtl ==2.1.* 
-* pretty ==1.1.*
-* array ==0.4.*
-* directory ==1.1.*
-* template-haskell ==2.7.*
-* hashable ==1.1.*
-* containers ==0.4.*
-* bytestring ==0.9.*
-* cmdargs ==0.10.*
-* syb ==0.3.*
+The makefile installs the cabal packages for seri and seri-smt in a pretend
+home directory, compiles some programs against the installed packages, then
+runs some tests on the generated executables. During the process of
+installation, required packages will automatically be installed as well.
 
 Generated files of note:
-build/src/seri:: the generated seri executable
-build/src/dist/seri-<version>.tar.gz:: the cabal distribution package
-build/src/dist/doc/html/seri/index.html:: generated library documentation
+build/seri-bin/seri:: the generated seri executable
+build/seri/seri-<version>.tar.gz:: seri cabal distribution package
+build/seri/doc/html/seri/index.html:: seri library documentation
+build/seri-smt/seri-smt-<version>.tar.gz:: seri-smt cabal distribution package
+build/seri-smt/doc/html/seri-smt/index.html:: seri-smt documentation
 
 Trouble Shooting
 ~~~~~~~~~~~~~~~~
@@ -133,20 +104,19 @@ You may need to set your LD_LIBRARY_PATH to find the library at runtime:
 Once you have verified yices2 is install and working on your system, double
 check that:
 * tclmk/local.tcl has the right LD_LIBRARY_PATH set
-* Your cabal config (typically in ~/.cabal/config) has the appropriate
-  extra-lib-dirs flag set
 
 Trying Seri
 -----------
 After building seri you can try it out. For example, to run a simple query
 using yices2:
 
-    ./build/src/seri --io --include src/sri -m Seri.SMT.Tests.HelloWorld.main -f src/sri/Seri/SMT/Tests/HelloWorld.sri
+    ./build/seri-smt/seri --io --include seri/sri --include seri-smt/sri -m Seri.SMT.Tests.HelloWorld.main -f seri-smt/sri/Seri/SMT/Tests/HelloWorld.sri
 
 If it works, you should get the output:
     Satisfiable 5
 
 And HelloWorld.dbg will contain the yices2 query evaluated to get this result.
 
-Additional sample queries are available in the src/sri/Seri/SMT/Tests/ directory.
+Additional sample queries are available in the seri-smt/sri/Seri/SMT/Tests/
+directory.
 

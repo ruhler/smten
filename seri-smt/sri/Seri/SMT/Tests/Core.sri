@@ -17,14 +17,14 @@ qmain = do
 main :: IO ()
 main = do
     putStrLn "yices1..."
-    r1 <- runYices1 (Just "build/src/Seri/SMT/Tests/Core.yices1.dbg") qmain
+    r1 <- runYices1 (Just "build/test/Core.yices1.dbg") qmain
     putStrLn (show r1)
 
     putStrLn "yices2..."
-    r2 <- runYices2 (Just "build/src/Seri/SMT/Tests/Core.yices2.dbg") qmain
+    r2 <- runYices2 (Just "build/test/Core.yices2.dbg") qmain
     putStrLn (show r2)
 
     putStrLn "stp..."
-    r3 <- runSTP (Just "build/src/Seri/SMT/Tests/Core.stp.dbg") qmain
+    r3 <- runSTP (Just "build/test/Core.stp.dbg") qmain
     putStrLn (show r3)
 

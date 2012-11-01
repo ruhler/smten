@@ -29,14 +29,14 @@ qmain = do
 main :: IO ()
 main = do
     putStr "yices1..."
-    r1 <- runYices1 (Just "build/src/Seri/SMT/Tests/Bit.yices1.dbg") qmain
+    r1 <- runYices1 (Just "build/test/Bit.yices1.dbg") qmain
     putStrLn (show r1)
 
     putStr "yices2..."
-    r2 <- runYices2 (Just "build/src/Seri/SMT/Tests/Bit.yices2.dbg") qmain
+    r2 <- runYices2 (Just "build/test/Bit.yices2.dbg") qmain
     putStrLn (show r2)
 
     putStr "stp..."
-    r3 <- runSTP (Just "build/src/Seri/SMT/Tests/Bit.stp.dbg") qmain
+    r3 <- runSTP (Just "build/test/Bit.stp.dbg") qmain
     putStrLn (show r3)
 

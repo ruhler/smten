@@ -30,9 +30,9 @@ qmain = allQ pred1
 main :: IO ()
 main = do
     putStr "yices1..."
-    r1 <- runYices1 (Just "build/src/Seri/SMT/Tests/AllQ.yices1.dbg") qmain
+    r1 <- runYices1 (Just "build/test/AllQ.yices1.dbg") qmain
     putStrLn (show r1)
 
     putStr "yices2..."
-    r2 <- runYices2 (Just "build/src/Seri/SMT/Tests/AllQ.yices2.dbg") qmain
+    r2 <- runYices2 (Just "build/test/AllQ.yices2.dbg") qmain
     putStrLn (show r2)
