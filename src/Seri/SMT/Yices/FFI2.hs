@@ -96,6 +96,7 @@ module Seri.SMT.Yices.FFI2 (
     c_yices_shift_left0,
     c_yices_shift_right0,
     c_yices_bvextract,
+    c_yices_bvconcat,
 
     -- Working with contexts
     c_yices_new_context,
@@ -290,6 +291,9 @@ foreign import ccall unsafe "yices_shift_right0"
 
 foreign import ccall unsafe "yices_bvextract"
     c_yices_bvextract :: YTerm -> Word32 -> Word32 -> IO YTerm
+
+foreign import ccall unsafe "yices_bvconcat"
+    c_yices_bvconcat :: YTerm -> YTerm -> IO YTerm
 
 foreign import ccall unsafe "yices_new_context"
     c_yices_new_context :: Ptr YContextConfig -> IO (Ptr YContext)

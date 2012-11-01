@@ -49,6 +49,7 @@ module Seri.SMT.Syntax (
     mkbvE, de_mkbvE, bvaddE, de_bvaddE, bvorE, de_bvorE, bvandE, de_bvandE,
     bvshiftLeft0E, de_bvshiftLeft0E,
     bvshiftRight0E, bvzeroExtendE, de_bvzeroExtendE, bvextractE, bvshlE,
+    bvconcatE, de_bvconcatE,
   ) where
 
 type Symbol = String
@@ -253,6 +254,13 @@ de_bvzeroExtendE _ = Nothing
 -- | > (bv-extract end begin bv)
 bvextractE :: Integer -> Integer -> Expression -> Expression
 bvextractE i j x = AppE (varE "bv-extract") [integerE i, integerE j, x]
+
+bvconcatE :: Expression -> Expression -> Expression
+bvconcatE a b = AppE (varE "bv-concat") [a, b]
+
+de_bvconcatE :: Expression -> Maybe (Expression, Expression)
+de_bvconcatE (AppE (VarE "bv-concat") [a, b]) = Just (a, b)
+de_bvconcatE _ = Nothing
 
 letE :: [Binding] -> Expression -> Expression
 letE [] e = e

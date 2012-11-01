@@ -10,23 +10,21 @@ import Seri.IO.SMT
 bityx :: Bit #(2+3)
 bityx = 15
 
---qmain :: Query (Answer (Bit#3, Bit #2, Bit #3))
-qmain :: Query (Answer (Bit#3, Bit #3))
+qmain :: Query (Answer (Bit#3, Bit #2, Bit #3))
 qmain = do
     -- x is 'b111
     x <- free
     assert (((x :: Bit #3) + 1) == 0)
 
     -- y is 'b01
-    --y <- free
-    --assert (bv_concat y x == bityx)
+    y <- free
+    assert (bv_concat y x == bityx)
 
     -- z is 'b011
     z <- free
     assert (z == bv_extract bityx 2)
 
-    query (x, z)
-    --query (x, y, z)
+    query (x, y, z)
 
 main :: IO ()
 main = do

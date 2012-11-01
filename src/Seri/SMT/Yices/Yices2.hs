@@ -203,6 +203,7 @@ ytermS s e | Just [a, b] <- de_andE e = dobinop' s a b c_yices_and2
 ytermS s e | Just (a, b) <- de_bvaddE e = dobinop' s a b c_yices_bvadd
 ytermS s e | Just (a, b) <- de_bvorE e = dobinop' s a b c_yices_bvor
 ytermS s e | Just (a, b) <- de_bvandE e = dobinop' s a b c_yices_bvand
+ytermS s e | Just (a, b) <- de_bvconcatE e = dobinop' s a b c_yices_bvconcat
 ytermS s e | isbinop "<" e = dobinop s e c_yices_arith_lt_atom
 ytermS s e | isbinop "<=" e = dobinop s e c_yices_arith_leq_atom
 ytermS s e | isbinop ">" e = dobinop s e c_yices_arith_gt_atom

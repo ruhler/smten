@@ -50,6 +50,7 @@ mkExpr s e | Just [a, b] <- de_orE e = mkBinExpr s a b c_vc_orExpr
 mkExpr s e | Just [a, b] <- de_andE e = mkBinExpr s a b c_vc_andExpr
 mkExpr s e | Just (a, b) <- de_bvorE e = mkBinExpr s a b c_vc_bvOrExpr
 mkExpr s e | Just (a, b) <- de_bvandE e = mkBinExpr s a b c_vc_bvAndExpr
+mkExpr s e | Just (a, b) <- de_bvconcatE e = mkBinExpr s a b c_vc_bvConcatExpr
 mkExpr s e | Just (a, n) <- de_bvshiftLeft0E e = do
     ae <- mkExpr s a
     withvc s $ \vc -> c_vc_bvLeftShiftExpr vc (fromInteger n) ae

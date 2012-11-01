@@ -18,6 +18,7 @@ __prim_lsh_Bit :: Bit #n -> Integer -> Bit #n
 __prim_rshl_Bit :: Bit #n -> Integer -> Bit #n
 __prim_or_Bit :: Bit #n -> Bit #n -> Bit #n
 __prim_and_Bit :: Bit #n -> Bit #n -> Bit #n
+__prim_concat_Bit :: Bit #n -> Bit #m -> Bit #(n+m)
 
 
 instance Eq (Bit #n) where
@@ -60,11 +61,7 @@ bv_truncate :: Bit #n -> Bit #m
 bv_truncate = __prim_truncate_Bit
 
 bv_concat :: Bit #n -> Bit #m -> Bit #(n+m)
-bv_concat a b = 
-  let bw = bv_sizeof b
-      a' = bv_zero_extend a
-      b' = bv_zero_extend b
-  in bv_or (bv_lsh a' bw) b'
+bv_concat = __prim_concat_Bit
 
 -- Extract m bits from the given vector, with the least significant bit to be
 -- extract specified in the argument. The most significant bit is inferred.

@@ -379,6 +379,7 @@ elaborate mode env exp =
             (name "Seri.Lib.Bit.__prim_add_Bit", \s -> binbprim s (\a b -> bitEH (a + b))),
             (name "Seri.Lib.Bit.__prim_sub_Bit", \s -> binbprim s (\a b -> bitEH (a - b))),
             (name "Seri.Lib.Bit.__prim_mul_Bit", \s -> binbprim s (\a b -> bitEH (a * b))),
+            (name "Seri.Lib.Bit.__prim_concat_Bit", \s -> binbprim s (\a b -> bitEH (bv_concat a b))),
             (name "Seri.Lib.Bit.__prim_show_Bit", \s@(Sig n t) -> 
                 let [ta, _] = unarrowsT t
                 in LaceEH (ES_Some WHNF) [

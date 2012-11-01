@@ -261,6 +261,9 @@ smtE' e@(AppE a b) =
        [VarE (Sig n _), a, b]
           | n == name "Seri.Lib.Bit.__prim_and_Bit"
           -> binary SMT.bvandE a b
+       [VarE (Sig n _), a, b]
+          | n == name "Seri.Lib.Bit.__prim_concat_Bit"
+          -> binary SMT.bvconcatE a b
        -- TODO: should we allow shifting by an amount not statically
        -- determined? In that case, I think we need to convert the second
        -- argument to a bit vector in order to use smt bvshl function.

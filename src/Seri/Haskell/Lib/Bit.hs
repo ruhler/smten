@@ -7,6 +7,7 @@ module Seri.Haskell.Lib.Bit(
     lsh, rshl, zeroExtend,
     Seri.Haskell.Lib.Bit.truncate,
     Seri.Haskell.Lib.Bit.extract,
+    Seri.Haskell.Lib.Bit.concat,
     ) where
 
 import Data.Bits
@@ -37,6 +38,9 @@ or (Bit w a) (Bit _ b) = Bit w (a .|. b)
 
 and :: N__ n => Bit n -> Bit n -> Bit n
 and (Bit w a) (Bit _ b) = Bit w (a .&. b)
+
+concat :: (N__ a, N__ b) => Bit a -> Bit b -> Bit (N__PLUS a b)
+concat (Bit _ a) (Bit _ b) = Bit numeric (a `B.bv_concat` b)
 
 lsh :: N__ n => Bit n -> Integer -> Bit n
 lsh (Bit w a) x = Bit w (a `shiftL` fromInteger x)
