@@ -18,8 +18,11 @@ module Seri.SMT.STP.FFI (
     c_vc_falseExpr,
     c_vc_notExpr,
     c_vc_orExpr,
+    c_vc_orExprN,
     c_vc_andExpr,
+    c_vc_andExprN,
     c_vc_eqExpr,
+    c_vc_iteExpr,
 
     c_vc_bvConstExprFromLL,
     c_vc_bvPlusExpr,
@@ -76,11 +79,20 @@ foreign import ccall "vc_notExpr"
 foreign import ccall "vc_orExpr"
     c_vc_orExpr  :: Ptr STP_VC -> Ptr STP_Expr -> Ptr STP_Expr -> IO (Ptr STP_Expr)
 
+foreign import ccall "vc_orExprN"
+    c_vc_orExprN  :: Ptr STP_VC -> Ptr (Ptr STP_Expr) -> CInt -> IO (Ptr STP_Expr)
+
 foreign import ccall "vc_andExpr"
     c_vc_andExpr  :: Ptr STP_VC -> Ptr STP_Expr -> Ptr STP_Expr -> IO (Ptr STP_Expr)
 
+foreign import ccall "vc_andExprN"
+    c_vc_andExprN  :: Ptr STP_VC -> Ptr (Ptr STP_Expr) -> CInt -> IO (Ptr STP_Expr)
+
 foreign import ccall "vc_eqExpr"
     c_vc_eqExpr  :: Ptr STP_VC -> Ptr STP_Expr -> Ptr STP_Expr -> IO (Ptr STP_Expr)
+
+foreign import ccall "vc_iteExpr"
+    c_vc_iteExpr  :: Ptr STP_VC -> Ptr STP_Expr -> Ptr STP_Expr -> Ptr STP_Expr -> IO (Ptr STP_Expr)
 
 foreign import ccall "vc_bvConstExprFromLL"
     c_vc_bvConstExprFromLL  :: Ptr STP_VC -> CInt -> CULLong -> IO (Ptr STP_Expr)

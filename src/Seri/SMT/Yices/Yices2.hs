@@ -220,7 +220,7 @@ ytermS s e | Just a <- de_notE e = do
 ytermS s (AppE (VarE "select") [v, LitE (IntegerL i)]) = do
     vt <- ytermS s v
     c_yices_select (fromInteger i) vt
-ytermS s (AppE (VarE "if") [p, a, b]) = do
+ytermS s e | Just (p, a, b) <- de_ifE e = do
     pt <- ytermS s p 
     at <- ytermS s a
     bt <- ytermS s b

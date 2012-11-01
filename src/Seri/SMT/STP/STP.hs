@@ -4,6 +4,7 @@
 module Seri.SMT.STP.STP (STP(), stp) where
 
 import Data.Functor
+import Data.List(genericLength)
 import Data.IORef
 import qualified Data.Map as Map
 
@@ -58,10 +59,20 @@ mkExpr s e | Just (a, n) <- de_bvzeroExtendE e = do
     ae <- mkExpr s a
     zeros <- withvc s $ \vc -> c_vc_bvConstExprFromLL vc (fromInteger n) (fromInteger 0)
     withvc s $ \vc -> c_vc_bvConcatExpr vc zeros ae
-
+mkExpr s e | Just args <- de_orE e = do
+    args' <- mapM (mkExpr s) args
+    withvc s $ \vc ->
+        withArray args' $ \ptr -> c_vc_orExprN vc ptr (genericLength args)
+mkExpr s e | Just args <- de_andE e = do
+    args' <- mapM (mkExpr s) args
+    withvc s $ \vc ->
+        withArray args' $ \ptr -> c_vc_andExprN vc ptr (genericLength args)
 mkExpr s e | Just a <- de_notE e = do
     ae <- mkExpr s a
     withvc s $ \vc -> c_vc_notExpr vc ae
+mkExpr s e | Just (p, a, b) <- de_ifE e = do
+    [pe, ae, be] <- mapM (mkExpr s) [p, a, b]
+    withvc s $ \vc -> c_vc_iteExpr vc pe ae be
 mkExpr s e | Just (a, b) <- de_bvaddE e = do
     ae <- mkExpr s a
     be <- mkExpr s b

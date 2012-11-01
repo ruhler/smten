@@ -181,5 +181,5 @@ qmain = do
 
 main :: IO ()
 main = do
-    r <- runYices2 (Just "build/src/Seri/SMT/Tests/Sudoku.yices3.dbg") qmain
+    r <- runSTP (Just "build/src/Seri/SMT/Tests/Sudoku.stp.dbg") qmain
     mapM_ putStrLn r

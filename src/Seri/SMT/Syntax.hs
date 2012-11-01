@@ -39,7 +39,7 @@ module Seri.SMT.Syntax (
     Binding, Literal(..),
 
     -- * Core
-    letE, eqE, de_eqE, ifE, varE,
+    letE, eqE, de_eqE, ifE, de_ifE, varE,
     boolE, trueE, falseE, notE, de_notE, andE, de_andE, orE, de_orE,
 
     -- * Integer
@@ -168,6 +168,10 @@ ifE p (AppE vif [p2, a, _]) b
     | vif == varE "if" && p == p2
     = ifE p a b
 ifE p a b = AppE (varE "if") [p, a, b]
+
+de_ifE :: Expression -> Maybe (Expression, Expression, Expression)
+de_ifE (AppE (VarE "if") [p, a, b]) = Just (p, a, b)
+de_ifE _ = Nothing
 
 -- | > (< <exprsesion> <expression>)
 ltE :: Expression -> Expression -> Expression
