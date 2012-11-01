@@ -36,7 +36,7 @@ proc hrun {args} {
 hrun mkdir -p build/home build/seri-bin build/test build/test/Squares2
 
 set ::env(HOME) [pwd]/build/home
-hrun cabal update
+#hrun cabal update
 hrun cabal install cmdargs syb
 
 # The seri package
@@ -82,15 +82,14 @@ set ENOCH build/seri-bin/enoch
 set SUDOKU build/seri-bin/sudoku
 
 set SRI_SERI seri/sri
-set SRI_SMT seri-smt/sri
 
 # The general seri test
 run $SERI --type \
-    --include $::SRI_SERI --include $::SRI_SMT \
+    --include $::SRI_SERI \
     -f $::SRI_SERI/Seri/Lib/Tests.sri \
     > build/test/tests.typed
 run $SERI --io \
-    --include $::SRI_SERI --include $::SRI_SMT \
+    --include $::SRI_SERI \
     -m Seri.Lib.Tests.testallio \
     -f $::SRI_SERI/Seri/Lib/Tests.sri \
     > build/test/tests.got 
@@ -101,8 +100,8 @@ hrun cmp build/test/tests.got build/test/tests.wnt
 proc badtypetest {name} {
     set cmd {
         run $::SERI --type \
-            --include $::SRI_SERI --include $::SRI_SMT \
-            -f src/Seri/Lambda/Tests/$name.sri \
+            --include $::SRI_SERI \
+            -f $::SRI_SERI/Seri/Lambda/Tests/$name.sri \
             > "build/test/$name.typed"
         }
 
@@ -120,7 +119,7 @@ badtypetest "InstCtx"
 # Test the haskell target.
 set hsdir build/test
 run $SERI --haskell \
-    --include $::SRI_SERI --include $::SRI_SMT \
+    --include $::SRI_SERI \
     -m testallio \
     -f $::SRI_SERI/Seri/Lib/Tests.sri \
     > $hsdir/hstests.hs
@@ -132,9 +131,9 @@ hrun cmp $hsdir/hstests.got $hsdir/hstests.wnt
 # The SMT query tests
 proc smttest {name} {
     run $::SERI --io \
-         --include $::SRI_SERI --include $::SRI_SMT \
+         --include $::SRI_SERI \
          -m Seri.SMT.Tests.[string map {/ .} $name].main \
-         -f $::SRI_SMT/Seri/SMT/Tests/$name.sri \
+         -f $::SRI_SERI/Seri/SMT/Tests/$name.sri \
          > build/test/$name.out
 }
 
@@ -159,9 +158,9 @@ smttest "Sudoku3"
 # The IO tests
 proc iotest {name args} {
     run $::SERI --io \
-        --include $::SRI_SERI --include $::SRI_SMT \
+        --include $::SRI_SERI \
          -m Seri.IO.Tests.[string map {/ .} $name].main \
-         -f $::SRI_SMT/Seri/IO/Tests/$name.sri {*}$args \
+         -f $::SRI_SERI/Seri/IO/Tests/$name.sri {*}$args \
          > build/test/$name.out
 }
 

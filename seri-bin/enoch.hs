@@ -9,6 +9,7 @@ import Data.Functor
 import Seri.Failable
 import Seri.Lambda hiding (free, query)
 
+import Seri
 import Seri.Enoch.Enoch
 import Seri.Enoch.EnochTH
 import Seri.Enoch.Prelude
@@ -96,7 +97,7 @@ qallQ :: (Solver s) => Query s [Integer]
 qallQ = allQ pred1
 
 env :: Env
-env = $(loadenvth ["../../seri/sri", "../../seri-smt/sri"] "../../seri/sri/Seri/Enoch/Enoch.sri")
+env = $(loadenvth [seridir] (seridir >>= return . (++ "/Seri/Enoch/Enoch.sri")))
 
 try :: (Show a) => String -> Query Yices2 a -> IO ()
 try nm q = runQuery (RunOptions (Just $ "build/test/" ++ nm ++ ".dbg") True) env q >>= (putStrLn . show)

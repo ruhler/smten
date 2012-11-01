@@ -5,6 +5,7 @@ import Prelude hiding ((>), (==), (/=), (<=), notElem, print, (&&), all)
 
 import Data.List(transpose)
 
+import Seri
 import Seri.Failable
 import Seri.Lambda hiding (free, query)
 import Seri.Enoch.Enoch
@@ -157,7 +158,7 @@ solve = do
        _ -> return ["no solution"]
 
 env :: Env
-env = $(loadenvth ["../../seri/sri", "../../seri-smt/sri"] "../../seri-smt/sri/Seri/SMT/SMT.sri")
+env = $(loadenvth [seridir] (seridir >>= return . (++ "/Seri/SMT/SMT.sri")))
 
 main :: IO ()
 main = runQuery (RunOptions (Just "build/test/sudoku.dbg") True) env (yices2 solve) >>= mapM_ putStrLn

@@ -102,9 +102,15 @@ derive_unpack nm vars cs =
 -- Load a seri environment at compile time.
 -- Performs type checking on the environment statically.
 -- Returns an expression of type Env.
-loadenvth :: S.SearchPath -> FilePath -> Q Exp
-loadenvth path fin = do
-    env <- runIO $ S.loadenv path fin
+--
+-- It takes the paths as IO computations to make it work more naturally with
+-- the seridir function.
+loadenvth :: [IO FilePath] -> IO FilePath -> Q Exp
+loadenvth iopath iofin = do
+    env <- runIO $ do
+        path <- sequence iopath
+        fin <- iofin
+        S.loadenv path fin
     let decls = S.getDecls env
     [| S.mkEnv decls |]
 
