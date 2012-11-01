@@ -53,6 +53,11 @@ mkExpr s e | Just (a, b) <- de_bvandE e = mkBinExpr s a b c_vc_bvAndExpr
 mkExpr s e | Just (a, n) <- de_bvshiftLeft0E e = do
     ae <- mkExpr s a
     withvc s $ \vc -> c_vc_bvLeftShiftExpr vc (fromInteger n) ae
+mkExpr s e | Just (a, n) <- de_bvzeroExtendE e = do
+    ae <- mkExpr s a
+    zeros <- withvc s $ \vc -> c_vc_bvConstExprFromLL vc (fromInteger n) (fromInteger 0)
+    withvc s $ \vc -> c_vc_bvConcatExpr vc zeros ae
+
 mkExpr s e | Just a <- de_notE e = do
     ae <- mkExpr s a
     withvc s $ \vc -> c_vc_notExpr vc ae
@@ -113,7 +118,11 @@ instance Solver STP where
             1 -> return True
             x -> error $ "STP.getBoolValue got value " ++ show x ++ " for " ++ nm
         
-    getBitVectorValue _ _ = error $ "TODO: STP.getBitVectorValue"
+    getBitVectorValue s _ nm = do
+        var <- mkExpr s (varE nm)
+        val <- withvc s $ \vc -> c_vc_getCounterExample vc var
+        fromIntegral <$> c_getBVUnsignedLongLong val
+        
 
 stp :: Q.Query STP a -> Q.Query STP a
 stp = id
