@@ -5,8 +5,8 @@ all:
 test:
 	./build/src/seri --io \
 		--include src/sri \
-		-m Seri.SMT.Tests.Core.main \
-		-f src/sri/Seri/SMT/Tests/Core.sri
+		-m Seri.SMT.Tests.Bit.main \
+		-f src/sri/Seri/SMT/Tests/Bit.sri
 
 clean:
 	rm -rf build/src

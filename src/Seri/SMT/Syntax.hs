@@ -39,15 +39,16 @@ module Seri.SMT.Syntax (
     Binding, Literal(..),
 
     -- * Core
-    letE, eqE, ifE, varE,
-    boolE, trueE, falseE, notE, andE, orE,
+    letE, eqE, de_eqE, ifE, varE,
+    boolE, trueE, falseE, notE, de_notE, andE, de_andE, orE, de_orE,
 
     -- * Integer
     integerE, ltE, leqE, gtE, addE, subE, mulE,
 
     -- * Bit Vector
-    mkbvE, bvaddE, bvorE, bvandE, bvshiftLeft0E, bvshiftRight0E,
-    bvzeroExtendE, bvextractE, bvshlE,
+    mkbvE, de_mkbvE, bvaddE, de_bvaddE, bvorE, de_bvorE, bvandE, de_bvandE,
+    bvshiftLeft0E, de_bvshiftLeft0E,
+    bvshiftRight0E, bvzeroExtendE, de_bvzeroExtendE, bvextractE, bvshlE,
   ) where
 
 type Symbol = String
@@ -101,6 +102,10 @@ boolE b = LitE (BoolL b)
 notE :: Expression -> Expression
 notE e = AppE (varE "not") [e]
 
+de_notE :: Expression -> Maybe Expression
+de_notE (AppE (VarE "not") [e]) = Just e
+de_notE _ = Nothing
+
 -- | An integer expression.
 integerE :: Integer -> Expression
 integerE i = LitE (IntegerL i)
@@ -109,6 +114,11 @@ integerE i = LitE (IntegerL i)
 eqE :: Expression -> Expression -> Expression
 eqE a b | a == trueE = b
 eqE a b = AppE (varE "=") [a, b]
+
+-- | Deconstruct an equality expression.
+de_eqE :: Expression -> Maybe (Expression, Expression)
+de_eqE (AppE (VarE "=") [a, b]) = Just (a, b)
+de_eqE _ = Nothing
 
 -- | > (and <term_1> ... <term_n>)
 andE :: [Expression] -> Expression
@@ -123,6 +133,11 @@ andE es =
       xs | any (== falseE) xs -> falseE
       xs -> AppE (varE "and") xs
 
+-- | Deconstruct an AND expression
+de_andE :: Expression -> Maybe [Expression]
+de_andE (AppE (VarE "and") args) = Just args
+de_andE _ = Nothing
+
 -- | > (or <term_1> ... <term_n>)
 orE :: [Expression] -> Expression
 orE es =
@@ -135,6 +150,11 @@ orE es =
         [x] -> x
         xs | any (== trueE) xs -> trueE
         xs -> AppE (varE "or") xs
+
+-- | Deconstruct an OR expression
+de_orE :: Expression -> Maybe [Expression]
+de_orE (AppE (VarE "or") args) = Just args
+de_orE _ = Nothing
 
 -- | > (if <expression> <expression> <expression>)
 ifE :: Expression -> Expression -> Expression -> Expression
@@ -176,22 +196,42 @@ mulE a b = AppE (varE "*") [a, b]
 mkbvE :: Integer -> Integer -> Expression
 mkbvE w b = AppE (varE "mk-bv") [integerE w, integerE b]
 
+de_mkbvE :: Expression -> Maybe (Integer, Integer)
+de_mkbvE (AppE (VarE "mk-bv") [LitE (IntegerL w), LitE (IntegerL v)]) = Just (w, v)
+de_mkbvE _ = Nothing
+
 -- | > (bv-add a b)
 bvaddE :: Expression -> Expression -> Expression
 bvaddE a b = AppE (varE "bv-add") [a, b]
+
+de_bvaddE :: Expression -> Maybe (Expression, Expression)
+de_bvaddE (AppE (VarE "bv-add") [a, b]) = Just (a, b)
+de_bvaddE _ = Nothing
 
 -- | > (bv-or a b)
 bvorE :: Expression -> Expression -> Expression
 bvorE a b = AppE (varE "bv-or") [a, b]
 
+de_bvorE :: Expression -> Maybe (Expression, Expression)
+de_bvorE (AppE (VarE "bv-or") [a, b]) = Just (a, b)
+de_bvorE _ = Nothing
+
 -- | > (bv-and a b)
 bvandE :: Expression -> Expression -> Expression
 bvandE a b = AppE (varE "bv-and") [a, b]
+
+de_bvandE :: Expression -> Maybe (Expression, Expression)
+de_bvandE (AppE (VarE "bv-and") [a, b]) = Just (a, b)
+de_bvandE _ = Nothing
 
 -- | > (bv-shift-left0 a i)
 bvshiftLeft0E :: Expression -> Integer -> Expression
 bvshiftLeft0E a 0 = a
 bvshiftLeft0E a b = AppE (varE "bv-shift-left0") [a, integerE b]
+
+de_bvshiftLeft0E :: Expression -> Maybe (Expression, Integer)
+de_bvshiftLeft0E (AppE (VarE "bv-shift-left0") [a, LitE (IntegerL b)]) = Just (a, b)
+de_bvshiftLeft0E _ = Nothing
 
 -- | > (bv-shift-right0 a i)
 bvshiftRight0E :: Expression -> Integer -> Expression
@@ -205,6 +245,10 @@ bvshlE a b = AppE (varE "bv-shl") [a, b]
 -- | > (bv-zero-extend a w)
 bvzeroExtendE :: Expression -> Integer -> Expression
 bvzeroExtendE a b = AppE (varE "bv-zero-extend") [a, integerE b]
+
+de_bvzeroExtendE :: Expression -> Maybe (Expression, Integer)
+de_bvzeroExtendE (AppE (VarE "bv-zero-extend") [a, LitE (IntegerL b)]) = Just (a, b)
+de_bvzeroExtendE _ = Nothing
 
 -- | > (bv-extract end begin bv)
 bvextractE :: Integer -> Integer -> Expression -> Expression

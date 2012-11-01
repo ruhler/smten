@@ -33,6 +33,8 @@
 -- 
 -------------------------------------------------------------------------------
 
+{-# LANGUAGE PatternGuards #-}
+
 -- | Backend for the Yices2 solver
 module Seri.SMT.Yices.Yices2 (Yices2(), yices2) where
 
@@ -161,11 +163,14 @@ isbinop :: String -> Expression -> Bool
 isbinop nm (AppE (VarE n) [_, _]) = n == nm
 isbinop _ _ = False
 
-dobinop :: [(String, YTerm)] -> Expression -> (YTerm -> YTerm -> IO YTerm) -> IO YTerm
-dobinop s (AppE (VarE _) [a, b]) f = do
+dobinop' :: [(String, YTerm)] -> Expression -> Expression -> (YTerm -> YTerm -> IO YTerm) -> IO YTerm
+dobinop' s a b f = do
     at <- ytermS s a
     bt <- ytermS s b
     f at bt
+
+dobinop :: [(String, YTerm)] -> Expression -> (YTerm -> YTerm -> IO YTerm) -> IO YTerm
+dobinop s (AppE (VarE _) [a, b]) f = dobinop' s a b f
 
 yterm :: Expression -> IO YTerm
 yterm = ytermS []
@@ -192,25 +197,25 @@ builtin = [
 -- Construct a yices term from the given expression with the given
 -- variable scope.
 ytermS :: [(String, YTerm)] -> Expression -> IO YTerm
-ytermS s e | isbinop "=" e = dobinop s e c_yices_eq
+ytermS s e | Just (a, b) <- de_eqE e = dobinop' s a b c_yices_eq
+ytermS s e | Just [a, b] <- de_orE e = dobinop' s a b c_yices_or2
+ytermS s e | Just [a, b] <- de_andE e = dobinop' s a b c_yices_and2
+ytermS s e | Just (a, b) <- de_bvaddE e = dobinop' s a b c_yices_bvadd
+ytermS s e | Just (a, b) <- de_bvorE e = dobinop' s a b c_yices_bvor
+ytermS s e | Just (a, b) <- de_bvandE e = dobinop' s a b c_yices_bvand
 ytermS s e | isbinop "<" e = dobinop s e c_yices_arith_lt_atom
 ytermS s e | isbinop "<=" e = dobinop s e c_yices_arith_leq_atom
 ytermS s e | isbinop ">" e = dobinop s e c_yices_arith_gt_atom
 ytermS s e | isbinop "+" e = dobinop s e c_yices_add
 ytermS s e | isbinop "-" e = dobinop s e c_yices_sub
 ytermS s e | isbinop "*" e = dobinop s e c_yices_mul
-ytermS s e | isbinop "or" e = dobinop s e c_yices_or2
-ytermS s e | isbinop "and" e = dobinop s e c_yices_and2
 ytermS s e | isbinop "xor" e = dobinop s e c_yices_xor2
-ytermS s e | isbinop "bv-add" e = dobinop s e c_yices_bvadd
 ytermS s e | isbinop "bv-sub" e = dobinop s e c_yices_bvsub
 ytermS s e | isbinop "bv-mul" e = dobinop s e c_yices_bvmul
-ytermS s e | isbinop "bv-or" e = dobinop s e c_yices_bvor
-ytermS s e | isbinop "bv-and" e = dobinop s e c_yices_bvand
 ytermS s e | isbinop "bv-shl" e = dobinop s e c_yices_bvshl
-ytermS s (AppE (VarE "not") [e]) = do
-    et <- ytermS s e
-    c_yices_not et
+ytermS s e | Just a <- de_notE e = do
+    at <- ytermS s a
+    c_yices_not at
 ytermS s (AppE (VarE "select") [v, LitE (IntegerL i)]) = do
     vt <- ytermS s v
     c_yices_select (fromInteger i) vt
@@ -222,9 +227,9 @@ ytermS s (AppE (VarE "if") [p, a, b]) = do
 ytermS s (AppE (VarE "mk-tuple") args) = do
     argst <- mapM (ytermS s) args
     withArray argst $ c_yices_tuple (fromIntegral $ length argst)
-ytermS s (AppE (VarE "mk-bv") [LitE (IntegerL w), LitE (IntegerL v)]) = do
+ytermS s e | Just (w, v) <- de_mkbvE e = do
     c_yices_bvconst_uint64 (fromInteger w) (fromInteger v)
-ytermS s (AppE (VarE "bv-zero-extend") [a, LitE (IntegerL n)]) = do
+ytermS s e | Just (a, n) <- de_bvzeroExtendE e = do
     at <- ytermS s a
     c_yices_zero_extend at (fromInteger n)
 
@@ -234,7 +239,7 @@ ytermS s (AppE (VarE "bv-extract") [LitE (IntegerL end), LitE (IntegerL begin), 
     xt <- ytermS s x
     c_yices_bvextract xt (fromInteger begin) (fromInteger end)
 
-ytermS s (AppE (VarE "bv-shift-left0") [a, LitE (IntegerL n)]) = do
+ytermS s e | Just (a, n) <- de_bvshiftLeft0E e = do
     at <- ytermS s a
     c_yices_shift_left0 at (fromInteger n)
 ytermS s (AppE (VarE "bv-shift-right0") [a, LitE (IntegerL n)]) = do

@@ -35,3 +35,8 @@ main = do
     putStr "yices2..."
     r2 <- runYices2 (Just "build/src/Seri/SMT/Tests/Bit.yices2.dbg") qmain
     putStrLn (show r2)
+
+    putStr "stp..."
+    r3 <- runSTP (Just "build/src/Seri/SMT/Tests/Bit.stp.dbg") qmain
+    putStrLn (show r3)
+

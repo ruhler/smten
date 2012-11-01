@@ -1,4 +1,6 @@
 
+{-# LANGUAGE PatternGuards #-}
+
 module Seri.SMT.STP.STP (STP(), stp) where
 
 import Data.Functor
@@ -32,20 +34,35 @@ mkType s (BitVectorT w) = withvc s $ \vc -> c_vc_bvType vc (fromInteger w)
 mkType _ IntegerT = error $ "STP does not support Integer type"
 mkType _ (ArrowT _) = error $ "STP does not support Function type"
 
+mkBinExpr :: STP -> Expression -> Expression
+      -> (Ptr STP_VC -> Ptr STP_Expr -> Ptr STP_Expr -> IO (Ptr STP_Expr))
+      -> IO (Ptr STP_Expr)
+mkBinExpr s a b f = do
+    ae <- mkExpr s a
+    be <- mkExpr s b
+    withvc s $ \vc -> f vc ae be
+
 mkExpr :: STP -> Expression -> IO (Ptr STP_Expr)
 mkExpr s (LitE (BoolL True)) = withvc s c_vc_trueExpr
 mkExpr s (LitE (BoolL False)) = withvc s c_vc_falseExpr
-mkExpr s (AppE (VarE "not") [a]) = do
+mkExpr s e | Just (a, b) <- de_eqE e = mkBinExpr s a b c_vc_eqExpr
+mkExpr s e | Just [a, b] <- de_orE e = mkBinExpr s a b c_vc_orExpr
+mkExpr s e | Just [a, b] <- de_andE e = mkBinExpr s a b c_vc_andExpr
+mkExpr s e | Just (a, b) <- de_bvorE e = mkBinExpr s a b c_vc_bvOrExpr
+mkExpr s e | Just (a, b) <- de_bvandE e = mkBinExpr s a b c_vc_bvAndExpr
+mkExpr s e | Just (a, n) <- de_bvshiftLeft0E e = do
+    ae <- mkExpr s a
+    withvc s $ \vc -> c_vc_bvLeftShiftExpr vc (fromInteger n) ae
+mkExpr s e | Just a <- de_notE e = do
     ae <- mkExpr s a
     withvc s $ \vc -> c_vc_notExpr vc ae
-mkExpr s (AppE (VarE "or") [a, b]) = do
+mkExpr s e | Just (a, b) <- de_bvaddE e = do
     ae <- mkExpr s a
     be <- mkExpr s b
-    withvc s $ \vc -> c_vc_orExpr vc ae be
-mkExpr s (AppE (VarE "and") [a, b]) = do
-    ae <- mkExpr s a
-    be <- mkExpr s b
-    withvc s $ \vc -> c_vc_andExpr vc ae be
+    w <- withvc s $ \vc -> c_vc_getBVLength vc ae
+    withvc s $ \vc -> c_vc_bvPlusExpr vc w ae be
+mkExpr s e | Just (w, v) <- de_mkbvE e = do
+    withvc s $ \vc -> c_vc_bvConstExprFromLL vc (fromInteger w) (fromInteger v)
 mkExpr s (VarE nm) = do
     vars <- readIORef (stp_vars s)
     case Map.lookup nm vars of

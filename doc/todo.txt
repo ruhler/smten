@@ -115,3 +115,7 @@ That is, anything with ~?
 
 * Don't require ScopedTypeVariables in derive_SeriableE.
 
+* Remove bv-left-shift0 from SMT syntax, switch to more general bvshl
+  described by SMTLIB2
+* Remove bv-zero-extend from SMT syntax, use SMTLIB2 alternative
+

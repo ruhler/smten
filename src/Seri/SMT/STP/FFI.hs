@@ -19,9 +19,17 @@ module Seri.SMT.STP.FFI (
     c_vc_notExpr,
     c_vc_orExpr,
     c_vc_andExpr,
+    c_vc_eqExpr,
+
+    c_vc_bvConstExprFromLL,
+    c_vc_bvPlusExpr,
+    c_vc_bvOrExpr,
+    c_vc_bvAndExpr,
+    c_vc_bvLeftShiftExpr,
 
     c_vc_getCounterExample,
     c_vc_isBool,
+    c_vc_getBVLength,
     ) where
 
 import Foreign
@@ -69,10 +77,30 @@ foreign import ccall "vc_orExpr"
 foreign import ccall "vc_andExpr"
     c_vc_andExpr  :: Ptr STP_VC -> Ptr STP_Expr -> Ptr STP_Expr -> IO (Ptr STP_Expr)
 
+foreign import ccall "vc_eqExpr"
+    c_vc_eqExpr  :: Ptr STP_VC -> Ptr STP_Expr -> Ptr STP_Expr -> IO (Ptr STP_Expr)
+
+foreign import ccall "vc_bvConstExprFromLL"
+    c_vc_bvConstExprFromLL  :: Ptr STP_VC -> CInt -> CULLong -> IO (Ptr STP_Expr)
+
+foreign import ccall "vc_bvPlusExpr"
+    c_vc_bvPlusExpr  :: Ptr STP_VC -> CInt -> Ptr STP_Expr -> Ptr STP_Expr -> IO (Ptr STP_Expr)
+
+foreign import ccall "vc_bvOrExpr"
+    c_vc_bvOrExpr  :: Ptr STP_VC -> Ptr STP_Expr -> Ptr STP_Expr -> IO (Ptr STP_Expr)
+
+foreign import ccall "vc_bvAndExpr"
+    c_vc_bvAndExpr  :: Ptr STP_VC -> Ptr STP_Expr -> Ptr STP_Expr -> IO (Ptr STP_Expr)
+
+foreign import ccall "vc_bvLeftShiftExpr"
+    c_vc_bvLeftShiftExpr  :: Ptr STP_VC -> CInt -> Ptr STP_Expr -> IO (Ptr STP_Expr)
 
 foreign import ccall "vc_getCounterExample"
     c_vc_getCounterExample  :: Ptr STP_VC -> Ptr STP_Expr -> IO (Ptr STP_Expr)
 
 foreign import ccall "vc_isBool"
     c_vc_isBool  :: Ptr STP_Expr -> IO CInt
+
+foreign import ccall "vc_getBVLength"
+    c_vc_getBVLength  :: Ptr STP_VC -> Ptr STP_Expr -> IO CInt
 
