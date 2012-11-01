@@ -2,7 +2,7 @@
 
 module Seri.SMT.Tests.FIFO where {
 
-import Seri.Lib.Prelude;
+import Prelude;
 import Seri.SMT.SMT;
 
 class FIFO f where {

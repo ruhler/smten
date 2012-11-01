@@ -4,7 +4,7 @@
 -- lists, which cause problems for SMT.
 module Seri.SMT.Array where
 
-import Seri.Lib.Prelude
+import Prelude
 import Seri.SMT.SMT
 
 -- Primitive function update:

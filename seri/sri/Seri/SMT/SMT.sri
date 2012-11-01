@@ -2,7 +2,7 @@
 -- The Seri SMT primitives and common declarations.
 module Seri.SMT.SMT where
 
-import Seri.Lib.Prelude
+import Prelude
 import Seri.Lib.Bit
 
 -- Query is the primitive query monad.

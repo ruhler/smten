@@ -215,39 +215,39 @@ smtE' e@(AppE a b) =
     case unappsE e of 
        ((ConE s):args) -> smtC s args
        [VarE (Sig n t), _]
-            | n == name "Seri.Lib.Prelude.error"
+            | n == name "Prelude.error"
             , Just (_, dt) <- deArrowT t
             -> do errnm <- yfreeerr dt
                   return $ SMT.varE errnm
        [VarE (Sig n _), a, b]
-          | n == name "Seri.Lib.Prelude.<"
+          | n == name "Prelude.<"
           -> binary SMT.ltE a b
        [VarE (Sig n _), a, b]
-          | n == name "Seri.Lib.Prelude.<="
+          | n == name "Prelude.<="
           -> binary SMT.leqE a b
        [VarE (Sig n _), a, b]
-          | n == name "Seri.Lib.Prelude.>"
+          | n == name "Prelude.>"
           -> binary SMT.gtE a b
        [VarE (Sig n _), a, b]
-          | n == name "Seri.Lib.Prelude.&&"
+          | n == name "Prelude.&&"
           -> binary (\x y -> SMT.andE [x, y]) a b
        [VarE (Sig n _), a, b]
-          | n == name "Seri.Lib.Prelude.||"
+          | n == name "Prelude.||"
           -> binary (\x y -> SMT.orE [x, y]) a b
        [VarE (Sig n _), a]
-          | n == name "Seri.Lib.Prelude.not"
+          | n == name "Prelude.not"
           -> SMT.notE <$> smtE' a
        [VarE (Sig n _), a, b]
-          | n == name "Seri.Lib.Prelude.__prim_add_Integer"
+          | n == name "Prelude.__prim_add_Integer"
           -> binary SMT.addE a b
        [VarE (Sig n _), a, b]
-          | n == name "Seri.Lib.Prelude.__prim_sub_Integer"
+          | n == name "Prelude.__prim_sub_Integer"
           -> binary SMT.subE a b
        [VarE (Sig n _), a, b]
-          | n == name "Seri.Lib.Prelude.__prim_mul_Integer"
+          | n == name "Prelude.__prim_mul_Integer"
           -> binary SMT.mulE a b
        [VarE (Sig n _), a, b]
-          | n == name "Seri.Lib.Prelude.__prim_eq_Integer"
+          | n == name "Prelude.__prim_eq_Integer"
           -> binary SMT.eqE a b
        [VarE (Sig n _), a, b]
           | n == name "Seri.Lib.Bit.__prim_eq_Bit"

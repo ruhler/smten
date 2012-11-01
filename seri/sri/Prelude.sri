@@ -1,5 +1,5 @@
 
-module Seri.Lib.Prelude where
+module Prelude where
 
 -- Return the integer value of a numeric type.
 valueof :: #n -> Integer

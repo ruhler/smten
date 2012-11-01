@@ -1,7 +1,7 @@
 
 module Seri.SMT.Tests.Squares2.Reg where {
 
-import Seri.Lib.Prelude;
+import Prelude;
 import Seri.SMT.SMT;
 import Seri.SMT.Tests.Squares2.Prelude;
 

@@ -144,14 +144,14 @@ binary nm e | Just (VarE (Sig n _), a, b) <- deApp2E e
 binary _ _ = Nothing
 
 sugardo :: Exp -> [Stmt]
-sugardo e | Just (m, r) <- binary (name "Seri.Lib.Prelude.>>") e
+sugardo e | Just (m, r) <- binary (name "Prelude.>>") e
     = NoBindS m : sugardo r
 sugardo e | Just (m, r) <- binary (name ">>") e
     = NoBindS m : sugardo r
 sugardo e | Just (m, f) <- binary (name ">>=") e
           , Just (Match [p] r) <- deLamE f
     = BindS p m : sugardo r
-sugardo e | Just (m, f) <- binary (name "Seri.Lib.Prelude.>>=") e
+sugardo e | Just (m, f) <- binary (name "Prelude.>>=") e
           , Just (Match [p] r) <- deLamE f
     = BindS p m : sugardo r
 sugardo e = [NoBindS e]

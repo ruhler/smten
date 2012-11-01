@@ -1,7 +1,7 @@
 
 module Seri.Lib.Vector where
 
-import Seri.Lib.Prelude
+import Prelude
 
 data Vector #n a = Vector #n [a]
 

@@ -1,7 +1,7 @@
 
 module Seri.Lambda.Tests.BadType1 where
 
-import Seri.Lib.Prelude
+import Prelude
 
 foo :: Integer
 foo = True

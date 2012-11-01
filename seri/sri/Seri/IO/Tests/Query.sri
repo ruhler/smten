@@ -1,7 +1,7 @@
 
 module Seri.IO.Tests.Query where
 
-import Seri.Lib.Prelude
+import Prelude
 import Seri.SMT.SMT
 import Seri.IO.IO
 import Seri.IO.SMT

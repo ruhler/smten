@@ -1,5 +1,5 @@
 module Seri.SMT.Tests.BCL3 where {
-  import Seri.Lib.Prelude;
+  import Prelude;
   import Seri.SMT.Tests.BCL.FIFO;
   import Seri.SMT.Tests.BCL.Tuple;
   import Seri.SMT.Tests.BCL.Reg;

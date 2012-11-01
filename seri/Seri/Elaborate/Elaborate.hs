@@ -350,7 +350,7 @@ elaborate mode env exp =
 
       primitives :: HT.HashTable Name (Sig -> ExpH)
       primitives = HT.table $ [
-            (name "Seri.Lib.Prelude.error", \s ->
+            (name "Prelude.error", \s ->
                 LaceEH (ES_Some WHNF) [
                     MatchH [VarP $ Sig (name "msg") stringT] $ 
                       \[(_, msg)] ->
@@ -359,11 +359,11 @@ elaborate mode env exp =
                              _ -> AppEH (ES_Some WHNF) (VarEH (ES_Some SNF) s) [msg]
                        ]
               ),
-            (name "Seri.Lib.Prelude.__prim_eq_Integer", \s -> biniprim s (\a b -> boolEH (a == b))),
-            (name "Seri.Lib.Prelude.__prim_add_Integer", \s -> biniprim s (\a b -> integerEH (a + b))),
-            (name "Seri.Lib.Prelude.__prim_sub_Integer", \s -> biniprim s (\a b -> integerEH (a - b))),
-            (name "Seri.Lib.Prelude.__prim_mul_Integer", \s -> biniprim s (\a b -> integerEH (a * b))),
-            (name "Seri.Lib.Prelude.__prim_show_Integer", \s ->
+            (name "Prelude.__prim_eq_Integer", \s -> biniprim s (\a b -> boolEH (a == b))),
+            (name "Prelude.__prim_add_Integer", \s -> biniprim s (\a b -> integerEH (a + b))),
+            (name "Prelude.__prim_sub_Integer", \s -> biniprim s (\a b -> integerEH (a - b))),
+            (name "Prelude.__prim_mul_Integer", \s -> biniprim s (\a b -> integerEH (a * b))),
+            (name "Prelude.__prim_show_Integer", \s ->
                 LaceEH (ES_Some WHNF) [
                     MatchH [VarP $ Sig (name "a") integerT] $ 
                         \[(_, a)] ->
@@ -371,10 +371,10 @@ elaborate mode env exp =
                                 LitEH (IntegerL ai) -> stringEH (show ai)
                                 _ -> AppEH (ES_Some WHNF) (VarEH (ES_Some SNF) s) [a]
                     ]),
-            (name "Seri.Lib.Prelude.<", \s -> biniprim s (\a b -> boolEH (a < b))),
-            (name "Seri.Lib.Prelude.<=", \s -> biniprim s (\a b -> boolEH (a <= b))),
-            (name "Seri.Lib.Prelude.>", \s -> biniprim s (\a b -> boolEH (a > b))),
-            (name "Seri.Lib.Prelude.__prim_eq_Char", \s -> bincprim s (\a b -> boolEH (a == b))),
+            (name "Prelude.<", \s -> biniprim s (\a b -> boolEH (a < b))),
+            (name "Prelude.<=", \s -> biniprim s (\a b -> boolEH (a <= b))),
+            (name "Prelude.>", \s -> biniprim s (\a b -> boolEH (a > b))),
+            (name "Prelude.__prim_eq_Char", \s -> bincprim s (\a b -> boolEH (a == b))),
             (name "Seri.Lib.Bit.__prim_eq_Bit", \s -> binbprim s (\a b -> boolEH (a == b))),
             (name "Seri.Lib.Bit.__prim_add_Bit", \s -> binbprim s (\a b -> bitEH (a + b))),
             (name "Seri.Lib.Bit.__prim_sub_Bit", \s -> binbprim s (\a b -> bitEH (a - b))),
@@ -398,7 +398,7 @@ elaborate mode env exp =
                   let AppT _ (NumT wt) = last $ unarrowsT t
                       i = j + (nteval wt) - 1
                   in bitEH (bv_extract i j a))),
-            (name "Seri.Lib.Prelude.&&", \s -> 
+            (name "Prelude.&&", \s -> 
               LaceEH (ES_Some WHNF) [
                 MatchH [VarP $ Sig (name "a") boolT, VarP $ Sig (name "b") boolT] $
                   \[(_, a), (_, b)] ->
@@ -407,7 +407,7 @@ elaborate mode env exp =
                       av | av == falseEH -> falseEH
                       _ -> AppEH (ES_Some WHNF) (VarEH (ES_Some SNF) s) [a, b]
                 ]),
-            (name "Seri.Lib.Prelude.||", \s -> 
+            (name "Prelude.||", \s -> 
               LaceEH (ES_Some WHNF) [
                 MatchH [VarP $ Sig (name "a") boolT, VarP $ Sig (name "b") boolT] $
                   \[(_, a), (_, b)] ->
@@ -416,7 +416,7 @@ elaborate mode env exp =
                       av | av == falseEH -> b
                       _ -> AppEH (ES_Some WHNF) (VarEH (ES_Some SNF) s) [a, b]
                 ]),
-            (name "Seri.Lib.Prelude.not", \s -> 
+            (name "Prelude.not", \s -> 
               LaceEH (ES_Some WHNF) [
                 MatchH [VarP $ Sig (name "a") boolT] $
                   \[(_, a)] ->
@@ -425,13 +425,13 @@ elaborate mode env exp =
                       av | av == falseEH -> trueEH
                       _ -> AppEH (ES_Some WHNF) (VarEH (ES_Some SNF) s) [a]
                 ]),
-            (name "Seri.Lib.Prelude.valueof", \(Sig n t) ->
+            (name "Prelude.valueof", \(Sig n t) ->
               let [NumT nt, it] = unarrowsT t
               in LaceEH (ES_Some SNF) [
                   MatchH [VarP $ Sig (name "_") (NumT nt)] $
                     \_ -> integerEH (nteval nt)
                   ]),
-            (name "Seri.Lib.Prelude.numeric", \(Sig _ (NumT nt)) -> ConEH (Sig (name "#" `nappend` name (show (nteval nt))) (NumT nt))),
+            (name "Prelude.numeric", \(Sig _ (NumT nt)) -> ConEH (Sig (name "#" `nappend` name (show (nteval nt))) (NumT nt))),
             (name "Seri.Lib.Bit.__prim_zeroExtend_Bit", \s@(Sig _ t) ->
               let [ta, AppT _ (NumT wt)] = unarrowsT t
               in LaceEH (ES_Some WHNF) [

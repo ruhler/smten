@@ -255,7 +255,7 @@ preludeH =
       mt _ (ConT n) | n == name "IO" = return $ H.ConT (H.mkName "Prelude.IO")
       mt _ t = throw $ "preludeH does not apply to type: " ++ pretty t
 
-      md _ (PrimD (TopSig n _ t)) | n == name "Seri.Lib.Prelude.error" = do
+      md _ (PrimD (TopSig n _ t)) | n == name "Prelude.error" = do
         let e = H.VarE (H.mkName "Prelude.error")
         let val = H.FunD (H.mkName "error") [H.Clause [] (H.NormalB e) []]
         return [val]
@@ -273,20 +273,20 @@ preludeH =
         name "(,,,,,,,,)",
         name "[]",
         name "IO"] = return []
-      md c (PrimD s@(TopSig n _ _)) | n == name "Seri.Lib.Prelude.__prim_add_Integer" = prim c s (vare "Prelude.+")
-      md c (PrimD s@(TopSig n _ _)) | n == name "Seri.Lib.Prelude.__prim_sub_Integer" = prim c s (vare "Prelude.-")
-      md c (PrimD s@(TopSig n _ _)) | n == name "Seri.Lib.Prelude.__prim_mul_Integer" = prim c s (vare "Prelude.*")
-      md c (PrimD s@(TopSig n _ _)) | n == name "Seri.Lib.Prelude.__prim_show_Integer" = prim c s (vare "Prelude.show")
-      md c (PrimD s@(TopSig n _ _)) | n == name "Seri.Lib.Prelude.<" = bprim c s "Prelude.<"
-      md c (PrimD s@(TopSig n _ _)) | n == name "Seri.Lib.Prelude.<=" = bprim c s "Prelude.<="
-      md c (PrimD s@(TopSig n _ _)) | n == name "Seri.Lib.Prelude.>" = bprim c s "Prelude.>"
-      md c (PrimD s@(TopSig n _ _)) | n == name "Seri.Lib.Prelude.&&" = prim c s (vare "&&#")
-      md c (PrimD s@(TopSig n _ _)) | n == name "Seri.Lib.Prelude.||" = prim c s (vare "||#")
-      md c (PrimD s@(TopSig n _ _)) | n == name "Seri.Lib.Prelude.not" = prim c s (vare "not_")
-      md c (PrimD s@(TopSig n _ _)) | n == name "Seri.Lib.Prelude.__prim_eq_Integer" = bprim c s "Prelude.=="
-      md c (PrimD s@(TopSig n _ _)) | n == name "Seri.Lib.Prelude.__prim_eq_Char" = bprim c s "Prelude.=="
-      md c (PrimD s@(TopSig n _ _)) | n == name "Seri.Lib.Prelude.valueof" = return []
-      md c (PrimD s@(TopSig n _ _)) | n == name "Seri.Lib.Prelude.numeric" = return []
+      md c (PrimD s@(TopSig n _ _)) | n == name "Prelude.__prim_add_Integer" = prim c s (vare "Prelude.+")
+      md c (PrimD s@(TopSig n _ _)) | n == name "Prelude.__prim_sub_Integer" = prim c s (vare "Prelude.-")
+      md c (PrimD s@(TopSig n _ _)) | n == name "Prelude.__prim_mul_Integer" = prim c s (vare "Prelude.*")
+      md c (PrimD s@(TopSig n _ _)) | n == name "Prelude.__prim_show_Integer" = prim c s (vare "Prelude.show")
+      md c (PrimD s@(TopSig n _ _)) | n == name "Prelude.<" = bprim c s "Prelude.<"
+      md c (PrimD s@(TopSig n _ _)) | n == name "Prelude.<=" = bprim c s "Prelude.<="
+      md c (PrimD s@(TopSig n _ _)) | n == name "Prelude.>" = bprim c s "Prelude.>"
+      md c (PrimD s@(TopSig n _ _)) | n == name "Prelude.&&" = prim c s (vare "&&#")
+      md c (PrimD s@(TopSig n _ _)) | n == name "Prelude.||" = prim c s (vare "||#")
+      md c (PrimD s@(TopSig n _ _)) | n == name "Prelude.not" = prim c s (vare "not_")
+      md c (PrimD s@(TopSig n _ _)) | n == name "Prelude.__prim_eq_Integer" = bprim c s "Prelude.=="
+      md c (PrimD s@(TopSig n _ _)) | n == name "Prelude.__prim_eq_Char" = bprim c s "Prelude.=="
+      md c (PrimD s@(TopSig n _ _)) | n == name "Prelude.valueof" = return []
+      md c (PrimD s@(TopSig n _ _)) | n == name "Prelude.numeric" = return []
 
       md c (DataD n _ _) | n == name "Bit" = return []
       md c (PrimD s@(TopSig n _ _)) | n == name "Seri.Lib.Bit.__prim_fromInteger_Bit" = prim c s (vare "Prelude.fromInteger")

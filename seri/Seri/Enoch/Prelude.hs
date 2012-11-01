@@ -107,41 +107,41 @@ conE nm =
 
 instance Num (TExp Integer) where
     fromInteger = pack . fromInteger
-    (+) = varE2 "Seri.Lib.Prelude.+"
-    (*) = varE2 "Seri.Lib.Prelude.*"
-    (-) = varE2 "Seri.Lib.Prelude.-"
+    (+) = varE2 "Prelude.+"
+    (*) = varE2 "Prelude.*"
+    (-) = varE2 "Prelude.-"
     abs = error $ "todo: abs for TExp Integer"
     signum = error $ "todo: signum for TExp Integer"
 
 -- This assumes there's a Seri instance of Eq for the object. Is that okay?
 (==) :: (SeriableT a) => TExp a -> TExp a -> TExp Bool
-(==) = varE2 "Seri.Lib.Prelude.=="
+(==) = varE2 "Prelude.=="
 
 -- This assumes there's a Seri instance of Eq for the object. Is that okay?
 (/=) :: (SeriableT a) => TExp a -> TExp a -> TExp Bool
-(/=) = varE2 "Seri.Lib.Prelude./="
+(/=) = varE2 "Prelude./="
 
 (<) :: TExp Integer -> TExp Integer -> TExp Bool
-(<) = varE2 "Seri.Lib.Prelude.<"
+(<) = varE2 "Prelude.<"
 
 (>) :: TExp Integer -> TExp Integer -> TExp Bool
-(>) = varE2 "Seri.Lib.Prelude.>"
+(>) = varE2 "Prelude.>"
 
 (<=) :: TExp Integer -> TExp Integer -> TExp Bool
-(<=) = varE2 "Seri.Lib.Prelude.<="
+(<=) = varE2 "Prelude.<="
 
 (>=) :: TExp Integer -> TExp Integer -> TExp Bool
-(>=) = varE2 "Seri.Lib.Prelude.>="
+(>=) = varE2 "Prelude.>="
 
 (&&) :: TExp Bool -> TExp Bool -> TExp Bool
-(&&) = varE2 "Seri.Lib.Prelude.&&"
+(&&) = varE2 "Prelude.&&"
 
 ite :: TExp Bool -> TExp a -> TExp a -> TExp a
 ite (TExp p) (TExp a) (TExp b) = TExp $ ifE p a b
 
 fst :: (SeriableT a, SeriableT b) => TExp (a, b) -> TExp a
-fst = varE1 "Seri.Lib.Prelude.fst"
+fst = varE1 "Prelude.fst"
 
 snd :: (SeriableT a, SeriableT b) => TExp (a, b) -> TExp b
-snd = varE1 "Seri.Lib.Prelude.snd"
+snd = varE1 "Prelude.snd"
 

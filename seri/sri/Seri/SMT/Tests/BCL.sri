@@ -1,7 +1,7 @@
 
 module Seri.SMT.Tests.BCL where {
 
-import Seri.Lib.Prelude;
+import Prelude;
 import Seri.SMT.SMT;
 
 data FIFO a =

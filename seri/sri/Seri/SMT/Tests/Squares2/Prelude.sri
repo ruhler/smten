@@ -1,7 +1,7 @@
 
 module Seri.SMT.Tests.Squares2.Prelude where {
 
-import Seri.Lib.Prelude;
+import Prelude;
 import Seri.SMT.SMT;
 
 data Action s a = Action {

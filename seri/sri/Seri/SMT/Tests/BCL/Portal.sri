@@ -1,7 +1,7 @@
 
 module Seri.SMT.Tests.BCL.Portal where
 
-import Seri.Lib.Prelude
+import Prelude
 
 data Portal a b = Portal{ dbx     :: Bool
                         , istream :: (Integer -> a)

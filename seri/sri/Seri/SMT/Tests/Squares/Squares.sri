@@ -1,7 +1,7 @@
 
 module Seri.SMT.Tests.Squares.Squares where {
 
-import Seri.Lib.Prelude;
+import Prelude;
 import Seri.Lib.Bit;
 import Seri.SMT.SMT;
 

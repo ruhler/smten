@@ -1,7 +1,7 @@
 
 module Seri.Lib.Array where
 
-import Seri.Lib.Prelude
+import Prelude
 
 -- TODO: We have a generic Array definition, but as you'll see, currently only
 -- arrays with Integer indices are supported.
