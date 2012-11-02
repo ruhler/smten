@@ -1,124 +1,112 @@
 
-- support negative literals?
-- default methods in classes?
-
-- line numbers for non-syntactic errors would be nice.
-
-- Test type inference and type checking
-** Verify we check for the instance or context for every method call
-** Verify we check for too many arguments in a ConP, or too few
-** Verify we check for undefined variables
-** Verify we can't over apply a type, for example: Maybe Integer Bool.
-** Verify we can't declare the same variable twice.
-** Verify all clauses have to have the same number of args.
-** Verify recursive definitions in lets aren't allowed (self recursion)
-** Verify ambiguous types aren't allowed
-** Verify a type constructor used has been declared somewhere.
-** Verify a free variable in an expression is not allowed.
-** Verify all methods have been defined for a class instance.
-** Verify you can't refer to a nonexistent type
-
-- Reimplement TypeCheck to make use of constraint generation from TypeInfer?
-
-- Understand all the conflicts in the parser.
-I suspect many of the reduce/reduce are from:
-    foo :: (Foo a) -> Sludge
-vs. foo :: (Foo a) => Sludge
-
-- Allow arbitrary patterns in lambda expression arguments.
+Haskell Features::
+* support negative literals?
+* default methods in classes?
+* allow arbitrary patterns in lambda expression arguments.
     example: \(Foo x) -> x+1
-
-- Add support for list sequences
+* add support for list sequences
     example: [1..5]
+* list comprehension.
+* support for pattern guards?
+* support for pattern bindings: x@(...)
+* Variable operators: `foo`.
+* pattern matching in do bind notation.
+* support type synonyms? 
+* auto derive Show
+* recursive let blocks
+* modularity support
+* automatically import Prelude
 
-- support for pattern guards?
-- support for pattern bindings: x@(...)
+Test Type Checking::
+* Verify we check for the instance or context for every method call
+* Verify we check for too many arguments in a ConP, or too few
+* Verify we check for undefined variables
+* Verify we can't over apply a type, for example: Maybe Integer Bool.
+* Verify we can't declare the same variable twice.
+* Verify all clauses have to have the same number of args.
+* Verify recursive definitions in lets aren't allowed (self recursion)
+* Verify ambiguous types aren't allowed
+* Verify a type constructor used has been declared somewhere.
+* Verify a free variable in an expression is not allowed.
+* Verify all methods have been defined for a class instance.
+* Verify you can't refer to a nonexistent type
 
-- what happens if we realize a free integer variable which is a dont-care?
-
-- functions with clauses in let would be nice.
-
-- array comprehension.
-- pattern guards would be nice.
-
-- move TypeInfer, TypeCheck and TypeSolve into a Type/ folder?
+Type System::
+* give a nice message if there's a type ambiguity?
+    That is, anything with ~?
+* Reimplement TypeCheck to make use of constraint generation from TypeInfer?
+* move TypeInfer, TypeCheck and TypeSolve into a Type/ folder?
 This might make a lot more sense after moving stuff in Types to Prelude.hs.
-
-- interpret function evidence
-- interpret char evidence (?)
-
-- modularity support
-
-- document the executables much better.
-
-- give a nice message if there's a type ambiguity?
-That is, anything with ~?
-
-- pretty printer parser problems:
-** don't print out builtin prelude?
-** do notation <- doesn't work with explicit type (parser bug?)
-
-- Variable operators: `foo`.
-- pattern matching in do bind notation.
-
-- Implement enough math somewhere to know that
+* Implement enough math somewhere to know that
   Bit #3  -> Bit #4 -> Bit #7 is a valid subtype of
   Bit #m  -> Bit #n -> Bit #(m+n)
 
   Because otherwise bitvector concatentation is really annoying to use.
 
-- seriq2 for SquaresRaw... result differs from yices1 and yices2. Why?
-  seriq1 seg faults on that same example randomly
-    (in GC evacuate at end of prog)
+Front End::
+* line numbers for non-syntactic errors would be nice.
+* Understand all the conflicts in the parser.
+I suspect many of the reduce/reduce are from:
+    foo :: (Foo a) -> Sludge
+vs. foo :: (Foo a) => Sludge
+* support parser-error layout rule.
+    For example: (let foo = bar in foo x)
+* Report an error if module name doesn't match source file name.
 
-- Add support for sharing in generated queries
-  Or otherwise improve performance of seri...
+Enoch::
+* Don't require ScopedTypeVariables in derive_SeriableE.
 
-- Use the yices1 native interface where possible
+Pretty Printer::
+* don't print out builtin prelude?
+* do notation <- doesn't work with explicit type (parser bug?)
 
-* Don't require yices1 and yices2 to be installed to build or use seri
-    If a solver isn't installed, just give a runtime error when you try to
-    use it. (As per request of Nirav)
+Performance::
+* Add speculative elaboration to elaborator
+* Compile seri to Haskell
+* Add support for sharing in generated queries (?)
+* Use the yices1 native interface where possible (everywhere?)
 
-* Don't allow deriving of Free for recursive data types
-* Figure out how to give an instance of Free for just those function types
-  that we support
-* Get rid of the __prim_free primitive
-* Add STP as a solver
+Solvers::
+* Figure out how to test all the different solvers more completely
+* Add minisata as a solver
 * Add Z3 as a solver
 
+Static Analysis::
 * Add static check for exhaustive case statements
 * Add static check for concreteness of queries
 
-* support type synonyms? 
-* support polymorphic declarations in let bindings?
-
-* print out source code locations for type errors
-* support parser-error layout rule.
-    For example: (let foo = bar in foo x)
-
-* Define SMT theory classes and add a solver phantom type to free and Query.
-    This makes more sense when we have solvers supporting different theories,
-    so probably want to hold off until then.
-
-* Report an error if module name doesn't match source file name.
-* auto derive Show
-
-* change Seri.Lib.Prelude to just Prelude
-* automatically import Prelude
-* try to match the haskell module hierarchy
-
-* add phantom type to Query and Free which indicates the theories supported by
-  a solver
-* share code common to the different sudoku solvers
-* Have the sudoku solver use IO to read the input board
-
-* Don't require ScopedTypeVariables in derive_SeriableE.
-
+SMT Syntax::
 * Remove bv-left-shift0 from SMT syntax, switch to more general bvshl
   described by SMTLIB2
 * Remove bv-zero-extend from SMT syntax, use SMTLIB2 alternative
 
+Dealing with Free Things::
+* what happens if we realize a free integer variable which is a dont-care?
+* interpret function evidence
+* interpret char evidence (?)
+* Figure out how to give an instance of Free for just those function types
+  that we support
+* Don't allow deriving of Free for recursive data types
+* Get rid of the __prim_free primitive
+* Define SMT theory classes and add a solver phantom type to free and Query.
+
+Bugs::
+* seriq2 for SquaresRaw... result differs from yices1 and yices2. Why?
+  seriq1 seg faults on that same example randomly
+    (in GC evacuate at end of prog)
+
+Build System::
+* Don't require yices1 and yices2 to be installed to build or use seri
+    If a solver isn't installed, just give a runtime error when you try to
+    use it. (As per request of Nirav)
 * don't hardcode build/test output directory into SMT and IO tests
 * clean up tclmk script: maybe separate into init, build, and test sections.
+
+Seri Library::
+* try to match the haskell module hierarchy
+* share code common to the different sudoku solvers
+* Have the sudoku solver use IO to read the input board
+
+
+
 
