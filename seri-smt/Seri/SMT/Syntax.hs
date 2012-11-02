@@ -39,7 +39,7 @@ module Seri.SMT.Syntax (
     Binding, Literal(..),
 
     -- * Core
-    letE, eqE, de_eqE, ifE, de_ifE, varE,
+    letE, eqE, de_eqE, ifE, de_ifE, varE, de_varE,
     boolE, trueE, falseE, notE, de_notE, andE, de_andE, orE, de_orE,
 
     -- * Integer
@@ -87,6 +87,10 @@ data Literal =
 -- | > A <symbol> expression.
 varE :: String -> Expression
 varE n = VarE n
+
+de_varE :: Expression -> Maybe String
+de_varE (VarE n) = Just n
+de_varE _ = Nothing
 
 -- | > true
 trueE :: Expression

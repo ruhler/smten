@@ -16,6 +16,7 @@ Haskell Features::
 * recursive let blocks
 * modularity support
 * automatically import Prelude
+* supply operator precedence as expected for default operators
 
 Test Type Checking::
 * Verify we check for the instance or context for every method call
@@ -52,6 +53,7 @@ vs. foo :: (Foo a) => Sludge
 * support parser-error layout rule.
     For example: (let foo = bar in foo x)
 * Report an error if module name doesn't match source file name.
+* allow multiply specified imports
 
 Enoch::
 * Don't require ScopedTypeVariables in derive_SeriableE.
@@ -68,7 +70,7 @@ Performance::
 
 Solvers::
 * Figure out how to test all the different solvers more completely
-* Add minisata as a solver
+* Add minisata as a solver (requires CNF)
 * Add Z3 as a solver
 
 Static Analysis::
@@ -99,7 +101,7 @@ Build System::
 * Don't require yices1 and yices2 to be installed to build or use seri
     If a solver isn't installed, just give a runtime error when you try to
     use it. (As per request of Nirav)
-* don't hardcode build/test output directory into SMT and IO tests
+* don't hardcode build/test output directory into SMT tests
 * clean up tclmk script: maybe separate into init, build, and test sections.
 
 Seri Library::
