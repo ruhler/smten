@@ -1,0 +1,339 @@
+
+Sat Oct 27 15:11:36 EDT 2012
+
+I had an insight on the enoch/yices1 issue.
+
+A couple.
+
+The big idea is: if you don't import Yices1 when using template haskell, you
+should be just fine, as it shouldn't need to load yices1. That makes it clear.
+
+Some ideas:
+* don't mix yices1 and template haskell. Do the template haskell in a separate
+  module which doesn't import Yices1.
+* provide a dummy library for yices1 (and maybe yices2 too) to link against
+  if they know they aren't using yices1.
+* don't require yices1 in the seri package, let the user link to it
+  explicitly, then they can choose to link to the dummy one if they want.
+
+So I have to do some experiments to get a better idea of what's going on.
+
+Experiments to run:
+
+1. With seri installed as is (yices1 and yices2 support), try building enoch,
+see if it works. It might say: can't load yices1, because the seri package
+requires yices1?
+
+2. Assuming it needs yices1, then don't require yices1 in seri package, see if
+I can make seri and enoch work when compiled separately (they may require
+yices1). I think this will work.
+
+3. Try implementing enoch using yices1. It should fail.
+4. Try doing the template haskell stuff for enoch in a separate file from
+loading yices1, see if it works with yices1 now.
+
+That should tell me a bunch. Let me get to work. See what I learn, then figure
+out what I want to do about it all.
+
+
+1. As expected, can't load yices1, required by seri package.
+2. Doesn't work! The seri package, even though yices1 is not required, still
+refers to those symbols.
+
+The real trouble is, I can't get seri to work, because it's not putting the
+-lyices1 and -lyices2 in the right places on the command line I think.
+
+Hmm...
+
+What are the options now?
+
+I could make a dummy yices1 library and dummy yices2 library, but I don't
+think that will help...
+
+A dummy yices library would just give you a way to disable yices1 without a
+special build of the seri package.
+
+I can't make a package linked with yices1 I require people to install, because
+template haskell is going to load all the packages on the system I think.
+
+What I want is... No package should require linking with yices1 or yices2 if
+you don't want to. You should be able to choose at link time of your
+executable...
+
+Can I do something with ghc flags? Or preload, or something?
+
+The goal is: figure out how to have the linker look at libraries if they are
+out of order... Can I pass flags to gcc or ld via ghc?
+
+What if I separate compilation from linking? Give a dummy library for
+compilation (loading of template haskell), and the real library for final
+linking? That seems worth a try to me. But... I still can't build seri without
+linking libraries at cabal, right?
+
+
+If I don't specify yices1 and yices2 to seri, those symbols are undefined in
+the generated library.
+
+Even if I do specify yices1 and yices2 to seri, those symbols are undefined in
+the generated library. The difference is, ghc seems to add the right linker
+flags, or the linker flags in the right place. Somehow ghc seems to know where
+the library is. That information must be compiled in somewhere, or otherwise
+be somewhere in my environment.
+
+So, what's the plan then?
+
+Let me try providing a dummy library for yices1, see if I can compile enoch
+with that library somehow.
+
+Sat Oct 27 16:45:40 EDT 2012
+
+I don't know. I don't see what I can do. The trouble is, I don't know how to
+change the linker flags specified by ghc. It doesn't seem to pay attention to
+what I put. I would think that, if the seri package doesn't have the yices1
+and yices2 libraries, then I should be able to add then when I compile
+things...
+
+Sat Oct 27 16:51:01 EDT 2012
+
+Okay, some progress being made.
+I can not specify yices1 and yices2 in the seri package, the compile without
+linking, then compile with linking and explicitly pass the seri package .o
+file and yices1 and yices2 libraries. Then the seri executable compiles.
+
+It doesn't work if I use -package seri. The annoying part here is I have to
+manually write down all my other packages too on the command line. At least
+those I can say -package with.
+
+Anyway, let's see what I can do for enoch now.
+
+Sat Oct 27 17:06:20 EDT 2012
+
+Okay, so I think this works. Sad as that is.
+
+You compile with the dummy yices1 library, you link with the real yices1
+library.
+
+Yes. That works. It's good to know I suppose. Not sure what to do about it.
+It's a slightly annoying, but entirely reasonable workaround I should say, for
+people who really care.
+
+What am I supposed to do about this?
+
+I need a few moments to reflect...
+
+Sat Oct 27 17:41:52 EDT 2012
+
+I wish there were an easy way to compile programs using the seri package where
+seri does not specify the libraries. Let me play around with that a little.
+
+Sat Oct 27 18:04:40 EDT 2012
+
+Progress!
+
+So, I can build seri cleanly as long as I say:
+-lHSseri-0.1.1.1 -lyices1 -lyices2
+
+Let me see about enoch now.
+
+Aha! I think I've figured it out now, at last.
+
+If you call ghc -c, it will compile to a .o file, running template haskell. If
+you then call ghc, it will see the .o file, and reuse that, not rerunning
+template haskell. For the first call, when template haskell runs, give a dummy
+yices library. For the second call, give the libraries as show above. Then
+everything works swell. I don't have to specify cludgy stuff. It's clean.
+
+So, you can compile seri without yices1 or yices2. You have to link those
+yourself when you make an executable, it's not too hard to do. You can specify
+a dummy library (which I will provide) if you prefer not to install the SMT
+solver.
+
+When using template haskell, it's a little trickier, but still not so bad.
+It's a little like the profiling thing.
+
+There is a question of what this means for my build system. Should enoch,
+sudoku, seri be part of the build? I think they should be. Or, rather, I think
+seri should be, enoch and sudoku need not be shipped with the seri package,
+they are just for test purposes.
+
+Can I mark them as just for test purposes? Or... better yet, just build them
+using ghc in my build system, assuming the seri package has already been built
+and I can find it in the right place. I can just link to the -o file, no
+problem? Well... try not to include the seri source code in the path,
+otherwise it won't reuse the seri package that's built.
+
+This should help speed up the time to make too.
+
+One issue will be the seri version to use... but that's not too hard. It will
+be annoying for the end user to keep updating that. Too bad it has to be
+explicitly listed on the ghc command line.
+
+So I've figured out a solution. Let me write it down here, just in case I
+forget:
+
+* seri library should not require yices1 or yices2 libraries
+* to build non-enoch program with seri:
+    ghc -o foo foo.hs -lHSseri-0.1.1.1 -lyices1 -lyices2
+* to build enoch program with seri:
+    ghc -c foo.hs -lyices1_dummy -lyices2
+    ghc -o foo foo.hs -lHSseri-0.1.1.1 -lyices1 -lyices2
+
+I can work out the build system stuff.
+
+It's not clear to me just now that I want to switch at this point. Nirav
+doesn't care about yices1, and switching to this will only make it harder for
+him, not easier.
+
+Anyway, next thing to do then: runYices2 IO primitive for seri.
+
+Sat Oct 27 18:42:43 EDT 2012
+
+Well, there you have it. I am unable to compile the seri library because of
+this template haskell/yices1 issue. Gar. And it's with cabal...
+
+Temporary solution: don't use template haskell in the library?
+
+Gah! That's a very not nice solution. I don't want to use it.
+
+Let me try to get template haskell working, however I can. If it means
+disabling yices1 to start, so be it.
+
+Sat Oct 27 19:25:49 EDT 2012
+
+It seems to work with yices1 disabled... but I don't understand why it doesn't
+work using the trick I had from before. Partial compilation. That sort of
+thing. Sigh. Well, let me at least test it out.
+
+Sat Oct 27 19:36:20 EDT 2012
+
+The good news is, runYices2 works swell.
+
+The bad news is, there are some issues to work out:
+
+* How to support yices1?
+* Would like support for the Show type class.
+
+Let me check in what I have to a different branch. Then try to figure out the
+yices1 issue from there if I can.
+
+Sat Oct 27 19:40:27 EDT 2012
+
+Okay, how will I get yices1 to work?
+
+Sat Oct 27 20:02:12 EDT 2012
+
+Well well! How about this even easier solution: first compile with the dummy
+yices1 library, then compile exactly the same way with the normal yices1
+library. Let me see if I can make this work.
+
+Sat Oct 27 20:07:34 EDT 2012
+
+Wow! It looks like it works...
+
+Sat Oct 27 20:11:49 EDT 2012
+
+I'm going to take a break for dinner now, but there's rather a bit to think
+about. How should I release seri, to deal with this template haskell issue?
+And what are the next steps for IO? Even though I know the answer: I need
+support for show...
+
+Sat Oct 27 20:51:41 EDT 2012
+
+Show is easy enough, and it will be cool.
+
+Let me work some more on the cabal issue.
+
+There are two things I can do:
+* produce a cabal package with no support for yices1.
+Or, in other words, which uses yices1_dummy instead of yices1.
+
+This should make Nirav that most happy, and any user, because then everything
+works the way they want, except for yices1, but who really wants yices1
+besides me?
+
+* produce a cabal package without yices1 and yices2(?) built in, which the
+  user has to manually link.
+
+If the process isn't so bad, that may not be a terrible option. Then, I should
+figure out in my build system how to use the package.
+
+And the answer has to be: build up my own package repository. But, an idea: I
+could base it off of the user's package repository. That would be cool. Just
+copy over their repository, install seri into that, and build from there.
+
+Anyway, what I want to do now is, I suppose, a couple things.
+
+1. Figure out how much work it is for a user to make use of a seri package
+without solvers linked in. With and without template haskell.
+
+2. See if it's possible to have the solvers linked in an still be able to
+change them later? I don't know... I'm not feeling this one so much.
+
+Actually, that would be nice, wouldn't it? The user could link in the dummy
+solver, then override it whenever they want to use yices1? I don't know.
+
+Number (1)...
+
+Sat Oct 27 21:06:16 EDT 2012
+
+I don't know. Looks like I run ghc -c with the dummy libraries, then ghc with
+the real libraries and the seri package library. I don't know if it changes
+when more source files are involved.
+
+Let me try the other way. Building with yices1_dummy compiled in, and see if
+you can override.
+
+Sat Oct 27 21:12:46 EDT 2012
+
+Actually, it works just fine the same way. I link with yices1_dummy, you get
+yices1_dummy by default, if you want to use yices1, you just need to relink
+with the yices1 library instead of the yices1_dummy library.
+
+I think this is the best approach, because it means people like Nirav, who
+don't care about not having yices1 support, can build without anything
+special. But people like me, who do care, can build the special stuff in.
+
+Good. Let me stick with this approach.
+
+Sat Oct 27 21:16:00 EDT 2012
+
+So then, the next question is... Can I make use of the package I build with
+cabal? So that seri and enoch and sudoku really are just like what the user
+has to do?
+
+The trick is, I have to install the package, then try to use the installed
+version.
+
+I bet I can do this. Let me try it out...
+
+Sat Oct 27 21:46:15 EDT 2012
+
+It works!
+
+Here's the deal, get rid of the GHC package path, call cabal update first.
+Then cabal installs everything it needs to to make seri work. It's a little
+bit of a wait the first time but as long as I don't go deleting that
+build/home directory, after that it's quick. And everything works. The built
+executables use the cabal package that has been installed.
+
+Sat Oct 27 21:52:45 EDT 2012
+
+I like this approach. I think it will work out. I have just a few things to
+work out, like what it means to clean, and avoiding silly cabal updates, and
+things like that. Let me let those work themselves out over time though.
+
+I think I can merge with the master branch now. Let me clean up the cabal
+configuration file first?
+
+Sat Oct 27 22:17:40 EDT 2012
+
+Cool. It's all cleaned up now. That makes me feel better. Yices1 and build
+issues resolved. Until next time...
+
+Anyway, the next thing on my list of things to do is:
+* implement __prim_show_Integer
+* define Show class
+* implement Show for common things: Answer, Integer, tuple, etc...
+* Change all SMT tests to use the IO monad from the top level.
+* Remove the --query option to seri.
+

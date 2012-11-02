@@ -1,0 +1,144 @@
+
+module Seri.SMT.Tests.Sudoku2 where
+
+import Prelude
+import Seri.SMT.SMT
+
+-- The size of the sudoku.
+-- (nxn)x(nxn)
+n :: Integer
+n = 3
+
+-- The square of the sudoku size.
+m :: Integer
+m = n*n
+
+data Cell = C1 | C2 | C3 | C4 | C5 | C6 | C7 | C8 | C9
+    deriving(Eq, Free)
+
+readCell :: Char -> Query Cell
+readCell '1' = return C1
+readCell '2' = return C2
+readCell '3' = return C3
+readCell '4' = return C4
+readCell '5' = return C5
+readCell '6' = return C6
+readCell '7' = return C7
+readCell '8' = return C8
+readCell '9' = return C9
+readCell '.' = free
+readCell c = error ("readCell: " ++ [c])
+
+printCell :: Cell -> Char
+printCell C1 = '1'
+printCell C2 = '2'
+printCell C3 = '3'
+printCell C4 = '4'
+printCell C5 = '5'
+printCell C6 = '6'
+printCell C7 = '7'
+printCell C8 = '8'
+printCell C9 = '9'
+
+-- Return true if all elements in the list are unique.
+unique :: (Eq a) => [a] -> Bool
+unique [] = True
+unique (x:xs) = notElem x xs && unique xs
+
+data Board = Board [[Cell]]
+
+print :: Board -> [[Char]]
+print (Board cells) = map (\row -> map printCell row) cells
+
+rows :: Board -> [[Cell]]
+rows (Board x) = x
+
+cols :: Board -> [[Cell]]
+cols (Board x) = transpose x
+
+transpose :: [[a]] -> [[a]]
+transpose [] = []
+transpose ([]:_) = []
+transpose xs = (map head xs) : transpose (map tail xs)
+
+boxes :: Board -> [[Cell]]
+boxes (Board rows) = 
+  let brows = breakup n rows;
+  in concat (map boxes' brows)
+
+-- Given just 'm' rows, return the m boxes in those m rows.
+boxes' :: [[a]] -> [[a]]
+boxes' [] = []
+boxes' ([]:_) = []
+boxes' xs = 
+  let b = concat (map (take n) xs)
+      bs = map (drop n) xs
+  in b : (boxes' bs)
+
+-- Break a list up into a bunch of lists of the given length.
+breakup :: Integer -> [a] -> [[a]]
+breakup _ [] = []
+breakup n xs =
+  case splitAt n xs of
+     (a, b) -> a : (breakup n b)
+
+isvalid :: Board -> Bool
+isvalid b = all unique (concat [rows b, cols b, boxes b])
+
+readRow :: [Char] -> Query [Cell]
+readRow = mapM readCell
+
+readBoard :: [[Char]] -> Query Board
+readBoard rows = do
+    brows <- mapM readRow rows
+    return (Board brows)
+
+easy :: [[Char]]
+easy =
+  ["2....1.38",
+   "........5",
+   ".7...6...",
+   ".......13",
+   ".981..257",
+   "31....8..",
+   "9..8...2.",
+   ".5..69784",
+   "4..25...."]
+
+solved :: [[Char]]
+solved =
+  ["249571638",
+   "861432975",
+   "573986142",
+   "725698413",
+   "698143257",
+   "314725869",
+   "937814526",
+   "152369784",
+   "486257391"]
+
+diabolical :: [[Char]]
+diabolical = 
+    [".9.7..86.",
+     ".31..5.2.",
+     "8.6......",
+     "..7.5...6",
+     "...3.7...",
+     "5...1.7..",
+     "......1.9",
+     ".2.6..35.",
+     ".54..8.7."]
+
+qmain :: Query [[Char]]
+qmain = do
+    board <- readBoard diabolical
+    assert (isvalid board)
+    result <- query board
+    case result of
+       Satisfiable v -> return (print v)
+       _ -> return ["no solution"]
+
+main :: IO ()
+main = do
+    r <- runYices2 (Just "build/test/Sudoku2.yices2.dbg") qmain
+    mapM_ putStrLn r

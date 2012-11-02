@@ -1,0 +1,64 @@
+
+Sun Oct 28 09:31:22 EDT 2012
+
+I implemented the Show class. It seems to work swell. I don't have auto
+deriving yet.
+
+So, at this point, it seems like we would like to have a big clean up of
+everything. Everything is going to be run in IO... Get rid of --query...
+
+So the idea, then, is to move all the tests to... somewhere. A common folder.
+Not sure where.
+
+I'm envisioning two test programs:
+* the standard tests
+* the SMT tests
+
+We split them up, because the standard tests can be compiled to Haskell, while
+the SMT tests can't.
+
+The standard tests are just the one file.
+The SMT tests will make use of the queries spread across different files.
+Though I suppose they could be moved to the same file?
+I think I like keeping them separate...
+
+Let me think about what I want to do. Clearly the next step is to convert all
+the Query top level functions to IO. It's just a question of whether I want to
+reorganize them at this point or not? Put them in the same file together or
+not?
+ 
+Sun Oct 28 09:54:20 EDT 2012
+
+Here are my thoughts.
+
+First step, the step to take today: just switch everything over to IO. Don't
+reorganize.
+
+Later on I'll reorganize as follows: separate all the .sri code into its own
+directory. Move Seri.Lib.Prelude to Prelude. Things like that. Try to mimic
+the haskell organization as much as I can, because it would be great if we
+could run the haskell compiler on seri code, for example (if only haskell had
+support for numeric type syntax...)
+
+Let me get going on the removal of --query. See how far I can get in an hour.
+
+First thing to note: the queries themselves choose which solver to run on.
+This could be troublesome if you don't want to run on yices1... Oh well. Worry
+about it later.
+
+Sun Oct 28 10:56:15 EDT 2012
+
+Cool. I got rid of --query. 
+
+What's next? I'm not going to do any more work right now, I just want to know
+what I should be thinking about.
+
+Well, implement STP as a solver, and Z3. Implement the runSTP and runZ3 seri
+primitives. Then, at this point, I'll want to figure out how to augment Query
+and Free with a particular solver. It would be nice to have support for a pure
+SAT solver too, I should look to see if I can find any nice SAT solvers.
+
+There's lots of cleanup work there for me to do too. Hopefully I can keep on
+top of everything. It does feel a little bit like I'm loosing track of
+everything that's going on with seri.
+

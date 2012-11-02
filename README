@@ -1,7 +1,7 @@
 Seri ReadMe
 ===========
 Richard Uhler <ruhler@csail.mit.edu>
-October 18, 2012
+November 1, 2012
 
 Configuring Seri for Build
 --------------------------
@@ -11,20 +11,14 @@ information about your system.
 
 The following variables should be set in tclmk/local.tcl:
 ::HAPPY - The path to the happy executable for building the parser.
-::GHC - The path to ghc
-::PACKAGE_DB - The ghc package database to use when building the seri cabal package
 ::env(PATH) - The PATH to use for executables
-::env(GHC_PACKAGE_PATH) - your ghc package path
 ::env(LD_LIBRARY_PATH) - the ld library path
 
 For example, tclmk/local.tcl might look like:
 
 =========================================
 set ::HAPPY /home/ruhler/.cabal/bin/happy
-set ::GHC /usr/bin/ghc
-set ::PACKAGE_DB "/var/lib/ghc/package.conf.d"
 set ::env(PATH) "/bin:/usr/bin:/home/ruhler/local/bin"
-set ::env(GHC_PACKAGE_PATH) "$::PACKAGE_DB:/home/ruhler/.ghc/x86_64-linux-7.4.1/package.conf.d"
 set ::env(LD_LIBRARY_PATH) "/home/ruhler/local/lib"
 =========================================
 
@@ -35,12 +29,11 @@ for a yices1 library called "yices1" and a yices2 library called "yices2".
 Because the yices libraries are both shiped as "yices", you will need to
 rename them or provide a link to "yices1" and "yices2".
 
-Additionally, in order to use both yices1 and yices2 libraries in a single
-executable, seri assumes the symbols in the yices1 library have been renamed
-so that prefixes yices_ are now yices1_. The rename map is included in the doc
-directory.
+In order to use both yices1 and yices2 libraries in a single executable, seri
+assumes the symbols in the yices1 library have been renamed so that prefixes
+yices_ are now yices1_. The rename map is included in the doc directory.
 
-So, for example, if you have libyices.a for yices1 and libyices.so.2.1.0 for
+In summary, if you have libyices.a for yices1 and libyices.so.2.1.0 for
 yices2 installed, to create the "yices1" and "yices2" libraries suitable for
 use with seri, run the commands:
 
@@ -48,31 +41,26 @@ use with seri, run the commands:
    ln -s libyices.so.2.1.0 libyices2.so
    ln -s libyices.so.2.1.0 libyices.so.2.0 
 
+STP
+~~~
+Seri requires you have the STP library installed on your system to build.
+
 
 Building Seri
 -------------
 Once seri is configured for build, it can be built by running `make`.
 
-The makefile generates a cabal package for seri, builds it, then runs some
-tests on the generated executables.
-
-As of October 18th, 2012, Seri requires the following haskell packages:
-
-* base ==4.5.*
-* mtl ==2.1.* 
-* pretty ==1.1.*
-* array ==0.4.*
-* directory ==1.1.*
-* template-haskell ==2.7.*
-* hashable ==1.1.*
-* containers ==0.5.*
-* bytestring ==0.9.*
-* cmdargs ==0.10.*
-* syb ==0.3.*
+The makefile installs the cabal packages for seri and seri-smt in a pretend
+home directory, compiles some programs against the installed packages, then
+runs some tests on the generated executables. During the process of
+installation, required packages will automatically be installed as well.
 
 Generated files of note:
-build/src/dist/build/seri/seri
-  - the generated seri executable
+build/seri-bin/seri:: the generated seri executable
+build/seri/seri-<version>.tar.gz:: seri cabal distribution package
+build/seri/doc/html/seri/index.html:: seri library documentation
+build/seri-smt/seri-smt-<version>.tar.gz:: seri-smt cabal distribution package
+build/seri-smt/doc/html/seri-smt/index.html:: seri-smt documentation
 
 Trouble Shooting
 ~~~~~~~~~~~~~~~~
@@ -116,20 +104,19 @@ You may need to set your LD_LIBRARY_PATH to find the library at runtime:
 Once you have verified yices2 is install and working on your system, double
 check that:
 * tclmk/local.tcl has the right LD_LIBRARY_PATH set
-* Your cabal config (typically in ~/.cabal/config) has the appropriate
-  extra-lib-dirs flag set
 
 Trying Seri
 -----------
 After building seri you can try it out. For example, to run a simple query
-with yices 2:
+using yices2:
 
-    ./build/src/dist/build/seri/seri --query -s Yices2 -d Query1.dbg --include src -m Seri.SMT.Tests.Query1.main -f src/Seri/SMT/Tests/Query1.sri
+    ./build/seri-smt/seri --io --include seri/sri --include seri-smt/sri -m Seri.SMT.Tests.HelloWorld.main -f seri-smt/sri/Seri/SMT/Tests/HelloWorld.sri
 
 If it works, you should get the output:
-    (Satisfiable :: Answer Integer) 5
+    Satisfiable 5
 
-And Query1.dbg will contain the yices2 query evaluated to get this result.
+And HelloWorld.dbg will contain the yices2 query evaluated to get this result.
 
-Additional sample queries are available in the src/Seri/SMT/Tests/ directory.
+Additional sample queries are available in the seri-smt/sri/Seri/SMT/Tests/
+directory.
 

@@ -1,0 +1,35 @@
+name: seri
+version: 0.2.0.0
+synopsis: Seri language compilers and infrastructure
+license: AllRightsReserved
+license-file: LICENSE
+author: Richard Uhler
+maintainer: ruhler@csail.mit.edu
+category: Language
+build-type: Simple
+cabal-version: >=1.8
+stability: experimental
+data-dir: sri
+data-files:
+    Prelude.sri
+    Data/*.sri
+    Seri/*.sri
+    Seri/Tests/*.sri
+    Seri/Tests/MalTyped/*.sri
+    Seri/SMT/*.sri
+    Seri/SMT/Tests/*.sri
+    Seri/SMT/Tests/BCL/*.sri
+    Seri/SMT/Tests/Squares2/*.sri
+    Seri/SMT/Tests/Squares/*.sri
+source-repository this
+  type: git
+  location: /afs/csail.mit.edu/u/r/ruhler/git/seri
+--branch: 
+--tag: 
+library
+  exposed-modules: Seri Seri.Bit, Seri.Elaborate, Seri.Elaborate.Elaborate, Seri.Elaborate.FreshPretty, Seri.Enoch.Enoch, Seri.Enoch.EnochTH, Seri.Enoch.Prelude, Seri.Enoch.Seriables, Seri.Failable, Seri.HashTable, Seri.Haskell, Seri.Haskell.Compiler, Seri.Haskell.Haskell, Seri.Haskell.Lib.Bit, Seri.Haskell.Lib.Numeric, Seri.Lambda, Seri.Lambda.Declarations, Seri.Lambda.Env, Seri.Lambda.Generics, Seri.Lambda.IR, Seri.Lambda.Loader, Seri.Lambda.Modularity, Seri.Lambda.Parser, Seri.Lambda.Parser.Grammar, Seri.Lambda.Parser.Lexer, Seri.Lambda.Parser.Monad, Seri.Lambda.Ppr, Seri.Lambda.Prelude, Seri.Lambda.Sugar, Seri.Lambda.TypeCheck, Seri.Lambda.TypeInfer, Seri.Lambda.TypeSolver, Seri.Lambda.Types, Seri.Lambda.Utils, Seri.Strict
+  other-modules: Paths_seri
+  build-depends: base ==4.5.*, mtl ==2.1.*, pretty ==1.1.*, array ==0.4.*,
+                 directory ==1.1.*, template-haskell ==2.7.*, hashable ==1.1.*,
+                 containers ==0.4.*, bytestring ==0.9.*
+  build-tools: happy

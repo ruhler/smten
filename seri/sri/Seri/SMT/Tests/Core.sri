@@ -1,0 +1,28 @@
+
+module Seri.SMT.Tests.Core where
+
+import Prelude
+import Seri.SMT.SMT
+
+qmain :: Query (Answer (Bool, Bool, Bool))
+qmain = do
+    x <- free
+    y <- free
+    z <- free
+    assert (((not x) && y) || (x && z))
+    query (x, y, z)
+
+main :: IO ()
+main = do
+    putStrLn "yices1..."
+    r1 <- runYices1 (Just "build/test/Core.yices1.dbg") qmain
+    putStrLn (show r1)
+
+    putStrLn "yices2..."
+    r2 <- runYices2 (Just "build/test/Core.yices2.dbg") qmain
+    putStrLn (show r2)
+
+    putStrLn "stp..."
+    r3 <- runSTP (Just "build/test/Core.stp.dbg") qmain
+    putStrLn (show r3)
+

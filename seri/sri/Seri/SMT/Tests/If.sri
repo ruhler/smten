@@ -1,0 +1,25 @@
+
+module Seri.SMT.Tests.If where
+
+import Prelude
+import Seri.SMT.SMT
+
+sign :: Integer -> Integer
+sign a = if a < 0 then 0 else 1
+
+qmain :: Query (Answer Integer)
+qmain = do
+    x <- free
+    assert (sign x == 0)
+    query x
+
+main :: IO ()
+main = do
+    putStr "yices1..."
+    r1 <- runYices1 (Just "build/test/If.yices1.dbg") qmain
+    putStrLn (show r1)
+
+    putStr "yices2..."
+    r2 <- runYices2 (Just "build/test/If.yices2.dbg") qmain
+    putStrLn (show r2)
+

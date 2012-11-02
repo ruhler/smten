@@ -1,0 +1,53 @@
+
+module Data.Array where
+
+import Prelude
+
+-- TODO: We have a generic Array definition, but as you'll see, currently only
+-- arrays with Integer indices are supported.
+-- This is because I haven't gotten around to defining the Ix class yet,
+-- because it's supposed to have Ord in the context, and at the time of
+-- writing this, seri doesn't support that.
+data Array a b = MkArray (a, a) (a -> b)
+
+range :: (Integer, Integer) -> [Integer]
+range (l, h) = 
+  case (l > h, l == h) of
+      (True, _) -> []
+      (_, True) -> [h]
+      _ -> l : range (l+1, h)
+
+-- TODO: check for out of bounds conditions.
+array :: (Integer, Integer) -> [(Integer, b)] -> Array Integer b
+array b ivs =
+  let isidx = \j -> \x -> fst x == j
+  in MkArray b (\j -> 
+        case filter (isidx j) ivs of
+            [(_, v)] -> v
+            [] -> error "Array.!: undefined array element"
+            _ -> error "Array.!: multiply defined array element"
+        )
+
+(!) :: Array Integer b -> Integer -> b
+(!) (MkArray _ f) = f
+
+bounds :: Array Integer b -> (Integer, Integer)
+bounds (MkArray b _) = b
+
+indices :: Array Integer b -> [Integer]
+indices = range . bounds
+
+assocs :: Array Integer b -> [(Integer, b)]
+assocs a = map (\i -> (i, a!i)) (indices a)
+
+(//) :: Array Integer b -> [(Integer, b)] -> Array Integer b
+(//) a new_ivs =
+  let new_is = map fst new_ivs
+      old_ivs = map (\i -> (i, a ! i))
+                  (filter (\i -> (notElem i new_is)) (indices a))
+  in array (bounds a) (old_ivs ++ new_ivs)
+
+instance (Eq b) => Eq (Array Integer b) where
+    (==) a b = (assocs a == assocs b)
+    (/=) a b = not (a == b)
+

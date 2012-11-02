@@ -1,0 +1,95 @@
+
+module Seri.SMT.Tests.BCL.Reg where {
+
+import Prelude;
+import Seri.SMT.SMT;
+
+data Reg a = Reg { db :: Bool
+                 , val :: a } deriving (Free);
+
+clear_dirty_bits_Reg_a :: Reg a -> Reg a;
+clear_dirty_bits_Reg_a a = Reg False (val a);
+
+dimension_Reg_a :: Reg a -> Reg a -> Bool;
+dimension_Reg_a conc free = True;
+
+merge_p_Reg_a :: Reg a -> Reg a -> Reg a;
+merge_p_Reg_a a b = if (db a) then a else b;
+
+_write_Reg_a :: a -> Reg a -> (Bool, Reg a, ());
+_write_Reg_a x reg = (True, Reg True x, ());
+
+_read_Reg_a :: Reg a -> a;
+_read_Reg_a reg = val reg;
+
+_read_guard_Reg_a :: Reg a -> Bool;
+_read_guard_Reg_a reg = True;
+
+eq_Reg_a :: (Eq a) => Reg a -> Reg a -> Bool;
+eq_Reg_a a b = (val a) == (val b);
+
+
+
+mkReg__Reg__Int_32_eq :: Reg Integer -> Reg Integer -> Bool;
+mkReg__Reg__Int_32_eq = eq_Reg_a;
+
+mkReg__Reg__Int_32_ctor :: Integer -> Reg Integer;
+mkReg__Reg__Int_32_ctor x = Reg False x;
+
+mkReg__Reg__Int_32_clear_dirty_bits :: Reg Integer -> Reg Integer;
+mkReg__Reg__Int_32_clear_dirty_bits = clear_dirty_bits_Reg_a;
+
+mkReg__Reg__Int_32_idfn :: Reg Integer -> Reg Integer;
+mkReg__Reg__Int_32_idfn a = a;
+
+mkReg__Reg__Int_32_dimension :: Reg Integer -> Reg Integer -> Bool;
+mkReg__Reg__Int_32_dimension = dimension_Reg_a;
+
+_write_mkReg__Reg__Int_32 :: Integer -> Reg Integer -> (Bool, Reg Integer, ());
+_write_mkReg__Reg__Int_32 = _write_Reg_a;
+
+_read_val_mkReg__Reg__Int_32 :: Reg Integer -> Integer;
+_read_val_mkReg__Reg__Int_32 = _read_Reg_a;
+
+_read_guard_mkReg__Reg__Int_32 :: Reg Integer -> Bool;
+_read_guard_mkReg__Reg__Int_32 = _read_guard_Reg_a;
+
+merge_p_mkReg__Reg__Int_32 :: Reg Integer -> Reg Integer -> Reg Integer;
+merge_p_mkReg__Reg__Int_32 = merge_p_Reg_a;
+
+
+
+
+mkReg__Reg_Bool_eq :: Reg Bool -> Reg Bool -> Bool;
+mkReg__Reg_Bool_eq = eq_Reg_a;
+
+mkReg__Reg_Bool_ctor :: Bool -> Reg Bool;
+mkReg__Reg_Bool_ctor x = Reg False x;
+
+mkReg__Reg_Bool_clear_dirty_bits :: Reg Bool -> Reg Bool;
+mkReg__Reg_Bool_clear_dirty_bits = clear_dirty_bits_Reg_a;
+
+mkReg__Reg_Bool_idfn :: Reg Bool -> Reg Bool;
+mkReg__Reg_Bool_idfn a = a;
+
+mkReg__Reg_Bool_dimension :: Reg Bool -> Reg Bool -> Bool;
+mkReg__Reg_Bool_dimension = dimension_Reg_a;
+
+_write_mkReg__Reg_Bool :: Bool -> Reg Bool -> (Bool, Reg Bool, ());
+_write_mkReg__Reg_Bool = _write_Reg_a;
+
+_read_val_mkReg__Reg_Bool :: Reg Bool -> Bool;
+_read_val_mkReg__Reg_Bool = _read_Reg_a;
+
+_read_guard_mkReg__Reg_Bool :: Reg Bool -> Bool;
+_read_guard_mkReg__Reg_Bool = _read_guard_Reg_a;
+
+merge_p_mkReg__Reg_Bool :: Reg Bool -> Reg Bool -> Reg Bool;
+merge_p_mkReg__Reg_Bool = merge_p_Reg_a;
+
+instance (Eq a) => Eq (Reg a) where {
+  (==) a b = (db a == db b) && (val a == val b);
+  (/=) a b = not (a == b);
+};
+
+}

@@ -1,0 +1,319 @@
+
+Wed Oct 31 08:24:20 EDT 2012
+
+I have a proposal for how to control which solver to use, and which theories
+to use with the solver.
+
+Here's how it goes.
+
+We augment Query with a phantom type representing a solver/logic combination.
+We augment the Free class with the same.
+
+class Free s where
+    free :: Query s a
+
+We have a class for each theory:
+
+class T_BV s where
+    free_bit :: Query s (Bit #n)
+
+class T_IA s where
+    free_Integer :: Query s Integer
+
+class T_F s where
+    free_Function :: Query s (a -> b)
+
+That sort of thing. I'll come up with better names. We can also combine them
+to describe more complex logics:
+
+class (T_BV s, T_IA s) => class T_BVIA a where {}
+
+(This will require I add support for contexts to class declarations).
+
+Now, the key insight here is, we have a type representing each solver, but
+this type is of kind *->*. So it combines a solver and a logic.
+
+For each solver, I provide primitives for its supported theories:
+
+yices1_free_Integer :: Query (Yices1 t) Integer
+yices1_free_Bit :: Query (Yices1 t) (Bit #n)
+yices1_free_Function :: Query (Yices1 t) (a -> b)
+
+And for each solver, we provide a way to run the query of that type:
+
+runYices1 :: Query (Yices1 t) a -> IO a
+
+The t parameter lets us specify a subset of theories to use with the solver.
+
+For example, you could use Yices1 with QF_IABV as:
+
+instance T_IA (Yices1 QF_IABV) where
+    free_Integer = yices1_free_Integer
+
+instance T_BV (Yices1 QF_IABV) where
+    free_Bit = yices1_free_Bit
+
+But we don't give an instance for Function, for example. Or we give an
+alternative implementation.
+
+For example, you could have QF_IA, so no bit vector support, but we could
+implement bit vectors on top of booleans.
+
+instance T_IA (Yices1 QF_IA) where
+    free_Integer = yices1_free_Integer
+
+instance T_BV (Yices1 QF_IA) where
+    free_Bit = do
+        x <- free
+        assert (inbounds x)
+        return (fromInteger x)
+ 
+Or that sort of thing.
+
+Actually, this brings up an important example. Using fromInteger to create a
+free bit-vector from a free integer will not work unless bitvectors are
+supported. It doesn't go away in my elaboration, because x isn't a case
+statement. Hmm... That's unfortunate. Perhaps bit vectors should truly be
+built in? Is there some other way to get around that issue? I don't know...
+
+Something to come back to anyway. I guess you could implement fromInteger for
+bit as a primitive without support for bit vectors? Err... not exactly. You
+would need to expose it to the elaborator. What we conceptually want is a
+giant case statement, but that sounds scary to me too...
+
+Oh well, something to work out.
+    
+So, now, you'll have queries which require certain theories. You can choose
+which solver and logic to evaluate it with using types. The type checker will
+verify the theories are supported under that solver and logic, and it will
+choose the right implementation of free variables. And there you have it.
+
+Wed Oct 31 09:01:40 EDT 2012
+
+Anyway, the goal for this morning is to work on STP, see how far I can get it
+to go.
+
+Wed Oct 31 09:44:16 EDT 2012
+
+Okay, so I've coded up the SMTLIB2.0 format, in theory...
+
+How can I try it out?
+
+Perhaps I should wait until we get to that point. Fix what bugs come up when
+they come up.
+
+Okay, so assuming that works just perfectly, what's the next step?
+
+I want an STP solver. Here's how it will work... For now I'll hardcode the
+location of stp, just to get things going. We execute STP, and open up a pipe
+to its input and output. For pretty, we use the SMTLIB2.0 pretty printer. To
+initialize: open up the pipe. To run a command, pretty print it and send it
+over the pipe. For check... I'll have to see what check returns.
+
+Hum... You know what? I should really work out a concrete example first. It
+will give me a much better idea what's going on.
+
+Let me start with a Query1 like thing, but, I suppose, it should be for bit
+vectors? Or better yet, start with booleans. A very simple query:
+
+(define-fun x () Bool)
+(define-fun y () Bool)
+(define-fun z () Bool)
+(or (and (not x) y) (and (x z)))
+(check-sat)
+
+Figure out how to make that work.
+
+Wed Oct 31 10:27:02 EDT 2012
+
+Playing around with STP.
+
+Some issues... I don't now how to get counterexamples using the SMTLIB2
+format with STP. It doesn't appear to support those functions.
+
+Wed Oct 31 11:18:15 EDT 2012
+
+It looks like STP has a c interface which I've heard good things about. Let me
+look into that. That would be cool, because it should make it relatively easy
+to add STP support. Then I don't have to deal with processes and talking to
+those, which is not pleasant.
+
+The C interface:
+
+It looks like it has everything I need, though it's not clear to me the best
+way to do things. That will probably come out as I try to implement it.
+
+We need the SMTLIB2.0 pretty printer anyway for debug purposes, so that
+wasn't a waste.
+
+Okay, let me first build the stp library (on purity), then work on the
+implementation.
+
+Wed Oct 31 11:52:31 EDT 2012
+
+Built and installed stp. No issues there.
+
+The problem now is... I'm being very sloppy about how I'm implementing the STP
+back end, and thus I'm not making much in the way of progress. I need to be
+more systematic.
+
+How about this. Let's say I make it demand driven. Implement a test for an STP
+query. Start with stub functions: errors. And fill things out as needed.
+
+I could start with a simple core test. I think I'll be more effective that
+way.
+
+Wed Oct 31 11:58:20 EDT 2012
+
+I should also consider implementing STP on a separate branch. I think I'll do
+that.
+
+Okay, so when I come back, here's the plan:
+
+* Start a new stp branch
+* Stub out the implementation of the STP solver
+* Try running STP on the Core query 
+* Work out the implementation for the STP backend as I go to make Core work.
+* Try running STP on the Bit query
+* Work out the implementation for the STP backend as I go to make Bit work.
+* Try running Sudoku2 and Sudoku3 in STP, see if that works.
+
+At this point, STP should be pretty well integrated. Merge with the master
+branch.
+
+I think I should also separate STP into different files: FFI, with the foreign
+function interface, and STP, with the solver, and perhaps Concrete with the
+SMTLIB2 pretty printer.
+
+Good. Sounds like a plan to me.
+
+Wed Oct 31 13:07:05 EDT 2012
+
+Got started. It seems there is a problem with STP and template haskell. So the
+saga continues...
+
+For now I'm just disabling enoch and sudoku, because seri builds just fine.
+I'll get STP to work like that, then figure out the template haskell issue
+before merging with master.
+
+Wed Oct 31 13:36:29 EDT 2012
+
+Next step:
+
+Declare free of type BoolT.
+
+How do I do this?
+
+How do I declare a free variable?
+
+Okay, I can declare it, and get back an Exp. But is there any way to define
+the name and refer to it later?
+
+It looks like at one time there may have been a way to look up a variable, but
+no longer.
+
+So, I'll want to maintain a map from Name to Exp then. I guess I'll use an IO
+ref for this.
+
+Wed Oct 31 14:04:57 EDT 2012
+
+Okay, so that's all set up. Next step: assertions.
+That's easy enough: vc_assertFormula. The tricky part is, once I have that, I
+have to start supporting the expressions.
+
+I should make abstract deconstructors for the SMT Syntax, as opposed to
+strings. That will make it much more flexible later on if I want to adjust the
+syntax.
+
+Wed Oct 31 14:39:52 EDT 2012
+
+seri: TODO: STP.run Assert (AppE (VarE "or") [AppE (VarE "and") [AppE (VarE "not") [VarE "free~1"],VarE "free~2"],AppE (VarE "and") [VarE "free~1",VarE "free~3"]])
+
+I need a way to build up expressions. So I'll introduce that function. Then
+Assert becomes easy.
+
+Wed Oct 31 14:57:39 EDT 2012
+
+Next: check. Now, this is interesting, because STP does validity, not
+satisfiability.
+
+For example;
+
+assert(x)
+query(True)
+
+Says: This is valid. You are all done.
+
+But:
+
+assert(x)
+query(False)
+
+Says: This is invalid, for example, x could be True.
+
+I don't understand.
+
+Without the assertion, I just get Invalid.
+
+If I assert False, then query True, I get: valid.
+
+
+True is valid.
+False is invalid.
+
+What if I assert False, then test for False?
+
+Then we get valid...
+
+Okay, so here's the idea behind check. I will query for False. If False is
+valid, there is no satisfying assignment. If false is invalid, we should get a
+counterexample. That counter example is a satisfying assignment to the
+assertions.
+
+In other words, the only way False could be valid is if your assertions imply
+False. Cool.
+
+Wed Oct 31 15:08:26 EDT 2012
+
+Next question: how to get a bool value?
+
+Okay, I got it:
+
+Given Expr for var x
+
+v <- vc_getCounterExample vc x
+b <- vc_isBool v
+case b of
+    0 -> False
+    1 -> True
+
+Let me try this real quick like, then I ought to be able to finish my example.
+
+Wed Oct 31 15:24:51 EDT 2012
+
+Looks like it works!
+
+Nifty.
+
+Some issues:
+
+* debug needs additional information... it's like, not very useful I fear? Not
+  sure.
+
+Let me try and add support for bit vectors now.
+
+Wed Oct 31 16:41:24 EDT 2012
+
+What should I do about shifts?
+
+According to SMTLIB2.0, the only left shift is: bvshl, which is left shift of
+a bit vector. The arguments are bit vectors of the given width.
+
+But I'm using this shift-left-0 thing. What does that mean?
+
+It means: shift left by a constant amount, shifting in zeros. Now, why did I
+choose to use that instead of bvshl?
+
+Well, that's something to put on the list of things to do. For now, I think
+stp supports this interface.
+

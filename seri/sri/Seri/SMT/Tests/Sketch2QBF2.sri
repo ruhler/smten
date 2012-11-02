@@ -1,0 +1,33 @@
+
+module Seri.SMT.Tests.Sketch2QBF2 where
+
+import Prelude
+import Seri.SMT.SMT
+
+sketch2qbf' :: (Free a) => b -> (b -> a -> Bool) -> Query (Answer b)
+sketch2qbf' c p = do
+  rc <- query c
+  case rc of
+    Unsatisfiable -> return Unsatisfiable
+    Satisfiable cv -> do
+      x <- free
+      assert (not (p cv x))
+      rx <- query x
+      case rx of
+        Unsatisfiable -> return (Satisfiable cv)
+        Satisfiable xv -> do
+            assert (p c xv)
+            sketch2qbf' c p
+
+sketch2qbf :: (Free a, Free b) => (b -> a -> Bool) -> Query (Answer b)
+sketch2qbf p = do
+  c <- free
+  sketch2qbf' c p
+  
+p1 :: Integer -> Integer -> Bool
+p1 4 _ = True
+p1 c x = (c+x) > 2
+
+main :: Query (Answer Integer)
+main = sketch2qbf p1
+

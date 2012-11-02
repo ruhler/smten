@@ -1,0 +1,112 @@
+
+-- The Seri SMT primitives and common declarations.
+module Seri.SMT.SMT where
+
+import Prelude
+import Seri.Bit
+
+-- Query is the primitive query monad.
+data Query a =
+
+data Answer a = Satisfiable a | Unsatisfiable | Unknown
+
+instance (Show a) => Show (Answer a) where
+    show (Satisfiable x) = "Satisfiable " ++ show x
+    show Unsatisfiable = "Unsatisfiable"
+    show Unknown = "Unknown"
+
+-- Return a new free variable.
+-- Note: this is depricated. Don't use it if you can avoid it.
+__prim_free :: Query a
+
+-- Return a new free boolean
+-- TODO: make it a primitive for real instead of using __prim_free.
+__prim_free_Bool :: Query Bool
+__prim_free_Bool = __prim_free
+
+-- Return a new free integer
+-- TODO: make it a primitive for real instead of using __prim_free.
+__prim_free_Integer :: Query Integer
+__prim_free_Integer = __prim_free
+
+-- Return a new free bit vector
+-- TODO: make it a primitive for real instead of using __prim_free.
+__prim_free_Bit :: Query (Bit #n)
+__prim_free_Bit = __prim_free
+
+class Free a where
+    -- Return a free variable of the given type.
+    free :: Query a
+
+instance Free () where
+    free = return ()
+
+instance Free Bool where
+    free = __prim_free_Bool
+
+instance Free Integer where
+    free = __prim_free_Integer
+
+instance Free (Bit #n) where
+    free = __prim_free_Bit
+
+instance (Free a, Free b) => Free (a, b) where
+    free = do
+        a <- free
+        b <- free
+        return (a, b)
+
+instance (Free a, Free b, Free c) => Free (a, b, c) where
+    free = do
+        a <- free
+        b <- free
+        c <- free  
+        return (a, b, c)
+
+-- TODO: how should we deal with free functions?
+instance (Free a, Free b) => Free (a -> b) where
+    free = __prim_free
+
+-- Assert the given boolean is true.
+assert :: Bool -> Query ()
+
+-- Ask the SMT solver if there is an assignment to the free variables in the
+-- context such that all assertions are satisfied. If there is a satisfying
+-- assignment, evaluates the argument under that assignment and returns the
+-- concrete result.
+query :: a -> Query (Answer a)
+
+-- Execute a scoped query.
+-- No assertions or free variables declared in the given query affect the
+-- context of this query.
+-- Warning: It is possible to return free variables from the given query which
+-- have no meaning in the context of this query. You should not do this.
+queryS :: Query a -> Query a
+
+-- The Query monad primitives
+return_query :: a -> Query a
+nobind_query :: Query a -> Query b -> Query b
+bind_query :: Query a -> (a -> Query b) -> Query b
+fail_query :: [Char] -> Query a
+
+instance Monad Query where
+  return = return_query
+  (>>=) = bind_query
+  (>>) = nobind_query
+  fail = fail_query
+
+-- Run an SMT Query using yices1
+-- If the first argument is not Nothing, debugging will be enabled, outputting
+-- to the given file.
+runYices1 :: Maybe [Char] -> Query a -> IO a
+
+-- Run an SMT Query using yices2
+-- If the first argument is not Nothing, debugging will be enabled, outputting
+-- to the given file.
+runYices2 :: Maybe [Char] -> Query a -> IO a
+
+-- Run an SMT Query using stp
+-- If the first argument is not Nothing, debugging will be enabled, outputting
+-- to the given file.
+runSTP :: Maybe [Char] -> Query a -> IO a
+

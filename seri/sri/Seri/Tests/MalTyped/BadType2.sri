@@ -1,0 +1,8 @@
+
+module Seri.Tests.MalTyped.BadType2 where
+
+import Prelude
+
+foo :: Bool
+foo = not 18
+

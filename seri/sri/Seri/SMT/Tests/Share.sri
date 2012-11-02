@@ -1,0 +1,26 @@
+
+
+module Seri.SMT.Tests.Share where
+
+import Prelude
+import Seri.SMT.SMT
+
+quadruple :: Integer -> Integer
+quadruple a = a + (a + (a + a))
+
+qmain :: Query (Answer (Integer, Integer))
+qmain = do
+    x <- free
+    y <- free
+    assert (quadruple (quadruple (x - y)) == 32)
+    query (x, y)
+
+main :: IO ()
+main = do
+    putStr "yices1..."
+    r1 <- runYices1 (Just "build/test/Share.yices1.dbg") qmain
+    putStrLn (show r1)
+
+    putStr "yices2..."
+    r2 <- runYices2 (Just "build/test/Share.yices2.dbg") qmain
+    putStrLn (show r2)

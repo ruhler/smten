@@ -100,3 +100,30 @@ consume it)
 Or I can do everything all at once. How about this. I'll try to do everything
 all at once (on a separate branch), and see how it goes. Wish me luck.
 
+Wed Oct 24 16:46:09 EDT 2012
+
+Now I'm thinking, perhaps we should keep the stack in the ParserMonad. And the
+way we implement layout is we give a function for doing layout (Token ->
+ParserMonad a), which makes use of the parser's given function. So really we
+are augmenting the parser's given function. See if that works?
+
+Wed Oct 24 17:02:15 EDT 2012
+
+Here's a problem. I can't eat a token. You give me a token, I have to give
+back a ParserMonad a, the only way I can do that is by calling the output
+function.
+
+Um, maybe I can. I just need to get the next token somehow. And don't I know
+how to do that? apply layout to output to get a function, then apply that to
+the lexer, right?
+
+Fine. That seems to work out okay.
+
+Wed Oct 24 17:57:27 EDT 2012
+
+Okay, so I wrote up all the layout rules. It seems easy enough (though I
+suspect I could run into issues with types and such I'll have to deal with).
+
+The next step is to generate the layout tokens. I'll do that when I come back
+to this.
+

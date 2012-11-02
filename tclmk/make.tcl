@@ -7,10 +7,7 @@ foreach key [array names ::env] {
 # Get infomation about the local environment.
 # local.tcl should set
 #   ::HAPPY - path to the happy executable
-#   ::GHC - path to ghc
-#   ::env(...) - needed environment variables, such as:
-#       PATH, GHC_PACKAGE_PATH
-#   ::PACKAGE_DB - package-db to use for cabal 
+#   ::env(...) - needed environment variables, such as: PATH
 source tclmk/local.tcl
 set ::env(LANG) "en_US.UTF-8"
 
@@ -36,52 +33,76 @@ proc hrun {args} {
 }
 
 # Create and set up a build directory for the build.
-hrun find src -type d -exec mkdir -p build/{} {;}
-hrun find src -type f -exec ln -sf [pwd]/{} build/{} {;}
+hrun mkdir -p build/home build/seri-bin build/test build/test/Squares2
 
-# The cabal package
-source tclmk/haskell.tcl
-source tclmk/cabal.tcl
-cabal build/src/seri.cabal
-hrun mkdir -p build/home
 set ::env(HOME) [pwd]/build/home
-indir build/src {
+#hrun cabal update
+hrun cabal install cmdargs syb
+
+# The seri package
+indir seri {
     # Add the flag --enable-executable-profiling to this command to enable
     # profiling.
-    hrun cabal configure --package-db $::PACKAGE_DB \
-        --extra-lib-dirs $::env(LD_LIBRARY_PATH) \
-        --with-happy=$::HAPPY
+    hrun cabal install \
+        --builddir ../build/seri \
+        --with-happy=$::HAPPY \
+        --force-reinstalls 
 
-    hrun cabal build
-    #hrun cabal haddock --executables
-    hrun cabal sdist
+    #hrun cabal haddock --builddir ../build/seri
+    hrun cabal sdist --builddir ../build/seri
+}
+
+# The seri-smt package
+indir seri-smt {
+    # Add the flag --enable-executable-profiling to this command to enable
+    # profiling.
+    hrun cabal install \
+        --builddir ../build/seri-smt \
+        --extra-lib-dirs $::env(LD_LIBRARY_PATH) \
+        --force-reinstalls 
+
+    #hrun cabal haddock --builddir ../build/seri-smt
+    hrun cabal sdist --builddir ../build/seri-smt
+}
+
+# The binary executables
+indir build/seri-bin {
+    hrun ln -sf ../../seri-bin/seri.hs seri.hs
+    hrun ghc -o seri seri.hs
+
+    hrun ln -sf ../../seri-bin/enoch.hs enoch.hs
+    hrun ghc -o enoch enoch.hs
+
+    hrun ln -sf ../../seri-bin/sudoku.hs sudoku.hs
+    hrun ghc -o sudoku sudoku.hs
 }
     
-set SERI build/src/dist/build/seri/seri
-set ENOCH build/src/dist/build/enoch/enoch
-set SUDOKU build/src/dist/build/sudoku/sudoku
+set SERI build/seri-bin/seri
+set ENOCH build/seri-bin/enoch
+set SUDOKU build/seri-bin/sudoku
+
+set SRI_SERI seri/sri
 
 # The general seri test
 run $SERI --type \
-    --include build/src \
-    -f build/src/Seri/Lib/Tests.sri \
-    > build/src/tests.typed
+    --include $::SRI_SERI \
+    -f $::SRI_SERI/Seri/Tests/Basic.sri \
+    > build/test/tests.typed
 run $SERI --io \
-    --include build/src \
-    -m Seri.Lib.Tests.testallio \
-    -f build/src/Seri/Lib/Tests.sri \
-    > build/src/tests.got 
-run echo "PASSED" > build/src/tests.wnt
-hrun cmp build/src/tests.got build/src/tests.wnt
+    --include $::SRI_SERI \
+    -m Seri.Tests.Basic.testallio \
+    -f $::SRI_SERI/Seri/Tests/Basic.sri \
+    > build/test/tests.got 
+run echo "PASSED" > build/test/tests.wnt
+hrun cmp build/test/tests.got build/test/tests.wnt
 
 # Poorly typed tests.
 proc badtypetest {name} {
-    set btdir "build/src/Seri/Lambda/Tests"
     set cmd {
         run $::SERI --type \
-            --include build/src \
-            -f $btdir/$name.sri \
-            > $btdir/$name.typed
+            --include $::SRI_SERI \
+            -f $::SRI_SERI/Seri/Tests/MalTyped/$name.sri \
+            > "build/test/$name.typed"
         }
 
     if { [catch $cmd] == 0 } {
@@ -96,57 +117,43 @@ badtypetest "InstCtx"
 
 
 # Test the haskell target.
-set hsdir build/src/Seri/Haskell
+set hsdir build/test
 run $SERI --haskell \
-    --include build/src \
+    --include $::SRI_SERI \
     -m testallio \
-    -f build/src/Seri/Lib/Tests.sri \
+    -f $::SRI_SERI/Seri/Tests/Basic.sri \
     > $hsdir/hstests.hs
-hrun -ignorestderr $GHC -o $hsdir/hstests -ibuild/src $hsdir/hstests.hs
+hrun -ignorestderr ghc -o $hsdir/hstests $hsdir/hstests.hs
 run ./$hsdir/hstests > $hsdir/hstests.got
 run echo "PASSED" > $hsdir/hstests.wnt
 hrun cmp $hsdir/hstests.got $hsdir/hstests.wnt
 
-# The SMT query1 tests
-proc querytest {solver name} {
-    run $::SERI --query \
-         -s $solver \
-         --include=build/src \
-         -m Seri.SMT.Tests.[string map {/ .} $name].main \
-         -f build/src/Seri/SMT/Tests/$name.sri \
-         -d build/src/Seri/SMT/Tests/$name.$solver.dbg \
-         > build/src/Seri/SMT/Tests/$name.$solver.out
-}
-
-proc yices2test {name} { querytest Yices2 $name }
-
-yices2test "Query1"
-yices2test "Query2"
-yices2test "Complex"
-yices2test "If"
-yices2test "Bluespec"
-yices2test "Array"
-yices2test "Share"
-yices2test "Tuple"
-yices2test "Bit"
-yices2test "AllQ"
-yices2test "AllQ2"
-yices2test "Squares2/Squares"
-yices2test "BCL3Small"
-yices2test "Sudoku"
-yices2test "Sudoku2"
-yices2test "Sudoku3"
-
-# The IO tests
-proc iotest {name args} {
+# The SMT query tests
+proc smttest {name} {
     run $::SERI --io \
-         --include=build/src \
-         -m Seri.IO.Tests.[string map {/ .} $name].main \
-         -f build/src/Seri/IO/Tests/$name.sri {*}$args \
-         > build/src/Seri/IO/Tests/$name.out
+         --include $::SRI_SERI \
+         -m Seri.SMT.Tests.[string map {/ .} $name].main \
+         -f $::SRI_SERI/Seri/SMT/Tests/$name.sri \
+         > build/test/$name.out
 }
 
-iotest "Simple"
+smttest "Core"
+smttest "Query1"
+smttest "Query2"
+smttest "Complex"
+smttest "If"
+smttest "Bluespec"
+smttest "Array"
+smttest "Share"
+smttest "Tuple"
+smttest "Bit"
+smttest "AllQ"
+smttest "AllQ2"
+smttest "Squares2/Squares"
+smttest "BCL3Small"
+smttest "Sudoku"
+smttest "Sudoku2"
+smttest "Sudoku3"
 
 # The enoch tests
 hrun $::ENOCH
