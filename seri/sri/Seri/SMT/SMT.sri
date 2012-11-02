@@ -3,7 +3,7 @@
 module Seri.SMT.SMT where
 
 import Prelude
-import Seri.Lib.Bit
+import Seri.Bit
 
 -- Query is the primitive query monad.
 data Query a =

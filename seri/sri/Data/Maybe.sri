@@ -1,5 +1,5 @@
 
-module Seri.Lib.Maybe where
+module Data.Maybe where
 
 import Prelude
 

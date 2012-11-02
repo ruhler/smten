@@ -289,20 +289,20 @@ preludeH =
       md c (PrimD s@(TopSig n _ _)) | n == name "Prelude.numeric" = return []
 
       md c (DataD n _ _) | n == name "Bit" = return []
-      md c (PrimD s@(TopSig n _ _)) | n == name "Seri.Lib.Bit.__prim_fromInteger_Bit" = prim c s (vare "Prelude.fromInteger")
-      md c (PrimD s@(TopSig n _ _)) | n == name "Seri.Lib.Bit.__prim_eq_Bit" = bprim c s "Prelude.=="
-      md c (PrimD s@(TopSig n _ _)) | n == name "Seri.Lib.Bit.__prim_add_Bit" = prim c s (vare "Prelude.+")
-      md c (PrimD s@(TopSig n _ _)) | n == name "Seri.Lib.Bit.__prim_sub_Bit" = prim c s (vare "Prelude.-")
-      md c (PrimD s@(TopSig n _ _)) | n == name "Seri.Lib.Bit.__prim_mul_Bit" = prim c s (vare "Prelude.*")
-      md c (PrimD s@(TopSig n _ _)) | n == name "Seri.Lib.Bit.__prim_concat_Bit" = prim c s (vare "Bit.concat")
-      md c (PrimD s@(TopSig n _ _)) | n == name "Seri.Lib.Bit.__prim_show_Bit" = prim c s (vare "Prelude.show")
-      md c (PrimD s@(TopSig n _ _)) | n == name "Seri.Lib.Bit.__prim_or_Bit" = prim c s (vare "Bit.or")
-      md c (PrimD s@(TopSig n _ _)) | n == name "Seri.Lib.Bit.__prim_and_Bit" = prim c s (vare "Bit.and")
-      md c (PrimD s@(TopSig n _ _)) | n == name "Seri.Lib.Bit.__prim_lsh_Bit" = prim c s (vare "Bit.lsh")
-      md c (PrimD s@(TopSig n _ _)) | n == name "Seri.Lib.Bit.__prim_rshl_Bit" = prim c s (vare "Bit.rshl")
-      md c (PrimD s@(TopSig n _ _)) | n == name "Seri.Lib.Bit.__prim_zeroExtend_Bit" = prim c s (vare "Bit.zeroExtend")
-      md c (PrimD s@(TopSig n _ _)) | n == name "Seri.Lib.Bit.__prim_truncate_Bit" = prim c s (vare "Bit.truncate")
-      md c (PrimD s@(TopSig n _ _)) | n == name "Seri.Lib.Bit.__prim_extract_Bit" = prim c s (vare "Bit.extract")
+      md c (PrimD s@(TopSig n _ _)) | n == name "Seri.Bit.__prim_fromInteger_Bit" = prim c s (vare "Prelude.fromInteger")
+      md c (PrimD s@(TopSig n _ _)) | n == name "Seri.Bit.__prim_eq_Bit" = bprim c s "Prelude.=="
+      md c (PrimD s@(TopSig n _ _)) | n == name "Seri.Bit.__prim_add_Bit" = prim c s (vare "Prelude.+")
+      md c (PrimD s@(TopSig n _ _)) | n == name "Seri.Bit.__prim_sub_Bit" = prim c s (vare "Prelude.-")
+      md c (PrimD s@(TopSig n _ _)) | n == name "Seri.Bit.__prim_mul_Bit" = prim c s (vare "Prelude.*")
+      md c (PrimD s@(TopSig n _ _)) | n == name "Seri.Bit.__prim_concat_Bit" = prim c s (vare "Bit.concat")
+      md c (PrimD s@(TopSig n _ _)) | n == name "Seri.Bit.__prim_show_Bit" = prim c s (vare "Prelude.show")
+      md c (PrimD s@(TopSig n _ _)) | n == name "Seri.Bit.__prim_or_Bit" = prim c s (vare "Bit.or")
+      md c (PrimD s@(TopSig n _ _)) | n == name "Seri.Bit.__prim_and_Bit" = prim c s (vare "Bit.and")
+      md c (PrimD s@(TopSig n _ _)) | n == name "Seri.Bit.__prim_lsh_Bit" = prim c s (vare "Bit.lsh")
+      md c (PrimD s@(TopSig n _ _)) | n == name "Seri.Bit.__prim_rshl_Bit" = prim c s (vare "Bit.rshl")
+      md c (PrimD s@(TopSig n _ _)) | n == name "Seri.Bit.__prim_zeroExtend_Bit" = prim c s (vare "Bit.zeroExtend")
+      md c (PrimD s@(TopSig n _ _)) | n == name "Seri.Bit.__prim_truncate_Bit" = prim c s (vare "Bit.truncate")
+      md c (PrimD s@(TopSig n _ _)) | n == name "Seri.Bit.__prim_extract_Bit" = prim c s (vare "Bit.extract")
 
       md c (PrimD s@(TopSig n _ _)) | n == name "Seri.IO.IO.return_io" = prim c s (vare "Prelude.return")
       md c (PrimD s@(TopSig n _ _)) | n == name "Seri.IO.IO.bind_io" = prim c s (vare "Prelude.>>=")

@@ -2,7 +2,7 @@
 module Seri.SMT.Tests.Sudoku3 where
 
 import Prelude
-import Seri.Lib.Bit
+import Seri.Bit
 import Seri.SMT.SMT
 import Seri.IO.IO
 import Seri.IO.SMT

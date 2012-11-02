@@ -307,7 +307,7 @@ elaborate mode env exp =
       -- The expression should be elaborated already.
       unbit :: ExpH -> Maybe Bit
       unbit (AppEH _ (VarEH _ (Sig fib (AppT _ (AppT _ (NumT w))))) [ve])
-        | fib == name "Seri.Lib.Bit.__prim_fromInteger_Bit"
+        | fib == name "Seri.Bit.__prim_fromInteger_Bit"
         , LitEH (IntegerL v) <- elab ve
         = Just (bv_make (nteval w) v)
       unbit _ = Nothing
@@ -375,12 +375,12 @@ elaborate mode env exp =
             (name "Prelude.<=", \s -> biniprim s (\a b -> boolEH (a <= b))),
             (name "Prelude.>", \s -> biniprim s (\a b -> boolEH (a > b))),
             (name "Prelude.__prim_eq_Char", \s -> bincprim s (\a b -> boolEH (a == b))),
-            (name "Seri.Lib.Bit.__prim_eq_Bit", \s -> binbprim s (\a b -> boolEH (a == b))),
-            (name "Seri.Lib.Bit.__prim_add_Bit", \s -> binbprim s (\a b -> bitEH (a + b))),
-            (name "Seri.Lib.Bit.__prim_sub_Bit", \s -> binbprim s (\a b -> bitEH (a - b))),
-            (name "Seri.Lib.Bit.__prim_mul_Bit", \s -> binbprim s (\a b -> bitEH (a * b))),
-            (name "Seri.Lib.Bit.__prim_concat_Bit", \s -> binbprim s (\a b -> bitEH (bv_concat a b))),
-            (name "Seri.Lib.Bit.__prim_show_Bit", \s@(Sig n t) -> 
+            (name "Seri.Bit.__prim_eq_Bit", \s -> binbprim s (\a b -> boolEH (a == b))),
+            (name "Seri.Bit.__prim_add_Bit", \s -> binbprim s (\a b -> bitEH (a + b))),
+            (name "Seri.Bit.__prim_sub_Bit", \s -> binbprim s (\a b -> bitEH (a - b))),
+            (name "Seri.Bit.__prim_mul_Bit", \s -> binbprim s (\a b -> bitEH (a * b))),
+            (name "Seri.Bit.__prim_concat_Bit", \s -> binbprim s (\a b -> bitEH (bv_concat a b))),
+            (name "Seri.Bit.__prim_show_Bit", \s@(Sig n t) -> 
                 let [ta, _] = unarrowsT t
                 in LaceEH (ES_Some WHNF) [
                        MatchH [VarP $ Sig (name "a") ta] $ 
@@ -389,11 +389,11 @@ elaborate mode env exp =
                                    a' | Just av <- unbit a' -> stringEH (show av)
                                    _ -> AppEH (ES_Some WHNF) (VarEH (ES_Some SNF) s) [a]
                        ]),
-            (name "Seri.Lib.Bit.__prim_or_Bit", \s -> binbprim s (\a b -> bitEH (a .|. b))),
-            (name "Seri.Lib.Bit.__prim_and_Bit", \s -> binbprim s (\a b -> bitEH (a .&. b))),
-            (name "Seri.Lib.Bit.__prim_lsh_Bit", \s -> binbiprim s (\a b -> bitEH (a `shiftL` fromInteger b))),
-            (name "Seri.Lib.Bit.__prim_rshl_Bit", \s -> binbiprim s (\a b -> bitEH (a `shiftR` fromInteger b))),
-            (name "Seri.Lib.Bit.__prim_extract_Bit", \s@(Sig _ t) ->
+            (name "Seri.Bit.__prim_or_Bit", \s -> binbprim s (\a b -> bitEH (a .|. b))),
+            (name "Seri.Bit.__prim_and_Bit", \s -> binbprim s (\a b -> bitEH (a .&. b))),
+            (name "Seri.Bit.__prim_lsh_Bit", \s -> binbiprim s (\a b -> bitEH (a `shiftL` fromInteger b))),
+            (name "Seri.Bit.__prim_rshl_Bit", \s -> binbiprim s (\a b -> bitEH (a `shiftR` fromInteger b))),
+            (name "Seri.Bit.__prim_extract_Bit", \s@(Sig _ t) ->
                binbiprim s (\a j ->
                   let AppT _ (NumT wt) = last $ unarrowsT t
                       i = j + (nteval wt) - 1
@@ -432,7 +432,7 @@ elaborate mode env exp =
                     \_ -> integerEH (nteval nt)
                   ]),
             (name "Prelude.numeric", \(Sig _ (NumT nt)) -> ConEH (Sig (name "#" `nappend` name (show (nteval nt))) (NumT nt))),
-            (name "Seri.Lib.Bit.__prim_zeroExtend_Bit", \s@(Sig _ t) ->
+            (name "Seri.Bit.__prim_zeroExtend_Bit", \s@(Sig _ t) ->
               let [ta, AppT _ (NumT wt)] = unarrowsT t
               in LaceEH (ES_Some WHNF) [
                    MatchH [VarP $ Sig (name "a") ta] $
@@ -441,7 +441,7 @@ elaborate mode env exp =
                          a' | Just av <- unbit a' -> bitEH $ bv_zero_extend (nteval wt - bv_width av) av
                          _ -> AppEH (ES_Some WHNF) (VarEH (ES_Some SNF) s) [a]
                    ]),
-            (name "Seri.Lib.Bit.__prim_truncate_Bit", \s@(Sig _ t) ->
+            (name "Seri.Bit.__prim_truncate_Bit", \s@(Sig _ t) ->
               let [ta, AppT _ (NumT wt)] = unarrowsT t
               in LaceEH (ES_Some WHNF) [
                    MatchH [VarP $ Sig (name "a") ta] $
@@ -505,5 +505,5 @@ unappsEH (AppEH _ a xs) = unappsEH a ++ xs
 unappsEH e = [e]
 
 bitEH :: Bit -> ExpH
-bitEH b = AppEH (ES_Some SNF) (VarEH (ES_Some SNF) (Sig (name "Seri.Lib.Bit.__prim_fromInteger_Bit") (arrowsT [integerT, bitT (bv_width b)]))) [integerEH $ bv_value b]
+bitEH b = AppEH (ES_Some SNF) (VarEH (ES_Some SNF) (Sig (name "Seri.Bit.__prim_fromInteger_Bit") (arrowsT [integerT, bitT (bv_width b)]))) [integerEH $ bv_value b]
 

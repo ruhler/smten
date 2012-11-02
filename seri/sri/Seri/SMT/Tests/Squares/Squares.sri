@@ -2,7 +2,7 @@
 module Seri.SMT.Tests.Squares.Squares where {
 
 import Prelude;
-import Seri.Lib.Bit;
+import Seri.Bit;
 import Seri.SMT.SMT;
 
 import Seri.SMT.Tests.Squares.Prelude;

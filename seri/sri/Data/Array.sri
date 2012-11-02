@@ -1,5 +1,5 @@
 
-module Seri.Lib.Array where
+module Data.Array where
 
 import Prelude
 

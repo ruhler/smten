@@ -1,5 +1,5 @@
 
-module Seri.Lib.Bit where
+module Seri.Bit where
 
 import Prelude
 

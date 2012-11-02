@@ -1,5 +1,5 @@
 
-module Seri.Lib.Vector where
+module Seri.Vector where
 
 import Prelude
 

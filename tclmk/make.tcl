@@ -86,12 +86,12 @@ set SRI_SERI seri/sri
 # The general seri test
 run $SERI --type \
     --include $::SRI_SERI \
-    -f $::SRI_SERI/Seri/Lib/Tests.sri \
+    -f $::SRI_SERI/Seri/Tests/Basic.sri \
     > build/test/tests.typed
 run $SERI --io \
     --include $::SRI_SERI \
-    -m Seri.Lib.Tests.testallio \
-    -f $::SRI_SERI/Seri/Lib/Tests.sri \
+    -m Seri.Tests.Basic.testallio \
+    -f $::SRI_SERI/Seri/Tests/Basic.sri \
     > build/test/tests.got 
 run echo "PASSED" > build/test/tests.wnt
 hrun cmp build/test/tests.got build/test/tests.wnt
@@ -121,7 +121,7 @@ set hsdir build/test
 run $SERI --haskell \
     --include $::SRI_SERI \
     -m testallio \
-    -f $::SRI_SERI/Seri/Lib/Tests.sri \
+    -f $::SRI_SERI/Seri/Tests/Basic.sri \
     > $hsdir/hstests.hs
 hrun -ignorestderr ghc -o $hsdir/hstests $hsdir/hstests.hs
 run ./$hsdir/hstests > $hsdir/hstests.got

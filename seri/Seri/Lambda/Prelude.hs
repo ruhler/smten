@@ -154,7 +154,7 @@ numberE :: Integer -> Exp
 numberE i = AppE (VarE (Sig (name "fromInteger") (arrowsT [integerT, UnknownT]))) [integerE i]
 
 bitE :: Integer -> Integer -> Exp
-bitE w v = AppE (VarE (Sig (name "Seri.Lib.Bit.__prim_fromInteger_Bit") (arrowsT [integerT, AppT (ConT (name "Bit")) (NumT (ConNT w))]))) [integerE v]
+bitE w v = AppE (VarE (Sig (name "Seri.Bit.__prim_fromInteger_Bit") (arrowsT [integerT, AppT (ConT (name "Bit")) (NumT (ConNT w))]))) [integerE v]
 
 charE :: Char -> Exp
 charE c = LitE (CharL c)

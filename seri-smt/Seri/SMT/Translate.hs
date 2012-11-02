@@ -250,38 +250,38 @@ smtE' e@(AppE a b) =
           | n == name "Prelude.__prim_eq_Integer"
           -> binary SMT.eqE a b
        [VarE (Sig n _), a, b]
-          | n == name "Seri.Lib.Bit.__prim_eq_Bit"
+          | n == name "Seri.Bit.__prim_eq_Bit"
           -> binary SMT.eqE a b
        [VarE (Sig n _), a, b]
-          | n == name "Seri.Lib.Bit.__prim_add_Bit"
+          | n == name "Seri.Bit.__prim_add_Bit"
           -> binary SMT.bvaddE a b
        [VarE (Sig n _), a, b]
-          | n == name "Seri.Lib.Bit.__prim_or_Bit"
+          | n == name "Seri.Bit.__prim_or_Bit"
           -> binary SMT.bvorE a b
        [VarE (Sig n _), a, b]
-          | n == name "Seri.Lib.Bit.__prim_and_Bit"
+          | n == name "Seri.Bit.__prim_and_Bit"
           -> binary SMT.bvandE a b
        [VarE (Sig n _), a, b]
-          | n == name "Seri.Lib.Bit.__prim_concat_Bit"
+          | n == name "Seri.Bit.__prim_concat_Bit"
           -> binary SMT.bvconcatE a b
        -- TODO: should we allow shifting by an amount not statically
        -- determined? In that case, I think we need to convert the second
        -- argument to a bit vector in order to use smt bvshl function.
        [VarE (Sig n _), a, (LitE (IntegerL v))]
-          | n == name "Seri.Lib.Bit.__prim_lsh_Bit"
+          | n == name "Seri.Bit.__prim_lsh_Bit"
           -> do
            a' <- smtE' a
            return (SMT.bvshiftLeft0E a' v)
-       [VarE (Sig n _), a, (LitE (IntegerL v))] | n == name "Seri.Lib.Bit.__prim_rshl_Bit" -> do
+       [VarE (Sig n _), a, (LitE (IntegerL v))] | n == name "Seri.Bit.__prim_rshl_Bit" -> do
            a' <- smtE' a
            return (SMT.bvshiftRight0E a' v)
        [VarE (Sig n t), LitE (IntegerL x)]
-            | n == name "Seri.Lib.Bit.__prim_fromInteger_Bit"
+            | n == name "Seri.Bit.__prim_fromInteger_Bit"
             , Just (_, bt) <- deArrowT t
             , Just w <- deBitT bt
             -> return (SMT.mkbvE w x)
        [VarE (Sig n t), a]
-            | n == name "Seri.Lib.Bit.__prim_zeroExtend_Bit"
+            | n == name "Seri.Bit.__prim_zeroExtend_Bit"
             , Just (bs, bt) <- deArrowT t
             , Just sw <- deBitT bs
             , Just tw <- deBitT bt
@@ -289,12 +289,12 @@ smtE' e@(AppE a b) =
                a' <- smtE' a
                return (SMT.bvzeroExtendE a' (tw - sw))
        [VarE (Sig n t), a]
-            | n == name "Seri.Lib.Bit.__prim_truncate_Bit"
+            | n == name "Seri.Bit.__prim_truncate_Bit"
             , Just (_, bt) <- deArrowT t
             , Just tw <- deBitT bt
             -> SMT.bvextractE (tw - 1) 0 <$> smtE' a
        [VarE (Sig n _), x, LitE (IntegerL i)]
-            | n == name "Seri.Lib.Bit.__prim_extract_Bit"
+            | n == name "Seri.Bit.__prim_extract_Bit"
             , Just tw <- deBitT (typeof e)
             -> SMT.bvextractE (i + tw - 1) i <$> smtE' x
        [VarE (Sig n _), f, k, v] | n == name "Seri.SMT.Array.update" -> do

@@ -2,7 +2,7 @@
 module Seri.SMT.Tests.SquaresRaw where
 
 import Prelude
-import Seri.Lib.Bit
+import Seri.Bit
 import Seri.SMT.SMT
 
 -- Raw Lambda Calculus description for the following bluespec module.
