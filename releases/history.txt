@@ -1,4 +1,23 @@
 
+Nov 02, 2012
+  seri-0.2.0.0
+  seri-smt-0.1.0.0
+
+  Changes from seri-0.1.1.1:
+  * Split seri package into seri and seri-smt
+    This is to get around issues with dynamically loading the static yices1
+    and stp libraries when using template haskell.
+  * Ship .sri library with the packages, and expose the install directory with
+    the function Seri.seridir
+  * Reorganized layout of .sri files to better match Haskell layout
+    In particular, Seri.lib.Prelude is now just Prelude.
+  * Add support for the STP solver.
+  * Implemented runYices1, runYices2, and runSTP Seri IO primitives for
+    running queries
+  * Added Show class to Seri Prelude (does not yet support deriving)
+  * Added support for layout in seri code.
+  * Allow implicit Main module in seri code.
+
 Oct 25, 2012
   seri-0.1.1.1
 
