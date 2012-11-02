@@ -101,7 +101,7 @@ proc badtypetest {name} {
     set cmd {
         run $::SERI --type \
             --include $::SRI_SERI \
-            -f $::SRI_SERI/Seri/Lambda/Tests/$name.sri \
+            -f $::SRI_SERI/Seri/Tests/MalTyped/$name.sri \
             > "build/test/$name.typed"
         }
 
@@ -154,18 +154,6 @@ smttest "BCL3Small"
 smttest "Sudoku"
 smttest "Sudoku2"
 smttest "Sudoku3"
-
-# The IO tests
-proc iotest {name args} {
-    run $::SERI --io \
-        --include $::SRI_SERI \
-         -m Seri.IO.Tests.[string map {/ .} $name].main \
-         -f $::SRI_SERI/Seri/IO/Tests/$name.sri {*}$args \
-         > build/test/$name.out
-}
-
-iotest "Simple"
-iotest "Query"
 
 # The enoch tests
 hrun $::ENOCH

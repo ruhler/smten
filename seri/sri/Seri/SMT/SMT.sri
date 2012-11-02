@@ -95,3 +95,18 @@ instance Monad Query where
   (>>) = nobind_query
   fail = fail_query
 
+-- Run an SMT Query using yices1
+-- If the first argument is not Nothing, debugging will be enabled, outputting
+-- to the given file.
+runYices1 :: Maybe [Char] -> Query a -> IO a
+
+-- Run an SMT Query using yices2
+-- If the first argument is not Nothing, debugging will be enabled, outputting
+-- to the given file.
+runYices2 :: Maybe [Char] -> Query a -> IO a
+
+-- Run an SMT Query using stp
+-- If the first argument is not Nothing, debugging will be enabled, outputting
+-- to the given file.
+runSTP :: Maybe [Char] -> Query a -> IO a
+

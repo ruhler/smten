@@ -1,5 +1,5 @@
 
-module Seri.Lambda.Tests.InstCtx where
+module Seri.Tests.MalTyped.InstCtx where
 
 import Prelude
 

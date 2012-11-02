@@ -3,8 +3,6 @@ module Seri.SMT.Tests.AllQ2 where
 
 import Prelude
 import Seri.SMT.SMT
-import Seri.IO.IO
-import Seri.IO.SMT
 
 -- Find a list of all values satisfing the given predicate.
 allQ :: (Eq a, Free a) => (a -> Bool) -> Query [a]

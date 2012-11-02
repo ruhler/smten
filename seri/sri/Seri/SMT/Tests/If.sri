@@ -3,8 +3,6 @@ module Seri.SMT.Tests.If where
 
 import Prelude
 import Seri.SMT.SMT
-import Seri.IO.IO
-import Seri.IO.SMT
 
 sign :: Integer -> Integer
 sign a = if a < 0 then 0 else 1

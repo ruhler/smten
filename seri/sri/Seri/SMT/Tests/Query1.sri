@@ -3,8 +3,6 @@ module Seri.SMT.Tests.Query1 where
 
 import Prelude
 import Seri.SMT.SMT
-import Seri.IO.IO
-import Seri.IO.SMT
 
 qmain :: Query (Answer Integer)
 qmain = do

@@ -6,7 +6,6 @@ import Prelude
 import Data.Array
 import Seri.Vector
 import Seri.Bit
-import Seri.IO.IO
 
 ------ This is a comment with lots of dashes
 

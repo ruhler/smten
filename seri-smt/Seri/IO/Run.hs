@@ -20,28 +20,28 @@ import Seri.SMT.STP.STP
 run :: Env -> Exp -> IO Exp
 run env e = do
     case elabwhnf env e of
-        (AppE (VarE (Sig n _)) [arg]) | n == name "Seri.IO.IO.putStr" -> do
+        (AppE (VarE (Sig n _)) [arg]) | n == name "Prelude.putStr" -> do
             case deStringE (elabwhnf env arg) of
                 Just str -> putStr str
                 Nothing -> error $ "putStr: expected string, got: " ++ pretty arg
             return unitE
         (AppE (VarE (Sig n _)) [debug, query])
-            | n == name "Seri.IO.SMT.runYices1"
+            | n == name "Seri.SMT.SMT.runYices1"
             , Just dbg <- unpack (TExp debug :: TExp (Maybe String))
             -> runQuery (RunOptions dbg True) env (yices1 $ Seri.SMT.Run.run query)
         (AppE (VarE (Sig n _)) [debug, query])
-            | n == name "Seri.IO.SMT.runYices2"
+            | n == name "Seri.SMT.SMT.runYices2"
             , Just dbg <- unpack (TExp debug :: TExp (Maybe String))
             -> runQuery (RunOptions dbg True) env (yices2 $ Seri.SMT.Run.run query)
         (AppE (VarE (Sig n _)) [debug, query])
-            | n == name "Seri.IO.SMT.runSTP"
+            | n == name "Seri.SMT.SMT.runSTP"
             , Just dbg <- unpack (TExp debug :: TExp (Maybe String))
             -> runQuery (RunOptions dbg True) env (stp $ Seri.SMT.Run.run query)
-        (AppE (VarE (Sig n _)) [x]) | n == name "Seri.IO.IO.return_io" -> return x
-        (AppE (VarE (Sig n _)) [x, f]) | n == name "Seri.IO.IO.bind_io" -> do
+        (AppE (VarE (Sig n _)) [x]) | n == name "Prelude.return_io" -> return x
+        (AppE (VarE (Sig n _)) [x, f]) | n == name "Prelude.bind_io" -> do
           result <- run env x
           run env (AppE f [result])
-        (AppE (VarE (Sig n _)) [x, y]) | n == name "Seri.IO.IO.nobind_io" -> do
+        (AppE (VarE (Sig n _)) [x, y]) | n == name "Prelude.nobind_io" -> do
           run env x
           run env y
         x -> error $ "unknown IO: " ++ pretty x

@@ -4,8 +4,6 @@ module Seri.SMT.Tests.Share where
 
 import Prelude
 import Seri.SMT.SMT
-import Seri.IO.IO
-import Seri.IO.SMT
 
 quadruple :: Integer -> Integer
 quadruple a = a + (a + (a + a))

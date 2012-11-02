@@ -4,8 +4,6 @@ module Seri.SMT.Tests.Bluespec where
 
 import Prelude
 import Seri.SMT.SMT
-import Seri.IO.IO
-import Seri.IO.SMT
 
 import Seri.SMT.Tests.FIFO
 

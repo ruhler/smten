@@ -1,6 +1,6 @@
 
 -- Seri declarations for the enoch.hs test case.
-module Seri.Enoch.Enoch where
+module Seri.Tests.Enoch where
 
 import Prelude
 import Seri.SMT.SMT

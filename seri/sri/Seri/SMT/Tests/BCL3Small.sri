@@ -5,8 +5,6 @@ module Seri.SMT.Tests.BCL3Small where {
   import Seri.SMT.Tests.BCL.Reg;
   import Seri.SMT.Tests.BCL.Portal;
   import Seri.SMT.SMT;
-  import Seri.IO.IO;
-  import Seri.IO.SMT;
   data MkSizedFIFOF___FIFOFF__Int_32_BCC =
       MkSizedFIFOF___FIFOFF__Int_32_BCC (FIFO Integer)
         deriving (Free)

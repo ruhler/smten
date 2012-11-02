@@ -304,11 +304,11 @@ preludeH =
       md c (PrimD s@(TopSig n _ _)) | n == name "Seri.Bit.__prim_truncate_Bit" = prim c s (vare "Bit.truncate")
       md c (PrimD s@(TopSig n _ _)) | n == name "Seri.Bit.__prim_extract_Bit" = prim c s (vare "Bit.extract")
 
-      md c (PrimD s@(TopSig n _ _)) | n == name "Seri.IO.IO.return_io" = prim c s (vare "Prelude.return")
-      md c (PrimD s@(TopSig n _ _)) | n == name "Seri.IO.IO.bind_io" = prim c s (vare "Prelude.>>=")
-      md c (PrimD s@(TopSig n _ _)) | n == name "Seri.IO.IO.nobind_io" = prim c s (vare "Prelude.>>")
-      md c (PrimD s@(TopSig n _ _)) | n == name "Seri.IO.IO.fail_io" = prim c s (vare "Prelude.fail")
-      md c (PrimD s@(TopSig n _ _)) | n == name "Seri.IO.IO.putStr" = prim c s (vare "Prelude.putStr")
+      md c (PrimD s@(TopSig n _ _)) | n == name "Prelude.return_io" = prim c s (vare "Prelude.return")
+      md c (PrimD s@(TopSig n _ _)) | n == name "Prelude.bind_io" = prim c s (vare "Prelude.>>=")
+      md c (PrimD s@(TopSig n _ _)) | n == name "Prelude.nobind_io" = prim c s (vare "Prelude.>>")
+      md c (PrimD s@(TopSig n _ _)) | n == name "Prelude.fail_io" = prim c s (vare "Prelude.fail")
+      md c (PrimD s@(TopSig n _ _)) | n == name "Prelude.putStr" = prim c s (vare "Prelude.putStr")
 
       md _ d = throw $ "preludeH does not apply to dec: " ++ pretty d
   in Compiler me mt md

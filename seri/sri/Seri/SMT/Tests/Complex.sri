@@ -3,8 +3,6 @@ module Seri.SMT.Tests.Complex where
 
 import Prelude
 import Seri.SMT.SMT
-import Seri.IO.IO
-import Seri.IO.SMT
 
 data Foo = Bar Integer
          | Sludge Bool

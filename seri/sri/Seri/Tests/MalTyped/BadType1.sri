@@ -1,5 +1,5 @@
 
-module Seri.Lambda.Tests.BadType1 where
+module Seri.Tests.MalTyped.BadType1 where
 
 import Prelude
 

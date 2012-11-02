@@ -1,8 +1,7 @@
 
-module Seri.IO.Tests.Simple where
+module Seri.Tests.HelloWorld where
 
 import Prelude
-import Seri.IO.IO
 
 main :: IO ()
 main = putStrLn "hello, world"

@@ -4,8 +4,6 @@ module Seri.SMT.Tests.Bit where
 import Prelude
 import Seri.Bit
 import Seri.SMT.SMT
-import Seri.IO.IO
-import Seri.IO.SMT
 
 bityx :: Bit #(2+3)
 bityx = 15

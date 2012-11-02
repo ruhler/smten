@@ -4,8 +4,6 @@ module Seri.SMT.Tests.Array where
 import Prelude
 import Seri.SMT.Array
 import Seri.SMT.SMT
-import Seri.IO.IO
-import Seri.IO.SMT
 
 arr :: SMTArray Integer
 arr = smta_upd (smta_upd (smta_upd (smta_new 3) 0 42) 1 12) 2 19

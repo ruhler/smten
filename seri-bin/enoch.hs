@@ -43,7 +43,7 @@ quadruple a = a + a + a + a
 -- This quadruple exposes the sharing to the SMT solver (if sharing is
 -- turned on in the elaborator).
 quadrupleS :: TExp Integer -> TExp Integer
-quadrupleS = varE1 "Seri.Enoch.Enoch.quadruple"
+quadrupleS = varE1 "Seri.Tests.Enoch.quadruple"
 
 share :: (Solver s) => (TExp Integer -> TExp Integer) -> Query s (Answer (Integer, Integer))
 share f = do
@@ -71,7 +71,7 @@ derive_SeriableT ''Foo
 derive_SeriableE ''Foo
 
 defoo :: TExp Foo -> TExp Integer
-defoo = varE1 "Seri.Enoch.Enoch.defoo"
+defoo = varE1 "Seri.Tests.Enoch.defoo"
 
 quserdata :: (Solver s) => Query s (Answer Foo)
 quserdata = do
@@ -97,7 +97,7 @@ qallQ :: (Solver s) => Query s [Integer]
 qallQ = allQ pred1
 
 env :: Env
-env = $(loadenvth [seridir] (seridir >>= return . (++ "/Seri/Enoch/Enoch.sri")))
+env = $(loadenvth [seridir] (seridir >>= return . (++ "/Seri/Tests/Enoch.sri")))
 
 try :: (Show a) => String -> Query Yices2 a -> IO ()
 try nm q = runQuery (RunOptions (Just $ "build/test/" ++ nm ++ ".dbg") True) env q >>= (putStrLn . show)

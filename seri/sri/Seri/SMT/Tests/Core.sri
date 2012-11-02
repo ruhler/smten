@@ -3,8 +3,6 @@ module Seri.SMT.Tests.Core where
 
 import Prelude
 import Seri.SMT.SMT
-import Seri.IO.IO
-import Seri.IO.SMT
 
 qmain :: Query (Answer (Bool, Bool, Bool))
 qmain = do
