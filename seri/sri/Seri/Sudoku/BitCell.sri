@@ -1,0 +1,73 @@
+
+module Seri.Sudoku.BitCell where
+
+import Prelude
+import Seri.SMT.SMT
+import Seri.Bit
+
+import Seri.Sudoku.Cell
+
+data BitCell = BitCell { bits :: Bit#9 } deriving (Eq, Free)
+
+c1 :: BitCell
+c1 = BitCell 1
+
+c2 :: BitCell
+c2 = BitCell 2
+
+c3 :: BitCell
+c3 = BitCell 4
+
+c4 :: BitCell
+c4 = BitCell 8
+
+c5 :: BitCell
+c5 = BitCell 16
+
+c6 :: BitCell
+c6 = BitCell 32
+
+c7 :: BitCell
+c7 = BitCell 64
+
+c8 :: BitCell
+c8 = BitCell 128
+
+c9 :: BitCell
+c9 = BitCell 256
+
+isValidCell :: BitCell -> Bool
+isValidCell c = elem c [c1, c2, c3, c4, c5, c6, c7, c8, c9]
+
+join :: [BitCell] -> Bit #9
+join xs = foldl bv_or 0 (map bits xs)
+
+instance Cell BitCell where
+    mkCell 1 = c1
+    mkCell 2 = c2
+    mkCell 3 = c3
+    mkCell 4 = c4
+    mkCell 5 = c5
+    mkCell 6 = c6
+    mkCell 7 = c7
+    mkCell 8 = c8
+    mkCell 9 = c9
+
+    deCell c = 
+           if c == c1 then 1
+      else if c == c2 then 2
+      else if c == c3 then 3
+      else if c == c4 then 4
+      else if c == c5 then 5
+      else if c == c6 then 6
+      else if c == c7 then 7
+      else if c == c8 then 8
+      else 9
+
+    freeCell = do
+        x <- free
+        assert (isValidCell x)
+        return x
+
+    distinctCell cells = join cells == 511
+

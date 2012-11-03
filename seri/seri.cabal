@@ -16,6 +16,7 @@ data-files:
     Seri/*.sri
     Seri/Tests/*.sri
     Seri/Tests/MalTyped/*.sri
+    Seri/Sudoku/*.sri
     Seri/SMT/*.sri
     Seri/SMT/Tests/*.sri
     Seri/SMT/Tests/BCL/*.sri

@@ -1,0 +1,13 @@
+
+module Seri.Sudoku.Solver where
+
+import Prelude
+import Seri.SMT.SMT
+import Seri.Sudoku.Cell
+import Seri.Sudoku.Board
+
+solve :: (Cell c) => Board c -> Query (Answer (Board c))
+solve board = do
+    assert (isvalid board)
+    query board
+    

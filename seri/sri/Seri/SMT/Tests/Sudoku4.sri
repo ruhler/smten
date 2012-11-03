@@ -1,16 +1,16 @@
 
-module Seri.SMT.Tests.Sudoku2 where
+module Seri.SMT.Tests.Sudoku4 where
 
 import Prelude
 import Seri.SMT.SMT
 import Seri.Sudoku.Board
 import Seri.Sudoku.Boards
 import Seri.Sudoku.Solver
-import Seri.Sudoku.EnumCell
+import Seri.Sudoku.IntegerCell2
 
 qmain :: Query [[Char]]
 qmain = do
-    board <- (readBoard diabolical :: Query (Board EnumCell))
+    board <- (readBoard diabolical :: Query (Board IntegerCell2))
     result <- solve board
     case result of
        Satisfiable v -> return (print v)
@@ -18,6 +18,6 @@ qmain = do
 
 main :: IO ()
 main = do
-    r <- runYices2 (Just "build/test/Sudoku2.yices2.dbg") qmain
+    r <- runYices2 (Just "build/test/Sudoku4.yices2.dbg") qmain
     mapM_ putStrLn r
 

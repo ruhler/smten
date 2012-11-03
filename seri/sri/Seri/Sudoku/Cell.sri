@@ -1,0 +1,52 @@
+
+module Seri.Sudoku.Cell where
+
+import Prelude
+import Seri.SMT.SMT
+
+-- The size of the sudoku.
+-- (nxn)x(nxn)
+n :: Integer
+n = 3
+
+-- The square of the sudoku size.
+m :: Integer
+m = n*n
+
+-- Return true if all elements in the list are distinct.
+distinct :: (Eq a) => [a] -> Bool
+distinct [] = True
+distinct (x:xs) = notElem x xs && distinct xs
+
+class Cell c where
+    mkCell :: Integer -> c
+    deCell :: c -> Integer
+    freeCell :: Query c
+    distinctCell :: [c] -> Bool
+    
+readCell :: (Cell c) => Char -> Query c
+readCell '1' = return (mkCell 1)
+readCell '2' = return (mkCell 2)
+readCell '3' = return (mkCell 3)
+readCell '4' = return (mkCell 4)
+readCell '5' = return (mkCell 5)
+readCell '6' = return (mkCell 6)
+readCell '7' = return (mkCell 7)
+readCell '8' = return (mkCell 8)
+readCell '9' = return (mkCell 9)
+readCell '.' = freeCell
+readCell c = error ("readCell: " ++ [c])
+
+printCell :: (Cell c) => c -> Char
+printCell c = 
+  case deCell c of
+     1 -> '1'
+     2 -> '2'
+     3 -> '3'
+     4 -> '4'
+     5 -> '5'
+     6 -> '6'
+     7 -> '7'
+     8 -> '8'
+     9 -> '9'
+     _ -> '?'

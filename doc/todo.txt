@@ -105,6 +105,5 @@ Build System::
 * clean up tclmk script: maybe separate into init, build, and test sections.
 
 Seri Library::
-* share code common to the different sudoku solvers
 * Have the sudoku solver use IO to read the input board
 

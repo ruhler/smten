@@ -5,8 +5,8 @@ all:
 test:
 	./build/seri-bin/seri --io \
 		--include seri/sri \
-		-m Seri.SMT.Tests.Sudoku.main \
-		-f seri/sri/Seri/SMT/Tests/Sudoku.sri
+		-m Seri.SMT.Tests.Sudoku4.main \
+		-f seri/sri/Seri/SMT/Tests/Sudoku4.sri
 
 clean:
 	rm -rf build/seri-smt build/seri build/seri-bin build/test
