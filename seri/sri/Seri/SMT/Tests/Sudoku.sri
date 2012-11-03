@@ -14,19 +14,27 @@ m :: Integer
 m = n*n
 
 data Cell = Cell Integer
-
-instance Eq Cell where
-    (==) (Cell a) (Cell b) = (a == b)
-    (/=) (Cell a) (Cell b) = (a /= b)
+    deriving(Eq)
 
 mkCell :: Integer -> Cell
 mkCell = Cell
+
+deCell :: Cell -> Integer
+deCell (Cell x) = x
 
 freeCell :: Query Cell
 freeCell = do
     x <- free
     assert ((x > 0) && (x <= m))
     return (Cell x)
+
+distinctCell :: [Cell] -> Bool
+distinctCell = distinct
+
+-- Return true if all elements in the list are distinct.
+distinct :: (Eq a) => [a] -> Bool
+distinct [] = True
+distinct (x:xs) = notElem x xs && distinct xs
 
 readCell :: Char -> Query Cell
 readCell '1' = return (mkCell 1)
@@ -42,21 +50,18 @@ readCell '.' = freeCell
 readCell c = error ("readCell: " ++ [c])
 
 printCell :: Cell -> Char
-printCell (Cell 1) = '1'
-printCell (Cell 2) = '2'
-printCell (Cell 3) = '3'
-printCell (Cell 4) = '4'
-printCell (Cell 5) = '5'
-printCell (Cell 6) = '6'
-printCell (Cell 7) = '7'
-printCell (Cell 8) = '8'
-printCell (Cell 9) = '9'
-printCell _ = '?'
-
--- Return true if all elements in the list are unique.
-unique :: (Eq a) => [a] -> Bool
-unique [] = True
-unique (x:xs) = notElem x xs && unique xs
+printCell c = 
+  case deCell c of
+     1 -> '1'
+     2 -> '2'
+     3 -> '3'
+     4 -> '4'
+     5 -> '5'
+     6 -> '6'
+     7 -> '7'
+     8 -> '8'
+     9 -> '9'
+     _ -> '?'
 
 data Board = Board [[Cell]]
 
@@ -96,7 +101,7 @@ breakup n xs =
      (a, b) -> a : (breakup n b)
 
 isvalid :: Board -> Bool
-isvalid b = all unique (concat [rows b, cols b, boxes b])
+isvalid b = all distinctCell (concat [rows b, cols b, boxes b])
 
 readRow :: [Char] -> Query [Cell]
 readRow = mapM readCell

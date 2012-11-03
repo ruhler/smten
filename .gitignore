@@ -4,3 +4,4 @@ tclmk/local.tcl
 *.ps
 *.hp
 *.aux
+releases/*.tar.gz
