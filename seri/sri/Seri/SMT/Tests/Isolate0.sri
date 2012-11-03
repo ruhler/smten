@@ -1,0 +1,58 @@
+
+module Seri.SMT.Tests.Isolate0 where
+
+import Prelude
+import Seri.Bit
+import Seri.SMT.SMT
+import Seri.SMT.Tests.Sketch2QBF
+
+-- Test the isolate0 sketch
+
+-- The specification: returns a bit vector with a single bit set, and that bit
+-- is the right most zero bit in the given word.
+isolate0 :: Bit #n -> Bit #n
+isolate0 = isolate0' 1
+
+-- Helper function for isolate0. Takes a target mask as input.
+isolate0' :: Bit #n -> Bit #n -> Bit #n
+isolate0' m n =
+  if m == 0
+      then 0
+      else if bv_and m n == 0
+               then m
+               else isolate0' (bv_lsh m 1) n
+
+-- isolate0 1010_0111 = 167
+-- To get:  0000_1000 = 8
+example :: Bit #8
+example = isolate0 167
+
+-- The sketch
+data Holes a = Holes {
+    hole1 :: a,
+    hole2 :: a
+} deriving (Eq, Free)
+
+instance (Show a) => Show (Holes a) where
+    show (Holes h1 h2) = concat [
+        "Holes { hole1 = ", show h1, ", hole2 = ", show h2, " }"]
+
+isolate0sketch :: Holes (Bit #n) -> Bit #n -> Bit #n
+isolate0sketch holes n
+  = bv_and (bv_not (n + hole1 holes)) (n + hole2 holes)
+
+holeswanted :: Holes (Bit #n)
+holeswanted = Holes { hole1 = 0, hole2 = 1 }
+
+iscorrect :: Holes (Bit #n) -> Bit #n -> Bool
+iscorrect h x = isolate0 x == isolate0sketch h x
+
+qsketch :: Query (Answer (Holes (Bit #8)))
+qsketch = sketch2qbf iscorrect
+
+main :: IO ()
+main = do
+    putStrLn (show example)
+    r <- runYices2 (Just "build/test/Isolate0.dbg") qsketch
+    putStrLn $ show r
+

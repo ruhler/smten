@@ -8,6 +8,7 @@ module Seri.Haskell.Lib.Bit(
     Seri.Haskell.Lib.Bit.truncate,
     Seri.Haskell.Lib.Bit.extract,
     Seri.Haskell.Lib.Bit.concat,
+    Seri.Haskell.Lib.Bit.not,
     ) where
 
 import Data.Bits
@@ -38,6 +39,9 @@ or (Bit w a) (Bit _ b) = Bit w (a .|. b)
 
 and :: N__ n => Bit n -> Bit n -> Bit n
 and (Bit w a) (Bit _ b) = Bit w (a .&. b)
+
+not :: N__ n => Bit n -> Bit n
+not (Bit w a) = Bit w (complement a)
 
 concat :: (N__ a, N__ b) => Bit a -> Bit b -> Bit (N__PLUS a b)
 concat (Bit _ a) (Bit _ b) = Bit numeric (a `B.bv_concat` b)

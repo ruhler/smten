@@ -9,6 +9,7 @@ __prim_eq_Bit :: Bit #n -> Bit #n -> Bool
 __prim_add_Bit :: Bit #n -> Bit #n -> Bit #n
 __prim_sub_Bit :: Bit #n -> Bit #n -> Bit #n
 __prim_mul_Bit :: Bit #n -> Bit #n -> Bit #n
+__prim_not_Bit :: Bit #n -> Bit #n
 __prim_show_Bit :: Bit #n -> [Char]
 __prim_fromInteger_Bit :: Integer -> Bit #n
 __prim_zeroExtend_Bit :: Bit #n -> Bit #m
@@ -53,6 +54,9 @@ bv_or = __prim_or_Bit
 
 bv_and :: Bit #n -> Bit #n -> Bit #n
 bv_and = __prim_and_Bit
+
+bv_not :: Bit #n -> Bit #n 
+bv_not = __prim_not_Bit
 
 bv_zero_extend :: Bit #n -> Bit #m
 bv_zero_extend = __prim_zeroExtend_Bit

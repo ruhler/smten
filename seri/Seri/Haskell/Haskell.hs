@@ -296,6 +296,7 @@ preludeH =
       md c (PrimD s@(TopSig n _ _)) | n == name "Seri.Bit.__prim_mul_Bit" = prim c s (vare "Prelude.*")
       md c (PrimD s@(TopSig n _ _)) | n == name "Seri.Bit.__prim_concat_Bit" = prim c s (vare "Bit.concat")
       md c (PrimD s@(TopSig n _ _)) | n == name "Seri.Bit.__prim_show_Bit" = prim c s (vare "Prelude.show")
+      md c (PrimD s@(TopSig n _ _)) | n == name "Seri.Bit.__prim_not_Bit" = prim c s (vare "Bit.not")
       md c (PrimD s@(TopSig n _ _)) | n == name "Seri.Bit.__prim_or_Bit" = prim c s (vare "Bit.or")
       md c (PrimD s@(TopSig n _ _)) | n == name "Seri.Bit.__prim_and_Bit" = prim c s (vare "Bit.and")
       md c (PrimD s@(TopSig n _ _)) | n == name "Seri.Bit.__prim_lsh_Bit" = prim c s (vare "Bit.lsh")

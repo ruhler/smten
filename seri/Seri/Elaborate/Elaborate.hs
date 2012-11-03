@@ -389,6 +389,15 @@ elaborate mode env exp =
                                    a' | Just av <- unbit a' -> stringEH (show av)
                                    _ -> AppEH (ES_Some WHNF) (VarEH (ES_Some SNF) s) [a]
                        ]),
+            (name "Seri.Bit.__prim_not_Bit", \s@(Sig n t) -> 
+                let [ta, _] = unarrowsT t
+                in LaceEH (ES_Some WHNF) [
+                       MatchH [VarP $ Sig (name "a") ta] $ 
+                           \[(_, a)] ->
+                               case (elab a) of
+                                   a' | Just av <- unbit a' -> bitEH (complement av)
+                                   _ -> AppEH (ES_Some WHNF) (VarEH (ES_Some SNF) s) [a]
+                       ]),
             (name "Seri.Bit.__prim_or_Bit", \s -> binbprim s (\a b -> bitEH (a .|. b))),
             (name "Seri.Bit.__prim_and_Bit", \s -> binbprim s (\a b -> bitEH (a .&. b))),
             (name "Seri.Bit.__prim_lsh_Bit", \s -> binbiprim s (\a b -> bitEH (a `shiftL` fromInteger b))),

@@ -154,6 +154,7 @@ smttest "BCL3Small"
 smttest "Sudoku"
 smttest "Sudoku2"
 smttest "Sudoku3"
+smttest "Isolate0"
 
 # The enoch tests
 hrun $::ENOCH

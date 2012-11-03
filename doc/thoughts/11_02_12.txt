@@ -1,0 +1,143 @@
+
+Fri Nov  2 16:03:26 EDT 2012
+
+Goal for this afternoon, or evening, or end of work day, or whatever you want
+to call it: implement a reduction to conjunctive normal form. The goal is to
+have this so I can plug in the minisat solver.
+
+I have it all worked out. I could explain how it's going to work... or I could
+just implement it directly, and tell you when I run into problems. I think
+I'll do that.
+
+The real question is... how will I test it? Do I have to wait for minisat to
+be installed before I can do that? I don't know. Let me just code it up first
+and go from there.
+
+Fri Nov  2 17:08:55 EDT 2012
+
+Okay, so I coded it up. Now what?
+
+Well, I could try to plug in minisat directly. Or I could do some HUnit like
+test cases. HUnit tests are hard, because there are different ways to convert
+to CNF, and I'd rather not hardcode a specific way into my test cases.
+
+I think a better approach would be to try plugging in minisat and see if I can
+make it work. But that's maybe a little bit more work than I want to do just
+now. So I'll save what I have, but try out minisat later.
+
+Fri Nov  2 19:43:02 EDT 2012
+
+To try out minisat will require some work:
+* build it as a library
+* figure out how to deal with assertions and such
+* fix all the bugs that are going to come up in my CNF translation.
+
+It will be fun to get working, but not what I'm in the mood for now.
+
+Instead I want to do some clean up. Specifically, right now, of Sudoku.
+
+What do I want?
+
+I want the following
+* sudoku solver function :: [[Char]] -> Query (Answer Board)
+* a main function which reads the board from IO
+* common code in a common place
+* ability to specialize the Cell type.
+
+For now let's keep it as a 9x9 sudoku solver. That makes it possible to do an
+enum. It is a little sad. For instance, you might ask: how could we generalize
+the sudoku solver to work for arbitrary 9x9 while making use of data types and
+SAT? I don't know. That's a good question. It's totally doable in terms of
+what I can do in the backend. It's just not clear how to express what I want
+in the front end.
+
+So, I want to be able to swap out Cells. That's how we choose different
+things. What do we need from a Cell?
+
+class Cell c where
+    mkCell :: Integer -> c   (for construction)
+    deCell :: c -> Integer   (for deconstruction)
+    freeCell :: Query c
+    distinctCells :: [c] -> Bool  (test for distinct)
+
+Everything else is easy. We can also provide a default implementation of
+distinct for any Cell type that supports equality.
+
+What do you think? Is this worth a try?
+
+I think so.
+
+Of course, I could just plug all the implementations into a single file now if
+I wanted to...
+
+Let me start by transforming Sudoku.sri to use this structure. Get it to work.
+Then expand it to support the other versions. I can also try two kinds of
+integer versions. The one based on distinct, and another based on powers of
+two and having their sums be the expected value for uniqueness.
+
+Okay. Here I go. Wish me luck.
+
+Fri Nov  2 20:37:37 EDT 2012
+
+I did it. It works. I even added another integer cell which uses a trick
+analogous to bit vectors: add the integers together and make sure they sum to
+511 to test for uniqueness. Interesting thing: it takes a long time. Much much
+longer than any other representation. Interesting.
+
+I'm still not sure what to do about the sudoku tests, so I'm just leaving them
+the same, only they make use of this general sudoku library I've built.
+
+Fri Nov  2 20:40:17 EDT 2012
+
+Cool, so, what's the next thing to work on?
+
+I think I've done all the implementation stuff I can do today.
+
+Let me think a little bit about testing.
+
+What things do we want to test? How should they be organized?
+
+Let me focus on SMT stuff.
+
+I think we should have tests which focus on specific things:
+
+* Core test: tests if, let, and, or, not, eq, free boolean variables
+* Integer test: tests integer operations
+* Bit test: tests bit vector operations
+* Datatype test: tests user defined data types with Core
+
+The idea is: focus the tests on specific parts, and don't require special
+theories for a test if not necessary. That way the test can be useful for the
+most solvers.
+
+For each test, we would like to run it on every supported solver. For things
+like BCL3Small and Sudoku, and I suppose also AllQ and Sketch, it could take a
+long time to run all the tests.
+
+So perhaps I should change my testing schedule. Only run all the tests
+maybe... every night? Every release? Run the basic tests every time I build.
+
+The other question is, how to deal with the output of the tests?
+
+For some things, there is only one answer. For others, there may be multiple
+answers, and we don't know what we'll get. Perhaps we can limit the answers
+expect. Either way, I think it would be valuable to test the answer returned,
+and throw an error or something if it's not what we expect. That way I don't
+have to worry about getting an output which is maybe wrong.
+
+How about debug output? It's nice to have the debug output to look at things,
+but I don't actually do anything with it but generate it. It would be nice if
+I could test the debug output is correct, perhaps by running a solver on it,
+or something. Or maybe don't bother with the debug output at all?
+
+Oh, hey, the sudoku with different integer approach finally finished. 16
+minutes to solve the board, as opposed to just seconds with other approaches.
+That's pretty interesting. It would be interesting to see if any solvers
+specializing in integers could do better with that approach.
+
+Anyway, what's up for the next stuff?
+
+* Add MINISAT solver, test it on Core and Sudoku2
+* Implement a traveling salesmen solver
+* Continue to clean up seri as I go
+

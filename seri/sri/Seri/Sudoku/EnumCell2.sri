@@ -1,0 +1,19 @@
+
+module Seri.Sudoku.EnumCell2 where
+
+import Prelude
+import Seri.SMT.SMT
+
+import Seri.Sudoku.Cell
+
+data EnumCell2 = EnumCell2 Integer
+    deriving(Eq)
+
+instance Cell EnumCell2 where
+    mkCell = EnumCell2
+    deCell (EnumCell2 v) = v
+    freeCell = do
+        x <- free_enum 1 m
+        return (EnumCell2 x)
+    distinctCell = distinct
+

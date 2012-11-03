@@ -47,6 +47,7 @@ module Seri.SMT.Syntax (
 
     -- * Bit Vector
     mkbvE, de_mkbvE, bvaddE, de_bvaddE, bvorE, de_bvorE, bvandE, de_bvandE,
+    bvnotE, de_bvnotE,
     bvshiftLeft0E, de_bvshiftLeft0E,
     bvshiftRight0E, bvzeroExtendE, de_bvzeroExtendE, bvextractE, bvshlE,
     bvconcatE, de_bvconcatE,
@@ -232,6 +233,13 @@ bvandE a b = AppE (varE "bv-and") [a, b]
 de_bvandE :: Expression -> Maybe (Expression, Expression)
 de_bvandE (AppE (VarE "bv-and") [a, b]) = Just (a, b)
 de_bvandE _ = Nothing
+
+bvnotE :: Expression -> Expression
+bvnotE a = AppE (varE "bv-not") [a]
+
+de_bvnotE :: Expression -> Maybe Expression
+de_bvnotE (AppE (VarE "bv-not") [a]) = Just a
+de_bvnotE _ = Nothing
 
 -- | > (bv-shift-left0 a i)
 bvshiftLeft0E :: Expression -> Integer -> Expression

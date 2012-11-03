@@ -46,6 +46,7 @@ mkBinExpr s a b f = do
 mkExpr :: STP -> Expression -> IO (Ptr STP_Expr)
 mkExpr s (LitE (BoolL True)) = withvc s c_vc_trueExpr
 mkExpr s (LitE (BoolL False)) = withvc s c_vc_falseExpr
+mkExpr s (LitE (IntegerL {})) = error $ "STP does not support integer literals"
 mkExpr s e | Just (a, b) <- de_eqE e = mkBinExpr s a b c_vc_eqExpr
 mkExpr s e | Just [a, b] <- de_orE e = mkBinExpr s a b c_vc_orExpr
 mkExpr s e | Just [a, b] <- de_andE e = mkBinExpr s a b c_vc_andExpr

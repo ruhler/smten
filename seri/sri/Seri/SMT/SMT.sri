@@ -67,6 +67,22 @@ instance (Free a, Free b, Free c) => Free (a, b, c) where
 instance (Free a, Free b) => Free (a -> b) where
     free = __prim_free
 
+-- Return a free integer which ranges from M to N for given M and N.
+-- Uses only the Core theory, Integer support is not required.
+--
+-- N should be greater than or equal to M.
+--
+-- Note: This returns a linear structure of booleans, which is not
+-- necessarily a very compact representation.
+free_enum :: Integer -> Integer -> Query Integer
+free_enum m n =
+    if (m == n)
+        then return m
+        else do
+            ism <- free
+            v <- free_enum (m+1) n
+            return (if ism then m else v)
+
 -- Assert the given boolean is true.
 assert :: Bool -> Query ()
 

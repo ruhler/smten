@@ -1,6 +1,7 @@
 
 Haskell Features::
 * support negative literals?
+* support hex literals
 * default methods in classes?
 * allow arbitrary patterns in lambda expression arguments.
     example: \(Foo x) -> x+1
@@ -11,6 +12,7 @@ Haskell Features::
 * support for pattern bindings: x@(...)
 * Variable operators: `foo`.
 * pattern matching in do bind notation.
+* pattern matching against bit vectors
 * support type synonyms? 
 * auto derive Show
 * recursive let blocks
@@ -63,6 +65,7 @@ Pretty Printer::
 * do notation <- doesn't work with explicit type (parser bug?)
 
 Performance::
+* Play with GHC Sparks and non-strict state monads
 * Add speculative elaboration to elaborator
 * Compile seri to Haskell
 * Add support for sharing in generated queries (?)
@@ -70,7 +73,7 @@ Performance::
 
 Solvers::
 * Figure out how to test all the different solvers more completely
-* Add minisata as a solver (requires CNF)
+* Add minisat as a solver (requires CNF)
 * Add Z3 as a solver
 
 Static Analysis::
@@ -83,6 +86,9 @@ SMT Syntax::
 * Remove bv-zero-extend from SMT syntax, use SMTLIB2 alternative
 
 Dealing with Free Things::
+* Elaborator needs to do delambdafication for primitive functions to avoid
+  unnecessary background theories (but maybe only for backends which don't
+  support those theories?)
 * what happens if we realize a free integer variable which is a dont-care?
 * interpret function evidence
 * interpret char evidence (?)
@@ -96,6 +102,13 @@ Bugs::
 * seriq2 for SquaresRaw... result differs from yices1 and yices2. Why?
   seriq1 seg faults on that same example randomly
     (in GC evacuate at end of prog)
+* Detect recursive functions in SNF elaboration and report an error about
+  them.
+* Report an error for an unknown primitive encountered in SMT Translation
+
+Tests::
+* test bv_not in basic tests
+* test bv_not in SMT tests
 
 Build System::
 * Don't require yices1 and yices2 to be installed to build or use seri

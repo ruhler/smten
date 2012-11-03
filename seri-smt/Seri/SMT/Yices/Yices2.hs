@@ -217,6 +217,9 @@ ytermS s e | isbinop "bv-shl" e = dobinop s e c_yices_bvshl
 ytermS s e | Just a <- de_notE e = do
     at <- ytermS s a
     c_yices_not at
+ytermS s e | Just a <- de_bvnotE e = do
+    at <- ytermS s a
+    c_yices_bvnot at
 ytermS s (AppE (VarE "select") [v, LitE (IntegerL i)]) = do
     vt <- ytermS s v
     c_yices_select (fromInteger i) vt

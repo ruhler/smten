@@ -272,6 +272,9 @@ smtE' e@(AppE a b) =
           -> do
            a' <- smtE' a
            return (SMT.bvshiftLeft0E a' v)
+       [VarE (Sig n _), a]
+          | n == name "Seri.Bit.__prim_not_Bit"
+          -> SMT.bvnotE <$> smtE' a
        [VarE (Sig n _), a, (LitE (IntegerL v))] | n == name "Seri.Bit.__prim_rshl_Bit" -> do
            a' <- smtE' a
            return (SMT.bvshiftRight0E a' v)
