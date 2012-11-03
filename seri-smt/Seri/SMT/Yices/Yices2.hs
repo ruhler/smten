@@ -266,14 +266,14 @@ ytermS s (UpdateE f args v) = do
     argst <- mapM (ytermS s) args
     vt <- ytermS s v
     withArray argst $ \arr -> c_yices_update ft (fromIntegral $ length argst) arr vt
-ytermS s (LetE bs e) = 
+ytermS s e | Just (bs, v) <- de_letE e =
   let mkvar :: (String, Expression) -> IO (String, YTerm)
       mkvar (nm, e) = do
         et <- ytermS s e
         return (nm, et)
   in do
     vars <- mapM mkvar bs
-    ytermS (vars ++ s) e
+    ytermS (vars ++ s) v
         
 ytermS _ (LitE (BoolL True)) = c_yices_true
 ytermS _ (LitE (BoolL False)) = c_yices_false

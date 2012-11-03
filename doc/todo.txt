@@ -33,6 +33,7 @@ Test Type Checking::
 * Verify a free variable in an expression is not allowed.
 * Verify all methods have been defined for a class instance.
 * Verify you can't refer to a nonexistent type
+* Verify we can't use a made up constructor: ex: Answer True
 
 Type System::
 * give a nice message if there's a type ambiguity?

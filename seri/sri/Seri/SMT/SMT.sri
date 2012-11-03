@@ -9,6 +9,7 @@ import Seri.Bit
 data Query a =
 
 data Answer a = Satisfiable a | Unsatisfiable | Unknown
+    deriving (Eq)
 
 instance (Show a) => Show (Answer a) where
     show (Satisfiable x) = "Satisfiable " ++ show x

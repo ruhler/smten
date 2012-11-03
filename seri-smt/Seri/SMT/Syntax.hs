@@ -39,7 +39,7 @@ module Seri.SMT.Syntax (
     Binding, Literal(..),
 
     -- * Core
-    letE, eqE, de_eqE, ifE, de_ifE, varE, de_varE,
+    letE, de_letE, eqE, de_eqE, ifE, de_ifE, varE, de_varE,
     boolE, trueE, falseE, notE, de_notE, andE, de_andE, orE, de_orE,
 
     -- * Integer
@@ -282,4 +282,8 @@ letE :: [Binding] -> Expression -> Expression
 letE [] e = e
 letE [(n, e)] (VarE n') | n == n' = e
 letE bs e = LetE bs e
+
+de_letE :: Expression -> Maybe ([Binding], Expression)
+de_letE (LetE bs e) = Just (bs, e)
+de_letE _ = Nothing
 

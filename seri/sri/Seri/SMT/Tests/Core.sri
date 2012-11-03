@@ -4,25 +4,77 @@ module Seri.SMT.Tests.Core where
 import Prelude
 import Seri.SMT.SMT
 
-qmain :: Query (Answer (Bool, Bool, Bool))
-qmain = do
+-- Verify the given predicate holds.
+-- If it doesn't, report the given name as failing.
+test :: [Char] -> Bool -> Query ()
+test nm True = return ()
+test nm False = error ("Test failed: " ++ nm)
+
+p :: Bool -> Bool -> Bool -> Bool
+p x y z =
+    if x && y
+        then not z
+        else x == (y || z)
+
+qtest :: Query ()
+qtest = do
+    -- Trivial test. Verifies we can make free booleans and assert things
+    -- about them.
+    a <- free
+    assert a
+    ra <- query a
+    test "core.trivial" (ra == Satisfiable True)
+
+    -- Test NOT
+    b <- free
+    assert (not b)
+    rb <- query b
+    test "core.not" (rb == Satisfiable False)
+
+    -- Test OR
+    c <- free
+    d <- free
+    assert (c || d)
+    assert (not c)
+    rcd <- query (c, d)
+    test "core.or" (rcd == Satisfiable (False, True))
+
+    -- Test AND
+    e <- free
+    f <- free
+    assert (e && f)
+    ref <- query (e, f)
+    test "core.and" (ref == Satisfiable (True, True))
+
+    -- Test EQ
+    g <- free
+    h <- free
+    assert (g == h)
+    assert (not g)
+    rgh <- query (g, h)
+    test "core.eq" (rgh == Satisfiable (False, False))
+
+    -- Test IF
+    i <- free
+    assert (if i then False else True)
+    ri <- query i
+    test "core.if" (ri == Satisfiable False)
+    
+    -- Test more complex
     x <- free
     y <- free
     z <- free
-    assert (((not x) && y) || (x && z))
-    query (x, y, z)
+    assert (p x y z)
+    rxyz <- query (x, y, z)
+    test "core.complex" $
+        case rxyz of
+            Satisfiable (xv, yv, zv) -> p xv yv zv
+            _ -> False
+
 
 main :: IO ()
 main = do
-    putStrLn "yices1..."
-    r1 <- runYices1 (Just "build/test/Core.yices1.dbg") qmain
-    putStrLn (show r1)
-
-    putStrLn "yices2..."
-    r2 <- runYices2 (Just "build/test/Core.yices2.dbg") qmain
-    putStrLn (show r2)
-
-    putStrLn "stp..."
-    r3 <- runSTP (Just "build/test/Core.stp.dbg") qmain
-    putStrLn (show r3)
+    runYices1 (Just "build/test/Core.yices1.dbg") qtest
+    runYices2 (Just "build/test/Core.yices2.dbg") qtest
+    runSTP (Just "build/test/Core.stp.dbg") qtest
 

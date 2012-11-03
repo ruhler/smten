@@ -86,6 +86,15 @@ mkExpr s (VarE nm) = do
     case Map.lookup nm vars of
         Just v -> return v
         Nothing -> error $ "STP: unknown var: " ++ nm
+mkExpr s e | Just (bs, v) <- de_letE e =
+  let mkvar :: (String, Expression) -> IO ()
+      mkvar (nm, val) = do
+        val' <- mkExpr s val
+        modifyIORef (stp_vars s) $ Map.insert nm val'
+  in do
+    mapM_ mkvar bs
+    mkExpr s v
+    
 mkExpr _ e = error $ "TODO: STP.mkExpr " ++ show e
 
 instance Solver STP where
