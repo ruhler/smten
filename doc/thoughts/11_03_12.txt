@@ -1,0 +1,326 @@
+
+Sat Nov  3 08:52:12 EDT 2012
+
+A number of cool thoughts this morning.
+
+Dynamic Enum
+------------
+First is the question of dynamically bounded enum. The idea is, in Sudoku, for
+example, we want to use an enum for the cells, because then we can use a SAT
+solver and don't need Integer or bit vector support. I can do this with a
+statically defined enum, but can I do it with a dynamically defined enum? The
+reason you want to do it with a dynamically defined enum is so you can scale
+the sudoku solver up to board greater than 9x9 naturally.
+
+Well, I believe you can do it rather easily for a dynamically defined enum.
+
+I just need this special function:
+
+free_enum :: Integer -> Query Integer
+
+Okay, so what does this do? It takes as input a range, or a bound. Call the
+input N. Then it returns a free integer which is in the range 0 to (N-1). That
+free integer is based on free booleans, so it can be done with a SAT solver.
+
+How to implement this you ask?
+
+free_enum x | x < 1 = error "empty enum"
+free_enum 1 = return 0
+free_enum x = do
+    b <- free
+    if b
+        then return 0
+        else do
+            y <- free_enum (x-1)
+            return (1+y)
+
+That gives exactly the linear representation we use for enums in our
+auto-deriving of Free.
+
+You could also consider a binary representation, though I'm not convinced a
+binary representation is better. It will be more compact, but will it be
+harder for the SAT solver to work with?
+
+free_enum 1 = return 0
+free_enum x = do
+    b <- free
+    if b
+        then free_enum (x/2)
+        else do
+            y <- free_enum (x/2)
+            return (y + x/2)
+
+Or something like that.
+
+So, I should implement these both and try them out with Sudoku as EnumCell2
+and EnumCell3.
+
+
+Non-Exponential CNF
+-------------------
+Reduction to CNF form can blow up. This makes me very sad.
+
+Specifically the reduction of the following:
+
+a OR (b AND c)
+
+In our current reduction, this becomes:
+
+(a OR b) AND (a OR c)
+
+The blowup is that now 'a' is mentioned twice, and 'a' could be a complicated
+formula itself blowing up.
+
+Thanks to wikipedia, it seems we can avoid this if we are willing to introduce
+a new free variable instead. The idea is, we'll define a new variable 'x',
+which is meant to capture the value of (b AND c).
+
+(a OR x) AND (x ==> (b AND c))
+
+Where (x ==> (b AND c)) is implication, it can be written as:
+
+((not x) OR (b AND c))
+
+Or, put all together:
+
+(a OR x) AND ((not x) OR (b AND c))
+
+The thing to notice here is: the only duplication is in the variable 'x', but
+we know 'x' is just a variable, so it is cheap to duplicate. Thus we avoid an
+exponential blowup.
+
+The question is, how is satisfiability of the original formula related to the
+satisfiability of the new formula?
+
+My claim is, if the new formula is satisfiable with some assignment M, then
+the original formula is satisfiable under the same assignment. If the new
+formula is unsatisfiable, then the original formula is unsatisfiable. Which is
+exactly what I want, because then we can ask satisfiability about one and get
+satisfiability about the other.
+
+How will I prove my claims?
+
+Let's say the new formula is satisfiable.
+
+Case: x is TRUE
+  Then (b AND c) must be TRUE, so the original formula is satisfied with the
+  same assignment.
+
+Case: x is FALSE
+  Then a must be TRUE, so the original formula is satisfied with the same
+  assignment.
+
+Okay, so if the new formula is satisfied, the old one is too with the same
+assignment.
+
+Now consider if the old formula is satisfied.
+
+case a is TRUE
+    Set x to FALSE, and the same assignment satisfies the new formula
+
+case a is FALSE
+    Then (b AND c) must be TRUE. Set x to TRUE, and the same assignment
+    satisfies the new formula.
+
+This means, in particular, that if the new formula is unsatisfiable, the old
+formula is unsatisfiable, because otherwise the new formula would be
+satisfiable.
+
+We can look at that a bit more. The concern is: if 'x' is FALSE, it may be the
+case that a, b, and c, are all TRUE. This doesn't satisfy the new formula, but
+it satisfies the old. The answer is: don't have 'x' be FALSE, just change it
+to TRUE and you are all done.
+
+So I can and absolutely should do this transformation to avoid exponential
+blowup. What it means is, we need some way to allocate new variables in the
+conversion to CNF. I'll just stick a monad in there or something that lets you
+get fresh names.
+
+
+Sketch in Seri
+--------------
+How can we do Sketch in Seri? Well, one idea is to define an abstract syntax
+for a language in Seri, and describe your sketches that way. Fine, whatever.
+But! You could also just use Seri as the language for sketches and your target
+language.
+
+Consider the isolate0 thing.
+
+I don't remember it exactly.
+
+isolate0 :: Bit #n -> Bit #n
+isolate0 = <specification>
+
+Now, I can make a sketch. My sketch is going to have a couple holes. Let's
+call them 'a' and 'b'.
+
+data Holes = Holes { a :: Bit #n, b :: Bit #n }
+    deriving(Eq, Free)
+
+isolate0sketch :: Holes -> Bit #n -> Bit #n
+isolate0sketch = <implementation>
+
+Now I give the implementation in terms of some holes. It's just an extra
+parameter to the function.
+
+Now the sketch question is to find the holes, but this is very easy.
+
+predicate :: Holes -> Bit #n -> Bool
+predicate h x = isolate0sketch h x == isolate0 x
+
+qholes :: Query (Answer Holes)
+qholes = sketch2qbf predicate
+    
+And there you have it!
+
+If you want, you could even return the sketched value and start using it in
+your functions.
+
+I should totally try this out.
+
+The one annoyance here is, we don't pretty print the completed sketch. I can
+pretty print the holes, but if you want to see the complete sketch, you have
+to plug them in yourself.
+
+And you know what? I bet I can do all the cool tricks with holes that the
+Sketch tool does, in terms of making more interesting program sketches.
+
+That's really exciting.
+
+So many things to try out...
+
+Let me take a break to think about what I want to try out first.
+
+Sat Nov  3 09:59:52 EDT 2012
+
+Tried out the SeriEnum thing.
+
+It doesn't work quite like I expected. It's requiring integer in the back end.
+
+The reason is, I have something like:
+
+if free~1
+  then 0
+  else (1 + if (free~2) then 0 else 1 + 0)
+
+So we get things like:
+
+1 + (if free~2 then 0 else 1)
+
+What surprises me is, this isn't changed to:
+
+if free~2 then 1+0 else 1+1
+
+Which I kind of expect to have happen. That's something to look into.
+
+Sat Nov  3 10:03:51 EDT 2012
+
+I checked the elaborator. It doesn't actually do the delambdafication for
+integer primitives. Only LACE functions. I may want to consider changing that.
+Hopefully it's not too much of a performance loss.
+
+I would like to try another representation of free_enum though, and see if
+that improves anything.
+
+Sat Nov  3 10:08:39 EDT 2012
+
+That improved things, but it still didn't get rid of the requirement for
+integers, because we use integers to test for equality. It's the same problem.
+I need to do delambdafication for primitive functions as well as user defined
+functions.
+
+Sat Nov  3 10:14:30 EDT 2012
+
+I added the note to TODO. I'm worried about performance, because... well, I
+am. But maybe it won't be so bad? Or, maybe I can limit delambdafication to
+only those necessary given the restricted background theories. For example, if
+your solver supports user defined data types, no need to do delambdafication
+on Lace. If your solver supports integers, no need to do delambdafication on
+integer primitives. If your solver supports bit vectors, no need to do
+delambdafication on bit vector primitives. And so on. That may be an important
+kind of optimization. It's an interesting idea.
+
+Sat Nov  3 11:10:15 EDT 2012
+
+Next thing to try out is...
+
+I want to try out this sketch example, see if it works. I'm slightly worried
+it may require primitives I don't support yet, but that's okay. Try it, see
+how far I get.
+
+Sat Nov  3 11:38:04 EDT 2012
+
+Trouble with my sketch attempt. My specification for isolate0 is a recursive
+function, and we can't handle recursive functions. Isn't that sad?
+
+Of course, I ought to know I could just unroll this a finite amount. But I
+don't. I don't know that after n iterations it is guaranteed to terminate. I
+should try expressing that explicitly.
+
+Sat Nov  3 12:01:45 EDT 2012
+
+It works! I had to implement bv_not first in SMT, but it totally works.
+Awesome.
+
+Sat Nov  3 12:19:45 EDT 2012
+
+Next steps... Well, I should work on test cases and cleanup and such. So, if
+I'm in the mood for that, go to it.
+
+A good place to start would be:
+* Make SMT Core tests more exhaustive. Try to cover all the core primitives.
+* Make SMT Bit tests more exhaustive. Try to cover all the bit primitives.
+
+If I don't feel like that sort of grunt work, then I think it would be fun to
+rewrite the CNF translator to use new free variables to avoid exponential
+blowup. I'm sure I'll want to do that. There's very little cost, and very big
+gain.
+
+Try not to get too far ahead in fun stuff. Otherwise I'll not be nearly so
+robust as I think, then I'll try to do something, thinking it will work out
+fine, and discover I have a whole bunch of implementation stuff I haven't done
+yet.
+
+Sat Nov  3 14:07:55 EDT 2012
+
+Okay, so before I get too far ahead, I really should test Core better.
+
+I can use this as a kind of experiment to figure out or play with the best way
+to test things.
+
+What are the core things I want to test?
+
+OR, AND, NOT, EQ, IF, TRUE, FALSE
+
+That's pretty straight forward.
+
+Let me have a specific test for each one.
+
+If I could, it would be great to use a Test monad or some such.
+
+Perhaps I have a query the calls "error" if the answer isn't right. So,
+something like: require :: Bool -> Query (), which throws an error if the
+argument isn't true. Or, test :: String -> Bool -> Query (), which throws an
+error with the test name if the argument isn't true. That sounds good to me.
+
+And all I have to do is run the query under each solver. The tests take care
+of themselves. Awesome. Let me try this.
+
+Sat Nov  3 14:41:12 EDT 2012
+
+Cool. The Core test is nice now. I even found a bug in STP: we didn't have
+support for let expressions yet.
+
+I like this strategy for testing. And it actually does test results, it
+doesn't just test that the query can run.
+
+Sat Nov  3 14:49:30 EDT 2012
+
+Good. I'm glad I cleaned up the Core test. I should keep on going with cleanup
+of the other tests too.
+
+It would be nice to support hex literals too, if I'm looking for more cleanup
+stuff to do.
+
+Again, big thing is the CNF converter, then get minisat up and running.
+

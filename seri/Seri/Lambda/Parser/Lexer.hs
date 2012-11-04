@@ -157,6 +157,9 @@ lex = do
               kw | Just tok <- lookup kw keywords ->
                   many kw >> setText rest >> return tok
               id -> many id >> setText rest >> return (TokenVarId id)
+      ('0':x:cs) | x `elem` ['x', 'X'] ->
+          let (ns, rest) = span isHexDigit cs
+          in many ('0':x:ns) >> setText rest >> return (TokenInteger (read ('0':x:ns)))
       (c:cs) | isDigit c ->
           let (ns, rest) = span isDigit cs
           in many (c:ns) >> setText rest >> return (TokenInteger (read (c:ns)))

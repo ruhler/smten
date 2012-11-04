@@ -69,5 +69,5 @@ instance Cell BitCell where
         assert (isValidCell x)
         return x
 
-    distinctCell cells = join cells == 511
+    distinctCell cells = join cells == 0x1FF
 

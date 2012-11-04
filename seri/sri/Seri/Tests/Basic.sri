@@ -160,7 +160,7 @@ testbit :: Test ()
 testbit = do
     t "bit simple" (bit3 0 == ((bit3 7) + 1))
     t "bit zeroext" (bit5 7 == bv_zero_extend (bit3 (0-1)))
-    t "bit or" (bit5 30 == bv_or (bit5 18) (bit5 12))
+    t "bit or" (bit5 0x1E == bv_or (bit5 0x12) (bit5 0x0C))
     t "bit lsh" (bit5 10 == bv_lsh (bit5 5) 1)
     t "bit extract" (bit3 3 == bv_extract (bit5 7) 1)
 
@@ -244,7 +244,9 @@ testbasic = do
     t "M" (DEq2 (5 :: Integer) 9 == DEq2 5 9)
     t "N" (DEq1 (5 :: Integer) /= DEq2 5 9)
     --t "O" (Just 1 == patterndo)
-    t "P" (length "foo\n" == 4);
+    t "P" (length "foo\n" == 4)
+    t "hex literal" (0x18 == (24 :: Integer))
+    t "HEX literal" (0X18 == (24 :: Integer))
 
 testprelude :: Test ()
 testprelude = do

@@ -59,6 +59,8 @@ vs. foo :: (Foo a) => Sludge
 
 Enoch::
 * Don't require ScopedTypeVariables in derive_SeriableE.
+* Should SeriableE be (TExp a -> Maybe a), and (a -> TExp a),
+  or just: (Exp -> Maybe a) and (a -> Exp)?
 
 Pretty Printer::
 * don't print out builtin prelude?
