@@ -277,40 +277,47 @@ elaborate mode env exp =
       toe :: ExpH -> Exp
       toe e = runFresh (toeM e) (free' exp)
 
+      binary :: (ExpH -> ExpH -> Maybe ExpH) -> Sig -> ExpH
+      binary f s@(Sig _ t) =
+        let [ta, tb, _] = unarrowsT t
+        in LaceEH (ES_Some WHNF) [
+             MatchH [VarP $ Sig (name "a") ta, VarP $ Sig (name "b") tb] $ 
+               \[(_, a), (_, b)] ->
+                 case (elab a, elab b) of
+                    (a', b') | Just r <- f a' b' -> r
+                    _ -> AppEH (ES_Some WHNF) (VarEH (ES_Some SNF) s) [a, b]
+             ]
+
       -- Binary integer primitive.
       --  s - signature of the primitive
       --  f - primitive implementation
       biniprim :: Sig -> (Integer -> Integer -> ExpH) -> ExpH
       biniprim s f =
-        LaceEH (ES_Some WHNF) [
-          MatchH [VarP $ Sig (name "a") integerT, VarP $ Sig (name "b") integerT] $ 
-            \[(_, a), (_, b)] -> 
-               case (elab a, elab b) of
-                  (LitEH (IntegerL ai), LitEH (IntegerL bi)) -> f ai bi
-                  _ -> AppEH (ES_Some WHNF) (VarEH (ES_Some SNF) s) [a, b]
-          ]
+        let g a b = do
+                a' <- de_integerEH a
+                b' <- de_integerEH b
+                return (f a' b')
+        in binary g s
    
       -- Binary character primitive.
       --  s - signature of the primitive
       --  f - primitive implementation
       bincprim :: Sig -> (Char -> Char -> ExpH) -> ExpH
       bincprim s f =
-        LaceEH (ES_Some WHNF) [
-          MatchH [VarP $ Sig (name "a") charT, VarP $ Sig (name "b") charT] $
-            \[(_, a), (_, b)] ->
-               case (elab a, elab b) of
-                  (LitEH (CharL av), LitEH (CharL bv)) -> f av bv
-                  _ -> AppEH (ES_Some WHNF) (VarEH (ES_Some SNF) s) [a, b]
-          ]
+        let g a b = do
+                a' <- de_charEH a
+                b' <- de_charEH b
+                return (f a' b')
+        in binary g s
 
       -- Extract a Bit from an expression of the form: __prim_frominteger_Bit v
       -- The expression should be elaborated already.
-      unbit :: ExpH -> Maybe Bit
-      unbit (AppEH _ (VarEH _ (Sig fib (AppT _ (AppT _ (NumT w))))) [ve])
+      de_bitEH :: ExpH -> Maybe Bit
+      de_bitEH (AppEH _ (VarEH _ (Sig fib (AppT _ (AppT _ (NumT w))))) [ve])
         | fib == name "Seri.Bit.__prim_fromInteger_Bit"
         , LitEH (IntegerL v) <- elab ve
         = Just (bv_make (nteval w) v)
-      unbit _ = Nothing
+      de_bitEH _ = Nothing
 
    
       -- Binary bitvector primitive.
@@ -318,32 +325,22 @@ elaborate mode env exp =
       --  f - primitive implementation
       binbprim :: Sig -> (Bit -> Bit -> ExpH) -> ExpH
       binbprim s@(Sig n t) f =
-        let [ta, tb, _] = unarrowsT t
-        in LaceEH (ES_Some WHNF) [
-             MatchH [VarP $ Sig (name "a") ta, VarP $ Sig (name "b") tb] $ 
-               \[(_, a), (_, b)] ->
-                 case (elab a, elab b) of
-                    (a', b') | Just av <- unbit a'
-                             , Just bv <- unbit b'
-                             -> f av bv
-                    _ -> AppEH (ES_Some WHNF) (VarEH (ES_Some SNF) s) [a, b]
-             ]
+        let g a b = do
+                a' <- de_bitEH a
+                b' <- de_bitEH b
+                return (f a' b')
+        in binary g s
    
       -- Binary bitvector/integer primitive.
       --  s - signature of the primitive
       --  f - primitive implementation
       binbiprim :: Sig -> (Bit -> Integer -> ExpH) -> ExpH
       binbiprim s@(Sig n t) f =
-        let [ta, tb, _] = unarrowsT t
-        in LaceEH (ES_Some WHNF) [
-            MatchH [VarP $ Sig (name "a") ta, VarP $ Sig (name "b") tb] $
-              \[(_, a), (_, b)] ->
-                 case (elab a, elab b) of
-                    (a', LitEH (IntegerL bv))
-                      | Just av <- unbit a'
-                      -> f av bv
-                    _ -> AppEH (ES_Some WHNF) (VarEH (ES_Some SNF) s) [a, b]
-            ]
+        let g a b = do
+                a' <- de_bitEH a
+                b' <- de_integerEH b
+                return (f a' b')
+        in binary g s
 
       stringEH :: String -> ExpH
       stringEH str = toh [] (stringE str)
@@ -386,7 +383,7 @@ elaborate mode env exp =
                        MatchH [VarP $ Sig (name "a") ta] $ 
                            \[(_, a)] ->
                                case (elab a) of
-                                   a' | Just av <- unbit a' -> stringEH (show av)
+                                   a' | Just av <- de_bitEH a' -> stringEH (show av)
                                    _ -> AppEH (ES_Some WHNF) (VarEH (ES_Some SNF) s) [a]
                        ]),
             (name "Seri.Bit.__prim_not_Bit", \s@(Sig n t) -> 
@@ -395,7 +392,7 @@ elaborate mode env exp =
                        MatchH [VarP $ Sig (name "a") ta] $ 
                            \[(_, a)] ->
                                case (elab a) of
-                                   a' | Just av <- unbit a' -> bitEH (complement av)
+                                   a' | Just av <- de_bitEH a' -> bitEH (complement av)
                                    _ -> AppEH (ES_Some WHNF) (VarEH (ES_Some SNF) s) [a]
                        ]),
             (name "Seri.Bit.__prim_or_Bit", \s -> binbprim s (\a b -> bitEH (a .|. b))),
@@ -447,7 +444,7 @@ elaborate mode env exp =
                    MatchH [VarP $ Sig (name "a") ta] $
                      \[(_, a)] ->
                        case (elab a) of
-                         a' | Just av <- unbit a' -> bitEH $ bv_zero_extend (nteval wt - bv_width av) av
+                         a' | Just av <- de_bitEH a' -> bitEH $ bv_zero_extend (nteval wt - bv_width av) av
                          _ -> AppEH (ES_Some WHNF) (VarEH (ES_Some SNF) s) [a]
                    ]),
             (name "Seri.Bit.__prim_truncate_Bit", \s@(Sig _ t) ->
@@ -456,7 +453,7 @@ elaborate mode env exp =
                    MatchH [VarP $ Sig (name "a") ta] $
                      \[(_, a)] ->
                        case (elab a) of
-                         a' | Just av <- unbit a' -> bitEH $ bv_truncate (nteval wt) av
+                         a' | Just av <- de_bitEH a' -> bitEH $ bv_truncate (nteval wt) av
                          _ -> AppEH (ES_Some WHNF) (VarEH (ES_Some SNF) s) [a]
                    ])
             ]
@@ -498,6 +495,14 @@ repat m =
 integerEH :: Integer -> ExpH
 integerEH = LitEH . IntegerL 
 
+de_integerEH :: ExpH -> Maybe Integer
+de_integerEH (LitEH (IntegerL i)) = Just i
+de_integerEH _ = Nothing
+
+de_charEH :: ExpH -> Maybe Char
+de_charEH (LitEH (CharL c)) = Just c
+de_charEH _ = Nothing
+
 trueEH :: ExpH
 trueEH = ConEH (Sig (name "True") (ConT (name "Bool")))
 
@@ -508,6 +513,11 @@ falseEH = ConEH (Sig (name "False") (ConT (name "Bool")))
 boolEH :: Bool -> ExpH
 boolEH True = trueEH
 boolEH False = falseEH
+
+de_boolEH :: ExpH -> Maybe Bool
+de_boolEH x | x == trueEH = Just True
+de_boolEH x | x == falseEH = Just False
+de_boolEH _ = Nothing
 
 unappsEH :: ExpH -> [ExpH]
 unappsEH (AppEH _ a xs) = unappsEH a ++ xs

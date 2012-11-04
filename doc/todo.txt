@@ -33,14 +33,13 @@ Test Type Checking::
 * Verify a free variable in an expression is not allowed.
 * Verify all methods have been defined for a class instance.
 * Verify you can't refer to a nonexistent type
-* Verify we can't use a made up constructor: ex: Answer True
+* Verify we can't use a made up data constructor: ex: Answer True
 
 Type System::
 * give a nice message if there's a type ambiguity?
     That is, anything with ~?
 * Reimplement TypeCheck to make use of constraint generation from TypeInfer?
 * move TypeInfer, TypeCheck and TypeSolve into a Type/ folder?
-This might make a lot more sense after moving stuff in Types to Prelude.hs.
 * Implement enough math somewhere to know that
   Bit #3  -> Bit #4 -> Bit #7 is a valid subtype of
   Bit #m  -> Bit #n -> Bit #(m+n)
@@ -106,10 +105,15 @@ Bugs::
 * Detect recursive functions in SNF elaboration and report an error about
   them.
 * Report an error for an unknown primitive encountered in SMT Translation
+* I suspect shadowed variables won't work in STP queries because of a bug in
+  how let expressions are implemented. (Can that ever happen?)
 
 Tests::
 * test bv_not in basic tests
 * test bv_not in SMT tests
+* Have Bit SMT tests test all the Bit vector primitives
+* Make an SMT test which exercises user defined data types on Core
+* Remove redundant SMT tests: Query1, Query2, Complex, If?
 
 Build System::
 * Don't require yices1 and yices2 to be installed to build or use seri
