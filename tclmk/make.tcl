@@ -138,15 +138,14 @@ proc smttest {name} {
 }
 
 smttest "Core"
-smttest "Query1"
-smttest "Query2"
+smttest "Integer"
+
+smttest "Bit"
 smttest "Complex"
-smttest "If"
 smttest "Bluespec"
 smttest "Array"
 smttest "Share"
 smttest "Tuple"
-smttest "Bit"
 smttest "AllQ"
 smttest "AllQ2"
 smttest "Squares2/Squares"

@@ -1,7 +1,6 @@
 
 Haskell Features::
 * support negative literals?
-* support hex literals
 * default methods in classes?
 * allow arbitrary patterns in lambda expression arguments.
     example: \(Foo x) -> x+1
@@ -88,7 +87,7 @@ SMT Syntax::
 * Remove bv-zero-extend from SMT syntax, use SMTLIB2 alternative
 
 Dealing with Free Things::
-* Elaborator needs to do delambdafication for primitive functions to avoid
+* Elaborator needs to do delacification for primitive functions to avoid
   unnecessary background theories (but maybe only for backends which don't
   support those theories?)
 * what happens if we realize a free integer variable which is a dont-care?
@@ -115,7 +114,7 @@ Tests::
 * test bv_not in SMT tests
 * Have Bit SMT tests test all the Bit vector primitives
 * Make an SMT test which exercises user defined data types on Core
-* Remove redundant SMT tests: Query1, Query2, Complex, If?
+* Remove redundant SMT tests: Complex?
 
 Build System::
 * Don't require yices1 and yices2 to be installed to build or use seri
