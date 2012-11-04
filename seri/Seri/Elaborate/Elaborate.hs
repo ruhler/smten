@@ -277,6 +277,39 @@ elaborate mode env exp =
       toe :: ExpH -> Exp
       toe e = runFresh (toeM e) (free' exp)
 
+      -- Unary primitive handling
+      unary :: (ExpH -> Maybe ExpH) -> Sig -> ExpH
+      unary f s@(Sig _ t) =
+        let [ta, _] = unarrowsT t
+        in LaceEH (ES_Some WHNF) [
+             MatchH [VarP $ Sig (name "a") ta] $ 
+               \[(_, a)] ->
+                  let def = AppEH (ES_Some WHNF) (VarEH (ES_Some SNF) s) [a]
+                  in fromMaybe def (f (elab a))
+             ]
+
+      uXX :: (ExpH -> Maybe a)
+             -> (b -> ExpH)
+             -> (a -> b)
+             -> (Sig -> ExpH)
+      uXX de_a mkb f =
+        let g a = do
+                a' <- de_a a
+                return (mkb (f a'))
+        in unary g
+
+      uIS :: (Integer -> String) -> (Sig -> ExpH)
+      uIS = uXX de_integerEH stringEH
+
+      uVS :: (Bit -> String) -> (Sig -> ExpH)
+      uVS = uXX de_bitEH stringEH
+
+      uVV :: (Bit -> Bit) -> (Sig -> ExpH)
+      uVV = uXX de_bitEH bitEH
+
+      uBB :: (Bool -> Bool) -> (Sig -> ExpH)
+      uBB = uXX de_boolEH boolEH
+
       -- Binary primitive handling
       binary :: (ExpH -> ExpH -> Maybe ExpH) -> Sig -> ExpH
       binary f s@(Sig _ t) =
@@ -360,6 +393,10 @@ elaborate mode env exp =
             (name "Seri.Bit.__prim_rshl_Bit", bVIV shiftR'),
             (name "Prelude.&&", bBBB (&&)),
             (name "Prelude.||", bBBB (||)),
+            (name "Prelude.__prim_show_Integer", uIS show),
+            (name "Seri.Bit.__prim_show_Bit", uVS show),
+            (name "Seri.Bit.__prim_not_Bit", uVV complement),
+            (name "Prelude.not", uBB not),
 
             (name "Prelude.error", \s ->
                 LaceEH (ES_Some WHNF) [
@@ -370,32 +407,6 @@ elaborate mode env exp =
                              _ -> AppEH (ES_Some WHNF) (VarEH (ES_Some SNF) s) [msg]
                        ]
               ),
-            (name "Prelude.__prim_show_Integer", \s ->
-                LaceEH (ES_Some WHNF) [
-                    MatchH [VarP $ Sig (name "a") integerT] $ 
-                        \[(_, a)] ->
-                            case (elab a) of
-                                LitEH (IntegerL ai) -> stringEH (show ai)
-                                _ -> AppEH (ES_Some WHNF) (VarEH (ES_Some SNF) s) [a]
-                    ]),
-            (name "Seri.Bit.__prim_show_Bit", \s@(Sig n t) -> 
-                let [ta, _] = unarrowsT t
-                in LaceEH (ES_Some WHNF) [
-                       MatchH [VarP $ Sig (name "a") ta] $ 
-                           \[(_, a)] ->
-                               case (elab a) of
-                                   a' | Just av <- de_bitEH a' -> stringEH (show av)
-                                   _ -> AppEH (ES_Some WHNF) (VarEH (ES_Some SNF) s) [a]
-                       ]),
-            (name "Seri.Bit.__prim_not_Bit", \s@(Sig n t) -> 
-                let [ta, _] = unarrowsT t
-                in LaceEH (ES_Some WHNF) [
-                       MatchH [VarP $ Sig (name "a") ta] $ 
-                           \[(_, a)] ->
-                               case (elab a) of
-                                   a' | Just av <- de_bitEH a' -> bitEH (complement av)
-                                   _ -> AppEH (ES_Some WHNF) (VarEH (ES_Some SNF) s) [a]
-                       ]),
             (name "Seri.Bit.__prim_extract_Bit", \s@(Sig _ t) ->
                 let f :: Bit -> Integer -> Bit
                     f a j = 
@@ -403,15 +414,6 @@ elaborate mode env exp =
                           i = j + (nteval wt) - 1
                       in bv_extract i j a
                 in bVIV f s),
-            (name "Prelude.not", \s -> 
-              LaceEH (ES_Some WHNF) [
-                MatchH [VarP $ Sig (name "a") boolT] $
-                  \[(_, a)] ->
-                    case (elab a) of
-                      av | av == trueEH -> falseEH
-                      av | av == falseEH -> trueEH
-                      _ -> AppEH (ES_Some WHNF) (VarEH (ES_Some SNF) s) [a]
-                ]),
             (name "Prelude.valueof", \(Sig n t) ->
               let [NumT nt, it] = unarrowsT t
               in LaceEH (ES_Some SNF) [
