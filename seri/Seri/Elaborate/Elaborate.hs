@@ -156,6 +156,43 @@ elaborate mode env exp =
       match (WildP _) _ = Succeeded []
       match p e = Unknown
 
+      -- Perform a delacification
+      -- Rewrites:
+      --    (blah blah) (case foo of
+      --                   p1 -> m1  
+      --                   p2 -> m2
+      --                   ...) x y z
+      --    
+      -- As:
+      --    let _f = (blah blah)
+      --    in (case foo of
+      --          p1 -> _f m1
+      --          p2 -> _f m2) x y z
+      --
+      -- TODO: this is suspect. For example, if the function _f is not strict
+      -- in the argument, this transformation is wrong, because it makes f
+      -- strict in the argument. But, we've already elaborated anything we
+      -- could, so if f is not strict in the argument, wouldn't this already
+      -- go away? I'm not sure.
+      delacifyM :: ExpH -> [ExpH] -> Maybe ExpH
+      delacifyM f (AppEH _ (LaceEH _ bms) cargs : fargs) | mode == SNF =
+        let rematch :: ExpH -> MatchH -> MatchH 
+            rematch f (MatchH ps b) = MatchH ps $ \m -> AppEH ES_None f [b m]
+
+            pat = VarP $ Sig (name "_f") (typeof f)
+            lam = LaceEH ES_None [MatchH [pat] $ \m ->
+                     AppEH ES_None (LaceEH ES_None (map (rematch (snd (head m))) bms)) (cargs ++ fargs)
+                     ]
+        in Just (elab $ AppEH ES_None lam [f])
+      delacifyM f (x:xs) | mode == SNF = delacifyM (AppEH (ES_Some mode) f [x]) xs
+      delacifyM f x = Nothing
+
+      delacify :: ExpH -> [ExpH] -> ExpH
+      delacify f args =
+        let undelacified = AppEH (ES_Some mode) f args
+            delacified = delacifyM f args
+        in fromMaybe undelacified delacified
+
       -- elaborate the given expression
       elab :: ExpH -> ExpH
       elab e@(LitEH l) = e
@@ -209,44 +246,7 @@ elaborate mode env exp =
                case matchms args ms of
                  NoMatched -> error $ "case no match"
                  Matched e -> elab e
-                 UnMatched ms' ->
-                   let delambdafy :: ExpH -> [ExpH] -> Maybe ExpH
-                       delambdafy f (AppEH _ (LaceEH _ bms) cargs : fargs) | mode == SNF =
-                           let -- Perform a delambdafication.
-                               -- Rewrites:
-                               --    (blah blah) (case foo of
-                               --                   p1 -> m1  
-                               --                   p2 -> m2
-                               --                   ...) x y z
-                               --    
-                               -- As:
-                               --    let _f = (blah blah)
-                               --    in (case foo of
-                               --          p1 -> _f m1
-                               --          p2 -> _f m2) x y z
-                               --
-                               -- TODO: this is suspect. For example, if the
-                               -- function _f is not strict in the argument, this
-                               -- transformation is wrong, because it makes f
-                               -- strict in the argument. But, we've already
-                               -- elaborated anything we could, so if f is not
-                               -- strict in the argument, wouldn't this already go
-                               -- away? I'm not sure.
-                               rematch :: ExpH -> MatchH -> MatchH 
-                               rematch f (MatchH ps b) = MatchH ps $ \m -> AppEH ES_None f [b m]
-
-                               pat = VarP $ Sig (name "_f") (typeof f)
-                               lam = LaceEH ES_None [MatchH [pat] $ \m ->
-                                        AppEH ES_None (LaceEH ES_None (map (rematch (snd (head m))) bms)) (cargs ++ fargs)
-                                        ]
-                           in Just (elab $ AppEH ES_None lam [f])
-                       delambdafy f (x:xs) | mode == SNF = delambdafy (AppEH (ES_Some mode) f [x]) xs
-                       delambdafy f x = Nothing
-
-                       f = LaceEH (ES_Some mode) ms'
-                       undelambdafied = AppEH (ES_Some mode) f args
-                       delambdafied = delambdafy f args
-                   in fromMaybe undelambdafied delambdafied
+                 UnMatched ms' -> delacify (LaceEH (ES_Some mode) ms') args
             f' -> AppEH (ES_Some mode) f' args
       elab e@(LaceEH (ES_Some m) _) | mode <= m = e
       elab e@(LaceEH _ ms) | mode == WHNF = e
