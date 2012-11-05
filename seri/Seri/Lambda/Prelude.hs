@@ -37,6 +37,7 @@
 -- seri expressions based on the prelude.
 module Seri.Lambda.Prelude (
     prelude,
+    appE, deAppE,
     appsE, unappsE, deApp2E,
     unitE, trueE, falseE, boolE, listE, listP, deListE,
     tupE, tupP, deTupE,
@@ -45,7 +46,7 @@ module Seri.Lambda.Prelude (
 
 import Control.Monad
 
-import Data.List (nub, group)
+import Data.List (genericLength)
 import Seri.Lambda.IR
 import Seri.Lambda.Types
 
@@ -94,14 +95,26 @@ tupE es@(_:_:_) =
       nm = name $ "(" ++ replicate (n-1) ',' ++ ")"
       types = map typeof es
       ttype = arrowsT (types ++ [tupT types])
-  in AppE (ConE (Sig nm ttype)) es
+  in appE (ConE (Sig nm ttype)) es
 
--- TODO: support arbitrary length tuples.
+-- Check if a name is a tuple name. If so, returns the number of elements in
+-- the tuple.
+deTupN :: Name -> Maybe Integer
+deTupN n = do
+    let s = unname n
+    guard $ length s > 2
+    guard $ head s == '('
+    guard $ last s == ')'
+    let mid = init (tail s)
+    guard $ all (== ',') mid
+    return (genericLength mid + 1)
+    
 deTupE :: Exp -> Maybe [Exp]
-deTupE (AppE (ConE (Sig n _)) [a, b]) | n == name "(,)" = Just [a, b]
-deTupE (AppE (ConE (Sig n _)) [a, b, c]) | n == name "(,,)" = Just [a, b, c]
-deTupE (AppE (ConE (Sig n _)) [a, b, c, d]) | n == name "(,,,)" = Just [a, b, c, d]
-deTupE _ = Nothing
+deTupE e = do
+    (ConE (Sig n _), args) <- deAppE e
+    l <- deTupN n
+    guard $ genericLength args == l
+    return args
 
 -- | (a, b, ... )
 -- There must be at least one pattern given.
@@ -151,10 +164,10 @@ integerE :: Integer -> Exp
 integerE i = LitE (IntegerL i)
 
 numberE :: Integer -> Exp
-numberE i = AppE (VarE (Sig (name "fromInteger") (arrowsT [integerT, UnknownT]))) [integerE i]
+numberE i = appE (VarE (Sig (name "fromInteger") (arrowsT [integerT, UnknownT]))) [integerE i]
 
 bitE :: Integer -> Integer -> Exp
-bitE w v = AppE (VarE (Sig (name "Seri.Bit.__prim_fromInteger_Bit") (arrowsT [integerT, AppT (ConT (name "Bit")) (NumT (ConNT w))]))) [integerE v]
+bitE w v = appE (VarE (Sig (name "Seri.Bit.__prim_fromInteger_Bit") (arrowsT [integerT, AppT (ConT (name "Bit")) (NumT (ConNT w))]))) [integerE v]
 
 charE :: Char -> Exp
 charE c = LitE (CharL c)
@@ -174,18 +187,29 @@ deStringE e = do
   mapM deCharE xs
             
 deApp2E :: Exp -> Maybe (Exp, Exp, Exp)
-deApp2E (AppE f [a, b]) = Just (f, a, b)
-deApp2E (AppE (AppE f [a]) [b]) = Just (f, a, b)
-deApp2E _ = Nothing
-
+deApp2E e = do
+    (f, [a, b]) <- deAppE e
+    return (f, a, b)
 
 -- | (a b ... c)
 appsE :: [Exp] -> Exp
 appsE [f] = f
-appsE (f:xs) = AppE f xs
+appsE (f:xs) = appE f xs
 
 -- | Given (a b ... c), returns [a, b, ..., c]
 unappsE :: Exp -> [Exp]
-unappsE (AppE a bs) = unappsE a ++ bs
-unappsE e = [e]
+unappsE e =
+  case deAppE e of
+     Nothing -> [e]
+     Just (f, xs) -> f:xs
+
+appE :: Exp -> [Exp] -> Exp
+appE = AppE
+
+deAppE :: Exp -> Maybe (Exp, [Exp])
+deAppE (AppE f xs) =
+  case (deAppE f) of
+     Just (g, ys) -> Just (g, ys ++ xs)
+     Nothing -> Just (f, xs)
+deAppE _ = Nothing
 

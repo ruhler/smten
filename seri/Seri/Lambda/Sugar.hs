@@ -38,7 +38,7 @@
 -- | Constructor functions for desugaring higher level constructs into the
 -- core Seri IR.
 module Seri.Lambda.Sugar (
-    caseE, deCaseE, trueP, falseP, ifE, deIfE,
+    laceE, deLaceE, caseE, deCaseE, trueP, falseP, ifE, deIfE,
     lamE, deLamE, letE, deLet1E, deLetE,
     typeE,
     Stmt(..), doE, clauseE,
@@ -54,17 +54,26 @@ import Seri.Lambda.Prelude
 import Seri.Lambda.Types
 import Seri.Lambda.Utils
 
+laceE :: [Match] -> Exp
+laceE = LaceE
+
+deLaceE :: Exp -> Maybe [Match]
+deLaceE (LaceE ms) = Just ms
+deLaceE _ = Nothing
+
 -- | case x of
 --      p1 -> e1;
 --      p2 -> e2;
 --      ...
 caseE :: Exp -> [Match] -> Exp
-caseE x ms = AppE (LaceE ms) [x]
+caseE x ms = appE (laceE ms) [x]
 
 deCaseE :: Exp -> Maybe ([Exp], [Match])
-deCaseE (AppE (LaceE ms@(Match ps _ : _)) xs) | length ps == length xs = Just (xs, ms)
-deCaseE _ = Nothing
-
+deCaseE e = do
+    (f, xs) <- deAppE e
+    ms@(Match ps _ : _) <- deLaceE f
+    guard (length ps == length xs)
+    return (xs, ms)
 
 trueP :: Pat
 trueP = ConP (ConT (name "Bool")) (name "True") []
@@ -85,11 +94,12 @@ deIfE e = do
 
 -- | \a b ... c -> e
 lamE :: Match -> Exp
-lamE m = LaceE [m]
+lamE m = laceE [m]
 
 deLamE :: Exp -> Maybe Match
-deLamE (LaceE [m]) = Just m
-deLamE _ = Nothing
+deLamE e = do
+    [m] <- deLaceE e
+    return m
 
 -- |
 -- > let n1 = e1
@@ -100,12 +110,14 @@ deLamE _ = Nothing
 -- TODO: use lazy pattern matching instead of strict?
 letE :: [(Pat, Exp)] -> Exp -> Exp
 letE [] x = x
-letE ((p, e):bs) x = AppE (lamE $ Match [p] (letE bs x)) [e]
+letE ((p, e):bs) x = appE (lamE $ Match [p] (letE bs x)) [e]
 
 -- Match against a single let binding.
 deLet1E :: Exp -> Maybe (Pat, Exp, Exp)
-deLet1E (AppE f [e]) | Just (Match [p] x) <- deLamE f = Just (p, e, x)
-deLet1E _ = Nothing
+deLet1E e = do
+    (f, [v]) <- deAppE e
+    Match [p] x <- deLamE f
+    return (p, v, x)
 
 unLetE :: Exp -> ([(Pat, Exp)], Exp)
 unLetE e | Just (p, v, rest) <- deLet1E e
@@ -144,7 +156,7 @@ doE ((BindS p e):stmts) =
 
 clauseE :: [Match] -> Exp
 clauseE [Match [] e] = e
-clauseE ms = LaceE ms
+clauseE ms = laceE ms
     
 -- | Record type constructors.
 data ConRec = NormalC Name [Type]
@@ -242,14 +254,14 @@ deriveEq dn vars cs =
             fields2 = [Sig (name $ [c, '2']) t | (t, c) <- zip ts "abcdefghijklmnopqrstuvwxyz"]
             p1 = ConP dt cn [VarP s | s <- fields1]
             p2 = ConP dt cn [VarP s | s <- fields2]
-            body = AppE (VarE (Sig (name "and") UnknownT))
+            body = appE (VarE (Sig (name "and") UnknownT))
                         [listE [appsE [VarE (Sig (name "==") UnknownT), VarE a, VarE b] | (a, b) <- zip fields1 fields2]]
         in Match [p1, p2] body
 
       def = Match [WildP UnknownT, WildP UnknownT] falseE
       ctx = [Class (name "Eq") [tyVarType c] | c <- vars]
       eqclauses = map mkcon cs ++ [def]
-      eq = Method (name "==") (LaceE eqclauses)
+      eq = Method (name "==") (laceE eqclauses)
       ne = Method (name "/=") (VarE (Sig (name "/=#") UnknownT))
   in InstD ctx (Class (name "Eq") [dt]) [eq, ne]
 
@@ -316,7 +328,7 @@ deriveFree dn vars cs =
                     | s <- tags ++ fields]
       pats = mkPats (length cs)
       bodies = map mkCon cs
-      lace = LaceE [Match p b | (p, b) <- zip pats bodies]
+      lace = laceE [Match p b | (p, b) <- zip pats bodies]
       value = appsE (lace : map VarE tags)
       rtn = NoBindS $ appsE [VarE (Sig (name "return") UnknownT),
              if null tags
@@ -341,5 +353,5 @@ derive x = error $ "deriving " ++ show x ++ " not supported in seri"
 typeE :: Exp -> Type -> Exp
 typeE (ConE (Sig n _)) t = ConE (Sig n t)
 typeE (VarE (Sig n _)) t = VarE (Sig n t)
-typeE e t = AppE (VarE (Sig (name "id") (arrowsT [t, t]))) [e]
+typeE e t = appE (VarE (Sig (name "id") (arrowsT [t, t]))) [e]
 
