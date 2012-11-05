@@ -5,36 +5,55 @@ import Prelude
 import Seri.Bit
 import Seri.SMT.SMT
 
-bityx :: Bit #(2+3)
-bityx = 15
+test :: [Char] -> Bool -> Query ()
+test nm True = return ()
+test nm False = error ("Test failed: " ++ nm)
 
-qmain :: Query (Answer (Bit#3, Bit #2, Bit #3))
-qmain = do
-    -- x is 'b111
-    x <- free
-    assert (((x :: Bit #3) + 1) == 0)
+qtest :: Query ()
+qtest = do
+    a <- free
+    assert (a == 0)
+    ra <- query (a :: Bit #5)
+    test "bit.simple" (ra == Satisfiable 0)
 
-    -- y is 'b01
-    y <- free
-    assert (bv_concat y x == bityx)
+    b <- free
+    c <- free
+    assert (b == c)
+    assert (c == 5)
+    rbc <- query (b :: Bit #5, c :: Bit #5)
+    test "bit.eq" (rbc == Satisfiable (5, 5))
 
-    -- z is 'b011
-    z <- free
-    assert (z == bv_extract bityx 2)
+    d <- free
+    assert ((d + 3) == 1)
+    rd <- query (d :: Bit #3)
+    test "bit.add" (rd == Satisfiable 6)
 
-    query (x, y, z)
+    e <- free
+    assert ((e - 3) == 6)
+    re <- query (e :: Bit #3)
+    test "bit.sub" (re == Satisfiable 1)
+
+    f <- free
+    assert (bv_not f == 0x15)
+    rf <- query (f :: Bit #5)
+    test "bit.not" (rf == Satisfiable 0x0A)
+
+    g <- free
+    assert (bv_and g 0xA == 0x0)
+    assert (bv_or g 0xA == 0xF)
+    rg <- query (g :: Bit #4)
+    test "bit.and" (rg == Satisfiable 0x5)
+
+    h <- free
+    assert (bv_concat (0x5 :: Bit #3) h == 0x17)
+    rh <- query (h :: Bit #2)
+    test "bit.concat" (rh == Satisfiable 3)
+    
+
 
 main :: IO ()
 main = do
-    putStr "yices1..."
-    r1 <- runYices1 (Just "build/test/Bit.yices1.dbg") qmain
-    putStrLn (show r1)
-
-    putStr "yices2..."
-    r2 <- runYices2 (Just "build/test/Bit.yices2.dbg") qmain
-    putStrLn (show r2)
-
-    putStr "stp..."
-    r3 <- runSTP (Just "build/test/Bit.stp.dbg") qmain
-    putStrLn (show r3)
+    runYices1 (Just "build/test/Bit.yices1.dbg") qtest
+    runYices2 (Just "build/test/Bit.yices2.dbg") qtest
+    runSTP (Just "build/test/Bit.stp.dbg") qtest
 

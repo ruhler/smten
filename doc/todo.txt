@@ -112,13 +112,6 @@ Bugs::
   think. So if a test case fails, it doesn't do "error", it says unknown
   query.
 
-Tests::
-* test bv_not in basic tests
-* test bv_not in SMT tests
-* Have Bit SMT tests test all the Bit vector primitives
-* Make an SMT test which exercises user defined data types on Core
-* Remove redundant SMT tests: Complex?
-
 Build System::
 * Don't require yices1 and yices2 to be installed to build or use seri
     If a solver isn't installed, just give a runtime error when you try to

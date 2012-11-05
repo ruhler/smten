@@ -53,6 +53,9 @@ mkExpr s e | Just [a, b] <- de_andE e = mkBinExpr s a b c_vc_andExpr
 mkExpr s e | Just (a, b) <- de_bvorE e = mkBinExpr s a b c_vc_bvOrExpr
 mkExpr s e | Just (a, b) <- de_bvandE e = mkBinExpr s a b c_vc_bvAndExpr
 mkExpr s e | Just (a, b) <- de_bvconcatE e = mkBinExpr s a b c_vc_bvConcatExpr
+mkExpr s e | Just a <- de_bvnotE e = do
+    ae <- mkExpr s a
+    withvc s $ \vc -> c_vc_bvNotExpr vc ae
 mkExpr s e | Just (a, n) <- de_bvshiftLeft0E e = do
     ae <- mkExpr s a
     withvc s $ \vc -> c_vc_bvLeftShiftExpr vc (fromInteger n) ae
@@ -79,6 +82,11 @@ mkExpr s e | Just (a, b) <- de_bvaddE e = do
     be <- mkExpr s b
     w <- withvc s $ \vc -> c_vc_getBVLength vc ae
     withvc s $ \vc -> c_vc_bvPlusExpr vc w ae be
+mkExpr s e | Just (a, b) <- de_bvsubE e = do
+    ae <- mkExpr s a
+    be <- mkExpr s b
+    w <- withvc s $ \vc -> c_vc_getBVLength vc ae
+    withvc s $ \vc -> c_vc_bvMinusExpr vc w ae be
 mkExpr s e | Just (w, v) <- de_mkbvE e = do
     withvc s $ \vc -> c_vc_bvConstExprFromLL vc (fromInteger w) (fromInteger v)
 mkExpr s (VarE nm) = do

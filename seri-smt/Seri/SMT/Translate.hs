@@ -143,7 +143,7 @@ smtE :: Exp -> CompilationM SMT.Expression
 smtE e = do
   poly <- gets ys_poly
   let se = elaborate SNF poly e
-  smtE' se
+  smtE' se `catchError` (\msg -> throw $ msg ++ "\nWhen translating: " ++ pretty se)
 
 -- | Compile a seri expression to smt, assuming the expression can be
 -- represented as is in smt without further elaboration.
@@ -256,6 +256,9 @@ smtE' e@(AppE a b) =
        [VarE (Sig n _), a, b]
           | n == name "Seri.Bit.__prim_add_Bit"
           -> binary SMT.bvaddE a b
+       [VarE (Sig n _), a, b]
+          | n == name "Seri.Bit.__prim_sub_Bit"
+          -> binary SMT.bvsubE a b
        [VarE (Sig n _), a, b]
           | n == name "Seri.Bit.__prim_or_Bit"
           -> binary SMT.bvorE a b

@@ -201,6 +201,7 @@ ytermS s e | Just (a, b) <- de_eqE e = dobinop' s a b c_yices_eq
 ytermS s e | Just [a, b] <- de_orE e = dobinop' s a b c_yices_or2
 ytermS s e | Just [a, b] <- de_andE e = dobinop' s a b c_yices_and2
 ytermS s e | Just (a, b) <- de_bvaddE e = dobinop' s a b c_yices_bvadd
+ytermS s e | Just (a, b) <- de_bvsubE e = dobinop' s a b c_yices_bvsub
 ytermS s e | Just (a, b) <- de_bvorE e = dobinop' s a b c_yices_bvor
 ytermS s e | Just (a, b) <- de_bvandE e = dobinop' s a b c_yices_bvand
 ytermS s e | Just (a, b) <- de_bvconcatE e = dobinop' s a b c_yices_bvconcat
