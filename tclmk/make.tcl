@@ -139,6 +139,7 @@ proc smttest {name} {
 
 smttest "Core"
 smttest "Integer"
+smttest "Scoped"
 
 smttest "Bit"
 smttest "Complex"

@@ -108,6 +108,9 @@ Bugs::
 * Report an error for an unknown primitive encountered in SMT Translation
 * I suspect shadowed variables won't work in STP queries because of a bug in
   how let expressions are implemented. (Can that ever happen?)
+* de_stringEH doesn't work without full elaboration of the argument I don't
+  think. So if a test case fails, it doesn't do "error", it says unknown
+  query.
 
 Tests::
 * test bv_not in basic tests

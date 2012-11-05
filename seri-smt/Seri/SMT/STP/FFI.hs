@@ -12,6 +12,8 @@ module Seri.SMT.STP.FFI (
 
     c_vc_varExpr,
     c_vc_assertFormula,
+    c_vc_push,
+    c_vc_pop,
     c_vc_query,
 
     c_vc_trueExpr,
@@ -62,6 +64,12 @@ foreign import ccall "vc_varExpr"
 
 foreign import ccall "vc_assertFormula"
     c_vc_assertFormula  :: Ptr STP_VC -> Ptr STP_Expr -> IO ()
+
+foreign import ccall "vc_push"
+    c_vc_push  :: Ptr STP_VC -> IO ()
+
+foreign import ccall "vc_pop"
+    c_vc_pop  :: Ptr STP_VC -> IO ()
 
 foreign import ccall "vc_query"
     c_vc_query  :: Ptr STP_VC -> Ptr STP_Expr -> IO CInt

@@ -1,0 +1,76 @@
+
+Sun Nov  4 12:22:45 EST 2012
+
+I need to add delambdafication to primitives.
+
+I should come up with a better name than delambdafication, because that's not
+really what it is. It's more like... case evaluation or symbolic evaluation or
+some such.
+
+I'm a little scared, because of past attempts I've made, and the fact that I
+don't really understand how it currently works.
+
+But! I can make small progress towards the end goal which will be useful. Put
+this under the classification of cleanup of Elaboration.
+
+There are two place to do cleanup. The first is, pull the decasification into
+a separate function. Delacification. That's a nice name. Let me start calling
+it delacification. So, make delacify its own function, and apply that to
+wherever it is now applied. Then it should hopefully be easy to apply
+elsewhere.
+
+The second is, factor out common code for all the primitives.
+
+I think there are a number of stages of common code here that I can leverage.
+But basically the idea behind all the primitives is the same. Elaborate the
+arguments, extract a value of expected type, if extraction was successful,
+apply some function to produce a new object and push it into the ExpH
+representation and return that, otherwise don't do anything.
+
+I think binary and unary and terciary (are there any of those?) are separate
+things. We can have those be the base:
+
+primbinary :: (ExpH -> ExpH -> Maybe ExpH) -> Primitive
+
+Elaborates the arguments, applies your function, if it gets a result, uses
+that, otherwise does nothing.
+
+primunary :: (ExpH -> Maybe ExpH)
+
+Then you can build up other structures on top. For example, for a binary
+integer thing:
+
+binint :: (Integer -> Integer -> Integer) -> (ExpH -> ExpH -> Maybe ExpH)
+So you can do any binary integer operation.
+
+I think this separates the common functionality in a much cleaner way. We'll
+see if it actually works out of course, but I would like to give it a try and
+see.
+
+Sun Nov  4 13:28:45 EST 2012
+
+You know, I could probably clean up the primitives a bit more and make in more
+generic by using a type class to describe how to translate Haskell values to
+and from Seri values. It could then automatically infer which things to use
+just based on the function type.
+
+This would be useful to have in general too, only I suppose the elaborator is
+specific to ExpH as opposed to Exp.
+
+The only hiccup is with de_bitEH. Because of how I represent bit vectors, a
+bitEH in WHNF may not be a bitEH. Which means I need the elab function to
+implement bitEH, so I can't take it outside.
+
+This may be solved if I do SNF elaboration instead of WHNF elaboration. And
+because it's lazy, it shouldn't hurt us any.
+
+I think it's worth a try.
+
+Well, the other challenge is stringE, which reuses the toh code.
+
+What I really ought to do is just pull everything out of the closure... but
+that means I have to pass around Env and Mode everywhere, which is annoying.
+
+Maybe I'll come back to that.
+
+

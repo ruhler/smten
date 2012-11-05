@@ -114,6 +114,9 @@ instance Solver STP where
     run s (Assert e) = do
         se <- mkExpr s e
         withvc s $ \vc -> c_vc_assertFormula vc se
+
+    run s Push = withvc s c_vc_push
+    run s Pop = withvc s c_vc_pop
         
     run _ cmd = error $ "TODO: STP.run " ++ show cmd
     
