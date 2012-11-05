@@ -140,9 +140,10 @@ proc smttest {name} {
 smttest "Core"
 smttest "Integer"
 smttest "Scoped"
+#smttest "Datatype"
 
 smttest "Bit"
-smttest "Complex"
+
 smttest "Bluespec"
 smttest "Array"
 smttest "Share"

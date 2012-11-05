@@ -1,0 +1,59 @@
+
+module Seri.SMT.Tests.Datatype where
+
+import Prelude
+import Seri.SMT.SMT
+
+data MyEnum = E1 | E2 | E3 | E4
+    deriving (Eq, Free)
+
+rotateenum :: MyEnum -> MyEnum
+rotateenum E1 = E2
+rotateenum E2 = E3
+rotateenum E3 = E4
+rotateenum E4 = E1
+
+data MyStruct = MyStruct MyEnum Bool
+    deriving (Eq, Free)
+
+changestruct :: MyStruct -> MyStruct
+changestruct (MyStruct e True) = MyStruct (rotateenum e) False
+changestruct (MyStruct e False) = MyStruct e True
+
+data MyMix = Mix1 Bool Bool
+           | Mix2 Bool
+    deriving (Eq, Free)
+
+mixval :: MyMix -> MyEnum
+mixval (Mix1 True _) = E1
+mixval (Mix1 False _) = E2
+mixval (Mix2 True) = E3
+mixval (Mix2 False) = E4
+
+test :: [Char] -> Bool -> Query ()
+test nm True = return ()
+test nm False = error ("Test failed: " ++ nm)
+
+qtest :: Query ()
+qtest = do
+    a <- free
+    assert (rotateenum a == E3)
+    ra <- query a
+    test "datatype.enum" (ra == Satisfiable E2)
+
+    b <- free
+    assert (changestruct b == MyStruct E2 False)
+    rb <- query b
+    test "datatype.struct" (rb == Satisfiable (MyStruct E1 True))
+    
+    c <- free
+    assert (mixval c == E3)
+    rc <- query c
+    test "datatype.mix" (rc == Satisfiable (Mix2 True))
+
+main :: IO ()
+main = do
+    runYices1 (Just "build/test/Datatype.yices1.dbg") qtest
+    runYices2 (Just "build/test/Datatype.yices2.dbg") qtest
+    runSTP (Just "build/test/Datatype.stp.dbg") qtest
+

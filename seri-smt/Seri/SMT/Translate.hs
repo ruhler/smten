@@ -119,7 +119,8 @@ yfreecase c = do
 smtC :: Sig -> [Exp] -> CompilationM SMT.Expression
 smtC (Sig n _) [] | n == name "True" = return SMT.trueE
 smtC (Sig n _) [] | n == name "False" = return SMT.falseE
-smtC s _ = error $ "smtC: " ++ pretty s
+smtC s args = throw $ "unsupported constructor application: "
+                        ++ pretty (AppE (ConE s) args)
 
 -- | Convert a seri name to an SMT name.
 smtN :: Name -> String
