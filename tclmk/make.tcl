@@ -141,7 +141,6 @@ smttest "Core"
 smttest "Integer"
 smttest "Scoped"
 #smttest "Datatype"
-
 smttest "Bit"
 
 smttest "Bluespec"

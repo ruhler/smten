@@ -53,6 +53,7 @@ import Seri.Bit
 import Seri.Failable
 import qualified Seri.HashTable as HT
 import Seri.Lambda
+import Seri.Lambda.Ppr hiding (Mode)
 
 import Seri.Elaborate.FreshPretty
 
@@ -68,7 +69,17 @@ data ExpH = LitEH Lit
           | VarEH EState Sig
           | AppEH EState ExpH [ExpH]
           | LaceEH EState [MatchH]
-    deriving(Eq, Show)
+    deriving(Eq)
+
+instance Ppr ExpH where
+    ppr (LitEH l) = ppr l
+    ppr (ConEH s) = ppr s
+    ppr (VarEH _ s) = ppr s
+    ppr (AppEH _ f xs) = sep (ppr f : map (parens . ppr) xs)
+    ppr (LaceEH _ ms)
+        = text "case" <+> text "of" <+> text "{"
+            $+$ nest tabwidth (vcat (map ppr ms)) $+$ text "}"
+    
 
 -- | MatchH is a list of patterns a function describing the body of the match.
 -- This function takes as input an association list containing a mapping from
@@ -83,10 +94,10 @@ data ExpH = LitEH Lit
 --  The argument to this matches function would be:
 --      [("a", 1), ("b", 4), ("c", 2), ("d", 5)]
 data MatchH = MatchH [Pat] ([(Sig, ExpH)] -> ExpH)
-    deriving (Eq, Show)
+    deriving (Eq)
 
-instance Show (a -> ExpH) where
-    show _ = "(function)"
+instance Ppr MatchH where
+    ppr (MatchH ps _) = ppr ps <+> text "->" <+> text "..." Seri.Lambda.Ppr.<> semi
 
 instance Eq (a -> ExpH) where
     (==) _ _ = False
@@ -175,7 +186,7 @@ elaborate mode env exp =
       -- could, so if f is not strict in the argument, wouldn't this already
       -- go away? I'm not sure.
       delacifyM :: ExpH -> [ExpH] -> Maybe ExpH
-      delacifyM f (AppEH _ (LaceEH _ bms) cargs : fargs) | mode == SNF =
+      delacifyM f (AppEH _ (LaceEH _ bms) cargs : fargs) =
         let rematch :: ExpH -> MatchH -> MatchH 
             rematch f (MatchH ps b) = MatchH ps $ \m -> AppEH ES_None f [b m]
 
@@ -184,10 +195,11 @@ elaborate mode env exp =
                      AppEH ES_None (LaceEH ES_None (map (rematch (snd (head m))) bms)) (cargs ++ fargs)
                      ]
         in Just (elab $ AppEH ES_None lam [f])
-      delacifyM f (x:xs) | mode == SNF = delacifyM (AppEH (ES_Some mode) f [x]) xs
+      delacifyM f (x:xs) = delacifyM (AppEH (ES_Some mode) f [x]) xs
       delacifyM f x = Nothing
 
       delacify :: ExpH -> [ExpH] -> ExpH
+      delacify f args | mode /= SNF = AppEH (ES_Some mode) f args
       delacify f args =
         let undelacified = AppEH (ES_Some mode) f args
             delacified = delacifyM f args
@@ -242,9 +254,9 @@ elaborate mode env exp =
                          ]
                in elab $ AppEH ES_None lam rargs
 
-            LaceEH _ ms@(MatchH ps _ : _) | length args == length ps ->
+            l@(LaceEH _ ms@(MatchH ps _ : _)) | length args == length ps ->
                case matchms args ms of
-                 NoMatched -> error $ "case no match"
+                 NoMatched -> error $ "case no match: " ++ pretty l ++ ",\n " ++ concat ["(" ++ pretty a ++ ") " | a <- args]
                  Matched e -> elab e
                  UnMatched ms' -> delacify (LaceEH (ES_Some mode) ms') args
             f' -> AppEH (ES_Some mode) f' args
