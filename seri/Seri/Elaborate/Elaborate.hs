@@ -204,7 +204,6 @@ elaborate mode env exp =
       elab' e@(AppEH _ f uearg) = 
         let arg = if mode == SNF then elab uearg else uearg
         in case (elab f) of
-            f'@(ConEH s) -> AppEH (ES_Some mode) f' (elab arg)
             l@(LaceEH _ ms@(MatchH p _ : _)) ->
                case matchms arg ms of
                  NoMatched -> error $ "case no match: " ++ pretty l ++ ",\n " ++ "(" ++ pretty arg ++ ") "
