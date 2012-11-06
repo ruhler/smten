@@ -170,18 +170,38 @@ elaborate mode env exp =
       match (WildP _) _ = Succeeded []
       match p e = Unknown
 
+      elab :: ExpH -> ExpH
+      elab e =
+        case elab' e of
+            AppEH _ f x | mode == SNF
+                        , AppEH _ (LaceEH _ ms) y <- elab x -> 
+               let -- perform "function" pushing.
+                   -- Rewrites:
+                   --    (blah blah) (case y of {p1 -> m1; p2 -> m2})
+                   -- As:
+                   --    let _f = (blah blah)
+                   --    in case y of {p1 -> _f m1; p2 -> _f m2}
+                   rematch :: ExpH -> MatchH -> MatchH
+                   rematch f (MatchH p b) = MatchH p $ \m -> AppEH ES_None f (b m)
+
+                   pat = VarP $ Sig (name "_f") (typeof f)
+                   lam = LaceEH ES_None [MatchH pat $ \[(_, _f)] ->
+                            AppEH ES_None (LaceEH ES_None (map (rematch _f) ms)) y 
+                          ]
+               in elab $ AppEH ES_None lam f
+            ee -> ee
 
       -- elaborate the given expression
-      elab :: ExpH -> ExpH
-      elab e@(LitEH l) = e
-      elab e@(ConEH s) = e
-      elab e@(VarEH (ES_Some m) s) | mode <= m = e
-      elab e@(VarEH _ s@(Sig n ct)) =
+      elab' :: ExpH -> ExpH
+      elab' e@(LitEH l) = e
+      elab' e@(ConEH s) = e
+      elab' e@(VarEH (ES_Some m) s) | mode <= m = e
+      elab' e@(VarEH _ s@(Sig n ct)) =
         case (attemptM $ lookupVar env s) of
             Just (pt, ve) -> elab $ toh [] $ assignexp (assignments pt ct) ve
             Nothing -> VarEH (ES_Some SNF) s
-      elab e@(AppEH (ES_Some m) _ _) | mode <= m = e
-      elab e@(AppEH _ f uearg) = 
+      elab' e@(AppEH (ES_Some m) _ _) | mode <= m = e
+      elab' e@(AppEH _ f uearg) = 
         let arg = if mode == SNF then elab uearg else uearg
         in case (elab f) of
             f'@(ConEH s) -> AppEH (ES_Some mode) f' (elab arg)
@@ -193,9 +213,9 @@ elaborate mode env exp =
             (AppEH _ (LaceEH _ ms) y) ->
                 let -- perform "argument pushing"
                     -- Rewrites:
-                    --    (case y of { ... -> f; ... -> g) arg
+                    --    (case y of { ... -> f; ... -> g) (blah blah)
                     -- As:
-                    --    let _a = arg
+                    --    let _a = (blah blah)
                     --    in case y of { ... -> f _a; ... -> g _a }
                     argvar = Sig (name "_a") (typeof arg)
 
@@ -209,9 +229,9 @@ elaborate mode env exp =
                             ]
                 in elab $ AppEH ES_None lam arg
             f' -> AppEH (ES_Some mode) f' arg
-      elab e@(LaceEH (ES_Some m) _) | mode <= m = e
-      elab e@(LaceEH _ ms) | mode == WHNF = e
-      elab e@(LaceEH _ ms) = 
+      elab' e@(LaceEH (ES_Some m) _) | mode <= m = e
+      elab' e@(LaceEH _ ms) | mode == WHNF = e
+      elab' e@(LaceEH _ ms) = 
         let elabm :: MatchH -> MatchH
             elabm (MatchH p f) = MatchH p (\m -> elab (f m))
         in LaceEH (ES_Some mode) (map elabm ms)
