@@ -201,14 +201,13 @@ elaborate mode env exp =
             Just (pt, ve) -> elab $ toh [] $ assignexp (assignments pt ct) ve
             Nothing -> VarEH (ES_Some SNF) s
       elab' e@(AppEH (ES_Some m) _ _) | mode <= m = e
-      elab' e@(AppEH _ f uearg) = 
-        let arg = if mode == SNF then elab uearg else uearg
-        in case (elab f) of
+      elab' e@(AppEH _ f arg) = 
+           case (elab f) of
             l@(LaceEH _ ms@(MatchH p _ : _)) ->
                case matchms arg ms of
                  NoMatched -> error $ "case no match: " ++ pretty l ++ ",\n " ++ "(" ++ pretty arg ++ ") "
                  Matched e -> elab e
-                 UnMatched ms' -> AppEH (ES_Some mode) (LaceEH (ES_Some mode) ms') arg
+                 UnMatched ms' -> AppEH (ES_Some mode) (LaceEH (ES_Some mode) ms') (if mode == SNF then elab arg else arg)
             (AppEH _ (LaceEH _ ms) y) | mode == SNF ->
                 let -- perform "argument pushing"
                     -- Rewrites:
@@ -227,7 +226,7 @@ elaborate mode env exp =
                               in AppEH ES_None (LaceEH ES_None ams) y
                             ]
                 in elab $ AppEH ES_None lam arg
-            f' -> AppEH (ES_Some mode) f' arg
+            f' -> AppEH (ES_Some mode) f' (if mode == SNF then elab arg else arg)
       elab' e@(LaceEH (ES_Some m) _) | mode <= m = e
       elab' e@(LaceEH _ ms) | mode == WHNF = e
       elab' e@(LaceEH _ ms) = 

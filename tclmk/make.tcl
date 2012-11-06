@@ -69,6 +69,7 @@ indir seri-smt {
 indir build/seri-bin {
     hrun ln -sf ../../seri-bin/seri.hs seri.hs
     hrun ghc -o seri seri.hs
+    #hrun ghc -rtsopts -prof -auto-all -o seri seri.hs
 
     hrun ln -sf ../../seri-bin/enoch.hs enoch.hs
     hrun ghc -o enoch enoch.hs

@@ -10,7 +10,7 @@ import Seri.Sudoku.IntegerCell
 
 qmain :: Query [[Char]]
 qmain = do
-    board <- (readBoard diabolical :: Query (Board IntegerCell))
+    board <- (readBoard little :: Query (Board IntegerCell))
     result <- solve board
     case result of
        Satisfiable v -> return (print v)
