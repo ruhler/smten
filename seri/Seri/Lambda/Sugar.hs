@@ -38,15 +38,18 @@
 -- | Constructor functions for desugaring higher level constructs into the
 -- core Seri IR.
 module Seri.Lambda.Sugar (
-    laceE, deLaceE, caseE, deCaseE, trueP, falseP, ifE, deIfE,
+    laceE, deLaceE, sLaceE, caseE, deCaseE, trueP, falseP, ifE, deIfE,
     lamE, deLamE, letE, deLet1E, deLetE,
     typeE,
     Stmt(..), doE, clauseE,
     ConRec(..), recordD, recordC, recordU,
     ) where
 
+import Debug.Trace
+
 import Control.Monad
 import Data.List((\\))
+import Data.Maybe (fromMaybe)
 
 import Seri.Failable
 import Seri.Lambda.IR
@@ -60,6 +63,49 @@ laceE = LaceE
 deLaceE :: Exp -> Maybe [Match]
 deLaceE (LaceE ms) = Just ms
 deLaceE _ = Nothing
+
+-- | Convert multi-arg laces to single-arg laces here
+--  case of
+--    p1a, p1b, p1c -> m1
+--    p2a, p2b, p2c -> m2
+--
+-- Is converted into:
+--   (curry (curry (
+--      case of
+--         ((p1a, p1b), p1c) -> m1
+--         ((p2a, p2b), p2c) -> m1
+sLaceE :: [Match] -> Exp
+sLaceE ms@(Match [_] _ : _) = LaceE ms
+sLaceE ms@(Match ps _ : _)= 
+  let tupp :: Pat -> Pat -> Pat
+      tupp a b = tupP [a, b]
+
+      repat :: [Pat] -> Pat
+      repat = foldl1 tupp
+
+      -- Apply curry to the given expression n times.
+      curryn :: Int -> Exp -> Exp
+      curryn 0 e = e
+      curryn n e = curryn (n-1) (curryE e)
+    
+      lace = LaceE [Match [repat ps] b | Match ps b <- ms]
+      slaced = curryn (length ps - 1) lace
+  in slaced
+
+-- | curry e
+-- | The curry function, after flattening and type checking.
+curryE :: Exp -> Exp
+curryE e =
+  let (ta, tb, tc) = fromMaybe (UnknownT, UnknownT, UnknownT) $ do
+        (tt, c) <- deArrowT (typeof e)
+        [a, b] <- deTupT tt
+        return (a, b, c)
+  in appE (VarE (Sig (name "Prelude.curry") (curryT ta tb tc))) [e]
+
+-- | given types a, b, c,
+-- returns the type: ((a, b) -> c) -> a -> b -> c
+curryT :: Type -> Type -> Type -> Type
+curryT a b c = arrowsT [arrowsT [tupT [a, b], c], a, b, c]
 
 -- | case x of
 --      p1 -> e1;

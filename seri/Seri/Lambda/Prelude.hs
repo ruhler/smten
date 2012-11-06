@@ -97,18 +97,6 @@ tupE es@(_:_:_) =
       ttype = arrowsT (types ++ [tupT types])
   in appE (ConE (Sig nm ttype)) es
 
--- Check if a name is a tuple name. If so, returns the number of elements in
--- the tuple.
-deTupN :: Name -> Maybe Integer
-deTupN n = do
-    let s = unname n
-    guard $ length s > 2
-    guard $ head s == '('
-    guard $ last s == ')'
-    let mid = init (tail s)
-    guard $ all (== ',') mid
-    return (genericLength mid + 1)
-    
 deTupE :: Exp -> Maybe [Exp]
 deTupE e = do
     (ConE (Sig n _), args) <- deAppE e

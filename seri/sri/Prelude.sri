@@ -68,7 +68,7 @@ id :: a -> a
 id x = x
 
 (.) :: (b -> c) -> (a -> b) -> a -> c
-(.) f g = \x -> f (g x)
+(.) f g x = f (g x)
 
 flip :: (a -> b -> c) -> b -> a -> c
 flip f x y = f y x
@@ -153,6 +153,11 @@ fst (x, _) = x
 
 snd :: (a, b) -> b
 snd (_, y) = y
+
+-- Note: curry is used in syntactic sugar for multi arg pattern matching, so
+-- we can't use that in its implementation.
+curry :: ((a, b) -> c) -> a -> b -> c
+curry = \f -> \a -> \b -> f (a, b)
 
 error :: [Char] -> a
 

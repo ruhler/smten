@@ -43,7 +43,12 @@ instance Free () where
     free = return ()
 
 instance Free Bool where
-    free = __prim_free_Bool
+    free = do
+        -- Note: we don't just use __prim_free_Bool, because we want the if
+        -- statement to show up in the elaborator. That way, delacification
+        -- can simplify things much more nicely.
+        isTrue <- __prim_free_Bool
+        return (if isTrue then True else False)
 
 instance Free Integer where
     free = __prim_free_Integer

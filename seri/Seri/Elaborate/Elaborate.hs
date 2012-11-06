@@ -67,7 +67,7 @@ data EState = ES_None | ES_Some Mode
 data ExpH = LitEH Lit
           | ConEH Sig
           | VarEH EState Sig
-          | AppEH EState ExpH [ExpH]
+          | AppEH EState ExpH ExpH
           | LaceEH EState [MatchH]
     deriving(Eq)
 
@@ -75,7 +75,7 @@ instance Ppr ExpH where
     ppr (LitEH l) = ppr l
     ppr (ConEH s) = ppr s
     ppr (VarEH _ s) = ppr s
-    ppr (AppEH _ f xs) = sep (ppr f : map (parens . ppr) xs)
+    ppr (AppEH _ f x) = parens (ppr f) <+> parens (ppr x)
     ppr (LaceEH _ ms)
         = text "case" <+> text "of" <+> text "{"
             $+$ nest tabwidth (vcat (map ppr ms)) $+$ text "}"
@@ -84,20 +84,19 @@ instance Ppr ExpH where
 -- | MatchH is a list of patterns a function describing the body of the match.
 -- This function takes as input an association list containing a mapping from
 -- Sig to expression. The Sigs correspond to the signatures of all the
--- variables bound by all the patterns, in order from left to right of
--- occurence of pattern and variable within the pattern. The expression is the
--- bound value of that.
+-- variables bound by all the pattern, in order from left to right of
+-- the variable within the pattern. The expression is the bound value of that.
 --
 -- For example, the case expression:
---  case Just (Foo 1 4), Foo 2 5 of
---      Just (Foo a b), Foo c d -> a + b + c + d
+--  case Just (Foo 1 4) of
+--      Just (Foo a b) -> a + b + c + d
 --  The argument to this matches function would be:
---      [("a", 1), ("b", 4), ("c", 2), ("d", 5)]
-data MatchH = MatchH [Pat] ([(Sig, ExpH)] -> ExpH)
+--      [("a", 1), ("b", 4)]
+data MatchH = MatchH Pat ([(Sig, ExpH)] -> ExpH)
     deriving (Eq)
 
 instance Ppr MatchH where
-    ppr (MatchH ps _) = ppr ps <+> text "->" <+> text "..." Seri.Lambda.Ppr.<> semi
+    ppr (MatchH p _) = ppr p <+> text "->" <+> text "..." Seri.Lambda.Ppr.<> semi
 
 instance Eq (a -> ExpH) where
     (==) _ _ = False
@@ -106,16 +105,16 @@ instance Typeof ExpH where
     typeof (LitEH l) = typeof l
     typeof (ConEH s) = typeof s
     typeof (VarEH _ s) = typeof s
-    typeof (AppEH _ f xs) =
+    typeof (AppEH _ f x) =
         let fts = unarrowsT (typeof f)
-        in case (drop (length xs) fts) of
+        in case (drop 1 fts) of
               [] -> UnknownT
               ts -> arrowsT ts
     typeof (LaceEH _ []) = UnknownT
-    typeof (LaceEH _ (MatchH ps b:_)) =
-      let bindings = concatMap bindingsP ps
+    typeof (LaceEH _ (MatchH p b:_)) =
+      let bindings = bindingsP p
           bt = typeof (b (zip bindings (map (VarEH ES_None) bindings)))
-      in arrowsT (map typeof ps ++ [bt])
+      in arrowsT [typeof p, bt]
 
 
 -- Weak head normal form elaboration
@@ -135,17 +134,21 @@ elaborate mode env exp =
       toh m (VarE s@(Sig n _)) | Just f <- HT.lookup n primitives = f s
       toh m (VarE s) | Just v <- lookup s m = v
       toh m (VarE s) = VarEH ES_None s
-      toh m (AppE f xs) = AppEH ES_None (toh m f) (map (toh m) xs)
+      toh m (AppE f xs) =
+        let appeh :: ExpH -> Exp -> ExpH
+            appeh f x = AppEH ES_None f (toh m x)
+        in foldl appeh (toh m f) xs
+      toh m (LaceE ms@(Match (_:_:_) _ : _)) = toh m (sLaceE ms)
       toh m (LaceE ms) = 
-        let tomh (Match ps b) = MatchH ps (\bnd -> (toh (bnd ++ m) b))
+        let tomh (Match [p] b) = MatchH p (\bnd -> (toh (bnd ++ m) b))
         in LaceEH ES_None (map tomh ms)
          
-      -- Match expressions against a sequence of alternatives.
-      matchms :: [ExpH] -> [MatchH] -> MatchesResult
+      -- Match an expression against a sequence of alternatives.
+      matchms :: ExpH -> [MatchH] -> MatchesResult
       matchms _ [] = NoMatched
-      matchms xs ms@((MatchH ps f):_) =
-        case matchps ps xs of 
-          Failed -> matchms xs (tail ms)
+      matchms x ms@((MatchH p f):_) =
+        case match p x of 
+          Failed -> matchms x (tail ms)
           Succeeded vs -> Matched $ f vs
           Unknown -> UnMatched ms
      
@@ -167,43 +170,6 @@ elaborate mode env exp =
       match (WildP _) _ = Succeeded []
       match p e = Unknown
 
-      -- Perform a delacification
-      -- Rewrites:
-      --    (blah blah) (case foo of
-      --                   p1 -> m1  
-      --                   p2 -> m2
-      --                   ...) x y z
-      --    
-      -- As:
-      --    let _f = (blah blah)
-      --    in (case foo of
-      --          p1 -> _f m1
-      --          p2 -> _f m2) x y z
-      --
-      -- TODO: this is suspect. For example, if the function _f is not strict
-      -- in the argument, this transformation is wrong, because it makes f
-      -- strict in the argument. But, we've already elaborated anything we
-      -- could, so if f is not strict in the argument, wouldn't this already
-      -- go away? I'm not sure.
-      delacifyM :: ExpH -> [ExpH] -> Maybe ExpH
-      delacifyM f (AppEH _ (LaceEH _ bms) cargs : fargs) =
-        let rematch :: ExpH -> MatchH -> MatchH 
-            rematch f (MatchH ps b) = MatchH ps $ \m -> AppEH ES_None f [b m]
-
-            pat = VarP $ Sig (name "_f") (typeof f)
-            lam = LaceEH ES_None [MatchH [pat] $ \m ->
-                     AppEH ES_None (LaceEH ES_None (map (rematch (snd (head m))) bms)) (cargs ++ fargs)
-                     ]
-        in Just (elab $ AppEH ES_None lam [f])
-      delacifyM f (x:xs) = delacifyM (AppEH (ES_Some mode) f [x]) xs
-      delacifyM f x = Nothing
-
-      delacify :: ExpH -> [ExpH] -> ExpH
-      delacify f args | mode /= SNF = AppEH (ES_Some mode) f args
-      delacify f args =
-        let undelacified = AppEH (ES_Some mode) f args
-            delacified = delacifyM f args
-        in fromMaybe undelacified delacified
 
       -- elaborate the given expression
       elab :: ExpH -> ExpH
@@ -214,52 +180,17 @@ elaborate mode env exp =
         case (attemptM $ lookupVar env s) of
             Just (pt, ve) -> elab $ toh [] $ assignexp (assignments pt ct) ve
             Nothing -> VarEH (ES_Some SNF) s
-      elab (AppEH _ x []) = elab x
       elab e@(AppEH (ES_Some m) _ _) | mode <= m = e
-      elab e@(AppEH _ f ueargs) = 
-        let args = if mode == SNF 
-                        then map elab ueargs
-                        else ueargs
+      elab e@(AppEH _ f uearg) = 
+        let arg = if mode == SNF then elab uearg else uearg
         in case (elab f) of
-            f'@(ConEH s) -> AppEH (ES_Some mode) f' (map elab args)
-            AppEH _ f largs -> elab (AppEH ES_None f (largs ++ args))
-            LaceEH _ ms@(MatchH ps _ : _) | length args > length ps ->
-               let -- Apply the given arguments to the body of the match.
-                   appm :: [ExpH] -> MatchH -> MatchH
-                   appm [] m = m
-                   appm xs (MatchH p f) = MatchH p (\m -> AppEH ES_None (f m) xs)
-
-                   (largs, rargs) = splitAt (length ps) args
-
-                   -- Push all extra arguments into the matches.
-                   -- This serves two purposes. It applies the extra arguments
-                   -- to which ever alternative matches, and it performs a
-                   -- delambdafication in case there are no matches.
-                   -- That is, it rewrites:
-                   --  (case foo of
-                   --     ... -> f
-                   --     ... -> g) (blah blah blah)
-                   --
-                   -- As:
-                   --  let _a = (blah blah blah)
-                   --  case foo of
-                   --     ... -> f _a
-                   --     ... -> g _a
-                   nms = [name ['_', c] | c <- "abcdefghijklmnopqrstuvwxyz"]
-                   tys = map typeof rargs
-                   pats = [VarP $ Sig n t | (n, t) <- zip nms tys]
-                   lam = LaceEH ES_None [MatchH pats $ \m -> 
-                           let ams = map (appm (map snd m)) ms
-                           in AppEH ES_None (LaceEH ES_None ams) largs
-                         ]
-               in elab $ AppEH ES_None lam rargs
-
-            l@(LaceEH _ ms@(MatchH ps _ : _)) | length args == length ps ->
-               case matchms args ms of
-                 NoMatched -> error $ "case no match: " ++ pretty l ++ ",\n " ++ concat ["(" ++ pretty a ++ ") " | a <- args]
+            f'@(ConEH s) -> AppEH (ES_Some mode) f' (elab arg)
+            l@(LaceEH _ ms@(MatchH p _ : _)) ->
+               case matchms arg ms of
+                 NoMatched -> error $ "case no match: " ++ pretty l ++ ",\n " ++ "(" ++ pretty arg ++ ") "
                  Matched e -> elab e
-                 UnMatched ms' -> delacify (LaceEH (ES_Some mode) ms') args
-            f' -> AppEH (ES_Some mode) f' args
+                 UnMatched ms' -> AppEH (ES_Some mode) (LaceEH (ES_Some mode) ms') arg
+            f' -> AppEH (ES_Some mode) f' arg
       elab e@(LaceEH (ES_Some m) _) | mode <= m = e
       elab e@(LaceEH _ ms) | mode == WHNF = e
       elab e@(LaceEH _ ms) = 
@@ -272,18 +203,17 @@ elaborate mode env exp =
       toeM (LitEH l) = return (LitE l)
       toeM (ConEH s) = return (ConE s)
       toeM (VarEH _ s) = return (VarE s)
-      toeM (AppEH _ f xs) = do
-        f' <- toeM f
-        xs' <- mapM toeM xs
-        return (AppE f' xs')
+      toeM e@(AppEH {}) = do
+        (f:args) <- mapM toeM (unappsEH e)
+        return (AppE f args)
       toeM (LaceEH _ ms) = 
-        let toem (MatchH ps f) = do
-              let sigs = concatMap bindingsP ps
+        let toem (MatchH p f) = do
+              let sigs = bindingsP p
               sigs' <- mapM fresh sigs
               let rename = zip sigs sigs'
-              let ps' = map (repat (zip sigs sigs')) ps
+              let p' = (repat (zip sigs sigs')) p
               b <- toeM (f [(s, VarEH ES_None s') | (s, s') <- rename])
-              return (Match ps' b)
+              return (Match [p'] b)
         in LaceE <$> mapM toem ms
     
       toe :: ExpH -> Exp
@@ -294,9 +224,9 @@ elaborate mode env exp =
       unary f s@(Sig _ t) =
         let [ta, _] = unarrowsT t
         in LaceEH (ES_Some WHNF) [
-             MatchH [VarP $ Sig (name "a") ta] $ 
+             MatchH (VarP $ Sig (name "a") ta) $ 
                \[(_, a)] ->
-                  let def = AppEH (ES_Some WHNF) (VarEH (ES_Some SNF) s) [a]
+                  let def = AppEH (ES_Some WHNF) (VarEH (ES_Some SNF) s) a
                   in fromMaybe def (f (elab a))
              ]
 
@@ -327,11 +257,13 @@ elaborate mode env exp =
       binary f s@(Sig _ t) =
         let [ta, tb, _] = unarrowsT t
         in LaceEH (ES_Some WHNF) [
-             MatchH [VarP $ Sig (name "a") ta, VarP $ Sig (name "b") tb] $ 
-               \[(_, a), (_, b)] ->
-                  let def = AppEH (ES_Some WHNF) (VarEH (ES_Some SNF) s) [a, b]
-                  in fromMaybe def (f (elab a) (elab b))
-             ]
+             MatchH (VarP $ Sig (name "a") ta) $ \[(_, a)] ->
+               LaceEH (ES_Some WHNF) [
+                 MatchH (VarP $ Sig (name "b") tb) $ \[(_, b)] ->
+                   let def = AppEH (ES_Some WHNF) (AppEH (ES_Some WHNF) (VarEH (ES_Some SNF) s) a) b
+                   in fromMaybe def (f (elab a) (elab b))
+                  ]
+              ]
 
       -- Handle a binary primitive of type a -> b -> c
       bXXX :: (ExpH -> Maybe a)     -- ^ how to get a
@@ -375,7 +307,7 @@ elaborate mode env exp =
       -- Extract a Bit from an expression of the form: __prim_frominteger_Bit v
       -- The expression should be elaborated already.
       de_bitEH :: ExpH -> Maybe Bit
-      de_bitEH (AppEH _ (VarEH _ (Sig fib (AppT _ (AppT _ (NumT w))))) [ve])
+      de_bitEH (AppEH _ (VarEH _ (Sig fib (AppT _ (AppT _ (NumT w))))) ve)
         | fib == name "Seri.Bit.__prim_fromInteger_Bit"
         , LitEH (IntegerL v) <- elab ve
         = Just (bv_make (nteval w) v)
@@ -410,14 +342,11 @@ elaborate mode env exp =
             (name "Seri.Bit.__prim_not_Bit", uVV complement),
             (name "Prelude.not", uBB not),
 
-            (name "Prelude.error", \s ->
-                LaceEH (ES_Some WHNF) [
-                    MatchH [VarP $ Sig (name "msg") stringT] $ 
-                      \[(_, msg)] ->
-                          case mode of
-                             WHNF | Just str <- deStringE (toe msg) -> error $ "Seri.error: " ++ str
-                             _ -> AppEH (ES_Some WHNF) (VarEH (ES_Some SNF) s) [msg]
-                       ]
+            (name "Prelude.error", 
+                let g a = do
+                    msg <- deStringE (toe a)
+                    return (error $ "Seri.error: " ++ msg)
+                in unary g
               ),
             (name "Seri.Bit.__prim_extract_Bit", \s@(Sig _ t) ->
                 let f :: Bit -> Integer -> Bit
@@ -426,31 +355,24 @@ elaborate mode env exp =
                           i = j + (nteval wt) - 1
                       in bv_extract i j a
                 in bVIV f s),
-            (name "Prelude.valueof", \(Sig n t) ->
+            (name "Prelude.valueof", \s@(Sig n t) ->
               let [NumT nt, it] = unarrowsT t
-              in LaceEH (ES_Some SNF) [
-                  MatchH [VarP $ Sig (name "_") (NumT nt)] $
-                    \_ -> integerEH (nteval nt)
-                  ]),
+                  g _ = return $ integerEH (nteval nt)
+              in unary g s
+               ),
             (name "Prelude.numeric", \(Sig _ (NumT nt)) -> ConEH (Sig (name "#" `nappend` name (show (nteval nt))) (NumT nt))),
             (name "Seri.Bit.__prim_zeroExtend_Bit", \s@(Sig _ t) ->
               let [ta, AppT _ (NumT wt)] = unarrowsT t
-              in LaceEH (ES_Some WHNF) [
-                   MatchH [VarP $ Sig (name "a") ta] $
-                     \[(_, a)] ->
-                       case (elab a) of
-                         a' | Just av <- de_bitEH a' -> bitEH $ bv_zero_extend (nteval wt - bv_width av) av
-                         _ -> AppEH (ES_Some WHNF) (VarEH (ES_Some SNF) s) [a]
-                   ]),
+                  f :: Bit -> Bit
+                  f a = bv_zero_extend (nteval wt - bv_width a) a
+              in uVV f s
+                 ),
             (name "Seri.Bit.__prim_truncate_Bit", \s@(Sig _ t) ->
               let [ta, AppT _ (NumT wt)] = unarrowsT t
-              in LaceEH (ES_Some WHNF) [
-                   MatchH [VarP $ Sig (name "a") ta] $
-                     \[(_, a)] ->
-                       case (elab a) of
-                         a' | Just av <- de_bitEH a' -> bitEH $ bv_truncate (nteval wt) av
-                         _ -> AppEH (ES_Some WHNF) (VarEH (ES_Some SNF) s) [a]
-                   ])
+                  f :: Bit -> Bit
+                  f a = bv_truncate (nteval wt) a
+              in uVV f s
+                   )
               ]
 
 
@@ -515,11 +437,11 @@ de_boolEH x | x == falseEH = Just False
 de_boolEH _ = Nothing
 
 unappsEH :: ExpH -> [ExpH]
-unappsEH (AppEH _ a xs) = unappsEH a ++ xs
+unappsEH (AppEH _ a x) = unappsEH a ++ [x]
 unappsEH e = [e]
 
 bitEH :: Bit -> ExpH
-bitEH b = AppEH (ES_Some SNF) (VarEH (ES_Some SNF) (Sig (name "Seri.Bit.__prim_fromInteger_Bit") (arrowsT [integerT, bitT (bv_width b)]))) [integerEH $ bv_value b]
+bitEH b = AppEH (ES_Some SNF) (VarEH (ES_Some SNF) (Sig (name "Seri.Bit.__prim_fromInteger_Bit") (arrowsT [integerT, bitT (bv_width b)]))) (integerEH $ bv_value b)
 
 shiftL' :: Bit -> Integer -> Bit
 shiftL' a b = shiftL a (fromInteger b)

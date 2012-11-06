@@ -193,8 +193,9 @@ instance Monad Test where
     (>>=) (Test x) f = f x
     
 t :: [Char] -> Bool -> Test ()
-t msg True = return ()
-t msg False = fail msg
+t msg b = case b of
+            True -> return ()
+            False -> fail msg
 
 testbasic :: Test ()
 testbasic = do
@@ -258,6 +259,7 @@ testprelude = do
 
 tests :: Test ()
 tests = do
+    t "test.dummy" True
     testbasic
     testprelude
     testarray

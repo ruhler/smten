@@ -38,14 +38,15 @@
 -- | Utilities for working with Seri Types
 module Seri.Lambda.Types (
     appsT, arrowsT, unappsT, unarrowsT, deArrowT,
-    unitT, boolT, listT, integerT, bitT, deBitT, charT, stringT, tupT, untupT,
+    unitT, boolT, listT, integerT, bitT, deBitT, charT, stringT,
+    deTupN, deTupT, tupT, untupT,
     Typeof(..),
     assign, assignl, assignments, bindingsP, bindingsP', varTs, nvarTs,
     isSubType,
     ) where
 
 import Control.Monad.State
-import Data.List(nub)
+import Data.List(nub, genericLength)
 import Data.Maybe
 
 import Seri.Lambda.IR
@@ -248,6 +249,27 @@ nvarTs (NumT (AppNT _ a b)) = nub $ nvarTs (NumT a) ++ nvarTs (NumT b)
 nvarTs (NumT (VarNT n)) = [n]
 nvarTs _ = []
 
+-- Check if a name is a tuple name. If so, returns the number of elements in
+-- the tuple.
+deTupN :: Name -> Maybe Integer
+deTupN n = do
+    let s = unname n
+    guard $ length s > 2
+    guard $ head s == '('
+    guard $ last s == ')'
+    let mid = init (tail s)
+    guard $ all (== ',') mid
+    return (genericLength mid + 1)
+
+deTupT :: Type -> Maybe [Type]
+deTupT t =
+  case unappsT t of
+     (ConT tn):ts -> do
+        len <- deTupN tn
+        guard $ len == genericLength ts
+        return ts
+     _ -> Nothing
+    
 -- | (a, b, ...)
 -- There must be at least one type given.
 --
