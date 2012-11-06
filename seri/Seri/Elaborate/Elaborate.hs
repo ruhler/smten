@@ -190,6 +190,24 @@ elaborate mode env exp =
                  NoMatched -> error $ "case no match: " ++ pretty l ++ ",\n " ++ "(" ++ pretty arg ++ ") "
                  Matched e -> elab e
                  UnMatched ms' -> AppEH (ES_Some mode) (LaceEH (ES_Some mode) ms') arg
+            (AppEH _ (LaceEH _ ms) y) ->
+                let -- perform "argument pushing"
+                    -- Rewrites:
+                    --    (case y of { ... -> f; ... -> g) arg
+                    -- As:
+                    --    let _a = arg
+                    --    in case y of { ... -> f _a; ... -> g _a }
+                    argvar = Sig (name "_a") (typeof arg)
+
+                    appm :: ExpH -> MatchH -> MatchH
+                    appm x (MatchH p f) = MatchH p (\m -> AppEH ES_None (f m) x)
+
+                    -- \a -> case y of { ... -> f a; ... -> g a}
+                    lam = LaceEH ES_None [MatchH (VarP argvar) $ \[(_, a)] ->
+                              let ams = map (appm a) ms
+                              in AppEH ES_None (LaceEH ES_None ams) y
+                            ]
+                in elab $ AppEH ES_None lam arg
             f' -> AppEH (ES_Some mode) f' arg
       elab e@(LaceEH (ES_Some m) _) | mode <= m = e
       elab e@(LaceEH _ ms) | mode == WHNF = e

@@ -176,11 +176,6 @@ patternlet =
   let (a, b) = (1, 5)
   in a + b
 
---patterndo :: Maybe Integer
---patterndo = do
---  (a, _) <- Just (1, integer 4)
---  return a
-
 data DerivedEq a = DEq1 a | DEq2 a a
     deriving (Eq)
 
@@ -245,7 +240,6 @@ testbasic = do
     t "L" (6 == patternlet)
     t "M" (DEq2 (5 :: Integer) 9 == DEq2 5 9)
     t "N" (DEq1 (5 :: Integer) /= DEq2 5 9)
-    --t "O" (Just 1 == patterndo)
     t "P" (length "foo\n" == 4)
     t "hex literal" (0x18 == (24 :: Integer))
     t "HEX literal" (0X18 == (24 :: Integer))
