@@ -288,9 +288,6 @@ showListHelper (x:xs) = concat [show x, ", ", showListHelper xs]
 -- Primitive IO monad
 data IO a = 
 
--- Print a string to stdout.
-putStr :: [Char] -> IO ()
-
 -- The IO monad primitives
 return_io :: a -> IO a
 nobind_io :: IO a -> IO b -> IO b
@@ -303,6 +300,12 @@ instance Monad IO where
   (>>) = nobind_io
   fail = fail_io
 
+-- Print a character to stdou.
+putChar :: Char -> IO ()
+
+-- Print a string to stdout.
+putStr :: [Char] -> IO ()
+putStr = mapM_ putChar
 
 -- Print a line to stdout.
 putStrLn :: [Char] -> IO ()

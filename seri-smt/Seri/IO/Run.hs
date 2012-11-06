@@ -20,10 +20,10 @@ import Seri.SMT.STP.STP
 run :: Env -> Exp -> IO Exp
 run env e = do
     case elabwhnf env e of
-        (AppE (VarE (Sig n _)) [arg]) | n == name "Prelude.putStr" -> do
-            case deStringE (elabwhnf env arg) of
-                Just str -> putStr str
-                Nothing -> error $ "putStr: expected string, got: " ++ pretty arg
+        (AppE (VarE (Sig n _)) [arg]) | n == name "Prelude.putChar" -> do
+            case deCharE (elabwhnf env arg) of
+                Just c -> putChar c
+                Nothing -> error $ "putChar: expected Char, got: " ++ pretty (elabwhnf env arg)
             return unitE
         (AppE (VarE (Sig n _)) [debug, query])
             | n == name "Seri.SMT.SMT.runYices1"

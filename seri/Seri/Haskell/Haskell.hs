@@ -309,7 +309,7 @@ preludeH =
       md c (PrimD s@(TopSig n _ _)) | n == name "Prelude.bind_io" = prim c s (vare "Prelude.>>=")
       md c (PrimD s@(TopSig n _ _)) | n == name "Prelude.nobind_io" = prim c s (vare "Prelude.>>")
       md c (PrimD s@(TopSig n _ _)) | n == name "Prelude.fail_io" = prim c s (vare "Prelude.fail")
-      md c (PrimD s@(TopSig n _ _)) | n == name "Prelude.putStr" = prim c s (vare "Prelude.putStr")
+      md c (PrimD s@(TopSig n _ _)) | n == name "Prelude.putChar" = prim c s (vare "Prelude.putChar")
 
       md _ d = throw $ "preludeH does not apply to dec: " ++ pretty d
   in Compiler me mt md
