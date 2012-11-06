@@ -209,7 +209,7 @@ elaborate mode env exp =
                  NoMatched -> error $ "case no match: " ++ pretty l ++ ",\n " ++ "(" ++ pretty arg ++ ") "
                  Matched e -> elab e
                  UnMatched ms' -> AppEH (ES_Some mode) (LaceEH (ES_Some mode) ms') arg
-            (AppEH _ (LaceEH _ ms) y) ->
+            (AppEH _ (LaceEH _ ms) y) | mode == SNF ->
                 let -- perform "argument pushing"
                     -- Rewrites:
                     --    (case y of { ... -> f; ... -> g) (blah blah)
@@ -338,9 +338,6 @@ elaborate mode env exp =
       bVIV :: (Bit -> Integer -> Bit) -> (Sig -> ExpH)
       bVIV = bXXX de_bitEH de_integerEH bitEH
 
-      bBBB :: (Bool -> Bool -> Bool) -> (Sig -> ExpH)
-      bBBB = bXXX de_boolEH de_boolEH boolEH
-
       -- Extract a Bit from an expression of the form: __prim_frominteger_Bit v
       -- The expression should be elaborated already.
       de_bitEH :: ExpH -> Maybe Bit
@@ -372,8 +369,18 @@ elaborate mode env exp =
             (name "Seri.Bit.__prim_and_Bit", bVVV (.&.)),
             (name "Seri.Bit.__prim_lsh_Bit", bVIV shiftL'),
             (name "Seri.Bit.__prim_rshl_Bit", bVIV shiftR'),
-            (name "Prelude.&&", bBBB (&&)),
-            (name "Prelude.||", bBBB (||)),
+            (name "Prelude.&&", 
+                let f a b = do
+                      val <- de_boolEH a
+                      return (if val then b else falseEH)
+                in binary f
+                ),
+            (name "Prelude.||", 
+                let f a b = do
+                      val <- de_boolEH a
+                      return (if val then trueEH else b)
+                in binary f
+                ),
             (name "Prelude.__prim_show_Integer", uIS show),
             (name "Seri.Bit.__prim_show_Bit", uVS show),
             (name "Seri.Bit.__prim_not_Bit", uVV complement),

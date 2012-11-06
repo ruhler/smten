@@ -243,6 +243,8 @@ testbasic = do
     t "P" (length "foo\n" == 4)
     t "hex literal" (0x18 == (24 :: Integer))
     t "HEX literal" (0X18 == (24 :: Integer))
+    t "or lazy" (True || (error "or is not lazy"))
+    t "and lazy" (not (False && (error "and is not lazy")))
 
 testprelude :: Test ()
 testprelude = do
