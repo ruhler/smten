@@ -215,6 +215,7 @@ ytermS s e | isbinop "xor" e = dobinop s e c_yices_xor2
 ytermS s e | isbinop "bv-sub" e = dobinop s e c_yices_bvsub
 ytermS s e | isbinop "bv-mul" e = dobinop s e c_yices_bvmul
 ytermS s e | isbinop "bv-shl" e = dobinop s e c_yices_bvshl
+ytermS s e | isbinop "bv-lshr" e = dobinop s e c_yices_bvlshr
 ytermS s e | Just a <- de_notE e = do
     at <- ytermS s a
     c_yices_not at
@@ -244,12 +245,6 @@ ytermS s (AppE (VarE "bv-extract") [LitE (IntegerL end), LitE (IntegerL begin), 
     xt <- ytermS s x
     c_yices_bvextract xt (fromInteger begin) (fromInteger end)
 
-ytermS s e | Just (a, n) <- de_bvshiftLeft0E e = do
-    at <- ytermS s a
-    c_yices_shift_left0 at (fromInteger n)
-ytermS s (AppE (VarE "bv-shift-right0") [a, LitE (IntegerL n)]) = do
-    at <- ytermS s a
-    c_yices_shift_right0 at (fromInteger n)
 ytermS s (AppE (VarE "and") args) = do
     argst <- mapM (ytermS s) args
     withArray argst $ c_yices_and (fromIntegral $ length argst)

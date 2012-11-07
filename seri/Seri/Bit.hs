@@ -40,6 +40,7 @@ module Seri.Bit (
     Bit(), bv_make, bv_width, bv_value, bv_signed_value,
     bv_concat, bv_extract, bv_truncate,
     bv_zero_extend, bv_sign_extend,
+    bv_shl, bv_lshr,
     ) where
 
 import Data.Bits
@@ -115,4 +116,10 @@ bv_extract i j b = bv_truncate (i - j + 1) (b `shiftR` fromIntegral j)
 -- Truncate a bit vector to the given number of bits.
 bv_truncate :: Integer -> Bit -> Bit
 bv_truncate w (Bit _ a) = bv_make w a
+
+bv_shl :: Bit -> Bit -> Bit
+bv_shl (Bit w a) (Bit _ b) = bv_make w (a `shiftL` fromInteger b)
+
+bv_lshr :: Bit -> Bit -> Bit
+bv_lshr (Bit w a) (Bit _ b) = bv_make w (a `shiftR` fromInteger b)
 

@@ -33,6 +33,8 @@ module Seri.SMT.STP.FFI (
     c_vc_bvAndExpr,
     c_vc_bvNotExpr,
     c_vc_bvLeftShiftExpr,
+    c_vc_bvLeftShiftExprExpr,
+    c_vc_bvRightShiftExprExpr,
     c_vc_bvConcatExpr,
 
     c_vc_getCounterExample,
@@ -124,6 +126,12 @@ foreign import ccall "vc_bvNotExpr"
 
 foreign import ccall "vc_bvLeftShiftExpr"
     c_vc_bvLeftShiftExpr  :: Ptr STP_VC -> CInt -> Ptr STP_Expr -> IO (Ptr STP_Expr)
+
+foreign import ccall "vc_bvLeftShiftExprExpr"
+    c_vc_bvLeftShiftExprExpr  :: Ptr STP_VC -> CInt -> Ptr STP_Expr -> Ptr STP_Expr -> IO (Ptr STP_Expr)
+
+foreign import ccall "vc_bvRightShiftExprExpr"
+    c_vc_bvRightShiftExprExpr  :: Ptr STP_VC -> CInt -> Ptr STP_Expr -> Ptr STP_Expr -> IO (Ptr STP_Expr)
 
 foreign import ccall "vc_bvConcatExpr"
     c_vc_bvConcatExpr  :: Ptr STP_VC -> Ptr STP_Expr -> Ptr STP_Expr -> IO (Ptr STP_Expr)

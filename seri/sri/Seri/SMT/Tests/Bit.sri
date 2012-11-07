@@ -48,7 +48,11 @@ qtest = do
     assert (bv_concat (0x5 :: Bit #3) h == 0x17)
     rh <- query (h :: Bit #2)
     test "bit.concat" (rh == Satisfiable 3)
-    
+
+    i <- free
+    assert (bv_shl (0x15 :: Bit #8) i == 0xA8)
+    ri <- query (i :: Bit #8)
+    test "bit.lsh" (ri == Satisfiable 3)
 
 
 main :: IO ()

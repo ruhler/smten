@@ -20,7 +20,7 @@ isolate0' m n =
       then 0
       else if bv_and m n == 0
                then m
-               else isolate0' (bv_lsh m 1) n
+               else isolate0' (bv_shl m 1) n
 
 -- isolate0 1010_0111 = 167
 -- To get:  0000_1000 = 8

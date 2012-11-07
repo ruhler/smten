@@ -49,8 +49,8 @@ module Seri.SMT.Syntax (
     mkbvE, de_mkbvE, bvaddE, de_bvaddE, bvsubE, de_bvsubE,
     bvorE, de_bvorE, bvandE, de_bvandE,
     bvnotE, de_bvnotE,
-    bvshiftLeft0E, de_bvshiftLeft0E,
-    bvshiftRight0E, bvzeroExtendE, de_bvzeroExtendE, bvextractE, bvshlE,
+    bvshlE, de_bvshlE, bvlshrE, de_bvlshrE,
+    bvzeroExtendE, de_bvzeroExtendE, bvextractE,
     bvconcatE, de_bvconcatE,
   ) where
 
@@ -249,23 +249,20 @@ de_bvnotE :: Expression -> Maybe Expression
 de_bvnotE (AppE (VarE "bv-not") [a]) = Just a
 de_bvnotE _ = Nothing
 
--- | > (bv-shift-left0 a i)
-bvshiftLeft0E :: Expression -> Integer -> Expression
-bvshiftLeft0E a 0 = a
-bvshiftLeft0E a b = AppE (varE "bv-shift-left0") [a, integerE b]
-
-de_bvshiftLeft0E :: Expression -> Maybe (Expression, Integer)
-de_bvshiftLeft0E (AppE (VarE "bv-shift-left0") [a, LitE (IntegerL b)]) = Just (a, b)
-de_bvshiftLeft0E _ = Nothing
-
--- | > (bv-shift-right0 a i)
-bvshiftRight0E :: Expression -> Integer -> Expression
-bvshiftRight0E a 0 = a
-bvshiftRight0E a b = AppE (varE "bv-shift-right0") [a, integerE b]
-
 -- | > (bv-shl a b)
 bvshlE :: Expression -> Expression -> Expression
 bvshlE a b = AppE (varE "bv-shl") [a, b]
+
+de_bvshlE :: Expression -> Maybe (Expression, Expression)
+de_bvshlE (AppE (VarE "bv-shl") [a, b]) = Just (a, b)
+de_bvshlE _ = Nothing
+
+bvlshrE :: Expression -> Expression -> Expression
+bvlshrE a b = AppE (varE "bv-rshl") [a, b]
+
+de_bvlshrE :: Expression -> Maybe (Expression, Expression)
+de_bvlshrE (AppE (VarE "bv-lshr") [a, b]) = Just (a, b)
+de_bvlshrE _ = Nothing
 
 -- | > (bv-zero-extend a w)
 bvzeroExtendE :: Expression -> Integer -> Expression

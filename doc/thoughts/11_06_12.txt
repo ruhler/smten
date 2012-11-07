@@ -1,0 +1,585 @@
+
+Tue Nov  6 09:33:41 EST 2012
+
+Some thoughts.
+
+First off, switching to single argument application will make things much
+easier to understand. I should totally do it. So I'll keep working on it as I
+have been.
+
+One question came up, which was, how do you deal with something like:
+
+foo (case (True, free1)) of
+    (True, True) -> 1
+    (True, False) -> 2
+    (False, False) -> 3
+    (False, False) -> 4
+
+Because it seems like this won't get simplified any, so we are left with a
+tuple. Well, the answer is....
+
+When I create a free boolean, I should do it as:
+
+    x <- __prim_free_Bool
+    return (if x then True else False)
+
+This way the case statement is:
+
+case (True, if free1 then True else False) of
+    ...
+
+Then take a closer look at the argument:
+
+() True (if free1 then True else False)
+
+Where (() True) is a function, call it f.
+
+f (if Free1 then True else False)
+
+Our delacification will change this to:
+
+if free1 then f True else f False
+
+Now delacify again:
+
+if free1
+  then case (True, True) of
+            ...
+  else case (True, False) of
+            ...
+
+And those can get elaborated to:
+
+if free1 
+    then 1
+    else 2
+
+Exactly as desired.
+
+Let me go do that now, because it's an easy change to make.
+
+Good. Done.
+
+Now, the other important thing to consider, the one conceptual challenge, or
+issue with the idea behind how things should work, is delacification messes
+with strictness. It forces arguments before they necessarily would be forced.
+If the argument is, for example, an infinite object which is never read in its
+entirety, this could lead to an infinite loop in the elaborator which we don't
+expect to have.  That's something I should think more about and understand.
+
+Anyway, for now I would like to... keep on pushing with changing the
+elaborator to single arg, see if I can get it up and running.
+
+Err... I probably ought to undo that change to booleans I just made, in order
+to avoid changing too many things at once. It could cause issues. How about
+this, I'll keep it in mind as something that could cause issues.
+
+Really if I can get the Basic tests to work, that should tell me if my single
+arg thing could be made to work.
+
+Tue Nov  6 10:13:40 EST 2012
+
+Okay, so I updated the elaborator. I removed delacification and
+delambdafication for the time being. I want to get the basic tests to pass
+first.
+
+In fact, it may make sense to remove the notion of SNF entirely, but let's see
+how things go.
+
+Regardless of how things go, I made important changes I want to keep. So don't
+just revert willy nilly. Mostly changes in terms of the primitives and how
+they are expressed. Stuff which should be easy to save and copy over.
+
+Let's see how things go...
+
+Tue Nov  6 10:58:44 EST 2012
+
+Here's a problem. I use curry and compose for multi-arg case. But I implement
+them using multi-arg case! I can't do that. That's bad...
+
+Tue Nov  6 11:07:51 EST 2012
+
+Well, it's clear there's something wrong with my syntactic sugar for multi-arg
+case statements. Hmm...
+
+Tue Nov  6 11:21:28 EST 2012
+
+I'm wondering if I'm doing things right with regards to the curry application.
+Let me review:
+
+I have an expression:
+
+f :: a -> b -> c
+f = case of
+      pa, pb -> mc
+
+But, now I want to get rid of multi-arg stuff. So, how is it done?
+
+f = curry (case of (pa, pb) -> mc)
+
+And for multiple arguments?
+
+f :: a -> b -> c -> d
+f = case of
+      pa, pb, pc -> md
+
+curry (case of ((pa, pb), pc) -> md)
+
+has type:
+    (pa, pb) -> (pc -> pd)
+
+To make this into what I want, I need to curry again:
+
+    curry (curry (case of ((pa, pb), pc) -> md))
+
+Which should have type: pa -> pb -> pc -> pd.
+So I don't need compose.
+
+Tue Nov  6 11:33:45 EST 2012
+
+Cool! The elaborator works on the test cases now. That's awesome.
+
+It doesn't work on the SMT test cases, which is not surprising. But that's
+okay.
+
+Tue Nov  6 11:38:11 EST 2012
+
+Now, first thing to fix:
+
+case (free1, free2) of
+    (False, False) -> True
+    (True, True) -> True
+    (_, _) -> False
+
+It has the tuple. Hmm... I can't fix it this way, can I.
+
+Now, consider instead:
+
+case (if free7 then True else False, if free8 then True else False) of
+    (False, False) -> True
+    (True, True) -> True
+    (_, _) -> False
+
+What things do I want to do here?
+
+First of all, functions:
+
+f (case x of
+     p1 -> m1
+     p2 -> m2)
+
+Should be changed to:
+
+case x of
+    p1 -> f m1
+    p2 -> f m2
+
+This, again, has a strictification issue. So I should only do it after all
+other options for the function f. So only do it if I can't do beta reduction
+or primitive application, or what have you.
+
+Is this enough? Once I have this, we end up with:
+
+() (if free1 then True else False)
+
+Turns into:
+  (if free1 then () True else () false)
+
+Then:
+
+(if free1 then () True else () False) (if free2 then True else False)
+
+Turns into:
+
+if free2
+   then (if free1 then () True else () False) True
+   then (if free1 then () True else () False) False
+
+Aha. So there is one more transformation we need to make.
+
+(case foo of
+    p1 -> f1
+    p2 -> f2) x
+
+Turns into:
+
+case foo of
+    p1 -> f1 x
+    p2 -> f2 x
+
+So we end up with:
+    
+if free2
+   then (if free1 then (True, True) else (False, True))
+   then (if free1 then (True, True) else (False, False))
+
+And this is itself an argument to the case statement.
+
+if free2
+    then case (if free1 then (True, True) else (False, True)) of
+            (False, False) -> True
+            (True, True) -> True
+            (_, _) -> False
+    else case (if free1 then (True, False) else (False, False)) of
+            (False, False) -> True
+            (True, True) -> True
+            (_, _) -> False
+
+Which is further expanded to:
+
+if free2
+    then if free1 
+            then case (True, True) of ...
+            else case (False, True) of ...
+     else if free1
+            then case (True, False) of ...
+            else case (False, False) of ...
+
+Which now simplifies to:
+
+if free2
+  then if free1 
+            then True
+            else False
+  else if free1
+            then False
+            else True
+
+Which is exactly what I want.
+
+So, two transformations to make. It is a little worriesome that it seems like
+we have to do these transformations an exponential amount. Like, what if I had
+done them in another order, would that have helped?
+
+Anyway, that's not my real concern right now, unless it turns out to be a
+major performance issue. I want to make things work first.
+                
+            
+So, in summary, two transformations:
+
+(case foo of p1 -> f1; p2 -> f2) x 
+  When a function is a case statement (not Lace, but Case),
+    Push the argument into the matches. Maybe call it argument pushing.
+
+f (case foo of p1 -> x1; p2 -> x2)
+  When an argument is a case statement (not Lace, but Case),
+    Push the function into the matches. Maybe call it function pushing.
+
+Note that argument pushing is always safe.
+Function pushing makes the argument strict where it possibly wasn't before.
+So that's potentially dangerous. Hopefully, though, if you have already
+elaborated 'f' fully, then this doesn't hurt anything, because the lazy
+argument would already have disappeared. Cool!
+
+I have to take a break now. I'll think about it a little, see if anything
+enlightening comes up in terms of how to implement this. Otherwise, I think it
+should be fairly straight-forward. Just reuse my code from before, but much
+cleaned up.
+
+Tue Nov  6 13:01:08 EST 2012
+
+First step... let me try argument pushing, because that seems relatively easy
+and straight-forward, and order doesn't matter, and I can do it for WHNF too?
+
+Tue Nov  6 13:18:47 EST 2012
+
+Cool. Argument pushing is done and easy. Not sure if it works. Well find out
+after the next step.
+
+Next step is function pushing. Where should I apply it?
+
+That is, to which function?
+
+Let me start conservatively, get working what worked before...
+
+No. I have to do it in general for it to work for multiple arguments. Do it in
+general, and pray...
+
+The idea is, whenever you end up with a function applied to an argument, after
+elaboration. Then, if you can do function pushing, because the (fully
+elaborated) argument is a case statement, do it and reelaborate, otherwise you
+are done.
+
+Sounds clear to me.
+
+Tue Nov  6 13:26:16 EST 2012
+
+You know what? I think function pushing is safe to do this way, because we've
+already elaborated the function and found it couldn't be reduced. Right?
+
+We don't have multi-argument case statements, so if it is a pattern match
+which didn't match, it depends on the argument. If it's a primitive, it should
+have matched... I don't know. Let me try and see if it works. I feel like
+maybe it ought to.
+
+Tue Nov  6 13:30:06 EST 2012
+
+The code is so much nicer with single argument application. I just want to say
+for the record.
+
+Let's see if it works!
+
+Tue Nov  6 13:31:19 EST 2012
+
+Looks like it works on the core tests... That's good.
+
+Works on Datatype!
+Trouble with Array... looks like a strictness thing?
+Trouble with Share... Prelude.show (Satisfiable (2, 0)) is not working...
+
+The Share problem is causing other issues too at this point.
+
+But! All the SMT unit tests pass, which is more than I can say before. The
+rest is probably just a bug or two left in the elaborator.
+
+Nifty.
+
+Tue Nov  6 13:38:39 EST 2012
+
+What's up with this putStrLn bug? An issue with typing?
+
+Or, we fail to elaborate the argument to string?
+
+This is not an SNF issue. It's a weak head normal form elaboration that
+doesn't seem to be working.
+
+
+I think the issue is... Or the question is, how much do we elaborator
+arguments?
+
+Do we elaborate arguments to functions? Or, under what circumstances do we
+elaborate arguments to functions?
+
+If it's a constructor, I think yes, right?
+
+Tue Nov  6 13:51:39 EST 2012
+
+According to the web, my elaborator is working properly. Returning the correct
+WHNF. So the expression: 'f':("oo" ++ "bar")
+Is considered to be WHNF.
+
+Cool. So let me leave it like that. That will be better. This is good.
+
+The fix is: change putStr to putChar. Implement putStr on top of putC. The
+putChar argument, when evaluated, will turn into a literal char, which I can
+put out.
+
+Tue Nov  6 13:59:03 EST 2012
+
+Good. That fixed that. Now many things work. But there are still some issues:
+
+Array - smt undefined element
+Squares2/Squares - hangs (or slow?)
+BCL3Small - hangs (or slow?)
+Sudoku2 - hangs (or slow?)
+
+I should figure out if these are hanging or just slow. I'll kick of a run of
+Sudoku2 and see if it finishes as I look into what the issue may be.
+
+Tue Nov  6 14:04:03 EST 2012
+
+Sudoku2 is off and running.
+
+Meanwhile... what should I do?
+
+I think I can clean up the elaborator some more. It may help with the issues
+I'm seeing. Or maybe not...
+
+Tue Nov  6 14:05:32 EST 2012
+
+What's the difference between SNF and WHNF?
+
+Tue Nov  6 14:07:52 EST 2012
+
+One thing I would like to do is maybe try using a reader monad to clean up
+elaboration, so we aren't all stuck inside a closure.
+
+I should try to figure out what is going on in the elaborator for the failing
+SMT test cases.
+
+I could work on making the rest of the program single-arg application and
+pattern matching. That would be nice, and should hopefully be doable at this
+point, no?
+
+I think all would be valuable. If I wait on Sudoku for an hour or so, I might
+get more info on whether it is just slow or a hang. Or I may not.
+
+Either way, I think a break from the elaborator would be nice. Or at least, a
+break from this sort of thing?
+
+Or, redo the elaborator making use of a reader monad to greatly clean things
+up. That sounds good to me.
+
+I could also split the elaborator up into different files, which would be very
+nice.
+
+Here's the plan. We need to pass to many things: the elaboration Mode, and the
+Env. That goes to anyone who wants to do elaboration. So, I'll have a reader
+monad which takes that information, do all my functions in that monad, pull
+them out to the top level, and see how I can clean up things from there.
+
+Sounds cool to me.
+
+I worry about performance, but let me not worry about that until I worry about
+it, if you know what I mean. Clean and correct code trumps when I don't know
+it will make things worse.
+
+Cool. So I'll do this. A little bit at a time.
+
+Or all at once?
+
+Let me try all at once, see how terrible it is and what issues I run into.
+
+Tue Nov  6 14:23:55 EST 2012
+
+Ug. I'm just not feeling it right now.
+
+Let me walk around a little bit, then see what I want to do next.
+
+Tue Nov  6 15:01:33 EST 2012
+
+Here are my conclusions:
+
+I should figure out the elaboration issues before cleaning up the elaborator
+and before switching the rest of the code to use single argument application.
+
+There are two issues to look into and understand.
+
+1. Why does the Array test trigger an undefined?
+2. Why does Sudoku2 seem to get stuck in an infinite loop?
+
+For the array test, let me just print what it's doing. But print carefully, so
+I can figure out what is happening without forcing anything that wouldn't
+otherwise be forced. So, careful with pretty printing of expressions.
+
+For sudoku, let me try out a revised version which is just 4x4 instead of 9x9.
+I suspect it will still get stuck in an infinite loop, but should be much
+quicker to get to the issue.
+
+Start with the Array test.
+
+Well, this is a known issue, right? I'm calling smta_upd with a free index.
+That could lead to an error. A potentially out of bounds index, even though
+I've made the assertion that it won't.
+
+
+Okay, so it will be good to go through this in more detail. Just to make sure
+the issue is what I think it is.
+
+smta_upd arr w 0, where w is free.
+
+
+arr: smta_upd (smta_upd (smta_upd (smta_new 3) 0 42) 1 12) 2 19
+
+Turns into...
+arr.smta_sub = update (update (update error 0 42) 1 12) 2 19
+
+Now the array function is something like:
+  update (update (update (update error 0 42) 1 12) 2 19) w 0
+
+We call sub for array element 2, then 1, then 0.
+
+Hmm...
+
+Oh, no, it's not what I was thinking. It looks like it's something to do with
+the array works function. That's odd... And slightly unexpected.
+
+Let's see what the function does.
+
+arrayworks =
+  and [
+    42 == smta_sub arr 0,
+    12 == smta_sub arr 1,
+    19 == smta_sub arr 2]
+
+Wait a second. There aren't any free variables here! It should totally work as
+expected...
+
+Okay, so one question is, what is the difference between SNF and WHNF when
+there are no free varaibles? Because I bet if I ran this in WHNF, it would
+work fine.
+
+No! It's not even SNF. It's WHNF elaboration where we run into this problem.
+
+That's good to be aware of... zeroing in on the issue...
+
+I need to step through elaboration to understand what's going on here.
+
+Tue Nov  6 15:32:25 EST 2012
+
+Ah, of course. The issue is, well, I don't have 'update' defined in the
+elaborator, so I can't deal with it in WHNF elaboration.
+
+So, let me put this issue aside for now. Note: I made a slight change in the
+elaborator. I don't do argument pushing unless it is SNF. That made the error
+go away in array, and replaces it with this new one...
+
+The array test is kind of special and different for its own reasons. So let me
+now switch focus to Sudoku2.
+
+First step: try for a 4x4 sudoku.
+
+Tue Nov  6 15:39:47 EST 2012
+
+Okay, so 4x4 sudoku has been implemented.
+We still hang. Let me print out some elaboration info to see what's going on.
+
+Tue Nov  6 15:47:30 EST 2012
+
+Looks like we get stuck elaborating "distinct" in an infinite like loop.
+
+Let me see if I can get more info.
+
+Hmm... too much info.
+
+Tue Nov  6 15:57:11 EST 2012
+
+Here's what I'll do. I compile it with profiling. Let it run for a long time.
+See where all the time is being spent, and see if it finishes after an hour or
+so. And meanwhile... stew on what the issue could be.
+
+Tue Nov  6 17:16:04 EST 2012
+
+My run didn't help, because the libraries didn't get auto-all turned on for
+profiling, and it never finished.
+
+I did have some ideas, but nothing really concrete. Just kind of... guesses.
+Do you suppose it's worth a try?
+
+They are basically, try to be as lazy as possible. Not only in WHNF
+elaboration, but also SNF elaboration.
+
+Some ideas:
+
+* and, or primitives should be lazy (I ought to be able to test this)
+* ... just never be eager...
+
+So yes. Or fails to be lazy. Let me fix that quickly.
+
+Tue Nov  6 17:30:01 EST 2012
+
+How to do SNF elaboration without being eager? Is that possible? What does it
+mean?
+
+It means, when you return a function, or an unmatched case... that you
+elaborate the arguments. I can try that...
+
+Tue Nov  6 17:36:53 EST 2012
+
+Well, that still works. It just doesn't help anything. I'll keep it in. I
+think I'm about as lazy as I can get now.
+
+It slows things down. I'll fix that later when I do speculative elaboration.
+
+So, now I'm not eager. But we still have an issue.
+
+Let me do one last code review, then I'll go home to think about this some
+more. What I really should do is step through the elaboration on Sudoku and
+see where all of it is going. I suppose that's the plan for tomorrow. It can't
+be that complicated to walk through, can it? I just have to figure out the
+right information to print out to follow along what the elaborator is doing.
+
+Tue Nov  6 17:46:24 EST 2012
+
+I don't know what's up. I'll have to stew on it.
+

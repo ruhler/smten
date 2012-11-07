@@ -366,8 +366,6 @@ elaborate mode env exp =
             (name "Seri.Bit.__prim_concat_Bit", bVVV bv_concat),
             (name "Seri.Bit.__prim_or_Bit", bVVV (.|.)),
             (name "Seri.Bit.__prim_and_Bit", bVVV (.&.)),
-            (name "Seri.Bit.__prim_lsh_Bit", bVIV shiftL'),
-            (name "Seri.Bit.__prim_rshl_Bit", bVIV shiftR'),
             (name "Prelude.&&", 
                 let f a b = do
                       val <- de_boolEH a
@@ -380,6 +378,8 @@ elaborate mode env exp =
                       return (if val then trueEH else b)
                 in binary f
                 ),
+            (name "Seri.Bit.__prim_shl_Bit", bVVV bv_shl),
+            (name "Seri.Bit.__prim_lshr_Bit", bVVV bv_lshr),
             (name "Prelude.__prim_show_Integer", uIS show),
             (name "Seri.Bit.__prim_show_Bit", uVS show),
             (name "Seri.Bit.__prim_not_Bit", uVV complement),
@@ -485,10 +485,4 @@ unappsEH e = [e]
 
 bitEH :: Bit -> ExpH
 bitEH b = AppEH (ES_Some SNF) (VarEH (ES_Some SNF) (Sig (name "Seri.Bit.__prim_fromInteger_Bit") (arrowsT [integerT, bitT (bv_width b)]))) (integerEH $ bv_value b)
-
-shiftL' :: Bit -> Integer -> Bit
-shiftL' a b = shiftL a (fromInteger b)
-
-shiftR' :: Bit -> Integer -> Bit
-shiftR' a b = shiftR a (fromInteger b)
 

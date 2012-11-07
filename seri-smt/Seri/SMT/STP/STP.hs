@@ -56,9 +56,18 @@ mkExpr s e | Just (a, b) <- de_bvconcatE e = mkBinExpr s a b c_vc_bvConcatExpr
 mkExpr s e | Just a <- de_bvnotE e = do
     ae <- mkExpr s a
     withvc s $ \vc -> c_vc_bvNotExpr vc ae
-mkExpr s e | Just (a, n) <- de_bvshiftLeft0E e = do
-    ae <- mkExpr s a
-    withvc s $ \vc -> c_vc_bvLeftShiftExpr vc (fromInteger n) ae
+mkExpr s e | Just (a, b) <- de_bvshlE e =
+  let f :: Ptr STP_VC -> Ptr STP_Expr -> Ptr STP_Expr -> IO (Ptr STP_Expr)
+      f vc ae be = do
+         n <- c_vc_getBVLength vc ae
+         c_vc_bvLeftShiftExprExpr vc n ae be
+  in mkBinExpr s a b f
+mkExpr s e | Just (a, b) <- de_bvlshrE e =
+  let f :: Ptr STP_VC -> Ptr STP_Expr -> Ptr STP_Expr -> IO (Ptr STP_Expr)
+      f vc ae be = do
+         n <- c_vc_getBVLength vc ae
+         c_vc_bvRightShiftExprExpr vc n ae be
+  in mkBinExpr s a b f
 mkExpr s e | Just (a, n) <- de_bvzeroExtendE e = do
     ae <- mkExpr s a
     zeros <- withvc s $ \vc -> c_vc_bvConstExprFromLL vc (fromInteger n) (fromInteger 0)

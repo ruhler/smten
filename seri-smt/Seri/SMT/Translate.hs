@@ -268,20 +268,15 @@ smtE' e@(AppE a b) =
        [VarE (Sig n _), a, b]
           | n == name "Seri.Bit.__prim_concat_Bit"
           -> binary SMT.bvconcatE a b
-       -- TODO: should we allow shifting by an amount not statically
-       -- determined? In that case, I think we need to convert the second
-       -- argument to a bit vector in order to use smt bvshl function.
-       [VarE (Sig n _), a, (LitE (IntegerL v))]
-          | n == name "Seri.Bit.__prim_lsh_Bit"
-          -> do
-           a' <- smtE' a
-           return (SMT.bvshiftLeft0E a' v)
+       [VarE (Sig n _), a, b]
+          | n == name "Seri.Bit.__prim_shl_Bit"
+          -> binary SMT.bvshlE a b
+       [VarE (Sig n _), a, b]
+          | n == name "Seri.Bit.__prim_lshr_Bit"
+          -> binary SMT.bvlshrE a b
        [VarE (Sig n _), a]
           | n == name "Seri.Bit.__prim_not_Bit"
           -> SMT.bvnotE <$> smtE' a
-       [VarE (Sig n _), a, (LitE (IntegerL v))] | n == name "Seri.Bit.__prim_rshl_Bit" -> do
-           a' <- smtE' a
-           return (SMT.bvshiftRight0E a' v)
        [VarE (Sig n t), LitE (IntegerL x)]
             | n == name "Seri.Bit.__prim_fromInteger_Bit"
             , Just (_, bt) <- deArrowT t
