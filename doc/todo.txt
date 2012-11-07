@@ -39,6 +39,7 @@ Type System::
     That is, anything with ~?
 * Reimplement TypeCheck to make use of constraint generation from TypeInfer?
 * move TypeInfer, TypeCheck and TypeSolve into a Type/ folder?
+* Make numeric types happy
 * Implement enough math somewhere to know that
   Bit #3  -> Bit #4 -> Bit #7 is a valid subtype of
   Bit #m  -> Bit #n -> Bit #(m+n)
@@ -82,8 +83,7 @@ Static Analysis::
 * Add static check for concreteness of queries
 
 SMT Syntax::
-* Remove bv-left-shift0 from SMT syntax, switch to more general bvshl
-  described by SMTLIB2
+* multiplication for 
 * Remove bv-zero-extend from SMT syntax, use SMTLIB2 alternative
 
 Dealing with Free Things::

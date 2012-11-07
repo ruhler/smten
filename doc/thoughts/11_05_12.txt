@@ -1,0 +1,510 @@
+
+Mon Nov  5 09:20:23 EST 2012
+
+Trouble has arisen from implementing better test cases. I'm running into bugs.
+
+First observation: constructors are functions too. So they should undergo
+delacification. Just like primitives are functions too.
+
+So, it looks like I really have to work on delacification. It's not specific
+to functions which are Lace statements. It should apply to all sorts of
+functions.
+
+Again, I tried this before and ran into trouble. I think it's good I have my
+test cases now though. Better test cases should make it better to figure out
+how to make this work right.
+
+Mon Nov  5 09:27:15 EST 2012
+
+Okay, so delacification.
+
+I want it to work for all kinds of functions, not just lace. I've tried this
+in the past and run into problems. Hopefully I can do it more cleanly now and
+not run into problems.
+
+First goal: get the Datatype test to work. So don't worry about primitives for
+now.
+
+Here's the idea. We have this delacification process. It should be generic to
+any function application. Currently it's targeted towards application of Lace.
+So, I ought to be able to implement the generic version, apply it in the
+special place, and everything should work just fine. Then, try to apply it to
+the other place I need it: data constructors, and hopefully everything still
+works fine.
+
+Of course, we could ask if there is a single place this makes more sense to
+go. As in, let's say you do full elaboration and end up with an application.
+My claim is, that's where you should check then for any arguments which are
+case statements and perform delacification. I might even get everything for
+free that way...
+
+But, first steps first. Figure out how to write down the generic version of
+delacification without changing where it is applied.
+
+Mon Nov  5 09:39:56 EST 2012
+
+Okay, it's all pulled out and cleaned up. I'm hopefully this could be made to
+work in general. Let me try it out then.
+
+Mon Nov  5 09:43:22 EST 2012
+
+I really want to do this after elab. Any time after elab, check for
+application. If I run into application, apply delambdaficiation.
+
+If it's not SNF, delambdafication will not do anything.
+If it is SNF, all the args will be fully elaborated, so I don't have to worry
+about that kind of thing.
+
+Gulp. I don't know if this is going to work. Wish me luck.
+
+After all this is over, I feel like I ought to try cleaning up elaboration,
+because all these modifications are making it rather messy.
+
+Mon Nov  5 10:08:05 EST 2012
+
+Well, problems. Problems.
+
+1. It doesn't solve the data type problem entirely.
+Because we end up with things like:
+    case (MyFoo free~1, free~2) of
+        MyFoo _, True -> ...
+        MyFoo _, False-> ...
+
+2. It causes problems with BCL3Small, all the Sudokus, Isolate0.
+I suspect these are performance problems. They may go away if I improve
+performance. They may be an infinite loop? They may be fixed if my ES_State
+flags are better maintained. I'm not sure.
+
+3. When I restrict it to just (LaceE) functions, but more generally than
+before, we run into case no match for Sudoku. Which I don't understand.
+
+Thus you know why I was afraid to do this sort of thing.
+
+The good news is, it's all potentially fixable.
+
+For example:
+
+1. Whenever I have case (free) where the free is a boolean, split it into:
+
+if (free)
+  then case (True)
+  else case (False)
+
+And figure out how to make that work for multi-arg case statements. That
+should solve that issue.
+
+2. Really I need to understand what the performance problem is from. Is it an
+infinite loop? What's up?
+
+Look at Sudoku for example, or one of those, or try to come up with the
+simplest example I can. Understand what's going on, why it's blowing up, then
+I should have a better notion of how to deal with it.
+
+If it's an infinite loop, that's a kind of bug I should be able to fix. If
+it's just being slow, then I should try out speculative elaboration, which
+will hopefully fix that issue.
+
+I shouldn't just try things and see what works though. I should understand the
+issue somehow. I think it's solvable though.
+
+3. I just need to figure out how this is coming up. What are the arguments?
+How did we get to a case no match? Figure out where it's coming from. If it's
+a bug in my matching, that's fixable. If it's an under specified case branch
+in Sudoku, that's solvable. Static elaboration of case statements could help
+me find that in that case.
+
+Let me stew on this. Think about what's up. I think it would be very valuable
+to understand (2) and (3), even before hacking up (1). It may make sense to do
+an overhaul of the elaborator based on what I find.
+
+Mon Nov  5 10:33:59 EST 2012
+
+What do I want to figure out first?
+
+How do I want to go about figuring it out?
+
+I need more time to stew. Let me stall on this issue now and switch to another
+topic.
+
+Mon Nov  5 13:26:36 EST 2012
+
+Okay, I'm coming back to this issue. Or these issues.
+
+I would like a small test case. I feel like the isolate0 test is perhaps the
+most simple one I have. I think the issue is related to recursion in some way.
+
+Hmm... It would be nice if I could do incremental progress on this. So maybe
+the trick is to understand the Sudoku thing first, in whatever way I can. Just
+get that out of the way, and as I add more cases of delacification, I can see
+what causes or doesn't cause blowup?
+
+Sure.
+
+Mon Nov  5 13:35:48 EST 2012
+
+1. Add delacification to constructor applications.
+First I get this issue which I don't understand, which is I have to put in an
+extra check for SNF.
+
+Oh, I must be trying to force something that we don't want to force for WHNF.
+That could explain that.
+
+Datatype test improves, but still fails because of (1) above.
+That is, it seems like I need to change case statements involving boolean
+variables into if statements on those boolean variables.
+
+BCL3Small blows up.
+Sudoku2 blows up.
+
+But Sudoku, Sudoku3, and Isolate0 still all work fine. This sounds like a good
+lead to me.
+
+2. Instead of constructor applications, I try all other applications. These
+would be primitive applications.
+
+BCL3Small blows up.
+Sudoku gives: case no match.
+Sudoku2 gives: case no match.
+Sudoku3 blows up.
+Isolate0 blows up.
+
+Let me figure out this case no match thing.
+
+Okay, so I got the code. The case which doesn't match. Let me just translate
+it to something human readable.
+
+case of
+    f, [] -> ...
+    f, (x:xs) -> ... 
+
+f is of type: [Integer] -> [Integer]
+
+Applied to...
+
+Something is wrong here. A bug in delacification? There appears to be a type
+issue.
+
+seri: case no match: case of {
+  (f :: [IntegerCell] -> [IntegerCell]), ([] :: [[IntegerCell]]) -> ...;
+  (f :: [IntegerCell] -> [IntegerCell]), ((:) :: [[IntegerCell]]) (x :: [IntegerCell]) (xs :: [[IntegerCell]]) -> ...;
+},
+ (:) :: IntegerCell -> [IntegerCell] -> [IntegerCell];
+((:) :: IntegerCell -> [IntegerCell] -> [IntegerCell];
+ (IntegerCell :: Integer -> IntegerCell; (free~1 :: Integer;))
+ ((:) :: IntegerCell -> [IntegerCell] -> [IntegerCell];
+  (IntegerCell :: Integer -> IntegerCell; (9))
+  ((:) :: IntegerCell -> [IntegerCell] -> [IntegerCell];
+   (IntegerCell :: Integer -> IntegerCell; (free~2 :: Integer;))
+   ((:) :: IntegerCell -> [IntegerCell] -> [IntegerCell];
+    (IntegerCell :: Integer -> IntegerCell; (7))
+    ((:) :: IntegerCell -> [IntegerCell] -> [IntegerCell];
+     (IntegerCell :: Integer -> IntegerCell; (free~3 :: Integer;))
+     ((:) :: IntegerCell -> [IntegerCell] -> [IntegerCell];
+      (IntegerCell :: Integer -> IntegerCell; (free~4 :: Integer;))
+      ((:) :: IntegerCell -> [IntegerCell] -> [IntegerCell];
+       (IntegerCell :: Integer -> IntegerCell; (8))
+       ((:) :: IntegerCell -> [IntegerCell] -> [IntegerCell];
+        (IntegerCell :: Integer -> IntegerCell; (6))
+        ((:) :: IntegerCell -> [IntegerCell] -> [IntegerCell];
+         (IntegerCell :: Integer -> IntegerCell; (free~5 :: Integer;))
+         ([] :: [IntegerCell];))))))))))
+((:) :: IntegerCell -> [IntegerCell] -> [IntegerCell];
+ ((:) :: IntegerCell -> [IntegerCell] -> [IntegerCell];
+  (IntegerCell :: Integer -> IntegerCell; (free~6 :: Integer;))
+  ((:) :: IntegerCell -> [IntegerCell] -> [IntegerCell];
+   (IntegerCell :: Integer -> IntegerCell; (3))
+   ((:) :: IntegerCell -> [IntegerCell] -> [IntegerCell];
+    (IntegerCell :: Integer -> IntegerCell; (1))
+    ((:) :: IntegerCell -> [IntegerCell] -> [IntegerCell];
+     (IntegerCell :: Integer -> IntegerCell; (free~7 :: Integer;))
+     ((:) :: IntegerCell -> [IntegerCell] -> [IntegerCell];
+      (IntegerCell :: Integer -> IntegerCell; (free~8 :: Integer;))
+      ((:) :: IntegerCell -> [IntegerCell] -> [IntegerCell];
+       (IntegerCell :: Integer -> IntegerCell; (5))
+       ((:) :: IntegerCell -> [IntegerCell] -> [IntegerCell];
+        (IntegerCell :: Integer -> IntegerCell; (free~9 :: Integer;))
+        ((:) :: IntegerCell -> [IntegerCell] -> [IntegerCell];
+         (IntegerCell :: Integer -> IntegerCell; (2))
+         ((:) :: IntegerCell -> [IntegerCell] -> [IntegerCell];
+          (IntegerCell :: Integer -> IntegerCell; (free~10 :: Integer;))
+          ([] :: [IntegerCell];))))))))))
+ ((:) :: IntegerCell -> [IntegerCell] -> [IntegerCell];
+  ((:) :: IntegerCell -> [IntegerCell] -> [IntegerCell];
+   (IntegerCell :: Integer -> IntegerCell; (8))
+   ((:) :: IntegerCell -> [IntegerCell] -> [IntegerCell];
+    (IntegerCell :: Integer -> IntegerCell; (free~11 :: Integer;))
+    ((:) :: IntegerCell -> [IntegerCell] -> [IntegerCell];
+     (IntegerCell :: Integer -> IntegerCell; (6))
+     ((:) :: IntegerCell -> [IntegerCell] -> [IntegerCell];
+      (IntegerCell :: Integer -> IntegerCell; (free~12 :: Integer;))
+      ((:) :: IntegerCell -> [IntegerCell] -> [IntegerCell];
+       (IntegerCell :: Integer -> IntegerCell; (free~13 :: Integer;))
+       ((:) :: IntegerCell -> [IntegerCell] -> [IntegerCell];
+        (IntegerCell :: Integer -> IntegerCell; (free~14 :: Integer;))
+        ((:) :: IntegerCell -> [IntegerCell] -> [IntegerCell];
+         (IntegerCell :: Integer -> IntegerCell; (free~15 :: Integer;))
+         ((:) :: IntegerCell -> [IntegerCell] -> [IntegerCell];
+          (IntegerCell :: Integer -> IntegerCell; (free~16 :: Integer;))
+          ((:) :: IntegerCell -> [IntegerCell] -> [IntegerCell];
+           (IntegerCell :: Integer -> IntegerCell; (free~17 :: Integer;))
+           ([] :: [IntegerCell];))))))))))
+  ([] :: [IntegerCell];)))True :: Bool;
+
+Definitely a problem with the types. Let me look at the implementation of
+delacification again, see if I can spot any problems.
+
+Mon Nov  5 14:24:39 EST 2012
+
+Looking at the implementation, I think there may be an issue.
+
+We do the following:
+
+f (case a b c ... of
+      p -> b) x y z
+
+Is changed to:
+
+let _f = f
+in case (a b c ... x y z) of
+     p -> _f b
+
+But! What if the function _f takes multiple arguments? Then this is wrong!
+
+For example... say f is a constructor which takes two arguments.
+
+Foo (case free of
+        True -> 0
+        False -> 1) True
+
+This then gets delacified as:
+
+case free True of
+    True -> Foo 0
+    False -> Foo 1 
+
+Hmm... which is exactly the same as...
+
+(case free of
+    True -> Foo 0
+    False -> Foo 1) True
+
+Which actually is okay. Isn't it... The extra arguments will already be pushed
+inside...
+
+I don't know what the issue is.
+
+I clearly have a bug, because the case statement is guaranteed to match.
+
+f []
+f (x:xs)
+
+All constructors are covered. Everything is covered.
+
+The reason we don't match is because...
+
+Well, 'f' is ... what are the arguments again?
+
+It looks like arguments are getting mixed up or something, because we are
+trying to match things of the wrong types. You can't match True against [],
+for example.
+
+So, there's a bug in the transformation somewhere.
+
+How about this. Let me write up what I want the elaboration semantics to be
+for SNF. Work those out by hand. Then see how they differ from my
+implementation, try to get them to match if I can. Maybe that will expose the
+issue. It will have value regardless.
+
+I'm going to start with paper.
+
+Multi-arg cases and applications complicate things a bunch, unfortunately. Oh
+well.
+
+It would be awesome if I could write this up in coq, but I don't think it's
+worth the time sync right now. Too much of a learning curve to compete with.
+
+Mon Nov  5 15:37:31 EST 2012
+
+Writing things down maybe didn't help so much. Maybe it did.
+
+An interesting observation is, delacification can always be applied to a
+function of the form:  f [x], with a single argument. For multiple arguments,
+where [x] may not be the last, just make sure we delacify the expression f,
+which itself may be an application.
+
+I feel like life would be easier if I didn't have multi-arg applications and
+multi-pattern laces. I could avoid translating into and out of them and such.
+But that's more than I want to think about.
+
+The other thing is, unless your assertion is infinite, it shouldn't matter
+what order I do things in. For example, I ought to be able to do
+delacification before other elaboration. I feel like in the current
+implementation I can't do that.
+
+Let me change the delacification structure to just work on f [x], and simplify
+f [x, y] into (f [x]) [y]. There is potential trouble here, because this
+unfolds applications, and I have another step which folds applications, and it
+would be bad to mix those up. Hmm...
+
+How bad is it to have single argument applications and cases? That would avoid
+this entire issue.
+
+There's a supposed performance hit, but I don't really believe that.
+
+My real motivation initially was, how do you express:
+
+case of
+    p1a, p1b -> m1
+    p2a, p2b -> m2
+
+As a single argument case statement? That is, we don't have the arguments yet.
+
+What I want is something like:
+
+\a b -> case (a, b) of
+          (p1a, p1b) -> m1
+          (p2a, p2b) -> m2
+
+Which leverages tuples. But this requires I introduce a name. There must be a
+way to avoid introducing a name.
+
+It's like curry, or uncurry, or something like that, right?
+
+curry (case of
+          (p1a, p1b) -> m1
+          (p2a, p2b) -> m2)
+
+Is exactly what I had before. No new name. The trouble with this is, it is
+specific to two arguments. How about three arguments?
+
+case of
+    p1a, p1b, p1c -> m1
+    p2a, p2b, p2c -> m2
+
+Well... use multiple curries? And stick to two-tuples?
+
+\a b c ->
+  case ((a, b), c) of
+     ((p1a, p1b), p1c) -> m1
+     ((p2a, p2b), p2c) -> m2
+
+So, the question is, how to implement curry2:
+
+curry :: ((a, b) -> c) -> a -> b -> c
+curry2 :: ((a, b, c) -> d) -> a -> b -> c -> d
+
+Using curry? And not introducing any new variables?
+
+Let's say that a is a tuple type.
+
+curry :: ((a1, a2), b) -> c) -> (a1, a2) -> b -> c
+curry :: ((a1, a2) -> (b -> c)) -> a1 -> a2 -> (b -> c)
+
+Put them together, and you get:
+
+curry . curry :: ((a1, a2), b) -> c) -> a1 -> a2 -> b -> c
+Which is exactly what I want.
+
+So, this is a way I could do multi-arg cases naturally, given I have
+composition and curry, which I will have.
+
+case of
+    p1a, p1b, p1c -> m1
+    p2a, p2b, p2c -> m2
+
+Turns into:
+
+(curry (curry (
+    case of
+       ((p1a, p1b), p1c) -> m1
+       ((p2a, p2b), p2c) -> m2)))
+
+If this works, I should absolutely switch to single-arg lace and application.
+It will simplify everything.
+
+Let me start a new branch to experiment with this.
+
+Mon Nov  5 16:18:27 EST 2012
+
+What's the first step? Try encoding multi-arg lace statements using curry, see
+if it should work. I shouldn't have to change any representations or anything
+like that to try this out.
+
+Err... the trouble with that is, I need to change the type of Match. Maybe
+that's not so bad?
+
+It will be good to have as a stepping stone?
+
+Um... I'm not sure. How about I provide a way to have an augmented match type,
+and convert that to normal lace. Then people could use that. It's just, for
+now, they are the same.
+
+I think this will work, though it isn't working just this moment. Not sure
+why. But I like this. I think it will simplify things a whole bunch, so I want
+to make the leap and switch over to single argument case and application. It
+will be a drag, but it's totally doable too. Make use of MultiMatch in the
+syntax as I do. Then I can work out the problems I encounter as I encounter
+them. It shouldn't be too bad.
+
+Okay? Wish me luck? I hope so. I'm going to dive in and see what issues we run
+into.
+
+Um... this is going to be a whole lot of work. You know that, right?
+
+Ug. I'm having second thoughts about my approach. Perhaps I should slowly
+transform what I have.
+
+Remove references to LaceE and AppE. Hide them behind functions which I can
+change later. Then make the switch in the underlying representation.
+
+Yes. I think I'll have more luck that way.
+
+Let me work for this on a half hour, see how far I can get.
+
+Mon Nov  5 16:57:52 EST 2012
+
+I have a worrisome thought. Will this actually improve anything any?
+
+Like, I would expect to get things like:
+
+case ((True, if free1 then True else False)) of
+    (True, True) -> 1
+    (True, False) -> 2
+    (False, True) -> 3
+    (False, False) -> 4
+
+What's going to happen here? We can't match anything. I have to do
+delacification. But I have to go inside the tuple argument!
+
+Of course, I have the same problem now potentially, but this pushes it to the
+forefront...
+
+I still think it's a good idea to change the representation if I can, because
+it is only simpler, and I no longer have the excuse I originally had for it,
+because I can use curry to do the conversion I want.
+
+So I'll keep up this effort. But I may need to spend some thought on
+delacification in this new environment.
+
+Mon Nov  5 17:33:02 EST 2012
+
+Here's another idea. I could convert my elaborator to use single app stuff
+first. Or go the other way around. The translation from Exp to ExpH and back
+could deal with that. Just as a way to make incremental progress.
+
+Because really, it's the elaborate where it matters how I handle single or
+multi-arg application and lace.
+
+That's actually not so bad an idea.
+
+The idea is, make AppEH and MatchEH single argument things. Do the
+translation, the addition of curry, etc... when mapping into AppEH and
+LaceEH. If I can make that work, then I can slowly lift that to other parts of
+the code.
+
+Mon Nov  5 17:52:36 EST 2012
+
+Unfortunately I've run out of time to finish. But I think this would be a nice
+step to take. Because after the elaborator is all set, I think everything else
+is easy to change to one argument. I shall resume this when I get a chance.
+
