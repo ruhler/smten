@@ -33,6 +33,7 @@ Test Type Checking::
 * Verify all methods have been defined for a class instance.
 * Verify you can't refer to a nonexistent type
 * Verify we can't use a made up data constructor: ex: Answer True
+* Verify we can't use a data constructor where a type constructor is expected
 
 Type System::
 * give a nice message if there's a type ambiguity?

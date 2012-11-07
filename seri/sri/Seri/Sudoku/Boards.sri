@@ -46,4 +46,10 @@ little =
      "...4",
      "1..."]
      
+little_solved :: [[Char]]
+little_solved =
+    ["21..",
+     "4321",
+     "3214",
+     "1432"]
 

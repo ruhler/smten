@@ -7,10 +7,11 @@ import Seri.Sudoku.Board
 import Seri.Sudoku.Boards
 import Seri.Sudoku.Solver
 import Seri.Sudoku.EnumCell
+import Seri.Sudoku.Cell
 
 qmain :: Query [[Char]]
 qmain = do
-    board <- (readBoard little :: Query (Board EnumCell))
+    board <- (readBoard little_solved :: Query (Board EnumCell))
     result <- solve board
     case result of
        Satisfiable v -> return (print v)
