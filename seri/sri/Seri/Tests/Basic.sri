@@ -161,7 +161,7 @@ testbit = do
     t "bit simple" (bit3 0 == ((bit3 7) + 1))
     t "bit zeroext" (bit5 7 == bv_zero_extend (bit3 (0-1)))
     t "bit or" (bit5 0x1E == bv_or (bit5 0x12) (bit5 0x0C))
-    t "bit lsh" (bit5 10 == bv_lsh (bit5 5) 1)
+    t "bit shl" (bit5 10 == bv_shl (bit5 5) (bit5 1))
     t "bit extract" (bit3 3 == bv_extract (bit5 7) 1)
     t "bit not" (bit5 0x15 == bv_not (0x0A))
 

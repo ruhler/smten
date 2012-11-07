@@ -15,8 +15,8 @@ __prim_fromInteger_Bit :: Integer -> Bit #n
 __prim_zeroExtend_Bit :: Bit #n -> Bit #m
 __prim_truncate_Bit :: Bit #n -> Bit #m
 __prim_extract_Bit :: Bit #n -> Integer -> Bit #m
-__prim_lsh_Bit :: Bit #n -> Integer -> Bit #n
-__prim_rshl_Bit :: Bit #n -> Integer -> Bit #n
+__prim_shl_Bit :: Bit #n -> Bit #n -> Bit #n
+__prim_lshr_Bit :: Bit #n -> Bit #n -> Bit #n
 __prim_or_Bit :: Bit #n -> Bit #n -> Bit #n
 __prim_and_Bit :: Bit #n -> Bit #n -> Bit #n
 __prim_concat_Bit :: Bit #n -> Bit #m -> Bit #(n+m)
@@ -43,11 +43,11 @@ bv_ntype _ = numeric
 bv_sizeof :: Bit #n -> Integer
 bv_sizeof x = valueof (bv_ntype x)
 
-bv_lsh :: Bit #n -> Integer -> Bit #n
-bv_lsh = __prim_lsh_Bit
+bv_shl :: Bit #n -> Bit #n -> Bit #n
+bv_shl = __prim_shl_Bit
 
-bv_rshl :: Bit #n -> Integer -> Bit #n
-bv_rshl = __prim_rshl_Bit
+bv_lshr :: Bit #n -> Bit #n -> Bit #n
+bv_lshr = __prim_lshr_Bit
 
 bv_or :: Bit #n -> Bit #n -> Bit #n
 bv_or = __prim_or_Bit

@@ -94,6 +94,7 @@ module Seri.SMT.Yices.FFI2 (
     c_yices_bvnot,
     c_yices_zero_extend,
     c_yices_bvshl,
+    c_yices_bvlshr,
     c_yices_shift_left0,
     c_yices_shift_right0,
     c_yices_bvextract,
@@ -286,6 +287,9 @@ foreign import ccall unsafe "yices_zero_extend"
 
 foreign import ccall unsafe "yices_bvshl"
     c_yices_bvshl :: YTerm -> YTerm -> IO YTerm
+
+foreign import ccall unsafe "yices_bvlshr"
+    c_yices_bvlshr :: YTerm -> YTerm -> IO YTerm
 
 foreign import ccall unsafe "yices_shift_left0"
     c_yices_shift_left0 :: YTerm -> Word32 -> IO YTerm

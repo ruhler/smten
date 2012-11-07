@@ -4,7 +4,7 @@ module Seri.Haskell.Lib.Bit(
     Bit(),
     Seri.Haskell.Lib.Bit.or,
     Seri.Haskell.Lib.Bit.and,
-    lsh, rshl, zeroExtend,
+    shl, lshr, zeroExtend,
     Seri.Haskell.Lib.Bit.truncate,
     Seri.Haskell.Lib.Bit.extract,
     Seri.Haskell.Lib.Bit.concat,
@@ -46,11 +46,11 @@ not (Bit w a) = Bit w (complement a)
 concat :: (N__ a, N__ b) => Bit a -> Bit b -> Bit (N__PLUS a b)
 concat (Bit _ a) (Bit _ b) = Bit numeric (a `B.bv_concat` b)
 
-lsh :: N__ n => Bit n -> Integer -> Bit n
-lsh (Bit w a) x = Bit w (a `shiftL` fromInteger x)
+shl :: N__ n => Bit n -> Bit n -> Bit n
+shl (Bit w a) (Bit _ x) = Bit w (a `B.bv_shl` x)
 
-rshl :: N__ n => Bit n -> Integer -> Bit n
-rshl (Bit w a) x = Bit w (a `shiftR` fromInteger x)
+lshr :: N__ n => Bit n -> Bit n-> Bit n
+lshr (Bit w a) (Bit _ x) = Bit w (a `B.bv_lshr` x)
 
 zeroExtend :: (N__ n, N__ m) => Bit n -> Bit m
 zeroExtend (Bit n a)
