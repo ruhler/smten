@@ -1,5 +1,5 @@
 name: seri-smt
-version: 0.1.0.0
+version: 0.2.0.0
 synopsis: SMT primitives and backends for seri
 license: AllRightsReserved
 license-file: LICENSE
@@ -16,6 +16,6 @@ source-repository this
 --tag:
 library
   exposed-modules: Seri.Enoch.SMT, Seri.IO.Run, Seri.SMT.Query, Seri.SMT.Run, Seri.SMT.STP.Concrete, Seri.SMT.STP.FFI, Seri.SMT.STP.STP, Seri.SMT.Solver, Seri.SMT.Syntax, Seri.SMT.Translate, Seri.SMT.Yices.Concrete, Seri.SMT.Yices.FFI2, Seri.SMT.Yices.Yices1, Seri.SMT.Yices.Yices2
-  build-depends: base ==4.5.*, mtl ==2.1.*, pretty ==1.1.*, array ==0.4.*, directory ==1.1.*, template-haskell ==2.7.*, hashable ==1.1.*, containers ==0.4.*, bytestring ==0.9.*, seri ==0.2.*
+  build-depends: base ==4.5.*, mtl ==2.1.*, pretty ==1.1.*, array ==0.4.*, directory ==1.1.*, template-haskell ==2.7.*, hashable ==1.1.*, containers ==0.4.*, bytestring ==0.9.*, seri ==0.3.*
   extra-libraries: stp stdc++ yices1 yices2
   ghc-prof-options: -auto-all
