@@ -41,8 +41,6 @@ hrun cabal install cmdargs syb
 
 # The seri package
 indir seri {
-    # Add the flag --enable-executable-profiling to this command to enable
-    # profiling.
     hrun cabal install \
         --builddir ../build/seri \
         --with-happy=$::HAPPY \
@@ -54,8 +52,6 @@ indir seri {
 
 # The seri-smt package
 indir seri-smt {
-    # Add the flag --enable-executable-profiling to this command to enable
-    # profiling.
     hrun cabal install \
         --builddir ../build/seri-smt \
         --extra-lib-dirs $::env(LD_LIBRARY_PATH) \

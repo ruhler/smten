@@ -143,6 +143,7 @@ smtE :: Exp -> CompilationM SMT.Expression
 smtE e = do
   poly <- gets ys_poly
   let se = elaborate SNF poly e
+  trace ("POST-SNF: " ++ pretty se) (return ())
   smtE' se `catchError` (\msg -> throw $ msg ++ "\nWhen translating: " ++ pretty se)
 
 -- | Compile a seri expression to smt, assuming the expression can be
