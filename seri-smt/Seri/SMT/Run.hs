@@ -2,6 +2,8 @@
 -- | Run a Seri Exp of type Query in the haskell Query monad.
 module Seri.SMT.Run (run) where
 
+import Debug.Trace
+
 import Seri.Lambda hiding (free, query)
 import Seri.SMT.Query
 import Seri.SMT.Solver (Solver)
@@ -17,8 +19,10 @@ run e = do
         (AppE (VarE (Sig n _)) [arg]) | n == name "Seri.SMT.SMT.query" -> do
             res <- query (realize arg)
             case res of 
-                Satisfiable arg' -> do
-                    return $ AppE (ConE (Sig (name "Satisfiable") (AppT (ConT (name "Answer")) (typeof arg)))) [arg']
+                Satisfiable arg' ->
+                    let tsat = arrowsT [typeof arg, AppT (ConT (name "Answer")) (typeof arg)]
+                        result = AppE (ConE (Sig (name "Satisfiable") tsat)) [arg']
+                    in return result
                 Unsatisfiable -> return $ ConE (Sig (name "Unsatisfiable") (AppT (ConT (name "Answer")) (typeof arg)))
                 _ -> return $ ConE (Sig (name "Unknown") (AppT (ConT (name "Answer")) (typeof arg)))
         (VarE (Sig n (AppT _ t))) | n == name "Seri.SMT.SMT.__prim_free" -> free t

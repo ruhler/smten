@@ -136,7 +136,12 @@ deIfE e = do
   ([p], [Match [t] a, Match [f] b]) <- deCaseE e
   guard $ t == trueP
   guard $ f == falseP || f == WildP boolT
-  return (p, a, b)
+  let bv = fromMaybe b $ do
+         ([p1], (Match [f1] b1 : _)) <- deCaseE b
+         guard $ p1 == p
+         guard $ f1 == falseP
+         return b1
+  return (p, a, bv)
 
 -- | \a b ... c -> e
 lamE :: Match -> Exp

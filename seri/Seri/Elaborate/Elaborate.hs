@@ -184,7 +184,7 @@ elaborate mode env exp =
              desugar ca ms err
          
       elab :: ExpH -> ExpH
-      elab e = elab' e
+      elab = elab'
 
       -- elaborate the given expression
       elab' :: ExpH -> ExpH
@@ -204,9 +204,9 @@ elaborate mode env exp =
       elab' e@(LamEH {}) | mode == WHNF = e
       elab' e@(LamEH _ v f) = LamEH (ES_Some mode) v (\x -> elab (f x))
       elab' e@(CaseEH (ES_Some m) _ _ _ _) | mode <= m = e
-      elab' e@(CaseEH _ arg k yes no)
-        | (ConEH s:vs) <- unappsEH (elab arg) =
-          if s == k
+      elab' e@(CaseEH _ arg k@(Sig nk _) yes no)
+        | (ConEH (Sig s _):vs) <- unappsEH (elab arg) =
+          if s == nk
             then elab $ appEH yes vs
             else elab no
       elab' e@(CaseEH _ arg k yes no) | mode == SNF =
