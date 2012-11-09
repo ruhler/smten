@@ -243,28 +243,6 @@ elaborate mode env exp =
             CaseEH (ES_Some mode) (elab arg) k (elab yes) (elab no)
           CaseEH _ arg k yes no -> CaseEH (ES_Some mode) arg k yes no
         
-      -- Translate back to the normal Exp representation
-      toeM :: ExpH -> Fresh Exp
-      toeM (LitEH l) = return (LitE l)
-      toeM (ConEH s) = return (ConE s)
-      toeM (VarEH s) = return (VarE s)
-      toeM e@(AppEH {}) = do
-        (f:args) <- mapM toeM (unappsEH e)
-        return (AppE f args)
-      toeM (LamEH _ s f) = do
-        s' <- fresh s
-        b <- toeM (f (VarEH s'))
-        return (lamE $ Match [VarP s'] b)
-      toeM (CaseEH _ arg (Sig n t) yes no) = do
-        arg' <- toeM arg
-        let tys = unarrowsT t
-        vars <- mapM (fresh . Sig (name "_x")) (init tys)
-        yes' <- toeM (appEH yes (map VarEH vars))
-        no' <- toeM no
-        let pt = typeof arg'
-        return $ caseE arg' [Match [ConP pt n (map VarP vars)] yes',
-                             Match [WildP pt] no']
-
       toe :: ExpH -> Exp
       toe e = runFresh (toeM e) (free' exp)
 
@@ -479,3 +457,24 @@ ifEH p a b =
   let false = CaseEH ES_None p (Sig (name "False") boolT) b (error "if failed to match")
   in CaseEH ES_None p (Sig (name "True") boolT) a false
 
+-- Translate back to the normal Exp representation
+toeM :: ExpH -> Fresh Exp
+toeM (LitEH l) = return (LitE l)
+toeM (ConEH s) = return (ConE s)
+toeM (VarEH s) = return (VarE s)
+toeM e@(AppEH {}) = do
+  (f:args) <- mapM toeM (unappsEH e)
+  return (AppE f args)
+toeM (LamEH _ s f) = do
+  s' <- fresh s
+  b <- toeM (f (VarEH s'))
+  return (lamE $ Match [VarP s'] b)
+toeM (CaseEH _ arg (Sig n t) yes no) = do
+  arg' <- toeM arg
+  let tys = unarrowsT t
+  vars <- mapM (fresh . Sig (name "_x")) (init tys)
+  yes' <- toeM (appEH yes (map VarEH vars))
+  no' <- toeM no
+  let pt = typeof arg'
+  return $ caseE arg' [Match [ConP pt n (map VarP vars)] yes',
+                       Match [WildP pt] no']
