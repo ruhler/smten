@@ -239,6 +239,10 @@ elaborate mode env exp =
                     y2' = y2ify k2args y2body y2
                     n2' = CaseEH ES_None n2 k1 y1 n1
                 in elab $ CaseEH ES_None x2 k2 y2' n2'
+          CaseEH _ arg@(VarEH (Sig nm t)) k yes no
+              | mode == SNF && t == boolT ->
+                let Just v = de_boolEH (ConEH k)
+                in CaseEH (ES_Some mode) (elab arg) k (elab (concretize nm v yes)) (elab (concretize nm (not v) no))
           CaseEH _ arg k yes no | mode == SNF ->
             CaseEH (ES_Some mode) (elab arg) k (elab yes) (elab no)
           CaseEH _ arg k yes no -> CaseEH (ES_Some mode) arg k yes no
@@ -478,3 +482,17 @@ toeM (CaseEH _ arg (Sig n t) yes no) = do
   let pt = typeof arg'
   return $ caseE arg' [Match [ConP pt n (map VarP vars)] yes',
                        Match [WildP pt] no']
+
+-- Replace all occurences of the boolean variable with given name to the value
+-- True or False in the given expression.
+concretize :: Name -> Bool -> ExpH -> ExpH
+concretize n v e
+ = case e of
+    LitEH {} -> e
+    ConEH {} -> e
+    VarEH (Sig nm _) | n == nm -> boolEH v
+    VarEH {} -> e
+    AppEH _ f x -> AppEH ES_None (concretize n v f) (concretize n v x)
+    LamEH _ s f -> LamEH ES_None s $ \x -> concretize n v (f x)
+    CaseEH _ x k y d -> CaseEH ES_None (concretize n v x) k (concretize n v y) (concretize n v d)
+
