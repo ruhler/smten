@@ -10,7 +10,7 @@ import Seri.Sudoku.BitCell
 
 qmain :: Query [[Char]]
 qmain = do
-    board <- (readBoard diabolical :: Query (Board BitCell))
+    board <- (readBoard little :: Query (Board BitCell))
     result <- solve board
     case result of
        Satisfiable v -> return (print v)

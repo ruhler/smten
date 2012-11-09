@@ -196,8 +196,30 @@ elaborate mode env exp =
           AppEH (ES_Some m) _ _ | mode <= m -> e
           AppEH _ f arg -> 
              case (elab f) of
-              (LamEH _ _ b) -> elab $ b arg
-              f' -> AppEH (ES_Some mode) f' (if mode == SNF then elab arg else arg)
+               CaseEH _ a k y n | mode == SNF ->
+                 let -- Perform argument pushing.
+                     -- (case a of
+                     --     k -> y
+                     --     _ -> n) arg
+                     -- Where y = \v1 -> \v2 -> ... -> yv
+                     -- Translates to:
+                     --     case a of
+                     --         k -> \v1 -> \v2 -> ... -> yv arg
+                     --         _ -> n arg
+                     ybody = \yv -> AppEH ES_None yv arg
+                     yify :: Integer -> (ExpH -> ExpH) -> ExpH -> ExpH
+                     yify 0 f x = f x
+                     yify n f (LamEH _ s b) = LamEH ES_None s $ \x ->
+                         (yify (n-1) f (b x))
+                     yify n f x = error $ "yify got: " ++ pretty x
+
+                     kargs = genericLength (unarrowsT (typeof k)) - 1
+
+                     y' = yify kargs ybody y
+                     n' = AppEH ES_None n arg
+                 in elab $ CaseEH ES_None a k y' n'
+               LamEH _ _ b -> elab $ b arg
+               f' -> AppEH (ES_Some mode) f' (if mode == SNF then elab arg else arg)
           LamEH (ES_Some m) _ _ | mode <= m -> e
           LamEH {} | mode == WHNF -> e
           LamEH _ v f -> LamEH (ES_Some mode) v (\x -> elab (f x))
