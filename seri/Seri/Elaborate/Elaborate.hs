@@ -45,7 +45,7 @@ import Debug.Trace
 
 import Data.Bits
 import Data.Functor
-import Data.List(genericLength, partition)
+import Data.List(genericLength)
 import Data.Maybe(fromMaybe)
 import Data.Monoid
 
@@ -209,6 +209,38 @@ elaborate mode env exp =
           if s == nk
             then elab $ appEH yes vs
             else elab no
+      elab' (CaseEH _ arg k1 y1 n1)
+        | mode == SNF
+        , CaseEH _ x2 k2 y2 n2 <- elab arg =
+            let -- Decasify:
+                --  case (case x2 of k2 -> y2 ; _ -> n2) of
+                --      k1 -> y1;
+                --      _ -> n1;
+                --
+                --  Where: y2 = \v1 -> \v2 -> ... -> y2v
+                --
+                -- Turns into:
+                --  case x2 of
+                --     k2 -> \v1 -> \v2  -> ... ->
+                --                case y2v of
+                --                    k1 -> y1;
+                --                    _ -> n1;
+                --     _ -> case n2 of
+                --            k1 -> y1;
+                --            _ -> n1;
+                -- TODO: use lets to maintain sharing of y1 and n1.
+                y2body = \y -> CaseEH ES_None y k1 y1 n1
+                y2ify :: Integer -> (ExpH -> ExpH) -> ExpH -> ExpH
+                y2ify 0 f x = f x
+                y2ify n f (LamEH _ s b) = LamEH ES_None s $ \x ->
+                    (y2ify (n-1) f (b x))
+                y2ify n f x = error $ "y2ify got: " ++ pretty x
+
+                k2args = genericLength (unarrowsT (typeof k2)) - 1
+
+                y2' = y2ify k2args y2body y2
+                n2' = CaseEH ES_None n2 k1 y1 n1
+            in elab $ CaseEH ES_None x2 k2 y2' n2'
       elab' e@(CaseEH _ arg k yes no) | mode == SNF =
           CaseEH (ES_Some mode) (elab arg) k (elab yes) (elab no)
       elab' e@(CaseEH _ arg k yes no) = CaseEH (ES_Some mode) arg k yes no
@@ -361,12 +393,12 @@ elaborate mode env exp =
             (name "Seri.Bit.__prim_not_Bit", uVV complement),
             (name "Prelude.not", uBB not),
 
-            (name "Prelude.error", 
-                let g a = do
-                    msg <- deStringE (toe a)
-                    return (error $ "Seri.error: " ++ msg)
-                in unary g
-              ),
+--            (name "Prelude.error", 
+--                let g a = do
+--                    msg <- deStringE (toe a)
+--                    return (error $ "Seri.error: " ++ msg)
+--                in unary g
+--              ),
             (name "Seri.Bit.__prim_extract_Bit", \s@(Sig _ t) ->
                 let f :: Bit -> Integer -> Bit
                     f a j = 

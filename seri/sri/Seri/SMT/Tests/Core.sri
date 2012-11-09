@@ -54,22 +54,22 @@ qtest = do
     rgh <- query (g, h)
     test "core.eq" (rgh == Satisfiable (False, False))
 
---    -- Test IF
---    i <- free
---    assert (if i then False else True)
---    ri <- query i
---    test "core.if" (ri == Satisfiable False)
---    
---    -- Test more complex
---    x <- free
---    y <- free
---    z <- free
---    assert (p x y z)
---    rxyz <- query (x, y, z)
---    test "core.complex" $
---        case rxyz of
---            Satisfiable (xv, yv, zv) -> p xv yv zv
---            _ -> False
+    -- Test IF
+    i <- free
+    assert (if i then False else True)
+    ri <- query i
+    test "core.if" (ri == Satisfiable False)
+    
+    -- Test more complex
+    x <- free
+    y <- free
+    z <- free
+    assert (p x y z)
+    rxyz <- query (x, y, z)
+    test "core.complex" $
+        case rxyz of
+            Satisfiable (xv, yv, zv) -> p xv yv zv
+            _ -> False
 
 
 main :: IO ()

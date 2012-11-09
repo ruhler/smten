@@ -135,6 +135,7 @@ smtT t | t == integerT = return SMT.IntegerT
 smtT t | t == charT = return SMT.IntegerT
 smtT t | Just w <- deBitT t = return $ SMT.BitVectorT w
 smtT t | Just (a, b) <- deArrowT t = SMT.ArrowT <$> mapM smtT [a, b] 
+smtT t = throw $ "smtT: unsupported type: " ++ pretty t
 
 -- | Compile a seri expression to a smt expression.
 -- Before using the returned expression, the smtD function should be called
@@ -143,7 +144,7 @@ smtE :: Exp -> CompilationM SMT.Expression
 smtE e = do
   poly <- gets ys_poly
   let se = elaborate SNF poly e
-  --trace ("POST-SNF: " ++ pretty se) (return ())
+  trace ("POST-SNF: " ++ pretty se) (return ())
   smtE' se `catchError` (\msg -> throw $ msg ++ "\nWhen translating: " ++ pretty se)
 
 -- | Compile a seri expression to smt, assuming the expression can be
