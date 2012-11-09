@@ -182,68 +182,67 @@ elaborate mode env exp =
 
         in LamEH (ES_Some WHNF) (Sig (name "_ca") tpat) $ \ca ->
              desugar ca ms err
-         
-      elab :: ExpH -> ExpH
-      elab = elab'
 
       -- elaborate the given expression
-      elab' :: ExpH -> ExpH
-      elab' e@(LitEH l) = e
-      elab' e@(ConEH s) = e
-      elab' e@(VarEH (ES_Some m) s) | mode <= m = e
-      elab' e@(VarEH _ s@(Sig n ct)) =
-        case (attemptM $ lookupVar env s) of
-            Just (pt, ve) -> elab $ toh [] $ assignexp (assignments pt ct) ve
-            Nothing -> VarEH (ES_Some SNF) s
-      elab' e@(AppEH (ES_Some m) _ _) | mode <= m = e
-      elab' e@(AppEH _ f arg) = 
-           case (elab f) of
-            (LamEH _ _ b) -> elab $ b arg
-            f' -> AppEH (ES_Some mode) f' (if mode == SNF then elab arg else arg)
-      elab' e@(LamEH (ES_Some m) _ _) | mode <= m = e
-      elab' e@(LamEH {}) | mode == WHNF = e
-      elab' e@(LamEH _ v f) = LamEH (ES_Some mode) v (\x -> elab (f x))
-      elab' e@(CaseEH (ES_Some m) _ _ _ _) | mode <= m = e
-      elab' e@(CaseEH _ arg k@(Sig nk _) yes no)
-        | (ConEH (Sig s _):vs) <- unappsEH (elab arg) =
-          if s == nk
-            then elab $ appEH yes vs
-            else elab no
-      elab' (CaseEH _ arg k1 y1 n1)
-        | mode == SNF
-        , CaseEH _ x2 k2 y2 n2 <- elab arg =
-            let -- Decasify:
-                --  case (case x2 of k2 -> y2 ; _ -> n2) of
-                --      k1 -> y1;
-                --      _ -> n1;
-                --
-                --  Where: y2 = \v1 -> \v2 -> ... -> y2v
-                --
-                -- Turns into:
-                --  case x2 of
-                --     k2 -> \v1 -> \v2  -> ... ->
-                --                case y2v of
-                --                    k1 -> y1;
-                --                    _ -> n1;
-                --     _ -> case n2 of
-                --            k1 -> y1;
-                --            _ -> n1;
-                -- TODO: use lets to maintain sharing of y1 and n1.
-                y2body = \y -> CaseEH ES_None y k1 y1 n1
-                y2ify :: Integer -> (ExpH -> ExpH) -> ExpH -> ExpH
-                y2ify 0 f x = f x
-                y2ify n f (LamEH _ s b) = LamEH ES_None s $ \x ->
-                    (y2ify (n-1) f (b x))
-                y2ify n f x = error $ "y2ify got: " ++ pretty x
+      elab :: ExpH -> ExpH
+      elab e =
+        case e of
+          LitEH l -> e
+          ConEH s -> e
+          VarEH (ES_Some m) s | mode <= m -> e
+          VarEH _ s@(Sig n ct) ->
+            case (attemptM $ lookupVar env s) of
+                Just (pt, ve) -> elab $ toh [] $ assignexp (assignments pt ct) ve
+                Nothing -> VarEH (ES_Some SNF) s
+          AppEH (ES_Some m) _ _ | mode <= m -> e
+          AppEH _ f arg -> 
+             case (elab f) of
+              (LamEH _ _ b) -> elab $ b arg
+              f' -> AppEH (ES_Some mode) f' (if mode == SNF then elab arg else arg)
+          LamEH (ES_Some m) _ _ | mode <= m -> e
+          LamEH {} | mode == WHNF -> e
+          LamEH _ v f -> LamEH (ES_Some mode) v (\x -> elab (f x))
+          CaseEH (ES_Some m) _ _ _ _ | mode <= m -> e
+          CaseEH _ arg k@(Sig nk _) yes no
+            | (ConEH (Sig s _):vs) <- unappsEH (elab arg) ->
+              if s == nk
+                then elab $ appEH yes vs
+                else elab no
+          CaseEH _ arg k1 y1 n1
+            | mode == SNF
+            , CaseEH _ x2 k2 y2 n2 <- elab arg ->
+                let -- Decasify:
+                    --  case (case x2 of k2 -> y2 ; _ -> n2) of
+                    --      k1 -> y1;
+                    --      _ -> n1;
+                    --
+                    --  Where: y2 = \v1 -> \v2 -> ... -> y2v
+                    --
+                    -- Turns into:
+                    --  case x2 of
+                    --     k2 -> \v1 -> \v2  -> ... ->
+                    --                case y2v of
+                    --                    k1 -> y1;
+                    --                    _ -> n1;
+                    --     _ -> case n2 of
+                    --            k1 -> y1;
+                    --            _ -> n1;
+                    -- TODO: use lets to maintain sharing of y1 and n1.
+                    y2body = \y -> CaseEH ES_None y k1 y1 n1
+                    y2ify :: Integer -> (ExpH -> ExpH) -> ExpH -> ExpH
+                    y2ify 0 f x = f x
+                    y2ify n f (LamEH _ s b) = LamEH ES_None s $ \x ->
+                        (y2ify (n-1) f (b x))
+                    y2ify n f x = error $ "y2ify got: " ++ pretty x
 
-                k2args = genericLength (unarrowsT (typeof k2)) - 1
+                    k2args = genericLength (unarrowsT (typeof k2)) - 1
 
-                y2' = y2ify k2args y2body y2
-                n2' = CaseEH ES_None n2 k1 y1 n1
-            in elab $ CaseEH ES_None x2 k2 y2' n2'
-      elab' e@(CaseEH _ arg k yes no) | mode == SNF =
-          CaseEH (ES_Some mode) (elab arg) k (elab yes) (elab no)
-      elab' e@(CaseEH _ arg k yes no) = CaseEH (ES_Some mode) arg k yes no
+                    y2' = y2ify k2args y2body y2
+                    n2' = CaseEH ES_None n2 k1 y1 n1
+                in elab $ CaseEH ES_None x2 k2 y2' n2'
+          CaseEH _ arg k yes no | mode == SNF ->
+            CaseEH (ES_Some mode) (elab arg) k (elab yes) (elab no)
+          CaseEH _ arg k yes no -> CaseEH (ES_Some mode) arg k yes no
         
       -- Translate back to the normal Exp representation
       toeM :: ExpH -> Fresh Exp
