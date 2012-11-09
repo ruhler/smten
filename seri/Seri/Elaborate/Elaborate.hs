@@ -66,7 +66,7 @@ data EState = ES_None | ES_Some Mode
 
 data ExpH = LitEH Lit
           | ConEH Sig
-          | VarEH EState Sig
+          | VarEH Sig
           | AppEH EState ExpH ExpH
           | LamEH EState Sig (ExpH -> ExpH)
           | CaseEH EState ExpH Sig ExpH ExpH
@@ -82,7 +82,7 @@ data ExpH = LitEH Lit
 instance Ppr ExpH where
     ppr (LitEH l) = ppr l
     ppr (ConEH s) = ppr s
-    ppr (VarEH _ s) = ppr s
+    ppr (VarEH s) = ppr s
     ppr (AppEH _ f x) = parens (ppr f) <+> parens (ppr x)
     ppr (LamEH _ s f) = text "\\" <+> ppr s <+> text "-> ..."
     ppr (CaseEH _ e1 p e2 e3)
@@ -98,13 +98,13 @@ instance Eq (ExpH -> ExpH) where
 instance Typeof ExpH where
     typeof (LitEH l) = typeof l
     typeof (ConEH s) = typeof s
-    typeof (VarEH _ s) = typeof s
+    typeof (VarEH s) = typeof s
     typeof (AppEH _ f x) =
         let fts = unarrowsT (typeof f)
         in case (drop 1 fts) of
               [] -> UnknownT
               ts -> arrowsT ts
-    typeof (LamEH _ v f) = arrowsT [typeof v, typeof (f (VarEH (ES_Some SNF) v))]
+    typeof (LamEH _ v f) = arrowsT [typeof v, typeof (f (VarEH v))]
     typeof (CaseEH _ _ _ _ e) = typeof e
 
 
@@ -124,7 +124,7 @@ elaborate mode env exp =
       toh _ (ConE s) = ConEH s
       toh m (VarE s@(Sig n _)) | Just f <- HT.lookup n primitives = f s
       toh m (VarE s) | Just v <- lookup s m = v
-      toh m (VarE s) = VarEH ES_None s
+      toh m (VarE s) = VarEH s
       toh m (AppE f xs) =
         let appeh :: ExpH -> Exp -> ExpH
             appeh f x = AppEH ES_None f (toh m x)
@@ -139,7 +139,7 @@ elaborate mode env exp =
         let tpat = typeof p
             tbody = typeof b
             terr = arrowsT [stringT, tbody]
-            errv = VarEH ES_None (Sig (name "Prelude.error") terr)
+            errv = VarEH (Sig (name "Prelude.error") terr)
             err = AppEH ES_None errv (stringEH "Case no match")
 
             depat :: [(Sig, ExpH)] -- ^ Variables in scope
@@ -155,7 +155,7 @@ elaborate mode env exp =
             depat vars arg (LitP l) b def =
               let lt = typeof l
                   eqt = arrowsT [lt, lt, boolT]
-                  p = appEH (VarEH ES_None (Sig (name "Prelude.==") eqt)) [LitEH l, arg]
+                  p = appEH (VarEH (Sig (name "Prelude.==") eqt)) [LitEH l, arg]
               in ifEH p (b vars) def
             depat vars arg (ConP t n ps) b def =
               let k = Sig n (arrowsT ((map typeof ps) ++ [t]))
@@ -189,11 +189,10 @@ elaborate mode env exp =
         case e of
           LitEH l -> e
           ConEH s -> e
-          VarEH (ES_Some m) s | mode <= m -> e
-          VarEH _ s@(Sig n ct) ->
+          VarEH s@(Sig n ct) ->
             case (attemptM $ lookupVar env s) of
                 Just (pt, ve) -> elab $ toh [] $ assignexp (assignments pt ct) ve
-                Nothing -> VarEH (ES_Some SNF) s
+                Nothing -> VarEH s
           AppEH (ES_Some m) _ _ | mode <= m -> e
           AppEH _ f arg -> 
              case (elab f) of
@@ -248,19 +247,19 @@ elaborate mode env exp =
       toeM :: ExpH -> Fresh Exp
       toeM (LitEH l) = return (LitE l)
       toeM (ConEH s) = return (ConE s)
-      toeM (VarEH _ s) = return (VarE s)
+      toeM (VarEH s) = return (VarE s)
       toeM e@(AppEH {}) = do
         (f:args) <- mapM toeM (unappsEH e)
         return (AppE f args)
       toeM (LamEH _ s f) = do
         s' <- fresh s
-        b <- toeM (f (VarEH (ES_Some SNF) s'))
+        b <- toeM (f (VarEH s'))
         return (lamE $ Match [VarP s'] b)
       toeM (CaseEH _ arg (Sig n t) yes no) = do
         arg' <- toeM arg
         let tys = unarrowsT t
         vars <- mapM (fresh . Sig (name "_x")) (init tys)
-        yes' <- toeM (appEH yes (map (VarEH (ES_Some SNF)) vars))
+        yes' <- toeM (appEH yes (map VarEH vars))
         no' <- toeM no
         let pt = typeof arg'
         return $ caseE arg' [Match [ConP pt n (map VarP vars)] yes',
@@ -274,7 +273,7 @@ elaborate mode env exp =
       unary f s@(Sig _ t) =
         let [ta, _] = unarrowsT t
         in LamEH (ES_Some WHNF) (Sig (name "a") ta) $ \a ->
-             let def = AppEH (ES_Some WHNF) (VarEH (ES_Some SNF) s) a
+             let def = AppEH (ES_Some WHNF) (VarEH s) a
              in fromMaybe def (f (elab a))
 
       uXX :: (ExpH -> Maybe a)
@@ -305,7 +304,7 @@ elaborate mode env exp =
         let [ta, tb, _] = unarrowsT t
         in LamEH (ES_Some WHNF) (Sig (name "a") ta) $ \a ->
              LamEH (ES_Some WHNF) (Sig (name "b") tb) $ \b ->
-               let def = AppEH (ES_Some WHNF) (AppEH (ES_Some WHNF) (VarEH (ES_Some SNF) s) a) b
+               let def = AppEH (ES_Some WHNF) (AppEH (ES_Some WHNF) (VarEH s) a) b
                in fromMaybe def (f (elab a) (elab b))
 
       -- Handle a binary primitive of type a -> b -> c
@@ -347,7 +346,7 @@ elaborate mode env exp =
       -- Extract a Bit from an expression of the form: __prim_frominteger_Bit v
       -- The expression should be elaborated already.
       de_bitEH :: ExpH -> Maybe Bit
-      de_bitEH (AppEH _ (VarEH _ (Sig fib (AppT _ (AppT _ (NumT w))))) ve)
+      de_bitEH (AppEH _ (VarEH (Sig fib (AppT _ (AppT _ (NumT w))))) ve)
         | fib == name "Seri.Bit.__prim_fromInteger_Bit"
         , LitEH (IntegerL v) <- elab ve
         = Just (bv_make (nteval w) v)
@@ -473,7 +472,7 @@ appEH f [] = f
 appEH f (x:xs) = appEH (AppEH ES_None f x) xs
 
 bitEH :: Bit -> ExpH
-bitEH b = AppEH (ES_Some SNF) (VarEH (ES_Some SNF) (Sig (name "Seri.Bit.__prim_fromInteger_Bit") (arrowsT [integerT, bitT (bv_width b)]))) (integerEH $ bv_value b)
+bitEH b = AppEH (ES_Some SNF) (VarEH (Sig (name "Seri.Bit.__prim_fromInteger_Bit") (arrowsT [integerT, bitT (bv_width b)]))) (integerEH $ bv_value b)
 
 ifEH :: ExpH -> ExpH -> ExpH -> ExpH
 ifEH p a b = 
