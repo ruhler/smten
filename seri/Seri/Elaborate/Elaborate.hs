@@ -196,6 +196,10 @@ elaborate mode env exp =
           AppEH (ES_Some m) _ _ | mode <= m -> e
           AppEH _ f arg -> 
              case (elab f) of
+               AppEH _ (VarEH s@(Sig n _)) x
+                 | Just f <- HT.lookup n bprimitives
+                 , Just v <- f (elab x) (elab arg)
+                 -> v
                CaseEH _ a k y n | mode == SNF ->
                  let -- Perform argument pushing.
                      -- (case a of
@@ -359,23 +363,52 @@ elaborate mode env exp =
       stringEH :: String -> ExpH
       stringEH str = toh [] (stringE str)
 
+      -- binary primitives
+      bprimitives :: HT.HashTable Name (ExpH -> ExpH -> Maybe ExpH)
+      bprimitives =
+        let bXXX :: (ExpH -> Maybe a) -> (ExpH -> Maybe b) -> (c -> ExpH)
+                    -> (a -> b -> c)
+                    -> ExpH -> ExpH -> Maybe ExpH
+            bXXX de_a de_b mkc f a b = do
+                a' <- de_a a
+                b' <- de_b b
+                return (mkc (f a' b'))
+
+            bIIB = bXXX de_integerEH de_integerEH boolEH
+            bIII = bXXX de_integerEH de_integerEH integerEH
+            bCCB = bXXX de_charEH de_charEH boolEH
+            bVVB = bXXX de_bitEH de_bitEH boolEH
+            bVVV = bXXX de_bitEH de_bitEH bitEH
+        in HT.table $ [
+             (name "Prelude.__prim_eq_Integer", bIIB (==)),
+             (name "Prelude.__prim_add_Integer", bIII (+)),
+             (name "Prelude.__prim_sub_Integer", bIII (-)),
+             (name "Prelude.__prim_mul_Integer", bIII (*)),
+             (name "Prelude.<", bIIB (<)),
+             (name "Prelude.<=", bIIB (<=)),
+             (name "Prelude.>", bIIB (>)),
+             (name "Prelude.__prim_eq_Char", bCCB (==)),
+             (name "Seri.Bit.__prim_eq_Bit", bVVB (==)),
+             (name "Seri.Bit.__prim_add_Bit", bVVV (+)),
+             (name "Seri.Bit.__prim_sub_Bit", bVVV (-)),
+             (name "Seri.Bit.__prim_mul_Bit", bVVV (*)),
+             (name "Seri.Bit.__prim_concat_Bit", bVVV bv_concat),
+             (name "Seri.Bit.__prim_or_Bit", bVVV (.|.)),
+             (name "Seri.Bit.__prim_and_Bit", bVVV (.&.)),
+             (name "Seri.Bit.__prim_shl_Bit", bVVV bv_shl),
+             (name "Seri.Bit.__prim_lshr_Bit", bVVV bv_lshr)
+                ]
+
       primitives :: HT.HashTable Name (Sig -> ExpH)
       primitives = HT.table $ [
-            (name "Prelude.__prim_eq_Integer", bIIB (==)),
-            (name "Prelude.__prim_add_Integer", bIII (+)),
-            (name "Prelude.__prim_sub_Integer", bIII (-)),
-            (name "Prelude.__prim_mul_Integer", bIII (*)),
-            (name "Prelude.<", bIIB (<)),
-            (name "Prelude.<=", bIIB (<=)),
-            (name "Prelude.>", bIIB (>)),
-            (name "Prelude.__prim_eq_Char", bCCB (==)),
-            (name "Seri.Bit.__prim_eq_Bit", bVVB (==)),
-            (name "Seri.Bit.__prim_add_Bit", bVVV (+)),
-            (name "Seri.Bit.__prim_sub_Bit", bVVV (-)),
-            (name "Seri.Bit.__prim_mul_Bit", bVVV (*)),
-            (name "Seri.Bit.__prim_concat_Bit", bVVV bv_concat),
-            (name "Seri.Bit.__prim_or_Bit", bVVV (.|.)),
-            (name "Seri.Bit.__prim_and_Bit", bVVV (.&.)),
+            (name "Seri.Bit.__prim_extract_Bit", \s@(Sig _ t) ->
+                let f :: Bit -> Integer -> Bit
+                    f a j = 
+                      let AppT _ (NumT wt) = last $ unarrowsT t
+                          i = j + (nteval wt) - 1
+                      in bv_extract i j a
+                in bVIV f s),
+
             (name "Prelude.&&", 
                 let f a b = do
                       val <- de_boolEH a
@@ -388,8 +421,6 @@ elaborate mode env exp =
                       return (if val then trueEH else b)
                 in binary f
                 ),
-            (name "Seri.Bit.__prim_shl_Bit", bVVV bv_shl),
-            (name "Seri.Bit.__prim_lshr_Bit", bVVV bv_lshr),
             (name "Prelude.__prim_show_Integer", uIS show),
             (name "Seri.Bit.__prim_show_Bit", uVS show),
             (name "Seri.Bit.__prim_not_Bit", uVV complement),
@@ -401,13 +432,6 @@ elaborate mode env exp =
 --                    return (error $ "Seri.error: " ++ msg)
 --                in unary g
 --              ),
-            (name "Seri.Bit.__prim_extract_Bit", \s@(Sig _ t) ->
-                let f :: Bit -> Integer -> Bit
-                    f a j = 
-                      let AppT _ (NumT wt) = last $ unarrowsT t
-                          i = j + (nteval wt) - 1
-                      in bv_extract i j a
-                in bVIV f s),
             (name "Prelude.valueof", \s@(Sig n t) ->
               let [NumT nt, it] = unarrowsT t
                   g _ = return $ integerEH (nteval nt)

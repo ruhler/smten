@@ -123,3 +123,39 @@ Build System::
 Seri Library::
 * Have the sudoku solver use IO to read the input board
 
+Elaborator::
+* Perhaps case statements should consider all constructors at once instead of
+  one at a time?
+* Primitives should be done as reduction rules, they shouldn't introduce lambda
+  terms. They should still be pretty though.
+* Pull elaborator functions out into top level declarations. Then use type
+  classes to make handling of primitives much cleaner (don't have to write
+  different bXXX and uXX functions for each type I use). Perhaps use a Reader
+  monad?
+* Don't elaborate an expression which has already been elaborated
+* Figure out how to cheaply concretize free variables in expressions, ideally
+  without forcing re-elaboration after concretization. Can I make use of HOAS
+  somehow with this so I elaborate the right way from the start?
+* Have common abstraction for evaluating an argument, used for case arguments
+  and primitive arguments
+* Propagate the error primitive up instead of calling error.
+* Can I remove the distinction between SNF and WHNF elaboration? Can they be
+  the same?
+* It's okay to elaborate bodies of lambdas in WHNF thanks to HOAS.
+* Do eager elaboration whenever arguments are shared.
+* Don't come out of ExpH for IO and Query monads.
+** Remove casenoerr flag
+* Look over results of elaboration, especially SNF, to see if anything pops
+  out, and make sure things aren't blown up too big.
+* Have common abstraction for manipulating the yv part of a case expression.
+* Consider more general concretization propagation?
+* Change front end to have single argument applications and patterns.
+* Change front end to have desugared case expressions.
+* Share loading of top level declarations.
+* Change deriving of Free to generate if statements, not case statements.
+* Leverage let statements when doing argument and function pushing to capture
+  sharing
+* Implement the 'update' primitive in the elaborator, or remove it from
+  smt_array.
+* Test out free_enum, see if it generate SAT (it may not...)
+
