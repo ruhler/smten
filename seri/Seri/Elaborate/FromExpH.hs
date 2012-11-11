@@ -5,7 +5,7 @@ module Seri.Elaborate.FromExpH (
 
 import Seri.Lambda
 import Seri.Elaborate.ExpH
-import Seri.Elaborate.FreshPretty
+import Seri.Elaborate.FreshFast
 
 fromExpH :: ExpH -> Exp
 fromExpH e = runFresh (fromExpHM e)
