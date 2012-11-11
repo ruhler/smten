@@ -33,7 +33,6 @@
 -- 
 -------------------------------------------------------------------------------
 
-{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE PatternGuards #-}
 
 -- | Target for elaborating seri expressions.
@@ -53,60 +52,10 @@ import Seri.Bit
 import Seri.Failable
 import qualified Seri.HashTable as HT
 import Seri.Lambda
-import Seri.Lambda.Ppr hiding (Mode)
 
-import Seri.Elaborate.FreshPretty
-
-data Mode = WHNF -- ^ elaborate to weak head normal form.
-          | SNF  -- ^ elaborate to smt normal form.
-    deriving (Show, Eq, Ord)
-
-data EState = ES_None | ES_Some Mode
-    deriving (Show, Eq)
-
-data ExpH = LitEH Lit
-          | ConEH Sig
-          | VarEH Sig
-          | AppEH EState ExpH ExpH
-          | LamEH EState Sig (ExpH -> ExpH)
-          | CaseEH EState ExpH Sig ExpH ExpH
-            -- ^ case e1 of
-            --      k -> e2
-            --      _ -> e3
-            -- Note: if k is a constructor of type (a -> b -> c -> K),
-            -- Then e2 should have type: (a -> b -> c -> V),
-            -- And  e1 should have type: V
-            --  Where V is the type of the case expression.
-    deriving(Eq)
-
-instance Ppr ExpH where
-    ppr (LitEH l) = ppr l
-    ppr (ConEH s) = ppr s
-    ppr (VarEH s) = ppr s
-    ppr (AppEH _ f x) = parens (ppr f) <+> parens (ppr x)
-    ppr (LamEH _ s f) = text "\\" <+> ppr s <+> text "-> ..."
-    ppr (CaseEH _ e1 p e2 e3)
-        = text "case" <+> parens (ppr e1) <+> text "of" <+> text "{"
-            $+$ nest tabwidth (vcat [
-                    ppr p <+> text "->" <+> ppr e2,
-                    text "_" <+> text "->" <+> ppr e3
-                  ]) $+$ text "}"
-    
-instance Eq (ExpH -> ExpH) where
-    (==) _ _ = False
-
-instance Typeof ExpH where
-    typeof (LitEH l) = typeof l
-    typeof (ConEH s) = typeof s
-    typeof (VarEH s) = typeof s
-    typeof (AppEH _ f x) =
-        let fts = unarrowsT (typeof f)
-        in case (drop 1 fts) of
-              [] -> UnknownT
-              ts -> arrowsT ts
-    typeof (LamEH _ v f) = arrowsT [typeof v, typeof (f (VarEH v))]
-    typeof (CaseEH _ _ _ _ e) = typeof e
-
+import Seri.Elaborate.ExpH
+import Seri.Elaborate.ToExpH
+import Seri.Elaborate.FromExpH
 
 -- Weak head normal form elaboration
 elabwhnf :: Env -> Exp -> Exp
@@ -127,7 +76,7 @@ elaborate mode env exp =
           VarEH (Sig n t) | Just f <- HT.lookup n nprimitives -> f t
           VarEH s@(Sig n ct) ->
             case (attemptM $ lookupVar env s) of
-                Just (pt, ve) -> elab $ toh [] $ assignexp (assignments pt ct) ve
+                Just (pt, ve) -> elab $ toExpH [] $ assignexp (assignments pt ct) ve
                 Nothing -> VarEH s
           AppEH (ES_Some m) _ _ | mode <= m -> e
           AppEH _ f arg -> 
@@ -211,9 +160,6 @@ elaborate mode env exp =
             CaseEH (ES_Some mode) (elab arg) k (elab yes) (elab no)
           CaseEH _ arg k yes no -> CaseEH (ES_Some mode) arg k yes no
         
-      toe :: ExpH -> Exp
-      toe e = runFresh (toeM e)
-
       -- Extract a Bit from an expression of the form: __prim_frominteger_Bit v
       -- The expression should be elaborated already.
       de_bitEH :: ExpH -> Maybe Bit
@@ -259,7 +205,7 @@ elaborate mode env exp =
                     (if a' then const trueEH else id)
                 ),
 --             (name "Prelude.error", \_ a -> do
---                 a <- deStringE (toe a)
+--                 a <- deStringE (fromExpH a)
 --                 return (error $ "Seri.error: " ++ msg)
 --                ),
              (name "Prelude.valueof", \t _ -> 
@@ -331,9 +277,9 @@ elaborate mode env exp =
                 in bSVIV f)
                 ]
 
-      exph = toh [] exp
+      exph = toExpH [] exp
       elabed = elab exph
-      done = toe elabed
+      done = fromExpH elabed
   in --trace ("elab " ++ show mode ++ ": " ++ pretty exp) $
      --trace ("To: " ++ pretty done) $
      done
@@ -369,43 +315,8 @@ de_boolEH x | x == trueEH = Just True
 de_boolEH x | x == falseEH = Just False
 de_boolEH _ = Nothing
 
-unappsEH :: ExpH -> [ExpH]
-unappsEH (AppEH _ a x) = unappsEH a ++ [x]
-unappsEH e = [e]
-
-appEH :: ExpH -> [ExpH] -> ExpH
-appEH f [] = f
-appEH f (x:xs) = appEH (AppEH ES_None f x) xs
-
 bitEH :: Bit -> ExpH
 bitEH b = AppEH (ES_Some SNF) (VarEH (Sig (name "Seri.Bit.__prim_fromInteger_Bit") (arrowsT [integerT, bitT (bv_width b)]))) (integerEH $ bv_value b)
-
-ifEH :: ExpH -> ExpH -> ExpH -> ExpH
-ifEH p a b = 
-  let false = CaseEH ES_None p (Sig (name "False") boolT) b (error "if failed to match")
-  in CaseEH ES_None p (Sig (name "True") boolT) a false
-
--- Translate back to the normal Exp representation
-toeM :: ExpH -> Fresh Exp
-toeM (LitEH l) = return (LitE l)
-toeM (ConEH s) = return (ConE s)
-toeM (VarEH s) = return (VarE s)
-toeM e@(AppEH {}) = do
-  (f:args) <- mapM toeM (unappsEH e)
-  return (AppE f args)
-toeM (LamEH _ s f) = do
-  s' <- fresh s
-  b <- toeM (f (VarEH s'))
-  return (lamE $ Match [VarP s'] b)
-toeM (CaseEH _ arg (Sig n t) yes no) = do
-  arg' <- toeM arg
-  let tys = unarrowsT t
-  vars <- mapM (fresh . Sig (name "_x")) (init tys)
-  yes' <- toeM (appEH yes (map VarEH vars))
-  no' <- toeM no
-  let pt = typeof arg'
-  return $ caseE arg' [Match [ConP pt n (map VarP vars)] yes',
-                       Match [WildP pt] no']
 
 -- Replace all occurences of the boolean variable with given name to the value
 -- True or False in the given expression.
@@ -420,71 +331,5 @@ concretize n v e
     LamEH _ s f -> LamEH ES_None s $ \x -> concretize n v (f x)
     CaseEH _ x k y d -> CaseEH ES_None (concretize n v x) k (concretize n v y) (concretize n v d)
 
--- translate to our HOAS expression representation
-toh :: [(Sig, ExpH)] -> Exp -> ExpH
-toh _ (LitE l) = LitEH l
-toh _ (ConE s) = ConEH s
-toh m (VarE s) | Just v <- lookup s m = v
-toh m (VarE s) = VarEH s
-toh m (AppE f xs) =
-  let appeh :: ExpH -> Exp -> ExpH
-      appeh f x = AppEH ES_None f (toh m x)
-  in foldl appeh (toh m f) xs
-toh m e | Just (Match [VarP s] b) <- deLamE e =   
-  LamEH ES_None s $ \x -> toh ((s, x):m) b
-toh m e@(LaceE ms@(Match [_] _ : _)) =
-  let deSugarLace :: [(Sig, ExpH)] -> [Match] -> ExpH
-      deSugarLace vars ms@(Match [p] b : _) =
-        let tpat = typeof p
-            tbody = typeof b
-            terr = arrowsT [stringT, tbody]
-            errv = VarEH (Sig (name "Prelude.error") terr)
-            err = AppEH ES_None errv (stringEH "Case no match")
-
-            depat :: [(Sig, ExpH)] -- ^ Variables in scope
-                  -> ExpH -- ^ Argument to the case expression
-                  -> Pat  -- ^ Pattern to match against
-                  -> ([(Sig, ExpH)] -> ExpH) -- ^ Body if match succeeds   
-                  -> ExpH -- ^ Default value on failure
-                  -> ExpH
-            depat vars arg (WildP {}) b _ = b vars
-            depat vars arg (VarP s) b _ =
-              let lam = LamEH ES_None s $ \x -> b ((s, x):vars)
-              in AppEH ES_None lam arg
-            depat vars arg (LitP l) b def =
-              let lt = typeof l
-                  eqt = arrowsT [lt, lt, boolT]
-                  p = appEH (VarEH (Sig (name "Prelude.==") eqt)) [LitEH l, arg]
-              in ifEH p (b vars) def
-            depat vars arg (ConP t n ps) b def =
-              let k = Sig n (arrowsT ((map typeof ps) ++ [t]))
-                  mkmatched :: [(Sig, ExpH)] -> [(Pat, ExpH)] -> ([(Sig, ExpH)] -> ExpH) -> ExpH -> ExpH
-                  mkmatched vars [] b _ = b vars
-                  mkmatched vars ((p, x):ps) b def =
-                    let body = \vs -> mkmatched vs ps b def
-                    in depat vars x p body def
-  
-                  mklams :: [(Sig, ExpH)] -> [Pat] -> [(Pat, ExpH)] -> ([(Sig, ExpH)] -> ExpH) -> ExpH -> ExpH
-                  mklams vars [] ps body def = mkmatched vars ps body def
-                  mklams vars (p:ps) ps' body def =
-                    LamEH ES_None (Sig (name ("_cb")) (typeof p)) $ \x ->
-                      mklams vars ps ((p, x):ps') body def
-              in CaseEH ES_None arg k (mklams vars ps [] b def) def
-            
-            -- perform core desugaring of case statements.
-            desugar :: ExpH -- ^ Argument to the case expression
-                    -> [Match] -- ^ Set of matches
-                    -> ExpH -- ^ The default value if no match
-                    -> ExpH -- ^ The desugared expression
-            desugar arg [Match [p] b] def = depat vars arg p (flip toh b) def
-            desugar arg (m:ms) def = desugar arg [m] (desugar arg ms def)
-
-        in LamEH (ES_Some WHNF) (Sig (name "_ca") tpat) $ \ca ->
-              desugar ca ms err
-  in deSugarLace m ms
-toh m (LaceE ms) = toh m (sLaceE ms)
-
-stringEH :: String -> ExpH
-stringEH str = toh [] (stringE str)
 
 
