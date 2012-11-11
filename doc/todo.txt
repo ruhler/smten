@@ -126,12 +126,8 @@ Seri Library::
 Elaborator::
 * Perhaps case statements should consider all constructors at once instead of
   one at a time?
-* Primitives should be done as reduction rules, they shouldn't introduce lambda
-  terms. They should still be pretty though.
-* Pull elaborator functions out into top level declarations. Then use type
-  classes to make handling of primitives much cleaner (don't have to write
-  different bXXX and uXX functions for each type I use). Perhaps use a Reader
-  monad?
+* Pull elaborator functions out into top level declarations.
+  Perhaps use a Reader monad?
 * Don't elaborate an expression which has already been elaborated
 * Figure out how to cheaply concretize free variables in expressions, ideally
   without forcing re-elaboration after concretization. Can I make use of HOAS

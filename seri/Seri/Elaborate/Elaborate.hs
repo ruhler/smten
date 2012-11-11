@@ -188,7 +188,7 @@ elaborate mode env exp =
         case e of
           LitEH l -> e
           ConEH s -> e
-          VarEH s@(Sig n _) | Just f <- HT.lookup n nprimitives -> f s
+          VarEH (Sig n t) | Just f <- HT.lookup n nprimitives -> f t
           VarEH s@(Sig n ct) ->
             case (attemptM $ lookupVar env s) of
                 Just (pt, ve) -> elab $ toh [] $ assignexp (assignments pt ct) ve
@@ -196,12 +196,12 @@ elaborate mode env exp =
           AppEH (ES_Some m) _ _ | mode <= m -> e
           AppEH _ f arg -> 
              case (elab f) of
-               VarEH s@(Sig n _)
+               VarEH (Sig n t)
                  | Just f <- HT.lookup n uprimitives
-                 , Just v <- f s (elab arg) -> v
-               AppEH _ (VarEH s@(Sig n _)) x
+                 , Just v <- f t (elab arg) -> v
+               AppEH _ (VarEH (Sig n t)) x
                  | Just f <- HT.lookup n bprimitives
-                 , Just v <- f s (elab x) (elab arg) -> v
+                 , Just v <- f t (elab x) (elab arg) -> v
                CaseEH _ a k y n | mode == SNF ->
                  let -- Perform argument pushing.
                      -- (case a of
@@ -291,17 +291,17 @@ elaborate mode env exp =
       stringEH str = toh [] (stringE str)
 
       -- nullary primitives
-      nprimitives :: HT.HashTable Name (Sig -> ExpH)
+      nprimitives :: HT.HashTable Name (Type -> ExpH)
       nprimitives = HT.table $ [
-            (name "Prelude.numeric", \(Sig _ (NumT nt)) ->
+            (name "Prelude.numeric", \(NumT nt) ->
                 ConEH (Sig (name "#" `nappend` name (show (nteval nt))) (NumT nt)))
               ]
 
       -- unary primitives
-      uprimitives :: HT.HashTable Name (Sig -> ExpH -> Maybe ExpH)
+      uprimitives :: HT.HashTable Name (Type -> ExpH -> Maybe ExpH)
       uprimitives =
         let uXX :: (ExpH -> Maybe a) -> (b -> ExpH) -> (a -> b)
-                   -> Sig -> ExpH -> Maybe ExpH
+                   -> Type -> ExpH -> Maybe ExpH
             uXX de_a mkb f _ a = do 
                 a' <- de_a a
                 return (mkb (f a'))
@@ -329,16 +329,16 @@ elaborate mode env exp =
 --                 a <- deStringE (toe a)
 --                 return (error $ "Seri.error: " ++ msg)
 --                ),
-             (name "Prelude.valueof", \s@(Sig _ t) _ -> 
+             (name "Prelude.valueof", \t _ -> 
                let [NumT nt, it] = unarrowsT t
                in return $ integerEH (nteval nt)
                 ),
-             (name "Seri.Bit.__prim_zeroExtend_Bit", \s@(Sig _ t) a -> do
+             (name "Seri.Bit.__prim_zeroExtend_Bit", \t a -> do
                let [ta, AppT _ (NumT wt)] = unarrowsT t
                a' <- de_bitEH a
                return . bitEH $ bv_zero_extend (nteval wt - bv_width a') a'
                   ),
-             (name "Seri.Bit.__prim_truncate_Bit", \s@(Sig _ t) a -> do
+             (name "Seri.Bit.__prim_truncate_Bit", \t a -> do
                let [ta, AppT _ (NumT wt)] = unarrowsT t
                a' <- de_bitEH a
                return . bitEH $ bv_truncate (nteval wt) a'
@@ -346,11 +346,11 @@ elaborate mode env exp =
                ]
 
       -- binary primitives
-      bprimitives :: HT.HashTable Name (Sig -> ExpH -> ExpH -> Maybe ExpH)
+      bprimitives :: HT.HashTable Name (Type -> ExpH -> ExpH -> Maybe ExpH)
       bprimitives =
         let bXXX :: (ExpH -> Maybe a) -> (ExpH -> Maybe b) -> (c -> ExpH)
                     -> (a -> b -> c)
-                    -> Sig -> ExpH -> ExpH -> Maybe ExpH
+                    -> Type -> ExpH -> ExpH -> Maybe ExpH
             bXXX de_a de_b mkc f _ a b = do
                 a' <- de_a a
                 b' <- de_b b
@@ -363,12 +363,12 @@ elaborate mode env exp =
             bVVV = bXXX de_bitEH de_bitEH bitEH
 
             bSXXX :: (ExpH -> Maybe a) -> (ExpH -> Maybe b) -> (c -> ExpH)
-                    -> (Sig -> a -> b -> c)
-                    -> Sig -> ExpH -> ExpH -> Maybe ExpH
-            bSXXX de_a de_b mkc f s a b = do
+                    -> (Type -> a -> b -> c)
+                    -> Type -> ExpH -> ExpH -> Maybe ExpH
+            bSXXX de_a de_b mkc f t a b = do
                 a' <- de_a a
                 b' <- de_b b
-                return (mkc (f s a' b'))
+                return (mkc (f t a' b'))
 
             bSVIV = bSXXX de_bitEH de_integerEH bitEH
         in HT.table $ [
@@ -390,8 +390,8 @@ elaborate mode env exp =
              (name "Seri.Bit.__prim_shl_Bit", bVVV bv_shl),
              (name "Seri.Bit.__prim_lshr_Bit", bVVV bv_lshr),
              (name "Seri.Bit.__prim_extract_Bit",
-                let f :: Sig -> Bit -> Integer -> Bit
-                    f (Sig _ t) a j =
+                let f :: Type -> Bit -> Integer -> Bit
+                    f t a j =
                       let AppT _ (NumT wt) = last $ unarrowsT t
                           i = j + (nteval wt) - 1
                       in bv_extract i j a
