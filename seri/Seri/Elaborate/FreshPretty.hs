@@ -65,17 +65,6 @@ fresh s@(Sig n t) = do
       Nothing -> return $ Sig nbase t
       Just x -> return $ Sig (nbase `nappend` name (show x)) t
 
-runFresh :: Fresh a -> [Name] -> a
-runFresh x nms = evalState x (freshmap nms)
-
--- construct the initial fresh map for use with fresh variables.
-freshmap :: [Name] -> Map.Map Name Integer
-freshmap [] = Map.empty
-freshmap (n:ns) =
-  let m = freshmap ns
-      (digits, rest) = span isDigit (reverse (unname n))
-      num = if null digits then 0 else read (reverse digits)
-      base = name $ reverse rest
-  in Map.insertWith max base (num+1) m
-
+runFresh :: Fresh a -> a
+runFresh x = evalState x Map.empty
 

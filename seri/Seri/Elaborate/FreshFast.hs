@@ -55,8 +55,8 @@ fresh s@(Sig _ t) = do
    put $! incrnm id
    return (Sig id t)
 
-runFresh :: Fresh a -> [Name] -> a
-runFresh x nms = evalState x (name "~Ea")
+runFresh :: Fresh a -> a
+runFresh x = evalState x (name "~Ea")
 
 -- TODO: this assumes name is a Char8 bytestring.
 -- Is that a bad idea?

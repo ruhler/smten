@@ -212,7 +212,7 @@ elaborate mode env exp =
           CaseEH _ arg k yes no -> CaseEH (ES_Some mode) arg k yes no
         
       toe :: ExpH -> Exp
-      toe e = runFresh (toeM e) (free' exp)
+      toe e = runFresh (toeM e)
 
       -- Extract a Bit from an expression of the form: __prim_frominteger_Bit v
       -- The expression should be elaborated already.
