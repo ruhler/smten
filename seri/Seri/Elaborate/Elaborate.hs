@@ -118,71 +118,7 @@ elaborate :: Mode  -- ^ Elaboration mode
           -> Exp   -- ^ expression to evaluate
           -> Exp   -- ^ elaborated expression
 elaborate mode env exp =
-  let -- translate to our HOAS expression representation
-      toh :: [(Sig, ExpH)] -> Exp -> ExpH
-      toh _ (LitE l) = LitEH l
-      toh _ (ConE s) = ConEH s
-      toh m (VarE s) | Just v <- lookup s m = v
-      toh m (VarE s) = VarEH s
-      toh m (AppE f xs) =
-        let appeh :: ExpH -> Exp -> ExpH
-            appeh f x = AppEH ES_None f (toh m x)
-        in foldl appeh (toh m f) xs
-      toh m e | Just (Match [VarP s] b) <- deLamE e =   
-        LamEH ES_None s $ \x -> toh ((s, x):m) b
-      toh m e@(LaceE ms@(Match [_] _ : _)) = deSugarLace m ms
-      toh m (LaceE ms) = toh m (sLaceE ms)
-
-      deSugarLace :: [(Sig, ExpH)] -> [Match] -> ExpH
-      deSugarLace vars ms@(Match [p] b : _) =
-        let tpat = typeof p
-            tbody = typeof b
-            terr = arrowsT [stringT, tbody]
-            errv = VarEH (Sig (name "Prelude.error") terr)
-            err = AppEH ES_None errv (stringEH "Case no match")
-
-            depat :: [(Sig, ExpH)] -- ^ Variables in scope
-                  -> ExpH -- ^ Argument to the case expression
-                  -> Pat  -- ^ Pattern to match against
-                  -> ([(Sig, ExpH)] -> ExpH) -- ^ Body if match succeeds   
-                  -> ExpH -- ^ Default value on failure
-                  -> ExpH
-            depat vars arg (WildP {}) b _ = b vars
-            depat vars arg (VarP s) b _ =
-              let lam = LamEH ES_None s $ \x -> b ((s, x):vars)
-              in AppEH ES_None lam arg
-            depat vars arg (LitP l) b def =
-              let lt = typeof l
-                  eqt = arrowsT [lt, lt, boolT]
-                  p = appEH (VarEH (Sig (name "Prelude.==") eqt)) [LitEH l, arg]
-              in ifEH p (b vars) def
-            depat vars arg (ConP t n ps) b def =
-              let k = Sig n (arrowsT ((map typeof ps) ++ [t]))
-                  mkmatched :: [(Sig, ExpH)] -> [(Pat, ExpH)] -> ([(Sig, ExpH)] -> ExpH) -> ExpH -> ExpH
-                  mkmatched vars [] b _ = b vars
-                  mkmatched vars ((p, x):ps) b def =
-                    let body = \vs -> mkmatched vs ps b def
-                    in depat vars x p body def
-    
-                  mklams :: [(Sig, ExpH)] -> [Pat] -> [(Pat, ExpH)] -> ([(Sig, ExpH)] -> ExpH) -> ExpH -> ExpH
-                  mklams vars [] ps body def = mkmatched vars ps body def
-                  mklams vars (p:ps) ps' body def =
-                    LamEH ES_None (Sig (name ("_cb")) (typeof p)) $ \x ->
-                      mklams vars ps ((p, x):ps') body def
-              in CaseEH ES_None arg k (mklams vars ps [] b def) def
-            
-            -- perform core desugaring of case statements.
-            desugar :: ExpH -- ^ Argument to the case expression
-                    -> [Match] -- ^ Set of matches
-                    -> ExpH -- ^ The default value if no match
-                    -> ExpH -- ^ The desugared expression
-            desugar arg [Match [p] b] def = depat vars arg p (flip toh b) def
-            desugar arg (m:ms) def = desugar arg [m] (desugar arg ms def)
-
-        in LamEH (ES_Some WHNF) (Sig (name "_ca") tpat) $ \ca ->
-             desugar ca ms err
-
-      -- elaborate the given expression
+  let -- elaborate the given expression
       elab :: ExpH -> ExpH
       elab e =
         case e of
@@ -286,9 +222,6 @@ elaborate mode env exp =
         , LitEH (IntegerL v) <- elab ve
         = Just (bv_make (nteval w) v)
       de_bitEH _ = Nothing
-
-      stringEH :: String -> ExpH
-      stringEH str = toh [] (stringE str)
 
       -- nullary primitives
       nprimitives :: HT.HashTable Name (Type -> ExpH)
@@ -486,4 +419,72 @@ concretize n v e
     AppEH _ f x -> AppEH ES_None (concretize n v f) (concretize n v x)
     LamEH _ s f -> LamEH ES_None s $ \x -> concretize n v (f x)
     CaseEH _ x k y d -> CaseEH ES_None (concretize n v x) k (concretize n v y) (concretize n v d)
+
+-- translate to our HOAS expression representation
+toh :: [(Sig, ExpH)] -> Exp -> ExpH
+toh _ (LitE l) = LitEH l
+toh _ (ConE s) = ConEH s
+toh m (VarE s) | Just v <- lookup s m = v
+toh m (VarE s) = VarEH s
+toh m (AppE f xs) =
+  let appeh :: ExpH -> Exp -> ExpH
+      appeh f x = AppEH ES_None f (toh m x)
+  in foldl appeh (toh m f) xs
+toh m e | Just (Match [VarP s] b) <- deLamE e =   
+  LamEH ES_None s $ \x -> toh ((s, x):m) b
+toh m e@(LaceE ms@(Match [_] _ : _)) =
+  let deSugarLace :: [(Sig, ExpH)] -> [Match] -> ExpH
+      deSugarLace vars ms@(Match [p] b : _) =
+        let tpat = typeof p
+            tbody = typeof b
+            terr = arrowsT [stringT, tbody]
+            errv = VarEH (Sig (name "Prelude.error") terr)
+            err = AppEH ES_None errv (stringEH "Case no match")
+
+            depat :: [(Sig, ExpH)] -- ^ Variables in scope
+                  -> ExpH -- ^ Argument to the case expression
+                  -> Pat  -- ^ Pattern to match against
+                  -> ([(Sig, ExpH)] -> ExpH) -- ^ Body if match succeeds   
+                  -> ExpH -- ^ Default value on failure
+                  -> ExpH
+            depat vars arg (WildP {}) b _ = b vars
+            depat vars arg (VarP s) b _ =
+              let lam = LamEH ES_None s $ \x -> b ((s, x):vars)
+              in AppEH ES_None lam arg
+            depat vars arg (LitP l) b def =
+              let lt = typeof l
+                  eqt = arrowsT [lt, lt, boolT]
+                  p = appEH (VarEH (Sig (name "Prelude.==") eqt)) [LitEH l, arg]
+              in ifEH p (b vars) def
+            depat vars arg (ConP t n ps) b def =
+              let k = Sig n (arrowsT ((map typeof ps) ++ [t]))
+                  mkmatched :: [(Sig, ExpH)] -> [(Pat, ExpH)] -> ([(Sig, ExpH)] -> ExpH) -> ExpH -> ExpH
+                  mkmatched vars [] b _ = b vars
+                  mkmatched vars ((p, x):ps) b def =
+                    let body = \vs -> mkmatched vs ps b def
+                    in depat vars x p body def
+  
+                  mklams :: [(Sig, ExpH)] -> [Pat] -> [(Pat, ExpH)] -> ([(Sig, ExpH)] -> ExpH) -> ExpH -> ExpH
+                  mklams vars [] ps body def = mkmatched vars ps body def
+                  mklams vars (p:ps) ps' body def =
+                    LamEH ES_None (Sig (name ("_cb")) (typeof p)) $ \x ->
+                      mklams vars ps ((p, x):ps') body def
+              in CaseEH ES_None arg k (mklams vars ps [] b def) def
+            
+            -- perform core desugaring of case statements.
+            desugar :: ExpH -- ^ Argument to the case expression
+                    -> [Match] -- ^ Set of matches
+                    -> ExpH -- ^ The default value if no match
+                    -> ExpH -- ^ The desugared expression
+            desugar arg [Match [p] b] def = depat vars arg p (flip toh b) def
+            desugar arg (m:ms) def = desugar arg [m] (desugar arg ms def)
+
+        in LamEH (ES_Some WHNF) (Sig (name "_ca") tpat) $ \ca ->
+              desugar ca ms err
+  in deSugarLace m ms
+toh m (LaceE ms) = toh m (sLaceE ms)
+
+stringEH :: String -> ExpH
+stringEH str = toh [] (stringE str)
+
 
