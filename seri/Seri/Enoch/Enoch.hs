@@ -5,7 +5,7 @@ module Seri.Enoch.Enoch (
     TExp(..),
     SeriableT(..), SeriableT1(..), SeriableT2(..),
     SeriableE(..),
-    packE, unpack',
+    packE, unpackE, unpack',
  ) where
 
 import Data.Maybe (fromMaybe)
@@ -57,6 +57,9 @@ packE :: (SeriableE a) => a -> Exp
 packE a = 
  let TExp e = pack a
  in e
+
+unpackE :: (SeriableE a) => Exp -> Maybe a
+unpackE e = unpack (TExp e)
 
 -- | Unpack assuming the seri expression is of the right type.
 -- Throws an error if the sery expression is of the wrong type.

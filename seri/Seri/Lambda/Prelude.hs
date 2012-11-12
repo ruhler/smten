@@ -42,6 +42,7 @@ module Seri.Lambda.Prelude (
     unitE, trueE, falseE, boolE, listE, listP, deListE,
     tupE, tupP, deTupE,
     stringE, deStringE, charE, deCharE, integerE, numberE, bitE,
+    deVarE,
     ) where
 
 import Control.Monad
@@ -200,4 +201,8 @@ deAppE (AppE f xs) =
      Just (g, ys) -> Just (g, ys ++ xs)
      Nothing -> Just (f, xs)
 deAppE _ = Nothing
+
+deVarE :: Exp -> Maybe Sig
+deVarE (VarE s) = Just s
+deVarE _ = Nothing
 

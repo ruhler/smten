@@ -58,15 +58,15 @@ import Seri.Elaborate.ToExpH
 import Seri.Elaborate.FromExpH
 
 -- Weak head normal form elaboration
-elabwhnf :: Env -> Exp -> Exp
+elabwhnf :: Env -> ExpH -> ExpH
 elabwhnf = elaborate WHNF
 
 -- | Elaborate an expression in ExpH form under the given mode.
-elaborateH :: Mode  -- ^ Elaboration mode
+elaborate :: Mode  -- ^ Elaboration mode
            -> Env   -- ^ context under which to evaluate the expression
            -> ExpH   -- ^ expression to evaluate
            -> ExpH   -- ^ elaborated expression
-elaborateH mode env =
+elaborate mode env =
   let -- elaborate the given expression
       elab :: ExpH -> ExpH
       elab e =
@@ -278,49 +278,17 @@ elaborateH mode env =
                 ]
   in elab
 
--- | Elaborate an expression in Exp form under the given mode.
-elaborate :: Mode  -- ^ Elaboration mode
-           -> Env   -- ^ context under which to evaluate the expression
-           -> Exp   -- ^ expression to evaluate
-           -> Exp   -- ^ elaborated expression
-elaborate mode env exp =
-  let exph = toExpH [] exp
-      elabed = elaborateH mode env exph
-  in fromExpH elabed
-
 assignexp :: [(Name, Type)] -> Exp -> Exp
 assignexp = assign
         
-integerEH :: Integer -> ExpH
-integerEH = LitEH . IntegerL 
-
 de_integerEH :: ExpH -> Maybe Integer
 de_integerEH (LitEH (IntegerL i)) = Just i
 de_integerEH _ = Nothing
-
-de_charEH :: ExpH -> Maybe Char
-de_charEH (LitEH (CharL c)) = Just c
-de_charEH _ = Nothing
-
-trueEH :: ExpH
-trueEH = ConEH (Sig (name "True") (ConT (name "Bool")))
-
-falseEH :: ExpH
-falseEH = ConEH (Sig (name "False") (ConT (name "Bool")))
-
--- | Boolean expression
-boolEH :: Bool -> ExpH
-boolEH True = trueEH
-boolEH False = falseEH
 
 de_boolEH :: ExpH -> Maybe Bool
 de_boolEH x | x == trueEH = Just True
 de_boolEH x | x == falseEH = Just False
 de_boolEH _ = Nothing
-
-bitEH :: Bit -> ExpH
-bitEH b = AppEH (ES_Some SNF) (VarEH (Sig (name "Seri.Bit.__prim_fromInteger_Bit") (arrowsT [integerT, bitT (bv_width b)]))) (integerEH $ bv_value b)
-
 -- Replace all occurences of the boolean variable with given name to the value
 -- True or False in the given expression.
 concretize :: Name -> Bool -> ExpH -> ExpH

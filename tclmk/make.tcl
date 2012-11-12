@@ -67,16 +67,16 @@ indir build/seri-bin {
     #hrun ghc -o seri seri.hs
     hrun ghc -rtsopts -prof -auto-all -o seri seri.hs
 
-    hrun ln -sf ../../seri-bin/enoch.hs enoch.hs
-    hrun ghc -o enoch enoch.hs
+    #hrun ln -sf ../../seri-bin/enoch.hs enoch.hs
+    #hrun ghc -o enoch enoch.hs
 
-    hrun ln -sf ../../seri-bin/sudoku.hs sudoku.hs
-    hrun ghc -o sudoku sudoku.hs
+    #hrun ln -sf ../../seri-bin/sudoku.hs sudoku.hs
+    #hrun ghc -o sudoku sudoku.hs
 }
     
 set SERI build/seri-bin/seri
-set ENOCH build/seri-bin/enoch
-set SUDOKU build/seri-bin/sudoku
+#set ENOCH build/seri-bin/enoch
+#set SUDOKU build/seri-bin/sudoku
 
 set SRI_SERI seri/sri
 
@@ -154,8 +154,8 @@ smttest "Sudoku3"
 smttest "Isolate0"
 
 # The enoch tests
-hrun $::ENOCH
-hrun $::SUDOKU
+#hrun $::ENOCH
+#hrun $::SUDOKU
 
 puts "BUILD COMPLETE"
 

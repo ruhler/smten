@@ -34,8 +34,21 @@
 -------------------------------------------------------------------------------
 
 module Seri.Elaborate(
-    module Elaborate
+    Mode(..), ExpH(),
+    toExpH, fromExpH,
+    elabwhnf, elaborate,
+
+    conEH, varEH, appEH, unappsEH, de_varEH,
+    de_appv1, de_appv2,
+    ifEH,
+    transform,
+
+    unitEH, boolEH, trueEH, falseEH, integerEH, bitEH,
+    de_charEH,
     ) where
 
-import Seri.Elaborate.Elaborate as Elaborate
+import Seri.Elaborate.ExpH
+import Seri.Elaborate.ToExpH
+import Seri.Elaborate.FromExpH
+import Seri.Elaborate.Elaborate
 

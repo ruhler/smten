@@ -37,6 +37,7 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE PatternGuards #-}
 
 module Seri.SMT.Query (
     Answer(..), Realize(), 
@@ -45,6 +46,7 @@ module Seri.SMT.Query (
     ) where
 
 import Data.Functor
+import Data.List(nub)
 
 import System.IO
 
@@ -53,8 +55,10 @@ import Control.Monad.State
 import qualified Seri.SMT.Syntax as SMT
 import qualified Seri.SMT.Solver as SMT
 
+import Seri.Bit
 import Seri.Failable
 import Seri.Lambda hiding (free, query)
+import qualified Seri.Lambda
 import Seri.SMT.Translate
 import Seri.Elaborate
 
@@ -128,7 +132,7 @@ smtt t = do
     runCmds cmds
     return yt
 
-smte :: (SMT.Solver s) => Exp -> Query s SMT.Expression
+smte :: (SMT.Solver s) => ExpH -> Query s SMT.Expression
 smte e = do
     qs <- gets qs_qs 
     let mkye = do
@@ -192,32 +196,32 @@ runQuery opts env q = do
 -- Assumes:
 --   Integers, Bools, and Bit vectors are implemented directly using the
 --   corresponding smt primitives. (Should I not be assuming this?)
-realizefree :: (SMT.Solver s) => Env -> Name -> Type -> Query s Exp
-realizefree _ nm t | t == boolT = do
+realizefree :: (SMT.Solver s) => Env -> Sig -> Query s ExpH
+realizefree _ (Sig nm t) | t == boolT = do
     ctx <- gets qs_ctx
     bval <- lift $ SMT.getBoolValue ctx (smtN nm)
     debug $ "; " ++ pretty nm ++ " is " ++ show bval
-    return (boolE bval)
-realizefree _ nm t | t == integerT = do
+    return (boolEH bval)
+realizefree _ (Sig nm t) | t == integerT = do
     ctx <- gets qs_ctx
     ival <- lift $ SMT.getIntegerValue ctx (smtN nm)
     debug $ "; " ++ pretty nm ++ " is " ++ show ival
-    return (integerE ival)
-realizefree _ nm (AppT (ConT n) (NumT (ConNT w))) | n == name "Bit" = do
+    return (integerEH ival)
+realizefree _ (Sig nm (AppT (ConT n) (NumT (ConNT w)))) | n == name "Bit" = do
     ctx <- gets qs_ctx
     bval <- lift $ SMT.getBitVectorValue ctx w (smtN nm)
     debug $ "; " ++ pretty nm ++ " has value " ++ show bval
-    return (bitE w bval)
-realizefree _ _ t@(AppT (AppT (ConT n) _) _) | n == name "->"
+    return (bitEH (bv_make w bval))
+realizefree _ (Sig _ t@(AppT (AppT (ConT n) _) _)) | n == name "->"
   = error $ "TODO: realizefree type " ++ pretty t
-realizefree _ _ t
+realizefree _ (Sig _ t)
   = error $ "unexpected realizefree type: " ++ pretty t
 
-data RealizeT = RealizeT Env
+data RealizeQ = RealizeQ
 
-instance (SMT.Solver s) => TransformerM RealizeT (Query s) where
-    tm_Exp (RealizeT env) (VarE (Sig nm ty)) | isfreename nm = realizefree env nm ty
-    tm_Exp _ e = return e
+instance Querier RealizeQ [Sig] where
+    q_Exp _ e | Just s@(Sig nm ty) <- deVarE e, isfreename nm = [s]
+    q_Exp _ _ = []
 
 
 -- | Check if the current assertions are satisfiable. If so, runs the given
@@ -231,31 +235,31 @@ query r = do
       _ -> return Unknown
 
 -- | Allocate a free expression of the given type.
-free :: (SMT.Solver s) => Type -> Query s Exp
+free :: (SMT.Solver s) => Type -> Query s ExpH
 free t | isPrimT t = do
   t' <- smtt t
   free <- freevar
   runCmds [SMT.Declare (smtN free) t']
-  return (VarE (Sig free t))
+  return (varEH (Sig free t))
 free t = do
   let (ConT dt):args = unappsT t
   env <- gets qs_env
   DataD _ vars cs <- lift . attemptIO $ lookupDataD env dt
-  (let mkcon :: (SMT.Solver s) => Con -> Query s Exp
+  (let mkcon :: (SMT.Solver s) => Con -> Query s ExpH
        mkcon (Con cn ts) = 
          let ts' = assign (zip (map tyVarName vars) args) ts
          in do
              argvals <- mapM free ts'
-             return $ appsE ((ConE (Sig cn (arrowsT (ts' ++ [t])))):argvals)
+             return $ appEH (conEH (Sig cn (arrowsT (ts' ++ [t])))) argvals
   
-       mkcons :: (SMT.Solver s) => [Con] -> Query s Exp
+       mkcons :: (SMT.Solver s) => [Con] -> Query s ExpH
        mkcons [] = error $ "free on DataD with no constructors: " ++ pretty t
        mkcons [c] = mkcon c
        mkcons (c:cs) = do
          isthis <- free boolT
          this <- mkcon c
          rest <- mkcons cs
-         return $ ifE isthis this rest
+         return $ ifEH isthis this rest
    in do
        v <- mkcons cs
        debug $ "; free " ++ pretty t ++ ":"
@@ -264,7 +268,7 @@ free t = do
    )
 
 -- | Assert the given seri boolean expression.
-assert :: (SMT.Solver s) => Exp -> Query s ()
+assert :: (SMT.Solver s) => ExpH -> Query s ()
 assert p = do
   yp <- smte p
   runCmds [SMT.Assert yp]
@@ -282,10 +286,16 @@ queryS q = do
 
 -- | Update the free variables in the given expression based on the current
 -- model.
-realize :: (SMT.Solver s) => Exp -> Realize s Exp
+realize :: (SMT.Solver s) => ExpH -> Realize s ExpH
 realize e = Realize $ do
     env <- gets qs_env
-    transformM (RealizeT env) e
+    let freevars = nub $ Seri.Lambda.query RealizeQ (fromExpH e)
+    freevarvals <- mapM (realizefree env) freevars
+    let g :: ExpH -> Maybe ExpH
+        g e = do
+            s <- de_varEH e
+            lookup s (zip freevars freevarvals)
+    return $ Seri.Elaborate.transform g e
 
 -- | Return the environment the query is running under.
 envQ :: (SMT.Solver s) => Query s Env

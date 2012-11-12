@@ -94,7 +94,7 @@ main = do
     case (run args) of
         Io -> do 
             tmain <- attemptIO $ lookupVarType env nmain
-            let m = VarE (Sig (name (main_is args)) tmain)
+            let m = varEH (Sig (name (main_is args)) tmain)
             I.run env m
             return ()
         Type -> putStrLn . pretty $ env

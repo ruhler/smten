@@ -4,10 +4,16 @@
 
 module Seri.Elaborate.ExpH (
       Mode(..), EState(..), ExpH(..),
-      appEH, unappsEH, ifEH,
-      transform, transformM,
+      varEH, conEH, appEH, unappsEH, ifEH,
+      transform, query,
+      de_varEH,
+      de_appv1, de_appv2,
+
+      unitEH, boolEH, trueEH, falseEH, integerEH, bitEH,
+      de_charEH,
   ) where
 
+import Seri.Bit
 import Seri.Lambda hiding (transform)
 import Seri.Lambda.Ppr hiding (Mode)
 
@@ -61,6 +67,12 @@ instance Typeof ExpH where
     typeof (LamEH _ v f) = arrowsT [typeof v, typeof (f (VarEH v))]
     typeof (CaseEH _ _ _ _ e) = typeof e
 
+conEH :: Sig -> ExpH
+conEH = ConEH
+
+varEH :: Sig -> ExpH
+varEH = VarEH
+
 appEH :: ExpH -> [ExpH] -> ExpH
 appEH f [] = f
 appEH f (x:xs) = appEH (AppEH ES_None f x) xs
@@ -89,3 +101,49 @@ transform g e
        LamEH _ s f -> LamEH ES_None s $ \x -> transform g (f x)
        CaseEH _ x k y d -> CaseEH ES_None (transform g x) k (transform g y) (transform g d)
      
+de_varEH :: ExpH -> Maybe Sig
+de_varEH (VarEH s) = Just s
+de_varEH _ = Nothing
+
+trueEH :: ExpH
+trueEH = ConEH (Sig (name "True") (ConT (name "Bool")))
+
+falseEH :: ExpH
+falseEH = ConEH (Sig (name "False") (ConT (name "Bool")))
+
+-- | Boolean expression
+boolEH :: Bool -> ExpH
+boolEH True = trueEH
+boolEH False = falseEH
+
+bitEH :: Bit -> ExpH
+bitEH b = AppEH (ES_Some SNF) (VarEH (Sig (name "Seri.Bit.__prim_fromInteger_Bit") (arrowsT [integerT, bitT (bv_width b)]))) (integerEH $ bv_value b)
+
+integerEH :: Integer -> ExpH
+integerEH = LitEH . IntegerL 
+
+unitEH :: ExpH
+unitEH = conEH (Sig (name "()") unitT)
+
+-- Match an application of the variable with given name to a single argument.
+-- Returns the argument.
+de_appv1 :: Name -> ExpH -> Maybe ExpH
+de_appv1 n e 
+    | [v, x] <- unappsEH e
+    , Just (Sig nm _) <- de_varEH v
+    , n == nm
+    = Just x
+de_appv1 _ _ = Nothing
+
+de_appv2 :: Name -> ExpH -> Maybe (ExpH, ExpH)
+de_appv2 n e
+    | [v, x, y] <- unappsEH e
+    , Just (Sig nm _) <- de_varEH v
+    , n == nm
+    = Just (x, y)
+de_appv2 _ _ = Nothing
+
+de_charEH :: ExpH -> Maybe Char
+de_charEH (LitEH (CharL c)) = Just c
+de_charEH _ = Nothing
+

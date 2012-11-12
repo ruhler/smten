@@ -140,10 +140,11 @@ smtT t = throw $ "smtT: unsupported type: " ++ pretty t
 -- | Compile a seri expression to a smt expression.
 -- Before using the returned expression, the smtD function should be called
 -- to get the required smt declarations.
-smtE :: Exp -> CompilationM SMT.Expression
+smtE :: ExpH -> CompilationM SMT.Expression
 smtE e = do
   poly <- gets ys_poly
-  let se = elaborate SNF poly e
+  let seh = elaborate SNF poly e
+  let se = fromExpH seh
   --trace ("POST-SNF: " ++ pretty se) (return ())
   smtE' se `catchError` (\msg -> throw $ msg ++ "\nWhen translating: " ++ pretty se)
 
