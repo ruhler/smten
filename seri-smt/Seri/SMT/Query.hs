@@ -76,6 +76,7 @@ data QS s = QS {
     qs_dh :: Maybe Handle,
     qs_freeid :: Integer,
     qs_qs :: Compilation,
+    qs_freevars :: [Sig],
     qs_env :: Env
 }
 
@@ -117,9 +118,6 @@ freevar = do
 
 freename :: Integer -> Name
 freename id = name $ "free~" ++ show id
-
-isfreename :: Name -> Bool
-isfreename nm = name "free~" == ntake 5 nm
 
 smtt :: (SMT.Solver s) => Type -> Query s SMT.Type
 smtt t = do
@@ -177,6 +175,7 @@ mkQS ctx opts env = do
         qs_dh = dh,
         qs_freeid = 1,
         qs_qs = compilation (nocaseerr opts) env,
+        qs_freevars = [],
         qs_env = env
     }
 
@@ -214,16 +213,9 @@ realizefree _ (Sig nm (AppT (ConT n) (NumT (ConNT w)))) | n == name "Bit" = do
     debug $ "; " ++ pretty nm ++ " has value " ++ show bval
     return (bitEH (bv_make w bval))
 realizefree _ (Sig _ t@(AppT (AppT (ConT n) _) _)) | n == name "->"
-  = error $ "TODO: realizefree type " ++ pretty t
+  = return (error $ "TODO: realizefree type " ++ pretty t)
 realizefree _ (Sig _ t)
-  = error $ "unexpected realizefree type: " ++ pretty t
-
-data RealizeQ = RealizeQ
-
-instance Querier RealizeQ [Sig] where
-    q_Exp _ e | Just s@(Sig nm ty) <- deVarE e, isfreename nm = [s]
-    q_Exp _ _ = []
-
+  = return (error $ "unexpected realizefree type: " ++ pretty t)
 
 -- | Check if the current assertions are satisfiable. If so, runs the given
 -- realize computation and returns that as the body of the Answer.
@@ -240,8 +232,10 @@ free :: (SMT.Solver s) => Type -> Query s ExpH
 free t | isPrimT t = do
   t' <- smtt t
   free <- freevar
+  let freevar = Sig free t
+  modify $ \qs -> qs { qs_freevars = freevar : qs_freevars qs }
   runCmds [SMT.Declare (smtN free) t']
-  return (varEH (Sig free t))
+  return (varEH freevar)
 free t = do
   let (ConT dt):args = unappsT t
   env <- gets qs_env
@@ -290,15 +284,13 @@ queryS q = do
 realize :: (SMT.Solver s) => ExpH -> Realize s ExpH
 realize e = Realize $ do
     env <- gets qs_env
-    let g e | Just s@(Sig nm ty) <- de_varEH e, isfreename nm = [s]
-        g _ = []
-        
-        freevars = nub $ Seri.Elaborate.query g e
+    freevars <- gets qs_freevars
     freevarvals <- mapM (realizefree env) freevars
-    let g :: ExpH -> Maybe ExpH
+    let freemap = zip freevars freevarvals
+        g :: ExpH -> Maybe ExpH
         g e = do
             s <- de_varEH e
-            lookup s (zip freevars freevarvals)
+            lookup s freemap
     return $ Seri.Elaborate.transform g e
 
 -- | Return the environment the query is running under.

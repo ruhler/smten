@@ -149,7 +149,7 @@ smttest "AllQ2"
 smttest "Squares2/Squares"
 smttest "BCL3Small"
 smttest "Sudoku"
-#smttest "Sudoku2"
+smttest "Sudoku2"
 smttest "Sudoku3"
 smttest "Isolate0"
 
