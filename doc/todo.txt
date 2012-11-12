@@ -58,11 +58,6 @@ vs. foo :: (Foo a) => Sludge
 * Report an error if module name doesn't match source file name.
 * allow multiply specified imports
 
-Enoch::
-* Don't require ScopedTypeVariables in derive_SeriableE.
-* Should SeriableE be (TExp a -> Maybe a), and (a -> TExp a),
-  or just: (Exp -> Maybe a) and (a -> Exp)?
-
 Pretty Printer::
 * don't print out builtin prelude?
 * do notation <- doesn't work with explicit type (parser bug?)

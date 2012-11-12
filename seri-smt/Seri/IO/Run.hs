@@ -6,14 +6,14 @@ module Seri.IO.Run (run) where
 
 import Seri.Lambda
 import Seri.Elaborate
-import Seri.Enoch.Enoch
-import Seri.Enoch.Seriables
 import Seri.SMT.Query
 import qualified Seri.SMT.Run
 import Seri.SMT.Yices.Yices1
 import Seri.SMT.Yices.Yices2
 import Seri.SMT.STP.STP
 import Seri.ExpH.Sugar
+import Seri.ExpH.SeriEH
+import Seri.ExpH.SeriEHs
 
 -- | Given a Seri expression of type IO a,
 -- returns the Seri expression of type a which results from running the IO
@@ -27,13 +27,13 @@ run env e = do
                 Nothing -> error $ "putChar: expected Char, got: " ++ pretty (elabwhnf env arg)
             return unitEH
         e' | Just (debug, query) <- de_appv2 (name "Seri.SMT.SMT.runYices1") e'
-           , Just dbg <- unpackE (fromExpH debug)
+           , Just dbg <- de_seriEH debug
            -> runQuery (RunOptions dbg True) env (yices1 $ Seri.SMT.Run.run query)
         e' | Just (debug, query) <- de_appv2 (name "Seri.SMT.SMT.runYices2") e'
-           , Just dbg <- unpackE (fromExpH debug)
+           , Just dbg <- de_seriEH debug
            -> runQuery (RunOptions dbg True) env (yices2 $ Seri.SMT.Run.run query)
         e' | Just (debug, query) <- de_appv2 (name "Seri.SMT.SMT.runSTP") e'
-           , Just dbg <- unpackE (fromExpH debug)
+           , Just dbg <- de_seriEH debug
            -> runQuery (RunOptions dbg True) env (stp $ Seri.SMT.Run.run query)
         e' | Just x <- de_appv1 (name "Prelude.return_io") e' -> return x
         e' | Just (x, f) <- de_appv2 (name "Prelude.bind_io") e' -> do

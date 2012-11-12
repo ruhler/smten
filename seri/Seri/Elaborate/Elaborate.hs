@@ -284,14 +284,6 @@ elaborate mode env =
 assignexp :: [(Name, Type)] -> Exp -> Exp
 assignexp = assign
         
-de_integerEH :: ExpH -> Maybe Integer
-de_integerEH (LitEH (IntegerL i)) = Just i
-de_integerEH _ = Nothing
-
-de_boolEH :: ExpH -> Maybe Bool
-de_boolEH x | x == trueEH = Just True
-de_boolEH x | x == falseEH = Just False
-de_boolEH _ = Nothing
 -- Replace all occurences of the boolean variable with given name to the value
 -- True or False in the given expression.
 concretize :: Name -> Bool -> ExpH -> ExpH

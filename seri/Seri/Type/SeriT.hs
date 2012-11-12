@@ -51,9 +51,6 @@ instance SeriT Integer where
 instance SeriT Bool where
     seriT _ = boolT
 
-instance SeriT1 [] where
-    seriT1 _ = conT (name "[]")
-
 instance SeriT2 (->) where
     seriT2 _ = conT arrowN
 

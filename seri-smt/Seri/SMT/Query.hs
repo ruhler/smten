@@ -38,6 +38,7 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE PatternGuards #-}
+{-# LANGUAGE TemplateHaskell #-}
 
 module Seri.SMT.Query (
     Answer(..), Realize(), 
@@ -61,7 +62,9 @@ import Seri.Lambda hiding (free, query)
 import qualified Seri.Lambda
 import Seri.Type.Sugar
 import Seri.Type.SeriT
+import Seri.Type.TH
 import Seri.ExpH.Sugar
+import Seri.ExpH.TH
 import Seri.SMT.Translate
 import Seri.Elaborate hiding (query)
 import qualified Seri.Elaborate
@@ -69,6 +72,9 @@ import qualified Seri.Elaborate
 
 data Answer a = Satisfiable a | Unsatisfiable | Unknown
     deriving (Eq, Show)
+
+derive_SeriT ''Answer
+derive_SeriEH ''Answer
 
 newtype Realize s a = Realize {
     runRealize :: Query s a

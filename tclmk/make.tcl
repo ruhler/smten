@@ -66,6 +66,9 @@ indir build/seri-bin {
     hrun ln -sf ../../seri-bin/seri.hs seri.hs
     #hrun ghc -o seri seri.hs
     hrun ghc -rtsopts -prof -auto-all -o seri seri.hs
+    
+    hrun ln -sf ../../seri-bin/dsel.hs dsel.hs
+    hrun ghc -o dsel dsel.hs
 
     #hrun ln -sf ../../seri-bin/enoch.hs enoch.hs
     #hrun ghc -o enoch enoch.hs
@@ -75,6 +78,7 @@ indir build/seri-bin {
 }
     
 set SERI build/seri-bin/seri
+set DSEL build/seri-bin/dsel
 #set ENOCH build/seri-bin/enoch
 #set SUDOKU build/seri-bin/sudoku
 
@@ -153,7 +157,8 @@ smttest "Sudoku2"
 smttest "Sudoku3"
 smttest "Isolate0"
 
-# The enoch tests
+# The DSEL tests
+hrun $::DSEL
 #hrun $::ENOCH
 #hrun $::SUDOKU
 

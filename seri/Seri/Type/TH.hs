@@ -21,17 +21,3 @@ derive_SeriT nm = do
   let dec = FunD (mkName $ "seriT" ++ vn) [Clause [WildP] (NormalB body) []]
   return [InstanceD [] ty [dec]]
 
-instance Lift S.Name where
-    lift s = let str = S.unname s in [| S.name str |]
-
-instance Lift S.Type where
-    lift (S.ConT n) = [| S.ConT n |]
-    lift (S.AppT a b) = [| S.AppT a b |]
-    lift (S.VarT n) = [| S.VarT n |]
-    lift (S.NumT n) = [| S.NumT n |]
-    lift (S.UnknownT) = [| S.UnknownT |]
-
-instance Lift S.NType where
-    lift (S.ConNT i) = [| S.ConNT i |]
-    lift (S.VarNT n) = [| S.VarNT n |]
-    lift (S.AppNT op a b) = [| S.AppNT op a b |]

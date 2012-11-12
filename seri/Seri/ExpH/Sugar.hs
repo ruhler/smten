@@ -1,10 +1,13 @@
 
 -- | Abstract constructors and deconstructors dealing with ExpH
 module Seri.ExpH.Sugar (
-    litEH, de_litEH, varEH, de_varEH, conEH,
+    litEH, de_litEH, varEH, de_varEH, conEH, de_conEH,
     appEH, de_appEH, appsEH, de_appsEH,
 
-    unitEH, boolEH, trueEH, falseEH, integerEH, bitEH, de_charEH,
+    unitEH,
+    boolEH, trueEH, falseEH, de_boolEH,
+    integerEH, de_integerEH, bitEH,
+    charEH, de_charEH,
 
     ifEH, 
     ) where
@@ -18,6 +21,10 @@ import Seri.ExpH.ExpH
 
 conEH :: Sig -> ExpH
 conEH = ConEH
+
+de_conEH :: ExpH -> Maybe Sig
+de_conEH (ConEH s) = Just s
+de_conEH _ = Nothing
 
 litEH :: Lit -> ExpH
 litEH = LitEH
@@ -63,11 +70,24 @@ boolEH :: Bool -> ExpH
 boolEH True = trueEH
 boolEH False = falseEH
 
+de_boolEH :: ExpH -> Maybe Bool
+de_boolEH x | x == trueEH = Just True
+de_boolEH x | x == falseEH = Just False
+de_boolEH _ = Nothing
+
 integerEH :: Integer -> ExpH
 integerEH = litEH . IntegerL 
 
+
+de_integerEH :: ExpH -> Maybe Integer
+de_integerEH (LitEH (IntegerL i)) = Just i
+de_integerEH _ = Nothing
+
 bitEH :: Bit -> ExpH
 bitEH b = appEH (varEH (Sig (name "Seri.Bit.__prim_fromInteger_Bit") (arrowsT [integerT, bitT (bv_width b)]))) (integerEH $ bv_value b)
+
+charEH :: Char -> ExpH
+charEH = litEH . CharL 
 
 de_charEH :: ExpH -> Maybe Char
 de_charEH e = do
