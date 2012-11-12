@@ -7,7 +7,7 @@ import Seri.SMT.SMT
 -- The size of the sudoku.
 -- (nxn)x(nxn)
 n :: Integer
-n = 2
+n = 3
 
 -- The square of the sudoku size.
 m :: Integer

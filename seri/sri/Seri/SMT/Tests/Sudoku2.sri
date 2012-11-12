@@ -11,7 +11,7 @@ import Seri.Sudoku.Cell
 
 qmain :: Query [[Char]]
 qmain = do
-    board <- (readBoard little :: Query (Board EnumCell))
+    board <- (readBoard diabolical :: Query (Board EnumCell))
     result <- solve board
     case result of
        Satisfiable v -> return (print v)

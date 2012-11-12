@@ -41,7 +41,7 @@ module Seri.Elaborate(
     conEH, varEH, appEH, unappsEH, de_varEH,
     de_appv1, de_appv2,
     ifEH,
-    transform,
+    transform, query,
 
     unitEH, boolEH, trueEH, falseEH, integerEH, bitEH,
     de_charEH,

@@ -60,7 +60,8 @@ import Seri.Failable
 import Seri.Lambda hiding (free, query)
 import qualified Seri.Lambda
 import Seri.SMT.Translate
-import Seri.Elaborate
+import Seri.Elaborate hiding (query)
+import qualified Seri.Elaborate
 
 
 data Answer a = Satisfiable a | Unsatisfiable | Unknown
@@ -289,7 +290,10 @@ queryS q = do
 realize :: (SMT.Solver s) => ExpH -> Realize s ExpH
 realize e = Realize $ do
     env <- gets qs_env
-    let freevars = nub $ Seri.Lambda.query RealizeQ (fromExpH e)
+    let g e | Just s@(Sig nm ty) <- de_varEH e, isfreename nm = [s]
+        g _ = []
+        
+        freevars = nub $ Seri.Elaborate.query g e
     freevarvals <- mapM (realizefree env) freevars
     let g :: ExpH -> Maybe ExpH
         g e = do

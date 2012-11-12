@@ -13,9 +13,11 @@ module Seri.Elaborate.ExpH (
       de_charEH,
   ) where
 
+import Data.Monoid
+
 import Seri.Bit
-import Seri.Lambda hiding (transform)
-import Seri.Lambda.Ppr hiding (Mode)
+import Seri.Lambda hiding (transform, query)
+import Seri.Lambda.Ppr hiding (Mode, (<>))
 
 data Mode = WHNF -- ^ elaborate to weak head normal form.
           | SNF  -- ^ elaborate to smt normal form.
@@ -100,6 +102,15 @@ transform g e
        AppEH _ f x -> AppEH ES_None (transform g f) (transform g x)
        LamEH _ s f -> LamEH ES_None s $ \x -> transform g (f x)
        CaseEH _ x k y d -> CaseEH ES_None (transform g x) k (transform g y) (transform g d)
+
+query :: Monoid m => (ExpH -> m) -> ExpH -> m
+query g e 
+ = g e <> case e of
+             AppEH _ f x -> query g f <> query g x
+             LamEH _ s f -> query g (f (varEH s))
+             CaseEH _ x _ y d -> query g x <> query g y <> query g d
+             _ -> mempty
+    
      
 de_varEH :: ExpH -> Maybe Sig
 de_varEH (VarEH s) = Just s

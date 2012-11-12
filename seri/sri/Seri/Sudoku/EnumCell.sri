@@ -6,7 +6,7 @@ import Seri.SMT.SMT
 
 import Seri.Sudoku.Cell
 
-data EnumCell = C1 | C2 | C3 | C4
+data EnumCell = C1 | C2 | C3 | C4 | C5 | C6 | C7 | C8 | C9
     deriving(Eq, Free)
 
 instance Cell EnumCell where
@@ -14,11 +14,21 @@ instance Cell EnumCell where
     mkCell 2 = C2
     mkCell 3 = C3
     mkCell 4 = C4
+    mkCell 5 = C5
+    mkCell 6 = C6
+    mkCell 7 = C7
+    mkCell 8 = C8
+    mkCell 9 = C9
 
     deCell C1 = 1
     deCell C2 = 2
     deCell C3 = 3
     deCell C4 = 4
+    deCell C5 = 5
+    deCell C6 = 6
+    deCell C7 = 7
+    deCell C8 = 8
+    deCell C9 = 9
 
     freeCell = free
 
