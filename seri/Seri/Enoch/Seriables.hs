@@ -6,6 +6,7 @@ module Seri.Enoch.Seriables () where
 
 import Seri.Lambda
 import Seri.Type.SeriT
+import Seri.Type.TH
 import Seri.Enoch.Enoch
 import Seri.Enoch.EnochTH
 
