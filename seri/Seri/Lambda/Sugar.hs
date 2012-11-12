@@ -57,6 +57,7 @@ import Seri.Lambda.Prelude
 import Seri.Lambda.Types
 import Seri.Lambda.Utils
 import Seri.Type.Sugar
+import Seri.Type.SeriT
 
 laceE :: [Match] -> Exp
 laceE = LaceE

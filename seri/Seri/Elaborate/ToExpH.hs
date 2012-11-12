@@ -7,6 +7,7 @@ module Seri.Elaborate.ToExpH (
 
 import Seri.Lambda
 import Seri.Type.Sugar
+import Seri.Type.SeriT
 import Seri.Elaborate.ExpH
 
 -- | Translate an Exp to our HOAS ExpH representation

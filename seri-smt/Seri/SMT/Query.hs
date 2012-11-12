@@ -60,6 +60,7 @@ import Seri.Failable
 import Seri.Lambda hiding (free, query)
 import qualified Seri.Lambda
 import Seri.Type.Sugar
+import Seri.Type.SeriT
 import Seri.SMT.Translate
 import Seri.Elaborate hiding (query)
 import qualified Seri.Elaborate

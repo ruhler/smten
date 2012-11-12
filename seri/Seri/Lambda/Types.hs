@@ -37,7 +37,7 @@
 
 -- | Utilities for working with Seri Types
 module Seri.Lambda.Types (
-    boolT, listT, integerT, bitT, deBitT, stringT, charT,
+    bitT, deBitT,
     deTupN, deTupT, tupT, untupT,
     Typeof(..),
     assign, assignl, assignments, bindingsP, bindingsP', varTs, nvarTs,
@@ -53,31 +53,12 @@ import Seri.Lambda.Generics
 import Seri.Type.Sugar
 import Seri.Type.SeriT
 
--- | The Integer type
-integerT :: Type
-integerT = seriT (undefined :: Integer)
-
-charT :: Type
-charT = seriT (undefined :: Char)
-
 bitT :: Integer -> Type
 bitT w = AppT (ConT (name "Bit")) (NumT (ConNT w))
 
 deBitT :: Type -> Maybe Integer
 deBitT (AppT (ConT n) (NumT w)) | n == name "Bit" = Just (nteval w)
 deBitT _ = Nothing
-
--- | The String type
-stringT :: Type
-stringT = listT (seriT (undefined :: Char))
-
--- | The boolean type
-boolT :: Type
-boolT = seriT (undefined :: Bool)
-
--- | Given a type a, returns the type [a].
-listT :: Type -> Type
-listT t = AppT (ConT (name "[]")) t
 
 -- | assignments poly concrete
 -- Given a polymorphic type and a concrete type of the same form, return the

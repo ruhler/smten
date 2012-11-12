@@ -59,6 +59,7 @@ import Control.Monad.Error
 import Seri.Failable
 import Seri.Lambda
 import Seri.Type.Sugar
+import Seri.Type.SeriT
 import Seri.Strict
 import Seri.Elaborate
 

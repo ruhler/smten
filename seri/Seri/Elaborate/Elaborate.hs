@@ -53,6 +53,7 @@ import Seri.Failable
 import qualified Seri.HashTable as HT
 import Seri.Lambda hiding (transform)
 import Seri.Type.Sugar
+import Seri.Type.SeriT
 
 import Seri.Elaborate.ExpH
 import Seri.Elaborate.ToExpH

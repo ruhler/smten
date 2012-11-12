@@ -12,6 +12,5 @@ import Seri.Enoch.EnochTH
 derive_SeriT ''Maybe
 derive_SeriableE ''Maybe
 
-derive_SeriT ''[]
 derive_SeriableE ''[]
 
