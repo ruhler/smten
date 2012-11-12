@@ -1,9 +1,9 @@
 
 {-# LANGUAGE FlexibleInstances #-}
 
+-- | Relating haskell types to seri types.
 module Seri.Type.SeriT (
     SeriT(..), SeriT1(..), SeriT2(..),
-    unitT, boolT, charT, integerT, listT, stringT,
  ) where
 
 import Seri.Name
@@ -39,33 +39,17 @@ instance (SeriT2 m, SeriT a) => SeriT1 (m a) where
       in appT (seriT2 x) (seriT (t x))
 
 
-unitT :: Type
-unitT = conT (name "()")
-
 instance SeriT () where
     seriT _ = unitT
-
-charT :: Type
-charT = conT (name "Char")
 
 instance SeriT Char where
     seriT _ = charT
 
-integerT :: Type
-integerT = conT (name "Integer")
-
 instance SeriT Integer where
     seriT _ = integerT
 
-boolT :: Type
-boolT = conT (name "Bool")
-
 instance SeriT Bool where
     seriT _ = boolT
-
--- | Given a type a, returns the type [a].
-listT :: Type -> Type
-listT t = appT (conT (name "[]")) t
 
 instance SeriT1 [] where
     seriT1 _ = conT (name "[]")
@@ -75,7 +59,4 @@ instance SeriT2 (->) where
 
 instance SeriT2 (,) where
     seriT2 _ = conT (name "(,)")
-
-stringT :: Type
-stringT = listT charT
 

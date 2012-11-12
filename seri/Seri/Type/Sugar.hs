@@ -6,6 +6,8 @@ module Seri.Type.Sugar (
     conT,
     appT, appsT, de_appsT,
     arrowN, arrowT, de_arrowT, arrowsT, de_arrowsT,
+
+    unitT, boolT, charT, integerT, listT, stringT,
   ) where
 
 import Seri.Name
@@ -57,4 +59,22 @@ de_arrowsT :: Type -> [Type]
 de_arrowsT t | Just (a, b) <- de_arrowT t = a : (de_arrowsT b)
 de_arrowsT t = [t]
 
+unitT :: Type
+unitT = conT (name "()")
+
+charT :: Type
+charT = conT (name "Char")
+
+integerT :: Type
+integerT = conT (name "Integer")
+
+boolT :: Type
+boolT = conT (name "Bool")
+
+-- | Given a type a, returns the type [a].
+listT :: Type -> Type
+listT t = appT (conT (name "[]")) t
+
+stringT :: Type
+stringT = listT charT
 
