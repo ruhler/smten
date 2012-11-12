@@ -51,7 +51,7 @@ import Data.Monoid
 import Seri.Bit
 import Seri.Failable
 import qualified Seri.HashTable as HT
-import Seri.Lambda
+import Seri.Lambda hiding (transform)
 
 import Seri.Elaborate.ExpH
 import Seri.Elaborate.ToExpH
@@ -324,13 +324,9 @@ bitEH b = AppEH (ES_Some SNF) (VarEH (Sig (name "Seri.Bit.__prim_fromInteger_Bit
 -- Replace all occurences of the boolean variable with given name to the value
 -- True or False in the given expression.
 concretize :: Name -> Bool -> ExpH -> ExpH
-concretize n v e
- = case e of
-    LitEH {} -> e
-    ConEH {} -> e
-    VarEH (Sig nm _) | n == nm -> boolEH v
-    VarEH {} -> e
-    AppEH _ f x -> AppEH ES_None (concretize n v f) (concretize n v x)
-    LamEH _ s f -> LamEH ES_None s $ \x -> concretize n v (f x)
-    CaseEH _ x k y d -> CaseEH ES_None (concretize n v x) k (concretize n v y) (concretize n v d)
+concretize n v
+ = let g :: ExpH -> Maybe ExpH
+       g (VarEH (Sig nm _)) | n == nm = Just (boolEH v)
+       g _ = Nothing
+   in transform g
 
