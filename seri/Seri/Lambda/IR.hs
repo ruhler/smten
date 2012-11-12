@@ -35,42 +35,16 @@
 
 -- | Definition of the abstract syntax for the Seri core lambda expressions.
 module Seri.Lambda.IR (
-    Name, name, unname, ncons, ntake, nappend, nhead, ntail, nnull,
     TyVar(..), NType(..), Type(..),
     Sig(..), TopSig(..), Class(..), Context,
     Pat(..), Match(..),
     Lit(..), Exp(..), 
     Con(..), Method(..), Dec(..),
     isDataD, tyVarType, tyVarName, nteval,
+    module Seri.Name,
     ) where
 
-import qualified Data.ByteString.Char8 as STR
-
-type Name = STR.ByteString
-
-name :: String -> Name
-name = STR.pack
-
-unname :: Name -> String
-unname = STR.unpack
-
-ncons :: Char -> Name -> Name
-ncons = STR.cons
-
-nhead :: Name -> Char
-nhead = STR.head
-
-ntail :: Name -> Name
-ntail = STR.tail
-
-nnull :: Name -> Bool
-nnull = STR.null
-
-ntake :: Int -> Name -> Name
-ntake = STR.take
-
-nappend :: Name -> Name -> Name
-nappend = STR.append
+import Seri.Name
 
 type NTOp = String
 
