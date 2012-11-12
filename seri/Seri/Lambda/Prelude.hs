@@ -97,13 +97,13 @@ tupE es@(_:_:_) =
   let n = length es
       nm = name $ "(" ++ replicate (n-1) ',' ++ ")"
       types = map typeof es
-      ttype = arrowsT (types ++ [tupT types])
+      ttype = arrowsT (types ++ [tupleT types])
   in appE (ConE (Sig nm ttype)) es
 
 deTupE :: Exp -> Maybe [Exp]
 deTupE e = do
     (ConE (Sig n _), args) <- deAppE e
-    l <- deTupN n
+    l <- de_tupleN n
     guard $ genericLength args == l
     return args
 

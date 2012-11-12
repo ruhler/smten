@@ -214,7 +214,7 @@ atype :: { Type }
  | tyvarnm
     { VarT (name $1) }
  | '(' types_commasep ')'
-    { tupT $2 }     -- takes care of '(' type ')' case too.
+    { tupleT $2 }     -- takes care of '(' type ')' case too.
  | '[' type ']'
     { AppT (ConT (name "[]")) $2 }
  | '#' antype
@@ -621,7 +621,7 @@ mkContext t =
           (ConT nm, ts) -> return $ Class nm ts
           _ -> throw $ "invalid context"
 
-      classes = untupT t
+      classes = fromMaybe [t] (de_tupleT t)
   in mapM mkclass classes
       
       

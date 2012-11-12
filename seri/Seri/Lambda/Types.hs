@@ -37,8 +37,6 @@
 
 -- | Utilities for working with Seri Types
 module Seri.Lambda.Types (
-    bitT, deBitT,
-    deTupN, deTupT, tupT, untupT,
     Typeof(..),
     assign, assignl, assignments, bindingsP, bindingsP', varTs, nvarTs,
     isSubType,
@@ -52,13 +50,6 @@ import Seri.Lambda.IR
 import Seri.Lambda.Generics
 import Seri.Type.Sugar
 import Seri.Type.SeriT
-
-bitT :: Integer -> Type
-bitT w = AppT (ConT (name "Bit")) (NumT (ConNT w))
-
-deBitT :: Type -> Maybe Integer
-deBitT (AppT (ConT n) (NumT w)) | n == name "Bit" = Just (nteval w)
-deBitT _ = Nothing
 
 -- | assignments poly concrete
 -- Given a polymorphic type and a concrete type of the same form, return the
@@ -193,37 +184,4 @@ nvarTs (AppT a b) = nub $ nvarTs a ++ nvarTs b
 nvarTs (NumT (AppNT _ a b)) = nub $ nvarTs (NumT a) ++ nvarTs (NumT b)
 nvarTs (NumT (VarNT n)) = [n]
 nvarTs _ = []
-
--- Check if a name is a tuple name. If so, returns the number of elements in
--- the tuple.
-deTupN :: Name -> Maybe Integer
-deTupN n = do
-    let s = unname n
-    guard $ length s > 2
-    guard $ head s == '('
-    guard $ last s == ')'
-    let mid = init (tail s)
-    guard $ all (== ',') mid
-    return (genericLength mid + 1)
-
-deTupT :: Type -> Maybe [Type]
-deTupT t = do
-    let (ConT tn, ts) = de_appsT t
-    len <- deTupN tn
-    guard $ len == genericLength ts
-    return ts
-    
--- | (a, b, ...)
--- There must be at least one type given.
---
--- If exactly one type is given, that type is returned without tupling.
-tupT :: [Type] -> Type
-tupT [] = error $ "tupT on empty list"
-tupT [x] = x
-tupT es = foldl AppT (ConT $ name $ "(" ++ replicate (length es - 1) ',' ++ ")") es
-
--- | Extract the types [a, b, c, ...] from a tuple type (a, b, c, ...)
--- If the type is not a tuple type, that single type is returned.
-untupT :: Type -> [Type]
-untupT t = fromMaybe [t] (deTupT t) 
 

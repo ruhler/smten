@@ -8,7 +8,12 @@ module Seri.Type.Sugar (
     arrowN, arrowT, de_arrowT, arrowsT, de_arrowsT,
 
     unitT, boolT, charT, integerT, listT, stringT,
+    bitT, de_bitT,
+    tupleN, de_tupleN, tupleT, de_tupleT,
   ) where
+
+import Control.Monad(guard)
+import Data.List(genericLength)
 
 import Seri.Name
 import Seri.Type.Type
@@ -77,4 +82,43 @@ listT t = appT (conT (name "[]")) t
 
 stringT :: Type
 stringT = listT charT
+
+bitT :: Integer -> Type
+bitT w = appT (conT (name "Bit")) (NumT (ConNT w))
+
+de_bitT :: Type -> Maybe Integer
+de_bitT (AppT (ConT n) (NumT w)) | n == name "Bit" = Just (nteval w)
+de_bitT _ = Nothing
+
+-- Generate the tuple name for given number of arguments.
+tupleN :: (Integral n) => n -> Name
+tupleN n = name $ "(" ++ replicate (fromIntegral (n-1)) ',' ++ ")"
+
+-- Check if a name is a tuple name. If so, returns the number of elements in
+-- the tuple.
+de_tupleN :: Name -> Maybe Integer
+de_tupleN n = do
+    let s = unname n
+    guard $ length s > 2
+    guard $ head s == '('
+    guard $ last s == ')'
+    let mid = init (tail s)
+    guard $ all (== ',') mid
+    return (genericLength mid + 1)
+
+-- | (a, b, ...)
+-- There must be at least one type given.
+--
+-- If exactly one type is given, that type is returned without tupling.
+tupleT :: [Type] -> Type
+tupleT [] = error $ "tupT on empty list"
+tupleT [x] = x
+tupleT es = appsT (conT $ tupleN (length es)) es
+
+de_tupleT :: Type -> Maybe [Type]
+de_tupleT t = do
+    let (ConT tn, ts) = de_appsT t
+    len <- de_tupleN tn
+    guard $ len == genericLength ts
+    return ts
 

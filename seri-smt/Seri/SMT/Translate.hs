@@ -135,7 +135,7 @@ smtT :: Type -> CompilationM SMT.Type
 smtT t | t == boolT = return SMT.BoolT
 smtT t | t == integerT = return SMT.IntegerT
 smtT t | t == charT = return SMT.IntegerT
-smtT t | Just w <- deBitT t = return $ SMT.BitVectorT w
+smtT t | Just w <- de_bitT t = return $ SMT.BitVectorT w
 smtT t | Just (a, b) <- de_arrowT t = SMT.ArrowT <$> mapM smtT [a, b] 
 smtT t = throw $ "smtT: unsupported type: " ++ pretty t
 
@@ -285,24 +285,24 @@ smtE' e@(AppE a b) =
        [VarE (Sig n t), LitE (IntegerL x)]
             | n == name "Seri.Bit.__prim_fromInteger_Bit"
             , Just (_, bt) <- de_arrowT t
-            , Just w <- deBitT bt
+            , Just w <- de_bitT bt
             -> return (SMT.mkbvE w x)
        [VarE (Sig n t), a]
             | n == name "Seri.Bit.__prim_zeroExtend_Bit"
             , Just (bs, bt) <- de_arrowT t
-            , Just sw <- deBitT bs
-            , Just tw <- deBitT bt
+            , Just sw <- de_bitT bs
+            , Just tw <- de_bitT bt
             -> do
                a' <- smtE' a
                return (SMT.bvzeroExtendE a' (tw - sw))
        [VarE (Sig n t), a]
             | n == name "Seri.Bit.__prim_truncate_Bit"
             , Just (_, bt) <- de_arrowT t
-            , Just tw <- deBitT bt
+            , Just tw <- de_bitT bt
             -> SMT.bvextractE (tw - 1) 0 <$> smtE' a
        [VarE (Sig n _), x, LitE (IntegerL i)]
             | n == name "Seri.Bit.__prim_extract_Bit"
-            , Just tw <- deBitT (typeof e)
+            , Just tw <- de_bitT (typeof e)
             -> SMT.bvextractE (i + tw - 1) i <$> smtE' x
        [VarE (Sig n _), f, k, v] | n == name "Seri.SMT.Array.update" -> do
            f' <- smtE' f

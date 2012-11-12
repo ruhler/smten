@@ -100,14 +100,14 @@ curryE :: Exp -> Exp
 curryE e =
   let (ta, tb, tc) = fromMaybe (UnknownT, UnknownT, UnknownT) $ do
         (tt, c) <- de_arrowT (typeof e)
-        [a, b] <- deTupT tt
+        [a, b] <- de_tupleT tt
         return (a, b, c)
   in appE (VarE (Sig (name "Prelude.curry") (curryT ta tb tc))) [e]
 
 -- | given types a, b, c,
 -- returns the type: ((a, b) -> c) -> a -> b -> c
 curryT :: Type -> Type -> Type -> Type
-curryT a b c = arrowsT [arrowsT [tupT [a, b], c], a, b, c]
+curryT a b c = arrowsT [arrowsT [tupleT [a, b], c], a, b, c]
 
 -- | case x of
 --      p1 -> e1;
