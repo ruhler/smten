@@ -8,8 +8,6 @@ module Seri.ExpH.Sugar (
     boolEH, trueEH, falseEH, de_boolEH,
     integerEH, de_integerEH, bitEH,
     charEH, de_charEH,
-
-    ifEH, 
     ) where
 
 import Seri.Bit
@@ -93,9 +91,4 @@ de_charEH :: ExpH -> Maybe Char
 de_charEH e = do
     CharL c <- de_litEH e
     return c
-
-ifEH :: ExpH -> ExpH -> ExpH -> ExpH
-ifEH p a b = 
-  let false = CaseEH ES_None p (Sig (name "False") boolT) b (error "if failed to match")
-  in CaseEH ES_None p (Sig (name "True") boolT) a false
 

@@ -10,6 +10,7 @@ import Seri.Type.Sugar
 import Seri.Type.SeriT
 import Seri.Elaborate.ExpH
 import Seri.ExpH.Sugar
+import Seri.ExpH.Sugar2
 
 -- | Translate an Exp to our HOAS ExpH representation
 toExpH :: [(Sig, ExpH)] -> Exp -> ExpH

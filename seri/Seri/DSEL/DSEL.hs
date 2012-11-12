@@ -18,6 +18,7 @@ import Seri.Type.SeriT
 import Seri.ExpH.ExpH
 import Seri.ExpH.SeriEH
 import Seri.ExpH.Sugar
+import Seri.ExpH.Sugar2
 
 data ExpT a = ExpT ExpH
 

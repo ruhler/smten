@@ -8,10 +8,11 @@ import Data.List(transpose)
 import Seri
 import Seri.Failable
 import Seri.Lambda hiding (free, query)
-import Seri.Enoch.Enoch
-import Seri.Enoch.EnochTH
-import Seri.Enoch.Prelude
-import Seri.Enoch.SMT
+import Seri.DSEL.DSEL
+import Seri.DSEL.SMT
+import Seri.Type.SeriT
+import Seri.TH
+import Seri
 import Seri.SMT.Solver (Solver)
 import Seri.SMT.Yices.Yices2
 
@@ -27,22 +28,22 @@ m = n*n
 
 type Cell = Integer
 
-freeCell :: (Solver s) => Query s (TExp Cell)
+freeCell :: (Solver s) => Query s (ExpT Cell)
 freeCell = do
     x <- free
-    assert ((x > 0) && (x <= pack m))
+    assert ((x > 0) && (x <= seriET m))
     return x
 
-readCell :: (Solver s) => Char -> Query s (TExp Cell);
-readCell '1' = return (pack 1);
-readCell '2' = return (pack 2);
-readCell '3' = return (pack 3);
-readCell '4' = return (pack 4);
-readCell '5' = return (pack 5);
-readCell '6' = return (pack 6);
-readCell '7' = return (pack 7);
-readCell '8' = return (pack 8);
-readCell '9' = return (pack 9);
+readCell :: (Solver s) => Char -> Query s (ExpT Cell);
+readCell '1' = return (seriET 1);
+readCell '2' = return (seriET 2);
+readCell '3' = return (seriET 3);
+readCell '4' = return (seriET 4);
+readCell '5' = return (seriET 5);
+readCell '6' = return (seriET 6);
+readCell '7' = return (seriET 7);
+readCell '8' = return (seriET 8);
+readCell '9' = return (seriET 9);
 readCell '.' = freeCell;
 readCell c = error ("readCell: " ++ [c]);
 
@@ -57,13 +58,13 @@ printCell 7 = '7';
 printCell 8 = '8';
 printCell 9 = '9';
 
-notElem :: (SeriableT a) => TExp a -> [TExp a] -> TExp Bool
-notElem x [] = pack True
+notElem :: (SeriT a) => ExpT a -> [ExpT a] -> ExpT Bool
+notElem x [] = seriET True
 notElem x (y:ys) = (x /= y) && (notElem x ys)
 
 -- Return true if all elements in the list are unique.
-unique :: (SeriableT a) => [TExp a] -> TExp Bool;
-unique [] = pack True;
+unique :: (SeriT a) => [ExpT a] -> ExpT Bool;
+unique [] = seriET True;
 unique (x:xs) = notElem x xs && unique xs;
 
 print :: [[Cell]] -> [[Char]];
@@ -99,17 +100,17 @@ breakup n xs =
      (a, b) -> a : (breakup n b);
   };
 
-all :: (a -> TExp Bool) -> [a] -> TExp Bool
-all f [] = pack True
-all f (x:xs) = ite (f x) (all f xs) (pack False)
+all :: (a -> ExpT Bool) -> [a] -> ExpT Bool
+all f [] = seriET True
+all f (x:xs) = ite (f x) (all f xs) (seriET False)
 
-isvalid :: [[TExp Cell]] -> TExp Bool;
+isvalid :: [[ExpT Cell]] -> ExpT Bool;
 isvalid b = all unique (concat [rows b, cols b, boxes b]);
 
-readRow :: (Solver s) => [Char] -> Query s [TExp Cell];
+readRow :: (Solver s) => [Char] -> Query s [ExpT Cell];
 readRow = mapM readCell;
 
-readBoard :: (Solver s) => [[Char]] -> Query s [[TExp Cell]]
+readBoard :: (Solver s) => [[Char]] -> Query s [[ExpT Cell]]
 readBoard rows = mapM readRow rows;
 
 easy :: [[Char]];

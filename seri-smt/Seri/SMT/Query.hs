@@ -64,6 +64,7 @@ import Seri.Type.Sugar
 import Seri.Type.SeriT
 import Seri.Type.TH
 import Seri.ExpH.Sugar
+import Seri.ExpH.Sugar2
 import Seri.ExpH.TH
 import Seri.SMT.Translate
 import Seri.Elaborate hiding (query)
