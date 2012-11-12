@@ -56,6 +56,7 @@ import Seri.Lambda.IR
 import Seri.Lambda.Prelude
 import Seri.Lambda.Types
 import Seri.Lambda.Utils
+import Seri.Type.Sugar
 
 laceE :: [Match] -> Exp
 laceE = LaceE
@@ -97,7 +98,7 @@ sLaceE ms@(Match ps _ : _)=
 curryE :: Exp -> Exp
 curryE e =
   let (ta, tb, tc) = fromMaybe (UnknownT, UnknownT, UnknownT) $ do
-        (tt, c) <- deArrowT (typeof e)
+        (tt, c) <- de_arrowT (typeof e)
         [a, b] <- deTupT tt
         return (a, b, c)
   in appE (VarE (Sig (name "Prelude.curry") (curryT ta tb tc))) [e]
@@ -236,7 +237,7 @@ recordD nm vars cons derivings =
       mkcon (NormalC n ts) = Con n ts
       mkcon (RecordC n ts) = Con n (map snd ts)
 
-      dt = appsT (ConT nm : map tyVarType vars)
+      dt = appsT (ConT nm) (map tyVarType vars)
 
       mkundef :: Con -> Dec
       mkundef (Con n ts) =
@@ -298,7 +299,7 @@ recordC (Sig cn ct) fields = recordU (VarE (Sig (record_undefnm cn) ct)) fields
 -- data type declaration.
 deriveEq :: Name -> [TyVar] -> [Con] -> Dec
 deriveEq dn vars cs = 
-  let dt = appsT (ConT dn : map tyVarType vars)
+  let dt = appsT (ConT dn) (map tyVarType vars)
       mkcon :: Con -> Match
       mkcon (Con cn ts) = 
         let fields1 = [Sig (name $ [c, '1']) t | (t, c) <- zip ts "abcdefghijklmnopqrstuvwxyz"]
@@ -340,7 +341,7 @@ deriveEq dn vars cs =
 --           _ _ -> Wedge
 deriveFree :: Name -> [TyVar] -> [Con] -> Dec
 deriveFree dn vars cs =
-  let dt = appsT (ConT dn : map tyVarType vars)
+  let dt = appsT (ConT dn) (map tyVarType vars)
 
       mkTag :: Con -> Sig
       mkTag (Con nm _) = Sig (name "is" `nappend` nm) boolT

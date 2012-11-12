@@ -18,6 +18,7 @@ import Data.Monoid
 import Seri.Bit
 import Seri.Lambda hiding (transform, query)
 import Seri.Lambda.Ppr hiding (Mode, (<>))
+import Seri.Type.Sugar
 
 data Mode = WHNF -- ^ elaborate to weak head normal form.
           | SNF  -- ^ elaborate to smt normal form.
@@ -62,7 +63,7 @@ instance Typeof ExpH where
     typeof (ConEH s) = typeof s
     typeof (VarEH s) = typeof s
     typeof (AppEH _ f x) =
-        let fts = unarrowsT (typeof f)
+        let fts = de_arrowsT (typeof f)
         in case (drop 1 fts) of
               [] -> UnknownT
               ts -> arrowsT ts

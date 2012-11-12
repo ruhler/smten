@@ -11,6 +11,7 @@ module Seri.Enoch.Enoch (
 import Data.Maybe (fromMaybe)
 
 import Seri.Lambda
+import Seri.Type.Sugar
 
 -- | Typed Exp.
 -- A Seri expression corresponding to a haskell object of type 'a'
@@ -33,7 +34,7 @@ instance (SeriableT1 m, SeriableT a) => SeriableT (m a) where
     serit x =
       let t :: m a -> a
           t _ = undefined
-      in appsT [serit1 x, serit (t x)]
+      in appT (serit1 x) (serit (t x))
 
 class SeriableT2 m where
     serit2 :: m a b -> Type
@@ -42,7 +43,7 @@ instance (SeriableT2 m, SeriableT a) => SeriableT1 (m a) where
     serit1 x =
       let t :: m a b -> a
           t _ = undefined
-      in appsT [serit2 x, serit (t x)]
+      in appT (serit2 x) (serit (t x))
 
 
 -- | Class of type of values which can be reperesnted as seri expressions.

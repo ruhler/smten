@@ -45,6 +45,7 @@ import Seri.Lambda.IR
 import Seri.Lambda.Ppr
 import Seri.Lambda.Types
 import Seri.Lambda.Utils
+import Seri.Type.Sugar
 
 class TypeCheck a where
     -- | Type check the given object under the given environment.
@@ -103,7 +104,7 @@ instance TypeCheck Dec where
              if length concated /= length (nub (map fst concated))
                 then throw $ "VarP appears multiple times in " ++ pretty p
                 else return ()
-             let twants = init (unarrowsT ct)
+             let twants = init (de_arrowsT ct)
              let assertpat w p =
                     if w == typeof p
                         then return () 

@@ -4,6 +4,7 @@ module Seri.Elaborate.FromExpH (
   ) where
 
 import Seri.Lambda
+import Seri.Type.Sugar
 import Seri.Elaborate.ExpH
 import Seri.Elaborate.FreshFast
 
@@ -24,7 +25,7 @@ fromExpHM (LamEH _ s f) = do
   return (lamE $ Match [VarP s'] b)
 fromExpHM (CaseEH _ arg (Sig n t) yes no) = do
   arg' <- fromExpHM arg
-  let tys = unarrowsT t
+  let tys = de_arrowsT t
   vars <- mapM (fresh . Sig (name "_x")) (init tys)
   yes' <- fromExpHM (appEH yes (map VarEH vars))
   no' <- fromExpHM no

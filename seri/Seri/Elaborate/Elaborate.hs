@@ -52,6 +52,7 @@ import Seri.Bit
 import Seri.Failable
 import qualified Seri.HashTable as HT
 import Seri.Lambda hiding (transform)
+import Seri.Type.Sugar
 
 import Seri.Elaborate.ExpH
 import Seri.Elaborate.ToExpH
@@ -104,7 +105,7 @@ elaborate mode env =
                          (yify (n-1) f (b x))
                      yify n f x = error $ "yify got: " ++ pretty x
 
-                     kargs = genericLength (unarrowsT (typeof k)) - 1
+                     kargs = genericLength (de_arrowsT (typeof k)) - 1
 
                      y' = yify kargs ybody y
                      n' = AppEH ES_None n arg
@@ -147,7 +148,7 @@ elaborate mode env =
                         (y2ify (n-1) f (b x))
                     y2ify n f x = error $ "y2ify got: " ++ pretty x
 
-                    k2args = genericLength (unarrowsT (typeof k2)) - 1
+                    k2args = genericLength (de_arrowsT (typeof k2)) - 1
 
                     y2' = y2ify k2args y2body y2
                     n2' = CaseEH ES_None n2 k1 y1 n1
@@ -209,16 +210,16 @@ elaborate mode env =
 --                 return (error $ "Seri.error: " ++ msg)
 --                ),
              (name "Prelude.valueof", \t _ -> 
-               let [NumT nt, it] = unarrowsT t
+               let [NumT nt, it] = de_arrowsT t
                in return $ integerEH (nteval nt)
                 ),
              (name "Seri.Bit.__prim_zeroExtend_Bit", \t a -> do
-               let [ta, AppT _ (NumT wt)] = unarrowsT t
+               let [ta, AppT _ (NumT wt)] = de_arrowsT t
                a' <- de_bitEH a
                return . bitEH $ bv_zero_extend (nteval wt - bv_width a') a'
                   ),
              (name "Seri.Bit.__prim_truncate_Bit", \t a -> do
-               let [ta, AppT _ (NumT wt)] = unarrowsT t
+               let [ta, AppT _ (NumT wt)] = de_arrowsT t
                a' <- de_bitEH a
                return . bitEH $ bv_truncate (nteval wt) a'
                    )
@@ -271,7 +272,7 @@ elaborate mode env =
              (name "Seri.Bit.__prim_extract_Bit",
                 let f :: Type -> Bit -> Integer -> Bit
                     f t a j =
-                      let AppT _ (NumT wt) = last $ unarrowsT t
+                      let AppT _ (NumT wt) = last $ de_arrowsT t
                           i = j + (nteval wt) - 1
                       in bv_extract i j a
                 in bSVIV f)

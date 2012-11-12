@@ -55,6 +55,7 @@ import Seri.Lambda.IR
 import Seri.Lambda.Ppr
 import Seri.Lambda.Types
 import Seri.Lambda.TypeSolver
+import Seri.Type.Sugar
 
 class TypeInfer a where
     -- | Perform type inference on the given object.
@@ -207,7 +208,7 @@ instance Constrain Pat where
         cty <- lift $ lookupDataConType env n
         rcty <- retype cty
         addc rcty (arrowsT (tps ++ [t]))
-        let pts = init (unarrowsT rcty)
+        let pts = init (de_arrowsT rcty)
         sequence_ [addc pt tp | (pt, tp) <- zip pts tps]
         return t
     constrain (VarP (Sig _ t)) = return t

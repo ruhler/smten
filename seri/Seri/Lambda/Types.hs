@@ -37,7 +37,6 @@
 
 -- | Utilities for working with Seri Types
 module Seri.Lambda.Types (
-    appsT, arrowsT, unappsT, unarrowsT, deArrowT,
     unitT, boolT, listT, integerT, bitT, deBitT, charT, stringT,
     deTupN, deTupT, tupT, untupT,
     Typeof(..),
@@ -51,6 +50,7 @@ import Data.Maybe
 
 import Seri.Lambda.IR
 import Seri.Lambda.Generics
+import Seri.Type.Sugar
 
 -- | The Integer type
 integerT :: Type
@@ -70,38 +70,6 @@ charT = ConT (name "Char")
 -- | The String type
 stringT :: Type
 stringT = listT charT
-
--- | Given the list of types [a, b, ..., c],
--- Return the applications of those types: (a b ... c)
--- The list must be non-empty.
-appsT :: [Type] -> Type
-appsT [] = error $ "appsT applied to empty list"
-appsT ts = foldl1 AppT ts
-
--- | Given the list of types [a, b, ..., c]
--- Return the type (a -> b -> ... -> c)
--- The list must be non-empty.
-arrowsT :: [Type] -> Type
-arrowsT [] = error $ "arrowsT applied to empty list"
-arrowsT [t] = t
-arrowsT (t:ts) = appsT [ConT (name "->"), t, arrowsT ts]
-
--- | Given a type of the form (a b ... c),
--- returns the list: [a, b, ..., c]
-unappsT :: Type -> [Type]
-unappsT (AppT a b) = (unappsT a) ++ [b]
-unappsT t = [t]
-
--- | Given a type of the form (a -> b -> ... -> c),
---  returns the list: [a, b, ..., c]
-unarrowsT :: Type -> [Type]
-unarrowsT t | Just (a, b) <- deArrowT t = a : (unarrowsT b)
-unarrowsT t = [t]
-
--- | Given a type of the form (a -> b), return (a, b)
-deArrowT :: Type -> Maybe (Type, Type)
-deArrowT (AppT (AppT (ConT ar) a) b) | ar == name "->" = Just (a, b)
-deArrowT _ = Nothing
 
 -- | The unit type: ()
 unitT :: Type
@@ -170,7 +138,7 @@ instance Typeof Exp where
     typeof (ConE tn) = typeof tn
     typeof (VarE tn) = typeof tn
     typeof e@(AppE f xs) = 
-      let fts = unarrowsT (typeof f)
+      let fts = de_arrowsT (typeof f)
       in case (drop (length xs) fts) of
             [] -> UnknownT
             ts -> arrowsT ts
@@ -262,13 +230,11 @@ deTupN n = do
     return (genericLength mid + 1)
 
 deTupT :: Type -> Maybe [Type]
-deTupT t =
-  case unappsT t of
-     (ConT tn):ts -> do
-        len <- deTupN tn
-        guard $ len == genericLength ts
-        return ts
-     _ -> Nothing
+deTupT t = do
+    let (ConT tn, ts) = de_appsT t
+    len <- deTupN tn
+    guard $ len == genericLength ts
+    return ts
     
 -- | (a, b, ...)
 -- There must be at least one type given.
@@ -282,8 +248,5 @@ tupT es = foldl AppT (ConT $ name $ "(" ++ replicate (length es - 1) ',' ++ ")")
 -- | Extract the types [a, b, c, ...] from a tuple type (a, b, c, ...)
 -- If the type is not a tuple type, that single type is returned.
 untupT :: Type -> [Type]
-untupT t = 
-   case unappsT t of
-      (ConT tn):ts | (ntake 2 tn == name "(,") -> ts
-      _ -> [t]
+untupT t = fromMaybe [t] (deTupT t) 
 

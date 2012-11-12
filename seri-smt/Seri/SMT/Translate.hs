@@ -58,6 +58,7 @@ import Control.Monad.Error
 
 import Seri.Failable
 import Seri.Lambda
+import Seri.Type.Sugar
 import Seri.Strict
 import Seri.Elaborate
 
@@ -134,7 +135,7 @@ smtT t | t == boolT = return SMT.BoolT
 smtT t | t == integerT = return SMT.IntegerT
 smtT t | t == charT = return SMT.IntegerT
 smtT t | Just w <- deBitT t = return $ SMT.BitVectorT w
-smtT t | Just (a, b) <- deArrowT t = SMT.ArrowT <$> mapM smtT [a, b] 
+smtT t | Just (a, b) <- de_arrowT t = SMT.ArrowT <$> mapM smtT [a, b] 
 smtT t = throw $ "smtT: unsupported type: " ++ pretty t
 
 -- | Compile a seri expression to a smt expression.
@@ -220,7 +221,7 @@ smtE' e@(AppE a b) =
        ((ConE s):args) -> smtC s args
        [VarE (Sig n t), _]
             | n == name "Prelude.error"
-            , Just (_, dt) <- deArrowT t
+            , Just (_, dt) <- de_arrowT t
             -> do errnm <- yfreeerr dt
                   return $ SMT.varE errnm
        [VarE (Sig n _), a, b]
@@ -282,12 +283,12 @@ smtE' e@(AppE a b) =
           -> SMT.bvnotE <$> smtE' a
        [VarE (Sig n t), LitE (IntegerL x)]
             | n == name "Seri.Bit.__prim_fromInteger_Bit"
-            , Just (_, bt) <- deArrowT t
+            , Just (_, bt) <- de_arrowT t
             , Just w <- deBitT bt
             -> return (SMT.mkbvE w x)
        [VarE (Sig n t), a]
             | n == name "Seri.Bit.__prim_zeroExtend_Bit"
-            , Just (bs, bt) <- deArrowT t
+            , Just (bs, bt) <- de_arrowT t
             , Just sw <- deBitT bs
             , Just tw <- deBitT bt
             -> do
@@ -295,7 +296,7 @@ smtE' e@(AppE a b) =
                return (SMT.bvzeroExtendE a' (tw - sw))
        [VarE (Sig n t), a]
             | n == name "Seri.Bit.__prim_truncate_Bit"
-            , Just (_, bt) <- deArrowT t
+            , Just (_, bt) <- de_arrowT t
             , Just tw <- deBitT bt
             -> SMT.bvextractE (tw - 1) 0 <$> smtE' a
        [VarE (Sig n _), x, LitE (IntegerL i)]

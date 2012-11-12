@@ -59,6 +59,7 @@ import Seri.Bit
 import Seri.Failable
 import Seri.Lambda hiding (free, query)
 import qualified Seri.Lambda
+import Seri.Type.Sugar
 import Seri.SMT.Translate
 import Seri.Elaborate hiding (query)
 import qualified Seri.Elaborate
@@ -148,7 +149,7 @@ isPrimT :: Type -> Bool
 isPrimT t | t == boolT = True
 isPrimT t | t == integerT = True
 isPrimT (AppT (ConT n) _) | n == name "Bit" = True
-isPrimT t | head (unappsT t) == ConT (name "->") = True
+isPrimT t | Just _ <- de_arrowT t = True
 isPrimT _ = False
 
 data RunOptions = RunOptions {
@@ -237,7 +238,7 @@ free t | isPrimT t = do
   runCmds [SMT.Declare (smtN free) t']
   return (varEH freevar)
 free t = do
-  let (ConT dt):args = unappsT t
+  let (ConT dt, args) = de_appsT t
   env <- gets qs_env
   DataD _ vars cs <- lift . attemptIO $ lookupDataD env dt
   (let mkcon :: (SMT.Solver s) => Con -> Query s ExpH

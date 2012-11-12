@@ -45,6 +45,7 @@ import Seri.Lambda.Modularity
 import Seri.Lambda.Prelude
 import Seri.Lambda.Sugar
 import Seri.Lambda.Types
+import Seri.Type.Sugar
 
 import Seri.Lambda.Parser.Monad
 import Seri.Lambda.Parser.Lexer
@@ -616,8 +617,8 @@ mkContext :: Type -> Failable [Class]
 mkContext t = 
   let mkclass :: Type -> Failable Class
       mkclass t =
-        case unappsT t of
-          (ConT nm):ts -> return $ Class nm ts
+        case de_appsT t of
+          (ConT nm, ts) -> return $ Class nm ts
           _ -> throw $ "invalid context"
 
       classes = untupT t

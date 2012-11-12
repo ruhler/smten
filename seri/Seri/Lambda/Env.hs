@@ -63,6 +63,7 @@ import Seri.HashTable as HT
 import Seri.Lambda.IR
 import Seri.Lambda.Ppr
 import Seri.Lambda.Types
+import Seri.Type.Sugar
 
 -- | Env is an abstract data type representing information about a seri
 -- environment.
@@ -129,7 +130,7 @@ dctable decs =
   let dcdec :: Dec -> [(Name, Type)]
       dcdec d@(DataD dn vars cs) =
         let dccon :: Con -> (Name, Type)
-            dccon (Con n ts) = (n, arrowsT (ts ++ [appsT (ConT dn : map tyVarType vars)]))
+            dccon (Con n ts) = (n, arrowsT (ts ++ [appsT (ConT dn) (map tyVarType vars)]))
         in map dccon cs
       dcdec _ = []
   in concat $ map dcdec decs
