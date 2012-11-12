@@ -61,12 +61,12 @@ import Seri.Elaborate.FromExpH
 elabwhnf :: Env -> Exp -> Exp
 elabwhnf = elaborate WHNF
 
--- | Elaborate an expression under the given mode.
-elaborate :: Mode  -- ^ Elaboration mode
-          -> Env   -- ^ context under which to evaluate the expression
-          -> Exp   -- ^ expression to evaluate
-          -> Exp   -- ^ elaborated expression
-elaborate mode env exp =
+-- | Elaborate an expression in ExpH form under the given mode.
+elaborateH :: Mode  -- ^ Elaboration mode
+           -> Env   -- ^ context under which to evaluate the expression
+           -> ExpH   -- ^ expression to evaluate
+           -> ExpH   -- ^ elaborated expression
+elaborateH mode env =
   let -- elaborate the given expression
       elab :: ExpH -> ExpH
       elab e =
@@ -276,14 +276,17 @@ elaborate mode env exp =
                       in bv_extract i j a
                 in bSVIV f)
                 ]
+  in elab
 
-      exph = toExpH [] exp
-      elabed = elab exph
-      done = fromExpH elabed
-  in --trace ("elab " ++ show mode ++ ": " ++ pretty exp) $
-     --trace ("To: " ++ pretty done) $
-     done
-
+-- | Elaborate an expression in Exp form under the given mode.
+elaborate :: Mode  -- ^ Elaboration mode
+           -> Env   -- ^ context under which to evaluate the expression
+           -> Exp   -- ^ expression to evaluate
+           -> Exp   -- ^ elaborated expression
+elaborate mode env exp =
+  let exph = toExpH [] exp
+      elabed = elaborateH mode env exph
+  in fromExpH elabed
 
 assignexp :: [(Name, Type)] -> Exp -> Exp
 assignexp = assign
@@ -330,6 +333,4 @@ concretize n v e
     AppEH _ f x -> AppEH ES_None (concretize n v f) (concretize n v x)
     LamEH _ s f -> LamEH ES_None s $ \x -> concretize n v (f x)
     CaseEH _ x k y d -> CaseEH ES_None (concretize n v x) k (concretize n v y) (concretize n v d)
-
-
 
