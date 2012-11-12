@@ -3,7 +3,6 @@
 
 module Seri.Enoch.Enoch (
     TExp(..),
-    SeriableT(..), SeriableT1(..), SeriableT2(..),
     SeriableE(..),
     packE, unpackE, unpack',
  ) where
@@ -12,42 +11,13 @@ import Data.Maybe (fromMaybe)
 
 import Seri.Lambda
 import Seri.Type.Sugar
+import Seri.Type.SeriT
 
 -- | Typed Exp.
 -- A Seri expression corresponding to a haskell object of type 'a'
 data TExp a = TExp Exp
 
--- | Class of types which have a corresponding seri type.
-class SeriableT a where
-    -- | The seri type corresponding to the type 'a'.
-    -- The argument is ignored.
-    serit :: a -> Type
-
--- | Class of unary type constructors having a corresponding seri type
--- constructor.
-class SeriableT1 m where
-    -- | The seri unary type constructor corresponding to the type constructor
-    -- 'm'. The argument is ignored.
-    serit1 :: m a -> Type
-
-instance (SeriableT1 m, SeriableT a) => SeriableT (m a) where
-    serit x =
-      let t :: m a -> a
-          t _ = undefined
-      in appT (serit1 x) (serit (t x))
-
-class SeriableT2 m where
-    serit2 :: m a b -> Type
-
-instance (SeriableT2 m, SeriableT a) => SeriableT1 (m a) where
-    serit1 x =
-      let t :: m a b -> a
-          t _ = undefined
-      in appT (serit2 x) (serit (t x))
-
-
--- | Class of type of values which can be reperesnted as seri expressions.
-class (SeriableT a) => SeriableE a where
+class (SeriT a) => SeriableE a where
     -- | Convert a haskell object to its seri representation.
     pack :: a -> TExp a
 

@@ -4,7 +4,7 @@
 
 -- | Template Haskell utilities for enoch.
 module Seri.Enoch.EnochTH ( 
-    derive_SeriableT, derive_SeriableE, loadenvth
+    derive_SeriT, derive_SeriableE, loadenvth
  ) where 
 
 import Language.Haskell.TH
@@ -14,13 +14,13 @@ import Seri.Enoch.Enoch
 import qualified Seri.Lambda as S
 import qualified Seri.Enoch.Prelude as S
 
-derive_SeriableT :: Name -> Q [Dec]
-derive_SeriableT nm = do
+derive_SeriT :: Name -> Q [Dec]
+derive_SeriT nm = do
   TyConI (DataD _ _ vars _ _) <- reify nm
   let vn = if null vars then "" else show (length vars)
-  let ty = AppT (ConT (mkName $ "SeriableT" ++ vn)) (ConT nm)
+  let ty = AppT (ConT (mkName $ "SeriT" ++ vn)) (ConT nm)
   let body = AppE (ConE 'S.ConT) (AppE (VarE 'S.name) (LitE (StringL (nameBase nm))))
-  let dec = FunD (mkName $ "serit" ++ vn) [Clause [WildP] (NormalB body) []]
+  let dec = FunD (mkName $ "seriT" ++ vn) [Clause [WildP] (NormalB body) []]
   return [InstanceD [] ty [dec]]
 
 derive_SeriableE :: Name -> Q [Dec]

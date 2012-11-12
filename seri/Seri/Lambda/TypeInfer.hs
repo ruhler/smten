@@ -56,6 +56,7 @@ import Seri.Lambda.Ppr
 import Seri.Lambda.Types
 import Seri.Lambda.TypeSolver
 import Seri.Type.Sugar
+import Seri.Type.SeriT
 
 class TypeInfer a where
     -- | Perform type inference on the given object.
@@ -162,7 +163,7 @@ class Constrain a where
 
 instance Constrain Lit where
     constrain (IntegerL {}) = return integerT
-    constrain (CharL {}) = return charT
+    constrain (CharL {}) = return (seriT (undefined :: Char))
 
 instance Constrain Exp where
     constrain (LitE l) = constrain l

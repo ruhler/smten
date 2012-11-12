@@ -51,6 +51,7 @@ import Data.List (genericLength)
 import Seri.Lambda.IR
 import Seri.Lambda.Types
 import Seri.Type.Sugar
+import Seri.Type.SeriT
 
 tuple :: Int -> Dec
 tuple i = 
@@ -69,7 +70,7 @@ prelude = [
 
 -- | > ()
 unitE :: Exp
-unitE = ConE (Sig (name "()") unitT)
+unitE = ConE (Sig (name "()") (seriT ()))
 
 -- | True
 trueE :: Exp
@@ -167,7 +168,7 @@ deCharE (LitE (CharL c)) = Just c
 deCharE _ = Nothing
 
 stringE :: String -> Exp
-stringE [] = ConE (Sig (name "[]") (listT charT))
+stringE [] = ConE (Sig (name "[]") (listT (seriT (undefined :: Char))))
 stringE s = listE (map charE s)
 
 deStringE :: Exp -> Maybe String

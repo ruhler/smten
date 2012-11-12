@@ -37,7 +37,7 @@
 
 -- | Utilities for working with Seri Types
 module Seri.Lambda.Types (
-    unitT, boolT, listT, integerT, bitT, deBitT, charT, stringT,
+    boolT, listT, integerT, bitT, deBitT, stringT, charT,
     deTupN, deTupT, tupT, untupT,
     Typeof(..),
     assign, assignl, assignments, bindingsP, bindingsP', varTs, nvarTs,
@@ -51,10 +51,14 @@ import Data.Maybe
 import Seri.Lambda.IR
 import Seri.Lambda.Generics
 import Seri.Type.Sugar
+import Seri.Type.SeriT
 
 -- | The Integer type
 integerT :: Type
-integerT = ConT (name "Integer")
+integerT = seriT (undefined :: Integer)
+
+charT :: Type
+charT = seriT (undefined :: Char)
 
 bitT :: Integer -> Type
 bitT w = AppT (ConT (name "Bit")) (NumT (ConNT w))
@@ -63,21 +67,13 @@ deBitT :: Type -> Maybe Integer
 deBitT (AppT (ConT n) (NumT w)) | n == name "Bit" = Just (nteval w)
 deBitT _ = Nothing
 
--- | The Char type
-charT :: Type
-charT = ConT (name "Char")
-
 -- | The String type
 stringT :: Type
-stringT = listT charT
-
--- | The unit type: ()
-unitT :: Type
-unitT = ConT (name "()")
+stringT = listT (seriT (undefined :: Char))
 
 -- | The boolean type
 boolT :: Type
-boolT = ConT (name "Bool")
+boolT = seriT (undefined :: Bool)
 
 -- | Given a type a, returns the type [a].
 listT :: Type -> Type
@@ -131,7 +127,7 @@ class Typeof a where
 
 instance Typeof Lit where
     typeof (IntegerL {}) = integerT
-    typeof (CharL {}) = charT
+    typeof (CharL {}) = seriT (undefined :: Char)
 
 instance Typeof Exp where
     typeof (LitE l) = typeof l

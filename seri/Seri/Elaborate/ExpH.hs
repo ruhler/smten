@@ -19,6 +19,7 @@ import Seri.Bit
 import Seri.Lambda hiding (transform, query)
 import Seri.Lambda.Ppr hiding (Mode, (<>))
 import Seri.Type.Sugar
+import Seri.Type.SeriT
 
 data Mode = WHNF -- ^ elaborate to weak head normal form.
           | SNF  -- ^ elaborate to smt normal form.
@@ -135,7 +136,7 @@ integerEH :: Integer -> ExpH
 integerEH = LitEH . IntegerL 
 
 unitEH :: ExpH
-unitEH = conEH (Sig (name "()") unitT)
+unitEH = conEH (Sig (name "()") (seriT ()))
 
 -- Match an application of the variable with given name to a single argument.
 -- Returns the argument.
