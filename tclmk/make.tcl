@@ -70,16 +70,12 @@ indir build/seri-bin {
     hrun ln -sf ../../seri-bin/dsel.hs dsel.hs
     hrun ghc -o dsel dsel.hs
 
-    #hrun ln -sf ../../seri-bin/enoch.hs enoch.hs
-    #hrun ghc -o enoch enoch.hs
-
     #hrun ln -sf ../../seri-bin/sudoku.hs sudoku.hs
     #hrun ghc -o sudoku sudoku.hs
 }
     
 set SERI build/seri-bin/seri
 set DSEL build/seri-bin/dsel
-#set ENOCH build/seri-bin/enoch
 #set SUDOKU build/seri-bin/sudoku
 
 set SRI_SERI seri/sri
@@ -159,7 +155,6 @@ smttest "Isolate0"
 
 # The DSEL tests
 hrun $::DSEL
-#hrun $::ENOCH
 #hrun $::SUDOKU
 
 puts "BUILD COMPLETE"

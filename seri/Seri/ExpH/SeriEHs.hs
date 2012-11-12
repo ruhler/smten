@@ -9,4 +9,5 @@ import Seri.ExpH.TH
 
 derive_SeriEH ''Maybe
 derive_SeriEH ''[]
+derive_SeriEH ''(,)
 
