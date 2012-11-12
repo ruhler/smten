@@ -4,12 +4,9 @@
 
 module Seri.Elaborate.ExpH (
       module Seri.ExpH.ExpH,
-      ifEH,
       transform, query,
       de_appv1, de_appv2,
 
-      unitEH, boolEH, trueEH, falseEH, integerEH, bitEH,
-      de_charEH,
   ) where
 
 import Data.Monoid
@@ -48,11 +45,6 @@ instance Typeof ExpH where
     typeof (LamEH _ v f) = arrowsT [typeof v, typeof (f (VarEH v))]
     typeof (CaseEH _ _ _ _ e) = typeof e
 
-ifEH :: ExpH -> ExpH -> ExpH -> ExpH
-ifEH p a b = 
-  let false = CaseEH ES_None p (Sig (name "False") boolT) b (error "if failed to match")
-  in CaseEH ES_None p (Sig (name "True") boolT) a false
-
 -- Perform a generic transformation on an expression.
 -- Applies the given function to each subexpression. Any matching
 -- subexpression is replaced with the returned value, otherwise it continues
@@ -76,26 +68,6 @@ query g e
              CaseEH _ x _ y d -> query g x <> query g y <> query g d
              _ -> mempty
     
-     
-trueEH :: ExpH
-trueEH = ConEH (Sig (name "True") (ConT (name "Bool")))
-
-falseEH :: ExpH
-falseEH = ConEH (Sig (name "False") (ConT (name "Bool")))
-
--- | Boolean expression
-boolEH :: Bool -> ExpH
-boolEH True = trueEH
-boolEH False = falseEH
-
-bitEH :: Bit -> ExpH
-bitEH b = AppEH (ES_Some SNF) (VarEH (Sig (name "Seri.Bit.__prim_fromInteger_Bit") (arrowsT [integerT, bitT (bv_width b)]))) (integerEH $ bv_value b)
-
-integerEH :: Integer -> ExpH
-integerEH = LitEH . IntegerL 
-
-unitEH :: ExpH
-unitEH = conEH (Sig (name "()") (seriT ()))
 
 -- Match an application of the variable with given name to a single argument.
 -- Returns the argument.
@@ -114,8 +86,4 @@ de_appv2 n e
     , n == nm
     = Just (x, y)
 de_appv2 _ _ = Nothing
-
-de_charEH :: ExpH -> Maybe Char
-de_charEH (LitEH (CharL c)) = Just c
-de_charEH _ = Nothing
 

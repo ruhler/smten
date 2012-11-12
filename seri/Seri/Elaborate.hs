@@ -39,11 +39,7 @@ module Seri.Elaborate(
     elabwhnf, elaborate,
 
     de_appv1, de_appv2,
-    ifEH,
     transform, query,
-
-    unitEH, boolEH, trueEH, falseEH, integerEH, bitEH,
-    de_charEH,
     ) where
 
 import Seri.Elaborate.ExpH

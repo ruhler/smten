@@ -1,14 +1,30 @@
 
 -- | Abstract constructors and deconstructors dealing with ExpH
 module Seri.ExpH.Sugar (
-    varEH, de_varEH, conEH, appEH, de_appEH, appsEH, de_appsEH,
+    litEH, de_litEH, varEH, de_varEH, conEH,
+    appEH, de_appEH, appsEH, de_appsEH,
+
+    unitEH, boolEH, trueEH, falseEH, integerEH, bitEH, de_charEH,
+
+    ifEH, 
     ) where
 
-import Seri.ExpH.ExpH
+import Seri.Bit
+import Seri.Lit
+import Seri.Name
 import Seri.Sig
+import Seri.Type.Sugar
+import Seri.ExpH.ExpH
 
 conEH :: Sig -> ExpH
 conEH = ConEH
+
+litEH :: Lit -> ExpH
+litEH = LitEH
+
+de_litEH :: ExpH -> Maybe Lit
+de_litEH (LitEH l) = Just l
+de_litEH _ = Nothing
 
 varEH :: Sig -> ExpH
 varEH = VarEH
@@ -32,4 +48,34 @@ de_appsEH (AppEH _ a b) =
     let (f, as) = de_appsEH a
     in (f, as ++ [b])
 de_appsEH t = (t, [])
+
+unitEH :: ExpH
+unitEH = conEH (Sig (name "()") unitT)
+
+trueEH :: ExpH
+trueEH = ConEH (Sig (name "True") boolT)
+
+falseEH :: ExpH
+falseEH = ConEH (Sig (name "False") boolT)
+
+-- | Boolean expression
+boolEH :: Bool -> ExpH
+boolEH True = trueEH
+boolEH False = falseEH
+
+integerEH :: Integer -> ExpH
+integerEH = litEH . IntegerL 
+
+bitEH :: Bit -> ExpH
+bitEH b = appEH (varEH (Sig (name "Seri.Bit.__prim_fromInteger_Bit") (arrowsT [integerT, bitT (bv_width b)]))) (integerEH $ bv_value b)
+
+de_charEH :: ExpH -> Maybe Char
+de_charEH e = do
+    CharL c <- de_litEH e
+    return c
+
+ifEH :: ExpH -> ExpH -> ExpH -> ExpH
+ifEH p a b = 
+  let false = CaseEH ES_None p (Sig (name "False") boolT) b (error "if failed to match")
+  in CaseEH ES_None p (Sig (name "True") boolT) a false
 
