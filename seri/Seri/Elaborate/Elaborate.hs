@@ -54,6 +54,7 @@ import qualified Seri.HashTable as HT
 import Seri.Lambda hiding (transform)
 import Seri.Type.Sugar
 import Seri.Type.SeriT
+import Seri.ExpH.Sugar
 
 import Seri.Elaborate.ExpH
 import Seri.Elaborate.ToExpH
@@ -118,9 +119,9 @@ elaborate mode env =
           LamEH _ v f -> LamEH (ES_Some mode) v (\x -> elab (f x))
           CaseEH (ES_Some m) _ _ _ _ | mode <= m -> e
           CaseEH _ arg k@(Sig nk _) yes no
-            | (ConEH (Sig s _):vs) <- unappsEH (elab arg) ->
+            | (ConEH (Sig s _), vs) <- de_appsEH (elab arg) ->
               if s == nk
-                then elab $ appEH yes vs
+                then elab $ appsEH yes vs
                 else elab no
           CaseEH _ arg k1 y1 n1
             | mode == SNF

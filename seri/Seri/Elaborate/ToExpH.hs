@@ -9,6 +9,7 @@ import Seri.Lambda
 import Seri.Type.Sugar
 import Seri.Type.SeriT
 import Seri.Elaborate.ExpH
+import Seri.ExpH.Sugar
 
 -- | Translate an Exp to our HOAS ExpH representation
 toExpH :: [(Sig, ExpH)] -> Exp -> ExpH
@@ -44,7 +45,7 @@ toExpH m e@(LaceE ms@(Match [_] _ : _)) =
             depat vars arg (LitP l) b def =
               let lt = typeof l
                   eqt = arrowsT [lt, lt, boolT]
-                  p = appEH (VarEH (Sig (name "Prelude.==") eqt)) [LitEH l, arg]
+                  p = appsEH (VarEH (Sig (name "Prelude.==") eqt)) [LitEH l, arg]
               in ifEH p (b vars) def
             depat vars arg (ConP t n ps) b def =
               let k = Sig n (arrowsT ((map typeof ps) ++ [t]))

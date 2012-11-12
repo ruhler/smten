@@ -37,21 +37,21 @@
 module Seri.Lambda.IR (
     TyVar(..),
     tyVarType, tyVarName,
-    Sig(..), TopSig(..), Class(..), Context,
+    TopSig(..), Class(..), Context,
     Pat(..), Match(..),
-    Lit(..), Exp(..), 
+    Exp(..), 
     Con(..), Method(..), Dec(..),
     isDataD,
     module Seri.Name,
     module Seri.Type.Type,
+    module Seri.Lit,
+    module Seri.Sig,
     ) where
 
 import Seri.Name
 import Seri.Type.Type
-
--- | 'Sig' is a name annotated with a type.
-data Sig = Sig Name Type
-    deriving(Eq, Ord, Show)
+import Seri.Lit
+import Seri.Sig
 
 -- | 'TopSig' is a signature with a context.
 data TopSig = TopSig Name Context Type
@@ -66,10 +66,6 @@ data Class = Class Name [Type]
       deriving(Eq, Ord, Show)
 
 data Match = Match [Pat] Exp      -- ^ p1, p2, ... -> e
-    deriving (Eq, Ord, Show)
-
-data Lit = IntegerL Integer         -- ^ integer literal
-         | CharL Char               -- ^ character literal
     deriving (Eq, Ord, Show)
 
 data Exp = LitE Lit                 -- ^ literal

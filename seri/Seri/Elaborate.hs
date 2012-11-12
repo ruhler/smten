@@ -38,7 +38,6 @@ module Seri.Elaborate(
     toExpH, fromExpH,
     elabwhnf, elaborate,
 
-    conEH, varEH, appEH, unappsEH, de_varEH,
     de_appv1, de_appv2,
     ifEH,
     transform, query,

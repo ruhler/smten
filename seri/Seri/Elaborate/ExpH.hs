@@ -3,10 +3,9 @@
 {-# LANGUAGE PatternGuards #-}
 
 module Seri.Elaborate.ExpH (
-      Mode(..), EState(..), ExpH(..),
-      varEH, conEH, appEH, unappsEH, ifEH,
+      module Seri.ExpH.ExpH,
+      ifEH,
       transform, query,
-      de_varEH,
       de_appv1, de_appv2,
 
       unitEH, boolEH, trueEH, falseEH, integerEH, bitEH,
@@ -20,28 +19,9 @@ import Seri.Lambda hiding (transform, query)
 import Seri.Lambda.Ppr hiding (Mode, (<>))
 import Seri.Type.Sugar
 import Seri.Type.SeriT
+import Seri.ExpH.ExpH
+import Seri.ExpH.Sugar
 
-data Mode = WHNF -- ^ elaborate to weak head normal form.
-          | SNF  -- ^ elaborate to smt normal form.
-    deriving (Show, Eq, Ord)
-
-data EState = ES_None | ES_Some Mode
-    deriving (Show, Eq)
-
-data ExpH = LitEH Lit
-          | ConEH Sig
-          | VarEH Sig
-          | AppEH EState ExpH ExpH
-          | LamEH EState Sig (ExpH -> ExpH)
-          | CaseEH EState ExpH Sig ExpH ExpH
-            -- ^ case e1 of
-            --      k -> e2
-            --      _ -> e3
-            -- Note: if k is a constructor of type (a -> b -> c -> K),
-            -- Then e2 should have type: (a -> b -> c -> V),
-            -- And  e1 should have type: V
-            --  Where V is the type of the case expression.
-    deriving(Eq)
 
 instance Ppr ExpH where
     ppr (LitEH l) = ppr l
@@ -56,9 +36,6 @@ instance Ppr ExpH where
                     text "_" <+> text "->" <+> ppr e3
                   ]) $+$ text "}"
     
-instance Eq (ExpH -> ExpH) where
-    (==) _ _ = False
-
 instance Typeof ExpH where
     typeof (LitEH l) = typeof l
     typeof (ConEH s) = typeof s
@@ -71,24 +48,10 @@ instance Typeof ExpH where
     typeof (LamEH _ v f) = arrowsT [typeof v, typeof (f (VarEH v))]
     typeof (CaseEH _ _ _ _ e) = typeof e
 
-conEH :: Sig -> ExpH
-conEH = ConEH
-
-varEH :: Sig -> ExpH
-varEH = VarEH
-
-appEH :: ExpH -> [ExpH] -> ExpH
-appEH f [] = f
-appEH f (x:xs) = appEH (AppEH ES_None f x) xs
-
 ifEH :: ExpH -> ExpH -> ExpH -> ExpH
 ifEH p a b = 
   let false = CaseEH ES_None p (Sig (name "False") boolT) b (error "if failed to match")
   in CaseEH ES_None p (Sig (name "True") boolT) a false
-
-unappsEH :: ExpH -> [ExpH]
-unappsEH (AppEH _ a x) = unappsEH a ++ [x]
-unappsEH e = [e]
 
 -- Perform a generic transformation on an expression.
 -- Applies the given function to each subexpression. Any matching
@@ -114,10 +77,6 @@ query g e
              _ -> mempty
     
      
-de_varEH :: ExpH -> Maybe Sig
-de_varEH (VarEH s) = Just s
-de_varEH _ = Nothing
-
 trueEH :: ExpH
 trueEH = ConEH (Sig (name "True") (ConT (name "Bool")))
 
@@ -142,7 +101,7 @@ unitEH = conEH (Sig (name "()") (seriT ()))
 -- Returns the argument.
 de_appv1 :: Name -> ExpH -> Maybe ExpH
 de_appv1 n e 
-    | [v, x] <- unappsEH e
+    | (v, [x]) <- de_appsEH e
     , Just (Sig nm _) <- de_varEH v
     , n == nm
     = Just x
@@ -150,7 +109,7 @@ de_appv1 _ _ = Nothing
 
 de_appv2 :: Name -> ExpH -> Maybe (ExpH, ExpH)
 de_appv2 n e
-    | [v, x, y] <- unappsEH e
+    | (v, [x, y]) <- de_appsEH e
     , Just (Sig nm _) <- de_varEH v
     , n == nm
     = Just (x, y)

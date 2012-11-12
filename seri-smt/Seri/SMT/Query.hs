@@ -61,6 +61,7 @@ import Seri.Lambda hiding (free, query)
 import qualified Seri.Lambda
 import Seri.Type.Sugar
 import Seri.Type.SeriT
+import Seri.ExpH.Sugar
 import Seri.SMT.Translate
 import Seri.Elaborate hiding (query)
 import qualified Seri.Elaborate
@@ -247,7 +248,7 @@ free t = do
          let ts' = assign (zip (map tyVarName vars) args) ts
          in do
              argvals <- mapM free ts'
-             return $ appEH (conEH (Sig cn (arrowsT (ts' ++ [t])))) argvals
+             return $ appsEH (conEH (Sig cn (arrowsT (ts' ++ [t])))) argvals
   
        mkcons :: (SMT.Solver s) => [Con] -> Query s ExpH
        mkcons [] = error $ "free on DataD with no constructors: " ++ pretty t

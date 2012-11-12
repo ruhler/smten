@@ -13,6 +13,7 @@ import qualified Seri.SMT.Run
 import Seri.SMT.Yices.Yices1
 import Seri.SMT.Yices.Yices2
 import Seri.SMT.STP.STP
+import Seri.ExpH.Sugar
 
 -- | Given a Seri expression of type IO a,
 -- returns the Seri expression of type a which results from running the IO
@@ -37,7 +38,7 @@ run env e = do
         e' | Just x <- de_appv1 (name "Prelude.return_io") e' -> return x
         e' | Just (x, f) <- de_appv2 (name "Prelude.bind_io") e' -> do
               result <- run env x
-              run env (appEH f [result])
+              run env (appsEH f [result])
         e' | Just (x, y) <- de_appv2 (name "Prelude.nobind_io") e' -> do
               run env x
               run env y

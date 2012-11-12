@@ -8,6 +8,7 @@ import Debug.Trace
 
 import Seri.Lambda hiding (free, query)
 import Seri.Type.Sugar
+import Seri.ExpH.Sugar
 import Seri.SMT.Query
 import Seri.SMT.Solver (Solver)
 
@@ -24,7 +25,7 @@ run e = do
             case res of 
                 Satisfiable arg' ->
                     let tsat = arrowsT [typeof arg, AppT (ConT (name "Answer")) (typeof arg)]
-                        result = appEH (conEH (Sig (name "Satisfiable") tsat)) [arg']
+                        result = appsEH (conEH (Sig (name "Satisfiable") tsat)) [arg']
                     in return result
                 Unsatisfiable -> return $ conEH (Sig (name "Unsatisfiable") (AppT (ConT (name "Answer")) (typeof arg)))
                 _ -> return $ conEH (Sig (name "Unknown") (AppT (ConT (name "Answer")) (typeof arg)))
@@ -37,7 +38,7 @@ run e = do
         e' | Just x <- de_appv1 (name "Seri.SMT.SMT.return_query") e' -> return x
         e' | Just (x, f) <- de_appv2 (name "Seri.SMT.SMT.bind_query") e' -> do
           result <- run x
-          run (appEH f [result])
+          run (appsEH f [result])
         e' | Just (x, y) <- de_appv2 (name "Seri.SMT.SMT.nobind_query") e' -> do
           run x
           run y
