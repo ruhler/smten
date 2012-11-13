@@ -33,18 +33,6 @@ instance Ppr ExpH where
                     text "_" <+> text "->" <+> ppr e3
                   ]) $+$ text "}"
     
-instance Typeof ExpH where
-    typeof (LitEH l) = typeof l
-    typeof (ConEH s) = typeof s
-    typeof (VarEH s) = typeof s
-    typeof (AppEH _ f x) =
-        let fts = de_arrowsT (typeof f)
-        in case (drop 1 fts) of
-              [] -> UnknownT
-              ts -> arrowsT ts
-    typeof (LamEH _ v f) = arrowsT [typeof v, typeof (f (VarEH v))]
-    typeof (CaseEH _ _ _ _ e) = typeof e
-
 -- Perform a generic transformation on an expression.
 -- Applies the given function to each subexpression. Any matching
 -- subexpression is replaced with the returned value, otherwise it continues

@@ -3,10 +3,8 @@ module Seri.Elaborate.FromExpH (
     fromExpH
   ) where
 
-import Seri.Lambda
-import Seri.Type.Sugar
-import Seri.ExpH.Sugar
-import Seri.Elaborate.ExpH
+import Seri.Exp.Exp
+import Seri.ExpH.ExpH
 import Seri.Elaborate.FreshFast
 
 fromExpH :: ExpH -> Exp
@@ -17,20 +15,17 @@ fromExpHM :: ExpH -> Fresh Exp
 fromExpHM (LitEH l) = return (LitE l)
 fromExpHM (ConEH s) = return (ConE s)
 fromExpHM (VarEH s) = return (VarE s)
-fromExpHM e@(AppEH {}) = do
-  (f:args) <- mapM fromExpHM (uncurry (:) $ de_appsEH e)
-  return (AppE f args)
+fromExpHM (AppEH _ f x) = do
+    f' <- fromExpHM f
+    x' <- fromExpHM x   
+    return (AppE f' x')
 fromExpHM (LamEH _ s f) = do
   s' <- fresh s
   b <- fromExpHM (f (VarEH s'))
-  return (lamE $ Match [VarP s'] b)
-fromExpHM (CaseEH _ arg (Sig n t) yes no) = do
+  return (LamE s' b)
+fromExpHM (CaseEH _ arg s yes no) = do
   arg' <- fromExpHM arg
-  let tys = de_arrowsT t
-  vars <- mapM (fresh . Sig (name "_x")) (init tys)
-  yes' <- fromExpHM (appsEH yes (map VarEH vars))
+  yes' <- fromExpHM yes
   no' <- fromExpHM no
-  let pt = typeof arg'
-  return $ caseE arg' [Match [ConP pt n (map VarP vars)] yes',
-                       Match [WildP pt] no']
+  return $ CaseE arg' s yes' no'
 

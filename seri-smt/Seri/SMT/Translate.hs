@@ -57,23 +57,27 @@ import Control.Monad.State.Strict
 import Control.Monad.Error
 
 import Seri.Failable
-import Seri.Lambda
+import Seri.Lambda (Env, Typeof(..), pretty)
+import Seri.Name
+import Seri.Lit
+import Seri.Sig
 import Seri.Type.Sugar
 import Seri.Type.SeriT
+import Seri.Exp.Exp
+import Seri.Exp.Sugar
+import Seri.Exp.Typeof
 import Seri.Strict
 import Seri.Elaborate
 
 -- | An SMT compilation object.
 data Compilation = Compilation {
-    ys_nocaseerr :: Bool,       -- ^ Assume an alternative will match in each case expression
     ys_poly :: Env,             -- ^ The polymorphic seri environment
 
     -- | Declarations needed for what was compiled, stored in reverse order
     -- for efficiency sake.
     ys_cmdsr :: [SMT.Command],
 
-    ys_errid :: Integer,        -- ^ unique id to use for next free error variable
-    ys_caseid :: Integer        -- ^ unique id to use for next case arg variable
+    ys_errid :: Integer        -- ^ unique id to use for next free error variable
 }
 
 -- | Monad for performing additional smt compilation.
@@ -88,11 +92,9 @@ compilation :: Bool         -- ^ nocase err?
                -> Env          -- ^ polymorphic seri environment
                -> Compilation
 compilation nocaseerr poly = Compilation {
-    ys_nocaseerr = nocaseerr,
     ys_poly = poly,
     ys_cmdsr = [],
-    ys_errid = 1,
-    ys_caseid = 1 
+    ys_errid = 1
 }
 
 -- | Run a compilation.
@@ -110,19 +112,11 @@ yfreeerr t = do
     addcmds [SMT.Declare nm yt]
     return nm
 
--- Get a new, free variable for use as a case argument variable.
-yfreecase :: Char -> CompilationM String
-yfreecase c = do
-    id <- gets ys_caseid
-    modifyS $ \ys -> ys { ys_caseid = id+1 }
-    return $! ['c', c, '~'] ++ show id
-
 -- Generate smt code for a fully applied constructor application.
 smtC :: Sig -> [Exp] -> CompilationM SMT.Expression
 smtC (Sig n _) [] | n == name "True" = return SMT.trueE
 smtC (Sig n _) [] | n == name "False" = return SMT.falseE
-smtC s args = throw $ "unsupported constructor application: "
-                        ++ pretty (AppE (ConE s) args)
+smtC s args = throw $ "unsupported constructor application: " ++ show (s, args)
 
 -- | Convert a seri name to an SMT name.
 smtN :: Name -> String
@@ -148,146 +142,53 @@ smtE e = do
   let seh = elaborate SNF poly e
   let se = fromExpH seh
   --trace ("POST-SNF: " ++ pretty se) (return ())
-  smtE' se `catchError` (\msg -> throw $ msg ++ "\nWhen translating: " ++ pretty se)
+  smtE' se `catchError` (\msg -> throw $ msg ++ "\nWhen translating: " ++ show se)
 
 -- | Compile a seri expression to smt, assuming the expression can be
 -- represented as is in smt without further elaboration.
 smtE' :: Exp -> CompilationM SMT.Expression
-smtE' e | Just (VarP (Sig n _), v, x) <- deLet1E e = do
+smtE' e | Just (Sig n _, v, x) <- de_letE e = do
     v' <- smtE' v
     x' <- smtE' x
     return (SMT.letE [(smtN n, v')] x')
 
-smtE' e | Just (p, a, b) <- deIfE e = do
-  p' <- smtE' p
-  a' <- smtE' a
-  b' <- smtE' b
-  return (SMT.ifE p' a' b') 
-
-smtE' e | Just (xs, ms) <- deCaseE e = do
-  nocaseerr <- gets ys_nocaseerr
-  (let -- depat p e
-     --    outputs: (predicate, bindings)
-     --   predicate - predicates indicating if the 
-     --                pattern p matches expression e
-     --   bindings - a list of bindings made when p matches e.
-     depat :: Pat -> SMT.Expression -> CompilationM ([SMT.Expression], [SMT.Binding])
-     depat (ConP _ n []) e | n == name "True" = return ([e], [])
-     depat (ConP _ n []) e | n == name "False" = return ([SMT.notE e], [])
-     depat (VarP (Sig n t)) e = return ([], [(pretty n, e)])
-     depat (LitP (IntegerL i)) e = return ([SMT.eqE (SMT.integerE i) e], [])
-     depat (LitP (CharL c)) e = return ([SMT.eqE (SMT.integerE (fromIntegral $ ord c)) e], [])
-     depat (WildP _) _ = return ([], [])
-     depat p x = error $ "depat: " ++ pretty p
-
-     -- dematch es ms
-     --    es - the expressions being cased on
-     --    ms - the remaining matches in the case statement.
-     --  outputs - the smt expression implementing the matches.
-     dematch :: [SMT.Expression] -> [Match] -> CompilationM SMT.Expression
-     dematch ye [] = do
-         errnm <- yfreeerr (arrowsT $ map typeof xs ++ [typeof (head ms)])
-         return $ SMT.AppE (SMT.varE errnm) ye
-     dematch es [Match ps b] | nocaseerr = do
-         b' <- smtE' b
-         bindings <- concatMap snd <$> mapM (uncurry depat) (zip ps es)
-         return $ SMT.letE bindings b'
-     dematch es ((Match ps b):ms) = do
-         bms <- dematch es ms
-         b' <- smtE' b
-         (preds, bindings) <- unzip <$> mapM (uncurry depat) (zip ps es)
-         let pred = SMT.andE (concat preds)
-         let lete = SMT.letE (concat bindings) b'
-         return $ SMT.ifE pred lete bms
-
-     givename :: (SMT.Expression, Char) -> CompilationM ([SMT.Binding], SMT.Expression)
-     givename (e@SMT.LitE {}, _) = return ([], e)
-     givename (e@SMT.VarE {}, _) = return ([], e)
-     givename (e, c) = do
-        cnm <- yfreecase c
-        return ([(cnm, e)], SMT.varE cnm)
-   in do
-       -- The expressions e' can get really big, so we don't want to duplicate
-       -- them when we use them it to check for a pattern match in every
-       -- alternative. Instead we bind them to variables ~ca, ~cb, ... and
-       -- duplicate that instead.
-       es' <- mapM smtE' xs
-       (binds, es'') <- unzip <$> mapM givename (zip es' "abcdefghijklmnopqrstuvwxyz")
-       body <- dematch es'' ms
-       return $ SMT.letE (concat binds) body
-   )
-smtE' (AppE a []) = smtE' a
+smtE' (LitE (IntegerL x)) = return $ SMT.integerE x
+smtE' (LitE (CharL c)) = return $ SMT.integerE (fromIntegral $ ord c)
+smtE' (ConE s) = smtC s []
+smtE' (VarE (Sig n _)) = return $ SMT.varE (smtN n)
 smtE' e@(AppE a b) =
-    case unappsE e of 
-       ((ConE s):args) -> smtC s args
-       [VarE (Sig n t), _]
+    case de_appsE e of 
+       (ConE s, args) -> smtC s args
+       (VarE (Sig n t), [_])
             | n == name "Prelude.error"
             , Just (_, dt) <- de_arrowT t
             -> do errnm <- yfreeerr dt
                   return $ SMT.varE errnm
-       [VarE (Sig n _), a, b]
-          | n == name "Prelude.<"
-          -> binary SMT.ltE a b
-       [VarE (Sig n _), a, b]
-          | n == name "Prelude.<="
-          -> binary SMT.leqE a b
-       [VarE (Sig n _), a, b]
-          | n == name "Prelude.>"
-          -> binary SMT.gtE a b
-       [VarE (Sig n _), a, b]
-          | n == name "Prelude.&&"
-          -> binary (\x y -> SMT.andE [x, y]) a b
-       [VarE (Sig n _), a, b]
-          | n == name "Prelude.||"
-          -> binary (\x y -> SMT.orE [x, y]) a b
-       [VarE (Sig n _), a]
-          | n == name "Prelude.not"
-          -> SMT.notE <$> smtE' a
-       [VarE (Sig n _), a, b]
-          | n == name "Prelude.__prim_add_Integer"
-          -> binary SMT.addE a b
-       [VarE (Sig n _), a, b]
-          | n == name "Prelude.__prim_sub_Integer"
-          -> binary SMT.subE a b
-       [VarE (Sig n _), a, b]
-          | n == name "Prelude.__prim_mul_Integer"
-          -> binary SMT.mulE a b
-       [VarE (Sig n _), a, b]
-          | n == name "Prelude.__prim_eq_Integer"
-          -> binary SMT.eqE a b
-       [VarE (Sig n _), a, b]
-          | n == name "Seri.Bit.__prim_eq_Bit"
-          -> binary SMT.eqE a b
-       [VarE (Sig n _), a, b]
-          | n == name "Seri.Bit.__prim_add_Bit"
-          -> binary SMT.bvaddE a b
-       [VarE (Sig n _), a, b]
-          | n == name "Seri.Bit.__prim_sub_Bit"
-          -> binary SMT.bvsubE a b
-       [VarE (Sig n _), a, b]
-          | n == name "Seri.Bit.__prim_or_Bit"
-          -> binary SMT.bvorE a b
-       [VarE (Sig n _), a, b]
-          | n == name "Seri.Bit.__prim_and_Bit"
-          -> binary SMT.bvandE a b
-       [VarE (Sig n _), a, b]
-          | n == name "Seri.Bit.__prim_concat_Bit"
-          -> binary SMT.bvconcatE a b
-       [VarE (Sig n _), a, b]
-          | n == name "Seri.Bit.__prim_shl_Bit"
-          -> binary SMT.bvshlE a b
-       [VarE (Sig n _), a, b]
-          | n == name "Seri.Bit.__prim_lshr_Bit"
-          -> binary SMT.bvlshrE a b
-       [VarE (Sig n _), a]
-          | n == name "Seri.Bit.__prim_not_Bit"
-          -> SMT.bvnotE <$> smtE' a
-       [VarE (Sig n t), LitE (IntegerL x)]
+       (VarE (Sig n _), [a, b]) | n == name "Prelude.<" -> binary SMT.ltE a b
+       (VarE (Sig n _), [a, b]) | n == name "Prelude.<=" -> binary SMT.leqE a b
+       (VarE (Sig n _), [a, b]) | n == name "Prelude.>" -> binary SMT.gtE a b
+       (VarE (Sig n _), [a, b]) | n == name "Prelude.&&" -> binary (\x y -> SMT.andE [x, y]) a b
+       (VarE (Sig n _), [a, b]) | n == name "Prelude.||" -> binary (\x y -> SMT.orE [x, y]) a b
+       (VarE (Sig n _), [a]) | n == name "Prelude.not" -> SMT.notE <$> smtE' a
+       (VarE (Sig n _), [a, b]) | n == name "Prelude.__prim_add_Integer" -> binary SMT.addE a b
+       (VarE (Sig n _), [a, b]) | n == name "Prelude.__prim_sub_Integer" -> binary SMT.subE a b
+       (VarE (Sig n _), [a, b]) | n == name "Prelude.__prim_mul_Integer" -> binary SMT.mulE a b
+       (VarE (Sig n _), [a, b]) | n == name "Prelude.__prim_eq_Integer" -> binary SMT.eqE a b
+       (VarE (Sig n _), [a, b]) | n == name "Seri.Bit.__prim_eq_Bit" -> binary SMT.eqE a b
+       (VarE (Sig n _), [a, b]) | n == name "Seri.Bit.__prim_add_Bit" -> binary SMT.bvaddE a b
+       (VarE (Sig n _), [a, b]) | n == name "Seri.Bit.__prim_sub_Bit" -> binary SMT.bvsubE a b
+       (VarE (Sig n _), [a, b]) | n == name "Seri.Bit.__prim_or_Bit" -> binary SMT.bvorE a b
+       (VarE (Sig n _), [a, b]) | n == name "Seri.Bit.__prim_and_Bit" -> binary SMT.bvandE a b
+       (VarE (Sig n _), [a, b]) | n == name "Seri.Bit.__prim_concat_Bit" -> binary SMT.bvconcatE a b
+       (VarE (Sig n _), [a, b]) | n == name "Seri.Bit.__prim_shl_Bit" -> binary SMT.bvshlE a b
+       (VarE (Sig n _), [a, b]) | n == name "Seri.Bit.__prim_lshr_Bit" -> binary SMT.bvlshrE a b
+       (VarE (Sig n _), [a]) | n == name "Seri.Bit.__prim_not_Bit" -> SMT.bvnotE <$> smtE' a
+       (VarE (Sig n t), [LitE (IntegerL x)])
             | n == name "Seri.Bit.__prim_fromInteger_Bit"
             , Just (_, bt) <- de_arrowT t
             , Just w <- de_bitT bt
             -> return (SMT.mkbvE w x)
-       [VarE (Sig n t), a]
+       (VarE (Sig n t), [a])
             | n == name "Seri.Bit.__prim_zeroExtend_Bit"
             , Just (bs, bt) <- de_arrowT t
             , Just sw <- de_bitT bs
@@ -295,30 +196,37 @@ smtE' e@(AppE a b) =
             -> do
                a' <- smtE' a
                return (SMT.bvzeroExtendE a' (tw - sw))
-       [VarE (Sig n t), a]
+       (VarE (Sig n t), [a])
             | n == name "Seri.Bit.__prim_truncate_Bit"
             , Just (_, bt) <- de_arrowT t
             , Just tw <- de_bitT bt
             -> SMT.bvextractE (tw - 1) 0 <$> smtE' a
-       [VarE (Sig n _), x, LitE (IntegerL i)]
+       (VarE (Sig n _), [x, LitE (IntegerL i)])
             | n == name "Seri.Bit.__prim_extract_Bit"
             , Just tw <- de_bitT (typeof e)
             -> SMT.bvextractE (i + tw - 1) i <$> smtE' x
-       [VarE (Sig n _), f, k, v] | n == name "Seri.SMT.Array.update" -> do
+       (VarE (Sig n _), [f, k, v]) | n == name "Seri.SMT.Array.update" -> do
            f' <- smtE' f
            k' <- smtE' k
            v' <- smtE' v
            return $ SMT.UpdateE f' [k'] v'
        _ -> do
-           a' <- smtE' (AppE a (init b))
-           b' <- smtE' (last b)
+           a' <- smtE' a
+           b' <- smtE' b
            return $ SMT.AppE a' [b']
-smtE' (LitE (IntegerL x)) = return $ SMT.integerE x
-smtE' (LitE (CharL c)) = return $ SMT.integerE (fromIntegral $ ord c)
-smtE' l@(LaceE ms) = 
-    throw $ "lambda expression in smt target generation: " ++ pretty l
-smtE' (ConE s) = smtC s []
-smtE' (VarE (Sig n _)) = return $ SMT.varE (smtN n)
+smtE' l@(LamE {}) = throw $ "lambda expression in smt target generation: " ++ show l
+smtE' (CaseE x (Sig nm _) y n) | nm == name "True" = do
+    x' <- smtE' x
+    y' <- smtE' y
+    n' <- smtE' n
+    return $ SMT.ifE x' y' n'
+smtE' (CaseE x (Sig nm _) y n) | nm == name "False" = do
+    x' <- smtE' x
+    y' <- smtE' y
+    n' <- smtE' n
+    return $ SMT.ifE x' n' y'
+smtE' e@(CaseE {})
+  = throw $ "unsupported case expression in smt target generation: " ++ show e
 
 
 -- | Take the list of smt declarations made so far.

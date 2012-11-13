@@ -3,6 +3,7 @@
 
 -- Abstract constructors and deconstructors for manipulating seri types.
 module Seri.Type.Sugar (
+    Type(),
     conT,
     appT, appsT, de_appsT,
     arrowN, arrowT, de_arrowT, arrowsT, de_arrowsT,

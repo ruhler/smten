@@ -79,7 +79,6 @@ Static Analysis::
 * Add static check for concreteness of queries
 
 SMT Syntax::
-* multiplication for 
 * Remove bv-zero-extend from SMT syntax, use SMTLIB2 alternative
 
 Dealing with Free Things::
@@ -94,6 +93,9 @@ Dealing with Free Things::
 * Don't allow deriving of Free for recursive data types
 * Get rid of the __prim_free primitive
 * Define SMT theory classes and add a solver phantom type to free and Query.
+* Don't ask for the value of a free variable from an SMT solver unless it
+  shows up in a query. Or maybe just cache the results so long as check hasn't
+  been called again?
 
 Bugs::
 * seriq2 for SquaresRaw... result differs from yices1 and yices2. Why?
@@ -121,8 +123,6 @@ Seri Library::
 Elaborator::
 * Perhaps case statements should consider all constructors at once instead of
   one at a time?
-* Pull elaborator functions out into top level declarations.
-  Perhaps use a Reader monad?
 * Don't elaborate an expression which has already been elaborated
 * Figure out how to cheaply concretize free variables in expressions, ideally
   without forcing re-elaboration after concretization. Can I make use of HOAS
@@ -134,8 +134,6 @@ Elaborator::
   the same?
 * It's okay to elaborate bodies of lambdas in WHNF thanks to HOAS.
 * Do eager elaboration whenever arguments are shared.
-* Don't come out of ExpH for IO and Query monads.
-** Remove casenoerr flag
 * Look over results of elaboration, especially SNF, to see if anything pops
   out, and make sure things aren't blown up too big.
 * Have common abstraction for manipulating the yv part of a case expression.
@@ -149,4 +147,10 @@ Elaborator::
 * Implement the 'update' primitive in the elaborator, or remove it from
   smt_array.
 * Test out free_enum, see if it generate SAT (it may not...)
+
+Other::
+* Remove casenoerr flag
+* Group Seri.Type.* in common module so we don't need so many imports
+* Group Seri.ExpH.* in common module so we don't need so many imports
+* Finish reorganizing Lambda module layout
 
