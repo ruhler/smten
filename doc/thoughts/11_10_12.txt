@@ -1,0 +1,147 @@
+
+Sat Nov 10 13:47:13 EST 2012
+
+How to do concretization of free variables most efficiently?
+
+The issue is, you have a free variable in some expression. The value of the
+free variable depends on where the expression is used, and the expression may
+be used in different places with different values of the free variable. For
+example:
+
+let x = free1 || free2
+in x || (if free1 then x else not x)
+
+Here the expression x is used 3 different places, and in each place, free1 has
+a different value.
+
+This means I have to do multiple elaboration.
+
+How do we do this? It's a little messy I fear, but I think the right approach
+is to have each expression be a haskell function from free variable values to
+expression. I fear there could still be some duplication of work, but
+hopefully not too much.
+
+So I think that's the thing to do about that. After that, all the pieces can
+come together one at a time. It would be a mistake to try and start over from
+scratch and have everything perfect. I need to morph into what I want a bit at
+a time, and at each step verify correctness and get a sense of performance
+consequences.
+
+Here's my proposed plan for doing the morph:
+
+1. Pull all functions in elaboration out to the top level.
+If need be, I can have functions require the elab function as an argument. I
+may have to just dive in and do this all at once, but it shouldn't really be
+that hard. Just slightly annoying. Don't change anything else in this step.
+Just rearrange code. I expect no performance change.
+
+2. Use type classes to describe binary and unary predicates instead of
+explicit functions of different types. This should clean up the code I lot. I
+expect no performance change.
+
+3. Change the elaboration interface to be ExpH -> ExpH instead of Exp -> Exp.
+Switch Query, SMT.Run, IO.Run, and enoch to use this new interface. Note:
+we'll translate back to Exp just before translation to SMT. I expect this to
+improve performance. In the current state, it may not make much difference.
+But certainly it will be big if we do eager elaboration, and it opens the door
+for us doing eager elaboration.
+
+4. Make a new Exp interface for use with the SMT translation. This will be a
+candidate for front end interface too later on. It's basically the same as
+ExpH without annotations specific to elaboration and without HOAS. This should
+simplify translation to SMT, and mean we no longer need the casenoerr flag. I
+would expect a little performance improvement, because there is less
+translation cost to and from Exp.
+
+5. Change primitives to be reduction rules instead of introducing lambdas.
+And figure out a clean way to do this. I would expect this to improve
+performance slightly. The code shouldn't be too much messier. But I think it's
+more correct and makes more sense.
+
+6. Factor out common function for applying changes to yv and n parts of a case
+statement. Use it for argument and function pushing. This should clean up the
+code. I expect no difference in performance.
+
+7. Leverage let statements in argument and function pushing. This may hurt
+performance a little for now, but it will be good to have later on.
+
+... and I can figure out what to do from there. It's a long road to travel,
+but I think everything from here on is an improvement.
+
+First step: figure out what to use as the profiling thing to watch
+performance.
+
+I'll use squares.
+
+Sat Nov 10 14:07:13 EST 2012
+
+Okay, squares with profiling is at about 25 seconds, just for your reference.
+
+So let me do step (1). Pulling things out to the top level. It shouldn't be
+too bad I hope.
+
+toh needs: primitives, deSugarLace
+
+primitives I can take as an argument.
+deSugarLace needs: toh.
+
+So, hmm... I'll pass toh to deSugarLace, which will have the primitives built
+in. Then I'll pass primitives to toh. How does that sound?
+
+How did I get everything so mixed up?
+
+Sat Nov 10 14:14:02 EST 2012
+
+Trouble: stringEH needs something... Oh. It's based on toh. That's a little
+bit silly. I understand why I did it though...
+
+Sigh. Okay, let me pull out stringEH first. It neededn't make use of stringE,
+as nice as that is.
+
+Ug! This is hard. Maybe I have to go all at once to break free. May as well
+give that a shot. It would be good to work out what info everything needs
+though.
+
+toh - primitives, deSugarLace
+deSugarLace - stringEH, toh
+
+de_bitEH - elab
+toe - exp
+elab - mode, env
+stringEH - toh
+primitives - stringEH, elab
+
+What interfaces do I want? How should it really look, from a conceptual point
+of view?
+
+stringEH - should not require an arguments. It should be: String -> ExpH.
+elab - should require Env, Mode.
+primitives - should require ... well, after I rework these they'll change a
+bunch. For now they should require (ExpH -> ExpH), which is elab.
+de_bitEH should require (ExpH -> ExpH), which is elab. toe need not be pulled
+out. DeSugarLace should be merged as a let block inside toh, because they are
+one and the same. toh should take primitives as an argument.
+
+Cool. This should help me make some progress. Steps I can follow to get here:
+
+1+ Make de_bitEH take (ExpH -> ExpH) argument.
+2+ Pull de_bitEH out of closure.
+3. Make primitives take (ExpH -> ExpH) argument.
+4. Pull primitives out of the closure.
+5. Merge deSugarLace with toh
+6. Pull toh out of closure
+7. Pull stringEH out of closure (it can use toh with no primitives)
+8. Pull elab out of the closure.
+
+Then I'm done.
+
+Let me just do the first couple right now, then come back.
+
+Sat Nov 10 14:35:02 EST 2012
+
+Ug. This is so messy. Why is this so messy?
+
+Primitives should be part of the elaboration rules. Let me think about this.
+
+
+

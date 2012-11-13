@@ -1,0 +1,917 @@
+
+Thu Nov  8 08:46:40 EST 2012
+
+I was thinking. Which is not always a good thing, but in this case I think it
+was.
+
+Before I start rewriting the elaborator, I need to understand what changed
+from my last version of the elaborator that lead to an exponential blowup.
+Because it's fixing that which will make a difference. Not my vision for a
+fast elaborator.
+
+Now, when you take this approach, a few things become apparent.
+
+1. The representation of free variables could be very significant performance
+wise.
+
+For example, let's see you have a 3 element enum. E1, E2, E3. What does a free
+one look like?
+
+I feel lik (though I don't quite remember), my current approach is something
+like:
+
+   case ((if f1 then True else False,
+          if f2 then True else False),
+          if f3 then True else False) of
+        ((True, _), _) -> E1
+        ((_, True), _) -> E2
+        ((_, _), True) -> E3
+
+Now we can ask how much work elaborating this to SNF form is. In fact, let me
+do that now.
+
+() (if f1 then True else False)  
+ ==>   if f1 then () True else () False
+
+(if f1 then () True else () False) (if f2 then True else False)
+ ==>   if f1 then () True (if f2 then True else False)
+             else () False (if f2 then True else False)
+
+ ==>  if f1 then (if f2 then () True True else () True False)
+            else (if f2 then () False True else () False False)
+
+() (if f1 then (if f2 then () True True else () True False)
+        else (if f2 then () False True else () False False))
+ ==> if f1 then () (if f2 then () True True else () True False)
+           else () (if f2 then () False True else () False False))
+
+ ==> if f1 then (if f2 then () (True, True) else () (True, False))
+           else (if f2 then () (False, True) else () (False, False))
+
+Applied to (if f3 then True else False):
+ 
+ ==> if f3
+        then (if f1 then (if f2 then () (True, True) else () (True, False))
+                   else (if f2 then () (False, True) else () (False, False))) True
+        else (if f1 then (if f2 then () (True, True) else () (True, False))
+                   else (if f2 then () (False, True) else () (False, False))) False
+
+ ==> if f3
+        then (if f1 then (if f2 then () (True, True) else () (True, False)) True
+                    else (if f2 then () (False, True) else () (False, False)) True)
+        else (if f1 then (if f2 then () (True, True) else () (True, False)) False
+                    else (if f2 then () (False, True) else () (False, False)) False)
+
+ ==> if f3
+        then (if f1 then (if f2 then ((True, True), True) else ((True, False), True))
+                    else (if f2 then ((False, True), True) else ((False, False), True))
+        then (if f1 then (if f2 then ((True, True), False) else ((True, False), False))
+                    else (if f2 then ((False, True), False) else ((False, False), False))
+
+Do you see what's happened here? We've expanded the argument to all 2^8
+possibilities for the boolean variables. That's exponential.
+
+Now, we'll match against it, do some more lifting. It's pretty bad.
+
+Consider an alternative approach to the representation.
+ 
+  if f1 then E1 else (if f2 then E2 else (if f3 then E3))
+
+We have no expansion to do, it's already in SNF. No work to do. This is
+probably what we would get if elaborated the case statement from above on the
+expanded argument.
+
+That's the first issue. The second issue is, consider that now we have
+primitive functions which we do function pushing on. In particular, && and
+not.
+
+This means, basically, that after SNF elaboration, all the free variables will
+have propagated up to the top level, doing an exponential mixing. That's bad.
+Very bad. We basically have just implemented a brute force sat solver which
+looks at all possible combinations. Rather than call into a SAT solver from
+there, we may as well just search the resulting tree for a solution.
+
+This may be fun to have as a no-SAT seri solver kind of approach, but it's not
+practical.
+
+So, here's what I suggest. Let me look at the expression generated after SNF,
+but before SMT syntactic simplification. Let me compare the old elaboration
+with the new elaboration. I expect to find the new elaboration is exponential
+where-as the old one is linear. For some sense of something.
+
+Then identify what functions or arguments were not pushed in the old
+elaboration that we are pushing now. I don't want to jump to conclusions, but
+I feel like, perhaps, we can follow a scheme of: if the primitive is supported
+by the solver, don't push it. These would be things like: &&, ||, not.
+
+I'm not entirely sure that would work, because you could imagine a case where
+you have to know the result of the && to deal with a recursive function or
+something, but maybe if you have a recursive function, you'll just keep
+pushing the recursive function? Not sure.
+
+Anyway, let me generate a seri executable from the old elaborator which prints
+out post SNF elaboration. Then run some experiments.
+  
+Thu Nov  8 09:14:35 EST 2012
+
+Yup! What do we find? The new elaborator does exhaustive search. It looks at
+all possible values for all assignments and shows you what will happen in each
+case. The old elaborator keeps around some && and not and ||, rather than
+pushing those inside.
+
+Hmm... So the question is... what should I or shouldn't I be pushing?
+
+Hypothesis:
+* I should push any function which is not supported by the solver
+* I should push every argument
+
+This way, functions not supported by the solvers are guaranteed to be pushed
+into their arguments?
+
+No. It can't be so easy as that.
+
+Well, anyway, the good news is, I'm sure, as long as you only allocate free
+booleans, that I can reduce the expression enough to work with any solver.
+Because I can always be exhaustive. The question is figuring out when I can
+scale back and not elaborate. The goal will be to elaborate as little as
+possible. Or, rather, push as little as possible, which is maybe slightly
+different from elaboration.
+
+Figuring out how little push? That's a bit scary. But, as a heuristic, let me
+try, for now, pushing everything except &&, ||, and not. Then as we run into
+problems, I can adjust it.
+
+Cool. Let's give it a shot.
+
+Thu Nov  8 09:36:20 EST 2012
+
+What I find is: if I push ConEH and (AppEH ConEH _), then we end up doing an
+exhaustive search.
+
+What behavior was I seeing when I was mucking around the old elaborator? Let
+me look at my notes. See if I can understand the behavior better now.
+
+Pushing constructors before lead to the same blowup I'm seeing now.
+
+So! Looks like we need to take a different approach.
+
+I'm not sure why dealing with constructors makes such a big difference. Hm...
+
+But... this does bring up an interesting point. An interesting idea. Something
+that keeps coming up over and over and over again...
+
+What's the original problem. The original motivation for redoing the
+elaborator? For pushing constructors?
+
+Consider the following (multi-arg) case expression:
+
+    case MyFoo free~1, free~2 of
+        MyFoo _, True -> ...
+        MyFoo _, False-> ...
+
+The idea here was, we can't possibly match this, because we don't know what
+free~2 is. But that leaves the constructor MyFoo in there, when we don't want
+it to be.
+
+The solution was: 
+1. change free~1 to be: if free~1 then MyFoo True else False.
+2. perform function pushing for the MyFoo constructor.
+
+The thing is... it shouldn't matter, right? Because MyFoo doesn't contribute
+anything here. I could just as well rewrite this case statement as:
+
+    case free~1, free~2 of
+        _, True -> ...
+        _, False-> ...
+
+In which case there is no issue.
+
+Which brings us to the idea to explore: single level pattern matching. Only
+match the outer constructor. Complex patterns in case statements are desugared
+into a simple format.
+
+This would simplify things a bunch. The issue is, I don't know how to do this
+without having some sort of exponential blowup. Maybe exponential blowup isn't
+so bad, but ... you know?
+
+Anyway, let me play around with this case statement.
+
+    case (MyFoo free~1, free~2) of
+        (MyFoo _, True) -> x
+        (MyFoo _, False) -> y
+
+
+case () (MyFoo free~1) free~2 of
+    () (MyFoo _) True -> x
+    () (MyFoo _) False -> y
+
+Let's glom together all the patterns which have the same constructor. Turns
+out there's only one of them.
+
+case (MyFoo free~1, free~2) of
+    () a b -> ...
+
+What do we go to? Because we have to match both a and b...
+
+I need to see an explanation of how this is done.
+
+Thu Nov  8 10:09:22 EST 2012
+
+The matches are done in order from left to right, and the patterns are matched
+in order.
+
+So, in other words, we would desugar as:
+    
+    case v of
+        (MyFoo _, True) -> x
+        (MyFoo _, False) -> y
+
+==> 
+
+    case v of
+        (MyFoo _, True) -> x
+        _ -> case v of
+                (MyFoo _, False) -> y
+
+==>
+    let e' = case v of
+                (MyFoo _, False) -> y
+    in case v of
+          (a, b) -> case a of 
+                       MyFoo _ -> case b of
+                                      True -> x
+                                      _ -> e'
+                       _ -> e'
+          _ -> e'
+
+So you see? Yes, there is a kind of a blowup, but if you use variables, that's
+not a problem. And it's something we do elsewhere a bunch anyway.
+
+Now, imagine we do things like this. Then constructors will match if you have
+them. Free booleans will get stuck where they do, but I think everything is
+clear. So no pushing of constructors, and everyone is happy.
+
+You know? I think this is the right approach to take.
+
+First question I have is... well, it would be nice to see how this is done in
+ghc core. So let me do a little experiment, try to dump core in ghc, and see
+how it desugars the above case.
+
+Thu Nov  8 10:21:56 EST 2012
+
+I can't tell. GHC core is unintelligible to me, and it's doing lots of
+optimizations.
+
+Okay, so, hmm...
+
+Let me come up with a translation routine for my generic pattern matching.
+
+What is the target? That's important. What are my desugared case expressions
+like?
+
+Well, they have a single pattern and a default.
+The pattern could be: A constructor, which means match the constructor. It
+introduces new variables, I suppose I could give them default names of some
+sort that the user isn't allowed? But they have to be new, don't they? That's
+slightly troublesome. So let's say a constructor pattern is a Constructor and
+a bunch of variables names. Or it could be wild. Or it could be a variable
+pattern... Or ... it could be a literal? But let's say it can't be a literal
+at all, because that's desugared.
+
+If we had a way to represent beta reduction as a separate thing, then case
+expressions could do matching of constructors, and have a separate variable
+binding beta reduction thing, which is: LamE Sig Exp
+
+In this case, maybe it makes sense to separate LamE and CaseE? Have them be
+too separate things? The CaseE does not do any beta reduction, except by
+relying on LamE. That sounds good to me.
+
+So, I'm proposing the following:
+
+LamE Sig Exp            -- \x -> e,  nothing fancy.
+CaseE Exp ConPat Exp Exp --  case e1 of
+                                p -> e2
+                                _ -> e3
+
+Where p is of the form: ConPat Sig [Sig]:   K v1 v2 ...
+
+Now, how can we translate a Lace Statement?
+
+LaceE [Match]
+
+First, we wrap it in a lambda. We have to pick a new name here (sad, but,
+maybe I ought to have a new name generator in the sugarer? That makes things
+hard...)
+
+Maybe I don't have to wrap it, depending on the matches? Not sure.
+
+You know, it almost seems like it would be easier to do in ExpH format,
+because I don't have to worry about names. They are all generated later...
+
+Anyway, let me not worry about that just now.
+
+We wrap in a lambda to get a variable. Now, I'm given an Exp which is a case
+arg and a list of matches. What do I do next?
+
+Well, perhaps first we should add the default match: _ -> error "case no
+match". Do away with that worry. Good.
+
+Now, a list of matches and a variable. We know we have at least 2 matches.
+
+if there are more than three matches:
+
+ p1 -> m1 
+ ...
+
+Change it to: combine all the last matches into a case statement with the
+variable. 
+
+That is.
+
+case x of
+    p1 -> m1
+    p2 -> m2
+    p3 -> m3
+    ...
+
+Changes to:
+
+case x of
+    p1 -> m1
+    _ -> case x of
+            p2 -> m2
+            p3 -> m3
+            ...
+
+Oh. Um, we need the last match to be a wild card, don't we. So, take as input
+to desugar: a variable which is the argument, a list of matches, and a default
+expression.
+
+If you have multiple matches, change all the last matches to a case statement
+and desugar that?
+
+Or maybe... better yet... Okay, so don't add the "case no match" thing yet.
+We'll add that to the end? Erg... I'm not sure.
+
+Anyway, the idea is, if you have more than a pattern and a default, merge all
+the rest of the patterns into a new case, and make this the default. Ah yes.
+That should work. So yes, take in a list of matches and a variable and a
+default. If you have multiple matches, merge all but the first into a case
+statement with the default of the original, and this serves as a new default
+for this case.
+
+So! We are now left with a variable, a default, and a single match.
+
+How do I deal with this? Case statement on the pattern in the match:
+
+If the pattern is '_'... return the body of the match. Easy.
+If the pattern is a variable 'x' with value 'v' and match body 'b':
+    (\x -> b) v
+If the pattern is a literal l:
+    if (l == v)
+        then body
+        else default
+If the pattern is a constructor:
+    Create new variables for each argument. And return a case statement with a
+    modified body:
+
+case v of
+    Foo p1 p2 -> body
+    _ -> default
+
+Turns into:
+
+case v of
+    Foo v1 v2 -> \v1 -> 
+                   case v1 of
+                      p1 -> v2 -> case v2 of
+                              p2 -> body
+                              _ -> default
+                      _ -> default
+    _ -> default
+
+And that can be generalized to multiple arguments easily enough.
+
+So! There you have it. A fairly straight-forward process to do the desugaring.
+
+Now, let me revisit my failing example one more time to see if I can gain
+confidence in it working out.
+
+    case (MyFoo free~1, free~2) of
+        (MyFoo _, True) -> x
+        (MyFoo _, False) -> y
+
+Desugars into:
+
+    case (MyFoo f1, f2) of
+        () a b ->
+            case a of
+              MyFoo c ->
+                case b of
+                  True -> x
+                  _ ->
+                    case b of
+                      False -> y
+                      _ -> error "case no match"
+              _ -> error "case no match"
+        _ -> error "case no match"
+
+
+And now what will elaboration be able to do?
+    
+case f2 of
+  True -> x
+  _ ->
+    case b of
+      False -> y
+      _ -> error "case no match"
+
+And I should recognize this as being an if statement. We end up with:
+
+if f2 then x else y
+
+Perfect! Awesome! Wonderful.
+
+Okay, so I think this is a solution to the problem. We no longer have to push
+constructors inside cases. I wonder if other forms of pushing go away too? Not
+clear. That would be nifty though.
+
+How am I to approach the implementation of this? Again, do like I did for
+single application. I need to translate LaceE into ExpH, doing this
+desugaring. Then I'll rewrite the elaborator to make use of this new format. I
+expect it to clean up rather nicely. Then we see if the new elaborator works
+or not. Then, once that is all established, we can ask about how to change the
+rest of seri over to this representation. Think of this as an exploratory
+phase.
+
+One question. How does argument pushing and function pushing look under this
+representation? Perhaps they aren't needed at all?
+
+For example: 
+   (if f1 then foo else bar) 3
+
+Where foo and bar can't be represented to smt solvers?
+
+Turns into...
+
+(case f1 of
+    True -> foo
+    _ -> case f1 of
+            False -> bar
+            _ -> error "case no match") 3
+
+We can still do argument pushing. And we can still do function pushing.
+
+Question. Do I want to change how I handle primitives at the same time? In
+some sense, I have to change them, because I'll no longer of lace... but I
+suppose I could change them to use lambda. Hmm... I still think it's better to
+do as little change as possible, to isolate what causes what bad things to
+happen. Once I get something working, I can combine everything together in a
+new spify, fast elaborator. I don't need everything at once. Address one
+problem at a time.
+
+In particular: stay as lazy as possible, that way primitives should work out
+fine.
+
+We'll still have 3 modes for things: unelaborated, WHNF, and SNF
+
+Lit: always SNF
+Con: always SNF
+Var: WHNF or SNF
+App: unelaborated, WHNF, or SNF
+Lam: WHNF or SNF
+Case: unelaborated or SNF
+
+So, like other things, try to minimize the changes.
+
+Okay. Let me try to make this change. It will be messy. It will be yucky. It
+may be hard to make work. Stay strong.
+
+Thu Nov  8 12:04:52 EST 2012
+
+I think to start I'm going to not deal with function or argument pushing. Add
+those back as needed, if needed. I'll be interested to see where they are
+needed now.
+
+Thu Nov  8 12:13:15 EST 2012
+
+Cool. This change seems to be cleaning things up a bit. I like that.
+I did the elaboration rules, everything is straight-forward. I suspect the
+rest will be straight-forward, except for desugaring.
+
+I'll come back after lunch for all this.
+
+Thu Nov  8 12:52:43 EST 2012
+
+Here's a question. Case statements do binding of variables, don't they? Should
+I treat them like that?
+
+For example:
+
+case Foo (...) of
+    Foo x -> f x
+
+Perhaps instead we should not specify variables. The expression which is the
+body of the case can have all the variable names.
+
+case Foo (...) of
+    Foo -> \x -> e
+
+That way we keep things clear. I like that idea. Let me update my
+representation then. Now, how about the default? Default does no binding.
+Cool.
+
+Thu Nov  8 13:01:15 EST 2012
+
+Question, how do I convert CaseEH to Exp?
+
+case x of
+    Foo -> f
+    _ -> d
+
+It needs to change to:
+
+case x of
+    Foo a b c ... -> f a b c ...
+    _ -> d
+
+So we have to introduce variables. Introduced based on the type of the
+constructor Foo. That shouldn't be too bad. And we already have the type of
+Foo as a function type. Good.
+
+Thu Nov  8 13:11:47 EST 2012
+
+So, elaboration seems to be in place. All that's left is the desugaring...
+
+Thu Nov  8 14:22:11 EST 2012
+
+I'm having trouble. Trouble with the last case. With dealing with constructors
+and generating the body. It's this issue between Exp and ExpH.
+
+
+case v of
+    Foo p1 p2 -> body
+    _ -> default
+
+Turns into:
+
+case v of
+    Foo v1 v2 -> \v1 -> 
+                   case v1 of
+                      p1 -> v2 -> case v2 of
+                              p2 -> body
+                              _ -> default
+                      _ -> default
+    _ -> default
+
+body potentially refers to variables defined in p2, p1.
+This means I can't translate:
+
+\v2 -> case v2 of
+    p2 -> body
+    _ -> default
+
+As a subexpression, because I need to reference the variable for p1. I could
+do this if you gave me the variable mapping though...
+
+What's the issue again?
+
+The issue is, I want to recursively call depat, but it requires an Exp body,
+and I want to supply a ... modified body? No. The original.
+
+Okay. That seems to work out.
+
+No... it doesn't. I have a list of patterns to do this for. So I call depat.
+That gives me as the new body I would like to use an ExpH.
+
+Perhaps the thing to do is instead make all the variables ahead of time, put
+them in the map?
+
+Why is this so confusing?
+
+Oh. I see. I'm doing it backwards. The first p I look at has to be the last p
+in the list. Call mkmatched first...
+
+The trouble is I'm mixing things up. Either the entire translation needs to be
+in Exp, or the entire translation needs to be in ExpH. I want Exp, because
+that's what supports both styles: sugared and desugared. I want ExpH, because
+that's what supports variable names for free.
+
+So here's what I should do. Put all the lambdas at the top. They'll add their
+values to the vars list. Then make an Exp using these new arguments which is
+specialized, then toh that.
+
+In other words:
+
+case v of
+    Foo p1 p2 -> body
+    _ -> default
+
+turns into something like
+
+case v of
+    Foo p1 p2 -> \v1 -> \v2 ->
+        (toh $ (case v...
+        ))
+    _ -> default
+
+This scares me. Are you sure this makes sense?
+
+What if I take a function from var mapping to ExpH? For Exp it's toh. For the
+rest, it's just the lambda function?
+
+Wow. I think that may have done it.
+
+There! All done. It's all in place. Does it work? It can't. Not a chance. But
+the rough draft is there. What's left is to try it out.
+
+I may as well give it a go and see where it blows up.
+
+Thu Nov  8 15:01:14 EST 2012
+
+Good news is it compiles. Bad news... or rather, expected news, is that it
+doesn't work.
+
+Let's see if I can figure out why not.
+
+Thu Nov  8 15:06:10 EST 2012
+
+Pattern matching seems not to work. Odd...
+
+case Test () of
+    Test () -> putStrLn "PASSED"
+
+doesn't work. Let's try no arguments?
+
+It's like I'm not doing full elaboration, because we have sharing:
+
+let str = "PASSED"
+in do
+    putStr str
+    putStr "\n"
+
+
+Okay, about as simple as you can get:
+
+case () of 
+    () -> putChar 'P'
+
+Doesn't seem to work.
+
+Thu Nov  8 15:11:48 EST 2012
+
+Oh, I see. I forgot to elaborate after beta reduction. Try it now.
+
+Thu Nov  8 15:21:59 EST 2012
+
+Good news: many of the basic tests work. Not all of them though. Let's take a
+closer look at which ones fail and see what they have in common.
+
+* equality of Maybe doesn't work.
+* equality of DerivedEq doesn't work.
+
+Ah. We seem to have a common sort of thing. It looks as if user derived
+equality fails to hold.
+
+Thu Nov  8 15:28:26 EST 2012
+
+Looks like a bug in the translation for case statements.
+
+Consider: (True == True).
+
+Let me just print out what it looks like after desugaring the case statements.
+
+Thu Nov  8 15:44:03 EST 2012
+
+There is some craziness going on which I don't understand.
+
+Consider, for example:
+
+\a -> \b -> f (a, b)
+
+Your simple currying.
+Turns into...
+
+\_ca ->
+  let a = _ca
+  in \_ca1 -> 
+       let b = _ca1
+       in curry 
+
+Oh... I see some confusion. I should print out post singlification.
+Also, lambdas should go directly to lambda if possible.
+        
+Thu Nov  8 15:49:21 EST 2012
+
+Oh. Hmm... recall that == makes use of Prelude.and.
+
+Okay, here's the desugar in question:
+
+Um, these extra lambdas are confusing me. Let me see if I can't, for now, do
+away with them.
+
+LACE: case of {
+  ((False :: Bool), (False :: Bool)) ->
+    (Prelude.and :: [Bool] -> Bool) [ ];
+  ((True :: Bool), (True :: Bool)) ->
+    (Prelude.and :: [Bool] -> Bool) [ ];
+  ((_ :: Bool), (_ :: Bool)) ->
+    (False :: Bool);
+}
+
+Turns into, after some simplification:
+
+\_ca -> 
+  case ca of
+    (x, x1) ->
+      (case x of
+         False ->
+           \cb1 -> 
+             case cb1 of
+                False -> and []
+                _ ->
+                  case ca of
+                    (x2, x3) -> 
+                      (case x2 of
+                        True ->
+                          \cb3 -> 
+                            case cb3 of
+                               True -> and []
+                               _ -> case ca of
+                                      (x4, x5) -> False
+                                      _ ->  error "case no match"
+                        _ -> case ca of
+                                (x6, x7) -> False
+                                _ -> error "case no match"
+                      ) x3              
+      ) x1
+      
+There is a problem here. Do you see it? We aren't well typed.
+
+The body of a match has a different type than the default. Remember that.
+This may just be an issue with conversion to Exp... but that's still a
+significant thing. And that's probably the bug. Let me go check.
+
+No. The translation looks right. Must be somewhere else we get messed up.
+
+What do I expect to see?
+
+case of
+    (False, False) -> and []
+    (True, True) -> and []
+    (_, _) -> False
+
+Should go to...
+
+\v -> 
+  case v of
+    (x, x1) -> 
+      (\c -> 
+          case c of
+            True -> 
+              \c1 -> 
+                 case c1 of
+                   True -> and []
+                   _ -> case v of
+                          (x2, x3) ->
+                            (\c2 -> 
+                            ) x2 x3
+                          _ -> error "no match"
+            _ -> case v of
+                    (x4, x5) -> ...
+
+      ) x x1
+    _ -> error "no match"
+
+The lambda application is happening in the wrong spot.
+
+I should just do all the lambdas at the top. That should make things better.
+
+The issue is... say we have to vars:
+case v of
+    (v1, v2, v3) ->
+        \v1 -> case v1 of
+                  Foo -> \v2 -> case v2 of  
+                            ...
+                  _ -> \v2 -> \v3 -> def
+    _ -> def
+
+What if one of the variables, say v1, fails to match its pattern. Then what
+should it do? I should have the default given to it, but! That should be
+abstracted, because we have to apply the argument. So we need to add a lambda
+there too. 
+
+Let me see how hard this would be to do. I can clean up this all later to make
+it nicer.
+
+It's too messy. Let me just pull all the variable definitions up to the top.
+
+So, along with each pattern, we pass the argument.
+That should be easy enough.
+
+Oh I see. yes. I should do all variables at the top, because it's no easier to
+fix it the way it currently is.
+
+Okay, so let's figure out how to do this.
+
+Given: p1, p2, ..., pn, and body, and default
+I want
+ \v1 -> \v2 -> ... \vn ->
+    case... associate an exp with each pattern.
+So, two steps. The one will assume we have all the lambdas, you give me the
+bindings. The other will create the bindings in the first place. Probably one
+at a time? Not sure.
+
+Let's assume we have the bindings. How does this work then?
+
+Oh. That was simple. That comes out naturally. Now, how do I make the
+bindings?
+
+I want again a function to produce the expression.
+it will take a list of vars, pats... ug. it's messy. But I can do it. I'm
+almost there.
+
+Thu Nov  8 17:04:58 EST 2012
+
+Ug! This is so convoluted. I bet I can fix it up to be better.
+
+Cool. Looks like I got it. Now we have other issues. But let me see where the
+test cases are now without tracing.
+
+Thu Nov  8 17:13:15 EST 2012
+
+Cool! All the tests pass. The basic ones. For SMT I'll have to do some pushing
+of stuff. But this is nifty.
+
+I'm checking in now.
+
+Thu Nov  8 17:17:03 EST 2012
+
+Okay, so how do I deal with the problem now? I'm getting a "Case no match"
+result. It should only happen if you really can't match, right?
+
+Or... I feel like it could happen for any SNF. We have these cases with Case
+no match. Like... an if statement. Yes. Consider an if statement.
+
+if free~1 then True else False
+
+It turns into:
+
+    case free~1 of
+       True -> True
+       _ -> case free~1 of
+               False -> False
+               _ -> error "case no match"
+
+If I try to read this, it will fail.
+
+So I need to match another kind of if statement. The kind with this form.
+I hope that's what I have. How can I test that this is the issue?
+
+Easy: to start, disable error elaboration, and print out the post SNF
+elaborated things.
+
+Just a note: if this works, then I can remove the casenoerr flag, as we
+convert all case errors to error errors.
+
+Thu Nov  8 17:51:05 EST 2012
+
+Looks like the query generation is working as desired. (This is for, like, the
+trivial core case though). But something else funny is happening.
+
+We aren't doing full elaboration? Or something odd is happening?
+
+It seems that ra == ra is false, even though it should be true.
+
+Thu Nov  8 18:13:24 EST 2012
+
+Oh. I see an issue. it seems that in ra, the value is:
+
+(Satisfiable :: Answer Bool) (True :: Bool)
+
+But what it should be is:
+
+(Satisfiable :: Bool -> Answer Bool) (True :: Bool)
+
+So there's a type messed up somewhere. Okay. That's a good lead.
+Types do matter now... I could either fix this, or not require types to
+matter. I think a mix of both would be good.
+
+Thu Nov  8 18:23:11 EST 2012
+
+Well, I've made good progress.
+
+Plan for tomorrow, continue working out the bugs. I'm hopeful. We'll see.
+
+I think most of the yucky stuff I managed to do today. I hope.
+
+Thu Nov  8 19:00:03 EST 2012
+
+Couple things.
+
+1. case no match is happening in Core test, but if I don't interpret error, it
+seems to go away entirely. Am I being too eager?
+
+2. I'll work on the case (case ) thing a bit. I think it's just straight
+forward pushing of a case statement.
+

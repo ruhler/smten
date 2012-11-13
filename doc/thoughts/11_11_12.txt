@@ -1,0 +1,156 @@
+
+Sun Nov 11 09:39:31 EST 2012
+
+I took the wrong approach yesterday. Let me start over a better way.
+
+The first observation is: translating from Exp to ExpH should not require
+elaboration. So, toh should not deal with primitives. Let me try a different
+order now.
+
+1. Move checking for primitives from toh to elab. Verify it still works.
+Performance may drop a little.
+
+2. Move deSugarLace into toh, because it's part of the translation process.
+
+3. Pull toh out of elaborate.
+
+Then take a moment to figure out what should happen next.
+
+Sun Nov 11 09:48:09 EST 2012
+
+(1) doesn't work. I don't understand why.
+
+Perhaps I should change the way primitives work first. Fold them into elab
+much more closely. Get rid of this introduction of lambdas. I can move a
+primitive at a time. Eventually the primitives table will be empty. Then I can
+remove it from toh.
+
+I bet what was happening is we would evaluate a primitive, find it doesn't
+elaborate  because it has a free argument, then elaborate it again and again
+and again and again and get stuck in that loop. In which case yes, this is the
+right fix to make now.
+
+Sun Nov 11 10:54:51 EST 2012
+
+I switched over all the primitives.
+
+It's just as clean as ever, only now it's also a little bit faster too, and
+takes a little less memory. We're talking like: 25 to 24, 16 to 15, 12 to 11,
+that kind of performance improvement.
+
+Sun Nov 11 10:56:05 EST 2012
+
+Good. Now, the next step should be: merge sugarLace and toh. Then pull toh
+outside of elaborate. And, if I can give it a better name. Then I ought to
+also be able to pull things like stringEH out of elaborate.
+
+Sun Nov 11 11:40:49 EST 2012
+
+I separated out elaboration into ExpH, toExpH, fromExpH, and elaborate. It
+improved performance, but I think that's mostly just because I also changed
+fresh not to consider an initial list of names. If you look at the profile
+now, most of the time is spent going back and forth between Exp and ExpH.
+
+That's good news, because my plan for what to do next was to remove that
+translation entirely in Query, SMT.Run, and IO.Run.
+
+Sun Nov 11 11:47:57 EST 2012
+
+It's interesting now that almost no time is being spent in elaborate. All the
+time is in ToExpH and FromExpH. I seem to get better profiling information
+when I separate things out...
+
+Anyway, this is really good news, because I think it's pretty clear how to fix
+it.
+
+Basically the steps are as follows:
+
+1. Have Query, SMT.Run, and IO.Run work entirely with ExpH.
+This will entirely remove a number of translations between Exp and ExpH.
+
+2. Translate ExpH to a new Exp type with desugared case and single
+application. This should greatly simplify the FromExpH translation.
+
+3. Make an EnvH and pass it around. This way we only call ExpH once for each
+top level declaration. This should greatly reduce the number of times ToExpH
+is called.
+
+And we'll see where we find ourselves after this. But I think it should be in
+a very good place. And we'll still have room to improve elaboration.
+
+
+Sun Nov 11 16:45:23 EST 2012
+
+I pulled out elaborateH into a separate function. The question is, is there
+any way I can switch over to it incrementally?
+
+Well, I can go back and forth using toExpH and fromExpH. So perhaps use this
+judiciously to make the conversion. I feel like the easiest place to start
+would be the IO monad.
+
+What do we need to do runH? And what kind of abstraction functions would we
+want for it?
+
+* elabwhnfH - weak head normal form elaboration with ExpH.
+* For putChar, I want a function which matches against a variable with given
+  name, and returns the argument to that function.
+* For putChar, I want to expose de_charEH.
+* For runQuery I want to match against a function call with given name and two
+  arguments. I want to be able to unpack the first argument into Maybe String.
+* For return I want to match single function call with given name
+* For bind I want to match binary function call with given name
+* Also want to say how to perform application
+
+So, in summary, it would be nice to have:
+* given name of a function call and arity, match against it and return
+  arguments.
+* Unpack things: char, string, Maybe String, whatever.
+* Perform applications.
+* pack things: unit
+
+I feel like, if I had a typeclass, and I define the core things you can do
+with seri expressions, then I could share a lot of code for the different
+representations. No need to copy. No need to translate. Then functions could
+be made much more general. But maybe that's overkill? More trouble than it's
+worth?
+
+I do think a more structured way to express packing and unpacking of
+expressions would be good.
+
+I don't know. I'll have to think about how I want to do this.
+
+I want expressions to remain as abstract as possible. Use the right
+abstractions for the right jobs. There are different sorts of abstractions for
+expressions:
+
+* constructing syntaxes
+* converting expressions between Seri and Haskell
+
+Okay. I think I know what I need to do next. It could be a bit unpleasant in
+places. Be patient. Bear with it. Try not to go to crazy in genericism,
+because that could do more harm than good.
+
+I need to come up with a set of abstractions for manipulating an expression.
+Ideally an organized set of abstractions. So that I can construct and examine
+Exp without referring to its constructors.
+
+Once that abstraction is in place, change everything that refers to Exp that I
+want to change to ExpH to use those abstractions.
+
+Next, implement the same abstractions for ExpH. At this point the transition
+from Exp to ExpH should be easy. Just change the types.
+
+I see no good reason to make a type class for env. That will just muddy
+things. Exp has its place. ExpH has its place. They ought not to be mixed up.
+That is, except in defining the abstractions...
+
+No. Don't go down that route.
+
+I think the first step is: Move the SeriableE class from Enoch into Lambda.
+Change the types appropriately. Change all the fooE and deFooE to this class
+so I can say pack and unpack. And try to be incremental. I can clean things up
+later. Don't get stuck trying to do everything at once.
+
+Well, there you have it. The plan. My plans haven't been entirely successful
+of late, but what can you do?
+

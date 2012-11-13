@@ -1,0 +1,531 @@
+
+Fri Nov  9 08:20:43 EST 2012
+
+Almost there.
+
+Next step. In SNF. If a case statement wasn't reduced completely, and it is
+of the form:
+
+case (case x of K -> y ; _ -> n) of
+    K2 -> y2;
+    _ -> n2;
+
+Then change it to be:
+
+case x of 
+    K -> (case y of
+            K2 -> y2
+            _ -> n2)
+    _ -> case n of
+            K2 -> y2
+            _ -> n2)
+
+That should be easy enough. The one thing to worry about is the way functions
+are handled.
+
+So, remember, y has type: a -> b -> ... -> V
+              n has type: V
+
+Hmm... That's slightly unpleasant. It looks like I'll have to push inside of
+all those lambdas. But what if there aren't any lambdas? I have to assume
+there may not be, because things may have been inlined and simplified.
+
+So I need to wrap it in a function, and do application to y:
+
+case x of
+    K -> \v1 -> \v2 -> ...
+            (case y v1 v2 ... of
+                K2 -> y2
+                _ -> n2
+            )
+    _ -> case n of
+            K2 -> y2
+            _ -> n2
+
+Slightly annoying, but, hopefully, not overly terrible.
+
+Wait. Am I guaranteed y is surrounded by enough variables? I know I put the
+variables there when create the case statement. A lambda doesn't simplify away
+without application, and we don't do application. So perhaps I can just count
+the number of lambdas to go inside.
+
+case (case x of K -> y ; _ -> n) of
+    K2 -> y2;
+    _ -> n2;
+
+is really
+
+case (case x of K -> \v1 -> \v2 -> ... -> yv ; _ -> n) of
+    K2 -> \w1 -> \w2 -> ... y2v
+    _ -> n2
+
+Which I expand to:
+
+case x of 
+    K -> \v1 -> \v2 -> ... -> case yv of
+                                 K2 -> \w1 -> \w2 -> ... y2v
+                                 _ -> n2
+    _ -> case n of
+            K2 -> ...
+            _ -> n2
+
+That would avoid extra blowup.
+
+No. That's too messy. Too special case. Too fragile. Better to just create new
+lambdas for now.
+
+Okay, I'm going to try writing this up. Wish me luck.
+
+Fri Nov  9 09:01:52 EST 2012
+
+I wrote it up. Went with the special case, because it was easier and I think
+it should work just fine. Let's try it out.
+
+Fri Nov  9 09:18:29 EST 2012
+
+Another issue now. I'm getting things like:
+
+if f1
+  then if f1
+     then x
+     else y
+  else z
+
+This is bad, because 'y' could be huge!
+
+Note: it's not just this case. There are all sorts of variants. Things like:
+
+if f1
+    then x
+    else if f1
+        then y
+        else z
+
+And not only is 'y' huge, but it contains some things we don't support.
+Namely, there are errors which don't go away.
+
+So, two thoughts as to how to get around this. Because I feel like
+decasification is working properly. All the free things are pushed up to the
+top...
+
+1. Propagate errors 
+Any time we see: case (error ...) of
+Replace it with error ...
+
+Any time we see error as an argument to a primitive, replace it with error.
+
+Alternatively, we could just throw the error at that point. Depending on how
+we want to deal with errors in SMT queries. It may be we want to leave them
+there. Depends also on my semantics.
+
+2. Perform some sort of free variable resolution.
+
+Let me focus on boolean free variables.
+
+If I have an expression like:
+
+if free1
+    then x
+    else y
+
+Then when I evaluate 'x', I should evaluate 'x' under the assumption that
+free1 is true. And I should evaluate 'y' under the assumption that free1 is
+False.
+
+There are other kinds of information we could have as well. Let me see if I
+could think of all the sorts of information we have...
+
+Boolean free: is it True or is it False.
+Integer free: is it equal to something, is it less than something, ...
+
+In general, any predicate on a free variable could potentially be useful.
+
+if p free1
+    then x
+    else y
+
+The general case may be much more difficult to support than the specific case
+of a boolean variable being True or False.
+
+This would simplify a lot.
+
+One way we could do this is by having elaboration take as input a map of known
+values of free variables. Something that adjusts during elaboration, because
+for some subexpressions we know their values. Or something like this. I would
+need to think hard about the details, given the HOAS form.
+
+I suppose an easy way is to just leave free variables as they are, give a map
+from free variable name to value for known values of free variables, and as an
+elaboration step, check whenever you see a free variable if it's in the map or
+not, and if so, replace it with the appropriate value.
+
+Then, when I'm doing case statements on free variables, whenever I make a
+match, in particular, when elaborating inside bodies of case for SNF, add the
+appropriate value for the variable. 
+
+Why is this coming up? Why didn't I run into this before?
+
+I think it's because before I assumed no errors, and here, my case expressions
+don't have implicit errors, so errors are made explicit that weren't there
+before. And now we are seeing errors that you can't get to (so our assumption
+about no errors was right), but still show up.
+
+What am I to do?
+
+Let me think about it some more. I don't think it will be difficult to hack up
+something that works, but I would like to have a better understand first of
+all the things we may encounter.
+
+In particular, the interesting question is, what are all the things that could
+possibly lead to an expression which does not fully elaborate?
+
+You know, if I do this trick, then my translation is non-trivial. There's
+nothing straight-forward about this. Reducing algebraic data types to SAT
+automatically, and hopefully efficiently.
+
+Again, I'll think some more about this. I have some errands to run now though.
+
+
+Good news though: Sudoku no longer blows up! Looks like we fixed that issue.
+That's happy.
+
+Fri Nov  9 12:05:24 EST 2012
+
+Summary of thoughts:
+
+1. We need to propagate errors, as I said. Consider the following:
+
+assert (case error "error!" of
+            E1 -> True
+            E2 -> False)
+
+If you don't propagate the error, you end up showing constructors E1 and E2.
+Propagate the error, and all is well.
+
+2. We to do... decasification.
+
+The idea is this. I want to abstract the notion of looking at an argument. Or
+being strict. Or something like that. It happens in the following places:
+
+* matching a constructor in a case
+* evaluating an argument to a primitive function
+
+We have the following things that could happen:
+* argument is as expected. Cool.
+* argument is error something. Then propagate the error.
+* argument is free.
+* argument is application of a primitive
+* argument is application of a case. Then do decasification.
+
+If the argument is free or application of a primitive, then it can only have
+type: Bool, Integer, or Bit-Vector, because those are the only free things or
+things returned by primitives.
+
+This brings me confidence that if I follow all of these rules, then I won't
+have any user defined constructors left over.
+
+Let me leave that discussion there for now.
+
+The next thing is about propagating information.
+
+If you have a case statement and the argument is a free variable, that
+variable must be of Bool type. When I elaborate inside the case branches, I
+should add that the free variable has the given value. Easy. We can only say
+thing for the matched branch, not for the default branch. I don't think that
+will cause too much issue for now. Ideally we would like to say: this free
+variable does not have this value, and somehow make use of that, but that
+interacts with errors and free variables being errors and I don't know.
+
+I think it's fair to say free variables can't be _|_. Then for boolean, if the
+constructor is True, then I know in the other branch the value should be
+False. And vice-versa. I think I should make that assumption.
+
+The rest is simple. Augment elab with an extra argument mapping Name to ExpH.
+Whenever I see a variable, if it's not in scope, check in this map.
+
+I want to try this. I think it will work. I'm pretty excited by it. The
+exciting thing is, if you have an if statement at the top level, then beneath
+that if statement, an entire variable is completely eliminated. It's pretty
+nifty.
+
+The other note I want to note: There's no issue elaborating inside the body of
+a lambda. I should do that for WHNF too.
+
+Which brings up a hope: that maybe I can merge WHNF and SNF into one. They are
+exactly the same except in SNF we have this decasification. But! That will
+only happen in the presence of free variables. It would be really cool if it
+was one kind of elaboration. I'm not going to deal with this now, because we
+have other issues (going between ExpH and Exp), but it's something good to
+keep in mind for the future.
+
+Okay, I have some other stuff I need to do now. When I get back, I'll try
+implementing this. I'll not worry about propagating errors for now. Not until
+it shows up in a test case as something I have to fix.
+
+Oh, there is one other thing worth asking. General predicates.
+
+For example, what if I have:
+
+if (free1 && free2)
+    then if (free1 && free2)
+        then x
+        else y
+    else z
+
+This is something my optimization can't deal with. I'll have all the same
+problems I have now. I'll probably have to deal with this eventually (not
+now). The approach could be similar: just have map from predicate to value,
+and anywhere I see that predicate, replace it with the value. A free boolean
+is a simple case of a predicate.
+
+Of course, that doesn't deal with slightly more complex things making use of
+domain knowledge, like:
+
+if (free1 && free2)
+    then if (free1)
+        then x
+        else y
+    else z
+
+I could perhaps recognize && and put both free1 and free2 in the environment
+if the answer is True. Or recognize || and put both free1 and free2 in the
+environment if the answer is False. But this seems like more advanced
+reductions I don't want to worry about just now.
+
+Hmm... Perhaps I should do error propagation first...
+
+Fri Nov  9 13:59:35 EST 2012
+
+There is this thought. What if I changed free booleans now to
+    if free then True else False?
+
+Will that help anything? Will it potentially have the same effect as
+propagating info about free variables?
+
+Well, the first concern is it will just blow up like it did last time. But I'm
+confident that will not happen, because we don't push constructors or ordinary
+function applications inside of it, only cases.
+
+The next question is, will it do what I want? And I feel like the answer is...
+no. It doesn't help with anything.
+
+But it's easy enough to try, so I may as well just double check to see it does
+what I expect.
+
+Fri Nov  9 14:04:24 EST 2012
+
+Tried it out. The amount of difference it made? Zero. Zip. Not a single bit
+different. Except it maybe took longer. I could probably work out why it
+wouldn't make a difference. It's actually cool that it doesn't.
+
+Anyway, let me try out this idea for propagating info about free variables,
+and see how it goes.
+
+Fri Nov  9 14:16:01 EST 2012
+
+Trouble. It's really hard to thread freevars through everywhere the way things
+are currently set up, because a lot of functions implicitly call elab, where
+all its arguments are implicit.
+
+This is something that is annoying for other reasons too, namely, dealing with
+binary and unary functions of different types without being able to use type
+classes.
+
+So, perhaps this would be a good time to change the code layout. All the
+functions should be pulled out of closures. Or, the big ones anyway. They
+should take arguments explicitly.
+
+Alternatively, I could try doing elaboration in the reader monad. That scares
+me a little bit though.
+
+So I'll try to pull apart the functions to take all their arguments
+explicitly. It will be tedious and annoying. But hopefully it will make it
+easier later on to make this really clean, and easier to add the free variable
+list as an argument to elaboration.
+
+Fri Nov  9 14:24:54 EST 2012
+
+Sadness. It's really messy. Everything is all intertwined with everything
+else. I almost want to start from scratch. A clean slate.
+
+Let me not change too much stuff though.
+
+Erg. Is info about these free variables supposed to propagate through
+everything? Maybe I need to pass that info as an argument in the HOAS?
+
+I wonder if it would be easier to have a substitution pass. Given ExpH, Name,
+Value, where the Name is of a free variable and the value is either True or
+False, then replace all occurrences of that name with that value. That
+shouldn't be too hard. Let me try doing that instead.
+
+Fri Nov  9 14:52:10 EST 2012
+
+Okay, concretize function was easy to write. Now the question is, where should
+I apply it?
+
+Easy. Have a special check for it if case doesn't elaborate otherwise.
+
+Fri Nov  9 14:58:05 EST 2012
+
+Some trouble: I may have to totally reevaluate things after concretization.
+That's annoying. So, this isn't the most efficient implementation currently.
+But hopefully it's decent enough. I'm sure I can redo it and make it much
+better.
+
+Fri Nov  9 15:00:58 EST 2012
+
+Cool! Looks like it's working. Let me turn off SNF tracing and see where I'm
+at now.
+
+Fri Nov  9 15:06:31 EST 2012
+
+It all works. Everything works.
+
+Umm... The datatype test seems a little slow for my liking. Let me see if a
+more ambitious sudoku works.
+
+And the Squares test doesn't work. So I'll have to look into that too.
+
+Note: there are many opportunities for improving performance. Remember that.
+As long as I'm generating the right queries, I think I can make the generation
+process much faster later on.
+
+Fri Nov  9 15:08:43 EST 2012
+
+Sudoku2 can solve the little board just fine. It takes a little while... but
+again, I think the generated query is appropriate? I suppose I'll want to take
+a look at that at some point.
+
+Let me try 9x9 now for sudoku.
+
+Fri Nov  9 15:19:30 EST 2012
+
+It's taking a while, and tons of memory. So there's still more work to do
+here. Again, I think there's lots of room for improvement. I don't think this
+approach is intractable. I should certainly not give up yet.
+
+Anyway, I'll think about how I want to clean up the elaborator once all the
+little issues are settled. And that should hopefully help with performance on
+sudoku.
+
+For now, I just need to work out the remaining issue: Squares. See if I can
+figure out what is up.
+
+Fri Nov  9 15:24:50 EST 2012
+
+Looks like our old friend: argument pushing.
+
+Say you have the following:
+
+(if free1
+   then \x -> x == True
+   else \y -> y == False
+) True
+
+That is, application where the function is a case statement. That means the
+body is a function, and so we want to push the arguments inside.
+
+That's not to bad. Let me implement this now. Then I think we'll have all the
+bases covered, and I can move on to the question of how to clean up the
+elaborator.
+
+Let me capture this in a test case if I can. What test should it go into? How
+about Core? Because it is a core test case? Sure.
+
+Okay, I caught it in a core test case. Let me try fixing it now.
+
+Yup! That fixed it. Squares is a little slow, but, well, whatever.
+
+Now the only known problem is with performance.
+
+Fri Nov  9 15:49:10 EST 2012
+
+This approach will work. I think this approach will work. I think it's much
+more correct. Especially if I include things I've thought about but not added
+yet, like error propagation.
+
+I need to rewrite the elaborator from scratch based on all the info I've
+gleaned in my experiments thus far. That's how to make it go fast. Now I'm on
+a performance hunt.
+
+It would also be good to check out the generated POST-SNF expressions, look at
+them, see if they can be simplified or not.
+
+Note now, too, that everything I was talking about before I went the
+desugaring case route also applies. There are lots of points to consider.
+Unfortunately, it's not clear I can do them all at once and expect to be
+successful. I may have to take some steps in the wrong direction before things
+work out the way I want.
+
+Of course, it won't be perfect yet. That's okay. It will never be perfect. But
+if I can raise the bar. Make it significantly cleaner and better performing
+now, that will make it all the more easy to hack it up as I approach the next
+major refactor.
+
+Now, there are lots of things going on here. Lots. And I'm not sure I can keep
+track of them all. So let me brainstorm the things I want to consider when
+doing my rewrite of the elaborator.
+
+Brainstorm of considerations for elaborator:
+* Perhaps case statements should consider all constructors at once instead of
+  one at a time?
+* Primitives should be done as reduction rules, they shouldn't introduce lambda
+  terms. They should still be pretty though.
+* Pull elaborator functions out into top level declarations. Then use type
+  classes to make handling of primitives much cleaner (don't have to write
+  different bXXX and uXX functions for each type I use). Perhaps use a Reader
+  monad?
+* Don't elaborate an expression which has already been elaborated
+* Figure out how to cheaply concretize free variables in expressions, ideally
+  without forcing re-elaboration after concretization. Can I make use of HOAS
+  somehow with this so I elaborate the right way from the start?
+* Have common abstraction for evaluating an argument, used for case arguments
+  and primitive arguments
+* Propagate the error primitive up instead of calling error.
+* Can I remove the distinction between SNF and WHNF elaboration? Can they be
+  the same?
+* It's okay to elaborate bodies of lambdas in WHNF thanks to HOAS.
+* Do eager elaboration whenever arguments are shared.
+* Don't come out of ExpH for IO and Query monads.
+** Remove casenoerr flag
+* Look over results of elaboration, especially SNF, to see if anything pops
+  out, and make sure things aren't blown up too big.
+* Have common abstraction for manipulating the yv part of a case expression.
+* Consider more general concretization propagation?
+* Change front end to have single argument applications and patterns.
+* Change front end to have desugared case expressions.
+* Share loading of top level declarations.
+* Change deriving of Free to generate if statements, not case statements.
+* Leverage let statements when doing argument and function pushing to capture
+  sharing
+* Implement the 'update' primitive in the elaborator, or remove it from
+  smt_array.
+* Test out free_enum, see if it generate SAT (it may not...)
+
+That's it.
+
+Also, don't try to get too far ahead. Better to get everything cleaned up and
+nicer with some other stuff to do then get stuck trying to clean everything at
+once perfectly and fail.
+
+Fri Nov  9 16:32:52 EST 2012
+
+Okay, so I added this to my todo list. The trouble is, it's too much to think
+about all at once.
+
+I think what I need to do is start with the core elaborator stuff.
+
+1. Figure out how to deal with primitives, concretization of free variables,
+not re-evaluating already evaluated things, and pulling elaboration out to the
+top level.
+
+2. Switch all the back end stuff to be based on ExpH instead of Exp.
+Mostly it's abstract. Only SMT translation has to worry about details of the
+representation.
+
+You know, I could introduce another form of expression, which is Exp, the way
+I want, but only for use in the back end. Then translate ExpH to this form,
+and then I can use that in translation in the back end.
+
+I don't know. Let me just spend some time thinking and I'll get back to you.
+

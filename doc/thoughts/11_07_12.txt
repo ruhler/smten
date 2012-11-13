@@ -1,0 +1,665 @@
+
+Wed Nov  7 08:07:56 EST 2012
+
+I have a plan for making progress on this bug.
+
+Sudoku is more complicated than I should need to deal with. Even a 4x4. My
+suspicion is the issue has to do with recursive functions mixing with function
+or argument pushing.
+
+So, I should be able to make a tiny test case. Minimize it. For example: just
+make a small list of free variables, assert distinct, and see if that still
+has the problem. Then maybe try notElem, see if that has the problem. This
+should be a very small test case, thus much easier to step through.
+
+Then I'll also annotate the elaboration process as much as I can, which ought
+to make it easy to trace.
+
+I thought I was going to mention something else, but I don't remember. So
+continue.
+
+Wed Nov  7 08:13:38 EST 2012
+
+Well, sad news. My minimization attempt failed. distinct works just fine on
+its own.
+
+I suppose I'll have to hack at Sudoku to minimize it.
+
+Wed Nov  7 08:44:53 EST 2012
+
+Aha! I think I figured it out.
+
+I think it's not an infinite loop. It's just an exponential runtime. An
+exponential runtime in SNF elaboration.
+
+To test out my hypothesis: solving a full board takes no time at all. Solving
+a board with one missing element takes 14 seconds. Solving a board with two
+missing elements... Takes a long time. I'm going to give it an hour or so and
+see if it finishes.
+
+But yes. This makes much more sense to me. Which means, it could be that my
+elaborator works. I just need to make it faster.
+
+Fortunately, I know approaches I can take to make it significantly faster.
+The idea is: don't duplicate evaluation work. I'll just have to figure out how
+to implement these approaches, and see what sorts of improvements I get, and
+see if it's enough improvement.
+
+The first thing I should do is a code review to understand where it's possible
+for elaboration duplication to occur. Then think about speculative elaboration
+and how that might result it. I think there are two big things: shared
+elaboration of intermediate expressions, and shared elaboration of top level
+declarations.
+
+Wed Nov  7 09:47:51 EST 2012
+
+Sudoku with 2 holes has taken more than an hour. That's bad.
+
+I'm still going to let in run in the background.
+
+There's been a request to change left shift and right shift to be of generic
+type, instead of integer. Let me take a short break on the master branch to
+deal with this, then I'll come back to the elaborator.
+
+Wed Nov  7 10:13:46 EST 2012
+
+Trouble with the shifts. Yices1 doesn't support that kind of shifting. Gah!
+
+At the very least, I would like to be able to shift by a static amount for
+yices1... But maybe for now, just don't support shifting in yices1? That's
+really annoying. Or, maybe I can write a function for it, using if statements
+and such. I think, regardless, don't worry about it now. I hope I can get away
+with that.
+
+Wed Nov  7 10:36:06 EST 2012
+
+Good news! Yices1 does support shl. Cool. So this works now.
+
+Wed Nov  7 11:03:54 EST 2012
+
+Back to sudoku. Yes! I was right. My sudoku run finally finished. It took 2
+hours. That's a lot. A lot a lot. Too much.
+
+Anyway, I know what I want to do. First step, investigation.
+
+The idea is: I should avoid duplicating elaboration work. If I can do that,
+then I hope that will be enough. It's possible it will not be enough, but I
+think it will be a good starting point. I can use the sudoku test with one
+free hole to measure progress.
+
+Wed Nov  7 11:08:27 EST 2012
+
+First observation: profiler shows lots of time in toh. Closely followed by
+elab. This isn't surprising. All the time is spent in elaboration. Fine. And
+it's an SNF elaboration.
+
+So, the question is, where do we loose the opportunity for sharing?
+
+Where do I go:
+
+  e -> e -> elab e -> e'
+    -> e -> elab e -> e'
+
+When I could instead do:
+  e -> elab e -> e' -> e'
+                    -> e'
+
+* Application to match function.
+That is, standard beta reduction. We should apply the match function to a
+speculatively elaborated expression, because that expression could be referred
+to, and potentially elaborated, in multiple places.
+
+* Pattern matching.
+For example, imagine:
+    case foo x of
+       (True, True) -> ...
+       (True, False) -> ...
+       (False, True) -> ...
+       (False, False) -> ...
+
+Now, imagine foo x is the last case. Don't we end up elaborating (foo x) 4
+times? That could lead to an exponential blowup.
+
+You could imagine something more complicated, where it looks more deeply. The
+idea you would like is: once (foo x) is elaborated some bit, then everywhere
+it's elaborated that way. In other words, I think this is a deeper elaboration
+than just weak head normal form. This is like ... a head normal form
+elaboration, or something like that?
+
+* function or arg pushing.
+I don't think I have to worry about those, because I make the sharing explicit
+via beta reduction, so if I handle beta reduction right, that should handle
+this right. Except! in determining whether to apply the pushing. We want the
+argument to be elaborated. So, as soon as we elaborate it to test for this, we
+want to keep this elaboration everywhere.
+
+* top level declarations.
+Every time we look up a variable in the environment, we perform elaboration
+and toh of it. We should just look up each variable or variable, type pair
+once, and reuse the elaboration of it. This could lead to exponential
+duplication.
+
+* primitive elaboration?
+That should be handled by sharing, right?
+    
+
+I think those are the big categories. Let me try to summarize what's up.
+
+Whenever you might do elaboration on the same expression in multiple places,
+you would like to do the work only once. The reasons we might end up doing
+elaboration on the same expression in multiple places are:
+
+1. Top level declarations could be referred to multiple times, each time you do
+   elaboration
+
+2. Local variables could be referred to multiple times, each time you use it,
+   you may do elaboration
+
+3. Arguments to case statements are elaborated for each pattern you try to
+   match against them.
+
+Ideally we could have all the uses of an expression shared, and any time one
+place does some incremental elaboration on that expression, it is seen by
+everyone else.
+
+But! There's an important thing, which is, I want to be as lazy as possible
+for WHNF elaboration, because I believe that is important. So, if you don't
+need to elaborate something at all, you should NOT elaborate it at all.
+
+Now, we could try doing a heap elaborator thing to do this explicitly. But, we
+could also leverage haskell's runtime to do this. The idea is, if you
+elaborate an expression in haskell, then share that elaborated expression,
+because Haskell is lazy, it will only do incremental elaboration when needed.
+Exactly what we want.
+
+Let put out an idea about how this might work. I'm not convinced the idea will
+work. We'll see:
+
+Proposal is, define a new kind of ExpH: SExpH ExpH ExpH. It is a speculatively
+elaborated expression. The first argument is the unelaborated expression. The
+second argument is the elaborated expression. To elaborate the expression,
+just take the second argument. When converting back to Exp, do it based on the
+first argument. Create one of these for every shared expression, and you're
+all set, right?
+
+Well, there's some issues. How far does the sharing go down? What kind of
+elaboration should I do?
+
+Consider, for example, the following. I have a case statement:
+
+case foo x of
+    (False, _) -> 1
+    (True, (True, False)) -> 2
+    (True, (True, True)) -> 3
+    _ -> 4
+  
+Say foo x is really complicated.
+The WHNF elaboration of foo x is:   (blah1, blah2), where blah1 and blah2
+could be very complicated.
+
+If I just do WHNF elaboration for speculative elaboration, then I'm sharing
+(blah1, blah2). But each time I try to match against blah1, I need to
+elaborate blah1, and that elaboration is not shared in this case!
+
+To me, this suggests we want to do a more involved elaboration. Well, let's
+say we do. Let's say we elaborate it completely, down to:
+    (True, (False, True)).
+
+And say I want to adjust my example:
+
+case foo x of
+    (False, _) -> return ()
+    (True, a) -> assert a
+
+Now I match 'a' against some complicated expression. But remember now, we want
+to be as lazy as possible for WHNF. What if the value of 'a' could be
+represented as some variable (bar)? Then at this point we have
+over-elaborated.
+
+Now, one might question whether my ask lazy as possible requirement makes
+sense. My argument for it is that we go in and out of the ExpH representation,
+and we want to minimize the translation between them. In some cases, if we
+aren't lazy, you may not be able to translate between them when you should be
+able to, and that's a correctness issue.
+
+If we did everything in this ExpH representation, that would be much less of
+an issue I think.
+
+In other words, I have to be explicitly lazy in some cases, so we can
+translate out of ExpH. If I'm explicitly lazy, then ... how can I preserve
+that I'm explicitly lazy?
+
+That is, it seems like we want to make each expression have an unelaborated
+part and an elaborated part.
+
+I would really rather not be explicitly lazy if I can avoid it. Haskell will
+do a much better job than me in being lazy.
+
+Let me push the laziness requirement a little further. Why do I want to be
+lazy? Because I go in and out of the ExpH representation. I do this in the
+Query monad, and I do this in the IO monad. Any other place I do this?
+
+If you want to print out an expression which could be big. Which elaborates
+to infinity. But I don't think of any off the top of my head.
+
+Certainly SMT assertions need to see the expression, but they need it fully
+elaborated anyway. IO monad outputs a string... Type checking doesn't require
+elaboration...
+
+One idea is... we could limit explicit laziness to just top level declaration
+uses, because that's the only place you have infinity happening. Every time we
+look up a variable, elaborate the result speculatively? But really we want the
+result of combining that variable with arguments, so it's not clear that will
+help.
+
+There is also an issue between head normal form elaboration and SMT normal
+form elaboration. Once you share head normal form elaboration, if you want to
+do extra SMT elaboration on top of both those, you are now duplicating work
+once again. Perhaps this is not such a major concern?
+
+Let me think about things some more. I think I'm coming up with good ideas...
+
+Wed Nov  7 12:59:03 EST 2012
+
+Here's the idea. I want to try not having to be as lazy as possible.
+
+1. Reimplement the Query and IO monad evaluates to work on the ExpH expression
+type. Actually, I can support both... Hmm... Wait, I may need to think about
+this more.
+
+2. In the elaborator, do eager elaboration before attempting case matches, and
+of arguments in beta reduction.
+
+You know what the problem this is? It hurts enoch, doesn't it? Maybe. Maybe
+not...
+
+I suppose the idea would be, keep the expression in ExpH form as long as you
+can until you need to get the result. That should actually work out okay.
+
+I should expose ways to convert to and from ExpH and Exp. Otherwise, I think
+ExpH is okay to remain abstract. To get started, I can keep the existing
+interface, and just add another interface on top, and see if that helps?
+
+Let me try to make more concrete what all steps are involved here.
+
+* Implement an elabwhnfH function for elaborating ExpH to ExpH
+* Update Seri.SMT.Query functions to work on ExpH.
+* Implement a runH function for Queries, which goes from ExpH to ExpH.
+* Update runH function for IO to go from ExpH to ExpH
+* Update Enoch Query to work with ExpH.
+
+That's a whole lot of work.
+
+I don't know. That's a really big thing. It could make a big difference...
+Once you go into ExpH, it's a little scary to come out, because the expression
+could be infinite...
+
+I suspect we could also want an EnvH, which gives you fast lookup from Sig to
+ExpH. This would be for elaboration.
+
+I think different representations make sense for the different parts: type
+inference, type checking on Exp. Elaboration on ExpH.
+
+What should I do? This is too big a decision to make all at once.
+
+Perhaps I can make decent progress in the right direction, let the big
+decision stew for a little bit...
+
+One trouble is, I don't have a good sense of what the payoff to this decision
+will be. Will it improve performance drastically? Could I approximate it and
+make most of the performance without such a big change? Just leave the
+elaborator a little messy?
+
+I feel like switching all of elaboration over to ExpH is the right thing to
+do. It's the ideal thing to do. It cleans things up. It makes things
+efficient. The one concern is about infinite sized expressions. Because once
+we go into ExpH, we could have infinite expressions which are not possible to
+look at.
+
+But, I can probably handle that without too much trouble. Just add an extra
+constructor to label expressions which are directly from the environment. They
+keep the label until you try to elaborate them to look inside. It's just a
+marker to know if we are lazy. That could be a good solution.
+
+Hmm... And that's also something I could already do, without having to all
+this big overhauls. Be as eager as I can and will in the elaborator, but add
+these annotations to make it easy to go back to Exp. Hopefully easy. Then save
+as a future step making all elaboration into ExpH.
+
+That actually sounds appealing... I need to discuss this with someone.
+
+Wed Nov  7 14:13:30 EST 2012
+
+Talked to Nirav. He thinks this is a reasonable thing to try. So that's what
+I'm going to go ahead and do.
+
+I need to do it in an incremental fashion. Highest priority should be putting
+in the code for sharing and seeing if it helps elaboration. In particular, it
+should get rid of this exponential blowup stuff.
+
+Well, there you have it. Now, how should I go about making this work?
+
+I want to make little changes. Because I fear big changes will cause problems.
+
+Make a whole bunch of little changes, then do a major refactor once I have
+something that works. That's kind of like what I'm already doing.
+
+A big question I have is, how much elaboration do we do?
+
+Certainly elaborate arguments to functions.
+
+But, what about going inside of lambda terms to elaborate in the presence of
+free variables? That sounds dangerous to me. But if you don't do it... don't
+you lose sharing?
+
+Okay, let's say I'm willing to lose that amount of sharing. If needed, the
+user ought to be able to make this explicit: anything you could have shared
+could be pulled out to a top level function which is elaborated. That's good.
+
+The other question is about argument pushing and function pushing. Let's say
+no, I don't do those.
+
+So we are left with two forms of elaboration.
+
+I can't figure out what the term definitions are.
+
+beta normal form: no beta reductions possible.
+head normal form: no beta reductions possible at the head.
+weak head normal form: ??
+
+Okay, I found a definition I like. Weak head normal form doesn't go inside
+lambdas. So we have a weak head normal form elaborator, which isn't as lazy as
+possible necessarily. And we have an SMT normal form elaborator, which goes
+inside lambdas, does argument pushing and function pushing.
+
+Good. That's settled.
+
+So, we elaborate things to WHNF, but an eager WHNF: so all arguments are
+elaborated. That should be plenty good enough.
+
+What is the first step for making changes?
+
+Again. Make little, incremental changes.
+
+First step: don't be so lazy in elaboration. Elaborate before matching against
+cases, elaborate before applying functions. I should no longer need to
+elaborate when evaluating case matches or primitives. Those are the first
+steps. Let me make that work.
+
+Wed Nov  7 14:35:58 EST 2012
+
+Notice, if I elaborate to WHNF only, then my expressions are NOT infinite.
+That's nice. No? We'll see...
+
+Oh, let me add another to the list: elaborate arguments to functions.
+
+Some of these will overlap. For example, arguments to functions does the case
+thing. So let me start with that. Elaborate arguments to functions when I see
+a function application. Then elaborate before applying functions, if that
+isn't already handled.
+
+Wed Nov  7 14:56:07 EST 2012
+
+Something strange is happening. By performing more elaboration, things seem to
+stop working? I don't understand. 
+
+This is in SNF.
+
+Wed Nov  7 15:00:11 EST 2012
+
+I tried just pre-elaborating the argument to case matching. That made a huge
+difference. Let me keep going. Until I can figure out which eager evaluation
+is triggering the problem I'm having.
+
+Wed Nov  7 15:04:17 EST 2012
+
+Okay, the issue is with leaving arguments to a function elaborated.
+
+Let me see if I can isolate which test case is the problem.
+
+Wed Nov  7 15:06:28 EST 2012
+
+It's the complex test case.
+
+Wed Nov  7 15:09:19 EST 2012
+
+Here's a hypothesis. I go inside of lambdas, so we could have free variables,
+I look them up, don't find them... then ... no.
+
+I don't get it!
+
+Sadness.
+
+How can we end up with && and || unelaborated? It has to do with argument and
+function pushing, right?
+
+Wed Nov  7 15:22:08 EST 2012
+
+Looks like it is specific to && and || to me. Maybe try going back to the old
+definition?
+
+No, that doesn't help anything.
+
+I'm confused. I'm getting a lot of unelaborated primitive things.
+
+I wonder... what if I'm trying to elaborate the primitives prematurely?
+
+Oh... That makes sense, doesn't it?
+
+I go inside a lambda. I apply this lifting/pushing thing. Prelude.&& happens,
+we end up with
+
+&& a b
+
+Then, later up the stack, we do a substitution, which brings us to:
+
+&& True True
+
+Now, && is considered a free variable, it's no longer a primitive.
+
+So! You know what this means?
+
+Err... trying to work out what it means.
+
+The question is, at what point do we go from
+ \a -> \b -> (primitive and implementation)
+
+To: &&?
+
+If I'm lazy, I never do it early, I just do it once, and that's all that
+matters. As soon as I'm eager... we have other issues.
+
+What else could I do?
+
+Lookup && as a primitive when I evaluate. But the concern is, maybe I would
+get stuck in an infinite elaboration loop? But hopefully not.
+
+I think that's worth trying. Lookup primitives in elaboration, not toh.
+
+Wed Nov  7 15:36:37 EST 2012
+
+No, that leads to an infinite loop, as I feared.
+
+I need to understand a concrete example. Good thing I have one...
+
+Wed Nov  7 15:39:51 EST 2012
+
+Okay, simplify the example, then do it by hand to see what's up and what could
+help.
+
+Here's the example for me to work through.
+
+(\x -> \y -> x == (y || x)) (if f1 then True else False) (if f2 then True else False)
+
+Let's take a look at what happens.
+
+First step, elaborate the function:
+
+\x -> \y -> case (x, (y || x)) of
+               (True, True) -> True
+               (False, False) -> True
+               _ -> False
+
+Now, I'm eagerly evaluation (y || x), and ending up with... Prelude.|| y x.
+Which is a very different object than when it's in the primitive form.
+
+If I'm lazy, this isn't a problem, because we wait to try elaboration until we
+know the values of x and y.
+
+No. There is something wrong here. We shouldn't be seeing variables x and y.
+That's not where the issue is.
+
+Something is wrong here. We shouldn't be seeing a variable when we elaborate.
+We should be seeing the ultimate value. That's how the beta reduction works.
+
+Okay, I need to step through this better. Time for tracing.
+
+Unfortunately, tracing forces early evaluation, doesn't it? Not sure.
+
+Wed Nov  7 16:22:07 EST 2012
+
+I'm getting some funny behavior. I'm seeing Prelude.and showing up, and I
+don't understand why.
+
+Oh, that's from the implementation of == for boolean. That's okay.
+
+Gar. What is going on?
+
+Wed Nov  7 16:31:24 EST 2012
+
+Oh, maybe this is it.
+
+I have the following:
+
+|| (if f1 then True else False) (if f2 then True else False)
+
+Now look at this. We are applying ||. That's correct. The arguments are fully
+elaborated. That's correct. But no match is made!
+
+So, we end up with 
+
+Prelude.|| instead of the primitive or. Then we do function pushing. Now
+Prelude.|| is inside, and we do nothing with it.
+
+The problem is this difference between Prelude.|| and primitive ||. If they
+were the same thing, we wouldn't have any issue at all.
+
+Why don't I want them to be the same thing? Or, how could I leave them as the
+same thing?
+
+The idea is, let's say we treat || as a primitive in the elaborator, not as a
+function which maybe or maybe does not apply the primitive. Then what we want
+is an elaboration rule which says: if you are the primitive || applied to a
+and b, and those are booleans, do this simplification. Ah, so the current
+approach will only work once. You only get one attempt at elaboration, then it
+fails. And really it's meant for exactly one attempt at elaboration. 0
+introduces stuff we don't want. more just doesn't work, as you see.
+
+So, it would appear I'm suggesting a different way to implement primitives in
+the elaborator. Implement them as elaboration rules which only apply when they
+can apply. They don't introduce any new variables.
+
+How could we do this?
+
+Well, I had it before. It's not terribly difficult.
+
+Let me hack something up and see if this can fix it.
+
+Yup! That fixes it. I wonder if it's faster too. Not sure. Maybe it could be.
+
+So I think I need to take this approach in general. Rework primitives.
+
+Then I ought to be able to speed up the elaborator.
+
+Wed Nov  7 17:03:20 EST 2012
+
+Okay, so making the primitive like that doesn't hurt anything performance
+wise. I think the big performance hit now is conversion into and out of Exp.
+
+I fear I can't be eager until I've gotten over that, if I want performance
+improvements.
+
+Wed Nov  7 17:07:00 EST 2012
+
+So! In summary... what is the summary?
+
+1. Primitives need to be reworked to work with eager elaboration.
+Try and figure out a nice way of specifying them still. But basically, they
+should reduce if they can, otherwise they should do nothing. In particular,
+they should not introduce extra arguments.
+
+2. Translation between ExpH and Exp, if you are eager, is very costly.
+This is a strong suspicion. If I'm eager, runtime is blowing up currently. If
+I'm lazy, it doesn't blow up at all.
+
+Well, one problem may be this memory thing. We are using tons of memory...
+
+I don't know. The question is, is it a translation problem that will go away
+if I don't go in and out of ExpH? Or is it some other problem with eager
+elaboration?
+
+You know, it may very well make sense to try my original speculative
+elaboration plan. The idea is: do elaboration on elaborated values, but return
+unelaborated values. That is, if this is the problem. But also, if that's the
+problem, then it should go away too if I stay in ExpH.
+
+Another point is, it might be worth trying sharing of toh first? Because I
+expect I want that anyway?
+
+Ug. The trouble is, I don't know if avoiding translation back and forth will
+help or not. I think it will. But I'm not sure.
+
+If it will help, then it will help when I'm not doing eager evaluation. So
+perhaps the first step is to try it out without doing eager evaluation.
+Perhaps doing my speculative elaboration plan if that makes things faster.
+Switch to ExpH, then see if it's slower or not. I expect it should not be
+slower, but it also won't be hugely faster at this point.
+
+Then I can turn on eager elaboration and see how it helps. The hope is it
+would help things, not hurt.
+
+I can't do eager now, because we get a space blowup. I suspect the primitives
+aren't helping. So maybe if I fix the primitives first, that will deal with
+the space blowup issue.
+
+I think I want to work in the regime of working programs. Don't try changing
+things in a broken program. And watch the progress. If a change doesn't hurt
+too much, keep it. Slowly move forward, and see where I can get to.
+
+Okay, then assuming we start with what I have, here is a brainstorm of the
+sequences of changes I can try that could help:
+
+1. Eagerly evaluate case arguments, but not function arguments.
+This we know is reasonably fast and works.
+
+2. Redo primitives so they don't inject lambda terms. Have them instead be
+like the Prelude.&& and Prelude.|| primitives I just changed. Do find a pretty
+way to specify them though. Don't be duplicating lots of code.
+
+3. try being eager now, see if we have the same space blowup as before. If
+not, cool, go from there. If so, back off.
+
+4. try using WHNF for the eager evaluation, even for an SNF elaboration.
+See if we have the same space blowup still.
+
+5. Expose an elaboration function which goes ExpH to ExpH. Update the Query
+monad to use this, the Query Run code, and the IO run code.
+
+6. try being eager again. I really hope it would work at this point.
+
+7. implement sharing of environment elaboration. This may require the
+introduction of an EnvH structure which maps Sig to elaborated value. For now
+it can be WHNF elaborated. Maybe SNF elaborated too?
+
+Which brings up another point. Maybe I should mix elaboration. This could be
+an issue with eagerness too. We should always try beta reduction before we try
+SNF elaboration, right? Yes. So try doing eager elaboration where the
+eagerness is to do the elaboration to WHNF, not to SNF, so it doesn't start
+recursing into lambdas. Maybe I should try that first...
+
+Good. Plenty of work to do. Plenty of things to try. But the most important
+part is, I feel like we don't have some magical thing going on which I don't
+understand. That's good.
+
+
+
