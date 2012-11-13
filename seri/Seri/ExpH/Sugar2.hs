@@ -18,7 +18,5 @@ errorEH :: Type -> String -> ExpH
 errorEH t msg = appEH (varEH (Sig (name "Prelude.error") (arrowsT [stringT, t]))) (seriEH msg)
 
 ifEH :: ExpH -> ExpH -> ExpH -> ExpH
-ifEH p a b = 
-  let false = CaseEH ES_None p (Sig (name "False") boolT) b (errorEH (typeof b) "if failed to match")
-  in CaseEH ES_None p (Sig (name "True") boolT) a false
+ifEH p a b = CaseEH ES_None p (Sig (name "True") boolT) a b
 

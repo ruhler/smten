@@ -4,11 +4,11 @@
 -- Abstract constructors and deconstructors for manipulating seri types.
 module Seri.Type.Sugar (
     Type(),
-    conT,
-    appT, appsT, de_appsT,
+    conT, de_conT,
+    appT, de_appT, appsT, de_appsT,
     arrowN, arrowT, de_arrowT, arrowsT, de_arrowsT,
 
-    unitT, boolT, charT, integerT, listT, stringT,
+    unitT, boolT, charT, integerT, listT, de_listT, stringT,
     bitT, de_bitT,
     tupleN, de_tupleN, tupleT, de_tupleT,
   ) where
@@ -23,10 +23,18 @@ import Seri.Type.Type
 conT :: Name -> Type
 conT = ConT
 
+de_conT :: Type -> Maybe Name
+de_conT (ConT n) = Just n
+de_conT _ = Nothing
+
 -- | Type application.
 -- Given a, b, returns the type (a b)
 appT :: Type -> Type -> Type
 appT = AppT
+
+de_appT :: Type -> Maybe (Type, Type)
+de_appT (AppT a b) = Just (a, b)
+de_appT _ = Nothing
 
 -- | Multi-arg type application
 -- Given f, [a, b, ..., ], returns the type (f a b ...)
@@ -80,6 +88,13 @@ boolT = conT (name "Bool")
 -- | Given a type a, returns the type [a].
 listT :: Type -> Type
 listT t = appT (conT (name "[]")) t
+
+de_listT :: Type -> Maybe Type
+de_listT t = do
+    (l, v) <- de_appT t
+    n <- de_conT l
+    guard $ n == name "[]"
+    return v
 
 stringT :: Type
 stringT = listT charT

@@ -3,6 +3,7 @@
 module Seri.ExpH.Sugar (
     litEH, de_litEH, varEH, de_varEH, conEH, de_conEH,
     appEH, de_appEH, appsEH, de_appsEH,
+    lamEH,
 
     unitEH,
     boolEH, trueEH, falseEH, de_boolEH,
@@ -53,6 +54,9 @@ de_appsEH (AppEH _ a b) =
     let (f, as) = de_appsEH a
     in (f, as ++ [b])
 de_appsEH t = (t, [])
+
+lamEH :: Sig -> (ExpH -> ExpH) -> ExpH
+lamEH = LamEH ES_None
 
 unitEH :: ExpH
 unitEH = conEH (Sig (name "()") unitT)

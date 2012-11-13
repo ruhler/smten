@@ -33,18 +33,18 @@
 -- 
 -------------------------------------------------------------------------------
 
-module Seri.Lambda.Loader (SearchPath, load) where
+module Seri.Loader (SearchPath, load, loadenv) where
 
 import System.Directory
 
 import Data.List(nub)
 
+import Seri.Name
+import Seri.Dec
+import Seri.Module
+import Seri.Parser
 import Seri.Failable
-import Seri.Lambda.IR
-import Seri.Lambda.Parser
-import Seri.Lambda.Modularity
-import Seri.Lambda.Sugar
-import Seri.Lambda.Ppr
+import Seri.Typing
 
 type SearchPath = [FilePath]
 
@@ -75,7 +75,7 @@ loadone sp n = do
     attemptIO $ parse fname text
       
 findmodule :: SearchPath -> Name -> IO FilePath
-findmodule [] n = fail $ "Module " ++ pretty n ++ " not found"
+findmodule [] n = fail $ "Module " ++ unname n ++ " not found"
 findmodule (s:ss) n =
  let dirify :: Name -> FilePath
      dirify n | nnull n = []
@@ -96,4 +96,16 @@ load path mainmod = do
     maintext <- readFile mainmod
     main@(Module _ imps _)  <- attemptIO $ parse mainmod maintext
     loads path [n | Import n <- imps] [main]
+
+
+-- Load a program into an environment.
+-- Performs module flattening, type inference, and type checking.
+loadenv :: SearchPath -> FilePath -> IO Env
+loadenv path fin = do
+    query <- load path fin
+    flat <- attemptIO $ flatten query
+    decs <- attemptIO $ typeinfer (mkEnv flat) flat
+    let env = mkEnv decs
+    attemptIO $ typecheck env decs
+    return env
 

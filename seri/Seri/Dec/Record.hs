@@ -1,0 +1,131 @@
+
+module Seri.Dec.Record (
+    ConRec(..), recordD, recordC, recordU,
+    ) where
+
+import Seri.Name
+import Seri.Type
+import Seri.Sig
+import Seri.Fresh
+import Seri.Exp
+import Seri.Dec.Dec
+
+-- | Record type constructors.
+data ConRec = NormalC Name [Type]
+            | RecordC Name [(Name, Type)]
+    deriving(Eq, Show)
+
+
+-- return the undef variable name for a given data constructor name.
+record_undefnm :: Name -> Name
+record_undefnm n = name "__" `nappend` n `nappend` name "_undef"
+
+-- return the updater for a given field.
+record_updnm :: Name -> Name
+record_updnm n = name "__" `nappend` n `nappend` name "_update"
+
+-- | Desugar record constructors from a data declaration.
+-- Also handles deriving construts.
+-- Generates:
+--   data declaration with normal constructors.
+--   accessor functions for every field.
+--   update functions for every field.
+--   An undef declaration for each constructor.
+recordD :: Name -> [TyVar] -> [ConRec] -> [String] -> [Dec]
+recordD nm vars cons derivings =
+  let mkcon :: ConRec -> Con
+      mkcon (NormalC n ts) = Con n ts
+      mkcon (RecordC n ts) = Con n (map snd ts)
+
+      dt = appsT (ConT nm) (map tyVarType vars)
+
+      mkundef :: Con -> Dec
+      mkundef (Con n ts) =
+        let undefnm = (record_undefnm n)
+            undefet = arrowsT $ ts ++ [dt]
+            undefe = appsE (ConE (Sig n undefet)) [VarE (Sig (name "undefined") t) | t <- ts]
+        in ValD (TopSig undefnm [] dt) undefe
+
+      -- TODO: handle correctly the case where two different constructors
+      -- share the same accessor name.
+      mkaccs :: ConRec -> [Dec]
+      mkaccs (NormalC {}) = []
+      mkaccs (RecordC cn ts) = 
+        let mkacc :: ((Name, Type), Int) -> Dec
+            mkacc ((n, t), i) = 
+              let at = arrowsT [dt, t] 
+                  pat = ConP cn ([WildP | _ <- take i ts]
+                         ++ [VarP (name "x")]
+                         ++ [WildP | _ <- drop (i+1) ts])
+                  body = mlamE $ MMatch [pat] (varE (Sig (name "x") t))
+              in ValD (TopSig n [] at) body
+        in map mkacc (zip ts [0..])
+
+      mkupds :: ConRec -> [Dec]
+      mkupds (NormalC {}) = []
+      mkupds (RecordC cn ts) = 
+        let ct = arrowsT $ (map snd ts) ++ [dt]
+            mkupd :: ((Name, Type), Int) -> Dec
+            mkupd ((n, t), i) =
+              let ut = arrowsT [t, dt, dt]
+                  mypat = ConP cn (
+                            [VarP nm | (nm, _) <- take i ts]
+                            ++ [WildP]
+                            ++ [VarP nm | (nm, _) <- drop (i+1) ts])
+                  myexp = appsE (ConE (Sig cn ct)) [VarE (Sig n t) | (n, t) <- ts]
+                  body = mlamE $ MMatch [VarP n, mypat] myexp
+              in ValD (TopSig (record_updnm n) [] ut) body
+        in map mkupd (zip ts [0..])
+                            
+      cons' = map mkcon cons
+      undefs = map mkundef cons'
+      accs = concatMap mkaccs cons
+      upds = concatMap mkupds cons
+      derivations = [derive d nm vars cons' | d <- derivings]
+  in concat [[DataD nm vars cons'], derivations, undefs, accs, upds]
+
+-- | Desugar labelled update.
+recordU :: Exp -> [(Name, Exp)] -> Exp
+recordU e [] = e
+recordU e ((n, v):us) = 
+  appsE (VarE (Sig (record_updnm n) (arrowsT [typeof v, typeof e])))
+         [v, recordU e us]
+
+-- | Desugar labelled constructors.
+recordC :: Sig -> [(Name, Exp)] -> Exp
+recordC (Sig cn ct) fields = recordU (VarE (Sig (record_undefnm cn) ct)) fields
+
+-- Derive an instance of Eq for the given data type declaration.
+deriveEq :: Name -> [TyVar] -> [Con] -> Dec
+deriveEq dn vars cs = error $ "TODO: deriveEq"
+
+-- Derive an instance of Free (before flattening and inference) for the given
+-- data type declaration.
+--
+-- TODO: this should only work for non-recursive data types!
+--
+-- For example:
+--   data Foo = Bar Integer Integer
+--            | Sludge Bool
+--            | Wedge
+--
+-- Derives something of the form:
+--   free = do
+--      isBar <- free
+--      isSludge <- free
+--      aBar <- free 
+--      bBar <- free 
+--      aSludge <- free
+--      return (
+--         if isbar then Bar aBar bBar
+--                  else if then isSludge Sludge aSludge
+--                          else Wedge
+deriveFree :: Name -> [TyVar] -> [Con] -> Dec
+deriveFree dn vars cs = error $ "TODO: deriveFree"
+
+derive :: String -> Name -> [TyVar] -> [Con] -> Dec
+derive "Eq" = deriveEq
+derive "Free" = deriveFree
+derive x = error $ "deriving " ++ show x ++ " not supported in seri"
+
+

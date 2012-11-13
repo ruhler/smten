@@ -37,7 +37,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 
 -- | Hopefully efficient queries regarding a seri environment.
-module Seri.Lambda.Env (
+module Seri.Dec.Env (
     Env(), mkEnv, tweak,
     VarInfo(..),
     lookupVarType, lookupVarValue, lookupVar, lookupVarInfo, lookupVarContext,
@@ -58,11 +58,14 @@ import Data.List(partition)
 import Data.Maybe
 import qualified Data.Map as Map
 
+import Seri.Name
 import Seri.Failable
 import Seri.HashTable as HT
-import Seri.Lambda.IR
-import Seri.Lambda.Ppr
-import Seri.Lambda.Types
+import Seri.Sig
+import Seri.Exp
+import Seri.Dec.Dec
+import Seri.Dec.Ppr
+import Seri.Ppr
 import Seri.Type
 
 -- | Env is an abstract data type representing information about a seri

@@ -7,7 +7,6 @@ import Data.List(transpose)
 
 import Seri
 import Seri.Failable
-import Seri.Lambda hiding (free, query)
 import Seri.DSEL.DSEL
 import Seri.DSEL.SMT
 import Seri.Type

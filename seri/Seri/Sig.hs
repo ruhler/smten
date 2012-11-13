@@ -1,9 +1,9 @@
 
 module Seri.Sig (Sig(..)) where
 
-
 import Seri.Name
 import Seri.Type
+import Seri.Ppr
 
 -- | 'Sig' is a name annotated with a type.
 data Sig = Sig Name Type
@@ -11,4 +11,7 @@ data Sig = Sig Name Type
 
 instance Typeof Sig where
     typeof (Sig _ t) = t
+
+instance Ppr Sig where
+    ppr (Sig n t) = ppr n <+> text "::" <+> ppr t
 

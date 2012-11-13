@@ -34,7 +34,6 @@
 -------------------------------------------------------------------------------
 
 module Seri.Elaborate(
-    toExpH, fromExpH,
     elabwhnf, elaborate,
 
     de_appv1, de_appv2,
@@ -42,7 +41,5 @@ module Seri.Elaborate(
     ) where
 
 import Seri.Elaborate.ExpH
-import Seri.Elaborate.ToExpH
-import Seri.Elaborate.FromExpH
 import Seri.Elaborate.Elaborate
 

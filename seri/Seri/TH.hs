@@ -10,8 +10,13 @@ module Seri.TH (
 import Language.Haskell.TH
 import Language.Haskell.TH.Syntax
 
-import qualified Seri.Lambda as S
 import qualified Seri.Type as S
+import qualified Seri.Name as S
+import qualified Seri.Sig as S
+import qualified Seri.Lit as S
+import qualified Seri.Exp as S
+import qualified Seri.Dec as S
+import qualified Seri.Loader as S
 
 -- Load a seri environment at compile time.
 -- Performs type checking on the environment statically.
@@ -38,12 +43,6 @@ instance Lift S.Dec where
 instance Lift S.TopSig where
     lift (S.TopSig n c t) = [| S.TopSig n c t |]
 
-instance Lift S.Pat where
-    lift (S.ConP t n ps) = [| S.ConP t n ps |]
-    lift (S.VarP s) = [| S.VarP s |]
-    lift (S.LitP l) = [| S.LitP l |]
-    lift (S.WildP t) = [| S.WildP t |]
-
 instance Lift S.Lit where
     lift (S.IntegerL i) = [| S.IntegerL i |]
     lift (S.CharL c) = [| S.CharL c |]
@@ -51,16 +50,13 @@ instance Lift S.Lit where
 instance Lift S.Sig where
     lift (S.Sig n t) = [| S.Sig n t |]
 
-instance Lift S.Match where
-    lift (S.Match ps e) = [| S.Match ps e |]
-    
-
 instance Lift S.Exp where
     lift (S.LitE l) = [| S.LitE l |]
     lift (S.ConE s) = [| S.ConE s |]
     lift (S.VarE s) = [| S.VarE s |]
-    lift (S.LaceE ms) = [| S.LaceE ms |]
-    lift (S.AppE f xs) = [| S.AppE f xs |]
+    lift (S.AppE f x) = [| S.AppE f x |]
+    lift (S.LamE s b) = [| S.LamE s b |]
+    lift (S.CaseE x k y n) = [| S.CaseE x k y n |]
 
 instance Lift S.TyVar where
     lift (S.NormalTV n) = [| S.NormalTV n |]

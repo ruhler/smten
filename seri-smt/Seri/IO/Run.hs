@@ -4,14 +4,16 @@
 -- | Run a Seri Exp of type IO in the haskell IO monad.
 module Seri.IO.Run (run) where
 
-import Seri.Lambda
 import Seri.Elaborate
 import Seri.SMT.Query
 import qualified Seri.SMT.Run
 import Seri.SMT.Yices.Yices1
 import Seri.SMT.Yices.Yices2
 import Seri.SMT.STP.STP
+import Seri.Name
 import Seri.ExpH
+import Seri.Dec
+import Seri.Ppr
 
 -- | Given a Seri expression of type IO a,
 -- returns the Seri expression of type a which results from running the IO

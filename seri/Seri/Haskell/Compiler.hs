@@ -46,8 +46,10 @@ import qualified Language.Haskell.TH.PprLib as H
 import qualified Language.Haskell.TH as H
 
 import Seri.Failable
-import Seri.Lambda
+import Seri.Name
 import Seri.Type
+import Seri.Exp
+import Seri.Dec
 
 data Compiler e t d = Compiler {
     compile_exp :: Compiler e t d -> Exp -> Failable e,
@@ -85,7 +87,7 @@ hsName =
             (_, n') -> dequalify (tail n')
       symify :: String -> String
       symify s = if issymbol s then "(" ++ s ++ ")" else s
-  in H.mkName . symify . dequalify . pretty
+  in H.mkName . symify . dequalify . unname
 
 issymbol :: String -> Bool
 issymbol ('(':_) = False

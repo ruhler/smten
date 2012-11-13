@@ -1,17 +1,17 @@
 
-module Seri.Elaborate.FromExpH (
+module Seri.ExpH.FromExpH (
     fromExpH
   ) where
 
 import Seri.Exp.Exp
-import Seri.ExpH
-import Seri.Elaborate.FreshFast
+import Seri.ExpH.ExpH
+import Seri.Fresh
 
 fromExpH :: ExpH -> Exp
-fromExpH e = runFresh (fromExpHM e)
+fromExpH e = runFreshFast (fromExpHM e)
 
 -- Translate back to the normal Exp representation
-fromExpHM :: ExpH -> Fresh Exp
+fromExpHM :: (Fresh f) => ExpH -> f Exp
 fromExpHM (LitEH l) = return (LitE l)
 fromExpHM (ConEH s) = return (ConE s)
 fromExpHM (VarEH s) = return (VarE s)

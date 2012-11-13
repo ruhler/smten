@@ -35,20 +35,20 @@
 -------------------------------------------------------------------------------
 {
 
-module Seri.Lambda.Parser.Grammar (parse) where
+module Seri.Parser.Grammar (parse) where
 
 import Data.Maybe
 
 import Seri.Failable
-import Seri.Lambda.IR
-import Seri.Lambda.Modularity
-import Seri.Lambda.Prelude
-import Seri.Lambda.Sugar
-import Seri.Lambda.Types
+import Seri.Name
+import Seri.Lit
 import Seri.Type
-
-import Seri.Lambda.Parser.Monad
-import Seri.Lambda.Parser.Lexer
+import Seri.Sig
+import Seri.Exp
+import Seri.Dec
+import Seri.Module
+import Seri.Parser.Monad
+import Seri.Parser.Lexer
 
 }
 
@@ -158,7 +158,7 @@ decl :: { PDec }
  : gendecl
     { PSig $1 }
  | funlhs rhs
-    { PClause (fst $1) (Match (snd $1) $2) }
+    { PClause (fst $1) (MMatch (snd $1) $2) }
 
 cdecls :: { [TopSig] }
  : cdecl
@@ -180,15 +180,15 @@ ldecl :: { (Pat, Exp) }
  : pat rhs
     { ($1, $2) }
 
-idecls :: { [(Name, Match)] }
+idecls :: { [(Name, MMatch)] }
  : idecl
     { [$1] }
  | idecls ';' idecl
     { $1 ++ [$3] }
 
-idecl :: { (Name, Match) }
+idecl :: { (Name, MMatch) }
  : funlhs rhs
-    { (fst $1, Match (snd $1) $2) }
+    { (fst $1, MMatch (snd $1) $2) }
 
 gendecl :: { TopSig }
  : var '::' type
@@ -301,9 +301,9 @@ exp :: { Exp }
 
 exp10 :: { Exp }
  : '\\' var_typed '->' exp
-    { lamE $ Match [VarP $2] $4 }
+    { lamE $2 $4 }
  | 'let' '{' ldecls opt(';') '}' 'in' exp
-    { letE $3 $7 }
+    { mletsE $3 $7 }
  | 'if' exp 'then' exp 'else' exp
     { ifE $2 $4 $6 }
  | 'case' exp 'of' '{' alts opt(';') '}'
@@ -332,7 +332,7 @@ aexp :: { Exp }
  | '(' exp ')'
     { $2 }
  | '(' exp ',' exps_commasep ')'
-    { tupE ($2 : $4) }
+    { tupleE ($2 : $4) }
  | '['  exps_commasep ']'
     { listE $2 }
  | aexp '{' opt(fbinds) '}'
@@ -349,15 +349,15 @@ literal :: { Exp }
  | string
     { stringE $1 }
 
-alts :: { [Match] }
+alts :: { [SMatch] }
  : alt
     { [$1] }
  | alts ';' alt
     { $1 ++ [$3] }
 
-alt :: { Match }
+alt :: { SMatch }
  : pat '->' exp
-    { Match [$1] $3 }
+    { SMatch $1 $3 }
 
 stmts :: { [Stmt] }
  : stmt 
@@ -366,8 +366,8 @@ stmts :: { [Stmt] }
     { $1 ++ [$3] }
 
 stmt :: { Stmt }
- : var_typed '<-' exp
-    { BindS (VarP $1) $3 }
+ : var '<-' exp
+    { BindS (VarP (name $1)) $3 }
  | exp 
     { NoBindS $1 }
  | 'let' '{' ldecl opt(';') '}'
@@ -388,11 +388,11 @@ pat :: { Pat }
  : pat10
     { $1 }
  | pat10 ':' pat
-    { ConP UnknownT (name ":") [$1, $3] }
+    { ConP (name ":") [$1, $3] }
 
 pat10 :: { Pat }
- : gcon_typed apats
-    { let Sig n t = $1 in ConP t n $2 }
+ : gcon apats
+    { ConP (name $1) $2 }
  | apat
     { $1 }
 
@@ -403,10 +403,10 @@ apats :: { [Pat] }
     { $1 ++ [$2] }
 
 apat :: { Pat }
- : var_typed
-    { let Sig n t = $1 in if n == (name "_") then WildP t else VarP $1 }
- | gcon_typed
-    { let Sig n t = $1 in ConP t n [] }
+ : var
+    { if $1 == "_" then WildP else VarP (name $1) }
+ | gcon
+    { ConP (name $1) [] }
  | integer
     { LitP (IntegerL $1) }
  | char
@@ -414,15 +414,9 @@ apat :: { Pat }
  | '(' pat ')'
     { $2 }
  | '(' pat ',' pats_commasep ')'
-    { tupP ($2 : $4) }
+    { tupleP ($2 : $4) }
  | '[' pats_commasep ']'
     { listP $2 }
-
-gcon_typed :: { Sig }
- : '(' gcon '::' type ')'
-    { Sig (name $2) $4 }
- | gcon
-    { Sig (name $1) UnknownT }
 
 gcon :: { String }
  : '(' ')'
@@ -585,7 +579,7 @@ parseError tok = lfailE $ "parser error at " ++ show tok
 data PDec =
     PDec Dec
   | PSig TopSig
-  | PClause Name Match
+  | PClause Name MMatch
 
 isPClause :: PDec -> Bool
 isPClause (PClause {}) = True
@@ -603,7 +597,7 @@ coalesce ((PSig s):ds) =
 coalesce ((PDec d):ds) = d : coalesce ds
 
 -- Merge clauses for the same method into a single method.
-icoalesce :: [(Name, Match)] -> [Method]
+icoalesce :: [(Name, MMatch)] -> [Method]
 icoalesce [] = []
 icoalesce ((n, c):ms) =
     let (me, rms) = span (\(n', _) -> n' == n) ms

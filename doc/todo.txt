@@ -152,3 +152,8 @@ Other::
 * Finish reorganizing Lambda module layout (get rid of Seri.Lambda.*)
 * Have name sugar for arrowN, tupleN, de_tupleN, unitN, etc...
 
+Haskell Backend::
+* Push the compiler into one function, don't break it up the silly way it has
+  been.
+
+

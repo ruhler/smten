@@ -51,13 +51,16 @@ import Data.Monoid
 import Seri.Bit
 import Seri.Failable
 import qualified Seri.HashTable as HT
-import Seri.Lambda hiding (transform)
+import Seri.Name
+import Seri.Lit
+import Seri.Sig
 import Seri.Type
+import Seri.Exp
 import Seri.ExpH
+import Seri.Dec
+import Seri.Ppr (pretty)
 
 import Seri.Elaborate.ExpH
-import Seri.Elaborate.ToExpH
-import Seri.Elaborate.FromExpH
 
 -- Weak head normal form elaboration
 elabwhnf :: Env -> ExpH -> ExpH

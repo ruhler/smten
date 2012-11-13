@@ -36,19 +36,21 @@
 {-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE FlexibleInstances #-}
 
-module Seri.Lambda.Modularity (
+module Seri.Module.Module (
     Module(..), Import(..), flatten, flatten1,
     ) where
 
 import Control.Monad.State
 import Data.Functor
 
-import Seri.Lambda.IR
-import Seri.Lambda.Ppr
-import Seri.Lambda.Prelude
-import Seri.Lambda.Types
 import Seri.Failable
+import Seri.Ppr
+import Seri.Name
+import Seri.Sig
 import Seri.Type
+import Seri.Exp
+import Seri.Dec
+
 
 -- | Currently imports are restricted to the form:
 -- > import Foo.Bar
@@ -172,18 +174,12 @@ instance Qualify Exp where
         f' <- qualify f
         x' <- qualify x
         return (AppE f' x')
-    qualify (LaceE ms) = LaceE <$> mapM qualify ms
-
-
-instance Qualify Match where
-    qualify (Match ps m) = do
-        ps' <- mapM qualify ps
-        m' <- withbound (concatMap bindingsP' ps) $ qualify m 
-        return (Match ps' m')
-
-instance Qualify Pat where
-    -- TODO: qualify patterns
-    qualify p = return p
+    qualify (LamE s@(Sig n _) b) = LamE s <$> (withbound [n] $ qualify b)
+    qualify (CaseE x k y n) = do
+        x' <- qualify x
+        y' <- qualify y
+        n' <- qualify n
+        return $ CaseE x' k y' n'
 
 instance Qualify Method where
     qualify (Method nm e) = do

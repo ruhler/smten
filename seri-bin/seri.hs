@@ -44,16 +44,20 @@ import System.Environment
 import System.Exit
 import qualified System.Console.CmdArgs.Implicit as A
 
+import Seri.Name
+import Seri.Sig
 import Seri.Failable
-import Seri.Lambda
 import Seri.ExpH
 import Seri.Elaborate
+import Seri.Ppr
+import Seri.Dec
+import Seri.Loader
 
 import qualified Seri.SMT.Run as Q
 import qualified Seri.SMT.Query as Q
 
 import qualified Seri.IO.Run as I
-import Seri.Haskell
+--import Seri.Haskell
 
 data Run = Io | Type | Haskell
     deriving (Show, Eq, Typeable, Data)
@@ -99,5 +103,7 @@ main = do
             I.run env m
             return ()
         Type -> putStrLn . pretty $ env
-        Haskell -> putStrLn . show $ haskell haskellH (getDecls env) nmain
+        Haskell -> do
+            error $ "TODO: support haskell"
+            --putStrLn . show $ haskell haskellH (getDecls env) nmain
 

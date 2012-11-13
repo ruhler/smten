@@ -35,7 +35,7 @@
 
 {-# LANGUAGE PatternGuards #-}
 
-module Seri.Lambda.Parser.Lexer (
+module Seri.Parser.Lexer (
     lexer,
     ) where
 
@@ -46,7 +46,7 @@ import Data.Char hiding (isSymbol)
 import Data.Functor
 import Data.Maybe (fromMaybe)
 
-import Seri.Lambda.Parser.Monad
+import Seri.Parser.Monad
 
 isSmall :: Char -> Bool
 isSmall '_' = True

@@ -14,7 +14,6 @@ import Foreign.C.Types
 import qualified Foreign.Concurrent as F
 import Seri.SMT.STP.FFI
 
-import qualified Seri.Lambda as S
 import qualified Seri.SMT.Query as Q
 import Seri.SMT.Solver
 import Seri.SMT.Syntax

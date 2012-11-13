@@ -4,7 +4,6 @@
 import Prelude hiding (fst, snd, (/=), (==), (<), (>), (&&))
 import qualified Prelude
 
-import Seri.Lambda hiding (free, query)
 import Seri.SMT.Solver (Solver)
 import Seri.SMT.Yices.Yices2
 import Seri.DSEL.DSEL
@@ -13,6 +12,7 @@ import Seri
 import Seri.TH
 import Seri.Type
 import Seri.ExpH
+import Seri.Dec
 
 q1 :: (Solver s) => Query s (Answer Integer)
 q1 = do

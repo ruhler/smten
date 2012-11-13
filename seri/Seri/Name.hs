@@ -1,11 +1,14 @@
 
+{-# LANGUAGE TypeSynonymInstances #-}
+
 module Seri.Name (
     Name, name, unname, ncons, ntake, nhead, ntail, nnull, nappend,
     ) where
 
 import Data.Monoid
-
 import qualified Data.ByteString.Char8 as STR
+
+import Seri.Ppr
 
 type Name = STR.ByteString
 
@@ -32,4 +35,7 @@ nnull = STR.null
 
 nappend :: Name -> Name -> Name
 nappend = STR.append
+
+instance Ppr Name where
+    ppr = text . unname
 

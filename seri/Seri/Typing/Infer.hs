@@ -37,7 +37,7 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 
-module Seri.Lambda.TypeInfer (
+module Seri.Typing.Infer (
         TypeInfer(..)
     ) where
 
@@ -49,13 +49,14 @@ import qualified Data.Map as Map
 import Data.Maybe(fromMaybe)
 
 import Seri.Failable
-import Seri.Lambda.Env
-import Seri.Lambda.Generics
-import Seri.Lambda.IR
-import Seri.Lambda.Ppr
-import Seri.Lambda.Types
-import Seri.Lambda.TypeSolver
+import Seri.Name
+import Seri.Sig
+import Seri.Lit
 import Seri.Type
+import Seri.Exp
+import Seri.Dec
+import Seri.Typing.Solver
+
 
 class TypeInfer a where
     -- | Perform type inference on the given object.
@@ -103,20 +104,10 @@ inferexp env t e = do
  --trace ("solution: " ++ pretty sol) (return ())
  return $ assignl (flip Map.lookup sol) e'
 
-
-data DeUnknown = DeUnknown
-
-instance TransformerM DeUnknown (State Integer) where
-    tm_Type _ UnknownT = do
-        id <- get
-        put (id+1)
-        return (VarT . name $ "~" ++ show id)
-    tm_Type _ t = return t
-        
 -- | Replace all UnknownT with new variable types.
 -- State is the id of the next free type variable to use.
 deunknown :: Exp -> State Integer Exp
-deunknown = transformM DeUnknown
+deunknown = error $ "TODO: Typing.Infer.deunknown"
 
 data TIS = TIS {
     ti_varid :: Integer,        -- ^ The next free VarT id
@@ -190,31 +181,23 @@ instance Constrain Exp where
         addc (arrowT it ot) tf
         addc it tx
         return ot
-    constrain (LaceE ms) = do
-        tps <- mapM (mapM constrain) [ps | Match ps _ <- ms]
-        tms <- mapM constrain ms
-        sequence_ [mapM (uncurry addc) (zip (head tps) tp) | tp <- tail tps]
-        sequence_ [addc (head tms) tm | tm <- tail tms]
-        return (arrowsT (head tps ++ [head tms]))
+    constrain (LamE s x) = scoped [s] (constrain x)
+    constrain (CaseE x (Sig kn kt) y n) = do
+        xt <- constrain x
+        yt <- constrain y
+        nt <- constrain n 
 
--- Only constrains the body. Doesn't constrain the patterns.
-instance Constrain Match where
-    constrain (Match ps e) = scoped (concatMap bindingsP ps) (constrain e)
-
-instance Constrain Pat where
-    constrain (ConP t n ps) = do
-        tps <- mapM constrain ps
         env <- gets ti_env
-        cty <- lift $ lookupDataConType env n
-        rcty <- retype cty
-        addc rcty (arrowsT (tps ++ [t]))
-        let pts = init (de_arrowsT rcty)
-        sequence_ [addc pt tp | (pt, tp) <- zip pts tps]
-        return t
-    constrain (VarP (Sig _ t)) = return t
-    constrain (LitP l) = return (typeof l)
-    constrain (WildP t) = return t
+        kty <- lift $ lookupDataConType env kn
+        rkty <- retype kty
+        addc rkty kt
 
+        let at = last $ de_arrowsT rkty
+        addc at (typeof x)
+
+        let ywt = arrowsT (init (de_arrowsT rkty) ++ [nt])
+        addc ywt yt
+        return nt
 
 -- Given a type, return a new version of the type with new VarTs.
 retype :: Type -> TI Type

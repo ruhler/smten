@@ -33,66 +33,51 @@
 -- 
 -------------------------------------------------------------------------------
 
-module Seri.Lambda.Utils (
-    free, free',
-    Uses(..), uses
+{-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE FlexibleInstances #-}
+
+module Seri.Fresh.Fast (
+    Fresh(..), runFreshFast,
     ) where
 
-import Data.List(nub)
-import Data.Monoid
+import Seri.Name
+import Seri.Sig
+import Seri.Fresh.Fresh
 
-import Seri.Lambda.IR
-import Seri.Lambda.Types
+import Control.Monad.State.Strict
+import Data.ByteString.Char8 as S
+
+import Data.Char(isDigit)
+import Data.List(dropWhileEnd)
+import qualified Data.Map as Map
 
 
--- | Return a list of the free variables in the given expression.
-free :: Exp -> [Sig]
-free =
-  let free' :: [Name] -> Exp -> [Sig]
-      free' _ (LitE {}) = []
-      free' _ (ConE {}) = []
-      free' bound (VarE (Sig n _)) | n `elem` bound = []
-      free' _ (VarE s) = [s]
-      free' bound (AppE a b) = nub $ free' bound a ++ free' bound b
-      free' bound (LaceE ms) =
-        let freem :: Match -> [Sig]
-            freem (Match ps b) = free' (map (\(Sig n _) -> n) (concat (map bindingsP ps)) ++ bound) b
-        in nub $ concat (map freem ms)
-  in free' []
+type FreshFast = State Name
 
-free' :: Exp -> [Name]
-free' e = [n | Sig n _ <- free e]
+instance Fresh FreshFast where
+    fresh s@(Sig _ t) = do
+       id <- get
+       put $! incrnm id
+       return (Sig id t)
 
-data Uses = NoUse | SingleUse | MultiUse
-    deriving(Eq, Show)
+runFreshFast :: FreshFast a -> a
+runFreshFast x = evalState x (name "~Ea")
 
-instance Num Uses where
-  fromInteger 0 = NoUse
-  fromInteger 1 = SingleUse
-  fromInteger _ = MultiUse
+-- TODO: this assumes name is a Char8 bytestring.
+-- Is that a bad idea?
+-- 
+-- Name is of the form "~E<num>"
+-- We want to increment the number.
+--
+-- Only, instead of numbers made of digits, we use numbers made of lowercase
+-- letters (which gives us more options before extending the string size)
+incrnm :: Name -> Name
+incrnm n = 
+  let start = S.init n
+      end = S.last n
+  in case end of
+        'z' -> S.snoc (incrnm start) 'a'
+        'E' -> name "~Ea"
+        _ -> S.snoc start (succ end)
+        
 
-  (+) NoUse x = x
-  (+) SingleUse NoUse = SingleUse
-  (+) SingleUse _ = MultiUse
-  (+) MultiUse _ = MultiUse
-
-  (*) = error "* Uses"
-  abs = error "abs Uses"
-  signum = error "signum Uses"
-
--- Return the number of times a variable is used in the given expression.
-uses :: (Num n) => Name -> Exp -> n
-uses n =
-  let uses' :: (Num n) => Exp -> n
-      uses' (LitE {}) = 0
-      uses' (ConE {}) = 0  
-      uses' (VarE (Sig nm _)) | nm == n = 1
-      uses' (VarE {}) = 0
-      uses' (AppE a b) = uses' a + uses' b
-      uses' (LaceE ms) = 
-        let usesm :: (Num n) => Match -> n
-            usesm (Match ps _) | n `elem` concatMap bindingsP' ps = 0
-            usesm (Match _ b) = uses' b
-        in sum (map usesm ms)
-  in uses'
-      

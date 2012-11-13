@@ -6,9 +6,11 @@ module Seri.SMT.Run (run) where
 
 import Debug.Trace
 
-import Seri.Lambda hiding (free, query)
 import Seri.Type
 import Seri.ExpH
+import Seri.Name
+import Seri.Sig
+import Seri.Ppr
 import Seri.SMT.Query
 import Seri.SMT.Solver (Solver)
 

@@ -1,11 +1,11 @@
 
-module Seri.Lambda.Parser (
+module Seri.Parser (
     -- * The Seri Language
     -- $doc
     parse
     ) where
 
-import Seri.Lambda.Parser.Grammar
+import Seri.Parser.Grammar
 
 -- $doc
 -- The Seri language is a subset of haskell. The following lists the

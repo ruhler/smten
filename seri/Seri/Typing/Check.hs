@@ -35,23 +35,23 @@
 
 {-# LANGUAGE FlexibleInstances #-}
 
-module Seri.Lambda.TypeCheck (TypeCheck(..)) where
+module Seri.Typing.Check (TypeCheck(..)) where
 
 import Data.List(nub)
 
 import Seri.Failable
-import Seri.Lambda.Env
-import Seri.Lambda.IR
-import Seri.Lambda.Ppr
-import Seri.Lambda.Types
-import Seri.Lambda.Utils
+import Seri.Name
+import Seri.Lit
+import Seri.Sig
+import Seri.Ppr
+import Seri.Exp
+import Seri.Dec
 import Seri.Type
 
 class TypeCheck a where
     -- | Type check the given object under the given environment.
     -- Fails if there is an error.
     typecheck :: Env -> a -> Failable ()
-
 
 type TypeEnv = [(Name, Type)]
 
@@ -92,35 +92,6 @@ instance TypeCheck Dec where
                  mapM_ checkmeth ms
           checkdec d@(PrimD {}) = return ()
 
-          checkpat :: Pat -> Failable [(Name, Type)]
-          checkpat p@(ConP pt n ps) = do
-             let ct = arrowsT ((map typeof ps) ++ [pt])
-             texpected <- lookupDataConType env n
-             if isSubType texpected ct
-                then return ()
-                else throw $ "checkpat: expecting type " ++ pretty texpected ++ ", but found type " ++ pretty ct
-             binds <- mapM checkpat ps
-             let concated = concat binds
-             if length concated /= length (nub (map fst concated))
-                then throw $ "VarP appears multiple times in " ++ pretty p
-                else return ()
-             let twants = init (de_arrowsT ct)
-             let assertpat w p =
-                    if w == typeof p
-                        then return () 
-                        else throw $ "checkpat: expected type " ++ pretty w ++ " but found type " ++ pretty (typeof p) ++ " in pattern " ++ pretty p
-             sequence [assertpat w p | (w, p) <- zip twants ps]
-             return concated
-          checkpat (VarP (Sig n t)) = return [(n, t)]
-          checkpat (LitP i) = return []
-          checkpat (WildP t) = return []
-                
-
-          checkmatch :: TypeEnv -> Match -> Failable ()
-          checkmatch tenv (Match ps b) = do
-            bindings <- mapM checkpat ps
-            checkexp (concat bindings ++ tenv) b
-
           -- checkexp tenv e
           -- Type check an expression.
           --    tenv - a mapping from bound variable name to type
@@ -159,25 +130,28 @@ instance TypeCheck Dec where
                             " in expression " ++ pretty x
                 t -> throw $ "expected function type, but got type " ++ pretty t ++ " in expression " ++ pretty f
 
-          checkexp tenv (LaceE []) = throw "Empty lace expression"
-          checkexp tenv (LaceE ms@(Match ps1 _ : _)) = do
-             mapM_ (checkmatch tenv) ms
-             let pattypes = map typeof ps1
-             let badpattypes = filter (\ps -> pattypes /= map typeof ps) [ps | Match ps _ <- tail ms]
-             if null badpattypes
-                then return ()
-                else
-                  let printtypes ts = render (sep $ punctuate comma (map ppr ts))
-                  in throw $ "Expected types " ++ printtypes pattypes
-                            ++ " in pattern " ++ pretty (head (badpattypes))
-                            ++ " but found types " ++ printtypes (head (badpattypes))
-             let badmtypes = filter (\e -> typeof e /= typeof (head ms)) [e | Match _ e <- ms]
-             if null badmtypes
-                then return ()
-                else throw $ "Expected type " ++ pretty (typeof (head ms))
-                            ++ " in match expression " ++ pretty (head (badmtypes))
-                            ++ " but found type " ++ pretty (typeof (head (badmtypes)))
+          checkexp tenv (LamE (Sig n t) x) = checkexp ((n, t):tenv) x
 
+          checkexp tenv (CaseE x k y n) = do
+            checkexp tenv x
+            checkexp tenv y
+            checkexp tenv n
+
+            -- Verify the argument type matches the type of the constructor.
+            let at = last $ de_arrowsT (typeof k)
+            if at == typeof x
+                then return ()
+                else throw $ "checkexp case: expected argument type " ++ pretty at ++
+                        " but got type " ++ pretty (typeof x) ++
+                        " in expression " ++ pretty x
+
+            -- Verify y has the right type.
+            let yt = arrowsT (init (de_arrowsT (typeof k)) ++ [typeof n])
+            if yt == typeof y
+                then return ()
+                else throw $ "checkexp case: expected type " ++ pretty yt ++
+                        " but got type " ++ pretty (typeof y) ++
+                        " in expression " ++ pretty y
       in checkdec
 
 -- | Verify all the needed class instances are either in the context or

@@ -33,38 +33,55 @@
 -- 
 -------------------------------------------------------------------------------
 
-module Seri.Elaborate.FreshPretty (
-    Fresh, runFresh, fresh,
+-- | Seri declarations.
+module Seri.Dec.Dec (
+    TyVar(..), tyVarType, tyVarName,
+    TopSig(..), Class(..), Context,
+    Con(..), Method(..), Dec(..),
     ) where
 
-import Control.Monad.State.Strict
+import Seri.Name
+import Seri.Type
+import Seri.Lit
+import Seri.Sig
+import Seri.Exp
 
-import Data.Char(isDigit)
-import Data.List(dropWhileEnd)
-import qualified Data.Map as Map
+-- | 'TopSig' is a signature with a context.
+data TopSig = TopSig Name Context Type
+    deriving(Eq, Show)
 
-import Seri.Lambda
+type Context = [Class]
 
--- Fresh names
---
--- We store a mapping from name to number such that the concatenation of the
--- name and the number is guaranteed to be a fresh name, and the
--- concatenation of the name and any higher number is guaranteed to be a
--- fresh name.
+-- | 'Class' represents a single predicate.
+-- For example, the predicate (MonadState s m) is represented with:
+-- > Class "MonadState" [VarT "s", VarT "m"]
+data Class = Class Name [Type]
+      deriving(Eq, Show)
 
-type Fresh = State (Map.Map Name Integer)
+data Con = Con Name [Type]
+    deriving(Eq, Show)
 
--- return a fresh name based on the given name.
-fresh :: Sig -> Fresh Sig
-fresh s@(Sig n t) = do
-   let nbase = name $ dropWhileEnd isDigit (unname n)
-   m <- get
-   let (id, m') = Map.insertLookupWithKey (\_ -> (+)) nbase 1 m
-   put $! m'
-   case id of
-      Nothing -> return $ Sig nbase t
-      Just x -> return $ Sig (nbase `nappend` name (show x)) t
+data Method = Method Name Exp
+    deriving(Eq, Show)
 
-runFresh :: Fresh a -> a
-runFresh x = evalState x Map.empty
+data TyVar = NormalTV Name
+           | NumericTV Name
+       deriving (Eq, Ord, Show)
+
+data Dec = ValD TopSig Exp              -- ^ nm :: ctx => ty ; nm = exp
+         | DataD Name [TyVar] [Con]      -- ^ data nm vars = 
+         | ClassD Name [TyVar] [TopSig]  -- ^ class nm vars where { sigs }
+         | InstD Context Class [Method] -- ^ instance ctx => cls where { meths }
+         | PrimD TopSig                 -- ^ nm :: ctx => ty ;
+     deriving (Eq, Show)
+
+-- | Convert a type variable to a variable type.
+tyVarType :: TyVar -> Type
+tyVarType (NormalTV n) = VarT n
+tyVarType (NumericTV n) = NumT (VarNT n)
+
+-- | Get the name of a type variable
+tyVarName :: TyVar -> Name
+tyVarName (NormalTV n) = n
+tyVarName (NumericTV n) = n
 

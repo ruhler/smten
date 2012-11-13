@@ -34,7 +34,7 @@
 -------------------------------------------------------------------------------
 
 -- | Parser monad used in seri parsing.
-module Seri.Lambda.Parser.Monad (
+module Seri.Parser.Monad (
     Location(..), Token(..), ParserMonad, runParser,
     failE, lfailE, 
     single, many, newline, getText, setText, getLoc, getTLoc, saveLoc,

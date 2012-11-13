@@ -35,7 +35,7 @@
 
 {-# LANGUAGE FlexibleInstances #-}
 
-module Seri.Lambda.TypeSolver (solve) where
+module Seri.Typing.Solver (solve) where
 
 import Debug.Trace
 
@@ -44,10 +44,9 @@ import Control.Monad.State
 import qualified Data.Map as Map
 
 import Seri.Failable
-import Seri.Lambda.IR
-import Seri.Lambda.Ppr
-import Seri.Lambda.Types
+import Seri.Name
 import Seri.Type
+import Seri.Ppr
 
 -- | Solve a type constraint system.
 -- Here's how we solve it:

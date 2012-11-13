@@ -48,8 +48,9 @@ import qualified Language.Haskell.TH.PprLib as H
 import qualified Language.Haskell.TH as H
 
 import Seri.Failable
-import Seri.Lambda
 import Seri.Type
+import Seri.Lit
+import Seri.Exp
 import Seri.Haskell.Compiler
 
 hsLit :: Lit -> H.Lit

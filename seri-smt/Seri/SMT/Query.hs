@@ -58,10 +58,12 @@ import qualified Seri.SMT.Solver as SMT
 
 import Seri.Bit
 import Seri.Failable
-import Seri.Lambda hiding (free, query)
-import qualified Seri.Lambda
+import Seri.Name
+import Seri.Sig
 import Seri.Type
 import Seri.ExpH
+import Seri.Dec
+import Seri.Ppr
 import Seri.SMT.Translate
 import Seri.Elaborate hiding (query)
 import qualified Seri.Elaborate
