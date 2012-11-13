@@ -13,5 +13,6 @@ instance Typeof Sig where
     typeof (Sig _ t) = t
 
 instance Ppr Sig where
+    ppr (Sig n UnknownT) = ppr n
     ppr (Sig n t) = ppr n <+> text "::" <+> ppr t
 

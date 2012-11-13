@@ -6,6 +6,8 @@ module Seri.Exp.Match (
     caseE, clauseE, mlamE, mletE, mletsE,
     ) where
 
+import Data.Maybe(fromMaybe)
+
 import Seri.Lit
 import Seri.Name
 import Seri.Type
@@ -61,7 +63,15 @@ matchE x (SMatch (ConP nm ps) yv) n =
       --                       _ -> n
       --               _ -> n
       --    _ -> n
-  in error $ "TODO: matchE ConP"
+      mkcases :: (Fresh m) => [(Pat, Exp)] -> Exp -> Exp -> m Exp
+      mkcases [] y n = return y
+      mkcases ((p, x):ps) y n = do
+        body <- mkcases ps y n
+        matchE x (SMatch p body) n
+  in do
+      vars <- mapM fresh [Sig (name $ "_p" ++ show i) UnknownT | i <- [1..(length ps)]]
+      body <- mkcases [(p, varE v) | (p, v) <- zip ps vars] yv n
+      return $ CaseE x (Sig nm UnknownT) (lamsE vars body) n
 
 -- | Desugar multiple matches. Or, in other words, a case statement with an
 -- explicit default clause.
@@ -78,15 +88,49 @@ matchesE e (m:ms) n = do
 
 -- | Desugar a case expression.
 caseE :: Exp -> [SMatch] -> Exp
-caseE x ms = runFreshPretty $ matchesE x ms (errorE UnknownT "case no match")
+caseE x ms = runFreshPretty $ matchesE x ms (errorE "case no match")
 
 -- | Single argument clause expression
-sclauseE :: (Fresh m) => [SMatch] -> m Exp
-sclauseE = error $ "TODO: sclauseE"
+sclauseE :: [SMatch] -> Exp
+sclauseE ms =
+  let x = Sig (name "_x") UnknownT
+  in lamE x $ caseE (varE x) ms
 
 -- | Multi-argument clause expression
+-- This converts multi-arg clause expressions to single-arg clause
+-- expressions, then calls sclauseE.
+--
+--  case of
+--    p1a, p1b, p1c -> m1
+--    p2a, p2b, p2c -> m2
+--
+-- Is converted into:
+--   (curry (curry (
+--      case of
+--         ((p1a, p1b), p1c) -> m1
+--         ((p2a, p2b), p2c) -> m1
 clauseE :: [MMatch] -> Exp
-clauseE = error $ "TODO: clauseE"
+clauseE (MMatch [] b : _) = b
+clauseE ms@(MMatch ps _ : _) = 
+  let tupp :: Pat -> Pat -> Pat
+      tupp a b = tupleP [a, b]
+
+      repat :: [Pat] -> Pat
+      repat = foldl1 tupp
+
+      -- Apply curry to the given expression n times.
+      curryn :: Int -> Exp -> Exp
+      curryn n e | n < 0 = error $ "curryn with " ++ show n
+      curryn 0 e = e
+      curryn n e = curryn (n-1) (curryE e)
+
+      -- Apply curry to the given expression.
+      curryE :: Exp -> Exp
+      curryE e = appE (varE (Sig (name "curry") UnknownT)) e
+
+      sms = [SMatch (repat ps) b | MMatch ps b <- ms]
+  in curryn (length ps - 1) (sclauseE sms)
+
 
 -- | Lambda with pattern matching.
 mlamE :: MMatch -> Exp

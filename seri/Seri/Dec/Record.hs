@@ -96,8 +96,37 @@ recordC :: Sig -> [(Name, Exp)] -> Exp
 recordC (Sig cn ct) fields = recordU (VarE (Sig (record_undefnm cn) ct)) fields
 
 -- Derive an instance of Eq for the given data type declaration.
+-- Generates something of the form:
+--    instance (Eq a, Eq b, ...) => Eq (Foo a b ...) where
+--       (==) (Foo1 a1 a2 ...) (Foo1 b1 b2 ...) = and [a1 == b1, a2 == b2, ...]
+--       (==) (Foo2 a1 a2 ...) (Foo2 b1 b2 ...) = and [a1 == b1, a2 == b2, ...]
+--            ...
+--       (==) (FooN a1 a2 ...) (FooN b1 b2 ...) = and [a1 == b1, a2 == b2, ...]
+--       (==) _ _ = False
+--
+--       (/=) = (/=#)
 deriveEq :: Name -> [TyVar] -> [Con] -> Dec
-deriveEq dn vars cs = error $ "TODO: deriveEq"
+deriveEq dn vars cs =
+  let dt = appsT (ConT dn) (map tyVarType vars)
+        
+      mkcon :: Con -> MMatch
+      mkcon (Con cn ts) =
+        let fieldsA = [Sig (name $ 'a' : show i) t | (t, i) <- zip ts [1..]]
+            fieldsB = [Sig (name $ 'b' : show i) t | (t, i) <- zip ts [1..]]
+            pA = ConP cn [VarP n | Sig n _ <- fieldsA]
+            pB = ConP cn [VarP n | Sig n _ <- fieldsB]
+            body = appsE (VarE (Sig (name "and") UnknownT))
+                    [listE [appsE (VarE (Sig (name "==") UnknownT)) 
+                               [VarE a, VarE b] | (a, b) <- zip fieldsA fieldsB]]
+        in MMatch [pA, pB] body
+
+      def = MMatch [WildP, WildP] falseE
+      ctx = [Class (name "eq") [tyVarType c] | c <- vars]
+      eqclauses = map mkcon cs ++ [def]
+      eq = Method (name "==") (clauseE eqclauses)
+      ne = Method (name "/=") (varE (Sig (name "/=#") UnknownT))
+  in InstD ctx (Class (name "Eq") [dt]) [eq, ne]
+    
 
 -- Derive an instance of Free (before flattening and inference) for the given
 -- data type declaration.

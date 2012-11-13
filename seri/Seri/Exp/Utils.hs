@@ -1,10 +1,12 @@
 
-module Seri.Exp.Utils (free, free') where
+module Seri.Exp.Utils (free, free', transformMTE) where
 
+import Data.Functor
 import Data.List(nub)
 
 import Seri.Name
 import Seri.Sig
+import Seri.Type
 import Seri.Exp.Exp
 
 -- | Return a list of the free variables in the given expression.
@@ -22,4 +24,25 @@ free =
 
 free' :: Exp -> [Name]
 free' e = [n | Sig n _ <- free e]
+
+-- Perform a monadic transformation on all the types appearing in the given
+-- expression
+transformMTE :: (Functor m, Monad m) => (Type -> m Type) -> Exp -> m Exp
+transformMTE f e =
+  let me = transformMTE f
+  in case e of
+       LitE {} -> return e
+       ConE (Sig n t) -> (ConE . Sig n) <$> f t
+       VarE (Sig n t) -> (VarE . Sig n) <$> f t
+       AppE a b -> do
+            [a', b'] <- mapM me [a, b]
+            return $ AppE a' b'
+       LamE (Sig n t) b -> do
+          t' <- f t
+          b' <- me b
+          return $ LamE (Sig n t') b'
+       CaseE x (Sig kn kt) y n -> do
+         kt' <- f kt
+         [x', y', n'] <- mapM me [x, y, n]
+         return $ CaseE x' (Sig kn kt') y' n'
 

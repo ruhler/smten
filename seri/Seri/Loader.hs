@@ -102,8 +102,8 @@ load path mainmod = do
 -- Performs module flattening, type inference, and type checking.
 loadenv :: SearchPath -> FilePath -> IO Env
 loadenv path fin = do
-    query <- load path fin
-    flat <- attemptIO $ flatten query
+    mods <- load path fin
+    flat <- attemptIO $ flatten mods
     decs <- attemptIO $ typeinfer (mkEnv flat) flat
     let env = mkEnv decs
     attemptIO $ typecheck env decs

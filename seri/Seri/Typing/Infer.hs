@@ -55,6 +55,7 @@ import Seri.Lit
 import Seri.Type
 import Seri.Exp
 import Seri.Dec
+import Seri.Ppr(pretty)
 import Seri.Typing.Solver
 
 
@@ -71,8 +72,9 @@ instance TypeInfer [Dec] where
     typeinfer e = mapM (typeinfer e)
 
 instance TypeInfer Dec where
-    typeinfer = inferdec
-    
+    typeinfer e d = onfail (\msg -> throw $ msg ++ "\nWhen running type inference on " ++ pretty d) $
+       inferdec e d
+
 -- Run inference on a single declaration, given the environment.
 inferdec :: Env -> Dec -> Failable Dec
 inferdec env (ValD (TopSig n ctx t) e) = do
@@ -107,7 +109,13 @@ inferexp env t e = do
 -- | Replace all UnknownT with new variable types.
 -- State is the id of the next free type variable to use.
 deunknown :: Exp -> State Integer Exp
-deunknown = error $ "TODO: Typing.Infer.deunknown"
+deunknown = 
+  let f UnknownT = do
+          id <- get
+          put (id+1)
+          return (VarT . name $ "~" ++ show id)
+      f t = return t
+  in transformMTE f
 
 data TIS = TIS {
     ti_varid :: Integer,        -- ^ The next free VarT id

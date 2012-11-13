@@ -81,6 +81,10 @@ set SUDOKU build/seri-bin/sudoku
 set SRI_SERI seri/sri
 
 # The general seri test
+run $SERI --desugar \
+    --include $::SRI_SERI \
+    -f $::SRI_SERI/Seri/Tests/Basic.sri \
+    > build/test/tests.desugared
 run $SERI --type \
     --include $::SRI_SERI \
     -f $::SRI_SERI/Seri/Tests/Basic.sri \

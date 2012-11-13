@@ -52,6 +52,7 @@ import Seri.Elaborate
 import Seri.Ppr
 import Seri.Dec
 import Seri.Loader
+import Seri.Module
 
 import qualified Seri.SMT.Run as Q
 import qualified Seri.SMT.Query as Q
@@ -59,7 +60,7 @@ import qualified Seri.SMT.Query as Q
 import qualified Seri.IO.Run as I
 --import Seri.Haskell
 
-data Run = Io | Type | Haskell
+data Run = Io | Type | Desugar | Haskell
     deriving (Show, Eq, Typeable, Data)
 
 data Args = Args {
@@ -73,6 +74,7 @@ argspec :: Args
 argspec = Args { 
     run = A.enum [Io A.&= A.help "Run a seri program in the IO monad",
                   Type A.&= A.help "Type infer and check a seri program",
+                  Desugar A.&= A.help "Desugar, but don't type a seri program",
                   Haskell A.&= A.help "Compile a seri program to Haskell"]
        A.&= A.typ "RUN MODE",
     include = []
@@ -92,17 +94,23 @@ main :: IO ()
 main = do
     args <- A.cmdArgs argspec
 
-    env <- loadenv (include args) (file args)
 
     let nmain = name (main_is args)
 
     case (run args) of
         Io -> do 
+            env <- loadenv (include args) (file args)
             tmain <- attemptIO $ lookupVarType env nmain
             let m = varEH (Sig (name (main_is args)) tmain)
             I.run env m
             return ()
-        Type -> putStrLn . pretty $ env
+        Desugar -> do
+            mods <- load (include args) (file args)
+            flat <- attemptIO $ flatten mods
+            putStrLn . pretty $ flat
+        Type -> do
+            env <- loadenv (include args) (file args)
+            putStrLn . pretty $ env
         Haskell -> do
             error $ "TODO: support haskell"
             --putStrLn . show $ haskell haskellH (getDecls env) nmain

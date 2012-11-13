@@ -1,7 +1,7 @@
 
 -- | Abstract constructors and deconstructors working with Exp
 module Seri.Exp.Sugar (
-    litE, conE, varE, appE, de_appE, appsE, de_appsE, lamE, de_letE, 
+    litE, conE, varE, appE, de_appE, appsE, de_appsE, lamE, lamsE, de_letE, 
     ifE, typeE,
     
     boolE, falseE, trueE, charE, listE, stringE, errorE, tupleE,
@@ -32,6 +32,10 @@ appsE = foldl AppE
 
 lamE :: Sig -> Exp -> Exp
 lamE = LamE
+
+lamsE :: [Sig] -> Exp -> Exp
+lamsE [] x = x
+lamsE (v:vs) x = lamE v (lamsE vs x)
 
 de_letE :: Exp -> Maybe (Sig, Exp, Exp)
 de_letE (AppE (LamE s b) v) = Just (s, v, b)
@@ -78,10 +82,9 @@ listE (x:xs) =
 stringE :: String -> Exp
 stringE str = listE (map charE str)
 
-errorE :: Type -> String -> Exp
-errorE t msg =
-  let et = arrowsT [stringT, t]
-  in appE (conE (Sig (name "Prelude.error") et)) (stringE msg)
+-- Seri error, before flattening.
+errorE :: String -> Exp
+errorE msg = appE (varE (Sig (name "error") UnknownT)) (stringE msg)
 
 -- | Type signature expression, of form: (e :: t)
 -- Assigns the given type to the given expression.
