@@ -51,6 +51,7 @@ import Control.Monad.Writer
 import Data.Monoid
 
 import Seri.Lambda.IR
+import Seri.Type
 
 -- | A TransformerM specifies monadic transformations for parts of the seri
 -- IR. The type 'a' is a dummy type to select the right transformation

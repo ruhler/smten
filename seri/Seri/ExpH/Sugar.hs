@@ -14,7 +14,7 @@ import Seri.Bit
 import Seri.Lit
 import Seri.Name
 import Seri.Sig
-import Seri.Type.Sugar
+import Seri.Type
 import Seri.ExpH.ExpH
 
 conEH :: Sig -> ExpH

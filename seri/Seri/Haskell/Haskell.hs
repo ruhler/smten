@@ -49,6 +49,7 @@ import qualified Language.Haskell.TH as H
 
 import Seri.Failable
 import Seri.Lambda
+import Seri.Type
 import Seri.Haskell.Compiler
 
 hsLit :: Lit -> H.Lit

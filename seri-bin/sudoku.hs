@@ -10,7 +10,7 @@ import Seri.Failable
 import Seri.Lambda hiding (free, query)
 import Seri.DSEL.DSEL
 import Seri.DSEL.SMT
-import Seri.Type.SeriT
+import Seri.Type
 import Seri.TH
 import Seri
 import Seri.SMT.Solver (Solver)

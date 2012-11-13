@@ -7,8 +7,7 @@ module Seri.ExpH.Sugar2 (
 
 import Seri.Sig
 import Seri.Name
-import Seri.Type.Type
-import Seri.Type.Sugar
+import Seri.Type
 import Seri.ExpH.ExpH
 import Seri.ExpH.Sugar
 import Seri.ExpH.SeriEH

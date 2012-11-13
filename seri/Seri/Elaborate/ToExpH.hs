@@ -6,9 +6,7 @@ module Seri.Elaborate.ToExpH (
     ) where
 
 import Seri.Lambda
-import Seri.Type.Sugar
-import Seri.Type.SeriT
-import Seri.Type.Typeof
+import Seri.Type
 import Seri.Elaborate.ExpH
 import Seri.ExpH.Sugar
 import Seri.ExpH.Sugar2

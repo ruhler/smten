@@ -4,9 +4,7 @@ module Seri.ExpH.Typeof (Typeof(..)) where
 import Data.Maybe(fromMaybe)
 import Data.Functor
 
-import Seri.Type.Type
-import Seri.Type.Sugar
-import Seri.Type.Typeof
+import Seri.Type
 import Seri.ExpH.ExpH
 
 

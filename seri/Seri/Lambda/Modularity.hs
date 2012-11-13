@@ -48,6 +48,7 @@ import Seri.Lambda.Ppr
 import Seri.Lambda.Prelude
 import Seri.Lambda.Types
 import Seri.Failable
+import Seri.Type
 
 -- | Currently imports are restricted to the form:
 -- > import Foo.Bar

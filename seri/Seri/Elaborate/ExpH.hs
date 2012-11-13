@@ -14,8 +14,7 @@ import Data.Monoid
 import Seri.Bit
 import Seri.Lambda hiding (transform, query)
 import Seri.Lambda.Ppr hiding (Mode, (<>))
-import Seri.Type.Sugar
-import Seri.Type.SeriT
+import Seri.Type
 import Seri.ExpH.ExpH
 import Seri.ExpH.Sugar
 

@@ -14,7 +14,7 @@ import qualified Prelude
 
 import Seri.Name
 import Seri.Sig
-import Seri.Type.SeriT
+import Seri.Type
 import Seri.ExpH.ExpH
 import Seri.ExpH.SeriEH
 import Seri.ExpH.Sugar

@@ -49,6 +49,7 @@ import Seri.Failable
 import Seri.Lambda.Env
 import Seri.Lambda.Generics
 import Seri.Lambda.IR
+import Seri.Type
 
 
 data Declarations = Declarations Env

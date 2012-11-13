@@ -11,6 +11,7 @@ import Language.Haskell.TH
 import Language.Haskell.TH.Syntax
 
 import qualified Seri.Lambda as S
+import qualified Seri.Type as S
 
 -- Load a seri environment at compile time.
 -- Performs type checking on the environment statically.

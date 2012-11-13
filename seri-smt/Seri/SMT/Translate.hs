@@ -61,9 +61,7 @@ import Seri.Lambda (Env, pretty)
 import Seri.Name
 import Seri.Lit
 import Seri.Sig
-import Seri.Type.Sugar
-import Seri.Type.SeriT
-import Seri.Type.Typeof
+import Seri.Type
 import Seri.Exp.Exp
 import Seri.Exp.Sugar
 import Seri.Exp.Typeof

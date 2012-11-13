@@ -45,7 +45,7 @@ import Seri.Lambda.Modularity
 import Seri.Lambda.Prelude
 import Seri.Lambda.Sugar
 import Seri.Lambda.Types
-import Seri.Type.Sugar
+import Seri.Type
 
 import Seri.Lambda.Parser.Monad
 import Seri.Lambda.Parser.Lexer

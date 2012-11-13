@@ -11,8 +11,7 @@ import Seri.DSEL.DSEL
 import Seri.DSEL.SMT
 import Seri
 import Seri.TH
-import Seri.Type.SeriT
-import Seri.Type.TH
+import Seri.Type
 import Seri.ExpH.SeriEH
 import Seri.ExpH.SeriEHs
 import Seri.ExpH.TH

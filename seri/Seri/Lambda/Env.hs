@@ -63,7 +63,7 @@ import Seri.HashTable as HT
 import Seri.Lambda.IR
 import Seri.Lambda.Ppr
 import Seri.Lambda.Types
-import Seri.Type.Sugar
+import Seri.Type
 
 -- | Env is an abstract data type representing information about a seri
 -- environment.

@@ -3,7 +3,7 @@
 
 module Seri.ExpH.SeriEHs () where
 
-import Seri.Type.SeriTs
+import Seri.Type
 import Seri.ExpH.SeriEH
 import Seri.ExpH.TH
 

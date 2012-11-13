@@ -43,13 +43,12 @@ module Seri.Lambda.IR (
     Con(..), Method(..), Dec(..),
     isDataD,
     module Seri.Name,
-    module Seri.Type.Type,
     module Seri.Lit,
     module Seri.Sig,
     ) where
 
 import Seri.Name
-import Seri.Type.Type
+import Seri.Type
 import Seri.Lit
 import Seri.Sig
 

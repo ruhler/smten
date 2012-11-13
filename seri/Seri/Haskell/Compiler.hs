@@ -47,6 +47,7 @@ import qualified Language.Haskell.TH as H
 
 import Seri.Failable
 import Seri.Lambda
+import Seri.Type
 
 data Compiler e t d = Compiler {
     compile_exp :: Compiler e t d -> Exp -> Failable e,

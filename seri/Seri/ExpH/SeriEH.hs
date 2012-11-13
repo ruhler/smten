@@ -7,7 +7,7 @@ import Control.Monad
 
 import Seri.Name
 import Seri.Sig
-import Seri.Type.SeriT
+import Seri.Type
 import Seri.ExpH.ExpH
 import Seri.ExpH.Sugar
 

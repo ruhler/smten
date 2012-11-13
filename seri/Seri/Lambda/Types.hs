@@ -47,9 +47,7 @@ import Data.Maybe
 
 import Seri.Lambda.IR
 import Seri.Lambda.Generics
-import Seri.Type.Sugar
-import Seri.Type.SeriT
-import Seri.Type.Typeof
+import Seri.Type
 
 -- | assignments poly concrete
 -- Given a polymorphic type and a concrete type of the same form, return the

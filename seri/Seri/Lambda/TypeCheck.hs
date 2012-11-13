@@ -45,8 +45,7 @@ import Seri.Lambda.IR
 import Seri.Lambda.Ppr
 import Seri.Lambda.Types
 import Seri.Lambda.Utils
-import Seri.Type.Sugar
-import Seri.Type.Typeof
+import Seri.Type
 
 class TypeCheck a where
     -- | Type check the given object under the given environment.

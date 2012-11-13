@@ -50,9 +50,7 @@ import Control.Monad
 import Data.List (genericLength)
 import Seri.Lambda.IR
 import Seri.Lambda.Types
-import Seri.Type.Sugar
-import Seri.Type.SeriT
-import Seri.Type.Typeof
+import Seri.Type
 
 tuple :: Int -> Dec
 tuple i = 

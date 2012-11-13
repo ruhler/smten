@@ -16,8 +16,7 @@ import qualified Seri.SMT.Query as Q
 import qualified Seri.SMT.Run as Q
 import Seri.DSEL.DSEL
 import Seri.Elaborate hiding (query)
-import Seri.Type.SeriT
-import Seri.Type.TH
+import Seri.Type
 import Seri.ExpH.SeriEH
 
 -- Dummy query type with instance of SeriableT.

@@ -11,9 +11,7 @@ import Language.Haskell.TH.Syntax
 
 import qualified Seri.Name as S
 import Seri.Sig
-import qualified Seri.Type.Type as S
-import Seri.Type.SeriT
-import Seri.Type.Sugar
+import qualified Seri.Type as S
 import Seri.ExpH.ExpH
 import Seri.ExpH.Sugar
 import Seri.ExpH.SeriEH
@@ -23,9 +21,9 @@ unappsEH e =
   let (f, xs) = de_appsEH e
   in f:xs
 
-seriEH_helper :: (SeriT a) => String -> a -> [S.Type] -> [ExpH] -> ExpH
+seriEH_helper :: (S.SeriT a) => String -> a -> [S.Type] -> [ExpH] -> ExpH
 seriEH_helper nm ty tys xs = 
-  let t = arrowsT (tys ++ [seriT ty])
+  let t = S.arrowsT (tys ++ [S.seriT ty])
   in appsEH (conEH (Sig (S.name nm) t)) xs
 
 derive_SeriEH :: Name -> Q [Dec]
@@ -51,7 +49,7 @@ derive_seriEH nm vars cs =
             expvar = mkName "exp"
             pat = AsP expvar (ConP cnm (map VarP args))
             elist = ListE $ map (\a -> AppE (VarE 'seriEH) (VarE a)) args
-            tlist = ListE $ map (\a -> AppE (VarE 'seriT) (VarE a)) args
+            tlist = ListE $ map (\a -> AppE (VarE 'S.seriT) (VarE a)) args
             body = foldl1 AppE [
                       VarE 'seriEH_helper,
                       LitE (StringL (nameBase cnm)),

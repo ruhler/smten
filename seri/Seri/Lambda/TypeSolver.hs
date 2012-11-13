@@ -47,6 +47,7 @@ import Seri.Failable
 import Seri.Lambda.IR
 import Seri.Lambda.Ppr
 import Seri.Lambda.Types
+import Seri.Type
 
 -- | Solve a type constraint system.
 -- Here's how we solve it:

@@ -7,8 +7,7 @@ module Seri.SMT.Run (run) where
 import Debug.Trace
 
 import Seri.Lambda hiding (free, query)
-import Seri.Type.Sugar
-import Seri.Type.Typeof
+import Seri.Type
 import Seri.ExpH.Sugar
 import Seri.SMT.Query
 import Seri.SMT.Solver (Solver)

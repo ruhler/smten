@@ -52,6 +52,7 @@ import Text.PrettyPrint.HughesPJ
 import Seri.Lambda.IR
 import Seri.Lambda.Sugar
 import Seri.Lambda.Prelude
+import Seri.Type
 
 class Ppr a where
     ppr :: a -> Doc

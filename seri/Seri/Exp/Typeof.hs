@@ -4,9 +4,7 @@ module Seri.Exp.Typeof () where
 import Data.Functor
 import Data.Maybe(fromMaybe)
 
-import Seri.Type.Type
-import Seri.Type.Sugar
-import Seri.Type.Typeof
+import Seri.Type
 import Seri.Exp.Exp
 
 instance Typeof Exp where
