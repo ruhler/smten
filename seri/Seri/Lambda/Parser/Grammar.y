@@ -297,7 +297,7 @@ exp :: { Exp }
  | exp10 '::' type
     { typeE $1 $3 }
  | exp10 qop exp10
-    { appE $2 [$1, $3] }
+    { appsE $2 [$1, $3] }
 
 exp10 :: { Exp }
  : '\\' var_typed '->' exp
@@ -320,7 +320,7 @@ fexp :: { Exp }
  : aexp
     { $1 }
  | fexp aexp
-    { appE $1 [$2] }
+    { appE $1 $2 }
 
 aexp :: { Exp }
  : qvar

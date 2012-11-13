@@ -150,4 +150,5 @@ Elaborator::
 
 Other::
 * Finish reorganizing Lambda module layout (get rid of Seri.Lambda.*)
+* Have name sugar for arrowN, tupleN, de_tupleN, unitN, etc...
 

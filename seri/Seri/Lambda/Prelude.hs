@@ -37,8 +37,8 @@
 -- seri expressions based on the prelude.
 module Seri.Lambda.Prelude (
     prelude,
-    appE, deAppE,
-    appsE, unappsE, deApp2E,
+    appE, de_appsE, de_appE,
+    appsE, deApp2E,
     unitE, trueE, falseE, boolE, listE, listP, deListE,
     tupE, tupP, deTupE,
     stringE, deStringE, charE, deCharE, integerE, numberE, bitE,
@@ -97,14 +97,16 @@ tupE es@(_:_:_) =
       nm = name $ "(" ++ replicate (n-1) ',' ++ ")"
       types = map typeof es
       ttype = arrowsT (types ++ [tupleT types])
-  in appE (ConE (Sig nm ttype)) es
+  in appsE (ConE (Sig nm ttype)) es
 
 deTupE :: Exp -> Maybe [Exp]
-deTupE e = do
-    (ConE (Sig n _), args) <- deAppE e
-    l <- de_tupleN n
-    guard $ genericLength args == l
-    return args
+deTupE e =
+  case de_appsE e of
+    (ConE (Sig n _), args) -> do
+        l <- de_tupleN n
+        guard $ genericLength args == l
+        return args
+    _ -> Nothing
 
 -- | (a, b, ... )
 -- There must be at least one pattern given.
@@ -127,11 +129,11 @@ listE [] = ConE (Sig (name "[]") (listT UnknownT))
 listE [x] =
  let t = typeof x
      consT = arrowsT [t, listT t, listT t]
- in appsE [ConE (Sig (name ":") consT), x, ConE (Sig (name "[]") (listT t))]
+ in appsE (ConE (Sig (name ":") consT)) [x, ConE (Sig (name "[]") (listT t))]
 listE (x:xs) = 
  let t = typeof x
      consT = arrowsT [t, listT t, listT t]
- in appsE [ConE (Sig (name ":") consT), x, listE xs]
+ in appsE (ConE (Sig (name ":") consT)) [x, listE xs]
 
 deListE :: Exp -> Maybe [Exp]
 deListE (ConE (Sig n _)) | n == name "[]" = Just []
@@ -154,10 +156,10 @@ integerE :: Integer -> Exp
 integerE i = LitE (IntegerL i)
 
 numberE :: Integer -> Exp
-numberE i = appE (VarE (Sig (name "fromInteger") (arrowsT [integerT, UnknownT]))) [integerE i]
+numberE i = appE (VarE (Sig (name "fromInteger") (arrowsT [integerT, UnknownT]))) (integerE i)
 
 bitE :: Integer -> Integer -> Exp
-bitE w v = appE (VarE (Sig (name "Seri.Bit.__prim_fromInteger_Bit") (arrowsT [integerT, AppT (ConT (name "Bit")) (NumT (ConNT w))]))) [integerE v]
+bitE w v = appE (VarE (Sig (name "Seri.Bit.__prim_fromInteger_Bit") (arrowsT [integerT, AppT (ConT (name "Bit")) (NumT (ConNT w))]))) (integerE v)
 
 charE :: Char -> Exp
 charE c = LitE (CharL c)
@@ -177,31 +179,27 @@ deStringE e = do
   mapM deCharE xs
             
 deApp2E :: Exp -> Maybe (Exp, Exp, Exp)
-deApp2E e = do
-    (f, [a, b]) <- deAppE e
-    return (f, a, b)
+deApp2E e =
+    case de_appsE e of
+        (f, [a, b]) -> Just (f, a, b)
+        _ -> Nothing
 
--- | (a b ... c)
-appsE :: [Exp] -> Exp
-appsE [f] = f
-appsE (f:xs) = appE f xs
+-- | Given (f a b ... c), returns (f, [b, ..., c])
+de_appsE :: Exp -> (Exp, [Exp])
+de_appsE (AppE a b) =
+  let (f, as) = de_appsE a
+  in (f, as ++ [b])
+de_appsE x = (x, [])
 
--- | Given (a b ... c), returns [a, b, ..., c]
-unappsE :: Exp -> [Exp]
-unappsE e =
-  case deAppE e of
-     Nothing -> [e]
-     Just (f, xs) -> f:xs
-
-appE :: Exp -> [Exp] -> Exp
+appE :: Exp -> Exp -> Exp
 appE = AppE
 
-deAppE :: Exp -> Maybe (Exp, [Exp])
-deAppE (AppE f xs) =
-  case (deAppE f) of
-     Just (g, ys) -> Just (g, ys ++ xs)
-     Nothing -> Just (f, xs)
-deAppE _ = Nothing
+de_appE :: Exp -> Maybe (Exp, Exp)
+de_appE (AppE a b) = Just (a, b)
+de_appE _ = Nothing
+
+appsE :: Exp -> [Exp] -> Exp
+appsE f xs = foldl appE f xs
 
 deVarE :: Exp -> Maybe Sig
 deVarE (VarE s) = Just s

@@ -101,7 +101,7 @@ curryE e =
         (tt, c) <- de_arrowT (typeof e)
         [a, b] <- de_tupleT tt
         return (a, b, c)
-  in appE (VarE (Sig (name "Prelude.curry") (curryT ta tb tc))) [e]
+  in appE (VarE (Sig (name "Prelude.curry") (curryT ta tb tc))) e
 
 -- | given types a, b, c,
 -- returns the type: ((a, b) -> c) -> a -> b -> c
@@ -113,11 +113,11 @@ curryT a b c = arrowsT [arrowsT [tupleT [a, b], c], a, b, c]
 --      p2 -> e2;
 --      ...
 caseE :: Exp -> [Match] -> Exp
-caseE x ms = appE (laceE ms) [x]
+caseE x ms = appE (laceE ms) x
 
 deCaseE :: Exp -> Maybe ([Exp], [Match])
 deCaseE e = do
-    (f, xs) <- deAppE e
+    let (f, xs) = de_appsE e
     ms@(Match ps _ : _) <- deLaceE f
     guard (length ps == length xs)
     return (xs, ms)
@@ -162,12 +162,12 @@ deLamE e = do
 -- TODO: use lazy pattern matching instead of strict?
 letE :: [(Pat, Exp)] -> Exp -> Exp
 letE [] x = x
-letE ((p, e):bs) x = appE (lamE $ Match [p] (letE bs x)) [e]
+letE ((p, e):bs) x = appE (lamE $ Match [p] (letE bs x)) e
 
 -- Match against a single let binding.
 deLet1E :: Exp -> Maybe (Pat, Exp, Exp)
 deLet1E e = do
-    (f, [v]) <- deAppE e
+    (f, v) <- de_appE e
     Match [p] x <- deLamE f
     return (p, v, x)
 
@@ -199,12 +199,12 @@ doE ((LetS p e):stmts) =
 doE ((NoBindS e):stmts) =
     let rest = doE stmts
         tbind = (arrowsT [typeof e, typeof rest, typeof rest])
-    in appsE [VarE (Sig (name ">>") tbind), e, rest]
+    in appsE (VarE (Sig (name ">>") tbind)) [e, rest]
 doE ((BindS p e):stmts) =
     let rest = doE stmts
         f = lamE $ Match [p] rest
         tbind = (arrowsT [typeof e, typeof f, typeof rest])
-    in appsE [VarE (Sig (name ">>=") tbind), e, f]
+    in appsE (VarE (Sig (name ">>=") tbind)) [e, f]
 
 clauseE :: [Match] -> Exp
 clauseE [Match [] e] = e
@@ -243,7 +243,7 @@ recordD nm vars cons derivings =
       mkundef (Con n ts) =
         let undefnm = (record_undefnm n)
             undefet = arrowsT $ ts ++ [dt]
-            undefe = appsE $ ConE (Sig n undefet) : [VarE (Sig (name "undefined") t) | t <- ts]
+            undefe = appsE (ConE (Sig n undefet)) [VarE (Sig (name "undefined") t) | t <- ts]
         in ValD (TopSig undefnm [] dt) undefe
 
       -- TODO: handle correctly the case where two different constructors
@@ -272,7 +272,7 @@ recordD nm vars cons derivings =
                             [VarP (Sig nm t) | (nm, t) <- take i ts]
                             ++ [WildP t]
                             ++ [VarP (Sig nm t) | (nm, t) <- drop (i+1) ts])
-                  myexp = appsE $ ConE (Sig cn ct) : [VarE (Sig n t) | (n, t) <- ts]
+                  myexp = appsE (ConE (Sig cn ct)) [VarE (Sig n t) | (n, t) <- ts]
                   body = lamE $ Match [VarP (Sig n t), mypat] myexp
               in ValD (TopSig (record_updnm n) [] ut) body
         in map mkupd (zip ts [0..])
@@ -288,8 +288,8 @@ recordD nm vars cons derivings =
 recordU :: Exp -> [(Name, Exp)] -> Exp
 recordU e [] = e
 recordU e ((n, v):us) = 
-  appsE [VarE (Sig (record_updnm n) (arrowsT [typeof v, typeof e])),
-         v, recordU e us]
+  appsE (VarE (Sig (record_updnm n) (arrowsT [typeof v, typeof e])))
+         [v, recordU e us]
 
 -- | Desugar labelled constructors.
 recordC :: Sig -> [(Name, Exp)] -> Exp
@@ -306,8 +306,7 @@ deriveEq dn vars cs =
             fields2 = [Sig (name $ [c, '2']) t | (t, c) <- zip ts "abcdefghijklmnopqrstuvwxyz"]
             p1 = ConP dt cn [VarP s | s <- fields1]
             p2 = ConP dt cn [VarP s | s <- fields2]
-            body = appE (VarE (Sig (name "and") UnknownT))
-                        [listE [appsE [VarE (Sig (name "==") UnknownT), VarE a, VarE b] | (a, b) <- zip fields1 fields2]]
+            body = appsE (VarE (Sig (name "and") UnknownT)) [listE [appsE (VarE (Sig (name "==") UnknownT)) [VarE a, VarE b] | (a, b) <- zip fields1 fields2]]
         in Match [p1, p2] body
 
       def = Match [WildP UnknownT, WildP UnknownT] falseE
@@ -354,7 +353,7 @@ deriveFree dn vars cs =
       mkCon :: Con -> Exp
       mkCon c@(Con nm ts) = 
         let fields = mkFields c
-        in appsE (ConE (Sig nm UnknownT) : map VarE fields)
+        in appsE (ConE (Sig nm UnknownT)) (map VarE fields)
 
       -- Generate the case patterns given there are n cases.
       -- The patterns are:
@@ -381,11 +380,9 @@ deriveFree dn vars cs =
       pats = mkPats (length cs)
       bodies = map mkCon cs
       lace = laceE [Match p b | (p, b) <- zip pats bodies]
-      value = appsE (lace : map VarE tags)
-      rtn = NoBindS $ appsE [VarE (Sig (name "return") UnknownT),
-             if null tags
-                then head bodies
-                else value]
+      value = appsE lace (map VarE tags)
+      rtn = NoBindS $ appE (VarE (Sig (name "return") UnknownT))
+             (if null tags then head bodies else value)
       stmts = freevars ++ [rtn]
       free = Method (name "free") (doE stmts)
       ctx = [Class (name "Free") [tyVarType c] | c <- vars]
@@ -405,5 +402,5 @@ derive x = error $ "deriving " ++ show x ++ " not supported in seri"
 typeE :: Exp -> Type -> Exp
 typeE (ConE (Sig n _)) t = ConE (Sig n t)
 typeE (VarE (Sig n _)) t = VarE (Sig n t)
-typeE e t = appE (VarE (Sig (name "id") (arrowsT [t, t]))) [e]
+typeE e t = appE (VarE (Sig (name "id") (arrowsT [t, t]))) e
 

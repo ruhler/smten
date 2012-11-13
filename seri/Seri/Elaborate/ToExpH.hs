@@ -16,10 +16,7 @@ toExpH _ (LitE l) = LitEH l
 toExpH _ (ConE s) = ConEH s
 toExpH m (VarE s) | Just v <- lookup s m = v
 toExpH m (VarE s) = VarEH s
-toExpH m (AppE f xs) =
-  let appeh :: ExpH -> Exp -> ExpH
-      appeh f x = AppEH ES_None f (toExpH m x)
-  in foldl appeh (toExpH m f) xs
+toExpH m (AppE f x) = appEH (toExpH m f) (toExpH m x)
 toExpH m e | Just (Match [VarP s] b) <- deLamE e =   
   LamEH ES_None s $ \x -> toExpH ((s, x):m) b
 toExpH m e@(LaceE ms@(Match [_] _ : _)) =

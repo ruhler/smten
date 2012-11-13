@@ -147,7 +147,7 @@ instance TypeCheck Dec where
                          else throw $ "expected variable of type:\n  " ++ pretty texpected
                                     ++ "\nbut " ++ pretty n ++ " has type:\n  " ++ pretty t
 
-          checkexp tenv (AppE f [x]) = do    
+          checkexp tenv (AppE f x) = do    
              checkexp tenv f
              checkexp tenv x
              case typeof f of
@@ -158,7 +158,6 @@ instance TypeCheck Dec where
                             " but got type " ++ pretty (typeof x) ++
                             " in expression " ++ pretty x
                 t -> throw $ "expected function type, but got type " ++ pretty t ++ " in expression " ++ pretty f
-          checkexp tenv (AppE f (x:xs)) = checkexp tenv (AppE (AppE f [x]) xs)
 
           checkexp tenv (LaceE []) = throw "Empty lace expression"
           checkexp tenv (LaceE ms@(Match ps1 _ : _)) = do
@@ -178,7 +177,6 @@ instance TypeCheck Dec where
                 else throw $ "Expected type " ++ pretty (typeof (head ms))
                             ++ " in match expression " ++ pretty (head (badmtypes))
                             ++ " but found type " ++ pretty (typeof (head (badmtypes)))
-          checkexp tenv e = error $ "checkexp: " ++ show e
 
       in checkdec
 

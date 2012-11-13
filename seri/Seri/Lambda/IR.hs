@@ -71,7 +71,7 @@ data Exp = LitE Lit                 -- ^ literal
          | ConE Sig                 -- ^ data constructor
          | VarE Sig                 -- ^ variable
          | LaceE [Match]            -- ^ lambda-case
-         | AppE Exp [Exp]             -- ^ f x y ...
+         | AppE Exp Exp             -- ^ f x
      deriving (Eq, Ord, Show)
 
 -- | Patterns.

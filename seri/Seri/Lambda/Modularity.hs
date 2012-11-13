@@ -168,10 +168,10 @@ instance Qualify Exp where
             else do
                 n' <- resolve n
                 return (VarE (Sig n' t'))
-    qualify (AppE f xs) = do
+    qualify (AppE f x) = do
         f' <- qualify f
-        xs' <- mapM qualify xs
-        return (AppE f' xs')
+        x' <- qualify x
+        return (AppE f' x')
     qualify (LaceE ms) = LaceE <$> mapM qualify ms
 
 

@@ -182,13 +182,13 @@ instance Constrain Exp where
                 rvt <- retype vt
                 addc rvt t
         return t
-    constrain (AppE f xs) = do
+    constrain (AppE f x) = do
         tf <- constrain f
-        txs <- mapM constrain xs
-        its <- mapM (const newvt) txs
+        tx <- constrain x
+        it <- newvt
         ot <- newvt
-        addc (arrowsT $ its ++ [ot]) tf
-        sequence_ [addc it tx | (it, tx) <- zip its txs]
+        addc (arrowT it ot) tf
+        addc it tx
         return ot
     constrain (LaceE ms) = do
         tps <- mapM (mapM constrain) [ps | Match ps _ <- ms]

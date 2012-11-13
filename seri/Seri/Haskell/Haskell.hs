@@ -86,10 +86,10 @@ hsExp c (VarE (Sig n t)) = do
     -- Give explicit type signature to make sure there are no type ambiguities
     ht <- compile_type c c t
     return $ H.SigE (H.VarE (hsName n)) ht
-hsExp c (AppE f xs) = do
+hsExp c (AppE f x) = do
     f' <- compile_exp c c f
-    xs' <- mapM (compile_exp c c) xs
-    return $ foldl H.AppE f' xs'
+    x' <- compile_exp c c x
+    return $ H.AppE f' x'
     
 -- Make a lace look like case by introducing dummy variables
 -- TODO: hopefully we don't shadow any names here.
@@ -97,7 +97,7 @@ hsExp c e@(LaceE ms@(Match ps _ : _)) =
     let nms = [name $ '_':'_':c:[] | c <- take (length ps) "abcdefghijklmnopqrstuvwxyz"]
         dummyps = [VarP (Sig n UnknownT) | n <- nms]
         dummyargs = [VarE (Sig n UnknownT) | n <- nms]
-        body = AppE e dummyargs
+        body = appsE e dummyargs
     in hsExp c (lamE $ Match dummyps body) 
 
 hsMatch :: HCompiler -> Match -> Failable H.Match

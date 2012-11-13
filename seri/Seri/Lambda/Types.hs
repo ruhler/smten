@@ -42,7 +42,8 @@ module Seri.Lambda.Types (
     ) where
 
 import Control.Monad.State
-import Data.List(nub, genericLength)
+import Data.Functor
+import Data.List(nub)
 import Data.Maybe
 
 import Seri.Lambda.IR
@@ -91,11 +92,7 @@ instance Typeof Exp where
     typeof (LitE l) = typeof l
     typeof (ConE tn) = typeof tn
     typeof (VarE tn) = typeof tn
-    typeof e@(AppE f xs) = 
-      let fts = de_arrowsT (typeof f)
-      in case (drop (length xs) fts) of
-            [] -> UnknownT
-            ts -> arrowsT ts
+    typeof e@(AppE f x) = fromMaybe UnknownT $ snd <$> de_arrowT (typeof f)
     typeof (LaceE []) = UnknownT
     typeof (LaceE (Match ps b:_)) = arrowsT (map typeof ps ++ [typeof b])
     

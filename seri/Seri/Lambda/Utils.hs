@@ -53,7 +53,7 @@ free =
       free' _ (ConE {}) = []
       free' bound (VarE (Sig n _)) | n `elem` bound = []
       free' _ (VarE s) = [s]
-      free' bound (AppE a bs) = nub $ free' bound a ++ concat (map (free' bound) bs)
+      free' bound (AppE a b) = nub $ free' bound a ++ free' bound b
       free' bound (LaceE ms) =
         let freem :: Match -> [Sig]
             freem (Match ps b) = free' (map (\(Sig n _) -> n) (concat (map bindingsP ps)) ++ bound) b
@@ -88,7 +88,7 @@ uses n =
       uses' (ConE {}) = 0  
       uses' (VarE (Sig nm _)) | nm == n = 1
       uses' (VarE {}) = 0
-      uses' (AppE a bs) = uses' a + sum (map uses' bs)
+      uses' (AppE a b) = uses' a + uses' b
       uses' (LaceE ms) = 
         let usesm :: (Num n) => Match -> n
             usesm (Match ps _) | n `elem` concatMap bindingsP' ps = 0

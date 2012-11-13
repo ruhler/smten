@@ -204,8 +204,9 @@ instance Ppr Exp where
     ppr (LitE l) = ppr l
     ppr (ConE s) = pprsig s
     ppr (VarE s) = pprsig s
-    ppr (AppE f xs) = 
-      let pprx x | isAtomE x = ppr x
+    ppr e@(AppE {}) = 
+      let (f, xs) = de_appsE e
+          pprx x | isAtomE x = ppr x
           pprx x = (parens $ ppr x)
       in sep (ppr f : map pprx xs)
     ppr (LaceE ms)

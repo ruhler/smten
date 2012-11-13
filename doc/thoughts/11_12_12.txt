@@ -1,0 +1,538 @@
+
+Mon Nov 12 08:30:53 EST 2012
+
+Goal for this morning... or today, depending on how long it takes:
+
+Switch to ExpH in the back end.
+
+The plan for getting there: Make sure the back end uses abstraction to access
+the contents of an Exp and generate an Exp. Then implement those same
+abstractions for ExpH. Then hopefully it will be easy to switch.
+
+Along the way I'm going to be tempted to clean other things up. A little of
+that is okay, but it doesn't have to be great. Clean up later. Get the big
+stuff working first.
+
+First target: The SMT.Query monad.
+
+Things that need to change eventually:
+
+* smte should take ExpH, not Exp.
+* realizefree should return ExpH, not Exp (pack and unpack would be nice here)
+* realizefree needs a way to do a generic monadic transformation on ExpH.
+* free should return ExpH, not Exp. Have a varE abstract constructor.
+* assert should take an ExpH, not Exp
+
+So, it actually looks fairly easy. The biggest issue is transformation of
+ExpH. It's interesting, though, because we do transformation in the elaborator
+too, so this could be a useful function to have anyway.
+
+Having a pack and unpack for Bool, Int, Bit would be nice.
+
+Let me start on the pack/unpack thing. I know it's a little out of the way,
+but I think it will be useful.
+
+The idea is, change SeriableE to work on raw expressions. Move it into
+Seri.Lambda (out of Enoch). Implement that, and see how it cleans things up,
+if at all... Is this too much of a distraction from what I want to do? Does it
+actually help anything? Sadly I feel like no... Gar.
+
+Well, let me do some of it anyway, see where it goes?
+
+Ug. What I really ought to do is figure out how to do the generic
+transformation, what the right interface should be. Then implement that
+interface with both Exp and ExpH. After that, switching Query over should be
+easy, and I can focus on the other things.
+
+Fine. I'll look into how to do transformation, then fix SeriableE, even if it
+is out of the way. Then I'll deal with the transformation.
+
+First step: how to do transformation. I have two places where it is used:
+
+1. Replace all occurrences of a free variable with a given value.
+2. Replace all occurrence of a free variable with a given value monadically.
+
+So it's exactly the same kind of thing, but one is monadic and the other
+isn't...
+
+What I want, then, is... I provide a function: Exp -> Maybe Exp, which is a
+transformation. And I provide a traversal. Anywhere the function is matched,
+do the transformation, otherwise leave it as it was. That shouldn't be so
+inefficient I don't think.
+
+Okay, I'll start with that in the elaborator. I'll probably have to make two
+transformations, one is pure, the other monadic.
+
+transform :: (Exp -> Maybe Exp) -> Exp -> Exp
+transformM :: (Monad m) => (Exp -> Maybe (m Exp)) -> Exp -> m Exp
+
+Sounds good to me. Let me try it for the pure one first.
+
+Mon Nov 12 08:52:46 EST 2012
+
+Just to note, the reason this seems so much simpler than other transformations
+I've done is because it works only on expressions. It doesn't, for example,
+go into all of the types, which would require a more complicated traversal.
+
+Too bad the name is already overloaded...
+
+Mon Nov 12 08:57:40 EST 2012
+
+Trouble with transformM... how do I do lambda?
+
+I have a function: f :: ExpH -> ExpH.
+I want to do the transformation inside that, and somehow get a new function of
+type ExpH -> ExpH. But I don't have the argument yet. That's problematic.
+
+fmap f :: m ExpH -> m ExpH
+
+\x -> transformM g (f x)    :: ExpH -> m ExpH
+
+I want to change that somehow to: m (ExpH -> ExpH)
+
+Okay, hmm... I could say:
+
+return (\x -> transformM g (f x))   :: m (ExpH -> m ExpH)
+
+I don't know. I don't know how to do it. That's bad.
+
+Well, maybe I can get away with a pure version. What if I had a query?
+Say I have a query, I return a list of names, I do the monad on that to figure
+out all the values of those names, then I do a pure transformation. That seems
+reasonable to me.
+
+Mon Nov 12 09:08:15 EST 2012
+
+Another problem. How can I do the query without having the argument yet?
+
+That actually answers the transformM question. Doesn't it? Or not? I have to
+assume, for the sake of the query, that we don't have the argument yet?
+
+The other thing I could do is just get the value for all free variables,
+ideally lazily or somehow lazily, though maybe that's not possible in IO. Then
+substitute those as needed? Hmm... Tricky.
+
+I may need to keep the set of free variables around, read all their values,
+then do a pure transformation to put that in.
+
+Oh well. That's not terrible.
+
+Mon Nov 12 09:18:41 EST 2012
+
+Ug! I'm not focused. I need to not get too distracted.
+
+So I have to deal with the generic transformation in Query somehow. It looks
+like ExpH doesn't support monadic transformations or queries... unless I treat
+lambdas as lambdas. But then we also have name issues. So probably better to
+do queries by transforming to Exp (or some form of that), then doing the query
+on that.
+
+But again, I shouldn't need that kind of thing here, because I can just ask
+for all the values of the free variables? But maybe that's not lazy the way we
+want? Ug. I don't know.
+
+Let me look ahead, maybe get some other useful stuff implemented, then come
+back to this.
+
+SMT.Run:
+* take ExpH
+* need elabwhnfH
+* ...
+
+Aha. Let me start with pack and unpack, which should simplify this. I want a
+way to pack Unknown, and Unsatisfiable, and Satisfiable with a given
+argument... But how can I do that? How can we get the type information?
+
+Sadness :(
+
+Let me instead implement the abstraction for matching function calls.
+
+de_varE?
+
+Wah. This is hard. And unhappy.
+
+Mon Nov 12 09:37:39 EST 2012
+
+I'm tired of preparing. I want to just dive in and switch something over to
+ExpH.
+
+Gar! Why is this so hard?
+
+Okay, I'm going to just dive in, and see how bad it is, to just, all at once,
+change the back end over to ExpH instead of Exp.
+
+I'll come up with the abstractions I need. Collect them all in some module.
+Probably Elaborate.ExpH. There will be challenges, work through them. Make it
+work.
+
+So, Query, SMT.Run, IO.Run, all will work with ExpH. I ought to be able to get
+rid of elaborate on Exp entirely. I'll go back to Exp only for SMT.Translate.
+Let me dive in, see how awful it goes. This is an experiment... Who knows?
+Maybe it won't be that bad?
+
+Mon Nov 12 09:53:04 EST 2012
+
+Okay, so I'm at realize. How do I do realize...
+
+ExpH -> m ExpH, replacing each occurrence of a free variable with the given
+value. I suppose to start I could just transform to and from Exp... That's not
+a good solution though.
+
+If I have lambdas, I want to keep them that way.
+
+What's the best way to do this? I think query the expression (with lambdas and
+no renaming), then get all those free variables, then do a transformation?
+
+Remember eventually an ExpH will be a function from free variable to value,
+and so this will be easy. So it's not so big a deal now. But, for example, if
+I have a lambda, I don't want to perform realization to the argument after
+it's plugged in, only the free variables that are there.
+
+Let me implement query as I was before, and do things that way. Query without
+renaming, so don't do queries based on renaming? I don't know. We'll see if
+this is a problem and fix it later.
+
+Oh, what I should really do is convert to Exp, do the query on the Exp, then
+read the free variables, then do a pure transformation on the ExpH. That will
+be the most correct. I can work out performance issues later.
+
+Mon Nov 12 10:32:44 EST 2012
+
+It works! Wow!
+
+So, I didn't update enoch, because I didn't feel like it, but other than
+that... it works! And it looks to be a whole lot faster too. Sweet.
+
+Mon Nov 12 10:35:19 EST 2012
+
+That was enormous. We're talking, like, 4 seconds down to 0.29. Like 5.2
+billion bytes down to 0.2 billion bytes. Awesome.
+
+So, the question now is... Can we do sudoku 9x9 at this point? I'll need to
+try it out.
+
+Also, just to have an idea, let me look over the profiling info to see what's
+what... though really it didn't take long enough to get a good sense.
+
+No. It's not long enough. We have lex taking up much of the time. Elaboration
+time doesn't even dominate. Amazing.
+
+On to sudoku.
+
+Mon Nov 12 10:44:21 EST 2012
+
+Sudoku does not work still. It looks like all the time is in fromExpHM...
+converting from an ExpH. But that could also include elaboration I think. It
+seems to be generating an awful large expression. Much larger than I would
+expect.
+
+Okay, so here's what I should do...
+
+1. I should update Enoch. Get that working again.
+2. I should fill in as much of the diabolical board as I can for sudoku
+to take a reasonable amount of time... say, like, 30 seconds, so I can keep
+track of performance improvements.
+3. Implement a new kind of Exp which mirrors ExpH for use in translating to
+SMT.
+4. Look at the generated expression, try to understand it, is it much bigger
+than it ought to be? I should do this for sudoku4 if that makes things easier.
+
+Mon Nov 12 11:00:23 EST 2012
+
+Updating Enoch is going to be a pain. I think it may be worth rethinking how I
+want to organize things before updating enoch.
+
+So, let me skip (1) for now.
+
+Mon Nov 12 11:02:16 EST 2012
+
+You know... the interesting thing about sudoku is, it generates the query, and
+runs it. It doesn't seem to have a problem there. Rather, it seems to have a
+problem with... realizing the resulting board?
+
+Let me try implementing a query not based on conversion to Exp. See if that
+helps.
+
+Mon Nov 12 11:13:47 EST 2012
+
+Well... we don't have such a huge memory leak anymore, but there seems to be
+issues still. Are we stuck in an infinite loop do you think? I don't
+understand.
+
+Well... it's not taking up any memory now, and I don't think I hurt anything
+else, so let me keep this change, but I'll also let sudoku run in the
+background and see if it ever finishes.
+
+Then, while I wait for it to finish or just give up on it, let me spend some
+time thinking about how I want to reorganize Seri given all the latest
+developments.
+
+Mon Nov 12 11:17:23 EST 2012
+
+Okay, what to do about code organization.
+
+Let me try to think conceptually of what all we have. Of what all we'll want
+to have, assuming I switch the front end Exp over to match ExpH, which I think
+I should.
+
+* Names and Types
+* Non-HOAS Exp
+* Declarations
+
+* Parsing
+* Flattening
+* Pretty printing
+
+* Abstract interface to types (Type Sugar)
+* Conversion between Seri and Haskell types (SeriableT).
+
+* Abstract interface to patterns (patterns are a sugar now...)
+
+* Abstract interface to expressions (Exp Sugar)
+* Conversion between Seri and Haskell values (SeriableE).
+
+* Type valuing (determining types of expressions)
+* Type Inference
+** Type Solver
+* Type Checking
+
+* HOAS Exp
+* Abstract interface to HOAS Exp (ExpH Sugar)
+* Conversion between Seri and Haskell values in HOAS
+
+* Haskell Target: Declarations + Pure Exp -> Haskell
+* Enoch (phantom-typed ExpH)
+
+Okay, so a number of points are coming up now.
+
+1. Move Name stuff out of Seri.Lambda.IR into Seri.Name
+2. Move Type stuff out of Seri.Lambda.IR into Seri.Type
+3. Implement SeriableT as part of Seri.Type, or a subset, or some such.
+4. Have Exp in Seri.Exp, and ExpH in Seri.ExpH. The two modules should mirror
+each other, providing the same abstract interface, including sugar and
+conversion to and from Haskell, and traversal, and all that fun stuff.
+
+I would like to have an abstract interface to all the IRs which I expose. But
+also the concrete one for those special people who want to deal with it.
+
+It's very hard to keep track of everything that's going on with Seri. I don't
+think I can manage to write down a comprehensive reorganization plan. Perhaps
+a better approach will be to identify how I want some things, and make those
+things go that way. Slowly morph the organization into something better, more
+consistent, which I can understand.
+
+Am I aloud to start cleaning up even before I get Sudoku2 to work right?
+
+Blah. Okay, To make progress on Sudoku2, I'll do this. I'll find a reasonably
+timed version of it, around 30 seconds or so. Then, when I have that... run
+profiling to get a baseline, check out the profile to see where all the time
+is being spent. Then go to clean a little.
+
+Mon Nov 12 11:48:02 EST 2012
+
+There's something very strange going on. All my time is spent trying to figure
+out what the free vars are.
+
+How about, just for now, instead, I'll just query the value of all the free
+variables. If that gets by the sudoku issue, that would be great, because it
+means I can focus just on cleaning again, because performance will have gone
+back to as good as the master branch. Then it's clean clean clean clean clean.
+
+Okay, let me try this. I'll just collect a list of free variables.
+
+I worry that it could be a lot more than I care about... but I can fix that
+better later I suppose.
+
+Mon Nov 12 11:57:40 EST 2012
+
+There. That seems to have fixed that. Or rather, worked around whatever issue
+I was having which I don't understand. But that's fine.
+
+Sudoku2 is a little slow. A handful of seconds. But it doesn't blow up
+anymore. Hurray! This means officially the new performance is good enough.
+(And, like I say, I know how to improve it still).
+
+I just need to get enoch up and running, and everything cleaned up...
+
+Mon Nov 12 12:02:04 EST 2012
+
+Okay, performance is good enough for now. It's time to clean clean clean clean
+clean.
+
+First priority should be getting enoch to work again, in a clean fashion.
+Next priority should be to make Exp look like ExpH without HOAS.
+And in general clean up.
+
+Don't worry about any performance issues now. Clean up. Then I can take some
+more stabs at performance.
+
+Mon Nov 12 12:37:20 EST 2012
+
+Enoch plans. Rename it DSEL.
+
+The DSEL should have the following:
+* TExp - an ExpH with a phantom type.
+* Prelude operators (everything in Seri.Enoch.Prelude)
+* The Query wrapper
+
+That's it. All the Seriable and TH stuff doesn't belong there.
+
+Okay, so let me propose the following steps:
+
+1+ Pull Name out of Seri.Lambda.IR into Seri.Name.
+2x Replace nnull and nappend with mempty and mappend
+3x Change unname to de_name 
+
+4+ Pull Type out of Seri.Lambda.IR into
+Seri.Type.Type
+5x Pull Type syntax out of Seri.Lambda.Types into Seri.Type.Sugar
+6+ Make Seri.Type.SeriT to have SeriT class (was SeriableT in Enoch)
+
+Hmm... I should get enoch working again first, don't you think? Okay, let me
+try doing that, see how bad it is. Remember, I have toExpH and fromExpH to use
+as I will.
+
+No. I don't want to. I want to pull out SeriT and SeriE first. Then I don't
+have to convert those. Or maybe I do. I don't know. Oh well.
+
+So, let me follow my above steps then, and see how far we get.
+
+Mon Nov 12 13:55:31 EST 2012
+
+Okay, so I made SeriT. The thing is, it's also nice to have charT, boolT,
+unitT, etc... Much more convenient than having to write (seriT (undefined ::
+Char)), for example. Where should I keep those?
+
+Those should be in SeriT. And they should probably be the primary definitions.
+Don't implement them based on seriT.
+
+Mon Nov 12 14:26:49 EST 2012
+
+Okay, so we have the type sugar and SeriT all set up. All nice and clean.
+
+What's next? Keeping in mind that I have something of a goal towards making
+enoch work again (renamed to DSEL).
+
+I suppose the natural thing to do next would be to pull Exp out of IR into
+Seri.Exp.Exp. And have a Seri.Exp.Sugar and Seri.Exp.SeriE. And then, I
+suppose I should duplicate that same thing, only for ExpH. So I have a
+Seri.ExpH and Seri.ExpH.Sugar and Seri.ExpH.SeriE.
+
+But... while I'm cleaning things up, I may as well start clean, right?
+
+Perhaps what I ought to do is... Take this opportunity to make my non-HOAS
+form of Exp the way I want it. Do it cleanly, with abstractions. And switch to
+that for the back end just before SMT translation.
+
+Or, because, once again, I'm interested in getting Enoch up and running again
+as a high priority, clean up ExpH and sugar and SeriE for that. Then I should
+be all set to rewrite Enoch from scratch in a pretty way. Then, at least, I
+have my first priority met. That sounds reasonable to me.
+
+Yup. I think that's the next step to take.
+
+Of course, when I think about that, I start to wonder about how nice my ExpH
+type is. Do we need to distinguish between WHNF and SNF?
+
+Okay, that's a good question. Let me explore that a little, see if I can get
+rid of the distinction, because that will clean things up a bit.
+
+Mon Nov 12 14:45:22 EST 2012
+
+Well, first thing is, if I'm eager about elaborating arguments, it looks like
+realization and concretization of free variables is more costly, but a
+significant amount. So maybe I'm not ready for this kind of exploration yet.
+
+I think it's fine for me to skip this for now, and clean up ExpH later on. Let
+me pull it out into Seri.ExpH.ExpH and go from there.
+
+Mon Nov 12 16:42:49 EST 2012
+
+Okay! So I hunkered down and dug in and got enoch, now called DSEL, up and
+running. At least on a simple case. Good work.
+
+It should be relatively straight forward now to add the rest of the test cases
+back to dsel, and get sudoku up and running. Then priority 1 will have been
+achieved.
+
+After that, it's on to more cleanup, most importantly, a redefined Exp.
+
+Mon Nov 12 18:28:45 EST 2012
+
+Cool! We are now totally caught up. Enoch and sudoku are up and running. That
+is, caught up in the sense of functionality. There's still cleanup to do.
+
+But that's pretty nifty.
+
+Mon Nov 12 18:41:32 EST 2012
+
+Okay, I'm going to be tempted to improve performance. It's not the time for
+that. It's the time for cleanup. It's the time for single argument application
+in the front end Exp. Or making the right Exp in the back end translation.
+These are not performance things. They are cleanup and consistency things.
+
+Mon Nov 12 19:38:41 EST 2012
+
+I did the Exp back end thing. It's nice. No major performance improvement,
+because it's not at all the bottleneck. But it's cleaner, which is good, and I
+have my Exp now, which is also good.
+
+The real question now. The big one. The next step. Will be switching the front
+end over to my new Exp. How ever am I to do that?
+
+The big scary thing is how to do desugaring of case expressions without more
+help in allocating fresh variables. Perhaps I should just have it be done in a
+monad which knows how to assign fresh variables. A monad like... Fresh...
+
+I think at the very least I can do more cleanup first. Trying to pull things
+out of Lambda where possible. I'm not ready to just jump over to the new Exp.
+
+Perhaps what I should do is implement all the Sugar for it, like, the fancy
+sugar: case expressions, that sort of thing. Then I would feel more confident?
+
+Another path I could try would be to have a translation from the old Exp into
+the new Exp. I don't know if that would help any.
+
+I think I'm unlikely to make lots of progress on this tonight. Instead let me
+just do some cleanup stuff and think about how to make progress tomorrow.
+
+Mon Nov 12 20:16:27 EST 2012
+
+I should note: I already have a path from old Exp to new Exp, via ExpH.
+
+How about this. Let me make a list of the de-sugaring I need to support, and
+an estimate of how much work that would be?
+
+I feel like, aside from desugaring of case statements, everything is easy.
+
+Mon Nov 12 20:45:19 EST 2012
+
+Question. Is there any reason not to merge with the master branch now? I'd
+like to stand by all the changes I've made. I think they are good. I think
+they are right. And I think it's up to what we had with the master, aside from
+a couple minor performance issues which I think I can resolve fairly easily.
+
+So let me do that. Then continue to clean from there.
+
+Mon Nov 12 20:49:33 EST 2012
+
+Okay! Cool. I merged into the master branch. From now on it's about more
+cleanup...
+
+I'm thinking it might make sense to have another level of indirection. Define
+a fully sugared syntax. Maybe call it ExpU for user or something? This
+structure just reflects the syntactic sugar. The abstract syntax of the front
+end language. So we parse into this, then we have desugar phase? And I can
+have a resugar phase to go back to this format and then pretty print it.
+
+This would make things slightly more convinient if I could have the desugar
+phase be in a Fresh monad or something to allow me to introduce new names.
+
+I don't know. The only other thing I can think in terms of approaches to
+switching to the new Exp is start by making the old Exp look more like the new
+Exp. As in... switch to single arg application. The work done on that would be
+directly transferable and useful later on.
+
+Yes. I recommend that as the next step. I think I'm ready for it. It shouldn't
+be hard at this point. After that? I don't know. We'll see.
+
