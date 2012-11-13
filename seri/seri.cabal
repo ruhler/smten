@@ -30,7 +30,7 @@ source-repository this
 library
   exposed-modules: Seri
                    Seri.Name Seri.Lit Seri.Sig
-                   Seri.Type.Type Seri.Type.Sugar Seri.Type.SeriT Seri.Type.TH Seri.Type.SeriTs
+                   Seri.Type.Type Seri.Type.Sugar Seri.Type.SeriT Seri.Type.TH Seri.Type.SeriTs Seri.Type.Typeof
                    Seri.Exp.Exp Seri.Exp.Sugar Seri.Exp.Typeof
                    Seri.ExpH.ExpH Seri.ExpH.Sugar Seri.ExpH.Sugar2 Seri.ExpH.SeriEH Seri.ExpH.TH Seri.ExpH.SeriEHs Seri.ExpH.Typeof
                    Seri.DSEL.DSEL

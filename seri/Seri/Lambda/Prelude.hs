@@ -52,6 +52,7 @@ import Seri.Lambda.IR
 import Seri.Lambda.Types
 import Seri.Type.Sugar
 import Seri.Type.SeriT
+import Seri.Type.Typeof
 
 tuple :: Int -> Dec
 tuple i = 

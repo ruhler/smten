@@ -57,6 +57,7 @@ import Seri.Lambda.Types
 import Seri.Lambda.TypeSolver
 import Seri.Type.Sugar
 import Seri.Type.SeriT
+import Seri.Type.Typeof
 
 class TypeInfer a where
     -- | Perform type inference on the given object.

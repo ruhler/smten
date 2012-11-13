@@ -37,7 +37,6 @@
 
 -- | Utilities for working with Seri Types
 module Seri.Lambda.Types (
-    Typeof(..),
     assign, assignl, assignments, bindingsP, bindingsP', varTs, nvarTs,
     isSubType,
     ) where
@@ -50,6 +49,7 @@ import Seri.Lambda.IR
 import Seri.Lambda.Generics
 import Seri.Type.Sugar
 import Seri.Type.SeriT
+import Seri.Type.Typeof
 
 -- | assignments poly concrete
 -- Given a polymorphic type and a concrete type of the same form, return the
@@ -89,18 +89,6 @@ assign :: Transformable a => [(Name, Type)] -> a -> a
 assign [] = id
 assign m = assignl (\n -> Prelude.lookup n m)
 
-class Typeof a where
-    -- | Return the seri type of the given object, assuming the object is well
-    -- typed. Behavior is undefined if the object is not well typed.
-    --
-    -- TODO: it would be nice if behavior was "UnknownT" if the object is not
-    -- well typed.
-    typeof :: a -> Type
-
-instance Typeof Lit where
-    typeof (IntegerL {}) = integerT
-    typeof (CharL {}) = seriT (undefined :: Char)
-
 instance Typeof Exp where
     typeof (LitE l) = typeof l
     typeof (ConE tn) = typeof tn
@@ -113,9 +101,6 @@ instance Typeof Exp where
     typeof (LaceE []) = UnknownT
     typeof (LaceE (Match ps b:_)) = arrowsT (map typeof ps ++ [typeof b])
     
-instance Typeof Sig where
-    typeof (Sig _ t) = t
-
 instance Typeof Match where
     typeof (Match _ e) = typeof e
 

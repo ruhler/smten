@@ -6,9 +6,9 @@ import Data.Functor
 
 import Seri.Type.Type
 import Seri.Type.Sugar
+import Seri.Type.Typeof
 import Seri.ExpH.ExpH
 
-import Seri.Lambda.Types
 
 instance Typeof ExpH where
     typeof (LitEH l) = typeof l

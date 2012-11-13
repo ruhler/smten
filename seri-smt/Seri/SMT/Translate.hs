@@ -57,12 +57,13 @@ import Control.Monad.State.Strict
 import Control.Monad.Error
 
 import Seri.Failable
-import Seri.Lambda (Env, Typeof(..), pretty)
+import Seri.Lambda (Env, pretty)
 import Seri.Name
 import Seri.Lit
 import Seri.Sig
 import Seri.Type.Sugar
 import Seri.Type.SeriT
+import Seri.Type.Typeof
 import Seri.Exp.Exp
 import Seri.Exp.Sugar
 import Seri.Exp.Typeof

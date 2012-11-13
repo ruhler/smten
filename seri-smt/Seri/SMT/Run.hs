@@ -8,6 +8,7 @@ import Debug.Trace
 
 import Seri.Lambda hiding (free, query)
 import Seri.Type.Sugar
+import Seri.Type.Typeof
 import Seri.ExpH.Sugar
 import Seri.SMT.Query
 import Seri.SMT.Solver (Solver)

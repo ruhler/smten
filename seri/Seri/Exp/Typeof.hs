@@ -6,9 +6,8 @@ import Data.Maybe(fromMaybe)
 
 import Seri.Type.Type
 import Seri.Type.Sugar
+import Seri.Type.Typeof
 import Seri.Exp.Exp
-
-import Seri.Lambda.Types
 
 instance Typeof Exp where
     typeof (LitE l) = typeof l
