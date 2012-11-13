@@ -46,7 +46,7 @@ import qualified System.Console.CmdArgs.Implicit as A
 
 import Seri.Failable
 import Seri.Lambda
-import Seri.ExpH.Sugar
+import Seri.ExpH
 import Seri.Elaborate
 
 import qualified Seri.SMT.Run as Q

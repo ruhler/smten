@@ -4,7 +4,7 @@ module Seri.Elaborate.FromExpH (
   ) where
 
 import Seri.Exp.Exp
-import Seri.ExpH.ExpH
+import Seri.ExpH
 import Seri.Elaborate.FreshFast
 
 fromExpH :: ExpH -> Exp

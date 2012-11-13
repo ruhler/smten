@@ -34,7 +34,6 @@
 -------------------------------------------------------------------------------
 
 module Seri.Elaborate(
-    Mode(..), ExpH(),
     toExpH, fromExpH,
     elabwhnf, elaborate,
 

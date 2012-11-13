@@ -3,7 +3,6 @@
 {-# LANGUAGE PatternGuards #-}
 
 module Seri.Elaborate.ExpH (
-      module Seri.ExpH.ExpH,
       transform, query,
       de_appv1, de_appv2,
 
@@ -15,8 +14,7 @@ import Seri.Bit
 import Seri.Lambda hiding (transform, query)
 import Seri.Lambda.Ppr hiding (Mode, (<>))
 import Seri.Type
-import Seri.ExpH.ExpH
-import Seri.ExpH.Sugar
+import Seri.ExpH
 
 
 instance Ppr ExpH where

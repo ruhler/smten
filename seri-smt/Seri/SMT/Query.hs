@@ -61,10 +61,7 @@ import Seri.Failable
 import Seri.Lambda hiding (free, query)
 import qualified Seri.Lambda
 import Seri.Type
-import Seri.Type.TH
-import Seri.ExpH.Sugar
-import Seri.ExpH.Sugar2
-import Seri.ExpH.TH
+import Seri.ExpH
 import Seri.SMT.Translate
 import Seri.Elaborate hiding (query)
 import qualified Seri.Elaborate

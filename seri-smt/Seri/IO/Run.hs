@@ -11,9 +11,7 @@ import qualified Seri.SMT.Run
 import Seri.SMT.Yices.Yices1
 import Seri.SMT.Yices.Yices2
 import Seri.SMT.STP.STP
-import Seri.ExpH.Sugar
-import Seri.ExpH.SeriEH
-import Seri.ExpH.SeriEHs
+import Seri.ExpH
 
 -- | Given a Seri expression of type IO a,
 -- returns the Seri expression of type a which results from running the IO

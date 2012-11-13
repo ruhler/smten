@@ -12,9 +12,7 @@ import Seri.DSEL.SMT
 import Seri
 import Seri.TH
 import Seri.Type
-import Seri.ExpH.SeriEH
-import Seri.ExpH.SeriEHs
-import Seri.ExpH.TH
+import Seri.ExpH
 
 q1 :: (Solver s) => Query s (Answer Integer)
 q1 = do

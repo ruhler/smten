@@ -8,8 +8,7 @@ module Seri.Elaborate.ToExpH (
 import Seri.Lambda
 import Seri.Type
 import Seri.Elaborate.ExpH
-import Seri.ExpH.Sugar
-import Seri.ExpH.Sugar2
+import Seri.ExpH
 
 -- | Translate an Exp to our HOAS ExpH representation
 toExpH :: [(Sig, ExpH)] -> Exp -> ExpH
