@@ -163,12 +163,7 @@ isPrimT _ = False
 
 data RunOptions = RunOptions {
     -- | Optionally output debug info to the given file.
-    debugout :: Maybe FilePath,
-
-    -- | When True, assume in every case expression some alternative will
-    -- match. This is not always a safe assumption, and can lead to odd
-    -- answers, but it does improve performance a lot.
-    nocaseerr :: Bool
+    debugout :: Maybe FilePath
 } deriving(Show)
             
 mkQS :: (SMT.Solver s) => s -> RunOptions -> Env -> IO (QS s)
@@ -184,7 +179,7 @@ mkQS ctx opts env = do
         qs_ctx = ctx,
         qs_dh = dh,
         qs_freeid = 1,
-        qs_qs = compilation (nocaseerr opts) env,
+        qs_qs = compilation env,
         qs_freevars = [],
         qs_env = env
     }

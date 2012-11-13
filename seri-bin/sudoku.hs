@@ -162,5 +162,5 @@ env :: Env
 env = $(loadenvth [seridir] (seridir >>= return . (++ "/Seri/SMT/SMT.sri")))
 
 main :: IO ()
-main = runQuery (RunOptions (Just "build/test/sudoku.dbg") True) env (yices2 solve) >>= mapM_ putStrLn
+main = runQuery (RunOptions (Just "build/test/sudoku.dbg")) env (yices2 solve) >>= mapM_ putStrLn
 

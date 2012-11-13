@@ -88,10 +88,8 @@ addcmds :: [SMT.Command] -> CompilationM ()
 addcmds cmds = modifyS $ \ys -> ys { ys_cmdsr = (reverse cmds) ++ ys_cmdsr ys}
 
 -- | Create a new smt compilation object.
-compilation :: Bool         -- ^ nocase err?
-               -> Env          -- ^ polymorphic seri environment
-               -> Compilation
-compilation nocaseerr poly = Compilation {
+compilation :: Env -> Compilation
+compilation poly = Compilation {
     ys_poly = poly,
     ys_cmdsr = [],
     ys_errid = 1

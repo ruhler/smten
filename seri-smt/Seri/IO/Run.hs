@@ -28,13 +28,13 @@ run env e = do
             return unitEH
         e' | Just (debug, query) <- de_appv2 (name "Seri.SMT.SMT.runYices1") e'
            , Just dbg <- de_seriEH debug
-           -> runQuery (RunOptions dbg True) env (yices1 $ Seri.SMT.Run.run query)
+           -> runQuery (RunOptions dbg) env (yices1 $ Seri.SMT.Run.run query)
         e' | Just (debug, query) <- de_appv2 (name "Seri.SMT.SMT.runYices2") e'
            , Just dbg <- de_seriEH debug
-           -> runQuery (RunOptions dbg True) env (yices2 $ Seri.SMT.Run.run query)
+           -> runQuery (RunOptions dbg) env (yices2 $ Seri.SMT.Run.run query)
         e' | Just (debug, query) <- de_appv2 (name "Seri.SMT.SMT.runSTP") e'
            , Just dbg <- de_seriEH debug
-           -> runQuery (RunOptions dbg True) env (stp $ Seri.SMT.Run.run query)
+           -> runQuery (RunOptions dbg) env (stp $ Seri.SMT.Run.run query)
         e' | Just x <- de_appv1 (name "Prelude.return_io") e' -> return x
         e' | Just (x, f) <- de_appv2 (name "Prelude.bind_io") e' -> do
               result <- run env x
