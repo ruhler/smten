@@ -149,7 +149,5 @@ Elaborator::
 * Test out free_enum, see if it generate SAT (it may not...)
 
 Other::
-* Group Seri.ExpH.* in common module so we don't need so many imports
-* Group Seri.Exp.* in common module so we don't need so many imports
 * Finish reorganizing Lambda module layout (get rid of Seri.Lambda.*)
 

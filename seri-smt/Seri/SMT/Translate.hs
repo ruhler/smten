@@ -62,9 +62,7 @@ import Seri.Name
 import Seri.Lit
 import Seri.Sig
 import Seri.Type
-import Seri.Exp.Exp
-import Seri.Exp.Sugar
-import Seri.Exp.Typeof
+import Seri.Exp
 import Seri.ExpH
 import Seri.Strict
 import Seri.Elaborate
