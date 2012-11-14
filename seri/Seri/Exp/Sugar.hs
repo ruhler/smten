@@ -4,7 +4,7 @@
 -- | Abstract constructors and deconstructors working with Exp
 module Seri.Exp.Sugar (
     litE, conE, de_conE, varE, de_varE, appE, de_appE, appsE, de_appsE, lamE,
-    lamsE, de_letE, ifE, typeE,
+    lamsE, letE, de_letE, ifE, typeE,
     
     boolE, falseE, trueE, charE, de_charE, listE, de_listE, stringE, de_stringE,
     errorE, tupleE,
@@ -49,6 +49,9 @@ lamE = LamE
 lamsE :: [Sig] -> Exp -> Exp
 lamsE [] x = x
 lamsE (v:vs) x = lamE v (lamsE vs x)
+
+letE :: Sig -> Exp -> Exp -> Exp
+letE s v b = appE (lamE s b) v
 
 de_letE :: Exp -> Maybe (Sig, Exp, Exp)
 de_letE (AppE (LamE s b) v) = Just (s, v, b)

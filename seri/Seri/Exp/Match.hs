@@ -47,7 +47,7 @@ matchE x (SMatch (VarP n) yv) _ = return $ appE (lamE (Sig n UnknownT) yv) x
 matchE x (SMatch (LitP l) yv) n =
   let p = appsE (varE (Sig (name "==") UnknownT)) [litE l, x]
   in return $ ifE p yv n
-matchE x (SMatch (ConP nm ps) yv) n =
+matchE x (SMatch (ConP nm ps) yv) n | isSimple n =
   let -- case x of
       --    K pa pb pc -> yv
       --    _ -> n
@@ -72,6 +72,10 @@ matchE x (SMatch (ConP nm ps) yv) n =
       vars <- mapM fresh [Sig (name $ "_p" ++ show i) UnknownT | i <- [1..(length ps)]]
       body <- mkcases [(p, varE v) | (p, v) <- zip ps vars] yv n
       return $ CaseE x (Sig nm UnknownT) (lamsE vars body) n
+matchE x m n = do
+  nv <- fresh (Sig (name "_n") UnknownT)
+  body <- matchE x m (varE nv)
+  return $ letE nv n body
 
 -- | Desugar multiple matches. Or, in other words, a case statement with an
 -- explicit default clause.
@@ -82,9 +86,13 @@ matchE x (SMatch (ConP nm ps) yv) n =
 --   _ -> n
 matchesE :: (Fresh f) => Exp -> [SMatch] -> Exp -> f Exp
 matchesE e [m] n = matchE e m n
-matchesE e (m:ms) n = do
+matchesE e (m:ms) n | isSimple e = do
     n' <- matchesE e ms n
     matchE e m n'
+matchesE e ms n = do
+    ev <- fresh (Sig (name "_e") UnknownT)
+    body <- matchesE (varE ev) ms n
+    return $ letE ev e body
 
 -- | Desugar a case expression.
 caseE :: Exp -> [SMatch] -> Exp
@@ -144,4 +152,12 @@ mletE  p v e = caseE v [SMatch p e]
 mletsE :: [(Pat, Exp)] -> Exp -> Exp
 mletsE [] x = x
 mletsE ((p, v):ps) x = mletE p v (mletsE ps x)
+
+-- Return true if the expression is simple.
+-- If an expression is simple, there's no cost to duplicating it.
+isSimple :: Exp -> Bool
+isSimple (AppE {}) = False
+isSimple (LamE {}) = False
+isSimple (CaseE {}) = False
+isSimple _ = True
 

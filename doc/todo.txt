@@ -153,5 +153,4 @@ Haskell Backend::
 
 Other::
 * Have name sugar for arrowN, tupleN, de_tupleN, unitN, etc...
-* Desugaring of case should preserve sharing.
 
