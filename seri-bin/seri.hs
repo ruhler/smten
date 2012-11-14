@@ -58,7 +58,7 @@ import qualified Seri.SMT.Run as Q
 import qualified Seri.SMT.Query as Q
 
 import qualified Seri.IO.Run as I
---import Seri.Haskell
+import Seri.Haskell
 
 data Run = Io | Type | Desugar | Haskell
     deriving (Show, Eq, Typeable, Data)
@@ -112,6 +112,6 @@ main = do
             env <- loadenv (include args) (file args)
             putStrLn . pretty $ env
         Haskell -> do
-            error $ "TODO: support haskell"
-            --putStrLn . show $ haskell haskellH (getDecls env) nmain
+            env <- loadenv (include args) (file args)
+            putStrLn . show $ haskell haskellH (getDecls env) nmain
 

@@ -48,9 +48,13 @@ import qualified Language.Haskell.TH.PprLib as H
 import qualified Language.Haskell.TH as H
 
 import Seri.Failable
+import Seri.Name
+import Seri.Sig
 import Seri.Type
 import Seri.Lit
 import Seri.Exp
+import Seri.Dec
+import Seri.Ppr
 import Seri.Haskell.Compiler
 
 hsLit :: Lit -> H.Lit
@@ -64,21 +68,12 @@ hsExp :: HCompiler -> Exp -> Failable H.Exp
 -- if they contain newlines, thus, we can't print those as string literals.
 -- When they fix the template haskell pretty printer, that special case should
 -- be removed here.
-hsExp c e | Just str <- deStringE e
+hsExp c e | Just str <- de_stringE e
           , '\n' `notElem` str
           = return $ H.LitE (H.StringL str)
-hsExp c e | Just xs <- deListE e = do
+hsExp c e | Just xs <- de_listE e = do
   xs' <- mapM (compile_exp c c) xs
   return $ H.ListE xs'
-hsExp c e | Just (es, ms) <- deCaseE e = do
-  es' <- mapM (compile_exp c c) es
-  ms' <- mapM (hsMatch c) ms
-  return $ H.CaseE (H.TupE es') ms'
-
-hsExp c e | Just (Match ps b) <- deLamE e = do
-  let ps' = map hsPat ps
-  b' <- compile_exp c c b
-  return $ H.LamE ps' b'
 
 hsExp c (LitE l) = return (H.LitE (hsLit l))
 hsExp c (ConE (Sig n _)) = return $ H.ConE (hsName n)
@@ -91,28 +86,30 @@ hsExp c (AppE f x) = do
     f' <- compile_exp c c f
     x' <- compile_exp c c x
     return $ H.AppE f' x'
-    
--- Make a lace look like case by introducing dummy variables
--- TODO: hopefully we don't shadow any names here.
-hsExp c e@(LaceE ms@(Match ps _ : _)) =
-    let nms = [name $ '_':'_':c:[] | c <- take (length ps) "abcdefghijklmnopqrstuvwxyz"]
-        dummyps = [VarP (Sig n UnknownT) | n <- nms]
-        dummyargs = [VarE (Sig n UnknownT) | n <- nms]
-        body = appsE e dummyargs
-    in hsExp c (lamE $ Match dummyps body) 
 
-hsMatch :: HCompiler -> Match -> Failable H.Match
-hsMatch c (Match ps e) = do
-    let p' = H.TupP $ map hsPat ps
-    e' <- compile_exp c c e
-    return $ H.Match p' (H.NormalB $ e') []
-    
-hsPat :: Pat -> H.Pat
-hsPat (ConP _ n ps) = H.ConP (hsName n) (map hsPat ps)
-hsPat (VarP (Sig n _)) = H.VarP (hsName n)
-hsPat (LitP l) = H.LitP (hsLit l)
-hsPat (WildP _) = H.WildP
+hsExp c (LamE (Sig n _) x) = do
+    x' <- compile_exp c c x
+    return $ H.LamE [H.VarP (hsName n)] x'
 
+hsExp c (CaseE x (Sig kn kt) y n) =
+  let nwant = length (de_arrowsT kt) - 1
+      getvars :: Int -> Exp -> ([Name], Exp)
+      getvars 0 x = ([], x)
+      getvars n (LamE (Sig nm _) x) = 
+        let (vs, b) = getvars (n-1) x
+        in (nm:vs, b)
+      getvars _ e = error $ "getvars expected LamE, found: " ++ pretty e
+
+      (vars, yv) = getvars nwant y
+  in do
+    x' <- compile_exp c c x
+    yv' <- compile_exp c c yv
+    n' <- compile_exp c c n
+    return $ H.CaseE x' [
+        H.Match (H.ConP (hsName kn) (map (H.VarP . hsName) vars)) (H.NormalB yv') [],
+        H.Match H.WildP (H.NormalB n') []]
+    
+    
 hsType :: HCompiler -> Type -> Failable H.Type
 hsType c (ConT n) | n == name "->" = return H.ArrowT
 hsType c (ConT n) = return $ H.ConT (hsName n)

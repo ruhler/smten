@@ -69,11 +69,11 @@ library
     Seri.ExpH.FromExpH
     Seri.ExpH.Ppr
 
-    --Seri.Haskell
-    --Seri.Haskell.Haskell
-    --Seri.Haskell.Compiler
-    --Seri.Haskell.Lib.Bit
-    --Seri.Haskell.Lib.Numeric
+    Seri.Haskell
+    Seri.Haskell.Haskell
+    Seri.Haskell.Compiler
+    Seri.Haskell.Lib.Bit
+    Seri.Haskell.Lib.Numeric
 
     Seri.Module
     Seri.Module.Module

@@ -39,7 +39,6 @@ Type System::
 * give a nice message if there's a type ambiguity?
     That is, anything with ~?
 * Reimplement TypeCheck to make use of constraint generation from TypeInfer?
-* move TypeInfer, TypeCheck and TypeSolve into a Type/ folder?
 * Make numeric types happy
 * Implement enough math somewhere to know that
   Bit #3  -> Bit #4 -> Bit #7 is a valid subtype of
@@ -59,8 +58,8 @@ vs. foo :: (Foo a) => Sludge
 * allow multiply specified imports
 
 Pretty Printer::
-* don't print out builtin prelude?
-* do notation <- doesn't work with explicit type (parser bug?)
+* Make pretty again.
+* Make it so I can compile pretty printed code?
 
 Performance::
 * Play with GHC Sparks and non-strict state monads
@@ -148,12 +147,11 @@ Elaborator::
   smt_array.
 * Test out free_enum, see if it generate SAT (it may not...)
 
-Other::
-* Finish reorganizing Lambda module layout (get rid of Seri.Lambda.*)
-* Have name sugar for arrowN, tupleN, de_tupleN, unitN, etc...
-
 Haskell Backend::
 * Push the compiler into one function, don't break it up the silly way it has
   been.
 
+Other::
+* Have name sugar for arrowN, tupleN, de_tupleN, unitN, etc...
+* Desugaring of case should preserve sharing.
 

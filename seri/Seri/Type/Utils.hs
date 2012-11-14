@@ -3,6 +3,7 @@
 
 module Seri.Type.Utils (
     assignments, isSubType, Assign(..), assign,
+    nvarTs, varTs,
     ) where
 
 import Control.Monad.State
@@ -82,4 +83,17 @@ instance Assign Type where
 
 instance (Assign a) => Assign [a] where
     assignl f = map (assignl f)
+
+-- | List the (non-numeric) variable type names in a given type.
+varTs :: Type -> [Name]
+varTs (AppT a b) = nub $ varTs a ++ varTs b
+varTs (VarT n) = [n]
+varTs _ = []
+
+-- | List the numeric type variables in the given type.
+nvarTs :: Type -> [Name]
+nvarTs (AppT a b) = nub $ nvarTs a ++ nvarTs b
+nvarTs (NumT (AppNT _ a b)) = nub $ nvarTs (NumT a) ++ nvarTs (NumT b)
+nvarTs (NumT (VarNT n)) = [n]
+nvarTs _ = []
 
