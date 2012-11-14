@@ -156,4 +156,6 @@ Other::
 * Have name sugar for arrowN, tupleN, de_tupleN, unitN, etc...
 * Review desugared expressions to see if they make sense or could be cleaned
   up.
+* Get rid of Elaborate.ExpH. Those utilities should be in ExpH.Utils or some
+  such.
 
