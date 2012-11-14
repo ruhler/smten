@@ -1,6 +1,8 @@
 
+{-# LANGUAGE PatternGuards #-}
+
 module Seri.Type.Utils (
-    assignments, isSubType, assign, assignl,
+    assignments, isSubType, Assign(..), assign,
     ) where
 
 import Control.Monad.State
@@ -54,10 +56,30 @@ isSubType t sub
     
 -- | Replace all variable types and numeric variable types with the given
 -- values. Uses association list lookup.
-assign :: [(Name, Type)] -> a -> a
+assign :: (Assign a) => [(Name, Type)] -> a -> a
 assign [] = id
 assign m = assignl (\n -> Prelude.lookup n m)
 
-assignl :: (Name -> Maybe Type) -> a -> a
-assignl = error $ "TODO: assignl"
+class Assign a where
+    assignl :: (Name -> Maybe Type) -> a -> a
+
+instance Assign NType where
+    assignl f t = 
+      let me = assignl f
+      in case t of
+            AppNT o a b -> AppNT o (me a) (me b)
+            VarNT n | Just (NumT t') <- f n -> t'
+            _ -> t
+
+instance Assign Type where
+    assignl f t = 
+      let me = assignl f
+      in case t of
+            AppT a b -> AppT (me a) (me b)
+            VarT n | Just t' <- f n -> t'
+            NumT nt -> NumT (assignl f nt)
+            _ -> t
+
+instance (Assign a) => Assign [a] where
+    assignl f = map (assignl f)
 

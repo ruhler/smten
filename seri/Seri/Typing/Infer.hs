@@ -114,6 +114,10 @@ deunknown =
           id <- get
           put (id+1)
           return (VarT . name $ "~" ++ show id)
+      f (AppT a b) = do
+          a' <- f a
+          b' <- f b
+          return $ AppT a' b'
       f t = return t
   in transformMTE f
 
@@ -189,7 +193,9 @@ instance Constrain Exp where
         addc (arrowT it ot) tf
         addc it tx
         return ot
-    constrain (LamE s x) = scoped [s] (constrain x)
+    constrain (LamE s x) = do
+        ot <- scoped [s] (constrain x)
+        return $ arrowT (typeof s) ot
     constrain (CaseE x (Sig kn kt) y n) = do
         xt <- constrain x
         yt <- constrain y
@@ -201,7 +207,7 @@ instance Constrain Exp where
         addc rkty kt
 
         let at = last $ de_arrowsT rkty
-        addc at (typeof x)
+        addc at xt
 
         let ywt = arrowsT (init (de_arrowsT rkty) ++ [nt])
         addc ywt yt

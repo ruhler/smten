@@ -65,6 +65,7 @@ import Seri.Sig
 import Seri.Exp
 import Seri.Dec.Dec
 import Seri.Dec.Ppr
+import Seri.Dec.Utils
 import Seri.Ppr
 import Seri.Type
 

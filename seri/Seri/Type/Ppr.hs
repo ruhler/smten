@@ -12,12 +12,24 @@ instance Ppr NType where
     ppr (VarNT v) = ppr v
     ppr (AppNT o a b) = parens (ppr a <+> text o <+> ppr b)
 
+-- Print an atomic type.
+-- Wraps complex types in parens.
+atom :: Type -> Doc
+atom t | Just _ <- de_listT t = ppr t
+atom t | Just _ <- de_arrowT t = parens (ppr t)
+atom t | Just _ <- de_appT t = parens (ppr t)
+atom t = ppr t
+
 instance Ppr Type where
     -- Special case for list type
     ppr t | Just v <- de_listT t = text "[" <> ppr v <> text "]"
 
+    -- Special case for ->
+    ppr t | (t1:ts@(_:_)) <- de_arrowsT t   
+      = sep $ ppr t1 : concat [[text "->", atom tx] | tx <- ts]
+
     ppr (ConT n) = ppr n
-    ppr (AppT a b) = parens (ppr a) <+> parens (ppr b)
+    ppr (AppT a b) = atom a <+> atom b
     ppr (VarT n) = ppr n
     ppr (NumT nt) = text "#" <> ppr nt
     ppr UnknownT = text "?"

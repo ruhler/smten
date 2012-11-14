@@ -14,5 +14,5 @@ instance Typeof Sig where
 
 instance Ppr Sig where
     ppr (Sig n UnknownT) = ppr n
-    ppr (Sig n t) = ppr n <+> text "::" <+> ppr t
+    ppr (Sig n t) = parens (ppr n <+> text "::" <+> ppr t)
 

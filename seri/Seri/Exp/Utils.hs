@@ -46,3 +46,14 @@ transformMTE f e =
          [x', y', n'] <- mapM me [x, y, n]
          return $ CaseE x' (Sig kn kt') y' n'
 
+instance Assign Exp where
+   assignl f e =
+    let me = assignl f 
+        mt = assignl f
+    in case e of
+         LitE {} -> e
+         ConE (Sig n t) -> ConE (Sig n (mt t))
+         VarE (Sig n t) -> VarE (Sig n (mt t))
+         AppE a b -> AppE (me a) (me b)
+         LamE (Sig n t) b -> LamE (Sig n (mt t)) (me b)
+         CaseE x (Sig kn kt) y n -> CaseE (me x) (Sig kn (mt kt)) (me y) (me n)

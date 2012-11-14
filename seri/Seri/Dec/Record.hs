@@ -121,7 +121,7 @@ deriveEq dn vars cs =
         in MMatch [pA, pB] body
 
       def = MMatch [WildP, WildP] falseE
-      ctx = [Class (name "eq") [tyVarType c] | c <- vars]
+      ctx = [Class (name "Eq") [tyVarType c] | c <- vars]
       eqclauses = map mkcon cs ++ [def]
       eq = Method (name "==") (clauseE eqclauses)
       ne = Method (name "/=") (varE (Sig (name "/=#") UnknownT))

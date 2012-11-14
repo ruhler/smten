@@ -1,12 +1,17 @@
 
+{-# LANGUAGE PatternGuards #-}
+
 -- | Abstract constructors and deconstructors working with Exp
 module Seri.Exp.Sugar (
-    litE, conE, varE, appE, de_appE, appsE, de_appsE, lamE, lamsE, de_letE, 
-    ifE, typeE,
+    litE, conE, de_conE, varE, de_varE, appE, de_appE, appsE, de_appsE, lamE,
+    lamsE, de_letE, ifE, typeE,
     
-    boolE, falseE, trueE, charE, listE, stringE, errorE, tupleE,
+    boolE, falseE, trueE, charE, de_charE, listE, de_listE, stringE, de_stringE,
+    errorE, tupleE,
     integerE, numberE,
     ) where
+
+import Control.Monad
 
 import Seri.Lit
 import Seri.Name
@@ -18,8 +23,16 @@ import Seri.Exp.Typeof
 conE :: Sig -> Exp
 conE = ConE
 
+de_conE :: Exp -> Maybe Sig
+de_conE (ConE s) = Just s
+de_conE _ = Nothing
+
 varE :: Sig -> Exp
 varE = VarE
+
+de_varE :: Exp -> Maybe Sig
+de_varE (VarE s) = Just s
+de_varE _ = Nothing
 
 litE :: Lit -> Exp
 litE = LitE
@@ -67,6 +80,10 @@ boolE False = falseE
 charE :: Char -> Exp
 charE = litE . CharL
 
+de_charE :: Exp -> Maybe Char
+de_charE (LitE (CharL c)) = Just c
+de_charE _ = Nothing
+
 -- | [a, b, ..., c]
 listE :: [Exp] -> Exp
 listE [] = conE (Sig (name "[]") (listT UnknownT))
@@ -79,8 +96,23 @@ listE (x:xs) =
      consT = arrowsT [t, listT t, listT t]
  in appsE (conE (Sig (name ":") consT)) [x, listE xs]
 
+de_listE :: Exp -> Maybe [Exp]
+de_listE e | Just (Sig n _) <- de_conE e, n == name "[]" = Just []
+de_listE e | (f, [a, b]) <- de_appsE e = do
+    (Sig n _) <- de_conE f
+    guard $ n == name ":"
+    xs <- de_listE b
+    return (a:xs)
+de_listE _ = Nothing
+
 stringE :: String -> Exp
 stringE str = listE (map charE str)
+
+de_stringE :: Exp -> Maybe String
+de_stringE e = do
+    elems <- de_listE e
+    guard $ not (null elems)
+    mapM de_charE elems
 
 -- Seri error, before flattening.
 errorE :: String -> Exp

@@ -84,6 +84,7 @@ library
     Seri.Dec.Env
     Seri.Dec.Dec
     Seri.Dec.Ppr
+    Seri.Dec.Utils
 
     Seri.Typing
     Seri.Typing.Infer
