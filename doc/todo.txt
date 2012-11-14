@@ -60,6 +60,7 @@ vs. foo :: (Foo a) => Sludge
 Pretty Printer::
 * Make pretty again.
 * Make it so I can compile pretty printed code?
+* Maybe dump the Doc approach and take my SMT concrete approach?
 
 Performance::
 * Play with GHC Sparks and non-strict state monads
@@ -81,9 +82,6 @@ SMT Syntax::
 * Remove bv-zero-extend from SMT syntax, use SMTLIB2 alternative
 
 Dealing with Free Things::
-* Elaborator needs to do delacification for primitive functions to avoid
-  unnecessary background theories (but maybe only for backends which don't
-  support those theories?)
 * what happens if we realize a free integer variable which is a dont-care?
 * interpret function evidence
 * interpret char evidence (?)
@@ -93,8 +91,7 @@ Dealing with Free Things::
 * Get rid of the __prim_free primitive
 * Define SMT theory classes and add a solver phantom type to free and Query.
 * Don't ask for the value of a free variable from an SMT solver unless it
-  shows up in a query. Or maybe just cache the results so long as check hasn't
-  been called again?
+  shows up in a query.
 
 Bugs::
 * seriq2 for SquaresRaw... result differs from yices1 and yices2. Why?
@@ -131,17 +128,12 @@ Elaborator::
 * Propagate the error primitive up instead of calling error.
 * Can I remove the distinction between SNF and WHNF elaboration? Can they be
   the same?
-* It's okay to elaborate bodies of lambdas in WHNF thanks to HOAS.
-* Do eager elaboration whenever arguments are shared.
 * Look over results of elaboration, especially SNF, to see if anything pops
   out, and make sure things aren't blown up too big.
 * Have common abstraction for manipulating the yv part of a case expression.
 * Consider more general concretization propagation?
-* Change front end to have single argument applications and patterns.
-* Change front end to have desugared case expressions.
 * Share loading of top level declarations.
-* Change deriving of Free to generate if statements, not case statements.
-* Leverage let statements when doing argument and function pushing to capture
+* Leverage let statements when doing function pushing to capture
   sharing
 * Implement the 'update' primitive in the elaborator, or remove it from
   smt_array.

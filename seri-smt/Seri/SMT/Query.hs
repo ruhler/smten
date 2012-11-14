@@ -85,6 +85,7 @@ data QS s = QS {
     qs_freeid :: Integer,
     qs_qs :: Compilation,
     qs_freevars :: [Sig],
+    qs_freevals :: Maybe [ExpH], -- ^ Cache of free variable values
     qs_env :: Env
 }
 
@@ -108,6 +109,7 @@ check = do
     debug (SMT.pretty ctx SMT.Check)
     res <- lift $ SMT.check ctx
     debug $ "; check returned: " ++ show res
+    modify $ \qs -> qs { qs_freevals = Nothing }
     return res
 
 -- Output a line to the debug output.
@@ -179,6 +181,7 @@ mkQS ctx opts env = do
         qs_freeid = 1,
         qs_qs = compilation env,
         qs_freevars = [],
+        qs_freevals = Nothing,
         qs_env = env
     }
 
@@ -286,10 +289,16 @@ queryS q = do
 -- model.
 realize :: (SMT.Solver s) => ExpH -> Realize s ExpH
 realize e = Realize $ do
-    env <- gets qs_env
     freevars <- gets qs_freevars
-    freevarvals <- mapM (realizefree env) freevars
-    let freemap = zip freevars freevarvals
+    freevals <- gets qs_freevals
+    fvs <- case freevals of
+              Just vs -> return vs
+              Nothing -> do
+                env <- gets qs_env
+                freevals <- mapM (realizefree env) freevars
+                modify $ \qs -> qs { qs_freevals = Just freevals }
+                return freevals
+    let freemap = zip freevars fvs
         g :: ExpH -> Maybe ExpH
         g e = do
             s <- de_varEH e
