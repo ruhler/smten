@@ -85,14 +85,14 @@ elaborate mode env =
                 Nothing -> VarEH s
           AppEH (ES_Some m) _ _ | mode <= m -> e
           AppEH _ f arg -> 
-             case (elab f) of
-               VarEH (Sig n t)
+             case (elab f, elab arg) of
+               (VarEH (Sig n t), arg)
                  | Just f <- HT.lookup n uprimitives
-                 , Just v <- f t (elab arg) -> v
-               AppEH _ (VarEH (Sig n t)) x
+                 , Just v <- f t arg -> v
+               (AppEH _ (VarEH (Sig n t)) x, arg)
                  | Just f <- HT.lookup n bprimitives
-                 , Just v <- f t (elab x) (elab arg) -> v
-               CaseEH _ a k y n | mode == SNF ->
+                 , Just v <- f t (elab x) arg -> v
+               (CaseEH _ a k y n, arg) | mode == SNF ->
                  let -- Perform argument pushing.
                      -- (case a of
                      --     k -> y
@@ -114,8 +114,8 @@ elaborate mode env =
                      y' = yify kargs ybody y
                      n' = AppEH ES_None n arg
                  in elab $ CaseEH ES_None a k y' n'
-               LamEH _ _ b -> elab $ b arg
-               f' -> AppEH (ES_Some mode) f' (if mode == SNF then elab arg else arg)
+               (LamEH _ _ b, arg) -> elab $ b arg
+               (f', arg) -> AppEH (ES_Some mode) f' arg
           LamEH (ES_Some m) _ _ | mode <= m -> e
           LamEH {} | mode == WHNF -> e
           LamEH _ v f -> LamEH (ES_Some mode) v (\x -> elab (f x))
