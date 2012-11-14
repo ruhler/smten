@@ -67,8 +67,8 @@ indir build/seri-bin {
     #hrun ghc -o seri seri.hs
     hrun ghc -rtsopts -prof -auto-all -o seri seri.hs
     
-    #hrun ln -sf ../../seri-bin/dsel.hs dsel.hs
-    #hrun ghc -o dsel dsel.hs
+    hrun ln -sf ../../seri-bin/dsel.hs dsel.hs
+    hrun ghc -o dsel dsel.hs
 
     #hrun ln -sf ../../seri-bin/sudoku.hs sudoku.hs
     #hrun ghc -o sudoku sudoku.hs
@@ -151,14 +151,13 @@ smttest "Tuple"
 smttest "AllQ"
 smttest "AllQ2"
 smttest "Squares2/Squares"
-smttest "BCL3Small"
 smttest "Sudoku"
-smttest "Sudoku2"
+#smttest "Sudoku2"
 smttest "Sudoku3"
 smttest "Isolate0"
 
 # The DSEL tests
-#hrun $::DSEL
+hrun $::DSEL
 #hrun $::SUDOKU
 
 puts "BUILD COMPLETE"

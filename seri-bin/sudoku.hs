@@ -12,6 +12,7 @@ import Seri.DSEL.SMT
 import Seri.Type
 import Seri.TH
 import Seri
+import Seri.Dec
 import Seri.SMT.Solver (Solver)
 import Seri.SMT.Yices.Yices2
 

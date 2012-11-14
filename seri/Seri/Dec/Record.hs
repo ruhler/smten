@@ -139,22 +139,66 @@ deriveEq dn vars cs =
 --            | Wedge
 --
 -- Derives something of the form:
+-- Generates something of the form
+-- instance (Free a, Free b, ...) => Free (Foo a b ...) where
 --   free = do
---      isBar <- free
---      isSludge <- free
---      aBar <- free 
---      bBar <- free 
---      aSludge <- free
+--      isFoo1 <- free ; isFoo2 <- free ; ... ; isFooNm1 <- free 
+--
+--      a1Foo1 <- free ; a2Foo1 <- free ; ... 
+--      a1Foo2 <- free ; a2Foo2 <- free ; ... 
+--      ...
+--      a1FooN <- free ; a2FooN <- free ; ... 
+--
 --      return (
---         if isbar then Bar aBar bBar
---                  else if then isSludge Sludge aSludge
---                          else Wedge
+--               if isFoo1 then Foo1 a1Foo1 a2Foo1 ...
+--          else if isFoo2 then Foo2 a1Foo2 a2Foo2 ...
+--             ...
+--          else FooN a1FooN a2FooN ...)
 deriveFree :: Name -> [TyVar] -> [Con] -> Dec
-deriveFree dn vars cs = error $ "TODO: deriveFree"
+deriveFree dn vars cs =
+  let dt = appsT (ConT dn) (map tyVarType vars)
+    
+      -- name of tag for constructor: (isFooX :: Bool)
+      mkTag :: Con -> Sig
+      mkTag (Con nm _) = Sig (name "is" `nappend` nm) boolT
 
+      -- fields for constructor: [a1FooX, a2FooX, ...]
+      mkFields :: Con -> [Sig]
+      mkFields (Con nm ts)
+        = [Sig (name ('a' : show i) `nappend` nm) t | (t, i) <- zip ts [1..]]
+
+      -- application of constructor to its fields:
+      --    FooX a1FooX a2FooX ...
+      mkCon :: Con -> Exp
+      mkCon c@(Con nm ts) =
+        let fields = mkFields c
+        in appsE (conE (Sig nm UnknownT)) (map varE fields)
+
+      -- given [t1, t2, ..., tnm1] [v1, v2, ... vn]
+      --  Generates the nested if statement:
+      --    if t1 then v1
+      --          else if t2 then v2
+      --                     else if ...
+      --                             else vn
+      mkIf :: [Sig] -> [Exp] -> Exp
+      mkIf [] [x] = x
+      mkIf (t:ts) (x:xs) = ifE (varE t) x (mkIf ts xs)
+      mkIf ss es = error $ "mkIf: " ++ show ss ++ ", " ++ show es
+
+      tags = map mkTag (init cs)
+      fields = concat (map mkFields cs)
+      freevars = [BindS (VarP n) (VarE (Sig (name "free") UnknownT))
+                    | Sig n _ <- tags ++ fields]
+      bodies = map mkCon cs
+      value = mkIf tags bodies
+      rtn = NoBindS $ appE (varE (Sig (name "return") UnknownT)) value
+      stmts = freevars ++ [rtn]
+      free = Method (name "free") (doE stmts)
+      ctx = [Class (name "Free") [tyVarType c] | c <- vars]
+  in InstD ctx (Class (name "Free") [dt]) [free]
+      
 derive :: String -> Name -> [TyVar] -> [Con] -> Dec
 derive "Eq" = deriveEq
 derive "Free" = deriveFree
 derive x = error $ "deriving " ++ show x ++ " not supported in seri"
-
 

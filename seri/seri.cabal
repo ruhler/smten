@@ -19,7 +19,6 @@ data-files:
     Seri/Sudoku/*.sri
     Seri/SMT/*.sri
     Seri/SMT/Tests/*.sri
-    Seri/SMT/Tests/BCL/*.sri
     Seri/SMT/Tests/Squares2/*.sri
     Seri/SMT/Tests/Squares/*.sri
 source-repository this
