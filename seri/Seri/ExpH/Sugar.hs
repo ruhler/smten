@@ -7,7 +7,7 @@ module Seri.ExpH.Sugar (
 
     unitEH,
     boolEH, trueEH, falseEH, de_boolEH,
-    integerEH, de_integerEH, bitEH,
+    integerEH, de_integerEH, bitEH, de_bitEH,
     charEH, de_charEH,
     ) where
 
@@ -87,6 +87,15 @@ de_integerEH _ = Nothing
 
 bitEH :: Bit -> ExpH
 bitEH b = appEH (varEH (Sig (name "Seri.Bit.__prim_fromInteger_Bit") (arrowsT [integerT, bitT (bv_width b)]))) (integerEH $ bv_value b)
+
+-- Extract a Bit from an expression of the form: __prim_frominteger_Bit v
+-- The expression should be elaborated already.
+de_bitEH :: ExpH -> Maybe Bit
+de_bitEH (AppEH _ (VarEH (Sig fib (AppT _ (AppT _ (NumT w))))) ve)
+  | fib == name "Seri.Bit.__prim_fromInteger_Bit"
+  , LitEH (IntegerL v) <- ve
+  = Just (bv_make (nteval w) v)
+de_bitEH _ = Nothing
 
 charEH :: Char -> ExpH
 charEH = litEH . CharL 

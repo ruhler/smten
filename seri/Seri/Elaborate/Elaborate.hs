@@ -91,7 +91,7 @@ elaborate mode env =
                  , Just v <- f t arg -> v
                (AppEH _ (VarEH (Sig n t)) x, arg)
                  | Just f <- HT.lookup n bprimitives
-                 , Just v <- f t (elab x) arg -> v
+                 , Just v <- f t x arg -> v
                (CaseEH _ a k y n, arg) | mode == SNF ->
                  let -- Perform argument pushing.
                      -- (case a of
@@ -114,10 +114,9 @@ elaborate mode env =
                      y' = yify kargs ybody y
                      n' = AppEH ES_None n arg
                  in elab $ CaseEH ES_None a k y' n'
-               (LamEH _ _ b, arg) -> elab $ b arg
+               (LamEH _ _ b, arg) -> b arg
                (f', arg) -> AppEH (ES_Some mode) f' arg
           LamEH (ES_Some m) _ _ | mode <= m -> e
-          LamEH {} | mode == WHNF -> e
           LamEH _ v f -> LamEH (ES_Some mode) v (\x -> elab (f x))
           CaseEH (ES_Some m) _ _ _ _ | mode <= m -> e
           CaseEH _ arg k@(Sig nk _) yes no
@@ -165,15 +164,6 @@ elaborate mode env =
             CaseEH (ES_Some mode) (elab arg) k (elab yes) (elab no)
           CaseEH _ arg k yes no -> CaseEH (ES_Some mode) arg k yes no
         
-      -- Extract a Bit from an expression of the form: __prim_frominteger_Bit v
-      -- The expression should be elaborated already.
-      de_bitEH :: ExpH -> Maybe Bit
-      de_bitEH (AppEH _ (VarEH (Sig fib (AppT _ (AppT _ (NumT w))))) ve)
-        | fib == name "Seri.Bit.__prim_fromInteger_Bit"
-        , LitEH (IntegerL v) <- elab ve
-        = Just (bv_make (nteval w) v)
-      de_bitEH _ = Nothing
-
       -- nullary primitives
       nprimitives :: HT.HashTable Name (Type -> ExpH)
       nprimitives = HT.table $ [

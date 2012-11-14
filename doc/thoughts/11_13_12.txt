@@ -1,0 +1,314 @@
+
+Tue Nov 13 07:48:07 EST 2012
+
+First thing to do this morning: switch front end to single arg application.
+
+Clean up the sugar as I need to.
+
+I think define Match as a single argument match and MMatch as a multi-argument
+match, and have sLaceE desugar from multi-argument match to single argument
+match.
+
+Here I go.
+
+Tue Nov 13 08:12:49 EST 2012
+
+Switched to single arg application in the front end. It wasn't bad. Note, I
+still have multi-arg laces.
+
+What makes sense as the next step?
+
+For some reason I have been able to dive in and hack at things and be
+successful recently. I did this with enoch. I did it with something else too.
+Should I try it here?
+
+I think what I should do is implement desugaring from ... Lace down to new
+Exp. Use the Fresh monad if needed (pull it out and make it available). Once I
+have that, then I think I'll be ready to try to make the leap.
+
+Tue Nov 13 08:29:50 EST 2012
+
+Let me just review one more time to see if I can get away without having to
+pick new variable names.
+
+The hard one is:
+
+case x of
+    Foo A B C -> yv
+    _ -> n
+
+Which desugars into:
+
+case x of
+    Foo a b c ->
+      case a of
+        A -> case b of
+                B -> case c of 
+                        C -> yv
+                        _ -> n
+                _ -> n
+        _ -> n
+
+And really the trouble is, A could be of the form Bar D E F. And those names
+would conflict.
+
+case x of
+   Foo a b ->
+      case a of
+         Bar a b -> case a of
+                        D -> case b of 
+                                E -> case b <<== 'b' is shadowed here!       
+                                        of B -> yv
+
+So yes, I'll need new names. So it makes sense to use the Fresh monad.
+
+Okay, next step is to see what kind of desugaring we do.
+
+First, I expect the following kinds of inputs:
+
+case arg of
+    (single arg matches)
+
+or in other words:
+
+caseE :: Exp -> [SMatch] -> Exp
+clauseE :: [MMatch] -> Exp
+
+lamsE :: MMatch -> Exp      -- multi-arg pattern matching lambda
+letE :: Exp -> SMatch       -- single-arg pattern matching let
+ifE :: Exp -> Exp -> Exp -> Exp
+
+In other words, everything is desugared into either a case or a clause
+expression. So just focus on how to desugar those.
+
+I already know how to go from multi-arg clause to single-arg clause using
+sLaceE. So really I have two:
+
+caseE :: Exp -> [SMatch] -> Exp
+sclauseE :: [SMatch] -> Exp
+
+Clearly one can be implemented on the other. It's not clear at this time which
+I should prefer.
+
+Now, let me take a look at it from the other side.
+
+We have this function:
+
+matchE :: Exp -> SMatch -> Exp -> Exp
+
+This is like a simplified case, where we have a single match, but we are still
+matching against a pattern.
+
+matchesE :: Exp -> [SMatch] -> Exp -> Exp
+
+And the one for multiple arguments.
+
+Ah. Now when you break it down like that, it seems relatively easy. If you
+also have the Fresh monad.
+
+Cool. So, I propose the following. I'll switch to a new branch, and try and
+attack the whole thing all at once cleanly on the new branch.
+
+Tue Nov 13 08:48:15 EST 2012
+
+Here's something interesting. Now that we do type checking after getting rid
+of patterns, do patterns need types? Well, I need to know how many arguments
+there are to each constructor, and I don't know that unless I have types. At
+least, the type of the constructor. This means I can't really do desugaring of
+cases as a syntactic sugar...
+
+Wait. That's not true. I know how many arguments to constructors I got. That's
+all I need to know. So yes, I can get rid of the types there. I don't think I
+need ever to give explicit types to patterns, so this makes sense to me.
+
+Tue Nov 13 09:27:44 EST 2012
+
+A couple ideas:
+
+* Perhaps a good way to leap over to the new Exp would be to stub all the
+  functions out, get it to typecheck, then slowly implement more of them. And
+  I can implement the easy ones directly. I kind of like this plan.
+
+* I also like the idea of separating syntactic sugar into multiple modules.
+  For example, we can have the module which is a thin wrapper over Exp. We can
+  have the module which is pattern matching. Who knows.
+
+But this is good. I like the way it's going. I'll continue a little later on.
+
+Tue Nov 13 10:40:11 EST 2012
+
+Okay, so say I go to stub out everything. Now what? As in... how do I make the
+leap? Just go all at once?
+
+I suppose. Why not? Just remove any references to Seri.Lambda, which should go
+away entirely, and see what I need to do.
+
+Tue Nov 13 10:42:23 EST 2012
+
+Um... just so you know... there are rather a lot of references to Seri.Lambda.
+This could be a lot of work to reorganize and jump over to new Exp all at
+once. Am I still up for it?
+
+Sure. Why not. At least see how far I get before I get stuck.
+
+Tue Nov 13 12:05:12 EST 2012
+
+Well, I continue to make progress. I'm taking a step back in terms of pretty
+printing, but I think that's okay. Let me take a break for lunch and come back
+hacking. I do think it's getting close and cleaner. I just hope it all comes
+together right.
+
+Tue Nov 13 13:11:23 EST 2012
+
+Something annoying: looks like I have to rewrite deriving of Eq and Free. I
+kind of don't want to do that just now...
+
+Question: can clauseE and caseE not require Fresh? Can it call fresh
+internally? Something to ponder...
+
+Tue Nov 13 13:52:39 EST 2012
+
+Making progress. Still making progress. I'm almost there I think.
+
+Tue Nov 13 15:24:25 EST 2012
+ 
+On the fresh variable thing...  I need to seed the fresh monad with a list of
+names it can't pick. Otherwise bad things will almost certainly happen.
+
+Let me ignore that issue for now and get back to it when we run into it.
+
+Tue Nov 13 15:40:06 EST 2012
+
+How to deal with generic traversals?
+
+I don't much like the approach I had before. Perhaps I can be more direct.
+
+For example, consider assign. This is a generic traversal which maps types to
+new types. Can this be done using a transformation?
+
+First off, let me rename it, and split it:
+
+retypeT :: [(Name, Type)] -> Type -> Type
+retypeE :: [(Name, Exp)] -> Exp -> Exp
+
+How could I do this with generic transformations?
+
+transformT :: (Type -> Type) -> Type -> Type
+transformE :: (Exp -> Exp) -> Exp -> Exp
+
+retypeT =
+  let f t = ...
+  in transformT f
+
+That's fine. Now, to do retypeE, what I want is a transformation of types on
+expressions:
+
+transformET :: (Type -> Type) -> Exp -> Exp
+
+And that's not so hard to do either I don't think. Then I can combine them
+together. So I think this is a nicer way to do things, and let me see how far
+I can push it.
+
+I suppose I could have a type class.
+
+class Transform a b where
+    transform :: (a -> a) -> b -> b
+
+Transform all values of type 'a' in the expression 'b' using the given
+function to get a new 'b'. Now all I have to do is give an instance for any
+kind of transformation I want to do. That sounds reasonable to me.
+
+For now I'll make it a todo.
+
+What does retype look like now?
+
+retype :: (Transform Type b) => [(Name, Type)] -> b -> b
+
+That's pretty nice. I can even keep the same old name to make things easier if
+I want.
+
+Tue Nov 13 16:45:27 EST 2012
+
+Okay! It now all types. Except for the Haskell back end, which I'll come back
+to later. Time to fill in the stubs and make it work for real.
+
+There's some heavy lifting that needs to be done, but hopefully it's not so
+bad. I'm going to check stuff in now, clean up the empty directory structure,
+and then fill out the stubs.
+
+Tue Nov 13 16:50:45 EST 2012
+
+Now, time to make it work for real.
+First step: clauseE.
+
+Tue Nov 13 16:51:47 EST 2012
+
+ClauseE is the same as sLaceE.
+Let me recover that and plug it in.
+
+Tue Nov 13 17:37:17 EST 2012
+
+I have some bad news. It hangs. That's unpleasant. Either that, or it's just
+really slow.
+
+There is some fear we duplicate big arguments. But we shouldn't be having any
+big arguments yet. (I should fix that later).
+
+Let me try to just desugar, pre-type check, and see what I get.
+
+I guess this would be post flattening?
+
+Looks like a massive space leak.
+
+Aha. Perhaps an infinite recursion. We get stuck in curryn?
+
+Looks like we call clauseE with no arguments. What does that mean? Should be
+fairly easy.
+
+Good. Progress. Now I need deunknown...
+
+This is very similar to assign.
+It's a type transformation on expressions.
+
+Tue Nov 13 17:50:09 EST 2012
+
+Slight problem. Looks like I need it to be monadic in this case.
+I suppose that's not so hard.
+
+Tue Nov 13 17:59:52 EST 2012
+
+Now I'm running into Prelude.error where a constructor is expected. What's up
+with that?
+
+Let me print out the desugared, pre-type checked output.
+
+Tue Nov 13 18:03:56 EST 2012
+
+Okay! So now I need to get pretty printing to work, so I can have a clue
+what's going on.
+
+Tue Nov 13 18:28:35 EST 2012
+
+Now I need assignl for expressions and for types.
+
+Let me have: assignlE and assinglT, instead of a generic one?
+
+Otherwise I could have generic transform. That would perhaps be more useful.
+I'm not sure.
+
+Tue Nov 13 18:40:42 EST 2012
+
+Uh oh. I want to do assign for contexts too. That's annoying.
+
+I ought to do a type class then.
+
+I don't feel like doing this just now. Let me come back to this.
+
+Very good progress though. Just a few more things left:
+
+* assign
+* deriving of Free
+* make pretty printing nice
+* haskell back end
+* dealing with fresh names properly
+
