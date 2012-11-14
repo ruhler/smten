@@ -150,7 +150,10 @@ Elaborator::
 Haskell Backend::
 * Push the compiler into one function, don't break it up the silly way it has
   been.
+* Figure out how to avoid warnings about overlapping case alternatives
 
 Other::
 * Have name sugar for arrowN, tupleN, de_tupleN, unitN, etc...
+* Review desugared expressions to see if they make sense or could be cleaned
+  up.
 
