@@ -102,7 +102,6 @@ elaborate mode env =
                      --     case a of
                      --         k -> \v1 -> \v2 -> ... -> yv arg
                      --         _ -> n arg
-                     ybody = \yv -> AppEH ES_None yv arg
                      yify :: Integer -> (ExpH -> ExpH) -> ExpH -> ExpH
                      yify 0 f x = f x
                      yify n f (LamEH _ s b) = LamEH ES_None s $ \x ->
@@ -111,9 +110,12 @@ elaborate mode env =
 
                      kargs = genericLength (de_arrowsT (typeof k)) - 1
 
-                     y' = yify kargs ybody y
-                     n' = AppEH ES_None n arg
-                 in elab $ CaseEH ES_None a k y' n'
+                     lam = LamEH ES_None (Sig (name "_z") (typeof arg)) $ \av ->
+                        let ybody = \yv -> AppEH ES_None yv av
+                            y' = yify kargs ybody y
+                            n' = AppEH ES_None n av
+                        in CaseEH ES_None a k y' n'
+                 in elab $ AppEH ES_None lam arg
                (LamEH _ _ b, arg) -> b arg
                (f', arg) -> AppEH (ES_Some mode) f' arg
           LamEH (ES_Some m) _ _ | mode <= m -> e
@@ -144,7 +146,6 @@ elaborate mode env =
                     --            k1 -> y1;
                     --            _ -> n1;
                     -- TODO: use lets to maintain sharing of y1 and n1.
-                    y2body = \y -> CaseEH ES_None y k1 y1 n1
                     y2ify :: Integer -> (ExpH -> ExpH) -> ExpH -> ExpH
                     y2ify 0 f x = f x
                     y2ify n f (LamEH _ s b) = LamEH ES_None s $ \x ->
@@ -153,9 +154,10 @@ elaborate mode env =
 
                     k2args = genericLength (de_arrowsT (typeof k2)) - 1
 
+                    y2body = \y -> CaseEH ES_None y k1 y1 n1
                     y2' = y2ify k2args y2body y2
                     n2' = CaseEH ES_None n2 k1 y1 n1
-                in elab $ CaseEH ES_None x2 k2 y2' n2'
+                in elab $ CaseEH ES_None x2 k2 y2' n2' 
           CaseEH _ arg@(VarEH (Sig nm t)) k yes no
               | mode == SNF && t == boolT ->
                 let Just v = de_boolEH (ConEH k)
