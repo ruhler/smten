@@ -48,7 +48,7 @@ class Monad m where
   (>>=) :: m a -> (a -> m b) -> m b
   (>>) :: m a -> m b -> m b
   return :: a -> m a
-  fail :: [Char] -> m a
+  fail :: String -> m a
 
 sequence :: Monad m => [m a] -> m [a]
 sequence [] = return []
@@ -98,6 +98,8 @@ not :: Bool -> Bool
 not_ :: Bool -> Bool
 not_ True = False
 not_ False = True
+
+type String = [Char]
 
 data Maybe a = Nothing | Just a
   deriving (Eq)
@@ -159,7 +161,7 @@ snd (_, y) = y
 curry :: ((a, b) -> c) -> a -> b -> c
 curry = \f -> \a -> \b -> f (a, b)
 
-error :: [Char] -> a
+error :: String -> a
 
 undefined :: a
 undefined = error "Prelude.undefined"
@@ -252,9 +254,9 @@ notElem :: (Eq a) => a -> [a] -> Bool
 notElem x = all (\v -> v /= x)
 
 class Show a where
-    show :: a -> [Char]
+    show :: a -> String
 
-__prim_show_Integer :: Integer -> [Char]
+__prim_show_Integer :: Integer -> String
 
 instance Show Integer where
     show = __prim_show_Integer
@@ -280,7 +282,7 @@ instance (Show a) => Show [a] where
     show xs = concat ["[", showListHelper xs, "]"]
 
 -- Show a list without the open and close brackets
-showListHelper :: (Show a) => [a] -> [Char]
+showListHelper :: (Show a) => [a] -> String
 showListHelper [] = "" 
 showListHelper [x] = show x
 showListHelper (x:xs) = concat [show x, ", ", showListHelper xs]
@@ -292,7 +294,7 @@ data IO a =
 return_io :: a -> IO a
 nobind_io :: IO a -> IO b -> IO b
 bind_io :: IO a -> (a -> IO b) -> IO b
-fail_io :: [Char] -> IO a
+fail_io :: String -> IO a
 
 instance Monad IO where
   return = return_io
@@ -304,12 +306,14 @@ instance Monad IO where
 putChar :: Char -> IO ()
 
 -- Print a string to stdout.
-putStr :: [Char] -> IO ()
+putStr :: String -> IO ()
 putStr = mapM_ putChar
 
 -- Print a line to stdout.
-putStrLn :: [Char] -> IO ()
+putStrLn :: String -> IO ()
 putStrLn str = do
   putStr str
   putStr "\n"
+
+type FilePath = String
 

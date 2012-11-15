@@ -9,7 +9,7 @@ import Seri.Sudoku.Solver
 import Seri.Sudoku.EnumCell
 import Seri.Sudoku.Cell
 
-qmain :: Query [[Char]]
+qmain :: Query [String]
 qmain = do
     board <- (readBoard diabolical :: Query (Board EnumCell))
     result <- solve board

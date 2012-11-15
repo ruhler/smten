@@ -30,7 +30,7 @@ mixval (Mix1 False _) = E2
 mixval (Mix2 True) = E3
 mixval (Mix2 False) = E4
 
-test :: [Char] -> Bool -> Query ()
+test :: String -> Bool -> Query ()
 test nm True = return ()
 test nm False = error ("Test failed: " ++ nm)
 

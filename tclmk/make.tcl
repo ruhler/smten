@@ -124,7 +124,8 @@ run $SERI --haskell \
     -m testallio \
     -f $::SRI_SERI/Seri/Tests/Basic.sri \
     > $hsdir/hstests.hs
-hrun -ignorestderr ghc -o $hsdir/hstests $hsdir/hstests.hs
+hrun -ignorestderr ghc -fno-warn-overlapping-patterns \
+    -o $hsdir/hstests $hsdir/hstests.hs
 run ./$hsdir/hstests > $hsdir/hstests.got
 run echo "PASSED" > $hsdir/hstests.wnt
 hrun cmp $hsdir/hstests.got $hsdir/hstests.wnt

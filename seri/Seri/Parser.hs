@@ -22,7 +22,7 @@ import Seri.Parser.Grammar
 --
 -- - Import specifications are not supported.
 --
--- - Type synonyms
+-- - Type synonyms are not allowed to have arguments
 --
 -- - Contexts in data declarations
 --
@@ -56,8 +56,6 @@ import Seri.Parser.Grammar
 --
 -- - pattern guards.
 --
--- - infix operations that require precedence knowledge.
---
 -- - arithmetic sequences.
 --
 -- - list comprehension.
@@ -88,11 +86,6 @@ import Seri.Parser.Grammar
 --
 --
 -- [@Other Notes@]
---
--- - variables and constructors in patterns can be typed explicitly using a
--- type signature expression syntax. This is so pretty printed seri code with
--- type information can be parsed back in as is. You probably shouldn't rely
--- on this behavior. (Signature expressions for expressions are supported).
 --
 -- - record constructors define variables for an undefined version of the
 -- constructor (for Foo {}), and for updating (for x { foo = bar }).

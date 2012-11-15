@@ -6,7 +6,7 @@ import Seri.SMT.SMT
 
 -- Verify the given predicate holds.
 -- If it doesn't, report the given name as failing.
-test :: [Char] -> Bool -> Query ()
+test :: String -> Bool -> Query ()
 test nm True = return ()
 test nm False = error ("Test failed: " ++ nm)
 

@@ -58,12 +58,12 @@ loads :: SearchPath
 loads _ [] ms = return ms
 loads sp ns ms =
   let isLoaded :: Name -> Bool
-      isLoaded n = n `elem` ([mn | Module mn _ _ <- ms])
+      isLoaded n = n `elem` ([mn | Module mn _ _ _ <- ms])
 
       needed = nub $ filter (not . isLoaded) ns
   in do
     loaded <- mapM (loadone sp) needed
-    let newimports = concat [i | Module _ i _ <- loaded]
+    let newimports = concat [i | Module _ i _ _ <- loaded]
     let newnames = [n | Import n <- newimports]
     loads sp newnames (loaded ++ ms)
 
@@ -94,7 +94,7 @@ findmodule (s:ss) n =
 load :: SearchPath -> FilePath -> IO [Module]
 load path mainmod = do
     maintext <- readFile mainmod
-    main@(Module _ imps _)  <- attemptIO $ parse mainmod maintext
+    main@(Module _ imps _ _)  <- attemptIO $ parse mainmod maintext
     loads path [n | Import n <- imps] [main]
 
 

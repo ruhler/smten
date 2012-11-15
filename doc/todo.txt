@@ -12,7 +12,7 @@ Haskell Features::
 * Variable operators: `foo`.
 * pattern matching in do bind notation.
 * pattern matching against bit vectors
-* support type synonyms? 
+* support arguments to type synonyms? 
 * auto derive Show
 * recursive let blocks
 * modularity support

@@ -99,6 +99,7 @@ import Seri.Parser.Lexer
        char     { TokenChar $$ }
        string   { TokenString $$ }
        'data'   { TokenData }
+       'type'   { TokenType }
        'class'  { TokenClass }
        'instance'  { TokenInstance }
        'where'  { TokenWhere }
@@ -128,19 +129,23 @@ import Seri.Parser.Lexer
 
 module :: { Module }
  : 'module' modid 'where' body
-    { Module (name $2) (fst $4) (snd $4) }
+    { let (is, sy, ds) = $4
+      in Module (name $2) is sy ds }
  | body
     -- TODO: we should export only 'main' explicitly when explicit exports are
     -- supported
-    { Module (name "Main") (fst $1) (snd $1) }
+    { let (is, sy, ds) = $1
+      in Module (name "Main") is sy ds}
 
-body :: { ([Import], [Dec]) }
+body :: { ([Import], [Synonym], [Dec]) }
  : '{' impdecls ';' topdecls opt(';') '}'
-    { ($2, coalesce $4) }
+    { let (syns, ds) = coalesce $4
+      in ($2, syns, ds) }
  | '{' impdecls opt(';') '}'
-    { ($2, []) }
+    { ($2, [], []) }
  | '{' topdecls opt(';') '}'
-    { ([], coalesce $2) }
+    { let (syns, ds) = coalesce $2
+      in ([], syns, ds) }
 
 impdecls :: { [Import] }
  : impdecl 
@@ -165,6 +170,8 @@ topdecl :: { [PDec] }
             derives = fromMaybe [] $6;
       } in [PDec ds | ds <- recordD (name $2) tyvars constrs derives]
     }
+ | 'type' tycon '=' type
+    { [PSynonym (Synonym (name $2) $4) ] }
  | 'class' tycls tyvars 'where' '{' cdecls opt(';') '}'
     { [PDec (ClassD (name $2) $3 $6)] }
  | 'instance' class 'where' '{' idecls opt(';') '}'
@@ -634,21 +641,27 @@ data PDec =
     PDec Dec
   | PSig TopSig
   | PClause Name MMatch
+  | PSynonym Synonym
 
 isPClause :: PDec -> Bool
 isPClause (PClause {}) = True
 isPClause _ = False
 
-coalesce :: [PDec] -> [Dec]
-coalesce [] = []
+coalesce :: [PDec] -> ([Synonym], [Dec])
+coalesce [] = ([], [])
 coalesce ((PSig s):ds) =
     let (ms, rds) = span isPClause ds
-        rest = coalesce rds
+        (syns, rest) = coalesce rds
         d = case ms of
                 [] -> PrimD s
                 _ -> ValD s (clauseE [c | PClause _ c <- ms]) 
-    in (d:rest)
-coalesce ((PDec d):ds) = d : coalesce ds
+    in (syns, d:rest)
+coalesce ((PDec d):ds) =
+   let (syns, rest) = coalesce ds
+   in (syns, d:rest)
+coalesce ((PSynonym s):ds) =
+   let (syns, rest) = coalesce ds
+   in (s:syns, rest)
 
 -- Merge clauses for the same method into a single method.
 icoalesce :: [(Name, MMatch)] -> [Method]

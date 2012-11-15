@@ -144,10 +144,10 @@ model = Model {
   target = (\s -> (value (inst_squares s)) == 9)
 };
 
-mctest :: Query (Answer (MOD_mkSquares, MOD_mkSquares, [[Char]]));
+mctest :: Query (Answer (MOD_mkSquares, MOD_mkSquares, [String]));
 mctest = check model 10;
 
-main :: Query (Answer (MOD_mkSquares, MOD_mkSquares, [[Char]]));
+main :: Query (Answer (MOD_mkSquares, MOD_mkSquares, [String]));
 main = mctest;
 
 }

@@ -8,7 +8,7 @@ import Seri.Sudoku.Boards
 import Seri.Sudoku.Solver
 import Seri.Sudoku.IntegerCell2
 
-qmain :: Query [[Char]]
+qmain :: Query [String]
 qmain = do
     board <- (readBoard diabolical :: Query (Board IntegerCell2))
     result <- solve board

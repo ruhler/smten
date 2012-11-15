@@ -6,7 +6,7 @@ import Seri.SMT.SMT;
 import Seri.SMT.Tests.Squares2.Prelude;
 
 data Model s = Model { 
-  rules :: [([Char], (s -> (Bool, s)))],
+  rules :: [(String, (s -> (Bool, s)))],
   initial :: (s -> Bool),
   target :: (s -> Bool)
 }; 
@@ -16,7 +16,7 @@ data Model s = Model {
 -- Finds a sequence of rules within the given length from an initial state to
 -- final state if one exists. Returns the initial state, final state, and rule
 -- sequence.
-check :: (Eq s) => Model s -> Integer -> Query (Answer (s, s, [[Char]]));
+check :: (Eq s) => Model s -> Integer -> Query (Answer (s, s, [String]));
 check m d = queryS $ do {
   s0 <- free;
   assert (initial m s0);
@@ -37,9 +37,9 @@ check m d = queryS $ do {
 };
 
 checklist :: (Eq s) => Model s -> Integer
-             -> s -> [[Char]]
-             -> s -> [([Char], (s -> (Bool, s)))]
-             -> Query (Answer (s, s, [[Char]]));
+             -> s -> [String]
+             -> s -> [(String, (s -> (Bool, s)))]
+             -> Query (Answer (s, s, [String]));
 checklist _ 0 _ _ _ _ = return Unsatisfiable;
 checklist _ _ _ _ _ [] = return Unsatisfiable;
 checklist m d s0 rs sx (rc:rcs) = do {
@@ -53,10 +53,10 @@ checklist m d s0 rs sx (rc:rcs) = do {
 checkone :: (Eq s) => Model s       -- model being checked
           -> Integer    -- depth of sequence to use
           -> s          -- initial (abstract) state
-          -> [[Char]]   -- list of rules executed so far in reverse order
+          -> [String]   -- list of rules executed so far in reverse order
           -> s          -- previous (abstract) state
-          -> ([Char], (s -> (Bool, s))) -- next rule to try executing
-          -> Query (Answer (s, s, [[Char]]));
+          -> (String, (s -> (Bool, s))) -- next rule to try executing
+          -> Query (Answer (s, s, [String]));
 checkone model depth s0 rs sx (nm, r) = queryS $ do {
   g <- free;
   s <- free;

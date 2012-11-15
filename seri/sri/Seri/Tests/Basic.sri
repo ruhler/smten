@@ -187,7 +187,7 @@ instance Monad Test where
     (>>) a b = a >>= (\_ -> b)
     (>>=) (Test x) f = f x
     
-t :: [Char] -> Bool -> Test ()
+t :: String -> Bool -> Test ()
 t msg b = case b of
             True -> return ()
             False -> fail msg

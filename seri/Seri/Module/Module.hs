@@ -37,12 +37,14 @@
 {-# LANGUAGE FlexibleInstances #-}
 
 module Seri.Module.Module (
-    Module(..), Import(..), flatten, flatten1,
+    Module(..), Import(..), Synonym(..), flatten, flatten1,
     ) where
 
 import Control.Monad.State
 import Data.Functor
+import Data.Maybe(fromMaybe)
 
+import qualified Seri.HashTable as HT
 import Seri.Failable
 import Seri.Ppr
 import Seri.Name
@@ -58,29 +60,44 @@ import Seri.Dec
 data Import = Import Name
     deriving(Show, Eq)
 
-data Module = Module Name [Import] [Dec]
+-- | Currently synonyms are restricted to have no arguments.
+-- type Foo = ...
+data Synonym = Synonym Name Type 
+    deriving(Show, Eq)
+
+data Module = Module Name [Import] [Synonym] [Dec]
     deriving(Show, Eq)
 
 instance Ppr Import where
     ppr (Import n) = text "import" <+> ppr n <> semi
 
+instance Ppr Synonym where
+    ppr (Synonym n t) = text "type" <+> ppr n <+> text "=" <+> ppr t <> semi
+
 instance Ppr Module where
-    ppr (Module n imps decs)
+    ppr (Module n imps syns decs)
         = text "module" <+> ppr n <+> text "where" <+> text "{"
-            $+$ nest tabwidth (vcat (map ppr imps) $+$ ppr decs) $+$ text "}"
+            $+$ nest tabwidth (
+                vcat (map ppr imps)
+                $+$ vcat (map ppr syns)
+                $+$ ppr decs) $+$ text "}"
 
 lookupModule :: Name -> [Module] -> Failable Module
 lookupModule n [] = throw $ "module " ++ pretty n ++ " not found"
-lookupModule n (m@(Module nm _ _) : _) | (n == nm) = return m
+lookupModule n (m@(Module nm _ _ _) : _) | (n == nm) = return m
 lookupModule n (_:ms) = lookupModule n ms
 
 data QS = QS {
     qs_env :: [Module],     -- ^ The environment
     qs_me :: Module,        -- ^ The current module
-    qs_bound :: [Name]      -- ^ List of bound variable names
+    qs_bound :: [Name],     -- ^ List of bound variable names
+    qs_syns :: HT.HashTable Name Type -- ^ All type synonyms
 }
 
 type QualifyM = StateT QS Failable
+
+mkSyns :: [Synonym] -> HT.HashTable Name Type
+mkSyns xs = HT.table [(n, t) | Synonym n t <- xs]
 
 onfailq :: (String -> QualifyM a) -> QualifyM a -> QualifyM a
 onfailq f q = do
@@ -91,7 +108,7 @@ onfailq f q = do
 
 mename :: QualifyM Name
 mename = do
-    Module n _ _ <- gets qs_me
+    Module n _ _ _ <- gets qs_me
     return n 
 
 withbound :: [Name] -> QualifyM a -> QualifyM a
@@ -112,11 +129,15 @@ class Qualify a where
     qualify :: a -> QualifyM a 
 
 instance Qualify Module where
-    qualify m@(Module nm is ds) = do
+    qualify m@(Module nm is sy ds) = do
         modify $ \qs -> qs { qs_me = m }
+        sy' <- mapM qualify sy
         ds' <- mapM qualify ds
         modify $ \qs -> qs { qs_me = (error "not in module") }
-        return (Module nm is ds')
+        return (Module nm is sy' ds')
+
+instance Qualify Synonym where
+    qualify (Synonym n t) = Synonym n <$> qualify t
 
 instance Qualify TopSig where
     qualify (TopSig nm ctx t) = do
@@ -126,6 +147,15 @@ instance Qualify TopSig where
         t' <- qualify t
         return (TopSig nm' ctx' t')
 
+instance (Qualify a) => Qualify [a] where
+    qualify = mapM qualify
+
+instance Qualify Class where
+    qualify (Class nm ts) = Class nm <$> qualify ts
+
+instance Qualify Con where
+    qualify (Con nm ts) = Con nm <$> qualify ts
+
 instance Qualify Dec where
     qualify d@(ValD ts body) = 
         onfailq (\msg -> lift $ throw (msg ++ "\n when flattening " ++ pretty d)) $ do
@@ -134,34 +164,43 @@ instance Qualify Dec where
            return (ValD ts' body')
 
     -- TODO: qualify type and data constructors.
-    qualify d@(DataD {}) = return d
+    qualify (DataD n vars cs) = DataD n vars <$> qualify cs
 
     -- TODO: qualify class names
     qualify (ClassD nm vars sigs) = do
         sigs' <- mapM qualify sigs
         return (ClassD nm vars sigs')
 
-    -- TODO: qualify class name
     qualify (InstD ctx cls meths) = do
+        ctx' <- qualify ctx
+        cls' <- qualify cls
         meths' <- mapM qualify meths
-        return (InstD ctx cls meths')
+        return (InstD ctx' cls' meths')
 
     qualify (PrimD ts) = do
         ts' <- qualify ts
         return (PrimD ts')
 
-instance Qualify Context where
-    -- TODO: qualify context
-    qualify ctx = return ctx
-
 instance Qualify Type where
     -- TODO: qualify type
-    qualify ty = return ty
+    qualify t@(ConT nm) = do
+        -- Is this a type synonym?
+        syns <- gets qs_syns
+        case HT.lookup nm syns of
+            Just t' -> qualify t'
+            _ -> return t
+    qualify (AppT a b) = do
+        a' <- qualify a
+        b' <- qualify b
+        return (AppT a' b')
+    qualify t = return t
 
 instance Qualify Exp where
     -- TODO: qualify data constructors
     qualify e@(LitE {}) = return e
-    qualify e@(ConE {}) = return e
+    qualify (ConE (Sig n t)) = do
+        t' <- qualify t
+        return (ConE (Sig n t'))
     qualify (VarE (Sig n t)) = do
         t' <- qualify t
         bound <- isbound n
@@ -174,12 +213,16 @@ instance Qualify Exp where
         f' <- qualify f
         x' <- qualify x
         return (AppE f' x')
-    qualify (LamE s@(Sig n _) b) = LamE s <$> (withbound [n] $ qualify b)
-    qualify (CaseE x k y n) = do
+    qualify (LamE (Sig n t) b) = do
+        t' <- qualify t
+        LamE (Sig n t') <$> (withbound [n] $ qualify b)
+    
+    qualify (CaseE x (Sig kn kt) y n) = do
+        kt' <- qualify kt
         x' <- qualify x
         y' <- qualify y
         n' <- qualify n
-        return $ CaseE x' k y' n'
+        return $ CaseE x' (Sig kn kt') y' n'
 
 instance Qualify Method where
     qualify (Method nm e) = do
@@ -202,9 +245,9 @@ resolve n =
       hasName n (PrimD (TopSig nm _ _)) = (n == nm)
 
       r :: [Module] -> Module -> Failable Name
-      r env me@(Module menm imports _) = 
+      r env me@(Module menm imports _ _) = 
         let immediate :: Module -> [Name]
-            immediate (Module mnm _ ds) = map (const (mnm `nappend` name "." `nappend` n)) (filter (hasName n) ds)
+            immediate (Module mnm _ _ ds) = map (const (mnm `nappend` name "." `nappend` n)) (filter (hasName n) ds)
         in do
             imported <- mapM (\(Import mn) -> lookupModule mn env) imports
             let names = map immediate (me : imported)
@@ -229,7 +272,8 @@ flatten1 :: [Module]    -- ^ The environment
             -> Module   -- ^ The module to flatten
             -> Failable [Dec] -- ^ Flattened declarations from the module
 flatten1 ms m = do
-  (Module _ _ d, _) <- runStateT (qualify m) (QS ms (error "not in module") [])
+  let syns = mkSyns (concat [s | Module _ _ s _ <- ms])
+  (Module _ _ _ d, _) <- runStateT (qualify m) (QS ms (error "not in module") [] syns)
   return d
             
 

@@ -4,7 +4,7 @@ module Seri.SMT.Tests.Scoped where
 import Prelude
 import Seri.SMT.SMT
 
-test :: [Char] -> Bool -> Query ()
+test :: String -> Bool -> Query ()
 test nm True = return ()
 test nm False = error ("Test failed: " ++ nm)
 

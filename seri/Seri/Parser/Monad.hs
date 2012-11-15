@@ -73,6 +73,7 @@ data Token =
      | TokenString String
      | TokenChar Char
      | TokenData
+     | TokenType
      | TokenForall
      | TokenClass
      | TokenInstance

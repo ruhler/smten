@@ -104,7 +104,7 @@ queryS :: Query a -> Query a
 return_query :: a -> Query a
 nobind_query :: Query a -> Query b -> Query b
 bind_query :: Query a -> (a -> Query b) -> Query b
-fail_query :: [Char] -> Query a
+fail_query :: String -> Query a
 
 instance Monad Query where
   return = return_query
@@ -115,15 +115,15 @@ instance Monad Query where
 -- Run an SMT Query using yices1
 -- If the first argument is not Nothing, debugging will be enabled, outputting
 -- to the given file.
-runYices1 :: Maybe [Char] -> Query a -> IO a
+runYices1 :: Maybe FilePath -> Query a -> IO a
 
 -- Run an SMT Query using yices2
 -- If the first argument is not Nothing, debugging will be enabled, outputting
 -- to the given file.
-runYices2 :: Maybe [Char] -> Query a -> IO a
+runYices2 :: Maybe FilePath -> Query a -> IO a
 
 -- Run an SMT Query using stp
 -- If the first argument is not Nothing, debugging will be enabled, outputting
 -- to the given file.
-runSTP :: Maybe [Char] -> Query a -> IO a
+runSTP :: Maybe FilePath -> Query a -> IO a
 

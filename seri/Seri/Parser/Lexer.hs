@@ -95,6 +95,7 @@ reservedops = [
 keywords :: [(String, Token)]
 keywords = [         
     ("data", TokenData),
+    ("type", TokenType),
     ("class", TokenClass),
     ("instance", TokenInstance),
     ("where", TokenWhere),

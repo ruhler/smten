@@ -3,7 +3,7 @@ module Seri.Sudoku.Boards where
 
 import Prelude
 
-easy :: [[Char]]
+easy :: [String]
 easy =
   ["2....1.38",
    "........5",
@@ -15,7 +15,7 @@ easy =
    ".5..69784",
    "4..25...."]
 
-easy_solved :: [[Char]]
+easy_solved :: [String]
 easy_solved =
   ["249571638",
    "861432975",
@@ -27,7 +27,7 @@ easy_solved =
    "152369784",
    "486257391"]
 
-diabolical :: [[Char]]
+diabolical :: [String]
 diabolical = 
     [".9.7..86.",
      ".31..5.2.",
@@ -39,14 +39,14 @@ diabolical =
      ".2.6..35.",
      ".54..8.7."]
 
-little :: [[Char]]
+little :: [String]
 little =
     ["21..",
      ".32.",
      "...4",
      "1..."]
      
-little_solved :: [[Char]]
+little_solved :: [String]
 little_solved =
     ["21..",
      "4321",

@@ -8,7 +8,7 @@ import Seri.Sudoku.Cell
 
 data Board c = Board [[c]]
 
-print :: (Cell c) => Board c -> [[Char]]
+print :: (Cell c) => Board c -> [String]
 print (Board cells) = map (\row -> map printCell row) cells
 
 rows :: (Cell c) => Board c -> [[c]]
@@ -46,10 +46,10 @@ breakup n xs =
 isvalid :: (Eq c, Cell c) => Board c -> Bool
 isvalid b = all distinctCell (concat [rows b, cols b, boxes b])
 
-readRow :: (Cell c) => [Char] -> Query [c]
+readRow :: (Cell c) => String -> Query [c]
 readRow = mapM readCell
 
-readBoard :: (Cell c) => [[Char]] -> Query (Board c)
+readBoard :: (Cell c) => [String] -> Query (Board c)
 readBoard rows = do
     brows <- mapM readRow rows
     return (Board brows)
