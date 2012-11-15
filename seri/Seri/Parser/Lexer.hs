@@ -171,7 +171,25 @@ lex = do
               rop | Just tok <- lookup rop reservedops ->
                   many rop >> setText rest >> return tok
               op | head op == ':' -> many op >> setText rest >> return (TokenConSym op)
-              op -> many op >> setText rest >> return (TokenVarSym op)
+              op -> do
+                many op
+                setText rest
+                return $ case op of
+                            "+" -> TokenPlus
+                            "-" -> TokenMinus
+                            "*" -> TokenStar
+                            "$" -> TokenDollar
+                            ">>" -> TokenDoubleGT
+                            ">>=" -> TokenDoubleGTEQ
+                            "||" -> TokenDoubleBar
+                            "&&" -> TokenDoubleAmp
+                            "==" -> TokenDoubleEq
+                            "/=" -> TokenSlashEq
+                            "<" -> TokenLT
+                            "<=" -> TokenLE
+                            ">=" -> TokenGE
+                            ">" -> TokenGT
+                            _ -> TokenVarSym op
       ('"':cs) -> do
          single 
          tok <- lexstr "" cs

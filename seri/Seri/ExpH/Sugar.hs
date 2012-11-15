@@ -1,4 +1,6 @@
 
+{-# LANGUAGE PatternGuards #-}
+
 -- | Abstract constructors and deconstructors dealing with ExpH
 module Seri.ExpH.Sugar (
     litEH, de_litEH, varEH, de_varEH, conEH, de_conEH,

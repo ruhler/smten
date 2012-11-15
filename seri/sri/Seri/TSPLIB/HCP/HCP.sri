@@ -58,9 +58,9 @@ hamiltonian n edges = do
 
 main :: IO ()
 main = do
-    putStrLn (show (ishamiltonian sampleN sampleE sampleS))
-    putStrLn (show (ishamiltonian sampleN sampleE [1, 2, 3]))
-    putStrLn (show (ishamiltonian sampleN sampleE [1, 2, 3, 4, 5, 6]))
+    putStrLn $ show (ishamiltonian sampleN sampleE sampleS)
+    putStrLn $ show (ishamiltonian sampleN sampleE [1, 2, 3])
+    putStrLn $ show (ishamiltonian sampleN sampleE [1, 2, 3, 4, 5, 6])
     r <- runYices2 (Just "build/test/HCP.yices2.dbg") (hamiltonian sampleN sampleE)
-    putStrLn (show r)
+    putStrLn $ show r
 

@@ -10,10 +10,10 @@ import Seri.Bit
 ------ This is a comment with lots of dashes
 
 foo1 :: Integer
-foo1 = (\x -> ((x*x)+(3*x))+2) 5
+foo1 = (\x -> x*x + 3*x + 2) 5
 
 foo2 :: Integer -> Integer
-foo2 x = ((x*x)+(3*x))+2
+foo2 x = x*x + 3*x + 2
 
 rfact :: Integer -> Integer
 rfact x = if (x < 1) then 1 else x * rfact (x-1)
@@ -68,7 +68,7 @@ instance Foo Integer where
     foo _ = 2
 
 foofun :: (Foo a) => a -> Integer
-foofun x = (((foo x)*(foo x)) + (3*(foo x))) + (foo True)
+foofun x = foo x * foo x + 3*(foo x) + foo True
 
 data Apple = Apple {
     isgreen :: Bool,
@@ -245,6 +245,7 @@ testbasic = do
     t "HEX literal" (0X18 == (24 :: Integer))
     t "or lazy" (True || (error "or is not lazy"))
     t "and lazy" (not (False && (error "and is not lazy")))
+    t "precedence" (1*2+3-4*5+6-7 == negate (16 :: Integer))
 
 testprelude :: Test ()
 testprelude = do

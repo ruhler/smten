@@ -11,6 +11,8 @@ module Seri.Type.Sugar (
     unitT, boolT, charT, integerT, listT, de_listT, stringT,
     bitT, de_bitT,
     tupleN, de_tupleN, tupleT, de_tupleT,
+
+    addNT, subNT, mulNT,
   ) where
 
 import Control.Monad(guard)
@@ -137,4 +139,13 @@ de_tupleT t = do
     len <- de_tupleN tn
     guard $ len == genericLength ts
     return ts
+
+addNT :: NType -> NType -> NType
+addNT = AppNT "+" 
+
+subNT :: NType -> NType -> NType
+subNT = AppNT "-" 
+
+mulNT :: NType -> NType -> NType
+mulNT = AppNT "*" 
 

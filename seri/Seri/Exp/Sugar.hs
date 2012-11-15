@@ -9,6 +9,8 @@ module Seri.Exp.Sugar (
     boolE, falseE, trueE, charE, de_charE, listE, de_listE, stringE, de_stringE,
     errorE, tupleE,
     integerE, numberE,
+
+    addE, subE, mulE, opE,
     ) where
 
 import Control.Monad
@@ -146,3 +148,17 @@ numberE i =
  let t = arrowsT [integerT, UnknownT]
  in appE (VarE (Sig (name "fromInteger") t)) (integerE i)
 
+-- a + b
+addE :: Exp -> Exp -> Exp
+addE = opE "+"
+
+-- a - b
+subE :: Exp -> Exp -> Exp
+subE = opE "-"
+
+-- a * b
+mulE :: Exp -> Exp -> Exp
+mulE = opE "*"
+
+opE :: String -> Exp -> Exp -> Exp
+opE op a b = appsE (varE (Sig (name op) UnknownT)) [a, b]

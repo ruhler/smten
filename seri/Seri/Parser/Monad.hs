@@ -91,6 +91,20 @@ data Token =
      | TokenEOF
      | TokenLayoutBrace Integer
      | TokenLayoutLine Integer
+     | TokenPlus
+     | TokenMinus
+     | TokenStar
+     | TokenDollar
+     | TokenDoubleGT
+     | TokenDoubleGTEQ
+     | TokenDoubleBar
+     | TokenDoubleAmp
+     | TokenDoubleEq
+     | TokenSlashEq
+     | TokenLT
+     | TokenLE
+     | TokenGE
+     | TokenGT
     deriving (Eq, Show)
 
 data Location = Location {

@@ -71,6 +71,20 @@ import Seri.Parser.Lexer
        ','      { TokenComma }
        ';'      { TokenSemicolon }
        '.'      { TokenPeriod }
+       '+'      { TokenPlus }
+       '-'      { TokenMinus }
+       '*'      { TokenStar }
+       '$'      { TokenDollar }
+       '>>'     { TokenDoubleGT }
+       '>>='    { TokenDoubleGTEQ }
+       '||'     { TokenDoubleBar }
+       '&&'     { TokenDoubleAmp }
+       '=='     { TokenDoubleEq }
+       '/='     { TokenSlashEq }
+       '<'      { TokenLT }
+       '<='     { TokenLE }
+       '>='     { TokenGE }
+       '>'      { TokenGT }
        '|'      { TokenBar }
        '='      { TokenEquals }
        ':'      { TokenColon }
@@ -99,6 +113,16 @@ import Seri.Parser.Lexer
        'module' { TokenModule }
        'import' { TokenImport }
        'deriving' { TokenDeriving }
+
+%right '$'
+%left '>>' '>>='
+%right '||'
+%right '&&'
+%nonassoc '==' '/=' '<' '<=' '>=' '>'    
+%left '+' '-'
+%left '*'
+%right '.'
+%nonassoc qop
 
 %%
 
@@ -221,10 +245,10 @@ atype :: { Type }
     { NumT $2 }
 
 ntype :: { NType }
- : antype 
-    { $1 }
- | antype varsym antype
-    { AppNT $2 $1 $3 }
+ : antype { $1 }
+ | antype '+' antype { addNT $1 $3 }
+ | antype '-' antype { subNT $1 $3 }
+ | antype '*' antype { mulNT $1 $3 }
 
 antype :: { NType }
  : integer
@@ -292,14 +316,25 @@ rhs :: { Exp }
     { $2 }
 
 exp :: { Exp }
- : exp10
-    { $1 }
- | exp10 '::' type
-    { typeE $1 $3 }
- | exp10 qop exp10
-    { appsE $2 [$1, $3] }
+ : lexp { $1 }
+ | lexp '::' type { typeE $1 $3 }
+ | exp '+' exp { addE $1 $3 }
+ | exp '-' exp { subE $1 $3 }
+ | exp '*' exp { mulE $1 $3 }
+ | exp '$' exp { opE "$" $1 $3 }
+ | exp '>>' exp { opE ">>" $1 $3 }
+ | exp '>>=' exp { opE ">>=" $1 $3 }
+ | exp '||' exp { opE "||" $1 $3 }
+ | exp '&&' exp { opE "&&" $1 $3 }
+ | exp '==' exp { opE "==" $1 $3 }
+ | exp '/=' exp { opE "/=" $1 $3 }
+ | exp '<' exp { opE "<" $1 $3 }
+ | exp '<=' exp { opE "<=" $1 $3 }
+ | exp '>=' exp { opE ">=" $1 $3 }
+ | exp '>' exp { opE ">" $1 $3 }
+ | exp qop exp { appsE $2 [$1, $3] }
 
-exp10 :: { Exp }
+lexp :: { Exp }
  : '\\' var_typed '->' exp
     { lamE $2 $4 }
  | 'let' '{' ldecls opt(';') '}' 'in' exp
@@ -439,11 +474,15 @@ var :: { String }
     { $1 }
  | '(' varsym ')'
     { $2 }
+ | '(' varsym_op ')'
+    { $2 }
 
 qvar :: { String }
  : qvarid
     { $1 }
  | '(' qvarsym ')'
+    { $2 }
+ | '(' varsym_op ')'
     { $2 }
 
 con :: { String }
@@ -467,11 +506,26 @@ qvarsym :: { String }
  : varsym
     { $1 }
 
+varsym_op :: { String }
+ : '+' { "+" }
+ | '-' { "-" }
+ | '*' { "*" }
+ | '$'  { "$" }
+ | '>>' { ">>" }
+ | '>>=' { ">>=" }
+ | '||' { "||" }
+ | '&&' { "&&" }
+ | '==' { "==" }
+ | '/=' { "/=" }
+ | '<'  { "<" }
+ | '<=' { "<=" }
+ | '>=' { ">=" }
+ | '>'  { ">" }
+
 varsym :: { String }
  : varsymt
     { $1 }
- | '.'
-    { "." }
+ | '.' { "." }
 
 qconop :: { String }
  : gconsym

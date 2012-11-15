@@ -17,7 +17,6 @@ Haskell Features::
 * recursive let blocks
 * modularity support
 * automatically import Prelude
-* supply operator precedence as expected for default operators
 
 Test Type Checking::
 * Verify we check for the instance or context for every method call
