@@ -1,0 +1,66 @@
+
+module Seri.TSPLIB.HCP.HCP where
+
+import Prelude
+import Seri.SMT.SMT
+
+-- Return true if all elements in the list are distinct.
+distinct :: (Eq a) => [a] -> Bool
+distinct [] = True
+distinct (x:xs) = notElem x xs && distinct xs
+
+-- Hamiltonian Cicruit Problem.
+-- 
+-- Given a graph of N cities and a set of edges specifying which cities are
+-- connected, return a tour of the cities where each city is connected to the
+-- next, every city is visited exactly once, and the last city is connected to
+-- the first city.
+
+-- Thoughts on how to improve this:
+--  * Sort the edges so we can do the lookup faster.
+--  * Fix the first city
+
+-- Test whether the given tour is a hamiltonian circuit.
+-- The smallest number city is 1, the largest number city is N.
+ishamiltonian :: Integer -> [(Integer, Integer)] -> [Integer] -> Bool
+ishamiltonian n edges tour = and [
+    length tour == n,
+    distinct tour,
+    istour edges (head tour) tour]
+
+-- Test whether each city connects to the next in the given candidate tour.
+-- And verify the last city is connected to the given starting city.
+istour :: [(Integer, Integer)] -> Integer -> [Integer] -> Bool
+istour edges start [end] = isconnected edges start end
+istour edges start (x:y:zs) = isconnected edges x y && istour edges start (y:zs)
+
+-- Test whether two cities are connected.
+isconnected :: [(Integer, Integer)] -> Integer -> Integer -> Bool
+isconnected [] _ _ = False
+isconnected ((a, b):es) c d =
+ (((c == a) && (b == d)) || ((c == b) && (d == a))) || isconnected es c d
+    
+-- A small sample.
+sampleN :: Integer
+sampleN = 6
+
+sampleE :: [(Integer, Integer)]
+sampleE = [(1, 2), (1, 6), (1, 4), (2, 6), (2, 5), (3, 4), (3, 5)]
+
+sampleS :: [Integer]
+sampleS = [1, 6, 2, 5, 3, 4]
+
+hamiltonian :: Integer -> [(Integer, Integer)] -> Query (Answer [Integer])
+hamiltonian n edges = do
+    tour <- sequence (replicate n free)
+    assert (ishamiltonian n edges tour)
+    query tour
+
+main :: IO ()
+main = do
+    putStrLn (show (ishamiltonian sampleN sampleE sampleS))
+    putStrLn (show (ishamiltonian sampleN sampleE [1, 2, 3]))
+    putStrLn (show (ishamiltonian sampleN sampleE [1, 2, 3, 4, 5, 6]))
+    r <- runYices2 (Just "build/test/HCP.yices2.dbg") (hamiltonian sampleN sampleE)
+    putStrLn (show r)
+

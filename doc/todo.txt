@@ -138,6 +138,11 @@ Elaborator::
 * Implement the 'update' primitive in the elaborator, or remove it from
   smt_array.
 * Test out free_enum, see if it generate SAT (it may not...)
+* Pull primitives out of elaborate, then have them be arguments to elaborate
+* make IO and Query primitives primitives in the elaborator instead of having
+  a separate run method. (Add IoEH and QueryEH expressions to accomplish this)
+** This requires first changing the Query monad to take the solver as an
+   argument instead of embedding it in the Query type.
 
 Haskell Backend::
 * Push the compiler into one function, don't break it up the silly way it has

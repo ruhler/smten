@@ -1,0 +1,633 @@
+
+Wed Nov 14 08:35:00 EST 2012
+
+assign: I don't need generic transformations. All I need is an assign class.
+Easy.
+
+Let me do that now.
+
+Wed Nov 14 08:48:08 EST 2012
+
+Okay! Assign is implemented. Now to work out the bugs.
+
+First, let me make pretty printing prettier, because it's a little unpleasant
+as it is just now.
+
+* Pretty print (->) as infix
+* Don't put parens around atomic types.
+
+Wed Nov 14 09:53:49 EST 2012
+
+Okay, we had a bug in inference of lambdas. That fixed seems to help.
+Now what's the issue?
+
+sequence.
+
+For some reason, Prelude.>>= has a type with unknown vars in it.
+A bug in deunknown?
+
+Yes. We aren't deunknowning properly. But I'm not sure why.
+
+We see: UnknownT -> ...
+
+Oh. I know. I don't recurse through types. I just look at top level types.
+
+That's easily enough fixed I suppose.
+
+Wed Nov 14 10:07:48 EST 2012
+
+It works! The Basic tests pass. That's amazing. And nifty.
+
+Um... pretty printing has a ways to go. I'll put a todo item.
+
+Wed Nov 14 11:02:33 EST 2012
+
+Okay! So, we're in decent shape. SMT tests work. For the most part.
+
+I got rid of BCL3, because it used explicit types on patterns, which we no
+longer support. Sudoku2 blows up. And Sudoku blows up, so it seems I can't
+load it statically into ghc with template haskell, because ghc complains it is
+too big.
+
+Where is the blowup coming from? It must be from desugaring of case
+statements, which currently could lead to an exponential blowup. I should fix
+that. It is important.
+
+What's the test case? Where do we blow up? It's when we have lots of
+arguments, the default value is duplicated.
+
+case x of
+    Foo A B C D -> y
+    _ -> n
+
+Turns into:
+
+case x of
+    Foo a b c d -> \a b c d ->
+      case a of
+        A -> case b of
+                B -> case c of
+                        C -> case d of
+                                D -> y
+                                _ -> n
+                        _ -> n
+                _ -> n
+        _ -> n
+    _ -> n
+
+So, here we have n show up 5 times. Imagine this expression is itself an n,
+it's duplicated 5 times, we have n*n is 25 times. That's bad.
+
+So we need to ensure the default is either simple: lit, var, con, or give it a
+name.
+
+Let me make a little test case to demonstrate this issue to myself.
+
+Yup! It's as I feared. And worse, because it's not hard to blow up at all.
+
+Now, let me figure out where to check for and fix this.
+
+I see it. It's in matchesE where we duplicate n. Any other place?
+Yes. mkcases. Those are the two places.
+
+It might be nice to have a function which is...
+
+shared :: Exp -> (Exp -> a) -> a
+
+or something like that? Not sure.
+
+let me start with the matches case.
+
+Turns out, in my example, that made no difference at all. Maybe that wasn't
+the right place to put it, because we just stuff n inside, we don't actually
+duplicate it.
+
+Wed Nov 14 11:37:53 EST 2012
+
+That fixed the memory blowup in Sudoku2, but it still seems to be taking
+forever... I'll let it run a while and see if it ever finishes, and see what's
+taking so much time. I suspect it's just doing a lot more work than it has to
+do, and in the wrong order.
+
+Let me see if the TH thing works now.
+
+It does. Good.
+
+Wed Nov 14 11:40:09 EST 2012
+
+Good news! Sudoku finished after a couple of minutes. Let me see where all the
+time is spent. I suspect this is an elaborator performance issue.
+
+It claims very little time is spent in elaboration. All of it is in transform
+and concretize. Every last bit. I don't know if it's getting time from the
+elaborator or not...
+
+But this is good. I think we are in decent enough shape to commit to the
+master branch. And I have a good test case which I can use to try to get the
+elaborator performance up and running again. I suppose that can be my task for
+the rest of the day: solve this transformation issue.
+
+Wed Nov 14 11:55:49 EST 2012
+
+Well, there are a couple things to try. First, try specializing the concretize
+function. Don't allocate all these maybe objects. That sort of thing. That
+could lead to an improvement, or not. I doubt it would be so significant.
+
+Meanwhile, I'll think about how to use HOAS to deal with this more
+effectively. I should also think about how we can do the concretization before
+any elaboration, to reduce the blowup...
+
+Wed Nov 14 12:43:56 EST 2012
+
+Thoughts: HOAS for dealing with free should make a huge difference. When
+assigning a free variable, instead of traversing through the entire
+expression, you do a pointer update.
+
+And it's makes sense. An expression is a function from free variables to a
+value. I can elaborate under that. And build it easily enough. Hopefully my
+syntactic sugar is good enough so that it isn't too painful to deal with.
+
+But first let me specialize concretization, to get a sense of how much that
+helps.
+
+Wed Nov 14 12:51:19 EST 2012
+
+The other reason HOAS will be good is, once something is elaborated, it stays
+elaborated. Now when I do concretization, I "de-elaborate" expressions. I
+suppose it isn't so bad, because they are fully elaborated already, so no more
+work will be done, but you still have to traverse the entire thing.
+
+Anyway, while I'm waiting for the results of my specialization, let me figure
+out how I'm going to make the HOAS thing work.
+
+The idea is, every expression is a function from [(Sig, Exp)], free variables,
+to what is currently ExpH.
+
+I can form this easily enough. Just add free variables as an extra argument in
+toh, and look up in there if the var is not found as a bound variable. The
+hard part will be ... in many cases I know there are no free variables, then
+how do I do things?
+
+I suppose my syntactic sugar can handle this appropriately.
+
+Question. Would it be better, or possible, to treat free variables as a
+lambda?
+
+The issue is... I need to change arguments in certain places, but not every
+place.
+
+Here's a question. Can I do the simplification... concretization and such,
+eagerly? Or earlier on? Like, first thing? Then hopefully it's cheap to
+concretize. I can do it for any variables, it doesn't have to be specific to
+free variables. For example:
+
+case foo of
+    True -> ... (foo)
+
+It can be a general kind of optimization.
+
+Wed Nov 14 12:59:08 EST 2012
+
+My altered concretize made things slower, if you can believe it. I don't
+really understand why. Let me ditch that attempt.
+
+I do want to try reordering things first, to see if I can improve performance
+before completely changing the ExpH representation.
+
+Here's the idea. Do the optimization early, concretize *before* elaborating.
+Then it should be easy.
+
+Except, maybe then you don't get as much concretization? As in, for the
+arguments?
+
+For example, imagine...
+
+let a = free1 && free2
+in case free1 of
+     True -> case a of
+                ...
+     False -> ...
+
+Here you can't specialize anything, because when you concretize, 'a' doesn't
+get changed.
+
+This would be handled properly if we did some sort of floating, rewrite to:
+
+case free1 of
+      True -> let a = free1 && free2    
+    ...
+But 'a' may be used in the false branch as well.
+
+So, really, I don't think playing around with orders is the ultimate solution.
+I think we want to go HOAS. It makes sense, philosophically.
+
+But it's worth a try. Let's see what happens.
+
+Wed Nov 14 13:09:49 EST 2012
+
+No, turns out it's already done in the right place, and I don't think that
+would help out much.
+
+The reason I can't reuse the existing LamEH infrastructure is because we want
+to be able to change the value of the object, depending on its location. I
+fear, though, that if you can change at every expression, then you'll end up
+with this big chain of function calls which isn't really what you want.
+
+Well, what if we know the only place we want to change free variables is at
+case bodies?
+
+No. I think having each ExpH be a function from free variables to value is the
+right answer. Now arguments, for example, are functions. When you do beta
+reduction, you input arguments which are parameterized based on free values.
+
+Here's a question, how do you link everything together? How do you concretize?
+How does that show up?
+
+* LitEH can not have free variables, so it need not be a function.
+* ConEH can not have free variables, so it need not be a function.
+* VarEH can not have free variables? so it need not be a function?
+But what if it is a free variable? It seems like we need to represent a free
+variable as a function: \[(Name, ExpH)] -> ExpH, which is: if the free
+variable is present, its value, otherwise, just the VarEH.
+
+This is interesting. So what if I introduce something called:
+
+FreeEH :: [(Name, ExpH)] -> ExpH
+
+Add it as an additional constructor. And we need a way to lift this up during
+elaboration.
+
+So, for example:
+
+AppEH (FreeEH f) (FreeEH x) = FreeEH $ \m -> AppEH (f m) (x m)
+AppEH (FreeEH f) x = FreeEH $ \m -> AppEH (f m) x
+AppEH f (FreeEH x) = FreeEH $ \m -> AppEH f (x m)
+CaseEH ... and this is where we can stop the bubble up, if the argument, once
+evaluated and de-freed, is a variable, then we get a free variable, and we can
+apply the appropriate value in the given map. Or.. really, we modify the map
+we are given to have the appropriate value.
+
+Consider now elaboration of FreeEH f = FreeEH $ \m -> elab m? Does that make
+any sense? But there is this idea that we would like to merge FreeEH. that is,
+once I apply something to a freeEH, I should not get a FreeEH back. Maybe that
+is ensured already. I don't know.
+
+elab (FreeEH f) = FreeEH $ \m ->
+                    case elab (f m) of
+                        FreeEH g = g m
+                        x = x
+
+That could ensure we don't get a FreeEH back.
+
+You know? I kind of like this plan. I don't have to change everything. We only
+introduce the potential for free variables when we have them and they
+propagate up. I see them and can modify the arguments in CaseEH where desired.
+I also get it back at the top level, name in query, so I can implement query
+by elaborating the argument and applying the map of free variables.
+    
+And! Interesting enough... I can just return a free variable as a free
+variable. It doesn't have to have a name at all. And then I can use the ID of
+the free variable as the index, instead of a name. For example, when I
+allocate a free variable, instead of:
+    return (varEH freevar)
+
+return $ FreeEH $ \m -> fromMaybe (varEH freevar) (lookup m 4)
+
+And you know what else? I could use this to identify which free variables
+exist in an expression too. Just provide a couple of functions. One returns
+the value. The other returns the set of free variables used in the expression.
+
+But let me save that idea for later.
+
+I need some invariants. Some way to understand what a FreeEH is.
+
+One idea is to say: a FreeEH is an expression with free variables. Always. Pre
+or post elaboration.
+
+How do build up an expression with free variables? I shouldn't need to. There
+should be no such thing. The only way to introduce a free variable is using
+the "Free" primitive.
+
+Then how do we propagate "Free" properly?
+
+Oh. It's problematic. After beta reduction, we end up with a bunch of Free
+things, and those things need to propagate up. We don't just want it at the
+top level. We want it where the arguments where, and we want those to
+propagate up.
+
+So try another invariant:
+
+FreeEH is an expression which contains free variables. If an expression
+contains free variables after elaboration, then the elaborated expression is
+a FreeEH.
+
+This sounds good to me...
+
+It's kind of experimental, so let me work on a new branch. I'm not sure what's
+going to happen. Just try it out and see.
+
+Wed Nov 14 14:06:18 EST 2012
+
+Things I think I need to do to make this work:
+
++ elaborate FreeEH by elaborating its body if that hasn't been done already.  
++ Replace concretize by calls to free
+++ problem: we won't have a FreeID from the variable in the case argument!
+Which we need. So maybe ditch this FreeID idea, stick to names.
++ add FreeEH to conversion back to pure Exp: just apply [] and convert the
+  result.
++ Apply the actual free value map to do realize in query.
+* propagate FreeEH in elaboration.
+
+I have another question now. Can I propagate FreeEH in a step separate from
+elaboration? Motivation: keep them separate, so it's easier to think about.
+But also, that way I can apply the free variables in query without having to
+perform elaboration.
+
+The trouble is, that turns into another traversal, doesn't it? But maybe it's
+a special kind of traversal?
+
+Then the idea is: do elaboration, don't muck with FreeEH. A number of FreeEH
+expressions could just go away entirely...
+
+No. It makes sense to do them together. Because by lifting a FreeEH, we could
+do more elaboration, and we don't want to lift prematurely, and there
+shouldn't be any issue in my system with doing elaboration of the result of a
+query prematurely. Unless it somehow forces us to see something that otherwise
+wouldn't be used? I don't think so. It should still ought to be lazy...
+
+Okay, let me work on these things, write them up, then see if it works or not
+and why or why not.
+
+Wed Nov 14 14:33:42 EST 2012
+
+I'm not sure where to do lifting of FreeEH.
+
+This, again, is something that should happen whenever I force an argument.
+Primitive arguments. Cases arguments. Should it happen elsewhere too?
+
+Now that I have free variables, and am doing things this way, the only things
+which should not finish elaborating are Free and error. Any time I see Free
+when I force something, propagate it. Any time I see error when I force
+something, propagate it.
+
+I don't know what will happen if I don't do the propagation. Probably it will
+still work, just be slow, because we don't end up doing any concretization. Or
+rather, wrong, because we don't end up substituting the free variables...
+
+Question: how can you propagate free variables inside of lambdas?
+I suppose I don't need to worry about that, because lambdas go away in
+elaboration?
+
+I don't know.
+
+I'm thinking maybe I want to clean up the elaborator first. Be more eager. Fix
+up error propagation. That sort of thing.
+
+I don't know. I'm going to try compiling and see what happens.
+
+Wed Nov 14 14:46:20 EST 2012
+
+I'm getting:
+    case (Satisfiable (free, free) == Satisfiable (True, True)) of
+        ...
+
+And that's wrong.
+
+In other words. I'm getting:
+
+() free free
+
+Or, in other words, an argument to a function (constructor) is free. I want to
+propagate that up to the application.
+
+Wed Nov 14 14:56:48 EST 2012
+
+Trouble! We are propagating free to far. It's propagating up past
+nobind_query.
+
+Now, in a sense, that's correct. That's what we want.
+
+Hmm... let me revisit an earlier idea.
+
+The idea is: what if I explicitly say when to lift of free variables?
+
+The notion is this: I have some things which are free. There are a couple
+points where I want to make those free things no longer free. I want to
+concretize. This includes: the argument to query, and, in a partial sort of
+way, the body of case. But nothing more than that?
+
+Either of them could be... Hum. I think I need to take a step back and think
+about this some more, because I don't really understand how it's supposed to
+work.
+
+Here I go.
+
+We have these things called free variables. We don't know what their value is
+yet. We can do elaboration in the presence of free variables. If you don't
+know the value of the free variable, this means you can get stuck. You may not
+be able to match a case statement or evaluate a primitive.
+
+If it were not for free variables, you would always be able to match a case
+statement or evaluate a primitive, assuming we propagate error.
+
+This is the setting we come from. We've been representing free variables as a
+name.
+
+How are free variables used?
+
+1. When we have an assertion, the free variables are turned into names for the
+SMT solver. That is, every time we have a free variable, it turns into a varE.
+This is no problem currently, because that's how we represent them in the
+first place.
+
+2. When we perform a query, we want to replace every free variable in an
+expression with its concrete value. Before or after elaboration, doesn't
+matter. Originally we did this by traversing the expression, and any time we
+encounter a free variable, look up its value. This could lead to duplicate
+lookups. Then we switch to lookup in all the values, then traversing the
+expression and doing the replacement.
+
+When the expression is large, particularly after some partial elaboration,
+this traversal take a long time potentially.
+
+3. When evaluating case expressions whose argument is a free boolean variable.
+Even if we don't know the boolean variable, if it matches True, then we do
+know the boolean variable. Or if it matches False, then we do know the boolean
+variable. So we can simplify the branches of the case based on the now known
+value of the boolean variable.
+
+Currently we traverse the branches and make the replacements. This is taking a
+very very long time.
+
+That's it. That's all there is to it. The background. The setup, as it were.
+Everything I need to know about free variables.
+
+One more thing. Say I have one of these expressions: a case or primitive with
+a free argument. I can delay the elaboration, return a function which says:
+if you give me the value of this free argument, I can give you the result. So
+potentially we can have expressions with delayed elaboration: given the value
+of free variables, you get the result.
+
+It appears that what we want is an efficient way to set the value of a free
+variable in an expression. In particular, after partial elaboration when an
+expression is big. That is, when the free variable is used in many places. If
+the free variable is not used at all, there's no need to set it's value, but
+that also doesn't hurt. 
+
+We know traversing a large expression to make the change is too expensive.
+What I want is a pointer I can pass around and just set to whatever value I
+want.
+
+Places we want to change free variables:
+* after SNF. We want SNF to return an expression with all instances of free
+  variables replaced with corresponding varEHs.
+* query: we want to replace free variables that appear anywhere in the
+  subexpression with the given value. If you could given an explicit list of
+  the variables you want, that would be nice too.
+* case: we want to replace a single specific variable with either True or
+  False.
+
+Note, in addition to SMT free variables, we also have other free variables
+floating around, which are, for example primitives of other monads: IO or
+Query.
+
+If I explicitly try to pull free variables up, I have to do a traversal,
+potentially of a large expression. If I pull free variables up in elaboration,
+I can share the traversal, and I save big. Or, more precisely, if I pull free
+variables up before a beta reduction, then I can share the traversal and I
+save big.
+
+So here's the idea then. I have a separate traversal which knows how to pull
+up free variables. Propagation of free. The key thing is, in elaboration,
+before doing beta reduction, I pull up free variables in the argument. That
+way I share the traversal, and it becomes cheap. That is, as long as I mark it
+as already having been traversed, which I should do. It's some flag like the
+elaboration state.
+
+The other place I pull up explicitly is when I call 'query'. I pull up the
+argument. Again, this could be before elaboration. I may want to pull up in
+case elaboration?
+
+An expression may or may not contain free variables. And I may or may not know
+that yet. If it contains free variables, there ought to be a way to pull those
+all out into a single function. And represent that as FreeEH.
+
+Okay, so a proposal is forming.
+
+FreeEH :: ([(Name, ExpH)] -> ExpH) -> ExpH
+
+What is the meaning of this? The meaning of this is: here is an expression
+which may depend contain variables. If you call this function, it will no
+longer contain free variables.
+
+In particular, the function could be of the form: \_ -> exp, if we already
+know the expression exp doesn't contain free variables. But sometimes we want
+to avoid pulling things up...
+
+For example:
+
+let x = free
+in do assert x
+      assert (not x)
+      v1 <- query x
+      v2 <- query (not x)
+
+I don't want the free variable to propagate out of x... well, in this case it
+will not. But, for example:
+
+let x = free
+    assertion = assert x
+in do assertion
+      v <- query x
+
+I don't want assertion to turn into : \x -> assert (x). That's pulling it up
+too far.
+
+You almost want assert to be a primitive the (WHNF) elaborator knows about, a
+special primitive which doesn't propagate free variables. Same with 'query'.
+
+What if I had an IoEH? Would this make it natural to incorporate the IO monad
+into the elaborator? How would it look?
+
+IoEH :: IO ExpH -> ExpH
+
+Now, for example, we can have rules like:
+
+putChar c => IoEH (putChar c >> return unitEH)
+return_io x => IoEH (return x)
+bind_io (IoEH x) f => IoEH $ do
+    xv <- x
+    let IoEH r = elab (f xv)
+    r
+
+I could do this. It would work. And similarly, I could have a QueryEH.
+
+That would be nice. Would it help anything?
+
+I'm thinking for this to work logistically, I want primitives to be arguments
+to ExpH. That way I can specify primitives in a different file than the
+elaborator, and I can build a useful subset of primitives into seri without
+requiring smt. I could even let you pick and choose pretty easily which
+primitives you want enabled, and you could write your own primitives
+reasonably easily... That would be cool.
+
+But, alas, it is a little off topic. Unless I can see a way in which it helps.
+
+One idea is, you don't pull free variables out of IoEH?
+
+You know? That might actually work...
+
+Hmm.. how do you pull free variables out of lambdas? I suppose you just
+concretize inside the body... but you want to concretize the body of the
+lambda and not the arguments that will be substituted into the lambda.
+
+In other words... I have some thinking to do before I get this free thing
+working, even know how it should work. I think the idea is clear: share the
+traversal by traversing before duplicating expressions.
+
+So I'll stew over this.
+
+Wed Nov 14 16:18:31 EST 2012
+
+Let me see what progress, if any, I can make on this IoEH idea. I think it
+will clean things up in general.
+
+First goal: pass primitives as an argument to elaboration. This way I can
+specify primitives separately from Elaboration, so I can make seri work
+without SMT stuff. That would be nice. Perhaps have a seri binary and a
+satseri binary, both of which are the same aside from the primitives they
+require.
+
+The other thing I want to try is sharing elaboration whereever possible. And
+see if I can ditch SNF. The problem with doing that now is that traversal of
+expressions will likely blow up even more. It would be great if I could get
+over the traversal headache first.
+
+Let me see how bad things are if I try this.
+
+Wed Nov 14 16:28:15 EST 2012
+
+Wow! It looks like that fixed Sudoku2!
+
+So much for HOAS of free variables... Sweet.
+
+Wed Nov 14 17:21:42 EST 2012
+
+Well, things are looking good now for seri. I still have more cleanup and
+optimizations I can do, but ... once again, the elaborator isn't the issue.
+Talking to the solver is...
+
+Wait a second... what if I disable debugging? Does it go much faster?
+
+The answer is yes, it does. Then elaboration becomes an issue again.
+
+So, at this point I'm left with some grand ideas, a growing list of things to
+do, thoughts about how I can improve performance. But, once again, performance
+doesn't seem to be a big problem on my test cases, so perhaps it is time to
+focus back on the applications. This long, however many weeks episode that
+came out of trying to clean up the test cases... is now, I believe, officially
+over. The code is much cleaner. It works much better. It's not any slower.
+
+I suppose I could go back to making minisat work...
+
