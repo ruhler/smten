@@ -1,0 +1,477 @@
+
+Thu Nov 15 09:19:03 EST 2012
+
+What do I need for a CAV paper?
+
+* SAT backend
+** get minisat to work
+** provide a way to have dynamically sized enums using only SAT
+
+* Applications
+** traveling salesman?
+** Hampy?
+
+* Reasonable performance
+* An understanding of overheads introduced by seri
+
+I have a number of ideas for performance, but I don't really have any good
+benchmarks yet to drive my optimizations. So it doesn't make sense to me, at
+this point, to focus on improving seri performance, as much fun as that is.
+
+Really what I need are applications. Implement something in seri, run it using
+the different solvers, see what does and doesn't work. See how bad performance
+is. Try out different back ends. Take a break from performance.
+
+I think I should still work on code cleanup when I can, but it should be more
+on the side.
+
+So... what can I justify doing? I need applications. Look up some competitions
+for traveling salesmen and see if I can figure out how to solve it at all.
+
+A working SAT back end would be nice too.
+
+Sigh. Time to get back to real work...
+
+Let me do this: for 30 minutes or an hour, I'll look into this IoEH idea. One
+issue is QueryEH... do we need a different kind for each solver?
+
+The problem is, the query monad has this 's' type parameter. It would be
+better if it took the solver as an argument. The issue is, each different
+solver has a different type.
+
+Instead I could pass the solver as a set of functions. I could do this without
+requiring an entire restructure of the solver code. Just have a generic
+function...
+
+mkSolver :: (SMT.Solver s) => IO Query.Solver
+mkSolver = do
+  s <- initialize
+  return $ Query.Solver {
+    pretty = pretty s,
+    run = run s
+    check = check s
+    ...
+    }
+
+That will work fine. Now Query isn't parameterized by the solver, so it's more
+general? More useful? More dynamic.
+
+Fine. I'll put this on the todo list. But I don't think I can justify working
+on it right now. So let me leave it there.
+
+Thu Nov 15 09:38:27 EST 2012
+
+Next thing to work on? Traveling salesmen, or some other such graph problem.
+
+Thu Nov 15 10:16:40 EST 2012
+
+Looks like Halmiton Circuit is a special case of Traveling salesmen: find any
+path. Traveling salesmen is the minimization problem of halmiton circuit. So
+it would be good to start with halmiton circuit, code that up, and go from
+there.
+
+Thu Nov 15 10:29:13 EST 2012
+
+Okay, so, here's the specification for Halmiton circuit:
+
+hamilton :: Integer -> [(Integer, Integer)] -> Query (Answer [Integer])
+
+Input is number of cities and a list of edges. Output is the order if there is
+any.
+
+What's a naive way to solve this using SMT?
+
+Well... it's pretty easy. Make a list of N free cities. Assert all the cities
+are different. Assert the tour is a hamilton circuit given the edges.
+
+This is certainly easy to code up in haskell. It's a couple of lines. I kind
+of suspect it won't do so well for large inputs...
+
+But that's okay! That's the whole point. Put some stress on seri. And then I
+can play around with representations for the edge matrix and such.
+
+Cool. Let me try it out. The nice part is, I can write code for hamilton path
+without thinking about SMT, and just try it out directly. The same thing
+happened in sudoku. Wish me luck.
+
+Thu Nov 15 11:07:09 EST 2012
+
+Hamiltonian circuit works, for small examples that is. That's cool. And I have
+a number of ideas as to how I could improve it. Reorganizing edges and how
+they are looked up, require the path start with a given city.
+
+Some things came up, which is good, when writing this:
+
+* type synonyms would be nice
+* operator precedence would be really nice.
+
+This gives me a great excuse to work on these things, to improve seri. I'm
+trying to make applications easier to write.
+
+Let me start with operator precedence, which should be fairly easy I think.
+Just hard code it. This is valuable to have.
+
+Here is the table from haskell prelude:
+
+   infixl 9  !!
+   infixr 9  .  
+   infixr 8  ^, ^^, ⋆⋆  
+   infixl 7  ⋆, /, ‘quot‘, ‘rem‘, ‘div‘, ‘mod‘  
+   infixl 6  +, -
+
+   -- The (:) operator is built-in syntax, and cannot legally be given  
+   -- a fixity declaration; but its fixity is given by:  
+   --   infixr 5  :  
+    
+   infix  4  ==, /=, <, <=, >=, >  
+   infixr 3  &&  
+   infixr 2  ||  
+   infixl 1  >>, >>=  
+   infixr 1  =<<  
+   infixr 0  $, $!, ‘seq‘
+
+Now, how will I implement this?
+
+Thu Nov 15 11:33:42 EST 2012
+
+I see two approaches. One is to hardcode the fixity into the parser. This will
+be tedious, won't support user defined fixity later on, but is
+straight-forward and will likely lead to a faster parser.
+
+The other approach is to do fixity resolution separately. An expression is a
+normal expression or an operator application? A list? I don't know. But they
+give the code to do it in the haskell 2010 report.
+
+Um... I'm kind of tempted to just hard code it into the parser for now. I
+think I'm more likely to make progress that way.
+
+So I need more token types, to convey to the parser information about fixity
+and precedence. Which tokens do I want?
+
+TokenOpL9 (default)
+TokenOpR9
+TokenOpL7
+TokenOpL6
+TokenOpR5
+TokenOpN4
+TokenOpR3
+TokenOpR2
+TokenOpL1
+TokenOpR1
+TokenOpR0
+
+That's not too bad.
+
+And, because we have defaults, it looks like I could add one at a time.
+
+So here's the deal... I need to know the difference between a regular operator
+and a constructor operator... Maybe treat qconop as ... I don't know.
+
+Let me start by having TokenOpL9 be a token which is just a string. I can
+figure out var or con by special casing on ':'. Err... I would rather keep
+them separate. So have a TokenColon for the list operator. That can be the
+first change? But I already have that... Ug.
+
+Okay, how about this... erg. Tedious. Not very pleasant. 
+
+Okay, a better approach. Just hard code the operators. Turn them into tokens.
+And let them also be found wherever they can also be found. Add one at a time.
+
+First thing to try: "*" and "+" operators with precedence which is proper.
+
+Step 1: make "*" and "+" lexical tokens. Make everything work like that. Then
+change the structure as needed for operator precedence, and try it out.
+
+Sounds like a plan to me.
+
+First step: make '+' L6. So I can do (a + b + c), for example.
+
+Thu Nov 15 11:56:43 EST 2012
+
+What happens when we have qualified operators? Won't that be unpleasant? Ug...
+maybe separate fixity resolution would be better after all? But how do I know
+the fixities for things?
+
+Sadness.
+
+Oh look. There's another option it would seem. Happy supports precedence.
+
+So here's what I propose. I'll use happy's precedence. We may need to separate
+operators into explicit and default, keep them separate, have a rule with the
+separation, and different rule with the union so they can be used right in the
+right places.
+
+Okay. Now this sounds like a plan to me. I'll try it after lunch.
+
+1. Split qvarsym into two things, one for varsym, another for varsym +
+explicit operators. Alternatively, I could just have it not include explicit
+operators, and have a collection of explicit operators. That may make more
+sense. Sure. Do that.
+
+Cool. And add the operators one by one. There may be a little bit of diving in
+and fixing up kind of work here.
+
+Thu Nov 15 13:34:40 EST 2012
+
+It works now. Cool. I'll call that a success until demonstrated otherwise.
+
+Thu Nov 15 13:35:20 EST 2012
+
+Next thing: type synonyms.
+
+To start, it may be useful enough to have nullary type synonyms. Don't allow
+arguments. Everything has to be of the form:
+
+type Foo = ...
+
+Let me read about type synonyms in the haskell report, then think about how to
+add support for them.
+
+Well, we don't have a whole lot of information. It's a purely syntactic thing.
+
+So we set up a translation: Type -> Type. You give me a synonym type, I will
+replace it with its actual type, otherwise I'll not change anything.
+
+Type synonyms are easy to collect. I can just collect them in the parser
+monad, for example. I can make them part of a module definition.
+
+Where do we apply these type synonyms? It seems like flattening would be an
+appropriate time. When we have everything in scope.
+
+We already do a traversal. We should do it over all the types. Gather the set
+of type synonyms, do replacement there.
+
+It sounds straight-forward enough to me.
+
+This would be a nice thing to have. The first test I can have is a synonym for
+strings.
+
+Okay, fine. Let me try it out. For now limit to no type parameters. I don't
+expect that to be hard to change later on.
+
+Looks rather straight forward to me. Let me try it out.
+
+Thu Nov 15 14:37:01 EST 2012
+
+Good. Got those little issues sorted out. Now, what's next?
+
+Let me find some numbers. See who as run TSPLIB, how long benchmarks take. If
+there is a simple one, try running it to see where I am.
+
+Another good thing would be to write a parser to the TSPLIB HCP input format.
+That would be very valuable.
+
+Or, perhaps I should implement TSP now? How hard is it?
+
+Well, the thing now is, I associate a weight with each edge.
+
+What I would like is... to be able to write down and execute HCP problems
+specified in TSPLIB format, and then TSP problems. I can write some by hand if
+seri isn't up for solving the big ones. But there are clearly a large number
+of benchmarks to try out.
+
+I can't find any HCP numbers. But I do have concorde TSP solver, which should
+be a fine reference for TSP. Too bad it doesn't work on HCP.
+
+What should I do? Ug.
+
+Okay, I'll write an hcp solver in seri. Try running it, see what happens.
+It will accept HCP format. They are all the same.
+
+I'll need another IO primitive: getContents. I can pass the input in that way.
+
+But this is good. A good direction. Good to support TSPLIB in seri. Should
+give me at least a ballpark idea of where we are.
+
+Question: how can I implement TSP? That might be fun to do.
+
+We need weights. Problem. All the TSP problems use floating point arithmetic
+to calculate the distances. Wait. Is that really a problem? Because the
+distances are rounded to integers and then used. It just means I calculate the
+distances ahead of time. Of course, for N nodes, there are N^2 distances...
+But that's fine.
+
+It just means this will be hard to do in seri without floating point support
+or otherwise translation to figure out the distances.
+
+Let me focus on HCP first. Be able to read things in. Get a sense of the
+performance as inputs grow? Sure.
+
+How about to start, I manually translate the HCP problems, or the simplest
+anyway, to seri, and try that out. Okay? Yes. Sounds like a plan.
+
+Thu Nov 15 15:56:23 EST 2012
+
+So, I wrote up alb1000 in seri. To even test if their solution is a
+hamiltonian path seems to take a while. That's bad news.
+
+What do I want to do?
+
+Even to show it takes a long time. And this isn't even any thing to do with
+SMT. That's a little bit... scary. Worrisome. As in, I have a long way to go
+performance wise. As in, I probably want to make a seri compiler, and do all
+sorts of tricks if I can to piggy back on haskell to do my SNF elaboration.
+
+It's interesting. Now we have a performance problem. Can I start hacking on
+seri again?
+
+Let me see what translation to haskell can do.
+
+Translating to haskell: it takes no time at all.
+
+Hmm... I can translate to haskell. There's no problem with that, aside from
+some things to figure out. But really I need the elaborator to be fast for
+SNF elaboration. Can I translate SNF elaboration to haskell and have it be
+efficient?
+
+Thu Nov 15 16:17:28 EST 2012
+
+Showing 600 elements of the list takes 1m11s.
+
+Where is the time being spent?
+
+22% is in type inference. The rest is in elaboration.
+
+I suspect a large part of it is re-elaborating arguments? But do we really do
+that? I suppose it's possible if we are lazy that we do, that would be bad.
+That's one idea.
+
+The other possibility is it is just slow to do toExpH.
+
+A ton of time is spent in assignexp. This is the same source of slowdown as in
+type inference. It takes a long time to do type reassignment.
+
+I think the best idea to get around that is: make an EnvH which shares
+pre-assigned, toExpH'd expressions.
+
+Or... if I can compile the SNF stuff to haskell some how, that would be very
+valuable. How could I do that? Is there any way? Don't worry about annoying
+type things or other such logistics.
+
+The idea is, I want to do elaboration in the presence of free variables. Don't
+worry about anything else for now.
+
+So, an expression could be concrete or symbolic. I want to elaborate as much
+as I can in haskell. It's like a symbolic evaluator then.
+
+For example, let's say I have something like:
+
+foo :: Integer -> Integer -> Integer
+foo x y = if (x + 3 == 0) then y + x + 1 else y - x
+
+Here's what I want. You give me concrete integers as input, it does this
+totally concretely. Easy. We get that for free.
+
+You give me one concrete integer and one free, then it does everything it can
+concretely, and the rest it does symbolically...
+
+One approach is to have a symbolic type. Make it an instance of Eq and Num.
+When you apply a primitive operation, if both arguments are concrete, just
+call the concrete thing.
+
+This sounds like sbv to me. But don't get discouraged by that. I can make
+things pretty.
+
+Let's say we have something like:
+
+    free + foo 3
+
+Now, foo 3 is concrete, so I would like to evaluate it to a concrete value,
+rather than saying + makes foo 3 symbolic.
+
+How do we deal with case statements and user defined data types?
+
+if free1 then a else b
+
+The DSEL takes care of a lot of this. Ignore its annoying type requirements
+for now. The issues that remain are things like:
+
+free + foo 3
+
+Where foo 3 gets type Free Integer instead of type Integer like I would like.
+
+I suppose I could insert:
+
+free + mkFree (foo 3) to make it clear. But again, this doesn't work out
+because we don't know statically what's free and what's concrete. Consider:
+
+blah :: Integer -> Integer -> Integer
+blah x y = x + (foo y)
+
+Again, unless I can explicitly say something like
+
+    (+) (FreeInt a) (FreeInt b) = FreeInt (a+b)
+    (+) a b = FreeAdd a b
+
+Consider any function on a free variable:
+
+foo :: Integer -> Integer
+foo x = ...
+
+I could have a symbolic version which is:
+
+fooS :: Free Integer -> Free Integer
+fooS (FreeInt x) = FreeInt (foo x)
+fooS x = ...
+
+Interesting... Let's say I'm willing to generate haskell code from seri. Let
+me look at the test cases, and see how I could translate things the way I
+want.
+
+p :: Bool -> Bool -> Bool -> Bool
+p x y z =
+    if x && y
+        then not z
+        else x == (y || z)
+
+Here's an ordinary boolean predicate. It has 3 variables. Let's look at some
+variations of it.
+
+p1 :: Bool -> Bool -> Free Bool -> Free Bool
+p1 x y z =
+    if x && y
+        then not z
+        else Free x == (Free y || z)
+
+p2 :: Bool -> Free Bool -> Bool -> Free Bool
+p2 x y z =
+    ifE (Free (&& x)) y
+       then Free (not z)
+       else Free x == (y || Free z)
+
+p3 :: Free Bool -> Bool -> Bool -> Free Bool
+p3 x y z =
+    ifE x && (Free y)
+        then Free (not z)
+        else x == Free (y || z)
+
+p4 :: Bool -> Free Bool -> Free Bool
+p4 x y z =
+    ifE (Free (&& x)) y
+      then not z
+      else Free x == (y || z)
+
+Perhaps we can just look at single argument functions and take advantage of
+partial application to do the rest.
+
+p :: Bool -> (Bool -> Bool -> Bool)
+p x = \y z -> ...
+
+I don't see how to separate it cleanly. && is an easier case:
+
+(&&) :: Bool -> Bool -> Bool
+(&&) x = if x then id else const false
+
+Perhaps the point is, given any function, I can generate specialized versions
+of the function which work on various combinations of free and concrete
+variables. It's exponential in the number of arguments, but maybe that's not
+so big a deal. Most functions don't take many arguments?
+
+I need to get away and think about this more. Does it help with anything other
+than elaboration? Like, if all my variables are free, will it help me generate
+the SMT query faster? Or do I still have to do elaboration?
+
+I guess that's the goal. The goal is: I do no elaboration myself. Haskell does
+all the elaboration, I'm left with just the operations left involving free
+variables.
+
