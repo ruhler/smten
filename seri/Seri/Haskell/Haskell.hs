@@ -72,7 +72,7 @@ hsExp c e | Just str <- de_stringE e
           , '\n' `notElem` str
           = return $ H.LitE (H.StringL str)
 hsExp c e | Just xs <- de_listE e = do
-  xs' <- mapM (compile_exp c c) xs
+  xs' <- mapM (hsExp c) xs
   return $ H.ListE xs'
 
 hsExp c (LitE l) = return (H.LitE (hsLit l))
@@ -80,15 +80,15 @@ hsExp c (ConE (Sig n _)) = return $ H.ConE (hsName n)
 hsExp c (VarE (Sig n t)) | unknowntype t = return $ H.VarE (hsName n)
 hsExp c (VarE (Sig n t)) = do
     -- Give explicit type signature to make sure there are no type ambiguities
-    ht <- compile_type c c t
+    ht <- hsType c t
     return $ H.SigE (H.VarE (hsName n)) ht
 hsExp c (AppE f x) = do
-    f' <- compile_exp c c f
-    x' <- compile_exp c c x
+    f' <- hsExp c f
+    x' <- hsExp c x
     return $ H.AppE f' x'
 
 hsExp c (LamE (Sig n _) x) = do
-    x' <- compile_exp c c x
+    x' <- hsExp c x
     return $ H.LamE [H.VarP (hsName n)] x'
 
 hsExp c (CaseE x (Sig kn kt) y n) =
@@ -102,20 +102,23 @@ hsExp c (CaseE x (Sig kn kt) y n) =
 
       (vars, yv) = getvars nwant y
   in do
-    x' <- compile_exp c c x
-    yv' <- compile_exp c c yv
-    n' <- compile_exp c c n
+    x' <- hsExp c x
+    yv' <- hsExp c yv
+    n' <- hsExp c n
     return $ H.CaseE x' [
         H.Match (H.ConP (hsName kn) (map (H.VarP . hsName) vars)) (H.NormalB yv') [],
         H.Match H.WildP (H.NormalB n') []]
     
     
 hsType :: HCompiler -> Type -> Failable H.Type
+hsType c (ConT n) | n == name "Char" = return $ H.ConT (H.mkName "Prelude.Char")
+hsType c (ConT n) | n == name "Integer" = return $ H.ConT (H.mkName "Prelude.Integer")
+hsType c (ConT n) | n == name "IO" = return $ H.ConT (H.mkName "Prelude.IO")
 hsType c (ConT n) | n == name "->" = return H.ArrowT
 hsType c (ConT n) = return $ H.ConT (hsName n)
 hsType c (AppT a b) = do
-    a' <- compile_type c c a
-    b' <- compile_type c c b
+    a' <- hsType c a
+    b' <- hsType c b
     return $ H.AppT a' b'
 hsType c (VarT n) = return $ H.VarT (hsName n)
 hsType c (NumT (ConNT i)) = return $ hsnt i
@@ -139,7 +142,7 @@ hsnt n = H.AppT (H.ConT (H.mkName $ "N__2p" ++ show (n `mod` 2))) (hsnt $ n `div
 hsTopType :: HCompiler -> Context -> Type -> Failable H.Type
 hsTopType c ctx t = do
     let ntvs = [H.ClassP (H.mkName "N__") [H.VarT (H.mkName (pretty n))] | n <- nvarTs t]
-    t' <- compile_type c c t
+    t' <- hsType c t
     ctx' <- mapM (hsClass c) ctx
     case ntvs ++ ctx' of
         [] -> return t'
@@ -147,19 +150,19 @@ hsTopType c ctx t = do
 
 hsClass :: HCompiler -> Class -> Failable H.Pred
 hsClass c (Class nm ts) = do
-    ts' <- mapM (compile_type c c) ts
+    ts' <- mapM (hsType c) ts
     return $ H.ClassP (hsName nm) ts'
     
 hsMethod :: HCompiler -> Method -> Failable H.Dec
 hsMethod c (Method n e) = do
     let hsn = hsName n
-    e' <- compile_exp c c e
+    e' <- hsExp c e
     return $ H.ValD (H.VarP hsn) (H.NormalB e') []
 
 
 hsCon :: HCompiler -> Con -> Failable H.Con
 hsCon c (Con n tys) = do
-    ts <- mapM (compile_type c c) tys
+    ts <- mapM (hsType c) tys
     return $ H.NormalC (hsName n) (map (\t -> (H.NotStrict, t)) ts)
     
 hsSig :: HCompiler -> TopSig -> Failable H.Dec
@@ -171,11 +174,27 @@ hsSig c (TopSig n ctx t) = do
 hsDec :: HCompiler -> Dec -> Failable [H.Dec]
 hsDec c (ValD (TopSig n ctx t) e) = do
     t' <- hsTopType c ctx t
-    e' <- compile_exp c c e
+    e' <- hsExp c e
     let hsn = hsName n
     let sig = H.SigD hsn t'
     let val = H.FunD hsn [H.Clause [] (H.NormalB e') []]
     return [sig, val]
+
+hsDec _ (DataD n _ _) | n `elem` [
+  name "Char",
+  name "Integer",
+  name "()",
+  name "(,)",
+  name "(,,)",
+  name "(,,,)",
+  name "(,,,,)",
+  name "(,,,,,)",
+  name "(,,,,,,)",
+  name "(,,,,,,,)",
+  name "(,,,,,,,,)",
+  name "[]",
+  name "Bit",
+  name "IO"] = return []
 
 hsDec c (DataD n tyvars constrs) = do
     cs <- mapM (hsCon c) constrs
@@ -189,9 +208,50 @@ hsDec c (InstD ctx (Class n ts) ms) = do
     let ntvs = [H.ClassP (H.mkName "N__") [H.VarT (H.mkName (pretty n))] | n <- concat $ map nvarTs ts]
     ctx' <- mapM (hsClass c) ctx
     ms' <- mapM (hsMethod c) ms
-    ts' <- mapM (compile_type c c) ts
+    ts' <- mapM (hsType c) ts
     let t = foldl H.AppT (H.ConT (hsName n)) ts'
     return [H.InstanceD (ntvs ++ ctx') t ms'] 
+
+hsDec _ (PrimD (TopSig n _ t)) | n == name "Prelude.error" = do
+  let e = H.VarE (H.mkName "Prelude.error")
+  let val = H.FunD (H.mkName "error") [H.Clause [] (H.NormalB e) []]
+  return [val]
+
+hsDec c (PrimD s@(TopSig n _ _))
+ | n == name "Prelude.__prim_add_Integer" = prim c s (vare "Prelude.+")
+ | n == name "Prelude.__prim_sub_Integer" = prim c s (vare "Prelude.-")
+ | n == name "Prelude.__prim_mul_Integer" = prim c s (vare "Prelude.*")
+ | n == name "Prelude.__prim_show_Integer" = prim c s (vare "Prelude.show")
+ | n == name "Prelude.<" = bprim c s "Prelude.<"
+ | n == name "Prelude.<=" = bprim c s "Prelude.<="
+ | n == name "Prelude.>" = bprim c s "Prelude.>"
+ | n == name "Prelude.&&" = prim c s (vare "&&#")
+ | n == name "Prelude.||" = prim c s (vare "||#")
+ | n == name "Prelude.not" = prim c s (vare "not_")
+ | n == name "Prelude.__prim_eq_Integer" = bprim c s "Prelude.=="
+ | n == name "Prelude.__prim_eq_Char" = bprim c s "Prelude.=="
+ | n == name "Prelude.valueof" = return []
+ | n == name "Prelude.numeric" = return []
+ | n == name "Seri.Bit.__prim_fromInteger_Bit" = prim c s (vare "Prelude.fromInteger")
+ | n == name "Seri.Bit.__prim_eq_Bit" = bprim c s "Prelude.=="
+ | n == name "Seri.Bit.__prim_add_Bit" = prim c s (vare "Prelude.+")
+ | n == name "Seri.Bit.__prim_sub_Bit" = prim c s (vare "Prelude.-")
+ | n == name "Seri.Bit.__prim_mul_Bit" = prim c s (vare "Prelude.*")
+ | n == name "Seri.Bit.__prim_concat_Bit" = prim c s (vare "Bit.concat")
+ | n == name "Seri.Bit.__prim_show_Bit" = prim c s (vare "Prelude.show")
+ | n == name "Seri.Bit.__prim_not_Bit" = prim c s (vare "Bit.not")
+ | n == name "Seri.Bit.__prim_or_Bit" = prim c s (vare "Bit.or")
+ | n == name "Seri.Bit.__prim_and_Bit" = prim c s (vare "Bit.and")
+ | n == name "Seri.Bit.__prim_shl_Bit" = prim c s (vare "Bit.shl")
+ | n == name "Seri.Bit.__prim_lshr_Bit" = prim c s (vare "Bit.lshr")
+ | n == name "Seri.Bit.__prim_zeroExtend_Bit" = prim c s (vare "Bit.zeroExtend")
+ | n == name "Seri.Bit.__prim_truncate_Bit" = prim c s (vare "Bit.truncate")
+ | n == name "Seri.Bit.__prim_extract_Bit" = prim c s (vare "Bit.extract")
+ | n == name "Prelude.return_io" = prim c s (vare "Prelude.return")
+ | n == name "Prelude.bind_io" = prim c s (vare "Prelude.>>=")
+ | n == name "Prelude.nobind_io" = prim c s (vare "Prelude.>>")
+ | n == name "Prelude.fail_io" = prim c s (vare "Prelude.fail")
+ | n == name "Prelude.putChar" = prim c s (vare "Prelude.putChar")
 
 hsDec _ d = throw $ "coreH does not apply to dec: " ++ pretty d
 
@@ -199,7 +259,7 @@ coreH :: HCompiler
 coreH = Compiler hsExp hsType hsDec
 
 haskellH :: HCompiler
-haskellH = compilers [preludeH, coreH]
+haskellH = coreH
 
 -- haskell builtin decs
 --  Compile the given declarations to haskell.
@@ -243,75 +303,6 @@ bprim c s@(TopSig nm _ t) b = do
                           (H.ConE (H.mkName "False"))
               )) []]
   return [sig, val]
-
-
-preludeH :: HCompiler
-preludeH =
-  let me _ e = throw $ "preludeH does not apply to exp: " ++ pretty e
-
-      mt _ (ConT n) | n == name "Char" = return $ H.ConT (H.mkName "Prelude.Char")
-      mt _ (ConT n) | n == name "Integer" = return $ H.ConT (H.mkName "Prelude.Integer")
-      mt _ (ConT n) | n == name "IO" = return $ H.ConT (H.mkName "Prelude.IO")
-      mt _ t = throw $ "preludeH does not apply to type: " ++ pretty t
-
-      md _ (PrimD (TopSig n _ t)) | n == name "Prelude.error" = do
-        let e = H.VarE (H.mkName "Prelude.error")
-        let val = H.FunD (H.mkName "error") [H.Clause [] (H.NormalB e) []]
-        return [val]
-      md _ (DataD n _ _) | n `elem` [
-        name "Char",
-        name "Integer",
-        name "()",
-        name "(,)",
-        name "(,,)",
-        name "(,,,)",
-        name "(,,,,)",
-        name "(,,,,,)",
-        name "(,,,,,,)",
-        name "(,,,,,,,)",
-        name "(,,,,,,,,)",
-        name "[]",
-        name "IO"] = return []
-      md c (PrimD s@(TopSig n _ _)) | n == name "Prelude.__prim_add_Integer" = prim c s (vare "Prelude.+")
-      md c (PrimD s@(TopSig n _ _)) | n == name "Prelude.__prim_sub_Integer" = prim c s (vare "Prelude.-")
-      md c (PrimD s@(TopSig n _ _)) | n == name "Prelude.__prim_mul_Integer" = prim c s (vare "Prelude.*")
-      md c (PrimD s@(TopSig n _ _)) | n == name "Prelude.__prim_show_Integer" = prim c s (vare "Prelude.show")
-      md c (PrimD s@(TopSig n _ _)) | n == name "Prelude.<" = bprim c s "Prelude.<"
-      md c (PrimD s@(TopSig n _ _)) | n == name "Prelude.<=" = bprim c s "Prelude.<="
-      md c (PrimD s@(TopSig n _ _)) | n == name "Prelude.>" = bprim c s "Prelude.>"
-      md c (PrimD s@(TopSig n _ _)) | n == name "Prelude.&&" = prim c s (vare "&&#")
-      md c (PrimD s@(TopSig n _ _)) | n == name "Prelude.||" = prim c s (vare "||#")
-      md c (PrimD s@(TopSig n _ _)) | n == name "Prelude.not" = prim c s (vare "not_")
-      md c (PrimD s@(TopSig n _ _)) | n == name "Prelude.__prim_eq_Integer" = bprim c s "Prelude.=="
-      md c (PrimD s@(TopSig n _ _)) | n == name "Prelude.__prim_eq_Char" = bprim c s "Prelude.=="
-      md c (PrimD s@(TopSig n _ _)) | n == name "Prelude.valueof" = return []
-      md c (PrimD s@(TopSig n _ _)) | n == name "Prelude.numeric" = return []
-
-      md c (DataD n _ _) | n == name "Bit" = return []
-      md c (PrimD s@(TopSig n _ _)) | n == name "Seri.Bit.__prim_fromInteger_Bit" = prim c s (vare "Prelude.fromInteger")
-      md c (PrimD s@(TopSig n _ _)) | n == name "Seri.Bit.__prim_eq_Bit" = bprim c s "Prelude.=="
-      md c (PrimD s@(TopSig n _ _)) | n == name "Seri.Bit.__prim_add_Bit" = prim c s (vare "Prelude.+")
-      md c (PrimD s@(TopSig n _ _)) | n == name "Seri.Bit.__prim_sub_Bit" = prim c s (vare "Prelude.-")
-      md c (PrimD s@(TopSig n _ _)) | n == name "Seri.Bit.__prim_mul_Bit" = prim c s (vare "Prelude.*")
-      md c (PrimD s@(TopSig n _ _)) | n == name "Seri.Bit.__prim_concat_Bit" = prim c s (vare "Bit.concat")
-      md c (PrimD s@(TopSig n _ _)) | n == name "Seri.Bit.__prim_show_Bit" = prim c s (vare "Prelude.show")
-      md c (PrimD s@(TopSig n _ _)) | n == name "Seri.Bit.__prim_not_Bit" = prim c s (vare "Bit.not")
-      md c (PrimD s@(TopSig n _ _)) | n == name "Seri.Bit.__prim_or_Bit" = prim c s (vare "Bit.or")
-      md c (PrimD s@(TopSig n _ _)) | n == name "Seri.Bit.__prim_and_Bit" = prim c s (vare "Bit.and")
-      md c (PrimD s@(TopSig n _ _)) | n == name "Seri.Bit.__prim_shl_Bit" = prim c s (vare "Bit.shl")
-      md c (PrimD s@(TopSig n _ _)) | n == name "Seri.Bit.__prim_lshr_Bit" = prim c s (vare "Bit.lshr")
-      md c (PrimD s@(TopSig n _ _)) | n == name "Seri.Bit.__prim_zeroExtend_Bit" = prim c s (vare "Bit.zeroExtend")
-      md c (PrimD s@(TopSig n _ _)) | n == name "Seri.Bit.__prim_truncate_Bit" = prim c s (vare "Bit.truncate")
-      md c (PrimD s@(TopSig n _ _)) | n == name "Seri.Bit.__prim_extract_Bit" = prim c s (vare "Bit.extract")
-
-      md c (PrimD s@(TopSig n _ _)) | n == name "Prelude.return_io" = prim c s (vare "Prelude.return")
-      md c (PrimD s@(TopSig n _ _)) | n == name "Prelude.bind_io" = prim c s (vare "Prelude.>>=")
-      md c (PrimD s@(TopSig n _ _)) | n == name "Prelude.nobind_io" = prim c s (vare "Prelude.>>")
-      md c (PrimD s@(TopSig n _ _)) | n == name "Prelude.fail_io" = prim c s (vare "Prelude.fail")
-      md c (PrimD s@(TopSig n _ _)) | n == name "Prelude.putChar" = prim c s (vare "Prelude.putChar")
-
-      md _ d = throw $ "preludeH does not apply to dec: " ++ pretty d
-  in Compiler me mt md
 
 unknowntype :: Type -> Bool
 unknowntype (ConT {}) = False
