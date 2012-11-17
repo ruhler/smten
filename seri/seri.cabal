@@ -70,7 +70,6 @@ library
 
     Seri.Haskell
     Seri.Haskell.Haskell
-    Seri.Haskell.Compiler
     Seri.Haskell.Lib.Bit
     Seri.Haskell.Lib.Numeric
 
