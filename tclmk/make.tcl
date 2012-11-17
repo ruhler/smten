@@ -66,17 +66,9 @@ indir build/seri-bin {
     hrun ln -sf ../../seri-bin/seri.hs seri.hs
     #hrun ghc -o seri seri.hs
     hrun ghc -rtsopts -prof -auto-all -o seri seri.hs
-    
-    hrun ln -sf ../../seri-bin/dsel.hs dsel.hs
-    hrun ghc -o dsel dsel.hs
-
-    hrun ln -sf ../../seri-bin/sudoku.hs sudoku.hs
-    hrun ghc -o sudoku sudoku.hs
 }
     
 set SERI build/seri-bin/seri
-set DSEL build/seri-bin/dsel
-set SUDOKU build/seri-bin/sudoku
 
 set SRI_SERI seri/sri
 
@@ -97,69 +89,18 @@ run $SERI --io \
 run echo "PASSED" > build/test/tests.wnt
 hrun cmp build/test/tests.got build/test/tests.wnt
 
-# Poorly typed tests.
-proc badtypetest {name} {
-    set cmd {
-        run $::SERI --type \
-            --include $::SRI_SERI \
-            -f $::SRI_SERI/Seri/Tests/MalTyped/$name.sri \
-            > "build/test/$name.typed"
-        }
-
-    if { [catch $cmd] == 0 } {
-        error "expected type error, but $name passed type check"
-    }
-}
-
-badtypetest "BadType1"
-badtypetest "BadType2"
-badtypetest "Ctx"
-badtypetest "InstCtx"
-
-
-# Test the haskell target.
+# Test the haskellF target.
 set hsdir build/test
-run $SERI --haskell \
+run $SERI --haskellf \
     --include $::SRI_SERI \
     -m testallio \
     -f $::SRI_SERI/Seri/Tests/Basic.sri \
-    > $hsdir/hstests.hs
+    > $hsdir/hsftests.hs
 hrun -ignorestderr ghc -fno-warn-overlapping-patterns \
-    -o $hsdir/hstests $hsdir/hstests.hs
-run ./$hsdir/hstests > $hsdir/hstests.got
-run echo "PASSED" > $hsdir/hstests.wnt
-hrun cmp $hsdir/hstests.got $hsdir/hstests.wnt
-
-# The SMT query tests
-proc smttest {name} {
-    run $::SERI --io \
-         --include $::SRI_SERI \
-         -m Seri.SMT.Tests.[string map {/ .} $name].main \
-         -f $::SRI_SERI/Seri/SMT/Tests/$name.sri \
-         > build/test/$name.out
-}
-
-smttest "Core"
-smttest "Integer"
-smttest "Scoped"
-smttest "Datatype"
-smttest "Bit"
-
-smttest "Bluespec"
-smttest "Array"
-smttest "Share"
-smttest "Tuple"
-smttest "AllQ"
-smttest "AllQ2"
-smttest "Squares2/Squares"
-smttest "Sudoku"
-smttest "Sudoku2"
-smttest "Sudoku3"
-smttest "Isolate0"
-
-# The DSEL tests
-hrun $::DSEL
-hrun $::SUDOKU
+    -o $hsdir/hsftests $hsdir/hsftests.hs
+run ./$hsdir/hstests > $hsdir/hsftests.got
+run echo "PASSED" > $hsdir/hsftests.wnt
+hrun cmp $hsdir/hsftests.got $hsdir/hsftests.wnt
 
 puts "BUILD COMPLETE"
 
