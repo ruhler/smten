@@ -44,33 +44,31 @@ data Result
     = Satisfiable
     | Unsatisfiable
     | Undefined
-    deriving (Eq, Ord, Enum, Bounded, Read, Show)
+    deriving (Eq, Show)
 
-class Solver a where
+data Solver = Solver {
     -- | Print a command in pretty syntax for debugging purposes.
     -- The command should be printed in a concrete syntax understood by the
     -- solver so the user can try running the generated query directly.
-    pretty :: a -> Command -> String
-
-    -- | Create a new context for interacting with the solver.
-    initialize :: IO a 
+    pretty :: Command -> String,
 
     -- | Run a single command, ignoring the result.
-    run :: a -> Command -> IO ()
+    run :: Command -> IO (),
 
     -- | Run (check) and return the result.
-    check :: a -> IO Result    
+    check :: IO Result,
 
     -- | Given the name of a free variable with integer type, return its
     -- value.
-    getIntegerValue :: a -> String -> IO Integer
+    getIntegerValue :: String -> IO Integer,
 
     -- | Given the name of a free variable with bool type, return its
     -- value.
-    getBoolValue :: a -> String -> IO Bool
+    getBoolValue :: String -> IO Bool,
 
     -- | Given the width and name of a free variable with bit vector type,
     -- return its value as a positive integer.
-    getBitVectorValue :: a -> Integer -> String -> IO Integer
+    getBitVectorValue :: Integer -> String -> IO Integer
+}
 
 

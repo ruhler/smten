@@ -140,8 +140,6 @@ Elaborator::
 * Pull primitives out of elaborate, then have them be arguments to elaborate
 * make IO and Query primitives primitives in the elaborator instead of having
   a separate run method. (Add IoEH and QueryEH expressions to accomplish this)
-** This requires first changing the Query monad to take the solver as an
-   argument instead of embedding it in the Query type.
 
 Other::
 * Have name sugar for arrowN, tupleN, de_tupleN, unitN, etc...

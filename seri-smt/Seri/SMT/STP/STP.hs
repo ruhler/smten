@@ -1,7 +1,7 @@
 
 {-# LANGUAGE PatternGuards #-}
 
-module Seri.SMT.STP.STP (STP(), stp) where
+module Seri.SMT.STP.STP (stp) where
 
 import Data.Functor
 import Data.List(genericLength)
@@ -15,7 +15,7 @@ import qualified Foreign.Concurrent as F
 import Seri.SMT.STP.FFI
 
 import qualified Seri.SMT.Query as Q
-import Seri.SMT.Solver
+import qualified Seri.SMT.Solver as S
 import Seri.SMT.Syntax
 
 import qualified Seri.SMT.STP.Concrete as C
@@ -113,58 +113,65 @@ mkExpr s e | Just (bs, v) <- de_letE e =
     
 mkExpr _ e = error $ "TODO: STP.mkExpr " ++ show e
 
-instance Solver STP where
-    pretty _ = C.pretty
-
-    initialize = do
-        ptr <- c_vc_createValidityChecker
-        fvc <- F.newForeignPtr ptr (c_vc_Destroy ptr)
-        vars <- newIORef Map.empty
-        return $ STP { stp_fvc = fvc, stp_vars = vars }
-
-    run s (Declare nm t) = do
-        st <- mkType s t        
-        v <- withvc s $ \vc -> (withCString nm $ \cnm -> c_vc_varExpr vc cnm st)
-        modifyIORef (stp_vars s) $ Map.insert nm v
-
-    run s (Assert e) = do
-        se <- mkExpr s e
-        withvc s $ \vc -> c_vc_assertFormula vc se
-
-    run s Push = withvc s c_vc_push
-    run s Pop = withvc s c_vc_pop
+stp :: IO S.Solver
+stp = do
+  ptr <- c_vc_createValidityChecker
+  fvc <- F.newForeignPtr ptr (c_vc_Destroy ptr)
+  vars <- newIORef Map.empty
+  let s = STP { stp_fvc = fvc, stp_vars = vars }
+  return $ S.Solver {
+       S.pretty = C.pretty,
+       S.run = run s,
+       S.check = check s,
+       S.getIntegerValue = getIntegerValue s,
+       S.getBoolValue = getBoolValue s,
+       S.getBitVectorValue = getBitVectorValue s
+    }
         
-    run _ cmd = error $ "TODO: STP.run " ++ show cmd
+run :: STP -> Command -> IO ()
+run s (Declare nm t) = do
+    st <- mkType s t        
+    v <- withvc s $ \vc -> (withCString nm $ \cnm -> c_vc_varExpr vc cnm st)
+    modifyIORef (stp_vars s) $ Map.insert nm v
+
+run s (Assert e) = do
+    se <- mkExpr s e
+    withvc s $ \vc -> c_vc_assertFormula vc se
+
+run s Push = withvc s c_vc_push
+run s Pop = withvc s c_vc_pop
     
-    -- To check for satisfiability, we query if False is valid. If False is
-    -- valid, the assertions imply False, meaning they are unsatisfiable. If
-    -- False is not valid, then there's some assignment which satisfies all
-    -- the assertions.
-    check s = do
-        false <- withvc s c_vc_falseExpr
-        r <- withvc s $ \vc -> c_vc_query vc false
-        case r of
-            0 -> return Satisfiable     -- False is INVALID
-            1 -> return Unsatisfiable   -- False is VALID
-            _ -> error $ "STP.check: vc_query returned " ++ show r
-        
-    getIntegerValue _ _ = error $ "STP does not support free Integers"
+run _ cmd = error $ "TODO: STP.run " ++ show cmd
 
-    getBoolValue s nm = do
-        var <- mkExpr s (varE nm)
-        val <- withvc s $ \vc -> c_vc_getCounterExample vc var
-        b <- c_vc_isBool val
-        case b of
-            0 -> return False
-            1 -> return True
-            x -> error $ "STP.getBoolValue got value " ++ show x ++ " for " ++ nm
-        
-    getBitVectorValue s _ nm = do
-        var <- mkExpr s (varE nm)
-        val <- withvc s $ \vc -> c_vc_getCounterExample vc var
-        fromIntegral <$> c_getBVUnsignedLongLong val
-        
+-- To check for satisfiability, we query if False is valid. If False is
+-- valid, the assertions imply False, meaning they are unsatisfiable. If
+-- False is not valid, then there's some assignment which satisfies all
+-- the assertions.
+check :: STP -> IO S.Result
+check s = do
+    false <- withvc s c_vc_falseExpr
+    r <- withvc s $ \vc -> c_vc_query vc false
+    case r of
+        0 -> return S.Satisfiable     -- False is INVALID
+        1 -> return S.Unsatisfiable   -- False is VALID
+        _ -> error $ "STP.check: vc_query returned " ++ show r
+    
+getIntegerValue :: STP -> String -> IO Integer
+getIntegerValue _ _ = error $ "STP does not support free Integers"
 
-stp :: Q.Query STP a -> Q.Query STP a
-stp = id
-
+getBoolValue :: STP -> String -> IO Bool
+getBoolValue s nm = do
+    var <- mkExpr s (varE nm)
+    val <- withvc s $ \vc -> c_vc_getCounterExample vc var
+    b <- c_vc_isBool val
+    case b of
+        0 -> return False
+        1 -> return True
+        x -> error $ "STP.getBoolValue got value " ++ show x ++ " for " ++ nm
+    
+getBitVectorValue :: STP -> Integer -> String -> IO Integer
+getBitVectorValue s _ nm = do
+    var <- mkExpr s (varE nm)
+    val <- withvc s $ \vc -> c_vc_getCounterExample vc var
+    fromIntegral <$> c_getBVUnsignedLongLong val
+    

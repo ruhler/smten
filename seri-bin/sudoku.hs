@@ -13,7 +13,6 @@ import Seri.Type
 import Seri.TH
 import Seri
 import Seri.Dec
-import Seri.SMT.Solver (Solver)
 import Seri.SMT.Yices.Yices2
 
 
@@ -28,13 +27,13 @@ m = n*n
 
 type Cell = Integer
 
-freeCell :: (Solver s) => Query s (ExpT Cell)
+freeCell :: Query (ExpT Cell)
 freeCell = do
     x <- free
     assert ((x > 0) && (x <= seriET m))
     return x
 
-readCell :: (Solver s) => Char -> Query s (ExpT Cell);
+readCell :: Char -> Query (ExpT Cell);
 readCell '1' = return (seriET 1);
 readCell '2' = return (seriET 2);
 readCell '3' = return (seriET 3);
@@ -107,10 +106,10 @@ all f (x:xs) = ite (f x) (all f xs) (seriET False)
 isvalid :: [[ExpT Cell]] -> ExpT Bool;
 isvalid b = all unique (concat [rows b, cols b, boxes b]);
 
-readRow :: (Solver s) => [Char] -> Query s [ExpT Cell];
+readRow :: [Char] -> Query [ExpT Cell];
 readRow = mapM readCell;
 
-readBoard :: (Solver s) => [[Char]] -> Query s [[ExpT Cell]]
+readBoard :: [[Char]] -> Query [[ExpT Cell]]
 readBoard rows = mapM readRow rows;
 
 easy :: [[Char]];
@@ -149,7 +148,7 @@ diabolical =
      ".2.6..35.",
      ".54..8.7."];
 
-solve :: (Solver s) => Query s [[Char]];
+solve :: Query [[Char]];
 solve = do
     board <- readBoard diabolical
     assert (isvalid board)
@@ -162,5 +161,8 @@ env :: Env
 env = $(loadenvth [seridir] (seridir >>= return . (++ "/Seri/SMT/SMT.sri")))
 
 main :: IO ()
-main = runQuery (RunOptions (Just "build/test/sudoku.dbg")) env (yices2 solve) >>= mapM_ putStrLn
+main = do
+    y <- yices2
+    r <- runQuery (RunOptions (Just "build/test/sudoku.dbg") y) env solve
+    mapM_ putStrLn r
 

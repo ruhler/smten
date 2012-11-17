@@ -36,7 +36,7 @@
 {-# LANGUAGE PatternGuards #-}
 
 -- | Backend for the Yices2 solver
-module Seri.SMT.Yices.Yices2 (Yices2(), yices2) where
+module Seri.SMT.Yices.Yices2 (yices2) where
 
 import Data.List(genericLength)
 import Data.Ratio
@@ -48,84 +48,96 @@ import Foreign.C.Types
 import Seri.SMT.Yices.FFI2
 import Seri.SMT.Syntax
 import qualified Seri.SMT.Yices.Concrete as YC
-import Seri.SMT.Solver
+import qualified Seri.SMT.Solver as S
 import qualified Seri.SMT.Query as Q
 
 data Yices2 = Yices2 (Ptr YContext)
 
-instance Solver Yices2 where
-    pretty _ = YC.pretty
+-- TODO: this currently leaks context pointers!
+-- That should most certainly be fixed somehow.
+-- TODO: when do we call c_yices_exit?
+yices2 :: IO S.Solver
+yices2 = do
+  c_yices_init
+  ptr <- c_yices_new_context nullPtr
+  return $    
+    let y2 = Yices2 ptr
+    in S.Solver {
+          S.pretty = YC.pretty,
+          S.run = run y2,
+          S.check = check y2,
+          S.getIntegerValue = getIntegerValue y2,
+          S.getBoolValue = getBoolValue y2,
+          S.getBitVectorValue = getBitVectorValue y2
+       }
 
-    -- TODO: this currently leaks context pointers!
-    -- That should most certainly be fixed somehow.
-    -- TODO: when do we call c_yices_exit?
-    initialize = do
-        c_yices_init
-        ptr <- c_yices_new_context nullPtr
-        return $! Yices2 ptr
+run :: Yices2 -> Command -> IO ()
+run _ (Declare s ty) = do
+    ty' <- ytype ty
+    term <- c_yices_new_uninterpreted_term ty'
+    withCString s $ c_yices_set_term_name term
+run (Yices2 yctx) (Assert p) = do
+    p' <- yterm p
+    c_yices_assert_formula yctx p'
+run ctx Check = check ctx >> return ()
+run (Yices2 yctx) Push = do
+    c_yices_push yctx
+run (Yices2 yctx) Pop = do
+    c_yices_pop yctx
 
-    run _ (Declare s ty) = do
-        ty' <- ytype ty
-        term <- c_yices_new_uninterpreted_term ty'
-        withCString s $ c_yices_set_term_name term
-    run (Yices2 yctx) (Assert p) = do
-        p' <- yterm p
-        c_yices_assert_formula yctx p'
-    run ctx Check = check ctx >> return ()
-    run (Yices2 yctx) Push = do
-        c_yices_push yctx
-    run (Yices2 yctx) Pop = do
-        c_yices_pop yctx
+check :: Yices2 -> IO S.Result
+check (Yices2 yctx) = do
+    st <- c_yices_check_context yctx nullPtr
+    return $! fromYSMTStatus st
 
-    check (Yices2 yctx) = do
-        st <- c_yices_check_context yctx nullPtr
-        return $! fromYSMTStatus st
-
-    getIntegerValue (Yices2 yctx) nm = do
-        model <- c_yices_get_model yctx 1
-        x <- alloca $ \ptr -> do
-                term <- yterm (varE nm)
-                ir <- c_yices_get_int64_value model term ptr
-                if ir == 0
-                   then do 
-                      v <- peek ptr
-                      return $! v
-                   else error $ "yices2 get int64 value returned: " ++ show ir
-        c_yices_free_model model
-        return $! toInteger x
-
-    getBoolValue (Yices2 yctx) nm = do
-        model <- c_yices_get_model yctx 1
-        x <- alloca $ \ptr -> do
-                term <- yterm (varE nm)
-                ir <- c_yices_get_bool_value model term ptr
-                case ir of
-                   _ | ir == (-1) -> do
-                      -- -1 means we don't care, so just return the equivalent
-                      -- of False.
-                      return 0
-
-                   0 -> do 
-                      v <- peek ptr
-                      return v
-
-                   _ -> error $ "yices2 get bool value returned: " ++ show ir
-        c_yices_free_model model
-        case x of
-            0 -> return False
-            1 -> return True
-            _ -> error $ "yices2 get bool value got: " ++ show x
-        
-    getBitVectorValue (Yices2 yctx) w nm = do
-        model <- c_yices_get_model yctx 1
-        bits <- allocaArray (fromInteger w) $ \ptr -> do
+getIntegerValue :: Yices2 -> String -> IO Integer
+getIntegerValue (Yices2 yctx) nm = do
+    model <- c_yices_get_model yctx 1
+    x <- alloca $ \ptr -> do
             term <- yterm (varE nm)
-            ir <- c_yices_get_bv_value model term ptr
+            ir <- c_yices_get_int64_value model term ptr
             if ir == 0
-                then peekArray (fromInteger w) ptr
-                else error $ "yices2 get bit vector value returned: " ++ show ir
-        c_yices_free_model model
-        return $! bvInteger bits
+               then do 
+                  v <- peek ptr
+                  return $! v
+               else error $ "yices2 get int64 value returned: " ++ show ir
+    c_yices_free_model model
+    return $! toInteger x
+
+getBoolValue :: Yices2 -> String -> IO Bool
+getBoolValue (Yices2 yctx) nm = do
+    model <- c_yices_get_model yctx 1
+    x <- alloca $ \ptr -> do
+            term <- yterm (varE nm)
+            ir <- c_yices_get_bool_value model term ptr
+            case ir of
+               _ | ir == (-1) -> do
+                  -- -1 means we don't care, so just return the equivalent
+                  -- of False.
+                  return 0
+
+               0 -> do 
+                  v <- peek ptr
+                  return v
+
+               _ -> error $ "yices2 get bool value returned: " ++ show ir
+    c_yices_free_model model
+    case x of
+        0 -> return False
+        1 -> return True
+        _ -> error $ "yices2 get bool value got: " ++ show x
+    
+getBitVectorValue :: Yices2 -> Integer -> String -> IO Integer
+getBitVectorValue (Yices2 yctx) w nm = do
+    model <- c_yices_get_model yctx 1
+    bits <- allocaArray (fromInteger w) $ \ptr -> do
+        term <- yterm (varE nm)
+        ir <- c_yices_get_bv_value model term ptr
+        if ir == 0
+            then peekArray (fromInteger w) ptr
+            else error $ "yices2 get bit vector value returned: " ++ show ir
+    c_yices_free_model model
+    return $! bvInteger bits
         
                 
 
@@ -292,7 +304,4 @@ ytermbystr e = do
             withstderr $ \stderr -> c_yices_print_error stderr
             error $ "yterm error"
         else return $! ye
-
-yices2 :: Q.Query Yices2 a -> Q.Query Yices2 a
-yices2 = id
 

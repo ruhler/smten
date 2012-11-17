@@ -12,13 +12,12 @@ import Seri.Name
 import Seri.Sig
 import Seri.Ppr
 import Seri.SMT.Query
-import Seri.SMT.Solver (Solver)
 
 import Seri.Elaborate hiding (query)
 
 -- | Given a Seri expression of type Query a,
 -- returns the Seri expression of type a which results from running the query.
-run :: (Solver s) => ExpH -> Query s ExpH
+run :: ExpH -> Query ExpH
 run e = do
     env <- envQ
     case elabwhnf env e of

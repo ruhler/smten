@@ -41,14 +41,14 @@
 -- NOTE: This assumes all the symbols from the yices1 library starting with
 -- yices_ have been renamed to yices1_. This is so yices1 and yices2 can
 -- coexist.
-module Seri.SMT.Yices.Yices1 (Yices1(), yices1) where
+module Seri.SMT.Yices.Yices1 (yices1) where
 
 import Foreign
 import Foreign.C.String
 import Foreign.C.Types
 import qualified Foreign.Concurrent as F
 
-import Seri.SMT.Solver
+import qualified Seri.SMT.Solver as S
 import Seri.SMT.Syntax
 import qualified Seri.SMT.Yices.Concrete as YC
 
@@ -104,77 +104,85 @@ foreign import ccall "yices1_get_var_decl_from_name"
     c_yices_get_var_decl_from_name :: Ptr YContext -> CString -> IO (Ptr YDecl)
                           
 
-toResult :: YBool -> Result
+toResult :: YBool -> S.Result
 toResult n
-    | n == yFalse = Unsatisfiable
-    | n == yTrue  = Satisfiable
-    | otherwise   = Undefined
+    | n == yFalse = S.Unsatisfiable
+    | n == yTrue  = S.Satisfiable
+    | otherwise   = S.Undefined
 
-instance Solver Yices1 where
-    pretty _ = YC.pretty 
+run :: Yices1 -> Command -> IO ()
+run (Yices1 fp) cmd = do
+    worked <- withCString (YC.concrete cmd) $ \str -> do
+          withForeignPtr fp $ \yctx ->
+            c_yices_parse_command yctx str
+    if worked 
+       then return ()
+       else do
+          cstr <- c_yices_get_last_error_message
+          msg <- peekCString cstr
+          fail $ show msg
+                    ++ "\n when running command: \n" 
+                    ++ YC.pretty cmd
 
-    initialize = do
-        c_yices_enable_type_checker True
-        ptr <- c_yices_mk_context
-        fp  <- F.newForeignPtr ptr (c_yices_del_context ptr)
-        return $! Yices1 fp
+check :: Yices1 -> IO S.Result
+check (Yices1 fp) = do
+    res <- withForeignPtr fp c_yices_check
+    return $ toResult res
 
-    run (Yices1 fp) cmd = do
-        worked <- withCString (YC.concrete cmd) $ \str -> do
-              withForeignPtr fp $ \yctx ->
-                c_yices_parse_command yctx str
-        if worked 
-           then return ()
-           else do
-              cstr <- c_yices_get_last_error_message
-              msg <- peekCString cstr
-              fail $ show msg
-                        ++ "\n when running command: \n" 
-                        ++ YC.pretty cmd
+getIntegerValue :: Yices1 -> String -> IO Integer
+getIntegerValue (Yices1 fp) nm = do
+    model <- withForeignPtr fp c_yices_get_model 
+    decl <- withCString nm $ \str ->
+                withForeignPtr fp $ \yctx ->
+                    c_yices_get_var_decl_from_name yctx str
+    x <- alloca $ \ptr -> do
+        ir <- c_yices_get_int_value model decl ptr
+        if ir == 1
+            then peek ptr
+            else error $ "yices get int value returned: " ++ show ir
+    return (toInteger x)
 
-    check (Yices1 fp) = do
-        res <- withForeignPtr fp c_yices_check
-        return $ toResult res
+getBoolValue :: Yices1 -> String -> IO Bool
+getBoolValue (Yices1 fp) nm = do
+    model <- withForeignPtr fp c_yices_get_model 
+    decl <- withCString nm $ \str ->
+                withForeignPtr fp $ \yctx ->
+                    c_yices_get_var_decl_from_name yctx str
+    br <- c_yices_get_value model decl
+    case br of
+      _ | br == yTrue -> return True
+      _ | br == yFalse -> return False
+      _ | br == yUndef -> return False
 
-    getIntegerValue (Yices1 fp) nm = do
-        model <- withForeignPtr fp c_yices_get_model 
-        decl <- withCString nm $ \str ->
-                    withForeignPtr fp $ \yctx ->
-                        c_yices_get_var_decl_from_name yctx str
-        x <- alloca $ \ptr -> do
-            ir <- c_yices_get_int_value model decl ptr
-            if ir == 1
-                then peek ptr
-                else error $ "yices get int value returned: " ++ show ir
-        return (toInteger x)
-
-    getBoolValue (Yices1 fp) nm = do
-        model <- withForeignPtr fp c_yices_get_model 
-        decl <- withCString nm $ \str ->
-                    withForeignPtr fp $ \yctx ->
-                        c_yices_get_var_decl_from_name yctx str
-        br <- c_yices_get_value model decl
-        case br of
-          _ | br == yTrue -> return True
-          _ | br == yFalse -> return False
-          _ | br == yUndef -> return False
-
-    getBitVectorValue (Yices1 fp) w nm = do
-        model <- withForeignPtr fp c_yices_get_model 
-        decl <- withCString nm $ \str ->
-                    withForeignPtr fp $ \yctx ->
-                        c_yices_get_var_decl_from_name yctx str
-        bits <- allocaArray (fromInteger w) $ \ptr -> do
-            ir <- c_yices_get_bitvector_value model decl (fromInteger w) ptr
-            if ir == 1
-                then peekArray (fromInteger w) ptr
-                else error $ "yices get bit vector value returned: " ++ show ir
-        return (bvInteger bits)
+getBitVectorValue :: Yices1 -> Integer -> String -> IO Integer
+getBitVectorValue (Yices1 fp) w nm = do
+    model <- withForeignPtr fp c_yices_get_model 
+    decl <- withCString nm $ \str ->
+                withForeignPtr fp $ \yctx ->
+                    c_yices_get_var_decl_from_name yctx str
+    bits <- allocaArray (fromInteger w) $ \ptr -> do
+        ir <- c_yices_get_bitvector_value model decl (fromInteger w) ptr
+        if ir == 1
+            then peekArray (fromInteger w) ptr
+            else error $ "yices get bit vector value returned: " ++ show ir
+    return (bvInteger bits)
 
 bvInteger :: [CInt] -> Integer
 bvInteger [] = 0
 bvInteger (x:xs) = bvInteger xs * 2 + (fromIntegral x)
         
-yices1 :: Q.Query Yices1 a -> Q.Query Yices1 a
-yices1 = id
-
+yices1 :: IO S.Solver
+yices1 = do
+  c_yices_enable_type_checker True
+  ptr <- c_yices_mk_context
+  fp  <- F.newForeignPtr ptr (c_yices_del_context ptr)
+  return $
+    let y1 = Yices1 fp
+    in S.Solver {
+          S.pretty = YC.pretty,
+          S.run = run y1,
+          S.check = check y1,
+          S.getIntegerValue = getIntegerValue y1,
+          S.getBoolValue = getBoolValue y1,
+          S.getBitVectorValue = getBitVectorValue y1
+       }
