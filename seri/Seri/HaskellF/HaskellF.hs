@@ -45,7 +45,7 @@ import Debug.Trace
 
 import Data.Char(isAlphaNum)
 import Data.Functor((<$>))
-import Data.List(nub)
+import Data.List(nub, genericLength)
 import Data.Maybe(fromJust)
 
 import qualified Language.Haskell.TH.PprLib as H
@@ -178,14 +178,14 @@ hsnt :: Integer -> H.Type
 hsnt 0 = H.ConT (H.mkName "N__0")
 hsnt n = H.AppT (H.ConT (H.mkName $ "N__2p" ++ show (n `mod` 2))) (hsnt $ n `div` 2)
 
-hsTopType :: Context -> Type -> Failable H.Type
-hsTopType ctx t = do
-    let ntvs = [H.ClassP (H.mkName "N__") [H.VarT (H.mkName (pretty n))] | n <- nvarTs t]
+hsTopType :: [Name] -> Context -> Type -> Failable H.Type
+hsTopType clsvars ctx t = do
+    let (nctx, use) = mkContext (flip notElem clsvars) t
     t' <- hsType t
     ctx' <- mapM hsClass ctx
-    case ntvs ++ ctx' of
+    case nctx ++ ctx' of
         [] -> return t'
-        ctx'' -> return $ H.ForallT (map (H.PlainTV . H.mkName . pretty) (nvarTs t ++ varTs t)) ctx'' t'
+        ctx'' -> return $ H.ForallT (map (H.PlainTV . hsName) use) ctx'' t'
 
 hsClass :: Class -> Failable H.Pred
 hsClass (Class nm ts) = do
@@ -199,15 +199,17 @@ hsMethod (Method n e) = do
     return $ H.ValD (H.VarP hsn) (H.NormalB e') []
 
 
-hsSig :: TopSig -> Failable H.Dec
-hsSig (TopSig n ctx t) = do
-    t' <- hsTopType ctx t
+hsSig :: [Name]     -- ^ List of varTs to ignore, because they belong to the class.
+         -> TopSig
+         -> Failable H.Dec
+hsSig clsvars (TopSig n ctx t) = do
+    t' <- hsTopType clsvars ctx t
     return $ H.SigD (hsName n) t'
 
     
 hsDec :: Dec -> Failable [H.Dec]
 hsDec (ValD (TopSig n ctx t) e) = do
-    t' <- hsTopType ctx t
+    t' <- hsTopType [] ctx t
     e' <- hsExp e
     let hsn = hsName n
     let sig = H.SigD hsn t'
@@ -282,10 +284,8 @@ hsDec (DataD n tyvars constrs) =
       -- Make the instance of Symbolic__
       mkinst :: H.Con -> H.Dec
       mkinst (H.RecC cn fields) =
-        let clsname = (H.mkName "Symbolic__")
-            varts = [H.VarT (hsName (tyVarName v)) | v <- tyvars]
-            ctx = [H.ClassP clsname [v] | v <- varts]
-            ty = H.AppT (H.ConT clsname) (foldl H.AppT (H.ConT cn) varts)
+        let clsname = clssymbolic (genericLength tyvars)
+            ty = H.AppT (H.ConT clsname) (H.ConT cn)
 
             iffield :: H.VarStrictType -> H.FieldExp
             iffield (n, _, _) = 
@@ -296,10 +296,10 @@ hsDec (DataD n tyvars constrs) =
                 in (n, e)
 
             body = H.NormalB $ H.RecConE cn (map iffield fields)
-            ifmethod = H.FunD (H.mkName "__if") [
+            ifmethod = H.FunD (ifmeth (genericLength tyvars)) [
                 H.Clause [H.VarP (H.mkName x) | x <- ["p", "a", "b"]] body []
                 ]
-        in H.InstanceD ctx ty [ifmethod]
+        in H.InstanceD [] ty [ifmethod]
 
       mkmk :: [Name] -> Name -> [H.Type] -> H.Dec
       mkmk prev cn ctys =
@@ -361,9 +361,11 @@ hsDec (DataD n tyvars constrs) =
         instD = mkinst con
     return $ concat [[dataD, instD], confs]
 
-hsDec (ClassD n vars sigs) = do
-    sigs' <- mapM hsSig sigs
-    return $ [H.ClassD [] (hsName n) (map (H.PlainTV . hsName . tyVarName) vars) [] sigs']
+hsDec (ClassD n vars sigs@(TopSig _ _ t:_)) = do
+    let vts = map tyVarName vars
+        (ctx, use) = mkContext (flip elem vts) t
+    sigs' <- mapM (hsSig vts) sigs
+    return $ [H.ClassD ctx (hsName n) (map (H.PlainTV . hsName) use) [] sigs']
 
 hsDec (InstD ctx (Class n ts) ms) = do
     let ntvs = [H.ClassP (H.mkName "N__") [H.VarT (H.mkName (pretty n))] | n <- concat $ map nvarTs ts]
@@ -428,31 +430,6 @@ haskellf env main =
         H.text "main :: IO ()" H.$+$
         H.text "main = " H.<+> H.text (pretty main)
 
--- | Declare a primitive seri implemented with the given haskell expression.
-prim :: TopSig -> H.Exp -> Failable [H.Dec]
-prim s@(TopSig nm ctx t) b = do
-  let hsn = hsName nm
-  sig <- hsSig s
-  let val = H.FunD hsn [H.Clause [] (H.NormalB b) []]
-  return [sig, val]
-
-vare :: String -> H.Exp
-vare n = H.VarE (H.mkName n)
-
--- | Declare a binary predicate primitive in haskell.
-bprim :: TopSig -> String -> Failable [H.Dec]
-bprim s@(TopSig nm _ t) b = do    
-  let hsn = hsName nm
-  sig <- hsSig s
-  let val = H.FunD hsn [H.Clause
-          [H.VarP (H.mkName "a"), H.VarP (H.mkName "b")]
-              (H.NormalB (
-                  H.CondE (H.AppE (H.AppE (vare b) (vare "a")) (vare "b"))
-                          (H.ConE (H.mkName "True"))
-                          (H.ConE (H.mkName "False"))
-              )) []]
-  return [sig, val]
-
 unknowntype :: Type -> Bool
 unknowntype (ConT {}) = False
 unknowntype (AppT a b) = unknowntype a || unknowntype b
@@ -469,4 +446,23 @@ tuple i =
   let nm = name $ "Tuple" ++ show i ++ "__"
       vars = [NormalTV (name [c]) | c <- take i "abcdefghijklmnopqrstuvwxyz"]
   in DataD nm vars [Con nm (map tyVarType vars)]
+
+clssymbolic :: Integer -> H.Name
+clssymbolic 0 = H.mkName "Symbolic__"
+clssymbolic n = H.mkName $ "Symbolic" ++ show n ++ "__"
+
+ifmeth :: Integer -> H.Name
+ifmeth 0 = H.mkName "__if"
+ifmeth n = H.mkName $ "__if" ++ show n
+
+-- Form the context for declarations.
+mkContext :: (Name -> Bool) -- ^ which variable types we should care about
+              -> Type       -- ^ a sample use of the variable types
+              -> ([H.Pred], [Name])  -- ^ generated context and list of names used.
+mkContext p t =
+  let nvts = filter p $ nvarTs t
+      kvts = filter (p . fst) $ kvarTs t
+      ntvs = [H.ClassP (H.mkName "N__") [H.VarT (hsName n)] | n <- nvts]
+      stvs = [H.ClassP (clssymbolic k) [H.VarT (hsName n)] | (n, k) <- kvts]
+  in (concat [ntvs, stvs], nvts ++ map fst kvts)
 

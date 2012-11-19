@@ -97,8 +97,9 @@ run $SERI --haskellf \
     -f $::SRI_SERI/Seri/Tests/Basic.sri \
     > $hsdir/hsftests.hs
 hrun -ignorestderr ghc -fno-warn-overlapping-patterns \
+    -fno-warn-missing-fields \
     -o $hsdir/hsftests $hsdir/hsftests.hs
-run ./$hsdir/hstests > $hsdir/hsftests.got
+run ./$hsdir/hsftests > $hsdir/hsftests.got
 run echo "PASSED" > $hsdir/hsftests.wnt
 hrun cmp $hsdir/hsftests.got $hsdir/hsftests.wnt
 

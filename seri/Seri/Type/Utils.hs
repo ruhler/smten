@@ -3,14 +3,15 @@
 
 module Seri.Type.Utils (
     assignments, isSubType, Assign(..), assign,
-    nvarTs, varTs,
+    nvarTs, varTs, kvarTs,
     ) where
 
 import Control.Monad.State
-import Data.List(nub)
+import Data.List(nub, genericLength)
 
 import Seri.Name
 import Seri.Type.Type
+import Seri.Type.Sugar
 
 -- | assignments poly concrete
 -- Given a polymorphic type and a concrete type of the same form, return the
@@ -89,6 +90,14 @@ varTs :: Type -> [Name]
 varTs (AppT a b) = nub $ varTs a ++ varTs b
 varTs (VarT n) = [n]
 varTs _ = []
+
+-- | List the (non-numeric) variable type names in a given type along with
+-- the number of type arguments they require.
+kvarTs :: Type -> [(Name, Integer)]
+kvarTs t | (VarT n, ts) <- de_appsT t
+ = nub $ (n, genericLength ts) : (concatMap kvarTs ts)
+kvarTs (AppT a b) = nub $ kvarTs a ++ kvarTs b
+kvarTs _ = []
 
 -- | List the numeric type variables in the given type.
 nvarTs :: Type -> [Name]

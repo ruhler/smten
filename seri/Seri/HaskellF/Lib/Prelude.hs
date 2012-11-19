@@ -1,6 +1,12 @@
 
+{-# LANGUAGE FlexibleInstances #-}
+
 module Seri.HaskellF.Lib.Prelude (
-    Symbolic__(..), Bool(), Char, Integer, IO, Bit, Unit__, List__,
+    Symbolic__(..), Symbolic1__(..), Symbolic2__(..), Symbolic3__(..),
+    Symbolic4__(..), Symbolic5__(..), Symbolic6__(..), Symbolic7__(..),
+    Symbolic8__(..), Symbolic9__(..),
+
+    Bool(), Char, Integer, IO, Bit, Unit__, List__,
     __mkUnit__, __caseUnit__,
     __mkTrue, __mkFalse, __caseTrue, __caseFalse,
     __mkCons__, __mkNil__, __caseCons__, __caseNil__,
@@ -19,12 +25,13 @@ module Seri.HaskellF.Lib.Prelude (
 
     error,
 
-    module Seri.Haskell.Lib.Numeric,
+    N__, module NE,
     ) where
 
 import qualified Prelude
 import qualified Seri.Haskell.Lib.Bit as Bit
-import Seri.Haskell.Lib.Numeric
+import Seri.Haskell.Lib.Numeric as NE hiding (N__) 
+import qualified Seri.Haskell.Lib.Numeric as N
 
 type Char = Prelude.Char
 type Integer = Prelude.Integer
@@ -37,6 +44,7 @@ data Bool = True
           | False
           | Free Prelude.String
           | Conditional Bool Bool Bool
+    deriving(Prelude.Show)
 
 __mkTrue :: Bool
 __mkTrue = True
@@ -56,6 +64,86 @@ __caseFalse p y n = __if p n y
 
 class Symbolic__ a where
     __if :: Bool -> a -> a -> a
+    __if True a _ = a
+    __if False _ b = b
+    __if p _ _ = Prelude.error ("Unsupported __if predicate: " Prelude.++ Prelude.show p)
+
+class Symbolic1__ m where
+    __if1 :: (Symbolic__ a) => Bool -> m a -> m a -> m a
+    __if1 True a _ = a
+    __if1 False _ b = b
+    __if1 p _ _ = Prelude.error ("Unsupported __if1 predicate: " Prelude.++ Prelude.show p)
+
+instance (Symbolic1__ m, Symbolic__ a) => Symbolic__ (m a) where
+    __if = __if1
+
+class Symbolic2__ m where
+    __if2 :: (Symbolic__ a, Symbolic__ b) =>
+        Bool -> m a b -> m a b -> m a b
+    __if2 True a _ = a
+    __if2 False _ b = b
+    __if2 p _ _ = Prelude.error ("Unsupported __if2 predicate: " Prelude.++ Prelude.show p)
+
+instance (Symbolic2__ m, Symbolic__ a) => Symbolic1__ (m a) where
+    __if1 = __if2
+
+class Symbolic3__ m where
+    __if3 :: (Symbolic__ a, Symbolic__ b, Symbolic__ c) =>
+        Bool -> m a b c -> m a b c -> m a b c
+    __if3 True a _ = a
+    __if3 False _ b = b
+    __if3 p _ _ = Prelude.error ("Unsupported __if3 predicate: " Prelude.++ Prelude.show p)
+
+instance (Symbolic3__ m, Symbolic__ a) => Symbolic2__ (m a) where
+    __if2 = __if3
+
+class Symbolic4__ m where
+    __if4 :: (Symbolic__ a, Symbolic__ b, Symbolic__ c, Symbolic__ d) =>
+        Bool -> m a b c d -> m a b c d -> m a b c d
+
+instance (Symbolic4__ m, Symbolic__ a) => Symbolic3__ (m a) where
+    __if3 = __if4
+
+class Symbolic5__ m where
+    __if5 :: (Symbolic__ a, Symbolic__ b, Symbolic__ c, Symbolic__ d,
+              Symbolic__ e) =>
+        Bool -> m a b c d e -> m a b c d e -> m a b c d e
+
+instance (Symbolic5__ m, Symbolic__ a) => Symbolic4__ (m a) where
+    __if4 = __if5
+
+class Symbolic6__ m where
+    __if6 :: (Symbolic__ a, Symbolic__ b, Symbolic__ c, Symbolic__ d,
+              Symbolic__ e, Symbolic__ f) =>
+        Bool -> m a b c d e f -> m a b c d e f -> m a b c d e f
+
+instance (Symbolic6__ m, Symbolic__ a) => Symbolic5__ (m a) where
+    __if5 = __if6
+
+class Symbolic7__ m where
+    __if7 :: (Symbolic__ a, Symbolic__ b, Symbolic__ c, Symbolic__ d,
+              Symbolic__ e, Symbolic__ f, Symbolic__ g) =>
+        Bool -> m a b c d e f g -> m a b c d e f g -> m a b c d e f g
+
+instance (Symbolic7__ m, Symbolic__ a) => Symbolic6__ (m a) where
+    __if6 = __if7
+
+class Symbolic8__ m where
+    __if8 :: (Symbolic__ a, Symbolic__ b, Symbolic__ c, Symbolic__ d,
+              Symbolic__ e, Symbolic__ f, Symbolic__ g, Symbolic__ h) =>
+        Bool -> m a b c d e f g h -> m a b c d e f g h -> m a b c d e f g h
+
+instance (Symbolic8__ m, Symbolic__ a) => Symbolic7__ (m a) where
+    __if7 = __if8
+
+class Symbolic9__ m where
+    __if9 :: (Symbolic__ a, Symbolic__ b, Symbolic__ c, Symbolic__ d,
+              Symbolic__ e, Symbolic__ f, Symbolic__ g, Symbolic__ h,
+              Symbolic__ i) =>
+        Bool -> m a b c d e f g h i -> m a b c d e f g h i -> m a b c d e f g h i
+
+instance (Symbolic9__ m, Symbolic__ a) => Symbolic8__ (m a) where
+    __if8 = __if9
 
 instance Symbolic__ Bool where
     __if = Conditional 
@@ -175,4 +263,31 @@ __mkUnit__ = ()
 
 __caseUnit__ :: Unit__ -> a -> a -> a
 __caseUnit__ () y _ = y
+
+instance Symbolic__ Unit__ where
+    __if p _ _ = ()
+
+instance Symbolic2__ (->) where
+    __if2 p f g = \x -> __if p (f x) (g x)
+
+instance Symbolic__ Char where
+instance Symbolic__ Integer where
+instance Symbolic__ N__0 where
+instance Symbolic1__ IO where
+instance Symbolic1__ List__ where
+instance Symbolic1__ Bit where
+instance Symbolic1__ N__2p0 where
+instance Symbolic1__ N__2p1 where
+instance Symbolic2__ N__PLUS where
+instance Symbolic2__ N__MINUS where
+instance Symbolic2__ N__TIMES where
+
+class (Symbolic__ a, N.N__ a) => N__ a where
+
+instance N__ N__0 where
+instance (N__ n) => N__ (N__2p0 n) where
+instance (N__ n) => N__ (N__2p1 n) where
+instance (N__ a, N__ b) => N__ (N__PLUS a b) where
+instance (N__ a, N__ b) => N__ (N__MINUS a b) where
+instance (N__ a, N__ b) => N__ (N__TIMES a b) where
 
