@@ -258,10 +258,10 @@ tests :: Test ()
 tests = do
     t "test.dummy" True
     testbasic
-    --testprelude
-    --testarray
-    --testvector
-    --testbit
+    testprelude
+    testarray
+    testvector
+    testbit
 
 testallio :: IO ()
 testallio =

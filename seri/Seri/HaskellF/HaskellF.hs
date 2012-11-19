@@ -255,13 +255,13 @@ hsDec (DataD n _ _) | Just x <- de_tupleN n = hsDec $ tuple (fromIntegral x)
 --      ...
 --   }
 -- __mkFooB :: FooB1 -> FooB2 -> ... -> Foo
--- __mkFooB b1 b2 ... = __default {
+-- __mkFooB b1 b2 ... = let v = type v (__default {
 --      __tFooA = False,
 --      __tFooB = True,
 --      __vFooB1 = b1,
 --      __vFooB2 = b2,
 --      ...
---   }
+--   }) in v
 -- __isFooB :: Foo -> Bool
 -- __isFooB f = not (__tFooA f) && __tFooB f
 -- __appFooB :: Foo -> (FooB1 -> FooB2 -> ... -> a) -> a
@@ -313,18 +313,27 @@ hsDec (DataD n tyvars constrs) =
                 ]
         in H.InstanceD [] ty [ifmethod, defmethod]
 
-      mkmk :: [Name] -> Name -> [H.Type] -> H.Dec
-      mkmk prev cn ctys =
-        let argnms = [H.mkName $ "x" ++ show i | i <- [1..(length ctys)]]
+      mkmk :: [Name] -> Name -> [Type] -> [H.Type] -> [H.Dec]
+      mkmk prev cn tys ctys =
+        let dt = appsT (conT n) (map tyVarType tyvars)
+            t = arrowsT $ tys ++ [dt]
+            ht = surely $ hsTopType [] [] t
+
+            argnms = [H.mkName $ "x" ++ show i | i <- [1..(length ctys)]]
             oldts = [(constrtagnm p, H.VarE (constrnm (name "False"))) | p <- prev]
             thists = [(constrtagnm cn, H.VarE (constrnm (name "True")))]
             thisvs = [(constrvalnm i cn, H.VarE a) | (a, i) <- zip argnms [1..]]
-            def = H.VarE (H.mkName "__default")
-            body = H.NormalB $ H.RecUpdE def (concat [oldts, thists, thisvs])
-        in H.FunD (constrnm cn) [H.Clause (map H.VarP argnms) body []]
+    
+            def = H.SigE (H.VarE (H.mkName "__default")) (surely $ hsType dt)
+            upd = H.RecUpdE def (concat [oldts, thists, thisvs])
+            body = H.NormalB $ upd
 
-      mkis :: [Name] -> Name -> [H.Type] -> H.Dec
-      mkis prev cn _ =
+            sigD = H.SigD (constrnm cn) ht
+            funD = H.FunD (constrnm cn) [H.Clause (map H.VarP argnms) body []]
+         in [sigD, funD]
+
+      mkis :: [Name] -> Name -> [Type] -> [H.Type] -> [H.Dec]
+      mkis prev cn _ _ =
         let argnm = H.mkName $ "x"
             oldts = [H.AppE (H.VarE $ H.mkName "not") (
                         H.AppE (H.VarE $ constrtagnm p) (H.VarE argnm))
@@ -335,31 +344,31 @@ hsDec (DataD n tyvars constrs) =
             handE a b = foldl H.AppE (H.VarE (hsName (name "&&"))) [a, b]
 
             body = H.NormalB $ foldl handE thist oldts
-        in H.FunD (constrisnm cn) [H.Clause [H.VarP argnm] body []]
+        in [H.FunD (constrisnm cn) [H.Clause [H.VarP argnm] body []]]
 
-      mkapp :: [Name] -> Name -> [H.Type] -> H.Dec
-      mkapp _ cn ctys = 
+      mkapp :: [Name] -> Name -> [Type] -> [H.Type] -> [H.Dec]
+      mkapp _ cn _ ctys = 
         let xarg = H.mkName "x"
             farg = H.mkName "f"
             vs = [H.VarE (constrvalnm i cn) | i <- [1..(length ctys)]]
             app = foldl H.AppE (H.VarE farg) [H.AppE v (H.VarE xarg) | v <- vs]
             body = H.NormalB app
-        in H.FunD (constrappnm cn) [H.Clause [H.VarP xarg, H.VarP farg] body []]
+        in [H.FunD (constrappnm cn) [H.Clause [H.VarP xarg, H.VarP farg] body []]]
 
-      mkcase :: [Name] -> Name -> [H.Type] -> H.Dec
-      mkcase _ cn _ = 
+      mkcase :: [Name] -> Name -> [Type] -> [H.Type] -> [H.Dec]
+      mkcase _ cn _ _ = 
         let [x, y, n] = map H.mkName ["x", "y", "n"]
             app = foldl H.AppE (H.VarE $ H.mkName "__if") [
                       H.AppE (H.VarE (constrisnm cn)) (H.VarE x),
                       H.AppE (H.AppE (H.VarE (constrappnm cn)) (H.VarE x)) (H.VarE y),
                       H.VarE n]
             body = H.NormalB app
-        in H.FunD (constrcasenm cn) [H.Clause (map H.VarP [x, y, n]) body []]
+        in [H.FunD (constrcasenm cn) [H.Clause (map H.VarP [x, y, n]) body []]]
 
       mkconfs :: [Name] -> Con -> Failable [H.Dec]
       mkconfs prev (Con cn ctys) = do
         htys <- mapM hsType ctys
-        return $ [f prev cn htys | f <- [mkmk, mkis, mkapp, mkcase]]
+        return $ concat [f prev cn ctys htys | f <- [mkmk, mkis, mkapp, mkcase]]
 
       mkallconfs :: [Con] -> Failable [H.Dec]
       mkallconfs [] = return []
@@ -438,6 +447,7 @@ haskellf env main =
       hsHeader = H.text "{-# LANGUAGE ExplicitForAll #-}" H.$+$
                  H.text "{-# LANGUAGE MultiParamTypeClasses #-}" H.$+$
                  H.text "{-# LANGUAGE FlexibleInstances #-}" H.$+$
+                 H.text "{-# LANGUAGE ScopedTypeVariables #-}" H.$+$
                  H.text "import qualified Prelude" H.$+$
                  H.text "import Seri.HaskellF.Lib.Prelude"
 
