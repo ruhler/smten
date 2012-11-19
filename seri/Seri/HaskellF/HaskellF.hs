@@ -244,14 +244,18 @@ hsDec (DataD n _ _) | Just x <- de_tupleN n = hsDec $ tuple (fromIntegral x)
 --   ...
 --   }
 --
--- instance (Symbolic__ a, Symbolic__ b, ...) => Symbolic__ Foo where
---  __if p a b = Foo {
+-- instance SymbolicN__ Foo where
+--  __ifN p a b = Foo {
 --      __tFooA = __if p (__tFooA a) (__tFooA b)
 --      __vFooA1 = __if p (__vFooA1 a) (__vFooA1 b)
 --      ...
+--  __defaultN = Foo {
+--      __tFooA = __default,
+--      _-vFooA1 = __default,
+--      ...
 --   }
 -- __mkFooB :: FooB1 -> FooB2 -> ... -> Foo
--- __mkFooB b1 b2 ... = Foo {
+-- __mkFooB b1 b2 ... = __default {
 --      __tFooA = False,
 --      __tFooB = True,
 --      __vFooB1 = b1,
@@ -295,11 +299,19 @@ hsDec (DataD n tyvars constrs) =
                             H.AppE (H.VarE n) (H.VarE (H.mkName "b"))]
                 in (n, e)
 
-            body = H.NormalB $ H.RecConE cn (map iffield fields)
+            ifbody = H.NormalB $ H.RecConE cn (map iffield fields)
             ifmethod = H.FunD (ifmeth (genericLength tyvars)) [
-                H.Clause [H.VarP (H.mkName x) | x <- ["p", "a", "b"]] body []
+                H.Clause [H.VarP (H.mkName x) | x <- ["p", "a", "b"]] ifbody []
                 ]
-        in H.InstanceD [] ty [ifmethod]
+
+            deffield :: H.VarStrictType -> H.FieldExp
+            deffield (n, _, _) = (n, H.VarE (H.mkName "__default"))
+
+            defbody = H.NormalB $ H.RecConE cn (map deffield fields)
+            defmethod = H.FunD (defmeth (genericLength tyvars)) [
+                H.Clause [] defbody []
+                ]
+        in H.InstanceD [] ty [ifmethod, defmethod]
 
       mkmk :: [Name] -> Name -> [H.Type] -> H.Dec
       mkmk prev cn ctys =
@@ -307,7 +319,8 @@ hsDec (DataD n tyvars constrs) =
             oldts = [(constrtagnm p, H.VarE (constrnm (name "False"))) | p <- prev]
             thists = [(constrtagnm cn, H.VarE (constrnm (name "True")))]
             thisvs = [(constrvalnm i cn, H.VarE a) | (a, i) <- zip argnms [1..]]
-            body = H.NormalB $ H.RecConE (hsName n) (concat [oldts, thists, thisvs])
+            def = H.VarE (H.mkName "__default")
+            body = H.NormalB $ H.RecUpdE def (concat [oldts, thists, thisvs])
         in H.FunD (constrnm cn) [H.Clause (map H.VarP argnms) body []]
 
       mkis :: [Name] -> Name -> [H.Type] -> H.Dec
@@ -457,6 +470,10 @@ clssymbolic n = H.mkName $ "Symbolic" ++ show n ++ "__"
 ifmeth :: Integer -> H.Name
 ifmeth 0 = H.mkName "__if"
 ifmeth n = H.mkName $ "__if" ++ show n
+
+defmeth :: Integer -> H.Name
+defmeth 0 = H.mkName "__default"
+defmeth n = H.mkName $ "__default" ++ show n
 
 -- Form the context for declarations.
 mkContext :: (Name -> Bool) -- ^ which variable types we should care about

@@ -64,14 +64,19 @@ class Symbolic__ a where
     __if False _ b = b
     __if p _ _ = Prelude.error ("Unsupported __if predicate: ?")
 
+    __default :: a
+
 class Symbolic1__ m where
     __if1 :: (Symbolic__ a) => Bool -> m a -> m a -> m a
     __if1 True a _ = a
     __if1 False _ b = b
     __if1 p _ _ = Prelude.error ("Unsupported __if1 predicate: ?")
 
+    __default1 :: (Symbolic__ a) => m a
+
 instance (Symbolic1__ m, Symbolic__ a) => Symbolic__ (m a) where
     __if = __if1
+    __default = __default1
 
 class Symbolic2__ m where
     __if2 :: (Symbolic__ a, Symbolic__ b) =>
@@ -80,8 +85,12 @@ class Symbolic2__ m where
     __if2 False _ b = b
     __if2 p _ _ = Prelude.error ("Unsupported __if2 predicate: ?")
 
+    __default2 :: (Symbolic__ a, Symbolic__ b) => m a b
+
+
 instance (Symbolic2__ m, Symbolic__ a) => Symbolic1__ (m a) where
     __if1 = __if2
+    __default1 = __default2
 
 class Symbolic3__ m where
     __if3 :: (Symbolic__ a, Symbolic__ b, Symbolic__ c) =>
@@ -90,47 +99,67 @@ class Symbolic3__ m where
     __if3 False _ b = b
     __if3 p _ _ = Prelude.error ("Unsupported __if3 predicate: ?")
 
+    __default3 :: (Symbolic__ a, Symbolic__ b, Symbolic__ c) => m a b c
+
 instance (Symbolic3__ m, Symbolic__ a) => Symbolic2__ (m a) where
     __if2 = __if3
+    __default2 = __default3
 
 class Symbolic4__ m where
     __if4 :: (Symbolic__ a, Symbolic__ b, Symbolic__ c, Symbolic__ d) =>
         Bool -> m a b c d -> m a b c d -> m a b c d
+    __default4 :: (Symbolic__ a, Symbolic__ b, Symbolic__ c, Symbolic__ d) =>
+        m a b c d
 
 instance (Symbolic4__ m, Symbolic__ a) => Symbolic3__ (m a) where
     __if3 = __if4
+    __default3 = __default4
 
 class Symbolic5__ m where
     __if5 :: (Symbolic__ a, Symbolic__ b, Symbolic__ c, Symbolic__ d,
               Symbolic__ e) =>
         Bool -> m a b c d e -> m a b c d e -> m a b c d e
 
+    __default5 :: (Symbolic__ a, Symbolic__ b, Symbolic__ c, Symbolic__ d,
+              Symbolic__ e) => m a b c d e 
+
 instance (Symbolic5__ m, Symbolic__ a) => Symbolic4__ (m a) where
     __if4 = __if5
+    __default4 = __default5
 
 class Symbolic6__ m where
     __if6 :: (Symbolic__ a, Symbolic__ b, Symbolic__ c, Symbolic__ d,
               Symbolic__ e, Symbolic__ f) =>
         Bool -> m a b c d e f -> m a b c d e f -> m a b c d e f
+    __default6 :: (Symbolic__ a, Symbolic__ b, Symbolic__ c, Symbolic__ d,
+              Symbolic__ e, Symbolic__ f) => m a b c d e f
 
 instance (Symbolic6__ m, Symbolic__ a) => Symbolic5__ (m a) where
     __if5 = __if6
+    __default5 = __default6
 
 class Symbolic7__ m where
     __if7 :: (Symbolic__ a, Symbolic__ b, Symbolic__ c, Symbolic__ d,
               Symbolic__ e, Symbolic__ f, Symbolic__ g) =>
         Bool -> m a b c d e f g -> m a b c d e f g -> m a b c d e f g
+    __default7 :: (Symbolic__ a, Symbolic__ b, Symbolic__ c, Symbolic__ d,
+              Symbolic__ e, Symbolic__ f, Symbolic__ g) => m a b c d e f g 
 
 instance (Symbolic7__ m, Symbolic__ a) => Symbolic6__ (m a) where
     __if6 = __if7
+    __default6 = __default7
 
 class Symbolic8__ m where
     __if8 :: (Symbolic__ a, Symbolic__ b, Symbolic__ c, Symbolic__ d,
               Symbolic__ e, Symbolic__ f, Symbolic__ g, Symbolic__ h) =>
         Bool -> m a b c d e f g h -> m a b c d e f g h -> m a b c d e f g h
+    __default8 :: (Symbolic__ a, Symbolic__ b, Symbolic__ c, Symbolic__ d,
+              Symbolic__ e, Symbolic__ f, Symbolic__ g, Symbolic__ h) =>
+                m a b c d e f g h 
 
 instance (Symbolic8__ m, Symbolic__ a) => Symbolic7__ (m a) where
     __if7 = __if8
+    __default7 = __default8
 
 class Symbolic9__ m where
     __if9 :: (Symbolic__ a, Symbolic__ b, Symbolic__ c, Symbolic__ d,
@@ -138,14 +167,21 @@ class Symbolic9__ m where
               Symbolic__ i) =>
         Bool -> m a b c d e f g h i -> m a b c d e f g h i -> m a b c d e f g h i
 
+    __default9 :: (Symbolic__ a, Symbolic__ b, Symbolic__ c, Symbolic__ d,
+              Symbolic__ e, Symbolic__ f, Symbolic__ g, Symbolic__ h,
+              Symbolic__ i) => m a b c d e f g h i
+
 instance (Symbolic9__ m, Symbolic__ a) => Symbolic8__ (m a) where
     __if8 = __if9
+    __default8 = __default9
 
 instance Symbolic__ Bool where
     __if True a _ = a
     __if False _ b = b
-    __if p a b = Prelude.error ("__if predicate for Bool")
+    __if p a b = Prelude.error ("TODO: __if predicate for Bool")
     --__if p a b = Conditional p a b
+
+    __default = False
 
 not :: Bool -> Bool
 not x = __caseTrue x __mkFalse __mkTrue
@@ -265,21 +301,44 @@ __caseUnit__ () y _ = y
 
 instance Symbolic__ Unit__ where
     __if _ _ _ = ()
+    __default = ()
 
 instance Symbolic2__ (->) where
     __if2 p f g = \x -> __if p (f x) (g x)
+    __default2 = \_ -> __default
 
 instance Symbolic__ Char where
+    __default = '?'
+
 instance Symbolic__ Integer where
+    __default = 0
+
 instance Symbolic__ N__0 where
+    __default = N__0
+
 instance Symbolic1__ IO where
+    __default1 = return_io __default
+
 instance Symbolic1__ List__ where
+    __default1 = [__default]
+
 instance Symbolic1__ Bit where
+    __default1 = Prelude.error "TODO: default1 Bit"
+
 instance Symbolic1__ N__2p0 where
+    __default1 = N__2p0 __default
+
 instance Symbolic1__ N__2p1 where
+    __default1 = N__2p1 __default
+
 instance Symbolic2__ N__PLUS where
+    __default2 = N__PLUS __default __default
+
 instance Symbolic2__ N__MINUS where
+    __default2 = N__MINUS __default __default
+
 instance Symbolic2__ N__TIMES where
+    __default2 = N__TIMES __default __default
 
 class (Symbolic__ a, N.N__ a) => N__ a where
 
