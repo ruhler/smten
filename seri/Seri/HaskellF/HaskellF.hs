@@ -50,6 +50,7 @@ import Data.Maybe(fromJust)
 
 import qualified Language.Haskell.TH.PprLib as H
 import qualified Language.Haskell.TH as H
+import qualified Language.Haskell.TH.Syntax as H
 
 import Seri.Failable
 import Seri.Name
@@ -65,7 +66,7 @@ import Seri.Ppr
 -- the same name (unlikely...). Really we should form a proper haskell name
 -- for whatever this name is used for (varid, conid)
 hsName :: Name -> H.Name
-hsName =
+hsName n =
   let dequalify :: String -> String
       dequalify n = 
         case break (== '.') n of
@@ -74,7 +75,7 @@ hsName =
             (_, n') -> dequalify (tail n')
       symify :: String -> String
       symify s = if issymbol s then "(" ++ s ++ ")" else s
-  in H.mkName . symify . dequalify . unname
+  in H.mkName . symify . dequalify . unname $ n
 
 issymbol :: String -> Bool
 issymbol ('(':_) = False
@@ -86,22 +87,28 @@ hsLit :: Lit -> H.Lit
 hsLit (IntegerL i) = H.IntegerL i
 hsLit (CharL c) = H.CharL c
 
+prependnm :: String -> Name -> H.Name
+prependnm m n = hsName $ name m `nappend` n
+
+-- Given the name of a data constructor, return the name of the corresponding
+-- abstract constructor function.
+constrnm :: Name -> H.Name
+constrnm = prependnm "__mk"
+
+constrtagnm :: Name -> H.Name
+constrtagnm = prependnm "__t"
+
+constrvalnm :: Name -> H.Name
+constrvalnm = prependnm "__v"
+
+-- Given the name of a data constructor, return the name of the function for
+-- doing a case match against the constructor.
+constrcasenm :: Name -> H.Name
+constrcasenm = prependnm "__case"
+
 hsExp :: Exp -> Failable H.Exp
-
--- String literals:
--- TODO: the template haskell pretty printer doesn't print strings correctly
--- if they contain newlines, thus, we can't print those as string literals.
--- When they fix the template haskell pretty printer, that special case should
--- be removed here.
-hsExp e | Just str <- de_stringE e
-          , '\n' `notElem` str
-          = return $ H.LitE (H.StringL str)
-hsExp e | Just xs <- de_listE e = do
-  xs' <- mapM hsExp xs
-  return $ H.ListE xs'
-
 hsExp (LitE l) = return (H.LitE (hsLit l))
-hsExp (ConE (Sig n _)) = return $ H.ConE (hsName n)
+hsExp (ConE (Sig n _)) = return $ H.VarE (constrnm n)
 hsExp (VarE (Sig n t)) | unknowntype t = return $ H.VarE (hsName n)
 hsExp (VarE (Sig n t)) = do
     -- Give explicit type signature to make sure there are no type ambiguities
@@ -116,25 +123,15 @@ hsExp (LamE (Sig n _) x) = do
     x' <- hsExp x
     return $ H.LamE [H.VarP (hsName n)] x'
 
-hsExp (CaseE x (Sig kn kt) y n) =
-  let nwant = length (de_arrowsT kt) - 1
-      getvars :: Int -> Exp -> ([Name], Exp)
-      getvars 0 x = ([], x)
-      getvars n (LamE (Sig nm _) x) = 
-        let (vs, b) = getvars (n-1) x
-        in (nm:vs, b)
-      getvars _ e = error $ "getvars expected LamE, found: " ++ pretty e
-
-      (vars, yv) = getvars nwant y
-  in do
-    x' <- hsExp x
-    yv' <- hsExp yv
-    n' <- hsExp n
-    return $ H.CaseE x' [
-        H.Match (H.ConP (hsName kn) (map (H.VarP . hsName) vars)) (H.NormalB yv') [],
-        H.Match H.WildP (H.NormalB n') []]
-    
-    
+-- case x of
+--    K -> y
+--    _ -> n
+--
+-- Translates to:  __caseK x y n
+hsExp (CaseE x (Sig kn kt) y n) = do
+    [x', y', n'] <- mapM hsExp [x, y, n]
+    return $ foldl1 H.AppE [H.VarE (constrcasenm kn), x', y', n']
+        
 hsType :: Type -> Failable H.Type
 hsType (ConT n) | n == name "Char" = return $ H.ConT (H.mkName "Prelude.Char")
 hsType (ConT n) | n == name "Integer" = return $ H.ConT (H.mkName "Prelude.Integer")
@@ -185,11 +182,6 @@ hsMethod (Method n e) = do
     return $ H.ValD (H.VarP hsn) (H.NormalB e') []
 
 
-hsCon :: Con -> Failable H.Con
-hsCon (Con n tys) = do
-    ts <- mapM hsType tys
-    return $ H.NormalC (hsName n) (map (\t -> (H.NotStrict, t)) ts)
-    
 hsSig :: TopSig -> Failable H.Dec
 hsSig (TopSig n ctx t) = do
     t' <- hsTopType ctx t
@@ -206,6 +198,7 @@ hsDec (ValD (TopSig n ctx t) e) = do
     return [sig, val]
 
 hsDec (DataD n _ _) | n `elem` [
+  name "Bool",
   name "Char",
   name "Integer",
   name "()",
@@ -217,13 +210,94 @@ hsDec (DataD n _ _) | n `elem` [
   name "(,,,,,,)",
   name "(,,,,,,,)",
   name "(,,,,,,,,)",
-  name "[]",
   name "Bit",
   name "IO"] = return []
 
-hsDec (DataD n tyvars constrs) = do
-    cs <- mapM hsCon constrs
-    return [H.DataD [] (hsName n) (map (H.PlainTV . hsName . tyVarName) tyvars) cs []]
+-- data Foo a b ... = FooA FooA1 FooA2 ...
+--                  | FooB FooB1 FooB2 ...
+--                  ...
+--
+-- Translates to:
+-- data Foo a b ... = Foo {
+--   __tFooA :: Bool,
+--   __vFooA1 :: FooA1,
+--   __vFooA2 :: FooA2,
+--   ...
+--
+--   __tFooB :: Bool,
+--   __vFooB1 :: FooB1,
+--   __vFooB2 :: FooB2,
+--   ...
+--   }
+--
+-- instance (Symbolic__ a, Symbolic__ b, ...) => Symbolic__ Foo where
+--  __if p a b = Foo {
+--      __tFooA = __if p (__tFooA a) (__tFooA b)
+--      __vFooA1 = __if p (__vFooA1 a) (__vFooA1 b)
+--      ...
+--   }
+-- __mkFooB :: FooB1 -> FooB2 -> ... -> Foo
+-- __mkFooB b1 b2 ... = Foo {
+--      __tFooA = False,
+--      __tFooB = True,
+--      __vFooB1 = b1,
+--      __vFooB2 = b2,
+--      ...
+--   }
+-- __isFooB :: Foo -> Bool
+-- __isFooB f = and [not (__tFooA f), __tFooB f]
+-- __appFooB :: Foo -> (FooB1 -> FooB2 -> ... -> a) -> a
+-- __appFooB x f = f (__vFooB1 f) (__vFooB2 f) ...
+-- __caseFooB :: Foo -> (FooB1 -> FooB2 -> ... -> a) -> a -> a
+-- __caseFooB x y n = __if (__isFooB x) (__appFooB x y) n
+-- ...
+hsDec (DataD n tyvars constrs) =
+  let -- Make the record constructor fields for the given the seri constructor.
+      mkrconfs :: Con -> Failable [H.VarStrictType]
+      mkrconfs (Con cn cts) = do
+        bt <- hsType boolT
+        cts' <- mapM hsType cts
+        let tag = (constrtagnm cn, H.NotStrict, bt)
+        let vals = [(constrvalnm (cn `nappend` (name $ show i)), H.NotStrict, t)
+                       | (t, i) <- zip cts' [1..]]
+        return (tag:vals)
+
+      -- Make the record constructor with all the fields.
+      mkrcon :: [Con] -> Failable H.Con
+      mkrcon cs = do
+        fields <- concat <$> mapM mkrconfs cs
+        return $ H.RecC (hsName n) fields
+
+      -- Make the instance of Symbolic__
+      mkinst :: H.Con -> H.Dec
+      mkinst (H.RecC cn fields) =
+        let clsname = (H.mkName "Symbolic__")
+            varts = [H.VarT (hsName (tyVarName v)) | v <- tyvars]
+            ctx = [H.ClassP clsname [v] | v <- varts]
+            ty = H.AppT (H.ConT clsname) (foldl H.AppT (H.ConT cn) varts)
+
+            iffield :: H.VarStrictType -> H.FieldExp
+            iffield (n, _, _) = 
+                let e = foldl H.AppE (H.VarE (H.mkName "__if")) [
+                            H.VarE (H.mkName "p"),
+                            H.AppE (H.VarE n) (H.VarE (H.mkName "a")),
+                            H.AppE (H.VarE n) (H.VarE (H.mkName "b"))
+                          ]
+                in (n, e)
+
+            body = H.NormalB $ H.RecConE cn (map iffield fields)
+            ifmethod = H.FunD (H.mkName "__if") [
+                H.Clause [H.VarP (H.mkName x) | x <- ["p", "a", "b"]] body []
+                ]
+        in H.InstanceD ctx ty [ifmethod]
+
+  in do
+    con <- mkrcon constrs
+    let tyvars' = map (H.PlainTV . hsName . tyVarName) tyvars
+        n' = hsName n
+        dataD = H.DataD [] n' tyvars' [con] []
+        instD = mkinst con
+    return [dataD, instD]
 
 hsDec (ClassD n vars sigs) = do
     sigs' <- mapM hsSig sigs
@@ -289,6 +363,7 @@ haskellf env main =
                  H.text "{-# LANGUAGE MultiParamTypeClasses #-}" H.$+$
                  H.text "{-# LANGUAGE FlexibleInstances #-}" H.$+$
                  H.text "import qualified Prelude" H.$+$
+                 H.text "import Seri.HaskellF.Lib.Prelude" H.$+$
                  H.text "import Seri.Haskell.Lib.Numeric" H.$+$
                  H.text "import qualified Seri.Haskell.Lib.Bit as Bit" H.$+$
                  H.text "import Seri.Haskell.Lib.Bit(Bit)"
