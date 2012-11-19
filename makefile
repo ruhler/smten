@@ -5,8 +5,8 @@ all:
 test:
 	./build/seri-bin/seri --haskellf \
 		--include seri/sri \
-		-m testallio \
-		-f seri/sri/Seri/Tests/Basic.sri > foo.hs
+		-m main \
+		-f seri/sri/Seri/SMT/Tests/Core.sri > foo.hs
 	HOME=build/home ghc -fno-warn-overlapping-patterns \
 		-fno-warn-missing-fields \
 		-prof -auto-all -rtsopts \

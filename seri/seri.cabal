@@ -73,9 +73,6 @@ library
     Seri.Haskell.Lib.Bit
     Seri.Haskell.Lib.Numeric
 
-    Seri.HaskellF.HaskellF
-    Seri.HaskellF.Lib.Prelude
-
     Seri.Module
     Seri.Module.Module
 

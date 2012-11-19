@@ -436,6 +436,17 @@ hsDec (PrimD s@(TopSig n _ _))
  | n == name "Prelude.nobind_io" = return []
  | n == name "Prelude.fail_io" = return []
  | n == name "Prelude.putChar" = return []
+ | n == name "Seri.SMT.SMT.__prim_free" = return []
+ | n == name "Seri.SMT.SMT.assert" = return []
+ | n == name "Seri.SMT.SMT.query" = return []
+ | n == name "Seri.SMT.SMT.queryS" = return []
+ | n == name "Seri.SMT.SMT.return_query" = return []
+ | n == name "Seri.SMT.SMT.nobind_query" = return []
+ | n == name "Seri.SMT.SMT.bind_query" = return []
+ | n == name "Seri.SMT.SMT.fail_query" = return []
+ | n == name "Seri.SMT.SMT.runYices1" = return []
+ | n == name "Seri.SMT.SMT.runYices2" = return []
+ | n == name "Seri.SMT.SMT.runSTP" = return []
 
 hsDec d = throw $ "coreH does not apply to dec: " ++ pretty d
 
@@ -449,7 +460,8 @@ haskellf env main =
                  H.text "{-# LANGUAGE FlexibleInstances #-}" H.$+$
                  H.text "{-# LANGUAGE ScopedTypeVariables #-}" H.$+$
                  H.text "import qualified Prelude" H.$+$
-                 H.text "import Seri.HaskellF.Lib.Prelude"
+                 H.text "import Seri.HaskellF.Lib.Prelude" H.$+$
+                 H.text "import Seri.HaskellF.Lib.SMT"
 
       ds = surely $ (concat <$> mapM hsDec env)
   in hsHeader H.$+$ H.ppr ds H.$+$
