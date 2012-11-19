@@ -53,26 +53,22 @@ __mkFalse :: Bool
 __mkFalse = False
 
 __caseTrue :: (Symbolic__ a) => Bool -> a -> a -> a
-__caseTrue True y _ = y
-__caseTrue False _ n = n
-__caseTrue p y n = __if p y n
+__caseTrue p a b = __if p a b
 
 __caseFalse :: (Symbolic__ a) => Bool -> a -> a -> a
-__caseFalse True _ n = n
-__caseFalse False y _ = y
 __caseFalse p y n = __if p n y
 
 class Symbolic__ a where
     __if :: Bool -> a -> a -> a
     __if True a _ = a
     __if False _ b = b
-    __if p _ _ = Prelude.error ("Unsupported __if predicate: " Prelude.++ Prelude.show p)
+    __if p _ _ = Prelude.error ("Unsupported __if predicate: ?")
 
 class Symbolic1__ m where
     __if1 :: (Symbolic__ a) => Bool -> m a -> m a -> m a
     __if1 True a _ = a
     __if1 False _ b = b
-    __if1 p _ _ = Prelude.error ("Unsupported __if1 predicate: " Prelude.++ Prelude.show p)
+    __if1 p _ _ = Prelude.error ("Unsupported __if1 predicate: ?")
 
 instance (Symbolic1__ m, Symbolic__ a) => Symbolic__ (m a) where
     __if = __if1
@@ -82,7 +78,7 @@ class Symbolic2__ m where
         Bool -> m a b -> m a b -> m a b
     __if2 True a _ = a
     __if2 False _ b = b
-    __if2 p _ _ = Prelude.error ("Unsupported __if2 predicate: " Prelude.++ Prelude.show p)
+    __if2 p _ _ = Prelude.error ("Unsupported __if2 predicate: ?")
 
 instance (Symbolic2__ m, Symbolic__ a) => Symbolic1__ (m a) where
     __if1 = __if2
@@ -92,7 +88,7 @@ class Symbolic3__ m where
         Bool -> m a b c -> m a b c -> m a b c
     __if3 True a _ = a
     __if3 False _ b = b
-    __if3 p _ _ = Prelude.error ("Unsupported __if3 predicate: " Prelude.++ Prelude.show p)
+    __if3 p _ _ = Prelude.error ("Unsupported __if3 predicate: ?")
 
 instance (Symbolic3__ m, Symbolic__ a) => Symbolic2__ (m a) where
     __if2 = __if3
@@ -146,7 +142,10 @@ instance (Symbolic9__ m, Symbolic__ a) => Symbolic8__ (m a) where
     __if8 = __if9
 
 instance Symbolic__ Bool where
-    __if = Conditional 
+    __if True a _ = a
+    __if False _ b = b
+    __if p a b = Prelude.error ("__if predicate for Bool")
+    --__if p a b = Conditional p a b
 
 not :: Bool -> Bool
 not x = __caseTrue x __mkFalse __mkTrue
@@ -265,7 +264,7 @@ __caseUnit__ :: Unit__ -> a -> a -> a
 __caseUnit__ () y _ = y
 
 instance Symbolic__ Unit__ where
-    __if p _ _ = ()
+    __if _ _ _ = ()
 
 instance Symbolic2__ (->) where
     __if2 p f g = \x -> __if p (f x) (g x)

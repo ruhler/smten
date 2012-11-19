@@ -259,7 +259,7 @@ hsDec (DataD n _ _) | Just x <- de_tupleN n = hsDec $ tuple (fromIntegral x)
 --      ...
 --   }
 -- __isFooB :: Foo -> Bool
--- __isFooB f = and [not (__tFooA f), __tFooB f]
+-- __isFooB f = not (__tFooA f) && __tFooB f
 -- __appFooB :: Foo -> (FooB1 -> FooB2 -> ... -> a) -> a
 -- __appFooB x f = f (__vFooB1 x) (__vFooB2 x) ...
 -- __caseFooB :: Foo -> (FooB1 -> FooB2 -> ... -> a) -> a -> a
@@ -317,8 +317,11 @@ hsDec (DataD n tyvars constrs) =
                         H.AppE (H.VarE $ constrtagnm p) (H.VarE argnm))
                           | p <- prev]
             thist = H.AppE (H.VarE $ constrtagnm cn) (H.VarE argnm)
-            l = H.ListE $ oldts ++ [thist]
-            body = H.NormalB $ H.AppE (H.VarE $ H.mkName "and") l
+
+            handE :: H.Exp -> H.Exp -> H.Exp
+            handE a b = foldl H.AppE (H.VarE (hsName (name "&&"))) [a, b]
+
+            body = H.NormalB $ foldl handE thist oldts
         in H.FunD (constrisnm cn) [H.Clause [H.VarP argnm] body []]
 
       mkapp :: [Name] -> Name -> [H.Type] -> H.Dec
