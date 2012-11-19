@@ -95,19 +95,35 @@ prependnm m n = hsName $ name m `nappend` n
 constrnm :: Name -> H.Name
 constrnm = prependnm "__mk"
 
+constrisnm :: Name -> H.Name
+constrisnm = prependnm "__is"
+
+constrappnm :: Name -> H.Name
+constrappnm = prependnm "__app"
+
 constrtagnm :: Name -> H.Name
 constrtagnm = prependnm "__t"
 
-constrvalnm :: Name -> H.Name
-constrvalnm = prependnm "__v"
+constrvalnm :: Int -> Name -> H.Name
+constrvalnm i = prependnm $ "__v" ++ show i
 
 -- Given the name of a data constructor, return the name of the function for
 -- doing a case match against the constructor.
 constrcasenm :: Name -> H.Name
-constrcasenm = prependnm "__case"
+constrcasenm n 
+ | n == name "()" = constrcasenm $ name "Unit__"
+ | Just x <- de_tupleN n = constrcasenm . name $ "Tuple" ++ show x ++ "__"
+ | n == name "[]" = constrcasenm $ name "Nil__"
+ | n == name ":" = constrcasenm $ name "Cons__"
+constrcasenm n = prependnm "__case" n
 
 hsExp :: Exp -> Failable H.Exp
 hsExp (LitE l) = return (H.LitE (hsLit l))
+hsExp (ConE (Sig n t))
+  | n == name "()" = hsExp (ConE (Sig (name "Unit__") t))
+  | Just x <- de_tupleN n = hsExp (ConE (Sig (name $ "Tuple" ++ show x ++ "__") t))
+  | n == name ":" = hsExp (ConE (Sig (name "Cons__") t))
+  | n == name "[]" = hsExp (ConE (Sig (name "Nil__") t))
 hsExp (ConE (Sig n _)) = return $ H.VarE (constrnm n)
 hsExp (VarE (Sig n t)) | unknowntype t = return $ H.VarE (hsName n)
 hsExp (VarE (Sig n t)) = do
@@ -133,9 +149,10 @@ hsExp (CaseE x (Sig kn kt) y n) = do
     return $ foldl1 H.AppE [H.VarE (constrcasenm kn), x', y', n']
         
 hsType :: Type -> Failable H.Type
-hsType (ConT n) | n == name "Char" = return $ H.ConT (H.mkName "Prelude.Char")
-hsType (ConT n) | n == name "Integer" = return $ H.ConT (H.mkName "Prelude.Integer")
-hsType (ConT n) | n == name "IO" = return $ H.ConT (H.mkName "Prelude.IO")
+hsType (ConT n) | n == name "()" = return $ H.ConT (H.mkName "Unit__")
+hsType (ConT n) | Just x <- de_tupleN n
+  = return $ H.ConT (H.mkName $ "Tuple" ++ show x ++ "__")
+hsType (ConT n) | n == name "[]" = return $ H.ConT (H.mkName "List__")
 hsType (ConT n) | n == name "->" = return H.ArrowT
 hsType (ConT n) = return $ H.ConT (hsName n)
 hsType (AppT a b) = do
@@ -201,17 +218,12 @@ hsDec (DataD n _ _) | n `elem` [
   name "Bool",
   name "Char",
   name "Integer",
-  name "()",
-  name "(,)",
-  name "(,,)",
-  name "(,,,)",
-  name "(,,,,)",
-  name "(,,,,,)",
-  name "(,,,,,,)",
-  name "(,,,,,,,)",
-  name "(,,,,,,,,)",
   name "Bit",
+  name "[]",
+  name "()",
   name "IO"] = return []
+
+hsDec (DataD n _ _) | Just x <- de_tupleN n = hsDec $ tuple (fromIntegral x)
 
 -- data Foo a b ... = FooA FooA1 FooA2 ...
 --                  | FooB FooB1 FooB2 ...
@@ -247,7 +259,7 @@ hsDec (DataD n _ _) | n `elem` [
 -- __isFooB :: Foo -> Bool
 -- __isFooB f = and [not (__tFooA f), __tFooB f]
 -- __appFooB :: Foo -> (FooB1 -> FooB2 -> ... -> a) -> a
--- __appFooB x f = f (__vFooB1 f) (__vFooB2 f) ...
+-- __appFooB x f = f (__vFooB1 x) (__vFooB2 x) ...
 -- __caseFooB :: Foo -> (FooB1 -> FooB2 -> ... -> a) -> a -> a
 -- __caseFooB x y n = __if (__isFooB x) (__appFooB x y) n
 -- ...
@@ -258,8 +270,7 @@ hsDec (DataD n tyvars constrs) =
         bt <- hsType boolT
         cts' <- mapM hsType cts
         let tag = (constrtagnm cn, H.NotStrict, bt)
-        let vals = [(constrvalnm (cn `nappend` (name $ show i)), H.NotStrict, t)
-                       | (t, i) <- zip cts' [1..]]
+        let vals = [(constrvalnm i cn, H.NotStrict, t) | (t, i) <- zip cts' [1..]]
         return (tag:vals)
 
       -- Make the record constructor with all the fields.
@@ -281,8 +292,7 @@ hsDec (DataD n tyvars constrs) =
                 let e = foldl H.AppE (H.VarE (H.mkName "__if")) [
                             H.VarE (H.mkName "p"),
                             H.AppE (H.VarE n) (H.VarE (H.mkName "a")),
-                            H.AppE (H.VarE n) (H.VarE (H.mkName "b"))
-                          ]
+                            H.AppE (H.VarE n) (H.VarE (H.mkName "b"))]
                 in (n, e)
 
             body = H.NormalB $ H.RecConE cn (map iffield fields)
@@ -291,13 +301,65 @@ hsDec (DataD n tyvars constrs) =
                 ]
         in H.InstanceD ctx ty [ifmethod]
 
+      mkmk :: [Name] -> Name -> [H.Type] -> H.Dec
+      mkmk prev cn ctys =
+        let argnms = [H.mkName $ "x" ++ show i | i <- [1..(length ctys)]]
+            oldts = [(constrtagnm p, H.VarE (constrnm (name "False"))) | p <- prev]
+            thists = [(constrtagnm cn, H.VarE (constrnm (name "True")))]
+            thisvs = [(constrvalnm i cn, H.VarE a) | (a, i) <- zip argnms [1..]]
+            body = H.NormalB $ H.RecConE (hsName n) (concat [oldts, thists, thisvs])
+        in H.FunD (constrnm cn) [H.Clause (map H.VarP argnms) body []]
+
+      mkis :: [Name] -> Name -> [H.Type] -> H.Dec
+      mkis prev cn _ =
+        let argnm = H.mkName $ "x"
+            oldts = [H.AppE (H.VarE $ H.mkName "not") (
+                        H.AppE (H.VarE $ constrtagnm p) (H.VarE argnm))
+                          | p <- prev]
+            thist = H.AppE (H.VarE $ constrtagnm cn) (H.VarE argnm)
+            l = H.ListE $ oldts ++ [thist]
+            body = H.NormalB $ H.AppE (H.VarE $ H.mkName "and") l
+        in H.FunD (constrisnm cn) [H.Clause [H.VarP argnm] body []]
+
+      mkapp :: [Name] -> Name -> [H.Type] -> H.Dec
+      mkapp _ cn ctys = 
+        let xarg = H.mkName "x"
+            farg = H.mkName "f"
+            vs = [H.VarE (constrvalnm i cn) | i <- [1..(length ctys)]]
+            app = foldl H.AppE (H.VarE farg) [H.AppE v (H.VarE xarg) | v <- vs]
+            body = H.NormalB app
+        in H.FunD (constrappnm cn) [H.Clause [H.VarP xarg, H.VarP farg] body []]
+
+      mkcase :: [Name] -> Name -> [H.Type] -> H.Dec
+      mkcase _ cn _ = 
+        let [x, y, n] = map H.mkName ["x", "y", "n"]
+            app = foldl H.AppE (H.VarE $ H.mkName "__if") [
+                      H.AppE (H.VarE (constrisnm cn)) (H.VarE x),
+                      H.AppE (H.AppE (H.VarE (constrappnm cn)) (H.VarE x)) (H.VarE y),
+                      H.VarE n]
+            body = H.NormalB app
+        in H.FunD (constrcasenm cn) [H.Clause (map H.VarP [x, y, n]) body []]
+
+      mkconfs :: [Name] -> Con -> Failable [H.Dec]
+      mkconfs prev (Con cn ctys) = do
+        htys <- mapM hsType ctys
+        return $ [f prev cn htys | f <- [mkmk, mkis, mkapp, mkcase]]
+
+      mkallconfs :: [Con] -> Failable [H.Dec]
+      mkallconfs [] = return []
+      mkallconfs (x:xs) = do
+          xd <- mkconfs [n | Con n _ <- xs] x
+          xds <- mkallconfs xs
+          return (xd ++ xds)
+
   in do
     con <- mkrcon constrs
+    confs <- mkallconfs constrs
     let tyvars' = map (H.PlainTV . hsName . tyVarName) tyvars
         n' = hsName n
         dataD = H.DataD [] n' tyvars' [con] []
         instD = mkinst con
-    return [dataD, instD]
+    return $ concat [[dataD, instD], confs]
 
 hsDec (ClassD n vars sigs) = do
     sigs' <- mapM hsSig sigs
@@ -311,46 +373,42 @@ hsDec (InstD ctx (Class n ts) ms) = do
     let t = foldl H.AppT (H.ConT (hsName n)) ts'
     return [H.InstanceD (ntvs ++ ctx') t ms'] 
 
-hsDec (PrimD (TopSig n _ t)) | n == name "Prelude.error" = do
-  let e = H.VarE (H.mkName "Prelude.error")
-  let val = H.FunD (H.mkName "error") [H.Clause [] (H.NormalB e) []]
-  return [val]
-
 hsDec (PrimD s@(TopSig n _ _))
- | n == name "Prelude.__prim_add_Integer" = prim s (vare "Prelude.+")
- | n == name "Prelude.__prim_sub_Integer" = prim s (vare "Prelude.-")
- | n == name "Prelude.__prim_mul_Integer" = prim s (vare "Prelude.*")
- | n == name "Prelude.__prim_show_Integer" = prim s (vare "Prelude.show")
- | n == name "Prelude.<" = bprim s "Prelude.<"
- | n == name "Prelude.<=" = bprim s "Prelude.<="
- | n == name "Prelude.>" = bprim s "Prelude.>"
- | n == name "Prelude.&&" = prim s (vare "&&#")
- | n == name "Prelude.||" = prim s (vare "||#")
- | n == name "Prelude.not" = prim s (vare "not_")
- | n == name "Prelude.__prim_eq_Integer" = bprim s "Prelude.=="
- | n == name "Prelude.__prim_eq_Char" = bprim s "Prelude.=="
+ | n == name "Prelude.__prim_add_Integer" = return []
+ | n == name "Prelude.__prim_sub_Integer" = return []
+ | n == name "Prelude.__prim_mul_Integer" = return []
+ | n == name "Prelude.__prim_show_Integer" = return []
+ | n == name "Prelude.<" = return []
+ | n == name "Prelude.<=" = return []
+ | n == name "Prelude.>" = return []
+ | n == name "Prelude.&&" = return []
+ | n == name "Prelude.||" = return []
+ | n == name "Prelude.not" = return []
+ | n == name "Prelude.__prim_eq_Integer" = return []
+ | n == name "Prelude.__prim_eq_Char" = return []
  | n == name "Prelude.valueof" = return []
  | n == name "Prelude.numeric" = return []
- | n == name "Seri.Bit.__prim_fromInteger_Bit" = prim s (vare "Prelude.fromInteger")
- | n == name "Seri.Bit.__prim_eq_Bit" = bprim s "Prelude.=="
- | n == name "Seri.Bit.__prim_add_Bit" = prim s (vare "Prelude.+")
- | n == name "Seri.Bit.__prim_sub_Bit" = prim s (vare "Prelude.-")
- | n == name "Seri.Bit.__prim_mul_Bit" = prim s (vare "Prelude.*")
- | n == name "Seri.Bit.__prim_concat_Bit" = prim s (vare "Bit.concat")
- | n == name "Seri.Bit.__prim_show_Bit" = prim s (vare "Prelude.show")
- | n == name "Seri.Bit.__prim_not_Bit" = prim s (vare "Bit.not")
- | n == name "Seri.Bit.__prim_or_Bit" = prim s (vare "Bit.or")
- | n == name "Seri.Bit.__prim_and_Bit" = prim s (vare "Bit.and")
- | n == name "Seri.Bit.__prim_shl_Bit" = prim s (vare "Bit.shl")
- | n == name "Seri.Bit.__prim_lshr_Bit" = prim s (vare "Bit.lshr")
- | n == name "Seri.Bit.__prim_zeroExtend_Bit" = prim s (vare "Bit.zeroExtend")
- | n == name "Seri.Bit.__prim_truncate_Bit" = prim s (vare "Bit.truncate")
- | n == name "Seri.Bit.__prim_extract_Bit" = prim s (vare "Bit.extract")
- | n == name "Prelude.return_io" = prim s (vare "Prelude.return")
- | n == name "Prelude.bind_io" = prim s (vare "Prelude.>>=")
- | n == name "Prelude.nobind_io" = prim s (vare "Prelude.>>")
- | n == name "Prelude.fail_io" = prim s (vare "Prelude.fail")
- | n == name "Prelude.putChar" = prim s (vare "Prelude.putChar")
+ | n == name "Prelude.error" = return []
+ | n == name "Seri.Bit.__prim_fromInteger_Bit" = return []
+ | n == name "Seri.Bit.__prim_eq_Bit" = return []
+ | n == name "Seri.Bit.__prim_add_Bit" = return []
+ | n == name "Seri.Bit.__prim_sub_Bit" = return []
+ | n == name "Seri.Bit.__prim_mul_Bit" = return []
+ | n == name "Seri.Bit.__prim_concat_Bit" = return []
+ | n == name "Seri.Bit.__prim_show_Bit" = return []
+ | n == name "Seri.Bit.__prim_not_Bit" = return []
+ | n == name "Seri.Bit.__prim_or_Bit" = return []
+ | n == name "Seri.Bit.__prim_and_Bit" = return []
+ | n == name "Seri.Bit.__prim_shl_Bit" = return []
+ | n == name "Seri.Bit.__prim_lshr_Bit" = return []
+ | n == name "Seri.Bit.__prim_zeroExtend_Bit" = return []
+ | n == name "Seri.Bit.__prim_truncate_Bit" = return []
+ | n == name "Seri.Bit.__prim_extract_Bit" = return []
+ | n == name "Prelude.return_io" = return []
+ | n == name "Prelude.bind_io" = return []
+ | n == name "Prelude.nobind_io" = return []
+ | n == name "Prelude.fail_io" = return []
+ | n == name "Prelude.putChar" = return []
 
 hsDec d = throw $ "coreH does not apply to dec: " ++ pretty d
 
@@ -363,14 +421,11 @@ haskellf env main =
                  H.text "{-# LANGUAGE MultiParamTypeClasses #-}" H.$+$
                  H.text "{-# LANGUAGE FlexibleInstances #-}" H.$+$
                  H.text "import qualified Prelude" H.$+$
-                 H.text "import Seri.HaskellF.Lib.Prelude" H.$+$
-                 H.text "import Seri.Haskell.Lib.Numeric" H.$+$
-                 H.text "import qualified Seri.Haskell.Lib.Bit as Bit" H.$+$
-                 H.text "import Seri.Haskell.Lib.Bit(Bit)"
+                 H.text "import Seri.HaskellF.Lib.Prelude"
 
       ds = surely $ (concat <$> mapM hsDec env)
   in hsHeader H.$+$ H.ppr ds H.$+$
-        H.text "main :: Prelude.IO ()" H.$+$
+        H.text "main :: IO ()" H.$+$
         H.text "main = " H.<+> H.text (pretty main)
 
 -- | Declare a primitive seri implemented with the given haskell expression.
@@ -405,4 +460,13 @@ unknowntype (VarT {}) = True
 unknowntype (NumT {}) = True    -- TODO: this may not be unknown, right?
 unknowntype UnknownT = True
 
+harrowsT :: [H.Type] -> H.Type
+harrowsT = foldr1 (\a b -> H.AppT (H.AppT H.ArrowT a) b)
+
+-- Tuple declarations renamed.
+tuple :: Int -> Dec
+tuple i = 
+  let nm = name $ "Tuple" ++ show i ++ "__"
+      vars = [NormalTV (name [c]) | c <- take i "abcdefghijklmnopqrstuvwxyz"]
+  in DataD nm vars [Con nm (map tyVarType vars)]
 
