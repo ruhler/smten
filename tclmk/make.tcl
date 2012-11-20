@@ -83,7 +83,7 @@ run $SERI --type \
     > build/test/tests.typed
 run $SERI --io \
     --include $::SRI_SERI \
-    -m Seri.Tests.Basic.testallio \
+    -m Seri.Tests.Basic.main \
     -f $::SRI_SERI/Seri/Tests/Basic.sri \
     > build/test/tests.got 
 run echo "PASSED" > build/test/tests.wnt
@@ -93,7 +93,6 @@ hrun cmp build/test/tests.got build/test/tests.wnt
 set hsdir build/test
 run $SERI --haskellf \
     --include $::SRI_SERI \
-    -m testallio \
     -f $::SRI_SERI/Seri/Tests/Basic.sri \
     > $hsdir/hsftests.hs
 hrun -ignorestderr ghc -fno-warn-overlapping-patterns \

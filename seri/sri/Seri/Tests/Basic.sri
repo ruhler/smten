@@ -263,8 +263,8 @@ tests = do
     testvector
     testbit
 
-testallio :: IO ()
-testallio =
+main :: IO ()
+main =
     case tests of
         Test () -> putStrLn "PASSED"
 

@@ -118,5 +118,5 @@ main = do
             putStrLn . show $ haskell (getDecls env) nmain
         HaskellF -> do
             env <- loadenv (include args) (file args)
-            putStrLn . show $ haskellf (getDecls env) nmain
+            putStrLn . show $ haskellf (getDecls env)
 

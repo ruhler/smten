@@ -28,7 +28,7 @@ module Seri.HaskellF.Lib.Prelude (
 
     N__, module NE,
 
-    __toSMT,
+    __toSMT, __free,
     ) where
 
 import qualified Prelude
@@ -46,6 +46,9 @@ type List__ = []
 
 newtype Bool = Bool { __toSMT :: SMT.Expression }
     deriving(Prelude.Show)
+
+__free :: SMT.Symbol -> Bool
+__free s = Bool (SMT.varE s)
 
 __mkTrue :: Bool
 __mkTrue = Bool SMT.trueE

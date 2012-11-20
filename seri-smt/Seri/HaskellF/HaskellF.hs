@@ -223,6 +223,8 @@ hsDec (DataD n _ _) | n `elem` [
   name "Bit",
   name "[]",
   name "()",
+  name "Answer",
+  name "Query",
   name "IO"] = return []
 
 hsDec (DataD n _ _) | Just x <- de_tupleN n = hsDec $ tuple (fromIntegral x)
@@ -464,8 +466,8 @@ hsDec d = throw $ "coreH does not apply to dec: " ++ pretty d
 
 -- haskell decs
 --  Compile the given declarations to haskell.
-haskellf :: [Dec] -> Name -> H.Doc
-haskellf env main =
+haskellf :: [Dec] -> H.Doc
+haskellf env =
   let hsHeader :: H.Doc
       hsHeader = H.text "{-# LANGUAGE ExplicitForAll #-}" H.$+$
                  H.text "{-# LANGUAGE MultiParamTypeClasses #-}" H.$+$
@@ -476,9 +478,7 @@ haskellf env main =
                  H.text "import Seri.HaskellF.Lib.SMT"
 
       ds = surely $ (concat <$> mapM hsDec env)
-  in hsHeader H.$+$ H.ppr ds H.$+$
-        H.text "main :: IO ()" H.$+$
-        H.text "main = " H.<+> H.text (pretty main)
+  in hsHeader H.$+$ H.ppr ds
 
 unknowntype :: Type -> Bool
 unknowntype (ConT {}) = False
