@@ -85,7 +85,7 @@ issymbol (h:_) = not $ isAlphaNum h || h == '_'
 
 hsLit :: Lit -> H.Exp
 hsLit (IntegerL i) = H.LitE (H.IntegerL i)
-hsLit (CharL c) = H.AppE (H.VarE (H.mkName "__mkChar")) (H.LitE (H.CharL c))
+hsLit (CharL c) = H.AppE (H.VarE (H.mkName "__concrete")) (H.LitE (H.CharL c))
 
 prependnm :: String -> Name -> H.Name
 prependnm m n = hsName $ name m `nappend` n

@@ -8,7 +8,7 @@ module Seri.HaskellF.Lib.Prelude (
     Symbolic8__(..), Symbolic9__(..),
 
     Bool(), Char, Integer, IO, Bit, Unit__, List__,
-    __mkChar,
+    __concrete,
     __mkUnit__, __caseUnit__,
     __mkTrue, __mkFalse, __caseTrue, __caseFalse,
     __mkCons__, __mkNil__, __caseCons__, __caseNil__,
@@ -44,6 +44,8 @@ type IO = Prelude.IO
 type Bit = Bit.Bit
 type Unit__ = ()
 type List__ = []
+type Integer = Concrete__ Prelude.Integer
+type Char = Concrete__ Prelude.Char
 
 newtype Bool = Bool { __toSMT :: SMT.Expression }
     deriving(Prelude.Show)
@@ -52,50 +54,34 @@ mkBool :: Prelude.Bool -> Bool
 mkBool Prelude.True = __mkTrue
 mkBool Prelude.False = __mkFalse
 
-data Integer = Integer_c Prelude.Integer
-             | Integer_if Bool Integer Integer
+data Concrete__ a = Concrete_c a
+                  | Concrete_if Bool (Concrete__ a) (Concrete__ a)
     deriving (Prelude.Show)
 
+__concrete :: a -> Concrete__ a
+__concrete = Concrete_c
+
+__de_concrete :: Concrete__ a -> Prelude.Maybe a
+__de_concrete (Concrete_c a) = Prelude.Just a
+__de_concrete _ = Prelude.Nothing
+
+-- Apply a function to a concrete argument.
+__capp :: (Symbolic__ b) => (a -> b) -> Concrete__ a -> b
+__capp f (Concrete_c x) = f x
+__capp f (Concrete_if p a b) = __if p (__capp f a) (__capp f b)
+
+__capp2 :: (Symbolic__ a, Symbolic__ b) => (a -> a -> b)
+                          -> Concrete__ a -> Concrete__ a -> b
+__capp2 f = __capp . __capp f
+
+
 instance Prelude.Num Integer where
-    fromInteger = mkInteger . Prelude.fromInteger
+    fromInteger = __concrete . Prelude.fromInteger
     (+) = Prelude.error $ "+ for haskellf Integer not defined"
     (*) = Prelude.error $ "* for haskellf Integer not defined"
     abs = Prelude.error $ "abs for haskellf Integer not defined"
     signum = Prelude.error $ "signum for haskellf Integer not defined"
 
-mkInteger :: Prelude.Integer -> Integer
-mkInteger = Integer_c
-
-data Char = Char_c Prelude.Char
-          | Char_if Bool Char Char
-    deriving (Prelude.Show)
-
-__mkChar :: Prelude.Char -> Char
-__mkChar = Char_c
-
--- | Convert a primitive unary integer function into a function on seri
--- integers.
--- Performs function pushing.
--- TODO: don't perform function pushing if the SMT solver can handle it
--- without function pushing.
-__iprim :: (Symbolic__ a) => (Prelude.Integer -> a) -> Integer -> a
-__iprim f (Integer_c x) = f x
-__iprim f (Integer_if p a b) = __if p (__iprim f a) (__iprim f b)
-
-__iprim2 :: (Symbolic__ a)
-            => (Prelude.Integer -> Prelude.Integer -> a)
-            -> Integer -> Integer -> a
-__iprim2 f = __iprim . __iprim f
-
-__cprim :: (Symbolic__ a) => (Prelude.Char -> a) -> Char -> a
-__cprim f (Char_c x) = f x
-__cprim f (Char_if p a b) = __if p (__cprim f a) (__cprim f b)
-
-__cprim2 :: (Symbolic__ a)
-            => (Prelude.Char -> Prelude.Char -> a)
-            -> Char -> Char -> a
-__cprim2 f = __cprim . __cprim f
-    
 
 __free :: SMT.Symbol -> Bool
 __free s = Bool (SMT.varE s)
@@ -283,28 +269,28 @@ not x = __caseTrue x __mkFalse __mkTrue
 (||) x y = __caseTrue x __mkTrue y
 
 __prim_eq_Char :: Char -> Char -> Bool
-__prim_eq_Char = __cprim2 $ \a b -> mkBool (a Prelude.== b)
+__prim_eq_Char = __capp2 $ \a b -> mkBool (a Prelude.== b)
 
 __prim_eq_Integer :: Integer -> Integer -> Bool
-__prim_eq_Integer = __iprim2 $ \a b -> mkBool (a Prelude.== b)
+__prim_eq_Integer = __capp2 $ \a b -> mkBool (a Prelude.== b)
 
 __prim_add_Integer :: Integer -> Integer -> Integer
-__prim_add_Integer = __iprim2 $ \a b -> mkInteger (a Prelude.+ b)
+__prim_add_Integer = __capp2 $ \a b -> __concrete (a Prelude.+ b)
 
 __prim_sub_Integer :: Integer -> Integer -> Integer
-__prim_sub_Integer = __iprim2 $ \a b -> mkInteger (a Prelude.- b)
+__prim_sub_Integer = __capp2 $ \a b -> __concrete (a Prelude.- b)
 
 __prim_mul_Integer :: Integer -> Integer -> Integer
-__prim_mul_Integer = __iprim2 $ \a b -> mkInteger (a Prelude.* b)
+__prim_mul_Integer = __capp2 $ \a b -> __concrete (a Prelude.* b)
 
 (<) :: Integer -> Integer -> Bool
-(<) = __iprim2 $ \a b -> mkBool (a Prelude.< b)
+(<) = __capp2 $ \a b -> mkBool (a Prelude.< b)
 
 (>) :: Integer -> Integer -> Bool
-(>) = __iprim2 $ \a b -> mkBool (a Prelude.> b)
+(>) = __capp2 $ \a b -> mkBool (a Prelude.> b)
 
 __prim_show_Integer :: Integer -> List__ Char
-__prim_show_Integer = Prelude.map __mkChar . __iprim Prelude.show
+__prim_show_Integer = Prelude.map __concrete . __capp Prelude.show
 
 return_io :: a -> IO a
 return_io = Prelude.return
@@ -319,13 +305,13 @@ fail_io :: List__ Char -> IO a
 fail_io = Prelude.error $ "TODO: haskellf fail_io"
 
 putChar :: Char -> IO ()
-putChar = __cprim Prelude.putChar
+putChar = __capp Prelude.putChar
 
 __prim_eq_Bit :: (N__ n) => Bit n -> Bit n -> Bool
 __prim_eq_Bit a b = if a Prelude.== b then __mkTrue else __mkFalse
 
 __prim_show_Bit :: Bit n -> List__ Char
-__prim_show_Bit = Prelude.map __mkChar . Prelude.show
+__prim_show_Bit = Prelude.map __concrete . Prelude.show
 
 __prim_add_Bit :: (N__ n) => Bit n -> Bit n -> Bit n
 __prim_add_Bit = (Prelude.+)
@@ -337,7 +323,7 @@ __prim_mul_Bit :: (N__ n) => Bit n -> Bit n -> Bit n
 __prim_mul_Bit = (Prelude.*)
 
 __prim_fromInteger_Bit :: (N__ n) => Integer -> Bit n
-__prim_fromInteger_Bit = __iprim Prelude.fromInteger
+__prim_fromInteger_Bit = __capp Prelude.fromInteger
 
 __prim_shl_Bit :: (N__ n) => Bit n -> Bit n -> Bit n
 __prim_shl_Bit = Bit.shl
@@ -364,7 +350,7 @@ __prim_concat_Bit :: (N__ a, N__ b) => Bit a -> Bit b -> Bit (N__PLUS a b)
 __prim_concat_Bit = Bit.concat
 
 __prim_extract_Bit :: (N__ n, N__ m) => Bit n -> Integer -> Bit m
-__prim_extract_Bit = __iprim . Bit.extract
+__prim_extract_Bit = __capp . Bit.extract
 
 error :: (Symbolic__ a) => List__ Char -> a
 error = __error
@@ -398,23 +384,16 @@ instance Symbolic2__ (->) where
     __default2 = \_ -> __default
     __substitute2 l f = \x -> __substitute l (f x)
 
-instance Symbolic__ Char where
-    __default = __mkChar '?'
-    __if p@(Bool px) a b
+instance Symbolic1__ Concrete__ where
+    __default1 = __concrete __default
+    __if1 p@(Bool px) a b
         | Prelude.Just Prelude.True <- SMT.de_boolE px = a
         | Prelude.Just Prelude.False <- SMT.de_boolE px = b
-        | Prelude.otherwise = Char_if p a b
+        | Prelude.otherwise = Concrete_if p a b
 
 instance Symbolic__ Prelude.Char where
     __default = '?'
     __if = __if_default "Prelude.Char"
-
-instance Symbolic__ Integer where
-    __default = mkInteger 0
-    __if p@(Bool px) a b
-        | Prelude.Just Prelude.True <- SMT.de_boolE px = a
-        | Prelude.Just Prelude.False <- SMT.de_boolE px = b
-        | Prelude.otherwise = Integer_if p a b
 
 instance Symbolic__ Prelude.Integer where
     __default = 0
@@ -465,7 +444,7 @@ __if_default msg (Bool p) a b
 
 class (Symbolic__ a, N.N__ a) => N__ a where
     valueof :: a -> Integer
-    valueof = mkInteger . N.valueof
+    valueof = __concrete . N.valueof
 
     numeric :: a
     numeric = N.numeric
