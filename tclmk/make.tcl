@@ -89,18 +89,22 @@ run $SERI --io \
 run echo "PASSED" > build/test/tests.wnt
 hrun cmp build/test/tests.got build/test/tests.wnt
 
-# Test the haskellF target.
-set hsdir build/test
-run $SERI --haskellf \
-    --include $::SRI_SERI \
-    -f $::SRI_SERI/Seri/Tests/Basic.sri \
-    > $hsdir/hsftests.hs
-hrun -ignorestderr ghc -fno-warn-overlapping-patterns \
-    -fno-warn-missing-fields \
-    -o $hsdir/hsftests $hsdir/hsftests.hs
-run ./$hsdir/hsftests > $hsdir/hsftests.got
-run echo "PASSED" > $hsdir/hsftests.wnt
-hrun cmp $hsdir/hsftests.got $hsdir/hsftests.wnt
+# Run a HaskellF Test
+proc haskellf {module} {
+    set hsdir build/test
+    run $::SERI --haskellf \
+        --include $::SRI_SERI \
+        -f $::SRI_SERI/[string map {. /} $module].sri \
+        > $hsdir/[string map {. _} $module].hs
+    hrun -ignorestderr ghc -fno-warn-overlapping-patterns \
+        -fno-warn-missing-fields \
+        -o $hsdir/[string map {. _} $module] $hsdir/[string map {. _} $module].hs
+    hrun ./$hsdir/[string map {. _} $module]
+}
+
+
+haskellf Seri.Tests.Basic
+haskellf Seri.SMT.Tests.Core
 
 puts "BUILD COMPLETE"
 
