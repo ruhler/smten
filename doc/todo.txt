@@ -148,3 +148,13 @@ Other::
 * Get rid of Elaborate.ExpH. Those utilities should be in ExpH.Utils or some
   such.
 
+HaskellF:
+* Specialize for solver.
+  For example don't inline away the integers in ((if free1 then 3 else 4) == 4)
+  if the solver supports Integers and the user says he wants to use them.
+  Maybe use a Reader monad to read supported theories at run time?
+* Figure out how to deal with error values properly
+* Figure out how to deal with debugging properly
+* Perform concretization to avoid things like (if free1 then (if free1  ...))
+  Maybe use a Reader monad to concretize efficiently at run time?
+

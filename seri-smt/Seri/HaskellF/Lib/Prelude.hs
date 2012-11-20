@@ -26,19 +26,19 @@ module Seri.HaskellF.Lib.Prelude (
 
     error,
 
-    N__, module NE,
+    N__(..), module NE,
 
     __toSMT, __free,
     ) where
 
+import Prelude((.), ($))
 import qualified Prelude
 import qualified Seri.Haskell.Lib.Bit as Bit
-import Seri.Haskell.Lib.Numeric as NE hiding (N__) 
+import Seri.Haskell.Lib.Numeric as NE hiding (N__(..)) 
 import qualified Seri.Haskell.Lib.Numeric as N
 import qualified Seri.SMT.Syntax as SMT
 
 type Char = Prelude.Char
-type Integer = Prelude.Integer
 type IO = Prelude.IO
 type Bit = Bit.Bit
 type Unit__ = ()
@@ -46,6 +46,39 @@ type List__ = []
 
 newtype Bool = Bool { __toSMT :: SMT.Expression }
     deriving(Prelude.Show)
+
+mkBool :: Prelude.Bool -> Bool
+mkBool Prelude.True = __mkTrue
+mkBool Prelude.False = __mkFalse
+
+data Integer = Integer_c Prelude.Integer
+             | Integer_if Bool Integer Integer
+    deriving (Prelude.Show)
+
+instance Prelude.Num Integer where
+    fromInteger = mkInteger . Prelude.fromInteger
+    (+) = error $ "+ for haskellf Integer not defined"
+    (*) = error $ "* for haskellf Integer not defined"
+    abs = error $ "abs for haskellf Integer not defined"
+    signum = error $ "signum for haskellf Integer not defined"
+
+mkInteger :: Prelude.Integer -> Integer
+mkInteger = Integer_c
+
+-- | Convert a primitive unary integer function into a function on seri
+-- integers.
+-- Performs function pushing.
+-- TODO: don't perform function pushing if the SMT solver can handle it
+-- without function pushing.
+__iprim :: (Symbolic__ a) => (Prelude.Integer -> a) -> Integer -> a
+__iprim f (Integer_c x) = f x
+__iprim f (Integer_if p a b) = __if p (__iprim f a) (__iprim f b)
+
+__iprim2 :: (Symbolic__ a)
+            => (Prelude.Integer -> Prelude.Integer -> a)
+            -> Integer -> Integer -> a
+__iprim2 f = __iprim . __iprim f
+    
 
 __free :: SMT.Symbol -> Bool
 __free s = Bool (SMT.varE s)
@@ -254,25 +287,25 @@ __prim_eq_Char :: Char -> Char -> Bool
 __prim_eq_Char a b = if (a Prelude.== b) then __mkTrue else __mkFalse
 
 __prim_eq_Integer :: Integer -> Integer -> Bool
-__prim_eq_Integer a b = if (a Prelude.== b) then __mkTrue else __mkFalse
+__prim_eq_Integer = __iprim2 $ \a b -> mkBool (a Prelude.== b)
 
 __prim_add_Integer :: Integer -> Integer -> Integer
-__prim_add_Integer = (Prelude.+)
+__prim_add_Integer = __iprim2 $ \a b -> mkInteger (a Prelude.+ b)
 
 __prim_sub_Integer :: Integer -> Integer -> Integer
-__prim_sub_Integer = (Prelude.-)
+__prim_sub_Integer = __iprim2 $ \a b -> mkInteger (a Prelude.- b)
 
 __prim_mul_Integer :: Integer -> Integer -> Integer
-__prim_mul_Integer = (Prelude.*)
+__prim_mul_Integer = __iprim2 $ \a b -> mkInteger (a Prelude.* b)
 
 (<) :: Integer -> Integer -> Bool
-(<) a b = if (a Prelude.< b) then __mkTrue else __mkFalse
+(<) = __iprim2 $ \a b -> mkBool (a Prelude.< b)
 
 (>) :: Integer -> Integer -> Bool
-(>) a b = if (a Prelude.> b) then __mkTrue else __mkFalse
+(>) = __iprim2 $ \a b -> mkBool (a Prelude.> b)
 
 __prim_show_Integer :: Integer -> List__ Char
-__prim_show_Integer = Prelude.show
+__prim_show_Integer = __iprim Prelude.show
 
 return_io :: a -> IO a
 return_io = Prelude.return
@@ -305,7 +338,7 @@ __prim_mul_Bit :: (N__ n) => Bit n -> Bit n -> Bit n
 __prim_mul_Bit = (Prelude.*)
 
 __prim_fromInteger_Bit :: (N__ n) => Integer -> Bit n
-__prim_fromInteger_Bit = Prelude.fromInteger
+__prim_fromInteger_Bit = __iprim Prelude.fromInteger
 
 __prim_shl_Bit :: (N__ n) => Bit n -> Bit n -> Bit n
 __prim_shl_Bit = Bit.shl
@@ -332,7 +365,7 @@ __prim_concat_Bit :: (N__ a, N__ b) => Bit a -> Bit b -> Bit (N__PLUS a b)
 __prim_concat_Bit = Bit.concat
 
 __prim_extract_Bit :: (N__ n, N__ m) => Bit n -> Integer -> Bit m
-__prim_extract_Bit = Bit.extract
+__prim_extract_Bit = __iprim . Bit.extract
 
 error :: (Symbolic__ a) => List__ Char -> a
 error = __error
@@ -374,11 +407,18 @@ instance Symbolic__ Char where
         | Prelude.otherwise = Prelude.error ("Unsupported __if :: Char predicate: " Prelude.++ Prelude.show p)
 
 instance Symbolic__ Integer where
+    __default = mkInteger 0
+    __if p@(Bool px) a b
+        | Prelude.Just Prelude.True <- SMT.de_boolE px = a
+        | Prelude.Just Prelude.False <- SMT.de_boolE px = b
+        | Prelude.otherwise = Integer_if p a b
+
+instance Symbolic__ Prelude.Integer where
     __default = 0
     __if (Bool p) a b
         | Prelude.Just Prelude.True <- SMT.de_boolE p = a
         | Prelude.Just Prelude.False <- SMT.de_boolE p = b
-        | Prelude.otherwise = Prelude.error ("Unsupported __if :: Integer predicate: " Prelude.++ Prelude.show p)
+        | Prelude.otherwise = Prelude.error ("Unsupported __if :: Prelude.Integer predicate: " Prelude.++ Prelude.show p)
 
 instance Symbolic__ N__0 where
     __default = N__0
@@ -389,6 +429,10 @@ instance Symbolic1__ IO where
 
 instance Symbolic1__ List__ where
     __default1 = [__default]
+    __if1 (Bool p) a b
+        | Prelude.Just Prelude.True <- SMT.de_boolE p = a
+        | Prelude.Just Prelude.False <- SMT.de_boolE p = b
+        | Prelude.otherwise = Prelude.error ("Unsupported __if :: [] predicate: " Prelude.++ Prelude.show p)
 
 instance Symbolic1__ Bit where
     __default1 = Prelude.error "TODO: default1 Bit"
@@ -409,6 +453,11 @@ instance Symbolic2__ N__TIMES where
     __default2 = N__TIMES __default __default
 
 class (Symbolic__ a, N.N__ a) => N__ a where
+    valueof :: a -> Integer
+    valueof = mkInteger . N.valueof
+
+    numeric :: a
+    numeric = N.numeric
 
 instance N__ N__0 where
 instance (N__ n) => N__ (N__2p0 n) where
