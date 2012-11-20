@@ -30,9 +30,10 @@ module Seri.HaskellF.Lib.Prelude (
     N__(..), module NE,
 
     __toSMT, __free,
+    __if_default,
     ) where
 
-import Prelude((.), ($))
+import Prelude((.), ($), (++))
 import qualified Prelude
 import qualified Seri.Haskell.Lib.Bit as Bit
 import Seri.Haskell.Lib.Numeric as NE hiding (N__(..)) 
@@ -113,11 +114,6 @@ __caseFalse p y n = __if p n y
 
 class Symbolic__ a where
     __if :: Bool -> a -> a -> a
-    __if (Bool p) a b
-        | Prelude.Just Prelude.True <- SMT.de_boolE p = a
-        | Prelude.Just Prelude.False <- SMT.de_boolE p = b
-        | Prelude.otherwise = Prelude.error ("Unsupported __if predicate: " Prelude.++ Prelude.show p)
-
     __default :: a
     __error :: List__ Char -> a
     __error = Prelude.const __default
@@ -126,11 +122,6 @@ class Symbolic__ a where
 
 class Symbolic1__ m where
     __if1 :: (Symbolic__ a) => Bool -> m a -> m a -> m a
-    __if1 (Bool p) a b
-        | Prelude.Just Prelude.True <- SMT.de_boolE p = a
-        | Prelude.Just Prelude.False <- SMT.de_boolE p = b
-        | Prelude.otherwise = Prelude.error ("Unsupported __if1 predicate: " Prelude.++ Prelude.show p)
-
     __default1 :: (Symbolic__ a) => m a
     __error1 :: (Symbolic__ a) => List__ Char -> m a
     __error1 = Prelude.const __default1
@@ -146,10 +137,6 @@ instance (Symbolic1__ m, Symbolic__ a) => Symbolic__ (m a) where
 class Symbolic2__ m where
     __if2 :: (Symbolic__ a, Symbolic__ b) =>
         Bool -> m a b -> m a b -> m a b
-    __if2 (Bool p) a b
-        | Prelude.Just Prelude.True <- SMT.de_boolE p = a
-        | Prelude.Just Prelude.False <- SMT.de_boolE p = b
-        | Prelude.otherwise = Prelude.error ("Unsupported __if2 predicate: ?")
 
     __default2 :: (Symbolic__ a, Symbolic__ b) => m a b
     __error2 :: (Symbolic__ a, Symbolic__ b) => List__ Char -> m a b
@@ -168,10 +155,6 @@ instance (Symbolic2__ m, Symbolic__ a) => Symbolic1__ (m a) where
 class Symbolic3__ m where
     __if3 :: (Symbolic__ a, Symbolic__ b, Symbolic__ c) =>
         Bool -> m a b c -> m a b c -> m a b c
-    __if3 (Bool p) a b
-        | Prelude.Just Prelude.True <- SMT.de_boolE p = a
-        | Prelude.Just Prelude.False <- SMT.de_boolE p = b
-        | Prelude.otherwise = Prelude.error ("Unsupported __if3 predicate: ?")
 
     __default3 :: (Symbolic__ a, Symbolic__ b, Symbolic__ c) => m a b c
     __error3 :: (Symbolic__ a, Symbolic__ b, Symbolic__ c) => List__ Char -> m a b c
@@ -424,10 +407,7 @@ instance Symbolic__ Char where
 
 instance Symbolic__ Prelude.Char where
     __default = '?'
-    __if (Bool p) a b
-        | Prelude.Just Prelude.True <- SMT.de_boolE p = a
-        | Prelude.Just Prelude.False <- SMT.de_boolE p = b
-        | Prelude.otherwise = Prelude.error "__if :: Prelude.Char"
+    __if = __if_default "Prelude.Char"
 
 instance Symbolic__ Integer where
     __default = mkInteger 0
@@ -438,42 +418,50 @@ instance Symbolic__ Integer where
 
 instance Symbolic__ Prelude.Integer where
     __default = 0
-    __if (Bool p) a b
-        | Prelude.Just Prelude.True <- SMT.de_boolE p = a
-        | Prelude.Just Prelude.False <- SMT.de_boolE p = b
-        | Prelude.otherwise = Prelude.error ("Unsupported __if :: Prelude.Integer predicate: " Prelude.++ Prelude.show p)
+    __if = __if_default "Prelude.Integer"
 
 instance Symbolic__ N__0 where
+    __if = __if_default "N__0"
     __default = N__0
 
 instance Symbolic1__ IO where
+    __if1 = __if_default "IO"
     __default1 = return_io __default
     __error1 = Prelude.error . Prelude.show
 
 instance Symbolic1__ List__ where
     __default1 = [__default]
-    __if1 (Bool p) a b
-        | Prelude.Just Prelude.True <- SMT.de_boolE p = a
-        | Prelude.Just Prelude.False <- SMT.de_boolE p = b
-        | Prelude.otherwise = Prelude.error ("Unsupported __if :: [] predicate: " Prelude.++ Prelude.show p)
+    __if1 = __if_default "List__"
 
 instance Symbolic1__ Bit where
+    __if1 = __if_default "Bit"
     __default1 = Prelude.error "TODO: default1 Bit"
 
 instance Symbolic1__ N__2p0 where
+    __if1 = __if_default "N__2p0"
     __default1 = N__2p0 __default
 
 instance Symbolic1__ N__2p1 where
+    __if1 = __if_default "N__2p1"
     __default1 = N__2p1 __default
 
 instance Symbolic2__ N__PLUS where
+    __if2 = __if_default "N__PLUS"
     __default2 = N__PLUS __default __default
 
 instance Symbolic2__ N__MINUS where
+    __if2 = __if_default "N__MINUS"
     __default2 = N__MINUS __default __default
 
 instance Symbolic2__ N__TIMES where
+    __if2 = __if_default "N__TIMES"
     __default2 = N__TIMES __default __default
+
+__if_default :: Prelude.String -> Bool -> a -> a -> a
+__if_default msg (Bool p) a b
+    | Prelude.Just Prelude.True <- SMT.de_boolE p = a
+    | Prelude.Just Prelude.False <- SMT.de_boolE p = b
+    | Prelude.otherwise = Prelude.error ("__if " ++ msg)
 
 class (Symbolic__ a, N.N__ a) => N__ a where
     valueof :: a -> Integer

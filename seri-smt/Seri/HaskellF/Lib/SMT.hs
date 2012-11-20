@@ -94,9 +94,11 @@ __caseSatisfiable (Q.Satisfiable a) y _ = y a
 __caseSatisfiable _ _ n = n
 
 instance F.Symbolic1__ Query where
+    __if1 = F.__if_default "Query"
     __default1 = return_query F.__default
     __error1 = error . show
 
 instance F.Symbolic1__ Answer where
+    __if1 = F.__if_default "Answer"
     __default1 = __mkUnsatisfiable
 
