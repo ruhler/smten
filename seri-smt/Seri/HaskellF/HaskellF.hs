@@ -120,7 +120,7 @@ constrcasenm n = prependnm "__case" n
 hsExp :: Exp -> Failable H.Exp
 hsExp e | Just xs <- de_listE e = do
   xs' <- mapM hsExp xs
-  return $ H.ListE xs'
+  return $ H.AppE (H.VarE (H.mkName "__list")) (H.ListE xs')
 hsExp (LitE l) = return (hsLit l)
 hsExp (ConE (Sig n t))
   | n == name "()" = hsExp (ConE (Sig (name "Unit__") t))

@@ -31,6 +31,7 @@ module Seri.HaskellF.Lib.Prelude (
 
     __toSMT, __free,
     __if_default,
+    __list,
     ) where
 
 import Prelude((.), ($), (++))
@@ -43,7 +44,6 @@ import qualified Seri.SMT.Syntax as SMT
 type IO = Prelude.IO
 type Bit = Bit.Bit
 type Unit__ = ()
-type List__ = []
 type Integer = Concrete__ Prelude.Integer
 type Char = Concrete__ Prelude.Char
 
@@ -73,6 +73,13 @@ __capp f (Concrete_if p a b) = __if p (__capp f a) (__capp f b)
 __capp2 :: (Symbolic__ a, Symbolic__ b) => (a -> a -> b)
                           -> Concrete__ a -> Concrete__ a -> b
 __capp2 f = __capp . __capp f
+
+data List__ a = List_c [a]
+              | List_if Bool (List__ a) (List__ a)
+    deriving (Prelude.Show)
+
+__list :: [a] -> List__ a
+__list = List_c
 
 
 instance Prelude.Num Integer where
@@ -290,7 +297,7 @@ __prim_mul_Integer = __capp2 $ \a b -> __concrete (a Prelude.* b)
 (>) = __capp2 $ \a b -> mkBool (a Prelude.> b)
 
 __prim_show_Integer :: Integer -> List__ Char
-__prim_show_Integer = Prelude.map __concrete . __capp Prelude.show
+__prim_show_Integer = __list . Prelude.map __concrete . __capp Prelude.show
 
 return_io :: a -> IO a
 return_io = Prelude.return
@@ -311,7 +318,7 @@ __prim_eq_Bit :: (N__ n) => Bit n -> Bit n -> Bool
 __prim_eq_Bit a b = if a Prelude.== b then __mkTrue else __mkFalse
 
 __prim_show_Bit :: Bit n -> List__ Char
-__prim_show_Bit = Prelude.map __concrete . Prelude.show
+__prim_show_Bit = __list . Prelude.map __concrete . Prelude.show
 
 __prim_add_Bit :: (N__ n) => Bit n -> Bit n -> Bit n
 __prim_add_Bit = (Prelude.+)
@@ -355,19 +362,22 @@ __prim_extract_Bit = __capp . Bit.extract
 error :: (Symbolic__ a) => List__ Char -> a
 error = __error
 
-__mkCons__ :: a -> List__ a -> List__ a
-__mkCons__ = (:)
+__mkCons__ :: (Symbolic__ a) => a -> List__ a -> List__ a
+__mkCons__ x (List_c xs) = __list (x:xs)
+__mkCons__ x (List_if p a b) = __if p (__mkCons__ x a) (__mkCons__ x b)
 
 __mkNil__ :: List__ a
-__mkNil__ = []
+__mkNil__ = __list []
 
-__caseCons__ :: List__ a -> (a -> List__ a -> x) -> x -> x
-__caseCons__ (x:xs) f _ = f x xs
-__caseCons__ _ _ n = n
+__caseCons__ :: (Symbolic__ x) => List__ a -> (a -> List__ a -> x) -> x -> x
+__caseCons__ (List_c (x:xs)) f _ = f x (List_c xs)
+__caseCons__ (List_c []) _ n = n
+__caseCons__ (List_if p a b) y n = __if p (__caseCons__ a y n) (__caseCons__ b y n)
 
-__caseNil__ :: List__ a -> x -> x -> x
-__caseNil__ [] y _ = y
-__caseNil__ _ _ n = n
+__caseNil__ :: (Symbolic__ x) => List__ a -> x -> x -> x
+__caseNil__ (List_c []) y _ = y
+__caseNil__ (List_c _) _ n = n
+__caseNil__ (List_if p a b) y n = __if p (__caseNil__ a y n) (__caseNil__ b y n)
 
 __mkUnit__ :: Unit__
 __mkUnit__ = ()
@@ -395,6 +405,10 @@ instance Symbolic__ Prelude.Char where
     __default = '?'
     __if = __if_default "Prelude.Char"
 
+instance Symbolic1__ [] where
+    __default1 = []
+    __if1 = __if_default "Prelude.[]"
+
 instance Symbolic__ Prelude.Integer where
     __default = 0
     __if = __if_default "Prelude.Integer"
@@ -409,8 +423,11 @@ instance Symbolic1__ IO where
     __error1 = Prelude.error . Prelude.show
 
 instance Symbolic1__ List__ where
-    __default1 = [__default]
-    __if1 = __if_default "List__"
+    __default1 = __list [__default]
+    __if1 p@(Bool px) a b
+        | Prelude.Just Prelude.True <- SMT.de_boolE px = a
+        | Prelude.Just Prelude.False <- SMT.de_boolE px = b
+        | Prelude.otherwise = List_if p a b
 
 instance Symbolic1__ Bit where
     __if1 = __if_default "Bit"
