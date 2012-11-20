@@ -311,7 +311,19 @@ hsDec (DataD n tyvars constrs) =
             defmethod = H.FunD (defmeth (genericLength tyvars)) [
                 H.Clause [] defbody []
                 ]
-        in H.InstanceD [] ty [ifmethod, defmethod]
+
+            subfield :: H.VarStrictType -> H.FieldExp
+            subfield (n, _, _) = 
+                let e = foldl H.AppE (H.VarE (H.mkName "__substitute")) [
+                            H.VarE (H.mkName "f"),
+                            H.AppE (H.VarE n) (H.VarE (H.mkName "a"))]
+                in (n, e)
+
+            subbody = H.NormalB $ H.RecConE cn (map subfield fields)
+            submethod = H.FunD (submeth (genericLength tyvars)) [
+                H.Clause [H.VarP (H.mkName x) | x <- ["f", "a"]] subbody []
+                ]
+        in H.InstanceD [] ty [ifmethod, defmethod, submethod]
 
       mkmk :: [Name] -> Name -> [Type] -> [H.Type] -> [H.Dec]
       mkmk prev cn tys ctys =
@@ -496,6 +508,10 @@ ifmeth n = H.mkName $ "__if" ++ show n
 defmeth :: Integer -> H.Name
 defmeth 0 = H.mkName "__default"
 defmeth n = H.mkName $ "__default" ++ show n
+
+submeth :: Integer -> H.Name
+submeth 0 = H.mkName "__substitute"
+submeth n = H.mkName $ "__substitute" ++ show n
 
 -- Form the context for declarations.
 mkContext :: (Name -> Bool) -- ^ which variable types we should care about

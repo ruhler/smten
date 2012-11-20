@@ -27,6 +27,8 @@ module Seri.HaskellF.Lib.Prelude (
     error,
 
     N__, module NE,
+
+    __toSMT,
     ) where
 
 import qualified Prelude
@@ -42,7 +44,7 @@ type Bit = Bit.Bit
 type Unit__ = ()
 type List__ = []
 
-newtype Bool = Bool (SMT.Expression)
+newtype Bool = Bool { __toSMT :: SMT.Expression }
     deriving(Prelude.Show)
 
 __mkTrue :: Bool
@@ -65,6 +67,8 @@ class Symbolic__ a where
         | Prelude.otherwise = Prelude.error ("Unsupported __if predicate: ?")
 
     __default :: a
+    __substitute :: (SMT.Symbol -> Prelude.Maybe SMT.Expression) -> a -> a
+    __substitute _ = Prelude.id
 
 class Symbolic1__ m where
     __if1 :: (Symbolic__ a) => Bool -> m a -> m a -> m a
@@ -74,10 +78,13 @@ class Symbolic1__ m where
         | Prelude.otherwise = Prelude.error ("Unsupported __if1 predicate: ?")
 
     __default1 :: (Symbolic__ a) => m a
+    __substitute1 :: (Symbolic__ a) => (SMT.Symbol -> Prelude.Maybe SMT.Expression) -> m a -> m a
+    __substitute1 _ = Prelude.id
 
 instance (Symbolic1__ m, Symbolic__ a) => Symbolic__ (m a) where
     __if = __if1
     __default = __default1
+    __substitute = __substitute1
 
 class Symbolic2__ m where
     __if2 :: (Symbolic__ a, Symbolic__ b) =>
@@ -88,11 +95,15 @@ class Symbolic2__ m where
         | Prelude.otherwise = Prelude.error ("Unsupported __if2 predicate: ?")
 
     __default2 :: (Symbolic__ a, Symbolic__ b) => m a b
+    __substitute2 :: (Symbolic__ a, Symbolic__ b) =>
+        (SMT.Symbol -> Prelude.Maybe SMT.Expression) -> m a b -> m a b
+    __substitute2 _ = Prelude.id
 
 
 instance (Symbolic2__ m, Symbolic__ a) => Symbolic1__ (m a) where
     __if1 = __if2
     __default1 = __default2
+    __substitute1 = __substitute2
 
 class Symbolic3__ m where
     __if3 :: (Symbolic__ a, Symbolic__ b, Symbolic__ c) =>
@@ -103,80 +114,90 @@ class Symbolic3__ m where
         | Prelude.otherwise = Prelude.error ("Unsupported __if3 predicate: ?")
 
     __default3 :: (Symbolic__ a, Symbolic__ b, Symbolic__ c) => m a b c
+    __substitute3 :: (Symbolic__ a, Symbolic__ b, Symbolic__ c) =>
+        (SMT.Symbol -> Prelude.Maybe SMT.Expression) -> m a b c -> m a b c
 
 instance (Symbolic3__ m, Symbolic__ a) => Symbolic2__ (m a) where
     __if2 = __if3
     __default2 = __default3
+    __substitute2 = __substitute3
 
 class Symbolic4__ m where
     __if4 :: (Symbolic__ a, Symbolic__ b, Symbolic__ c, Symbolic__ d) =>
         Bool -> m a b c d -> m a b c d -> m a b c d
     __default4 :: (Symbolic__ a, Symbolic__ b, Symbolic__ c, Symbolic__ d) =>
         m a b c d
+    __substitute4 :: (Symbolic__ a, Symbolic__ b, Symbolic__ c, Symbolic__ d) =>
+        (SMT.Symbol -> Prelude.Maybe SMT.Expression) -> m a b c d -> m a b c d
 
 instance (Symbolic4__ m, Symbolic__ a) => Symbolic3__ (m a) where
     __if3 = __if4
     __default3 = __default4
+    __substitute3 = __substitute4
 
 class Symbolic5__ m where
-    __if5 :: (Symbolic__ a, Symbolic__ b, Symbolic__ c, Symbolic__ d,
-              Symbolic__ e) =>
+    __if5 :: (Symbolic__ a, Symbolic__ b, Symbolic__ c, Symbolic__ d, Symbolic__ e) =>
         Bool -> m a b c d e -> m a b c d e -> m a b c d e
 
-    __default5 :: (Symbolic__ a, Symbolic__ b, Symbolic__ c, Symbolic__ d,
-              Symbolic__ e) => m a b c d e 
+    __default5 :: (Symbolic__ a, Symbolic__ b, Symbolic__ c, Symbolic__ d, Symbolic__ e) => m a b c d e 
+    __substitute5 :: (Symbolic__ a, Symbolic__ b, Symbolic__ c, Symbolic__ d, Symbolic__ e) =>
+        (SMT.Symbol -> Prelude.Maybe SMT.Expression) -> m a b c d e -> m a b c d e
 
 instance (Symbolic5__ m, Symbolic__ a) => Symbolic4__ (m a) where
     __if4 = __if5
     __default4 = __default5
+    __substitute4 = __substitute5
 
 class Symbolic6__ m where
-    __if6 :: (Symbolic__ a, Symbolic__ b, Symbolic__ c, Symbolic__ d,
-              Symbolic__ e, Symbolic__ f) =>
+    __if6 :: (Symbolic__ a, Symbolic__ b, Symbolic__ c, Symbolic__ d, Symbolic__ e, Symbolic__ f) =>
         Bool -> m a b c d e f -> m a b c d e f -> m a b c d e f
-    __default6 :: (Symbolic__ a, Symbolic__ b, Symbolic__ c, Symbolic__ d,
-              Symbolic__ e, Symbolic__ f) => m a b c d e f
+    __default6 :: (Symbolic__ a, Symbolic__ b, Symbolic__ c, Symbolic__ d, Symbolic__ e, Symbolic__ f) => m a b c d e f
+    __substitute6 :: (Symbolic__ a, Symbolic__ b, Symbolic__ c, Symbolic__ d, Symbolic__ e, Symbolic__ f) =>
+        (SMT.Symbol -> Prelude.Maybe SMT.Expression) -> m a b c d e f -> m a b c d e f
 
 instance (Symbolic6__ m, Symbolic__ a) => Symbolic5__ (m a) where
     __if5 = __if6
     __default5 = __default6
+    __substitute5 = __substitute6
 
 class Symbolic7__ m where
-    __if7 :: (Symbolic__ a, Symbolic__ b, Symbolic__ c, Symbolic__ d,
-              Symbolic__ e, Symbolic__ f, Symbolic__ g) =>
+    __if7 :: (Symbolic__ a, Symbolic__ b, Symbolic__ c, Symbolic__ d, Symbolic__ e, Symbolic__ f, Symbolic__ g) =>
         Bool -> m a b c d e f g -> m a b c d e f g -> m a b c d e f g
-    __default7 :: (Symbolic__ a, Symbolic__ b, Symbolic__ c, Symbolic__ d,
-              Symbolic__ e, Symbolic__ f, Symbolic__ g) => m a b c d e f g 
+    __default7 :: (Symbolic__ a, Symbolic__ b, Symbolic__ c, Symbolic__ d, Symbolic__ e, Symbolic__ f, Symbolic__ g) => m a b c d e f g 
+    __substitute7 :: (Symbolic__ a, Symbolic__ b, Symbolic__ c, Symbolic__ d, Symbolic__ e, Symbolic__ f, Symbolic__ g) =>
+        (SMT.Symbol -> Prelude.Maybe SMT.Expression) -> m a b c d e f g -> m a b c d e f g
 
 instance (Symbolic7__ m, Symbolic__ a) => Symbolic6__ (m a) where
     __if6 = __if7
     __default6 = __default7
+    __substitute6 = __substitute7
 
 class Symbolic8__ m where
-    __if8 :: (Symbolic__ a, Symbolic__ b, Symbolic__ c, Symbolic__ d,
-              Symbolic__ e, Symbolic__ f, Symbolic__ g, Symbolic__ h) =>
+    __if8 :: (Symbolic__ a, Symbolic__ b, Symbolic__ c, Symbolic__ d, Symbolic__ e, Symbolic__ f, Symbolic__ g, Symbolic__ h) =>
         Bool -> m a b c d e f g h -> m a b c d e f g h -> m a b c d e f g h
-    __default8 :: (Symbolic__ a, Symbolic__ b, Symbolic__ c, Symbolic__ d,
-              Symbolic__ e, Symbolic__ f, Symbolic__ g, Symbolic__ h) =>
-                m a b c d e f g h 
+    __default8 :: (Symbolic__ a, Symbolic__ b, Symbolic__ c, Symbolic__ d, Symbolic__ e, Symbolic__ f, Symbolic__ g, Symbolic__ h) => m a b c d e f g h 
+    __substitute8 :: (Symbolic__ a, Symbolic__ b, Symbolic__ c, Symbolic__ d, Symbolic__ e, Symbolic__ f, Symbolic__ g, Symbolic__ h) =>
+        (SMT.Symbol -> Prelude.Maybe SMT.Expression) -> m a b c d e f g h -> m a b c d e f g h
 
 instance (Symbolic8__ m, Symbolic__ a) => Symbolic7__ (m a) where
     __if7 = __if8
     __default7 = __default8
+    __substitute7 = __substitute8
 
 class Symbolic9__ m where
-    __if9 :: (Symbolic__ a, Symbolic__ b, Symbolic__ c, Symbolic__ d,
-              Symbolic__ e, Symbolic__ f, Symbolic__ g, Symbolic__ h,
-              Symbolic__ i) =>
+    __if9 :: (Symbolic__ a, Symbolic__ b, Symbolic__ c, Symbolic__ d, Symbolic__ e, Symbolic__ f, Symbolic__ g, Symbolic__ h, Symbolic__ i) =>
         Bool -> m a b c d e f g h i -> m a b c d e f g h i -> m a b c d e f g h i
 
     __default9 :: (Symbolic__ a, Symbolic__ b, Symbolic__ c, Symbolic__ d,
               Symbolic__ e, Symbolic__ f, Symbolic__ g, Symbolic__ h,
               Symbolic__ i) => m a b c d e f g h i
+    __substitute9 :: (Symbolic__ a, Symbolic__ b, Symbolic__ c, Symbolic__ d, Symbolic__ e, Symbolic__ f, Symbolic__ g, Symbolic__ h, Symbolic__ i) =>
+        (SMT.Symbol -> Prelude.Maybe SMT.Expression) -> m a b c d e f g h i -> m a b c d e f g h i
 
 instance (Symbolic9__ m, Symbolic__ a) => Symbolic8__ (m a) where
     __if8 = __if9
     __default8 = __default9
+    __substitute8 = __substitute9
 
 instance Symbolic__ Bool where
     __if (Bool p) a@(Bool ax) b@(Bool bx)
@@ -185,6 +206,7 @@ instance Symbolic__ Bool where
         | Prelude.otherwise = Bool (SMT.ifE p ax bx)
 
     __default = __mkFalse
+    __substitute f (Bool x) = Bool (SMT.substitute f x)
 
 not :: Bool -> Bool
 not x = __caseTrue x __mkFalse __mkTrue
@@ -309,6 +331,7 @@ instance Symbolic__ Unit__ where
 instance Symbolic2__ (->) where
     __if2 p f g = \x -> __if p (f x) (g x)
     __default2 = \_ -> __default
+    __substitute2 l f = \x -> __substitute l (f x)
 
 instance Symbolic__ Char where
     __default = '?'

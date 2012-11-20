@@ -33,6 +33,8 @@
 -- 
 -------------------------------------------------------------------------------
 
+{-# LANGUAGE PatternGuards #-}
+
 -- | An abstract syntax for SMT solvers.
 module Seri.SMT.Syntax (
     Symbol, Command(..), Type(..), Expression(..),
@@ -53,6 +55,8 @@ module Seri.SMT.Syntax (
     bvshlE, de_bvshlE, bvlshrE, de_bvlshrE,
     bvzeroExtendE, de_bvzeroExtendE, bvextractE,
     bvconcatE, de_bvconcatE,
+
+    substitute,
   ) where
 
 type Symbol = String
@@ -296,4 +300,22 @@ letE bs e = LetE bs e
 de_letE :: Expression -> Maybe ([Binding], Expression)
 de_letE (LetE bs e) = Just (bs, e)
 de_letE _ = Nothing
+
+-- Replace the values of symbols in the given expression with the given
+-- updated value, if any. Performs simplification after the substitution.
+substitute :: (Symbol -> Maybe Expression) -> Expression -> Expression
+substitute f e =
+  let me = substitute f
+  in case e of
+       _ | Just x <- de_notE e -> notE (me x)
+         | Just (a, b) <- de_eqE e -> eqE (me a) (me b)
+         | Just (p, a, b) <- de_ifE e -> ifE (me p) (me a) (me b)
+         | Just xs <- de_andE e -> andE (map me xs)
+         | Just xs <- de_orE e -> orE (map me xs)
+       LitE {} -> e
+       VarE v | Just x <- f v -> x
+       VarE {} -> e
+       LetE bs x -> LetE [(s, me e) | (s, e) <- bs] (me x) 
+       AppE f xs -> AppE (me f) (map me xs)
+       UpdateE f xs v -> UpdateE (me f) (map me xs) (me v)
 
