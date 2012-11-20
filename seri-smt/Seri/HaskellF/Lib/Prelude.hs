@@ -1,4 +1,5 @@
 
+{-# LANGUAGE PatternGuards #-}
 {-# LANGUAGE FlexibleInstances #-}
 
 module Seri.HaskellF.Lib.Prelude (
@@ -32,6 +33,7 @@ import qualified Prelude
 import qualified Seri.Haskell.Lib.Bit as Bit
 import Seri.Haskell.Lib.Numeric as NE hiding (N__) 
 import qualified Seri.Haskell.Lib.Numeric as N
+import qualified Seri.SMT.Syntax as SMT
 
 type Char = Prelude.Char
 type Integer = Prelude.Integer
@@ -40,17 +42,14 @@ type Bit = Bit.Bit
 type Unit__ = ()
 type List__ = []
 
-data Bool = True
-          | False
-          | Free Prelude.String
-          | Conditional Bool Bool Bool
+newtype Bool = Bool (SMT.Expression)
     deriving(Prelude.Show)
 
 __mkTrue :: Bool
-__mkTrue = True
+__mkTrue = Bool SMT.trueE
 
 __mkFalse :: Bool
-__mkFalse = False
+__mkFalse = Bool SMT.falseE
 
 __caseTrue :: (Symbolic__ a) => Bool -> a -> a -> a
 __caseTrue p a b = __if p a b
@@ -60,17 +59,19 @@ __caseFalse p y n = __if p n y
 
 class Symbolic__ a where
     __if :: Bool -> a -> a -> a
-    __if True a _ = a
-    __if False _ b = b
-    __if p _ _ = Prelude.error ("Unsupported __if predicate: ?")
+    __if (Bool p) a b
+        | Prelude.Just Prelude.True <- SMT.de_boolE p = a
+        | Prelude.Just Prelude.False <- SMT.de_boolE p = b
+        | Prelude.otherwise = Prelude.error ("Unsupported __if predicate: ?")
 
     __default :: a
 
 class Symbolic1__ m where
     __if1 :: (Symbolic__ a) => Bool -> m a -> m a -> m a
-    __if1 True a _ = a
-    __if1 False _ b = b
-    __if1 p _ _ = Prelude.error ("Unsupported __if1 predicate: ?")
+    __if1 (Bool p) a b
+        | Prelude.Just Prelude.True <- SMT.de_boolE p = a
+        | Prelude.Just Prelude.False <- SMT.de_boolE p = b
+        | Prelude.otherwise = Prelude.error ("Unsupported __if1 predicate: ?")
 
     __default1 :: (Symbolic__ a) => m a
 
@@ -81,9 +82,10 @@ instance (Symbolic1__ m, Symbolic__ a) => Symbolic__ (m a) where
 class Symbolic2__ m where
     __if2 :: (Symbolic__ a, Symbolic__ b) =>
         Bool -> m a b -> m a b -> m a b
-    __if2 True a _ = a
-    __if2 False _ b = b
-    __if2 p _ _ = Prelude.error ("Unsupported __if2 predicate: ?")
+    __if2 (Bool p) a b
+        | Prelude.Just Prelude.True <- SMT.de_boolE p = a
+        | Prelude.Just Prelude.False <- SMT.de_boolE p = b
+        | Prelude.otherwise = Prelude.error ("Unsupported __if2 predicate: ?")
 
     __default2 :: (Symbolic__ a, Symbolic__ b) => m a b
 
@@ -95,9 +97,10 @@ instance (Symbolic2__ m, Symbolic__ a) => Symbolic1__ (m a) where
 class Symbolic3__ m where
     __if3 :: (Symbolic__ a, Symbolic__ b, Symbolic__ c) =>
         Bool -> m a b c -> m a b c -> m a b c
-    __if3 True a _ = a
-    __if3 False _ b = b
-    __if3 p _ _ = Prelude.error ("Unsupported __if3 predicate: ?")
+    __if3 (Bool p) a b
+        | Prelude.Just Prelude.True <- SMT.de_boolE p = a
+        | Prelude.Just Prelude.False <- SMT.de_boolE p = b
+        | Prelude.otherwise = Prelude.error ("Unsupported __if3 predicate: ?")
 
     __default3 :: (Symbolic__ a, Symbolic__ b, Symbolic__ c) => m a b c
 
@@ -176,12 +179,12 @@ instance (Symbolic9__ m, Symbolic__ a) => Symbolic8__ (m a) where
     __default8 = __default9
 
 instance Symbolic__ Bool where
-    __if True a _ = a
-    __if False _ b = b
-    __if p a b = Prelude.error ("TODO: __if predicate for Bool")
-    --__if p a b = Conditional p a b
+    __if (Bool p) a@(Bool ax) b@(Bool bx)
+        | Prelude.Just Prelude.True <- SMT.de_boolE p = a
+        | Prelude.Just Prelude.False <- SMT.de_boolE p = b
+        | Prelude.otherwise = Bool (SMT.ifE p ax bx)
 
-    __default = False
+    __default = __mkFalse
 
 not :: Bool -> Bool
 not x = __caseTrue x __mkFalse __mkTrue

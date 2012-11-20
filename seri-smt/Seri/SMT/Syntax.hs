@@ -40,7 +40,8 @@ module Seri.SMT.Syntax (
 
     -- * Core
     letE, de_letE, eqE, de_eqE, ifE, de_ifE, varE, de_varE,
-    boolE, trueE, falseE, notE, de_notE, andE, de_andE, orE, de_orE,
+    boolE, de_boolE, trueE, falseE,
+    notE, de_notE, andE, de_andE, orE, de_orE,
 
     -- * Integer
     integerE, ltE, leqE, gtE, addE, subE, mulE,
@@ -104,6 +105,10 @@ falseE = LitE (BoolL False)
 
 boolE :: Bool -> Expression
 boolE b = LitE (BoolL b)
+
+de_boolE :: Expression -> Maybe Bool
+de_boolE (LitE (BoolL b)) = Just b
+de_boolE _ = Nothing
 
 -- | > not e
 notE :: Expression -> Expression
