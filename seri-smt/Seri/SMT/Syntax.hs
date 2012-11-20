@@ -116,7 +116,9 @@ de_boolE _ = Nothing
 
 -- | > not e
 notE :: Expression -> Expression
-notE e = AppE (varE "not") [e]
+notE p
+ | Just v <- de_boolE p = boolE (not v)
+ | otherwise = AppE (varE "not") [p]
 
 de_notE :: Expression -> Maybe Expression
 de_notE (AppE (VarE "not") [e]) = Just e

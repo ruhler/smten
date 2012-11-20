@@ -105,6 +105,7 @@ proc haskellf {module} {
 
 haskellf Seri.Tests.Basic
 haskellf Seri.SMT.Tests.Core
+haskellf Seri.SMT.Tests.Datatype
 
 puts "BUILD COMPLETE"
 

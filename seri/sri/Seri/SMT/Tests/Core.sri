@@ -18,6 +18,8 @@ p x y z =
 
 qtest :: Query ()
 qtest = do
+    test "core.dummy" True
+
     -- Trivial test. Verifies we can make free booleans and assert things
     -- about them.
     a <- free

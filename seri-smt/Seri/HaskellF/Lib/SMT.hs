@@ -63,7 +63,8 @@ runYices1 _ q = do
 runYices2 :: d -> Query a -> IO a
 runYices2 _ q = do
     s <- Q.yices2 
-    Q.runQuery (Q.RunOptions (Just "foo.yices2.dbg") s) q
+    --Q.runQuery (Q.RunOptions (Just "foo.yices2.dbg") s) q
+    Q.runQuery (Q.RunOptions Nothing s) q
 
 -- TODO: don't ignore debug argument.
 runSTP :: d -> Query a -> IO a
@@ -94,6 +95,7 @@ __caseSatisfiable _ _ n = n
 
 instance F.Symbolic1__ Query where
     __default1 = return_query F.__default
+    __error1 = error
 
 instance F.Symbolic1__ Answer where
     __default1 = __mkUnsatisfiable

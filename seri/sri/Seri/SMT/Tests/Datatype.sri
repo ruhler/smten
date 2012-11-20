@@ -56,4 +56,5 @@ main = do
     runYices1 (Just "build/test/Datatype.yices1.dbg") qtest
     runYices2 (Just "build/test/Datatype.yices2.dbg") qtest
     runSTP (Just "build/test/Datatype.stp.dbg") qtest
+    putStrLn "DATATYPE PASSED"
 

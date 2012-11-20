@@ -67,9 +67,11 @@ class Symbolic__ a where
     __if (Bool p) a b
         | Prelude.Just Prelude.True <- SMT.de_boolE p = a
         | Prelude.Just Prelude.False <- SMT.de_boolE p = b
-        | Prelude.otherwise = Prelude.error ("Unsupported __if predicate: ?")
+        | Prelude.otherwise = Prelude.error ("Unsupported __if predicate: " Prelude.++ Prelude.show p)
 
     __default :: a
+    __error :: Prelude.String -> a
+    __error = Prelude.const __default
     __substitute :: (SMT.Symbol -> Prelude.Maybe SMT.Expression) -> a -> a
     __substitute _ = Prelude.id
 
@@ -78,15 +80,18 @@ class Symbolic1__ m where
     __if1 (Bool p) a b
         | Prelude.Just Prelude.True <- SMT.de_boolE p = a
         | Prelude.Just Prelude.False <- SMT.de_boolE p = b
-        | Prelude.otherwise = Prelude.error ("Unsupported __if1 predicate: ?")
+        | Prelude.otherwise = Prelude.error ("Unsupported __if1 predicate: " Prelude.++ Prelude.show p)
 
     __default1 :: (Symbolic__ a) => m a
+    __error1 :: (Symbolic__ a) => Prelude.String -> m a
+    __error1 = Prelude.const __default1
     __substitute1 :: (Symbolic__ a) => (SMT.Symbol -> Prelude.Maybe SMT.Expression) -> m a -> m a
     __substitute1 _ = Prelude.id
 
 instance (Symbolic1__ m, Symbolic__ a) => Symbolic__ (m a) where
     __if = __if1
     __default = __default1
+    __error = __error1
     __substitute = __substitute1
 
 class Symbolic2__ m where
@@ -98,6 +103,8 @@ class Symbolic2__ m where
         | Prelude.otherwise = Prelude.error ("Unsupported __if2 predicate: ?")
 
     __default2 :: (Symbolic__ a, Symbolic__ b) => m a b
+    __error2 :: (Symbolic__ a, Symbolic__ b) => Prelude.String -> m a b
+    __error2 = Prelude.const __default2
     __substitute2 :: (Symbolic__ a, Symbolic__ b) =>
         (SMT.Symbol -> Prelude.Maybe SMT.Expression) -> m a b -> m a b
     __substitute2 _ = Prelude.id
@@ -106,6 +113,7 @@ class Symbolic2__ m where
 instance (Symbolic2__ m, Symbolic__ a) => Symbolic1__ (m a) where
     __if1 = __if2
     __default1 = __default2
+    __error1 = __error2
     __substitute1 = __substitute2
 
 class Symbolic3__ m where
@@ -117,25 +125,30 @@ class Symbolic3__ m where
         | Prelude.otherwise = Prelude.error ("Unsupported __if3 predicate: ?")
 
     __default3 :: (Symbolic__ a, Symbolic__ b, Symbolic__ c) => m a b c
+    __error3 :: (Symbolic__ a, Symbolic__ b, Symbolic__ c) => Prelude.String -> m a b c
+    __error3 = Prelude.const __default3
     __substitute3 :: (Symbolic__ a, Symbolic__ b, Symbolic__ c) =>
         (SMT.Symbol -> Prelude.Maybe SMT.Expression) -> m a b c -> m a b c
 
 instance (Symbolic3__ m, Symbolic__ a) => Symbolic2__ (m a) where
     __if2 = __if3
     __default2 = __default3
+    __error2 = __error3
     __substitute2 = __substitute3
 
 class Symbolic4__ m where
     __if4 :: (Symbolic__ a, Symbolic__ b, Symbolic__ c, Symbolic__ d) =>
         Bool -> m a b c d -> m a b c d -> m a b c d
-    __default4 :: (Symbolic__ a, Symbolic__ b, Symbolic__ c, Symbolic__ d) =>
-        m a b c d
+    __default4 :: (Symbolic__ a, Symbolic__ b, Symbolic__ c, Symbolic__ d) => m a b c d
+    __error4 :: (Symbolic__ a, Symbolic__ b, Symbolic__ c, Symbolic__ d) => Prelude.String -> m a b c d
+    __error4 = Prelude.const __default4
     __substitute4 :: (Symbolic__ a, Symbolic__ b, Symbolic__ c, Symbolic__ d) =>
         (SMT.Symbol -> Prelude.Maybe SMT.Expression) -> m a b c d -> m a b c d
 
 instance (Symbolic4__ m, Symbolic__ a) => Symbolic3__ (m a) where
     __if3 = __if4
     __default3 = __default4
+    __error3 = __error4
     __substitute3 = __substitute4
 
 class Symbolic5__ m where
@@ -143,48 +156,60 @@ class Symbolic5__ m where
         Bool -> m a b c d e -> m a b c d e -> m a b c d e
 
     __default5 :: (Symbolic__ a, Symbolic__ b, Symbolic__ c, Symbolic__ d, Symbolic__ e) => m a b c d e 
+    __error5 :: (Symbolic__ a, Symbolic__ b, Symbolic__ c, Symbolic__ d, Symbolic__ e) => Prelude.String -> m a b c d e 
+    __error5 = Prelude.const __default5
     __substitute5 :: (Symbolic__ a, Symbolic__ b, Symbolic__ c, Symbolic__ d, Symbolic__ e) =>
         (SMT.Symbol -> Prelude.Maybe SMT.Expression) -> m a b c d e -> m a b c d e
 
 instance (Symbolic5__ m, Symbolic__ a) => Symbolic4__ (m a) where
     __if4 = __if5
     __default4 = __default5
+    __error4 = __error5
     __substitute4 = __substitute5
 
 class Symbolic6__ m where
     __if6 :: (Symbolic__ a, Symbolic__ b, Symbolic__ c, Symbolic__ d, Symbolic__ e, Symbolic__ f) =>
         Bool -> m a b c d e f -> m a b c d e f -> m a b c d e f
     __default6 :: (Symbolic__ a, Symbolic__ b, Symbolic__ c, Symbolic__ d, Symbolic__ e, Symbolic__ f) => m a b c d e f
+    __error6 :: (Symbolic__ a, Symbolic__ b, Symbolic__ c, Symbolic__ d, Symbolic__ e, Symbolic__ f) => Prelude.String -> m a b c d e f
+    __error6 = Prelude.const __default6
     __substitute6 :: (Symbolic__ a, Symbolic__ b, Symbolic__ c, Symbolic__ d, Symbolic__ e, Symbolic__ f) =>
         (SMT.Symbol -> Prelude.Maybe SMT.Expression) -> m a b c d e f -> m a b c d e f
 
 instance (Symbolic6__ m, Symbolic__ a) => Symbolic5__ (m a) where
     __if5 = __if6
     __default5 = __default6
+    __error5 = __error6
     __substitute5 = __substitute6
 
 class Symbolic7__ m where
     __if7 :: (Symbolic__ a, Symbolic__ b, Symbolic__ c, Symbolic__ d, Symbolic__ e, Symbolic__ f, Symbolic__ g) =>
         Bool -> m a b c d e f g -> m a b c d e f g -> m a b c d e f g
     __default7 :: (Symbolic__ a, Symbolic__ b, Symbolic__ c, Symbolic__ d, Symbolic__ e, Symbolic__ f, Symbolic__ g) => m a b c d e f g 
+    __error7 :: (Symbolic__ a, Symbolic__ b, Symbolic__ c, Symbolic__ d, Symbolic__ e, Symbolic__ f, Symbolic__ g) => Prelude.String -> m a b c d e f g 
+    __error7 = Prelude.const __default7
     __substitute7 :: (Symbolic__ a, Symbolic__ b, Symbolic__ c, Symbolic__ d, Symbolic__ e, Symbolic__ f, Symbolic__ g) =>
         (SMT.Symbol -> Prelude.Maybe SMT.Expression) -> m a b c d e f g -> m a b c d e f g
 
 instance (Symbolic7__ m, Symbolic__ a) => Symbolic6__ (m a) where
     __if6 = __if7
     __default6 = __default7
+    __error6 = __error7
     __substitute6 = __substitute7
 
 class Symbolic8__ m where
     __if8 :: (Symbolic__ a, Symbolic__ b, Symbolic__ c, Symbolic__ d, Symbolic__ e, Symbolic__ f, Symbolic__ g, Symbolic__ h) =>
         Bool -> m a b c d e f g h -> m a b c d e f g h -> m a b c d e f g h
     __default8 :: (Symbolic__ a, Symbolic__ b, Symbolic__ c, Symbolic__ d, Symbolic__ e, Symbolic__ f, Symbolic__ g, Symbolic__ h) => m a b c d e f g h 
+    __error8 :: (Symbolic__ a, Symbolic__ b, Symbolic__ c, Symbolic__ d, Symbolic__ e, Symbolic__ f, Symbolic__ g, Symbolic__ h) => Prelude.String -> m a b c d e f g h 
+    __error8 = Prelude.const __default8
     __substitute8 :: (Symbolic__ a, Symbolic__ b, Symbolic__ c, Symbolic__ d, Symbolic__ e, Symbolic__ f, Symbolic__ g, Symbolic__ h) =>
         (SMT.Symbol -> Prelude.Maybe SMT.Expression) -> m a b c d e f g h -> m a b c d e f g h
 
 instance (Symbolic8__ m, Symbolic__ a) => Symbolic7__ (m a) where
     __if7 = __if8
     __default7 = __default8
+    __error7 = __error8
     __substitute7 = __substitute8
 
 class Symbolic9__ m where
@@ -194,12 +219,17 @@ class Symbolic9__ m where
     __default9 :: (Symbolic__ a, Symbolic__ b, Symbolic__ c, Symbolic__ d,
               Symbolic__ e, Symbolic__ f, Symbolic__ g, Symbolic__ h,
               Symbolic__ i) => m a b c d e f g h i
+    __error9 :: (Symbolic__ a, Symbolic__ b, Symbolic__ c, Symbolic__ d,
+              Symbolic__ e, Symbolic__ f, Symbolic__ g, Symbolic__ h,
+              Symbolic__ i) => Prelude.String -> m a b c d e f g h i
+    __error9 = Prelude.const __default9
     __substitute9 :: (Symbolic__ a, Symbolic__ b, Symbolic__ c, Symbolic__ d, Symbolic__ e, Symbolic__ f, Symbolic__ g, Symbolic__ h, Symbolic__ i) =>
         (SMT.Symbol -> Prelude.Maybe SMT.Expression) -> m a b c d e f g h i -> m a b c d e f g h i
 
 instance (Symbolic9__ m, Symbolic__ a) => Symbolic8__ (m a) where
     __if8 = __if9
     __default8 = __default9
+    __error8 = __error9
     __substitute8 = __substitute9
 
 instance Symbolic__ Bool where
@@ -304,8 +334,8 @@ __prim_concat_Bit = Bit.concat
 __prim_extract_Bit :: (N__ n, N__ m) => Bit n -> Integer -> Bit m
 __prim_extract_Bit = Bit.extract
 
-error :: List__ Char -> a
-error = Prelude.error
+error :: (Symbolic__ a) => List__ Char -> a
+error = __error
 
 __mkCons__ :: a -> List__ a -> List__ a
 __mkCons__ = (:)
@@ -338,15 +368,24 @@ instance Symbolic2__ (->) where
 
 instance Symbolic__ Char where
     __default = '?'
+    __if (Bool p) a b
+        | Prelude.Just Prelude.True <- SMT.de_boolE p = a
+        | Prelude.Just Prelude.False <- SMT.de_boolE p = b
+        | Prelude.otherwise = Prelude.error ("Unsupported __if :: Char predicate: " Prelude.++ Prelude.show p)
 
 instance Symbolic__ Integer where
     __default = 0
+    __if (Bool p) a b
+        | Prelude.Just Prelude.True <- SMT.de_boolE p = a
+        | Prelude.Just Prelude.False <- SMT.de_boolE p = b
+        | Prelude.otherwise = Prelude.error ("Unsupported __if :: Integer predicate: " Prelude.++ Prelude.show p)
 
 instance Symbolic__ N__0 where
     __default = N__0
 
 instance Symbolic1__ IO where
     __default1 = return_io __default
+    __error1 = Prelude.error
 
 instance Symbolic1__ List__ where
     __default1 = [__default]

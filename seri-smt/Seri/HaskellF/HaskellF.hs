@@ -117,7 +117,18 @@ constrcasenm n
  | n == name ":" = constrcasenm $ name "Cons__"
 constrcasenm n = prependnm "__case" n
 
+-- String literals:
+-- TODO: the template haskell pretty printer doesn't print strings correctly
+-- if they contain newlines, thus, we can't print those as string literals.
+-- When they fix the template haskell pretty printer, that special case should
+-- be removed here.
 hsExp :: Exp -> Failable H.Exp
+hsExp e | Just str <- de_stringE e
+        , '\n' `notElem` str
+        = return $ H.LitE (H.StringL str)
+hsExp e | Just xs <- de_listE e = do
+  xs' <- mapM hsExp xs
+  return $ H.ListE xs'
 hsExp (LitE l) = return (H.LitE (hsLit l))
 hsExp (ConE (Sig n t))
   | n == name "()" = hsExp (ConE (Sig (name "Unit__") t))
