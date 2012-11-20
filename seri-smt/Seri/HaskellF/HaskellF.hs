@@ -83,9 +83,9 @@ issymbol "[]" = False
 issymbol (h:_) = not $ isAlphaNum h || h == '_'
 
 
-hsLit :: Lit -> H.Lit
-hsLit (IntegerL i) = H.IntegerL i
-hsLit (CharL c) = H.CharL c
+hsLit :: Lit -> H.Exp
+hsLit (IntegerL i) = H.LitE (H.IntegerL i)
+hsLit (CharL c) = H.AppE (H.VarE (H.mkName "__mkChar")) (H.LitE (H.CharL c))
 
 prependnm :: String -> Name -> H.Name
 prependnm m n = hsName $ name m `nappend` n
@@ -117,19 +117,11 @@ constrcasenm n
  | n == name ":" = constrcasenm $ name "Cons__"
 constrcasenm n = prependnm "__case" n
 
--- String literals:
--- TODO: the template haskell pretty printer doesn't print strings correctly
--- if they contain newlines, thus, we can't print those as string literals.
--- When they fix the template haskell pretty printer, that special case should
--- be removed here.
 hsExp :: Exp -> Failable H.Exp
-hsExp e | Just str <- de_stringE e
-        , '\n' `notElem` str
-        = return $ H.LitE (H.StringL str)
 hsExp e | Just xs <- de_listE e = do
   xs' <- mapM hsExp xs
   return $ H.ListE xs'
-hsExp (LitE l) = return (H.LitE (hsLit l))
+hsExp (LitE l) = return (hsLit l)
 hsExp (ConE (Sig n t))
   | n == name "()" = hsExp (ConE (Sig (name "Unit__") t))
   | Just x <- de_tupleN n = hsExp (ConE (Sig (name $ "Tuple" ++ show x ++ "__") t))

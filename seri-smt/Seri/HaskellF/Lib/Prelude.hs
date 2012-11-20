@@ -8,6 +8,7 @@ module Seri.HaskellF.Lib.Prelude (
     Symbolic8__(..), Symbolic9__(..),
 
     Bool(), Char, Integer, IO, Bit, Unit__, List__,
+    __mkChar,
     __mkUnit__, __caseUnit__,
     __mkTrue, __mkFalse, __caseTrue, __caseFalse,
     __mkCons__, __mkNil__, __caseCons__, __caseNil__,
@@ -38,7 +39,6 @@ import Seri.Haskell.Lib.Numeric as NE hiding (N__(..))
 import qualified Seri.Haskell.Lib.Numeric as N
 import qualified Seri.SMT.Syntax as SMT
 
-type Char = Prelude.Char
 type IO = Prelude.IO
 type Bit = Bit.Bit
 type Unit__ = ()
@@ -57,13 +57,20 @@ data Integer = Integer_c Prelude.Integer
 
 instance Prelude.Num Integer where
     fromInteger = mkInteger . Prelude.fromInteger
-    (+) = error $ "+ for haskellf Integer not defined"
-    (*) = error $ "* for haskellf Integer not defined"
-    abs = error $ "abs for haskellf Integer not defined"
-    signum = error $ "signum for haskellf Integer not defined"
+    (+) = Prelude.error $ "+ for haskellf Integer not defined"
+    (*) = Prelude.error $ "* for haskellf Integer not defined"
+    abs = Prelude.error $ "abs for haskellf Integer not defined"
+    signum = Prelude.error $ "signum for haskellf Integer not defined"
 
 mkInteger :: Prelude.Integer -> Integer
 mkInteger = Integer_c
+
+data Char = Char_c Prelude.Char
+          | Char_if Bool Char Char
+    deriving (Prelude.Show)
+
+__mkChar :: Prelude.Char -> Char
+__mkChar = Char_c
 
 -- | Convert a primitive unary integer function into a function on seri
 -- integers.
@@ -78,6 +85,15 @@ __iprim2 :: (Symbolic__ a)
             => (Prelude.Integer -> Prelude.Integer -> a)
             -> Integer -> Integer -> a
 __iprim2 f = __iprim . __iprim f
+
+__cprim :: (Symbolic__ a) => (Prelude.Char -> a) -> Char -> a
+__cprim f (Char_c x) = f x
+__cprim f (Char_if p a b) = __if p (__cprim f a) (__cprim f b)
+
+__cprim2 :: (Symbolic__ a)
+            => (Prelude.Char -> Prelude.Char -> a)
+            -> Char -> Char -> a
+__cprim2 f = __cprim . __cprim f
     
 
 __free :: SMT.Symbol -> Bool
@@ -103,7 +119,7 @@ class Symbolic__ a where
         | Prelude.otherwise = Prelude.error ("Unsupported __if predicate: " Prelude.++ Prelude.show p)
 
     __default :: a
-    __error :: Prelude.String -> a
+    __error :: List__ Char -> a
     __error = Prelude.const __default
     __substitute :: (SMT.Symbol -> Prelude.Maybe SMT.Expression) -> a -> a
     __substitute _ = Prelude.id
@@ -116,7 +132,7 @@ class Symbolic1__ m where
         | Prelude.otherwise = Prelude.error ("Unsupported __if1 predicate: " Prelude.++ Prelude.show p)
 
     __default1 :: (Symbolic__ a) => m a
-    __error1 :: (Symbolic__ a) => Prelude.String -> m a
+    __error1 :: (Symbolic__ a) => List__ Char -> m a
     __error1 = Prelude.const __default1
     __substitute1 :: (Symbolic__ a) => (SMT.Symbol -> Prelude.Maybe SMT.Expression) -> m a -> m a
     __substitute1 _ = Prelude.id
@@ -136,7 +152,7 @@ class Symbolic2__ m where
         | Prelude.otherwise = Prelude.error ("Unsupported __if2 predicate: ?")
 
     __default2 :: (Symbolic__ a, Symbolic__ b) => m a b
-    __error2 :: (Symbolic__ a, Symbolic__ b) => Prelude.String -> m a b
+    __error2 :: (Symbolic__ a, Symbolic__ b) => List__ Char -> m a b
     __error2 = Prelude.const __default2
     __substitute2 :: (Symbolic__ a, Symbolic__ b) =>
         (SMT.Symbol -> Prelude.Maybe SMT.Expression) -> m a b -> m a b
@@ -158,7 +174,7 @@ class Symbolic3__ m where
         | Prelude.otherwise = Prelude.error ("Unsupported __if3 predicate: ?")
 
     __default3 :: (Symbolic__ a, Symbolic__ b, Symbolic__ c) => m a b c
-    __error3 :: (Symbolic__ a, Symbolic__ b, Symbolic__ c) => Prelude.String -> m a b c
+    __error3 :: (Symbolic__ a, Symbolic__ b, Symbolic__ c) => List__ Char -> m a b c
     __error3 = Prelude.const __default3
     __substitute3 :: (Symbolic__ a, Symbolic__ b, Symbolic__ c) =>
         (SMT.Symbol -> Prelude.Maybe SMT.Expression) -> m a b c -> m a b c
@@ -173,7 +189,7 @@ class Symbolic4__ m where
     __if4 :: (Symbolic__ a, Symbolic__ b, Symbolic__ c, Symbolic__ d) =>
         Bool -> m a b c d -> m a b c d -> m a b c d
     __default4 :: (Symbolic__ a, Symbolic__ b, Symbolic__ c, Symbolic__ d) => m a b c d
-    __error4 :: (Symbolic__ a, Symbolic__ b, Symbolic__ c, Symbolic__ d) => Prelude.String -> m a b c d
+    __error4 :: (Symbolic__ a, Symbolic__ b, Symbolic__ c, Symbolic__ d) => List__ Char -> m a b c d
     __error4 = Prelude.const __default4
     __substitute4 :: (Symbolic__ a, Symbolic__ b, Symbolic__ c, Symbolic__ d) =>
         (SMT.Symbol -> Prelude.Maybe SMT.Expression) -> m a b c d -> m a b c d
@@ -189,7 +205,7 @@ class Symbolic5__ m where
         Bool -> m a b c d e -> m a b c d e -> m a b c d e
 
     __default5 :: (Symbolic__ a, Symbolic__ b, Symbolic__ c, Symbolic__ d, Symbolic__ e) => m a b c d e 
-    __error5 :: (Symbolic__ a, Symbolic__ b, Symbolic__ c, Symbolic__ d, Symbolic__ e) => Prelude.String -> m a b c d e 
+    __error5 :: (Symbolic__ a, Symbolic__ b, Symbolic__ c, Symbolic__ d, Symbolic__ e) => List__ Char -> m a b c d e 
     __error5 = Prelude.const __default5
     __substitute5 :: (Symbolic__ a, Symbolic__ b, Symbolic__ c, Symbolic__ d, Symbolic__ e) =>
         (SMT.Symbol -> Prelude.Maybe SMT.Expression) -> m a b c d e -> m a b c d e
@@ -204,7 +220,7 @@ class Symbolic6__ m where
     __if6 :: (Symbolic__ a, Symbolic__ b, Symbolic__ c, Symbolic__ d, Symbolic__ e, Symbolic__ f) =>
         Bool -> m a b c d e f -> m a b c d e f -> m a b c d e f
     __default6 :: (Symbolic__ a, Symbolic__ b, Symbolic__ c, Symbolic__ d, Symbolic__ e, Symbolic__ f) => m a b c d e f
-    __error6 :: (Symbolic__ a, Symbolic__ b, Symbolic__ c, Symbolic__ d, Symbolic__ e, Symbolic__ f) => Prelude.String -> m a b c d e f
+    __error6 :: (Symbolic__ a, Symbolic__ b, Symbolic__ c, Symbolic__ d, Symbolic__ e, Symbolic__ f) => List__ Char -> m a b c d e f
     __error6 = Prelude.const __default6
     __substitute6 :: (Symbolic__ a, Symbolic__ b, Symbolic__ c, Symbolic__ d, Symbolic__ e, Symbolic__ f) =>
         (SMT.Symbol -> Prelude.Maybe SMT.Expression) -> m a b c d e f -> m a b c d e f
@@ -219,7 +235,7 @@ class Symbolic7__ m where
     __if7 :: (Symbolic__ a, Symbolic__ b, Symbolic__ c, Symbolic__ d, Symbolic__ e, Symbolic__ f, Symbolic__ g) =>
         Bool -> m a b c d e f g -> m a b c d e f g -> m a b c d e f g
     __default7 :: (Symbolic__ a, Symbolic__ b, Symbolic__ c, Symbolic__ d, Symbolic__ e, Symbolic__ f, Symbolic__ g) => m a b c d e f g 
-    __error7 :: (Symbolic__ a, Symbolic__ b, Symbolic__ c, Symbolic__ d, Symbolic__ e, Symbolic__ f, Symbolic__ g) => Prelude.String -> m a b c d e f g 
+    __error7 :: (Symbolic__ a, Symbolic__ b, Symbolic__ c, Symbolic__ d, Symbolic__ e, Symbolic__ f, Symbolic__ g) => List__ Char -> m a b c d e f g 
     __error7 = Prelude.const __default7
     __substitute7 :: (Symbolic__ a, Symbolic__ b, Symbolic__ c, Symbolic__ d, Symbolic__ e, Symbolic__ f, Symbolic__ g) =>
         (SMT.Symbol -> Prelude.Maybe SMT.Expression) -> m a b c d e f g -> m a b c d e f g
@@ -234,7 +250,7 @@ class Symbolic8__ m where
     __if8 :: (Symbolic__ a, Symbolic__ b, Symbolic__ c, Symbolic__ d, Symbolic__ e, Symbolic__ f, Symbolic__ g, Symbolic__ h) =>
         Bool -> m a b c d e f g h -> m a b c d e f g h -> m a b c d e f g h
     __default8 :: (Symbolic__ a, Symbolic__ b, Symbolic__ c, Symbolic__ d, Symbolic__ e, Symbolic__ f, Symbolic__ g, Symbolic__ h) => m a b c d e f g h 
-    __error8 :: (Symbolic__ a, Symbolic__ b, Symbolic__ c, Symbolic__ d, Symbolic__ e, Symbolic__ f, Symbolic__ g, Symbolic__ h) => Prelude.String -> m a b c d e f g h 
+    __error8 :: (Symbolic__ a, Symbolic__ b, Symbolic__ c, Symbolic__ d, Symbolic__ e, Symbolic__ f, Symbolic__ g, Symbolic__ h) => List__ Char -> m a b c d e f g h 
     __error8 = Prelude.const __default8
     __substitute8 :: (Symbolic__ a, Symbolic__ b, Symbolic__ c, Symbolic__ d, Symbolic__ e, Symbolic__ f, Symbolic__ g, Symbolic__ h) =>
         (SMT.Symbol -> Prelude.Maybe SMT.Expression) -> m a b c d e f g h -> m a b c d e f g h
@@ -254,7 +270,7 @@ class Symbolic9__ m where
               Symbolic__ i) => m a b c d e f g h i
     __error9 :: (Symbolic__ a, Symbolic__ b, Symbolic__ c, Symbolic__ d,
               Symbolic__ e, Symbolic__ f, Symbolic__ g, Symbolic__ h,
-              Symbolic__ i) => Prelude.String -> m a b c d e f g h i
+              Symbolic__ i) => List__ Char -> m a b c d e f g h i
     __error9 = Prelude.const __default9
     __substitute9 :: (Symbolic__ a, Symbolic__ b, Symbolic__ c, Symbolic__ d, Symbolic__ e, Symbolic__ f, Symbolic__ g, Symbolic__ h, Symbolic__ i) =>
         (SMT.Symbol -> Prelude.Maybe SMT.Expression) -> m a b c d e f g h i -> m a b c d e f g h i
@@ -284,7 +300,7 @@ not x = __caseTrue x __mkFalse __mkTrue
 (||) x y = __caseTrue x __mkTrue y
 
 __prim_eq_Char :: Char -> Char -> Bool
-__prim_eq_Char a b = if (a Prelude.== b) then __mkTrue else __mkFalse
+__prim_eq_Char = __cprim2 $ \a b -> mkBool (a Prelude.== b)
 
 __prim_eq_Integer :: Integer -> Integer -> Bool
 __prim_eq_Integer = __iprim2 $ \a b -> mkBool (a Prelude.== b)
@@ -305,7 +321,7 @@ __prim_mul_Integer = __iprim2 $ \a b -> mkInteger (a Prelude.* b)
 (>) = __iprim2 $ \a b -> mkBool (a Prelude.> b)
 
 __prim_show_Integer :: Integer -> List__ Char
-__prim_show_Integer = __iprim Prelude.show
+__prim_show_Integer = Prelude.map __mkChar . __iprim Prelude.show
 
 return_io :: a -> IO a
 return_io = Prelude.return
@@ -317,16 +333,16 @@ nobind_io :: IO a -> IO b -> IO b
 nobind_io = (Prelude.>>)
 
 fail_io :: List__ Char -> IO a
-fail_io = Prelude.fail
+fail_io = Prelude.error $ "TODO: haskellf fail_io"
 
 putChar :: Char -> IO ()
-putChar = Prelude.putChar
+putChar = __cprim Prelude.putChar
 
 __prim_eq_Bit :: (N__ n) => Bit n -> Bit n -> Bool
 __prim_eq_Bit a b = if a Prelude.== b then __mkTrue else __mkFalse
 
 __prim_show_Bit :: Bit n -> List__ Char
-__prim_show_Bit = Prelude.show
+__prim_show_Bit = Prelude.map __mkChar . Prelude.show
 
 __prim_add_Bit :: (N__ n) => Bit n -> Bit n -> Bit n
 __prim_add_Bit = (Prelude.+)
@@ -400,11 +416,18 @@ instance Symbolic2__ (->) where
     __substitute2 l f = \x -> __substitute l (f x)
 
 instance Symbolic__ Char where
+    __default = __mkChar '?'
+    __if p@(Bool px) a b
+        | Prelude.Just Prelude.True <- SMT.de_boolE px = a
+        | Prelude.Just Prelude.False <- SMT.de_boolE px = b
+        | Prelude.otherwise = Char_if p a b
+
+instance Symbolic__ Prelude.Char where
     __default = '?'
     __if (Bool p) a b
         | Prelude.Just Prelude.True <- SMT.de_boolE p = a
         | Prelude.Just Prelude.False <- SMT.de_boolE p = b
-        | Prelude.otherwise = Prelude.error ("Unsupported __if :: Char predicate: " Prelude.++ Prelude.show p)
+        | Prelude.otherwise = Prelude.error "__if :: Prelude.Char"
 
 instance Symbolic__ Integer where
     __default = mkInteger 0
@@ -425,7 +448,7 @@ instance Symbolic__ N__0 where
 
 instance Symbolic1__ IO where
     __default1 = return_io __default
-    __error1 = Prelude.error
+    __error1 = Prelude.error . Prelude.show
 
 instance Symbolic1__ List__ where
     __default1 = [__default]

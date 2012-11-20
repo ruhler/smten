@@ -50,8 +50,8 @@ bind_query = (>>=)
 nobind_query :: Query a -> Query b -> Query b
 nobind_query = (>>)
 
-fail_query :: String -> Query a
-fail_query = fail
+fail_query :: F.List__ F.Char -> Query a
+fail_query = error $ "TODO: fail_query"
 
 -- TODO: don't ignore debug argument.
 runYices1 :: d -> Query a -> IO a
@@ -95,7 +95,7 @@ __caseSatisfiable _ _ n = n
 
 instance F.Symbolic1__ Query where
     __default1 = return_query F.__default
-    __error1 = error
+    __error1 = error . show
 
 instance F.Symbolic1__ Answer where
     __default1 = __mkUnsatisfiable

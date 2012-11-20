@@ -93,6 +93,12 @@ qtest = do
     rp <- query p
     test "core.list" (rp == Satisfiable False)
 
+    -- Same with char
+    q <- free
+    assert ('a' == (if q then 'a' else 'b'))
+    rq <- query q
+    test "core.char" (rq == Satisfiable True)
+
 
 main :: IO ()
 main = do
