@@ -32,10 +32,13 @@ module Seri.HaskellF.Lib.Prelude (
     __toSMT, __free,
     __if_default,
     __list,
+    __errorh,
     ) where
 
 import Prelude((.), ($), (++))
 import qualified Prelude
+import Data.Maybe (fromMaybe)
+
 import qualified Seri.Haskell.Lib.Bit as Bit
 import Seri.Haskell.Lib.Numeric as NE hiding (N__(..)) 
 import qualified Seri.Haskell.Lib.Numeric as N
@@ -80,6 +83,17 @@ data List__ a = List_c [a]
 
 __list :: [a] -> List__ a
 __list = List_c
+
+__de_list :: List__ a -> Prelude.Maybe [a]
+__de_list (List_c x) = Prelude.return x
+__de_list _ = Prelude.Nothing
+
+__errorh :: List__ Char -> a
+__errorh msg = fromMaybe (Prelude.error (Prelude.show msg)) $ do
+  l <- __de_list msg
+  str <- Prelude.mapM __de_concrete l
+  Prelude.return (Prelude.error str)
+
 
 
 instance Prelude.Num Integer where
@@ -424,7 +438,7 @@ instance Symbolic__ N__0 where
 instance Symbolic1__ IO where
     __if1 = __if_default "IO"
     __default1 = return_io __default
-    __error1 = Prelude.error . Prelude.show
+    __error1 = __errorh 
 
 instance Symbolic1__ List__ where
     __default1 = __list [__default]

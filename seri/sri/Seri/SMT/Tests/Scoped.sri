@@ -44,4 +44,5 @@ main = do
     runYices1 (Just "build/test/Scoped.yices1.dbg") qtest
     runYices2 (Just "build/test/Scoped.yices2.dbg") qtest
     runSTP (Just "build/test/Scoped.stp.dbg") qtest
+    putStrLn "SCOPED PASSED"
 

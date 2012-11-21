@@ -155,4 +155,5 @@ HaskellF:
   Maybe use a Reader monad to read supported theories at run time?
 * Figure out how to deal with error values properly
 * Figure out how to deal with debugging properly
+* Use one less tag than field for translated datatypes.
 
