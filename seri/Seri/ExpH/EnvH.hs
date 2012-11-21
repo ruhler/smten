@@ -6,6 +6,10 @@ module Seri.ExpH.EnvH (
 
 import Debug.Trace
 
+import Control.Monad
+import Data.Either
+import Data.List(nub)
+
 import Seri.Name
 import Seri.Sig
 import qualified Seri.HashTable as HT
@@ -13,21 +17,52 @@ import Seri.Failable
 import Seri.Type
 import Seri.Dec
 import Seri.Ppr
+import Seri.Exp
 import Seri.ExpH.ExpH
 import Seri.ExpH.ToExpH
+import Seri.ExpH.Utils
 
-data EnvH = EnvH Env (HT.HashTable Name (Type -> Maybe ExpH))
+data EnvH = EnvH {
+    eh_env :: Env,
+    eh_l1 :: HT.HashTable Sig ExpH,
+    eh_l2 :: HT.HashTable Name (Type -> Maybe ExpH)
+}
 
 mkEnvH :: Env -> EnvH
 mkEnvH e = 
-  let getelem :: Dec -> [(Name, Type -> Maybe ExpH)]
-      getelem (ValD (TopSig n _ pt) e) | null (nvarTs pt) && null (varTs pt)
-        = [(n, \_ -> return (toExpH [] e))]
+  let isconcrete :: Type -> Bool
+      isconcrete t = null (nvarTs t) && null (varTs t)
+
+      getcvarsD :: Dec -> [Sig]
+      getcvarsD (ValD (TopSig n _ t) e) =
+        let evs = getcvarsE [] e
+        in if isconcrete t
+             then (Sig n t) : evs
+             else evs
+      getcvarsD (InstD _ _ ms) = concat [getcvarsE [] e | Method _ e <- ms]
+      getcvarsD _ = []
+
+      getcvarsE :: [Name] -> Exp -> [Sig]
+      getcvarsE _ (LitE {}) = []
+      getcvarsE _ (ConE {}) = []
+      getcvarsE bnd (VarE s@(Sig n t)) | n `notElem` bnd && isconcrete t = [s]
+      getcvarsE _ (VarE {}) = []
+      getcvarsE bnd (AppE a b) = getcvarsE bnd a ++ getcvarsE bnd b
+      getcvarsE bnd (LamE (Sig n _) x) = getcvarsE (n:bnd) x
+      getcvarsE bnd (CaseE x _ y n) = concat [
+            getcvarsE bnd x, getcvarsE bnd y, getcvarsE bnd n]
+
+      getcelem :: Sig -> [(Sig, ExpH)]
+      getcelem s@(Sig n ct) = attemptM $ do
+        (pt, ve) <- lookupVar e s
+        return $ (s, toExpH [] $ assign (assignments pt ct) ve)
+
+      getelem :: Dec -> [Either (Sig, ExpH) (Name, Type -> Maybe ExpH)]
+      getelem (ValD (TopSig n _ pt) e) | isconcrete pt = [Left (Sig n pt, toExpH [] e)]
       getelem (ValD (TopSig n _ pt) e) =
-        let f :: Type -> Maybe ExpH
-            f ct = return (toExpH [] $ assign (assignments pt ct) e)
-        in [(n, f)]
-      getelem (ClassD _ _ tss) = [(n, mkf n) | TopSig n _ _ <- tss]
+        let f ct = return $ toExpH [] (assign (assignments pt ct) e)
+        in [Right (n, f)]
+      getelem (ClassD _ _ tss) = [Right (n, mkf n) | TopSig n _ _ <- tss]
       getelem _ = []
 
       elems = concatMap getelem (getDecls e)
@@ -37,14 +72,25 @@ mkEnvH e =
         (pt, ve) <- attemptM $ lookupVar e (Sig n ct)
         return $ toExpH [] $ assign (assignments pt ct) ve
 
-      m = HT.table elems
-  in EnvH e m
+      --allcvars = nub $ concatMap getcvarsD (getDecls e)
+      allcvars = []
+      specialize = [
+        Sig (name "Prelude.++") (arrowsT [stringT, stringT, stringT]),
+        Sig (name "Prelude.concat") (arrowsT [listT stringT, stringT]),
+        Sig (name "Prelude.curry")
+            (arrowsT [arrowsT [tupleT [charT, charT], charT],
+                      charT, charT, charT])
+         ]
+
+      l1 = HT.table (lefts elems ++ concatMap getcelem (specialize ++ allcvars))
+      l2 = HT.table (rights elems)
+  in EnvH e l1 l2
 
 lookupVarH :: EnvH -> Sig -> Maybe ExpH
-lookupVarH (EnvH _ m) (Sig n ct) = do
-    f <- HT.lookup n m
+lookupVarH e s@(Sig n ct) = mplus (HT.lookup s (eh_l1 e)) $ do
+    f <- HT.lookup n (eh_l2 e)
     f ct
     
 onEnv :: (Env -> a) -> EnvH -> a
-onEnv f (EnvH e _) = f e
+onEnv f = f . eh_env
 

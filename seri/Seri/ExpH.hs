@@ -11,6 +11,7 @@ module Seri.ExpH (
     module Seri.ExpH.TH,
     module Seri.ExpH.ToExpH,
     module Seri.ExpH.Typeof,
+    module Seri.ExpH.Utils,
     ) where
 
 import Seri.ExpH.EnvH
@@ -24,4 +25,5 @@ import Seri.ExpH.Sugar
 import Seri.ExpH.TH
 import Seri.ExpH.ToExpH
 import Seri.ExpH.Typeof
+import Seri.ExpH.Utils
 

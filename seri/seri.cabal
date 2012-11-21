@@ -68,6 +68,7 @@ library
     Seri.ExpH.ToExpH
     Seri.ExpH.FromExpH
     Seri.ExpH.Ppr
+    Seri.ExpH.Utils
 
     Seri.Haskell
     Seri.Haskell.Haskell
