@@ -155,6 +155,4 @@ HaskellF:
   Maybe use a Reader monad to read supported theories at run time?
 * Figure out how to deal with error values properly
 * Figure out how to deal with debugging properly
-* Perform concretization to avoid things like (if free1 then (if free1  ...))
-  Maybe use a Reader monad to concretize efficiently at run time?
 

@@ -56,7 +56,7 @@ module Seri.SMT.Syntax (
     bvzeroExtendE, de_bvzeroExtendE, bvextractE,
     bvconcatE, de_bvconcatE,
 
-    substitute,
+    substitute, impliedByTrue, impliedByFalse,
   ) where
 
 type Symbol = String
@@ -320,4 +320,20 @@ substitute f e =
        LetE bs x -> LetE [(s, me e) | (s, e) <- bs] (me x) 
        AppE f xs -> AppE (me f) (map me xs)
        UpdateE f xs v -> UpdateE (me f) (map me xs) (me v)
+
+-- Assuming the given expression is True, what does that trivially imply about
+-- the variables in the expression?
+impliedByTrue :: Expression -> [(Symbol, Expression)]
+impliedByTrue e
+  | VarE v <- e = [(v, trueE)]
+  | Just xs <- de_andE e = concatMap impliedByTrue xs
+  | otherwise = []
+
+-- Assuming the given expression is False, what does that trivially imply
+-- about the variables in the expression?
+impliedByFalse :: Expression -> [(Symbol, Expression)]
+impliedByFalse e
+  | VarE v <- e = [(v, falseE)]
+  | Just xs <- de_orE e = concatMap impliedByFalse xs
+  | otherwise = []
 

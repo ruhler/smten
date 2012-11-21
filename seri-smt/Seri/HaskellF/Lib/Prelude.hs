@@ -261,7 +261,10 @@ instance Symbolic__ Bool where
     __if (Bool p) a@(Bool ax) b@(Bool bx)
         | Prelude.Just Prelude.True <- SMT.de_boolE p = a
         | Prelude.Just Prelude.False <- SMT.de_boolE p = b
-        | Prelude.otherwise = Bool (SMT.ifE p ax bx)
+        | Prelude.otherwise =
+           let a' = SMT.substitute (Prelude.flip Prelude.lookup (SMT.impliedByTrue p)) ax
+               b' = SMT.substitute (Prelude.flip Prelude.lookup (SMT.impliedByFalse p)) bx
+           in Bool (SMT.ifE p a' b')
 
     __default = __mkFalse
     __substitute f (Bool x) = Bool (SMT.substitute f x)
