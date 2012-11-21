@@ -1,5 +1,6 @@
 
 module Seri.ExpH (
+    module Seri.ExpH.EnvH,
     module Seri.ExpH.ExpH,
     module Seri.ExpH.FromExpH,
     module Seri.ExpH.Ppr,
@@ -12,6 +13,7 @@ module Seri.ExpH (
     module Seri.ExpH.Typeof,
     ) where
 
+import Seri.ExpH.EnvH
 import Seri.ExpH.ExpH
 import Seri.ExpH.FromExpH
 import Seri.ExpH.Ppr

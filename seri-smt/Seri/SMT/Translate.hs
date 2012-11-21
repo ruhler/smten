@@ -70,7 +70,7 @@ import Seri.Elaborate
 
 -- | An SMT compilation object.
 data Compilation = Compilation {
-    ys_poly :: Env,             -- ^ The polymorphic seri environment
+    ys_poly :: EnvH,             -- ^ The polymorphic seri environment
 
     -- | Declarations needed for what was compiled, stored in reverse order
     -- for efficiency sake.
@@ -87,7 +87,7 @@ addcmds :: [SMT.Command] -> CompilationM ()
 addcmds cmds = modifyS $ \ys -> ys { ys_cmdsr = (reverse cmds) ++ ys_cmdsr ys}
 
 -- | Create a new smt compilation object.
-compilation :: Env -> Compilation
+compilation :: EnvH -> Compilation
 compilation poly = Compilation {
     ys_poly = poly,
     ys_cmdsr = [],

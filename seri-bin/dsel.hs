@@ -97,7 +97,7 @@ env = $(loadenvth [seridir] (seridir >>= return . (++ "/Seri/Tests/DSEL.sri")))
 try :: (Show a) => String -> Query a -> IO ()
 try nm q = do
     y <- yices2
-    r <- runQuery (RunOptions (Just $ "build/test/DSEL." ++ nm ++ ".dbg") y) env q
+    r <- runQuery (RunOptions (Just $ "build/test/DSEL." ++ nm ++ ".dbg") y) (mkEnvH env) q
     putStrLn $ show r
 
 main :: IO ()

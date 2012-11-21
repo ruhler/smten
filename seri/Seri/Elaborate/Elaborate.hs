@@ -63,12 +63,12 @@ import Seri.Ppr (pretty)
 import Seri.Elaborate.ExpH
 
 -- Weak head normal form elaboration
-elabwhnf :: Env -> ExpH -> ExpH
+elabwhnf :: EnvH -> ExpH -> ExpH
 elabwhnf = elaborate WHNF
 
 -- | Elaborate an expression in ExpH form under the given mode.
 elaborate :: Mode  -- ^ Elaboration mode
-           -> Env   -- ^ context under which to evaluate the expression
+           -> EnvH   -- ^ context under which to evaluate the expression
            -> ExpH   -- ^ expression to evaluate
            -> ExpH   -- ^ elaborated expression
 elaborate mode env =
@@ -79,10 +79,7 @@ elaborate mode env =
           LitEH l -> e
           ConEH s -> e
           VarEH (Sig n t) | Just f <- HT.lookup n nprimitives -> f t
-          VarEH s@(Sig n ct) ->
-            case (attemptM $ lookupVar env s) of
-                Just (pt, ve) -> elab $ toExpH [] $ assignexp (assignments pt ct) ve
-                Nothing -> VarEH s
+          VarEH s@(Sig n ct) -> fromMaybe e $ elab <$> lookupVarH env s
           AppEH (ES_Some m) _ _ | mode <= m -> e
           AppEH _ f arg -> 
              case (elab f, elab arg) of

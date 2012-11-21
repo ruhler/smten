@@ -13,6 +13,7 @@ import Seri.Type
 import Seri.TH
 import Seri
 import Seri.Dec
+import Seri.ExpH
 import Seri.SMT.Yices.Yices2
 
 
@@ -163,6 +164,6 @@ env = $(loadenvth [seridir] (seridir >>= return . (++ "/Seri/SMT/SMT.sri")))
 main :: IO ()
 main = do
     y <- yices2
-    r <- runQuery (RunOptions (Just "build/test/sudoku.dbg") y) env solve
+    r <- runQuery (RunOptions (Just "build/test/sudoku.dbg") y) (mkEnvH env) solve
     mapM_ putStrLn r
 
