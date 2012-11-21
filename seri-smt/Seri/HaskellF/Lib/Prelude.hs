@@ -408,6 +408,7 @@ instance Symbolic__ Prelude.Char where
 instance Symbolic1__ [] where
     __default1 = []
     __if1 = __if_default "Prelude.[]"
+    __substitute1 f = Prelude.map (__substitute f)
 
 instance Symbolic__ Prelude.Integer where
     __default = 0
@@ -428,6 +429,9 @@ instance Symbolic1__ List__ where
         | Prelude.Just Prelude.True <- SMT.de_boolE px = a
         | Prelude.Just Prelude.False <- SMT.de_boolE px = b
         | Prelude.otherwise = List_if p a b
+    __substitute1 f (List_c x) = List_c (__substitute1 f x)
+    __substitute1 f (List_if p a b)
+        = __if (__substitute f p) (__substitute f a) (__substitute f b)
 
 instance Symbolic1__ Bit where
     __if1 = __if_default "Bit"
@@ -457,7 +461,7 @@ __if_default :: Prelude.String -> Bool -> a -> a -> a
 __if_default msg (Bool p) a b
     | Prelude.Just Prelude.True <- SMT.de_boolE p = a
     | Prelude.Just Prelude.False <- SMT.de_boolE p = b
-    | Prelude.otherwise = Prelude.error ("__if " ++ msg)
+    | Prelude.otherwise = Prelude.error ("__if " ++ msg ++ ": " ++ Prelude.show p)
 
 class (Symbolic__ a, N.N__ a) => N__ a where
     valueof :: a -> Integer

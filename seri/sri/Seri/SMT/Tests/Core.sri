@@ -99,7 +99,6 @@ qtest = do
     rq <- query q
     test "core.char" (rq == Satisfiable True)
 
-
 main :: IO ()
 main = do
     runYices1 (Just "build/test/Core.yices1.dbg") qtest
