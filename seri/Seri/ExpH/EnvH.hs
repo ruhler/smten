@@ -55,12 +55,12 @@ mkEnvH e =
       getcelem :: Sig -> [(Sig, ExpH)]
       getcelem s@(Sig n ct) = attemptM $ do
         (pt, ve) <- lookupVar e s
-        return $ (s, toExpH [] $ assign (assignments pt ct) ve)
+        return $ (s, toExpH (assignments pt ct) [] ve)
 
       getelem :: Dec -> [Either (Sig, ExpH) (Name, Type -> Maybe ExpH)]
-      getelem (ValD (TopSig n _ pt) e) | isconcrete pt = [Left (Sig n pt, toExpH [] e)]
+      getelem (ValD (TopSig n _ pt) e) | isconcrete pt = [Left (Sig n pt, toExpH [] [] e)]
       getelem (ValD (TopSig n _ pt) e) =
-        let f ct = return $ toExpH [] (assign (assignments pt ct) e)
+        let f ct = return $ toExpH (assignments pt ct) [] e
         in [Right (n, f)]
       getelem (ClassD _ _ tss) = [Right (n, mkf n) | TopSig n _ _ <- tss]
       getelem _ = []
@@ -70,17 +70,17 @@ mkEnvH e =
       mkf :: Name -> Type -> Maybe ExpH
       mkf n ct = do
         (pt, ve) <- attemptM $ lookupVar e (Sig n ct)
-        return $ toExpH [] $ assign (assignments pt ct) ve
+        return $ toExpH (assignments pt ct) [] ve
 
       --allcvars = nub $ concatMap getcvarsD (getDecls e)
       allcvars = []
-      specialize = [
-        Sig (name "Prelude.++") (arrowsT [stringT, stringT, stringT]),
-        Sig (name "Prelude.concat") (arrowsT [listT stringT, stringT]),
-        Sig (name "Prelude.curry")
-            (arrowsT [arrowsT [tupleT [charT, charT], charT],
-                      charT, charT, charT])
-         ]
+      specialize = []
+--        Sig (name "Prelude.++") (arrowsT [stringT, stringT, stringT]),
+--        Sig (name "Prelude.concat") (arrowsT [listT stringT, stringT]),
+--        Sig (name "Prelude.curry")
+--            (arrowsT [arrowsT [tupleT [charT, charT], charT],
+--                      charT, charT, charT])
+--         ]
 
       l1 = HT.table (lefts elems ++ concatMap getcelem (specialize ++ allcvars))
       l2 = HT.table (rights elems)

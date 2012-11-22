@@ -21,3 +21,6 @@ instance Ppr Sig where
 instance Hashable Sig where
     hash (Sig n t) = combine (hash n) (hash t)
 
+instance Assign Sig where
+    assignl f (Sig n t) = Sig n (assignl f t) 
+
