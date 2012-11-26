@@ -4,13 +4,14 @@
 -- | Abstract constructors and deconstructors working with Exp
 module Seri.Exp.Sugar (
     litE, conE, de_conE, varE, de_varE, appE, de_appE, appsE, de_appsE, lamE,
-    lamsE, letE, de_letE, ifE, typeE,
+    lamsE, letE, de_letE, ifE, typeE, caseE,
     
-    boolE, falseE, trueE, charE, de_charE, listE, de_listE, stringE, de_stringE,
+    boolE, de_boolE, falseE, trueE, charE, de_charE, listE, de_listE, stringE, de_stringE,
     errorE, tupleE,
     integerE, numberE,
 
     addE, subE, mulE, opE,
+    de_notE, de_andE, de_orE,
     ) where
 
 import Control.Monad
@@ -81,6 +82,12 @@ falseE = conE (Sig (name "False") boolT)
 boolE :: Bool -> Exp
 boolE True = trueE
 boolE False = falseE
+
+de_boolE :: Exp -> Maybe Bool
+de_boolE e
+  | e == trueE = Just True
+  | e == falseE = Just False
+  | otherwise = Nothing
 
 charE :: Char -> Exp
 charE = litE . CharL
@@ -162,3 +169,30 @@ mulE = opE "*"
 
 opE :: String -> Exp -> Exp -> Exp
 opE op a b = appsE (varE (Sig (name op) UnknownT)) [a, b]
+
+de_notE :: Exp -> Maybe Exp
+de_notE e =
+  case de_appsE e of
+    (VarE (Sig n _), [x]) | n == name "Prelude.not" -> Just x
+    _ -> Nothing
+
+de_andE :: Exp -> Maybe (Exp, Exp)
+de_andE e =
+  case de_appsE e of
+    (VarE (Sig n _), [x, y]) | n == name "Prelude.and" -> Just (x, y)
+    _ -> Nothing
+
+de_orE :: Exp -> Maybe (Exp, Exp)
+de_orE e =
+  case de_appsE e of
+    (VarE (Sig n _), [x, y]) | n == name "Prelude.or" -> Just (x, y)
+    _ -> Nothing
+
+caseE :: Exp -> Sig -> Exp -> Exp -> Exp
+caseE x (Sig kn _) y n
+  | (ConE (Sig s _), vs) <- de_appsE x =
+    if kn == s
+        then appsE y vs
+        else n
+caseE x k y n = CaseE x k y n
+

@@ -11,9 +11,13 @@ import System.IO
 import qualified Seri.HaskellF.Lib.Prelude as F
 import qualified Seri.SMT.Solver as SMT
 import qualified Seri.SMT.Syntax as SMT
+import Seri.SMT.Translate
+import Seri.Sig
+import Seri.Name
+import Seri.Failable
+import Seri.Type
+import Seri.Exp
 
-
-type Name = String
 
 data Answer a = Satisfiable a | Unsatisfiable | Unknown
     deriving (Eq, Show)
@@ -22,6 +26,7 @@ data QS = QS {
     qs_ctx :: SMT.Solver,
     qs_dh :: Maybe Handle,
     qs_freeid :: Integer,
+    qs_qs :: Compilation,
     qs_freevars :: [Name]
 }
 
@@ -62,7 +67,7 @@ freevar = do
     return $ freename fid
 
 freename :: Integer -> Name
-freename id = "free~" ++ show id
+freename id = name $ "free~" ++ show id
 
 data RunOptions = RunOptions {
     -- | Optionally output debug info to the given file.
@@ -83,6 +88,7 @@ mkQS opts = do
         qs_ctx = ro_solver opts,
         qs_dh = dh,
         qs_freeid = 1,
+        qs_qs = compilation,
         qs_freevars = []
     }
 
@@ -98,8 +104,8 @@ runQuery opts q = do
 realizefree :: Name -> Query Bool
 realizefree nm = do
     ctx <- gets qs_ctx
-    bval <- lift $ SMT.getBoolValue ctx nm
-    debug $ "; " ++ nm ++ " is " ++ show bval
+    bval <- lift $ SMT.getBoolValue ctx (unname nm)
+    debug $ "; " ++ unname nm ++ " is " ++ show bval
     return bval
 
 -- | Check if the current assertions are satisfiable.
@@ -110,22 +116,37 @@ query r = do
       SMT.Satisfiable -> do
         freevars <- gets qs_freevars
         freevals <- mapM realizefree freevars
-        let flookup :: SMT.Symbol -> Maybe SMT.Expression
-            flookup s = SMT.boolE <$> lookup s (zip freevars freevals)
+        let flookup :: Name -> Maybe Exp
+            flookup s = boolE <$> lookup s (zip freevars freevals)
         return $ Satisfiable (F.__substitute flookup r)
       SMT.Unsatisfiable -> return Unsatisfiable
       _ -> return Unknown
 
 -- | Allocate a free expression of boolean type.
-freebool :: Query F.Bool
+freebool :: Query Exp
 freebool = do
   free <- freevar
   modify $ \qs -> qs { qs_freevars = free : qs_freevars qs }
-  runCmds [SMT.Declare free SMT.BoolT]
-  return $ F.__free free
+  runCmds [SMT.Declare (unname free) SMT.BoolT]
+  return $ VarE (Sig free boolT)
 
-assert :: F.Bool -> Query ()
-assert b = runCmds [SMT.Assert (F.__toSMT b)]
+smte :: Exp -> Query SMT.Expression
+smte e = do
+    qs <- gets qs_qs 
+    let mkye :: CompilationM ([SMT.Command], SMT.Expression)
+        mkye = do
+          ye <- smtE e
+          cmds <- smtD
+          return (cmds, ye)
+    ((cmds, ye), qs') <- lift . attemptIO $ runCompilation mkye qs
+    modify $ \s -> s { qs_qs = qs' }
+    runCmds cmds
+    return ye
+
+assert :: Exp -> Query ()
+assert e = do
+    e' <- smte e
+    runCmds [SMT.Assert e']
 
 -- | Run the given query in its own scope and return the result.
 -- Note: it's possible to leak free variables with this function.

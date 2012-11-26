@@ -3,7 +3,7 @@
 module Seri.Exp.Match (
     Pat(..), SMatch(..), MMatch(..),
     tupleP, listP,
-    caseE, clauseE, mlamE, mletE, mletsE,
+    mcaseE, clauseE, mlamE, mletE, mletsE,
     ) where
 
 import Data.Maybe(fromMaybe)
@@ -95,14 +95,14 @@ matchesE e ms n = do
     return $ letE ev e body
 
 -- | Desugar a case expression.
-caseE :: Exp -> [SMatch] -> Exp
-caseE x ms = runFreshPretty $ matchesE x ms (errorE "case no match")
+mcaseE :: Exp -> [SMatch] -> Exp
+mcaseE x ms = runFreshPretty $ matchesE x ms (errorE "case no match")
 
 -- | Single argument clause expression
 sclauseE :: [SMatch] -> Exp
 sclauseE ms =
   let x = Sig (name "_x") UnknownT
-  in lamE x $ caseE (varE x) ms
+  in lamE x $ mcaseE (varE x) ms
 
 -- | Multi-argument clause expression
 -- This converts multi-arg clause expressions to single-arg clause
@@ -146,7 +146,7 @@ mlamE m = clauseE [m]
 
 -- | Let with pattern matching
 mletE :: Pat -> Exp -> Exp -> Exp
-mletE  p v e = caseE v [SMatch p e]
+mletE  p v e = mcaseE v [SMatch p e]
 
 -- | Sequential let with pattern matching
 mletsE :: [(Pat, Exp)] -> Exp -> Exp

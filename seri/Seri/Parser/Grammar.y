@@ -349,7 +349,7 @@ lexp :: { Exp }
  | 'if' exp 'then' exp 'else' exp
     { ifE $2 $4 $6 }
  | 'case' exp 'of' '{' alts opt(';') '}'
-    { caseE $2 $5 }
+    { mcaseE $2 $5 }
  | 'do' '{' stmts opt(';') '}'
     {% case last $3 of
          NoBindS _ -> return $ doE $3

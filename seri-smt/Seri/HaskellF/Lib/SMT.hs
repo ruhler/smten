@@ -5,7 +5,7 @@
 module Seri.HaskellF.Lib.SMT (
     Query, Answer,
     __prim_free,
-    Q.assert, Q.query, Q.queryS,
+    assert, Q.query, Q.queryS,
     return_query, bind_query, nobind_query, fail_query,
     runYices1, runYices2, runSTP,
 
@@ -13,6 +13,8 @@ module Seri.HaskellF.Lib.SMT (
     __caseUnknown, __mkUnknown,
     __caseUnsatisfiable, __mkUnsatisfiable,
     ) where
+
+import Data.Functor((<$>))
 
 import qualified Seri.HaskellF.Lib.Prelude as F
 import qualified Seri.HaskellF.Lib.Query as Q
@@ -27,7 +29,7 @@ class Free a where
     free :: Query a
 
 instance Free F.Bool where
-    free = Q.freebool
+    free = F.Bool <$> Q.freebool
 
 instance Free F.Integer where
     free = error $ "TODO: free Integer"
@@ -101,4 +103,7 @@ instance F.Symbolic1__ Query where
 instance F.Symbolic1__ Answer where
     __if1 = F.__if_default "Answer"
     __default1 = __mkUnsatisfiable
+
+assert :: F.Bool -> Query ()
+assert (F.Bool e) = Q.assert e
 

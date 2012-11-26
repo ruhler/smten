@@ -171,7 +171,7 @@ concretize n v
  = let g :: ExpH -> Maybe ExpH
        g (VarEH (Sig nm _)) | n == nm = Just (boolEH v)
        g _ = Nothing
-   in transform g
+   in Seri.ExpH.transform g
 
 -- nullary primitives
 nprimitives :: HT.HashTable Name (Type -> ExpH)
