@@ -15,7 +15,7 @@ source-repository this
 --branch:
 --tag:
 library
-  exposed-modules: Seri.IO.Run, Seri.SMT.Query, Seri.SMT.Run, Seri.SMT.STP.Concrete, Seri.SMT.STP.FFI, Seri.SMT.STP.STP, Seri.SMT.Solver, Seri.SMT.Syntax, Seri.SMT.Translate, Seri.SMT.Yices.Concrete, Seri.SMT.Yices.FFI2, Seri.SMT.Yices.Yices1, Seri.SMT.Yices.Yices2
+  exposed-modules: Seri.IO.Run, Seri.SMT.Run, Seri.SMT.STP.Concrete, Seri.SMT.STP.FFI, Seri.SMT.STP.STP, Seri.SMT.Yices.Concrete, Seri.SMT.Yices.FFI2, Seri.SMT.Yices.Yices1, Seri.SMT.Yices.Yices2
                    Seri.DSEL.SMT
   build-depends: base ==4.5.*, mtl ==2.1.*, pretty ==1.1.*, array ==0.4.*, directory ==1.1.*, template-haskell ==2.7.*, hashable ==1.1.*, containers ==0.4.*, bytestring ==0.9.*, seri ==0.3.*
   extra-libraries: stp stdc++ yices1 yices2

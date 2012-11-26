@@ -1,0 +1,648 @@
+
+Wed Nov 21 07:43:59 EST 2012
+
+Of course! The problem is simple. I forgot to implement substitute for list.
+
+Wed Nov 21 07:49:42 EST 2012
+
+And now sudoku works. Awesome.
+
+Nifty.
+
+The only issue is... it takes 30 seconds, because the generated query is
+massive. I need to do concretization where possible. That's the next step.
+
+Wed Nov 21 08:19:25 EST 2012
+
+Done. Now Sudoku is faster.
+
+But... I'm slightly disappointed, because still we have very little time spent
+in check. All of it is in substitution and SMT syntax stuff.
+
+Well, I could work on making those faster, which would be good. I should also
+get the rest of the test cases to work. But this is good news. I think I'm
+close now to where the seri master branch is. Just a little bit more grunt
+work to do. And I ought to be able to compare performance against it too.
+
+Wed Nov 21 09:39:26 EST 2012
+
+Thoughts on debug.
+
+You don't really want programmer controlled debug. You don't want debug on by
+default. You shouldn't mention it. Debug is for when things go wrong and you
+want to get some insight as to what is happening. Or, debug is when you want
+to generate a sample SMT file, perhaps for use in a benchmark.
+
+Note that debug can really slow things down.
+
+So, here is what I propose for debug. Remove the explicit debug run option.
+Instead use an environment variable. SERI_DEBUG=... or something. This will
+either be empty, in which case no debug is performed, or it will be the name
+of a file or path where debug should be done. But we'll use it as a template.
+So, you have template foo, then generated debug files should be, ideally:
+foo.yices1.1, foo.yices2.1, foo.stp.1 foo.yices2.2, etc... where we add
+explicitly which solver it is, and each different run gets a different number.
+
+I don't know how to implement it reasonably. Perhaps I can approximate at
+first, by appending to a file instead of overwriting? Or... hum. No sure.
+
+Anyway, I think that makes as much sense, or more, than the current approach,
+which doesn't work because: for perf you want debug off, for debug you want it
+on, you don't want to have to change your program each time. And you don't
+know when you run the program what directory you are in. That is, debug is
+really a runtime choice, which depends on where you are, what you are doing.
+And consider the current approach: each runQuery call site goes to the same
+debug file, which is almost as bad as overwriting the debug file each time
+runQuery is called.
+
+Thoughts on error.
+
+Give each type an explicit _|_ in HaskellF. When converting to and from
+concrete Haskell values, _|_ maps to Prelude.error. In an assertion you may or
+may not have _|_ show up.
+
+There are two approaches, which may actually be the same, as to how this
+should work. First approach: from the semantic point of view, assertions are
+manipulating sets of assignments.
+
+Let's say we keep track of three sets of assignments... a partition of all
+possible assignments: 
+  TRUE - set of assignments for which every assertion argument evaluates to
+         True.
+  FALSE - set of assignments for which there exists an assertion argument
+         which evaluates to False.
+  ERROR - Everything else. That is, no assertion arguments evaluate to FALSE,
+          but at least one is _|_.
+
+The construction of these sets is:
+Initially, all assignments are in TRUE.
+We have a state transition diagram. Given the initial state for an assignment,
+and the result of the assignment on the next assertion, the state is goes to
+is:
+
+(TRUE, True) -> TRUE
+(TRUE, False) -> FALSE
+(TRUE, _|_) -> ERROR
+(ERROR, True) -> ERROR
+(ERROR, False) -> FALSE
+(ERROR, _|_) -> ERROR
+(FALSE, True) -> FALSE
+(FALSE, False) -> FALSE
+(FALSE, _|_) -> FALSE
+
+In other words, False pulls everything down to FALSE. Error pulls everything
+above False down to Error. And True does nothing.
+
+And now we can ask what happens when you call query:
+
+Satisfiable: TRUE is non-empty, give an assignment from the set.
+Unsatisfiable: TRUE and ERROR are empty.
+Unknown: True is empty, ERROR is non-empty.
+
+
+That's the first approach. The alternative is... let's try to be consistent
+with the idea that _|_ is the same as non-termination. I suppose there are a
+couple of ways to look at this.
+
+First way: if any assertion evaluates to _|_, then a query making use of that
+assertion evaluate to _|_.
+
+Okay, so let's say we were doing this the brute force way.
+
+Given an assertion, I do the following:
+- For every assignment in TRUE, evaluate the assertion.
+True -> TRUE
+False -> FALSE
+_|_ -> _|_
+
+What does this mean? And again, treat it as an evaluation.
+
+It means things like:
+
+assert (False)
+assert (error "foo")
+query ()
+
+Returns Unsatisfiable, we don't trigger the error, because there was no
+satisfying assignment to begin with.
+
+assert (error "foo")
+assert (False)
+query ()
+    Returns _|_, because the first assertion triggers an error.
+
+x <- free
+assert (not x)
+assert (if x then _|_ else False)
+query x
+
+  Returns Unsatisfiable. We don't trigger _|_, because we knew from the first
+assertion that x must be false, so we don't encounter _|_.
+
+Now, contrast this with the approach above.
+
+The first query: is the same: any False drags it down.
+The second query: is different! It's _|_ vs. Unsatisfiable.
+The third query: is the same.
+
+Honestly, I think I prefer the second approach. It makes more sense from an
+operational point of view. It makes more sense from this idea that: you can't
+necessarily look at _|_.
+
+Okay. I like that. Let's go with that second approach then. What does that
+mean in practice?
+
+It means the order of assertions is important. Ug. I don't know what it means.
+Let me come back to this later.
+
+Just some thoughts.
+
+Now. Goal for the rest of today:
+
+1. Get haskellf to work for all the test cases.
+
+And I guess that's it. Then play around with performance and such.
+If it works in the end, merge with the master branch.
+
+Wed Nov 21 10:27:49 EST 2012
+
+Issue: things are getting really messy.
+
+For example, I have this common thing I want to do: lift haskell functions
+into haskellf functions. Take functions operating on haskell concrete things,
+and lift them into functions operating on free haskell things.
+
+No? Maybe not... because now I no longer use primitive haskell operations here
+for integer... Okay, scratch that. I can put off cleanup until later on.
+
+Wed Nov 21 10:47:15 EST 2012
+
+Err... okay, so things really are very messy, and I think they could be made
+much cleaner. We can be sharing a lot more code in a much nicer, cleaner way.
+
+How?
+
+The idea is this.
+
+We have notions of free things. We have a number of notions of how to express
+free things in seri:
+
+* Using Exp
+* Using ExpH
+* Using SMT.Expression
+* Using Concrete, or a generated Symbolic__
+
+A common thing we want to do is relate these things to Haskell.
+
+pack :: c -> f
+unpack :: f -> Maybe c
+
+Another common thing we want to do is build up more complex free things:
+
+if__ :: FreeBool -> f -> f -> f
+
+Hmm... But do the different kinds of free representations mix? I fear no.
+
+One issue is... we seem to be having duplicate representations for free
+things. Why? I can express a free thing as easily in SMT.Expression as I can
+in Exp, as I can in ExpH.
+
+Or... another way to ask the question is... why do I distinguish between, say,
+ExpH and SMT.Expression?
+
+Let's say I made SMT.Expression totally abstract. The only way you work with
+it is using the de_fooE functions for pattern matching.
+
+Then anyone who uses SMT.Expression, could just as easily use ExpH, so long as
+I've implemented those functions for ExpH. Or Exp, so long as I've implemented
+those functions for Exp.
+
+Note: I still may need STM.Command. Because I don't have a way to express that
+in ExpH.
+
+Hmm... This is a little bit frightening. I don't like to tie Exp and
+SMT.Expression together. Bad for dependencies and such like. But it may be...
+if I make things abstract enough, and introduce classes where necessary, that
+this won't be an issue.
+
+For example, what if you want to use SMT solvers without having the heavy
+weight of the Exp syntax? Wouldn't it be nice to use them on their own?
+Perhaps more efficiently that way?
+
+This is what Nirav was talking about.
+
+Gah! I wish I understood what this all means.
+
+Okay, allow me to dream a little.
+
+Imagine I get rid of SMT.Expression. I don't need it. Instead I can use Exp.
+It has the same information. We access it abstractly.
+
+Now... SMT.Expression has these smart constructors. How about smart
+constructors for Exp?
+
+For example, addE does simplification. It implements the primitive add
+function, or does nothing if the arguments are not appropriate. Or simplifies
+as necessary.
+
+Now, what does elaboration of primitives look like? Is it any different?
+
+No. But... if I do addE, it does some elaboration already if it can?
+
+In a similar fashion... caseE could do some elaboration already. It could
+actually do the case elaboration if the arguments are acceptable.
+
+Here's one difference: Exp is always in the presence of an environment,
+whereas SMT.Expression is not. Now we might need an environment to do caseE
+and addE. That sounds unpleasant. But we might want to add an environment to
+SMT.Expression later on, and wouldn't it be nice to just use the Env we
+already have?
+
+Aha! Here's am important difference between the Seri elaboration process and
+HaskellF. HaskellF gives the environment to ghc to deal with, whereas seri
+elaboration passes it around explicitly.
+
+If I did HaskellF, where each function is translated, but they all operate on
+Exp...
+
+First of all, it would greatly simplify the translation in HaskellF, because I
+don't need these type classes. Every type is Exp.
+
+We get the environment passed along by ghc. For primitives, we provide these
+addE, mulE, etc... constructs.
+
+I think it is important to have an interpreter as well as a compiler, because
+we can't always compile to ghc. For example, if I make up a function on the
+fly based on user input, and I don't want to compile ghc. Is there a natural
+way that these two approaches can coexist and share code?
+
+A binary primitive is a function from f = Type -> ExpH -> ExpH -> Maybe ExpH.
+This primitive is very close to addE. It could be used to 
+
+addE = fromMaybe ("+" a b) (f a b)
+
+Why is the elaborator so slow on the HCP thing?
+It has to do with lists...
+
+If ExpH had a type for List. And if... map were a function on lists... that
+means haskell has to know about the map function to make it go faster... in
+HaskellF, haskell knows about the map function. And it distinguishes types.
+But again, if we have some notion of free list, then it can't really do that,
+can it?
+
+That is, if I have everything translate to Exp...
+
+Then how will map translate?
+
+It translates like:
+
+It makes references to __caseNil__ and __caseCons__.
+
+I could translate these to:
+
+__caseNil__ (ListEH []) y _ = y
+__caseNil__ (ListEH _) _ n = n
+__caseNil__ ...
+
+And that's where we get the specialization?
+
+I'm so confused.
+
+The question is, what about HaskellF improves performance?
+* ghc knows about environment, so it can make pointers.
+Analog in elaborator: share toh and make an EnvH.
+Oh, ghc can also do dictionary stuff for type classes and all that fun stuff.
+
+* different haskell types for different functions. Let's us specialize on
+  constructors and such. But this doesn't last as more things are allowed to
+  be free?
+
+Wed Nov 21 11:51:50 EST 2012
+
+I looked at sudoku profiling. Elaborator versus haskellf. There's surprisingly
+little difference. I think it's all because ghc looks at the environment, can
+specialize things for different types, deal with the type classes
+appropriately, and all that sort of stuff. If you look at the sudoku profile,
+you see that much of the time is spent in concretize and assignl. The
+concretize is the similar to the substitute time in haskellf. The assignl is
+the time that goes away from the environment. The time that, perhaps, would go
+away if I introduced an EnvH.
+
+Now, the real motivation for haskellf was HCP. So let me look at that profile.
+
+The time there is dominated by type substitution in assignl. A lot for type
+inference. A lot for assignexp. Basically, I have a very large expression, and
+I need to transform it's types.
+
+You know what would help here?
+
+A couple of things. The first is: a HOAS like thing for type substitutions.
+Otherwise known as: sharing of the toExpH, or EnvH, where we have functions
+from Type to ExpH in the environment. If haskell is good enough, we only have
+to do the type substitution once, or we can share a lot of it. Or, rather, to
+do the type update is just setting a pointer?
+
+Another idea is: type specialization. Do a transformation where we change
+things like (+ :: Integer -> Integer -> Integer) to +_Integer, and add the
+specialized declaration to the environment.
+
+Wed Nov 21 12:07:31 EST 2012
+
+What we find is that for the HCP test... haskellf is fast. Again, I think it's
+this same reason. Remember, we are lazy loading things from the environment,
+and we don't share. Doing the substitution of types for the big list is a lot
+of work.
+
+That brings up one thing. If we, for example, represented String in Exp, then
+we could represent it's type very compactly. In fact, we don't even need to
+represent a type, it's implicit. It would make transforming the string type
+much better too.
+
+Perhaps this is something HOAS can help with? If I give a generic type
+transformation, can it recognize that the string part doesn't depend on its
+argument, so it can share the work between the two? That's the big important
+question.
+
+You know what I would like? Some debugging, profiling information. I want to
+see how many times each function is looked up, and what types are transformed,
+during the seri elaboration for HCP. It's easy, just have a trace statement to
+print out the signature of any variable we lookup. Let me see how much we are
+duplicating things.
+
+Looking at the code, I expect zero duplication of the alb1000S in HCP.
+
+Wed Nov 21 12:57:56 EST 2012
+
+alb1000S is read once. We have zero duplication.
+
+Some other things, curry especially, are read a whole bunch. As in, thousands
+of times. I'm not sure if that's the problem or not, because those are all
+fairly small, but it's a clear optimization to try.
+
+Now, I want to understand more about HOAS in haskell.
+
+I have some expression with variables. I want to perform some operation on it,
+such as elaboration. The question is, say I do something like:
+
+\x -> elab exp
+
+Where exp has x substituted for all the variables.
+
+Let me be more specific.
+
+expression is: 
+
+ bar (add "x" (foo 3))
+
+To elaborate, I do:
+
+f x = elab (bar (add x (foo 3)))
+
+Now, I make the following calls, say:
+
+f 3
+f 4
+f 3 
+
+The questions are:
+1. How many times is foo evaluated?
+I would absolutely love it if the answer was once.
+2. How many times is bar evaluated?
+I would absolutely love it if the answer is twice.
+
+I should try this both as HOAS, and as direct compilation in haskell. See if
+there is a difference or not.
+
+First: direct in haskell.
+
+I feel like ghc is going to optimization this away a bunch. I expect from ghc:
+
+foo 3 is called one time.
+bar 9 is called one time.
+bar 10 is called one time.
+
+Shocking. I find each is called all times. Perhaps optimizations need to be
+turned on, or trace mucks with things?
+
+With -O2 turned on, it pulls out (foo 3).
+
+What does this suggest for HOAS? I'm not sure. I don't think it will do any
+better. Let's see.
+
+Well... HOAS doesn't do any better. It doesn't catch the sharing with -O2.
+
+But, I should be able to do these kinds of optimizations just as well. The
+idea is... recognize any part of the expression which doesn't depend on the
+argument, and elaborate it before doing the substitution. That way it is
+shared.
+
+Well, what can I do? I can try it out. Implement this EnvH optimization and
+see if it makes much of a difference.
+
+I expect it to make some difference, certainly. I'm not sure it will make ...
+
+Oh. You know what it is? The reason HOAS is valuable?
+
+Without hoas, I traverse the expression and elaborate with each different
+argument. With hoas, I traverse the expression once. Then, with each argument:
+do a pointer update then elaborate. So that, clearly, is an improvement.
+
+Okay. Yes. This is what I'm going to do then. Make a thing called an EnvH.
+Don't couple it with shared elaboration yet. We are just sharing the
+assignment to types and the conversion from Exp to ExpH.
+
+After that, try sharing elaboration and see how it improves things.
+
+Okay then. How will this work? What's the idea?
+
+The idea is... for elaboration, I want to use EnvH. What is EnvH?
+
+EnvH is an object with a single function:
+
+lookupVar :: EnvH -> Sig -> Maybe ExpH
+
+What is the implementation?
+
+The easiest first cut would be...
+
+EnvH = H.Table (Name, Type -> Maybe ExpH)
+
+So, find all method names in the environment. These are from VarD and methods
+in ClassD. Ignore InstD and PrimD and DataD. Form the pair:
+
+(n, \ct -> do
+    (pt, ve) <- lookupVar env (Sig n ct)
+    return $ toExpH [] $ assignexp (assignments pt ct) ve)
+
+Easy. Simple.
+
+Okay, question: how will I carry this around? When do we make the EnvH, and
+how do we keep a consistent use of it?
+
+1. elaborate will take as an argument an EnvH instead of Env. That's easy.
+2. SMT.Run will take as an argument an EnvH instead of Env.
+    Meaning that Query will have an EnvH embedded in it.
+3. IO.Run will take as an argument an EnvH instead of Env.
+
+Now, a number of users still make use of Env. So I think EnvH should keep a
+copy of the Env and pass that around as needed. That will ease the transition.
+
+Cool. So let me define EnvH, right along side ExpH. And see if I can make this
+work and how it helps performance if any.
+
+Wed Nov 21 13:56:28 EST 2012
+
+So, the naive thing didn't work at all. It didn't change performance at all.
+
+I think the better thing I can do is... do the lookup at time of EnvH
+creation.
+
+Let me at least verify this reduces the number of lookups we make...
+
+Oh. It probably doesn't. Because I do the lookup in the function.
+
+I need to not do a lookupVar in the returned function. I need to do that ahead
+of time.
+
+Not sure how to do this.
+
+Yes. So I didn't end up reducing the lookups any, which is why it is the same.
+But I can improve that.
+
+First: don't do a lookup for any ValD. Read it from the declaration list.
+Second: any ValD whose type does not have any type variables should go to
+    \_ -> e
+Those with type variables should go to
+    \t -> assign (assigments... ) e
+I'll leave type classes as they are for now, because that's trickier.
+
+Wed Nov 21 14:17:33 EST 2012
+
+So, First made no difference, sadly enough, performance wise.
+
+I think, perhaps, I'm trying to solve the wrong problem. The problem isn't
+that we do lots of repeated lookups, because the repeated lookups we do are
+for small things. The problem is type assignments in large expressions...
+namely lists.
+
+Let me try the Second, see if that helps at all. I suspect not.
+
+I don't think this EnvH hurts anything. It's actually, perhaps, cleaner, so I
+see no reason not to leave it in. It's slightly disappointing it doesn't make
+a huge difference.
+
+Wed Nov 21 14:25:15 EST 2012
+
+Second didn't make any difference at all. 
+
+I suppose I can check up on Sudoku, see how it does.
+
+No. It's too small a test case to make a difference.
+
+Well, what should I do? Keep this in?
+
+I think it's a nice abstraction to have, and could be improved upon later. For
+now... it doesn't improve any performance.
+
+Wed Nov 21 14:29:54 EST 2012
+
+What does that leave? What can we do to improve seri elaborator performance?
+
+If I'm given the main expression, I can specialize all types entirely.
+Even without the main expression, I can probably specialize a lot of the
+types.
+
+The question is... is that what the problem is? I call assign exp on the same
+expression over and over again and that's why we spend so much time in assign?
+Or is the issue that we do assign once, but that once takes a long time?
+
+Wed Nov 21 14:39:58 EST 2012
+
+I'm looking closer at the profile, and it looks like the problem is we are
+calling assign and toExpH a whole bunch of times. Like, hundreds of millions.
+Given that there can't be nearly that many different types in my system, I'm
+doing a lot of repeated work.
+
+This suggests the issue really is we want to cache results for specific types,
+so we don't have to redo it over and over again.
+
+Well, there are a couple of options. I could do toExpH first, then update the
+types in the result? I'm not sure if that really would help any.
+
+The other idea is: Just get a set of sample type applications. Specialize each
+function. Ideally we do it based on some concrete thing... I suppose we would
+have to propagate too. So, it's like a recursive thing...
+
+The idea is to speculate. To preemptively (but ideally in a lazy way), guess
+what types you'll be calling a function with, and specialize those.
+
+There really aren't very many. For example, the HCP test only uses 63 distinct
+VarEs. We should only have to call toExpH and assign 63 times! As opposed to
+100 million times. This could be huge.
+
+The question is, how do I figure out which 63 to do?
+
+Again, if I do them all, lazily... But I don't know how to do them all lazily.
+If I do them eagerly, then I could end up doing a lot of work.
+
+Maybe it's not really that much work? To explore all the possible VarEs
+reachable in a given environment?
+
+That's an interesting question. Let me write a utility to figure this out. Or,
+just implement it?
+
+And I can do multiple levels?
+
+Like, first level is: Find all Vars with concrete typed sigs. This is a
+traversal of the entire environment. Specialize those. And only those.
+
+The next level is: for each specialized function, find all new concrete vars.
+And continue that until you reach fixed point.
+
+Let me start with just the first level, because I think that will make a big
+difference. In particular, it will get ++ for Char, because we do ++ with
+strings, and it will get curry of char... because... maybe it won't?
+
+I would like to print them all out and see how many we get on the first pass.
+
+Actually, let me start by doing toExpH before assign. There's no reason not
+to, and that way we can at least verify we end up calling toExpH a whole lot
+less, and all the effort is in assign.
+
+Wed Nov 21 15:06:11 EST 2012
+
+Well, that certainly reduces the burden on toExpH. Trouble is, it also means
+much more work has to be done in assign.
+
+I think specialization is the answer. Let me go back to trying that route.
+
+First step: print out all first level concrete vars, see what we get.
+
+Err... this is annoying. We have to avoid reading bound variables.
+
+Looks like we don't get very many first level concrete vars. I may want to up
+it to multiple levels... But let me just start with the first level. See if it
+makes a difference. If so, good. If not... don't get my hopes down yet. Try
+doing more levels. As long as it doesn't cost us very much, we should be fine
+doing multiple levels. It should be well worth it. I don't know. We'll see.
+
+Wed Nov 21 15:45:22 EST 2012
+
+This doesn't help, because we don't specialize anything interesting yet, and
+there is a notable cost to hashing types.
+
+Let me quickly try the allcvars in this special thing, and see if that helps
+at all. Sadly, I suspect it will not.
+
+What if, just for the sake of argument, I specialize the ones I know are used
+a lot. ++ with [Char]. Crury with (([Char], [Char]) -> [Char]) -> -> [Char] [Char] -> Char]
+
+Yes. That's a good idea to try out.
+
+That made a difference. We cut runtime about in half from that.
+
+Maybe we need a SPECIALIZE pragma, or similar sort of thing.
+
+Well... I have stuff to think about this weekend. Plenty of stuff to think
+about.
+

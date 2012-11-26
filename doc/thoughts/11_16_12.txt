@@ -1,0 +1,533 @@
+
+Fri Nov 16 08:46:37 EST 2012
+
+We have this problem that seri is really really slow. Taking forever to show a
+1000 element list that in Haskell takes like 0.27 seconds to show. This is a
+problem.
+
+One approach is to make the elaborator faster. I suspect that will always have
+issues.
+
+Another approach, which I want to investigate today, is to piggy back much
+more deeply on Haskell. I think I have a way of doing where ghc does all the
+elaboration work, and thus it should be very fast.
+
+Here's the high level idea. We take a seri program and we translate it to a
+haskell program. For each function that operates on free variables, we
+translate the function into a modified function which has the effect of
+working on free variables in Haskell.
+
+In other words, there are functions which work on concrete values. Those will
+stay the same. It's a direct translation from seri to haskell. That's what I
+already do in the haskell backend.
+
+Now there is another space of these same functions operating on free
+variables. I believe I can translate haskell functions and data types in a
+systematic way such that when evaluated in haskell, you get the SMT query you
+want as a result in a very efficient manner.
+
+The first step is to work out examples by hand of the expected translation.
+That's the goal for today. Manually translate Core, Datatype, and Sudoku test
+cases.
+
+I'll figure out what the translation rules are by doing the examples. That's
+the whole point. Let me discuss the background idea now to get things going,
+then dive in to translating Core and see what I can accomplish.
+
+The idea is, given an algebraic data type such as:
+ 
+ data M = M1 | M2 A B
+
+I want to generate a new data type representing a free variable of that type.
+
+The new data type is formed by:
+* a constructor representing a concrete value of the type
+* a constructor for each non-nullary constructor representing a value with
+  that constructor but potentially non-concrete arguments
+* a constructor representing choice about which constructor value you have.
+
+So, for instance, for the above data type, we would generate:
+
+  data M_ = M_C M       -- concrete value
+          | M2_ A_ B_   -- known constructor value, free fields 
+          | M_Q Bool_ M_ M_ -- A choice between constructors
+
+Now, for any function which operates on data M, I believe I can translate it
+to one which operates on M_ which gives the behavior I want: as much concrete
+evaluation as possible is done, everything else generates the desired SNF
+elaborated SMT expression.
+
+The assert function will take as input a Bool_, which represents our SMT
+query.
+
+And that's it. That's the idea. Let me implement the Core test now that way
+and see if it works out or not. I think I can just skip to the interesting
+core test to start.
+
+I need a name for this. What is it called? I don't know. I'll call it Royce
+for now.
+
+I have a predicate p. I want to translate the predicate. Then print out the
+result of computing the translated predicate on various combinations of
+free/concrete variables. Okay? Okay. Here I go. Wish me luck. It could be a
+little tedious to do this translation manually...
+
+Fri Nov 16 09:29:11 EST 2012
+
+Okay! Translation of p_ is easy. We have one test for if all the arguments are
+concrete, in which case we use the original p function. Otherwise we convert
+all the boolean operators to the corresponding free boolean operators.
+
+Let me try it out now and see what it looks like.
+
+Fri Nov 16 09:39:29 EST 2012
+
+Cool! It works great. Works wonderful...
+
+What's the next step?
+
+I think, for now, I can keep working on translations. Don't worry yet about
+plugging into an actual SMT solver. Not until datatype works. I can see it's
+going to generate the right SMT query.
+
+Of course, there's the question of, once you know the values of free
+variables, how do you do the substitution? That's maybe not so hard. I can
+have a simplifyB function which makes use of existing "smart" constructors.
+(Is this starting to sound a lot like hasksat again?)
+
+Okay, now onto the datatype test. This is where things get interesting.
+
+Fri Nov 16 10:10:13 EST 2012
+
+Cool! Looks like enum works. This is ... tedious.
+
+Observations:
+* Given A, A_, we want functions:
+    mkA :: A -> A_
+    de_mkA :: A_ -> Maybe A
+    ifA :: Bool_ -> A_ -> A_ -> A_
+
+Next step... Structures.
+
+Sudoku will be valuable and interesting to do. To get an idea of the
+performance. I fear we have lots of checking for free or not, but it can't
+possibly be slower than the seri elaborator.
+
+Another note, I don't want to forget. When doing simplifications, it may be
+good to cache functions. Like, when I call foo for some complicated boolean
+expression... err... maybe not. No. Nevermind. Don't worry about this just
+now. I can worry about it later. Yes. That would be good. Worry about it
+later. The idea is to say: the way I got this symbolic expression was by
+executing this big function on the argument, so if the argument suddenly
+becomes concrete, rather than reevaluating the expression with free variables,
+I can just re-run the concrete function again.
+
+Fri Nov 16 11:45:45 EST 2012
+
+An idea from Nirav. It may be much easier to reason and do translation if I
+project things to product and sum types. After I get data types up and
+running, I think I should try and write down the translation process for union
+and sum types.
+
+In fact, if I have a translation to union and sum type, I can just provide
+free union and free sum as a library, right? Something to think about.
+
+Where was I again? Oh yes. I see, working on struct.
+
+Fri Nov 16 11:54:26 EST 2012
+
+Well, I'm at the point where I generate something, but I don't know what that
+corresponds to. I need to implement translation back.
+
+Given a free expression and bindings for free variables, substitute the
+values, simplify, and go from there.
+
+I think this will work as a solution. I really do. I think now it does make
+sense to desugar to product and sum types now. I'm not sure why I didn't want
+to do that before... possible because of pattern matching and that stuff?
+
+If haskell is doing all the work, and I keep my nice input language, that's
+all that matters really, right?
+
+Okay, so think about a language with types:
+  Bool, Either a b, Tuple a b, and how I would deal with those.
+
+I should probably think about free functions too, but... not now.
+
+In particular... what's important? What's important is... I don't have to
+worry. Everything is translated my way. I translate case statements. I don't
+make use of multiple argument struct and union to do anything fancy. Let
+haskell do all the work?
+
+We would loose pretty printing, but maybe that doesn't matter? I'll think
+about it.
+
+Certainly just working with sum and product is a special case of full
+algebraic, so if I can figure out how to make that work, I should be all set.
+
+Fri Nov 16 12:44:38 EST 2012
+
+I think this will work. I feel confident it will work. I think I may be trying
+too many optimizations prematurely. I should start by focusing on the minimum
+effort to make it correct, then add performance optimizations later. Because,
+like I say, I think even without optimizations, it's likely to perform much
+better than seri does now anyway.
+
+Let me work out now the translation for a restricted language with the
+following types: Unit, Bool, Either, (,),
+
+For SAT, that should be all I need. We can ask about integers later on as a
+separate thing.
+
+And the expressions? I guess you don't need case statements anymore, do you?
+Let me not worry about that.
+
+What do we need?
+
+Unit:: We don't need a free version. Or rather, a free unit is the same as a
+concrete unit.
+
+Bool:: We need the primitive SMT operations: 
+* True, False, Free, and, or, not, if.
+
+And I'll make these smart constructors which simplify operations on concrete
+values.
+
+(A,B)::
+
+A free tuple is represented as:
+
+data Tuple' A B = TupleC (A, B)     -- A concrete tuple
+                | Tuple' A' B'      -- A free tuple (contains free values)
+
+Hmm... I would seem to be doing a premature optimization here, caching
+concrete values. Let me simplify.
+
+data Tuple' A B = (A', B'). Simple. The arguments can be free. Everything else
+is exactly the same.
+
+Either A B::
+A free Either is represented as:
+
+data Either' A B = Either' Bool' A' B'
+
+Now, the important thing is, we do lifting for either values?
+
+either :: (a -> c) -> (b -> c) -> Either' a b -> c
+either fa fb (Either' p a b) = ...
+
+Hmm... This is interesting. Let's consider the cases more carefully:
+
+Case: c is unit: trivial. Just return unit.
+Case: c is bool: Answer is:     ifB p (fa a) (fb b)
+Case: c is Struct X Y: Answer is:
+    Struct ...
+
+Basically what I want is to have IF defined for every data type. Then this is
+trivial:
+
+if p (fa a) (fb b)
+
+The if is defined as follows:
+    Unit: ()
+    Bool: Bool_if
+    Struct: \p (Struct a b) (Struct x y) -> Struct (if p a x) (if p b y)
+    Either: \p (Either p1 a1 b1) (Either p2 a2 b2)
+        -> Either  (if p p1 p2) (if p a1 a2) (if p b1 b2)
+
+Easy! Now, there is concern here, because we end up duplicating predicates. So
+hopefully I can share those at some point eventually. This is how we do
+pushing. And this, by the way, handles all case constructs. That's what I've
+just done.
+
+Okay, so now consider how to do the translation from concrete to free.
+
+To translate a value:
+
+    Unit: id
+    Bool: True -> True, False -> False
+    Struct: translate component wise
+    Either: Left a -> Either True a ?
+            Right b -> Either False ? b
+
+Here's a question. What should the value of '?' be? Well, let's say we have
+default values, because it doesn't really matter.
+
+Default Unit: ()
+        Bool: False
+        Struct default component wise
+        Either: default component wise
+
+In this way we can convert any concrete element to a free element.
+
+Now, how to convert back, assuming no free elements?
+
+Unpack Unit: ()
+       Bool: it should simplify to True or False, then go back.
+       Struct: component wise
+       Either: if p, Left, else Right.
+
+Again. Easy to do.
+
+Now, how to translate a function? That is, I want something of the form:
+
+Given (a -> b), produce (Free a -> Free b).
+
+What could the function be? Let's say I get rid of case statements. Use if and
+either instead. We don't need constructors any more, just the functions:
+
+pair :: a -> b -> (a, b)
+fst :: (a, b) -> a
+snd :: (a, b) -> b
+left :: a -> Either a b
+right :: b -> Either a b
+either :: (a -> c) -> (b -> c) -> Either a b -> c
+if :: Bool -> a -> a -> a
+true :: Bool
+unit :: ()
+false :: Bool
+
+And primitives, and such.
+
+We'll also have lambda terms... do we need those? And application. And
+literals. Yes. I'll keep lamba terms.
+
+In other words, it comes down to the primitives and lambda and application.
+
+Let me give everything then:
+
+pair' = pair
+fst' = fst
+snd' = snd
+left' a = Either' true' a default
+right' b = Either' false' default b
+either f g (Either' p a b) = Either' p (f a) (g b)
+if = we already saw.
+true' = True
+false' = False
+unit' = unit
+
+\x -> ..., turns into \x -> (...)'. Basically we translate everything in the
+body (the variable 'x' stays the same).
+
+(f x) turns into: (f' x')
+
+I'm slightly concerned about the difference between
+    Free (a -> b) and Free a -> Free b. Are they equivalent?
+
+Perhaps that's exactly the translation I'm describing. You give me
+(a -> b), I can turn it into Free a -> Free b.
+
+But there is a notion of a free function... Interesting...
+
+free (a -> b) is, well, I can base it on the argument type or the target type.
+I think it's the same thing? I don't know.
+
+free :: Free (() -> b)
+free = do
+    x <- free
+    return $ \_ -> x
+
+free :: Free (Bool -> b)
+free = do
+    y <- free
+    z <- free
+    return $ \x -> if x then y else z
+
+free :: Free ((a, b) -> c)
+free = do
+    f <- free
+    return $ \(x, y) -> f x y   
+
+free :: Free (Either a b -> c)
+free = do
+    f <- free
+    g <- free
+    return $ either' f g 
+
+That's it! I can completely describe any object, value or function of free
+type. Um... I don't have integers, which will complicate things. The trouble
+with integer is there is no way to have a function from an integer to value in
+general. I need a primitive (Integer -> a) for that to work. But fine. Don't
+worry about that now.
+
+Okay, so here's what I have. A simplified language with just a couple types
+and primitive functions and lambda terms and application. You give me any
+concrete type, function included, and I can give you a free instance of that
+type. You give me any function of the type (a -> b), and I can give you a
+function of type (Free a -> Free b). Note that this is different from
+Free (a -> b). In the later, you have a free function, in the former you have
+a concrete function which operates on free values. Wait... is that true? I'm
+confused. Confused because my representation of Free (a -> b) is a function of
+type (Free a -> Free b). Oh! So they are the same. That's good.
+
+Now, I could make a library based on these primitives in Haskell. I could run
+concrete seri programs by translating to these primitives. I should make use
+of newtype so that we can distinguish between different seri types with the
+same structure. I should make use of generalized newtype deriving to reuse the
+primitives. This would work in my current system. I could just do the
+translation when I translate to Haskell.
+
+Now, for every named ... and I suppose anonymous function? Err... For every
+named function I can generate another function which is the free version of
+that. That is given: foo :: A -> B, I generate foo' :: FreeA -> FreeB, for
+appropriate types of free. For polymorphic types? I ... don't know that it
+matters so much? Or it will be easy? Yes. Let's say it will be easy.
+
+Now you have this, and you want to start writing queries. Let's say you can't
+talk about Query in seri, because remember, I don't really support that type
+in my translation. Then you can manually write your query in the query monad
+in Haskell, and you choose to use foo or foo' in the right place based on your
+types?
+
+There is another idea. For each top level variable, define a type class? Oh,
+that would be so terribly annoying, wouldn't it? Would it? Maybe, maybe not.
+
+For example:
+
+class Foo a of
+    foo :: a
+
+Then give instances:
+instance Foo (A -> B)
+    foo = ...
+
+instance Foo (FreeA -> FreeB)
+    foo = ...
+
+Now in your query, you write "foo", and Haskell will figure out the right one
+for you to use based on types.
+
+assert :: FreeBool -> Query ()
+free :: Query FreeBool
+query :: FreeA -> Query A       <--- this is the tricky one.
+
+
+If I had a notion of a class: Free a b, where this means the concrete type 'a'
+is represented by the free type 'b', then I could say:
+
+query :: Free a b => b -> Query (Answer a)
+
+And basically it comes down to:
+1. Call check in SMT solver
+2. Read the value of free variables
+3. Do substitution on the argument
+4. Simplify the argument
+5. Unpack the argument. If Satisfiable, it should be guaranteed to unpack
+successfully.
+
+I really wish classes with functional dependencies weren't so painful to
+use...
+
+Okay, so here now is the idea. The vision, if you will.
+
+You give me a seri program, in the same form you currently give it to me in.
+I translate it to a haskell program. For each top level variable you give me,
+I generate two implementations: one for the concrete type, and one for a
+corresponding Free type. If I am unable to translate to the corresponding Free
+type, then I just don't define that instance. This could happen, for example,
+if you try to instantiate a free Query. If everything checks out, your program
+should compile just fine to haskell, and you can run it.
+
+Note: I still need to convert to products and sums. I don't think that will be
+hard to do. I just wanted to mention it.
+
+And thus we come around full circle again. That's okay.
+
+How should I go about making this work?
+
+I need to figure out what haskell code I want to generate.
+
+So here's the plan then. Let me implement the library as I have described it
+above. Let me implement a query monad in Haskell which takes a free bool for
+an assertion, and that sort of thing. Let me then manually translate Core and
+Datatype tests using this framework, and see how it goes. I'll not jump right
+to complicated things. Just do the minimal I need to to get those tests
+working, but in a manner consistent with the vision.
+
+I suspect that's all I'll have time for today. If I get bored... I'm sure I
+can think of something to do.
+
+Okay then. Time to get started...
+
+Fri Nov 16 15:31:58 EST 2012
+
+Looks like the Core test works in this new royce. That's good.
+
+Some comments:
+* I hate functional dependencies. I hate it.
+* There's some intertwining of Query Free and FreeBool which is rather ugly.
+  Can they be separated out more nicely?
+
+Fri Nov 16 16:46:43 EST 2012
+
+Implemented MyEnum test. For some reason we only allocate 3 variables instead
+of the ... oh. No. I expect 3. Seri allocates 4 for some reason.
+
+But the generated query is also much more complex... and rather redundant. I
+ought to be able to simplify it more. I'm not sure what's going on there.
+
+Fri Nov 16 16:53:48 EST 2012
+
+Okay, so all the library, hypothetically, is implemented. Maybe.
+Let me write up MyStruct and MyMix test cases.
+
+Fri Nov 16 17:12:46 EST 2012
+
+Okay, so I implemented Core and Datatype.
+
+What are the observations?
+* newtype makes it trivial to define a new type based on products and sums
+  which inherits the Free data type, and Concrete is a trivial
+  translation.
+* I worry about the complexity of generated expressions, which is much greater
+  than the ones generated by seri. Why is that? Perhaps it's because of the
+  optimization I have to concreteize free variables along the way. I suppose
+  that's not too hard a thing to test out. Just disable the optimization in
+  seri and see what happens. Let me try that.
+
+I can't tell, because seri completely blows up without that optimization
+(which is scary).
+
+How hard would it be to implement that optimization in royce? I can already
+realize some free variables...
+
+Fri Nov 16 17:32:24 EST 2012
+
+Well, I can implement that optimization in royce easily enough. It cleans
+things up a little for if statements. I could probably propagate the same kind
+of information for and and or and other things.
+
+For example
+
+(x && (if x a b))
+
+Could be simplified to: (x && a), because we know for && to be satisfied, x
+must be True, if it's false, nothing else matters, so in the rest of the
+expressions, we may as well assume it's true.
+
+In other words, I could rewrite this as:
+
+if x
+    then (if x a b)
+    else False
+
+Apply the transformation:
+
+if x 
+    then a else False
+
+And then reduce:
+
+(x && a)
+    
+
+That's pretty nifty that I can do that sort of thing.
+
+Yes. I think that would solve the issues I'm having. If I was clever, I ought
+to be able to get a general case to work, and build everything up out of that.
+Perhaps that's what Nirav was suggesting...
+
+Now then, what's the next step? The next step is to think about the next step
+over dinner.
+

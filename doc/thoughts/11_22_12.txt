@@ -1,0 +1,85 @@
+
+Thu Nov 22 10:55:33 EST 2012
+
+I've been thinking a bunch. Not sure how much progress I've made, but let me
+put down my thoughts.
+
+1. I feel like we should only have to call toExpH once for each top level
+declaration. It doesn't matter what type you call it with, the translation is
+the same except for the types of the ConE and free VarE at the leafs.
+
+Here's an idea. Have toExpH do the assignment. This is good because we share
+the traversal, and we only have to change types for non-free variables.
+
+That could save us some.
+
+Other ideas include:
+* instead of having the function be on the type, have it be on the values
+  looked up? The idea is, given the polymorphic type, we know all the type
+  variables that are going to be looked up. So let's look them up, and have
+  their values point to an argument or thunk, or something like that.
+* try to explicitly separate things which depend on the type and things which
+  don't? For example, by treating it more as: toExpH :: ... -> (Type -> ExpH),
+  instead of toExpH :: ... -> Type -> ExpH. For example, all the LitEHs can be
+  shared. Unfortunately, that's about it...
+
+There's this observation that, really, for each different type, we need a
+different structure. If we know which of the finite different structures we
+need, then we would be all set (specialization), but if we don't, we end up
+duplicating over and over and over again.
+
+I would really rather not go the route of specialization, if that can be
+avoided...
+
+So here's another idea... could we do toExpH, without doing the assignment.
+Use the same translation. Then carry through the type assignment in
+elaboration somehow?
+
+I suppose the idea is... when I get a VarE, I first do assign there when I
+want to elaborate it, then look it up.
+
+This is possible if we have an extra argument to elab... but is that really
+the right way to do it?
+
+The hard part is dealing with lambda. So I have a lambda, I want to associate
+it with special assignments? Or really, I have an arbitrary expression. I want
+to say: when elaborating this arbitrary expression, use this type environment.
+
+But, for lambdas... I want to say: the body of the expression, not, for
+example, after substituting things in. Which means I have to do it at the time
+of toExpH...
+
+So, LamEH would have a function from type environment, to argument, to ExpH.
+This is, again, in line with doing the assignment during toExpH.
+
+The other point to bring up, which is actually, perhaps, the most significant
+point, is that we could greatly reduce the number of variable lookups we do if
+we aren't so lazy in the variable lookups. Right?
+
+So, either do the lookups in toExpH? Or do elaboration of top level
+declarations in EnvH, or something like that. This way, the number of lookups
+and assignments we do is on the order of the number of occurrences seen in the
+user code, not the number of occurrences seen after a big elaboration. Or
+maybe something like that. And I want to do some of this anyway.
+
+So, to start, here's what I'll do. I'll modify toExpH to take the type
+assignments and do them too. See how that helps things, if at all. Then I'm
+going to take a break to think more about the other options and how they may
+or many not help and how they could be implemented.
+
+Another thing I want to think about is how to make IoEH and QueryEH part of
+the elaborator. This gets tricky because of how seri and seri-smt packages are
+split up. Perhaps I can move QueryEH to seri? Fine. But how do I handle the
+runYices and runSTP primitives? Those have to be in seri-smt. So, look into
+the option of passing primitives to elaborate, and pass those primitives as
+extra in seri-smt.
+
+Thu Nov 22 11:26:51 EST 2012
+
+Combining toExpH and assign made a big difference. As much of a difference as
+specialization. I haven't tried doing them both together yet. That will be
+good to see. And I'll continue to think about the things I said above. I still
+think toExpH is being called way more often than it need be, often with
+exactly the same arguments. That's what I would like to avoid.
+
+

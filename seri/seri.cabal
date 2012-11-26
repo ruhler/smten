@@ -106,6 +106,11 @@ library
     Seri.Elaborate.ExpH
     Seri.Elaborate.Elaborate
 
+    Seri.SMT.Solver
+    Seri.SMT.Syntax
+    Seri.SMT.Translate
+    Seri.SMT.Query
+
     Seri.TH
 
     Seri.Fresh

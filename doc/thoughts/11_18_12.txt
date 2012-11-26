@@ -1,0 +1,12 @@
+
+Sun Nov 18 10:34:41 EST 2012
+
+Okay, so, making progress. Perhaps enough progress to be error driven now.
+
+First issue: __caseTrue is not defined.
+
+Err... okay, so I should finish generating the code I believe I need to
+generate before getting into this.
+
+I think 'Bool' is a special type which I need to define myself. That's okay.
+
