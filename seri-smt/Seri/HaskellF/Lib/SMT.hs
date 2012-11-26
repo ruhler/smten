@@ -32,7 +32,7 @@ instance Free F.Bool where
     free = F.Bool <$> Q.freebool
 
 instance Free F.Integer where
-    free = error $ "TODO: free Integer"
+    free = F.Integer <$> Q.freeinteger
 
 instance Free (F.Bit n) where
     free = error $ "TODO: free Bit n"

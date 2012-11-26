@@ -8,10 +8,13 @@ module Seri.Exp.Sugar (
     
     boolE, de_boolE, falseE, trueE, charE, de_charE, listE, de_listE, stringE, de_stringE,
     errorE, tupleE,
-    integerE, numberE,
+    integerE, de_integerE, numberE,
 
     addE, subE, mulE, opE,
     de_notE, de_andE, de_orE,
+    eqE, ltE, leqE, gtE, 
+    integer_addE, integer_subE, integer_mulE,
+    integer_eqE, integer_ltE, integer_leqE, integer_gtE, 
     ) where
 
 import Control.Monad
@@ -150,6 +153,10 @@ tupleE xs =
 integerE :: Integer -> Exp
 integerE = litE . IntegerL
 
+de_integerE :: Exp -> Maybe Integer
+de_integerE (LitE (IntegerL x)) = Just x
+de_integerE _ = Nothing
+
 numberE :: Integer -> Exp
 numberE i =
  let t = arrowsT [integerT, UnknownT]
@@ -195,4 +202,58 @@ caseE x (Sig kn _) y n
         then appsE y vs
         else n
 caseE x k y n = CaseE x k y n
+
+eqE :: Exp -> Exp -> Exp
+eqE a b = appsE (varE (Sig (name "Prelude.==") (arrowsT [typeof a, typeof b, boolT]))) [a, b]
+
+ltE :: Exp -> Exp -> Exp
+ltE a b = appsE (varE (Sig (name "Prelude.<") (arrowsT [typeof a, typeof b, boolT]))) [a, b]
+
+leqE :: Exp -> Exp -> Exp
+leqE a b = appsE (varE (Sig (name "Prelude.<=") (arrowsT [typeof a, typeof b, boolT]))) [a, b]
+
+gtE :: Exp -> Exp -> Exp
+gtE a b = appsE (varE (Sig (name "Prelude.>") (arrowsT [typeof a, typeof b, boolT]))) [a, b]
+
+integer_addE :: Exp -> Exp -> Exp
+integer_addE a b
+  | Just av <- de_integerE a
+  , Just bv <- de_integerE b = integerE (av + bv)
+  | otherwise = appsE (varE (Sig (name "Prelude.__prim_add_Integer") (arrowsT [integerT, integerT, integerT]))) [a, b]
+
+integer_subE :: Exp -> Exp -> Exp
+integer_subE a b
+  | Just av <- de_integerE a
+  , Just bv <- de_integerE b = integerE (av - bv)
+  | otherwise = appsE (varE (Sig (name "Prelude.__prim_sub_Integer") (arrowsT [integerT, integerT, integerT]))) [a, b]
+
+integer_mulE :: Exp -> Exp -> Exp
+integer_mulE a b
+  | Just av <- de_integerE a
+  , Just bv <- de_integerE b = integerE (av * bv)
+  | otherwise = appsE (varE (Sig (name "Prelude.__prim_mul_Integer") (arrowsT [integerT, integerT, integerT]))) [a, b]
+
+integer_eqE :: Exp -> Exp -> Exp
+integer_eqE a b
+  | Just av <- de_integerE a
+  , Just bv <- de_integerE b = boolE (av == bv)
+  | otherwise = appsE (varE (Sig (name "Prelude.__prim_eq_Integer") (arrowsT [integerT, integerT, boolT]))) [a, b]
+
+integer_ltE :: Exp -> Exp -> Exp
+integer_ltE a b
+  | Just av <- de_integerE a
+  , Just bv <- de_integerE b = boolE (av < bv)
+  | otherwise = appsE (varE (Sig (name "Prelude.<") (arrowsT [integerT, integerT, boolT]))) [a, b]
+
+integer_leqE :: Exp -> Exp -> Exp
+integer_leqE a b
+  | Just av <- de_integerE a
+  , Just bv <- de_integerE b = boolE (av <= bv)
+  | otherwise = appsE (varE (Sig (name "Prelude.<=") (arrowsT [integerT, integerT, boolT]))) [a, b]
+
+integer_gtE :: Exp -> Exp -> Exp
+integer_gtE a b
+  | Just av <- de_integerE a
+  , Just bv <- de_integerE b = boolE (av > bv)
+  | otherwise = appsE (varE (Sig (name "Prelude.>") (arrowsT [integerT, integerT, boolT]))) [a, b]
 

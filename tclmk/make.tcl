@@ -107,6 +107,7 @@ haskellf Seri.Tests.Basic
 haskellf Seri.SMT.Tests.Core
 haskellf Seri.SMT.Tests.Datatype
 haskellf Seri.SMT.Tests.Scoped
+haskellf Seri.SMT.Tests.Integer
 
 puts "BUILD COMPLETE"
 

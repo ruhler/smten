@@ -103,6 +103,6 @@ main :: IO ()
 main = do
     runYices1 (Just "build/test/Core.yices1.dbg") qtest
     runYices2 (Just "build/test/Core.yices2.dbg") qtest
-    runSTP (Just "build/test/Core.stp.dbg") qtest
+    --runSTP (Just "build/test/Core.stp.dbg") qtest
     putStrLn "CORE PASSED"
 

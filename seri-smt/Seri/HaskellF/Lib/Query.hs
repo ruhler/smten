@@ -1,7 +1,7 @@
 
 module Seri.HaskellF.Lib.Query (
     Query, RunOptions(..), Answer(..),
-    query, queryS, assert, runQuery, freebool,
+    query, queryS, assert, runQuery, freebool, freeinteger,
     ) where
 
 import Control.Monad.State
@@ -27,7 +27,7 @@ data QS = QS {
     qs_dh :: Maybe Handle,
     qs_freeid :: Integer,
     qs_qs :: Compilation,
-    qs_freevars :: [Name]
+    qs_freevars :: [Sig]
 }
 
 type Query = StateT QS IO
@@ -101,12 +101,17 @@ runQuery opts q = do
     evalStateT q qs
 
 
-realizefree :: Name -> Query Bool
-realizefree nm = do
+realizefree :: Sig -> Query Exp
+realizefree (Sig nm t) | t == boolT = do
     ctx <- gets qs_ctx
     bval <- lift $ SMT.getBoolValue ctx (unname nm)
     debug $ "; " ++ unname nm ++ " is " ++ show bval
-    return bval
+    return $ boolE bval
+realizefree (Sig nm t) | t == integerT = do
+    ctx <- gets qs_ctx
+    ival <- lift $ SMT.getIntegerValue ctx (unname nm)
+    debug $ "; " ++ unname nm ++ " is " ++ show ival
+    return $ integerE ival
 
 -- | Check if the current assertions are satisfiable.
 query :: (F.Symbolic__ a) => a -> Query (Answer a)
@@ -117,7 +122,7 @@ query r = do
         freevars <- gets qs_freevars
         freevals <- mapM realizefree freevars
         let flookup :: Name -> Maybe Exp
-            flookup s = boolE <$> lookup s (zip freevars freevals)
+            flookup s = lookup s (zip [n | Sig n _ <- freevars] freevals)
         return $ Satisfiable (F.__substitute flookup r)
       SMT.Unsatisfiable -> return Unsatisfiable
       _ -> return Unknown
@@ -126,9 +131,18 @@ query r = do
 freebool :: Query Exp
 freebool = do
   free <- freevar
-  modify $ \qs -> qs { qs_freevars = free : qs_freevars qs }
+  let s = Sig free boolT
+  modify $ \qs -> qs { qs_freevars = s : qs_freevars qs }
   runCmds [SMT.Declare (unname free) SMT.BoolT]
-  return $ VarE (Sig free boolT)
+  return $ VarE s
+
+freeinteger :: Query Exp
+freeinteger = do
+  free <- freevar
+  let s = Sig free integerT
+  modify $ \qs -> qs { qs_freevars = s : qs_freevars qs }
+  runCmds [SMT.Declare (unname free) SMT.IntegerT]
+  return $ VarE s
 
 smte :: Exp -> Query SMT.Expression
 smte e = do

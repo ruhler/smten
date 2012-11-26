@@ -7,7 +7,7 @@ module Seri.HaskellF.Lib.Prelude (
     Symbolic4__(..), Symbolic5__(..), Symbolic6__(..), Symbolic7__(..),
     Symbolic8__(..), Symbolic9__(..),
 
-    Bool(..), Char, Integer, IO, Bit, Unit__, List__,
+    Bool(..), Char, Integer(..), IO, Bit, Unit__, List__,
     __concrete,
     __mkUnit__, __caseUnit__,
     __mkTrue, __mkFalse, __caseTrue, __caseFalse,
@@ -15,7 +15,7 @@ module Seri.HaskellF.Lib.Prelude (
 
     not, (&&), (||),
     __prim_eq_Char, __prim_eq_Integer, __prim_add_Integer, __prim_sub_Integer,
-    __prim_mul_Integer, (<), (>),
+    __prim_mul_Integer, (<), (<=), (>),
     __prim_show_Integer,
     return_io, bind_io, nobind_io, fail_io, putChar,
 
@@ -48,11 +48,16 @@ import qualified Seri.Ppr as S
 type IO = Prelude.IO
 type Bit = Bit.Bit
 type Unit__ = ()
-type Integer = Concrete__ Prelude.Integer
 type Char = Concrete__ Prelude.Char
 
 newtype Bool = Bool S.Exp
     deriving(Prelude.Show)
+
+newtype Integer = Integer S.Exp
+    deriving(Prelude.Show)
+
+mkInteger :: Prelude.Integer -> Integer
+mkInteger = Integer . S.integerE
 
 mkBool :: Prelude.Bool -> Bool
 mkBool = Bool . S.boolE
@@ -97,7 +102,7 @@ __errorh msg = fromMaybe (Prelude.error (Prelude.show msg)) $ do
 
 
 instance Prelude.Num Integer where
-    fromInteger = __concrete . Prelude.fromInteger
+    fromInteger = mkInteger
     (+) = Prelude.error $ "+ for haskellf Integer not defined"
     (*) = Prelude.error $ "* for haskellf Integer not defined"
     abs = Prelude.error $ "abs for haskellf Integer not defined"
@@ -293,25 +298,28 @@ __prim_eq_Char :: Char -> Char -> Bool
 __prim_eq_Char = __capp2 $ \a b -> mkBool (a Prelude.== b)
 
 __prim_eq_Integer :: Integer -> Integer -> Bool
-__prim_eq_Integer = __capp2 $ \a b -> mkBool (a Prelude.== b)
+__prim_eq_Integer (Integer a) (Integer b) = Bool $ S.integer_eqE a b
 
 __prim_add_Integer :: Integer -> Integer -> Integer
-__prim_add_Integer = __capp2 $ \a b -> __concrete (a Prelude.+ b)
+__prim_add_Integer (Integer a) (Integer b) = Integer $ S.integer_addE a b
 
 __prim_sub_Integer :: Integer -> Integer -> Integer
-__prim_sub_Integer = __capp2 $ \a b -> __concrete (a Prelude.- b)
+__prim_sub_Integer (Integer a) (Integer b) = Integer $ S.integer_subE a b
 
 __prim_mul_Integer :: Integer -> Integer -> Integer
-__prim_mul_Integer = __capp2 $ \a b -> __concrete (a Prelude.* b)
+__prim_mul_Integer (Integer a) (Integer b) = Integer $ S.integer_mulE a b
 
 (<) :: Integer -> Integer -> Bool
-(<) = __capp2 $ \a b -> mkBool (a Prelude.< b)
+(<) (Integer a) (Integer b) = Bool $ S.integer_ltE a b
+
+(<=) :: Integer -> Integer -> Bool
+(<=) (Integer a) (Integer b) = Bool $ S.integer_leqE a b
 
 (>) :: Integer -> Integer -> Bool
-(>) = __capp2 $ \a b -> mkBool (a Prelude.> b)
+(>) (Integer a) (Integer b) = Bool $ S.integer_gtE a b
 
 __prim_show_Integer :: Integer -> List__ Char
-__prim_show_Integer = __list . Prelude.map __concrete . __capp Prelude.show
+__prim_show_Integer = __list . Prelude.map __concrete . Prelude.show
 
 return_io :: a -> IO a
 return_io = Prelude.return
@@ -344,7 +352,9 @@ __prim_mul_Bit :: (N__ n) => Bit n -> Bit n -> Bit n
 __prim_mul_Bit = (Prelude.*)
 
 __prim_fromInteger_Bit :: (N__ n) => Integer -> Bit n
-__prim_fromInteger_Bit = __capp Prelude.fromInteger
+__prim_fromInteger_Bit (Integer a)
+  | Prelude.Just v <- S.de_integerE a = Prelude.fromInteger v
+  | Prelude.otherwise = Prelude.error $ "TODO: __prim_fromInteger_Bit for haskellf: " ++ S.pretty a
 
 __prim_shl_Bit :: (N__ n) => Bit n -> Bit n -> Bit n
 __prim_shl_Bit = Bit.shl
@@ -371,7 +381,9 @@ __prim_concat_Bit :: (N__ a, N__ b) => Bit a -> Bit b -> Bit (N__PLUS a b)
 __prim_concat_Bit = Bit.concat
 
 __prim_extract_Bit :: (N__ n, N__ m) => Bit n -> Integer -> Bit m
-__prim_extract_Bit = __capp . Bit.extract
+__prim_extract_Bit b (Integer a)
+  | Prelude.Just v <- S.de_integerE a = Bit.extract b v
+  | Prelude.otherwise = Prelude.error "TODO: __prim_extract_Bit for haskellf"
 
 error :: (Symbolic__ a) => List__ Char -> a
 error = __error
@@ -428,6 +440,17 @@ instance Symbolic__ Prelude.Integer where
     __default = 0
     __if = __if_default "Prelude.Integer"
 
+instance Symbolic__ Integer where
+    __default = 0
+    __if (Bool p) a@(Integer ax) b@(Integer bx)
+        | Prelude.Just Prelude.True <- S.de_boolE p = a
+        | Prelude.Just Prelude.False <- S.de_boolE p = b
+        | Prelude.otherwise =
+           let a' = S.simplify $ S.substitute (Prelude.flip Prelude.lookup (S.impliedByTrue p)) ax
+               b' = S.simplify $ S.substitute (Prelude.flip Prelude.lookup (S.impliedByFalse p)) bx
+           in Integer (S.ifE p a' b')
+    __substitute f (Integer x) = Integer (S.simplify $ S.substitute f x)
+
 instance Symbolic__ N__0 where
     __if = __if_default "N__0"
     __default = N__0
@@ -479,7 +502,7 @@ __if_default msg (Bool p) a b
 
 class (Symbolic__ a, N.N__ a) => N__ a where
     valueof :: a -> Integer
-    valueof = __concrete . N.valueof
+    valueof = mkInteger . N.valueof
 
     numeric :: a
     numeric = N.numeric
