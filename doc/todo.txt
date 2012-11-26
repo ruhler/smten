@@ -104,6 +104,8 @@ Bugs::
 * de_stringEH doesn't work without full elaboration of the argument I don't
   think. So if a test case fails, it doesn't do "error", it says unknown
   query.
+* error primitive is disabled. It should be kept in seri as long as possible,
+  bubble up, then, if it gets to IO, turn into a haskell error.
 
 Build System::
 * Don't require yices1 and yices2 to be installed to build or use seri
@@ -131,7 +133,6 @@ Elaborator::
   out, and make sure things aren't blown up too big.
 * Have common abstraction for manipulating the yv part of a case expression.
 * Consider more general concretization propagation?
-* Share loading of top level declarations.
 * Leverage let statements when doing function pushing to capture
   sharing
 * Implement the 'update' primitive in the elaborator, or remove it from
@@ -147,4 +148,15 @@ Other::
   up.
 * Get rid of Elaborate.ExpH. Those utilities should be in ExpH.Utils or some
   such.
+
+HaskellF::
+* Do argument and function pushing for integer primitives
+* Get the bit tests working
+* Get the rest of the seri test cases working
+
+Applications::
+* HCP - get it working on the larger test cases
+* TCP - Implement it
+* SAT - implement MAXSAT
+* SAT - implement DIMACs parser
 
