@@ -253,6 +253,8 @@ testprelude = do
    t "p.drop" ([5 :: Integer, 1] == drop 2 [8, 3, 5, 1])
    t "p.splitAt" (([8 :: Integer, 3], [5, 1]) == splitAt 2 [8, 3, 5, 1])
    t "p.concat" ([8 :: Integer, 3, 5, 1, 2, 5] == concat [[8, 3], [5], [1, 2, 5]])
+   t "p.bang1" (([7 :: Integer, 2, 5, 3, 1] !! 0) == 7)
+   t "p.bang2" (([7 :: Integer, 2, 5, 3, 1] !! 2) == 5)
 
 tests :: Test ()
 tests = do

@@ -1,8 +1,10 @@
 
+{-# LANGUAGE PatternGuards #-}
+
 -- | More syntactic sugar for ExpH.
 -- These make use of SeriEHs.
 module Seri.ExpH.Sugar2 (
-    ifEH, errorEH,
+    ifEH, errorEH, de_stringEH,
     ) where
 
 import Seri.Sig
@@ -19,4 +21,7 @@ errorEH t msg = appEH (varEH (Sig (name "Prelude.error") (arrowsT [stringT, t]))
 
 ifEH :: ExpH -> ExpH -> ExpH -> ExpH
 ifEH p a b = CaseEH ES_None p (Sig (name "True") boolT) a b
+
+de_stringEH :: ExpH -> Maybe String
+de_stringEH = de_seriEH
 
