@@ -1,0 +1,166 @@
+
+Sun Nov 25 19:58:20 EST 2012
+
+Thoughts from over the weekend.
+
+1. Combine ToExpH and EnvH.
+Bascially, ToExpH should take EnvH as an argument, we construct EnvH
+recursively, using itself.
+
+This will ensure all toExpH is done before any elaboration, and should
+hopefully avoid lots of duplicate calls to toExpH. I believe this should lead
+to a significant improvement in performance.
+
+We still may be duplicating calls to toExpH with the same arguments, but
+hopefully not nearly so much.
+
+2. Try to specify primitives as arguments to Elaborate. 
+The goal is: all the Elaborate, IO, Query code should be in the same package
+(ideally seri), the only thing in seri-smt should be the solvers, and the seri
+executable can just specify the runQuery primitives as arguments to
+elaborate.
+
+This is mainly important so we can do the following changes.
+
+3. Add IoEH and QueryEH to the elaborator.
+Goal is to avoid need for seprate IO.Run and Query.Run modules. Just treat
+those primitives as primitives. At this point elaboration happens all at once.
+Potentially opening up more efficient ways of doing elaboration.
+
+I don't really expect much of a performance improvement using this method.
+Perhaps a little.
+
+4. SMT.Expression is redundant. I should replace it with Exp. 
+I'm a little concerned tying them together. I wonder if I should create a
+class representing an Exp, which has all the deconstructors. Either way, ditch
+the current SMT.Expression, because I'm duplicating work between that and Exp.
+
+5. Consider making the primitives in the elaborator smarter. For example, AND
+and OR can look at their second arguments if the first aren't known.
+
+That's enough to start with. Goal at this point is... performance I suppose.
+Understand why haskellf is better than the elaborator, and see what I can do,
+if anything, to fix that.
+
+I'm not going to do to much tonight. I don't think.
+
+Let me try merging toExpH and EnvH, and see if that helps any.
+
+The profiler for hcp still puts most of the time in assignl and toExpH. I
+think my proposal should help.
+
+Sun Nov 25 20:22:42 EST 2012
+
+Tried (1). It didn't help any. Sadness. I'll have to revert it.
+
+I still think we're calling toExpH way to many times. And I should focus on
+trying to reduce it to just the few number of times we actually need. I'll
+think more about that.
+
+Now, a lot of time... 30%, is being spent in type inference. I bet I can
+improve that without too much work.
+
+The time is spent in finalize, this fixassign thing, in the type solver.
+
+The idea is, you are given a set of name value pairs, and you want to
+substitute occurrences of any names in the values with the corresponding
+values. And do it repeatedly, until you are fully substituted.
+
+Currently what we do is, for every (name, value) pair, we look up the final
+result of the value. What if, instead, we do a single step for every (name,
+value) pair, and iterate that way?
+
+The other idea is: we should make as few type variables as possible. Don't
+introduce new ones unless necessary.
+
+I think both should help. Let me start with the later idea, see how hard that
+is to implement. Anywhere I introduce a type variable, consider if there is
+not some other type I could use directly instead.
+
+Opportunities:
+1. we often do: retype and assign as equal. Maybe we could directly compare?
+I'm not sure...
+
+2. AppE, we make a new type for the input and output type of the function. If
+we already know the function has an input and output type, just reuse those.
+
+Hmm... I only managed to do (2). I'm a little skeptical as to how effective
+this will be. I suppose we'll see.
+
+Well, it made very little difference, and it kind of makes things less clean,
+so let me revert this too. Let's try the alternate approach to finalizing the
+final solution.
+
+Sun Nov 25 20:44:01 EST 2012
+
+That made a big difference. Type inference dropped from 30% down to 5%. Good.
+I'll keep this.
+
+Sun Nov 25 20:46:07 EST 2012
+
+How can I improve performance now? I could see if turning specialization back
+on still helps. I suspect it will. But that's not really the answer I want to
+hear.
+
+Let me see if I can get profiling to give me an idea of how many times we call
+the top level toExpH? But I know the answer from tracing. We are doing so much
+more work than we should have to.
+
+I wonder if I can use unsafePerformIO. The idea is that I want to make a cache
+of the Sigs I look up during elaboration. I've been trying to predict what
+those would be, but so much better if I can just see what they are and cache
+them. I could cache the elaboration of them too.
+
+The reason to predicate what they would be is then I can do pure elaboration.
+But if I can use perform unsafe IO to keep the cache... it should be safe
+right? I really don't care what order the IO computations happen, so long as
+they are atomic with respect to each other. It's okay to do the same
+computation more than once, or not at all. I think it should be plenty safe.
+The only one which really matters is the first one, to set up the cache
+properly...
+
+Is there no other way? No pure way?
+
+Perhaps I could hide it in a safe way? Err... I suspect not.
+
+Or maybe. What I want to express is computation under a state-like monad with
+a single idempotent operation. The idea is, use perform unsafeIO to make the
+evaluation of that monad more efficient, because it can be done in a lazy
+manner. This would be very useful to have...
+
+I think performUnsafeIO would be safe to use in this context. I think it could
+help performance a whole lot. I think I ought to try it.
+
+But! I don't think it's the thing to jump to tonight. Let me first work on
+other aspects of things. If I want to do more tonight, that is. Let me look at
+the predicates, and see if I can bring IO and Query into the seri package.
+Meanwhile, I'll think more about the unsafeIO idea, and other alternatives.
+
+Let me summarize: I believe the current performance problem is caused by
+excessive repeated calls to toExpH with the same arguments. I want to share
+all those calls. The trouble with pure haskell in doing this is, I don't know
+ahead of time what those calls will be, and there are an infinite potential
+number of them. What I want, ideally, is to cache the results of each call
+I've made. I could do that with a monad, but the monad ruins laziness.
+performUnsafeIO appears to be a way to do exactly what I want, and in a way
+which is safe.
+
+Sun Nov 25 21:16:12 EST 2012
+
+I had a thought. Query doesn't depend on the SMT solvers. Only the runQuery IO
+primitives do. That means I should be able to move Query to the seri package
+already, and try out this QueryEH idea. Let me try that out.
+
+Sun Nov 25 21:22:40 EST 2012
+
+I moved the query monad to the seri package. Now I should  be able to try out
+QueryEH.
+
+Here's the deal. Add primitives for the query moand. Add QueryEH as an
+expression type. Now the run function for Query should just call elabwhnf, we
+expect to get a QueryEH back. Return that.
+
+Um... I would still like the primitives to be specified separately if at all
+possible. Otherwise ... I suppose there's no way around it. We get a loop:
+Elaborate depends on Query. Query depends on elaborate?
+
