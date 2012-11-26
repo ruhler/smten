@@ -118,50 +118,49 @@ elaborate mode env =
           LamEH (ES_Some m) _ _ | mode <= m -> e
           LamEH _ v f -> LamEH (ES_Some mode) v (\x -> elab (f x))
           CaseEH (ES_Some m) _ _ _ _ | mode <= m -> e
-          CaseEH _ arg k@(Sig nk _) yes no
-            | (ConEH (Sig s _), vs) <- de_appsEH (elab arg) ->
-              if s == nk
-                then elab $ appsEH yes vs
-                else elab no
-          CaseEH _ arg k1 y1 n1
-            | mode == SNF
-            , CaseEH _ x2 k2 y2 n2 <- elab arg ->
-                let -- Decasify:
-                    --  case (case x2 of k2 -> y2 ; _ -> n2) of
-                    --      k1 -> y1;
-                    --      _ -> n1;
-                    --
-                    --  Where: y2 = \v1 -> \v2 -> ... -> y2v
-                    --
-                    -- Turns into:
-                    --  case x2 of
-                    --     k2 -> \v1 -> \v2  -> ... ->
-                    --                case y2v of
-                    --                    k1 -> y1;
-                    --                    _ -> n1;
-                    --     _ -> case n2 of
-                    --            k1 -> y1;
-                    --            _ -> n1;
-                    -- TODO: use lets to maintain sharing of y1 and n1.
-                    y2ify :: Integer -> (ExpH -> ExpH) -> ExpH -> ExpH
-                    y2ify 0 f x = f x
-                    y2ify n f (LamEH _ s b) = LamEH ES_None s $ \x ->
-                        (y2ify (n-1) f (b x))
-                    y2ify n f x = error $ "y2ify got: " ++ pretty x
+          CaseEH _ arg k y n ->
+            case (elab arg, k, elab y, elab n) of
+                (arg, Sig nk _, _, no) | (ConEH (Sig s _), vs) <- de_appsEH arg ->
+                    if s == nk
+                        then elab $ appsEH y vs
+                        else no
+                (arg, k1, _, _)
+                    | mode == SNF
+                    , CaseEH _ x2 k2 y2 n2 <- arg ->
+                        let -- Decasify:
+                            --  case (case x2 of k2 -> y2 ; _ -> n2) of
+                            --      k1 -> y;
+                            --      _ -> n1;
+                            --
+                            --  Where: y2 = \v1 -> \v2 -> ... -> y2v
+                            --
+                            -- Turns into:
+                            --  case x2 of
+                            --     k2 -> \v1 -> \v2  -> ... ->
+                            --                case y2v of
+                            --                    k1 -> y;
+                            --                    _ -> n;
+                            --     _ -> case n2 of
+                            --            k1 -> y;
+                            --            _ -> n;
+                            -- TODO: use lets to maintain sharing of y and n.
+                            y2ify :: Integer -> (ExpH -> ExpH) -> ExpH -> ExpH
+                            y2ify 0 f x = f x
+                            y2ify n f (LamEH _ s b) = LamEH ES_None s $ \x ->
+                                (y2ify (n-1) f (b x))
+                            y2ify n f x = error $ "y2ify got: " ++ pretty x
 
-                    k2args = genericLength (de_arrowsT (typeof k2)) - 1
+                            k2args = genericLength (de_arrowsT (typeof k2)) - 1
 
-                    y2body = \y -> CaseEH ES_None y k1 y1 n1
-                    y2' = y2ify k2args y2body y2
-                    n2' = CaseEH ES_None n2 k1 y1 n1
-                in elab $ CaseEH ES_None x2 k2 y2' n2' 
-          CaseEH _ arg@(VarEH (Sig nm t)) k yes no
-              | mode == SNF && t == boolT ->
-                let Just v = de_boolEH (ConEH k)
-                in CaseEH (ES_Some mode) (elab arg) k (elab (concretize nm v yes)) (elab (concretize nm (not v) no))
-          CaseEH _ arg k yes no | mode == SNF ->
-            CaseEH (ES_Some mode) (elab arg) k (elab yes) (elab no)
-          CaseEH _ arg k yes no -> CaseEH (ES_Some mode) arg k yes no
+                            y2body = \x -> CaseEH ES_None x k1 y n
+                            y2' = y2ify k2args y2body y2
+                            n2' = CaseEH ES_None n2 k1 y n
+                        in elab $ CaseEH ES_None x2 k2 y2' n2' 
+                (arg@(VarEH (Sig nm t)), k, _, _) | mode == SNF && t == boolT ->
+                    let Just v = de_boolEH (ConEH k)
+                    in CaseEH (ES_Some mode) arg k (elab (concretize nm v y)) (elab (concretize nm (not v) n))
+                (arg, k, yes, no) | mode == SNF -> CaseEH (ES_Some mode) arg k yes no
+                _ -> CaseEH (ES_Some mode) arg k y n
         
   in elab
 
