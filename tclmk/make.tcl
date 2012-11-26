@@ -66,28 +66,47 @@ indir build/seri-bin {
     hrun ln -sf ../../seri-bin/seri.hs seri.hs
     #hrun ghc -o seri seri.hs
     hrun ghc -rtsopts -prof -auto-all -o seri seri.hs
+
+    hrun ln -sf ../../seri-bin/dsel.hs dsel.hs
+    hrun ghc -o dsel dsel.hs
+
+    hrun ln -sf ../../seri-bin/sudoku.hs sudoku.hs
+    hrun ghc -o sudoku sudoku.hs
 }
     
 set SERI build/seri-bin/seri
+set DSEL build/seri-bin/dsel
+set SUDOKU build/seri-bin/sudoku
 
 set SRI_SERI seri/sri
 
-# The general seri test
-run $SERI --desugar \
-    --include $::SRI_SERI \
-    -f $::SRI_SERI/Seri/Tests/Basic.sri \
-    > build/test/tests.desugared
-run $SERI --type \
-    --include $::SRI_SERI \
-    -f $::SRI_SERI/Seri/Tests/Basic.sri \
-    > build/test/tests.typed
-run $SERI --io \
-    --include $::SRI_SERI \
-    -m Seri.Tests.Basic.main \
-    -f $::SRI_SERI/Seri/Tests/Basic.sri \
-    > build/test/tests.got 
-run echo "PASSED" > build/test/tests.wnt
-hrun cmp build/test/tests.got build/test/tests.wnt
+# Poorly typed tests.
+proc badtypetest {name} {
+    set cmd {
+        run $::SERI --type \
+            --include $::SRI_SERI \
+            -f $::SRI_SERI/Seri/Tests/MalTyped/$name.sri \
+            > "build/test/$name.typed"
+        }
+
+    if { [catch $cmd] == 0 } {
+        error "expected type error, but $name passed type check"
+    }
+}
+
+badtypetest "BadType1"
+badtypetest "BadType2"
+badtypetest "Ctx"
+badtypetest "InstCtx"
+
+# Run an IO Test
+proc io {module} {
+    set smtdir build/test
+    hrun $::SERI --io \
+        --include $::SRI_SERI \
+        -m $module.main \
+        -f $::SRI_SERI/[string map {. /} $module].sri
+}
 
 # Run a HaskellF Test
 proc haskellf {module} {
@@ -102,12 +121,32 @@ proc haskellf {module} {
     hrun ./$hsdir/[string map {. _} $module]
 }
 
+io Seri.Tests.Basic
+io Seri.SMT.Tests.Core
+io Seri.SMT.Tests.Datatype
+io Seri.SMT.Tests.Scoped
+io Seri.SMT.Tests.Integer
+io Seri.SMT.Tests.Bit
 
 haskellf Seri.Tests.Basic
 haskellf Seri.SMT.Tests.Core
 haskellf Seri.SMT.Tests.Datatype
 haskellf Seri.SMT.Tests.Scoped
 haskellf Seri.SMT.Tests.Integer
+#haskellf Seri.SMT.Tests.Bit
+
+io Seri.SMT.Tests.Bluespec
+io Seri.SMT.Tests.Array
+io Seri.SMT.Tests.Share
+io Seri.SMT.Tests.Tuple
+io Seri.SMT.Tests.AllQ
+io Seri.SMT.Tests.AllQ2
+io Seri.SMT.Tests.Squares2.Squares
+io Seri.SMT.Tests.Sudoku
+io Seri.SMT.Tests.Sudoku2
+io Seri.SMT.Tests.Sudoku3
+io Seri.SMT.Tests.Isolate0
+
 
 puts "BUILD COMPLETE"
 

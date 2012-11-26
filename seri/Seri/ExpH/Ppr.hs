@@ -1,4 +1,6 @@
 
+{-# LANGUAGE PatternGuards #-}
+
 module Seri.ExpH.Ppr () where
 
 import Seri.Lit

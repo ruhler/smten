@@ -5,10 +5,11 @@ module Seri.Exp.Utils (
     free, free',
     transformMTE, transform, simplify, substitute,
     impliedByTrue, impliedByFalse,
+    pushFunction,
     ) where
 
 import Data.Functor
-import Data.List(nub)
+import Data.List(nub, genericLength)
 
 import Seri.Name
 import Seri.Sig
@@ -111,4 +112,23 @@ impliedByFalse e
   | Just (a, b) <- de_orE e = impliedByFalse a ++ impliedByFalse b
   | Just x <- de_notE e = impliedByTrue x
   | otherwise = []
+
+-- Push the function into the given argument.
+-- This only makes sense, and only does anything, if the argument is a case
+-- expression.
+--
+-- Transforms:
+--   f (case x of k -> \a b ... -> y; _ -> n)
+--  To:
+--   case x of k -> \a b ... f y; _ -> f n
+pushFunction :: Exp -> Exp -> Exp
+pushFunction f (CaseE x k y n) =
+  let yify :: Integer -> (Exp -> Exp) -> Exp -> Exp
+      yify 0 f x = f x
+      yify n f (LamE s b) = LamE s (yify (n-1) f b)
+
+      kargs = genericLength (de_arrowsT (typeof k))
+      ybody = \x -> appE f x
+      y' = yify kargs ybody y
+  in CaseE x k y' (appE f n)
 
