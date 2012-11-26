@@ -1,0 +1,228 @@
+
+Mon Nov 19 09:56:22 EST 2012
+
+Issue: we need to rename (:) and ([]), because it's not legal syntax, as it
+were.
+
+Ideally I want to rename the list type to List__, the nil constructor to
+Nil__, and the cons constructor to Cons__.
+
+Where do I do this?
+
+Well, I can rename the type in hsType. That seems reasonable.
+I can have a special case for the constructors. That's not too bad, is it?
+
+Let's see what happens...
+
+Hmm... do I want to have a special case for [] generation? Maybe I'll leave
+that to the library.
+
+There. Easy. Sounds good.
+
+Mon Nov 19 11:49:30 EST 2012
+
+Okay! Making lots of progress. I'm almost there.
+
+The problem I'm having now... perhaps the last remaining issue before I can
+make the Basic test work with free booleans, is the return type of case must
+be symbolic. In other words, I think I have to add to every single context the
+requirement that type variables are Symbolic.
+
+How bad is that?
+
+Let me try it out and see.
+
+Trouble! Looks like I need to do kind inference. Have a Symbolic1__
+Symbolic2__, etc...  That's sad.
+
+Okay, so maybe what I need to do is this: look at all the case statements in
+the expression, collect a list of types that are returned by case
+statements...
+
+That's not enough. Because function calls matter too :(
+
+It sounds like I really need to do kind inference. That shouldn't be too hard.
+Should it? Just see where variable types are used?
+
+I'll think about it over lunch.
+
+Mon Nov 19 12:44:08 EST 2012
+
+What do I have to do? Do I need Symbolic1__? What does that mean?
+
+It means for any argument type for which Symbolic__ holds, Symbolic__ holds on
+the applied type. That does sound like what I want?
+
+I'm confused.
+
+I think I do need different classes for different kinds. How would it look?
+
+class Symbolic1__ m where
+    __if1 :: (Symbolic__ a) => Bool -> m a -> m a -> m a
+
+That makes sense. That's what we want.
+
+Then I can given the generic instance:
+
+instance (Symbolic1__ m, Symbolic__a) => Symbolic (m a) where
+    __if = __if1
+
+It's either that, or any time I see something like:
+    m a, or m Foo, or m Bar, I add the requirement that that is symbolic.
+Which I don't want to do.
+
+Okay. Let me do this then. It shouldn't be too hard. Changes I need to make
+are:
+
+* Figure out approximately the kind of each type variable.
+* Generate the appropriate version of Symbolic based on kind.
+* Use the appropriate version of Symbolic based on kind.
+
+Not that hard at all. Let's dive in and see where it gets me.
+
+Mon Nov 19 13:54:25 EST 2012
+
+Okay! It compiles now. The basic test compile. Trouble is... there seems to be
+trouble. As in, an infinite loop or something.
+
+Let's see which tests pass and which don't when. I suspect there's a problem
+with infinite recursion on concrete something or other.
+
+Mon Nov 19 14:04:06 EST 2012
+
+Yes, looks like an issue with recursion.
+
+For example, putChar 'P' works fine. putStr "P" hangs.
+
+Let's look at why that may be the case.
+
+putStr = mapM_ putChar
+
+Must be an issue with mapM_ then.
+
+Which just calls mapM, so that should be where the issue is.
+
+Hum. I can't seem to get a profile.
+
+What's going on here?
+
+Mon Nov 19 14:24:26 EST 2012
+
+I don't know. I think I have to step through by hand to see what's going on.
+Shall I try that?
+
+Okay. Wish me luck. And patience. I'll need a lot of that too.
+
+Mon Nov 19 14:53:29 EST 2012
+
+Okay, I think I see the issue.
+
+Consider calling foldr.
+
+We have a dependency loop:
+
+foldr depends on caseTuple2.
+caseTuple2 depends on isTuple2.
+isTuple2 depends on and.
+and depends on foldr.
+
+So, I need to be a little more primitive. Don't use (and) to generate the is
+functions. Use the primitive &&. That should work out much better.
+
+Yup. That was the issue. Now let's see how many tests pass...
+
+Mon Nov 19 15:02:52 EST 2012
+
+It's complaining about me not initializing everything in the constructors. So,
+the mkmk function needs to be updated. Either I should make it explicitly
+bottom, or I should give a default value. I think I general I need a default
+value?
+
+I don't really understand why this is an issue. Why can't it be lazy and deal
+with it?
+
+I could try a couple of things. I could try using a default value, or I could
+try using undefined. I guess it makes more sense to me to use a default value.
+
+So, let's say I add a field to Symbolic which is a default value. This can be
+derived easily enough, right? Just set all fields to their default value.
+
+It's a little annoying in the changes it requires in HaskellF. Now I have to
+know what all the fields are.
+
+Alternatively, I can give a default valued object to each type.
+
+__defaultFoo :: Foo
+__defaultFoo = Foo {    a = defaultA, b = ... }
+But then I need a class. So yes, let me use a type class instead. Or just add
+to the Symbolic type class.
+
+Trouble with this... now it looks like we need to give top level declarations
+for the mkmk thing. That shouldn't be too bad, should it?
+
+Mon Nov 19 15:53:04 EST 2012
+
+Okay, now I'm having a problem where I say: default { ... }, but the types
+aren't well specified. Record constructor update introduces an ambiguous
+type. I think I better not use record constructor update. Better would be
+record constructor construction, which means I need to make all the other
+fields explicitly default. Okay. Whatever.
+
+This is getting really messy. I hope I'm close.
+
+Looks like it's not possible to use the record update constructor, not unless
+I have scoped type variables... Shall I try that? Why not...
+
+Looks like that worked. UG. This is so messy.
+
+Anyway, there you have it. Let's see what more test work now.
+
+All basic tests work! Cool! Awesome!
+
+Mon Nov 19 16:15:03 EST 2012
+
+Okay, so now I have to try Core, and see what happens.
+
+It should fail, but hopefully only a little bit, and mostly in the Prelude,
+not in the library generation.
+
+Let me give it a shot.
+
+Issues:
+* __prim_free not declared. This shouldn't be too hard...
+
+First problem: Prelude doesn't have access to SMT stuff. Let me put all the
+SMT stuff in a different spot.
+
+Mon Nov 19 17:03:19 EST 2012
+
+Had a brief chat with Nirav. An interesting idea came up. For Bool and
+Integer, and anything that can be free, we could just use SMT.Expression as
+the type. That might make things a little simpler.
+
+Mon Nov 19 17:09:23 EST 2012
+
+Ug. I'm toast. I think that's all I can get done for today.
+
+I need to merge Royce.Query with SMT.Query. Not sure if I can do that in git.
+Maybe be easier to just manually do it. Probably based on Royce.query.
+
+I can do that first thing tomorrow (or even a little bit for the rest of
+today. Then use that as my Query monad.
+
+Some other issues I'll run into: my runFoo primitives make use of the Maybe
+type, which suggests I have to make Maybe a primitive? Perhaps I could just
+use list instead? I don't know.
+
+More trouble: I can't use SMT.Expression in HaskellF prelude because it's part
+of the wrong package. Perhaps I should move HaskellF entirely over to
+seri-smt. That makes sense to me.
+
+Other stuff to do:
+
+* I need a way to concretize Symbolic things.
+* I need a way to convert a Symbolic__ Bool to SMT.
+
+That should hopefully come naturally tomorrow.
+
+

@@ -1,6 +1,8 @@
 
 module Seri.Sig (Sig(..)) where
 
+import Data.Hashable
+
 import Seri.Name
 import Seri.Type
 import Seri.Ppr
@@ -15,4 +17,10 @@ instance Typeof Sig where
 instance Ppr Sig where
     ppr (Sig n UnknownT) = ppr n
     ppr (Sig n t) = parens (ppr n <+> text "::" <+> ppr t)
+
+instance Hashable Sig where
+    hash (Sig n t) = combine (hash n) (hash t)
+
+instance Assign Sig where
+    assignl f (Sig n t) = Sig n (assignl f t) 
 

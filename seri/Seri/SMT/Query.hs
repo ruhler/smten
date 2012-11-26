@@ -65,7 +65,7 @@ import Seri.ExpH
 import Seri.Dec
 import Seri.Ppr
 import Seri.SMT.Translate
-import Seri.Elaborate hiding (query)
+import Seri.Elaborate
 import qualified Seri.Elaborate
 
 
@@ -86,7 +86,7 @@ data QS = QS {
     qs_qs :: Compilation,
     qs_freevars :: [Sig],
     qs_freevals :: Maybe [ExpH], -- ^ Cache of free variable values
-    qs_env :: Env
+    qs_env :: EnvH
 }
 
 type Query = StateT QS IO
@@ -169,7 +169,7 @@ data RunOptions = RunOptions {
     ro_solver :: SMT.Solver
 }
             
-mkQS :: RunOptions -> Env -> IO QS
+mkQS :: RunOptions -> EnvH -> IO QS
 mkQS opts env = do
     dh <- case ro_debugout opts of
             Nothing -> return Nothing
@@ -192,7 +192,7 @@ mkQS opts env = do
 -- Note: it's possible to leak free variables with this function.
 -- You should not return anything from the first query which could contain a
 -- free variable, otherwise who knows what will happen.
-runQuery :: RunOptions -> Env -> Query a -> IO a
+runQuery :: RunOptions -> EnvH -> Query a -> IO a
 runQuery opts env q = do
     qs <- mkQS opts env
     evalStateT q qs
@@ -204,25 +204,25 @@ runQuery opts env q = do
 -- Assumes:
 --   Integers, Bools, and Bit vectors are implemented directly using the
 --   corresponding smt primitives. (Should I not be assuming this?)
-realizefree :: Env -> Sig -> Query ExpH
-realizefree _ (Sig nm t) | t == boolT = do
+realizefree :: Sig -> Query ExpH
+realizefree (Sig nm t) | t == boolT = do
     solver <- gets qs_solver
     bval <- lift $ SMT.getBoolValue solver (smtN nm)
     debug $ "; " ++ pretty nm ++ " is " ++ show bval
     return (boolEH bval)
-realizefree _ (Sig nm t) | t == integerT = do
+realizefree (Sig nm t) | t == integerT = do
     solver <- gets qs_solver
     ival <- lift $ SMT.getIntegerValue solver (smtN nm)
     debug $ "; " ++ pretty nm ++ " is " ++ show ival
     return (integerEH ival)
-realizefree _ (Sig nm (AppT (ConT n) (NumT (ConNT w)))) | n == name "Bit" = do
+realizefree (Sig nm (AppT (ConT n) (NumT (ConNT w)))) | n == name "Bit" = do
     solver <- gets qs_solver
     bval <- lift $ SMT.getBitVectorValue solver w (smtN nm)
     debug $ "; " ++ pretty nm ++ " has value " ++ show bval
     return (bitEH (bv_make w bval))
-realizefree _ (Sig _ t@(AppT (AppT (ConT n) _) _)) | n == name "->"
+realizefree (Sig _ t@(AppT (AppT (ConT n) _) _)) | n == name "->"
   = return (error $ "TODO: realizefree type " ++ pretty t)
-realizefree _ (Sig _ t)
+realizefree (Sig _ t)
   = return (error $ "unexpected realizefree type: " ++ pretty t)
 
 -- | Check if the current assertions are satisfiable. If so, runs the given
@@ -247,7 +247,7 @@ free t | isPrimT t = do
 free t = do
   let (ConT dt, args) = de_appsT t
   env <- gets qs_env
-  DataD _ vars cs <- lift . attemptIO $ lookupDataD env dt
+  DataD _ vars cs <- lift . attemptIO $ onEnv lookupDataD env dt
   (let mkcon :: Con -> Query ExpH
        mkcon (Con cn ts) = 
          let ts' = assign (zip (map tyVarName vars) args) ts
@@ -296,8 +296,7 @@ realize e = Realize $ do
     fvs <- case freevals of
               Just vs -> return vs
               Nothing -> do
-                env <- gets qs_env
-                freevals <- mapM (realizefree env) freevars
+                freevals <- mapM realizefree freevars
                 modify $ \qs -> qs { qs_freevals = Just freevals }
                 return freevals
     let freemap = zip freevars fvs
@@ -305,12 +304,12 @@ realize e = Realize $ do
         g e = do
             s <- de_varEH e
             lookup s freemap
-    return $ Seri.Elaborate.transform g e
+    return $ transform g e
 
 -- | Return the environment the query is running under.
-envQ :: Query Env
+envQ :: Query EnvH
 envQ = gets qs_env
 
-envR :: Realize Env
+envR :: Realize EnvH
 envR = Realize envQ
 

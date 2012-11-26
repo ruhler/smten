@@ -1,0 +1,385 @@
+
+Sat Nov 17 10:14:08 EST 2012
+
+I was thinking. Translating to sum and product types sounds like a lot of
+work. A lot more work then just translating the algebraic data types directly.
+
+How would that look?
+
+Well, let me propose the following...
+
+To represent a free variable, we need to represent which constructor it is,
+and what the value in that constructor is. I'm not sure the most efficient way
+to do it, but it seems like the brute force way, which would hopefully avoid
+exponential blowup when matching, is: represent each data type with a single
+constructor, containing (N-1) booleans for the N constructors, and the fields
+for each of those.
+
+This forces the use of a particular representation. Again, that could be good
+in that it avoids an exponential blowup. It could be bad, in that it's not
+very flexible.
+
+Let me look into the exponential blowup thing first.
+
+The question is, what if we have something like:
+
+(if a
+ then E1
+ else if b then E2 
+       else if c then E3
+             else E4)
+==
+
+(if x
+ then E1
+ else if y then E2 
+       else if z then E3
+             else E4)
+
+Current methods for pushing arguments lead to something exponential:
+
+if a
+    then (E1 == (if x then ...)
+    else if b then (E2 == (if x then ...)
+        else if c then (E3 == (if x then ...)
+            else (E4 == (if x then ...))
+
+Imagine instead that we represent the constructor choice explicitly:
+
+
+v: (a: E1, b: E2, c: E3, _: E4) == w: (x: E1, y: E2, z: E3, _: E4)
+
+This turns into a case statement something like:
+
+case v of
+    E1 -> case w of
+            E1 -> True
+            _ -> case v of 
+                    E2 -> case w of
+                        E2 -> True
+                        _ -> ...
+
+Let's look at just the one branch.
+
+case v of 
+    E1 -> y
+    _ -> n
+
+This translate to the free variable as:
+
+if a then y else n
+
+Or, for a different constructor:
+
+case v of
+    E3 -> y
+    _ -> n
+
+if (not a && not b && c)
+    then y
+    else n
+
+I think this could avoid the exponential blowup.
+Further, we can in this case concretize:
+    in y, we know it's the case that
+    a = False, b = False, and c = True.
+    That's very valuable information.
+We can't say quite so much about what happens in n, unfortunately.
+
+I believe represented this way would make translation much simpler.
+We can try to come up with more clever representations and such once we get
+the basic route working.
+
+Another idea: we could have the same kind of representation for boolean
+variables. It's a little funny. I'm not sure if it works out. In fact... I'm
+beginning to think it doesn't.
+
+Nevermind with that idea. But there is an idea of: let's not have tons of
+different boolean constructors. Let's just have True, False, and If.
+
+data FreeBool =
+      Bool_c Bool
+    | Bool_if FreeBool FreeBool FreeBool
+
+Because I can represent each of the primitive operations as if easily enough.
+And that way I can concretize just at that one place, uniformly.
+
+I'm not sure if that would help or not. It's easy to try.
+
+I want to try out these ideas. On my core and data type tests first. See how
+they go. For my desugared case statements, we just need to ask: is it this
+constructor. That's then very easy to translate.
+
+Cool. Let me give it a shot.
+
+Sat Nov 17 10:42:05 EST 2012
+
+I'm not sure the if change makes any difference. Let's just agree that it's
+not really important, and it's easy to play with later.
+
+What's the next thing to try? My enum and my mix.
+
+Sat Nov 17 10:59:05 EST 2012
+
+I tried enum. I think this approach will work just fine. I can auto-derive
+Free and Concrete, and the translation from desugared case is easy enough to
+do. Good. This cuts out the need for translating to just sums and products.
+
+What I really want, for implementing case statements, is, for every
+constructor FooX of type Foo:
+
+isFooX :: Foo -> Bool
+mkFooX :: AX -> BX -> ... Foo
+appFooX :: (AX -> BX -> ... -> a) -> Foo -> a
+
+Cool. So that's settled. For every data type I generate the following:
+* Single constructor Free representation of the data type
+* Instance of Free, Concrete
+* For each constructor: isFooX, mkFooX, appFooX,
+
+From that it should be easy to describe the free version of any function. Case
+expressions are trivial given isFooX and appFooX. Lambda and application are
+fine. Constructors... oh, that might be nice too. Generate constructor
+functions. Then that's easy. Easy!
+
+Let me call those worries out of the way. What remains is the hard part: how
+do I figure out what to translate to symbolic, and what to translate to
+concrete?
+
+For every top level declaration, I want to change:
+
+x :: A
+x = ...
+
+x' :: FreeA
+x' = symbolic x
+
+That's trivial. The symbolic function does it in general.
+
+x :: A -> B
+x = ...
+
+x' :: FreeA -> FreeB
+x' = ... 
+
+x :: A -> B -> ... -> C
+x' :: FreeA -> FreeB -> ... -> FreeC
+
+For polymorphic parameters:
+
+x :: A -> b -> ... -> C
+x' :: (Concrete bc bf) => FreeA -> bf -> ... -> FreeC
+
+But when you go inside ... I don't know.
+
+For example, consider the following function:
+
+foo :: Integer -> Integer
+foo a = a + blah 3 a + 5*6
+
+How do I know to translate this to:
+
+foo' :: Free Integer -> Free Integer
+foo' a = a +' blah' (symbolic 3) a +' (5*6)     ?
+
+Maybe I'm trying to be too clever. Just translate everything:
+
+foo' :: Free Integer -> Free Integer
+foo' a = a +' blah' (symbolic 3) a +' (symbolic 5) *' (symbolic 6)
+
+I can optimize for things later.
+
+So, given:
+    var :: a -> b -> ... c
+    ==> var' :: Free a -> Free b -> ... Free c
+
+    con :: a -> b -> X
+    ==> mkCon :: Free a -> Free b -> Free X
+    
+    lit :: Integer 
+    ==> symbolic (lit) :: Free Integer
+
+    lam :: a -> b
+    ==> lam (Free a -> Free b), just change the type of the sig and translate
+    the body.
+
+    app :: (a -> b) -> a -> b
+    ==> app (Free a -> Free b) -> Free a -> Free b
+   
+    case x k y n
+    ==> if (isK x)
+          then appK y x
+          else n
+
+    And translate the bodies of everything.
+
+In other words, I can compute entirely in the free domain as well as the
+concrete, because the concrete domain is a subset of the free domain. It may
+not be the best performing, but I can always improve it later, and it's likely
+to be way way better than the current seri elaborator anyway.
+
+The last question is: how do I deal with queries, which seem to involve
+partial translation?
+
+do x <- free
+   assert (foo x == foo 3)
+   query x
+
+What if I translated the whole thing?
+It really looks like:
+
+prim_bind free (\x -> prim_nobind (assert (foo x == foo 3)) (query x))
+
+If I translate it according to the above rules, I get:
+
+prim_bind' free' (\x -> prim_nobind' (assert' (foo' x ==' foo' (symbolic 3))) (query' x)
+
+Well, prim_bind, free, prim_nobind, assert, and query all all primitives, so I
+can define them my own way:
+
+prim_bind' :: Query a -> (a -> Query b) -> Query b
+free' :: Query (Free a)
+assert :: (Free Bool) -> Query ()
+query :: (Free a) => Query (Answer a)
+
+This suggests what we do is ... oh my. That's an interesting idea.
+
+It suggests we translate you seri program entirely to a program which operates
+in the Free domain. Don't even translate concrete stuff, which is just a
+special case.
+
+Wow. That's easy. Slow perhaps, because we evaluate all concrete values under
+the Free domain, but we can do a concreteness analysis as a later optimization
+to improve performance. Again, I still think it will be much faster this way
+than with my current seri elaborator.
+
+You know? I think that's it. I think that's the answer. All I have to do is
+write a different Haskell back end. And it should just work. No worries about
+things. Simple. Easy.
+
+Let me take a short break to stew on this. Then I think I should dive in. How
+hard can it be? Just change how data type are defined and how case statements
+are implemented.
+
+Sat Nov 17 11:52:28 EST 2012
+
+I think first step: clean up the existing haskell back end.
+
+Sat Nov 17 12:17:50 EST 2012
+
+I cleaned up the haskell back end. Next step? I think copy it into a another
+back end, call it HaskellF for free haskell? Sure. Then modify that a bit at a
+time to support free things.
+
+What changes do I want to make?
+
+I suppose I can do it all at once. What all are the changes we need?
+
+* Generate algebraic data types differently.
+** Convert to free version
+** generate isFooX, onFooX, mkFooX
+* Translate case statements using isFooX, onFooX
+* Translate constructors using mkFooX
+* Change the library as appropriate.
+
+I think that's all I need to do. It should be relatively easy. First step: get
+the Basic tests to pass in the free mode.
+
+It will be interesting to compare haskell vs haskellF vs seri on performance
+of the basic tests. Perhaps by profiling each of them and comparing the
+profiles to figure out how much overhead each one has. It's not a very large
+test case, so it may not show that much information, but it could be useful.
+
+This is actually a potentially good evaluation metric. I can ask what the
+overhead of evaluating concrete things in haskellF vs haskell by making some
+big tests and comparing them. And I can work to reduce this overhead.
+
+Let me come back after lunch to try implementing this.
+
+Sat Nov 17 15:12:03 EST 2012
+
+Some more thoughts. There's one additional thing I need... well, an
+abstraction I would like. It's an abstraction for choosing between two things,
+where the choice is free.
+
+choose :: Bool -> a -> a -> a
+
+In royce I called this if_. I need this to implement case statements.
+
+Given this abstraction, I can change the representation of a free variable if
+I want. If I think it will be better. But I think my proposed implementation
+is a good one.
+
+Good.
+
+Another thing I'm going to need before things will work out nicely is to make
+Query a generic monad, instead of parameterizing it on a solver type. I should
+do that now. Then start hacking at the haskellF translation.
+
+Sat Nov 17 15:52:24 EST 2012
+
+I changed the Solver to be a data structure with functions instead of a class.
+It's so much better. So many things were polluted by that class. It's amazing.
+
+What about this makes it better to have a data type instead of a class?
+
+Perhaps what it is is, you basically make a thing, and then pass it as an
+argument to functions. As opposed to other classes, where you are given two of
+something or creating or deleting things. I don't know. Something to keep in
+mind.
+
+I wonder if this could help with multi-param type classes and function
+dependencies issues...
+
+Sat Nov 17 17:09:27 EST 2012
+
+Working on haskellf backend. Let's start with... what?
+
+* Generate algebraic data types differently.
+** Convert to free version
+** generate isFooX, onFooX, mkFooX
+* Translate case statements using isFooX, onFooX
+* Translate constructors using mkFooX
+
+See what happens if I try this. And fix bugs from there.
+
+Sat Nov 17 17:15:07 EST 2012
+
+Perhaps each constructor can just have a case function. The arguments are: the
+case argument, the yes branch as a function, and the no branch. Sounds good to
+me. Something like:
+
+__caseFooX :: Foo -> (\A -> B -> ... -> C) -> C -> C
+
+That can combine isFooX and onFooX functions. And it makes sense as a way to
+implement case expressions as functions even for normal stuff.
+
+This gives me an idea. Let me do this translation first without changing the
+data types. Then change the data types and have everything work still (I
+hope). It's a little extra work, but it lets me break up the work into pieces?
+Naw. It's not worth the extra work.
+
+Sat Nov 17 17:39:45 EST 2012
+
+Okay! So, everything is easy except for the annoyance of generating the data
+type and its accessor functions.
+
+I think If needs to be a type class, so we can work with polymorphic data
+types. The rest should be written out based on constructor name.
+
+Let me start the grunt work, see how it goes. Because that's really all it is
+now. Nothing hard. Just lots of tedious grunt work...
+
+Sat Nov 17 17:43:52 EST 2012
+
+Here's an annoying problem. What's the difference between: __isFooB and
+__isFooB? Where one says: the constructor is FooB, so long as it isn't also
+FooA. And: the constructor is FooB for sure?
+
+That is, how should I name them differently? I think __isFooB means the second
+in my mind. I suppose I could call it: __tFooB, for tag. Okay. Good enough.
+
+Good. So. Next step is to write the code. I'm not going to do it right now,
+because I'm not up for it and I have to leave soon anyway. But I think this
+will work, which is cool.
+

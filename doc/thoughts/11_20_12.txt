@@ -1,0 +1,585 @@
+
+Tue Nov 20 09:04:22 EST 2012
+
+Goal for today...
+
+1. Get Core tests to pass.
+2. Get Datatype tests to pass.
+3. Get Sudoku2 to run.
+
+If I can do that, it will be a good day. I think it's not so unreasonable a
+hope.
+
+Some decisions to help get me there:
++ Change Bool implementation to be SMT.Expression
+* Make Answer a concrete primitive data type (to start)
+* Ignore debug argument to runQuery primitive for now
+
+First step, I think is, if everything works as is now, change Bool to
+SMT.Expression and see it working again.
+
+Tue Nov 20 09:17:13 EST 2012
+
+I need a way to concretize things.
+
+Sound like another traversal routine. Now that I'm using SMT.Expression, I'll
+need a way to traverse that too...
+
+This suggests to me I'd like to change SMT.Expression to be more like a
+haskell data type, and less string based. That will make it clear what things
+are supported.
+
+And, while I'm at it, it may make sense to try and make it entirely abstract.
+
+Okay, let me try this on the master branch. Get rid of representing primitives
+using strings.
+
+Question is... how do I want to do this?
+
+Options: 
+* Have each primitive take the proper number of arguments:
+    NotE :: Exp -> Exp
+    AddE :: Exp -> Exp -> Exp
+    ...
+* Don't have each primitive take the proper number of arguments:
+    AppE :: Exp -> [Exp] -> Exp
+    PrimE = NotE | AddE | AndE | ...
+
+I think, for the time being, let me go with the second approach. It will keep
+the expression more compact, and is less work to do, and a step along the way
+to the first. I can go the extra step later if I feel it's important.
+
+Now, do I want any organization to this? Sure. Let me have a PrimE. 
+I guess I could break it down further into CoreE, BitE, IntegerE primitives,
+and so on, but... nah. PrimE is good enough for me for now.
+
+Tue Nov 20 09:32:38 EST 2012
+
+Trouble. The concrete printers look inside the representation. Any change I
+make to it will have to be changed in Yices.Concrete and exactly the same way
+in SMT.Concrete.
+
+Presumably those syntaxes are similar. Could they share code? I guess it
+depends if they are the same or not. Hmm...
+
+Let me remember the purpose of this concrete printer:
+1. Yices1 relies on it for sending commands.
+2. We use it for generating debug files you can try running in yices1 and
+yices2. Here, yices1 and yices2 are exactly the same, because we don't use
+tuple update anymore.
+3. It probably doesn't generate the right code for STP yet (SMTLIB). Maybe a
+close approximation.
+4. It's very useful to be able to look at the generate SMT query in a pretty
+format, for debugging.
+
+Let me defer this question for now. I only need to do the core primitives to
+start, so I can have faith my substitution and simplification works as
+desired?
+
+Er... This maybe isn't really what I want. I think I may need to have exact
+number of arguments for the primitives, give each its own branch. That way I
+can say something like:
+
+concretize (NotE x) = notE (concretize x)
+
+Currently it's like...
+
+concrete (AppE (PrimE NotP) [x]) = notE (concretize x)
+
+I guess that's not terrible...
+Easier to do the pattern guard destructor.
+
+concrete e | Just x <- de_notE e = notE (concretize x)
+
+So, maybe I punt the whole issue and just do that for now for concretize. That
+seems reasonable.
+
+Fine. I'll ditch this then and take that route.
+
+Next step:
+* Implement concretize for SMT.Expression.
+It should be: [(Name, SMT.Expression)] as the things you substitute.
+
+Okay, did that. Next step?
+
+Yet me finish up Query now that we have all that right.
+
+Um... No. First I need everything symbolic to have this substitution thing.
+Okay. That's doable. A little tedious, but doable.
+
+Tue Nov 20 10:14:39 EST 2012
+
+Okay, so I have this substitution thing. I think the Query monad is all set
+up. Let me just implement the primitives.
+
+We also have an issue with main. Perhaps first thing to do is change it so it
+doesn't do anything special with main.
+
+Tue Nov 20 10:53:36 EST 2012
+
+Well, there you have it! Core works!
+
+Tue Nov 20 10:54:57 EST 2012
+
+It looks like Datatype does not work. We get "case no match" error.
+
+Oh. Maybe that's because we have to propagate errors. Errors have to be part
+of free objects... Hmm... Let me think about that, and think about what I want
+to do next here.
+
+Tue Nov 20 11:13:03 EST 2012
+
+Let me look more closely, to see if I can better understand why we are
+triggering an error, and what the proper way to handle it is.
+
+Let's say we have a 2 element enum: E1, E2.
+And we have 
+
+rotateenum :: E -> E
+rotateenum E1 = E2
+rotateenum E2 = E1
+
+This desugars into something like:
+
+rotateenum = \_x ->
+    case _x of
+        E1 -> E2
+        _ -> case _x of 
+            E2 -> E1
+            _ -> error "case no match"
+
+The current implementation for E is
+    E { __tE1 :: Bool, __tE2 :: Bool }
+
+The argument to rotateenum is a free enum called a.
+
+rotateenum E { __tE1 = ?, __tE2 = ? }
+
+So what happens when we try to match against this?
+
+I can simplify the problem even more, to a single enum.
+
+__caseE1 (E { __tE1 = "foo" }) __mkE2 (error "case no match")
+
+What happens here?
+__if "foo" __mkE2 (error "case no match")
+
+Look for __if of type MyEnum:
+
+E { __tE1 = __if "foo" (__tE1 __mkE2) (__tE1 (error "case no match")) }
+
+Turns into boolean __if.
+
+The argument is not a boolean. So what do we do? We ask: is b equal to true.
+If so, we can simplify it. But! That causes us to blow up. Yes. That explains
+that issue.
+
+The problem is: how do we deal with bottom? How do we deal with the error
+primitive?
+
+Depends on what I do. Or rather, what I want to do with errors.
+
+Approaches:
+ * Assume they are not possible? But you can explicitly say something like:
+ * Use the default value for them? 
+
+The issue is, I can't put them in the generated SMT query anymore, because I
+don't have the compiler infrastructure to define the free variables.
+
+Ug. I don't want to deal with this now. I want to side step it.
+
+How about this. Change "error" to default? Or, change error to ... I feel like
+we should have a type class? We could have an explicit error?
+
+Fine. For now, to sidestep this issue, I'll just have error be default.
+
+Except... that means I can't rely on error in my test cases. How about
+instead, customize error for each type, default to error, have boolean use
+default for error, and side step the issue that way.
+
+The only thing that forces anything is a primitive or a __case. Hmm... hum...
+ug...
+
+Maybe default to __default? Then for IO or Query monads make it error?
+
+Just for now. To try and make forward progress. This is what I'll do. I'll
+have to think about this a bunch though.
+
+Tue Nov 20 11:55:30 EST 2012
+
+Okay, made that forward progress. The Datatype test now passes. Let me try out
+suduku!
+
+Sudoku2 hangs. Or rather, it hogs tons of memory. I gave up after a minute.
+
+Looks like all the time is spent printout out the debug query...
+
+And it is a very large query... 320,000 lines printed out before I gave up on
+waiting.
+
+I bet concretization could help here...
+
+I do wonder what happens if we don't try to print out the debug info. Let me
+try that quickly.
+
+Turn off debugging, and memory doesn't blow up. Though it still takes some
+time.
+
+Now we have this problem that we get a bad predicate for __if. I wonder what
+type is causing this? What type are we trying to make free which doesn't
+support it?
+
+Integer... why are we trying to make a free integer? Where are we trying to
+make a free integer?
+
+Hmm... Lots of things to think about:
+* debug
+* error
+* concretization
+* free integer needed for sudoku2?
+
+Tue Nov 20 14:12:46 EST 2012
+
+Free integer needed for sudoku2?
+
+Consider the following example:
+
+assert ((if free1 then 2 else 3) == 3)
+
+How do I handle that?
+
+Let me make this a core test. Because it should work for core. Verify it
+doesn't work... Actually, let me first run it by hand, then try it and verify
+it doesn't work.
+
+This turns into what?
+
+It calls __if free1 2 3.
+Which leads exactly to the error I'm currently having.
+
+So, it seems to me I want the notion of a free integer, but it's possible to
+have the notion of a free integer which doesn't depend on integer primitives.
+
+Actually, this is a very good example. A better example is:
+
+assert ((if free1 then 2 else 3) == (if free2 then 3 else 4));
+
+Here is an SMT query. It involves free booleans. It involves integers. The
+solution is cleary: free1 is false, free2 is true, then this is satisfied.
+This is a kind of question we want to ask.
+
+If your solver has support for integers, we would like to translate it as. If
+your solver does not have support for integers, we could still make it work if
+we perform the following translation:
+
+assert ((if free1 then (if free2 then False else True)
+                  else (if free2 then False else False)))
+
+Now, in this case it simplifies, but in general we have an exponential blowup
+here. I don't want that. I want the SMT solver to deal with it if it can.
+
+This is basically an issue at the core of a long lunch discussion today. How
+can we specialize for different solvers while sharing as much work as
+possible? Up to now I've been assuming you don't want to specialize for
+different solvers, they are all basically the same. But this is a very real
+example of where you want to specialize for solvers. So it's worth thinking
+about how to do this.
+
+First question to ask is: what if I wanted to do the inlining. The pushing of
+(==). How would I do that with the current scheme?
+
+I would say... __if for integer goes to a special constructor for integer:
+Integer_if :: Bool -> Integer -> Integer -> Integer. Then I would have all my
+primitive operations handle this case:
+
+__prim_add_Integer (Integer_c a) (Integer_c b) = a + b
+__prim_add_Integer (Integer_c a) (Integer_if p x y)
+    = Integer_if p (__prim_add_Integer a x) (__prim_add_Integer a y)
+
+or, perhaps more relevant:
+
+__prim_eq_Integer (Integer_c a) (Integer_c b) = SMT.boolE $ a == b
+__prim_eq_Integer (Integer_c a) (Integer_if p x y)
+    = __if p (__prim_add_Integer a x) (__prim_add_Integer a y)
+__prim_eq_Integer (Integer_if p x y) a 
+    = __if p (__prim_add_Integer x a) (__prim_add_Integer y a)
+
+I think that's fine. That makes sense. The reason that is bad is we have
+exponential blowup. Again, I think unavoidable for a target like SAT or STP,
+for a target like yices2... maybe not something we want to do?
+
+Well... I think I'm going to end up doing this anyway, because that will make
+it like the current seri elaborator, and it will be good to see how much this
+costs us.
+
+But, allow me to consider the specialization idea now. I want to do something
+different based on the SMT solver I'm using to evaluate this query.
+
+So... say I delay this operation until assert. Keep the SMT expression in the
+form it was in. Now we have only primitives. We may have some primitives not
+supported by the SMT solver, such as equality for integers and integer
+literals.
+
+So, let me do a specialization pass on the SMT query. How will it look?
+
+Any time I see == on integer type, where an argument is an if statement... do
+the pushing there. In other words, it seems like I'm doing my elaboration on
+SMT.Expression, as opposed to Exp.
+
+If we are clever, we could turn that into a HOAS thing, make Bool a function
+from solver to SMT.Expression, or a (Reader Solver SMT.Expression), and read
+this value in the equality for integer primitive.
+
+If we do have Reader, we could also provide other information. That may make
+concretization more efficient....
+
+In other words, also as Nirav suggested at lunch, translating to Haskell
+doesn't make any of the elaboration issues with free variables go away.
+
+Okay, so there will still be work to do after this translation. It's not
+immediately going to solve all sorts of problems. But I think there will be
+clear things to improve. I'm not going to spend my time on that now. My first
+priority is to get something working equivalent to what the seri elaborator
+has now.
+
+So I do the pushing in integer primitives.
+
+Annoying, but I can probably abstract it away, and fix things to be nicer
+later.
+
+Let me add this test case to core, then deal with it.
+
+Yup! That triggered the issue.
+
+Let me do the solution now... I have to make Integer free.
+Probably need the same for Bit...
+
+Alternatively... I could just specialize in the SMT expression?
+
+Err... this is going to be an issue with all the data types, right?
+
+For example, what if I do:
+
+    assert (null (if (free) then [1, 2, 3] else []))
+
+This does an __if on a list with a free variable... So perhaps I should be
+looking for a more general solution? Stop hacking, start thinking?
+
+What happens in this case?
+
+null = \x -> (caseNil x True 
+                (caseCons x (\_ _ -> False) 
+                    (error "case no match")))
+
+The caseNil will say: what kind of list is this.
+
+Okay, so it looks like the only place I have to worry about this is in case
+statements and primitives. And primitives only for primitive data types. That,
+at least, is contained.
+
+So, the conclusion is... Every primitive type ought to have a special _if
+constructor on which primitive functions are pushed inside of.
+
+Now let's consider another question. Some of my primitives make use of, for
+example, list. Can I use the seri user defined list construct in those?
+
+No. I don't think that's the right question to be asking. Hard code them as
+primitive.
+
+Yes. That fixed the integer issue. Of course, we still have the list issue. I
+suppose I should fix that next in a similar fashion.
+
+And looks like I'll have to handle character primitives too in a similar
+fashion. Basically, I need to handle all the primitive types this way. Chars
+are what is keeping sudoku2 from working now.
+
+Tue Nov 20 15:57:17 EST 2012
+
+Good news is... all the time in sudoku2 so far is spent in communicating with
+the SMT solver. Probably because we have a massive query. But we don't have
+any time spent in elaboration. Or almost none. Also good news is, profiling
+shows me which seri functions time is going to, which is very nice to have.
+
+Let me keep doing the grunt work to make more things free/concrete. I'm
+getting closer. I'll think about this more. Think about how to convert between
+haskell and haskellf and that sort of thing.
+
+Tue Nov 20 16:15:27 EST 2012
+
+I seem to be repeating code a bunch.
+
+Here's a thought... how about have a general implementation for Concrete seri
+things?
+
+data Concrete a = Concrete a
+                | Choice Bool (Concrete a) (Concrete a)
+
+type Char = Concrete Prelude.Char
+type List = Concrete Prelude.[]
+type Integer = Concrete Prelude.Integer
+etc...
+
+I like that idea. Let me try it out and see if it works. Then it should be
+easy to support all the other types.
+
+Sadness. It looks like my Concrete__ thing won't work for lists, because it's
+a different thing: it takes a type parameter.
+
+List__ a = Concrete__ (List a)
+
+I suppose I could do it with a newtype.
+
+Here's a question. Can I close the loop? Do I really need Symbolic1 through
+Symbolic9? Or can a bigger one manage with a smaller one?
+
+Let's look at how I could avoid Symbolic2. Why do we need it?
+
+I might have something like:
+
+foo :: m True False -> m a b
+
+I need to say that (m True False) and (m a b) are both symbolic. Currently the
+way I say that is:
+
+foo :: (Symbolic2__ m, Symbolic__ a, Symbolic__ b) => ...
+
+Because I know the arguments to m are symbolic, and that in any case, so long
+as that is the case, m is symbolic, then I'm fine? Yes, so we need a way of
+saying: here is type which takes two parameters, which, so long as those two
+parameters are Symbolic, we guarenteed is symbolic.
+
+Let's be more explicit now then.
+
+foo :: m True False -> m a b
+
+Is the same as:
+
+foo :: (m True) False -> (m a) b
+
+So, this would seem to suggest what we want is a way to say:
+
+m is a type variable which, applied to any symbolic thing, gives me something
+which, applied to any symbolic thing, is symbolic.
+
+We want a reduction.
+
+What I do know is say: (m a) gives you a Symblic1. And then you can apply
+things. What I want is something like...
+
+No. I claim it can't be done. And here's the logic.
+
+I need to say something about ... err...
+
+How about this.
+
+I have something like: m of kind * -> * -> *
+
+I want to say that (m a b) is symbolic for any symbolic a and b.
+That's the same as saying that (m a) is symbolic when applied to any argument
+which is symbolic. Which is the same as saying...
+
+m a is an instance of Symbolic1 for all arguments of type a.
+
+So, the idea is... we have Symbolic. We have Symbolic1. Now, to avoid
+Symbolic2, we make (m a) an instance of Symbolic1 for all Symbolic a. Then we
+are done.
+
+In other words... it would seem that I don't need greater than 1. 1 covers
+all?
+
+There's an easy way to test this. Use 1 in the context somewhere instead of N.
+
+let me try it on foo.hs.
+
+Tue Nov 20 16:55:17 EST 2012
+
+No, I don't think this works out. The argument to a typeclass must always have
+the same kind. So Symbolic__ always takes a kind *. Symbolic1__ a kind *->*,
+and so on.
+
+Am I being silly? Do I only need Symbolic__? Why do I feel like I can't get
+away with that?
+
+For something of kind *->*, just say:
+ instance (Symbolic a) => Symbolic (m a)
+
+For something of kind *->*->*, say:
+ instance (Symbolic a, Symbolic b) => Symbolic (m a b)
+
+Ah, but what if you have a type class like monad.
+
+class Monad m where
+    ...
+
+And I want to put a qualification on 'm' which says, for all types a, (m a) is
+symbolic. How can I do that?
+
+Oh no. It's even simplier.
+
+Say I have a generic function like... I don't know...
+
+sequence :: (Monad  m) => [m a] -> m [a]
+
+Ah. The perfect example, and the cause of all my troubles.
+
+Now, I want to require that [m a] and m [a] are symbolic... I can say a is
+symbolic. But that's not enough to tell me (m a) is symbolic, because I don't
+know that you've defined an instance of symbolic for m for all arguments which
+are symbolic.
+
+And thus is the trouble. Sadness.
+
+Okay, so that's bad. I could perhaps limit it to 2, but who knows when someone
+will come along and want something fancier.
+
+Instead, let me consider Concrete__, which may be an entirely different
+animal? May or may not? Shouldn't it be like monad transformers?
+
+The issue is this. I want an instance of Symbolic1 for 
+newtype List a = List (Concrete__ [a])
+
+But wait. That's not right either. Really it's:
+
+newtype List a = List (Concrete__ [Concrete__ a])
+
+And this will just end up being duplicated, so that I'll actually want:
+
+data Concrete1__ m a = Concrete_c (m (Concrete__ a))
+                     | Concrete_if Bool (Concrete1__ m a) (Concrete1__ m a)
+
+But even that is wrong, isn't it?
+
+I don't know. let me do list first, and then IO, and if they turn out to be
+the same, maybe it will be more obvious.
+
+No. I don't think I can reuse Concrete_c. Not easily.
+
+Tue Nov 20 17:26:15 EST 2012
+
+Okay, so somehow we are getting __if IO. How could that happen?
+
+It can't be a case statement on free, because there is no such that.
+That means it must be a primitive: return, bind, or some such.
+
+Let's consider return...
+
+return ... but return doesn't look at IO, it just returns it, so that can't be
+the issue. Instead it would have to be bind?
+
+How about mapM_? Or something like that? Then you get things like...
+
+caseCons x (\x xs -> putChar x >> foo xs) (return ())
+
+So you have a free string. And how would you push this?
+
+I don't understand. What's the argument?
+
+I don't see where this could possibly be coming from. I'll have to think about
+it. I mean, I see where it could come from in general, but not in Sudoku. The
+only place we have IO is solve, and using the primitives. I don't do fancy
+stuff like:
+
+x <- if free then return 3 else return 4
+
+I'll think about it some.
+

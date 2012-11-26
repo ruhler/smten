@@ -14,7 +14,7 @@ import Seri.SMT.Query hiding (free, assert, query)
 import qualified Seri.SMT.Query as Q
 import qualified Seri.SMT.Run as Q
 import Seri.DSEL.DSEL
-import Seri.Elaborate hiding (query)
+import Seri.Elaborate
 import Seri.Type
 import Seri.ExpH
 

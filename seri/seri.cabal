@@ -57,6 +57,7 @@ library
     Seri.Exp.Ppr
 
     Seri.ExpH
+    Seri.ExpH.EnvH
     Seri.ExpH.ExpH
     Seri.ExpH.SeriEH
     Seri.ExpH.Typeof
@@ -67,6 +68,7 @@ library
     Seri.ExpH.ToExpH
     Seri.ExpH.FromExpH
     Seri.ExpH.Ppr
+    Seri.ExpH.Utils
 
     Seri.Haskell
     Seri.Haskell.Haskell
@@ -103,6 +105,11 @@ library
     Seri.Elaborate
     Seri.Elaborate.ExpH
     Seri.Elaborate.Elaborate
+
+    Seri.SMT.Solver
+    Seri.SMT.Syntax
+    Seri.SMT.Translate
+    Seri.SMT.Query
 
     Seri.TH
 
