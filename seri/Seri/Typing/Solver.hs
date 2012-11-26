@@ -138,7 +138,11 @@ fixassign l t =
 
 -- | Given the solution, finalize it so each value is fully simplified.
 finalize :: Map.Map Name Type -> Map.Map Name Type
-finalize m = Map.map (fixassign (flip Map.lookup m)) m
+finalize m =
+  let m' = Map.map (assignl (flip Map.lookup m)) m
+  in if m == m'
+        then m
+        else finalize m'
 
 lessknown :: Type -> Type -> Bool
 lessknown (VarT a) (VarT b) = a > b
