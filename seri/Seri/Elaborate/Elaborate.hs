@@ -163,118 +163,8 @@ elaborate mode env =
             CaseEH (ES_Some mode) (elab arg) k (elab yes) (elab no)
           CaseEH _ arg k yes no -> CaseEH (ES_Some mode) arg k yes no
         
-      -- nullary primitives
-      nprimitives :: HT.HashTable Name (Type -> ExpH)
-      nprimitives = HT.table $ [
-            (name "Prelude.numeric", \(NumT nt) ->
-                ConEH (Sig (name "#" `nappend` name (show (nteval nt))) (NumT nt)))
-              ]
-
-      -- unary primitives
-      uprimitives :: HT.HashTable Name (Type -> ExpH -> Maybe ExpH)
-      uprimitives =
-        let uXX :: (ExpH -> Maybe a) -> (b -> ExpH) -> (a -> b)
-                   -> Type -> ExpH -> Maybe ExpH
-            uXX de_a mkb f _ a = do 
-                a' <- de_a a
-                return (mkb (f a'))
-
-            uBB = uXX de_boolEH boolEH
-            uVV = uXX de_bitEH bitEH
-            uIS = uXX de_integerEH stringEH
-            uVS = uXX de_bitEH stringEH
-        in HT.table $ [
-             (name "Prelude.not", uBB not),
-             (name "Seri.Bit.__prim_not_Bit", uVV complement),
-             (name "Prelude.__prim_show_Integer", uIS show),
-             (name "Seri.Bit.__prim_show_Bit", uVS show),
-             (name "Prelude.&&", \_ a -> do
-                 a' <- de_boolEH a
-                 return $ LamEH ES_None (Sig (name "b") boolT)
-                    (if a' then id else const falseEH)
-                ),
-             (name "Prelude.||", \_ a -> do
-                 a' <- de_boolEH a
-                 return $ LamEH ES_None (Sig (name "b") boolT)
-                    (if a' then const trueEH else id)
-                ),
---             (name "Prelude.error", \_ a -> do
---                 a <- deStringE (fromExpH a)
---                 return (error $ "Seri.error: " ++ msg)
---                ),
-             (name "Prelude.valueof", \t _ -> 
-               let [NumT nt, it] = de_arrowsT t
-               in return $ integerEH (nteval nt)
-                ),
-             (name "Seri.Bit.__prim_zeroExtend_Bit", \t a -> do
-               let [ta, AppT _ (NumT wt)] = de_arrowsT t
-               a' <- de_bitEH a
-               return . bitEH $ bv_zero_extend (nteval wt - bv_width a') a'
-                  ),
-             (name "Seri.Bit.__prim_truncate_Bit", \t a -> do
-               let [ta, AppT _ (NumT wt)] = de_arrowsT t
-               a' <- de_bitEH a
-               return . bitEH $ bv_truncate (nteval wt) a'
-                   )
-               ]
-
-      -- binary primitives
-      bprimitives :: HT.HashTable Name (Type -> ExpH -> ExpH -> Maybe ExpH)
-      bprimitives =
-        let bXXX :: (ExpH -> Maybe a) -> (ExpH -> Maybe b) -> (c -> ExpH)
-                    -> (a -> b -> c)
-                    -> Type -> ExpH -> ExpH -> Maybe ExpH
-            bXXX de_a de_b mkc f _ a b = do
-                a' <- de_a a
-                b' <- de_b b
-                return (mkc (f a' b'))
-
-            bIIB = bXXX de_integerEH de_integerEH boolEH
-            bIII = bXXX de_integerEH de_integerEH integerEH
-            bCCB = bXXX de_charEH de_charEH boolEH
-            bVVB = bXXX de_bitEH de_bitEH boolEH
-            bVVV = bXXX de_bitEH de_bitEH bitEH
-
-            bSXXX :: (ExpH -> Maybe a) -> (ExpH -> Maybe b) -> (c -> ExpH)
-                    -> (Type -> a -> b -> c)
-                    -> Type -> ExpH -> ExpH -> Maybe ExpH
-            bSXXX de_a de_b mkc f t a b = do
-                a' <- de_a a
-                b' <- de_b b
-                return (mkc (f t a' b'))
-
-            bSVIV = bSXXX de_bitEH de_integerEH bitEH
-        in HT.table $ [
-             (name "Prelude.__prim_eq_Integer", bIIB (==)),
-             (name "Prelude.__prim_add_Integer", bIII (+)),
-             (name "Prelude.__prim_sub_Integer", bIII (-)),
-             (name "Prelude.__prim_mul_Integer", bIII (*)),
-             (name "Prelude.<", bIIB (<)),
-             (name "Prelude.<=", bIIB (<=)),
-             (name "Prelude.>", bIIB (>)),
-             (name "Prelude.__prim_eq_Char", bCCB (==)),
-             (name "Seri.Bit.__prim_eq_Bit", bVVB (==)),
-             (name "Seri.Bit.__prim_add_Bit", bVVV (+)),
-             (name "Seri.Bit.__prim_sub_Bit", bVVV (-)),
-             (name "Seri.Bit.__prim_mul_Bit", bVVV (*)),
-             (name "Seri.Bit.__prim_concat_Bit", bVVV bv_concat),
-             (name "Seri.Bit.__prim_or_Bit", bVVV (.|.)),
-             (name "Seri.Bit.__prim_and_Bit", bVVV (.&.)),
-             (name "Seri.Bit.__prim_shl_Bit", bVVV bv_shl),
-             (name "Seri.Bit.__prim_lshr_Bit", bVVV bv_lshr),
-             (name "Seri.Bit.__prim_extract_Bit",
-                let f :: Type -> Bit -> Integer -> Bit
-                    f t a j =
-                      let AppT _ (NumT wt) = last $ de_arrowsT t
-                          i = j + (nteval wt) - 1
-                      in bv_extract i j a
-                in bSVIV f)
-                ]
   in elab
 
-assignexp :: [(Name, Type)] -> Exp -> Exp
-assignexp = assign
-        
 -- Replace all occurences of the boolean variable with given name to the value
 -- True or False in the given expression.
 concretize :: Name -> Bool -> ExpH -> ExpH
@@ -284,3 +174,110 @@ concretize n v
        g _ = Nothing
    in transform g
 
+-- nullary primitives
+nprimitives :: HT.HashTable Name (Type -> ExpH)
+nprimitives = HT.table $ [
+      (name "Prelude.numeric", \(NumT nt) ->
+          ConEH (Sig (name "#" `nappend` name (show (nteval nt))) (NumT nt)))
+        ]
+
+-- unary primitives
+uprimitives :: HT.HashTable Name (Type -> ExpH -> Maybe ExpH)
+uprimitives =
+  let uXX :: (ExpH -> Maybe a) -> (b -> ExpH) -> (a -> b)
+             -> Type -> ExpH -> Maybe ExpH
+      uXX de_a mkb f _ a = do 
+          a' <- de_a a
+          return (mkb (f a'))
+
+      uBB = uXX de_boolEH boolEH
+      uVV = uXX de_bitEH bitEH
+      uIS = uXX de_integerEH stringEH
+      uVS = uXX de_bitEH stringEH
+  in HT.table $ [
+       (name "Prelude.not", uBB not),
+       (name "Seri.Bit.__prim_not_Bit", uVV complement),
+       (name "Prelude.__prim_show_Integer", uIS show),
+       (name "Seri.Bit.__prim_show_Bit", uVS show),
+       (name "Prelude.&&", \_ a -> do
+           a' <- de_boolEH a
+           return $ LamEH ES_None (Sig (name "b") boolT)
+              (if a' then id else const falseEH)
+          ),
+       (name "Prelude.||", \_ a -> do
+           a' <- de_boolEH a
+           return $ LamEH ES_None (Sig (name "b") boolT)
+              (if a' then const trueEH else id)
+          ),
+       --(name "Prelude.error", \_ a -> do
+       --    a <- de_stringE (fromExpH a)
+       --    return (error $ "Seri.error: " ++ msg)
+       --   ),
+       (name "Prelude.valueof", \t _ -> 
+         let [NumT nt, it] = de_arrowsT t
+         in return $ integerEH (nteval nt)
+          ),
+       (name "Seri.Bit.__prim_zeroExtend_Bit", \t a -> do
+         let [ta, AppT _ (NumT wt)] = de_arrowsT t
+         a' <- de_bitEH a
+         return . bitEH $ bv_zero_extend (nteval wt - bv_width a') a'
+            ),
+       (name "Seri.Bit.__prim_truncate_Bit", \t a -> do
+         let [ta, AppT _ (NumT wt)] = de_arrowsT t
+         a' <- de_bitEH a
+         return . bitEH $ bv_truncate (nteval wt) a'
+             )
+         ]
+
+-- binary primitives
+bprimitives :: HT.HashTable Name (Type -> ExpH -> ExpH -> Maybe ExpH)
+bprimitives =
+  let bXXX :: (ExpH -> Maybe a) -> (ExpH -> Maybe b) -> (c -> ExpH)
+              -> (a -> b -> c)
+              -> Type -> ExpH -> ExpH -> Maybe ExpH
+      bXXX de_a de_b mkc f _ a b = do
+          a' <- de_a a
+          b' <- de_b b
+          return (mkc (f a' b'))
+
+      bIIB = bXXX de_integerEH de_integerEH boolEH
+      bIII = bXXX de_integerEH de_integerEH integerEH
+      bCCB = bXXX de_charEH de_charEH boolEH
+      bVVB = bXXX de_bitEH de_bitEH boolEH
+      bVVV = bXXX de_bitEH de_bitEH bitEH
+
+      bSXXX :: (ExpH -> Maybe a) -> (ExpH -> Maybe b) -> (c -> ExpH)
+              -> (Type -> a -> b -> c)
+              -> Type -> ExpH -> ExpH -> Maybe ExpH
+      bSXXX de_a de_b mkc f t a b = do
+          a' <- de_a a
+          b' <- de_b b
+          return (mkc (f t a' b'))
+
+      bSVIV = bSXXX de_bitEH de_integerEH bitEH
+  in HT.table $ [
+       (name "Prelude.__prim_eq_Integer", bIIB (==)),
+       (name "Prelude.__prim_add_Integer", bIII (+)),
+       (name "Prelude.__prim_sub_Integer", bIII (-)),
+       (name "Prelude.__prim_mul_Integer", bIII (*)),
+       (name "Prelude.<", bIIB (<)),
+       (name "Prelude.<=", bIIB (<=)),
+       (name "Prelude.>", bIIB (>)),
+       (name "Prelude.__prim_eq_Char", bCCB (==)),
+       (name "Seri.Bit.__prim_eq_Bit", bVVB (==)),
+       (name "Seri.Bit.__prim_add_Bit", bVVV (+)),
+       (name "Seri.Bit.__prim_sub_Bit", bVVV (-)),
+       (name "Seri.Bit.__prim_mul_Bit", bVVV (*)),
+       (name "Seri.Bit.__prim_concat_Bit", bVVV bv_concat),
+       (name "Seri.Bit.__prim_or_Bit", bVVV (.|.)),
+       (name "Seri.Bit.__prim_and_Bit", bVVV (.&.)),
+       (name "Seri.Bit.__prim_shl_Bit", bVVV bv_shl),
+       (name "Seri.Bit.__prim_lshr_Bit", bVVV bv_lshr),
+       (name "Seri.Bit.__prim_extract_Bit",
+          let f :: Type -> Bit -> Integer -> Bit
+              f t a j =
+                let AppT _ (NumT wt) = last $ de_arrowsT t
+                    i = j + (nteval wt) - 1
+                in bv_extract i j a
+          in bSVIV f)
+          ]
