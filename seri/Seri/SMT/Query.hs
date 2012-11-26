@@ -304,7 +304,7 @@ realize e = Realize $ do
         g e = do
             s <- de_varEH e
             lookup s freemap
-    return $ Seri.Elaborate.transform g e
+    return $ transform g e
 
 -- | Return the environment the query is running under.
 envQ :: Query EnvH
