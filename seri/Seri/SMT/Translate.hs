@@ -63,15 +63,11 @@ import Seri.Sig
 import Seri.Ppr
 import Seri.Type
 import Seri.Exp
-import Seri.ExpH
 import Seri.Dec
 import Seri.Strict
-import Seri.Elaborate
 
 -- | An SMT compilation object.
 data Compilation = Compilation {
-    ys_poly :: EnvH,             -- ^ The polymorphic seri environment
-
     -- | Declarations needed for what was compiled, stored in reverse order
     -- for efficiency sake.
     ys_cmdsr :: [SMT.Command],
@@ -87,9 +83,8 @@ addcmds :: [SMT.Command] -> CompilationM ()
 addcmds cmds = modifyS $ \ys -> ys { ys_cmdsr = (reverse cmds) ++ ys_cmdsr ys}
 
 -- | Create a new smt compilation object.
-compilation :: EnvH -> Compilation
-compilation poly = Compilation {
-    ys_poly = poly,
+compilation :: Compilation
+compilation = Compilation {
     ys_cmdsr = [],
     ys_errid = 1
 }
@@ -133,13 +128,8 @@ smtT t = throw $ "smtT: unsupported type: " ++ pretty t
 -- | Compile a seri expression to a smt expression.
 -- Before using the returned expression, the smtD function should be called
 -- to get the required smt declarations.
-smtE :: ExpH -> CompilationM SMT.Expression
-smtE e = do
-  poly <- gets ys_poly
-  let seh = elaborate SNF poly e
-  let se = fromExpH seh
-  --trace ("POST-SNF: " ++ pretty se) (return ())
-  smtE' se `catchError` (\msg -> throw $ msg ++ "\nWhen translating: " ++ show se)
+smtE :: Exp -> CompilationM SMT.Expression
+smtE e = smtE' e `catchError` (\msg -> throw $ msg ++ "\nWhen translating: " ++ show e)
 
 -- | Compile a seri expression to smt, assuming the expression can be
 -- represented as is in smt without further elaboration.

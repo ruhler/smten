@@ -144,8 +144,13 @@ smtt t = do
 smte :: ExpH -> Query SMT.Expression
 smte e = do
     qs <- gets qs_qs 
-    let mkye = do
-          ye <- smtE e
+    env <- gets qs_env
+    let seh = elaborate SNF env e
+        se = fromExpH seh
+
+        mkye :: CompilationM ([SMT.Command], SMT.Expression)
+        mkye = do
+          ye <- smtE se
           cmds <- smtD
           return (cmds, ye)
     ((cmds, ye), qs') <- lift . attemptIO $ runCompilation mkye qs
@@ -182,7 +187,7 @@ mkQS opts env = do
         qs_solver = ro_solver opts,
         qs_dh = dh,
         qs_freeid = 1,
-        qs_qs = compilation env,
+        qs_qs = compilation,
         qs_freevars = [],
         qs_freevals = Nothing,
         qs_env = env
