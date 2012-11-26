@@ -4,8 +4,10 @@ module Seri.ExpH.Ppr () where
 import Seri.Lit
 import Seri.Ppr
 import Seri.ExpH.ExpH
+import Seri.ExpH.Sugar2
 
 instance Ppr ExpH where
+    ppr e | Just v <- de_stringEH e = text (show v)
     ppr (LitEH l) = ppr l
     ppr (ConEH s) = ppr s
     ppr (VarEH s) = ppr s

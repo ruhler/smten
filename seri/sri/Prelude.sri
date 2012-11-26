@@ -204,7 +204,7 @@ length (_:l) = 1 + length l
 
 (!!) :: [a] -> Integer -> a
 (!!) [] _ = error "Prelude.!!: index too large"
-(!!) (x:[]) 0 = x
+(!!) (x:_) 0 = x
 (!!) (_:xs) n = xs !! (n-1)
 
 foldl :: (a -> b -> a) -> a -> [b] -> a

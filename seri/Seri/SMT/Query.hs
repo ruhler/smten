@@ -46,6 +46,8 @@ module Seri.SMT.Query (
     Query, query, free, assert, queryS, realize, envQ, envR,
     ) where
 
+import Debug.Trace
+
 import Data.Functor
 import Data.List(nub)
 
@@ -153,6 +155,8 @@ smte e = do
           ye <- smtE se
           cmds <- smtD
           return (cmds, ye)
+    --trace ("PRE: " ++ pretty e) (return ())
+    --trace ("POST: " ++ pretty se) (return ())
     ((cmds, ye), qs') <- lift . attemptIO $ runCompilation mkye qs
     modify $ \s -> s { qs_qs = qs' }
     runCmds cmds
