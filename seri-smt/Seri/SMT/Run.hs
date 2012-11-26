@@ -13,7 +13,7 @@ import Seri.Sig
 import Seri.Ppr
 import Seri.SMT.Query
 
-import Seri.Elaborate hiding (query)
+import Seri.Elaborate
 
 -- | Given a Seri expression of type Query a,
 -- returns the Seri expression of type a which results from running the query.

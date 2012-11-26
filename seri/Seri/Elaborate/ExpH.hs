@@ -3,7 +3,7 @@
 {-# LANGUAGE PatternGuards #-}
 
 module Seri.Elaborate.ExpH (
-      transform, query,
+      transform,
       de_appv1, de_appv2,
 
   ) where
@@ -30,15 +30,6 @@ transform g e
        AppEH _ f x -> AppEH ES_None (transform g f) (transform g x)
        LamEH _ s f -> LamEH ES_None s $ \x -> transform g (f x)
        CaseEH _ x k y d -> CaseEH ES_None (transform g x) k (transform g y) (transform g d)
-
-query :: Monoid m => (ExpH -> m) -> ExpH -> m
-query g e 
- = g e <> case e of
-             AppEH _ f x -> query g f <> query g x
-             LamEH _ s f -> query g (f (varEH s))
-             CaseEH _ x _ y d -> query g x <> query g y <> query g d
-             _ -> mempty
-    
 
 -- Match an application of the variable with given name to a single argument.
 -- Returns the argument.

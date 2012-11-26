@@ -65,7 +65,7 @@ import Seri.ExpH
 import Seri.Dec
 import Seri.Ppr
 import Seri.SMT.Translate
-import Seri.Elaborate hiding (query)
+import Seri.Elaborate
 import qualified Seri.Elaborate
 
 
