@@ -89,7 +89,7 @@ elaborate mode env =
                (AppEH _ (VarEH (Sig n t)) x, arg)
                  | Just f <- HT.lookup n bprimitives
                  , Just v <- f t x arg -> v
-               (CaseEH _ a k y n, arg) | mode == SNF ->
+               (CaseEH _ a k y n, arg) ->
                  let -- Perform argument pushing.
                      -- (case a of
                      --     k -> y
@@ -125,8 +125,7 @@ elaborate mode env =
                         then elab $ appsEH y vs
                         else no
                 (arg, k1, _, _)
-                    | mode == SNF
-                    , CaseEH _ x2 k2 y2 n2 <- arg ->
+                    | CaseEH _ x2 k2 y2 n2 <- arg ->
                         let -- Decasify:
                             --  case (case x2 of k2 -> y2 ; _ -> n2) of
                             --      k1 -> y;
@@ -156,11 +155,10 @@ elaborate mode env =
                             y2' = y2ify k2args y2body y2
                             n2' = CaseEH ES_None n2 k1 y n
                         in elab $ CaseEH ES_None x2 k2 y2' n2' 
-                (arg@(VarEH (Sig nm t)), k, _, _) | mode == SNF && t == boolT ->
+                (arg@(VarEH (Sig nm t)), k, _, _) | t == boolT ->
                     let Just v = de_boolEH (ConEH k)
                     in CaseEH (ES_Some mode) arg k (elab (concretize nm v y)) (elab (concretize nm (not v) n))
-                (arg, k, yes, no) | mode == SNF -> CaseEH (ES_Some mode) arg k yes no
-                _ -> CaseEH (ES_Some mode) arg k y n
+                (arg, k, yes, no) -> CaseEH (ES_Some mode) arg k yes no
         
   in elab
 
