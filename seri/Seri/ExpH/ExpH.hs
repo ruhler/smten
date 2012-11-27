@@ -4,18 +4,14 @@
 -- | HOAS form for Seri Expressions, geared towards high performance
 -- elaboration.
 module Seri.ExpH.ExpH (
-    Mode(..), EState(..), ExpH(..),
+    EState(..), ExpH(..),
     ) where
 
 import Seri.Lit
 import Seri.Sig
 
-data Mode = WHNF -- ^ elaborate to weak head normal form.
-          | SNF  -- ^ elaborate to smt normal form.
-    deriving (Show, Eq, Ord)
-
-data EState = ES_None | ES_Some Mode
-    deriving (Show, Eq)
+data EState = ES_None | ES_Done
+    deriving (Eq, Show)
 
 data ExpH = LitEH Lit
           | ConEH Sig

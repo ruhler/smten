@@ -20,7 +20,7 @@ import Seri.Elaborate
 run :: ExpH -> Query ExpH
 run e = do
     env <- envQ
-    case elabwhnf env e of
+    case elaborate env e of
         e' | Just arg <- de_appv1 (name "Seri.SMT.SMT.query") e' -> do
             res <- query (realize arg)
             case res of 

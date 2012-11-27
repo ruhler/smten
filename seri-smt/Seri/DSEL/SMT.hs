@@ -37,7 +37,7 @@ assert p =
 realize :: (SeriEH a) => ExpT a -> Realize a
 realize (ExpT x) = do
   env <- envR
-  fromJust . de_seriEH . elabwhnf env <$> Q.realize x
+  fromJust . de_seriEH . elaborate env <$> Q.realize x
 
 queryR :: Realize a -> Query (Answer a)
 queryR = Q.query
@@ -52,5 +52,5 @@ run' :: (SeriEH a) => ExpT (QueryT a) -> Query a
 run' x = do
   env <- envQ
   ExpT v <- run x
-  return . fromJust . de_seriEH $ elabwhnf env v
+  return . fromJust . de_seriEH $ elaborate env v
 

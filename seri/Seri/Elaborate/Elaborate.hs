@@ -37,7 +37,7 @@
 
 -- | Target for elaborating seri expressions.
 module Seri.Elaborate.Elaborate (
-    Mode(..), elabwhnf, elaborate,
+    elaborate,
     ) where
 
 import Debug.Trace
@@ -62,16 +62,11 @@ import Seri.Ppr (pretty)
 
 import Seri.Elaborate.ExpH
 
--- Weak head normal form elaboration
-elabwhnf :: EnvH -> ExpH -> ExpH
-elabwhnf = elaborate WHNF
-
--- | Elaborate an expression in ExpH form under the given mode.
-elaborate :: Mode  -- ^ Elaboration mode
-           -> EnvH   -- ^ context under which to evaluate the expression
+-- | Elaborate an expression in ExpH form.
+elaborate ::  EnvH   -- ^ context under which to evaluate the expression
            -> ExpH   -- ^ expression to evaluate
            -> ExpH   -- ^ elaborated expression
-elaborate mode env =
+elaborate env =
   let -- elaborate the given expression
       elab :: ExpH -> ExpH
       elab e =
@@ -80,7 +75,7 @@ elaborate mode env =
           ConEH s -> e
           VarEH (Sig n t) | Just f <- HT.lookup n nprimitives -> f t
           VarEH s@(Sig n ct) -> fromMaybe e $ elab <$> lookupVarH env s
-          AppEH (ES_Some m) _ _ | mode <= m -> e
+          AppEH ES_Done _ _ -> e
           AppEH _ f arg -> 
              case (elab f, elab arg) of
                (VarEH (Sig n t), arg)
@@ -114,10 +109,10 @@ elaborate mode env =
                         in CaseEH ES_None a k y' n'
                  in elab $ AppEH ES_None lam arg
                (LamEH _ _ b, arg) -> b arg
-               (f', arg) -> AppEH (ES_Some mode) f' arg
-          LamEH (ES_Some m) _ _ | mode <= m -> e
-          LamEH _ v f -> LamEH (ES_Some mode) v (\x -> elab (f x))
-          CaseEH (ES_Some m) _ _ _ _ | mode <= m -> e
+               (f', arg) -> AppEH ES_Done f' arg
+          LamEH ES_Done _ _ -> e
+          LamEH _ v f -> LamEH ES_Done v (\x -> elab (f x))
+          CaseEH ES_Done _ _ _ _ -> e
           CaseEH _ arg k y n ->
             case (elab arg, k, elab y, elab n) of
                 (arg, Sig nk _, _, no) | (ConEH (Sig s _), vs) <- de_appsEH arg ->
@@ -157,8 +152,8 @@ elaborate mode env =
                         in elab $ CaseEH ES_None x2 k2 y2' n2' 
                 (arg@(VarEH (Sig nm t)), k, _, _) | t == boolT ->
                     let Just v = de_boolEH (ConEH k)
-                    in CaseEH (ES_Some mode) arg k (elab (concretize nm v y)) (elab (concretize nm (not v) n))
-                (arg, k, yes, no) -> CaseEH (ES_Some mode) arg k yes no
+                    in CaseEH ES_Done arg k (elab (concretize nm v y)) (elab (concretize nm (not v) n))
+                (arg, k, yes, no) -> CaseEH ES_Done arg k yes no
         
   in elab
 

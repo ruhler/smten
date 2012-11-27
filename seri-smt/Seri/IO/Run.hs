@@ -20,11 +20,11 @@ import Seri.Ppr
 -- computation.
 run :: EnvH -> ExpH -> IO ExpH
 run env e = do
-    case elabwhnf env e of
+    case elaborate env e of
         e' | Just arg <- de_appv1 (name "Prelude.putChar") e' -> do
-            case de_charEH (elabwhnf env arg) of
+            case de_charEH (elaborate env arg) of
                 Just c -> putChar c
-                Nothing -> error $ "putChar: expected Char, got: " ++ pretty (elabwhnf env arg)
+                Nothing -> error $ "putChar: expected Char, got: " ++ pretty (elaborate env arg)
             return unitEH
         e' | Just (debug, query) <- de_appv2 (name "Seri.SMT.SMT.runYices1") e'
            , Just dbg <- de_seriEH debug -> do  

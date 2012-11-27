@@ -1,0 +1,599 @@
+
+Mon Nov 26 07:38:08 EST 2012
+
+Tried performUnsafeIO. The program doesn't crash. It goes a bit faster (like
+13 down to 9, kind of thing), but not amazingly faster. I want to double check
+and verify it's finding things in the cache as expected.
+
+Mon Nov 26 07:45:13 EST 2012
+
+The cache is working as expected. I'll keep it. The question is... why isn't
+it working better? Why is toExpH and elaboration still slow?
+
+Mon Nov 26 07:52:43 EST 2012
+
+It's slow, I think, just because we are doing so much elaboration and toExpH.
+There's one last trick I can think of that has a chance at making a big
+difference. Sharing elaboration of top level declarations.
+
+I'm sure adding an IoEH and QueryEH couldn't help either.
+
+And maybe improving de_appsEH. But really, I need to be sharing elaboration of
+top level declarations, and ideally in a way which really shares elaboration
+of things that can be shared, not just deferring elaboration until we have an
+argument. Let me think about that a bit.
+
+Mon Nov 26 09:56:59 EST 2012
+
+Okay, what's the plan? What are the next steps for seri?
+
+Again, we are still worrying about performance. Because the hcp, just to show
+the solution, takes way way longer than it ought to.
+
+I fear I won't get as good as haskell at elaboration, not without years of
+effort. Perhaps what I should do is take a balanced approach. For concrete
+stuff, we should use haskellf. And keep improving the elaborator.
+
+So, the overall plan is as follows...
+
+I want to try sharing elaboration of top level declarations. I honestly don't
+feel deep down this will make a very big difference, but it's one last thing
+to try out. I can use the approach I use for toExpH: unsafe IO, to make this
+work just the way I want.
+
+But, for it to work, I really want to merge IO and Query into the elaborator.
+
+The other thing I want to do is get rid of SMT.Expression, because it is just
+duplicated code. If I do that, then try to do haskellf, the haskellf should be
+much easier. Maybe or maybe it won't work.
+
+The idea behind haskellf would now be: every type is just a newtype of Exp.
+These represent our free expressions.
+
+The primitive functions work as desired.
+
+Case statements can translate to haskell case statements. For example:
+
+case x of
+    (:) -> \a -> b -> yv
+    _ -> n
+
+Could translate into...
+
+case x of
+    List__ (AppE (ConE (Sig n _)) a b) | n == name ":" -> yv a b
+    _ -> n
+
+Then maybe haskell can special case on it. I don't know. I suppose I have to
+check for error too though. Maybe I want to keep the same existing abstraction
+I have. It might work just as well.
+    
+It will be good to have haskellf running on the elaborator.
+
+So, this is the plan. Unfortunately, the plan ends up tying things up, perhaps
+in ways which are... not supported?
+
+What is the dependency chain?
+
+If Query depends on ExpH... That's really annoying. Because ExpH will depend
+on Query to have QueryEH. And Query depends, even if indirectly, on
+Elaborator, which depends on ExpH...
+
+Yes, it's quite messy.
+
+Translate needs to know how to elaborate an ExpH. Does translate do anything?
+I guess I'm proposing I get rid of that entirely?
+
+It does deal with error.
+
+What if I keep SMT.Expression for now? What if I just redo haskellf to work
+with Exp? Or should it be ExpH?
+
+Mon Nov 26 10:23:06 EST 2012
+
+Okay, I think I know the right way forward. I want to get haskellf going in a
+nice way, and merge it with the master branch. I want both to be based on
+ExpH, or whatever, so they share work in the elaborator. I want to have
+haskellf, because I think we'll want to use those numbers for CAV. It's an
+easy way to get a big speedup. Even if it just delays the problem, pushes
+issues down the road, it's not doing so in a bad way I don't think.
+
+I'm just worried that it will be too slow regardless...
+
+Okay, let me spend a little time thinking about how this will work. Haskellf
+using ExpH.
+
+The idea is... hmm... Confused. That's what it is...
+
+Let's start with the easy part. Start with concrete elaboration.
+
+The idea is: ExpH (or Exp?) is a way to represent a possible free variable.
+Hmm... That's problematic. Well, not really, it's just a question. Do I want
+ExpH or Exp? I feel like I want Exp.
+
+That is, with haskellf, we don't use the elaborator. Everything is inlined by
+haskell. So really I don't get to share a whole lot, do I?
+
+Let me keep pushing. So we use Exp, to represent a value which may be free.
+Concrete values we know how to represent.
+
+Each type becomes a newtype of Exp. That's easy enough.
+For each type... do we want to define something? If so, what?
+
+I don't know. I don't understand how this is to work. For example, how do we
+express Query? As a real monad? Or as an Exp? Same with IO?
+
+Does it matter?
+
+What if we had smart constructors for Exp, or ExpH?
+
+Assuming everything is inlined by haskell, for example...
+
+The primitives can look at their arguments and simplify.
+
+Application could look at its argument and simplify immediately. That is,
+perform the elaboration step immediately.
+
+A case statement could perform it's elaboration step immediately.
+
+This is the kind of think I would want for haskellf. Let's say I have this.
+How does it help with elaboration? Does it help at all?
+
+Elaboration becomes the same as simplification. Aside from this issue with
+looking up things in the environment.
+
+Then the idea is... you have an expression. It could be an ExpH or Exp, let me
+not worry about that now. You build it up, and an environment. Now, to
+elaborate: do all the variable substitutions inside that expression, and call
+simplify. The simplify step performs the elaboration.
+
+And you know what? Using unsafePerformIO, we could capture the notion of the
+environment in a global variable? Or, maybe these simplification functions
+would have to work in the context of an environment. So the simplify function
+takes as argument the environment. For haskellf, the environment could be
+empty.
+
+You know what this sounds like? A redesign. Let's say I started from scratch,
+based on this idea. How would it work?
+
+Well... that's too much to think about all at once. Think instead about
+haskellf. How would it work in that context.
+
+The idea is.. I have smart constructors which do the elaboration steps for me.
+Application and beta reduction turns into haskell application and beta
+reduction. That's the hard part made easy via haskell.
+
+Primitives are simple. Case is easy enough. We have a simplify function. Easy!
+
+So, I think what I should do is... take haskellf, and start morphing it into
+this, and see how that makes things easier.
+
+We can use newtype deriving to help us with things...
+
+Mon Nov 26 11:17:28 EST 2012
+
+Yes. I need to switch haskellf over to Exp. To make it generalize to other
+types better. Don't try to do major things all at once. Try to do a little at
+a time if I can.
+
+What we are going to find is... in haskellf, times is spent in substitute for
+Exp. In seri, time is spent in substitute for ExpH. That's okay. I can figure
+out how to improve that later.
+
+I think my goal should be this: update haskellf. Get it to work with Exp on
+all the kinds of expressions. Have it pass all my test cases. Then try running
+the hcp query on it, see how terrible that is.
+
+Okay, the initial update shouldn't be too bad. Let me try it out, see how it
+goes.
+
+Mon Nov 26 11:26:13 EST 2012
+
+Merged master branch into haskellf. It works out.
+
+What's the next step? Let me switch from SMT.Expression to Exp. That's where
+things ought to be done, right? We'll see...
+
+The trouble is, it's hard to keep track of what all changes need to be made.
+Let me go through and try to make a list.
+
+1. Change F.Bool implementation to be based on Exp, not SMT.Expression.
+Query: doesn't have to change at all, because F.Bool is abstract. That's cool.
+SMT: same.
+
+So all we should have to change is Prelude, and the boolean functions.
+* __free, __mkTrue, __mkFalse, __if for Bool.
+* implement: substitute and impliedByTrue, impliedByFalse for Exp.
+* implement: smart ifE for Exp.
+
+That's it. This first step will be easy.
+
+Except for: translation from Exp to SMT.Expression. Currently requires a
+compilation object... Which needs to be part of the Query monad. Expose smtE'?
+
+The issue is, we have a way of representing errors, so we need a way of
+dealing with them too. It's good we can represent an error. I just need to
+deal with it appropriately.
+
+So, add a compilation object to Query? Does it need the environment?
+
+Let me not hack overly much, because that's what got haskellf into the mess
+it's already in.
+
+How do I want to deal with errors in the long run?
+
+I have explicit representations of errors. I suppose if performance didn't
+matter, the way I would handle them is:
+
+1. Make a query assuming there can be no errors. If satisfiable, the query is
+satisfiable. Otherwise...
+2. Make a query assuming there can be errors. If unsatisfiable, the query is
+unsatisfiable. Otherwise...
+3. The query is unknown, or error of some sort.
+
+Or, in other words, I have the query, which is some expression. Actually, some
+set of assertions. Along with that I have another predicate, indicating
+whether there are any errors or not. Or rather, a predicate saying: there are
+no errors. The requirement for there to be no errors. Now, if there are
+trivially no errors, I would expect this predicate to become True, and I could
+optimize the query. Only do a single one, instead of two. This is what I'm
+hoping is the case currently. Do I have a way to prove it?
+
+I think the summary is, I want the Query monad to take an Exp, not an F.Bool.
+Then it can do the right thing later.
+
+The right thing later will be...
+Translate an Exp to SMT.Expression, and in the process supply:
+* The set of all error variables allocated: name and type.
+* A predicate which asserts no errors are reached.
+
+The higher-up can then do the appropriate things with this.
+
+Okay, so I know how to do the first bullet point. How hard is it to do the
+second? How do I build that assertion? Let's see...
+
+let n = v in x:
+    ... Can I ignore this case for now? Let's say yes.
+
+LitE: True - there can be no error.
+ConE: True - there can be no error.
+VarE: True - there can be no error? Or maybe I should pass around values of
+      bound variables and their predicates, and any time I use a bound
+      variable, include its predicate? Not sure.
+Error: The negation of the current path predicate.
+AppE: - recurse to a and b and take the OR of the fields.
+CaseE: pass around a path predicate. Add to that predicate either the argument
+or the negation of the argument.
+
+So really, it's not at all that hard.
+
+It would be great if I could handle errors properly. The real thing I want to
+do now is expose a common interface from SMT.Translate that I can use in seri
+elaboration and generated haskellf. Then let the user make the best of it.
+
+We shouldn't need the environment. That's the important point. The smtE
+function should need error, yes, and an error ID, yes, but that's all.
+
+What it really needs is... Fresh with error.
+
+Good! So here's what I'll do.
+
+oh.. Wait. We also need to return the declarations required... Which really
+just means... the error variables.
+
+I don't have to do this now. Here's what I propose:
+
+* smtE should move, in its current form, to Query.
+* smtE' should be renamed to smtE.
+* Compilation should no longer require an environment.
+* The haskellf Query monad should keep track of a compilation object as the
+  other Query monad does. Now call smtE when we switch over to Exp.
+
+Easy. Simple. Clean.
+
+I'll do this when I come back. Starting on the master branch. I can change the
+interface to handle errors properly later on.
+
+Mon Nov 26 13:37:30 EST 2012
+
+I'm going to have to do a simplification thing for Exp... When should we have
+smart constructors, and when stupid constructors?
+
+This is important. I certainly don't want to be doing things prematurely for
+seri elaboration. I only want to do that if I know that's what I want to do...
+
+So maybe what I want is Exp.Simplify, which knows how to do simplification and
+substitution, all assuming SNF form.
+
+In other words, we have an Exp elaborator which works without an
+environment... Or something like that.
+
+Now, here is where I want to think a little. This is going to duplicate much
+of the code in Elaborate, only for Exp instead of ExpH, right?
+
+Could we make use of this technique for ExpH elaboration?
+
+Reasons why it doesn't work so well:
+* we have an environment
+* we don't know what mode we want to elaborate to
+
+I don't know. How about this. For now, keep it separate. See what issues with
+performance and such come up with the Exp simplification. Perhaps I should
+call it elaboration... No, stick with simplification for now.
+
+When I do Exp simplification... maybe it makes sense to make it a full pledged
+elaborator? Isn't that what it is?
+
+Okay, it's elaboration with the following assumptions:
+* There are no top level variables which we haven't inlined.
+
+Let's see how it will look. The question is, if everything is inlined and
+concrete, will this simplifier do full simplification? And how fast will it
+be?
+
+We could use this to make a simplifier which works in a given environment by
+inlining all variables in a kind of recursive manner, and elaborating. I'm not
+sure it will work with infinite recursion. Maybe, maybe not? I suppose
+infinite recursion would just mean an infinite expression.
+
+The reason I ask about all this is... if I can make a fully fledged elaborator
+out of this technique, it would be cool to add it as an option to the seri
+executable, and see if it works on all the test cases.
+
+Haskellf uses this form of elaboration, only it has the pleasure of not
+generating any case or lambda terms.
+
+I could use the same unsafe IO cache technique for this elaboration: make a
+cache of simplified top level variables of given types?
+
+Given an expression, transform all variables with their top level declaration
+values. Those values are formed by looking up in the cache, or looking up in
+the environment and first simplifying that expression, and then transforming.
+It's totally doable.
+
+No. This is not the right way to look at it.
+
+There are some simplifications it doesn't hurt to make. I should make those.
+For Exp. Always. In Exp sugar.
+
+The one which doesn't make sense to do is beta reduction, because it could
+make things more complicated, but, as we said, haskellf doesn't ever generate
+a beta reduction. So I believe this simplification is reasonable to do in
+general when constructing Exp objects. Start with that route. Substitute and
+simplify can just try to recognize constructs and call the smart constructors
+to resugar. Good.
+
+For now, I'll skip the simplification and let the errors guide me. Good.
+
+Mon Nov 26 14:28:35 EST 2012
+
+Errors are guiding me as follows:
+* simplify case statements whenever possible.
+That is, we get a constructor as the argument. We should be able to match
+that.
+
+So simplify has to recurse, and simplify has to simplify case statements.
+
+Have a caseE sugar which knows how to do that for me.
+
+And if I have this... no need for the additional call to simplify? Or should I
+keep it working anyway? Have generic transformation simpilfy? That makes sense
+to me...
+
+Mon Nov 26 14:37:01 EST 2012
+
+There! And just like that, haskellf is switched over to Exp, and we get a few
+other cool things too. Nifty.
+
+Now what? Now what I could do is...
+
+The goal is clearly to have haskellf work on all the test cases. So try to
+make it work on the Integer test cases.
+
+I don't remember what all problems that causes. It was enough before to really
+annoy me. Let me try now and see how annoying it is or isn't.
+
+Well, we have some problems.
+* Concrete values need to be fully simpled for basic tests to work.
+* == (if p then 1 else 2) 2
+Needs to be simplified to:
+    if p then (== 1 2) else (== 2 2), and then those should be simplified.
+
+That is, we need to push the function in, and the argument too? How annoying.
+
+Mon Nov 26 15:19:24 EST 2012
+
+I did the concrete value simplification. That works now. Next what I need is
+argument pushing. I wonder if there's an easy way I can describe this...
+
+The way I did it before was using __capp. It was part of the implementation of
+__prim_eq_Integer for integer.
+
+The way it works is... if the first integer argument is free, and it is an if
+statement (case statement), then push the function inside.
+
+This is a general thing I can do. Push a function inside a case statement.
+
+Mon Nov 26 15:30:22 EST 2012
+
+Well, here's the current status. The Integer tests pass. The problem is Core
+doesn't pass with STP because it doesn't eliminate the integer operations.
+Exactly this pushing thing I'm talking about.
+
+Let me check in what I have now, as a saving point. Then consider what I want
+to do next.
+
+Mon Nov 26 15:50:57 EST 2012
+
+There's some thought about how I would implement a DIMACS cnf SAT solver in
+seri. The input format can be parsed however. For now let me ignore that.
+
+The input format I'll work with in seri is:
+ Integer -- number of vars
+ [[Integer]] -- the clauses.
+
+Well, how should I do this?
+
+What I would like to have is an efficient function from Integer to Bool. And
+ideally a way to create this function dynamically. A naive approach would just
+be to have a list of bool and use the get function to look up its value. I
+fear that will be very slow... If I were in haskell, I would use an array for
+fast look up. Too bad seri doesn't have arrays like that...
+
+I could create a function, but that won't be any better than linear search. I
+could create a map data structure. I'll probably want that eventually anyway.
+
+So it sounds like, to start, take the slow approach.
+
+Then this is pretty easy.
+
+1. Allocate a list of variables.
+2. make an assertion for each clause based on those variables.
+
+I can do this easily enough. Why not try it out?
+
+Mon Nov 26 16:05:09 EST 2012
+
+One interesting question would be: can I implement MAXSAT in seri? How would I
+do that?
+
+I bet I could. That would be good to try.
+
+Mon Nov 26 16:37:41 EST 2012
+
+I'm getting errors. I don't understand why. In a trivial, simple example. I
+should not be getting any errors here.
+
+Mon Nov 26 16:53:56 EST 2012
+
+Okay, it was a bug in (!!). Fixed now.
+
+So my dimacs solver core looks like it works.
+
+Next question... what should I do with it? Figure out how to parse DIMACs
+format correctly? Find a tool for evaluating it compared to other DIMACs
+solvers? Implement MAXSAT?
+
+Those would all be worth while.
+
+As would fixing haskellf...
+And dealing with errors correctly...
+
+Here's the deal with haskellf... I don't want to specialize if I don't have
+to. I shouldn't have to for yices1 and yices2. I do want to specialize for
+STP. Or rather... wrong word. I want to specialize. For yices1 and yices2,
+don't push. For STP, do push.
+
+I suppose for now push, and I can always relax the pushing thereof later.
+
+I would like to do this in a more general way if I can. Handling of pushing
+that is.
+
+You know what? I need a break. I need to take a walk. Let my mind clear.
+Otherwise I'll just end up hacking up stuff in a messed up way.
+
+There are lots of things to do. Let me write them down. Then figure out what
+should have priority right now.
+
+I think priority should go to getting haskellf back up to steam. It should
+work on all the test cases just as well as seri elaborator does.
+
+Let me think about how to properly, cleanly, deal with pushing for integer
+primitives in haskellf.
+
+Mon Nov 26 17:47:54 EST 2012
+
+Trouble...
+
+So the decision was to brute force it, just for the sake of getting things
+rolling...
+
+You know what? The seri elaborator doesn't support this yet either, so why
+deal with it now? That's a good question.
+
+Cool. Easy. I'll not worry about it now then. That's a nice solution.
+
+Mon Nov 26 17:50:48 EST 2012
+
+You know what this means? It means the next step is the Bit tests.
+
+Um.. The bit test is going to be hard.
+
+Here's what I propose. I don't like having two different branches. There's no
+reason not to merge them together into the master branch. I should fix the
+test cases so they all run.
+
+Let me try that out then.
+
+Mon Nov 26 18:05:27 EST 2012
+
+Okay! I'm all merged. Some issues have come up. Been brought to the front as
+it were.
+
+Maybe I can have a "Big" item on the TODO list? Because the todo list doesn't
+convey very well what is and isn't important.
+
+Perhaps indicate a priority with each item: (high), (med), (low). That sort of
+thing?
+
+The trouble is, I have too many todo items now. I can't keep track of them
+all. Perhaps they aren't organized well enough?
+
+Anyway, I have lots of work to do. What is it I want to give priority to?
+That's the real question. What are the big things I need to handle right? The
+things that don't work that I need to make work?
+
+I need to be driven by test cases. So the big things are:
+
+* Fix commented out Core test cases in elaborator
+This requires I implement a more general function pushing kind of thing: do
+function pushing for primitive functions.
+
+* Fix commented out Core test cases in haskellf
+This requires I do a similar function pushing thing in haskellf. I may want to
+reorganize or redo haskellf to make this cleaner.
+
+* Implement Bit tests for haskellf.
+I tried it briefly, and I fear there are issues with type ambiguity I'll have
+to work out.
+
+* Try haskellf on the other test cases.
+If any of them fail, figure out why, and make a primitive test case for that
+feature.
+
+* Implement a test case for dealing with errors properly, and deal with them
+  properly in both the elaborator and haskellf.
+
+This is, I believe, the right road to follow. Get io and haskellf to work in
+all known cases, the right way. I'll work on applications on the side and keep
+an eye on performance, but first thing is first: they need to work correctly.
+
+Oh, no. I didn't commit that when I had it in.
+
+So, here's the proposal. toExpH should just entirely inline the environment.
+
+In other words, I'm thinking something like:
+
+toExpH :: Env -> Exp -> ExpH
+elaborate :: Mode -> ExpH -> ExpH
+
+Where toExpH does full inlining of all the top level variables.
+
+Here's a question. I claim for WHNF I shouldn't have to distinguish between
+elaboration modes. Can I get rid of the mode argument to elaborate? Just
+assume full transformations for the time being?
+
+That seems reasonable to me. Will it work? I'm not sure. Let me give it a try.
+
+Tue Nov 27 10:04:05 EST 2012
+
+It works! I no longer need to make reference to the mode. That's cool.
+
+Now let's see if I need to keep track of what I've elaborated before or not?
+
+Or should that be a separate step?
+
+I'd like to remove all notion of a mode entirely if I can...
+
+Or rather, all notion of how elaborated something is.
+

@@ -34,7 +34,7 @@
 -------------------------------------------------------------------------------
 
 module Seri.Elaborate(
-    elabwhnf, elaborate,
+    elaborate,
 
     de_appv1, de_appv2,
     ) where

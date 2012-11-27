@@ -147,7 +147,7 @@ smte :: ExpH -> Query SMT.Expression
 smte e = do
     qs <- gets qs_qs 
     env <- gets qs_env
-    let seh = elaborate SNF env e
+    let seh = elaborate env e
         se = fromExpH seh
 
         mkye :: CompilationM ([SMT.Command], SMT.Expression)
