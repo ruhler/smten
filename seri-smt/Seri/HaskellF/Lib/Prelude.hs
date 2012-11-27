@@ -17,7 +17,7 @@ module Seri.HaskellF.Lib.Prelude (
     __prim_eq_Char, __prim_eq_Integer, __prim_add_Integer, __prim_sub_Integer,
     __prim_mul_Integer, (<), (<=), (>),
     __prim_show_Integer,
-    return_io, bind_io, nobind_io, fail_io, putChar,
+    return_io, bind_io, nobind_io, fail_io, putChar, getContents,
 
     __prim_eq_Bit, __prim_show_Bit, __prim_add_Bit, __prim_sub_Bit, 
     __prim_mul_Bit, __prim_fromInteger_Bit, __prim_shl_Bit,
@@ -36,6 +36,7 @@ module Seri.HaskellF.Lib.Prelude (
 
 import Prelude((.), ($), (++))
 import qualified Prelude
+import Data.Functor ((<$>))
 import Data.Maybe (fromMaybe)
 
 import qualified Seri.Haskell.Lib.Bit as Bit
@@ -336,11 +337,17 @@ fail_io = Prelude.error $ "TODO: haskellf fail_io"
 putChar :: Char -> IO ()
 putChar = __capp Prelude.putChar
 
+getContents :: IO (List__ Char)
+getContents = __string <$> Prelude.getContents
+
+__string :: Prelude.String -> List__ Char
+__string = __list . Prelude.map __concrete
+
 __prim_eq_Bit :: (N__ n) => Bit n -> Bit n -> Bool
 __prim_eq_Bit a b = if a Prelude.== b then __mkTrue else __mkFalse
 
 __prim_show_Bit :: Bit n -> List__ Char
-__prim_show_Bit = __list . Prelude.map __concrete . Prelude.show
+__prim_show_Bit = __string . Prelude.show
 
 __prim_add_Bit :: (N__ n) => Bit n -> Bit n -> Bit n
 __prim_add_Bit = (Prelude.+)

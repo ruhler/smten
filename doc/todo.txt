@@ -114,6 +114,7 @@ Build System::
     use it. (As per request of Nirav)
 * don't hardcode build/test output directory into SMT tests
 * clean up tclmk script: maybe separate into init, build, and test sections.
+* test haskell backend
 
 Elaborator::
 * Fix the commented out Core test cases

@@ -275,6 +275,7 @@ hsDec (PrimD s@(TopSig n _ _))
  | n == name "Prelude.nobind_io" = prim s (vare "Prelude.>>")
  | n == name "Prelude.fail_io" = prim s (vare "Prelude.fail")
  | n == name "Prelude.putChar" = prim s (vare "Prelude.putChar")
+ | n == name "Prelude.getContents" = prim s (vare "Prelude.getContents")
 
 hsDec d = throw $ "coreH does not apply to dec: " ++ pretty d
 

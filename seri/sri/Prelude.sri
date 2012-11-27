@@ -372,5 +372,8 @@ putStrLn str = do
   putStr str
   putStr "\n"
 
+-- Read the contents of stdin.
+getContents :: IO String
+
 type FilePath = String
 

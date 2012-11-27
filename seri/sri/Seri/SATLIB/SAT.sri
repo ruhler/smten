@@ -114,6 +114,7 @@ dimacssat s =
 
 main :: IO ()
 main = do
-    r <- runYices2 (Just "sat.y2.dbg") (dimacssat sample)
+    dimacs <- getContents
+    r <- runYices1 Nothing (dimacssat dimacs)
     putSatResult r
 

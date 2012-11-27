@@ -11,6 +11,7 @@ import Seri.SMT.Yices.Yices1
 import Seri.SMT.Yices.Yices2
 import Seri.SMT.STP.STP
 import Seri.Name
+import Seri.Sig
 import Seri.ExpH
 import Seri.Dec
 import Seri.Ppr
@@ -26,6 +27,10 @@ run env e = do
                 Just c -> putChar c
                 Nothing -> error $ "putChar: expected Char, got: " ++ pretty (elaborate arg)
             return unitEH
+        e' | Just (Sig n _) <- de_varEH e'
+           , n == name "Prelude.getContents" -> do
+                msg <- getContents
+                return (stringEH msg)
         e' | Just (debug, query) <- de_appv2 (name "Seri.SMT.SMT.runYices1") e'
            , Just dbg <- de_seriEH debug -> do  
                 y1 <- yices1
