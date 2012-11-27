@@ -105,7 +105,7 @@ main = do
             env <- loadenv (include args) (file args)
             tmain <- attemptIO $ lookupVarType env nmain
             let m = varE (Sig (name (main_is args)) tmain)
-            I.run (mkEnvH env) (toExpH env m)
+            I.run env (toExpH env m)
             return ()
         Desugar -> do
             mods <- load (include args) (file args)

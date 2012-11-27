@@ -88,7 +88,7 @@ data QS = QS {
     qs_qs :: Compilation,
     qs_freevars :: [Sig],
     qs_freevals :: Maybe [ExpH], -- ^ Cache of free variable values
-    qs_env :: EnvH
+    qs_env :: Env
 }
 
 type Query = StateT QS IO
@@ -146,7 +146,6 @@ smtt t = do
 smte :: ExpH -> Query SMT.Expression
 smte e = do
     qs <- gets qs_qs 
-    env <- gets qs_env
     let seh = elaborate e
         se = fromExpH seh
 
@@ -178,7 +177,7 @@ data RunOptions = RunOptions {
     ro_solver :: SMT.Solver
 }
             
-mkQS :: RunOptions -> EnvH -> IO QS
+mkQS :: RunOptions -> Env -> IO QS
 mkQS opts env = do
     dh <- case ro_debugout opts of
             Nothing -> return Nothing
@@ -201,7 +200,7 @@ mkQS opts env = do
 -- Note: it's possible to leak free variables with this function.
 -- You should not return anything from the first query which could contain a
 -- free variable, otherwise who knows what will happen.
-runQuery :: RunOptions -> EnvH -> Query a -> IO a
+runQuery :: RunOptions -> Env -> Query a -> IO a
 runQuery opts env q = do
     qs <- mkQS opts env
     evalStateT q qs
@@ -256,7 +255,7 @@ free t | isPrimT t = do
 free t = do
   let (ConT dt, args) = de_appsT t
   env <- gets qs_env
-  DataD _ vars cs <- lift . attemptIO $ onEnv lookupDataD env dt
+  DataD _ vars cs <- lift . attemptIO $ lookupDataD env dt
   (let mkcon :: Con -> Query ExpH
        mkcon (Con cn ts) = 
          let ts' = assign (zip (map tyVarName vars) args) ts
@@ -316,9 +315,9 @@ realize e = Realize $ do
     return $ transform g e
 
 -- | Return the environment the query is running under.
-envQ :: Query EnvH
+envQ :: Query Env
 envQ = gets qs_env
 
-envR :: Realize EnvH
+envR :: Realize Env
 envR = Realize envQ
 

@@ -57,7 +57,6 @@ library
     Seri.Exp.Ppr
 
     Seri.ExpH
-    Seri.ExpH.EnvH
     Seri.ExpH.ExpH
     Seri.ExpH.SeriEH
     Seri.ExpH.Typeof

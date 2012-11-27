@@ -163,6 +163,6 @@ env = $(loadenvth [seridir] (seridir >>= return . (++ "/Seri/SMT/SMT.sri")))
 main :: IO ()
 main = do
     y <- yices2
-    r <- runQuery (RunOptions (Just "build/test/sudoku.dbg") y) (mkEnvH env) solve
+    r <- runQuery (RunOptions (Just "build/test/sudoku.dbg") y) env solve
     mapM_ putStrLn r
 

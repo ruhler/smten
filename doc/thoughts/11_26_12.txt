@@ -674,5 +674,22 @@ Looks like it will work. There are some annoyances:
 
 Ultimately I think the approach I want is to use a haskellf like thing. For
 each function, I generate for you a corresponding haskell function which you
-can import.
+can import. Note the newtype stuff could be a little annoying to work around.
+I'll have to do something to make it easy. The newtype stuff is a little bit
+like the TExp stuff... Maybe I should ditch TExp and just use newtypes? That
+would give us the type safety we want, without the need for a phantom type.
+
+Anyway... I might disable compilation of DSEL... because it takes so long.
+
+But this is a good opportunity to consider what my next step should be.
+
+ExpH now embeds the environment within it. At least, the environment needed
+for elaboration.
+
+At this point, the Query monad uses env only for a deriving like thing for
+user defined data types of the Free class, but we shouldn't need that. I don't
+think we use it at all. So let me get rid of it.
+
+The one place I would use it is for the generic __prim_free on a user defined
+data type.
 

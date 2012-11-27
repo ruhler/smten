@@ -18,7 +18,7 @@ import Seri.Ppr
 -- | Given a Seri expression of type IO a,
 -- returns the Seri expression of type a which results from running the IO
 -- computation.
-run :: EnvH -> ExpH -> IO ExpH
+run :: Env -> ExpH -> IO ExpH
 run env e = do
     case elaborate e of
         e' | Just arg <- de_appv1 (name "Prelude.putChar") e' -> do
