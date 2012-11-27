@@ -186,6 +186,9 @@ filter p (x:xs) =
 concat :: [[a]] -> [a]
 concat xss = foldr (++) [] xss
 
+concatMap :: (a -> [b]) -> [a] -> [b]
+concatMap f = concat . map f
+
 head :: [a] -> a
 head (x:_) = x
 head [] = error "Prelude.head: empty list"
@@ -193,6 +196,11 @@ head [] = error "Prelude.head: empty list"
 tail :: [a] -> [a]
 tail (_:xs) = xs
 tail [] = error "Prelude.tail: empty list"
+
+init :: [a] -> [a]
+init [x] = []
+init (x:xs) = x : init xs
+init [] = error "Prelude.init: empty list"
 
 null :: [a] -> Bool
 null [] = True
@@ -232,6 +240,48 @@ drop n (_:xs) = drop (n-1) xs
 splitAt :: Integer -> [a] -> ([a],[a])
 splitAt n xs = (take n xs, drop n xs)
 
+dropWhile :: (a -> Bool) -> [a] -> [a]
+dropWhile p [] = []
+dropWhile p (x:xs) =
+  if p x 
+     then dropWhile p xs
+     else x:xs
+
+span :: (a -> Bool) -> [a] -> ([a], [a])
+span p [] = ([], [])
+span p (x:xs) =
+  if p x
+    then let (ys, zs) = span p xs
+         in (x:ys, zs)
+    else ([], x:xs)
+
+break :: (a -> Bool) -> [a] -> ([a], [a])
+break p = span (not . p)
+
+isSpace :: Char -> Bool
+isSpace ' ' = True
+isSpace '\n' = True
+isSpace _ = False
+
+lines :: String -> [String]
+lines [] = []
+lines s =
+  let (l, s') = break ((==) '\n') s
+  in l : (case s' of
+            [] -> []
+            (_:s'') -> lines s''
+         )
+
+words :: String -> [String]
+words s =
+  case dropWhile isSpace s of
+    [] -> []
+    s' -> let (w, s'') = break isSpace s'
+          in w : words s''
+
+unlines :: [String] -> String
+unlines = concatMap (flip (++) "\n")
+
 reverse :: [a] -> [a]
 reverse =  foldl (flip (:)) []
 
@@ -261,6 +311,9 @@ __prim_show_Integer :: Integer -> String
 instance Show Integer where
     show = __prim_show_Integer
 
+instance Show Char where
+    show c = ['\'', c, '\'']
+
 instance Show Bool where
     show True = "True"
     show False = "False"
@@ -280,6 +333,10 @@ instance (Show a, Show b, Show c, Show d) => Show (a, b, c, d) where
 
 instance (Show a) => Show [a] where
     show xs = concat ["[", showListHelper xs, "]"]
+
+instance (Show a) => Show (Maybe a) where
+    show Nothing = "Nothing"
+    show (Just x) = "Just " ++ show x
 
 -- Show a list without the open and close brackets
 showListHelper :: (Show a) => [a] -> String

@@ -1,5 +1,6 @@
 
 Haskell Features::
+* string literal patterns
 * support negative literals?
 * default methods in classes?
 * allow arbitrary patterns in lambda expression arguments.
