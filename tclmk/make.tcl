@@ -147,6 +147,8 @@ io Seri.SMT.Tests.Sudoku2
 io Seri.SMT.Tests.Sudoku3
 io Seri.SMT.Tests.Isolate0
 
+hrun $DSEL
+hrun $SUDOKU
 
 puts "BUILD COMPLETE"
 

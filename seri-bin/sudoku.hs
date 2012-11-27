@@ -5,7 +5,6 @@ import Prelude hiding ((>), (==), (/=), (<=), notElem, print, (&&), all)
 
 import Data.List(transpose)
 
-import Seri
 import Seri.Failable
 import Seri.DSEL.DSEL
 import Seri.DSEL.SMT
@@ -30,7 +29,7 @@ type Cell = Integer
 
 freeCell :: Query (ExpT Cell)
 freeCell = do
-    x <- free
+    x <- free env
     assert ((x > 0) && (x <= seriET m))
     return x
 

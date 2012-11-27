@@ -63,10 +63,8 @@ import Seri.Ppr (pretty)
 import Seri.Elaborate.ExpH
 
 -- | Elaborate an expression in ExpH form.
-elaborate ::  EnvH   -- ^ context under which to evaluate the expression
-           -> ExpH   -- ^ expression to evaluate
-           -> ExpH   -- ^ elaborated expression
-elaborate env =
+elaborate :: ExpH -> ExpH
+elaborate =
   let -- elaborate the given expression
       elab :: ExpH -> ExpH
       elab e =
@@ -74,7 +72,7 @@ elaborate env =
           LitEH l -> e
           ConEH s -> e
           VarEH (Sig n t) | Just f <- HT.lookup n nprimitives -> f t
-          VarEH s@(Sig n ct) -> fromMaybe e $ elab <$> lookupVarH env s
+          VarEH s -> e
           AppEH ES_Done _ _ -> e
           AppEH _ f arg -> 
              case (elab f, elab arg) of

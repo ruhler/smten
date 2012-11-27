@@ -13,9 +13,12 @@ import Seri.Type
 import Seri.ExpH
 import Seri.Dec
 
+env :: Env
+env = $(loadenvth [seridir] (seridir >>= return . (++ "/Seri/Tests/DSEL.sri")))
+
 q1 :: Query (Answer Integer)
 q1 = do
-    x <- free
+    x <- free env
     assert (x < 6)
     assert (x > 4)
     query x
@@ -25,7 +28,7 @@ incr x = x + 1
 
 q2 :: Query (Answer Integer)
 q2 = do
-    x <- free
+    x <- free env
     assert (x < 6)
     assert (incr x > 5)
     query x
@@ -38,12 +41,12 @@ quadruple a = a + a + a + a
 -- This quadruple exposes the sharing to the SMT solver (if sharing is
 -- turned on in the elaborator).
 quadrupleS :: ExpT Integer -> ExpT Integer
-quadrupleS = varET1 "Seri.Tests.DSEL.quadruple"
+quadrupleS = varET1 env "Seri.Tests.DSEL.quadruple"
 
 share :: (ExpT Integer -> ExpT Integer) -> Query (Answer (Integer, Integer))
 share f = do
-    x <- free
-    y <- free
+    x <- free env
+    y <- free env
     assert (f (x - y) == 24)
     assert (y > 0)
     queryR $ do
@@ -53,7 +56,7 @@ share f = do
 
 qtuple :: Query (Answer Integer)
 qtuple = do
-    p <- free
+    p <- free env
     let x = (ite p (seriET (1, 3)) (seriET (2, 4))) :: ExpT (Integer, Integer)
     assert (fst x == 1)
     query (snd x)
@@ -66,17 +69,17 @@ derive_SeriT ''Foo
 derive_SeriEH ''Foo
 
 defoo :: ExpT Foo -> ExpT Integer
-defoo = varET1 "Seri.Tests.DSEL.defoo"
+defoo = varET1 env "Seri.Tests.DSEL.defoo"
 
 quserdata :: Query (Answer Foo)
 quserdata = do
-    f <- free
+    f <- free env
     assert (2 == defoo f)
     query f
 
 allQ :: (SeriEH a) => (ExpT a -> ExpT Bool) -> Query [a]
 allQ p = do
-    x <- free
+    x <- free env
     assert (p x)
     r <- query x
     case r of
@@ -90,9 +93,6 @@ pred1 x = (x > 3) && (x < 6)
 
 qallQ :: Query [Integer]
 qallQ = allQ pred1
-
-env :: Env
-env = $(loadenvth [seridir] (seridir >>= return . (++ "/Seri/Tests/DSEL.sri")))
 
 try :: (Show a) => String -> Query a -> IO ()
 try nm q = do

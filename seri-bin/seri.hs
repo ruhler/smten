@@ -47,6 +47,7 @@ import qualified System.Console.CmdArgs.Implicit as A
 import Seri.Name
 import Seri.Sig
 import Seri.Failable
+import Seri.Exp
 import Seri.ExpH
 import Seri.Elaborate
 import Seri.Ppr
@@ -103,8 +104,8 @@ main = do
         Io -> do 
             env <- loadenv (include args) (file args)
             tmain <- attemptIO $ lookupVarType env nmain
-            let m = varEH (Sig (name (main_is args)) tmain)
-            I.run (mkEnvH env) m
+            let m = varE (Sig (name (main_is args)) tmain)
+            I.run (mkEnvH env) (toExpH env m)
             return ()
         Desugar -> do
             mods <- load (include args) (file args)

@@ -597,3 +597,82 @@ I'd like to remove all notion of a mode entirely if I can...
 
 Or rather, all notion of how elaborated something is.
 
+Tue Nov 27 10:14:52 EST 2012
+
+The mode argument to elaborate is now gone. Good. I left in the flag
+indicating whether we were done with elaboration yet or not.
+
+Now, the next step in the grand scheme is... remove EnvH requirement from
+elaborate.
+
+The idea is:
+
+toExpH :: Env -> Exp -> ExpH
+
+And I'll have the helper function which takes all the additional fancy
+arguments.
+
+So we call toExpH first to get the ExpH. Maybe call it: inline? I'm not sure.
+Anyway, toExpH fully inlines in a lazy shared cache sort of way. I don't need
+EnvH at all anymore after this.
+
+Let me try it out. See if it works or not.
+
+Tue Nov 27 10:38:58 EST 2012
+
+I'm going to run into issues with this approach I fear. But maybe I can work
+through them.
+
+The idea is: now ExpH holds within it it's notion of an environment. That sort
+of makes sense to me. But it's an assumption I haven't really been making thus
+far. So, anytime I say VarEH with a variable from the environment, this will
+fail.
+
+In particular, I think the DSEL will fail.
+
+Let me push and see how far I get, then think about how to resolve whatever
+specific problems arise.
+
+Tue Nov 27 10:45:26 EST 2012
+
+It's as I suspected. The DSEL test fails, because I often refer to variables
+directly.
+
+But this works as desired for elaboration, and it's even a little bit of a
+performance improvement.
+
+We can see how many times in the profile we actually do toExpH on a top level
+declaration: 61 for HCP.
+
+I would like to keep this change... But what do I do about the DSEL?
+
+Options: have varEH take an environment. Really all varEH is used for now is
+free variables and primitives. It's not used for local variables or top level
+declarations.
+
+Tue Nov 27 10:53:37 EST 2012
+
+The problem we see with DSEL first off is the variable 'free'.
+
+You know what? This might not be such a big problem.
+
+Each DSEL module can load it's corresponding seri environment and link to
+that. So change varTX to take an environment. It will be annoying, because it
+will take a long time to compile, but I think it's fine.
+
+And, what's more, it's consistent with the target vision, which is to compile
+using haskellf, and just load that as a haskell module. Good. I'll try this.
+
+Tue Nov 27 11:13:51 EST 2012
+
+Looks like it will work. There are some annoyances:
+* ghc compile time is now through the roof. As in... 3 minutes for each time
+  we load an env with th. Which happens, like... 4 different times, and with
+  profiling, that's 8 loads for a total of 24 minutes. Bad.
+* we don't share cache between invocations of toExpH. So we loose some sharing
+  there.
+
+Ultimately I think the approach I want is to use a haskellf like thing. For
+each function, I generate for you a corresponding haskell function which you
+can import.
+

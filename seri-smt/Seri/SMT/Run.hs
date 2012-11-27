@@ -19,8 +19,7 @@ import Seri.Elaborate
 -- returns the Seri expression of type a which results from running the query.
 run :: ExpH -> Query ExpH
 run e = do
-    env <- envQ
-    case elaborate env e of
+    case elaborate e of
         e' | Just arg <- de_appv1 (name "Seri.SMT.SMT.query") e' -> do
             res <- query (realize arg)
             case res of 

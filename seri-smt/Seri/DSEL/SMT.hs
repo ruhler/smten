@@ -16,28 +16,34 @@ import qualified Seri.SMT.Run as Q
 import Seri.DSEL.DSEL
 import Seri.Elaborate
 import Seri.Type
+import Seri.Dec
 import Seri.ExpH
+import Seri.TH
+import Seri
+
+smt :: Env
+smt = $(loadenvth [seridir] (seridir >>= return . (++ "/Seri/SMT/SMT.sri")))
 
 -- Dummy query type with instance of SeriableT.
 data QueryT a = QueryT
 derive_SeriT ''QueryT
 
-free :: (SeriT a) => Query (ExpT a)
-free = 
+free :: (SeriT a) => Env -> Query (ExpT a)
+free env = 
     let freeE :: (SeriT a) => ExpT (QueryT a)
-        freeE = varET "Seri.SMT.SMT.free"
+        freeE = varET env "Seri.SMT.SMT.free"
     in run freeE
 
 assert :: ExpT Bool -> Query ()
 assert p =
   let assertE :: ExpT (Bool -> QueryT ())
-      assertE = varET "Seri.SMT.SMT.assert"
+      assertE = varET smt "Seri.SMT.SMT.assert"
   in run' (apply assertE p)
 
 realize :: (SeriEH a) => ExpT a -> Realize a
 realize (ExpT x) = do
   env <- envR
-  fromJust . de_seriEH . elaborate env <$> Q.realize x
+  fromJust . de_seriEH . elaborate <$> Q.realize x
 
 queryR :: Realize a -> Query (Answer a)
 queryR = Q.query
@@ -52,5 +58,5 @@ run' :: (SeriEH a) => ExpT (QueryT a) -> Query a
 run' x = do
   env <- envQ
   ExpT v <- run x
-  return . fromJust . de_seriEH $ elaborate env v
+  return . fromJust . de_seriEH $ elaborate v
 
