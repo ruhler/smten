@@ -320,7 +320,9 @@ __prim_mul_Integer (Integer a) (Integer b) = Integer $ S.integer_mulE a b
 (>) (Integer a) (Integer b) = Bool $ S.integer_gtE a b
 
 __prim_show_Integer :: Integer -> List__ Char
-__prim_show_Integer = __list . Prelude.map __concrete . Prelude.show
+__prim_show_Integer (Integer x)
+  | Prelude.Just v <- S.de_integerE x = __string (Prelude.show v)
+  | Prelude.otherwise = __string (Prelude.show x)
 
 return_io :: a -> IO a
 return_io = Prelude.return
