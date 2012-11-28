@@ -14,6 +14,7 @@ module Seri.ExpH.Sugar (
 
     de_notEH, de_andEH, de_orEH,
     integer_addEH, integer_subEH, integer_mulEH,
+    char_eqEH,
     integer_eqEH, integer_ltEH, integer_leqEH, integer_gtEH, 
     ) where
 
@@ -134,6 +135,12 @@ integer_mulEH a b
   | Just av <- de_integerEH a
   , Just bv <- de_integerEH b = integerEH (av * bv)
   | otherwise = appsEH (varEH (Sig (name "Prelude.__prim_mul_Integer") (arrowsT [integerT, integerT, integerT]))) [a, b]
+
+char_eqEH :: ExpH -> ExpH -> ExpH
+char_eqEH a b
+  | Just av <- de_charEH a
+  , Just bv <- de_charEH b = boolEH (av == bv)
+  | otherwise = appsEH (varEH (Sig (name "Prelude.__prim_eq_Char") (arrowsT [charT, charT, boolT]))) [a, b]
 
 integer_eqEH :: ExpH -> ExpH -> ExpH
 integer_eqEH a b

@@ -117,6 +117,7 @@ Build System::
 * test haskell backend
 
 Elaborator::
+* Use impliedByFooH and substituteH rather than concretize
 * Fix the commented out Core test cases
 * Specialize for theory supported.
   For example don't inline away the integers in ((if free1 then 3 else 4) == 4)
