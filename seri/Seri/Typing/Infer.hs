@@ -164,8 +164,7 @@ class Constrain a where
     constrain :: a -> TI Type
 
 instance Constrain Lit where
-    constrain (IntegerL {}) = return integerT
-    constrain (CharL {}) = return (seriT (undefined :: Char))
+    constrain l = return $ typeof l
 
 instance Constrain Exp where
     constrain (LitE l) = constrain l

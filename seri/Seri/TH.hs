@@ -1,4 +1,5 @@
 
+{-# LANGUAGE PatternGuards #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE TemplateHaskell #-}
 
@@ -44,8 +45,9 @@ instance Lift S.TopSig where
     lift (S.TopSig n c t) = [| S.TopSig n c t |]
 
 instance Lift S.Lit where
-    lift (S.IntegerL i) = [| S.IntegerL i |]
-    lift (S.CharL c) = [| S.CharL c |]
+    lift l
+      | Just v <- S.de_integerL l = [| S.integerL v |]
+      | Just v <- S.de_charL l = [| S.charL v |]
 
 instance Lift S.Sig where
     lift (S.Sig n t) = [| S.Sig n t |]

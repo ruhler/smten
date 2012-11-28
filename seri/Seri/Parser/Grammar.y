@@ -450,9 +450,9 @@ apat :: { Pat }
  | gcon
     { ConP (name $1) [] }
  | integer
-    { LitP (IntegerL $1) }
+    { LitP (integerL $1) }
  | char
-    { LitP (CharL $1) }
+    { LitP (charL $1) }
  | '(' pat ')'
     { $2 }
  | '(' pat ',' pats_commasep ')'

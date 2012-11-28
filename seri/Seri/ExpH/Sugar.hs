@@ -85,12 +85,13 @@ de_boolEH x | x == falseEH = Just False
 de_boolEH _ = Nothing
 
 integerEH :: Integer -> ExpH
-integerEH = litEH . IntegerL 
+integerEH = litEH . integerL 
 
 
 de_integerEH :: ExpH -> Maybe Integer
-de_integerEH (LitEH (IntegerL i)) = Just i
-de_integerEH _ = Nothing
+de_integerEH e = do
+    l <- de_litEH e
+    de_integerL l
 
 bitEH :: Bit -> ExpH
 bitEH b = appEH (varEH (Sig (name "Seri.Bit.__prim_fromInteger_Bit") (arrowsT [integerT, bitT (bv_width b)]))) (integerEH $ bv_value b)
@@ -100,17 +101,17 @@ bitEH b = appEH (varEH (Sig (name "Seri.Bit.__prim_fromInteger_Bit") (arrowsT [i
 de_bitEH :: ExpH -> Maybe Bit
 de_bitEH (AppEH _ (VarEH (Sig fib (AppT _ (AppT _ (NumT w))))) ve)
   | fib == name "Seri.Bit.__prim_fromInteger_Bit"
-  , LitEH (IntegerL v) <- ve
+  , Just v <- de_integerEH ve
   = Just (bv_make (nteval w) v)
 de_bitEH _ = Nothing
 
 charEH :: Char -> ExpH
-charEH = litEH . CharL 
+charEH = litEH . charL 
 
 de_charEH :: ExpH -> Maybe Char
 de_charEH e = do
-    CharL c <- de_litEH e
-    return c
+    l <- de_litEH e
+    de_charL l
 
 caseEH :: ExpH -> Sig -> ExpH -> ExpH -> ExpH
 caseEH x k@(Sig nk _) y n

@@ -4,7 +4,7 @@
 -- | Abstract constructors and deconstructors working with Exp
 module Seri.Exp.Sugar (
     litE, conE, de_conE, varE, de_varE, appE, de_appE, appsE, de_appsE, lamE,
-    lamsE, letE, de_letE, ifE, typeE, caseE,
+    lamsE, letE, de_letE, ifE, typeE, caseE, de_litE,
     
     boolE, de_boolE, falseE, trueE, charE, de_charE, listE, de_listE, stringE, de_stringE,
     errorE, tupleE,
@@ -91,11 +91,16 @@ de_boolE e
   | otherwise = Nothing
 
 charE :: Char -> Exp
-charE = litE . CharL
+charE = litE . charL
 
 de_charE :: Exp -> Maybe Char
-de_charE (LitE (CharL c)) = Just c
-de_charE _ = Nothing
+de_charE e = do
+    l <- de_litE e
+    de_charL l
+
+de_litE :: Exp -> Maybe Lit
+de_litE (LitE l) = Just l
+de_litE _ = Nothing
 
 -- | [a, b, ..., c]
 listE :: [Exp] -> Exp
@@ -149,11 +154,12 @@ tupleE xs =
   in appsE (conE (Sig n t)) xs
 
 integerE :: Integer -> Exp
-integerE = litE . IntegerL
+integerE = litE . integerL
 
 de_integerE :: Exp -> Maybe Integer
-de_integerE (LitE (IntegerL x)) = Just x
-de_integerE _ = Nothing
+de_integerE e = do
+    l <- de_litE e
+    de_integerL l
 
 numberE :: Integer -> Exp
 numberE i =
