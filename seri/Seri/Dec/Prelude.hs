@@ -19,7 +19,8 @@ prelude = [
     DataD (name "Char") [] [],
     DataD (name "Integer") [] [],
     DataD (name "()") [] [Con (name "()") []],
-    tuple 2, tuple 3, tuple 4, tuple 5, tuple 6, tuple 7, tuple 8, tuple 9,
+    tuple 2, tuple 3, tuple 4,
+    -- tuple 5, tuple 6, tuple 7, tuple 8, tuple 9,
     DataD (name "[]") [NormalTV (name "a")] [Con (name "[]") [], Con (name ":") [VarT (name "a"), listT (VarT (name "a"))]]
     ]
 

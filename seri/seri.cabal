@@ -113,7 +113,7 @@ library
     Seri.TH
 
     Seri.Fresh
-    Seri.DSEL.DSEL
+--    Seri.DSEL.DSEL
 
     Seri.Ppr
     Seri.Lit

@@ -67,11 +67,11 @@ indir build/seri-bin {
     #hrun ghc -o seri seri.hs
     hrun ghc -rtsopts -prof -auto-all -o seri seri.hs
 
-    hrun ln -sf ../../seri-bin/dsel.hs dsel.hs
-    hrun ghc -o dsel dsel.hs
+    #hrun ln -sf ../../seri-bin/dsel.hs dsel.hs
+    #hrun ghc -o dsel dsel.hs
 
-    hrun ln -sf ../../seri-bin/sudoku.hs sudoku.hs
-    hrun ghc -o sudoku sudoku.hs
+    #hrun ln -sf ../../seri-bin/sudoku.hs sudoku.hs
+    #hrun ghc -o sudoku sudoku.hs
 }
     
 set SERI build/seri-bin/seri
@@ -147,8 +147,8 @@ io Seri.SMT.Tests.Sudoku2
 io Seri.SMT.Tests.Sudoku3
 io Seri.SMT.Tests.Isolate0
 
-hrun $DSEL
-hrun $SUDOKU
+#hrun $DSEL
+#hrun $SUDOKU
 
 puts "BUILD COMPLETE"
 
