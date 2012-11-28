@@ -1,11 +1,18 @@
 
 {-# LANGUAGE PatternGuards #-}
 
-module Seri.ExpH.Utils (transform) where
+module Seri.ExpH.Utils (
+    transform,
+    simplifyH, substituteH,
+    impliedByTrueH, impliedByFalseH,
+    ) where
 
 import Seri.Type
-import Seri.ExpH.ExpH
+import Seri.Name
 import Seri.Sig
+import Seri.ExpH.ExpH
+import Seri.ExpH.Sugar
+
 
 instance Assign ExpH where
    assignl f e =
@@ -34,4 +41,35 @@ transform g e =
        AppEH _ f x -> AppEH ES_None (me f) (me x)
        LamEH _ s f -> LamEH ES_None s $ \x -> me (f x)
        CaseEH _ x k y d -> CaseEH ES_None (me x) k (me y) (me d)
+
+substituteH :: (Name -> Maybe ExpH) -> ExpH -> ExpH
+substituteH f =
+  let g (VarEH (Sig n _)) = f n
+      g _ = Nothing
+  in transform g
+
+simplifyH :: ExpH -> ExpH
+simplifyH e =
+  let me = simplifyH
+  in case e of
+        LitEH {} -> e
+        ConEH {} -> e
+        VarEH {} -> e
+        AppEH _ f x -> appEH (me f) (me x)
+        LamEH _ s f -> lamEH s $ \x -> me (f x)
+        CaseEH _ x k y d -> caseEH (me x) k (me y) (me d)
+
+impliedByTrueH :: ExpH -> [(Name, ExpH)]
+impliedByTrueH e
+  | VarEH (Sig n _) <- e = [(n, trueEH)]
+  | Just (a, b) <- de_andEH e = impliedByTrueH a ++ impliedByTrueH b
+  | Just x <- de_notEH e = impliedByFalseH x
+  | otherwise = []
+
+impliedByFalseH :: ExpH -> [(Name, ExpH)]
+impliedByFalseH e
+  | VarEH (Sig n _) <- e = [(n, falseEH)]
+  | Just (a, b) <- de_orEH e = impliedByFalseH a ++ impliedByFalseH b
+  | Just x <- de_notEH e = impliedByTrueH x
+  | otherwise = []
 

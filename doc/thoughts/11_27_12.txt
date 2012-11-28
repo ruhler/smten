@@ -1,0 +1,527 @@
+
+Tue Nov 27 08:50:18 EST 2012
+
+I've been thinking a bunch. Things are messy. Things are confusing. I'm
+hacking all about.
+
+I have a proposal for what I believe could be a better solution to the
+problems I'm running into.
+
+Let me summarize the major issues:
+* Code duplication between seri elaborator and haskellf
+* haskellf is really messy (with all those typeclasses and such)
+* we need to properly handle pushing of things for solvers which don't support
+  certain features
+* we need to properly handle propagation of _|_
+* we want elaborator to be faster (share top level elaboration if possible)
+* I don't understand what things should work and shouldn't and why
+* we would like to specialize for solvers if possible
+
+There are some big issues here. There are many confusing issues. Here's a 
+proposal I have which could potentially solve all these issues in one fell
+sweep.
+
+Ah... except for one issues which I just thought of which may be important...
+oh well, let me not worry about that just now. Maybe I can think of a fix
+later.
+
+The idea is this.
+
+We have an ExpH type. Just like ExpH now, only:
+* no need for EState flags
+* add QueryEH and IoEH
+
+And we have smart constructors. These are constructors which elaborate the
+expression at construction.
+
+First the WHNF constructors. We do the following elaborations:
+* Application of Lambda to argument does beta reduction (appEH)
+* Case statement matches if possible (caseEH)
+* Primitives fire if possible (addEH, eqEH, etc...)
+
+For the case statement and primitives, they propagate errors properly.
+
+The idea is: if you have a constructed ExpH, it is already fully elaborated to
+WHNF.
+
+We can use this in haskellf and the seri elaborator.
+Haskellf::
+Every type is just a newtype of ExpH. Main will result in a smartly
+constructed (aka, WHNF elaborated) IoEH, which we run and we are done. No
+funny Symbolic classes or anything else like that needed.
+
+Elaborator::
+Using unsafeIO, toExpH will construct things smartly, and look up top level
+variables in a cache which recursively calls toExpH.
+
+So, call toExpH on an expression, and it will be fully elaborated. Note here
+that we share completely elaboration of top level variables because of our
+cache. We also share, for lambdas, any common things which don't depend on
+arguments. So potentially we share a lot more than we currently do, which
+should be great for performance.
+
+Notice now that haskellf and the elaborator use the same expression type for
+elaboration, so we can completely share code between them.
+
+This also fits naturally with DSEL. Use haskellf to statically compile haskell
+functions of type ExpH to ExpH, import those into your actual haskell file,
+use the pack and unpack functions we have, and you're all set to go, super
+fast and clean integration with haskell.
+
+Now, what remains is the question about SMT expressions. After WHNF
+elaboration, in the presence of free variables, there could be constructs not
+supported by solvers. For each of these constructs, I argue we have a way of
+transforming them so they are supported by the solvers.
+
+Lambdas::
+Not fully applied functions will happen if you have a case statement which
+returns a function whose argument is free in some way. To fix this, push the
+argument to the case inside the case. ArgumentPushing.
+
+Constructors, Case Statements::
+Case with case as argument leads to this. Do decasification.
+
+Unsupported Primitives::
+Arguments must be case. Push primitive functions inside case.
+
+We would like to vary this depending on the theories the user wants to use,
+or, for the time being, the theories the solver supports. So, I propose we
+have a specialization pass which takes as argument the theories supported,
+performs these optimizations, and then simplifies. Because we can do smart
+construction, this lets us do these transformations then elaborate fully.
+
+Now we specialize for each solver. It's easy. And I've thus solved all the big
+problems I'm facing now.
+
+What are the downsides I can think of?
+* Forces us to do full inlining. But I rely on that anyway with the current
+  approach, so I'm okay with that.
+* Concern about duplication of specialization.
+
+Imagine I have a let statement:
+
+ let x = foo
+ in blah
+
+If blah refers to x multiple times, and we need to specialize foo, we end up
+duplicating the specialization of foo. This could potentially lead to an
+exponential blowup.
+
+We don't have the problem with WHNF elaboration, because we always WHNF
+elaborate ahead of time.
+
+Where do these potential duplications show up?
+* top level declarations
+* beta reductions
+
+The two places where we have sharing.
+
+One observation is, for concrete expressions, none of the specialization
+transformations will apply. So what if we always do specialization
+transformations as a last resort?
+  
+The question is... how do you want to specialize it? That depends on the
+solver you are using. Ideally we could share much of the elaboration and
+specialize only at the end.
+
+Other options are: perform smart construction in a reader monad or in an
+environment.
+
+From the point of few of code organization and cleanliness, if I was okay
+delaying specialization, then everything would be lovely. The question is, how
+big is the cost of delaying specialization? What is the performance cost?
+
+Here's what I propose. Don't worry about this for now. Try it out the clean
+way. See how performance is. Keep this in mind as a potential future
+performance improvement to try.
+
+I like it. I like this plan. I think it simplifies things greatly, has many
+benefits, let's me do a big refactor. The only downside is what I mentioned,
+but I will be in much better shape to deal with it in the new setup than the
+old. And, worst case, I could always do all the reductions to core possible in
+the standard elaboration transformations, in which case we are no worse off
+than the current approach.
+
+Good. I'm going to do this.
+
+The steps, as I see it, are:
+
+1. Add QueryEH and IoEH to the current ExpH expression type.
+Figure out all the dependencies and such and make that work out.
+
+2. On a new branch:
+* Reimplement haskellf from scratch to work as desired on the basic tests
+* Reimplement elaborator to do as described above and work on basic tests
+* Stub out specialize function, have Query monad call it.
+* Get all tests to work in haskellf and elaborator
+
+And then we should be all set.
+
+Another note: if at all possible, I would really like to use a single Query
+monad. The Query monad should take for assertions an ExpH. It will specialize
+the ExpH, convert to Exp, convert to SMT.Expression. The query function should
+take an ExpH and perform substitution on it.
+
+Okay, first step, working out the dependency issues so that I can add QueryEH
+to ExpH.
+
+What do I want?
+
+QueryEH :: Query ExpH -> ExpH
+
+So I need to know about the Query type. But that's all. I don't have to know
+about any functions operating on it.
+
+Currently Query is: StateT QS IO.
+Where QS is:
+ The issues will be:
+ * Cache of free variable values.
+ * qs_env: the environment.
+
+We need the environment because we do elaboration in the environment. Note
+that this will not be an issue in the proposed plan, because we will have
+already fully inlined everything.
+
+Question: can I do that now? Fully inline everything as the first step, then
+not need Env for elaboration?
+
+The other thing we use the environment for is to lookup information about data
+types for generic free...
+
+These are issues that I won't have in the proposed plan. Perhaps it makes
+sense to dive into the proposed plan? Start clean slate? Or is it better to
+take the slowly morph approach?
+
+How would the slowly morph approach look?
+
+I could slowly get rid of things in the seri elaborator. First thing: remove
+the standard case rule. Replace it with... caseEH during construction. Then,
+remove the beta reduction rule, replace it with appEH during construction.
+Then, remove the unary primitive rule, replace it in varEH. Note: I can keep
+the primitives around and use them that way...
+
+Here's a worrying question. How do I deal with the seri/seri-smt split
+properly? We need some way to pass primitives as an argument so I can specify
+the primitive separately from the elaboration process. How would I do that in
+this new scheme?
+
+It's no problem for haskellf.
+The problem is for the seri elaborator.
+
+So we have a special case in elaborate. We can pass primitives as arguments.
+The toExpH transformation will plug them in properly.
+
+Okay. I'm thinking the right approach to take here is a slowly morph kind of
+approach. I have the ultimate vision. I just need to work my way there.
+
+1. In the ultimate vision, elaboration doesn't depend on an environment. We do
+all the environment stuff ahead of time. There's no reason not to do that now.
+
+In fact... I think it should already work, right? Because we do lookupVarH in
+toExpH. So I should just be able to remove that one clause without
+consequence.
+
+
+Tue Nov 27 10:04:05 EST 2012
+
+It works! I no longer need to make reference to the mode. That's cool.
+
+Now let's see if I need to keep track of what I've elaborated before or not?
+
+Or should that be a separate step?
+
+I'd like to remove all notion of a mode entirely if I can...
+
+Or rather, all notion of how elaborated something is.
+
+Tue Nov 27 10:14:52 EST 2012
+
+The mode argument to elaborate is now gone. Good. I left in the flag
+indicating whether we were done with elaboration yet or not.
+
+Now, the next step in the grand scheme is... remove EnvH requirement from
+elaborate.
+
+The idea is:
+
+toExpH :: Env -> Exp -> ExpH
+
+And I'll have the helper function which takes all the additional fancy
+arguments.
+
+So we call toExpH first to get the ExpH. Maybe call it: inline? I'm not sure.
+Anyway, toExpH fully inlines in a lazy shared cache sort of way. I don't need
+EnvH at all anymore after this.
+
+Let me try it out. See if it works or not.
+
+Tue Nov 27 10:38:58 EST 2012
+
+I'm going to run into issues with this approach I fear. But maybe I can work
+through them.
+
+The idea is: now ExpH holds within it it's notion of an environment. That sort
+of makes sense to me. But it's an assumption I haven't really been making thus
+far. So, anytime I say VarEH with a variable from the environment, this will
+fail.
+
+In particular, I think the DSEL will fail.
+
+Let me push and see how far I get, then think about how to resolve whatever
+specific problems arise.
+
+Tue Nov 27 10:45:26 EST 2012
+
+It's as I suspected. The DSEL test fails, because I often refer to variables
+directly.
+
+But this works as desired for elaboration, and it's even a little bit of a
+performance improvement.
+
+We can see how many times in the profile we actually do toExpH on a top level
+declaration: 61 for HCP.
+
+I would like to keep this change... But what do I do about the DSEL?
+
+Options: have varEH take an environment. Really all varEH is used for now is
+free variables and primitives. It's not used for local variables or top level
+declarations.
+
+Tue Nov 27 10:53:37 EST 2012
+
+The problem we see with DSEL first off is the variable 'free'.
+
+You know what? This might not be such a big problem.
+
+Each DSEL module can load it's corresponding seri environment and link to
+that. So change varTX to take an environment. It will be annoying, because it
+will take a long time to compile, but I think it's fine.
+
+And, what's more, it's consistent with the target vision, which is to compile
+using haskellf, and just load that as a haskell module. Good. I'll try this.
+
+Tue Nov 27 11:13:51 EST 2012
+
+Looks like it will work. There are some annoyances:
+* ghc compile time is now through the roof. As in... 3 minutes for each time
+  we load an env with th. Which happens, like... 4 different times, and with
+  profiling, that's 8 loads for a total of 24 minutes. Bad.
+* we don't share cache between invocations of toExpH. So we loose some sharing
+  there.
+
+Ultimately I think the approach I want is to use a haskellf like thing. For
+each function, I generate for you a corresponding haskell function which you
+can import. Note the newtype stuff could be a little annoying to work around.
+I'll have to do something to make it easy. The newtype stuff is a little bit
+like the TExp stuff... Maybe I should ditch TExp and just use newtypes? That
+would give us the type safety we want, without the need for a phantom type.
+
+Anyway... I might disable compilation of DSEL... because it takes so long.
+
+But this is a good opportunity to consider what my next step should be.
+
+ExpH now embeds the environment within it. At least, the environment needed
+for elaboration.
+
+At this point, the Query monad uses env only for a deriving like thing for
+user defined data types of the Free class, but we shouldn't need that. I don't
+think we use it at all. So let me get rid of it.
+
+The one place I would use it is for the generic __prim_free on a user defined
+data type.
+
+If I got rid of this, Query would no longer need Env...
+
+But what does that matter? Env doesn't hurt us. It's EnvH which would have,
+but I just got rid of that.
+
+Remember the high level goal now... What is it again?
+
+I'm slowly morphing into my vision. The method for elaboration is in place. I
+still have to deal with IO and Query in the elaborator somehow.
+
+Here's a question. Do &&, ||, and not have any benefits of being primitive? I
+feel like they need not be primitive, and I wouldn't loose anything. They
+would turn into if statements, which I would recognize for what they really
+were.
+
+Let me, again, try to come to a better understanding of the overall vision. Or
+the broader goal, the path I want to follow.
+
+Primary goal:
+* get elaborator and haskellf to work on all the test cases.
+
+I could either focus on the elaborator or on haskellf.
+
+For haskellf I want to do the whole big rewrite. But for that to work, I want
+IoEH and QueryEH in ExpH.
+
+To get IoEH and QueryEH in ExpH, I would like first to have it working in the
+elaborator.
+
+What's stopping me? This separation between seri and seri-smt. I can make the
+Query thing work. But what I need to do is figure out how to pass the runFoo
+primitives to elaboration in a separate package.
+
+In other words, it would seem what I want is an extra argument to toExpH which
+describes how to handle primitives. This also suggests I may want the notion
+of a PrimEH in ExpH.
+
+If I can pass this notion of primitive dynamically to toExpH, then just have
+some primitives defined in seri-smt which have to do with the solvers. I
+suppose ideally they would be limited to:
+  
+yices1 :: IO Solver
+yices2 :: IO Solver
+stp :: IO Solver
+
+And then everything else could be in the seri package.
+
+Have: runQuery :: Solver -> Query a -> IO a
+As a primitive?
+
+Or I could just bake in runYices1, runYices2, and runSTP primitives. That way
+I don't have to introduce a primitive Solver type into ExpH.
+
+Now, if instead of the haskellf path, I want to work on getting the elaborator
+to pass tests, I run into a similar question: how to propagate error properly
+for primitives?
+
+Of course... it's hard to test the error thing.
+
+Alternatively: how to do function pushing for primitives, ideally in a generic
+way.
+
+I'll have to think about this.
+
+There are also lots of other issues with haskellf to consider. I may still
+need a type class, or some type classes ranging 0 through 9 as I do currently.
+
+Hum. Everything is confusing again.
+
+Okay, let me start with IoEH. I don't have to worry about recursive
+dependencies. I do have to figure out have to pass primitives as arguments
+somewhere. So I want a generic representation of a primitive. So let me think
+about how a generic representation of a primitive should ideally look. Keeping
+in mind that I have nullary, unary, binary, and potentially other kinds of
+primitives.
+
+I'll think about this during lunch.
+
+And, for the fun of it, real quick like, let me get rid of && || and not as
+primitives.
+
+Tue Nov 27 12:04:33 EST 2012
+
+I don't want to get rid of those primitives, because we use them in the
+concretization optimization. Let me leave them there for now.
+
+Tue Nov 27 12:58:29 EST 2012
+
+How will I deal with concretization in a scheme with PrimE?
+I suppose the PrimE will have the name with it, so that won't be unreasonable.
+
+What now? Everything is still so muddled and confusing to me.
+
+Let me spend some time working on applications. So I remember why I'm doing
+what I'm doing.
+
+Looks like there are plenty of sample solvers. I suspect yices works for this
+too. Or stp.
+
+So what I need is a way to do evaluation. Given a .cnf in DIMACS format, I
+want to: 
+  - run it on yices or stp or whatever and get some numbers
+  - run it on my seri sat solver (probably with haskellf) and get some numbers.
+
+I think this is worth pursuing a little bit now.
+
+Things to try:
+1. run one of my .cnf files on one of the solvers I have installed. See and
+understand the output format.
+2. make a parser for the .cnf format for seri, make a sat executable in seri,
+and run it on the same .cnf file and get a similar kind of output.
+
+Really I need a way to test the answers we get. That would be ideal. Then I
+know my sat implementation is correct. But let's start a little at a time.
+
+Step 1.
+
+Looks like yices1 claims support for dimacs format, but it doesn't output like
+I would expect, and it fails to parse some of the benchmarks from the web, so
+I wouldn't trust it. STP and yices2 make no claims about supporting dimacs.
+
+So it looks like I want to download a SAT solver and use that as the reference
+instead.
+
+Oh... looks like minisat and yices1 will work, it's just the input files have
+this % character at the end, which is odd. I can probably fix them.
+
+The output format I'm getting is:
+SAT vs unsat, or what have you.
+
+Followed by a list of numbers, positive or negative, indicating the variable
+values. Is this what we expect the output to be?
+
+Tue Nov 27 14:02:49 EST 2012
+
+Working on the DIMACs parser. I'll need a way to read an integer.
+
+I suppose that's not so hard.
+
+The last thing I need for my dimacs parser is a way to read inputs.
+
+How about... getContents primitive? What do you think about that?
+
+Should be easy enough. Let me try it out. It will be useful for other things
+too.
+
+Then I should be able to create a seri SAT solver which accepts its input on
+stdin. Good enough for the 2011 competition.
+
+And I'll run it, and see how the overhead compares to, say, yices. Using yices
+as the solver.
+
+Tue Nov 27 14:59:27 EST 2012
+
+Cool! Looks like my sat solver works. That's nifty.
+
+Tue Nov 27 16:35:06 EST 2012
+
+Trouble: it blows up on a real input.
+
+Question: why? What's taking up so much memory?
+
+First idea: it's parsing dimacs which is the problem. This I can put to the
+test easily enough.
+
+Yes. Looks like all the time is in parsing the DIMACS format! That's
+ridiculous. How could that happen? Why?
+
+I think the problem is with tuples. Pattern matching of tuples, to be more
+precise. It should be trivial. Why isn't it?
+
+The strange thing is... it should trivially match, because there is only a
+single constructor, right?
+
+So, this could be helped by getting rid of the bogus tag, or other
+optimizations. I think, before I try figuring out how to make it faster, I
+need to reimplement haskellf with my new intended approach. Then it makes
+sense to try and make it faster.
+
+Just for fun, let me check the io approach. Could that do better?
+
+I get no information from that. So I don't know if it's any better or not.
+
+Well, I think the summary is clear. Before I can work on performance, I need
+to reimplement haskellf as planned.
+
+This was good work that I did today, to get more benchmarks. But we still are
+facing the same issues: I'm not even getting to deal with free variables or
+SMT queries, because elaboration of normal things is so slow! Even with
+haskellf.
+
+Focus from here on out: reimplementing haskellf as desired. As planned from
+this morning. Morph there slowly if need be, that's fine. But until I have
+things correct, it makes no sense to try and optimize performance.
+

@@ -7,7 +7,7 @@ test:
 		--include seri/sri \
 		-m main \
 		-f seri/sri/Seri/SATLIB/SAT.sri > foo.hs
-	HOME=build/home ghc -fno-warn-overlapping-patterns \
+	HOME=build/home ghc -O2 -fno-warn-overlapping-patterns \
 		-fno-warn-missing-fields \
 		-prof -auto-all -rtsopts \
 		-o foo foo.hs
@@ -16,8 +16,8 @@ test:
 testio:
 	./build/seri-bin/seri --io \
 		--include seri/sri \
-		-m Seri.SATLIB.SAT.main \
-		-f seri/sri/Seri/SATLIB/SAT.sri +RTS -p
+		-m Seri.SMT.Tests.Core.main \
+		-f seri/sri/Seri/SMT/Tests/Core.sri +RTS -p
 
 clean:
 	rm -rf build/seri-smt build/seri build/seri-bin build/test

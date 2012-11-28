@@ -3,8 +3,7 @@
 
 module Seri.Exp.Utils (
     free, free',
-    transformMTE, transform, simplify, substitute,
-    impliedByTrue, impliedByFalse,
+    transformMTE, transform,
     pushFunction,
     ) where
 
@@ -81,37 +80,6 @@ transform g e =
        AppE f x -> AppE (me f) (me x)
        LamE s f -> LamE s (me f)
        CaseE x k y d -> CaseE (me x) k (me y) (me d)
-
-substitute :: (Name -> Maybe Exp) -> Exp -> Exp
-substitute f =
-  let g (VarE (Sig n _)) = f n
-      g _ = Nothing
-  in transform g
-
-simplify :: Exp -> Exp
-simplify e =
-  let me = simplify
-  in case e of
-        LitE {} -> e
-        ConE {} -> e
-        VarE {} -> e
-        AppE f x -> appE (me f) (me x)
-        LamE s f -> lamE s (me f)
-        CaseE x k y d -> caseE (me x) k (me y) (me d)
-
-impliedByTrue :: Exp -> [(Name, Exp)]
-impliedByTrue e
-  | VarE (Sig n _) <- e = [(n, trueE)]
-  | Just (a, b) <- de_andE e = impliedByTrue a ++ impliedByTrue b
-  | Just x <- de_notE e = impliedByFalse x
-  | otherwise = []
-
-impliedByFalse :: Exp -> [(Name, Exp)]
-impliedByFalse e
-  | VarE (Sig n _) <- e = [(n, falseE)]
-  | Just (a, b) <- de_orE e = impliedByFalse a ++ impliedByFalse b
-  | Just x <- de_notE e = impliedByTrue x
-  | otherwise = []
 
 -- Push the function into the given argument.
 -- This only makes sense, and only does anything, if the argument is a case

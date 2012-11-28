@@ -16,7 +16,7 @@ import Seri.Sig
 import Seri.Name
 import Seri.Failable
 import Seri.Type
-import Seri.Exp
+import Seri.ExpH
 
 
 data Answer a = Satisfiable a | Unsatisfiable | Unknown
@@ -101,17 +101,17 @@ runQuery opts q = do
     evalStateT q qs
 
 
-realizefree :: Sig -> Query Exp
+realizefree :: Sig -> Query ExpH
 realizefree (Sig nm t) | t == boolT = do
     ctx <- gets qs_ctx
     bval <- lift $ SMT.getBoolValue ctx (unname nm)
     debug $ "; " ++ unname nm ++ " is " ++ show bval
-    return $ boolE bval
+    return $ boolEH bval
 realizefree (Sig nm t) | t == integerT = do
     ctx <- gets qs_ctx
     ival <- lift $ SMT.getIntegerValue ctx (unname nm)
     debug $ "; " ++ unname nm ++ " is " ++ show ival
-    return $ integerE ival
+    return $ integerEH ival
 
 -- | Check if the current assertions are satisfiable.
 query :: (F.Symbolic__ a) => a -> Query (Answer a)
@@ -121,35 +121,35 @@ query r = do
       SMT.Satisfiable -> do
         freevars <- gets qs_freevars
         freevals <- mapM realizefree freevars
-        let flookup :: Name -> Maybe Exp
+        let flookup :: Name -> Maybe ExpH
             flookup s = lookup s (zip [n | Sig n _ <- freevars] freevals)
         return $ Satisfiable (F.__substitute flookup r)
       SMT.Unsatisfiable -> return Unsatisfiable
       _ -> return Unknown
 
 -- | Allocate a free expression of boolean type.
-freebool :: Query Exp
+freebool :: Query ExpH
 freebool = do
   free <- freevar
   let s = Sig free boolT
   modify $ \qs -> qs { qs_freevars = s : qs_freevars qs }
   runCmds [SMT.Declare (unname free) SMT.BoolT]
-  return $ VarE s
+  return $ VarEH s
 
-freeinteger :: Query Exp
+freeinteger :: Query ExpH
 freeinteger = do
   free <- freevar
   let s = Sig free integerT
   modify $ \qs -> qs { qs_freevars = s : qs_freevars qs }
   runCmds [SMT.Declare (unname free) SMT.IntegerT]
-  return $ VarE s
+  return $ VarEH s
 
-smte :: Exp -> Query SMT.Expression
+smte :: ExpH -> Query SMT.Expression
 smte e = do
     qs <- gets qs_qs 
     let mkye :: CompilationM ([SMT.Command], SMT.Expression)
         mkye = do
-          ye <- smtE e
+          ye <- smtE (fromExpH e)
           cmds <- smtD
           return (cmds, ye)
     ((cmds, ye), qs') <- lift . attemptIO $ runCompilation mkye qs
@@ -157,7 +157,7 @@ smte e = do
     runCmds cmds
     return ye
 
-assert :: Exp -> Query ()
+assert :: ExpH -> Query ()
 assert e = do
     e' <- smte e
     runCmds [SMT.Assert e']

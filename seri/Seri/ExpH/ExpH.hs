@@ -26,8 +26,11 @@ data ExpH = LitEH Lit
             -- Then e2 should have type: (a -> b -> c -> V),
             -- And  e1 should have type: V
             --  Where V is the type of the case expression.
-    deriving(Eq)
+    deriving(Eq, Show)
 
 instance Eq (ExpH -> ExpH) where
     (==) _ _ = False
+
+instance Show (ExpH -> ExpH) where
+    show _ = "..."
 

@@ -115,6 +115,7 @@ dimacssat s =
 main :: IO ()
 main = do
     dimacs <- getContents
-    r <- runYices1 Nothing (dimacssat dimacs)
-    putSatResult r
+    putStrLn (show (parseDimacs dimacs))
+    --r <- runYices1 Nothing (dimacssat dimacs)
+    --putSatResult r
 
