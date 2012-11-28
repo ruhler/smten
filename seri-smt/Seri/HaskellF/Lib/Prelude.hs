@@ -3,19 +3,19 @@
 {-# LANGUAGE FlexibleInstances #-}
 
 module Seri.HaskellF.Lib.Prelude (
-    Symbolic__(..), Symbolic1__(..), Symbolic2__(..), Symbolic3__(..),
-    Symbolic4__(..), Symbolic5__(..), Symbolic6__(..), Symbolic7__(..),
-    Symbolic8__(..), Symbolic9__(..),
-
-    Bool(..), Char, Integer(..), IO, Bit, Unit__, List__,
-    __char,
-    __mkUnit__, __caseUnit__,
-    __mkTrue, __mkFalse, __caseTrue, __caseFalse,
-    __mkCons__, __mkNil__, __caseCons__, __caseNil__,
+    Char,
+    Integer,
+    Bit,
+    IO,
+    Unit__, __mkUnit__, __caseUnit__,
+    Bool, __mkTrue, __mkFalse, __caseTrue, __caseFalse,
+    List__, __mkCons__, __mkNil__, __caseCons__, __caseNil__,
 
     not, (&&), (||),
-    __prim_eq_Char, __prim_eq_Integer, __prim_add_Integer, __prim_sub_Integer,
-    __prim_mul_Integer, (<), (<=), (>),
+    __prim_eq_Char,
+    __prim_eq_Integer,
+    __prim_add_Integer, __prim_sub_Integer, __prim_mul_Integer,
+    (<), (<=), (>),
     __prim_show_Integer,
     return_io, bind_io, nobind_io, fail_io, putChar, getContents,
 
@@ -24,39 +24,62 @@ module Seri.HaskellF.Lib.Prelude (
     __prim_lshr_Bit, __prim_or_Bit, __prim_and_Bit, __prim_not_Bit,
     __prim_zeroExtend_Bit, __prim_truncate_Bit, __prim_concat_Bit,
     __prim_extract_Bit,
-
     error,
 
     N__(..), module NE,
-
-    __if_default,
-    __list,
-    __errorh,
     ) where
 
-import Prelude((.), ($), (++))
-import qualified Prelude
-import Data.Functor ((<$>))
-import Data.Maybe (fromMaybe)
+import Prelude hiding (
+    Char, String, Integer, Bool(..),
+    not, (&&), (||),
+    (<), (<=), (>), error
+)
+import qualified Prelude as P
 
-import qualified Seri.Haskell.Lib.Bit as Bit
-import Seri.Haskell.Lib.Numeric as NE hiding (N__(..)) 
-import qualified Seri.Haskell.Lib.Numeric as N
-import qualified Seri.Name as S
-import qualified Seri.ExpH as S
-import qualified Seri.Ppr as S
+import Seri.HaskellF.Symbolic
 
-type IO = Prelude.IO
-type Bit = Bit.Bit
-type Unit__ = ()
-
-newtype Bool = Bool S.ExpH
+newtype Char = Char S.ExpH
     deriving (Prelude.Show)
 
+instance SeriT Char where
+    serit _ = charT
+
+instance Symbolic Char where
+    box = Char
+    unbox (Char x) = x
+
+    
 newtype Integer = Integer S.ExpH
     deriving (Prelude.Show)
 
-newtype Char = Char S.ExpH
+instance SeriT Integer where
+    serit _ = integerT
+
+instance Symbolic Integer where
+    box = Integer
+    unbox (Integer x) = x
+
+newtype Bit n = Bit S.ExpH
+    deriving (Prelude.Show)
+
+instance SeriT1 Bit where
+    serit _ = ConT (name "Bit")
+
+instance Symbolic Bit where
+    box = Bit
+    unbox (Bit x) = x
+
+instance SeriT1 IO where
+    serit _ = ConT (name "IO")
+
+instance Symbolic IO where
+    box = P.error $ "TODO: box IO"
+
+
+
+type Unit__ = ()
+
+newtype Bool = Bool S.ExpH
     deriving (Prelude.Show)
 
 type String = List__ Char
