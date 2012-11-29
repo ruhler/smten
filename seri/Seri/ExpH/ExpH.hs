@@ -1,4 +1,5 @@
 
+{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE FlexibleInstances #-}
 
 -- | HOAS form for Seri Expressions, geared towards high performance
@@ -6,6 +7,8 @@
 module Seri.ExpH.ExpH (
     EState(..), ExpH(..),
     ) where
+
+import Data.Dynamic
 
 import Seri.Lit
 import Seri.Sig
@@ -26,7 +29,7 @@ data ExpH = LitEH Lit
             -- Then e2 should have type: (a -> b -> c -> V),
             -- And  e1 should have type: V
             --  Where V is the type of the case expression.
-    deriving(Eq, Show)
+    deriving(Eq, Typeable, Show)
 
 instance Eq (ExpH -> ExpH) where
     (==) _ _ = False

@@ -11,6 +11,7 @@ module Seri.ExpH.Sugar (
     boolEH, trueEH, falseEH, de_boolEH,
     integerEH, de_integerEH, bitEH, de_bitEH,
     charEH, de_charEH,
+    ioEH, de_ioEH,
 
     de_notEH, de_andEH, de_orEH,
     ) where
@@ -133,4 +134,12 @@ de_orEH e =
   case de_appsEH e of
     (VarEH (Sig n _), [x, y]) | n == name "Prelude.or" -> Just (x, y)
     _ -> Nothing
+
+ioEH :: IO ExpH -> ExpH
+ioEH x = litEH (dynamicL x)
+
+de_ioEH :: ExpH -> Maybe (IO ExpH)
+de_ioEH x = do
+    l <- de_litEH x
+    de_dynamicL l
 

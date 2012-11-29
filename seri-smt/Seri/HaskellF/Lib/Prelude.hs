@@ -19,530 +19,248 @@ module Seri.HaskellF.Lib.Prelude (
     __prim_show_Integer,
     return_io, bind_io, nobind_io, fail_io, putChar, getContents,
 
-    __prim_eq_Bit, __prim_show_Bit, __prim_add_Bit, __prim_sub_Bit, 
-    __prim_mul_Bit, __prim_fromInteger_Bit, __prim_shl_Bit,
-    __prim_lshr_Bit, __prim_or_Bit, __prim_and_Bit, __prim_not_Bit,
-    __prim_zeroExtend_Bit, __prim_truncate_Bit, __prim_concat_Bit,
-    __prim_extract_Bit,
+--    __prim_eq_Bit, __prim_show_Bit, __prim_add_Bit, __prim_sub_Bit, 
+--    __prim_mul_Bit, __prim_fromInteger_Bit, __prim_shl_Bit,
+--    __prim_lshr_Bit, __prim_or_Bit, __prim_and_Bit, __prim_not_Bit,
+--    __prim_zeroExtend_Bit, __prim_truncate_Bit, __prim_concat_Bit,
+--    __prim_extract_Bit,
     error,
-
-    N__(..), module NE,
+    __main_wrapper,
     ) where
 
 import Prelude hiding (
-    Char, String, Integer, Bool(..),
+    Char, String, Integer, Bool(..), IO,
     not, (&&), (||),
-    (<), (<=), (>), error
-)
+    (<), (<=), (>), error,
+    putChar, getContents,
+    )
 import qualified Prelude as P
 
+import Seri.Type
+import Seri.Name
+import Seri.ExpH
+import Seri.Ppr
 import Seri.HaskellF.Symbolic
 
-newtype Char = Char S.ExpH
+newtype Char = Char ExpH
     deriving (Prelude.Show)
 
 instance SeriT Char where
-    serit _ = charT
+    seriT _ = charT
 
 instance Symbolic Char where
     box = Char
     unbox (Char x) = x
 
     
-newtype Integer = Integer S.ExpH
+newtype Integer = Integer ExpH
     deriving (Prelude.Show)
 
 instance SeriT Integer where
-    serit _ = integerT
+    seriT _ = integerT
 
 instance Symbolic Integer where
     box = Integer
     unbox (Integer x) = x
 
-newtype Bit n = Bit S.ExpH
+instance Prelude.Num Integer where
+    fromInteger = seriS
+    (+) = P.error $ "+ for haskellf Integer not defined"
+    (*) = P.error $ "* for haskellf Integer not defined"
+    abs = P.error $ "abs for haskellf Integer not defined"
+    signum = P.error $ "signum for haskellf Integer not defined"
+
+newtype Bit n = Bit ExpH
     deriving (Prelude.Show)
 
 instance SeriT1 Bit where
-    serit _ = ConT (name "Bit")
+    seriT1 _ = ConT (name "Bit")
 
-instance Symbolic Bit where
-    box = Bit
-    unbox (Bit x) = x
+instance Symbolic1 Bit where
+    box1 = Bit
+    unbox1 (Bit x) = x
+
+newtype IO a = IO ExpH
+    deriving (Prelude.Show)
 
 instance SeriT1 IO where
-    serit _ = ConT (name "IO")
+    seriT1 _ = ConT (name "IO")
 
-instance Symbolic IO where
-    box = P.error $ "TODO: box IO"
+instance Symbolic1 IO where
+    box1 = IO
+    unbox1 (IO x) = x
 
+newtype Unit__ = Unit__ ExpH
 
+instance SeriT Unit__ where
+    seriT _ = unitT
+    
+instance Symbolic Unit__ where
+    box = Unit__
+    unbox (Unit__ x) = x
 
-type Unit__ = ()
+__mkUnit__ :: Unit__
+__mkUnit__ = conS "()"
 
-newtype Bool = Bool S.ExpH
-    deriving (Prelude.Show)
+__caseUnit__ :: (Symbolic a) => Unit__ -> a -> a -> a
+__caseUnit__ = caseS "()"
+
+newtype Bool = Bool ExpH
+
+instance SeriT Bool where
+    seriT _ = boolT
+
+instance Symbolic Bool where
+    box = Bool
+    unbox (Bool x) = x
+
+__mkTrue :: Bool
+__mkTrue = conS "True"
+
+__mkFalse :: Bool
+__mkFalse = conS "False"
+
+__caseTrue :: (Symbolic a) => Bool -> a -> a -> a
+__caseTrue = caseS "True"
+
+__caseFalse :: (Symbolic a) => Bool -> a -> a -> a
+__caseFalse = caseS "False"
+
+newtype List__ a = List__ ExpH
+
+instance SeriT1 List__ where
+    seriT1 _ = seriT1 [()]
+
+instance Symbolic1 List__ where
+    box1 = List__
+    unbox1 (List__ x) = x
+
+__mkNil__ :: (Symbolic a) => List__ a
+__mkNil__ = conS "[]"
+
+__mkCons__ :: (Symbolic a) => a -> List__ a -> List__ a
+__mkCons__ = conS ":"
+
+__caseNil__ :: (Symbolic a, Symbolic z) => List__ a -> z -> z -> z
+__caseNil__ = caseS "[]"
+
+__caseCons__ :: (Symbolic a, Symbolic z) => List__ a -> (a -> List__ a -> z) -> z -> z
+__caseCons__ = caseS ":"
 
 type String = List__ Char
 
+nullary :: (Symbolic a) => ExpH -> a
+nullary = box
 
-mkInteger :: Prelude.Integer -> Integer
-mkInteger = Integer . S.integerEH
+unary :: (Symbolic a, Symbolic b) => (ExpH -> ExpH) -> a -> b
+unary f x = box $ f (unbox x)
 
-mkBool :: Prelude.Bool -> Bool
-mkBool = Bool . S.boolEH
-
-data List__ a = List_c [a]
-              | List_if Bool (List__ a) (List__ a)
-    deriving (Prelude.Show)
-
-__list :: [a] -> List__ a
-__list = List_c
-
-__de_list :: List__ a -> Prelude.Maybe [a]
-__de_list (List_c x) = Prelude.return x
-__de_list _ = Prelude.Nothing
-
-__errorh :: String -> a
-__errorh msg = fromMaybe (Prelude.error (Prelude.show msg)) $ do
-  str <- __de_string msg
-  Prelude.return (Prelude.error str)
-
-__char :: Prelude.Char -> Char
-__char = Char . S.charEH
-
-__de_char :: Char -> Prelude.Maybe (Prelude.Char)
-__de_char (Char x) = S.de_charEH x
-
-__de_string :: String -> Prelude.Maybe (Prelude.String)
-__de_string l = do
-  elems <- __de_list l
-  Prelude.mapM __de_char elems
-
-
-instance Prelude.Num Integer where
-    fromInteger = mkInteger
-    (+) = Prelude.error $ "+ for haskellf Integer not defined"
-    (*) = Prelude.error $ "* for haskellf Integer not defined"
-    abs = Prelude.error $ "abs for haskellf Integer not defined"
-    signum = Prelude.error $ "signum for haskellf Integer not defined"
-
-
-__mkTrue :: Bool
-__mkTrue = Bool S.trueEH
-
-__mkFalse :: Bool
-__mkFalse = Bool S.falseEH
-
-__caseTrue :: (Symbolic__ a) => Bool -> a -> a -> a
-__caseTrue p a b = __if p a b
-
-__caseFalse :: (Symbolic__ a) => Bool -> a -> a -> a
-__caseFalse p y n = __if p n y
-
-class Symbolic__ a where
-    __if :: Bool -> a -> a -> a
-    __default :: a
-    __error :: String -> a
-    __error = Prelude.const __default
-    __substitute :: (S.Name -> Prelude.Maybe S.ExpH) -> a -> a
-    __substitute _ = Prelude.id
-
-class Symbolic1__ m where
-    __if1 :: (Symbolic__ a) => Bool -> m a -> m a -> m a
-    __default1 :: (Symbolic__ a) => m a
-    __error1 :: (Symbolic__ a) => String -> m a
-    __error1 = Prelude.const __default1
-    __substitute1 :: (Symbolic__ a) => (S.Name -> Prelude.Maybe S.ExpH) -> m a -> m a
-    __substitute1 _ = Prelude.id
-
-instance (Symbolic1__ m, Symbolic__ a) => Symbolic__ (m a) where
-    __if = __if1
-    __default = __default1
-    __error = __error1
-    __substitute = __substitute1
-
-class Symbolic2__ m where
-    __if2 :: (Symbolic__ a, Symbolic__ b) =>
-        Bool -> m a b -> m a b -> m a b
-
-    __default2 :: (Symbolic__ a, Symbolic__ b) => m a b
-    __error2 :: (Symbolic__ a, Symbolic__ b) => String -> m a b
-    __error2 = Prelude.const __default2
-    __substitute2 :: (Symbolic__ a, Symbolic__ b) =>
-        (S.Name -> Prelude.Maybe S.ExpH) -> m a b -> m a b
-    __substitute2 _ = Prelude.id
-
-
-instance (Symbolic2__ m, Symbolic__ a) => Symbolic1__ (m a) where
-    __if1 = __if2
-    __default1 = __default2
-    __error1 = __error2
-    __substitute1 = __substitute2
-
-class Symbolic3__ m where
-    __if3 :: (Symbolic__ a, Symbolic__ b, Symbolic__ c) =>
-        Bool -> m a b c -> m a b c -> m a b c
-
-    __default3 :: (Symbolic__ a, Symbolic__ b, Symbolic__ c) => m a b c
-    __error3 :: (Symbolic__ a, Symbolic__ b, Symbolic__ c) => String -> m a b c
-    __error3 = Prelude.const __default3
-    __substitute3 :: (Symbolic__ a, Symbolic__ b, Symbolic__ c) =>
-        (S.Name -> Prelude.Maybe S.ExpH) -> m a b c -> m a b c
-
-instance (Symbolic3__ m, Symbolic__ a) => Symbolic2__ (m a) where
-    __if2 = __if3
-    __default2 = __default3
-    __error2 = __error3
-    __substitute2 = __substitute3
-
-class Symbolic4__ m where
-    __if4 :: (Symbolic__ a, Symbolic__ b, Symbolic__ c, Symbolic__ d) =>
-        Bool -> m a b c d -> m a b c d -> m a b c d
-    __default4 :: (Symbolic__ a, Symbolic__ b, Symbolic__ c, Symbolic__ d) => m a b c d
-    __error4 :: (Symbolic__ a, Symbolic__ b, Symbolic__ c, Symbolic__ d) => String -> m a b c d
-    __error4 = Prelude.const __default4
-    __substitute4 :: (Symbolic__ a, Symbolic__ b, Symbolic__ c, Symbolic__ d) =>
-        (S.Name -> Prelude.Maybe S.ExpH) -> m a b c d -> m a b c d
-
-instance (Symbolic4__ m, Symbolic__ a) => Symbolic3__ (m a) where
-    __if3 = __if4
-    __default3 = __default4
-    __error3 = __error4
-    __substitute3 = __substitute4
-
-class Symbolic5__ m where
-    __if5 :: (Symbolic__ a, Symbolic__ b, Symbolic__ c, Symbolic__ d, Symbolic__ e) =>
-        Bool -> m a b c d e -> m a b c d e -> m a b c d e
-
-    __default5 :: (Symbolic__ a, Symbolic__ b, Symbolic__ c, Symbolic__ d, Symbolic__ e) => m a b c d e 
-    __error5 :: (Symbolic__ a, Symbolic__ b, Symbolic__ c, Symbolic__ d, Symbolic__ e) => String -> m a b c d e 
-    __error5 = Prelude.const __default5
-    __substitute5 :: (Symbolic__ a, Symbolic__ b, Symbolic__ c, Symbolic__ d, Symbolic__ e) =>
-        (S.Name -> Prelude.Maybe S.ExpH) -> m a b c d e -> m a b c d e
-
-instance (Symbolic5__ m, Symbolic__ a) => Symbolic4__ (m a) where
-    __if4 = __if5
-    __default4 = __default5
-    __error4 = __error5
-    __substitute4 = __substitute5
-
-class Symbolic6__ m where
-    __if6 :: (Symbolic__ a, Symbolic__ b, Symbolic__ c, Symbolic__ d, Symbolic__ e, Symbolic__ f) =>
-        Bool -> m a b c d e f -> m a b c d e f -> m a b c d e f
-    __default6 :: (Symbolic__ a, Symbolic__ b, Symbolic__ c, Symbolic__ d, Symbolic__ e, Symbolic__ f) => m a b c d e f
-    __error6 :: (Symbolic__ a, Symbolic__ b, Symbolic__ c, Symbolic__ d, Symbolic__ e, Symbolic__ f) => String -> m a b c d e f
-    __error6 = Prelude.const __default6
-    __substitute6 :: (Symbolic__ a, Symbolic__ b, Symbolic__ c, Symbolic__ d, Symbolic__ e, Symbolic__ f) =>
-        (S.Name -> Prelude.Maybe S.ExpH) -> m a b c d e f -> m a b c d e f
-
-instance (Symbolic6__ m, Symbolic__ a) => Symbolic5__ (m a) where
-    __if5 = __if6
-    __default5 = __default6
-    __error5 = __error6
-    __substitute5 = __substitute6
-
-class Symbolic7__ m where
-    __if7 :: (Symbolic__ a, Symbolic__ b, Symbolic__ c, Symbolic__ d, Symbolic__ e, Symbolic__ f, Symbolic__ g) =>
-        Bool -> m a b c d e f g -> m a b c d e f g -> m a b c d e f g
-    __default7 :: (Symbolic__ a, Symbolic__ b, Symbolic__ c, Symbolic__ d, Symbolic__ e, Symbolic__ f, Symbolic__ g) => m a b c d e f g 
-    __error7 :: (Symbolic__ a, Symbolic__ b, Symbolic__ c, Symbolic__ d, Symbolic__ e, Symbolic__ f, Symbolic__ g) => String -> m a b c d e f g 
-    __error7 = Prelude.const __default7
-    __substitute7 :: (Symbolic__ a, Symbolic__ b, Symbolic__ c, Symbolic__ d, Symbolic__ e, Symbolic__ f, Symbolic__ g) =>
-        (S.Name -> Prelude.Maybe S.ExpH) -> m a b c d e f g -> m a b c d e f g
-
-instance (Symbolic7__ m, Symbolic__ a) => Symbolic6__ (m a) where
-    __if6 = __if7
-    __default6 = __default7
-    __error6 = __error7
-    __substitute6 = __substitute7
-
-class Symbolic8__ m where
-    __if8 :: (Symbolic__ a, Symbolic__ b, Symbolic__ c, Symbolic__ d, Symbolic__ e, Symbolic__ f, Symbolic__ g, Symbolic__ h) =>
-        Bool -> m a b c d e f g h -> m a b c d e f g h -> m a b c d e f g h
-    __default8 :: (Symbolic__ a, Symbolic__ b, Symbolic__ c, Symbolic__ d, Symbolic__ e, Symbolic__ f, Symbolic__ g, Symbolic__ h) => m a b c d e f g h 
-    __error8 :: (Symbolic__ a, Symbolic__ b, Symbolic__ c, Symbolic__ d, Symbolic__ e, Symbolic__ f, Symbolic__ g, Symbolic__ h) => String -> m a b c d e f g h 
-    __error8 = Prelude.const __default8
-    __substitute8 :: (Symbolic__ a, Symbolic__ b, Symbolic__ c, Symbolic__ d, Symbolic__ e, Symbolic__ f, Symbolic__ g, Symbolic__ h) =>
-        (S.Name -> Prelude.Maybe S.ExpH) -> m a b c d e f g h -> m a b c d e f g h
-
-instance (Symbolic8__ m, Symbolic__ a) => Symbolic7__ (m a) where
-    __if7 = __if8
-    __default7 = __default8
-    __error7 = __error8
-    __substitute7 = __substitute8
-
-class Symbolic9__ m where
-    __if9 :: (Symbolic__ a, Symbolic__ b, Symbolic__ c, Symbolic__ d, Symbolic__ e, Symbolic__ f, Symbolic__ g, Symbolic__ h, Symbolic__ i) =>
-        Bool -> m a b c d e f g h i -> m a b c d e f g h i -> m a b c d e f g h i
-
-    __default9 :: (Symbolic__ a, Symbolic__ b, Symbolic__ c, Symbolic__ d,
-              Symbolic__ e, Symbolic__ f, Symbolic__ g, Symbolic__ h,
-              Symbolic__ i) => m a b c d e f g h i
-    __error9 :: (Symbolic__ a, Symbolic__ b, Symbolic__ c, Symbolic__ d,
-              Symbolic__ e, Symbolic__ f, Symbolic__ g, Symbolic__ h,
-              Symbolic__ i) => String -> m a b c d e f g h i
-    __error9 = Prelude.const __default9
-    __substitute9 :: (Symbolic__ a, Symbolic__ b, Symbolic__ c, Symbolic__ d, Symbolic__ e, Symbolic__ f, Symbolic__ g, Symbolic__ h, Symbolic__ i) =>
-        (S.Name -> Prelude.Maybe S.ExpH) -> m a b c d e f g h i -> m a b c d e f g h i
-
-instance (Symbolic9__ m, Symbolic__ a) => Symbolic8__ (m a) where
-    __if8 = __if9
-    __default8 = __default9
-    __error8 = __error9
-    __substitute8 = __substitute9
-
-instance Symbolic__ Bool where
-    __if (Bool p) a@(Bool ax) b@(Bool bx)
-        | Prelude.Just Prelude.True <- S.de_boolEH p = a
-        | Prelude.Just Prelude.False <- S.de_boolEH p = b
-        | Prelude.otherwise =
-           let a' = S.simplifyH $ S.substituteH (Prelude.flip Prelude.lookup (S.impliedByTrueH p)) ax
-               b' = S.simplifyH $ S.substituteH (Prelude.flip Prelude.lookup (S.impliedByFalseH p)) bx
-           in Bool (S.ifEH p a' b')
-
-    __default = __mkFalse
-    __substitute f (Bool x) = Bool (S.simplifyH $ S.substituteH f x)
+binary :: (Symbolic a, Symbolic b, Symbolic c)
+           => (ExpH -> ExpH -> ExpH) -> a -> b -> c
+binary f a b = box $ f (unbox a) (unbox b)
 
 not :: Bool -> Bool
-not x = __caseTrue x __mkFalse __mkTrue
+not = unary notEH
 
 (&&) :: Bool -> Bool -> Bool
-(&&) x y = __caseTrue x y __mkFalse
+(&&) = unary andEH
 
 (||) :: Bool -> Bool -> Bool
-(||) x y = __caseTrue x __mkTrue y
+(||) = unary orEH
 
 __prim_eq_Char :: Char -> Char -> Bool
-__prim_eq_Char (Char a) (Char b) = Bool $ S.__prim_eq_CharEH a b
+__prim_eq_Char = binary __prim_eq_CharEH
 
 __prim_eq_Integer :: Integer -> Integer -> Bool
-__prim_eq_Integer (Integer a) (Integer b) = Bool $ S.__prim_eq_IntegerEH a b
+__prim_eq_Integer = binary __prim_eq_IntegerEH
 
 __prim_add_Integer :: Integer -> Integer -> Integer
-__prim_add_Integer (Integer a) (Integer b) = Integer $ S.__prim_add_IntegerEH a b
+__prim_add_Integer = binary __prim_add_IntegerEH
 
 __prim_sub_Integer :: Integer -> Integer -> Integer
-__prim_sub_Integer (Integer a) (Integer b) = Integer $ S.__prim_sub_IntegerEH a b
+__prim_sub_Integer = binary __prim_sub_IntegerEH
 
 __prim_mul_Integer :: Integer -> Integer -> Integer
-__prim_mul_Integer (Integer a) (Integer b) = Integer $ S.__prim_mul_IntegerEH a b
+__prim_mul_Integer = binary __prim_mul_IntegerEH
 
 (<) :: Integer -> Integer -> Bool
-(<) (Integer a) (Integer b) = Bool $ S.__prim_lt_IntegerEH a b
+(<) = binary __prim_lt_IntegerEH
 
 (<=) :: Integer -> Integer -> Bool
-(<=) (Integer a) (Integer b) = Bool $ S.__prim_leq_IntegerEH a b
+(<=) = binary __prim_leq_IntegerEH
 
 (>) :: Integer -> Integer -> Bool
-(>) (Integer a) (Integer b) = Bool $ S.__prim_gt_IntegerEH a b
+(>) = binary __prim_gt_IntegerEH
 
 __prim_show_Integer :: Integer -> String
-__prim_show_Integer (Integer x)
-  | Prelude.Just v <- S.de_integerEH x = __string (Prelude.show v)
-  | Prelude.otherwise = __string (Prelude.show x)
+__prim_show_Integer = unary __prim_show_IntegerEH
 
-return_io :: a -> IO a
-return_io = Prelude.return
+return_io :: (Symbolic a) => a -> IO a
+return_io = unary __prim_return_IOEH
 
-bind_io :: IO a -> (a -> IO b) -> IO b
-bind_io = (Prelude.>>=)
+bind_io :: (Symbolic a, Symbolic b) => IO a -> (a -> IO b) -> IO b
+bind_io = binary __prim_bind_IOEH
 
-nobind_io :: IO a -> IO b -> IO b
-nobind_io = (Prelude.>>)
+nobind_io :: (Symbolic a, Symbolic b) => IO a -> IO b -> IO b
+nobind_io = binary __prim_nobind_IOEH
 
-fail_io :: String -> IO a
-fail_io = Prelude.error $ "TODO: haskellf fail_io"
+fail_io :: (Symbolic a) => String -> IO a
+fail_io = unary __prim_fail_IOEH
 
-putChar :: Char -> IO ()
-putChar (Char x) 
-  | Prelude.Just v <- S.de_charEH x = Prelude.putChar v
-  | Prelude.otherwise = Prelude.error $ "TODO: haskellf putChar: " ++ S.pretty x
+putChar :: Char -> IO Unit__
+putChar = unary putCharEH
 
 getContents :: IO String
-getContents = __string <$> Prelude.getContents
+getContents = nullary getContentsEH
 
-__string :: Prelude.String -> String
-__string = __list . Prelude.map __char
+--__prim_eq_Bit :: Bit n -> Bit n -> Bool
+--__prim_eq_Bit = binary __prim_eq_BitEH
+--
+--__prim_show_Bit :: Bit n -> String
+--__prim_show_Bit = unary __prim_show_BitEH
+--
+--__prim_add_Bit :: Bit n -> Bit n -> Bit n
+--__prim_add_Bit = binary __prim_add_BitEH
+--
+--__prim_sub_Bit :: Bit n -> Bit n -> Bit n
+--__prim_sub_Bit = binary __prim_sub_BitEH
+--
+--__prim_mul_Bit :: Bit n -> Bit n -> Bit n
+--__prim_mul_Bit = binary __prim_mul_BitEH
+--
+--__prim_fromInteger_Bit :: Integer -> Bit n
+--__prim_fromInteger_Bit = unary __prim_fromInteger_BitEH
+--
+--__prim_shl_Bit :: Bit n -> Bit n -> Bit n
+--__prim_shl_Bit = binary __prim_shl_BitEH
+--
+--__prim_lshr_Bit :: Bit n -> Bit n -> Bit n
+--__prim_lshr_Bit = binary __prim_lshr_BitEH
+--
+--__prim_or_Bit :: Bit n -> Bit n -> Bit n
+--__prim_or_Bit = binary __prim_or_BitEH
+--
+--__prim_and_Bit :: Bit n -> Bit n -> Bit n
+--__prim_and_Bit = binary __prim_and_BitEH
+--
+--__prim_not_Bit :: Bit n -> Bit n
+--__prim_not_Bit = unary __prim_not_BitEH
+--
+--__prim_zeroExtend_Bit :: Bit n -> Bit m
+--__prim_zeroExtend_Bit = unary __prim_zeroExtend_BitEH
+--
+--__prim_truncate_Bit :: Bit n -> Bit m
+--__prim_truncate_Bit = unary __prim_truncate_BitEH
 
-__prim_eq_Bit :: (N__ n) => Bit n -> Bit n -> Bool
-__prim_eq_Bit a b = if a Prelude.== b then __mkTrue else __mkFalse
-
-__prim_show_Bit :: Bit n -> String
-__prim_show_Bit = __string . Prelude.show
-
-__prim_add_Bit :: (N__ n) => Bit n -> Bit n -> Bit n
-__prim_add_Bit = (Prelude.+)
-
-__prim_sub_Bit :: (N__ n) => Bit n -> Bit n -> Bit n
-__prim_sub_Bit = (Prelude.-)
-
-__prim_mul_Bit :: (N__ n) => Bit n -> Bit n -> Bit n
-__prim_mul_Bit = (Prelude.*)
-
-__prim_fromInteger_Bit :: (N__ n) => Integer -> Bit n
-__prim_fromInteger_Bit (Integer a)
-  | Prelude.Just v <- S.de_integerEH a = Prelude.fromInteger v
-  | Prelude.otherwise = Prelude.error $ "TODO: __prim_fromInteger_Bit for haskellf: " ++ S.pretty a
-
-__prim_shl_Bit :: (N__ n) => Bit n -> Bit n -> Bit n
-__prim_shl_Bit = Bit.shl
-
-__prim_lshr_Bit :: (N__ n) => Bit n -> Bit n -> Bit n
-__prim_lshr_Bit = Bit.lshr
-
-__prim_or_Bit :: (N__ n) => Bit n -> Bit n -> Bit n
-__prim_or_Bit = Bit.or
-
-__prim_and_Bit :: (N__ n) => Bit n -> Bit n -> Bit n
-__prim_and_Bit = Bit.and
-
-__prim_not_Bit :: (N__ n) => Bit n -> Bit n
-__prim_not_Bit = Bit.not
-
-__prim_zeroExtend_Bit :: (N__ n, N__ m) => Bit n -> Bit m
-__prim_zeroExtend_Bit = Bit.zeroExtend
-
-__prim_truncate_Bit :: (N__ n, N__ m) => Bit n -> Bit m
-__prim_truncate_Bit = Bit.truncate
-
-__prim_concat_Bit :: (N__ a, N__ b) => Bit a -> Bit b -> Bit (N__PLUS a b)
-__prim_concat_Bit = Bit.concat
-
-__prim_extract_Bit :: (N__ n, N__ m) => Bit n -> Integer -> Bit m
-__prim_extract_Bit b (Integer a)
-  | Prelude.Just v <- S.de_integerEH a = Bit.extract b v
-  | Prelude.otherwise = Prelude.error "TODO: __prim_extract_Bit for haskellf"
-
-error :: (Symbolic__ a) => String -> a
-error = __error
-
-__mkCons__ :: (Symbolic__ a) => a -> List__ a -> List__ a
-__mkCons__ x (List_c xs) = __list (x:xs)
-__mkCons__ x (List_if p a b) = __if p (__mkCons__ x a) (__mkCons__ x b)
-
-__mkNil__ :: List__ a
-__mkNil__ = __list []
-
-__caseCons__ :: (Symbolic__ x) => List__ a -> (a -> List__ a -> x) -> x -> x
-__caseCons__ (List_c (x:xs)) f _ = f x (List_c xs)
-__caseCons__ (List_c []) _ n = n
-__caseCons__ (List_if p a b) y n = __if p (__caseCons__ a y n) (__caseCons__ b y n)
-
-__caseNil__ :: (Symbolic__ x) => List__ a -> x -> x -> x
-__caseNil__ (List_c []) y _ = y
-__caseNil__ (List_c _) _ n = n
-__caseNil__ (List_if p a b) y n = __if p (__caseNil__ a y n) (__caseNil__ b y n)
-
-__mkUnit__ :: Unit__
-__mkUnit__ = ()
-
-__caseUnit__ :: Unit__ -> a -> a -> a
-__caseUnit__ () y _ = y
-
-instance Symbolic__ Unit__ where
-    __if _ _ _ = ()
-    __default = ()
-
-instance Symbolic2__ (->) where
-    __if2 p f g = \x -> __if p (f x) (g x)
-    __default2 = \_ -> __default
-    __substitute2 l f = \x -> __substitute l (f x)
-
-instance Symbolic__ Char where
-    __default = __char '?'
-    __if (Bool p) a@(Char ax) b@(Char bx)
-        | Prelude.Just Prelude.True <- S.de_boolEH p = a
-        | Prelude.Just Prelude.False <- S.de_boolEH p = b
-        | Prelude.otherwise =
-           let a' = S.simplifyH $ S.substituteH (Prelude.flip Prelude.lookup (S.impliedByTrueH p)) ax
-               b' = S.simplifyH $ S.substituteH (Prelude.flip Prelude.lookup (S.impliedByFalseH p)) bx
-           in Char (S.ifEH p a' b')
-    __substitute f (Char x) = Char (S.simplifyH $ S.substituteH f x)
-
-instance Symbolic__ Prelude.Char where
-    __default = '?'
-    __if = __if_default "Prelude.Char"
-
-instance Symbolic1__ [] where
-    __default1 = []
-    __if1 = __if_default "Prelude.[]"
-    __substitute1 f = Prelude.map (__substitute f)
-
-instance Symbolic__ Prelude.Integer where
-    __default = 0
-    __if = __if_default "Prelude.Integer"
-
-instance Symbolic__ Integer where
-    __default = 0
-    __if (Bool p) a@(Integer ax) b@(Integer bx)
-        | Prelude.Just Prelude.True <- S.de_boolEH p = a
-        | Prelude.Just Prelude.False <- S.de_boolEH p = b
-        | Prelude.otherwise =
-           let a' = S.simplifyH $ S.substituteH (Prelude.flip Prelude.lookup (S.impliedByTrueH p)) ax
-               b' = S.simplifyH $ S.substituteH (Prelude.flip Prelude.lookup (S.impliedByFalseH p)) bx
-           in Integer (S.ifEH p a' b')
-    __substitute f (Integer x) = Integer (S.simplifyH $ S.substituteH f x)
-
-instance Symbolic__ N__0 where
-    __if = __if_default "N__0"
-    __default = N__0
-
-instance Symbolic1__ IO where
-    __if1 = __if_default "IO"
-    __default1 = return_io __default
-    __error1 = __errorh 
-
-instance Symbolic1__ List__ where
-    __default1 = __list [__default]
-    __if1 p@(Bool px) a b
-        | Prelude.Just Prelude.True <- S.de_boolEH px = a
-        | Prelude.Just Prelude.False <- S.de_boolEH px = b
-        | Prelude.otherwise = List_if p a b
-    __substitute1 f (List_c x) = List_c (__substitute1 f x)
-    __substitute1 f (List_if p a b)
-        = __if (__substitute f p) (__substitute f a) (__substitute f b)
-
-instance Symbolic1__ Bit where
-    __if1 = __if_default "Bit"
-    __default1 = Prelude.error "TODO: default1 Bit"
-
-instance Symbolic1__ N__2p0 where
-    __if1 = __if_default "N__2p0"
-    __default1 = N__2p0 __default
-
-instance Symbolic1__ N__2p1 where
-    __if1 = __if_default "N__2p1"
-    __default1 = N__2p1 __default
-
-instance Symbolic2__ N__PLUS where
-    __if2 = __if_default "N__PLUS"
-    __default2 = N__PLUS __default __default
-
-instance Symbolic2__ N__MINUS where
-    __if2 = __if_default "N__MINUS"
-    __default2 = N__MINUS __default __default
-
-instance Symbolic2__ N__TIMES where
-    __if2 = __if_default "N__TIMES"
-    __default2 = N__TIMES __default __default
-
-__if_default :: Prelude.String -> Bool -> a -> a -> a
-__if_default msg (Bool p) a b
-    | Prelude.Just Prelude.True <- S.de_boolEH p = a
-    | Prelude.Just Prelude.False <- S.de_boolEH p = b
-    | Prelude.otherwise = Prelude.error ("__if " ++ msg ++ ": " ++ S.pretty p)
-
-class (Symbolic__ a, N.N__ a) => N__ a where
-    valueof :: a -> Integer
-    valueof = mkInteger . N.valueof
-
-    numeric :: a
-    numeric = N.numeric
-
-instance N__ N__0 where
-instance (N__ n) => N__ (N__2p0 n) where
-instance (N__ n) => N__ (N__2p1 n) where
-instance (N__ a, N__ b) => N__ (N__PLUS a b) where
-instance (N__ a, N__ b) => N__ (N__MINUS a b) where
-instance (N__ a, N__ b) => N__ (N__TIMES a b) where
+error :: (Symbolic a) => String -> a
+error x
+ | Just s <- de_seriS x = 
+    let z = box (errorEH t s)
+        t = seriT z
+    in z
+    
+__main_wrapper :: IO Unit__ -> P.IO ()
+__main_wrapper m
+  | Just x <- de_ioEH (unbox m) = x >> return ()
+  | otherwise = P.error $ "__main_wrapper: " ++ pretty (unbox m)
 

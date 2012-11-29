@@ -8,7 +8,8 @@ import Control.Monad.State
 import Data.Functor((<$>))
 import System.IO
 
-import qualified Seri.HaskellF.Lib.Prelude as F
+import qualified Seri.HaskellF.Lib.Prelude as S
+import Seri.HaskellF.Symbolic
 import qualified Seri.SMT.Solver as SMT
 import qualified Seri.SMT.Syntax as SMT
 import Seri.SMT.Translate
@@ -114,7 +115,7 @@ realizefree (Sig nm t) | t == integerT = do
     return $ integerEH ival
 
 -- | Check if the current assertions are satisfiable.
-query :: (F.Symbolic__ a) => a -> Query (Answer a)
+query :: (Symbolic a) => a -> Query (Answer a)
 query r = do
   res <- check
   case res of 
@@ -123,7 +124,7 @@ query r = do
         freevals <- mapM realizefree freevars
         let flookup :: Name -> Maybe ExpH
             flookup s = lookup s (zip [n | Sig n _ <- freevars] freevals)
-        return $ Satisfiable (F.__substitute flookup r)
+        return $ Satisfiable (box $ substituteH flookup (unbox r))
       SMT.Unsatisfiable -> return Unsatisfiable
       _ -> return Unknown
 

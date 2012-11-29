@@ -86,7 +86,7 @@ issymbol (h:_) = not $ isAlphaNum h || h == '_'
 hsLit :: Lit -> H.Exp
 hsLit l
  | Just i <- de_integerL l = H.LitE (H.IntegerL i)
- | Just c <- de_charL l = H.AppE (H.VarE (H.mkName "__char")) (H.LitE (H.CharL c))
+ | Just c <- de_charL l = H.AppE (H.VarE (H.mkName "S.seriS")) (H.LitE (H.CharL c))
 
 prependnm :: String -> Name -> H.Name
 prependnm m n = hsName $ name m `nappend` n
@@ -95,18 +95,6 @@ prependnm m n = hsName $ name m `nappend` n
 -- abstract constructor function.
 constrnm :: Name -> H.Name
 constrnm = prependnm "__mk"
-
-constrisnm :: Name -> H.Name
-constrisnm = prependnm "__is"
-
-constrappnm :: Name -> H.Name
-constrappnm = prependnm "__app"
-
-constrtagnm :: Name -> H.Name
-constrtagnm = prependnm "__t"
-
-constrvalnm :: Int -> Name -> H.Name
-constrvalnm i = prependnm $ "__v" ++ show i
 
 -- Given the name of a data constructor, return the name of the function for
 -- doing a case match against the constructor.
@@ -119,9 +107,6 @@ constrcasenm n
 constrcasenm n = prependnm "__case" n
 
 hsExp :: Exp -> Failable H.Exp
-hsExp e | Just xs <- de_listE e = do
-  xs' <- mapM hsExp xs
-  return $ H.AppE (H.VarE (H.mkName "__list")) (H.ListE xs')
 hsExp (LitE l) = return (hsLit l)
 hsExp (ConE (Sig n t))
   | n == name "()" = hsExp (ConE (Sig (name "Unit__") t))
@@ -238,171 +223,76 @@ hsDec (DataD n _ _) | Just x <- de_tupleN n = hsDec $ tuple (fromIntegral x)
 --                  ...
 --
 -- Translates to:
--- data Foo a b ... = Foo {
---   __tFooA :: Bool,
---   __vFooA1 :: FooA1,
---   __vFooA2 :: FooA2,
---   ...
+-- newtype Foo a b ... = Foo S.ExpH
 --
---   __tFooB :: Bool,
---   __vFooB1 :: FooB1,
---   __vFooB2 :: FooB2,
---   ...
---   }
+-- instance S.SymbolicN Foo where
+--  boxN = Foo
+--  unboxN (Foo x) = x
 --
--- instance SymbolicN__ Foo where
---  __ifN p a b = Foo {
---      __tFooA = __if p (__tFooA a) (__tFooA b)
---      __vFooA1 = __if p (__vFooA1 a) (__vFooA1 b)
---      ...
---  __defaultN = Foo {
---      __tFooA = __default,
---      _-vFooA1 = __default,
---      ...
---   }
+-- And for each constructor FooB:
 -- __mkFooB :: FooB1 -> FooB2 -> ... -> Foo
--- __mkFooB b1 b2 ... = let v = type v (__default {
---      __tFooA = False,
---      __tFooB = True,
---      __vFooB1 = b1,
---      __vFooB2 = b2,
---      ...
---   }) in v
--- __isFooB :: Foo -> Bool
--- __isFooB f = not (__tFooA f) && __tFooB f
--- __appFooB :: Foo -> (FooB1 -> FooB2 -> ... -> a) -> a
--- __appFooB x f = f (__vFooB1 x) (__vFooB2 x) ...
+-- __mkFooB = S.conS "FooB"
 -- __caseFooB :: Foo -> (FooB1 -> FooB2 -> ... -> a) -> a -> a
--- __caseFooB x y n = __if (__isFooB x) (__appFooB x y) n
+-- __caseFooB = S.caseS "FooB"
 -- ...
 hsDec (DataD n tyvars constrs) =
-  let -- Make the record constructor fields for the given the seri constructor.
-      mkrconfs :: Con -> Failable [H.VarStrictType]
-      mkrconfs (Con cn cts) = do
-        bt <- hsType boolT
-        cts' <- mapM hsType cts
-        let tag = (constrtagnm cn, H.NotStrict, bt)
-        let vals = [(constrvalnm i cn, H.NotStrict, t) | (t, i) <- zip cts' [1..]]
-        return (tag:vals)
+  let tyvars' = map (H.PlainTV . hsName . tyVarName) tyvars
+      con = H.NormalC (hsName n) [(H.NotStrict, H.ConT (H.mkName "S.ExpH"))]
+      dataD = H.NewtypeD [] (hsName n) tyvars' con []
 
-      -- Make the record constructor with all the fields.
-      mkrcon :: [Con] -> Failable H.Con
-      mkrcon cs = do
-        fields <- concat <$> mapM mkrconfs cs
-        return $ H.RecC (hsName n) fields
+      box = H.FunD (boxmeth (genericLength tyvars)) [
+                H.Clause [] (H.NormalB (H.ConE (hsName n))) []]
+      unbox = H.FunD (unboxmeth (genericLength tyvars)) [
+                H.Clause [H.ConP (hsName n) [H.VarP (H.mkName "x")]]
+                    (H.NormalB (H.VarE (H.mkName "x"))) []]
 
-      -- Make the instance of Symbolic__
-      mkinst :: H.Con -> H.Dec
-      mkinst (H.RecC cn fields) =
-        let clsname = clssymbolic (genericLength tyvars)
-            ty = H.AppT (H.ConT clsname) (H.ConT cn)
+      clsname = clssymbolic (genericLength tyvars)
+      ty = H.AppT (H.ConT clsname) (H.ConT (hsName n))
+      instD = H.InstanceD [] ty [box, unbox]
 
-            iffield :: H.VarStrictType -> H.FieldExp
-            iffield (n, _, _) = 
-                let e = foldl H.AppE (H.VarE (H.mkName "__if")) [
-                            H.VarE (H.mkName "p"),
-                            H.AppE (H.VarE n) (H.VarE (H.mkName "a")),
-                            H.AppE (H.VarE n) (H.VarE (H.mkName "b"))]
-                in (n, e)
-
-            ifbody = H.NormalB $ H.RecConE cn (map iffield fields)
-            ifmethod = H.FunD (ifmeth (genericLength tyvars)) [
-                H.Clause [H.VarP (H.mkName x) | x <- ["p", "a", "b"]] ifbody []
-                ]
-
-            deffield :: H.VarStrictType -> H.FieldExp
-            deffield (n, _, _) = (n, H.VarE (H.mkName "__default"))
-
-            defbody = H.NormalB $ H.RecConE cn (map deffield fields)
-            defmethod = H.FunD (defmeth (genericLength tyvars)) [
-                H.Clause [] defbody []
-                ]
-
-            subfield :: H.VarStrictType -> H.FieldExp
-            subfield (n, _, _) = 
-                let e = foldl H.AppE (H.VarE (H.mkName "__substitute")) [
-                            H.VarE (H.mkName "f"),
-                            H.AppE (H.VarE n) (H.VarE (H.mkName "a"))]
-                in (n, e)
-
-            subbody = H.NormalB $ H.RecConE cn (map subfield fields)
-            submethod = H.FunD (submeth (genericLength tyvars)) [
-                H.Clause [H.VarP (H.mkName x) | x <- ["f", "a"]] subbody []
-                ]
-        in H.InstanceD [] ty [ifmethod, defmethod, submethod]
-
-      mkmk :: [Name] -> Name -> [Type] -> [H.Type] -> [H.Dec]
-      mkmk prev cn tys ctys =
+      body = H.AppE (H.VarE (H.mkName "S.conT"))
+                    (H.AppE (H.VarE (H.mkName "S.name"))
+                            (H.LitE (H.StringL (unname n))))
+      serit = H.FunD (seritmeth (genericLength tyvars)) [
+                H.Clause [H.WildP] (H.NormalB body) []]
+      clsnamet = clsserit (genericLength tyvars)
+      tyt = H.AppT (H.ConT clsnamet) (H.ConT (hsName n))
+      instDt = H.InstanceD [] tyt [serit]
+      
+      
+      mkmk :: Name -> [Type] -> [H.Dec]
+      mkmk cn tys =
         let dt = appsT (conT n) (map tyVarType tyvars)
             t = arrowsT $ tys ++ [dt]
             ht = surely $ hsTopType [] [] t
 
-            argnms = [H.mkName $ "x" ++ show i | i <- [1..(length ctys)]]
-            oldts = [(constrtagnm p, H.VarE (constrnm (name "False"))) | p <- prev]
-            thists = [(constrtagnm cn, H.VarE (constrnm (name "True")))]
-            thisvs = [(constrvalnm i cn, H.VarE a) | (a, i) <- zip argnms [1..]]
-    
-            def = H.SigE (H.VarE (H.mkName "__default")) (surely $ hsType dt)
-            upd = H.RecUpdE def (concat [oldts, thists, thisvs])
-            body = H.NormalB $ upd
-
             sigD = H.SigD (constrnm cn) ht
-            funD = H.FunD (constrnm cn) [H.Clause (map H.VarP argnms) body []]
+
+            body = H.AppE (H.VarE (H.mkName "S.conS")) (H.LitE (H.StringL (unname cn)))
+            funD = H.FunD (constrnm cn) [H.Clause [] (H.NormalB body) []]
          in [sigD, funD]
 
-      mkis :: [Name] -> Name -> [Type] -> [H.Type] -> [H.Dec]
-      mkis prev cn _ _ =
-        let argnm = H.mkName $ "x"
-            oldts = [H.AppE (H.VarE $ H.mkName "not") (
-                        H.AppE (H.VarE $ constrtagnm p) (H.VarE argnm))
-                          | p <- prev]
-            thist = H.AppE (H.VarE $ constrtagnm cn) (H.VarE argnm)
+      mkcase :: Name -> [Type] -> [H.Dec]
+      mkcase cn tys = 
+        let dt = appsT (conT n) (map tyVarType tyvars)
+            z = VarT (name "z")
+            t = arrowsT [dt, arrowsT (tys ++ [z]), z, z]
+            ht = surely $ hsTopType [] [] t
 
-            handE :: H.Exp -> H.Exp -> H.Exp
-            handE a b = foldl H.AppE (H.VarE (hsName (name "&&"))) [a, b]
+            sigD = H.SigD (constrcasenm cn) ht
 
-            body = H.NormalB $ foldl handE thist oldts
-        in [H.FunD (constrisnm cn) [H.Clause [H.VarP argnm] body []]]
+            body = H.AppE (H.VarE (H.mkName "S.caseS")) (H.LitE (H.StringL (unname cn)))
+            funD = H.FunD (constrcasenm cn) [H.Clause [] (H.NormalB body) []]
+        in [sigD, funD]
 
-      mkapp :: [Name] -> Name -> [Type] -> [H.Type] -> [H.Dec]
-      mkapp _ cn _ ctys = 
-        let xarg = H.mkName "x"
-            farg = H.mkName "f"
-            vs = [H.VarE (constrvalnm i cn) | i <- [1..(length ctys)]]
-            app = foldl H.AppE (H.VarE farg) [H.AppE v (H.VarE xarg) | v <- vs]
-            body = H.NormalB app
-        in [H.FunD (constrappnm cn) [H.Clause [H.VarP xarg, H.VarP farg] body []]]
+      mkconfs :: Con -> [H.Dec]
+      mkconfs (Con cn ctys)
+        = concat [f cn ctys | f <- [mkmk, mkcase]]
 
-      mkcase :: [Name] -> Name -> [Type] -> [H.Type] -> [H.Dec]
-      mkcase _ cn _ _ = 
-        let [x, y, n] = map H.mkName ["x", "y", "n"]
-            app = foldl H.AppE (H.VarE $ H.mkName "__if") [
-                      H.AppE (H.VarE (constrisnm cn)) (H.VarE x),
-                      H.AppE (H.AppE (H.VarE (constrappnm cn)) (H.VarE x)) (H.VarE y),
-                      H.VarE n]
-            body = H.NormalB app
-        in [H.FunD (constrcasenm cn) [H.Clause (map H.VarP [x, y, n]) body []]]
+      mkallconfs :: [Con] -> [H.Dec]
+      mkallconfs = concatMap mkconfs
 
-      mkconfs :: [Name] -> Con -> Failable [H.Dec]
-      mkconfs prev (Con cn ctys) = do
-        htys <- mapM hsType ctys
-        return $ concat [f prev cn ctys htys | f <- [mkmk, mkis, mkapp, mkcase]]
-
-      mkallconfs :: [Con] -> Failable [H.Dec]
-      mkallconfs [] = return []
-      mkallconfs (x:xs) = do
-          xd <- mkconfs [n | Con n _ <- xs] x
-          xds <- mkallconfs xs
-          return (xd ++ xds)
-
-  in do
-    con <- mkrcon constrs
-    confs <- mkallconfs constrs
-    let tyvars' = map (H.PlainTV . hsName . tyVarName) tyvars
-        n' = hsName n
-        dataD = H.DataD [] n' tyvars' [con] []
-        instD = mkinst con
-    return $ concat [[dataD, instD], confs]
+  in return $ concat [[dataD, instDt, instD], mkallconfs constrs]
 
 hsDec (ClassD n vars sigs@(TopSig _ _ t:_)) = do
     let vts = map tyVarName vars
@@ -478,9 +368,15 @@ haskellf env =
                  H.text "{-# LANGUAGE MultiParamTypeClasses #-}" H.$+$
                  H.text "{-# LANGUAGE FlexibleInstances #-}" H.$+$
                  H.text "{-# LANGUAGE ScopedTypeVariables #-}" H.$+$
+                 H.text "module Main (__main) where" H.$+$
                  H.text "import qualified Prelude" H.$+$
+                 H.text "import qualified Seri.HaskellF.Symbolic as S" H.$+$
+                 H.text "import qualified Seri.Name as S" H.$+$
+                 H.text "import qualified Seri.Type as S" H.$+$
+                 H.text "import qualified Seri.ExpH as S" H.$+$
                  H.text "import Seri.HaskellF.Lib.Prelude" H.$+$
-                 H.text "import Seri.HaskellF.Lib.SMT"
+                 H.text "" H.$+$
+                 H.text "__main = __main_wrapper main"
 
       ds = surely $ (concat <$> mapM hsDec env)
   in hsHeader H.$+$ H.ppr ds
@@ -503,20 +399,24 @@ tuple i =
   in DataD nm vars [Con nm (map tyVarType vars)]
 
 clssymbolic :: Integer -> H.Name
-clssymbolic 0 = H.mkName "Symbolic__"
-clssymbolic n = H.mkName $ "Symbolic" ++ show n ++ "__"
+clssymbolic 0 = H.mkName "S.Symbolic"
+clssymbolic n = H.mkName $ "S.Symbolic" ++ show n
 
-ifmeth :: Integer -> H.Name
-ifmeth 0 = H.mkName "__if"
-ifmeth n = H.mkName $ "__if" ++ show n
+boxmeth :: Integer -> H.Name
+boxmeth 0 = H.mkName "box"
+boxmeth n = H.mkName $ "box" ++ show n
 
-defmeth :: Integer -> H.Name
-defmeth 0 = H.mkName "__default"
-defmeth n = H.mkName $ "__default" ++ show n
+unboxmeth :: Integer -> H.Name
+unboxmeth 0 = H.mkName "unbox"
+unboxmeth n = H.mkName $ "unbox" ++ show n
 
-submeth :: Integer -> H.Name
-submeth 0 = H.mkName "__substitute"
-submeth n = H.mkName $ "__substitute" ++ show n
+clsserit :: Integer -> H.Name
+clsserit 0 = H.mkName "S.SeriT"
+clsserit n = H.mkName $ "S.SeriT" ++ show n
+
+seritmeth :: Integer -> H.Name
+seritmeth 0 = H.mkName "seriT"
+seritmeth n = H.mkName $ "seriT" ++ show n
 
 -- Form the context for declarations.
 mkContext :: (Name -> Bool) -- ^ which variable types we should care about

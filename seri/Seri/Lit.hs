@@ -5,6 +5,7 @@ module Seri.Lit (
     Lit(),
     integerL, de_integerL,
     charL, de_charL,
+    dynamicL, de_dynamicL,
     ) where
 
 import Data.Typeable

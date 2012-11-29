@@ -6,9 +6,10 @@ test:
 	./build/seri-bin/seri --haskellf \
 		--include seri/sri \
 		-m main \
-		-f seri/sri/Seri/SATLIB/SAT.sri > foo.hs
+		-f seri/sri/Seri/Tests/Basic.sri > foo.hs
 	HOME=build/home ghc -O2 -fno-warn-overlapping-patterns \
 		-fno-warn-missing-fields \
+		-main-is __main \
 		-prof -auto-all -rtsopts \
 		-o foo foo.hs
 	./foo +RTS -p

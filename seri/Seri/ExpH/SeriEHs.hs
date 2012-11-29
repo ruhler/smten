@@ -3,9 +3,13 @@
 
 module Seri.ExpH.SeriEHs (stringEH) where
 
+import Data.Typeable
+
 import Seri.Type
+import Seri.Lit
 import Seri.ExpH.ExpH
 import Seri.ExpH.SeriEH
+import Seri.ExpH.Sugar
 import Seri.ExpH.TH
 
 derive_SeriEH ''Maybe
