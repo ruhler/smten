@@ -45,6 +45,7 @@ de_varEH (VarEH s) = Just s
 de_varEH _ = Nothing
 
 appEH :: ExpH -> ExpH -> ExpH
+appEH (LamEH _ _ f) x = f x
 appEH f x = AppEH ES_None f x
 
 de_appEH :: ExpH -> Maybe (ExpH, ExpH)

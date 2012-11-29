@@ -259,9 +259,9 @@ testprelude = do
 tests :: Test ()
 tests = do
     t "test.dummy" True
-    --testbasic
-    --testprelude
-    --testarray
+    testbasic
+    testprelude
+    testarray
     --testvector
     --testbit
 

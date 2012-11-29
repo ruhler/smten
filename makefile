@@ -7,7 +7,7 @@ test:
 		--include seri/sri \
 		-m main \
 		-f seri/sri/Seri/Tests/Basic.sri > foo.hs
-	HOME=build/home ghc -O2 -fno-warn-overlapping-patterns \
+	HOME=build/home ghc -fno-warn-overlapping-patterns \
 		-fno-warn-missing-fields \
 		-main-is __main \
 		-prof -auto-all -rtsopts \
