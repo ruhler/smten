@@ -1,4 +1,6 @@
 
+{-# LANGUAGE PatternGuards #-}
+
 module Seri.Type.Typeof (Typeof(..)) where
 
 import Seri.Lit
@@ -11,8 +13,9 @@ class Typeof a where
     typeof :: a -> Type
 
 instance Typeof Lit where
-    typeof (IntegerL {}) = integerT
-    typeof (CharL {}) = charT
-
+    typeof l
+      | Just _ <- de_integerL l = integerT
+      | Just _ <- de_charL l = charT
+      | otherwise = UnknownT
 
 

@@ -139,8 +139,9 @@ smtE' e | Just (Sig n _, v, x) <- de_letE e = do
     x' <- smtE' x
     return (SMT.letE [(smtN n, v')] x')
 
-smtE' (LitE (IntegerL x)) = return $ SMT.integerE x
-smtE' (LitE (CharL c)) = return $ SMT.integerE (fromIntegral $ ord c)
+smtE' e
+ | Just v <- de_integerE e = return $ SMT.integerE v
+ | Just v <- de_charE e = return $ SMT.integerE (fromIntegral $ ord v)
 smtE' (ConE s) = smtC s []
 smtE' (VarE (Sig n _)) = return $ SMT.varE (smtN n)
 smtE' e@(AppE a b) =
@@ -170,8 +171,9 @@ smtE' e@(AppE a b) =
        (VarE (Sig n _), [a, b]) | n == name "Seri.Bit.__prim_shl_Bit" -> binary SMT.bvshlE a b
        (VarE (Sig n _), [a, b]) | n == name "Seri.Bit.__prim_lshr_Bit" -> binary SMT.bvlshrE a b
        (VarE (Sig n _), [a]) | n == name "Seri.Bit.__prim_not_Bit" -> SMT.bvnotE <$> smtE' a
-       (VarE (Sig n t), [LitE (IntegerL x)])
+       (VarE (Sig n t), [l])
             | n == name "Seri.Bit.__prim_fromInteger_Bit"
+            , Just x <- de_integerE l
             , Just (_, bt) <- de_arrowT t
             , Just w <- de_bitT bt
             -> return (SMT.mkbvE w x)
@@ -188,8 +190,9 @@ smtE' e@(AppE a b) =
             , Just (_, bt) <- de_arrowT t
             , Just tw <- de_bitT bt
             -> SMT.bvextractE (tw - 1) 0 <$> smtE' a
-       (VarE (Sig n _), [x, LitE (IntegerL i)])
+       (VarE (Sig n _), [x, li])
             | n == name "Seri.Bit.__prim_extract_Bit"
+            , Just i <- de_integerE li
             , Just tw <- de_bitT (typeof e)
             -> SMT.bvextractE (i + tw - 1) i <$> smtE' x
        (VarE (Sig n _), [f, k, v]) | n == name "Seri.SMT.Array.update" -> do

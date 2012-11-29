@@ -79,11 +79,6 @@ issymbol ('(':_) = False
 issymbol "[]" = False
 issymbol (h:_) = not $ isAlphaNum h || h == '_'
 
-
-hsLit :: Lit -> H.Lit
-hsLit (IntegerL i) = H.IntegerL i
-hsLit (CharL c) = H.CharL c
-
 hsExp :: Exp -> Failable H.Exp
 
 -- String literals:
@@ -98,7 +93,8 @@ hsExp e | Just xs <- de_listE e = do
   xs' <- mapM hsExp xs
   return $ H.ListE xs'
 
-hsExp (LitE l) = return (H.LitE (hsLit l))
+hsExp e | Just v <- de_integerE e = return (H.LitE (H.IntegerL v))
+hsExp e | Just v <- de_charE e = return (H.LitE (H.CharL v))
 hsExp (ConE (Sig n _)) = return $ H.ConE (hsName n)
 hsExp (VarE (Sig n t)) | unknowntype t = return $ H.VarE (hsName n)
 hsExp (VarE (Sig n t)) = do
