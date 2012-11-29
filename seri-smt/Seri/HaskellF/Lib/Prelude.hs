@@ -290,28 +290,28 @@ not x = __caseTrue x __mkFalse __mkTrue
 (||) x y = __caseTrue x __mkTrue y
 
 __prim_eq_Char :: Char -> Char -> Bool
-__prim_eq_Char (Char a) (Char b) = Bool $ S.char_eqEH a b
+__prim_eq_Char (Char a) (Char b) = Bool $ S.__prim_eq_CharEH a b
 
 __prim_eq_Integer :: Integer -> Integer -> Bool
-__prim_eq_Integer (Integer a) (Integer b) = Bool $ S.integer_eqEH a b
+__prim_eq_Integer (Integer a) (Integer b) = Bool $ S.__prim_eq_IntegerEH a b
 
 __prim_add_Integer :: Integer -> Integer -> Integer
-__prim_add_Integer (Integer a) (Integer b) = Integer $ S.integer_addEH a b
+__prim_add_Integer (Integer a) (Integer b) = Integer $ S.__prim_add_IntegerEH a b
 
 __prim_sub_Integer :: Integer -> Integer -> Integer
-__prim_sub_Integer (Integer a) (Integer b) = Integer $ S.integer_subEH a b
+__prim_sub_Integer (Integer a) (Integer b) = Integer $ S.__prim_sub_IntegerEH a b
 
 __prim_mul_Integer :: Integer -> Integer -> Integer
-__prim_mul_Integer (Integer a) (Integer b) = Integer $ S.integer_mulEH a b
+__prim_mul_Integer (Integer a) (Integer b) = Integer $ S.__prim_mul_IntegerEH a b
 
 (<) :: Integer -> Integer -> Bool
-(<) (Integer a) (Integer b) = Bool $ S.integer_ltEH a b
+(<) (Integer a) (Integer b) = Bool $ S.__prim_lt_IntegerEH a b
 
 (<=) :: Integer -> Integer -> Bool
-(<=) (Integer a) (Integer b) = Bool $ S.integer_leqEH a b
+(<=) (Integer a) (Integer b) = Bool $ S.__prim_leq_IntegerEH a b
 
 (>) :: Integer -> Integer -> Bool
-(>) (Integer a) (Integer b) = Bool $ S.integer_gtEH a b
+(>) (Integer a) (Integer b) = Bool $ S.__prim_gt_IntegerEH a b
 
 __prim_show_Integer :: Integer -> String
 __prim_show_Integer (Integer x)

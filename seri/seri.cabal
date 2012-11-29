@@ -67,6 +67,7 @@ library
     Seri.ExpH.ToExpH
     Seri.ExpH.FromExpH
     Seri.ExpH.Ppr
+    Seri.ExpH.Primitives
     Seri.ExpH.Utils
 
     Seri.Haskell
@@ -113,7 +114,7 @@ library
     Seri.TH
 
     Seri.Fresh
-    Seri.DSEL.DSEL
+    --Seri.DSEL.DSEL
 
     Seri.Ppr
     Seri.Lit

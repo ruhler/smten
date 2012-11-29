@@ -13,9 +13,6 @@ module Seri.ExpH.Sugar (
     charEH, de_charEH,
 
     de_notEH, de_andEH, de_orEH,
-    integer_addEH, integer_subEH, integer_mulEH,
-    char_eqEH,
-    integer_eqEH, integer_ltEH, integer_leqEH, integer_gtEH, 
     ) where
 
 import Seri.Bit
@@ -118,54 +115,6 @@ caseEH x k@(Sig nk _) y n
  | (ConEH (Sig s _), vs) <- de_appsEH x
     = if s == nk then appsEH y vs else n
  | otherwise = CaseEH ES_None x k y n
-
-integer_addEH :: ExpH -> ExpH -> ExpH
-integer_addEH a b
-  | Just av <- de_integerEH a
-  , Just bv <- de_integerEH b = integerEH (av + bv)
-  | otherwise = appsEH (varEH (Sig (name "Prelude.__prim_add_Integer") (arrowsT [integerT, integerT, integerT]))) [a, b]
-
-integer_subEH :: ExpH -> ExpH -> ExpH
-integer_subEH a b
-  | Just av <- de_integerEH a
-  , Just bv <- de_integerEH b = integerEH (av - bv)
-  | otherwise = appsEH (varEH (Sig (name "Prelude.__prim_sub_Integer") (arrowsT [integerT, integerT, integerT]))) [a, b]
-
-integer_mulEH :: ExpH -> ExpH -> ExpH
-integer_mulEH a b
-  | Just av <- de_integerEH a
-  , Just bv <- de_integerEH b = integerEH (av * bv)
-  | otherwise = appsEH (varEH (Sig (name "Prelude.__prim_mul_Integer") (arrowsT [integerT, integerT, integerT]))) [a, b]
-
-char_eqEH :: ExpH -> ExpH -> ExpH
-char_eqEH a b
-  | Just av <- de_charEH a
-  , Just bv <- de_charEH b = boolEH (av == bv)
-  | otherwise = appsEH (varEH (Sig (name "Prelude.__prim_eq_Char") (arrowsT [charT, charT, boolT]))) [a, b]
-
-integer_eqEH :: ExpH -> ExpH -> ExpH
-integer_eqEH a b
-  | Just av <- de_integerEH a
-  , Just bv <- de_integerEH b = boolEH (av == bv)
-  | otherwise = appsEH (varEH (Sig (name "Prelude.__prim_eq_Integer") (arrowsT [integerT, integerT, boolT]))) [a, b]
-
-integer_ltEH :: ExpH -> ExpH -> ExpH
-integer_ltEH a b
-  | Just av <- de_integerEH a
-  , Just bv <- de_integerEH b = boolEH (av < bv)
-  | otherwise = appsEH (varEH (Sig (name "Prelude.<") (arrowsT [integerT, integerT, boolT]))) [a, b]
-
-integer_leqEH :: ExpH -> ExpH -> ExpH
-integer_leqEH a b
-  | Just av <- de_integerEH a
-  , Just bv <- de_integerEH b = boolEH (av <= bv)
-  | otherwise = appsEH (varEH (Sig (name "Prelude.<=") (arrowsT [integerT, integerT, boolT]))) [a, b]
-
-integer_gtEH :: ExpH -> ExpH -> ExpH
-integer_gtEH a b
-  | Just av <- de_integerEH a
-  , Just bv <- de_integerEH b = boolEH (av > bv)
-  | otherwise = appsEH (varEH (Sig (name "Prelude.>") (arrowsT [integerT, integerT, boolT]))) [a, b]
 
 de_notEH :: ExpH -> Maybe ExpH
 de_notEH e =
