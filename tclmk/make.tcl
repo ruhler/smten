@@ -129,7 +129,7 @@ io Seri.Tests.Basic
 #io Seri.SMT.Tests.Integer
 #io Seri.SMT.Tests.Bit
 
-haskellf Seri.Tests.Basic
+#haskellf Seri.Tests.Basic
 #haskellf Seri.SMT.Tests.Core
 #haskellf Seri.SMT.Tests.Datatype
 #haskellf Seri.SMT.Tests.Scoped

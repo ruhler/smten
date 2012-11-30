@@ -5,12 +5,14 @@ module Seri.Lit (
     Lit(),
     integerL, de_integerL,
     charL, de_charL,
+    bitL, de_bitL,
     dynamicL, de_dynamicL,
     ) where
 
 import Data.Typeable
 import Data.Dynamic
 
+import Seri.Bit
 import Seri.Ppr
 
 data Lit = Lit Dynamic
@@ -42,8 +44,15 @@ charL = dynamicL
 de_charL :: Lit -> Maybe Char
 de_charL = de_dynamicL
 
+bitL :: Bit -> Lit
+bitL = dynamicL
+
+de_bitL :: Lit -> Maybe Bit
+de_bitL = de_dynamicL
+
 instance Ppr Lit where
     ppr l
       | Just i <- de_integerL l = integer i
       | Just c <- de_charL l = text (show c)
+      | Just b <- de_bitL l = text (show b)
 

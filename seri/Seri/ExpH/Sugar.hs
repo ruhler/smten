@@ -93,16 +93,12 @@ de_integerEH e = do
     de_integerL l
 
 bitEH :: Bit -> ExpH
-bitEH b = appEH (varEH (Sig (name "Seri.Bit.__prim_fromInteger_Bit") (arrowsT [integerT, bitT (bv_width b)]))) (integerEH $ bv_value b)
+bitEH = litEH . bitL
 
--- Extract a Bit from an expression of the form: __prim_frominteger_Bit v
--- The expression should be elaborated already.
 de_bitEH :: ExpH -> Maybe Bit
-de_bitEH (AppEH _ (VarEH (Sig fib (AppT _ (AppT _ (NumT w))))) ve)
-  | fib == name "Seri.Bit.__prim_fromInteger_Bit"
-  , Just v <- de_integerEH ve
-  = Just (bv_make (nteval w) v)
-de_bitEH _ = Nothing
+de_bitEH e = do
+    l <- de_litEH e
+    de_bitL l
 
 charEH :: Char -> ExpH
 charEH = litEH . charL 

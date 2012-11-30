@@ -33,6 +33,8 @@
 -- 
 -------------------------------------------------------------------------------
 
+{-# LANGUAGE DeriveDataTypeable #-}
+
 -- | Bit vector library. Widths are specified dynamically instead of enforced
 -- statically to avoid complications with numeric types in haskell. But all
 -- operations assume properly related widths.
@@ -43,6 +45,7 @@ module Seri.Bit (
     bv_shl, bv_lshr,
     ) where
 
+import Data.Typeable
 import Data.Bits
 
 data Bit = Bit {
@@ -51,7 +54,7 @@ data Bit = Bit {
     -- | The value is stored as the smallest positive integer representing the
     -- bits of the bit vector.
     bv_value :: Integer
-}
+} deriving (Typeable)
 
 instance Show Bit where
     show (Bit w v) = show w ++ "'d" ++ show v

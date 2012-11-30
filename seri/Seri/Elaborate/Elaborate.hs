@@ -186,6 +186,12 @@ uprimitives =
        (name "Seri.Bit.__prim_not_Bit", uVV complement),
        (name "Prelude.__prim_show_Integer", uIS show),
        (name "Seri.Bit.__prim_show_Bit", uVS show),
+       (name "Seri.Bit.__prim_fromInteger_Bit", \t a -> do
+           v <- de_integerEH a
+           (_, bt) <- de_arrowT t
+           w <- de_bitT bt
+           return $ bitEH (bv_make w v)
+          ),
        (name "Prelude.&&", \_ a -> do
            a' <- de_boolEH a
            return $ LamEH ES_None (Sig (name "b") boolT)

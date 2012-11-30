@@ -58,6 +58,7 @@ import Control.Monad.Error
 
 import Seri.Failable
 import Seri.Name
+import Seri.Bit
 import Seri.Lit
 import Seri.Sig
 import Seri.Ppr
@@ -142,6 +143,7 @@ smtE' e | Just (Sig n _, v, x) <- de_letE e = do
 smtE' e
  | Just v <- de_integerE e = return $ SMT.integerE v
  | Just v <- de_charE e = return $ SMT.integerE (fromIntegral $ ord v)
+ | Just v <- de_bitE e = return $ SMT.mkbvE (bv_width v) (bv_value v)
 smtE' (ConE s) = smtC s []
 smtE' (VarE (Sig n _)) = return $ SMT.varE (smtN n)
 smtE' e@(AppE a b) =
@@ -171,12 +173,6 @@ smtE' e@(AppE a b) =
        (VarE (Sig n _), [a, b]) | n == name "Seri.Bit.__prim_shl_Bit" -> binary SMT.bvshlE a b
        (VarE (Sig n _), [a, b]) | n == name "Seri.Bit.__prim_lshr_Bit" -> binary SMT.bvlshrE a b
        (VarE (Sig n _), [a]) | n == name "Seri.Bit.__prim_not_Bit" -> SMT.bvnotE <$> smtE' a
-       (VarE (Sig n t), [l])
-            | n == name "Seri.Bit.__prim_fromInteger_Bit"
-            , Just x <- de_integerE l
-            , Just (_, bt) <- de_arrowT t
-            , Just w <- de_bitT bt
-            -> return (SMT.mkbvE w x)
        (VarE (Sig n t), [a])
             | n == name "Seri.Bit.__prim_zeroExtend_Bit"
             , Just (bs, bt) <- de_arrowT t
