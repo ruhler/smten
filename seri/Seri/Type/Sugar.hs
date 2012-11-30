@@ -31,8 +31,19 @@ de_conT _ = Nothing
 
 -- | Type application.
 -- Given a, b, returns the type (a b)
+--
+-- Special case: if the result would be an application of
+--  ConT "+", ConT "-", or ConT "*" and two numeric types, converts it to the
+--  numeric type operation.
+--
+-- This is a hack to get the haskellf translation work with seriT and numeric
+-- types. The proper solution would be to change the representation of numeric
+-- type operations so that #(a+b) is represented as
+--   AppT (AppT (ConT "+") a b), or some such similar.
 appT :: Type -> Type -> Type
-appT = AppT
+appT (AppT (ConT n) (NumT a)) (NumT b)
+ | n `elem` map name ["+", "-", "*"] = NumT (AppNT (unname n) a b)
+appT a b = AppT a b
 
 de_appT :: Type -> Maybe (Type, Type)
 de_appT (AppT a b) = Just (a, b)

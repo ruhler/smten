@@ -162,48 +162,28 @@ instance Symbolic N__0 where
     box = N__0
     unbox (N__0 x) = x
 
-newtype N__2p0 a = N__2p0 ExpH
+newtype N__1 = N__1 ExpH
 
-instance SeriT1 N__2p0 where
-    seriT1 x =
-      let f :: N__2p0 a -> a
-          f _ = undefined
-    
-          NumT (ConNT v) = seriT (f x)
-      in NumT (ConNT (2*v))
+instance SeriT N__1 where
+    seriT _ = NumT (ConNT 1)
 
-instance Symbolic1 N__2p0 where
-    box1 = N__2p0
-    unbox1 (N__2p0 x) = x
+instance Symbolic N__1 where
+    box = N__1
+    unbox (N__1 x) = x
 
-newtype N__2p1 a = N__2p1 ExpH
+newtype N__2 = N__2 ExpH
 
-instance SeriT1 N__2p1 where
-    seriT1 x =
-      let f :: N__2p1 a -> a
-          f _ = undefined
-      in case seriT (f x) of
-           NumT (ConNT v) -> NumT (ConNT (2*v + 1))
-           t -> P.error $ "seriT N__2p1: " ++ show t
+instance SeriT N__2 where
+    seriT _ = NumT (ConNT 2)
 
-instance Symbolic1 N__2p1 where
-    box1 = N__2p1
-    unbox1 (N__2p1 x) = x
-
+instance Symbolic N__2 where
+    box = N__2
+    unbox (N__2 x) = x
 
 newtype N__PLUS a b = N__PLUS ExpH
 
 instance SeriT2 N__PLUS where
-    seriT2 x =
-      let fa :: N__PLUS a b -> a
-          fa _ = undefined
-
-          fb :: N__PLUS a b -> b
-          fb _ = undefined
-
-          NumT a = seriT (fa x)
-          NumT b = seriT (fb x)
-      in NumT $ addNT a b
+    seriT2 _ = ConT (name "+")
 
 instance Symbolic2 N__PLUS where
     box2 = N__PLUS
@@ -212,16 +192,7 @@ instance Symbolic2 N__PLUS where
 newtype N__MINUS a b = N__MINUS ExpH
 
 instance SeriT2 N__MINUS where
-    seriT2 x =
-      let fa :: N__MINUS a b -> a
-          fa _ = undefined
-
-          fb :: N__MINUS a b -> b
-          fb _ = undefined
-
-          NumT a = seriT (fa x)
-          NumT b = seriT (fb x)
-      in NumT $ subNT a b
+    seriT2 _ = ConT (name "-")
 
 instance Symbolic2 N__MINUS where
     box2 = N__MINUS
@@ -230,20 +201,15 @@ instance Symbolic2 N__MINUS where
 newtype N__TIMES a b = N__TIMES ExpH
 
 instance SeriT2 N__TIMES where
-    seriT2 x =
-      let fa :: N__TIMES a b -> a
-          fa _ = undefined
-
-          fb :: N__TIMES a b -> b
-          fb _ = undefined
-
-          NumT a = seriT (fa x)
-          NumT b = seriT (fb x)
-      in NumT $ mulNT a b
+    seriT2 _ = ConT (name "*")
 
 instance Symbolic2 N__TIMES where
     box2 = N__TIMES
     unbox2 (N__TIMES x) = x
+
+type N__2p0 a = N__TIMES N__2 a
+type N__2p1 a = N__PLUS (N__2p0 a) N__1
+
 
 
 nullary :: (Symbolic a) => ExpH -> a

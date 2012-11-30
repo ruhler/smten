@@ -265,9 +265,9 @@ tests = do
     t "test.dummy" True
     testbasic
     testprelude
-    --testnumeric
+    testnumeric
     testarray
-    --testvector
+    testvector
     --testbit
 
 main :: IO ()
