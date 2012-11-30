@@ -21,11 +21,13 @@ module Seri.HaskellF.Lib.Prelude (
     __prim_show_Integer,
     return_io, bind_io, nobind_io, fail_io, putChar, getContents,
 
---    __prim_eq_Bit, __prim_show_Bit, __prim_add_Bit, __prim_sub_Bit, 
---    __prim_mul_Bit, __prim_fromInteger_Bit, __prim_shl_Bit,
---    __prim_lshr_Bit, __prim_or_Bit, __prim_and_Bit, __prim_not_Bit,
---    __prim_zeroExtend_Bit, __prim_truncate_Bit, __prim_concat_Bit,
---    __prim_extract_Bit,
+    __prim_eq_Bit, __prim_show_Bit,
+    __prim_add_Bit, __prim_sub_Bit, __prim_mul_Bit,
+    __prim_fromInteger_Bit,
+    --__prim_shl_Bit,
+    --__prim_lshr_Bit, __prim_or_Bit, __prim_and_Bit, __prim_not_Bit,
+    --__prim_zeroExtend_Bit, __prim_truncate_Bit, __prim_concat_Bit,
+    --__prim_extract_Bit,
     error,
     __main_wrapper,
     valueof, numeric,
@@ -276,24 +278,26 @@ putChar = unary putCharEH
 getContents :: IO String
 getContents = nullary getContentsEH
 
---__prim_eq_Bit :: Bit n -> Bit n -> Bool
---__prim_eq_Bit = binary __prim_eq_BitEH
---
---__prim_show_Bit :: Bit n -> String
---__prim_show_Bit = unary __prim_show_BitEH
---
---__prim_add_Bit :: Bit n -> Bit n -> Bit n
---__prim_add_Bit = binary __prim_add_BitEH
---
---__prim_sub_Bit :: Bit n -> Bit n -> Bit n
---__prim_sub_Bit = binary __prim_sub_BitEH
---
---__prim_mul_Bit :: Bit n -> Bit n -> Bit n
---__prim_mul_Bit = binary __prim_mul_BitEH
---
---__prim_fromInteger_Bit :: Integer -> Bit n
---__prim_fromInteger_Bit = unary __prim_fromInteger_BitEH
---
+__prim_eq_Bit :: (Symbolic n) => Bit n -> Bit n -> Bool
+__prim_eq_Bit = binary __prim_eq_BitEH
+
+__prim_show_Bit :: (Symbolic n) => Bit n -> String
+__prim_show_Bit = unary __prim_show_BitEH
+
+__prim_add_Bit :: (Symbolic n) => Bit n -> Bit n -> Bit n
+__prim_add_Bit = binary __prim_add_BitEH
+
+__prim_sub_Bit :: (Symbolic n) => Bit n -> Bit n -> Bit n
+__prim_sub_Bit = binary __prim_sub_BitEH
+
+__prim_mul_Bit :: (Symbolic n) => Bit n -> Bit n -> Bit n
+__prim_mul_Bit = binary __prim_mul_BitEH
+
+__prim_fromInteger_Bit :: (Symbolic n) => Integer -> Bit n
+__prim_fromInteger_Bit =
+  let z = unary (__prim_fromInteger_BitEH (seriT z))
+  in z
+
 --__prim_shl_Bit :: Bit n -> Bit n -> Bit n
 --__prim_shl_Bit = binary __prim_shl_BitEH
 --

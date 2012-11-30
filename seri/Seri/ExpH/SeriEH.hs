@@ -6,6 +6,7 @@ module Seri.ExpH.SeriEH (
 import Control.Monad
 
 import Seri.Name
+import Seri.Bit
 import Seri.Sig
 import Seri.Type
 import Seri.ExpH.ExpH

@@ -10,11 +10,15 @@ module Seri.ExpH.Primitives(
     __prim_return_IOEH, __prim_bind_IOEH, __prim_nobind_IOEH, __prim_fail_IOEH,
     putCharEH, getContentsEH,
     numericEH, valueofEH,
+    __prim_eq_BitEH, __prim_show_BitEH,
+    __prim_add_BitEH, __prim_sub_BitEH, __prim_mul_BitEH,
+    __prim_fromInteger_BitEH,
     ) where
 
 import Data.Functor((<$>))
 
 import Seri.Name
+import Seri.Bit
 import Seri.Sig
 import Seri.Type
 import Seri.Ppr
@@ -41,6 +45,14 @@ __prim_eq_IntegerEH =
   let f :: Integer -> Integer -> Bool
       f = (==)
   in binary "Prelude.__prim_eq_Integer" f
+
+__prim_eq_BitEH :: ExpH -> ExpH -> ExpH
+__prim_eq_BitEH a b
+  | Just av <- de_bitEH a
+  , Just bv <- de_bitEH b = boolEH (av == bv)
+  | otherwise =
+     let t = arrowsT [typeof a, typeof b, boolT]
+     in appsEH (varEH (Sig (name "Seri.Bit.__prim_eq_Bit") t)) [a, b]
 
 __prim_eq_CharEH :: ExpH -> ExpH -> ExpH
 __prim_eq_CharEH =
@@ -90,6 +102,20 @@ __prim_show_IntegerEH =
       f = show
   in unary "Prelude.__prim_show_Integer" f
 
+__prim_show_BitEH :: ExpH -> ExpH
+__prim_show_BitEH a
+  | Just av <- de_bitEH a = stringEH (show av)
+  | otherwise = 
+      let t = arrowsT [typeof a, stringT]
+      in appEH (varEH (Sig (name "Seri.Bit.__prim_show_Bit") t)) a
+
+__prim_fromInteger_BitEH :: Type -> ExpH -> ExpH
+__prim_fromInteger_BitEH t a
+  | Just v <- de_integerEH a
+  , Just (_, bt) <- de_arrowT t
+  , Just w <- de_bitT bt = bitEH (bv_make w v)
+  | otherwise = appEH (varEH (Sig (name "Seri.Bit.__prim_fromInteger_Bit") t)) a
+  
 __prim_return_IOEH :: ExpH -> ExpH
 __prim_return_IOEH a = ioEH (return a)
 
@@ -141,4 +167,21 @@ valueofEH :: ExpH -> ExpH
 valueofEH x = 
   let NumT nt = typeof x
   in integerEH (nteval nt)
+
+binaryB :: String -> (Bit -> Bit -> Bit) -> ExpH -> ExpH -> ExpH
+binaryB n f a b
+ | Just av <- de_bitEH a
+ , Just bv <- de_bitEH b = bitEH (f av bv)
+ | otherwise =
+    let t = arrowsT [typeof a, typeof b, typeof a]
+    in appsEH (varEH (Sig (name n) t)) [a, b]
+
+__prim_add_BitEH :: ExpH -> ExpH -> ExpH
+__prim_add_BitEH = binaryB "Seri.Bit.__prim_add_Bit" (+)
+
+__prim_sub_BitEH :: ExpH -> ExpH -> ExpH
+__prim_sub_BitEH = binaryB "Seri.Bit.__prim_sub_Bit" (-)
+
+__prim_mul_BitEH :: ExpH -> ExpH -> ExpH
+__prim_mul_BitEH = binaryB "Seri.Bit.__prim_mul_Bit" (*)
 

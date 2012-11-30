@@ -301,11 +301,12 @@ hsDec (ClassD n vars sigs@(TopSig _ _ t:_)) = do
     return $ [H.ClassD ctx (hsName n) (map (H.PlainTV . hsName) use) [] sigs']
 
 hsDec (InstD ctx (Class n ts) ms) = do
+    let (nctx, _) = mkContext (const True) (appsT (conT n) ts)
     ctx' <- mapM hsClass ctx
     ms' <- mapM hsMethod ms
     ts' <- mapM hsType ts
     let t = foldl H.AppT (H.ConT (hsName n)) ts'
-    return [H.InstanceD ctx' t ms'] 
+    return [H.InstanceD (nctx ++ ctx') t ms'] 
 
 hsDec (PrimD s@(TopSig n _ _))
  | n == name "Prelude.__prim_add_Integer" = return []
