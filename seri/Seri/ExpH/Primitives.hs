@@ -12,9 +12,13 @@ module Seri.ExpH.Primitives(
     numericEH, valueofEH,
     __prim_eq_BitEH, __prim_show_BitEH,
     __prim_add_BitEH, __prim_sub_BitEH, __prim_mul_BitEH,
+    __prim_and_BitEH, __prim_or_BitEH, __prim_not_BitEH,
+    __prim_shl_BitEH, __prim_lshr_BitEH,
     __prim_fromInteger_BitEH, __prim_zeroExtend_BitEH,
+    __prim_truncate_BitEH, __prim_extract_BitEH, __prim_concat_BitEH,
     ) where
 
+import Data.Bits
 import Data.Functor((<$>))
 
 import Seri.Name
@@ -192,3 +196,49 @@ __prim_sub_BitEH = binaryB "Seri.Bit.__prim_sub_Bit" (-)
 __prim_mul_BitEH :: ExpH -> ExpH -> ExpH
 __prim_mul_BitEH = binaryB "Seri.Bit.__prim_mul_Bit" (*)
 
+__prim_and_BitEH :: ExpH -> ExpH -> ExpH
+__prim_and_BitEH = binaryB "Seri.Bit.__prim_and_Bit" (.&.)
+
+__prim_or_BitEH :: ExpH -> ExpH -> ExpH
+__prim_or_BitEH = binaryB "Seri.Bit.__prim_or_Bit" (.|.)
+
+__prim_shl_BitEH :: ExpH -> ExpH -> ExpH
+__prim_shl_BitEH = binaryB "Seri.Bit.__prim_shl_Bit" bv_shl
+
+__prim_lshr_BitEH :: ExpH -> ExpH -> ExpH
+__prim_lshr_BitEH = binaryB "Seri.Bit.__prim_lshr_Bit" bv_lshr
+
+__prim_not_BitEH :: ExpH -> ExpH
+__prim_not_BitEH a
+ | Just av <- de_bitEH a = bitEH (complement av)
+ | otherwise =
+    let t = arrowsT [typeof a, typeof a]
+    in appEH (varEH (Sig (name "Seri.Bit.__prim_not_Bit") t)) a
+
+__prim_truncate_BitEH :: Type -> ExpH -> ExpH
+__prim_truncate_BitEH t a
+ | Just v <- de_bitEH a =
+    let [ta, AppT _ (NumT wt)] = de_arrowsT t
+    in bitEH $ bv_truncate (nteval wt) v
+ | otherwise = appEH (varEH (Sig (name "Seri.Bit.__prim_truncate_Bit") t)) a
+
+__prim_extract_BitEH :: Type -> ExpH -> ExpH -> ExpH
+__prim_extract_BitEH t a j
+ | Just av <- de_bitEH a
+ , Just jv <- de_integerEH j =
+   let AppT _ (NumT wt) = last $ de_arrowsT t
+       i = jv + (nteval wt) - 1
+   in bitEH $ bv_extract i jv av
+ | otherwise = appsEH (varEH (Sig (name "Seri.Bit.__prim_extract_BitEH") t)) [a, j]
+
+
+__prim_concat_BitEH :: ExpH -> ExpH -> ExpH
+__prim_concat_BitEH a b
+ | Just av <- de_bitEH a
+ , Just bv <- de_bitEH b = bitEH (bv_concat av bv)
+ | otherwise =
+    let Just wa = de_bitT $ typeof a
+        Just wb = de_bitT $ typeof b
+        t = arrowsT [typeof a, typeof b, bitT (wa+wb)]
+    in appsEH (varEH (Sig (name "Seri.Bit.__prim_concat_BitEH") t)) [a, b]
+    

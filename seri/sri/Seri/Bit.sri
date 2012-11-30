@@ -12,16 +12,15 @@ __prim_mul_Bit :: Bit #n -> Bit #n -> Bit #n
 __prim_show_Bit :: Bit #n -> String
 __prim_fromInteger_Bit :: Integer -> Bit #n
 __prim_zeroExtend_Bit :: Bit #n -> Bit #m
+__prim_or_Bit :: Bit #n -> Bit #n -> Bit #n
+__prim_and_Bit :: Bit #n -> Bit #n -> Bit #n
+__prim_shl_Bit :: Bit #n -> Bit #n -> Bit #n
+__prim_lshr_Bit :: Bit #n -> Bit #n -> Bit #n
+__prim_not_Bit :: Bit #n -> Bit #n
+__prim_truncate_Bit :: Bit #n -> Bit #m
+__prim_extract_Bit :: Bit #n -> Integer -> Bit #m
+__prim_concat_Bit :: Bit #n -> Bit #m -> Bit #(n+m)
 
---__prim_not_Bit :: Bit #n -> Bit #n
---__prim_truncate_Bit :: Bit #n -> Bit #m
---__prim_extract_Bit :: Bit #n -> Integer -> Bit #m
---__prim_shl_Bit :: Bit #n -> Bit #n -> Bit #n
---__prim_lshr_Bit :: Bit #n -> Bit #n -> Bit #n
---__prim_or_Bit :: Bit #n -> Bit #n -> Bit #n
---__prim_and_Bit :: Bit #n -> Bit #n -> Bit #n
---__prim_concat_Bit :: Bit #n -> Bit #m -> Bit #(n+m)
---
 
 instance Eq (Bit #n) where
     (==) = __prim_eq_Bit
@@ -44,32 +43,32 @@ bv_ntype _ = numeric
 bv_sizeof :: Bit #n -> Integer
 bv_sizeof x = valueof (bv_ntype x)
 
---bv_shl :: Bit #n -> Bit #n -> Bit #n
---bv_shl = __prim_shl_Bit
---
---bv_lshr :: Bit #n -> Bit #n -> Bit #n
---bv_lshr = __prim_lshr_Bit
---
---bv_or :: Bit #n -> Bit #n -> Bit #n
---bv_or = __prim_or_Bit
---
---bv_and :: Bit #n -> Bit #n -> Bit #n
---bv_and = __prim_and_Bit
---
---bv_not :: Bit #n -> Bit #n 
---bv_not = __prim_not_Bit
+bv_shl :: Bit #n -> Bit #n -> Bit #n
+bv_shl = __prim_shl_Bit
+
+bv_lshr :: Bit #n -> Bit #n -> Bit #n
+bv_lshr = __prim_lshr_Bit
+
+bv_or :: Bit #n -> Bit #n -> Bit #n
+bv_or = __prim_or_Bit
+
+bv_and :: Bit #n -> Bit #n -> Bit #n
+bv_and = __prim_and_Bit
+
+bv_not :: Bit #n -> Bit #n 
+bv_not = __prim_not_Bit
 
 bv_zero_extend :: Bit #n -> Bit #m
 bv_zero_extend = __prim_zeroExtend_Bit
 
---bv_truncate :: Bit #n -> Bit #m
---bv_truncate = __prim_truncate_Bit
---
---bv_concat :: Bit #n -> Bit #m -> Bit #(n+m)
---bv_concat = __prim_concat_Bit
---
----- Extract m bits from the given vector, with the least significant bit to be
----- extract specified in the argument. The most significant bit is inferred.
---bv_extract :: Bit #n -> Integer -> Bit #m
---bv_extract = __prim_extract_Bit
+bv_truncate :: Bit #n -> Bit #m
+bv_truncate = __prim_truncate_Bit
+
+bv_concat :: Bit #n -> Bit #m -> Bit #(n+m)
+bv_concat = __prim_concat_Bit
+
+-- Extract m bits from the given vector, with the least significant bit to be
+-- extract specified in the argument. The most significant bit is inferred.
+bv_extract :: Bit #n -> Integer -> Bit #m
+bv_extract = __prim_extract_Bit
 

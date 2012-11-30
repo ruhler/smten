@@ -24,11 +24,10 @@ module Seri.HaskellF.Lib.Prelude (
     __prim_eq_Bit, __prim_show_Bit,
     __prim_add_Bit, __prim_sub_Bit, __prim_mul_Bit,
     __prim_fromInteger_Bit,
-    --__prim_shl_Bit,
-    --__prim_lshr_Bit, __prim_or_Bit, __prim_and_Bit, __prim_not_Bit,
+    __prim_shl_Bit, __prim_lshr_Bit,
+    __prim_or_Bit, __prim_and_Bit, __prim_not_Bit,
     __prim_zeroExtend_Bit,
-    --__prim_truncate_Bit, __prim_concat_Bit,
-    --__prim_extract_Bit,
+    __prim_truncate_Bit, __prim_concat_Bit, __prim_extract_Bit,
     error,
     __main_wrapper,
     valueof, numeric,
@@ -299,28 +298,38 @@ __prim_fromInteger_Bit =
   let z = unary (__prim_fromInteger_BitEH (seriT z))
   in z
 
---__prim_shl_Bit :: Bit n -> Bit n -> Bit n
---__prim_shl_Bit = binary __prim_shl_BitEH
---
---__prim_lshr_Bit :: Bit n -> Bit n -> Bit n
---__prim_lshr_Bit = binary __prim_lshr_BitEH
---
---__prim_or_Bit :: Bit n -> Bit n -> Bit n
---__prim_or_Bit = binary __prim_or_BitEH
---
---__prim_and_Bit :: Bit n -> Bit n -> Bit n
---__prim_and_Bit = binary __prim_and_BitEH
---
---__prim_not_Bit :: Bit n -> Bit n
---__prim_not_Bit = unary __prim_not_BitEH
+__prim_shl_Bit :: (Symbolic n) => Bit n -> Bit n -> Bit n
+__prim_shl_Bit = binary __prim_shl_BitEH
+
+__prim_lshr_Bit :: (Symbolic n) => Bit n -> Bit n -> Bit n
+__prim_lshr_Bit = binary __prim_lshr_BitEH
+
+__prim_or_Bit :: (Symbolic n) => Bit n -> Bit n -> Bit n
+__prim_or_Bit = binary __prim_or_BitEH
+
+__prim_and_Bit :: (Symbolic n) => Bit n -> Bit n -> Bit n
+__prim_and_Bit = binary __prim_and_BitEH
+
+__prim_not_Bit :: (Symbolic n) => Bit n -> Bit n
+__prim_not_Bit = unary __prim_not_BitEH
 
 __prim_zeroExtend_Bit :: (Symbolic n, Symbolic m) => Bit n -> Bit m
 __prim_zeroExtend_Bit =
  let z = unary $ __prim_zeroExtend_BitEH (seriT z)
  in z
 
---__prim_truncate_Bit :: Bit n -> Bit m
---__prim_truncate_Bit = unary __prim_truncate_BitEH
+__prim_truncate_Bit :: (Symbolic n, Symbolic m) => Bit n -> Bit m
+__prim_truncate_Bit =
+  let z = unary $ __prim_truncate_BitEH (seriT z)
+  in z
+
+__prim_concat_Bit :: (Symbolic n, Symbolic m) => Bit n -> Bit m -> Bit (N__PLUS n m)
+__prim_concat_Bit = binary __prim_concat_BitEH
+
+__prim_extract_Bit :: (Symbolic n, Symbolic m) => Bit n -> Integer -> Bit m
+__prim_extract_Bit =
+  let z = binary $ __prim_extract_BitEH (seriT z)
+  in z
 
 error :: (Symbolic a) => String -> a
 error x
