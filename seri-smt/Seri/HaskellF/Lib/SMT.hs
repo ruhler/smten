@@ -1,109 +1,93 @@
 
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE TypeSynonymInstances #-}
-
 module Seri.HaskellF.Lib.SMT (
-    Query, Answer,
-    __prim_free,
-    assert, Q.query, Q.queryS,
-    return_query, bind_query, nobind_query, fail_query,
-    runYices1, runYices2, runSTP,
-
+    Query,
+    Answer,
     __caseSatisfiable, __mkSatisfiable,
     __caseUnknown, __mkUnknown,
     __caseUnsatisfiable, __mkUnsatisfiable,
+
+    __prim_free, assert, query, queryS,
+    return_query, bind_query, nobind_query, fail_query,
+    runYices1, runYices2, runSTP,
     ) where
 
-import Data.Functor((<$>))
+import Prelude hiding (Bool, IO, Char, String)
+import Seri.Name
+import Seri.Type
+import Seri.ExpH
+import Seri.HaskellF.Symbolic
+import Seri.HaskellF.Lib.Prelude
+import Seri.SMT.Primitives
 
-import qualified Seri.HaskellF.Lib.Prelude as F
-import qualified Seri.HaskellF.Lib.Query as Q
-import qualified Seri.SMT.Yices.Yices1 as Q
-import qualified Seri.SMT.Yices.Yices2 as Q
-import qualified Seri.SMT.STP.STP as Q
+newtype Query a = Query ExpH
 
-type Query = Q.Query
-type Answer = Q.Answer
+instance SeriT1 Query where
+    seriT1 _ = conT (name "Query")
 
-class Free a where
-    free :: Query a
+instance Symbolic1 Query where
+    box1 = Query
+    unbox1 (Query x) = x
 
-instance Free F.Bool where
-    free = F.Bool <$> Q.freebool
+newtype Answer a = Answer ExpH
 
-instance Free F.Integer where
-    free = F.Integer <$> Q.freeinteger
+instance SeriT1 Answer where
+    seriT1 _ = conT (name "Answer")
 
-instance Free (F.Bit n) where
-    free = error $ "TODO: free Bit n"
+instance Symbolic1 Answer where
+    box1 = Answer
+    unbox1 (Answer x) = x
 
-instance Free (a -> b) where
-    free = error $ "TODO: free a -> b"
 
-__prim_free :: (Free a) => Query a
-__prim_free = free
+__mkSatisfiable :: (Symbolic a) => a -> Answer a
+__mkSatisfiable = conS "Satisfiable"
 
-return_query :: a -> Query a
-return_query = return
+__mkUnsatisfiable :: (Symbolic a) => Answer a
+__mkUnsatisfiable = conS "Unsatisfiable"
 
-bind_query :: Query a -> (a -> Query b) -> Query b
-bind_query = (>>=)
+__mkUnknown :: (Symbolic a) => Answer a
+__mkUnknown = conS "Unknown"
 
-nobind_query :: Query a -> Query b -> Query b
-nobind_query = (>>)
+__caseUnknown :: (Symbolic a, Symbolic z) => Answer a -> z -> z -> z
+__caseUnknown = caseS "Unknown"
 
-fail_query :: F.List__ F.Char -> Query a
-fail_query = error $ "TODO: fail_query"
+__caseUnsatisfiable :: (Symbolic a, Symbolic z) => Answer a -> z -> z -> z
+__caseUnsatisfiable = caseS "Unsatisfiable"
 
--- TODO: don't ignore debug argument.
-runYices1 :: d -> Query a -> IO a
-runYices1 _ q = do
-    s <- Q.yices1 
-    Q.runQuery (Q.RunOptions (Just "foo.yices1.dbg") s) q
+__caseSatisfiable :: (Symbolic a, Symbolic z) => Answer a -> (a -> z) -> z -> z
+__caseSatisfiable = caseS "Satisfiable"
 
--- TODO: don't ignore debug argument.
-runYices2 :: d -> Query a -> IO a
-runYices2 _ q = do
-    s <- Q.yices2 
-    --Q.runQuery (Q.RunOptions (Just "foo.yices2.dbg") s) q
-    Q.runQuery (Q.RunOptions Nothing s) q
+__prim_free :: (Symbolic a) => Query a
+__prim_free = 
+  let z = nullaryS $ __prim_freeEH (seriT z)
+  in z
 
--- TODO: don't ignore debug argument.
-runSTP :: d -> Query a -> IO a
-runSTP _ q = do
-    s <- Q.stp
-    Q.runQuery (Q.RunOptions (Just "foo.stp.dbg") s) q
+assert :: Bool -> Query Unit__
+assert = unaryS __prim_assertEH
 
-__mkSatisfiable :: a -> Answer a
-__mkSatisfiable = Q.Satisfiable
+query :: (Symbolic a) => a -> Query (Answer a)
+query = unaryS __prim_queryEH
 
-__mkUnsatisfiable :: Answer a
-__mkUnsatisfiable = Q.Unsatisfiable
+queryS :: (Symbolic a) => Query a -> Query a
+queryS = unaryS __prim_querySEH
 
-__mkUnknown :: Answer a
-__mkUnknown = Q.Unknown
+return_query :: (Symbolic a) => a -> Query a
+return_query = unaryS __prim_return_QueryEH
 
-__caseUnknown :: Answer a -> x -> x -> x
-__caseUnknown Q.Unknown y _ = y
-__caseUnknown _ _ n = n
+bind_query :: (Symbolic a, Symbolic b) => Query a -> (a -> Query b) -> Query b
+bind_query = binaryS __prim_bind_QueryEH
 
-__caseUnsatisfiable :: Answer a -> x -> x -> x
-__caseUnsatisfiable Q.Unsatisfiable y _ = y
-__caseUnsatisfiable _ _ n = n
+nobind_query :: (Symbolic a, Symbolic b) => Query a -> Query b -> Query b
+nobind_query = binaryS __prim_nobind_QueryEH
 
-__caseSatisfiable :: Answer a -> (a -> x) -> x -> x
-__caseSatisfiable (Q.Satisfiable a) y _ = y a
-__caseSatisfiable _ _ n = n
+fail_query :: (Symbolic a) => List__ Char -> Query a
+fail_query = unaryS __prim_fail_QueryEH
 
-instance F.Symbolic1__ Query where
-    __if1 = F.__if_default "Query"
-    __default1 = return_query F.__default
-    __error1 = F.__errorh
+runYices1 :: (Symbolic a, Symbolic d) => d -> Query a -> IO a
+runYices1 = binaryS __prim_runYices1EH
 
-instance F.Symbolic1__ Answer where
-    __if1 = F.__if_default "Answer"
-    __default1 = __mkUnsatisfiable
+runYices2 :: (Symbolic a, Symbolic d) => d -> Query a -> IO a
+runYices2 = binaryS __prim_runYices2EH
 
-assert :: F.Bool -> Query ()
-assert (F.Bool e) = Q.assert e
+runSTP :: (Symbolic a, Symbolic d) => d -> Query a -> IO a
+runSTP = binaryS __prim_runSTPEH
 

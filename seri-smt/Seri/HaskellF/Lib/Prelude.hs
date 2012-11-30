@@ -213,122 +213,111 @@ type N__2p0 a = N__TIMES N__2 a
 type N__2p1 a = N__PLUS (N__2p0 a) N__1
 
 
-
-nullary :: (Symbolic a) => ExpH -> a
-nullary = box
-
-unary :: (Symbolic a, Symbolic b) => (ExpH -> ExpH) -> a -> b
-unary f x = box $ f (unbox x)
-
-binary :: (Symbolic a, Symbolic b, Symbolic c)
-           => (ExpH -> ExpH -> ExpH) -> a -> b -> c
-binary f a b = box $ f (unbox a) (unbox b)
-
 not :: Bool -> Bool
-not = unary notEH
+not = unaryS notEH
 
 (&&) :: Bool -> Bool -> Bool
-(&&) = unary andEH
+(&&) = unaryS andEH
 
 (||) :: Bool -> Bool -> Bool
-(||) = unary orEH
+(||) = unaryS orEH
 
 __prim_eq_Char :: Char -> Char -> Bool
-__prim_eq_Char = binary __prim_eq_CharEH
+__prim_eq_Char = binaryS __prim_eq_CharEH
 
 __prim_eq_Integer :: Integer -> Integer -> Bool
-__prim_eq_Integer = binary __prim_eq_IntegerEH
+__prim_eq_Integer = binaryS __prim_eq_IntegerEH
 
 __prim_add_Integer :: Integer -> Integer -> Integer
-__prim_add_Integer = binary __prim_add_IntegerEH
+__prim_add_Integer = binaryS __prim_add_IntegerEH
 
 __prim_sub_Integer :: Integer -> Integer -> Integer
-__prim_sub_Integer = binary __prim_sub_IntegerEH
+__prim_sub_Integer = binaryS __prim_sub_IntegerEH
 
 __prim_mul_Integer :: Integer -> Integer -> Integer
-__prim_mul_Integer = binary __prim_mul_IntegerEH
+__prim_mul_Integer = binaryS __prim_mul_IntegerEH
 
 (<) :: Integer -> Integer -> Bool
-(<) = binary __prim_lt_IntegerEH
+(<) = binaryS __prim_lt_IntegerEH
 
 (<=) :: Integer -> Integer -> Bool
-(<=) = binary __prim_leq_IntegerEH
+(<=) = binaryS __prim_leq_IntegerEH
 
 (>) :: Integer -> Integer -> Bool
-(>) = binary __prim_gt_IntegerEH
+(>) = binaryS __prim_gt_IntegerEH
 
 __prim_show_Integer :: Integer -> String
-__prim_show_Integer = unary __prim_show_IntegerEH
+__prim_show_Integer = unaryS __prim_show_IntegerEH
 
 return_io :: (Symbolic a) => a -> IO a
-return_io = unary __prim_return_IOEH
+return_io = unaryS __prim_return_IOEH
 
 bind_io :: (Symbolic a, Symbolic b) => IO a -> (a -> IO b) -> IO b
-bind_io = binary __prim_bind_IOEH
+bind_io = binaryS __prim_bind_IOEH
 
 nobind_io :: (Symbolic a, Symbolic b) => IO a -> IO b -> IO b
-nobind_io = binary __prim_nobind_IOEH
+nobind_io = binaryS __prim_nobind_IOEH
 
 fail_io :: (Symbolic a) => String -> IO a
-fail_io = unary __prim_fail_IOEH
+fail_io = unaryS __prim_fail_IOEH
 
 putChar :: Char -> IO Unit__
-putChar = unary putCharEH
+putChar = unaryS putCharEH
 
 getContents :: IO String
-getContents = nullary getContentsEH
+getContents = nullaryS getContentsEH
 
 __prim_eq_Bit :: (Symbolic n) => Bit n -> Bit n -> Bool
-__prim_eq_Bit = binary __prim_eq_BitEH
+__prim_eq_Bit = binaryS __prim_eq_BitEH
 
 __prim_show_Bit :: (Symbolic n) => Bit n -> String
-__prim_show_Bit = unary __prim_show_BitEH
+__prim_show_Bit = unaryS __prim_show_BitEH
 
 __prim_add_Bit :: (Symbolic n) => Bit n -> Bit n -> Bit n
-__prim_add_Bit = binary __prim_add_BitEH
+__prim_add_Bit = binaryS __prim_add_BitEH
 
 __prim_sub_Bit :: (Symbolic n) => Bit n -> Bit n -> Bit n
-__prim_sub_Bit = binary __prim_sub_BitEH
+__prim_sub_Bit = binaryS __prim_sub_BitEH
 
 __prim_mul_Bit :: (Symbolic n) => Bit n -> Bit n -> Bit n
-__prim_mul_Bit = binary __prim_mul_BitEH
+__prim_mul_Bit = binaryS __prim_mul_BitEH
 
 __prim_fromInteger_Bit :: (Symbolic n) => Integer -> Bit n
 __prim_fromInteger_Bit =
-  let z = unary (__prim_fromInteger_BitEH (seriT z))
+  let z = unaryS (__prim_fromInteger_BitEH (seriT z))
   in z
 
 __prim_shl_Bit :: (Symbolic n) => Bit n -> Bit n -> Bit n
-__prim_shl_Bit = binary __prim_shl_BitEH
+__prim_shl_Bit = binaryS __prim_shl_BitEH
 
 __prim_lshr_Bit :: (Symbolic n) => Bit n -> Bit n -> Bit n
-__prim_lshr_Bit = binary __prim_lshr_BitEH
+__prim_lshr_Bit = binaryS __prim_lshr_BitEH
 
 __prim_or_Bit :: (Symbolic n) => Bit n -> Bit n -> Bit n
-__prim_or_Bit = binary __prim_or_BitEH
+__prim_or_Bit = binaryS __prim_or_BitEH
 
 __prim_and_Bit :: (Symbolic n) => Bit n -> Bit n -> Bit n
-__prim_and_Bit = binary __prim_and_BitEH
+__prim_and_Bit = binaryS __prim_and_BitEH
 
 __prim_not_Bit :: (Symbolic n) => Bit n -> Bit n
-__prim_not_Bit = unary __prim_not_BitEH
+__prim_not_Bit = unaryS __prim_not_BitEH
 
 __prim_zeroExtend_Bit :: (Symbolic n, Symbolic m) => Bit n -> Bit m
 __prim_zeroExtend_Bit =
- let z = unary $ __prim_zeroExtend_BitEH (seriT z)
+ let z = unaryS $ __prim_zeroExtend_BitEH (seriT z)
  in z
 
 __prim_truncate_Bit :: (Symbolic n, Symbolic m) => Bit n -> Bit m
 __prim_truncate_Bit =
-  let z = unary $ __prim_truncate_BitEH (seriT z)
+  let z = unaryS $ __prim_truncate_BitEH (seriT z)
   in z
 
 __prim_concat_Bit :: (Symbolic n, Symbolic m) => Bit n -> Bit m -> Bit (N__PLUS n m)
-__prim_concat_Bit = binary __prim_concat_BitEH
+__prim_concat_Bit = binaryS __prim_concat_BitEH
 
 __prim_extract_Bit :: (Symbolic n, Symbolic m) => Bit n -> Integer -> Bit m
 __prim_extract_Bit =
-  let z = binary $ __prim_extract_BitEH (seriT z)
+  let z = binaryS $ __prim_extract_BitEH (seriT z)
   in z
 
 error :: (Symbolic a) => String -> a
@@ -349,5 +338,5 @@ numeric =
  in x
 
 valueof :: (Symbolic a) => a -> Integer
-valueof = unary valueofEH
+valueof = unaryS valueofEH
 

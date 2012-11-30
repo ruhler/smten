@@ -154,21 +154,21 @@ getContentsEH :: ExpH
 getContentsEH = ioEH $ stringEH <$> getContents
 
 notEH :: ExpH -> ExpH
-notEH = unary "not" not
+notEH = unary "Prelude.not" not
 
 andEH :: ExpH -> ExpH
 andEH a
  | Just av <- de_boolEH a
    = lamEH (Sig (name "b") boolT) (if av then id else const falseEH)
  | otherwise
-   = appEH (varEH (Sig (name "&&") (arrowsT [boolT, boolT, boolT]))) a
+   = appEH (varEH (Sig (name "Prelude.&&") (arrowsT [boolT, boolT, boolT]))) a
 
 orEH :: ExpH -> ExpH
 orEH a
  | Just av <- de_boolEH a
    = lamEH (Sig (name "b") boolT) (if av then const trueEH else id)
  | otherwise
-   = appEH (varEH (Sig (name "||") (arrowsT [boolT, boolT, boolT]))) a
+   = appEH (varEH (Sig (name "Prelude.||") (arrowsT [boolT, boolT, boolT]))) a
 
 numericEH :: Type -> ExpH
 numericEH (NumT nt) = conEH (Sig (name "#" `nappend` name (show (nteval nt))) (NumT nt))

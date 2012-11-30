@@ -34,15 +34,15 @@ run env e = do
         e' | Just (debug, query) <- de_appv2 (name "Seri.SMT.SMT.runYices1") e'
            , Just dbg <- de_seriEH debug -> do  
                 y1 <- yices1
-                runQuery (RunOptions dbg y1) env (Seri.SMT.Run.run query)
+                runQuery (RunOptions dbg y1) (Seri.SMT.Run.run query)
         e' | Just (debug, query) <- de_appv2 (name "Seri.SMT.SMT.runYices2") e'
            , Just dbg <- de_seriEH debug -> do
                 y2 <- yices2
-                runQuery (RunOptions dbg y2) env (Seri.SMT.Run.run query)
+                runQuery (RunOptions dbg y2) (Seri.SMT.Run.run query)
         e' | Just (debug, query) <- de_appv2 (name "Seri.SMT.SMT.runSTP") e'
            , Just dbg <- de_seriEH debug -> do
                 s <- stp
-                runQuery (RunOptions dbg s) env (Seri.SMT.Run.run query)
+                runQuery (RunOptions dbg s) (Seri.SMT.Run.run query)
         e' | Just x <- de_appv1 (name "Prelude.return_io") e' -> return x
         e' | Just (x, f) <- de_appv2 (name "Prelude.bind_io") e' -> do
               result <- run env x

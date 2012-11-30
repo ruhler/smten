@@ -17,11 +17,11 @@ source-repository this
 library
   exposed-modules: Seri.IO.Run, Seri.SMT.Run, Seri.SMT.STP.Concrete, Seri.SMT.STP.FFI, Seri.SMT.STP.STP, Seri.SMT.Yices.Concrete, Seri.SMT.Yices.FFI2, Seri.SMT.Yices.Yices1, Seri.SMT.Yices.Yices2
     --Seri.DSEL.SMT
+    Seri.SMT.Primitives
     Seri.HaskellF.HaskellF
     Seri.HaskellF.Lib.Prelude
     Seri.HaskellF.Symbolic
-    --Seri.HaskellF.Lib.SMT
-    --Seri.HaskellF.Lib.Query
+    Seri.HaskellF.Lib.SMT
   build-depends: base ==4.5.*, mtl ==2.1.*, pretty ==1.1.*, array ==0.4.*, directory ==1.1.*, template-haskell ==2.7.*, hashable ==1.1.*, containers ==0.4.*, bytestring ==0.9.*, seri ==0.3.*
   extra-libraries: stp stdc++ yices1 yices2
   ghc-prof-options: -auto-all

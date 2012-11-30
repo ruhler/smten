@@ -5,6 +5,7 @@ module Seri.HaskellF.Symbolic (
     Symbolic(..), Symbolic1(..), Symbolic2(..), Symbolic3(..), Symbolic4(..),
     seriS, de_seriS,
     conS, caseS,
+    nullaryS, unaryS, binaryS, 
     ) where
 
 import Seri.Name
@@ -75,4 +76,14 @@ caseS k x y n =
       tx = seriT x
       t = arrowsT (take (length tys - length tns) tys ++ [tx])
   in r
+
+nullaryS :: (Symbolic a) => ExpH -> a
+nullaryS = box
+
+unaryS :: (Symbolic a, Symbolic b) => (ExpH -> ExpH) -> a -> b
+unaryS f x = box $ f (unbox x)
+
+binaryS :: (Symbolic a, Symbolic b, Symbolic c)
+           => (ExpH -> ExpH -> ExpH) -> a -> b -> c
+binaryS f a b = box $ f (unbox a) (unbox b)
 

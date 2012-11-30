@@ -375,6 +375,7 @@ haskellf env =
                  H.text "import qualified Seri.Type as S" H.$+$
                  H.text "import qualified Seri.ExpH as S" H.$+$
                  H.text "import Seri.HaskellF.Lib.Prelude" H.$+$
+                 H.text "import Seri.HaskellF.Lib.SMT" H.$+$
                  H.text "" H.$+$
                  H.text "__main = __main_wrapper main"
 
