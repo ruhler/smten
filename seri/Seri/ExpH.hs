@@ -9,7 +9,6 @@ module Seri.ExpH (
     module Seri.ExpH.Sugar2,
     module Seri.ExpH.Sugar,
     module Seri.ExpH.TH,
-    module Seri.ExpH.ToExpH,
     module Seri.ExpH.Typeof,
     module Seri.ExpH.Utils,
     ) where
@@ -23,7 +22,6 @@ import Seri.ExpH.SeriEHs
 import Seri.ExpH.Sugar2
 import Seri.ExpH.Sugar
 import Seri.ExpH.TH
-import Seri.ExpH.ToExpH
 import Seri.ExpH.Typeof
 import Seri.ExpH.Utils
 

@@ -64,11 +64,12 @@ library
     Seri.ExpH.Sugar2
     Seri.ExpH.SeriEHs
     Seri.ExpH.TH
-    Seri.ExpH.ToExpH
     Seri.ExpH.FromExpH
     Seri.ExpH.Ppr
     Seri.ExpH.Primitives
     Seri.ExpH.Utils
+
+    Seri.Inline
 
     Seri.Prim
     Seri.Prim.Prim

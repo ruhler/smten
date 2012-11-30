@@ -19,6 +19,7 @@ import Seri.Type
 import Seri.Dec hiding (prelude)
 import Seri.Exp
 import Seri.ExpH
+import Seri.Inline
 import Seri
 import Seri.TH
 
@@ -32,7 +33,7 @@ varET env nm =
   let t :: ExpT a -> a
       t _ = undefined
     
-      me = ExpT $ toExpH env (varE (Sig (name nm) (seriT (t me))))
+      me = ExpT $ inline env (varE (Sig (name nm) (seriT (t me))))
   in me
 
 -- | Make a unary function from a variable name.

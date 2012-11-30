@@ -49,6 +49,7 @@ import Seri.Sig
 import Seri.Failable
 import Seri.Exp
 import Seri.ExpH
+import Seri.Inline
 import Seri.Elaborate
 import Seri.Ppr
 import Seri.Dec
@@ -105,7 +106,7 @@ main = do
             env <- loadenv (include args) (file args)
             tmain <- attemptIO $ lookupVarType env nmain
             let m = varE (Sig (name (main_is args)) tmain)
-            I.run env (toExpH env m)
+            I.run env (inline env m)
             return ()
         Desugar -> do
             mods <- load (include args) (file args)
