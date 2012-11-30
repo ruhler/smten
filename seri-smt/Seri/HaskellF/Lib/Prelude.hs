@@ -44,6 +44,7 @@ import qualified Prelude as P
 import Seri.Type
 import Seri.Name
 import Seri.ExpH
+import Seri.Prim
 import Seri.Ppr
 import Seri.HaskellF.Symbolic
 
@@ -214,7 +215,7 @@ type N__2p1 a = N__PLUS (N__2p0 a) N__1
 
 
 not :: Bool -> Bool
-not = unaryS notEH
+not = primS notP
 
 (&&) :: Bool -> Bool -> Bool
 (&&) = unaryS andEH
@@ -226,7 +227,7 @@ __prim_eq_Char :: Char -> Char -> Bool
 __prim_eq_Char = binaryS __prim_eq_CharEH
 
 __prim_eq_Integer :: Integer -> Integer -> Bool
-__prim_eq_Integer = binaryS __prim_eq_IntegerEH
+__prim_eq_Integer = primS eq_IntegerP
 
 __prim_add_Integer :: Integer -> Integer -> Integer
 __prim_add_Integer = binaryS __prim_add_IntegerEH

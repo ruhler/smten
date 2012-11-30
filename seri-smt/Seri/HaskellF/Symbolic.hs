@@ -4,7 +4,7 @@
 module Seri.HaskellF.Symbolic (
     Symbolic(..), Symbolic1(..), Symbolic2(..), Symbolic3(..), Symbolic4(..),
     seriS, de_seriS,
-    conS, caseS,
+    conS, caseS, primS,
     nullaryS, unaryS, binaryS, 
     ) where
 
@@ -12,6 +12,7 @@ import Seri.Name
 import Seri.Type
 import Seri.Sig
 import Seri.ExpH
+import Seri.Prim
 
 -- | Symbolic represents new type wrappers around ExpH.
 class (SeriT a) => Symbolic a where
@@ -76,6 +77,11 @@ caseS k x y n =
       tx = seriT x
       t = arrowsT (take (length tys - length tns) tys ++ [tx])
   in r
+
+primS :: (Symbolic a) => Prim -> a
+primS p = 
+ let z = box $ primEH p (seriT z)
+ in z
 
 nullaryS :: (Symbolic a) => ExpH -> a
 nullaryS = box

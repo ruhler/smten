@@ -151,16 +151,13 @@ smtt t = do
 smte :: ExpH -> Query SMT.Expression
 smte e = do
     qs <- gets qs_qs 
-    let seh = elaborate e
-        se = fromExpH seh
+    let se = fromExpH e
 
         mkye :: CompilationM ([SMT.Command], SMT.Expression)
         mkye = do
           ye <- smtE se
           cmds <- smtD
           return (cmds, ye)
-    --trace ("PRE: " ++ pretty e) (return ())
-    --trace ("POST: " ++ pretty se) (return ())
     ((cmds, ye), qs') <- liftIO . attemptIO $ runCompilation mkye qs
     modify $ \s -> s { qs_qs = qs' }
     runCmds cmds

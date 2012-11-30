@@ -16,6 +16,14 @@ p x y z =
         then not z
         else x == (y || z)
 
+-- Test that primitives are reapplied after substitution.
+qsubstitute :: Query ()
+qsubstitute = do
+    a <- free
+    assert (not a)
+    r <- query (not a)
+    test "core.substitute" (r == Satisfiable True)
+
 qtest :: Query ()
 qtest = do
     test "core.dummy" True
@@ -98,6 +106,8 @@ qtest = do
 --    assert ('a' == (if q then 'a' else 'b'))
 --    rq <- query q
 --    test "core.char" (rq == Satisfiable True)
+
+    qsubstitute
 
 main :: IO ()
 main = do

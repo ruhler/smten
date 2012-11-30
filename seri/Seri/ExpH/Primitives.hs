@@ -2,8 +2,8 @@
 {-# LANGUAGE PatternGuards #-}
 
 module Seri.ExpH.Primitives(
-    notEH, andEH, orEH,
-    __prim_eq_IntegerEH, __prim_eq_CharEH,
+    andEH, orEH,
+    __prim_eq_CharEH,
     __prim_add_IntegerEH, __prim_sub_IntegerEH, __prim_mul_IntegerEH,
     __prim_lt_IntegerEH, __prim_leq_IntegerEH, __prim_gt_IntegerEH,
     __prim_show_IntegerEH,
@@ -43,12 +43,6 @@ binary n f a b
  | Just av <- de_seriEH a
  , Just bv <- de_seriEH b = seriEH (f av bv)
  | otherwise = appsEH (varEH (Sig (name n) (seriT f))) [a, b]
-
-__prim_eq_IntegerEH :: ExpH -> ExpH -> ExpH
-__prim_eq_IntegerEH =
-  let f :: Integer -> Integer -> Bool
-      f = (==)
-  in binary "Prelude.__prim_eq_Integer" f
 
 __prim_eq_BitEH :: ExpH -> ExpH -> ExpH
 __prim_eq_BitEH a b
@@ -152,9 +146,6 @@ putCharEH a
 
 getContentsEH :: ExpH
 getContentsEH = ioEH $ stringEH <$> getContents
-
-notEH :: ExpH -> ExpH
-notEH = unary "Prelude.not" not
 
 andEH :: ExpH -> ExpH
 andEH a

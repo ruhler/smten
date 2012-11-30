@@ -19,6 +19,7 @@ data EState = ES_None | ES_Done
 data ExpH = LitEH Lit
           | ConEH Sig
           | VarEH Sig
+          | PrimEH Sig ([ExpH] -> ExpH) [ExpH]
           | AppEH EState ExpH ExpH
           | LamEH EState Sig (ExpH -> ExpH)
           | CaseEH EState ExpH Sig ExpH ExpH
@@ -34,6 +35,12 @@ data ExpH = LitEH Lit
 instance Eq (ExpH -> ExpH) where
     (==) _ _ = False
 
+instance Eq ([ExpH] -> ExpH) where
+    (==) _ _ = False
+
 instance Show (ExpH -> ExpH) where
+    show _ = "..."
+
+instance Show ([ExpH] -> ExpH) where
     show _ = "..."
 

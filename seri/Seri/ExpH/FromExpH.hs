@@ -5,6 +5,7 @@ module Seri.ExpH.FromExpH (
 
 import Seri.Exp.Exp
 import Seri.ExpH.ExpH
+import Seri.ExpH.Sugar
 import Seri.Fresh
 
 fromExpH :: ExpH -> Exp
@@ -15,6 +16,7 @@ fromExpHM :: (Fresh f) => ExpH -> f Exp
 fromExpHM (LitEH l) = return (LitE l)
 fromExpHM (ConEH s) = return (ConE s)
 fromExpHM (VarEH s) = return (VarE s)
+fromExpHM (PrimEH s _ xs) = fromExpHM (appsEH (varEH s) xs)
 fromExpHM (AppEH _ f x) = do
     f' <- fromExpHM f
     x' <- fromExpHM x   

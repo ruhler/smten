@@ -38,6 +38,7 @@ transform g e =
        LitEH {} -> e
        ConEH {} -> e
        VarEH {} -> e 
+       PrimEH s f xs -> f (map me xs)
        AppEH _ f x -> AppEH ES_None (me f) (me x)
        LamEH _ s f -> LamEH ES_None s $ \x -> me (f x)
        CaseEH _ x k y d -> CaseEH ES_None (me x) k (me y) (me d)

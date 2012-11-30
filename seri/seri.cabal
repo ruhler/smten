@@ -70,6 +70,10 @@ library
     Seri.ExpH.Primitives
     Seri.ExpH.Utils
 
+    Seri.Prim
+    Seri.Prim.Prim
+    Seri.Prim.Prelude
+
     Seri.Haskell
     Seri.Haskell.Haskell
     Seri.Haskell.Lib.Bit

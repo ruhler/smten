@@ -6,6 +6,7 @@ module Seri.ExpH.Ppr () where
 import Seri.Lit
 import Seri.Ppr
 import Seri.ExpH.ExpH
+import Seri.ExpH.Sugar
 import Seri.ExpH.Sugar2
 
 instance Ppr ExpH where
@@ -13,6 +14,7 @@ instance Ppr ExpH where
     ppr (LitEH l) = ppr l
     ppr (ConEH s) = ppr s
     ppr (VarEH s) = ppr s
+    ppr (PrimEH s _ xs) = ppr (appsEH (varEH s) xs)
     ppr (AppEH _ f x) = parens (ppr f) <+> parens (ppr x)
     ppr (LamEH _ s f) = text "\\" <+> ppr s <+> text "-> ..."
     ppr (CaseEH _ e1 p e2 e3)

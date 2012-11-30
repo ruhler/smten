@@ -13,6 +13,7 @@ import Seri.Name
 import Seri.Lit
 import Seri.Sig
 import Seri.ExpH
+import Seri.Ppr
 import Seri.SMT.Query
 import Seri.SMT.Yices.Yices1
 import Seri.SMT.Yices.Yices2
@@ -53,8 +54,10 @@ __prim_bind_QueryEH :: ExpH -> ExpH -> ExpH
 __prim_bind_QueryEH x f = queryEH $ do
     let Just xq = de_queryEH x
     r <- xq
-    let Just fq = de_queryEH (appEH f r)
-    fq
+    case appEH f r of
+        q | Just fq <- de_queryEH q -> fq
+          | otherwise -> error $ "expecting Query, got: " ++ pretty q
+        
 
 __prim_nobind_QueryEH :: ExpH -> ExpH -> ExpH
 __prim_nobind_QueryEH a b

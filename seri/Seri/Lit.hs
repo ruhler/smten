@@ -55,4 +55,5 @@ instance Ppr Lit where
       | Just i <- de_integerL l = integer i
       | Just c <- de_charL l = text (show c)
       | Just b <- de_bitL l = text (show b)
+      | otherwise = text "?Lit?"
 
