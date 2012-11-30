@@ -73,6 +73,7 @@ elaborate =
           ConEH s -> e
           VarEH (Sig n t) | Just f <- HT.lookup n nprimitives -> f t
           VarEH s -> e
+          PrimEH _ f xs -> f (map elab xs)
           AppEH ES_Done _ _ -> e
           AppEH _ f arg -> 
              case (elab f, elab arg) of
@@ -182,7 +183,6 @@ uprimitives =
       uIS = uXX de_integerEH stringEH
       uVS = uXX de_bitEH stringEH
   in HT.table $ [
-       (name "Prelude.not", uBB not),
        (name "Seri.Bit.__prim_not_Bit", uVV complement),
        (name "Prelude.__prim_show_Integer", uIS show),
        (name "Seri.Bit.__prim_show_Bit", uVS show),
@@ -246,7 +246,6 @@ bprimitives =
 
       bSVIV = bSXXX de_bitEH de_integerEH bitEH
   in HT.table $ [
-       (name "Prelude.__prim_eq_Integer", bIIB (==)),
        (name "Prelude.__prim_add_Integer", bIII (+)),
        (name "Prelude.__prim_sub_Integer", bIII (-)),
        (name "Prelude.__prim_mul_Integer", bIII (*)),

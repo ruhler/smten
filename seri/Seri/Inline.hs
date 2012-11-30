@@ -6,6 +6,7 @@ module Seri.Inline (inline) where
 
 import System.IO.Unsafe
 
+import Control.Monad
 import Data.IORef
 import qualified Data.Map as Map
 
@@ -16,13 +17,17 @@ import Seri.Name
 import Seri.Exp
 import Seri.Dec
 import Seri.ExpH
+import Seri.Prim
 
 -- | Inline all variables from environment into the given expression.
-inline :: Env -> Exp -> ExpH
-inline env =
+inline :: Env -> [Prim] -> Exp -> ExpH
+inline env prims =
   let {-# NOINLINE cache #-}
       cache :: IORef (Map.Map Sig (Maybe ExpH))
       cache = unsafePerformIO (newIORef Map.empty)
+
+      priml :: Sig -> Maybe ExpH 
+      priml = lookupPrim prims
 
       lookupIO :: Sig -> IO (Maybe ExpH)
       lookupIO s@(Sig n ct) = do
@@ -30,9 +35,12 @@ inline env =
          case Map.lookup s m of
             Just v -> return v
             Nothing -> do
-              let x = attemptM $ do
+              let inprims = priml s
+                  inenv = attemptM $ do
                          (pt, ve) <- lookupVar env s
                          return $ inline' (assignments pt ct) [] ve
+                  x = mplus inprims inenv
+                
               writeIORef cache (Map.insert s x m)
               return x
 

@@ -3,10 +3,11 @@
 
 module Seri.Prim.Prim (
     Prim(),
+    primEH, lookupPrim,
     unaryP, binaryP,
-    primEH,
     ) where
 
+import qualified Seri.HashTable as HT
 import Seri.Name
 import Seri.Type
 import Seri.Sig
@@ -18,6 +19,13 @@ data Prim = Prim {
     p_name :: Name,
     primEH :: Type -> ExpH
 }
+
+lookupPrim :: [Prim] -> Sig -> Maybe ExpH
+lookupPrim ps =
+  let m = HT.table [(n, f) | Prim n f <- ps]
+  in \(Sig n t) -> do
+    f <- HT.lookup n m
+    return (f t)
 
 -- | Construct a unary primitve from a haskell function.
 unaryP :: (SeriEH a, SeriEH b) => String -> (a -> b) -> Prim
