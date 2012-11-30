@@ -11,9 +11,9 @@ __prim_sub_Bit :: Bit #n -> Bit #n -> Bit #n
 __prim_mul_Bit :: Bit #n -> Bit #n -> Bit #n
 __prim_show_Bit :: Bit #n -> String
 __prim_fromInteger_Bit :: Integer -> Bit #n
+__prim_zeroExtend_Bit :: Bit #n -> Bit #m
 
 --__prim_not_Bit :: Bit #n -> Bit #n
---__prim_zeroExtend_Bit :: Bit #n -> Bit #m
 --__prim_truncate_Bit :: Bit #n -> Bit #m
 --__prim_extract_Bit :: Bit #n -> Integer -> Bit #m
 --__prim_shl_Bit :: Bit #n -> Bit #n -> Bit #n
@@ -58,10 +58,10 @@ bv_sizeof x = valueof (bv_ntype x)
 --
 --bv_not :: Bit #n -> Bit #n 
 --bv_not = __prim_not_Bit
---
---bv_zero_extend :: Bit #n -> Bit #m
---bv_zero_extend = __prim_zeroExtend_Bit
---
+
+bv_zero_extend :: Bit #n -> Bit #m
+bv_zero_extend = __prim_zeroExtend_Bit
+
 --bv_truncate :: Bit #n -> Bit #m
 --bv_truncate = __prim_truncate_Bit
 --

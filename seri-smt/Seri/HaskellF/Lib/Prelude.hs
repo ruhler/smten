@@ -26,7 +26,8 @@ module Seri.HaskellF.Lib.Prelude (
     __prim_fromInteger_Bit,
     --__prim_shl_Bit,
     --__prim_lshr_Bit, __prim_or_Bit, __prim_and_Bit, __prim_not_Bit,
-    --__prim_zeroExtend_Bit, __prim_truncate_Bit, __prim_concat_Bit,
+    __prim_zeroExtend_Bit,
+    --__prim_truncate_Bit, __prim_concat_Bit,
     --__prim_extract_Bit,
     error,
     __main_wrapper,
@@ -312,10 +313,12 @@ __prim_fromInteger_Bit =
 --
 --__prim_not_Bit :: Bit n -> Bit n
 --__prim_not_Bit = unary __prim_not_BitEH
---
---__prim_zeroExtend_Bit :: Bit n -> Bit m
---__prim_zeroExtend_Bit = unary __prim_zeroExtend_BitEH
---
+
+__prim_zeroExtend_Bit :: (Symbolic n, Symbolic m) => Bit n -> Bit m
+__prim_zeroExtend_Bit =
+ let z = unary $ __prim_zeroExtend_BitEH (seriT z)
+ in z
+
 --__prim_truncate_Bit :: Bit n -> Bit m
 --__prim_truncate_Bit = unary __prim_truncate_BitEH
 

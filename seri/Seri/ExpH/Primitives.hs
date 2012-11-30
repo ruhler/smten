@@ -12,7 +12,7 @@ module Seri.ExpH.Primitives(
     numericEH, valueofEH,
     __prim_eq_BitEH, __prim_show_BitEH,
     __prim_add_BitEH, __prim_sub_BitEH, __prim_mul_BitEH,
-    __prim_fromInteger_BitEH,
+    __prim_fromInteger_BitEH, __prim_zeroExtend_BitEH,
     ) where
 
 import Data.Functor((<$>))
@@ -115,6 +115,13 @@ __prim_fromInteger_BitEH t a
   , Just (_, bt) <- de_arrowT t
   , Just w <- de_bitT bt = bitEH (bv_make w v)
   | otherwise = appEH (varEH (Sig (name "Seri.Bit.__prim_fromInteger_Bit") t)) a
+
+__prim_zeroExtend_BitEH :: Type -> ExpH -> ExpH
+__prim_zeroExtend_BitEH t a
+  | Just v <- de_bitEH a =
+     let [ta, AppT _ (NumT wt)] = de_arrowsT t
+     in bitEH $ bv_zero_extend (nteval wt - bv_width v) v
+  | otherwise = appEH (varEH (Sig (name "Seri.Bit.__prim_zeroExtend_Bit") t)) a
   
 __prim_return_IOEH :: ExpH -> ExpH
 __prim_return_IOEH a = ioEH (return a)
