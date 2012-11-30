@@ -287,10 +287,6 @@ realize e = Realize $ do
                 freevals <- mapM realizefree freevars
                 modify $ \qs -> qs { qs_freevals = Just freevals }
                 return freevals
-    let freemap = zip freevars fvs
-        g :: ExpH -> Maybe ExpH
-        g e = do
-            s <- de_varEH e
-            lookup s freemap
-    return $ transform g e
+    let freemap = zip [n | Sig n _ <- freevars] fvs
+    return $ substituteH (flip lookup freemap) e
 

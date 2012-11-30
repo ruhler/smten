@@ -3,7 +3,7 @@
 
 module Seri.ExpH.Utils (
     transform,
-    simplifyH, substituteH,
+    substituteH,
     impliedByTrueH, impliedByFalseH,
     ) where
 
@@ -47,17 +47,6 @@ substituteH f =
   let g (VarEH (Sig n _)) = f n
       g _ = Nothing
   in transform g
-
-simplifyH :: ExpH -> ExpH
-simplifyH e =
-  let me = simplifyH
-  in case e of
-        LitEH {} -> e
-        ConEH {} -> e
-        VarEH {} -> e
-        AppEH _ f x -> appEH (me f) (me x)
-        LamEH _ s f -> lamEH s $ \x -> me (f x)
-        CaseEH _ x k y d -> caseEH (me x) k (me y) (me d)
 
 impliedByTrueH :: ExpH -> [(Name, ExpH)]
 impliedByTrueH e
