@@ -11,6 +11,8 @@ module Seri.HaskellF.Lib.Prelude (
     Bool, __mkTrue, __mkFalse, __caseTrue, __caseFalse,
     List__, __mkCons__, __mkNil__, __caseCons__, __caseNil__,
 
+    N__0, N__2p1, N__2p0, N__PLUS, N__MINUS, N__TIMES,
+
     not, (&&), (||),
     __prim_eq_Char,
     __prim_eq_Integer,
@@ -26,6 +28,7 @@ module Seri.HaskellF.Lib.Prelude (
 --    __prim_extract_Bit,
     error,
     __main_wrapper,
+    valueof, numeric,
     ) where
 
 import Prelude hiding (
@@ -149,6 +152,100 @@ __caseCons__ = caseS ":"
 
 type String = List__ Char
 
+
+newtype N__0 = N__0 ExpH
+
+instance SeriT N__0 where
+    seriT _ = NumT (ConNT 0)
+
+instance Symbolic N__0 where
+    box = N__0
+    unbox (N__0 x) = x
+
+newtype N__2p0 a = N__2p0 ExpH
+
+instance SeriT1 N__2p0 where
+    seriT1 x =
+      let f :: N__2p0 a -> a
+          f _ = undefined
+    
+          NumT (ConNT v) = seriT (f x)
+      in NumT (ConNT (2*v))
+
+instance Symbolic1 N__2p0 where
+    box1 = N__2p0
+    unbox1 (N__2p0 x) = x
+
+newtype N__2p1 a = N__2p1 ExpH
+
+instance SeriT1 N__2p1 where
+    seriT1 x =
+      let f :: N__2p1 a -> a
+          f _ = undefined
+      in case seriT (f x) of
+           NumT (ConNT v) -> NumT (ConNT (2*v + 1))
+           t -> P.error $ "seriT N__2p1: " ++ show t
+
+instance Symbolic1 N__2p1 where
+    box1 = N__2p1
+    unbox1 (N__2p1 x) = x
+
+
+newtype N__PLUS a b = N__PLUS ExpH
+
+instance SeriT2 N__PLUS where
+    seriT2 x =
+      let fa :: N__PLUS a b -> a
+          fa _ = undefined
+
+          fb :: N__PLUS a b -> b
+          fb _ = undefined
+
+          NumT a = seriT (fa x)
+          NumT b = seriT (fb x)
+      in NumT $ addNT a b
+
+instance Symbolic2 N__PLUS where
+    box2 = N__PLUS
+    unbox2 (N__PLUS x) = x
+
+newtype N__MINUS a b = N__MINUS ExpH
+
+instance SeriT2 N__MINUS where
+    seriT2 x =
+      let fa :: N__MINUS a b -> a
+          fa _ = undefined
+
+          fb :: N__MINUS a b -> b
+          fb _ = undefined
+
+          NumT a = seriT (fa x)
+          NumT b = seriT (fb x)
+      in NumT $ subNT a b
+
+instance Symbolic2 N__MINUS where
+    box2 = N__MINUS
+    unbox2 (N__MINUS x) = x
+
+newtype N__TIMES a b = N__TIMES ExpH
+
+instance SeriT2 N__TIMES where
+    seriT2 x =
+      let fa :: N__TIMES a b -> a
+          fa _ = undefined
+
+          fb :: N__TIMES a b -> b
+          fb _ = undefined
+
+          NumT a = seriT (fa x)
+          NumT b = seriT (fb x)
+      in NumT $ mulNT a b
+
+instance Symbolic2 N__TIMES where
+    box2 = N__TIMES
+    unbox2 (N__TIMES x) = x
+
+
 nullary :: (Symbolic a) => ExpH -> a
 nullary = box
 
@@ -263,4 +360,12 @@ __main_wrapper :: IO Unit__ -> P.IO ()
 __main_wrapper m
   | Just x <- de_ioEH (unbox m) = x >> return ()
   | otherwise = P.error $ "__main_wrapper: " ++ pretty (unbox m)
+
+numeric :: (Symbolic a) => a
+numeric = 
+ let x = box $ numericEH (seriT x)
+ in x
+
+valueof :: (Symbolic a) => a -> Integer
+valueof = unary valueofEH
 

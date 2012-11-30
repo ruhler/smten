@@ -9,6 +9,7 @@ module Seri.ExpH.Primitives(
     __prim_show_IntegerEH,
     __prim_return_IOEH, __prim_bind_IOEH, __prim_nobind_IOEH, __prim_fail_IOEH,
     putCharEH, getContentsEH,
+    numericEH, valueofEH,
     ) where
 
 import Data.Functor((<$>))
@@ -16,6 +17,7 @@ import Data.Functor((<$>))
 import Seri.Name
 import Seri.Sig
 import Seri.Type
+import Seri.Ppr
 import Seri.ExpH.ExpH
 import Seri.ExpH.Sugar
 import Seri.ExpH.Sugar2
@@ -130,4 +132,13 @@ orEH a
    = lamEH (Sig (name "b") boolT) (if av then const trueEH else id)
  | otherwise
    = appEH (varEH (Sig (name "||") (arrowsT [boolT, boolT, boolT]))) a
+
+numericEH :: Type -> ExpH
+numericEH (NumT nt) = conEH (Sig (name "#" `nappend` name (show (nteval nt))) (NumT nt))
+numericEH t = error $ "numericEH got type: " ++ pretty t
+
+valueofEH :: ExpH -> ExpH
+valueofEH x = 
+  let NumT nt = typeof x
+  in integerEH (nteval nt)
 

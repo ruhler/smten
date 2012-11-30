@@ -21,16 +21,16 @@ class SeriT a where
 class SeriT1 m where
     -- | The seri unary type constructor corresponding to the type constructor
     -- 'm'. The argument is ignored.
-    seriT1 :: m a -> Type
+    seriT1 :: (SeriT a) => m a -> Type
 
 class SeriT2 m where
-    seriT2 :: m a b -> Type
+    seriT2 :: (SeriT a, SeriT b) => m a b -> Type
 
 class SeriT3 m where
-    seriT3 :: m a b c -> Type
+    seriT3 :: (SeriT a, SeriT b, SeriT c) => m a b c -> Type
 
 class SeriT4 m where
-    seriT4 :: m a b c d -> Type
+    seriT4 :: (SeriT a, SeriT b, SeriT c, SeriT d) => m a b c d -> Type
 
 instance (SeriT1 m, SeriT a) => SeriT (m a) where
     seriT x =

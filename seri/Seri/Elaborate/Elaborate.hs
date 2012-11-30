@@ -166,10 +166,7 @@ concretize n v
 
 -- nullary primitives
 nprimitives :: HT.HashTable Name (Type -> ExpH)
-nprimitives = HT.table $ [
-      (name "Prelude.numeric", \(NumT nt) ->
-          ConEH (Sig (name "#" `nappend` name (show (nteval nt))) (NumT nt)))
-        ]
+nprimitives = HT.table $ [ (name "Prelude.numeric", numericEH) ]
 
 -- unary primitives
 uprimitives :: HT.HashTable Name (Type -> ExpH -> Maybe ExpH)
@@ -203,10 +200,7 @@ uprimitives =
        --    a <- de_stringE (fromExpH a)
        --    return (error $ "Seri.error: " ++ msg)
        --   ),
-       (name "Prelude.valueof", \t _ -> 
-         let [NumT nt, it] = de_arrowsT t
-         in return $ integerEH (nteval nt)
-          ),
+       (name "Prelude.valueof", \_ x -> return (valueofEH x)),
        (name "Seri.Bit.__prim_zeroExtend_Bit", \t a -> do
          let [ta, AppT _ (NumT wt)] = de_arrowsT t
          a' <- de_bitEH a

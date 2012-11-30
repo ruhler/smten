@@ -4,7 +4,7 @@ module Seri.Tests.Basic where
 
 import Prelude
 import Data.Array
---import Seri.Vector
+import Seri.Vector
 --import Seri.Bit
 
 ------ This is a comment with lots of dashes
@@ -139,17 +139,17 @@ testarray = do
     t "arrsub2" (19 == (arr ! 2))
     t "arrupd" (23 == ((arr // [(1, 23)]) ! 1))
 
---v4 :: Vector #4 Bool
---v4 = vreplicate True
---
---v2x4 :: Vector #2 (Vector #4 Bool)
---v2x4 = vreplicate v4
---
---testvector :: Test ()
---testvector = do
---    t "vecreplen" (4 == vlength v4)
---    t "vecconcat" (8 == vlength (vconcat v2x4))
---
+v4 :: Vector #4 Bool
+v4 = vreplicate True
+
+v2x4 :: Vector #2 (Vector #4 Bool)
+v2x4 = vreplicate v4
+
+testvector :: Test ()
+testvector = do
+    t "vecreplen" (4 == vlength v4)
+    t "vecconcat" (8 == vlength (vconcat v2x4))
+
 --bit3 :: Integer -> Bit #3
 --bit3 = fromInteger
 --
@@ -256,11 +256,16 @@ testprelude = do
    t "p.bang1" (([7 :: Integer, 2, 5, 3, 1] !! 0) == 7)
    t "p.bang2" (([7 :: Integer, 2, 5, 3, 1] !! 2) == 5)
 
+testnumeric :: Test ()
+testnumeric = do
+   t "n.3" ((3 :: Integer) == (valueof (numeric :: #3)))
+
 tests :: Test ()
 tests = do
     t "test.dummy" True
     testbasic
     testprelude
+    --testnumeric
     testarray
     --testvector
     --testbit

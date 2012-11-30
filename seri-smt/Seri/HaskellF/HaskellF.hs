@@ -301,12 +301,11 @@ hsDec (ClassD n vars sigs@(TopSig _ _ t:_)) = do
     return $ [H.ClassD ctx (hsName n) (map (H.PlainTV . hsName) use) [] sigs']
 
 hsDec (InstD ctx (Class n ts) ms) = do
-    let ntvs = [H.ClassP (H.mkName "N__") [H.VarT (H.mkName (pretty n))] | n <- concat $ map nvarTs ts]
     ctx' <- mapM hsClass ctx
     ms' <- mapM hsMethod ms
     ts' <- mapM hsType ts
     let t = foldl H.AppT (H.ConT (hsName n)) ts'
-    return [H.InstanceD (ntvs ++ ctx') t ms'] 
+    return [H.InstanceD ctx' t ms'] 
 
 hsDec (PrimD s@(TopSig n _ _))
  | n == name "Prelude.__prim_add_Integer" = return []
@@ -385,7 +384,8 @@ unknowntype :: Type -> Bool
 unknowntype (ConT {}) = False
 unknowntype (AppT a b) = unknowntype a || unknowntype b
 unknowntype (VarT {}) = True
-unknowntype (NumT {}) = True    -- TODO: this may not be unknown, right?
+unknowntype (NumT (VarNT {})) = True
+unknowntype (NumT {}) = False
 unknowntype UnknownT = True
 
 harrowsT :: [H.Type] -> H.Type
@@ -425,7 +425,7 @@ mkContext :: (Name -> Bool) -- ^ which variable types we should care about
 mkContext p t =
   let nvts = filter p $ nvarTs t
       kvts = filter (p . fst) $ kvarTs t
-      ntvs = [H.ClassP (H.mkName "N__") [H.VarT (hsName n)] | n <- nvts]
+      ntvs = [H.ClassP (clssymbolic 0) [H.VarT (hsName n)] | n <- nvts]
       stvs = [H.ClassP (clssymbolic k) [H.VarT (hsName n)] | (n, k) <- kvts]
   in (concat [ntvs, stvs], nvts ++ map fst kvts)
 
