@@ -184,7 +184,6 @@ uprimitives =
       uVS = uXX de_bitEH stringEH
   in HT.table $ [
        (name "Seri.Bit.__prim_not_Bit", uVV complement),
-       (name "Prelude.__prim_show_Integer", uIS show),
        (name "Seri.Bit.__prim_show_Bit", uVS show),
        (name "Seri.Bit.__prim_fromInteger_Bit", \t a -> do
            v <- de_integerEH a
@@ -246,13 +245,6 @@ bprimitives =
 
       bSVIV = bSXXX de_bitEH de_integerEH bitEH
   in HT.table $ [
-       (name "Prelude.__prim_add_Integer", bIII (+)),
-       (name "Prelude.__prim_sub_Integer", bIII (-)),
-       (name "Prelude.__prim_mul_Integer", bIII (*)),
-       (name "Prelude.<", bIIB (<)),
-       (name "Prelude.<=", bIIB (<=)),
-       (name "Prelude.>", bIIB (>)),
-       (name "Prelude.__prim_eq_Char", bCCB (==)),
        (name "Seri.Bit.__prim_eq_Bit", bVVB (==)),
        (name "Seri.Bit.__prim_add_Bit", bVVV (+)),
        (name "Seri.Bit.__prim_sub_Bit", bVVV (-)),

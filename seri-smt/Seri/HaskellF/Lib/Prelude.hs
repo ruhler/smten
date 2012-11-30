@@ -224,31 +224,31 @@ not = primS notP
 (||) = unaryS orEH
 
 __prim_eq_Char :: Char -> Char -> Bool
-__prim_eq_Char = binaryS __prim_eq_CharEH
+__prim_eq_Char = primS eq_CharP
 
 __prim_eq_Integer :: Integer -> Integer -> Bool
 __prim_eq_Integer = primS eq_IntegerP
 
 __prim_add_Integer :: Integer -> Integer -> Integer
-__prim_add_Integer = binaryS __prim_add_IntegerEH
+__prim_add_Integer = primS add_IntegerP
 
 __prim_sub_Integer :: Integer -> Integer -> Integer
-__prim_sub_Integer = binaryS __prim_sub_IntegerEH
+__prim_sub_Integer = primS sub_IntegerP
 
 __prim_mul_Integer :: Integer -> Integer -> Integer
-__prim_mul_Integer = binaryS __prim_mul_IntegerEH
+__prim_mul_Integer = primS mul_IntegerP
 
 (<) :: Integer -> Integer -> Bool
-(<) = binaryS __prim_lt_IntegerEH
+(<) = primS lt_IntegerP
 
 (<=) :: Integer -> Integer -> Bool
-(<=) = binaryS __prim_leq_IntegerEH
+(<=) = primS leq_IntegerP
 
 (>) :: Integer -> Integer -> Bool
-(>) = binaryS __prim_gt_IntegerEH
+(>) = primS gt_IntegerP
 
 __prim_show_Integer :: Integer -> String
-__prim_show_Integer = unaryS __prim_show_IntegerEH
+__prim_show_Integer = primS show_IntegerP
 
 return_io :: (Symbolic a) => a -> IO a
 return_io = unaryS __prim_return_IOEH

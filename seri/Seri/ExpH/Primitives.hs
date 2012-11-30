@@ -3,10 +3,6 @@
 
 module Seri.ExpH.Primitives(
     andEH, orEH,
-    __prim_eq_CharEH,
-    __prim_add_IntegerEH, __prim_sub_IntegerEH, __prim_mul_IntegerEH,
-    __prim_lt_IntegerEH, __prim_leq_IntegerEH, __prim_gt_IntegerEH,
-    __prim_show_IntegerEH,
     __prim_return_IOEH, __prim_bind_IOEH, __prim_nobind_IOEH, __prim_fail_IOEH,
     putCharEH, getContentsEH,
     numericEH, valueofEH,
@@ -51,54 +47,6 @@ __prim_eq_BitEH a b
   | otherwise =
      let t = arrowsT [typeof a, typeof b, boolT]
      in appsEH (varEH (Sig (name "Seri.Bit.__prim_eq_Bit") t)) [a, b]
-
-__prim_eq_CharEH :: ExpH -> ExpH -> ExpH
-__prim_eq_CharEH =
-  let f :: Char -> Char -> Bool
-      f = (==)
-  in binary "Prelude.__prim_eq_Char" f
-
-__prim_add_IntegerEH :: ExpH -> ExpH -> ExpH
-__prim_add_IntegerEH =
-  let f :: Integer -> Integer -> Integer
-      f = (+)
-  in binary "Prelude.__prim_add_Integer" f
-
-__prim_sub_IntegerEH :: ExpH -> ExpH -> ExpH
-__prim_sub_IntegerEH =
-  let f :: Integer -> Integer -> Integer
-      f = (-)
-  in binary "Prelude.__prim_sub_Integer" f
-
-__prim_mul_IntegerEH :: ExpH -> ExpH -> ExpH
-__prim_mul_IntegerEH =
-  let f :: Integer -> Integer -> Integer
-      f = (*)
-  in binary "Prelude.__prim_mul_Integer" f
-
-__prim_lt_IntegerEH :: ExpH -> ExpH -> ExpH
-__prim_lt_IntegerEH =
-  let f :: Integer -> Integer -> Bool
-      f = (<)
-  in binary "Prelude.<" f
-
-__prim_leq_IntegerEH :: ExpH -> ExpH -> ExpH
-__prim_leq_IntegerEH =
-  let f :: Integer -> Integer -> Bool
-      f = (<=)
-  in binary "Prelude.<=" f
-
-__prim_gt_IntegerEH :: ExpH -> ExpH -> ExpH
-__prim_gt_IntegerEH =
-  let f :: Integer -> Integer -> Bool
-      f = (>)
-  in binary "Prelude.>" f
-
-__prim_show_IntegerEH :: ExpH -> ExpH
-__prim_show_IntegerEH =
-  let f :: Integer -> String
-      f = show
-  in unary "Prelude.__prim_show_Integer" f
 
 __prim_show_BitEH :: ExpH -> ExpH
 __prim_show_BitEH a
