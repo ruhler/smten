@@ -2,8 +2,7 @@
 {-# LANGUAGE PatternGuards #-}
 
 module Seri.SMT.Specialize (
-    Logic(..), core,
-    specialize,
+    Logic(..), core, specialize,
     ) where
 
 import Data.List (genericLength)
@@ -34,7 +33,17 @@ specialize l e =
  let me = specialize l
  in case () of
      _ | not (th_lambda l)
-       , Just (f@(CaseEH a k y n), arg) <- de_appEH e -> me $ pusharg f arg
+       , Just (f@(CaseEH {}), arg) <- de_appEH e -> me $ pusharg f arg
+       | CaseEH a@(CaseEH {}) k y n <- e
+       , not (oktype l (typeof a)) -> me $ pushfun (\a' -> caseEH a' k y n) a
+       | PrimEH _ f (a@(CaseEH {}) : xs) <- e
+       , not (oktype l (typeof a)) -> me $ pushfun (\a' -> f (a':xs)) a
+       | PrimEH _ f (x:a@(CaseEH {}):xs) <- e
+       , not (oktype l (typeof a)) -> me $ pushfun (\a' -> f (x:a':xs)) a
+       | PrimEH _ f xs <- e -> f (map me xs)
+       | AppEH a b <- e -> appEH (me a) (me b)
+       | LamEH s f <- e -> lamEH s (\x -> me (f x))
+       | CaseEH x k y n <- e -> caseEH (me x) k (me y) (me n)
        | otherwise -> e
 
 -- Perform argument pushing.
@@ -60,5 +69,27 @@ pusharg (CaseEH a k y n) arg =
             y' = yify kargs ybody y
             n' = appEH n av
         in caseEH a k y' n'
-  in appEH lam arg
+ in appEH lam arg
+
+-- Return TRUE if the type is supported in the given logic.
+oktype :: Logic -> Type -> Bool
+oktype l t
+ | not (th_integer l), t == integerT = False
+ | not (th_bit l), Just _ <- de_bitT t = False
+ | not (th_lambda l), Just _ <- de_arrowT t = False
+ | otherwise = True
+ 
+-- Perform function pushing:
+--    f (case x of { k -> y; _ -> n})
+-- Turns into:
+--    case x of { k -> f y; _ -> f n}
+pushfun :: (ExpH -> ExpH) -> ExpH -> ExpH
+pushfun f (CaseEH x k y n) =
+ let yify :: Integer -> (ExpH -> ExpH) -> ExpH -> ExpH
+     yify 0 f x = f x
+     yify n f (LamEH s b) = lamEH s $ \x -> yify (n-1) f (b x)
+     yify n f x = error $ "yify got: " ++ pretty x
+
+     kargs = genericLength (de_arrowsT (typeof k)) - 1
+ in caseEH x k (yify kargs f y) (f n)
 

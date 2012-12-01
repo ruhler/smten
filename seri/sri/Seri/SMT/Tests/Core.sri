@@ -87,14 +87,14 @@ qtest = do
     rm <- query m
     test "core.lambda" (rm == Satisfiable False)
 
---    -- We should be able to using Integers, so long as they aren't free, even
---    -- if the underlying solver doesn't support them.
---    n <- free
---    o <- free
---    assert ((if n then 3 else (4 :: Integer)) == (if o then 4 else 5))
---    rno <- query (n, o)
---    test "core.integer" (rno == Satisfiable (False, True))
---
+    -- We should be able to using Integers, so long as they aren't free, even
+    -- if the underlying solver doesn't support them.
+    n <- free
+    o <- free
+    assert ((if n then 3 else (4 :: Integer)) == (if o then 4 else 5))
+    rno <- query (n, o)
+    test "core.integer" (rno == Satisfiable (False, True))
+
 --    -- Same with lists
 --    p <- free
 --    assert (null (if p then [1, 2, 3 :: Integer] else []))

@@ -5,6 +5,7 @@ module Seri.ExpH.FromExpH (
 
 import Seri.Sig
 import Seri.Name
+import Seri.Type
 import Seri.Exp.Exp
 import Seri.ExpH.ExpH
 import Seri.ExpH.Sugar
@@ -34,5 +35,5 @@ fromExpHM (CaseEH arg s yes no) = do
   no' <- fromExpHM no
   return $ CaseE arg' s yes' no'
 fromExpHM (ErrorEH t s)
-  = fromExpHM $ appEH (varEH (Sig (name "Prelude.error") t)) (stringEH s) 
+  = fromExpHM $ appEH (varEH (Sig (name "Prelude.error") (arrowT stringT t))) (stringEH s) 
 

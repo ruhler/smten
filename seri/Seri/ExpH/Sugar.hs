@@ -109,7 +109,9 @@ de_charEH e = do
     de_charL l
 
 errorEH :: Type -> String -> ExpH
-errorEH = ErrorEH 
+errorEH t =
+ let Just (_, ot) = de_arrowT t
+ in ErrorEH ot
 
 de_errorEH :: ExpH -> Maybe (Type, String)
 de_errorEH (ErrorEH t s) = Just (t, s)

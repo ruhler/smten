@@ -28,7 +28,7 @@ data ExpH = LitEH Lit
             -- Then e2 should have type: (a -> b -> c -> V),
             -- And  e1 should have type: V
             --  Where V is the type of the case expression.
-          | ErrorEH Type String
+          | ErrorEH Type String -- ^ type is type of expression.
     deriving(Eq, Typeable, Show)
 
 instance Eq (ExpH -> ExpH) where
