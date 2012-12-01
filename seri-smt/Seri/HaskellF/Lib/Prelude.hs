@@ -13,7 +13,6 @@ module Seri.HaskellF.Lib.Prelude (
 
     N__0, N__2p1, N__2p0, N__PLUS, N__MINUS, N__TIMES,
 
-    not, (&&), (||),
     __prim_eq_Char,
     __prim_eq_Integer,
     __prim_add_Integer, __prim_sub_Integer, __prim_mul_Integer,
@@ -35,7 +34,6 @@ module Seri.HaskellF.Lib.Prelude (
 
 import Prelude hiding (
     Char, String, Integer, Bool(..), IO,
-    not, (&&), (||),
     (<), (<=), (>), error,
     putChar, getContents,
     )
@@ -213,15 +211,6 @@ instance Symbolic2 N__TIMES where
 type N__2p0 a = N__TIMES N__2 a
 type N__2p1 a = N__PLUS (N__2p0 a) N__1
 
-
-not :: Bool -> Bool
-not = primS notP
-
-(&&) :: Bool -> Bool -> Bool
-(&&) = unaryS andEH
-
-(||) :: Bool -> Bool -> Bool
-(||) = unaryS orEH
 
 __prim_eq_Char :: Char -> Char -> Bool
 __prim_eq_Char = primS eq_CharP

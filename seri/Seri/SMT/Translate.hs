@@ -157,9 +157,6 @@ smtE' e@(AppE a b) =
        (VarE (Sig n _), [a, b]) | n == name "Prelude.<" -> binary SMT.ltE a b
        (VarE (Sig n _), [a, b]) | n == name "Prelude.<=" -> binary SMT.leqE a b
        (VarE (Sig n _), [a, b]) | n == name "Prelude.>" -> binary SMT.gtE a b
-       (VarE (Sig n _), [a, b]) | n == name "Prelude.&&" -> binary (\x y -> SMT.andE [x, y]) a b
-       (VarE (Sig n _), [a, b]) | n == name "Prelude.||" -> binary (\x y -> SMT.orE [x, y]) a b
-       (VarE (Sig n _), [a]) | n == name "Prelude.not" -> SMT.notE <$> smtE' a
        (VarE (Sig n _), [a, b]) | n == name "Prelude.__prim_add_Integer" -> binary SMT.addE a b
        (VarE (Sig n _), [a, b]) | n == name "Prelude.__prim_sub_Integer" -> binary SMT.subE a b
        (VarE (Sig n _), [a, b]) | n == name "Prelude.__prim_mul_Integer" -> binary SMT.mulE a b

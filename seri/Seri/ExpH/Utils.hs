@@ -39,9 +39,9 @@ transform g e =
        ConEH {} -> e
        VarEH {} -> e 
        PrimEH s f xs -> f (map me xs)
-       AppEH _ f x -> AppEH ES_None (me f) (me x)
-       LamEH _ s f -> LamEH ES_None s $ \x -> me (f x)
-       CaseEH _ x k y d -> CaseEH ES_None (me x) k (me y) (me d)
+       AppEH _ f x -> appEH (me f) (me x)
+       LamEH _ s f -> lamEH s $ \x -> me (f x)
+       CaseEH _ x k y d -> caseEH (me x) k (me y) (me d)
 
 substituteH :: (Name -> Maybe ExpH) -> ExpH -> ExpH
 substituteH f =
@@ -49,17 +49,11 @@ substituteH f =
       g _ = Nothing
   in transform g
 
+-- Todo: look for eq, not, and, and or calls to get more info here.
 impliedByTrueH :: ExpH -> [(Name, ExpH)]
-impliedByTrueH e
-  | VarEH (Sig n _) <- e = [(n, trueEH)]
-  | Just (a, b) <- de_andEH e = impliedByTrueH a ++ impliedByTrueH b
-  | Just x <- de_notEH e = impliedByFalseH x
-  | otherwise = []
+impliedByTrueH e = []
 
+-- Todo: look for eq, not, and, and or calls to get more info here.
 impliedByFalseH :: ExpH -> [(Name, ExpH)]
-impliedByFalseH e
-  | VarEH (Sig n _) <- e = [(n, falseEH)]
-  | Just (a, b) <- de_orEH e = impliedByFalseH a ++ impliedByFalseH b
-  | Just x <- de_notEH e = impliedByTrueH x
-  | otherwise = []
+impliedByFalseH e = []
 

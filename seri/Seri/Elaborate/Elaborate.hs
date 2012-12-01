@@ -191,20 +191,6 @@ uprimitives =
            w <- de_bitT bt
            return $ bitEH (bv_make w v)
           ),
-       (name "Prelude.&&", \_ a -> do
-           a' <- de_boolEH a
-           return $ LamEH ES_None (Sig (name "b") boolT)
-              (if a' then id else const falseEH)
-          ),
-       (name "Prelude.||", \_ a -> do
-           a' <- de_boolEH a
-           return $ LamEH ES_None (Sig (name "b") boolT)
-              (if a' then const trueEH else id)
-          ),
-       --(name "Prelude.error", \_ a -> do
-       --    a <- de_stringE (fromExpH a)
-       --    return (error $ "Seri.error: " ++ msg)
-       --   ),
        (name "Prelude.valueof", \_ x -> return (valueofEH x)),
        (name "Seri.Bit.__prim_zeroExtend_Bit", \t a -> do
          let [ta, AppT _ (NumT wt)] = de_arrowsT t

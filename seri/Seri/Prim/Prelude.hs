@@ -4,7 +4,6 @@ module Seri.Prim.Prelude (
     add_IntegerP, sub_IntegerP, mul_IntegerP,
     lt_IntegerP, leq_IntegerP, gt_IntegerP,
     show_IntegerP,
-    notP,
     preludePs,
     ) where
 
@@ -15,8 +14,7 @@ preludePs = [
     eq_IntegerP, eq_CharP,
     add_IntegerP, sub_IntegerP, mul_IntegerP,
     lt_IntegerP, leq_IntegerP, gt_IntegerP,
-    show_IntegerP,
-    notP
+    show_IntegerP
     ]
 
 eq_IntegerP :: Prim
@@ -45,7 +43,4 @@ gt_IntegerP = binaryP "Prelude.>" ((>) :: Integer -> Integer -> Bool)
 
 show_IntegerP :: Prim
 show_IntegerP = unaryP "Prelude.__prim_show_Integer" (show :: Integer -> String)
-
-notP :: Prim
-notP = unaryP "Prelude.not" not
 

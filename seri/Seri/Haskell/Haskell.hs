@@ -244,9 +244,6 @@ hsDec (PrimD s@(TopSig n _ _))
  | n == name "Prelude.<" = bprim s "Prelude.<"
  | n == name "Prelude.<=" = bprim s "Prelude.<="
  | n == name "Prelude.>" = bprim s "Prelude.>"
- | n == name "Prelude.&&" = prim s (vare "&&#")
- | n == name "Prelude.||" = prim s (vare "||#")
- | n == name "Prelude.not" = prim s (vare "not_")
  | n == name "Prelude.__prim_eq_Integer" = bprim s "Prelude.=="
  | n == name "Prelude.__prim_eq_Char" = bprim s "Prelude.=="
  | n == name "Prelude.valueof" = return []

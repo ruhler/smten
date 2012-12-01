@@ -12,8 +12,6 @@ module Seri.ExpH.Sugar (
     integerEH, de_integerEH, bitEH, de_bitEH,
     charEH, de_charEH,
     ioEH, de_ioEH,
-
-    de_notEH, de_andEH, de_orEH,
     ) where
 
 import Seri.Bit
@@ -113,24 +111,6 @@ caseEH x k@(Sig nk _) y n
  | (ConEH (Sig s _), vs) <- de_appsEH x
     = if s == nk then appsEH y vs else n
  | otherwise = CaseEH ES_None x k y n
-
-de_notEH :: ExpH -> Maybe ExpH
-de_notEH e =
-  case de_appsEH e of
-    (VarEH (Sig n _), [x]) | n == name "Prelude.not" -> Just x
-    _ -> Nothing
-
-de_andEH :: ExpH -> Maybe (ExpH, ExpH)
-de_andEH e =
-  case de_appsEH e of
-    (VarEH (Sig n _), [x, y]) | n == name "Prelude.and" -> Just (x, y)
-    _ -> Nothing
-
-de_orEH :: ExpH -> Maybe (ExpH, ExpH)
-de_orEH e =
-  case de_appsEH e of
-    (VarEH (Sig n _), [x, y]) | n == name "Prelude.or" -> Just (x, y)
-    _ -> Nothing
 
 ioEH :: IO ExpH -> ExpH
 ioEH x = litEH (dynamicL x)

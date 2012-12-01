@@ -13,7 +13,6 @@ module Seri.Exp.Sugar (
     integerE, de_integerE, numberE,
 
     addE, subE, mulE, opE,
-    de_notE, de_andE, de_orE,
     eqE, ltE, leqE, gtE, 
     ) where
 
@@ -188,24 +187,6 @@ mulE = opE "*"
 
 opE :: String -> Exp -> Exp -> Exp
 opE op a b = appsE (varE (Sig (name op) UnknownT)) [a, b]
-
-de_notE :: Exp -> Maybe Exp
-de_notE e =
-  case de_appsE e of
-    (VarE (Sig n _), [x]) | n == name "Prelude.not" -> Just x
-    _ -> Nothing
-
-de_andE :: Exp -> Maybe (Exp, Exp)
-de_andE e =
-  case de_appsE e of
-    (VarE (Sig n _), [x, y]) | n == name "Prelude.and" -> Just (x, y)
-    _ -> Nothing
-
-de_orE :: Exp -> Maybe (Exp, Exp)
-de_orE e =
-  case de_appsE e of
-    (VarE (Sig n _), [x, y]) | n == name "Prelude.or" -> Just (x, y)
-    _ -> Nothing
 
 caseE :: Exp -> Sig -> Exp -> Exp -> Exp
 caseE x (Sig kn _) y n

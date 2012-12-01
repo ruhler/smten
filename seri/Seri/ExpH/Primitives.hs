@@ -2,7 +2,6 @@
 {-# LANGUAGE PatternGuards #-}
 
 module Seri.ExpH.Primitives(
-    andEH, orEH,
     __prim_return_IOEH, __prim_bind_IOEH, __prim_nobind_IOEH, __prim_fail_IOEH,
     putCharEH, getContentsEH,
     numericEH, valueofEH,
@@ -94,20 +93,6 @@ putCharEH a
 
 getContentsEH :: ExpH
 getContentsEH = ioEH $ stringEH <$> getContents
-
-andEH :: ExpH -> ExpH
-andEH a
- | Just av <- de_boolEH a
-   = lamEH (Sig (name "b") boolT) (if av then id else const falseEH)
- | otherwise
-   = appEH (varEH (Sig (name "Prelude.&&") (arrowsT [boolT, boolT, boolT]))) a
-
-orEH :: ExpH -> ExpH
-orEH a
- | Just av <- de_boolEH a
-   = lamEH (Sig (name "b") boolT) (if av then const trueEH else id)
- | otherwise
-   = appEH (varEH (Sig (name "Prelude.||") (arrowsT [boolT, boolT, boolT]))) a
 
 numericEH :: Type -> ExpH
 numericEH (NumT nt) = conEH (Sig (name "#" `nappend` name (show (nteval nt))) (NumT nt))

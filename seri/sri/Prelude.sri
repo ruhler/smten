@@ -79,25 +79,17 @@ flip f x y = f y x
 data Bool = False | True
   deriving (Eq)
 
--- && as a primitive
 (&&) :: Bool -> Bool -> Bool
-
--- && as not a primitive
-(&&#) :: Bool -> Bool -> Bool
-(&&#) True x = x
-(&&#) False _ = False
+(&&) True x = x
+(&&) False _ = False
 
 (||) :: Bool -> Bool -> Bool
-
-(||#) :: Bool -> Bool -> Bool
-(||#) True _ = True
-(||#) False x = x
+(||) True _ = True
+(||) False x = x
 
 not :: Bool -> Bool
-
-not_ :: Bool -> Bool
-not_ True = False
-not_ False = True
+not True = False
+not False = True
 
 type String = [Char]
 

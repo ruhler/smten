@@ -87,9 +87,6 @@ instance Num (ExpT Integer) where
 (>=) :: ExpT Integer -> ExpT Integer -> ExpT Bool
 (>=) = varET2 prelude "Prelude.>="
 
-(&&) :: ExpT Bool -> ExpT Bool -> ExpT Bool
-(&&) = varET2 prelude "Prelude.&&"
-
 ite :: ExpT Bool -> ExpT a -> ExpT a -> ExpT a
 ite (ExpT p) (ExpT a) (ExpT b) = ExpT $ ifEH p a b
 
