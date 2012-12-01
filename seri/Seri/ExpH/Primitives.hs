@@ -2,7 +2,7 @@
 {-# LANGUAGE PatternGuards #-}
 
 module Seri.ExpH.Primitives(
-    numericEH, valueofEH,
+    numericEH,
     __prim_eq_BitEH, __prim_show_BitEH,
     __prim_add_BitEH, __prim_sub_BitEH, __prim_mul_BitEH,
     __prim_and_BitEH, __prim_or_BitEH, __prim_not_BitEH,
@@ -70,11 +70,6 @@ __prim_zeroExtend_BitEH t a
 numericEH :: Type -> ExpH
 numericEH (NumT nt) = conEH (Sig (name "#" `nappend` name (show (nteval nt))) (NumT nt))
 numericEH t = error $ "numericEH got type: " ++ pretty t
-
-valueofEH :: ExpH -> ExpH
-valueofEH x = 
-  let NumT nt = typeof x
-  in integerEH (nteval nt)
 
 binaryB :: String -> (Bit -> Bit -> Bit) -> ExpH -> ExpH -> ExpH
 binaryB n f a b

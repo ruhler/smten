@@ -328,5 +328,5 @@ numeric =
  in x
 
 valueof :: (Symbolic a) => a -> Integer
-valueof = unaryS valueofEH
+valueof = primS valueofP
 

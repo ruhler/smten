@@ -191,7 +191,6 @@ uprimitives =
            w <- de_bitT bt
            return $ bitEH (bv_make w v)
           ),
-       (name "Prelude.valueof", \_ x -> return (valueofEH x)),
        (name "Seri.Bit.__prim_zeroExtend_Bit", \t a -> do
          let [ta, AppT _ (NumT wt)] = de_arrowsT t
          a' <- de_bitEH a
