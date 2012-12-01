@@ -27,9 +27,9 @@ instance Assign ExpH where
          LitEH {} -> e
          ConEH (Sig n t) -> ConEH (Sig n (mt t))
          VarEH (Sig n t) -> VarEH (Sig n (mt t))
-         AppEH m a b -> AppEH m (me a) (me b)
-         LamEH m (Sig n t) b -> LamEH m (Sig n (mt t)) $ \x -> (me (b x))
-         CaseEH m x (Sig kn kt) y n -> CaseEH m (me x) (Sig kn (mt kt)) (me y) (me n)
+         AppEH a b -> AppEH (me a) (me b)
+         LamEH (Sig n t) b -> LamEH (Sig n (mt t)) $ \x -> (me (b x))
+         CaseEH x (Sig kn kt) y n -> CaseEH (me x) (Sig kn (mt kt)) (me y) (me n)
          ErrorEH t m -> ErrorEH (mt t) m
 
 -- Perform a generic transformation on an expression.
@@ -45,9 +45,9 @@ transform g e =
        ConEH {} -> e
        VarEH {} -> e 
        PrimEH s f xs -> f (map me xs)
-       AppEH _ f x -> appEH (me f) (me x)
-       LamEH _ s f -> lamEH s $ \x -> me (f x)
-       CaseEH _ x k y d -> caseEH (me x) k (me y) (me d)
+       AppEH f x -> appEH (me f) (me x)
+       LamEH s f -> lamEH s $ \x -> me (f x)
+       CaseEH x k y d -> caseEH (me x) k (me y) (me d)
        ErrorEH {} -> e
 
 substituteH :: (Name -> Maybe ExpH) -> ExpH -> ExpH

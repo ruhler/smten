@@ -108,9 +108,6 @@ library
     Seri.Fresh.Fast
     Seri.Fresh.Fresh
 
-    Seri.Elaborate
-    Seri.Elaborate.Elaborate
-
     Seri.SMT.Solver
     Seri.SMT.Syntax
     Seri.SMT.Specialize

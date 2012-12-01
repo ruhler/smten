@@ -50,7 +50,6 @@ import Seri.Failable
 import Seri.Exp
 import Seri.ExpH
 import Seri.Inline
-import Seri.Elaborate
 import Seri.Ppr
 import Seri.Prim
 import Seri.Dec

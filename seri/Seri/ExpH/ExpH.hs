@@ -5,7 +5,7 @@
 -- | HOAS form for Seri Expressions, geared towards high performance
 -- elaboration.
 module Seri.ExpH.ExpH (
-    EState(..), ExpH(..),
+    ExpH(..),
     ) where
 
 import Data.Dynamic
@@ -14,16 +14,13 @@ import Seri.Lit
 import Seri.Type
 import Seri.Sig
 
-data EState = ES_None | ES_Done
-    deriving (Eq, Show)
-
 data ExpH = LitEH Lit
           | ConEH Sig
           | VarEH Sig
           | PrimEH Sig ([ExpH] -> ExpH) [ExpH]
-          | AppEH EState ExpH ExpH
-          | LamEH EState Sig (ExpH -> ExpH)
-          | CaseEH EState ExpH Sig ExpH ExpH
+          | AppEH ExpH ExpH
+          | LamEH Sig (ExpH -> ExpH)
+          | CaseEH ExpH Sig ExpH ExpH
             -- ^ case e1 of
             --      k -> e2
             --      _ -> e3

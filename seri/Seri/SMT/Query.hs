@@ -71,7 +71,6 @@ import Seri.Dec
 import Seri.Ppr
 import Seri.SMT.Translate
 import Seri.SMT.Specialize
-import qualified Seri.Elaborate
 
 
 data Answer a = Satisfiable a | Unsatisfiable | Unknown

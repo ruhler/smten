@@ -45,24 +45,24 @@ de_varEH (VarEH s) = Just s
 de_varEH _ = Nothing
 
 appEH :: ExpH -> ExpH -> ExpH
-appEH (LamEH _ _ f) x = f x
-appEH f x = AppEH ES_None f x
+appEH (LamEH _ f) x = f x
+appEH f x = AppEH f x
 
 de_appEH :: ExpH -> Maybe (ExpH, ExpH)
-de_appEH (AppEH _ f x) = Just (f, x)
+de_appEH (AppEH f x) = Just (f, x)
 de_appEH _ = Nothing
 
 appsEH :: ExpH -> [ExpH] -> ExpH
 appsEH f xs = foldl appEH f xs
 
 de_appsEH :: ExpH -> (ExpH, [ExpH])
-de_appsEH (AppEH _ a b) =
+de_appsEH (AppEH a b) =
     let (f, as) = de_appsEH a
     in (f, as ++ [b])
 de_appsEH t = (t, [])
 
 lamEH :: Sig -> (ExpH -> ExpH) -> ExpH
-lamEH = LamEH ES_None
+lamEH = LamEH
 
 unitEH :: ExpH
 unitEH = conEH (Sig (name "()") unitT)
@@ -120,7 +120,7 @@ caseEH x k@(Sig nk _) y n
  | (ConEH (Sig s _), vs) <- de_appsEH x
     = if s == nk then appsEH y vs else n
  | Just (_, msg) <- de_errorEH x = errorEH (typeof n) msg
- | otherwise = CaseEH ES_None x k y n
+ | otherwise = CaseEH x k y n
 
 ioEH :: IO ExpH -> ExpH
 ioEH x = litEH (dynamicL x)

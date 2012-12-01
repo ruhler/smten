@@ -20,15 +20,15 @@ fromExpHM (LitEH l) = return (LitE l)
 fromExpHM (ConEH s) = return (ConE s)
 fromExpHM (VarEH s) = return (VarE s)
 fromExpHM (PrimEH s _ xs) = fromExpHM (appsEH (varEH s) xs)
-fromExpHM (AppEH _ f x) = do
+fromExpHM (AppEH f x) = do
     f' <- fromExpHM f
     x' <- fromExpHM x   
     return (AppE f' x')
-fromExpHM (LamEH _ s f) = do
+fromExpHM (LamEH s f) = do
   s' <- fresh s
   b <- fromExpHM (f (VarEH s'))
   return (LamE s' b)
-fromExpHM (CaseEH _ arg s yes no) = do
+fromExpHM (CaseEH arg s yes no) = do
   arg' <- fromExpHM arg
   yes' <- fromExpHM yes
   no' <- fromExpHM no
