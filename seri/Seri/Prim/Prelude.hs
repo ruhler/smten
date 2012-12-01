@@ -7,10 +7,12 @@ module Seri.Prim.Prelude (
     show_IntegerP,
     return_IOP, bind_IOP, nobind_IOP, fail_IOP,
     putCharP, getContentsP,
-    valueofP,
+    numericP, valueofP,
     ) where
 
 import Seri.Type
+import Seri.Name
+import Seri.Sig
 import Seri.ExpH
 import Seri.Prim.Prim
 
@@ -23,7 +25,7 @@ preludePs = [
     return_IOP,  fail_IOP,
     --bind_IOP, nobind_IOP,
     putCharP, getContentsP,
-    valueofP
+    numericP, valueofP
     ]
 
 eq_IntegerP :: Prim
@@ -70,6 +72,12 @@ putCharP = unaryP "Prelude.putChar" putChar
 
 getContentsP :: Prim
 getContentsP = nullaryP "Prelude.getContents" getContents
+
+numericP :: Prim
+numericP =
+  let f :: Type -> ExpH
+      f (NumT nt) = conEH (Sig (name "#" `nappend` name (show (nteval nt))) (NumT nt))
+  in nullaryTP "Prelude.numeric" f
 
 valueofP :: Prim
 valueofP = 

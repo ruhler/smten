@@ -2,7 +2,6 @@
 {-# LANGUAGE PatternGuards #-}
 
 module Seri.ExpH.Primitives(
-    numericEH,
     __prim_eq_BitEH, __prim_show_BitEH,
     __prim_add_BitEH, __prim_sub_BitEH, __prim_mul_BitEH,
     __prim_and_BitEH, __prim_or_BitEH, __prim_not_BitEH,
@@ -66,10 +65,6 @@ __prim_zeroExtend_BitEH t a
      let [ta, AppT _ (NumT wt)] = de_arrowsT t
      in bitEH $ bv_zero_extend (nteval wt - bv_width v) v
   | otherwise = appEH (varEH (Sig (name "Seri.Bit.__prim_zeroExtend_Bit") t)) a
-  
-numericEH :: Type -> ExpH
-numericEH (NumT nt) = conEH (Sig (name "#" `nappend` name (show (nteval nt))) (NumT nt))
-numericEH t = error $ "numericEH got type: " ++ pretty t
 
 binaryB :: String -> (Bit -> Bit -> Bit) -> ExpH -> ExpH -> ExpH
 binaryB n f a b

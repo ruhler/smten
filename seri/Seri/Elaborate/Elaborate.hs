@@ -167,7 +167,7 @@ concretize n v
 
 -- nullary primitives
 nprimitives :: HT.HashTable Name (Type -> ExpH)
-nprimitives = HT.table $ [ (name "Prelude.numeric", numericEH) ]
+nprimitives = HT.table $ [ ]
 
 -- unary primitives
 uprimitives :: HT.HashTable Name (Type -> ExpH -> Maybe ExpH)

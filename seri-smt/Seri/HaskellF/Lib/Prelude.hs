@@ -323,9 +323,7 @@ __main_wrapper m
   | otherwise = P.error $ "__main_wrapper: " ++ pretty (unbox m)
 
 numeric :: (Symbolic a) => a
-numeric = 
- let x = box $ numericEH (seriT x)
- in x
+numeric = primS numericP 
 
 valueof :: (Symbolic a) => a -> Integer
 valueof = primS valueofP
