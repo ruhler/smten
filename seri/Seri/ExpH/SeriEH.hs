@@ -1,9 +1,13 @@
 
+{-# LANGUAGE FlexibleInstances #-}
+
 module Seri.ExpH.SeriEH (
     SeriEH(..),
     ) where
 
 import Control.Monad
+import Data.Functor((<$>))
+import Data.Maybe
 
 import Seri.Name
 import Seri.Bit
@@ -39,3 +43,22 @@ instance SeriEH Char where
     seriEH = charEH
     de_seriEH = de_charEH
 
+-- The SeriEH for ExpH just passes through the ExpH unchanged.
+-- Note, this is different from packing a haskell ExpH into a seri ExpH. It
+-- packs a haskell ExpH into whatever seri object that haskell ExpH
+-- represents.
+instance SeriT ExpH where
+    seriT _ = error "seriT on ExpH"
+
+instance SeriEH ExpH where
+    seriEH = id
+    de_seriEH = return
+
+instance (SeriEH a) => SeriEH (IO a) where
+    seriEH x = ioEH (seriEH <$> x)
+    de_seriEH e = do
+        io <- de_ioEH e
+        return $ do
+            x <- io
+            return $ fromMaybe (error "de_seriEH IO") (de_seriEH x)
+    

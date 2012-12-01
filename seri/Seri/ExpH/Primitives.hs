@@ -22,6 +22,7 @@ import Seri.Sig
 import Seri.Type
 import Seri.Ppr
 import Seri.ExpH.ExpH
+import Seri.ExpH.Ppr
 import Seri.ExpH.Sugar
 import Seri.ExpH.Sugar2
 import Seri.ExpH.SeriEH
@@ -69,30 +70,27 @@ __prim_zeroExtend_BitEH t a
   | otherwise = appEH (varEH (Sig (name "Seri.Bit.__prim_zeroExtend_Bit") t)) a
   
 __prim_return_IOEH :: ExpH -> ExpH
-__prim_return_IOEH a = ioEH (return a)
+__prim_return_IOEH = unary "Prelude.return_io" (return :: ExpH -> IO ExpH)
 
 __prim_bind_IOEH :: ExpH -> ExpH -> ExpH
-__prim_bind_IOEH x f = ioEH $ do
-    let Just xio = de_ioEH x
+__prim_bind_IOEH x f
+ | Just xio <- de_ioEH x = ioEH $ do
     r <- xio
     let Just fio = de_ioEH (appEH f r)
     fio
+ | otherwise = error $ "__prim_bind_IOEH: " ++ pretty x
 
 __prim_nobind_IOEH :: ExpH -> ExpH -> ExpH
-__prim_nobind_IOEH a b
- | Just aio <- de_ioEH a
- , Just bio <- de_ioEH b = ioEH $ aio >> bio
+__prim_nobind_IOEH = binary "Prelude.nobind_io" ((>>) :: IO ExpH -> IO ExpH -> IO ExpH)
 
 __prim_fail_IOEH :: ExpH -> ExpH
-__prim_fail_IOEH a
- | Just v <- de_stringEH a = ioEH $ fail v
+__prim_fail_IOEH = unary "Prelude.fail_io" (fail :: String -> IO ExpH)
 
 putCharEH :: ExpH -> ExpH
-putCharEH a
- | Just v <- de_charEH a = ioEH $ putChar v >> return unitEH
+putCharEH = unary "Prelude.putChar" putChar
 
 getContentsEH :: ExpH
-getContentsEH = ioEH $ stringEH <$> getContents
+getContentsEH = seriEH getContents
 
 numericEH :: Type -> ExpH
 numericEH (NumT nt) = conEH (Sig (name "#" `nappend` name (show (nteval nt))) (NumT nt))
