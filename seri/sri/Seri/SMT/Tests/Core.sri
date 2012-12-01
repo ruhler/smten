@@ -81,12 +81,12 @@ qtest = do
             Satisfiable (jv, kv, lv) -> p jv kv lv
             _ -> False
 
---    -- Test an issue with lambdas that we've had issues with in the past.
---    m <- free
---    assert ((if m then (==) True else (==) False) False)
---    rm <- query m
---    test "core.lambda" (rm == Satisfiable False)
---
+    -- Test an issue with lambdas that we've had issues with in the past.
+    m <- free
+    assert ((if m then (==) True else (==) False) False)
+    rm <- query m
+    test "core.lambda" (rm == Satisfiable False)
+
 --    -- We should be able to using Integers, so long as they aren't free, even
 --    -- if the underlying solver doesn't support them.
 --    n <- free
