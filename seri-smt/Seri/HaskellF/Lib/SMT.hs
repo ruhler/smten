@@ -57,37 +57,35 @@ __caseSatisfiable :: (Symbolic a, Symbolic z) => Answer a -> (a -> z) -> z -> z
 __caseSatisfiable = caseS "Satisfiable"
 
 __prim_free :: (Symbolic a) => Query a
-__prim_free = 
-  let z = nullaryS $ __prim_freeEH (seriT z)
-  in z
+__prim_free = primS freeP
 
 assert :: Bool -> Query Unit__
-assert = unaryS __prim_assertEH
+assert = primS assertP
 
 query :: (Symbolic a) => a -> Query (Answer a)
-query = unaryS __prim_queryEH
+query = primS queryP
 
 queryS :: (Symbolic a) => Query a -> Query a
-queryS = unaryS __prim_querySEH
+queryS = primS querySP
 
 return_query :: (Symbolic a) => a -> Query a
 return_query = primS return_QueryP
 
 bind_query :: (Symbolic a, Symbolic b) => Query a -> (a -> Query b) -> Query b
-bind_query = binaryS __prim_bind_QueryEH
+bind_query = primS bind_QueryP
 
 nobind_query :: (Symbolic a, Symbolic b) => Query a -> Query b -> Query b
-nobind_query = binaryS __prim_nobind_QueryEH
+nobind_query = primS nobind_QueryP
 
 fail_query :: (Symbolic a) => List__ Char -> Query a
-fail_query = unaryS __prim_fail_QueryEH
+fail_query = primS fail_QueryP
 
 runYices1 :: (Symbolic a, Symbolic d) => d -> Query a -> IO a
-runYices1 = binaryS __prim_runYices1EH
+runYices1 = primS runYices1P
 
 runYices2 :: (Symbolic a, Symbolic d) => d -> Query a -> IO a
-runYices2 = binaryS __prim_runYices2EH
+runYices2 = primS runYices2P
 
 runSTP :: (Symbolic a, Symbolic d) => d -> Query a -> IO a
-runSTP = binaryS __prim_runSTPEH
+runSTP = primS runSTPP
 

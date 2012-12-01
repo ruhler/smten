@@ -2,11 +2,11 @@
 {-# LANGUAGE PatternGuards #-}
 
 module Seri.SMT.Primitives (
-    smtPs, return_QueryP,
-    __prim_freeEH, __prim_queryEH, __prim_assertEH, __prim_querySEH,
-    __prim_bind_QueryEH, __prim_nobind_QueryEH,
-    __prim_fail_QueryEH,
-    __prim_runYices1EH, __prim_runYices2EH, __prim_runSTPEH,
+    queryEH, de_queryEH,
+    smtPs,
+    return_QueryP, fail_QueryP, bind_QueryP, nobind_QueryP,
+    freeP, queryP, assertP, querySP,
+    runYices1P, runYices2P, runSTPP,
     ) where
 
 import Data.Functor((<$>))
@@ -41,71 +41,75 @@ instance (SeriEH a) => SeriEH (Query a) where
 
 smtPs :: [Prim]
 smtPs = [
-    return_QueryP
+    return_QueryP, fail_QueryP,
+    bind_QueryP, nobind_QueryP,
+    freeP, queryP, assertP, querySP,
+    runYices1P, runYices2P, runSTPP
     ]
 
 return_QueryP :: Prim
 return_QueryP = unaryP "Seri.SMT.SMT.return_query" (return :: ExpH -> Query ExpH)
 
-__prim_freeEH :: Type -> ExpH
-__prim_freeEH t
- | Just (_, t') <- de_appT t = queryEH (free t')
+fail_QueryP :: Prim
+fail_QueryP = unaryP "Seri.SMT.SMT.fail_query" (fail :: String -> Query ExpH)
 
-__prim_assertEH :: ExpH -> ExpH
-__prim_assertEH p = queryEH $ assert p >> return unitEH
+bind_QueryP :: Prim
+bind_QueryP = binaryP "Seri.SMT.SMT.bind_query" ((>>=) :: Query ExpH -> (ExpH -> Query ExpH) -> Query ExpH)
 
-__prim_queryEH :: ExpH -> ExpH
-__prim_queryEH arg = queryEH $ do
-    res <- query (realize arg)
-    case res of
-        Satisfiable arg' ->
-            let tsat = arrowsT [typeof arg, AppT (ConT (name "Answer")) (typeof arg)]
-                result = appsEH (conEH (Sig (name "Satisfiable") tsat)) [arg']
-            in return result
-        Unsatisfiable -> return $ conEH (Sig (name "Unsatisfiable") (AppT (ConT (name "Answer")) (typeof arg)))
-        _ -> return $ conEH (Sig (name "Unknown") (AppT (ConT (name "Answer")) (typeof arg)))
+nobind_QueryP :: Prim
+nobind_QueryP = binaryP "Seri.SMT.SMT.nobind_query" ((>>) :: Query ExpH -> Query ExpH -> Query ExpH)
 
-__prim_querySEH :: ExpH -> ExpH
-__prim_querySEH q
- | Just v <- de_queryEH q = queryEH $ queryS v
+freeP :: Prim
+freeP =
+  let f :: Type -> Query ExpH
+      f t =
+        let Just (_, t') = de_appT t
+        in free t'
+  in nullaryTP "Seri.SMT.SMT.__prim_free" f
 
-__prim_bind_QueryEH :: ExpH -> ExpH -> ExpH
-__prim_bind_QueryEH x f = queryEH $ do
-    let Just xq = de_queryEH x
-    r <- xq
-    case appEH f r of
-        q | Just fq <- de_queryEH q -> fq
-          | otherwise -> error $ "expecting Query, got: " ++ pretty q
-        
+assertP :: Prim
+assertP = unaryP "Seri.SMT.SMT.assert" assert
 
-__prim_nobind_QueryEH :: ExpH -> ExpH -> ExpH
-__prim_nobind_QueryEH a b
- | Just aq <- de_queryEH a
- , Just bq <- de_queryEH b = queryEH $ aq >> bq
+-- TODO: clean this up
+-- * have f return Query (Answer ExpH) to automatically pack the Answer.
+queryP :: Prim
+queryP =
+  let f :: ExpH -> Query ExpH
+      f arg = do
+        res <- query (realize arg)
+        case res of
+            Satisfiable arg' ->
+                let tsat = arrowsT [typeof arg, AppT (ConT (name "Answer")) (typeof arg)]
+                    result = appsEH (conEH (Sig (name "Satisfiable") tsat)) [arg']
+                in return result
+            Unsatisfiable -> return $ conEH (Sig (name "Unsatisfiable") (AppT (ConT (name "Answer")) (typeof arg)))
+            _ -> return $ conEH (Sig (name "Unknown") (AppT (ConT (name "Answer")) (typeof arg)))
+  in unaryP "Seri.SMT.SMT.query" f
 
-__prim_fail_QueryEH :: ExpH -> ExpH
-__prim_fail_QueryEH a
- | Just v <- de_stringEH a = queryEH $ fail v
+querySP :: Prim
+querySP = unaryP "Seri.SMT.SMT.queryS" (queryS :: Query ExpH -> Query ExpH)
 
-__prim_runYices1EH :: ExpH -> ExpH -> ExpH
-__prim_runYices1EH debug query
- | Just dbg <- de_seriEH debug
- , Just q <- de_queryEH query = ioEH $ do
-     y1 <- yices1
-     runQuery (RunOptions dbg y1) q
+runYices1P :: Prim
+runYices1P =
+  let f :: Maybe FilePath -> Query ExpH -> IO ExpH
+      f dbg q = do
+        y1 <- yices1
+        runQuery (RunOptions dbg y1) q
+  in binaryP "Seri.SMT.SMT.runYices1" f
 
-__prim_runYices2EH :: ExpH -> ExpH -> ExpH
-__prim_runYices2EH debug query
- | Just dbg <- de_seriEH debug
- , Just q <- de_queryEH query = ioEH $ do
-     y2 <- yices2
-     runQuery (RunOptions dbg y2) q
-    
+runYices2P :: Prim
+runYices2P =
+  let f :: Maybe FilePath -> Query ExpH -> IO ExpH
+      f dbg q = do
+        y2 <- yices2
+        runQuery (RunOptions dbg y2) q
+  in binaryP "Seri.SMT.SMT.runYices2" f
 
-__prim_runSTPEH :: ExpH -> ExpH -> ExpH
-__prim_runSTPEH debug query
- | Just dbg <- de_seriEH debug
- , Just q <- de_queryEH query = ioEH $ do
-     s <- stp
-     runQuery (RunOptions dbg s) q
+runSTPP :: Prim
+runSTPP =
+  let f :: Maybe FilePath -> Query ExpH -> IO ExpH
+      f dbg q = do
+        s <- stp
+        runQuery (RunOptions dbg s) q
+  in binaryP "Seri.SMT.SMT.runSTP" f
 

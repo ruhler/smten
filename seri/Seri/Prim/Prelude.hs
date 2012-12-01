@@ -23,7 +23,7 @@ preludePs = [
     lt_IntegerP, leq_IntegerP, gt_IntegerP,
     show_IntegerP,
     return_IOP,  fail_IOP,
-    --bind_IOP, nobind_IOP,
+    bind_IOP, nobind_IOP,
     putCharP, getContentsP,
     numericP, valueofP
     ]

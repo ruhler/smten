@@ -12,6 +12,7 @@ import Seri.Name
 import Seri.Sig
 import Seri.Ppr
 import Seri.SMT.Query
+import Seri.SMT.Primitives
 
 import Seri.Elaborate
 
@@ -20,6 +21,7 @@ import Seri.Elaborate
 run :: ExpH -> Query ExpH
 run e = do
     case elaborate e of
+        e' | Just v <- de_queryEH e -> v
         e' | Just arg <- de_appv1 (name "Seri.SMT.SMT.query") e' -> do
             res <- query (realize arg)
             case res of 
