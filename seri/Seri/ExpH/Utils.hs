@@ -5,7 +5,10 @@ module Seri.ExpH.Utils (
     transform,
     substituteH,
     impliedByTrueH, impliedByFalseH,
+    runio,
     ) where
+
+import Data.Maybe
 
 import Seri.Type
 import Seri.Name
@@ -56,4 +59,10 @@ impliedByTrueH e = []
 -- Todo: look for eq, not, and, and or calls to get more info here.
 impliedByFalseH :: ExpH -> [(Name, ExpH)]
 impliedByFalseH e = []
+
+-- | Given a Seri expression of type IO a,
+-- returns the Seri expression of type a which results from running the IO
+-- computation.
+runio :: ExpH -> IO ExpH
+runio e = fromMaybe (error "runio got non-IO") (de_ioEH e)
 

@@ -61,7 +61,6 @@ import qualified Seri.SMT.Run as Q
 import qualified Seri.SMT.Query as Q
 import Seri.SMT.Primitives
 
-import qualified Seri.IO.Run as I
 import Seri.Haskell
 import Seri.HaskellF.HaskellF
 
@@ -108,7 +107,7 @@ main = do
             env <- loadenv (include args) (file args)
             tmain <- attemptIO $ lookupVarType env nmain
             let m = varE (Sig (name (main_is args)) tmain)
-            I.run env (inline env (seriPs ++ smtPs) m)
+            runio (inline env (seriPs ++ smtPs) m)
             return ()
         Desugar -> do
             mods <- load (include args) (file args)
