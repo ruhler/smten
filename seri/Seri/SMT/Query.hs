@@ -70,7 +70,7 @@ import Seri.ExpH
 import Seri.Dec
 import Seri.Ppr
 import Seri.SMT.Translate
-import Seri.Elaborate
+import Seri.SMT.Specialize
 import qualified Seri.Elaborate
 
 
@@ -86,6 +86,7 @@ newtype Realize a = Realize {
 
 data QS = QS {
     qs_solver :: SMT.Solver,
+    qs_logic :: Logic,
     qs_dh :: Maybe Handle,
     qs_freeid :: Integer,
     qs_qs :: Compilation,
@@ -150,8 +151,9 @@ smtt t = do
 
 smte :: ExpH -> Query SMT.Expression
 smte e = do
+    l <- gets qs_logic
     qs <- gets qs_qs 
-    let se = fromExpH e
+    let se = fromExpH $ specialize l e
 
         mkye :: CompilationM ([SMT.Command], SMT.Expression)
         mkye = do
@@ -176,7 +178,10 @@ data RunOptions = RunOptions {
     ro_debugout :: Maybe FilePath,
 
     -- | The solver to use
-    ro_solver :: SMT.Solver
+    ro_solver :: SMT.Solver,
+
+    -- | The logic to use.
+    ro_logic :: Logic
 }
             
 mkQS :: RunOptions -> IO QS
@@ -190,6 +195,7 @@ mkQS opts = do
 
     return $ QS {
         qs_solver = ro_solver opts,
+        qs_logic = ro_logic opts,
         qs_dh = dh,
         qs_freeid = 1,
         qs_qs = compilation,

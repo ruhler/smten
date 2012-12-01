@@ -113,6 +113,7 @@ library
 
     Seri.SMT.Solver
     Seri.SMT.Syntax
+    Seri.SMT.Specialize
     Seri.SMT.Translate
     Seri.SMT.Query
 
