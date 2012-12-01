@@ -95,17 +95,17 @@ qtest = do
     rno <- query (n, o)
     test "core.integer" (rno == Satisfiable (False, True))
 
---    -- Same with lists
---    p <- free
---    assert (null (if p then [1, 2, 3 :: Integer] else []))
---    rp <- query p
---    test "core.list" (rp == Satisfiable False)
---
---    -- Same with char
---    q <- free
---    assert ('a' == (if q then 'a' else 'b'))
---    rq <- query q
---    test "core.char" (rq == Satisfiable True)
+    -- Same with lists
+    p <- free
+    assert (null (if p then [1, 2, 3 :: Integer] else []))
+    rp <- query p
+    test "core.list" (rp == Satisfiable False)
+
+    -- Same with char
+    q <- free
+    assert ('a' == (if q then 'a' else 'b'))
+    rq <- query q
+    test "core.char" (rq == Satisfiable True)
 
     qsubstitute
 

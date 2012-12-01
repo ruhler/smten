@@ -6,6 +6,7 @@ module Seri.SMT.Specialize (
     ) where
 
 import Data.List (genericLength)
+import Data.Maybe (isJust)
 
 import Seri.Name
 import Seri.Type
@@ -15,15 +16,13 @@ import Seri.ExpH
 
 data Logic = Logic {
     th_integer :: Bool,
-    th_bit :: Bool,
-    th_lambda :: Bool
+    th_bit :: Bool
 }
 
 core :: Logic
 core = Logic {
     th_integer = False,
-    th_bit = False,
-    th_lambda = False
+    th_bit = False
   }
     
 -- Specialize an expression for a given logic.
@@ -32,8 +31,8 @@ specialize :: Logic -> ExpH -> ExpH
 specialize l e =
  let me = specialize l
  in case () of
-     _ | not (th_lambda l)
-       , Just (f@(CaseEH {}), arg) <- de_appEH e -> me $ pusharg f arg
+     _ | Just (f@(CaseEH {}), arg) <- de_appEH e
+       , not (oktype l (typeof f)) -> me $ pusharg f arg
        | CaseEH a@(CaseEH {}) k y n <- e
        , not (oktype l (typeof a)) -> me $ pushfun (\a' -> caseEH a' k y n) a
        | PrimEH _ f (a@(CaseEH {}) : xs) <- e
@@ -73,11 +72,11 @@ pusharg (CaseEH a k y n) arg =
 
 -- Return TRUE if the type is supported in the given logic.
 oktype :: Logic -> Type -> Bool
-oktype l t
- | not (th_integer l), t == integerT = False
- | not (th_bit l), Just _ <- de_bitT t = False
- | not (th_lambda l), Just _ <- de_arrowT t = False
- | otherwise = True
+oktype l t = or [
+    t == boolT,
+    th_integer l && t == integerT,
+    th_bit l && isJust (de_bitT t)
+    ]
  
 -- Perform function pushing:
 --    f (case x of { k -> y; _ -> n})
