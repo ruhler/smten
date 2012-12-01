@@ -240,22 +240,22 @@ __prim_show_Integer :: Integer -> String
 __prim_show_Integer = primS show_IntegerP
 
 return_io :: (Symbolic a) => a -> IO a
-return_io = unaryS __prim_return_IOEH
+return_io = primS return_IOP
 
 bind_io :: (Symbolic a, Symbolic b) => IO a -> (a -> IO b) -> IO b
-bind_io = binaryS __prim_bind_IOEH
+bind_io = primS bind_IOP
 
 nobind_io :: (Symbolic a, Symbolic b) => IO a -> IO b -> IO b
-nobind_io = binaryS __prim_nobind_IOEH
+nobind_io = primS nobind_IOP
 
 fail_io :: (Symbolic a) => String -> IO a
-fail_io = unaryS __prim_fail_IOEH
+fail_io = primS fail_IOP
 
 putChar :: Char -> IO Unit__
-putChar = unaryS putCharEH
+putChar = primS putCharP
 
 getContents :: IO String
-getContents = nullaryS getContentsEH
+getContents = primS getContentsP
 
 __prim_eq_Bit :: (Symbolic n) => Bit n -> Bit n -> Bool
 __prim_eq_Bit = binaryS __prim_eq_BitEH

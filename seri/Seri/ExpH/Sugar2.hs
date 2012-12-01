@@ -20,7 +20,7 @@ errorEH :: Type -> String -> ExpH
 errorEH t msg = appEH (varEH (Sig (name "Prelude.error") (arrowsT [stringT, t]))) (seriEH msg)
 
 ifEH :: ExpH -> ExpH -> ExpH -> ExpH
-ifEH p a b = CaseEH ES_None p (Sig (name "True") boolT) a b
+ifEH p a b = caseEH p (Sig (name "True") boolT) a b
 
 de_stringEH :: ExpH -> Maybe String
 de_stringEH = de_seriEH

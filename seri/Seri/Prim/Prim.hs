@@ -4,7 +4,7 @@
 module Seri.Prim.Prim (
     Prim(),
     primEH, lookupPrim,
-    unaryP, binaryP,
+    nullaryP, unaryP, binaryP,
     ) where
 
 import qualified Seri.HashTable as HT
@@ -26,6 +26,9 @@ lookupPrim ps =
   in \(Sig n t) -> do
     f <- HT.lookup n m
     return (f t)
+
+nullaryP :: (SeriEH a) => String -> a -> Prim
+nullaryP n x = Prim (name n) (const (seriEH x))
 
 -- | Construct a unary primitve from a haskell function.
 unaryP :: (SeriEH a, SeriEH b) => String -> (a -> b) -> Prim

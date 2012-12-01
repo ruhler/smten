@@ -55,7 +55,7 @@ inline env prims =
       inline' tm m (VarE s) = VarEH (assign tm s)
       inline' tm m (AppE f x) = appEH (inline' tm m f) (inline' tm m x)
       inline' tm m (LamE s b) = lamEH (assign tm s) $ \x -> inline' tm ((s, x):m) b
-      inline' tm m (CaseE x k y n) = CaseEH ES_None (inline' tm m x) (assign tm k) (inline' tm m y) (inline' tm m n)
+      inline' tm m (CaseE x k y n) = caseEH (inline' tm m x) (assign tm k) (inline' tm m y) (inline' tm m n)
   in inline' [] []
 
 

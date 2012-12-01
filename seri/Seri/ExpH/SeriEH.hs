@@ -54,11 +54,11 @@ instance SeriEH ExpH where
     seriEH = id
     de_seriEH = return
 
+-- SeriEH for IO
+-- Note: de_seriEH can return an IO a which will lead to an error if the
+-- returned 'a' is not concrete.
 instance (SeriEH a) => SeriEH (IO a) where
     seriEH x = ioEH (seriEH <$> x)
     de_seriEH e = do
         io <- de_ioEH e
-        return $ do
-            x <- io
-            return $ fromMaybe (error "de_seriEH IO") (de_seriEH x)
-    
+        return $ fromMaybe (error "de_seriEH IO") . de_seriEH <$> io

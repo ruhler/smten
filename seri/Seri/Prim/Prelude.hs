@@ -1,12 +1,15 @@
 
 module Seri.Prim.Prelude (
+    preludePs,
     eq_IntegerP, eq_CharP,
     add_IntegerP, sub_IntegerP, mul_IntegerP,
     lt_IntegerP, leq_IntegerP, gt_IntegerP,
     show_IntegerP,
-    preludePs,
+    return_IOP, bind_IOP, nobind_IOP, fail_IOP,
+    putCharP, getContentsP,
     ) where
 
+import Seri.ExpH
 import Seri.Prim.Prim
 
 preludePs :: [Prim]
@@ -14,7 +17,10 @@ preludePs = [
     eq_IntegerP, eq_CharP,
     add_IntegerP, sub_IntegerP, mul_IntegerP,
     lt_IntegerP, leq_IntegerP, gt_IntegerP,
-    show_IntegerP
+    show_IntegerP,
+    return_IOP,  fail_IOP,
+    --bind_IOP, nobind_IOP,
+    putCharP, getContentsP
     ]
 
 eq_IntegerP :: Prim
@@ -43,4 +49,22 @@ gt_IntegerP = binaryP "Prelude.>" ((>) :: Integer -> Integer -> Bool)
 
 show_IntegerP :: Prim
 show_IntegerP = unaryP "Prelude.__prim_show_Integer" (show :: Integer -> String)
+
+return_IOP :: Prim
+return_IOP = unaryP "Prelude.return_io" (return :: ExpH -> IO ExpH)
+
+bind_IOP :: Prim
+bind_IOP = binaryP "Prelude.bind_io" ((>>=) :: IO ExpH -> (ExpH -> IO ExpH) -> IO ExpH)
+
+nobind_IOP :: Prim
+nobind_IOP = binaryP "Prelude.nobind_io" ((>>) :: IO ExpH -> IO ExpH -> IO ExpH)
+
+fail_IOP :: Prim
+fail_IOP = unaryP "Prelude.fail_io" (fail :: String -> IO ExpH)
+
+putCharP :: Prim
+putCharP = unaryP "Prelude.putChar" putChar
+
+getContentsP :: Prim
+getContentsP = nullaryP "Prelude.getContents" getContents
 

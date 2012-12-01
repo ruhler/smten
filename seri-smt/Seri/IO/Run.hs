@@ -22,6 +22,7 @@ import Seri.Ppr
 run :: Env -> ExpH -> IO ExpH
 run env e = do
     case elaborate e of
+        e' | Just v <- de_ioEH e' -> v
         e' | Just arg <- de_appv1 (name "Prelude.putChar") e' -> do
             case de_charEH (elaborate arg) of
                 Just c -> putChar c

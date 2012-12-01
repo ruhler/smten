@@ -63,6 +63,7 @@ library
     Seri.ExpH.Sugar
     Seri.ExpH.Sugar2
     Seri.ExpH.SeriEHs
+    Seri.ExpH.SeriEHs2
     Seri.ExpH.TH
     Seri.ExpH.FromExpH
     Seri.ExpH.Ppr

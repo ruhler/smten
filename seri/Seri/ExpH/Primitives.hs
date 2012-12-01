@@ -2,8 +2,6 @@
 {-# LANGUAGE PatternGuards #-}
 
 module Seri.ExpH.Primitives(
-    __prim_return_IOEH, __prim_bind_IOEH, __prim_nobind_IOEH, __prim_fail_IOEH,
-    putCharEH, getContentsEH,
     numericEH, valueofEH,
     __prim_eq_BitEH, __prim_show_BitEH,
     __prim_add_BitEH, __prim_sub_BitEH, __prim_mul_BitEH,
@@ -69,29 +67,6 @@ __prim_zeroExtend_BitEH t a
      in bitEH $ bv_zero_extend (nteval wt - bv_width v) v
   | otherwise = appEH (varEH (Sig (name "Seri.Bit.__prim_zeroExtend_Bit") t)) a
   
-__prim_return_IOEH :: ExpH -> ExpH
-__prim_return_IOEH = unary "Prelude.return_io" (return :: ExpH -> IO ExpH)
-
-__prim_bind_IOEH :: ExpH -> ExpH -> ExpH
-__prim_bind_IOEH x f
- | Just xio <- de_ioEH x = ioEH $ do
-    r <- xio
-    let Just fio = de_ioEH (appEH f r)
-    fio
- | otherwise = error $ "__prim_bind_IOEH: " ++ pretty x
-
-__prim_nobind_IOEH :: ExpH -> ExpH -> ExpH
-__prim_nobind_IOEH = binary "Prelude.nobind_io" ((>>) :: IO ExpH -> IO ExpH -> IO ExpH)
-
-__prim_fail_IOEH :: ExpH -> ExpH
-__prim_fail_IOEH = unary "Prelude.fail_io" (fail :: String -> IO ExpH)
-
-putCharEH :: ExpH -> ExpH
-putCharEH = unary "Prelude.putChar" putChar
-
-getContentsEH :: ExpH
-getContentsEH = seriEH getContents
-
 numericEH :: Type -> ExpH
 numericEH (NumT nt) = conEH (Sig (name "#" `nappend` name (show (nteval nt))) (NumT nt))
 numericEH t = error $ "numericEH got type: " ++ pretty t
