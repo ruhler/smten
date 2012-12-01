@@ -60,8 +60,6 @@ import Seri.ExpH
 import Seri.Dec
 import Seri.Ppr (pretty)
 
-import Seri.Elaborate.ExpH
-
 -- | Elaborate an expression in ExpH form.
 elaborate :: ExpH -> ExpH
 elaborate =

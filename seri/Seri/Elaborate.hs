@@ -35,10 +35,7 @@
 
 module Seri.Elaborate(
     elaborate,
-
-    de_appv1, de_appv2,
     ) where
 
-import Seri.Elaborate.ExpH
 import Seri.Elaborate.Elaborate
 

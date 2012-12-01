@@ -109,7 +109,6 @@ library
     Seri.Fresh.Fresh
 
     Seri.Elaborate
-    Seri.Elaborate.ExpH
     Seri.Elaborate.Elaborate
 
     Seri.SMT.Solver

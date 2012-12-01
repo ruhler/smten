@@ -57,8 +57,6 @@ import Seri.Dec
 import Seri.Loader
 import Seri.Module
 
-import qualified Seri.SMT.Run as Q
-import qualified Seri.SMT.Query as Q
 import Seri.SMT.Primitives
 
 import Seri.Haskell
