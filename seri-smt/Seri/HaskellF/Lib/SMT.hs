@@ -71,7 +71,7 @@ queryS :: (Symbolic a) => Query a -> Query a
 queryS = unaryS __prim_querySEH
 
 return_query :: (Symbolic a) => a -> Query a
-return_query = unaryS __prim_return_QueryEH
+return_query = primS return_QueryP
 
 bind_query :: (Symbolic a, Symbolic b) => Query a -> (a -> Query b) -> Query b
 bind_query = binaryS __prim_bind_QueryEH

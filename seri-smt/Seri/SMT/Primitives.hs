@@ -2,11 +2,15 @@
 {-# LANGUAGE PatternGuards #-}
 
 module Seri.SMT.Primitives (
+    smtPs, return_QueryP,
     __prim_freeEH, __prim_queryEH, __prim_assertEH, __prim_querySEH,
-    __prim_return_QueryEH, __prim_bind_QueryEH, __prim_nobind_QueryEH,
+    __prim_bind_QueryEH, __prim_nobind_QueryEH,
     __prim_fail_QueryEH,
     __prim_runYices1EH, __prim_runYices2EH, __prim_runSTPEH,
     ) where
+
+import Data.Functor((<$>))
+import Data.Maybe
 
 import Seri.Type
 import Seri.Name
@@ -18,12 +22,30 @@ import Seri.SMT.Query
 import Seri.SMT.Yices.Yices1
 import Seri.SMT.Yices.Yices2
 import Seri.SMT.STP.STP
+import Seri.Prim
 
 queryEH :: Query ExpH -> ExpH
 queryEH = litEH . dynamicL
 
 de_queryEH :: ExpH -> Maybe (Query ExpH)
 de_queryEH e = de_litEH e >>= de_dynamicL
+
+instance SeriT1 Query where
+    seriT1 _ = conT (name "Query")
+
+instance (SeriEH a) => SeriEH (Query a) where
+    seriEH x = queryEH (seriEH <$> x)
+    de_seriEH e = do
+        q <- de_queryEH e
+        return $ fromMaybe (error "de_seriEH Query") . de_seriEH <$> q
+
+smtPs :: [Prim]
+smtPs = [
+    return_QueryP
+    ]
+
+return_QueryP :: Prim
+return_QueryP = unaryP "Seri.SMT.SMT.return_query" (return :: ExpH -> Query ExpH)
 
 __prim_freeEH :: Type -> ExpH
 __prim_freeEH t
@@ -46,9 +68,6 @@ __prim_queryEH arg = queryEH $ do
 __prim_querySEH :: ExpH -> ExpH
 __prim_querySEH q
  | Just v <- de_queryEH q = queryEH $ queryS v
-
-__prim_return_QueryEH :: ExpH -> ExpH
-__prim_return_QueryEH a = queryEH (return a)
 
 __prim_bind_QueryEH :: ExpH -> ExpH -> ExpH
 __prim_bind_QueryEH x f = queryEH $ do
