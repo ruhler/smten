@@ -11,6 +11,7 @@ module Seri.ExpH.ExpH (
 import Data.Dynamic
 
 import Seri.Lit
+import Seri.Type
 import Seri.Sig
 
 data EState = ES_None | ES_Done
@@ -30,6 +31,7 @@ data ExpH = LitEH Lit
             -- Then e2 should have type: (a -> b -> c -> V),
             -- And  e1 should have type: V
             --  Where V is the type of the case expression.
+          | ErrorEH Type String
     deriving(Eq, Typeable, Show)
 
 instance Eq (ExpH -> ExpH) where

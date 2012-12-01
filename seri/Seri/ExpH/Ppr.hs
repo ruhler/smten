@@ -23,4 +23,5 @@ instance Ppr ExpH where
                     ppr p <+> text "->" <+> ppr e2,
                     text "_" <+> text "->" <+> ppr e3
                   ]) $+$ text "}"
+    ppr (ErrorEH t s) = text "error" <+> text s
 

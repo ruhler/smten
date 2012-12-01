@@ -91,6 +91,7 @@ Dealing with Free Things::
 * Define SMT theory classes and add a solver phantom type to free and Query.
 * Don't ask for the value of a free variable from an SMT solver unless it
   shows up in a query.
+* Deal with errors in queries correctly.
 
 Bugs::
 * seriq2 for SquaresRaw... result differs from yices1 and yices2. Why?
@@ -101,8 +102,6 @@ Bugs::
 * Report an error for an unknown primitive encountered in SMT Translation
 * I suspect shadowed variables won't work in STP queries because of a bug in
   how let expressions are implemented. (Can that ever happen?)
-* error primitive is disabled. It should be kept in seri as long as possible,
-  bubble up, then, if it gets to IO, turn into a haskell error.
 
 Build System::
 * Don't require yices1 and yices2 to be installed to build or use seri
@@ -113,6 +112,8 @@ Build System::
 * test haskell backend
 
 Elaborator::
+* Remove ES_State from ExpH
+* Fill out stubbed out impliedByFoo* functions
 * Use impliedByFooH and substituteH rather than concretize
 * Fix the commented out Core test cases
 * Specialize for theory supported.
@@ -126,7 +127,6 @@ Elaborator::
   somehow with this so I elaborate the right way from the start?
 * Have common abstraction for evaluating an argument, used for case arguments
   and primitive arguments
-* Propagate the error primitive up instead of calling error.
 * Look over results of elaboration to see if anything pops
   out, and make sure things aren't blown up too big.
 * Have common abstraction for manipulating the yv part of a case expression.
@@ -146,7 +146,6 @@ HaskellF:
   For example don't inline away the integers in ((if free1 then 3 else 4) == 4)
   if the solver supports Integers and the user says he wants to use them.
   Maybe use a Reader monad to read supported theories at run time?
-* Figure out how to deal with error values properly
 * Figure out how to deal with debugging properly
 * Do argument and function pushing for integer primitives
 * Get the bit tests working

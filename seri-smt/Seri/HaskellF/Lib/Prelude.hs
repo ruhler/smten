@@ -303,11 +303,7 @@ __prim_extract_Bit :: (Symbolic n, Symbolic m) => Bit n -> Integer -> Bit m
 __prim_extract_Bit = primS extract_BitP
 
 error :: (Symbolic a) => String -> a
-error x
- | Just s <- de_seriS x = 
-    let z = box (errorEH t s)
-        t = seriT z
-    in z
+error = primS errorP
     
 __main_wrapper :: IO Unit__ -> P.IO ()
 __main_wrapper m

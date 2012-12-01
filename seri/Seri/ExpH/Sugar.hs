@@ -6,6 +6,7 @@ module Seri.ExpH.Sugar (
     litEH, de_litEH, varEH, de_varEH, conEH, de_conEH,
     appEH, de_appEH, appsEH, de_appsEH,
     lamEH, caseEH,
+    errorEH, de_errorEH,
 
     unitEH,
     boolEH, trueEH, falseEH, de_boolEH,
@@ -20,6 +21,7 @@ import Seri.Name
 import Seri.Sig
 import Seri.Type
 import Seri.ExpH.ExpH
+import Seri.ExpH.Typeof
 
 conEH :: Sig -> ExpH
 conEH = ConEH
@@ -106,10 +108,18 @@ de_charEH e = do
     l <- de_litEH e
     de_charL l
 
+errorEH :: Type -> String -> ExpH
+errorEH = ErrorEH 
+
+de_errorEH :: ExpH -> Maybe (Type, String)
+de_errorEH (ErrorEH t s) = Just (t, s)
+de_errorEH _ = Nothing
+
 caseEH :: ExpH -> Sig -> ExpH -> ExpH -> ExpH
 caseEH x k@(Sig nk _) y n
  | (ConEH (Sig s _), vs) <- de_appsEH x
     = if s == nk then appsEH y vs else n
+ | Just (_, msg) <- de_errorEH x = errorEH (typeof n) msg
  | otherwise = CaseEH ES_None x k y n
 
 ioEH :: IO ExpH -> ExpH

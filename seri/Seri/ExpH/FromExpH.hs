@@ -3,9 +3,12 @@ module Seri.ExpH.FromExpH (
     fromExpH
   ) where
 
+import Seri.Sig
+import Seri.Name
 import Seri.Exp.Exp
 import Seri.ExpH.ExpH
 import Seri.ExpH.Sugar
+import Seri.ExpH.SeriEHs
 import Seri.Fresh
 
 fromExpH :: ExpH -> Exp
@@ -30,4 +33,6 @@ fromExpHM (CaseEH _ arg s yes no) = do
   yes' <- fromExpHM yes
   no' <- fromExpHM no
   return $ CaseE arg' s yes' no'
+fromExpHM (ErrorEH t s)
+  = fromExpHM $ appEH (varEH (Sig (name "Prelude.error") t)) (stringEH s) 
 

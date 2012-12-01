@@ -1,6 +1,7 @@
 
 module Seri.Prim.Prelude (
     preludePs,
+    errorP,
     eq_IntegerP, eq_CharP,
     add_IntegerP, sub_IntegerP, mul_IntegerP,
     lt_IntegerP, leq_IntegerP, gt_IntegerP,
@@ -18,6 +19,7 @@ import Seri.Prim.Prim
 
 preludePs :: [Prim]
 preludePs = [
+    errorP,
     eq_IntegerP, eq_CharP,
     add_IntegerP, sub_IntegerP, mul_IntegerP,
     lt_IntegerP, leq_IntegerP, gt_IntegerP,
@@ -27,6 +29,9 @@ preludePs = [
     putCharP, getContentsP,
     numericP, valueofP
     ]
+
+errorP :: Prim
+errorP = unaryTP "Prelude.error" errorEH
 
 eq_IntegerP :: Prim
 eq_IntegerP = binaryP "Prelude.__prim_eq_Integer" ((==) :: Integer -> Integer -> Bool)

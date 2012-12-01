@@ -16,5 +16,6 @@ instance Typeof ExpH where
     typeof (AppEH _ f x) = fromMaybe UnknownT $ snd <$> de_arrowT (typeof f)
     typeof (LamEH _ v f) = arrowsT [typeof v, typeof (f (VarEH v))]
     typeof (CaseEH _ _ _ _ e) = typeof e
+    typeof (ErrorEH t _) = t
 
 

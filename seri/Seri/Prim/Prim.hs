@@ -7,6 +7,8 @@ module Seri.Prim.Prim (
     nullaryP, nullaryTP, unaryP, unaryTP, binaryTP, binaryP,
     ) where
 
+import Control.Monad
+
 import qualified Seri.HashTable as HT
 import Seri.Name
 import Seri.Type
@@ -41,6 +43,9 @@ unaryTP n f =
       impl :: Type -> [ExpH] -> ExpH
       impl t [a]
         | Just av <- de_seriEH a = seriEH (f t av)
+        | Just (_, msg) <- de_errorEH a =
+            let Just (_, ot) = de_arrowT t
+            in errorEH ot msg
         | otherwise = PrimEH (Sig nm t) (impl t) [a]
 
       eh :: Type -> ExpH
@@ -65,6 +70,10 @@ binaryTP n f =
       impl t [a, b] 
         | Just av <- de_seriEH a
         , Just bv <- de_seriEH b = seriEH (f t av bv)
+        | Just (_, msg) <- mplus (de_errorEH a) (de_errorEH b) =
+            let Just (_, bot) = de_arrowT t
+                Just (_, ot) = de_arrowT bot
+            in errorEH ot msg
         | otherwise = PrimEH (Sig nm t) (impl t) [a, b]
 
       -- The type is the type of the primitive function without arguments
