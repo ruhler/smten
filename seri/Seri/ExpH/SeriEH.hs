@@ -62,3 +62,12 @@ instance (SeriEH a) => SeriEH (IO a) where
     de_seriEH e = do
         io <- de_ioEH e
         return $ fromMaybe (error "de_seriEH IO") . de_seriEH <$> io
+
+-- SeriEH for Bit
+instance SeriT Bit where
+    seriT _ = error "seriT on Bit"
+
+instance SeriEH Bit where
+    seriEH = bitEH
+    de_seriEH = de_bitEH
+

@@ -67,7 +67,6 @@ library
     Seri.ExpH.TH
     Seri.ExpH.FromExpH
     Seri.ExpH.Ppr
-    Seri.ExpH.Primitives
     Seri.ExpH.Utils
 
     Seri.Inline
@@ -75,6 +74,7 @@ library
     Seri.Prim
     Seri.Prim.Prim
     Seri.Prim.Prelude
+    Seri.Prim.Bit
 
     Seri.Haskell
     Seri.Haskell.Haskell
