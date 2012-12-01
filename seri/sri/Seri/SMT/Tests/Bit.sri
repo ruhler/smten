@@ -60,4 +60,5 @@ main = do
     runYices1 (Just "build/test/Bit.yices1.dbg") qtest
     runYices2 (Just "build/test/Bit.yices2.dbg") qtest
     runSTP (Just "build/test/Bit.stp.dbg") qtest
+    putStrLn "BIT PASSED"
 

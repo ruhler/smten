@@ -229,7 +229,8 @@ realizefree (Sig nm t) | t == integerT = do
     ival <- liftIO $ SMT.getIntegerValue solver (smtN nm)
     debug $ "; " ++ pretty nm ++ " is " ++ show ival
     return (integerEH ival)
-realizefree (Sig nm (AppT (ConT n) (NumT (ConNT w)))) | n == name "Bit" = do
+realizefree (Sig nm (AppT (ConT n) (NumT wt))) | n == name "Bit" = do
+    let w = nteval wt
     solver <- gets qs_solver
     bval <- liftIO $ SMT.getBitVectorValue solver w (smtN nm)
     debug $ "; " ++ pretty nm ++ " has value " ++ show bval
