@@ -24,14 +24,26 @@ core = Logic {
     th_integer = False,
     th_bit = False
   }
-    
+
 -- Specialize an expression for a given logic.
--- TODO: actually perform specialization.
 specialize :: Logic -> ExpH -> ExpH
 specialize l e =
  let me = specialize l
- in case () of
-     _ | Just (f@(CaseEH {}), arg) <- de_appEH e
+
+     -- specialize just the children of the given expression.
+     sub :: ExpH -> ExpH
+     sub e 
+      | LitEH {} <- e = e
+      | ConEH {} <- e = e
+      | VarEH {} <- e = e
+      | PrimEH s f xs <- e = f (map me xs)
+      | AppEH a b <- e = appEH (me a) (me b)
+      | LamEH s f <- e = lamEH s $ \x -> me (f x)
+      | CaseEH x k y n <- e = caseEH (me x) k (me y) (me n)
+      | ErrorEH {} <- e = e
+          
+ in case sub e of
+     e | Just (f@(CaseEH {}), arg) <- de_appEH e
        , not (oktype l (typeof f)) -> me $ pusharg f arg
        | CaseEH a@(CaseEH {}) k y n <- e
        , not (oktype l (typeof a)) -> me $ pushfun (\a' -> caseEH a' k y n) a
@@ -39,10 +51,6 @@ specialize l e =
        , not (oktype l (typeof a)) -> me $ pushfun (\a' -> f (a':xs)) a
        | PrimEH _ f (x:a@(CaseEH {}):xs) <- e
        , not (oktype l (typeof a)) -> me $ pushfun (\a' -> f (x:a':xs)) a
-       | PrimEH _ f xs <- e -> f (map me xs)
-       | AppEH a b <- e -> appEH (me a) (me b)
-       | LamEH s f <- e -> lamEH s (\x -> me (f x))
-       | CaseEH x k y n <- e -> caseEH (me x) k (me y) (me n)
        | otherwise -> e
 
 -- Perform argument pushing.
