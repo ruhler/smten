@@ -9,9 +9,9 @@ data MyEnum = E1 | E2 | E3 | E4
 
 rotateenum :: MyEnum -> MyEnum
 rotateenum E1 = E2
-rotateenum E2 = E3
+rotateenum E2 = E1
 rotateenum E3 = E4
-rotateenum E4 = E1
+rotateenum E4 = E3
 
 data MyStruct = MyStruct MyEnum Bool
     deriving (Eq, Free)
@@ -39,7 +39,7 @@ qtest = do
     a <- free
     assert (rotateenum a == E3)
     ra <- query a
-    test "datatype.enum" (ra == Satisfiable E2)
+    test "datatype.enum" (ra == Satisfiable E4)
 
     b <- free
     assert (changestruct b == MyStruct E2 False)

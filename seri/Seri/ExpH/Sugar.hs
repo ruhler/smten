@@ -5,7 +5,7 @@
 module Seri.ExpH.Sugar (
     litEH, de_litEH, varEH, de_varEH, conEH, de_conEH,
     appEH, de_appEH, appsEH, de_appsEH,
-    lamEH, caseEH,
+    lamEH,
     errorEH, de_errorEH,
 
     unitEH,
@@ -108,21 +108,14 @@ de_charEH e = do
     l <- de_litEH e
     de_charL l
 
+-- The type passed to errorEH should be the return type of error when applied
+-- to a string.
 errorEH :: Type -> String -> ExpH
-errorEH t =
- let Just (_, ot) = de_arrowT t
- in ErrorEH ot
+errorEH = ErrorEH
 
 de_errorEH :: ExpH -> Maybe (Type, String)
 de_errorEH (ErrorEH t s) = Just (t, s)
 de_errorEH _ = Nothing
-
-caseEH :: ExpH -> Sig -> ExpH -> ExpH -> ExpH
-caseEH x k@(Sig nk _) y n
- | (ConEH (Sig s _), vs) <- de_appsEH x
-    = if s == nk then appsEH y vs else n
- | Just (_, msg) <- de_errorEH x = errorEH (typeof n) msg
- | otherwise = CaseEH x k y n
 
 ioEH :: IO ExpH -> ExpH
 ioEH x = litEH (dynamicL x)

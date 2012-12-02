@@ -4,7 +4,7 @@
 -- | More syntactic sugar for ExpH.
 -- These make use of SeriEHs.
 module Seri.ExpH.Sugar2 (
-    ifEH, de_stringEH,
+    de_stringEH,
     ) where
 
 import Control.Monad
@@ -18,9 +18,5 @@ import Seri.ExpH.SeriEH
 import Seri.ExpH.SeriEHs
 import Seri.ExpH.Typeof
 
-ifEH :: ExpH -> ExpH -> ExpH -> ExpH
-ifEH p a b = caseEH p (Sig (name "True") boolT) a b
-
 de_stringEH :: ExpH -> Maybe String
 de_stringEH = de_seriEH
-

@@ -13,7 +13,7 @@ import Seri.ExpH.SeriEHs
 import Seri.Fresh
 
 fromExpH :: ExpH -> Exp
-fromExpH e = runFreshFast (fromExpHM e)
+fromExpH e = runFreshPretty (fromExpHM e)
 
 -- Translate back to the normal Exp representation
 fromExpHM :: (Fresh f) => ExpH -> f Exp

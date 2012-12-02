@@ -31,7 +31,12 @@ preludePs = [
     ]
 
 errorP :: Prim
-errorP = unaryTP "Prelude.error" errorEH
+errorP =
+  let f :: Type -> String -> ExpH
+      f t =
+        let Just (_, ot) = de_arrowT t
+        in errorEH ot
+  in unaryTP "Prelude.error" f
 
 eq_IntegerP :: Prim
 eq_IntegerP = binaryP "Prelude.__prim_eq_Integer" ((==) :: Integer -> Integer -> Bool)
