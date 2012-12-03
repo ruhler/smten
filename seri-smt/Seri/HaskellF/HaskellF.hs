@@ -358,14 +358,16 @@ hsDec d = throw $ "coreH does not apply to dec: " ++ pretty d
 
 -- haskell decs
 --  Compile the given declarations to haskell.
-haskellf :: [Dec] -> H.Doc
-haskellf env =
+haskellf ::    Bool     -- ^ Should a "__main" wrapper be generated?
+            -> String   -- ^ Name of target module.
+            -> [Dec] -> H.Doc
+haskellf wrapmain modname env =
   let hsHeader :: H.Doc
       hsHeader = H.text "{-# LANGUAGE ExplicitForAll #-}" H.$+$
                  H.text "{-# LANGUAGE MultiParamTypeClasses #-}" H.$+$
                  H.text "{-# LANGUAGE FlexibleInstances #-}" H.$+$
                  H.text "{-# LANGUAGE ScopedTypeVariables #-}" H.$+$
-                 H.text "module Main (__main) where" H.$+$
+                 H.text ("module " ++ modname ++ " where") H.$+$
                  H.text "import qualified Prelude" H.$+$
                  H.text "import qualified Seri.HaskellF.Symbolic as S" H.$+$
                  H.text "import qualified Seri.Name as S" H.$+$
@@ -374,7 +376,9 @@ haskellf env =
                  H.text "import Seri.HaskellF.Lib.Prelude" H.$+$
                  H.text "import Seri.HaskellF.Lib.SMT" H.$+$
                  H.text "" H.$+$
-                 H.text "__main = __main_wrapper main"
+                 if wrapmain
+                    then H.text "__main = __main_wrapper main"
+                    else H.empty
 
       ds = surely $ (concat <$> mapM hsDec env)
   in hsHeader H.$+$ H.ppr ds

@@ -11,7 +11,7 @@ import Seri.HaskellF.Symbolic
 import Seri.HaskellF.Query
 import qualified Seri.HaskellF.Lib.Prelude as S
 import qualified Seri.HaskellF.Lib.SMT as S
-import qualified SMT_Seri as S
+import qualified Seri_SMT as S
 import Seri.SMT.Specialize
 import Seri.SMT.Yices.Yices2    
 

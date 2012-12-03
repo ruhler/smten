@@ -69,9 +69,6 @@ indir build/seri-bin {
 
     #hrun ln -sf ../../seri-bin/dsel.hs dsel.hs
     #hrun ghc -o dsel dsel.hs
-
-    #hrun ln -sf ../../seri-bin/sudoku.hs sudoku.hs
-    #hrun ghc -o sudoku sudoku.hs
 }
     
 set SERI build/seri-bin/seri
@@ -104,7 +101,7 @@ proc io {module} {
     set smtdir build/test
     hrun $::SERI --io \
         --include $::SRI_SERI \
-        -m $module.main \
+        --main-is $module.main \
         -f $::SRI_SERI/[string map {. /} $module].sri
 }
 
@@ -148,8 +145,20 @@ io Seri.SMT.Tests.Squares2.Squares
 #io Seri.SMT.Tests.Sudoku3
 io Seri.SMT.Tests.Isolate0
 
-#hrun $DSEL
-#hrun $SUDOKU
+# The sudoku haskell integration test.
+
+run $::SERI --haskellf \
+    --include $::SRI_SERI \
+    --no-main \
+    --mod-name Seri_SMT \
+    -f $::SRI_SERI/Seri/SMT/SMT.sri \
+    > build/seri-bin/Seri_SMT.hs
+indir build/seri-bin {
+    hrun ln -sf ../../seri-bin/sudoku.hs sudoku.hs
+    hrun ghc --make -o sudoku sudoku.hs
+}
+hrun ./build/seri-bin/sudoku
+
 
 puts "BUILD COMPLETE"
 

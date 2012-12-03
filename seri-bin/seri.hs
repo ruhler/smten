@@ -68,6 +68,8 @@ data Args = Args {
     run :: Run,
     include :: [FilePath],
     main_is :: String,
+    no_main :: Bool,
+    mod_name :: String,
     file :: FilePath
 } deriving (Show, Eq, Data, Typeable)
 
@@ -84,6 +86,10 @@ argspec = Args {
        A.&= A.typDir,
     main_is = "Main.main"
        A.&= A.help "Fully qualified top-level function to use",
+    no_main = False
+       A.&= A.help "Don't generate a __main wrapper with haskellf",
+    mod_name = "Main"
+       A.&= A.help "Haskell module to generate with haskellf",
     file = "Main.sri"
        A.&= A.help "Input .sri file"
        A.&= A.typFile
@@ -118,5 +124,5 @@ main = do
             putStrLn . show $ haskell (getDecls env) nmain
         HaskellF -> do
             env <- loadenv (include args) (file args)
-            putStrLn . show $ haskellf (getDecls env)
+            putStrLn . show $ haskellf (not (no_main args)) (mod_name args) (getDecls env)
 
