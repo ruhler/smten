@@ -1,20 +1,21 @@
 
-{-# LANGUAGE TemplateHaskell #-}
+import Prelude hiding (notElem, all, print)
 
-import Prelude hiding ((>), (==), (/=), (<=), notElem, print, (&&), all)
+import Data.Functor ((<$>))
+import Data.Maybe
+
+import Seri.Type
+import Seri.ExpH
+import Seri.SMT.Query
+import Seri.HaskellF.Symbolic
+import Seri.HaskellF.Query
+import qualified Seri.HaskellF.Lib.Prelude as S
+import qualified Seri.HaskellF.Lib.SMT as S
+import qualified SMT_Seri as S
+import Seri.SMT.Specialize
+import Seri.SMT.Yices.Yices2    
 
 import Data.List(transpose)
-
-import Seri.Failable
-import Seri.DSEL.DSEL
-import Seri.DSEL.SMT
-import Seri.Type
-import Seri.TH
-import Seri
-import Seri.Dec
-import Seri.ExpH
-import Seri.SMT.Yices.Yices2
-
 
 -- The size of the sudoku.
 -- (nxn)x(nxn)
@@ -26,23 +27,24 @@ m :: Integer
 m = n*n
 
 type Cell = Integer
+type S_Cell = S.Integer
 
-freeCell :: Query (ExpT Cell)
+freeCell :: Query S_Cell
 freeCell = do
-    x <- free env
-    assert ((x > 0) && (x <= seriET m))
+    x <- freeS
+    assertS ((x S.> 0) S.&& (x S.<= seriS m))
     return x
 
-readCell :: Char -> Query (ExpT Cell);
-readCell '1' = return (seriET 1);
-readCell '2' = return (seriET 2);
-readCell '3' = return (seriET 3);
-readCell '4' = return (seriET 4);
-readCell '5' = return (seriET 5);
-readCell '6' = return (seriET 6);
-readCell '7' = return (seriET 7);
-readCell '8' = return (seriET 8);
-readCell '9' = return (seriET 9);
+readCell :: Char -> Query S_Cell;
+readCell '1' = return 1;
+readCell '2' = return 2;
+readCell '3' = return 3;
+readCell '4' = return 4;
+readCell '5' = return 5;
+readCell '6' = return 6;
+readCell '7' = return 7;
+readCell '8' = return 8;
+readCell '9' = return 9;
 readCell '.' = freeCell;
 readCell c = error ("readCell: " ++ [c]);
 
@@ -57,14 +59,14 @@ printCell 7 = '7';
 printCell 8 = '8';
 printCell 9 = '9';
 
-notElem :: (SeriT a) => ExpT a -> [ExpT a] -> ExpT Bool
-notElem x [] = seriET True
-notElem x (y:ys) = (x /= y) && (notElem x ys)
+notElem :: (S.Eq a, Symbolic a) => a -> [a] -> S.Bool
+notElem x [] = seriS True
+notElem x (y:ys) = (x S./= y) S.&& (notElem x ys)
 
 -- Return true if all elements in the list are unique.
-unique :: (SeriT a) => [ExpT a] -> ExpT Bool;
-unique [] = seriET True;
-unique (x:xs) = notElem x xs && unique xs;
+unique :: (Symbolic a, S.Eq a) => [a] -> S.Bool;
+unique [] = seriS True;
+unique (x:xs) = notElem x xs S.&& unique xs;
 
 print :: [[Cell]] -> [[Char]];
 print cells = map (\row -> map printCell row) cells;
@@ -99,17 +101,17 @@ breakup n xs =
      (a, b) -> a : (breakup n b);
   };
 
-all :: (a -> ExpT Bool) -> [a] -> ExpT Bool
-all f [] = seriET True
-all f (x:xs) = ite (f x) (all f xs) (seriET False)
+all :: (a -> S.Bool) -> [a] -> S.Bool
+all f [] = seriS True
+all f (x:xs) = S.__caseTrue (f x) (all f xs) (seriS False)
 
-isvalid :: [[ExpT Cell]] -> ExpT Bool;
+isvalid :: [[S_Cell]] -> S.Bool;
 isvalid b = all unique (concat [rows b, cols b, boxes b]);
 
-readRow :: [Char] -> Query [ExpT Cell];
+readRow :: [Char] -> Query [S_Cell];
 readRow = mapM readCell;
 
-readBoard :: [[Char]] -> Query [[ExpT Cell]]
+readBoard :: [[Char]] -> Query [[S_Cell]]
 readBoard rows = mapM readRow rows;
 
 easy :: [[Char]];
@@ -150,19 +152,17 @@ diabolical =
 
 solve :: Query [[Char]];
 solve = do
-    board <- readBoard diabolical
-    assert (isvalid board)
-    result <- queryR $ mapM (mapM realize) board
+    board <- readBoard solved
+    assert (unbox $ isvalid board)
+    result <- query $ mapM (mapM realizeS) board
     case (result) of
        Satisfiable v -> return (print v)
        _ -> return ["no solution"]
 
-env :: Env
-env = $(loadenvth [seridir] (seridir >>= return . (++ "/Seri/SMT/SMT.sri")))
-
 main :: IO ()
 main = do
     y <- yices2
-    r <- runQuery (RunOptions (Just "build/test/sudoku.dbg") y) env solve
+    let l = core { th_integer = True, th_bit = True }
+    r <- runQuery (RunOptions (Just "build/test/sudoku.dbg") y l) solve
     mapM_ putStrLn r
 
