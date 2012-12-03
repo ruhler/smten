@@ -7,6 +7,7 @@ module Seri.HaskellF.Query (
 import Data.Functor ((<$>))
 import Data.Maybe
 
+import Seri.Ppr
 import Seri.Type
 import Seri.ExpH
 import Seri.SMT.Query
@@ -25,7 +26,7 @@ assertS :: S.Bool -> Query ()
 assertS = assert . unbox
 
 de_seriEH' :: (SeriEH a) => ExpH -> a
-de_seriEH' x = fromMaybe (error "de_seriEH'") (de_seriEH x)
+de_seriEH' x = fromMaybe (error $ "de_seriEH': " ++ pretty x) (de_seriEH x)
 
 realizeS :: (Symbolic a, SeriEH b) => a -> Realize b
 realizeS = fmap de_seriEH' . realize . unbox

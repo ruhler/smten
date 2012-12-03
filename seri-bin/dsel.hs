@@ -1,65 +1,61 @@
 
 {-# LANGUAGE TemplateHaskell #-}
 
-import Prelude hiding (fst, snd, (/=), (==), (<), (>), (&&))
-import qualified Prelude
-
-import Seri.SMT.Yices.Yices2
-import Seri.DSEL.DSEL
-import Seri.DSEL.SMT
-import Seri
-import Seri.TH
 import Seri.Type
 import Seri.ExpH
-import Seri.Dec
-
-env :: Env
-env = $(loadenvth [seridir] (seridir >>= return . (++ "/Seri/Tests/DSEL.sri")))
+import Seri.SMT.Query
+import Seri.HaskellF.Symbolic
+import Seri.HaskellF.Query
+import qualified Seri.HaskellF.Lib.Prelude as S
+import qualified Seri.HaskellF.Lib.SMT as S
+import qualified Seri_DSEL as S
+import Seri.SMT.Yices.Yices2    
+import Seri.SMT.Specialize
 
 q1 :: Query (Answer Integer)
 q1 = do
-    x <- free env
-    assert (x < 6)
-    assert (x > 4)
-    query x
+    x <- freeS
+    assertS (x S.< 6)
+    assertS (x S.> 4)
+    query $ realizeS x
 
-incr :: ExpT Integer -> ExpT Integer
-incr x = x + 1
+incr :: S.Integer -> S.Integer
+incr x = x S.+ 1
 
 q2 :: Query (Answer Integer)
 q2 = do
-    x <- free env
-    assert (x < 6)
-    assert (incr x > 5)
-    query x
+    x <- freeS 
+    assertS (x S.< 6)
+    assertS (incr x S.> 5)
+    query $ realizeS x
 
 -- This quadruple inlines the argument completely. The SMT solver doesn't see
 -- the sharing between the different instances of 'a'.
-quadruple :: ExpT Integer -> ExpT Integer
-quadruple a = a + a + a + a
+quadruple :: S.Integer -> S.Integer
+quadruple a = a S.+ a S.+ a S.+ a
 
 -- This quadruple exposes the sharing to the SMT solver (if sharing is
 -- turned on in the elaborator).
-quadrupleS :: ExpT Integer -> ExpT Integer
-quadrupleS = varET1 env "Seri.Tests.DSEL.quadruple"
+quadrupleS :: S.Integer -> S.Integer
+quadrupleS = S.quadruple
 
-share :: (ExpT Integer -> ExpT Integer) -> Query (Answer (Integer, Integer))
+share :: (S.Integer -> S.Integer) -> Query (Answer (Integer, Integer))
 share f = do
-    x <- free env
-    y <- free env
-    assert (f (x - y) == 24)
-    assert (y > 0)
-    queryR $ do
-      xv <- realize x
-      yv <- realize y
+    x <- freeS
+    y <- freeS
+    assertS (f (x S.- y) S.== 24)
+    assertS (y S.> 0)
+    query $ do
+      xv <- realizeS x
+      yv <- realizeS y
       return (xv, yv)
 
 qtuple :: Query (Answer Integer)
 qtuple = do
-    p <- free env
-    let x = (ite p (seriET (1, 3)) (seriET (2, 4))) :: ExpT (Integer, Integer)
-    assert (fst x == 1)
-    query (snd x)
+    p <- freeS
+    let x = S.__caseTrue p (seriS (1 :: Integer, 3 :: Integer)) (seriS (2 :: Integer, 4 :: Integer)) :: S.Tuple2__ S.Integer S.Integer 
+    assertS (S.fst x S.== 1)
+    query $ realizeS (S.snd x)
 
 data Foo = Bar Integer
          | Sludge Bool
@@ -68,28 +64,28 @@ data Foo = Bar Integer
 derive_SeriT ''Foo
 derive_SeriEH ''Foo
 
-defoo :: ExpT Foo -> ExpT Integer
-defoo = varET1 env "Seri.Tests.DSEL.defoo"
+defoo :: S.Foo -> S.Integer
+defoo = S.defoo
 
 quserdata :: Query (Answer Foo)
 quserdata = do
-    f <- free env
-    assert (2 == defoo f)
-    query f
+    f <- freeS
+    assertS (2 S.== defoo f)
+    query $ realizeS f
 
-allQ :: (SeriEH a) => (ExpT a -> ExpT Bool) -> Query [a]
+allQ :: (S.Eq a, Symbolic a, SeriEH b) => (a -> S.Bool) -> Query [b]
 allQ p = do
-    x <- free env
-    assert (p x)
-    r <- query x
+    x <- freeS
+    assertS (p x)
+    r <- query $ realizeS x
     case r of
        Satisfiable v -> do
-          vs <- allQ (\a -> (p a) && (a /= seriET v))
+          vs <- allQ (\a -> (p a) S.&& (a S./= seriS v))
           return (v:vs)
        _ -> return []
 
-pred1 :: ExpT Integer -> ExpT Bool
-pred1 x = (x > 3) && (x < 6)
+pred1 :: S.Integer -> S.Bool
+pred1 x = (x S.> 3) S.&& (x S.< 6)
 
 qallQ :: Query [Integer]
 qallQ = allQ pred1
@@ -97,7 +93,8 @@ qallQ = allQ pred1
 try :: (Show a) => String -> Query a -> IO ()
 try nm q = do
     y <- yices2
-    r <- runQuery (RunOptions (Just $ "build/test/DSEL." ++ nm ++ ".dbg") y) env q
+    let l = core { th_integer = True, th_bit = True }
+    r <- runQuery (RunOptions (Just $ "build/test/DSEL." ++ nm ++ ".dbg") y l) q
     putStrLn $ show r
 
 main :: IO ()
@@ -106,7 +103,7 @@ main = do
     try "q2" q2
     try "share_haskell" $ share quadruple
     try "share_seri" $ share quadrupleS
-    try "qtuple" $ qtuple
-    try "quserdata" $ quserdata
+    --try "qtuple" $ qtuple
+    --try "quserdata" $ quserdata
     try "qallQ" $ qallQ
     

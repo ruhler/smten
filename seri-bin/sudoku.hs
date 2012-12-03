@@ -1,8 +1,7 @@
 
 import Prelude hiding (notElem, all, print)
 
-import Data.Functor ((<$>))
-import Data.Maybe
+import Data.List(transpose)
 
 import Seri.Type
 import Seri.ExpH
@@ -12,10 +11,8 @@ import Seri.HaskellF.Query
 import qualified Seri.HaskellF.Lib.Prelude as S
 import qualified Seri.HaskellF.Lib.SMT as S
 import qualified Seri_SMT as S
-import Seri.SMT.Specialize
 import Seri.SMT.Yices.Yices2    
-
-import Data.List(transpose)
+import Seri.SMT.Specialize
 
 -- The size of the sudoku.
 -- (nxn)x(nxn)

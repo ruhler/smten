@@ -114,8 +114,6 @@ library
     Seri.SMT.Translate
     Seri.SMT.Query
 
-    Seri.TH
-
     Seri.Fresh
 
     Seri.Ppr
