@@ -152,9 +152,10 @@ smte :: ExpH -> Query SMT.Expression
 smte e = do
     l <- gets qs_logic
     qs <- gets qs_qs 
+    --trace ("PRESPEC : " ++ pretty (fromExpH e)) (return ())
     let se = fromExpH $ specialize l e
-
-        mkye :: CompilationM ([SMT.Command], SMT.Expression)
+    --trace ("POSTSPEC: " ++ pretty se) (return ())
+    let mkye :: CompilationM ([SMT.Command], SMT.Expression)
         mkye = do
           ye <- smtE se
           cmds <- smtD
@@ -290,6 +291,6 @@ realize e = Realize $ do
                 freevals <- mapM realizefree freevars
                 modify $ \qs -> qs { qs_freevals = Just freevals }
                 return freevals
-    let freemap = zip [n | Sig n _ <- freevars] fvs
-    return $ substituteH (flip lookup freemap) e
+    let freemap = zip (map varEH freevars) fvs
+    return $ transform (flip lookup freemap) e
 

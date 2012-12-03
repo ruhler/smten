@@ -29,13 +29,18 @@ data ExpH = LitEH Lit
             -- And  e1 should have type: V
             --  Where V is the type of the case expression.
           | ErrorEH Type String -- ^ type is type of expression.
-    deriving(Eq, Typeable, Show)
+    deriving(Typeable, Show)
 
-instance Eq (ExpH -> ExpH) where
+instance Eq ExpH where
+    (==) (LitEH a) (LitEH b) = a == b
+    (==) (ConEH a) (ConEH b) = a == b
+    (==) (VarEH a) (VarEH b) = a == b
+    (==) (PrimEH a _ as) (PrimEH b _ bs) = (a == b) && (as == bs)
+    (==) (AppEH af ax) (AppEH bf bx) = af == bf && ax == bx
+    (==) (CaseEH ax ak ay an) (CaseEH bx bk by bn)
+        = and [ ax == bx, ak == bk, ay == by, an == bn]
     (==) _ _ = False
-
-instance Eq ([ExpH] -> ExpH) where
-    (==) _ _ = False
+        
 
 instance Show (ExpH -> ExpH) where
     show _ = "..."

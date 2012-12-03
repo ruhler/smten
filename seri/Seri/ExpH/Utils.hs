@@ -3,7 +3,6 @@
 
 module Seri.ExpH.Utils (
     transform,
-    substituteH,
     impliedByBoolH,
     runio, caseEH, ifEH,
     ) where
@@ -50,24 +49,17 @@ transform g e =
        CaseEH x k y d -> caseEH (me x) k (me y) (me d)
        ErrorEH {} -> e
 
-substituteH :: (Name -> Maybe ExpH) -> ExpH -> ExpH
-substituteH f =
-  let g (VarEH (Sig n _)) = f n
-      g _ = Nothing
-  in transform g
-
 -- Assuming the given expression has value True or False, what can we easily
 -- infer about the free variables in that expression?
-impliedByBoolH :: Bool -> ExpH -> [(Name, ExpH)]
+impliedByBoolH :: Bool -> ExpH -> [(ExpH, ExpH)]
 impliedByBoolH b e
- | VarEH (Sig n _) <- e = [(n, boolEH b)]
  | CaseEH x k y n <- e
  , Just kv <- de_boolEH (conEH k)
- , y == (boolEH (not b)) = impliedByBoolH (not kv) x ++ impliedByBoolH b n
+ , y == (boolEH (not b)) = [(e, boolEH b)] ++ impliedByBoolH (not kv) x ++ impliedByBoolH b n
  | CaseEH x k y n <- e
  , Just kv <- de_boolEH (conEH k)
- , n == (boolEH (not b)) = impliedByBoolH kv x ++ impliedByBoolH b y
- | otherwise = []
+ , n == (boolEH (not b)) = [(e, boolEH b)] ++ impliedByBoolH kv x ++ impliedByBoolH b y
+ | otherwise = [(e, boolEH b)]
 
 -- | Given a Seri expression of type IO a,
 -- returns the Seri expression of type a which results from running the IO
@@ -84,10 +76,11 @@ caseEH x k@(Sig nk _) y n
  | Just b <- de_boolEH (conEH k) =
     let ify = impliedByBoolH b x
         ifn = impliedByBoolH (not b) x
-        y' = substituteH (flip lookup ify) y
-        n' = substituteH (flip lookup ifn) n
+        y' = transform (flip lookup ify) y
+        n' = transform (flip lookup ifn) n
     in CaseEH x k y' n'
  | otherwise = CaseEH x k y n
 
 ifEH :: ExpH -> ExpH -> ExpH -> ExpH
 ifEH p a b = caseEH p (Sig (name "True") boolT) a b
+
