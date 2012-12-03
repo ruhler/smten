@@ -57,6 +57,10 @@ vs. foo :: (Foo a) => Sludge
     For example: (let foo = bar in foo x)
 * Report an error if module name doesn't match source file name.
 * allow multiply specified imports
+* Review desugared expressions to see if they make sense or could be cleaned
+  up.
+* Don't allow deriving of Free for recursive data types
+* Add static check for concreteness of queries (?)
 
 Pretty Printer::
 * Make pretty again.
@@ -68,30 +72,48 @@ Performance::
 * Add support for sharing in generated queries (?)
 * Use the yices1 native interface where possible (everywhere?)
 
-Solvers::
-* Figure out how to test all the different solvers more completely
+ExpH::
+* Perhaps case statements should consider all constructors at once instead of
+  one at a time?
+* Annotate expressions with IDs to quickly test for equality?
+
+Primitives::
+* Implement the 'update' primitive, or remove it from smt_array.
+* Get rid of the __prim_free primitive
+
+SMT::
+* Remove bv-zero-extend from SMT syntax, use SMTLIB2 alternative
 * Add minisat as a solver (requires CNF)
 * Add Z3 as a solver
 
-Static Analysis::
-* Add static check for exhaustive case statements
-* Add static check for concreteness of queries
-
-SMT Syntax::
-* Remove bv-zero-extend from SMT syntax, use SMTLIB2 alternative
-
-Dealing with Free Things::
-* what happens if we realize a free integer variable which is a dont-care?
-* interpret function evidence
-* interpret char evidence (?)
-* Figure out how to give an instance of Free for just those function types
-  that we support
-* Don't allow deriving of Free for recursive data types
-* Get rid of the __prim_free primitive
-* Define SMT theory classes and add a solver phantom type to free and Query.
+Query::
+* Figure out how to deal with debugging properly
+* Change names of logics and theories in Specialize to match SMTLIB. (?)
 * Don't ask for the value of a free variable from an SMT solver unless it
   shows up in a query.
 * Deal with errors in queries correctly.
+
+HaskellF::
+* Translate a module at a time instead of one big blob
+
+Distribution::
+* Move everything but the SMT solvers from seri-smt to seri.
+
+Build System::
+* Don't require yices1 and yices2 to be installed to build or use seri
+    If a solver isn't installed, just give a runtime error when you try to
+    use it. (As per request of Nirav)
+* don't hardcode build/test output directory into SMT tests
+* clean up tclmk script: maybe separate into init, build, and test sections.
+* test haskell backend
+
+
+Applications::
+* HCP - get it working on the larger test cases
+* TCP - Implement it
+* SAT - implement MAXSAT
+* SAT - implement DIMACs parser
+* SUDOKU - Have the sudoku solver use IO to read the input board
 
 Bugs::
 * seriq2 for SquaresRaw... result differs from yices1 and yices2. Why?
@@ -103,60 +125,7 @@ Bugs::
 * I suspect shadowed variables won't work in STP queries because of a bug in
   how let expressions are implemented. (Can that ever happen?)
 
-Build System::
-* Don't require yices1 and yices2 to be installed to build or use seri
-    If a solver isn't installed, just give a runtime error when you try to
-    use it. (As per request of Nirav)
-* don't hardcode build/test output directory into SMT tests
-* clean up tclmk script: maybe separate into init, build, and test sections.
-* test haskell backend
-
-Elaborator::
-* Remove ES_State from ExpH
-* Fill out stubbed out impliedByFoo* functions
-* Use impliedByFooH and substituteH rather than concretize
-* Fix the commented out Core test cases
-* Specialize for theory supported.
-  For example don't inline away the integers in ((if free1 then 3 else 4) == 4)
-  if the solver supports Integers and the user says he wants to use them.
-* Perhaps case statements should consider all constructors at once instead of
-  one at a time?
-* Get rid of elaborate function
-* Figure out how to cheaply concretize free variables in expressions, ideally
-  without forcing re-elaboration after concretization. Can I make use of HOAS
-  somehow with this so I elaborate the right way from the start?
-* Have common abstraction for evaluating an argument, used for case arguments
-  and primitive arguments
-* Look over results of elaboration to see if anything pops
-  out, and make sure things aren't blown up too big.
-* Have common abstraction for manipulating the yv part of a case expression.
-* Consider more general concretization propagation?
-* Leverage let statements when doing function pushing to capture
-  sharing
-* Implement the 'update' primitive, or remove it from smt_array.
-* Test out free_enum, see if it generate SAT (it may not...)
-
 Other::
 * Have name sugar for arrowN, tupleN, de_tupleN, unitN, etc...
-* Review desugared expressions to see if they make sense or could be cleaned
-  up.
-* Change names of logics and theories in Specialize to match SMTLIB.
-
-HaskellF:
-* Specialize for solver.
-  For example don't inline away the integers in ((if free1 then 3 else 4) == 4)
-  if the solver supports Integers and the user says he wants to use them.
-  Maybe use a Reader monad to read supported theories at run time?
-* Figure out how to deal with debugging properly
-* Do argument and function pushing for integer primitives
-* Get the bit tests working
-* Get the rest of the seri test cases working
-
-Applications::
-* HCP - get it working on the larger test cases
-* TCP - Implement it
-* SAT - implement MAXSAT
-* SAT - implement DIMACs parser
-* SUDOKU - Have the sudoku solver use IO to read the input board
-
+* Get dsel tests which don't work to work.
 
