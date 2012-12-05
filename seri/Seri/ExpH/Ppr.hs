@@ -19,9 +19,9 @@ instance Ppr ExpH where
             <+> text "}" <+> text "in" <+> ppr (f (VarEH s))
 
     ppr (LitEH l) = ppr l
-    ppr (ConEH n t xs) = ppr (appsEH (varEH (Sig n UnknownT)) xs)
+    ppr (ConEH n _ xs) = ppr (appsEH (varEH (Sig n UnknownT)) xs)
     ppr (VarEH s) = ppr s
-    ppr (PrimEH s _ xs) = ppr (appsEH (varEH s) xs)
+    ppr (PrimEH n _ _ xs) = ppr (appsEH (varEH (Sig n UnknownT)) xs)
     ppr (AppEH f x) = parens (ppr f) <+> parens (ppr x)
     ppr (LamEH s f) = text "\\" <+> ppr s <+> text "->" <+> text "..."
     ppr (CaseEH e1 p e2 e3)

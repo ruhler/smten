@@ -38,7 +38,7 @@ specialize l e =
       | LitEH {} <- e = e
       | ConEH n t xs <- e = ConEH n t (map me xs)
       | VarEH {} <- e = e
-      | PrimEH s f xs <- e = f (map me xs)
+      | PrimEH _ _ f xs <- e = f (map me xs)
       | AppEH a b <- e = appEH (me a) (me b)
       | LamEH s f <- e = lamEH s $ \x -> me (f x)
       | CaseEH x k y n <- e = caseEH (me x) k (me y) (me n)
@@ -56,11 +56,11 @@ specialize l e =
        , not (oktype l (typeof a)) -> me $
           let f = lamEH (Sig (name "_x") (typeof a)) $ \a' -> caseEH a' k y n
           in pushfun f a
-       | PrimEH _ f (a@(CaseEH {}) : xs) <- e
+       | PrimEH _ _ f (a@(CaseEH {}) : xs) <- e
        , not (oktype l (typeof a)) -> me $
           let f' = lamEH (Sig (name "_x") (typeof a)) $ \a' -> f (a':xs)
           in pushfun f' a
-       | PrimEH _ f (x:a@(CaseEH {}):xs) <- e
+       | PrimEH _ _ f (x:a@(CaseEH {}):xs) <- e
        , not (oktype l (typeof a)) -> me $
           let f' = lamEH (Sig (name "_x") (typeof a)) $ \a' -> f (x:a':xs)
           in pushfun f' a

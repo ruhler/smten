@@ -23,7 +23,10 @@ fromExpHM (ConEH n t xs) = do
     let t' = arrowsT $ (map typeof xs') ++ [t]
     return $ appsE (ConE (Sig n t')) xs'
 fromExpHM (VarEH s) = return (VarE s)
-fromExpHM (PrimEH s _ xs) = fromExpHM (appsEH (varEH s) xs)
+fromExpHM (PrimEH n t _ xs) = do
+    xs' <- mapM fromExpHM xs
+    let t' = arrowsT $ (map typeof xs') ++ [t]
+    return $ appsE (VarE (Sig n t')) xs'
 fromExpHM (AppEH f x) = do
     f' <- fromExpHM f
     x' <- fromExpHM x   

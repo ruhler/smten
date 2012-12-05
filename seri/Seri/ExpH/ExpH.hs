@@ -16,11 +16,11 @@ import Seri.Type
 import Seri.Sig
 
 data ExpH = LitEH Lit
-          | ConEH Name Type [ExpH]  -- ^ type is for fully applied.
+          | ConEH Name Type [ExpH]
+                -- ^ type is for fully applied constructor.
           | VarEH Sig
-          | PrimEH Sig ([ExpH] -> ExpH) [ExpH]
-                -- ^ TODO: what is Type in sig? fully applied, or unapplied?
-                --         does Typeof match? Does fromExpH match?
+          | PrimEH Name Type ([ExpH] -> ExpH) [ExpH]
+                -- ^ type is for fully applied primitive.
           | AppEH ExpH ExpH
           | LamEH Sig (ExpH -> ExpH)
           | CaseEH ExpH Sig ExpH ExpH
@@ -39,7 +39,8 @@ instance Eq ExpH where
     (==) (ConEH an at axs) (ConEH bn bt bxs)
         = and [an == bn, at == bt, axs == bxs]
     (==) (VarEH a) (VarEH b) = a == b
-    (==) (PrimEH a _ as) (PrimEH b _ bs) = (a == b) && (as == bs)
+    (==) (PrimEH an at _ as) (PrimEH bn bt _ bs)
+        = and [an == bn, at == bt, as == bs]
     (==) (AppEH af ax) (AppEH bf bx) = af == bf && ax == bx
     (==) (CaseEH ax ak ay an) (CaseEH bx bk by bn)
         = and [ ax == bx, ak == bk, ay == by, an == bn]

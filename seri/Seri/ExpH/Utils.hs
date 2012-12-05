@@ -42,7 +42,7 @@ transform g e =
        LitEH {} -> e
        ConEH n s xs -> ConEH n s (map me xs)
        VarEH {} -> e 
-       PrimEH s f xs -> f (map me xs)
+       PrimEH _ _ f xs -> f (map me xs)
        AppEH f x -> appEH (me f) (me x)
        LamEH s f -> lamEH s $ \x -> me (f x)
        CaseEH x k y d -> caseEH (me x) k (me y) (me d)

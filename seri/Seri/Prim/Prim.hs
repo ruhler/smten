@@ -46,7 +46,9 @@ unaryTP n f =
         | Just (_, msg) <- de_errorEH a =
             let Just (_, ot) = de_arrowT t
             in errorEH ot msg
-        | otherwise = PrimEH (Sig nm t) (impl t) [a]
+        | otherwise =
+            let Just (_, ot) = de_arrowT t
+            in PrimEH nm ot (impl t) [a]
 
       eh :: Type -> ExpH
       eh t
@@ -74,7 +76,10 @@ binaryTP n f =
             let Just (_, bot) = de_arrowT t
                 Just (_, ot) = de_arrowT bot
             in errorEH ot msg
-        | otherwise = PrimEH (Sig nm t) (impl t) [a, b]
+        | otherwise =
+            let Just (_, bot) = de_arrowT t
+                Just (_, ot) = de_arrowT bot
+            in PrimEH nm ot (impl t) [a, b]
 
       -- The type is the type of the primitive function without arguments
       -- applied.
