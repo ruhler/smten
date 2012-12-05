@@ -121,7 +121,7 @@ proc haskellf {module} {
 
 io Seri.Tests.Basic
 io Seri.SMT.Tests.Core
-#io Seri.SMT.Tests.Datatype
+io Seri.SMT.Tests.Datatype
 io Seri.SMT.Tests.Scoped
 io Seri.SMT.Tests.Integer
 io Seri.SMT.Tests.Bit

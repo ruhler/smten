@@ -5,8 +5,8 @@ all:
 test:
 	./build/seri-bin/seri --haskellf \
 		--include seri/sri \
-		-m main \
-		-f seri/sri/Seri/SMT/Tests/Sudoku.sri > foo.hs
+		--main-is main \
+		-f seri/sri/Seri/SMT/Tests/Datatype.sri > foo.hs
 	HOME=build/home ghc -fno-warn-overlapping-patterns \
 		-fno-warn-missing-fields \
 		-main-is __main \
@@ -17,8 +17,8 @@ test:
 testio:
 	./build/seri-bin/seri --io \
 		--include seri/sri \
-		--main-is Seri.SMT.Tests.Core.main \
-		-f seri/sri/Seri/SMT/Tests/Core.sri +RTS -p
+		--main-is Seri.SMT.Tests.Share.main \
+		-f seri/sri/Seri/SMT/Tests/Share.sri +RTS -p -K1g
 
 clean:
 	rm -rf build/seri-smt build/seri build/seri-bin build/test

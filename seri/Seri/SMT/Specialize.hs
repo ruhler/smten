@@ -5,6 +5,8 @@ module Seri.SMT.Specialize (
     Logic(..), core, specialize,
     ) where
 
+import Debug.Trace
+
 import Data.List (genericLength)
 import Data.Maybe (isJust)
 
@@ -51,11 +53,17 @@ specialize l e =
        | Just (f@(CaseEH {}), arg) <- de_appEH e
        , not (oktype l (typeof f)) -> me $ pusharg f arg
        | CaseEH a@(CaseEH {}) k y n <- e
-       , not (oktype l (typeof a)) -> me $ pushfun (\a' -> caseEH a' k y n) a
+       , not (oktype l (typeof a)) -> me $
+          let f = lamEH (Sig (name "_x") (typeof a)) $ \a' -> caseEH a' k y n
+          in pushfun f a
        | PrimEH _ f (a@(CaseEH {}) : xs) <- e
-       , not (oktype l (typeof a)) -> me $ pushfun (\a' -> f (a':xs)) a
+       , not (oktype l (typeof a)) -> me $
+          let f' = lamEH (Sig (name "_x") (typeof a)) $ \a' -> f (a':xs)
+          in pushfun f' a
        | PrimEH _ f (x:a@(CaseEH {}):xs) <- e
-       , not (oktype l (typeof a)) -> me $ pushfun (\a' -> f (x:a':xs)) a
+       , not (oktype l (typeof a)) -> me $
+          let f' = lamEH (Sig (name "_x") (typeof a)) $ \a' -> f (x:a':xs)
+          in pushfun f' a
        | otherwise -> e
 
 shouldinline :: Logic -> ExpH -> Bool
@@ -73,9 +81,10 @@ shouldinline l v
 --     _ -> n) arg
 -- Where y = \v1 -> \v2 -> ... -> yv
 -- Translates to:
---     case a of
---         k -> \v1 -> \v2 -> ... -> yv arg
---         _ -> n arg
+--  let z = arg
+--  in case a of
+--         k -> \v1 -> \v2 -> ... -> yv z
+--         _ -> n z
 pusharg :: ExpH -> ExpH -> ExpH
 pusharg (CaseEH a k y n) arg =
  let yify :: Integer -> (ExpH -> ExpH) -> ExpH -> ExpH
@@ -84,13 +93,11 @@ pusharg (CaseEH a k y n) arg =
      yify n f x = error $ "yify got: " ++ pretty x
 
      kargs = genericLength (de_arrowsT (typeof k)) - 1
-
-     lam = lamEH (Sig (name "_z") (typeof arg)) $ \av ->
+ in letEH (Sig (name "_z") (typeof arg)) arg $ \av -> 
         let ybody = \yv -> appEH yv av
             y' = yify kargs ybody y
             n' = appEH n av
         in caseEH a k y' n'
- in appEH lam arg
 
 -- Return TRUE if the type is supported in the given logic.
 oktype :: Logic -> Type -> Bool
@@ -103,14 +110,15 @@ oktype l t = or [
 -- Perform function pushing:
 --    f (case x of { k -> y; _ -> n})
 -- Turns into:
---    case x of { k -> f y; _ -> f n}
-pushfun :: (ExpH -> ExpH) -> ExpH -> ExpH
+--    let _f = f in case x of { k -> _f y; _ -> _f n}
+pushfun :: ExpH -> ExpH -> ExpH
 pushfun f (CaseEH x k y n) =
- let yify :: Integer -> (ExpH -> ExpH) -> ExpH -> ExpH
-     yify 0 f x = f x
+ let yify :: Integer -> ExpH -> ExpH -> ExpH
+     yify 0 f x = appEH f x
      yify n f (LamEH s b) = lamEH s $ \x -> yify (n-1) f (b x)
      yify n f x = error $ "yify got: " ++ pretty x
 
      kargs = genericLength (de_arrowsT (typeof k)) - 1
- in caseEH x k (yify kargs f y) (f n)
+ in letEH (Sig (name "_f") (typeof f)) f $ \fv ->
+        caseEH x k (yify kargs fv y) (appEH fv n)
 

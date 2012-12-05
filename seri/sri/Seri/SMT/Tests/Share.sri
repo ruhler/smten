@@ -12,14 +12,15 @@ qmain :: Query (Answer (Integer, Integer))
 qmain = do
     x <- free
     y <- free
-    assert (quadruple (quadruple (x - y)) == 32)
+    assert (let v = x - y
+            in v + v + v + v == 8)
     query (x, y)
 
 main :: IO ()
 main = do
-    putStr "yices1..."
-    r1 <- runYices1 (Just "build/test/Share.yices1.dbg") qmain
-    putStrLn (show r1)
+--    putStr "yices1..."
+--    r1 <- runYices1 (Just "build/test/Share.yices1.dbg") qmain
+--    putStrLn (show r1)
 
     putStr "yices2..."
     r2 <- runYices2 (Just "build/test/Share.yices2.dbg") qmain
