@@ -11,14 +11,14 @@ rotateenum :: MyEnum -> MyEnum
 rotateenum E1 = E2
 rotateenum E2 = E1
 rotateenum E3 = E4
-rotateenum E4 = E3
+rotateenum _ = E3
 
 data MyStruct = MyStruct MyEnum Bool
     deriving (Eq, Free)
 
 changestruct :: MyStruct -> MyStruct
 changestruct (MyStruct e True) = MyStruct (rotateenum e) False
-changestruct (MyStruct e False) = MyStruct e True
+changestruct (MyStruct e _) = MyStruct e True
 
 data MyMix = Mix1 Bool Bool
            | Mix2 Bool
@@ -26,13 +26,13 @@ data MyMix = Mix1 Bool Bool
 
 mixval :: MyMix -> MyEnum
 mixval (Mix1 True _) = E1
-mixval (Mix1 False _) = E2
+mixval (Mix1 _ _) = E2
 mixval (Mix2 True) = E3
-mixval (Mix2 False) = E4
+mixval _ = E4
 
 test :: String -> Bool -> Query ()
 test nm True = return ()
-test nm False = error ("Test failed: " ++ nm)
+test nm _ = error ("Test failed: " ++ nm)
 
 qtest :: Query ()
 qtest = do

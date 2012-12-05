@@ -77,19 +77,22 @@ flip f x y = f y x
 ($) f x = f x
 
 data Bool = False | True
-  deriving (Eq)
+
+instance Eq Bool where
+    (==) a b = if a then b else not b
+    (/=) a b = if a then not b else b
 
 (&&) :: Bool -> Bool -> Bool
 (&&) True x = x
-(&&) False _ = False
+(&&) _ _ = False
 
 (||) :: Bool -> Bool -> Bool
 (||) True _ = True
-(||) False x = x
+(||) _ x = x
 
 not :: Bool -> Bool
 not True = False
-not False = True
+not _ = True
 
 type String = [Char]
 
@@ -196,7 +199,7 @@ init [] = error "Prelude.init: empty list"
 
 null :: [a] -> Bool
 null [] = True
-null (_:_) = False
+null _ = False
 
 length :: [a] -> Integer
 length [] = 0

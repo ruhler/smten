@@ -93,6 +93,14 @@ Query::
   shows up in a query.
 * Deal with errors in queries correctly.
 
+Query Optimizations::
+* Inline variables with a single use
+* Perform inferred value propagation
+* Perform case analysis to avoid inserting unnecessary error conditions
+  automatically.
+* Preserve sharing in monadic bind
+
+
 HaskellF::
 * Translate a module at a time instead of one big blob
 
