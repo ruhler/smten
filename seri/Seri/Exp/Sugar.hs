@@ -9,7 +9,7 @@ module Seri.Exp.Sugar (
     boolE, de_boolE, falseE, trueE, charE, de_charE,
     listE, de_listE, stringE, de_stringE,
     de_bitE,
-    errorE, tupleE,
+    errorE, tupleE, de_tupleE,
     integerE, de_integerE, numberE,
 
     addE, subE, mulE, opE,
@@ -17,6 +17,7 @@ module Seri.Exp.Sugar (
     ) where
 
 import Control.Monad
+import Data.List(genericLength)
 
 import Seri.Bit
 import Seri.Lit
@@ -154,6 +155,15 @@ tupleE xs =
       ts = map typeof xs
       t = arrowsT $ ts ++ [tupleT ts]
   in appsE (conE (Sig n t)) xs
+
+de_tupleE :: Exp -> Maybe [Exp]
+de_tupleE x = 
+    case de_appsE x of
+       (ConE (Sig nm _), xs) -> do
+          n <- de_tupleN nm
+          guard $ genericLength xs == n
+          return xs
+       _ -> Nothing
 
 integerE :: Integer -> Exp
 integerE = litE . integerL
