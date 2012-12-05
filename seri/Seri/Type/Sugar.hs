@@ -145,11 +145,13 @@ tupleT [x] = x
 tupleT es = appsT (conT $ tupleN (length es)) es
 
 de_tupleT :: Type -> Maybe [Type]
-de_tupleT t = do
-    let (ConT tn, ts) = de_appsT t
-    len <- de_tupleN tn
-    guard $ len == genericLength ts
-    return ts
+de_tupleT t =
+ case de_appsT t of
+    (ConT tn, ts) -> do
+        len <- de_tupleN tn
+        guard $ len == genericLength ts
+        return ts
+    _ -> Nothing
 
 addNT :: NType -> NType -> NType
 addNT = AppNT "+" 
