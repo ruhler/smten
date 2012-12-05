@@ -25,11 +25,7 @@ class (SeriT a) => SeriEH a where
 
 instance SeriEH () where
     seriEH () = unitEH
-
-    de_seriEH e = do
-        Sig n _ <- de_conEH e
-        guard $ n == name "()"
-        return ()
+    de_seriEH x = de_kconEH (name "()") x >> return ()
 
 instance SeriEH Bool where
     seriEH = boolEH

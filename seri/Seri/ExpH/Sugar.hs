@@ -3,7 +3,7 @@
 
 -- | Abstract constructors and deconstructors dealing with ExpH
 module Seri.ExpH.Sugar (
-    litEH, de_litEH, varEH, de_varEH, conEH, de_conEH,
+    litEH, de_litEH, varEH, de_varEH, conEH, de_conEH, de_kconEH,
     appEH, de_appEH, appsEH, de_appsEH,
     lamEH,
     errorEH, de_errorEH,
@@ -14,6 +14,8 @@ module Seri.ExpH.Sugar (
     charEH, de_charEH,
     ioEH, de_ioEH,
     ) where
+
+import Control.Monad
 
 import Seri.Bit
 import Seri.Lit
@@ -26,9 +28,21 @@ import Seri.ExpH.Typeof
 conEH :: Sig -> ExpH
 conEH = ConEH
 
-de_conEH :: ExpH -> Maybe Sig
-de_conEH (ConEH s) = Just s
-de_conEH _ = Nothing
+-- Check for a fully applied constructor.
+de_conEH :: ExpH -> Maybe (Sig, [ExpH])
+de_conEH e =
+  case de_appsEH e of
+     (ConEH s@(Sig _ t), vs) -> do
+        guard $ length vs == (length (de_arrowsT t) - 1)
+        return (s, vs)
+     _ -> Nothing
+
+-- Check for the given fully applied constructor.
+de_kconEH :: Name -> ExpH -> Maybe [ExpH]
+de_kconEH n x = do
+    (Sig nm _, vs) <- de_conEH x
+    guard $ nm == n
+    return vs
 
 litEH :: Lit -> ExpH
 litEH = LitEH
@@ -79,9 +93,10 @@ boolEH True = trueEH
 boolEH False = falseEH
 
 de_boolEH :: ExpH -> Maybe Bool
-de_boolEH x | x == trueEH = Just True
-de_boolEH x | x == falseEH = Just False
-de_boolEH _ = Nothing
+de_boolEH x =
+ let detrue = de_kconEH (name "True") x >> return True
+     defalse = de_kconEH (name "False") x >> return False
+ in mplus detrue defalse
 
 integerEH :: Integer -> ExpH
 integerEH = litEH . integerL 

@@ -1,5 +1,6 @@
 
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE PatternGuards #-}
 
 module Seri.ExpH.SeriEHs (stringEH) where
 

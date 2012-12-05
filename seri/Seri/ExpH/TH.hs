@@ -16,11 +16,6 @@ import Seri.ExpH.ExpH
 import Seri.ExpH.Sugar
 import Seri.ExpH.SeriEH
 
-unappsEH :: ExpH -> [ExpH]
-unappsEH e =
-  let (f, xs) = de_appsEH e
-  in f:xs
-
 seriEH_helper :: (S.SeriT a) => String -> a -> [S.Type] -> [ExpH] -> ExpH
 seriEH_helper nm ty tys xs = 
   let t = S.arrowsT (tys ++ [S.seriT ty])
@@ -72,16 +67,17 @@ derive_de_seriEH nm vars cs =
       -- A constructor of the form:
       --    Bar Sludge Fudge
       -- Maps to the clause:
-      --    [ConEH (Sig n _), a, b] | n == name "Bar" -> do
-      --      a' <- de_seriEH a
-      --      b' <- de_seriEH b
-      --      return (Bar a' b')
+      --    [x] | Just [x1, x2] <- de_kconEH (name "Bar") x -> do
+      --      x1' <- de_seriEH x1
+      --      x2' <- de_seriEH x2
+      --      return (Bar x1' x2')
       mkcon :: Con -> Match
       mkcon (NormalC cnm ts) =   
-        let args = [mkName [c] | c <- take (length ts) "abcdefghijklmnopqrstuvwxyz"]
-            args' = [mkName (c:'\'':[]) | c <- take (length ts) "abcdefghijklmnopqrstuvwxyz"]
-            pat = ListP (ConP 'ConEH [ConP 'Sig [VarP (mkName "nm"), WildP]] : map VarP args)
-            guard = NormalG $ AppE (AppE (VarE '(==)) (VarE (mkName "nm"))) (AppE (VarE 'S.name) (LitE (StringL (nameBase cnm))))
+        let args = [mkName ("x" ++ show i) | i <- take (length ts) [1..]]
+            args' = [mkName ("x" ++ show i ++ "'") | i <- take (length ts) [1..]]
+            pat = VarP (mkName "x")
+            argpat = ConP 'Just [ListP (map VarP args)]
+            guard = PatG [BindS argpat (AppE (AppE (VarE (mkName "de_kconEH")) (AppE (VarE 'S.name) (LitE (StringL (nameBase cnm))))) (VarE (mkName "x")))]
             stmts = [BindS (VarP x') (AppE (VarE 'de_seriEH) (VarE x)) | (x, x') <- zip args args']
             body = DoE $ stmts ++ [NoBindS (AppE (VarE 'return) (foldl AppE (ConE cnm) (map VarE args')))]
         in Match pat (GuardedB [(guard, body)]) []
@@ -91,7 +87,7 @@ derive_de_seriEH nm vars cs =
       defaultmatch :: Match
       defaultmatch = Match WildP (NormalB (ConE 'Nothing)) []
 
-      body = CaseE (AppE (VarE 'unappsEH) (VarE (mkName "e"))) (map mkcon cs ++ [defaultmatch])
+      body = CaseE (VarE (mkName "e")) (map mkcon cs ++ [defaultmatch])
       clause = Clause [VarP (mkName "e")] (NormalB body) []
       dec = FunD 'de_seriEH [clause]
   in [dec]

@@ -57,7 +57,7 @@ runio e = fromMaybe (error $ "runio got non-IO: " ++ pretty e) (de_ioEH e)
 
 caseEH :: ExpH -> Sig -> ExpH -> ExpH -> ExpH
 caseEH x k@(Sig nk _) y n
- | (ConEH (Sig s _), vs) <- de_appsEH x
+ | Just (Sig s _, vs) <- de_conEH x
     = if s == nk then appsEH y vs else n
  | Just (_, msg) <- de_errorEH x = errorEH (typeof n) msg
  | otherwise = CaseEH x k y n
