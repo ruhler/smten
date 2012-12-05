@@ -21,10 +21,9 @@ atom t | Just _ <- de_appT t = parens (ppr t)
 atom t = ppr t
 
 instance Ppr Type where
-    -- Special case for list type
     ppr t | Just v <- de_listT t = text "[" <> ppr v <> text "]"
-
-    -- Special case for ->
+    ppr t | Just vs <- de_tupleT t
+      = text "(" <> sep (punctuate comma (map ppr vs)) <> text ")"
     ppr t | (t1:ts@(_:_)) <- de_arrowsT t   
       = sep $ ppr t1 : concat [[text "->", atom tx] | tx <- ts]
 

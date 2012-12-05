@@ -52,8 +52,10 @@ transform g e =
 -- returns the Seri expression of type a which results from running the IO
 -- computation.
 runio :: ExpH -> IO ExpH
-runio (ErrorEH _ msg) = error $ "seri: " ++ msg
-runio e = fromMaybe (error $ "runio got non-IO: " ++ pretty e) (de_ioEH e)
+runio e
+ | Just (_, msg) <- de_errorEH e = error $ "seri: " ++ msg
+ | Just io <- de_ioEH e = io
+ | otherwise = error $ "runio got non-IO: " ++ pretty (un_letEH e)
 
 caseEH :: ExpH -> Sig -> ExpH -> ExpH -> ExpH
 caseEH x k@(Sig nk _) y n

@@ -5,7 +5,7 @@
 module Seri.ExpH.Sugar (
     litEH, de_litEH, varEH, de_varEH, conEH, de_conEH, de_kconEH,
     appEH, de_appEH, appsEH, de_appsEH,
-    lamEH,
+    lamEH, letEH, de_letEH, un_letEH,
     errorEH, de_errorEH,
 
     unitEH,
@@ -36,8 +36,9 @@ conEH (Sig n t) =
 
 -- Check for a fully applied constructor.
 de_conEH :: ExpH -> Maybe (Name, Type, [ExpH])
-de_conEH (ConEH n t xs) = Just (n, t, xs)
-de_conEH _ = Nothing
+de_conEH e
+ | (ConEH n t xs) <- un_letEH e = Just (n, t, xs)
+ | otherwise = Nothing
 
 -- Check for the given fully applied constructor.
 de_kconEH :: Name -> ExpH -> Maybe [ExpH]
@@ -50,8 +51,9 @@ litEH :: Lit -> ExpH
 litEH = LitEH
 
 de_litEH :: ExpH -> Maybe Lit
-de_litEH (LitEH l) = Just l
-de_litEH _ = Nothing
+de_litEH e
+ | LitEH l <- un_letEH e = Just l
+ | otherwise = Nothing
 
 varEH :: Sig -> ExpH
 varEH = VarEH
@@ -60,9 +62,10 @@ de_varEH :: ExpH -> Maybe Sig
 de_varEH (VarEH s) = Just s
 de_varEH _ = Nothing
 
+-- We don't apply lambdas here. That's done lazily in de_litEH, de_conEH, and
+-- de_errorEH. This is to preserve sharing as much as possible.
 appEH :: ExpH -> ExpH -> ExpH
-appEH (LamEH _ f) x = f x
-appEH f x = AppEH f x
+appEH = AppEH
 
 de_appEH :: ExpH -> Maybe (ExpH, ExpH)
 de_appEH (AppEH f x) = Just (f, x)
@@ -79,6 +82,20 @@ de_appsEH t = (t, [])
 
 lamEH :: Sig -> (ExpH -> ExpH) -> ExpH
 lamEH = LamEH
+
+letEH :: Sig -> ExpH -> (ExpH -> ExpH) -> ExpH
+letEH s v b = appEH (lamEH s b) v
+
+de_letEH :: ExpH -> Maybe (Sig, ExpH, ExpH -> ExpH)
+de_letEH (AppEH f v)
+  | LamEH s b <- un_letEH f = Just (s, v, b)
+de_letEH _ = Nothing
+
+-- Remove all lets from the given expression.
+un_letEH :: ExpH -> ExpH
+un_letEH e
+ | Just (_, v, f) <- de_letEH e = un_letEH (f v)
+ | otherwise = e
 
 unitEH :: ExpH
 unitEH = conEH (Sig (name "()") unitT)
@@ -131,8 +148,9 @@ errorEH :: Type -> String -> ExpH
 errorEH = ErrorEH
 
 de_errorEH :: ExpH -> Maybe (Type, String)
-de_errorEH (ErrorEH t s) = Just (t, s)
-de_errorEH _ = Nothing
+de_errorEH e
+ | ErrorEH t s <- un_letEH e = Just (t, s)
+ | otherwise = Nothing
 
 ioEH :: IO ExpH -> ExpH
 ioEH x = litEH (dynamicL x)

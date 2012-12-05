@@ -43,7 +43,12 @@ specialize l e =
       | ErrorEH {} <- e = e
           
  in case sub e of
-     e | Just (f@(CaseEH {}), arg) <- de_appEH e
+     e | Just (_, v, b) <- de_letEH e
+       , shouldinline l v -> me (b v)
+       | Just (f, arg) <- de_appEH e
+       , Just (s, v, b) <- de_letEH f
+           -> me $ letEH s v (\x -> appEH (b x) arg)
+       | Just (f@(CaseEH {}), arg) <- de_appEH e
        , not (oktype l (typeof f)) -> me $ pusharg f arg
        | CaseEH a@(CaseEH {}) k y n <- e
        , not (oktype l (typeof a)) -> me $ pushfun (\a' -> caseEH a' k y n) a
@@ -52,6 +57,15 @@ specialize l e =
        | PrimEH _ f (x:a@(CaseEH {}):xs) <- e
        , not (oktype l (typeof a)) -> me $ pushfun (\a' -> f (x:a':xs)) a
        | otherwise -> e
+
+shouldinline :: Logic -> ExpH -> Bool
+shouldinline l v
+ | LitEH {} <- v = True
+ | ConEH {} <- v = True
+ | VarEH {} <- v = True
+ | ErrorEH {} <- v = True
+ | not (oktype l (typeof v)) = True
+ | otherwise = False
 
 -- Perform argument pushing.
 -- (case a of
