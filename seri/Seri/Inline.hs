@@ -49,7 +49,7 @@ inline env prims =
 
       inline' :: [(Name, Type)] -> [(Sig, ExpH)] -> Exp -> ExpH
       inline' tm m (LitE l) = LitEH l
-      inline' tm m (ConE s) = ConEH (assign tm s)
+      inline' tm m (ConE s) = conEH (assign tm s)
       inline' tm m (VarE s) | Just v <- lookup s m = v
       inline' tm m (VarE s) | Just v <- lookupPure (assign tm s) = v
       inline' tm m (VarE s) = VarEH (assign tm s)

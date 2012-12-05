@@ -9,6 +9,8 @@ module Seri.SMT.Primitives (
     runYices1P, runYices2P, runSTPP,
     ) where
 
+import Debug.Trace
+
 import Data.Functor((<$>))
 import Data.Maybe
 
@@ -71,20 +73,16 @@ freeP =
 assertP :: Prim
 assertP = unaryP "Seri.SMT.SMT.assert" assert
 
--- TODO: clean this up
--- * have f return Query (Answer ExpH) to automatically pack the Answer.
 queryP :: Prim
 queryP =
   let f :: ExpH -> Query ExpH
       f arg = do
         res <- query (realize arg)
+        let ta = AppT (ConT (name "Answer")) (typeof arg)
         case res of
-            Satisfiable arg' ->
-                let tsat = arrowsT [typeof arg, AppT (ConT (name "Answer")) (typeof arg)]
-                    result = appsEH (conEH (Sig (name "Satisfiable") tsat)) [arg']
-                in return result
-            Unsatisfiable -> return $ conEH (Sig (name "Unsatisfiable") (AppT (ConT (name "Answer")) (typeof arg)))
-            _ -> return $ conEH (Sig (name "Unknown") (AppT (ConT (name "Answer")) (typeof arg)))
+            Satisfiable arg' -> return $ ConEH (name "Satisfiable") ta [arg']
+            Unsatisfiable -> return $ ConEH (name "Unsatisfiable") ta []
+            _ -> return $ ConEH (name "Unknown") ta []
   in unaryP "Seri.SMT.SMT.query" f
 
 querySP :: Prim

@@ -10,7 +10,7 @@ import Seri.ExpH.ExpH
 
 instance Typeof ExpH where
     typeof (LitEH l) = typeof l
-    typeof (ConEH s) = typeof s
+    typeof (ConEH _ t _) = t
     typeof (VarEH s) = typeof s
     typeof (PrimEH s _ _) = typeof s
     typeof (AppEH f x) = fromMaybe UnknownT $ snd <$> de_arrowT (typeof f)

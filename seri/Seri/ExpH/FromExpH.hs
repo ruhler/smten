@@ -6,7 +6,7 @@ module Seri.ExpH.FromExpH (
 import Seri.Sig
 import Seri.Name
 import Seri.Type
-import Seri.Exp.Exp
+import Seri.Exp
 import Seri.ExpH.ExpH
 import Seri.ExpH.Sugar
 import Seri.ExpH.SeriEHs
@@ -18,7 +18,10 @@ fromExpH e = runFreshPretty (fromExpHM e)
 -- Translate back to the normal Exp representation
 fromExpHM :: (Fresh f) => ExpH -> f Exp
 fromExpHM (LitEH l) = return (LitE l)
-fromExpHM (ConEH s) = return (ConE s)
+fromExpHM (ConEH n t xs) = do
+    xs' <- mapM fromExpHM xs
+    let t' = arrowsT $ (map typeof xs') ++ [t]
+    return $ appsE (ConE (Sig n t')) xs'
 fromExpHM (VarEH s) = return (VarE s)
 fromExpHM (PrimEH s _ xs) = fromExpHM (appsEH (varEH s) xs)
 fromExpHM (AppEH f x) = do

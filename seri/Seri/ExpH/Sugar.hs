@@ -26,21 +26,23 @@ import Seri.ExpH.ExpH
 import Seri.ExpH.Typeof
 
 conEH :: Sig -> ExpH
-conEH = ConEH
+conEH (Sig n t) =
+ let coneh :: Name -> Type -> [ExpH] -> ExpH
+     coneh n t args
+        | Just (it, ot) <- de_arrowT t =
+            LamEH (Sig (name "c") it) $ \x -> coneh n ot (args ++ [x])
+        | otherwise = ConEH n t args
+ in coneh n t []
 
 -- Check for a fully applied constructor.
-de_conEH :: ExpH -> Maybe (Sig, [ExpH])
-de_conEH e =
-  case de_appsEH e of
-     (ConEH s@(Sig _ t), vs) -> do
-        guard $ length vs == (length (de_arrowsT t) - 1)
-        return (s, vs)
-     _ -> Nothing
+de_conEH :: ExpH -> Maybe (Name, Type, [ExpH])
+de_conEH (ConEH n t xs) = Just (n, t, xs)
+de_conEH _ = Nothing
 
 -- Check for the given fully applied constructor.
 de_kconEH :: Name -> ExpH -> Maybe [ExpH]
 de_kconEH n x = do
-    (Sig nm _, vs) <- de_conEH x
+    (nm, _, vs) <- de_conEH x
     guard $ nm == n
     return vs
 
@@ -82,10 +84,10 @@ unitEH :: ExpH
 unitEH = conEH (Sig (name "()") unitT)
 
 trueEH :: ExpH
-trueEH = ConEH (Sig (name "True") boolT)
+trueEH = conEH (Sig (name "True") boolT)
 
 falseEH :: ExpH
-falseEH = ConEH (Sig (name "False") boolT)
+falseEH = conEH (Sig (name "False") boolT)
 
 -- | Boolean expression
 boolEH :: Bool -> ExpH

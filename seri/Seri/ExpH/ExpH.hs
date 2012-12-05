@@ -11,13 +11,16 @@ module Seri.ExpH.ExpH (
 import Data.Dynamic
 
 import Seri.Lit
+import Seri.Name
 import Seri.Type
 import Seri.Sig
 
 data ExpH = LitEH Lit
-          | ConEH Sig
+          | ConEH Name Type [ExpH]  -- ^ type is for fully applied.
           | VarEH Sig
           | PrimEH Sig ([ExpH] -> ExpH) [ExpH]
+                -- ^ TODO: what is Type in sig? fully applied, or unapplied?
+                --         does Typeof match? Does fromExpH match?
           | AppEH ExpH ExpH
           | LamEH Sig (ExpH -> ExpH)
           | CaseEH ExpH Sig ExpH ExpH
@@ -33,7 +36,8 @@ data ExpH = LitEH Lit
 
 instance Eq ExpH where
     (==) (LitEH a) (LitEH b) = a == b
-    (==) (ConEH a) (ConEH b) = a == b
+    (==) (ConEH an at axs) (ConEH bn bt bxs)
+        = and [an == bn, at == bt, axs == bxs]
     (==) (VarEH a) (VarEH b) = a == b
     (==) (PrimEH a _ as) (PrimEH b _ bs) = (a == b) && (as == bs)
     (==) (AppEH af ax) (AppEH bf bx) = af == bf && ax == bx

@@ -4,6 +4,8 @@
 module Seri.ExpH.Ppr () where
 
 import Seri.Lit
+import Seri.Sig
+import Seri.Type
 import Seri.Ppr
 import Seri.ExpH.ExpH
 import Seri.ExpH.Sugar
@@ -12,7 +14,7 @@ import Seri.ExpH.Sugar2
 instance Ppr ExpH where
     ppr e | Just v <- de_stringEH e = text (show v)
     ppr (LitEH l) = ppr l
-    ppr (ConEH s) = ppr s
+    ppr (ConEH n t xs) = ppr (appsEH (varEH (Sig n UnknownT)) xs)
     ppr (VarEH s) = ppr s
     ppr (PrimEH s _ xs) = ppr (appsEH (varEH s) xs)
     ppr (AppEH f x) = parens (ppr f) <+> parens (ppr x)

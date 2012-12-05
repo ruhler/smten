@@ -34,7 +34,7 @@ specialize l e =
      sub :: ExpH -> ExpH
      sub e 
       | LitEH {} <- e = e
-      | ConEH {} <- e = e
+      | ConEH n t xs <- e = ConEH n t (map me xs)
       | VarEH {} <- e = e
       | PrimEH s f xs <- e = f (map me xs)
       | AppEH a b <- e = appEH (me a) (me b)

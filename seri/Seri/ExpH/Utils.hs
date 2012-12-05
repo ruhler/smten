@@ -23,7 +23,7 @@ instance Assign ExpH where
         mt = assignl f
     in case e of
          LitEH {} -> e
-         ConEH (Sig n t) -> ConEH (Sig n (mt t))
+         ConEH n t xs -> ConEH n (mt t) (map me xs)
          VarEH (Sig n t) -> VarEH (Sig n (mt t))
          AppEH a b -> AppEH (me a) (me b)
          LamEH (Sig n t) b -> LamEH (Sig n (mt t)) $ \x -> (me (b x))
@@ -40,7 +40,7 @@ transform g e =
   let me = transform g
   in case e of
        LitEH {} -> e
-       ConEH {} -> e
+       ConEH n s xs -> ConEH n s (map me xs)
        VarEH {} -> e 
        PrimEH s f xs -> f (map me xs)
        AppEH f x -> appEH (me f) (me x)
@@ -57,7 +57,7 @@ runio e = fromMaybe (error $ "runio got non-IO: " ++ pretty e) (de_ioEH e)
 
 caseEH :: ExpH -> Sig -> ExpH -> ExpH -> ExpH
 caseEH x k@(Sig nk _) y n
- | Just (Sig s _, vs) <- de_conEH x
+ | Just (s, _, vs) <- de_conEH x
     = if s == nk then appsEH y vs else n
  | Just (_, msg) <- de_errorEH x = errorEH (typeof n) msg
  | otherwise = CaseEH x k y n

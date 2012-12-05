@@ -17,8 +17,8 @@ test:
 testio:
 	./build/seri-bin/seri --io \
 		--include seri/sri \
-		-m Seri.SMT.Tests.Sudoku.main \
-		-f seri/sri/Seri/SMT/Tests/Sudoku.sri +RTS -p
+		--main-is Seri.SMT.Tests.Core.main \
+		-f seri/sri/Seri/SMT/Tests/Core.sri +RTS -p
 
 clean:
 	rm -rf build/seri-smt build/seri build/seri-bin build/test
