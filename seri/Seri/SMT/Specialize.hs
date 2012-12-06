@@ -34,8 +34,8 @@ specialize l e =
      -- specialized 
      spec :: ExpH -> ExpH
      spec e 
-       | Just (_, _, v, b) <- de_letEH e
-       , shouldinline l v = b v
+       | Just (Sig _ t, _, v, b) <- de_letEH e
+       , shouldinline l t = b v
 
         -- (let s = v in b) arg
         -- Turns into: (let s = v in b arg)
@@ -135,28 +135,19 @@ specialize l e =
              caseEH x k (yify kargs fv y) (spec $ appEH fv n)
 
      me = specialize l
+ in spec $ case e of
+             LitEH {} -> e
+             ConEH n t xs -> ConEH n t (map me xs)
+             VarEH {} -> e
+             PrimEH _ _ f xs -> f (map me xs)
+             AppEH a b _ -> appEH (me a) (me b)
+             LamEH s t f -> lamEH s t $ \x -> me (f x)
+             CaseEH x k y n -> caseEH (me x) k (me y) (me n)
+             ErrorEH {} -> e
 
-     un_lete = un_letEH e
- in case un_lete of
-      LitEH {} -> un_lete
-      VarEH {} -> un_lete
-      ConEH _ _ [] -> un_lete
-      ErrorEH {} -> un_lete
-      _ -> spec $ case e of
-                    ConEH n t xs -> ConEH n t (map me xs)
-                    PrimEH _ _ f xs -> f (map me xs)
-                    AppEH a b _ -> appEH (me a) (me b)
-                    LamEH s t f -> lamEH s t $ \x -> me (f x)
-                    CaseEH x k y n -> caseEH (me x) k (me y) (me n)
-
--- TODO: don't touch v!
-shouldinline :: Logic -> ExpH -> Bool
-shouldinline l v
- | LitEH {} <- v = True
- | ConEH {} <- v = True
- | VarEH {} <- v = True
- | ErrorEH {} <- v = True
- | not (oktype l (typeof v)) = True
+shouldinline :: Logic -> Type -> Bool
+shouldinline l t
+ | not (oktype l t) = True
  | otherwise = False
 
 -- Return TRUE if the type is supported in the given logic.

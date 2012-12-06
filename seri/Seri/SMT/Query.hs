@@ -291,6 +291,8 @@ realize e = Realize $ do
                 freevals <- mapM realizefree freevars
                 modify $ \qs -> qs { qs_freevals = Just freevals }
                 return freevals
-    let freemap = zip (map varEH freevars) fvs
-    return $ if null freemap then e else transform (flip lookup freemap) e
+    let freemap = zip [n | Sig n _ <- freevars] fvs
+        g (VarEH (Sig nm _)) = lookup nm freemap
+        g _ = Nothing
+    return $ if null freemap then e else transform g e
 
