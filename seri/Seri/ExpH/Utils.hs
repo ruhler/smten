@@ -29,7 +29,7 @@ transform g e =
        ConEH n s xs -> ConEH n s (map me xs)
        VarEH {} -> e 
        PrimEH _ _ f xs -> f (map me xs)
-       AppEH f x _ -> appEH (me f) (me x)
+       AppEH f x i -> AppEH (me f) (me x) (me i)
        LamEH s t f -> lamEH s t $ \x -> me (f x)
        CaseEH x k y d -> caseEH (me x) k (me y) (me d)
        ErrorEH {} -> e
