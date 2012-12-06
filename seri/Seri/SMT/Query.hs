@@ -152,7 +152,7 @@ smte :: ExpH -> Query SMT.Expression
 smte e = do
     l <- gets qs_logic
     qs <- gets qs_qs 
-    --trace ("PRESPEC : " ++ pretty (fromExpH e)) (return ())
+    --trace ("PRESPEC : " ++ pretty e) (return ())
     let se = fromExpH $ specialize l e
     --trace ("POSTSPEC: " ++ pretty se) (return ())
     let mkye :: CompilationM ([SMT.Command], SMT.Expression)
