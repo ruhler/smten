@@ -292,5 +292,5 @@ realize e = Realize $ do
                 modify $ \qs -> qs { qs_freevals = Just freevals }
                 return freevals
     let freemap = zip (map varEH freevars) fvs
-    return $ transform (flip lookup freemap) e
+    return $ if null freemap then e else transform (flip lookup freemap) e
 

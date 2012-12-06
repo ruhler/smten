@@ -107,16 +107,19 @@ specialize l e =
              caseEH x k (yify kargs fv y) (spec $ appEH fv n)
 
      me = specialize l
- in spec $ case e of
-             LitEH {} -> e
-             ConEH n t xs -> ConEH n t (map me xs)
-             VarEH {} -> e
-             PrimEH _ _ f xs -> f (map me xs)
-             AppEH a b -> appEH (me a) (me b)
-             LamEH s f -> lamEH s $ \x -> me (f x)
-             CaseEH x k y n -> caseEH (me x) k (me y) (me n)
-             ErrorEH {} -> e
-          
+
+     un_lete = un_letEH e
+ in case un_lete of
+      LitEH {} -> un_lete
+      VarEH {} -> un_lete
+      ConEH _ _ [] -> un_lete
+      ErrorEH {} -> un_lete
+      _ -> spec $ case e of
+                    ConEH n t xs -> ConEH n t (map me xs)
+                    PrimEH _ _ f xs -> f (map me xs)
+                    AppEH a b -> appEH (me a) (me b)
+                    LamEH s f -> lamEH s $ \x -> me (f x)
+                    CaseEH x k y n -> caseEH (me x) k (me y) (me n)
 
 shouldinline :: Logic -> ExpH -> Bool
 shouldinline l v
