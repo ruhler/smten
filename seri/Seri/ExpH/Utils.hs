@@ -16,20 +16,6 @@ import Seri.ExpH.Ppr
 import Seri.ExpH.ExpH
 import Seri.ExpH.Sugar
 
-
-instance Assign ExpH where
-   assignl f e =
-    let me = assignl f 
-        mt = assignl f
-    in case e of
-         LitEH {} -> e
-         ConEH n t xs -> ConEH n (mt t) (map me xs)
-         VarEH (Sig n t) -> VarEH (Sig n (mt t))
-         AppEH a b -> AppEH (me a) (me b)
-         LamEH (Sig n it) ot b -> LamEH (Sig n (mt it)) (mt ot) $ \x -> (me (b x))
-         CaseEH x (Sig kn kt) y n -> CaseEH (me x) (Sig kn (mt kt)) (me y) (me n)
-         ErrorEH t m -> ErrorEH (mt t) m
-
 -- Perform a generic transformation on an expression.
 -- Applies the given function to each subexpression. Any matching
 -- subexpression is replaced with the returned value, otherwise it continues
