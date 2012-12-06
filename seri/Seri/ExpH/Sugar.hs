@@ -65,17 +65,19 @@ de_varEH _ = Nothing
 -- We don't apply lambdas here. That's done lazily in de_litEH, de_conEH, and
 -- de_errorEH. This is to preserve sharing as much as possible.
 appEH :: ExpH -> ExpH -> ExpH
-appEH = AppEH
+appEH f x
+ | LamEH _ _ g <- un_letEH f = AppEH f x (un_letEH $ g x)
+ | otherwise = let e = AppEH f x e in e
 
 de_appEH :: ExpH -> Maybe (ExpH, ExpH)
-de_appEH (AppEH f x) = Just (f, x)
+de_appEH (AppEH f x _) = Just (f, x)
 de_appEH _ = Nothing
 
 appsEH :: ExpH -> [ExpH] -> ExpH
 appsEH f xs = foldl appEH f xs
 
 de_appsEH :: ExpH -> (ExpH, [ExpH])
-de_appsEH (AppEH a b) =
+de_appsEH (AppEH a b _) =
     let (f, as) = de_appsEH a
     in (f, as ++ [b])
 de_appsEH t = (t, [])
@@ -98,15 +100,14 @@ letEH s t v b = appEH (lamEH s t b) v
 --  t - type of let body
 --  v - value of let variable
 de_letEH :: ExpH -> Maybe (Sig, Type, ExpH, ExpH -> ExpH)
-de_letEH (AppEH f v)
+de_letEH (AppEH f v _)
   | LamEH s t b <- un_letEH f = Just (s, t, v, b)
 de_letEH _ = Nothing
 
 -- Remove all lets from the given expression.
 un_letEH :: ExpH -> ExpH
-un_letEH e
- | Just (_, _, v, f) <- de_letEH e = un_letEH (f v)
- | otherwise = e
+un_letEH (AppEH _ _ x) = x
+un_letEH x = x
 
 unitEH :: ExpH
 unitEH = conEH (Sig (name "()") unitT)

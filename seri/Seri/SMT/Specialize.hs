@@ -145,7 +145,7 @@ specialize l e =
       _ -> spec $ case e of
                     ConEH n t xs -> ConEH n t (map me xs)
                     PrimEH _ _ f xs -> f (map me xs)
-                    AppEH a b -> appEH (me a) (me b)
+                    AppEH a b _ -> appEH (me a) (me b)
                     LamEH s t f -> lamEH s t $ \x -> me (f x)
                     CaseEH x k y n -> caseEH (me x) k (me y) (me n)
 

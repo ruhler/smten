@@ -27,7 +27,7 @@ fromExpHM (PrimEH n t _ xs) = do
     xs' <- mapM fromExpHM xs
     let t' = arrowsT $ (map typeof xs') ++ [t]
     return $ appsE (VarE (Sig n t')) xs'
-fromExpHM (AppEH f x) = do
+fromExpHM (AppEH f x _) = do
     f' <- fromExpHM f
     x' <- fromExpHM x   
     return (AppE f' x')

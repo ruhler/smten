@@ -21,7 +21,13 @@ data ExpH = LitEH Lit
           | VarEH Sig
           | PrimEH Name Type ([ExpH] -> ExpH) [ExpH]
                 -- ^ type is for fully applied primitive.
-          | AppEH ExpH ExpH
+         
+          -- | AppEH f x i
+          --  f - the function
+          --  x - the argument
+          --  i - A cached version of (un_letEH (f x)) for performance
+          --  reasons.
+          | AppEH ExpH ExpH ExpH
 
           -- | LamEH s t f:
           --    s - name and type of the function argument. 
@@ -48,7 +54,6 @@ instance Eq ExpH where
     (==) (VarEH a) (VarEH b) = a == b
     (==) (PrimEH an at _ as) (PrimEH bn bt _ bs)
         = and [an == bn, at == bt, as == bs]
-    (==) (AppEH af ax) (AppEH bf bx) = af == bf && ax == bx
     (==) (CaseEH ax ak ay an) (CaseEH bx bk by bn)
         = and [ ax == bx, ak == bk, ay == by, an == bn]
     (==) _ _ = False
