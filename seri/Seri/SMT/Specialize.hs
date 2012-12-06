@@ -34,31 +34,46 @@ specialize l e =
      -- specialized 
      spec :: ExpH -> ExpH
      spec e 
-       | Just (_, v, b) <- de_letEH e
+       | Just (_, _, v, b) <- de_letEH e
        , shouldinline l v = b v
+
+        -- (let s = v in b) arg
+        -- Turns into: (let s = v in b arg)
        | Just (f, arg) <- de_appEH e
-       , Just (s, v, b) <- de_letEH f
-           = spec $ letEH s v (\x -> spec $ appEH (b x) arg)
+       , Just (s, t, v, b) <- de_letEH f =
+          let Just (_, ot) = de_arrowT t
+          in spec $ letEH s ot v (\x -> spec $ appEH (b x) arg)
        | Just (f@(CaseEH {}), arg) <- de_appEH e
        , not (oktype l (typeof f)) = spec $ pusharg f arg
        | CaseEH a k y n <- e
        , not (oktype l (typeof a)) =
           case a of
             CaseEH {} ->
-              let f = lamEH (Sig (name "_x") (typeof a)) $ \a' ->
+              let f = lamEH (Sig (name "_x") (typeof a)) (typeof e) $ \a' ->
                         spec $ caseEH a' k y n
               in spec $ pushfun f a
-            _ | Just (s, v, b) <- de_letEH a ->
-                spec $ letEH s v (\x -> spec $ caseEH (b x) k y n)
+
+            --   case (let s = v in b) of
+            --        k -> y
+            --        _ -> n
+            -- Goes to:
+            --   let s = v
+            --   in case b of
+            --        k -> y
+            --        _ -> n
+            _ | Just (s, _, v, b) <- de_letEH a ->
+                spec $ letEH s (typeof e) v (\x -> spec $ caseEH (b x) k y n)
               | otherwise -> error $ "TODO: specialize case arg: " ++ pretty a
        | PrimEH _ _ f (a@(CaseEH {}) : xs) <- e
        , not (oktype l (typeof a)) = 
-          let f' = lamEH (Sig (name "_x") (typeof a)) $ \a' -> spec $ f (a':xs)
+          let f' = lamEH (Sig (name "_x") (typeof a)) (typeof e) $ \a' ->
+                     spec $ f (a':xs)
           in spec $ pushfun f' a
 
        | PrimEH _ _ f (x:a@(CaseEH {}):xs) <- e
        , not (oktype l (typeof a)) =
-          let f' = lamEH (Sig (name "_x") (typeof a)) $ \a' -> spec $ f (x:a':xs)
+          let f' = lamEH (Sig (name "_x") (typeof a)) (typeof e) $ \a' ->
+                      spec $ f (x:a':xs)
           in spec $ pushfun f' a
        | otherwise = e
 
@@ -76,14 +91,21 @@ specialize l e =
      --         k -> \v1 -> \v2 -> ... -> yv z
      --         _ -> n z
      pusharg :: ExpH -> ExpH -> ExpH
-     pusharg (CaseEH a k y n) arg =
+     pusharg ce@(CaseEH a k y n) arg =
       let yify :: Integer -> (ExpH -> ExpH) -> ExpH -> ExpH
           yify 0 f x = spec $ f x
-          yify n f (LamEH s b) = lamEH s $ \x -> spec $ yify (n-1) f (b x)
+          yify n f (LamEH s t b) =
+            let ts = de_arrowsT t
+                (its, fot) = splitAt (fromInteger n) ts
+                fot' = arrowsT $ tail fot
+                ot = arrowsT (its ++ [fot'])
+            in lamEH s ot $ \x -> spec $ yify (n-1) f (b x)
           yify n f x = error $ "yify got: " ++ pretty x
 
           kargs = genericLength (de_arrowsT (typeof k)) - 1
-      in letEH (Sig (name "_z") (typeof arg)) arg $ \av -> 
+
+          Just (_, t) = de_arrowT (typeof ce)
+      in letEH (Sig (name "_z") (typeof arg)) t arg $ \av -> 
              let ybody = \yv -> appEH yv av
                  y' = yify kargs ybody y
                  n' = spec $ appEH n av
@@ -99,11 +121,17 @@ specialize l e =
      pushfun f (CaseEH x k y n) =
       let yify :: Integer -> ExpH -> ExpH -> ExpH
           yify 0 f x = spec $ appEH f x
-          yify n f (LamEH s b) = lamEH s $ \x -> spec $ yify (n-1) f (b x)
+          yify n f (LamEH s t b) =
+            let ts = de_arrowsT t
+                its = take (fromInteger n) ts
+                Just (_, fot) = de_arrowT (typeof f)
+                ot = arrowsT (its ++ [fot])
+            in lamEH s ot $ \x -> spec $ yify (n-1) f (b x)
           yify n f x = error $ "yify got: " ++ pretty x
 
           kargs = genericLength (de_arrowsT (typeof k)) - 1
-      in letEH (Sig (name "_f") (typeof f)) f $ \fv ->
+          Just (_, ot) = de_arrowT $ typeof f
+      in letEH (Sig (name "_f") (typeof f)) ot f $ \fv ->
              caseEH x k (yify kargs fv y) (spec $ appEH fv n)
 
      me = specialize l
@@ -118,9 +146,10 @@ specialize l e =
                     ConEH n t xs -> ConEH n t (map me xs)
                     PrimEH _ _ f xs -> f (map me xs)
                     AppEH a b -> appEH (me a) (me b)
-                    LamEH s f -> lamEH s $ \x -> me (f x)
+                    LamEH s t f -> lamEH s t $ \x -> me (f x)
                     CaseEH x k y n -> caseEH (me x) k (me y) (me n)
 
+-- TODO: don't touch v!
 shouldinline :: Logic -> ExpH -> Bool
 shouldinline l v
  | LitEH {} <- v = True

@@ -22,7 +22,14 @@ data ExpH = LitEH Lit
           | PrimEH Name Type ([ExpH] -> ExpH) [ExpH]
                 -- ^ type is for fully applied primitive.
           | AppEH ExpH ExpH
-          | LamEH Sig (ExpH -> ExpH)
+
+          -- | LamEH s t f:
+          --    s - name and type of the function argument. 
+          --        The name is for debugging purposes only.
+          --    t - the return type of the function
+          --    f - the haskell representation of the function.
+          | LamEH Sig Type (ExpH -> ExpH)
+
           | CaseEH ExpH Sig ExpH ExpH
             -- ^ case e1 of
             --      k -> e2

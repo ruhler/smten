@@ -5,6 +5,7 @@ import Data.Maybe(fromMaybe)
 import Data.Functor
 
 import Seri.Type
+import Seri.Sig
 import Seri.ExpH.ExpH
 
 
@@ -14,7 +15,7 @@ instance Typeof ExpH where
     typeof (VarEH s) = typeof s
     typeof (PrimEH _ t _ _) = t
     typeof (AppEH f x) = fromMaybe UnknownT $ snd <$> de_arrowT (typeof f)
-    typeof (LamEH v f) = arrowsT [typeof v, typeof (f (VarEH v))]
+    typeof (LamEH (Sig _ it) ot _) = arrowT it ot
     typeof (CaseEH _ _ _ e) = typeof e
     typeof (ErrorEH t _) = t
 

@@ -30,7 +30,7 @@ conEH (Sig n t) =
  let coneh :: Name -> Type -> [ExpH] -> ExpH
      coneh n t args
         | Just (it, ot) <- de_arrowT t =
-            LamEH (Sig (name "c") it) $ \x -> coneh n ot (args ++ [x])
+            LamEH (Sig (name "c") it) ot $ \x -> coneh n ot (args ++ [x])
         | otherwise = ConEH n t args
  in coneh n t []
 
@@ -80,21 +80,32 @@ de_appsEH (AppEH a b) =
     in (f, as ++ [b])
 de_appsEH t = (t, [])
 
-lamEH :: Sig -> (ExpH -> ExpH) -> ExpH
+-- lamEH s t f
+--  s - name and type of argument to function
+--  t - output type of the function
+lamEH :: Sig -> Type -> (ExpH -> ExpH) -> ExpH
 lamEH = LamEH
 
-letEH :: Sig -> ExpH -> (ExpH -> ExpH) -> ExpH
-letEH s v b = appEH (lamEH s b) v
+-- letEH s t v f
+--  s - name and type of let variable
+--  t - type of the let expression
+--  v - value of the let variable
+letEH :: Sig -> Type -> ExpH -> (ExpH -> ExpH) -> ExpH
+letEH s t v b = appEH (lamEH s t b) v
 
-de_letEH :: ExpH -> Maybe (Sig, ExpH, ExpH -> ExpH)
+-- (s, t, v, f)
+--  s - name and type of let variable
+--  t - type of let body
+--  v - value of let variable
+de_letEH :: ExpH -> Maybe (Sig, Type, ExpH, ExpH -> ExpH)
 de_letEH (AppEH f v)
-  | LamEH s b <- un_letEH f = Just (s, v, b)
+  | LamEH s t b <- un_letEH f = Just (s, t, v, b)
 de_letEH _ = Nothing
 
 -- Remove all lets from the given expression.
 un_letEH :: ExpH -> ExpH
 un_letEH e
- | Just (_, v, f) <- de_letEH e = un_letEH (f v)
+ | Just (_, _, v, f) <- de_letEH e = un_letEH (f v)
  | otherwise = e
 
 unitEH :: ExpH

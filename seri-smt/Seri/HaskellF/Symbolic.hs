@@ -54,7 +54,14 @@ instance (Symbolic4 m, Symbolic a) => Symbolic3 (m a) where
 
 instance Symbolic2 (->) where
     box2 e = \x -> box $ appEH e (unbox x)
-    unbox2 f = lamEH (Sig (name "x") (seriT f)) $ \x -> unbox (f (box x))
+    unbox2 f =
+       let ta :: (a -> b) -> a
+           ta _ = undefined
+    
+           tb :: (a -> b) -> b
+           tb _ = undefined
+       in lamEH (Sig (name "x") (seriT (ta f))) (seriT (tb f)) $ \x ->
+            unbox (f (box x))
 
 -- | Convert a concrete haskell value to its symbolic representation.
 seriS :: (SeriEH c, Symbolic f) => c -> f

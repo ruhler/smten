@@ -31,7 +31,7 @@ fromExpHM (AppEH f x) = do
     f' <- fromExpHM f
     x' <- fromExpHM x   
     return (AppE f' x')
-fromExpHM (LamEH s f) = do
+fromExpHM (LamEH s _ f) = do
   s' <- fresh s
   b <- fromExpHM (f (VarEH s'))
   return (LamE s' b)

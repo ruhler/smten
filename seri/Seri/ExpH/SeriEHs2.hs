@@ -22,12 +22,16 @@ import Seri.ExpH.Sugar
 --   returned 'b' is not concrete.
 instance (SeriEH a, SeriEH b) => SeriEH (a -> b) where
     seriEH f =
-      let g :: (a -> b) -> a
-          g _ = undefined
-      in lamEH (Sig (name "x") (seriT (g f))) $ \x ->
+      let ta :: (a -> b) -> a
+          ta _ = undefined
+        
+          tb :: (a -> b) -> b
+          tb _ = undefined
+          
+      in lamEH (Sig (name "x") (seriT (ta f))) (seriT (tb f)) $ \x ->
             seriEH $ f (fromMaybe (error "seriEH (->)") (de_seriEH x))
             
-    de_seriEH (LamEH _ f) = return $ \x ->
+    de_seriEH (LamEH _ _ f) = return $ \x ->
        let fx = f (seriEH x)
        in fromMaybe (error $ "de_seriEH (->): " ++ pretty fx) (de_seriEH fx)
     de_seriEH _ = Nothing

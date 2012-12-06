@@ -26,7 +26,7 @@ instance Assign ExpH where
          ConEH n t xs -> ConEH n (mt t) (map me xs)
          VarEH (Sig n t) -> VarEH (Sig n (mt t))
          AppEH a b -> AppEH (me a) (me b)
-         LamEH (Sig n t) b -> LamEH (Sig n (mt t)) $ \x -> (me (b x))
+         LamEH (Sig n it) ot b -> LamEH (Sig n (mt it)) (mt ot) $ \x -> (me (b x))
          CaseEH x (Sig kn kt) y n -> CaseEH (me x) (Sig kn (mt kt)) (me y) (me n)
          ErrorEH t m -> ErrorEH (mt t) m
 
@@ -44,7 +44,7 @@ transform g e =
        VarEH {} -> e 
        PrimEH _ _ f xs -> f (map me xs)
        AppEH f x -> appEH (me f) (me x)
-       LamEH s f -> lamEH s $ \x -> me (f x)
+       LamEH s t f -> lamEH s t $ \x -> me (f x)
        CaseEH x k y d -> caseEH (me x) k (me y) (me d)
        ErrorEH {} -> e
 

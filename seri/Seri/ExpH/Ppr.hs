@@ -13,7 +13,7 @@ import Seri.ExpH.Sugar2
 
 instance Ppr ExpH where
     ppr e | Just v <- de_stringEH e = text (show v)
-    ppr e | Just (s, v, f) <- de_letEH e
+    ppr e | Just (s, _, v, f) <- de_letEH e
       = text "let" <+> text "{"
             <+> ppr s <+> text "=" <+> ppr v
             <+> text "}" <+> text "in" <+> ppr (f (VarEH s))
@@ -23,7 +23,7 @@ instance Ppr ExpH where
     ppr (VarEH s) = ppr s
     ppr (PrimEH n _ _ xs) = ppr (appsEH (varEH (Sig n UnknownT)) xs)
     ppr (AppEH f x) = parens (ppr f) <+> parens (ppr x)
-    ppr (LamEH s f) = text "\\" <+> ppr s <+> text "->" <+> text "..."
+    ppr (LamEH s _ f) = text "\\" <+> ppr s <+> text "->" <+> text "..."
     ppr (CaseEH e1 p e2 e3)
         = text "case" <+> parens (ppr e1) <+> text "of" <+> text "{"
             $+$ nest tabwidth (vcat [

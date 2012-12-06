@@ -52,8 +52,8 @@ unaryTP n f =
 
       eh :: Type -> ExpH
       eh t
-        | Just (at, _) <- de_arrowT t =
-            lamEH (Sig (name "a") at) $ \a ->
+        | Just (at, ot) <- de_arrowT t =
+            lamEH (Sig (name "a") at) ot $ \a ->
               impl t [a]
         | otherwise = error $ "unaryTP.eh type: " ++ pretty t
   in Prim nm eh
@@ -86,9 +86,9 @@ binaryTP n f =
       eh :: Type -> ExpH
       eh t
         | Just (at, bzt) <- de_arrowT t
-        , Just (bt, _) <- de_arrowT bzt = 
-            lamEH (Sig (name "a") at) $ \a ->
-              lamEH (Sig (name "b") bt) $ \b ->
+        , Just (bt, ot) <- de_arrowT bzt = 
+            lamEH (Sig (name "a") at) bzt $ \a ->
+              lamEH (Sig (name "b") bt) ot $ \b ->
                 impl t [a, b]
         | otherwise = error $ "binaryTP.eh type: " ++ pretty t
   in Prim nm eh
