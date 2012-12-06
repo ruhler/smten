@@ -41,11 +41,16 @@ specialize l e =
            = spec $ letEH s v (\x -> spec $ appEH (b x) arg)
        | Just (f@(CaseEH {}), arg) <- de_appEH e
        , not (oktype l (typeof f)) = spec $ pusharg f arg
-       | CaseEH a@(CaseEH {}) k y n <- e
+       | CaseEH a k y n <- e
        , not (oktype l (typeof a)) =
-          let f = lamEH (Sig (name "_x") (typeof a)) $ \a' ->
-                    spec $ caseEH a' k y n
-          in spec $ pushfun f a
+          case a of
+            CaseEH {} ->
+              let f = lamEH (Sig (name "_x") (typeof a)) $ \a' ->
+                        spec $ caseEH a' k y n
+              in spec $ pushfun f a
+            _ | Just (s, v, b) <- de_letEH a ->
+                spec $ letEH s v (\x -> spec $ caseEH (b x) k y n)
+              | otherwise -> error $ "TODO: specialize case arg: " ++ pretty a
        | PrimEH _ _ f (a@(CaseEH {}) : xs) <- e
        , not (oktype l (typeof a)) = 
           let f' = lamEH (Sig (name "_x") (typeof a)) $ \a' -> spec $ f (a':xs)

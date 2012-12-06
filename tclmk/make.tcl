@@ -126,12 +126,12 @@ io Seri.SMT.Tests.Scoped
 io Seri.SMT.Tests.Integer
 io Seri.SMT.Tests.Bit
 
-haskellf Seri.Tests.Basic
-haskellf Seri.SMT.Tests.Core
+#haskellf Seri.Tests.Basic
+#haskellf Seri.SMT.Tests.Core
 #haskellf Seri.SMT.Tests.Datatype
-haskellf Seri.SMT.Tests.Scoped
-haskellf Seri.SMT.Tests.Integer
-haskellf Seri.SMT.Tests.Bit
+#haskellf Seri.SMT.Tests.Scoped
+#haskellf Seri.SMT.Tests.Integer
+#haskellf Seri.SMT.Tests.Bit
 
 #io Seri.SMT.Tests.Bluespec
 #io Seri.SMT.Tests.Array
@@ -145,32 +145,32 @@ haskellf Seri.SMT.Tests.Bit
 #io Seri.SMT.Tests.Sudoku3
 #io Seri.SMT.Tests.Isolate0
 
-# The sudoku haskell integration test.
-run $::SERI --haskellf \
-    --include $::SRI_SERI \
-    --no-main \
-    --mod-name Seri_SMT \
-    -f $::SRI_SERI/Seri/SMT/SMT.sri \
-    > build/seri-bin/Seri_SMT.hs
-indir build/seri-bin {
-    hrun ln -sf ../../seri-bin/sudoku.hs sudoku.hs
-    hrun ghc --make -o sudoku sudoku.hs
-}
-hrun ./build/seri-bin/sudoku
-
-# The dsel haskell integration test.
-run $::SERI --haskellf \
-    --include $::SRI_SERI \
-    --no-main \
-    --mod-name Seri_DSEL \
-    -f $::SRI_SERI/Seri/Tests/DSEL.sri \
-    > build/seri-bin/Seri_DSEL.hs
-indir build/seri-bin {
-    hrun ln -sf ../../seri-bin/dsel.hs dsel.hs
-    hrun ghc --make -o dsel dsel.hs
-}
-hrun ./build/seri-bin/dsel
-
+## The sudoku haskell integration test.
+#run $::SERI --haskellf \
+#    --include $::SRI_SERI \
+#    --no-main \
+#    --mod-name Seri_SMT \
+#    -f $::SRI_SERI/Seri/SMT/SMT.sri \
+#    > build/seri-bin/Seri_SMT.hs
+#indir build/seri-bin {
+#    hrun ln -sf ../../seri-bin/sudoku.hs sudoku.hs
+#    hrun ghc --make -o sudoku sudoku.hs
+#}
+#hrun ./build/seri-bin/sudoku
+#
+## The dsel haskell integration test.
+#run $::SERI --haskellf \
+#    --include $::SRI_SERI \
+#    --no-main \
+#    --mod-name Seri_DSEL \
+#    -f $::SRI_SERI/Seri/Tests/DSEL.sri \
+#    > build/seri-bin/Seri_DSEL.hs
+#indir build/seri-bin {
+#    hrun ln -sf ../../seri-bin/dsel.hs dsel.hs
+#    hrun ghc --make -o dsel dsel.hs
+#}
+#hrun ./build/seri-bin/dsel
+#
 
 puts "BUILD COMPLETE"
 

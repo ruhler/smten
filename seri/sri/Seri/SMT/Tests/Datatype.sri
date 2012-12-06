@@ -51,6 +51,15 @@ qtest = do
     rc <- query c
     test "datatype.mix" (rc == Satisfiable (Mix2 True))
 
+    d <- free
+    assert (case (let v = d || d
+                  in if v then E1 else E2) of
+               E1 -> False
+               E2 -> True
+             )
+    rd <- query d
+    test "datetype.caseoflet" (rd == Satisfiable False)
+
 main :: IO ()
 main = do
     runYices1 (Just "build/test/Datatype.yices1.dbg") qtest
