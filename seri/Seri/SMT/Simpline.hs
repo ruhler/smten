@@ -12,7 +12,7 @@ simpline =
       f e | Just (_, _, v, f) <- de_letEH e 
           , issimple v = Just (simpline (f v))
           | otherwise = Nothing
-  in transform f
+  in transform f . transform f
 
 issimple :: ExpH -> Bool
 issimple e
