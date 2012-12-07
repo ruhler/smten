@@ -71,6 +71,7 @@ import Seri.Dec
 import Seri.Ppr
 import Seri.SMT.Translate
 import Seri.SMT.Specialize
+import Seri.SMT.Simpline
 
 
 data Answer a = Satisfiable a | Unsatisfiable | Unknown
@@ -153,9 +154,8 @@ smte e = do
     l <- gets qs_logic
     qs <- gets qs_qs 
     --trace ("PRESPEC : " ++ pretty e) (return ())
-    let se = fromExpH $ specialize l e
-    --trace ("POSTSPEC: " ++ pretty se) (return ())
-    let mkye :: CompilationM ([SMT.Command], SMT.Expression)
+    let se = fromExpH . simpline $ specialize l e
+        mkye :: CompilationM ([SMT.Command], SMT.Expression)
         mkye = do
           ye <- smtE se
           cmds <- smtD
