@@ -3,6 +3,8 @@
 
 module Seri.SMT.Simpline (simpline) where
 
+import Debug.Trace
+
 import Seri.ExpH
 
 -- Inline all the simple arguments in a post-specialized expression.

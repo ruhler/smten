@@ -17,6 +17,8 @@ module Seri.ExpH.Sugar (
 
 import Control.Monad
 
+import Data.Maybe(isJust)
+
 import Seri.Bit
 import Seri.Lit
 import Seri.Name
@@ -62,12 +64,19 @@ de_varEH :: ExpH -> Maybe Sig
 de_varEH (VarEH s) = Just s
 de_varEH _ = Nothing
 
--- We don't apply lambdas here. That's done lazily in de_litEH, de_conEH, and
--- de_errorEH. This is to preserve sharing as much as possible.
+-- We don't apply lambdas here if the arguments are supported by SMT. That's
+-- done lazily in de_litEH, de_conEH, and de_errorEH. This is to preserve
+-- sharing as much as possible.
 appEH :: ExpH -> ExpH -> ExpH
 appEH f x
- | LamEH _ _ g <- un_letEH f = AppEH f x (un_letEH $ g x)
+ | LamEH (Sig _ t) _ g <- un_letEH f =
+      if smttype t
+          then AppEH f x (un_letEH $ g x)
+          else g x
  | otherwise = let e = AppEH f x e in e
+
+smttype :: Type -> Bool
+smttype t = or [ t == boolT, t == integerT, isJust (de_bitT t) ]
 
 de_appEH :: ExpH -> Maybe (ExpH, ExpH)
 de_appEH (AppEH f x _) = Just (f, x)
