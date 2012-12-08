@@ -22,5 +22,5 @@ runio :: ExpH -> IO ExpH
 runio e
  | Just (_, msg) <- de_errorEH e = error $ "seri: " ++ msg
  | Just io <- de_ioEH e = io
- | otherwise = error $ "runio got non-IO: " ++ pretty (un_letEH e)
+ | otherwise = error $ "runio got non-IO: " ++ pretty e
 

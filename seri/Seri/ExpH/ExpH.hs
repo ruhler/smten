@@ -25,9 +25,7 @@ data ExpH = LitEH Lit
           -- | AppEH f x i
           --  f - the function
           --  x - the argument
-          --  i - A cached version of (un_letEH (f x)) for performance
-          --  reasons.
-          | AppEH ExpH ExpH ExpH
+          | AppEH ExpH ExpH
 
           -- | LamEH s t f:
           --    s - name and type of the function argument. 

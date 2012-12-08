@@ -99,7 +99,7 @@ specialize l e =
              ConEH n t xs -> ConEH n t (map me xs)
              VarEH {} -> e
              PrimEH _ _ f xs -> f (map me xs)
-             AppEH a b i -> AppEH (me a) (me b) (me i)
+             AppEH a b -> AppEH (me a) (me b)
              LamEH s t f -> lamEH s t $ \x -> me (f x)
              CaseEH x k y n -> caseEH (me x) k (me y) (me n)
              ErrorEH {} -> e

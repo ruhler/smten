@@ -5,7 +5,7 @@
 module Seri.ExpH.Sugar (
     litEH, de_litEH, varEH, de_varEH, conEH, de_conEH, de_kconEH,
     appEH, de_appEH, appsEH, de_appsEH,
-    lamEH, letEH, de_letEH, un_letEH,
+    lamEH, letEH, de_letEH,
     errorEH, de_errorEH,
     caseEH, ifEH,
 
@@ -42,7 +42,7 @@ conEH (Sig n t) =
 -- Check for a fully applied constructor.
 de_conEH :: ExpH -> Maybe (Name, Type, [ExpH])
 de_conEH e
- | (ConEH n t xs) <- un_letEH e = Just (n, t, xs)
+ | (ConEH n t xs) <- e = Just (n, t, xs)
  | otherwise = Nothing
 
 -- Check for the given fully applied constructor.
@@ -57,7 +57,7 @@ litEH = LitEH
 
 de_litEH :: ExpH -> Maybe Lit
 de_litEH e
- | LitEH l <- un_letEH e = Just l
+ | LitEH l <- e = Just l
  | otherwise = Nothing
 
 varEH :: Sig -> ExpH
@@ -72,8 +72,8 @@ de_varEH _ = Nothing
 -- sharing as much as possible.
 appEH :: ExpH -> ExpH -> ExpH
 appEH f x
- | LamEH (Sig _ t) _ g <- un_letEH f = g x
- | CaseEH a k y n <- un_letEH f =
+ | LamEH (Sig _ t) _ g <- f = g x
+ | CaseEH a k y n <- f =
     -- Perform Case Argument Pushing:
     -- (case a of { k -> y ; _ -> n}) x
     --  where y = \v1 -> \v2 -> ... -> y v
@@ -85,21 +85,21 @@ appEH f x
              y' = onyv kargs g y
              n' = g n
          in caseEH a k y' n'
- | otherwise = let e = AppEH f x e in e
+ | otherwise = AppEH f x
 
 smttype :: Type -> Bool
 --smttype t = or [ t == boolT, t == integerT, isJust (de_bitT t) ]
 smttype t = or [ t == boolT, isJust (de_bitT t) ]
 
 de_appEH :: ExpH -> Maybe (ExpH, ExpH)
-de_appEH (AppEH f x _) = Just (f, x)
+de_appEH (AppEH f x) = Just (f, x)
 de_appEH _ = Nothing
 
 appsEH :: ExpH -> [ExpH] -> ExpH
 appsEH f xs = foldl appEH f xs
 
 de_appsEH :: ExpH -> (ExpH, [ExpH])
-de_appsEH (AppEH a b _) =
+de_appsEH (AppEH a b) =
     let (f, as) = de_appsEH a
     in (f, as ++ [b])
 de_appsEH t = (t, [])
@@ -122,14 +122,9 @@ letEH s t v b = appEH (lamEH s t b) v
 --  t - type of let body
 --  v - value of let variable
 de_letEH :: ExpH -> Maybe (Sig, Type, ExpH, ExpH -> ExpH)
-de_letEH (AppEH f v _)
-  | LamEH s t b <- un_letEH f = Just (s, t, v, b)
+de_letEH (AppEH f v)
+  | LamEH s t b <- f = Just (s, t, v, b)
 de_letEH _ = Nothing
-
--- Remove all lets from the given expression.
-un_letEH :: ExpH -> ExpH
-un_letEH (AppEH _ _ x) = x
-un_letEH x = x
 
 unitEH :: ExpH
 unitEH = conEH (Sig (name "()") unitT)
@@ -183,7 +178,7 @@ errorEH = ErrorEH
 
 de_errorEH :: ExpH -> Maybe (Type, String)
 de_errorEH e
- | ErrorEH t s <- un_letEH e = Just (t, s)
+ | ErrorEH t s <- e = Just (t, s)
  | otherwise = Nothing
 
 ioEH :: IO ExpH -> ExpH
@@ -258,7 +253,7 @@ transform g e =
        ConEH n s xs -> ConEH n s (map me xs)
        VarEH {} -> e 
        PrimEH _ _ f xs -> f (map me xs)
-       AppEH f x i -> AppEH (me f) (me x) (me i)
+       AppEH f x -> AppEH (me f) (me x)
        LamEH s t f -> lamEH s t $ \x -> me (f x)
        CaseEH x k y d -> caseEH (me x) k (me y) (me d)
        ErrorEH {} -> e

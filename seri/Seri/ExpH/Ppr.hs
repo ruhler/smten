@@ -22,7 +22,7 @@ instance Ppr ExpH where
     ppr (ConEH n _ xs) = ppr (appsEH (varEH (Sig n UnknownT)) xs)
     ppr (VarEH s) = ppr s
     ppr (PrimEH n _ _ xs) = ppr (appsEH (varEH (Sig n UnknownT)) xs)
-    ppr (AppEH f x _) = parens (ppr f) <+> parens (ppr x)
+    ppr (AppEH f x) = parens (ppr f) <+> parens (ppr x)
     ppr (LamEH s _ f) = text "\\" <+> ppr s <+> text "->" <+> text "..."
     ppr (CaseEH e1 p e2 e3)
         = text "case" <+> parens (ppr e1) <+> text "of" <+> text "{"
