@@ -12,7 +12,6 @@ import qualified Seri.HaskellF.Lib.Prelude as S
 import qualified Seri.HaskellF.Lib.SMT as S
 import qualified Seri_SMT as S
 import Seri.SMT.Yices.Yices2    
-import Seri.SMT.Specialize
 
 -- The size of the sudoku.
 -- (nxn)x(nxn)
@@ -149,7 +148,7 @@ diabolical =
 
 solve :: Query [[Char]];
 solve = do
-    board <- readBoard solved
+    board <- readBoard diabolical
     assert (unbox $ isvalid board)
     result <- query $ mapM (mapM realizeS) board
     case (result) of
@@ -159,7 +158,6 @@ solve = do
 main :: IO ()
 main = do
     y <- yices2
-    let l = core { th_integer = True, th_bit = True }
-    r <- runQuery (RunOptions (Just "build/test/sudoku.dbg") y l) solve
+    r <- runQuery (RunOptions (Just "build/test/sudoku.dbg") y) solve
     mapM_ putStrLn r
 

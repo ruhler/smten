@@ -10,7 +10,6 @@ import qualified Seri.HaskellF.Lib.Prelude as S
 import qualified Seri.HaskellF.Lib.SMT as S
 import qualified Seri_DSEL as S
 import Seri.SMT.Yices.Yices2    
-import Seri.SMT.Specialize
 
 q1 :: Query (Answer Integer)
 q1 = do
@@ -93,8 +92,7 @@ qallQ = allQ pred1
 try :: (Show a) => String -> Query a -> IO ()
 try nm q = do
     y <- yices2
-    let l = core { th_integer = True, th_bit = True }
-    r <- runQuery (RunOptions (Just $ "build/test/DSEL." ++ nm ++ ".dbg") y l) q
+    r <- runQuery (RunOptions (Just $ "build/test/DSEL." ++ nm ++ ".dbg") y) q
     putStrLn $ show r
 
 main :: IO ()
