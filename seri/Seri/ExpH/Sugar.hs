@@ -7,6 +7,7 @@ module Seri.ExpH.Sugar (
     appEH, de_appEH, appsEH, de_appsEH,
     lamEH, letEH, de_letEH, un_letEH,
     errorEH, de_errorEH,
+    caseEH, ifEH,
 
     unitEH,
     boolEH, trueEH, falseEH, de_boolEH,
@@ -180,4 +181,14 @@ de_ioEH :: ExpH -> Maybe (IO ExpH)
 de_ioEH x = do
     l <- de_litEH x
     de_dynamicL l
+
+caseEH :: ExpH -> Sig -> ExpH -> ExpH -> ExpH
+caseEH x k@(Sig nk _) y n
+ | Just (s, _, vs) <- de_conEH x
+    = if s == nk then appsEH y vs else n
+ | Just (_, msg) <- de_errorEH x = errorEH (typeof n) msg
+ | otherwise = CaseEH x k y n
+
+ifEH :: ExpH -> ExpH -> ExpH -> ExpH
+ifEH p a b = caseEH p (Sig (name "True") boolT) a b
 

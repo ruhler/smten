@@ -3,7 +3,7 @@
 
 module Seri.ExpH.Utils (
     transform,
-    runio, caseEH, ifEH,
+    runio,
     ) where
 
 import Data.Maybe
@@ -42,14 +42,4 @@ runio e
  | Just (_, msg) <- de_errorEH e = error $ "seri: " ++ msg
  | Just io <- de_ioEH e = io
  | otherwise = error $ "runio got non-IO: " ++ pretty (un_letEH e)
-
-caseEH :: ExpH -> Sig -> ExpH -> ExpH -> ExpH
-caseEH x k@(Sig nk _) y n
- | Just (s, _, vs) <- de_conEH x
-    = if s == nk then appsEH y vs else n
- | Just (_, msg) <- de_errorEH x = errorEH (typeof n) msg
- | otherwise = CaseEH x k y n
-
-ifEH :: ExpH -> ExpH -> ExpH -> ExpH
-ifEH p a b = caseEH p (Sig (name "True") boolT) a b
 
