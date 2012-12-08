@@ -43,8 +43,6 @@ specialize l e =
        , Just (s, t, v, b) <- de_letEH f =
           let Just (_, ot) = de_arrowT t
           in spec $ letEH s ot v (\x -> spec $ appEH (b x) arg)
-       | Just (f@(CaseEH {}), arg) <- de_appEH e
-       , not (oktype l (typeof f)) = spec $ pusharg f arg
        | CaseEH a k y n <- e
        , not (oktype l (typeof a)) =
           case a of
@@ -77,40 +75,6 @@ specialize l e =
           in spec $ pushfun f' a
        | otherwise = e
 
-     -- Perform argument pushing.
-     -- Preserves the property that all sub-expressions are fully
-     -- specialized assuming that is the case for the arguments.
-     --
-     -- (case a of
-     --     k -> y
-     --     _ -> n) arg
-     -- Where y = \v1 -> \v2 -> ... -> yv
-     -- Translates to:
-     --  let z = arg
-     --  in case a of
-     --         k -> \v1 -> \v2 -> ... -> yv z
-     --         _ -> n z
-     pusharg :: ExpH -> ExpH -> ExpH
-     pusharg ce@(CaseEH a k y n) arg =
-      let yify :: Integer -> (ExpH -> ExpH) -> ExpH -> ExpH
-          yify 0 f x = spec $ f x
-          yify n f (LamEH s t b) =
-            let ts = de_arrowsT t
-                (its, fot) = splitAt (fromInteger n) ts
-                fot' = arrowsT $ tail fot
-                ot = arrowsT (its ++ [fot'])
-            in lamEH s ot $ \x -> spec $ yify (n-1) f (b x)
-          yify n f x = error $ "yify got: " ++ pretty x
-
-          kargs = genericLength (de_arrowsT (typeof k)) - 1
-
-          Just (_, t) = de_arrowT (typeof ce)
-      in letEH (Sig (name "_z") (typeof arg)) t arg $ \av -> 
-             let ybody = \yv -> appEH yv av
-                 y' = yify kargs ybody y
-                 n' = spec $ appEH n av
-             in caseEH a k y' n'
- 
      -- Perform function pushing:
      -- Preserves specialization of arguments.
      --

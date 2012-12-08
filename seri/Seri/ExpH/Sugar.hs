@@ -74,6 +74,25 @@ appEH f x
       if smttype t
           then AppEH f x (un_letEH $ g x)
           else g x
+ | CaseEH a k y n <- un_letEH f =
+    -- Perform Case Argument Pushing:
+    -- (case a of { k -> y ; _ -> n}) x
+    --  where y = \v1 -> \v2 -> ... -> y v
+    -- ===> (case a of { k -> \v1 -> \v2 -> ... -> yv x; _ -> n x })
+    let onyv :: Int -> (ExpH -> ExpH) -> ExpH -> ExpH
+        onyv 0 f yv = f yv
+        onyv n f (LamEH s t b) =
+          let ts = de_arrowsT t
+              (its, fot) = splitAt n ts
+              fot' = arrowsT $ tail fot
+              ot = arrowsT (its ++ [fot'])
+          in lamEH s ot $ \x -> onyv (n-1) f (b x)
+        kargs = length (de_arrowsT (typeof k)) - 1
+        Just (_, t) = de_arrowT (typeof f)
+    in letEH (Sig (name "_z") (typeof x)) t x $ \av ->
+         let y' = onyv kargs (\yv -> appEH yv av) y
+             n' = appEH n av
+         in caseEH a k y' n'
  | otherwise = let e = AppEH f x e in e
 
 smttype :: Type -> Bool
