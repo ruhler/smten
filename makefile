@@ -17,8 +17,8 @@ test:
 testio:
 	./build/seri-bin/seri --io \
 		--include seri/sri \
-		--main-is Seri.SMT.Tests.Datatype.main \
-		-f seri/sri/Seri/SMT/Tests/Datatype.sri +RTS -p -K1g
+		--main-is Seri.SMT.Tests.Squares2.Squares.main \
+		-f seri/sri/Seri/SMT/Tests/Squares2/Squares.sri +RTS -p -K1g
 
 clean:
 	rm -rf build/seri-smt build/seri build/seri-bin build/test

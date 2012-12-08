@@ -154,7 +154,8 @@ smte e = do
     l <- gets qs_logic
     qs <- gets qs_qs 
     --trace ("PRESPEC : " ++ pretty e) (return ())
-    let se = fromExpH . simpline $ specialize l e
+    let --se = fromExpH $ specialize l e
+        se = fromExpH e
         mkye :: CompilationM ([SMT.Command], SMT.Expression)
         mkye = do
           ye <- smtE se

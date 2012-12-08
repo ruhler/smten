@@ -15,6 +15,7 @@ module Seri.ExpH.Sugar (
     charEH, de_charEH,
     ioEH, de_ioEH,
     pushfun, smttype,
+    transform,
     ) where
 
 import Control.Monad
@@ -71,10 +72,7 @@ de_varEH _ = Nothing
 -- sharing as much as possible.
 appEH :: ExpH -> ExpH -> ExpH
 appEH f x
- | LamEH (Sig _ t) _ g <- un_letEH f =
-      if smttype t
-          then AppEH f x (un_letEH $ g x)
-          else g x
+ | LamEH (Sig _ t) _ g <- un_letEH f = g x
  | CaseEH a k y n <- un_letEH f =
     -- Perform Case Argument Pushing:
     -- (case a of { k -> y ; _ -> n}) x
@@ -90,7 +88,8 @@ appEH f x
  | otherwise = let e = AppEH f x e in e
 
 smttype :: Type -> Bool
-smttype t = or [ t == boolT, t == integerT, isJust (de_bitT t) ]
+--smttype t = or [ t == boolT, t == integerT, isJust (de_bitT t) ]
+smttype t = or [ t == boolT, isJust (de_bitT t) ]
 
 de_appEH :: ExpH -> Maybe (ExpH, ExpH)
 de_appEH (AppEH f x _) = Just (f, x)
@@ -204,6 +203,15 @@ caseEH x k@(Sig nk _) y n
     let f = lamEH (Sig (name "_x") (typeof x)) (typeof n) $ \x' ->
                caseEH x' k y n
     in pushfun f x
+ | VarEH (Sig nm t) <- x
+ , t == boolT
+ , Just kv <- de_boolEH (conEH k) =
+    let g :: Bool -> ExpH -> Maybe ExpH
+        g b e = do
+            Sig nm' _ <- de_varEH e
+            guard $ nm' == nm
+            return (boolEH b)
+    in CaseEH x k (transform (g kv) y) (transform (g (not kv)) n)
  | otherwise = CaseEH x k y n
 
 -- Function pushing:
@@ -236,3 +244,22 @@ onyv n f (LamEH s t b) =
       fot' = arrowsT $ tail fot
       ot = arrowsT (its ++ [fot'])
   in lamEH s ot $ \x -> onyv (n-1) f (b x)
+
+-- Perform a generic transformation on an expression.
+-- Applies the given function to each subexpression. Any matching
+-- subexpression is replaced with the returned value, otherwise it continues
+-- to recurse.
+transform :: (ExpH -> Maybe ExpH) -> ExpH -> ExpH
+transform g e | Just v <- g e = v
+transform g e =
+  let me = transform g
+  in case e of
+       LitEH {} -> e
+       ConEH n s xs -> ConEH n s (map me xs)
+       VarEH {} -> e 
+       PrimEH _ _ f xs -> f (map me xs)
+       AppEH f x i -> AppEH (me f) (me x) (me i)
+       LamEH s t f -> lamEH s t $ \x -> me (f x)
+       CaseEH x k y d -> caseEH (me x) k (me y) (me d)
+       ErrorEH {} -> e
+

@@ -80,6 +80,8 @@ ExpH::
 Primitives::
 * Implement the 'update' primitive, or remove it from smt_array.
 * Get rid of the __prim_free primitive
+* Change primitive functions to take return type instead of function type
+  The function type can be reconstructed given the arguments if needed.
 
 SMT::
 * Remove bv-zero-extend from SMT syntax, use SMTLIB2 alternative

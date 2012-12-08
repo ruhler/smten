@@ -133,15 +133,15 @@ io Seri.SMT.Tests.Bit
 #haskellf Seri.SMT.Tests.Integer
 #haskellf Seri.SMT.Tests.Bit
 
-#io Seri.SMT.Tests.Bluespec
-#io Seri.SMT.Tests.Array
+io Seri.SMT.Tests.Bluespec
+io Seri.SMT.Tests.Array
 io Seri.SMT.Tests.Share
-#io Seri.SMT.Tests.Tuple
+io Seri.SMT.Tests.Tuple
 io Seri.SMT.Tests.AllQ
 io Seri.SMT.Tests.AllQ2
-#io Seri.SMT.Tests.Squares2.Squares
+io Seri.SMT.Tests.Squares2.Squares
 io Seri.SMT.Tests.Sudoku
-io Seri.SMT.Tests.Sudoku2
+#io Seri.SMT.Tests.Sudoku2
 io Seri.SMT.Tests.Sudoku3
 io Seri.SMT.Tests.Isolate0
 
