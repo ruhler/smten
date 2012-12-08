@@ -46,11 +46,6 @@ specialize l e =
        | CaseEH a k y n <- e
        , not (oktype l (typeof a)) =
           case a of
-            CaseEH {} ->
-              let f = lamEH (Sig (name "_x") (typeof a)) (typeof e) $ \a' ->
-                        spec $ caseEH a' k y n
-              in spec $ pushfun f a
-
             --   case (let s = v in b) of
             --        k -> y
             --        _ -> n

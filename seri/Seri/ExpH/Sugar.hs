@@ -79,19 +79,12 @@ appEH f x
     -- (case a of { k -> y ; _ -> n}) x
     --  where y = \v1 -> \v2 -> ... -> y v
     -- ===> (case a of { k -> \v1 -> \v2 -> ... -> yv x; _ -> n x })
-    let onyv :: Int -> (ExpH -> ExpH) -> ExpH -> ExpH
-        onyv 0 f yv = f yv
-        onyv n f (LamEH s t b) =
-          let ts = de_arrowsT t
-              (its, fot) = splitAt n ts
-              fot' = arrowsT $ tail fot
-              ot = arrowsT (its ++ [fot'])
-          in lamEH s ot $ \x -> onyv (n-1) f (b x)
-        kargs = length (de_arrowsT (typeof k)) - 1
+    let kargs = length (de_arrowsT (typeof k)) - 1
         Just (_, t) = de_arrowT (typeof f)
     in letEH (Sig (name "_z") (typeof x)) t x $ \av ->
-         let y' = onyv kargs (\yv -> appEH yv av) y
-             n' = appEH n av
+         let g x = appEH x av
+             y' = onyv kargs g y
+             n' = g n
          in caseEH a k y' n'
  | otherwise = let e = AppEH f x e in e
 
@@ -206,8 +199,39 @@ caseEH x k@(Sig nk _) y n
  | Just (s, _, vs) <- de_conEH x
     = if s == nk then appsEH y vs else n
  | Just (_, msg) <- de_errorEH x = errorEH (typeof n) msg
+ | CaseEH {} <- x =
+    let f = lamEH (Sig (name "_x") (typeof x)) (typeof n) $ \x' ->
+               caseEH x' k y n
+    in pushfun f x
  | otherwise = CaseEH x k y n
+
+-- Function pushing:
+--    f (case x of { k -> y; _ -> n})
+-- Turns into:
+--    let _f = f in case x of { k -> _f y; _ -> _f n}
+pushfun :: ExpH -> ExpH -> ExpH
+pushfun f (CaseEH x k y n) =
+ let kargs = length (de_arrowsT (typeof k)) - 1
+     Just (_, ot) = de_arrowT $ typeof f
+     g yv = appEH 
+ in letEH (Sig (name "_f") (typeof f)) ot f $ \fv ->
+      let g x = appEH fv x
+          y' = onyv kargs g y
+          n' = g n
+      in caseEH x k y' n'
 
 ifEH :: ExpH -> ExpH -> ExpH -> ExpH
 ifEH p a b = caseEH p (Sig (name "True") boolT) a b
 
+-- For a case expresion, we have:
+-- onyv n f y
+--  where y = \v1 -> \v2 -> ... -> \vn -> yv
+-- Returns: y' = \v1 -> \v2 -> ... -> \vn -> f yv
+onyv :: Int -> (ExpH -> ExpH) -> ExpH -> ExpH
+onyv 0 f yv = f yv
+onyv n f (LamEH s t b) =
+  let ts = de_arrowsT t
+      (its, fot) = splitAt n ts
+      fot' = arrowsT $ tail fot
+      ot = arrowsT (its ++ [fot'])
+  in lamEH s ot $ \x -> onyv (n-1) f (b x)
