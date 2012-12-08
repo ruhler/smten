@@ -24,7 +24,6 @@ import Seri.SMT.Query
 import Seri.SMT.Yices.Yices1
 import Seri.SMT.Yices.Yices2
 import Seri.SMT.STP.STP
-import Seri.SMT.Specialize
 import Seri.Prim
 
 queryEH :: Query ExpH -> ExpH
@@ -90,31 +89,25 @@ querySP = unaryP "Seri.SMT.SMT.queryS" (queryS :: Query ExpH -> Query ExpH)
 
 runYices1P :: Prim
 runYices1P =
-  let l = core { th_integer = True, th_bit = True }
-
-      f :: Maybe FilePath -> Query ExpH -> IO ExpH
+  let f :: Maybe FilePath -> Query ExpH -> IO ExpH
       f dbg q = do
         y1 <- yices1
-        runQuery (RunOptions dbg y1 l) q
+        runQuery (RunOptions dbg y1) q
   in binaryP "Seri.SMT.SMT.runYices1" f
 
 runYices2P :: Prim
 runYices2P =
-  let l = core { th_integer = True, th_bit = True }
-
-      f :: Maybe FilePath -> Query ExpH -> IO ExpH
+  let f :: Maybe FilePath -> Query ExpH -> IO ExpH
       f dbg q = do
         y2 <- yices2
-        runQuery (RunOptions dbg y2 l) q
+        runQuery (RunOptions dbg y2) q
   in binaryP "Seri.SMT.SMT.runYices2" f
 
 runSTPP :: Prim
 runSTPP =
-  let l = core { th_bit = True }
-
-      f :: Maybe FilePath -> Query ExpH -> IO ExpH
+  let f :: Maybe FilePath -> Query ExpH -> IO ExpH
       f dbg q = do
         s <- stp
-        runQuery (RunOptions dbg s l) q
+        runQuery (RunOptions dbg s) q
   in binaryP "Seri.SMT.SMT.runSTP" f
 
