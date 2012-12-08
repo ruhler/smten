@@ -13,7 +13,7 @@ import Seri.SMT.Yices.Yices2
 
 q1 :: Query (Answer Integer)
 q1 = do
-    x <- freeS
+    x <- qS S.free
     assertS (x S.< 6)
     assertS (x S.> 4)
     query $ realizeS x
@@ -23,7 +23,7 @@ incr x = x S.+ 1
 
 q2 :: Query (Answer Integer)
 q2 = do
-    x <- freeS 
+    x <- qS S.free
     assertS (x S.< 6)
     assertS (incr x S.> 5)
     query $ realizeS x
@@ -40,8 +40,8 @@ quadrupleS = S.quadruple
 
 share :: (S.Integer -> S.Integer) -> Query (Answer (Integer, Integer))
 share f = do
-    x <- freeS
-    y <- freeS
+    x <- qS S.free
+    y <- qS S.free
     assertS (f (x S.- y) S.== 24)
     assertS (y S.> 0)
     query $ do
@@ -51,7 +51,7 @@ share f = do
 
 qtuple :: Query (Answer Integer)
 qtuple = do
-    p <- freeS
+    p <- qS S.free
     let x = S.__caseTrue p (seriS (1 :: Integer, 3 :: Integer)) (seriS (2 :: Integer, 4 :: Integer)) :: S.Tuple2__ S.Integer S.Integer 
     assertS (S.fst x S.== 1)
     query $ realizeS (S.snd x)
@@ -68,13 +68,13 @@ defoo = S.defoo
 
 quserdata :: Query (Answer Foo)
 quserdata = do
-    f <- freeS
+    f <- qS S.free
     assertS (2 S.== defoo f)
     query $ realizeS f
 
-allQ :: (S.Eq a, Symbolic a, SeriEH b) => (a -> S.Bool) -> Query [b]
+allQ :: (S.Eq a, S.Free a, Symbolic a, SeriEH b) => (a -> S.Bool) -> Query [b]
 allQ p = do
-    x <- freeS
+    x <- qS S.free
     assertS (p x)
     r <- query $ realizeS x
     case r of
@@ -102,6 +102,6 @@ main = do
     try "share_haskell" $ share quadruple
     try "share_seri" $ share quadrupleS
     --try "qtuple" $ qtuple
-    --try "quserdata" $ quserdata
+    try "quserdata" $ quserdata
     try "qallQ" $ qallQ
     

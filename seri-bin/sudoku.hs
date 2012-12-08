@@ -27,7 +27,7 @@ type S_Cell = S.Integer
 
 freeCell :: Query S_Cell
 freeCell = do
-    x <- freeS
+    x <- qS S.free
     assertS ((x S.> 0) S.&& (x S.<= seriS m))
     return x
 
