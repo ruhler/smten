@@ -14,6 +14,7 @@ module Seri.ExpH.Sugar (
     integerEH, de_integerEH, bitEH, de_bitEH,
     charEH, de_charEH,
     ioEH, de_ioEH,
+    pushfun, smttype,
     ) where
 
 import Control.Monad

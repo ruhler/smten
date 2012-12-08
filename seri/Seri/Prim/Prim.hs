@@ -46,6 +46,13 @@ unaryTP n f =
         | Just (_, msg) <- de_errorEH a =
             let Just (_, ot) = de_arrowT t
             in errorEH ot msg
+        | CaseEH {} <- a
+        , not (smttype (typeof a)) =
+            -- | f (case x of { k -> y ; _ -> n})
+            -- ==> case x of { k -> f y ; _ -> f n }
+            let Just (_, ot) = de_arrowT t
+                g = lamEH (Sig (name "_x") (typeof a)) ot $ \a' -> impl t [a']
+            in pushfun g a
         | otherwise =
             let Just (_, ot) = de_arrowT t
             in PrimEH nm ot (impl t) [a]
@@ -76,6 +83,22 @@ binaryTP n f =
             let Just (_, bot) = de_arrowT t
                 Just (_, ot) = de_arrowT bot
             in errorEH ot msg
+        | CaseEH {} <- a
+        , not (smttype (typeof a)) =
+            -- | f (case x of { k -> y ; _ -> n}) b
+            -- ==> case x of { k -> f y b ; _ -> f n b } 
+            let Just (_, bot) = de_arrowT t
+                Just (_, ot) = de_arrowT bot
+                g = lamEH (Sig (name "_x") (typeof a)) ot $ \a' -> impl t [a', b]
+            in pushfun g a
+        | CaseEH {} <- b
+        , not (smttype (typeof b)) =
+            -- | f a (case x of { k -> y ; _ -> n})
+            -- ==> case x of { k -> f a y ; _ -> f a n } 
+            let Just (_, bot) = de_arrowT t
+                Just (_, ot) = de_arrowT bot
+                g = lamEH (Sig (name "_x") (typeof b)) ot $ \b' -> impl t [a, b']
+            in pushfun g b
         | otherwise =
             let Just (_, bot) = de_arrowT t
                 Just (_, ot) = de_arrowT bot
