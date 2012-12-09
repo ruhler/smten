@@ -52,7 +52,9 @@ share f = do
 qtuple :: Query (Answer Integer)
 qtuple = do
     p <- qS S.free
-    let x = S.__caseTrue p (seriS (1 :: Integer, 3 :: Integer)) (seriS (2 :: Integer, 4 :: Integer)) :: S.Tuple2__ S.Integer S.Integer 
+    let x = S.__caseTrue p
+                   (S.__mkTuple2__ (1 :: S.Integer) (3 :: S.Integer))
+                   (S.__mkTuple2__ (2 :: S.Integer) (4 :: S.Integer))
     assertS (S.fst x S.== 1)
     query $ realizeS (S.snd x)
 
@@ -101,7 +103,7 @@ main = do
     try "q2" q2
     try "share_haskell" $ share quadruple
     try "share_seri" $ share quadrupleS
-    --try "qtuple" $ qtuple
+    try "qtuple" $ qtuple
     try "quserdata" $ quserdata
     try "qallQ" $ qallQ
     
