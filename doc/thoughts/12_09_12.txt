@@ -1,0 +1,43 @@
+
+Sun Dec  9 08:36:13 EST 2012
+
+Two things.
+
+1. the qtuple test for dsel probably isn't working because we are getting
+mixed up between "(,)" and "Tuple2". I'll double check that.
+
+Once I settle that issue, I should merge with the master branch. I don't think
+there is any fundamental loss in performance from the master branch. I think
+sudoku2 is a fluke. I'm much happier with the current state of things.
+
+2. I think I know how to solve the transform problem nicer. It's an idea I've
+had before, but have been too afraid to consider. But let me consider it.
+
+The idea is this: you build up ExpH inside an environment. This environment
+conntains:
+ * values of local and free variables
+ * whether to use specialization and the logic to use
+ * anything else I may want to know about for elaboration later
+
+Why does this work?
+
+The assert function can modify the environment to add specialization.
+caseEH can modify the environment for inferred value propagation.
+
+Now... this is a big change. Complicated. And not entirely clear to me yet.
+For example... when we apply a function, who makes sure all the arguments have
+a transformation applied to them? Perhaps whenever we modify the environment,
+we have to...
+
+Perhaps values of variables have to be themselves functions of the
+environment. Something like that.
+
+It's similar to the transformation thing, but I think a much nicer way to
+think about it. I'll keep thinking about it some more.
+
+For now, let me update the master branch.
+
+Sun Dec  9 08:47:31 EST 2012
+
+1. Yes. The tuple problem is as I thought. I'm not sure how to fix it though.
+The trouble is, I have no way to construct a ... oh. I know. Of course...

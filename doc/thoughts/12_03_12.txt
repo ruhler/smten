@@ -1,0 +1,633 @@
+
+Mon Dec  3 08:49:22 EST 2012
+
+Thoughts.
+
+A possible thing I could do, for a more general optimization than checking for
+if statements specifically, would be: for ConEH, keep a list of all the other
+possible constructors along with the constructor.
+
+This way, when we find that something is not a certain constructor in a case
+statement, we can say: it must be one of these.
+
+Now substitute turns into an "inform" kind of computation. We give a map from
+ExpH to set of possible constructors. That set may be singleton.
+
+Now when we see a case expression, if the expression is in the map, and it's
+singleton the way we want, we know it matches. If we know it can't be what we
+want, then we use the default branch. And we can update anywhere we see the
+constructor too to eliminate alternative choices.
+
+I don't think I should start by doing this general thing. I think better to
+start by specializing on if statements, and I can come back here later.
+
+Another idea for improving performance is: store an Int with each constructor
+identifying which constructor it is. That way we can do really fast comparison
+for case matches instead of comparing a name.
+
+Oh, one issue with the above proposed optimization. Let's say we know an
+expression will have a given constructor type, because there are no other
+options. But we don't know what the arguments to the constructor will be. How
+do we match that in a case expression? I suppose just change the default
+expression to be trivial (error?) and don't worry about it? Not sure.
+
+So, I have ideas about things to do in general. I want to start specific. Do
+these little optimizations. Try to get the generated query, both pre and post
+specialization, to look the way I want it to.
+
+For yices2.. really they should be the same pre and post specialization, no?
+
+Mon Dec  3 09:07:06 EST 2012
+
+A thought. These optimizations I've presented are really just constant time
+things. They won't solve the exponential problem I'm having. I should focus on
+understanding and solving the exponential problem before hacking at constant
+time things and hoping I will be lucky.
+
+So, let me do that instead.
+
+First thing, what I expect to have for the pre specialization for Sudoku1
+with a single hole:
+
+and [
+    not (x == 2),
+    not (x == 9),
+    not (x == 5),
+    not (x == 7),
+    not (x == 1),
+    ...
+]
+
+There should be 24 of these.
+
+Now, it won't look pretty like this. It will turn into a bunch of case
+statements. And it could have a different structure than this.
+
+Something like:
+
+case (x == 2) of
+    True -> False
+    _ -> case (x == 2) of
+            False -> case (x == 9) of
+                        True -> False
+                        False -> case (x == 5) ...
+
+Let me take a closer look, and see if this is indeed what I see.
+            
+Mon Dec  3 09:19:47 EST 2012
+
+We see the following: For sudoku, there is no difference between pre and post
+specialization. As expected. All the complexity comes from generating the
+initial query.
+
+In a sense, this is good news, because generating the initial query should be
+much easier than specialization... It means the performance problem is not
+with how efficiently we do specialization.
+
+It means... we really want to make as much use of whatever information we can
+when we learn things in case expressions?
+
+Let me try to simplify manually the expression, using my advanced knowledge of
+the kinds of information we could learn, and see how the expression
+simplifies.
+
+Mon Dec  3 09:35:28 EST 2012
+
+Yes. The expression simplifies a whole lot. And here is the information I
+used:
+
+1. x == 2   is False, means (x == 2) matches false.
+
+2. case p of
+     True -> True
+     _ -> False
+  is the same as: p
+
+3. isFalse (case (x == 2) of
+                True -> False
+                _ -> True)
+  Implies (x == 2) is True.
+
+I think we get more information than that too... Like, we know that (x == 2)
+means x is 2. We know (x == 2 is false) means x does not equal 2.
+
+Why is this happening now but it didn't before? Perhaps because I did
+specialization before? I'm not sure. Maybe because I kept && and || and not as
+primitives? I don't know.
+
+Let me see. Maybe it won't be so difficult to come up with this information
+from case statements that we can propagate elsewhere. I claim we only learn
+this information from case statements. Let me see if I can work out in general
+what information we learn and how.
+
+The basic idea is we learn things about expressions in general. Not just
+variables, but expressions. We learn things about their values. We learn that
+either they are of a certain constructor, or they are not of a certain
+constructor. In some cases, knowing expressions are not of certain
+constructors means we can infer it is of a certain constructor. That works for
+datatypes. It won't work for integers, for example.
+
+Here are the things we learn:
+
+case x of
+    K -> y
+    _ -> n
+
+We learn that: in y, x is constructor K.
+               in n, x is not constructor K.
+
+We also have: assuming we know x is constructor K, or not constructor K, we
+can learn other things too.
+
+My, this seems complicated.
+
+Could I stick to booleans for now? Just generalize it in the sense that we
+keep track of arbitrary expressions being True or False? That would handle the
+Sudoku cases I believe.
+
+The alternative is, try to figure out things about integer variables. Like,
+what things the are, or what things they are not. That way we don't have to
+look at any generic expression, but we still learn things.
+
+We would have to know something about the primitives then. We would want to
+recognize that, if x is not 2, then (x == 2) is false.
+
+But we don't learn as much that way. For example, I could have:
+
+if (a || b)
+    then (if (a || b)
+            then a
+            else b
+    else c
+
+This should simplify to:
+
+if (a || b)
+    then a
+    else c
+
+Which I would know if I kept track of (a || b) being True, even though it
+doesn't tell me anything about a or b specifically.
+
+I wonder if we could do this somehow as a preprocessing step?
+Err... probably not...
+
+But, if you had some thing like:
+
+if (a || b)
+    then let x = a || b in
+          ...
+    else let x = a || b in
+          ...
+
+And all you had to do was change it to be:
+
+if (a || b)
+    then let x = True in ...
+    else let x = False in ...
+
+Then elaboration would do the rest.
+
+I'm fighting a performance problem I don't know exists yet. So I shouldn't
+worry about that.
+
+Okay, so here's the idea. Change my optimization to form information about
+boolean expressions in general. To keep me sane, I'll stick to boolean
+expressions. To generalize it, I generalize it to Exp instead of Name. See
+where that gets me.
+
+I expect: substitute will have a big cost in checking for a known expression.
+I can deal with that when I get to it. Fight the known problem before fighting
+the unknown problem.
+
+Well, then, this is relatively simple. Change information to be [(ExpH,
+ExpH)], impliedByBool... should add every subexpression along the way to the
+list. I'll keep it a list for now. Substitute should check every expression
+for a value.
+
+The values will be True or False. So no worries about the order in which the
+substitute is performed.
+
+I'll want to explicitly define equality so it works correctly for ExpH.
+
+You see the plan? Yup. Let me try it out, and see how it goes.
+
+Mon Dec  3 10:17:05 EST 2012
+
+That seems to have done it. For Sudoku with a single hole anyway. Let me try
+more holes.
+
+Mon Dec  3 10:19:10 EST 2012
+
+We still aren't up to diabolical. I still see a simplification I can make,
+which is that one I mentioned.
+
+Anyway, let me see how many holes we can handle, and how it grows.
+
+1: 0.4
+2: 0.45
+3: 0.66
+
+Mon Dec  3 10:21:43 EST 2012
+
+It grows pretty badly. Not surprisingly, most of the time is spent in
+transformation, checking for equality, and building up this big list of values
+for expressions.
+
+Let me try to get about a 30 second profile time, then see how I can improve
+the performance of this operation.
+
+Nope, can't get 30 seconds. We run out of memory first.
+
+Okay. Let me check in what I have now. Then I'll start playing with things.
+Like, using a map instead of an association list.
+
+Mon Dec  3 10:36:03 EST 2012
+
+Trouble: I don't know how to define Ord. We have things which are not
+comparable. What should they be? Certainly not equal. But LT? Then we end up
+with things which are less than themselves, and that certainly can't be good,
+can it?
+
+Ug. Well, don't worry about that. Do it anyway.
+
+Mon Dec  3 10:52:35 EST 2012
+
+Using a map didn't help. It just hurt. So, scratch that idea.
+
+How about, don't include every sub-expression? We get less information that
+way...
+
+Mon Dec  3 10:55:31 EST 2012
+
+You know what's really annoying? These expressions which are exactly the same,
+are the same because they start the same, but then I duplicate them... The
+transformation I'm doing is like a common-subexpression elimination. But I
+don't need that.
+
+What if I could give a number to every shared expression?
+
+So, we identify each expression with a number, with the following property:
+
+If two expressions have the same number, they are the same expression.
+
+Two expressions may have different numbers and be the same.
+And let's reserve a special number indicating we don't know anything about
+that expression.
+
+This would give us a way to keep track of what expressions are shared.
+
+The immediate benefits of this would hopefully be:
+* we can use a hash table for storing Integer -> ExpH of the transformation.
+Now the cost to look up values for transformation, which currently costs us at
+least 30% of the current run time, goes down.
+* we can decide not to add subexpressions which aren't labelled, because we
+  they won't appear anywhere, thus saving a lot of memory allocation in
+  impliedByBoolH, which is currently 50% of the memory allocation.
+
+The potential long term benefit of this is: we can do a pass to recognize
+shared expressions after full elaboration and express that to SMT solvers.
+Perhaps we can share specialization and other transformations better.
+
+I can use unsafe perform IO to generate these unique identifiers. I don't care
+if we end up calling it multiple times. There are two places where we hand out
+these numbers:
+
+1. Application of lambda, if not already numbered.
+2. Lookup in toExpH.
+
+Note: whenever we do a transformation, we need to renumber to keep track of
+the fact that some expression N could be transformed in some places but not
+others. We want untransformed ones to remain N, we want all the transformed
+ones to have the same new N' numbering ideally. Again, perform unsafeIO can
+help us here, caching the transformations we perform.
+
+I think this sharing information would be very valuable to maintain. And, like
+I said, I think it will solve the current problem I'm facing very effectively.
+So long as I make sure to make sharing explicit whereever possible, in
+argument and function pushing and case de-sugaring and all that sort of thing.
+
+The trouble is... it's a very big change. Not something for me to dive right
+into.
+
+Here's an idea. Maybe I can take a break to update DSEL. See how that works
+out, if it works out. I would like to have that working again. Then the only
+way we are behind master is... performance. We are more correct than the
+master branch. Just slower. And, unfortunately, rather unacceptably so.
+
+I do have things good enough that I could work on improving the concrete
+performance now though.
+
+Yes. I need more thought before diving into this shared annotation scheme. I
+can already think of some problematic issues.
+
+So, I'm going to try out a new approach to DSEL, see how it works.
+
+What I want: dsel test and sudoku tests working again.
+
+Here's the idea of how it will work:
+
+1. Use haskellf to generate a haskell file with the needed seri imports.
+2. Import that file into your haskell file, qualified.
+3. Use the functions in there, and seriS and de_seriS as needed to describe
+what you want.
+
+Let me give it a shot and see how it looks.
+
+First with sudoku, which I think is easier. And it will be interesting to see
+if it suffers the same performance problems I'm having with the other sudokus.
+
+I want to build a solution by hand first, then figure out how to automatically
+build it and such.
+
+Mon Dec  3 12:17:07 EST 2012
+
+Looks like this approach works fine. We just need some helper functions to
+make things a little easier. Nifty!
+
+Let me clean this up then check it in.
+
+Mon Dec  3 13:02:37 EST 2012
+
+I have to go over my phd proposal story. So here's the deal for today. I'll
+clean up the DSEL, check it in, then work on my proposal story. Meanwhile,
+I'll continue thinking about this sharing thing.
+
+What do I need to do to clean up the DSEL?
+
+* We should preserve the module name in the haskellf translation? Or have it
+  be a fixed name? Or let the user specify the name?
+* Export all symbols, not just main
+* Don't generate a main wrapper if there is no main.
+
+So, I have to think about how I want to use this.
+
+One idea is: we never generate a main. If you want to run a program, you have
+to explicitly specify the main function... using a library routine? That's the
+problem.
+
+Perhaps you have to write your own main function? Annoying...
+
+I think it makes sense to say: the user specifies the main function. If they
+specify no main function, you don't wrap anything. Default to no main
+function?
+
+No. It's simple. Always specify a main function. You don't have to compile
+directly if you don't want. You just need to specify something. Anything IO ().
+err... I dont' know of things like that though.
+
+How about a flag: -no-main? Yes. That's the answer. An additional flag.
+Defaults to false. Only meaningful for haskellf.
+
+How do we translate the module name? Just add underscores in place of the
+dots. That will be good...
+
+Except... doesn't it have to match the target name? Whatever. That's the
+user's deal. Yes. Translate the module name using underscores.
+
+And always export everything.
+
+That's what I need. Good.
+
+1. Clean up haskellf generation
+* have no-main flag which says not to generate a __main function.
+* have module flag which says what output module to make.
+* export all symbols in generated file.
+
+2. Make some nice symbolic functions for working with queries:
+
+freeS, assertS, realizeS
+
+3. Clean up the build system to automatically make sudoku the right way.
+4. Translate dsel tests to this new approach
+5. Remove old DSEL stuff.
+6. Remove loadenvth stuff and related TH stuff.
+
+Let me start a bit at a time. Not necessarily in order...
+
+5. Done.
+2. Done.
+1. Done.
+3. Done.
+4...
+
+Almost. There are some issues with the dsel test:
+* some bug with tuple2 for some reason
+* free needs to change: we need to use S.free somehow, and convert that to a
+  Query. So, like: runq S.free kind of thing.
+
+But it's good enough for me to check in now and then patch up.
+
+Question: do we need to know anymore where the .sri files are installed?
+I feel like no. But may as well keep that.
+
+Mon Dec  3 15:31:11 EST 2012
+
+Let me summarize the current state of the world.
+
+Three ways to use seri:
+1. interpreted
+2. compiled to haskell as main program
+3. compiled to haskell as library
+
+They all work. They all share the same runtime infrastructure. Perfect. Okay,
+so a little bit of work to do, but much improved over previous approaches.
+
+Current issues:
+* Performance of concrete stuff (hcp, sat) is bad
+  That is, general evaluation sluggishness
+  Note: now that I have (3) set up nicely, I should be able to sidestep this
+  issue for the time being.
+* Performance of query generation is bad
+  Figure out how to do these optimizations and informed update or sharing
+  better.
+* Some cleanup still to do with path (3)
+
+Because the first point can be worked around, I feel like I should not attack
+it directly yet. It should not have priority. This means I should update HCP
+and SAT to use haskell as much as possible, and hopefully find that those
+performance issues go away entirely.
+
+Then all that's left will be the stuff I'm facing now: sluggishness in
+generated queries. I think I can solve this using my proposed sharing
+annotation scheme. But I need to think about that some more.
+
+Good work today. I think that's it for today. This is in decent shape now.
+
+Good enough to merge with the master branch? It's more correct. It's much
+nicer. What do I need the master branch for? The one question is: why is it so
+much worse than the master branch? What critical change did we make from the
+master branch?
+
+I should generate the sudoku query in the master branch, and see how it
+differs. That should help me understand what's wrong with my current approach.
+There's got to be something wrong with it.
+
+Okay, yes. That's the next step. When I come back to work on this next.
+
+Mon Dec  3 16:19:41 EST 2012
+
+I want to just take a look at the generated query for Sudoku on the master
+branch, and see if I can't better understand why it's different from the
+haskellf branch.
+
+Mon Dec  3 16:31:21 EST 2012
+
+I don't understand what's different.
+
+The master branch sudoku doesn't work if I try to print out the assertion. It
+blows up then. Not out of stack space, but out of memory. So it's generating a
+very large query as well. I wonder if somehow haskellf is forcing something in
+that query which the master branch doesn't?
+
+Not sure.
+
+Mon Dec  3 16:35:29 EST 2012
+
+You know what it is? This implied thing takes too long. If I disable that
+check in caseEH, Sudoku1 finishes in a reasonable amount of time. I bet if I
+did some partial checks which were cheap, it would finish even faster, perhaps
+in the 1 second desired...
+
+All the time now is in sending and evaluating the massive query...
+
+So, let me think about this some. It may be my proposed approach for fixing
+the inferred value propagation performance could make all the difference.
+
+Mon Dec  3 18:49:05 EST 2012
+
+Question: why did the implied thing cause problems with sudoku before I
+updated it to do more things?
+
+One problem is... what? What's going on here?
+
+Anyway, I think the approach I want to take for sharing makes sense. Just add
+a sharing ID to: VarEH, PrimEH, and AppEH. And only to the outer level.
+
+This means we won't share everything, but we will share most.
+
+For example:
+
+let x = (y, z)
+in fst x + fst x
+
+Doesn't mark (fst x) as shared. But that's okay, because it isn't explicitly
+shared. Instead write it as:
+
+let x = (y, z)
+    fst_x = fst x
+in fst_x + fst_x
+
+And now it is shared, as desired.
+
+And once that's there, all the rest is easy.
+
+I don't want to dive in now, because it's too late and my brain is fuddled.
+But I have the plan, if I decide this is the right approach to take.
+
+I would like to understand things better. Things about this optimization.
+
+1. Why is this optimization critical for Datatype, and what part of the
+optimization is critical for Datatype?
+
+2. Why is this optimization debilitating for sudoku, and what part of the
+optimization is debilitating for sudoku?
+
+I can do some experiments to figure this out.
+
+First experiment: Datatype.
+
+1. No inferred value propagation for datatype.
+Blows up.
+
+2. Just immediate value propagation.
+Data type works fine.
+
+So that's all we need. To say the argument has the given type.
+
+3. Just immediate Var value propagation.
+Datatype test works fine.
+
+So we only need vars from the first argument.
+
+Fine. Now, let's look at sudoku.
+
+1. no inferred value propagation.
+Takes about 15 seconds.
+Time is dominated by large query.
+
+2. Just immediate var propagation.
+Blows up!
+Even though I bet we don't have any matches at all...
+
+How about, optimize so if no matches, we do no simplification.
+
+3. If no matches, do no simplification.
+Same as (1). As expected. Because I don't expect any matches.
+
+4. Match top level expression, regardless of type.
+Overflows.
+
+Interesting. It seems as if...
+
+We must be doing some simplification when we make the smt expression, because
+we can print that easily enough, but we can't print the exp version of it?
+
+Or maybe it's just... whenever you find a match, you find it a lot, so you do
+a lot of transformation?
+
+What if we did just names, but we descended into && and || to try and get more
+info?
+
+5. look into && and || and not and such to get more information.
+Sudoku still finishes, doesn't do much though.
+
+Because again, I don't think we learn anything in this case about integer
+variables.
+
+How about... what's up with sudoku3? Same issues?
+
+Sudoku3: takes almost no time with just immediate variable inference. Blows up
+if we try to do further inquiery.
+
+Sudoku2?
+
+Blows up right away. Even with just immediate variable inference.
+
+What's the summary?
+* immediate variable inference propagation is vital for Datatype
+* no inference propagation is vital for Sudoku, Sudoku2, Sudoku3.
+
+You know what this suggests to me?
+
+Again, there's something funny about sudoku where traversing the expression to
+perform the transformation turns out to be very expensive...
+
+So here's what I'll do for now...
+
+I need to understand sudoku better. Don't jump into this sharing idea without
+understanding why the query blows up, or traversing the query blows up, or
+what's going on. Don't do any fancy inference unless I demonstrate real
+improvement with it, as was the case for Datatype.
+
+I should be able to understand the problem by starting with no holes, then 1
+hole, then 2 holes, and so on. See how that evolves, and how it evolves
+differently from what I expect.
+
+Okay, so I know the next steps. Let me summarize so I remember what to work on
+when I come back to this tomorrow:
+
+* Understand and fix qtuple test in dsel
+* Fix quserdata test in dsel
+* Re-implement SAT test as integrated haskell/seri
+    Do the dimacs parser in Haskell (use arrays? That would be cool...)
+    See what the performance problems are.
+* Re-implement HCP test as integrated haskell/seri
+    Do the parsing and loading in Haskell.
+    See what the performance problems are.
+* Understand why the sudoku queries blow up so big internally by printing out
+  the queries starting with 0 holes, then slowly increasing.
+  Compare master, haskellf, Sudoku and Sudoku2.
+
+Take no action for performance until I understand the sudoku issue.
+

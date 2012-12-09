@@ -1,0 +1,422 @@
+
+Sun Dec  2 10:26:47 EST 2012
+
+I need to focus on the right thing. I need to get my datatype test working
+without jumping ahead to optimizations.
+
+So, first step: get the data type test working. Try to figure out which test
+is causing the problem, and step through how it should work by hand.
+
+Perhaps first I can clean up specialize. The way specialize should work is
+first you specialize all sub-expressions. Then you check to see if you can
+specialize this expression. If not, you are done. If so, do the
+specialization, then re-specialize the result. There's potential duplicate
+work going on here, which could be bad. But don't worry about that for now.
+
+This may be the issue I'm having with datatype, so I may as well clean it up
+first and see if that helps.
+
+Sun Dec  2 10:35:25 EST 2012
+
+Looks like that didn't help, but it's cleaner anyway, so I'll stick with it.
+
+Now, what's the problem with datatype?
+
+Here's an idea. What if we can't specialize away something? Do we get stuck in
+an infinite loop?
+
+No. I don't think that's it. Let me figure out which case is causing the issue
+and work through it by hand.
+
+Well... yes, let me walk through by hand. It's a ... sadly large expression
+before specialization. Could this just be a performance issue? What if I make
+the test much smaller and run it for a while? Let me see.
+
+Sun Dec  2 10:57:16 EST 2012
+
+The smaller test completes. This is looking to me like an exponential blowup.
+One which is taking a lot of memory.
+
+So, what I should do is try 3 element, see how that does.
+
+Oh! Aha! Yes. It finished. It's just an exponential blowup.
+
+And we can see how big the generated query is. Probably not big at all.
+
+Sun Dec  2 10:59:57 EST 2012
+
+It's huge! Wow! With tons of errors.
+
+You know what will fix this? The trivial implies by optimization. I'm sure.
+
+That can be the next step... I would like to think if there's a better way to
+solve this issue? Because I fear the optimization doesn't solve this problem
+in general.
+
+Sun Dec  2 11:43:39 EST 2012
+
+One thing is clear. It's not just a matter of generating the query more
+efficiently. I do not want to generate so complicated a query.
+
+So let me do this optimization thing. I know the plan.
+
+The idea is: ... what is the idea?
+
+We could start specific. Then generalize it later. That's probably the best
+idea.
+
+The general idea is: you do a case match against a free variable. This splits
+into two branch: a branch where the match is made, and a branch where the
+match isn't made. This gives you information. You learn things when you go
+down the branch, and we need to take advantage of what we learn.
+
+Again, I could think generally, but I think that's too hard right now. Let me
+think specially, and generalize later. The specialization is let's consider
+booleans. For any case you do of boolean type, you learn on the branch that
+the argument is either True or False.
+
+The question is, what can you learn about free variables if you know an
+argument is true or false? Let's consider one case at a time.
+
+Start with: assuming the argument is true.
+
+Free variable: the free variable is true. This is great information.
+Application - should not be possible.
+Lambda - currently should not be possible.
+Prim... depends on the primitive. The primitives we have of boolean type are:
+* equality primitives: we can learn a primitive has a specific value
+* inequality primitives: we can learn bounds a primitive type.
+Case ...
+
+Well, the result type of the case is Boolean. We don't know what the argument
+type is.
+
+Let me consider an if statement, which summarizes all the possibilities, I
+think. After that it's recursive.
+
+Say we know the following is true:
+    if p then a else b
+
+That can only happen in two cases.
+A. p is true and a is true
+B. p is false and b is true
+
+Now, we don't know which is the case. That's problematic. Because without
+knowing that, p could be true or false, and a could be true or false, and b
+could be true or false. So we learn nothing.
+
+There are, however, some cases where we do learn something.
+
+Let's assume we don't know the value of p. Because if we did, I claim we
+wouldn't have a case statement there. So the question is, what if we know the
+value of a or b?
+
+a = True:
+ Says either: p is true or b is true
+ Again, we can't do things with either very well, so that doesn't help.
+
+a = False:
+ Says p is false and b is true. Now we learn a lot.
+
+b = True:
+ Says p is false or a is true. Doesn't tell us much.
+
+b = False:
+ Says p is true and a is true. We learn a lot.
+
+a = False, b = True
+ Says p is false, but we didn't need to know b is True.
+
+So, whenever we have AND only, and no OR, then we are in fine shape, if we
+know something is true. Because we learn that every thing must be true.
+
+Whenever we have OR only, and no AND, then we, if we know something is false,
+we know all the components must be false.
+
+Can demorgan help us here?
+
+not (a OR b) = not a AND not b
+
+So, let's say I know that (a OR b) is true.
+That means: not a AND not b is false. But that doesn't help any.
+
+In other words... it comes down to exactly what I had before. Recognize and.
+Recognize or. The rest should come out of that for free.
+
+Let me implement it, see what happens.
+
+Cases for True:
+
+If arg has a boolean type, and.
+
+k = True:           (if x then y else n)
+   y = False: x is False, n is True
+   n = False: x is True, y is True
+
+k = False:          (if x then n else y)
+   y = False: x is True, n is True
+   n = False: x is False, y is True
+
+Or, in summary:
+
+y = False => x is (not k), n is True
+n = False => x is k, y is True
+ 
+Now, let's look at implied by false:
+
+case x of
+    k -> y
+    _ -> n
+
+y == True: x is (not k) and n is False
+n == True: x is k and y is False
+
+Sun Dec  2 12:17:31 EST 2012
+
+Now, let's see if we can generalize that even more...
+
+True: 
+    y = False => x is (not k), n is True
+    n = False => x is k, y is True
+False:
+    y == True: x is (not k) and n is False
+    n == True: x is k and y is False
+
+Implied by T:
+    y = not T => x is (not k), n is T
+    n = not T => x is k, y is T
+
+Now, booleans are special, because we get information about not, so, for
+example, when we say x is (not k), that means we know exactly what x is.
+
+In general, the type doesn't have to be boolean. I'm not going to worry about
+that now for the implementation, but it's something to keep in mind. We could
+collect information for variables about what constructors they are or are not.
+
+Sun Dec  2 12:39:29 EST 2012
+
+Well, that optimization fixed the data type test. It makes a huge difference,
+apparently. Nifty!
+
+Next step... I should test all the other test cases.
+
+Sun Dec  2 12:43:21 EST 2012
+
+None of the sudoku tests work. All the other ones do.
+
+So I guess the next step is to figure out what's wrong with the sudoku tests.
+
+Sun Dec  2 17:47:07 EST 2012
+
+What's wrong with the sudoku tests?
+
+How can I figure that out?
+
+Symptoms are: it runs out of memory. So let me try two things...
+
+First, focus on Sudoku1, which we never had problems with in the past. See how
+the behavior is for the elaborator and haskellf.
+
+
+haskellf: Uses very little memory. Has a stack space overflow.
+Profile suggests memory and time is taken up by transform and caseEH.
+
+elaborator: Same kind of behavior.
+
+The profiles for each look very similar.
+
+Well... first thing to try would seem to be...
+
+Increase the stack size. See what happens then.
+
+Sun Dec  2 17:57:18 EST 2012
+
+Memory is under control. It looks like it's doing a lot of allocation then
+garbage collection. It's taking a long time.
+
+Hypothesis: specialize is doing a lot work rebuilding the expression over and
+over again... Like, every time we do a specialization, we rebuild the entire
+structure from scratch.
+
+Another observation: we are generating errors for things that can't happen. I
+wonder if I can somehow figure it out.
+
+For example:
+
+if x > 0
+    then x <= 9
+    else (x > 0) && error
+
+This is silly, because we know x > 0 is false, so there's no need to talk
+about the possibility of an error.
+
+This seems like we could handle it in specialize. I wonder if we could also
+handle it by some sort of case transformation:
+
+case x of
+    True -> a
+    _ -> case x of 
+            False -> b
+            _ -> c
+
+
+Could be transformed into:
+
+case x of
+    True -> a
+    _ -> b
+
+Because we know c can never happen. It certainly a similar sort of thing as
+our implied by simplification.
+
+And we could do this in general for all kinds of case expressions. 
+
+Anyway, Sudoku is still running. Taking a long time. What could I do to make
+it not take so much time?
+
+* Can we be smarter about how we do specialization so we don't have to
+  re-specialize expressions over and over again?
+* Maybe we could make specialization part of elaboration, to avoid duplicating
+  work between common sub-expressions?
+
+The later I can at least try easily enough, assuming we do all the reduction
+rules all the time. It's not really a specialization kind of thing, but, well,
+could be worth it.
+
+Let me look into the former now, see what I think.
+
+Start with argument pushing.
+
+(case x of
+    k -> f
+    _ -> g) arg
+
+We know: x is fully specialized. f is fully specialized. g is fully
+specialized...
+
+case x of
+    k -> f arg
+    _ -> g arg
+
+The trouble is... f could be fully specialized, but (f arg) may not be. The x
+doesn't change... Well, so, we could simplify it a little by just
+re-specializing (f arg) and (g arg), and not the whole thing. Doesn't seem
+like much of a savings though...
+
+One thing we don't have to do for that specialization, however, is descend.
+Because we know f and g are fully specialized, just apply the top level check
+for specialization.
+
+Thus we form this notion of:
+
+- children may need specialization.
+- here may need specialization.
+- there is no need for specialization.
+
+So I bet I can make this much faster. Have a function: specialize children.
+Have a function: specialize here. Have a function: specialize children and
+here. Then, first thing we do is; specialize just the children. Then, when we
+match here, we can say: after applying f arg, specialize not the children, but
+the top level result.
+
+Can that work? What if the argument pushing leads to a lambda application? And
+that lambda application itself leads to... something? Can that ever happen?
+
+I don't know. Perhaps I should just let my tests cases guide me in figuring
+out which specialization to perform. Start with minimum: don't specialize
+after a rule fires. That way, either I'll see explicit cases we have to worry
+about and how I can fix them, and I'll see if it helps performance any.
+
+That sounds like a decent plan to me.
+
+Um... How long should I wait for Sudoku to finish, do you think?
+
+Not much longer I think. I should rather start with a full solution and slowly
+empty squares and see how performance scales that way.
+
+Sun Dec  2 18:20:20 EST 2012
+
+Even one hole leads to a large cost. Let me check out the generated query.
+
+The generated query is pretty large.
+
+What would I expect? Something like... 8*3 = 24 constraints.
+
+How many am I getting?
+
+Way, way more than that.
+
+So, looks like we at least have a problem here with the generated query. I
+should probably focus on that first.
+
+First idea... do this proposed case simplification. Try to get rid of the
+errors, see if that helps things out?
+
+Or have other optimizations? For example
+
+a && a = a
+a || a = a
+
+?
+
+Where are these things coming from? I'd also like to see the pre-specialized
+formula. See if there's anything sensical I can make out of that.
+
+Sun Dec  2 18:31:21 EST 2012
+
+In PRESPEC, I'm getting things like:
+
+case (x == 2) of
+    True -> True
+    _ -> case (x == 2) of
+            False -> False
+            _ -> error "case no match"
+
+That's kind of silly. It ought to just be: (x == 2).
+
+Trouble is... how can we detect this equality? I should manually say what it
+means for two functions to be equal... maybe default to true. Then I could do
+comparisons of expressions.
+
+We could split this into two kinds of optimizations perhaps?
+
+case x of
+    True -> a
+    _ -> case x of
+            False -> b
+            _ -> ...
+
+Turns into:
+
+case x of
+    True -> a
+    _ -> b
+
+Requires equality test on 'x'.
+
+Then we can have another:
+
+case x of
+    True -> True
+    _ -> False
+
+Goes to: x.
+
+Adding these optimizations seems like hacks to me though... Erg.
+
+I don't know what to do. I think I want to think about this first.
+
+So, ideas that I have had, to consider:
+
+* Do optimizations on if statements to generate more sensible queries
+** remove error case if we can show it won't happen
+** if x then True else False should be just x
+    Should improve query.
+* Don't respecialize after a specialization rules has fired. Then add minimal
+  respecialization as needed based on bugs 
+    Should improve performance
+* Do specialization in general elaboration.
+    Should improve performance
+
+I think I should focus on improving the query first. But I'll keep thinking.
+

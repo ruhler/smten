@@ -1,0 +1,543 @@
+
+Fri Nov 30 09:02:17 EST 2012
+
+Trouble with numeric types. I run the vector tests, and I get: <<loop>>.
+
+What's up with that?
+
+Well, either it's a stupid bug in my ...
+
+Oh. You know what it is? I'm not allowed to look at the argument to seriT.
+Because I do loop things. I bet that's the problem.
+
+So let me think about how I can get numeric type information for seriT without
+looping.
+
+No. Something else is wrong.
+
+Let me add some numeric tests. Ignore vector for now, and see how they work.
+
+Fri Nov 30 09:09:28 EST 2012
+
+I'm doing the following numeric test:
+
+3 == (valueof (numeric :: #3))
+
+I expect this to work. Why doesn't it? Why does it still <<loop>>?
+
+Fri Nov 30 09:47:40 EST 2012
+
+The <<loop>> was a bug. There's another issue now, which is...
+
+For N__2p0 I have an instance of SeriT1. But that's not right, because N__2p0
+doesn't correspond to some type constructor thing...
+
+Oh. You know what? This is very interesting...
+
+What if I had a numeric type which was "+". Then AppT could work for "+", and
+we could have syntactic sugar to turn it into the desired thing. Hmm...
+
+I could hack something up and make it work, I'm sure, but is it what I want?
+
+Okay, let me take this opportunity to review numeric types. How they work in
+seri, and consider some alternative possibilities.
+
+Currently numeric types are a little bit dissapointing. They are like a wart
+on my kernel language.
+
+Wartiness:
+* We have a separate kind of variable type for numeric types and for regular
+  types.
+* We have a separate kind of type application for numeric types and for
+  regular types.
+
+Why?
+
+Well, maybe we want to have a way to figure out when a type is a numeric type.
+But why not have types mirror what happens with expressions? Expressions have
+a type. Types should have a kind: I can start simple: Numeric or Non-Numeric.
+That's easy to figure out.
+
+Okay. So why is this valuable then? The problem at hand, besides ugliness of
+numeric types is:
+
+What if + were a type constructor? It is, isn't it? You give it two arguments,
+it returns a new type. Isn't that how type constructors should work? The only
+difference is, we don't treat + as opaque. We interpret it.
+
+So, if you call appT, it should check: is the argument '+'? If so, perform the
+addition.
+
+Why is this nice? It means that in the haskell translation, I can define a
+type PLUS which has the right kind, takes the right arguments. Then seriT will
+work out the way you want.
+
+Now, type substitution should, just as for expressions, do this simplification
+whenever it recognizes an application of one of these primitive type
+constructor things. Currently all type constructors are binary operations on
+numeric types. I like to keep it that way. So I can have a general thing, or,
+for now, just keep it specific.
+
+So, I propose we change the type representation to the following:
+
+Type = ConT Name
+     | VarT Name
+     | NumT Integer
+     | AppT Type Type
+     | UnknownT
+     
+We add the following primitive type constructors: +, *, -
+
+And we add type sugar: appT :: Type -> Type -> Type, which does the reduction
+for the type operators if appropriate.
+
+Cool! I like it.
+
+Let me fork a branch off of haskellf to make this change. I suspect it will
+have impacts that I'm not aware of. Perhaps the first step will be to make
+numeric types abstract. Then it should be fairly easy to switch over.
+
+Gar! I'm getting frustrated. I don't think I can make the leap all at once.
+
+I worry this will cause issues in the type solver. Perhaps I should delay on
+this idea for now.
+
+What other solution can I provide?
+
+It strikes me that N__2p1 and N__2p0 could also be described using
+
+N__0, N__1, N__2, N__PLUS, and N__TIMES. Any reason not to do that?
+
+type N__2p1 a = N__PLUS N__1 (N__TIMES N__2 a)
+
+That's at least easier to deal with. Sure.
+
+Then the question becomes... how to deal with N__PLUS, N__TIMES, and N__MINUS?
+
+I suppose I could just add a hack for now. But... gar! I don't like that.
+
+Let me try using undecidable instances. See if that helps any, or can be made
+to work.
+
+I think that's too messy, and won't work out the way I need it to.
+
+The real solution is to make it so I separate the notion of a numeric type
+operator: "+" or "-" or "*", and application. Then recognize numeric type
+operations in appT. Basically, what I had been planning to do with numeric
+types. That solves the issue in a way which makes sense.
+
+Okay, well, maybe I can take some smaller steps towards getting there. What's
+the minimum I need to do?
+
+I need to understand the issue with the solver?
+Or... could I keep the same representation, only have...
+
+How about this, as a short cut. Recognize specially ConT "*", ConT "+" and
+ConT "-" when you do AppT. If they are fully applied to two numeric type
+arguments, convert to the type application. That way I don't have to change
+anything for now.
+
+Okay, sounds good to me. Let me set it up, and see what goes wrong.
+
+Numeric types work. At this point, there are two approaches I can take.
+
+1. Get concrete Bit vectors to work.
+2. Start working on SMT.
+
+You know what? Now that I have literals as Dynamic, I can implement Bit
+objects as real literals, instead of having to store them as
+"from_integer_Bit" kinds of things. That's nice.
+
+I think I should get concrete bit vectors to work first. Then I'll have the
+headache of SMT.
+
+1. Make bit a literal.
+2. Implement all the bit vector primitives.
+
+Fri Nov 30 11:26:04 EST 2012
+
+Trouble with bit vector primitives. I want to have seriT for Bit, but the
+width is dynamic, not static, so haskell doesn't know about it...
+
+Perhaps for Bit I have to do the primitives differently? SeriT won't work for
+Bit.
+
+That's okay, I suppose. I can supply the bit type manually.
+
+Alternatively, I could have the bit type be static... but that sounds hard. I
+really rather not.
+
+I'll hack around it for now.
+
+Fri Nov 30 11:59:47 EST 2012
+
+Two observations:
+* In general, primitives may require their type. For any primitive, if you
+  give it the type and the arguments, it can do what it needs to.
+* The difference between the seri primitives in the elaborator and those in
+  the translator are just that the ones in the elaborator return Nothing if
+  they don't reduce concretely, while the ones in the translator form an ExpH.
+
+I should certainly be able to share the code between them. The question is,
+does it make sense to represent them at the core as one or the other?
+
+Anyway, I'm going to take a break now for lunch. I don't think there is any
+challenge in implementing the rest of the bit vector primitives for concrete
+values. Just grunt work. I'll do that after lunch.
+
+Then we can start looking at SMT queries, when things will get really
+interesting, and we should finally be able to share things between the
+elabrator and the translation.
+
+Cool. The goal for the end of the day? Optimistically, it would be great if
+all the SMT tests work. I think practically that is unlikely, but I should at
+least be deep into the problems that I need to solve to make it work.
+
+Fri Nov 30 13:11:23 EST 2012
+
+Okay! So the concrete stuff works. At this point, if I wanted to, I could get
+a sense for the performance now of haskellf on showing the hcp thing, and on
+parsing the dimacs file.
+
+I don't really have any reason to believe the performance will be better than
+the old haskellf. But who knows? It may actually be. We don't have that extra
+tag thing going on, for example, and we do IO inline. So let me try this out,
+just to get an initial sense. Something to ponder about, but in the back of
+the mind. Priority has to go to making SMT work, because things are going to
+change during that process, and I really want both the elaborator and haskellf
+to be sharing code before I focus on performance improvements.
+
+Fri Nov 30 13:21:59 EST 2012
+
+On HCP: haskellf performance appears to be basically the same as the seri
+elaborator performance. The seems reasonable to me. I expect seri elaborator
+to be a little slower, because it does type checking and conversion to ExpH,
+but after that they should be basically the same.
+
+We find in haskellf a lot of time is spent in unbox2, case, and box2. I fear
+the time in unbox2 and box2 is going back and forth between (a -> b) and
+ExpH. It would be great if I could somehow avoid doing work there.
+
+Fri Nov 30 13:25:25 EST 2012
+
+Anyway, it's looking at this point to me like the elaborator and haskellf will
+run at about the same performance. Improvements to one will also improve the
+other, I hope.
+
+Anyway, time now for SMT stuff. This is going to be a bit of work I suspect.
+
+Let me think ahead and see what I expect to have happen.
+
+The problem is, substitution doesn't try to re-evaluate the primitives. So,
+I'll be going along fine, I ought to generate the right SMT query, but as soon
+as I try to perform a substitution involving free variables as arguments to
+some primitive, it will fail to reduce the primitives, and start failing from
+there, and I'll get something like an IO or other thing expecting a concrete
+value to have an unsimplified concrete value.
+
+The solution to this is add the notion of PrimEH, and inform the simplifier
+(which I should get rid of, because transform should simplify by default).
+
+I wonder if, at this point, it would make sense to not worry about the
+elaborator, and focus on haskellf. The idea being, we shouldn't need the
+elaborator anymore after updating the primitives.
+
+The other problem we'll run into is, we don't do function pushing anywhere, so
+those tests will fail. That has an independent solution, which is to update
+the primitive functions in question: caseEH, fooEH to push functions and
+arguments as needed.
+
+Okay? Expectations set. Let's try out core. Focus should be to make core work
+correctly.
+
+Fri Nov 30 13:36:44 EST 2012
+
+Aha! Of course. Forgot the first important point. I need to implement the
+Query primitives. Okay. I can do that now.
+
+Fri Nov 30 13:44:51 EST 2012
+
+What does '__prim_free' look like? I should be able to do it for any type.
+
+__prim_freeEH :: Type -> ExpH
+
+Hmm... And you know what? I should be using the Query monad for these
+primitives. Which means, perhaps, I don't need a new Query monad? We'll see.
+Don't get my heart set on the existing Query monad.
+
+Fri Nov 30 13:56:58 EST 2012
+
+I don't need two query monads. That's good. They should share. Currently the
+elaborator monad is much more complicated. I think that's okay. Use the
+elaborator one, simplify it as needed. That should work out just fine.
+
+Fri Nov 30 14:42:07 EST 2012
+
+The basic core tests work! Isn't that cool? Yes, I think it is.
+
+So, next step is ... I should have a test case which tests primitive reduction
+stuff. What would that be?
+
+It should be something like: query (free1 && free2), and assert that's true.
+
+In both the elaborator and haskellf. I expect it works in the elaborator, but
+not in haskellf. That will be the next big challenge.
+
+Fri Nov 30 14:58:02 EST 2012
+
+Yes. It's as I expected. We fail to do reduction after substitution. We have
+things like (not False) left unapplied.
+
+This, then, would appear to be a good time to think hard about the next step.
+
+Whenever I do a transformation, such as substitute, I need to perform
+simplification. That means I need to call the primitive reduction rules. The
+problem is, I don't know what all the primitives are where I define how to do
+substitution.
+
+It is, perhaps, possible for me to move things and hard code all the
+primitives. But I don't want to do that.
+
+So we need a generic way of describing how to do substitution and
+simplification of a primitive. I believe I already know what this is:
+
+We need a function such as:  [ExpH] -> ExpH which performs the reduction if
+possible, otherwise leaves things as they are. A smart constructor for
+primitives, where the primitives provide their own smart constructor.
+
+Some primitives need their type. I'm assuming this function has the type
+embedded inside it.
+
+So, is there any issue here? Isn't it clear what I want to do?
+
+PrimEH :: Sig -> ([ExpH] -> ExpH) -> [ExpH] -> ExpH
+
+Some questions arise.
+
+1. Do we have to take a list of arguments, or can we fold things inside of
+things?
+
+I think I should take a list of arguments. That way it's clear how to
+translate to SMT, and maybe the primitive can do things with later arguments
+that it can't do earlier. For example, an optimization like
+(+ x 0) goes to (x).
+
+Sounds good to me.
+
+2. Does it make sense to have every primitive function have the above type?
+
+For example, what if I have:
+
+type Primitive = Type -> [ExpH] -> ExpH
+
+That covers all possible kinds of primitives. Does this make things easy
+somehow? Or should I keep unary and nullary and binary distinctions?
+
+3. How to use the primitives in the seri elaborator?
+
+Well, this isn't so hard. We want to pass a function for toExpH to use in
+looking up primitives: (Sig -> Maybe ExpH). I would expect this function to be
+formed from a table: HT.Table Name (Type -> Maybe ExpH).
+
+This might look, for example, with binary, as:
+
+binary :: (Type -> ExpH -> ExpH -> ExpH) -> (Type -> ExpH)
+binary f t = lamE "a" $ \a ->
+              lamE "b" $ \b ->
+               f t a b
+
+This suggests to me we should keep primitives as unary, nullary, and binary,
+and convert them at the end. This is because we need some way to convey the
+arity of a primitive. Using the haskell type is a natural way to do that.
+
+So, I would expect something like, given a list of nullary, unary, and binary
+primitives (and others if you want), convert them to a list of
+(Name, Type -> ExpH), and then you are all set.
+
+Here's an idea. We could have a class for primitives. Just to help keep track
+of everything. I image we want things like:
+
+* name
+* (Type -> ExpH) function
+* [ExpH] -> ExpH function
+
+And then, you know what I could do? I could have a generic:
+
+primS :: (Symbolic a, Primitive p) => p -> a
+
+And use that in a generic form for all the primitives.
+
+The different kinds of primitives we can have are:
+* nullary vs unary vs binary
+* type annotated vs untype annotated
+
+That sounds cool to me.
+
+And later on we could add additional information, such as: SMT theory
+required. That could help do specialization in a very generic way.
+
+You know what? I like this. Don't get too carried away to start.
+
+If I'm going to have a generic Primitive type, and do things to that type, I
+should just start with the one type, not a class. And have functions for
+creating that in different ways.
+
+Cool. Is there any thing else I wanted to think about?
+
+We have a primEH, which knows how to apply the primitive (trivially).
+
+Fine. I think I know everything I need to. I think this is a good plan. 
+
+Here's a question. Should PrimEH just be Prim -> [ExpH] -> ExpH? It has the
+function. I don't want it to have to have arguments yet. We need a way to
+get the Exp corresponding to the primitive, and a way to reapply the
+primitive.
+
+The only issue with that is, we have to specify primitives and ExpH in the
+same module, because of the recursive dependency. I think it will be easier to
+start with them separate.
+
+What path will I take to add primitive?
+
+1. Add a PrimEH. I shouldn't have to do anything about it to start, because no
+one uses it. But I should implement primEH and fromExpH and typeof for it at
+the very least.
+
+This is an easy step.
+
+2. Define Seri.Primitive.Primitive
+          Seri.Primitive.Prelude
+
+Move one of the primitives defined in ExpH.Primitives to
+Seri.Primitive.Prelude. Get that to work. Probably it should be one of the
+core primitives we test. Focus is on haskellf. Don't worry about the
+elaborator using the new primitives yet.
+
+Alternatively, I could try out having the one primitive in the elaborator as
+an argument to toExpH. That might be a good idea. Start that. Get that
+working.
+
+Once I have these in place, then all I should have to do is convert the
+primitives over one at a time until I've ported all primitives over for both
+haskelf and elaborator. At the end, the elaborator should require no more
+primitives. We should no longer need IO.Run and SMT.Run. The concrete tests
+should pass. And now the current Core tests should all pass.
+
+I want to keep the elaborate function around still, as I'll need it for
+argument pushing and such. The next step will be to add those things to
+haskellf, then get rid of them from the elaborator.
+
+Yes. I like the idea of doing both at once. I'll be that much closer to a
+unified system at the end as a result, and I'll see what issues, if any come
+up.
+
+Cool. Sounds like a plan. Let me get started.
+
+Fri Nov 30 15:49:09 EST 2012
+
+Step 1 is done. Easy enough. I decided not to make a primEH, because it's too
+scary. I don't want primitives to assume primEH will lead to a PrimEH, but
+that's a natural assumption to make. So I'll just leave it out.
+
+Step 2...
+
+Let me move a primitive over to this and see how things go.
+
+__prim_eq_IntegerEH will be a good start. I want it to have type Prim.
+
+Okay, so I have eq_IntegerP defined. How do I use it?
+
+Let's start with haskellf. I want to implement a primS kind of thing.
+
+Um... I need to know how many arguments there are. So, really what I want is a
+function: Type -> ExpH. That should be embedded within the primitive.
+
+Oh... Interesting. Looks like we have a natural kind of primEH now.
+
+primEH :: Prim -> Type -> ExpH. That's cool. Slightly different.
+
+Okay, so we have that in place. The next step is to use it... Here goes...
+
+Fri Nov 30 16:24:34 EST 2012
+
+It appears to work. That's good.
+
+As a sanity check, I would like to make sure the && and not primitives work
+for the core test. Let me try to simplify that test.
+
+Fri Nov 30 16:34:31 EST 2012
+
+It works! Nifty. This is a good saving point. Then I'll try to use those two
+primitives in the seri elaborator and see how it goes over.
+
+Fri Nov 30 16:36:56 EST 2012
+
+Cool. Next step is... toExpH should take a list of primitives as an additional
+argument.
+
+We'll want a function: lookup :: Sig -> [Prim] -> Maybe ExpH.
+
+First problem: toExpH doesn't know about primitives. Either I need to pull
+toExpH out of ExpH, or push Prim into ExpH.
+
+Let me pull toExpH out. Maybe I can call it a different name? Inline? Because
+that's really what it does. Full inlining.
+
+Fri Nov 30 16:59:32 EST 2012
+
+I did it. I'm now passing in primitives to toExpH. And they work. That's
+nifty.
+
+Fri Nov 30 17:00:41 EST 2012
+
+Well, you know what the plan now is, right? It's time for me to start
+converting all the primitives to Prim. I'll work on that for the next 30
+minutes or so, then call it a night whereever I stand. I should be able to
+make decent progress, if not full progress.
+
+Wish me luck! I'll start with all the easy primitives.
+
+Fri Nov 30 17:16:19 EST 2012
+
+I did all the easy primitives. We are left with hard ones. Ones that don't
+seem to work with the same easy pattern. Let me figure out why they are hard
+and see if I can't come up with a clean solution.
+
+* Dealing with BitEH:
+Trouble is, BitEH doesn't support seriEH. Maybe I should make a dummy type for
+bit with an extra argument so that I can make it work? I don't know.
+
+* Dealing with IOEH:
+Trouble is... we want everything to be IO ExpH, not IO a. Is that... doable?
+What if I can give an instance of seriEH for IO ExpH?
+
+* Dealing with && and ||
+Trouble is: I give a function from Bool to ExpH?
+Maybe this isn't that bad. I just need to use unary...
+
+* numericEH 
+Trouble is: it requires the type.
+
+So, these are all the trouble makers. I think the best way to clean them up is
+to try and clean them up in ExpH.Primitives, get them working like that, then
+switch to Prim.
+
+Let me start with && and ||, which should hopefully be easy. I just have to
+write it the right way, right?
+
+Fri Nov 30 17:33:35 EST 2012
+
+It works, after adding SeriEH of (a -> b). Which only works if you happen to
+have concrete things all the way, otherwise it will throw an error.
+
+But I think that's okay for now.
+
+Fri Nov 30 17:37:07 EST 2012
+
+Nope! It doesn't work... Hum...
+
+Fri Nov 30 17:38:27 EST 2012
+
+Well, I'll think about that, and bit, and IO, and types, and see if I can come
+up with anything better.
+

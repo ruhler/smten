@@ -1,0 +1,184 @@
+
+Sat Dec  8 11:15:20 EST 2012
+
+Switching over to this transformation thing is going to be messy. Very messy.
+I believe the right approach is for all the smart constructors to take the
+transformation as an argument as mentioned yesterday.
+
+It's going to be messy. It's going to be messy to make it work with haskellf.
+It's going to touch a lot of code and be yucky and hard to get right.
+
+I do believe something like this needs to be done in the long run. It is not
+acceptable to have (\x -> me (f x)) in the long run. Perhaps other easier
+solutions could be found, I'm not sure.
+
+What I want to explore today is the question of whether we can hold off in the
+short run or not.
+
+The master branch worked, right? I'll want to double check this.
+
+The story is this. I had the master branch, where elaboration and
+specialization and full inlining were tied together in one big jumble. It
+worked, but I wanted to unify haskellf and the elaborator. I did so very
+nicely, but I pulled apart elaboration and specialization, and as I now know,
+this causes big problems with (\x -> me (f x)). I did not, however, know that
+at the time, so I tried fixing things in other ways: sharing preservation.
+That leads to all sorts of other issues that I tried to solve.
+
+I did make important improvements in the code. So I don't want to start over
+from scratch. But one thing I haven't tried is the new haskellf and seri
+elaborator together where we do as much common specialization in the
+elaboration phase as a we can, and we still do full inlining.
+
+We may also need to reinstate inferred value propagation. I hope not, because
+it has the same issues as the (\x -> me (f x)), but if it worked before it
+could work again.
+
+So, here's my plan.
+
+1. revisit the master branch. Verify all the tests work reasonably there.
+2. fork off of share2, somewhere before changing LamEH. Just a couple of
+revisions ago. Make an unshare branch.
+3. change appEH to full inline. See how the test cases work out now. In
+particular, do core and datatype generate a decent query or not? Does Bluespec
+and array and squares all finish now?
+
+If it all works out, great! If needed, move more specialization into the
+elaborator. In the worst case, I can move it all there, and force
+specialization for the minimum solver, but hopefully I can do all common
+specialization there and do the rest with a specialize pass and have it not be
+too expensive.
+
+The hope is, by this point, I'm back to where master was. I don't preserve
+sharing, but I know from this past week a way I could preserve it, and some
+issues that come up because of it.
+
+Then clean up, remove traces of explicit sharing, get haskellf working again,
+fix the dsel test, merge with master, and I'll be very happy.
+
+Cool. Wish me luck.
+
+Sat Dec  8 11:35:34 EST 2012
+
+1. Yes. On master branch, they all work just fine. Good.
+2. I forked the branch.
+
+3. The datatype test fails if I do inlining right away. Let me first move as
+much specialization as I can (not related to lets) into Sugar. I think that
+should solve the datatype issue. Either that, or I need inferred value
+propagation? I hope not. I'd rather not need inferred value propagation.
+
+Is there a way to tell? I have to look at the generated query. It's worth
+looking at that now.
+
+Good news. The datatype test is just slow. And it's not terribly slow. So I
+can inline fully right away and see how that works out.
+
+Sat Dec  8 11:50:52 EST 2012
+
+First transformation to convert: case argument pushing. Unfortunately this is
+an application transformation, and that means app and case are mutually
+recursive and need to go into the same module. I've had to deal with this
+before.
+
+Perhaps I could figure out a way to move caseEH into Sugar? I think that would
+make things much easier.
+
+Sat Dec  8 12:50:10 EST 2012
+
+Even with specialize disabled entirely, datatype and sudoku2 still blow up.
+Datatype finishes eventually. Sudoku2 doesn't seem to.
+
+What's the difference between this and master?
+
+* we do error propagation
+* we do arg pushing for primitives (but not really, because all SMT types are
+  currently supported for the primitives.
+* we don't do inferred value propagation.
+* we preserve sharing in function pushing of case (didn't that cause problems
+  on the master branch?)
+
+So, let me add back in basic inferred value propagation. Just check for an
+immediate vareh of boolean type in caseEH.
+
+If that doesn't help enough, try inlining directly in function pushing of
+case. If that doesn't help enough, I'm out of ideas, take a break and do
+something else for a while.
+
+Sat Dec  8 13:05:07 EST 2012
+
+Simple preferred value propagation:
+ - datatype test is much faster
+ - sudoku test is much faster
+ - sudoku2... still blows up. :(
+
+All the other tests work though, and they are all fast!
+
+Let me try the one last thing. Don't make lambdas for function pushing. See if
+that helps... It's the last thing I can think of for sudoku2.
+
+I'm so close!
+
+Sat Dec  8 13:20:45 EST 2012
+
+Last thing tried for sudoku2 didn't help. I'm out of ideas. I need to take a
+break.
+
+I think I know the problem. Fundamentally. It's the transform problem that I
+decided to put off. But that doesn't explain why the master branch can handle
+sudoku2 but this still can't. What's different between the two? Smarter
+inferred value propagation?
+
+No. Because master doesn't do smarter inferred value propagation.
+
+Sat Dec  8 13:29:46 EST 2012
+
+I don't know what's going on. Perhaps I just got really lucky with sudoku on
+the master branch. So maybe I'm close enough now to merge with the master
+branch. We just have that sudoku2 doesn't work anymore.
+
+Steps before merging this with master:
+* remove reference to Specialize
+* remove un_letE
+* try out haskellf again
+* fix bug in dsel
+
+Then I think it probably makes sense to do the merge, because the code is in
+much better shape. From there I can launch to the next task, which isn't even
+explicit sharing, but rather figuring out how to do this transformation thing
+much much better. That, I bet, will solve the sudoku2 test case problem, and
+many others.
+
+Sat Dec  8 14:56:06 EST 2012
+
+I think there may be nicer ways to deal with the transform thing. I'll keep
+thinking about that. But one thing that occurred to me: I don't expect
+transform to be so hard for Sudoku2. I'm not transforming any functions, am I?
+
+Oh. I realize my mistake. The problem isn't the transformation into the board.
+It's the transformation during construction of the argument...
+
+Well, I could test this. Keep count of times we do transformation after
+application. See if it grows or not when we scale up to harder and harder
+sudoku problems. That's an experiment worth doing.
+
+Sat Dec  8 15:09:45 EST 2012
+
+None. That's not the problem. We aren't doing any TLAM...
+
+Could it be we are just substituting into a really really big expression?
+
+Let me print it out and see what it is.
+
+It's not a really big expression. I think it's just a whole lot of small
+expressions.
+
+Hypothesis: We do full inlining first. Then we perform this translation. It
+has to do the translation after full inlining, which is a whole lot more work
+than if we could have done it before full inlining.
+
+So, even though it's not exactly related to this \x -> me (f x) thing (which
+is never being called), it's still the same kind of problem. We want
+translation to happen before inlining of the expression, not after. That would
+make it much more efficient.
+

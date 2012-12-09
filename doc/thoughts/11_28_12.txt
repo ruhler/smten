@@ -1,0 +1,577 @@
+
+Wed Nov 28 08:38:53 EST 2012
+
+Remember high level goal: get things correct, so I can then get things faster,
+so I can run on interesting benchmarks.
+
+What are the main correctness issues? The main things I need to change before
+I can start working on performance?
+
+* propagate errors for case and primitives in seri elaborator
+* do function pushing for primitives in seri elaborator
+
+At this point, the seri elaborator should be correct.
+
+* change haskellf to generate newtype of ExpH for each data type.
+* propagate errors for case and primitives (reuse same code as in elaborator)
+* do function pushing for primitives (reuse same code as in elaborator)
+* implement the Bit test.
+
+At this point, haskellf should be correct. Note: this doesn't actually require
+adding IoEH and QueryEH to ExpH. Or, at least, I don't think it does. Though I
+do expect I'll want that eventually.
+
+So let me make sure my focus is right. I have a tendency to get side tracked
+on my vision for how I want things to be. I can keep that in mind, but I
+should focus on the immediate goal, which is getting more test cases to pass.
+
+Let's say, I'll be ready to focus on performance as soon as:
+* the basic tests pass for both elaborator and haskellf
+* all the smt unit tests pass for both elaborator and haskellf
+    Basic, Core, Datatype, Scoped, Integer, Bit
+  With no commented out tests
+* haskellf uses the same code for elaboration as the seri elaborator
+    That is, primitives, case reduction, function pushing, arg pushing should
+    all be shared.
+
+Always try to stay true to the ultimate vision. And try to do general
+solutions, not specific hacks.
+
+Okay, so first immediate issue is: 
+
+assert ((if free1 then 3 else 4) == (if free2 then 4 else 5))
+
+Does not work in STP, but it could.
+
+Note, it does work in yices1 and yices2, because they support integer
+operations. I've already discussed that ideally I could leave it as it was in
+yices1 and yices2, and only do the function pushing for STP, or other solvers
+without integer support.
+
+There was some concern about performance, delaying specialization like this
+for the specific assertion in question. What do I want to do? Do I want to
+just do argument pushing for everything now, or do I want to support
+specialization?
+
+The ultimate goal is specialization, then see how good or bad performance is.
+One line of thought says: for now, just inline everything and specialize
+later. You aren't taking any steps backwards, and it's just a performance
+issue. That sounds reasonable to me. Don't do the premature optimization.
+Start with the simplest path to a correct solution, which is to always perform
+function pushing?
+
+Well, but they lead to different solutions. In the case where I do
+specialization, I expect to have:
+* specialize function: Theories -> ExpH -> ExpH
+Traverses looking for opportunities to specialize. When it finds them, does
+the transformation.
+
+Without specialization, I expect to have:
+* pattern matching...
+
+Okay, so enough of the code is in common, I don't think it hurts to start
+without specialization. I don't think it's any easier to do specialization
+right away, is what I'm saying.
+
+Good. So, how is this going to work?
+
+...
+
+There's another question, which is how do I deal with error, and can I handle
+it currently? Can I test it somehow?
+
+For example, a core test case might be:
+
+I don't know. I'm looking to test case propagates errors correctly. Maybe I
+shouldn't worry about that for now.
+
+Fine. So, how to deal with function pushing in primitives?
+
+I want to do it generically for all primitives. Don't have a special case for
+each primitive. Here's what I want to recognize...
+
+First, do we need to do this for all primitives? For example, && and || are
+already supported by all the solvers. So what if we have:
+
+&& (if foo then ...) (if blah then ...)
+
+I certainly don't want to push the && inside!
+
+So maybe I do want to have a specialization path?
+
+I don't know. I don't know what I want to do here. So maybe let it stew. I
+need to think harder about how I want to deal with specialization. I'm coming
+to believe I don't want to do function pushing everywhere. Only do it in those
+places where it is necessary.
+
+So, while that stews, to give me more info and make some progress, how about
+we move to the third bullet point: haskellf and the elaborator should share
+all the code.
+
+Let me consider, then, how haskellf will look.
+
+A generic data type Foo in seri is translated to:
+
+newtype Foo = Foo ExpH
+
+If Foo has variables, we will introduce phantom types.
+
+newtype Foo a b ... c = Foo ExpH
+
+For the time being, IO and Query will be special cases. Primitive data types.
+
+Now, for every top level declaration, we want to convert it to this. How?
+
+Integer i::  Integer (integerEH i)
+Char c:: Char (charEH c)
+ConE:: turn it into __mkFoo, as we currently do.
+    __mkFoo a b c ... = Foo (appsEH (conEH ...)) [__unbox a, __unbox b, __unbox c, ...]
+VarE:: turn it into a haskell variable. Easy.
+AppE:: turn it into a haskell application. Easy.
+LamE:: turn it into a haskell lambda. Easy.
+CaseE:: turn it into a __caseFoo function, as we currently do.
+    __caseFoo :: Foo -> (A -> B -> ... -> C) -> C -> C
+    __caseFoo x y n = __box (caseEH (__unbox x) (__unbox y) (__unbox n))
+        
+
+Notes:
+* Every type should belong to a class with an __unbox :: Foo -> ExpH function.
+* Every type should belong to a class with a __box :: ExpH -> Foo function.
+* caseEH should do simplification and error propagation.
+
+One thing I notice: we do a lot of boxing and unboxing. Now, this in theory
+shouldn't cost us anything at run time, because of the use of newtype.
+
+There is a question: does it make sense, instead of using newtype, to just use
+ExpH for everything?
+
+The reason we use newtype is so that haskell automatically handles classes as
+desired. It also does a type sanity check. How could we go without newtype?
+How do we know that the function foo should be foo for some type, or foo for
+some other? Do we loose specialization?
+
+I think it's better to keep the types distinct. That should also let us do
+more interesting performance optimizations in the future. It also lets us
+specialize IO and Query. The downside is we need these classes for boxing and
+unboxing, which is kind of annoying.
+
+Well, but everything is in place now. It should be fairly straight forward to
+do the translation given I've already done most of the grunt work.
+
+Can we use newtype deriving? We could for nullary constructors.
+
+Well, it's not hard to generate my own instances. They all look the same,
+right?
+
+__boxN = Foo
+__unboxN (Foo x) = x
+
+Good. So, to make this switch, what I need to do first is make caseEH do
+simplifications.
+
+Good. This looks not too hard. The steps are:
+1. Change caseEH to do simplification.
+2. Change haskellf translation
+3. Update the primitives in the haskellf prelude.
+
+Let me do (1) now. Then think about (3). I'll want these primitives to be
+shared, note.
+
+I don't see how to put (1) into the elaborator just yet, though it should work
+eventually. Let me get haskellf working with it, which will make it mature,
+then I can plug it in. The issue is, I don't know if it makes any progress or
+not. We need to have this assumption that it's arguments are always fully
+elaborated for it to make sense, and that's not yet guaranteed in the
+elaborator.
+
+Now, let me think about primitives in haskellf. How will I implement those?
+Ideally in a way which is shared by the elaborator.
+
+For example...
+
+__prim_add_Integer :: Integer -> Integer -> Integer
+__prim_add_Integer =  ?
+
+The arguments may or may not be fully elaborated... I have the following
+requirements:
+
+* if the arguments are integers, return an integer.
+
+Well, actually, this isn't so hard. I could even switch the integers over to
+ExpH first, then the transition should be pretty easy.
+
+So, here's the idea. All primitive types should first be converted to my
+proposed scheme. Then I'll have the primitives implemented and working as
+desired. Then the change in translation should be easy.
+
+Cool. I can do this a bit at a time. First step: change everything using Exp
+over to ExpH.
+
+One problem with using ExpH instead of Exp: you can't go inside lambda bodies
+to do a substitution and simplification.
+
+This shouldn't be a big problem for haskellf, because I don't expect to have
+any lambda bodies. But it will be an issue, potentially, with substitution in
+seri... of course, it's an issue I already have, so maybe that doesn't matter.
+
+Wed Nov 28 12:57:27 EST 2012
+
+Making progress. Next big step to make: Implement List using ExpH.
+
+The issue here is, it starts to make use of boxing and un-boxing of data
+types. Let me add __box and __unbox to the Symbolic classes, and see how bad
+that turns out.
+
+Wed Nov 28 13:09:45 EST 2012
+
+There's going to be some issue with boxing and unboxing of functions I fear. I
+don't know what the type of the argument is.
+
+Wed Nov 28 13:53:36 EST 2012
+
+Okay, so updating lists has made things a little messy, but I also want to
+recognize some stuff in common now, and try to share it if I can.
+
+Especially some stuff in common between this and TExp like stuff.
+
+That is, I'm at the point where I should work stuff out, in terms of the
+translation, and really making everything the way I want. I'm close enough
+that the next step is to make the leap.
+
+The only questions I have, I believe, are...
+* What to generate for constructors
+* What to generate for case
+
+Because the primitives now work just fine.
+
+I would argue that all constructors have the same form:
+
+__mkFoo a b c ... = __box $ (appsEH (conEH K) [__unbox a, __unbox b, ...])
+
+The trick is coming up with K. Well, we know the name of the constructor.
+Fine. The question is, what is the type?
+
+Well, we know the argument types. Fine.
+Do we know the result type?
+
+It would be great if everything was an instance of SeriT. Then I could get the
+return type that way, right?
+
+__mkFoo a b :: A -> B -> Foo
+
+The type of the constructor is exactly the seriT of __mkFoo!
+
+__mkFoo a b = __box $ (appsEH (conEH (Sig (name "Foo") (seriT __mkFoo))) [unbox a, unbox b]
+
+That would make things much easier. And I think it's trivial to give an
+automatic instance of SeriTN for each data type.
+
+Here's a question... Could I have a generic constructor implementation? The
+idea is... say we have some function (a -> b -> c -> d), where each of the
+arguments are Symbolic__. I have an Exp...
+
+I could make (Exp -> Exp -> Exp -> Exp)...
+
+I'm not sure it's worth it at this point. Anyway, SeriT helps here, and now
+this should be trivial to generate code for.
+
+Now, consider case:
+
+__caseFoo x y n 
+
+__case :: (Symbolic__ a, Symbolic__ b, Symbolic__ f) => S.Sig -> a -> f -> b -> b
+__case k x y n = __box $ S.caseEH (__unbox x) k (__unbox y) (__unbox n)
+
+__caseFoo = __case (S.Sig (S.name "Foo") t)
+
+Now, what is 't'? It's like: take the type of f as a seri type, and replace
+the target type with the argument type. Easy to do if I have SeriT instances.
+
+Notice how why this is valuable progress for me to be making. Now all case
+expressions in haskellf just use caseEH, so I can put all the function pushing
+and lifting and dealing with errors in there, and share between haskellf and
+the elaborator, which is the whole idea of what I'm trying to do.
+
+So, bad news is, I think I need to revert all my changes from the last hour or
+so. Start clean slate.
+
+For Prelude, it would be good if I could make use of SeriEH in a generic way
+to convert things.
+
+Sigh.
+
+It's worth thinking more before I start from scratch. Let's think about DSEL.
+
+Here's the idea. I would like to be able to translate a single seri module at
+a time. Now, for DSEL, instead of using whatever it is I have, I switch to
+using the generated code...
+
+That brings up a very interesting question. Could I use phantom types ... no,
+nothing to be gained that way.
+
+Or is there?
+
+Here's the idea. We have a type, call it:
+
+newtype TExpH a = TExpH ExpH
+
+(look familiar?)
+
+Now, my types will be:
+
+type Integer = TExpH (Prelude.Integer)
+type Bool = TExpH (Prelude.Bool)
+
+If I need to, I can create dummy types:
+
+data Foo__ a b = {}
+
+type Foo a b = TExpH (Foo__ a b)
+
+Note that I can distinguish between TExpH Bool and TExpH Integer, for example,
+so I can handle type classes appropriately. Haskell deals with the
+specialization.
+
+Having the concrete haskell types around is also nice, as it gives a natural
+course towards concretization of things. But let me not worry about that now.
+To start all the haskell types can be bogus things.
+
+Now, the benefit of this approach over my current approach is we have
+structure. We know anything of type TExpH can be boxed and unboxed. I don't
+need a global type class any more (perhaps).
+
+__unbox :: TExpH a -> ExpH
+__unbox (TExpH x) = x
+
+__box :: ExpH -> TExpH a
+__box x = TExpH x
+
+Now, consider a polymorphic function. Let's see if this makes things any
+easier. Two things to look at: constructors and case.
+
+__mkFoo :: TExp A -> TExp B -> ... -> TExp Foo
+__mkFoo = ...
+
+Here's a question. Can I automatically convert (TExp (a -> b)) to TExp a ->
+TExp b in haskell? If so, the constructor would be trivial
+
+__mkFoo = convert (conET "Foo")
+
+apply :: TExp (a -> b) -> TExp a -> TExp b
+apply (TExp x) = TExp . appEH x
+
+apply2 :: TExp (a -> (b -> c)) -> TExp a -> (TExp b -> TExp c)
+apply2 x = apply . apply x 
+
+The question is, what if we have no arguments?
+
+apply0 :: TExp a -> TExp a
+apply1 :: TExp (a -> b) -> (TExp a -> TExp b)
+
+Well, special case that?
+
+class Apply a b where
+    apply :: a -> b
+
+The problem is ambiguity, what if you only want partial application? So, try
+this. Two argument type class.
+
+instance Apply (TExp a) (TExp a) where
+    apply = id
+
+instance Apply (TExp (a->b)) (TExp a -> TExp b) where
+    apply = apply1
+
+instance Apply (TExp (a -> b -> c))
+
+Wed Nov 28 14:51:37 EST 2012
+
+I don't know how to do it. It's something like <$>.
+
+So don't have a class, just inline it. That's fine.
+
+instance Functor TExp where
+    fmap :: TExp (a -> b) -> TExp a -> TExp b
+
+Oh no... it's not Functor. It's slightly different. Functor doesn't have TExp
+(a -> b) in it. Oh well. Whatever.
+
+But this has to do with something...
+
+fmap :: (a -> b) -> (m a -> m b)
+>>= :: m (a -> b) -> ((a -> b) -> (m a -> m b)) -> ...
+
+nope. I should stop getting distracted. The point is, though I can't
+necessarily create a generic apply, I can certainly spell it out explicitly.
+
+__mkFoo = apply . apply . ... . apply (conET "Foo")
+
+Easy.
+
+Next step, case statements.
+
+__caseFoo. It's just like it was before. No problem, right?
+
+Now, how does this interface with DSEL?
+
+The trouble is know when to use an existing haskell type, or when to create a
+new one.
+
+How do we handle polymorphic functions?
+
+map :: (a -> b) -> [a] -> [b]
+
+Would turn into:
+
+map :: TExp (a -> b) -> TExp [a] -> TExp [b]
+
+But we really want:
+
+(TExp a -> TExp b) -> TExp [a] -> TExp [b]
+
+And this doesn't make any sense to me.
+
+So, in other words... I'm not feeling much like this TExp thing is helping a
+whole lot. I may as well just have a class with __box and __unbox. That makes
+it easier to concretize things later on too? Not clear. Anyway...
+
+Gosh. I don't understand anything anymore. Can I go back to the beginning?
+Clean slate? How will I be doing this?
+
+We have a class of symbolic things. Everything is newtype of ExpH. We make
+functions the way you expect. We have functions to box and unbox. Everything
+runs on caseEH.
+
+Now, the question is, how can you make use of this in DSEL?
+
+I give you a function of type Foo -> Bar, for Foo and Bar my symbolic versions
+of the haskell Foo and Bar. You can box these in and out of ExpH, which means
+we could also pretty easily give SeriEH instances of them, no? Well, not
+exactly, but we have a useful variant. I just need different function names,
+and it all works out as desired.
+
+So, I do haskellf on a module, I get a bunch of declarations and data types
+defined which I can box and unbox. I want to use these declarations, such as
+my shared query?  Or defoo.
+
+defoo :: F.Foo -> F.Integer
+
+I can have a class for free variables. Then it's exactly as I want.
+
+So I think this is the right path to take. If you want, you could write your
+functions manually desugared with the help of __caseFoo. In practice, let the
+compiler generate those, then use haskell to write the functions that don't
+require pattern matching, or whatever.
+
+And this is how I can write more efficient test cases: just move all the
+concrete stuff into haskell proper, and import the shared stuff. I suppose
+it's not entirely ideal...
+
+We could generate two modules. A concrete module and a free module.
+
+Or, we could give you a way to convert a F.Foo -> F.Bar into a Foo -> Bar
+function. That's not so hard really. And if we are smart enough, that can be
+almost as good as a concretely generated one.
+
+Anyway, the point seems to be the following:
+1. We want a class with box and unbox functions.
+2. We want this class to depend on SeriT.
+3. We want to generate __mkFoo with repeated use of an apply function.
+4. We want to generate __caseFoo using caseEH underneath the covers.
+5. We want to compile a single seri module at a time.
+
+I'm confident I can do 1 through 4 easily enough. The thing I don't know about
+is (5). How important is this?
+
+It's just to avoid redundancy? Well, not entirely. You would like to write
+DSEL code which depends on some library module, let other people use it, and
+let them write their own seri libraries and use those too.
+
+Well, it's worth looking at a little bit. How much work is involved in
+compiling just a single seri module?
+
+It's not hard. Just tedious. And it's not important, so skip it for now.
+
+Okay, let me make a new branch, clean slate (1-4). Get it to work. Don't worry
+about DSEL. And go from there.
+
+I'll dive in. Wish me luck.
+
+Wed Nov 28 15:35:44 EST 2012
+
+Let me also do myself a favor and limit the size of tuple supported.
+
+Wed Nov 28 15:39:31 EST 2012
+
+First step... the library. That will help me figure out what code I have to
+generate. Make good use of SeriEH!
+
+First let me split it into a module whose names will be in scope with the seri
+code: Lib.Prelude, and a module with background stuff: Symbolic.
+
+Wed Nov 28 16:54:50 EST 2012
+
+Some trouble: I need to move Bit vectors to ExpH representation. This is work
+I hadn't done before. Hopefully it's not too much of a headache.
+
+Maybe I can get rid of bit for the first round attempt. That shouldn't be too
+hard, I hope.
+
+Wed Nov 28 17:02:05 EST 2012
+
+Trouble: how do we handle IO? You see the problem now? I want a way to
+represent an IO computation in ExpH, but I currently don't have one. What do I
+do?
+
+Question: How hard is it to add IoEH?
+
+I can add that fine. The question is, how do I add the runFoo primitives? The
+answer is... I need to pass the primitives as an argument somewhere, so I can
+define them in a different module from Elaborate.
+
+Another approach would just be to move Elaborate to seri-smt. I don't like it
+so much, but I think it should be okay? I hope so? I'd rather not go in that
+direction...
+
+The idea is, pass the primitives as arguments to toExpH. Or, rather, pass the
+extra primitives to toExpH. I can have all the default ones hang around.
+
+I need to do this eventually. Now seems like as good a time as any. Especially
+because I have a decent motivation for it now. It's what's holding me up on
+haskellf.
+
+And it's just those 3 primitives... Could I somehow stuff them in as a post
+processing step? As an argument to elaborate perhaps?
+
+The problem there was, Query needs elaborate. How about I make it so Query
+doesn't need elaborate? Then I'm all set. I think that's a good idea.
+
+Okay, the plan now is:
+
+1. Make it so Query doesn't have to call elaborate.
+2. Add extra primitives as an argument to elaborate.
+3. Remove IO.Run. Instead add the IO primitives to the Elaborator, all except
+the runQuery primitives, which I will withhold.
+
+Or rather, specify the runQuery primitives in a different place.
+Seri.SMT.Primitives should perhaps be a good place.
+4. Remove Query.Run...
+
+Trouble: I'll have to deal with the Query ExpH dependency loop. That makes me
+sad.
+
+Alternative: Replace LitEH with any concrete kind of haskell value. In which
+case... I could stuff IO and Query in there, and I don't have to worry about
+primitives yet.
+
+Awesome. That sounds good to me. So, new plan:
+
+1. Change LitE to be any dynamic haskell type.
+2. Continue with haskellf2.
+
+Wed Nov 28 17:42:16 EST 2012
+
+Trouble with using Dynamic: we can no longer compare literals for equality...
+
+Well, I suppose I can hack that up.
+

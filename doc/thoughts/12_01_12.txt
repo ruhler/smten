@@ -1,0 +1,357 @@
+
+Sat Dec  1 08:49:07 EST 2012
+
+I think I have everything worked out.
+
+Why my idea for AND and OR didn't work::
+Because I specified the function (id :: Bool -> Bool), but that is different
+from what I really want (id :: Exp -> Exp), because it forces the argument to
+be concrete.
+
+How to fix it. Give as the primitive function a function of type (Bool -> Exp
+-> Exp). This works as long as Exp is seriable.
+
+There are two approaches to making Exp seriable. First approach is to just
+make an instances with id as seriEH and return as de_seriEH. The thing that
+slightly concerns me about that is, what if you really mean you want to pack
+an ExpH into something which in seri is an ExpH?
+
+Would you ever want to do that? Could you ever do that? Maybe. Eventually.
+Certainly I don't expect it in the near future.
+
+The other approach, to make it clear that you are doing a pass-through like
+thing, is to wrap the ExpH in a newtype constructor for passthrough. Then it's
+clear.
+
+I think, to start, let me just go with the first approach. I can change it
+later if I run into issues.
+
+Note: there's no reasonabl way to do seriT with ExpH, because the type is
+embedded dynamically instead of statically. For my current use, that should be
+okay, because we don't call seriT for the primitives. Let me double check that
+now.
+
+Yup. That's correct. The type comes from either toExpH, or the haskellf
+prelude, both of which have the proper type information.
+
+Good. Let me start with this, and I'll reveal my solutions to the other issues
+as they arise.
+
+Sat Dec  1 09:01:36 EST 2012
+
+No. There's a problem. In order to pack and unpack (ExpH -> ExpH), we need to
+know the type of the argument. But we don't have the argument, all we know is
+it's type, and we can't get at the correct type statically for things like
+ExpH.
+
+There is another approach here. The issue is, && and || really shouldn't be
+primitives I feel like. Then everything will work out as desired. The only
+reason I have them as primitives is so I can recognize them and extract
+implied by information.
+
+But, let's say they are fully applied, I can recognize those as case
+statements anyway.
+
+So, new plan.
+
+1. rewrite de_andEH and de_orEH to look for case statements (ifEH), and go
+from there.
+
+What it will look like is:
+
+de_andEH looks for:
+    if a
+        then b
+        else false
+
+de_orEH looks for:
+    if a
+        then true
+        else b
+
+and we could look for other variations too if we wanted:
+
+if a
+    then false
+    else b
+
+which is: (not a && b), which should be able to do implied by analysis on.
+
+In fact, I don't even need this to be working now. So let me just disable the
+implied by analysis for now.
+
+Then && and || and not no longer need be primitives, and that problem is
+solved.
+
+Sat Dec  1 09:16:16 EST 2012
+
+Trouble: for some reason, the substitution test is failing. Which I don't
+expect. We are getting case of a known value...
+
+Ah. Yes. I actually do expect it, it turns out. Okay, I can fix that.
+
+Sat Dec  1 09:18:45 EST 2012
+
+Good. Those are gone and out of the way. Next issues: IO things.
+
+Unfortunately, I feel like this is a similar problem. We'll see.
+
+I'll start with return, because I think that will be doable. return, nobind,
+and fail should all work just fine. The key is, any polymorphic arguments
+should have type ExpH. I worry about the function argument to bind. But it's
+a de_seriEH, not a seriEH, so maybe that's okay.
+
+Sat Dec  1 10:11:05 EST 2012
+
+Cool. So bind is now specified nicely.
+
+Let me move all the IO primitives over to Prim now. They should work
+naturally.
+
+Sat Dec  1 10:32:14 EST 2012
+
+I'm running into a bug, where a caseEH isn't simplifying. Not sure where.
+Let's search for it.
+
+Sat Dec  1 10:38:36 EST 2012
+
+Now we have a problem that the runQuery primitives aren't implemented yet...
+How hard would it be to add those primitives?
+
+How about this as a workaround. I'll leave the bindS primitive out of
+preludePs. And switch over later for just that one.
+
+I can still use the right definition for haskellf, which ought to work fine.
+
+Sat Dec  1 10:47:08 EST 2012
+
+No, actually, this is a different problem. This is a problem with IO.Run. We
+are getting an unexpected unknown IO...
+
+It's a primitive:
+
+nobind_io applied to: runYices1. Okay, so it is the problem of not having the
+runQuery primitives supported yet.
+
+Fine. Whatever.
+
+What's next? 
+
+Two things left. BitEH stuff, and stuff which takes type info.
+
+Let's start with the easier: stuff which takes type info.
+
+I want: ...
+
+well, valueofEH isn't special.
+
+Sat Dec  1 11:08:17 EST 2012
+
+Only one last kind of primitive to worry about. Bit.
+
+Well, this shouldn't be a problem. Just make Bit an instance of SeriEH with no
+SeriT. Then all should be happy. Hurray!
+
+Let me do the first one, just to make sure it works. Then I might take a
+little break and come back for the rest.
+
+After this, I have to work on the SMT primitives...
+
+Sat Dec  1 11:40:10 EST 2012
+
+Okay! All the bit vector primitives are moved over. Nifty.
+
+Next step? The next steps should be... the SMT primitives.
+
+Let me just get the ball rolling on those. Then I'll take my break.
+
+This is pretty cool. I'm making good progress. The interesting stuff will come
+when I get to function pushing.
+
+Sat Dec  1 11:50:19 EST 2012
+
+Okay, SMT queries should work just fine. Give me time and all do the rest. I'm
+taking a break now.
+
+Sat Dec  1 12:26:34 EST 2012
+
+I moved all the SMT primitives over. Now the only primitive not implemented is
+error... But that's a funny thing anyway. I may want to just have ErrorEH. In
+fact, I probably will want to have that.
+
+Anyway, now the primitives are moved over, I should no longer need this run
+function for IO or Query. Let me try to ditch those.
+
+Sat Dec  1 12:45:11 EST 2012
+
+There! We've reached a big milestone in this translation process. The
+elaborator and haskellf now share all the same primitives. We no longer have
+IO.run or Query.run. And some other things cleaned up to.
+
+What are the next steps? Clearly I need to get the rest of the SMT tests
+working. I expect that to involve the following:
+
+* Propagate error argument to case
+* Propagate error argument to any primitive
+* Fill out impliedByFoo* functions, and call that in caseEH
+    General optimization.
+* Perform argument pushing for case applied to argument
+    Specialization for no LAMBDA theory
+* Perform function pushing for case of case
+    If case argument is an unsupported data type.
+    Specialization for no DATATYPE theory
+* Perform function pushing for primitive applied to case
+    If primitive argument is an unsupported data type.
+    Specialization for no INTEGER theory (for integer primitives)
+    Specialization for no BIT theory (for bit primitives)
+
+The cool thing is, with a feature full SMT solver, we in theory don't have to
+do any of these specializations. For now I'll probably do them all be default.
+The only ones we may not want to do are:
+    Don't specialize for INTEGER or BIT with yices1 and yices2
+    Don't specialize for BIT with stp
+
+Let me try out some other test cases, just to get a sense of where we stand
+currently.
+
+core:: needs lambda specialize for case applied to arg
+datatype:: needs case of case specialization
+scoped:: works
+integer:: works
+bit:: realizefree doesn't support bit vectors anymore?
+
+Looks like I'm close though. That's cool.
+
+Sat Dec  1 15:25:37 EST 2012
+
+Here's the deal. I can specialize separately. I'll do all these
+specializations in a specialize pass, which will take as an argument the kind
+of specialization. In other words, the background theories supported. I think
+it's fairly straight forward.
+
+We should specify to the Query monad when we run a query what theories it
+should support. For now I can hardcode yices1 and yices2 to BIT and INTEGER,
+and STP to BIT. Eventually we may want to specify that as an option to
+runQuery in seri.
+
+The first thing I want to do is handle errors correctly.
+
+1. Verify the elaborate function does nothing. Don't call it anymore.
+I'll save it for the time being, but just to have the code for reference
+purposes.
+
+2. Set a test to fail, and watch it not do error correctly.
+
+3. Add ErrorEH  which takes a string argument, and an error primitive.
+4. caseEH should propagate error
+5. the primitives should propagate errors.
+
+Now the failing test case should fail as desired. Basically, the error
+primitive propagates up to the top level runio, which will check for it and
+throw the error then.
+
+After this I'll implement a specialize function, set up the Theories the right
+way, and start making all the test cases pass one at a time.
+
+At the end, I expect all test cases to pass, errors are propagated,
+specialization is performed.
+
+Sat Dec  1 15:32:47 EST 2012
+
+1. Elaborate function isn't called anymore. So that's correct.
+
+2. Error: runio got non-IO. Good. I'll turn that into error.
+
+You know, I see know reason to add an ErrorEH field. Let me just have the
+primitive. What I need is the primitive, and de_errorEH to check for error.
+
+What is error though? The function should do nothing. We want it to return an
+ExpH... Okay, that's fine I guess.
+
+Sat Dec  1 16:06:41 EST 2012
+
+Error is now propagated as desired. Good.
+
+Now, to set up specialization correctly. I need the following:
+
+* runQuery takes Theories argument
+* assert calls specialize
+
+For now, specialize can be a dummy function which doesn't do anything, and
+Theories can be an empty constructor.
+
+Perhaps Theories should just be a list? No... Okay. Fine.
+
+Sat Dec  1 16:19:30 EST 2012
+
+Cool! Everything is in place now for specialization. Let me take down these
+bugs one at a time.
+
+First one:
+
+Case applied to an argument, if LAMBDA is not supported. Then do argument
+pushing.
+
+Sat Dec  1 16:41:33 EST 2012
+
+Next one: STP does not support integer literals.
+
+Or, in other words... if you have an argument to a case statement or a
+primitive whose type is integer, and integer is not supported, and the
+argument is a case statement, push the function.
+
+This is easy for case, I think. Harder for primitives...
+
+Let me start one at a time... or maybe I can think about it first?
+
+I want a function where I give:
+* a function from argument to ExpH, which is the applied function with a new
+  argument.
+* the argument, which is a case.
+
+That seems easy enough to do in a general way.
+
+Sat Dec  1 17:05:44 EST 2012
+
+I did it in a general way. Trouble is... it doesn't work. Why not? It looks to
+me like it should.
+
+Okay. I see the problem. We forgot to recurse to subexpressions. Good. That's
+simple enough.
+
+Let me try to do this quickly.
+
+I'm worried. Worried we won't know when we are done specializing...
+
+I should use transform?
+
+Sat Dec  1 17:14:16 EST 2012
+
+I need to think about this more. I also need, as a next step, to perform the
+optimization which gets rid of things we know the answer to by trivial
+implication.
+
+Sat Dec  1 17:21:26 EST 2012
+
+Okay, function pushing looks to be okay. What are the next things to try?
+
+Sat Dec  1 17:27:09 EST 2012
+
+Core tests pass now. Let's try some more, see how they work out.
+
+Sat Dec  1 17:34:18 EST 2012
+
+Everything works now except for the Datatype tests, which appears to hang.
+
+I fear it's this specialization potential to loop thing?
+I don't know. I'll have to look closer.
+
+But cool! I'm close. Just a few things left before I can merge back to the
+master branch:
+
+1. figure out bug in datatype test
+2. implement trivial implies optimization (in caseEH)
+3. try all the other SMT tests
+
+Then merge to master, and I can start working on performance.
+

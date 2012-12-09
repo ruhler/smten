@@ -1,0 +1,1262 @@
+
+Tue Dec  4 08:28:01 EST 2012
+
+First, start with:
+
+Understand Datatype. Why does it blow up?
+
+I think I had this info before, but I need to look again.
+
+Without inferred value propagation, we aren't doing any special optimizations.
+Just generating the query naturally. Why is that not enough? That's the
+question.
+
+Um... There are some optimizations in the translation to SMT. But I'm not
+going to focus on those, because I don't think they are ...
+
+Well. They could be important.
+
+Anyway, let's see what's going on with datatype, before and after
+specialization, with no optimization. Starting small and growing.
+
+Tue Dec  4 08:32:50 EST 2012
+
+First step: what do I expect from datatype E2?
+
+a is a bool.
+Let's say: a = True ==> E1
+           a = False ==> E2
+
+The simplest we could expect to have is:
+  assert (not a).
+
+That's the ideal generated query.
+
+Pre-specialization what do I expect?
+
+(case (if a then E1 else E2) of
+    E1 -> E2
+    _ -> case (if a then E1 else E2) of
+             E2 -> E1
+             _ -> error "case no match"
+) == E1
+
+Notice: we are duplicating the argument here. That's rather worrisome.
+
+Post-specialization, what do I expect?
+
+(case (if a then E1 else E2) of
+    E1 -> E2
+    _ -> if a   
+            then error "case no match"
+            else E1
+) == E1
+
+to...
+
+(if a 
+    then E2
+    else if a
+            then error "case no match"
+            else E1
+) == E1
+
+To...
+
+if a
+    then False
+    else (if a 
+            then error "case no match"
+            else E1) == E1
+
+if a 
+    then False
+    else if a
+            then error "case no match"
+            else True
+
+Notice:
+* a gets duplicated. This is from the initial duplication in the case
+  statement
+* We have an error which can't actually ever show up.
+* We do some work in pushing == down to the error and propagating it back up.
+
+I suspect I'll see the real trouble with this when I jump to 3 enum types.
+
+Now, let's compare what I'm getting to what I expect to get.
+
+I see my first mistake. This == operation is not a primitive. It's boolean
+equality. It turns into:
+
+(==) x E1 =
+    case x of
+        E1 -> True
+        _ -> case x of
+                E2 -> False
+                _ -> False
+
+Now recall what x looks like:
+
+case (if a then E1 else E2) of
+    E1 -> E2
+    _ -> case (if a then E1 else E2) of
+            E2 -> E1
+            _ -> error "case no match"
+
+You see the exponential blowup? We duplicate
+    (if a then E1 else E2) twice in x.
+    We duplicate x twice in (==). This gets worse as you increase the number.
+
+For example, consider E3:
+
+a = if f1 then E1
+          else if f2 then E2
+                     else E3
+rotate a =
+    case a of
+        E1 -> E2
+        _ -> case a of
+                E2 -> E3
+                _ -> case a of
+                        E3 -> E1
+                        _ -> error "case no match"
+
+This has 'a' in it 3 times!
+And equality now...
+
+(==) x E1 =
+    case x of
+        E1 -> True
+        _ -> case x of
+                E2 -> False
+                _ -> case x of
+                    E3 -> False
+                    _ -> False
+    
+
+We have 'x' 3 times. So, what was 2*2 = 4, is now 3*3 = 9. Exponential blowup
+in the generated query.
+
+And you can imagine 4x4 will be bad.
+Let's take a look at 3x3 and see if we see this blowup as expected.
+
+Yes. It blows up. No wonder.
+We go from 48 lines to 2502 lines. That's huge just going from 2 to 3. Imagine
+3 to 4.
+
+This explains the problem we are facing with datatype. It explains the problem
+we are facing with sudoku too. Because sudoku is like this, only with 9 enums
+instead of as little as 2 or 3 or 4.
+
+Why does our value optimization help? I'm not sure exactly. But I would say,
+it's not the right solution.
+
+What's the right solution? How do I really want this to be represented and
+elaborated and specialized and such?
+
+The trouble comes from duplicating the argument to the case expressions. What
+if we didn't do that. What if case expressions looked at all possibilities at
+once?
+
+rotate a =
+    case a of
+        E1 -> E2
+        E2 -> E3
+        E3 -> E1
+        _ -> error "case no match"
+
+(==) x E1 =
+    case x of
+        E1 -> True
+        E2 -> False
+        E3 -> False
+        _ -> False
+
+Now a is only viewed once. We have linear growth instead of exponential. That
+would be major.
+
+This is a specific case?
+
+Two questions:
+1. Can we do this in general for case desugaring?
+2. Can we do this in general for let statements (which is another way to
+express this)?
+
+I would prefer (2), because it's a much more general solution.
+
+I like the simplicity of the generated expressions... Maybe that doesn't
+help.
+
+Why would I not be able to do this? The trouble is when we have common
+patterns which could fail, right? Like, say I have:
+    
+    case x of
+        (a, E1) -> f
+        (E1, b) -> g
+        (E2, E2) -> h
+        _ -> n
+
+Currently this desugars as...
+
+case x of
+    (a, b) ->
+        case b of 
+            E1 -> f a b
+            _ -> case x of
+                    ...
+
+And we have the duplication of x. I have to do something more clever to figure
+out the patterns have common constructors? Maybe not...
+
+For a case statement which is of data type...
+
+oh, the real problem is...
+
+No. Let's just look at the outer constructors.
+
+A pattern is either:
+    * An outer constructor
+    * A variable: in which case nothing following matters   
+    * A wildcard: in which case nothing following matters
+
+So I have a bunch of outer constructors, they may be the same or different.
+They may be interleaved. Either way it's clear: if x matches one of them, it
+won't match any of the other constructors. This means different constructors
+can be reordered.
+
+case x of
+    Left (...) -> a
+    Right (...) -> b
+    Left (...) -> c
+    Right (...) -> d
+    _ -> e
+    Left (...) -> f
+    Right (...) -> g
+
+Can be safely transformed, regardless of the what's in the (...) expressions,
+to:
+
+1. Drop everything after var or wildcard.
+
+case x of
+    Left (...) -> a
+    Right (...) -> b
+    Left (...) -> c
+    Right (...) -> d
+    _ -> e
+
+2. Sort constructors
+
+case x of
+    Left (...) -> a
+    Left (...) -> c
+    Right (...) -> b
+    Right (...) -> d
+    _ -> e
+
+Now, if we had some way to say: given these sets of argument matches,
+reduce...
+
+case x of
+    Left -> a or c
+    Right -> b or d
+    _ -> e
+
+And that's exactly what I'm looking for. 'x' is only mentioned once.
+
+The hard part is: given (...) and (...) for the same constructor, how do I
+combine them? I already have a great example:
+
+Say 'a' and 'b' are in scope, and we want to match:
+
+case (a, b) of
+        (a, E1) -> f
+        (E1, b) -> g
+        (E2, E2) -> h
+        _ -> n
+
+How could we generate code for that?
+Note: 'a' and 'b' are variables. Err... I say it's cheap to copy them, but
+really it's not. Not unless I find a general solution to (2), in which case
+none of this is necessary.
+
+This could turn into:
+
+case b of
+    E1 -> f
+    _ -> case a of
+            E1 -> g
+            _ -> case a of
+                    E2 -> case b of
+                            E2 -> h
+                            _ -> n
+                    _ -> n
+
+Notice: even here we duplicate 'a' and 'b', which is bad.
+Can we avoid that somehow? If I were really clever, how could I simplify this?
+
+case a of
+    E1 -> case b of...
+
+No. We can't. We end up duplicating something one way or another. So, this
+idea may help a little. But it's by no means a comprehensive solution.
+
+Let me consider, then, a potential comprehensive solution. In general we want
+to be able to have things like...
+
+Well, it's the sharing test.
+
+let x = a
+    y = x + x + x + x
+    z = y + y + y + y
+in z + z + z + z
+
+And this should not end up with 4*4*4 = 64 copies of a potentially complex
+expression 'a'.
+
+What this means is, 
+* We shouldn't elaborate 'a' 64 times. This is already taken care of, because
+  'a' is elaborated before we do the inlining.
+* We shouldn't specialize 'a' 64 times. This is currently not taken care of.
+* We shouldn't translate 'a' 64 times to SMT. We shouldn't pass 'a' 64 times
+  to the SMT solver.
+
+In other words, we should preserve sharing somehow.
+
+You know what? I claim it's easy. It's easy and works as following.
+
+The observation is, you know need to look at a value for case match and
+primitive arguments. So, conceptually, we do the following:
+
+VarEH will have both the variable name (and/or some sort of unique id) and
+value. For case and primitive, we look at the value, and do what we need to do
+based on that. Everything else keeps around the var.
+
+A let statement:
+    let n = v
+    in e
+
+We do the following:
+  * evaluate the 'v'
+  * apply the function for e with n = VarEH n v
+  * evaluate 'e'
+  * Count remaining occurrences of n in 'e'
+    If 0 or 1, this simplifies to 'e', otherwise it stays as:
+        let n = v
+        in e
+
+Now, you want to specialize? Well, specialize 'v'. That specialize is shared.
+Easy.
+
+Now, you want to translate? That's shared. You want to pass to SMT solver?
+That's shared.
+
+This gives us the general solution we want to avoid exponential blowup.
+
+Now, what's tricky here?
+
+First, how do we keep arguments unique? The answer is, we would like to leave
+it as a function. Perhaps a function of Sig instead of ExpH just to make it
+clear: we have already substituted a specific argument into this expression to
+simplify it.
+
+I could just have a LetEH expression which makes that clear. Or ... well, the
+very presence of AppEH (LamEH {}) x, should make it obvious, because that
+can't occur any other way. Whatever. That's not important. The important thing
+is, we can leave it as a function, so we don't have to come up with unique
+names for things until conversion to Exp, exactly as we want. So that's not a
+problem. It would look something like:
+
+appEH (LamEH s f) x
+ = AppEH (LamEH s (\v -> f (SharedEH v x)))
+
+In fact, this gives me an idea. If the case or primitive can reduce because of
+'x', then it reduces. Otherwise it switches to 'v' instead. That way we can
+apply the lambda again to quickly get the variables in the right place. Cool.
+
+Now, here's the really hard part. The part I worry about. The part that would
+be nice to have a reasonable way to do...
+
+How do we count occurrences of 'v' in the elaborated expression? Especially
+considering we want to be lazy about evaluating the expression.
+
+Well... We have some higher level knowledge of things, don't we? We know that
+the only thing 'x' could be to make it not cause elaboration is:
+
+* Not a literal (for primitives)
+* Not a constructor application (for case args)
+
+Um... there are some primitives where we don't look at the value, but again,
+that turns into a let somewhere, so doesn't hurt to keep it around I don't
+think.
+
+Okay, that helps, but there are still questions. Like, what if v is some
+complex variable expression which is just never used? That could certainly
+happen. We might choose a case branch which doesn't use that value. Even if
+the value is complex, we don't want it around any longer.
+
+It's important to realize this when we can, because, for example, if a case
+argument is (let x = blah blah in True), then it can't reduce the case, which
+is very bad. We could, of course, push the case inside the lambda... but
+still...
+
+And then there's the question of how specialize works in the presence of these
+variables.
+
+What's the problem here? It's simple, right?
+
+Given the argument to a function, we can apply the function. The result is an
+elaborated expressions. A _fully_ elaborated expression. If you need to look
+at it's value, you need to force the entire expression anyway. But only then.
+
+So, this is simple then. Here's how it will work.
+
+We somehow annotate an argument with an ID. In such a way that primitives and
+case statements see the argument, but retain the ID if it can't be elaborated
+further.
+
+We apply the function to get a new ExpH.
+We then apply a function to that result. Not sure what to call it...
+
+shared :: ID -> ExpH -> (Integer, ExpH -> ExpH)
+
+What this function does is traverse through ExpH. It returns the number of
+occurrences of the given ID in the expression, and a function for replacing
+all occurrences of that ID with a different expression value.
+
+It doesn't have to be an Integer. It could be something which just keeps track
+of: 0, 1, or More. If that helps any.
+
+Now, if the number of occurrences is 0 or 1, I apply the original argument to
+get the fully elaborated value. If the number of occurrences is greater, I
+leave it as an AppEH with the new function and same argument.
+
+And that's it. It's the simple. Everything works just the way you want it to.
+I hope.
+
+Certainly it works fine without specialization. I may have to think about how
+it works in the context of specialization.
+
+But this is it. This will make seri amazingly fast and effective I bet. At
+least, it should be reasonable. Even without inferred value propagation I hope
+(I could always add that back in).
+
+Two questions remain.
+1. How to annotate an expression with an ID.
+Note: this is a temporary ID. It goes away right away. So we could annotate
+every expression with the same ID. We just need a boolean: is this the shared
+expression or not. Right?...
+
+Err, no. That's not true. We have to be careful about nested lambdas. Okay, so
+give each argument a unique id.
+
+Wait, really? If there's a nested let, we would have already done the
+replacement before applying the function, right?
+
+2. How does this get along with specialization?
+
+Note that the two could be related.
+
+In fact, I could make it very easy.
+
+Certain expressions can be annotated as shared:
+   VarEH, PrimEH, AppEH, LamEH, CaseEH,
+
+Given an id. I'm not yet sure if we need more than just: NotShared or Shared
+to keep track of everything the right way.
+
+Then we do elaboration and specialization without special case checks. We do
+this kind of thing. Specialization knows how to call appEH, which will handle
+stuff the right way.
+
+It all just works. And everyone is left happy happy happy happy.
+
+Invariant: An elaborated expression will contain no Shared things.
+So, really I don't need an id. I just need: Shared or Not. That way I don't
+have to worry about making up IDs.
+
+Okay, so the solution to all my problems appears clear.
+
+* Add a flag: Shared or NotShared to each type of expression we may want to
+  share
+* Implemented a shared function to count how many of something is shared and
+  do a replacement
+* Modify appEH to deal with sharing properly.
+* Verify I make sharing explicit everywhere,
+    especially case desugaring, pusharg, and pushfun
+
+That's it. Simple. Easy. General.
+
+I have 50 minutes until 11am, when I'm supposed to switch to proposal work.
+Think I can implement this and get it working in 50 minutes?
+
+Let's give it a try.
+
+Tue Dec  4 10:26:23 EST 2012
+
+Question... would it be better to split shared into two functions? One to
+test... naw. I think this is fine. I can maybe improve things later by saying:
+if the use count is 0, then use const e. That way we avoid lots of const
+unconst kinds of things. But don't worry about that for now. Only when I see
+that I'm spending all my time in the shared function.
+
+Trouble. I don't know how to go inside of a lambda...
+
+Tue Dec  4 10:32:54 EST 2012
+
+What to do about lambdas?
+
+I'll have lambdas if I have them standalone. I'll have lambdas in let
+statements. I don't know what the argument is yet. The number of shared should
+not depend on the argument!
+
+So, easy enough. Substitute in a VarEH. We don't care. It's not going to get
+elaborated away accidentally. So we should be fine. Just to figure out the
+number though?
+
+I'm thinking I should split up the traversals then. No?
+
+Let's see. We'll see how bad it is.
+
+Now let me update appEH...
+
+Okay. Now all that's left is to make things compile properly...
+
+Let's see if it works!
+
+Tue Dec  4 10:42:29 EST 2012
+
+Trouble:
+  shared uses caseEH.
+  appEH uses shared.
+
+  So, looks like I'll have to push more things into utils. Sadness.
+  Arg! So annoying...
+
+Tue Dec  4 10:48:46 EST 2012
+
+We have the follow dependency chain:
+
+seriEH_helper -> appsEH -> shared -> caseEH -> errorEH -> seriEH_Helper
+
+Sadness. Let me try to break it.
+
+Tue Dec  4 11:00:26 EST 2012
+
+When I run it, it says <<loop>>.
+
+Why? That's not expected. I expect, for concrete stuff, the first argument of
+shared should always be 0.
+
+Hmm...
+
+Tue Dec  4 11:17:39 EST 2012
+
+I think the problem is, we are trying to count how many occurrences there are
+of a variable in an infinite expression...
+
+That would explain why it <<loops>> in the elaborator and is infinite in
+haskellf.
+
+Let me try making it 0, 1, or Many. See if that helps. It won't help if the
+answer is 0... but then, yeah...
+
+And, really, I could start with 0 or Many, because I don't make that
+distinction yet.
+
+The trouble is... it seems we could have an infinite expression with 0
+occurrences, and we don't want to look at them all!
+
+We need to count the number of occurrences after applying the argument in the
+lambda. That's what I don't know how to do.
+
+So, let's assume lambdas have the Shared expression somewhere inside, and deal
+with it later. That's easy enough.
+
+Or, should I assume none?
+
+How would we ever get a shared inside of the lambda? Only if we applied the
+lambda, in which case we shouldn't have the lambda still. Unless it's lazy, in
+which case... just check the arg...
+
+Let me try that.
+
+Let me convince myself a little better.
+
+We find a LamEH in a fully elaborated expression. What does that mean?
+
+* The expression is a function. Well. we could have shared stuff inside. I
+  don't know.
+* The expression contains a let...
+
+What if we don't allow the argument applied to a lambda to be shared? Then we
+would know... Well, if it is applied, then you no longer have a lambda...
+
+When do we keep lambdas? Only in appEH for lets. Otherwise I'm sure there is
+no Shared inside the lambda.
+
+So the question is... what if x in appEH is shared already?
+
+Well, we take care of that. Thus. LamEH should be a nop in terms of sharing,
+right?
+
+The real question is, can f' ever put a shared thing in the result? And the
+answer is no. So I'm all set. No lambda can have a shared thing inside.
+
+Tue Dec  4 11:33:25 EST 2012
+
+Ah, now we have something interesting. We have an IO thing which is a
+lambda, so I can't run it. Why would that happen?
+
+We don't inline literals?
+
+Err... clearly I don't understand what's going on. That will cause problems
+later on. Let me explore a little more before I try to understand though.
+
+Tue Dec  4 11:53:17 EST 2012
+
+Good news: basic tests now pass, as expected.
+
+We had two issues. First, someone was trying to compare Shared vs Unshared of
+an otherwise equal expression, and discovering surprisingly that they were not
+equal. I'm not sure what that case would be, but I just ignore sharing info
+now for equality comparison.
+
+Next, we have to inline if there is only a single use. Otherwise we could end
+up with things like:
+
+let x = True
+in x
+
+Which is bad.
+
+Okay. Now what's the problem? The Core test doesn't work out right. So let me
+investigate why not.
+
+Tue Dec  4 11:56:35 EST 2012
+
+Firstly, let's look at the not test.
+
+assert (not x), is...
+
+assert:
+  case x of
+    True -> False
+    _ -> case x of
+            False -> True
+            _ -> error "case not match"
+
+What's the expression we are getting? I would like to see it.
+
+I'm getting..
+
+let _n = case x of
+            False -> True
+            _ -> error "case no match"
+in case _n of
+     True -> False
+     _ -> _n
+
+Umm... this is wrong. No?
+
+Hypothesis: we are finding things as shared that should not be. That is, we
+need unique identifiers for shared things.
+
+Yes. This is wrong. If x is True, then it returns an unexpected error.
+
+What do I expect to see here for the desugared expression?
+
+not True = False
+not False = True
+
+Turns into...
+
+Prelude.not = \_x ->
+                (\_n1 ->
+                   case (_x) of {
+                     True -> False
+                     _ -> _n1
+                   }) ((\_n ->
+                          case (_x) of {
+                            False -> True
+                            _ -> _n
+                          }) ((Prelude.error) ("case no match")))
+
+What is not "f"?
+
+"_x" is referred to multiple times...
+
+Note: we don't need to share variables. They are simple enough already to be inlined!
+
+I would expect something like:
+
+let _x = f
+in let _n1 = case _x of
+                False -> True
+                _ -> error "case no match"
+   in case _x of
+        True -> False
+        _ -> _n1
+    
+Yup! It's as expected. _n1 and _x get conflated to mean the same thing. So I
+need an id for shared variables.
+
+Tue Dec  4 13:05:43 EST 2012
+
+Here's a problem. When doing a transformation on something shared, we want all
+shared things to be transformed the same way. Otherwise we lose the sharing
+:(.
+
+How about this. If sum is zero, don't create a new thing!
+
+That make sense to me.
+
+The idea is. If it's shared, it shouldn't depend on your variable...
+
+Oh, that's interesting. If it's shared, then it can't contain your variable,
+so we just keep it as is...
+
+I think that could be right. I'm not sure...
+
+The idea is, we call shared on the innermost. So, if you have some other
+shared which contains this shared, the other shared must be more inner, and so
+we aren't on the innermost, which is a contradiction. Sounds good enough for
+me.
+
+Tue Dec  4 13:18:29 EST 2012
+
+Okay, so I made the change. Let's see how things work now.
+
+The not test turns into:
+    if free2 then False else True
+ But with an extra possibility of error. That's correct. Probably because I
+don't share variables anymore, not because I fixed things with the id thing...
+
+Let's look at the rest of core and see how they look.
+
+Tue Dec  4 13:41:00 EST 2012
+g == h is definitely wrong.
+
+Though looking at the desugared expression it looks fine.
+Let me test the bad case in basic tests, see if that catches the bug.
+
+Tue Dec  4 13:42:18 EST 2012
+
+Oh! My Basic tests were all commented out. That would explain that issue...
+
+Let me figure out what's up.
+
+p.splitAt doesn't work?
+
+Tue Dec  4 13:58:53 EST 2012
+
+Hypothesis: We can't have:
+
+let x = Foo a b c
+in case x of
+     Foo ...
+
+Because we ...
+
+No. That's not right. That should not be a problem.
+
+The problem is...
+
+let x = Foo a
+in case x b of
+     Foo a' b' -> ...
+
+Here's an idea. What if ConEH must be fully applied? We can use the same trick
+as for primitives. Wrap constructors in lambdas if they are partially applied.
+Then we don't have this problem.
+
+Wait! No! This should still not be a problem.
+
+How about...
+
+case ( let xs = [8, 3]
+       in (xs, xs)) of
+    (a, b) -> ...
+    _ -> ...
+
+Now, this will not end up matching when it ought to end up matching.
+
+Well... I could push the case inside the let.
+I should probably do that. Let me try and see what happens.
+
+case (let s = v in b) of
+    ...
+
+Becomes:
+
+let s = v
+in case b of
+        ...
+
+Never hurts, I don't think. We don't capture anything wrong.
+
+Tue Dec  4 14:40:37 EST 2012
+
+There's something wrong with lambdas now in the seri elaborator. We don't have
+the same problem in haskellf. Or... maybe we do, just it's not exposed...
+
+Is it a renaming issue?
+
+It is! We never increment the shared id for some reason...
+
+Tue Dec  4 14:47:39 EST 2012
+
+So, the problem is, I call (newIORef 0) every time, instead of just once. I
+want to call it just once and share the generated IORef.
+
+Tue Dec  4 14:59:23 EST 2012
+
+Well, if I base the increment on the expression, I can get it to increment the
+way I want. But we have this <<loop>> with the Array test, which I fear is due
+to forcing the value...
+
+Tue Dec  4 15:54:53 EST 2012
+
+Okay, I figured out a workaround. I just pass the given expression through the
+IO computation.
+
+Good. All those tests pass now.
+
+Now, let me take a look at core, see what's up.
+
+Tue Dec  4 15:57:29 EST 2012
+
+Looks like all the tests pass. Let me check that they look right to me.
+
+The equality test looks fixed now. That's good.
+
+Tue Dec  4 16:03:10 EST 2012
+
+I'm not sure about the others...
+
+I should put a test for if statements in. And not-if statements. In the SMT
+translation. That would avoid a bunch of err variables we don't need and
+simplify things some.
+
+Anyway, that's a step for another time. What now?
+
+Tue Dec  4 16:18:14 EST 2012
+
+Datatype test fails: specialization not completed. Not sure why.
+Scoped test fails: it completes, but wrong result. Not sure why.
+
+Tue Dec  4 16:29:01 EST 2012
+
+Problem with dis-equality not working correctly.
+
+Tue Dec  4 16:31:27 EST 2012
+
+I fear it's a problem with case lifting? It shouldn't be...
+
+Hmm... What's going on?
+
+Let me try out some values, see what we get...
+
+We know g is true. What can h b?
+
+Yes... it's a problem with case lifting. Looks like maybe I don't need that
+after all. Good.
+
+Now what?
+
+All the unit tests pass except for Datatype. What's wrong with that test?
+
+First thing to do: pusharg and pushfun should use lambdas for explicit
+sharing.
+
+Actually, first problem is: we for some reason I feel don't have full sharing
+in the PRESPEC expression.
+
+What do I expect to see?
+
+Here's a problem. >>= doesn't preserve sharing. I can change that I think.
+
+Oh, but there's a problem. We don't really want something like:
+
+let x = ...
+in ..
+
+for IO, do we?
+
+Tue Dec  4 17:00:39 EST 2012
+
+I saved a checkpoint. Next I want to understand what's going on with Datatype.
+
+First step: The pre-specialization. What do I expect. What do I get?
+
+Desugared definition of equality for MyEnum looks good.
+Desugared definition of free for MyEnum looks good.
+
+I am concerned about loosing sharing when we call >>=. But that has other
+issues. It also doesn't look like it would apply here.
+
+Desugared definition of rotateenum looks good.
+
+I expect to see something like:
+
+let a = if f1 then E1
+              else if f2 then E2
+                         else if f3 then E3 
+                                    else E4
+    _x = case ...
+in case ...
+
+Right?
+
+What do I get?
+
+Well! There's clearly a problem here. The prespecialized function is not well
+typed. I'm seeing:
+
+let _n = ...
+in case (_n :: Bool) of
+      E1 -> _n
+      _ -> _n
+
+That makes no sense.
+
+I see 'a' show up 8 times. It isn't shared when it should be.
+
+If I try to reconstruct the expression, I get:
+
+a = ... (fine)
+
+x = case a of
+      E1 -> E2
+      E2 -> E1
+      E3 -> E4
+      E4 -> E3
+      _ -> error "case no match"
+b = case x of
+       E3 -> True
+       E4 -> False
+       _ -> False
+
+n = case b of
+       E2 -> b
+       _ -> b
+
+assert: case n of
+           E1 -> n  
+           _ -> n
+
+Notes:
+* a is not shared, when it should be
+* x is (rotate a)
+* x is not shared, when it should be
+* b is (rotate a == E3)
+
+I've no idea what 'n' or the predicate are supposed to be.
+
+First question: Does the same thing happen with haskellf?
+
+* haskellf does _NOT_ preserve sharing. Which makes sense, because we use
+  direct function application instead of appEH.
+
+That's rather interesting. And suggests haskellf won't work the way it is
+currently with sharing. That's kind of a big deal...
+
+But let me not worry about that just yet.
+
+What's wrong with the elaborator?
+
+First test: is this a concrete kind of elaboration issue, or specific to
+elaboration in the presence of free variables?
+
+It does not appear to be an issue with concrete elaboration.
+
+So, what do we do differently for non-concrete elaboration that could be
+messing things up?
+
+First, I'm able to simplify the problem to just equality, without rotateenum.
+
+a == E4:
+* a is not duplicated, which is good.
+
+But we still have some bogus stuff.
+
+_n2 = (a == E4)     Fine.
+_n1 = case _n2 of       ??????
+        E3 -> _n2
+        _ -> _n2
+
+_n = case _n1 of        ??????
+        E2 -> _n1
+        _ -> _n1
+
+assert $ case n of      ??????
+           E1 -> _n
+           _ -> n 
+
+Let me simplify first to just E1 and E2. See if that works.
+
+Now we get:
+
+let _n = (a == E2)
+in case _n of
+     E1 -> _n
+     _ -> _n   
+
+What? That's so odd...
+
+n and x are getting mixed up somehow?
+
+Let me first verify we are generating unique numbers for everyone.
+
+Yes. Each one gets a unique number...
+
+Is pretty printing of lets correct still?
+
+Yes.
+
+Tue Dec  4 17:56:38 EST 2012
+
+How do we deal with sharing in an IO literal?
+
+For example... Err... is this a problem?
+
+(return $ if f then E1 else E2) >>= \x -> assert x == E2
+
+So it would seem the bindIO primitive is potentially problematic? Because it
+does the wrong kind of application?
+
+Yes... That could be. We don't want haskell application. We want seri
+application.
+
+(>>=) free (\_x ->
+    let a = _x
+    in assert (a == E2)) 
+
+This is the expression in question. How could this possibly do what it's
+doing?
+
+'free' turns into:
+    LitEH (<<Query>> (return (if "f" then E1 else E2)))
+
+Bind gets (LitEH <<Query>> (return (if "f" then E1 else E2)))
+     and  (LamEH "_x" \x -> ...)
+
+de_seriEH on those turns into:
+1. return (if "f" then E1 else E2)    
+2. \x -> ... (the haskell version of the function).
+We pass it to haskell (>>=), it will do an application, but without sharing.
+
+I could wrap it in sharing. That's something I've tried before (with no
+effect), but honestly, it shouldn't matter. We just don't preserve as much
+sharing as we could be. I'm more interested now in how we are getting
+incorrect results.
+
+It doesn't make a difference anyway. Another thing I don't understand.
+
+How can I get insight into what's going on?
+
+If sharing is turned off, do I still have this problem?
+
+No. Sharing off, the problem goes away.
+
+I think the problem is we are capturing something we shouldn't be. It has to
+do with 'a'.
+
+The shared expression is very close. But when we have:
+
+case _n of
+    E1 -> _n
+    _ -> _n
+
+We really want:
+
+case a of
+    E1 -> _n
+    _-> _n
+
+Then it would be perfect.
+
+* How does the argument switch from 'a' to _n?
+* Why is 'a' inlined?
+
+free returns a. 'a' is used multiple times, for sure...
+
+\a ->
+(let _n = case a of
+        E2 -> True
+        _ -> false
+ in case a of
+      E1 -> _n
+      _ -> _n) (if f1 then E1 else E2)
+
+Say we have this application. What happens here?
+
+1. We mark 'a' as shared, getting a new id for it.
+2. We apply the function, to get:
+
+let _n = case (if f1 then E1 else E2) {0} of
+        E2 -> True
+        _ -> False
+in case (if f1 then E1 else E2) {0} of
+     E1 -> _n
+     _ -> _n
+
+Now, how do we evaluate this?
+
+3. We make '_n' as shared, getting a new id for it.
+4. We apply the function, to get:
+
+case (if f1 then E1 else E2){0} of
+    E1 -> (case (if f1 then E1 else E2){0} of
+             E2 -> True
+             _ -> False){1}
+    _ -> (case (if f1 then E1 else E2){0} of
+             E2 -> True
+             _ -> False){1}
+
+We count the number of occurrences of ...
+
+Oh. Ooooh. I see a bug.
+        
+Well. That explains that issue.
+
+We still seem to loose some sharing. Most notably in terms of 'a'. I don't
+understand why that happens.
+
+Let me re-enable the full datatype test and see what we get. Keeping in mind
+we are loosing some sharing I expect to have.
+
+We still loose a lot of sharing in datatype test. We have 4x4 = 16 copies of
+'a'. Which is not desired.
+
+This is a bug fix. Don't get me wrong. But we still have some problems to sort
+out.
+
+The Share test captures this problem fairly nicely I think. Maybe I can focus
+on figuring it out in that context?
+
+Or, nicer yet, a share test based on booleans, and sharing a complex boolean
+formula could be nice.
+
+Well... currently we don't share. Why not?
+
+Something about nested sharing?
+
+Let's walk through this.
+
+let v = x && y
+in v || v
+
+How is this evaluated?
+
+(\v -> case v of
+          True -> True
+          _ -> case v of
+                 False -> v
+                 _ -> error "case no match")
+    (case x of
+        True -> y
+        _ -> case x of
+                False -> False
+                _ -> error "case no match")
+
+This is being inlined in the share test, exactly. Why do I not want it to be
+inlined? What makes it inlined?
+
+1. Mark arg as shared.
+2. Do application
+
+case (...){0} of
+    True -> True
+    _ -> case (...){0} of
+            False -> (...){0}
+            _ -> error "case no match"
+
+We can do no further elaboration, so that's fully elaborated at this point.
+
+Now, the shared function is applied... And we get:
+
+...
+
+The claim is sharedvariable is not shared at all... How could that be?
+
+Well, I see what the problem is. Unsafe IO problem. We are calling mkShared
+multiple times when we inline things. That is, we aren't assigning the same id
+to all the instances of the expression. Things are getting inlined first...
+
+Or, in other words... x' is left as a thunk and applied later. Or lazily. Or
+something like that.
+
+Try a case statement instead of let?
+
+Still doesn't work...
+
+Tue Dec  4 19:57:20 EST 2012
+
+Well. At least I know what the problem is. I'll think more about how I can
+solve this... so much for unsafeIO. I suppose the issue is it is not safe to
+use unsafeIO if having it called multiple times when you want sharing is not
+acceptable...
+
+What if I put the entire computation involving the shared thing inside IO?
+That would be safe right?
+
+I'll think about it and get back to you.
+
+Tue Dec  4 20:46:31 EST 2012
+
+Yes. If I do everything in IO, it will be safe, because we won't export the
+shared value, so it will truly be an idempotent operation.
+
+Let me try that now.
+
+Tue Dec  4 21:08:05 EST 2012
+
+It doesn't work. I don't understand why not. We still get different share ids.
+
+Tue Dec  4 21:29:31 EST 2012
+
+It's not an issue with performIO. That's fine now. It's an issue with
+re-sharing things.
+
+For example, imagine the definition of Prelude.||
+
+curry (\_x ->
+    let _n1 = let _n = error "case no match"
+              in case _x of 
+                    (,) -> \_p ->
+                             \_p1 -> 
+                                case _p of
+                                  False -> let x = _p1 in x
+                                  _ -> _n
+                    _ -> _n
+     in case _x of  
+            (,) -> \p2 -> \p3 -> case p2 of {True -> True, _ -> n1}
+            _ -> _n1)
+
+I have the arguments: v, v.
+
+I say something like:
+    let p = v
+    in case p of
+         False -> ...
+
+So, we share 'v'. We get to p... we see the complex expression for v, we say,
+oh hey, let's share this! Thus giving it a new number, and destroying the
+sharing opportunity.
+
+So, what we really want to do is...
+
+If the argument is already being shared... inline it directly.
+
+Let me try that.
+
+Tue Dec  4 21:42:09 EST 2012
+
+That was it! The share test works now.
+
+Let me just check datatype test quicky.
+
+Doesn't work. Probably because of bind, but I can deal with that tomorrow.
+Good.
+

@@ -1,0 +1,760 @@
+
+Fri Dec  7 08:08:08 EST 2012
+
+Hypothesis: The reason specialization takes so long is because when we
+specialize a lambda, we do something like:
+    \x -> specialize (f x)
+
+This means, whenever we inline an argument, we perform specialization on the
+result. In particular, we perform specialization anywhere the argument appears
+in the result. This re-specialization of the argument is wasted, duplicated
+work. If the argument is large, this could be very costly. In the very least
+it's a waste in terms of memory allocation, because even if an expression is
+already fully specialized, we end up traversing and making a copy of the
+entire thing when we call specialization on it.
+
+The profile's I get for sudoku are consistent with this hypothesis. We perform
+a lot of specialization, and we allocate a ton of memory doing so. This is the
+top cost for Sudoku. 70% time and memory in specialization at least. 85 to 80
+more likely.
+
+I'm not sure this is the problem. It is difficult to tell when an argument is
+respecialized and when it's not, and if that really is the problem.
+
+Experiment:
+
+Let's say respecialization is the problem. How could we avoid this
+respecialization?
+
+I was going to suggest we move as much specialization to the elaboration phase
+as possible, but upon further reflection, I don't think that will help any,
+because I believe the problem is that we will still end up recursing...
+
+Perhaps it will help. We pay a cost whenenever we inline something. Let me
+move all the inlining to the elaboration phase. At that point, there will no
+longer remain any lambdas to specialize, thus removing this problem. If that
+improve performance substantially, that suggests my hypothesis is correct, and
+we can think of a better long term solution to the problem (I already have a
+solution in mind).
+
+Hmm... One issue. We still have lets. As long as we have let expressions, they
+will be inlined eventually, so we could still pay the cost. I'm concerned this
+experiment may not be conclusive if we don't see much performance improvement.
+
+Let me count for sudoku the number of times we specialize a result, possibly
+with duplication. I'll watch for how that count reduces as I try different
+things to keep an eye on how conclusive the experiment is.
+
+Fri Dec  7 08:22:15 EST 2012
+
+sudoku.0: baseline.
+  20 seconds to run.
+  14 million LSPEC
+  50 thousand LSIMP
+
+I should also note, simpline has a similar potential problem as specialize.
+Let me keep some tabs on that too.
+
+First step: perform general inlining in appEH. This will inline everything
+that isn't a bit vector, integer, or boolean.
+
+sudoku.1: inline all non-smt types in elaboration
+   4 seconds to run.
+   50 thousand LSPEC
+   50 thousand LSIMP
+
+That was it. For the Sudoku test, after this simple change, specialize is no
+more an issue at all. I would say that's fairly conclusive.
+
+Now in the profile, time is dominated by the generated query. Same goes for
+Sudoku2.
+
+Let me check out some of the other tests and see what shape they are in now. I
+think this was the silver bullet. The last thing keeping me from matching the
+master branch... Well, that and the size of the generated queries. It would be
+nice still to inline single or zero use to cut down the size of the query
+dramatically.
+
+Bluespec: generated query is massive. Looks like an issue with false errors
+perhaps. But it makes progress, which is good.
+
+Array: gets stuck in simpline. Probably for an analogous reason as the sudoku
+issue.
+
+Squares2 and Tuple still have other issues which I should figure out and make
+unit tests for.
+
+Good. I believe I've learned something very valuable this morning. I believe I
+am very close to really solving the performance issues with share2.
+
+Next step: let me tell you about the general solution I have in mind for these
+issues. We'll go from there.
+
+Fri Dec  7 08:54:41 EST 2012
+
+Here's the idea. The problem stems from this:
+
+\x -> me (f x)
+
+What we really want is something like:
+
+\x -> (me f) x
+
+We assume the argument is already transformed. We just want to transform the
+function. That way we don't traverse into 'x' repeatedly.
+
+How can we do this? Let us modify 'f'. Let's have it accept a transformation
+function:
+
+f :: (ExpH -> ExpH) -> ExpH -> ExpH
+
+What this means is the following. When you call f, you supply a transformation
+function. The body of the function will be transformed according to the given
+function, then the argument will be inlined, and you get the result.
+
+I claim this is a generalization of the current approach. The current approach
+is to do no transformation, equivalent to the identity transformation.
+
+Now, this is a little tricky. Let me see if I can piece it together to figure
+out what's going on.
+
+To apply a function: supply the identity transformation. We want to use the
+body as is.
+
+To transform a function:
+
+\t x -> f (t . me) x
+
+Or, in other words:
+
+\t -> f (t . me)
+
+
+You give a new function which first applies my transformation, then applies
+the transformation you want. It's nice we don't even have to mention 'x'.
+
+When the function is finally called using id, we are all set. It turns into:
+f me x, just as I would like.
+
+What's really going on here? What is this function?
+
+Recall we initially create this function when we call inline. So this
+function, when called, will do inlining, and as it creates the ExpHs, it will
+first perform all of your transformations on them. Easy.
+
+We should be able to use this for specialize, simpline, and substitute
+transformations. I don't think there will be any overhead over the current
+approach. It could get slightly cumbersome to work with, but that's all.
+
+Let me clean up the code in the state its in slightly, then check it in. I
+think there's nothing wrong with the change I made, even if I'm going to do
+this transformation thing (which I want to do anyway).
+
+If possible, I would like to change transform to be a bottom-up thing instead
+of top down. Perhaps that's a later step.
+
+Fri Dec  7 09:13:15 EST 2012
+
+I had a thought. If we do this transformation step, does that mean we don't
+need to preserve sharing and can just inline everything fully?
+
+Um... probably no. If I inline everything, I'll end up with an enormous
+datatype test? Maybe. Maybe not. Perhaps that was because of errors more than
+anything else.
+
+Well, it's something very easy to try. Just modify appEH to inline everything
+by default, see how that works out.
+
+Let me try generalizing to allow for bottom up transformations in lambdas.
+Verify it doesn't cost too much (small constant time at most I expect). Then
+use that to do specialize, substitute, and simpline and see how performance
+looks after that. If I can get rid of the inline step in appEH for non-smt
+types and still have good performance after that, that would be especially
+great.
+
+Fri Dec  7 09:21:14 EST 2012
+
+First challenge: conEH. For example:
+
+Foo :: A -> B -> Foo
+
+Turns into:
+
+\(c1::A) ->
+  \(c2 :: B) ->
+    ConEH "Foo" [c1, c2]
+
+How does the transformation function come into play?
+
+Let me go slowly. First, consider a unary primitive.
+You give a transformation function...
+
+Okay, now we can ask, what function are you giving? Is it a recursive
+transformation function, or just a top-level transformation function?
+
+Let's say it's just a top level transformation function.
+
+How do we apply that for primitives?
+
+Unary: we assume the argument is transformed. We need to transform the result?
+The body?
+
+The idea is... the result is transformed?
+
+I guess it depends on the transformations we are doing. I happen to know the
+transformations I perform are:
+- not on primitives or constructors.
+So for now, just ignore the transformation for primitives and constructors.
+
+I suppose if you wanted to be proper, you would apply the transformation to
+the result of the constructor or the primitive.
+
+In fact, especially for primitives which don't have concrete arguments, this
+is necessary.
+
+Then the question becomes: which transformation do we perform? The one from
+the outer lambda, or the one from the inner lambda? Or both? I really rather
+not do both... Let me think about it as I walk to work.
+
+Fri Dec  7 11:16:57 EST 2012
+
+Here's how it should work. If I have two lambdas, the outer lambda should
+transform the inner lambda. The inner lambda should transform the result if
+needed.
+
+I fear we'll end up with potentially long chains of: id . id . id . id ...,
+but we'll see if that's really a problem in practice.
+
+Good. Let me continue with the implementation work and see where it gets me.
+
+Fri Dec  7 12:29:59 EST 2012
+
+Issues: I have to change transform to be bottom up for this to make sense.
+Should I do that first?
+
+For now... don't change the strategy. We won't get the performance
+improvement, but it shouldn't hurt any either.
+
+Fri Dec  7 12:34:20 EST 2012
+
+I 'll have to think about this some more I fear. We'll see what happens. But
+especially the transformations in specialize...
+
+The key point here is: the transformation function is not recursive. It
+assumes all children have had the transformation applied.
+
+Fri Dec  7 12:46:59 EST 2012
+
+Yes... I have to be very careful here. Otherwise this will not work the way I
+need it to.
+
+Remember: the function you provide is not recursive. I have to recursively
+apply it everywhere.
+
+Whose job is it to recursively apply it everywhere?
+
+Option: inline recursively applies it everywhere.
+Option: transform recursively applies it everywhere.
+
+The important thing is that we go inside a lambda to apply it, and we expose
+that application as much as possible. It can't get lost somewhere.
+
+So, exporting the transformation to lambda is all that matters. We can call
+transform elsewhere if we want.
+
+So, if ever you are in a lambda, you have to transform the body... note: the
+body. Not the body after the argument has been applied...
+
+And remember, don't transform input arguments. Those are assumed to be
+transformed already.
+
+Okay. Question. Should the 'inline' function, the top level one, export a
+transformation function? Answer: no. We only need to export it if we make a
+lambda. If we use it in a lambda, then it should be transformed in that
+lambda? This is rather confusing, and worries me. I need to understand this to
+have any hope of making it work correctly.
+
+Fri Dec  7 12:58:12 EST 2012
+
+Here's a question. In inline... do I relate the top level transformation to
+the one in the lambda?
+
+I think no. I think the only reason we pass around a transformation is for
+inside the lambda. It will be linked like that as necessary...
+
+You pass a top level transformation in. It gets to lambda... Lambda takes an
+arbitrary transformation... Should you have to transform the body? No. That
+should happen automatically, right?
+
+I'm confused. Let me try again. You call a lambda, it performs the given
+transformation on the body... including descending into sub lambdas. So we
+need to compose, right?
+
+\x ->
+ \y -> x + y
+
+Say you have the above. Now you want to apply the function 'x'. After that,
+the entire body should have been transformed.
+
+You get back a lambda. That lambda should have had its entire body
+transformed, right?
+
+Let's say I have some function TF. I have the above lambda. I apply TF to
+the lambda. What does that mean?
+
+It means the body of the lambda has been transformed. Okay. So now I get back
+a lambda. I want to apply it.
+
+Cases:
+1. I give id, and it gives back (id . TF) transformed value.
+2. I give TF, and it gives back TF transformed value.
+
+Well, if I applied TF, I expect everything in the body of the outer lambda to
+have been transformed. That means if I apply id to the inner lambda,
+everything still should have been transformed, so we need case (1). Which
+means I do have to link them.
+
+Here's a problem: unboxing (a -> b) function...
+
+Fri Dec  7 13:13:42 EST 2012
+
+Okay, so maybe I've done it right. Maybe not. We'll find I soon enough I
+suspect. There appears to be a small (but slightly noticable) performance
+degradation because of this.
+
+First step... I think...
+
+1. Implement a bottom up transformH function.
+2. Implement substituteH based on transformH.
+
+If all looks good, then try:
+
+3. Implement specialize based on transformH.
+
+This will really tell us what's up.
+
+4. Implement simpline based on transformH.
+
+I kind of expect things will blow up because I have a bug somewhere or the
+method won't work as well as I want. I really hope I can avoid having
+something like: specialize . specialize . specialize . specialize ... building
+up.
+
+We'll see. Trust me.
+
+Fri Dec  7 13:25:17 EST 2012
+
+(1) was easy.
+(2) ... doesn't work. Well... it works for simple things. I think it doesn't
+work for lambda.
+
+Maybe I can try this in a Core test? Be able to query the value of a lambda.
+
+f <- query (\x -> if p then x else 3)
+
+That would be nice to have... Of course, I already catch the problem in the
+datatype test, so it's not clear it adds anything to have this test too.
+
+I managed to duplicate with my simple test in Core. We want to apply transform
+to:
+
+(\x -> if a then x else 3)
+
+The transformation should replace all occurrences of 'a' with a given value.
+
+How does this work? I expect to have a lambda.
+I call transform on the lambda. It says:
+
+Call g on:
+    LamEH s t $ \tf x -> f (tf . g) x
+
+Fine. That does nothing. Gives us back this lambda.
+
+Now, I apply that lambda to the argument 2.
+
+We call that function with 2 and id:
+    f (id . g) 2
+
+Now ... what does this function 'f' really look like? What is the function
+created for the lambda? This was in an inline' call, where tf was id.
+
+LamEH ... \tf' x -> 
+    inline' ... ... (tf' . tf) b
+
+note that b is: "if a then x else 3", where ...
+
+'a' is in scope, but it has value "free~1", right?
+
+Oh my... You see the issue?
+
+It's fine to say the argument has already been applied... but then I need to
+apply it to the arguments that have not yet been applied. So... all the
+arguments in the map already. They have had tf applied. but they have not had
+tf' applied. That's what I need to do.
+
+That fixed the core test. But we still have a problem with the datatype test.
+Shall I try two arguments and make sure it nests properly still?
+
+You know what? I may be I need to do this more generally in specialization and
+case statements. If I accept an outside argument into a lambda body, I have to
+make sure it has had the transformation for that lambda applied to it.
+
+I should go through binary primitives... I think that's maybe the only one to
+worry about? I should look at the SMT specialization too.
+
+Perhaps I could figure out and miminize the failing datatype test case. That
+also would be worth while. Again, the issue is what the argument to query is,
+or how that argument is used...
+
+Fri Dec  7 13:48:23 EST 2012
+
+The queried thing is:
+
+let c = True
+in (MyStruct (case free4 of ) of ...)
+
+So let me try a let instead of a function in Core to try and replicate this.
+
+Fri Dec  7 13:59:52 EST 2012
+
+I managed to minize it:
+
+let av = if a then True else False
+fa <- query (let c = True
+             in (av, c))
+
+Looks like we need the let in the query.
+looks like we need 'av' to be a complicated expression with a free variable.
+
+Hmm.. minimizing further...
+
+fa <- let av = if a then True else False
+      in query (let c = True in (av, c))
+
+What happens here? I see the let, so I inline it to get at the query itself.
+
+But we have this (let c = True in (av, c))...
+
+Okay, so we go to execute a monadic query bind:
+
+(>>=) (let av = if free1 then True else False
+       in query (let c = True in av)) (\fa -> ...)
+
+First thing we do is inline to get at the query:
+
+query (let c = True in (if free1 then True else False))
+
+May hypothesis is: when we did that inline, we failed to apply the
+transformation on the (\c -> ) function.
+
+Note. This is not an issue with specialize, because we don't do any
+specialization.
+
+Perhaps de_seriEH for Query? No... it inlines, but through the accepted
+routes.
+
+Fri Dec  7 14:14:40 EST 2012
+
+I found a couple places where there were problems: binary primitives and
+constructors. I suspect specialize has a number of these issues still too.
+
+Sadly... those fixes didn't result the issue.
+
+Fri Dec  7 14:23:47 EST 2012
+
+Found a bunch of problems in specialize. Hopefully I got all of those. And
+that will have solved all the issues? I hope.
+
+Unfortunately... we still have the core test problem.
+
+Fri Dec  7 14:34:47 EST 2012
+
+Well, I seem to have found it. I'm not sure I understand it, but whatever.
+
+I have to transform the cached value in an application. I can't just call
+appEH to let it reconstruct that.
+
+Why is that the case? I have no idea. Oh well.
+
+Fri Dec  7 14:39:29 EST 2012
+
+Next steps... Either simpline or specialize. Simpline is much easier, so I
+would like it if I could start with that. I may as well try it. If it blows
+up, back off and try specialize instead.
+
+Fri Dec  7 14:42:53 EST 2012
+
+Well, it doesn't blow up... It just doesn't seem to perform any
+simplifications? Wait... that's not necessarally true... Maybe I just need to
+run it a couple of times still? For reasons I don't understand, still?
+
+I don't understand. It's doing something... but it doesn't appear to be
+traversing at all. More bugs in transformation propagation?
+
+Fri Dec  7 14:46:59 EST 2012
+
+Let me investigate it in a simple test case, like core. Looks like 'p' is a
+good one to try out.
+
+Fri Dec  7 14:56:33 EST 2012
+
+Something very funny is going on.
+
+If I have the line:
+
+test "core.if" (ri == Satisfiable False)
+
+Before the complex query, then it fails to inline things the way I want.
+If, however, I have the line:
+
+test "core.if" (True)
+
+It inlines things fine. How could that be?
+
+It looks like all that matters is the complexity of the predicate:
+
+test "core.if" True -- all inlines fine
+test "core.if" (False == False) -- some inlining occurs
+test "core.if" (Satisfiable False == Satisfiable False) -- less inlining occurs.
+
+Very strange.
+
+If I only call transformH once, almost no inlining happens... I don't think.
+
+Fri Dec  7 15:12:49 EST 2012
+
+Let me try turning off specialization to see if that makes a difference... I'm
+not sure if it will be supported, but it's worth a try. I want to see if
+specialization is loosing transformation somewhere...
+
+For example: before we call spec? Perhaps. Perhaps...
+
+I have no idea. I think perhaps I should just reimplement specialize using
+transformH, and see if that works or not. Who knows.
+
+Fri Dec  7 15:26:31 EST 2012
+
+Here's a question... When I do specialization, I do something like:
+
+Inside a lambda:
+
+tf . spec $ caseEH ...
+
+I know all the arguments to the case have the transformation applied.
+I need to make sure the case itself has the transformation applied... or
+rather, something returned has the transformation applied.
+
+I think it should be: spec . tf? Well, am I specializing what's transformed,
+or transforming what's been specialized? I think I want to transform what's
+been specialized.
+
+I have no idea.
+
+Fri Dec  7 15:34:04 EST 2012
+
+I want a way to test out transformH. Where I give an argument of my control,
+and I perform some transformation which shows what sub components of that
+argument I got to touch. Ideally I should touch each one.
+
+I can use an identity-like transformation. Print out the initial expression.
+Apply the transformation. Print out the final expression. The hope is... that
+will make it clear what is and is not getting transformed, and hopefully I can
+use that to pinpoint the problem.
+
+I can add an extra flag to seri to do this for me.
+
+You know... this doesn't really help me out.
+
+Ug! How am I supposed to deal with this?
+
+Fri Dec  7 15:46:47 EST 2012
+
+I have two approaches I think would be reasonable.
+
+1. Review the SMT specialize code. Really understand how everything should
+work. Make it work using transformH.
+
+2. Identify and minimize the test case which causes specialize not to work.
+Break it apart and figure out what's going on. I really need to start
+understanding things.
+
+Okay. I have a plan then.
+
+First step: let me update the specialize code, go over it from scratch. I'll
+write down any questions I have and their resolutions. Then I'll go on to fix
+bugs from there.
+
+First thing to keep in mind:
+    spec: It assumes all arguments have been specialized.
+
+Next thing to keep in mind:
+
+The result of applying a lambda should be:
+* first apply the transformation to all parts of the body.
+* then inline the arguments.
+
+Question: does this mean the result of the application has had the
+transformation applied?
+
+Cases: 
+ 1. the argument is not used. When the body is transformed, it's result will
+    be transformed. So yes. 
+ 2. the argument is used as a child. When the body is transformed, we must
+    transform the body after the argument has been inlined?
+ 3. the body is the argument: it's already been transformed.
+
+Let me consider the second case. Imagine we have:
+
+\x -> Case x of
+        k -> y
+        _ -> n
+
+When transformation is applied, it should work as follows:
+* transform y
+* transform n
+* don't touch x
+??? transform the result ???
+
+Yes. Transform the case. That's where the transformation is done. Thus we
+assume the result of applying a lambda is something where the lambda's
+transformation has been applied.
+
+Okay? Clear? Good. I'll keep those things in mind.
+
+Let me go through the specializations one at a time:
+
+1. Inlining of unsupported types
+We know by assumption that the given 'b' and 'v' are already specialized.
+Thus: 'v' is specialized, and the result of applying 'b' to a specialized
+argument is also specialized.
+
+So: just call b. The result is specialized. We are done.
+
+2. Let argument pushing.
+
+We know:
+* f is already specialized.
+* arg is already specialized.
+* v is already specialized
+* b, when applied, gives something specialized.
+
+We must produce something specialized.
+It may be after performing this single step, we still have something that
+isn't specialized. So we must specialize the result. The argument we apply
+must have everything specialized.
+
+Arguments:
+* 'v' is already specialized.
+* f... the function must return something specialized when applied to 'id'.
+  That's what it means for a lambda to be specialized.
+
+When we apply 'b' and arg, we might get something not specialized. So we must
+call specialize on the result.
+
+Okay, here are where things get tricky.
+
+First assume tf is id, and verify the specialization stuff works out:
+
+arg is specialized. b x is specialized. We call appEH, then specialize that.
+We get something specialized. Fine.
+
+Hmm... 
+
+This transformation tf will be performed after full specialization. This means
+that specialize should never view an output of 'tf'. Otherwise the
+specializations are mixed up.
+
+Oh... So, idea is: 1. Perform specialization of the body. That gives us the
+body you want. 2. Perform transformation on the body...
+
+Trouble: 'x' is something with the tf transformation applied... Ideally we
+shouldn't touch it?
+
+Except, in this case, I know what the argument is going to be: 'v'.
+
+There is something I need to understand here. Try again. First: what am I
+creating?
+
+I have a letEH. What if I break it down more clearly:
+
+appEH (LamEH ...) v
+
+I want to specialize that. We know 'v' is fully specialized. Good. What should
+the lambda look like?
+
+I want to specialize the lambda. In a recursive way?
+
+1. Create the lambda:
+l = LamEH s $ \tf x -> tf $ appEH (b tf x) (tf arg)
+2. Specialize the lambda:
+spec l
+3. Specialize the application:
+spec $ AppEH l v
+
+Actually, not quite. If transform was called, it would have recursed into the
+body of the lambda. That means, before I can call "spec" on 'l', I must make
+sure the body of the lambda has been specialized.
+
+We do that as follows (as taken from transformH):
+
+\tf x -> f (tf . g) x
+
+Now, f is: f tf x = tf $ appEH (b tf x) (tf arg)
+
+Where here 'g' means spec. So, if I inline this, I get:
+
+\tf x -> tf . spec $ appEH (b (tf . spec) x) ((tf . spec) arg)
+
+Now, I already know that arg is specialized, so I can drop that:
+
+\tf x -> tf . spec $ appEH (b (tf . spec) x) (tf arg)
+
+What's interesting here is the appearance of 'spec' when we descend into b. It
+means... oh. I have to transform the body of 'b'.
+
+Now I've specialized the body of l, I can call 'spec' on the lambda just in
+case that does anything (I may know it doesn't, but who knows what things I
+might add later on), then I can apply it and specialize the result.
+
+Wow. Well, that could be the bug, which is nice to know. I imagine there may
+be other issues like this...
+
+Question. When I call de_letEH, I'm implicitly throwing away the inlined
+object. Is that bad? It's caused performance issues in the past.
+
+I think I should change de_letEH to return that value, so I can use it if
+needed. But does that mean appEH and letEH should take that value is input?
+
+You know what would be nice? Some way to say: here is an expression I'm
+building up. These existing expressions are already transformed. Go recursively
+transform the rest.
+
+Ug. I don't know.
+
+But, this could certainly explain the bugs I'm seeing.
+
+It's too complicated. I seem to have lost the abstractions I want to rely on
+to do this for me.
+
+This is why I end up having to call specialize recursively on the result of a
+function. To do those specializations which I forgot to do.
+
+This is why having smart constructors is nice. They already know how to
+perform the right transformation in constructing things. The trouble is, my
+smart constructors are for elaboration, not for specialize...
+
+What if I have every smart constructor take a transformation function as
+input? The way it works is: the smart constructor assumes all arguments have
+been transformed, and it transforms all the rest. For the case of let, that
+means transforming the intermediate lambda and application.
+
+So, whenever you use a real constructor: you have to explicitly apply the
+transformation function. Whenever you use a smart constructor: you supply the
+transformation function, it does the rest. The lamEH could update the given
+function. As could letEH, so I wouldn't have to worry about it.
+
+Fri Dec  7 16:54:34 EST 2012
+
+I need to stew on this significantly. I'm not going to do anything more on it
+right now. I'll work on my thesis proposal a little.
+

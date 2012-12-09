@@ -1,0 +1,668 @@
+
+Wed Dec  5 08:36:35 EST 2012
+
+Okay. I've thought a lot. Let me put down everything and reveal to you how I
+believe I have a very nice solution indeed.
+
+First: the current approach is broken. 
+
+The problem is, we don't traverse inside Lambdas for shared when we should be.
+
+For example, imagine I have the following code:
+
+let x = ...
+in case f1 of
+      True -> \y -> x + x + y
+      _ -> ...
+
+If f1 is free, then when I look for how 'x' is shared in the given expression,
+I stop at the lambda, and don't see it's use.
+
+Why is this bad? It's bad because the function we get back for replacing 'x'
+does not replace the occurrence of 'x' is this lambda. Depending on the
+default branch to the case, we may not even recognize x as shared, and it will
+be inlined directly. This is what we see in practice.
+
+I have another approach. An idea I think will work. But it will help me to get
+everything down in writing to see if I'm full of it or not.
+
+Here's the idea. We want sugar for lambdas. When you give a haskell function
+to lamEH, we are going to wrap it in our own function to make it sharing
+aware. That is, we will change it to a function which evaluates fully if when
+applied would evaluate fully, otherwise evaluates to a let expression.
+
+Here's the idea.
+
+First we label an expression as fully evaluated or not. An expression is fully
+evaluated if it contains no: VarEH, CaseEH, or PrimEH. (We say a LamEH is fully
+evaluated).
+
+Claim: if the argument to the lambda function is fully evaluated, then
+anywhere it is used (CaseEH or PrimEH) will reduce. Otherwise, if it is used
+(CaseEH or PrimEH), it will not be reduced. There is one more case: the
+argument is not fully evaluated, but it is not used at all in the function.
+Then applying the function will fully reduce, regardless of the argument.
+
+So, we want to be able to detect when an argument is not fully evaluated and
+when the function uses it.
+
+Err... I just had some thoughts that this might not work, but let me continue
+with the idea anyway and flesh out the issues.
+
+Idea: we can detect when a haskell expression is forced by wrapping it in an
+unsafeIO operation which sets a flag. When the function is called, if the
+argument is not used, it will never be forced by haskell. If the argument is
+used, it ... will be forced... assuming the resulting expression is fully
+forced.
+
+So, assuming I can make sure forced things are forced, I could do the
+following:
+
+Given s, f, produce:
+    g x = unsafePerformIO $ do
+            flag <- newIORef False
+            let fx = f (unsafePerformIO (writeIORef Flag True >> return x))
+            force fx
+            fv <- readIORef flag
+            if fv && (not $ evaluated x)
+                then return AppEH (LamEH s f) x
+                else return fx
+
+Potential problems:
+* evaluating 'x' may force it or parts of it, even if 'x' is not used. How do
+  we deal with that?
+  If 'x' is not used, then fv will be False, so we won't check for evaluated
+  'x'. It's important we don't prematurely check to see if 'x' is evaluated.
+
+* What if 'x' is used inside a lambda? Will force still force it?
+    If need be, we can traverse inside a lambda...
+    Oh, that's potentially bad. We don't want to traverse inside a lambda with
+    a bogus argument, because it could be an infinite recursive function
+    without an appropriate argument.
+
+  Now, if we waited until after the lambda is evaluated, we would at least not
+  cause any bad infinite loops (that wouldn't already have been caused). That
+  may mean waiting until after specialization.
+
+  For what reasons might we have lambdas?  Case expressions, let expressions.
+
+  So one idea is: 
+    * to force a let: apply the argument and force the result.
+    * to force a case lambda: don't, just assume it contains your expression.
+
+This brings up an interesting point, which is this is strictly an issue with
+SMT expressions. For concrete evaluation, we'll never run into issues. So,
+what if we dealt with this in specialization?
+
+Well... the idea, I guess, is if you don't use an argument, you shouldn't need
+it to call a function? Is that an optimization in performance?
+
+Really what I want to avoid are things like:
+
+let x = ...
+in y
+
+Where y does not reference x.
+Hmm... Here's an interesting question... What if I delay the issue until
+later?
+
+So, say I do evaluation. Now we have just one thing: if the argument is
+fully elaborated, inline the function. Otherwise leave it as a let. 
+
+Um... Hopefully the argument isn't an unused infinite expression... That would
+be very bad.
+
+So you do this (assuming I can figure out how). You are left with a bunch of
+lets in the pre-specialized expression. We have a post processing path which
+gets rid of unnecessary ones...
+
+You know what's interesting? In the FFI interface, having an unused let
+doesn't cost anything. So maybe I should just leave them for now, and not
+worry about it? If it's used, then we want to leave it as a let. If it's not
+used, then the expression won't depend on it, so we won't introduce any
+infinite-ness by using a variable for the expression instead of the actual
+argument.
+
+Okay, so here's the question. How can I determine if an expression is
+evaluated or not without forcing a potentially infinite object that should not
+be forced?
+
+I think I'm close... I think leaving the lets there for any potentially ...
+err... I don't know. It's so confusing.
+
+The trouble seems to be that I don't want to force things prematurely. Now,
+once you get to the SMT expression, it should be fully viewable? Not
+necessarily. Not if you have an infinite function or infinite arg that isn't
+pushed together when they should be. For example:
+
+(case f1 of
+    K -> const 3
+    _ -> const 4) boom
+
+We need to do specialization first. Or at least arg and function pushing, or
+something. It's only the case with lambdas though...
+
+Say I get rid of all LamEH during prespecialization. LamEH is the only place
+where we might making an infinite thing disappear.
+
+Except... you could have case statements with lameh you don't get rid of
+during prespecialization.
+
+Okay, so here's an idea.
+
+* Give every shared expression a unique identifier. We know how to do that.
+* Perform elaboration. Inline everything fully to do so. Sharing is
+preserved, because we elaborate before duplicating.
+* Have a way of transforming an expression with sharing preserved.
+
+Basically it's something like: 
+ You give me a function (ExpH -> Maybe ExpH) which says if I transform this
+ expression or not. I wrap it in a new function which keeps an unsafeIO cache
+ of this function being called on shared expressions, which you use to
+ maintain sharing.
+
+* Perform specialization while preserving sharing.
+
+At this point we are left with a fully inlined, fully specialized,
+sharing-annotated expression. It would be great if we could also maintain and
+preserve information about the source of the sharing... I suppose that's what
+I've been trying to do...
+
+Wed Dec  5 10:08:06 EST 2012
+
+I've got a new idea. Let's see how this works out.
+
+We start without any unsafeIO. Remove the share id. We won't need that. Back
+to happier times.
+
+The idea is, we leave (AppEH (LamEH ...) x) as is. We do not inline it. We
+leave lets as lets.
+
+Now, in case expressions, or primitives... when looking at the argument, the
+first thing you do, if it is a let expression, is inline the let, then try to
+match. If you can simplify based on the result, you do.
+
+I claim, with this method, we can do concrete elaboration just fine.
+
+Let me say it another way. All of our smart deconstructors check for a let,
+apply the let, and try to match against the result.
+
+Note: I think it would be a good idea for ConEH to be a fully applied
+thing. That will avoid ambiguities. The only thing you can apply to is a
+function.
+
+Now, specialization will be done on lets:
+ Specialize the argument, and update the function to specialize the result
+ when it gets a change.
+
+I wonder if it makes sense to have another set of smart constructors for
+specialization, or a newtype, or something, so we can distinguish between
+things we've already specialized and things that need specialization still
+like we do for elaboration. Don't worry about that for now. That's a later
+performance optimization to consider.
+
+Now, conversion to Exp will look at the lets and preserve them.
+
+And I claim that's all I need to do. None of this IO yuckiness. No fears about
+premature forcing. We preserve all sharing.
+
+One other thing is, we may want to wrap assertions in if statements:
+if p then True else False, just to force the match for us if possible.
+
+What do you say? Shall I try it out? Revert all this junk (but try to save the
+pretty printing stuff I did), make ConEH fully applied, check for let in
+de_conEH and de_seriEH. Everything else might already just work out of the
+box.
+
+Good. This sounds like a plan. Let me try it out now, see how much I can get
+done before lunch. If, after lunch, things aren't pressing, I should take a
+break to work on my proposal, then come back to this after that.
+
+Sounds like a plan to me. Here I go.
+
+1+ revert to pre-sharing thing, but keep nice pretty printing where possible.
+2x Change ConEH to be fully applied. inline will have to account for this and
+add LamEHs as needed based on the type of the constructor.
+3. Check for let in de_conEH and de_seriEH.
+4. Try it out and see how it works.
+
+I could actually skip (2) if I make a de_conEH and use that for case matches.
+That might make a lot of sense.
+
+Wed Dec  5 11:13:55 EST 2012
+
+Now, I've got it down to three functions I believe we use to check for things:
+
+de_conEH, de_litEH, and de_errorEH.
+
+Let me try to update all of those: they should see through let statements by
+applying.
+
+One approach I could take is: at first, don't see through lets, see how awful
+things get. Then add looking through lets as needed. I think that's
+reasonable.
+
+How do we preserve lets? appEH should not apply.
+
+I'm concerned about de_conEH. It should probably be specially implemented.
+
+This would be much easier if ConEH were fully applied already. I think that's
+a change worth making.
+
+I think I need to do that first, before preserving sharing.
+
+Wed Dec  5 11:48:28 EST 2012
+
+Started work on ConEH. The Basic tests pass, which is a very good sign.
+
+The Core tests fail. Something is odd.
+
+Wed Dec  5 11:50:39 EST 2012
+
+The && test fails, for example. Let me see why.
+
+It's weird... What is this expression I'm getting?
+
+It's a function. I'm getting...
+
+Something different. I don't understand. Nothing should be different.
+
+I'm introducing lambdas... How do we specialize lambdas? What if I don't do
+specialization?
+
+Why is && so complicated?
+Do Basic tests work with &&?
+
+I don't understand why this isn't working. Let me think about it some more.
+
+Wed Dec  5 12:48:37 EST 2012
+
+Here's the problem: based on the symptoms, I believe the problem should be...
+
+We don't do realization properly. Or not at all. I'm not sure why this would
+or would not happen... Let's look at the code.
+
+But that explains why we only have problems when we try to use the result of a
+realization. Maybe? Yes...
+
+Wed Dec  5 12:51:18 EST 2012
+
+Let me use SeriEH to pack and unpack the result to Query. See if that fixes
+things.
+
+Trouble: it calls SeriT for some reason. Why?
+
+Hypothesis: ... Hmm... I don't know.
+
+I think, the trouble is, we can't call seriEH on (Answer ExpH), because it
+needs the type of the argument, which it doesn't know here.
+
+Fine. Let me see if I can figure out what the problem is then.
+
+Found the bug. It was in transform. There's a problem with using Foo {} for
+pattern matching...
+
+Wed Dec  5 13:16:56 EST 2012
+
+Next step... now let me try updating de_litEH, de_conEH, and de_errorEH. See
+if that works out better.
+
+Wed Dec  5 13:20:28 EST 2012
+
+First, let me make sure this check for let's doesn't break anything, even
+though I expect not to have any lets left over.
+
+Good. Still works fine. Now, let's continue on with the let preservation...
+
+I'm getting a case no match it looks like?
+
+Err... runio has to do this too.
+
+I think I see the problem. How LamEH could itself be a let, so we should check
+that.
+
+Okay! So, that fixed the basic tests. Now, why do the core tests fail?
+
+Ah, it's simple. Now we have let expressions. We need to do some more kinds of
+simplification.
+
+For example...
+
+assert (let x = True in x), should work fine. (A little silly, but ... so?)
+
+Wed Dec  5 14:06:54 EST 2012
+
+Aha. Here's the interesting example:
+
+let f = \x -> x
+in f True
+
+Should be easy to handle. But I need to do some work in specialization.
+
+The work is... if the data type in a let expression is not supported, it must
+be inlined. Simple. Let's see how that does us.
+
+That solved that problem. We could also inline simple things. No reason not
+to...
+
+Anyway, continuing on with the core tests now...
+
+Wed Dec  5 14:18:41 EST 2012
+
+Wow! It looks like everything works... Except for the core.integer test.
+That's exciting.
+
+What's up with this test?
+
+let a = case f of
+           True -> 3
+           _ -> 4
+in (\b -> a == b) (case f2 of
+                     True -> 4
+                     _ -> 5)
+
+Here's my question. Why is this not:
+
+let a = case f of ...
+in let b = case f2 of ...
+   in a == b
+
+Oh. I see. It's really..
+
+(let a = case f of ...
+ in \b -> a == b) (case f2 of ...)
+
+So... we have an application of a let. Means we want to push things together.
+Push the argument inside the let.
+
+Wed Dec  5 14:29:27 EST 2012
+
+There! That's it! All the SMT tests pass again. I haven't tried datatype
+yet... That will be the real question.
+
+Wed Dec  5 14:32:31 EST 2012
+
+First problem... sharing doesn't seem to work in the Share test like I expect
+it to. Why is that?
+
+The Datatype test does pass. That's cool.
+
+Wed Dec  5 14:34:28 EST 2012
+
+It's bigger than I expect it to be. That's unfortunate.
+
+Shall I try out sudoku?
+
+Wed Dec  5 14:41:51 EST 2012
+
+Well, it would seem we are not out of the woods yet.
+
+The following hang:
+* BSV, Squares, Sudoku, Sudoku2, Sudoku3, Isolate0
+
+Array gives a stack overflow.
+Share doesn't share.
+And datatype takes longer than I want.
+
+What's up with that?
+
+Wed Dec  5 14:42:57 EST 2012
+
+Let me start by looking into share.
+
+One idea is: query and io bind inline instead of share?
+
+Let me start by doing a little simplification. Make sure things look the way I
+would hope for them to. Starting with the core tests.
+
+Wed Dec  5 14:55:36 EST 2012
+
+First ugly thing: not.
+
+(not x) is turning into:
+
+let n = case x of
+            False -> True
+            _ -> error "case no match"
+in case x of
+      True -> False
+      _ -> n
+
+This is silly, because we know that where 'n' is used, x must be False, so n
+should be True. This is an if statement:
+
+if x then False else True.
+
+Well, there are a couple of things here, that seem to do with inferred value
+propagation?
+
+For example:
+
+* n is used once, so we could inline it.
+Then we get a straight-up if statement, and it should look exactly as we want.
+
+I'm not sure what the best way to deal with this is. Ug.
+
+Let me look at the datatype test?
+
+We start by making 324 error variables. Terrible.
+
+Now, I expect to have something like:
+  
+ not f1 && not f2 && not f3
+
+I get something enormous...
+
+And... not shared? At least if we share everything, it shouldn't be so
+enormous.
+
+Clearly I'm wandering around aimlessly now.
+
+Let me look at Share. Why does it work for booleans but not integers?
+
+Did I remember to preserve sharing in pushfun and pusharg? That's a good
+question.
+          
+Wed Dec  5 15:26:17 EST 2012
+
+I added back the sharing in pushfun. Looks like the trouble now is with the
+mess of PrimEH type. Okay. I'll fix that now.
+
+Wed Dec  5 15:35:13 EST 2012
+
+That solved the share bug. Good.
+
+Wed Dec  5 15:35:47 EST 2012
+
+Let me test sharing in a monad. Make sure that works as expected.
+
+Wed Dec  5 15:36:59 EST 2012
+
+We loose sharing there. I think I know why and can fix that.
+
+Oh. You know what? I don't think this will work. Um... I'm not sure.
+
+It seems like, to get at the IO, I have to inline anyway....
+
+Is there another way around that?
+
+I have to wrap it I think.
+
+So, we have to be careful there, because we loose sharing.
+
+If possible, it would be nice to push the let down.
+
+let v = sludge
+in foo (bar v)
+
+translate it to:
+
+foo (let v = sludge in bar v)
+
+That kind of optimization would help here. Too bad I don't know how to do it.
+
+Wed Dec  5 15:48:04 EST 2012
+
+Now I would like to get rid of these extra "err" things, because they are
+costing us a lot. I think I should go to the source.
+
+When de-sugaring patterns, don't add an extra "err" thing if we know all
+constructors are present. Is that possible?
+
+Maybe have a special case for 'if'?
+
+I don't like having these special case things.
+To do it in general, I have to know about the datatype, so I can't do it
+during desugaring. The problem is, lambda's make things very confusing in the
+desugar.
+
+So let me try a special case, see how it works out if at all.
+
+Wed Dec  5 16:11:16 EST 2012
+
+It only catches a very small number of cases. In particular, we don't catch &&
+or ||.
+
+Here's another idea. Perhaps I can do this when inlining. Check for de_ifE,
+and put all the cases I know of there?
+
+Err... Or put them in caseEH?
+
+I don't know. ug.
+
+Or... when coming out of them? Or as a separate phase?
+
+Wed Dec  5 16:21:19 EST 2012
+
+I clearly need a break. Let me spend some time to figure out what I should do
+next.
+
+Good news is, it seems we preserve sharing, for the most part.
+Bad news is: datatype query is still massive. Much larger than I expect.
+
+I would like to understand why that is the case.
+
+Also look into the other tests which hang or fail, such as sudoku.
+
+Wed Dec  5 17:19:31 EST 2012
+
+Here's an idea... let me just manually write the code in a nice way so that we
+don't have these extra error things.
+
+That sounds like a cool idea to me. Let me see how much, if any, difference it
+makes for rotate.
+
+Wed Dec  5 17:24:25 EST 2012
+
+Well, that's an easy way to get rid of err's in the generated queries. I mean,
+ideally we would like the compiler to handle that for us. But I can stand to
+do it by hand for now.
+
+Core optimizations that could still be done:
+* Inline variables only used once.
+* Boolean equality generates something messy.
+
+I fixed the boolean equality in seri.
+
+We could probably recognize equality in SMT.Syntax too.
+
+Nifty!
+
+Let me take a look at the datatype test now then.
+
+Well, it makes a little difference. But I need to go through everywhere and
+make sure the defaults are clear.
+
+There are some cases we can't do the default thing, because we need to access
+an argument. I hope that doesn't hurt us too much.
+
+Let me see what I can do with datatype.
+
+Wed Dec  5 17:42:26 EST 2012
+
+Wow! By making one thing default, we drop from 324 possible errors and a
+massive expression to no errors and a very simple expression. That was the
+blowup in the Datatype test!
+
+Very interesting...
+
+Note we can still do inferred value propagation to improve things.
+
+So, datatype test is solved. How do other things look now?
+Like... sudoku?
+
+Wed Dec  5 17:50:00 EST 2012
+
+Well, with Sudoku we see the big problem. Specialization costs a ton.
+Until we run out of stack space. And it's all in memory allocation.
+
+This may be because of the error thing. Or it may be something else. How could
+I figure that out?
+
+I suppose the trick would be to look at the desugared expressions, and try to
+get rid of error "case no match" in as many places as possible.
+
+
+Sudoku: stack over flow: specialize takes up almost all time and memory.
+Sudoku2: hang: specialize takes up almost all time and memory.
+Sudoku3: hang: specialize takes up almost all time. No problem with memory
+         though.
+Bluespec: hang: specialize takes up a bunch. Problem with memory.
+
+Wed Dec  5 18:01:46 EST 2012
+
+I want to figure out specifically what the problems with these are. Is it an
+error thing? A failed sharing thing? Some other thing?
+
+Let me take a look. Starting with Sudoku, scaled down, then bring it up.
+
+Wed Dec  5 18:08:42 EST 2012
+
+Wow! I can't even scale sudoku down. A completely solved board is taking
+forever. How can that be?
+
+Apparently I can't even print out the query.
+
+Wed Dec  5 18:21:39 EST 2012
+
+So, I see the prespecialized query. It's very complicated, because all the
+lets are left as is. I could check for a bool, which would inline a bunch of
+stuff... but that's really the job of specialize, right?
+
+So there are a couple of ideas. Mostly focused around making specialization
+more efficient, perhaps by making it like elaboration.
+
+* Do common specializations at elaboration time (not ideal, but should help)
+* Somehow do something like in elaboration where if we have a concrete value,
+  we know it's fully elaborated.
+
+Inlining obvious stuff could help too. Like cases where there are zero or a
+single use...
+
+I'll think about it some more.
+
+Wed Dec  5 19:44:06 EST 2012
+
+I reimplemented specialize in a way which I think could make a drastic
+performance improvement. The idea is, we don't keep re-specialization the same
+arguments over and over. We specialize from the ground up.
+
+Let's see first if it's correct, then if it's faster.
+
+
+Wed Dec  5 19:46:29 EST 2012
+
+Good news! It's still correct. I didn't break anything. Now, let's see about
+performance. Shall we try Sudoku?
+
+Wed Dec  5 19:49:28 EST 2012
+
+We didn't solve the problem with Sudoku, whatever that was. I do think this is
+better though.
+
+Good news though, it makes the datatype test much faster, so I can keep the
+change.
+
+Wed Dec  5 19:53:39 EST 2012
+
+

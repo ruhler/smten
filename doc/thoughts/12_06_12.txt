@@ -1,0 +1,716 @@
+
+Thu Dec  6 08:42:42 EST 2012
+
+I have an idea for something I can do to improve the existing problem...
+
+Okay, so I don't know what the problem with sudoku is. I have a hypothesis:
+The hypothesis is, we don't do any elaboration until we get to a case
+statement. So specialization sees an almost completely unelaborated
+expression, and has to do specialization on that, which is not nice.
+
+It would be much better if we inlined everything that will go away entirely
+from inlining or will only appear once after inlining.
+
+Now, I've thought a bunch about how to do that, and I don't know a nice way.
+The problem is, if you consider lambdas, we can't know how many times our
+argument is inlined into a lambda until we have the argument to that lambda,
+which we may not have.
+
+There is one thing I can do though. An approximation which I believe is safe,
+and will hopefully catch a large number of the cases I'm interested in.
+
+When I say appEH, do the following:
+* perform the application
+* if the result is one of:
+  ** Literal
+  ** A constructor with no arguments
+  ** An error
+  ** A VarEH
+then return that. Otherwise return the unapplied version.
+
+This is safe in that it won't force something prematurely. I'm hoping it will
+be very useful, because even if some things should be inlined but aren't, when
+put in context, they will be inlined...
+
+For example:
+let x = case (let y = Foo 3 in y) of
+            Foo b -> b
+in x
+
+The (let y = Foo 3 in y) will not be inlined, because we don't know it's safe
+to look at the 3 yet. The let x, however, will be inlined, because the result
+is 3, so we get rid of the let y anyway.
+
+At the very least, with this we ought to be able to solve an already solved
+sudoku board. And, I'm hoping, do much better as well.
+
+Well, wish me luck. We'll see if this works out or not.
+
+Thu Dec  6 09:57:55 EST 2012
+
+It didn't work out. But I have another hypothesis.
+
+I must not look at any arguments to functions before applying them. I
+currently violate that. I call typeof on the argument to figure out its type
+and know if I should inline it or not.
+
+Not only that, I look at the value of the argument to see if I should inline
+it or not. That's something I'm not allowed to do.
+
+For correctness, I shouldn't need to inline simple things. I want to, but I
+shouldn't need to. I do need to look at the type of a thing though. When I
+look at the type of a thing, I have to get the type from the function, not the
+argument. That's because the function has to be concrete, the argument could
+be _|_.
+
+So there are two issues then.
+
+1. Get the type of the argument from the type of the function
+2. Don't require application of the function get its type. So pass an explicit
+return type around with the LamEH.
+
+Fine. First thing I want to do: what if I don't inline simple things. Do the
+basic test cases still work?
+
+Thu Dec  6 10:12:30 EST 2012
+
+The answer is... no. But maybe not for any major reason.
+
+Imagine we have:
+
+case (if p then Foo else Bar) of
+  Foo -> ...
+  _ -> ...
+
+We can't support Foo or Bar, so we have to do function pushing to get:
+
+if p 
+    then ...
+    else ...
+
+Now, what if the argument is slightly different:
+
+case (let v = blah
+      in if p then Foo else Bar) of
+    Foo -> ...
+    _ -> ...
+
+We should still handle that case properly. What's the best way to handle this
+properly? Can I avoid loosing sharing somehow?
+
+We could push the case inside:
+
+let v = blah
+in case (if p then Foo else Bar) of
+        Foo -> ...
+        _ -> ...
+
+I don't loose any sharing that way.
+
+Let me add a test case for this in Datatype. Show that it fails in the current
+implementation. Do pushing of case statements ... if the argument type is not
+supported. Show it fixes it. Then try again removing that inlining on the
+basic unit tests.
+
+Yes, I've caught the bug in the unit test case. Now let me fix it...
+
+Thu Dec  6 10:30:14 EST 2012
+
+Fixed. But we have another problem. frominteger_Bit... needs to have the
+integer value? Can it take a variable type? This is specifically for yices1
+and yices2. STP will inline the integer type anyway.
+
+I think I can handle it...
+
+Actually, probably not in yices1, because we generate code for it and yices1
+deals with the lets. But it will work fine with yices2 so long as the argument
+is statically evaluated and known. 
+
+(let v = 0 in __prim_fromInteger_Bit v)
+
+That sucks.
+
+What if I do this. What if, whenever you specialize something, I ask first:
+can I simplify this to a: 
+ * Lit or Var or Con with no args or error?
+
+If so, return that as is, otherwise try to specialize as you were.
+I claim it's safe, because we look at the result of specialization.
+And it will deal with this problem, right? It may even fix the sudoku
+problem... though I should still fix the type thing.
+
+Let me try that. Again, on the specialization as is currently checked in.
+
+Thu Dec  6 10:47:18 EST 2012
+
+It works. But it's slow for datatype. I think because we call un_letEH over
+and over and over and over again. Why not cache that? Cache the inlined, unlet
+version of all the let statements. It should help performance anyway, right?
+
+I could have a specific: LetEH. It might make sense. And that stores the
+inlined value. appEH turns into LetEH...
+
+Which means, really, we don't need AppEH. Just change it to be LetEH.
+
+Notice: this fixes the sudoku test with presolved board...
+
+Thu Dec  6 12:57:26 EST 2012
+
+I added explicit type info to LamEH. It's messy, but hopefully not too bad.
+It improved the performance of the Datatype test a bunch, which is good.
+
+Now I'm going to switch AppEH to LetEH and cache the un_letEH'd version. I
+expect it to be a huge performance improvement.
+
+Thu Dec  6 13:10:51 EST 2012
+
+Trouble! I made a mistake. I messed up. One possible function to AppEH is a
+function which returns an argument.
+
+I also don't like how LetEH seems to duplicate much of the functionality of
+LamEH. I need to take a step back to think about this a little bit.
+
+What if I just add LetEH. And I make it...
+
+Anytime you apply err...
+
+How about this. I can add a field to AppEH which is a cached inlined thing. It
+might be a pointer back to itself.
+
+Sounds good to me.
+
+Thu Dec  6 13:32:41 EST 2012
+
+Added the field. It improved performance a bunch. 3x on the datatype test.
+
+But! Still we have issues. Namely... It still seems if I don't inline
+arguments I run into troubles. Let me try first making it so I don't touch v
+to ask for typeof. Get that instead from the function and see how that goes.
+
+Thu Dec  6 13:41:29 EST 2012
+
+That didn't solve it. But I do want to leave that in place.
+
+Let me summarize where I'm at currently.
+
+Bug: I may not look at the argument to a lambda to decide if I should inline
+it or not, because it may be infinite...
+
+Currently, if I don't look at the argument, the datatype test blows up.
+
+Sudoku still blows up when I look at the argument.
+If I don't look at the argument, Sudoku still hangs.
+
+Note: we aren't using any memory up in our hang. Memory stays at 0...
+
+You know what the answer is? Let me do the specialization for datatype
+manually to see what happens.
+
+Thu Dec  6 13:54:05 EST 2012
+
+Minimized test case:
+
+b <- free
+assert (MyStruct E1 b == MyStruct E1 True)
+
+fails.
+
+That's pretty darn simple... Which is good.
+
+Let me define my own equality, see if that's better than the derived equality.
+I have a suspicion the and [...] in the derived equality is bad.
+
+Aha. Simplified the failing case to:
+
+b <- free
+assert (and [b == True])
+
+Note that (and [b]) works fine.
+
+Good. I think this is the smallest I can get.
+
+Now, let me do this by hand.
+
+One issue: and will be an infinite expression. Is that the problem? We are
+trying to specialize an infinite expression?
+
+Argument: and [b == True]
+
+But, it may be with sharing thrown in... What does this turn into?
+
+Okay, even simpler.
+
+b <- free
+assert (and [let v = b
+             in if v then True else False])
+
+I can add and remove indirection for the argument to the if statement, and it
+makes a HUGE difference. Using b: 0.7s, v: 3.5s, v2: 34s.
+
+So let me try to do this one by hand and see if I can better understand what's
+going on.
+
+and [let v = b
+         v2 = v
+     in case v2 of
+           True -> True
+           _ -> False]
+
+Thu Dec  6 14:54:30 EST 2012
+
+Okay, so I wrote down most of the pre-specialized expression prettily. I have
+most of it right.
+
+Let's now walk through specialization for this...
+
+Here's one issue: When I specialize a lambda, I recursively call specialize,
+not spec. That means I'm re-specializing all the arguments. Isn't that bad for
+performance?
+
+Thu Dec  6 15:29:31 EST 2012
+
+Here's a line of thought...
+
+We inline let's until they are inlined.
+Now, consider we reach a let who we are not to inline, because we support the
+type.
+
+(let s = v in (let s' = v' in (let s'' = v'' in f))) arg
+
+WE are spending all our time in PUSH ARG in LET.
+
+What if I got rid of the specialization? It spends less time there...
+
+Why did I have that in the first place?
+
+(let s = v in b) arg
+
+For:
+
+(let s = v
+in \x -> ...) arg
+
+Turns into:
+
+let s = v
+in let x = arg
+   in ...
+
+Of course, it could be worse, right?
+
+(let s1 = v1
+in let s2 = v2
+   in let s3 = v3
+      in \x -> ...) arg
+
+Turns into:
+
+let s1 = v1
+in (let s2 = v2
+    in let s3 = v3
+        in \x -> ...) arg
+
+Turns into:
+
+let s1 = v1
+in let s2 = v2
+   in (let s3 = v3
+       in \x -> ...) arg
+
+Turns into:
+
+let s1 = v1
+in let s2 = v2
+   in let s3 = v3
+      in let x = arg
+         in ...
+
+So, we make a big chain of these things. For example, let's say we had
+something simple like:
+
+(\a -> \b -> \c -> \d -> ...) av bv cv dv
+
+(let a = av
+ in \b -> \c -> \d -> ...) bv cv dv
+
+(let a = av
+ in let b = bv 
+    in \c -> \d -> ...) cv dv
+
+(let a = av
+ in (let b = bv
+     in \c -> \d -> ...) cv) dv
+
+(let a = av
+ in let b = bv
+    in let c = cv
+       in \d -> ...) dv
+
+let a = av
+in (let b = bv
+    in let c = cv
+       in 
+...
+
+In other words, we create a chain and walk it along the way. That's n^2!
+That's not good.
+
+Can I test somehow to see if this is indeed the problem?
+    
+Well, it's certainly a quadradic kind of explosion. Or exponential?
+
+I don't know. It's not good. So, what do I do?
+
+I'm so confused at this point.
+
+Thu Dec  6 16:21:28 EST 2012
+
+Some observations:
+* there is no difference in number of specializations performed between the
+  fast case and the slow case...
+
+I'm confident now it's not a correctness thing. Not an infinite loop. Just a
+really long time.
+
+I still don't understand why it blows up, or what I can do about it.
+
+Thu Dec  6 16:24:56 EST 2012
+
+Here's an interesting observation: if we don't try to reduce something to a
+simple thing first, then datatype no longer blows up.
+
+And sudoku?
+
+Thu Dec  6 16:31:17 EST 2012
+
+Look! it's generating a query... It's actually working... very slowly... but
+that's because the generated query is so large.
+
+Hmm...
+
+Thu Dec  6 16:33:44 EST 2012
+
+Let me see how long it takes. I'm confident it will generate a query. I've
+already seen, there are 7000 error variables, or something like that. So
+that's one potential problem.
+
+Note: one place we can't get rid of introducing error is matching case
+tuples... Except, I suppose, we should do all those statically, so that's not
+a problem.
+
+Let me look in sudoku an see where all these errors are coming from. See if
+getting rid of those solves the problem.
+
+Now, I still have as an open problem now this question of how to handle
+    let v = 0 in __fromInteger_Bit v
+
+For yices2 I should be able to make it work... so let's not have that be the
+priority.
+
+Thu Dec  6 16:40:54 EST 2012
+
+I'm looking at the generated sudoku query now. Some comments:
+* Many excess lets:
+    let a3 = free~1
+        b3 = 0
+    in a3 > b3
+  Could simplify to: free~1 > 0
+* Constant operations should be inlined!
+    let a2 = 3
+        b2 = 3
+    in a2 * b2
+* Don't have unused lets
+    let n = ...
+    in false 
+
+In other words...
+* inline: literals, vars, errors, nullary constructors.
+* inline: if not used or used only once.
+
+That's what we need to make a pretty query.
+
+There has to be some way I can do this. It has to be allowed for something...
+
+The other problem we are having, which is just amazing, is even though we
+already sent the query to yices and got the result, it's taking forever to
+print out the board!
+
+You know what the answer is? The answer is to figure out how I can do my two
+points above without blowing things up.
+
+And ideally we do this is normal elaboration. No reason to wait until
+specialization for it.
+
+Well... I have some ideas for things to try with sudoku.
+
+I don't know if it will blow things up. I want to keep an eye out.
+
+First: how can I inline things that I know are simple and not have it cause
+problems?
+
+Let me look at the result of applying the function. The same thing I wanted to
+do this morning.
+
+Remember, it was the basic tests which failed then. Maybe things will go
+better now.
+
+I can't look at the argument. I really can't. Because the argument may not be
+used. But I should certainly be allowed to look at the result. It's just a
+question of how often the result is simple, and how often not.
+
+For Basic test, the result should always be simple except for constructors
+which take arguments. We are not allowed to look into the arguments.
+
+We have the same problem with the datatype test as before. That's not
+surprising to me. Not that I understand what it is...
+
+Let me check sudoku.
+
+Thu Dec  6 17:18:19 EST 2012
+
+So, inline fails. It fails for Datatype and Sudoku. It fails a lot. This is
+what the cost is. So, it seems like looking at the result isn't necessarily
+the way to go.
+
+I really want to look at the argument. Pretty please?
+
+How often do I use an infinite argument? Is it a common thing?
+
+For example... In factorial.
+
+factorial = \n -> if n < 1 then 1 else n * (factorial (n-1))
+
+It's the case which chooses between the potential explosion. In what common
+case do I have a huge argument and ignore it?
+
+Let me try looking at the argument, just for the fun of it.
+
+Doesn't work. What can I do?
+
+What if I could annotate and reconstruct the sharing?
+
+I already know how to break through a share point.
+
+Full inlining works fine... aside from blowing up.
+
+Thu Dec  6 17:45:59 EST 2012
+
+Claim: In a fully inlined expression, specialization will never get rid of a
+BOOM.
+
+Now, if I have sharing... I don't think that's still true.
+
+let x = True
+in if x then False else BOOM
+
+For example, is not inlined, and as a result, if specialization goes inside,
+it could become BOOM!
+
+Well, let's say x is a simple constructor, so we'll inline this, right?
+
+let x = Foo BOOM
+in case x of
+        Foo _ -> False
+        _ -> BOOM
+
+Ah, so we have to inline 'x' here too... At risk of blowup:
+
+let x = Foo y
+in case x of
+     Foo v -> v + v + v + v + v + v + v + v...
+
+You know what? No trouble with introducing blowup? Wait. I don't have the
+right condition.
+
+The concern is, we don't want 'x' duplicated, because it leads to a lot of
+duplication of Foo y.
+
+let x = Foo a b c d
+in let y = Foo x x x x
+   in let z = Foo y y y y
+      in case z of
+            Foo a b c d -> a + b + c + d
+            _ -> 3
+
+Now we have lots of duplication in ...? Hmm... I'm not seeing it.
+
+Well, this could be a problem. But how about I don't worry about it yet.
+
+
+So say we inline a constructor... How about something more interesting...
+
+let x = a && BOOM
+in y || x
+
+Here we will share, because it's a case statement. We don't know what 'a' is.
+If we inline... well, that means it could go boom, either way.
+
+What am I leading to? What I'm leading to is... I think I can just inline any
+concrete thing. There is concern of potential duplication, but if it's totally
+concrete, you aren't duplicating any lambdas, so you aren't duplicating
+something that's duplicated.
+
+Hmm... It doesn't seem to be working with sudoku.
+
+Let me remember the one configuration of sudoku which did make progress:
+* don't try to inline full expressions to get simple results
+* don't look at the argument to applications to test inlining
+     
+Which is the one that I expect to make progress, because I don't try to do
+anything eagerly. It's just... not exactly what I want, because there's lots
+of stuff not the way I want. Namely, my two points:
+
+1. Don't share simple things
+2. Don't share things with 0 or 1 uses.
+
+How can I reconcile these two issues?
+
+We know that, after specialization, everything is safe to touch. Because we do
+touch everything.
+
+What if I did a post-specialization simplification pass. Go through the
+specialized expression, inline everything simple for (1).
+
+For (2)... Do another bottom-up pass. Err... can I do that?
+
+How about, when I translate back to Exp. Translating a let.
+
+1. translate the let.
+2. count occurrences of variables (the translation can bubble up this
+information)
+3. If the number of variables is 0 or 1, ditch the translation, inline the
+variable, and translate the result.
+One wonders how much can be done lazily here and how much we'll end up
+re-translating over and over and over again...
+
+I should note: Sudoku1 and Sudoku2 work using the current approach. The only
+thing that doesn't is that one fromInteger_Bit issue.
+
+Well... How about I try this? One step at a time. See if it improves anything.
+
+I should also try to figure out why transform is so terribly slow in sudoku.
+
+In some ways, that's an even more interesting question. Maybe, maybe not.
+
+Okay! So I have a plan. Stick with the lazy approach, which seems to work. If
+not well, at least it doesn't blow up for anything known. Try to improve it
+bits at a time.
+
+Oh... transform is probably taking forever because we are checking every
+subexpression, not just VarEH. That's easily enough fixed.
+
+Thu Dec  6 18:28:59 EST 2012
+
+Hmm... The transformation still isn't working so well... I know there's only a
+single variable in this case, so switching to a hash table here probably won't
+help any. What could it be that's taking so long?
+
+The fear is lambdas. Because instead of transforming the lambda before an
+argument is applied, I apply the argument then transform. That's bad, because
+it means we try to transform the argument too.
+
+I wonder if there's a better way to deal with that.
+
+For example... I have this function (ExpH -> ExpH).
+Could I provide another function for transforming it:
+(ExpH -> Maybe ExpH) -> ExpH -> ExpH
+
+That might be cool. It certainly would be useful for specialization and
+transformation. For present purposes I'm more concerned with transformation.
+
+While we're at it, we could allow for a monadic transformation too perhaps?
+I'm not sure if we could support an IO monadic transformation. It would be:
+
+(ExpH -> IO (Maybe ExpH)) -> IO (ExpH -> ExpH)
+
+But I don't know how to do that. Something to think about for the future.
+
+How can I do this transform thing? I'll have to change inline to give us this
+function back.
+
+I wonder if we could do something general. For example, just have a single
+function:
+
+(ExpH -> Maybe ExpH) -> ExpH -> ExpH
+
+Which says...
+
+Do the following:
+1. Apply the transformation to each expression in the body of the lambda.
+2. Inline the argument.
+
+Now you have some flexibility...
+
+Except, can you only transform once?
+
+Thu Dec  6 18:45:09 EST 2012
+
+Good news! I figured out a better way to do transform. For AppEH, transform
+the already inlined thing as well, rather than recomputing it. Makes all the
+difference.
+
+Thu Dec  6 18:46:37 EST 2012
+
+Good. I'm glad. I didn't want to go that HOAS route.
+
+Now then. What's next? Next is... let me do a post-specialization processing
+phase. Call it... simplify? Not sure. simpline? Simple inline... Sounds good
+to me. Goal is to cut down the generated query. Most of the time currently is
+in sending over the query, so the smaller I can make it, the better.
+
+Thu Dec  6 19:13:49 EST 2012
+
+Trouble I don't understand... we can't simpline the argument before checking
+to go in... Could we do multiple simpline passes?
+
+Thu Dec  6 19:39:52 EST 2012
+
+I still don't understand. Multiple simpline passes work... Perhaps too many
+triggers something bad?
+
+Thu Dec  6 19:48:25 EST 2012
+
+Status update:
+
+* Sudoku on easy_partial: 2 simplines does everything
+  At this point, most of the time is spent in specialize
+* Sudoku on diabolical: same thing. Some time is spent on sendCmds, but mostly
+  specialize
+
+The interesting thing is... it doesn't take any more time to solve a
+diabolical board than an easy board. This suggests to me the time is dominated
+by specialization, regardless of what variables are free or not.
+
+The generated query is exactly the assertions we want. The only annoyance is
+we have extra let statements whose variables are only referred to once.
+
+For Sudoku, I guess we don't need to preserve sharing at all. Full inlining
+would have handled things just fine. Not sure if it would have been more
+efficient or not.
+
+Thu Dec  6 20:00:54 EST 2012
+
+Bluespec test still blows up.
+Array test still blows up.
+Tuple test gets de_seriEH (->) error.
+Squares test hits an ErrorEH which we don't specialize properly.
+
+
+We could make the Sudoku queries nicer if we ... basically, for the sudoku
+queries there is no sharing. You want to inline everything. I think. If we
+inline a bit further (zero, single use variables), then it would be just as
+clean as we want it to be, I think.
+
+I should try not to get stuck focusing on the Sudoku queries, because they
+don't have sharing. I don't think. Maybe they do? I don't know.
+
+I'm going to call it a night here.
+
+Some good progress I think. Well, the Datatype and Sudoku tests work now. The
+sudoku tests are slower than I would like (why?).
+
+Perhaps inferred value propagation would improve things?
+
+What's taking so much time? Why is specialization so slow? Is it the lambda
+thing I fear it is? Stuff to stew on.
+

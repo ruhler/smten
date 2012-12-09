@@ -1,0 +1,357 @@
+
+Thu Nov 29 08:18:09 EST 2012
+
+I'm trying to clarify my thoughts. Here goes.
+
+The next thing to focus on is getting haskellf to work as expected. The work
+here will directly be applicable to the seri elaborator. I think the path to
+make haskellf work is clear. Now that we can shove IO and Query into an ExpH,
+there shouldn't be anything stopping me from making progress on that.
+
+The way primitives work...
+
+I need some way to represent a primitive in an ExpH. Whatever way that has
+should have the following properties:
+
+* I can translate that primitive to Exp and thus to SMT.Expression
+* When substitute is called, substitution is performed on the arguments to the
+  primitive
+* When simplify is called, the primitive is recognized and reduced if
+  necessary. This recognition and reduction should be done in a generic way,
+  not hard coded into the elaboration rules. That is, the primitive should
+  carry enough information with it to do the reduction.
+
+I don't know what representation to use for this yet. Though one could image
+something simple like:
+    PrimEH :: Sig -> ([ExpH] -> ExpH) -> [ExpH] -> ExpH
+To translate to Exp: translate the Sig and apply to the args.
+To substitute: substitute the args.
+To simplify, call the function.
+
+The core meaning of the primitive is described with the function
+[ExpH] -> ExpH. For unary functions, this will be a wrapper around 
+ExpH -> ExpH. For binary functions, this will be a wrapper around
+ExpH -> ExpH -> ExpH. And so on.
+
+So, to describe a primitive, I implement a function:
+
+foo :: ExpH -> ExpH -> ExpH.
+
+These are like the integer_addE, integer_eqE, etc... things I already have.
+The function does the following:
+* if all arguments are ready, call the corresponding haskell function
+* otherwise, if pushing or _|_ propagation needs to be done, do that
+* otherwise, generate the appropriate PrimEH value.
+
+Ah, so this brings another level to primitives. There are a number of them.
+Let me list the ones I have in mind.
+
+1. Concrete haskell function.       (a -> b -> c)
+ex: Prelude.+, Prelude.==, etc...
+
+2. Symbolic version of haskell function  (ExpH -> ExpH -> ExpH)
+ex: integer_addE, integer_eqE, etc...
+This is formed from the concrete haskell function by using SeriH to try
+packing and unpacking concrete values, adding the signature for generation to
+haskell, adding any error propagation or function pushing needed.
+
+3. Haskellf version of haskell function   (ExpH a -> ExpH b -> ExpH c)
+ex: Haskellf.Lib.Prelude.__prim_add_Integer
+This is formed by unboxing arguments, calling (2), and boxing the result.
+
+4. ExpH version of primitive    (ExpH)
+The toExpH function replaces all primitive names with the corresponding ExpH
+of this type.
+This is formed by wrapping (2) in LamEH.
+ex: LamEH (Sig "a" t) $ \a ->
+      LamEH (Sig "b" t) $ \b -> integer_addE a b
+
+And that's it. Simple. 
+
+I should be primitives in Seri.ExpH.Primitives.
+
+Now all the primitives are hopefully easy to describe in a generic way, we are
+extensible, and everything is shared between haskellf and the elaborator.
+
+Now, let me take a brief moment to consider how PrimEH should be represented.
+
+We have the one proposal: Sig, function, args. What's annoying to me about
+this is the arguments are specified in a list... but maybe that makes sense,
+because a primitive has to be fully applied anyway. I think that's a
+reasonable first attempt at a primitive representation. Good then. Go with
+that.
+
+Some primitives may need to be parameterized by type. Such as numeric. I'll
+figure out how to deal with that when I get to it.
+
+Good. So I have the vision in place. It's clear. The question, as always, is
+how should I get there?
+
+Allow me to start by moving integer_addE and friends to Seri.ExpH.Primitives,
+base them on concrete haskell things if possible, rename them to match the
+primitive name. I can do this all on the master branch. That will get the ball
+rolling.
+
+The next step is to continue the rough draft of the haskellf prelude and
+Symbolic. I'll see what issues I run into then then. After that, update the
+translation process as appropriate. And pretty much go from there until I run
+into problems, at which point I'll come back here and start thinking some
+more.
+
+Cool. Sounds like a nice, good, focused plan.
+
+Thu Nov 29 09:02:29 EST 2012
+
+First step went smoothly as planned. Cool. Next step: continue on the rough
+draft of haskellf. I'm sure things will come up as they do. That's fine.
+
+Thu Nov 29 09:17:08 EST 2012
+
+Okay, time to remind myself how case statements work...
+
+Oh. It's not so bad, is it? Err... Hmm...
+
+Some comments:
+
+* It would be really nice to have Sig sugar:
+  unitS, trueS, falseS, etc...
+
+Thu Nov 29 09:30:58 EST 2012
+
+I have an observation. Constructors are like primitives, sort of.
+
+The idea is, say I have a function from ExpH -> ExpH -> ExpH, such as consEH.
+Well, to turn it into __mkCons__, it's exactly the same as the binary
+primitive wrapper. So I should reuse that.
+
+Here's a question. Can I box and unbox functions? Isn't that exactly what that
+is?
+
+instance Symbolic2 (->) where
+    box e = \a -> appEH e (unbox a)
+    unbox f = lamEH (Sig "x" ...) f
+
+The answer is yes! I can!
+
+So... the idea for __mkFoo in Prelude is, have fooEH sugar for all the basic
+types. Then just say: box fooEH. Works for any number of arguments.
+Same goes for primitives. Awesome.
+
+I need to take a short break right now, but when I come back, this is the
+plan. Implement Symblic2 for (->), then use that for all the constructors and
+primitives.
+
+What remains is to figure out a generic way to do __caseFoo. I think the
+tricky part is coming up with the type of the constructor. Basically I want to
+give the name of the constructor, and that's it. It figures out the rest.
+
+Thu Nov 29 10:51:22 EST 2012
+
+Better idea for constructors. Make a function:
+
+conS :: (Symbolic a) => Name -> a
+conS n =
+  let r = box $ conEH (Sig n (seriT r))
+  in r
+
+The box takes care of converting from ExpH to Foo -> Bar -> ... whatever. This
+is when having an instance of Symbolic2 for (->).
+
+In fact, if I have this, there's really no reason not to just convert
+constructors to calls to conS. That's what I'm going to do anyway... unless it
+leads to type ambiguities, but I don't think it should.
+
+Err.. that's a little sketchy to me. Let me leave the top level type
+declarations there for now. That's fine.
+
+So, I'll take this route now.
+
+I believe I can do the same thing with case.
+
+caseS :: (Symbolic x, Symbolic y, Symbolic n)
+        => Name -> x -> y -> n -> n
+caseS k x y n = 
+ let r = box $ caseEH (unbox x) (Sig k t) (unbox y) (unbox n)
+     ty = seriT y
+     tx = seriT x
+     t = arrowsT (init (de_arrowsT ty) ++ [tx])
+ in r
+
+And that gives me everything I need. Cool. That's certainly much easier. I'm
+totally going to do it.
+
+Cool! That makes things nice. Let me move on then.
+
+Next step, all that's left, are the primitives. Let's see how well this works.
+
+What do I want to do again?
+
+Assume we have:
+notEH :: ExpH -> ExpH
+    PrimEH :: Sig -> ([ExpH] -> ExpH) -> [ExpH] -> ExpH
+
+andEH :: ExpH -> ExpH
+orEH :: ExpH -> ExpH
+
+I want to make
+
+not :: Bool -> Bool
+&& :: Bool -> (Bool -> Bool)
+|| :: Bool -> (Bool -> Bool)
+
+So, for unary primitives. How do we do this?
+
+not :: Bool -> Bool
+not x = box (notEH (unbox x))
+
+unary :: (Symbolic a, Symbolic b) => (ExpH -> ExpH) -> a -> b
+unary x f = box (f (unbox x))
+
+The real question is... can I instead do something like:
+
+not :: Bool -> Bool
+not = box notEH
+
+What does this mean? I can box into Bool, it's going to turn into...
+
+Oh, the problem here is, notEH doesn't have type ExpH. It has type ExpH ->
+ExpH. How to give it type ExpH? I have to wrap it in a lambda. Okay, not worth
+it. I'll just do unary and binary. That's fine.
+
+Thu Nov 29 11:59:38 EST 2012
+
+Some primitives will require a type. So I think I should have:
+
+nullaryT, unaryT, binaryT, where the function takes an extra Type argument.
+
+There is some question about how to deal with numeric types.
+
+I really think, to start, I should make it work without bit vector support
+initially.
+
+Okay, so I've scratched out a basic Prelude.
+
+Let me start focusing on the basic tests without bitvector support.
+
+Next step? That would be... change the translation itself. Not much to change.
+Just the instance of Symbolic and implementations of things. Mostly trivial I
+should think.
+
+1. Change translation
+2. Try Basic tests without bit vectors (or numeric types?)
+3. Resolve the errors from there.
+
+Thu Nov 29 13:15:09 EST 2012
+
+Okay, basic translation stuff was updated. Let's try it out now.
+
+Thu Nov 29 13:31:28 EST 2012
+
+Here's a question. How to deal with seriEH of IO.
+
+So, given an IO a, I can plug it into ExpH using dynamic. And I can get the
+result. That's fine. But do I want to store IO a, or IO ExpH?
+
+How about, to start, store IO a. Then, if I want IO ExpH, I can always do
+something like: seriEH <$> x.
+
+Let's see if this works out the way I hope.
+
+Thu Nov 29 13:38:37 EST 2012
+
+Okay, so here is an issue. Consider the return_io primitive.
+It's type is polymorphic. But I don't know how it's going to be used. This
+means I need to have as an argument the type.
+
+Err... this primitive isn't going to work the way I want I don't think.
+
+Really what I want is... the argument should be ExpH, and it should return
+ExpH. It's that passthrough issue thing.
+
+I think it might take some practice and be more apparent with patterns how to
+deal with the IO primitive. For now let me just hard code it.
+
+Thu Nov 29 14:40:00 EST 2012
+
+Here's a fear. If I box then unbox a function, I'll get back a different
+result. I add layers and layers of functions, which is... maybe a bad thing?
+
+Well, maybe I don't have to worry about it.
+
+Thu Nov 29 15:16:00 EST 2012
+
+Okay, so things are running mostly smoothly now, I think.
+
+Next issue: the main function has the wrong type. I need a wrapper around the
+main function... that should be doable. Something like:
+
+__main :: Prelude.IO Unit__
+__main = S.__main main
+
+Making great progress! Things compile now. Let me save that as a checkpoint.
+
+First issue: application to a lambda ought to be performed.
+
+It works! Wow. Was that all I needed to do? Let me try some more interesting
+test cases.
+
+It works! Sweet.
+
+What's the next step?
+
+Well, I could go on to SMT stuff, or I could figure out numeric types. Let me
+think a little about numeric types, because it would be nice to handle those
+too.
+
+The idea behind numeric types is... how do I represent a numeric type?
+
+What is the Haskell type corresponding to a numeric type? Each one should be
+different, right?
+
+But I know how to do this, I hope?
+
+Hypothetically, #4 and #2 are different types. So you could have a type class
+which does something different for each, so #4 and #2 ought to have a
+different type representation in the generated haskell target. Currently,
+however, I'm sure I don't do that. So, if I wanted, I could punt on the issue
+for the time being, and have one numeric type, say... 
+
+newtype Numeric__ = Numeric__ S.ExpH
+
+And just have every numeric type use that.
+
+One problem with this: how do we have different values for seriT?
+
+Okay, so ideally we should have a different haskell type for every numeric
+type. They should all have instances of SeriT. Given that, I shouldn't need
+a Numeric class. I can define the primitives:
+
+numeric :: (Symbolic a) => a
+numeric = 
+ let x = numericEH (seriT x)
+ in x
+
+And valueof:
+
+valueof :: (Symbolic a) => a -> Integer
+valueof x = valueOfEH (unbox x)
+
+So that's nice at least.  
+
+I need the following different types:
+* literals: 1, 2, ...
+* operators: -,+,*
+
+Operators are easy: N__MINUS, N__PLUS, N__TIMES.
+Literals are...
+
+I've already done this all before. So just reuse that, only ditch the
+Numeric__ class requirement.
+
+Cool. Let me go to work then.
+
+Thu Nov 29 16:22:28 EST 2012
+
+maybe the trick is to try numeric types without bit vectors yet, because bit
+vectors require a whole bunch of primitives.
+
