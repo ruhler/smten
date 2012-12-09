@@ -47,7 +47,6 @@ import Seri.Ppr
 import Seri.HaskellF.Symbolic
 
 newtype Char = Char ExpH
-    deriving (Prelude.Show)
 
 instance SeriT Char where
     seriT _ = charT
@@ -58,7 +57,6 @@ instance Symbolic Char where
 
     
 newtype Integer = Integer ExpH
-    deriving (Prelude.Show)
 
 instance SeriT Integer where
     seriT _ = integerT
@@ -75,7 +73,6 @@ instance Prelude.Num Integer where
     signum = P.error $ "signum for haskellf Integer not defined"
 
 newtype Bit n = Bit ExpH
-    deriving (Prelude.Show)
 
 instance SeriT1 Bit where
     seriT1 _ = ConT (name "Bit")
@@ -85,7 +82,6 @@ instance Symbolic1 Bit where
     unbox1 (Bit x) = x
 
 newtype IO a = IO ExpH
-    deriving (Prelude.Show)
 
 instance SeriT1 IO where
     seriT1 _ = ConT (name "IO")
