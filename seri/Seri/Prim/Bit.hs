@@ -35,8 +35,7 @@ fromInteger_BitP :: Prim
 fromInteger_BitP =
  let f :: Type -> Integer -> Bit
      f t v =
-        let Just (_, bt) = de_arrowT t
-            Just w = de_bitT bt
+        let Just w = de_bitT t
         in bv_make w v
  in unaryTP "Seri.Bit.__prim_fromInteger_Bit" f
 
@@ -44,7 +43,7 @@ zeroExtend_BitP :: Prim
 zeroExtend_BitP =
  let f :: Type -> Bit -> Bit
      f t v =
-        let [ta, AppT _ (NumT wt)] = de_arrowsT t
+        let AppT _ (NumT wt) = t
         in bv_zero_extend (nteval wt - bv_width v) v
  in unaryTP "Seri.Bit.__prim_zeroExtend_Bit" f
 
@@ -76,7 +75,7 @@ truncate_BitP :: Prim
 truncate_BitP =
   let f :: Type -> Bit -> Bit
       f t v =
-        let [ta, AppT _ (NumT wt)] = de_arrowsT t
+        let AppT _ (NumT wt) = t
         in bv_truncate (nteval wt) v
   in unaryTP "Seri.Bit.__prim_truncate_Bit" f
 
@@ -84,7 +83,7 @@ extract_BitP :: Prim
 extract_BitP =
   let f :: Type -> Bit -> Integer -> Bit
       f t av jv =
-        let AppT _ (NumT wt) = last $ de_arrowsT t
+        let AppT _ (NumT wt) = t
             i = jv + (nteval wt) - 1
         in bv_extract i jv av
   in binaryTP "Seri.Bit.__prim_extract_Bit" f

@@ -69,19 +69,15 @@ Pretty Printer::
 
 Performance::
 * Play with GHC Sparks and non-strict state monads
-* Add support for sharing in generated queries (?)
 * Use the yices1 native interface where possible (everywhere?)
 
 ExpH::
 * Perhaps case statements should consider all constructors at once instead of
   one at a time?
-* Annotate expressions with IDs to quickly test for equality?
 
 Primitives::
 * Implement the 'update' primitive, or remove it from smt_array.
 * Get rid of the __prim_free primitive
-* Change primitive functions to take return type instead of function type
-  The function type can be reconstructed given the arguments if needed.
 
 SMT::
 * Remove bv-zero-extend from SMT syntax, use SMTLIB2 alternative
@@ -90,21 +86,17 @@ SMT::
 
 Query::
 * Figure out how to deal with debugging properly
-* Change names of logics and theories in Specialize to match SMTLIB. (?)
 * Don't ask for the value of a free variable from an SMT solver unless it
   shows up in a query.
 * Deal with errors in queries correctly.
 
 Query Optimizations::
-* Inline variables with a single use
-* Perform inferred value propagation
 * Perform case analysis to avoid inserting unnecessary error conditions
   automatically.
-* Preserve sharing in monadic bind
+* preserve sharing (?)
 
 Specialization::
-* handle correctly: let v = 0 in __prim_fromInteger_Bit v
-* don't look at the argument to a let! It could blow up.
+* put it back in
 
 
 HaskellF::
@@ -133,7 +125,7 @@ Bugs::
 * seriq2 for SquaresRaw... result differs from yices1 and yices2. Why?
   seriq1 seg faults on that same example randomly
     (in GC evacuate at end of prog)
-* Detect recursive functions in SNF elaboration and report an error about
+* Detect recursive functions in elaboration and report an error about
   them.
 * Report an error for an unknown primitive encountered in SMT Translation
 * I suspect shadowed variables won't work in STP queries because of a bug in
@@ -141,5 +133,4 @@ Bugs::
 
 Other::
 * Have name sugar for arrowN, tupleN, de_tupleN, unitN, etc...
-* Get dsel tests which don't work to work.
 
