@@ -85,6 +85,7 @@ reservedops = [
     ("=", TokenEquals),
     (":", TokenColon),
     ("#", TokenHash),
+    ("@", TokenAt),
     ("\\", TokenBackSlash),
     ("->", TokenDashArrow),
     ("<-", TokenBindArrow),

@@ -18,6 +18,7 @@ import Seri.Exp.Sugar
 
 data Pat = ConP Name [Pat]
          | VarP Name
+         | AsP Name Pat
          | LitP Lit
          | WildP
     deriving (Eq, Show)
@@ -44,6 +45,9 @@ data MMatch = MMatch [Pat] Exp
 matchE :: (Fresh f) => Exp -> SMatch -> Exp -> f Exp
 matchE _ (SMatch WildP yv) _ = return yv
 matchE x (SMatch (VarP n) yv) _ = return $ appE (lamE (Sig n UnknownT) yv) x
+matchE x (SMatch (AsP nm p) yv) n = do
+    rest <- matchE x (SMatch p yv) n
+    return $ letE (Sig nm (typeof x)) x rest
 matchE x (SMatch (LitP l) yv) n =
   let p = appsE (varE (Sig (name "==") UnknownT)) [litE l, x]
   in return $ ifE p yv n

@@ -9,7 +9,6 @@ Haskell Features::
     example: [1..5]
 * list comprehension.
 * support for pattern guards?
-* support for pattern bindings: x@(...)
 * Variable operators: `foo`.
 * pattern matching in do bind notation.
 * pattern matching against bit vectors
@@ -59,6 +58,7 @@ vs. foo :: (Foo a) => Sludge
   up.
 * Don't allow deriving of Free for recursive data types
 * Add static check for concreteness of queries (?)
+* use "reservedops" in Lexer for the operators.
 
 Pretty Printer::
 * Make pretty again.

@@ -246,6 +246,15 @@ testbasic = do
     t "or lazy" (True || (error "or is not lazy"))
     t "and lazy" (not (False && (error "and is not lazy")))
     t "precedence" (1*2+3-4*5+6-7 == negate (16 :: Integer))
+    testaspattern
+
+testaspattern :: Test ()
+testaspattern = do
+    t "as pattern" (
+        case [1, 2, 3 :: Integer] of
+          v@(x:xs) -> (length v + x + length xs) == 6
+          _ -> False
+      )
 
 testprelude :: Test ()
 testprelude = do

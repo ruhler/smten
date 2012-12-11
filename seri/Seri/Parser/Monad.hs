@@ -63,6 +63,7 @@ data Token =
      | TokenEquals
      | TokenColon
      | TokenHash
+     | TokenAt
      | TokenBackSlash
      | TokenDoubleColon
      | TokenConId String

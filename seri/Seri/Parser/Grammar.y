@@ -89,6 +89,7 @@ import Seri.Parser.Lexer
        '='      { TokenEquals }
        ':'      { TokenColon }
        '#'      { TokenHash }
+       '@'      { TokenAt }
        '\\'      { TokenBackSlash }
        '::'      { TokenDoubleColon }
        conid    { TokenConId $$ }
@@ -447,6 +448,8 @@ apats :: { [Pat] }
 apat :: { Pat }
  : var
     { if $1 == "_" then WildP else VarP (name $1) }
+ | var '@' apat
+    { AsP (name $1) $3 }
  | gcon
     { ConP (name $1) [] }
  | integer
