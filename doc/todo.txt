@@ -56,7 +56,6 @@ vs. foo :: (Foo a) => Sludge
 * support parser-error layout rule.
     For example: (let foo = bar in foo x)
 * Report an error if module name doesn't match source file name.
-* allow multiply specified imports
 * Review desugared expressions to see if they make sense or could be cleaned
   up.
 * Don't allow deriving of Free for recursive data types

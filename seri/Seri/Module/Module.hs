@@ -41,7 +41,8 @@ module Seri.Module.Module (
     ) where
 
 import Control.Monad.State
-import Data.Functor
+import Data.Functor ((<$>))
+import Data.List(nub)
 import Data.Maybe(fromMaybe)
 
 import qualified Seri.HashTable as HT
@@ -251,10 +252,10 @@ resolve n =
         in do
             imported <- mapM (\(Import mn) -> lookupModule mn env) imports
             let names = map immediate (me : imported)
-            case concat names of
+            case nub $ concat names of
                 [] -> throw $ "'" ++ pretty n ++ "' not found in module " ++ pretty menm
                 [x] -> return x
-                xs -> throw $ "'" ++ pretty n ++ "' is ambiguious: " ++ show xs
+                xs -> throw $ "'" ++ pretty n ++ "' is ambiguous: " ++ show xs
   in do
       me <- gets qs_me
       env <- gets qs_env
