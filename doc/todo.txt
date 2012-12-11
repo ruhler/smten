@@ -16,6 +16,7 @@ Haskell Features::
 * auto derive Show
 * recursive let blocks
 * modularity support
+* labeled pattern matching.
 
 Test Type Checking::
 * Verify we check for the instance or context for every method call

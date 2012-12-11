@@ -119,10 +119,10 @@ instance Eq () where
     (==) () () = True
     (/=) = (/=#)
 
-__prim_eq_Char :: Char -> Char -> Bool
+__prim_toInteger_Char :: Char -> Integer
 
 instance Eq Char where
-    (==) = __prim_eq_Char
+    (==) a b = __prim_toInteger_Char a == __prim_toInteger_Char b
     (/=) = (/=#)
 
 __prim_eq_Integer :: Integer -> Integer -> Bool

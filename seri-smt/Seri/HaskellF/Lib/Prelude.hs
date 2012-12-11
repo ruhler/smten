@@ -13,7 +13,7 @@ module Seri.HaskellF.Lib.Prelude (
 
     N__0, N__2p1, N__2p0, N__PLUS, N__MINUS, N__TIMES,
 
-    __prim_eq_Char,
+    __prim_toInteger_Char,
     __prim_eq_Integer,
     __prim_add_Integer, __prim_sub_Integer, __prim_mul_Integer,
     (<), (<=), (>),
@@ -208,8 +208,8 @@ type N__2p0 a = N__TIMES N__2 a
 type N__2p1 a = N__PLUS (N__2p0 a) N__1
 
 
-__prim_eq_Char :: Char -> Char -> Bool
-__prim_eq_Char = primS eq_CharP
+__prim_toInteger_Char :: Char -> Integer
+__prim_toInteger_Char = primS toInteger_CharP
 
 __prim_eq_Integer :: Integer -> Integer -> Bool
 __prim_eq_Integer = primS eq_IntegerP
