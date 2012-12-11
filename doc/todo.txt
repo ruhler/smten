@@ -17,7 +17,6 @@ Haskell Features::
 * auto derive Show
 * recursive let blocks
 * modularity support
-* automatically import Prelude
 
 Test Type Checking::
 * Verify we check for the instance or context for every method call

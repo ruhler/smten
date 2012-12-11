@@ -2,7 +2,6 @@
 -- vim: ft=haskell
 module Seri.Tests.Basic where
 
-import Prelude
 import Data.Array
 import Seri.Vector
 import Seri.Bit

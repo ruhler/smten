@@ -250,7 +250,8 @@ resolve n =
         let immediate :: Module -> [Name]
             immediate (Module mnm _ _ ds) = map (const (mnm `nappend` name "." `nappend` n)) (filter (hasName n) ds)
         in do
-            imported <- mapM (\(Import mn) -> lookupModule mn env) imports
+            let prelude = Import (name "Prelude")
+            imported <- mapM (\(Import mn) -> lookupModule mn env) (prelude : imports)
             let names = map immediate (me : imported)
             case nub $ concat names of
                 [] -> throw $ "'" ++ pretty n ++ "' not found in module " ++ pretty menm
