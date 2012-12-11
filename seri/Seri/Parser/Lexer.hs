@@ -81,6 +81,7 @@ singles = [
 reservedops :: [(String, Token)] 
 reservedops = [
     (".", TokenPeriod),
+    ("..", TokenDoubleDot),
     ("|", TokenBar),
     ("=", TokenEquals),
     (":", TokenColon),

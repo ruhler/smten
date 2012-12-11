@@ -36,6 +36,13 @@ instance (Eq a, Eq b) => Eq (a, b) where
    (==) a b = (fst a == fst b) && (snd a == snd b)
    (/=) = (/=#)
 
+-- TODO: turn this into an enum class method.
+enumFromTo :: Integer -> Integer -> [Integer]
+enumFromTo a b =
+  if a > b
+    then []
+    else a : enumFromTo (a+1) b
+
 class Num a where
   (+) :: a -> a -> a
   (*) :: a -> a -> a

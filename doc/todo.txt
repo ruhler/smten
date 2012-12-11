@@ -5,8 +5,8 @@ Haskell Features::
 * default methods in classes?
 * allow arbitrary patterns in lambda expression arguments.
     example: \(Foo x) -> x+1
-* add support for list sequences
-    example: [1..5]
+* add support for more kinds of arithmetic sequence
+    example: [1..]
 * list comprehension.
 * support for pattern guards?
 * Variable operators: `foo`.

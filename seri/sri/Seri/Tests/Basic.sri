@@ -247,6 +247,7 @@ testbasic = do
     t "and lazy" (not (False && (error "and is not lazy")))
     t "precedence" (1*2+3-4*5+6-7 == negate (16 :: Integer))
     testaspattern
+    testarithsequence
 
 testaspattern :: Test ()
 testaspattern = do
@@ -255,6 +256,10 @@ testaspattern = do
           v@(x:xs) -> (length v + x + length xs) == 6
           _ -> False
       )
+
+testarithsequence :: Test ()
+testarithsequence = do
+    t "fromto" ([1..5] == [1,2,3,4,5 :: Integer])
 
 testprelude :: Test ()
 testprelude = do

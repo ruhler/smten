@@ -66,6 +66,7 @@ data Token =
      | TokenAt
      | TokenBackSlash
      | TokenDoubleColon
+     | TokenDoubleDot
      | TokenConId String
      | TokenVarId String
      | TokenVarSym String

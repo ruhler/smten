@@ -5,7 +5,7 @@
 module Seri.Exp.Sugar (
     litE, conE, de_conE, varE, de_varE, appE, de_appE, appsE, de_appsE, lamE,
     lamsE, letE, de_letE, ifE, typeE, caseE, de_litE,
-    
+
     boolE, de_boolE, falseE, trueE, charE, de_charE,
     listE, de_listE, stringE, de_stringE,
     de_bitE,
@@ -14,6 +14,7 @@ module Seri.Exp.Sugar (
 
     addE, subE, mulE, opE,
     eqE, ltE, leqE, gtE, 
+    fromtoE,
     ) where
 
 import Control.Monad
@@ -217,4 +218,8 @@ leqE a b = appsE (varE (Sig (name "Prelude.<=") (arrowsT [typeof a, typeof b, bo
 
 gtE :: Exp -> Exp -> Exp
 gtE a b = appsE (varE (Sig (name "Prelude.>") (arrowsT [typeof a, typeof b, boolT]))) [a, b]
+
+-- [a..b]
+fromtoE :: Exp -> Exp -> Exp
+fromtoE a b = appsE (varE (Sig (name "enumFromTo") UnknownT)) [a, b]
 

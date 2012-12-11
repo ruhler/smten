@@ -90,6 +90,7 @@ import Seri.Parser.Lexer
        ':'      { TokenColon }
        '#'      { TokenHash }
        '@'      { TokenAt }
+       '..'      { TokenDoubleDot }
        '\\'      { TokenBackSlash }
        '::'      { TokenDoubleColon }
        conid    { TokenConId $$ }
@@ -376,6 +377,8 @@ aexp :: { Exp }
     { $2 }
  | '(' exp ',' exps_commasep ')'
     { tupleE ($2 : $4) }
+ | '[' exp '..' exp ']'
+    { fromtoE $2 $4 }
  | '['  exps_commasep ']'
     { listE $2 }
  | aexp '{' opt(fbinds) '}'
