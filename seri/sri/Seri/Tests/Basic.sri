@@ -3,6 +3,7 @@
 module Seri.Tests.Basic where
 
 import Data.Array
+import Data.List
 import Seri.Vector
 import Seri.Bit
 import Seri.Bit -- test duplicate import
@@ -274,6 +275,14 @@ testnumeric :: Test ()
 testnumeric = do
    t "n.3" ((3 :: Integer) == (valueof (numeric :: #3)))
 
+testlist :: Test ()
+testlist = do
+   t "tails" (tails "abc" == ["abc", "bc", "c", ""])
+   t "isPrefixOf" (isPrefixOf "foo" "foosball")
+   t "not isPrefixOf" (not $ isPrefixOf "fish" "foosball")
+   t "isInfixOf" (isInfixOf "oba" "foobar")
+   t "not isInfixOf" (not $ isInfixOf "abo" "foobar")
+
 tests :: Test ()
 tests = do
     t "test.dummy" True
@@ -283,6 +292,7 @@ tests = do
     testarray
     testvector
     testbit
+    testlist
 
 main :: IO ()
 main =

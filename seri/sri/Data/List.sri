@@ -1,0 +1,14 @@
+
+module Data.List where
+
+tails :: [a] -> [[a]]
+tails x = x : (if null x then [] else tails (tail x))
+
+isPrefixOf :: (Eq a) => [a] -> [a] -> Bool
+isPrefixOf [] _ = True
+isPrefixOf (x:xs) (y:ys) = x == y && isPrefixOf xs ys
+isPrefixOf _ _ = False
+
+isInfixOf :: (Eq a) => [a] -> [a] -> Bool
+isInfixOf needle haystack = any (isPrefixOf needle) (tails haystack)
+
