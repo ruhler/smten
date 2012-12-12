@@ -87,6 +87,8 @@ Query::
 * Don't ask for the value of a free variable from an SMT solver unless it
   shows up in a query.
 * Deal with errors in queries correctly.
+* Use value inference on assertion predicate to solve trivial predicates, then
+  don't even send them to the SMT solver (?)
 
 Query Optimizations::
 * Perform case analysis to avoid inserting unnecessary error conditions
@@ -96,6 +98,8 @@ Query Optimizations::
 Specialization::
 * put it back in
 
+Haskell::
+* Test it or remove it.
 
 HaskellF::
 * Translate a module at a time instead of one big blob
