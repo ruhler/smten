@@ -16,7 +16,7 @@ module Seri.HaskellF.Lib.Prelude (
     __prim_toInteger_Char,
     __prim_eq_Integer,
     __prim_add_Integer, __prim_sub_Integer, __prim_mul_Integer,
-    (<), (<=), (>),
+    __prim_lt_Integer, __prim_gt_Integer, __prim_leq_Integer, __prim_geq_Integer,
     __prim_show_Integer,
     return_io, bind_io, nobind_io, fail_io, putChar, getContents,
 
@@ -34,8 +34,7 @@ module Seri.HaskellF.Lib.Prelude (
 
 import Prelude hiding (
     Char, String, Integer, Bool(..), IO,
-    (<), (<=), (>), error,
-    putChar, getContents,
+    error, putChar, getContents,
     )
 import qualified Prelude as P
 
@@ -223,14 +222,17 @@ __prim_sub_Integer = primS sub_IntegerP
 __prim_mul_Integer :: Integer -> Integer -> Integer
 __prim_mul_Integer = primS mul_IntegerP
 
-(<) :: Integer -> Integer -> Bool
-(<) = primS lt_IntegerP
+__prim_lt_Integer :: Integer -> Integer -> Bool
+__prim_lt_Integer = primS lt_IntegerP
 
-(<=) :: Integer -> Integer -> Bool
-(<=) = primS leq_IntegerP
+__prim_leq_Integer :: Integer -> Integer -> Bool
+__prim_leq_Integer = primS leq_IntegerP
 
-(>) :: Integer -> Integer -> Bool
-(>) = primS gt_IntegerP
+__prim_gt_Integer :: Integer -> Integer -> Bool
+__prim_gt_Integer = primS gt_IntegerP
+
+__prim_geq_Integer :: Integer -> Integer -> Bool
+__prim_geq_Integer = primS geq_IntegerP
 
 __prim_show_Integer :: Integer -> String
 __prim_show_Integer = primS show_IntegerP

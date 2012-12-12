@@ -1,0 +1,51 @@
+
+Tue Dec 11 10:17:05 EST 2012
+
+Working on HAMPI in seri, some feature requests have come up:
+
+Features desired for seri:
+* explicit export list
++ implicit import of prelude
+* list comprehensions
++ range things: [0..foo]
++ pattern variable binding
+
+If I can do any of them without too much trouble, I think I should.
+
+Let me start with the easiest if I can.
+
+implicit import of prelude...
+
+Always implicitly import prelude. For every module. Easy.
+
+First I have to solve the duplicate import problem.
+
+Tue Dec 11 10:26:11 EST 2012
+
+Okay, we have implicit import of prelude.
+Next thing... pattern variable binding.
+
+I want a new kind of pattern:
+
+AsP Name Pat. Should be easy enough, right?
+
+Tue Dec 11 10:45:05 EST 2012
+
+Okay, we now support as patterns.
+
+Let me look into the range thing next.
+
+Looks like a limited version to start is easy enough.
+
+[x..y] desugars into: enumFromTo x y
+I can start with just Integer support.
+
+Tue Dec 11 11:38:46 EST 2012
+
+Okay, now we have basic [x..y] support.
+
+How about a look at list comprehensions?
+
+List comprehensions are certainly doable... but I feel like I've done enough
+sugar for now, so let me leave it as todo for another time.
+

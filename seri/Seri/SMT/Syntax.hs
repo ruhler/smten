@@ -46,7 +46,7 @@ module Seri.SMT.Syntax (
     notE, de_notE, andE, de_andE, orE, de_orE,
 
     -- * Integer
-    integerE, ltE, leqE, gtE, addE, subE, mulE,
+    integerE, ltE, leqE, gtE, geqE, addE, subE, mulE,
 
     -- * Bit Vector
     mkbvE, de_mkbvE, bvaddE, de_bvaddE, bvsubE, de_bvsubE,
@@ -201,6 +201,10 @@ leqE a b = AppE (varE "<=") [a, b]
 -- | > (> <exprsesion> <expression>)
 gtE :: Expression -> Expression -> Expression
 gtE a b = AppE (varE ">") [a, b]
+
+-- | > (> <exprsesion> <expression>)
+geqE :: Expression -> Expression -> Expression
+geqE a b = AppE (varE ">=") [a, b]
 
 -- | > (+ <exprsesion> <expression>)
 addE :: Expression -> Expression -> Expression

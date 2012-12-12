@@ -220,6 +220,7 @@ ytermS s e | Just (a, b) <- de_bvconcatE e = dobinop' s a b c_yices_bvconcat
 ytermS s e | isbinop "<" e = dobinop s e c_yices_arith_lt_atom
 ytermS s e | isbinop "<=" e = dobinop s e c_yices_arith_leq_atom
 ytermS s e | isbinop ">" e = dobinop s e c_yices_arith_gt_atom
+ytermS s e | isbinop ">=" e = dobinop s e c_yices_arith_geq_atom
 ytermS s e | isbinop "+" e = dobinop s e c_yices_add
 ytermS s e | isbinop "-" e = dobinop s e c_yices_sub
 ytermS s e | isbinop "*" e = dobinop s e c_yices_mul

@@ -154,9 +154,10 @@ smtE' e@(AppE a b) =
             , Just (_, dt) <- de_arrowT t
             -> do errnm <- yfreeerr dt
                   return $ SMT.varE errnm
-       (VarE (Sig n _), [a, b]) | n == name "Prelude.<" -> binary SMT.ltE a b
-       (VarE (Sig n _), [a, b]) | n == name "Prelude.<=" -> binary SMT.leqE a b
-       (VarE (Sig n _), [a, b]) | n == name "Prelude.>" -> binary SMT.gtE a b
+       (VarE (Sig n _), [a, b]) | n == name "Prelude.__prim_lt_Integer" -> binary SMT.ltE a b
+       (VarE (Sig n _), [a, b]) | n == name "Prelude.__prim_leq_Integer" -> binary SMT.leqE a b
+       (VarE (Sig n _), [a, b]) | n == name "Prelude.__prim_gt_Integer" -> binary SMT.gtE a b
+       (VarE (Sig n _), [a, b]) | n == name "Prelude.__prim_geq_Integer" -> binary SMT.geqE a b
        (VarE (Sig n _), [a, b]) | n == name "Prelude.__prim_add_Integer" -> binary SMT.addE a b
        (VarE (Sig n _), [a, b]) | n == name "Prelude.__prim_sub_Integer" -> binary SMT.subE a b
        (VarE (Sig n _), [a, b]) | n == name "Prelude.__prim_mul_Integer" -> binary SMT.mulE a b

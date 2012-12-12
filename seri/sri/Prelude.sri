@@ -143,14 +143,22 @@ instance Num Integer where
   abs x = if x < 0 then negate x else x
   fromInteger x = x
 
-(<) :: Integer -> Integer -> Bool
-(>) :: Integer -> Integer -> Bool
+class Ord a where
+    (<) :: a -> a -> Bool
+    (>) :: a -> a -> Bool
+    (<=) :: a -> a -> Bool
+    (>=) :: a -> a -> Bool
 
-(<=) :: Integer -> Integer -> Bool
---(<=) a b = (a == b) || (a < b)
+__prim_lt_Integer :: Integer -> Integer -> Bool
+__prim_gt_Integer :: Integer -> Integer -> Bool
+__prim_leq_Integer :: Integer -> Integer -> Bool
+__prim_geq_Integer :: Integer -> Integer -> Bool
 
-(>=) :: Integer -> Integer -> Bool
-(>=) a b = (a == b) || (a > b)
+instance Ord Integer where
+    (<) = __prim_lt_Integer
+    (>) = __prim_gt_Integer
+    (<=) = __prim_leq_Integer
+    (>=) = __prim_geq_Integer
 
 fst :: (a, b) -> a
 fst (x, _) = x

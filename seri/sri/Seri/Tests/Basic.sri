@@ -198,7 +198,7 @@ testbasic = do
     t "b" (42 == (foo1))
     t "c" (42 == (foo2 5))
     t "d" (True)
-    t "e" ((23 :: Integer) == (if 6 < 4 then 42 else 23 ))
+    t "e" ((23 :: Integer) == (if 6 < (4 :: Integer) then 42 else 23 ))
     t "f" ((5 :: Integer) == ((id id) 5))
     t "g" (5 == (fromMaybeInteger 10 (JustInteger 5)))
     t "h" (10 == (fromMaybeInteger 10 NoInteger))

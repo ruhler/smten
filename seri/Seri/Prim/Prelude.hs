@@ -4,7 +4,7 @@ module Seri.Prim.Prelude (
     errorP,
     eq_IntegerP, toInteger_CharP,
     add_IntegerP, sub_IntegerP, mul_IntegerP,
-    lt_IntegerP, leq_IntegerP, gt_IntegerP,
+    lt_IntegerP, leq_IntegerP, gt_IntegerP, geq_IntegerP,
     show_IntegerP,
     return_IOP, bind_IOP, nobind_IOP, fail_IOP,
     putCharP, getContentsP,
@@ -22,7 +22,7 @@ preludePs = [
     errorP,
     eq_IntegerP, toInteger_CharP,
     add_IntegerP, sub_IntegerP, mul_IntegerP,
-    lt_IntegerP, leq_IntegerP, gt_IntegerP,
+    lt_IntegerP, leq_IntegerP, gt_IntegerP, geq_IntegerP,
     show_IntegerP,
     return_IOP,  fail_IOP,
     bind_IOP, nobind_IOP,
@@ -52,13 +52,16 @@ mul_IntegerP :: Prim
 mul_IntegerP = binaryP "Prelude.__prim_mul_Integer" ((*) :: Integer -> Integer -> Integer)
 
 lt_IntegerP :: Prim
-lt_IntegerP = binaryP "Prelude.<" ((<) :: Integer -> Integer -> Bool)
+lt_IntegerP = binaryP "Prelude.__prim_lt_Integer" ((<) :: Integer -> Integer -> Bool)
 
 leq_IntegerP :: Prim
-leq_IntegerP = binaryP "Prelude.<=" ((<=) :: Integer -> Integer -> Bool)
+leq_IntegerP = binaryP "Prelude.__prim_leq_Integer" ((<=) :: Integer -> Integer -> Bool)
 
 gt_IntegerP :: Prim
-gt_IntegerP = binaryP "Prelude.>" ((>) :: Integer -> Integer -> Bool)
+gt_IntegerP = binaryP "Prelude.__prim_gt_Integer" ((>) :: Integer -> Integer -> Bool)
+
+geq_IntegerP :: Prim
+geq_IntegerP = binaryP "Prelude.__prim_geq_Integer" ((>=) :: Integer -> Integer -> Bool)
 
 show_IntegerP :: Prim
 show_IntegerP = unaryP "Prelude.__prim_show_Integer" (show :: Integer -> String)

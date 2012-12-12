@@ -16,7 +16,7 @@ q1 = do
     x <- qS S.free
     assertS (x S.< 6)
     assertS (x S.> 4)
-    query $ realizeS x
+    query $ realizeS (x :: S.Integer)
 
 incr :: S.Integer -> S.Integer
 incr x = x S.+ 1

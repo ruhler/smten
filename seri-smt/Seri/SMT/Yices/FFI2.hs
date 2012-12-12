@@ -76,6 +76,7 @@ module Seri.SMT.Yices.FFI2 (
     c_yices_arith_lt_atom,
     c_yices_arith_leq_atom,
     c_yices_arith_gt_atom,
+    c_yices_arith_geq_atom,
     c_yices_add,
     c_yices_sub,
     c_yices_mul,
@@ -235,6 +236,9 @@ foreign import ccall unsafe "yices_arith_leq_atom"
 
 foreign import ccall unsafe "yices_arith_gt_atom"
     c_yices_arith_gt_atom :: YTerm -> YTerm -> IO YTerm
+
+foreign import ccall unsafe "yices_arith_geq_atom"
+    c_yices_arith_geq_atom :: YTerm -> YTerm -> IO YTerm
 
 foreign import ccall unsafe "yices_add"
     c_yices_add :: YTerm -> YTerm -> IO YTerm
