@@ -91,7 +91,21 @@ reservedops = [
     ("->", TokenDashArrow),
     ("<-", TokenBindArrow),
     ("=>", TokenEqualsArrow),
-    ("::", TokenDoubleColon)
+    ("::", TokenDoubleColon),
+    ("+", TokenPlus),
+    ("-", TokenMinus),
+    ("*", TokenStar),
+    ("$", TokenDollar),
+    (">>", TokenDoubleGT),
+    (">>=", TokenDoubleGTEQ),
+    ("||", TokenDoubleBar),
+    ("&&", TokenDoubleAmp),
+    ("==", TokenDoubleEq),
+    ("/=", TokenSlashEq),
+    ("<", TokenLT),
+    ("<=", TokenLE),
+    (">=", TokenGE),
+    (">", TokenGT)
     ]
 
 keywords :: [(String, Token)]
@@ -177,22 +191,7 @@ lex = do
               op -> do
                 many op
                 setText rest
-                return $ case op of
-                            "+" -> TokenPlus
-                            "-" -> TokenMinus
-                            "*" -> TokenStar
-                            "$" -> TokenDollar
-                            ">>" -> TokenDoubleGT
-                            ">>=" -> TokenDoubleGTEQ
-                            "||" -> TokenDoubleBar
-                            "&&" -> TokenDoubleAmp
-                            "==" -> TokenDoubleEq
-                            "/=" -> TokenSlashEq
-                            "<" -> TokenLT
-                            "<=" -> TokenLE
-                            ">=" -> TokenGE
-                            ">" -> TokenGT
-                            _ -> TokenVarSym op
+                return $ TokenVarSym op
       ('"':cs) -> do
          single 
          tok <- lexstr "" cs

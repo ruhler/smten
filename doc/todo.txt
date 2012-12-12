@@ -59,7 +59,6 @@ vs. foo :: (Foo a) => Sludge
   up.
 * Don't allow deriving of Free for recursive data types
 * Add static check for concreteness of queries (?)
-* use "reservedops" in Lexer for the operators.
 
 Pretty Printer::
 * Make pretty again.
