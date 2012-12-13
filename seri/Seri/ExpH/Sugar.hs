@@ -194,7 +194,8 @@ caseEH x k@(Sig nk _) y n
  | Just (s, _, vs) <- de_conEH x
     = if s == nk then appsEH y vs else n
  | Just (_, msg) <- de_errorEH x = errorEH (typeof n) msg
- | CaseEH {} <- x =
+ | CaseEH {} <- x
+ , not (smttype (typeof x)) =
     let f = lamEH (Sig (name "_x") (typeof x)) (typeof n) $ \x' ->
                caseEH x' k y n
     in pushfun f x

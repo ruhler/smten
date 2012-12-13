@@ -226,12 +226,12 @@ length (_:l) = 1 + length l
 (!!) (_:xs) n = xs !! (n-1)
 
 foldl :: (a -> b -> a) -> a -> [b] -> a
-foldl f z [] = z
 foldl f z (x:xs) = foldl f (f z x) xs
+foldl f z _ = z
 
 foldr :: (a -> b -> b) -> b -> [a] -> b
-foldr f z [] = z
 foldr f z (x:xs) = f x (foldr f z xs)
+foldr f z _ = z
 
 replicate :: Integer -> a -> [a]
 replicate 0 _ = []
