@@ -1,3 +1,21 @@
+Dec 13, 2012
+  seri-1.0.0.0
+  seri-smt-1.0.0.0
+
+  Major rewrite of seri.
+
+  Changes from seri-0.3.0.0, seri-smt-0.2.0.0:
+  * Major rewrite of seri internals
+  * Major reorganization of seri code
+  * Expanded seri library
+  * New haskellf mode for generating haskell code.
+  * Use default operator precedence
+  * Support for type synonyms (without arguments)
+  * Allow duplicate module imports
+  * Implicitly import Prelude.
+  * Support for as-patterns.
+  * Support for integer arithmetic sequences of form [a..b]
+
 Nov 07, 2012
   seri-0.3.0.0
   seri-smt-0.2.0.0

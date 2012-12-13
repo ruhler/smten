@@ -106,6 +106,7 @@ HaskellF::
 
 Distribution::
 * Move everything but the SMT solvers from seri-smt to seri.
+* Package up seri executable nicer.
 
 Build System::
 * Don't require yices1 and yices2 to be installed to build or use seri
