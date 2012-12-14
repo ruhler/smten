@@ -100,6 +100,10 @@ module Seri.SMT.Yices.FFI2 (
     c_yices_shift_right0,
     c_yices_bvextract,
     c_yices_bvconcat,
+    c_yices_bvlt_atom,
+    c_yices_bvle_atom,
+    c_yices_bvgt_atom,
+    c_yices_bvge_atom,
 
     -- Working with contexts
     c_yices_new_context,
@@ -346,3 +350,14 @@ foreign import ccall unsafe "yices_print_model"
 foreign import ccall unsafe "fdopen"
     c_fdopen :: CInt -> CString -> IO (Ptr CFile)
 
+foreign import ccall unsafe "yices_bvlt_atom"
+    c_yices_bvlt_atom :: YTerm -> YTerm -> IO YTerm
+
+foreign import ccall unsafe "yices_bvle_atom"
+    c_yices_bvle_atom :: YTerm -> YTerm -> IO YTerm
+
+foreign import ccall unsafe "yices_bvgt_atom"
+    c_yices_bvgt_atom :: YTerm -> YTerm -> IO YTerm
+
+foreign import ccall unsafe "yices_bvge_atom"
+    c_yices_bvge_atom :: YTerm -> YTerm -> IO YTerm

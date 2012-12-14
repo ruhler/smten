@@ -21,6 +21,7 @@ module Seri.HaskellF.Lib.Prelude (
     return_io, bind_io, nobind_io, fail_io, putChar, getContents,
 
     __prim_eq_Bit, __prim_show_Bit,
+    __prim_lt_Bit, __prim_gt_Bit, __prim_leq_Bit, __prim_geq_Bit,
     __prim_add_Bit, __prim_sub_Bit, __prim_mul_Bit,
     __prim_fromInteger_Bit,
     __prim_shl_Bit, __prim_lshr_Bit,
@@ -313,4 +314,16 @@ numeric = primS numericP
 
 valueof :: (Symbolic a) => a -> Integer
 valueof = primS valueofP
+
+__prim_lt_Bit :: (Symbolic n) => Bit n -> Bit n -> Bool
+__prim_lt_Bit = primS lt_BitP
+
+__prim_leq_Bit :: (Symbolic n) => Bit n -> Bit n -> Bool
+__prim_leq_Bit = primS leq_BitP
+
+__prim_gt_Bit :: (Symbolic n) => Bit n -> Bit n -> Bool
+__prim_gt_Bit = primS gt_BitP
+
+__prim_geq_Bit :: (Symbolic n) => Bit n -> Bit n -> Bool
+__prim_geq_Bit = primS geq_BitP
 

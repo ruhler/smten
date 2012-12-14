@@ -50,6 +50,8 @@ module Seri.SMT.Syntax (
 
     -- * Bit Vector
     mkbvE, de_mkbvE, bvaddE, de_bvaddE, bvsubE, de_bvsubE,
+    bvltE, bvgtE, bvleqE, bvgeqE,
+    de_bvltE, de_bvgtE, de_bvleqE, de_bvgeqE,
     bvorE, de_bvorE, bvandE, de_bvandE,
     bvnotE, de_bvnotE,
     bvshlE, de_bvshlE, bvlshrE, de_bvlshrE,
@@ -306,6 +308,34 @@ letE bs e = LetE bs e
 de_letE :: Expression -> Maybe ([Binding], Expression)
 de_letE (LetE bs e) = Just (bs, e)
 de_letE _ = Nothing
+
+bvltE :: Expression -> Expression -> Expression
+bvltE a b = AppE (varE "bv-lt") [a, b]
+
+de_bvltE :: Expression -> Maybe (Expression, Expression)
+de_bvltE (AppE (VarE "bv-lt") [a, b]) = Just (a, b)
+de_bvltE _ = Nothing
+
+bvgtE :: Expression -> Expression -> Expression
+bvgtE a b = AppE (varE "bv-gt") [a, b]
+
+de_bvgtE :: Expression -> Maybe (Expression, Expression)
+de_bvgtE (AppE (VarE "bv-gt") [a, b]) = Just (a, b)
+de_bvgtE _ = Nothing
+
+bvgeqE :: Expression -> Expression -> Expression
+bvgeqE a b = AppE (varE "bv-ge") [a, b]
+
+de_bvgeqE :: Expression -> Maybe (Expression, Expression)
+de_bvgeqE (AppE (VarE "bv-ge") [a, b]) = Just (a, b)
+de_bvgeqE _ = Nothing
+
+bvleqE :: Expression -> Expression -> Expression
+bvleqE a b = AppE (varE "bv-le") [a, b]
+
+de_bvleqE :: Expression -> Maybe (Expression, Expression)
+de_bvleqE (AppE (VarE "bv-le") [a, b]) = Just (a, b)
+de_bvleqE _ = Nothing
 
 -- Replace the values of symbols in the given expression with the given
 -- updated value, if any. Performs simplification after the substitution.

@@ -6,6 +6,10 @@ import Prelude
 data Bit #n =
 
 __prim_eq_Bit :: Bit #n -> Bit #n -> Bool
+__prim_lt_Bit :: Bit #n -> Bit #n -> Bool
+__prim_leq_Bit :: Bit #n -> Bit #n -> Bool
+__prim_gt_Bit :: Bit #n -> Bit #n -> Bool
+__prim_geq_Bit :: Bit #n -> Bit #n -> Bool
 __prim_add_Bit :: Bit #n -> Bit #n -> Bit #n
 __prim_sub_Bit :: Bit #n -> Bit #n -> Bit #n
 __prim_mul_Bit :: Bit #n -> Bit #n -> Bit #n
@@ -25,6 +29,12 @@ __prim_concat_Bit :: Bit #n -> Bit #m -> Bit #(n+m)
 instance Eq (Bit #n) where
     (==) = __prim_eq_Bit
     (/=) a b = not (a == b)
+
+instance Ord (Bit #n) where
+    (<) = __prim_lt_Bit
+    (>) = __prim_gt_Bit
+    (<=) = __prim_leq_Bit
+    (>=) = __prim_geq_Bit
 
 instance Show (Bit #n) where
     show = __prim_show_Bit

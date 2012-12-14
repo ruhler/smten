@@ -9,6 +9,14 @@ test :: String -> Bool -> Query ()
 test nm True = return ()
 test nm False = error ("Test failed: " ++ nm)
 
+bitcmp :: Query ()
+bitcmp = do
+    a <- free
+    assert (a < 8)
+    assert (a > 6)
+    r <- query (a :: Bit #8)
+    test "bitcmp" (r == Satisfiable 7)
+
 qtest :: Query ()
 qtest = do
     a <- free
@@ -53,6 +61,8 @@ qtest = do
     assert (bv_shl (0x15 :: Bit #8) i == 0xA8)
     ri <- query (i :: Bit #8)
     test "bit.lsh" (ri == Satisfiable 3)
+
+    bitcmp
 
 
 main :: IO ()

@@ -221,6 +221,10 @@ ytermS s e | isbinop "<" e = dobinop s e c_yices_arith_lt_atom
 ytermS s e | isbinop "<=" e = dobinop s e c_yices_arith_leq_atom
 ytermS s e | isbinop ">" e = dobinop s e c_yices_arith_gt_atom
 ytermS s e | isbinop ">=" e = dobinop s e c_yices_arith_geq_atom
+ytermS s e | isbinop "bv-lt" e = dobinop s e c_yices_bvlt_atom
+ytermS s e | isbinop "bv-le" e = dobinop s e c_yices_bvle_atom
+ytermS s e | isbinop "bv-gt" e = dobinop s e c_yices_bvgt_atom
+ytermS s e | isbinop "bv-ge" e = dobinop s e c_yices_bvge_atom
 ytermS s e | isbinop "+" e = dobinop s e c_yices_add
 ytermS s e | isbinop "-" e = dobinop s e c_yices_sub
 ytermS s e | isbinop "*" e = dobinop s e c_yices_mul

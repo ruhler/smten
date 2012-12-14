@@ -2,6 +2,7 @@
 module Seri.Prim.Bit (
     bitPs,
     eq_BitP, show_BitP,
+    lt_BitP, gt_BitP, leq_BitP, geq_BitP,
     add_BitP, sub_BitP, mul_BitP,
     and_BitP, or_BitP, not_BitP,
     shl_BitP, lshr_BitP,
@@ -18,6 +19,7 @@ import Seri.Bit
 bitPs :: [Prim]
 bitPs = [
     eq_BitP, show_BitP,
+    lt_BitP, gt_BitP, leq_BitP, geq_BitP,
     add_BitP, sub_BitP, mul_BitP,
     and_BitP, or_BitP, not_BitP,
     shl_BitP, lshr_BitP,
@@ -27,6 +29,18 @@ bitPs = [
 
 eq_BitP :: Prim
 eq_BitP = binaryP "Seri.Bit.__prim_eq_Bit" ((==) :: Bit -> Bit -> Bool)
+
+lt_BitP :: Prim
+lt_BitP = binaryP "Seri.Bit.__prim_lt_Bit" ((<) :: Bit -> Bit -> Bool)
+
+gt_BitP :: Prim
+gt_BitP = binaryP "Seri.Bit.__prim_gt_Bit" ((>) :: Bit -> Bit -> Bool)
+
+leq_BitP :: Prim
+leq_BitP = binaryP "Seri.Bit.__prim_leq_Bit" ((<=) :: Bit -> Bit -> Bool)
+
+geq_BitP :: Prim
+geq_BitP = binaryP "Seri.Bit.__prim_geq_Bit" ((>=) :: Bit -> Bit -> Bool)
 
 show_BitP :: Prim
 show_BitP = unaryP "Seri.Bit.__prim_show_Bit" (show :: Bit -> String)

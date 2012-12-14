@@ -36,6 +36,10 @@ module Seri.SMT.STP.FFI (
     c_vc_bvLeftShiftExprExpr,
     c_vc_bvRightShiftExprExpr,
     c_vc_bvConcatExpr,
+    c_vc_bvLtExpr,
+    c_vc_bvLeExpr,
+    c_vc_bvGtExpr,
+    c_vc_bvGeExpr,
 
     c_vc_getCounterExample,
     c_vc_isBool,
@@ -148,3 +152,14 @@ foreign import ccall "vc_getBVLength"
 foreign import ccall "getBVUnsignedLongLong"
     c_getBVUnsignedLongLong  :: Ptr STP_Expr -> IO CULLong
 
+foreign import ccall "vc_bvLtExpr"
+    c_vc_bvLtExpr  :: Ptr STP_VC -> Ptr STP_Expr -> Ptr STP_Expr -> IO (Ptr STP_Expr)
+
+foreign import ccall "vc_bvLeExpr"
+    c_vc_bvLeExpr  :: Ptr STP_VC -> Ptr STP_Expr -> Ptr STP_Expr -> IO (Ptr STP_Expr)
+
+foreign import ccall "vc_bvGtExpr"
+    c_vc_bvGtExpr  :: Ptr STP_VC -> Ptr STP_Expr -> Ptr STP_Expr -> IO (Ptr STP_Expr)
+
+foreign import ccall "vc_bvGeExpr"
+    c_vc_bvGeExpr  :: Ptr STP_VC -> Ptr STP_Expr -> Ptr STP_Expr -> IO (Ptr STP_Expr)

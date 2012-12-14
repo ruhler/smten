@@ -71,6 +71,9 @@ mkMask i = (shiftL 1 (fromInteger i)) - 1
 instance Eq Bit where
     (==) (Bit _ a) (Bit _ b) = a == b
 
+instance Ord Bit where
+    compare (Bit _ a) (Bit _ b) = compare a b
+
 instance Num Bit where
     (+) (Bit w a) (Bit _ b) = bv_make w (a+b)
     (*) (Bit w a) (Bit _ b) = bv_make w (a*b)

@@ -163,6 +163,10 @@ smtE' e@(AppE a b) =
        (VarE (Sig n _), [a, b]) | n == name "Prelude.__prim_mul_Integer" -> binary SMT.mulE a b
        (VarE (Sig n _), [a, b]) | n == name "Prelude.__prim_eq_Integer" -> binary SMT.eqE a b
        (VarE (Sig n _), [a, b]) | n == name "Seri.Bit.__prim_eq_Bit" -> binary SMT.eqE a b
+       (VarE (Sig n _), [a, b]) | n == name "Seri.Bit.__prim_lt_Bit" -> binary SMT.bvltE a b
+       (VarE (Sig n _), [a, b]) | n == name "Seri.Bit.__prim_leq_Bit" -> binary SMT.bvleqE a b
+       (VarE (Sig n _), [a, b]) | n == name "Seri.Bit.__prim_gt_Bit" -> binary SMT.bvgtE a b
+       (VarE (Sig n _), [a, b]) | n == name "Seri.Bit.__prim_geq_Bit" -> binary SMT.bvgeqE a b
        (VarE (Sig n _), [a, b]) | n == name "Seri.Bit.__prim_add_Bit" -> binary SMT.bvaddE a b
        (VarE (Sig n _), [a, b]) | n == name "Seri.Bit.__prim_sub_Bit" -> binary SMT.bvsubE a b
        (VarE (Sig n _), [a, b]) | n == name "Seri.Bit.__prim_or_Bit" -> binary SMT.bvorE a b
