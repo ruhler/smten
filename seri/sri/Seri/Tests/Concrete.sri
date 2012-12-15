@@ -1,0 +1,17 @@
+
+-- All tests involving only concrete values (no SMT).
+module Seri.Tests.Concrete where
+
+import Seri.Tests.Test
+import Seri.Tests.Basic
+
+tests :: IO ()
+tests = do
+    test "test.dummy" True
+    testbasics
+
+main :: IO ()
+main = do
+    tests
+    putStrLn "CONCRETE PASSED"
+

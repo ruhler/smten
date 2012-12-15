@@ -119,7 +119,7 @@ proc haskellf {module} {
     hrun ./$hsdir/[string map {. _} $module]
 }
 
-io Seri.Tests.Basic
+io Seri.Tests.Concrete
 io Seri.SMT.Tests.Core
 io Seri.SMT.Tests.Datatype
 io Seri.SMT.Tests.Scoped
@@ -137,7 +137,7 @@ io Seri.SMT.Tests.Sudoku
 io Seri.SMT.Tests.Sudoku3
 io Seri.SMT.Tests.Isolate0
 
-haskellf Seri.Tests.Basic
+haskellf Seri.Tests.Concrete
 haskellf Seri.SMT.Tests.Core
 haskellf Seri.SMT.Tests.Datatype
 haskellf Seri.SMT.Tests.Scoped

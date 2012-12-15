@@ -272,9 +272,8 @@ testlist = do
    test "isInfixOf" (isInfixOf "oba" "foobar")
    test "not isInfixOf" (not $ isInfixOf "abo" "foobar")
 
-tests :: IO ()
-tests = do
-    test "test.dummy" True
+testbasics :: IO ()
+testbasics = do
     testbasic
     testprelude
     testnumeric
@@ -282,9 +281,4 @@ tests = do
     testvector
     testbit
     testlist
-
-main :: IO ()
-main = do
-    tests
-    putStrLn "PASSED"
 
