@@ -3,12 +3,7 @@ module Seri.SMT.Tests.Integer where
 
 import Prelude
 import Seri.SMT.SMT
-
--- Verify the given predicate holds.
--- If it doesn't, report the given name as failing.
-test :: String -> Bool -> Query ()
-test nm True = return ()
-test nm False = error ("Test failed: " ++ nm)
+import Seri.Tests.Test
 
 qtest :: Query ()
 qtest = do

@@ -1,13 +1,9 @@
 
 module Seri.SMT.Tests.Bit where
 
-import Prelude
 import Seri.Bit
 import Seri.SMT.SMT
-
-test :: String -> Bool -> Query ()
-test nm True = return ()
-test nm False = error ("Test failed: " ++ nm)
+import Seri.Tests.Test
 
 bitcmp :: Query ()
 bitcmp = do

@@ -3,6 +3,7 @@ module Seri.SMT.Tests.Datatype where
 
 import Prelude
 import Seri.SMT.SMT
+import Seri.Tests.Test
 
 data MyEnum = E1 | E2 | E3 | E4
     deriving (Eq, Free)
@@ -29,10 +30,6 @@ mixval (Mix1 True _) = E1
 mixval (Mix1 _ _) = E2
 mixval (Mix2 True) = E3
 mixval _ = E4
-
-test :: String -> Bool -> Query ()
-test nm True = return ()
-test nm _ = error ("Test failed: " ++ nm)
 
 qtest :: Query ()
 qtest = do

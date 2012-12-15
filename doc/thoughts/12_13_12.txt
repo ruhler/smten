@@ -1,0 +1,123 @@
+
+Thu Dec 13 11:40:50 EST 2012
+
+Why is sharing hard?
+
+1. We need a way to inline simple arguments
+2. We need a way to inline arguments with 0 or 1 use (after elaboration)
+
+This should be independent of specialization.
+Question: why can't I do this?
+
+We know how we can represent sharing explicitly.
+
+LetEH f x fx
+
+f is the function.
+x is the argument.
+fx is the actual value of the (fully inlined) expression.
+
+Think of 'f' and 'x' as annotations to the expression 'fx' saying, oh, by the
+way, we get 'fx' by applying 'f' and 'x'.
+
+So, appEH needs to decide if it should inline or not. How does it work?
+
+1. We can't touch the argument, because it could blow up. We can't touch the
+argument until we try to touch 'fx'. Or rather... we can't touch the argument
+until we go far enough into 'fx' to where we might see it.
+
+If we try to touch 'fx', then we can throw away 'f' and 'x', but not
+otherwise.
+
+What I would like to do is something like the following:
+* Apply f to x to get fx
+* Count occurrences of 'x' left inside fx.
+    If 0 or 1, just use 'fx'
+    If more, we can then check 'x' to see if it is small.
+        If so, just use 'fx', else leave sharing.
+
+This is based on the following assumption:
+ * 'fx' is the fully inlined thing. We don't have any unknown variables we
+   might later learn about.
+
+Note: we can't check 'x' before testing for '0' occurrences in 'fx'. That
+should preserve the strictness property.
+
+I'll have to think harder to know if this will work or not. But that's the
+idea.
+
+How do we count occurrences of a variable in an expression?
+
+Have a thing called a variable. But it's going to have both the Sig and the
+value. We do all our computation normally, but we annotate where lambdas
+where, and where shared values were.
+
+During transformation from ExpH to Exp... we want some knot tying thing.
+
+Input is: For each local variable, we have a bool which says whether to inline
+it or not.
+
+If inline: choose the value. If not, choose the variable.
+
+The output will include: for each local variable: how many times it was seen
+(regardless of whether or not it was inlined).
+
+So the value of the variable will be a thunk:
+    if inline then x else s
+
+We can still count the number of occurrences of the variable seen, before
+knowing our choice. Then the inline predicate is:
+
+ (n < 2 || issimple x)
+
+
+And there you have it. Cheap. Safe. Inlines exactly what we want. The key is,
+we don't have Var or Exp. We have both simultaneously.
+
+It would be great if we could pick unique names on the fly. Then I would just
+have:
+
+ShareEH :: Sig -> ExpH -> ExpH
+
+Which says: The variable Sig occurs in the given expression, and is
+potentially worth sharing. ShareEH is exactly the same as the ExpH in every
+other respect.
+
+SharedEH :: Sig -> ExpH -> ExpH
+
+Which says: This is the value of Sig. It behaves the same as ExpH in every
+other respect.
+
+We can argue over names later if needed.
+
+fromExpH takes as an argument: (Map Sig Bool) to see if we should inline.
+When it finds SharedEH, it says:
+    incr times this sig is seen, record the value too.
+    if inline, put 
+
+Thu Dec 13 11:41:07 EST 2012
+
+* appEH should automatically inline any type not supported for smt.
+* plan is to do fresh naming during elaboration...
+Do I need to do fresh naming during elaboration? Can I not do that
+optimization yet?
+* I don't foresee any issue with performance or transformation or anything
+  like that...
+* There may be the possibility of <<loop>>... but I don't think so. There
+  shouldn't be.
+
+fromExpH sees ShareEH s x f v, it says:
+
+  s' <- fresh s
+  ...
+
+Trouble. I think we can't do this if fromExpH is monadic instead of pure.
+
+Note: we'll have problems with shared integer arguments, because smttype can't
+support integers and still work with STP. We need to support specialization
+better for that to work out.
+
+But this is good. I think it's an approach worth considering.
+  
+
+
