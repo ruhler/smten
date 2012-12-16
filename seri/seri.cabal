@@ -12,6 +12,7 @@ stability: experimental
 data-dir: sri
 data-files:
     Prelude.sri
+    Control/Monad/*.sri
     Data/*.sri
     Seri/*.sri
     Seri/Tests/*.sri

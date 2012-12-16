@@ -4,11 +4,13 @@ module Seri.Tests.Concrete where
 
 import Seri.Tests.Test
 import Seri.Tests.Basic
+import Seri.Tests.State
 
 tests :: IO ()
 tests = do
     test "test.dummy" True
     testbasics
+    teststate
 
 main :: IO ()
 main = do

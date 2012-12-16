@@ -17,8 +17,8 @@ test:
 testio:
 	./build/seri-bin/seri --io \
 		--include seri/sri \
-		--main-is Seri.SMT.Tests.Bit.main \
-		-f seri/sri/Seri/SMT/Tests/Bit.sri +RTS -p -K1g
+		--main-is Seri.Tests.Concrete.main \
+		-f seri/sri/Seri/Tests/Concrete.sri +RTS -p -K1g
 
 clean:
 	rm -rf build/seri-smt build/seri build/seri-bin build/test

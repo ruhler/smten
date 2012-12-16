@@ -1,0 +1,28 @@
+
+module Control.Monad.State where
+
+data State s a = State {
+    runState :: (s -> (a, s))
+}
+
+evalState :: State s a -> s -> a
+evalState m = fst . runState m
+
+execState :: State s a -> s -> s
+execState m = snd . runState m
+
+get :: State s s
+get = State $ \s -> (s, s)
+
+put :: s -> State s ()
+put s = State $ \_ -> ((), s)
+
+instance Monad (State s) where
+    fail = error
+    return x = State $ \s -> (x, s)
+    (>>=) x f = State $ \s ->   
+        let (a, s') = runState x s
+        in runState (f a) s'
+    (>>) x y = x >>= (\_ -> y)
+    
+
