@@ -212,6 +212,7 @@ hsDec (DataD n _ _) | n `elem` [
   name "Bit",
   name "[]",
   name "()",
+  name "(,)",
   name "Answer",
   name "Query",
   name "IO"] = return []

@@ -53,8 +53,8 @@ qtuple :: Query (Answer Integer)
 qtuple = do
     p <- qS S.free
     let x = S.__caseTrue p
-                   (S.__mkTuple2__ (1 :: S.Integer) (3 :: S.Integer))
-                   (S.__mkTuple2__ (2 :: S.Integer) (4 :: S.Integer))
+                   (seriS ((1, 3) :: (Integer, Integer)) :: S.Tuple2__ S.Integer S.Integer)
+                   (seriS ((2, 4) :: (Integer, Integer)) :: S.Tuple2__ S.Integer S.Integer)
     assertS (S.fst x S.== 1)
     query $ realizeS (S.snd x)
 
