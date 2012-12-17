@@ -12,7 +12,7 @@ module Seri.ExpH.Sugar (
     unitEH,
     boolEH, trueEH, falseEH, de_boolEH,
     integerEH, de_integerEH, bitEH, de_bitEH,
-    charEH, de_charEH,
+    charEH, de_charEH, de_tupleEH,
     ioEH, de_ioEH,
     pushfun, smttype,
     transform,
@@ -20,6 +20,7 @@ module Seri.ExpH.Sugar (
 
 import Control.Monad
 
+import Data.List(genericLength)
 import Data.Maybe(isJust)
 
 import Seri.Bit
@@ -258,4 +259,13 @@ transform g e =
        LamEH s t f -> lamEH s t $ \x -> me (f x)
        CaseEH x k y d -> caseEH (me x) k (me y) (me d)
        ErrorEH {} -> e
+
+de_tupleEH :: ExpH -> Maybe [ExpH]
+de_tupleEH x = 
+    case de_conEH x of
+       Just (nm, _, xs) -> do
+          n <- de_tupleN nm
+          guard $ genericLength xs == n
+          return xs
+       _ -> Nothing
 

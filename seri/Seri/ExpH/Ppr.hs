@@ -13,6 +13,10 @@ import Seri.ExpH.Sugar2
 
 instance Ppr ExpH where
     ppr e | Just v <- de_stringEH e = text (show v)
+    ppr e | Just xs <- de_listEH e
+      = text "[" <> sep (punctuate comma (map ppr xs)) <> text "]"
+    ppr e | Just xs <- de_tupleEH e
+      = text "(" <> sep (punctuate comma (map ppr xs)) <> text ")"
     ppr e | Just (s, _, v, f) <- de_letEH e
       = text "let" <+> text "{"
             <+> ppr s <+> text "=" <+> ppr v

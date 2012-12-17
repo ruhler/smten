@@ -313,6 +313,13 @@ elem x = any (\v -> v == x)
 notElem :: (Eq a) => a -> [a] -> Bool
 notElem x = all (\v -> v /= x)
 
+lookup :: (Eq a) => a -> [(a, b)] -> Maybe b
+lookup _ [] = Nothing
+lookup k ((x, y):xs) =
+  if k == x
+     then Just y
+     else lookup k xs
+
 class Show a where
     show :: a -> String
 
