@@ -271,6 +271,7 @@ testlist = do
    test "not isPrefixOf" (not $ isPrefixOf "fish" "foosball")
    test "isInfixOf" (isInfixOf "oba" "foobar")
    test "not isInfixOf" (not $ isInfixOf "abo" "foobar")
+   test "nub" (nub "abaabccabdabeaabc" == "abcde")
 
 testbasics :: IO ()
 testbasics = do

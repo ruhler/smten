@@ -12,3 +12,7 @@ isPrefixOf _ _ = False
 isInfixOf :: (Eq a) => [a] -> [a] -> Bool
 isInfixOf needle haystack = any (isPrefixOf needle) (tails haystack)
 
+nub :: (Eq a) => [a] -> [a]
+nub [] = []
+nub (x:xs) = x : nub (filter ((/=) x) xs)
+
