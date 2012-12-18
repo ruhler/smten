@@ -10,7 +10,6 @@ module Seri.HaskellF.Lib.Prelude (
     Unit__, __mkUnit__, __caseUnit__,
     Bool, __mkTrue, __mkFalse, __caseTrue, __caseFalse,
     List__, __mkCons__, __mkNil__, __caseCons__, __caseNil__,
-    Tuple2__, __mkTuple2__, __caseTuple2__,
 
     N__0, N__2p1, N__2p0, N__PLUS, N__MINUS, N__TIMES,
 
@@ -149,20 +148,6 @@ __caseCons__ :: (Symbolic a, Symbolic z) => List__ a -> (a -> List__ a -> z) -> 
 __caseCons__ = caseS ":"
 
 type String = List__ Char
-
-newtype Tuple2__ a b = Tuple2__ ExpH
-
-instance SeriT2 Tuple2__ where
-    seriT2 _ = conT (name "(,)")
-
-instance Symbolic2 Tuple2__ where
-    box2 = Tuple2__
-    unbox2 (Tuple2__ x) = x
-
-__mkTuple2__ :: (Symbolic a, Symbolic b) => a -> b -> Tuple2__ a b
-__mkTuple2__ = conS "(,)"
-__caseTuple2__ :: (Symbolic a, Symbolic b, Symbolic z) => Tuple2__ a b -> (a -> b -> z) -> z -> z
-__caseTuple2__ = caseS "(,)"
 
 newtype N__0 = N__0 ExpH
 

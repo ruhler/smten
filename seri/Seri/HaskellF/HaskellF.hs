@@ -66,6 +66,8 @@ import Seri.Ppr
 -- the same name (unlikely...). Really we should form a proper haskell name
 -- for whatever this name is used for (varid, conid)
 hsName :: Name -> H.Name
+hsName n
+ | Just i <- de_tupleN n = H.mkName $ "Tuple" ++ show i ++ "__"
 hsName n =
   let dequalify :: String -> String
       dequalify n = 
@@ -94,7 +96,9 @@ prependnm m n = hsName $ name m `nappend` n
 -- Given the name of a data constructor, return the name of the corresponding
 -- abstract constructor function.
 constrnm :: Name -> H.Name
-constrnm = prependnm "__mk"
+constrnm n 
+ | Just x <- de_tupleN n = constrnm . name $ "Tuple" ++ show x ++ "__"
+constrnm n = prependnm "__mk" n
 
 -- Given the name of a data constructor, return the name of the function for
 -- doing a case match against the constructor.
@@ -212,12 +216,9 @@ hsDec (DataD n _ _) | n `elem` [
   name "Bit",
   name "[]",
   name "()",
-  name "(,)",
   name "Answer",
   name "Query",
   name "IO"] = return []
-
-hsDec (DataD n _ _) | Just x <- de_tupleN n = hsDec $ tuple (fromIntegral x)
 
 -- data Foo a b ... = FooA FooA1 FooA2 ...
 --                  | FooB FooB1 FooB2 ...
@@ -399,13 +400,6 @@ unknowntype UnknownT = True
 
 harrowsT :: [H.Type] -> H.Type
 harrowsT = foldr1 (\a b -> H.AppT (H.AppT H.ArrowT a) b)
-
--- Tuple declarations renamed.
-tuple :: Int -> Dec
-tuple i = 
-  let nm = name $ "Tuple" ++ show i ++ "__"
-      vars = [NormalTV (name [c]) | c <- take i "abcdefghijklmnopqrstuvwxyz"]
-  in DataD nm vars [Con nm (map tyVarType vars)]
 
 clssymbolic :: Integer -> H.Name
 clssymbolic 0 = H.mkName "S.Symbolic"
