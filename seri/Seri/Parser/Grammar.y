@@ -660,7 +660,7 @@ coalesce ((PSig s):ds) =
         (syns, rest) = coalesce rds
         d = case ms of
                 [] -> PrimD s
-                _ -> ValD s (clausesE [c | PClause _ c <- ms]) 
+                _ -> ValD s (clauseE [c | PClause _ c <- ms]) 
     in (syns, d:rest)
 coalesce ((PDec d):ds) =
    let (syns, rest) = coalesce ds
@@ -675,7 +675,7 @@ icoalesce [] = []
 icoalesce ((n, c):ms) =
     let (me, rms) = span (\(n', _) -> n' == n) ms
         rest = icoalesce rms
-        m = Method n (clausesE (c : map snd me))
+        m = Method n (clauseE (c : map snd me))
     in (m : rest)
 
 -- A context is parsed first as a type to avoid a reduce/reduce conflict. Here
