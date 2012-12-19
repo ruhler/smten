@@ -1,0 +1,5 @@
+
+module Debug.Trace where
+
+trace :: String -> a -> a
+

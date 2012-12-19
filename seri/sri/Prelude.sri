@@ -182,6 +182,18 @@ instance (Eq a, Ord a, Eq b, Ord b) => Ord (a, b) where
     (<=) a b = (a < b) || (a == b)
     (>=) a b = not (a < b)
 
+data Ordering = LT | EQ | GT
+    deriving (Eq)
+
+-- TODO: make 'compare' a method of 'Ord'
+compare :: (Ord a, Eq a) => a -> a -> Ordering
+compare x y =
+  if (x == y)
+    then EQ
+    else if (x <= y)
+            then LT
+            else GT
+
 fst :: (a, b) -> a
 fst (x, _) = x
 

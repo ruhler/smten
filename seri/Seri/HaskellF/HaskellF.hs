@@ -349,6 +349,7 @@ hsDec (PrimD s@(TopSig n _ _))
  | n == name "Prelude.fail_io" = return []
  | n == name "Prelude.putChar" = return []
  | n == name "Prelude.getContents" = return []
+ | n == name "Debug.Trace.trace" = return []
  | n == name "Seri.SMT.SMT.__prim_free" = return []
  | n == name "Seri.SMT.SMT.assert" = return []
  | n == name "Seri.SMT.SMT.query" = return []

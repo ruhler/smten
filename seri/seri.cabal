@@ -13,6 +13,7 @@ data-dir: sri
 data-files:
     Prelude.sri
     Control/Monad/*.sri
+    Debug/*.sri
     Data/*.sri
     Seri/*.sri
     Seri/Tests/*.sri

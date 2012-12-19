@@ -30,7 +30,7 @@ module Seri.HaskellF.Lib.Prelude (
     __prim_truncate_Bit, __prim_concat_Bit, __prim_extract_Bit,
     error,
     __main_wrapper,
-    valueof, numeric,
+    valueof, numeric, trace,
     ) where
 
 import Prelude hiding (
@@ -313,6 +313,9 @@ numeric = primS numericP
 
 valueof :: (Symbolic a) => a -> Integer
 valueof = primS valueofP
+
+trace :: (Symbolic a) => String -> a -> a
+trace = primS traceP
 
 __prim_lt_Bit :: (Symbolic n) => Bit n -> Bit n -> Bool
 __prim_lt_Bit = primS lt_BitP
