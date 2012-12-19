@@ -160,16 +160,36 @@ instance Ord Integer where
     (<=) = __prim_leq_Integer
     (>=) = __prim_geq_Integer
 
+instance Ord Char where
+    (<) a b = __prim_toInteger_Char a < __prim_toInteger_Char b
+    (>) a b = __prim_toInteger_Char a > __prim_toInteger_Char b
+    (<=) a b = __prim_toInteger_Char a <= __prim_toInteger_Char b
+    (>=) a b = __prim_toInteger_Char a >= __prim_toInteger_Char b
+
+instance (Eq a, Ord a) => Ord [a] where
+    (<) [] [] = False
+    (<) [] (_:_) = True
+    (<) (a:as) (b:bs) = (a < b) || ((a == b) && (as < bs))
+    (<) (_:_) [] = False
+
+    (>) a b = not (a <= b)
+    (<=) a b = (a < b) || (a == b)
+    (>=) a b = not (a < b)
+
+instance (Eq a, Ord a, Eq b, Ord b) => Ord (a, b) where
+    (<) (a, b) (c, d) = (a < c) || ((a == c) && (b < d))
+    (>) a b = not (a <= b)
+    (<=) a b = (a < b) || (a == b)
+    (>=) a b = not (a < b)
+
 fst :: (a, b) -> a
 fst (x, _) = x
 
 snd :: (a, b) -> b
 snd (_, y) = y
 
--- Note: curry is used in syntactic sugar for multi arg pattern matching, so
--- we can't use that in its implementation.
 curry :: ((a, b) -> c) -> a -> b -> c
-curry = \f -> \a -> \b -> f (a, b)
+curry f a b = f (a, b)
 
 error :: String -> a
 

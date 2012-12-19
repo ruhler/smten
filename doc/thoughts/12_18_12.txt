@@ -1,0 +1,46 @@
+
+Tue Dec 18 20:46:51 EST 2012
+
+Performance improvement idea.
+
+Looking at profiles for shampi, I see a ton of time spent in:
+
+curry, __mkTuple2__, __caseTuple2__.
+
+I believe this is because of how we desugar multi-argument function clauses.
+
+foo p1 p2 = a
+foo p3 p4 = b
+...
+
+Is desugared into:
+    curry (\x -> case x of
+                    () -> \x1 x2 -> case x1 of
+                                      p1 -> ...
+
+or approximately. So every time we have multi-argument function clauses, we
+first box up the arguments into a tuple (in the implementation of curry), then
+unbox the tuple back to the arguments. This is silly.
+
+Instead, don't use curry for multi-argument function clauses. It's easy,
+because we already support all the functionality we need.
+
+I propose we pull the following common function out in Match.hs:
+
+clauseE :: MMatch -> Exp -> Fresh Exp
+
+It creates a function which matches all the arguments. This can be used both
+for ConP and for clausesE. No need for curry. And we are all set.
+
+Sounds good to me. First I would like to have a benchmark to try it on, see
+how performance improves given this.
+
+Yes! Good. Sort of...
+
+Sudoku has curry, mkTuple and caseTuple as 2,3 and 4 slots on the profile. I
+can see if I can make those go away to evaluate this change.
+
+Tue Dec 18 21:14:03 EST 2012
+
+Well, I wrote the rought draft of the code, and it compiles, but seems to be
+buggy. I'll have to look at it tomorrow.

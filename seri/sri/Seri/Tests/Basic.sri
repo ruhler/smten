@@ -273,6 +273,10 @@ testlist = do
    test "not isInfixOf" (not $ isInfixOf "abo" "foobar")
    test "nub" (nub "abaabccabdabeaabc" == "abcde")
 
+testchar :: IO ()
+testchar = do
+   test "char.lt" ('a' < 'z')
+
 testbasics :: IO ()
 testbasics = do
     testbasic
@@ -282,4 +286,5 @@ testbasics = do
     testvector
     testbit
     testlist
+    testchar
 

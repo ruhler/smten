@@ -68,6 +68,7 @@ Pretty Printer::
 Performance::
 * Play with GHC Sparks and non-strict state monads
 * Use the yices1 native interface where possible (everywhere?)
+* In case desugar, use varp and asp directly instead of indirectly
 
 ExpH::
 * Perhaps case statements should consider all constructors at once instead of

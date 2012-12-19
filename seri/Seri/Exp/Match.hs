@@ -51,31 +51,9 @@ matchE x (SMatch (AsP nm p) yv) n = do
 matchE x (SMatch (LitP l) yv) n =
   let p = appsE (varE (Sig (name "==") UnknownT)) [litE l, x]
   in return $ ifE p yv n
-matchE x (SMatch (ConP nm ps) yv) n | isSimple n =
-  let -- case x of
-      --    K pa pb pc -> yv
-      --    _ -> n
-      -- 
-      -- Translates to:
-      -- case x of
-      --    K -> \a b c -> 
-      --            case a of
-      --               pa -> case b of
-      --                       pb -> case c of 
-      --                               pc -> yv
-      --                               _ -> n
-      --                       _ -> n
-      --               _ -> n
-      --    _ -> n
-      mkcases :: (Fresh m) => [(Pat, Exp)] -> Exp -> Exp -> m Exp
-      mkcases [] y n = return y
-      mkcases ((p, x):ps) y n = do
-        body <- mkcases ps y n
-        matchE x (SMatch p body) n
-  in do
-      vars <- mapM fresh [Sig (name $ "_p" ++ show i) UnknownT | i <- [1..(length ps)]]
-      body <- mkcases [(p, varE v) | (p, v) <- zip ps vars] yv n
-      return $ CaseE x (Sig nm UnknownT) (lamsE vars body) n
+matchE x (SMatch (ConP nm ps) yv) n | isSimple n = do
+      y <- clauseE' [MMatch ps yv] n
+      return $ CaseE x (Sig nm UnknownT) y n
 matchE x m n = do
   nv <- fresh (Sig (name "_n") UnknownT)
   body <- matchE x m (varE nv)
@@ -102,47 +80,42 @@ matchesE e ms n = do
 mcaseE :: Exp -> [SMatch] -> Exp
 mcaseE x ms = runFreshPretty $ matchesE x ms (errorE "case no match")
 
--- | Single argument clause expression
-sclauseE :: [SMatch] -> Exp
-sclauseE ms =
-  let x = Sig (name "_x") UnknownT
-  in lamE x $ mcaseE (varE x) ms
-
--- | Multi-argument clause expression
--- This converts multi-arg clause expressions to single-arg clause
--- expressions, then calls sclauseE.
---
---  case of
---    p1a, p1b, p1c -> m1
---    p2a, p2b, p2c -> m2
---
--- Is converted into:
---   (curry (curry (
---      case of
---         ((p1a, p1b), p1c) -> m1
---         ((p2a, p2b), p2c) -> m1
 clauseE :: [MMatch] -> Exp
-clauseE (MMatch [] b : _) = b
-clauseE ms@(MMatch ps _ : _) = 
-  let tupp :: Pat -> Pat -> Pat
-      tupp a b = tupleP [a, b]
+clauseE ms = runFreshPretty $ clauseE' ms (errorE "case no match")
 
-      repat :: [Pat] -> Pat
-      repat = foldl1 tupp
+clauseE' :: (Fresh f) => [MMatch] -> Exp -> f Exp
+clauseE' ms@(MMatch ps _ : _) n = do
+    vars <- mapM fresh [Sig (name $ "_p" ++ show i) UnknownT | i <- [1..(length ps)]]
+    b <- mmatchesE vars ms n
+    return $ lamsE vars b
 
-      -- Apply curry to the given expression n times.
-      curryn :: Int -> Exp -> Exp
-      curryn n e | n < 0 = error $ "curryn with " ++ show n
-      curryn 0 e = e
-      curryn n e = curryn (n-1) (curryE e)
+mmatchesE :: (Fresh f) => [Sig] -> [MMatch] -> Exp -> f Exp
+mmatchesE args [m] n = mmatchE args m n
+mmatchesE args (m:ms) n = do
+    n' <- mmatchesE args ms n
+    mmatchE args m n'
 
-      -- Apply curry to the given expression.
-      curryE :: Exp -> Exp
-      curryE e = appE (varE (Sig (name "curry") UnknownT)) e
-
-      sms = [SMatch (repat ps) b | MMatch ps b <- ms]
-  in curryn (length ps - 1) (sclauseE sms)
-
+mmatchE :: (Fresh f) => [Sig] -> MMatch -> Exp -> f Exp
+mmatchE args (MMatch ps yv) n =
+  let -- case a b c of
+      --    pa pb pc -> yv
+      --    _ -> n
+      --
+      -- Translates to:
+      --  \a b c -> 
+      --     case a of
+      --        pa -> case b of
+      --                pb -> case c of 
+      --                        pc -> yv
+      --                        _ -> n
+      --                _ -> n
+      --        _ -> n
+      mkcases :: (Fresh m) => [(Pat, Exp)] -> Exp -> Exp -> m Exp
+      mkcases [] y n = return y
+      mkcases ((p, x):ps) y n = do
+        body <- mkcases ps y n
+        matchE x (SMatch p body) n
+  in mkcases (zip ps (map varE args)) yv n
 
 -- | Lambda with pattern matching.
 mlamE :: MMatch -> Exp
