@@ -1,7 +1,13 @@
 
+{-# LANGUAGE PatternGuards #-}
+
 module Seri.ExpH.FromExpH (
     fromExpH
   ) where
+
+import Control.Monad.State
+import qualified Data.Map as Map
+import qualified Data.Set as Set
 
 import Seri.Sig
 import Seri.Name
@@ -38,4 +44,43 @@ fromExpH (CaseEH _ arg s yes no) =
   in CaseE arg' s yes' no'
 fromExpH (ErrorEH t s)
   = fromExpH $ appEH (varEH (Sig (name "Prelude.error") (arrowT stringT t))) (stringEH s) 
+
+data Use = Multi | Single
+    deriving (Eq)
+
+-- Find all the subexpressions in the given expression which should be shared.
+sharing :: ExpH -> Set.Set ID
+sharing e =
+  let -- Return the ID of the given complex expression, or None if the
+      -- expression is simple
+      getid :: ExpH -> Maybe ID
+      getid e
+        | ConEH _ _ _ [] <- e = Nothing
+        | ConEH x _ _ _ <- e = Just x
+        | PrimEH x _ _ _ _ <- e = Just x
+        | AppEH x _ _ <- e = Just x
+        | LamEH x _ _ _ <- e = Just x
+        | CaseEH x _ _ _ _ <- e = Just x
+        | otherwise = Nothing
+     
+      traverse :: ExpH -> State (Map.Map ID Use) ()
+      traverse e
+        | Just id <- getid e = do
+            m <- get
+            case Map.lookup id m of
+               Just Single -> put (Map.insert id Multi m)
+               Just Multi -> return ()
+               Nothing -> put (Map.insert id Single m) >> subtraverse e
+        | otherwise = return ()
+
+      subtraverse :: ExpH -> State (Map.Map ID Use) ()
+      subtraverse e
+        | ConEH _ _ _ xs <- e = mapM_ traverse xs
+        | PrimEH _ _ _ _ xs <- e = mapM_ traverse xs
+        | AppEH _ a b <- e = mapM_ traverse [a, b]
+        | CaseEH _ x _ y n <- e = mapM_ traverse [x, y, n]
+        | otherwise = return ()
+
+      m = execState (traverse e) Map.empty
+  in Map.keysSet (Map.filter (== Multi) m)
 
