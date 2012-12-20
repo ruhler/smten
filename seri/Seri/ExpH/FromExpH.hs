@@ -19,31 +19,7 @@ import Seri.ExpH.SeriEHs
 
 -- Translate back to the normal Exp representation
 fromExpH :: ExpH -> Exp
-fromExpH (LitEH l) = LitE l
-fromExpH (ConEH _ n t xs) = 
-  let xs' = map fromExpH xs
-      t' = arrowsT $ (map typeof xs') ++ [t]
-  in appsE (ConE (Sig n t')) xs'
-fromExpH (VarEH s) = VarE s
-fromExpH (PrimEH _ n t _ xs) =
-  let xs' = map fromExpH xs
-      t' = arrowsT $ (map typeof xs') ++ [t]
-  in appsE (VarE (Sig n t')) xs'
-fromExpH (AppEH _ f x) =
-  let f' = fromExpH f
-      x' = fromExpH x   
-  in AppE f' x'
-fromExpH (LamEH _ (Sig nm t) _ f) =
-  let s' = identify $ \x -> Sig (nm `nappend` (name (show x))) t
-      b = fromExpH (f (VarEH s'))
-  in LamE s' b
-fromExpH (CaseEH _ arg s yes no) =
-  let arg' = fromExpH arg
-      yes' = fromExpH yes
-      no' = fromExpH no
-  in CaseE arg' s yes' no'
-fromExpH (ErrorEH t s)
-  = fromExpH $ appEH (varEH (Sig (name "Prelude.error") (arrowT stringT t))) (stringEH s) 
+fromExpH e = convert (sharing e) e
 
 data Use = Multi | Single
     deriving (Eq)
@@ -51,19 +27,7 @@ data Use = Multi | Single
 -- Find all the subexpressions in the given expression which should be shared.
 sharing :: ExpH -> Set.Set ID
 sharing e =
-  let -- Return the ID of the given complex expression, or None if the
-      -- expression is simple
-      getid :: ExpH -> Maybe ID
-      getid e
-        | ConEH _ _ _ [] <- e = Nothing
-        | ConEH x _ _ _ <- e = Just x
-        | PrimEH x _ _ _ _ <- e = Just x
-        | AppEH x _ _ <- e = Just x
-        | LamEH x _ _ _ <- e = Just x
-        | CaseEH x _ _ _ _ <- e = Just x
-        | otherwise = Nothing
-     
-      traverse :: ExpH -> State (Map.Map ID Use) ()
+  let traverse :: ExpH -> State (Map.Map ID Use) ()
       traverse e
         | Just id <- getid e = do
             m <- get
@@ -83,4 +47,58 @@ sharing e =
 
       m = execState (traverse e) Map.empty
   in Map.keysSet (Map.filter (== Multi) m)
+
+convert :: Set.Set ID -> ExpH -> Exp
+convert share e =
+  let -- Generate the definition for this expression.
+      defineM :: ExpH -> State [(ID, Exp)] Exp
+      defineM e
+        | LitEH l <- e = return $ LitE l
+        | ConEH _ n t xs <- e = do
+            xs' <- mapM useM xs
+            let t' = arrowsT $ (map typeof xs') ++ [t]
+            return $ appsE (ConE (Sig n t')) xs'
+        | VarEH s <- e = return $ VarE s
+        | PrimEH _ n t _ xs <- e = do
+            xs' <- mapM useM xs
+            let t' = arrowsT $ (map typeof xs') ++ [t]
+            return $ appsE (varE (Sig n t')) xs'
+        | AppEH _ f x <- e = do
+            f' <- useM f
+            x' <- useM x
+            return $ AppE f' x'
+        | LamEH _ (Sig nm t) _ f <- e = do
+            let s' = identify $ \x -> Sig (nm `nappend` (name (show x))) t
+            b <- useM (f (VarEH s'))
+            return $ LamE s' b
+        | CaseEH _ arg s yes no <- e = do
+            arg' <- useM arg
+            yes' <- useM yes
+            no' <- useM no
+            return $ CaseE arg' s yes' no'
+        | ErrorEH t s <- e = do
+            useM $ appEH (varEH (Sig (name "Prelude.error") (arrowT stringT t))) (stringEH s)
+            
+
+      -- Generate the use for this expression.
+      -- So, if it's shared, turns into a VarE.
+      useM :: ExpH -> State [(ID, Exp)] Exp
+      useM e
+        | Just id <- getid e
+        , Set.member id share = do
+            m <- get
+            let var = VarE (Sig (nameof id) (typeof e))
+            case lookup id m of
+                Just _ -> return var
+                Nothing -> do
+                   v <- defineM e
+                   modify $ \m -> (id, v):m
+                   return var
+        | otherwise = defineM e
+    
+      (body, bindings) = runState (defineM e) []
+
+      nameof :: ID -> Name
+      nameof x = name $ "s~" ++ show x
+  in letsE [(Sig (nameof x) (typeof v), v) | (x, v) <- reverse bindings] body
 

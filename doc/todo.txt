@@ -69,7 +69,10 @@ Performance::
 * Play with GHC Sparks and non-strict state monads
 * Use the yices1 native interface where possible (everywhere?)
 * In case desugar, use varp and asp directly instead of indirectly
+
+Sharing::
 * Preserve sharing in "transform" function
+* Why do we sometimes share "free~2"?? For example, in Datatype test.
 
 ExpH::
 * Perhaps case statements should consider all constructors at once instead of

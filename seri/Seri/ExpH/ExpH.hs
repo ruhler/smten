@@ -1,11 +1,11 @@
 
 {-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE PatternGuards #-}
 
 -- | HOAS form for Seri Expressions, geared towards high performance
 -- elaboration.
 module Seri.ExpH.ExpH (
-    ExpH(..), ID, identify,
+    ExpH(..), ID, identify, getid,
     ) where
 
 import System.IO.Unsafe
@@ -63,3 +63,14 @@ identify f =
         return (f x)
   in unsafePerformIO $ identifyIO f
 
+-- Return the ID of the given complex expression, or None if the
+-- expression is simple
+getid :: ExpH -> Maybe ID
+getid e
+  | ConEH _ _ _ [] <- e = Nothing
+  | ConEH x _ _ _ <- e = Just x
+  | PrimEH x _ _ _ _ <- e = Just x
+  | AppEH x _ _ <- e = Just x
+  | LamEH x _ _ _ <- e = Just x
+  | CaseEH x _ _ _ _ <- e = Just x
+  | otherwise = Nothing
