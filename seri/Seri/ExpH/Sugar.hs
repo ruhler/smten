@@ -36,14 +36,14 @@ conEH (Sig n t) =
  let coneh :: Name -> Type -> [ExpH] -> ExpH
      coneh n t args
         | Just (it, ot) <- de_arrowT t =
-            LamEH (Sig (name "c") it) ot $ \x -> coneh n ot (args ++ [x])
-        | otherwise = ConEH n t args
+            lamEH (Sig (name "c") it) ot $ \x -> coneh n ot (args ++ [x])
+        | otherwise = identify $ \id -> ConEH id n t args
  in coneh n t []
 
 -- Check for a fully applied constructor.
 de_conEH :: ExpH -> Maybe (Name, Type, [ExpH])
 de_conEH e
- | (ConEH n t xs) <- e = Just (n, t, xs)
+ | (ConEH _ n t xs) <- e = Just (n, t, xs)
  | otherwise = Nothing
 
 -- Check for the given fully applied constructor.
@@ -73,8 +73,8 @@ de_varEH _ = Nothing
 -- sharing as much as possible.
 appEH :: ExpH -> ExpH -> ExpH
 appEH f x
- | LamEH (Sig _ t) _ g <- f = g x
- | CaseEH a k y n <- f =
+ | LamEH _ (Sig _ t) _ g <- f = g x
+ | CaseEH _ a k y n <- f =
     -- Perform Case Argument Pushing:
     -- (case a of { k -> y ; _ -> n}) x
     --  where y = \v1 -> \v2 -> ... -> y v
@@ -86,21 +86,21 @@ appEH f x
              y' = onyv kargs g y
              n' = g n
          in caseEH a k y' n'
- | otherwise = AppEH f x
+ | otherwise = identify $ \id -> AppEH id f x
 
 smttype :: Type -> Bool
 --smttype t = or [ t == boolT, t == integerT, isJust (de_bitT t) ]
 smttype t = or [ t == boolT, isJust (de_bitT t) ]
 
 de_appEH :: ExpH -> Maybe (ExpH, ExpH)
-de_appEH (AppEH f x) = Just (f, x)
+de_appEH (AppEH _ f x) = Just (f, x)
 de_appEH _ = Nothing
 
 appsEH :: ExpH -> [ExpH] -> ExpH
 appsEH f xs = foldl appEH f xs
 
 de_appsEH :: ExpH -> (ExpH, [ExpH])
-de_appsEH (AppEH a b) =
+de_appsEH (AppEH _ a b) =
     let (f, as) = de_appsEH a
     in (f, as ++ [b])
 de_appsEH t = (t, [])
@@ -109,7 +109,7 @@ de_appsEH t = (t, [])
 --  s - name and type of argument to function
 --  t - output type of the function
 lamEH :: Sig -> Type -> (ExpH -> ExpH) -> ExpH
-lamEH = LamEH
+lamEH s t f = identify $ \id -> LamEH id s t f
 
 -- letEH s t v f
 --  s - name and type of let variable
@@ -123,8 +123,8 @@ letEH s t v b = appEH (lamEH s t b) v
 --  t - type of let body
 --  v - value of let variable
 de_letEH :: ExpH -> Maybe (Sig, Type, ExpH, ExpH -> ExpH)
-de_letEH (AppEH f v)
-  | LamEH s t b <- f = Just (s, t, v, b)
+de_letEH (AppEH _ f v)
+  | LamEH _ s t b <- f = Just (s, t, v, b)
 de_letEH _ = Nothing
 
 unitEH :: ExpH
@@ -208,15 +208,15 @@ caseEH x k@(Sig nk _) y n
             Sig nm' _ <- de_varEH e
             guard $ nm' == nm
             return (boolEH b)
-    in CaseEH x k (transform (g kv) y) (transform (g (not kv)) n)
- | otherwise = CaseEH x k y n
+    in identify $ \id -> CaseEH id x k (transform (g kv) y) (transform (g (not kv)) n)
+ | otherwise = identify $ \id -> CaseEH id x k y n
 
 -- Function pushing:
 --    f (case x of { k -> y; _ -> n})
 -- Turns into:
 --    let _f = f in case x of { k -> _f y; _ -> _f n}
 pushfun :: ExpH -> ExpH -> ExpH
-pushfun f (CaseEH x k y n) =
+pushfun f (CaseEH _ x k y n) =
  let kargs = length (de_arrowsT (typeof k)) - 1
      Just (_, ot) = de_arrowT $ typeof f
      g yv = appEH 
@@ -235,7 +235,7 @@ ifEH p a b = caseEH p (Sig (name "True") boolT) a b
 -- Returns: y' = \v1 -> \v2 -> ... -> \vn -> f yv
 onyv :: Int -> (ExpH -> ExpH) -> ExpH -> ExpH
 onyv 0 f yv = f yv
-onyv n f (LamEH s t b) =
+onyv n f (LamEH _ s t b) =
   let ts = de_arrowsT t
       (its, fot) = splitAt n ts
       fot' = arrowsT $ tail fot
@@ -246,18 +246,19 @@ onyv n f (LamEH s t b) =
 -- Applies the given function to each subexpression. Any matching
 -- subexpression is replaced with the returned value, otherwise it continues
 -- to recurse.
+-- TODO: preserve sharing here!
 transform :: (ExpH -> Maybe ExpH) -> ExpH -> ExpH
 transform g e | Just v <- g e = v
 transform g e =
   let me = transform g
   in case e of
        LitEH {} -> e
-       ConEH n s xs -> ConEH n s (map me xs)
+       ConEH _ n s xs -> identify $ \id -> ConEH id n s (map me xs)
        VarEH {} -> e 
-       PrimEH _ _ f xs -> f (map me xs)
-       AppEH f x -> AppEH (me f) (me x)
-       LamEH s t f -> lamEH s t $ \x -> me (f x)
-       CaseEH x k y d -> caseEH (me x) k (me y) (me d)
+       PrimEH _ _ _ f xs -> f (map me xs)
+       AppEH _ f x -> identify $ \id -> AppEH id (me f) (me x)
+       LamEH _ s t f -> lamEH s t $ \x -> me (f x)
+       CaseEH _ x k y d -> caseEH (me x) k (me y) (me d)
        ErrorEH {} -> e
 
 de_tupleEH :: ExpH -> Maybe [ExpH]

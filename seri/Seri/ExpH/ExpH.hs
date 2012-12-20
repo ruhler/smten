@@ -20,25 +20,25 @@ import Seri.Sig
 type ID = Integer
 
 data ExpH = LitEH Lit
-          | ConEH Name Type [ExpH]
+          | ConEH ID Name Type [ExpH]
                 -- ^ type is for fully applied constructor.
           | VarEH Sig
-          | PrimEH Name Type ([ExpH] -> ExpH) [ExpH]
+          | PrimEH ID Name Type ([ExpH] -> ExpH) [ExpH]
                 -- ^ type is for fully applied primitive.
          
           -- | AppEH f x i
           --  f - the function
           --  x - the argument
-          | AppEH ExpH ExpH
+          | AppEH ID ExpH ExpH
 
           -- | LamEH s t f:
           --    s - name and type of the function argument. 
           --        The name is for debugging purposes only.
           --    t - the return type of the function
           --    f - the haskell representation of the function.
-          | LamEH Sig Type (ExpH -> ExpH)
+          | LamEH ID Sig Type (ExpH -> ExpH)
 
-          | CaseEH ExpH Sig ExpH ExpH
+          | CaseEH ID ExpH Sig ExpH ExpH
             -- ^ case e1 of
             --      k -> e2
             --      _ -> e3

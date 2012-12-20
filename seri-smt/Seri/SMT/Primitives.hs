@@ -79,9 +79,9 @@ queryP =
         res <- query (realize arg)
         let ta = AppT (ConT (name "Answer")) (typeof arg)
         case res of
-            Satisfiable arg' -> return $ ConEH (name "Satisfiable") ta [arg']
-            Unsatisfiable -> return $ ConEH (name "Unsatisfiable") ta []
-            _ -> return $ ConEH (name "Unknown") ta []
+            Satisfiable arg' -> return $ identify $ \id -> ConEH id (name "Satisfiable") ta [arg']
+            Unsatisfiable -> return $ identify $ \id -> ConEH id (name "Unsatisfiable") ta []
+            _ -> return $ identify $ \id -> ConEH id (name "Unknown") ta []
   in unaryP "Seri.SMT.SMT.query" f
 
 querySP :: Prim

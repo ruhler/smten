@@ -51,7 +51,7 @@ unaryTP n f =
             -- ==> case x of { k -> f y ; _ -> f n }
             let g = lamEH (Sig (name "_x") (typeof a)) t $ \a' -> impl t [a']
             in pushfun g a
-        | otherwise = PrimEH nm t (impl t) [a]
+        | otherwise = identify $ \id -> PrimEH id nm t (impl t) [a]
 
       -- The type is the type of the primitive function without arguments
       -- applied.
@@ -89,7 +89,7 @@ binaryTP n f =
             -- ==> case x of { k -> f a y ; _ -> f a n } 
             let g = lamEH (Sig (name "_x") (typeof b)) t $ \b' -> impl t [a, b']
             in pushfun g b
-        | otherwise = PrimEH nm t (impl t) [a, b]
+        | otherwise = identify $ \id -> PrimEH id nm t (impl t) [a, b]
 
       -- The type is the type of the primitive function without arguments
       -- applied.

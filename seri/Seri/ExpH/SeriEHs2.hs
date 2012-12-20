@@ -31,7 +31,7 @@ instance (SeriEH a, SeriEH b) => SeriEH (a -> b) where
       in lamEH (Sig (name "x") (seriT (ta f))) (seriT (tb f)) $ \x ->
             seriEH $ f (fromMaybe (error "seriEH (->)") (de_seriEH x))
             
-    de_seriEH (LamEH _ _ f) = return $ \x ->
+    de_seriEH (LamEH _ _ _ f) = return $ \x ->
        let fx = f (seriEH x)
        in fromMaybe (error $ "de_seriEH (->): " ++ pretty fx) (de_seriEH fx)
     de_seriEH _ = Nothing

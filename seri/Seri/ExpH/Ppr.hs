@@ -23,12 +23,12 @@ instance Ppr ExpH where
             <+> text "}" <+> text "in" <+> ppr (f (VarEH s))
 
     ppr (LitEH l) = ppr l
-    ppr (ConEH n _ xs) = ppr (appsEH (varEH (Sig n UnknownT)) xs)
+    ppr (ConEH _ n _ xs) = ppr (appsEH (varEH (Sig n UnknownT)) xs)
     ppr (VarEH s) = ppr s
-    ppr (PrimEH n _ _ xs) = ppr (appsEH (varEH (Sig n UnknownT)) xs)
-    ppr (AppEH f x) = parens (ppr f) <+> parens (ppr x)
-    ppr (LamEH s _ f) = text "\\" <+> ppr s <+> text "->" <+> text "..."
-    ppr (CaseEH e1 p e2 e3)
+    ppr (PrimEH _ n _ _ xs) = ppr (appsEH (varEH (Sig n UnknownT)) xs)
+    ppr (AppEH _ f x) = parens (ppr f) <+> parens (ppr x)
+    ppr (LamEH _ s _ f) = text "\\" <+> ppr s <+> text "->" <+> text "..."
+    ppr (CaseEH _ e1 p e2 e3)
         = text "case" <+> parens (ppr e1) <+> text "of" <+> text "{"
             $+$ nest tabwidth (vcat [
                     ppr p <+> text "->" <+> ppr e2,
