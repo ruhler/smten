@@ -10,36 +10,32 @@ import Seri.Exp
 import Seri.ExpH.ExpH
 import Seri.ExpH.Sugar
 import Seri.ExpH.SeriEHs
-import Seri.Fresh
-
-fromExpH :: ExpH -> Exp
-fromExpH e = runFreshPretty (fromExpHM e)
 
 -- Translate back to the normal Exp representation
-fromExpHM :: (Fresh f) => ExpH -> f Exp
-fromExpHM (LitEH l) = return (LitE l)
-fromExpHM (ConEH n t xs) = do
-    xs' <- mapM fromExpHM xs
-    let t' = arrowsT $ (map typeof xs') ++ [t]
-    return $ appsE (ConE (Sig n t')) xs'
-fromExpHM (VarEH s) = return (VarE s)
-fromExpHM (PrimEH n t _ xs) = do
-    xs' <- mapM fromExpHM xs
-    let t' = arrowsT $ (map typeof xs') ++ [t]
-    return $ appsE (VarE (Sig n t')) xs'
-fromExpHM (AppEH f x) = do
-    f' <- fromExpHM f
-    x' <- fromExpHM x   
-    return (AppE f' x')
-fromExpHM (LamEH s _ f) = do
-  s' <- fresh s
-  b <- fromExpHM (f (VarEH s'))
-  return (LamE s' b)
-fromExpHM (CaseEH arg s yes no) = do
-  arg' <- fromExpHM arg
-  yes' <- fromExpHM yes
-  no' <- fromExpHM no
-  return $ CaseE arg' s yes' no'
-fromExpHM (ErrorEH t s)
-  = fromExpHM $ appEH (varEH (Sig (name "Prelude.error") (arrowT stringT t))) (stringEH s) 
+fromExpH :: ExpH -> Exp
+fromExpH (LitEH l) = LitE l
+fromExpH (ConEH n t xs) = 
+  let xs' = map fromExpH xs
+      t' = arrowsT $ (map typeof xs') ++ [t]
+  in appsE (ConE (Sig n t')) xs'
+fromExpH (VarEH s) = VarE s
+fromExpH (PrimEH n t _ xs) =
+  let xs' = map fromExpH xs
+      t' = arrowsT $ (map typeof xs') ++ [t]
+  in appsE (VarE (Sig n t')) xs'
+fromExpH (AppEH f x) =
+  let f' = fromExpH f
+      x' = fromExpH x   
+  in AppE f' x'
+fromExpH (LamEH (Sig nm t) _ f) =
+  let s' = identify $ \x -> Sig (nm `nappend` (name (show x))) t
+      b = fromExpH (f (VarEH s'))
+  in LamE s' b
+fromExpH (CaseEH arg s yes no) =
+  let arg' = fromExpH arg
+      yes' = fromExpH yes
+      no' = fromExpH no
+  in CaseE arg' s yes' no'
+fromExpH (ErrorEH t s)
+  = fromExpH $ appEH (varEH (Sig (name "Prelude.error") (arrowT stringT t))) (stringEH s) 
 

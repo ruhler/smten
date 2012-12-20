@@ -1,0 +1,446 @@
+
+Wed Dec 19 07:52:51 EST 2012
+
+There's a bug. I think I see what it is...
+
+clauseE returns a *function*...
+
+That's fine when we want to use it in the context of a function.
+It's not fine when we want to use it as the default value for a case...
+
+So, consider the clauses... Or a simple example:
+
+foo True True = 1
+foo True False = 2
+foo _ _ = 3
+
+What does this turn into?
+
+foo _ _ = 3: \a b -> 3. Good.
+
+foo True False = 2
+foo _ _ = 3
+
+\a b -> case a of
+           True -> case b of
+                     False -> 2
+                     _ -> (\a b -> 3)
+           _ -> (\a b -> 3)
+    
+Bad! Because we don't reuse the same variables...
+
+Interesting. So what is it I really want? There are two ways I could do this.
+
+One is: build up the functions a bit by bit as I've suggested.
+Just make sure to apply the defaults...
+
+Except that's not so easy to do, because I don't know what the variables are.
+
+The other option would be to have a multi-argument case construct.
+
+clausesE would create the variables for the arguments, then turn into caseE,
+for a multi-arg case match.
+
+See? Okay. Let me give that a try then.
+
+The question is, how do I want to break things down?
+
+Remember my top-level requirements:
+
+* mcaseE - case with pattern matching
+* clausesE - function clauses
+* mlamE - lambda with pattern matching
+* mletE - let with pattern matching
+* mletsE - lets with pattern matching
+
+Internally I want to build this up with:
+
+* matchE: single arg, single pattern, and default value.
+* matchesE: single arg, multiple patterns, and default value.
+    For a sequence of single argument matches.
+
+* clauseE: multiple arg, single case, and default value.
+    But... do you give the args, or does it create them?
+
+Places we use multi-arg:
+* clausesE: want one lambda, then a multi-arg case given all arguments.
+* ConP match: want one lambda, then single alternative match and default.
+        So, you create the variables.
+    In a sense, this is a special case of clausesE with a single
+    alternative... Except it's default is given instead of error...
+
+We could divide it up many ways.
+
+Now, what is the core functionality we need here?
+
+* Given a single multi-argument match, with arguments and default, generate
+  the case expression. Call this: mmatchE. For a multi-match.
+* Given multiple mulit-argument matches, with arguments and defaults, generate
+  the case expression. Call this: mmatchesE.
+* Given multiple multi-arg matches, with no arguments and a default, generate
+  a function. Call this: clauseE'
+* Given multiple multi-arg matches, no arguments, no default, generate a
+  function. Call this: clauseE.
+
+There! That should be pretty straigh-forward.
+
+Let me start working on it, see what progress, if any, is made.
+
+Wed Dec 19 08:24:58 EST 2012
+
+Looks like it works! And the problem with Sudoku and curry, tuple2 went away.
+But, as expected, it wasn't really a major part of the cost for that case. I
+suspect shampi will do much better now.
+
+Wed Dec 19 13:23:56 EST 2012
+
+Next step for seri... a big one...
+
+Preserve sharing in generated SMT queries!
+
+This time I have more useful information to work from, so I have a chance of
+making forward progress.
+
+Let me summarize the goal...
+
+If the same complex expression occurs multiple times in a generated query, it
+should be shared explicitly with a let statement in the generated query. This
+is important, because if it is not done, we could get exponential blowup.
+
+Some points:
+
+* only share if used multiple times. Single use or no use at all should not be
+  shared.
+* only share if complex. Don't share true, false, or literals.
+* It is not enough to do sharing based on sharing expressed in lambdas in the
+  seri code.
+
+The last point is new and important. Because we could do sharing via a user
+level map, and that's the sharing we must preserve.
+
+How do we implement this?
+
+What things will we share? We want to share any seri expressions which have
+the same haskell pointers.
+
+I think the first proposed approach is pretty standard. Let me walk through it
+and see what we see.
+
+Whenever we construct an ExpH, assign a unique id to it if it is complex.
+
+Complex ExpH include:
+    PrimEH, AppEH, CaseEH
+
+    Hypothetically it should also include ConEH and LamEH, but I know those go
+    away in my current specialization, so let me not worry about those just
+    now.
+
+The proposal is: using unsafePerformIO, allocate a unique ID to each of these
+expressions. Perform full inlining as I currently do.
+
+Now, we end up with an ExpH which is the SMT predicate. It has some
+expressions annotated. The goal is to figure out which to share and which not.
+
+Brute force version... I may need to be clever to make it work in haskell. Let
+me start by ignoring that issue.
+
+1. Annotate each node in the tree with the number of times each expression
+occurs as a subexpression...
+
+Better yet.
+
+1. Annotate each node in the tree with the subexpressions it uses.
+2. From the top down...
+If an expression is used in multiple subchildren of this expression, define
+that expression there, and replace its uses in the subchildren with variables.
+
+Problem: sub expressions can themselves depend on subexpressions.
+
+What if we push the lets up as needed? Could this work? Build it bottom up?
+
+The idea is... let's make a transformation which has the property that after
+this transformation, all sharing will be explicit.
+
+Note... be careful. Because we don't support transformations yet. Or... there
+are issues supporting transformations...
+
+Hopefully I don't have any lambdas in the generated SMT expression, in which
+case this is perhaps not an issue?
+
+Let's see how this could work.
+
+The transformation will do the following: generate an expression without
+sharing, and the set of subexpression ids contained in this expression...
+
+If we could be tricky, and have it take as input the final result of the
+expression evaluation, that would be cool, no? Not sure. I'm not sure how this
+would work.
+
+1. transform all the subexpressions.
+2. find all expressions in common among the subexpressions.
+3. Make it so the subexpressions share this expression (replace it with a
+variable), add the let here. Return the result.
+
+Now this is good, because sharing is shared, and dependencies should work out
+just fine I hope. The tricky part will be: how to transform... If that makes
+sense to do... and how.
+
+Question... can we some how use haskell to tie a knot to make this efficient?
+
+Let me not worry about Exp or translations or anything like that yet. Let me
+keep things in ExpH form, or whatever form I need to for things to work out.
+
+The function I want to write is something like:
+
+share :: Map ID ExpH -> ExpH -> (Map ID ExpH, ExpH)
+share m e
+
+The meaning is:
+  m -- Map specifying the final value for shared expressions.
+       You may look up a value, but you make not look at the looked up value?
+       Assume the values looked up are already fully shared.
+     Question: don't you also need the expressions in that? Yes...
+
+Attempt2:
+
+share :: Map ID (Map ID ExpH, ExpH) -> ExpH ...
+
+No. I don't think this can work, because we have the recursive issues.
+
+fromExpH :: Set ID -> ExpH -> (Exp, Set ID)
+
+Input map:
+  whether the expression with given ID should be inlined, or has already been
+  defined, so you should use a var for it.
+
+No. It won't work. Because the contents of the returned set depend on whether
+we inline or not. If we inline: include all subexpressions. If we don't,
+include just us.
+
+Let me think about it in terms of two passes, okay? Is that doable?
+
+The concern with that is... there's still some recursive loop like thing, no?
+
+I feel like I need to go in pieces...
+
+The issue is I need a sort like thing. For example, I could come top down if I
+did it as follows: try sharing the big things first...
+
+No. I think I have a better solution. Not the nicest, maybe, but it should
+work fine enough.
+
+Here's the idea: you first annotate all sharing in ExpH. Don't convert to Exp
+yet. That should be okay I think.
+
+We introduce a new constructor: ShareEH ExpH ExpH
+    This says: the first expression is referenced multiple times in the
+               second. We've already replaced the values in the second ExpH
+               with VarEHs
+
+The sharing is explicit. Note: no need to keep a HOAS form here.
+
+Now, we'll want some way to ask, given an expression, what subexpressions
+occur in there. That is straight-forward with this approach. We assume no
+lambdas survive, so this should be fine. (I should verify no lambdas survive,
+by disallowing them in fromExpH).
+
+... um... do we loose sharing here? Do I perform this transformation multiple
+times on a common argument without linking their results?
+
+I believe that is the case.
+
+So, we change the elaboration as follows. Every expression constructed has
+sharing explicitly annotated. Then we don't need an additional pass. We share
+the explicit annotation of sharing.
+
+How does this work? Whenever constructing a complex expression, we ask: what
+... err... this could be problematic. We may not be allowed to look at the
+final expressions... That's not going to work out.
+
+Okay, keep it as a post pass, but perhaps cache transformations so we don't
+loose our sharing. I think we'll have to do that, otherwise we'll end up doing
+exponential work.
+
+I can't construct things with explicit sharing? No. That's the whole point of
+inlining completely right away.
+
+This can't be that hard.
+
+Given an annotated expression... except I'm not allowed to look at the whole
+thing... I have to cache shared results.
+
+Assume that isn't a problem, because I can always write an abstraction to
+cache things for me. How would I do this?
+
+What about this. Let's say I traverse the entire expression, and I generate a
+set of paths, from root down to leaf. But I only look at different prefixes.
+
+This should tell me exactly where to share each expression. Then use that, do
+the transformation in one go, and I'm done.
+
+I need some examples.
+
+The place we want to share an expression is at it's lowest common ancestor.
+When something is shared, we don't care about subthings...
+
+Here's an example:
+
+  1 (2 (5 4) (3 (5 4))) 6 4 
+
+So I go through this and find the following paths from root to leaf:
+
+1.2.5.4
+1.2.3.5.4
+1.6
+1.4
+
+Does this help? I want to recognize the tail 5.4. Then I want to recognize the
+common tail .4.
+
+Okay, how about this. How about I return paths instead of single elements, and
+try to match the longest suffix?
+
+Pass one: annotate each node with the set of paths from that node.
+Pass two: find two paths sharing a common suffix of any length. Share those?
+
+Gosh! Why is this so hard? It should be easy... Shouldn't it?
+
+I guess the hard part is the fact that we have global information to deal
+with, and nesting.
+
+Ah, so maybe the information we want to propagate is... newly shared?
+
+Or, all shared, and it just works out okay?
+
+Here's the thing. If 5 is shared, and 4 is shared, and 5 contains 4, then
+anytime 5 is shared, 4 is also shared. That's the important part?
+
+Let me not worry about that issue then, and just brute force and see what
+happens.
+
+Pass 1: at each node, list all the subexpressions in that node.
+Pass 2: from top down...
+
+Find all subexpressions in multiple children nodes.
+There might be dependencies on some of them...
+
+Some of them may even be false sharing.
+
+Give priority to shortest path?
+
+I don't know. I'm not getting anywhere here. Let me doodle for a time and see
+what, if anything, I come up with.
+
+Wed Dec 19 16:34:14 EST 2012
+
+Okay, I have an idea.
+
+Not sure if it will work... Let's see...
+
+I'm going to build up a table by doing a depth first search of the expression
+in a state monad. It works as follows:
+
+When I reach a labelled expression, I do the following:
+* If it is already in the table, update the type value by taking the largest
+common prefix between the current position and the position in the table.
+Then you are done.
+* If it is not in the table, insert it in the table in the current position.
+
+Um... There's maybe another way.
+
+The idea is: query all paths from the root to a given ID.
+
+For each ID you'll end up with a set of paths. Merge the paths as follows:
+
+Given paths a and b:
+* if the second to last element in a and b is the same, take a.
+    This means the second to last element will be shared, so we don't have to
+    worry about it.
+* otherwise: take the greatest common prefix of a and b as the new path.
+
+Claim: the resulting path specifies where the expression should be defined.
+
+Expressions used once will have themselves as where they should be defined.
+That's the special case of inlining.
+
+Um, this doesn't quite work.
+
+Consider the following:
+
+x + x
+
+Or: ((+) x{2} x{2}){1}
+
+The path sets for 2 are:
+
+1.2
+1.2
+
+According to this I squash, end up with:
+
+1.2
+
+But then I inline, which I don't want.
+
+Instead... Maybe we need a special case.... but you can't tell?
+
+Let me keep thinking about it.
+
+Okay, here's the plan. We need to cache anyway, so that's fine. Have the
+state monad with the table.
+
+* if in the table: update, don't descend.
+* otherwise: set, descend.
+
+Update is: take longest common prefix.
+
+Um... trouble with the same example. Longest common prefix of 1.2 and 1.2 is
+1.2. But we really want 1. to be the final path.
+
+It's more like: 1.2a and 1.2b, because they come from different places.
+
+How about: largest common path whose length is smaller than the longest? Or,
+in other words, if they are the same, drop the last element, otherwise take
+longest common prefix.
+
+No. this still has problems. Sadness.
+
+What if we could build bottom up?
+
+
+Here's a new proposal. Do the depth first search. States are:
+
+Single Path | Multi Path
+
+For single Path, the Path includes up to, but not including the last element.
+
+For merge: Largest common subsequence.
+
+At the end, remove all Single Paths.
+You are left with Multi Paths, which say where an expression should be
+defined. All of these expressions will be shared.
+
+What if two expressions are shared at the same place? How do you know what
+order they should go in? Bummer...
+
+Well, a sort is not so hard. Let's just say, given a list of expressions, sort
+them. We have the following property:
+
+a < b if b contains a. That's not hard to do (we may want to cache these order
+dependencies). Or maybe we can construct the list in the right order naturally
+somehow.
+
+Yes. We could do that.
+
+So, first step: construct this map which says, for each duplicated ID, where
+it should be defined.
+
+Next step: construct the reverse mapping, by traversing the expression in
+dependency order to figure out what all elements are defined at each node.
+
+Final step: traverse again, at every node define all the lets needed.
+
+Maybe we can merge the first two steps.
+
+I'll think about it more.
+

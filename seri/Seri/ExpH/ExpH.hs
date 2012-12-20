@@ -5,15 +5,19 @@
 -- | HOAS form for Seri Expressions, geared towards high performance
 -- elaboration.
 module Seri.ExpH.ExpH (
-    ExpH(..),
+    ExpH(..), ID, identify,
     ) where
 
-import Data.Dynamic
+import System.IO.Unsafe
+import Data.IORef
+import Data.Typeable
 
 import Seri.Lit
 import Seri.Name
 import Seri.Type
 import Seri.Sig
+
+type ID = Integer
 
 data ExpH = LitEH Lit
           | ConEH Name Type [ExpH]
@@ -44,4 +48,18 @@ data ExpH = LitEH Lit
             --  Where V is the type of the case expression.
           | ErrorEH Type String -- ^ type is type of expression.
     deriving(Typeable)
+
+-- Call the given function with a globally unique identifier.
+identify :: (ID -> a) -> a
+identify f = 
+  let {-# NOINLINE idstore #-}
+      idstore :: IORef ID
+      idstore = unsafePerformIO (newIORef 0)
+
+      identifyIO :: (ID -> a) -> IO a
+      identifyIO f = do
+        x <- readIORef idstore
+        writeIORef idstore (x + 1)
+        return (f x)
+  in unsafePerformIO $ identifyIO f
 
