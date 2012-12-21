@@ -97,7 +97,7 @@ instance SeriT Unit__ where
     
 instance Symbolic Unit__ where
     box e 
-      | Just [] <- de_kconEH (name "()") e = Unit__
+      | Just [] <- de_conS "()" e = Unit__
       | otherwise = Unit__s e
 
     unbox x
@@ -107,13 +107,10 @@ instance Symbolic Unit__ where
 __mkUnit__ :: Unit__
 __mkUnit__ = Unit__
 
-__casesUnit__ :: (Symbolic a) => Unit__ -> a -> a -> a
-__casesUnit__ = caseS "()"
-
 __caseUnit__ :: (Symbolic a) => Unit__ -> a -> a -> a
 __caseUnit__ x y n
   | Unit__ <- x = y
-  | Unit__s _ <- x = __casesUnit__ x y n
+  | Unit__s _ <- x = caseS "()" x y n
   | otherwise = n
 
 data Bool =
@@ -126,8 +123,8 @@ instance SeriT Bool where
 
 instance Symbolic Bool where
     box e
-      | Just [] <- de_kconEH (name "True") e = True
-      | Just [] <- de_kconEH (name "False") e = False
+      | Just [] <- de_conS "True" e = True
+      | Just [] <- de_conS "False" e = False
       | otherwise = Bool_s e
 
     unbox x
@@ -144,20 +141,14 @@ __mkFalse = False
 __caseTrue :: (Symbolic a) => Bool -> a -> a -> a
 __caseTrue x y n
   | True <- x = y
-  | Bool_s _ <- x = __casesTrue x y n
+  | Bool_s _ <- x = caseS "True" x y n
   | otherwise = n
 
 __caseFalse :: (Symbolic a) => Bool -> a -> a -> a
 __caseFalse x y n
   | False <- x = y
-  | Bool_s _ <- x = __casesFalse x y n
+  | Bool_s _ <- x = caseS "False" x y n
   | otherwise = n
-
-__casesTrue :: (Symbolic a) => Bool -> a -> a -> a
-__casesTrue = caseS "True"
-
-__casesFalse :: (Symbolic a) => Bool -> a -> a -> a
-__casesFalse = caseS "False"
 
 data List__ a =
       Nil__ 
@@ -169,8 +160,8 @@ instance SeriT1 List__ where
 
 instance Symbolic1 List__ where
     box1 e
-     | Just [] <- de_kconEH (name "[]") e = Nil__
-     | Just [x, xs] <- de_kconEH (name ":") e = Cons__ (box x) (box xs)
+     | Just [] <- de_conS "[]" e = Nil__
+     | Just [x, xs] <- de_conS ":" e = Cons__ (box x) (box xs)
      | otherwise = List__s e
 
     unbox1 x
@@ -187,20 +178,14 @@ __mkCons__ = Cons__
 __caseNil__ :: (Symbolic a, Symbolic z) => List__ a -> z -> z -> z
 __caseNil__ x y n
   | Nil__ <- x = y
-  | List__s _ <- x = __casesNil__ x y n
+  | List__s _ <- x = caseS "[]" x y n
   | otherwise = n
 
 __caseCons__ :: (Symbolic a, Symbolic z) => List__ a -> (a -> List__ a -> z) -> z -> z
 __caseCons__ x y n
   | Cons__ a b <- x = y a b
-  | List__s _ <- x = __casesCons__ x y n
+  | List__s _ <- x = caseS ":" x y n
   | otherwise = n
-
-__casesNil__ :: (Symbolic a, Symbolic z) => List__ a -> z -> z -> z
-__casesNil__ = caseS "[]"
-
-__casesCons__ :: (Symbolic a, Symbolic z) => List__ a -> (a -> List__ a -> z) -> z -> z
-__casesCons__ = caseS ":"
 
 type String = List__ Char
 

@@ -4,7 +4,7 @@
 module Seri.HaskellF.Symbolic (
     Symbolic(..), Symbolic1(..), Symbolic2(..), Symbolic3(..), Symbolic4(..),
     seriS, de_seriS,
-    conS, conS', caseS, primS,
+    conS, conS', de_conS, caseS, primS,
     nullaryS, unaryS, binaryS, 
     ) where
 
@@ -77,6 +77,9 @@ conS nm =
 
 conS' :: (Symbolic a) => a -> String -> [ExpH] -> ExpH
 conS' x nm args = aconEH (name nm) (seriT x) args
+
+de_conS :: String -> ExpH -> Maybe [ExpH]
+de_conS nm = de_kconEH (name nm)
 
 caseS :: (Symbolic x, Symbolic y, Symbolic n)
          => String -> x -> y -> n -> n
