@@ -109,7 +109,7 @@ runCmds cmds = do
     liftIO $ sendCmds cmds solver dh
 
 check :: Query SMT.Result
-check = do
+check = {-# SCC "check" #-} do
     solver <- gets qs_solver
     debug (SMT.pretty solver SMT.Check)
     res <- liftIO $ SMT.check solver
@@ -256,7 +256,7 @@ free t = error $ "Query.free: unsupported type: " ++ pretty t
 
 -- | Assert the given seri boolean expression.
 assert :: ExpH -> Query ()
-assert p = do
+assert p = {-# SCC "assert" #-} do
   yp <- smte p
   runCmds [SMT.Assert yp]
 

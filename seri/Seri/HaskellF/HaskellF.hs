@@ -111,6 +111,17 @@ constrcasenm n
 constrcasenm n = prependnm "__case" n
 
 hsExp :: Exp -> Failable H.Exp
+
+-- String literals:
+-- TODO: the template haskell pretty printer doesn't print strings correctly
+-- if they contain newlines, thus, we can't print those as string literals.
+-- When they fix the template haskell pretty printer, that special case should
+-- be removed here.
+hsExp e
+  | Just str <- de_stringE e
+  , '\n' `notElem` str
+    = return $ H.AppE (H.VarE (H.mkName "S.seriS")) (H.LitE (H.StringL str))
+
 hsExp (LitE l) = return (hsLit l)
 hsExp (ConE (Sig n t))
   | n == name "()" = hsExp (ConE (Sig (name "Unit__") t))

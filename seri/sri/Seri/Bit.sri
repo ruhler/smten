@@ -35,6 +35,12 @@ instance Ord (Bit #n) where
     (>) = __prim_gt_Bit
     (<=) = __prim_leq_Bit
     (>=) = __prim_geq_Bit
+    compare x y =
+      if (x == y)
+        then EQ
+        else if (x <= y)
+                then LT
+                else GT
 
 instance Show (Bit #n) where
     show = __prim_show_Bit

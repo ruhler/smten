@@ -143,11 +143,21 @@ instance Num Integer where
   abs x = if x < 0 then negate x else x
   fromInteger x = x
 
+data Ordering = LT | EQ | GT
+    deriving (Eq)
+
+__lexorder :: [Ordering] -> Ordering
+__lexorder [] = EQ
+__lexorder (EQ:xs) = __lexorder xs
+__lexorder (x:_) = x
+
+
 class Ord a where
     (<) :: a -> a -> Bool
     (>) :: a -> a -> Bool
     (<=) :: a -> a -> Bool
     (>=) :: a -> a -> Bool
+    compare :: a -> a -> Ordering
 
 __prim_lt_Integer :: Integer -> Integer -> Bool
 __prim_gt_Integer :: Integer -> Integer -> Bool
@@ -159,40 +169,39 @@ instance Ord Integer where
     (>) = __prim_gt_Integer
     (<=) = __prim_leq_Integer
     (>=) = __prim_geq_Integer
+    compare x y =
+      if (x == y)
+        then EQ
+        else if (x <= y)
+                then LT
+                else GT
+
 
 instance Ord Char where
     (<) a b = __prim_toInteger_Char a < __prim_toInteger_Char b
     (>) a b = __prim_toInteger_Char a > __prim_toInteger_Char b
     (<=) a b = __prim_toInteger_Char a <= __prim_toInteger_Char b
     (>=) a b = __prim_toInteger_Char a >= __prim_toInteger_Char b
+    compare a b = compare (__prim_toInteger_Char a) (__prim_toInteger_Char b)
 
 instance (Eq a, Ord a) => Ord [a] where
-    (<) [] [] = False
-    (<) [] (_:_) = True
-    (<) (a:as) (b:bs) = (a < b) || ((a == b) && (as < bs))
-    (<) (_:_) [] = False
+    compare [] [] = EQ
+    compare [] _ = LT
+    compare (x:xs) [] = GT
+    compare (x:xs) (y:ys) = __lexorder [compare x y, compare xs ys]
 
-    (>) a b = not (a <= b)
-    (<=) a b = (a < b) || (a == b)
-    (>=) a b = not (a < b)
+    (<) a b = compare a b == LT
+    (>) a b = compare a b == GT
+    (<=) a b = compare a b /= GT
+    (>=) a b = compare a b /= LT
 
 instance (Eq a, Ord a, Eq b, Ord b) => Ord (a, b) where
-    (<) (a, b) (c, d) = (a < c) || ((a == c) && (b < d))
-    (>) a b = not (a <= b)
-    (<=) a b = (a < b) || (a == b)
-    (>=) a b = not (a < b)
+    compare (a, b) (c, d) = __lexorder [compare a c, compare b d]
 
-data Ordering = LT | EQ | GT
-    deriving (Eq)
-
--- TODO: make 'compare' a method of 'Ord'
-compare :: (Ord a, Eq a) => a -> a -> Ordering
-compare x y =
-  if (x == y)
-    then EQ
-    else if (x <= y)
-            then LT
-            else GT
+    (<) a b = compare a b == LT
+    (>) a b = compare a b == GT
+    (<=) a b = compare a b /= GT
+    (>=) a b = compare a b /= LT
 
 fst :: (a, b) -> a
 fst (x, _) = x

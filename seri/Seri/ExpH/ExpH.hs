@@ -74,3 +74,4 @@ getid e
   | LamEH x _ _ _ <- e = Just x
   | CaseEH x _ _ _ _ <- e = Just x
   | otherwise = Nothing
+

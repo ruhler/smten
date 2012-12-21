@@ -19,14 +19,14 @@ import Seri.ExpH.SeriEHs
 
 -- Translate back to the normal Exp representation
 fromExpH :: ExpH -> Exp
-fromExpH e = convert (sharing e) e
+fromExpH e = {-# SCC "fromExpH" #-} convert (sharing e) e
 
 data Use = Multi | Single
     deriving (Eq)
 
 -- Find all the subexpressions in the given expression which should be shared.
 sharing :: ExpH -> Set.Set ID
-sharing e =
+sharing e = {-# SCC "sharing" #-}
   let traverse :: ExpH -> State (Map.Map ID Use) ()
       traverse e
         | Just id <- getid e = do
@@ -49,7 +49,7 @@ sharing e =
   in Map.keysSet (Map.filter (== Multi) m)
 
 convert :: Set.Set ID -> ExpH -> Exp
-convert share e =
+convert share e = {-# SCC "convert" #-}
   let -- Generate the definition for this expression.
       defineM :: ExpH -> State [(ID, Exp)] Exp
       defineM e
