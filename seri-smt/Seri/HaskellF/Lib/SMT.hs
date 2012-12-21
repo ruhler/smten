@@ -1,10 +1,10 @@
 
+{-# LANGUAGE PatternGuards #-}
+
 module Seri.HaskellF.Lib.SMT (
     Query,
-    Answer,
-    __caseSatisfiable, __mkSatisfiable,
-    __caseUnknown, __mkUnknown,
-    __caseUnsatisfiable, __mkUnsatisfiable,
+    Answer(Satisfiable, Unsatisfiable, Unknown),
+    __caseSatisfiable, __caseUnknown, __caseUnsatisfiable,
 
     __prim_free, assert, query, queryS,
     return_query, bind_query, nobind_query, fail_query,
@@ -28,33 +28,45 @@ instance Symbolic1 Query where
     box1 = Query
     unbox1 (Query x) = x
 
-newtype Answer a = Answer ExpH
+data Answer a =
+      Satisfiable a
+    | Unsatisfiable
+    | Unknown
+    | Answer__s ExpH
 
 instance SeriT1 Answer where
     seriT1 _ = conT (name "Answer")
 
 instance Symbolic1 Answer where
-    box1 = Answer
-    unbox1 (Answer x) = x
+    box1 e
+      | Just [a] <- de_conS "Satisfiable" e = Satisfiable (box a)
+      | Just [] <- de_conS "Unsatisfiable" e = Unsatisfiable
+      | Just [] <- de_conS "Unknown" e = Unknown
+      | otherwise = Answer__s e
 
-
-__mkSatisfiable :: (Symbolic a) => a -> Answer a
-__mkSatisfiable = conS "Satisfiable"
-
-__mkUnsatisfiable :: (Symbolic a) => Answer a
-__mkUnsatisfiable = conS "Unsatisfiable"
-
-__mkUnknown :: (Symbolic a) => Answer a
-__mkUnknown = conS "Unknown"
+    unbox1 x
+      | Satisfiable a <- x = conS x "Satisfiable" [unbox a]
+      | Unsatisfiable <- x = conS x "Unsatisfiable" []
+      | Unknown <- x = conS x "Unknown" []
+      | Answer__s v <- x = v
 
 __caseUnknown :: (Symbolic a, Symbolic z) => Answer a -> z -> z -> z
-__caseUnknown = caseS "Unknown"
+__caseUnknown x y n
+  | Unknown <- x = y
+  | Answer__s _ <- x = caseS "Unknown" x y n
+  | otherwise = n
 
 __caseUnsatisfiable :: (Symbolic a, Symbolic z) => Answer a -> z -> z -> z
-__caseUnsatisfiable = caseS "Unsatisfiable"
+__caseUnsatisfiable x y n
+  | Unsatisfiable <- x = y
+  | Answer__s _ <- x = caseS "Unsatisfiable" x y n
+  | otherwise = n
 
 __caseSatisfiable :: (Symbolic a, Symbolic z) => Answer a -> (a -> z) -> z -> z
-__caseSatisfiable = caseS "Satisfiable"
+__caseSatisfiable x y n
+  | Satisfiable a <- x = y a
+  | Answer__s _ <- x = caseS "Satisfiable" x y n
+  | otherwise = n
 
 __prim_free :: (Symbolic a) => Query a
 __prim_free = primS freeP

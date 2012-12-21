@@ -7,9 +7,9 @@ module Seri.HaskellF.Lib.Prelude (
     Integer,
     Bit,
     IO,
-    Unit__, __mkUnit__, __caseUnit__,
-    Bool, __mkTrue, __mkFalse, __caseTrue, __caseFalse,
-    List__, __mkCons__, __mkNil__, __caseCons__, __caseNil__,
+    Unit__(Unit__), __caseUnit__,
+    Bool(True, False), __caseTrue, __caseFalse,
+    List__(Cons__, Nil__), __caseCons__, __caseNil__,
 
     N__0, N__2p1, N__2p0, N__PLUS, N__MINUS, N__TIMES,
 
@@ -101,11 +101,8 @@ instance Symbolic Unit__ where
       | otherwise = Unit__s e
 
     unbox x
-      | Unit__ <- x = conS' x "()" []
+      | Unit__ <- x = conS x "()" []
       | Unit__s v <- x = v
-
-__mkUnit__ :: Unit__
-__mkUnit__ = Unit__
 
 __caseUnit__ :: (Symbolic a) => Unit__ -> a -> a -> a
 __caseUnit__ x y n
@@ -128,15 +125,9 @@ instance Symbolic Bool where
       | otherwise = Bool_s e
 
     unbox x
-      | True <- x = conS' x "True" []
-      | False <- x = conS' x "False" []
+      | True <- x = conS x "True" []
+      | False <- x = conS x "False" []
       | Bool_s v <- x = v
-
-__mkTrue :: Bool
-__mkTrue = True
-
-__mkFalse :: Bool
-__mkFalse = False
 
 __caseTrue :: (Symbolic a) => Bool -> a -> a -> a
 __caseTrue x y n
@@ -165,15 +156,9 @@ instance Symbolic1 List__ where
      | otherwise = List__s e
 
     unbox1 x
-     | Nil__ <- x = conS' x "[]" []
-     | Cons__ a b <- x = conS' x ":" [unbox a, unbox b]
+     | Nil__ <- x = conS x "[]" []
+     | Cons__ a b <- x = conS x ":" [unbox a, unbox b]
      | List__s v <- x = v
-
-__mkNil__ :: (Symbolic a) => List__ a
-__mkNil__ = Nil__
-
-__mkCons__ :: (Symbolic a) => a -> List__ a -> List__ a
-__mkCons__ = Cons__
 
 __caseNil__ :: (Symbolic a, Symbolic z) => List__ a -> z -> z -> z
 __caseNil__ x y n

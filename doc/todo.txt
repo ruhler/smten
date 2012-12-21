@@ -108,6 +108,7 @@ Haskell::
 
 HaskellF::
 * Translate a module at a time instead of one big blob
+* Take primitives as input, and just ignore all those names automatically?
 
 Distribution::
 * Move everything but the SMT solvers from seri-smt to seri.

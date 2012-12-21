@@ -58,10 +58,9 @@ import Seri.Module
 
 import Seri.SMT.Primitives
 
-import Seri.Haskell
 import Seri.HaskellF.HaskellF
 
-data Run = Io | Type | Desugar | Haskell | HaskellF
+data Run = Io | Type | Desugar | HaskellF
     deriving (Show, Eq, Typeable, Data)
 
 data Args = Args {
@@ -78,7 +77,6 @@ argspec = Args {
     run = A.enum [Io A.&= A.help "Run a seri program in the IO monad",
                   Type A.&= A.help "Type infer and check a seri program",
                   Desugar A.&= A.help "Desugar, but don't type a seri program",
-                  Haskell A.&= A.help "Compile a seri program to Haskell",
                   HaskellF A.&= A.help "Compile a satseri program to Haskell"]
        A.&= A.typ "RUN MODE",
     include = []
@@ -119,9 +117,6 @@ main = do
         Type -> do
             env <- loadenv (include args) (file args)
             putStrLn . pretty $ env
-        Haskell -> do
-            env <- loadenv (include args) (file args)
-            putStrLn . show $ haskell (getDecls env) nmain
         HaskellF -> do
             env <- loadenv (include args) (file args)
             putStrLn . show $ haskellf (not (no_main args)) (mod_name args) (getDecls env)

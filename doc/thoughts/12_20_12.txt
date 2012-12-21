@@ -1,0 +1,144 @@
+
+Thu Dec 20 08:45:30 EST 2012
+
+Sharing. Here's the plan.
+
+First, we simplify the goal. My goal will be:
+* inline all simple things
+* inline everything used zero or once
+
+Where I'm relaxing it is the following:
+* all sharing will be at the top level.
+
+This means we don't get local sharing. Now, we have the full effect of sharing
+on the generated query still, and there's not really any evidence or reason to
+believe sharing at the top level is less efficient than sharing at the local
+level. It's just not quite as nice.
+
+But! It's a whole lot easier to implement, and thus would serve as a great
+starting point.
+
+Here's how this will be done.
+
+1. Annotate potentially complex ExpH with an ID
+ * ConEH, PrimEH, AppEH, LamEH, CaseEH
+
+Note: I expect no AppEH or LamEH in the final thing. I expect the only ConEH
+to be boolean constructors (which really ought to be inlined). Perhaps I can
+have a special case in the algorithm which pretends ConEH with no arguments is
+simple.
+
+I'll use unsafePerformIO when I construct these expressions to generate unique
+IDs.
+
+2. Have a function which determines which expressions should be shared in a
+given ExpH.
+
+The implementation is as follows. In a state monad, we keep a map from ID to
+Use, which says how many times the expression is used. It could be Single, or
+Multi use.
+
+Perform a depth first search of the expression, for every complex expression,
+first check if it's been used. If not: set Use as Single and recurse to
+subexpressions, if so: set Use as Multi and don't recurse to subexpressions.
+
+At the end of this, the map contains all the information we need about whether
+an expression should be shared or not. This is an O(N) traversal, where N is
+the size of the ExpH with sharing. So it's efficient.
+
+We may want to convert the Map to a Set of ID's which are shared for the next
+phase of operation.
+
+3. Convert the ExpH to an Exp, given the set of expressions which should be
+shared. We do this in a state monad with an ordered list mapping ID to
+generated Exp.
+
+To convert an expression, we do the following:
+* if it is not shared, do a standard conversion like what we already do.
+* if it is shared, 
+    check if we've already converted it.
+    if so, just use a VarEH for the value.
+    if not, convert it recursively, add the result to the head of the list,
+    then use a VarEH for the value.
+
+At the end we end up with an Exp and a list of the form [(ID, Exp)]. Turn this
+into one big letsE expression.
+
+Simple. Again, this second pass is the same O(N) traversal cost.
+
+And we are done. That's it. All we need.
+
+Some other notes:
+* If we label each LamEH with a unique ID and do sharing, we don't need this
+  "fresh" monad for generating free names for conversion from ExpH. We could
+  just use the lambda ID?
+
+Not sure. Or maybe, we have a way to generate unique numbers on the fly, just
+use that instead of Fresh.
+
+Okay. Understood. Any prep work I should be doing? Or should I just dive right
+in?
+
+The only prep work I can think of is, if I want to get rid of Fresh for
+fromExpH. Make it pure. By using performUnsafeIO.
+
+Basically, given a Name, we'll generate a unique integer, and append it to the
+name: "foo~42351", that sort of thing. It should be fine. We could print it as
+hex if you think that will make things cleaner. This could be slightly costly
+though... Generating so many names. We'll have to see.
+
+Okay, I'll try this first.
+
+First step: I want a nice way to perform unsafe IO with a new identifier.
+How about the following:
+
+identify :: (ID -> a) -> a
+
+You give me a function which takes an ID, I produce a unique ID, call the
+function, then give you the result. I can use this anywhere I need.
+
+Sounds reasonable to me.
+
+May as well put it in ExpH for now.
+
+Thu Dec 20 09:49:53 EST 2012
+
+Now ExpH are annotated as desired. Sharing may be lost in transform, but I can
+fix that later. For my sharing test that won't be the case, and for shampi it
+won't be the case... because I don't have any boolean variables. (Boolean
+expressions, yes, not boolean variables).
+
+Next: identify all shared expressions.
+
+Thu Dec 20 10:04:27 EST 2012
+
+I wrote the function. Haven't tested it yet, but... let me forge ahead anyway.
+Assuming it works, because the easiest way to test it will be to go on to the
+next and final phase.
+
+Next and final phase... given the set of shared.
+
+I think it's straight forward... hopefully. Wish me luck.
+
+Thu Dec 20 10:31:20 EST 2012
+
+Okay! So it's implemented now. Care to try it out, see if it works?
+
+Thu Dec 20 10:40:36 EST 2012
+
+It works! Nifty!
+
+Okay, so there are some hiccups. I see things not shared that should be
+(probably from transform) and others shared that shouldn't be (because of SMT
+translation simplification??).
+
+But that's fine. Nothing is slower, and sharing seems to work.
+
+Awesome!
+
+The real test will be... how does shampi do now?
+
+Thu Dec 20 20:03:50 EST 2012
+
+Looking at concretization in haskellf. Some things that would be useful:
+
