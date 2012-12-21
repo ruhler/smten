@@ -25,9 +25,9 @@ data Use = Multi | Single
     deriving (Eq)
 
 -- Find all the subexpressions in the given expression which should be shared.
-sharing :: ExpH -> Set.Set ID
+sharing :: ExpH -> Set.Set EID
 sharing e = {-# SCC "sharing" #-}
-  let traverse :: ExpH -> State (Map.Map ID Use) ()
+  let traverse :: ExpH -> State (Map.Map EID Use) ()
       traverse e
         | Just id <- getid e = do
             m <- get
@@ -37,7 +37,7 @@ sharing e = {-# SCC "sharing" #-}
                Nothing -> put (Map.insert id Single m) >> subtraverse e
         | otherwise = return ()
 
-      subtraverse :: ExpH -> State (Map.Map ID Use) ()
+      subtraverse :: ExpH -> State (Map.Map EID Use) ()
       subtraverse e
         | ConEH _ _ _ xs <- e = mapM_ traverse xs
         | PrimEH _ _ _ _ xs <- e = mapM_ traverse xs
@@ -49,11 +49,11 @@ sharing e = {-# SCC "sharing" #-}
   in Map.keysSet (Map.filter (== Multi) m)
 
 data Defined = Defined {
-    df_defs :: [(ID, Exp)],
-    df_done :: Set.Set ID
+    df_defs :: [(EID, Exp)],
+    df_done :: Set.Set EID
 }
 
-convert :: Set.Set ID -> ExpH -> Exp
+convert :: Set.Set EID -> ExpH -> Exp
 convert share e = {-# SCC "convert" #-}
   let -- Generate the definition for this expression.
       defineM :: ExpH -> State Defined Exp
@@ -106,7 +106,7 @@ convert share e = {-# SCC "convert" #-}
       (body, defined) = runState (defineM e) (Defined [] Set.empty)
       bindings = reverse (df_defs defined)
 
-      nameof :: ID -> Name
+      nameof :: EID -> Name
       nameof x = {-# SCC "convert.nameof" #-} name $ "s~" ++ show x
   in letsE [(Sig (nameof x) (typeof v), v) | (x, v) <- bindings] body
 
