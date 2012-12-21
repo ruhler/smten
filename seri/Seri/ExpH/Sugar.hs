@@ -5,7 +5,7 @@
 module Seri.ExpH.Sugar (
     litEH, de_litEH, varEH, de_varEH, conEH, de_conEH, de_kconEH,
     appEH, de_appEH, appsEH, de_appsEH,
-    lamEH, letEH, de_letEH,
+    lamEH, letEH, de_letEH, aconEH,
     errorEH, de_errorEH,
     caseEH, ifEH,
 
@@ -31,13 +31,17 @@ import Seri.Type
 import Seri.ExpH.ExpH
 import Seri.ExpH.Typeof
 
+-- Fully applied constructor
+aconEH :: Name -> Type -> [ExpH] -> ExpH
+aconEH n t args = identify $ \id -> ConEH id n t args
+
 conEH :: Sig -> ExpH
 conEH (Sig n t) =
  let coneh :: Name -> Type -> [ExpH] -> ExpH
      coneh n t args
         | Just (it, ot) <- de_arrowT t =
             lamEH (Sig (name "c") it) ot $ \x -> coneh n ot (args ++ [x])
-        | otherwise = identify $ \id -> ConEH id n t args
+        | otherwise = aconEH n t args
  in coneh n t []
 
 -- Check for a fully applied constructor.

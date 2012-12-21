@@ -90,62 +90,117 @@ instance Symbolic1 IO where
     box1 = IO
     unbox1 (IO x) = x
 
-newtype Unit__ = Unit__ ExpH
+data Unit__ = Unit__ | Unit__s ExpH
 
 instance SeriT Unit__ where
     seriT _ = unitT
     
 instance Symbolic Unit__ where
-    box = Unit__
-    unbox (Unit__ x) = x
+    box e 
+      | Just [] <- de_kconEH (name "()") e = Unit__
+      | otherwise = Unit__s e
+
+    unbox x
+      | Unit__ <- x = conS' x "()" []
+      | Unit__s v <- x = v
 
 __mkUnit__ :: Unit__
-__mkUnit__ = conS "()"
+__mkUnit__ = Unit__
+
+__casesUnit__ :: (Symbolic a) => Unit__ -> a -> a -> a
+__casesUnit__ = caseS "()"
 
 __caseUnit__ :: (Symbolic a) => Unit__ -> a -> a -> a
-__caseUnit__ = caseS "()"
+__caseUnit__ x y n
+  | Unit__ <- x = y
+  | Unit__s _ <- x = __casesUnit__ x y n
+  | otherwise = n
 
-newtype Bool = Bool ExpH
+data Bool =
+    True
+  | False
+  | Bool_s ExpH
 
 instance SeriT Bool where
     seriT _ = boolT
 
 instance Symbolic Bool where
-    box = Bool
-    unbox (Bool x) = x
+    box e
+      | Just [] <- de_kconEH (name "True") e = True
+      | Just [] <- de_kconEH (name "False") e = False
+      | otherwise = Bool_s e
+
+    unbox x
+      | True <- x = conS' x "True" []
+      | False <- x = conS' x "False" []
+      | Bool_s v <- x = v
 
 __mkTrue :: Bool
-__mkTrue = conS "True"
+__mkTrue = True
 
 __mkFalse :: Bool
-__mkFalse = conS "False"
+__mkFalse = False
 
 __caseTrue :: (Symbolic a) => Bool -> a -> a -> a
-__caseTrue = caseS "True"
+__caseTrue x y n
+  | True <- x = y
+  | Bool_s _ <- x = __casesTrue x y n
+  | otherwise = n
 
 __caseFalse :: (Symbolic a) => Bool -> a -> a -> a
-__caseFalse = caseS "False"
+__caseFalse x y n
+  | False <- x = y
+  | Bool_s _ <- x = __casesFalse x y n
+  | otherwise = n
 
-newtype List__ a = List__ ExpH
+__casesTrue :: (Symbolic a) => Bool -> a -> a -> a
+__casesTrue = caseS "True"
+
+__casesFalse :: (Symbolic a) => Bool -> a -> a -> a
+__casesFalse = caseS "False"
+
+data List__ a =
+      Nil__ 
+    | Cons__ a (List__ a)
+    | List__s ExpH
 
 instance SeriT1 List__ where
     seriT1 _ = seriT1 [()]
 
 instance Symbolic1 List__ where
-    box1 = List__
-    unbox1 (List__ x) = x
+    box1 e
+     | Just [] <- de_kconEH (name "[]") e = Nil__
+     | Just [x, xs] <- de_kconEH (name ":") e = Cons__ (box x) (box xs)
+     | otherwise = List__s e
+
+    unbox1 x
+     | Nil__ <- x = conS' x "[]" []
+     | Cons__ a b <- x = conS' x ":" [unbox a, unbox b]
+     | List__s v <- x = v
 
 __mkNil__ :: (Symbolic a) => List__ a
-__mkNil__ = conS "[]"
+__mkNil__ = Nil__
 
 __mkCons__ :: (Symbolic a) => a -> List__ a -> List__ a
-__mkCons__ = conS ":"
+__mkCons__ = Cons__
 
 __caseNil__ :: (Symbolic a, Symbolic z) => List__ a -> z -> z -> z
-__caseNil__ = caseS "[]"
+__caseNil__ x y n
+  | Nil__ <- x = y
+  | List__s _ <- x = __casesNil__ x y n
+  | otherwise = n
 
 __caseCons__ :: (Symbolic a, Symbolic z) => List__ a -> (a -> List__ a -> z) -> z -> z
-__caseCons__ = caseS ":"
+__caseCons__ x y n
+  | Cons__ a b <- x = y a b
+  | List__s _ <- x = __casesCons__ x y n
+  | otherwise = n
+
+__casesNil__ :: (Symbolic a, Symbolic z) => List__ a -> z -> z -> z
+__casesNil__ = caseS "[]"
+
+__casesCons__ :: (Symbolic a, Symbolic z) => List__ a -> (a -> List__ a -> z) -> z -> z
+__casesCons__ = caseS ":"
 
 type String = List__ Char
 
