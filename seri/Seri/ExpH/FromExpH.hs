@@ -48,10 +48,15 @@ sharing e = {-# SCC "sharing" #-}
       m = execState (traverse e) Map.empty
   in Map.keysSet (Map.filter (== Multi) m)
 
+data Defined = Defined {
+    df_defs :: [(ID, Exp)],
+    df_done :: Set.Set ID
+}
+
 convert :: Set.Set ID -> ExpH -> Exp
 convert share e = {-# SCC "convert" #-}
   let -- Generate the definition for this expression.
-      defineM :: ExpH -> State [(ID, Exp)] Exp
+      defineM :: ExpH -> State Defined Exp
       defineM e
         | LitEH l <- e = return $ LitE l
         | ConEH _ n t xs <- e = do
@@ -82,23 +87,26 @@ convert share e = {-# SCC "convert" #-}
 
       -- Generate the use for this expression.
       -- So, if it's shared, turns into a VarE.
-      useM :: ExpH -> State [(ID, Exp)] Exp
+      useM :: ExpH -> State Defined Exp
       useM e
         | Just id <- getid e
         , Set.member id share = do
-            m <- get
+            done <- gets df_done
             let var = VarE (Sig (nameof id) (typeof e))
-            case lookup id m of
-                Just _ -> return var
-                Nothing -> do
+            case {-# SCC "convert.lookup" #-} Set.member id done of
+                True -> return var
+                False -> do
                    v <- defineM e
-                   modify $ \m -> (id, v):m
+                   modify $ \df -> df {
+                      df_defs = (id, v) : df_defs df,
+                      df_done = Set.insert id (df_done df) }
                    return var
         | otherwise = defineM e
     
-      (body, bindings) = runState (defineM e) []
+      (body, defined) = runState (defineM e) (Defined [] Set.empty)
+      bindings = reverse (df_defs defined)
 
       nameof :: ID -> Name
-      nameof x = name $ "s~" ++ show x
-  in letsE [(Sig (nameof x) (typeof v), v) | (x, v) <- reverse bindings] body
+      nameof x = {-# SCC "convert.nameof" #-} name $ "s~" ++ show x
+  in letsE [(Sig (nameof x) (typeof v), v) | (x, v) <- bindings] body
 

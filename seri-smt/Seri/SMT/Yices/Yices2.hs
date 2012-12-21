@@ -38,8 +38,8 @@
 -- | Backend for the Yices2 solver
 module Seri.SMT.Yices.Yices2 (yices2) where
 
+import qualified Data.Map as Map
 import Data.List(genericLength)
-import Data.Ratio
 
 import Foreign
 import Foreign.C.String
@@ -175,17 +175,17 @@ isbinop :: String -> Expression -> Bool
 isbinop nm (AppE (VarE n) [_, _]) = n == nm
 isbinop _ _ = False
 
-dobinop' :: [(String, YTerm)] -> Expression -> Expression -> (YTerm -> YTerm -> IO YTerm) -> IO YTerm
+dobinop' :: Map.Map String YTerm -> Expression -> Expression -> (YTerm -> YTerm -> IO YTerm) -> IO YTerm
 dobinop' s a b f = do
     at <- ytermS s a
     bt <- ytermS s b
     f at bt
 
-dobinop :: [(String, YTerm)] -> Expression -> (YTerm -> YTerm -> IO YTerm) -> IO YTerm
+dobinop :: Map.Map String YTerm -> Expression -> (YTerm -> YTerm -> IO YTerm) -> IO YTerm
 dobinop s (AppE (VarE _) [a, b]) f = dobinop' s a b f
 
 yterm :: Expression -> IO YTerm
-yterm = ytermS []
+yterm = {-# SCC "yterm" #-} ytermS Map.empty
 
 builtin :: [String]
 builtin = [
@@ -208,7 +208,7 @@ builtin = [
 
 -- Construct a yices term from the given expression with the given
 -- variable scope.
-ytermS :: [(String, YTerm)] -> Expression -> IO YTerm
+ytermS :: Map.Map String YTerm -> Expression -> IO YTerm
 ytermS s e | Just (a, b) <- de_eqE e = dobinop' s a b c_yices_eq
 ytermS s e | Just [a, b] <- de_orE e = dobinop' s a b c_yices_or2
 ytermS s e | Just [a, b] <- de_andE e = dobinop' s a b c_yices_and2
@@ -286,13 +286,13 @@ ytermS s e | Just (bs, v) <- de_letE e =
         return (nm, et)
   in do
     vars <- mapM mkvar bs
-    ytermS (vars ++ s) v
+    ytermS (Map.union s (Map.fromList vars)) v
         
 ytermS _ (LitE (BoolL True)) = c_yices_true
 ytermS _ (LitE (BoolL False)) = c_yices_false
 ytermS _ (LitE (IntegerL i)) = c_yices_int64 (fromInteger i)
 ytermS s e@(VarE nm) =
-    case lookup nm s of
+    case {-# SCC "ytermS.lookup" #-} Map.lookup nm s of
         Nothing -> withCString nm c_yices_get_term_by_name
         Just t -> return t 
     

@@ -103,7 +103,7 @@ sendCmds cmds solver (Just dh) = do
     mapM_ (SMT.run solver) cmds
 
 runCmds :: [SMT.Command] -> Query ()
-runCmds cmds = do
+runCmds cmds = {-# SCC "runCmds" #-} do
     solver <- gets qs_solver
     dh <- gets qs_dh
     liftIO $ sendCmds cmds solver dh
@@ -149,7 +149,6 @@ smtt t = do
 smte :: ExpH -> Query SMT.Expression
 smte e = do
     qs <- gets qs_qs 
-    --trace ("PRESPEC : " ++ pretty e) (return ())
     let se = fromExpH e
         mkye :: CompilationM ([SMT.Command], SMT.Expression)
         mkye = do

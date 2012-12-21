@@ -69,6 +69,7 @@ Performance::
 * Play with GHC Sparks and non-strict state monads
 * Use the yices1 native interface where possible (everywhere?)
 * In case desugar, use varp and asp directly instead of indirectly
+* Use Data.Map for lets in STP like we do for yices2.
 
 Sharing::
 * Preserve sharing in "transform" function
@@ -98,7 +99,6 @@ Query::
 Query Optimizations::
 * Perform case analysis to avoid inserting unnecessary error conditions
   automatically.
-* preserve sharing (?)
 
 Specialization::
 * put it back in

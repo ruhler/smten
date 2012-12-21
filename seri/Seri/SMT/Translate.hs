@@ -130,7 +130,7 @@ smtT t = throw $ "smtT: unsupported type: " ++ pretty t
 -- Before using the returned expression, the smtD function should be called
 -- to get the required smt declarations.
 smtE :: Exp -> CompilationM SMT.Expression
-smtE e = smtE' e `catchError` (\msg -> throw $ msg ++ "\nWhen translating: " ++ pretty e)
+smtE e = {-# SCC "smtE" #-} smtE' e `catchError` (\msg -> throw $ msg ++ "\nWhen translating: " ++ pretty e)
 
 -- | Compile a seri expression to smt, assuming the expression can be
 -- represented as is in smt without further elaboration.
