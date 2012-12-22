@@ -41,7 +41,7 @@ inline env prims =
                          return $ inline' (assignments pt ct) [] ve
                   x = mplus inprims inenv
                 
-              writeIORef cache (Map.insert s x m)
+              modifyIORef cache (Map.insert s x)
               return x
 
       lookupPure :: Sig -> Maybe ExpH

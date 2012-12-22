@@ -10,10 +10,12 @@ quadruple a = a + (a + (a + a))
 
 qmain :: Query (Answer (Integer, Integer))
 qmain = do
+    b <- free
     x <- free
     y <- free
-    assert (let v = x - y
-            in v + v + v + v == 8)
+    assert (if b
+                then quadruple (x-y) == 8
+                else quadruple (x-y) == 8)
     query (x, y)
 
 main :: IO ()

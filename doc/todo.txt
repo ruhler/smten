@@ -82,8 +82,9 @@ Performance::
 * Concretize the rest of the haskellf primitives
 
 Sharing::
-* Preserve sharing in "transform" function
-* Why do we sometimes share "free~2"?? For example, in Datatype test.
+* Preserve trivial sharing in "transform" function (?)
+    That is, if no transformation is done, don't change the EIDs.
+* Why do we sometimes share "free~12"?? For example, in Datatype test.
 
 ExpH::
 * Perhaps case statements should consider all constructors at once instead of

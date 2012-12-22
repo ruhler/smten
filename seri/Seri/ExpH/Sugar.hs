@@ -18,10 +18,14 @@ module Seri.ExpH.Sugar (
     transform,
     ) where
 
+import System.IO.Unsafe
+
 import Control.Monad
 
 import Data.List(genericLength)
 import Data.Maybe(isJust)
+import Data.IORef
+import qualified Data.Map as Map
 
 import Seri.Bit
 import Seri.Lit
@@ -250,20 +254,42 @@ onyv n f (LamEH _ s t b) =
 -- Applies the given function to each subexpression. Any matching
 -- subexpression is replaced with the returned value, otherwise it continues
 -- to recurse.
--- TODO: preserve sharing here!
 transform :: (ExpH -> Maybe ExpH) -> ExpH -> ExpH
-transform g e | Just v <- g e = v
 transform g e =
-  let me = transform g
-  in case e of
-       LitEH {} -> e
-       ConEH _ n s xs -> identify $ \id -> ConEH id n s (map me xs)
-       VarEH {} -> e 
-       PrimEH _ _ _ f xs -> f (map me xs)
-       AppEH _ f x -> identify $ \id -> AppEH id (me f) (me x)
-       LamEH _ s t f -> lamEH s t $ \x -> me (f x)
-       CaseEH _ x k y d -> caseEH (me x) k (me y) (me d)
-       ErrorEH {} -> e
+  let {-# NOINLINE cache #-}
+      cache :: IORef (Map.Map EID ExpH, ExpH -> Maybe ExpH)
+      cache = unsafePerformIO (newIORef (Map.empty, g))
+
+      lookupIO :: EID -> ExpH -> IO ExpH
+      lookupIO x e = do
+        m <- readIORef cache
+        case Map.lookup x (fst m) of
+          Just v -> return v    
+          Nothing -> do
+            let v = def e
+            modifyIORef cache $ \(m, g) -> (Map.insert x v m, g)
+            return v
+
+      lookupPure :: EID -> ExpH -> ExpH
+      lookupPure x e = unsafePerformIO (lookupIO x e)
+
+      def :: ExpH -> ExpH
+      def e
+        | Just v <- g e = v
+        | LitEH {} <- e = e
+        | ConEH _ n s xs <- e = identify $ \id -> ConEH id n s (map use xs)
+        | VarEH {} <- e = e
+        | PrimEH _ _ _ f xs <- e = f (map use xs)
+        | AppEH _ f x <- e = identify $ \id -> AppEH id (use f) (use x)
+        | LamEH _ s t f <- e = lamEH s t $ \x -> use (f x)
+        | CaseEH _ x k y d <- e = caseEH (use x) k (use y) (use d)
+        | ErrorEH {} <- e = e
+
+      use :: ExpH -> ExpH
+      use e
+        | Just x <- getid e = lookupPure x e
+        | otherwise = def e
+  in def e
 
 de_tupleEH :: ExpH -> Maybe [ExpH]
 de_tupleEH x = 
