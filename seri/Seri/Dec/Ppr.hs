@@ -19,7 +19,8 @@ instance Ppr TyVar where
 
 instance Ppr Dec where
     ppr (ValD s@(TopSig n _ _) e)
-        = ppr s <> semi $$ ppr n <+> text "=" <+> ppr e
+        = ppr s <> semi $$
+          fsep [ppr n <+> text "=", nest tabwidth $ ppr e]
     ppr (DataD n vs cs)
         = text "data" <+> ppr n <+> hsep (map ppr vs) <+> text "=" $$
             (nest tabwidth (conlist cs))
@@ -49,7 +50,8 @@ instance Ppr Con where
       in ppr n <+> hsep (map pprt ts)
 
 instance Ppr Method where
-    ppr (Method n e) = ppr n <+> text "=" <+> ppr e <> semi
+    ppr (Method n e)
+       = fsep [ppr n <+> text "=", nest tabwidth $ ppr e <> semi]
 
 instance Ppr [Dec] where
     ppr ds = vcat (punctuate semi (map (\d -> ppr d $+$ text "") ds))

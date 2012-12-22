@@ -64,19 +64,7 @@ vs. foo :: (Foo a) => Sludge
 
 Pretty Printer::
 * Make pretty again:
-** Don't put parens around variables:
-    a instead of (a)
-** Don't put parens around string literals:
-    "foo" instead of ("foo")
-** Know about associativity of application:
-    foo a b instead of (foo a) b
 ** Don't print types of patterns?
-** don't drop to newline if not needed:
-    \p -> numeric  instead of \p ->
-                                numeric
-** newline for lambda should rest left as far as possible:
-    \x ->           instead of:         \x ->
-  foo ...                                 foo ...
 ** Know about associativity for types:
     a -> Foo b  instead of a -> (Foo b)
 ** Recognize if statements.
