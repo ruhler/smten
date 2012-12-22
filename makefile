@@ -15,7 +15,7 @@ test:
 	./foo +RTS -p -K1g
 
 testio:
-	./build/seri-bin/seri --io \
+	./build/seri-bin/seri --desugar \
 		--include seri/sri \
 		--main-is Seri.SMT.Tests.Share.main \
 		-f seri/sri/Seri/SMT/Tests/Share.sri +RTS -p -K1g

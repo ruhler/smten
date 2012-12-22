@@ -1,0 +1,34 @@
+
+Fri Dec 21 09:08:16 EST 2012
+
+Goal: add concretization support to haskellf translation.
+
+From the primitives I know the pattern. It shouldn't be hard at all. Just the
+usual tedium whenever generating code pragmatically.
+
+I think this should be very helpful performance wise.
+
+Shall I just dive right in?
+
+Here's the convention I'll use...
+
+* get rid of __mkFoo. I can just use the actual constructors I generate.
+* add a Foo__s data constructor for data type Foo.
+
+Everything is else is straight forward...
+
+Let me just dive in and try it out.
+
+Fri Dec 21 10:16:34 EST 2012
+
+Okay! So I think I've completed the rough draft...
+
+Other things to do first: replace conS with conS'.
+
+Then get it all to compile.
+
+Fri Dec 21 10:38:23 EST 2012
+
+Looks like it works. Cool. I'm looking forward to seeing what performance
+improvement we get in shampi. I'm hoping a lot.
+

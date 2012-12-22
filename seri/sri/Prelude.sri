@@ -146,10 +146,12 @@ instance Num Integer where
 data Ordering = LT | EQ | GT
     deriving (Eq)
 
+__lexmerge :: Ordering -> Ordering -> Ordering
+__lexmerge EQ x = x
+__lexmerge x _ = x
+
 __lexorder :: [Ordering] -> Ordering
-__lexorder [] = EQ
-__lexorder (EQ:xs) = __lexorder xs
-__lexorder (x:_) = x
+__lexorder = foldr __lexmerge EQ
 
 
 class Ord a where

@@ -110,6 +110,7 @@ Haskell::
 HaskellF::
 * Translate a module at a time instead of one big blob
 * Take primitives as input, and just ignore all those names automatically?
+* Give a template haskell way of deriving SeriS
 
 Distribution::
 * Move everything but the SMT solvers from seri-smt to seri.

@@ -84,6 +84,24 @@ clauseE :: [MMatch] -> Exp
 clauseE ms = runFreshPretty $ clauseE' ms (errorE "case no match")
 
 clauseE' :: (Fresh f) => [MMatch] -> Exp -> f Exp
+clauseE' [MMatch ps e] n = do
+  -- If we are only making one match, we pick the variables for the lambda
+  -- more wisely to avoid silly things like:
+  --    \_p1 -> let a = _p1
+  --            in foo a
+  -- This doesn't work if there are multiple matches because there are scoping
+  -- issues then.
+  let mkvar :: (Fresh f) => Pat -> f (Sig, Pat)
+      mkvar (VarP n) = return (Sig n UnknownT, WildP)
+      mkvar (AsP n p) = return (Sig n UnknownT, p)
+      mkvar p = do  
+        s <- fresh $ Sig (name "_p") UnknownT
+        return (s, p)
+  pvs <- mapM mkvar ps
+  let (vars, ps') = unzip pvs
+  b <- mmatchE vars (MMatch ps' e) n
+  return $ lamsE vars b
+
 clauseE' ms@(MMatch ps _ : _) n = do
     vars <- mapM fresh [Sig (name $ "_p" ++ show i) UnknownT | i <- [1..(length ps)]]
     b <- mmatchesE vars ms n
