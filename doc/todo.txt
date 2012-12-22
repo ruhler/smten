@@ -70,6 +70,7 @@ Performance::
 * Use the yices1 native interface where possible (everywhere?)
 * In case desugar, use varp and asp directly instead of indirectly
 * Use Data.Map for lets in STP like we do for yices2.
+* Concretize the rest of the haskellf primitives
 
 Sharing::
 * Preserve sharing in "transform" function

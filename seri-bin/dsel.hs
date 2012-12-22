@@ -1,4 +1,5 @@
 
+{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE TemplateHaskell #-}
 
 import Seri.Type
@@ -10,6 +11,14 @@ import qualified Seri.HaskellF.Lib.Prelude as S
 import qualified Seri.HaskellF.Lib.SMT as S
 import qualified Seri_DSEL as S
 import Seri.SMT.Yices.Yices2    
+
+instance (SeriS ca fa, SeriS cb fb) => SeriS (ca, cb) (S.Tuple2__ fa fb) where
+    seriS (a, b) = S.Tuple2__ (seriS a) (seriS b)
+    de_seriS (S.Tuple2__ a b) = do
+        a' <- de_seriS a
+        b' <- de_seriS b    
+        return (a', b')
+    de_seriS (S.Tuple2____s v) = de_seriEH v
 
 q1 :: Query (Answer Integer)
 q1 = do
@@ -74,7 +83,7 @@ quserdata = do
     assertS (2 S.== defoo f)
     query $ realizeS f
 
-allQ :: (S.Eq a, S.Free a, Symbolic a, SeriEH b) => (a -> S.Bool) -> Query [b]
+allQ :: (S.Eq a, S.Free a, SeriS b a) => (a -> S.Bool) -> Query [b]
 allQ p = do
     x <- qS S.free
     assertS (p x)

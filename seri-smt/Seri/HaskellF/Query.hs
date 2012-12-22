@@ -1,4 +1,6 @@
 
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE PatternGuards #-}
 
 -- | Helper functions for working with queries and Symbolic stuff.
@@ -17,6 +19,11 @@ import Seri.SMT.Primitives
 import qualified Seri.HaskellF.Lib.Prelude as S
 import qualified Seri.HaskellF.Lib.SMT as S
 import Seri.HaskellF.Symbolic
+
+instance (Symbolic a) => SeriS (Query ExpH) (S.Query a) where
+    seriS = box . seriEH
+    de_seriS = de_seriEH . unbox
+    
 
 qS :: (Symbolic a) => S.Query a -> Query a
 qS s

@@ -1,6 +1,7 @@
 
 {-# LANGUAGE PatternGuards #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 
 module Seri.HaskellF.Lib.Prelude (
     Char,
@@ -55,6 +56,10 @@ instance Symbolic Char where
     box = Char
     unbox (Char x) = x
 
+instance SeriS P.Char Char where
+    seriS = box . seriEH
+    de_seriS = de_seriEH . unbox
+
     
 data Integer =
         Integer P.Integer
@@ -71,6 +76,12 @@ instance Symbolic Integer where
     unbox x
      | Integer v <- x = integerEH v
      | Integer__s v <- x = v
+
+instance SeriS P.Integer Integer where  
+    seriS = Integer
+
+    de_seriS (Integer x) = Just x
+    de_seriS (Integer__s v) = de_seriEH v
 
 instance Prelude.Num Integer where
     fromInteger = Integer
@@ -136,6 +147,14 @@ instance Symbolic Bool where
       | False <- x = conS x "False" []
       | Bool_s v <- x = v
 
+instance SeriS P.Bool Bool where
+    seriS P.True = True
+    seriS P.False = False
+
+    de_seriS True = Just P.True
+    de_seriS False = Just P.False
+    de_seriS (Bool_s v) = de_seriEH v
+
 __caseTrue :: (Symbolic a) => Bool -> a -> a -> a
 __caseTrue x y n
   | True <- x = y
@@ -166,6 +185,17 @@ instance Symbolic1 List__ where
      | Nil__ <- x = conS x "[]" []
      | Cons__ a b <- x = conS x ":" [unbox a, unbox b]
      | List__s v <- x = v
+
+instance (SeriS c f) => SeriS [c] (List__ f) where
+    seriS [] = Nil__
+    seriS (x:xs) = Cons__ (seriS x) (seriS xs)
+    
+    de_seriS Nil__ = Just []
+    de_seriS (Cons__ x xs) = do
+        x' <- de_seriS x
+        xs' <- de_seriS xs
+        return (x':xs')
+    de_seriS (List__s v) = de_seriEH v
 
 __caseNil__ :: (Symbolic a, Symbolic z) => List__ a -> z -> z -> z
 __caseNil__ x y n
@@ -243,34 +273,28 @@ __prim_toInteger_Char :: Char -> Integer
 __prim_toInteger_Char = primS toInteger_CharP
 
 __prim_eq_Integer :: Integer -> Integer -> Bool
-__prim_eq_Integer a b
-  | Integer av <- a
-  , Integer bv <- b = if av == bv then True else False
-  | otherwise = primS eq_IntegerP a b
+__prim_eq_Integer = binaryS eq_IntegerP ((==) :: P.Integer -> P.Integer -> P.Bool)
 
 __prim_add_Integer :: Integer -> Integer -> Integer
-__prim_add_Integer = primS add_IntegerP
+__prim_add_Integer = binaryS add_IntegerP ((+) :: P.Integer -> P.Integer -> P.Integer)
 
 __prim_sub_Integer :: Integer -> Integer -> Integer
-__prim_sub_Integer = primS sub_IntegerP
+__prim_sub_Integer = binaryS sub_IntegerP ((-) :: P.Integer -> P.Integer -> P.Integer)
 
 __prim_mul_Integer :: Integer -> Integer -> Integer
-__prim_mul_Integer = primS mul_IntegerP
+__prim_mul_Integer = binaryS mul_IntegerP ((*) :: P.Integer -> P.Integer -> P.Integer)
 
 __prim_lt_Integer :: Integer -> Integer -> Bool
-__prim_lt_Integer = {-# SCC "prim_lt_Integer" #-} primS lt_IntegerP
+__prim_lt_Integer = binaryS lt_IntegerP ((<) :: P.Integer -> P.Integer -> P.Bool)
 
 __prim_leq_Integer :: Integer -> Integer -> Bool
-__prim_leq_Integer a b
-  | Integer av <- a
-  , Integer bv <- b = if av <= bv then True else False
-  | otherwise = primS leq_IntegerP a b
+__prim_leq_Integer = binaryS leq_IntegerP ((<=) :: P.Integer -> P.Integer -> P.Bool)
 
 __prim_gt_Integer :: Integer -> Integer -> Bool
-__prim_gt_Integer = {-# SCC "prim_gt_Integer" #-} primS gt_IntegerP
+__prim_gt_Integer = binaryS gt_IntegerP ((>) :: P.Integer -> P.Integer -> P.Bool)
 
 __prim_geq_Integer :: Integer -> Integer -> Bool
-__prim_geq_Integer = {-# SCC "prim_geq_Integer" #-} primS geq_IntegerP
+__prim_geq_Integer = binaryS geq_IntegerP ((>=) :: P.Integer -> P.Integer -> P.Bool)
 
 __prim_show_Integer :: Integer -> String
 __prim_show_Integer = primS show_IntegerP

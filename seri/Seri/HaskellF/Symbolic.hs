@@ -1,11 +1,12 @@
 
+{-# LANGUAGE PatternGuards #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 
 module Seri.HaskellF.Symbolic (
     Symbolic(..), Symbolic1(..), Symbolic2(..), Symbolic3(..), Symbolic4(..),
-    seriS, de_seriS,
-    conS, de_conS, caseS, primS,
-    nullaryS, unaryS, binaryS, 
+    SeriS(..),
+    conS, de_conS, caseS, primS, binaryS, 
     ) where
 
 import Seri.Name
@@ -64,11 +65,12 @@ instance Symbolic2 (->) where
             unbox (f (box x))
 
 -- | Convert a concrete haskell value to its symbolic representation.
-seriS :: (SeriEH c, Symbolic f) => c -> f
-seriS = box . seriEH
+class (SeriEH c, Symbolic f) => SeriS c f where
+    seriS :: c -> f
+    seriS = box . seriEH
 
-de_seriS :: (Symbolic f, SeriEH c) => f -> Maybe c
-de_seriS = de_seriEH . unbox
+    de_seriS :: f -> Maybe c
+    de_seriS = de_seriEH . unbox
 
 conS :: (Symbolic a) => a -> String -> [ExpH] -> ExpH
 conS x nm args = aconEH (name nm) (seriT x) args
@@ -91,13 +93,10 @@ primS p =
  let z = box $ primEH p (seriT z)
  in z
 
-nullaryS :: (Symbolic a) => ExpH -> a
-nullaryS = box
-
-unaryS :: (Symbolic a, Symbolic b) => (ExpH -> ExpH) -> a -> b
-unaryS f x = box $ f (unbox x)
-
-binaryS :: (Symbolic a, Symbolic b, Symbolic c)
-           => (ExpH -> ExpH -> ExpH) -> a -> b -> c
-binaryS f a b = box $ f (unbox a) (unbox b)
+binaryS :: (SeriS ca fa, SeriS cb fb, SeriS cc fc)
+           => Prim -> (ca -> cb -> cc) -> fa -> fb -> fc
+binaryS p f a b
+ | Just av <- de_seriS a
+ , Just bv <- de_seriS b = seriS (f av bv)
+ | otherwise = primS p a b
 
