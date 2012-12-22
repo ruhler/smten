@@ -14,9 +14,13 @@ instance Ppr Exp where
     ppr e | Just xs <- de_tupleE e =
         text "(" <> sep (punctuate comma (map ppr xs)) <> text ")"
     ppr e | Just (n, v, b) <- de_letE e = 
-       text "let" <+> text "{"
-         <+> ppr n <+> text "=" <+> ppr v
-         $+$ text "}" <+> text "in" <+> ppr b
+        text "let" <+> text "{"
+          <+> ppr n <+> text "=" <+> ppr v
+          $+$ text "}" <+> text "in" <+> ppr b
+    ppr e | (ss@(_:_), x) <- de_lamsE e = vcat [
+        text "\\" <> sep (map ppr ss) <+> text "->",
+        nest tabwidth (ppr x)
+      ]
 
     ppr (LitE l) = ppr l
     ppr (ConE s) = ppr s

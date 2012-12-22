@@ -8,15 +8,17 @@ Haskell Features::
 * add support for more kinds of arithmetic sequence
     example: [1..]
 * list comprehension.
-* support for pattern guards?
 * Variable operators: `foo`.
 * pattern matching in do bind notation.
 * pattern matching against bit vectors
 * support arguments to type synonyms? 
 * auto derive Show
+* auto derive Ord
 * recursive let blocks
 * modularity support
 * labeled pattern matching.
+* pattern guards
+* when blocks
 
 Test Type Checking::
 * Verify we check for the instance or context for every method call
@@ -61,7 +63,26 @@ vs. foo :: (Foo a) => Sludge
 * Add static check for concreteness of queries (?)
 
 Pretty Printer::
-* Make pretty again.
+* Make pretty again:
+** Don't put parens around variables:
+    a instead of (a)
+** Don't put parens around string literals:
+    "foo" instead of ("foo")
+** Know about associativity of application:
+    foo a b instead of (foo a) b
+** Don't print types of patterns?
+** don't drop to newline if not needed:
+    \p -> numeric  instead of \p ->
+                                numeric
+** newline for lambda should rest left as far as possible:
+    \x ->           instead of:         \x ->
+  foo ...                                 foo ...
+** Know about associativity for types:
+    a -> Foo b  instead of a -> (Foo b)
+** Recognize if statements.
+** Recognize do statements.
+** Recognize clauses:
+    foo a b = blah  instead of  foo = \a b -> blah
 * Make it so I can compile pretty printed code?
 * Maybe dump the Doc approach and take my SMT concrete approach?
 
@@ -83,6 +104,8 @@ ExpH::
 Primitives::
 * Implement the 'update' primitive, or remove it from smt_array.
 * Get rid of the __prim_free primitive
+* Associate concrete haskell function with Prim to avoid duplication in Prim
+  and concretized haskellf primitives.
 
 SMT::
 * Remove bv-zero-extend from SMT syntax, use SMTLIB2 alternative
@@ -104,9 +127,6 @@ Query Optimizations::
 Specialization::
 * put it back in
 
-Haskell::
-* Test it or remove it.
-
 HaskellF::
 * Translate a module at a time instead of one big blob
 * Take primitives as input, and just ignore all those names automatically?
@@ -122,7 +142,6 @@ Build System::
     use it. (As per request of Nirav)
 * don't hardcode build/test output directory into SMT tests
 * clean up tclmk script: maybe separate into init, build, and test sections.
-* test haskell backend
 
 
 Applications::
