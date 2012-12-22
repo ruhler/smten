@@ -56,17 +56,24 @@ instance Symbolic Char where
     unbox (Char x) = x
 
     
-newtype Integer = Integer ExpH
+data Integer =
+        Integer P.Integer
+      | Integer__s ExpH
 
 instance SeriT Integer where
     seriT _ = integerT
 
 instance Symbolic Integer where
-    box = Integer
-    unbox (Integer x) = x
+    box e
+     | Just v <- de_integerEH e = Integer v
+     | otherwise = Integer__s e
+
+    unbox x
+     | Integer v <- x = integerEH v
+     | Integer__s v <- x = v
 
 instance Prelude.Num Integer where
-    fromInteger = seriS
+    fromInteger = Integer
     (+) = P.error $ "+ for haskellf Integer not defined"
     (*) = P.error $ "* for haskellf Integer not defined"
     abs = P.error $ "abs for haskellf Integer not defined"
@@ -236,7 +243,10 @@ __prim_toInteger_Char :: Char -> Integer
 __prim_toInteger_Char = primS toInteger_CharP
 
 __prim_eq_Integer :: Integer -> Integer -> Bool
-__prim_eq_Integer = primS eq_IntegerP
+__prim_eq_Integer a b
+  | Integer av <- a
+  , Integer bv <- b = if av == bv then True else False
+  | otherwise = primS eq_IntegerP a b
 
 __prim_add_Integer :: Integer -> Integer -> Integer
 __prim_add_Integer = primS add_IntegerP
@@ -248,16 +258,19 @@ __prim_mul_Integer :: Integer -> Integer -> Integer
 __prim_mul_Integer = primS mul_IntegerP
 
 __prim_lt_Integer :: Integer -> Integer -> Bool
-__prim_lt_Integer = primS lt_IntegerP
+__prim_lt_Integer = {-# SCC "prim_lt_Integer" #-} primS lt_IntegerP
 
 __prim_leq_Integer :: Integer -> Integer -> Bool
-__prim_leq_Integer = primS leq_IntegerP
+__prim_leq_Integer a b
+  | Integer av <- a
+  , Integer bv <- b = if av <= bv then True else False
+  | otherwise = primS leq_IntegerP a b
 
 __prim_gt_Integer :: Integer -> Integer -> Bool
-__prim_gt_Integer = primS gt_IntegerP
+__prim_gt_Integer = {-# SCC "prim_gt_Integer" #-} primS gt_IntegerP
 
 __prim_geq_Integer :: Integer -> Integer -> Bool
-__prim_geq_Integer = primS geq_IntegerP
+__prim_geq_Integer = {-# SCC "prim_geq_Integer" #-} primS geq_IntegerP
 
 __prim_show_Integer :: Integer -> String
 __prim_show_Integer = primS show_IntegerP
