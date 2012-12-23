@@ -6,7 +6,7 @@
 module Seri.HaskellF.Symbolic (
     Symbolic(..), Symbolic1(..), Symbolic2(..), Symbolic3(..), Symbolic4(..),
     SeriS(..),
-    conS, de_conS, caseS, primS, binaryS, 
+    conS, de_conS, caseS, primS, unaryS, binaryS, 
     ) where
 
 import Seri.Name
@@ -92,6 +92,13 @@ primS :: (Symbolic a) => Prim -> a
 primS p = 
  let z = box $ primEH p (seriT z)
  in z
+
+unaryS :: (SeriS ca fa, SeriS cb fb)
+            => Prim -> (ca -> cb) -> fa -> fb
+unaryS p f a
+ | Just av <- de_seriS a = seriS (f av)
+ | otherwise = primS p a
+
 
 binaryS :: (SeriS ca fa, SeriS cb fb, SeriS cc fc)
            => Prim -> (ca -> cb -> cc) -> fa -> fb -> fc

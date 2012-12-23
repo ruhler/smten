@@ -47,18 +47,26 @@ import Seri.Prim
 import Seri.Ppr
 import Seri.HaskellF.Symbolic
 
-newtype Char = Char ExpH
+data Char =
+     Char P.Char
+   | Char__s ExpH
 
 instance SeriT Char where
     seriT _ = charT
 
 instance Symbolic Char where
-    box = Char
-    unbox (Char x) = x
+    box e
+      | Just v <- de_charEH e = Char v
+      | otherwise = Char__s e
+
+    unbox x
+      | Char v <- x = charEH v
+      | Char__s v <- x = v
 
 instance SeriS P.Char Char where
-    seriS = box . seriEH
-    de_seriS = de_seriEH . unbox
+    seriS = Char
+    de_seriS (Char v) = Just v
+    de_seriS (Char__s v) = de_seriEH v
 
     
 data Integer =
@@ -270,7 +278,10 @@ type N__2p1 a = N__PLUS (N__2p0 a) N__1
 
 
 __prim_toInteger_Char :: Char -> Integer
-__prim_toInteger_Char = primS toInteger_CharP
+__prim_toInteger_Char =
+    let f :: P.Char -> P.Integer 
+        f = toInteger . fromEnum
+    in unaryS toInteger_CharP f
 
 __prim_eq_Integer :: Integer -> Integer -> Bool
 __prim_eq_Integer = binaryS eq_IntegerP ((==) :: P.Integer -> P.Integer -> P.Bool)
