@@ -2,7 +2,7 @@
 -- | Syntactic sugar involving pattern matching.
 module Seri.Exp.Match (
     Pat(..), SMatch(..), MMatch(..),
-    tupleP, listP,
+    tupleP, listP, charP, stringP,
     mcaseE, clauseE, mlamE, mletE, mletsE,
     ) where
 
@@ -26,6 +26,12 @@ data Pat = ConP Name [Pat]
 listP :: [Pat] -> Pat
 listP [] = ConP (name "[]") []
 listP (x:xs) = ConP (name ":") [x, listP xs]
+
+charP :: Char -> Pat
+charP = LitP . charL
+
+stringP :: String -> Pat
+stringP = listP . map charP
 
 tupleP :: [Pat] -> Pat
 tupleP ps = ConP (tupleN (length ps)) ps

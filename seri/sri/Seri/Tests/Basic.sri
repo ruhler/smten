@@ -239,6 +239,7 @@ testbasic = do
     test "precedence" (1*2+3-4*5+6-7 == negate (16 :: Integer))
     testaspattern
     testarithsequence
+    teststringliteralpattern
 
 testaspattern :: IO ()
 testaspattern = do
@@ -251,6 +252,14 @@ testaspattern = do
 testarithsequence :: IO ()
 testarithsequence = do
     test "fromto" ([1..5] == [1,2,3,4,5 :: Integer])
+
+teststringliteralpattern :: IO ()
+teststringliteralpattern = do
+    test "stringliteralpattern" (
+        case "foo" of
+          "bar" -> False
+          "foo" -> True
+      )
 
 testprelude :: IO ()
 testprelude = do

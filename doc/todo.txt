@@ -1,6 +1,5 @@
 
 Haskell Features::
-* string literal patterns
 * support negative literals?
 * default methods in classes?
 * allow arbitrary patterns in lambda expression arguments.
@@ -82,8 +81,6 @@ Performance::
 * Concretize the rest of the haskellf primitives
 
 Sharing::
-* Preserve trivial sharing in "transform" function (?)
-    That is, if no transformation is done, don't change the EIDs.
 * Why do we sometimes share "free~12"?? For example, in Datatype test.
 
 ExpH::

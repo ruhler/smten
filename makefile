@@ -6,7 +6,7 @@ test:
 	./build/seri-bin/seri --haskellf \
 		--include seri/sri \
 		--main-is main \
-		-f seri/sri/Seri/SMT/Tests/Sudoku2.sri > foo.hs
+		-f seri/sri/Seri/TSPLIB/HCP/HCP.sri +RTS -p > foo.hs
 	HOME=build/home ghc -fno-warn-overlapping-patterns \
 		-fno-warn-missing-fields \
 		-main-is __main \

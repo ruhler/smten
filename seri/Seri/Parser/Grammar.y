@@ -458,7 +458,9 @@ apat :: { Pat }
  | integer
     { LitP (integerL $1) }
  | char
-    { LitP (charL $1) }
+    { charP $1 }
+ | string
+    { stringP $1 }
  | '(' pat ')'
     { $2 }
  | '(' pat ',' pats_commasep ')'
