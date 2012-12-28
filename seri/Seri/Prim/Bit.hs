@@ -6,7 +6,7 @@ module Seri.Prim.Bit (
     add_BitP, sub_BitP, mul_BitP,
     and_BitP, or_BitP, not_BitP,
     shl_BitP, lshr_BitP,
-    fromInteger_BitP, zeroExtend_BitP,
+    fromInteger_BitP, toInteger_BitP, zeroExtend_BitP,
     truncate_BitP, extract_BitP, concat_BitP,
     ) where
 
@@ -23,7 +23,7 @@ bitPs = [
     add_BitP, sub_BitP, mul_BitP,
     and_BitP, or_BitP, not_BitP,
     shl_BitP, lshr_BitP,
-    fromInteger_BitP, zeroExtend_BitP,
+    fromInteger_BitP, toInteger_BitP, zeroExtend_BitP,
     truncate_BitP, extract_BitP, concat_BitP
     ]
 
@@ -52,6 +52,9 @@ fromInteger_BitP =
         let Just w = de_bitT t
         in bv_make w v
  in unaryTP "Seri.Bit.__prim_fromInteger_Bit" f
+
+toInteger_BitP :: Prim
+toInteger_BitP = unaryP "Seri.Bit.__prim_toInteger_Bit" bv_value
 
 zeroExtend_BitP :: Prim
 zeroExtend_BitP =

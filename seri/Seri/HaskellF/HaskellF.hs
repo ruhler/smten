@@ -265,6 +265,7 @@ hsDec (PrimD s@(TopSig n _ _))
  | n == name "Prelude.numeric" = return []
  | n == name "Prelude.error" = return []
  | n == name "Seri.Bit.__prim_fromInteger_Bit" = return []
+ | n == name "Seri.Bit.__prim_toInteger_Bit" = return []
  | n == name "Seri.Bit.__prim_eq_Bit" = return []
  | n == name "Seri.Bit.__prim_lt_Bit" = return []
  | n == name "Seri.Bit.__prim_gt_Bit" = return []

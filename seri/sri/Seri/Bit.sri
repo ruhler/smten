@@ -15,6 +15,7 @@ __prim_sub_Bit :: Bit #n -> Bit #n -> Bit #n
 __prim_mul_Bit :: Bit #n -> Bit #n -> Bit #n
 __prim_show_Bit :: Bit #n -> String
 __prim_fromInteger_Bit :: Integer -> Bit #n
+__prim_toInteger_Bit :: Bit #n -> Integer
 __prim_zeroExtend_Bit :: Bit #n -> Bit #m
 __prim_or_Bit :: Bit #n -> Bit #n -> Bit #n
 __prim_and_Bit :: Bit #n -> Bit #n -> Bit #n

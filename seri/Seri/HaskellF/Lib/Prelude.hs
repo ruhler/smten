@@ -24,7 +24,7 @@ module Seri.HaskellF.Lib.Prelude (
     __prim_eq_Bit, __prim_show_Bit,
     __prim_lt_Bit, __prim_gt_Bit, __prim_leq_Bit, __prim_geq_Bit,
     __prim_add_Bit, __prim_sub_Bit, __prim_mul_Bit,
-    __prim_fromInteger_Bit,
+    __prim_fromInteger_Bit, __prim_toInteger_Bit,
     __prim_shl_Bit, __prim_lshr_Bit,
     __prim_or_Bit, __prim_and_Bit, __prim_not_Bit,
     __prim_zeroExtend_Bit,
@@ -46,6 +46,7 @@ import Seri.ExpH
 import Seri.Prim
 import Seri.Ppr
 import Seri.HaskellF.Symbolic
+import qualified Seri.Bit as B
 
 data Char =
      Char P.Char
@@ -351,6 +352,9 @@ __prim_mul_Bit = primS mul_BitP
 
 __prim_fromInteger_Bit :: (Symbolic n) => Integer -> Bit n
 __prim_fromInteger_Bit = primS fromInteger_BitP
+
+__prim_toInteger_Bit :: (Symbolic n) => Bit n -> Integer
+__prim_toInteger_Bit = primS toInteger_BitP
 
 __prim_shl_Bit :: (Symbolic n) => Bit n -> Bit n -> Bit n
 __prim_shl_Bit = primS shl_BitP

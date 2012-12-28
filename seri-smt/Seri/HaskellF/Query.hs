@@ -5,7 +5,7 @@
 
 -- | Helper functions for working with queries and Symbolic stuff.
 module Seri.HaskellF.Query (
-    qS, assertS, realizeS,
+    qS, assertS, realizeS, realizeS',
     ) where
 
 import Data.Functor ((<$>))
@@ -33,6 +33,9 @@ qS s
 
 assertS :: S.Bool -> Query ()
 assertS p = qS (S.assert p) >> return ()
+
+realizeS' :: (Symbolic a) => a -> Realize a
+realizeS' = fmap box . realize . unbox
 
 de_seriEH' :: (SeriEH a) => ExpH -> a
 de_seriEH' x = fromMaybe (error $ "de_seriEH': " ++ pretty x) (de_seriEH x)
