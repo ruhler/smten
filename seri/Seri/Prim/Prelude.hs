@@ -2,7 +2,7 @@
 module Seri.Prim.Prelude (
     preludePs,
     errorP,
-    eq_IntegerP, toInteger_CharP,
+    eq_IntegerP, toInteger_CharP, fromInteger_CharP,
     add_IntegerP, sub_IntegerP, mul_IntegerP,
     lt_IntegerP, leq_IntegerP, gt_IntegerP, geq_IntegerP,
     show_IntegerP,
@@ -23,7 +23,7 @@ import Seri.Prim.Prim
 preludePs :: [Prim]
 preludePs = [
     errorP,
-    eq_IntegerP, toInteger_CharP,
+    eq_IntegerP, toInteger_CharP, fromInteger_CharP,
     add_IntegerP, sub_IntegerP, mul_IntegerP,
     lt_IntegerP, leq_IntegerP, gt_IntegerP, geq_IntegerP,
     show_IntegerP,
@@ -45,6 +45,12 @@ toInteger_CharP =
  let f :: Char -> Integer
      f = toInteger . fromEnum
  in unaryP "Prelude.__prim_toInteger_Char" f
+
+fromInteger_CharP :: Prim
+fromInteger_CharP =
+ let f :: Integer -> Char
+     f = toEnum . fromInteger
+ in unaryP "Prelude.__prim_fromInteger_Char" f
 
 add_IntegerP :: Prim
 add_IntegerP = binaryP "Prelude.__prim_add_Integer" ((+) :: Integer -> Integer -> Integer)

@@ -5,7 +5,9 @@ module Seri.Tests.Basic where
 import Seri.Tests.Test
 
 import Debug.Trace
+
 import Data.Array
+import Data.Char
 import Data.List
 import Seri.Vector
 import Seri.Bit
@@ -286,6 +288,8 @@ testlist = do
 testchar :: IO ()
 testchar = do
    test "char.lt" ('a' < 'z')
+   test "char.ord" (ord 'a' == 97)
+   test "char.chr" (chr 98 == 'b')
 
 testtrace :: IO ()
 testtrace = do

@@ -120,6 +120,7 @@ instance Eq () where
     (/=) = (/=#)
 
 __prim_toInteger_Char :: Char -> Integer
+__prim_fromInteger_Char :: Integer -> Char
 
 instance Eq Char where
     (==) a b = __prim_toInteger_Char a == __prim_toInteger_Char b

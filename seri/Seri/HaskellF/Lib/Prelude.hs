@@ -14,7 +14,7 @@ module Seri.HaskellF.Lib.Prelude (
 
     N__0, N__2p1, N__2p0, N__PLUS, N__MINUS, N__TIMES,
 
-    __prim_toInteger_Char,
+    __prim_toInteger_Char, __prim_fromInteger_Char,
     __prim_eq_Integer,
     __prim_add_Integer, __prim_sub_Integer, __prim_mul_Integer,
     __prim_lt_Integer, __prim_gt_Integer, __prim_leq_Integer, __prim_geq_Integer,
@@ -282,6 +282,12 @@ __prim_toInteger_Char =
     let f :: P.Char -> P.Integer 
         f = toInteger . fromEnum
     in unaryS toInteger_CharP f
+
+__prim_fromInteger_Char :: Integer -> Char
+__prim_fromInteger_Char =
+    let f :: P.Integer -> P.Char
+        f = toEnum . fromInteger
+    in unaryS fromInteger_CharP f
 
 __prim_eq_Integer :: Integer -> Integer -> Bool
 __prim_eq_Integer = binaryS eq_IntegerP ((==) :: P.Integer -> P.Integer -> P.Bool)

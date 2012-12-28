@@ -260,6 +260,7 @@ hsDec (PrimD s@(TopSig n _ _))
  | n == name "Prelude.__prim_geq_Integer" = return []
  | n == name "Prelude.__prim_eq_Integer" = return []
  | n == name "Prelude.__prim_toInteger_Char" = return []
+ | n == name "Prelude.__prim_fromInteger_Char" = return []
  | n == name "Prelude.valueof" = return []
  | n == name "Prelude.numeric" = return []
  | n == name "Prelude.error" = return []
