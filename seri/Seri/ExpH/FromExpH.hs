@@ -19,14 +19,14 @@ import Seri.ExpH.SeriEHs
 
 -- Translate back to the normal Exp representation
 fromExpH :: ExpH -> Exp
-fromExpH e = {-# SCC "fromExpH" #-} convert (sharing e) e
+fromExpH e = convert (sharing e) e
 
 data Use = Multi | Single
     deriving (Eq)
 
 -- Find all the subexpressions in the given expression which should be shared.
 sharing :: ExpH -> Set.Set EID
-sharing e = {-# SCC "sharing" #-}
+sharing e =
   let traverse :: ExpH -> State (Map.Map EID Use) ()
       traverse e
         | Just id <- getid e = do
@@ -54,7 +54,7 @@ data Defined = Defined {
 }
 
 convert :: Set.Set EID -> ExpH -> Exp
-convert share e = {-# SCC "convert" #-}
+convert share e =
   let -- Generate the definition for this expression.
       defineM :: ExpH -> State Defined Exp
       defineM e
@@ -93,7 +93,7 @@ convert share e = {-# SCC "convert" #-}
         , Set.member id share = do
             done <- gets df_done
             let var = VarE (Sig (nameof id) (typeof e))
-            case {-# SCC "convert.lookup" #-} Set.member id done of
+            case Set.member id done of
                 True -> return var
                 False -> do
                    v <- defineM e
@@ -107,6 +107,6 @@ convert share e = {-# SCC "convert" #-}
       bindings = reverse (df_defs defined)
 
       nameof :: EID -> Name
-      nameof x = {-# SCC "convert.nameof" #-} name $ "s~" ++ show x
+      nameof x = name $ "s~" ++ show x
   in letsE [(Sig (nameof x) (typeof v), v) | (x, v) <- bindings] body
 

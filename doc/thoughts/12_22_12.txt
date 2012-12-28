@@ -1,0 +1,76 @@
+
+Sat Dec 22 12:05:09 EST 2012
+
+There are three things I would like to work on here.
+
+1. Have a template haskell way of deriving SeriS.
+Usage I would like is:
+    derive_SeriS ''Foo ''S.Foo
+
+And have it do the rest.
+
+2. Be a little smarter in case desugaring in choice of variables.
+The goal is to avoid things like:
+    
+    \_p -> let a = _p
+           in foo a
+
+When we could instead just do:
+    \a -> foo a
+
+It will make the code easier to read, and should result in at least minor
+performance improvements. It can't hurt, and I don't think it will be
+difficult to implement.
+
+Except... are there shadowing issues?
+
+I don't think so. No. there shouldn't be.
+
+3. Make the pretty printer for Exp nicer.
+Idea: ditch Doc. Because it sucks, and produces awful looking things once you
+near the end of a line.
+
+Let me try (2) and see if that helps things and how.
+
+No, we have a space leak. I have to make sure I pick fresh names, otherwise we
+could have problems... Perhaps I can approximate.
+
+No... it still seems to be having problems. Hum.
+
+Sat Dec 22 12:30:25 EST 2012
+
+Okay, works if there is only one match. Then we don't have scoping issues. So
+I implemented it for that. I think it's a decent change.
+
+Now, I'd like to work on the pretty printer a bit. Let me start by seeing if I
+can make it work better with Doc first. I probably can.
+
+What I want to avoid is "hanging". I don't have any layout rules to worry
+about, so always, whenever going to a new line, go as far left as possible:
+
+Okay, how about this. I'll look at the sugar code, and try to make that
+prettier first, by seeing what things I don't like in it. Go a little at a
+time.
+
+Sat Dec 22 14:55:41 EST 2012
+
+Note: realization performs transform! So, I can't just get rid of transform, I
+really need it to support preservation of sharing.
+
+Let me try that, see how hard it is. I'm concerned transform will be expensive
+because of all the lookups we have to do...
+
+Well... but it may end up being cheaper in the end, right? If we inline
+everything, we don't have this problem with transforming lambdas. And we do
+inline everything. That means the problem with transform is only in
+exponential blowup, which this should solve. It's a good thing. Right?
+
+Well... there's this other thing too, which is, what if we don't end up making
+any transformation? We still loose sharing then. Even if I cache things.
+
+And it's not like I can check to see if we would end up transforming things or
+not.
+
+Well, again, everything is inlined. So maybe we can check the whole thing?
+Maybe, maybe not... I don't know. This is complicated.
+

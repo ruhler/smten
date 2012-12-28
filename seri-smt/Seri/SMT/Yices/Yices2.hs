@@ -185,7 +185,7 @@ dobinop :: Map.Map String YTerm -> Expression -> (YTerm -> YTerm -> IO YTerm) ->
 dobinop s (AppE (VarE _) [a, b]) f = dobinop' s a b f
 
 yterm :: Expression -> IO YTerm
-yterm = {-# SCC "yterm" #-} ytermS Map.empty
+yterm = ytermS Map.empty
 
 builtin :: [String]
 builtin = [
@@ -292,7 +292,7 @@ ytermS _ (LitE (BoolL True)) = c_yices_true
 ytermS _ (LitE (BoolL False)) = c_yices_false
 ytermS _ (LitE (IntegerL i)) = c_yices_int64 (fromInteger i)
 ytermS s e@(VarE nm) =
-    case {-# SCC "ytermS.lookup" #-} Map.lookup nm s of
+    case Map.lookup nm s of
         Nothing -> withCString nm c_yices_get_term_by_name
         Just t -> return t 
     

@@ -17,7 +17,7 @@ Haskell Features::
 * modularity support
 * labeled pattern matching.
 * pattern guards
-* when blocks
+* where blocks
 
 Test Type Checking::
 * Verify we check for the instance or context for every method call
@@ -76,7 +76,6 @@ Pretty Printer::
 Performance::
 * Play with GHC Sparks and non-strict state monads
 * Use the yices1 native interface where possible (everywhere?)
-* In case desugar, use varp and asp directly instead of indirectly
 * Use Data.Map for lets in STP like we do for yices2.
 * Concretize the rest of the haskellf primitives
 

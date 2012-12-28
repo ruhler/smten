@@ -103,13 +103,13 @@ sendCmds cmds solver (Just dh) = do
     mapM_ (SMT.run solver) cmds
 
 runCmds :: [SMT.Command] -> Query ()
-runCmds cmds = {-# SCC "runCmds" #-} do
+runCmds cmds = {-# SCC "RunCmds" #-} do
     solver <- gets qs_solver
     dh <- gets qs_dh
     liftIO $ sendCmds cmds solver dh
 
 check :: Query SMT.Result
-check = {-# SCC "check" #-} do
+check = {-# SCC "Check" #-} do
     solver <- gets qs_solver
     debug (SMT.pretty solver SMT.Check)
     res <- liftIO $ SMT.check solver
@@ -146,8 +146,8 @@ smtt t = do
     runCmds cmds
     return yt
 
-smte :: ExpH -> Query SMT.Expression
-smte e = do
+smte' :: ExpH -> Query ([SMT.Command], SMT.Expression)
+smte' e = {-# SCC "SmtE" #-} do
     qs <- gets qs_qs 
     let se = fromExpH e
         mkye :: CompilationM ([SMT.Command], SMT.Expression)
@@ -157,6 +157,11 @@ smte e = do
           return (cmds, ye)
     ((cmds, ye), qs') <- liftIO . attemptIO $ runCompilation mkye qs
     modify $ \s -> s { qs_qs = qs' }
+    return (cmds, ye)
+
+smte :: ExpH -> Query SMT.Expression
+smte e = do
+    (cmds, ye) <- smte' e
     runCmds cmds
     return ye
 
@@ -255,7 +260,7 @@ free t = error $ "Query.free: unsupported type: " ++ pretty t
 
 -- | Assert the given seri boolean expression.
 assert :: ExpH -> Query ()
-assert p = {-# SCC "assert" #-} do
+assert p = do
   yp <- smte p
   runCmds [SMT.Assert yp]
 
