@@ -139,7 +139,7 @@ getIntegerValue (Yices1 fp) nm = do
         ir <- c_yices_get_int_value model decl ptr
         if ir == 1
             then peek ptr
-            else error $ "yices get int value returned: " ++ show ir
+            else return 0
     return (toInteger x)
 
 getBoolValue :: Yices1 -> String -> IO Bool
@@ -164,7 +164,7 @@ getBitVectorValue (Yices1 fp) w nm = do
         ir <- c_yices_get_bitvector_value model decl (fromInteger w) ptr
         if ir == 1
             then peekArray (fromInteger w) ptr
-            else error $ "yices get bit vector value returned: " ++ show ir
+            else return []
     return (bvInteger bits)
 
 bvInteger :: [CInt] -> Integer
