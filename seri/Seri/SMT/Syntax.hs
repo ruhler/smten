@@ -42,7 +42,7 @@ module Seri.SMT.Syntax (
 
     -- * Core
     letE, de_letE, eqE, de_eqE, ifE, de_ifE, varE, de_varE,
-    boolE, de_boolE, trueE, falseE,
+    boolE, de_boolE, trueE, de_trueE, falseE, de_falseE,
     notE, de_notE, andE, de_andE, orE, de_orE,
 
     -- * Integer
@@ -118,6 +118,14 @@ de_boolE :: Expression -> Maybe Bool
 de_boolE (LitE (BoolL b)) = Just b
 de_boolE _ = Nothing
 
+de_trueE :: Expression -> Bool
+de_trueE (LitE (BoolL b)) = b
+de_trueE _ = False
+
+de_falseE :: Expression -> Bool
+de_falseE (LitE (BoolL b)) = not b
+de_falseE _ = False
+
 -- | > not e
 notE :: Expression -> Expression
 notE p
@@ -148,16 +156,13 @@ de_eqE _ = Nothing
 
 -- | > (and <term_1> ... <term_n>)
 andE :: [Expression] -> Expression
-andE es = 
-  let flatten :: Expression -> [Expression]
-      flatten e | e == trueE = []
-      flatten (AppE f xs) | f == varE "and" = concat $ map flatten xs
-      flatten e = [e]
-  in case (concat $ map flatten es) of
-      [] -> trueE
-      [x] -> x
-      xs | any (== falseE) xs -> falseE
-      xs -> AppE (varE "and") xs
+andE es
+ | any de_falseE es = falseE
+ | otherwise =
+     case filter (not . de_trueE) es of
+        [] -> trueE
+        [x] -> x
+        xs -> AppE (varE "and") xs
 
 -- | Deconstruct an AND expression
 de_andE :: Expression -> Maybe [Expression]
@@ -166,15 +171,12 @@ de_andE _ = Nothing
 
 -- | > (or <term_1> ... <term_n>)
 orE :: [Expression] -> Expression
-orE es =
-  let flatten :: Expression -> [Expression]
-      flatten e | e == falseE = []
-      flatten (AppE f xs) | f == varE "or" = concat $ map flatten xs
-      flatten e = [e]
-  in case (concat $ map flatten es) of
+orE es
+ | any de_trueE es = trueE
+ | otherwise =
+     case filter (not . de_falseE) es of
         [] -> falseE
         [x] -> x
-        xs | any (== trueE) xs -> trueE
         xs -> AppE (varE "or") xs
 
 -- | Deconstruct an OR expression
