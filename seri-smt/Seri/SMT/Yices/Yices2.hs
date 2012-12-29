@@ -209,14 +209,18 @@ builtin = [
 -- Construct a yices term from the given expression with the given
 -- variable scope.
 ytermS :: Map.Map String YTerm -> Expression -> IO YTerm
-ytermS s e | Just (a, b) <- de_eqE e = dobinop' s a b c_yices_eq
-ytermS s e | Just [a, b] <- de_orE e = dobinop' s a b c_yices_or2
-ytermS s e | Just [a, b] <- de_andE e = dobinop' s a b c_yices_and2
-ytermS s e | Just (a, b) <- de_bvaddE e = dobinop' s a b c_yices_bvadd
-ytermS s e | Just (a, b) <- de_bvsubE e = dobinop' s a b c_yices_bvsub
-ytermS s e | Just (a, b) <- de_bvorE e = dobinop' s a b c_yices_bvor
-ytermS s e | Just (a, b) <- de_bvandE e = dobinop' s a b c_yices_bvand
-ytermS s e | Just (a, b) <- de_bvconcatE e = dobinop' s a b c_yices_bvconcat
+ytermS s e
+  | Just (a, b) <- de_eqE e = dobinop' s a b c_yices_eq
+  | Just [a, b] <- de_orE e = dobinop' s a b c_yices_or2
+  | Just [a, b] <- de_andE e = dobinop' s a b c_yices_and2
+  | Just (a, b) <- de_bvaddE e = dobinop' s a b c_yices_bvadd
+  | Just (a, b) <- de_bvsubE e = dobinop' s a b c_yices_bvsub
+  | Just (a, b) <- de_bvorE e = dobinop' s a b c_yices_bvor
+  | Just (a, b) <- de_bvandE e = dobinop' s a b c_yices_bvand
+  | Just (a, b) <- de_bvconcatE e = dobinop' s a b c_yices_bvconcat
+  | Just (a, b) <- de_addE e = dobinop' s a b c_yices_add
+  | Just (a, b) <- de_subE e = dobinop' s a b c_yices_sub
+  | Just (a, b) <- de_mulE e = dobinop' s a b c_yices_mul
 ytermS s e | isbinop "<" e = dobinop s e c_yices_arith_lt_atom
 ytermS s e | isbinop "<=" e = dobinop s e c_yices_arith_leq_atom
 ytermS s e | isbinop ">" e = dobinop s e c_yices_arith_gt_atom
@@ -225,9 +229,6 @@ ytermS s e | isbinop "bv-lt" e = dobinop s e c_yices_bvlt_atom
 ytermS s e | isbinop "bv-le" e = dobinop s e c_yices_bvle_atom
 ytermS s e | isbinop "bv-gt" e = dobinop s e c_yices_bvgt_atom
 ytermS s e | isbinop "bv-ge" e = dobinop s e c_yices_bvge_atom
-ytermS s e | isbinop "+" e = dobinop s e c_yices_add
-ytermS s e | isbinop "-" e = dobinop s e c_yices_sub
-ytermS s e | isbinop "*" e = dobinop s e c_yices_mul
 ytermS s e | isbinop "xor" e = dobinop s e c_yices_xor2
 ytermS s e | isbinop "bv-sub" e = dobinop s e c_yices_bvsub
 ytermS s e | isbinop "bv-mul" e = dobinop s e c_yices_bvmul

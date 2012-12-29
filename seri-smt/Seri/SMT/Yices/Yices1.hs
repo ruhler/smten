@@ -33,6 +33,7 @@
 -- 
 -------------------------------------------------------------------------------
 
+{-# LANGUAGE PatternGuards #-}
 {-# LANGUAGE ForeignFunctionInterface #-}
 {-# LANGUAGE EmptyDataDecls  #-}
 
@@ -48,6 +49,8 @@ import Foreign.C.String
 import Foreign.C.Types
 import qualified Foreign.Concurrent as F
 
+import qualified Data.Map as Map
+
 import qualified Seri.SMT.Solver as S
 import Seri.SMT.Syntax
 import qualified Seri.SMT.Yices.Concrete as YC
@@ -57,6 +60,7 @@ import qualified Seri.SMT.Query as Q
 data YContext
 data YModel
 data YDecl
+data YExpr
 data Yices1 = Yices1 (ForeignPtr YContext)
 
 type YBool = CInt
@@ -76,8 +80,20 @@ foreign import ccall "yices1_del_context"
 foreign import ccall "yices1_parse_command"
     c_yices_parse_command :: Ptr YContext -> CString -> IO Bool
 
+foreign import ccall "yices1_parse_expression"
+    c_yices_parse_expression :: Ptr YContext -> CString -> IO (Ptr YExpr)
+
 foreign import ccall "yices1_check"
     c_yices_check :: Ptr YContext -> IO YBool
+
+foreign import ccall "yices1_push"
+    c_yices_push :: Ptr YContext -> IO ()
+
+foreign import ccall "yices1_pop"
+    c_yices_pop :: Ptr YContext -> IO ()
+
+foreign import ccall "yices1_assert"
+    c_yices_assert :: Ptr YContext -> Ptr YExpr -> IO ()
 
 foreign import ccall "yices1_get_model"
     c_yices_get_model :: Ptr YContext -> IO (Ptr YModel)
@@ -102,6 +118,117 @@ foreign import ccall "yices1_get_bitvector_value"
 
 foreign import ccall "yices1_get_var_decl_from_name"
     c_yices_get_var_decl_from_name :: Ptr YContext -> CString -> IO (Ptr YDecl)
+
+foreign import ccall "yices1_mk_var_from_decl"
+    c_yices_mk_var_from_decl :: Ptr YContext -> Ptr YDecl -> IO (Ptr YExpr)
+
+foreign import ccall "yices1_mk_function_update"
+    c_yices_mk_function_update :: Ptr YContext -> Ptr YExpr -> Ptr (Ptr YExpr) -> CUInt -> Ptr YExpr -> IO (Ptr YExpr)
+
+foreign import ccall "yices1_mk_app"
+    c_yices_mk_app :: Ptr YContext -> Ptr YExpr -> Ptr (Ptr YExpr) -> CUInt -> IO (Ptr YExpr)
+
+foreign import ccall "yices1_mk_true"
+    c_yices_mk_true :: Ptr YContext -> IO (Ptr YExpr)
+
+foreign import ccall "yices1_mk_false"
+    c_yices_mk_false :: Ptr YContext -> IO (Ptr YExpr)
+
+foreign import ccall "yices1_mk_not"
+    c_yices_mk_not :: Ptr YContext -> Ptr YExpr -> IO (Ptr YExpr)
+
+foreign import ccall "yices1_mk_bv_not"
+    c_yices_mk_bv_not :: Ptr YContext -> Ptr YExpr -> IO (Ptr YExpr)
+
+foreign import ccall "yices1_mk_or"
+    c_yices_mk_or :: Ptr YContext -> Ptr (Ptr YExpr) -> CUInt -> IO (Ptr YExpr)
+
+foreign import ccall "yices1_mk_and"
+    c_yices_mk_and :: Ptr YContext -> Ptr (Ptr YExpr) -> CUInt -> IO (Ptr YExpr)
+
+foreign import ccall "yices1_mk_sum"
+    c_yices_mk_sum :: Ptr YContext -> Ptr (Ptr YExpr) -> CUInt -> IO (Ptr YExpr)
+
+foreign import ccall "yices1_mk_sub"
+    c_yices_mk_sub :: Ptr YContext -> Ptr (Ptr YExpr) -> CUInt -> IO (Ptr YExpr)
+
+foreign import ccall "yices1_mk_mul"
+    c_yices_mk_mul :: Ptr YContext -> Ptr (Ptr YExpr) -> CUInt -> IO (Ptr YExpr)
+
+foreign import ccall "yices1_mk_ite"
+    c_yices_mk_ite :: Ptr YContext -> Ptr YExpr -> Ptr YExpr -> Ptr YExpr -> IO (Ptr YExpr)
+
+foreign import ccall "yices1_mk_eq"
+    c_yices_mk_eq :: Ptr YContext -> Ptr YExpr -> Ptr YExpr -> IO (Ptr YExpr)
+
+foreign import ccall "yices1_mk_lt"
+    c_yices_mk_lt :: Ptr YContext -> Ptr YExpr -> Ptr YExpr -> IO (Ptr YExpr)
+
+foreign import ccall "yices1_mk_le"
+    c_yices_mk_le :: Ptr YContext -> Ptr YExpr -> Ptr YExpr -> IO (Ptr YExpr)
+
+foreign import ccall "yices1_mk_gt"
+    c_yices_mk_gt :: Ptr YContext -> Ptr YExpr -> Ptr YExpr -> IO (Ptr YExpr)
+
+foreign import ccall "yices1_mk_ge"
+    c_yices_mk_ge :: Ptr YContext -> Ptr YExpr -> Ptr YExpr -> IO (Ptr YExpr)
+
+foreign import ccall "yices1_mk_bv_add"
+    c_yices_mk_bv_add :: Ptr YContext -> Ptr YExpr -> Ptr YExpr -> IO (Ptr YExpr)
+
+foreign import ccall "yices1_mk_bv_sub"
+    c_yices_mk_bv_sub :: Ptr YContext -> Ptr YExpr -> Ptr YExpr -> IO (Ptr YExpr)
+
+foreign import ccall "yices1_mk_bv_mul"
+    c_yices_mk_bv_mul :: Ptr YContext -> Ptr YExpr -> Ptr YExpr -> IO (Ptr YExpr)
+
+foreign import ccall "yices1_mk_bv_and"
+    c_yices_mk_bv_and :: Ptr YContext -> Ptr YExpr -> Ptr YExpr -> IO (Ptr YExpr)
+
+foreign import ccall "yices1_mk_bv_or"
+    c_yices_mk_bv_or :: Ptr YContext -> Ptr YExpr -> Ptr YExpr -> IO (Ptr YExpr)
+
+foreign import ccall "yices1_mk_bv_concat"
+    c_yices_mk_bv_concat :: Ptr YContext -> Ptr YExpr -> Ptr YExpr -> IO (Ptr YExpr)
+
+foreign import ccall "yices1_mk_bv_lt"
+    c_yices_mk_bv_lt :: Ptr YContext -> Ptr YExpr -> Ptr YExpr -> IO (Ptr YExpr)
+
+foreign import ccall "yices1_mk_bv_gt"
+    c_yices_mk_bv_gt :: Ptr YContext -> Ptr YExpr -> Ptr YExpr -> IO (Ptr YExpr)
+
+foreign import ccall "yices1_mk_bv_le"
+    c_yices_mk_bv_le :: Ptr YContext -> Ptr YExpr -> Ptr YExpr -> IO (Ptr YExpr)
+
+foreign import ccall "yices1_mk_bv_ge"
+    c_yices_mk_bv_ge :: Ptr YContext -> Ptr YExpr -> Ptr YExpr -> IO (Ptr YExpr)
+
+foreign import ccall "yices1_mk_num"
+    c_yices_mk_num :: Ptr YContext -> CInt -> IO (Ptr YExpr)
+
+foreign import ccall "yices1_mk_bv_constant"
+    c_yices_mk_bv_constant :: Ptr YContext -> CUInt -> CULong -> IO (Ptr YExpr)
+
+foreign import ccall "yices1_mk_bv_shift_left0"
+    c_yices_mk_bv_shift_left0 :: Ptr YContext -> Ptr YExpr -> CUInt -> IO (Ptr YExpr)
+
+builtin :: [String]
+builtin = [
+    "true", "false", "if", "ite", "=", "/=", "distinct",
+    "or", "and", "not", "xor", "<=>", "=>", "mk-tuple",
+    "select", "tuple-update", "update",  "forall",  "exists",  "let",
+    "+", "-", "*", "/", "^",
+    "<", "<=", ">", ">=",
+    "mk-bv", "bv-add", "bv-sub", "bv-mul", "bv-neg", "bv-pow",
+    "bv-not", "bv-and", "bv-or", "bv-xor", "bv-nand", "bv-nor", "bv-xnor",
+    "bv-shift-left0", "bv-shift-left1", "bv-shift-right0", "bv-shift-right1",
+    "bv-ashift-right", "bv-rotate-left", "bv-rotate-right",
+    "bv-extract", "bv-concat", "bv-repeat",
+    "bv-sign-extend", "bv-zero-extend", "bv-ge", "bv-gt", "bv-le", "bv-lt",
+    "bv-sge", "bv-sgt", "bv-sle", "bv-slt", "bv-shl", "bv-lshr", "bv-ashr",
+    "bv-div", "bv-rem", "bv-sdiv", "bv-srem", "bv-smod",
+    "bv-redor", "bv-redand", "bv-comp"
+    ]
                           
 
 toResult :: YBool -> S.Result
@@ -111,6 +238,12 @@ toResult n
     | otherwise   = S.Undefined
 
 run :: Yices1 -> Command -> IO ()
+run y@(Yices1 fp) (Assert p) = do
+    p' <- yexpr y p
+    withForeignPtr fp $ \ctx -> c_yices_assert ctx p'
+run (Yices1 fp) Push = withForeignPtr fp c_yices_push
+run (Yices1 fp) Pop = withForeignPtr fp c_yices_pop
+run ctx Check = check ctx >> return ()
 run (Yices1 fp) cmd = do
     worked <- withCString (YC.concrete cmd) $ \str -> do
           withForeignPtr fp $ \yctx ->
@@ -186,3 +319,109 @@ yices1 = do
           S.getBoolValue = getBoolValue y1,
           S.getBitVectorValue = getBitVectorValue y1
        }
+
+yexpr :: Yices1 -> Expression -> IO (Ptr YExpr)
+yexpr y = yexprS y Map.empty
+
+dobinop :: Yices1 -> Map.Map String (Ptr YExpr)
+           -> Expression -> Expression
+           -> (Ptr YContext -> Ptr YExpr -> Ptr YExpr -> IO (Ptr YExpr))
+           -> IO (Ptr YExpr)
+dobinop y@(Yices1 fp) s a b f = do
+    a' <- yexprS y s a
+    b' <- yexprS y s b
+    withForeignPtr fp $ \ctx -> f ctx a' b'
+
+domanyop :: Yices1 -> Map.Map String (Ptr YExpr)
+           -> [Expression] 
+           -> (Ptr YContext -> Ptr (Ptr YExpr) -> CUInt -> IO (Ptr YExpr))
+           -> IO (Ptr YExpr)
+domanyop y@(Yices1 fp) s xs f = do
+    xs' <- mapM (yexprS y s) xs
+    withForeignPtr fp $ \ctx ->
+        withArray xs' $ \arr -> f ctx arr (fromIntegral $ length xs')
+
+yexprS :: Yices1 -> Map.Map String (Ptr YExpr) -> Expression -> IO (Ptr YExpr)
+yexprS y@(Yices1 fp) s e
+  | Just True <- de_boolE e = withForeignPtr fp c_yices_mk_true
+  | Just False <- de_boolE e = withForeignPtr fp c_yices_mk_false
+  | Just i <- de_integerE e = withForeignPtr fp $ \ctx ->
+        c_yices_mk_num ctx (fromInteger i)
+  | Just a <- de_notE e = do
+        a' <- yexprS y s a
+        withForeignPtr fp $ \ctx -> c_yices_mk_not ctx a'
+  | Just a <- de_bvnotE e = do
+        a' <- yexprS y s a
+        withForeignPtr fp $ \ctx -> c_yices_mk_bv_not ctx a'
+  | Just (a, b) <- de_eqE e = dobinop y s a b c_yices_mk_eq
+  | Just (a, b) <- de_ltE e = dobinop y s a b c_yices_mk_lt
+  | Just (a, b) <- de_leqE e = dobinop y s a b c_yices_mk_le
+  | Just (a, b) <- de_gtE e = dobinop y s a b c_yices_mk_gt
+  | Just (a, b) <- de_geqE e = dobinop y s a b c_yices_mk_ge
+  | Just (a, b) <- de_addE e = domanyop y s [a, b] c_yices_mk_sum
+  | Just (a, b) <- de_subE e = domanyop y s [a, b] c_yices_mk_sub
+  | Just (a, b) <- de_mulE e = domanyop y s [a, b] c_yices_mk_mul
+  | Just (a, b) <- de_bvaddE e = dobinop y s a b c_yices_mk_bv_add
+  | Just (a, b) <- de_bvsubE e = dobinop y s a b c_yices_mk_bv_sub
+  | Just (a, b) <- de_bvandE e = dobinop y s a b c_yices_mk_bv_and
+  | Just (a, b) <- de_bvorE e = dobinop y s a b c_yices_mk_bv_or
+  | Just (a, b) <- de_bvconcatE e = dobinop y s a b c_yices_mk_bv_concat
+  | Just (a, b) <- de_bvltE e = dobinop y s a b c_yices_mk_bv_lt
+  | Just (a, b) <- de_bvleqE e = dobinop y s a b c_yices_mk_bv_le
+  | Just (a, b) <- de_bvgtE e = dobinop y s a b c_yices_mk_bv_gt
+  | Just (a, b) <- de_bvgeqE e = dobinop y s a b c_yices_mk_bv_ge
+  | Just xs <- de_orE e = domanyop y s xs c_yices_mk_or
+  | Just xs <- de_andE e = domanyop y s xs c_yices_mk_and
+  | Just (p, a, b) <- de_ifE e = do
+      p' <- yexprS y s p
+      a' <- yexprS y s a
+      b' <- yexprS y s b
+      withForeignPtr fp $ \ctx -> c_yices_mk_ite ctx p' a' b'
+  | Just (bs, v) <- de_letE e =
+      let mkvar :: (String, Expression) -> IO (String, Ptr YExpr)
+          mkvar (nm, e) = do
+            et <- yexprS y s e
+            return (nm, et)
+      in do
+        vars <- mapM mkvar bs
+        yexprS y (Map.union s (Map.fromList vars)) v
+  | Just (w, v) <- de_mkbvE e = withForeignPtr fp $ \ctx ->
+        c_yices_mk_bv_constant ctx (fromInteger w) (fromInteger v)
+  | Just (a, b) <- de_bvshlE e
+  , Just bv <- de_integerE b = do
+        a' <- yexprS y s a
+        withForeignPtr fp $ \ctx ->
+            c_yices_mk_bv_shift_left0 ctx a' (fromInteger bv)
+  | Just (a, b) <- de_bvshlE e = do
+      -- TODO: This won't work if b contains local variable references!
+      yexprbystr y e
+  | VarE nm <- e =  
+      case Map.lookup nm s of
+        Nothing -> withForeignPtr fp $ \ctx -> do
+            decl <- withCString nm $ c_yices_get_var_decl_from_name ctx
+            c_yices_mk_var_from_decl ctx decl
+        Just t -> return t
+  | UpdateE f xs v <- e = do
+       f' <- yexprS y s f
+       xs' <- mapM (yexprS y s) xs
+       v' <- yexprS y s v
+       withForeignPtr fp $ \ctx ->
+          withArray xs' $ \arr ->
+              c_yices_mk_function_update ctx f' arr (fromIntegral $ length xs') v'
+  | AppE (VarE f) _ <- e
+  , f `elem` builtin = do
+        error $ "TODO: yexpr builtin " ++ YC.pretty e
+  | AppE f xs <- e = do
+       f' <- yexprS y s f
+       xs' <- mapM (yexprS y s) xs
+       withForeignPtr fp $ \ctx ->
+          withArray xs' $ \arr ->
+              c_yices_mk_app ctx f' arr (fromIntegral $ length xs')
+  | otherwise = error $ "TODO: yexpr: " ++ YC.pretty e
+
+yexprbystr :: Yices1 -> Expression -> IO (Ptr YExpr)
+yexprbystr (Yices1 fp) e =
+    withCString (YC.concrete e) $ \str ->
+      withForeignPtr fp $ \ctx ->
+        c_yices_parse_expression ctx str
+

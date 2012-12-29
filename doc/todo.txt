@@ -75,7 +75,6 @@ Pretty Printer::
 
 Performance::
 * Play with GHC Sparks and non-strict state monads
-* Use the yices1 native interface where possible (everywhere?)
 * Concretize the rest of the haskellf primitives
 
 Sharing::

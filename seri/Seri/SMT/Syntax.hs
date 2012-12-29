@@ -46,7 +46,9 @@ module Seri.SMT.Syntax (
     notE, de_notE, andE, de_andE, orE, de_orE,
 
     -- * Integer
-    integerE, ltE, leqE, gtE, geqE, addE, subE, mulE,
+    integerE, de_integerE,
+    ltE, de_ltE, leqE, de_leqE, gtE, de_gtE, geqE, de_geqE,
+    addE, de_addE, subE, de_subE, mulE, de_mulE,
 
     -- * Bit Vector
     mkbvE, de_mkbvE, bvaddE, de_bvaddE, bvsubE, de_bvsubE,
@@ -130,6 +132,10 @@ de_notE _ = Nothing
 integerE :: Integer -> Expression
 integerE i = LitE (IntegerL i)
 
+de_integerE :: Expression -> Maybe Integer
+de_integerE (LitE (IntegerL i)) = Just i
+de_integerE _ = Nothing
+
 -- | > (= <expression> <expression>)
 eqE :: Expression -> Expression -> Expression
 eqE a b | a == trueE = b
@@ -196,29 +202,57 @@ de_ifE _ = Nothing
 ltE :: Expression -> Expression -> Expression
 ltE a b = AppE (varE "<") [a, b]
 
+de_ltE :: Expression -> Maybe (Expression, Expression)
+de_ltE (AppE (VarE "<") [a, b]) = Just (a, b)
+de_ltE _ = Nothing
+
 -- | > (<= <exprsesion> <expression>)
 leqE :: Expression -> Expression -> Expression
 leqE a b = AppE (varE "<=") [a, b]
+
+de_leqE :: Expression -> Maybe (Expression, Expression)
+de_leqE (AppE (VarE "<=") [a, b]) = Just (a, b)
+de_leqE _ = Nothing
 
 -- | > (> <exprsesion> <expression>)
 gtE :: Expression -> Expression -> Expression
 gtE a b = AppE (varE ">") [a, b]
 
+de_gtE :: Expression -> Maybe (Expression, Expression)
+de_gtE (AppE (VarE ">") [a, b]) = Just (a, b)
+de_gtE _ = Nothing
+
 -- | > (> <exprsesion> <expression>)
 geqE :: Expression -> Expression -> Expression
 geqE a b = AppE (varE ">=") [a, b]
+
+de_geqE :: Expression -> Maybe (Expression, Expression)
+de_geqE (AppE (VarE ">=") [a, b]) = Just (a, b)
+de_geqE _ = Nothing
 
 -- | > (+ <exprsesion> <expression>)
 addE :: Expression -> Expression -> Expression
 addE a b = AppE (varE "+") [a, b]
 
+de_addE :: Expression -> Maybe (Expression, Expression)
+de_addE (AppE (VarE "+") [a, b]) = Just (a, b)
+de_addE _ = Nothing
+
 -- | > (- <exprsesion> <expression>)
 subE :: Expression -> Expression -> Expression
 subE a b = AppE (varE "-") [a, b]
 
+de_subE :: Expression -> Maybe (Expression, Expression)
+de_subE (AppE (VarE "-") [a, b]) = Just (a, b)
+de_subE _ = Nothing
+
 -- | > (* <exprsesion> <expression>)
 mulE :: Expression -> Expression -> Expression
 mulE a b = AppE (varE "*") [a, b]
+
+de_mulE :: Expression -> Maybe (Expression, Expression)
+de_mulE (AppE (VarE "*") [a, b]) = Just (a, b)
+de_mulE _ = Nothing
 
 -- | > (mk-bv w b)
 mkbvE :: Integer -> Integer -> Expression
