@@ -59,8 +59,6 @@ module Seri.SMT.Syntax (
     bvshlE, de_bvshlE, bvlshrE, de_bvlshrE,
     bvzeroExtendE, de_bvzeroExtendE, bvextractE,
     bvconcatE, de_bvconcatE,
-
-    substitute, impliedByTrue, impliedByFalse,
   ) where
 
 type Symbol = String
@@ -372,38 +370,4 @@ bvleqE a b = AppE (varE "bv-le") [a, b]
 de_bvleqE :: Expression -> Maybe (Expression, Expression)
 de_bvleqE (AppE (VarE "bv-le") [a, b]) = Just (a, b)
 de_bvleqE _ = Nothing
-
--- Replace the values of symbols in the given expression with the given
--- updated value, if any. Performs simplification after the substitution.
-substitute :: (Symbol -> Maybe Expression) -> Expression -> Expression
-substitute f e =
-  let me = substitute f
-  in case e of
-       _ | Just x <- de_notE e -> notE (me x)
-         | Just (a, b) <- de_eqE e -> eqE (me a) (me b)
-         | Just (p, a, b) <- de_ifE e -> ifE (me p) (me a) (me b)
-         | Just xs <- de_andE e -> andE (map me xs)
-         | Just xs <- de_orE e -> orE (map me xs)
-       LitE {} -> e
-       VarE v | Just x <- f v -> x
-       VarE {} -> e
-       LetE bs x -> LetE [(s, me e) | (s, e) <- bs] (me x) 
-       AppE f xs -> AppE (me f) (map me xs)
-       UpdateE f xs v -> UpdateE (me f) (map me xs) (me v)
-
--- Assuming the given expression is True, what does that trivially imply about
--- the variables in the expression?
-impliedByTrue :: Expression -> [(Symbol, Expression)]
-impliedByTrue e
-  | VarE v <- e = [(v, trueE)]
-  | Just xs <- de_andE e = concatMap impliedByTrue xs
-  | otherwise = []
-
--- Assuming the given expression is False, what does that trivially imply
--- about the variables in the expression?
-impliedByFalse :: Expression -> [(Symbol, Expression)]
-impliedByFalse e
-  | VarE v <- e = [(v, falseE)]
-  | Just xs <- de_orE e = concatMap impliedByFalse xs
-  | otherwise = []
 
