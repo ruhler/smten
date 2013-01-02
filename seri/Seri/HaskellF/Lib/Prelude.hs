@@ -10,6 +10,9 @@ module Seri.HaskellF.Lib.Prelude (
     IO,
     Unit__(Unit__), __caseUnit__,
     Bool(True, False), __caseTrue, __caseFalse,
+    Tuple2__(Tuple2__), __caseTuple2__,
+    Tuple3__(Tuple3__), __caseTuple3__,
+    Tuple4__(Tuple4__), __caseTuple4__,
     List__(Cons__, Nil__), __caseCons__, __caseNil__,
 
     N__0, N__2p1, N__2p0, N__PLUS, N__MINUS, N__TIMES,
@@ -175,6 +178,79 @@ __caseFalse x y n
   | False <- x = y
   | Bool_s _ <- x = caseS "False" x y n
   | otherwise = n
+
+data Tuple2__ a b = Tuple2__ a b | Tuple2____s ExpH
+instance SeriT2 Tuple2__
+    where seriT2 _ = conT (name "(,)")
+instance Symbolic2 Tuple2__
+    where box2 e | Prelude.Just [x1, x2] <- de_conS "(,)" e
+                     = Tuple2__ (box x1) (box x2)
+                 | Prelude.otherwise = Tuple2____s e
+          unbox2 x | Tuple2__ x1 x2 <- x
+                       = conS x "(,)" [unbox x1, unbox x2]
+                   | Tuple2____s v <- x
+                       = v
+__caseTuple2__ ::                (Symbolic a,
+                                  Symbolic b,
+                                  Symbolic z) =>
+                                 Tuple2__ a b -> (a -> b -> z) -> z -> z
+__caseTuple2__ x y n | Tuple2__ x1 x2 <- x
+                         = y x1 x2
+                     | Tuple2____s _ <- x
+                         = caseS "(,)" x y n
+                     | Prelude.otherwise = n
+
+instance (SeriS ca fa, SeriS cb fb) => SeriS (ca, cb) (Tuple2__ fa fb) where
+    seriS (a, b) = Tuple2__ (seriS a) (seriS b)
+    de_seriS (Tuple2__ a b) = do
+        a' <- de_seriS a
+        b' <- de_seriS b    
+        return (a', b')
+    de_seriS (Tuple2____s v) = de_seriEH v
+
+data Tuple3__ a b c = Tuple3__ a b c | Tuple3____s ExpH
+instance SeriT3 Tuple3__
+    where seriT3 _ = conT (name "(,,)")
+instance Symbolic3 Tuple3__
+    where box3 e | Prelude.Just [x1, x2, x3] <- de_conS "(,,)" e
+                     = Tuple3__ (box x1) (box x2) (box x3)
+                 | Prelude.otherwise = Tuple3____s e
+          unbox3 x | Tuple3__ x1 x2 x3 <- x
+                       = conS x "(,,)" [unbox x1, unbox x2, unbox x3]
+                   | Tuple3____s v <- x
+                       = v
+__caseTuple3__ ::                  (Symbolic a,
+                                    Symbolic b,
+                                    Symbolic c,
+                                    Symbolic z) =>
+                                   Tuple3__ a b c -> (a -> b -> c -> z) -> z -> z
+__caseTuple3__ x y n | Tuple3__ x1 x2 x3 <- x
+                         = y x1 x2 x3
+                     | Tuple3____s _ <- x
+                         = caseS "(,,)" x y n
+                     | Prelude.otherwise = n
+data Tuple4__ a b c d = Tuple4__ a b c d | Tuple4____s ExpH
+instance SeriT4 Tuple4__
+    where seriT4 _ = conT (name "(,,,)")
+instance Symbolic4 Tuple4__
+    where box4 e | Prelude.Just [x1, x2, x3, x4] <- de_conS "(,,,)" e
+                     = Tuple4__ (box x1) (box x2) (box x3) (box x4)
+                 | Prelude.otherwise = Tuple4____s e
+          unbox4 x | Tuple4__ x1 x2 x3 x4 <- x
+                       = conS x "(,,,)" [unbox x1, unbox x2, unbox x3, unbox x4]
+                   | Tuple4____s v <- x
+                       = v
+__caseTuple4__ ::                    (Symbolic a,
+                                      Symbolic b,
+                                      Symbolic c,
+                                      Symbolic d,
+                                      Symbolic z) =>
+                                     Tuple4__ a b c d -> (a -> b -> c -> d -> z) -> z -> z
+__caseTuple4__ x y n | Tuple4__ x1 x2 x3 x4 <- x
+                         = y x1 x2 x3 x4
+                     | Tuple4____s _ <- x
+                         = caseS "(,,,)" x y n
+                     | Prelude.otherwise = n
 
 data List__ a =
       Nil__ 

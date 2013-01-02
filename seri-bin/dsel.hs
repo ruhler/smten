@@ -14,14 +14,6 @@ import qualified Seri_DSEL as S
 import qualified Seri_DSEL
 import Seri.SMT.Yices.Yices2    
 
-instance (SeriS ca fa, SeriS cb fb) => SeriS (ca, cb) (S.Tuple2__ fa fb) where
-    seriS (a, b) = S.Tuple2__ (seriS a) (seriS b)
-    de_seriS (S.Tuple2__ a b) = do
-        a' <- de_seriS a
-        b' <- de_seriS b    
-        return (a', b')
-    de_seriS (S.Tuple2____s v) = de_seriEH v
-
 q1 :: Query (Answer Integer)
 q1 = do
     x <- qS S.free
