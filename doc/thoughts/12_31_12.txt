@@ -1,0 +1,69 @@
+
+Mon Dec 31 09:38:26 EST 2012
+
+Looking at Sudoku2... what do I find?
+
+It looks like it does what I would expect.
+It seems inferred value propagation is important.
+It looks like we spend 50% of our time, at least, in transform for inferred
+value propagation.
+
+I see a lot of things like:
+
+if foo
+    then false
+    else if bar
+        then false
+        else false
+
+Only, longer chains. Not surprising. This is something we could optimize.
+Change it to false. Which is what it is.
+
+I can check for equality of y and n, and use a fast equality check based on ID
+for the transformation. That could make a pretty big difference.
+
+It only deals with one half of the long chain. I'm not sure that I can do
+anything about the front half.
+
+Let me give it a try and see what happens.
+
+Mon Dec 31 12:24:32 EST 2012
+
+Um... it doesn't seem to help.
+
+It helps a little bit in the generated query, but just a little. Nothing
+major. And to solve the sudoku issue, I need something major.
+
+And I'm not convinced it's a safe thing to do. In order to test for equality,
+we have to look at both the branches of the if. But one of the branches of the
+if may be infinite, right? I don't know. It certainly seems to take longer to
+run Sudoku2 with this in.
+
+Is there anything else I could do for Sudoku2? I know it worked at one
+point...
+
+Well, I know what the Sudoku problem is. It's a bunch of distinctness
+assertions. And I now the representation I'm using...
+
+The problem isn't the size of the generated query... At least, not for the
+small sudoku test we still struggle with. It's doing all of these repeated
+transformations over and over and over again. So, clearly we are doing more
+work than I would like us to be doing. That's something we ought to be able to
+fix.
+
+Again, it's that transform issue I already talked about. I would like to be
+able to do the transformation only once, and I would especially like if I
+could recognize when a transformation isn't going to do anything, and thus not
+apply it at all.
+
+If I did my elaboration in the context of an environment, then we would be
+fine. We would only transform each thing exactly once.
+
+Maybe that's worth doing next as a big step. It's not something to do for the
+cav paper.
+
+I think it would help a lot with the sudoku test. I don't think it will make
+the exponential blowup go away. I think, perhaps, that exponential blowup is
+inherent in the problem. It's the reason we use an SMT solver in the first
+place.
+
