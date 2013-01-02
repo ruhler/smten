@@ -7,9 +7,11 @@ import Seri.ExpH
 import Seri.SMT.Query
 import Seri.HaskellF.Symbolic
 import Seri.HaskellF.Query
+import Seri.HaskellF.TH
 import qualified Seri.HaskellF.Lib.Prelude as S
 import qualified Seri.HaskellF.Lib.SMT as S
 import qualified Seri_DSEL as S
+import qualified Seri_DSEL
 import Seri.SMT.Yices.Yices2    
 
 instance (SeriS ca fa, SeriS cb fb) => SeriS (ca, cb) (S.Tuple2__ fa fb) where
@@ -69,10 +71,11 @@ qtuple = do
 
 data Foo = Bar Integer
          | Sludge Bool
-    deriving(Show)
+    deriving(Eq, Show)
 
 derive_SeriT ''Foo
 derive_SeriEH ''Foo
+derive_SeriS ''Foo ''S.Foo
 
 defoo :: S.Foo -> S.Integer
 defoo = S.defoo
@@ -82,6 +85,26 @@ quserdata = do
     f <- qS S.free
     assertS (2 S.== defoo f)
     query $ realizeS f
+
+quserdata2 :: Query (Answer Foo)
+quserdata2 = do
+    f <- qS S.free
+    assertS (f S./= (seriS (Sludge True)))
+    query $ realizeS (f :: S.Foo)
+
+data PolyFoo a = PolyBar a
+         | PolySludge Bool
+    deriving(Eq, Show)
+
+derive_SeriT ''PolyFoo
+derive_SeriEH ''PolyFoo
+derive_SeriS ''PolyFoo ''S.PolyFoo
+
+quserdata3 :: Query (Answer (PolyFoo Integer))
+quserdata3 = do
+    f <- qS S.free
+    assertS (f S./= (seriS (PolyBar True)))
+    query $ realizeS (f :: S.PolyFoo S.Bool)
 
 allQ :: (S.Eq a, S.Free a, SeriS b a) => (a -> S.Bool) -> Query [b]
 allQ p = do
@@ -114,5 +137,7 @@ main = do
     try "share_seri" $ share quadrupleS
     try "qtuple" $ qtuple
     try "quserdata" $ quserdata
+    try "quserdata2" $ quserdata2
+    try "quserdata3" $ quserdata3
     try "qallQ" $ qallQ
     

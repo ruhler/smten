@@ -81,6 +81,7 @@ library
     Seri.HaskellF.HaskellF
     Seri.HaskellF.Lib.Prelude
     Seri.HaskellF.Symbolic
+    Seri.HaskellF.TH
 
     Seri.Module
     Seri.Module.Module

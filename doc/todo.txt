@@ -83,6 +83,7 @@ Sharing::
 ExpH::
 * Perhaps case statements should consider all constructors at once instead of
   one at a time?
+* In derive_seriEH, don't use "abcdefghijklmnopqrstuvwxyz" for arg names
 
 Primitives::
 * Implement the 'update' primitive, or remove it from smt_array.
@@ -112,7 +113,9 @@ Specialization::
 
 HaskellF::
 * Translate a module at a time instead of one big blob
-* Give a template haskell way of deriving SeriS
+* derive more efficient de_seriS than just the default.
+* Provide instances of SeriS for the tuples
+* Perhaps use TH to make defining the HaskellF prelude easier?
 
 Distribution::
 * Move everything but the SMT solvers from seri-smt to seri.

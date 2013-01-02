@@ -9,9 +9,12 @@ quadruple :: Integer -> Integer
 quadruple a = a + (a + (a + a))
 
 data Foo = Bar Integer
-         | Sludge Bool deriving(Free)
+         | Sludge Bool deriving(Eq, Free)
 
 defoo :: Foo -> Integer
 defoo (Bar x) = x
 defoo (Sludge b) = if b then 1 else 0
+
+data PolyFoo a = PolyBar a
+         | PolySludge Bool deriving(Eq, Free)
 
