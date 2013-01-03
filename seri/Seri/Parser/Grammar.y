@@ -203,15 +203,22 @@ cdecl :: { TopSig }
  : gendecl
     { $1 }
 
-ldecls :: { [(Pat, Exp)] }
+ldecls :: { [LDec] }
  : ldecl
     { [$1] }
  | ldecls ';' ldecl
     { $1 ++ [$3] }
 
-ldecl :: { (Pat, Exp) }
- : pat rhs
-    { ($1, $2) }
+ldecl :: { LDec }
+ : pat opt(apats) rhs
+    {% case ($1, $2) of
+        (p, Nothing) -> return (LPat p $3)
+        (VarP n, Just ps) -> return (LClause n (MMatch ps $3))
+        _ -> lfailE "invalid let declaration"
+    }
+
+sldecl :: { (Pat, Exp) }
+ : pat rhs { ($1, $2) }
 
 idecls :: { [(Name, MMatch)] }
  : idecl
@@ -347,7 +354,7 @@ lexp :: { Exp }
  : '\\' var_typed '->' exp
     { lamE $2 $4 }
  | 'let' '{' ldecls opt(';') '}' 'in' exp
-    { mletsE $3 $7 }
+    { mletsE (lcoalesce $3) $7 }
  | 'if' exp 'then' exp 'else' exp
     { ifE $2 $4 $6 }
  | 'case' exp 'of' '{' alts opt(';') '}'
@@ -416,7 +423,7 @@ stmt :: { Stmt }
     { BindS (VarP (name $1)) $3 }
  | exp 
     { NoBindS $1 }
- | 'let' '{' ldecl opt(';') '}'
+ | 'let' '{' sldecl opt(';') '}'
     { LetS (fst $3) (snd $3) }
 
 fbinds :: { [(Name, Exp)] }
@@ -651,6 +658,10 @@ data PDec =
   | PClause Name MMatch
   | PSynonym Synonym
 
+data LDec =
+    LPat Pat Exp
+  | LClause Name MMatch
+
 isPClause :: PDec -> Bool
 isPClause (PClause {}) = True
 isPClause _ = False
@@ -678,6 +689,19 @@ icoalesce ((n, c):ms) =
     let (me, rms) = span (\(n', _) -> n' == n) ms
         rest = icoalesce rms
         m = Method n (clauseE (c : map snd me))
+    in (m : rest)
+
+lcoalesce :: [LDec] -> [(Pat, Exp)]
+lcoalesce [] = []
+lcoalesce (LPat p e : ls) = (p, e) : lcoalesce ls
+lcoalesce (LClause n c : ls) =
+    let isn :: LDec -> Bool
+        isn (LClause n' _) = n' == n
+        isn (LPat {}) = False
+
+        (me, rms) = span isn ls
+        rest = lcoalesce rms
+        m = (VarP n, clauseE (c : [c' | LClause _ c' <- me]))
     in (m : rest)
 
 -- A context is parsed first as a type to avoid a reduce/reduce conflict. Here

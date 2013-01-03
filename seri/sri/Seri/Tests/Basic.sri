@@ -243,6 +243,7 @@ testbasic = do
     testaspattern
     testarithsequence
     teststringliteralpattern
+    testletclause
 
 testaspattern :: IO ()
 testaspattern = do
@@ -251,6 +252,19 @@ testaspattern = do
           v@(x:xs) -> (length v + x + length xs) == 6
           _ -> False
       )
+
+testletclause :: IO ()
+testletclause = do
+    test "let clause" (
+        let foo (a, True) = a
+            foo (a, False) = not a
+        in foo (False, False)
+     )
+    test "let clause2" (
+        let foo a True = a
+            foo a False = not a
+        in foo False False
+     )
 
 testarithsequence :: IO ()
 testarithsequence = do
