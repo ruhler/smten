@@ -20,6 +20,11 @@ testio:
 		--main-is Seri.SMT.Tests.Share.main \
 		-f seri/sri/Seri/SMT/Tests/Share.sri +RTS -p -K1g
 
+userinstall:
+	cd seri ; cabal install --builddir ../build/seri-$(USER) --force-reinstalls
+	cd seri-smt ; cabal install --builddir ../build/seri-smt-$(USER) --force-reinstalls
+	cd seri-bin ; cabal install --builddir ../build/seri-bin-$(USER) --force-reinstalls
+
 clean:
 	rm -rf build/seri-smt build/seri build/seri-bin build/test
 

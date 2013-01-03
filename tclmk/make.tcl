@@ -61,17 +61,16 @@ indir seri-smt {
     hrun cabal sdist --builddir ../build/seri-smt
 }
 
-# The binary executables
-indir build/seri-bin {
-    hrun ln -sf ../../seri-bin/seri.hs seri.hs
-    #hrun ghc -o seri seri.hs
-    hrun ghc -rtsopts -prof -auto-all -o seri seri.hs
+# The seri-bin package
+indir seri-bin {
+    hrun cabal install \
+        --builddir ../build/seri-bin \
+        --force-reinstalls 
 
-    #hrun ln -sf ../../seri-bin/dsel.hs dsel.hs
-    #hrun ghc -o dsel dsel.hs
+    hrun cabal sdist --builddir ../build/seri-bin
 }
-    
-set SERI build/seri-bin/seri
+
+set SERI build/home/.cabal/bin/seri
 set DSEL build/seri-bin/dsel
 set SUDOKU build/seri-bin/sudoku
 
