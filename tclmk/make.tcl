@@ -81,7 +81,6 @@ set SRI_SERI seri/sri
 proc badtypetest {name} {
     set cmd {
         run $::SERI --type \
-            --include $::SRI_SERI \
             -f $::SRI_SERI/Seri/Tests/MalTyped/$name.sri \
             > "build/test/$name.typed"
         }
@@ -100,7 +99,6 @@ badtypetest "InstCtx"
 proc io {module} {
     set smtdir build/test
     hrun $::SERI --io \
-        --include $::SRI_SERI \
         --main-is $module.main \
         -f $::SRI_SERI/[string map {. /} $module].sri
 }
@@ -109,7 +107,6 @@ proc io {module} {
 proc haskellf {module} {
     set hsdir build/test
     run $::SERI --haskellf \
-        --include $::SRI_SERI \
         -f $::SRI_SERI/[string map {. /} $module].sri \
         > $hsdir/[string map {. _} $module].hs
     hrun -ignorestderr ghc -fno-warn-overlapping-patterns \

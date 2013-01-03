@@ -55,6 +55,7 @@ import Seri.Prim
 import Seri.Dec
 import Seri.Loader
 import Seri.Module
+import Seri
 
 import Seri.SMT.Primitives
 
@@ -99,25 +100,26 @@ argspec = Args {
 main :: IO ()
 main = do
     args <- A.cmdArgs argspec
-
+    stdlib <- seridir
 
     let nmain = name (main_is args)
+    let includes = include args ++ [stdlib]
 
     case (run args) of
         Io -> do 
-            env <- loadenv (include args) (file args)
+            env <- loadenv includes (file args)
             tmain <- attemptIO $ lookupVarType env nmain
             let m = varE (Sig (name (main_is args)) tmain)
             runio (inline env (seriPs ++ smtPs) m)
             return ()
         Desugar -> do
-            mods <- load (include args) (file args)
+            mods <- load includes (file args)
             flat <- attemptIO $ flatten mods
             putStrLn . pretty $ flat
         Type -> do
-            env <- loadenv (include args) (file args)
+            env <- loadenv includes (file args)
             putStrLn . pretty $ env
         HaskellF -> do
-            env <- loadenv (include args) (file args)
+            env <- loadenv includes (file args)
             putStrLn . show $ haskellf (not (no_main args)) (mod_name args) (getDecls env)
 
