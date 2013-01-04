@@ -217,9 +217,6 @@ ldecl :: { LDec }
         _ -> lfailE "invalid let declaration"
     }
 
-sldecl :: { (Pat, Exp) }
- : pat rhs { ($1, $2) }
-
 idecls :: { [(Name, MMatch)] }
  : idecl
     { [$1] }
@@ -423,8 +420,8 @@ stmt :: { Stmt }
     { BindS (VarP (name $1)) $3 }
  | exp 
     { NoBindS $1 }
- | 'let' '{' sldecl opt(';') '}'
-    { LetS (fst $3) (snd $3) }
+ | 'let' '{' ldecls opt(';') '}'
+    { LetS (lcoalesce $3) }
 
 fbinds :: { [(Name, Exp)] }
  : fbind 

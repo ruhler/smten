@@ -14,7 +14,7 @@ import Seri.Exp.Sugar
 data Stmt = 
     BindS Pat Exp   -- ^ n <- e
   | NoBindS Exp     -- ^ e
-  | LetS Pat Exp    -- ^ let p = e
+  | LetS [(Pat, Exp )]   -- ^ let p = e
     deriving(Eq, Show)
 
 -- | do { stmts }
@@ -22,9 +22,9 @@ data Stmt =
 doE :: [Stmt] -> Exp
 doE [] = error $ "doE on empty list"
 doE [NoBindS e] = e 
-doE ((LetS p e):stmts) =
+doE ((LetS bs):stmts) =
   let rest = doE stmts
-  in mletE p e rest
+  in mletsE bs rest
 doE ((NoBindS e):stmts) =
   let rest = doE stmts
       tbind = (arrowsT [typeof e, typeof rest, typeof rest])
