@@ -1,5 +1,5 @@
 name: seri-bin
-version: 1.0.0.0
+version: 1.1.0.0
 synopsis: Seri language binaries
 license: AllRightsReserved
 license-file: LICENSE
@@ -18,5 +18,5 @@ executable seri
   main-is: seri.hs
   build-depends: base ==4.5.*,
                  cmdargs ==0.10.*, syb ==0.3.*,
-                 seri ==1.0.*, seri-smt ==1.0.*
+                 seri ==1.1.*, seri-smt ==1.1.*
   ghc-prof-options: -fprof-auto-top

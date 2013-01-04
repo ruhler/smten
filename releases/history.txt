@@ -1,3 +1,23 @@
+Jan 03, 2012
+  seri-1.1.0.0
+  seri-smt-1.1.0.0
+  seri-bin-1.1.0.0
+
+  Changes from 1.0.0.0:
+  * support for string literal patterns
+  * support for clauses in let declarations
+  * seri library:
+    - Ord for Bit, State monad, Data.list.nub, Debug.trace
+    - __prim_fromInteger_Char, __prim_toInteger_Bit
+  * seri-bin cabal package for the seri compiler
+  * SeriS type class to translate between haskell and Symbolic types
+  * Improved pretty printer
+  * Many performance improvements, including:
+    - preserve sharing in generated SMT queries
+    - avoid boxing and unboxing of concrete values in haskellf
+    - switch to yices1 native interface
+    - better desugaring of function clauses
+
 Dec 13, 2012
   seri-1.0.0.0
   seri-smt-1.0.0.0
