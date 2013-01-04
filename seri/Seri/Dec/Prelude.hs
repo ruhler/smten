@@ -11,7 +11,7 @@ import Seri.Dec.Dec
 tuple :: Int -> Dec
 tuple i = 
   let nm = name $ "(" ++ replicate (i-1) ',' ++ ")"
-      vars = [NormalTV (name [c]) | c <- take i "abcdefghijklmnopqrstuvwxyz"]
+      vars = [NormalTV (name ('x':show j)) | j <- [1..i]]
   in DataD nm vars [Con nm (map tyVarType vars)]
 
 prelude :: [Dec]

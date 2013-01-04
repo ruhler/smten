@@ -82,7 +82,6 @@ Sharing::
 ExpH::
 * Perhaps case statements should consider all constructors at once instead of
   one at a time?
-* In derive_seriEH, don't use "abcdefghijklmnopqrstuvwxyz" for arg names
 
 Primitives::
 * Implement the 'update' primitive, or remove it from smt_array.

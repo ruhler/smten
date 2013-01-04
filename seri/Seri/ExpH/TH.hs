@@ -40,7 +40,7 @@ derive_seriEH nm vars cs =
       --    *** exp@(Bar a b) = seriEH_helper "Bar" exp [seriT a, seriT b] [seriEH a, seriEH b]
       mkcon :: Con -> Clause
       mkcon (NormalC cnm ts) =   
-        let args = [mkName [c] | c <- take (length ts) "abcdefghijklmnopqrstuvwxyz"]
+        let args = [mkName ('x' : show i) | i <- [1..length ts]]
             expvar = mkName "exp"
             pat = AsP expvar (ConP cnm (map VarP args))
             elist = ListE $ map (\a -> AppE (VarE 'seriEH) (VarE a)) args
