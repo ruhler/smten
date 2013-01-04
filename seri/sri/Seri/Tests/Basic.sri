@@ -244,6 +244,15 @@ testbasic = do
     testarithsequence
     teststringliteralpattern
     testletclause
+    testbitpattern
+
+testbitpattern :: IO ()
+testbitpattern = do
+    test "bit pattern" (
+        case bit3 3 of
+            3 -> True
+            _ -> False
+      )
 
 testaspattern :: IO ()
 testaspattern = do

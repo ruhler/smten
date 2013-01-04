@@ -460,7 +460,7 @@ apat :: { Pat }
  | gcon
     { ConP (name $1) [] }
  | integer
-    { LitP (integerL $1) }
+    { numberP $1 }
  | char
     { charP $1 }
  | string

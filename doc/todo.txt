@@ -9,7 +9,6 @@ Haskell Features::
 * list comprehension.
 * Variable operators: `foo`.
 * pattern matching in do bind notation.
-* pattern matching against bit vectors
 * support arguments to type synonyms? 
 * auto derive Show
 * auto derive Ord

@@ -2,7 +2,7 @@
 -- | Syntactic sugar involving pattern matching.
 module Seri.Exp.Match (
     Pat(..), SMatch(..), MMatch(..),
-    tupleP, listP, charP, stringP,
+    tupleP, listP, charP, stringP, numberP,
     mcaseE, clauseE, mlamE, mletE, mletsE,
     ) where
 
@@ -19,7 +19,7 @@ import Seri.Exp.Sugar
 data Pat = ConP Name [Pat]
          | VarP Name
          | AsP Name Pat
-         | LitP Lit
+         | LitP Exp
          | WildP
     deriving (Eq, Show)
 
@@ -28,10 +28,13 @@ listP [] = ConP (name "[]") []
 listP (x:xs) = ConP (name ":") [x, listP xs]
 
 charP :: Char -> Pat
-charP = LitP . charL
+charP = LitP . litE . charL
 
 stringP :: String -> Pat
 stringP = listP . map charP
+
+numberP :: Integer -> Pat
+numberP = LitP . numberE
 
 tupleP :: [Pat] -> Pat
 tupleP ps = ConP (tupleN (length ps)) ps
@@ -54,8 +57,8 @@ matchE x (SMatch (VarP n) yv) _ = return $ appE (lamE (Sig n UnknownT) yv) x
 matchE x (SMatch (AsP nm p) yv) n = do
     rest <- matchE x (SMatch p yv) n
     return $ letE (Sig nm (typeof x)) x rest
-matchE x (SMatch (LitP l) yv) n =
-  let p = appsE (varE (Sig (name "==") UnknownT)) [litE l, x]
+matchE x (SMatch (LitP e) yv) n =
+  let p = appsE (varE (Sig (name "==") UnknownT)) [e, x]
   in return $ ifE p yv n
 matchE x (SMatch (ConP nm ps) yv) n | isSimple n = do
       y <- clauseE' [MMatch ps yv] n
