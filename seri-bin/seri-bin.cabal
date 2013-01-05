@@ -20,3 +20,4 @@ executable seri
                  cmdargs ==0.10.*, syb ==0.3.*,
                  seri ==1.1.*, seri-smt ==1.1.*
   ghc-prof-options: -fprof-auto-top
+  ghc-options: -rtsopts

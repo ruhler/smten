@@ -76,9 +76,6 @@ de_varEH :: ExpH -> Maybe Sig
 de_varEH (VarEH s) = Just s
 de_varEH _ = Nothing
 
--- We don't apply lambdas here if the arguments are supported by SMT. That's
--- done lazily in de_litEH, de_conEH, and de_errorEH. This is to preserve
--- sharing as much as possible.
 appEH :: ExpH -> ExpH -> ExpH
 appEH f x
  | LamEH _ (Sig _ t) _ g <- f = g x

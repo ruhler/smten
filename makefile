@@ -15,10 +15,10 @@ test:
 	./foo +RTS -p -K1g
 
 testio:
-	./build/seri-bin/seri --io \
+	./build/home/.cabal/bin/seri --io \
 		--include seri/sri \
-		--main-is Seri.SMT.Tests.Share.main \
-		-f seri/sri/Seri/SMT/Tests/Share.sri +RTS -p -K1g
+		--main-is Seri.SMT.Tests.Sudoku2.main \
+		-f seri/sri/Seri/SMT/Tests/Sudoku2.sri +RTS -p -K1g
 
 userinstall:
 	cd seri ; cabal install --builddir ../build/seri-$(USER) --force-reinstalls
