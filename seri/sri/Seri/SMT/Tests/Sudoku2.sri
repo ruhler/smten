@@ -11,7 +11,7 @@ import Seri.Sudoku.Cell
 
 qmain :: Query [String]
 qmain = do
-    board <- (readBoard easy_partial :: Query (Board EnumCell))
+    board <- (readBoard diabolical :: Query (Board EnumCell))
     result <- solve board
     case result of
        Satisfiable v -> return (print v)
@@ -19,6 +19,7 @@ qmain = do
 
 main :: IO ()
 main = do
-    r <- runYices2 (Just "build/test/Sudoku2.yices2.dbg") qmain
+    --r <- runYices2 (Just "build/test/Sudoku2.yices2.dbg") qmain
+    r <- runYices2 Nothing qmain
     mapM_ putStrLn r
 

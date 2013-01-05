@@ -110,6 +110,7 @@ library
     Seri.Fresh.Fast
     Seri.Fresh.Fresh
 
+    Seri.SMT.IVP
     Seri.SMT.Solver
     Seri.SMT.Syntax
     Seri.SMT.Translate

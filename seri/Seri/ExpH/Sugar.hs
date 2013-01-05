@@ -208,15 +208,6 @@ caseEH x k@(Sig nk _) y n
     let f = lamEH (Sig (name "_x") (typeof x)) (typeof n) $ \x' ->
                caseEH x' k y n
     in pushfun f x
- | VarEH (Sig nm t) <- x
- , t == boolT
- , Just kv <- de_boolEH (conEH k) =
-    let g :: Bool -> ExpH -> Maybe ExpH
-        g b e = do
-            Sig nm' _ <- de_varEH e
-            guard $ nm' == nm
-            return (boolEH b)
-    in identify $ \id -> CaseEH id x k (transform (g kv) y) (transform (g (not kv)) n)
  | otherwise = identify $ \id -> CaseEH id x k y n
 
 -- Function pushing:
@@ -280,7 +271,7 @@ transform g e =
         | ConEH _ n s xs <- e = identify $ \id -> ConEH id n s (map use xs)
         | VarEH {} <- e = e
         | PrimEH _ _ _ f xs <- e = f (map use xs)
-        | AppEH _ f x <- e = identify $ \id -> AppEH id (use f) (use x)
+        | AppEH _ f x <- e = appEH (use f) (use x)
         | LamEH _ s t f <- e = lamEH s t $ \x -> use (f x)
         | CaseEH _ x k y d <- e = caseEH (use x) k (use y) (use d)
         | ErrorEH {} <- e = e
