@@ -4,26 +4,47 @@ module Seri.SMT.Tests.Share where
 
 import Prelude
 import Seri.SMT.SMT
+import Seri.Tests.Test
 
-quadruple :: Integer -> Integer
-quadruple a = a + (a + (a + a))
-
-qmain :: Query (Answer (Integer, Integer))
-qmain = do
-    b <- free
+simple :: Query ()
+simple = do
     x <- free
     y <- free
-    assert (if b
-                then quadruple (x-y) == 8
-                else quadruple (x-y) == 8)
-    query (x, y)
+    assert ((\a -> (a + a + a + a == (8 :: Integer))) (x - y))
+    r <- query (x - y)
+    test "simple" (r == Satisfiable 2)
+
+samectx :: Query ()
+samectx = do
+    p <- free
+    x <- free
+    y <- free
+    assert ((\a -> (if p then a + a
+                        else 0) == (8 :: Integer)) (x - y))
+    r <- query (x - y)
+    test "diffctx" (r == Satisfiable 4)
+
+diffctx :: Query ()
+diffctx = do
+    p <- free
+    x <- free
+    y <- free
+    assert ((\a -> (if p then a + a
+                        else a - a) == (8 :: Integer)) (x - y))
+    assert p
+    r <- query (x - y)
+    test "diffctx" (r == Satisfiable 4)
+
+qmain :: Query ()
+qmain = do
+    simple
+    samectx
+    diffctx
 
 main :: IO ()
 main = do
-    putStr "yices1..."
-    r1 <- runYices1 (Just "build/test/Share.yices1.dbg") qmain
-    putStrLn (show r1)
+    runYices2 (Just "build/test/Share.yices2.dbg") qmain
+    
+    putStr "SHARE PASSED"
 
-    putStr "yices2..."
-    r2 <- runYices2 (Just "build/test/Share.yices2.dbg") qmain
-    putStrLn (show r2)
+    
