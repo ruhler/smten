@@ -94,6 +94,9 @@ appEH f x
              y' = onyv kargs g y
              n' = g n
          in caseEH a k y' n'
+ | ErrorEH t s <- f = 
+    let Just (_, t) = de_arrowT (typeof f)
+    in errorEH t s
  | otherwise = identify $ \id -> AppEH id f x
 
 smttype :: Type -> Bool
