@@ -130,7 +130,7 @@ io Seri.SMT.Tests.AllQ
 io Seri.SMT.Tests.AllQ2
 io Seri.SMT.Tests.Squares2.Squares
 io Seri.SMT.Tests.Sudoku
-io Seri.SMT.Tests.Sudoku2
+#io Seri.SMT.Tests.Sudoku2
 io Seri.SMT.Tests.Sudoku3
 io Seri.SMT.Tests.Isolate0
 
