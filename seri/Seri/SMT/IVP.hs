@@ -4,7 +4,7 @@
 -- Inferred Value Propagation optimization
 module Seri.SMT.IVP (ivp) where
 
-import Control.Monad.State.Strict
+import Control.Monad.State
 
 import qualified Data.Map as Map
 import qualified Data.Set as Set
@@ -14,26 +14,41 @@ import Seri.Sig
 import Seri.Name
 import Seri.Type
 import Seri.ExpH
-import Seri.Strict
   
 
 -- The result of inferred value propagation, and the set of variables this
 -- result depends on.
 type IVPResult = (ExpH, Set.Set Name)
 
-type Cache = Map.Map EID IVPResult
+type Cache = [(Name, Map.Map EID IVPResult)]
+
+c_empty :: Cache
+c_empty = [(name "", Map.empty)]
+
+c_lookup :: EID -> Cache -> Maybe IVPResult
+c_lookup x [] = Nothing
+c_lookup x ((n, m):ms) = 
+ let a = Map.lookup x m
+     b = do
+        r <- c_lookup x ms
+        guard $ not (Set.member n (snd r))
+        return r
+ in mplus a b
+
+c_insert :: EID -> IVPResult -> Cache -> Cache
+c_insert k v ((n, m):ms) = (n, Map.insert k v m) : ms
 
 -- Do IVP.
 -- If the result for the expression is cached, use that.
 use :: Map.Map Name ExpH -> ExpH -> State Cache IVPResult
 use m e
  | Just id <- getid e = do
-    mv <- gets $ Map.lookup id
+    mv <- gets $ c_lookup id
     case mv of  
         Just v -> return v
         Nothing -> do
             v <- def m e
-            modifyS $ Map.insert id v
+            modify $ c_insert id v
             return v
  | otherwise = def m e
 
@@ -43,11 +58,10 @@ use m e
 -- computation not depending on Name.
 with :: Name -> State Cache a -> State Cache a
 with n q = do
-   (usesn, rest) <- gets $ Map.partition (Set.member n . snd)
-   put $! rest
+   modify $ (:) (n, Map.empty)
    v <- q
-   clean <- gets $ Map.filter (not . Set.member n . snd)
-   put $! Map.union clean usesn
+   ((_, m):(n', m'):ms) <- get
+   put $ (n', Map.union m' (Map.filter (not . Set.member n . snd) m)):ms
    return v
 
 -- Do IVP.
@@ -75,6 +89,9 @@ def m e
         (yv, yns) <- with nm $ use (Map.insert nm (boolEH kv) m) y
         (dv, dns) <- with nm $ use (Map.insert nm (boolEH (not kv)) m) d
         return (caseEH x' k yv dv, Set.unions [xns, yns, dns])
+     ConEH {} -> do
+        (v, vns) <- def m (caseEH x' k y d)
+        return (v, Set.union vns xns)
      _ -> do
         (yv, yns) <- use m y
         (dv, dns) <- use m d
@@ -85,5 +102,5 @@ def m e
 -- Perform inferred value propagation on the given expression.
 -- Assumes the expression may be looked at in its entirety.
 ivp :: ExpH -> ExpH
-ivp e = fst $ evalState (use Map.empty e) Map.empty
+ivp e = fst $ evalState (use Map.empty e) c_empty
 
