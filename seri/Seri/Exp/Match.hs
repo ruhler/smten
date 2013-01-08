@@ -1,9 +1,10 @@
 
 -- | Syntactic sugar involving pattern matching.
 module Seri.Exp.Match (
-    Pat(..), SMatch(..), MMatch(..),
+    Pat(..), SMatch(..), MMatch(..), Qual(..),
     tupleP, listP, charP, stringP, numberP,
     mcaseE, clauseE, mlamE, mletE, mletsE,
+    lcompE,
     ) where
 
 import Data.Maybe(fromMaybe)
@@ -164,4 +165,18 @@ isSimple (AppE {}) = False
 isSimple (LamE {}) = False
 isSimple (CaseE {}) = False
 isSimple _ = True
+
+data Qual = QGen Pat Exp
+          | QGuard Exp
+          | QBind [(Pat, Exp)]
+
+-- | List comprehension.
+lcompE :: Exp -> [Qual] -> Exp
+lcompE e [QGuard t] | t == trueE = listE [e]
+lcompE e [q] = lcompE e [q, QGuard trueE]
+lcompE e (QGuard b : qs) = ifE b (lcompE e qs) (listE [])
+lcompE e (QGen p l : qs) = 
+  let ok = clauseE [MMatch [p] (lcompE e qs), MMatch [WildP] (listE [])]
+  in appsE (varE (Sig (name "concatMap") UnknownT)) [ok, l]
+lcompE e (QBind decls : qs) = mletsE decls (lcompE e qs)
 

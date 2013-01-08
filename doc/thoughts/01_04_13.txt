@@ -1,0 +1,274 @@
+
+Fri Jan  4 19:47:54 EST 2013
+
+I have an idea...
+
+So the problem is, things like Sudoku2 blow up. Things like:
+
+foo (if p then E1 else E2)
+
+Perhaps I can make it more concrete. Consider sudoku, which does this kind of
+thing:
+
+((==) E4) (if a then E1 
+           else if b then E2
+           else if c then E3
+           else if d then E4
+           else if e then E5)
+
+Because we don't handle enums in the back end, we do the exponential blowup
+and end up with:
+
+if a then False
+    else if b then False
+    else if c then False
+    else if d then True
+    else if e then False
+
+This is bad for a couple of reasons. First, we ended up executing ((==) E4) 5
+different times, when in a concrete program, we only would have once. That
+sort of thing leads to exponential blowup, even if I preserve sharing. The
+other issue is, we end up with a slightly large, annoying generated
+expression.
+
+The problem originates from case statements. Case of case.
+
+Let's say I have the following:
+
+case (if a then E1 else E2) of
+    E2 -> True
+    _ -> False
+
+A very simple example. Currently I say: I don't support the argument type, so
+let me do case pushing:
+
+if a
+    then case E1 of E2 -> True; _ -> false
+    else case E2 of E2 -> True; _ -> false
+
+That's duplication. Duplication and blowup I would like to avoid.
+
+Something I want the SMT solver to use its smarts for...
+
+Let's say I do this differently. Let's say I don't inline it like that. I keep
+the case expression as it was. No exponential blowup.
+
+The question now is, how do I translate it to SMT?
+
+I need a function which works as follows. Given an expression and a target
+constructor to match, return a boolean indicating whether the expression
+matches, and if it matches, return the arguments it matches with.
+
+Now, in my example I don't have arguments to worry about, it's an okay first
+attempt.
+
+So what expression would I return?
+ if a then False else True... And then I generate the expression:
+
+if (if a then False else True)
+    then True
+    else False
+
+And the SMT solver can deal with the hard part. ...
+
+I need a better example. Let's try out this one:
+
+case (if a then Just 4 else if b then Just 3 else Nothing) of
+    Just x -> y
+    _ -> z
+
+The predicate is:
+    if a then True
+         else if b then True    
+              else False
+
+The argument is:
+    if a then 4
+         else if b then 3
+              else ?? (don't care I guess)
+
+The code I generate is:
+
+if (if a then True else if b then True else False)
+    then let x = (if a then 4 else if b then 3 else 0)
+         in y
+    else z
+
+In other words... in general, I can match symbolic expressions. I can turn
+everything into booleans very easily.
+
+And you know what else? If I find that something is the case in every case...
+like the predicate turns out to be True or False for sure (we may need some
+simplification to identify this), then we can do the match concretely on
+everything in parallel.
+       
+Does this actually help? For example, does this solve our Sudoku2 blowup? I
+think it might. And it isn't hard to implement I don't think.
+
+Okay, let's go through the options. Given an expression of some type, how do I
+test if it matches a certain constructor, and if so, how do I figure out what
+arguments there are to the constructor?
+
+LitEH - will never happen
+ConEH - if it matches, return True and the args. Otherwise return False and ?
+VarEH - should never happen, because then that type is supported.
+PrimEH - no primitives return unsupported data types. Should never happen.
+AppEH - I should never encounter this kind of thing?
+LamEH - Doesn't have the right type. I'll never see it.
+CaseEH - the interesting one...
+
+Find the predicate for that case matching. The say, if that's the case,
+then... and here traverse into the matching body. Otherwise, traverse into the
+not matching body.
+
+Or, said another way, if we do this, it should only be an if statement. Take
+the argument itself as the predicate, then recurse.
+
+Do you see what I'm suggesting? It's ... an interesting idea. Basically I'm
+suggesting that we replace CaseEH with IfEH. I'm suggesting I can always do
+this.
+
+So we simplify CaseEH for any non-boolean type then, where the constructor
+doesn't match.
+
+Okay, so let's say I want to extract arguments. I extract from the true
+branch, I extract from the false branch, how do I combine them?
+
+If the arguments are maybe arguments (to represent nothing and don't care),
+then I can do something like:
+    Nothing Nothing -> Nothing
+    Just x Nothing -> Just x
+    Nothing Just x -> Just x
+    Just x Just y -> if p then x else y
+
+And, unless we really have no choice, we should end up with something for
+every argument...
+
+Better yet, let's just have a Maybe list of arguments. Much easier to deal
+with. We could have a: Maybe (ExpH, [ExpH]) kind of thing. If Nothing, we know
+we'll never match, and we can just take the default case. If Something, then
+we have the predicate under which we match and the arguments to the match.
+
+Will this make a difference? It should in Sudoku2. Perhaps big... But we are
+still matching against multiple things, right? We still match against each
+branch of the if statement. Is that not as costly as before?
+
+I think it's not as costly as before, because now we share matching
+everywhere? Could be... could be...
+
+Needless to say, I'd like to give this a shot. Things to look at are:
+* does it solve Sudoku2?
+* does it break anything else?
+* does it affect shampi performance?
+    I don't expect it to make any difference with shampi, because I don't
+    think we have any symbolic things which aren't just booleans and mixtures
+    of booleans.
+
+What steps do I anticipate making to implement this change?
+
+* implement case traversal function
+    casematch :: Sig -> ExpH -> Maybe (ExpH, [ExpH])
+* implement joinmatch function
+    joinmatch :: Maybe (ExpH, [ExpH]) -> Maybe (ExpH, [ExpH]) -> Maybe (expH, [ExpH])
+* change CaseEH to IfEH EID ExpH ExpH ExpH
+* update caseEH as follows for non-matching case:
+    If k is True, turn into IfEH x y n
+    If k is False, turn into IfEH x n y
+    Otherwise call casematch
+        if Nothing, turn into n
+        otherwise, turn into if p then (apps y args) else n
+
+Question: what do we do about error? What if you try to match error?
+Well, then, I may as well just use that error for the predicate. Not sure what
+to use for the arguments. The problem is, I don't know what types to expect.
+
+Perhaps I should pass the types as arguments then, for this case?
+
+Or, I could be more explicit:
+
+CaseMatch =
+    Match ExpH [ExpH]
+  | NoMatch
+  | Error String
+
+Then I can combine as follows:
+
+Wait a second. What do I mean by combine?
+
+I mean, I have an if statement. Which means I have a predicate.
+I have a predicate and two matches.
+
+p NoMatch NoMatch = NoMatch
+p NoMatch (Match b xs) = Match (if p then ?? else )...
+
+What?
+
+Hmm... So maybe I always need arguments. If I pass down types, let's say I
+always return error for no match. So we always get a predicate. It could be
+True, False, Error, or something complex. We always get arguments. They could
+be something interesting or Error.
+
+The trouble is... With NoMatch, I want to treat it explicitly as I know I will
+not match, so there's no reason I should consider this case? Wait. Let me
+figure this out first. Assume I have some predicate and some args always. How
+do I implement if:
+
+Given:
+
+p (Match a as) (Match b bs) = Match (if p then a else b) (if p then as else bs)
+
+I'm losing information here. What I'm loosing is... I should check if a and b
+are the same. If in both cases we know we can't match, then I should preserve
+that. And here I'm allowed to look at a and b, which is not the case in
+general. If a and b are the same, simplify the predicate. That way we can
+know, when we get to the top, if the predicate is always true or always false,
+and simplify that case. But perhaps that's not something to worry about for
+now.
+
+Okay, let me try again now then.
+
+* implement case traversal function
+    casematch :: Sig -> [Type] -> ExpH -> (ExpH, [ExpH])
+* change CaseEH to IfEH EID ExpH ExpH ExpH
+* update caseEH as follows for non-matching case:
+    If k is True, turn into IfEH x y n
+    If k is False, turn into IfEH x n y
+    Otherwise call casematch
+        turn into if p then (apps y args) else n
+* change ifEH to go directly to IfEH.
+* update anyone else (I'm thinking SMT.Translate) to use IfEH instead of
+  CaseEH.
+
+And that's it. Simple. We are talking... 30 minutes tops to try out? (And
+presumably run into a problem I've not yet though of).
+
+Let me give it a shot and see what happens. This is pretty exciting.
+
+Fri Jan  4 21:40:52 EST 2013
+
+Well... so I implemented it, and it seems to work, but there are some issues.
+Namely...
+
+* Bluespec test seems to have gotten slow
+* Squares test has an unexpected application I should understand
+* Sudoku2 doesn't do any better. It maybe does worse.
+
+Notice here, we have a different kind of duplication in this approach. We
+duplicate predicates a bunch. Then we do repeated transformation on those
+predicates.
+
+I should understand what the issues are before I give up on this approach. I
+should also work out the Sudoku example to see if it gets any simpler or not.
+Like, try by hand to work out equality of two free E cells. That should make
+it pretty obvious what all duplication is going on.
+
+Remember the high level idea is to make the SMT solver make more smart
+decisions. So this is only a win if
+ * it avoids exponential blowup in elaboration
+ * it avoids exponential blowup in generated query
+
+The generated query can be more complicated, just not exponentially so?
+
+I don't know. I should also look at some of my generated queries to see if
+they aren't stupid.
+

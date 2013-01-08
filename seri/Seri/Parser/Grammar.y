@@ -383,6 +383,8 @@ aexp :: { Exp }
     { tupleE ($2 : $4) }
  | '[' exp '..' exp ']'
     { fromtoE $2 $4 }
+ | '[' exp '|' quals ']'
+    { lcompE $2 $4 }
  | '['  exps_commasep ']'
     { listE $2 }
  | aexp '{' opt(fbinds) '}'
@@ -390,6 +392,23 @@ aexp :: { Exp }
         ConE s -> recordC s (fromMaybe [] $3)
         x -> recordU x (fromMaybe [] $3)
     }
+
+qual :: { Qual }
+qual
+ : pat '<-' exp
+    { QGen $1 $3}
+ | 'let' ldecls
+    { QBind (lcoalesce $2) }
+-- This causes a reduce/reduce conflict, because we can't distiniguish the exp
+-- from a pat '<-' qual. I'm not sure how to deal with this properly.
+-- | exp
+--    { QGuard $1 }
+
+quals :: { [Qual] }
+ : qual
+    { [$1] }
+ | quals ',' qual
+    { $1 ++ [$3] }
 
 literal :: { Exp }
  : integer

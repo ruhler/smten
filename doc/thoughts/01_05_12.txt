@@ -1,0 +1,564 @@
+
+Sat Jan  5 08:53:56 EST 2013
+
+Thinking about it, I'm sure how my IfEH plan would help.
+
+Basically what we are saying is... rather than...
+
+Let me see if I can draw the picture in my head.
+
+Instead of:
+
+    a - b - c - d
+    e - f - g - h
+
+Which we had before. Now we have:
+
+    a   b   c   d
+    | - | - | - |
+    e   f   g   h
+
+But it's the same duplication of effort. We don't reduce anything.
+
+So I think, maybe, I'll abandon my iffy plan.
+
+Sat Jan  5 09:01:41 EST 2013
+
+I may as well do some more analysis while I have it.
+
+I fixed the app issue.
+
+One wonders now if we ever could create an AppEH.
+Let me think about it. This is worth understanding.
+
+We call application.
+We know the argument 'f' has a function type.
+
+What are the possible values of 'f'?
+
+Ah, I think that answers my question. But I'll go ahead anyway.
+
+LitEH - Can't happen (no literal has a function type)
+ConEH - Can't happen (no fully applied constructor has a function type)
+VarEH - Can't happen only if we support primitive free functions,
+            which we sort of half do currently.
+PrimEH - Can't happen (no primitives return functions)
+AppEH - inductive argument
+LamEH - we handle
+CaseEH - we handle
+ErrorEH - we handle
+
+So it comes down to this. Do you think we'll ever have a primitive function
+which returns a function? Do you think we'll ever have a VarEH with function
+type?
+
+I think those aren't so unreasonable, so yes. We could have AppEH.
+And if that is the case, then iffy will have to be able to handle it, but I'm
+not sure how. Perhaps you can say, no AppEH has type non-bool algebraic, so
+it doesn't matter for iffy.
+
+Good. Let me then go into my performance investigation for iffy.
+
+I want to look at:
+
+1. Original Bluespec se and prof
+2. Original Sudoku2 se and prof for 1 hole
+3. Iffy Bluespec se and prof
+4. Iffy Sudoku2 se and prof for 1 hole.
+
+Sat Jan  5 09:22:54 EST 2013
+
+Interesting!
+
+Looked at the profiles.
+
+Bluespec: with iffy, runtime goes way up, and it's dominated by the time to
+solve the query.
+Sudoku2: with iffy, runtime goes way down!, and it's dominated by the time to
+solve the query.
+
+Very interesting... Very interesting indeed.
+
+Let me look at the generated se's for bluespec and Sudoku2, see if I can see
+anything stupid, and just get a better sense for what's going on.
+
+Also, iffy avoids a stack overflow we encounter with master if the stack is
+not big enough.
+
+Sat Jan  5 09:32:58 EST 2013
+
+What I notice is... the quality of generated query is much better in master.
+But it seems it takes us longer to get there for sudoku.
+
+That's not so surprising, is it? Because we push more work to the SMT solver?
+But do we? I don't quite understand.
+
+Anyway! I'm not at all convinced iffy is a big improvement, and that it's at
+the heart of why sudoku2 got faster. I would much rather, at this point, get
+master to generate its query faster. And I think I can.
+
+All our time in sudoku2.master is spent in transform, identify, and caseEH.
+In other words, we spend all our time in transform for inferred value
+propagation. I have a proposal which I believe will get rid of all that time.
+
+Here's the problem: for every if statement with a variable as its predicate,
+we call "transform" on both bodies of the if statement. Every time we call
+transform, we traverse and make a new copy of the expression. Which means we
+have to allocate new identifiers, we have to re-examine arguments to see if we
+can simplify more. What's bad is, it may be transform does nothing. So we are
+doing all this work for nothing.
+
+My proposed solution is as follows. Don't do inferred value propagation at
+elaboration time. Save it as a step for when we call assert. Then, do all of
+the inferred value propagation all at once, not one if statement at a time.
+
+Consequences:
+* Each expression is only transformed a single time, not ...
+Not an exponential number of times? More on that in a sec.
+
+* We are allowed to look at everything, because it's an assertion predicate.
+  so we can check to see which expressions are not changed by the
+  transformation and preserve sharing under this condition.
+
+How much are we transforming expressions?
+
+Let's say I have the following kind of expression:
+
+if a then E1
+else if b then E2
+else if c then E3
+else if d then E4
+else if e then E5
+else if f then E6
+else E7
+
+I build this up. How many times do we do transformations on things?
+
+let's see... Let's see how many copies we make of things with new identifiers.
+
+E6                      E6.1
+E7                      E7.1
+if f then E6 else E7    
+    - transforms, so:   E6.1, E7.1
+E5                      E5.1
+if e then E5
+     else (if f then E6 else E7)
+    - transforms E5 again:  E5.1
+    - transforms (if ...) again: E6.1, E7.1
+        But! Transforming (if ...) again causes it to transform again!
+                E6.1, E7.1
+
+So basically, in a linear chain like this, we are talking:
+
+1 - for original creation
+1 - for first transformation
+2 - for second transformation and re-doing of first transformation
+3 - for third transformation and re-doing of second transformation
+4 - for fourth transformation, and re-doing of third transformation
+
+So, basically, The Nth transformation does N transformations. So we have
+quadratic behavior. Not exponential, which is good, but quadratic is bad.
+Especially when we shouldn't be doing any work at all...
+
+This suggests to me my plan to do all inferred value propagation in a single
+step will be a HUGE savings.
+
+Question. What if the chain is not linear, but it binary? Can this then be
+exponential?
+
+Leaf node: 
+ 1, 1 for this node
+ 1 total
+
+Level 1:
+ 2, 1 for each leaf
+ 2 total
+
+Level 2:
+ 4, 1 for each leaf
+ 4, 2 for each l1
+ 8 total
+
+Level 3:
+ 8, 1 for each leaf
+ 8, 2 for each l1 node
+ 8, 4 for each l2 node
+ 24 total
+
+Um... It feels bad, whatever it is.
+
+So let me make this change. There are two parts to it:
+
+1. Just do the transformation, passing down everything inferred.
+
+The problem with this is it will ruin sharing. Because every single
+subexpression is being transformed... Hmm...
+
+We can some preserve sharing if we know the transformation does nothing.
+We can preserve other sharing if we know the transformations happen in the
+same context.
+
+What I'm worried about is, what if you do two different transformations, but
+on shared expressions, and the result is as if you had done the same
+transformation? Is there some way to record that?
+
+Let's say I'm allowed to look at what changes I make. How about this, then,
+the transformation does the following:
+
+1. Return the set of transformations actual done, as a mapping from name to
+value. If no transformation occurs, this list will be empty.
+
+Now, I can cache based on that.
+
+So here's how it works. When you get to a new ID, you look it up in the cache.
+You'll get back a list of contexts. If you find a matching context, use that.
+Otherwise transform.
+
+What is a matching context?
+
+A matching context is one where the value of every free variable in the
+cached context is present and the same as in the current context...
+
+Except, what if you have more information?
+
+Bugger. I really would like to preserve sharing. It's kind of very important.
+And for inferred value propagation to be of any value, I need to not look at
+the expression before doing the propagation.
+
+Okay then, how about this. I cache things a little differently. I cache them
+by final value.
+
+Given a set of children and a constructor, map that to resulting shared value.
+
+Now, in this case I may end up doing duplicate work... Will likely end up
+doing duplicate work. But I'll at least be preserving all the sharing.
+
+I want to think about this more. It's a little disturbing.
+
+The question is: how can I avoid doing duplicate work?
+
+Sat Jan  5 13:31:24 EST 2013
+
+Okay, here's the deal.
+
+* My only benchmarks are:
+ - Sudoku2
+ - Bluespec, Squares, Datatype, Sudoku, Sudoku3, other stuff that works fine
+   now
+ - SHampi
+
+These are the only things I can meaninfully judge performance improvements on.
+
+Sudoku2 is slow because of inferred value propagation transformation. I have
+worked out and see how we have at least a quadratic blowup, potential
+exponential, doing work that need not be done at all.
+
+SHampi does not do any inferred value propagation.
+
+Proposal is to do inferred value propagation all at once.
+
+Shampi should not be affected in any way.
+
+Concern is: inferred value propagation transformation will loose sharing
+information.
+
+Two cases:
+1. identical expression, identical context, preserve sharing
+2. identical expression, mostly identical context, preserve sharing
+
+The current approach satisfies (1). It does not satisfy (2).
+
+The easy approach to my transformation change doesn't satisfy (1) or (2).
+A slightly harder approach to my transformation change satisfies (1).
+A more generic approach to my transformation change, which regenerates
+sharing, would satisfy (1) and (2). I should think (2) has a bigger impact
+than (1).
+
+I don't know what the consequences of the different things are. I know Sudoku2
+has no sharing in it to preserve.
+
+So, basically, I don't expect to see any significant loss with my current
+benchmarks by changing the inferred value propagation transformation. I do
+expect to see significant loss in more complicated benchmarks, but I don't
+have any more complicated benchmarks currently.
+
+It seems a benchmark suite for seri would be nice to have, which captures
+different kinds of programs, just so I can know if I'm improving overall
+performance, or just trading off one thing for another.
+
+I propose I do the following then:
+
+1. modify the Share query to verify inferred value propagation looses sharing
+with slightly different contexts. Or perhaps make a second version of it.
+
+2. Try removing inferred value propagation all together, and verify some
+things suffer badly from it. It would actually be good to understand those
+things, but, whatever.
+
+3. Implement my proposed inferred value propagation, simplest possible (no
+preservation of sharing). See what it does to Sudoku2, see what it does to
+Share.
+
+My expectation is, it will make a HUGE difference in Sudoku2, but we'll still
+have an exponential blowup, which I think will dominate pretty quickly. That's
+okay. At least I'll start to see what the next thing taking all the time is,
+right?
+
+I can put a TODO in to reconstruct sharing after inferred value propagation.
+
+Hmm... Actually, the simplest transformation I can do will totally destroy
+sharing, won't it? Even without inferred value propagation? I'm not sure. I
+don't know. Gar. This is so hard. So many thing to think about and be aware of
+all at once.
+
+Sat Jan  5 14:07:40 EST 2013
+
+Tried (1). It's as I expected.
+
+Tried (2).
+
+The only test that suffers is Bluespec... which seems to be related to
+Sudoku2. Did sudoku2 suffer? Let me try.
+
+But notice: Removing this fixes the sharing bug from different contexts.
+
+The trouble with Bluespec is you just get a lot of bogus error conditions. So
+this is kind of important. Sudoku2 is similar, now it takes no time at all to
+generate the query, but the query is so large and complicated, it takes the
+solver a lot of time to figure out the answer.
+
+Okay, so let's try my proposed transformation, which to start will blow away
+sharing of all kinds, but maybe will fix Sudoku2 entirely? It should at least
+get Bluespec working fast again.
+
+Sat Jan  5 14:36:50 EST 2013
+
+Okay! Implemented easiest version. No preservation of sharing.
+
+Share test says: We loose ALL sharing. So clearly this is not acceptable as a
+final solution, because it renders all sharing pointless.
+
+But... good news is: Sudoku2, much faster?
+
+Totally solved. As in, back to 1.5 seconds, or what have you. To the point
+where the primary cost is in printing out the query for debug reasons. And it
+works with STP just fine too.
+
+In other words, this is a total success, so long as I can figure out how to
+preserve sharing reasonably well.
+
+What are my options? Can I do full preservation of sharing somehow? What does
+that even mean?
+
+Here's where a little thought will be worth while, I suspect.
+
+I have three cases in my share test. How about I focus on what I can do in
+each of those.
+
+Remember the two goals of sharing:
+ * share work in elaboration
+ * preserve sharing in query
+
+The three cases:
+ * No inferred value propagation done at all
+ * Sharing with the same context of inferred value propagation
+ * Sharing with different contexts of inferred value propagation
+
+Ideally we want full sharing, both in elaboration and the generated query.
+
+I think sharing work in elaboration is important. It's harder for me to
+detect. But important to preserve. If I can preserve things there, it
+automatically gets preserved in the query. So let me start by trying to do
+that.
+
+The first obvious thing to do is cache (Context, ID) pairs and their results.
+That will handle no inferred value propagation done, it will handle sharing of
+the same context. It will not handle sharing with different contexts. And it
+could be a little expensive because a context isn't exactly cheap to store in
+a map.
+
+I say I'm allowed to look at the expression... But presumably after the
+inferred value propagation, not before it?
+
+What I would like to be able to say is:
+ * I had this ID with this context, after transformation, I ended up with this
+   result
+
+Now I have this same ID, with this slightly different context. How can I
+identify if it will have the same result as the previous attempt?
+
+It may be that the value of a particular Var does not matter. That is the case
+if either it doesn't show up after transformation from the other Vars.
+
+Basically there are three values a boolean var can take from the context:
+ - True
+ - False
+ - Unknown
+
+The map just implicitly represents Unknown by its absence.
+
+And for each expression, we have the set of variables that matter.
+Settings for some variables "hide" other variables. Some variables are hidden
+from the start. But it's not a total order.
+
+The question is, can I extract enough information about the expression to
+figure this out? If so, I could save myself a lot of work, and automatically
+preserve a lot of sharing. That would be cool.
+
+Certainly I can do approximations. If it doesn't contain a variable, the value
+of that variable doesn't matter.
+
+I think the information we want is a tree. The tree of variables in the order
+I saw them. You make the tree. It has values of variables. To test if
+something would change from what you had before, you walk the tree, and at
+every decision point in the tree, verify the variables have the same value is
+it had.
+
+Actually, we can probably have a total order. Not sure.
+
+Anyway, these say what the important variables are. If any are different, you
+have to rerun it.
+
+Well, this is interesting. So order doesn't matter. Basically I keep the set
+of important variables and their values. You must have all the same values of
+variables to qualify for sharing.
+
+And so we ought to be able to sort these variables and form a tree, to make it
+easier to look up shared values.
+
+Basically what you do is, you walk the tree. At each node it lists a variable.
+The value could either be: True, False, or Unknown. You follow the appropriate
+branch.
+
+If you reach a valid leaf: use that result.
+If you reach an invalid leaf: compute the value of the expression, extend the
+tree based on the results.
+
+Two questions here.
+
+1. How do we figure out which variables are important in the transformation?
+2. Does the order for the tree we choose make a difference?
+
+It seems to me that both are hard.
+
+I think the order in (2) does matter. What if we have a don't care? Then we
+could take multiple paths. That would be bad.
+
+Perhaps this is trivially solved by just remembering the order in which we
+encountered the variables, knowing earlier ones are more important to match
+than later ones, because they make a much bigger difference.
+
+Fine then. How do we do (1)?
+
+I wonder, can I somehow take advantage of the structure of transformation to
+do this all automatically?
+
+Like, return a cache with each sub-part?
+
+Let's say I return a cache for each inference node.
+
+So I know, once I've decided a, b, c, d, e, then here is the mapping from ID
+to transformed result.
+
+Then, how can I figure that out for a, b, c, d?
+
+Well, it depends on what all things talked about e. Any expression which
+depends on the value of 'e', can't be reused unless you have that same value
+of 'e'. So, perhaps the best approximation I can do is... I can reuse the
+cache so long as I remove any expressions which depended on the value of 'e'.
+
+Do you get it? So I build from the bottom up. I record which expressions
+depend on which values (which I know from whenever I encounter a Var which
+matches). Or rather, from whenever I encounter any Var at all.
+
+Then, when I'm in an if statement, I do the following:
+
+1. Set v = True in the context
+2. Transform the True branch. It returns a cache.
+3. Remove any values in the cache depending on v.
+4. Set v = False in the context
+5. Transform the False branch, using the cache is input.
+
+Or, in other words, we do transformation. And during the transformation we are
+given as input a cache. The cache has the following properties:
+
+It is valid.
+
+Okay, that's no too hard then.
+
+I'm thinking a State monad ought to work swell here. We are allowed to look at
+the entire expression. And we can be explicitly lazy. Right?
+
+So, going top down, how does this work then?
+
+I assume the cache is valid for any choice I make.
+I want to compute An ExpH and the set of vars it depended on. That's easy
+enough. That's also what will stay in the cache.
+
+I have to be lazy. If I look up a var, and it makes an expression go away, I
+must not look in the subexpression.
+
+Is there a way to tell whether replacing a var will make something go away?
+
+Yes. Case is the only thing that can make something go away, and we know
+exactly when it will go away: when the argument turns into a ConEH, or
+ErrorEH.
+
+So just make sure to be explicitly lazy in CaseEH.
+
+1. Reduce the argument.
+If it reduces (which we can tell based on the returned list of dependant vars)
+  i. form the new expression from it (call caseEH)
+  ii. transform the result.
+Else
+  i. Do each of the children.
+
+Easy. No problem.
+
+So I think I have it. I think it goes like this:
+
+ivp :: Map.Map Name ExpH -> ExpH -> State (Map.Map ID (ExpH, Set.Set Name)) (ExpH, Set.Set Name)
+
+Transforms an expression, in the context of a state cache, returning the
+transformed expression and the set of variables which were encountered in the
+transformation of that expression.
+
+Initially cache is empty, which means it's valid for everything.
+
+Var: returns its value, and adds itself to the list.
+ID: look itself up in the cache, add itself to the cache if needed.
+Case: do like I said above, evaluate argument, if it reduces, do, then
+traverse, otherwise traverse to both.
+If: (after possible reductions)
+  Given a new variable assignment,
+    1. add it to the map as True
+    2. recurse to the True branch. Because all transformations are valid for the if, all transformations are also valid for the True branch.
+    3. Remove from cache any depending on v's value, because will not be valid in the false branch.
+    4. recurse to the False branch.
+    5. Remove from the cache any depending on v's value, because will not be valued 
+
+There. I wouldn't say simple, but I think very reasonable. With a single
+traversal, and not too much mechanics, we get almost 100% of the sharing
+preserved both in elaboration and the generated query. Exactly what I want.
+
+I wonder if we can stack the maps to make them very easy to push and pop.
+
+Basically you have a stack of maps, each one associated with a variable name.
+You start at the top of the stack, and go in as far as you can so long as you
+don't depend on a variable from the map. Then you insert.
+
+Now pushing and popping the map stack is easy. That sounds like a good idea to
+me.
+
+It also means things are getting pretty complicated. And I think, if I can be
+smarter with inferred value propagation (aka, infer more values), that might
+be worth while. (But not for the first attempt!)
+
+Okay, so I have a plan. I think it's worth a try. But it's also worth stewing
+over, because it is a rather complicated plan, and I want to see if anything
+interesting comes up while I stew.
+
+Basically the idea is to have a complex kind of cache which knows what
+variables matter and which don't. To have sub-caches as it were. Easy, no? I
+think so. When you put it like that, anyway.
+

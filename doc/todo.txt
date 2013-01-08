@@ -6,7 +6,7 @@ Haskell Features::
     example: \(Foo x) -> x+1
 * add support for more kinds of arithmetic sequence
     example: [1..]
-* list comprehension.
+* guards in list comprehension (parser issue only)
 * Variable operators: `foo`.
 * pattern matching in do bind notation.
 * support arguments to type synonyms? 
@@ -130,7 +130,6 @@ Applications::
 * HCP - get it working on the larger test cases
 * TCP - Implement it
 * SAT - implement MAXSAT
-* SAT - implement DIMACs parser
 * SUDOKU - Have the sudoku solver use IO to read the input board
 
 Bugs::

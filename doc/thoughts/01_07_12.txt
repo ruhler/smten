@@ -1,0 +1,130 @@
+
+Mon Jan  7 13:19:31 EST 2013
+
+I want to try out preservation of sharing in ivp. The full scheme.
+
+I think it's a fairly reasonable idea. It's not so super crazy. The idea is
+just that we cache things at the right granularity. It's smart caching.
+
+Before I dive into the algorithm, I have to make sure I understand it, so let
+me describe it again.
+
+First, we have a caching data structure. Let me start abstract. I'll implement
+it as simply as I can the first attempt.
+
+Here's the interface:
+
+empty :: Cache
+lookup :: ID -> Cache -> Maybe (ExpH, [Name])
+insert :: ID -> (ExpH, [Name]) -> Cache -> Cache
+push :: Name -> Cache -> Cache
+pop :: Cache -> Cache
+
+The idea is, you want to cache things which are valid locally. But they may be
+invalid globally. The scope of validity is determined by a set of names,
+which are the variables being inferred as having some value.
+
+Lookup and insert work as you would expect. It's push and pop which are
+interesting.
+
+Err... I don't know a nice way to explain this, which is a bad sign.
+
+Basically, push and pop let you remove values which are valid only locally.
+
+Push: indicate that the most local context says something about the given Name.
+Or rather, introduce a new local context influenced by Name.
+
+Now, when you insert, any expressions depending on a Name, will be put local
+to that context. If it doesn't depend on the name, it will be made as global
+as possible, because it's valid that globally.
+
+Pop: removes all entries which depended on the Name most recently pushed.
+
+Simple.
+
+Whenever you infer the value of a variable, you enter a new context. If that
+value for the variable goes out of scope, you have to pop that context. Simple
+as that.
+
+I think I'm ready to try it out. Wish me luck.
+
+Mon Jan  7 14:38:58 EST 2013
+
+Well, I implemented it. And sharing seems to work. And it seems to work... The
+problem is, the way I handle the cache is way too slow. There may be a big
+space leak. It may just be the problem with working with lots of maps. I want
+something more efficient if I can find it.
+
+But what more efficient could I do?
+
+Really the crux of the thing is this "with" operation. It does the following:
+ - remove all things which depend on a given name
+ - run a computation
+ - extract all things not depending on that certain name.
+ - restore old things depending on name and join with new things.
+
+As you can imagine, that's hard.
+
+I feel like, though, if I am smart about how I do this, I ought to be able to
+make this efficient.
+
+What if I had a tree of maps?
+
+Left: those things where V has value Unknown.
+Right: those things where V has value Known.
+
+Here's how it works.
+
+Lookup:
+ - Check Right first. 
+
+No. It will end up being linear. That's okay. But treat it like that.
+
+Let's say I have a stack.
+
+Look up in current first.
+If not there, look up in previous, but throw away if the result depends on V.
+
+That's easy. Linear in number of vars, which I don't like, but may be okay.
+
+Pop: filter out those from the last which don't depend on 'v', union it with
+the current. Easy.
+
+Okay, let me try this.
+
+Mon Jan  7 14:57:20 EST 2013
+
+It still doesn't work. I wonder if the problem is ...
+
+Oh! I forgot to be lazy in case. I bet that's the problem.
+
+Hmm... Let me try fixing that.
+
+Mon Jan  7 15:03:10 EST 2013
+
+Yup! That was the issue. Cool. Now it looks like we successfully preserve all
+sharing in IVP. Awesome!
+
+Which means, I can check this into the main branch, right?
+
+Mon Jan  7 15:10:58 EST 2013
+
+I checked it into the main branch. Cool.
+
+Wow. Now all the tests work. SHampi is decent (4x is the worst for y2int). I
+have no applications which are horrendous in Seri. That's cool.
+
+I don't need to worry about this transform thing.
+
+What are the next steps?
+
+I'll want to figure out how to do specialize if at all possible.
+
+But really, that should be easy now. I can do it as a pass after inferred
+value propagation. We automatically will preserve sharing.
+
+If I were clever, I might merge it with inferred value propagation, to avoid
+the extra traversal. But that's... really messy. So if it's not unreasonable,
+a separate pass would be nice.
+
+
