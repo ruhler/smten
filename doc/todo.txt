@@ -6,9 +6,7 @@ Haskell Features::
     example: \(Foo x) -> x+1
 * add support for more kinds of arithmetic sequence
     example: [1..]
-* guards in list comprehension (parser issue only)
 * Variable operators: `foo`.
-* pattern matching in do bind notation.
 * support arguments to type synonyms? 
 * auto derive Show
 * auto derive Ord
@@ -49,9 +47,6 @@ Type System::
 Front End::
 * line numbers for non-syntactic errors would be nice.
 * Understand all the conflicts in the parser.
-I suspect many of the reduce/reduce are from:
-    foo :: (Foo a) -> Sludge
-vs. foo :: (Foo a) => Sludge
 * support parser-error layout rule.
     For example: (let foo = bar in foo x)
 * Report an error if module name doesn't match source file name.
@@ -59,6 +54,9 @@ vs. foo :: (Foo a) => Sludge
   up.
 * Don't allow deriving of Free for recursive data types
 * Add static check for concreteness of queries (?)
+* Support list comprehension guard and pattern matching in do-bind (parser
+  issues)
+    
 
 Pretty Printer::
 * Make pretty again:

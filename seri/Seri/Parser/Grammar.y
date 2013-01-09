@@ -180,7 +180,7 @@ topdecl :: { [PDec] }
     { [$1] }
 
 deriving :: { [String] }
- : 'deriving' '(' qtycls_commasep ')'
+ : 'deriving' '(' tycls_commasep ')'
     { $3 }
 
 decl :: { PDec }
@@ -291,7 +291,7 @@ context :: { [Class] }
     }
 
 class :: { Class }
- : qtycls atypes
+ : tycls atypes
     { Class (name $1) $2 }
 
 constrs :: { [ConRec] }
@@ -576,7 +576,7 @@ qconsym :: { String }
     { $1 } 
 
 tycon :: { String }
- : conid
+ : tycls
     { $1 }
 
 tyvarnm :: { String }
@@ -585,10 +585,6 @@ tyvarnm :: { String }
 
 tycls :: { String }
  : conid
-    { $1 }
-
-qtycls :: { String }
-  : tycls
     { $1 }
 
 qconid :: { String }
@@ -610,10 +606,10 @@ commas :: { String }
  | commas ','
     { ',':$1 }
 
-qtycls_commasep :: { [String] }
- : qtycls 
+tycls_commasep :: { [String] }
+ : tycls 
     { [$1] }
- | qtycls_commasep ',' qtycls
+ | tycls_commasep ',' tycls
     { $1 ++ [$3] }
 
 types_commasep :: { [Type] }
