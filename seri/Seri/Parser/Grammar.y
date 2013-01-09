@@ -126,7 +126,7 @@ import Seri.Parser.Lexer
 %left '+' '-'
 %left '*'
 %right '.'
-%nonassoc qop
+%nonassoc op
 
 %%
 
@@ -171,7 +171,7 @@ topdecl :: { [PDec] }
     { [PDec ds | ds <- recordD $2 $3 $5 $6] }
  | 'type' tycon '=' type
     { [PSynonym (Synonym $2 $4) ] }
- | 'class' tycls tyvars 'where' '{' cdecls opt(';') '}'
+ | 'class' tycon tyvars 'where' '{' cdecls opt(';') '}'
     { [PDec (ClassD $2 $3 $6)] }
  | 'instance' class 'where' '{' idecls opt(';') '}'
     { [PDec (InstD [] $2 (icoalesce $5))] }
@@ -292,7 +292,7 @@ context :: { [Class] }
     }
 
 class :: { Class }
- : tycls atypes
+ : tycon atypes
     { Class $1 $2 }
 
 constrs :: { [ConRec] }
@@ -343,7 +343,7 @@ exp :: { Exp }
  | exp '<=' exp { opE "<=" $1 $3 }
  | exp '>=' exp { opE ">=" $1 $3 }
  | exp '>' exp { opE ">" $1 $3 }
- | exp qop exp { appsE $2 [$1, $3] }
+ | exp op exp { appsE $2 [$1, $3] }
 
 lexp :: { Exp }
  : '\\' var_typed '->' exp
@@ -369,7 +369,7 @@ fexp :: { Exp }
     { appE $1 $2 }
 
 aexp :: { Exp }
- : qvar
+ : var
     { VarE (Sig $1 UnknownT) }
  | gcon
     { ConE (Sig $1 UnknownT) }
@@ -447,7 +447,7 @@ fbinds :: { [(Name, Exp)] }
     { $1 ++ [$3] }
 
 fbind :: { (Name, Exp) }
- : qvar '=' exp
+ : var '=' exp
     { ($1, $3) }
 
 
@@ -513,39 +513,27 @@ var :: { Name }
  | '(' varsym_op ')'
     { $2 }
 
-qvar :: { Name }
- : qvarid
-    { $1 }
- | '(' qvarsym ')'
-    { $2 }
- | '(' varsym_op ')'
-    { $2 }
-
 con :: { Name }
  : conid
     { $1 }
 
 qcon :: { Name }
- : qconid
+ : conid
     { $1 }
- | '(' gconsym ')'
+ | '(' consym ')'
     { $2 }
- | '(' gconsym_op ')'
+ | '(' consym_op ')'
     { $2 }
 
-gconsym_op :: { Name }
+consym_op :: { Name }
  : ':' { name ":" }
 
 
-qop :: { Exp }
- : qvarsym
-    { VarE (Sig $1 UnknownT) }
- | qconop
-    { ConE (Sig $1 UnknownT) }
-
-qvarsym :: { Name }
+op :: { Exp }
  : varsym
-    { $1 }
+    { VarE (Sig $1 UnknownT) }
+ | consym
+    { ConE (Sig $1 UnknownT) }
 
 varsym_op :: { Name }
  : '+' { name "+" }
@@ -568,32 +556,12 @@ varsym :: { Name }
     { $1 }
  | '.' { name "." }
 
-qconop :: { Name }
- : gconsym
-    { $1 }
-
-gconsym :: { Name }
- : qconsym 
-    { $1 }
-
-qconsym :: { Name }
- : consym
-    { $1 } 
-
-tycon :: { Name }
- : tycls
-    { $1 }
-
 tyvarnm :: { Name }
  : varid
     { $1 }
 
-tycls :: { Name }
+tycon :: { Name }
  : conid
-    { $1 }
-
-qconid :: { Name }
-  : conid
     { $1 }
 
 modid :: { Name }
@@ -602,9 +570,6 @@ modid :: { Name }
  | modid '.' conid
     { $1 `nappend` name "." `nappend` $3 }
 
-qvarid :: { Name }
-  : varid  { $1 }
-
 commas :: { String }
  : ','
     { "," }
@@ -612,9 +577,9 @@ commas :: { String }
     { ',':$1 }
 
 tycls_commasep :: { [Name] }
- : tycls 
+ : tycon 
     { [$1] }
- | tycls_commasep ',' tycls
+ | tycls_commasep ',' tycon
     { $1 ++ [$3] }
 
 types_commasep :: { [Type] }
