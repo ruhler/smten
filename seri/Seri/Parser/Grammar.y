@@ -121,6 +121,7 @@ import Seri.Parser.Lexer
 %left '>>' '>>='
 %right '||'
 %right '&&'
+%right ':'
 %nonassoc '==' '/=' '<' '<=' '>=' '>'    
 %left '+' '-'
 %left '*'
@@ -167,9 +168,9 @@ topdecls :: { [PDec] }
 
 topdecl :: { [PDec] }
  : 'data' tycon lopt(tyvars) '=' lopt(constrs) lopt(deriving)
-    { [PDec ds | ds <- recordD (name $2) $3 $5 $6] }
+    { [PDec ds | ds <- recordD $2 $3 $5 $6] }
  | 'type' tycon '=' type
-    { [PSynonym (Synonym (name $2) $4) ] }
+    { [PSynonym (Synonym $2 $4) ] }
  | 'class' tycls tyvars 'where' '{' cdecls opt(';') '}'
     { [PDec (ClassD (name $2) $3 $6)] }
  | 'instance' class 'where' '{' idecls opt(';') '}'
@@ -243,7 +244,7 @@ btype :: { Type }
 
 atype :: { Type }
  : gtycon
-    { ConT (name $1) }
+    { ConT $1 }
  | tyvarnm
     { VarT (name $1) }
  | '(' types_commasep ')'
@@ -267,17 +268,17 @@ antype :: { NType }
  | '(' ntype ')'
     { $2 }
 
-gtycon :: { String }
+gtycon :: { Name }
  : tycon
     { $1 }
  | '(' ')'
-    { "()" }
+    { name "()" }
  | '[' ']'
-    { "[]" }
+    { name "[]" }
  | '(' '->' ')'
-    { "->" }
+    { name "->" }
  | '(' commas ')'
-    { "(" ++ $2 ++ ")" }
+    { name $ "(" ++ $2 ++ ")" }
 
 -- context is treated as a btype to avoid conflicts like:
 --      (Foo Bar) -> ...
@@ -335,6 +336,7 @@ exp :: { Exp }
  | exp '>>=' exp { opE ">>=" $1 $3 }
  | exp '||' exp { opE "||" $1 $3 }
  | exp '&&' exp { opE "&&" $1 $3 }
+ | exp ':' exp { appsE (conE (Sig (name ":") UnknownT)) [$1, $3] }
  | exp '==' exp { opE "==" $1 $3 }
  | exp '/=' exp { opE "/=" $1 $3 }
  | exp '<' exp { opE "<" $1 $3 }
@@ -528,6 +530,11 @@ qcon :: { String }
     { $1 }
  | '(' gconsym ')'
     { $2 }
+ | '(' gconsym_op ')'
+    { $2 }
+
+gconsym_op :: { String }
+ : ':' { ":" }
 
 
 qop :: { Exp }
@@ -566,18 +573,16 @@ qconop :: { String }
     { $1 }
 
 gconsym :: { String }
- : ':'
-    { ":" }
- | qconsym 
+ : qconsym 
     { $1 }
 
 qconsym :: { String }
  : consym
     { $1 } 
 
-tycon :: { String }
+tycon :: { Name }
  : tycls
-    { $1 }
+    { name $1 }
 
 tyvarnm :: { String }
  : varid
