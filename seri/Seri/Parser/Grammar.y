@@ -166,12 +166,8 @@ topdecls :: { [PDec] }
     { $1 ++ $3 }
 
 topdecl :: { [PDec] }
- : 'data' tycon opt(tyvars) '=' opt(constrs) opt(deriving)
-    { let { tyvars = fromMaybe [] $3;
-            constrs = fromMaybe [] $5;
-            derives = fromMaybe [] $6;
-      } in [PDec ds | ds <- recordD (name $2) tyvars constrs derives]
-    }
+ : 'data' tycon lopt(tyvars) '=' lopt(constrs) lopt(deriving)
+    { [PDec ds | ds <- recordD (name $2) $3 $5 $6] }
  | 'type' tycon '=' type
     { [PSynonym (Synonym (name $2) $4) ] }
  | 'class' tycls tyvars 'where' '{' cdecls opt(';') '}'
@@ -210,10 +206,10 @@ ldecls :: { [LDec] }
     { $1 ++ [$3] }
 
 ldecl :: { LDec }
- : pat opt(apats) rhs
+ : pat lopt(apats) rhs
     {% case ($1, $2) of
-        (p, Nothing) -> return (LPat p $3)
-        (VarP n, Just ps) -> return (LClause n (MMatch ps $3))
+        (p, []) -> return (LPat p $3)
+        (VarP n, ps) -> return (LClause n (MMatch ps $3))
         _ -> lfailE "invalid let declaration"
     }
 
@@ -305,10 +301,10 @@ constrs :: { [ConRec] }
     { $1 ++ [$3] }
 
 constr :: { ConRec }
- : con opt(atypes)
-    { NormalC (name $1) (fromMaybe [] $2) }
- | con '{' opt(fielddecls) '}'
-    { RecordC (name $1) (fromMaybe [] $3) }
+ : con lopt(atypes)
+    { NormalC (name $1) $2 }
+ | con '{' lopt(fielddecls) '}'
+    { RecordC (name $1) $3 }
 
 fielddecls :: { [(Name, Type)] }
  : fielddecl
@@ -321,8 +317,8 @@ fielddecl :: { (Name, Type) }
     { (name $1, $3) }
 
 funlhs :: { (Name, [Pat]) }
- : var opt(apats)
-    { (name $1, fromMaybe [] $2) } 
+ : var lopt(apats)
+    { (name $1, $2) } 
 
 rhs :: { Exp }
  : '=' exp
@@ -387,10 +383,10 @@ aexp :: { Exp }
     { lcompE $2 $4 }
  | '['  exps_commasep ']'
     { listE $2 }
- | aexp '{' opt(fbinds) '}'
+ | aexp '{' lopt(fbinds) '}'
     { case $1 of
-        ConE s -> recordC s (fromMaybe [] $3)
-        x -> recordU x (fromMaybe [] $3)
+        ConE s -> recordC s $3
+        x -> recordU x $3
     }
 
 qual :: { Qual }
@@ -661,6 +657,10 @@ opt(p)
     { Just $1 }
  |  -- empty
     { Nothing }
+
+lopt(p)
+ : opt(p)
+    { fromMaybe [] $1 }
 
 
 {

@@ -1,0 +1,28 @@
+
+Tue Jan  8 17:56:53 EST 2013
+
+I tried adding list comprehensions. The logic is easy enough. I just run into
+problems with the parser.
+
+The trouble is, it can't distinguish between patterns and expressions. Just
+think, a list comprehension:
+
+[ e | (a, b) ...]
+
+Is (a, b) a pattern matching a tuple, or is it a tuple expression?
+
+I wonder if, for now, I can just disallow a standalone expression. That's the
+way I use list comprehensions anyway. Let me try that.
+
+Tue Jan  8 18:00:11 EST 2013
+
+Well, that works. So I can at least have that support.
+
+How should I make this work in general? The trouble is, we can't tell the
+difference between a pattern and an expression, possibly until it's too
+late...
+
+One approach would be to allow an intermediate structure which can represent
+an exp and a pat simultaneously. Then coerce it one way or the other. That's a
+little unpleasant.
+
