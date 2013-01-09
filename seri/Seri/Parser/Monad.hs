@@ -45,6 +45,7 @@ module Seri.Parser.Monad (
 import Control.Monad.State
 
 import Seri.Failable
+import Seri.Name
 
 data Token = 
        TokenOpenBracket
@@ -67,10 +68,10 @@ data Token =
      | TokenBackSlash
      | TokenDoubleColon
      | TokenDoubleDot
-     | TokenConId String
-     | TokenVarId String
-     | TokenVarSym String
-     | TokenConSym String
+     | TokenConId Name
+     | TokenVarId Name
+     | TokenVarSym Name
+     | TokenConSym Name
      | TokenInteger Integer
      | TokenString String
      | TokenChar Char

@@ -31,7 +31,7 @@ record_updnm n = name "__" `nappend` n `nappend` name "_update"
 --   accessor functions for every field.
 --   update functions for every field.
 --   An undef declaration for each constructor.
-recordD :: Name -> [TyVar] -> [ConRec] -> [String] -> [Dec]
+recordD :: Name -> [TyVar] -> [ConRec] -> [Name] -> [Dec]
 recordD nm vars cons derivings =
   let mkcon :: ConRec -> Con
       mkcon (NormalC n ts) = Con n ts
@@ -197,8 +197,9 @@ deriveFree dn vars cs =
       ctx = [Class (name "Free") [tyVarType c] | c <- vars]
   in InstD ctx (Class (name "Free") [dt]) [free]
       
-derive :: String -> Name -> [TyVar] -> [Con] -> Dec
-derive "Eq" = deriveEq
-derive "Free" = deriveFree
-derive x = error $ "deriving " ++ show x ++ " not supported in seri"
+derive :: Name -> Name -> [TyVar] -> [Con] -> Dec
+derive n
+ | n == name "Eq" = deriveEq
+ | n == name "Free" = deriveFree
+ | otherwise = error $ "deriving " ++ show n ++ " not supported in seri"
 

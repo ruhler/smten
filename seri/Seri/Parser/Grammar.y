@@ -133,7 +133,7 @@ import Seri.Parser.Lexer
 module :: { Module }
  : 'module' modid 'where' body
     { let (is, sy, ds) = $4
-      in Module (name $2) is sy ds }
+      in Module $2 is sy ds }
  | body
     -- TODO: we should export only 'main' explicitly when explicit exports are
     -- supported
@@ -158,7 +158,7 @@ impdecls :: { [Import] }
 
 impdecl :: { Import }
  : 'import' modid
-    { Import (name $2) }
+    { Import $2 }
 
 topdecls :: { [PDec] }
  : topdecl
@@ -172,7 +172,7 @@ topdecl :: { [PDec] }
  | 'type' tycon '=' type
     { [PSynonym (Synonym $2 $4) ] }
  | 'class' tycls tyvars 'where' '{' cdecls opt(';') '}'
-    { [PDec (ClassD (name $2) $3 $6)] }
+    { [PDec (ClassD $2 $3 $6)] }
  | 'instance' class 'where' '{' idecls opt(';') '}'
     { [PDec (InstD [] $2 (icoalesce $5))] }
  | 'instance' context class 'where' '{' idecls opt(';') '}'
@@ -180,7 +180,7 @@ topdecl :: { [PDec] }
  | decl
     { [$1] }
 
-deriving :: { [String] }
+deriving :: { [Name] }
  : 'deriving' '(' tycls_commasep ')'
     { $3 }
 
@@ -226,9 +226,9 @@ idecl :: { (Name, MMatch) }
 
 gendecl :: { TopSig }
  : var '::' type
-    { TopSig (name $1) [] $3 }
+    { TopSig $1 [] $3 }
  | var '::' context type
-    { TopSig (name $1) $3 $4 }
+    { TopSig $1 $3 $4 }
 
 type :: { Type }
  : btype
@@ -246,7 +246,7 @@ atype :: { Type }
  : gtycon
     { ConT $1 }
  | tyvarnm
-    { VarT (name $1) }
+    { VarT $1 }
  | '(' types_commasep ')'
     { tupleT $2 }     -- takes care of '(' type ')' case too.
  | '[' type ']'
@@ -264,7 +264,7 @@ antype :: { NType }
  : integer
     { ConNT $1 }
  | tyvarnm
-    { VarNT (name $1) }
+    { VarNT $1 }
  | '(' ntype ')'
     { $2 }
 
@@ -293,7 +293,7 @@ context :: { [Class] }
 
 class :: { Class }
  : tycls atypes
-    { Class (name $1) $2 }
+    { Class $1 $2 }
 
 constrs :: { [ConRec] }
  : constr
@@ -303,9 +303,9 @@ constrs :: { [ConRec] }
 
 constr :: { ConRec }
  : con lopt(atypes)
-    { NormalC (name $1) $2 }
+    { NormalC $1 $2 }
  | con '{' lopt(fielddecls) '}'
-    { RecordC (name $1) $3 }
+    { RecordC $1 $3 }
 
 fielddecls :: { [(Name, Type)] }
  : fielddecl
@@ -315,11 +315,11 @@ fielddecls :: { [(Name, Type)] }
 
 fielddecl :: { (Name, Type) }
  : var '::' type
-    { (name $1, $3) }
+    { ($1, $3) }
 
 funlhs :: { (Name, [Pat]) }
  : var lopt(apats)
-    { (name $1, $2) } 
+    { ($1, $2) } 
 
 rhs :: { Exp }
  : '=' exp
@@ -370,9 +370,9 @@ fexp :: { Exp }
 
 aexp :: { Exp }
  : qvar
-    { VarE (Sig (name $1) UnknownT) }
+    { VarE (Sig $1 UnknownT) }
  | gcon
-    { ConE (Sig (name $1) UnknownT) }
+    { ConE (Sig $1 UnknownT) }
  | literal
     { $1 }
  | '(' exp ')'
@@ -434,7 +434,7 @@ stmts :: { [Stmt] }
 
 stmt :: { Stmt }
  : var '<-' exp
-    { BindS (VarP (name $1)) $3 }
+    { BindS (VarP $1) $3 }
  | exp 
     { NoBindS $1 }
  | 'let' '{' ldecls opt(';') '}'
@@ -448,7 +448,7 @@ fbinds :: { [(Name, Exp)] }
 
 fbind :: { (Name, Exp) }
  : qvar '=' exp
-    { (name $1, $3) }
+    { ($1, $3) }
 
 
 pat :: { Pat }
@@ -459,7 +459,7 @@ pat :: { Pat }
 
 pat10 :: { Pat }
  : gcon apats
-    { ConP (name $1) $2 }
+    { ConP $1 $2 }
  | apat
     { $1 }
 
@@ -471,11 +471,11 @@ apats :: { [Pat] }
 
 apat :: { Pat }
  : var
-    { if $1 == "_" then WildP else VarP (name $1) }
+    { if $1 == name "_" then WildP else VarP $1 }
  | var '@' apat
-    { AsP (name $1) $3 }
+    { AsP $1 $3 }
  | gcon
-    { ConP (name $1) [] }
+    { ConP $1 [] }
  | integer
     { numberP $1 }
  | char
@@ -489,23 +489,23 @@ apat :: { Pat }
  | '[' pats_commasep ']'
     { listP $2 }
 
-gcon :: { String }
+gcon :: { Name }
  : '(' ')'
-    { "()" }
+    { name "()" }
  | '[' ']'
-    { "[]" }
+    { name "[]" }
  | '(' commas ')'
-    { "(" ++ $2 ++ ")" }
+    { name $ "(" ++ $2 ++ ")" }
  | qcon
     { $1 }
 
 var_typed :: { Sig }
  : '(' var  '::' type ')'
-    { Sig (name $2) $4 }
+    { Sig $2 $4 }
  | var
-    { Sig (name $1) UnknownT }
+    { Sig $1 UnknownT }
 
-var :: { String }
+var :: { Name }
  : varid
     { $1 }
  | '(' varsym ')'
@@ -513,7 +513,7 @@ var :: { String }
  | '(' varsym_op ')'
     { $2 }
 
-qvar :: { String }
+qvar :: { Name }
  : qvarid
     { $1 }
  | '(' qvarsym ')'
@@ -521,11 +521,11 @@ qvar :: { String }
  | '(' varsym_op ')'
     { $2 }
 
-con :: { String }
+con :: { Name }
  : conid
     { $1 }
 
-qcon :: { String }
+qcon :: { Name }
  : qconid
     { $1 }
  | '(' gconsym ')'
@@ -533,76 +533,76 @@ qcon :: { String }
  | '(' gconsym_op ')'
     { $2 }
 
-gconsym_op :: { String }
- : ':' { ":" }
+gconsym_op :: { Name }
+ : ':' { name ":" }
 
 
 qop :: { Exp }
  : qvarsym
-    { VarE (Sig (name $1) UnknownT) }
+    { VarE (Sig $1 UnknownT) }
  | qconop
-    { ConE (Sig (name $1) UnknownT) }
+    { ConE (Sig $1 UnknownT) }
 
-qvarsym :: { String }
+qvarsym :: { Name }
  : varsym
     { $1 }
 
-varsym_op :: { String }
- : '+' { "+" }
- | '-' { "-" }
- | '*' { "*" }
- | '$'  { "$" }
- | '>>' { ">>" }
- | '>>=' { ">>=" }
- | '||' { "||" }
- | '&&' { "&&" }
- | '==' { "==" }
- | '/=' { "/=" }
- | '<'  { "<" }
- | '<=' { "<=" }
- | '>=' { ">=" }
- | '>'  { ">" }
+varsym_op :: { Name }
+ : '+' { name "+" }
+ | '-' { name "-" }
+ | '*' { name "*" }
+ | '$'  { name "$" }
+ | '>>' { name ">>" }
+ | '>>=' { name ">>=" }
+ | '||' { name "||" }
+ | '&&' { name "&&" }
+ | '==' { name "==" }
+ | '/=' { name "/=" }
+ | '<'  { name "<" }
+ | '<=' { name "<=" }
+ | '>=' { name ">=" }
+ | '>'  { name ">" }
 
-varsym :: { String }
+varsym :: { Name }
  : varsymt
     { $1 }
- | '.' { "." }
+ | '.' { name "." }
 
-qconop :: { String }
+qconop :: { Name }
  : gconsym
     { $1 }
 
-gconsym :: { String }
+gconsym :: { Name }
  : qconsym 
     { $1 }
 
-qconsym :: { String }
+qconsym :: { Name }
  : consym
     { $1 } 
 
 tycon :: { Name }
  : tycls
-    { name $1 }
+    { $1 }
 
-tyvarnm :: { String }
+tyvarnm :: { Name }
  : varid
     { $1 }
 
-tycls :: { String }
+tycls :: { Name }
  : conid
     { $1 }
 
-qconid :: { String }
+qconid :: { Name }
   : conid
     { $1 }
 
-modid :: { String }
+modid :: { Name }
  : conid
     { $1 }
  | modid '.' conid
-    { $1 ++ "." ++ $3 }
+    { $1 `nappend` name "." `nappend` $3 }
 
-qvarid :: { String }
+qvarid :: { Name }
   : varid  { $1 }
 
 commas :: { String }
@@ -611,7 +611,7 @@ commas :: { String }
  | commas ','
     { ',':$1 }
 
-tycls_commasep :: { [String] }
+tycls_commasep :: { [Name] }
  : tycls 
     { [$1] }
  | tycls_commasep ',' tycls
@@ -637,9 +637,9 @@ pats_commasep :: { [Pat] }
 
 tyvar :: { TyVar }
  : tyvarnm
-    { NormalTV (name $1) }
+    { NormalTV $1 }
  | '#' tyvarnm
-    { NumericTV (name $2) }
+    { NumericTV $2 }
 
 tyvars :: { [TyVar] }
  : tyvar

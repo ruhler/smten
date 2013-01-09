@@ -46,6 +46,7 @@ import Data.Char hiding (isSymbol)
 import Data.Functor
 import Data.Maybe (fromMaybe)
 
+import Seri.Name
 import Seri.Parser.Monad
 
 isSmall :: Char -> Bool
@@ -167,13 +168,13 @@ lex = do
       (c:cs) | isSpace c -> single >> setText cs >> lex
       (c:cs) | isLarge c ->
           let (ns, rest) = span isIdChar cs
-          in many (c:ns) >> setText rest >> return (TokenConId (c:ns))
+          in many (c:ns) >> setText rest >> return (TokenConId (name $ c:ns))
       (c:cs) | isSmall c ->
           let (ns, rest) = span isIdChar cs
           in case (c:ns) of
               kw | Just tok <- lookup kw keywords ->
                   many kw >> setText rest >> return tok
-              id -> many id >> setText rest >> return (TokenVarId id)
+              id -> many id >> setText rest >> return (TokenVarId (name id))
       ('0':x:cs) | x `elem` ['x', 'X'] ->
           let (ns, rest) = span isHexDigit cs
           in many ('0':x:ns) >> setText rest >> return (TokenInteger (read ('0':x:ns)))
@@ -187,11 +188,11 @@ lex = do
                   setText (dropWhile (/= '\n') rest) >> lex
               rop | Just tok <- lookup rop reservedops ->
                   many rop >> setText rest >> return tok
-              op | head op == ':' -> many op >> setText rest >> return (TokenConSym op)
+              op | head op == ':' -> many op >> setText rest >> return (TokenConSym (name op))
               op -> do
                 many op
                 setText rest
-                return $ TokenVarSym op
+                return $ TokenVarSym (name op)
       ('"':cs) -> do
          single 
          tok <- lexstr "" cs
