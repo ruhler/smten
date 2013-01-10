@@ -396,12 +396,10 @@ qual :: { Qual }
      e <- toExp $3
      return (QGen p e)
    }
+ | exp
+    {% fmap QGuard (toExp $1) }
  | 'let' ldecls
     { QBind (lcoalesce $2) }
--- TODO: This causes a reduce/reduce conflict, because we can't distiniguish
--- the exp from a pat '<-' qual. I'm not sure how to deal with this properly.
--- | exp
---    { QGuard $1 }
 
 quals :: { [Qual] }
  : qual
@@ -437,11 +435,11 @@ stmts :: { [Stmt] }
     { $1 ++ [$3] }
 
 stmt :: { Stmt }
- -- TODO: this should be pat '<-' exp
- -- I don't know how to get rid of the exp vs pat '<-' exp reduce/reduce
- -- conflict yet.
- : var '<-' exp
-    {% fmap (BindS (VarP $1)) (toExp $3) }
+ : exp '<-' exp {% do
+    p <- toPat $1
+    e <- toExp $3
+    return (BindS p e)
+   }
  | exp 
     {% fmap NoBindS (toExp $1) }
  | 'let' '{' ldecls opt(';') '}'

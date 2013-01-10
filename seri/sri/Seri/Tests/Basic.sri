@@ -246,6 +246,12 @@ testbasic = do
     testletclause
     testbitpattern
     testlistcomprehension
+    testdopattern
+
+testdopattern :: IO ()
+testdopattern = do
+    Just b <- return (Just True)
+    test "do pattern" b
 
 testbitpattern :: IO ()
 testbitpattern = do
