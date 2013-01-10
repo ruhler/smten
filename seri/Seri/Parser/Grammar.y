@@ -286,10 +286,7 @@ gtycon :: { Name }
 --
 context :: { [Class] }
  : btype '=>'
-    {% case attempt $ mkContext $1 of
-         Right x -> return x
-         Left msg -> lfailE msg
-    }
+    {% mkContext $1 }
 
 class :: { Class }
  : tycon atypes
@@ -346,8 +343,8 @@ exp :: { Exp }
  | exp op exp { appsE $2 [$1, $3] }
 
 lexp :: { Exp }
- : '\\' var_typed '->' exp
-    { lamE $2 $4 }
+ : '\\' var '->' exp
+    { lamE (Sig $2 UnknownT) $4 }
  | 'let' '{' ldecls opt(';') '}' 'in' exp
     { mletsE (lcoalesce $3) $7 }
  | 'if' exp 'then' exp 'else' exp
@@ -498,12 +495,6 @@ gcon :: { Name }
     { name $ "(" ++ $2 ++ ")" }
  | qcon
     { $1 }
-
-var_typed :: { Sig }
- : '(' var  '::' type ')'
-    { Sig $2 $4 }
- | var
-    { Sig $1 UnknownT }
 
 var :: { Name }
  : varid
@@ -688,13 +679,13 @@ lcoalesce (LClause n c : ls) =
 
 -- A context is parsed first as a type to avoid a reduce/reduce conflict. Here
 -- we turn that type back into a proper context.
-mkContext :: Type -> Failable [Class] 
+mkContext :: Type -> ParserMonad [Class] 
 mkContext t = 
-  let mkclass :: Type -> Failable Class
+  let mkclass :: Type -> ParserMonad Class
       mkclass t =
         case de_appsT t of
           (ConT nm, ts) -> return $ Class nm ts
-          _ -> throw $ "invalid context"
+          _ -> lfailE "invalid context"
 
       classes = fromMaybe [t] (de_tupleT t)
   in mapM mkclass classes
