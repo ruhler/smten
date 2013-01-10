@@ -46,7 +46,6 @@ Type System::
 
 Front End::
 * line numbers for non-syntactic errors would be nice.
-* Understand all the conflicts in the parser.
 * support parser-error layout rule.
     For example: (let foo = bar in foo x)
 * Report an error if module name doesn't match source file name.
@@ -54,9 +53,6 @@ Front End::
   up.
 * Don't allow deriving of Free for recursive data types
 * Add static check for concreteness of queries (?)
-* Support list comprehension guard and pattern matching in do-bind (parser
-  issues)
-    
 
 Pretty Printer::
 * Make pretty again:
