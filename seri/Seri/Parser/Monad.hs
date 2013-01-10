@@ -36,7 +36,7 @@
 -- | Parser monad used in seri parsing.
 module Seri.Parser.Monad (
     Location(..), Token(..), ParserMonad, runParser,
-    failE, lfailE, 
+    failE, lfailE, pfailE,
     single, many, newline, getText, setText, getLoc, getTLoc, saveLoc,
     expectBrace, setExpectBrace,
     lpush, ltop, lpop, tpush, tnext,
@@ -231,4 +231,7 @@ expectBrace = gets ps_ebrace
 -- | Indicate whether we expect an open brace as the next token.
 setExpectBrace :: Bool -> ParserMonad ()
 setExpectBrace b = modify $ \ps -> ps { ps_ebrace = b }
+
+pfailE :: Token -> ParserMonad a
+pfailE tok = lfailE $ "parser error at " ++ show tok
 
