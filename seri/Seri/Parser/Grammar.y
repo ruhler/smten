@@ -209,7 +209,7 @@ ldecls :: { [LDec] }
     { $1 ++ [$3] }
 
 ldecl :: { LDec }
- : aexp lopt(aexps) rhs {% do
+ : apoe lopt(apoes) rhs {% do
       p <- toPat $1
       ps <- mapM toPat $2
       case (p, ps) of
@@ -318,85 +318,85 @@ fielddecl :: { (Name, Type) }
     { ($1, $3) }
 
 funlhs :: { (Name, [Pat]) }
- : var lopt(aexps)
+ : var lopt(apoes)
     {% fmap ((,) $1) (mapM toPat $2) } 
 
 rhs :: { Exp }
- : '=' exp
+ : '=' poe
     {% toExp $2 }
 
-exp :: { PatOrExp }
- : lexp { $1 }
- | lexp '::' type { typePE $1 $3 }
- | exp '+' exp { opPE "+" $1 $3 }
- | exp '-' exp { opPE "-" $1 $3 }
- | exp '*' exp { opPE "*" $1 $3 }
- | exp '$' exp { opPE "$" $1 $3 }
- | exp '>>' exp { opPE ">>" $1 $3 }
- | exp '>>=' exp { opPE ">>=" $1 $3 }
- | exp '||' exp { opPE "||" $1 $3 }
- | exp '&&' exp { opPE "&&" $1 $3 }
- | exp ':' exp { conopPE ":"$1 $3 }
- | exp '==' exp { opPE "==" $1 $3 }
- | exp '/=' exp { opPE "/=" $1 $3 }
- | exp '<' exp { opPE "<" $1 $3 }
- | exp '<=' exp { opPE "<=" $1 $3 }
- | exp '>=' exp { opPE ">=" $1 $3 }
- | exp '>' exp { opPE ">" $1 $3 }
- | exp op exp { appsPE $2 [$1, $3] }
+poe :: { PatOrExp }
+ : lpoe { $1 }
+ | lpoe '::' type { typePE $1 $3 }
+ | poe '+' poe { opPE "+" $1 $3 }
+ | poe '-' poe { opPE "-" $1 $3 }
+ | poe '*' poe { opPE "*" $1 $3 }
+ | poe '$' poe { opPE "$" $1 $3 }
+ | poe '>>' poe { opPE ">>" $1 $3 }
+ | poe '>>=' poe { opPE ">>=" $1 $3 }
+ | poe '||' poe { opPE "||" $1 $3 }
+ | poe '&&' poe { opPE "&&" $1 $3 }
+ | poe ':' poe { conopPE ":"$1 $3 }
+ | poe '==' poe { opPE "==" $1 $3 }
+ | poe '/=' poe { opPE "/=" $1 $3 }
+ | poe '<' poe { opPE "<" $1 $3 }
+ | poe '<=' poe { opPE "<=" $1 $3 }
+ | poe '>=' poe { opPE ">=" $1 $3 }
+ | poe '>' poe { opPE ">" $1 $3 }
+ | poe op poe { appsPE $2 [$1, $3] }
 
-lexp :: { PatOrExp }
- : '\\' var '->' exp
+lpoe :: { PatOrExp }
+ : '\\' var '->' poe
     { lamPE (Sig $2 UnknownT) $4 }
- | 'let' '{' ldecls opt(';') '}' 'in' exp
+ | 'let' '{' ldecls opt(';') '}' 'in' poe
     { letPE $3 $7 }
- | 'if' exp 'then' exp 'else' exp
+ | 'if' poe 'then' poe 'else' poe
     { ifPE $2 $4 $6 }
- | 'case' exp 'of' '{' alts opt(';') '}'
+ | 'case' poe 'of' '{' alts opt(';') '}'
     { casePE $2 $5 }
  | 'do' '{' stmts opt(';') '}'
     {% case last $3 of
          NoBindS _ -> return (doPE $3)
          _ -> lfailE "last statement in do must be an expression"
     }
- | aexps
+ | apoes
     { appsPE (head $1) (tail $1) }
 
-aexps :: { [PatOrExp] }
- : aexp
+apoes :: { [PatOrExp] }
+ : apoe
     { [$1] }
- | aexps aexp
+ | apoes apoe
     { $1 ++ [$2] }
 
-aexp :: { PatOrExp }
+apoe :: { PatOrExp }
  : var
     { varPE $1 }
- | var '@' aexp
+ | var '@' apoe
     { asPE $1 $3 }
  | gcon
     { conPE $1 }
  | literal
     { $1 }
- | '(' exp ')'
+ | '(' poe ')'
     { $2 }
- | '(' exp ',' exps_commasep ')'
+ | '(' poe ',' poes_commasep ')'
     { tuplePE ($2 : $4) }
- | '[' exp '..' exp ']'
+ | '[' poe '..' poe ']'
     { fromtoPE $2 $4 }
- | '[' exp '|' quals ']'
+ | '[' poe '|' quals ']'
     { lcompPE $2 $4 }
- | '['  exps_commasep ']'
+ | '['  poes_commasep ']'
     { listPE $2 }
- | aexp '{' lopt(fbinds) '}'
+ | apoe '{' lopt(fbinds) '}'
     { updatePE $1 $3 }
 
 qual :: { Qual }
- : exp '<-' exp {% do
+ : poe '<-' poe {% do
      p <- toPat $1
      e <- toExp $3
      return (QGen p e)
    }
- | exp
+ | poe
     {% fmap QGuard (toExp $1) }
  | 'let' ldecls
     { QBind (lcoalesce $2) }
@@ -422,7 +422,7 @@ alts :: { [SMatch] }
     { $1 ++ [$3] }
 
 alt :: { SMatch }
- : exp '->' exp {% do
+ : poe '->' poe {% do
     p <- toPat $1
     e <- toExp $3
     return (SMatch p e)
@@ -435,12 +435,12 @@ stmts :: { [Stmt] }
     { $1 ++ [$3] }
 
 stmt :: { Stmt }
- : exp '<-' exp {% do
+ : poe '<-' poe {% do
     p <- toPat $1
     e <- toExp $3
     return (BindS p e)
    }
- | exp 
+ | poe 
     {% fmap NoBindS (toExp $1) }
  | 'let' '{' ldecls opt(';') '}'
     { LetS (lcoalesce $3) }
@@ -452,7 +452,7 @@ fbinds :: { [(Name, Exp)] }
     { $1 ++ [$3] }
 
 fbind :: { (Name, Exp) }
- : var '=' exp
+ : var '=' poe
     {% fmap ((,) $1) (toExp $3) }
 
 gcon :: { Name }
@@ -548,10 +548,10 @@ types_commasep :: { [Type] }
  | types_commasep ',' type
     { $1 ++ [$3] }
 
-exps_commasep :: { [PatOrExp] }
- : exp
+poes_commasep :: { [PatOrExp] }
+ : poe
     { [$1] }
- | exps_commasep ',' exp
+ | poes_commasep ',' poe
     { $1 ++ [$3] }
 
 tyvar :: { TyVar }
