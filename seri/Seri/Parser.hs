@@ -24,52 +24,47 @@ import Seri.Parser.Grammar
 --
 -- - Type synonyms are not allowed to have arguments
 --
--- - Contexts in data declarations
+-- - Contexts are not allowed in data declarations
 --
 -- - Only Eq is supported in deriving clauses for data declarations.
+--   (deriving Free is also supported, specific to Seri)
 --
--- - Newtype declarations
+-- - Newtype declarations are not supported
 --
--- - Contexts in class declarations
+-- - Contexts in class declarations are not supported
 --
--- - Default declarations.
+-- - Empty class declarations are not supported
 --
--- - Pattern bindings (?)
+-- - Default class methods implementations are not supported.
 --
--- - Empty class declarations.
---
--- - Default class methods implementations.
---
--- - Multiple vars in a type signature.
+-- - Multiple vars for a single type signature are not supported.
 -- 
--- - fixity declarations.
+-- - fixity declarations are not supported.
 --
--- - Qualified names.
+-- - Qualified names are not supported.
 --
--- - Unparenthesized contexts.
+-- - Unparenthesized contexts are not supported
 --
--- - ! in constructor declarations.
+-- - ! in constructor declarations are not supported
 --
--- - infix constructors.
+-- - infix constructors are not supported, except for (:).
 --
--- - 'where' clauses in expressions.
+-- - 'where' clauses in expressions are not supported.
 --
--- - pattern guards.
+-- - pattern guards are not supported.
 --
--- - arithmetic sequences.
+-- - arithmetic sequences are not fully supported.
 --
--- - list comprehension.
+-- - left and right sections are not supported.
 --
--- - left and right sections.
---
--- - irrefutable patterns
+-- - irrefutable patterns are not supported
 -- 
--- - variable operators, such as (a `foo` b).
+-- - variable operators, such as (a `foo` b) are not supported.
 --
--- - float literals.
+-- - float literals are not supported.
 --
--- - recursive let expressions (?). Currently let expressions are sequential,
--- not recursive.
+-- - recursive let expressions are not supported(?). Currently let expressions
+--   are sequential, not recursive.
 --
 -- [@Things meant to be different from haskell@]
 --
@@ -83,6 +78,8 @@ import Seri.Parser.Grammar
 -- - Empty data declarations are supported, indicating a primitive type.
 --
 -- - Numeric types are supported, introduced with the # symbol.
+--
+-- - deriving of Free is supported
 --
 --
 -- [@Other Notes@]
