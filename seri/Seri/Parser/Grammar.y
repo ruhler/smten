@@ -49,6 +49,7 @@ import Seri.Dec
 import Seri.Module
 import Seri.Parser.Monad
 import Seri.Parser.Lexer
+import Seri.Parser.PatOrExp
 import Seri.Parser.Utils
 
 }
@@ -320,77 +321,74 @@ funlhs :: { (Name, [Pat]) }
 
 rhs :: { Exp }
  : '=' exp
-    { $2 }
+    {% toExp $2 }
 
-exp :: { Exp }
+exp :: { PatOrExp }
  : lexp { $1 }
- | lexp '::' type { typeE $1 $3 }
- | exp '+' exp { opE "+" $1 $3 }
- | exp '-' exp { opE "-" $1 $3 }
- | exp '*' exp { opE "*" $1 $3 }
- | exp '$' exp { opE "$" $1 $3 }
- | exp '>>' exp { opE ">>" $1 $3 }
- | exp '>>=' exp { opE ">>=" $1 $3 }
- | exp '||' exp { opE "||" $1 $3 }
- | exp '&&' exp { opE "&&" $1 $3 }
- | exp ':' exp { appsE (conE (Sig (name ":") UnknownT)) [$1, $3] }
- | exp '==' exp { opE "==" $1 $3 }
- | exp '/=' exp { opE "/=" $1 $3 }
- | exp '<' exp { opE "<" $1 $3 }
- | exp '<=' exp { opE "<=" $1 $3 }
- | exp '>=' exp { opE ">=" $1 $3 }
- | exp '>' exp { opE ">" $1 $3 }
- | exp op exp { appsE $2 [$1, $3] }
+ | lexp '::' type { typePE $1 $3 }
+ | exp '+' exp { opPE "+" $1 $3 }
+ | exp '-' exp { opPE "-" $1 $3 }
+ | exp '*' exp { opPE "*" $1 $3 }
+ | exp '$' exp { opPE "$" $1 $3 }
+ | exp '>>' exp { opPE ">>" $1 $3 }
+ | exp '>>=' exp { opPE ">>=" $1 $3 }
+ | exp '||' exp { opPE "||" $1 $3 }
+ | exp '&&' exp { opPE "&&" $1 $3 }
+ | exp ':' exp { conopPE ":"$1 $3 }
+ | exp '==' exp { opPE "==" $1 $3 }
+ | exp '/=' exp { opPE "/=" $1 $3 }
+ | exp '<' exp { opPE "<" $1 $3 }
+ | exp '<=' exp { opPE "<=" $1 $3 }
+ | exp '>=' exp { opPE ">=" $1 $3 }
+ | exp '>' exp { opPE ">" $1 $3 }
+ | exp op exp { appsPE $2 [$1, $3] }
 
-lexp :: { Exp }
+lexp :: { PatOrExp }
  : '\\' var '->' exp
-    { lamE (Sig $2 UnknownT) $4 }
+    { lamPE (Sig $2 UnknownT) $4 }
  | 'let' '{' ldecls opt(';') '}' 'in' exp
-    { mletsE (lcoalesce $3) $7 }
+    { letPE $3 $7 }
  | 'if' exp 'then' exp 'else' exp
-    { ifE $2 $4 $6 }
+    { ifPE $2 $4 $6 }
  | 'case' exp 'of' '{' alts opt(';') '}'
-    { mcaseE $2 $5 }
+    { casePE $2 $5 }
  | 'do' '{' stmts opt(';') '}'
     {% case last $3 of
-         NoBindS _ -> return $ doE $3
+         NoBindS _ -> return (doPE $3)
          _ -> lfailE "last statement in do must be an expression"
     }
  | aexps
-    { appsE (head $1) (tail $1) }
+    { appsPE (head $1) (tail $1) }
 
-aexps :: { [Exp] }
+aexps :: { [PatOrExp] }
  : aexp
     { [$1] }
  | aexps aexp
     { $1 ++ [$2] }
 
-aexp :: { Exp }
+aexp :: { PatOrExp }
  : var
-    { VarE (Sig $1 UnknownT) }
+    { varPE $1 }
  | gcon
-    { ConE (Sig $1 UnknownT) }
+    { conPE $1 }
  | literal
     { $1 }
  | '(' exp ')'
     { $2 }
  | '(' exp ',' exps_commasep ')'
-    { tupleE ($2 : $4) }
+    { tuplePE ($2 : $4) }
  | '[' exp '..' exp ']'
-    { fromtoE $2 $4 }
+    { fromtoPE $2 $4 }
  | '[' exp '|' quals ']'
-    { lcompE $2 $4 }
+    { lcompPE $2 $4 }
  | '['  exps_commasep ']'
-    { listE $2 }
+    { listPE $2 }
  | aexp '{' lopt(fbinds) '}'
-    { case $1 of
-        ConE s -> recordC s $3
-        x -> recordU x $3
-    }
+    { updatePE $1 $3 }
 
 qual :: { Qual }
  : pat '<-' exp
-    { QGen $1 $3}
+    {% fmap (QGen $1) (toExp $3)}
  | 'let' ldecls
     { QBind (lcoalesce $2) }
 -- TODO: This causes a reduce/reduce conflict, because we can't distiniguish
@@ -404,13 +402,13 @@ quals :: { [Qual] }
  | quals ',' qual
     { $1 ++ [$3] }
 
-literal :: { Exp }
+literal :: { PatOrExp }
  : integer
-    { numberE $1 }
+    { integerPE $1 }
  | char
-    { charE $1 }
+    { charPE $1 }
  | string
-    { stringE $1 }
+    { stringPE $1 }
 
 alts :: { [SMatch] }
  : alt
@@ -420,7 +418,7 @@ alts :: { [SMatch] }
 
 alt :: { SMatch }
  : pat '->' exp
-    { SMatch $1 $3 }
+    {% fmap (SMatch $1) (toExp $3) }
 
 stmts :: { [Stmt] }
  : stmt 
@@ -433,9 +431,9 @@ stmt :: { Stmt }
  -- I don't know how to get rid of the exp vs pat '<-' exp reduce/reduce
  -- conflict yet.
  : var '<-' exp
-    { BindS (VarP $1) $3 }
+    {% fmap (BindS (VarP $1)) (toExp $3) }
  | exp 
-    { NoBindS $1 }
+    {% fmap NoBindS (toExp $1) }
  | 'let' '{' ldecls opt(';') '}'
     { LetS (lcoalesce $3) }
 
@@ -447,7 +445,7 @@ fbinds :: { [(Name, Exp)] }
 
 fbind :: { (Name, Exp) }
  : var '=' exp
-    { ($1, $3) }
+    {% fmap ((,) $1) (toExp $3) }
 
 
 pat :: { Pat }
@@ -522,11 +520,11 @@ consym_op :: { Name }
  : ':' { name ":" }
 
 
-op :: { Exp }
+op :: { PatOrExp }
  : varsym
-    { VarE (Sig $1 UnknownT) }
+    { varPE $1 }
  | consym
-    { ConE (Sig $1 UnknownT) }
+    { conPE $1 }
 
 varsym_op :: { Name }
  : '+' { name "+" }
@@ -581,7 +579,7 @@ types_commasep :: { [Type] }
  | types_commasep ',' type
     { $1 ++ [$3] }
 
-exps_commasep :: { [Exp] }
+exps_commasep :: { [PatOrExp] }
  : exp
     { [$1] }
  | exps_commasep ',' exp

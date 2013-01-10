@@ -103,6 +103,7 @@ library
     Seri.Parser.Monad
     Seri.Parser.Lexer
     Seri.Parser.Grammar
+    Seri.Parser.PatOrExp
     Seri.Parser.Utils
 
     Seri.Loader

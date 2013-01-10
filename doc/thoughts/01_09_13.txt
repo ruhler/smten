@@ -1,0 +1,377 @@
+
+Wed Jan  9 07:14:35 EST 2013
+
+I want to see if I can work out parser reduce/reduce issues.
+
+There are 3 suspected issues:
+
+1. var vs. qvar
+It shouldn't matter, because they are the same. But in that case, I ought to
+just have one. I can always add the other back when I support qualified
+variables.
+
+2. (...) =>
+vs (...) ->
+Is it a type or a context? I'm not sure if I fixed this already or not. I
+think the solution is straight forward. Parse both as types, then, when a
+context is expected, convert the type to a context. This makes use of the fact
+that the language for a context is a subset of the language for the type.
+
+3. pat <- ...
+vs exp ...
+Is it a pattern or an expression? It's... tricky. Annoying.
+
+I want to consider three possible solutions, from best to worst:
+i. Does happy have a flag for backtracking?
+Idea is: try one, if it fails, go back and try the other.
+ii. Can we leverage error in happy?
+Idea is: try one, if it fails, go back and try the other.
+iii. Have a way to represent an object which could be an exp or a pat. I think
+pat is mostly a subset of exp, only it has as patterns. I think, parse into a
+pre-desugared expression, then be able to interpret that as either an exp or a
+pattern.
+
+Currently we have 5 reduce/reduce. And a bunch of shift/reduce. I don't care
+about the shift/reduce. I think those are operator precedence things.
+
+What are the 5 reduce/reduce?
+
+They are number (2). Class vs. context.
+
+So, let me try my plan to get rid of the issue, and see if it works...
+
+It would be cool if I could find a place where it makes the wrong decision and
+add that to the test case.
+
+Hmm... looks like I found a case. But it's weird. It's like, if I use 'opt' it
+does one thing, if I spell out the options, it does another...
+
+Wed Jan  9 07:31:45 EST 2013
+
+Okay, so I want to try the context thing. I don't understand why:
+
+  var '::' type
+| var '::' context type
+
+Works fine, but
+  var '::' opt(context) type
+Does not work.
+
+A fluke?
+
+Anyway, I know what I want to do, let me try it.
+
+Change context to parse a type, then convert it to a context.
+
+Oh, wait. We already do! Uh oh... So why do we still have a conflict? Maybe I
+don't have the right issue?
+
+Wed Jan  9 07:39:02 EST 2013
+
+Well, both tycls and tycon are the same! So let's just get rid of the
+duplicates and stick with one. Even though I'm pretty sure it's obvious which
+one you want from the context...
+
+Oh well. I'll give it a go.
+
+Wed Jan  9 07:50:05 EST 2013
+
+Fixed the reduce/reduce conflicts.
+
+Now, I started reading the happy user guide, and it seems we should not be
+getting shift/reduce conflicts explicitly reported if they are okay. So, I
+should probably look to understand all those conflicts too. I suspect that's
+why I have this funny behavior with opt vs. nonopt.
+
+Let me at least look into a couple of the shift/reduce, see what they are, see
+if they are okay, see if I can fix them, perhaps with a precedence annotation.
+
+Well, the shift/reduce seem to be of the form:
+
+     foo 
+vs.  foo bar
+
+And we prefer foo bar. That seems reasonable to me. Let me not muck with them.
+
+Now, this question about exp vs. pat... I don't think I can do anything with
+error or backtracking. Or rather, I probably could, but it's more complicated
+than it's worth. Instead let me try ... Having a PatExp representation? That's
+really messy.
+
+I wonder if I could hack something up as follows. Basically the idea is... try
+exp by default, for example. If that fails, then reset the token stack (have
+it saved somewhere), insert a token which says to try pat first, then
+continue.
+
+I think that should be okay.
+
+Notice, the distinction is always:
+    exp vs. pat <- exp
+
+So if I can write a production rule for that, that would be cool.
+
+So it looks something like this, then:
+
+eorbindwrap
+ : eorbind { $1 }
+ | 
+
+eorbind 
+ : pat '<-' exp
+
+No. I don't know how to save the stack. :(. I can't run an arbitrary monadic
+code whenever I want.
+
+How does the haskell parser handle this?
+
+Maybe I can keep exp and pat productions in the grammar separate. But have
+them have the same representation, and that representation can be:
+ Either Exp Pat, but wrapped up nicely. Then I'll have constructors for
+ converting one one way or the other? Would that help?
+
+The goal is:    exp vs. pat <- exp
+
+What if I did something like:
+    (exp or pat) opt(<- exp)
+
+Or, better yet...
+    exporpat -- interpreted as exp
+    exporpat <- exp -- interpreted as pat
+
+Now the question is, how do I resolve the conflict in exporpat?
+
+Maybe it just works? I think it's worth a try.
+
+No, it will still have this problem ...
+
+Maybe it can distinguish between (pat or exp) and exp. Or rather, it can
+choose between a class of: pat, or exp, or could be either. Then, the ones
+that could be either, I can translate manually as needed?
+
+I don't know.
+
+Wed Jan  9 13:51:51 EST 2013
+
+Here's what I think I should do.
+
+Define a pre-desugared type which represents a pattern or expression. Use this
+type for 'pat'. Use this type for 'exp'. But then, really, what I want to do
+is turn pat into a special case of 'exp', so add As pattern to Exp. Now I can
+parse an ExpOrPat, and convert it to the right thing as appropriate.
+
+Let's start with Pat, because that's simpler, and see what things I want this
+construct to have. The hard part I ought to be able to get working without
+changing the grammar.
+
+pattern:
+ - infix ConP (for list pattern)
+ - application (for ConP)
+ - Var
+ - Con
+ - As
+ - integer, char, string, tuple, list
+
+What's different about expression:
+ - type sig
+ - more infix ops
+ - lambda
+ - let 
+ - if 
+ - case
+ - do
+ - lcomp
+ - label (though that makes sense as a pattern too)
+
+Okay, good. That's fine. A good start.
+
+Let me get pattern working under this PatOrExp type.
+
+ConPE Name
+VarPE Name
+AppPE PatOrExp [PatOrExp]
+AsPE Name PatOrExp
+TuplePE [PatOrExp]
+ListPE [PatOrExp]
+IntegerPE Integer
+CharPE Char
+StringPE String
+
+Is all I need, I hope. To get started anyway.
+
+So, implement this, then implement conversion from this to Pat.
+
+Wed Jan  9 14:19:36 EST 2013
+
+Okay, so pattern works fine. Now for expression...
+
+Wed Jan  9 14:34:13 EST 2013
+
+Cool, so I added an ExpPE, which let's me do all the Exp specific things. So I
+guess I only need to do those things which are shared... I could do the same
+approach for AsP, which is specific to pat... Let me try that.
+
+Wed Jan  9 14:56:51 EST 2013
+
+Okay, so, now we have it. PatOrExp. So I ought to be able to distinguish
+between pattern and exp now. Let me try it...
+
+Let me try it starting with do expressions.
+
+Oh, wait. First I want to ditch patterns. So pat is exp, but toPat.
+Let me try that out.
+
+It doesn't work. And I don't know why. This is so ugly. So messy.
+
+You know? I'm tempted to strip the grammar and start from scratch. Clean
+things up a bunch.
+
+Have rules for: poe, apoe, pat, exp, things like that.
+Recognize the ':' operator specially.
+
+Then work out whatever issues we have from there.
+
+Also, ditch these qfoo vs foo things if there is no difference between
+them.
+
+I should probably also leave things in PatOrExp as long as possible. At least
+always be consistent, so if I have exp in some place, always use exp in that
+place. That sort of thing.
+
+Well, perhaps I can morph things to look the way I want.
+
+I'll give one last stab at it now, if it works, cool, if not I'll come back to
+it later.
+
+Wed Jan  9 15:37:44 EST 2013
+
+Well, so I tried cleaning it up a bunch. You know what I get? 66 reduce/reduce
+errors. :(
+
+I suppose I ought to look into and understand 1 of them at least.
+
+Difference between fpoe and apat? Arising from operators...
+
+So let me ditch apat entirely, see if that helps.
+
+No. It totally doesn't work. Fail. Sadness.
+
+Well, what if instead I kept exp and pat separate things. Then add a poe on
+top of it? Ug. That's an annoying duplication of code.
+
+I don't understand :(.
+
+Maybe the trick is to recognize a pattern can be fully described by an
+expression, except for As. But if I can bake an As inside a pattern, then
+convert Exp to Pat...
+
+No. I don't think it will work right at all.
+
+What if I parsed both Pat and Exp side by side? Well... that's kind of what I
+just tried to do that failed miserably, though it might be a cleaner approach.
+
+I don't know. I'll think about this some more and get back to you.
+
+Wed Jan  9 18:11:11 EST 2013
+
+I feel like the approach is right. Have a way to represent both Pat and Exp
+simultaneously, and use the same grammar construct to build that up.
+
+But it isn't working. So, I want to try again, but with the following things
+in mind:
+
+* Make as small a change as possible at a time and try it out.
+* Understand and eliminate ALL reduce/reduce conflicts as soon as they are
+  reported
+* Try to simplify anything that can be simplified in the grammar when
+  possible.
+
+That said, I'm going to revert current changes, and try to get back to a state
+that makes sense...
+
+I almost want to start over with this branch. But maybe it doesn't have to be
+that bad.
+
+No, I have to start over. Okay, that's fine.
+
+Wed Jan  9 19:11:27 EST 2013
+
+Well, I cleaned up a bunch in the parser. Which is nice.
+
+I think I'm at the point where it's time to try again. What will I do
+differently this time to be more successful?
+
+The idea is clear. Have a way to represent Exp and Pat simultaneously, and
+construct Exp and Pat simultaneously.
+
+One easy way to do it is as a pair (Exp, Pat). Perform each operation on each
+item. An issue with this is, we would like to record errors where possible.
+
+How about: (Failable Exp, Failable Pat)? Then whenever you try to do something
+silly, I can record the location and say what's up.
+
+Now, I'll want this to be abstract. And have all the constructor operations
+work on it.
+
+It would be nice for this if application can turn into a list instead of being
+built into the expression right away. That way it works the same for Exp and
+Pat.
+
+If I do this, then I think the right approach to take would be as follows:
+
+1. Make application work the same in Exp as Pat
+2. Define PatOrExp type and sugar on that type
+3. Replace Exp with PatOrExp.
+4. Add AsPat to Exp
+5. Replace Pat with PatOrExp.
+
+The real question will be, when do you convert from PatOrExp to Pat or Exp?
+
+I think we can't do it until we know for sure what context we are in... I
+think we should not do it until as late as possible. Until that Pat or Exp is
+used in some thing not a Pat or Exp.
+
+I think this is what I was messing up in my previous attempt.
+
+Um... I don't know. I don't know if I can make this work or not.
+
+Perhaps the problem is making a separate reduction rule which extracts the Exp
+or Pat from PatOrExp. The parser generator has to make a choice then, which we
+wouldn't otherwise have to make.
+
+So how about this policy: always manually extract the Pat or Exp from
+PatOrExp. See if that solves my issues.
+
+Okay, but we still have an open question. Where do I report the Parser Error
+for a malformed Pat or Exp? I shouldn't report it until I know which one I
+want to parse... but is it bad to report it too soon?
+
+No, I think the answer is, as soon as I know what I want, extract that and
+report the error.
+
+Wed Jan  9 19:39:23 EST 2013
+
+Am I ready to dive in and try this? I don't think so. I don't have very high
+hopes that it will actually work out.
+
+Wed Jan  9 20:12:22 EST 2013
+
+Okay, here's the plan.
+
+* If constructing a PatOrExp, use PatOrExp constructors. Don't fail if a part
+  of the PatOrExp is an Exp when Pat is expected or Pat when Exp is expected.
+  Delay that to the top level.
+* When using a PatOrExp in some construct which is not a PatOrExp, we should
+  by then know for sure whether we wanted pat or exp, extract the appropriate
+  item in that rule, failing the parse if it isn't the right thing.
+* Do not have a separate reduction rule for extracting pat or exp.
+
+I will follow these rules. I will implement it like this and see what happens.
+
+I'll go in steps, to try and identify problems early.
+
+1. Define PatOrExp type, and switch Exp to use it.
+2. Add As patterns to PatOrExp.
+3. Replace pat with PatOrExp
+
+And that's all there is to it. Wish me luck.
+
