@@ -5,6 +5,7 @@ module Seri.Parser.PatOrExp (
     lamPE, letPE, ifPE, casePE, doPE,
     varPE, conPE, integerPE, charPE, stringPE, 
     tuplePE, fromtoPE, lcompPE, listPE, updatePE,
+    asPE,
  ) where
 
 import Data.Functor ((<$>))
@@ -23,12 +24,12 @@ type PatOrExp = (Failable Pat, Failable Exp)
 
 toPat :: PatOrExp -> ParserMonad Pat
 toPat x = case attempt (fst x) of
-             Left msg -> failE msg
+             Left msg -> lfailE msg
              Right v -> return v
 
 toExp :: PatOrExp -> ParserMonad Exp
 toExp x = case attempt (snd x) of
-             Left msg -> failE msg
+             Left msg -> lfailE msg
              Right v -> return v
 
 typePE :: PatOrExp -> Type -> PatOrExp
@@ -49,12 +50,13 @@ conopPE :: String -> PatOrExp -> PatOrExp -> PatOrExp
 conopPE n a b = appsPE (conPE (name n)) [a, b]
 
 appsPE :: PatOrExp -> [PatOrExp] -> PatOrExp
+appsPE x [] = x
 appsPE (pf, ef) pexs =
  let p = do
         (f : xs) <- sequence (pf : map fst pexs)
         case f of
             ConP n [] -> return $ ConP n xs
-            _ -> throw "unsupported application in pattern"
+            _ -> throw $ "unsupported application in pattern: " ++ show f ++ " " ++ show xs
      e = do
         (f : xs) <- sequence (ef : map snd pexs)    
         return (appsE f xs)
@@ -159,5 +161,11 @@ updatePE (_, a) bs =
             case av of
                ConE s -> recordC s bs
                _ -> recordU av bs
+  in (p, e)
+
+asPE :: Name -> PatOrExp -> PatOrExp
+asPE n (a, _) = 
+  let p = AsP n <$> a
+      e = throw "as patterns not allowed in expressions"
   in (p, e)
 

@@ -209,8 +209,10 @@ ldecls :: { [LDec] }
     { $1 ++ [$3] }
 
 ldecl :: { LDec }
- : pat lopt(apats) rhs
-    {% case ($1, $2) of
+ : aexp lopt(aexps) rhs {% do
+      p <- toPat $1
+      ps <- mapM toPat $2
+      case (p, ps) of
         (p, []) -> return (LPat p $3)
         (VarP n, ps) -> return (LClause n (MMatch ps $3))
         _ -> lfailE "invalid let declaration"
@@ -316,8 +318,8 @@ fielddecl :: { (Name, Type) }
     { ($1, $3) }
 
 funlhs :: { (Name, [Pat]) }
- : var lopt(apats)
-    { ($1, $2) } 
+ : var lopt(aexps)
+    {% fmap ((,) $1) (mapM toPat $2) } 
 
 rhs :: { Exp }
  : '=' exp
@@ -369,6 +371,8 @@ aexps :: { [PatOrExp] }
 aexp :: { PatOrExp }
  : var
     { varPE $1 }
+ | var '@' aexp
+    { asPE $1 $3 }
  | gcon
     { conPE $1 }
  | literal
@@ -387,8 +391,11 @@ aexp :: { PatOrExp }
     { updatePE $1 $3 }
 
 qual :: { Qual }
- : pat '<-' exp
-    {% fmap (QGen $1) (toExp $3)}
+ : exp '<-' exp {% do
+     p <- toPat $1
+     e <- toExp $3
+     return (QGen p e)
+   }
  | 'let' ldecls
     { QBind (lcoalesce $2) }
 -- TODO: This causes a reduce/reduce conflict, because we can't distiniguish
@@ -417,8 +424,11 @@ alts :: { [SMatch] }
     { $1 ++ [$3] }
 
 alt :: { SMatch }
- : pat '->' exp
-    {% fmap (SMatch $1) (toExp $3) }
+ : exp '->' exp {% do
+    p <- toPat $1
+    e <- toExp $3
+    return (SMatch p e)
+  }
 
 stmts :: { [Stmt] }
  : stmt 
@@ -446,45 +456,6 @@ fbinds :: { [(Name, Exp)] }
 fbind :: { (Name, Exp) }
  : var '=' exp
     {% fmap ((,) $1) (toExp $3) }
-
-
-pat :: { Pat }
- : pat10
-    { $1 }
- | pat10 ':' pat
-    { ConP (name ":") [$1, $3] }
-
-pat10 :: { Pat }
- : gcon apats
-    { ConP $1 $2 }
- | apat
-    { $1 }
-
-apats :: { [Pat] }
- : apat
-    { [$1] }
- | apats apat
-    { $1 ++ [$2] }
-
-apat :: { Pat }
- : var
-    { if $1 == name "_" then WildP else VarP $1 }
- | var '@' apat
-    { AsP $1 $3 }
- | gcon
-    { ConP $1 [] }
- | integer
-    { numberP $1 }
- | char
-    { charP $1 }
- | string
-    { stringP $1 }
- | '(' pat ')'
-    { $2 }
- | '(' pat ',' pats_commasep ')'
-    { tupleP ($2 : $4) }
- | '[' pats_commasep ']'
-    { listP $2 }
 
 gcon :: { Name }
  : '(' ')'
@@ -583,12 +554,6 @@ exps_commasep :: { [PatOrExp] }
  : exp
     { [$1] }
  | exps_commasep ',' exp
-    { $1 ++ [$3] }
-
-pats_commasep :: { [Pat] }
- : pat
-    { [$1] }
- | pats_commasep ',' pat
     { $1 ++ [$3] }
 
 tyvar :: { TyVar }
