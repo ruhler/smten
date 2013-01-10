@@ -283,7 +283,6 @@ gtycon :: { Name }
 -- context is treated as a btype to avoid conflicts like:
 --      (Foo Bar) -> ...
 -- vs.  (Foo Bar) => ...
---
 context :: { [Class] }
  : btype '=>'
     {% mkContext $1 }
@@ -356,14 +355,14 @@ lexp :: { Exp }
          NoBindS _ -> return $ doE $3
          _ -> lfailE "last statement in do must be an expression"
     }
- | fexp
-    { $1 }
+ | aexps
+    { appsE (head $1) (tail $1) }
 
-fexp :: { Exp }
+aexps :: { [Exp] }
  : aexp
-    { $1 }
- | fexp aexp
-    { appE $1 $2 }
+    { [$1] }
+ | aexps aexp
+    { $1 ++ [$2] }
 
 aexp :: { Exp }
  : var
@@ -389,13 +388,12 @@ aexp :: { Exp }
     }
 
 qual :: { Qual }
-qual
  : pat '<-' exp
     { QGen $1 $3}
  | 'let' ldecls
     { QBind (lcoalesce $2) }
--- This causes a reduce/reduce conflict, because we can't distiniguish the exp
--- from a pat '<-' qual. I'm not sure how to deal with this properly.
+-- TODO: This causes a reduce/reduce conflict, because we can't distiniguish
+-- the exp from a pat '<-' qual. I'm not sure how to deal with this properly.
 -- | exp
 --    { QGuard $1 }
 
@@ -430,6 +428,9 @@ stmts :: { [Stmt] }
     { $1 ++ [$3] }
 
 stmt :: { Stmt }
+ -- TODO: this should be pat '<-' exp
+ -- I don't know how to get rid of the exp vs pat '<-' exp reduce/reduce
+ -- conflict yet.
  : var '<-' exp
     { BindS (VarP $1) $3 }
  | exp 
@@ -689,10 +690,9 @@ mkContext t =
 
       classes = fromMaybe [t] (de_tupleT t)
   in mapM mkclass classes
-      
-      
 
 parse :: FilePath -> String -> Failable Module
 parse = runParser seri_module
+
 } 
 
