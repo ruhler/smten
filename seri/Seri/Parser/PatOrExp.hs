@@ -169,7 +169,7 @@ fromthentoPE (_, a) (_, b) (_, c)=
         return (fromthentoE av bv cv)
   in (p, e)
 
-lcompPE :: PatOrExp -> [Qual] -> PatOrExp
+lcompPE :: PatOrExp -> [Guard] -> PatOrExp
 lcompPE (_, a) qs =
   let p = throw "list comprehension not allowed in pattern"
       e = do

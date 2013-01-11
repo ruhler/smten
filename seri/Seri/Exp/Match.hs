@@ -1,7 +1,7 @@
 
 -- | Syntactic sugar involving pattern matching.
 module Seri.Exp.Match (
-    Pat(..), Qual(..), Guard(..), Body(..), Alt(..), MAlt(..),
+    Pat(..), Guard(..), Body(..), Alt(..), MAlt(..),
     tupleP, listP, charP, stringP, numberP,
     mcaseE, clauseE, mlamE, mletE, mletsE,
     lcompE, normalB,
@@ -200,22 +200,18 @@ isSimple (LamE {}) = False
 isSimple (CaseE {}) = False
 isSimple _ = True
 
-data Qual = QGen Pat Exp
-          | QGuard Exp
-          | QBind [(Pat, Exp)]
-
 -- | List comprehension.
-lcompE :: Exp -> [Qual] -> Exp
-lcompE e [QGuard t] | t == trueE = listE [e]
-lcompE e [q] = lcompE e [q, QGuard trueE]
-lcompE e (QGuard b : qs) = ifE b (lcompE e qs) (listE [])
-lcompE e (QGen p l : qs) = 
+lcompE :: Exp -> [Guard] -> Exp
+lcompE e [BoolG t] | t == trueE = listE [e]
+lcompE e [q] = lcompE e [q, BoolG trueE]
+lcompE e (BoolG b : qs) = ifE b (lcompE e qs) (listE [])
+lcompE e (PatG p l : qs) = 
   let ok = clauseE [
             MAlt [p] (normalB $ lcompE e qs),
             MAlt [WildP] (normalB $ listE [])
            ]
   in appsE (varE (Sig (name "concatMap") UnknownT)) [ok, l]
-lcompE e (QBind decls : qs) = mletsE decls (lcompE e qs)
+lcompE e (LetG decls : qs) = mletsE decls (lcompE e qs)
 
 normalB :: Exp -> Body
 normalB = Body []

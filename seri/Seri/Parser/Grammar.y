@@ -390,7 +390,7 @@ apoe :: { PatOrExp }
     { fromthenPE $2 $4 }
  | '[' poe ',' poe '..' poe ']'
     { fromthentoPE $2 $4 $6 }
- | '[' poe '|' quals ']'
+ | '[' poe '|' guards ']'
     { lcompPE $2 $4 }
  | '[' poe ']'
     { listPE [$2] }
@@ -399,21 +399,21 @@ apoe :: { PatOrExp }
  | apoe '{' lopt(fbinds) '}'
     { updatePE $1 $3 }
 
-qual :: { Qual }
+guard :: { Guard }
  : poe '<-' poe {% do
      p <- toPat $1
      e <- toExp $3
-     return (QGen p e)
+     return (PatG p e)
    }
  | poe
-    {% fmap QGuard (toExp $1) }
+    {% fmap BoolG (toExp $1) }
  | 'let' ldecls
-    { QBind (lcoalesce $2) }
+    { LetG (lcoalesce $2) }
 
-quals :: { [Qual] }
- : qual
+guards :: { [Guard] }
+ : guard
     { [$1] }
- | quals ',' qual
+ | guards ',' guard
     { $1 ++ [$3] }
 
 literal :: { PatOrExp }
