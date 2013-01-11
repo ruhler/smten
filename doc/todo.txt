@@ -1,6 +1,5 @@
 
 Haskell Features::
-* support negative literals?
 * default methods in classes?
 * support arguments to type synonyms? 
 * auto derive Show

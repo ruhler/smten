@@ -46,27 +46,25 @@ data SMatch = SMatch Pat Exp
 -- | Multi-argument match
 data MMatch = MMatch [Pat] Exp
 
--- | Desugar a match expression. That is, a case statement with a single
--- match and a default clause.
--- 
+-- | Perform a pattern match.
 -- case x of
 --     p -> yv
 --     _ -> n
-matchE :: (Fresh f) => Exp -> SMatch -> Exp -> f Exp
-matchE _ (SMatch WildP yv) _ = return yv
-matchE x (SMatch (VarP n) yv) _ = return $ appE (lamE (Sig n UnknownT) yv) x
-matchE x (SMatch (AsP nm p) yv) n = do
-    rest <- matchE x (SMatch p yv) n
+matchpatE :: (Fresh f) => Exp -> Pat -> Exp -> Exp -> f Exp
+matchpatE _ WildP yv _ = return yv
+matchpatE x (VarP n) yv _ = return $ appE (lamE (Sig n UnknownT) yv) x
+matchpatE x (AsP nm p) yv n = do
+    rest <- matchpatE x p yv n
     return $ letE (Sig nm (typeof x)) x rest
-matchE x (SMatch (LitP e) yv) n =
+matchpatE x (LitP e) yv n =
   let p = appsE (varE (Sig (name "==") UnknownT)) [e, x]
   in return $ ifE p yv n
-matchE x (SMatch (ConP nm ps) yv) n | isSimple n = do
+matchpatE x (ConP nm ps) yv n | isSimple n = do
       y <- clauseE' [MMatch ps yv] n
       return $ CaseE x (Sig nm UnknownT) y n
-matchE x m n = do
+matchpatE x p y n = do
   nv <- fresh (Sig (name "_n") UnknownT)
-  body <- matchE x m (varE nv)
+  body <- matchpatE x p y (varE nv)
   return $ letE nv n body
 
 -- | Desugar multiple matches. Or, in other words, a case statement with an
@@ -77,10 +75,10 @@ matchE x m n = do
 --   ...
 --   _ -> n
 matchesE :: (Fresh f) => Exp -> [SMatch] -> Exp -> f Exp
-matchesE e [m] n = matchE e m n
-matchesE e (m:ms) n | isSimple e = do
+matchesE e [SMatch p y] n = matchpatE e p y n
+matchesE e (SMatch p y:ms) n | isSimple e = do
     n' <- matchesE e ms n
-    matchE e m n'
+    matchpatE e p y n'
 matchesE e ms n = do
     ev <- fresh (Sig (name "_e") UnknownT)
     body <- matchesE (varE ev) ms n
@@ -142,7 +140,7 @@ mmatchE args (MMatch ps yv) n =
       mkcases [] y n = return y
       mkcases ((p, x):ps) y n = do
         body <- mkcases ps y n
-        matchE x (SMatch p body) n
+        matchpatE x p body n
   in mkcases (zip ps (map varE args)) yv n
 
 -- | Lambda with pattern matching.
