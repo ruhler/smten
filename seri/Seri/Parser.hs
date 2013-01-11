@@ -53,8 +53,6 @@ import Seri.Parser.Grammar
 --
 -- - pattern guards are not supported.
 --
--- - arithmetic sequences are not fully supported.
---
 -- - left and right sections are not supported.
 --
 -- - irrefutable patterns are not supported

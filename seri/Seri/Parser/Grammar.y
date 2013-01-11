@@ -381,12 +381,20 @@ apoe :: { PatOrExp }
     { $2 }
  | '(' poe ',' poes_commasep ')'
     { tuplePE ($2 : $4) }
+ | '[' poe '..' ']'
+    { fromPE $2 }
  | '[' poe '..' poe ']'
     { fromtoPE $2 $4 }
+ | '[' poe ',' poe '..' ']'
+    { fromthenPE $2 $4 }
+ | '[' poe ',' poe '..' poe ']'
+    { fromthentoPE $2 $4 $6 }
  | '[' poe '|' quals ']'
     { lcompPE $2 $4 }
- | '['  poes_commasep ']'
-    { listPE $2 }
+ | '[' poe ']'
+    { listPE [$2] }
+ | '[' poe ',' poes_commasep ']'
+    { listPE ($2 : $4) }
  | apoe '{' lopt(fbinds) '}'
     { updatePE $1 $3 }
 

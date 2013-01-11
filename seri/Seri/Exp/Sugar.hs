@@ -16,7 +16,7 @@ module Seri.Exp.Sugar (
 
     addE, subE, mulE, opE,
     eqE, ltE, leqE, gtE, 
-    fromtoE,
+    fromtoE, fromthentoE, fromE, fromthenE,
     ) where
 
 import Control.Monad
@@ -240,3 +240,14 @@ gtE a b = appsE (varE (Sig (name "Prelude.>") (arrowsT [typeof a, typeof b, bool
 fromtoE :: Exp -> Exp -> Exp
 fromtoE a b = appsE (varE (Sig (name "enumFromTo") UnknownT)) [a, b]
 
+-- [a,b,..]
+fromthenE :: Exp -> Exp -> Exp
+fromthenE a b = appsE (varE (Sig (name "enumFromThen") UnknownT)) [a, b]
+
+-- [a..]
+fromE :: Exp -> Exp
+fromE a = appE (varE (Sig (name "enumFrom") UnknownT)) a
+
+-- [a,b,..,c]
+fromthentoE :: Exp -> Exp -> Exp -> Exp
+fromthentoE a b c = appsE (varE (Sig (name "enumFromThenTo") UnknownT)) [a, b, c]

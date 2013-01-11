@@ -4,7 +4,8 @@ module Seri.Parser.PatOrExp (
     typePE, opPE, conopPE, appsPE,
     lamPE, letPE, ifPE, casePE, doPE,
     varPE, conPE, integerPE, charPE, stringPE, 
-    tuplePE, fromtoPE, lcompPE, listPE, updatePE,
+    tuplePE, lcompPE, listPE, updatePE,
+    fromtoPE, fromPE, fromthenPE, fromthentoPE,
     asPE,
  ) where
 
@@ -136,12 +137,34 @@ listPE xs =
       e = listE <$> sequence (map snd xs)
   in (p, e)
 
+fromPE :: PatOrExp -> PatOrExp
+fromPE (_, a) =
+  let p = throw "from not allowed in pattern"
+      e = fromE <$> a
+  in (p, e)
+
 fromtoPE :: PatOrExp -> PatOrExp -> PatOrExp
 fromtoPE (_, a) (_, b) =
   let p = throw "fromto not allowed in pattern"
       e = do
         [av, bv] <- sequence [a, b]
         return (fromtoE av bv)
+  in (p, e)
+
+fromthenPE :: PatOrExp -> PatOrExp -> PatOrExp
+fromthenPE (_, a) (_, b) =
+  let p = throw "fromthen not allowed in pattern"
+      e = do
+        [av, bv] <- sequence [a, b]
+        return (fromthenE av bv)
+  in (p, e)
+
+fromthentoPE :: PatOrExp -> PatOrExp -> PatOrExp -> PatOrExp
+fromthentoPE (_, a) (_, b) (_, c)=
+  let p = throw "fromthento not allowed in pattern"
+      e = do
+        [av, bv, cv] <- sequence [a, b, c]
+        return (fromthentoE av bv cv)
   in (p, e)
 
 lcompPE :: PatOrExp -> [Qual] -> PatOrExp

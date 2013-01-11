@@ -4,8 +4,6 @@ Haskell Features::
 * default methods in classes?
 * allow arbitrary patterns in lambda expression arguments.
     example: \(Foo x) -> x+1
-* add support for more kinds of arithmetic sequence
-    example: [1..]
 * Variable operators: `foo`.
 * support arguments to type synonyms? 
 * auto derive Show
