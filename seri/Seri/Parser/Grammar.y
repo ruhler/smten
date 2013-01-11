@@ -346,8 +346,8 @@ poe :: { PatOrExp }
  | poe op poe { appsPE $2 [$1, $3] }
 
 lpoe :: { PatOrExp }
- : '\\' var '->' poe
-    { lamPE (Sig $2 UnknownT) $4 }
+ : '\\' apoes '->' poe
+    { lamPE $2 $4 }
  | 'let' '{' ldecls opt(';') '}' 'in' poe
     { letPE $3 $7 }
  | 'if' poe 'then' poe 'else' poe

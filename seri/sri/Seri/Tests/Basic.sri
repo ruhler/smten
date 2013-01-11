@@ -247,6 +247,13 @@ testbasic = do
     testbitpattern
     testlistcomprehension
     testdopattern
+    testlambda
+
+testlambda :: IO ()
+testlambda = do
+    test "simple lambda" ((\a -> a || False) True)
+    test "patmatch lambda" ((\(_, a) -> a) (False, True))
+    test "multi lambda" ((\a b -> a || b) False True)
 
 testdopattern :: IO ()
 testdopattern = do

@@ -63,10 +63,12 @@ appsPE (pf, ef) pexs =
         return (appsE f xs)
  in (p, e)
 
-lamPE :: Sig -> PatOrExp -> PatOrExp
-lamPE s (_, e) = 
+lamPE :: [PatOrExp] -> PatOrExp -> PatOrExp
+lamPE ps (_, e) = 
   let p = throw "lambda not allowed in pattern"
-      e' = lamE s <$> e 
+      e' = do
+        args <- mapM fst ps
+        mlamE . MMatch args <$> e
   in (p, e')
 
 letPE :: [LDec] -> PatOrExp -> PatOrExp

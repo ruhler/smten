@@ -2,8 +2,6 @@
 Haskell Features::
 * support negative literals?
 * default methods in classes?
-* allow arbitrary patterns in lambda expression arguments.
-    example: \(Foo x) -> x+1
 * Variable operators: `foo`.
 * support arguments to type synonyms? 
 * auto derive Show
@@ -122,7 +120,7 @@ Applications::
 * HCP - get it working on the larger test cases
 * TCP - Implement it
 * SAT - implement MAXSAT
-* SUDOKU - Have the sudoku solver use IO to read the input board
+* SKETCH - port some of their gallery to seri
 
 Bugs::
 * seriq2 for SquaresRaw... result differs from yices1 and yices2. Why?
