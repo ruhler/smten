@@ -31,7 +31,7 @@ doE ((NoBindS e):stmts) =
   in appsE (varE (Sig (name ">>") tbind)) [e, rest]
 doE ((BindS p e):stmts) =
   let rest = doE stmts
-      f = mlamE $ MMatch [p] rest
+      f = mlamE [p] rest
       tbind = (arrowsT [typeof e, typeof f, typeof rest])
   in appsE (varE (Sig (name ">>=") tbind)) [e, f]
 

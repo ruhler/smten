@@ -68,7 +68,7 @@ lamPE ps (_, e) =
   let p = throw "lambda not allowed in pattern"
       e' = do
         args <- mapM fst ps
-        mlamE . MMatch args <$> e
+        mlamE args <$> e
   in (p, e')
 
 letPE :: [LDec] -> PatOrExp -> PatOrExp
@@ -85,7 +85,7 @@ ifPE (_, a) (_, b) (_, c) =
         return $ ifE av bv cv
   in (p, e')
 
-casePE :: PatOrExp -> [SMatch] -> PatOrExp
+casePE :: PatOrExp -> [Alt] -> PatOrExp
 casePE (_, e) ms =
   let p = throw "case not allowed in pattern"
       e' = flip mcaseE ms <$> e

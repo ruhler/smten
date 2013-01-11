@@ -1,10 +1,10 @@
 
 -- | Syntactic sugar involving pattern matching.
 module Seri.Exp.Match (
-    Pat(..), SMatch(..), MMatch(..), Qual(..),
+    Pat(..), Qual(..), Guard(..), Body(..), Alt(..), MAlt(..),
     tupleP, listP, charP, stringP, numberP,
     mcaseE, clauseE, mlamE, mletE, mletsE,
-    lcompE,
+    lcompE, normalB,
     ) where
 
 import Data.Maybe(fromMaybe)
@@ -40,12 +40,6 @@ numberP = LitP . numberE
 tupleP :: [Pat] -> Pat
 tupleP ps = ConP (tupleN (length ps)) ps
 
--- | Single argument match
-data SMatch = SMatch Pat Exp
-
--- | Multi-argument match
-data MMatch = MMatch [Pat] Exp
-
 -- | Perform a pattern match.
 -- case x of
 --     p -> yv
@@ -60,7 +54,7 @@ matchpatE x (LitP e) yv n =
   let p = appsE (varE (Sig (name "==") UnknownT)) [e, x]
   in return $ ifE p yv n
 matchpatE x (ConP nm ps) yv n | isSimple n = do
-      y <- clauseE' [MMatch ps yv] n
+      y <- clauseE' [MAlt ps (normalB yv)] n
       return $ CaseE x (Sig nm UnknownT) y n
 matchpatE x p y n = do
   nv <- fresh (Sig (name "_n") UnknownT)
@@ -154,16 +148,15 @@ mmatchaltsE args (m:ms) n = do
     mmatchaltE args m n'
 
 -- | Desugar a case expression.
-mcaseE :: Exp -> [SMatch] -> Exp
-mcaseE x ms =
- let alts = [Alt p (Body [] e) | SMatch p e <- ms]
- in runFreshPretty $ matchaltsE x alts (errorE "case no match")
+mcaseE :: Exp -> [Alt] -> Exp
+mcaseE x alts
+ = runFreshPretty $ matchaltsE x alts (errorE "case no match")
 
-clauseE :: [MMatch] -> Exp
+clauseE :: [MAlt] -> Exp
 clauseE ms = runFreshPretty $ clauseE' ms (errorE "case no match")
 
-clauseE' :: (Fresh f) => [MMatch] -> Exp -> f Exp
-clauseE' [MMatch ps e] n = do
+clauseE' :: (Fresh f) => [MAlt] -> Exp -> f Exp
+clauseE' [MAlt ps e] n = do
   -- If we are only making one match, we pick the variables for the lambda
   -- more wisely to avoid silly things like:
   --    \_p1 -> let a = _p1
@@ -178,22 +171,21 @@ clauseE' [MMatch ps e] n = do
         return (s, p)
   pvs <- mapM mkvar ps
   let (vars, ps') = unzip pvs
-  b <- mmatchaltE vars (MAlt ps' (Body [] e)) n
+  b <- mmatchaltE vars (MAlt ps' e) n
   return $ lamsE vars b
 
-clauseE' ms@(MMatch ps _ : _) n = do
+clauseE' ms@(MAlt ps _ : _) n = do
     vars <- mapM fresh [Sig (name $ "_p" ++ show i) UnknownT | i <- [1..(length ps)]]
-    let alts = [MAlt ps (Body [] e) | MMatch ps e <- ms]
-    b <- mmatchaltsE vars alts n
+    b <- mmatchaltsE vars ms n
     return $ lamsE vars b
 
 -- | Lambda with pattern matching.
-mlamE :: MMatch -> Exp
-mlamE m = clauseE [m]
+mlamE :: [Pat] -> Exp -> Exp
+mlamE ps e = clauseE [MAlt ps (normalB e)]
 
 -- | Let with pattern matching
 mletE :: Pat -> Exp -> Exp -> Exp
-mletE  p v e = mcaseE v [SMatch p e]
+mletE  p v e = mcaseE v [Alt p (normalB e)]
 
 -- | Sequential let with pattern matching
 mletsE :: [(Pat, Exp)] -> Exp -> Exp
@@ -218,7 +210,13 @@ lcompE e [QGuard t] | t == trueE = listE [e]
 lcompE e [q] = lcompE e [q, QGuard trueE]
 lcompE e (QGuard b : qs) = ifE b (lcompE e qs) (listE [])
 lcompE e (QGen p l : qs) = 
-  let ok = clauseE [MMatch [p] (lcompE e qs), MMatch [WildP] (listE [])]
+  let ok = clauseE [
+            MAlt [p] (normalB $ lcompE e qs),
+            MAlt [WildP] (normalB $ listE [])
+           ]
   in appsE (varE (Sig (name "concatMap") UnknownT)) [ok, l]
 lcompE e (QBind decls : qs) = mletsE decls (lcompE e qs)
+
+normalB :: Exp -> Body
+normalB = Body []
 

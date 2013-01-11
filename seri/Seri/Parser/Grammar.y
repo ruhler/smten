@@ -191,7 +191,7 @@ decl :: { PDec }
  : gendecl
     { PSig $1 }
  | funlhs rhs
-    { PClause (fst $1) (MMatch (snd $1) $2) }
+    { PClause (fst $1) (MAlt (snd $1) (normalB $2)) }
 
 cdecls :: { [TopSig] }
  : cdecl
@@ -215,19 +215,19 @@ ldecl :: { LDec }
       ps <- mapM toPat $2
       case (p, ps) of
         (p, []) -> return (LPat p $3)
-        (VarP n, ps) -> return (LClause n (MMatch ps $3))
+        (VarP n, ps) -> return (LClause n (MAlt ps (normalB $3)))
         _ -> lfailE "invalid let declaration"
     }
 
-idecls :: { [(Name, MMatch)] }
+idecls :: { [(Name, MAlt)] }
  : idecl
     { [$1] }
  | idecls ';' idecl
     { $1 ++ [$3] }
 
-idecl :: { (Name, MMatch) }
+idecl :: { (Name, MAlt) }
  : funlhs rhs
-    { (fst $1, MMatch (snd $1) $2) }
+    { (fst $1, MAlt (snd $1) (normalB $2)) }
 
 gendecl :: { TopSig }
  : var '::' type
@@ -424,17 +424,17 @@ literal :: { PatOrExp }
  | string
     { stringPE $1 }
 
-alts :: { [SMatch] }
+alts :: { [Alt] }
  : alt
     { [$1] }
  | alts ';' alt
     { $1 ++ [$3] }
 
-alt :: { SMatch }
+alt :: { Alt }
  : poe '->' poe {% do
     p <- toPat $1
     e <- toExp $3
-    return (SMatch p e)
+    return (Alt p (normalB e))
   }
 
 stmts :: { [Stmt] }

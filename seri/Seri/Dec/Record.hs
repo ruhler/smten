@@ -57,7 +57,7 @@ recordD nm vars cons derivings =
                   pat = ConP cn ([WildP | _ <- take i ts]
                          ++ [VarP (name "x")]
                          ++ [WildP | _ <- drop (i+1) ts])
-                  body = mlamE $ MMatch [pat] (varE (Sig (name "x") t))
+                  body = mlamE [pat] (varE (Sig (name "x") t))
               in ValD (TopSig n [] at) body
         in map mkacc (zip ts [0..])
 
@@ -73,7 +73,7 @@ recordD nm vars cons derivings =
                             ++ [WildP]
                             ++ [VarP nm | (nm, _) <- drop (i+1) ts])
                   myexp = appsE (ConE (Sig cn ct)) [VarE (Sig n t) | (n, t) <- ts]
-                  body = mlamE $ MMatch [VarP n, mypat] myexp
+                  body = mlamE [VarP n, mypat] myexp
               in ValD (TopSig (record_updnm n) [] ut) body
         in map mkupd (zip ts [0..])
                             
@@ -109,7 +109,7 @@ deriveEq :: Name -> [TyVar] -> [Con] -> Dec
 deriveEq dn vars cs =
   let dt = appsT (ConT dn) (map tyVarType vars)
         
-      mkcon :: Con -> MMatch
+      mkcon :: Con -> MAlt
       mkcon (Con cn ts) =
         let fieldsA = [Sig (name $ 'a' : show i) t | (t, i) <- zip ts [1..]]
             fieldsB = [Sig (name $ 'b' : show i) t | (t, i) <- zip ts [1..]]
@@ -118,9 +118,9 @@ deriveEq dn vars cs =
             body = appsE (VarE (Sig (name "and") UnknownT))
                     [listE [appsE (VarE (Sig (name "==") UnknownT)) 
                                [VarE a, VarE b] | (a, b) <- zip fieldsA fieldsB]]
-        in MMatch [pA, pB] body
+        in MAlt [pA, pB] (normalB body)
 
-      def = MMatch [WildP, WildP] falseE
+      def = MAlt [WildP, WildP] (normalB falseE)
       ctx = [Class (name "Eq") [tyVarType c] | c <- vars]
       eqclauses = map mkcon cs ++ [def]
       eq = Method (name "==") (clauseE eqclauses)

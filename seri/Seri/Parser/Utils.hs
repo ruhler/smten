@@ -18,12 +18,12 @@ import Seri.Parser.Monad
 data PDec =
     PDec Dec
   | PSig TopSig
-  | PClause Name MMatch
+  | PClause Name MAlt
   | PSynonym Synonym
 
 data LDec =
     LPat Pat Exp
-  | LClause Name MMatch
+  | LClause Name MAlt
 
 isPClause :: PDec -> Bool
 isPClause (PClause {}) = True
@@ -46,7 +46,7 @@ coalesce ((PSynonym s):ds) =
    in (s:syns, rest)
 
 -- Merge clauses for the same method into a single method.
-icoalesce :: [(Name, MMatch)] -> [Method]
+icoalesce :: [(Name, MAlt)] -> [Method]
 icoalesce [] = []
 icoalesce ((n, c):ms) =
     let (me, rms) = span (\(n', _) -> n' == n) ms
