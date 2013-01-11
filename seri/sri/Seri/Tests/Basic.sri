@@ -248,6 +248,11 @@ testbasic = do
     testlistcomprehension
     testdopattern
     testlambda
+    testvarop
+
+testvarop :: IO ()
+testvarop = do
+    test "var op" (4 `elem` [1, 4, 2 :: Integer])
 
 testlambda :: IO ()
 testlambda = do

@@ -2,7 +2,6 @@
 Haskell Features::
 * support negative literals?
 * default methods in classes?
-* Variable operators: `foo`.
 * support arguments to type synonyms? 
 * auto derive Show
 * auto derive Ord

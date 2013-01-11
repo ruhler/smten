@@ -92,6 +92,7 @@ import Seri.Parser.Utils
        ':'      { TokenColon }
        '#'      { TokenHash }
        '@'      { TokenAt }
+       '`'      { TokenBackTick }
        '..'      { TokenDoubleDot }
        '\\'      { TokenBackSlash }
        '::'      { TokenDoubleColon }
@@ -500,6 +501,8 @@ consym_op :: { Name }
 op :: { PatOrExp }
  : varsym
     { varPE $1 }
+ | '`' varid '`'
+    { varPE $2 }
  | consym
     { conPE $1 }
 

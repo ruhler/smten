@@ -14,55 +14,52 @@ import Seri.Parser.Grammar
 --
 -- [@Things to implement eventually, perhaps@]
 --
--- - Explicit module exports are not allowed.
+-- - Explicit module exports.
 --
--- - Qualified imports are not allowed.
+-- - Qualified imports.
 --
--- - Importing a module under a different name using 'as' is not allowed.
+-- - Importing a module under a different name using 'as'.
 --
--- - Import specifications are not supported.
+-- - Import specifications.
 --
--- - Type synonyms are not allowed to have arguments
+-- - Type synonyms with arguments.
 --
--- - Contexts are not allowed in data declarations
+-- - Contexts in data declarations.
 --
--- - Only Eq is supported in deriving clauses for data declarations.
---   (deriving Free is also supported, specific to Seri)
+-- - deriving of classes other than Eq and Free.
 --
--- - Newtype declarations are not supported
+-- - Newtype declarations.
 --
--- - Contexts in class declarations are not supported
+-- - Contexts in class declarations.
 --
--- - Empty class declarations are not supported
+-- - Empty class declarations.
 --
--- - Default class methods implementations are not supported.
+-- - Default class methods implementations.
 --
--- - Multiple vars for a single type signature are not supported.
+-- - Multiple vars for a single type signature.
 -- 
--- - fixity declarations are not supported.
+-- - fixity declarations.
 --
--- - Qualified names are not supported.
+-- - Qualified names.
 --
--- - Unparenthesized contexts are not supported
+-- - Unparenthesized contexts.
 --
--- - ! in constructor declarations are not supported
+-- - ! in constructor declarations.
 --
--- - infix constructors are not supported, except for (:).
+-- - infix constructors other than (:).
 --
--- - 'where' clauses in expressions are not supported.
+-- - 'where' clauses in expressions.
 --
--- - pattern guards are not supported.
+-- - pattern guards.
 --
--- - left and right sections are not supported.
+-- - left and right sections.
 --
--- - irrefutable patterns are not supported
--- 
--- - variable operators, such as (a `foo` b) are not supported.
+-- - irrefutable patterns.
 --
--- - float literals are not supported.
+-- - float literals.
 --
--- - recursive let expressions are not supported(?). Currently let expressions
---   are sequential, not recursive.
+-- - recursive let expressions. (Currently let expressions
+--   are sequential, not recursive).
 --
 -- [@Things meant to be different from haskell@]
 --
