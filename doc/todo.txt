@@ -66,6 +66,7 @@ Performance::
 
 Sharing::
 * Why do we sometimes share "free~12"?? For example, in Datatype test.
+* case desugaring still looses sharing of 'n' in a number of places?
 
 ExpH::
 * Perhaps case statements should consider all constructors at once instead of

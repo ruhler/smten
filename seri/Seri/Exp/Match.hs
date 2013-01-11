@@ -67,26 +67,97 @@ matchpatE x p y n = do
   body <- matchpatE x p y (varE nv)
   return $ letE nv n body
 
--- | Desugar multiple matches. Or, in other words, a case statement with an
--- explicit default clause.
--- case x of
---   p1 -> b1
---   p2 -> b2
---   ...
---   _ -> n
-matchesE :: (Fresh f) => Exp -> [SMatch] -> Exp -> f Exp
-matchesE e [SMatch p y] n = matchpatE e p y n
-matchesE e (SMatch p y:ms) n | isSimple e = do
-    n' <- matchesE e ms n
-    matchpatE e p y n'
-matchesE e ms n = do
-    ev <- fresh (Sig (name "_e") UnknownT)
-    body <- matchesE (varE ev) ms n
-    return $ letE ev e body
+data Guard = PatG Pat Exp
+           | LetG [(Pat, Exp)]
+           | BoolG Exp
+    deriving (Eq, Show)
+
+-- | Perform a guard match
+--   | g = y
+--   | otherwise = n
+matchguardE :: (Fresh f) => Guard -> Exp -> Exp -> f Exp
+matchguardE (PatG p x) y n = matchpatE x p y n
+matchguardE (LetG decls) y _ = return (mletsE decls y)
+matchguardE (BoolG x) y n = return (ifE x y n)
+
+-- | Perform multiple guard matches
+--   | g1, g2, ... = y
+--   | otherwise = n
+matchguardsE :: (Fresh f) => [Guard] -> Exp -> Exp -> f Exp
+matchguardsE [] y _ = return y 
+matchguardsE (g:gs) y n = do
+    y' <- matchguardsE gs y n
+    matchguardE g y' n
+
+data Body = Body [Guard] Exp
+    deriving (Eq, Show)
+
+data Alt = Alt Pat Body
+    deriving (Eq, Show)
+
+-- Match a single alternative:
+--  case x of
+--    alt 
+--    _ -> n
+matchaltE :: (Fresh f) => Exp -> Alt -> Exp -> f Exp
+matchaltE x (Alt p (Body gs y)) n = do
+    body <- matchguardsE gs y n
+    matchpatE x p body n
+
+-- Match multiple alternatives:
+--   case x of
+--     alt1 
+--     alt2
+--     ...
+--     _ -> n
+matchaltsE :: (Fresh f) => Exp -> [Alt] -> Exp -> f Exp
+matchaltsE _ [] n = return n
+matchaltsE x (a:as) n | isSimple x = do
+    n' <- matchaltsE x as n
+    matchaltE x a n'
+matchaltsE x as n = do
+    xv <- fresh (Sig (name "_x") UnknownT)
+    body <- matchaltsE (varE xv) as n
+    return $ letE xv x body
+
+data MAlt = MAlt [Pat] Body
+    deriving (Eq, Show)
+
+-- Match a multi-argument alternative
+mmatchaltE :: (Fresh f) => [Sig] -> MAlt -> Exp -> f Exp
+mmatchaltE args (MAlt ps b) n = do
+  let -- case a b c of
+      --    pa pb pc -> yv
+      --    _ -> n
+      --
+      -- Translates to:
+      --  \a b c -> 
+      --     case a of
+      --        pa -> case b of
+      --                pb -> case c of 
+      --                        pc -> yv
+      --                        _ -> n
+      --                _ -> n
+      --        _ -> n
+      mkcases :: (Fresh m) => [(Pat, Exp)] -> Body -> Exp -> m Exp
+      mkcases [] (Body gs y) n = matchguardsE gs y n
+      mkcases ((p, x):ps) y n = do
+        body <- mkcases ps y n
+        matchpatE x p body n
+  mkcases (zip ps (map varE args)) b n
+
+-- Match multiple multi-argument alternatives
+mmatchaltsE :: (Fresh f) => [Sig] -> [MAlt] -> Exp -> f Exp
+mmatchaltsE args [] n = return n
+mmatchaltsE args (m:ms) n = do
+    n' <- mmatchaltsE args ms n
+    mmatchaltE args m n'
 
 -- | Desugar a case expression.
 mcaseE :: Exp -> [SMatch] -> Exp
-mcaseE x ms = runFreshPretty $ matchesE x ms (errorE "case no match")
+mcaseE x ms =
+ let alts = [Alt p (Body [] e) | SMatch p e <- ms]
+ in runFreshPretty $ matchaltsE x alts (errorE "case no match")
 
 clauseE :: [MMatch] -> Exp
 clauseE ms = runFreshPretty $ clauseE' ms (errorE "case no match")
@@ -107,41 +178,14 @@ clauseE' [MMatch ps e] n = do
         return (s, p)
   pvs <- mapM mkvar ps
   let (vars, ps') = unzip pvs
-  b <- mmatchE vars (MMatch ps' e) n
+  b <- mmatchaltE vars (MAlt ps' (Body [] e)) n
   return $ lamsE vars b
 
 clauseE' ms@(MMatch ps _ : _) n = do
     vars <- mapM fresh [Sig (name $ "_p" ++ show i) UnknownT | i <- [1..(length ps)]]
-    b <- mmatchesE vars ms n
+    let alts = [MAlt ps (Body [] e) | MMatch ps e <- ms]
+    b <- mmatchaltsE vars alts n
     return $ lamsE vars b
-
-mmatchesE :: (Fresh f) => [Sig] -> [MMatch] -> Exp -> f Exp
-mmatchesE args [m] n = mmatchE args m n
-mmatchesE args (m:ms) n = do
-    n' <- mmatchesE args ms n
-    mmatchE args m n'
-
-mmatchE :: (Fresh f) => [Sig] -> MMatch -> Exp -> f Exp
-mmatchE args (MMatch ps yv) n =
-  let -- case a b c of
-      --    pa pb pc -> yv
-      --    _ -> n
-      --
-      -- Translates to:
-      --  \a b c -> 
-      --     case a of
-      --        pa -> case b of
-      --                pb -> case c of 
-      --                        pc -> yv
-      --                        _ -> n
-      --                _ -> n
-      --        _ -> n
-      mkcases :: (Fresh m) => [(Pat, Exp)] -> Exp -> Exp -> m Exp
-      mkcases [] y n = return y
-      mkcases ((p, x):ps) y n = do
-        body <- mkcases ps y n
-        matchpatE x p body n
-  in mkcases (zip ps (map varE args)) yv n
 
 -- | Lambda with pattern matching.
 mlamE :: MMatch -> Exp
