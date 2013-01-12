@@ -134,16 +134,16 @@ import Seri.Parser.Utils
 %%
 
 module :: { Module }
- : 'module' modid 'where' body
+ : 'module' modid 'where' mbody
     { let (is, sy, ds) = $4
       in Module $2 is sy ds }
- | body
+ | mbody
     -- TODO: we should export only 'main' explicitly when explicit exports are
     -- supported
     { let (is, sy, ds) = $1
       in Module (name "Main") is sy ds}
 
-body :: { ([Import], [Synonym], [Dec]) }
+mbody :: { ([Import], [Synonym], [Dec]) }
  : '{' impdecls ';' topdecls opt(';') '}'
     { let (syns, ds) = coalesce $4
       in ($2, syns, ds) }
@@ -436,6 +436,16 @@ alt :: { Alt }
     e <- toExp $3
     return (simpleA p e)
   }
+ | poe bodies
+    {% fmap (flip Alt $2) (toPat $1) }
+
+bodies :: { [Body] }
+ : body { [$1] }
+ | bodies body { $1 ++ [$2] }
+
+body :: { Body }
+ : '|' guards '->' poe
+    {% fmap (Body $2) (toExp $4) }
 
 stmts :: { [Stmt] }
  : stmt 

@@ -249,6 +249,18 @@ testbasic = do
     testdopattern
     testlambda
     testvarop
+    testpatternguard
+
+fpatgd :: (Integer, Integer) -> Integer
+fpatgd p = case p of
+             (x, _) | x == 1 -> 0
+                    | x > 3 -> 1
+             _ | (x, y) <- p, y == 2 -> x
+             _ -> 3
+
+testpatternguard :: IO ()
+testpatterngaurd = do
+    test "pattern guard" ([0, 1, 2, 3] == map fpatgd [(1, 4), (4, 3), (2, 2), (3, 7)])
 
 testvarop :: IO ()
 testvarop = do
