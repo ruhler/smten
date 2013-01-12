@@ -191,7 +191,7 @@ decl :: { PDec }
  : gendecl
     { PSig $1 }
  | funlhs rhs
-    { PClause (fst $1) (simpleMA (snd $1) $2) }
+    { PClause (fst $1) (MAlt (snd $1) $2) }
 
 cdecls :: { [TopSig] }
  : cdecl
@@ -213,9 +213,9 @@ ldecl :: { LDec }
  : apoe lopt(apoes) rhs {% do
       p <- toPat $1
       ps <- mapM toPat $2
-      case (p, ps) of
-        (p, []) -> return (LPat p $3)
-        (VarP n, ps) -> return (LClause n (simpleMA ps $3))
+      case (p, ps, $3) of
+        (p, [], [Body [] e]) -> return (LPat p e)
+        (VarP n, _, _) -> return (LClause n (MAlt ps $3))
         _ -> lfailE "invalid let declaration"
     }
 
@@ -227,7 +227,7 @@ idecls :: { [(Name, MAlt)] }
 
 idecl :: { (Name, MAlt) }
  : funlhs rhs
-    { (fst $1, simpleMA (snd $1) $2) }
+    { (fst $1, MAlt (snd $1) $2) }
 
 gendecl :: { TopSig }
  : var '::' type
@@ -322,9 +322,21 @@ funlhs :: { (Name, [Pat]) }
  : var lopt(apoes)
     {% fmap ((,) $1) (mapM toPat $2) } 
 
-rhs :: { Exp }
- : '=' poe
-    {% toExp $2 }
+rhs :: { [Body] }
+ : '=' poe {% do
+    e <- toExp $2
+    return [Body [] e]
+   }
+ | rhsbodies
+    { $1 }
+
+rhsbodies :: { [Body] }
+ : rhsbody { [$1] }
+ | rhsbodies rhsbody { $1 ++ [$2] }
+
+rhsbody :: { Body }
+ : '|' guards '=' poe
+    {% fmap (Body $2) (toExp $4) }
 
 poe :: { PatOrExp }
  : lpoe { $1 }

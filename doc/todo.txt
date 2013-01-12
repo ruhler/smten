@@ -7,7 +7,6 @@ Haskell Features::
 * recursive let blocks
 * modularity support
 * labeled pattern matching.
-* pattern guards
 * where blocks
 
 Test Type Checking::
