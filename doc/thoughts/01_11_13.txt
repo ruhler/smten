@@ -1,0 +1,127 @@
+
+Fri Jan 11 12:23:33 EST 2013
+
+I want to do some more syntactic sugar stuff. Ideally starting with the
+easiest.
+
+Start with variable operators, which should be, like, trivial.
+
+Then look again at pattern guards and see if I can come up with a happy way to
+implement them. I remember it was terribly messy last time I looked, but then
+again, list comprehensions were too, but they turned out to be pretty easy.
+
+I suspect that will occupy me for a decent enough amount of time.
+
+Fri Jan 11 12:44:09 EST 2013
+
+Okay, variable operators were trivial. Now the fun part. Let's look at pattern
+guards again.
+
+Looks like we want to have the following:
+
+rename SMatch as SAlt
+rename MMatch as MAlt
+
+SAlt = SAlt Pat GDPat
+GDPat = GDPat [Guard] Exp
+Guard = GPat Pat Exp
+      | GDec LDecls
+      | GBool Exp
+
+How should this work?
+
+Ah yes... This turns out to be messy and complicated.
+
+Things we can do:
+* match a pattern   (matchpatE)
+* match a guard     (matchguardE)
+* match multiple guards (matchguardsE)
+* match an alternative  (matchaltE)
+* match multiple alternatives (matchaltsE)
+* match an alternative with multiple arguments (mmatchaltE)
+* match multiple alternatives with multiple arguments (mmatchaltsE)
+
+All these things will be shared by each other. I just need to construct them,
+and everything should be fine.
+
+First, how about coming up with names for each.
+
+Okay. That seems straight-forward enough. I should switch to these names, and
+try to switch to the new definitions I plan to use.
+
+Okay, so I know how to match a pattern. The next step is, how do we match a
+Guard? That shouldn't be too hard. In fact, I already do that sort of thing in
+list comprehensions, right? And do statements?
+
+Fri Jan 11 13:31:43 EST 2013
+
+Okay, so matchguard was easy to implement. It's done.
+
+Next we have...
+
+matchguards... done.
+matchalt...
+
+Okay! So I implemented all the matching constructs... Not sure if they work.
+Now I just have to use them...
+
+Let me reorganize the code, clean up, use them, and see if it works at all.
+
+Fri Jan 11 14:21:15 EST 2013
+
+Well, it appears to work. Though I think we are duplicating default cases in
+some places we shouldn't be. I ran into trouble with ambiguous types
+otherwise. Not sure why.
+
+The next step is to expose Alt, Body, Guard and such to the parser.
+
+Make plenty of helper functions if that will help.
+
+I want to ditch SMatch and MMatch declarations.
+
+Fri Jan 11 14:43:57 EST 2013
+
+Okay! Now everything is in place. The only thing left to support pattern
+guards now is adding support in the parser.
+
+Where all can pattern guards show up? Where can guards show up?
+
+I think only two places, right? Function declarations...
+
+Okay, so function declarations, methods, let declarations, alternatives. Those
+sorts of things.
+
+And you know, this will actually be nice to have, because there have been a
+number of places I want to use these but couldn't.
+
+I suppose the real question is... how ought I to test these features out? How
+should I drive them?
+
+It shouldn't be so hard...
+
+Let me start with functions, which ought to be the easiest.
+
+1. function declarations
+2. method declarations
+3. let declarations
+4. case alternatives.
+
+And I think that's all I need. Should be a snap.
+
+Fri Jan 11 15:04:37 EST 2013
+
+There's an issue.
+
+A body has a bunch of guards, fine... But an alternative itself can have a
+bunch of bodies! I forgot that step, and it's making things difficult for me
+just now.
+
+Let me start by assuming each alternative has a single body. Then I'll fix it
+up to allow multiple bodies in a single alternative. 
+
+The other issue is, let declarations should be (Pat, Body), not (Pat, Exp).
+Or... in other words... Alt?
+
+So, I'll want to figure these out first. I don't feel much like dealing with
+this just now though, so I think I'll take a break.
+

@@ -3,7 +3,7 @@ all:
 	tclsh8.5 tclmk/make.tcl
 
 test:
-	./build/seri-bin/seri --haskellf \
+	./build/home/.cabal/bin/seri --haskellf \
 		--include seri/sri \
 		--main-is main \
 		-f seri/sri/Seri/TSPLIB/HCP/HCP.sri +RTS -p > foo.hs

@@ -1,0 +1,42 @@
+
+Thu Jan 10 14:42:07 EST 2013
+
+Okay! So, first step is done. Now exp has type PatOrExp.
+
+And the great news is, I didn't change any of the production rules, so there's
+no way we could have introduced errors or conflicts. That's good.
+
+Step 2: add As patterns to PatOrExp. Shouldn't be too hard now, should it?
+
+Okay... good. That works fine.
+
+Next step:
+
+Everywhere I use 'pat', switch to 'exp' instead.
+
+Note, after this works, I'll probably want to rename things, because it's
+confusing otherwise.
+
+Thu Jan 10 14:57:31 EST 2013
+
+Okay! Patterns work now, using PatOrExp. Nifty.
+
+So I should be one step away from achieving my ultimate goal. And it's not too
+messy, which I like. At least, I don't think it's too messy anyway.
+
+It works! nifty!
+
+Thu Jan 10 15:06:09 EST 2013
+
+Okay, so, last thing I need to do before I can check this into the master
+branch is to rename exp and such things as poe, and add a comment saying what
+is going on.
+
+Thu Jan 10 15:10:53 EST 2013
+
+Done! It works. Wonderful. This should help with a bunch of things, including
+patterns in lambdas and pattern guards.
+
+And, as a bonus, we share all the production rules between pat and exp, so the
+grammar is cleaner too.
+

@@ -118,9 +118,9 @@ deriveEq dn vars cs =
             body = appsE (VarE (Sig (name "and") UnknownT))
                     [listE [appsE (VarE (Sig (name "==") UnknownT)) 
                                [VarE a, VarE b] | (a, b) <- zip fieldsA fieldsB]]
-        in MAlt [pA, pB] (normalB body)
+        in simpleMA [pA, pB] body
 
-      def = MAlt [WildP, WildP] (normalB falseE)
+      def = simpleMA [WildP, WildP] falseE
       ctx = [Class (name "Eq") [tyVarType c] | c <- vars]
       eqclauses = map mkcon cs ++ [def]
       eq = Method (name "==") (clauseE eqclauses)

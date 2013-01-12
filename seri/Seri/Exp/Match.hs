@@ -5,6 +5,7 @@ module Seri.Exp.Match (
     tupleP, listP, charP, stringP, numberP,
     mcaseE, clauseE, mlamE, mletE, mletsE,
     lcompE, normalB,
+    simpleA, simpleMA,
     ) where
 
 import Data.Maybe(fromMaybe)
@@ -54,7 +55,7 @@ matchpatE x (LitP e) yv n =
   let p = appsE (varE (Sig (name "==") UnknownT)) [e, x]
   in return $ ifE p yv n
 matchpatE x (ConP nm ps) yv n | isSimple n = do
-      y <- clauseE' [MAlt ps (normalB yv)] n
+      y <- clauseE' [simpleMA ps yv] n
       return $ CaseE x (Sig nm UnknownT) y n
 matchpatE x p y n = do
   nv <- fresh (Sig (name "_n") UnknownT)
@@ -86,16 +87,28 @@ matchguardsE (g:gs) y n = do
 data Body = Body [Guard] Exp
     deriving (Eq, Show)
 
-data Alt = Alt Pat Body
+matchbodyE :: (Fresh f) => Body -> Exp -> f Exp
+matchbodyE (Body gs y) n = matchguardsE gs y n
+
+matchbodiesE :: (Fresh f) => [Body] -> Exp -> f Exp
+matchbodiesE [] n = return n
+matchbodiesE (b:bs) n = do
+    n' <- matchbodiesE bs n
+    matchbodyE b n'
+
+data Alt = Alt Pat [Body]
     deriving (Eq, Show)
+
+simpleA :: Pat -> Exp -> Alt
+simpleA p e = Alt p [Body [] e]
 
 -- Match a single alternative:
 --  case x of
 --    alt 
 --    _ -> n
 matchaltE :: (Fresh f) => Exp -> Alt -> Exp -> f Exp
-matchaltE x (Alt p (Body gs y)) n = do
-    body <- matchguardsE gs y n
+matchaltE x (Alt p bs) n = do
+    body <- matchbodiesE bs n
     matchpatE x p body n
 
 -- Match multiple alternatives:
@@ -114,8 +127,11 @@ matchaltsE x as n = do
     body <- matchaltsE (varE xv) as n
     return $ letE xv x body
 
-data MAlt = MAlt [Pat] Body
+data MAlt = MAlt [Pat] [Body]
     deriving (Eq, Show)
+
+simpleMA :: [Pat] -> Exp -> MAlt
+simpleMA ps e = MAlt ps [Body [] e]
 
 -- Match a multi-argument alternative
 mmatchaltE :: (Fresh f) => [Sig] -> MAlt -> Exp -> f Exp
@@ -133,8 +149,8 @@ mmatchaltE args (MAlt ps b) n = do
       --                        _ -> n
       --                _ -> n
       --        _ -> n
-      mkcases :: (Fresh m) => [(Pat, Exp)] -> Body -> Exp -> m Exp
-      mkcases [] (Body gs y) n = matchguardsE gs y n
+      mkcases :: (Fresh m) => [(Pat, Exp)] -> [Body] -> Exp -> m Exp
+      mkcases [] bs n = matchbodiesE bs n
       mkcases ((p, x):ps) y n = do
         body <- mkcases ps y n
         matchpatE x p body n
@@ -181,11 +197,11 @@ clauseE' ms@(MAlt ps _ : _) n = do
 
 -- | Lambda with pattern matching.
 mlamE :: [Pat] -> Exp -> Exp
-mlamE ps e = clauseE [MAlt ps (normalB e)]
+mlamE ps e = clauseE [simpleMA ps e]
 
 -- | Let with pattern matching
 mletE :: Pat -> Exp -> Exp -> Exp
-mletE  p v e = mcaseE v [Alt p (normalB e)]
+mletE  p v e = mcaseE v [simpleA p e]
 
 -- | Sequential let with pattern matching
 mletsE :: [(Pat, Exp)] -> Exp -> Exp
@@ -207,8 +223,8 @@ lcompE e [q] = lcompE e [q, BoolG trueE]
 lcompE e (BoolG b : qs) = ifE b (lcompE e qs) (listE [])
 lcompE e (PatG p l : qs) = 
   let ok = clauseE [
-            MAlt [p] (normalB $ lcompE e qs),
-            MAlt [WildP] (normalB $ listE [])
+            simpleMA [p] (lcompE e qs),
+            simpleMA [WildP] (listE [])
            ]
   in appsE (varE (Sig (name "concatMap") UnknownT)) [ok, l]
 lcompE e (LetG decls : qs) = mletsE decls (lcompE e qs)
