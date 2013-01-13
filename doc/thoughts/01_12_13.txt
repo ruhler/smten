@@ -1,0 +1,263 @@
+
+Sat Jan 12 12:44:11 EST 2013
+
+Goal: get pattern guards working.
+
+First step: get the underlying representation support right. Save the syntax
+for a later step.
+
+I was missing a piece. There are a couple ways I could organize it, but to me,
+I think the most natural is to say:
+
+An Alternative is a Pattern and a list of bodies.
+A body is a list of guards and an expression.
+
+So I just need to make Alternative take a list of bodies.
+
+Okay. Fine. Now, what is a let declaration?
+
+Not sure. Let me come back to that.
+
+Good. Sounds like a plan to me then. Let me see if I can make the change and
+have things work out.
+
+Sat Jan 12 12:58:00 EST 2013
+
+Okay, so underlying support seems to be just fine.
+
+What's next? I suppose I should deal with this lambda issue. Oh, it's a let
+issue. What is a let declaration?
+
+This is meant to be after desugaring. But we could have alternatives...
+
+It's like a (Sig, Exp) pair, but expanded to allow patterns.
+This means, really, it should stay as (Pat, Exp).
+The pat isn't a pattern guard kind of thing. It's a pattern. The pattern guard
+goes into the Exp.
+
+Sounds good to me.
+
+Okay, so can I make some progress now? On the whole pattern guards thing?
+
+Perhaps I should start with case statements, which may be easier.
+
+Let me start by adding... hmm...
+
+alt -> pat bodies
+
+body -> '|' guards '->' exp
+
+bodies ->
+    body
+  | bodies body
+
+guards we already have.
+
+After this, all the variations should work. So I think give it a try with the
+same test I was thinking of before.
+
+Sat Jan 12 13:13:17 EST 2013
+
+Cool! Pattern guards work in case statements now.
+All I need left, then, is in functions, methods, let clauses. That sort of
+thing.
+
+Sat Jan 12 13:49:49 EST 2013
+
+It works! I now support pattern guards. That's really cool.
+
+It is also, I think... the last syntactic sugar that I can easily do?
+
+Perhaps where blocks, but I don't know how those work, and never use them
+myself. Perhaps labelled pattern matching, but I don't think that can be done
+purely as a syntactic sugar, because we need type information.
+
+I might be able to make the empty pattern match work okay:
+    Foo {} <- x
+
+What if I make it a pattern, and then I make sure to define a function for
+each type which converts z to (a -> b -> ... -> z), where (a, b, ...) are the
+arguments to the Foo constructor.
+
+And, actually, if I can make up names, the others should be doable too, right?
+Using pattern guards? Oh... Maybe it's really a pattern guard like thing?
+
+For example, maybe Foo {f1 = p1, f2 = p2, ... fn = pn}
+
+Is converted to...
+
+    p@(Foo {}) |
+       p1 <- f1 p,
+       p2 <- f2 p,
+       ...
+       pn <- fn p
+
+You know? That could actually work. Notice, in particular, that Foo {} is
+still a separate thing. So that's something I'll want to handle...
+
+And it works just like I suggested. I need a function which, given a body,
+ignores the right number of arguments.
+
+Note, though... this breaks my assumption that the CaseE body is a bunch of
+lambdas, which I use in the translation to haskell.
+
+So it's maybe doable, but I'm not satisfied I have a clean solution I'm happy
+with yet.
+
+The other changes are too involved to be doing at this point. I don't want to
+change anything major out from underneat the cav paper.
+
+Which brings me to the next phase of Seri. What is it?
+
+I have a number of ideas about how to improve performance. The trouble is, I
+don't have any examples where performance isn't as good as it should be. I
+need more applications.
+
+I looked at Sketch, but I think it's just a bit too advanced, because it
+figures out for you have much to unroll things.
+
+So... what application should I look at?
+
+I feel like a model checker would be a good example. Realistic. I have real
+problems I can try on it (bluespec problems). It's certainly a motivating
+example for Seri. I don't have anything to compare against, but maybe I can
+cast existing model checking problems into it.
+
+And I wonder if with seri, we can specify a much nicer input specification of
+what we are asking, then, say LTL.
+
+So, here's what I envision my model checker to look like. It will be generic.
+What it needs is:
+
+a - A state type. Should be an instance of Free, and maybe other things.
+delta :: a -> a -> Bool
+  - indication of whether there exists a transition between the given states.
+start :: a -> Bool
+  - a start state
+finish :: a -> Bool
+  - an end state
+
+And the question is simple. Does there exist a sequence of transitions from a
+start state to an end state?
+
+I think that's what you really want to ask. It maps naturally to bsv: a is the
+state vector, delta is the set of rules, start and finish are whatever you
+like.
+
+Cool. I like this very abstract representation of the problem.
+
+I've played around with this idea before a number of times. Let me try again.
+
+First, if there exists a state in start and finish, you are done. Just give
+the state. That's easy to check. So we can reduce it to the same problem where
+start and finish are disjoint.
+
+So, I think we keep a bunch of abstract states, which are represented as
+boolean predicates in seri: (a -> Bool).
+
+And we can ask the SMT solver for concrete states (src and dst) mapping from
+one abstract state to the next.
+
+And we can do a depth first search along these concrete states to see if there
+is a path from the start state to the end state. There may be multiple.
+
+And given a path, we can ask if there are any false links.
+
+A false link is when you enter an abstract state at one concrete state, and
+exit at another. If the two states are the same, it isn't a false link. If the
+two states are different, it may be a false link. 
+
+Now, I suppose we could do a global kind of thing, or a local kind of thing.
+
+Either way, the idea is to split the abstract state in 2, hopefully as evenly
+as possible, but it's not clear how to do that. We'll need another input to
+the model checker, a state splitter. Given two different concrete states,
+return a predicate which can distinguish between the two concrete states.
+Hopefully in such a way as to evenly divide the state space, as opposed to
+just saying: it is this concrete state or not.
+
+Now, once you split the state, there are a couple things you could do. You
+could ask: is there any way to get from the src to the dst? If so, it's not a
+false connection.
+
+But I almost feel like, a better way would just be: split the state. Now you
+have a new graph. Update connections as needed using the SMT solver. Continue
+spliting ("refining") states until either there is no path from a start state
+to an end state, or there is a path for which no links can be split. In that
+case, you have the path you are looking for.
+
+One issue, now, is there are a lot of choices you could make about which
+abstract state to split next. And it could make a huge difference. I'm not
+sure how to get around that.
+
+I also feel like if we aren't careful, we could end up doing a lot more work
+than we have to, or duplicated work, or something like that.
+
+Anyway! I think the idea is there. And it will not perform so well to start,
+but once I get it working, I can figure out what I can do to make it better.
+So I think the algorithm I'm proposing is pretty clear.
+
+Given a graph:
+1. Identify all paths from S to F (we may be able to cache parts of these from
+previous attempts. In which case, we should).
+
+Note that, splitting a node can not introduce a new path. Well, actually, it
+could, but not a completely different new path. And here we'll want to
+represent paths in a way that we share links as best we can.
+
+2. Pick one of the paths, follow it until there is a questionable link.
+A questionable link has the following form:
+    Concrete State -> Concrete State ... Concrete State -> Concrete State
+                      |--       abstract state      --|
+
+i. ask if the two concrete states in the abstract state are the same.
+If yes, this is a valid link.
+
+ii. ask SMT solver if there exists a concrete state in the abstract state such
+that you go from src to that, then that to dst.
+If yes, this is a valid link.
+
+iii. split the abstract state in two.
+Update all the paths and links, and you have a new graph to run the algorithm
+on.
+
+Hmm... there really will be a lot of opportunity for sharing. The key will be
+to leverage that. Perhaps not to start with.
+
+Perhaps the trick would be to do something like this:
+
+1. Find a path from start to finish. It can be any path you like. Depth first
+search is fine, breadth first search may be better (fewer potentially bad
+links).
+
+Now you have a candidate path, you want to see if it is valid or not.
+Note, the path should contain no cycles. I think that is important. It means
+whichever node you choose to split only appears once in the path, so splitting
+it can only affect that link. Good.
+
+You have a candidate path, so you generate a list of suspect links, let's say
+in order from start to finish.
+
+Then you check each link. Is it valid, if so, go on. If not, you are done with
+the path. Keep splitting until you get your answer, then move on.
+
+Sounds good to me... But we want to share things, while, I think, always
+working at the most abstract level possible. Even if we've already split a
+state, we may want to revert it to it's abstract version later on. So how can
+I organize the search that this becomes pretty obvious?
+
+How about this, I start with my search...
+
+What we want to do is, start with the Start state. Identify all those states
+the start state is connected to which could lead it to the end state. If none,
+you are done. ...
+
+This sounds like a dynamic programming problem to me. We want to build up a
+big table: Can I get from abstract state A to abstract state B, and if so,
+what's an example concrete sequence. These are the things I want to share. And
+I want to keep everything at the highest level I can. Oh, that sounds good. We
+do a lot of sharing there, and we can continue to work at the most abstract
+level, once we have verified a link? I'm not sure...
+
+I feel like some real examples would help.
+
