@@ -1,3 +1,20 @@
+Jan 14, 2012
+  seri-1.2.0.0
+  seri-smt-1.2.0.0
+  seri-bin-1.2.0.0
+
+  Changes from 1.1.0.0
+  * Cleaned up parser
+    - support multiple bindings in let statement in do-notation
+    - integer patterns now match any numeric type
+    - support for list comprehensions
+    - support for all kinds of arithmetic sequences
+    - support for pattern guards
+    - support for multi-arg lambdas with pattern matching
+    - support for pattern matching in do bind
+  * Pulled out inferred value propagation
+    - it's currently disabled, because there are some inefficiencies.
+
 Jan 03, 2012
   seri-1.1.0.0
   seri-smt-1.1.0.0
