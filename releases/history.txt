@@ -1,4 +1,13 @@
 Jan 30, 2012
+  seri-1.4.0.0
+  seri-smt-1.4.0.0
+  seri-bin-1.4.0.0
+
+  Changes from 1.3.0.0
+  * support for arguments to type synonyms
+  * fixed bug in implicit prelude import
+
+Jan 30, 2012
   seri-1.3.0.0
   seri-smt-1.3.0.0
   seri-bin-1.3.0.0
