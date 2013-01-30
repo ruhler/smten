@@ -37,6 +37,7 @@ module Seri.Loader (SearchPath, load, loadenv) where
 
 import System.Directory
 
+import Data.Functor((<$>))
 import Data.List(nub)
 
 import Seri.Name
@@ -71,8 +72,18 @@ loads sp ns ms =
 loadone :: SearchPath -> Name -> IO Module
 loadone sp n = do
     fname <- findmodule sp n
+    loadthis fname
+
+loadthis :: FilePath -> IO Module
+loadthis fname = do
     text <- readFile fname
-    attemptIO $ parse fname text
+    attemptIO $ addprelude <$> parse fname text
+
+-- Add the prelude import to a module if needed.
+addprelude :: Module -> Module
+addprelude m@(Module n i s d)
+  | n == name "Prelude" = m
+  | otherwise = Module n (Import (name "Prelude") : i) s d
       
 findmodule :: SearchPath -> Name -> IO FilePath
 findmodule [] n = fail $ "Module " ++ unname n ++ " not found"
@@ -93,8 +104,7 @@ findmodule (s:ss) n =
 -- the given path.
 load :: SearchPath -> FilePath -> IO [Module]
 load path mainmod = do
-    maintext <- readFile mainmod
-    main@(Module _ imps _ _)  <- attemptIO $ parse mainmod maintext
+    main@(Module _ imps _ _)  <- loadthis mainmod
     loads path [n | Import n <- imps] [main]
 
 

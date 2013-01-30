@@ -261,8 +261,7 @@ resolve n =
         let immediate :: Module -> [Name]
             immediate (Module mnm _ _ ds) = map (const (mnm `nappend` name "." `nappend` n)) (filter (hasName n) ds)
         in do
-            let prelude = Import (name "Prelude")
-            imported <- mapM (\(Import mn) -> lookupModule mn env) (prelude : imports)
+            imported <- mapM (\(Import mn) -> lookupModule mn env) imports
             let names = map immediate (me : imported)
             case nub $ concat names of
                 [] -> throw $ "'" ++ pretty n ++ "' not found in module " ++ pretty menm
@@ -274,11 +273,11 @@ resolve n =
       lift $ r env me
 
 -- | Flatten a complete module hierarchy.
--- Includes the builtin prelude.
+-- Includes builtin prelude.
 flatten :: [Module] -> Failable [Dec]
 flatten ms = do
     ds <- mapM (flatten1 ms) ms
-    return $ concat (prelude:ds)
+    return $ concat (prelude : ds)
 
 -- | Flatten a single module.
 flatten1 :: [Module]    -- ^ The environment
