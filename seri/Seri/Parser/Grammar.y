@@ -172,8 +172,8 @@ topdecls :: { [PDec] }
 topdecl :: { [PDec] }
  : 'data' tycon lopt(tyvars) '=' lopt(constrs) lopt(deriving)
     { [PDec ds | ds <- recordD $2 $3 $5 $6] }
- | 'type' tycon '=' type
-    { [PSynonym (Synonym $2 $4) ] }
+ | 'type' tycon lopt(tyvarnms) '=' type
+    { [PSynonym (Synonym $2 $3 $5) ] }
  | 'class' tycon tyvars 'where' '{' cdecls opt(';') '}'
     { [PDec (ClassD $2 $3 $6)] }
  | 'instance' class 'where' '{' idecls opt(';') '}'
@@ -598,6 +598,10 @@ tyvars :: { [TyVar] }
     { [$1] }
  | tyvars tyvar
     { $1 ++ [$2] }
+
+tyvarnms :: { [Name] }
+ : tyvarnm { [$1] }
+ | tyvarnms tyvarnm { $1 ++ [$2] }
 
 atypes :: { [Type] }
  : atype

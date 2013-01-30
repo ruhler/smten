@@ -22,8 +22,6 @@ import Seri.Parser.Grammar
 --
 -- - Import specifications.
 --
--- - Type synonyms with arguments.
---
 -- - Contexts in data declarations.
 --
 -- - deriving of classes other than Eq and Free.

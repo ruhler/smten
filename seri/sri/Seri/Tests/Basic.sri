@@ -251,6 +251,16 @@ testbasic = do
     testvarop
     testpatternguard
     testpatsig
+    testtypesyn
+
+type AMultiArgSynonym a = (a, a)
+
+fsyn :: AMultiArgSynonym Integer -> Integer
+fsyn (a, b) = a + b
+
+testtypesyn :: IO ()
+testtypesyn = do
+    test "type syn" (fsyn (1, 2) == 3)
 
 patsigf :: Integer -> Integer
 patsigf = \(x :: Integer) -> x + 3

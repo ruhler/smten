@@ -33,6 +33,7 @@
 -- 
 -------------------------------------------------------------------------------
 
+{-# LANGUAGE PatternGuards #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE FlexibleInstances #-}
 
@@ -61,9 +62,8 @@ import Seri.Dec
 data Import = Import Name
     deriving(Show, Eq)
 
--- | Currently synonyms are restricted to have no arguments.
--- type Foo = ...
-data Synonym = Synonym Name Type 
+-- type Foo a b ... = ...
+data Synonym = Synonym Name [Name] Type 
     deriving(Show, Eq)
 
 data Module = Module Name [Import] [Synonym] [Dec]
@@ -73,7 +73,10 @@ instance Ppr Import where
     ppr (Import n) = text "import" <+> ppr n <> semi
 
 instance Ppr Synonym where
-    ppr (Synonym n t) = text "type" <+> ppr n <+> text "=" <+> ppr t <> semi
+    ppr (Synonym n vs t)
+      = sep ([text "type", ppr n] 
+                ++ map ppr vs
+                ++ [text "=", ppr t]) <> semi
 
 instance Ppr Module where
     ppr (Module n imps syns decs)
@@ -92,13 +95,13 @@ data QS = QS {
     qs_env :: [Module],     -- ^ The environment
     qs_me :: Module,        -- ^ The current module
     qs_bound :: [Name],     -- ^ List of bound variable names
-    qs_syns :: HT.HashTable Name Type -- ^ All type synonyms
+    qs_syns :: HT.HashTable Name ([Name], Type) -- ^ All type synonyms
 }
 
 type QualifyM = StateT QS Failable
 
-mkSyns :: [Synonym] -> HT.HashTable Name Type
-mkSyns xs = HT.table [(n, t) | Synonym n t <- xs]
+mkSyns :: [Synonym] -> HT.HashTable Name ([Name], Type)
+mkSyns xs = HT.table [(n, (vs, t)) | Synonym n vs t <- xs]
 
 onfailq :: (String -> QualifyM a) -> QualifyM a -> QualifyM a
 onfailq f q = do
@@ -138,7 +141,7 @@ instance Qualify Module where
         return (Module nm is sy' ds')
 
 instance Qualify Synonym where
-    qualify (Synonym n t) = Synonym n <$> qualify t
+    qualify (Synonym n vs t) = Synonym n vs <$> qualify t
 
 instance Qualify TopSig where
     qualify (TopSig nm ctx t) = do
@@ -182,19 +185,27 @@ instance Qualify Dec where
         ts' <- qualify ts
         return (PrimD ts')
 
+qthrow :: String -> QualifyM a
+qthrow = throw
+
 instance Qualify Type where
-    -- TODO: qualify type
-    qualify t@(ConT nm) = do
-        -- Is this a type synonym?
+    qualify t = do
         syns <- gets qs_syns
-        case HT.lookup nm syns of
-            Just t' -> qualify t'
-            _ -> return t
-    qualify (AppT a b) = do
-        a' <- qualify a
-        b' <- qualify b
-        return (AppT a' b')
-    qualify t = return t
+        case t of
+          t | (ConT nm, args) <- de_appsT t
+            , Just (vs, t') <- HT.lookup nm syns ->
+                if length vs > length args
+                    then qthrow $ "expecting at least "
+                             ++ show (length vs)
+                             ++ " argument(s) to synonym "
+                             ++ pretty nm ++ " in " ++ pretty t
+                    else let (bound, rest) = splitAt (length vs) args
+                         in qualify (appsT (assign (zip vs bound) t') rest)
+          AppT a b -> do
+            a' <- qualify a
+            b' <- qualify b
+            return (AppT a' b')
+          t -> return t
 
 instance Qualify Exp where
     -- TODO: qualify data constructors
