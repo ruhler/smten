@@ -340,7 +340,7 @@ rhsbody :: { Body }
 
 poe :: { PatOrExp }
  : lpoe { $1 }
- | lpoe '::' type { typePE $1 $3 }
+ | lpoe '::' type { sigPE $1 $3 }
  | poe '+' poe { opPE "+" $1 $3 }
  | poe '-' poe { opPE "-" $1 $3 }
  | poe '*' poe { opPE "*" $1 $3 }

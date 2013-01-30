@@ -58,7 +58,7 @@ patM x (AsP nm p) yv n = do
 patM x (LitP e) yv n =
   let p = appsE (varE (Sig (name "==") UnknownT)) [e, x]
   in return $ ifE p yv n
-patM x (SigP p t) yv n = patM (typeE x t) p yv n
+patM x (SigP p t) yv n = patM (sigE x t) p yv n
 patM x (ConP nm ps) yv n | isSimple n = do
       y <- clauseM [simpleMA ps yv] n
       return $ CaseE x (Sig nm UnknownT) y n

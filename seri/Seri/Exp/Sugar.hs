@@ -6,7 +6,7 @@ module Seri.Exp.Sugar (
     litE, conE, de_conE, varE, de_varE,
     appE, de_appE, appsE, de_appsE,
     lamE, lamsE, de_lamE, de_lamsE,
-    letE, de_letE, letsE, ifE, typeE, caseE, de_litE,
+    letE, de_letE, letsE, ifE, sigE, caseE, de_litE,
 
     boolE, de_boolE, falseE, trueE, charE, de_charE,
     listE, de_listE, stringE, de_stringE,
@@ -162,10 +162,10 @@ errorE msg = appE (varE (Sig (name "error") UnknownT)) (stringE msg)
 --
 -- For constructors and variables, we update the signatures directly.
 -- For other expressions, we desugar to: ((id :: (t -> t)) e)
-typeE :: Exp -> Type -> Exp
-typeE (ConE (Sig n _)) t = ConE (Sig n t)
-typeE (VarE (Sig n _)) t = VarE (Sig n t)
-typeE e t = appE (varE (Sig (name "id") (arrowsT [t, t]))) e
+sigE :: Exp -> Type -> Exp
+sigE (ConE (Sig n _)) t = ConE (Sig n t)
+sigE (VarE (Sig n _)) t = VarE (Sig n t)
+sigE e t = appE (varE (Sig (name "id") (arrowsT [t, t]))) e
 
 tupleE :: [Exp] -> Exp
 tupleE xs =

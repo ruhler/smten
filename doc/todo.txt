@@ -132,5 +132,4 @@ Bugs::
 
 Other::
 * Have name sugar for arrowN, tupleN, de_tupleN, unitN, etc...
-* typeE and typePE should be renamed to sigE and sigPE
 

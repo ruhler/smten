@@ -1,7 +1,7 @@
 
 module Seri.Parser.PatOrExp (
     PatOrExp, toPat, toExp,
-    typePE, opPE, conopPE, appsPE,
+    sigPE, opPE, conopPE, appsPE,
     lamPE, letPE, ifPE, casePE, doPE,
     varPE, conPE, integerPE, charPE, stringPE, 
     tuplePE, lcompPE, listPE, updatePE,
@@ -33,10 +33,10 @@ toExp x = case attempt (snd x) of
              Left msg -> lfailE msg
              Right v -> return v
 
-typePE :: PatOrExp -> Type -> PatOrExp
-typePE (p, e) t =
+sigPE :: PatOrExp -> Type -> PatOrExp
+sigPE (p, e) t =
   let p' = flip sigP t <$> p
-      e' = flip typeE t <$> e
+      e' = flip sigE t <$> e
   in (p', e')
 
 opPE :: String -> PatOrExp -> PatOrExp -> PatOrExp
