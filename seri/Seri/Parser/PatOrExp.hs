@@ -34,8 +34,8 @@ toExp x = case attempt (snd x) of
              Right v -> return v
 
 typePE :: PatOrExp -> Type -> PatOrExp
-typePE (_, e) t =
-  let p' = throw "type signature not allowed in pattern"
+typePE (p, e) t =
+  let p' = flip sigP t <$> p
       e' = flip typeE t <$> e
   in (p', e')
 

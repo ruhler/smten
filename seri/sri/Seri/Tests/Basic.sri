@@ -250,6 +250,15 @@ testbasic = do
     testlambda
     testvarop
     testpatternguard
+    testpatsig
+
+patsigf :: Integer -> Integer
+patsigf = \(x :: Integer) -> x + 3
+
+testpatsig :: IO ()
+testpatsig = do
+    test "pat sig" (patsigf 4 == 7)
+
 
 fpatgd :: (Integer, Integer) -> Integer
 fpatgd p = case p of

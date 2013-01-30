@@ -45,6 +45,5 @@ main :: IO ()
 main = do
     runYices2 (Just "build/test/Share.yices2.dbg") qmain
     
-    putStr "SHARE PASSED"
+    putStrLn "SHARE PASSED"
 
-    

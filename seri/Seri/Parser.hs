@@ -72,6 +72,8 @@ import Seri.Parser.Grammar
 --
 -- - deriving of Free is supported
 --
+-- - Pattern type signatures are allowed.
+--
 --
 -- [@Other Notes@]
 --

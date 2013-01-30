@@ -2,7 +2,7 @@
 -- | Syntactic sugar involving pattern matching.
 module Seri.Exp.Match (
     Pat(..), Guard(..), Body(..), Alt(..), MAlt(..),
-    tupleP, listP, charP, stringP, numberP,
+    tupleP, listP, charP, stringP, numberP, sigP,
     mcaseE, clauseE, mlamE, mletE, mletsE,
     lcompE, normalB,
     simpleA, simpleMA,
@@ -23,6 +23,7 @@ data Pat = ConP Name [Pat]
          | AsP Name Pat
          | LitP Exp
          | WildP
+         | SigP Pat Type
     deriving (Eq, Show)
 
 listP :: [Pat] -> Pat
@@ -41,6 +42,9 @@ numberP = LitP . numberE
 tupleP :: [Pat] -> Pat
 tupleP ps = ConP (tupleN (length ps)) ps
 
+sigP :: Pat -> Type -> Pat
+sigP = SigP
+
 -- | Perform a pattern match.
 -- case x of
 --     p -> yv
@@ -54,6 +58,7 @@ patM x (AsP nm p) yv n = do
 patM x (LitP e) yv n =
   let p = appsE (varE (Sig (name "==") UnknownT)) [e, x]
   in return $ ifE p yv n
+patM x (SigP p t) yv n = patM (typeE x t) p yv n
 patM x (ConP nm ps) yv n | isSimple n = do
       y <- clauseM [simpleMA ps yv] n
       return $ CaseE x (Sig nm UnknownT) y n
