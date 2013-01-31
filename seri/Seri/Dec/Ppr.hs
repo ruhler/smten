@@ -24,8 +24,10 @@ instance Ppr Dec where
     ppr (DataD n vs cs)
         = text "data" <+> ppr n <+> hsep (map ppr vs) <+> text "=" $$
             (nest tabwidth (conlist cs))
-    ppr (ClassD n vs ss)
-        = text "class" <+> ppr n <+> hsep (map ppr vs)
+    ppr (ClassD ctx n vs ss)
+        = text "class"
+                <+> ppr ctx
+                <+> ppr n <+> hsep (map ppr vs)
                 <+> text "where" <+> text "{"
                 $+$ nest tabwidth (vcat (punctuate semi (map ppr ss))) $+$ text "}"
     ppr (InstD ctx cls ms)

@@ -171,7 +171,7 @@ __lexorder :: [Ordering] -> Ordering
 __lexorder = foldr __lexmerge EQ
 
 
-class Ord a where
+class (Eq a) => Ord a where
     (<) :: a -> a -> Bool
     (>) :: a -> a -> Bool
     (<=) :: a -> a -> Bool
@@ -203,7 +203,7 @@ instance Ord Char where
     (>=) a b = __prim_toInteger_Char a >= __prim_toInteger_Char b
     compare a b = compare (__prim_toInteger_Char a) (__prim_toInteger_Char b)
 
-instance (Eq a, Ord a) => Ord [a] where
+instance (Ord a) => Ord [a] where
     compare [] [] = EQ
     compare [] _ = LT
     compare (x:xs) [] = GT
@@ -214,7 +214,7 @@ instance (Eq a, Ord a) => Ord [a] where
     (<=) a b = compare a b /= GT
     (>=) a b = compare a b /= LT
 
-instance (Eq a, Ord a, Eq b, Ord b) => Ord (a, b) where
+instance (Ord a, Ord b) => Ord (a, b) where
     compare (a, b) (c, d) = __lexorder [compare a c, compare b d]
 
     (<) a b = compare a b == LT

@@ -75,7 +75,7 @@ instance TypeCheck Dec where
           checkdec (DataD {}) = return ()
           checkdec (ClassD {}) = return ()
 
-          checkdec d@(InstD ctx cls ms) =
+          checkdec d@(InstD ctx cls@(Class nm ts) ms) =
             let checkmeth :: Method -> Failable () 
                 checkmeth m@(Method n b) =
                   onfail (\s -> throw $ s ++ "\n in method " ++ pretty n) $ do
@@ -90,6 +90,9 @@ instance TypeCheck Dec where
                     instcheck env ctx b
             in onfail (\s -> throw $ s ++ "\n in declaration " ++ pretty d) $ do
                  mapM_ checkmeth ms
+                 ClassD clsctx _ pts _ <- lookupClassD env nm 
+                 let assigns = concat [assignments (tyVarType p) c | (p, c) <- zip pts ts]
+                 mapM_ (satisfied env ctx) (assign assigns clsctx)
           checkdec d@(PrimD {}) = return ()
 
           -- checkexp tenv e
@@ -154,20 +157,40 @@ instance TypeCheck Dec where
                         " in expression " ++ pretty y
       in checkdec
 
+-- Assert the given class requirement is satisfied.
+satisfied :: Env -> Context -> Class -> Failable ()
+satisfied e c cls = do
+    let -- Get the immediate context implied by the given class.
+        -- For example, getclassctx (Ord Foo) would return [Eq Foo].
+        getclassctx :: Class -> Failable Context
+        getclassctx (Class nm ts) = do
+            ClassD ctx _ pts _ <- lookupClassD e nm
+            let assigns = concat [assignments (tyVarType p) c | (p, c) <- zip pts ts]
+            return (assign assigns ctx)
+
+        -- expand a context by including all classes implied by it.
+        expand :: Context -> Failable Context
+        expand [] = return []
+        expand ctx = do
+            immediates <- mapM getclassctx ctx
+            full <- expand (filter (flip notElem ctx) (nub $ concat immediates))
+            return (ctx ++ full)
+    fullc <- expand c
+    let sat :: Class -> Failable ()
+        sat cls | cls `elem` fullc = return ()
+        sat cls@(Class _ ts) = do
+            InstD ctx (Class _ pts) _ <- lookupInstD e cls
+            let assigns = concat [assignments p c | (p, c) <- zip pts ts]
+            mapM_ sat (assign assigns ctx)
+    sat cls
+
 -- | Verify all the needed class instances are either in the context or
 -- declared for the given expression.
 instcheck :: Env -> Context -> Exp -> Failable ()
-instcheck env c e = 
-    let satisfied :: Class -> Failable ()
-        satisfied cls | cls `elem` c = return ()
-        satisfied cls@(Class _ ts) = do
-            InstD ctx (Class _ pts) _ <- lookupInstD env cls
-            let assigns = concat [assignments p c | (p, c) <- zip pts ts]
-            mapM_ satisfied (assign assigns ctx)
-
-        check :: Sig -> Failable ()
+instcheck env c e = do
+    let check :: Sig -> Failable ()
         check s = do
             ctx <- lookupVarContext env s
-            mapM_ satisfied ctx
-    in mapM_ check (free e)
+            mapM_ (satisfied env c) ctx
+    mapM_ check (free e)
 

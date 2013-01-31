@@ -93,6 +93,7 @@ badtypetest "BadType1"
 badtypetest "BadType2"
 badtypetest "Ctx"
 badtypetest "InstCtx"
+badtypetest "ClassCtx1"
 
 # Run an IO Test
 proc io {module} {

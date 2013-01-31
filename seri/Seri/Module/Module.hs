@@ -171,9 +171,10 @@ instance Qualify Dec where
     qualify (DataD n vars cs) = DataD n vars <$> qualify cs
 
     -- TODO: qualify class names
-    qualify (ClassD nm vars sigs) = do
+    qualify (ClassD ctx nm vars sigs) = do
+        ctx' <- qualify ctx
         sigs' <- mapM qualify sigs
-        return (ClassD nm vars sigs')
+        return (ClassD ctx' nm vars sigs')
 
     qualify (InstD ctx cls meths) = do
         ctx' <- qualify ctx
@@ -248,7 +249,7 @@ resolve n =
   let hasName :: Name -> Dec -> Bool
       hasName n (ValD (TopSig nm _ _) _) = (n == nm)
       hasName n (DataD nm _ _) = (n == nm)
-      hasName n (ClassD nm _ sigs) =
+      hasName n (ClassD _ nm _ sigs) =
         let hasns [] = False
             hasns ((TopSig snm _ _):_) | n == snm = True
             hasns (_:ss) = hasns ss

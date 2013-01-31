@@ -121,7 +121,7 @@ vitable decs =
       videc :: Dec -> [(Name, ValInfo)]
       videc d@(ValD (TopSig n _ _) _) = [(n, DecVI d)]
       videc d@(PrimD (TopSig n _ _)) = [(n, DecVI d)]
-      videc (ClassD cn ts sigs) =  
+      videc (ClassD _ cn ts sigs) =  
         let isig :: TopSig -> (Name, ValInfo)
             isig (TopSig n ctx t) = (n, ClassVI cn ts ctx t (fromMaybe [] (Map.lookup n methods)))
         in map isig sigs
@@ -196,7 +196,7 @@ lookupDataD env n =
 lookupClassD :: Env -> Name -> Failable Dec
 lookupClassD env n =
   let theClassD :: Dec -> Bool
-      theClassD (ClassD nm _ _) = n == nm
+      theClassD (ClassD _ nm _ _) = n == nm
       theClassD _ = False
   in theOneOf "ClassD" (pretty n) theClassD env
 

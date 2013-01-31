@@ -175,7 +175,9 @@ topdecl :: { [PDec] }
  | 'type' tycon lopt(tyvarnms) '=' type
     { [PSynonym (Synonym $2 $3 $5) ] }
  | 'class' tycon tyvars 'where' '{' cdecls opt(';') '}'
-    { [PDec (ClassD $2 $3 $6)] }
+    { [PDec (ClassD [] $2 $3 $6)] }
+ | 'class' context tycon tyvars 'where' '{' cdecls opt(';') '}'
+    { [PDec (ClassD $2 $3 $4 $7)] }
  | 'instance' class 'where' '{' idecls opt(';') '}'
     { [PDec (InstD [] $2 (icoalesce $5))] }
  | 'instance' context class 'where' '{' idecls opt(';') '}'

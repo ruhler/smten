@@ -238,11 +238,12 @@ hsDec (DataD n tyvars constrs) = do
     casesD <- mapM (mkCaseD n tyvars) constrs
     return $ concat ([dataD, seriTD, symbD] : casesD)
 
-hsDec (ClassD n vars sigs@(TopSig _ _ t:_)) = do
+hsDec (ClassD ctx n vars sigs@(TopSig _ _ t:_)) = do
     let vts = map tyVarName vars
-        (ctx, use) = mkContext (flip elem vts) t
+        (nctx, use) = mkContext (flip elem vts) t
+    ctx' <- mapM hsClass ctx
     sigs' <- mapM (hsSig vts) sigs
-    return $ [H.ClassD ctx (hsName n) (map (H.PlainTV . hsName) use) [] sigs']
+    return $ [H.ClassD (nctx ++ ctx') (hsName n) (map (H.PlainTV . hsName) use) [] sigs']
 
 hsDec (InstD ctx (Class n ts) ms) = do
     let (nctx, _) = mkContext (const True) (appsT (conT n) ts)
