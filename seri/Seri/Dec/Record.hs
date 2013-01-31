@@ -97,7 +97,7 @@ recordC (Sig cn ct) fields = recordU (VarE (Sig (record_undefnm cn) ct)) fields
 
 -- Derive an instance of Eq for the given data type declaration.
 -- Generates something of the form:
---    instance (Eq a, Eq b, ...) => Eq (Foo a b ...) where
+--    instance ctx => Eq (Foo ...) where
 --       (==) (Foo1 a1 a2 ...) (Foo1 b1 b2 ...) = and [a1 == b1, a2 == b2, ...]
 --       (==) (Foo2 a1 a2 ...) (Foo2 b1 b2 ...) = and [a1 == b1, a2 == b2, ...]
 --            ...
@@ -105,20 +105,12 @@ recordC (Sig cn ct) fields = recordU (VarE (Sig (record_undefnm cn) ct)) fields
 --       (==) _ _ = False
 --
 --       (/=) = (/=#)
-ideriveEq :: Name -> [TyVar] -> [Con] -> Dec
-ideriveEq dn vars cs =
-  let dt = appsT (ConT dn) (map tyVarType vars)
-      ctx = [Class (name "Eq") [tyVarType c] | c <- vars]
-      cls = Class (name "Eq") [dt]
-  in deriveEQ ctx cls dn vars cs
-
--- TODO: rename variable types in cs to match with values chosen in cls!
-deriveEQ :: Context -> Class -> Name -> [TyVar] -> [Con] -> Dec
-deriveEQ ctx cls dn vars cs =
+deriveEq :: Context -> Class -> Name -> [TyVar] -> [Con] -> Dec
+deriveEq ctx cls dn vars cs =
   let mkcon :: Con -> MAlt
       mkcon (Con cn ts) =
-        let fieldsA = [Sig (name $ 'a' : show i) t | (t, i) <- zip ts [1..]]
-            fieldsB = [Sig (name $ 'b' : show i) t | (t, i) <- zip ts [1..]]
+        let fieldsA = [Sig (name $ 'a' : show i) UnknownT | i <- [1..length ts]]
+            fieldsB = [Sig (name $ 'b' : show i) UnknownT | i <- [1..length ts]]
             pA = ConP cn [VarP n | Sig n _ <- fieldsA]
             pB = ConP cn [VarP n | Sig n _ <- fieldsB]
             body = appsE (VarE (Sig (name "and") UnknownT))
@@ -144,7 +136,7 @@ deriveEQ ctx cls dn vars cs =
 --
 -- Derives something of the form:
 -- Generates something of the form
--- instance (Free a, Free b, ...) => Free (Foo a b ...) where
+-- instance ctx => Free (Foo ...) where
 --   free = do
 --      isFoo1 <- free ; isFoo2 <- free ; ... ; isFooNm1 <- free 
 --
@@ -158,14 +150,6 @@ deriveEQ ctx cls dn vars cs =
 --          else if isFoo2 then Foo2 a1Foo2 a2Foo2 ...
 --             ...
 --          else FooN a1FooN a2FooN ...)
-ideriveFree :: Name -> [TyVar] -> [Con] -> Dec
-ideriveFree dn vars cs =
-  let dt = appsT (ConT dn) (map tyVarType vars)
-      ctx = [Class (name "Free") [tyVarType c] | c <- vars]
-      cls = Class (name "Free") [dt]
-  in deriveFree ctx cls dn vars cs
-
--- TODO: rename variable types in cs to match with values chosen in cls!
 deriveFree :: Context -> Class -> Name -> [TyVar] -> [Con] -> Dec
 deriveFree ctx cls dn vars cs =
   let -- name of tag for constructor: (isFooX :: Bool)
@@ -175,12 +159,12 @@ deriveFree ctx cls dn vars cs =
       -- fields for constructor: [a1FooX, a2FooX, ...]
       mkFields :: Con -> [Sig]
       mkFields (Con nm ts)
-        = [Sig (name ('a' : show i) `nappend` nm) t | (t, i) <- zip ts [1..]]
+        = [Sig (name ('a' : show i) `nappend` nm) UnknownT | i <- [1..length ts]]
 
       -- application of constructor to its fields:
       --    FooX a1FooX a2FooX ...
       mkCon :: Con -> Exp
-      mkCon c@(Con nm ts) =
+      mkCon c@(Con nm _) =
         let fields = mkFields c
         in appsE (conE (Sig nm UnknownT)) (map varE fields)
 
@@ -208,24 +192,16 @@ deriveFree ctx cls dn vars cs =
 
 -- Derive an instance of Show for the given data type declaration.
 -- Generates something of the form:
---    instance (Show a, Show b, ...) => Show (Foo a b ...) where
+--    instance ctx => Show (Foo ...) where
 --       show (Foo1 a1 a2 ...) = show_helper ["Foo1", show a1, show a2, ...]
 --       show (Foo2 a1 a2 ...) = show_helper ["Foo2", show a1, show a2, ...]
 --            ...
 --       show (FooN a1 a2 ...) = show_helper ["FooN", show a1, show a2, ...]
-ideriveShow :: Name -> [TyVar] -> [Con] -> Dec
-ideriveShow dn vars cs =
-  let dt = appsT (ConT dn) (map tyVarType vars)
-      ctx = [Class (name "Show") [tyVarType c] | c <- vars]
-      cls = Class (name "Show") [dt]
-  in deriveShow ctx cls dn vars cs
-
--- TODO: rename variable types in cs to match with values chosen in cls!
 deriveShow :: Context -> Class -> Name -> [TyVar] -> [Con] -> Dec
 deriveShow ctx cls dn vars cs =
   let mkcon :: Con -> MAlt
       mkcon (Con cn ts) =
-        let fields = [Sig (name $ 'a' : show i) t | (t, i) <- zip ts [1..]]
+        let fields = [Sig (name $ 'a' : show i) UnknownT | i <- [1..length ts]]
             p = ConP cn [VarP n | Sig n _ <- fields]
             shows = [appE (VarE (Sig (name "show") UnknownT)) (VarE a) | a <- fields]
             body = appE (VarE (Sig (name "__show_helper") UnknownT)) $
@@ -235,11 +211,18 @@ deriveShow ctx cls dn vars cs =
       shclauses = map mkcon cs
       sh = Method (name "show") (clauseE shclauses)
   in InstD ctx cls [sh]
+
+derive :: Context -> Class -> Name -> [TyVar] -> [Con] -> Dec
+derive ctx cls@(Class n _)
+ | n == name "Eq" = deriveEq ctx cls
+ | n == name "Free" = deriveFree ctx cls
+ | n == name "Show" = deriveShow ctx cls
+ | otherwise = error $ "deriving " ++ show n ++ " not supported in seri"
       
 iderive :: Name -> Name -> [TyVar] -> [Con] -> Dec
-iderive n
- | n == name "Eq" = ideriveEq
- | n == name "Free" = ideriveFree
- | n == name "Show" = ideriveShow
- | otherwise = error $ "deriving " ++ show n ++ " not supported in seri"
+iderive n dn vars cs = 
+  let dt = appsT (ConT dn) (map tyVarType vars)
+      ctx = [Class n [tyVarType c] | c <- vars]
+      cls = Class n [dt]
+  in derive ctx cls dn vars cs
 

@@ -5,9 +5,9 @@ Highly Desirable::
 * Arrays with bit-vector indices.
 * standalone deriving
 * Instances of Free for library types like Maybe
-* Allow parens in InstD: instance (Foo Bar) where...
 
 Haskell Features::
+* Allow parens in InstD: instance (Foo Bar) where...
 * default methods in classes?
 * auto derive Ord
 * recursive let blocks
