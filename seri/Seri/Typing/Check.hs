@@ -169,13 +169,13 @@ satisfied e c cls = do
             return (assign assigns ctx)
 
         -- expand a context by including all classes implied by it.
-        expand :: Context -> Failable Context
-        expand [] = return []
-        expand ctx = do
-            immediates <- mapM getclassctx ctx
-            full <- expand (filter (flip notElem ctx) (nub $ concat immediates))
-            return (ctx ++ full)
-    fullc <- expand c
+        expand :: Context -> Context -> Failable Context
+        expand done [] = return done
+        expand done todo = do
+            let todo' = filter (flip notElem done) todo
+            immediates <- mapM getclassctx todo'
+            expand (done ++ todo) (concat immediates)
+    fullc <- expand [] c
     let sat :: Class -> Failable ()
         sat cls | cls `elem` fullc = return ()
         sat cls@(Class _ ts) = do
