@@ -1,0 +1,162 @@
+
+Wed Jan 30 09:07:51 EST 2013
+
+Nirav wants pattern type signatures.
+
+I'm not going to add them like they are in ghc, because it's more complicated 
+than I want to deal with right now. Ignore type variables in the pattern type
+signatures, and all should make sense, I hope. Type variables will do whatever
+they do, which is probably a bug. I'll deal with that bug when it shows up.
+
+So then, how should pattern type signatures work?
+
+It should be easy to parse them. That's fine. No trouble.
+
+But what do I do with them?
+
+Well, it comes down to case expressions of single match form:
+
+case x of
+    p -> yv
+    _ -> n
+
+Or, rather... you can annotate a pattern with a type. So look at the different
+kinds of patterns and try to figure out what that means.
+
+WildP: This disappears in desugaring. There is no type to associate with it.
+Err... not entirely true. We have the argument to the case. But that goes
+away, doesn't it? Yes...
+
+Well, what you would like is: ...
+
+I wonder if I can do this in general. The idea is, you are matching against a
+pattern. We want to say: if the argument is not the right type, it throws an
+error. Well, that's not hard, is it?
+
+patM x (TypeP t p) yv n = patM (typeE x t) p yv n
+
+That's it! Simple. Things that go away might go away, but everything else
+should work just swell. No?
+
+No. It won't work the way I want? Or will it?
+
+I don't know. I need to think about it more. Let me stew on it a little bit
+and come back to this.
+
+Certainly my proposal is easy to implement. I'm just not sure it will do what
+I expect and desire.
+
+Wed Jan 30 09:55:55 EST 2013
+
+Okay... figuring out pattern type signatures. First, what behavior do I
+expect?
+
+Specifying a type signature should set the type of the pattern. If the pattern
+has a different type, that should lead to a type error. If the type of the
+pattern was previously ambiguous, it should no longer be ambiguous. If the
+type of the pattern was what it is, then nothing should happen.
+
+For example...
+
+case True of
+    _ :: Integer -> False
+
+Should give a type error.
+
+case True of
+    _ :: Bool -> False
+
+Should be fine.
+
+case 3 of
+    _ :: Integer -> False
+
+Should make the type of 3 well specified (As Integer, instead of Bit for
+example)
+
+case (3, 4) of
+    (a, b) :: (Integer, Bit #3) -> a + 3
+
+Should be fine, makes types of 3 and 4 well specified.
+
+And finally, the way I actually expect it to be used:
+
+ case ... of
+    a :: Foo -> ...
+
+Again, makes the type of a well specified.
+
+So I'm thinking the solution could be as simple as I think.
+
+Let's go through the examples:
+
+case True of
+    _ :: Integer -> False
+
+I claim turns into:
+
+    False.
+
+So, this won't work. Don't put types on wild cards. But I'm okay with that not
+working.
+
+case True of
+    _ :: Bool -> False...
+
+Well, hmm... it would seem this won't work for any wild card patterns. But it
+will work for other kinds of patterns as I expect. Is that good enough?
+
+Sure. Try it and see. I can just make it work on Nirav's example.
+
+Or... to have a unit test:
+
+foo :: ...
+foo = \(x :: Integer) -> ...
+
+That sort of thing.
+
+Okay, let me try it out.
+
+Wed Jan 30 10:28:19 EST 2013
+
+Well, that was easy. Cool.
+
+What should I work on next?
+
+I think, as far as seri is concerned, all my work should be application
+motivated. I think I should work on formal semantics. So that is what I'll do.
+
+Wed Jan 30 14:26:40 EST 2013
+
+Need to do:
+* type synonyms with parameters
+* auto derive of Show
+
+First step: type synonyms.
+
+Here's how type synonyms currently work:
+
+Synonym is a Name and a Type.
+Now it can have arguments... variables. So we'll want:
+    Name [Vars] Type.
+
+We create a hash map from Name to Type for fast lookup...
+Now it should be a map from Name to ([Var], Type).
+
+And our check for synonyms should be a special case, check for synonym on type
+application using pattern guards. Verify the number of args match up, if so,
+do the assignment and you're done.
+
+Actually, make sure we have at least as many types as we need. If we have
+more, that's fine, just apply them to the back as desired. If not enough, say
+failure.
+
+In other words.. this should be pretty easy.
+
+First step: modify the implementation, and verify it still works for nullary
+type synonyms.
+
+Next step: try out a more interesting type synonym.
+
+Easy.
+

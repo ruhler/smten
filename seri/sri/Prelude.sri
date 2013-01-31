@@ -113,6 +113,9 @@ not :: Bool -> Bool
 not True = False
 not _ = True
 
+otherwise :: Bool
+otherwise = True
+
 type String = [Char]
 
 data Maybe a = Nothing | Just a

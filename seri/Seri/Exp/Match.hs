@@ -1,13 +1,14 @@
 
 -- | Syntactic sugar involving pattern matching.
 module Seri.Exp.Match (
-    Pat(..), Guard(..), Body(..), Alt(..), MAlt(..),
+    Pat(..), Guard(..), Body(..), Alt(..), MAlt(..), WBodies(..),
     tupleP, listP, charP, stringP, numberP, sigP,
     mcaseE, clauseE, mlamE, mletE, mletsE,
     lcompE, normalB,
     simpleA, simpleMA,
     ) where
 
+import Data.Functor((<$>))
 import Data.Maybe(fromMaybe)
 
 import Seri.Lit
@@ -60,7 +61,7 @@ patM x (LitP e) yv n =
   in return $ ifE p yv n
 patM x (SigP p t) yv n = patM (sigE x t) p yv n
 patM x (ConP nm ps) yv n | isSimple n = do
-      y <- clauseM [simpleMA ps yv] n
+      y <- clauseM [simpleMA ps yv []] n
       return $ CaseE x (Sig nm UnknownT) y n
 patM x p y n = do
   nv <- fresh (Sig (name "_n") UnknownT)
@@ -101,11 +102,18 @@ bodiesM (b:bs) n = do
     n' <- bodiesM bs n
     bodyM b n'
 
-data Alt = Alt Pat [Body]
+-- Bodies with a where clause
+data WBodies = WBodies [Body] [(Pat, Exp)]
     deriving (Eq, Show)
 
-simpleA :: Pat -> Exp -> Alt
-simpleA p e = Alt p [Body [] e]
+wbodiesM :: (Fresh f) => WBodies -> Exp -> f Exp
+wbodiesM (WBodies bs ls) n = mletsE ls <$> bodiesM bs n
+
+data Alt = Alt Pat WBodies
+    deriving (Eq, Show)
+
+simpleA :: Pat -> Exp -> [(Pat, Exp)] -> Alt
+simpleA p e ls = Alt p (WBodies [Body [] e] ls)
 
 -- Match a single alternative:
 --  case x of
@@ -113,7 +121,7 @@ simpleA p e = Alt p [Body [] e]
 --    _ -> n
 altM :: (Fresh f) => Exp -> Alt -> Exp -> f Exp
 altM x (Alt p bs) n = do
-    body <- bodiesM bs n
+    body <- wbodiesM bs n
     patM x p body n
 
 -- Match multiple alternatives:
@@ -132,11 +140,11 @@ altsM x as n = do
     body <- altsM (varE xv) as n
     return $ letE xv x body
 
-data MAlt = MAlt [Pat] [Body]
+data MAlt = MAlt [Pat] WBodies
     deriving (Eq, Show)
 
-simpleMA :: [Pat] -> Exp -> MAlt
-simpleMA ps e = MAlt ps [Body [] e]
+simpleMA :: [Pat] -> Exp -> [(Pat, Exp)] -> MAlt
+simpleMA ps e ls = MAlt ps (WBodies [Body [] e] ls)
 
 -- Match a multi-argument alternative
 maltM :: (Fresh f) => [Sig] -> MAlt -> Exp -> f Exp
@@ -154,8 +162,8 @@ maltM args (MAlt ps b) n = do
       --                        _ -> n
       --                _ -> n
       --        _ -> n
-      mkcases :: (Fresh m) => [(Pat, Exp)] -> [Body] -> Exp -> m Exp
-      mkcases [] bs n = bodiesM bs n
+      mkcases :: (Fresh m) => [(Pat, Exp)] -> WBodies -> Exp -> m Exp
+      mkcases [] bs n = wbodiesM bs n
       mkcases ((p, x):ps) y n = do
         body <- mkcases ps y n
         patM x p body n
@@ -202,11 +210,11 @@ clauseM ms@(MAlt ps _ : _) n = do
 
 -- | Lambda with pattern matching.
 mlamE :: [Pat] -> Exp -> Exp
-mlamE ps e = clauseE [simpleMA ps e]
+mlamE ps e = clauseE [simpleMA ps e []]
 
 -- | Let with pattern matching
 mletE :: Pat -> Exp -> Exp -> Exp
-mletE  p v e = mcaseE v [simpleA p e]
+mletE  p v e = mcaseE v [simpleA p e []]
 
 -- | Sequential let with pattern matching
 mletsE :: [(Pat, Exp)] -> Exp -> Exp
@@ -228,8 +236,8 @@ lcompE e [q] = lcompE e [q, BoolG trueE]
 lcompE e (BoolG b : qs) = ifE b (lcompE e qs) (listE [])
 lcompE e (PatG p l : qs) = 
   let ok = clauseE [
-            simpleMA [p] (lcompE e qs),
-            simpleMA [WildP] (listE [])
+            simpleMA [p] (lcompE e qs) [],
+            simpleMA [WildP] (listE []) []
            ]
   in appsE (varE (Sig (name "concatMap") UnknownT)) [ok, l]
 lcompE e (LetG decls : qs) = mletsE decls (lcompE e qs)

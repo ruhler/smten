@@ -1,13 +1,17 @@
 
+Highly Desirable::
+* auto derive Show
+* StateT monad
+* Contexts in classes
+* Arrays with bit-vector indices.
+* standalone deriving
+
 Haskell Features::
 * default methods in classes?
-* support arguments to type synonyms? 
-* auto derive Show
 * auto derive Ord
 * recursive let blocks
 * modularity support
 * labeled pattern matching.
-* where blocks
 
 Test Type Checking::
 * Verify we check for the instance or context for every method call

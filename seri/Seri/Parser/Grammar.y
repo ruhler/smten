@@ -214,7 +214,7 @@ ldecl :: { LDec }
       p <- toPat $1
       ps <- mapM toPat $2
       case (p, ps, $3) of
-        (p, [], [Body [] e]) -> return (LPat p e)
+        (p, [], WBodies [Body [] e] []) -> return (LPat p e)
         (VarP n, _, _) -> return (LClause n (MAlt ps $3))
         _ -> lfailE "invalid let declaration"
     }
@@ -322,13 +322,17 @@ funlhs :: { (Name, [Pat]) }
  : var lopt(apoes)
     {% fmap ((,) $1) (mapM toPat $2) } 
 
-rhs :: { [Body] }
- : '=' poe {% do
+rhs :: { WBodies }
+ : '=' poe lopt(wdecls) {% do
     e <- toExp $2
-    return [Body [] e]
+    return $ WBodies [Body [] e] $3
    }
- | rhsbodies
-    { $1 }
+ | rhsbodies lopt(wdecls)
+    { WBodies $1 $2 }
+
+wdecls :: { [(Pat, Exp)] }
+ : 'where' '{' ldecls opt(';') '}'
+    { lcoalesce $3 }
 
 rhsbodies :: { [Body] }
  : rhsbody { [$1] }
@@ -443,13 +447,15 @@ alts :: { [Alt] }
     { $1 ++ [$3] }
 
 alt :: { Alt }
- : poe '->' poe {% do
+ : poe '->' poe lopt(wdecls) {% do
     p <- toPat $1
     e <- toExp $3
-    return (simpleA p e)
+    return (simpleA p e $4)
   }
- | poe bodies
-    {% fmap (flip Alt $2) (toPat $1) }
+ | poe bodies lopt(wdecls) {% do
+    p <- toPat $1
+    return (Alt p (WBodies $2 $3))
+  }
 
 bodies :: { [Body] }
  : body { [$1] }

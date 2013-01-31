@@ -5,7 +5,7 @@ module Seri.Fresh.Fresh (
 
 import Seri.Sig
 
-class (Monad m) => Fresh m where
+class (Functor m, Monad m) => Fresh m where
     -- Return a fresh name based on the given name.
     fresh :: Sig -> m Sig
     

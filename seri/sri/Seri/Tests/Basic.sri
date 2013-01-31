@@ -252,6 +252,7 @@ testbasic = do
     testpatternguard
     testpatsig
     testtypesyn
+    testwhereclause
 
 type AMultiArgSynonym a = (a, a)
 
@@ -319,6 +320,20 @@ testaspattern = do
         case [1, 2, 3 :: Integer] of
           v@(x:xs) -> (length v + x + length xs) == 6
           _ -> False
+      )
+
+wheref :: Integer -> Integer -> Integer
+wheref x y = 1 + z
+  where z = x + y 
+
+testwhereclause :: IO ()
+testwhereclause = do
+    test "where clause f" (wheref 1 2 == 4)
+    test "where clause c" (
+        case Just True of
+            Just v | False <- nv -> True   
+               where nv = not v
+            _ -> False
       )
 
 testletclause :: IO ()
