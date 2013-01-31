@@ -1,6 +1,5 @@
 
 Highly Desirable::
-* deriving should figure out better context to use
 * StateT monad
 * Arrays with bit-vector indices.
 * standalone deriving

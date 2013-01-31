@@ -3,6 +3,8 @@ module Seri.Dec.Record (
     ConRec(..), recordD, recordC, recordU,
     ) where
 
+import Data.List(nub)
+
 import Seri.Name
 import Seri.Type
 import Seri.Sig
@@ -222,7 +224,12 @@ derive ctx cls@(Class n _)
 iderive :: Name -> Name -> [TyVar] -> [Con] -> Dec
 iderive n dn vars cs = 
   let dt = appsT (ConT dn) (map tyVarType vars)
-      ctx = [Class n [tyVarType c] | c <- vars]
       cls = Class n [dt]
+    
+      keep :: Type -> Bool
+      keep t = not $ or [null (varTs t ++ nvarTs t), isSubType dt t]
+
+      fieldts = concat [ts | Con _ ts <- cs]
+      ctx = nub [Class n [t] | t <- filter keep fieldts]
   in derive ctx cls dn vars cs
 

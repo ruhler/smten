@@ -390,6 +390,7 @@ __show_helper xs = "(" ++ __show_helper2 xs ++ ")"
 
 __show_helper2 :: [String] -> String
 __show_helper2 [] = ""
+__show_helper2 [x] = x
 __show_helper2 (x:xs) = x ++ " " ++ __show_helper2 xs
 
 __prim_show_Integer :: Integer -> String
