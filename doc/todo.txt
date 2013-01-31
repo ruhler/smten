@@ -1,15 +1,19 @@
 
 Highly Desirable::
+* deriving should figure out better context to use
 * StateT monad
-* Contexts in classes
 * Arrays with bit-vector indices.
 * standalone deriving
+* Instances of Free for library types like Maybe
+* Allow parens in InstD: instance (Foo Bar) where...
 
 Haskell Features::
 * default methods in classes?
 * auto derive Ord
 * recursive let blocks
 * modularity support
+** ability to re-export modules 
+    (So we can include Seri.SMT instead of Seri.SMT.SMT, for example)
 * labeled pattern matching.
 
 Test Type Checking::
@@ -139,6 +143,9 @@ Bugs::
                   where z = p+1
                 _ -> z
    does this return 3 or 4?
+* auto-deriving infers too strong a context
+   ex: data Foo a = Foo Integer deriving (Eq)
+         (Foo 3 :: Foo (IO Bool) == Foo 3) 
             
 
 Other::

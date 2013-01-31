@@ -81,7 +81,7 @@ recordD nm vars cons derivings =
       undefs = map mkundef cons'
       accs = concatMap mkaccs cons
       upds = concatMap mkupds cons
-      derivations = [derive d nm vars cons' | d <- derivings]
+      derivations = [iderive d nm vars cons' | d <- derivings]
   in concat [[DataD nm vars cons'], derivations, undefs, accs, upds]
 
 -- | Desugar labelled update.
@@ -105,11 +105,17 @@ recordC (Sig cn ct) fields = recordU (VarE (Sig (record_undefnm cn) ct)) fields
 --       (==) _ _ = False
 --
 --       (/=) = (/=#)
-deriveEq :: Name -> [TyVar] -> [Con] -> Dec
-deriveEq dn vars cs =
+ideriveEq :: Name -> [TyVar] -> [Con] -> Dec
+ideriveEq dn vars cs =
   let dt = appsT (ConT dn) (map tyVarType vars)
-        
-      mkcon :: Con -> MAlt
+      ctx = [Class (name "Eq") [tyVarType c] | c <- vars]
+      cls = Class (name "Eq") [dt]
+  in deriveEQ ctx cls dn vars cs
+
+-- TODO: rename variable types in cs to match with values chosen in cls!
+deriveEQ :: Context -> Class -> Name -> [TyVar] -> [Con] -> Dec
+deriveEQ ctx cls dn vars cs =
+  let mkcon :: Con -> MAlt
       mkcon (Con cn ts) =
         let fieldsA = [Sig (name $ 'a' : show i) t | (t, i) <- zip ts [1..]]
             fieldsB = [Sig (name $ 'b' : show i) t | (t, i) <- zip ts [1..]]
@@ -121,12 +127,10 @@ deriveEq dn vars cs =
         in simpleMA [pA, pB] body []
 
       def = simpleMA [WildP, WildP] falseE []
-      ctx = [Class (name "Eq") [tyVarType c] | c <- vars]
       eqclauses = map mkcon cs ++ [def]
       eq = Method (name "==") (clauseE eqclauses)
       ne = Method (name "/=") (varE (Sig (name "/=#") UnknownT))
-  in InstD ctx (Class (name "Eq") [dt]) [eq, ne]
-    
+  in InstD ctx cls [eq, ne]
 
 -- Derive an instance of Free (before flattening and inference) for the given
 -- data type declaration.
@@ -154,11 +158,17 @@ deriveEq dn vars cs =
 --          else if isFoo2 then Foo2 a1Foo2 a2Foo2 ...
 --             ...
 --          else FooN a1FooN a2FooN ...)
-deriveFree :: Name -> [TyVar] -> [Con] -> Dec
-deriveFree dn vars cs =
+ideriveFree :: Name -> [TyVar] -> [Con] -> Dec
+ideriveFree dn vars cs =
   let dt = appsT (ConT dn) (map tyVarType vars)
-    
-      -- name of tag for constructor: (isFooX :: Bool)
+      ctx = [Class (name "Free") [tyVarType c] | c <- vars]
+      cls = Class (name "Free") [dt]
+  in deriveFree ctx cls dn vars cs
+
+-- TODO: rename variable types in cs to match with values chosen in cls!
+deriveFree :: Context -> Class -> Name -> [TyVar] -> [Con] -> Dec
+deriveFree ctx cls dn vars cs =
+  let -- name of tag for constructor: (isFooX :: Bool)
       mkTag :: Con -> Sig
       mkTag (Con nm _) = Sig (name "is" `nappend` nm) boolT
 
@@ -194,8 +204,7 @@ deriveFree dn vars cs =
       rtn = NoBindS $ appE (varE (Sig (name "return") UnknownT)) value
       stmts = freevars ++ [rtn]
       free = Method (name "free") (doE stmts)
-      ctx = [Class (name "Free") [tyVarType c] | c <- vars]
-  in InstD ctx (Class (name "Free") [dt]) [free]
+  in InstD ctx cls [free]
 
 -- Derive an instance of Show for the given data type declaration.
 -- Generates something of the form:
@@ -204,11 +213,17 @@ deriveFree dn vars cs =
 --       show (Foo2 a1 a2 ...) = show_helper ["Foo2", show a1, show a2, ...]
 --            ...
 --       show (FooN a1 a2 ...) = show_helper ["FooN", show a1, show a2, ...]
-deriveShow :: Name -> [TyVar] -> [Con] -> Dec
-deriveShow dn vars cs =
+ideriveShow :: Name -> [TyVar] -> [Con] -> Dec
+ideriveShow dn vars cs =
   let dt = appsT (ConT dn) (map tyVarType vars)
-        
-      mkcon :: Con -> MAlt
+      ctx = [Class (name "Show") [tyVarType c] | c <- vars]
+      cls = Class (name "Show") [dt]
+  in deriveShow ctx cls dn vars cs
+
+-- TODO: rename variable types in cs to match with values chosen in cls!
+deriveShow :: Context -> Class -> Name -> [TyVar] -> [Con] -> Dec
+deriveShow ctx cls dn vars cs =
+  let mkcon :: Con -> MAlt
       mkcon (Con cn ts) =
         let fields = [Sig (name $ 'a' : show i) t | (t, i) <- zip ts [1..]]
             p = ConP cn [VarP n | Sig n _ <- fields]
@@ -217,15 +232,14 @@ deriveShow dn vars cs =
                      listE (stringE (unname cn) : shows)
         in simpleMA [p] body []
 
-      ctx = [Class (name "Show") [tyVarType c] | c <- vars]
       shclauses = map mkcon cs
       sh = Method (name "show") (clauseE shclauses)
-  in InstD ctx (Class (name "Show") [dt]) [sh]
+  in InstD ctx cls [sh]
       
-derive :: Name -> Name -> [TyVar] -> [Con] -> Dec
-derive n
- | n == name "Eq" = deriveEq
- | n == name "Free" = deriveFree
- | n == name "Show" = deriveShow
+iderive :: Name -> Name -> [TyVar] -> [Con] -> Dec
+iderive n
+ | n == name "Eq" = ideriveEq
+ | n == name "Free" = ideriveFree
+ | n == name "Show" = ideriveShow
  | otherwise = error $ "deriving " ++ show n ++ " not supported in seri"
 
