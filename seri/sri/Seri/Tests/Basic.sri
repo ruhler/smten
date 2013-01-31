@@ -25,6 +25,7 @@ rfact :: Integer -> Integer
 rfact x = if (x < 1) then 1 else x * rfact (x-1)
 
 data MaybeInteger = NoInteger | JustInteger Integer
+    deriving (Show)
 
 fromMaybeInteger :: Integer -> MaybeInteger -> Integer
 fromMaybeInteger def = \mi ->

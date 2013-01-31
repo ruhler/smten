@@ -96,6 +96,7 @@ flip f x y = f y x
 ($) f x = f x
 
 data Bool = False | True
+    deriving (Show)
 
 instance Eq Bool where
     (==) a b = if a then b else not b
@@ -119,7 +120,7 @@ otherwise = True
 type String = [Char]
 
 data Maybe a = Nothing | Just a
-  deriving (Eq)
+  deriving (Eq, Show)
 
 instance Monad Maybe where
     fail _ = Nothing
@@ -382,6 +383,15 @@ lookup k ((x, y):xs) =
 class Show a where
     show :: a -> String
 
+__show_helper :: [String] -> String
+__show_helper [] = ""
+__show_helper [x] = x
+__show_helper xs = "(" ++ __show_helper2 xs ++ ")"
+
+__show_helper2 :: [String] -> String
+__show_helper2 [] = ""
+__show_helper2 (x:xs) = x ++ " " ++ __show_helper2 xs
+
 __prim_show_Integer :: Integer -> String
 
 instance Show Integer where
@@ -389,10 +399,6 @@ instance Show Integer where
 
 instance Show Char where
     show c = ['\'', c, '\'']
-
-instance Show Bool where
-    show True = "True"
-    show False = "False"
 
 instance Show () where
     show () = "()"
@@ -409,10 +415,6 @@ instance (Show a, Show b, Show c, Show d) => Show (a, b, c, d) where
 
 instance (Show a) => Show [a] where
     show xs = concat ["[", showListHelper xs, "]"]
-
-instance (Show a) => Show (Maybe a) where
-    show Nothing = "Nothing"
-    show (Just x) = "Just " ++ show x
 
 -- Show a list without the open and close brackets
 showListHelper :: (Show a) => [a] -> String

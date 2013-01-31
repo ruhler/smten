@@ -196,10 +196,36 @@ deriveFree dn vars cs =
       free = Method (name "free") (doE stmts)
       ctx = [Class (name "Free") [tyVarType c] | c <- vars]
   in InstD ctx (Class (name "Free") [dt]) [free]
+
+-- Derive an instance of Show for the given data type declaration.
+-- Generates something of the form:
+--    instance (Show a, Show b, ...) => Show (Foo a b ...) where
+--       show (Foo1 a1 a2 ...) = show_helper ["Foo1", show a1, show a2, ...]
+--       show (Foo2 a1 a2 ...) = show_helper ["Foo2", show a1, show a2, ...]
+--            ...
+--       show (FooN a1 a2 ...) = show_helper ["FooN", show a1, show a2, ...]
+deriveShow :: Name -> [TyVar] -> [Con] -> Dec
+deriveShow dn vars cs =
+  let dt = appsT (ConT dn) (map tyVarType vars)
+        
+      mkcon :: Con -> MAlt
+      mkcon (Con cn ts) =
+        let fields = [Sig (name $ 'a' : show i) t | (t, i) <- zip ts [1..]]
+            p = ConP cn [VarP n | Sig n _ <- fields]
+            shows = [appE (VarE (Sig (name "show") UnknownT)) (VarE a) | a <- fields]
+            body = appE (VarE (Sig (name "__show_helper") UnknownT)) $
+                     listE (stringE (unname cn) : shows)
+        in simpleMA [p] body []
+
+      ctx = [Class (name "Show") [tyVarType c] | c <- vars]
+      shclauses = map mkcon cs
+      sh = Method (name "show") (clauseE shclauses)
+  in InstD ctx (Class (name "Show") [dt]) [sh]
       
 derive :: Name -> Name -> [TyVar] -> [Con] -> Dec
 derive n
  | n == name "Eq" = deriveEq
  | n == name "Free" = deriveFree
+ | n == name "Show" = deriveShow
  | otherwise = error $ "deriving " ++ show n ++ " not supported in seri"
 

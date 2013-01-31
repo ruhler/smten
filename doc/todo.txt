@@ -1,6 +1,5 @@
 
 Highly Desirable::
-* auto derive Show
 * StateT monad
 * Contexts in classes
 * Arrays with bit-vector indices.
@@ -133,6 +132,14 @@ Bugs::
 * Report an error for an unknown primitive encountered in SMT Translation
 * I suspect shadowed variables won't work in STP queries because of a bug in
   how let expressions are implemented. (Can that ever happen?)
+* do a where clause's bindings shadow the default case?
+    ex:   let z = 3
+          in case z of
+                p | p /= 3 -> z
+                  where z = p+1
+                _ -> z
+   does this return 3 or 4?
+            
 
 Other::
 * Have name sugar for arrowN, tupleN, de_tupleN, unitN, etc...
