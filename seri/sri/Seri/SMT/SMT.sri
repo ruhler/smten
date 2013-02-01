@@ -64,6 +64,22 @@ instance (Free a, Free b, Free c) => Free (a, b, c) where
         c <- free  
         return (a, b, c)
 
+instance (Free a) => Free (Maybe a) where
+    free = do
+       p <- free
+       v <- free
+       return (if p then Just v else Nothing)
+
+instance Free Ordering where
+    free = do
+        lt <- free
+        eq <- free
+        return (if lt
+                  then LT
+                  else if eq
+                          then EQ
+                          else GT)
+
 -- TODO: how should we deal with free functions?
 instance (Free a, Free b) => Free (a -> b) where
     free = __prim_free

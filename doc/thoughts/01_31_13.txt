@@ -1,0 +1,466 @@
+
+Thu Jan 31 08:53:50 EST 2013
+
+There has been a request for where blocks. Let me try again to figure out how
+they are supposed to work.
+
+First off, they happen in some specific places.
+
+For example, in a case expression. Let's focus in on that use.
+
+           alt    → pat -> exp [where decls]
+                  | pat gdpat [where decls]
+So, there is an optional where clause associated with each pattern in the
+match.
+
+The decls "scope over all of the guards and expressions"
+
+- pattern match e against pat, trying alternatives sequentially
+- if we find a match
+    1. add bindings from pattern
+    2. add bindings from decls for the alternative
+    3. try guards, from top to bottom
+
+So, it looks like the way it works is...
+
+Match the pattern. Then apply the decls, then try the guards.
+
+Let me see how this would fit into my sugar.
+
+Alt is now: Alt Pat [Body] [LDecl]
+
+To match an alternative...
+
+body <- bodiesM bs n
+patM x p (lets decls body) n
+
+So, as soon as it matches, we have the bindings right there. Good?
+
+Seems reasonable to me. Not hard to change.
+
+Now, let me figure out where else we can have where. See if it is similar.
+
+           rhs    → = exp [where decls]
+                  | gdrhs [where decls]
+ 
+rhs returns [Body]. So now it should return ([Body], [LDecl]).
+So MAlt is extended to have an LDecl
+
+And the way it should match is, first we match the patterns, then we add the
+bindings. So again, body is wrapped in the bindings
+
+In summary: where's are associated with patterns in either case alternatives
+or function alternatives. They may refer to variables bound in the pattern.
+Any guards may refer to variables bound in the where.
+
+Easy.
+
+So! Let me try it out then. I think I only have to add it to those two places:
+Alt and MAlt.
+
+Thu Jan 31 09:54:04 EST 2013
+
+Okay! So where clauses are in the right place. I'm slightly worried about
+scoping and shadowing issues. I hope they don't come up... I suppose I'll pay
+for it when they do.
+
+I put a todo entry on the bug. That's good enough for me.
+
+Anyway! Next thing to tackle: auto deriving of Show.
+
+I may as well look at how it's supposed to be done, and do it right if it
+isn't too hard to do right.
+
+showPrec :: Integer -> a -> String -> String
+showPrec d x r
+
+If precedence of x is less than d, put parens around x, otherwise don't.
+Concat the printed value of x to the string r.
+
+So, looks like to show
+    FooBar = Foo A B
+           | Bar A B
+
+is:
+
+instance Show FooBar where
+    showsPrec d (Foo a b) = showParen (d > app_prec) showStr
+      where showStr = showString "Foo" .
+                      showsPrec (app_prec + 1) a .
+                      showsPrec (app_prec + 1) b
+    showsPrec d (Bar a b) = showParen (d > app_prec) showStr
+      where showStr = showString "Bar " .
+                      showsPrec (app_prec + 1) a .
+                      showString " " .
+                      showsPrec (app_prec + 1) b
+app_prec = 10
+
+And then I'll need to make sure the atomic things: integer, string, character,
+etc.. deal with the precedence correctly? Err... not really. That should be
+okay.
+
+So this isn't hard. I just need:
+ * showsPrec added to Show class
+ * implementation of show based on showsPrec
+ * implementation of showParen
+ * implementation of showString
+
+Okay, so it's not that hard... but maybe I can start more simply and deal with
+issues as they arise.
+
+I propose the following: have show, just put parens around any non-atomic
+thing. That is, show returns something atomic. I'll have extra top-level
+parenthesis, but that's the only cost, which I can deal with.
+
+For example:
+
+data FooBar = Foo
+            | Bar A B
+
+derives:
+
+instance Show FooBar where
+    show Foo = __show_helper ["Foo"]
+    show (Bar a b) = __show_helper ["Bar", show a, show b]
+
+__show_helper :: [String] -> String
+__show_helper [x] = x
+__show_helper xs = "(" ++ __show_helper2 xs ++ ")"
+
+__show_helper2 :: [String] -> String
+__show_helper2 [] = ""
+__show_helper2 (x:xs) = x ++ " " ++ xs
+
+Now, that ought to be easy to give an automatic derivation for. Shall I try
+it?
+
+Thu Jan 31 11:28:48 EST 2013
+
+Now I have a basic automatic derivation of show.
+
+Next on the list of things to change...
+
+This has come up a bunch, and I've always put it off, but I don't think it
+will be too difficult: contexts in classes.
+
+The idea is this:
+* each class can have a context.
+* for an instance to be valid, the class context must be satisfied for the
+  instance parameter.
+* a class appearing in a context also provides its context.
+
+The changes to make are... straight-forward, if a little tedious.
+
+1. Add Context too ClassD.
+2. Add check for context in instance declarations
+3. Extend context with that context in context checks.
+4. Add concrete syntax for context of classes.
+
+I don't think any of this is terribly difficult.
+
+Before I dive in, let me try to understand (2) and (3) a little better,
+because it's been a while since I've looked at the type checker.
+
+I have a function: instcheck. It takes an Env, a context, and an expression,
+and verifies the context is right.
+
+Issue: instcheck takes an expression. So it can't be used for verifying a
+predicate is satisfied in the context. That's a common function I should be
+able to pull out, and one that should look in all the classes recursively to
+find all the info we know about.
+
+To check if a Class predicate is satisfied, we look the following places:
+ * the immediate context.
+ * for an instance declaration
+    - in which case the context of that declaration must be satisfied.
+ * contexts implied by the immediate context
+
+For example, say we want to know if Eq Foo is satisfied.
+ * immediate context: we have Eq Foo
+ * instance declaration: we have instance ctx => Eq Foo,
+    and we verify all predicates in ctx are satisfied (given the immediate ctx)
+ * implied context: we have Ord Foo, and Ord Foo implies Eq Foo.
+
+So, maybe what I should do is this: before checking the immediate context,
+expand it recursively to get the immediate and implied context, and look in
+there for the first step. Then all I need to do is implement this recursive
+search function, and I'm all set. The instcheck function will work just as
+before, only taking into account class contexts.
+
+Now, for (2), how do I go about this?
+checkdec InstD needs to add a call to instcheck, only, like I said, I should
+have separated out the "satisfied" function from instcheck, then I can call
+that directly.
+
+Cool! So this really shouldn't be too difficult at all. I can do some
+reorganization and cleanup first to ease the transition. Perhaps I should make
+a new branch for this? Or is it easy enough to do all at once?
+
+Probably it's easy enough to do all at once.
+
+Steps:
+
+1. Add Context to Class, fix all errors by initially assuming empty
+2. implement recursive context search function
+3. use recursive context search function in "satisfied"
+4. pull satisfied out of instcheck
+5. use satisfied in checkdec of InstD.
+6. Add syntax for class contexts to grammar
+7. Make Eq a context of Ord, and try it out (verify with Ord in the context,
+we can use (==).
+
+I should really make a maltyped test where I verify I can't give an instance
+of Ord without there being an instance of Eq.
+
+Alternatively, I could do my search guided by what I know I'm testing against.
+Then, rather than say cls `elem` c, say something like cls `bycontext` c,
+which does the recursive check thing. It can go a class at a time, and look
+recursively up the chain as far as possible. I don't think it should be
+possible to have any loops.
+
+Sounds good to me. Let me try this out when I get back from lunch. I can fix
+this issue at last.
+
+Thu Jan 31 12:22:35 EST 2013
+
+1. Done.
+
+Actually, I'm tempted to go out of order here and make this test driven.
+
+Let me enable the concrete syntax. Then test the two things I need to test,
+and fix them as needed. Use the maltype test strategy where appropriate.
+
+Sounds reasonable to me.
+
+Okay, I have the syntax now. And I have a couple of test cases. The first case
+to fix is: search the context recursively. That should be fairly straight
+forward, no?
+
+Thu Jan 31 13:57:21 EST 2013
+
+There! done. I think, anyway. It's hard to tell. I did everything I said I
+should, and my test cases pass. So let me go from that, and assume it works.
+
+Perhaps, as a test, I should first change Ord to depend on Eq, then update
+everything to work based on that... and try out SHampi, see if it still works?
+
+Thu Jan 31 14:05:39 EST 2013
+
+Okay! So contexts in classes are now officially supported.
+
+Next step: there's an issue with the InstD context chosen by auto deriving.
+I'm not sure what it's supposed to do, but currently we put all type params in
+the context. That doesn't make sense.
+
+data Foo a = Foo Integer
+    deriving (Eq, Show)
+
+We should not need any context here.
+
+Questions are:
+ * what does the haskell report say?
+ * what does ghc do?
+ * what should I do?
+
+The haskell reports says: insert the smallest context such that all of the
+fields satisfy the class requirement. And we may need to do fixpoint analysis
+to figure out what that could be.
+
+Hmm... so how can I do this?
+
+Proposed approximation:
+- Put in the context a predicate for every field type which is not the type we
+  are deriving for, and which contains one of the type variables.
+
+What do you think of that? Eh?
+
+It won't be the smallest we need. For example, if we have a field of type [a]
+for Eq, then we'll say (Eq [a]) instead of (Eq a)...
+
+But that should still work I think. So let me try that. It's an easy enough
+check.
+
+No. This won't work. I fear infinite loops and such.
+
+I think I have to be much more clever to make this more reasonable than it is
+now.
+
+Perhaps, however, I could avoid the issue if I allow stand-alone deriving,
+because then the user could specify the context. I wouldn't have to figure it
+out.
+
+Thu Jan 31 14:33:35 EST 2013
+
+Let me think about standalone deriving.
+
+  deriving instance ctx => Foo ty
+
+This should be easy. The only reason it is difficult is, I need access to the
+data type definition. I can do this if I have the environment.
+
+I feel like... 'flatten' has all the info we need. Let's say a module includes
+a list of Deriving objects, where we give context, class, and type.
+
+Now, we need to look up the data type somewhere... I can call mkEnv to get the
+environment though, right?
+
+Okay, I can totally do this. In flatten1.
+
+I have syns. Also extract Derivings.
+After I qualify the module... and after qualifying the derivings too I
+suppose?
+
+No... I need to derive pre-qualified?
+
+Okay, so do this. For each deriving from the module, first do the deriving,
+using the environment of all the modules. That generates a bunch of
+declarations, stuff it into the current module, then qualify that module.
+That's it. Simple.
+
+I think this would be worth-while doing. More so, perhaps, and more
+reasonable, than fixing the issue with inferring the context for deriving.
+
+Well, I can at least try it, don't you think?
+
+Thu Jan 31 14:54:09 EST 2013
+
+I'm... getting stuck. Not making forward progress.
+
+Okay, let me go a step at a time.
+
+I want to add support for standalone deriving.
+
+I have code for non-standalone deriving. The non-standalone deriving code
+does two things: 1. context and class inference, 2. the actual derivation.
+Standalone deriving only needs (2).
+
+So, the first step should be for me to split the deriving code into (1) and
+(2).
+
+(2) needs as input:
+    Context - the inferred or explicit context: ex: (Eq a)
+    Class - the class to generate an instance for: ex: (Eq [a])
+    Name, [TyVar], [Con] - the data type declaration
+
+In our deriving clause, we are given: the data type declaration. That means
+that (1) needs:
+    Name, [TyVar], [Con]
+
+And it should produce the Context and Class for (2).
+
+We would also like to have the combination of (1) and (2) together. Though
+maybe, because that's only used in one place, that's not really necessary.
+
+Okay, so let me define:
+    inferFoo, which is (1) for Foo
+    deriveFoo, which is (2) for Foo
+
+I can also have the generic: infer, and derive? But I'd rather have a single
+function which knows how to mix them.
+
+Okay, how about this:
+    deriveFoo is (2)
+    ideriveFoo is (1) + (2).
+I can make a general derive and iderive. Easy. Just like I want.
+
+So let me rename deriveEq ideriveEq. Then split it into two parts. Okay? Cool.
+Sounds good. Easy.
+
+Ug. I dunno. This is hard for some reason.
+
+Thu Jan 31 15:22:41 EST 2013
+
+What all things do I have to do to make standalone deriving work?
+
+1. Reassign type variables in constructors based on Class
+   So, class should be (Foo (dn a1 a2 a3 ...))
+    Line up a1, a2, a3 and so on with the type vars.
+
+2. Lookup what to derive based on class
+   So, class should be (Foo (dn a1 a2 a3 ...))
+    Answer is "Foo"
+
+3. Look up data type in environment based on Class.
+   So, class should be (Foo (dn a1 a2 a3 ...))
+    lookup dn.
+
+4. wrap that in a function.
+Perhaps... saderive for standalone, and nderive for normal derive? Or keep it
+as iderive. I don't see much difference either way.
+
+5. Add Deriving component to Module, and do saderiving there.
+
+I don't feel like doing any of this now. Maybe I can work on something else
+productive...
+
+Thu Jan 31 16:03:59 EST 2013
+
+Okay, so I started making some progress.
+
+1. I no longer refer to types in the constructors, so no need to rename. Type
+inference will do all the work for us.
+
+2. Done. Easy.
+
+3. Should not be hard. But... hmm... I'm still running low on steam I suppose.
+
+Let me take a break, get an early dinner, then come back and see if I'm more
+in the mood to make progress here.
+
+Thu Jan 31 18:30:48 EST 2013
+
+I have a solution, I believe, to the normal deriving problem.
+
+Here's the deal. We need to infer a context for deriving, because we may have
+type variables which have to obey some restrictions.
+
+In each of Eq, Ord, Show, Free, etc... our use of the type class is recursive,
+and acts on the fields of the constructors. We must construct our context to
+satisfy the requirements for the fields to meet the class.
+
+In my current approach, I have not way to see which instances exist, and which
+contexts they have. For example, say you have a field which is (Foo a), and we
+want an instance of Eq. I have no way of checking to see if there is an
+instance of Eq for Foo for all a, in which case, we don't need to augment the
+context. This means I can't follow the spec to have the minimum inferred
+context.
+
+But I think that's fine. I just won't have the minimum. I don't see it as
+causing a problem. Instead I'll have the obvious: if I have (Foo a), I'll add
+to the context (Eq (Foo a)). Easy. The type checker can figure out if that is
+met or not by looking for an instance of Eq for (Foo a).
+
+Now, I say there is no need to include predicates in the inferred context
+which are satisfied by the instance being defined. So, if you are defining an
+instance of Eq for (Bar a), for example, no need to have (Bar a), or
+(Bar Blah) or similar such things in the context.
+
+This happens to avoid the fear I have for a recursive expand loop, but that
+doesn't matter, because I want to fix that anyway to break recursion.
+
+So the idea is simple.
+
+1. Reimplement expand to avoid loops.
+Pass as an argument the predicates we've already explored, and don't explore
+them again. Simple.
+
+2. To infer the context, do the following:
+a. produce the list of all fields of all constructors
+b. filter out any which have no variable type or are met by the derivation.
+Use the result as the context. Simple.
+
+Shall I try it? Yes. Starting with (1).
+
+Thu Jan 31 18:45:10 EST 2013
+
+1. is done.
+
+Now for 2.
+
+Thu Jan 31 18:58:47 EST 2013
+
+Easy! And it works. Wonderful. Cool. That makes me feel much better.
+
+Now, I would really like stand-alone deriving to work. The question is... how
+should I get at the data type declarations? I want to think about it more.
+
