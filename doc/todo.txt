@@ -3,7 +3,6 @@ Highly Desirable::
 * StateT monad
 * Arrays with bit-vector indices.
 * standalone deriving
-* Instances of Free for library types like Maybe
 
 Haskell Features::
 * Allow parens in InstD: instance (Foo Bar) where...
