@@ -1,0 +1,21 @@
+
+Fri Feb  1 12:57:44 EST 2013
+
+Here's how stand-alone deriving should work.
+
+1. derive should take the record-type constructors as input.
+This is needed for Show.
+
+I don't think it needs the name or variables as input.
+
+2. Module will contain a list of deriving instances, and a list of record-type
+data declarations.
+
+3. flatten1 will look up in the list of record-type data declarations from all
+modules to find the record-type constructors, and it will call derive, then
+append those instances to the module declarations just before qualification.
+
+And that's it. Easy.
+
+So... I can get to work if I really feel like I need this feature.
+

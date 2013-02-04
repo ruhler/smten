@@ -83,7 +83,7 @@ recordD nm vars cons derivings =
       undefs = map mkundef cons'
       accs = concatMap mkaccs cons
       upds = concatMap mkupds cons
-      derivations = [iderive d nm vars cons' | d <- derivings]
+      derivations = [iderive d nm vars cons | d <- derivings]
   in concat [[DataD nm vars cons'], derivations, undefs, accs, upds]
 
 -- | Desugar labelled update.
@@ -107,10 +107,10 @@ recordC (Sig cn ct) fields = recordU (VarE (Sig (record_undefnm cn) ct)) fields
 --       (==) _ _ = False
 --
 --       (/=) = (/=#)
-deriveEq :: Context -> Class -> Name -> [TyVar] -> [Con] -> Dec
-deriveEq ctx cls dn vars cs =
-  let mkcon :: Con -> MAlt
-      mkcon (Con cn ts) =
+deriveEq :: Context -> Class -> [ConRec] -> Dec
+deriveEq ctx cls cs =
+  let mkcon :: ConRec -> MAlt
+      mkcon (NormalC cn ts) =
         let fieldsA = [Sig (name $ 'a' : show i) UnknownT | i <- [1..length ts]]
             fieldsB = [Sig (name $ 'b' : show i) UnknownT | i <- [1..length ts]]
             pA = ConP cn [VarP n | Sig n _ <- fieldsA]
@@ -119,6 +119,7 @@ deriveEq ctx cls dn vars cs =
                     [listE [appsE (VarE (Sig (name "==") UnknownT)) 
                                [VarE a, VarE b] | (a, b) <- zip fieldsA fieldsB]]
         in simpleMA [pA, pB] body []
+      mkcon (RecordC cn ts) = mkcon (NormalC cn (map snd ts))
 
       def = simpleMA [WildP, WildP] falseE []
       eqclauses = map mkcon cs ++ [def]
@@ -152,23 +153,26 @@ deriveEq ctx cls dn vars cs =
 --          else if isFoo2 then Foo2 a1Foo2 a2Foo2 ...
 --             ...
 --          else FooN a1FooN a2FooN ...)
-deriveFree :: Context -> Class -> Name -> [TyVar] -> [Con] -> Dec
-deriveFree ctx cls dn vars cs =
+deriveFree :: Context -> Class -> [ConRec] -> Dec
+deriveFree ctx cls cs =
   let -- name of tag for constructor: (isFooX :: Bool)
-      mkTag :: Con -> Sig
-      mkTag (Con nm _) = Sig (name "is" `nappend` nm) boolT
+      mkTag :: ConRec -> Sig
+      mkTag (NormalC nm _) = Sig (name "is" `nappend` nm) boolT
+      mkTag (RecordC nm ts) = mkTag (NormalC nm (map snd ts))
 
       -- fields for constructor: [a1FooX, a2FooX, ...]
-      mkFields :: Con -> [Sig]
-      mkFields (Con nm ts)
+      mkFields :: ConRec -> [Sig]
+      mkFields (NormalC nm ts)
         = [Sig (name ('a' : show i) `nappend` nm) UnknownT | i <- [1..length ts]]
+      mkFields (RecordC nm ts) = mkFields (NormalC nm (map snd ts))
 
       -- application of constructor to its fields:
       --    FooX a1FooX a2FooX ...
-      mkCon :: Con -> Exp
-      mkCon c@(Con nm _) =
+      mkCon :: ConRec -> Exp
+      mkCon c@(NormalC nm _) =
         let fields = mkFields c
         in appsE (conE (Sig nm UnknownT)) (map varE fields)
+      mkCon (RecordC nm ts) = mkCon (NormalC nm (map snd ts))
 
       -- given [t1, t2, ..., tnm1] [v1, v2, ... vn]
       --  Generates the nested if statement:
@@ -199,29 +203,30 @@ deriveFree ctx cls dn vars cs =
 --       show (Foo2 a1 a2 ...) = show_helper ["Foo2", show a1, show a2, ...]
 --            ...
 --       show (FooN a1 a2 ...) = show_helper ["FooN", show a1, show a2, ...]
-deriveShow :: Context -> Class -> Name -> [TyVar] -> [Con] -> Dec
-deriveShow ctx cls dn vars cs =
-  let mkcon :: Con -> MAlt
-      mkcon (Con cn ts) =
+deriveShow :: Context -> Class -> [ConRec] -> Dec
+deriveShow ctx cls cs =
+  let mkcon :: ConRec -> MAlt
+      mkcon (NormalC cn ts) =
         let fields = [Sig (name $ 'a' : show i) UnknownT | i <- [1..length ts]]
             p = ConP cn [VarP n | Sig n _ <- fields]
             shows = [appE (VarE (Sig (name "show") UnknownT)) (VarE a) | a <- fields]
             body = appE (VarE (Sig (name "__show_helper") UnknownT)) $
                      listE (stringE (unname cn) : shows)
         in simpleMA [p] body []
+      mkcon (RecordC cn ts) = mkcon (NormalC cn (map snd ts))
 
       shclauses = map mkcon cs
       sh = Method (name "show") (clauseE shclauses)
   in InstD ctx cls [sh]
 
-derive :: Context -> Class -> Name -> [TyVar] -> [Con] -> Dec
+derive :: Context -> Class -> [ConRec] -> Dec
 derive ctx cls@(Class n _)
  | n == name "Eq" = deriveEq ctx cls
  | n == name "Free" = deriveFree ctx cls
  | n == name "Show" = deriveShow ctx cls
  | otherwise = error $ "deriving " ++ show n ++ " not supported in seri"
       
-iderive :: Name -> Name -> [TyVar] -> [Con] -> Dec
+iderive :: Name -> Name -> [TyVar] -> [ConRec] -> Dec
 iderive n dn vars cs = 
   let dt = appsT (ConT dn) (map tyVarType vars)
       cls = Class n [dt]
@@ -229,7 +234,11 @@ iderive n dn vars cs =
       keep :: Type -> Bool
       keep t = not $ or [null (varTs t ++ nvarTs t), isSubType dt t]
 
-      fieldts = concat [ts | Con _ ts <- cs]
+      fields :: ConRec -> [Type]
+      fields (NormalC _ ts) = ts
+      fields (RecordC _ ts) = map snd ts
+
+      fieldts = concatMap fields cs
       ctx = nub [Class n [t] | t <- filter keep fieldts]
-  in derive ctx cls dn vars cs
+  in derive ctx cls cs
 
