@@ -135,23 +135,23 @@ import Seri.Parser.Utils
 
 module :: { Module }
  : 'module' modid 'where' mbody
-    { let (is, sy, dds, ds) = $4
-      in Module $2 is sy dds ds }
+    { let (is, sy, dds, drv, ds) = $4
+      in Module $2 is sy dds drv ds }
  | mbody
     -- TODO: we should export only 'main' explicitly when explicit exports are
     -- supported
-    { let (is, sy, dds, ds) = $1
-      in Module (name "Main") is sy dds ds}
+    { let (is, sy, dds, drv, ds) = $1
+      in Module (name "Main") is sy dds drv ds}
 
-mbody :: { ([Import], [Synonym], [DataDec], [Dec]) }
+mbody :: { ([Import], [Synonym], [DataDec], [Deriving], [Dec]) }
  : '{' impdecls ';' topdecls opt(';') '}'
-    { let (syns, dds, ds) = coalesce $4
-      in ($2, syns, dds, ds) }
+    { let (syns, dds, drv, ds) = coalesce $4
+      in ($2, syns, dds, drv, ds) }
  | '{' impdecls opt(';') '}'
-    { ($2, [], [], []) }
+    { ($2, [], [], [], []) }
  | '{' topdecls opt(';') '}'
-    { let (syns, dds, ds) = coalesce $2
-      in ([], syns, dds, ds) }
+    { let (syns, dds, drv, ds) = coalesce $2
+      in ([], syns, dds, drv, ds) }
 
 impdecls :: { [Import] }
  : impdecl 
@@ -182,6 +182,10 @@ topdecl :: { [PDec] }
     { [PDec (InstD [] $2 (icoalesce $5))] }
  | 'instance' context class 'where' '{' idecls opt(';') '}'
     { [PDec (InstD $2 $3 (icoalesce $6))] }
+ | 'deriving' 'instance' class
+    { [PDeriving (Deriving [] $3)] }
+ | 'deriving' 'instance' context class
+    { [PDeriving (Deriving $3 $4)] }
  | decl
     { [$1] }
 

@@ -21,6 +21,7 @@ data PDec =
   | PSig TopSig
   | PClause Name MAlt
   | PSynonym Synonym
+  | PDeriving Deriving
 
 data LDec =
     LPat Pat Exp
@@ -30,24 +31,28 @@ isPClause :: PDec -> Bool
 isPClause (PClause {}) = True
 isPClause _ = False
 
-coalesce :: [PDec] -> ([Synonym], [DataDec], [Dec])
-coalesce [] = ([], [], [])
+coalesce :: [PDec] -> ([Synonym], [DataDec], [Deriving], [Dec])
+coalesce [] = ([], [], [], [])
 coalesce ((PSig s):ds) =
     let (ms, rds) = span isPClause ds
-        (syns, dds, rest) = coalesce rds
+        (syns, dds, drv, rest) = coalesce rds
         d = case ms of
                 [] -> PrimD s
                 _ -> ValD s (clauseE [c | PClause _ c <- ms]) 
-    in (syns, dds, d:rest)
+    in (syns, dds, drv, d:rest)
 coalesce ((PDec d):ds) =
-   let (syns, dds, rest) = coalesce ds
-   in (syns, dds, d:rest)
+   let (syns, dds, drv, rest) = coalesce ds
+   in (syns, dds, drv, d:rest)
 coalesce ((PDataDec dd):ds) = 
-   let (syns, rest, d) = coalesce ds
-   in (syns, dd:rest, d)
+   let (syns, rest, drv, d) = coalesce ds
+   in (syns, dd:rest, drv, d)
 coalesce ((PSynonym s):ds) =
-   let (syns, dds, rest) = coalesce ds
-   in (s:syns, dds, rest)
+   let (syns, dds, drv, rest) = coalesce ds
+   in (s:syns, dds, drv, rest)
+coalesce ((PDeriving d):ds) =
+   let (syns, dds, drv, rest) = coalesce ds
+   in (syns, dds, d:drv, rest)
+
 
 -- Merge clauses for the same method into a single method.
 icoalesce :: [(Name, MAlt)] -> [Method]

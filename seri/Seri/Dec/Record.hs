@@ -1,6 +1,7 @@
 
 module Seri.Dec.Record (
     ConRec(..), recordD, recordC, recordU,
+    derive,
     ) where
 
 import Data.List(nub)

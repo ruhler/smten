@@ -38,7 +38,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 
 module Seri.Module.Module (
-    Module(..), Import(..), Synonym(..), DataDec(..),
+    Module(..), Import(..), Synonym(..), DataDec(..), Deriving(..),
     flatten, flatten1,
     ) where
 
@@ -65,11 +65,15 @@ data Import = Import Name
 
 -- type Foo a b ... = ...
 data Synonym = Synonym Name [Name] Type 
-    deriving(Show, Eq)
+    deriving (Show, Eq)
 
 -- data Foo a b ... = ...
 data DataDec = DataDec Name [TyVar] [ConRec]
-    deriving(Show, Eq)
+    deriving (Show, Eq)
+
+-- deriving instance ctx => cls
+data Deriving = Deriving Context Class
+    deriving (Show, Eq)
 
 data Module = Module {
     mod_name :: Name,
@@ -83,6 +87,9 @@ data Module = Module {
     -- corresponding to this data declaration.
     mod_ddecs :: [DataDec],
 
+    -- | list of stand-alone deriving only.
+    mod_derivings :: [Deriving],
+
     mod_decs :: [Dec]
 } deriving(Show, Eq)
 
@@ -94,6 +101,13 @@ instance Ppr Synonym where
       = sep ([text "type", ppr n] 
                 ++ map ppr vs
                 ++ [text "=", ppr t]) <> semi
+
+instance Ppr Deriving where
+    ppr (Deriving ctx cls) = sep [
+            text "deriving",
+            text "instance",
+            ppr ctx,
+            ppr cls] <> semi
 
 instance Ppr Module where
     ppr m
@@ -119,6 +133,9 @@ type QualifyM = StateT QS Failable
 
 mkSyns :: [Synonym] -> HT.HashTable Name ([Name], Type)
 mkSyns xs = HT.table [(n, (vs, t)) | Synonym n vs t <- xs]
+
+mkDDecs :: [DataDec] -> HT.HashTable Name [ConRec]
+mkDDecs xs = HT.table [(n, cs) | DataDec n _ cs <- xs]
 
 onfailq :: (String -> QualifyM a) -> QualifyM a -> QualifyM a
 onfailq f q = do
@@ -301,5 +318,15 @@ flatten1 :: [Module]    -- ^ The environment
             -> Failable [Dec] -- ^ Flattened declarations from the module
 flatten1 ms m = do
   let syns = mkSyns $ concatMap mod_synonyms ms
-  mod_decs <$> evalStateT (qualify m) (QS ms (error "not in module") [] syns)
+      ddecs = mkDDecs $ concatMap mod_ddecs ms
+
+      mderive :: Deriving -> Failable Dec
+      mderive d@(Deriving ctx cls)
+        | Class _ [t] <- cls
+        , (ct, _) <- de_appsT t
+        , Just n <- de_conT ct
+        , Just cs <- HT.lookup n ddecs = return (derive ctx cls cs)
+        | otherwise = throw $ "unable to perform standalone derive: " ++ pretty d
+  derives <- mapM mderive (mod_derivings m)
+  mod_decs <$> evalStateT (qualify (m { mod_decs = derives ++ mod_decs m})) (QS ms (error "not in module") [] syns)
 

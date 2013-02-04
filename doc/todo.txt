@@ -2,7 +2,6 @@
 Highly Desirable::
 * StateT monad
 * Arrays with bit-vector indices.
-* standalone deriving
 
 Haskell Features::
 * Allow parens in InstD: instance (Foo Bar) where...
@@ -51,6 +50,8 @@ Front End::
   up.
 * Don't allow deriving of Free for recursive data types
 * Add static check for concreteness of queries (?)
+* The code for handling stand-alone deriving feels very messy to me. Can we
+  clean up how that works somehow?
 
 Pretty Printer::
 * Make pretty again:
