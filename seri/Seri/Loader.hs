@@ -59,12 +59,12 @@ loads :: SearchPath
 loads _ [] ms = return ms
 loads sp ns ms =
   let isLoaded :: Name -> Bool
-      isLoaded n = n `elem` ([mn | Module mn _ _ _ <- ms])
+      isLoaded n = n `elem` map mod_name ms
 
       needed = nub $ filter (not . isLoaded) ns
   in do
     loaded <- mapM (loadone sp) needed
-    let newimports = concat [i | Module _ i _ _ <- loaded]
+    let newimports = concatMap mod_imports loaded
     let newnames = [n | Import n <- newimports]
     loads sp newnames (loaded ++ ms)
 
@@ -81,9 +81,9 @@ loadthis fname = do
 
 -- Add the prelude import to a module if needed.
 addprelude :: Module -> Module
-addprelude m@(Module n i s d)
-  | n == name "Prelude" = m
-  | otherwise = Module n (Import (name "Prelude") : i) s d
+addprelude m
+  | mod_name m == name "Prelude" = m
+  | otherwise = m { mod_imports = Import (name "Prelude") : mod_imports m }
       
 findmodule :: SearchPath -> Name -> IO FilePath
 findmodule [] n = fail $ "Module " ++ unname n ++ " not found"
@@ -104,8 +104,8 @@ findmodule (s:ss) n =
 -- the given path.
 load :: SearchPath -> FilePath -> IO [Module]
 load path mainmod = do
-    main@(Module _ imps _ _)  <- loadthis mainmod
-    loads path [n | Import n <- imps] [main]
+    main <- loadthis mainmod
+    loads path [n | Import n <- mod_imports main] [main]
 
 
 -- Load a program into an environment.

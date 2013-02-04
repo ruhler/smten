@@ -38,7 +38,8 @@
 {-# LANGUAGE FlexibleInstances #-}
 
 module Seri.Module.Module (
-    Module(..), Import(..), Synonym(..), flatten, flatten1,
+    Module(..), Import(..), Synonym(..), DataDec(..),
+    flatten, flatten1,
     ) where
 
 import Control.Monad.State
@@ -66,8 +67,24 @@ data Import = Import Name
 data Synonym = Synonym Name [Name] Type 
     deriving(Show, Eq)
 
-data Module = Module Name [Import] [Synonym] [Dec]
+-- data Foo a b ... = ...
+data DataDec = DataDec Name [TyVar] [ConRec]
     deriving(Show, Eq)
+
+data Module = Module {
+    mod_name :: Name,
+    mod_imports :: [Import],
+    mod_synonyms :: [Synonym],
+
+    -- | A copy of the original data type declarations in the module. This is
+    -- recorded here so we have access to the record type constructors for
+    -- stand-alone deriving.
+    -- Note: mod_decs already contains the desugared declarations
+    -- corresponding to this data declaration.
+    mod_ddecs :: [DataDec],
+
+    mod_decs :: [Dec]
+} deriving(Show, Eq)
 
 instance Ppr Import where
     ppr (Import n) = text "import" <+> ppr n <> semi
@@ -79,16 +96,16 @@ instance Ppr Synonym where
                 ++ [text "=", ppr t]) <> semi
 
 instance Ppr Module where
-    ppr (Module n imps syns decs)
-        = text "module" <+> ppr n <+> text "where" <+> text "{"
+    ppr m
+        = text "module" <+> ppr (mod_name m) <+> text "where" <+> text "{"
             $+$ nest tabwidth (
-                vcat (map ppr imps)
-                $+$ vcat (map ppr syns)
-                $+$ ppr decs) $+$ text "}"
+                vcat (map ppr (mod_imports m))
+                $+$ vcat (map ppr (mod_synonyms m))
+                $+$ ppr (mod_decs m)) $+$ text "}"
 
 lookupModule :: Name -> [Module] -> Failable Module
 lookupModule n [] = throw $ "module " ++ pretty n ++ " not found"
-lookupModule n (m@(Module nm _ _ _) : _) | (n == nm) = return m
+lookupModule n (m:_) | (n == mod_name m) = return m
 lookupModule n (_:ms) = lookupModule n ms
 
 data QS = QS {
@@ -111,9 +128,7 @@ onfailq f q = do
      Right (v, s') -> put s' >> return v
 
 mename :: QualifyM Name
-mename = do
-    Module n _ _ _ <- gets qs_me
-    return n 
+mename = gets (mod_name . qs_me)
 
 withbound :: [Name] -> QualifyM a -> QualifyM a
 withbound binds x = do
@@ -133,12 +148,12 @@ class Qualify a where
     qualify :: a -> QualifyM a 
 
 instance Qualify Module where
-    qualify m@(Module nm is sy ds) = do
+    qualify m = do
         modify $ \qs -> qs { qs_me = m }
-        sy' <- mapM qualify sy
-        ds' <- mapM qualify ds
+        sy' <- mapM qualify (mod_synonyms m)
+        ds' <- mapM qualify (mod_decs m)
         modify $ \qs -> qs { qs_me = (error "not in module") }
-        return (Module nm is sy' ds')
+        return $ m { mod_synonyms = sy', mod_decs = ds' }
 
 instance Qualify Synonym where
     qualify (Synonym n vs t) = Synonym n vs <$> qualify t
@@ -258,14 +273,14 @@ resolve n =
       hasName n (PrimD (TopSig nm _ _)) = (n == nm)
 
       r :: [Module] -> Module -> Failable Name
-      r env me@(Module menm imports _ _) = 
+      r env me = 
         let immediate :: Module -> [Name]
-            immediate (Module mnm _ _ ds) = map (const (mnm `nappend` name "." `nappend` n)) (filter (hasName n) ds)
+            immediate m = map (const (mod_name m `nappend` name "." `nappend` n)) (filter (hasName n) (mod_decs m))
         in do
-            imported <- mapM (\(Import mn) -> lookupModule mn env) imports
+            imported <- mapM (\(Import mn) -> lookupModule mn env) (mod_imports me)
             let names = map immediate (me : imported)
             case nub $ concat names of
-                [] -> throw $ "'" ++ pretty n ++ "' not found in module " ++ pretty menm
+                [] -> throw $ "'" ++ pretty n ++ "' not found in module " ++ pretty (mod_name me)
                 [x] -> return x
                 xs -> throw $ "'" ++ pretty n ++ "' is ambiguous: " ++ show xs
   in do
@@ -285,8 +300,6 @@ flatten1 :: [Module]    -- ^ The environment
             -> Module   -- ^ The module to flatten
             -> Failable [Dec] -- ^ Flattened declarations from the module
 flatten1 ms m = do
-  let syns = mkSyns (concat [s | Module _ _ s _ <- ms])
-  (Module _ _ _ d, _) <- runStateT (qualify m) (QS ms (error "not in module") [] syns)
-  return d
-            
+  let syns = mkSyns $ concatMap mod_synonyms ms
+  mod_decs <$> evalStateT (qualify m) (QS ms (error "not in module") [] syns)
 

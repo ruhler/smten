@@ -87,7 +87,7 @@ argspec = Args {
        A.&= A.help "Fully qualified top-level function to use",
     no_main = False
        A.&= A.help "Don't generate a __main wrapper with haskellf",
-    mod_name = "Main"
+    Main.mod_name = "Main"
        A.&= A.help "Haskell module to generate with haskellf",
     file = "Main.sri"
        A.&= A.help "Input .sri file"
@@ -121,5 +121,5 @@ main = do
             putStrLn . pretty $ env
         HaskellF -> do
             env <- loadenv includes (file args)
-            putStrLn . show $ haskellf (not (no_main args)) (mod_name args) (getDecls env)
+            putStrLn . show $ haskellf (not (no_main args)) (Main.mod_name args) (getDecls env)
 

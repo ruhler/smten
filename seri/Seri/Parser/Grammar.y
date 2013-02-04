@@ -135,23 +135,23 @@ import Seri.Parser.Utils
 
 module :: { Module }
  : 'module' modid 'where' mbody
-    { let (is, sy, ds) = $4
-      in Module $2 is sy ds }
+    { let (is, sy, dds, ds) = $4
+      in Module $2 is sy dds ds }
  | mbody
     -- TODO: we should export only 'main' explicitly when explicit exports are
     -- supported
-    { let (is, sy, ds) = $1
-      in Module (name "Main") is sy ds}
+    { let (is, sy, dds, ds) = $1
+      in Module (name "Main") is sy dds ds}
 
-mbody :: { ([Import], [Synonym], [Dec]) }
+mbody :: { ([Import], [Synonym], [DataDec], [Dec]) }
  : '{' impdecls ';' topdecls opt(';') '}'
-    { let (syns, ds) = coalesce $4
-      in ($2, syns, ds) }
+    { let (syns, dds, ds) = coalesce $4
+      in ($2, syns, dds, ds) }
  | '{' impdecls opt(';') '}'
-    { ($2, [], []) }
+    { ($2, [], [], []) }
  | '{' topdecls opt(';') '}'
-    { let (syns, ds) = coalesce $2
-      in ([], syns, ds) }
+    { let (syns, dds, ds) = coalesce $2
+      in ([], syns, dds, ds) }
 
 impdecls :: { [Import] }
  : impdecl 
@@ -171,7 +171,7 @@ topdecls :: { [PDec] }
 
 topdecl :: { [PDec] }
  : 'data' tycon lopt(tyvars) '=' lopt(constrs) lopt(deriving)
-    { [PDec ds | ds <- recordD $2 $3 $5 $6] }
+    { PDataDec (DataDec $2 $3 $5) : [PDec ds | ds <- recordD $2 $3 $5 $6] }
  | 'type' tycon lopt(tyvarnms) '=' type
     { [PSynonym (Synonym $2 $3 $5) ] }
  | 'class' tycon tyvars 'where' '{' cdecls opt(';') '}'
