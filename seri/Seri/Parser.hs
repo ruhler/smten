@@ -24,11 +24,9 @@ import Seri.Parser.Grammar
 --
 -- - Contexts in data declarations.
 --
--- - deriving of classes other than Eq and Free.
+-- - deriving of classes other than Eq, Free, Show.
 --
 -- - Newtype declarations.
---
--- - Contexts in class declarations.
 --
 -- - Empty class declarations.
 --
@@ -43,8 +41,6 @@ import Seri.Parser.Grammar
 -- - ! in constructor declarations.
 --
 -- - infix constructors other than (:).
---
--- - 'where' clauses in expressions.
 --
 -- - left and right sections.
 --

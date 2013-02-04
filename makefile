@@ -20,6 +20,11 @@ testio:
 		--main-is Seri.SMT.Tests.Sudoku2.main \
 		-f seri/sri/Seri/SMT/Tests/Sudoku2.sri +RTS -p
 
+testdesugar:
+	./build/home/.cabal/bin/seri --desugar \
+		--include seri/sri \
+		-f seri/sri/Seri/SMT/Tests/Sudoku2.sri
+
 userinstall:
 	cd seri ; cabal install --builddir ../build/seri-$(USER) --force-reinstalls
 	cd seri-smt ; cabal install --builddir ../build/seri-smt-$(USER) --force-reinstalls

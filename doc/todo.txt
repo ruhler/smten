@@ -142,9 +142,6 @@ Bugs::
                   where z = p+1
                 _ -> z
    does this return 3 or 4?
-* auto-deriving infers too strong a context
-   ex: data Foo a = Foo Integer deriving (Eq)
-         (Foo 3 :: Foo (IO Bool) == Foo 3) 
             
 
 Other::
