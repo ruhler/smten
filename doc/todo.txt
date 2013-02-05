@@ -2,7 +2,6 @@
 Highly Desirable::
 * Recursive lets (with polymorphic types)
 * Better type errors
-** pretty print tuple as (a, b), not ((a, b))
 ** use type synonyms in errors.
 ** report an error for use of a type that isn't defined
 ** print types all on one line:
@@ -66,8 +65,6 @@ Front End::
 Pretty Printer::
 * Make pretty again:
 ** Don't print types of patterns?
-** Know about associativity for types:
-    a -> Foo b  instead of a -> (Foo b)
 ** Recognize if statements.
 ** Recognize do statements.
 ** Recognize clauses:
