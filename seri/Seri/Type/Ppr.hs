@@ -24,9 +24,9 @@ atom t = ppr t
 instance Ppr Type where
     ppr t | Just v <- de_listT t = text "[" <> ppr v <> text "]"
     ppr t | Just vs <- de_tupleT t
-      = text "(" <> sep (punctuate comma (map ppr vs)) <> text ")"
+      = text "(" <> hsep (punctuate comma (map ppr vs)) <> text ")"
     ppr t | (t1:ts@(_:_)) <- de_arrowsT t   
-      = sep $ atom t1 : concat [[text "->", atom tx] | tx <- ts]
+      = hsep $ atom t1 : concat [[text "->", atom tx] | tx <- ts]
 
     ppr (ConT n) = ppr n
     ppr (AppT a b) = atom a <+> atom b
