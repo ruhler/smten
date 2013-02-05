@@ -1,7 +1,20 @@
 
 Highly Desirable::
-* StateT monad
-* Arrays with bit-vector indices.
+* bug in seri
+    1.4 seems to work, 1.5 gets a de_seriEH (->).
+    What's up?
+* Recursive lets (with polymorphic types)
+* Better type errors
+** pretty print tuple as (a, b), not ((a, b))
+** use type synonyms in errors.
+** report an error for use of a type that isn't defined
+** print types all on one line:
+    a -> b -> c
+    instead of: a
+                ->
+                b
+                ->
+                c
 
 Haskell Features::
 * Allow parens in InstD: instance (Foo Bar) where...
