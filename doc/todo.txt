@@ -1,8 +1,5 @@
 
 Highly Desirable::
-* bug in seri
-    1.4 seems to work, 1.5 gets a de_seriEH (->).
-    What's up?
 * Recursive lets (with polymorphic types)
 * Better type errors
 ** pretty print tuple as (a, b), not ((a, b))
@@ -140,6 +137,7 @@ Applications::
 * SKETCH - port some of their gallery to seri
 
 Bugs::
+* DupInst maltype test
 * seriq2 for SquaresRaw... result differs from yices1 and yices2. Why?
   seriq1 seg faults on that same example randomly
     (in GC evacuate at end of prog)

@@ -94,6 +94,7 @@ badtypetest "BadType2"
 badtypetest "Ctx"
 badtypetest "InstCtx"
 badtypetest "ClassCtx1"
+#badtypetest "DupInst"
 
 # Run an IO Test
 proc io {module} {

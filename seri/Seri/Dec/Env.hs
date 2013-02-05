@@ -222,12 +222,15 @@ lookupVar env s@(Sig n t) =
      Just (ClassVI cn cts _ st meths) ->
         let ts = assign (assignments st t) (map tyVarType cts)
 
-            theMeth :: ([Type], exp) -> Bool
+            theMeth :: ([Type], Exp) -> Bool
             theMeth (x, _) = and [isSubType p c | (p, c) <- zip x ts]
         in do
             (pts, e) <- case filter theMeth meths of 
+                            [] -> throw $ "method implementation not found for: " ++ pretty s
                             [x] -> return x
-                            _ -> throw $ "method implementation not found for: " ++ pretty s
+                            xs -> -- multiple instances should not happen
+                                  -- it means we have a bug in the type checker
+                                  error $ "INTERNAL SERI ERROR: overlapping instances for: " ++ pretty s
             let assigns = concat [assignments p c | (p, c) <- zip pts ts]
             return (st, assign assigns e)
      _ -> throw $ "lookupVar: " ++ pretty n ++ " not found"

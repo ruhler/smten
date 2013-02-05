@@ -1,0 +1,31 @@
+
+Mon Feb  4 09:00:14 EST 2013
+
+I have officially received the request for stand-alone deriving as an
+important feature for seri and the work Nirav wants to do. So let me implement
+that.
+
+I already worked out the plan. All I need to do is implement it.
+
+1. Change derive to take record type constructors.
+2. collect stand-alone deriving and data type definitions in modules.
+3. flatten1 should look up in modules to do all stand-alone derivings.
+
+Easy. Right? We'll see.
+
+Mon Feb  4 09:09:50 EST 2013
+
+First step was easy. Now for the next step...
+
+Let me start with just collection of the data type definitions.
+
+Mon Feb  4 09:29:46 EST 2013
+
+2a is done. Now to add stand-alone deriving clauses...
+
+Mon Feb  4 10:03:36 EST 2013
+
+That's it! Easy. Cool.
+
+It's a bit messy, which I don't like... but what can you do?
+
