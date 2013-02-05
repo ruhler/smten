@@ -16,6 +16,7 @@ instance Ppr NType where
 -- Wraps complex types in parens.
 atom :: Type -> Doc
 atom t | Just _ <- de_listT t = ppr t
+atom t | Just _ <- de_tupleT t = ppr t
 atom t | Just _ <- de_arrowT t = parens (ppr t)
 atom t | Just _ <- de_appT t = parens (ppr t)
 atom t = ppr t
