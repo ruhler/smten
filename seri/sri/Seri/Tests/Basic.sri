@@ -429,6 +429,7 @@ testchar = do
 testtrace :: IO ()
 testtrace = do
    test "trace" (trace "tracehi!" True)
+   test "traceE" (traceE (\x -> x : " traceEhi!") True)
 
 testbasics :: IO ()
 testbasics = do

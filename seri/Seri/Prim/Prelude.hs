@@ -9,7 +9,7 @@ module Seri.Prim.Prelude (
     return_IOP, bind_IOP, nobind_IOP, fail_IOP,
     putCharP, getContentsP,
     numericP, valueofP,
-    traceP,
+    traceP, traceEP
     ) where
 
 import Debug.Trace
@@ -18,6 +18,8 @@ import Seri.Type
 import Seri.Name
 import Seri.Sig
 import Seri.ExpH
+import Seri.Exp
+import Seri.Ppr
 import Seri.Prim.Prim
 
 preludePs :: [Prim]
@@ -31,7 +33,7 @@ preludePs = [
     bind_IOP, nobind_IOP,
     putCharP, getContentsP,
     numericP, valueofP,
-    traceP
+    traceP, traceEP
     ]
 
 errorP :: Prim
@@ -110,5 +112,11 @@ valueofP =
 
 traceP :: Prim
 traceP = binaryP "Debug.Trace.trace" (trace :: String -> ExpH -> ExpH)
+
+traceEP :: Prim
+traceEP =
+ let f :: ExpH -> ExpH -> ExpH
+     f x a = trace (pretty (fromExpH x)) a
+ in binaryP "Debug.Trace.traceE" f
         
 

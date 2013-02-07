@@ -1,16 +1,10 @@
 
 Highly Desirable::
+* Some support for "forall" queries?
 * Recursive lets (with polymorphic types)
 * Better type errors
 ** use type synonyms in errors.
 ** report an error for use of a type that isn't defined
-** print types all on one line:
-    a -> b -> c
-    instead of: a
-                ->
-                b
-                ->
-                c
 
 Haskell Features::
 * Allow parens in InstD: instance (Foo Bar) where...
@@ -67,6 +61,7 @@ Pretty Printer::
 ** Don't print types of patterns?
 ** Recognize if statements.
 ** Recognize do statements.
+** Recognize multi-let statements?
 ** Recognize clauses:
     foo a b = blah  instead of  foo = \a b -> blah
 * Make it so I can compile pretty printed code?

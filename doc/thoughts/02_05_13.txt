@@ -1,0 +1,118 @@
+
+Tue Feb  5 13:05:14 EST 2013
+
+Bug: duplicate instances of Free for maybe caused things to blow up. Instead I
+should give an error.
+
+Let me see if I can replicate the bug. Perhaps with Eq.
+
+Tue Feb  5 13:09:25 EST 2013
+
+Well, I caught the bug in a test. Now how do I check for it?
+
+I need to check for overlapping instances? Because they could be slightly
+different. They may not be exactly the same.
+
+I could have an instance for:
+
+    Eq (Foo Bar)
+    Eq (Foo Sludge)
+
+which should certainly be considered different.
+
+The question is, does there exist a type which meets the criteria for both?
+
+What about:
+    Eq (Foo a Bar)
+    Eq (Foo Bar a)
+
+Those overlap: Foo Bar Bar is handled by both, but neither is a subtype of the
+other.
+
+Hmm... well, certainly this should be considered a type error. You aren't
+allowed to specify multiple instances. What does that mean? I don't know how
+to reasonably check it though. I could certainly do a dynamic check. But
+that's not happy.
+
+Why does it turn into a runtime error though? I don't understand that.
+
+Oh. I see. If we see duplicate methods, we assume it means there is no method,
+and so we leave it as a variable. Well, I can at least improve that.
+
+Tue Feb  5 13:25:51 EST 2013
+
+Okay, so I print a nicer error message now. But I'm not sure how to add this
+to the type checker. I guess for every pair of instances for the same class, I
+have to see if they overlap at all. That's a lot of work to do! Much easier
+would be if I could use an SMT solver to help me find some examples...
+
+Sadness. I don't want to have to make my own solver for this. :(
+
+And SMT is hard to use, because it is in IO, and I don't want to have to be in
+IO. Bugger!
+
+I suppose I could do unsafe IO. And it is safe, so long as I return a Bool,
+and not the thing returned by the SMT solver...
+
+I guess I need to just write my own specialized solver. Given a list of
+[Types] for the same Class name, see if any overlap. If so, probably helpful
+to report the overlapping classes, and maybe even an example.
+
+Tue Feb  5 13:59:42 EST 2013
+
+Well, I'll implement that eventually, if it becomes a big problem. For know
+I'll just list it as a known bug.
+
+I cleaned up the pretty printer output a little. Hopefully that will help with
+type errors.
+
+The next big thing to add support for: Recursive let... ideally with
+polymorphic bindings.
+
+The trouble is mixing polymorphic and monomorphic things. It's a problem of
+type inference. My current type inference assumes I know the type of all top
+level variables. What do I do if that's not the case? Do I have to solve all
+type constraints all together? That sounds a little frightening to me...
+
+I suppose it's only a problem with mutually recursive functions without type
+signatures. Otherwise we can do the type inference in the right order to
+figure out everything we need.
+
+I could probably handle that okay. I just need to do type inference in order,
+and when we get a loop, either handle it right, or say you can't do that. Make
+that work for top level declarations. Get lets and top level declarations to
+share the same haskell representation in the parser (except that lets don't
+allow class, inst, synonym, or deriving). Then I can reuse the parsing for
+both things, which will be nice.
+
+So, there are two issues needed to be solved for recursive lets the way I
+want: mixing monomorphic and polymorphic declarations - the trouble is with
+type inference, and supporting the recursion. Fortunately, each thing can be
+handled separately.
+
+The type inference part seems harder. What if I start with the recursion part?
+Then monomorphic should be fine. Worst case you have to duplicate a
+declaration if it's used in two different ways, which I think is rare. So
+recursion should get the priority.
+
+How to do recursion? I think it's pretty clear:
+
+1. Add to Exp:
+    LetE [(Sig, Exp)] Exp
+
+Conversion to haskell is easy.
+Inlining is...
+
+let decsH :: [(Sig, ExpH)] 
+    decsH = [(s, inline' tm decsH:m e) | (s, e) <- decs]
+in inline' tm (decsH:m) body
+
+Simple! So I should totally support this. It's easy.
+
+Um... some stuff will have to change with syntactic sugar, because I can no
+longer convert multi-arg lets to single lets. I suppose the sugar for let
+disappears.
+
+And haskell optimizations should do all the rest. I think this would be cool
+to get working as a next feature.
+
