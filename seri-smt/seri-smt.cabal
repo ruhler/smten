@@ -26,6 +26,7 @@ library
     Seri.SMT.Yices.Yices2
 
     Seri.SMT.Primitives
+    Seri.SMT.Primitives2
 
     Seri.HaskellF.Query
     Seri.HaskellF.Lib.SMT

@@ -58,6 +58,7 @@ import Seri.Module
 import Seri
 
 import Seri.SMT.Primitives
+import Seri.SMT.Primitives2
 
 import Seri.HaskellF.HaskellF
 
@@ -110,7 +111,7 @@ main = do
             env <- loadenv includes (file args)
             tmain <- attemptIO $ lookupVarType env nmain
             let m = varE (Sig (name (main_is args)) tmain)
-            runio (inline env (seriPs ++ smtPs) m)
+            runio (inline env (seriPs ++ smtPs ++ smt2Ps) m)
             return ()
         Desugar -> do
             mods <- load includes (file args)

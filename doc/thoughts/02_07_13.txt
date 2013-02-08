@@ -1,0 +1,27 @@
+
+Thu Feb  7 10:04:14 EST 2013
+
+We have a bug in seri. I think. I suppose it could be in Nirav's code...
+
+Anyway, the symptoms are as follows:
+
+Using the interpreter:
+* It hangs, eating up lots of memory
+* Doing control-C under profiling causes tons more memory to be used up, and
+  no profile is created
+    Maybe stuck in an allocation loop?
+* It seems to be able to handle similar queries of the same length
+* We expect very small queries
+* Appears to get stuck on an assertion.
+    Free variables have been declared, but no more of the query is printed.
+
+Using the compiler:
+* Generated haskell code does not compile (a seri bug!)
+
+Clearly there is a bug in the haskell code generation. That may or may not be
+related. It needs to be fixed eventually.
+
+Okay! So first step is... try to minimize the test case as much as possible,
+to isolate what the problem could be.
+
+

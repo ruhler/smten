@@ -35,6 +35,12 @@ qtest = do
         assert c
         query (b, c)
     test "scoped.s2" (rbc2 == Satisfiable (False, True))
+
+    queryS $ do
+      x <- free
+      assert x
+    rd <- query ()
+    test "scoped.popvar" (rd == Satisfiable ())
     
 main :: IO ()
 main = do

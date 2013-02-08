@@ -1,10 +1,16 @@
 
 Highly Desirable::
+* Bug: can't query after a pop in yices1, because we try read an out-of-scope
+  var value (i have a test case for it).
 * Some support for "forall" queries?
 * Recursive lets (with polymorphic types)
 * Better type errors
 ** use type synonyms in errors.
 ** report an error for use of a type that isn't defined
+** (Rule i s) prints as (Rule i) s
+    Which I think is right, but should not need parens
+** show string as "foobar" instead of ['f','o', 'o', 'b', 'a', 'r']
+
 
 Haskell Features::
 * Allow parens in InstD: instance (Foo Bar) where...

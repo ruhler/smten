@@ -1,0 +1,38 @@
+
+module Seri.SMT.Tests.Core2 where
+
+import Prelude
+import Seri.SMT.Symbolic
+import Seri.Tests.Test
+
+p :: Bool -> Bool -> Bool -> Bool
+p x y z =
+    if x && y
+        then not z
+        else x == (y || z)
+
+qtest :: SMT ()
+qtest = do
+    test "core.dummy" True
+
+    -- Trivial test. Verifies we can make free booleans and assert things
+    -- about them.
+    ra <- query $ do
+        a <- free
+        assert a
+        return a
+    test "core.trivial" (ra == Satisfiable True)
+
+    -- Verify we can handle functions in let expressions.
+    ra2 <- query $
+        assert (let f = (\x -> x)
+                in f True)
+    test "core.finlet" (ra2 == Satisfiable ())
+
+main :: IO ()
+main = do
+    runSMT Yices1 (Just "build/test/Core2.yices1.dbg") qtest
+    runSMT Yices2 (Just "build/test/Core2.yices2.dbg") qtest
+    runSMT STP (Just "build/test/Core2.stp.dbg") qtest
+    putStrLn "CORE2 PASSED"
+
