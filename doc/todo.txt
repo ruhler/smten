@@ -1,7 +1,5 @@
 
 Highly Desirable::
-* Bug: can't query after a pop in yices1, because we try read an out-of-scope
-  var value (i have a test case for it).
 * Some support for "forall" queries?
 * Recursive lets (with polymorphic types)
 * Better type errors
@@ -151,6 +149,8 @@ Bugs::
                   where z = p+1
                 _ -> z
    does this return 3 or 4?
+* It's possible to use a symbolic thing in a different context than it was
+  defined, in which case bad stuff will happen.
             
 
 Other::

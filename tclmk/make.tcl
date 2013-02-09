@@ -119,11 +119,11 @@ proc haskellf {module} {
 
 io Seri.Tests.Concrete
 
-#io Seri.SMT.Tests.Core2
+io Seri.SMT.Tests.Core2
 
 io Seri.SMT.Tests.Core
 io Seri.SMT.Tests.Datatype
-#io Seri.SMT.Tests.Scoped
+io Seri.SMT.Tests.Scoped
 io Seri.SMT.Tests.Integer
 io Seri.SMT.Tests.Bit
 io Seri.SMT.Tests.Share
@@ -142,7 +142,7 @@ io Seri.SMT.Tests.Isolate0
 haskellf Seri.Tests.Concrete
 haskellf Seri.SMT.Tests.Core
 haskellf Seri.SMT.Tests.Datatype
-#haskellf Seri.SMT.Tests.Scoped
+haskellf Seri.SMT.Tests.Scoped
 haskellf Seri.SMT.Tests.Integer
 haskellf Seri.SMT.Tests.Bit
 

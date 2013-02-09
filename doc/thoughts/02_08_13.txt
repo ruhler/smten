@@ -1,0 +1,65 @@
+
+Fri Feb  8 11:36:59 EST 2013
+
+What is the state of seri?
+
+* name change desired
+* some pretty printing issues
+* feature requests: mix mono/poly dec, recursive let
+* new query api proposed which makes more sense semantically
+
+Name change has to wait until I have approval on a new name.
+
+I can do the pretty printing issues easy enough. Maybe.
+
+The new features are hard.
+
+I think it makes sense for me to play around with this new interface, and see
+if it's usable. I think I can implement it on top of the old interface first.
+Once I see if it's usable and convince myself it makes sense semantically, I
+should clean up the seri code to implement it cleanly and directly, add
+support for symbolic in bind of symbolic, and all that fun stuff.
+
+I think this new interface can co-exist with the old one during the
+experimentation. So long as I don't try to use both at once.
+
+Let me put it in... Seri.SMT.Symbolic.
+
+Err... problem. If I'm implementing the new interface on top of the old... I
+can't really avoid using both at once...
+
+Fri Feb  8 11:46:37 EST 2013
+
+No. This won't work. They can't really coexist.
+
+Instead, I should create a new branch?
+Or treat them as separate objects... Yes, that makes more sense.
+
+Fri Feb  8 12:01:49 EST 2013
+
+Okay, so I have the new api written in seri. The question is, how will I
+implement it?
+
+I suppose just by defining the primitives. It shouldn't be too hard. Cool.
+
+I'll come  back after lunch and deal with this.
+
+Fri Feb  8 14:24:15 EST 2013
+
+I implemented the new primitives, as separate primitives, but reusing the same
+Query haskell interface. I think everything there is fine.
+
+I've run into a bug in seri which I need to fix. Currently I query the value
+of all variables, but I should not query the value of variables which are no
+longer in scope!
+
+This means somehow tracking which variables are in scope, and marking them as
+no longer used when they go out of scope.
+
+Then I can translate any that are marked as out of scope to _|_, so if you use
+them, it blows up, as my semantics desire. Of course, the only works within a
+query. If you pass something across a query, something rather bad could
+happen.
+
+I'll have to think about how to fix this bug.
+

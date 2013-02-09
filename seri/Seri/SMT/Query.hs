@@ -271,9 +271,11 @@ assert p = do
 -- free variable, otherwise who knows what will happen.
 queryS :: Query a -> Query a
 queryS q = do
+  freevars <- gets qs_freevars
   runCmds [SMT.Push]
   v <- q
   runCmds [SMT.Pop]
+  modify $ \qs -> qs { qs_freevars = freevars }
   return v
 
 -- | Update the free variables in the given expression based on the current
