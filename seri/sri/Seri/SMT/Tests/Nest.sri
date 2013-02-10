@@ -1,0 +1,56 @@
+
+module Seri.SMT.Tests.Nest where
+
+import Prelude
+import Seri.SMT.Symbolic
+import Seri.Tests.Test
+
+qtest :: SMT ()
+qtest = do
+    r <- nest $ do
+        commit $ assert False
+        query (return ())
+    test "nest.unsat" (r == Unsatisfiable)
+
+    a <- commit free
+    commit $ (a >>= assert)
+    ra <- query a
+    test "nest.nowsat" (ra == Satisfiable True)
+
+    b <- commit free
+    c <- commit free
+    bc <- commit $ do
+            vb <- b
+            vc <- c
+            assert (vb /= vc)
+            return (vb, vc)
+    rbc <- query bc
+    test "nest.prep" $
+        case rbc of
+            Satisfiable (vb, vc) -> vb /= vc
+            _ -> False
+
+    rbc1 <- nest $ do
+        commit $ (b >>= assert)
+        query bc
+    test "nest.s1" (rbc1 == Satisfiable (True, False))
+
+    rbc2 <- nest $ do
+        commit $ (c >>= assert)
+        query bc
+    test "nest.s2" (rbc2 == Satisfiable (False, True))
+
+    nest $ do
+      commit $ do
+        x <- free
+        assert x
+    rd <- query (return ())
+    test "nest.popvar" (rd == Satisfiable ())
+    
+main :: IO ()
+main = do
+    runSMT Yices1 (Just "build/test/Nest.yices1.dbg") qtest
+    runSMT Yices2 (Just "build/test/Nest.yices2.dbg") qtest
+    runSMT STP (Just "build/test/Nest.stp.dbg") qtest
+    putStrLn "NEST PASSED"
+

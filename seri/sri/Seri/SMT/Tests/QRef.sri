@@ -1,0 +1,49 @@
+
+
+module Seri.SMT.Tests.QRef where
+
+import Seri.SMT.Symbolic
+import Seri.Tests.Test
+
+qtest :: SMT ()
+qtest = do
+    nest $ do
+        xref <- commit $ free
+        _ <- commit $ xref >>= assert
+        rx <- query xref
+        test "qref.simple" (rx == Satisfiable True)
+
+        _ <- commit $ xref >>= (assert . not)
+        rx2 <- query xref
+        test "qref.reuse" (rx2 == Unsatisfiable)
+
+    nest $ do
+        xref <- commit $ free
+        _ <- commit $ do
+            v1 <- xref
+            assert v1
+            v2 <- xref
+            assert (not v2)
+        rx <- query (return ())
+        test "qref.dupref" (rx == Unsatisfiable)
+
+    nest $ do
+        xref <- commit $ do
+           x <- free
+           assert (not x)
+           return x
+        yref <- commit free
+        r <- query $ do
+            vx <- xref
+            vy <- yref
+            assert (vx || vy)
+            return vy
+        test "qref.join" (r == Satisfiable True)
+        
+main :: IO ()
+main = do
+    runSMT Yices1 (Just "build/test/QRef.yices1.dbg") qtest
+    runSMT Yices2 (Just "build/test/QRef.yices2.dbg") qtest
+    runSMT STP (Just "build/test/QRef.stp.dbg") qtest
+    putStrLn "QREF PASSED"
+        

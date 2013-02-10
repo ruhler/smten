@@ -120,6 +120,12 @@ proc haskellf {module} {
 io Seri.Tests.Concrete
 
 io Seri.SMT.Tests.Core2
+io Seri.SMT.Tests.Datatype2
+io Seri.SMT.Tests.QRef
+io Seri.SMT.Tests.Nest
+io Seri.SMT.Tests.Integer2
+io Seri.SMT.Tests.Bit2
+io Seri.SMT.Tests.Share2
 
 io Seri.SMT.Tests.Core
 io Seri.SMT.Tests.Datatype
@@ -128,16 +134,17 @@ io Seri.SMT.Tests.Integer
 io Seri.SMT.Tests.Bit
 io Seri.SMT.Tests.Share
 
+io Seri.SMT.Tests.AllQ
+io Seri.SMT.Tests.AllQ2
+io Seri.SMT.Tests.Isolate0
+
 io Seri.SMT.Tests.Bluespec
 io Seri.SMT.Tests.Array
 io Seri.SMT.Tests.Tuple
-io Seri.SMT.Tests.AllQ
-io Seri.SMT.Tests.AllQ2
 io Seri.SMT.Tests.Squares2.Squares
 io Seri.SMT.Tests.Sudoku
 io Seri.SMT.Tests.Sudoku2
 io Seri.SMT.Tests.Sudoku3
-io Seri.SMT.Tests.Isolate0
 
 haskellf Seri.Tests.Concrete
 haskellf Seri.SMT.Tests.Core

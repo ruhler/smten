@@ -2,7 +2,7 @@
 module Seri.SMT.Tests.Sketch2QBF where
 
 import Prelude
-import Seri.SMT.SMT
+import Seri.SMT.Symbolic
 
 -- Answer the question:
 --   Does there exist a value 'c' such that for all 'x', p(x, c) is satisfied?
@@ -15,31 +15,33 @@ import Seri.SMT.SMT
 --
 --  x has type a
 --  c has type b
-sketch2qbf' :: (Free a, Free b) => [a] -> (b -> a -> Bool) -> Query (Answer b)
+sketch2qbf' :: (Free a, Free b) => [a] -> (b -> a -> Bool) -> SMT (Answer b)
 sketch2qbf' xs p = do
   -- Find some concrete 'c' which satisfies the predicate for all existing
   -- examples.
-  c <- free
-  assert (all (p c) xs)
-  rc <- query c
+  rc <- query $ do
+      c <- free
+      assert (all (p c) xs)
+      return c
   case rc of
     Unsatisfiable -> return Unsatisfiable
     Satisfiable cv -> do
       -- Find a counter example
-      x <- free
-      assert (not (p cv x))
-      rx <- query x
+      rx <- query $ do
+          x <- free
+          assert (not (p cv x))
+          return x
       case rx of
         Unsatisfiable -> return (Satisfiable cv)
         Satisfiable xv -> sketch2qbf' (xv:xs) p
 
-sketch2qbf :: (Free a, Free b) => (b -> a -> Bool) -> Query (Answer b)
+sketch2qbf :: (Free a, Free b) => (b -> a -> Bool) -> SMT (Answer b)
 sketch2qbf = sketch2qbf' []
   
 p1 :: Integer -> Integer -> Bool
 p1 4 _ = True
 p1 c x = (c+x) > 2
 
-main :: Query (Answer Integer)
+main :: SMT (Answer Integer)
 main = sketch2qbf p1
 

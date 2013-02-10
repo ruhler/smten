@@ -1,0 +1,79 @@
+
+module Seri.SMT.Tests.Bit2 where
+
+import Seri.Bit
+import Seri.SMT.Symbolic
+import Seri.Tests.Test
+
+bitcmp :: SMT ()
+bitcmp = do
+    r <- query $ do
+        a <- free
+        assert (a < 8)
+        assert (a > 6)
+        return (a :: Bit #8)
+    test "bitcmp" (r == Satisfiable 7)
+
+qtest :: SMT ()
+qtest = do
+    ra <- query $ do
+        a <- free
+        assert (a == 0)
+        return (a :: Bit #5)
+    test "bit.simple" (ra == Satisfiable 0)
+
+    rbc <- query $ do
+        b <- free
+        c <- free
+        assert (b == c)
+        assert (c == 5)
+        return (b :: Bit #5, c :: Bit #5)
+    test "bit.eq" (rbc == Satisfiable (5, 5))
+
+    rd <- query $ do
+        d <- free
+        assert ((d + 3) == 1)
+        return (d :: Bit #3)
+    test "bit.add" (rd == Satisfiable 6)
+
+    re <- query $ do
+        e <- free
+        assert ((e - 3) == 6)
+        return (e :: Bit #3)
+    test "bit.sub" (re == Satisfiable 1)
+
+    rf <- query $ do
+        f <- free
+        assert (bv_not f == 0x15)
+        return (f :: Bit #5)
+    test "bit.not" (rf == Satisfiable 0x0A)
+
+    rg <- query $ do
+        g <- free
+        assert (bv_and g 0xA == 0x0)
+        assert (bv_or g 0xA == 0xF)
+        return (g :: Bit #4)
+    test "bit.and" (rg == Satisfiable 0x5)
+
+    rh <- query $ do
+        h <- free
+        assert (bv_concat (0x5 :: Bit #3) h == 0x17)
+        return (h :: Bit #2)
+    test "bit.concat" (rh == Satisfiable 3)
+
+    ri <- query $ do
+        i <- free
+        assert (bv_shl (0x15 :: Bit #8) i == 0xA8)
+        return (i :: Bit #8)
+    test "bit.lsh" (ri == Satisfiable 3)
+
+    bitcmp
+
+
+main :: IO ()
+main = do
+    runSMT Yices1 (Just "build/test/Bit2.yices1.dbg") qtest
+    runSMT Yices2 (Just "build/test/Bit2.yices2.dbg") qtest
+    runSMT STP (Just "build/test/Bit2.stp.dbg") qtest
+    putStrLn "BIT 2 PASSED"
+

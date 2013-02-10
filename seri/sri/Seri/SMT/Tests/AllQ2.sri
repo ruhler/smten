@@ -2,23 +2,25 @@
 module Seri.SMT.Tests.AllQ2 where
 
 import Prelude
-import Seri.SMT.SMT
+import Seri.SMT.Symbolic
 
 -- Find a list of all values satisfing the given predicate.
-allQ :: (Eq a, Free a) => (a -> Bool) -> Query [a]
+allQ :: (Eq a, Free a) => (a -> Bool) -> SMT [a]
 allQ p = do
-  x <- free
-  assert (p x)
-  allQ' x
+  xref <- commit $ do
+    x <- free
+    assert (p x)
+    return x
+  allQ' xref
 
 -- Find all different satisfying assignments to the given free variable in the
 -- current context.
-allQ' :: (Eq a) => a -> Query [a]
+allQ' :: (Eq a) => Symbolic a -> SMT [a]
 allQ' x = do
   r <- query x
   case r of
      Satisfiable v -> do
-        assert (x /= v)
+        commit (x >>= assert . (/=) v)
         vs <- allQ' x
         return (v:vs)
      _ -> return []
@@ -29,16 +31,16 @@ pred1 x = (x > 3) && (x < 8)
 pred2 :: Integer -> Bool
 pred2 x = False
 
-qmain :: Query [Integer]
+qmain :: SMT [Integer]
 qmain = allQ pred1
 
 main :: IO ()
 main = do
     putStr "yices1..."
-    r1 <- runYices1 (Just "build/test/AllQ2.yices1.dbg") qmain
+    r1 <- runSMT Yices1 (Just "build/test/AllQ2.yices1.dbg") qmain
     putStrLn (show r1)
 
     putStr "yices2..."
-    r2 <- runYices2 (Just "build/test/AllQ2.yices2.dbg") qmain
+    r2 <- runSMT Yices2 (Just "build/test/AllQ2.yices2.dbg") qmain
     putStrLn (show r2)
 

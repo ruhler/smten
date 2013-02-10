@@ -3,7 +3,7 @@ module Seri.SMT.Tests.Isolate0 where
 
 import Prelude
 import Seri.Bit
-import Seri.SMT.SMT
+import Seri.SMT.Symbolic
 import Seri.SMT.Tests.Sketch2QBF
 
 -- Test the isolate0 sketch
@@ -47,12 +47,12 @@ holeswanted = Holes { hole1 = 0, hole2 = 1 }
 iscorrect :: Holes (Bit #n) -> Bit #n -> Bool
 iscorrect h x = isolate0 x == isolate0sketch h x
 
-qsketch :: Query (Answer (Holes (Bit #8)))
+qsketch :: SMT (Answer (Holes (Bit #8)))
 qsketch = sketch2qbf iscorrect
 
 main :: IO ()
 main = do
     putStrLn (show example)
-    r <- runYices2 (Just "build/test/Isolate0.dbg") qsketch
+    r <- runSMT Yices2 (Just "build/test/Isolate0.dbg") qsketch
     putStrLn $ show r
 

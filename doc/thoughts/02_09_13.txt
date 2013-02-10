@@ -1,0 +1,14 @@
+
+Sat Feb  9 10:24:24 EST 2013
+
+Looks like I may have found an acceptable new name for seri: Smten.
+
+It has SMT.
+It makes sense as an acronym like thing: SMT Enable, or SMT Enhancer.
+
+So, how to fix my bug? Easy: keep a list of all the variables in context. Use
+that when looking what to query of the SMT solver. A new free variable pushes
+to the list, and queryS preserves the list. Easy!
+
+Cool.
+

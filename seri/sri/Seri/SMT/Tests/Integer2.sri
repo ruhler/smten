@@ -1,0 +1,67 @@
+
+module Seri.SMT.Tests.Integer2 where
+
+import Seri.SMT.Symbolic
+import Seri.Tests.Test
+
+qtest :: SMT ()
+qtest = do
+    ra <- query $ do
+        a <- free 
+        assert (a == 0)
+        return (a :: Integer)
+    test "integer.trivial" (ra == Satisfiable 0)
+
+    rbc <- query $ do
+        b <- free
+        c <- free
+        assert (b == c)
+        assert (b == 4)
+        return (b :: Integer, c :: Integer)
+    test "integer.eq" (rbc == Satisfiable (4, 4))
+
+    rde <- query $ do
+        d <- free
+        e <- free
+        assert ((d + 2) == e)
+        assert (e == 8)
+        return (d :: Integer, e :: Integer)
+    test "integer.add" (rde == Satisfiable (6, 8))
+
+    rfg <- query $ do
+        f <- free
+        g <- free
+        assert ((f - 2) == g)
+        assert (g == 8)
+        return (f :: Integer, g :: Integer)
+    test "integer.sub" (rfg == Satisfiable (10, 8))
+
+    rh <- query $ do
+        h <- free
+        assert (h < 8)
+        assert (h > 6)
+        return (h :: Integer)
+    test "integer.compare" (rh == Satisfiable 7)
+
+    ri <- query $ do
+        i <- free
+        assert (i >= 7)
+        assert (i <= 7)
+        return (i :: Integer)
+    test "integer.compare2" (ri == Satisfiable 7)
+
+    -- Test more complex
+    rxy <- query $ do
+        x <- free
+        y <- free
+        assert ((x + y) == 8)
+        assert ((x - y) == 2)
+        return (x :: Integer, y :: Integer)
+    test "integer.complex" (rxy == Satisfiable (5, 3))
+
+main :: IO ()
+main = do
+    runSMT Yices1 (Just "build/test/Integer2.yices1.dbg") qtest
+    runSMT Yices2 (Just "build/test/Integer2.yices2.dbg") qtest
+    putStrLn "INTEGER 2 PASSED"
+
