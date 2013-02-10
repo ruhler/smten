@@ -5,8 +5,6 @@ Highly Desirable::
 * Better type errors
 ** use type synonyms in errors.
 ** report an error for use of a type that isn't defined
-** (Rule i s) prints as (Rule i) s
-    Which I think is right, but should not need parens
 ** show string as "foobar" instead of ['f','o', 'o', 'b', 'a', 'r']
 
 

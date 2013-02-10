@@ -35,7 +35,7 @@ instance Ppr Type where
       = hsep $ atomArrow t1 : concat [[text "->", atomArrow tx] | tx <- ts]
 
     ppr (ConT n) = ppr n
-    ppr (AppT a b) = atomApp a <+> atomApp b
+    ppr (AppT a b) = atomArrow a <+> atomApp b
     ppr (VarT n) = ppr n
     ppr (NumT nt) = text "#" <> ppr nt
     ppr UnknownT = text "?"

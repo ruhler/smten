@@ -153,6 +153,12 @@ haskellf Seri.SMT.Tests.Scoped
 haskellf Seri.SMT.Tests.Integer
 haskellf Seri.SMT.Tests.Bit
 
+# The pretty printer test
+indir build/seri-bin {
+    hrun ln -sf ../../seri-bin/pprtest.hs pprtest.hs
+    hrun ghc --make -o pprtest pprtest.hs
+}
+hrun ./build/seri-bin/pprtest
 
 # The sudoku haskell integration test.
 run $::SERI --haskellf \
