@@ -5,6 +5,8 @@ import Prelude
 import Seri.Bit
 import Seri.SMT.Symbolic
 import Seri.SMT.Tests.Sketch2QBF
+import Seri.SMT.Tests.Sketch2QBF2
+import Seri.Tests.Test
 
 -- Test the isolate0 sketch
 
@@ -50,9 +52,19 @@ iscorrect h x = isolate0 x == isolate0sketch h x
 qsketch :: SMT (Maybe (Holes (Bit #8)))
 qsketch = sketch2qbf iscorrect
 
+qsketch2 :: SMT (Maybe (Holes (Bit #8)))
+qsketch2 = sketch2qbf2 iscorrect
+
+qmain :: SMT ()
+qmain = do
+    r <- qsketch
+    test "sketch" (r == Just holeswanted)
+
+    w <- qsketch2
+    test "sketch2" (w == Just holeswanted)
+
 main :: IO ()
 main = do
-    putStrLn (show example)
-    r <- runSMT Yices2 (Just "build/test/Isolate0.dbg") qsketch
-    putStrLn $ show r
+    runSMT Yices2 (Just "build/test/Isolate0.dbg") qmain
+    putStrLn "Isolate0 PASSED"
 

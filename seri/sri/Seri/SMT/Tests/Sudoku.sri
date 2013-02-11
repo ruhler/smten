@@ -7,18 +7,36 @@ import Seri.Sudoku.Board
 import Seri.Sudoku.Boards
 import Seri.Sudoku.Solver
 import Seri.Sudoku.IntegerCell
+import Seri.Sudoku.EnumCell
+import Seri.Sudoku.BitCell
+import Seri.Tests.Test
 
-qmain :: Query [String]
-qmain = do
-    board <- (readBoard diabolical :: Query (Board IntegerCell))
+qtest :: (Cell c, Eq c) => String -> Query (Board c) -> Query ()
+qtest msg mboard = do
+    board <- mboard
     result <- solve board
-    case result of
-       Satisfiable v -> return (print v)
-       _ -> return ["no solution"]
+    str <- case result of
+             Satisfiable v -> return $ print v
+             _ -> return ["no solution"]
+    test msg (str == diabolical_solved)
+
+qInteger :: Query ()
+qInteger = qtest "Integer" (readBoard diabolical :: Query (Board IntegerCell))
+
+qEnum :: Query ()
+qEnum = qtest "Enum" (readBoard diabolical :: Query (Board EnumCell))
+
+qBit :: Query ()
+qBit = qtest "Bit" (readBoard diabolical :: Query (Board BitCell))
 
 main :: IO ()
 main = do
-    --r <- runYices2 (Just "build/test/Sudoku.yices2.dbg") qmain
-    r <- runYices2 Nothing qmain
-    mapM_ putStrLn r
+    runYices2 Nothing qInteger
+    putStrLn "Sudoku Integer PASSED"
+
+    runYices2 Nothing qEnum
+    putStrLn "Sudoku Enum PASSED"
+
+    runYices2 Nothing qBit
+    putStrLn "Sudoku Bit PASSED"
 

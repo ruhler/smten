@@ -17,8 +17,8 @@ test:
 testio:
 	./build/home/.cabal/bin/seri --io \
 		--include seri/sri \
-		--main-is Seri.SMT.Tests.Isolate0.main \
-		-f seri/sri/Seri/SMT/Tests/Isolate0.sri
+		--main-is Seri.SMT.Tests.Sudoku.main \
+		-f seri/sri/Seri/SMT/Tests/Sudoku.sri
 
 testdesugar:
 	./build/home/.cabal/bin/seri --desugar \
