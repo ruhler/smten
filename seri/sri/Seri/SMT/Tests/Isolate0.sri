@@ -47,7 +47,7 @@ holeswanted = Holes { hole1 = 0, hole2 = 1 }
 iscorrect :: Holes (Bit #n) -> Bit #n -> Bool
 iscorrect h x = isolate0 x == isolate0sketch h x
 
-qsketch :: SMT (Answer (Holes (Bit #8)))
+qsketch :: SMT (Maybe (Holes (Bit #8)))
 qsketch = sketch2qbf iscorrect
 
 main :: IO ()

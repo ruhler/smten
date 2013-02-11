@@ -7,9 +7,6 @@ import Seri.Bit
 -- Primitive Symbolic monad
 data Symbolic a =
 
-data Answer a = Satisfiable a | Unsatisfiable | Unknown
-    deriving (Eq, Show)
-
 -- Built in symbolic things:
 __prim_free_Bool :: Symbolic Bool
 __prim_free_Integer :: Symbolic Integer
@@ -66,7 +63,7 @@ data SMT a =
 -- Ask the SMT solver for a concrete value contained in the given symbolic
 -- expression.
 -- The SMT context is not affected by this call.
-query :: Symbolic a -> SMT (Answer a)
+query :: Symbolic a -> SMT (Maybe a)
 
 -- Run an SMT computation without changing the current SMT context.
 nest :: SMT a -> SMT a

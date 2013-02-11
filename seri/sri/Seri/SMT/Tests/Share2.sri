@@ -13,7 +13,7 @@ simple = do
         y <- free
         assert ((\a -> (a + a + a + a == (8 :: Integer))) (x - y))
         return (x - y)
-    test "simple" (r == Satisfiable 2)
+    test "simple" (r == Just 2)
 
 samectx :: SMT ()
 samectx = do
@@ -24,7 +24,7 @@ samectx = do
         assert ((\a -> (if p then a + a
                             else 0) == (8 :: Integer)) (x - y))
         return (x - y)
-    test "diffctx" (r == Satisfiable 4)
+    test "diffctx" (r == Just 4)
 
 diffctx :: SMT ()
 diffctx = do
@@ -36,7 +36,7 @@ diffctx = do
                             else a - a) == (8 :: Integer)) (x - y))
         assert p
         return (x - y)
-    test "diffctx" (r == Satisfiable 4)
+    test "diffctx" (r == Just 4)
 
 qmain :: SMT ()
 qmain = do

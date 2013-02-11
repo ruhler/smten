@@ -12,7 +12,7 @@ allQ p = do
       assert (p x)
       return x
   case r of
-     Satisfiable v -> do
+     Just v -> do
         vs <- allQ (\a -> (p a) && (a /= v))
         return (v:vs)
      _ -> return []

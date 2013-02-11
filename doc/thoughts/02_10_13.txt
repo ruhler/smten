@@ -1,0 +1,55 @@
+
+Sun Feb 10 12:17:41 EST 2013
+
+I started porting tests to the new api. Observations...
+
+For non-incremental things, the new api works swell. You make a single query
+at a time, which is really easy. It doesn't affect other queries.
+
+I like that each query is independent.
+
+For incremental, interactive things... it's a little odd, in that you return a
+reference to a symbolic thing, not a symbolic thing? But not bad. And it
+integrates very nicely with non-incremental things.
+
+I think it does make it more clear when we are passing things which are
+intended to be symbolic.
+
+I wonder, though, if it's hard to tell the difference between a pure symbolic
+thing and a symbolic reference. I kind of worry it is.
+
+Perhaps I could make it more clear by introducing another type, and another
+function.
+
+commit :: Symbolic a -> SMT (SymRef a)
+readRef :: SymRef a -> Symbolic a
+
+I think that could clarify things more. That might be nice. A little bit
+tedious... but you know? I think it's not worse than what I have now.
+
+Cool. I like that idea.
+
+Sun Feb 10 12:35:14 EST 2013
+
+Okay, let me summarize what the next big steps are for seri implementation
+work:
+
+* Rename to Smten.
+SMTEN or Smten? I prefer Smten personally.
+This is a big change. I should double check with Nirav this is okay.
+* Change Symbolic api to have SymRef and readRef.
+* Port all tests from old SMT API to new SMT API.
+* Clean up the Query monad in Haskell if possible to better reflect the new
+  SMT API
+* Add support for binding to a symbolic Symbolic. As it should now make sense.
+* Continue to make fixes as requested by Nirav
+
+We have SHampi to update. We have the arch_extract thing Nirav will continue
+to play with, I'm sure. This API change should set me up nicely for the
+semantics... So I think if I focus on these things, that's all I need.
+
+In other words, I would like to target a semantics paper next. The API helps
+there. I will need to figure out what to do about errors, and infinite
+recursion, and all those problems. But hopefully better understanding of the
+new API and it's semantics will suggest reasonable approaches to those cases.
+

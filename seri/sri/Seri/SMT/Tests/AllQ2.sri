@@ -19,7 +19,7 @@ allQ' :: (Eq a) => Symbolic a -> SMT [a]
 allQ' x = do
   r <- query x
   case r of
-     Satisfiable v -> do
+     Just v -> do
         commit (x >>= assert . (/=) v)
         vs <- allQ' x
         return (v:vs)

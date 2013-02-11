@@ -15,7 +15,7 @@ import Seri.SMT.Symbolic
 --
 --  x has type a
 --  c has type b
-sketch2qbf' :: (Free a, Free b) => [a] -> (b -> a -> Bool) -> SMT (Answer b)
+sketch2qbf' :: (Free a, Free b) => [a] -> (b -> a -> Bool) -> SMT (Maybe b)
 sketch2qbf' xs p = do
   -- Find some concrete 'c' which satisfies the predicate for all existing
   -- examples.
@@ -24,24 +24,24 @@ sketch2qbf' xs p = do
       assert (all (p c) xs)
       return c
   case rc of
-    Unsatisfiable -> return Unsatisfiable
-    Satisfiable cv -> do
+    Nothing -> return Nothing
+    Just cv -> do
       -- Find a counter example
       rx <- query $ do
           x <- free
           assert (not (p cv x))
           return x
       case rx of
-        Unsatisfiable -> return (Satisfiable cv)
-        Satisfiable xv -> sketch2qbf' (xv:xs) p
+        Nothing -> return (Just cv)
+        Just xv -> sketch2qbf' (xv:xs) p
 
-sketch2qbf :: (Free a, Free b) => (b -> a -> Bool) -> SMT (Answer b)
+sketch2qbf :: (Free a, Free b) => (b -> a -> Bool) -> SMT (Maybe b)
 sketch2qbf = sketch2qbf' []
   
 p1 :: Integer -> Integer -> Bool
 p1 4 _ = True
 p1 c x = (c+x) > 2
 
-main :: SMT (Answer Integer)
+main :: SMT (Maybe Integer)
 main = sketch2qbf p1
 

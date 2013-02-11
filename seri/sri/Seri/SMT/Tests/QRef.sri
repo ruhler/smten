@@ -11,11 +11,11 @@ qtest = do
         xref <- commit $ free
         _ <- commit $ xref >>= assert
         rx <- query xref
-        test "qref.simple" (rx == Satisfiable True)
+        test "qref.simple" (rx == Just True)
 
         _ <- commit $ xref >>= (assert . not)
         rx2 <- query xref
-        test "qref.reuse" (rx2 == Unsatisfiable)
+        test "qref.reuse" (rx2 == Nothing)
 
     nest $ do
         xref <- commit $ free
@@ -25,7 +25,7 @@ qtest = do
             v2 <- xref
             assert (not v2)
         rx <- query (return ())
-        test "qref.dupref" (rx == Unsatisfiable)
+        test "qref.dupref" (rx == Nothing)
 
     nest $ do
         xref <- commit $ do
@@ -38,7 +38,7 @@ qtest = do
             vy <- yref
             assert (vx || vy)
             return vy
-        test "qref.join" (r == Satisfiable True)
+        test "qref.join" (r == Just True)
         
 main :: IO ()
 main = do

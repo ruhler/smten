@@ -10,12 +10,12 @@ qtest = do
     r <- nest $ do
         commit $ assert False
         query (return ())
-    test "nest.unsat" (r == Unsatisfiable)
+    test "nest.unsat" (r == Nothing)
 
     a <- commit free
     commit $ (a >>= assert)
     ra <- query a
-    test "nest.nowsat" (ra == Satisfiable True)
+    test "nest.nowsat" (ra == Just True)
 
     b <- commit free
     c <- commit free
@@ -27,25 +27,25 @@ qtest = do
     rbc <- query bc
     test "nest.prep" $
         case rbc of
-            Satisfiable (vb, vc) -> vb /= vc
+            Just (vb, vc) -> vb /= vc
             _ -> False
 
     rbc1 <- nest $ do
         commit $ (b >>= assert)
         query bc
-    test "nest.s1" (rbc1 == Satisfiable (True, False))
+    test "nest.s1" (rbc1 == Just (True, False))
 
     rbc2 <- nest $ do
         commit $ (c >>= assert)
         query bc
-    test "nest.s2" (rbc2 == Satisfiable (False, True))
+    test "nest.s2" (rbc2 == Just (False, True))
 
     nest $ do
       commit $ do
         x <- free
         assert x
     rd <- query (return ())
-    test "nest.popvar" (rd == Satisfiable ())
+    test "nest.popvar" (rd == Just ())
     
 main :: IO ()
 main = do

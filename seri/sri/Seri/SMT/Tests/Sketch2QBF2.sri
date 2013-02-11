@@ -3,23 +3,23 @@ module Seri.SMT.Tests.Sketch2QBF2 where
 
 import Seri.SMT.Symbolic
 
-sketch2qbf' :: (Free a) => Symbolic b -> (b -> a -> Bool) -> SMT (Answer b)
+sketch2qbf' :: (Free a) => Symbolic b -> (b -> a -> Bool) -> SMT (Maybe b)
 sketch2qbf' c p = do
   rc <- query c
   case rc of
-    Unsatisfiable -> return Unsatisfiable
-    Satisfiable cv -> do
+    Nothing -> return Nothing
+    Just cv -> do
       rx <- query $ do
           x <- free
           assert (not (p cv x))
           return x
       case rx of
-        Unsatisfiable -> return (Satisfiable cv)
-        Satisfiable xv -> do
+        Nothing -> return (Just cv)
+        Just xv -> do
             commit (c >>= \cv -> assert (p cv xv))
             sketch2qbf' c p
 
-sketch2qbf :: (Free a, Free b) => (b -> a -> Bool) -> SMT (Answer b)
+sketch2qbf :: (Free a, Free b) => (b -> a -> Bool) -> SMT (Maybe b)
 sketch2qbf p = do
   c <- commit free
   sketch2qbf' c p
@@ -28,6 +28,6 @@ p1 :: Integer -> Integer -> Bool
 p1 4 _ = True
 p1 c x = (c+x) > 2
 
-main :: SMT (Answer Integer)
+main :: SMT (Maybe Integer)
 main = sketch2qbf p1
 

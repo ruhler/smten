@@ -131,11 +131,11 @@ queryP =
       f arg = SMT . queryS $ do
         v <- symbolic_query arg
         res <- query (realize v)
-        let ta = AppT (ConT (name "Answer")) (typeof v)
+        let ta = AppT (ConT (name "Maybe")) (typeof v)
         case res of
-            Satisfiable arg' -> return $ identify $ \id -> ConEH id (name "Satisfiable") ta [arg']
-            Unsatisfiable -> return $ identify $ \id -> ConEH id (name "Unsatisfiable") ta []
-            _ -> return $ identify $ \id -> ConEH id (name "Unknown") ta []
+            Satisfiable arg' -> return $ identify $ \id -> ConEH id (name "Just") ta [arg']
+            Unsatisfiable -> return $ identify $ \id -> ConEH id (name "Nothing") ta []
+            _ -> return $ errorEH ta "query: Unknown"
   in unaryP "Seri.SMT.Symbolic.query" f
 
 commitP :: Prim

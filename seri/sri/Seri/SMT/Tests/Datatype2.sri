@@ -37,19 +37,19 @@ qtest = do
         a <- free
         assert (rotateenum a == E3)
         return a
-    test "datatype.enum" (ra == Satisfiable E4)
+    test "datatype.enum" (ra == Just E4)
 
     rb <- query $ do
         b <- free
         assert (changestruct b == MyStruct E2 False)
         return b
-    test "datatype.struct" (rb == Satisfiable (MyStruct E1 True))
+    test "datatype.struct" (rb == Just (MyStruct E1 True))
     
     rc <- query $ do
         c <- free
         assert (mixval c == E3)
         return c
-    test "datatype.mix" (rc == Satisfiable (Mix2 True))
+    test "datatype.mix" (rc == Just (Mix2 True))
 
     rd <- query $ do
         d <- free
@@ -59,7 +59,7 @@ qtest = do
                    E2 -> True
                  )
         return d
-    test "datetype.caseoflet" (rd == Satisfiable False)
+    test "datetype.caseoflet" (rd == Just False)
 
 main :: IO ()
 main = do

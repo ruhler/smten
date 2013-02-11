@@ -21,20 +21,20 @@ qtest = do
         a <- free
         assert a
         return a
-    test "core.trivial" (ra == Satisfiable True)
+    test "core.trivial" (ra == Just True)
 
     -- Verify we can handle functions in let expressions.
     ra2 <- query $
         assert (let f = (\x -> x)
                 in f True)
-    test "core.finlet" (ra2 == Satisfiable ())
+    test "core.finlet" (ra2 == Just ())
 
     -- Test NOT
     rb <- query $ do
         b <- free
         assert (not b)
         return b
-    test "core.not" (rb == Satisfiable False)
+    test "core.not" (rb == Just False)
 
     -- Test OR
     rcd <- query $ do
@@ -43,7 +43,7 @@ qtest = do
         assert (c || d)
         assert (not c)
         return (c, d)
-    test "core.or" (rcd == Satisfiable (False, True))
+    test "core.or" (rcd == Just (False, True))
 
     -- Test AND
     ref <- query $ do
@@ -51,7 +51,7 @@ qtest = do
         f <- free
         assert (e && f)
         return (e, f)
-    test "core.and" (ref == Satisfiable (True, True))
+    test "core.and" (ref == Just (True, True))
 
     -- Test EQ
     rgh <- query $ do
@@ -60,14 +60,14 @@ qtest = do
         assert (g == h)
         assert (not g)
         return (g, h)
-    test "core.eq" (rgh == Satisfiable (False, False))
+    test "core.eq" (rgh == Just (False, False))
 
     -- Test IF
     ri <- query $ do
         i <- free
         assert (if i then False else True)
         return i
-    test "core.if" (ri == Satisfiable False)
+    test "core.if" (ri == Just False)
 
     -- Test more complex
     rjkl <- query $ do
@@ -78,7 +78,7 @@ qtest = do
         return (j, k, l)
     test "core.complex" $
         case rjkl of
-            Satisfiable (jv, kv, lv) -> p jv kv lv
+            Just (jv, kv, lv) -> p jv kv lv
             _ -> False
 
     -- Test an issue with lambdas that we've had issues with in the past.
@@ -86,7 +86,7 @@ qtest = do
         m <- free
         assert ((if m then (==) True else (==) False) False)
         return m
-    test "core.lambda" (rm == Satisfiable False)
+    test "core.lambda" (rm == Just False)
 
     -- We should be able to using Integers, so long as they aren't free, even
     -- if the underlying solver doesn't support them.
@@ -95,21 +95,21 @@ qtest = do
         o <- free
         assert ((if n then 3 else (4 :: Integer)) == (if o then 4 else 5))
         return (n, o)
-    test "core.integer" (rno == Satisfiable (False, True))
+    test "core.integer" (rno == Just (False, True))
 
     -- Same with lists
     rp <- query $ do
         p <- free
         assert (null (if p then [1, 2, 3 :: Integer] else []))
         return p
-    test "core.list" (rp == Satisfiable False)
+    test "core.list" (rp == Just False)
 
     -- Same with char
     rq <- query $ do
         q <- free
         assert ('a' == (if q then 'a' else 'b'))
         return q
-    test "core.char" (rq == Satisfiable True)
+    test "core.char" (rq == Just True)
 
     qsubstitute
 
@@ -120,7 +120,7 @@ qsubstitute = do
         a <- free
         assert (not a)
         return (not a)
-    test "core.substitute" (r == Satisfiable True)
+    test "core.substitute" (r == Just True)
 
 
 main :: IO ()
