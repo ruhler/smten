@@ -9,20 +9,20 @@ qtest :: SMT ()
 qtest = do
     nest $ do
         xref <- commit $ free
-        _ <- commit $ xref >>= assert
-        rx <- query xref
+        commit $ readSMTRef xref >>= assert
+        rx <- query $ readSMTRef xref
         test "qref.simple" (rx == Just True)
 
-        _ <- commit $ xref >>= (assert . not)
-        rx2 <- query xref
+        commit $ readSMTRef xref >>= (assert . not)
+        rx2 <- query $ readSMTRef xref
         test "qref.reuse" (rx2 == Nothing)
 
     nest $ do
         xref <- commit $ free
-        _ <- commit $ do
-            v1 <- xref
+        commit $ do
+            v1 <- readSMTRef xref
             assert v1
-            v2 <- xref
+            v2 <- readSMTRef xref
             assert (not v2)
         rx <- query (return ())
         test "qref.dupref" (rx == Nothing)
@@ -34,8 +34,8 @@ qtest = do
            return x
         yref <- commit free
         r <- query $ do
-            vx <- xref
-            vy <- yref
+            vx <- readSMTRef xref
+            vy <- readSMTRef yref
             assert (vx || vy)
             return vy
         test "qref.join" (r == Just True)

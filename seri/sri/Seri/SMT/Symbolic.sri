@@ -4,6 +4,9 @@ module Seri.SMT.Symbolic where
 
 import Seri.Bit
 
+-- Primitive SMT reference.
+data SMTRef a =
+
 -- Primitive Symbolic monad
 data Symbolic a =
 
@@ -44,6 +47,7 @@ deriving instance (Free a) => Free (Maybe a)
 deriving instance Free Ordering
 
 assert :: Bool -> Symbolic ()
+readSMTRef :: SMTRef a -> Symbolic a
 
 -- The Symbolic monad primitives
 return_symbolic :: a -> Symbolic a
@@ -71,7 +75,7 @@ nest :: SMT a -> SMT a
 -- Commit the given symbolic computation to the current SMT context.
 -- Returns a reference to the result of the symbolic computation in the SMT
 -- context.
-commit :: Symbolic a -> SMT (Symbolic a)
+commit :: Symbolic a -> SMT (SMTRef a)
 
 -- The SMT monad primitives
 return_smt :: a -> SMT a

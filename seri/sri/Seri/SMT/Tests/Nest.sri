@@ -13,31 +13,31 @@ qtest = do
     test "nest.unsat" (r == Nothing)
 
     a <- commit free
-    commit $ (a >>= assert)
-    ra <- query a
+    commit $ (readSMTRef a >>= assert)
+    ra <- query $ readSMTRef a
     test "nest.nowsat" (ra == Just True)
 
     b <- commit free
     c <- commit free
     bc <- commit $ do
-            vb <- b
-            vc <- c
+            vb <- readSMTRef b
+            vc <- readSMTRef c
             assert (vb /= vc)
             return (vb, vc)
-    rbc <- query bc
+    rbc <- query $ readSMTRef bc
     test "nest.prep" $
         case rbc of
             Just (vb, vc) -> vb /= vc
             _ -> False
 
     rbc1 <- nest $ do
-        commit $ (b >>= assert)
-        query bc
+        commit $ (readSMTRef b >>= assert)
+        query $ readSMTRef bc
     test "nest.s1" (rbc1 == Just (True, False))
 
     rbc2 <- nest $ do
-        commit $ (c >>= assert)
-        query bc
+        commit $ (readSMTRef c >>= assert)
+        query $ readSMTRef bc
     test "nest.s2" (rbc2 == Just (False, True))
 
     nest $ do

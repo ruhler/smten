@@ -6,11 +6,12 @@
 module Seri.SMT.Primitives2 (
     symbolicEH, de_symbolicEH,
     smtEH, de_smtEH,
+    smtrefEH, de_smtrefEH,
     smt2Ps,
     return_SymbolicP, fail_SymbolicP, bind_SymbolicP, nobind_SymbolicP,
     return_SMTP, fail_SMTP, bind_SMTP, nobind_SMTP,
     free_IntegerP, free_BoolP, free_BitP,
-    assertP, queryP, nestP, commitP,
+    assertP, readSMTRefP, queryP, nestP, commitP,
     runSMT
     ) where
 
@@ -56,6 +57,25 @@ instance (SeriEH a) => SeriEH (Symbolic a) where
         q <- de_symbolicEH e
         return $ fromMaybe (error "de_seriEH Symbolic") . de_seriEH <$> q
 
+
+newtype SMTRef a = SMTRef { smtref_query :: Query a }
+    deriving (Monad, Functor)
+
+instance (SeriT1 SMTRef) where
+    seriT1 _ = conT (name "SMTRef")
+
+smtrefEH :: SMTRef ExpH -> ExpH
+smtrefEH = queryEH . smtref_query
+
+de_smtrefEH :: ExpH -> Maybe (SMTRef ExpH)
+de_smtrefEH x = SMTRef <$> de_queryEH x
+
+instance (SeriEH a) => SeriEH (SMTRef a) where
+    seriEH x = smtrefEH (seriEH <$> x)
+    de_seriEH e = do
+        q <- de_smtrefEH e
+        return $ fromMaybe (error "de_seriEH SMTRef") . de_seriEH <$> q
+
 newtype SMT a = SMT { smt_query :: Query a }
     deriving (Monad, Functor)
 
@@ -79,7 +99,7 @@ smt2Ps = [
     return_SymbolicP, fail_SymbolicP, bind_SymbolicP, nobind_SymbolicP,
     return_SMTP, fail_SMTP, bind_SMTP, nobind_SMTP,
     free_IntegerP, free_BoolP, free_BitP,
-    assertP, queryP, nestP, commitP,
+    assertP, queryP, readSMTRefP, nestP, commitP,
     runSMT
     ]
 
@@ -138,12 +158,18 @@ queryP =
             _ -> return $ errorEH ta "query: Unknown"
   in unaryP "Seri.SMT.Symbolic.query" f
 
+readSMTRefP :: Prim
+readSMTRefP =
+  let f :: SMTRef ExpH -> Symbolic ExpH
+      f = Symbolic . smtref_query
+  in unaryP "Seri.SMT.Symbolic.readSMTRef" f
+
 commitP :: Prim
 commitP =
-  let f :: Symbolic ExpH -> SMT (Symbolic ExpH)
+  let f :: Symbolic ExpH -> SMT (SMTRef ExpH)
       f arg = SMT $ do
         v <- symbolic_query arg
-        return (Symbolic $ return v)
+        return (SMTRef $ return v)
   in unaryP "Seri.SMT.Symbolic.commit" f
 
 nestP :: Prim

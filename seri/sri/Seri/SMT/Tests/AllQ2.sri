@@ -15,12 +15,12 @@ allQ p = do
 
 -- Find all different satisfying assignments to the given free variable in the
 -- current context.
-allQ' :: (Eq a) => Symbolic a -> SMT [a]
+allQ' :: (Eq a) => SMTRef a -> SMT [a]
 allQ' x = do
-  r <- query x
+  r <- query $ readSMTRef x
   case r of
      Just v -> do
-        commit (x >>= assert . (/=) v)
+        commit (readSMTRef x >>= assert . (/=) v)
         vs <- allQ' x
         return (v:vs)
      _ -> return []

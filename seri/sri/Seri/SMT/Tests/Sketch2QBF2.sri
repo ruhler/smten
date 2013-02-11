@@ -3,9 +3,9 @@ module Seri.SMT.Tests.Sketch2QBF2 where
 
 import Seri.SMT.Symbolic
 
-sketch2qbf' :: (Free a) => Symbolic b -> (b -> a -> Bool) -> SMT (Maybe b)
+sketch2qbf' :: (Free a) => SMTRef b -> (b -> a -> Bool) -> SMT (Maybe b)
 sketch2qbf' c p = do
-  rc <- query c
+  rc <- query $ readSMTRef c
   case rc of
     Nothing -> return Nothing
     Just cv -> do
@@ -16,7 +16,7 @@ sketch2qbf' c p = do
       case rx of
         Nothing -> return (Just cv)
         Just xv -> do
-            commit (c >>= \cv -> assert (p cv xv))
+            commit (readSMTRef c >>= \cv -> assert (p cv xv))
             sketch2qbf' c p
 
 sketch2qbf :: (Free a, Free b) => (b -> a -> Bool) -> SMT (Maybe b)
