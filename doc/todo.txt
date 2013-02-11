@@ -82,8 +82,6 @@ ExpH::
   one at a time?
 
 Primitives::
-* Implement the 'update' primitive, or remove it from smt_array.
-* Get rid of the __prim_free primitive
 * Associate concrete haskell function with Prim to avoid duplication in Prim
   and concretized haskellf primitives.
 

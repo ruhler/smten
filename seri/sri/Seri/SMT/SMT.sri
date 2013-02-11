@@ -16,24 +16,14 @@ instance (Show a) => Show (Answer a) where
     show Unsatisfiable = "Unsatisfiable"
     show Unknown = "Unknown"
 
--- Return a new free variable.
--- Note: this is depricated. Don't use it if you can avoid it.
-__prim_free :: Query a
-
 -- Return a new free boolean
--- TODO: make it a primitive for real instead of using __prim_free.
 __prim_free_Bool :: Query Bool
-__prim_free_Bool = __prim_free
 
 -- Return a new free integer
--- TODO: make it a primitive for real instead of using __prim_free.
 __prim_free_Integer :: Query Integer
-__prim_free_Integer = __prim_free
 
 -- Return a new free bit vector
--- TODO: make it a primitive for real instead of using __prim_free.
 __prim_free_Bit :: Query (Bit #n)
-__prim_free_Bit = __prim_free
 
 class Free a where
     -- Return a free variable of the given type.
@@ -66,10 +56,6 @@ instance (Free a, Free b, Free c) => Free (a, b, c) where
 
 deriving instance (Free a) => Free (Maybe a)
 deriving instance Free Ordering
-
--- TODO: how should we deal with free functions?
-instance (Free a, Free b) => Free (a -> b) where
-    free = __prim_free
 
 -- Return a free integer which ranges from M to N for given M and N.
 -- Uses only the Core theory, Integer support is not required.

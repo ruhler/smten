@@ -171,7 +171,6 @@ isPrimT :: Type -> Bool
 isPrimT t | t == boolT = True
 isPrimT t | t == integerT = True
 isPrimT (AppT (ConT n) _) | n == name "Bit" = True
-isPrimT t | Just _ <- de_arrowT t = True
 isPrimT _ = False
 
 data RunOptions = RunOptions {

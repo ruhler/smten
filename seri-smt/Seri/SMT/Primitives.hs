@@ -5,7 +5,8 @@ module Seri.SMT.Primitives (
     queryEH, de_queryEH,
     smtPs,
     return_QueryP, fail_QueryP, bind_QueryP, nobind_QueryP,
-    freeP, queryP, assertP, querySP,
+    free_BoolP, free_IntegerP, free_BitP,
+    queryP, assertP, querySP,
     runYices1P, runYices2P, runSTPP,
     ) where
 
@@ -45,7 +46,8 @@ smtPs :: [Prim]
 smtPs = [
     return_QueryP, fail_QueryP,
     bind_QueryP, nobind_QueryP,
-    freeP, queryP, assertP, querySP,
+    free_IntegerP, free_BoolP, free_BitP,
+    queryP, assertP, querySP,
     runYices1P, runYices2P, runSTPP
     ]
 
@@ -61,13 +63,19 @@ bind_QueryP = binaryP "Seri.SMT.SMT.bind_query" ((>>=) :: Query ExpH -> (ExpH ->
 nobind_QueryP :: Prim
 nobind_QueryP = binaryP "Seri.SMT.SMT.nobind_query" ((>>) :: Query ExpH -> Query ExpH -> Query ExpH)
 
-freeP :: Prim
-freeP =
-  let f :: Type -> Query ExpH
-      f t =
-        let Just (_, t') = de_appT t
-        in free t'
-  in nullaryTP "Seri.SMT.SMT.__prim_free" f
+free_helper :: Type -> Query ExpH
+free_helper t =
+  let Just (_, t') = de_appT t
+  in free t'
+
+free_IntegerP :: Prim
+free_IntegerP = nullaryTP "Seri.SMT.SMT.__prim_free_Integer" free_helper
+
+free_BoolP :: Prim
+free_BoolP = nullaryTP "Seri.SMT.SMT.__prim_free_Bool" free_helper
+
+free_BitP :: Prim
+free_BitP = nullaryTP "Seri.SMT.SMT.__prim_free_Bit" free_helper
 
 assertP :: Prim
 assertP = unaryP "Seri.SMT.SMT.assert" assert

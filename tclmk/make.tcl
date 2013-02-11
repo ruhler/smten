@@ -142,7 +142,6 @@ io Seri.SMT.Tests.Bit
 io Seri.SMT.Tests.Share
 
 io Seri.SMT.Tests.Bluespec
-io Seri.SMT.Tests.Array
 io Seri.SMT.Tests.Tuple
 io Seri.SMT.Tests.Squares2.Squares
 

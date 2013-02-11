@@ -6,12 +6,13 @@ module Seri.HaskellF.Lib.SMT (
     Answer(Satisfiable, Unsatisfiable, Unknown),
     __caseSatisfiable, __caseUnknown, __caseUnsatisfiable,
 
-    __prim_free, assert, query, queryS,
+    __prim_free_Bool, __prim_free_Integer, __prim_free_Bit,
+    assert, query, queryS,
     return_query, bind_query, nobind_query, fail_query,
     runYices1, runYices2, runSTP,
     ) where
 
-import Prelude hiding (Bool, IO, Char, String)
+import Prelude hiding (Bool, Integer, IO, Char, String)
 import Seri.Name
 import Seri.Type
 import Seri.ExpH
@@ -68,8 +69,14 @@ __caseSatisfiable x y n
   | Answer__s _ <- x = caseS "Satisfiable" x y n
   | otherwise = n
 
-__prim_free :: (Symbolic a) => Query a
-__prim_free = primS freeP
+__prim_free_Bool :: Query Bool
+__prim_free_Bool = primS free_BoolP
+
+__prim_free_Integer :: Query Integer
+__prim_free_Integer = primS free_IntegerP
+
+__prim_free_Bit :: (Symbolic n) => Query (Bit n)
+__prim_free_Bit = primS free_BitP
 
 assert :: Bool -> Query Unit__
 assert = primS assertP
