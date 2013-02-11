@@ -2,7 +2,7 @@
 module Seri.Sudoku.IntegerCell2 where
 
 import Prelude
-import Seri.SMT.SMT
+import Seri.SMT.Symbolic
 
 import Seri.Sudoku.Cell
 

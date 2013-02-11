@@ -1,13 +1,13 @@
 
 module Seri.Sudoku.Solver where
 
-import Prelude
-import Seri.SMT.SMT
+import Seri.SMT.Symbolic
 import Seri.Sudoku.Cell
 import Seri.Sudoku.Board
 
-solve :: (Eq c, Cell c) => Board c -> Query (Answer (Board c))
-solve board = do
-    assert (isvalid board)
-    query board
+solve :: (Eq c, Cell c) => Symbolic (Board c) -> SMT (Maybe (Board c))
+solve board = query $ do
+    b <- board
+    assert (isvalid b)
+    return b
     

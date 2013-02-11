@@ -1,8 +1,6 @@
 
 module Seri.Sudoku.Boards where
 
-import Prelude
-
 easy :: [String]
 easy =
   ["2....1.38",

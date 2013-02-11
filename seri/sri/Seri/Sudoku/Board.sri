@@ -2,7 +2,7 @@
 module Seri.Sudoku.Board where
 
 import Prelude
-import Seri.SMT.SMT
+import Seri.SMT.Symbolic
 import Seri.Sudoku.Cell
 
 
@@ -46,10 +46,10 @@ breakup n xs =
 isvalid :: (Eq c, Cell c) => Board c -> Bool
 isvalid b = all distinctCell (concat [rows b, cols b, boxes b])
 
-readRow :: (Cell c) => String -> Query [c]
+readRow :: (Cell c) => String -> Symbolic [c]
 readRow = mapM readCell
 
-readBoard :: (Cell c) => [String] -> Query (Board c)
+readBoard :: (Cell c) => [String] -> Symbolic (Board c)
 readBoard rows = do
     brows <- mapM readRow rows
     return (Board brows)

@@ -2,7 +2,7 @@
 module Seri.Sudoku.BitCell where
 
 import Prelude
-import Seri.SMT.SMT
+import Seri.SMT.Symbolic
 import Seri.Bit
 
 import Seri.Sudoku.Cell

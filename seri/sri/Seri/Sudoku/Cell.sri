@@ -2,7 +2,7 @@
 module Seri.Sudoku.Cell where
 
 import Prelude
-import Seri.SMT.SMT
+import Seri.SMT.Symbolic
 
 -- The size of the sudoku.
 -- (nxn)x(nxn)
@@ -21,10 +21,10 @@ distinct (x:xs) = notElem x xs && distinct xs
 class Cell c where
     mkCell :: Integer -> c
     deCell :: c -> Integer
-    freeCell :: Query c
+    freeCell :: Symbolic c
     distinctCell :: [c] -> Bool
     
-readCell :: (Cell c) => Char -> Query c
+readCell :: (Cell c) => Char -> Symbolic c
 readCell '1' = return (mkCell 1)
 readCell '2' = return (mkCell 2)
 readCell '3' = return (mkCell 3)

@@ -131,6 +131,7 @@ io Seri.SMT.Tests.Share2
 io Seri.SMT.Tests.AllQ
 io Seri.SMT.Tests.AllQ2
 io Seri.SMT.Tests.Isolate0
+io Seri.SMT.Tests.Sudoku
 
 # Tests in the old SMT API
 io Seri.SMT.Tests.Core
@@ -144,7 +145,6 @@ io Seri.SMT.Tests.Bluespec
 io Seri.SMT.Tests.Array
 io Seri.SMT.Tests.Tuple
 io Seri.SMT.Tests.Squares2.Squares
-io Seri.SMT.Tests.Sudoku
 
 # HaskellF tests
 haskellf Seri.Tests.Concrete
