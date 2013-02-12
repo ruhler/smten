@@ -1,3 +1,15 @@
+Feb 12, 2013
+  seri-1.6.0.0
+  seri-smt-1.6.0.0
+  seri-bin-1.6.0.0
+
+  Changes from 1.5.0.0
+  * Support for standalone deriving
+  * improvements in pretty printer
+  * Debug.Trace.traceE primitive
+  * Added new SMT API
+  * Bug Fixes
+
 Feb 01, 2013
   seri-1.5.0.0
   seri-smt-1.5.0.0
