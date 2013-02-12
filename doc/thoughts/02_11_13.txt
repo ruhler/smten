@@ -1,0 +1,50 @@
+
+Mon Feb 11 10:14:06 EST 2013
+
+I would like to switch over entirely to the new SMT api. I think it's just as
+powerful as the old, but is cleaner. In fact, it should be even more powerful,
+once I add support for binding to a symbolic Symbolic.
+
+The trouble is, making the switch is a bit messy.
+
+Issues:
+* Symbolic is already used for a typeclass in haskellf
+    Perhaps rename it "Symbolic__"?
+* Maybe should now be defined as a primitive type
+** And it would be very nice to auto-derive the constructors, etc... for it.
+* Should we still support the Query and Answer types in the Haskell lib? Or
+  should we make them look like the new API? (Which will likely lead to more
+  flexibility later on)
+* I no longer want to support arbitrary free types. This means no more support
+  for functions on Integer types, and hence, issues with free array? Why do I
+  feel like there shouldn't be issues there?
+
+I feel like this would be a good time to do a code cleanup. A lot of the tests
+don't check their answer. They should. And I should understand the tests. And
+be thorough.
+
+
+You know what would be really nice? Support for modules in HaskellF. Then I
+could have the two interfaces side by side. I could have SMT.Symbolic import a
+generated Prelude. I could handle modularity support. Wouldn't that be nice?
+
+Ug. Well... what's the right thing to do? How should I make progress on this?
+
+I propose the following. On master branch:
+1. Clean up haskellf prelude using template haskell
+2. Switch from "Symbolic" to "Symbolic__" as underlying type class in haskellf
+3. Understand if the array test needs function types, and why.
+    If not. Ditch the arbitrary free primitive in the existing API. Ditch
+    smt.array, because nobody uses it.
+4. Clean up all tests so they check that they passed. If I can't figure out
+   the purpose of the test, throw it away.
+5. Convert all remaining tests to the new API.
+
+At this point, I'll at least be in much cleaner shape. I think we could use a
+cleansing.
+
+Mon Feb 11 10:45:55 EST 2013
+
+It occurs to me Symbolic is not a problem, because it's qualified. S.Symbolic.
+Erg... I'm not sure what I should be doing at this point.
+

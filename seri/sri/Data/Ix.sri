@@ -1,0 +1,14 @@
+
+module Data.Ix where
+
+class (Ord a) => Ix a where
+    range :: (a, a) -> [a]
+
+instance Ix Integer where
+    range (l, h) = 
+      case (l > h, l == h) of
+          (True, _) -> []
+          (_, True) -> [h]
+          _ -> l : range (l+1, h)
+
+

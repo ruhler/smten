@@ -11,7 +11,7 @@ Highly Desirable::
 Haskell Features::
 * Allow parens in InstD: instance (Foo Bar) where...
 * default methods in classes?
-* auto derive Ord
+* auto derive Ord, Ix
 * recursive let blocks
 * modularity support
 ** ability to re-export modules 
@@ -57,6 +57,8 @@ Front End::
 * Add static check for concreteness of queries (?)
 * The code for handling stand-alone deriving feels very messy to me. Can we
   clean up how that works somehow?
+* derived instance of Show should handle record type constructors
+  appropriately.
 
 Pretty Printer::
 * Make pretty again:

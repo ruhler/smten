@@ -151,12 +151,19 @@ testlet =
 arr :: Array Integer Integer
 arr = array (0, 2) [(0, 42), (1, 12), (2, 19)]
 
+arr2 :: Array (Bit #3) Integer
+arr2 = array (0, 2) [(0, 42), (1, 12), (2, 19)]
+
 testarray :: IO ()
 testarray = do
     test "arrsub0" (42 == (arr ! 0))
     test "arrsub1" (12 == (arr ! 1))
     test "arrsub2" (19 == (arr ! 2))
     test "arrupd" (23 == ((arr // [(1, 23)]) ! 1))
+    test "arrsub0.bit" (42 == (arr2 ! 0))
+    test "arrsub1.bit" (12 == (arr2 ! 1))
+    test "arrsub2.bit" (19 == (arr2 ! 2))
+    test "arrupd.bit" (23 == ((arr2 // [(1, 23)]) ! 1))
 
 v4 :: Vector #4 Bool
 v4 = vreplicate True

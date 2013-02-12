@@ -1,7 +1,7 @@
 
 module Seri.Bit where
 
-import Prelude
+import Data.Ix
 
 data Bit #n =
 
@@ -88,4 +88,11 @@ bv_concat = __prim_concat_Bit
 -- extract specified in the argument. The most significant bit is inferred.
 bv_extract :: Bit #n -> Integer -> Bit #m
 bv_extract = __prim_extract_Bit
+
+instance Ix (Bit #n) where
+    range (l, h) = 
+      case (l > h, l == h) of
+          (True, _) -> []
+          (_, True) -> [h]
+          _ -> l : range (l+1, h)
 
