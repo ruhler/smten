@@ -1,0 +1,118 @@
+
+-- The Smten SMT primitives and common declarations.
+module Smten.SMT.SMT where
+
+import Prelude
+import Smten.Bit
+
+-- Query is the primitive query monad.
+data Query a =
+
+data Answer a = Satisfiable a | Unsatisfiable | Unknown
+    deriving (Eq)
+
+instance (Show a) => Show (Answer a) where
+    show (Satisfiable x) = "Satisfiable " ++ show x
+    show Unsatisfiable = "Unsatisfiable"
+    show Unknown = "Unknown"
+
+-- Return a new free boolean
+__prim_free_Bool :: Query Bool
+
+-- Return a new free integer
+__prim_free_Integer :: Query Integer
+
+-- Return a new free bit vector
+__prim_free_Bit :: Query (Bit #n)
+
+class Free a where
+    -- Return a free variable of the given type.
+    free :: Query a
+
+instance Free () where
+    free = return ()
+
+instance Free Bool where
+    free = __prim_free_Bool
+
+instance Free Integer where
+    free = __prim_free_Integer
+
+instance Free (Bit #n) where
+    free = __prim_free_Bit
+
+instance (Free a, Free b) => Free (a, b) where
+    free = do
+        a <- free
+        b <- free
+        return (a, b)
+
+instance (Free a, Free b, Free c) => Free (a, b, c) where
+    free = do
+        a <- free
+        b <- free
+        c <- free  
+        return (a, b, c)
+
+deriving instance (Free a) => Free (Maybe a)
+deriving instance Free Ordering
+
+-- Return a free integer which ranges from M to N for given M and N.
+-- Uses only the Core theory, Integer support is not required.
+--
+-- N should be greater than or equal to M.
+--
+-- Note: This returns a linear structure of booleans, which is not
+-- necessarily a very compact representation.
+free_enum :: Integer -> Integer -> Query Integer
+free_enum m n =
+    if (m == n)
+        then return m
+        else do
+            ism <- free
+            v <- free_enum (m+1) n
+            return (if ism then m else v)
+
+-- Assert the given boolean is true.
+assert :: Bool -> Query ()
+
+-- Ask the SMT solver if there is an assignment to the free variables in the
+-- context such that all assertions are satisfied. If there is a satisfying
+-- assignment, evaluates the argument under that assignment and returns the
+-- concrete result.
+query :: a -> Query (Answer a)
+
+-- Execute a scoped query.
+-- No assertions or free variables declared in the given query affect the
+-- context of this query.
+-- Warning: It is possible to return free variables from the given query which
+-- have no meaning in the context of this query. You should not do this.
+queryS :: Query a -> Query a
+
+-- The Query monad primitives
+return_query :: a -> Query a
+nobind_query :: Query a -> Query b -> Query b
+bind_query :: Query a -> (a -> Query b) -> Query b
+fail_query :: String -> Query a
+
+instance Monad Query where
+  return = return_query
+  (>>=) = bind_query
+  (>>) = nobind_query
+  fail = fail_query
+
+-- Run an SMT Query using yices1
+-- If the first argument is not Nothing, debugging will be enabled, outputting
+-- to the given file.
+runYices1 :: Maybe FilePath -> Query a -> IO a
+
+-- Run an SMT Query using yices2
+-- If the first argument is not Nothing, debugging will be enabled, outputting
+-- to the given file.
+runYices2 :: Maybe FilePath -> Query a -> IO a
+
+-- Run an SMT Query using stp
+-- If the first argument is not Nothing, debugging will be enabled, outputting
+-- to the given file.
+runSTP :: Maybe FilePath -> Query a -> IO a
+

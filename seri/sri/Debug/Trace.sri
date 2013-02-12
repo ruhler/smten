@@ -1,9 +1,0 @@
-
-module Debug.Trace where
-
-trace :: String -> a -> a
-
--- Pretty prints the seri expression for first argument to stderr, returns the
--- second argument.
-traceE :: a -> b -> b
-

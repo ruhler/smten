@@ -1,0 +1,8 @@
+
+module Smten.Tests.MalTyped.BadType1 where
+
+import Prelude
+
+foo :: Integer
+foo = True
+

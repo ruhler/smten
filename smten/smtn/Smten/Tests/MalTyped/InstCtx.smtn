@@ -1,0 +1,13 @@
+
+module Smten.Tests.MalTyped.InstCtx where
+
+import Prelude
+
+data Foo = Foo | Bar
+
+-- The Maybe type instance of Eq has a context.
+-- We expect this not to type check because there is no instance of Eq for
+-- Foo, even though there is an instance for Maybe.
+foo :: Maybe Foo -> Bool
+foo m = m == Just Foo
+

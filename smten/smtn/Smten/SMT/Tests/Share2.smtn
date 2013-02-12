@@ -1,0 +1,52 @@
+
+
+module Smten.SMT.Tests.Share2 where
+
+import Prelude
+import Smten.SMT.Symbolic
+import Smten.Tests.Test
+
+simple :: SMT ()
+simple = do
+    r <- query $ do
+        x <- free
+        y <- free
+        assert ((\a -> (a + a + a + a == (8 :: Integer))) (x - y))
+        return (x - y)
+    test "simple" (r == Just 2)
+
+samectx :: SMT ()
+samectx = do
+    r <- query $ do
+        p <- free
+        x <- free
+        y <- free
+        assert ((\a -> (if p then a + a
+                            else 0) == (8 :: Integer)) (x - y))
+        return (x - y)
+    test "diffctx" (r == Just 4)
+
+diffctx :: SMT ()
+diffctx = do
+    r <- query $ do
+        p <- free
+        x <- free
+        y <- free
+        assert ((\a -> (if p then a + a
+                            else a - a) == (8 :: Integer)) (x - y))
+        assert p
+        return (x - y)
+    test "diffctx" (r == Just 4)
+
+qmain :: SMT ()
+qmain = do
+    simple
+    samectx
+    diffctx
+
+main :: IO ()
+main = do
+    runSMT Yices2 (Just "build/test/Share2.yices2.dbg") qmain
+    
+    putStrLn "SHARE 2 PASSED"
+

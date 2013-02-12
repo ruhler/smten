@@ -1,0 +1,19 @@
+
+-- All tests involving only concrete values (no SMT).
+module Smten.Tests.Concrete where
+
+import Smten.Tests.Test
+import Smten.Tests.Basic
+import Smten.Tests.State
+
+tests :: IO ()
+tests = do
+    test "test.dummy" True
+    testbasics
+    teststate
+
+main :: IO ()
+main = do
+    tests
+    putStrLn "CONCRETE PASSED"
+

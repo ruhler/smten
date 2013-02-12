@@ -1,0 +1,46 @@
+
+module Smten.SMT.Tests.AllQ2 where
+
+import Prelude
+import Smten.SMT.Symbolic
+import Smten.Tests.Test
+
+-- Find a list of all values satisfing the given predicate.
+allQ :: (Eq a, Free a) => (a -> Bool) -> SMT [a]
+allQ p = do
+  xref <- commit $ do
+    x <- free
+    assert (p x)
+    return x
+  allQ' xref
+
+-- Find all different satisfying assignments to the given free variable in the
+-- current context.
+allQ' :: (Eq a) => SMTRef a -> SMT [a]
+allQ' x = do
+  r <- query $ readSMTRef x
+  case r of
+     Just v -> do
+        commit (readSMTRef x >>= assert . (/=) v)
+        vs <- allQ' x
+        return (v:vs)
+     _ -> return []
+
+pred1 :: Integer -> Bool
+pred1 x = (x > 3) && (x < 8)
+
+qmain :: SMT ()
+qmain = do
+    vs <- allQ pred1
+    test "len" (length vs == 4)
+    test "4" (4 `elem` vs)
+    test "5" (5 `elem` vs)
+    test "6" (6 `elem` vs)
+    test "7" (7 `elem` vs)
+
+main :: IO ()
+main = do
+    runSMT Yices1 (Just "build/test/AllQ.yices1.dbg") qmain
+    runSMT Yices2 (Just "build/test/AllQ.yices2.dbg") qmain
+    putStrLn "AllQ PASSED"
+

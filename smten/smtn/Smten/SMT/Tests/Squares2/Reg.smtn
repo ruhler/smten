@@ -1,0 +1,43 @@
+
+module Smten.SMT.Tests.Squares2.Reg where {
+
+import Prelude;
+import Smten.SMT.SMT;
+import Smten.SMT.Tests.Squares2.Prelude;
+
+data MOD_mkReg a = MOD_mkReg {
+   modified :: Bool,
+   value :: a
+} deriving (Eq, Free);
+
+instance (Show a) => Show (MOD_mkReg a) where {
+    show (MOD_mkReg a b) = concat [
+        "MOD_mkReg { ",
+        "modified = ", show a, ", ",
+        "value = ", show b, " }"
+      ];
+};
+
+instance State (MOD_mkReg a) where {
+    newState r = r { modified = False };
+
+    parMerge a b =
+      let {
+        g = not (modified a && modified b);
+        s = if (modified a) then a else b;
+      } in if g then Just s else Nothing;
+
+    seqMerge a b = if modified b then b else a;
+};
+
+ctor_mkReg :: a -> MOD_mkReg a;
+ctor_mkReg v = MOD_mkReg False v;
+
+meth_read_mkReg :: Action (MOD_mkReg a) a;
+meth_read_mkReg = gets value;
+
+meth_write_mkReg :: a -> Action (MOD_mkReg a) ();
+meth_write_mkReg v = modify $ \r -> r { modified = True, value = v};
+
+}
+

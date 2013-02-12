@@ -1,0 +1,98 @@
+
+-- Alternative interface for SMT queries in Smten.
+module Smten.SMT.Symbolic where
+
+import Smten.Bit
+
+-- Primitive SMT reference.
+data SMTRef a =
+
+-- Primitive Symbolic monad
+data Symbolic a =
+
+-- Built in symbolic things:
+__prim_free_Bool :: Symbolic Bool
+__prim_free_Integer :: Symbolic Integer
+__prim_free_Bit :: Symbolic (Bit #n)
+
+class Free a where
+    free :: Symbolic a
+
+instance Free () where
+    free = return ()
+
+instance Free Bool where
+    free = __prim_free_Bool
+
+instance Free Integer where
+    free = __prim_free_Integer
+
+instance Free (Bit #n) where
+    free = __prim_free_Bit
+
+instance (Free a, Free b) => Free (a, b) where
+    free = do
+        a <- free
+        b <- free
+        return (a, b)
+
+instance (Free a, Free b, Free c) => Free (a, b, c) where
+    free = do
+        a <- free
+        b <- free
+        c <- free  
+        return (a, b, c)
+
+deriving instance (Free a) => Free (Maybe a)
+deriving instance Free Ordering
+
+assert :: Bool -> Symbolic ()
+readSMTRef :: SMTRef a -> Symbolic a
+
+-- The Symbolic monad primitives
+return_symbolic :: a -> Symbolic a
+nobind_symbolic :: Symbolic a -> Symbolic b -> Symbolic b
+bind_symbolic :: Symbolic a -> (a -> Symbolic b) -> Symbolic b
+fail_symbolic :: String -> Symbolic a
+
+instance Monad Symbolic where
+  return = return_symbolic
+  (>>=) = bind_symbolic
+  (>>) = nobind_symbolic
+  fail = fail_symbolic
+
+-- Primitive SMT monad
+data SMT a = 
+
+-- Ask the SMT solver for a concrete value contained in the given symbolic
+-- expression.
+-- The SMT context is not affected by this call.
+query :: Symbolic a -> SMT (Maybe a)
+
+-- Run an SMT computation without changing the current SMT context.
+nest :: SMT a -> SMT a
+
+-- Commit the given symbolic computation to the current SMT context.
+-- Returns a reference to the result of the symbolic computation in the SMT
+-- context.
+commit :: Symbolic a -> SMT (SMTRef a)
+
+-- The SMT monad primitives
+return_smt :: a -> SMT a
+nobind_smt :: SMT a -> SMT b -> SMT b
+bind_smt :: SMT a -> (a -> SMT b) -> SMT b
+fail_smt :: String -> SMT a
+
+instance Monad SMT where
+  return = return_smt
+  (>>=) = bind_smt
+  (>>) = nobind_smt
+  fail = fail_smt
+
+data Solver = Yices1 | Yices2 | STP
+    deriving (Eq, Show)
+
+-- If no FilePath is given, debugging is disabled. If a FilePath is given,
+-- debugging is enabled, outputting the generated SMT query to the given file.
+runSMT :: Solver -> Maybe FilePath -> SMT a -> IO a
+

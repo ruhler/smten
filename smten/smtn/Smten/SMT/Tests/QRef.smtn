@@ -1,0 +1,49 @@
+
+
+module Smten.SMT.Tests.QRef where
+
+import Smten.SMT.Symbolic
+import Smten.Tests.Test
+
+qtest :: SMT ()
+qtest = do
+    nest $ do
+        xref <- commit $ free
+        commit $ readSMTRef xref >>= assert
+        rx <- query $ readSMTRef xref
+        test "qref.simple" (rx == Just True)
+
+        commit $ readSMTRef xref >>= (assert . not)
+        rx2 <- query $ readSMTRef xref
+        test "qref.reuse" (rx2 == Nothing)
+
+    nest $ do
+        xref <- commit $ free
+        commit $ do
+            v1 <- readSMTRef xref
+            assert v1
+            v2 <- readSMTRef xref
+            assert (not v2)
+        rx <- query (return ())
+        test "qref.dupref" (rx == Nothing)
+
+    nest $ do
+        xref <- commit $ do
+           x <- free
+           assert (not x)
+           return x
+        yref <- commit free
+        r <- query $ do
+            vx <- readSMTRef xref
+            vy <- readSMTRef yref
+            assert (vx || vy)
+            return vy
+        test "qref.join" (r == Just True)
+        
+main :: IO ()
+main = do
+    runSMT Yices1 (Just "build/test/QRef.yices1.dbg") qtest
+    runSMT Yices2 (Just "build/test/QRef.yices2.dbg") qtest
+    runSMT STP (Just "build/test/QRef.stp.dbg") qtest
+    putStrLn "QREF PASSED"
+        

@@ -1,12 +1,8 @@
 
-Highly Desirable::
-* Some support for "forall" queries?
-* Recursive lets (with polymorphic types)
-* Better type errors
-** use type synonyms in errors.
-** report an error for use of a type that isn't defined
-** show string as "foobar" instead of ['f','o', 'o', 'b', 'a', 'r']
-
+Priority::
+* Switch to new API
+* Add support for executing symbolic Symbolic
+* Add support for semicolon error parsing rule in parser
 
 Haskell Features::
 * Allow parens in InstD: instance (Foo Bar) where...
@@ -15,8 +11,11 @@ Haskell Features::
 * recursive let blocks
 * modularity support
 ** ability to re-export modules 
-    (So we can include Seri.SMT instead of Seri.SMT.SMT, for example)
+    (So we can include Smten.SMT instead of Smten.SMT.SMT, for example)
 * labeled pattern matching.
+
+Documentation::
+* Update README with sample of using Smten
 
 Test Type Checking::
 * Verify we check for the instance or context for every method call
@@ -59,6 +58,11 @@ Front End::
   clean up how that works somehow?
 * derived instance of Show should handle record type constructors
   appropriately.
+* Better type errors
+** give location of type error more specific than top level declaration.
+** use type synonyms in errors.
+** report an error for use of a type that isn't defined
+** show string as "foobar" instead of ['f','o', 'o', 'b', 'a', 'r']
 
 Pretty Printer::
 * Make pretty again:
@@ -86,6 +90,8 @@ ExpH::
 Primitives::
 * Associate concrete haskell function with Prim to avoid duplication in Prim
   and concretized haskellf primitives.
+* have a free function primitive for yices?
+* have a free integer primitive for SMT?
 
 SMT::
 * Remove bv-zero-extend from SMT syntax, use SMTLIB2 alternative
@@ -109,15 +115,15 @@ Specialization::
 
 HaskellF::
 * Translate a module at a time instead of one big blob
-* derive more efficient de_seriS than just the default.
-* Provide instances of SeriS for the tuples
+* derive more efficient de_smtenS than just the default.
+* Provide instances of SmtenS for the tuples
 * Perhaps use TH to make defining the HaskellF prelude easier?
 
 Distribution::
-* Move everything but the SMT solvers from seri-smt to seri.
+* Move everything but the SMT solvers from smten-smt to smten.
 
 Build System::
-* Don't require yices1 and yices2 to be installed to build or use seri
+* Don't require yices1 and yices2 to be installed to build or use smten
     If a solver isn't installed, just give a runtime error when you try to
     use it. (As per request of Nirav)
 * don't hardcode build/test output directory into SMT tests
@@ -128,12 +134,12 @@ Applications::
 * HCP - get it working on the larger test cases
 * TCP - Implement it
 * SAT - implement MAXSAT
-* SKETCH - port some of their gallery to seri
+* SKETCH - port some of their gallery to smten
 
 Bugs::
 * DupInst maltype test
-* seriq2 for SquaresRaw... result differs from yices1 and yices2. Why?
-  seriq1 seg faults on that same example randomly
+* smtenq2 for SquaresRaw... result differs from yices1 and yices2. Why?
+  smtenq1 seg faults on that same example randomly
     (in GC evacuate at end of prog)
 * Detect recursive functions in elaboration and report an error about
   them.
@@ -153,4 +159,10 @@ Bugs::
 
 Other::
 * Have name sugar for arrowN, tupleN, de_tupleN, unitN, etc...
+* Update LICENCE files to include 2013 copyright.
+* Remove all remaining traces of the name "smten".
+* TODO's inlined in the code
+* There's a lot of junk smtn code not being tested.
+  Either add tests to the test cases for it, or throw it away
+* Do a code review of all of Smten, figure out what can be cleaned up and how.
 

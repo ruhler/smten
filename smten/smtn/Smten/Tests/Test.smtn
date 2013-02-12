@@ -1,0 +1,7 @@
+
+module Smten.Tests.Test where
+
+test :: (Monad m) => String -> Bool -> m ()
+test _ True = return ()
+test msg _ = error ("Test failed: " ++ msg )
+

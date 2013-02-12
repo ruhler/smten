@@ -1,0 +1,70 @@
+
+module Smten.SMT.Tests.Datatype2 where
+
+import Prelude
+import Smten.SMT.Symbolic
+import Smten.Tests.Test
+
+data MyEnum = E1 | E2 | E3 | E4
+    deriving (Eq, Free)
+
+rotateenum :: MyEnum -> MyEnum
+rotateenum E1 = E2
+rotateenum E2 = E1
+rotateenum E3 = E4
+rotateenum _ = E3
+
+data MyStruct = MyStruct MyEnum Bool
+    deriving (Eq, Free)
+
+changestruct :: MyStruct -> MyStruct
+changestruct (MyStruct e True) = MyStruct (rotateenum e) False
+changestruct (MyStruct e _) = MyStruct e True
+
+data MyMix = Mix1 Bool Bool
+           | Mix2 Bool
+    deriving (Eq, Free)
+
+mixval :: MyMix -> MyEnum
+mixval (Mix1 True _) = E1
+mixval (Mix1 _ _) = E2
+mixval (Mix2 True) = E3
+mixval _ = E4
+
+qtest :: SMT ()
+qtest = do
+    ra <- query $ do
+        a <- free
+        assert (rotateenum a == E3)
+        return a
+    test "datatype.enum" (ra == Just E4)
+
+    rb <- query $ do
+        b <- free
+        assert (changestruct b == MyStruct E2 False)
+        return b
+    test "datatype.struct" (rb == Just (MyStruct E1 True))
+    
+    rc <- query $ do
+        c <- free
+        assert (mixval c == E3)
+        return c
+    test "datatype.mix" (rc == Just (Mix2 True))
+
+    rd <- query $ do
+        d <- free
+        assert (case (let v = d || d
+                      in if v then E1 else E2) of
+                   E1 -> False
+                   E2 -> True
+                 )
+        return d
+    test "datetype.caseoflet" (rd == Just False)
+
+main :: IO ()
+main = do
+    runSMT Yices1 (Just "build/test/Datatype2.yices1.dbg") qtest
+    runSMT Yices2 (Just "build/test/Datatype2.yices2.dbg") qtest
+    runSMT STP (Just "build/test/Datatype2.stp.dbg") qtest
+    putStrLn "DATATYPE 2 PASSED"
+

@@ -1,0 +1,44 @@
+
+module Smten.SMT.Tests.Squares.Prelude where {
+
+import Prelude;
+
+class State s where {
+    -- clear all modified bits
+    newState :: s -> s;
+
+    -- Select appropriate part of the states to keep for parallel composition
+    parMerge :: s -> s -> (Bool, s);
+
+    -- Copy new updates back on the old state
+    seqMerge :: s -> s -> s;
+    
+};
+
+-- Sequential rule composition.
+(<$>) :: (s -> (Bool, s)) -> (s -> (Bool, s)) -> (s -> (Bool, s));
+(<$>) a b =
+  \s0 ->
+    let {
+      (g1, s1) = a s0;
+      (g2, s2) = b s1;
+    } in (g1 && g2, s2);
+
+-- Parallel rule composition.
+(<|>) :: (State s) => (s -> (Bool, s)) -> (s -> (Bool, s)) -> s -> (Bool, s);
+(<|>) a b =
+  \s0 -> 
+    let {
+      ns = newState s0;
+      (g1, s1) = a ns;
+      (g2, s2) = b ns;
+      (g3, s3) = parMerge s1 s2;
+    } in (and [g1, g2, g3], seqMerge s0 s3);
+
+-- Multiple sequential composition.
+seq :: [(s -> (Bool, s))] -> s -> (Bool, s);
+seq [x] = x;
+seq (x:xs) = x <$> seq xs;
+
+}
+

@@ -1,11 +1,11 @@
-Seri ReadMe
-===========
+Smten ReadMe
+============
 Richard Uhler <ruhler@csail.mit.edu>
-November 1, 2012
+February 12, 2013
 
-Configuring Seri for Build
---------------------------
-Before building seri using the makefile, you must configure the build for your
+Configuring Smten for Build
+---------------------------
+Before building smten using the makefile, you must configure the build for your
 system. This is done by creating the file "tclmk/local.tcl" containing
 information about your system.
 
@@ -24,12 +24,12 @@ set ::env(LD_LIBRARY_PATH) "/home/ruhler/local/lib"
 
 Yices 1 and Yices 2
 ~~~~~~~~~~~~~~~~~~~
-Seri requires both yices1 and yices2 be installed on the system. It looks
+Smten requires both yices1 and yices2 be installed on the system. It looks
 for a yices1 library called "yices1" and a yices2 library called "yices2".
 Because the yices libraries are both shiped as "yices", you will need to
 rename them or provide a link to "yices1" and "yices2".
 
-In order to use both yices1 and yices2 libraries in a single executable, seri
+In order to use both yices1 and yices2 libraries in a single executable, smten
 assumes the symbols in the yices1 library have been renamed so that prefixes
 yices_ are now yices1_. The rename map is included in the doc directory.
 
@@ -43,24 +43,17 @@ use with seri, run the commands:
 
 STP
 ~~~
-Seri requires you have the STP library installed on your system to build.
+Smten requires you have the STP library installed on your system to build.
 
 
-Building Seri
--------------
-Once seri is configured for build, it can be built by running `make`.
+Building Smten
+--------------
+Once smten is configured for build, it can be built by running `make`.
 
-The makefile installs the cabal packages for seri and seri-smt in a pretend
+The makefile installs the cabal packages for smten and smten-smt in a pretend
 home directory, compiles some programs against the installed packages, then
 runs some tests on the generated executables. During the process of
 installation, required packages will automatically be installed as well.
-
-Generated files of note:
-build/seri-bin/seri:: the generated seri executable
-build/seri/seri-<version>.tar.gz:: seri cabal distribution package
-build/seri/doc/html/seri/index.html:: seri library documentation
-build/seri-smt/seri-smt-<version>.tar.gz:: seri-smt cabal distribution package
-build/seri-smt/doc/html/seri-smt/index.html:: seri-smt documentation
 
 Trouble Shooting
 ~~~~~~~~~~~~~~~~
@@ -104,19 +97,4 @@ You may need to set your LD_LIBRARY_PATH to find the library at runtime:
 Once you have verified yices2 is install and working on your system, double
 check that:
 * tclmk/local.tcl has the right LD_LIBRARY_PATH set
-
-Trying Seri
------------
-After building seri you can try it out. For example, to run a simple query
-using yices2:
-
-    ./build/seri-smt/seri --io --include seri/sri --include seri-smt/sri -m Seri.SMT.Tests.HelloWorld.main -f seri-smt/sri/Seri/SMT/Tests/HelloWorld.sri
-
-If it works, you should get the output:
-    Satisfiable 5
-
-And HelloWorld.dbg will contain the yices2 query evaluated to get this result.
-
-Additional sample queries are available in the seri-smt/sri/Seri/SMT/Tests/
-directory.
 

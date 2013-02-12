@@ -1,0 +1,80 @@
+
+module Smten.SMT.Tests.Squares2.FIFO2 where {
+
+import Prelude;
+import Smten.SMT.SMT;
+import Smten.SMT.Tests.Squares2.Prelude;
+import Smten.SMT.Tests.Squares2.Reg;
+
+data FIFO2 a = 
+    FIFO2_Empty
+  | FIFO2_Single a
+  | FIFO2_Full a a
+    deriving (Eq, Free);
+
+instance (Show a) => Show (FIFO2 a) where {
+    show FIFO2_Empty = "FIFO2_Empty";
+    show (FIFO2_Single x) = "FIFO2_Single " ++ show x;
+    show (FIFO2_Full x y) = concat ["FIFO2_Full ", show x, " ", show y];
+};
+
+data MOD_mkFIFO a = MOD_mkFIFO {
+    elems :: MOD_mkReg (FIFO2 a)
+} deriving (Eq, Free);
+
+instance (Show a) => Show (MOD_mkFIFO a) where {
+    show (MOD_mkFIFO x) = concat [
+        "MOD_mkFIFO { ",
+        "elems = ", show x, " }"    
+      ];
+};
+
+on_elems :: Action (MOD_mkReg (FIFO2 a)) b -> Action (MOD_mkFIFO a) b;
+on_elems = liftA elems __elems_update;
+
+instance State (MOD_mkFIFO a) where {
+   newState (MOD_mkFIFO r) = MOD_mkFIFO (newState r);
+
+   parMerge (MOD_mkFIFO a) (MOD_mkFIFO b) = do {
+     s <- parMerge a b;
+     return (MOD_mkFIFO s);
+   };
+
+   seqMerge (MOD_mkFIFO a) (MOD_mkFIFO b) = MOD_mkFIFO (seqMerge a b);
+};
+
+ctor_mkFIFO :: MOD_mkFIFO a;
+ctor_mkFIFO = MOD_mkFIFO (ctor_mkReg (FIFO2_Empty));
+
+meth_enq_mkFIFO :: a -> Action (MOD_mkFIFO a) ();
+meth_enq_mkFIFO v = do {
+  fifo <- on_elems meth_read_mkReg;
+  case fifo of {
+     FIFO2_Empty -> on_elems $ meth_write_mkReg (FIFO2_Single v);
+     FIFO2_Single x -> on_elems $ meth_write_mkReg (FIFO2_Full x v);
+     FIFO2_Full _ _ -> fail "enq to full fifo";
+  };
+};
+
+meth_deq_mkFIFO :: Action (MOD_mkFIFO a) ();
+meth_deq_mkFIFO = do {
+  fifo <- on_elems meth_read_mkReg;
+  case fifo of {
+     FIFO2_Empty -> fail "deq to empty fifo";
+     FIFO2_Single x -> on_elems $ meth_write_mkReg (FIFO2_Empty);
+     FIFO2_Full x y -> on_elems $ meth_write_mkReg (FIFO2_Single y);
+  };
+};
+
+meth_first_mkFIFO :: Action (MOD_mkFIFO a) a;
+meth_first_mkFIFO = do {
+  fifo <- on_elems meth_read_mkReg;
+  case fifo of {
+     FIFO2_Empty -> fail "first to empty fifo";
+     FIFO2_Single x -> return x;
+     FIFO2_Full x _ -> return x;
+  };
+};
+
+}
+

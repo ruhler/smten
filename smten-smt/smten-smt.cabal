@@ -1,0 +1,38 @@
+name: smten-smt
+version: 1.6.0.0
+synopsis: SMT primitives and backends for smten
+license: AllRightsReserved
+license-file: LICENSE
+author: Richard Uhler
+maintainer: ruhler@csail.mit.edu
+category: Language
+build-type: Simple
+cabal-version: >=1.8
+stability: experimental
+source-repository this
+  type: git
+  location: /afs/csail.mit.edu/u/r/ruhler/git/smten
+--branch:
+--tag:
+library
+  exposed-modules:
+    Smten.SMT.STP.Concrete,
+    Smten.SMT.STP.FFI,
+    Smten.SMT.STP.STP,
+
+    Smten.SMT.Yices.Concrete,
+    Smten.SMT.Yices.FFI2,
+    Smten.SMT.Yices.Yices1,
+    Smten.SMT.Yices.Yices2
+
+    Smten.SMT.Primitives
+    Smten.SMT.Primitives2
+
+    Smten.HaskellF.Query
+    Smten.HaskellF.Lib.SMT
+  build-depends: base ==4.5.*, mtl ==2.1.*, pretty ==1.1.*, array ==0.4.*,
+                 directory ==1.1.*, template-haskell ==2.7.*,
+                 hashable ==1.1.*, containers ==0.4.*, bytestring ==0.9.*,
+                 smten ==1.6.*
+  extra-libraries: stp stdc++ yices1 yices2
+  ghc-prof-options: -fprof-auto-top

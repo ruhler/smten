@@ -1,0 +1,130 @@
+name: smten
+version: 1.6.0.0
+synopsis: Smten library
+license: AllRightsReserved
+license-file: LICENSE
+author: Richard Uhler
+maintainer: ruhler@csail.mit.edu
+category: Language
+build-type: Simple
+cabal-version: >=1.8
+stability: experimental
+data-dir: smtn
+data-files:
+    Prelude.smtn
+    Control/Monad/*.smtn
+    Debug/*.smtn
+    Data/*.smtn
+    Smten/*.smtn
+    Smten/Tests/*.smtn
+    Smten/Tests/MalTyped/*.smtn
+    Smten/Sudoku/*.smtn
+    Smten/SMT/*.smtn
+    Smten/SMT/Tests/*.smtn
+    Smten/SMT/Tests/Squares2/*.smtn
+    Smten/SMT/Tests/Squares/*.smtn
+source-repository this
+  type: git
+  location: /afs/csail.mit.edu/u/r/ruhler/git/smten
+  --branch:
+  --tag:
+library
+  exposed-modules:
+    Smten
+    Smten.Bit
+    Smten.Strict
+    Smten.Failable
+    Smten.HashTable
+
+    Smten.Name
+    Smten.Sig
+
+    Smten.Type
+    Smten.Type.Typeof
+    Smten.Type.Sugar
+    Smten.Type.TH
+    Smten.Type.Utils
+    Smten.Type.SmtenT
+    Smten.Type.Type
+    Smten.Type.SmtenTs
+    Smten.Type.Ppr
+
+    Smten.Exp
+    Smten.Exp.Exp
+    Smten.Exp.Typeof
+    Smten.Exp.Match
+    Smten.Exp.Sugar
+    Smten.Exp.Utils
+    Smten.Exp.Do
+    Smten.Exp.Ppr
+
+    Smten.ExpH
+    Smten.ExpH.ExpH
+    Smten.ExpH.SmtenEH
+    Smten.ExpH.Typeof
+    Smten.ExpH.Sugar
+    Smten.ExpH.Sugar2
+    Smten.ExpH.SmtenEHs
+    Smten.ExpH.SmtenEHs2
+    Smten.ExpH.TH
+    Smten.ExpH.FromExpH
+    Smten.ExpH.Ppr
+    Smten.ExpH.Utils
+
+    Smten.Inline
+
+    Smten.Prim
+    Smten.Prim.Prim
+    Smten.Prim.Prelude
+    Smten.Prim.Bit
+
+    Smten.HaskellF.HaskellF
+    Smten.HaskellF.Lib.Prelude
+    Smten.HaskellF.Symbolic
+    Smten.HaskellF.TH
+
+    Smten.Module
+    Smten.Module.Module
+
+    Smten.Dec
+    Smten.Dec.Prelude
+    Smten.Dec.Record
+    Smten.Dec.Env
+    Smten.Dec.Dec
+    Smten.Dec.Ppr
+    Smten.Dec.Utils
+
+    Smten.Typing
+    Smten.Typing.Infer
+    Smten.Typing.Check
+    Smten.Typing.Solver
+
+    Smten.Parser
+    Smten.Parser.Monad
+    Smten.Parser.Lexer
+    Smten.Parser.Grammar
+    Smten.Parser.PatOrExp
+    Smten.Parser.Utils
+
+    Smten.Loader
+
+    Smten.Fresh.Pretty
+    Smten.Fresh.Fast
+    Smten.Fresh.Fresh
+
+    Smten.SMT.IVP
+    Smten.SMT.Solver
+    Smten.SMT.Syntax
+    Smten.SMT.Translate
+    Smten.SMT.Query
+
+    Smten.Fresh
+
+    Smten.Ppr
+    Smten.Lit
+  other-modules: Paths_smten
+  build-depends: base ==4.5.*, mtl ==2.1.*, pretty ==1.1.*, array ==0.4.*,
+                 directory ==1.1.*, template-haskell ==2.7.*, hashable ==1.1.*,
+                 containers ==0.4.*, bytestring ==0.9.*
+  build-tools: happy
+  ghc-prof-options: -fprof-auto-top
