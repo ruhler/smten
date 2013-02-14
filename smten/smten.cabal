@@ -117,6 +117,8 @@ library
     Smten.SMT.Syntax
     Smten.SMT.Translate
     Smten.SMT.Query
+    Smten.SMT.Symbolic
+    Smten.SMT.SMT
 
     Smten.Semantics
 

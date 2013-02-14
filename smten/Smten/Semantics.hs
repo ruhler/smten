@@ -39,7 +39,7 @@ data SE = SE {
     se_map :: DMap
 } deriving (Show)
 
--- Symbolic a represents a set (here list) of possible values of type 'a' in
+-- 'Symbolic a' represents a set (here list) of possible values of type 'a' in
 -- an environment of use contexts
 data Symbolic a = Symbolic {
     runSymbolic :: SE -> [a]
