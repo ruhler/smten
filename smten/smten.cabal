@@ -118,6 +118,8 @@ library
     Smten.SMT.Translate
     Smten.SMT.Query
 
+    Smten.Semantics
+
     Smten.Fresh
 
     Smten.Ppr

@@ -7,7 +7,8 @@ module Smten.ExpH.Sugar (
     appEH, de_appEH, appsEH, de_appsEH,
     lamEH, letEH, de_letEH, aconEH,
     errorEH, de_errorEH,
-    caseEH, ifEH,
+    caseEH, tcaseEH,
+    ifEH, impliesEH,
 
     unitEH,
     boolEH, trueEH, falseEH, de_boolEH,
@@ -84,13 +85,10 @@ appEH f x
     -- (case a of { k -> y ; _ -> n}) x
     --  where y = \v1 -> \v2 -> ... -> y v
     -- ===> (case a of { k -> \v1 -> \v2 -> ... -> yv x; _ -> n x })
-    let kargs = length (de_arrowsT (typeof k)) - 1
-        Just (_, t) = de_arrowT (typeof f)
+    let Just (_, t) = de_arrowT (typeof f)
     in letEH (Sig (name "_z") (typeof x)) t x $ \av ->
          let g x = appEH x av
-             y' = onyv kargs g y
-             n' = g n
-         in caseEH a k y' n'
+         in tcaseEH f g g
  | ErrorEH t s <- f = 
     let Just (_, t) = de_arrowT (typeof f)
     in errorEH t s
@@ -210,23 +208,33 @@ caseEH x k@(Sig nk _) y n
     in pushfun f x
  | otherwise = identify $ \id -> CaseEH id x k y n
 
+-- Transform the bodies of a case expression.
+--  e - must be a case expression
+--  fyv - transforms the 'yv' part of a case expression
+--  fn - transforms the 'n' part of a case expression
+tcaseEH :: ExpH -> (ExpH -> ExpH) -> (ExpH -> ExpH) -> ExpH
+tcaseEH (CaseEH _ x k y n) fyv fn =
+  let kargs = length (de_arrowsT (typeof k)) - 1
+      y' = onyv kargs fyv y
+      n' = fn n
+  in caseEH x k y' n'
+tcaseEH e _ _ = error "tcaseEH passed non-case expression"
+
 -- Function pushing:
 --    f (case x of { k -> y; _ -> n})
 -- Turns into:
 --    let _f = f in case x of { k -> _f y; _ -> _f n}
 pushfun :: ExpH -> ExpH -> ExpH
-pushfun f (CaseEH _ x k y n) =
- let kargs = length (de_arrowsT (typeof k)) - 1
-     Just (_, ot) = de_arrowT $ typeof f
-     g yv = appEH 
+pushfun f e@(CaseEH _ x k y n) =
+ let Just (_, ot) = de_arrowT $ typeof f
  in letEH (Sig (name "_f") (typeof f)) ot f $ \fv ->
-      let g x = appEH fv x
-          y' = onyv kargs g y
-          n' = g n
-      in caseEH x k y' n'
+      tcaseEH e (appEH fv) (appEH fv)
 
 ifEH :: ExpH -> ExpH -> ExpH -> ExpH
 ifEH p a b = caseEH p (Sig (name "True") boolT) a b
+
+impliesEH :: ExpH -> ExpH -> ExpH
+impliesEH p q = ifEH p q trueEH
 
 -- For a case expresion, we have:
 -- onyv n f y

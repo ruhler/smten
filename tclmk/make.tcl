@@ -160,6 +160,14 @@ indir build/smten-bin {
 }
 hrun ./build/smten-bin/pprtest
 
+# The semantics test
+indir build/smten-bin {
+    hrun ln -sf ../../smten-bin/semtest.hs semtest.hs
+    hrun ghc --make -o semtest semtest.hs
+}
+hrun ./build/smten-bin/semtest
+
+
 # The sudoku haskell integration test.
 run $::SMTEN --haskellf \
     --include $::SMTN \
