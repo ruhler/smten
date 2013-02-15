@@ -1,5 +1,5 @@
 
-module Smten.SMT.Tests.Integer2 where
+module Smten.SMT.Tests.Integer where
 
 import Smten.SMT.Symbolic
 import Smten.Tests.Test
@@ -61,7 +61,7 @@ qtest = do
 
 main :: IO ()
 main = do
-    runSMT Yices1 (Just "build/test/Integer2.yices1.dbg") qtest
-    runSMT Yices2 (Just "build/test/Integer2.yices2.dbg") qtest
-    putStrLn "INTEGER 2 PASSED"
+    runSMT Yices1 (Just "build/test/Integer.yices1.dbg") qtest
+    runSMT Yices2 (Just "build/test/Integer.yices2.dbg") qtest
+    putStrLn "INTEGER PASSED"
 

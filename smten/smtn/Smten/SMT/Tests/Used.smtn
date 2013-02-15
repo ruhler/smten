@@ -1,6 +1,6 @@
 
 
-module Smten.SMT.Tests.QRef where
+module Smten.SMT.Tests.Used where
 
 import Smten.SMT.Symbolic
 import Smten.Tests.Test
@@ -11,11 +11,11 @@ qtest = do
         xref <- use $ free
         use $ used xref >>= assert
         rx <- query $ used xref
-        test "qref.simple" (rx == Just True)
+        test "used.simple" (rx == Just True)
 
         use $ used xref >>= (assert . not)
         rx2 <- query $ used xref
-        test "qref.reuse" (rx2 == Nothing)
+        test "used.reuse" (rx2 == Nothing)
 
     nest $ do
         xref <- use $ free
@@ -25,7 +25,7 @@ qtest = do
             v2 <- used xref
             assert (not v2)
         rx <- query (return ())
-        test "qref.dupref" (rx == Nothing)
+        test "used.dupref" (rx == Nothing)
 
     nest $ do
         xref <- use $ do
@@ -38,12 +38,12 @@ qtest = do
             vy <- used yref
             assert (vx || vy)
             return vy
-        test "qref.join" (r == Just True)
+        test "used.join" (r == Just True)
         
 main :: IO ()
 main = do
-    runSMT Yices1 (Just "build/test/QRef.yices1.dbg") qtest
-    runSMT Yices2 (Just "build/test/QRef.yices2.dbg") qtest
-    runSMT STP (Just "build/test/QRef.stp.dbg") qtest
-    putStrLn "QREF PASSED"
+    runSMT Yices1 (Just "build/test/Used.yices1.dbg") qtest
+    runSMT Yices2 (Just "build/test/Used.yices2.dbg") qtest
+    runSMT STP (Just "build/test/Used.stp.dbg") qtest
+    putStrLn "USED PASSED"
         

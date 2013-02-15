@@ -1,5 +1,5 @@
 
-module Smten.SMT.Tests.Bit2 where
+module Smten.SMT.Tests.Bit where
 
 import Smten.Bit
 import Smten.SMT.Symbolic
@@ -72,8 +72,8 @@ qtest = do
 
 main :: IO ()
 main = do
-    runSMT Yices1 (Just "build/test/Bit2.yices1.dbg") qtest
-    runSMT Yices2 (Just "build/test/Bit2.yices2.dbg") qtest
-    runSMT STP (Just "build/test/Bit2.stp.dbg") qtest
-    putStrLn "BIT 2 PASSED"
+    runSMT Yices1 (Just "build/test/Bit.yices1.dbg") qtest
+    runSMT Yices2 (Just "build/test/Bit.yices2.dbg") qtest
+    runSMT STP (Just "build/test/Bit.stp.dbg") qtest
+    putStrLn "BIT PASSED"
 

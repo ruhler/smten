@@ -118,22 +118,22 @@ proc haskellf {module} {
 }
 
 io Smten.Tests.Concrete
-io Smten.SMT.Tests.Core2
-io Smten.SMT.Tests.Datatype2
-io Smten.SMT.Tests.QRef
+io Smten.SMT.Tests.Core
+io Smten.SMT.Tests.Datatype
+io Smten.SMT.Tests.Used
 io Smten.SMT.Tests.Nest
-io Smten.SMT.Tests.Integer2
-io Smten.SMT.Tests.Bit2
-io Smten.SMT.Tests.Share2
+io Smten.SMT.Tests.Integer
+io Smten.SMT.Tests.Bit
+io Smten.SMT.Tests.Share
 
 haskellf Smten.Tests.Concrete
-haskellf Smten.SMT.Tests.Core2
-haskellf Smten.SMT.Tests.Datatype2
-haskellf Smten.SMT.Tests.QRef
+haskellf Smten.SMT.Tests.Core
+haskellf Smten.SMT.Tests.Datatype
+haskellf Smten.SMT.Tests.Used
 haskellf Smten.SMT.Tests.Nest
-haskellf Smten.SMT.Tests.Integer2
-haskellf Smten.SMT.Tests.Bit2
-haskellf Smten.SMT.Tests.Share2
+haskellf Smten.SMT.Tests.Integer
+haskellf Smten.SMT.Tests.Bit
+haskellf Smten.SMT.Tests.Share
 
 io Smten.SMT.Tests.AllQ
 io Smten.SMT.Tests.AllQ2

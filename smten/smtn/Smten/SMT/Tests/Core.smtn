@@ -1,5 +1,5 @@
 
-module Smten.SMT.Tests.Core2 where
+module Smten.SMT.Tests.Core where
 
 import Prelude
 import Smten.SMT.Symbolic
@@ -125,8 +125,8 @@ qsubstitute = do
 
 main :: IO ()
 main = do
-    runSMT Yices1 (Just "build/test/Core2.yices1.dbg") qtest
-    runSMT Yices2 (Just "build/test/Core2.yices2.dbg") qtest
-    runSMT STP (Just "build/test/Core2.stp.dbg") qtest
-    putStrLn "CORE2 PASSED"
+    runSMT Yices1 (Just "build/test/Core.yices1.dbg") qtest
+    runSMT Yices2 (Just "build/test/Core.yices2.dbg") qtest
+    runSMT STP (Just "build/test/Core.stp.dbg") qtest
+    putStrLn "CORE PASSED"
 
