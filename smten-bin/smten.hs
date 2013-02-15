@@ -57,7 +57,7 @@ import Smten.Loader
 import Smten.Module
 import Smten
 
-import Smten.SMT.Primitives2
+import Smten.SMT.Primitives
 
 import Smten.HaskellF.HaskellF
 
@@ -110,7 +110,7 @@ main = do
             env <- loadenv includes (file args)
             tmain <- attemptIO $ lookupVarType env nmain
             let m = varE (Sig (name (main_is args)) tmain)
-            runio (inline env (smtenPs ++ smt2Ps) m)
+            runio (inline env (smtenPs ++ smtPs) m)
             return ()
         Desugar -> do
             mods <- load includes (file args)

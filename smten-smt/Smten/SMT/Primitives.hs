@@ -3,8 +3,8 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE TemplateHaskell #-}
 
-module Smten.SMT.Primitives2 (
-    smt2Ps,
+module Smten.SMT.Primitives (
+    smtPs,
     return_SymbolicP, fail_SymbolicP, bind_SymbolicP, nobind_SymbolicP,
     return_SMTP, fail_SMTP, bind_SMTP, nobind_SMTP,
     free_IntegerP, free_BoolP, free_BitP,
@@ -74,8 +74,8 @@ instance (SmtenEH a) => SmtenEH (SMT a) where
         q <- de_smtEH e
         return $ fromMaybe (error "de_smtenEH SMT") . de_smtenEH <$> q
 
-smt2Ps :: [Prim]
-smt2Ps = [
+smtPs :: [Prim]
+smtPs = [
     return_SymbolicP, fail_SymbolicP, bind_SymbolicP, nobind_SymbolicP,
     return_SMTP, fail_SMTP, bind_SMTP, nobind_SMTP,
     free_IntegerP, free_BoolP, free_BitP,

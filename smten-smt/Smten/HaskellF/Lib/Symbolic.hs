@@ -22,7 +22,7 @@ import Smten.ExpH
 import Smten.HaskellF.Symbolic hiding (Symbolic)
 import qualified Smten.HaskellF.Symbolic as S
 import Smten.HaskellF.Lib.Prelude
-import Smten.SMT.Primitives2
+import Smten.SMT.Primitives
 
 newtype Used a = Used ExpH
 
