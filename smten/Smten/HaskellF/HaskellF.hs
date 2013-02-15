@@ -227,8 +227,10 @@ hsDec (DataD n _ _) | n `elem` [
   name "(,)",
   name "(,,)",
   name "(,,,)",
-  name "Answer",
-  name "Query",
+  name "Maybe",
+  name "SMT",
+  name "Symbolic",
+  name "Used",
   name "IO"] = return []
 
 hsDec (DataD n tyvars constrs) = do
@@ -274,7 +276,7 @@ haskellf wrapmain modname env =
                  H.text "import qualified Smten.Type as S" H.$+$
                  H.text "import qualified Smten.ExpH as S" H.$+$
                  H.text "import Smten.HaskellF.Lib.Prelude" H.$+$
-                 H.text "import Smten.HaskellF.Lib.SMT" H.$+$
+                 H.text "import Smten.HaskellF.Lib.Symbolic" H.$+$
                  H.text "" H.$+$
                  if wrapmain
                     then H.text "__main = __main_wrapper main"

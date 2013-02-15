@@ -170,4 +170,7 @@ Other::
 * There's a lot of junk smtn code not being tested.
   Either add tests to the test cases for it, or throw it away
 * Do a code review of all of Smten, figure out what can be cleaned up and how.
+* HaskellF.Symbolic vs. SMT.Symbolic vs HaskellF.Lib.Symbolic
+    Lots of name overlap, which is... overly confusing I think. Pick distinct
+    names.
 
