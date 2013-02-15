@@ -55,8 +55,6 @@ import qualified Smten.SMT.Solver as S
 import Smten.SMT.Syntax
 import qualified Smten.SMT.Yices.Concrete as YC
 
-import qualified Smten.SMT.Query as Q
-
 data YContext
 
 data YModel_

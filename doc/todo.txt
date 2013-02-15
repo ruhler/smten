@@ -1,8 +1,9 @@
 
 Priority::
 * Switch to new API
+** Define new DSEL API
+** Implement sudoku and dsel tests with new DSEL API
 * Port SHampi to new name and API
-* Add support for executing symbolic Symbolic
 * Add support for semicolon error parsing rule in parser
 * Reorganize type errors so expected and found types are adjacent
 * If default implementation is missing for an instance, generate a default
@@ -173,4 +174,5 @@ Other::
 * HaskellF.Symbolic vs. SMT.Symbolic vs HaskellF.Lib.Symbolic
     Lots of name overlap, which is... overly confusing I think. Pick distinct
     names.
+* Test execution of symbolic Symbolic
 

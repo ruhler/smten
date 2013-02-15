@@ -14,7 +14,6 @@ import Foreign.C.Types
 import qualified Foreign.Concurrent as F
 import Smten.SMT.STP.FFI
 
-import qualified Smten.SMT.Query as Q
 import qualified Smten.SMT.Solver as S
 import Smten.SMT.Syntax
 

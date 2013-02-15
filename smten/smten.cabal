@@ -21,8 +21,6 @@ data-files:
     Smten/Sudoku/*.smtn
     Smten/SMT/*.smtn
     Smten/SMT/Tests/*.smtn
-    Smten/SMT/Tests/Squares2/*.smtn
-    Smten/SMT/Tests/Squares/*.smtn
 source-repository this
   type: git
   location: /afs/csail.mit.edu/u/r/ruhler/git/smten
@@ -116,7 +114,6 @@ library
     Smten.SMT.Solver
     Smten.SMT.Syntax
     Smten.SMT.Translate
-    Smten.SMT.Query
     Smten.SMT.Symbolic
     Smten.SMT.SMT
 

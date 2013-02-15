@@ -118,8 +118,6 @@ proc haskellf {module} {
 }
 
 io Smten.Tests.Concrete
-
-# Tests in the new SMT API
 io Smten.SMT.Tests.Core2
 io Smten.SMT.Tests.Datatype2
 io Smten.SMT.Tests.QRef
@@ -128,7 +126,6 @@ io Smten.SMT.Tests.Integer2
 io Smten.SMT.Tests.Bit2
 io Smten.SMT.Tests.Share2
 
-# HaskellF tests
 haskellf Smten.Tests.Concrete
 haskellf Smten.SMT.Tests.Core2
 haskellf Smten.SMT.Tests.Datatype2
@@ -143,19 +140,6 @@ io Smten.SMT.Tests.AllQ2
 io Smten.SMT.Tests.Isolate0
 io Smten.SMT.Tests.Sudoku
 
-# Tests in the old SMT API
-io Smten.SMT.Tests.Core
-io Smten.SMT.Tests.Datatype
-io Smten.SMT.Tests.Scoped
-io Smten.SMT.Tests.Integer
-io Smten.SMT.Tests.Bit
-io Smten.SMT.Tests.Share
-
-io Smten.SMT.Tests.Bluespec
-io Smten.SMT.Tests.Tuple
-io Smten.SMT.Tests.Squares2.Squares
-
-
 # The pretty printer test
 indir build/smten-bin {
     hrun ln -sf ../../smten-bin/pprtest.hs pprtest.hs
@@ -169,34 +153,6 @@ indir build/smten-bin {
     hrun ghc --make -o semtest semtest.hs
 }
 hrun ./build/smten-bin/semtest
-
-
-## The sudoku haskell integration test.
-#run $::SMTEN --haskellf \
-#    --include $::SMTN \
-#    --no-main \
-#    --mod-name Smten_SMT \
-#    -f $::SMTN/Smten/SMT/Symbolic.smtn \
-#    > build/smten-bin/Smten_SMT.hs
-#indir build/smten-bin {
-#    hrun ln -sf ../../smten-bin/sudoku.hs sudoku.hs
-#    hrun ghc --make -o sudoku sudoku.hs
-#}
-#hrun ./build/smten-bin/sudoku
-#
-## The dsel haskell integration test.
-#run $::SMTEN --haskellf \
-#    --include $::SMTN \
-#    --no-main \
-#    --mod-name Smten_DSEL \
-#    -f $::SMTN/Smten/Tests/DSEL.smtn \
-#    > build/smten-bin/Smten_DSEL.hs
-#indir build/smten-bin {
-#    hrun ln -sf ../../smten-bin/dsel.hs dsel.hs
-#    hrun ghc --make -o dsel dsel.hs
-#}
-#hrun ./build/smten-bin/dsel
-
 
 puts "BUILD COMPLETE"
 

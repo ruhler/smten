@@ -25,11 +25,8 @@ library
     Smten.SMT.Yices.Yices1,
     Smten.SMT.Yices.Yices2
 
-    Smten.SMT.Primitives
     Smten.SMT.Primitives2
 
-    Smten.HaskellF.Query
-    Smten.HaskellF.Lib.SMT
     Smten.HaskellF.Lib.Symbolic
   build-depends: base ==4.5.*, mtl ==2.1.*, pretty ==1.1.*, array ==0.4.*,
                  directory ==1.1.*, template-haskell ==2.7.*,
