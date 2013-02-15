@@ -3,9 +3,9 @@ module Smten.SMT.Tests.Sketch2QBF2 where
 
 import Smten.SMT.Symbolic
 
-sketch2qbf2' :: (Free a) => SMTRef b -> (b -> a -> Bool) -> SMT (Maybe b)
+sketch2qbf2' :: (Free a) => Used b -> (b -> a -> Bool) -> SMT (Maybe b)
 sketch2qbf2' c p = do
-  rc <- query $ readSMTRef c
+  rc <- query $ used c
   case rc of
     Nothing -> return Nothing
     Just cv -> do
@@ -16,11 +16,11 @@ sketch2qbf2' c p = do
       case rx of
         Nothing -> return (Just cv)
         Just xv -> do
-            commit (readSMTRef c >>= \cv -> assert (p cv xv))
+            use (used c >>= \cv -> assert (p cv xv))
             sketch2qbf2' c p
 
 sketch2qbf2 :: (Free a, Free b) => (b -> a -> Bool) -> SMT (Maybe b)
 sketch2qbf2 p = do
-  c <- commit free
+  c <- use free
   sketch2qbf2' c p
   

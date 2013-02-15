@@ -8,34 +8,34 @@ import Smten.Tests.Test
 qtest :: SMT ()
 qtest = do
     nest $ do
-        xref <- commit $ free
-        commit $ readSMTRef xref >>= assert
-        rx <- query $ readSMTRef xref
+        xref <- use $ free
+        use $ used xref >>= assert
+        rx <- query $ used xref
         test "qref.simple" (rx == Just True)
 
-        commit $ readSMTRef xref >>= (assert . not)
-        rx2 <- query $ readSMTRef xref
+        use $ used xref >>= (assert . not)
+        rx2 <- query $ used xref
         test "qref.reuse" (rx2 == Nothing)
 
     nest $ do
-        xref <- commit $ free
-        commit $ do
-            v1 <- readSMTRef xref
+        xref <- use $ free
+        use $ do
+            v1 <- used xref
             assert v1
-            v2 <- readSMTRef xref
+            v2 <- used xref
             assert (not v2)
         rx <- query (return ())
         test "qref.dupref" (rx == Nothing)
 
     nest $ do
-        xref <- commit $ do
+        xref <- use $ do
            x <- free
            assert (not x)
            return x
-        yref <- commit free
+        yref <- use free
         r <- query $ do
-            vx <- readSMTRef xref
-            vy <- readSMTRef yref
+            vx <- used xref
+            vy <- used yref
             assert (vx || vy)
             return vy
         test "qref.join" (r == Just True)

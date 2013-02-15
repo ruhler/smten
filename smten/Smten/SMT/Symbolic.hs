@@ -28,6 +28,10 @@ type Context = Unique
 type Contexts = [Unique]
 
 data Used a = Used Context a
+    deriving (Typeable)
+
+instance Functor Used where
+    fmap f (Used ctx a) = Used ctx (f a)
 
 data SS = SS {
     -- | Stack of currently active contexts

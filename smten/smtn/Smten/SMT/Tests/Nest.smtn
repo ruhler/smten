@@ -8,40 +8,40 @@ import Smten.Tests.Test
 qtest :: SMT ()
 qtest = do
     r <- nest $ do
-        commit $ assert False
+        use $ assert False
         query (return ())
     test "nest.unsat" (r == Nothing)
 
-    a <- commit free
-    commit $ (readSMTRef a >>= assert)
-    ra <- query $ readSMTRef a
+    a <- use free
+    use $ (used a >>= assert)
+    ra <- query $ used a
     test "nest.nowsat" (ra == Just True)
 
-    b <- commit free
-    c <- commit free
-    bc <- commit $ do
-            vb <- readSMTRef b
-            vc <- readSMTRef c
+    b <- use free
+    c <- use free
+    bc <- use $ do
+            vb <- used b
+            vc <- used c
             assert (vb /= vc)
             return (vb, vc)
-    rbc <- query $ readSMTRef bc
+    rbc <- query $ used bc
     test "nest.prep" $
         case rbc of
             Just (vb, vc) -> vb /= vc
             _ -> False
 
     rbc1 <- nest $ do
-        commit $ (readSMTRef b >>= assert)
-        query $ readSMTRef bc
+        use $ (used b >>= assert)
+        query $ used bc
     test "nest.s1" (rbc1 == Just (True, False))
 
     rbc2 <- nest $ do
-        commit $ (readSMTRef c >>= assert)
-        query $ readSMTRef bc
+        use $ (used c >>= assert)
+        query $ used bc
     test "nest.s2" (rbc2 == Just (False, True))
 
     nest $ do
-      commit $ do
+      use $ do
         x <- free
         assert x
     rd <- query (return ())

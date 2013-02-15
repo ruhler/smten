@@ -4,15 +4,12 @@
 {-# LANGUAGE TemplateHaskell #-}
 
 module Smten.SMT.Primitives2 (
-    symbolicEH, de_symbolicEH,
-    smtEH, de_smtEH,
-    smtrefEH, de_smtrefEH,
     smt2Ps,
     return_SymbolicP, fail_SymbolicP, bind_SymbolicP, nobind_SymbolicP,
     return_SMTP, fail_SMTP, bind_SMTP, nobind_SMTP,
     free_IntegerP, free_BoolP, free_BitP,
-    assertP, readSMTRefP, queryP, nestP, commitP,
-    runSMT
+    assertP, usedP, query_UsedP, nestP, useP,
+    runSMTP
     ) where
 
 import Debug.Trace
@@ -25,13 +22,13 @@ import Smten.Name
 import Smten.Lit
 import Smten.Sig
 import Smten.ExpH
-import Smten.Ppr
-import Smten.SMT.Query
+import Smten.Ppr hiding (nest)
+import Smten.SMT.Symbolic
+import Smten.SMT.SMT
 import Smten.SMT.Yices.Yices1
 import Smten.SMT.Yices.Yices2
 import Smten.SMT.STP.STP
 import Smten.Prim
-import Smten.SMT.Primitives (queryEH, de_queryEH)
 
 data Solver = Yices1 | Yices2 | STP
     deriving (Eq, Show)
@@ -39,17 +36,12 @@ data Solver = Yices1 | Yices2 | STP
 derive_SmtenT ''Solver
 derive_SmtenEH ''Solver
 
-newtype Symbolic a = Symbolic { symbolic_query :: Query a }
-    deriving (Monad, Functor)
-
-instance (SmtenT1 Symbolic) where
-    smtenT1 _ = conT (name "Symbolic")
+derive_SmtenT ''Symbolic
+derive_SmtenT ''Used
+derive_SmtenT ''SMT
 
 symbolicEH :: Symbolic ExpH -> ExpH
-symbolicEH = queryEH . symbolic_query
-
-de_symbolicEH :: ExpH -> Maybe (Symbolic ExpH)
-de_symbolicEH x = Symbolic <$> de_queryEH x
+symbolicEH = litEH . dynamicL
 
 instance (SmtenEH a) => SmtenEH (Symbolic a) where
     smtenEH x = symbolicEH (smtenEH <$> x)
@@ -58,35 +50,23 @@ instance (SmtenEH a) => SmtenEH (Symbolic a) where
         return $ fromMaybe (error "de_smtenEH Symbolic") . de_smtenEH <$> q
 
 
-newtype SMTRef a = SMTRef { smtref_query :: Query a }
-    deriving (Monad, Functor)
+usedEH :: Used ExpH -> ExpH
+usedEH = litEH . dynamicL
 
-instance (SmtenT1 SMTRef) where
-    smtenT1 _ = conT (name "SMTRef")
+de_usedEH :: ExpH -> Maybe (Used ExpH)
+de_usedEH e = de_litEH e >>= de_dynamicL
 
-smtrefEH :: SMTRef ExpH -> ExpH
-smtrefEH = queryEH . smtref_query
-
-de_smtrefEH :: ExpH -> Maybe (SMTRef ExpH)
-de_smtrefEH x = SMTRef <$> de_queryEH x
-
-instance (SmtenEH a) => SmtenEH (SMTRef a) where
-    smtenEH x = smtrefEH (smtenEH <$> x)
+instance (SmtenEH a) => SmtenEH (Used a) where
+    smtenEH x = usedEH (smtenEH <$> x)
     de_smtenEH e = do
-        q <- de_smtrefEH e
-        return $ fromMaybe (error "de_smtenEH SMTRef") . de_smtenEH <$> q
-
-newtype SMT a = SMT { smt_query :: Query a }
-    deriving (Monad, Functor)
-
-instance (SmtenT1 SMT) where
-    smtenT1 _ = conT (name "SMT")
+        q <- de_usedEH e
+        return $ fromMaybe (error "de_smtenEH Used") . de_smtenEH <$> q
 
 smtEH :: SMT ExpH -> ExpH
-smtEH = queryEH . smt_query
+smtEH = litEH . dynamicL
 
 de_smtEH :: ExpH -> Maybe (SMT ExpH)
-de_smtEH x = SMT <$> de_queryEH x
+de_smtEH e = de_litEH e >>= de_dynamicL
 
 instance (SmtenEH a) => SmtenEH (SMT a) where
     smtenEH x = smtEH (smtenEH <$> x)
@@ -99,8 +79,8 @@ smt2Ps = [
     return_SymbolicP, fail_SymbolicP, bind_SymbolicP, nobind_SymbolicP,
     return_SMTP, fail_SMTP, bind_SMTP, nobind_SMTP,
     free_IntegerP, free_BoolP, free_BitP,
-    assertP, queryP, readSMTRefP, nestP, commitP,
-    runSMT
+    assertP, query_UsedP, usedP, nestP, useP,
+    runSMTP
     ]
 
 return_SMTP :: Prim
@@ -127,12 +107,11 @@ bind_SymbolicP = binaryP "Smten.SMT.Symbolic.bind_symbolic" ((>>=) :: Symbolic E
 nobind_SymbolicP :: Prim
 nobind_SymbolicP = binaryP "Smten.SMT.Symbolic.nobind_symbolic" ((>>) :: Symbolic ExpH -> Symbolic ExpH -> Symbolic ExpH)
 
-
 free_helper :: Type -> Symbolic ExpH
-free_helper t =
-  let Just (_, t') = de_appT t
-  in Symbolic $ free t'
-
+free_helper t 
+  | Just (_, t') <- de_appT t = prim_free t'
+  | otherwise = error $ "free_helper: " ++ pretty t
+    
 free_IntegerP :: Prim
 free_IntegerP = nullaryTP "Smten.SMT.Symbolic.__prim_free_Integer" free_helper
 
@@ -143,46 +122,39 @@ free_BitP :: Prim
 free_BitP = nullaryTP "Smten.SMT.Symbolic.__prim_free_Bit" free_helper
 
 assertP :: Prim
-assertP = unaryP "Smten.SMT.Symbolic.assert" (Symbolic . assert)
+assertP = unaryP "Smten.SMT.Symbolic.assert" assert
 
-queryP :: Prim
-queryP =
-  let f :: Symbolic ExpH -> SMT ExpH
-      f arg = SMT . queryS $ do
-        v <- symbolic_query arg
-        res <- query (realize v)
+query_UsedP :: Prim
+query_UsedP =
+  -- Note: we can't use smtenEH to figure out the return type, because it
+  -- doesn't know it. We have to construct the return object based on the
+  -- dynamic input type.
+  let f :: Used ExpH -> SMT ExpH
+      f arg@(Used _ v) = do
         let ta = AppT (ConT (name "Maybe")) (typeof v)
-        case res of
-            Satisfiable arg' -> return $ identify $ \id -> ConEH id (name "Just") ta [arg']
-            Unsatisfiable -> return $ identify $ \id -> ConEH id (name "Nothing") ta []
-            _ -> return $ errorEH ta "query: Unknown"
-  in unaryP "Smten.SMT.Symbolic.query" f
+        res <- query_Used (realize <$> arg)
+        return $ case res of
+                    Just v' -> aconEH (name "Just") ta [v']
+                    Nothing -> aconEH (name "Nothing") ta []
+  in unaryP "Smten.SMT.Symbolic.query_Used" f
 
-readSMTRefP :: Prim
-readSMTRefP =
-  let f :: SMTRef ExpH -> Symbolic ExpH
-      f = Symbolic . smtref_query
-  in unaryP "Smten.SMT.Symbolic.readSMTRef" f
+usedP :: Prim
+usedP = unaryP "Smten.SMT.Symbolic.used" (used :: Used ExpH -> Symbolic ExpH)
 
-commitP :: Prim
-commitP =
-  let f :: Symbolic ExpH -> SMT (SMTRef ExpH)
-      f arg = SMT $ do
-        v <- symbolic_query arg
-        return (SMTRef $ return v)
-  in unaryP "Smten.SMT.Symbolic.commit" f
+useP :: Prim
+useP = unaryP "Smten.SMT.Symbolic.use" (use :: Symbolic ExpH -> SMT (Used ExpH))
 
 nestP :: Prim
-nestP = unaryP "Smten.SMT.Symbolic.nest" (queryS :: Query ExpH -> Query ExpH)
+nestP = unaryP "Smten.SMT.Symbolic.nest" (nest :: SMT ExpH -> SMT ExpH)
 
-runSMT :: Prim
-runSMT =
+runSMTP :: Prim
+runSMTP =
   let f :: Solver -> Maybe FilePath -> SMT ExpH -> IO ExpH
       f solver dbg q = do
         s <- case solver of
                 Yices1 -> yices1
                 Yices2 -> yices2
                 STP -> stp
-        runQuery (RunOptions dbg s) (smt_query q)
+        runSMT (RunOptions dbg s) q
   in binaryP "Smten.SMT.Symbolic.runSMT" f
 

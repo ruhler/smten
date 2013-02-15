@@ -8,7 +8,7 @@ import Smten.Tests.Test
 -- Find a list of all values satisfing the given predicate.
 allQ :: (Eq a, Free a) => (a -> Bool) -> SMT [a]
 allQ p = do
-  xref <- commit $ do
+  xref <- use $ do
     x <- free
     assert (p x)
     return x
@@ -16,12 +16,12 @@ allQ p = do
 
 -- Find all different satisfying assignments to the given free variable in the
 -- current context.
-allQ' :: (Eq a) => SMTRef a -> SMT [a]
+allQ' :: (Eq a) => Used a -> SMT [a]
 allQ' x = do
-  r <- query $ readSMTRef x
+  r <- query $ used x
   case r of
      Just v -> do
-        commit (readSMTRef x >>= assert . (/=) v)
+        use (used x >>= assert . (/=) v)
         vs <- allQ' x
         return (v:vs)
      _ -> return []

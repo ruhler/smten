@@ -7,6 +7,12 @@ userinstall:
 	cd smten-smt ; cabal install --builddir ../build/smten-smt-$(USER) --force-reinstalls
 	cd smten-bin ; cabal install --builddir ../build/smten-bin-$(USER) --force-reinstalls
 
+testio:
+	./build/home/.cabal/bin/smten --io \
+		--include smten/smtn \
+		--file smten/smtn/Smten/SMT/Tests/Nest.smtn \
+		--main-is Smten.SMT.Tests.Nest.main
+
 clean:
 	rm -rf build/smten-smt build/smten build/smten-bin build/test
 

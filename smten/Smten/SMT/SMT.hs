@@ -238,7 +238,7 @@ mkfree s@(Sig nm t) | isPrimT t = do
   t' <- smtt t
   modify $ \qs -> qs { qs_freevars = s : qs_freevars qs }
   runCmds [SMT.Declare (smtN nm) t']
-free s = error $ "SMT.mkfree: unsupported type: " ++ pretty s
+mkfree s = error $ "SMT.mkfree: unsupported type: " ++ pretty s
 
 -- | Assert the given smten boolean expression.
 mkassert :: ExpH -> SMT ()
