@@ -276,6 +276,9 @@ testbasic = do
     testclassctx
     testsaderiving
 
+data FunnyDeriveEQ a = FunnyDeriveEQ (a, a)
+    deriving (Eq)
+
 data SDerivedEq a = SDEq1 a | SDEq2 a a
 deriving instance (Eq a) => Eq (SDerivedEq a)
 

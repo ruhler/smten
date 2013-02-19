@@ -1,0 +1,302 @@
+
+Tue Feb 12 09:04:00 EST 2013
+
+Nirav have requested arrays which work on bit-vector indices. That should be
+fine now that I support contexts is class declarations.
+
+So let me try it out.
+
+Tue Feb 12 10:32:24 EST 2013
+
+The bit-vector indexed arrays thing was very easy. We have been approved for a
+new name of Smten. So let me try now to make the switch. The sooner the
+better, I say.
+
+Seri -> Smten
+.sri -> .smtn
+
+All references in the code.
+All files.
+The git repository name.
+
+All of it needs to change.
+
+Don't worry about changing past thoughts though. That I don't mind.
+
+This could be tricky... Let me take a stab at it, make a new release as soon
+as I get it working, and go from there.
+
+Tue Feb 12 11:28:19 EST 2013
+
+Changed everything over to the new name. It looks like it works. Which is
+cool.
+
+Goodbye Seri. We will remember you fondly. Welcome Smten to the world, we look
+forward to your future...
+
+Tue Feb 12 11:39:25 EST 2013
+
+Okay, so the switch over to smten is nominally done. I still need to update
+things like SHampi, but I can deal with that whenever. In other words, I'm
+going to have to update SHampi for the new api anyway, so may as well wait
+until then, right?
+
+I'm slightly worried about the CAV paper, because it uses the new name with
+the old API. But I can always come back to this point if need be and make
+things work out. I hope. Probably.
+
+The short of it is, it doesn't make sense to update SHampi yet, I don't think.
+More important is the continued conversion of everything over to the new API.
+
+One thing I found in my thoughts yesterday was that we can port the Haskell
+api to Query over to the new API just as well as the Seri API. And we should
+do that, to keep things clean. I just need to figure out what the deal with
+realize was, and understand what things I really need and want in the haskell
+API, and what I should be presenting to the user.
+
+This is going to take many stages. Go a bit at a time.
+
+First steps are:
+1. Port Bluespec, Tuple, Squares2.Squares tests to new API, or remove them.
+2...
+
+You know what I really ought to do? Figure out the clean haskell API I want to
+expose. Change the haskell API and haskellf and all that over all at once.
+
+Probably want to do this on its own branch.
+
+Okay, so let me go through and figure out what the new haskell API should be,
+and verify it will work nicely for Sudoku and DSEL and SHampi. I might have to
+do a "dive in and make things work" kind of strategy for this. Incremental
+approaches may not take me where I want to go.
+
+First, a summary of the existing SMT Query API in haskell:
+
+data Answer a = Satisfiable a | Unsatisfiable | Unknown
+
+data Realize a = {}
+instance Monad Realize
+
+data Query a = {}
+instance Monad Query
+
+RunOptions = debug output, solver to use
+runQuery :: RunOptions -> Query a -> IO a
+query :: Realize a -> Query (Answer a)
+free :: Type -> Query ExpH
+assert :: ExpH -> Query ()
+queryS :: Query a -> Query a
+realize :: ExpH -> Realize ExpH
+
+The key difference from the exposed old seri API is query takes a Realize
+computation, which lets you give user defined traversals over user defined
+data types. That's all.
+
+Now, how about the DSEL interface?
+We have all the old seri API generated translations.
+And then we have:
+
+qS :: (Symbolic a) => S.Query a -> Query a
+    -- convert a seri Query object into a Haskell Query object.
+
+assertS :: S.Bool -> Query ()
+    -- make an assertion on a seri bool
+
+realizeS' :: (Symbolic a) => a -> Realize a
+    -- realize a symbolic thing
+
+realizeS :: (Symbolic a, SmtenEH b) => a -> Realize b
+    -- realize a symbolic thing into a concrete haskell thing
+
+Okay, so I want two, independent APIs. The basic one shouldn't care about
+DSEL. The DSEL one is built on top of the basic one.
+
+I should make the API look as much like it does in smten as I can. I don't see
+any real issues achieving this. It's a fairly simple, fairly clean interface.
+
+I'll come back and write down what I want after lunch. Then I probably need to
+go work on class stuff.
+
+Tue Feb 12 12:40:20 EST 2013
+
+Proposed new Haskell API, mirroring the smten API:
+
+data SMTRef a = {}
+
+data Symbolic a = {}
+instance Monad Symbolic
+
+data SMT a = {}
+instance Monad SMT
+
+data Realize a = {}
+instance Monad Realize
+
+free_Bool :: Symbolic ExpH
+free_Integer :: Symbolic ExpH
+free_Bit :: Integer -> Symbolic ExpH
+assert :: ExpH -> Symbolic ()
+
+nest :: SMT a -> SMT a
+commit :: Symbolic a -> SMTRef a
+query :: Realize a -> SMT (Maybe a)
+realize :: ExpH -> Realize ExpH
+runSMT :: RunOptions -> SMT a -> IO a
+
+
+In other words... it's easy.
+
+Now, onto the DSEL. From the generated code we'll get:
+
+S.free :: (Symbolic a) => S.Symbolic a
+S.assert :: S.Bool -> S.Symbolic ()
+query :: (Symbolic a) => S.Symbolic a -> S.SMT (S.Maybe a)
+
+The things we want to be able to do are just as before. Convert smten
+things to haskell things. I'm sure I can come up with something fine.
+
+The big takeaway here is, there is nothing special about the current interface
+that says it makes more sense in Haskell than the new API. Or, in other words,
+I need to change the Haskell API as well as the Smten API.
+
+The real question is, how best to implement the switch?
+
+I need to know how I want to implement the Haskell API.
+
+Perhaps the most important question will be: how can I handle this kind of
+Symbolic thing:
+
+ x <- free
+ if x 
+    then ...
+    else ...
+
+Because that will shape what I want to do.
+
+Now, it can't be made to look just like my semantics, because we are using an
+underlying SMT solver. But maybe it's not so bad...
+
+SMTRef - references are read only, so they can contain themselves:
+
+newtype SMTRef a = SMTRef a
+
+Easy. So to read, I just extract.
+
+What is Symbolic? Well, given how we have done references, we don't need it to
+read an SMTRefMap or anything like that. We want to be able to make assertions
+and declare new free variables.
+
+I could do so directly, or I could collect a bunch of things and return it.
+
+How do you run a symbolic thing?
+
+From before:
+1. Predicate each branch by itself: add the predicate as an implication of
+every assertion. Return a case statement with the results of each. That's all
+you need. So for this, it seems like we want to pass a symbolic boolean as a
+predicate, for use in assertions. Perhaps a list of them.
+
+That's fine. What do we want to do with free variables and assertions? Do I
+want to commit right away, or be lazy?
+
+What's the difference?
+
+The only time we apply Symbolic is for commit and for query. In both cases we
+are strict in the argument, and we need to apply things to the SMT solver. So
+I ought to just go straight to the SMT solver itself. The other option would
+be to have a state monad, the state is: an Integer saying what the next free
+ID should be, a list of the free objects and their types allocated, and a list
+of assertions.
+
+I feel like it makes sense to separate SMT from Symbolic like this, for code
+clarity. Why not? For commit and query, I'll have a way to apply a Symbolic
+thing in the current context. The way it will work is: first declare all the
+variables of the right type, then declare all the assertions. A simple
+function. That sounds good to me.
+
+The one thing is, it seems like now SMT has to worry about free things, and so
+does Symbolic. If SMT is worrying about it anyway, why duplicate the work?
+
+Because then Symbolic is not in IO. It's pure. And for that alone, cleaner,
+and nicer.
+
+Good! So it's decided. First attempt for Symbolic should be:
+
+State SS, where SS is: 
+  ss_pred :: ExpH,  -- predicate to use for assertions
+  ss_freeid :: Integer,
+  ss_free :: [Sig],
+  ss_asserts :: [ExpH]
+
+This will also lend better to future optimizations in the back end I feel
+like. Such as reordering assertions? That not a great reason, so primary
+reason is it is cleaner. Symbolic doesn't have to know about a bunch of other
+junk. Good. Cool.
+
+Now, what does SMT need?
+* modifies IO
+* needs freevars, solver, debug handle, etc...
+
+Basically everything it has now. Any changes I do ought to be done in a
+separate step. Things like: why do we need Compilation anymore? What state
+does it preserve between things?
+
+Okay. Now I think the process is clear. We can even have the two Haskell API's
+co-existing, I believe. The only thing that doesn't coexist nicely is the two
+Smten API's in the HaskellF backend, because of poor support for modularity in
+HaskellF.
+
+Plan then:
+
+1. Rough draft of Smten.SMT.Symbolic.hs
+    Includes Symbolic monad and implementation..
+    Includes SMTRef definition.
+2. Rough draft of Smten.SMT.SMT.hs  
+    Includes SMT monad and implementation.
+3. Switch smte2Ps over to the new Haskell API
+
+I have a question. Can I make the debug interface nicer? What if I let the
+user do all the debug stuff themselves, so they can have whatever interface
+they like? I just need to give them the right hooks, right? And we could
+default to a null interface for debugging.
+
+What kind of debugging hooks would I want to expose:
+  debug.cmd :: SMT.Command -> IO ()
+  debug.checkresult :: Result -> IO ()
+
+I don't know. I'm probably trying to do too many changes at once here. Don't
+worry about changing the debug interface at this point in time. We can always
+change it later just as easily.
+
+In fact, maybe a better way to handle debug would just be to have Debug
+versions of the solvers. The solver gets to see everything anyway, right? Then
+we just have another solver instance. The debug solver instances could even be
+built on top of existing solver instances. The downside with these proposals
+is you don't get to see the Smten expression before it gets translate to SMT.
+Perhaps I ought to do away with that step entirely? Merge Smten and Syntax?
+Because it's a pretty direct translation now.
+
+Again, something to think about later, not now.
+
+Cool. So the plan is clear. I'll get to work tomorrow morning on it.
+
+It will be nice to clean things up. I feel like I'm falling behind with
+respect to the cleaning.
+
+Oh, just one more note: I should use Data.Unique to make sure references
+aren't used where they shouldn't be. We can handle nest just fine, because we
+keep track of ID's in scope. When you run Symbolic, it should take Unique, and
+each references should have a Unique, and if they don't match, throw a runtime
+error. Cool! I wonder if I should use this for EID?
+
+Um... Maybe I should also pass to Symbolic a list of initial free vars
+defined, so it can check references? No. That won't work.
+
+Maybe pass a stack of Uniques, and say it has to belong to one of those. Yes!
+I like that idea. So then there is no way you can read a reference to a bad
+context, and I don't have to worry about you having bad references to things.
+Awesome.
+
+Now... I have to go work on class stuff. Sorry. I'll be back tomorrow, excited
+and ready to go.
+

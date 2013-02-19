@@ -1,0 +1,157 @@
+
+Wed Feb 13 09:29:02 EST 2013
+
+Note: I don't need to pass predicate to the Symbolic monad, because we are
+returning the assertions. Whoever gets them returned can predicate them
+appropriately. That's cool. Another good reason to separate Symbolic and SMT.
+
+Wed Feb 13 09:47:27 EST 2013
+
+Note: there's one thing we loose by doing symbolic this way, deferring things
+to the end. We loose the ordering between "free" and "assert", which means we
+loose an easy way to tell that some assertions don't refer to some free
+variables. I think that's okay, because I don't think that makes any real
+difference, but I wanted to make a note of it anyway.
+
+Wed Feb 13 09:50:56 EST 2013
+
+Okay, so I've got the rough draft for Symbolic written down. Everything is
+working well. The only thing missing at this point is it would be nice to know
+how symbolic is represented in an ExpH, and to be able to convert an ExpH to
+Symbolic. This includes predicating assertions if the ExpH is not already a
+wrapper around Symbolic. I suppose we really just need the one function:
+
+de_symbolicEH :: ExpH -> Maybe (Symbolic ExpH)
+
+Wed Feb 13 11:32:43 EST 2013
+
+Trouble. In order to do this symbolic thing, I need to do a case match of the
+symbolic thing to get at the arguments in order to figure out what yv is, in
+order to convert it to a symbolic thing.
+
+For example:
+  x <- free
+  let y = if x then Just 7 else Nothing
+  case y of
+    Just a -> assert (a == 7)
+    Nothing -> assert (a == 6)
+
+This means I have to match the case statement. Either that, or start pushing
+things. Now, I can do this. My iffy branch does something just like this. It
+matches a symbolic thing which would not have been matchable otherwise,
+reducing to just if statements...
+
+I'm not sure I feel like implementing this now though. I want to focus on the
+task at hand: switching over to the new api.
+
+Okay, so for now it is easy to handle booleans and other things taking no
+arguments, so let me do that, and leave an error otherwise.
+
+Okay, that crisis avoid for the time being. Moving on...
+
+What's the next step? I suppose the next step is the SMT monad. Because the
+Symbolic monad is in good shape.
+
+Wed Feb 13 11:55:00 EST 2013
+
+Question: what should the type of query be?
+
+It was: Realize a -> SMT (Maybe a)
+But shouldn't it be a symbolic thing?
+
+So maybe: Symbolic (Realize a) -> SMT (Maybe a) ??
+
+What's the idea? The idea is I have some symbolic thing. Fine.
+But in order to realize a concrete value for it, I have to have a way to
+traverse it. So I was suggesting you specify the traversal you want to do on
+the symbolic thing.
+
+Maybe what we need is:
+    Symbolic a -> (a -> Realize a) -> SMT (Maybe a)
+
+you have to give the way to realize it...
+
+Of course, if you are going to do it like that... why not just bake it in:
+    s f -->>> f <$> s gives Symbolic (Realize a). So that makes sense to me.
+
+You are running a computation which can realize something? Well, it's a little
+bit odd, no?
+
+In practice, we run Symbolic, call check. If Unsat, return Nothing. If sat,
+run the given Realize? Why not? I may as well try it out, see if it works. It
+at least fells more general...
+
+Except, what if you do something like (return x) instead of realize x? Well,
+that will return something of type ExpH, but it won't realize it. Thus letting
+you leak ...
+
+Perhaps I should do a generics thing, which says: any ExpH you have, I'll
+realize it. You don't get a choice. But maybe you want a choice?
+
+I may as well go with the more general version.
+
+I'll come back to this after lunch.
+
+Um. query seems to duplicate nest and commit a little bit in the Haskell API,
+no? I'll think about it some more. It duplicates it a little bit in the
+semantics too.
+
+Wed Feb 13 13:04:20 EST 2013
+
+I think... don't worry about this issue for now. Continue to forge ahead.
+Actually, this would be a good thing to think about during 6.375...
+
+Continuing to forge ahead then...
+
+I'll want something common between commit and query. The idea is... I suppose
+query is like commit, no? Can I sort of implement query on top of commit?
+
+query s = nest $ do
+    v <- commit s
+    r <- check
+    case r of
+        Sat -> Just <$> runRealize v
+        _ -> Nothing
+        
+Yes! I can. Very easily...
+
+You know what this suggests? We ought to have a different interface. Maybe not
+a different interface, but certainly different primitives. We can wrap it in
+the nicer interface.
+
+query is reusing commit.
+query is reusing nest.
+
+The thing is, because it is nested, the commit is hidden.
+
+Let me first think about how this might best look in Smten:
+
+nest :: SMT a -> SMT a
+commit :: Symbolic a -> SMT (SMTRef a)
+prim_query :: SMTRef a -> SMT (Maybe a)
+
+query :: Symbolic a -> SMT (Maybe a)
+query = nest (commit >>= prim_query)
+
+Yes. That's better.
+
+Does this suggest better names for commit and prim_query?
+
+What if commit is execute? Or runSymbolic? Or "symbolic"?
+So symbolic runs a symbolic computation in the current SMT context, and
+returns a reference to the result in the context. And query queries the value
+of a reference in the context.
+
+But what if you want to combine things in the context without committing?
+Like, I have 'x', I have 'y', I want to query (x + y). It seems silly to have
+to make a new reference for that. In fact, it seems downright unpleasant.
+Except that, you can always write the wrapper function.
+
+Okay, so have a primitive:
+queryRef :: SMTRef a -> SMT (Maybe a), and that's the primitive. And query is
+built up on top of that.
+
+And that would clean up the semantics, don't you think? Avoid that
+duplication? Yes. I like that.
+        
+Hmm...
