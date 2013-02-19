@@ -1,0 +1,10 @@
+
+module Smten.Tests.MalTyped.FreeTypeVar where
+
+data Foo = Foo Bool b | Bar
+
+-- The variable 'b' is not in scope in the above declaration. That should not
+-- be allowed.
+bar :: Foo
+bar = Bar
+

@@ -34,6 +34,7 @@
 -------------------------------------------------------------------------------
 
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE PatternGuards #-}
 
 module Smten.Typing.Check (TypeCheck(..)) where
 
@@ -70,9 +71,11 @@ instance TypeCheck Dec where
                 else return ()
               instcheck env c e
 
-          -- TODO: shouldn't we check the type signatures don't have any partially
+          -- TODO: shouldn't we check that type signatures don't have any partially
           -- applied types?
-          checkdec (DataD {}) = return ()
+          checkdec d@(DataD n vs cs) =
+            onfail (\s -> throw $ s ++ "\n in declaration " ++ pretty d) $
+               mapM_ (checkcon vs) cs
           checkdec (ClassD {}) = return ()
 
           checkdec d@(InstD ctx cls@(Class nm ts) ms) =
@@ -94,6 +97,17 @@ instance TypeCheck Dec where
                  let assigns = concat [assignments (tyVarType p) c | (p, c) <- zip pts ts]
                  mapM_ (satisfied env ctx) (assign assigns clsctx)
           checkdec d@(PrimD {}) = return ()
+
+          checkcon :: [TyVar] -> Con -> Failable ()
+          checkcon m (Con n ts) = mapM_ (checktype m) ts
+
+          checktype :: [TyVar] -> Type -> Failable ()
+          checktype m t
+            | VarT n <- t
+            , n `notElem` (map tyVarName m) = throw $ "type variable " ++ pretty n ++ " not in scope"
+            | AppT a b <- t = checktype m a >> checktype m b
+            | UnknownT <- t = throw $ "unknown type encountered"
+            | otherwise = return ()
 
           -- checkexp tenv e
           -- Type check an expression.
