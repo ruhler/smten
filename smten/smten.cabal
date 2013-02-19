@@ -76,7 +76,7 @@ library
     Smten.Prim.Prelude
     Smten.Prim.Bit
 
-    Smten.HaskellF.HaskellF
+    Smten.HaskellF.Compile
     Smten.HaskellF.Lib.Prelude
     Smten.HaskellF.Symbolic
     Smten.HaskellF.TH

@@ -37,7 +37,7 @@
 
 -- Back end target which translates smten programs into Haskell. Supports the
 -- Query monad and SMT queries.
-module Smten.HaskellF.HaskellF (
+module Smten.HaskellF.Compile (
     haskellf,
     ) where
 

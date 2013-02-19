@@ -59,7 +59,7 @@ import Smten
 
 import Smten.SMT.Primitives
 
-import Smten.HaskellF.HaskellF
+import Smten.HaskellF.Compile
 
 data Run = Io | Type | Desugar | HaskellF
     deriving (Show, Eq, Typeable, Data)
