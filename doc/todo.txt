@@ -1,7 +1,6 @@
 
 Priority::
-* Switch to new API
-** Define new DSEL API
+* Define new DSEL API
 ** Implement sudoku and dsel tests with new DSEL API
 * Port SHampi to new name and API
 * Add support for semicolon error parsing rule in parser
@@ -9,6 +8,7 @@ Priority::
 * If default implementation is missing for an instance, generate a default
   of the form: error "Implementation of /= for Blah not defined"
 * In de_smtenEH (->), propagate ErrorEH (if that makes sense).
+* type checker: remember context for methods in class declarations
 
 Haskell Features::
 * Allow parens in InstD: instance (Foo Bar) where...
@@ -135,12 +135,6 @@ Build System::
 * don't hardcode build/test output directory into SMT tests
 * clean up tclmk script: maybe separate into init, build, and test sections.
 
-
-Applications::
-* HCP - get it working on the larger test cases
-* TCP - Implement it
-* SAT - implement MAXSAT
-* SKETCH - port some of their gallery to smten
 
 Bugs::
 * DupInst maltype test
