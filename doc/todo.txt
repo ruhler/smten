@@ -3,6 +3,13 @@ Priority::
 * Switch to new API
 * Add support for executing symbolic Symbolic
 * Add support for semicolon error parsing rule in parser
+* Reorganize type errors so expected and found types are adjacent
+* If default implementation is missing for an instance, generate a default
+  of the form: error "Implementation of /= for Blah not defined"
+* In de_smtenEH (->), propagate ErrorEH (if that makes sense).
+* Multiple bugs: Can't implement StateT monad.
+** type checker: remember context for methods in class declarations
+** haskellf: kind inference wrong
 
 Haskell Features::
 * Allow parens in InstD: instance (Foo Bar) where...
@@ -72,6 +79,8 @@ Pretty Printer::
 ** Recognize multi-let statements?
 ** Recognize clauses:
     foo a b = blah  instead of  foo = \a b -> blah
+** Print: Foo Bool b, not Foo (Bool) (b)
+    When pretty printing data declarations
 * Make it so I can compile pretty printed code?
 * Maybe dump the Doc approach and take my SMT concrete approach?
 
