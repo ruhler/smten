@@ -91,7 +91,7 @@ issymbol (h:_) = not $ isAlphaNum h || h == '_'
 hsLit :: Lit -> H.Exp
 hsLit l
  | Just i <- de_integerL l = H.LitE (H.IntegerL i)
- | Just c <- de_charL l = H.AppE (H.VarE (H.mkName "S.smtenS")) (H.LitE (H.CharL c))
+ | Just c <- de_charL l = H.AppE (H.VarE (H.mkName "S.smtenHF")) (H.LitE (H.CharL c))
 
 prependnm :: String -> Name -> H.Name
 prependnm m n = hsName $ name m `nappend` n
@@ -121,7 +121,7 @@ hsExp :: Exp -> Failable H.Exp
 hsExp e
   | Just str <- de_stringE e
   , '\n' `notElem` str
-    = return $ H.AppE (H.VarE (H.mkName "S.smtenS")) (H.LitE (H.StringL str))
+    = return $ H.AppE (H.VarE (H.mkName "S.smtenHF")) (H.LitE (H.StringL str))
 
 hsExp (LitE l) = return (hsLit l)
 hsExp (ConE (Sig n _)) = return $ H.ConE (hsName n)
@@ -273,7 +273,7 @@ haskellf wrapmain modname env =
                  H.text "{-# LANGUAGE ScopedTypeVariables #-}" H.$+$
                  H.text ("module " ++ modname ++ " where") H.$+$
                  H.text "import qualified Prelude" H.$+$
-                 H.text "import qualified Smten.HaskellF.Symbolic as S" H.$+$
+                 H.text "import qualified Smten.HaskellF.HaskellF as S" H.$+$
                  H.text "import qualified Smten.Name as S" H.$+$
                  H.text "import qualified Smten.Type as S" H.$+$
                  H.text "import qualified Smten.ExpH as S" H.$+$
@@ -298,9 +298,9 @@ unknowntype UnknownT = True
 harrowsT :: [H.Type] -> H.Type
 harrowsT = foldr1 (\a b -> H.AppT (H.AppT H.ArrowT a) b)
 
-clssymbolic :: Integer -> H.Name
-clssymbolic 0 = H.mkName "S.Symbolic"
-clssymbolic n = H.mkName $ "S.Symbolic" ++ show n
+clshaskellf :: Integer -> H.Name
+clshaskellf 0 = H.mkName "S.HaskellF"
+clshaskellf n = H.mkName $ "S.HaskellF" ++ show n
 
 boxmeth :: Integer -> H.Name
 boxmeth 0 = H.mkName "box"
@@ -325,8 +325,8 @@ mkContext :: (Name -> Bool) -- ^ which variable types we should care about
 mkContext p t =
   let nvts = filter p $ nvarTs t
       kvts = filter (p . fst) $ kvarTs t
-      ntvs = [H.ClassP (clssymbolic 0) [H.VarT (hsName n)] | n <- nvts]
-      stvs = [H.ClassP (clssymbolic k) [H.VarT (hsName n)] | (n, k) <- kvts]
+      ntvs = [H.ClassP (clshaskellf 0) [H.VarT (hsName n)] | n <- nvts]
+      stvs = [H.ClassP (clshaskellf k) [H.VarT (hsName n)] | (n, k) <- kvts]
   in (concat [ntvs, stvs], nvts ++ map fst kvts)
 
 hsCon :: Con -> Failable H.Con
@@ -359,20 +359,20 @@ mkSmtenTD n tyvars = return $
       tyt = H.AppT (H.ConT clsnamet) (H.ConT (hsName n))
   in H.InstanceD [] tyt [smtent]
   
--- instance S.SymbolicN Foo where
+-- instance S.HaskellFN Foo where
 --  boxN ...
 --  unboxN ...
 mkSymbD :: Name -> [TyVar] -> [Con] -> Failable H.Dec
 mkSymbD n tyvars constrs = do
     boxD <- mkBoxD n tyvars constrs
     unboxD <- mkUnboxD n tyvars constrs
-    let clsname = clssymbolic (genericLength tyvars)
+    let clsname = clshaskellf (genericLength tyvars)
         ty = H.AppT (H.ConT clsname) (H.ConT (hsName n))
     return $ H.InstanceD [] ty [boxD, unboxD]
 
 --  boxN e
---   | Just [a, b, ...] <- de_conS "FooA" e = FooA (box a) (box b) ...
---   | Just [a, b, ...] <- de_conS "FooB" e = FooB (box a) (box b) ...
+--   | Just [a, b, ...] <- de_conHF "FooA" e = FooA (box a) (box b) ...
+--   | Just [a, b, ...] <- de_conHF "FooB" e = FooB (box a) (box b) ...
 --   ...
 --   | otherwise = Foo__s e
 mkBoxD :: Name -> [TyVar] -> [Con] -> Failable H.Dec
@@ -384,7 +384,7 @@ mkBoxD n tyvars constrs = do
         let argnms = [H.mkName ("x" ++ show i) | i <- [1..length tys]]
             pat = H.ConP (H.mkName "Prelude.Just") [H.ListP (map H.VarP argnms)]
             src = foldl1 H.AppE [
-                    H.VarE (H.mkName "S.de_conS"),
+                    H.VarE (H.mkName "S.de_conHF"),
                     H.LitE (H.StringL (unname cn)),
                     H.VarE (H.mkName "e")]
             guard = H.PatG [H.BindS pat src]
@@ -399,8 +399,8 @@ mkBoxD n tyvars constrs = do
   
 
 --  unboxN x
---   | FooA a b ... <- x = conS x "FooA" [unbox a, unbox b, ...]
---   | FooB a b ... <- x = conS x "FooB" [unbox a, unbox b, ...]
+--   | FooA a b ... <- x = conHF x "FooA" [unbox a, unbox b, ...]
+--   | FooB a b ... <- x = conHF x "FooB" [unbox a, unbox b, ...]
 --   ...
 --   | Foo__s v <- x = v
 mkUnboxD :: Name -> [TyVar] -> [Con] -> Failable H.Dec
@@ -415,7 +415,7 @@ mkUnboxD n tyvars constrs = do
               guard = H.PatG [H.BindS pat src]
               unboxes = [H.AppE (H.VarE (H.mkName "S.unbox")) (H.VarE an) | an <- argnms]
               body = foldl1 H.AppE [
-                        H.VarE (H.mkName "S.conS"),
+                        H.VarE (H.mkName "S.conHF"),
                         H.VarE (H.mkName "x"),
                         H.LitE (H.StringL (unname cn)),
                         H.ListE unboxes]
@@ -431,7 +431,7 @@ mkUnboxD n tyvars constrs = do
 -- __caseFooB :: Foo -> (FooB1 -> FooB2 -> ... -> z) -> z -> z
 -- __caseFooB x y n
 --   | FooB a b ... <- x = y a b ...
---   | Foo__s _ <- x = caseS "FooB" x y n
+--   | Foo__s _ <- x = caseHF "FooB" x y n
 --   | otherwise = n
 mkCaseD :: Name -> [TyVar] -> Con -> Failable [H.Dec]
 mkCaseD n tyvars (Con cn tys) = do
@@ -441,7 +441,7 @@ mkCaseD n tyvars (Con cn tys) = do
   ht <- hsTopType [] [] t
   let sigD = H.SigD (constrcasenm cn) ht
 
-      body = H.AppE (H.VarE (H.mkName "S.caseS")) (H.LitE (H.StringL (unname cn)))
+      body = H.AppE (H.VarE (H.mkName "S.caseHF")) (H.LitE (H.StringL (unname cn)))
 
       yargs = [H.mkName ("x" ++ show i) | i <- [1..length tys]]
       ypat = H.ConP (hsName cn) (map H.VarP yargs)
@@ -452,7 +452,7 @@ mkCaseD n tyvars (Con cn tys) = do
       spat = H.ConP (symconstrnm n) [H.WildP]
       ssrc = H.VarE (H.mkName "x")
       sbody = foldl1 H.AppE [
-                H.VarE (H.mkName "S.caseS"),
+                H.VarE (H.mkName "S.caseHF"),
                 H.LitE (H.StringL (unname cn)),
                 H.VarE (H.mkName "x"),
                 H.VarE (H.mkName "y"),

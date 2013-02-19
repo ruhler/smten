@@ -1,7 +1,7 @@
 
 {-# LANGUAGE TemplateHaskell #-}
 
-module Smten.HaskellF.TH (derive_SmtenS) where
+module Smten.HaskellF.TH (derive_SmtenHF) where
 
 import Data.Maybe(fromMaybe)
 import Data.Functor((<$>))
@@ -9,48 +9,48 @@ import Data.Functor((<$>))
 import Language.Haskell.TH
 import Language.Haskell.TH.Syntax
 
-import Smten.HaskellF.Symbolic
+import Smten.HaskellF.HaskellF
 
 -- Input are the names of a generated symbolic data type and a haskell data
 -- type. We expect the unqualified names to be the same.
--- ex: derive_smtenS ''Maybe ''S.Maybe
-derive_SmtenS :: Name -> Name -> Q [Dec]
-derive_SmtenS a b = do
+-- ex: derive_smtenHF ''Maybe ''S.Maybe
+derive_SmtenHF :: Name -> Name -> Q [Dec]
+derive_SmtenHF a b = do
   TyConI (DataD _ _ vars cs _) <- reify a
   let vA = [VarT (mkName $ 'a' : show i) | i <- [1..length vars]]
       vB = [VarT (mkName $ 'b' : show i) | i <- [1..length vars]]
-      ctx = [ClassP ''SmtenS [a, b] | (a, b) <- zip vA vB]
+      ctx = [ClassP ''SmtenHF [a, b] | (a, b) <- zip vA vB]
       ta = foldl AppT (ConT a) vA
       tb = foldl AppT (ConT b) vB
-      ty = foldl AppT (ConT ''SmtenS) [ta, tb]
+      ty = foldl AppT (ConT ''SmtenHF) [ta, tb]
       moda = fromMaybe "" ((++ ".") <$> nameModule a)
       modb = fromMaybe "" ((++ ".") <$> nameModule b)
-      smtens = derive_smtenS moda modb vars cs
-      de_smtens = derive_de_smtenS moda modb vars cs
+      smtens = derive_smtenHF moda modb vars cs
+      de_smtens = derive_de_smtenHF moda modb vars cs
   return [InstanceD ctx ty (concat [smtens, de_smtens])]
 
-derive_smtenS :: String -> String -> [TyVarBndr] -> [Con] -> [Dec]
-derive_smtenS c f vars cs =
-  let -- Each data constructor has it's own clause in the smtenS function.
+derive_smtenHF :: String -> String -> [TyVarBndr] -> [Con] -> [Dec]
+derive_smtenHF c f vars cs =
+  let -- Each data constructor has it's own clause in the smtenHF function.
       -- A constructor of the form:
       --    Bar Sludge a
       -- Maps to the clause:
-      --    *** <c>.Bar a b = <f>.Bar (smtenS a) (smtenS b)
+      --    *** <c>.Bar a b = <f>.Bar (smtenHF a) (smtenHF b)
       mkcon :: Con -> Clause
       mkcon (NormalC cnm ts) =   
         let args = [mkName ('x' : show i) | i <- [1..length ts]]
             pat = ConP cnm (map VarP args)
-            argsS = [AppE (VarE 'smtenS) (VarE a) | a <- args]
+            argsS = [AppE (VarE 'smtenHF) (VarE a) | a <- args]
             body = foldl AppE (ConE (mkName (f ++ nameBase cnm))) argsS
         in Clause [pat] (NormalB body) []
       mkcon (RecC nm vsts) = mkcon (NormalC nm (map (\(_, s, t) -> (s, t)) vsts))
       mkcon (InfixC ta n tb) = mkcon $ NormalC n [ta, tb]
 
-      dec = FunD 'smtenS (map mkcon cs)
+      dec = FunD 'smtenHF (map mkcon cs)
   in [dec]
 
--- TODO: derive_de_smtenS
+-- TODO: derive_de_smtenHF
 -- For now we'll just fall back on the less efficient default.
-derive_de_smtenS :: String -> String -> [TyVarBndr] -> [Con] -> [Dec]
-derive_de_smtenS c f vars cs = []
+derive_de_smtenHF :: String -> String -> [TyVarBndr] -> [Con] -> [Dec]
+derive_de_smtenHF c f vars cs = []
 
