@@ -268,6 +268,8 @@ haskellf wrapmain modname env =
       hsHeader = H.text "{-# LANGUAGE ExplicitForAll #-}" H.$+$
                  H.text "{-# LANGUAGE MultiParamTypeClasses #-}" H.$+$
                  H.text "{-# LANGUAGE FlexibleInstances #-}" H.$+$
+                 H.text "{-# LANGUAGE FlexibleContexts #-}" H.$+$
+                 H.text "{-# LANGUAGE UndecidableInstances #-}" H.$+$
                  H.text "{-# LANGUAGE ScopedTypeVariables #-}" H.$+$
                  H.text ("module " ++ modname ++ " where") H.$+$
                  H.text "import qualified Prelude" H.$+$

@@ -1,0 +1,91 @@
+
+Fri Feb 15 09:08:26 EST 2013
+
+Plan for the couple of hours I have to work on this today:
+
+Continue work on the switch to the new api.
+
+1. Change Primitives2 to use the new api.
+This should cascade to changes in the test case. Just run with it. Dive in.
+
+Fri Feb 15 09:55:18 EST 2013
+
+It works! That's pretty cool.
+
+What is the next step?
+
+If possible, I would like to get rid of the old api entirely. But maybe I
+should first make sure the new api works with haskellf.
+
+So, get that up and running. Shouldn't be anything difficult. Maybe just
+slightly annoying and tedious.
+
+Fri Feb 15 10:18:49 EST 2013
+
+Okay! That's up to par. Next step: get the DSEL up to where it needs to be.
+This may benefit from some forethought.
+
+* Get DSEL up to par (sudoku, dsel tests)
+* Remove all traces to old API
+** rename Foo2 test to Foo
+** rename Primitives2 to Primitives
+** remove Query monad
+** remove SMT lib in HaskellF
+** remove SMT lib in smtn
+
+Let's think about what I need for dsel. I suppose starting with sudoku, which
+may be an easier case?
+
+Well, first problem is our three different notions of Symbolic, which is way
+confusing.
+
+Symbolic from the haskell SMT api
+Symbolic from the smten SMT api
+Symbolic from the utilities for converting smten to haskell.
+
+The third one needs to change.
+Maybe call it: SymbolicHF? That's at least better than what I have now.
+
+A completely better name might be nice too. Like... I don't know.
+
+Fri Feb 15 10:28:11 EST 2013
+
+I can't do this incrementally. I have to think about what I want. Plan it out.
+Set it all up so it makes sense. Actually design instead of just hack.
+
+Okay. Let's think about the DSEL API then. What sorts of things would we
+need/want?
+
+* convert S.Symbolic to Symbolic        (was qS)
+* assert S.Bool to get Symbolic ()      (was assertS)
+* convert Haskell type T to S.T         (was smtenS, de_smtenS)
+* assert something is S.*               (was Symbolic class)
+* query S.T into T                      (was query . realizeS)
+
+I don't know what to do about this.
+
+I like "Symbolic" for the API. So I need to think of other names. And I
+suppose what I really want, at the basic level, is:
+
+Hmm... I need a name for those objects in the generated haskellF code. Things
+that can be symbolic types. Symbolic is perfect, but overloaded.
+
+Maybe something like HSym. Or SymH. For a symbolic haskell object. Or, a
+haskell object which could be symbolic. And remember, we have "box" and
+"unbox" method names.
+
+Anyway, I think it's safe to remove everything which depended on Query and old
+stuff now. I'll stew on the right DSEL interface, and when I've figured it
+out, re-implement Sudoku and DSEL tests.
+
+Fri Feb 15 11:05:43 EST 2013
+
+Okay! We're in pretty good shape. I've removed all traces to the old
+primitives. The only thing left to have smten itself totally transitioned to
+the new API is to implement the DSEL api and tests for it.
+
+I'll continue to think about that, and names, and when I come back, hopefully
+I'll have something interesting to say about it.
+
+I'm very close!
+
