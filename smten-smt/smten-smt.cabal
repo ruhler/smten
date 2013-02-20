@@ -1,5 +1,5 @@
 name: smten-smt
-version: 1.6.0.0
+version: 2.0.0.0
 synopsis: SMT primitives and backends for smten
 license: AllRightsReserved
 license-file: LICENSE
@@ -32,6 +32,6 @@ library
   build-depends: base ==4.5.*, mtl ==2.1.*, pretty ==1.1.*, array ==0.4.*,
                  directory ==1.1.*, template-haskell ==2.7.*,
                  hashable ==1.1.*, containers ==0.4.*, bytestring ==0.9.*,
-                 smten ==1.6.*
+                 smten ==2.0.*
   extra-libraries: stp stdc++ yices1 yices2
   ghc-prof-options: -fprof-auto-top

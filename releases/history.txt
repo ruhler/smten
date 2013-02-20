@@ -1,3 +1,13 @@
+Feb 20, 2013
+  smten-2.0.0.0
+  smten-smt-2.0.0.0
+  smten-bin-2.0.0.0
+
+  Changes from seri 1.6.0.0
+  * Renamed from "seri" to "smten"
+  * New SMT api with better semantics
+  * bug fixes
+
 Feb 12, 2013
   seri-1.6.0.0
   seri-smt-1.6.0.0
