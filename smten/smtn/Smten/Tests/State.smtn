@@ -2,6 +2,7 @@
 module Smten.Tests.State where
 
 import Control.Monad.State
+import Control.Monad.State.Class
 import Smten.Tests.Test
 
 statething :: Integer -> State Integer Integer

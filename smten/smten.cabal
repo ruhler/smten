@@ -13,6 +13,7 @@ data-dir: smtn
 data-files:
     Prelude.smtn
     Control/Monad/*.smtn
+    Control/Monad/State/*.smtn
     Debug/*.smtn
     Data/*.smtn
     Smten/*.smtn

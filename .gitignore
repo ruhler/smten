@@ -5,4 +5,5 @@ tclmk/local.tcl
 *.hp
 *.aux
 releases/*/*.tar.gz
+releases/*/*/*.tar.gz
 releases/latest

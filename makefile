@@ -13,6 +13,11 @@ testio:
 		--file smten/smtn/Smten/SMT/Tests/Nest.smtn \
 		--main-is Smten.SMT.Tests.Nest.main
 
+testsugar:
+	./build/home/.cabal/bin/smten --desugar \
+		--include smten/smtn \
+		--file smten/smtn/Smten/Tests/Concrete.smtn \
+
 clean:
 	rm -rf build/smten-smt build/smten build/smten-bin build/test
 
