@@ -119,6 +119,7 @@ Query::
 Query Optimizations::
 * Perform case analysis to avoid inserting unnecessary error conditions
   automatically.
+* Simplify (= x x) to True
 
 Specialization::
 * put it back in
@@ -169,4 +170,5 @@ Other::
   Either add tests to the test cases for it, or throw it away
 * Do a code review of all of Smten, figure out what can be cleaned up and how.
 * Test execution of symbolic Symbolic
+* Switch to n-ary and to help in debugging of SMT queries?
 
