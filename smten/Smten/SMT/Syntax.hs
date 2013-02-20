@@ -145,6 +145,7 @@ de_integerE _ = Nothing
 -- | > (= <expression> <expression>)
 eqE :: Expression -> Expression -> Expression
 eqE a b | a == trueE = b
+eqE a b | a == b = trueE
 eqE a b = AppE (varE "=") [a, b]
 
 -- | Deconstruct an equality expression.

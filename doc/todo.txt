@@ -1,8 +1,6 @@
 
-Priority::
-* Define new DSEL API
-** Implement sudoku and dsel tests with new DSEL API
-* Port SHampi to new name and API
+Recent::
+* Implement quserdata test in dsel
 * Add support for semicolon error parsing rule in parser
 * Reorganize type errors so expected and found types are adjacent
 * If default implementation is missing for an instance, generate a default
@@ -11,6 +9,7 @@ Priority::
 * Multiple bugs: Can't implement StateT monad.
 ** type checker: remember context for methods in class declarations
 ** haskellf: kind inference wrong
+* Have flags in smten exe to call ghc appropriately.
 
 Haskell Features::
 * Allow parens in InstD: instance (Foo Bar) where...
@@ -171,4 +170,5 @@ Other::
 * Do a code review of all of Smten, figure out what can be cleaned up and how.
 * Test execution of symbolic Symbolic
 * Switch to n-ary and to help in debugging of SMT queries?
+* Port SHampi to new name and API
 

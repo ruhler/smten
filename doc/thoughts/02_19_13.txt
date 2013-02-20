@@ -1,0 +1,154 @@
+
+Tue Feb 19 13:17:02 EST 2013
+
+Running into lots of little issues with smten. Not sure when I'll get time to
+work them out. I really ought to work on them as I can.
+
+Anyway, the big thing to work on. Maybe I can start with that. Is the DSEL.
+
+How about this. I'll start by fixing a small issue, then move onto the DSEL.
+That way I can at least make progress on these small issues, which otherwise
+may never get fixed.
+
+Summary of plan for the DSEL:
+
+Symbolic -> SmtenHF
+Symbolic1 -> SmtenHF1
+etc...
+
+HaskellF/Compile.hs (was HaskellF)
+        /TH
+        /Lib/Prelude
+        /Lib/SMT
+        /HaskellF (was Symbolic)
+
+I think that's fine. And hopefully not too hard. Mostly renaming of whatever I
+had before at this point. Take it a step at a time.
+
+Cool.
+
+Tue Feb 19 13:40:26 EST 2013
+
+First step? Rename HaskellF/HaskellF to HaskellF/Compile.
+
+Easy. Next step?
+Move Symbolic, wherever that is, to HaskellF.
+
+Tue Feb 19 13:56:32 EST 2013
+
+Okay! Cool. I like that change. What's next?
+
+I want to try out the dsel test. So... perhaps resurrect it from before and
+port it over. Add whatever convenience functions I need to make it convenient.
+
+Tue Feb 19 14:03:11 EST 2013
+
+Okay! So now I'm started on this, I see what things I see.
+
+1. How to declare a free variable?
+Ideally we have a function: freeHF. Trouble is, it depends on the 'free' class
+which is defined by generated Haskell code, so we have a dependency problem
+(terribly annoying).
+
+But I can define:
+
+freeHF :: (S.Free a, HaskellF a) => Symbolic a
+freeHF = smtenHF S.free
+
+So that should be fine.
+
+Assert: Want:
+assertHF :: S.Bool -> Symbolic ()
+
+query: Want:
+
+query :: Symbolic (Realize a) -> SMT (Maybe a)
+Which is exactly what we already have. It might be nice to have:
+
+queryHF :: (HaskellF a) => Symbolic a -> SMT (Maybe a)
+
+Yes. I like that.
+
+Tue Feb 19 19:54:30 EST 2013
+
+I'm running into a type issue.
+
+freeHF :: (S.Free a, HaskellF a) => Symbolic a
+freeHF = smtenHF S.free
+
+calling smtenHF converts ... concrete to free? Or free to concrete?
+What's going on here?
+
+I want to convert: (S.Symbolic a) to Symbolic a.
+Which should just be: unbox s to get an Exp?
+
+Err... apply unbox to get an S.Symbolic ExpH. Then I can call ...
+
+apply unbox to get an ExpH. Apply a de_symbolicEH to get a Symbolic ExpH. fmap
+that with box to get back an a. Make sense?
+
+And I ought to be able to assume, based on types, that the conversion won't
+fail. Okay. Let me try it out.
+
+Tue Feb 19 20:19:35 EST 2013
+
+Okay! So I have the SMT DSEL. It looks like it's working out just fine. Though
+I honestly haven't tested it very thoroughly yet.
+
+But, you know, Shampi will test it out quite nicely. And other applications.
+So do I really need to worry about more tests now?
+
+I suppose tests serve as good documentation, so it may be worth a couple more
+of the more involved examples.
+
+Okay. So let me add those in. Err... except that I don't feel like it right
+now. So maybe not.
+
+Well, what do you think? Time to merge with master?
+
+I think so. Cool.
+
+Tue Feb 19 20:31:13 EST 2013
+
+Okay, so I merged with master. The question is, what should I focus on next?
+
+One big thing is updating SHampi... but I think it makes more sense at this
+point to instead focus on what Nirav needs, and code maintenance.
+
+Code maintenance::
+I think I can clean up type Checking a bunch. Have a single, common type
+checking monad with Env, variable types, and type variable kinds. And have a
+typecheck class for every data type.
+
+This cleanup can be part of the switch to support locations in type errors,
+which I believe is the single most important thing I can do for readability of
+errors at this point.
+
+As far as what Nirav needs... the next thing is to work out the StateT issues.
+
+In other words, I seem to be at a bug fix/code maintenance period, rather than
+a big new feature thing. That's good. Take the time to clean things up while I
+can.
+
+As far as next milestones...
+
+* When we get back CAV paper results, if it isn't accepted, really try to
+  understand why, and focus on a fix for that
+* Find a conference to target for the semantics, and start planning a paper on
+  that.
+* Would be good to find a conference to target a paper for Nirav's
+  architectural extraction thing. Start planning a paper on that.
+
+In other words, I believe we've made now enough progress for two new paper
+attempts: the semantics are in good enough shape to start trying to write a
+paper, and the arch-extraction tool ought to be in good enough shape to try to
+write a paper. And, of course, if the general 'tool' paper for seri isn't
+accepted in CAV, understanding why and improving that is the next goal.
+
+In other words, I don't need to add anymore features unless Nirav totally
+demands it for his work. Establish a paper target. In the meantime, keep
+improving usability and code cleanliness.
+
+Note: I think we are ready now to make a new release and have Nirav switch
+over to the new name and api.
+
