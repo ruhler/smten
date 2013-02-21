@@ -41,8 +41,8 @@ de_conT _ = Nothing
 -- type operations so that #(a+b) is represented as
 --   AppT (AppT (ConT "+") a b), or some such similar.
 appT :: Type -> Type -> Type
-appT (AppT (ConT n) (NumT a)) (NumT b)
- | n `elem` map name ["+", "-", "*"] = NumT (AppNT (unname n) a b)
+appT (AppT (ConT n) a) b
+ | n `elem` map name ntops = OpT (unname n) a b
 appT a b = AppT a b
 
 de_appT :: Type -> Maybe (Type, Type)
@@ -113,10 +113,10 @@ stringT :: Type
 stringT = listT charT
 
 bitT :: Integer -> Type
-bitT w = appT (conT (name "Bit")) (NumT (ConNT w))
+bitT w = appT (conT (name "Bit")) (NumT w)
 
 de_bitT :: Type -> Maybe Integer
-de_bitT (AppT (ConT n) (NumT w)) | n == name "Bit" = Just (nteval w)
+de_bitT (AppT (ConT n) w) | n == name "Bit" = Just (nteval w)
 de_bitT _ = Nothing
 
 -- Generate the tuple name for given number of arguments.
@@ -153,12 +153,12 @@ de_tupleT t =
         return ts
     _ -> Nothing
 
-addNT :: NType -> NType -> NType
-addNT = AppNT "+" 
+addNT :: Type -> Type -> Type
+addNT = OpT "+" 
 
-subNT :: NType -> NType -> NType
-subNT = AppNT "-" 
+subNT :: Type -> Type -> Type
+subNT = OpT "-" 
 
-mulNT :: NType -> NType -> NType
-mulNT = AppNT "*" 
+mulNT :: Type -> Type -> Type
+mulNT = OpT "*" 
 

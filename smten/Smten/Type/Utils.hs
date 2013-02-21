@@ -3,7 +3,7 @@
 
 module Smten.Type.Utils (
     assignments, isSubType, Assign(..), assign,
-    nvarTs, varTs, kvarTs,
+    nvarTs, varTs, kvarTs, kindOf,
     ) where
 
 import Control.Monad.State
@@ -105,4 +105,13 @@ nvarTs (AppT a b) = nub $ nvarTs a ++ nvarTs b
 nvarTs (NumT (AppNT _ a b)) = nub $ nvarTs (NumT a) ++ nvarTs (NumT b)
 nvarTs (NumT (VarNT n)) = [n]
 nvarTs _ = []
+
+kindOf :: Type -> Kind
+kindOf t 
+ | ConT {} <- t = StarK
+ | AppT a b <- t = ArrowK (kindOf a) (kindOf b)
+ | VarT _ k <- t = k
+ | NumT {} <- t = NumK
+ | OpT {} <- t = NumK
+ | UnknownT <- t = UnknownK
 

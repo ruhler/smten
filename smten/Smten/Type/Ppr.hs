@@ -7,11 +7,6 @@ import Smten.Ppr
 import Smten.Type.Type
 import Smten.Type.Sugar
 
-instance Ppr NType where
-    ppr (ConNT i) = integer i
-    ppr (VarNT v) = ppr v
-    ppr (AppNT o a b) = parens (ppr a <+> text o <+> ppr b)
-
 -- Print an atomic type in an App context
 atomApp :: Type -> Doc
 atomApp t | Just _ <- de_listT t = ppr t
@@ -33,10 +28,16 @@ instance Ppr Type where
       = text "(" <> hsep (punctuate comma (map ppr vs)) <> text ")"
     ppr t | (t1:ts@(_:_)) <- de_arrowsT t   
       = hsep $ atomArrow t1 : concat [[text "->", atomArrow tx] | tx <- ts]
+    ppr t | kindOf t == NumK = text "#" <> pprnumt t
 
     ppr (ConT n) = ppr n
     ppr (AppT a b) = atomArrow a <+> atomApp b
-    ppr (VarT n) = ppr n
-    ppr (NumT nt) = text "#" <> ppr nt
+    ppr (VarT n _) = ppr n
     ppr UnknownT = text "?"
+
+pprnumt :: Type -> Doc
+pprnumt (NumT i) = integer i
+pprnumt (OpT f a b) = parens $ pprnumt a <> text f <> pprnumt b
+pprnumt (VarT n _) = ppr n
+pprnumt t = ppr t
 

@@ -1,44 +1,39 @@
 
+{-# LANGUAGE PatternGuards #-}
+
 module Smten.Type.Type (
-     NType(..), Type(..), nteval,
+     Kind(..), Type(..), nteval, ntops,
  ) where
 
-import Data.Hashable
 import Smten.Name
 
 type NTOp = String
 
--- | Numeric types.
-data NType = ConNT Integer   -- ^ numeric type (should be non-negative)
-           | VarNT Name      -- ^ numeric type variable
-           | AppNT NTOp NType NType -- ^ numeric type operator application
-       deriving (Eq, Ord, Show)
-
-instance Hashable NType where
-    hash (ConNT i) = hash ("ConNT", i)
-    hash (VarNT n) = hash ("VarNT", n)
-    hash (AppNT o a b) = hash ("AppNT", o, a, b)
+data Kind = StarK                   -- ^ *
+          | NumK                    -- ^ #
+          | ArrowK Kind Kind        -- ^ k1 -> k2
+          | UnknownK                -- ^ ?
+    deriving(Eq, Ord, Show)
 
 data Type = ConT Name                       -- ^ type constructor
           | AppT Type Type                  -- ^ type application
-          | VarT Name                       -- ^ type variable
-          | NumT NType                      -- ^ numeric type
+          | VarT Name Kind                  -- ^ type variable
+          | NumT Integer                    -- ^ numeric type constructor
+          | OpT NTOp Type Type              -- ^ numeric type operation
           | UnknownT
       deriving(Eq, Ord, Show)
 
-instance Hashable Type where
-    hash (ConT n) = hash ("ConT", n)
-    hash (AppT a b) = hash ("AppT", a, b)
-    hash (VarT n) = hash ("VarT", n)
-    hash (NumT n) = hash ("NumT", n)
-    hash UnknownT = hash "UnknownT"
-
 -- | Evaluate a concrete numeric type.
-nteval :: NType -> Integer
-nteval (ConNT i) = i
-nteval v@(VarNT {}) = error $ "nteval: non-concrete numeric type: " ++ show v
-nteval (AppNT "+" a b) = nteval a + nteval b
-nteval (AppNT "-" a b) = nteval a - nteval b
-nteval (AppNT "*" a b) = nteval a * nteval b
-nteval (AppNT f a b) = error $ "nteval: unknown AppNT op: " ++ f
+nteval :: Type -> Integer
+nteval t
+  | NumT i <- t = i
+  | OpT "+" a b <- t = nteval a + nteval b
+  | OpT "-" a b <- t = nteval a - nteval b
+  | OpT "*" a b <- t = nteval a * nteval b
+  | OpT f a b <- t = error $ "nteval: unknown NTOp: " ++ f
+  | VarT {} <- t = error $ "nteval: non-concrete type: " ++ show t
+  | otherwise = error $ "nteval: non-numeric type: " ++ show t
+
+ntops :: [NTOp]
+ntops = ["+", "-", "*"]
 
