@@ -233,7 +233,7 @@ iderive n dn vars cs =
       cls = Class n [dt]
     
       keep :: Type -> Bool
-      keep t = not $ or [null (varTs t ++ nvarTs t), isSubType dt t]
+      keep t = not $ or [null (varTs t), isSubType dt t]
 
       fields :: ConRec -> [Type]
       fields (NormalC _ ts) = ts

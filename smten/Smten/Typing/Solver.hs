@@ -92,13 +92,9 @@ single (x, y) | x == y = return ()
 single (AppT a b, AppT c d) = do
     (sys, sol) <- get
     put ((a,c) : (b,d) : sys, sol)
-single (NumT (AppNT _ _ _), NumT (AppNT _ _ _)) = return ()
 single (a, b) | b `lessknown` a = single (b, a)
-single (VarT nm, b) | hasVarT nm b = return ()
-single (VarT nm, b) = do
-    (sys, sol) <- get
-    put (sys, Map.insert nm b sol)
-single (NumT (VarNT nm), b) = do
+single (VarT nm _, b) | hasVarT nm b = return ()
+single (VarT nm _, b) = do
     (sys, sol) <- get
     put (sys, Map.insert nm b sol)
 single (a, b) = error $ "single: unexpected assignment: " ++ pretty a ++ ": " ++ pretty b
@@ -109,7 +105,8 @@ hasVarT nm t =
   case t of
     ConT {} -> False
     AppT a b -> hasVarT nm a || hasVarT nm b
-    VarT n -> nm == n
+    OpT _ a b -> hasVarT nm a || hasVarT nm b
+    VarT n _ -> nm == n
     NumT {} -> False
     UnknownT -> False
 
@@ -118,10 +115,7 @@ solvable (VarT {}, _) = True
 solvable (_, VarT {}) = True
 solvable (ConT a, ConT b) = a == b
 solvable (AppT {}, AppT {}) = True
-solvable (NumT (VarNT {}), NumT {}) = True
-solvable (NumT {}, NumT (VarNT {})) = True
-solvable (NumT (ConNT a), NumT (ConNT b)) = a == b
-solvable (NumT (AppNT a _ _), NumT (AppNT b _ _)) = a == b
+solvable (NumT a, NumT b) = a == b
 solvable _ = False
 
 unsolvable :: (Type, Type) -> Bool
@@ -145,10 +139,8 @@ finalize m =
         else finalize m'
 
 lessknown :: Type -> Type -> Bool
-lessknown (VarT a) (VarT b) = a > b
-lessknown (VarT _) _ = True
-lessknown (NumT (VarNT a)) (NumT (VarNT b)) = a > b
-lessknown (NumT (VarNT _)) (NumT _) = True
+lessknown (VarT a _) (VarT b _) = a > b
+lessknown (VarT {}) _ = True
 lessknown a b = False
 
 instance Ppr [(Type, Type)] where

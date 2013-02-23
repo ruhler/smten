@@ -257,25 +257,25 @@ atype :: { Type }
  : gtycon
     { ConT $1 }
  | tyvarnm
-    { VarT $1 }
+    { VarT $1 UnknownK }
  | '(' types_commasep ')'
     { tupleT $2 }     -- takes care of '(' type ')' case too.
  | '[' type ']'
     { AppT (ConT (name "[]")) $2 }
  | '#' antype
-    { NumT $2 }
+    { $2 }
 
-ntype :: { NType }
+ntype :: { Type }
  : antype { $1 }
  | antype '+' antype { addNT $1 $3 }
  | antype '-' antype { subNT $1 $3 }
  | antype '*' antype { mulNT $1 $3 }
 
-antype :: { NType }
+antype :: { Type }
  : integer
-    { ConNT $1 }
+    { NumT $1 }
  | tyvarnm
-    { VarNT $1 }
+    { VarT $1 NumK }
  | '(' ntype ')'
     { $2 }
 
@@ -601,9 +601,9 @@ poes_commasep :: { [PatOrExp] }
 
 tyvar :: { TyVar }
  : tyvarnm
-    { NormalTV $1 }
+    { TyVar $1 UnknownK }
  | '#' tyvarnm
-    { NumericTV $2 }
+    { TyVar $2 NumK }
 
 tyvars :: { [TyVar] }
  : tyvar

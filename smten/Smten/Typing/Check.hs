@@ -103,9 +103,10 @@ instance TypeCheck Dec where
 
           checktype :: [TyVar] -> Type -> Failable ()
           checktype m t
-            | VarT n <- t
+            | VarT n _ <- t
             , n `notElem` (map tyVarName m) = throw $ "type variable " ++ pretty n ++ " not in scope"
             | AppT a b <- t = checktype m a >> checktype m b
+            | OpT _ a b <- t = checktype m a >> checktype m b
             | UnknownT <- t = throw $ "unknown type encountered"
             | otherwise = return ()
 

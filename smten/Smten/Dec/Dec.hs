@@ -64,8 +64,7 @@ data Con = Con Name [Type]
 data Method = Method Name Exp
     deriving(Eq, Show)
 
-data TyVar = NormalTV Name
-           | NumericTV Name
+data TyVar = TyVar Name Kind
        deriving (Eq, Ord, Show)
 
 data Dec = ValD TopSig Exp              -- ^ nm :: ctx => ty ; nm = exp
@@ -77,11 +76,9 @@ data Dec = ValD TopSig Exp              -- ^ nm :: ctx => ty ; nm = exp
 
 -- | Convert a type variable to a variable type.
 tyVarType :: TyVar -> Type
-tyVarType (NormalTV n) = VarT n
-tyVarType (NumericTV n) = NumT (VarNT n)
+tyVarType (TyVar n k) = VarT n k
 
 -- | Get the name of a type variable
 tyVarName :: TyVar -> Name
-tyVarName (NormalTV n) = n
-tyVarName (NumericTV n) = n
+tyVarName (TyVar n _) = n
 

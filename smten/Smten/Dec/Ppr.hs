@@ -14,8 +14,7 @@ conlist (x:xs) = text " " <+> ppr x
                     $+$ vcat (map (\c -> text "|" <+> ppr c) xs)
 
 instance Ppr TyVar where
-    ppr (NormalTV n) = ppr n
-    ppr (NumericTV n) = text "#" <> ppr n
+    ppr v = ppr (tyVarName v)
 
 instance Ppr Dec where
     ppr (ValD s@(TopSig n _ _) e)

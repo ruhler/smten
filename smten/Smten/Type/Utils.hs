@@ -3,7 +3,7 @@
 
 module Smten.Type.Utils (
     assignments, isSubType, Assign(..), assign,
-    nvarTs, varTs, kvarTs, kindOf,
+    varTs, kindOf,
     ) where
 
 import Control.Monad.State
@@ -17,11 +17,9 @@ import Smten.Type.Sugar
 -- Given a polymorphic type and a concrete type of the same form, return the
 -- mapping from type variable name to concrete type.
 assignments :: Type -> Type -> [(Name, Type)]
-assignments (VarT n) t = [(n, t)]
-assignments (NumT (VarNT n)) t = [(n, t)]
-assignments (NumT (AppNT _ a b)) (NumT (AppNT _ a' b'))
-    = assignments (NumT a) (NumT a') ++ assignments (NumT b) (NumT b')
-assignments (AppT a b) (AppT a' b') = (assignments a a') ++ (assignments b b')
+assignments (VarT n _) t = [(n, t)]
+assignments (OpT _ a b) (OpT _ a' b') = assignments a a' ++ assignments b b'
+assignments (AppT a b) (AppT a' b') = assignments a a' ++ assignments b b'
 assignments _ _ = []
 
 -- | isSubType t sub
@@ -30,26 +28,19 @@ isSubType :: Type -> Type -> Bool
 isSubType t sub
   = let isst :: Type -> Type -> State [(Name, Type)] Bool
         isst (ConT n) (ConT n') = return (n == n')
+        isst (NumT n) (NumT n') = return (n == n')
         isst (AppT a b) (AppT a' b') = do
             ar <- isst a a'
             br <- isst b b'
             return (ar && br)
-        isst (VarT n) t = do
+        isst (OpT o a b) (OpT o' a' b') = do
+            ar <- isst a a'
+            br <- isst b b'
+            return (o == o' && ar && br)
+        isst (VarT n _) t = do
             modify $ \l -> (n, t) : l
             return True
-        isst (NumT a) (NumT b) = isstn a b
         isst _ _ = return False
-
-        isstn :: NType -> NType -> State [(Name, Type)] Bool
-        isstn (ConNT n) (ConNT n') = return (n == n')
-        isstn (AppNT o a b) (AppNT o' a' b') = do
-            ar <- isstn a a'
-            br <- isstn b b'
-            return (o == o' && ar && br)
-        isstn (VarNT n) t = do
-            modify $ \l -> (ncons '#' n, NumT t) : l
-            return True
-        isstn _ _ = return False
 
         (b, tyvars) = runState (isst t sub) []
         assignnub = nub tyvars
@@ -65,46 +56,24 @@ assign m = assignl (\n -> Prelude.lookup n m)
 class Assign a where
     assignl :: (Name -> Maybe Type) -> a -> a
 
-instance Assign NType where
-    assignl f t = 
-      let me = assignl f
-      in case t of
-            AppNT o a b -> AppNT o (me a) (me b)
-            VarNT n | Just (NumT t') <- f n -> t'
-            _ -> t
-
 instance Assign Type where
     assignl f t = 
       let me = assignl f
       in case t of
             AppT a b -> AppT (me a) (me b)
-            VarT n | Just t' <- f n -> t'
-            NumT nt -> NumT (assignl f nt)
+            VarT n _ | Just t' <- f n -> t'
+            OpT o a b -> OpT o (me a) (me b)
             _ -> t
 
 instance (Assign a) => Assign [a] where
     assignl f = map (assignl f)
 
--- | List the (non-numeric) variable type names in a given type.
-varTs :: Type -> [Name]
+-- | List the variable type names in a given type.
+varTs :: Type -> [(Name, Kind)]
 varTs (AppT a b) = nub $ varTs a ++ varTs b
-varTs (VarT n) = [n]
+varTs (VarT n k) = [(n, k)]
+varTs (OpT o a b) = nub $ varTs a ++ varTs b
 varTs _ = []
-
--- | List the (non-numeric) variable type names in a given type along with
--- the number of type arguments they require.
-kvarTs :: Type -> [(Name, Integer)]
-kvarTs t | (VarT n, ts) <- de_appsT t
- = nub $ (n, genericLength ts) : (concatMap kvarTs ts)
-kvarTs (AppT a b) = nub $ kvarTs a ++ kvarTs b
-kvarTs _ = []
-
--- | List the numeric type variables in the given type.
-nvarTs :: Type -> [Name]
-nvarTs (AppT a b) = nub $ nvarTs a ++ nvarTs b
-nvarTs (NumT (AppNT _ a b)) = nub $ nvarTs (NumT a) ++ nvarTs (NumT b)
-nvarTs (NumT (VarNT n)) = [n]
-nvarTs _ = []
 
 kindOf :: Type -> Kind
 kindOf t 

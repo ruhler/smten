@@ -6,6 +6,7 @@ module Smten.Type.Ppr () where
 import Smten.Ppr
 import Smten.Type.Type
 import Smten.Type.Sugar
+import Smten.Type.Utils
 
 -- Print an atomic type in an App context
 atomApp :: Type -> Doc

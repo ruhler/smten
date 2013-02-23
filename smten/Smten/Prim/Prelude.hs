@@ -99,15 +99,13 @@ getContentsP = nullaryP "Prelude.getContents" getContents
 numericP :: Prim
 numericP =
   let f :: Type -> ExpH
-      f (NumT nt) = conEH (Sig (name "#" `nappend` name (show (nteval nt))) (NumT nt))
+      f nt = conEH (Sig (name "#" `nappend` name (show (nteval nt))) nt)
   in nullaryTP "Prelude.numeric" f
 
 valueofP :: Prim
 valueofP = 
   let f :: ExpH -> ExpH
-      f x =
-        let NumT nt = typeof x
-        in integerEH (nteval nt)
+      f x = integerEH (nteval (typeof x))
   in unaryP "Prelude.valueof" f
 
 traceP :: Prim

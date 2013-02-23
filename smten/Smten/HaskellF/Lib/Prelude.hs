@@ -299,7 +299,7 @@ type String = List__ Char
 newtype N__0 = N__0 ExpH
 
 instance SmtenT N__0 where
-    smtenT _ = NumT (ConNT 0)
+    smtenT _ = NumT 0
 
 instance HaskellF N__0 where
     box = N__0
@@ -308,7 +308,7 @@ instance HaskellF N__0 where
 newtype N__1 = N__1 ExpH
 
 instance SmtenT N__1 where
-    smtenT _ = NumT (ConNT 1)
+    smtenT _ = NumT 1
 
 instance HaskellF N__1 where
     box = N__1
@@ -317,7 +317,7 @@ instance HaskellF N__1 where
 newtype N__2 = N__2 ExpH
 
 instance SmtenT N__2 where
-    smtenT _ = NumT (ConNT 2)
+    smtenT _ = NumT 2
 
 instance HaskellF N__2 where
     box = N__2

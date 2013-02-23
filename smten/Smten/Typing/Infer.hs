@@ -113,7 +113,7 @@ deunknown =
   let f UnknownT = do
           id <- get
           put (id+1)
-          return (VarT . name $ "~" ++ show id)
+          return (VarT (name $ "~" ++ show id) UnknownK)
       f (AppT a b) = do
           a' <- f a
           b' <- f b
@@ -139,7 +139,7 @@ addc a b = modify $ \ti -> ti { ti_cons = (a, b) : (ti_cons ti) }
 newvt :: TI Type
 newvt = do
     n <- newvtn
-    return $ VarT n
+    return $ VarT n UnknownK
 
 newvtn :: TI Name
 newvtn = do
@@ -234,21 +234,13 @@ retype t = do
         a' <- retype' a
         b' <- retype' b
         return $ AppT a' b'
-    retype' (VarT n) = do
+    retype' (VarT n k) = do
         n' <- namefor n
-        return (VarT n')
-    retype' (NumT n) = do
-        n' <- retypen n
-        return (NumT n')
+        return (VarT n' k)
+    retype' t@(NumT n) = return t
+    retype' (OpT f a b) = do
+        a' <- retype' a
+        b' <- retype' b
+        return $ OpT f a' b'
     retype' UnknownT = return UnknownT
-
-    retypen :: NType -> StateT [(Name, Name)] TI NType
-    retypen t@(ConNT {}) = return t
-    retypen (VarNT n) = do
-        n' <- namefor n
-        return (VarNT n')
-    retypen (AppNT o a b) = do
-        a' <- retypen a
-        b' <- retypen b
-        return (AppNT o a' b')
 

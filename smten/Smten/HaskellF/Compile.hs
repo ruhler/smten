@@ -160,12 +160,11 @@ hsType (AppT a b) = do
     a' <- hsType a
     b' <- hsType b
     return $ H.AppT a' b'
-hsType (VarT n) = return $ H.VarT (hsName n)
-hsType (NumT (ConNT i)) = return $ hsnt i
-hsType (NumT (VarNT n)) = return $ H.VarT (H.mkName (pretty n))
-hsType (NumT (AppNT f a b)) = do
-    a' <- hsType (NumT a)
-    b' <- hsType (NumT b)
+hsType (VarT n _) = return $ H.VarT (hsName n)
+hsType (NumT i) = return $ hsnt i
+hsType (OpT f a b) = do
+    a' <- hsType a
+    b' <- hsType b
     let f' = case f of
                 "+" -> H.ConT $ H.mkName "N__PLUS"
                 "-" -> H.ConT $ H.mkName "N__MINUS"
@@ -291,7 +290,7 @@ unknowntype :: Type -> Bool
 unknowntype (ConT {}) = False
 unknowntype (AppT a b) = unknowntype a || unknowntype b
 unknowntype (VarT {}) = True
-unknowntype (NumT (VarNT {})) = True
+unknowntype (OpT _ a b) = unknowntype a || unknowntype b
 unknowntype (NumT {}) = False
 unknowntype UnknownT = True
 
@@ -323,11 +322,15 @@ mkContext :: (Name -> Bool) -- ^ which variable types we should care about
               -> Type       -- ^ a sample use of the variable types
               -> ([H.Pred], [Name])  -- ^ generated context and list of names used.
 mkContext p t =
-  let nvts = filter p $ nvarTs t
-      kvts = filter (p . fst) $ kvarTs t
-      ntvs = [H.ClassP (clshaskellf 0) [H.VarT (hsName n)] | n <- nvts]
-      stvs = [H.ClassP (clshaskellf k) [H.VarT (hsName n)] | (n, k) <- kvts]
-  in (concat [ntvs, stvs], nvts ++ map fst kvts)
+  let knum :: Kind -> Integer
+      knum StarK = 0
+      knum NumK = 0
+      knum (ArrowK a b) = 1 + knum a
+      knum UnknownK = 0
+
+      vts = filter (p . fst) $ varTs t 
+      tvs = [H.ClassP (clshaskellf (knum k)) [H.VarT (hsName n)] | (n, k) <- vts]
+  in (tvs, map fst vts)
 
 hsCon :: Con -> Failable H.Con
 hsCon (Con n tys) = do
@@ -436,7 +439,7 @@ mkUnboxD n tyvars constrs = do
 mkCaseD :: Name -> [TyVar] -> Con -> Failable [H.Dec]
 mkCaseD n tyvars (Con cn tys) = do
   let dt = appsT (conT n) (map tyVarType tyvars)
-      z = VarT (name "z")
+      z = VarT (name "z") StarK
       t = arrowsT [dt, arrowsT (tys ++ [z]), z, z]
   ht <- hsTopType [] [] t
   let sigD = H.SigD (constrcasenm cn) ht

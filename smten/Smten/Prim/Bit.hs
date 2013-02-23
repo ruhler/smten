@@ -60,7 +60,7 @@ zeroExtend_BitP :: Prim
 zeroExtend_BitP =
  let f :: Type -> Bit -> Bit
      f t v =
-        let AppT _ (NumT wt) = t
+        let AppT _ wt = t
         in bv_zero_extend (nteval wt - bv_width v) v
  in unaryTP "Smten.Bit.__prim_zeroExtend_Bit" f
 
@@ -92,7 +92,7 @@ truncate_BitP :: Prim
 truncate_BitP =
   let f :: Type -> Bit -> Bit
       f t v =
-        let AppT _ (NumT wt) = t
+        let AppT _ wt = t
         in bv_truncate (nteval wt) v
   in unaryTP "Smten.Bit.__prim_truncate_Bit" f
 
@@ -100,7 +100,7 @@ extract_BitP :: Prim
 extract_BitP =
   let f :: Type -> Bit -> Integer -> Bit
       f t av jv =
-        let AppT _ (NumT wt) = t
+        let AppT _ wt = t
             i = jv + (nteval wt) - 1
         in bv_extract i jv av
   in binaryTP "Smten.Bit.__prim_extract_Bit" f
