@@ -13,6 +13,7 @@ data Kind = StarK                   -- ^ *
           | NumK                    -- ^ #
           | ArrowK Kind Kind        -- ^ k1 -> k2
           | UnknownK                -- ^ ?
+          | VarK Name
     deriving(Eq, Ord, Show)
 
 data Type = ConT Name                       -- ^ type constructor
