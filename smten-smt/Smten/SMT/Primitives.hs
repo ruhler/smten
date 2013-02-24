@@ -9,8 +9,10 @@ module Smten.SMT.Primitives (
     return_SMTP, fail_SMTP, bind_SMTP, nobind_SMTP,
     free_IntegerP, free_BoolP, free_BitP,
     assertP, usedP, query_UsedP, nestP, useP,
-    runSMTP
+    runSMTP, liftIO_SMTP,
     ) where
+
+import Control.Monad.IO.Class
 
 import Debug.Trace
 
@@ -80,7 +82,7 @@ smtPs = [
     return_SMTP, fail_SMTP, bind_SMTP, nobind_SMTP,
     free_IntegerP, free_BoolP, free_BitP,
     assertP, query_UsedP, usedP, nestP, useP,
-    runSMTP
+    runSMTP, liftIO_SMTP
     ]
 
 return_SMTP :: Prim
@@ -157,4 +159,8 @@ runSMTP =
                 STP -> stp
         runSMT (RunOptions dbg s) q
   in binaryP "Smten.SMT.Symbolic.runSMT" f
+
+liftIO_SMTP :: Prim
+liftIO_SMTP = unaryP "Smten.SMT.Symbolic.liftIO_SMT" (liftIO :: IO ExpH -> SMT ExpH)
+    
 

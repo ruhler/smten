@@ -1,7 +1,7 @@
 
 module Smten.SMT.Tests.Core where
 
-import Prelude
+import Control.Monad.IO.Class
 import Smten.SMT.Symbolic
 import Smten.Tests.Test
 
@@ -112,6 +112,8 @@ qtest = do
     test "core.char" (rq == Just True)
 
     qsubstitute
+
+    liftIO $ putStrLn "CORE LIFTIO TEST"
 
 -- Test that primitives are reapplied after substitution.
 qsubstitute :: SMT ()
