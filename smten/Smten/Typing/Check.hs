@@ -140,7 +140,7 @@ instance TypeCheck Dec where
              checkexp tenv f
              checkexp tenv x
              case typeof f of
-                (AppT (AppT (ConT n) a) _) | n == name "->" ->
+                (AppT (AppT (ConT n _) a) _) | n == name "->" ->
                     if a == typeof x
                         then return ()
                         else throw $ "checkexp app: expected type " ++ pretty a ++

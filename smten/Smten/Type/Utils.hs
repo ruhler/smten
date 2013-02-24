@@ -3,7 +3,7 @@
 
 module Smten.Type.Utils (
     assignments, isSubType, Assign(..), assign,
-    varTs, kindOf,
+    varTs, kindof,
     ) where
 
 import Control.Monad.State
@@ -27,7 +27,7 @@ assignments _ _ = []
 isSubType :: Type -> Type -> Bool
 isSubType t sub
   = let isst :: Type -> Type -> State [(Name, Type)] Bool
-        isst (ConT n) (ConT n') = return (n == n')
+        isst (ConT n _) (ConT n' _) = return (n == n')
         isst (NumT n) (NumT n') = return (n == n')
         isst (AppT a b) (AppT a' b') = do
             ar <- isst a a'
@@ -75,10 +75,13 @@ varTs (VarT n k) = [(n, k)]
 varTs (OpT o a b) = nub $ varTs a ++ varTs b
 varTs _ = []
 
-kindOf :: Type -> Kind
-kindOf t 
+kindof :: Type -> Kind
+kindof t 
  | ConT {} <- t = StarK
- | AppT a b <- t = ArrowK (kindOf a) (kindOf b)
+ | AppT a _ <- t =
+     case (kindof a) of
+        ArrowK ka kb -> kb
+        _ -> UnknownK
  | VarT _ k <- t = k
  | NumT {} <- t = NumK
  | OpT {} <- t = NumK

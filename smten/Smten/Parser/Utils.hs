@@ -83,7 +83,7 @@ mkContext t =
   let mkclass :: Type -> ParserMonad Class
       mkclass t =
         case de_appsT t of
-          (ConT nm, ts) -> return $ Class nm ts
+          (ConT nm _, ts) -> return $ Class nm ts
           _ -> lfailE "invalid context"
 
       classes = fromMaybe [t] (de_tupleT t)

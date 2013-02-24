@@ -133,7 +133,7 @@ query_UsedP =
   -- dynamic input type.
   let f :: Used ExpH -> SMT ExpH
       f arg@(Used _ v) = do
-        let ta = AppT (ConT (name "Maybe")) (typeof v)
+        let ta = AppT (ConT (name "Maybe") (ArrowK StarK StarK)) (typeof v)
         res <- query_Used (realize <$> arg)
         return $ case res of
                     Just v' -> aconEH (name "Just") ta [v']

@@ -40,7 +40,7 @@ recordD nm vars cons derivings =
       mkcon (NormalC n ts) = Con n ts
       mkcon (RecordC n ts) = Con n (map snd ts)
 
-      dt = appsT (ConT nm) (map tyVarType vars)
+      dt = appsT (conT nm) (map tyVarType vars)
 
       mkundef :: Con -> Dec
       mkundef (Con n ts) =
@@ -229,7 +229,7 @@ derive ctx cls@(Class n _)
       
 iderive :: Name -> Name -> [TyVar] -> [ConRec] -> Dec
 iderive n dn vars cs = 
-  let dt = appsT (ConT dn) (map tyVarType vars)
+  let dt = appsT (conT dn) (map tyVarType vars)
       cls = Class n [dt]
     
       keep :: Type -> Bool

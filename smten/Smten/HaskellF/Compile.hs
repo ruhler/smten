@@ -149,7 +149,7 @@ hsExp (CaseE x (Sig kn kt) y n) = do
     return $ foldl1 H.AppE [H.VarE (constrcasenm kn), x', y', n']
         
 hsType :: Type -> Failable H.Type
-hsType (ConT n)
+hsType (ConT n _)
   | n == name "()" = return $ H.ConT (H.mkName "Unit__")
   | Just x <- de_tupleN n
      = return $ H.ConT (H.mkName $ "Tuple" ++ show x ++ "__")

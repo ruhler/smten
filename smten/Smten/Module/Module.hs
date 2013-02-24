@@ -225,7 +225,7 @@ instance Qualify Type where
     qualify t = do
         syns <- gets qs_syns
         case t of
-          t | (ConT nm, args) <- de_appsT t
+          t | (ConT nm _, args) <- de_appsT t
             , Just (vs, t') <- HT.lookup nm syns ->
                 if length vs > length args
                     then qthrow $ "expecting at least "

@@ -16,7 +16,7 @@ data Kind = StarK                   -- ^ *
           | VarK Name
     deriving(Eq, Ord, Show)
 
-data Type = ConT Name                       -- ^ type constructor
+data Type = ConT Name Kind                  -- ^ type constructor
           | AppT Type Type                  -- ^ type application
           | VarT Name Kind                  -- ^ type variable
           | NumT Integer                    -- ^ numeric type constructor

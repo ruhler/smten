@@ -58,5 +58,5 @@ instance Ppr [Dec] where
     ppr ds = vcat (punctuate semi (map (\d -> ppr d $+$ text "") ds))
 
 instance Ppr Class where
-    ppr (Class n ts) = ppr (appsT (ConT n) ts)
+    ppr (Class n ts) = ppr (appsT (conT n) ts)
 

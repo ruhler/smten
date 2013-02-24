@@ -245,7 +245,7 @@ type :: { Type }
  : btype
     { $1 } 
  | btype '->' type
-    { AppT (AppT (ConT (name "->")) $1) $3 }
+    { AppT (AppT (conT (name "->")) $1) $3 }
 
 btype :: { Type }
  : atype
@@ -255,13 +255,13 @@ btype :: { Type }
 
 atype :: { Type }
  : gtycon
-    { ConT $1 }
+    { conT $1 }
  | tyvarnm
     { VarT $1 UnknownK }
  | '(' types_commasep ')'
     { tupleT $2 }     -- takes care of '(' type ')' case too.
  | '[' type ']'
-    { AppT (ConT (name "[]")) $2 }
+    { AppT (conT (name "[]")) $2 }
  | '#' antype
     { $2 }
 

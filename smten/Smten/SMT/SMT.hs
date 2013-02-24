@@ -153,7 +153,7 @@ smte e = do
 isPrimT :: Type -> Bool
 isPrimT t | t == boolT = True
 isPrimT t | t == integerT = True
-isPrimT (AppT (ConT n) _) | n == name "Bit" = True
+isPrimT (AppT (ConT n _) _) | n == name "Bit" = True
 isPrimT _ = False
 
 data RunOptions = RunOptions {
@@ -207,13 +207,13 @@ realizefree (Sig nm t) | t == integerT = do
     ival <- liftIO $ SMT.getIntegerValue solver (smtN nm)
     debug $ "; " ++ pretty nm ++ " is " ++ show ival
     return (integerEH ival)
-realizefree (Sig nm (AppT (ConT n) wt)) | n == name "Bit" = do
+realizefree (Sig nm (AppT (ConT n _) wt)) | n == name "Bit" = do
     let w = nteval wt
     solver <- gets qs_solver
     bval <- liftIO $ SMT.getBitVectorValue solver w (smtN nm)
     debug $ "; " ++ pretty nm ++ " has value " ++ show bval
     return (bitEH (bv_make w bval))
-realizefree (Sig _ t@(AppT (AppT (ConT n) _) _)) | n == name "->"
+realizefree (Sig _ t@(AppT (AppT (ConT n _) _) _)) | n == name "->"
   = return (error $ "TODO: realizefree type " ++ pretty t)
 realizefree (Sig _ t)
   = return (error $ "unexpected realizefree type: " ++ pretty t)

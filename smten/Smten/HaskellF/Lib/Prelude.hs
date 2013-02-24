@@ -105,7 +105,7 @@ instance Prelude.Num Integer where
 newtype Bit n = Bit ExpH
 
 instance SmtenT1 Bit where
-    smtenT1 _ = ConT (name "Bit")
+    smtenT1 _ = ConT (name "Bit") (ArrowK NumK StarK)
 
 instance HaskellF1 Bit where
     box1 = Bit
@@ -114,7 +114,7 @@ instance HaskellF1 Bit where
 newtype IO a = IO ExpH
 
 instance SmtenT1 IO where
-    smtenT1 _ = ConT (name "IO")
+    smtenT1 _ = ConT (name "IO") (ArrowK StarK StarK)
 
 instance HaskellF1 IO where
     box1 = IO
@@ -326,7 +326,7 @@ instance HaskellF N__2 where
 newtype N__PLUS a b = N__PLUS ExpH
 
 instance SmtenT2 N__PLUS where
-    smtenT2 _ = ConT (name "+")
+    smtenT2 _ = ConT (name "+") (ArrowK (ArrowK NumK NumK) NumK)
 
 instance HaskellF2 N__PLUS where
     box2 = N__PLUS
@@ -335,7 +335,7 @@ instance HaskellF2 N__PLUS where
 newtype N__MINUS a b = N__MINUS ExpH
 
 instance SmtenT2 N__MINUS where
-    smtenT2 _ = ConT (name "-")
+    smtenT2 _ = ConT (name "-") (ArrowK (ArrowK NumK NumK) NumK)
 
 instance HaskellF2 N__MINUS where
     box2 = N__MINUS
@@ -344,7 +344,7 @@ instance HaskellF2 N__MINUS where
 newtype N__TIMES a b = N__TIMES ExpH
 
 instance SmtenT2 N__TIMES where
-    smtenT2 _ = ConT (name "*")
+    smtenT2 _ = ConT (name "*") (ArrowK (ArrowK NumK NumK) NumK)
 
 instance HaskellF2 N__TIMES where
     box2 = N__TIMES

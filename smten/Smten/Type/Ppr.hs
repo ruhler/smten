@@ -29,9 +29,9 @@ instance Ppr Type where
       = text "(" <> hsep (punctuate comma (map ppr vs)) <> text ")"
     ppr t | (t1:ts@(_:_)) <- de_arrowsT t   
       = hsep $ atomArrow t1 : concat [[text "->", atomArrow tx] | tx <- ts]
-    ppr t | kindOf t == NumK = text "#" <> pprnumt t
+    ppr t | kindof t == NumK = text "#" <> pprnumt t
 
-    ppr (ConT n) = ppr n
+    ppr (ConT n _) = ppr n
     ppr (AppT a b) = atomArrow a <+> atomApp b
     ppr (VarT n _) = ppr n
     ppr UnknownT = text "?"

@@ -113,7 +113,7 @@ hasVarT nm t =
 solvable :: (Type, Type) -> Bool
 solvable (VarT {}, _) = True
 solvable (_, VarT {}) = True
-solvable (ConT a, ConT b) = a == b
+solvable (ConT a _, ConT b _) = a == b
 solvable (AppT {}, AppT {}) = True
 solvable (NumT a, NumT b) = a == b
 solvable _ = False

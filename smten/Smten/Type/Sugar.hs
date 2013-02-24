@@ -23,10 +23,10 @@ import Smten.Type.Type
 
 -- | Form the type constructor with given name.
 conT :: Name -> Type
-conT = ConT
+conT n = ConT n UnknownK
 
 de_conT :: Type -> Maybe Name
-de_conT (ConT n) = Just n
+de_conT (ConT n _) = Just n
 de_conT _ = Nothing
 
 -- | Type application.
@@ -41,7 +41,7 @@ de_conT _ = Nothing
 -- type operations so that #(a+b) is represented as
 --   AppT (AppT (ConT "+") a b), or some such similar.
 appT :: Type -> Type -> Type
-appT (AppT (ConT n) a) b
+appT (AppT (ConT n _) a) b
  | n `elem` map name ntops = OpT (unname n) a b
 appT a b = AppT a b
 
@@ -72,7 +72,7 @@ arrowT a b = appsT (conT arrowN) [a, b]
 
 -- | Given a type of the form (a -> b), return (a, b).
 de_arrowT :: Type -> Maybe (Type, Type)
-de_arrowT (AppT (AppT (ConT ar) a) b) | ar == arrowN = Just (a, b)
+de_arrowT (AppT (AppT (ConT ar _) a) b) | ar == arrowN = Just (a, b)
 de_arrowT _ = Nothing
 
 -- | Given types [a, b, ..., c], return type (a -> b -> ... -> c)
@@ -116,7 +116,7 @@ bitT :: Integer -> Type
 bitT w = appT (conT (name "Bit")) (NumT w)
 
 de_bitT :: Type -> Maybe Integer
-de_bitT (AppT (ConT n) w) | n == name "Bit" = Just (nteval w)
+de_bitT (AppT (ConT n _) w) | n == name "Bit" = Just (nteval w)
 de_bitT _ = Nothing
 
 -- Generate the tuple name for given number of arguments.
@@ -147,7 +147,7 @@ tupleT es = appsT (conT $ tupleN (length es)) es
 de_tupleT :: Type -> Maybe [Type]
 de_tupleT t =
  case de_appsT t of
-    (ConT tn, ts) -> do
+    (ConT tn _, ts) -> do
         len <- de_tupleN tn
         guard $ len == genericLength ts
         return ts

@@ -134,7 +134,7 @@ dctable decs =
   let dcdec :: Dec -> [(Name, Type)]
       dcdec d@(DataD dn vars cs) =
         let dccon :: Con -> (Name, Type)
-            dccon (Con n ts) = (n, arrowsT (ts ++ [appsT (ConT dn) (map tyVarType vars)]))
+            dccon (Con n ts) = (n, arrowsT (ts ++ [appsT (conT dn) (map tyVarType vars)]))
         in map dccon cs
       dcdec _ = []
   in concat $ map dcdec decs
