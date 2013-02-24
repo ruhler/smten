@@ -10,7 +10,7 @@ module Smten.HaskellF.Lib.Symbolic (
     assert, query_Used, nest, use, used,
     return_symbolic, bind_symbolic, nobind_symbolic, fail_symbolic,
     return_smt, bind_smt, nobind_smt, fail_smt,
-    runSMT,
+    runSMT, liftIO_SMT,
     ) where
 
 import Prelude hiding (Bool, Integer, IO, Char, String, Maybe(..))
@@ -131,4 +131,7 @@ fail_symbolic = primHF fail_SymbolicP
 
 runSMT :: (HaskellF a, HaskellF s) => s -> Maybe (List__ Char) -> SMT a -> IO a
 runSMT = primHF runSMTP
+
+liftIO_SMT :: (HaskellF a) => IO a -> SMT a
+liftIO_SMT = primHF liftIO_SMTP
 

@@ -2,6 +2,7 @@
 -- Alternative interface for SMT queries in Smten.
 module Smten.SMT.Symbolic where
 
+import Control.Monad.IO.Class
 import Smten.Bit
 
 -- Primitive SMT reference.
@@ -91,6 +92,12 @@ instance Monad SMT where
   (>>=) = bind_smt
   (>>) = nobind_smt
   fail = fail_smt
+
+
+liftIO_SMT :: IO a -> SMT a
+
+instance MonadIO SMT where
+    liftIO = liftIO_SMT
 
 data Solver = Yices1 | Yices2 | STP
     deriving (Eq, Show)
