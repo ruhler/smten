@@ -66,8 +66,9 @@ instance TypeCheck Dec where
             onfail (\s -> throw $ s ++ "\n in declaration " ++ pretty d) $ do
               checkexp [] e
               if (typeof e /= t)
-                then throw $ "checkdec: expecting type " ++ pretty t ++ " in expression "
-                            ++ pretty e ++ " but found type " ++ pretty (typeof e)
+                then throw $ "checkdec: expecting type " ++ pretty t
+                            ++ " but found type " ++ pretty (typeof e)
+                            ++ " in expression " ++ pretty e
                 else return ()
               instcheck env c e
 
