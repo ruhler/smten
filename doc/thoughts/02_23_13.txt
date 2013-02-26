@@ -1,0 +1,132 @@
+
+Sat Feb 23 12:43:43 EST 2013
+
+Question: Can I do anything useful in the numeric type solver?
+
+Currently if you have equality of two numeric types, it will just ignore it.
+Can I do any better inference?
+
+What are some examples? I bet I could do some better inference. The question
+is, what's important? Can I do it in any comprehensive kind of way?
+
+I think that's probably better left for a separate discussion. For now just
+try to make the switch over to Kind instead of numeric type. That's enough
+work as it is.
+
+Sat Feb 23 13:12:43 EST 2013
+
+Okay, so here's a question. Now I've changed the code so it compiles without a
+special numeric type. A lot of duplicate code has gone away. Overall it's much
+cleaner. That's wonderful.
+
+But in the process, I removed what little kind inference I had (which was
+wrong before, but mostly worked).
+
+What do I want to do? Try and infer kinds like I did before, just to see if
+the merge worked? Or jump right into the general kind inference I plan to do
+next?
+
+I think I ought to just jump right into general kind inference. Notice that
+all my core interpreted tests still pass. That's a very good sign.
+
+Sat Feb 23 13:20:48 EST 2013
+
+Okay, so now I have to do kind inference. That's what's missing.
+
+I suppose I could punt on the whole thing. Just do a best-effort kind
+inference to get over the current issues, and do the full thing later?
+
+It certainly would be easier.
+
+The idea is, do kind inference without the environment. Call it local kind
+inference. Given a type, return the same type with kinds inferred.
+
+This may actually be a good stepping stone, because it's exactly the kind of
+thing I want for full kind inference.
+
+Hmm... I wonder if ConT ought to have a Kind associated with it? That would
+let us do full local kind inference, assuming we had that info.
+
+Then I can do this local kind inference just lovely. The only issue is the
+first step, which says given a type constructor, what's its kind?
+
+I don't know. It seems silly to do them in separate steps.
+
+
+So let me think about how to implement the kind solver.
+
+It's related to, but slightly different from the type solver because numeric
+types and star types overlap.
+
+So, I'll build up a map from variable to type, and I'll do reductions.
+
+The trouble is something like:
+   n = *
+
+Because I don't know if 'n' is *, or if it is really '#'. So I feel like I
+shouldn't be allowed to do any replacement on it yet, because then we would
+loose information.
+
+I wonder if we could take a different approach. Have a map tracking variable
+type to what we know best about its kind so far. We have the following order:
+
+UnknownK < everything
+StarK < NumK
+ArrowK lexicographical
+
+And the idea now is, every constraint I get updates this map. Not in a
+replacement kind of way, but in a unification kind of way.
+
+Let me look at some possible kind constraints to see how this might work.
+
+* = *               -- no info. Drop it.
+# = #               -- no info. Drop it.
+a -> b = c -> d     -- a = c, b = d, Drop it.
+v = #               -- update v to have kind '#'. Drop it.
+v = *               -- update v to have kind '*'. Drop it.
+v = a -> b          -- update v to have kind a -> b. Drop it.
+v = w               -- update v to have kindOf (w). Keep it.
+
+So, the idea is, we keep around constraints which may change. After each
+round... Somehow we have to know when to stop.
+
+Of course, what I would really like to do is just tie 'v' to 'w'. Say, I know
+'v', it's whatever 'w' is, and then I don't have to worry more. Anywhere you
+see 'v', replace it with 'w'.
+
+Wait a second. When do we learn something has numeric type? Aren't all numeric
+type variables explicitly numeric type? You have to put the '#' sign, right?
+You ought to anyway.
+
+So what if, for now, I just assume if it's *, it's *, and if it's #, it's #?
+Then I can use the same exact algorithm I have for my Type solver.
+
+?
+
+It might not work.
+
+But it might. That should be reasonable. If you put *, we assume that's what
+it is. If you put #, we assume that's what it is. If you put the wrong thing,
+it's a type error. Your fault. So long as I can catch that in type checking,
+everything should be okay.
+
+Fine. Question now is... is there a way I can translate kind inference to type
+inference?
+
+I just need a mapping from Kind to Type and back.
+
+StarK ==> ConT "StarK"
+NumK ==> ConT "NumK"
+ArrowK a b ==> AppT (AppT (ConT "ArrowK") a b)
+UnknownK ==> UnknownT
+VarK ==> VarT
+
+Yes. So I can translate all my constraints. And we can translate back just
+fine.
+
+So, last thing on the list is... Kind Infer. This will be analogous to
+Type Infer. I have to prep the kinds, generate constraints, and call the
+solver to solve the constraints.
+
+Hum. I think I may wish to take a break now.
+

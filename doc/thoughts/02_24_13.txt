@@ -1,0 +1,19 @@
+
+Sun Feb 24 11:05:04 EST 2013
+
+Kind inference.
+
+First off, there's a bug in kindOf as I've implemented it. It doesn't do what
+it should.
+
+I need to have a Kind associated with ConT. Then I can do proper kindOf. And
+that will help with kind inference too.
+
+1+ Add Kind to ConT
+2+ Fix kindOf to deal with AppT properly.
+3. Implement kind inference,
+  Start by doing kind inference for a given Type.
+  In a monad where we can look up type constructor kinds.
+
+I'll have to continue this when I next have the opportunity.
+

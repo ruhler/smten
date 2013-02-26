@@ -1,0 +1,194 @@
+
+Wed Feb 20 10:24:08 EST 2013
+
+What's the plan for today?
+
+Or what's the plan next?
+
+I made a smten release for Nirav. Hopefully that will hold him over a bit.
+
+The big block at this point is the StateT monad.
+And the big improvement I want to make at this point is cleaning up the type
+checker.
+
+I suppose I should keep the type checker cleanup to off-times. So let me work
+on StateT.
+
+Goal is: implement StateT just like it is in the haskell library. Fix the bugs
+I run into when it doesn't work. Sounds easy enough to me.
+
+Wed Feb 20 10:31:33 EST 2013
+
+1. Control.Monad.State.Class
+Make get and put be methods of that class.
+
+2. Add StateT monad to Control.Monad.State
+
+Should be enough for now.
+
+And make a separate test case for it. Not in Basic.smtn, but in State.smtn, I
+should think.
+
+In fact, it may make sense to do that first. Pull out the test case.
+
+Oh look! It's already been pulled out. Wonderful.
+
+Wed Feb 20 10:40:30 EST 2013
+
+First issue with MonadState:
+
+My: class MonadState s m
+
+is, in haskell, listed as:
+    class MonadState m s
+
+What's up with that?
+
+Let me start by looking at the sugar.
+
+Sugar is MonadState s m. So problem is at haskell translation time?
+
+Wed Feb 20 10:47:13 EST 2013
+
+Okay, I found the bug, and fixed it.
+
+Number 2: Add StateT to Control.Monad.State, and presumably I want to test it
+out too.
+
+Wed Feb 20 10:59:44 EST 2013
+
+Okay, added StateT, not tested. But I'm running into the kind inference bug
+now, which is good progress.
+
+The issue is this: __caseStateT is inferring 'm' to have kind both * and *->*,
+and it's being duplicated.
+
+I want to figure out why it thinks it should have kind * at all, and remove
+that.
+
+I call hsTopType with StateT s m a -> ((s -> m (a, s)) -> z) -> z -> z
+
+hsTopType calls mkContext, which generates the context and the use list.
+And mkContext calls kvarTs on that type.
+
+And so we see (StateT s m a), and assume each argument must perforce be of
+kind *, and get the wrong answer.
+
+Well, the mistake is clearly in assuming that arguments to an applied type
+must be of kind *. The real assumption we should be making is that arguments
+of (->) have kind *.
+
+But that's not enough. Because, for example, what if I have a function like:
+
+foo :: State m s a
+foo = ...
+
+Now it seems there is no way for me to figure out what the kind of these
+things are unless I know something about how 'State' is defined. And I claim
+it is important to get this right, because the Haskell code we want to
+generate is:
+
+foo :: (HaskellF1 m, HaskellF s, HaskellF a) => State m s a
+
+And we can't do that unless we know the right kind of m, s, and a.
+
+Thus! The correct solution to this will require just a little bit more work
+than I have now. I need kind inference.
+
+How can we infer the kind of something? I suppose recursively, based on the
+assumptions that:
+
+(->) has kind (* -> * -> *)
+Each constructor field has kind (*).
+
+Now, if I had kind info for each type embedded in the Type, then kvarTs would
+be trivial to do. It's consistent with the notion of giving each Exp a Type.
+Then I just need a separate kind inference pass (like I have a type inference
+pass), to figure out what all the kinds are. It may be a much easier problem
+than type inference, because we should be able to just look it up, right?
+
+Let me look up in the haskell report about kind inference, and see if it has
+anything of interest.
+
+Notes:
+* kind may be underspecified. Defaults to (*)
+
+Looks like I might need an inference engine like I have for type inference in
+order to do kind inference, because we could have complex dependency like
+things. For example, something like:
+
+data Foo a b c = Foo (a b) (b c) (b Bool)
+
+b :: * -> *
+a :: (* -> *) -> *
+c :: *
+
+But it's not obvious without the equations, right?
+I suppose b is obvious, and from that c is obvious, and then a is obvious. But
+I feel like you could mix things up, and it certainly depends on what order
+you give things in.
+
+You're also supposed to do kind inference in dependency groups, but that's
+real complicated, so I don't want to worry about it. That has consequences for
+when you default something to kind (*).
+
+Okay! So first question is: can I use my type inference solver to do kind
+inference as is? Perhaps I could generalize it in some way, because it might
+get confusing otherwise. I think we have the same kinds of constraints.
+
+Maybe the trick to do is implement a KindSolver with the right interface, but
+implement it by translate to a TypeSolver question. How?
+
+Well, we have '->' like before. We have '*' as the only constructor. And
+that's all we need, right? Then, at the end, default everything to '*'.
+
+Um, I feel like I should do kind inference before type inference. Because we
+want to assign the right kinds to each of the variable types at type inference
+time, but I don't think use in the value world should affect kind inference.
+
+So, kind inference is a completely separate step from type inference. We do it
+as a pass before type inference.
+
+Cool. So then, what's the next step?
+
+1. Declare 'Kind' representation.
+2. Implement and test a KindSolver for some of the simple examples I expect to
+   have.
+3. Implement KindInfer stage.
+
+I may as well check kinds in type checking, so no need for a separate
+KindCheck. And these can all go in Typeing/.
+
+This is going to be a big enough change to need a new branch.
+
+Shall I get started?
+
+You know, there's something interesting here. Which is that numeric types...
+we could distinguish numeric types by their kind. That could potentially clean
+things up a bunch. Though I'm not actually sure about that.
+
+Ug. This is a big change then. But it's worth thinking about how expressing
+numeric types using a different kind could help.
+
+Note: numeric types can be used wherever a (*) kind can be used. Don't you
+think that confuses things a bit? It certainly confuses me a bit.
+
+Ug. Why is this so complicated?
+
+Kinds:
+
+* - primitive unit kind
+# - primitive numeric kind (?). Note, that # can be used where * is expected,
+    but * ought not to be used where # is expected?
+-> - primitive arrow kind
+(+,*,/,%) - primitive numeric operator kinds??
+AppK - kind application
+
+The numeric type stuff complicates this a bunch, I fear.
+
+Well, I certainly have something to think about now. It would be good to work
+out how kinds and numeric types can interact, and what the best approach to
+take with regards to them is. I feel like # makes sense as a kind.
+
+Let me stew a bit.
+

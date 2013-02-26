@@ -1,0 +1,170 @@
+
+Thu Feb 21 10:54:41 EST 2013
+
+Kind inference. That's the big next step.
+
+What all thoughts have I had?
+
+VarT has a kind.
+TyVar has a kind.
+
+Kind is:
+  UnitK, ArrowK, AppK, NumK, UnknownK, VarK.
+
+Note, we merge numeric types and regular types now. The only difference is in
+the kind. So, type is: ConT, VarT, AppT, NumT, OpT, and UnknownT.
+
+Given a type, we can determine its kind.
+
+Now, question: are there better names we can use for kinds? Let's see what
+language.haskell.th uses.
+
+Interesting!
+
+Language.haskell.th uses:    StarK, and ArrowK. But ArrowK is fully applied.
+
+So maybe that's the better way to go.
+
+kind:
+    StarK               -- *
+    NumK                -- #
+    ArrowK Kind Kind    -- k1 -> k2
+    UnknownK
+    VarK Name
+
+Unknown and var are only needed for kind inference. We should never see them
+after that.
+
+So, that's kinds, and types, and assuming we can figure out what the kind of
+everything is, all is happy.
+
+Thus, the real question becomes, how do we figure out the kinds of things?
+
+What things do we have to figure out the kinds of?
+
+There are two classes. First, the things which determine kinds.
+
+We want to know, given a type constructor name, what it's kind is.
+
+So, data Foo a ...
+
+What is the kind of Foo?
+
+So, class Foo a where ...
+
+What is the kind of Foo?
+
+Once we have that information, we ought to be able to infer the kind of all
+components in a type. Of course, this information depends on itself, so there
+is some recursion/dependency analysis. This will be a good thing to experiment
+with, because I'll want to change type inference to work this way too.
+
+So, we have the following kind of idea. I want to perform kind inference. That
+will take place inside a state monad which builds up a map from type
+constructor name to Kind. It will go through all the type signatures and data
+declarations and update the kind.
+
+This is before type inference. I don't care about kinds buried inside an
+expression.
+
+So, given a type, how can I update a kind?
+
+- Only data type declarations and class declarations can contribute to our
+  map. Type signatures can't.
+
+So, really, there are two parts. Given the name of a type constructor, if it
+isn't already inferred, how do I figure out its kind? And given a type,
+assuming I already know all the kinds of type constructors used, how can I
+update all the VarT's with the appropriate kind?
+
+There may be some overlap in how I achieve this.
+
+Note: haskell report specifies complicated things about dependency groups and
+default kinds and such. I'm not going to worry at all about any of those
+corner cases for this first attempt.
+
+I feel like the easier case is, given I know the kind of every type
+constructor, how do I update the kinds in a type signature?
+
+A type signature is just a type. This will be just like how we do type
+inference.
+
+1. Assign each variable type with Unknown kind a variable kind.
+2. Generate constraints:
+  - kind of top level type must be *, or #
+  - in type application (T A)
+        kind of T must be of form: k1 -> k2
+        kind of A must be k1, but note, # can be used where * is expected.
+
+So, we have constraints of the form:
+    (kind, kind), which says one kind is the other.
+Now, this isn't straight equality, because a numeric kind can be used where *
+is expected.
+
+Question. Should * be considered non-numeric? Should we require users to
+explicitly express when something is numeric?
+
+For example, this would mean polymorphic list functions, for example, can't
+work on a list of numeric things. But why would you ever want a list of
+numeric things?
+
+But then, functions like 'map' wouldn't work. I think I need to have '#' be a
+subkind of '*', not a disjoint kind.
+
+Okay, so I generate the constraints, and I solve them.
+Assume unknown things are *. Assume things that could be '#' or '*' are
+'*'.
+
+And that's it. Just like type inference.
+
+Now, we have this other operation. Given a data type constructor, how do we
+figure out it's kind? Two cases.
+
+Class: Just do kind inference on the methods to figure it out.
+Data: do kind inference on the fields. Each field should have kind '*'.
+
+So that seems pretty easy to me.
+
+So, after flattening, and before type inference, I do this kind inference, all
+in one go.
+
+Do I want to keep kind inference and kind checking separate like I do for type
+inference and type checking? Not sure. Start with just kind inference, and
+only add kind checking if I feel like I need it.
+
+Then, after kind inference is done, we can do our type inference, and all is
+happy.
+
+I think I have enough to get going on an initial rough draft attempt of this
+all.
+
+On a new branch:
+
+1. Define the Kind representation.
+2. Merge the NType and Type representations.
+3. Define kindOf function.
+4. Implement kind solver
+5. Implement kind inference
+6. Make everything work.
+
+One problem here is, it's not an incremental kind of improvement. It's
+something that I can't try to see if it works until everything is in place and
+working. That's maybe because numeric types are a hack.
+
+I wonder if I could start by cleaning up numeric types. Get that to work in
+the kind skeleton, and then generalize the kind inference.
+
+That sounds appealing to me. So I'll start there.
+
+Thu Feb 21 11:31:00 EST 2013
+
+Okay, defined Kind, updated Type. That all looks good.
+
+I'm not sure what all to do next. So many little things. Let me let the
+compiler guide me.
+
+Thu Feb 21 11:40:05 EST 2013
+
+Okay! Making progress. I'll just have to keep working on it.
+Good news is, I think this cleans a bunch of things up.
+

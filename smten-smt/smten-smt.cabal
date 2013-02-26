@@ -1,5 +1,5 @@
 name: smten-smt
-version: 2.0.0.0
+version: 2.0.1.0
 synopsis: SMT primitives and backends for smten
 license: AllRightsReserved
 license-file: LICENSE

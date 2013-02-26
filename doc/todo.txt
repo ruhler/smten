@@ -44,8 +44,6 @@ Type System::
 * give a nice message if there's a type ambiguity?
     That is, anything with ~?
 * Reimplement TypeCheck to make use of constraint generation from TypeInfer?
-* Make numeric types happy
-** Share VarT and AppT between regular and numeric types
 * Implement enough math somewhere to know that
   Bit #3  -> Bit #4 -> Bit #7 is a valid subtype of
   Bit #m  -> Bit #n -> Bit #(m+n)
