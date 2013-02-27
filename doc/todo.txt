@@ -1,5 +1,6 @@
 
 Recent::
+* Don't allow methods in classes to not be defined!
 * Implement quserdata test in dsel
 * Add support for semicolon error parsing rule in parser
 * Reorganize type errors so expected and found types are adjacent

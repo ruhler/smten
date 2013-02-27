@@ -22,6 +22,7 @@ import Smten.Sig
 import Smten.Name
 import Smten.Type
 import Smten.Lit
+import Smten.Ppr
 import Smten.ExpH
 
 type Context = Unique
@@ -115,7 +116,7 @@ de_symbolicEH e
                 then y
                 else -- TODO: in this case we need to extract the arguments from
                      -- the case match, which I just don't feel like doing yet.
-                     error "TODO: de_symbolicEH of complex case expressions"
+                     error $ "TODO: de_symbolicEH of complex case expressions in: " ++ pretty e
         py = tcaseEH e (const trueEH) (const falseEH)
         pn = tcaseEH e (const falseEH) (const trueEH)
     in do

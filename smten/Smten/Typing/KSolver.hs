@@ -19,7 +19,7 @@ k2t :: Kind -> Type
 k2t StarK = conT (name "StarK")
 k2t NumK = conT (name "NumK")
 k2t (ArrowK a b) = AppT (AppT (conT (name "ArrowK")) (k2t a)) (k2t b)
-k2t (VarK n) = VarT n UnknownK
+k2t (VarK n) = VarT (name (show n)) UnknownK
 k2t UnknownK = UnknownT
 
 t2k :: Type -> Kind
@@ -28,7 +28,7 @@ t2k (ConT n _)
   | n == name "NumK" = NumK
 t2k (AppT (AppT (ConT n _) a) b)
   | n == name "ArrowK" = ArrowK (t2k a) (t2k b)
-t2k (VarT n _) = VarK n
+t2k (VarT n _) = VarK (read (unname n))
 t2k UnknownT = UnknownK
 t2k t = error $ "t2k: " ++ pretty t
 
