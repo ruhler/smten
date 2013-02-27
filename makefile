@@ -10,7 +10,7 @@ userinstall:
 testio:
 	./build/home/.cabal/bin/smten --io \
 		--include smten/smtn \
-		--file smten/smtn/Smten/SMT/Tests/Nest.smtn \
+		--file smten/smtn/Smten/Tests/Concrete.smtn \
 		--main-is Smten.SMT.Tests.Nest.main
 
 testsugar:
