@@ -1,5 +1,8 @@
 
 Recent::
+* Bug in HaskellF stuff
+    HaskellF2, for example, assumes all type parameters are of kind *, but
+    that may not be the case!
 * Reimplement IVP using new proposed scheme (see thoughts/02_27_13.txt)
 * What if you forget a type signature, does it error, or blow up?
 * Implement quserdata test in dsel
