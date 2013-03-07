@@ -1,5 +1,6 @@
 
 Recent::
+* {- -} style comments
 * Bug in HaskellF stuff
     HaskellF2, for example, assumes all type parameters are of kind *, but
     that may not be the case!

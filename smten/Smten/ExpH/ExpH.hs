@@ -17,7 +17,11 @@ import Smten.Name
 import Smten.Type
 import Smten.Sig
 
-type EID = Integer
+newtype EID = EID Integer
+    deriving (Eq, Ord)
+
+instance Show EID where
+    show (EID x) = show x
 
 data ExpH = LitEH Lit
           | ConEH EID Name Type [ExpH]
@@ -53,14 +57,14 @@ data ExpH = LitEH Lit
 identify :: (EID -> a) -> a
 identify f = 
   let {-# NOINLINE idstore #-}
-      idstore :: IORef EID
+      idstore :: IORef Integer
       idstore = unsafePerformIO (newIORef 0)
 
       identifyIO :: (EID -> a) -> IO a
       identifyIO f = do
         x <- readIORef idstore
         writeIORef idstore $! x + 1
-        return $! (f $! x)
+        return $! (f $! EID x)
   in unsafePerformIO $ identifyIO f
 
 -- Return the EID of the given complex expression, or None if the
