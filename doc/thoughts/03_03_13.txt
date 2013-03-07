@@ -1,0 +1,134 @@
+
+Sun Mar  3 16:45:37 EST 2013
+
+Goal: Implement my new approach for IVP. The one where I use a hash table,
+maybe even if ST.
+
+All I should need to do is change the cache, and I can abstract things out
+that way.
+
+So, break it down into parts.
+
+In fact, everything is the same except for the Cache, right? So this should be
+easy?
+
+Not clear. I need this 'with' thing too.
+
+Er... I suppose I really ought to be working on Kind inference instead. Why
+does that seem so much harder? Why is it so hard to get into Smten these days?
+
+Sun Mar  3 16:52:05 EST 2013
+
+Okay, so I need dependency sort. Let me work it out in much more detail before
+I start writing code. Really understand it on paper, and the decomposition I'm
+going to use.
+
+sort:
+ - takes an Env, from which we can get a list of Decls.
+ - produces a list of Dec groups: [[Dec]] in sorted order.
+
+ValD - It can depend on other things, but no kinds can depend on it, so it
+       will end up getting its own group, after everything it depends on.
+ a. Look up all Type Constructors its context and type depends on.
+    This should produce a list of Names. ("tycons")
+ b. "use" each of these Names, to make sure the dependency is in place.
+    What it means to "use" a name:
+        i. if the Name has been used already, do nothing.
+        ii. otherwise, look up the declaration for the name.
+            Note: this could fail, so we'll want to be in an error monad
+        iii. Recursively deal with this declaration.
+ c. Add this declaration to the end of our collection in a singleton list.
+PrimD, InstD - Just like ValD
+
+DataD
+ a. Look up all Type Constructors it depends on. ("tycons")
+ b. "use" each of these to make sure the dependency is in place.
+
+Functions desired:
+    tycons :: a -> [Name]
+        Given some object, return all the type constructors it depends on.
+        Will be implemented for Type and Context and TopSig.
+        This is a pure function.
+
+    use :: Name -> M ()
+        Given a name, look to see if it's already dealt with. If not, look up
+        the corresponding declaration in the environment.
+
+        State required:
+           - Set of TyCons already dealt with.
+           - Env to look up a TyCon declaration.
+             And we'll want a function:
+                lookupType :: Env -> Name -> m Dec
+                Which looks up the declaration (DataD or ClassD) associated
+                with a type constructor.
+
+    def :: Dec -> M ()
+        Given a declaration, insert it and all its dependencies in sorted
+        order into the list. This is the function we are working on.
+
+        State required:
+           - List of (reverse) sorted declarations
+    
+
+
+
+Okay, so everything is easy, except how to deal with recursion.
+
+How to deal with recursion?
+
+I suppose there are a couple of ways to think about it. But basically the idea
+is, I want to create a dependency stack. And whenever I try to put a
+Type constructor on the top of the stack which is already in the stack, we've
+found a mutually recursive group, and I want to chunk them all together.
+
+How can I do that?
+
+Well, the stack is easy. Keep track in the monad of the current stack. When I
+"def" something, add it to the stack before doing "use".
+
+When I "use" something, first check if it is in the stack. If it is, then we
+have a recursion. What I want to do at this point is abort all the way back to
+the beginning ... But I don't know how to do that. And I don't know if that
+will actually work. Because what if there are other participants in the
+recursion?
+
+Hmm... You know, there is, perhaps, another approach possible. Rather than
+going bottom up, we can try going top down.
+
+1. Find all DataD and ClassD which don't depend on any others. 
+2. Find all DataD and ClassD which don't depend on any others that we haven't
+already found.
+3. repeat until we reach a fixed point.
+
+Now, we will have sorted all the type constructor declarations which don't
+involve a recursion. What we have left are those which do have a recursion.
+
+The question is, how can we partition up the recursion?
+
+Basically this is a graph problem. I have a graph. I want to find all cycles
+and merge the cycle into a single node. Hmm... That's interesting.
+
+So, sort the graph topologically. If we find no cycles, what we return is the
+sorted result.
+
+If we find a cycle, merge the groups in the cycle together into 1 node, and
+repeat.
+
+That doesn't seem like the smartest way to do things though.
+
+Okay, how about this.
+
+When we "use" a Name, it will return a Maybe Name, which says the name
+recursively depended on Name. If the answer is Nothing, then what we used did
+not depend on us in any way, it was handled separately. Otherwise it did
+depend on us in some way...
+
+No, I need to return a list.
+
+Err... I think I need to think more about this offline and get back to you
+when I know what I'm doing. No wonder I've had trouble writing this up. I
+don't know how to do it yet.
+
+I'll get back to you when I've figured it out. Big question is how to detect
+cycles (mutual recursion).
+

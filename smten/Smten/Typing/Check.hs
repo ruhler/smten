@@ -92,9 +92,15 @@ instance TypeCheck Dec where
                         else return ()
                     -- TODO: use the context from the signature
                     instcheck env ctx b
+    
+                methdefined :: [Method] -> TopSig -> Bool 
+                methdefined ms (TopSig n _ _) = n `elem` [mn | Method mn _ <- ms]
             in onfail (\s -> throw $ s ++ "\n in declaration " ++ pretty d) $ do
                  mapM_ checkmeth ms
-                 ClassD clsctx _ pts _ <- lookupClassD env nm 
+                 ClassD clsctx _ pts cms <- lookupClassD env nm 
+                 case filter (not . methdefined ms) cms of
+                    [] -> return ()
+                    xs -> throw $ "methods not defined: " ++ show [pretty n | TopSig n _ _ <- xs]
                  let assigns = concat [assignments (tyVarType p) c | (p, c) <- zip pts ts]
                  mapM_ (satisfied env ctx) (assign assigns clsctx)
           checkdec d@(PrimD {}) = return ()

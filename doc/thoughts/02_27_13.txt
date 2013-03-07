@@ -1,0 +1,63 @@
+
+Wed Feb 27 10:00:59 EST 2013
+
+Thought about the numeric kind issue with kind inference.
+
+Conclusion: I don't need to worry about it.
+
+The reason we do kind inference is to get the kind of type variables in type
+signatures and classes. If the user wants a numeric type variable, he will
+explicitly annotate it, so we don't have to rely on kind inference. We don't
+do kind checking, so it's okay if things don't work out there.
+
+So I think everything is fine. All is set and ready to implement kind
+inference. All I need is to find some time...
+
+Wed Feb 27 17:23:12 EST 2013
+
+Small digression: Nirav is complaining about inferred value propagation.
+
+It's slow. It's confusing. It's yuck.
+
+So, here's an alternate proposal which is hopefully easier to understand and
+faster.
+
+The big question is: how do we cache things?
+
+Goal of cache: 
+ We want to cache the result of each expression for each context it is in. But
+the thing is, we only want to care about the context we care about.
+
+So, create a hash map from EID to CtxMap.
+
+Where CtxMap maps context to cached result.
+
+How do you specify a context? By the variables that are important.
+
+Each important variable can be either True, False, or Var. All must be
+explicit.
+
+So a context is a set of (Name, Maybe Bool) pairs. Absence of the variable in
+the context means its value doesn't matter. Presence with Nothing means its
+value does matter, and this is when we no nothing about what the variable is.
+
+The organization of CtxMap? We'll have a tree.
+
+At each node is a variable name which is important. And it has three possible
+directions: Just True, Just False, or Nothing.
+
+So, to look up the value: consider the first node. Look up its value in the
+context, follow the appropriate direction.
+
+If we reach an END node, use that result. Of we reach a EMPTY node, calculate
+the result and update the tree from there.
+
+That's the idea. I can modularize it. Initially don't special CtxMap, use a
+list, or map map to value. Whatever you need to do.
+
+Cool. Like I said, I think that makes a lot more sense and should be...
+hopefully noticeably more efficient.
+
+Anyway, now do I have time to start my clean kind inference? Or do I not have
+the spoons, as they say?
+

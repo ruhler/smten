@@ -1,0 +1,118 @@
+
+Tue Mar  5 10:38:08 EST 2013
+
+Kind issues. We are not yet done.
+
+Let me write down the summary of the current problem (which kind inference is
+not enough to solve), and the two proposed solutions.
+
+Summary of issues:
+
+* HaskellF1 is wanted:
+    foo :: a -> m a
+  Is some expression which could contain internally things of the form
+    m Bool, m Integer, m a, m (m a), what have you. Each of these things
+  requires an instance of HaskellF.
+
+  Ideally we write the constraint as: (forall v. HaskellF (m v)). Then we
+  cover everything in one shot, and don't have to worry. To do this in
+  Haskell: introduces HaskellF1. That's exactly the meaning of it.
+
+* HaskellF1 needs restriction in methods:
+    box1 :: (HaskellF a) => ExpH -> m a
+
+    We need to say 'a' has box and unbox. For example, (->) needs to box and
+    unbox its argument, but in the HaskellF2 instance for (->), we don't have
+    any way to refer to 'a' and 'b' to give that extra restriction, so it has
+    to be given in the class declaration.
+
+* HaskellF1 is restrictive in kinds:
+    box1 :: (HaskellF a) => ExpH -> m a
+    By asserting 'a' is an instance of HaskellF, we are requiring 'a' be of
+    kind *. This is overly restrictive.
+
+    For example, I can't write an instance of HaskellF1 for:
+        data Foo m = Foo (m Integer)
+
+Solution Approaches:
+1. Only have HaskellF. Don't use this (forall v. HaskellF (m v)) thing, right
+down explicitly everything we need.
+
+2. Support more kinds of constraints by adding more type classes:
+HaskellF1  for (* -> *)
+HaskellF1_1 for ((* -> *) -> *)
+etc...
+Note: this approach may require overlapping instances.
+
+First attempt, I think, should be kind inference and solution (2).
+It would be good to work these by hand first to make sure they can be done.
+
+When I have time, if I ever have time.
+
+Tue Mar  5 20:19:17 EST 2013
+
+More thoughts.
+
+What does "box1" and "box2" mean? I don't think it means anything. I can never
+call it, right? Or, it's the same as "box", right?
+
+That is, something weird seems to be going on here.
+
+
+Let me propose something based on the notes above. This idea that there is
+only one reason to have a class HaskellF1, and that is so I can have the
+constraint:  (forall v. HaskellF (m v)).
+
+I only call HaskellF when I have everything.
+
+So, what if ... not sure if this could work... but the idea is HaskellF1
+should not define any methods? Can that work?
+
+class (HaskellF (m v)) => HaskellF1 m
+
+No. That clearly is not allowed. Which is why I took the other approach.
+
+Hum...
+
+ghc does have some support for kind polymorphism, but I don't think it helps
+here.
+
+What I want is... what I have.
+
+Let me try to get this to work with StateT monad by manually mucking with
+things. How close are we?
+
+* I need SmtenT3_ for StateT of kind (* -> (*->*) -> * -> *)
+* I need HaskellF3_ for StateT of kind (* -> (*->*) -> * -> *)
+
+Tue Mar  5 20:46:53 EST 2013
+
+The deal is this: We don't actually need SmtenT3_ or HaskellF3_, unless we
+want a type variable with that funny type, which I don't think we want.
+
+The hack: all we really need is an instance of HaskellF1 (StateT s m). Then
+everyone is happy.
+
+So, after I solve kind inference, maybe I can do a special check to do the
+most general normal kind of thing we can do when generating instances of
+HaskellF. Sounds fine to me.
+
+Here's the relevant code, for StateT:
+
+instance (S.SmtenT s, S.SmtenT1 m) => S.SmtenT1 (StateT s m)
+    where smtenT1 x =
+            let ts :: StateT s m a -> s
+                ts _ = Prelude.undefined
+
+                tm :: StateT s m a -> m a
+                tm _ = Prelude.undefined
+            in S.appsT (S.conT (S.name "StateT")) [S.smtenT (ts x), S.smtenT1 (tm x)]
+
+instance (S.HaskellF s, S.HaskellF1 m) => S.HaskellF1 (StateT s m)
+    where box1 e | Prelude.Just [x1] <- S.de_conHF "StateT" e
+                     = StateT (S.box x1)
+                 | Prelude.otherwise = StateT__s e
+          unbox1 x | StateT x1 <- x
+                       = S.conHF x "StateT" [S.unbox x1]
+                   | StateT__s v <- x
+                       = v

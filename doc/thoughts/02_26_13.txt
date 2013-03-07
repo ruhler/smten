@@ -1,0 +1,242 @@
+
+Tue Feb 26 17:31:16 EST 2013
+
+Goal: kind inference.
+
+I'm getting to work on this in small bits and pieces.
+
+The next piece: the actual inference.
+
+Goal: Given a type, in the kind inference monad, generate kind constraints for
+it. Like in type inference.
+
+Question: should kindinfer return the inferred kind? Or should we just use
+kindof? Let me start by using kindof. If that's too annoying, merge the two.
+
+Okay, so there are two kinds of constraints:
+1. ConT must have kind equal to that in the environment.
+2. S A  - S has kind (k1 -> k2), then A must have kind k1.
+
+Easy.
+
+But! Trouble. Because the kind of S could be some variable, instead of an
+arrow type. That is, kindOf only makes sense for well kinded things, and
+before kind inference that isn't the case.
+
+Thus I see why I had typeinfer return a kind, and why I should do the same
+here. Because what we really want to do is introduce a new constraint, rather
+than assume the kind of S has the right form.
+
+Okay, cool. That makes sense. Also added some of the missing constraints:
+arguments to OpT must be of numeric kind.
+
+Good. Things are coming together.
+
+What other things do I need?
+
+* I need a way to look up the kind of a type constructor....
+So this was the thing I was going to make a map out of.
+So I need to have a map. And I need a way to add entries to the map. And, I
+need a way to fail if you reference a type constructor which doesn't exist.
+
+So my monad should be an Error monad somehow.
+
+Now, I have ntckind... how do I calculate the kind of a type constructor?
+
+Well, I might need to do kind inference on it.
+
+This leads to an organizational question... How do I keep track of what things
+I've done kind inference on for?
+
+I also may want to do nested kind inference? That is, I want to figure out the
+kind of something...
+
+Hmm...
+
+Easy. Let's say you have a type constructor in a map. Let's assume that means
+you have already done type inference on the kind constructor?
+
+No. No need to do that. There are two separate steps here. One is determining
+the kind of a kind constructor, the other is doing kind inference on its
+parts?
+
+The result of the first is just a Kind. The result of the second is an updated
+data or class declaration.
+
+If I have the updated data or class declaration, it is trivial to figure out
+its kind.
+
+Hum. I'm not thinking too clearly now, is the problem.
+
+The general idea is this.
+
+You want to know the kind for some type constructor. So you look up the
+declaration for that. And declarations which that depends on, that form a
+mutually recursive group. Now, generate a bunch of constraints for this group,
+solve them, then you get the new declarations in this group where kind
+inference has been done, and you get the result you were looking for.
+
+In this sense, we want to do inference for things a group at a time. Both in
+the sense of adding it to the map of things we know, and in the sense of
+updating the declaration.
+
+Now, I'm given a bunch of declarations. I go through in topological order.
+Which means, I do a dependency traversal. If I encounter a declaration I've
+already dealt with, then I skip it.
+
+Thus, we collect both a map from type constructor to Kind, because that's
+useful to have, and a pool of declarations we have already updated.
+
+But! Note that this pool of declarations we have already updated... The only
+thing we could depend on is a type constructor, which comes from a data
+declaration or a class declaration.
+
+So, basically, the idea is this. My goal is to perform kind inference on a
+bunch of declarations. During the process I'll build up a map from Type
+constructor to kind, and I'll build up the declarations I've done.
+
+When we get to a new declaration: first check to see if we've done it before.
+That is, if it is class or data, see if we know the kind of the type
+constructor it defines. If so, we are done, move on.
+
+For a declaration we haven't seen before, figure it out, then add it to the
+list, and update the map with its kind (if appropriate).
+
+There! Easy. Slightly different from what I was thinking of? Maybe.
+
+The point is, I need to collect a list of declarations we've already
+completed in the monad, and that will be the final result.
+
+So, we'll be stacking things. I'll want a function which, given a declaration,
+does inference on the declaration (and any mutually recursive things too).
+
+Mutually recursive things will be a special case to handle. A slightly
+annoying case. Perhaps I can make things easier by not worrying about it just
+now? I hope so. Or I could work it out, and make sure things work right.
+
+How to handle mutually recursive things?
+
+The idea is, I'm in the process of working on a group of declarations
+(initially just 1), and I encounter a type constructor already on the stack.
+
+For example, stack is maybe:
+    A .. B .. C .. A
+
+At this point, flatten A, B, C, A into a group (A, B, C), and do them all at
+once. Keep merging in more things as needed.
+
+That seems reasonable. How do I achieve it in the implementation?
+
+I think... get single working first. Figure out mutual recursion when I better
+understand what it means to do inference for a single constraint.
+
+So then, let's look at a single constraint. How do I do kind inference for it?
+
+Perhaps a good example would be the one that is causing me issues, or similar.
+
+data StateT s m a = StateT {
+    runStateT :: s -> m (a, s)
+}
+
+I come up with kind variables for 's', 'm', and 'a'.
+It's a data declaration. What we know is: each field must have kind StarK
+(or NumK!). The numeric thing could cause problems. Let me not worry about
+that now too.
+
+So, I say: do kind inference on each field, asserting it's resulting kind is
+StarK. This generates a bunch of constraints for each field. Solve the
+constraints, substitute the results, look up the top level variable kinds for
+'s', 'm', and 'a'. That's it. Simple. Just note, we may have had to look up
+something else first along the way. That should be fine.
+
+Cool. So then it's clear what to do (aside from dealing with numeric kinds and
+mutually recursive dependency groups).
+
+Then, what I want to do next is?
+
+Well, I'll want the following kind of thing:
+
+* deunknown :: Type -> State Integer Kind
+    Replace UnknownK with a free variable type.
+
+* constrain
+    Apply all the constraints
+
+    Note that one is missing: I need an environment which says this type
+    variable has this kind. And include that in the constraints.
+
+* solve
+    Solve the constraints.
+
+* assign
+    Do kind assignments.
+
+In other words, very similar to type inference. The big difference is, the
+'constrain' process can trigger a scoped inference.
+
+Okay, cool. Now, I could go ahead, but why not spend a little bit of time
+trying to figure out how to handle the two problems I have left un-addressed
+thus far:
+
+1. Mutual recursion.
+2. NumK.
+
+For (1), I feel like what we want is to collect a set of mutually recursive
+declarations together first, deunknown them all at once, constrain all at
+once, solve all at once.
+
+This is easy enough to do if I have the collection.
+
+So, how about I do an initial pass to detect dependency groups?
+
+I could, for example, come up with a sorted list of dependency groups, then
+just do the inference in the right order on all those.
+
+In other words, sort declarations first.
+
+And how to sort declarations?
+
+I have a stack of things I work on. Any time I see a new name, I traverse on
+it on the stack.
+
+If I reach a leaf node: finish traversal without needing anything else, then I
+put it on my list of things to do as a singleton set.
+
+If I reach a name which is already on the stack (so maybe keep around a set of
+names to make this an efficient check), then I merge all names on the stack
+into a single group. I end up with a reverse order list sorted just as I want.
+
+Cool. So, plan is:
+
+1. dependency sort.
+2. for each group, in order:
+    a. deunknown
+    b. constrain
+    c. solve    
+    d. assign
+
+And each one updates the map of type constructor kinds. And we can default to
+(*) for ambiguous things in the group, just like they say in the haskell report.
+
+Nifty.
+
+Question, what is the input to kind inference? And the output?
+
+Looks like I give an Env, and a set of declarations. Seems reasonable to me.
+
+I, um, may want to just take the Env, and get the declarations from it. It's
+not clear it makes sense to do one thing at a time, given the sorting we
+require.
+
+And hey! Guess what! This same kind of thing ought to apply to type inference
+when I want to mix polymorphic and monomorphic declarations. Make dependency
+groups and solve them that way.
+
+Good. Now, last question is, how to handle numeric kinds?
+
+For example:
+
+data Foo #n = Foo #n?
+
+I need to think about it.
+

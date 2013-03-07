@@ -22,6 +22,7 @@ data PDec =
   | PClause Name MAlt
   | PSynonym Synonym
   | PDeriving Deriving
+    deriving (Show)
 
 data LDec =
     LPat Pat Exp
@@ -52,6 +53,7 @@ coalesce ((PSynonym s):ds) =
 coalesce ((PDeriving d):ds) =
    let (syns, dds, drv, rest) = coalesce ds
    in (syns, dds, d:drv, rest)
+coalesce (p@(PClause {}) : ds) = error $ "coalesce: TODO: handle unexpected PClause: " ++ show p
 
 
 -- Merge clauses for the same method into a single method.

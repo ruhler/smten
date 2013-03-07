@@ -21,16 +21,16 @@ class SmtenT a where
 class SmtenT1 m where
     -- | The smten unary type constructor corresponding to the type constructor
     -- 'm'. The argument is ignored.
-    smtenT1 :: (SmtenT a) => m a -> Type
+    smtenT1 :: m a -> Type
 
 class SmtenT2 m where
-    smtenT2 :: (SmtenT a, SmtenT b) => m a b -> Type
+    smtenT2 :: m a b -> Type
 
 class SmtenT3 m where
-    smtenT3 :: (SmtenT a, SmtenT b, SmtenT c) => m a b c -> Type
+    smtenT3 :: m a b c -> Type
 
 class SmtenT4 m where
-    smtenT4 :: (SmtenT a, SmtenT b, SmtenT c, SmtenT d) => m a b c d -> Type
+    smtenT4 :: m a b c d -> Type
 
 instance (SmtenT1 m, SmtenT a) => SmtenT (m a) where
     smtenT x =
