@@ -1,0 +1,13 @@
+
+Thu Feb 28 11:04:19 EST 2013
+
+I'm taking time now to work on kind inference, because I've been doing too
+much work for the class (and not enough at the same time).
+
+First task: dependency sort.
+
+Goal is: given an environment/list of declarations, to sort them into a list
+of declarations groups.
+
+Problem: I don't have the energy to work on this right now. :(
+

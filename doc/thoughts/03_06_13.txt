@@ -1,0 +1,50 @@
+
+Wed Mar  6 08:36:06 EST 2013
+
+I think I've figured out this kind inference dependency sorting thing which
+has been plaguing me for some strange reason.
+
+The idea is: given a list declarations, sort them into dependency groups.
+
+Here's the high-level strategy.
+
+I have a function:
+    insert :: Set TyCon -> TyCon -> M (Set TyCon)
+
+Here's what this function means:
+
+Inputs:
+  S - a set of type constructors which depend on this type constructor.
+  T - a type constructor to analyze
+
+Actions:
+  M - a monad in which we can add Sets (groups) of type constructors to the
+      sorted list. The monad also keeps track of which type constructors we've
+      already dealt with.
+
+Outputs:
+  D - the set of type constructors which mutually recursively depend on a
+      type constructor in S.
+
+Here's how the algorithm works.
+
+a. If T has been dealt with, take no action and return the empty set.
+   Because if T has been dealt with, it can't depend on any type constructor
+   in S, because then it would not have already been dealt with.
+b. Find all type constructors which T immediately depends on.
+   For each, call 'insert' with (S + {T}).
+
+   Take the union of the results of the insert call, call that U. The set U
+   are a set of type constructors which mutually recursively depend on T. That
+   means all type constructors in U and T must belong to the same dependency
+   group.
+
+   Let V = U + {T}. If V and S are disjoint, then add V as a new dependency
+   group, mark all type constructors in V as dealt with, and return the empty
+   set. Otherwise return V.
+
+And that's it. Easy. Simple. Just what I wanted.
+
+Cool.
+
+

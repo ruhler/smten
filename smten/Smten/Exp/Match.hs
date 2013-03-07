@@ -50,7 +50,7 @@ sigP = SigP
 -- case x of
 --     p -> yv
 --     _ -> n
-patM :: (Fresh f) => Exp -> Pat -> Exp -> Exp -> f Exp
+patM :: Exp -> Pat -> Exp -> Exp -> Fresh Exp
 patM _ WildP yv _ = return yv
 patM x (VarP n) yv _ = return $ appE (lamE (Sig n UnknownT) yv) x
 patM x (AsP nm p) yv n = do
@@ -76,7 +76,7 @@ data Guard = PatG Pat Exp
 -- | Perform a guard match
 --   | g = y
 --   | otherwise = n
-guardM :: (Fresh f) => Guard -> Exp -> Exp -> f Exp
+guardM :: Guard -> Exp -> Exp -> Fresh Exp
 guardM (PatG p x) y n = patM x p y n
 guardM (LetG decls) y _ = return (mletsE decls y)
 guardM (BoolG x) y n = return (ifE x y n)
@@ -84,7 +84,7 @@ guardM (BoolG x) y n = return (ifE x y n)
 -- | Perform multiple guard matches
 --   | g1, g2, ... = y
 --   | otherwise = n
-guardsM :: (Fresh f) => [Guard] -> Exp -> Exp -> f Exp
+guardsM :: [Guard] -> Exp -> Exp -> Fresh Exp
 guardsM [] y _ = return y 
 guardsM (g:gs) y n = do
     y' <- guardsM gs y n
@@ -93,10 +93,10 @@ guardsM (g:gs) y n = do
 data Body = Body [Guard] Exp
     deriving (Eq, Show)
 
-bodyM :: (Fresh f) => Body -> Exp -> f Exp
+bodyM :: Body -> Exp -> Fresh Exp
 bodyM (Body gs y) n = guardsM gs y n
 
-bodiesM :: (Fresh f) => [Body] -> Exp -> f Exp
+bodiesM :: [Body] -> Exp -> Fresh Exp
 bodiesM [] n = return n
 bodiesM (b:bs) n = do
     n' <- bodiesM bs n
@@ -106,7 +106,7 @@ bodiesM (b:bs) n = do
 data WBodies = WBodies [Body] [(Pat, Exp)]
     deriving (Eq, Show)
 
-wbodiesM :: (Fresh f) => WBodies -> Exp -> f Exp
+wbodiesM :: WBodies -> Exp -> Fresh Exp
 wbodiesM (WBodies bs ls) n = mletsE ls <$> bodiesM bs n
 
 data Alt = Alt Pat WBodies
@@ -119,7 +119,7 @@ simpleA p e ls = Alt p (WBodies [Body [] e] ls)
 --  case x of
 --    alt 
 --    _ -> n
-altM :: (Fresh f) => Exp -> Alt -> Exp -> f Exp
+altM :: Exp -> Alt -> Exp -> Fresh Exp
 altM x (Alt p bs) n = do
     body <- wbodiesM bs n
     patM x p body n
@@ -130,7 +130,7 @@ altM x (Alt p bs) n = do
 --     alt2
 --     ...
 --     _ -> n
-altsM :: (Fresh f) => Exp -> [Alt] -> Exp -> f Exp
+altsM :: Exp -> [Alt] -> Exp -> Fresh Exp
 altsM _ [] n = return n
 altsM x (a:as) n | isSimple x = do
     n' <- altsM x as n
@@ -147,7 +147,7 @@ simpleMA :: [Pat] -> Exp -> [(Pat, Exp)] -> MAlt
 simpleMA ps e ls = MAlt ps (WBodies [Body [] e] ls)
 
 -- Match a multi-argument alternative
-maltM :: (Fresh f) => [Sig] -> MAlt -> Exp -> f Exp
+maltM :: [Sig] -> MAlt -> Exp -> Fresh Exp
 maltM args (MAlt ps b) n = do
   let -- case a b c of
       --    pa pb pc -> yv
@@ -162,7 +162,7 @@ maltM args (MAlt ps b) n = do
       --                        _ -> n
       --                _ -> n
       --        _ -> n
-      mkcases :: (Fresh m) => [(Pat, Exp)] -> WBodies -> Exp -> m Exp
+      mkcases :: [(Pat, Exp)] -> WBodies -> Exp -> Fresh Exp
       mkcases [] bs n = wbodiesM bs n
       mkcases ((p, x):ps) y n = do
         body <- mkcases ps y n
@@ -170,7 +170,7 @@ maltM args (MAlt ps b) n = do
   mkcases (zip ps (map varE args)) b n
 
 -- Match multiple multi-argument alternatives
-maltsM :: (Fresh f) => [Sig] -> [MAlt] -> Exp -> f Exp
+maltsM :: [Sig] -> [MAlt] -> Exp -> Fresh Exp
 maltsM args [] n = return n
 maltsM args (m:ms) n = do
     n' <- maltsM args ms n
@@ -179,12 +179,12 @@ maltsM args (m:ms) n = do
 -- | Desugar a case expression.
 mcaseE :: Exp -> [Alt] -> Exp
 mcaseE x alts
- = runFreshPretty $ altsM x alts (errorE "case no match")
+ = runFresh $ altsM x alts (errorE "case no match")
 
 clauseE :: [MAlt] -> Exp
-clauseE ms = runFreshPretty $ clauseM ms (errorE "case no match")
+clauseE ms = runFresh $ clauseM ms (errorE "case no match")
 
-clauseM :: (Fresh f) => [MAlt] -> Exp -> f Exp
+clauseM :: [MAlt] -> Exp -> Fresh Exp
 clauseM [MAlt ps e] n = do
   -- If we are only making one match, we pick the variables for the lambda
   -- more wisely to avoid silly things like:
@@ -192,7 +192,7 @@ clauseM [MAlt ps e] n = do
   --            in foo a
   -- This doesn't work if there are multiple matches because there are scoping
   -- issues then.
-  let mkvar :: (Fresh f) => Pat -> f (Sig, Pat)
+  let mkvar :: Pat -> Fresh (Sig, Pat)
       mkvar (VarP n) = return (Sig n UnknownT, WildP)
       mkvar (AsP n p) = return (Sig n UnknownT, p)
       mkvar p = do  
