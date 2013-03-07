@@ -16,6 +16,7 @@ import Smten.Exp
 import Smten.ExpH.ExpH
 import Smten.ExpH.Sugar
 import Smten.ExpH.SmtenEHs
+import Smten.Strict
 
 -- Translate back to the normal Exp representation
 fromExpH :: ExpH -> Exp
@@ -97,7 +98,7 @@ convert share e =
                 True -> return var
                 False -> do
                    v <- defineM e
-                   modify $ \df -> df {
+                   modifyS $ \df -> df {
                       df_defs = (id, v) : df_defs df,
                       df_done = Set.insert id (df_done df) }
                    return var
