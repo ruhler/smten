@@ -34,4 +34,4 @@ library
                  hashable ==1.1.*, containers ==0.4.*, bytestring ==0.9.*,
                  transformers ==0.3.*, smten ==2.0.*
   extra-libraries: stp stdc++ yices1 yices2
-  ghc-prof-options: -fprof-auto-top
+  --ghc-prof-options: -fprof-auto-top
