@@ -1,5 +1,6 @@
 
 {-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE PatternGuards #-}
 
 -- | HOAS form for Smten Expressions, geared towards high performance
@@ -11,6 +12,7 @@ module Smten.ExpH.ExpH (
 import System.IO.Unsafe
 import Data.IORef
 import Data.Typeable
+import Data.Hashable
 
 import Smten.Lit
 import Smten.Name
@@ -18,7 +20,7 @@ import Smten.Type
 import Smten.Sig
 
 newtype EID = EID Integer
-    deriving (Eq, Ord)
+    deriving (Eq, Hashable, Ord)
 
 instance Show EID where
     show (EID x) = show x

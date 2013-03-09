@@ -7,7 +7,7 @@ module Smten.ExpH.FromExpH (
 
 import Control.Monad.State
 import Data.Functor ((<$>))
-import qualified Data.Map as Map
+import qualified Data.HashMap as Map
 import qualified Data.Set as Set
 
 import Smten.Sig
