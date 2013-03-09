@@ -133,7 +133,7 @@ smtt t = do
 smte' :: ExpH -> SMT ([SMT.Command], SMT.Expression)
 smte' e = {-# SCC "SmtE" #-} do
     qs <- gets qs_qs 
-    let se = fromExpH (ivp e)
+    let se = {-# SCC "FROMEXPH" #-} fromExpH ({-# SCC "IVP" #-} ivp e)
         mkye :: CompilationM ([SMT.Command], SMT.Expression)
         mkye = do
           ye <- smtE se
@@ -242,7 +242,7 @@ mkfree s = error $ "SMT.mkfree: unsupported type: " ++ pretty s
 
 -- | Assert the given smten boolean expression.
 mkassert :: ExpH -> SMT ()
-mkassert p = do
+mkassert p = {-# SCC "MKASSERT" #-}do
   yp <- smte p
   runCmds [SMT.Assert yp]
 
