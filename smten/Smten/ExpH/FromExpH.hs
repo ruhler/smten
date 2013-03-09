@@ -6,6 +6,7 @@ module Smten.ExpH.FromExpH (
   ) where
 
 import Control.Monad.State
+import Data.Functor ((<$>))
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 
@@ -28,26 +29,28 @@ data Use = Multi | Single
 -- Find all the subexpressions in the given expression which should be shared.
 sharing :: ExpH -> Set.Set EID
 sharing e =
-  let traverse :: ExpH -> State (Map.Map EID Use) ()
+  let traverse :: ExpH -> State (Map.Map EID Use) (Set.Set EID)
       traverse e
         | Just id <- getid e = do
             m <- get
             case Map.lookup id m of
-               Just Single -> put (Map.insert id Multi m)
-               Just Multi -> return ()
-               Nothing -> put (Map.insert id Single m) >> subtraverse e
-        | otherwise = return ()
+               Nothing -> do
+                    put (Map.insert id Single m)
+                    subtraverse e
+               Just Single -> do    
+                    put (Map.insert id Multi m)
+                    return (Set.singleton id)
+               Just Multi -> return Set.empty
+        | otherwise = return Set.empty
 
-      subtraverse :: ExpH -> State (Map.Map EID Use) ()
+      subtraverse :: ExpH -> State (Map.Map EID Use) (Set.Set EID)
       subtraverse e
-        | ConEH _ _ _ xs <- e = mapM_ traverse xs
-        | PrimEH _ _ _ _ xs <- e = mapM_ traverse xs
-        | AppEH _ a b <- e = mapM_ traverse [a, b]
-        | CaseEH _ x _ y n <- e = mapM_ traverse [x, y, n]
-        | otherwise = return ()
-
-      m = execState (traverse e) Map.empty
-  in Map.keysSet (Map.filter (== Multi) m)
+        | ConEH _ _ _ xs <- e = Set.unions <$> mapM traverse xs
+        | PrimEH _ _ _ _ xs <- e = Set.unions <$> mapM traverse xs
+        | AppEH _ a b <- e = Set.unions <$> mapM traverse [a, b]
+        | CaseEH _ x _ y n <- e = Set.unions <$> mapM traverse [x, y, n]
+        | otherwise = return $ Set.empty
+  in evalState (traverse e) Map.empty
 
 data Defined = Defined {
     df_defs :: [(EID, Exp)],
