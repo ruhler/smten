@@ -1,0 +1,337 @@
+
+Thu Mar  7 08:05:01 EST 2013
+
+I wrote a rough draft of the type constructor sorting for kind inference. I
+haven't tried it, and really I don't feel like trying it right now.
+
+It produces a group of names, where each name is a type constructor. So what I
+need to do next is:
+
+* Convert groups of names to groups of declarations.
+* In order of groups of declarations:
+    Perform kind inference on the group, in the context of the results of the
+    previous groups.
+* Perform kind inference on all the rest of the declarations (ValD, PrimD,
+  InstD) in the context of the kind inference results from the previous step.
+* Concatenate all those declarations and we are done.
+
+So, the big function I'll want next is: given a group of declarations and a
+context of kinds, perform kind inference on all the declarations of the group
+simultaneously.
+
+What this will look like?
+Basically:
+  1. deunknownK.
+  2. constrain.
+  3. solve.
+  4. assign.
+  5. update context.
+
+Other things to do when low on brain:
+ * ConTs for: Con, Dec, Env, etc...
+
+Thu Mar  7 09:38:02 EST 2013
+
+Looking at performance issues for the architectural extraction tool:
+
+We run out of stack space, so there is a memory issue.
+We are using just the interpreter.
+
+Most of the time spent in...
+ assignl,
+ de_smtenEH
+ == on Type
+
+But that doesn't say a whole lot. Let's look inside higher level functions...
+  inline: 60%
+
+Trouble is: we are doing the nesting thing, so it's impossible to see where
+the time is being spent. I need manual SCCs.
+
+Looks like a ton of time spent in the IO primitive.
+So... concretize IO primitives, useP. But that only helps when using the
+HaskellF backend, which is still broken.
+
+Things we want to know about: how much time goes inside assert?
+
+ivp is like... nothing.
+assignl is from lookupVar.
+
+40% spent in loadenv.
+
+In other words, from what I'm seeing, the big problem here is that we are
+using the interpreter instead of the haskell back end.
+
+Let me try to get the haskell back end running, and see if that fixes things.
+
+Thu Mar  7 09:56:57 EST 2013
+
+There. Now HaskellF is running. That makes things much better. I want to focus
+on this version.
+
+Still have stack overflow. So I'll want to look at heap profiles.
+
+Where is time spent?
+- identify
+- convert
+- conEH (odd...)
+
+All the time is spent in a call to "box". box1. box2.
+
+Tons of boxing and unboxing...
+
+appEH...
+bind_IOP...
+
+so, I'm not sure these things are meaningful, again because of how things are
+all tied together.
+
+useP...
+use... fromExpH.
+ivp is 12%
+mkassert looks costly. 14%.
+
+Looks like a lot of boxing and unboxing, so certainly finishing up
+concretization of primitives could help, especially IO. But I think the issue
+is still unclear, because we have the wrong granularity.
+
+I would like to know how much time is spent under ASSERT. That should tell us
+how much time is spent in symbolic computation vs. concrete computation.
+
+So mark: ASSERT, IVP.
+
+But let me look at some heap info.
+
+Heap info suggests:
+ - we are doing a lot of box/unbox (would be nice to avoid if possible)
+   I suspect this is mostly from function application? Not sure.
+ - The big cause of memory is "convert" in FromExpH.
+
+Let me take a look at that some.
+
+Thu Mar  7 10:17:30 EST 2013
+
+Yes, it definitely looks like the memory problem is in FromExpH.
+Lots of lists and expressions... The question is, is this a strictness issue?
+Or is this a "we have so much stuff to look at" issue?
+
+The "use" primitive must call fromExpH, which calls convert. That's where all
+the memory is.
+
+Makes sense. That's where we are sending things over to the SMT solver, thus
+requiring the conversion.
+
+So, I claim this issue is fromExpH, not ivp?
+
+Let me look for a leak like thing there.
+
+- Is sharing already done? Can I rule out sharing?
+Looks like all the memory is in convert, not sharing.
+What is sharing? It returns a Set... So it may be the construction of this
+set? Or lack of pruning?
+
+Why is most of the space [] and Exp though?
+
+* The type t' for ConEH may be holding on to a list of Exp, which we don't want.
+* df may be leaking thunks. That would explain list and Exp too.
+
+So, what can I do to fix this?
+
+* try modifyS, add strictness stuff in. Let me try it all at once and see if
+  it does anything.
+
+1. Switched to modifyS:
+That fixed that space leak. But we are still having issues.
+
+Looks like we still have issues in the same function: fromExpH. But they
+aren't being reported for some reason.
+
+Thu Mar  7 14:06:49 EST 2013
+
+Found a big issue, which was how we dealt with ErrorEH. That was easily fixed.
+
+Now the top time takers are:
+
+IVP: 40%
+SHARING: 30%.
+
+SHARING is much simpler. Both are similar. So I want to focus on SHARING to
+see what I can learn in that context.
+
+First I need to do some heap analysis.
+
+Here's what sharing does:
+ - traverse an expression, identify any subexpression which occurs multiple
+   times.
+
+Literally that's all we do. Count occurrences of expressions. But we have to
+do it in some order, to avoid traversing into an expression that we have
+already seen.
+
+Can't be simpler. So. What things can I change?
+
+* switch to a hash map of some kind.
+* use Unique for EID instead of Integer?
+* use two maps? One for Multi use, one for Single use?
+    We would have to do two lookups, but then we avoid a filter stage at the
+    end?
+
+Thu Mar  7 14:15:30 EST 2013
+
+Note: the heap profile is in. And it's pretty clear. We spend all our memory
+on Maps. Sounds like a leak?
+
+Let me see if I can restrict the heap to sharing, see if that's everything.
+
+We certainly do have a map. But we should only need 1. So sounds like an issue
+with laziness.
+
+One thing I should do is make sure I am running the current code.
+
+But there is laziness: the argument to put, for example. Map.insert hangs on
+to the map. And that's it. And there should only be 1 map. So this should be
+easy to solve, assuming "SHARING" is the problem, which I think it is.
+
+Let me try to be more detailed in my experiments.
+
+We know 30% of time and allocation is in SHARING. I want to focus on that.
+
+-hy: Use about 800M peak. On different sorts of things.
+-hy -hmSmten.ExpH.FromExpH: 140M of Maps only.
+-hy -hcSHARING: 140M of Maps only.
+
+
+Note: Unique supports Ord and Hashable. So it would probably be good for EID.
+I would be interested in seeing how much of a difference that makes.
+Presumably they are better than me at it...
+
+One thing though, is I need a way to come up with a name for a Unique. Can I
+do that easily?
+
+No. The thing is, Unique is just a wrapper around Integer anyway, so there
+isn't anything to gain that way.
+
+Looks like SHARING is leaking maps big time. I ought to be able to fix this
+leak easily enough.
+
+Once that's fixed... I want to consider hash tables. 
+I should try Data.HashMap instead of Data.Map.
+I also want to try Data.HashTable.ST.Basic, see how that compares.
+
+If any of these things are big, I ought to be able to take advantage of them
+for IVP.
+
+Looks like my supposed fix for SHARING wasn't an actual fix. I don't
+understand why not. How can I be leaking maps?
+
+I should look at retainers and all that fun stuff to find out.
+
+Do you think the issue is just that we have a really big map? We aren't
+actually leaking anything?
+
+One thing I could try is doing an update/lookup all at once, and hope that
+makes it faster.
+
+Or use a strict state monad?
+
+* put $! ... does not solve the Map leak in SHARING
+  Why not?
+    Maybe the issue is we use the result of a lookup? So that keeps things
+    around? We use the result to determine whether or not to subtraverse.
+
+* Control.Monad.State.Strict
+* Simultaneous lookup/update
+* 
+
+I feel like I should just switch to the ST hash table and get it over with.
+Surely that will avoid any leaks.
+
+Oh. Hmm... Switching to Control.Monad.State.Strict seems to make it go a lot
+longer. Maybe it's just slower? How long should I wait to find out?
+
+The other possibility is we changed convert to a strict monad as well as
+sharing, and that could have messed things up?
+
+You know what looks like happened? Switching to a strict State monad avoids
+the stack overflow, but doesn't help with the memory.
+
+I think this is related to the issue. Hmm...
+
+Let me try the ST hash map. See what it does.
+
+Well, it got rid of the memory problem with SHARING. Assuming that hasn't just
+been moved under a different cost center. Trouble is, we still spend a ton of
+time in SHARING, doing hash table lookups and insertions and such. It almost
+seems like it didn't buy us that much to switch from Data.Map.
+
+Well... certainly it seems to have helped with this stack overflow issue.
+Let's see how far we can go before dying now then.
+
+I also would like to get an overall heap profile. We must take up some space
+for the hash table, right? Why don't I see that under SHARING?
+
+Anyway, the profile ought to help us out.
+
+What if the problem is with SHARING? What if it is just too expensive of a
+thing to do? Traverse the entire expression... Except that, we are going to
+have to traverse it eventually anyway, right?
+
+Is there no better way to handle sharing?
+
+What if, rather than using a map, I use IORefs to indicate what is shared. The
+first time I encounter an expression when doing a traversal, I mark it there,
+in place. The next time I encounter the expression, I see that I've already
+done things with it, and I update that.
+
+This at least avoids looking things up in trees. Constant time lookup.
+Constant time insertion. Sounds attractive to me... I just worry about leaking
+things, because now we keep around pointers to things.
+
+And how do we decide what to put on the IORef? A dynamic map?
+
+Could I come up with a good abstraction for doing traversals which maintain
+sharing?
+ 
+I think it's worth a try. But I don't want to have to come up with the whole
+general solution just yet. Maybe I can start by mixing the existing version
+with IORefs, and just use the IORefs for SHARING, and see how much of a
+difference, if any, that makes.
+
+So, the idea is, EID should be an opaque thing. That would be step 1. Then I
+should add an IORef to it which is used specifically to help in Sharing. In
+other words, we have an IORef Use. Or, maybe better, an IORef Dynamic.
+Initialize it to () or some such. Every pass we do can define its own type, or
+its own name, or something. I just wish I knew a good way to avoid leaking
+Use.
+
+This all seems very hackish to me.
+
+Thu Mar  7 15:54:07 EST 2013
+
+Anyway, it was really easy to make EID opaque. Nothing assumed anything about
+it other than Eq, Ord, and Show.
+
+What is it I plan to do for sharing? Have an IORef Dynamic, which I can read
+and write if I know what an EID is.
+
+I want to pull EID out into its own file so it's easier to play with.
+
+Basically the idea is, have a Dynamic. Then, in sharing, I tag each expression
+I come to when I come to it. We could even do it in a pure kind of way? Maybe.
+
+The idea is I make a pure function: ExpH -> [EID]. Gives the set of
+expressions which are shared. The way it works is:
+  * read the IORef.
+  * if Nothing, set to Single, subtraverse.
+  * if Single, set to Multi, return its EID.
+  * if Multi, do nothing.
+
+And that's it. When sub-traversing, just combine all the values of the
+children.
+
+That sounds ridiculously easy. And low cost too? Aside from leaking things...
+
+Maybe it make the traversal lazy, which could be nice too?
+
+Don't know. Let's see. I want to give it a try. During or after office hours.
+
