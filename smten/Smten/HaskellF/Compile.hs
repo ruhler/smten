@@ -317,21 +317,25 @@ smtentmeth :: Integer -> H.Name
 smtentmeth 0 = H.mkName "smtenT"
 smtentmeth n = H.mkName $ "smtenT" ++ show n
 
+smtentmethq :: Integer -> H.Name
+smtentmethq 0 = H.mkName "S.smtenT"
+smtentmethq n = H.mkName $ "S.smtenT" ++ show n
+
 -- Form the context for declarations.
 mkContext :: (Name -> Bool) -- ^ which variable types we should care about
               -> Type       -- ^ a sample use of the variable types
               -> ([H.Pred], [Name])  -- ^ generated context and list of names used.
 mkContext p t =
-  let knum :: Kind -> Integer
-      knum StarK = 0
-      knum NumK = 0
-      knum (ArrowK a b) = 1 + knum a
-      knum (VarK i) = 0 -- default to StarK
-      knum UnknownK = 0
-
-      vts = filter (p . fst) $ varTs t 
+  let vts = filter (p . fst) $ varTs t 
       tvs = [H.ClassP (clshaskellf (knum k)) [H.VarT (hsName n)] | (n, k) <- vts]
   in (tvs, map fst vts)
+
+knum :: Kind -> Integer
+knum StarK = 0
+knum NumK = 0
+knum (ArrowK a b) = 1 + knum a
+knum (VarK i) = 0 -- default to StarK
+knum UnknownK = 0
 
 hsCon :: Con -> Failable H.Con
 hsCon (Con n tys) = do
@@ -350,18 +354,39 @@ mkDataD n tyvars constrs = do
   let sconstr = H.NormalC (symconstrnm n) [(H.NotStrict, H.ConT (H.mkName "S.ExpH"))]
   return $ H.DataD [] (hsName n) tyvars' (constrs' ++ [sconstr]) []
 
--- instance SmtenTN Foo where
---    smtenTN _ = conT "Foo"
+-- Note: we currently don't support crazy kinded instances of SmtenT. This
+-- means we are limited to "linear" kinds of the form (* -> * -> ... -> *)
+--
+-- To handle that properly, we chop off as many type variables as needed to
+-- get to a linear kind.
+--   call the chopped off type variables c1, c2, ...
+--
+-- instance (SmtenN c1, SmtenN c2, ...) => SmtenTN (Foo c1 c2 ...) where
+--    smtenTN _ = appsT (conT "Foo") [smtenT (undefined :: c1), smtenT (undefined :: c2), ...]
 mkSmtenTD :: Name -> [TyVar] -> Failable H.Dec
 mkSmtenTD n tyvars = return $
-  let body = H.AppE (H.VarE (H.mkName "S.conT"))
+  let (rkept, rdropped) = span (\(TyVar n k) -> knum k == 0) (reverse tyvars)
+      nkept = genericLength rkept
+      dropped = reverse rdropped
+      ctx = [H.ClassP (clssmtent (knum k)) [H.VarT (hsName n)] | TyVar n k <- dropped]
+      cont = H.AppE (H.VarE (H.mkName "S.conT"))
                     (H.AppE (H.VarE (H.mkName "S.name"))
                             (H.LitE (H.StringL (unname n))))
-      smtent = H.FunD (smtentmeth (genericLength tyvars)) [
+
+      mkarg :: TyVar -> H.Exp
+      mkarg (TyVar n k) = 
+        H.AppE (H.VarE (smtentmethq (knum k)))
+               (H.SigE (H.VarE (H.mkName "Prelude.undefined"))
+                       (foldl H.AppT (H.VarT (hsName n)) (replicate (fromInteger (knum k)) (H.ConT (H.mkName "()")))))
+
+      args = H.ListE (map mkarg dropped)
+      body = H.AppE (H.AppE (H.VarE (H.mkName "S.appsT")) cont) args
+      smtent = H.FunD (smtentmeth nkept) [
                 H.Clause [H.WildP] (H.NormalB body) []]
-      clsnamet = clssmtent (genericLength tyvars)
-      tyt = H.AppT (H.ConT clsnamet) (H.ConT (hsName n))
-  in H.InstanceD [] tyt [smtent]
+      clsnamet = clssmtent nkept
+      tyt = H.AppT (H.ConT clsnamet)
+                   (foldl H.AppT (H.ConT (hsName n)) [H.VarT (hsName n) | TyVar n _ <- dropped])
+  in H.InstanceD ctx tyt [smtent]
   
 -- instance S.HaskellFN Foo where
 --  boxN ...
