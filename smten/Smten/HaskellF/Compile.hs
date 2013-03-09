@@ -391,22 +391,29 @@ mkSmtenTD n tyvars = return $
 -- instance S.HaskellFN Foo where
 --  boxN ...
 --  unboxN ...
+--
+-- Note: we do the same thing with crazy kinds as mkSmtenTD
 mkSymbD :: Name -> [TyVar] -> [Con] -> Failable H.Dec
 mkSymbD n tyvars constrs = do
-    boxD <- mkBoxD n tyvars constrs
-    unboxD <- mkUnboxD n tyvars constrs
-    let clsname = clshaskellf (genericLength tyvars)
-        ty = H.AppT (H.ConT clsname) (H.ConT (hsName n))
-    return $ H.InstanceD [] ty [boxD, unboxD]
+    let (rkept, rdropped) = span (\(TyVar n k) -> knum k == 0) (reverse tyvars)
+        nkept = genericLength rkept
+        dropped = reverse rdropped
+    boxD <- mkBoxD n nkept constrs
+    unboxD <- mkUnboxD n nkept constrs
+    let ctx = [H.ClassP (clshaskellf (knum k)) [H.VarT (hsName n)] | TyVar n k <- dropped]
+        clsname = clshaskellf nkept
+        ty = H.AppT (H.ConT clsname) 
+                    (foldl H.AppT (H.ConT (hsName n)) [H.VarT (hsName n) | TyVar n _ <- dropped])
+    return $ H.InstanceD ctx ty [boxD, unboxD]
 
 --  boxN e
 --   | Just [a, b, ...] <- de_conHF "FooA" e = FooA (box a) (box b) ...
 --   | Just [a, b, ...] <- de_conHF "FooB" e = FooB (box a) (box b) ...
 --   ...
 --   | otherwise = Foo__s e
-mkBoxD :: Name -> [TyVar] -> [Con] -> Failable H.Dec
-mkBoxD n tyvars constrs = do
-  let boxnm = boxmeth (genericLength tyvars)
+mkBoxD :: Name -> Integer -> [Con] -> Failable H.Dec
+mkBoxD n bn constrs = do
+  let boxnm = boxmeth bn
       
       mkGuard :: Con -> (H.Guard, H.Exp)
       mkGuard (Con cn tys) = 
@@ -432,9 +439,9 @@ mkBoxD n tyvars constrs = do
 --   | FooB a b ... <- x = conHF x "FooB" [unbox a, unbox b, ...]
 --   ...
 --   | Foo__s v <- x = v
-mkUnboxD :: Name -> [TyVar] -> [Con] -> Failable H.Dec
-mkUnboxD n tyvars constrs = do
-    let unboxnm = unboxmeth (genericLength tyvars)
+mkUnboxD :: Name -> Integer -> [Con] -> Failable H.Dec
+mkUnboxD n bn constrs = do
+    let unboxnm = unboxmeth bn
 
         mkGuard :: Con -> (H.Guard, H.Exp)
         mkGuard (Con cn tys) =
