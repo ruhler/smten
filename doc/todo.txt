@@ -1,3 +1,6 @@
+Focus::
+* Performance of seri_arch_extract: improve sharing, IVP
+* Catch-up: Locations for type errors
 
 Recent::
 * Reimplement IVP using new proposed scheme (see thoughts/02_27_13.txt)
