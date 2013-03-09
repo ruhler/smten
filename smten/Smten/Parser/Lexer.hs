@@ -155,6 +155,19 @@ lexstr ostr ('\\':e:cs) | ischaresc e
 lexstr ostr ('\\':cs) = error $ "todo: lex string escape: " ++ cs
 lexstr ostr (c:cs) = single >> lexstr (ostr ++ [c]) cs
 
+-- Consume the rest of a nested comment.
+-- depth is the number of close "-}" to match to consume the rest of the
+-- comment.
+lexcomment :: Integer -> String -> ParserMonad ()
+lexcomment depth ('-':'}':cs) = do
+    many "-}"
+    if depth == 1
+        then setText cs
+        else lexcomment (depth-1) cs
+lexcomment depth ('{':'-':cs) = many "{-" >> lexcomment (depth+1) cs
+lexcomment depth ('\n':cs) = newline >> lexcomment depth cs
+lexcomment depth (c:cs) = single >> lexcomment depth cs
+
 -- Read the next token from the input stream.
 -- Updates the tloc with the location of the start of the token.
 lex :: ParserMonad Token
@@ -164,6 +177,7 @@ lex = do
   saveLoc
   case text of
       [] -> return TokenEOF
+      ('{':'-':cs) -> lexcomment 0 text >> lex
       (c:cs) | Just tok <- (lookup c singles) -> osingle tok cs
       ('\n':cs) -> newline >> setText cs >> lex
       (c:cs) | isSpace c -> single >> setText cs >> lex

@@ -1,6 +1,5 @@
 
 Recent::
-* {- -} style comments
 * Reimplement IVP using new proposed scheme (see thoughts/02_27_13.txt)
 * What if you forget a type signature, does it error, or blow up?
 * Add support for semicolon error parsing rule in parser

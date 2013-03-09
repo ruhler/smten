@@ -15,6 +15,11 @@ import Smten.Bit -- test duplicate import
 
 ------ This is a comment with lots of dashes
 
+{- This is 
+ - a multiline comment
+ -  {- with a nested comment inside! -}
+ -}
+
 foo1 :: Integer
 foo1 = (\x -> x*x + 3*x + 2) 5
 
