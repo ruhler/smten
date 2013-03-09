@@ -1,19 +1,12 @@
 
 Recent::
 * {- -} style comments
-* Bug in HaskellF stuff
-    HaskellF2, for example, assumes all type parameters are of kind *, but
-    that may not be the case!
 * Reimplement IVP using new proposed scheme (see thoughts/02_27_13.txt)
 * What if you forget a type signature, does it error, or blow up?
-* Implement quserdata test in dsel
 * Add support for semicolon error parsing rule in parser
 * If default implementation is missing for an instance, generate a default
   of the form: error "Implementation of /= for Blah not defined"
 * In de_smtenEH (->), propagate ErrorEH (if that makes sense).
-* Multiple bugs: Can't implement StateT monad.
-** type checker: remember context for methods in class declarations
-** haskellf: kind inference wrong
 * Have flags in smten exe to call ghc appropriately.
 
 Haskell Features::
@@ -63,7 +56,6 @@ Front End::
 * Review desugared expressions to see if they make sense or could be cleaned
   up.
 * Don't allow deriving of Free for recursive data types
-* Add static check for concreteness of queries (?)
 * The code for handling stand-alone deriving feels very messy to me. Can we
   clean up how that works somehow?
 * derived instance of Show should handle record type constructors
@@ -72,7 +64,7 @@ Front End::
 ** give location of type error more specific than top level declaration.
 ** use type synonyms in errors.
 ** report an error for use of a type that isn't defined
-** show string as "foobar" instead of ['f','o', 'o', 'b', 'a', 'r']
+* show string as "foobar" instead of ['f','o', 'o', 'b', 'a', 'r']
 
 Pretty Printer::
 * Make pretty again:
@@ -128,8 +120,6 @@ Specialization::
 
 HaskellF::
 * Translate a module at a time instead of one big blob
-* derive more efficient de_smtenS than just the default.
-* Provide instances of SmtenS for the tuples
 * Perhaps use TH to make defining the HaskellF prelude easier?
 
 Distribution::
@@ -168,10 +158,7 @@ Other::
 * Have name sugar for arrowN, tupleN, de_tupleN, unitN, etc...
 * Update LICENCE files to include 2013 copyright.
 * TODO's inlined in the code
-* There's a lot of junk smtn code not being tested.
-  Either add tests to the test cases for it, or throw it away
 * Do a code review of all of Smten, figure out what can be cleaned up and how.
 * Test execution of symbolic Symbolic
-* Switch to n-ary and to help in debugging of SMT queries?
-* Port SHampi to new name and API
+* Switch to n-ary "and" to help in debugging of SMT queries?
 
