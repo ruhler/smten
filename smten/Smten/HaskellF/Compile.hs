@@ -326,6 +326,7 @@ mkContext p t =
       knum StarK = 0
       knum NumK = 0
       knum (ArrowK a b) = 1 + knum a
+      knum (VarK i) = 0 -- default to StarK
       knum UnknownK = 0
 
       vts = filter (p . fst) $ varTs t 

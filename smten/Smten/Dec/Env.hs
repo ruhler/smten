@@ -45,6 +45,7 @@ module Smten.Dec.Env (
     lookupDataD, lookupDataConType,
     lookupInstD, lookupPrimD,
     lookupValD, lookupClassD,
+    lookupTypeD,
     getDecls,
     ) where
 
@@ -163,7 +164,7 @@ data VarInfo = Primitive |  Declared | Instance Class
 --  name - the name of the declaration searched for (for error messages)
 --  predicate - a predicate which identifies the desired declaration
 --  env - the environment to search in.
-theOneOf :: String -> String -> (Dec -> Bool) -> Env -> Failable Dec
+theOneOf :: (MonadError String m) => String -> String -> (Dec -> Bool) -> Env -> m Dec
 theOneOf kind n p e =
     case filter p (e_decls e) of
         [] -> throw $ kind ++ " for " ++ n ++ " not found"
@@ -193,12 +194,17 @@ lookupDataD env n =
      _ -> throw $ "lookupDataD: " ++ pretty n ++ " is not a DataD"
 
 -- | Look up a ClassD with given Name in the given Environment.
-lookupClassD :: Env -> Name -> Failable Dec
+lookupClassD :: (MonadError String m) => Env -> Name -> m Dec
 lookupClassD env n =
   let theClassD :: Dec -> Bool
       theClassD (ClassD _ nm _ _) = n == nm
       theClassD _ = False
   in theOneOf "ClassD" (pretty n) theClassD env
+
+-- | Look up the DataD or ClassD associated with the given Name in the given
+-- Environment.
+lookupTypeD :: (MonadPlus m, MonadError String m) => Env -> Name -> m Dec
+lookupTypeD e n = lookupDataD e n `mplus` lookupClassD e n
 
 -- | Look up an InstD in the given Environment.
 lookupInstD :: Env -> Class -> Failable Dec

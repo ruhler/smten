@@ -2,8 +2,10 @@
 {-# LANGUAGE PatternGuards #-}
 
 module Smten.Type.Utils (
-    assignments, isSubType, Assign(..), assign,
-    varTs, kindof,
+    assignments, isSubType,
+    Assign(..), assign,
+    AssignK(..), assignk,
+    VarTs(..), kindof,
     ) where
 
 import Control.Monad.State
@@ -47,11 +49,15 @@ isSubType t sub
         namenub = nub (map fst assignnub)
      in length namenub == length assignnub && b
     
--- | Replace all variable types and numeric variable types with the given
+-- | Replace all variable types with the given
 -- values. Uses association list lookup.
 assign :: (Assign a) => [(Name, Type)] -> a -> a
 assign [] = id
 assign m = assignl (\n -> Prelude.lookup n m)
+
+assignk :: (AssignK a) => [(Integer, Kind)] -> a -> a
+assignk [] = id
+assignk m = assignkl (\i -> Prelude.lookup i m)
 
 class Assign a where
     assignl :: (Name -> Maybe Type) -> a -> a
@@ -68,12 +74,33 @@ instance Assign Type where
 instance (Assign a) => Assign [a] where
     assignl f = map (assignl f)
 
--- | List the variable type names in a given type.
-varTs :: Type -> [(Name, Kind)]
-varTs (AppT a b) = nub $ varTs a ++ varTs b
-varTs (VarT n k) = [(n, k)]
-varTs (OpT o a b) = nub $ varTs a ++ varTs b
-varTs _ = []
+class AssignK a where
+    assignkl :: (Integer -> Maybe Kind) -> a -> a
+
+instance AssignK Kind where
+    assignkl f k =
+      let me = assignkl f
+      in case k of
+            ArrowK a b -> ArrowK (me a) (me b)
+            VarK i | Just k' <- f i -> k'
+            _ -> k
+
+instance AssignK Type where
+    assignkl f t 
+      | ConT n k <- t = ConT n (assignkl f k)
+      | AppT a b <- t = AppT (assignkl f a) (assignkl f b)
+      | VarT n k <- t = VarT n (assignkl f k)
+      | otherwise = t
+
+class VarTs a where
+    -- | List the variable type names in a given object
+    varTs :: a -> [(Name, Kind)]
+
+instance VarTs Type where
+    varTs (AppT a b) = nub $ varTs a ++ varTs b
+    varTs (VarT n k) = [(n, k)]
+    varTs (OpT o a b) = nub $ varTs a ++ varTs b
+    varTs _ = []
 
 kindof :: Type -> Kind
 kindof t 

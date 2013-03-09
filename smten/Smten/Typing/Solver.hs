@@ -97,7 +97,7 @@ single (VarT nm _, b) | hasVarT nm b = return ()
 single (VarT nm _, b) = do
     (sys, sol) <- get
     put (sys, Map.insert nm b sol)
-single (a, b) = error $ "single: unexpected assignment: " ++ pretty a ++ ": " ++ pretty b
+single (a, b) = error $ "single: unexpected assignment: " ++ show a ++ ": " ++ show b
 
 -- Return true if the given VarT name appears anywhere in the given type.
 hasVarT :: Name -> Type -> Bool

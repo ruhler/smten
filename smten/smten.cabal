@@ -98,6 +98,8 @@ library
     Smten.Typing.Infer
     Smten.Typing.Check
     Smten.Typing.Solver
+    Smten.Typing.ConTs
+    Smten.Typing.KInfer
     Smten.Typing.KSolver
 
     Smten.Parser

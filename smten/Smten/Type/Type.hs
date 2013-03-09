@@ -22,7 +22,17 @@ data Type = ConT Name Kind                  -- ^ type constructor
           | NumT Integer                    -- ^ numeric type constructor
           | OpT NTOp Type Type              -- ^ numeric type operation
           | UnknownT
-      deriving(Eq, Ord, Show)
+      deriving(Ord, Show)
+
+-- Kinds don't affect equality of type
+instance Eq Type where
+    (==) (ConT a _) (ConT b _) = a == b
+    (==) (AppT a1 a2) (AppT b1 b2) = and [a1 == b1, a2 == b2]
+    (==) (VarT a _) (VarT b _) = a == b
+    (==) (NumT a) (NumT b) = a == b
+    (==) (OpT a1 a2 a3) (OpT b1 b2 b3) = and [a1 == b1, a2 == b2, a3 == b3]
+    (==) UnknownT UnknownT = True
+    (==) _ _ = False
 
 -- | Evaluate a concrete numeric type.
 nteval :: Type -> Integer

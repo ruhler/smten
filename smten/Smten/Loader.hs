@@ -114,7 +114,8 @@ loadenv :: SearchPath -> FilePath -> IO Env
 loadenv path fin = do
     mods <- load path fin
     flat <- attemptIO $ flatten mods
-    decs <- attemptIO $ typeinfer (mkEnv flat) flat
+    kinded <- attemptIO $ kindinfer (mkEnv flat)
+    decs <- attemptIO $ typeinfer (mkEnv kinded) kinded
     let env = mkEnv decs
     attemptIO $ typecheck env decs
     return env
