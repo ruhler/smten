@@ -1,0 +1,414 @@
+
+Sat Mar  9 08:26:54 EST 2013
+
+Plan today is to work hard on kind inference.
+
+But I want to take a brief break to think about IORef EID.
+
+The idea is, we want to use IORefs to make the sharing function more
+efficient. IORefs instead of maps. The concern is this will be very messy, and
+confusing, and unsafe, and scary.
+
+But! I think I can make it clean. Possibly.
+
+Here's the high level idea. Many details will be checked.
+
+The EID is an Integer and an (IORef (Map Unique Dynamic)). The idea is each
+transformation you do which needs to preserve sharing will create a new Unique
+thing and use that as the key in the map. That will avoid collisions and such.
+
+The next important part is we use weak pointers, or weak references, or
+whatever there is for that. So the transformation function holds on to a
+strong reference to the Unique object. The IORef holds on to a weak reference
+which evicts the key and value when the strong reference goes away. That's how
+we avoid memory leaks in this map.
+
+And, finally, we wrap access to this in a function which is safe. That is, I
+could implement the function using a map, but in practice I switch over to
+this special, faster implementation. Then nobody has to know about the IORef
+thing except for this function.
+
+For example, here's what I'm thinking about for sharing:
+
+We have a generic function "shared". Or something like that.
+
+    shared :: (ExpH -> Maybe a -> (ExpH -> b) -> (Maybe a, b)) -> ExpH -> b
+
+This says, you give me a function where:
+  Given an expression, its cached value, and a traversal function to traverse
+  children, returns an updated cached value and final result.
+
+And I will give you back a traversal function from top level expression to
+final result.
+
+I want to start by looking at how the non-ioref version would look.
+
+ shared f e =
+    let sm :: ExpH -> State (Map EID a) b
+        sm x = do
+            m <- get
+            let v = Map.lookup (eidof x) m
+                (v', r) = f x v (shared f)
+            case v' of
+                Just vv -> modify $ Map.insert (eidof x) vv
+                Nothing -> return ()
+            return b
+
+and the sharing function would look like:
+  
+ sharingf :: ExpH -> Maybe Used -> (ExpH -> Set EID) -> (Maybe Used, Set EID)   
+ sharingf e Nothing f = (Just Single, sub f e)
+ sharingf e (Just Single) f = (Just Multi, singleton (eidof e))
+ sharingf e (Just Multi) f = (Just Multi, empty)
+    where sub f e 
+        | ConEH _ _ _ xs <- e = unions (map f xs)
+        | PrimEH _ _ _ _ xs <- e = unions (map f xs)
+        | AppEH _ a b <- e = unions (map f [a, b]
+        | CaseEH _ x _ y n <- e = unions (map f [x, y, n])
+        | otherwise = empty
+     
+Very simple!
+
+That might be fun to try. And this, I believe, should be easy to switch to an
+IORef approach.
+
+Something like:
+
+ shared f e =
+    let uid = mkunique
+        
+        s :: ExpH -> b
+        s e =
+            let r = ioref e
+                v = ioreflookup uid r
+                (v', r) = f e v (shared f)
+            case v' of
+                Just vv -> putioref uid vv
+                Nothing -> return ()
+            return r
+
+So, that clearly is not well typed, but that's the idea.
+The big improvement: now we look up in a significantly smaller map. And we
+also can do computation purely (or I could put the whole thing in IO if I
+wanted to...).
+
+I think that can work.
+
+Let me start with just the pure part, see if I can make that work. If so,
+leave it at that for now.
+
+I wonder how this will change performance too. Will it improve things?
+
+Sat Mar  9 09:11:09 EST 2013
+
+So, doesn't appear to have improved performance any. Switching to HashMap
+instead of Map looks like it improved performance, but it may have just lead
+to crash sooner, so it's hard to tell.
+
+Anyway, I think that's enough on that for now. Let me dive more seriously into
+kind inference.
+
+I have a rough draft of the first phase: sorting type constructors.
+
+So, the process is...
+ 1. sort type constructors: Env -> [[Name]] - rough draft done
+ 2. get sorted list of all declarations:
+        Env -> [[Dec]]
+    Put all non-type constructor declarations as singletons on the back.
+    Call this: sortd
+    Should be easy? I think so.
+    - rough draft done
+ 3. kinfer: Env -> [Dec] -> KM [Dec]
+     Do kind inference on a single group:
+      * deunknownK. - drafted
+      * constrain.  - drafted
+      * solve.      - drafted
+      * assign.     - drafted start
+      * update context. (only for DataD and ClassD)
+
+Okay, lets say I have all the pieces now. I want the top level group function:
+
+group :: [Dec] -> KIM [Dec]
+
+That's stubbed out. Finally, the top level:
+
+Env -> [Dec]
+
+Okay! Everything now is stubbed out. Let me plug it in, and let the compiler
+and my tests tell me what I still need to work out.
+
+Sat Mar  9 10:20:14 EST 2013
+
+Okay, it compiles now. Just need to fill in the stubs.
+
+Top level stub: 
+ 1. get the groups
+ 2. run the groups.
+ Sounds easy enough.
+
+Sat Mar  9 10:26:54 EST 2013
+
+Next: group.
+
+How does this work?
+
+1. deunknown all.
+2. constrain all.
+3. solve constraints.
+4. assign solutions to all.
+5. extract new context and update it.
+
+This is really the meat. Let me try it.
+
+Let me use typeclasses for things to make them easier.
+
+Sat Mar  9 11:19:19 EST 2013
+
+Gosh. I'm having to write lots of traversals and other stuff. That's a lot of
+code...
+
+But I think I'm almost there...
+
+Or rather, making progress. We'll see what happens when I start running things
+and it totally doesn't work.
+
+Sat Mar  9 11:52:28 EST 2013
+
+You won't believe this. I don't believe this.
+
+It looks like kind inference is working!
+
+The one thing I need to add is this check for crazy kinds when I generate
+instances for SmtenT and HaskellF.
+
+Let me check things in for now though.
+
+Okay, things checked in.
+
+Now, question is... how do I do this special thing for StateT?
+
+Start with SmtenT3.
+
+Currently I generate:
+    instance S.SmtenT3 StateT
+        where smtenT3 _ = S.conT (S.name "StateT")
+
+Instead I want to generate something like:
+
+instance (S.SmtenT s, S.SmtenT1 m) => S.SmtenT1 (StateT s m)
+    where smtenT1 x =
+            let ts :: StateT s m a -> s
+                ts _ = Prelude.undefined
+
+                tm :: StateT s m a -> m a
+                tm _ = Prelude.undefined
+            in S.appsT (S.conT (S.name "StateT")) [S.smtenT (ts x), S.smtenT1 (tm x)]
+
+So, I think I want to generalize my smtenT instance creator.
+
+Take another parameter, which is the number of args to drop.
+
+- context includes SmtenTN for each of the dropped vars
+- can I use scoped type variables? That would make life much easier here,
+  right?
+
+Let me play a little with the seri_arch_extract.
+
+Yes, I can use scoped type variables.
+
+instance (S.SmtenT s, S.SmtenT1 m) => S.SmtenT1 (StateT s m)
+    where smtenT1 x =
+            S.appsT (S.conT (S.name "StateT")) [S.smtenT (undefined :: s), S.smtenT1 (undefined :: m ())]
+
+That should make it easy.
+
+And maybe just take in the list of TyVars to exclude?
+Or, it can partition the ty vars appropriately based on kind.
+
+Sounds good to me. I hope it can work...
+
+Okay, I did SmtenT. All that should be left is HaskellF.
+
+I'm doing:
+
+instance S.HaskellF3 StateT
+    where box3 e | Prelude.Just [x1] <- S.de_conHF "StateT" e
+                     = StateT (S.box x1)
+                 | Prelude.otherwise = StateT__s e
+          unbox3 x | StateT x1 <- x
+                       = S.conHF x "StateT" [S.unbox x1]
+                   | StateT__s v <- x
+                       = v
+
+I want:
+
+instance (S.HaskellF s, S.HaskellF1 m) => S.HaskellF1 (StateT s m)
+    where box1 e | Prelude.Just [x1] <- S.de_conHF "StateT" e = StateT (S.box x1)
+                 | Prelude.otherwise = StateT__s e
+          unbox1 x | StateT x1 <- x = S.conHF x "StateT" [S.unbox x1]
+                   | StateT__s v <- x = v
+
+The difference?
+    box1, unbox1, context, application.
+
+Everything else is the same! Hurray. That shouldn't be too bad.
+
+Sat Mar  9 12:40:28 EST 2013
+
+It's all done. Kind inference is, at last, done. Wow. That was quite a bit of
+work. I suspect there are bugs, but it seems to work well enough now.
+
+So now I can move on to greater, better things. I just have to think about
+what I want to work on next...
+
+Sat Mar  9 15:59:55 EST 2013
+
+Let me try out this IORef thing.
+
+On a separate branch:
+1. pull EID out into its own file - done
+2. make a generic sharing function as described above, and switch 'sharing' to
+use that.
+3. make another sharing function based on IORefs.
+For now it can leak and such. Goal is to see if it can work, and get a sense
+of the potential performance benefits.
+
+Sat Mar  9 16:22:56 EST 2013
+
+I broke sharing! Or did I do that before?
+
+Let me test. It may be the difference between Eq and Ord for types now.
+
+No, I broke sharing.
+
+Problem is: the recursive call looses the map. We can't give a pure interface
+to something inherently monadic.
+
+Unless I want to just try IORefs now? Otherwise put it in IO?
+
+An interesting idea.
+
+Okay, I'll expose the monad.
+
+Sat Mar  9 16:32:03 EST 2013
+
+No. This doesn't work. I need a different approach.
+
+Maybe I should just do the IORef directly, see how performance goes.
+
+Okay, how will this work?
+
+Skip the Unique for now. This is a hack. Use just IORef Use, and expand Use to
+include None.
+
+I'll do unsafe IO in order to lookup and replace things as needed.
+
+Shall I try it?
+
+Of course, I could put the whole thing in IO. Anything wrong with that? Then
+make it pure later?
+
+That sounds good to me. The idea is to see if IORefs help with lookup and
+insert. We can look at the potential for "pure" later.
+
+Sat Mar  9 16:47:20 EST 2013
+
+Well, performance results are in. Put sharing in IO and use IORefs. Big
+performance improvement. Sharing goes
+from:     20% time, 30% alloc
+down to:   4% time, 4% alloc
+
+That's pretty darn big.
+
+Presumably I would get similar drastic improvements in IVP too, if I could
+arrange it right. I may even get better improvements by switching sharing to
+be pure rather than all in IO, though that doesn't really concern me at the
+moment.
+
+So, I have two questions at this point.
+
+1. How can I clean up IVP and switch it to this method?
+2. How can I clean up the use of IORefs in a safe manner?
+    meaning: Unique, Dynamic, Weak references, all that fun stuff.
+
+Let me focus on (1) first. I absolutely refuse to check this into the master
+branch until I've done (2), but I may learn important things by doing (1)
+first, and that's more exciting for the moment to think about.
+
+I think the first step is to clean it up like I did for Sharing.
+
+That is, have it use a State monad like sharing did. Then the switch to IO
+ought to be easy.
+
+So, first thing should be: reorganize the Cache so it really is just a map of
+some sort. So that will require some cleanup.
+
+Good news is, I can do this cleanup on the master branch if I want. It
+probably will improve performance. Use a HashMap first try.
+
+Okay, so the real key is how to represent contexts.
+
+Probably, to start... simplest thing I can.
+
+So, idea is to cache:
+  EID -> (CTX -> ExpH)
+
+Where CTX is the context of assignments we have from Name to Bool?
+
+Um. This is going to take a bit of thought I think.
+
+How will inferred value propagation work?
+
+* in context of State monad with my Cache.
+* we pass around the current context of inferred things as a...
+    Name -> Bool. It's only for boolean variables to start.
+
+lit - no change.
+con - recurse to children.
+var - if in map, update it, otherwise keep it the same.
+      And record that we depended on the given variable.
+prim - recurse
+app - recurse
+lam - die
+case - if appropriate, add a level.
+
+So, the thing is, we do need to keep track of what context is used by an
+expression, so we get as much sharing as we ought.
+
+I think I want to make my Context map first then.
+
+The way it looks:
+    Insert: Map Name (Maybe Bool), the minimal context which was generated.
+    Lookup: Map Name Bool - may be bigger than element. But as long as it is
+            contained, we are okay. Start with an association list and linear
+            search. I can switch to a tree later.
+            Returns the minimal context and ExpH.
+
+Good. And the rest is the same.
+
+I think this will clean things up a bunch.
+
+Can I make small steps in the right direction?
+The IVPResult can still be the same. That's fine.
+
+Hmm... Maybe I can do it like this. The IVPResult includes what part of the
+context mattered. I use it to filter out the elements in the context which
+matter, then I can do lookups based on the context. Easy!
+
+Yes. I like this idea. Let me see how much progress I can make on it. On the
+master branch? Sure. Or, rather, on ivp2? Yes. That makes more sense.
+
+Wait. Trouble. I can't use the result to figure out the key, because I need
+the key to figure out the result.
+
+So I will need a special kind of context map.
+
+Let me start with that.
+
+Where you lookup with a possibly more general context than you need.
+
+Okay! I think I got it. Not really enough time to try it now though.
+
+Okay, got all the rough draft of the code written. When I have a chance I'll
+come back and try it out.
+
