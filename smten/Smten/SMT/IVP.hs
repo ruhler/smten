@@ -6,6 +6,7 @@ module Smten.SMT.IVP (ivp) where
 
 import Control.Monad.State
 
+import Data.Functor((<$>))
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 import Data.Maybe(fromMaybe)
@@ -14,65 +15,60 @@ import Smten.Sig
 import Smten.Name
 import Smten.Type
 import Smten.ExpH
+import Smten.Strict
   
 
 -- The result of inferred value propagation, and the set of variables this
 -- result depends on.
 type IVPResult = (ExpH, Set.Set Name)
 
-type Cache = [(Name, Map.Map EID IVPResult)]
+type Context = Map.Map Name Bool
+type ContextMap = [(Context, IVPResult)]
+type Cache = Map.Map EID ContextMap
 
-c_empty :: Cache
-c_empty = [(name "", Map.empty)]
+-- Lookup in a value in the context map.
+cm_lookup :: Context -> ContextMap -> Maybe IVPResult
+cm_lookup _ [] = Nothing
+cm_lookup m ((c, r@(e, s)):cs) =
+ let ishere = c == cm_restrict m s
+ in if ishere
+        then Just r
+        else cm_lookup m cs
 
-c_lookup :: EID -> Cache -> Maybe IVPResult
-c_lookup x [] = Nothing
-c_lookup x ((n, m):ms) = 
- let a = Map.lookup x m
-     b = do
-        r <- c_lookup x ms
-        guard $ not (Set.member n (snd r))
-        return r
- in mplus a b
-
-c_insert :: EID -> IVPResult -> Cache -> Cache
-c_insert k v ((n, m):ms) = (n, Map.insert k v m) : ms
+cm_restrict :: Context -> Set.Set Name -> Context
+cm_restrict c s = Map.filterWithKey (\k _ -> k `Set.member` s) c
 
 -- Do IVP.
 -- If the result for the expression is cached, use that.
-use :: Map.Map Name ExpH -> ExpH -> State Cache IVPResult
+use :: Context -> ExpH -> State Cache IVPResult
 use m e
  | Just id <- getid e = do
-    mv <- gets $ c_lookup id
-    case mv of  
-        Just v -> return v
+    cache <- get
+    case Map.lookup id cache of  
+        Just cm ->
+           case cm_lookup m cm of
+              Just v -> return v
+              Nothing -> do
+                v@(_, s) <- def m e
+                let cm' :: ContextMap
+                    cm' = (cm_restrict m s, v) : cm
+                modifyS $ Map.insert id cm' 
+                return v
         Nothing -> do
-            v <- def m e
-            modify $ c_insert id v
+            v@(_, s) <- def m e
+            modifyS $ Map.insert id [(cm_restrict m s, v)]
             return v
  | otherwise = def m e
 
--- Run the given computation where Name is modified.
--- So, for the computation, any items in the cache depending on Name are
--- removed. After the computation, cache is updated with any items from the
--- computation not depending on Name.
-with :: Name -> State Cache a -> State Cache a
-with n q = do
-   modify $ (:) (n, Map.empty)
-   v <- q
-   ((_, m):(n', m'):ms) <- get
-   put $ (n', Map.union m' (Map.filter (not . Set.member n . snd) m)):ms
-   return v
-
 -- Do IVP.
 -- Does not check if the result for the expression is cached.
-def :: Map.Map Name ExpH -> ExpH -> State Cache IVPResult
+def :: Context -> ExpH -> State Cache IVPResult
 def m e
  | LitEH {} <- e = return (e, Set.empty)
  | ConEH _ n t xs <- e = do
     xs' <- mapM (use m) xs
     return (identify $ \id -> ConEH id n t (map fst xs'), Set.unions (map snd xs'))
- | VarEH (Sig n _) <- e = return (fromMaybe e (Map.lookup n m), Set.singleton n)
+ | VarEH (Sig n _) <- e = return (fromMaybe e (boolEH <$> Map.lookup n m), Set.singleton n)
  | PrimEH _ _ _ f xs <- e = do
     xs' <- mapM (use m) xs
     return (f (map fst xs'), Set.unions (map snd xs'))
@@ -86,8 +82,8 @@ def m e
     case x' of
      VarEH (Sig nm t) | t == boolT -> do
         let Just kv = de_boolEH (conEH k)
-        (yv, yns) <- with nm $ use (Map.insert nm (boolEH kv) m) y
-        (dv, dns) <- with nm $ use (Map.insert nm (boolEH (not kv)) m) d
+        (yv, yns) <- use (Map.insert nm kv m) y
+        (dv, dns) <- use (Map.insert nm (not kv) m) d
         return (caseEH x' k yv dv, Set.unions [xns, yns, dns])
      ConEH {} -> do
         (v, vns) <- def m (caseEH x' k y d)
@@ -102,5 +98,5 @@ def m e
 -- Perform inferred value propagation on the given expression.
 -- Assumes the expression may be looked at in its entirety.
 ivp :: ExpH -> ExpH
-ivp e = fst $ evalState (use Map.empty e) c_empty
+ivp e = fst $ evalState (use Map.empty e) Map.empty
 
