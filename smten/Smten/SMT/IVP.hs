@@ -8,6 +8,7 @@ import Control.Monad.State
 
 import Data.Functor((<$>))
 import qualified Data.Map as Map
+import qualified Data.HashMap as HashMap
 import qualified Data.Set as Set
 import Data.Maybe(fromMaybe)
 
@@ -24,16 +25,25 @@ type IVPResult = (ExpH, Set.Set Name)
 
 type Context = Map.Map Name Bool
 type ContextMap = [(Context, IVPResult)]
-type Cache = Map.Map EID ContextMap
+type Cache = HashMap.Map EID ContextMap
 
 -- Lookup in a value in the context map.
 cm_lookup :: Context -> ContextMap -> Maybe IVPResult
 cm_lookup _ [] = Nothing
-cm_lookup m ((c, r@(e, s)):cs) =
+cm_lookup m ((c, r@(e, s)):cs) = {-# SCC "CM_LOOKUP" #-}
  let ishere = c == cm_restrict m s
  in if ishere
         then Just r
         else cm_lookup m cs
+
+cm_insert :: Context -> IVPResult -> ContextMap -> ContextMap
+cm_insert ctx v@(_, s) cm = {-# SCC "CM_INSERT" #-} (cm_restrict ctx s, v) : cm
+
+cm_empty :: ContextMap 
+cm_empty = []
+
+cm_single :: Context -> IVPResult -> ContextMap
+cm_single ctx v = cm_insert ctx v cm_empty
 
 cm_restrict :: Context -> Set.Set Name -> Context
 cm_restrict c s = Map.filterWithKey (\k _ -> k `Set.member` s) c
@@ -44,19 +54,17 @@ use :: Context -> ExpH -> State Cache IVPResult
 use m e
  | Just id <- getid e = do
     cache <- get
-    case Map.lookup id cache of  
+    case {-# SCC "CACHE_LOOKUP" #-} HashMap.lookup id cache of  
         Just cm ->
            case cm_lookup m cm of
               Just v -> return v
               Nothing -> do
-                v@(_, s) <- def m e
-                let cm' :: ContextMap
-                    cm' = (cm_restrict m s, v) : cm
-                modifyS $ Map.insert id cm' 
+                v <- def m e
+                modifyS $ {-# SCC "CACHE_INSERT" #-} HashMap.insert id (cm_insert m v cm) 
                 return v
         Nothing -> do
-            v@(_, s) <- def m e
-            modifyS $ Map.insert id [(cm_restrict m s, v)]
+            v <- def m e
+            modifyS $ {-# SCC "CACHE_INSERT" #-} HashMap.insert id (cm_single m v)
             return v
  | otherwise = def m e
 
@@ -98,5 +106,5 @@ def m e
 -- Perform inferred value propagation on the given expression.
 -- Assumes the expression may be looked at in its entirety.
 ivp :: ExpH -> ExpH
-ivp e = fst $ evalState (use Map.empty e) Map.empty
+ivp e = fst $ evalState (use Map.empty e) HashMap.empty
 
