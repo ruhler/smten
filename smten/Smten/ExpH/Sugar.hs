@@ -197,7 +197,10 @@ de_ioEH x = do
     de_dynamicL l
 
 caseEH :: ExpH -> Sig -> ExpH -> ExpH -> ExpH
-caseEH x k@(Sig nk _) y n
+caseEH x k y n = {-# SCC "CASE_EH" #-} caseEH' x k y n
+
+caseEH' :: ExpH -> Sig -> ExpH -> ExpH -> ExpH
+caseEH' x k@(Sig nk _) y n
  | Just (s, _, vs) <- de_conEH x
     = if s == nk then appsEH y vs else n
  | Just (_, msg) <- de_errorEH x = errorEH (typeof n) msg

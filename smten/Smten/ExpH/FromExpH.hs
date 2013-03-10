@@ -39,16 +39,16 @@ sharing e =
                     subtraverse e
                Just Single -> do    
                     put (Map.insert id Multi m)
-                    return (Set.singleton id)
+                    return $! Set.singleton id
                Just Multi -> return Set.empty
         | otherwise = return Set.empty
 
       subtraverse :: ExpH -> State (Map.Map EID Use) (Set.Set EID)
       subtraverse e
-        | ConEH _ _ _ xs <- e = Set.unions <$> mapM traverse xs
-        | PrimEH _ _ _ _ xs <- e = Set.unions <$> mapM traverse xs
-        | AppEH _ a b <- e = Set.unions <$> mapM traverse [a, b]
-        | CaseEH _ x _ y n <- e = Set.unions <$> mapM traverse [x, y, n]
+        | ConEH _ _ _ xs <- e = Set.unions <$!> mapM traverse xs
+        | PrimEH _ _ _ _ xs <- e = Set.unions <$!> mapM traverse xs
+        | AppEH _ a b <- e = Set.unions <$!> mapM traverse [a, b]
+        | CaseEH _ x _ y n <- e = Set.unions <$!> mapM traverse [x, y, n]
         | otherwise = return $ Set.empty
   in evalState (traverse e) Map.empty
 
