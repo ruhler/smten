@@ -111,9 +111,11 @@ qtest = do
         return q
     test "core.char" (rq == Just True)
 
+    qsymsym
     qsubstitute
 
     liftIO $ putStrLn "CORE LIFTIO TEST"
+    
 
 -- Test that primitives are reapplied after substitution.
 qsubstitute :: SMT ()
@@ -123,6 +125,21 @@ qsubstitute = do
         assert (not a)
         return (not a)
     test "core.substitute" (r == Just True)
+
+-- Test conversion of symbolic Symbolic to concrete Symbolic.
+qsymsym :: SMT ()
+qsymsym = do
+    r <- query $ do
+            a <- free
+            b <- free
+            if a
+                then do
+                    assert b
+                    assert False
+                else do
+                    assert (not b)
+            return (a, b)
+    test "core.qsymsym" (r == Just (False, False))
 
 
 main :: IO ()
