@@ -1,0 +1,117 @@
+
+Mon Mar 11 11:40:06 EDT 2013
+
+Performance issues...
+
+Looks like CASE_EH, and CASE_EH_PUSHFUN are likely causes.
+I no longer think SHARING or IVP are the source of the issue.
+
+Look for foldl like behavior in caseEH. It would be worth taking a good look
+at caseEH and understanding thunklike and such behavior.
+
+I don't know what else I can look at to understand what's going on.
+
+Anyway, a new priority now: fix binding to symbolic.
+
+Let me start by testing it with if statements. Then I can make a test for more
+general case statements.
+
+Mon Mar 11 13:02:31 EDT 2013
+
+Test for general statements leads to:
+|| smten: de_smtenEH (->): case ((free~20 :: Bool)) of {
+||   (True :: Bool) -> ?Lit?
+||   _ -> case ((free~20 :: Bool)) of {
+||          (True :: Bool) -> error case no match
+||          _ -> ?Lit?
+||        }
+|| }
+
+Interesting... Why don't I do the proper conversion there?
+
+It's a call to de_smtenEH which returns Nothing. What is my instance of
+de_smtenEH for Symbolic?
+
+This is strange. Is this what I expect? Which test case is failing?
+
+It's the new one I added.
+
+The trouble is, we call de_smtenEH on type ExpH, not on type Symbolic...
+Why is that a problem? That should never fail, right?
+
+No. That's not true. I'm just not getting the correct type. Probably because
+we don't know about the type for Symbolic. Hmm...
+
+I don't understand the error.
+
+de_smtenEH. So we are given a function of type (ExpH -> ExpH), and we want to
+convert that to (a -> b). The question is, what is the type of 'a' and 'b'?
+How can I figure that out?
+
+Using typeOf says its an instance of (ExpH -> ExpH). That should be trivial.
+There should be no problems at all for this.
+
+No, this doesn't make sense. Something funny is going on. Bug in GHC? (I
+highly doubt it, but, hmm...)
+
+Okay, now we got it: de_smtenEH is called on type (Symbolic ExpH).
+I have an instance for this right? One which should never fail?
+
+It calls de_smtenEH.
+de_smtenEH calls de_symbolicEH.
+
+Which may return bad stuff if de_dynamicL returns Nothing.
+
+Hm... cases where we could fail de_symbolicEH:
+
+* de_dynamicL l returns Nothing
+* the object is not a literal or a case.
+* if the object is a literal or a case, 
+    ys fails to de_symbolic
+    ns fails to de_symbolic
+
+Odd. Let's see...
+
+How about this: what if we have an ErrorEH buried somewhere? What should that
+do?
+
+I think that explains the current problem.
+
+We require ys and ns satisfy de_symbolic, but one of them is "error $ case no
+match". So what do I do?
+
+The idea should be...
+
+Well, in this case it isn't possible to reach that error.
+
+Maybe I need to purely propagate the error. That way we shouldn't encounter it
+unless we need to, and then it is properly propagated?
+
+Something to think about. When I come back.
+
+Mon Mar 11 16:34:46 EDT 2013
+
+I have an idea. The idea is this: minimize the test case.
+
+I ought to be able to write some smten code which triggers this same issue,
+but which is very simple and I can analyze by hand.
+
+My suspicion is it is either something like:
+    case (case (case (case ... case x of ...))) of
+        ...
+
+Or:
+    case x of
+        k -> case y of 
+                ky -> case z of
+                        kz -> ...
+
+I can write code for both of these.
+
+What I'm looking for is an example of where the code does not overflow the
+stack in haskell, but it does overflow when run in smten. This means the smten
+compiler has the stack overflow.
+
+It may very well be the overflow we are seeing is in the seri_arch_extract
+code. Or it may not be.
+

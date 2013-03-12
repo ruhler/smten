@@ -25,6 +25,8 @@ import Smten.Lit
 import Smten.Ppr
 import Smten.ExpH
 
+import Smten.SMT.IVP
+
 type Context = Unique
 type Contexts = [Unique]
 
@@ -104,27 +106,28 @@ runSymbolic ctx nfree s =
 -- Convert an ExpH of smten type (Symbolic a) to it's corresponding haskell
 -- Symbolic.
 --
--- This handles execution of symbolic Symbolics, such as:
---  if p
---      then s1
---      else s2
-de_symbolicEH :: ExpH -> Maybe (Symbolic ExpH)
+-- This assumes you are passing an expression of seri type (Symbolic a).
+-- It will always succeed, because it automatically converts symbolic
+-- (Symbolic a) into concrete (Symbolic a)
+de_symbolicEH :: ExpH -> Symbolic ExpH
 de_symbolicEH e
- | Just l <- de_litEH e, s <- de_dynamicL l = s
- | CaseEH _ x k y n <- e =
+ | Just l <- de_litEH e, Just s <- de_dynamicL l = s
+ | CaseEH _ x k y n <- ivp e =  -- TODO: use of ivp here is maybe a hack. Fix it.
     let yv = if 0 == length (de_arrowsT (typeof k)) - 1
                 then y
-                else -- TODO: in this case we need to extract the arguments from
-                     -- the case match, which I just don't feel like doing yet.
-                     error $ "TODO: de_symbolicEH of complex case expressions in: " ++ pretty e
+                else -- TODO: Can this ever occur?
+                     -- I think not, because caseEH gets rid of any case
+                     -- expression on things other than booleans.
+                     error $ "de_symbolicEH of complex case expressions in: " ++ pretty e
         py = tcaseEH e (const trueEH) (const falseEH)
         pn = tcaseEH e (const falseEH) (const trueEH)
+
+        ys = de_symbolicEH yv
+        ns = de_symbolicEH n
     in do
-        ys <- de_symbolicEH yv
-        ns <- de_symbolicEH n
-        return $ do
-            yr <- predicated py ys
-            nr <- predicated pn ns
-            return $ tcaseEH e (const yr) (const nr)
- | otherwise = Nothing
+        yr <- predicated py ys
+        nr <- predicated pn ns
+        return $ tcaseEH e (const yr) (const nr)
+ | ErrorEH _ msg <- e = error $ "(de_symbolicEH): " ++ msg
+ | otherwise = error $ "de_symbolicEH: " ++ pretty e
 

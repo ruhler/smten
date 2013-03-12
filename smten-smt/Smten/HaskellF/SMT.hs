@@ -16,9 +16,7 @@ import qualified Smten.HaskellF.Lib.Symbolic as S
 
 
 symbolicHF :: (HaskellF a) => S.Symbolic a -> Symbolic a
-symbolicHF s 
- | Just v <- de_symbolicEH (unbox s) = box <$> v
- | otherwise = error "symbolicHF failed"
+symbolicHF s = box <$> de_symbolicEH (unbox s)
 
 assertHF :: S.Bool -> Symbolic ()
 assertHF x = symbolicHF (S.assert x) >> return ()

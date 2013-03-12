@@ -1,0 +1,199 @@
+
+Sun Mar 10 11:45:06 EDT 2013
+
+Here's the deal with IVP:
+
+* I updated it to use a straight-forward cache like thing.
+* I switch to HashMap for the cache
+
+It performs better than before. We still have this stack overflow. But because
+it's better, I've merged with the master branch.
+
+Now, the thing to try next is... IORefs for the Cache map.
+
+This should be fairly easy to try. To make clean is another issue. But at
+least then we shall see how much improvement we can get using IORefs. I'll do
+this on the IORef branch.
+
+Sun Mar 10 14:31:21 EDT 2013
+
+Tried IORefs for the Cache map. It speeds things up nicely.
+
+But it is *NOT* the stack overflow problem. So let me work on diagnosing that.
+With IORefs in so we aren't distracted by IVP and SHARING as much.
+
+First step: gather info.
+
+FromExpH - is 40% time and memory
+    30% IVP, 7% SHARING
+MKASSERT - 10% time
+MAIN - 50% time and memory
+
+So, certainly it would be good to add some more SCCs to main, to figure out
+where all the time could be being spent.
+
+At stack overflow, the trace is: FromExpH.CONVERT.
+
+But I don't know what really that means.
+
+Let's look at memory profiles.
+
+Looking at 
+  types:  
+    1.2G peak.
+    Top are: ExpH, Set, (,), STRef, EID
+
+  closures:
+    Split at top: IVP, Main
+
+I think I need more closures. Let me turn on everything profiling wise to see
+if I can narrow down where all the memory is from.
+
+Looks like caseEH is taking up a bunch. Let me try add that in.
+
+Yes. CASE_EH appears to be the entire remaining time.
+
+A reminder that we do do function pushing:
+
+case (case x2 of k2 -> y2 ; _ -> n2) of
+    k -> y
+    _ -> n
+
+If the type of the argument is not supported. AKA, if it's type is not Bool.
+
+Then we inline:
+
+case x2 of
+    k2 -> case y2 of
+            k -> y
+            _ -> n
+    _ -> case n2 of
+            k -> y
+            _ -> n
+
+And this can lead to big blowup???
+
+Hmm...
+Now the profile shows:
+   A bunch from IVP
+   A bunch from CASE_EH (from Main)
+   A spike from CASE_EH (from IVP)
+
+So, how about I focus in on IVP, see what the memory usages there are?
+
+Wait a second... there is something funny here.
+
+Oh. I see. If the result of IVP is I learn the value of x', then I want to
+simplify. I see. That makes sense.
+
+Looks like IVP is causing none of the memory allocation.
+Or, at least, nothing is assigned there... Oh. Probably because the closures
+are defined in a different module: Smten.SMT.SMT. That's where I should look.
+
+I suppose I could limit by IVP closure...
+
+Well, here's a minor thing. Looks like from ExpH is leaking sets. We're
+talking 100M bytes worth. Can I fix that up?
+
+It's happening in SHARING.
+
+Maybe I need a <$!> kind of operator. Strict apply.
+
+I think the issue is with Set.unions:
+
+    x <- mapM traverse xs
+    return $ Set.unions x
+
+But I really want:
+    x <- mapM traverse xs
+    return $! Set.unions x
+
+To get rid of the thunk to a bunch of sets?
+
+It's worth a try.
+
+Yup! That was a space leak.
+
+Cool. I should remember that change and merge it with the master branch.
+
+Sun Mar 10 15:27:32 EDT 2013
+
+Okay, merged that with the master branch.
+
+Now let me focus in on IVP.
+
+IVP: about 500M.
+1. ExpH
+2. Set
+3. (,)
+4. Context
+5. []
+6. EID
+7. STREF
+
+All in large amounts. Am I leaking sets here too?
+Let me look at retainers, see if I can get more info.
+
+Retainer looks to be mostly CaseEH.
+
+let me look at IVP. See if I can at least understand where the sets are coming
+from.
+
+* We return a tuple (ExpH, Set).
+And the Set we return is made using Unions. So it is lazy, and potentially
+holding on to lots of things.
+
+The only person who looks at the set, however, is...
+cm_insert. So maybe cm_insert should be strict in the set?
+
+The question is, what are we storing in the IORef? A list. But the sets on
+that list are possibly unevaluated, holding onto more sets.
+
+What do the sets hold on to? They hold on to expressions.
+
+So this certainly could be a leak. How can I force the sets?
+
+We are talking, like 120M of sets. All from IVP.
+
+So this sounds promising to me. I just have to figure out how to make sure not
+to hold on to lots of sets.
+
+I don't know how to do that. I need to see who is responsible for forcing
+things and make sure he forces them.
+
+Options: cm_insert might have the option to force them.
+
+Perhaps IVPResult could be made strict in its arguments? Using bang patterns?
+
+An interesting idea. Or, have a special constructor for IVPResult which makes
+them strict. The idea is, every Set we have should be in weak head normal
+form, and not a thunk.
+
+Let me learn about bang patterns more. I've never found them help anything,
+but this seems a reasonable thing to try. Make IVPResult strict, then we are
+all set?
+
+That made things much worse. Probably because there are a lot of sets we don't
+care about? And by making it strict we force the issue.
+
+Looks like IVP holds on to the sets initially, then SHARING starts retaining
+them. Not totally surprising.
+
+I wonder if the problem is we hold on to a thunk for the ExpH when we don't
+need to hold on to the Set. Or the other way around?
+
+Perhaps I only need to calculate this set in limited circumstances? But...
+does that require an extra traversal?
+
+We need the set whenever we have an EID. We only need to compute a set
+whenever we have an EID which is shared...
+
+Well... Now that's an interesting concept.
+
+What if we knew ahead of time what expressions were shared. Could that help us
+do IVP?
+
+Something to think about.
+
+I need to think some more about what's going on, and what I want to go on.
+

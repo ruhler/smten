@@ -1,5 +1,5 @@
 Focus::
-* Performance of seri_arch_extract: improve sharing, IVP
+* Performance of seri_arch_extract: understand stack overflow
 * Catch-up: Locations for type errors
 
 Recent::

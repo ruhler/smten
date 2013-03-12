@@ -48,7 +48,7 @@ symbolicEH = litEH . dynamicL
 instance (SmtenEH a) => SmtenEH (Symbolic a) where
     smtenEH x = symbolicEH (smtenEH <$> x)
     de_smtenEH e = do
-        q <- de_symbolicEH e
+        let q = de_symbolicEH e
         return $ fromMaybe (error "de_smtenEH Symbolic") . de_smtenEH <$> q
 
 

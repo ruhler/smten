@@ -139,7 +139,19 @@ qsymsym = do
                 else do
                     assert (not b)
             return (a, b)
-    test "core.qsymsym" (r == Just (False, False))
+    test "core.qsymsym_if" (r == Just (False, False))
+
+    s <- query $ do
+            a <- free
+            b <- free
+            let m = if a then Just True else Nothing
+            case m of
+                Just v -> do
+                    assert (b && v)
+                    assert False
+                Nothing -> assert (not b)
+            return (a, b)
+    test "core.qsymsym_case" (s == Just (False, False))
 
 
 main :: IO ()
