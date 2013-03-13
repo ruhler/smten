@@ -426,6 +426,10 @@ testnumeric :: IO ()
 testnumeric = do
    test "n.3" ((3 :: Integer) == (valueof (numeric :: #3)))
 
+testparsedot :: IO ()
+testparsedot = do
+   putStrLn . show $ "parsehi!"
+
 testlist :: IO ()
 testlist = do
    test "tails" (tails "abc" == ["abc", "bc", "c", ""])

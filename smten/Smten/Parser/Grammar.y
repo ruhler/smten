@@ -355,6 +355,7 @@ poe :: { PatOrExp }
  | poe '-' poe { opPE "-" $1 $3 }
  | poe '*' poe { opPE "*" $1 $3 }
  | poe '$' poe { opPE "$" $1 $3 }
+ | poe '.' poe { opPE "." $1 $3 }
  | poe '>>' poe { opPE ">>" $1 $3 }
  | poe '>>=' poe { opPE ">>=" $1 $3 }
  | poe '||' poe { opPE "||" $1 $3 }
@@ -545,6 +546,7 @@ varsym_op :: { Name }
  | '-' { name "-" }
  | '*' { name "*" }
  | '$'  { name "$" }
+ | '.'  { name "." }
  | '>>' { name ">>" }
  | '>>=' { name ">>=" }
  | '||' { name "||" }
@@ -559,7 +561,6 @@ varsym_op :: { Name }
 varsym :: { Name }
  : varsymt
     { $1 }
- | '.' { name "." }
 
 tyvarnm :: { Name }
  : varid
