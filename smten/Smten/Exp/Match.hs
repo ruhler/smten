@@ -51,12 +51,12 @@ sigP = SigP
 sharedM :: Exp -> (Exp -> Fresh Exp) -> Fresh Exp
 sharedM x f | isSimple x = f x
 sharedM x f = do
-   xv <- fresh (Sig (name "_s") UnknownT)
+   xv@(Sig nv _) <- fresh (Sig (name "_s") UnknownT)
    body <- f (varE xv)
-   return $
-     if xv `elem` (free body)
-        then  letE xv x body 
-        else body
+   let z = if nv `elem` (free' body)
+             then letE xv x body 
+             else body
+   return z
 
 -- | Perform a pattern match.
 -- case x of

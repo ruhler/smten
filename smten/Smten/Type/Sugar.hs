@@ -36,10 +36,7 @@ de_conT _ = Nothing
 --  ConT "+", ConT "-", or ConT "*" and two numeric types, converts it to the
 --  numeric type operation.
 --
--- This is a hack to get the haskellf translation work with smtenT and numeric
--- types. The proper solution would be to change the representation of numeric
--- type operations so that #(a+b) is represented as
---   AppT (AppT (ConT "+") a b), or some such similar.
+-- This is to get the haskellf translation work with smtenT and numeric types.
 appT :: Type -> Type -> Type
 appT (AppT (ConT n _) a) b
  | n `elem` map name ntops = OpT (unname n) a b

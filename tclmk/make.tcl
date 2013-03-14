@@ -79,9 +79,9 @@ set SMTN smten/smtn
 # Poorly typed tests.
 proc badtypetest {name} {
     set cmd {
-        run $::SMTEN --type \
+        hrun $::SMTEN --type \
             -f $::SMTN/Smten/Tests/MalTyped/$name.smtn \
-            > "build/test/$name.typed"
+            -o "build/test/$name.typed"
         }
 
     if { [catch $cmd] == 0 } {
@@ -109,9 +109,9 @@ proc io {module} {
 # Run a HaskellF Test
 proc haskellf {module} {
     set hsdir build/test
-    run $::SMTEN --haskellf \
+    hrun $::SMTEN --haskellf \
         -f $::SMTN/[string map {. /} $module].smtn \
-        > $hsdir/[string map {. _} $module].hs
+        -o $hsdir/[string map {. _} $module].hs
     hrun -ignorestderr ghc -fno-warn-overlapping-patterns \
         -fno-warn-missing-fields \
         -main-is __main \
@@ -157,12 +157,12 @@ indir build/smten-bin {
 hrun ./build/smten-bin/semtest
 
 # The dsel haskell integration test.
-run $::SMTEN --haskellf \
+hrun $::SMTEN --haskellf \
     --include $::SMTN \
     --no-main \
     --mod-name Smten_DSEL \
     -f $::SMTN/Smten/Tests/DSEL.smtn \
-    > build/smten-bin/Smten_DSEL.hs
+    -o build/smten-bin/Smten_DSEL.hs
 indir build/smten-bin {
     hrun ln -sf ../../smten-bin/dsel.hs dsel.hs
     hrun ghc --make -o dsel dsel.hs

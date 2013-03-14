@@ -1,8 +1,11 @@
 Focus::
-* Performance of seri_arch_extract: understand stack overflow
+* Performance of seri_arch_extract
 * Catch-up: Locations for type errors
 
 Recent::
+* Don't pretty print numeric type 16 in haskellf as
+    2*2*2*2*(1+0) ??
+    depends if you want detailed type info or not.
 * Finish cleaning up type check
 * varTs should return a list of TyVar, not (Name, Kind)
 * Bug: foo :: Integer

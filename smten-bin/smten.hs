@@ -70,7 +70,8 @@ data Args = Args {
     main_is :: String,
     no_main :: Bool,
     mod_name :: String,
-    file :: FilePath
+    file :: FilePath,
+    output :: FilePath
 } deriving (Show, Eq, Data, Typeable)
 
 argspec :: Args
@@ -91,10 +92,13 @@ argspec = Args {
        A.&= A.help "Haskell module to generate with haskellf",
     file = "Main.smtn"
        A.&= A.help "Input .smtn file"
+       A.&= A.typFile,
+    output = "-"
+       A.&= A.help "Where to place output. Use '-' for stdout"
        A.&= A.typFile
     } A.&=
     A.verbosity A.&=
-    A.help "Compile/Run a smten program" A.&=
+    A.help "Desugar/Typecheck/Interpret/Compile a smten program" A.&=
     A.summary "smten" 
 
 main :: IO ()
@@ -104,6 +108,9 @@ main = do
 
     let nmain = name (main_is args)
     let includes = include args ++ [stdlib]
+    let outf = case (output args) of
+                  "-" -> putStr
+                  fout -> writeFile fout
 
     case (run args) of
         Io -> do 
@@ -115,11 +122,11 @@ main = do
         Desugar -> do
             mods <- load includes (file args)
             flat <- attemptIO $ flatten mods
-            putStrLn . pretty $ flat
+            outf . pretty $ flat
         Type -> do
             env <- loadenv includes (file args)
-            putStrLn . pretty $ env
+            outf . pretty $ env
         HaskellF -> do
             env <- loadenv includes (file args)
-            putStrLn . show $ haskellf (not (no_main args)) (Main.mod_name args) (getDecls env)
+            outf . show $ haskellf (not (no_main args)) (Main.mod_name args) (getDecls env)
 

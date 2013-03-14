@@ -139,6 +139,9 @@ shadow = \x -> (\x -> 2*x) (x+1)
 caseshadow :: Integer -> Integer
 caseshadow = \x -> (case 2*x of { x -> x; })
 
+funnydesugar :: Bool
+funnydesugar = let { (x :: Bool) = null "a" } in x
+
 thedo :: Maybe Bool -> Maybe Integer
 thedo m = do
     b <- m
