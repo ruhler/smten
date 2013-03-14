@@ -86,9 +86,13 @@ guardM (BoolG x) y n = return (ifE x y n)
 --   | otherwise = n
 guardsM :: [Guard] -> Exp -> Exp -> Fresh Exp
 guardsM [] y _ = return y 
-guardsM (g:gs) y n = do
+guardsM (g:gs) y n | isSimple n = do
     y' <- guardsM gs y n
     guardM g y' n
+guardsM gs y n = do
+    nv <- fresh (Sig (name "_n") UnknownT)
+    body <- guardsM gs y (varE nv)
+    return $ letE nv n body
 
 data Body = Body [Guard] Exp
     deriving (Eq, Show)

@@ -3,6 +3,10 @@ Focus::
 * Catch-up: Locations for type errors
 
 Recent::
+* Bug: foo :: Integer
+       fop = 3
+    Is accepted, and 'fop' is treated like 'foo'.
+    I should give an error here.
 * What if you forget a type signature, does it error, or blow up?
 * Add support for semicolon error parsing rule in parser
 * If default implementation is missing for an instance, generate a default
@@ -86,7 +90,10 @@ Performance::
 
 Sharing::
 * Why do we sometimes share "free~12"?? For example, in Datatype test.
-* case desugaring still loses sharing of 'n' in a number of places?
+* case desugaring still loses sharing of 'n' in a number of places!
+* loose sharing in: f (if p then if q then a else b else b)
+    Does (f b) twice, without preserving sharing. (for 'f' a primitive
+    function)
 
 ExpH::
 * Perhaps case statements should consider all constructors at once instead of

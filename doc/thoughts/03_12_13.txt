@@ -1,0 +1,572 @@
+
+Tue Mar 12 07:54:10 EDT 2013
+
+Here's the deal.
+
+1. To fix the bug I'm getting now:
+  ErrorEH should be allowed as a kind of symbolic thing.
+  It's converted to a (Just (error)) in haskell.
+
+  This assumes you only try to do de_symbolicEH on things with symbolic types.
+  Hmm... Maybe I ought then to change the type of de_symbolicEH to not be a
+  maybe? That would make this explicit.
+
+That actually sounds good to me.
+
+2. To handle general case things in de_symbolicEH:
+
+We can actually make a general function, call it ifify. Given an expression,
+it gets rid of all the caseEH inside and turns it into just ifs.
+
+Or maybe, given a single case expression, it turns that into an if?
+
+Something like that. Anyway, I've implemented this before, so it shouldn't be
+too hard. Too bad if I lost the revision history on the iffy branch.
+
+Cool. Sounds like a plan to me.
+
+Tue Mar 12 08:07:00 EDT 2013
+
+Trouble: How to handle a symbolic of the form:
+
+|| smten: de_smtenEH (->): case ((free~20 :: Bool)) of {
+||   (True :: Bool) -> ?Lit?
+||   _ -> case ((free~20 :: Bool)) of {
+||          (True :: Bool) -> error case no match
+||          _ -> ?Lit?
+||        }
+|| }
+
+In particular, it has this case no match error.
+
+So, reduce it to:
+
+case ((free~20 :: Bool)) of {
+  (True :: Bool) -> error case no match
+  _ -> ?Lit?
+}
+
+Is it proper to report an error?
+
+No. Because under no circumstance ... under no assignment to free~20 can this
+result in an actual error, because then the branch would not be taken.
+
+How do I handle errors like this in general? By being lazy?
+By doing inferred value propagation...
+
+Well, I can hack around this for now I expect.
+
+Tue Mar 12 08:23:11 EDT 2013
+
+Guess what! I don't need to do anything special for 'iffy'. Because function
+pushing in caseEH already handles that. Cool, eh?
+
+Wait, is that right?
+
+Let me assume it is working correctly now, until I find some otherwise case.
+
+Tue Mar 12 08:56:05 EDT 2013
+
+Okay, so back to the performance question. I was going to make some
+performance test cases, see if I can reproduce the issue we have in
+seri_arch_extract in a much simpler way.
+
+First, the haskell tests.
+
+Tue Mar 12 10:27:42 EDT 2013
+
+Actually, I have an idea to try.
+
+Hmm... A couple anyway.
+
+I suppose start with the one haskell test which doesn't take up any memory or
+stack, and verify that in smten it is the same. Otherwise we do have a real
+stack leak.
+
+Of course, I don't know if switching to a symbolic version would make a
+difference, or is a fair comparison. But I don't think the issue is with
+symbolic computation for some reason... I don't know.
+
+Anyway, it's worth a try.
+
+1. Remove use of $! in 'h', and verify we get same haskell behavior.
+ done.
+2. Run 'h' in Smten, and see what behavior we get. If we leak something,
+that's a leak to try and pinpoint.
+
+If that reveals nothing, then go on to this attempt: profile seri_arch_extract
+(not the Smten lib). Then we ought to be able to see who is causing leaks and
+things like that. It may give us more info.
+
+2. Stack overflow! Aha! Wonderful. This could very much be the issue.
+
+Well.. we shall see. That's using io. Let me try using haskellf.
+
+haskellf: does *not* stack overflow. Could this be the issue?
+
+It's worth investigating at the very least, I suppose. Because as soon as we
+try to do this sort of thing with symbolic arguments, we need the interpreter
+not to blow up. Let me see what's up.
+
+Tue Mar 12 10:44:58 EDT 2013
+
+Looks like an issue with appEH in this case. Different from what I was getting
+in seri_arch_extract.
+
+What are we leaking?
+
+BLACK_HOLE is leaking. Okay, let me at least look at appEH then, see if
+anything makes sense to leak.
+
+LamEH case: looks fine to me. We just apply the haskell function.
+CaseEH: I'll come back to this.
+ErrorEH: looks fine to me.
+otherwise: looks okay.
+
+CaseEH: I suspect this is the problem.
+
+Actually, I can put SCCs to get more info. But let me think about it first.
+
+f is: case x of
+        k -> g
+        _ -> h
+
+I change it to:
+
+case x of
+    k -> g a
+    _ -> h a
+
+Okay, rename the argument 'x'.
+Now, the thing is, 'x' is a thunk, and I create in a non-recursive way
+    appEH x av. Which could lead to a big chain of thunks.
+
+I think I'll find this is the problem.
+
+Actually, before I try running this... This should *not* be the problem,
+because there is no symbolic computation here. It must be something else.
+
+And indeed, we find APPEH_LAM to be the culprit. Let me try to understand why.
+
+First off: there's something very funny about the CaseEH branch.
+Oh. variable naming confusion. I get it.
+
+Okay, so focus on APPEH_LAM.
+
+Presumably g is itself an 'appEH'.
+Does calling 'g x' make a thunk where 'g' itself is a thunk?
+
+The only thing I can think is that 'g' should be strict. But isn't that
+already the case?
+
+Let me step through evaluation.
+
+h :: Integer -> Bool -> Bool
+h n x | (n == 3 && n == 4) = False
+h n x = case x of
+            True -> h (n-1) False
+            False -> h (n-1) True
+
+evaluate: h 0 True:
+runio (inline (AppE (AppE (VarE h) 0) (ConE True)))
+> inline (AppE (AppE (VarE h) 0) (ConE True))
+- appEH (inline (AppE (VarE h) 0)) (inline (ConE True))
+> inline (AppE (VarE h) 0)
+- appEH (inline (VarE h)) (inline 0)
+> inline (VarE h)
+- inline (LamE n (LamE x (CaseE x True (h (n-1) False) (h (n-1) True))))
+
+
+
+Ug. I don't know what's wrong. This is all too complicated.
+
+Tue Mar 12 14:35:15 EDT 2013
+
+I tried profiling the seri_arch_extract. Interesting results:
+
+MAYBE_EQ    Main     55.3   74.6
+query       Main     40.4   22.1
+
+All our time is spent in MAYBE_EQ. How could that be?
+
+What if I rewrite it manually?
+
+I suspect the issue is this is where we do all the assert. It's stuffed into
+this assertion.
+
+What is the assertion being asked?
+
+okay, here's a question: can I evaluate that same equality concretely?
+
+Hmm... I bet I can narrow down the issue here.
+
+Given: seq0: a list of rules (which is concrete?)
+I get back a Maybe state. Not sure what initial state is though.
+
+Then, inside the maybe, I assert a predicate on the state returned.
+Not sure what the predicate is.: predicate aek.
+
+Okay! I can print out ms' pretty easily. It is symbolic. It has symbolic
+stuff. That's okay. It's not actually very big. Interesting...
+
+I'm beginning to suspect things...
+
+What if I just make a bigger stack?
+
+The predicate is simple:
+
+(\s -> ((0 == meth_notEmpty_FIFO2 (inst_f s)) && (0 == meth_notEmpty_FIFO2 (inst_g s)) &&
+                                                 (0 == meth_notEmpty_FIFO2 (inst_h s))))
+
+So, why does this blow up?
+
+Tue Mar 12 15:36:00 EDT 2013
+
+I gave some more stack space, and the tool makes progress. The issue then is
+it just takes up a bunch of memory.
+
+So, let me, for now, not worry about the stack space issue, but rather the
+memory issue.
+
+Let me run some profiling, and hopefully have it not take up too much memory,
+and see what happens.
+
+Where is the memory coming from?
+
+I feel like the problem being asked shouldn't be that hard.
+I suspect the issue is case pushing, but why would that be an issue? We have
+sharing, right? Worst case we double the size of the expression?
+
+It's got to be leaks. Now, am I willing to sacrifice time for leaks?
+
+Perhaps a better question: do I expect leaks? Or do I expect we won't need
+that much memory?
+
+The trouble is, it's too complicated. I don't know what to expect. Is it an
+issue with arch_extract?
+
+Somehow I think no, because we spend all our time in query and ==. Mostly in
+query. So it's a Smten problem.
+
+So I should focus in Smten, presumably.
+
+Hmm... I wonder if I'm going to have trouble with type names now.
+
+Top memory hogs:
+  convert - gets real big
+  identify, as called by caseEH (large symbolic expressions?)
+
+So, the question is... what types of memory are these things allocating?
+
+First step: what type of objects does 'convert' allocate?
+
+* What are top memory consumers?
+  - convert
+  - identify (called from caseEH)
+
+* what type of thing are they using memory for?
+  - convert:    800M: Exp, Type, Sig, Name
+        In other words, it's just a bunch of Exps.
+        More than we expect? Not clear.
+  - identify:   500M: ExpH, STRef, MUT_VAR, EID, Integer
+        In other words, it's a bunch of ExpHs.
+
+And you know what? I bet almost all of the expressions we have are case
+expressions. Because of a blowup from pushfun?
+
+This is worth considering a little.
+
+case (case x2 of
+        k2 -> y2
+        _ -> n2) of
+    k1 -> y1
+    _ -> n1
+
+How many ExpH do I have here now? And what are they?
+
+case1
+case2
+x2, y2, n1, n2
+
+Now, after function pushing?
+
+Well, assuming everything went the way I like, it would be:
+
+case x2 of  
+    k2 -> case y2 of
+            k1 -> y1
+            _ -> n1
+    _ -> case n2 of
+            k1 -> y1
+            _ -> n1
+
+case1
+case2
+case3
+x2, y2, n1, n2
+
+So, I replace the two cases I had with 3 different cases. Net gain of one
+ExpH. First, I should verify we don't hold on to the old CaseEH. Also I should
+verify we aren't making some other kinds of expressions.
+
+Let's say we have a triple nesting. Do things get worse?
+
+case (case (case x3 y3 n3) y2 n2) y1 n1
+
+Becomes:
+First the inner:
+
+case (case x3 y3 n3) y2 n2
+case x3 (case y3 y2 n2) (case n3 y2 n2)
+    -2 + 3
+
+Then the outer:
+
+case (case x3 (case y3 y2 n2) (case n3 y2 n2)) y1 n1
+case x3 (case (case y3 y2 n2) y1 n1) (case (case n3 y2 n2) y1 n1)
+    -2 + 3
+
+But then we have more to do:
+
+case (case y3 y2 n2) y1 n1
+case y3 (case y2 y1 n1) (case n2 y1 n1)
+    -2 + 3
+
+case (case n3 y2 n2) y1 n1
+case n3 (case y2 y1 n1) (case n2 y1 n1)
+    -2 + 3
+
+Which is:
+
+case x3 (case y3 (case y2 y1 n1) (case n2 y1 n1)) (case n3 (case y2 y1 n1) (case n2 y1 n1))
+
+And now we no longer have any more case statements.
+
+So, sum total:
+
+case of case:  -2 + 3
+case of case of case: 4 * (-2+3)
+
+Now, are you willing to bet that another nesting will lead to 16 times a
+single nesting? Or something worse?
+
+I suppose I should do it and see.
+
+Basically it is exponential. It has to be.
+
+Tue Mar 12 18:24:18 EDT 2013
+
+Had a long discussion with Nirav with interesting ideas.
+
+Basically the problem seems to be this:
+
+case of case
+
+is expensive, because I have to traverse through each branch of the inner
+case, resulting in an expression with an exponential number of leaves.
+
+I should be more explicit.
+
+Consider the following:
+    case (case x2 y2 n2) y1 n1
+
+Case of case. Currently we take the cross product:
+
+case x2 (case y2 y1 n1) (case n2 y1 n1)
+
+This has 4 leafs. Now, imagine I do a case of that. Then we multiply again and
+again. It's an exponential blowup.
+
+Anytime we want to do something on one constructor, we have to search through
+an exponential number of branches to find all the cases where that constructor
+may apply, then apply them.
+
+Here is an alternative.
+
+Have a representation for a fully evaluated symbolic object.
+
+For example, let's say you have a symbolic object which could be:   
+    Just 4, Just 8, or Nothing.
+
+Current representation:
+x = if p1
+        then Just 4
+        else if p2 then Just 8
+            else Nothing
+
+If I want to do a function like:
+z = case x of
+        Just v -> f v
+        _ -> n
+
+Then we have to search through all exponential branches of 'x' to evaluate the
+case.
+
+Now, instead, have a new representation.
+
+x: Just -> (p1 | p2, if p1 4 else 8)
+   Nothing -> (!p1 & !p2)
+
+If I want to do the same function as above, then we can immediately do it and
+get a new, flattened symbolic value. That is, symbolic values just have the N
+fields. This would turn into:
+
+if (p1 | p2)
+    then f (if p1 4 else 8)
+    else n
+
+Why is this better? Now we have an if statement. if statements are supported
+by SMT. So we never get case of case. We don't push things way down inside an
+expression up. We keep things as if statements.
+
+Notice: getting p1 | p2 was trivial, because we have it right there. Also, ...
+
+Wait. I'm not saying this correctly. There is one missing step:
+
+x = if p1
+        then Just 4
+        else if p2 then Just 8
+            else Nothing
+
+z = case  (if p1 then Just 4 else if p2 then Just 8 else Nothing) of
+        Just v -> f v
+        _ -> n
+
+The important step is this: evaluation of symbolic if expressions for
+non-supported SMT data types.
+
+So, for example, I have: if p then x else y. And x and y are not supported by
+the SMT solver.
+
+If they are a data type... which is the only thing I could use as a case
+argument, then I can evaluate this with my new scheme.
+
+x: Just -> (p1 | p2, if p1 4 else 8)
+   Nothing -> (!p1 & !p2)
+
+y: Just -> p3, 5
+   Nothing -> p4
+
+z = if p then x else y
+
+Evaluates to:
+
+z = Just -> (if p then p1 | p2 else p3, if p then if p1 4 else 8 else 5)
+    Nothing -> (if p then !p1 & !p2 else p4)
+
+I don't know. I think it's better. I'm pretty certain. That's all the stuff we
+were talking about.
+
+Basically the idea is: make the tags symbolic, make it very quick to access
+the tags when doing evaluation. This approach makes tags symbolic, and
+extremely quick to access. Not just tags, but also arguments, which are what
+is important for case.
+
+I want to try it, because I think it could be a big win.
+
+Question is, how would I implement this? What all needs to change?
+
+ExpH now will never result in a case statement. Just if statements.
+
+So I'll have ifEH. And ifEH will have to know how to merge two branches when
+the predicate is symbolic.
+
+If the predicate isn't symbolic, it can save some work and use the right thing
+immediately. Otherwise it has to distribute the predicate across all the
+fields.
+
+Now, instead of ConEH, let me use something, maybe
+
+DataEH = [(Name, Bool, [ExpH])]
+
+For each constructor the object could be, you give the conditions under which
+it is that constructor, and the arguments.
+
+Actually, I'm not sure we save anything by doing this. How about we create
+small arrays? Then we always have to deal with every case, and we might have
+one constructor whose predicate is "True", and all the others have predicate
+"False".
+
+Okay. I think that's fine. And easy.
+
+I say we should just keep everything the same we can except to change ExpH:
+
+Replace ConEH EID Name Type [ExpH]
+  with: DataEH EID (Map Tag (Bool, ExpH))
+(I can figure out which kind of map to use later)
+
+Replace CaseEH EID ExpH Sig ExpH ExpH
+  with: IfEH EID ExpH ExpH ExpH
+
+And everything else is fine.
+
+Now:
+* caseEH turns into ifEH, based on predicate.
+* ifEH merges DataEHs 
+* aconEH makes a singleton DataEH.
+
+Easy! This could actually be a very simple change. I want to try it...
+
+I need dinner first though.
+
+Tue Mar 12 19:27:02 EDT 2013
+
+Okay, dinner is had, so I'm diving in to figure out what problems we'll face.
+
+First question: how do we represent DataEH? How do we do the map?
+
+Ideally, in my opinion, we use tags and arrays. But let me save that for later
+optimization. Let me use a Data.Map. Basically it's a list that it keeps
+sorted. It's just easier to merge two maps that way.
+
+Good.
+
+So now this should be easy. Let me just dive in and see what happens. I'm sure
+issues will arise.
+
+Tue Mar 12 19:32:53 EDT 2013
+
+Things todo in the future:
+
+* don't share True or False
+* Switch to Tag and Array for constructors in DataEH
+
+Things to do now:
+
+* caseEH should convert to ifEH
+* ifEH should merge DataEHs if the argument is symbolic.
+
+Issue:
+* how should de_kconEH work now?
+  How do you convert a symbolic object to concrete?
+
+I suppose what I want is an assertion that the given constructor is specified
+with certainty. Otherwise it doesn't make sense.
+
+Issue:
+* how to represent True and False?
+
+I can't as a data type, because then we have an infinite loop.
+Probably want to make these primitive. But be careful to check for that case
+in inline! Or conEH I suppose...
+
+Okay, now, how do I convert DataEH?
+
+It has to be an if statement. Hmm... And ignore the ones that are false.
+
+Get the list of assocs. Filter out any that are false. Then do a fold, and
+combine using ifE.
+
+But for each one, I have to call appsE. Hopefully that's okay. We shall see.
+
+Tue Mar 12 21:05:19 EDT 2013
+
+Well, I'm close. Lots of things pass.
+
+Sudoku leads to a stack overflow now. But that's probably because I messed
+something up, or something.
+
+This is something to figure out another day. It is terribly important to
+figure out, because Sudoku is exactly the kind of case I hope to improve with
+this change. We shall see.
+

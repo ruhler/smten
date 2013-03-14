@@ -1,0 +1,572 @@
+
+Wed Mar 13 09:51:16 EDT 2013
+
+An interesting idea.
+
+Maybe, with this new approach, we can change the way we compile to HaskellF.
+
+Instead of:
+
+data Either a b = 
+    Left a
+  | Right b
+  | Either__s S.ExpH
+
+We should now be able to handle just as well:
+
+data Either a b = 
+    Left a
+  | Right b
+  | Either__s (Bool, a) (Bool, b)
+
+And case statements can work on it directly.
+
+Then the one thing we need to be able to support is conditionals.
+
+if_ :: Bool -> a -> a -> a
+
+Which knows how to merge the two symbolic conditions into one object.
+
+Another question which has come up:
+
+What do you do in this case:
+
+  if p 
+    then Left 5
+    else error "ahh!"
+
+I don't have a way to represent that in the current approach.
+I suppose one approach would be to add a field to every data type which is a
+potential error:
+
+
+Either:
+  Left: (pl, [l])
+  Right: (pr, [r])
+  __Error: (pe, [msg])
+
+And figure out how to propagate those properly.
+
+Because, for example, you might have:
+
+case (if p then Left 5 else error "ahh!") of
+    Left v -> Left v + 1
+    _ -> Right 0
+
+What should happen then?
+
+Left: (p, 6)
+Error: (not p, "ahh!")
+
+In other words, we have to propagate the error.
+
+I wonder if this is the problem I'm running into with Sudoku and ivp.
+
+Let me first figure out the broken core test case then. Because this could be
+the issue.
+
+|| desym:if (if ((free~20 :: Bool)) then True else False) then ?Lit? else if (if ((free~20 :: Bool)) then False else True) then ?Lit? else error case no match
+
+Ah, so here is an interesting problem with inferred value propagation.
+
+if p then 
+    a
+    else if p
+        then boom
+        else b
+
+Inferred value propagation can handle this just lovely. The boom goes away.
+
+But now consider:
+
+if (if p then True else False) then 
+    a
+    else if p
+        then boom
+        else b
+
+Same exact expression, but inferred value propagation is now helpless. That's
+bad.
+
+It shows the fragility of inferred value propagation, that's for sure.
+
+Can I somehow avoid things like: if p then True else False?
+
+If the argument to an if is symbolic, we are allowed to look at the branches,
+right? Not clear. Actually, it's fairly clear I should not be allowed to look
+at the branches.
+
+So, either inferred value propagation needs to get smarter, or I need to not
+create things like (if p then True else False).
+
+Much better to fix inferred value propagation in my opinion. But that's
+harder.
+
+Actually, when I force the If, I should be allowed to look at the branches.
+Because we don't force until we want the result. As long as the argument is
+symbolic...
+
+Unless we want to look at the argument and change it before forcing the
+values. Sadness.
+
+Hum. 
+
+Anyway, I think this could explain Sudoku. Inferred value propagation is
+failing. The most general solution is to improve inferred value propagation.
+
+Shall I try running arch_extract, see what happens?
+
+Wed Mar 13 10:14:19 EDT 2013
+
+I'm running into this bug with Errors. I do need an error branch.
+
+Okay, so two issues. Representing data types which may be error, and fixing
+inferred value propagation so it can handle things like:
+
+ if (if p then True else False)
+
+I want to simplify if p the True else False to just 'p'. But I can't do that
+until I try to look at the results.
+
+Now this is interesting. Let's say I do associate an error with everything.
+
+That means I need to do it for Bool too.
+
+So, Bool is:
+
+True, False, or Error, each in some different cases. Now if I have this at the
+level of assertion, I automatically know under what conditions the assertion
+could Error. That would be very nice to have for handling errors correctly.
+
+Another thing: how do we deal with integer types or literals?
+
+if p then 3 else 4
+
+The only way I have to represent this is as an if expression. But that's okay
+I think.
+
+But what about Bool? 
+ if p then True else False...
+
+It's like we don't want to treat Bool specially, but at some point we have to.
+
+Maybe integers should change to be a map from constructor to when that
+constructor happens: Integer -> ExpH.
+
+Then primitive functions over Integers would try all combinations.
+
+Wow. This feels like the kind of approach I would take if I were to implement
+my own SMT solving.
+
+What do SMT solvers add? The ability to have a fully symbolic thing. 
+
+Then how do we deal with:
+
+x <- free
+return $ if p then 3 else x
+
+What representation can I have for that? Similar questions occur for free
+booleans and bit vectors.
+
+Hmm...
+
+So I think, in summary...
+
+There is no quick solution here. I really ought to understand the new
+approach, clean up the code to use it, and do so properly. It will be a great
+opportunity to clean up the interpreter.
+
+Let me think about how to do things a little bit. Then if I have time
+remaining, do some minor code cleanup and bug fixes.
+
+Okay, so, what's the idea now?
+
+Question: how to represent symbolic things.
+
+Current approach: using if statements.
+
+    if p then Just 4 
+        else if q then Just 8   
+            else Nothing
+
+Problem with current approach: It is hard to evaluate a case expression. In
+order to know what the tag is, and what the arguments are, you have to
+traverse the entire expression. If there are different branches where the same
+tag appears, you end up matching against both separately? Or at least
+traversing a large number of branches.
+
+Proposed solution:
+
+Choose a representation for symbolic things which is amenable to case
+expressions: Make the tags and arguments immediate. Hope is that this avoids
+a potentially exponential blowup.
+
+Now, we have a class of things which can be symbolic, and need symbolic
+representations. Let me consider each class. Remember that each thing can have
+multiple different values, or it could have error. This is something easily
+captured by if expressions. How will I capture it now?
+
+Classes:
+ * Literals: Char, Bit, Integer
+ * Functions
+ * User defined (algebraic) data types
+
+Let's start with user defined data types, because I think that is fairly
+clear.
+
+For each different constructor, and Error, we list the conditions under which
+the symbolic thing could have that constructor (or be error), and the value of
+the arguments under that condition.
+
+How to convert the 'if' representation to this representation?
+
+c = if p then a else b
+
+For each constructor i with predicate p and arguments xs, we form now:
+
+c[i].p = if p then a[i].p else b[i].p
+c[i].xs = if p then a[i].xs else b[i].xs
+
+This is a general approach. It works very well. Note: we need an index for _|_
+too. You can ask about optimizations later: what if a constructor could never
+happen? Then don't include it, and other such optimizations. I should not
+worry about these things now.
+
+Note: we still have if expressions in the predicate. But this is a different
+kind of thing than our ExpH. It's a pure boolean formula? No. That's actually
+not true. Because 'p' can be anything you wrote. In fact, 'p' itself could
+contain potentially True, potentially False, and potentially _|_. I have to
+understand what to do in that case. Somehow we need to stop the recursion.
+
+So, to first order, this representation works fine. But we need to understand
+how to represent predicates to the SMT solver, and something about that has to
+be different. Let me come back to this.
+
+Literals:
+
+For example to start, Char.
+
+What things do we do with characters? For example, in user defined data types,
+the only things we do are case expressions. That's why it makes sense to
+optimize the representation for case expressions. So, what do we do with
+Characters?
+
+- to/from integer
+- putChar
+
+I think it makes sense to have a map: Char -> Predicate. This says, for each
+character, under what conditions it could hold. We also need a way to
+represent _|_. Under what conditions is it _|_?
+
+In general a map should work. For efficiency, we may wish to specialize
+things, for example if we know things for certain. But we do need a way to
+talk about errors.
+
+Integer literals I would say the same for. Except there is one difference.
+Integer literals can also be primitive symbolic.
+
+They can be a mix of concrete and symbolic. The symbolic's may overlap. They
+can also be error.
+
+So I would say it as follows:
+ * map from Integer -> Predicate
+ * list of [(Predicate, Name)] - for primitive symbolic values
+ * Predicate for Error
+
+Now, for example, when we want to do (==), we would do it something like:
+
+Hmm... I wonder if it just makes more sense to keep symbolic literals
+represented using if statements. I feel like it can't hurt that much.
+Certainly not as much as for user defined data types.
+
+Okay, how about functions? The only thing you can do to a function is apply
+it.
+
+(if p then f else g) x
+
+And I don't think any sharing makes sense there. So, again, if statements seem
+good. But note it could also be error. No ordering makes sense for functions.
+As opposed to Char or Integer, where some orderings do make sense.
+
+So, here's what I'm sensing:
+
+* Use explicit canonical representation for symbolic, user defined data types
+Including representation of 'Error'.
+* If it's more efficient, do the same for Integers, but to start, don't worry
+  about it
+* Use if for functions.
+
+Hmm... I suppose you could collapse functions into a list:
+
+[(Predicate, ExpH -> ExpH)].
+
+That may be more efficient. But it may not be, because the predicates may
+share structure.
+
+Oh, this is an interesting point.
+
+Consider the two different representations for a symbolic thing:
+
+if a
+  then
+    if b then
+           if c then x
+                else y
+         else w
+  else z
+
+vs.
+
+(a && b && c, x)
+(a && b && not c, y)
+(a && not b, w)
+(not a, z)
+
+Is one not more compact than the other? Isn't the first more compact?
+Or is it, because we have sharing they are the same?
+
+And, looking at it this way suggests an alternate representation for a
+predicate: A conjunction of positive or negative things. Not sure if that
+helps any.
+
+So that's another issue to understand better. In reality, I think it's the
+heart of the issue at hand.
+
+But note: we actually have something slightly different, because we group
+things by tag, not by end value (for user defined data types). It's like we
+are flipping things upside-down.
+
+Interesting. Let's say the case above was for functions. Isn't it much easier
+to map over the list of functions without consulting the predicates? Except
+that, we have to turn the result into an if statement based on the different
+results, so no clear win there.
+
+Well, time's up for this for now. When I come back: review questions about how
+to represent predicates. How to handle predicates with errors, that sort of
+thing. It would also be worth spending a little time to think about inferred
+value propagation in this framework. Does it turn into just detecting when
+certain branches can't occur? Do we have to go inside of the arguments? I
+think so.
+ 
+Wed Mar 13 16:35:26 EDT 2013
+
+Okay, thought about this a bunch. Here's where I'm left at:
+
+* Keep everything but DataEH the same. It doesn't help to organize symbolic
+  functions, or Integers, or Chars, or such things differently from if
+  expressions.
+
+* Add _|_ as possible constructor for DataEH. The argument should be a
+  symbolic string.
+
+* There is a very meaningful way to merge:
+    if p then a else b
+  When 'p' may be an error. I wrote it down in my notebook. It's not hard. It
+  explicitly uses &&, ||, and not when combining predicates.
+
+* distinguish between a generic Bool (which could be _|_), and a predicate
+  (which can't be _|_, and which we never do case on).
+  How? Treat Bool like any other user defined data type. But when you have a
+  predicate, initialize things with LitEH True, LitEH False, etc...
+  And use special predicate combination functions which know how to operate on
+  those things. (This is a little bit messy...)
+
+* I can optimize haskellf, but don't even think or worry about that until I've
+  improved the interpreter.
+
+This is... a little sad. It seems messy to me.
+
+Wouldn't it be easier instead to do like my iffy thing before?
+
+Basically the question is: given a symbolic data type, return for me a boolean
+predicate which says if it belongs to a particular constructor, and give me a
+list of arguments in that case. And the implementation is just: walk through
+the expression and figure that out.
+
+In other words, it's the same as I have already tried. But note: I may want to
+do something special for error, because we want to conditionally propagate
+errors.
+
+This alternative approach is more appealing to me. Not much change. No special
+boolean representation. It should still handle the issue with case expressions
+just fine.
+
+Ug. In short, I'm feeling like this actually won't be a major improvement in
+things. I miss my iffy branch...
+    
+
+The other thing is: IVP is totally messed up. It's way too specific. I should
+generalize it.
+
+Certainly I'd like to try using the SMT solver to help me with that. But
+that's a totally separate experiment to run, which I'm not going to get into
+now. Can I not make IVP better now? Will it not help?
+
+I played with this a lot before, but a lot has also changed, so it might be
+worth trying again.
+
+I wonder if we could work backwards in IVP. Rather than saying: here is a
+branch, let me learn everything I can for later in this branch. Say: here is a
+condition, let me look at everything I know (in terms of predicates) and then
+ask if I can learn anything about this condition.
+
+It's like: I basically want my own mini SMT solver that I can do purely, and
+maybe it doesn't always matter if it is right or not?
+
+But that's the thing. It does matter. For when I convert symbolic Symbolic to
+concrete Symbolic.
+
+How can I figure out if this is the problem?
+
+I need to figure out what's going on. What kind of expressions are we working
+with here?
+
+In other words... I want to have more confidence about what the problem is
+before I start trying to fix it. I think that will be more successful.
+
+So maybe I should run some experiments designed to understand the issue.
+
+I kind of want to work off the master branch.
+
+Okay, so what's the deal?
+
+Understand why arch_extract blows up.
+
+How? Isolate the query that blows up. Minimize the test case. I should know
+the predicate, I know the rules. Just start right there right away. Simplify
+it down to a single assertion, and see if we still have the same problem. Then
+focus in on that.
+
+Yes. That makes sense. Simplify. Isolate the problem. Understand the problem.
+Then I'll be able to fix it correctly, rather than all this guess and check
+stuff, which I don't really think will be effective.
+
+Fine then. Let me get started. Without IVP, because I see no issue to worry
+myself about that. Without iorefs, because I don't want to add that unless I
+can clean it up, and I don't think it's the heart of the problem.
+
+I just need to find the heart of the problem. Then everything will get better
+quickly I expect.
+
+Step 1: Minimize the problem.
+
+Try to reduce the code to a single query where I know everything in advance.
+
+Not Architecutral Step: [(1,"ra"), (2,"rb"), (1,"ra"), (1,"ra"), (2,"rb")]
+UNSAFEPRINT: (3, 3)
+
+Hypothesis: problem is the following:
+
+runSMT $ nonArchStepNonContainedShared aek seq0 worklist
+ where 
+    aek = 
+
+Ug. This is going to be hard to get inside of. I suppose I can trace it back.
+We shall see.
+
+No. I don't know how to minimize it.
+
+How does that help me make progress? It doesn't.
+
+Okay, hypothesis is: we blow up inside an assertion. I should be able to test
+that with SCCs.
+
+This is a good question:
+ - is the problem in concrete evaluation or symbolic evaluation?
+
+All the time is in USE, which splits between caseEH and Sharing (inside
+fromExpH).
+
+Why do we get the caseEH? I'm not sure.
+
+USE does the following:
+- runSymbolic
+- mkfree
+- mkassert
+
+Aha. So: runSymbolic is responsible for all the caseEHs, while mkasserts is
+responsible for all the SHARING, because it's doing the assertions. Makes
+sense to me.
+
+Now, what happens if I run for much longer? Let me do that. I upped the stack
+size.
+
+While I wait a little bit for more info from that, let me now look over
+runSymbolic to understand how it forces things.
+
+Presumably it takes a Symbolic a which is converted from an ExpH.
+This is what happens in the 'useP' call, which is what happens when you call
+query.
+
+
+Wow! Looking at progress with arch_extract. It makes a lot more progress than
+when we use ioref!
+
+Okay, maybe not a whole lot more, but it certainly gets over the next step
+pretty quickly. Very interesting...
+
+Interesting indeed. In this case the CASE_EH use goes down.
+
+All the time is in USE.
+
+24% time, 40% mem in conversion, split over SHARING and CONVERT. 
+50% of time, 30% mem in RunCommands.
+
+So, what it looks like is that we have a really large SMT expression we are
+generating. Is this expected? Is sharing violated? Do we need IVP?
+
+Well, let me look at the expression and see. That's easy enough.
+
+Things I see:
+
+* case foo of
+    True -> True
+    _ ->  True
+
+  I should be able to simplify this to 'True', right?
+
+* case foo of
+     True -> True
+     _ -> False
+
+  I should be able to simplify this to 'False', right?
+
+* case foo of
+     True -> case foo of
+                True -> case foo of
+                            True -> 4
+    ...
+
+  IVP should simplify this.
+
+* violation of sharing!
+    I see a complex case expression appear multiple times.
+        - looks like it's coming from default cases not being shared.
+    I see: free~1 + 1 appear multiple times.
+
+* primEq free1 free1
+   
+  I should be able to simplify this to 'True'.
+
+
+Note: pretty printer should simplify concrete numeric types instead of writing
+them out as a product of sums...
+
+Also, don't indent further on case branch, fall back to beginning of line
+indented slightly.
+
+Interesting. So here's what I'm thinking:
+
+* there is certainly a bug in sharing, I suspect due to case desugaring.
+  Figure out the bug and fix it.
+* I feel like it would be great if I could do an expression simplification
+  step, where I'm allowed to look at anything I want. We already do this in
+  SMT syntax, but it might be good to do it all in ExpH first.
+* I would love to have a general IVP solution. Maybe this is part of
+  simplification.
+
+Really it would be great to know during evaluation when something is being
+used in a context of an assertion (hence we are allowed to look at it) or not.
+
+Things to think about...
+

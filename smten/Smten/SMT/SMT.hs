@@ -47,6 +47,8 @@ module Smten.SMT.SMT (
     SMT, query, query_Used, nest, use, realize,
     ) where
 
+import Debug.Trace
+
 import Data.Functor
 import Data.Unique
 import Data.Typeable
@@ -133,10 +135,13 @@ smtt t = do
 smte' :: ExpH -> SMT ([SMT.Command], SMT.Expression)
 smte' e = {-# SCC "SmtE" #-} do
     qs <- gets qs_qs 
-    let se = {-# SCC "FROMEXPH" #-} fromExpH ({-# SCC "IVP" #-} ivp e)
+    let --se = {-# SCC "FROMEXPH" #-} fromExpH ({-# SCC "IVP" #-} ivp e)
+        se = {-# SCC "FROMEXPH" #-} fromExpH e
+        --se' = trace ("ASSERT: " ++ pretty se) se
+        se' = se
         mkye :: CompilationM ([SMT.Command], SMT.Expression)
         mkye = do
-          ye <- smtE se
+          ye <- smtE se'
           cmds <- smtD
           return (cmds, ye)
     ((cmds, ye), qs') <- liftIO . attemptIO $ runCompilation mkye qs
@@ -219,7 +224,7 @@ realizefree (Sig _ t)
   = return (error $ "unexpected realizefree type: " ++ pretty t)
 
 query_Used :: (Used (Realize a)) -> SMT (Maybe a)
-query_Used (Used ctx rx) = do
+query_Used (Used ctx rx) = {-# SCC "QUERY_USED" #-} do
     ctxs <- gets qs_ctx
     if (ctx `notElem` ctxs)
         then error "query_Used: invalid context for Used"
@@ -231,7 +236,7 @@ query_Used (Used ctx rx) = do
         _ -> error $ "Smten.SMT.SMT.query_Used: check failed"
         
 query :: Symbolic (Realize a) -> SMT (Maybe a)
-query sr = nest (use sr >>= query_Used)
+query sr = {-# SCC "QUERY" #-} nest (use sr >>= query_Used)
 
 mkfree :: Sig -> SMT ()
 mkfree s@(Sig nm t) | isPrimT t = do
@@ -247,13 +252,13 @@ mkassert p = {-# SCC "MKASSERT" #-}do
   runCmds [SMT.Assert yp]
 
 use :: Symbolic a -> SMT (Used a)
-use s = do
+use s = {-# SCC "USE" #-} do
     ctx <- gets qs_ctx
     fid <- gets qs_freeid
-    let (fid', frees, asserts, v) = runSymbolic ctx fid s
+    let (fid', frees, asserts, v) = {-# SCC "RUN_SYMBOLIC" #-} runSymbolic ctx fid s
     modify $ \qs -> qs { qs_freeid = fid' }
-    mapM mkfree frees
-    mapM mkassert asserts
+    {-# SCC "MKFREES" #-} mapM mkfree frees
+    {-# SCC "MKASSERTS" #-} mapM mkassert asserts
     return (Used (head ctx) v)
     
 -- | Run the given query in its own scope and return the result.
@@ -269,7 +274,7 @@ nest q = do
 -- | Update the free variables in the given expression based on the current
 -- model.
 realize :: ExpH -> Realize ExpH
-realize e = Realize $ do
+realize e = {-# SCC "REALIZE" #-} Realize $ do
     freevars <- gets qs_freevars
     freevals <- gets qs_freevals
     fvs <- case freevals of

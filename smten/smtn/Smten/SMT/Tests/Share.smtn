@@ -38,11 +38,27 @@ diffctx = do
         return (x - y)
     test "diffctx" (r == Just 4)
 
+casedesugar :: SMT ()
+casedesugar = do
+    r <- query $ do
+            x <- free
+            a <- free
+            b <- free
+            c <- free
+            d <- free
+            assert $ 5 == case () of
+                            _ | a, b, c, d -> 5
+                              | otherwise -> (x + x + x + x + x)
+            assert (not d)
+            return x
+    test "casedesugar" (r == Just (1 :: Integer))
+
 qmain :: SMT ()
 qmain = do
     simple
     samectx
     diffctx
+    casedesugar
 
 main :: IO ()
 main = do
