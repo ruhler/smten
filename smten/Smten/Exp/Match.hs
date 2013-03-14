@@ -17,6 +17,7 @@ import Smten.Type
 import Smten.Sig
 import Smten.Fresh
 import Smten.Exp.Exp
+import Smten.Exp.Utils
 import Smten.Exp.Sugar
 
 data Pat = ConP Name [Pat]
@@ -46,6 +47,17 @@ tupleP ps = ConP (tupleN (length ps)) ps
 sigP :: Pat -> Type -> Pat
 sigP = SigP
 
+-- Share the given expression properly.
+sharedM :: Exp -> (Exp -> Fresh Exp) -> Fresh Exp
+sharedM x f | isSimple x = f x
+sharedM x f = do
+   xv <- fresh (Sig (name "_s") UnknownT)
+   body <- f (varE xv)
+   return $
+     if xv `elem` (free body)
+        then  letE xv x body 
+        else body
+
 -- | Perform a pattern match.
 -- case x of
 --     p -> yv
@@ -60,13 +72,9 @@ patM x (LitP e) yv n =
   let p = appsE (varE (Sig (name "==") UnknownT)) [e, x]
   in return $ ifE p yv n
 patM x (SigP p t) yv n = patM (sigE x t) p yv n
-patM x (ConP nm ps) yv n | isSimple n = do
-      y <- clauseM [simpleMA ps yv []] n
-      return $ CaseE x (Sig nm UnknownT) y n
-patM x p y n = do
-  nv <- fresh (Sig (name "_n") UnknownT)
-  body <- patM x p y (varE nv)
-  return $ letE nv n body
+patM x (ConP nm ps) yv n = sharedM n $ \nv -> do
+      y <- clauseM [simpleMA ps yv []] nv
+      return $ CaseE x (Sig nm UnknownT) y nv
 
 data Guard = PatG Pat Exp
            | LetG [(Pat, Exp)]
@@ -86,13 +94,9 @@ guardM (BoolG x) y n = return (ifE x y n)
 --   | otherwise = n
 guardsM :: [Guard] -> Exp -> Exp -> Fresh Exp
 guardsM [] y _ = return y 
-guardsM (g:gs) y n | isSimple n = do
-    y' <- guardsM gs y n
-    guardM g y' n
-guardsM gs y n = do
-    nv <- fresh (Sig (name "_n") UnknownT)
-    body <- guardsM gs y (varE nv)
-    return $ letE nv n body
+guardsM (g:gs) y n = sharedM n $ \nv -> do
+    y' <- guardsM gs y nv
+    guardM g y' nv
 
 data Body = Body [Guard] Exp
     deriving (Eq, Show)
@@ -124,9 +128,9 @@ simpleA p e ls = Alt p (WBodies [Body [] e] ls)
 --    alt 
 --    _ -> n
 altM :: Exp -> Alt -> Exp -> Fresh Exp
-altM x (Alt p bs) n = do
-    body <- wbodiesM bs n
-    patM x p body n
+altM x (Alt p bs) n = sharedM n $ \nv -> do
+    body <- wbodiesM bs nv
+    patM x p body nv
 
 -- Match multiple alternatives:
 --   case x of
@@ -136,13 +140,9 @@ altM x (Alt p bs) n = do
 --     _ -> n
 altsM :: Exp -> [Alt] -> Exp -> Fresh Exp
 altsM _ [] n = return n
-altsM x (a:as) n | isSimple x = do
-    n' <- altsM x as n
-    altM x a n'
-altsM x as n = do
-    xv <- fresh (Sig (name "_x") UnknownT)
-    body <- altsM (varE xv) as n
-    return $ letE xv x body
+altsM x (a:as) n = sharedM x $ \xv -> do
+    n' <- altsM xv as n
+    altM xv a n'
 
 data MAlt = MAlt [Pat] WBodies
     deriving (Eq, Show)
@@ -168,9 +168,9 @@ maltM args (MAlt ps b) n = do
       --        _ -> n
       mkcases :: [(Pat, Exp)] -> WBodies -> Exp -> Fresh Exp
       mkcases [] bs n = wbodiesM bs n
-      mkcases ((p, x):ps) y n = do
-        body <- mkcases ps y n
-        patM x p body n
+      mkcases ((p, x):ps) y n = sharedM n $ \nv -> do
+        body <- mkcases ps y nv
+        patM x p body nv
   mkcases (zip ps (map varE args)) b n
 
 -- Match multiple multi-argument alternatives
