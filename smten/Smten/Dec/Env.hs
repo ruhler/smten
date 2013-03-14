@@ -207,7 +207,7 @@ lookupTypeD :: (MonadPlus m, MonadError String m) => Env -> Name -> m Dec
 lookupTypeD e n = lookupDataD e n `mplus` lookupClassD e n
 
 -- | Look up an InstD in the given Environment.
-lookupInstD :: Env -> Class -> Failable Dec
+lookupInstD :: (MonadError String m) => Env -> Class -> m Dec
 lookupInstD env (Class n t) =
   let theInstD :: Dec -> Bool
       theInstD (InstD _ (Class nm ts) _)
@@ -251,7 +251,7 @@ lookupVarValue e s = snd <$> lookupVar e s
 -- instance.
 --
 -- Fails if the variable could not be found in the environment.
-lookupVarType :: Env -> Name -> Failable Type
+lookupVarType :: (MonadError String m) => Env -> Name -> m Type
 lookupVarType env n = do
   case HT.lookup n (e_vitable env) of
     Just (DecVI (ValD (TopSig _ _ t) _)) -> return t
@@ -261,7 +261,7 @@ lookupVarType env n = do
 
 -- | Given the name of a method and a specific class instance for the method,
 -- return the type of that method for the specific instance.
-lookupMethodType :: Env -> Name -> Class -> Failable Type
+lookupMethodType :: (MonadError String m) => Env -> Name -> Class -> m Type
 lookupMethodType env n (Class _ ts) = do
     case HT.lookup n (e_vitable env) of
         Just (ClassVI _ vars _ t _) ->
@@ -290,7 +290,7 @@ lookupVarInfo env (Sig n t) =
 -- | Look up the context specified for the given variable with given
 -- signature.
 -- Fails if the variable is not declared.
-lookupVarContext :: Env -> Sig -> Failable Context
+lookupVarContext :: (MonadError String m) => Env -> Sig -> m Context
 lookupVarContext env (Sig n t) = 
   case HT.lookup n (e_vitable env) of
      Just (DecVI (ValD (TopSig _ ctx st) _)) ->

@@ -1,0 +1,8 @@
+
+module Smten.Tests.MalTyped.Ambiguous where
+
+-- The type of x is ambiguous. This should be rejected.
+foo :: Integer
+foo = let x = error "what is the type of x?"
+      in 3
+

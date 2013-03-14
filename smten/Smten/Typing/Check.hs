@@ -34,11 +34,13 @@
 -------------------------------------------------------------------------------
 
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE PatternGuards #-}
 
-module Smten.Typing.Check (TypeCheck(..)) where
+module Smten.Typing.Check (typecheck) where
 
-import Data.List(nub)
+import Control.Monad.Error
+import Control.Monad.Reader
 
 import Smten.Failable
 import Smten.Name
@@ -49,157 +51,183 @@ import Smten.Exp
 import Smten.Dec
 import Smten.Type
 
-class TypeCheck a where
-    -- | Type check the given object under the given environment.
-    -- Fails if there is an error.
-    typecheck :: Env -> a -> Failable ()
 
 type TypeEnv = [(Name, Type)]
 
+-- TODO: add Context to this environment, and use it for instcheck and
+-- checkmeth.
+data TCS = TCS {
+    tcs_env :: Env,
+    tcs_tyvars :: [TyVar],
+    tcs_vars :: TypeEnv
+}
+
+type TC = ReaderT TCS Failable
+
+class TypeCheck a where
+    -- | Type check the given object.
+    -- Fails if there is a type error.
+    typecheckM :: a -> TC ()
+
 instance TypeCheck [Dec] where
-    typecheck e = mapM_ (typecheck e)
+    typecheckM = mapM_ typecheckM
+
+instance TypeCheck Con where
+    typecheckM (Con n ts) = mapM_ typecheckM ts
+
+instance TypeCheck Type where
+    typecheckM t
+      | ConT {} <- t = return ()
+      | VarT n _ <- t = do
+           m <- asks tcs_tyvars
+           if n `notElem` (map tyVarName m)
+                then throw $ "type variable " ++ pretty n ++ " not in scope"
+                else return ()
+      | AppT a b <- t = typecheckM a >> typecheckM b
+      | NumT {} <- t = return ()
+      | OpT _ a b <- t = typecheckM a >> typecheckM b
+      | UnknownT <- t = throw $ "unknown type encountered"
+
+instance TypeCheck Sig where
+    typecheckM (Sig n t) = typecheckM t
+
+addVarTs :: VarTs a => a -> TCS -> TCS
+addVarTs x tcs = tcs { tcs_tyvars = [TyVar n k | (n, k) <- varTs x]  ++ tcs_tyvars tcs }
+
+instance TypeCheck TopSig where
+    -- TODO: check the context too?
+    typecheckM (TopSig n c t) = local (addVarTs t) $ typecheckM t
+
+instance TypeCheck Exp where
+   typecheckM (LitE {}) = return ()
+
+   typecheckM c@(ConE s@(Sig n ct)) = do
+      typecheckM ct
+      env <- asks tcs_env
+      texpected <- lookupDataConType env n
+      if isSubType texpected ct
+         then return ()
+         else throw $ "expecting type " ++ pretty texpected ++ ", but found type " ++ pretty ct ++ " in data constructor " ++ pretty n
+
+   typecheckM (VarE (Sig n t)) = do
+      typecheckM t
+      tenv <- asks tcs_vars
+      case lookup n tenv of
+          Just t' | t == t' -> return ()
+          Just t' -> throw $ "expected variable of type:\n  " ++ pretty t'
+                     ++ "\nbut " ++ pretty n ++ " has type:\n  " ++ pretty t
+          Nothing -> do
+              env <- asks tcs_env
+              texpected <- lookupVarType env n
+              if isSubType texpected t
+                  then return ()
+                  else throw $ "expected variable of type:\n  " ++ pretty texpected
+                             ++ "\nbut " ++ pretty n ++ " has type:\n  " ++ pretty t
+
+   typecheckM (AppE f x) = do    
+      typecheckM f
+      typecheckM x
+      case typeof f of
+         (AppT (AppT (ConT n _) a) _) | n == name "->" ->
+             if a == typeof x
+                 then return ()
+                 else throw $ "expected type " ++ pretty a ++
+                     " but got type " ++ pretty (typeof x) ++
+                     " in expression " ++ pretty x
+         t -> throw $ "expected function type, but got type " ++ pretty t ++ " in expression " ++ pretty f
+
+   typecheckM (LamE (Sig n t) x)
+     = local (\tcs -> tcs { tcs_vars = (n, t) : tcs_vars tcs}) $ typecheckM x
+
+   typecheckM (CaseE x k y n) = do
+     typecheckM x
+     typecheckM k
+     typecheckM y
+     typecheckM n
+
+     -- Verify the argument type matches the type of the constructor.
+     let at = last $ de_arrowsT (typeof k)
+     if at == typeof x
+         then return ()
+         else throw $ "expected argument type " ++ pretty at ++
+                 " but got type " ++ pretty (typeof x) ++
+                 " in expression " ++ pretty x
+
+     -- Verify y has the right type.
+     let yt = arrowsT (init (de_arrowsT (typeof k)) ++ [typeof n])
+     if yt == typeof y
+         then return ()
+         else throw $ "expected type " ++ pretty yt ++
+                 " but got type " ++ pretty (typeof y) ++
+                 " in expression " ++ pretty y
+        
 
 instance TypeCheck Dec where
-    typecheck env =
-      let checkdec :: Dec -> Failable ()
-          checkdec d@(ValD (TopSig n c t) e) =
-            onfail (\s -> throw $ s ++ "\n in declaration " ++ pretty d) $ do
-              checkexp [] e
-              if (typeof e /= t)
-                then throw $ "checkdec: expecting type " ++ pretty t
-                            ++ " but found type " ++ pretty (typeof e)
-                            ++ " in expression " ++ pretty e
-                else return ()
-              instcheck env c e
+    typecheckM d@(ValD ts@(TopSig n c t) e) =
+      onfail (\s -> throw $ s ++ "\n in declaration " ++ pretty d) $ do
+        typecheckM ts
+        local (addVarTs ts) $ typecheckM e
+        if (typeof e /= t)
+          then throw $ "expecting type " ++ pretty t
+                      ++ " but found type " ++ pretty (typeof e)
+                      ++ " in expression " ++ pretty e
+          else return ()
+        env <- asks tcs_env
+        instcheck env c e
 
-          -- TODO: shouldn't we check that type signatures don't have any partially
-          -- applied types?
-          checkdec d@(DataD n vs cs) =
-            onfail (\s -> throw $ s ++ "\n in declaration " ++ pretty d) $
-               mapM_ (checkcon vs) cs
-          checkdec (ClassD {}) = return ()
+    typecheckM d@(DataD n vs cs) =
+      onfail (\s -> throw $ s ++ "\n in declaration " ++ pretty d) $
+         local (\tcs -> tcs { tcs_tyvars = vs }) (mapM_ typecheckM cs)
 
-          checkdec d@(InstD ctx cls@(Class nm ts) ms) =
-            let checkmeth :: Method -> Failable () 
-                checkmeth m@(Method n b) =
-                  onfail (\s -> throw $ s ++ "\n in method " ++ pretty n) $ do
-                    checkexp [] b
-                    texpected <- lookupMethodType env n cls
-                    if typeof b /= texpected
-                        then throw $ "checkmeth: expected type " ++ pretty texpected
-                                ++ " but found type " ++ pretty (typeof b)
-                                ++ " in Method " ++ pretty m
-                        else return ()
-                    -- TODO: use the context from the signature
-                    instcheck env ctx b
+    typecheckM (ClassD {}) = return ()
+
+    typecheckM d@(InstD ctx cls@(Class nm ts) ms) =
+      let checkmeth m@(Method n b) =
+            onfail (\s -> throw $ s ++ "\n in method " ++ pretty n) $ do
+              env <- asks tcs_env
+              texpected <- lookupMethodType env n cls
+              local (addVarTs texpected) $ typecheckM b
+              if typeof b /= texpected
+                  then throw $ "expected type " ++ pretty texpected
+                          ++ " but found type " ++ pretty (typeof b)
+                          ++ " in Method " ++ pretty m
+                  else return ()
+              -- TODO: use the context from the signature
+              instcheck env ctx b
     
-                methdefined :: [Method] -> TopSig -> Bool 
-                methdefined ms (TopSig n _ _) = n `elem` [mn | Method mn _ <- ms]
-            in onfail (\s -> throw $ s ++ "\n in declaration " ++ pretty d) $ do
-                 mapM_ checkmeth ms
-                 ClassD clsctx _ pts cms <- lookupClassD env nm 
-                 case filter (not . methdefined ms) cms of
-                    [] -> return ()
-                    xs -> throw $ "methods not defined: " ++ show [pretty n | TopSig n _ _ <- xs]
-                 let assigns = concat [assignments (tyVarType p) c | (p, c) <- zip pts ts]
-                 mapM_ (satisfied env ctx) (assign assigns clsctx)
-          checkdec d@(PrimD {}) = return ()
-
-          checkcon :: [TyVar] -> Con -> Failable ()
-          checkcon m (Con n ts) = mapM_ (checktype m) ts
-
-          checktype :: [TyVar] -> Type -> Failable ()
-          checktype m t
-            | VarT n _ <- t
-            , n `notElem` (map tyVarName m) = throw $ "type variable " ++ pretty n ++ " not in scope"
-            | AppT a b <- t = checktype m a >> checktype m b
-            | OpT _ a b <- t = checktype m a >> checktype m b
-            | UnknownT <- t = throw $ "unknown type encountered"
-            | otherwise = return ()
-
-          -- checkexp tenv e
-          -- Type check an expression.
-          --    tenv - a mapping from bound variable name to type
-          --    e - the expression to typecheck
-          --  fails if expression does not type check.
-          checkexp :: TypeEnv -> Exp -> Failable ()
-          checkexp _ (LitE {}) = return ()
-
-          checkexp _ c@(ConE s@(Sig n ct)) = do
-             texpected <- lookupDataConType env n
-             if isSubType texpected ct
-                then return ()
-                else throw $ "checkexp: expecting type " ++ pretty texpected ++ ", but found type " ++ pretty ct ++ " in data constructor " ++ pretty n
-
-          checkexp tenv (VarE (Sig n t)) =
-             case lookup n tenv of
-                 Just t' | t == t' -> return ()
-                 Just t' -> throw $ "expected variable of type:\n  " ++ pretty t'
-                            ++ "\nbut " ++ pretty n ++ " has type:\n  " ++ pretty t
-                 Nothing -> do
-                     texpected <- lookupVarType env n
-                     if isSubType texpected t
-                         then return ()
-                         else throw $ "expected variable of type:\n  " ++ pretty texpected
-                                    ++ "\nbut " ++ pretty n ++ " has type:\n  " ++ pretty t
-
-          checkexp tenv (AppE f x) = do    
-             checkexp tenv f
-             checkexp tenv x
-             case typeof f of
-                (AppT (AppT (ConT n _) a) _) | n == name "->" ->
-                    if a == typeof x
-                        then return ()
-                        else throw $ "checkexp app: expected type " ++ pretty a ++
-                            " but got type " ++ pretty (typeof x) ++
-                            " in expression " ++ pretty x
-                t -> throw $ "expected function type, but got type " ++ pretty t ++ " in expression " ++ pretty f
-
-          checkexp tenv (LamE (Sig n t) x) = checkexp ((n, t):tenv) x
-
-          checkexp tenv (CaseE x k y n) = do
-            checkexp tenv x
-            checkexp tenv y
-            checkexp tenv n
-
-            -- Verify the argument type matches the type of the constructor.
-            let at = last $ de_arrowsT (typeof k)
-            if at == typeof x
-                then return ()
-                else throw $ "checkexp case: expected argument type " ++ pretty at ++
-                        " but got type " ++ pretty (typeof x) ++
-                        " in expression " ++ pretty x
-
-            -- Verify y has the right type.
-            let yt = arrowsT (init (de_arrowsT (typeof k)) ++ [typeof n])
-            if yt == typeof y
-                then return ()
-                else throw $ "checkexp case: expected type " ++ pretty yt ++
-                        " but got type " ++ pretty (typeof y) ++
-                        " in expression " ++ pretty y
-      in checkdec
+          methdefined :: [Method] -> TopSig -> Bool 
+          methdefined ms (TopSig n _ _) = n `elem` [mn | Method mn _ <- ms]
+      in onfail (\s -> throw $ s ++ "\n in declaration " ++ pretty d) $ do
+           local (addVarTs ts) $ mapM_ checkmeth ms
+           env <- asks tcs_env
+           ClassD clsctx _ pts cms <- lookupClassD env nm 
+           case filter (not . methdefined ms) cms of
+              [] -> return ()
+              xs -> throw $ "methods not defined: " ++ show [pretty n | TopSig n _ _ <- xs]
+           let assigns = concat [assignments (tyVarType p) c | (p, c) <- zip pts ts]
+           mapM_ (satisfied env ctx) (assign assigns clsctx)
+    typecheckM d@(PrimD ts) =
+      onfail (\s -> throw $ s ++ "\n in declaration " ++ pretty d) $ do
+        typecheckM ts
 
 -- Assert the given class requirement is satisfied.
-satisfied :: Env -> Context -> Class -> Failable ()
+satisfied :: (MonadError String m) => Env -> Context -> Class -> m ()
 satisfied e c cls = do
     let -- Get the immediate context implied by the given class.
         -- For example, getclassctx (Ord Foo) would return [Eq Foo].
-        getclassctx :: Class -> Failable Context
         getclassctx (Class nm ts) = do
             ClassD ctx _ pts _ <- lookupClassD e nm
             let assigns = concat [assignments (tyVarType p) c | (p, c) <- zip pts ts]
             return (assign assigns ctx)
 
         -- expand a context by including all classes implied by it.
-        expand :: Context -> Context -> Failable Context
         expand done [] = return done
         expand done todo = do
             let todo' = filter (flip notElem done) todo
             immediates <- mapM getclassctx todo'
             expand (done ++ todo) (concat immediates)
     fullc <- expand [] c
-    let sat :: Class -> Failable ()
-        sat cls | cls `elem` fullc = return ()
+    let sat cls | cls `elem` fullc = return ()
         sat cls@(Class _ ts) = do
             InstD ctx (Class _ pts) _ <- lookupInstD e cls
             let assigns = concat [assignments p c | (p, c) <- zip pts ts]
@@ -208,11 +236,16 @@ satisfied e c cls = do
 
 -- | Verify all the needed class instances are either in the context or
 -- declared for the given expression.
-instcheck :: Env -> Context -> Exp -> Failable ()
+--
+-- TODO: incorporate this into the rest of the type checking traversal.
+instcheck :: (MonadError String m) => Env -> Context -> Exp -> m ()
 instcheck env c e = do
-    let check :: Sig -> Failable ()
+    let check :: (MonadError String m) => Sig -> m ()
         check s = do
             ctx <- lookupVarContext env s
             mapM_ (satisfied env c) ctx
     mapM_ check (free e)
+
+typecheck :: (TypeCheck a) => Env -> a -> Failable ()
+typecheck env x = runReaderT (typecheckM x) (TCS env [] [])
 

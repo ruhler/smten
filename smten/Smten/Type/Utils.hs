@@ -102,6 +102,9 @@ instance VarTs Type where
     varTs (OpT o a b) = nub $ varTs a ++ varTs b
     varTs _ = []
 
+instance (VarTs a) => VarTs [a] where
+    varTs xs = nub $ concatMap varTs xs
+
 kindof :: Type -> Kind
 kindof t 
  | ConT {} <- t = StarK

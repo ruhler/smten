@@ -92,10 +92,11 @@ proc badtypetest {name} {
 badtypetest "BadType1"
 badtypetest "BadType2"
 badtypetest "Ctx"
+badtypetest "Ambiguous"
 badtypetest "InstCtx"
 badtypetest "ClassCtx1"
-#badtypetest "DupInst"
 badtypetest "FreeTypeVar"
+#badtypetest "DupInst"
 
 # Run an IO Test
 proc io {module} {

@@ -3,6 +3,8 @@ Focus::
 * Catch-up: Locations for type errors
 
 Recent::
+* Finish cleaning up type check
+* varTs should return a list of TyVar, not (Name, Kind)
 * Bug: foo :: Integer
        fop = 3
     Is accepted, and 'fop' is treated like 'foo'.
@@ -35,7 +37,6 @@ Test Type Checking::
 * Verify we can't declare the same variable twice.
 * Verify all clauses have to have the same number of args.
 * Verify recursive definitions in lets aren't allowed (self recursion)
-* Verify ambiguous types aren't allowed
 * Verify a type constructor used has been declared somewhere.
 * Verify a free variable in an expression is not allowed.
 * Verify all methods have been defined for a class instance.

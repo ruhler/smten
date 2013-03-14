@@ -521,7 +521,7 @@ Things I see:
 
 * case foo of
     True -> True
-    _ ->  True
+    _ -> True
 
   I should be able to simplify this to 'True', right?
 
