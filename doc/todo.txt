@@ -94,7 +94,6 @@ Performance::
 
 Sharing::
 * Why do we sometimes share "free~12"?? For example, in Datatype test.
-* case desugaring still loses sharing of 'n' in a number of places!
 * loose sharing in: f (if p then if q then a else b else b)
     Does (f b) twice, without preserving sharing. (for 'f' a primitive
     function)
@@ -134,9 +133,6 @@ HaskellF::
 * Translate a module at a time instead of one big blob
 * Perhaps use TH to make defining the HaskellF prelude easier?
 
-Distribution::
-* Move everything but the SMT solvers from smten-smt to smten.
-
 Build System::
 * Don't require yices1 and yices2 to be installed to build or use smten
     If a solver isn't installed, just give a runtime error when you try to
@@ -147,9 +143,6 @@ Build System::
 
 Bugs::
 * DupInst maltype test
-* smtenq2 for SquaresRaw... result differs from yices1 and yices2. Why?
-  smtenq1 seg faults on that same example randomly
-    (in GC evacuate at end of prog)
 * Detect recursive functions in elaboration and report an error about
   them.
 * Report an error for an unknown primitive encountered in SMT Translation
@@ -171,6 +164,5 @@ Other::
 * Update LICENCE files to include 2013 copyright.
 * TODO's inlined in the code
 * Do a code review of all of Smten, figure out what can be cleaned up and how.
-* Test execution of symbolic Symbolic
 * Switch to n-ary "and" to help in debugging of SMT queries?
 

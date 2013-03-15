@@ -7,7 +7,7 @@ module Smten.ExpH.Sugar (
     appEH, appsEH,
     lamEH, letEH, aconEH,
     errorEH, de_errorEH,
-    caseEH, tcaseEH,
+    caseEH,
     ifEH, impliesEH,
 
     unitEH,
@@ -80,15 +80,13 @@ de_varEH _ = Nothing
 appEH :: ExpH -> ExpH -> ExpH
 appEH f x
  | LamEH _ (Sig _ t) _ g <- f = g x
- | CaseEH _ a k y n <- f =
+ | IfEH _ a y n <- f =
     -- Perform Case Argument Pushing:
-    -- (case a of { k -> y ; _ -> n}) x
-    --  where y = \v1 -> \v2 -> ... -> y v
-    -- ===> (case a of { k -> \v1 -> \v2 -> ... -> yv x; _ -> n x })
+    -- (if a then y else n) x
+    -- ===> (if a then y x else n x)
     let Just (_, t) = de_arrowT (typeof f)
     in letEH (Sig (name "_z") (typeof x)) t x $ \av ->
-         let g x = appEH x av
-         in tcaseEH f g g
+         ifEH a (appEH y av) (appEH n av)
  | ErrorEH t s <- f = 
     let Just (_, t) = de_arrowT (typeof f)
     in errorEH t s
@@ -185,53 +183,29 @@ caseEH' x k@(Sig nk _) y n
  | Just (s, _, vs) <- de_conEH x
     = if s == nk then appsEH y vs else n
  | Just (_, msg) <- de_errorEH x = errorEH (typeof n) msg
- | CaseEH {} <- x
- , not (smttype (typeof x)) =
+ | nk == name "True" = identify $ \id -> IfEH id x y n
+ | nk == name "False" = identify $ \id -> IfEH id x n y
+ | IfEH {} <- x =
     let f = lamEH (Sig (name "_x") (typeof x)) (typeof n) $ \x' ->
                caseEH x' k y n
     in pushfun f x
- | otherwise = identify $ \id -> CaseEH id x k y n
-
--- Transform the bodies of a case expression.
---  e - must be a case expression
---  fyv - transforms the 'yv' part of a case expression
---  fn - transforms the 'n' part of a case expression
-tcaseEH :: ExpH -> (ExpH -> ExpH) -> (ExpH -> ExpH) -> ExpH
-tcaseEH (CaseEH _ x k y n) fyv fn =
-  let kargs = length (de_arrowsT (typeof k)) - 1
-      y' = onyv kargs fyv y
-      n' = fn n
-  in caseEH x k y' n'
-tcaseEH e _ _ = error "tcaseEH passed non-case expression"
+ | otherwise = error "caseEH"
 
 -- Function pushing:
---    f (case x of { k -> y; _ -> n})
+--    f (if x then y else n)
 -- Turns into:
---    let _f = f in case x of { k -> _f y; _ -> _f n}
+--    let _f = f in if x then _f y else _f n
 pushfun :: ExpH -> ExpH -> ExpH
-pushfun f e@(CaseEH _ x k y n) =
+pushfun f e@(IfEH _ x y n) =
  let Just (_, ot) = de_arrowT $ typeof f
  in letEH (Sig (name "_f") (typeof f)) ot f $ \fv ->
-      tcaseEH e (appEH fv) (appEH fv)
+      ifEH x (appEH fv y) (appEH fv n)
 
 ifEH :: ExpH -> ExpH -> ExpH -> ExpH
 ifEH p a b = caseEH p (Sig (name "True") boolT) a b
 
 impliesEH :: ExpH -> ExpH -> ExpH
 impliesEH p q = ifEH p q trueEH
-
--- For a case expresion, we have:
--- onyv n f y
---  where y = \v1 -> \v2 -> ... -> \vn -> yv
--- Returns: y' = \v1 -> \v2 -> ... -> \vn -> f yv
-onyv :: Int -> (ExpH -> ExpH) -> ExpH -> ExpH
-onyv 0 f yv = f yv
-onyv n f (LamEH _ s t b) =
-  let ts = de_arrowsT t
-      (its, fot) = splitAt n ts
-      fot' = arrowsT $ tail fot
-      ot = arrowsT (its ++ [fot'])
-  in lamEH s ot $ \x -> onyv (n-1) f (b x)
 
 -- Perform a generic transformation on an expression.
 -- Applies the given function to each subexpression. Any matching
@@ -264,7 +238,7 @@ transform g e =
         | VarEH {} <- e = e
         | PrimEH _ _ _ f xs <- e = f (map use xs)
         | LamEH _ s t f <- e = lamEH s t $ \x -> use (f x)
-        | CaseEH _ x k y d <- e = caseEH (use x) k (use y) (use d)
+        | IfEH _ x y d <- e = ifEH (use x) (use y) (use d)
         | ErrorEH {} <- e = e
 
       use :: ExpH -> ExpH

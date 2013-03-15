@@ -23,11 +23,9 @@ instance Ppr ExpH where
     ppr (VarEH s) = ppr s
     ppr (PrimEH _ n _ _ xs) = ppr (appsEH (varEH (Sig n UnknownT)) xs)
     ppr (LamEH _ s _ f) = text "\\" <+> ppr s <+> text "->" <+> text "..."
-    ppr (CaseEH _ e1 p e2 e3)
-        = text "case" <+> parens (ppr e1) <+> text "of" <+> text "{"
-            $+$ nest tabwidth (vcat [
-                    ppr p <+> text "->" <+> ppr e2,
-                    text "_" <+> text "->" <+> ppr e3
-                  ]) $+$ text "}"
+    ppr (IfEH _ e1 e2 e3)
+        = text "if" <+> parens (ppr e1)
+            <+> text "then" <+> ppr e2
+            <+> text "else" <+> ppr e3
     ppr (ErrorEH t s) = text "error" <+> text s
 

@@ -112,22 +112,20 @@ runSymbolic ctx nfree s =
 de_symbolicEH :: ExpH -> Symbolic ExpH
 de_symbolicEH e
  | Just l <- de_litEH e, Just s <- de_dynamicL l = s
- | CaseEH _ x k y n <- ivp e =  -- TODO: use of ivp here is maybe a hack. Fix it.
-    let yv = if 0 == length (de_arrowsT (typeof k)) - 1
-                then y
-                else -- TODO: Can this ever occur?
-                     -- I think not, because caseEH gets rid of any case
-                     -- expression on things other than booleans.
-                     error $ "de_symbolicEH of complex case expressions in: " ++ pretty e
-        py = tcaseEH e (const trueEH) (const falseEH)
-        pn = tcaseEH e (const falseEH) (const trueEH)
 
-        ys = de_symbolicEH yv
+   -- TODO: use of ivp here is maybe a hack. Fix it.
+   -- In general we need an SMT solver to tell us when a certain branch is
+   -- unreachable to avoid being overly eager.
+ | IfEH _ x y n <- ivp e =
+    let py = x
+        pn = ifEH x falseEH trueEH
+
+        ys = de_symbolicEH y
         ns = de_symbolicEH n
     in do
         yr <- predicated py ys
         nr <- predicated pn ns
-        return $ tcaseEH e (const yr) (const nr)
+        return $ ifEH x yr nr
  | ErrorEH _ msg <- e = error $ "(de_symbolicEH): " ++ msg
  | otherwise = error $ "de_symbolicEH: " ++ pretty e
 

@@ -47,7 +47,7 @@ sharing e =
       subtraverse e
         | ConEH _ _ _ xs <- e = Set.unions <$!> mapM traverse xs
         | PrimEH _ _ _ _ xs <- e = Set.unions <$!> mapM traverse xs
-        | CaseEH _ x _ y n <- e = Set.unions <$!> mapM traverse [x, y, n]
+        | IfEH _ x y n <- e = Set.unions <$!> mapM traverse [x, y, n]
         | otherwise = return $ Set.empty
   in evalState (traverse e) Map.empty
 
@@ -75,11 +75,11 @@ convert share e =
             let s' = identify $ \x -> Sig (nm `nappend` (name (show x))) t
             b <- useM (f (VarEH s'))
             return $ LamE s' b
-        | CaseEH _ arg s yes no <- e = do
+        | IfEH _ arg yes no <- e = do
             arg' <- useM arg
             yes' <- useM yes
             no' <- useM no
-            return $ CaseE arg' s yes' no'
+            return $ ifE arg' yes' no'
         | ErrorEH t s <- e = return $
             appE (varE (Sig (name "Prelude.error") (arrowT stringT t))) (stringE s)
             

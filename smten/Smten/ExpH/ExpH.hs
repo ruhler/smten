@@ -26,12 +26,22 @@ newtype EID = EID Integer
 instance Show EID where
     show (EID x) = show x
 
-data ExpH = LitEH Lit
+-- ExpH represents a symbolic Smten expression evaluated to normal form. 
+data ExpH =
+            -- | Literal characters and integers
+            LitEH Lit
+
+            -- | Fully applied data constructors.
+            -- The Type field is the type of the fully applied constructor.
           | ConEH EID Name Type [ExpH]
-                -- ^ type is for fully applied constructor.
+
+            -- | Primitive symbolic varibles.
+            -- Current types supported are: Bool, Integer, Bit
           | VarEH Sig
+
+            -- | Fully applied primitive functions
+            -- | The Type field is the type of the fully applied primitive.
           | PrimEH EID Name Type ([ExpH] -> ExpH) [ExpH]
-                -- ^ type is for fully applied primitive.
          
           -- | LamEH s t f:
           --    s - name and type of the function argument. 
@@ -40,15 +50,19 @@ data ExpH = LitEH Lit
           --    f - the haskell representation of the function.
           | LamEH EID Sig Type (ExpH -> ExpH)
 
-          | CaseEH EID ExpH Sig ExpH ExpH
-            -- ^ case e1 of
-            --      k -> e2
-            --      _ -> e3
-            -- Note: if k is a constructor of type (a -> b -> c -> K),
-            -- Then e2 should have type: (a -> b -> c -> V),
-            -- And  e1 should have type: V
-            --  Where V is the type of the case expression.
-          | ErrorEH Type String -- ^ type is type of expression.
+          -- | Conditional expressions.
+          | IfEH EID ExpH ExpH ExpH
+
+          -- | Explicit _|_.
+          -- Type is the type of the expression.
+          --
+          -- TODO: Ideally we shouldn't need this at all, because error and
+          -- non-termination should be indistinguishable, so we could just
+          -- convert to a haskell error immediately. Our current
+          -- implementation, however, is overly eager when things are
+          -- symbolic. Having explicit error lets us at least handle that case
+          -- more nicely. (Though it doesn't work for non-termination).
+          | ErrorEH Type String
     deriving(Typeable)
 
 -- Call the given function with a globally unique identifier.
@@ -73,6 +87,6 @@ getid e
   | ConEH x _ _ _ <- e = Just x
   | PrimEH x _ _ _ _ <- e = Just x
   | LamEH x _ _ _ <- e = Just x
-  | CaseEH x _ _ _ _ <- e = Just x
+  | IfEH x _ _ _ <- e = Just x
   | otherwise = Nothing
 

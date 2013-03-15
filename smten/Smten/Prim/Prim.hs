@@ -45,7 +45,7 @@ unaryTP n f =
       impl t [a]
         | Just av <- de_smtenEH a = smtenEH (f t av)
         | Just (_, msg) <- de_errorEH a = errorEH t msg
-        | CaseEH {} <- a
+        | IfEH {} <- a
         , not (smttype (typeof a)) =
             -- | f (case x of { k -> y ; _ -> n})
             -- ==> case x of { k -> f y ; _ -> f n }
@@ -77,13 +77,13 @@ binaryTP n f =
         | Just av <- de_smtenEH a
         , Just bv <- de_smtenEH b = smtenEH (f t av bv)
         | Just (_, msg) <- mplus (de_errorEH a) (de_errorEH b) = errorEH t msg
-        | CaseEH {} <- a
+        | IfEH {} <- a
         , not (smttype (typeof a)) =
             -- | f (case x of { k -> y ; _ -> n}) b
             -- ==> case x of { k -> f y b ; _ -> f n b } 
             let g = lamEH (Sig (name "_x") (typeof a)) t $ \a' -> impl t [a', b]
             in pushfun g a
-        | CaseEH {} <- b
+        | IfEH {} <- b
         , not (smttype (typeof b)) =
             -- | f a (case x of { k -> y ; _ -> n})
             -- ==> case x of { k -> f a y ; _ -> f a n } 

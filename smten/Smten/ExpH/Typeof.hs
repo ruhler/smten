@@ -15,7 +15,7 @@ instance Typeof ExpH where
     typeof (VarEH s) = typeof s
     typeof (PrimEH _ _ t _ _) = t
     typeof (LamEH _ (Sig _ it) ot _) = arrowT it ot
-    typeof (CaseEH _ _ _ _ e) = typeof e
+    typeof (IfEH _ _ _ e) = typeof e
     typeof (ErrorEH t _) = t
 
 

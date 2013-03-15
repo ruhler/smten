@@ -4,6 +4,7 @@ module Data.Maybe where
 import Prelude
 
 fromMaybe :: a -> Maybe a -> a
-fromMaybe _ (Just x) = x
-fromMaybe x Nothing = x
+fromMaybe d m
+ | Just x <- m = x
+ | otherwise = d
 
