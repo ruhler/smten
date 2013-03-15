@@ -151,10 +151,6 @@ withstderr f = do
     return $! x
 
 ytype :: Type -> IO YType
-ytype (ArrowT ts) = do
-    tr <- ytype (last ts)
-    ts' <- mapM ytype (init ts)
-    withArray ts' $ \arr -> c_yices_function_type (genericLength ts') arr tr
 ytype (BitVectorT i) = c_yices_bv_type (fromIntegral i)
 ytype (IntegerT) = c_yices_int_type
 ytype (BoolT) = c_yices_bool_type
@@ -274,11 +270,6 @@ ytermS s (AppE f [a]) = do
     ft <- ytermS s f
     at <- ytermS s a 
     withArray [at] $ c_yices_application ft 1
-ytermS s (UpdateE f args v) = do
-    ft <- ytermS s f
-    argst <- mapM (ytermS s) args
-    vt <- ytermS s v
-    withArray argst $ \arr -> c_yices_update ft (fromIntegral $ length argst) arr vt
 ytermS s e | Just (bs, v) <- de_letE e =
   let mkvar :: (String, Expression) -> IO (String, YTerm)
       mkvar (nm, e) = do

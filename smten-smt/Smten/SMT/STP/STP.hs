@@ -31,7 +31,6 @@ mkType :: STP -> Type -> IO (Ptr STP_Type)
 mkType s BoolT = withvc s c_vc_boolType
 mkType s (BitVectorT w) = withvc s $ \vc -> c_vc_bvType vc (fromInteger w)
 mkType _ IntegerT = error $ "STP does not support Integer type"
-mkType _ (ArrowT _) = error $ "STP does not support Function type"
 
 mkBinExpr :: STP -> Expression -> Expression
       -> (Ptr STP_VC -> Ptr STP_Expr -> Ptr STP_Expr -> IO (Ptr STP_Expr))

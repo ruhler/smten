@@ -1,6 +1,6 @@
 Focus::
-* Performance of seri_arch_extract
 * Catch-up: Locations for type errors
+* Look-ahead: Fix issues with _|_ so semantics are correctly implemented
 
 Recent::
 * Don't pretty print numeric type 16 in haskellf as

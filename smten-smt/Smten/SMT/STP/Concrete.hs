@@ -128,7 +128,6 @@ instance Concrete [Command] where
     concreteM cmds = mapM_ concreteM (reverse cmds)
 
 instance Concrete Type where
-    concreteM (ArrowT ts) = error $ "ArrowT not supported in SMTLIB2"
     concreteM (BitVectorT i) = line $ "(_ BitVec " ++ show i ++ ")"
     concreteM IntegerT = line "Int"
     concreteM BoolT = line "Bool"
@@ -140,7 +139,6 @@ instance Concrete Expression where
       group "let" [group "" (map concreteM bindings), concreteM e]
     concreteM (AppE f args) = clump $ 
       group "" (concreteM f : map concreteM args)
-    concreteM (UpdateE f es e) = error $ "functional update not supported by SMTLIB2"
 
 instance Concrete Binding where
     concreteM (n, e) = clump $ group n [concreteM e]

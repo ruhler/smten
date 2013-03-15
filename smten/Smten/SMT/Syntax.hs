@@ -72,8 +72,7 @@ data Command =
     deriving(Show, Eq)
 
 data Type = 
-    ArrowT [Type]           -- ^ > (-> <type> ... <type> <type>)
-  | BitVectorT Integer      -- ^ > (bitvector <rational>)
+    BitVectorT Integer      -- ^ > (bitvector <rational>)
   | IntegerT                -- ^ > int
   | BoolT                   -- ^ > bool
     deriving(Show, Eq)
@@ -83,7 +82,6 @@ data Expression =
   | VarE Symbol
   | LetE [Binding] Expression
   | AppE Expression [Expression]
-  | UpdateE Expression [Expression] Expression
     deriving(Show, Eq)
 
 type Binding = (String, Expression)

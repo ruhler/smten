@@ -406,13 +406,6 @@ yexprS y@(Yices1 fp) s e
             decl <- withCString nm $ c_yices_get_var_decl_from_name ctx
             c_yices_mk_var_from_decl ctx decl
         Just t -> return t
-  | UpdateE f xs v <- e = do
-       f' <- yexprS y s f
-       xs' <- mapM (yexprS y s) xs
-       v' <- yexprS y s v
-       withForeignPtr fp $ \ctx ->
-          withArray xs' $ \arr ->
-              c_yices_mk_function_update ctx f' arr (fromIntegral $ length xs') v'
   | AppE (VarE f) _ <- e
   , f `elem` builtin = do
         error $ "TODO: yexpr builtin " ++ YC.pretty e

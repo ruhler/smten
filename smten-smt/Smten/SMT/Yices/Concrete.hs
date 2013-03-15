@@ -128,7 +128,6 @@ instance Concrete [Command] where
     concreteM cmds = mapM_ concreteM (reverse cmds)
 
 instance Concrete Type where
-    concreteM (ArrowT ts) = clump $ group "->" (map concreteM ts)
     concreteM (BitVectorT i) = line $ "(bitvector " ++ show i ++ ")"
     concreteM IntegerT = line "int"
     concreteM BoolT = line "bool"
@@ -140,8 +139,6 @@ instance Concrete Expression where
       group "let" [group "" (map concreteM bindings), concreteM e]
     concreteM (AppE f args) = clump $ 
       group "" (concreteM f : map concreteM args)
-    concreteM (UpdateE f es e) = clump $ 
-      group "update" [concreteM f, group "" (map concreteM es), concreteM e]
 
 instance Concrete Binding where
     concreteM (n, e) = clump $ group n [concreteM e]

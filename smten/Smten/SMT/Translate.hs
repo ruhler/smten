@@ -123,7 +123,6 @@ smtT t | t == boolT = return SMT.BoolT
 smtT t | t == integerT = return SMT.IntegerT
 smtT t | t == charT = return SMT.IntegerT
 smtT t | Just w <- de_bitT t = return $ SMT.BitVectorT w
-smtT t | Just (a, b) <- de_arrowT t = SMT.ArrowT <$> mapM smtT [a, b] 
 smtT t = throw $ "smtT: unsupported type: " ++ pretty t
 
 -- | Compile a smten expression to a smt expression.
@@ -193,11 +192,6 @@ smtE' e@(AppE a b) =
             , Just i <- de_integerE li
             , Just tw <- de_bitT (typeof e)
             -> SMT.bvextractE (i + tw - 1) i <$> smtE' x
-       (VarE (Sig n _), [f, k, v]) | n == name "Smten.SMT.Array.update" -> do
-           f' <- smtE' f
-           k' <- smtE' k
-           v' <- smtE' v
-           return $ SMT.UpdateE f' [k'] v'
        _ -> do
            a' <- smtE' a
            b' <- smtE' b
