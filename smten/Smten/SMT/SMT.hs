@@ -135,8 +135,7 @@ smtt t = do
 smte' :: ExpH -> SMT ([SMT.Command], SMT.Expression)
 smte' e = {-# SCC "SmtE" #-} do
     qs <- gets qs_qs 
-    let --se = {-# SCC "FROMEXPH" #-} fromExpH ({-# SCC "IVP" #-} ivp e)
-        se = {-# SCC "FROMEXPH" #-} fromExpH e
+    let se = {-# SCC "FROMEXPH" #-} fromExpH e
         mkye :: CompilationM ([SMT.Command], SMT.Expression)
         mkye = do
           ye <- smtE se

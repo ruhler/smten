@@ -94,9 +94,6 @@ Performance::
 
 Sharing::
 * Why do we sometimes share "free~12"?? For example, in Datatype test.
-* loose sharing in: f (if p then if q then a else b else b)
-    Does (f b) twice, without preserving sharing. (for 'f' a primitive
-    function)
 
 ExpH::
 * Perhaps case statements should consider all constructors at once instead of

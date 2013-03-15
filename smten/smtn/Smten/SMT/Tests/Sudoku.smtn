@@ -32,9 +32,8 @@ main = do
     runSMT Yices2 Nothing qInteger
     putStrLn "Sudoku Integer PASSED"
 
-    --runSMT Yices2 Nothing qEnum
-    --putStrLn "Sudoku Enum PASSED"
-    putStrLn "Sudoku Enum SKIPPED"
+    runSMT Yices2 Nothing qEnum
+    putStrLn "Sudoku Enum PASSED"
 
     runSMT Yices2 Nothing qBit
     putStrLn "Sudoku Bit PASSED"
