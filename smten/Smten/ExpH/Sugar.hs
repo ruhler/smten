@@ -192,33 +192,11 @@ caseEH' x k@(Sig nk _) y n
 -- It traverses inside of if expressions. Sharing is preserved.
 strict_appEH :: (ExpH -> ExpH) -> ExpH -> ExpH
 strict_appEH f =
-  let {-# NOINLINE cache #-}
-      cache :: IORef (Map.Map EID ExpH, ExpH -> ExpH)
-      cache = unsafePerformIO (newIORef (Map.empty, f))
-
-      lookupIO :: EID -> ExpH -> IO ExpH
-      lookupIO x e = do
-        m <- readIORef cache
-        case Map.lookup x (fst m) of
-          Just v -> return v    
-          Nothing -> do
-            let v = def e
-            modifyIORef cache $ \(m, g) -> (Map.insert x v m, g)
-            return v
-
-      lookupPure :: EID -> ExpH -> ExpH
-      lookupPure x e = unsafePerformIO (lookupIO x e)
-
-      def :: ExpH -> ExpH
-      def e
+  let g :: (ExpH -> ExpH) -> ExpH -> ExpH
+      g use e
         | IfEH _ x y d <- e = ifEH x (use y) (use d)
         | otherwise = f e
-
-      use :: ExpH -> ExpH
-      use e
-        | Just x <- getid e = lookupPure x e
-        | otherwise = def e
-  in def
+  in shared g
 
 ifEH :: ExpH -> ExpH -> ExpH -> ExpH
 ifEH p a b = caseEH p (Sig (name "True") boolT) a b
@@ -231,27 +209,10 @@ impliesEH p q = ifEH p q trueEH
 -- subexpression is replaced with the returned value, otherwise it continues
 -- to recurse.
 transform :: (ExpH -> Maybe ExpH) -> ExpH -> ExpH
-transform g e =
-  let {-# NOINLINE cache #-}
-      cache :: IORef (Map.Map EID ExpH, ExpH -> Maybe ExpH)
-      cache = unsafePerformIO (newIORef (Map.empty, g))
-
-      lookupIO :: EID -> ExpH -> IO ExpH
-      lookupIO x e = do
-        m <- readIORef cache
-        case Map.lookup x (fst m) of
-          Just v -> return v    
-          Nothing -> do
-            let v = def e
-            modifyIORef cache $ \(m, g) -> (Map.insert x v m, g)
-            return v
-
-      lookupPure :: EID -> ExpH -> ExpH
-      lookupPure x e = unsafePerformIO (lookupIO x e)
-
-      def :: ExpH -> ExpH
-      def e
-        | Just v <- g e = v
+transform f =
+  let g :: (ExpH -> ExpH) -> ExpH -> ExpH
+      g use e
+        | Just v <- f e = v
         | LitEH {} <- e = e
         | ConEH _ n s xs <- e = identify $ \id -> ConEH id n s (map use xs)
         | VarEH {} <- e = e
@@ -259,12 +220,7 @@ transform g e =
         | LamEH _ s t f <- e = lamEH s t $ \x -> use (f x)
         | IfEH _ x y d <- e = ifEH (use x) (use y) (use d)
         | ErrorEH {} <- e = e
-
-      use :: ExpH -> ExpH
-      use e
-        | Just x <- getid e = lookupPure x e
-        | otherwise = def e
-  in def e
+  in shared g
 
 de_tupleEH :: ExpH -> Maybe [ExpH]
 de_tupleEH x = 
@@ -274,4 +230,43 @@ de_tupleEH x =
           guard $ genericLength xs == n
           return xs
        _ -> Nothing
+
+-- shared f
+-- Apply a function to an ExpH which preserves sharing.
+-- If the function is called multiple times on the same ExpH, it shares
+-- the result.
+--
+-- f - The function to apply which takes:
+--   f' - the shared version of 'f' to recurse with
+--   x - the argument
+shared :: ((ExpH -> a) -> ExpH -> a) -> ExpH -> a
+shared f = 
+  let {-# NOINLINE cache #-}
+      -- Note: the IORef is a pair of map instead of just the map to ensure we
+      -- get a new IORef every time the 'shared' function is called.
+      --cache :: IORef (Map.Map EID a, ((ExpH -> a) -> ExpH -> a))
+      cache = unsafePerformIO (newIORef (Map.empty, f))
+
+      --lookupIO :: EID -> ExpH -> IO a
+      lookupIO x e = do
+        m <- readIORef cache
+        case Map.lookup x (fst m) of
+          Just v -> return v    
+          Nothing -> do
+            let v = def e
+            -- TODO: Do we need to make the insert strict to avoid space leaks?
+            modifyIORef cache $ \(m, g) -> (Map.insert x v m, g)
+            return v
+
+      --lookupPure :: EID -> ExpH -> a
+      lookupPure x e = unsafePerformIO (lookupIO x e)
+
+      --def :: ExpH -> a
+      def = f use
+
+      --use :: ExpH -> a
+      use e
+        | Just x <- getid e = lookupPure x e
+        | otherwise = def e
+  in def
 
