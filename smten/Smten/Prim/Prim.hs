@@ -46,11 +46,7 @@ unaryTP n f =
         | Just av <- de_smtenEH a = smtenEH (f t av)
         | Just (_, msg) <- de_errorEH a = errorEH t msg
         | IfEH {} <- a
-        , not (smttype (typeof a)) =
-            -- | f (case x of { k -> y ; _ -> n})
-            -- ==> case x of { k -> f y ; _ -> f n }
-            let g = lamEH (Sig (name "_x") (typeof a)) t $ \a' -> impl t [a']
-            in pushfun g a
+        , not (smttype (typeof a)) = strict_appEH (\a' -> impl t [a']) a
         | otherwise = identify $ \id -> PrimEH id nm t (impl t) [a]
 
       -- The type is the type of the primitive function without arguments
@@ -78,17 +74,9 @@ binaryTP n f =
         , Just bv <- de_smtenEH b = smtenEH (f t av bv)
         | Just (_, msg) <- mplus (de_errorEH a) (de_errorEH b) = errorEH t msg
         | IfEH {} <- a
-        , not (smttype (typeof a)) =
-            -- | f (case x of { k -> y ; _ -> n}) b
-            -- ==> case x of { k -> f y b ; _ -> f n b } 
-            let g = lamEH (Sig (name "_x") (typeof a)) t $ \a' -> impl t [a', b]
-            in pushfun g a
+        , not (smttype (typeof a)) = strict_appEH (\a' -> impl t [a', b]) a
         | IfEH {} <- b
-        , not (smttype (typeof b)) =
-            -- | f a (case x of { k -> y ; _ -> n})
-            -- ==> case x of { k -> f a y ; _ -> f a n } 
-            let g = lamEH (Sig (name "_x") (typeof b)) t $ \b' -> impl t [a, b']
-            in pushfun g b
+        , not (smttype (typeof b)) = strict_appEH (\b' -> impl t [a, b']) b
         | otherwise = identify $ \id -> PrimEH id nm t (impl t) [a, b]
 
       -- The type is the type of the primitive function without arguments

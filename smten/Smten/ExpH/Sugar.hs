@@ -4,7 +4,7 @@
 -- | Abstract constructors and deconstructors dealing with ExpH
 module Smten.ExpH.Sugar (
     litEH, de_litEH, varEH, de_varEH, conEH, de_conEH, de_kconEH,
-    appEH, appsEH,
+    appEH, appsEH, strict_appEH,
     lamEH, letEH, aconEH,
     errorEH, de_errorEH,
     caseEH,
@@ -15,7 +15,7 @@ module Smten.ExpH.Sugar (
     integerEH, de_integerEH, bitEH, de_bitEH,
     charEH, de_charEH, de_tupleEH,
     ioEH, de_ioEH,
-    pushfun, smttype,
+    smttype,
     transform,
     ) where
 
@@ -185,21 +185,22 @@ caseEH' x k@(Sig nk _) y n
  | Just (_, msg) <- de_errorEH x = errorEH (typeof n) msg
  | nk == name "True" = identify $ \id -> IfEH id x y n
  | nk == name "False" = identify $ \id -> IfEH id x n y
- | IfEH {} <- x =
-    let f = lamEH (Sig (name "_x") (typeof x)) (typeof n) $ \x' ->
-               caseEH x' k y n
-    in pushfun f x
+ | IfEH {} <- x = strict_appEH (\x' -> caseEH x' k y n) x
  | otherwise = error "caseEH"
 
--- Function pushing:
---    f (if x then y else n)
--- Turns into:
---    let _f = f in if x then _f y else _f n
-pushfun :: ExpH -> ExpH -> ExpH
-pushfun f e@(IfEH _ x y n) =
- let Just (_, ot) = de_arrowT $ typeof f
- in letEH (Sig (name "_f") (typeof f)) ot f $ \fv ->
-      ifEH x (appEH fv y) (appEH fv n)
+-- Strict application.
+-- It traverses inside of if expressions, and verifies sharing is preserved.
+--
+-- TODO: actually preserve sharing!
+-- This means: f (if p then (if q then a else b) else b)
+--
+-- Should turn into something like:
+--  let fb = f b
+--  in (if p then (if q then f a else fb) else fb)
+strict_appEH :: (ExpH -> ExpH) -> ExpH -> ExpH
+strict_appEH f x
+ | IfEH _ p a b <- x = ifEH p (strict_appEH f a) (strict_appEH f b)
+ | otherwise = f x
 
 ifEH :: ExpH -> ExpH -> ExpH -> ExpH
 ifEH p a b = caseEH p (Sig (name "True") boolT) a b
