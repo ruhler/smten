@@ -26,7 +26,7 @@ import Control.Monad
 import Data.List(genericLength)
 import Data.Maybe(isJust)
 import Data.IORef
-import qualified Data.Map as Map
+import qualified Data.HashMap as Map
 
 import Smten.Bit
 import Smten.Lit
@@ -189,18 +189,36 @@ caseEH' x k@(Sig nk _) y n
  | otherwise = error "caseEH"
 
 -- Strict application.
--- It traverses inside of if expressions, and verifies sharing is preserved.
---
--- TODO: actually preserve sharing!
--- This means: f (if p then (if q then a else b) else b)
---
--- Should turn into something like:
---  let fb = f b
---  in (if p then (if q then f a else fb) else fb)
+-- It traverses inside of if expressions. Sharing is preserved.
 strict_appEH :: (ExpH -> ExpH) -> ExpH -> ExpH
-strict_appEH f x
- | IfEH _ p a b <- x = ifEH p (strict_appEH f a) (strict_appEH f b)
- | otherwise = f x
+strict_appEH f =
+  let {-# NOINLINE cache #-}
+      cache :: IORef (Map.Map EID ExpH, ExpH -> ExpH)
+      cache = unsafePerformIO (newIORef (Map.empty, f))
+
+      lookupIO :: EID -> ExpH -> IO ExpH
+      lookupIO x e = do
+        m <- readIORef cache
+        case Map.lookup x (fst m) of
+          Just v -> return v    
+          Nothing -> do
+            let v = def e
+            modifyIORef cache $ \(m, g) -> (Map.insert x v m, g)
+            return v
+
+      lookupPure :: EID -> ExpH -> ExpH
+      lookupPure x e = unsafePerformIO (lookupIO x e)
+
+      def :: ExpH -> ExpH
+      def e
+        | IfEH _ x y d <- e = ifEH x (use y) (use d)
+        | otherwise = f e
+
+      use :: ExpH -> ExpH
+      use e
+        | Just x <- getid e = lookupPure x e
+        | otherwise = def e
+  in def
 
 ifEH :: ExpH -> ExpH -> ExpH -> ExpH
 ifEH p a b = caseEH p (Sig (name "True") boolT) a b
