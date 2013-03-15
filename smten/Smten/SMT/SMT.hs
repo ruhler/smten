@@ -137,11 +137,9 @@ smte' e = {-# SCC "SmtE" #-} do
     qs <- gets qs_qs 
     let --se = {-# SCC "FROMEXPH" #-} fromExpH ({-# SCC "IVP" #-} ivp e)
         se = {-# SCC "FROMEXPH" #-} fromExpH e
-        --se' = trace ("ASSERT: " ++ pretty se) se
-        se' = se
         mkye :: CompilationM ([SMT.Command], SMT.Expression)
         mkye = do
-          ye <- smtE se'
+          ye <- smtE se
           cmds <- smtD
           return (cmds, ye)
     ((cmds, ye), qs') <- liftIO . attemptIO $ runCompilation mkye qs

@@ -80,10 +80,6 @@ def m e
  | PrimEH _ _ _ f xs <- e = do
     xs' <- mapM (use m) xs
     return (f (map fst xs'), Set.unions (map snd xs'))
- | AppEH _ f x <- e = do
-    (fv, fns) <- use m f
-    (xv, xns) <- use m x
-    return (appEH fv xv, Set.union fns xns)
  | LamEH _ s t f <- e = error "IVP.def: LamEH"
  | CaseEH _ x k y d <- e = do
     (x', xns) <- use m x

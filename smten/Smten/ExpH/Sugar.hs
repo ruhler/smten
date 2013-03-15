@@ -4,8 +4,8 @@
 -- | Abstract constructors and deconstructors dealing with ExpH
 module Smten.ExpH.Sugar (
     litEH, de_litEH, varEH, de_varEH, conEH, de_conEH, de_kconEH,
-    appEH, de_appEH, appsEH, de_appsEH,
-    lamEH, letEH, de_letEH, aconEH,
+    appEH, appsEH,
+    lamEH, letEH, aconEH,
     errorEH, de_errorEH,
     caseEH, tcaseEH,
     ifEH, impliesEH,
@@ -92,24 +92,14 @@ appEH f x
  | ErrorEH t s <- f = 
     let Just (_, t) = de_arrowT (typeof f)
     in errorEH t s
- | otherwise = identify $ \id -> AppEH id f x
+ | otherwise = error "appEH"
 
 smttype :: Type -> Bool
 --smttype t = or [ t == boolT, t == integerT, isJust (de_bitT t) ]
 smttype t = or [ t == boolT, isJust (de_bitT t) ]
 
-de_appEH :: ExpH -> Maybe (ExpH, ExpH)
-de_appEH (AppEH _ f x) = Just (f, x)
-de_appEH _ = Nothing
-
 appsEH :: ExpH -> [ExpH] -> ExpH
 appsEH f xs = foldl appEH f xs
-
-de_appsEH :: ExpH -> (ExpH, [ExpH])
-de_appsEH (AppEH _ a b) =
-    let (f, as) = de_appsEH a
-    in (f, as ++ [b])
-de_appsEH t = (t, [])
 
 -- lamEH s t f
 --  s - name and type of argument to function
@@ -123,15 +113,6 @@ lamEH s t f = identify $ \id -> LamEH id s t f
 --  v - value of the let variable
 letEH :: Sig -> Type -> ExpH -> (ExpH -> ExpH) -> ExpH
 letEH s t v b = appEH (lamEH s t b) v
-
--- (s, t, v, f)
---  s - name and type of let variable
---  t - type of let body
---  v - value of let variable
-de_letEH :: ExpH -> Maybe (Sig, Type, ExpH, ExpH -> ExpH)
-de_letEH (AppEH _ f v)
-  | LamEH _ s t b <- f = Just (s, t, v, b)
-de_letEH _ = Nothing
 
 unitEH :: ExpH
 unitEH = conEH (Sig (name "()") unitT)
@@ -282,7 +263,6 @@ transform g e =
         | ConEH _ n s xs <- e = identify $ \id -> ConEH id n s (map use xs)
         | VarEH {} <- e = e
         | PrimEH _ _ _ f xs <- e = f (map use xs)
-        | AppEH _ f x <- e = appEH (use f) (use x)
         | LamEH _ s t f <- e = lamEH s t $ \x -> use (f x)
         | CaseEH _ x k y d <- e = caseEH (use x) k (use y) (use d)
         | ErrorEH {} <- e = e
