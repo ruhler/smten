@@ -2,9 +2,9 @@
 {-# LANGUAGE PatternGuards #-}
 
 module Smten.Prim.Prim (
-    Prim(),
+    Prim(), PrimF(..),
     primEH, lookupPrim,
-    nullaryP, nullaryTP, unaryP, unaryTP, binaryTP, binaryP,
+    nullaryP, nullaryTP, unaryP, unaryTP, unaryPF, binaryTP, binaryP, binaryPF,
     ) where
 
 import Control.Monad
@@ -16,6 +16,10 @@ import Smten.Sig
 import Smten.Ppr
 import Smten.ExpH
 
+data PrimF a = PrimF {
+    p_prim :: Prim,
+    p_impl :: a
+}
 
 data Prim = Prim {
     p_name :: Name,
@@ -62,6 +66,9 @@ unaryTP n f =
 unaryP :: (SmtenEH a, SmtenEH b) => String -> (a -> b) -> Prim
 unaryP n f = unaryTP n (const f)
 
+unaryPF :: (SmtenEH a, SmtenEH b) => String -> (a -> b) -> PrimF (a -> b)
+unaryPF n f = PrimF (unaryP n f) f
+
 -- | Construct a binary primitive from a haskell function.
 binaryTP :: (SmtenEH a, SmtenEH b, SmtenEH c) => String -> (Type -> a -> b -> c) -> Prim
 binaryTP n f =
@@ -93,4 +100,7 @@ binaryTP n f =
 
 binaryP :: (SmtenEH a, SmtenEH b, SmtenEH c) => String -> (a -> b -> c) -> Prim
 binaryP n f = binaryTP n (const f)
+
+binaryPF :: (SmtenEH a, SmtenEH b, SmtenEH c) => String -> (a -> b -> c) -> PrimF (a -> b -> c)
+binaryPF n f = PrimF (binaryP n f) f
 

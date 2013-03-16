@@ -355,40 +355,34 @@ type N__2p1 a = N__PLUS (N__2p0 a) N__1
 
 
 __prim_toInteger_Char :: Char -> Integer
-__prim_toInteger_Char =
-    let f :: P.Char -> P.Integer 
-        f = toInteger . fromEnum
-    in unaryHF toInteger_CharP f
+__prim_toInteger_Char = unaryHF toInteger_CharP
 
 __prim_fromInteger_Char :: Integer -> Char
-__prim_fromInteger_Char =
-    let f :: P.Integer -> P.Char
-        f = toEnum . fromInteger
-    in unaryHF fromInteger_CharP f
+__prim_fromInteger_Char = unaryHF fromInteger_CharP
 
 __prim_eq_Integer :: Integer -> Integer -> Bool
-__prim_eq_Integer = binaryHF eq_IntegerP ((==) :: P.Integer -> P.Integer -> P.Bool)
+__prim_eq_Integer = binaryHF eq_IntegerP
 
 __prim_add_Integer :: Integer -> Integer -> Integer
-__prim_add_Integer = binaryHF add_IntegerP ((+) :: P.Integer -> P.Integer -> P.Integer)
+__prim_add_Integer = binaryHF add_IntegerP
 
 __prim_sub_Integer :: Integer -> Integer -> Integer
-__prim_sub_Integer = binaryHF sub_IntegerP ((-) :: P.Integer -> P.Integer -> P.Integer)
+__prim_sub_Integer = binaryHF sub_IntegerP
 
 __prim_mul_Integer :: Integer -> Integer -> Integer
-__prim_mul_Integer = binaryHF mul_IntegerP ((*) :: P.Integer -> P.Integer -> P.Integer)
+__prim_mul_Integer = binaryHF mul_IntegerP
 
 __prim_lt_Integer :: Integer -> Integer -> Bool
-__prim_lt_Integer = binaryHF lt_IntegerP ((<) :: P.Integer -> P.Integer -> P.Bool)
+__prim_lt_Integer = binaryHF lt_IntegerP
 
 __prim_leq_Integer :: Integer -> Integer -> Bool
-__prim_leq_Integer = binaryHF leq_IntegerP ((<=) :: P.Integer -> P.Integer -> P.Bool)
+__prim_leq_Integer = binaryHF leq_IntegerP
 
 __prim_gt_Integer :: Integer -> Integer -> Bool
-__prim_gt_Integer = binaryHF gt_IntegerP ((>) :: P.Integer -> P.Integer -> P.Bool)
+__prim_gt_Integer = binaryHF gt_IntegerP
 
 __prim_geq_Integer :: Integer -> Integer -> Bool
-__prim_geq_Integer = binaryHF geq_IntegerP ((>=) :: P.Integer -> P.Integer -> P.Bool)
+__prim_geq_Integer = binaryHF geq_IntegerP
 
 __prim_show_Integer :: Integer -> String
 __prim_show_Integer = primHF show_IntegerP

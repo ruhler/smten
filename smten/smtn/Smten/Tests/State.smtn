@@ -5,6 +5,24 @@ import Control.Monad.State
 import Control.Monad.State.Class
 import Smten.Tests.Test
 
+-- Test an ambiguous type which can come from using StateT.
+fambig :: (Eq t) => (t, t) -> Bool
+fambig (a, b) = a == b
+
+--tambig :: (Eq t) => State (t, t) Bool
+--tambig = do
+--    x <- get                        -- ambiguous type for 'get'
+--    return (fambig (x :: (t, t)))   -- use scoped type variables to fix.
+
+funambig :: (t, t) -> State (t, t) ()
+funambig _ = return ()
+
+tunambig :: (Eq t) => State (t, t) Bool
+tunambig = do
+    x <- get
+    funambig x
+    return (fambig x)
+
 statething :: Integer -> State Integer Integer
 statething x = do
     s <- get

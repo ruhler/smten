@@ -94,16 +94,16 @@ primHF p =
  in z
 
 unaryHF :: (SmtenHF ca fa, SmtenHF cb fb)
-            => Prim -> (ca -> cb) -> fa -> fb
-unaryHF p f a
- | Just av <- de_smtenHF a = smtenHF (f av)
- | otherwise = primHF p a
+            => PrimF (ca -> cb) -> fa -> fb
+unaryHF p a
+ | Just av <- de_smtenHF a = smtenHF (p_impl p av)
+ | otherwise = primHF (p_prim p) a
 
 
 binaryHF :: (SmtenHF ca fa, SmtenHF cb fb, SmtenHF cc fc)
-           => Prim -> (ca -> cb -> cc) -> fa -> fb -> fc
-binaryHF p f a b
+           => PrimF (ca -> cb -> cc) -> fa -> fb -> fc
+binaryHF p a b
  | Just av <- de_smtenHF a
- , Just bv <- de_smtenHF b = smtenHF (f av bv)
- | otherwise = primHF p a b
+ , Just bv <- de_smtenHF b = smtenHF (p_impl p av bv)
+ | otherwise = primHF (p_prim p) a b
 

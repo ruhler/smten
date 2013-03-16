@@ -29,7 +29,7 @@ Haskell Features::
 * labeled pattern matching.
 
 Documentation::
-* Update README with sample of using Smten
+* Write a user guide
 
 Type System::
 * give a nice message if there's a type ambiguity?
@@ -74,15 +74,12 @@ Pretty Printer::
 
 Performance::
 * Play with GHC Sparks and non-strict state monads
-* Concretize the rest of the haskellf primitives
 
 Sharing::
 * Why do we sometimes share "free~12"?? For example, in Datatype test.
 
 Primitives::
-* Associate concrete haskell function with Prim to avoid duplication in Prim
-  and concretized haskellf primitives.
-* have a free function primitive for yices?
+* Concretize the rest of the haskellf primitives
 
 SMT::
 * Remove bv-zero-extend from SMT syntax, use SMTLIB2 alternative
@@ -121,6 +118,7 @@ Bugs::
 * BadKind, DupInst, DupVar maltype tests
 * Error tests
 * where shadow test (in Concrete)
+* tambig test (in State)
 * Report an error for an unknown primitive encountered in SMT Translation
 * I suspect shadowed variables won't work in STP queries because of a bug in
   how let expressions are implemented. (Can that ever happen?)
