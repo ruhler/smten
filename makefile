@@ -10,13 +10,14 @@ userinstall:
 testio:
 	./build/home/.cabal/bin/smten --io \
 		--include smten/smtn \
-		--file smten/smtn/Smten/SMT/Tests/Error.smtn \
-		--main-is Smten.SMT.Tests.Error.main
+		--file smten/smtn/Smten/Tests/Concrete.smtn \
+		--main-is Smten.Tests.Concrete.main
 
 testsugar:
 	./build/home/.cabal/bin/smten --desugar \
 		--include smten/smtn \
 		--file smten/smtn/Smten/Tests/Concrete.smtn \
+		-o desugared
 
 clean:
 	rm -rf build/smten-smt build/smten build/smten-bin build/test

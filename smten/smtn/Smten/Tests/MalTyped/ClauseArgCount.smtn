@@ -1,0 +1,8 @@
+
+module Smten.Tests.MalTyped.ClauseArgCount where
+
+-- Two clauses have different number of arguments.
+foo :: Integer -> Integer -> Integer
+foo 0 = \x -> x + 1
+foo a b = a + b
+

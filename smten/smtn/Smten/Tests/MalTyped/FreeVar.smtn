@@ -1,0 +1,7 @@
+
+module Smten.Tests.MalTyped.FreeVar where
+
+-- The variable 'x' is not in scope.
+bar :: Bool
+bar = x
+

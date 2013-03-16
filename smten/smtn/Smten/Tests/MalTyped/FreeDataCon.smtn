@@ -1,0 +1,7 @@
+
+module Smten.Tests.MalTyped.FreeDataCon where
+
+-- The data constructor Sludge.
+bar :: Bool
+bar = Sludge
+

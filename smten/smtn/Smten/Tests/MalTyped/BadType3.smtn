@@ -1,0 +1,10 @@
+
+module Smten.Tests.MalTyped.BadType3 where
+
+-- The 'Just a b' pattern has too many arguments.
+foo :: Maybe Bool -> Bool
+foo m =
+  case m of
+    Just a b -> a && b
+    _ -> False
+

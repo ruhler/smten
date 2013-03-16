@@ -1,0 +1,13 @@
+
+module Smten.Tests.MalTyped.DupVar where
+
+-- Variable 'foo' is declared twice.
+foo :: Bool
+foo = True
+
+bar :: Bool
+bar = True
+
+foo :: Bool
+foo = False
+

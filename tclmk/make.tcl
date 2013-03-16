@@ -89,14 +89,22 @@ proc badtypetest {name} {
     }
 }
 
+badtypetest "Ambiguous"
+#badtypetest "BadKind"
 badtypetest "BadType1"
 badtypetest "BadType2"
-badtypetest "Ctx"
-badtypetest "Ambiguous"
-badtypetest "InstCtx"
+badtypetest "BadType3"
+badtypetest "BadType4"
 badtypetest "ClassCtx1"
-badtypetest "FreeTypeVar"
+badtypetest "ClauseArgCount"
+badtypetest "Ctx"
 #badtypetest "DupInst"
+#badtypetest "DupVar"
+badtypetest "FreeDataCon"
+badtypetest "FreeTyCon"
+badtypetest "FreeTypeVar"
+badtypetest "FreeVar"
+badtypetest "InstCtx"
 
 # Run an IO Test
 proc io {module} {

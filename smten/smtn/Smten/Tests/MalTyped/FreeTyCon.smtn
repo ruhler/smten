@@ -1,0 +1,7 @@
+
+module Smten.Tests.MalTyped.FreeTyCon where
+
+-- The type constructor Blah is not in scope.
+bar :: Blah
+bar = error "huh?"
+
