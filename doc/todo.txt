@@ -16,7 +16,6 @@ Recent::
 * Add support for semicolon error parsing rule in parser
 * If default implementation is missing for an instance, generate a default
   of the form: error "Implementation of /= for Blah not defined"
-* In de_smtenEH (->), propagate ErrorEH (if that makes sense).
 * Have flags in smten exe to call ghc appropriately.
 
 Haskell Features::
@@ -95,15 +94,10 @@ Performance::
 Sharing::
 * Why do we sometimes share "free~12"?? For example, in Datatype test.
 
-ExpH::
-* Perhaps case statements should consider all constructors at once instead of
-  one at a time?
-
 Primitives::
 * Associate concrete haskell function with Prim to avoid duplication in Prim
   and concretized haskellf primitives.
 * have a free function primitive for yices?
-* have a free integer primitive for SMT?
 
 SMT::
 * Remove bv-zero-extend from SMT syntax, use SMTLIB2 alternative

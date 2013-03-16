@@ -1,0 +1,111 @@
+
+Fri Mar 15 09:49:14 EDT 2013
+
+Working on cleanup and performance.
+
+I think things are getting much cleaner. That's good. There was a lot I was
+doing before unnecessarily.
+
+So we have this new strict_appEH thing. I don't think I'm using it as well as
+I could be. For example, it ought to propagate errors, don't you think?
+
+Well, in reality I shouldn't have to make errors special, because they are
+just like non-termination. If I must handle errors specially, then I don't
+handle non-termination properly.
+
+But currently I don't handle errors properly, and I don't want to jump in that
+boat just yet.
+
+Instead, next step: sharing in strict_appEH. It's a transformation, like any
+other on ExpH. I know the standard pure IO trick to preserve sharing.
+
+Best would be if I could reuse an existing transform function so I don't have
+to reimplement this. Or make the existing one generic. Let me give that a try.
+
+Trouble: we can't reuse transform, because it doesn't recurse correctly. We
+don't want to recurse to the predicate of the if statement, just the bodies.
+
+Bummer. Well, let's start by a manual preservation of sharing, then see if
+there is some way I can make that function generic and reuse it.
+
+Fri Mar 15 10:13:36 EDT 2013
+
+Okay, I think I know how to make preservation of sharing generic. Let me dive
+in, make it work. See if I can reuse it for Sharing and IVP too, but only
+after the first step.
+
+And this will be good, because it looks like now Sharing is back to our old
+memory hog, so if I can make it faster, and it's shared, then everything is
+faster. We shall see.
+
+My generic function works great! Now, let me try it out on SHARING and IVP?
+
+SHARING first.
+
+Hmm... Sharing is slightly different. It isn't a pure thing. The reason is, it
+updates the previous result. Same with IVP.
+
+So we have a slightly different structure, which is: If you see an expression
+again, you want to combine it with the previous result.
+
+I think it can be shared, but it will require a slightly different structure.
+
+So let me not deal with it now, but I'll think about how to deal with it.
+
+Fri Mar 15 10:36:58 EDT 2013
+
+Tried out seri_arch_extract. It works now! Totally fine! That was absolutely
+the issue I was facing! Awesome. Sweet. Smten is fast now :).
+
+Let me try sudoku2.
+
+Works swell! Wonderful. So happy... Don't even need IVP. Which is very
+good.
+
+Fri Mar 15 13:38:45 EDT 2013
+
+Okay! So performance is well handled now. No more need to keep hacking on
+performance improvements. I'm very happy about this.
+
+But, what should I work on now then?
+
+The big thing looking ahead will be handling _|_ properly. I need to think
+about how to do that in a way which makes me happy.
+
+Other than that, it's all about code cleanup, improving error messages, and
+all those little kinds of things. I should take this opportunity to clean up
+as much code as I can.
+
+The big thing is locations for type errors. But that's kind of a feature
+thing, not just a code cleanup thing. I'm in the mood for more code cleanup
+kinds of things. Hmm...
+
+Type check. I think that would be a great place to start.
+SMT syntax perhaps, if there is left over stuff from functions.
+
+All these little things.
+
+So, let me do them. One at a time.
+
+1. SMT syntax.
+I should not need ArrowT anymore, right?
+I should not need UpdateE anymore, right?
+
+Correct. Done.
+
+Now, I wonder if yices concrete pretty printing needs to distinguish between
+yices1 and yices2 anymore.
+
+Fri Mar 15 13:48:54 EDT 2013
+
+2. varTs should return a list of TyVar, not (Name, Kind)
+
+Err... I actually don't feel like doing this right now. I need to think
+slightly more to see if it makes sense.
+
+3. Typecheck.
+Context should include Context.
+Do inst-check internally whenever we see a VarE not in scope.
+
+Um. I'm not sure I'm in the mood for this either. Hum.
+

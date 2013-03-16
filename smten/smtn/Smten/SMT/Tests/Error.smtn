@@ -1,0 +1,71 @@
+
+module Smten.SMT.Tests.Error where
+
+import Smten.SMT.Symbolic
+import Smten.Tests.Test
+
+boom :: Bool -> Bool
+boom x = boom (not x)
+
+series :: Integer -> Integer
+series 0 = 0
+series x = x + series (x-1)
+
+-- After assert false, explicit error should not be evaluated.
+qerror :: SMT ()
+qerror = do
+    a <- query $ do
+            p <- free
+            assert (p && not p)
+            assert (error "boom!")
+            return p
+    test "error.error" (a == Nothing)
+
+-- After assert false, non-termination should not be evaluated.
+qboom :: SMT ()
+qboom = do
+    a <- query $ do
+            p <- free
+            assert (p && not p)
+            assert (boom True)
+            return p
+    test "error.boom" (a == Nothing)
+
+-- It should not take an infinite amount of time to test a finite number of
+-- things. Right?
+--
+-- Or maybe assert (x > 0) is an infinite number of things, so it's okay to
+-- blow up?
+qinc :: SMT ()
+qinc = do
+    a <- query $ do
+            x <- free
+            assert (x > 0)
+            assert (x < 10)
+            assert (series x == 4)
+            return x
+    test "error.inc" (a == Nothing)
+
+-- It should not take an infinite amount of time to test a finite number of
+-- things. Attempt 2. This clearly should not blow up.
+qinc2 :: SMT ()
+qinc2 = do
+    a <- query $ do
+            p <- free
+            let x = if p then 4 else 10
+            assert (series x == 4)
+            return x
+    test "error.inc2" (a == Nothing)
+            
+qtest :: SMT ()
+qtest = do
+    qerror
+    qboom
+    qinc
+    qinc2
+
+main :: IO ()
+main = do
+    runSMT Yices2 (Just "build/test/Error.yices2.dbg") qtest
+    putStrLn "ERROR PASSED"
+

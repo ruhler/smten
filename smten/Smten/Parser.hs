@@ -10,7 +10,7 @@ import Smten.Parser.Grammar
 -- $doc
 -- The Smten language is a subset of haskell. The following lists the
 -- differences between the Smten language and haskell as defined in the 
--- Haskell 98 Language Report.
+-- Haskell 2010 Language Report.
 --
 -- [@Things to implement eventually, perhaps@]
 --
