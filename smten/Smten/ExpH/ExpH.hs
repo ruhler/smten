@@ -52,17 +52,6 @@ data ExpH =
 
           -- | Conditional expressions.
           | IfEH EID ExpH ExpH ExpH
-
-          -- | Explicit _|_.
-          -- Type is the type of the expression.
-          --
-          -- TODO: Ideally we shouldn't need this at all, because error and
-          -- non-termination should be indistinguishable, so we could just
-          -- convert to a haskell error immediately. Our current
-          -- implementation, however, is overly eager when things are
-          -- symbolic. Having explicit error lets us at least handle that case
-          -- more nicely. (Though it doesn't work for non-termination).
-          | ErrorEH Type String
     deriving(Typeable)
 
 -- Call the given function with a globally unique identifier.

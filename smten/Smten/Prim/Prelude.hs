@@ -40,7 +40,7 @@ preludePs = [
     ]
 
 errorP :: Prim
-errorP = unaryTP "Prelude.error" errorEH
+errorP = unaryP "Prelude.error" (error :: String -> ExpH)
 
 eq_IntegerP :: PrimF (Integer -> Integer -> Bool)
 eq_IntegerP = binaryPF "Prelude.__prim_eq_Integer" (==)

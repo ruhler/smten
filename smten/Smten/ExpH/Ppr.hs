@@ -27,5 +27,4 @@ instance Ppr ExpH where
         = text "if" <+> parens (ppr e1)
             <+> text "then" <+> ppr e2
             <+> text "else" <+> ppr e3
-    ppr (ErrorEH t s) = text "error" <+> text s
 

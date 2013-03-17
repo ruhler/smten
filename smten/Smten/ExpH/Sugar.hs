@@ -6,7 +6,6 @@ module Smten.ExpH.Sugar (
     litEH, de_litEH, varEH, de_varEH, conEH, de_conEH, de_kconEH,
     appEH, appsEH, strict_appEH,
     lamEH, letEH, aconEH,
-    errorEH, de_errorEH,
     caseEH,
     ifEH, impliesEH,
 
@@ -87,9 +86,6 @@ appEH f x
     let Just (_, t) = de_arrowT (typeof f)
     in letEH (Sig (name "_z") (typeof x)) t x $ \av ->
          ifEH a (appEH y av) (appEH n av)
- | ErrorEH t s <- f = 
-    let Just (_, t) = de_arrowT (typeof f)
-    in errorEH t s
  | otherwise = error "appEH"
 
 smttype :: Type -> Bool
@@ -157,16 +153,6 @@ de_charEH e = do
     l <- de_litEH e
     de_charL l
 
--- The type passed to errorEH should be the return type of error when applied
--- to a string.
-errorEH :: Type -> String -> ExpH
-errorEH = ErrorEH
-
-de_errorEH :: ExpH -> Maybe (Type, String)
-de_errorEH e
- | ErrorEH t s <- e = Just (t, s)
- | otherwise = Nothing
-
 ioEH :: IO ExpH -> ExpH
 ioEH x = litEH (dynamicL x)
 
@@ -182,7 +168,6 @@ caseEH' :: ExpH -> Sig -> ExpH -> ExpH -> ExpH
 caseEH' x k@(Sig nk _) y n
  | Just (s, _, vs) <- de_conEH x
     = if s == nk then appsEH y vs else n
- | Just (_, msg) <- de_errorEH x = errorEH (typeof n) msg
  | nk == name "True" = identify $ \id -> IfEH id x y n
  | nk == name "False" = identify $ \id -> IfEH id x n y
  | IfEH {} <- x = strict_appEH (\x' -> caseEH x' k y n) x
@@ -219,7 +204,6 @@ transform f =
         | PrimEH _ _ _ f xs <- e = f (map use xs)
         | LamEH _ s t f <- e = lamEH s t $ \x -> use (f x)
         | IfEH _ x y d <- e = ifEH (use x) (use y) (use d)
-        | ErrorEH {} <- e = e
   in shared g
 
 de_tupleEH :: ExpH -> Maybe [ExpH]

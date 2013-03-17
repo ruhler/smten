@@ -20,7 +20,6 @@ import Smten.ExpH.Sugar
 -- computation.
 runio :: ExpH -> IO ExpH
 runio e
- | Just (_, msg) <- de_errorEH e = error $ "smten: " ++ msg
  | Just io <- de_ioEH e = io
  | otherwise = error $ "runio got non-IO: " ++ pretty e
 

@@ -80,9 +80,6 @@ convert share e =
             yes' <- useM yes
             no' <- useM no
             return $ ifE arg' yes' no'
-        | ErrorEH t s <- e = return $
-            appE (varE (Sig (name "Prelude.error") (arrowT stringT t))) (stringE s)
-            
 
       -- Generate the use for this expression.
       -- So, if it's shared, turns into a VarE.

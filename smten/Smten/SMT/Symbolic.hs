@@ -126,6 +126,5 @@ de_symbolicEH e
         yr <- predicated py ys
         nr <- predicated pn ns
         return $ ifEH x yr nr
- | ErrorEH _ msg <- e = error $ "(de_symbolicEH): " ++ msg
  | otherwise = error $ "de_symbolicEH: " ++ pretty e
 

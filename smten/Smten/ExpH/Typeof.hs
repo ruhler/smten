@@ -16,6 +16,5 @@ instance Typeof ExpH where
     typeof (PrimEH _ _ t _ _) = t
     typeof (LamEH _ (Sig _ it) ot _) = arrowT it ot
     typeof (IfEH _ _ _ e) = typeof e
-    typeof (ErrorEH t _) = t
 
 

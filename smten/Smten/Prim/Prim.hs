@@ -48,7 +48,6 @@ unaryTP n f =
       impl :: Type -> [ExpH] -> ExpH
       impl t [a]
         | Just av <- de_smtenEH a = smtenEH (f t av)
-        | Just (_, msg) <- de_errorEH a = errorEH t msg
         | IfEH {} <- a
         , not (smttype (typeof a)) = strict_appEH (\a' -> impl t [a']) a
         | otherwise = identify $ \id -> PrimEH id nm t (impl t) [a]
@@ -79,7 +78,6 @@ binaryTP n f =
       impl t [a, b] 
         | Just av <- de_smtenEH a
         , Just bv <- de_smtenEH b = smtenEH (f t av bv)
-        | Just (_, msg) <- mplus (de_errorEH a) (de_errorEH b) = errorEH t msg
         | IfEH {} <- a
         , not (smttype (typeof a)) = strict_appEH (\a' -> impl t [a', b]) a
         | IfEH {} <- b

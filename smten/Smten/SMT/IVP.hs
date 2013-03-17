@@ -95,7 +95,6 @@ def m e
         (yv, yns) <- use m y
         (dv, dns) <- use m d
         return (ifEH x' yv dv, Set.unions [xns, yns, dns])
- | ErrorEH {} <- e = return (e, Set.empty)
     
 
 -- Perform inferred value propagation on the given expression.
