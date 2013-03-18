@@ -113,6 +113,11 @@ Build System::
 * don't hardcode build/test output directory into SMT tests
 * clean up tclmk script: maybe separate into init, build, and test sections.
 
+Error::
+* IfEH should not look into branches for type
+* de_symbolicEH doesn't prune properly
+* Performance is terrible
+* Bug in STP
 
 Bugs::
 * BadKind, DupInst, DupVar maltype tests

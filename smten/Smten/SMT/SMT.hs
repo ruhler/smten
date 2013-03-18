@@ -69,7 +69,6 @@ import Smten.Type
 import Smten.ExpH
 import Smten.Dec
 import Smten.Ppr hiding (nest)
-import Smten.SMT.IVP
 import Smten.SMT.Symbolic
 import Smten.SMT.Translate
 

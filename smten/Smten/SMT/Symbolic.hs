@@ -25,8 +25,6 @@ import Smten.Lit
 import Smten.Ppr
 import Smten.ExpH
 
-import Smten.SMT.IVP
-
 type Context = Unique
 type Contexts = [Unique]
 
@@ -112,11 +110,7 @@ runSymbolic ctx nfree s =
 de_symbolicEH :: ExpH -> Symbolic ExpH
 de_symbolicEH e
  | Just l <- de_litEH e, Just s <- de_dynamicL l = s
-
-   -- TODO: use of ivp here is maybe a hack. Fix it.
-   -- In general we need an SMT solver to tell us when a certain branch is
-   -- unreachable to avoid being overly eager.
- | IfEH _ x y n <- ivp e =
+ | IfEH _ x y n <- e =
     let py = x
         pn = ifEH x falseEH trueEH
 
