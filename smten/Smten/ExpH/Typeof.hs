@@ -11,11 +11,13 @@ import Smten.ExpH.ExpH
 
 instance Typeof ExpH where
     typeof (LitEH l) = typeof l
-    typeof (ConEH _ _ t _) = t
+    typeof (ConEH _ t _) = t
     typeof (VarEH s) = typeof s
-    typeof (PrimEH _ _ t _ _) = t
-    typeof (LamEH _ (Sig _ it) ot _) = arrowT it ot
-    typeof (IfEH _ t _ _ _) = t
+    typeof (PrimEH _ t _ _) = t
+    typeof (LamEH (Sig _ it) ot _) = arrowT it ot
+    typeof (IfEH t _ _ _) = t
     typeof (ErrorEH t _) = t
 
+instance Typeof Thunk where
+    typeof = typeof . force 
 

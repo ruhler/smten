@@ -23,10 +23,10 @@ data PrimF a = PrimF {
 
 data Prim = Prim {
     p_name :: Name,
-    primEH :: Type -> ExpH
+    primEH :: Type -> Thunk
 }
 
-lookupPrim :: [Prim] -> Sig -> Maybe ExpH
+lookupPrim :: [Prim] -> Sig -> Maybe Thunk
 lookupPrim ps =
   let m = HT.table [(n, f) | Prim n f <- ps]
   in \(Sig n t) -> do
@@ -45,17 +45,17 @@ unaryTP n f =
   let nm = name n
 
       -- Type is the type of the fully applied primitive.
-      impl :: Type -> [ExpH] -> ExpH
+      impl :: Type -> [Thunk] -> Thunk
       impl t [a]
         | Just av <- de_smtenEH a = smtenEH (f t av)
         | Just (_, msg) <- de_errorEH a = errorEH t msg
-        | IfEH {} <- a
+        | IfEH {} <- force a
         , not (smttype (typeof a)) = strict_appEH t (\a' -> impl t [a']) a
-        | otherwise = identify $ \id -> PrimEH id nm t (impl t) [a]
+        | otherwise = thunk $ PrimEH nm t (impl t) [a]
 
       -- The type is the type of the primitive function without arguments
       -- applied.
-      eh :: Type -> ExpH
+      eh :: Type -> Thunk
       eh t
         | Just (at, ot) <- de_arrowT t =
             lamEH (Sig (name "a") at) ot $ \a ->
@@ -75,20 +75,20 @@ binaryTP n f =
   let nm = name n 
 
       -- The type is the type of the fully applied primitive
-      impl :: Type -> [ExpH] -> ExpH
+      impl :: Type -> [Thunk] -> Thunk
       impl t [a, b] 
         | Just av <- de_smtenEH a
         , Just bv <- de_smtenEH b = smtenEH (f t av bv)
         | Just (_, msg) <- mplus (de_errorEH a) (de_errorEH b) = errorEH t msg
-        | IfEH {} <- a
+        | IfEH {} <- force a
         , not (smttype (typeof a)) = strict_appEH t (\a' -> impl t [a', b]) a
-        | IfEH {} <- b
+        | IfEH {} <- force b
         , not (smttype (typeof b)) = strict_appEH t (\b' -> impl t [a, b']) b
-        | otherwise = identify $ \id -> PrimEH id nm t (impl t) [a, b]
+        | otherwise = thunk $ PrimEH nm t (impl t) [a, b]
 
       -- The type is the type of the primitive function without arguments
       -- applied.
-      eh :: Type -> ExpH
+      eh :: Type -> Thunk
       eh t
         | Just (at, bzt) <- de_arrowT t
         , Just (bt, ot) <- de_arrowT bzt = 

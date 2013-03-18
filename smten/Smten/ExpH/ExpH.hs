@@ -6,7 +6,7 @@
 -- | HOAS form for Smten Expressions, geared towards high performance
 -- elaboration.
 module Smten.ExpH.ExpH (
-    ExpH(..), EID, identify, getid,
+    ExpH(..), EID, Thunk(), force, eid, thunk, thunkNS, identify,
     ) where
 
 import System.IO.Unsafe
@@ -33,7 +33,7 @@ data ExpH =
 
             -- | Fully applied data constructors.
             -- The Type field is the type of the fully applied constructor.
-          | ConEH EID Name Type [ExpH]
+          | ConEH Name Type [Thunk]
 
             -- | Primitive symbolic varibles.
             -- Current types supported are: Bool, Integer, Bit
@@ -41,17 +41,17 @@ data ExpH =
 
             -- | Fully applied primitive functions
             -- | The Type field is the type of the fully applied primitive.
-          | PrimEH EID Name Type ([ExpH] -> ExpH) [ExpH]
+          | PrimEH Name Type ([Thunk] -> Thunk) [Thunk]
          
           -- | LamEH s t f:
           --    s - name and type of the function argument. 
           --        The name is for debugging purposes only.
           --    t - the return type of the function
           --    f - the haskell representation of the function.
-          | LamEH EID Sig Type (ExpH -> ExpH)
+          | LamEH Sig Type (Thunk -> Thunk)
 
           -- | Conditional expressions.
-          | IfEH EID Type ExpH ExpH ExpH
+          | IfEH Type Thunk Thunk Thunk
 
           -- | Explicit _|_.
           -- Type is the type of the expression.
@@ -65,7 +65,15 @@ data ExpH =
           | ErrorEH Type String
     deriving(Typeable)
 
+data Thunk = Thunk {
+    eid :: Maybe EID,
+    force :: ExpH
+} deriving (Typeable)
+
 -- Call the given function with a globally unique identifier.
+thunk :: ExpH -> Thunk
+thunk e = identify $ \x -> Thunk (Just x) e
+
 identify :: (EID -> a) -> a
 identify f = 
   let {-# NOINLINE idstore #-}
@@ -79,14 +87,8 @@ identify f =
         return $! (f $! EID x)
   in unsafePerformIO $ identifyIO f
 
--- Return the EID of the given complex expression, or None if the
--- expression is simple
-getid :: ExpH -> Maybe EID
-getid e
-  | ConEH _ _ _ [] <- e = Nothing
-  | ConEH x _ _ _ <- e = Just x
-  | PrimEH x _ _ _ _ <- e = Just x
-  | LamEH x _ _ _ <- e = Just x
-  | IfEH x _ _ _ _ <- e = Just x
-  | otherwise = Nothing
+-- Create a non-sharing thunk.
+-- Use this for things like literals which there is no point in sharing.
+thunkNS :: ExpH -> Thunk
+thunkNS = Thunk Nothing
 

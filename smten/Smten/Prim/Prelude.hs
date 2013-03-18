@@ -78,16 +78,16 @@ show_IntegerP :: Prim
 show_IntegerP = unaryP "Prelude.__prim_show_Integer" (show :: Integer -> String)
 
 return_IOP :: Prim
-return_IOP = unaryP "Prelude.return_io" (return :: ExpH -> IO ExpH)
+return_IOP = unaryP "Prelude.return_io" (return :: Thunk -> IO Thunk)
 
 bind_IOP :: Prim
-bind_IOP = binaryP "Prelude.bind_io" ((>>=) :: IO ExpH -> (ExpH -> IO ExpH) -> IO ExpH)
+bind_IOP = binaryP "Prelude.bind_io" ((>>=) :: IO Thunk -> (Thunk -> IO Thunk) -> IO Thunk)
 
 nobind_IOP :: Prim
-nobind_IOP = binaryP "Prelude.nobind_io" ((>>) :: IO ExpH -> IO ExpH -> IO ExpH)
+nobind_IOP = binaryP "Prelude.nobind_io" ((>>) :: IO Thunk -> IO Thunk -> IO Thunk)
 
 fail_IOP :: Prim
-fail_IOP = unaryP "Prelude.fail_io" (fail :: String -> IO ExpH)
+fail_IOP = unaryP "Prelude.fail_io" (fail :: String -> IO Thunk)
 
 putCharP :: Prim
 putCharP = unaryP "Prelude.putChar" putChar
@@ -97,22 +97,22 @@ getContentsP = nullaryP "Prelude.getContents" getContents
 
 numericP :: Prim
 numericP =
-  let f :: Type -> ExpH
+  let f :: Type -> Thunk
       f nt = conEH (Sig (name "#" `nappend` name (show (nteval nt))) nt)
   in nullaryTP "Prelude.numeric" f
 
 valueofP :: Prim
 valueofP = 
-  let f :: ExpH -> ExpH
+  let f :: Thunk -> Thunk
       f x = integerEH (nteval (typeof x))
   in unaryP "Prelude.valueof" f
 
 traceP :: Prim
-traceP = binaryP "Debug.Trace.trace" (trace :: String -> ExpH -> ExpH)
+traceP = binaryP "Debug.Trace.trace" (trace :: String -> Thunk -> Thunk)
 
 traceEP :: Prim
 traceEP =
- let f :: ExpH -> ExpH -> ExpH
+ let f :: Thunk -> Thunk -> Thunk
      f x a = trace (pretty (fromExpH x)) a
  in binaryP "Debug.Trace.traceE" f
         

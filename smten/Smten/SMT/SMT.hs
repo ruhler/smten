@@ -83,7 +83,7 @@ data QS = QS {
     qs_freeid :: Integer,
     qs_qs :: Compilation,
     qs_freevars :: [Sig],
-    qs_freevals :: Maybe [ExpH] -- ^ Cache of free variable values
+    qs_freevals :: Maybe [Thunk] -- ^ Cache of free variable values
 }
 
 newtype SMT a = SMT (StateT QS IO a)
@@ -132,7 +132,7 @@ smtt t = do
     runCmds cmds
     return yt
 
-smte' :: ExpH -> SMT ([SMT.Command], SMT.Expression)
+smte' :: Thunk -> SMT ([SMT.Command], SMT.Expression)
 smte' e = {-# SCC "SmtE" #-} do
     qs <- gets qs_qs 
     let se = {-# SCC "FROMEXPH" #-} fromExpH e
@@ -145,7 +145,7 @@ smte' e = {-# SCC "SmtE" #-} do
     modify $ \s -> s { qs_qs = qs' }
     return (cmds, ye)
 
-smte :: ExpH -> SMT SMT.Expression
+smte :: Thunk -> SMT SMT.Expression
 smte e = do
     (cmds, ye) <- smte' e
     runCmds cmds
@@ -198,7 +198,7 @@ runSMT opts (SMT q) = do
 -- Assumes:
 --   Integers, Bools, and Bit vectors are implemented directly using the
 --   corresponding smt primitives. (Should I not be assuming this?)
-realizefree :: Sig -> SMT ExpH
+realizefree :: Sig -> SMT Thunk
 realizefree (Sig nm t) | t == boolT = do
     solver <- gets qs_solver
     bval <- liftIO $ SMT.getBoolValue solver (smtN nm)
@@ -243,7 +243,7 @@ mkfree s@(Sig nm t) | isPrimT t = do
 mkfree s = error $ "SMT.mkfree: unsupported type: " ++ pretty s
 
 -- | Assert the given smten boolean expression.
-mkassert :: ExpH -> SMT ()
+mkassert :: Thunk -> SMT ()
 mkassert p = {-# SCC "MKASSERT" #-}do
   yp <- smte p
   runCmds [SMT.Assert yp]
@@ -270,7 +270,7 @@ nest q = do
 
 -- | Update the free variables in the given expression based on the current
 -- model.
-realize :: ExpH -> Realize ExpH
+realize :: Thunk -> Realize Thunk
 realize e = {-# SCC "REALIZE" #-} Realize $ do
     freevars <- gets qs_freevars
     freevals <- gets qs_freevals
@@ -281,7 +281,7 @@ realize e = {-# SCC "REALIZE" #-} Realize $ do
                 modify $ \qs -> qs { qs_freevals = Just freevals }
                 return freevals
     let freemap = zip [n | Sig n _ <- freevars] fvs
-        g (VarEH (Sig nm _)) = lookup nm freemap
-        g _ = Nothing
+        g e | VarEH (Sig nm _) <- force e = lookup nm freemap
+            | otherwise = Nothing
     return $ if null freemap then e else transform g e
 

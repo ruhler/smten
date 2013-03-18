@@ -76,6 +76,8 @@ Performance::
 * Play with GHC Sparks and non-strict state monads
 
 Sharing::
+* Don't share trivially things.
+    Maybe need a thunk' function to create unshared thunks?
 * Why do we sometimes share "free~12"?? For example, in Datatype test.
 
 Primitives::

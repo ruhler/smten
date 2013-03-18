@@ -18,10 +18,10 @@ import Smten.ExpH.Sugar
 
 class (SmtenT a) => SmtenEH a where
     -- | Convert a haskell object to its smten ExpH representation
-    smtenEH :: a -> ExpH
+    smtenEH :: a -> Thunk
 
     -- | Convert a smten representation to its haskell object
-    de_smtenEH :: ExpH -> Maybe a
+    de_smtenEH :: Thunk -> Maybe a
 
 instance SmtenEH () where
     smtenEH () = unitEH
@@ -39,14 +39,14 @@ instance SmtenEH Char where
     smtenEH = charEH
     de_smtenEH = de_charEH
 
--- The SmtenEH for ExpH just passes through the ExpH unchanged.
--- Note, this is different from packing a haskell ExpH into a smten ExpH. It
--- packs a haskell ExpH into whatever smten object that haskell ExpH
+-- The SmtenEH for Thunk just passes through the Thunk unchanged.
+-- Note, this is different from packing a haskell Thunk into a smten Thunk. It
+-- packs a haskell Thunk into whatever smten object that haskell Thunk
 -- represents.
-instance SmtenT ExpH where
-    smtenT _ = error "smtenT on ExpH"
+instance SmtenT Thunk where
+    smtenT _ = error "smtenT on Thunk"
 
-instance SmtenEH ExpH where
+instance SmtenEH Thunk where
     smtenEH = id
     de_smtenEH = return
 

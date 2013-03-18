@@ -21,7 +21,7 @@ import Smten.Strict
 
 -- The result of inferred value propagation, and the set of variables this
 -- result depends on.
-type IVPResult = (ExpH, Set.Set Name)
+type IVPResult = (Thunk, Set.Set Name)
 
 type Context = Map.Map Name Bool
 type ContextMap = [(Context, IVPResult)]
@@ -50,9 +50,9 @@ cm_restrict c s = Map.filterWithKey (\k _ -> k `Set.member` s) c
 
 -- Do IVP.
 -- If the result for the expression is cached, use that.
-use :: Context -> ExpH -> State Cache IVPResult
+use :: Context -> Thunk -> State Cache IVPResult
 use m e
- | Just id <- getid e = do
+ | Just id <- eid e = do
     cache <- get
     case {-# SCC "CACHE_LOOKUP" #-} HashMap.lookup id cache of  
         Just cm ->
@@ -70,20 +70,21 @@ use m e
 
 -- Do IVP.
 -- Does not check if the result for the expression is cached.
-def :: Context -> ExpH -> State Cache IVPResult
+def :: Context -> Thunk -> State Cache IVPResult
 def m e
- | LitEH {} <- e = return (e, Set.empty)
- | ConEH _ n t xs <- e = do
+ | LitEH {} <- force e = return (e, Set.empty)
+ | ConEH n t xs <- force e = do
     xs' <- mapM (use m) xs
-    return (identify $ \id -> ConEH id n t (map fst xs'), Set.unions (map snd xs'))
- | VarEH (Sig n _) <- e = return (fromMaybe e (boolEH <$> Map.lookup n m), Set.singleton n)
- | PrimEH _ _ _ f xs <- e = do
+    let th = if null xs then thunkNS else thunk
+    return (th $ ConEH n t (map fst xs'), Set.unions (map snd xs'))
+ | VarEH (Sig n _) <- force e = return (fromMaybe e (boolEH <$> Map.lookup n m), Set.singleton n)
+ | PrimEH _ _ f xs <- force e = do
     xs' <- mapM (use m) xs
     return (f (map fst xs'), Set.unions (map snd xs'))
- | LamEH _ s t f <- e = error "IVP.def: LamEH"
- | IfEH _ tif x y d <- e = do
+ | LamEH s t f <- force e = error "IVP.def: LamEH"
+ | IfEH tif x y d <- force e = do
     (x', xns) <- use m x
-    case x' of
+    case force x' of
      VarEH (Sig nm t) | t == boolT -> do
         (yv, yns) <- use (Map.insert nm True m) y
         (dv, dns) <- use (Map.insert nm False m) d
@@ -95,11 +96,11 @@ def m e
         (yv, yns) <- use m y
         (dv, dns) <- use m d
         return (ifEH tif x' yv dv, Set.unions [xns, yns, dns])
- | ErrorEH {} <- e = return (e, Set.empty)
+ | ErrorEH {} <- force e = return (e, Set.empty)
     
 
 -- Perform inferred value propagation on the given expression.
 -- Assumes the expression may be looked at in its entirety.
-ivp :: ExpH -> ExpH
+ivp :: Thunk -> Thunk
 ivp e = fst $ evalState (use Map.empty e) HashMap.empty
 
