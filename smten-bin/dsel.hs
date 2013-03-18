@@ -8,7 +8,6 @@ import Data.Maybe(fromMaybe)
 
 import Smten.Type
 import Smten.ExpH
-import Smten.SMT.Symbolic
 import Smten.SMT.SMT
 import Smten.HaskellF.HaskellF
 import Smten.HaskellF.TH

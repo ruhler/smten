@@ -1,5 +1,4 @@
 
--- Alternative interface for SMT queries in Smten.
 module Smten.SMT.Symbolic where
 
 import Control.Monad.IO.Class

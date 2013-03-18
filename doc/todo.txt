@@ -114,8 +114,6 @@ Build System::
 * clean up tclmk script: maybe separate into init, build, and test sections.
 
 Error::
-* IfEH should not look into branches for type
-* de_symbolicEH doesn't prune properly
 * Performance is terrible
 * Bug in STP
 

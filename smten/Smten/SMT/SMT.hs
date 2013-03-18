@@ -43,9 +43,12 @@
 {-# LANGUAGE TemplateHaskell #-}
 
 module Smten.SMT.SMT (
+    Used(..),
+    Symbolic,
+    prim_free, assert, used,
+    predicated, de_symbolicEH,
     Realize(), RunOptions(..), runSMT,
-    SMT, query, query_Used, nest, use, realize,
-    prune,
+    SMT, query, query_Used, nest, use, realize, prune,
     ) where
 
 import Debug.Trace
@@ -65,11 +68,11 @@ import Smten.Bit
 import Smten.Failable
 import Smten.Name
 import Smten.Sig
+import Smten.Lit
 import Smten.Type
 import Smten.ExpH
-import Smten.Dec
+import Smten.Dec hiding (Context)
 import Smten.Ppr hiding (nest)
-import Smten.SMT.Symbolic
 import Smten.SMT.Translate
 
 newtype Realize a = Realize {
@@ -82,6 +85,7 @@ data QS = QS {
     qs_dh :: Maybe Handle,
     qs_freeid :: Integer,
     qs_qs :: Compilation,
+    qs_pred :: ExpH,
     qs_freevars :: [Sig],
     qs_freevals :: Maybe [ExpH] -- ^ Cache of free variable values
 }
@@ -182,6 +186,7 @@ mkQS opts = do
         qs_dh = dh,
         qs_freeid = 1,
         qs_qs = compilation,
+        qs_pred = trueEH,
         qs_freevars = [],
         qs_freevals = Nothing
     }
@@ -253,7 +258,8 @@ mkassert p = {-# SCC "MKASSERT" #-}do
   r <- check
   case r of
       SMT.Satisfiable -> do
-          p' <- prune p
+          pred <- gets qs_pred
+          p' <- prune (impliesEH pred p)
           assert_pruned p'
       SMT.Unsatisfiable -> return ()
       _ -> error $ "Smten.SMT.SMT.mkasserts: check failed"
@@ -293,11 +299,7 @@ prune e
 use :: Symbolic a -> SMT (Used a)
 use s = {-# SCC "USE" #-} do
     ctx <- gets qs_ctx
-    fid <- gets qs_freeid
-    let (fid', frees, asserts, v) = {-# SCC "RUN_SYMBOLIC" #-} runSymbolic ctx fid s
-    modify $ \qs -> qs { qs_freeid = fid' }
-    {-# SCC "MKFREES" #-} mapM mkfree frees
-    {-# SCC "MKASSERTS" #-} mapM mkassert asserts
+    v <- symbolic_smt s
     return (Used (head ctx) v)
     
 -- | Run the given query in its own scope and return the result.
@@ -326,4 +328,79 @@ realize e = {-# SCC "REALIZE" #-} Realize $ do
         g (VarEH (Sig nm _)) = lookup nm freemap
         g _ = Nothing
     return $ if null freemap then e else transform g e
+
+
+type Context = Unique
+type Contexts = [Unique]
+
+data Used a = Used Context a
+    deriving (Typeable)
+
+instance Functor Used where
+    fmap f (Used ctx a) = Used ctx (f a)
+
+newtype Symbolic a = Symbolic {
+    symbolic_smt :: SMT a
+} deriving (Functor, Monad, Typeable)
+
+deriving instance MonadState QS Symbolic
+
+-- | Assert the given predicate.
+assert :: ExpH -> Symbolic ()
+assert p = Symbolic (mkassert p)
+
+-- | Read the value of a Used.
+used :: Used a -> Symbolic a
+used (Used ctx v) = do
+    ctxs <- gets qs_ctx
+    if (ctx `elem` ctxs)
+       then return $ v
+       else error "used of ref in invalid context"
+
+-- | Allocate a primitive free variable of the given type.
+-- The underlying SMT solver must support this type for this to work.
+prim_free :: Type -> Symbolic ExpH
+prim_free t = do
+    fid <- gets qs_freeid
+    let f = Sig (name $ "free~" ++ show fid) t
+    Symbolic $ mkfree f
+    modify $ \qs -> qs { qs_freeid = fid+1 }
+    return (varEH f)
+
+-- | Predicate the symbolic computation on the given smten Bool.
+-- All assertions will only apply when the predicate is satisfied, otherwise
+-- the assertions become vacuous.
+predicated :: ExpH -> Symbolic a -> Symbolic a
+predicated p s = do
+    pred <- gets qs_pred
+    modify $ \qs -> qs { qs_pred = andEH pred p }
+    v <- s
+    modify $ \qs -> qs { qs_pred = pred }
+    return v
+
+-- Convert an ExpH of smten type (Symbolic a) to it's corresponding haskell
+-- Symbolic.
+--
+-- This assumes you are passing an expression of seri type (Symbolic a).
+-- It will always succeed, because it automatically converts symbolic
+-- (Symbolic a) into concrete (Symbolic a)
+de_symbolicEH :: ExpH -> Symbolic ExpH
+de_symbolicEH e = do
+    e' <- Symbolic $ prune e
+    de_symbolicEH_pruned e'
+
+de_symbolicEH_pruned :: ExpH -> Symbolic ExpH
+de_symbolicEH_pruned e
+ | Just l <- de_litEH e, Just s <- de_dynamicL l = s
+ | IfEH _ t x y n <- e =
+    let py = x
+        pn = ifEH boolT x falseEH trueEH
+
+        ys = de_symbolicEH y
+        ns = de_symbolicEH n
+    in do
+        yr <- predicated py ys
+        nr <- predicated pn ns
+        return $ ifEH t x yr nr
+ | otherwise = error $ "de_symbolicEH: " ++ pretty e
 

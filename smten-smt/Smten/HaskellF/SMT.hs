@@ -8,7 +8,6 @@ module Smten.HaskellF.SMT (
 import Data.Functor((<$>))
 import Data.Maybe (fromMaybe)
 
-import Smten.SMT.Symbolic
 import Smten.SMT.SMT
 import Smten.HaskellF.HaskellF
 import qualified Smten.HaskellF.Lib.Prelude as S

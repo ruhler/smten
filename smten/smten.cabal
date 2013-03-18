@@ -114,7 +114,6 @@ library
     Smten.SMT.Solver
     Smten.SMT.Syntax
     Smten.SMT.Translate
-    Smten.SMT.Symbolic
     Smten.SMT.SMT
 
     Smten.Semantics

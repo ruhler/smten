@@ -25,7 +25,6 @@ import Smten.Lit
 import Smten.Sig
 import Smten.ExpH
 import Smten.Ppr hiding (nest)
-import Smten.SMT.Symbolic
 import Smten.SMT.SMT
 import Smten.SMT.Yices.Yices1
 import Smten.SMT.Yices.Yices2
