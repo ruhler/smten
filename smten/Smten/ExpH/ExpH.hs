@@ -51,7 +51,7 @@ data ExpH =
           | LamEH EID Sig Type (ExpH -> ExpH)
 
           -- | Conditional expressions.
-          | IfEH EID ExpH ExpH ExpH
+          | IfEH EID Type ExpH ExpH ExpH
     deriving(Typeable)
 
 -- Call the given function with a globally unique identifier.
@@ -76,6 +76,6 @@ getid e
   | ConEH x _ _ _ <- e = Just x
   | PrimEH x _ _ _ _ <- e = Just x
   | LamEH x _ _ _ <- e = Just x
-  | IfEH x _ _ _ <- e = Just x
+  | IfEH x _ _ _ _ <- e = Just x
   | otherwise = Nothing
 

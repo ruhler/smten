@@ -53,12 +53,29 @@ casedesugar = do
             return x
     test "casedesugar" (r == Just (1 :: Integer))
 
+appeval :: SMT ()
+appeval = do
+    r <- query $ do
+            let f = \x -> 0
+                g = \x -> x + x + x + x + x
+            p <- free
+            q <- free
+            z <- free
+            assert $ 5 == (case () of
+                            _ | p, q -> f
+                              | otherwise -> g
+                          ) z
+            assert (not q)
+            return z
+    test "appeval" (r == Just (1 :: Integer))
+
 qmain :: SMT ()
 qmain = do
     simple
     samectx
     diffctx
     casedesugar
+    appeval
 
 main :: IO ()
 main = do

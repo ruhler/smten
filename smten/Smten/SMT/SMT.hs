@@ -266,7 +266,7 @@ prune e
  | VarEH {} <- e = return e
  | PrimEH _ _ _ impl xs <- e = impl <$> mapM prune xs
  | LamEH {} <- e = error "LamEH in Prune"
- | IfEH _ p a b <- e = do
+ | IfEH _ t p a b <- e = do
      p' <- prune p
      ma <- nest $ do
         assert_pruned p'
@@ -285,7 +285,7 @@ prune e
             _ -> error $ "Smten.SMT.SMT.prune: check failed"
 
      case (ma, mb) of
-         (Just a', Just b') -> return $ ifEH p' a' b'
+         (Just a', Just b') -> return $ ifEH t p' a' b'
          (Just a', _) -> return a'
          (_, Just b') -> return b'
          _ -> error $ "Smten.SMT.SMT.prune: unreachable"

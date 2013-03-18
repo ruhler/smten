@@ -110,15 +110,15 @@ runSymbolic ctx nfree s =
 de_symbolicEH :: ExpH -> Symbolic ExpH
 de_symbolicEH e
  | Just l <- de_litEH e, Just s <- de_dynamicL l = s
- | IfEH _ x y n <- e =
+ | IfEH _ t x y n <- e =
     let py = x
-        pn = ifEH x falseEH trueEH
+        pn = ifEH boolT x falseEH trueEH
 
         ys = de_symbolicEH y
         ns = de_symbolicEH n
     in do
         yr <- predicated py ys
         nr <- predicated pn ns
-        return $ ifEH x yr nr
+        return $ ifEH t x yr nr
  | otherwise = error $ "de_symbolicEH: " ++ pretty e
 

@@ -77,7 +77,7 @@ qtest = do
     qboom
     qinc
     qinc2
-    --qinc3
+    qinc3
 
 main :: IO ()
 main = do

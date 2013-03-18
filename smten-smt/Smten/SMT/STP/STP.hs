@@ -110,8 +110,11 @@ mkExpr s e | Just (bs, v) <- de_letE e =
         val' <- mkExpr s val
         modifyIORef (stp_vars s) $ Map.insert nm val'
   in do
+    m <- readIORef (stp_vars s)
     mapM_ mkvar bs
-    mkExpr s v
+    p <- mkExpr s v
+    writeIORef (stp_vars s) $! m
+    return p
     
 mkExpr _ e = error $ "TODO: STP.mkExpr " ++ show e
 

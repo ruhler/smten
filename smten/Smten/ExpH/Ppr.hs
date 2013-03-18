@@ -23,7 +23,7 @@ instance Ppr ExpH where
     ppr (VarEH s) = ppr s
     ppr (PrimEH _ n _ _ xs) = ppr (appsEH (varEH (Sig n UnknownT)) xs)
     ppr (LamEH _ s _ f) = text "\\" <+> ppr s <+> text "->" <+> text "..."
-    ppr (IfEH _ e1 e2 e3)
+    ppr (IfEH _ _ e1 e2 e3)
         = text "if" <+> parens (ppr e1)
             <+> text "then" <+> ppr e2
             <+> text "else" <+> ppr e3

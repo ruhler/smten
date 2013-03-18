@@ -79,13 +79,9 @@ de_varEH _ = Nothing
 appEH :: ExpH -> ExpH -> ExpH
 appEH f x
  | LamEH _ (Sig _ t) _ g <- f = g x
- | IfEH _ a y n <- f =
-    -- Perform Case Argument Pushing:
-    -- (if a then y else n) x
-    -- ===> (if a then y x else n x)
-    let Just (_, t) = de_arrowT (typeof f)
-    in letEH (Sig (name "_z") (typeof x)) t x $ \av ->
-         ifEH a (appEH y av) (appEH n av)
+ | IfEH {} <- f =
+     let Just (_, t) = de_arrowT (typeof f)
+     in strict_appEH t (\g -> appEH g x) f
  | otherwise = error "appEH"
 
 smttype :: Type -> Bool
@@ -161,41 +157,43 @@ de_ioEH x = do
     l <- de_litEH x
     de_dynamicL l
 
-caseEH :: ExpH -> Sig -> ExpH -> ExpH -> ExpH
-caseEH x k y n = {-# SCC "CASE_EH" #-} caseEH' x k y n
+caseEH :: Type -> ExpH -> Sig -> ExpH -> ExpH -> ExpH
+caseEH t x k y n = {-# SCC "CASE_EH" #-} caseEH' t x k y n
 
-caseEH' :: ExpH -> Sig -> ExpH -> ExpH -> ExpH
-caseEH' x k@(Sig nk _) y n
+caseEH' :: Type -> ExpH -> Sig -> ExpH -> ExpH -> ExpH
+caseEH' t x k@(Sig nk _) y n
  | Just (s, _, vs) <- de_conEH x
     = if s == nk then appsEH y vs else n
- | nk == name "True" = identify $ \id -> IfEH id x y n
- | nk == name "False" = identify $ \id -> IfEH id x n y
- | IfEH {} <- x = strict_appEH (\x' -> caseEH x' k y n) x
+ | nk == name "True" = identify $ \id -> IfEH id t x y n
+ | nk == name "False" = identify $ \id -> IfEH id t x n y
+ | IfEH {} <- x = strict_appEH t (\x' -> caseEH t x' k y n) x
  | otherwise = error "caseEH"
 
 -- Strict application.
 -- It traverses inside of if expressions. Sharing is preserved.
-strict_appEH :: (ExpH -> ExpH) -> ExpH -> ExpH
-strict_appEH f =
+strict_appEH :: Type -> (ExpH -> ExpH) -> ExpH -> ExpH
+strict_appEH t f =
   let g :: (ExpH -> ExpH) -> ExpH -> ExpH
       g use e
-        | IfEH _ x y d <- e = ifEH x (use y) (use d)
+        | IfEH _ _ x y d <- e = ifEH t x (use y) (use d)
         | otherwise = f e
   in shared g
 
-ifEH :: ExpH -> ExpH -> ExpH -> ExpH
-ifEH p a b = caseEH p (Sig (name "True") boolT) a b
+ifEH :: Type -> ExpH -> ExpH -> ExpH -> ExpH
+ifEH t p a b = caseEH t p (Sig (name "True") boolT) a b
 
 impliesEH :: ExpH -> ExpH -> ExpH
-impliesEH p q = ifEH p q trueEH
+impliesEH p q = ifEH boolT p q trueEH
 
 notEH :: ExpH -> ExpH
-notEH p = ifEH p falseEH trueEH
+notEH p = ifEH boolT p falseEH trueEH
 
 -- Perform a generic transformation on an expression.
 -- Applies the given function to each subexpression. Any matching
 -- subexpression is replaced with the returned value, otherwise it continues
 -- to recurse.
+--
+-- Note: The transformation should NOT change the type of the expression.
 transform :: (ExpH -> Maybe ExpH) -> ExpH -> ExpH
 transform f =
   let g :: (ExpH -> ExpH) -> ExpH -> ExpH
@@ -206,7 +204,7 @@ transform f =
         | VarEH {} <- e = e
         | PrimEH _ _ _ f xs <- e = f (map use xs)
         | LamEH _ s t f <- e = lamEH s t $ \x -> use (f x)
-        | IfEH _ x y d <- e = ifEH (use x) (use y) (use d)
+        | IfEH _ t x y d <- e = ifEH t (use x) (use y) (use d)
   in shared g
 
 de_tupleEH :: ExpH -> Maybe [ExpH]

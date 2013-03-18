@@ -13,7 +13,6 @@ testio:
 		--file smten/smtn/Smten/SMT/Tests/Error.smtn \
 		--main-is Smten.SMT.Tests.Error.main +RTS -K1g -p
 
-
 testsugar:
 	./build/home/.cabal/bin/smten --desugar \
 		--include smten/smtn \
