@@ -116,16 +116,16 @@ de_symbolicEH e
    -- TODO: use of ivp here is maybe a hack. Fix it.
    -- In general we need an SMT solver to tell us when a certain branch is
    -- unreachable to avoid being overly eager.
- | IfEH _ x y n <- ivp e =
+ | IfEH _ t x y n <- ivp e =
     let py = x
-        pn = ifEH x falseEH trueEH
+        pn = ifEH boolT x falseEH trueEH
 
         ys = de_symbolicEH y
         ns = de_symbolicEH n
     in do
         yr <- predicated py ys
         nr <- predicated pn ns
-        return $ ifEH x yr nr
+        return $ ifEH t x yr nr
  | ErrorEH _ msg <- e = error $ "(de_symbolicEH): " ++ msg
  | otherwise = error $ "de_symbolicEH: " ++ pretty e
 

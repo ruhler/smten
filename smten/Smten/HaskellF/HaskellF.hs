@@ -81,9 +81,10 @@ de_conHF nm = de_kconEH (name nm)
 caseHF :: (HaskellF x, HaskellF y, HaskellF n)
          => String -> x -> y -> n -> n
 caseHF k x y n =
-  let r = box $ caseEH (unbox x) (Sig (name k) t) (unbox y) (unbox n)
-      tys = de_arrowsT $ smtenT y
-      tns = de_arrowsT $ smtenT n
+  let tys = de_arrowsT $ smtenT y
+      tcs = smtenT n
+      tns = de_arrowsT tcs
+      r = box $ caseEH tcs (unbox x) (Sig (name k) t) (unbox y) (unbox n)
       tx = smtenT x
       t = arrowsT (take (length tys - length tns) tys ++ [tx])
   in r

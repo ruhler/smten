@@ -81,20 +81,20 @@ def m e
     xs' <- mapM (use m) xs
     return (f (map fst xs'), Set.unions (map snd xs'))
  | LamEH _ s t f <- e = error "IVP.def: LamEH"
- | IfEH _ x y d <- e = do
+ | IfEH _ tif x y d <- e = do
     (x', xns) <- use m x
     case x' of
      VarEH (Sig nm t) | t == boolT -> do
         (yv, yns) <- use (Map.insert nm True m) y
         (dv, dns) <- use (Map.insert nm False m) d
-        return (ifEH x' yv dv, Set.unions [xns, yns, dns])
+        return (ifEH tif x' yv dv, Set.unions [xns, yns, dns])
      ConEH {} -> do
-        (v, vns) <- def m (ifEH x' y d)
+        (v, vns) <- def m (ifEH tif x' y d)
         return (v, Set.union vns xns)
      _ -> do
         (yv, yns) <- use m y
         (dv, dns) <- use m d
-        return (ifEH x' yv dv, Set.unions [xns, yns, dns])
+        return (ifEH tif x' yv dv, Set.unions [xns, yns, dns])
  | ErrorEH {} <- e = return (e, Set.empty)
     
 
