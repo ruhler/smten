@@ -119,6 +119,7 @@ Bugs::
 * Error tests
 * where shadow test (in Concrete)
 * tambig test (in State)
+* STP bug (in Nest)
 * Report an error for an unknown primitive encountered in SMT Translation
 * It's possible to use a symbolic thing in a different context than it was
   defined, in which case bad stuff will happen.
