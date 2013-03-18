@@ -1,4 +1,6 @@
 
+{-# LANGUAGE PatternGuards #-}
+
 module Smten.ExpH.SmtenEHs2 () where
 
 import Data.Maybe
@@ -31,8 +33,9 @@ instance (SmtenEH a, SmtenEH b) => SmtenEH (a -> b) where
       in lamEH (Sig (name "x") (smtenT (ta f))) (smtenT (tb f)) $ \x ->
             smtenEH $ f (fromMaybe (error "smtenEH (->)") (de_smtenEH x))
             
-    de_smtenEH (LamEH _ _ _ f) = return $ \x ->
-       let fx = f (smtenEH x)
-       in fromMaybe (error $ "de_smtenEH (->): " ++ pretty fx) (de_smtenEH fx)
-    de_smtenEH _ = Nothing
+    de_smtenEH e
+      | LamEH _ _ f <- force e = return $ \x ->
+           let fx = f (smtenEH x)
+           in fromMaybe (error $ "de_smtenEH (->): " ++ pretty fx) (de_smtenEH fx)
+      | otherwise = Nothing
 

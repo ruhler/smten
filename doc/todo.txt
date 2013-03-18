@@ -76,6 +76,8 @@ Performance::
 * Play with GHC Sparks and non-strict state monads
 
 Sharing::
+* Don't share trivially things.
+    Maybe need a thunk' function to create unshared thunks?
 * Why do we sometimes share "free~12"?? For example, in Datatype test.
 
 Primitives::
@@ -122,6 +124,7 @@ Bugs::
 * Error tests
 * where shadow test (in Concrete)
 * tambig test (in State)
+* STP bug (in Nest)
 * Report an error for an unknown primitive encountered in SMT Translation
 * It's possible to use a symbolic thing in a different context than it was
   defined, in which case bad stuff will happen.

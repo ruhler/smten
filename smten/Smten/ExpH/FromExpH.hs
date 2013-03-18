@@ -20,18 +20,18 @@ import Smten.ExpH.SmtenEHs
 import Smten.Strict
 
 -- Translate back to the normal Exp representation
-fromExpH :: ExpH -> Exp
+fromExpH :: Thunk -> Exp
 fromExpH e = {-# SCC "CONVERT" #-} convert ({-# SCC "SHARING" #-} sharing e) e
 
 data Use = Multi | Single
     deriving (Eq)
 
 -- Find all the subexpressions in the given expression which should be shared.
-sharing :: ExpH -> Set.Set EID
+sharing :: Thunk -> Set.Set EID
 sharing e =
-  let traverse :: ExpH -> State (Map.Map EID Use) (Set.Set EID)
+  let traverse :: Thunk -> State (Map.Map EID Use) (Set.Set EID)
       traverse e
-        | Just id <- getid e = do
+        | Just id <- eid e = do
             m <- get
             case Map.lookup id m of
                Nothing -> do
@@ -43,11 +43,11 @@ sharing e =
                Just Multi -> return Set.empty
         | otherwise = return Set.empty
 
-      subtraverse :: ExpH -> State (Map.Map EID Use) (Set.Set EID)
+      subtraverse :: Thunk -> State (Map.Map EID Use) (Set.Set EID)
       subtraverse e
-        | ConEH _ _ _ xs <- e = Set.unions <$!> mapM traverse xs
-        | PrimEH _ _ _ _ xs <- e = Set.unions <$!> mapM traverse xs
-        | IfEH _ _ x y n <- e = Set.unions <$!> mapM traverse [x, y, n]
+        | ConEH _ _ xs <- force e = Set.unions <$!> mapM traverse xs
+        | PrimEH _ _ _ xs <- force e = Set.unions <$!> mapM traverse xs
+        | IfEH _ x y n <- force e = Set.unions <$!> mapM traverse [x, y, n]
         | otherwise = return $ Set.empty
   in evalState (traverse e) Map.empty
 
@@ -56,26 +56,26 @@ data Defined = Defined {
     df_done :: Set.Set EID
 }
 
-convert :: Set.Set EID -> ExpH -> Exp
+convert :: Set.Set EID -> Thunk -> Exp
 convert share e =
   let -- Generate the definition for this expression.
-      defineM :: ExpH -> State Defined Exp
+      defineM :: Thunk -> State Defined Exp
       defineM e
-        | LitEH l <- e = return $ LitE l
-        | ConEH _ n t xs <- e = do
+        | LitEH l <- force e = return $ LitE l
+        | ConEH n t xs <- force e = do
             xs' <- mapM useM xs
             let t' = arrowsT $ (map typeof xs') ++ [t]
             return $ appsE (ConE (Sig n t')) xs'
-        | VarEH s <- e = return $ VarE s
-        | PrimEH _ n t _ xs <- e = do
+        | VarEH s <- force e = return $ VarE s
+        | PrimEH n t _ xs <- force e = do
             xs' <- mapM useM xs
             let t' = arrowsT $ (map typeof xs') ++ [t]
             return $ appsE (varE (Sig n t')) xs'
-        | LamEH _ (Sig nm t) _ f <- e = do
+        | LamEH (Sig nm t) _ f <- force e = do
             let s' = identify $ \x -> Sig (nm `nappend` (name (show x))) t
-            b <- useM (f (VarEH s'))
+            b <- useM (f (thunkNS $ VarEH s'))
             return $ LamE s' b
-        | IfEH _ _ arg yes no <- e = do
+        | IfEH _ arg yes no <- force e = do
             arg' <- useM arg
             yes' <- useM yes
             no' <- useM no
@@ -83,9 +83,9 @@ convert share e =
 
       -- Generate the use for this expression.
       -- So, if it's shared, turns into a VarE.
-      useM :: ExpH -> State Defined Exp
+      useM :: Thunk -> State Defined Exp
       useM e
-        | Just id <- getid e
+        | Just id <- eid e
         , Set.member id share = do
             done <- gets df_done
             let var = VarE (Sig (nameof id) (typeof e))

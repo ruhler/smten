@@ -11,7 +11,7 @@ testio:
 	./build/home/.cabal/bin/smten --io \
 		--include smten/smtn \
 		--file smten/smtn/Smten/SMT/Tests/Nest.smtn \
-		--main-is Smten.SMT.Tests.Nest.main +RTS -K1g -p
+		--main-is Smten.SMT.Tests.Nest.main
 
 testsugar:
 	./build/home/.cabal/bin/smten --desugar \

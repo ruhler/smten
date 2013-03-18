@@ -23,7 +23,7 @@ import Smten.HaskellF.HaskellF
 import Smten.HaskellF.Lib.Prelude
 import Smten.SMT.Primitives
 
-newtype Used a = Used ExpH
+newtype Used a = Used Thunk
 
 instance SmtenT1 Used where
     smtenT1 _ = conT (name "Used")
@@ -32,7 +32,7 @@ instance HaskellF1 Used where
     box1 = Used
     unbox1 (Used x) = x
 
-newtype Symbolic a = Symbolic ExpH
+newtype Symbolic a = Symbolic Thunk
 
 instance SmtenT1 Symbolic where
     smtenT1 _ = conT (name "Symbolic")
@@ -41,7 +41,7 @@ instance HaskellF1 Symbolic where
     box1 = Symbolic
     unbox1 (Symbolic x) = x
 
-newtype SMT a = SMT ExpH
+newtype SMT a = SMT Thunk
 
 instance SmtenT1 SMT where
     smtenT1 _ = conT (name "SMT")
@@ -53,7 +53,7 @@ instance HaskellF1 SMT where
 data Maybe a =
       Just a
     | Nothing
-    | Maybe__s ExpH
+    | Maybe__s Thunk
 
 instance SmtenT1 Maybe where
     smtenT1 _ = conT (name "Maybe")

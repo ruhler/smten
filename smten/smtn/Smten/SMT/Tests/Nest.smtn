@@ -59,6 +59,23 @@ qtest = do
             x <- used xr
             assert (x && x)
         test "nest.bug.xx" (c == Just ())
+
+    -- Another case causing issues with STP.
+--    nest $ do
+--        xr <- use free
+--        ur <- use (return ())
+--
+--        nest $ do
+--            y <- query $ do
+--                   x <- used xr
+--                   assert (not x)
+--            test "nest.bug2.y" (y == Just ())
+--
+--            use $ do
+--                x <- used xr
+--                assert (x && x)
+--            v <- query_Used ur
+--            test "nest.bug2.v" (v == Just ())
         
     
 main :: IO ()
