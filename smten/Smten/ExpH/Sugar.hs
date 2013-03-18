@@ -80,13 +80,7 @@ de_varEH _ = Nothing
 appEH :: ExpH -> ExpH -> ExpH
 appEH f x
  | LamEH _ (Sig _ t) _ g <- f = g x
- | IfEH _ a y n <- f =
-    -- Perform Case Argument Pushing:
-    -- (if a then y else n) x
-    -- ===> (if a then y x else n x)
-    let Just (_, t) = de_arrowT (typeof f)
-    in letEH (Sig (name "_z") (typeof x)) t x $ \av ->
-         ifEH a (appEH y av) (appEH n av)
+ | IfEH {} <- f = strict_appEH (\g -> appEH g x) f
  | ErrorEH t s <- f = 
     let Just (_, t) = de_arrowT (typeof f)
     in errorEH t s
