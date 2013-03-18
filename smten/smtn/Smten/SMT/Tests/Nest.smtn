@@ -46,6 +46,20 @@ qtest = do
         assert x
     rd <- query (return ())
     test "nest.popvar" (rd == Just ())
+
+    -- This case was causing issues with STP.
+    nest $ do
+        xr <- use free
+        b <- query $ do
+            x <- used xr
+            assert (not x)
+        test "nest.bug.nx" (b == Just ())
+
+        c <- query $ do
+            x <- used xr
+            assert (x && x)
+        test "nest.bug.xx" (c == Just ())
+        
     
 main :: IO ()
 main = do

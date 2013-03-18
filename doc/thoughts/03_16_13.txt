@@ -1,0 +1,538 @@
+
+Sat Mar 16 07:21:23 EDT 2013
+
+Goal: Figure out how to efficiently handle _|_ correctly.
+
+In general, I need to use an SMT solver to see when I am allowed to look at a
+branch of an if statement with symbolic predicate.
+
+A naive implementation of this is easy, but it totally destroys sharing, and
+as we've seen, that's not acceptable for performance.
+
+The naive implementation:
+
+First, we assume we have something called assert_pruned, which is the real
+assert primitive. The assert_pruned primitive requires the argument be
+entirely visible, so the argument must have already been pruned.
+
+prune :: ExpH -> SMT ExpH
+
+Cases:
+* the argument is not an IfEH: Then recursively prune it's fields and
+  return them.
+
+* the argument is an IfEH p a b:
+    p' <- prune p
+    ma <- nest $ do
+        assert_pruned p'
+        r <- query ()
+        if r == Nothing
+            then return r
+            else Just <$> prune a
+    mb <- nest $ do
+        assert_pruned (not p')
+        r <- query ()
+        if r == Nothing
+            then return r
+            else Just <$> prune b
+    case (ma, mb) of
+        (Just a', Just b') -> return $ ifEH p' a' b'
+        (Just a', _) -> return a'
+        (_, Just b') -> return b'
+        _ -> error $ "unsat to start"
+
+That's simple. And assert_pruned is the assert we already have.
+
+One other thing I need is, after I do each assertion, I have to query to see
+if it was satisfiable or not. If it is not satisfiable, I can't even look at
+the arguments to the next assertions. So we need a query after every
+assertion.
+
+Is this implementation worth implementing, do you think?
+
+It probably is. Just to get a baseline end-to-end thing working. And I can
+write a bunch of simple test cases which don't run into the sharing issues.
+Sudoku2 can be my sharing test (or use Share...).
+
+Okay, so I want to do this. On its own branch. Get things going.
+
+But, to have something to stew on, what am I thinking about for preservation
+of sharing?
+
+First, we need some utilities:
+
+Create a Thunk. A Thunk will be a wrapper around ExpH which contains the EID
+for the ExpH. It will also (through some use of unsafeIO) have a function to
+determine if the ExpH has been forced yet or not.
+
+Now I have this... The way assert will work is it will check for things that
+have been forced. If a branch has not been forced, it will not look at it. It
+assumes it can't be forced according to the semantics.
+
+So, the goal of prune is... well, the opposite I suppose. But let me call it
+prune anyway. You are given an ExpH where some expressions have not yet been
+forced. It's your job to force everything that can legally be forced.
+
+How?
+
+For non-if expressions, just traverse them.
+
+The fun comes when you get to an if expression:
+
+IfEH p a b
+
+Maybe I want to call this traversal function "force".
+
+1. force p.
+2. if 'a' has been forced, force a
+    otherwise, save the context for a
+3. if 'b' has been forced, force b
+    otherwise, save the context for b
+
+Now, we need some way to preserve sharing. So we want to save some info for
+each ExpH we force. I propose we save the following information:
+
+- A map from EIDs we don't know if we can force to a predicate indicating
+  whether we can force it or not.
+
+This map will be formed by combining maps of children, and in IfEH, adding to
+the predicate. Hmm... There is something more to be worked out here. Because
+In general we have a context of the form:
+
+......\------- _____
+       +++++++ _____
+
+Where '......' is shared, '______' is shared, but '-------' and '+++++++' are
+different between two occurrences. What I want to save is the '_______' part,
+perhaps separately from the '---------' part. Yes. That's it. just save them
+separately. Then when I combine, I can share the '_______' part, and branch at
+the '-----' and '+++++' part. Maybe. I don't know. We'll have to see.
+
+Anyway, the idea is, when we get back to the top of the 'force' function, we
+end up with a list of potentially unforceable expressions. This list was
+created in a sharing preserving way.
+
+Then, for each of these potentially unforceable expressions, do the following:
+
+1. Check if the expression has been forced.
+If so, we ought to still have a mapping from that expression to everything
+else it maybe can't force. Update all those things based on the context of
+this expression, and ignore this expression.
+
+2. If the expression has not yet been forced:
+Check if the predicate for forcing it is satisfiable using the SMT solver.
+If not satisfiable: this expression can't be forced. Mark that somewhere if
+needed.
+
+If satisfiable: this expression can be forced. So force the expression, thus
+adding to the list of potentially unforceable expressions.
+
+Continue this process until there are no more expressions on the list. Then we
+are done.
+
+I wonder if we need a different arrangement of the data. What if I think of
+this more as a global algorithm instead of recursive?
+
+So, the idea is to build up a global map from each EID to the condition under
+which it can be forced. We need only store expressions on the map which we
+have reason to believe may be unforceable.
+
+No. The problem with this is it requires us to traverse in shared occurrence of
+something. That's why I also need a map from all EID to the context to those
+things beneath it that may be forced...
+
+Okay, so we have one map. You either get: the conditions under which this
+expression may be forced, or the childrens of this expression which may be
+unforceable and the path to those.
+
+Or, maybe all I need is, for each ExpH: what condition does it appear in, and
+what children does it have (with what relation) which may be unforceable.
+Something potentially unforceable will perforce have no children which could
+be unforceable.
+
+Now, during traversal we bubble up the expressions we have which may be
+unforceable. This is added as the initial thing to the map.
+
+So, if I see unforceable: add that to the map in its context as unforceable.
+If I see forceable: add its children to the map.
+
+Err...
+
+How about this. Parents keep track of the contexts to their children.
+
+Yes. This could work. Each parent contains a map from context to its immediate
+children?
+
+Oh, I'm confused now.
+
+What is the goal? The goal is, in a sharing preserving way, identify all
+possible contexts under which a potentially unforceable expression may occur.
+
+Every time I encounter an expression, it presumably is in a new context from
+what I've encountered before. I can share the traversal to figure out how to
+update the context of all its children. This requires I store the following:
+
+- for each forceable EID: list of potentially unforceable children and the
+  contexts to get to them
+
+Okay, remember I have sharing, so I can duplicate contexts which are very
+similar and they will be shared just swell. So yes, have this.
+
+If I reach an unforceable node, I add (OR) the current context to its map.
+If I reach a forceable node which I have not traversed:
+    traverse it and record the context from there to children potentially
+    unforceable.
+If I reach a forceable node which I have traversed: for each potentially
+unforceable child, update its context based on current information.
+
+If every I encounter a forceable node which was previously unforceable, remove
+the previous untraversability of it from our map, and pretend I have not yet
+traversed it.
+
+At the end of this process we will have, say, two maps. A map of potentially
+unforceable nodes: mapping EID to the condition under which it would be
+forceable. And a map of forceable nodes, describing the path from them to
+their potentially unforceable children. We may need to lazily remove children
+from this list as they become forceable.
+
+Good! This is wonderful. Now what I do is as follows:
+
+For each potentially unforceable node:
+* Use the SMT solver to ask if we can force it or not.
+* If we can force it, then do like we normally would when we find something we
+  can traverse now that we couldn't before.
+* If we can't force it, then remove it from the unforceable list.
+
+And that's it. Keep going until we get rid of everything we can. When we are
+done, we will have traversed everything we can.
+
+Easy! And preserves all the sharing we possibly could, methinks.
+
+Good. I like this. I feel good about this.
+
+What I should do, then, is let this stew. Do my first naive solution above,
+setup end-to-end stuff and tests.
+
+Then I'll want to switch to this Thunk thing which keeps EID with the thunk
+instead of the forced expression, and also can tell me if I've forced yet or
+not. Then implement this.
+
+And then the world will be a happy place, I'm sure. :)
+
+Good.
+
+Sat Mar 16 08:44:21 EDT 2013
+
+Short break for cleanup. Can I make a generic accumulating sharing preserving
+thing? Use it for SHARING and IVP?
+
+What do we need?
+
+Um... I don't see an obvious way about it. Maybe wait until I have more
+need/info.
+
+Which means the goal right now: write some Error tests.
+
+Sat Mar 16 09:29:22 EDT 2013
+
+I wrote some error tests. I also wrote some type checking tests.
+
+The error tests, not surprisingly, fail.
+The type checking tests mostly pass, though the error messages aren't exactly
+great. The ones which fail are:
+
+BadKind - I don't do kind checking. Why not? I do kind inference.
+          This should be easy. Whenever I do AppT, verify the kinds are right.
+          Except, I may not know the kind of a constructor unless I look it
+          up, because I don't update all the types in the expression with the
+          results of kind inference.
+
+DupInst, DupVar - I fear the Env totally hides these things.
+
+I don't feel like figuring out how to fix these things now. It's enough that I
+have test cases for them.
+
+Sat Mar 16 10:39:32 EDT 2013
+
+Bug report. Looks like a bug in compilation to Haskell. Type ambiguity.
+
+Consider a State monad:
+
+f :: (Eq t) => (t, t) -> Bool
+f (a, b) = a == b
+
+foo :: (Eq t) => State (t, t) Bool
+foo = do
+ x <- get
+ return (f x)
+
+Now, MonadState does not have functional dependencies. This means the type of
+'x' is ambiguous. It could be (t, t), or (t0, t0), or anything.
+
+So, what Nirav did is make it explicitly typed:
+
+
+foo :: (Eq t) => State (t, t) Bool
+foo = do
+ x <- get
+ return (f (x :: (t, t)))
+
+So smten can handle it fine now. Trouble is: in compilation to haskell, we
+throw away that explicit type.
+
+That should be easy to test and fix.
+
+Well, I have the test. Trouble with the fix: we can't use scoped type
+variables in instance methods.
+
+So, I should either... Figure out how to allow that using some ghc trick, or
+don't allow scoped type variables in my code?
+
+Hrm...
+
+Sat Mar 16 12:03:36 EDT 2013
+
+Anyway, I'll leave that for another day.
+
+Question about performance: Are we leaking IntMaps? Or do we just have really
+really big queries?
+
+Another idea: have we concretized Symbolic and SMT?
+
+The answer is: no, we have not concretized Symbolic. I should try that and see
+if it helps any. It may be just a small constant time factor improvement.
+
+Sat Mar 16 12:44:43 EDT 2013
+
+First step: Concretize Symbolic. Because runSymbolic is costing us a lot of
+memory.
+
+Oh! Look at this. runSymbolic is a State computation. I wonder what kind of
+memory it's consuming.
+
+Time for a heap profile.
+
+SS has: Contexts, Integer, free vars, asserts.
+
+Note:
+* assert is a non-strict modify.
+* prim_free is a non-strict modify
+* predicated has a non-strict put
+
+I suspect these are leading to a space leak.
+
+Now, I don't want to wait for like, 30 minutes to get profiling results.
+Instead let me just wait 5 minutes, and hopefully I'll have a decent slice of
+what the problem is and can judge.
+
+The question is: are we leaking SS? I expect to have very very little of them.
+
+I don't see SS in the profile, but I think this is often an issue, so let me
+try making things strict and see if that helps.
+
+Okay, have to wait another 5 minutes for that to try out.
+
+Sat Mar 16 13:01:43 EDT 2013
+
+That made no difference. Hm... What could the issue be?
+
+Just some really big assertions? Maybe I can get some more detail on where the
+memory is being allocated.
+
+Ah... If I look closely at the types that dominate, it looks to me like it's
+an issue with boxing/unboxing for bind. So let me concretize Symbolic and see
+if that makes a difference at all.
+
+In fact, I can probably keep Symbolic in the HaskellF lib as the same Symbolic
+in haskell, because we can always use de_symbolicEH to convert from symbolic
+Symbolic to concrete Symbolic.
+
+We shall see...
+
+No. This isn't going to work. Let me take a step at a time.
+
+Err, I'm not sure one step at a time is going to help much either though.
+Bugger.
+
+Maybe I can take this opportunity to clean up primitives a bit.
+
+The idea: associate with each primitive a corresponding haskell function. One
+that I can access concretely if desired.
+
+I don't even have to do the association in Haskell. Just do it by naming
+convention. Let's say... fooP is the primitive, as we have.  fooPF is the
+primitive function in haskell.
+
+Let me see if that can be used to clean up anything at all.
+
+Yes. I think that can help clean things up. So let me just do this cleanup,
+even though I don't expect it to improve performance any.
+
+Sat Mar 16 13:44:59 EDT 2013
+
+Turns out I think it's cleaner having a PrimF, which associates a function
+with a primitive. Let me use the approach on as many primitives as I easily
+can.
+
+I suppose I ought to see what other primitives I can concretize. The goal,
+eventually, will be to concretize them all. In particular, concretize all the
+Symbolic primitives.
+
+Maybe I should annotate the primitives with SCCs and see which ones, if any,
+are taking up a lot of time or memory...
+
+Sat Mar 16 14:07:58 EDT 2013
+
+We we find is, all the time for runSymbolic is spent in __caseTuple2.
+Hmm... That seems odd to me.
+
+Sat Mar 16 14:17:28 EDT 2013
+
+Interesting. All that time is in concrete evaluation. I wonder where.
+
+Let me profile seri_arch_extract to see if I can get a better idea.
+
+Hmm... That profile didn't help me much.
+
+Looking at CONVERT: looks like we are having large queries again.
+
+Hm. How am I suppose to figure out what's going on?
+
+How about... print out the queries?
+
+Sat Mar 16 14:51:42 EDT 2013
+
+Okay, I want to try another round. Try to understand what is going on.
+
+What does the profiling info tell me?
+
+It would seem, not terribly much.
+
+Looking at CONVERT suggests we are still creating large queries. But that's
+only 10% of the memory.
+
+Looking at hc profile:
+
+When the peak starts, we first get a lot of:
+    TUPLE2_CONCRETE, followed by SHARING.
+
+What is this TUPLE2_CONCRETE thing?
+
+The SHARING is part of convert, so presumably the space it takes up is like
+CONVERT. We just saw large Exps. So, a large query.
+
+How about TUPLE2_CONVERT?
+
+I think TUPLE2_CONVERT is getting all the memory assigned to it because it's
+what applies the StateT function. In other words, everything is just getting
+assigned there. It's not that it is responsible for anything.
+
+TUPLE2_CONVERT... it's strange. It looks like it's all in concrete-like
+evaluation? ExpH, HaskellF, SmtenT. Do you think concretization of primitives
+would help with this?
+
+How about I look at retainers? Could that give any useful information?
+
+It's not just one type dominating. It's just... everything. And I suspect it's
+mostly the HaskellF types. So, lots of concrete elaboration?
+
+How can I tell? How can I know how much is part of symbolic elaboration, and
+how much part of concrete elaboration?
+
+I need a better breakdown. Better SCC annotations.
+
+Let me turn on everything then, see what I can see.
+
+You know what it looks like?
+
+It looks like all the time is spent in Main.hs. The generated haskell code.
+That's where all the memory is going it appears.
+
+The heap profile shows the peaks on the heap are CONVERT.
+
+equivalent_pre' looks expensive.
+
+Hm...
+
+Okay, so top memory consumer is convert. And convert is made up of Exp, (,),
+Name, Sig, Type.
+
+In other words: lots of Exp. Now, I'm not sure where the (,) is coming from.
+
+Okay, looks like df_defs. What is df_defs? Why do we have a list? Is there a
+better data structure we can use?
+
+Bindings are the names of things we are defining. There must be a lot of names
+we are defining. Lots of shared things...
+
+It's a fairly simple algorithm. We traverse through the expressions. For any
+expression we run into which is shared, we define it and add it to a list of
+definitions. Otherwise we do the conversion in place.
+
+It seems like we just have a lot of these things. AKA: It's a big query.
+
+The real question is, why is it a big query? Because we expect it to be? Or
+because of a bug, perhaps in sharing?
+
+So I should print out the query, see what we are getting.
+
+Sat Mar 16 16:10:12 EDT 2013
+
+Observations from queries:
+* we have a lot of duplication across queries. I wonder if we can share that
+  somehow, and if that would make a reasonable difference.
+  Somehow I suspect it won't make a terribly huge difference. I suppose I
+  could be wrong...
+
+Sat Mar 16 16:27:55 EDT 2013
+
+Changing smttype to only bool made things much worse I think. As expected. So
+that's a good thing.
+
+I don't know. I don't know what the issue is, nor how to figure out what the
+issue is. It seems to me like we have a very big query. Why?
+
+The only reason to have big queries are:
+* loss of sharing somewhere
+    And there does appear to be some duplication across assertions.
+    Perhaps Nirav could make use of incremental assertions?
+* Perhaps we could do all assertions for a query at once, to get that sort of
+  sharing across them?
+* Perhaps we could do IVP or some such to prune the query better?
+
+I feel like what I need to do is look at the generated big query. See what it
+is. See why it seems too big?
+
+Looking at the query, I see:
+
+* IVP like pruning could trim down a lot
+* we have a lot of occurrences of (error "case no match")
+* sharing violation:        s12345 + 1 is replicated twice, verbatim.
+    Perhaps Nirav didn't preserve that sharing in his code?
+  More sharing violation, on an if statement.
+  More sharing violation.
+    This is actually happening a lot. For example:
+
+case (free~5 :: Bool) of {
+  (True :: Bool) -> case ((Smten.Bit.__prim_eq_Bit :: Bit
+                          (s~947179 :: Bit
+                          (s~947306 :: Bit
+                      (True :: Bool) -> (True :: Bool)
+                      _ -> (False :: Bool)
+                    }
+  _ -> case ((Smten.Bit.__prim_eq_Bit :: Bit
+             (s~947179 :: Bit 
+             (s~947306 :: Bit
+         (True :: Bool) -> (True :: Bool)
+         _ -> (False :: Bool)
+       }
+}
+ 
+            
+Yes. I'm definitely seeing lots of duplication. The question is, where is the
+duplication coming from? Could it be coming from Nirav's code? Where else
+could I be loosing sharing?
+
+I should check out the desugared code, see if it looks like we are duplicating
+things we shouldn't be.
+

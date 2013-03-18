@@ -1,0 +1,112 @@
+
+Sun Mar 17 11:41:42 EDT 2013
+
+Goal: Implement proper pruning, naive approach.
+
+Tasks:
++ assert should be renamed assert_pruned.
++ Implement assert which first prunes, then calls assert_pruned
++ Implement prune function to do pruning.
+x Call prune in de_symbolicEH
++ Remove ErrorEH from ExpH.
+
+Let me see how much I can get done.
+
+Goal is: all the error tests should pass. And everything else.
+ 
+Trouble: there might be a problem with the way I combine asserts in Symbolic.
+Not sure. I'll keep you posted.
+
+More Trouble: how to prune in de_symbolicEH, when de_symbolicEH doesn't happen
+in an SMT context?
+
+Sun Mar 17 18:28:05 EDT 2013
+
+Okay, now everything is in place. What remains is to try it out.
+
+Sun Mar 17 18:36:27 EDT 2013
+
+Looks like a bug in the STP interface somehow. Pushing and popping is not
+working correctly. Let me look in briefly to see if anything obvious pops out.
+Otherwise I'll just comment out the STP tests for now.
+
+I notice we are doing lots and lots of queries the SMT solver. I am certainly
+going to have to do some simplifications to fix the performance.
+
+I don't know what's going on with STP. Let me skip it for now.
+
+Okay, so everything seems to be working, except the Error test goes boom!
+
+Why does it go boom!?
+
+Ah yes. After every assertion I have to check for unsatisfiable. If it's
+unsatisfiable, I have to not try the following assertions.
+
+Sun Mar 17 18:50:47 EDT 2013
+
+Okay, STP really doesn't work. I don't get why.
+
+But, still having problems with Error. I'm getting a stack overflow when I
+don't expect one.
+
+What do I expect? This is the hard case, so it's worth looking at. Worth doing
+some by hand:
+
+a <- query $ do
+        p <- free
+        let x = if p then 4 else 10
+        assert (series x == 4)
+        return x
+test "error.inc2" (a == Nothing)
+
+series :: Integer -> Integer
+series x = if x == 0
+              then 0
+              else x + series (x-1)
+
+So, what do we know? We know p is True or False. So we know x is 4 or 10.
+
+
+How do we do the assertion (series x == 4)?
+
+Well, we will have an infinite tree, then I want to bound it.
+
+Hmm... maybe I should be using bit  vectors. Let's see what we get.
+
+Assertion is:
+
+if x == 0
+    then 0
+    else x + (if x-1 == 0
+                then 0
+                else (x-1) + (if x-2 == 0
+                                then 0
+                                else (x-2 + ...
+
+So, things we ask are:
+
+1. Can x == 0? No. Prune that.
+   Can x /= 0? Yes, if p is True, x can be 4.
+   Can x-1 == 0? No. Prune that.
+   Can x /= 0 and x -1 /= 0? Yes, x can be 4.
+
+When does it end? It should end after inlining series like, 10 times. That's
+not too expensive, is it? I wonder. Maybe it is... Maybe I should try a non
+tail-recursive or non space leak implementation. Let me see if I can change
+things to be like that.
+
+Hm... How far would this have to go to finish? It would have to go a long way.
+
+Let's say x can be 2 or 3. Then when I can I prune?
+
+I prune the part which says:
+    x /= 0 && x-1 /= 0 && x-2 /= 0 && x-3 /= 0
+
+Because that should be unsatisfiable.
+
+There is something very wrong here.
+
+Hypothesis: trouble with typeof? What if I switch the condition?
+
+Yes! That's it. That's the problem.
+

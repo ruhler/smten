@@ -120,8 +120,6 @@ Bugs::
 * where shadow test (in Concrete)
 * tambig test (in State)
 * Report an error for an unknown primitive encountered in SMT Translation
-* I suspect shadowed variables won't work in STP queries because of a bug in
-  how let expressions are implemented. (Can that ever happen?)
 * It's possible to use a symbolic thing in a different context than it was
   defined, in which case bad stuff will happen.
             
