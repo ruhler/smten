@@ -7,7 +7,7 @@ module Smten.ExpH.Sugar (
     appEH, appsEH, strict_appEH,
     lamEH, letEH, aconEH,
     caseEH,
-    ifEH, impliesEH,
+    ifEH, impliesEH, notEH,
 
     unitEH,
     boolEH, trueEH, falseEH, de_boolEH,
@@ -188,6 +188,9 @@ ifEH p a b = caseEH p (Sig (name "True") boolT) a b
 
 impliesEH :: ExpH -> ExpH -> ExpH
 impliesEH p q = ifEH p q trueEH
+
+notEH :: ExpH -> ExpH
+notEH p = ifEH p falseEH trueEH
 
 -- Perform a generic transformation on an expression.
 -- Applies the given function to each subexpression. Any matching

@@ -8,8 +8,14 @@ boom :: Bool -> Bool
 boom x = boom (not x)
 
 series :: Integer -> Integer
-series 0 = 0
-series x = x + series (x-1)
+series x = if x > 0
+              then x + series (x-1)
+              else 0
+
+series2 :: Integer -> Integer
+series2 x = if x == 0
+              then 0
+              else x + series2 (x-1)
 
 -- After assert false, explicit error should not be evaluated.
 qerror :: SMT ()
@@ -40,8 +46,7 @@ qinc :: SMT ()
 qinc = do
     a <- query $ do
             x <- free
-            assert (x > 0)
-            assert (x < 10)
+            assert (x == 2)
             assert (series x == 4)
             return x
     test "error.inc" (a == Nothing)
@@ -56,6 +61,15 @@ qinc2 = do
             assert (series x == 4)
             return x
     test "error.inc2" (a == Nothing)
+
+qinc3 :: SMT ()
+qinc3 = do
+    a <- query $ do
+            p <- free
+            let x = if p then 4 else 10
+            assert (series2 x == 4)
+            return x
+    test "error.inc3" (a == Nothing)
             
 qtest :: SMT ()
 qtest = do
@@ -63,6 +77,7 @@ qtest = do
     qboom
     qinc
     qinc2
+    --qinc3
 
 main :: IO ()
 main = do

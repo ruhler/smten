@@ -45,6 +45,7 @@
 module Smten.SMT.SMT (
     Realize(), RunOptions(..), runSMT,
     SMT, query, query_Used, nest, use, realize,
+    prune,
     ) where
 
 import Debug.Trace
@@ -242,11 +243,53 @@ mkfree s@(Sig nm t) | isPrimT t = do
   runCmds [SMT.Declare (smtN nm) t']
 mkfree s = error $ "SMT.mkfree: unsupported type: " ++ pretty s
 
+assert_pruned :: ExpH -> SMT ()
+assert_pruned p = do
+    yp <- smte p
+    runCmds [SMT.Assert yp]
+
 -- | Assert the given smten boolean expression.
 mkassert :: ExpH -> SMT ()
 mkassert p = {-# SCC "MKASSERT" #-}do
-  yp <- smte p
-  runCmds [SMT.Assert yp]
+  r <- check
+  case r of
+      SMT.Satisfiable -> do
+          p' <- prune p
+          assert_pruned p'
+      SMT.Unsatisfiable -> return ()
+      _ -> error $ "Smten.SMT.SMT.mkasserts: check failed"
+
+-- Prune unreachable branches from the given expression.
+prune :: ExpH -> SMT (ExpH)
+prune e
+ | LitEH {} <- e = return e
+ | ConEH _ n t xs <- e = aconEH n t <$> mapM prune xs
+ | VarEH {} <- e = return e
+ | PrimEH _ _ _ impl xs <- e = impl <$> mapM prune xs
+ | LamEH {} <- e = error "LamEH in Prune"
+ | IfEH _ p a b <- e = do
+     p' <- prune p
+     ma <- nest $ do
+        assert_pruned p'
+        r <- check
+        case r of
+            SMT.Satisfiable -> Just <$> prune a
+            SMT.Unsatisfiable -> return Nothing
+            _ -> error $ "Smten.SMT.SMT.prune: check failed"
+
+     mb <- nest $ do
+        assert_pruned (notEH p')
+        r <- check
+        case r of
+            SMT.Satisfiable -> Just <$> prune b
+            SMT.Unsatisfiable -> return Nothing
+            _ -> error $ "Smten.SMT.SMT.prune: check failed"
+
+     case (ma, mb) of
+         (Just a', Just b') -> return $ ifEH p' a' b'
+         (Just a', _) -> return a'
+         (_, Just b') -> return b'
+         _ -> error $ "Smten.SMT.SMT.prune: unreachable"
 
 use :: Symbolic a -> SMT (Used a)
 use s = {-# SCC "USE" #-} do
