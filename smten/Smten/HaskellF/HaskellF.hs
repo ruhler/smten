@@ -17,24 +17,24 @@ import Smten.Prim
 
 -- | HaskellF represents haskell data types with extra ExpH leg.
 class (SmtenT a) => HaskellF a where
-    box :: Thunk -> a
-    unbox :: a -> Thunk
+    box :: ExpH -> a
+    unbox :: a -> ExpH
 
 class (SmtenT1 m) => HaskellF1 m where
-    box1 :: (HaskellF a) => Thunk -> m a
-    unbox1 :: (HaskellF a) => m a -> Thunk 
+    box1 :: (HaskellF a) => ExpH -> m a
+    unbox1 :: (HaskellF a) => m a -> ExpH 
 
 class (SmtenT2 m) => HaskellF2 m where
-    box2 :: (HaskellF a, HaskellF b) => Thunk -> m a b
-    unbox2 :: (HaskellF a, HaskellF b) => m a b -> Thunk
+    box2 :: (HaskellF a, HaskellF b) => ExpH -> m a b
+    unbox2 :: (HaskellF a, HaskellF b) => m a b -> ExpH
 
 class (SmtenT3 m) => HaskellF3 m where
-    box3 :: (HaskellF a, HaskellF b, HaskellF c) => Thunk -> m a b c
-    unbox3 :: (HaskellF a, HaskellF b, HaskellF c) => m a b c -> Thunk
+    box3 :: (HaskellF a, HaskellF b, HaskellF c) => ExpH -> m a b c
+    unbox3 :: (HaskellF a, HaskellF b, HaskellF c) => m a b c -> ExpH
 
 class (SmtenT4 m) => HaskellF4 m where
-    box4 :: (HaskellF a, HaskellF b, HaskellF c, HaskellF d) => Thunk -> m a b c d
-    unbox4 :: (HaskellF a, HaskellF b, HaskellF c, HaskellF d) => m a b c d -> Thunk
+    box4 :: (HaskellF a, HaskellF b, HaskellF c, HaskellF d) => ExpH -> m a b c d
+    unbox4 :: (HaskellF a, HaskellF b, HaskellF c, HaskellF d) => m a b c d -> ExpH
 
 instance (HaskellF1 m, HaskellF a) => HaskellF (m a) where
     box = box1
@@ -72,10 +72,10 @@ class (SmtenEH c, HaskellF f) => SmtenHF c f where
     de_smtenHF :: f -> Maybe c
     de_smtenHF = de_smtenEH . unbox
 
-conHF :: (HaskellF a) => a -> String -> [Thunk] -> Thunk
+conHF :: (HaskellF a) => a -> String -> [ExpH] -> ExpH
 conHF x nm args = aconEH (name nm) (smtenT x) args
 
-de_conHF :: String -> Thunk -> Maybe [Thunk]
+de_conHF :: String -> ExpH -> Maybe [ExpH]
 de_conHF nm = de_kconEH (name nm)
 
 caseHF :: (HaskellF x, HaskellF y, HaskellF n)

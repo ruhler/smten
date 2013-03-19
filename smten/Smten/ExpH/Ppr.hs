@@ -11,7 +11,7 @@ import Smten.ExpH.ExpH
 import Smten.ExpH.Sugar
 import Smten.ExpH.Sugar2
 
-instance Ppr Thunk where
+instance Ppr ExpH where
     ppr e | Just v <- de_stringEH e = text (show v)
     ppr e | Just xs <- de_listEH e
       = text "[" <> sep (punctuate comma (map ppr xs)) <> text "]"

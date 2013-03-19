@@ -53,7 +53,7 @@ import qualified Smten.Bit as B
 
 data Char =
      Char P.Char
-   | Char__s Thunk
+   | Char__s ExpH
 
 instance SmtenT Char where
     smtenT _ = charT
@@ -75,7 +75,7 @@ instance SmtenHF P.Char Char where
     
 data Integer =
         Integer P.Integer
-      | Integer__s Thunk
+      | Integer__s ExpH
 
 instance SmtenT Integer where
     smtenT _ = integerT
@@ -102,7 +102,7 @@ instance Prelude.Num Integer where
     abs = P.error $ "abs for haskellf Integer not defined"
     signum = P.error $ "signum for haskellf Integer not defined"
 
-newtype Bit n = Bit Thunk
+newtype Bit n = Bit ExpH
 
 instance SmtenT1 Bit where
     smtenT1 _ = ConT (name "Bit") (ArrowK NumK StarK)
@@ -111,7 +111,7 @@ instance HaskellF1 Bit where
     box1 = Bit
     unbox1 (Bit x) = x
 
-newtype IO a = IO Thunk
+newtype IO a = IO ExpH
 
 instance SmtenT1 IO where
     smtenT1 _ = ConT (name "IO") (ArrowK StarK StarK)
@@ -120,7 +120,7 @@ instance HaskellF1 IO where
     box1 = IO
     unbox1 (IO x) = x
 
-data Unit__ = Unit__ | Unit__s Thunk
+data Unit__ = Unit__ | Unit__s ExpH
 
 instance SmtenT Unit__ where
     smtenT _ = unitT
@@ -143,7 +143,7 @@ __caseUnit__ x y n
 data Bool =
     True
   | False
-  | Bool_s Thunk
+  | Bool_s ExpH
 
 instance SmtenT Bool where
     smtenT _ = boolT
@@ -179,7 +179,7 @@ __caseFalse x y n
   | Bool_s _ <- x = caseHF "False" x y n
   | otherwise = n
 
-data Tuple2__ a b = Tuple2__ a b | Tuple2____s Thunk
+data Tuple2__ a b = Tuple2__ a b | Tuple2____s ExpH
 instance SmtenT2 Tuple2__
     where smtenT2 _ = conT (name "(,)")
 instance HaskellF2 Tuple2__
@@ -208,7 +208,7 @@ instance (SmtenHF ca fa, SmtenHF cb fb) => SmtenHF (ca, cb) (Tuple2__ fa fb) whe
         return (a', b')
     de_smtenHF (Tuple2____s v) = de_smtenEH v
 
-data Tuple3__ a b c = Tuple3__ a b c | Tuple3____s Thunk
+data Tuple3__ a b c = Tuple3__ a b c | Tuple3____s ExpH
 instance SmtenT3 Tuple3__
     where smtenT3 _ = conT (name "(,,)")
 instance HaskellF3 Tuple3__
@@ -229,7 +229,7 @@ __caseTuple3__ x y n | Tuple3__ x1 x2 x3 <- x
                      | Tuple3____s _ <- x
                          = caseHF "(,,)" x y n
                      | Prelude.otherwise = n
-data Tuple4__ a b c d = Tuple4__ a b c d | Tuple4____s Thunk
+data Tuple4__ a b c d = Tuple4__ a b c d | Tuple4____s ExpH
 instance SmtenT4 Tuple4__
     where smtenT4 _ = conT (name "(,,,)")
 instance HaskellF4 Tuple4__
@@ -255,7 +255,7 @@ __caseTuple4__ x y n | Tuple4__ x1 x2 x3 x4 <- x
 data List__ a =
       Nil__ 
     | Cons__ a (List__ a)
-    | List__s Thunk
+    | List__s ExpH
 
 instance SmtenT1 List__ where
     smtenT1 _ = smtenT1 [()]
@@ -296,7 +296,7 @@ __caseCons__ x y n
 
 type String = List__ Char
 
-newtype N__0 = N__0 Thunk
+newtype N__0 = N__0 ExpH
 
 instance SmtenT N__0 where
     smtenT _ = NumT 0
@@ -305,7 +305,7 @@ instance HaskellF N__0 where
     box = N__0
     unbox (N__0 x) = x
 
-newtype N__1 = N__1 Thunk
+newtype N__1 = N__1 ExpH
 
 instance SmtenT N__1 where
     smtenT _ = NumT 1
@@ -314,7 +314,7 @@ instance HaskellF N__1 where
     box = N__1
     unbox (N__1 x) = x
 
-newtype N__2 = N__2 Thunk
+newtype N__2 = N__2 ExpH
 
 instance SmtenT N__2 where
     smtenT _ = NumT 2
@@ -323,7 +323,7 @@ instance HaskellF N__2 where
     box = N__2
     unbox (N__2 x) = x
 
-newtype N__PLUS a b = N__PLUS Thunk
+newtype N__PLUS a b = N__PLUS ExpH
 
 instance SmtenT2 N__PLUS where
     smtenT2 _ = ConT (name "+") (ArrowK (ArrowK NumK NumK) NumK)
@@ -332,7 +332,7 @@ instance HaskellF2 N__PLUS where
     box2 = N__PLUS
     unbox2 (N__PLUS x) = x
 
-newtype N__MINUS a b = N__MINUS Thunk
+newtype N__MINUS a b = N__MINUS ExpH
 
 instance SmtenT2 N__MINUS where
     smtenT2 _ = ConT (name "-") (ArrowK (ArrowK NumK NumK) NumK)
@@ -341,7 +341,7 @@ instance HaskellF2 N__MINUS where
     box2 = N__MINUS
     unbox2 (N__MINUS x) = x
 
-newtype N__TIMES a b = N__TIMES Thunk
+newtype N__TIMES a b = N__TIMES ExpH
 
 instance SmtenT2 N__TIMES where
     smtenT2 _ = ConT (name "*") (ArrowK (ArrowK NumK NumK) NumK)

@@ -6,7 +6,7 @@
 -- | HOAS form for Smten Expressions, geared towards high performance
 -- elaboration.
 module Smten.ExpH.ExpH (
-    ExpH_(..), EID, Thunk(), force, eid, thunk, thunkNS, identify,
+    ExpH_(..), EID, ExpH(), force, eid, thunk, thunkNS, identify,
     ) where
 
 import System.IO.Unsafe
@@ -33,7 +33,7 @@ data ExpH_ =
 
             -- | Fully applied data constructors.
             -- The Type field is the type of the fully applied constructor.
-          | ConEH Name Type [Thunk]
+          | ConEH Name Type [ExpH]
 
             -- | Primitive symbolic varibles.
             -- Current types supported are: Bool, Integer, Bit
@@ -41,17 +41,17 @@ data ExpH_ =
 
             -- | Fully applied primitive functions
             -- | The Type field is the type of the fully applied primitive.
-          | PrimEH Name Type ([Thunk] -> Thunk) [Thunk]
+          | PrimEH Name Type ([ExpH] -> ExpH) [ExpH]
          
           -- | LamEH s t f:
           --    s - name and type of the function argument. 
           --        The name is for debugging purposes only.
           --    t - the return type of the function
           --    f - the haskell representation of the function.
-          | LamEH Sig Type (Thunk -> Thunk)
+          | LamEH Sig Type (ExpH -> ExpH)
 
           -- | Conditional expressions.
-          | IfEH Type Thunk Thunk Thunk
+          | IfEH Type ExpH ExpH ExpH
 
           -- | Explicit _|_.
           -- Type is the type of the expression.
@@ -65,14 +65,14 @@ data ExpH_ =
           | ErrorEH Type String
     deriving(Typeable)
 
-data Thunk = Thunk {
+data ExpH = ExpH {
     eid :: Maybe EID,
     force :: ExpH_
 } deriving (Typeable)
 
 -- Call the given function with a globally unique identifier.
-thunk :: ExpH_ -> Thunk
-thunk e = identify $ \x -> Thunk (Just x) e
+thunk :: ExpH_ -> ExpH
+thunk e = identify $ \x -> ExpH (Just x) e
 
 identify :: (EID -> a) -> a
 identify f = 
@@ -89,6 +89,6 @@ identify f =
 
 -- Create a non-sharing thunk.
 -- Use this for things like literals which there is no point in sharing.
-thunkNS :: ExpH_ -> Thunk
-thunkNS = Thunk Nothing
+thunkNS :: ExpH_ -> ExpH
+thunkNS = ExpH Nothing
 

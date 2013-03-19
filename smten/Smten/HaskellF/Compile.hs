@@ -346,12 +346,12 @@ hsCon (Con n tys) = do
 --    FooA FooA1 FooA2 ...
 --  | FooB FooB1 FooB2 ...
 --    ...
---  | Foo__s Thunk
+--  | Foo__s ExpH
 mkDataD :: Name -> [TyVar] -> [Con] -> Failable H.Dec
 mkDataD n tyvars constrs = do
   let tyvars' = map (H.PlainTV . hsName . tyVarName) tyvars
   constrs' <- mapM hsCon constrs
-  let sconstr = H.NormalC (symconstrnm n) [(H.NotStrict, H.ConT (H.mkName "S.Thunk"))]
+  let sconstr = H.NormalC (symconstrnm n) [(H.NotStrict, H.ConT (H.mkName "S.ExpH"))]
   return $ H.DataD [] (hsName n) tyvars' (constrs' ++ [sconstr]) []
 
 -- Note: we currently don't support crazy kinded instances of SmtenT. This

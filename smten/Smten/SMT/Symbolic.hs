@@ -47,7 +47,7 @@ data SS = SS {
     ss_free :: [Sig],
 
     -- | assertions made (in reverse order).
-    ss_asserts :: [Thunk]
+    ss_asserts :: [ExpH]
 }
 
 newtype Symbolic a = Symbolic {
@@ -57,7 +57,7 @@ newtype Symbolic a = Symbolic {
 deriving instance MonadState SS Symbolic
 
 -- | Assert the given predicate.
-assert :: Thunk -> Symbolic ()
+assert :: ExpH -> Symbolic ()
 assert p = modify $ \ss -> ss { ss_asserts = p : ss_asserts ss }
 
 -- | Read the value of a Used.
@@ -70,7 +70,7 @@ used (Used ctx v) = do
 
 -- | Allocate a primitive free variable of the given type.
 -- The underlying SMT solver must support this type for this to work.
-prim_free :: Type -> Symbolic Thunk
+prim_free :: Type -> Symbolic ExpH
 prim_free t = do
     fid <- gets ss_nfree
     let f = Sig (name $ "free~" ++ show fid) t
@@ -80,7 +80,7 @@ prim_free t = do
 -- | Predicate the symbolic computation on the given smten Bool.
 -- All assertions will only apply when the predicate is satisfied, otherwise
 -- the assertions become vacuous.
-predicated :: Thunk -> Symbolic a -> Symbolic a
+predicated :: ExpH -> Symbolic a -> Symbolic a
 predicated p s = do
     ss <- get
     let (v, ss') = runState (symbolic_state s) (ss { ss_asserts = [] })
@@ -98,18 +98,18 @@ predicated p s = do
 --   free - the primitive free variables created (in order of creation)
 --   asserts - the assertions made (of type Bool) (in order of assertion)
 --   val - the result of the computation.
-runSymbolic :: Contexts -> Integer -> Symbolic a -> (Integer, [Sig], [Thunk], a)
+runSymbolic :: Contexts -> Integer -> Symbolic a -> (Integer, [Sig], [ExpH], a)
 runSymbolic ctx nfree s = 
     let (v, ss) = runState (symbolic_state s) (SS ctx nfree [] [])
     in (ss_nfree ss, reverse (ss_free ss), reverse (ss_asserts ss), v)
 
--- Convert an Thunk of smten type (Symbolic a) to it's corresponding haskell
+-- Convert an ExpH of smten type (Symbolic a) to it's corresponding haskell
 -- Symbolic.
 --
 -- This assumes you are passing an expression of seri type (Symbolic a).
 -- It will always succeed, because it automatically converts symbolic
 -- (Symbolic a) into concrete (Symbolic a)
-de_symbolicEH :: Thunk -> Symbolic Thunk
+de_symbolicEH :: ExpH -> Symbolic ExpH
 de_symbolicEH e
  | Just l <- de_litEH e, Just s <- de_dynamicL l = s
 

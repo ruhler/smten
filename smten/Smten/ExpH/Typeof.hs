@@ -18,6 +18,6 @@ instance Typeof ExpH_ where
     typeof (IfEH t _ _ _) = t
     typeof (ErrorEH t _) = t
 
-instance Typeof Thunk where
+instance Typeof ExpH where
     typeof = typeof . force 
 

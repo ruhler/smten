@@ -21,7 +21,7 @@ import Smten.Strict
 
 -- The result of inferred value propagation, and the set of variables this
 -- result depends on.
-type IVPResult = (Thunk, Set.Set Name)
+type IVPResult = (ExpH, Set.Set Name)
 
 type Context = Map.Map Name Bool
 type ContextMap = [(Context, IVPResult)]
@@ -50,7 +50,7 @@ cm_restrict c s = Map.filterWithKey (\k _ -> k `Set.member` s) c
 
 -- Do IVP.
 -- If the result for the expression is cached, use that.
-use :: Context -> Thunk -> State Cache IVPResult
+use :: Context -> ExpH -> State Cache IVPResult
 use m e
  | Just id <- eid e = do
     cache <- get
@@ -70,7 +70,7 @@ use m e
 
 -- Do IVP.
 -- Does not check if the result for the expression is cached.
-def :: Context -> Thunk -> State Cache IVPResult
+def :: Context -> ExpH -> State Cache IVPResult
 def m e
  | LitEH {} <- force e = return (e, Set.empty)
  | ConEH n t xs <- force e = do
@@ -101,6 +101,6 @@ def m e
 
 -- Perform inferred value propagation on the given expression.
 -- Assumes the expression may be looked at in its entirety.
-ivp :: Thunk -> Thunk
+ivp :: ExpH -> ExpH
 ivp e = fst $ evalState (use Map.empty e) HashMap.empty
 
