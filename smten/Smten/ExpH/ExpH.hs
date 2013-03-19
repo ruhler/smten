@@ -6,7 +6,7 @@
 -- | HOAS form for Smten Expressions, geared towards high performance
 -- elaboration.
 module Smten.ExpH.ExpH (
-    ExpH(..), EID, Thunk(), force, eid, thunk, thunkNS, identify,
+    ExpH_(..), EID, Thunk(), force, eid, thunk, thunkNS, identify,
     ) where
 
 import System.IO.Unsafe
@@ -26,8 +26,8 @@ newtype EID = EID Integer
 instance Show EID where
     show (EID x) = show x
 
--- ExpH represents a symbolic Smten expression evaluated to normal form. 
-data ExpH =
+-- ExpH_ represents a symbolic Smten expression evaluated to normal form. 
+data ExpH_ =
             -- | Literal characters and integers
             LitEH Lit
 
@@ -67,11 +67,11 @@ data ExpH =
 
 data Thunk = Thunk {
     eid :: Maybe EID,
-    force :: ExpH
+    force :: ExpH_
 } deriving (Typeable)
 
 -- Call the given function with a globally unique identifier.
-thunk :: ExpH -> Thunk
+thunk :: ExpH_ -> Thunk
 thunk e = identify $ \x -> Thunk (Just x) e
 
 identify :: (EID -> a) -> a
@@ -89,6 +89,6 @@ identify f =
 
 -- Create a non-sharing thunk.
 -- Use this for things like literals which there is no point in sharing.
-thunkNS :: ExpH -> Thunk
+thunkNS :: ExpH_ -> Thunk
 thunkNS = Thunk Nothing
 
