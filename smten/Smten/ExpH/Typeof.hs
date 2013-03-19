@@ -17,6 +17,3 @@ instance Typeof ExpH_ where
     typeof (LamEH (Sig _ it) ot _) = arrowT it ot
     typeof (IfEH t _ _ _) = t
 
-instance Typeof ExpH where
-    typeof = typeof . force 
-

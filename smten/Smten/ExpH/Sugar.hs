@@ -83,7 +83,7 @@ appEH :: ExpH -> ExpH -> ExpH
 appEH f x
  | LamEH (Sig _ t) _ g <- force f = g x
  | IfEH {} <- force f =
-     let Just (_, t) = de_arrowT (typeof f)
+     let Just (_, t) = de_arrowT (typeof (force f))
      in strict_appEH t (\g -> appEH g x) f
  | otherwise = error "appEH"
 

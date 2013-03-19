@@ -275,20 +275,26 @@ prune e
  | IfEH t p a b <- force e = do
      p' <- prune p
      ma <- nest $ do
-        assert_pruned p'
-        r <- check
-        case r of
-            SMT.Satisfiable -> Just <$> prune a
-            SMT.Unsatisfiable -> return Nothing
-            _ -> error $ "Smten.SMT.SMT.prune: check failed"
+             assert_pruned p'
+             if forced a
+                then Just <$> prune a
+                else do
+                  r <- check
+                  case r of
+                      SMT.Satisfiable -> Just <$> prune a
+                      SMT.Unsatisfiable -> return Nothing
+                      _ -> error $ "Smten.SMT.SMT.prune: check failed"
 
      mb <- nest $ do
-        assert_pruned (notEH p')
-        r <- check
-        case r of
-            SMT.Satisfiable -> Just <$> prune b
-            SMT.Unsatisfiable -> return Nothing
-            _ -> error $ "Smten.SMT.SMT.prune: check failed"
+             assert_pruned (notEH p')
+             if forced b
+                then Just <$> prune b
+                else do
+                  r <- check
+                  case r of
+                      SMT.Satisfiable -> Just <$> prune b
+                      SMT.Unsatisfiable -> return Nothing
+                      _ -> error $ "Smten.SMT.SMT.prune: check failed"
 
      case (ma, mb) of
          (Just a', Just b') -> return $ ifEH t p' a' b'
@@ -396,8 +402,8 @@ de_symbolicEH_pruned e
     let py = x
         pn = ifEH boolT x falseEH trueEH
 
-        ys = de_symbolicEH y
-        ns = de_symbolicEH n
+        ys = de_symbolicEH_pruned y
+        ns = de_symbolicEH_pruned n
     in do
         yr <- predicated py ys
         nr <- predicated pn ns

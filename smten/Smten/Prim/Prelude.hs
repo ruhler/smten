@@ -40,7 +40,10 @@ preludePs = [
     ]
 
 errorP :: Prim
-errorP = unaryP "Prelude.error" (error :: String -> ExpH)
+errorP = 
+  let f :: String -> ExpH
+      f s = thunkNS $ error s
+  in unaryP "Prelude.error" f
 
 eq_IntegerP :: PrimF (Integer -> Integer -> Bool)
 eq_IntegerP = binaryPF "Prelude.__prim_eq_Integer" (==)
@@ -104,7 +107,7 @@ numericP =
 valueofP :: Prim
 valueofP = 
   let f :: ExpH -> ExpH
-      f x = integerEH (nteval (typeof x))
+      f x = integerEH (nteval (typeof (force x)))
   in unaryP "Prelude.valueof" f
 
 traceP :: Prim

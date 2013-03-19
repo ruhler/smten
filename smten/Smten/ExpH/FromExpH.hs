@@ -91,7 +91,7 @@ convert share e =
         | Just id <- eid e
         , Set.member id share = do
             done <- gets df_done
-            let var = VarE (Sig (nameof id) (typeof e))
+            let var = VarE (Sig (nameof id) (typeof (force e)))
             case Set.member id done of
                 True -> return var
                 False -> do

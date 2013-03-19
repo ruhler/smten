@@ -70,14 +70,28 @@ qinc3 = do
             assert (series2 x == 4)
             return x
     test "error.inc3" (a == Nothing)
+
+qsymsym :: SMT ()
+qsymsym = do
+    s <- query $ do
+            a <- free
+            b <- free
+            assert (not a)
+            if a
+                then error "qsymsym is not pruning!"
+                else assert b
+            return (a, b)
+    test "error.qsymsym" (s == Just (False, True))
+
             
 qtest :: SMT ()
 qtest = do
-    qerror
-    qboom
-    qinc
-    qinc2
-    qinc3
+    --qerror
+    --qboom
+    --qinc
+    --qinc2
+    --qinc3
+    qsymsym
 
 main :: IO ()
 main = do

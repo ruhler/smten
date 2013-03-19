@@ -49,7 +49,8 @@ unaryTP n f =
       impl t [a]
         | Just av <- de_smtenEH a = smtenEH (f t av)
         | IfEH {} <- force a
-        , not (smttype (typeof a)) = strict_appEH t (\a' -> impl t [a']) a
+        , not (smttype (typeof (force a)))
+            = strict_appEH t (\a' -> impl t [a']) a
         | otherwise = thunk $ PrimEH nm t (impl t) [a]
 
       -- The type is the type of the primitive function without arguments
@@ -79,9 +80,11 @@ binaryTP n f =
         | Just av <- de_smtenEH a
         , Just bv <- de_smtenEH b = smtenEH (f t av bv)
         | IfEH {} <- force a
-        , not (smttype (typeof a)) = strict_appEH t (\a' -> impl t [a', b]) a
+        , not (smttype (typeof (force a)))
+            = strict_appEH t (\a' -> impl t [a', b]) a
         | IfEH {} <- force b
-        , not (smttype (typeof b)) = strict_appEH t (\b' -> impl t [a, b']) b
+        , not (smttype (typeof (force b)))
+            = strict_appEH t (\b' -> impl t [a, b']) b
         | otherwise = thunk $ PrimEH nm t (impl t) [a, b]
 
       -- The type is the type of the primitive function without arguments

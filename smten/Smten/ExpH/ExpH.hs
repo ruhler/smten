@@ -63,7 +63,7 @@ data ExpH = ExpH {
 force :: ExpH -> ExpH_
 force x = unsafePerformIO $ do
     writeIORef (forced_ x) True
-    return (exph_ x)
+    return $! exph_ x
 
 forced :: ExpH -> Bool
 forced x = unsafePerformIO $ readIORef (forced_ x)
