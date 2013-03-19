@@ -6,7 +6,7 @@
 -- | HOAS form for Smten Expressions, geared towards high performance
 -- elaboration.
 module Smten.ExpH.ExpH (
-    ExpH_(..), EID, ExpH(), force, eid, thunk, thunkNS, identify,
+    ExpH_(..), EID, ExpH(), force, eid, thunk, thunkNS, forced,
     ) where
 
 import System.IO.Unsafe
@@ -56,28 +56,34 @@ data ExpH_ =
 
 data ExpH = ExpH {
     eid :: Maybe EID,
-    force :: ExpH_
+    forced_ :: IORef Bool,
+    exph_ :: ExpH_
 } deriving (Typeable)
+
+force :: ExpH -> ExpH_
+force x = unsafePerformIO $ do
+    writeIORef (forced_ x) True
+    return (exph_ x)
+
+forced :: ExpH -> Bool
+forced x = unsafePerformIO $ readIORef (forced_ x)
 
 -- Call the given function with a globally unique identifier.
 thunk :: ExpH_ -> ExpH
-thunk e = identify $ \x -> ExpH (Just x) e
-
-identify :: (EID -> a) -> a
-identify f = 
+thunk e = 
   let {-# NOINLINE idstore #-}
       idstore :: IORef Integer
       idstore = unsafePerformIO (newIORef 0)
-
-      identifyIO :: (EID -> a) -> IO a
-      identifyIO f = do
+  in unsafePerformIO $ do
         x <- readIORef idstore
         writeIORef idstore $! x + 1
-        return $! (f $! EID x)
-  in unsafePerformIO $ identifyIO f
+        r <- newIORef False
+        return $ ExpH (Just $ EID x) r e
 
 -- Create a non-sharing thunk.
 -- Use this for things like literals which there is no point in sharing.
 thunkNS :: ExpH_ -> ExpH
-thunkNS = ExpH Nothing
+thunkNS v = unsafePerformIO $ do
+    r <- newIORef False
+    return $ ExpH Nothing r v
 

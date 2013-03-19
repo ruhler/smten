@@ -53,7 +53,8 @@ sharing e =
 
 data Defined = Defined {
     df_defs :: [(EID, Exp)],
-    df_done :: Set.Set EID
+    df_done :: Set.Set EID,
+    df_id :: Integer
 }
 
 convert :: Set.Set EID -> ExpH -> Exp
@@ -72,7 +73,9 @@ convert share e =
             let t' = arrowsT $ (map typeof xs') ++ [t]
             return $ appsE (varE (Sig n t')) xs'
         | LamEH (Sig nm t) _ f <- force e = do
-            let s' = identify $ \x -> Sig (nm `nappend` (name (show x))) t
+            x <- gets df_id
+            modifyS $ \df -> df { df_id = x + 1 }
+            let s' = Sig (nm `nappend` (name ("~c" ++ show x))) t
             b <- useM (f (thunkNS $ VarEH s'))
             return $ LamE s' b
         | IfEH _ arg yes no <- force e = do
@@ -99,7 +102,7 @@ convert share e =
                    return var
         | otherwise = defineM e
     
-      (body, defined) = runState (defineM e) (Defined [] Set.empty)
+      (body, defined) = runState (defineM e) (Defined [] Set.empty 0)
       bindings = reverse (df_defs defined)
 
       nameof :: EID -> Name
