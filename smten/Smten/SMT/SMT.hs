@@ -48,7 +48,7 @@ module Smten.SMT.SMT (
     prim_free, assert, used,
     predicated, de_symbolicEH,
     Realize(), RunOptions(..), runSMT,
-    SMT, query, query_Used, nest, use, realize, prune,
+    SMT, query, query_Used, query_Sat, nest, use, realize, prune,
     ) where
 
 import Debug.Trace
@@ -231,14 +231,22 @@ query_Used (Used ctx rx) = {-# SCC "QUERY_USED" #-} do
     if (ctx `notElem` ctxs)
         then error "query_Used: invalid context for Used"
         else return ()
-    res <- check
-    case res of
-        SMT.Satisfiable -> Just <$> runRealize rx
-        SMT.Unsatisfiable -> return Nothing
-        _ -> error $ "Smten.SMT.SMT.query_Used: check failed"
+    res <- query_Sat
+    if res 
+        then Just <$> runRealize rx
+        else return Nothing
         
 query :: Symbolic (Realize a) -> SMT (Maybe a)
-query sr = {-# SCC "QUERY" #-} nest (use sr >>= query_Used)
+query sr = nest (use sr >>= query_Used)
+
+-- Ask if the existing context is satisfied or not.
+query_Sat :: SMT Bool
+query_Sat = do
+    res <- check
+    return $ case res of
+                SMT.Satisfiable -> True
+                SMT.Unsatisfiable -> False
+                _ -> error $ "Smten.SMT.SMT.query_Sat: check failed"
 
 mkfree :: Sig -> SMT ()
 mkfree s@(Sig nm t) | isPrimT t = do
@@ -279,22 +287,20 @@ prune e
              if forced a
                 then Just <$> prune a
                 else do
-                  r <- check
-                  case r of
-                      SMT.Satisfiable -> Just <$> prune a
-                      SMT.Unsatisfiable -> return Nothing
-                      _ -> error $ "Smten.SMT.SMT.prune: check failed"
+                  sat <- query_Sat
+                  if sat
+                     then Just <$> prune a
+                     else return Nothing
 
      mb <- nest $ do
              assert_pruned (notEH p')
              if forced b
                 then Just <$> prune b
                 else do
-                  r <- check
-                  case r of
-                      SMT.Satisfiable -> Just <$> prune b
-                      SMT.Unsatisfiable -> return Nothing
-                      _ -> error $ "Smten.SMT.SMT.prune: check failed"
+                  sat <- query_Sat
+                  if sat
+                     then Just <$> prune b
+                     else return Nothing
 
      case (ma, mb) of
          (Just a', Just b') -> return $ ifEH t p' a' b'

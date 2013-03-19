@@ -86,11 +86,11 @@ qsymsym = do
             
 qtest :: SMT ()
 qtest = do
-    --qerror
-    --qboom
-    --qinc
-    --qinc2
-    --qinc3
+    qerror
+    qboom
+    qinc
+    qinc2
+    qinc3
     qsymsym
 
 main :: IO ()
