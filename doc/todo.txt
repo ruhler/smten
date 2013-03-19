@@ -76,8 +76,6 @@ Performance::
 * Play with GHC Sparks and non-strict state monads
 
 Sharing::
-* Don't share trivially things.
-    Maybe need a thunk' function to create unshared thunks?
 * Why do we sometimes share "free~12"?? For example, in Datatype test.
 
 Primitives::
@@ -117,7 +115,11 @@ Build System::
 
 Error::
 * Performance is terrible
-* Bug in STP
+** 1. Cache which things have been forced, and don't make an SMT query for them.
+** 2. Don't prune, but rather, 'forceall'
+** 3. preserve sharing in 'forceall'
+** 4. Evaluate assertion predicate under example assignment to quickly force a
+      bunch of paths without having to go to SMT solver?
 
 Bugs::
 * BadKind, DupInst, DupVar maltype tests
