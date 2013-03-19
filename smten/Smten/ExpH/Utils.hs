@@ -18,7 +18,7 @@ import Smten.ExpH.Sugar
 -- | Given a Smten expression of type IO a,
 -- returns the Smten expression of type a which results from running the IO
 -- computation.
-runio :: Thunk -> IO Thunk
+runio :: ExpH -> IO ExpH
 runio e
  | Just io <- de_ioEH e = io
  | otherwise = error $ "runio got non-IO: " ++ pretty e

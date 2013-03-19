@@ -20,16 +20,16 @@ import Smten.ExpH
 import Smten.Prim
 
 -- | Inline all variables from environment into the given expression.
-inline :: Env -> [Prim] -> Exp -> Thunk
+inline :: Env -> [Prim] -> Exp -> ExpH
 inline env prims =
   let {-# NOINLINE cache #-}
-      cache :: IORef (Map.Map Sig (Maybe Thunk))
+      cache :: IORef (Map.Map Sig (Maybe ExpH))
       cache = unsafePerformIO (newIORef Map.empty)
 
-      priml :: Sig -> Maybe Thunk 
+      priml :: Sig -> Maybe ExpH 
       priml = lookupPrim prims
 
-      lookupIO :: Sig -> IO (Maybe Thunk)
+      lookupIO :: Sig -> IO (Maybe ExpH)
       lookupIO s@(Sig n ct) = do
          m <- readIORef cache
          case Map.lookup s m of
@@ -44,10 +44,10 @@ inline env prims =
               modifyIORef cache (Map.insert s x)
               return x
 
-      lookupPure :: Sig -> Maybe Thunk
+      lookupPure :: Sig -> Maybe ExpH
       lookupPure s = unsafePerformIO (lookupIO s)
 
-      inline' :: [(Name, Type)] -> [(Sig, Thunk)] -> Exp -> Thunk
+      inline' :: [(Name, Type)] -> [(Sig, ExpH)] -> Exp -> ExpH
       inline' tm m (LitE l) = thunkNS $ LitEH l
       inline' tm m (ConE s) = conEH (assign tm s)
       inline' tm m (VarE s) | Just v <- lookup s m = v

@@ -85,9 +85,9 @@ data QS = QS {
     qs_dh :: Maybe Handle,
     qs_freeid :: Integer,
     qs_qs :: Compilation,
-    qs_pred :: Thunk,
+    qs_pred :: ExpH,
     qs_freevars :: [Sig],
-    qs_freevals :: Maybe [Thunk] -- ^ Cache of free variable values
+    qs_freevals :: Maybe [ExpH] -- ^ Cache of free variable values
 }
 
 newtype SMT a = SMT (StateT QS IO a)
@@ -136,7 +136,7 @@ smtt t = do
     runCmds cmds
     return yt
 
-smte' :: Thunk -> SMT ([SMT.Command], SMT.Expression)
+smte' :: ExpH -> SMT ([SMT.Command], SMT.Expression)
 smte' e = {-# SCC "SmtE" #-} do
     qs <- gets qs_qs 
     let se = {-# SCC "FROMEXPH" #-} fromExpH e
@@ -149,7 +149,7 @@ smte' e = {-# SCC "SmtE" #-} do
     modify $ \s -> s { qs_qs = qs' }
     return (cmds, ye)
 
-smte :: Thunk -> SMT SMT.Expression
+smte :: ExpH -> SMT SMT.Expression
 smte e = do
     (cmds, ye) <- smte' e
     runCmds cmds
@@ -203,7 +203,7 @@ runSMT opts (SMT q) = do
 -- Assumes:
 --   Integers, Bools, and Bit vectors are implemented directly using the
 --   corresponding smt primitives. (Should I not be assuming this?)
-realizefree :: Sig -> SMT Thunk
+realizefree :: Sig -> SMT ExpH
 realizefree (Sig nm t) | t == boolT = do
     solver <- gets qs_solver
     bval <- liftIO $ SMT.getBoolValue solver (smtN nm)
@@ -247,13 +247,13 @@ mkfree s@(Sig nm t) | isPrimT t = do
   runCmds [SMT.Declare (smtN nm) t']
 mkfree s = error $ "SMT.mkfree: unsupported type: " ++ pretty s
 
-assert_pruned :: Thunk -> SMT ()
+assert_pruned :: ExpH -> SMT ()
 assert_pruned p = do
     yp <- smte p
     runCmds [SMT.Assert yp]
 
 -- | Assert the given smten boolean expression.
-mkassert :: Thunk -> SMT ()
+mkassert :: ExpH -> SMT ()
 mkassert p = {-# SCC "MKASSERT" #-}do
   r <- check
   case r of
@@ -265,7 +265,7 @@ mkassert p = {-# SCC "MKASSERT" #-}do
       _ -> error $ "Smten.SMT.SMT.mkasserts: check failed"
 
 -- Prune unreachable branches from the given expression.
-prune :: Thunk -> SMT Thunk
+prune :: ExpH -> SMT ExpH
 prune e
  | LitEH {} <- force e = return e
  | ConEH n t xs <- force e = aconEH n t <$> mapM prune xs
@@ -314,7 +314,7 @@ nest q = do
 
 -- | Update the free variables in the given expression based on the current
 -- model.
-realize :: Thunk -> Realize Thunk
+realize :: ExpH -> Realize ExpH
 realize e = {-# SCC "REALIZE" #-} Realize $ do
     freevars <- gets qs_freevars
     freevals <- gets qs_freevals
@@ -346,7 +346,7 @@ newtype Symbolic a = Symbolic {
 deriving instance MonadState QS Symbolic
 
 -- | Assert the given predicate.
-assert :: Thunk -> Symbolic ()
+assert :: ExpH -> Symbolic ()
 assert p = Symbolic (mkassert p)
 
 -- | Read the value of a Used.
@@ -359,7 +359,7 @@ used (Used ctx v) = do
 
 -- | Allocate a primitive free variable of the given type.
 -- The underlying SMT solver must support this type for this to work.
-prim_free :: Type -> Symbolic Thunk
+prim_free :: Type -> Symbolic ExpH
 prim_free t = do
     fid <- gets qs_freeid
     let f = Sig (name $ "free~" ++ show fid) t
@@ -370,7 +370,7 @@ prim_free t = do
 -- | Predicate the symbolic computation on the given smten Bool.
 -- All assertions will only apply when the predicate is satisfied, otherwise
 -- the assertions become vacuous.
-predicated :: Thunk -> Symbolic a -> Symbolic a
+predicated :: ExpH -> Symbolic a -> Symbolic a
 predicated p s = do
     pred <- gets qs_pred
     modify $ \qs -> qs { qs_pred = andEH pred p }
@@ -384,12 +384,12 @@ predicated p s = do
 -- This assumes you are passing an expression of seri type (Symbolic a).
 -- It will always succeed, because it automatically converts symbolic
 -- (Symbolic a) into concrete (Symbolic a)
-de_symbolicEH :: Thunk -> Symbolic Thunk
+de_symbolicEH :: ExpH -> Symbolic ExpH
 de_symbolicEH e = do
     e' <- Symbolic $ prune e
     de_symbolicEH_pruned e'
 
-de_symbolicEH_pruned :: Thunk -> Symbolic Thunk
+de_symbolicEH_pruned :: ExpH -> Symbolic ExpH
 de_symbolicEH_pruned e
  | Just l <- de_litEH e, Just s <- de_dynamicL l = s
  | IfEH t x y n <- force e =

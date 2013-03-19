@@ -41,7 +41,7 @@ derive_SmtenT ''Symbolic
 derive_SmtenT ''Used
 derive_SmtenT ''SMT
 
-symbolicEH :: Symbolic Thunk -> Thunk
+symbolicEH :: Symbolic ExpH -> ExpH
 symbolicEH = litEH . dynamicL
 
 instance (SmtenEH a) => SmtenEH (Symbolic a) where
@@ -51,10 +51,10 @@ instance (SmtenEH a) => SmtenEH (Symbolic a) where
         return $ fromMaybe (error "de_smtenEH Symbolic") . de_smtenEH <$> q
 
 
-usedEH :: Used Thunk -> Thunk
+usedEH :: Used ExpH -> ExpH
 usedEH = litEH . dynamicL
 
-de_usedEH :: Thunk -> Maybe (Used Thunk)
+de_usedEH :: ExpH -> Maybe (Used ExpH)
 de_usedEH e = de_litEH e >>= de_dynamicL
 
 instance (SmtenEH a) => SmtenEH (Used a) where
@@ -63,10 +63,10 @@ instance (SmtenEH a) => SmtenEH (Used a) where
         q <- de_usedEH e
         return $ fromMaybe (error "de_smtenEH Used") . de_smtenEH <$> q
 
-smtEH :: SMT Thunk -> Thunk
+smtEH :: SMT ExpH -> ExpH
 smtEH = litEH . dynamicL
 
-de_smtEH :: Thunk -> Maybe (SMT Thunk)
+de_smtEH :: ExpH -> Maybe (SMT ExpH)
 de_smtEH e = de_litEH e >>= de_dynamicL
 
 instance (SmtenEH a) => SmtenEH (SMT a) where
@@ -85,30 +85,30 @@ smtPs = [
     ]
 
 return_SMTP :: Prim
-return_SMTP = unaryP "Smten.SMT.Symbolic.return_smt" (return :: Thunk -> SMT Thunk)
+return_SMTP = unaryP "Smten.SMT.Symbolic.return_smt" (return :: ExpH -> SMT ExpH)
 
 fail_SMTP :: Prim
-fail_SMTP = unaryP "Smten.SMT.Symbolic.fail_smt" (fail :: String -> SMT Thunk)
+fail_SMTP = unaryP "Smten.SMT.Symbolic.fail_smt" (fail :: String -> SMT ExpH)
 
 bind_SMTP :: Prim
-bind_SMTP = binaryP "Smten.SMT.Symbolic.bind_smt" ((>>=) :: SMT Thunk -> (Thunk -> SMT Thunk) -> SMT Thunk)
+bind_SMTP = binaryP "Smten.SMT.Symbolic.bind_smt" ((>>=) :: SMT ExpH -> (ExpH -> SMT ExpH) -> SMT ExpH)
 
 nobind_SMTP :: Prim
-nobind_SMTP = binaryP "Smten.SMT.Symbolic.nobind_smt" ((>>) :: SMT Thunk -> SMT Thunk -> SMT Thunk)
+nobind_SMTP = binaryP "Smten.SMT.Symbolic.nobind_smt" ((>>) :: SMT ExpH -> SMT ExpH -> SMT ExpH)
 
 return_SymbolicP :: Prim
-return_SymbolicP = unaryP "Smten.SMT.Symbolic.return_symbolic" (return :: Thunk -> Symbolic Thunk)
+return_SymbolicP = unaryP "Smten.SMT.Symbolic.return_symbolic" (return :: ExpH -> Symbolic ExpH)
 
 fail_SymbolicP :: Prim
-fail_SymbolicP = unaryP "Smten.SMT.Symbolic.fail_symbolic" (fail :: String -> Symbolic Thunk)
+fail_SymbolicP = unaryP "Smten.SMT.Symbolic.fail_symbolic" (fail :: String -> Symbolic ExpH)
 
 bind_SymbolicP :: Prim
-bind_SymbolicP = binaryP "Smten.SMT.Symbolic.bind_symbolic" ((>>=) :: Symbolic Thunk -> (Thunk -> Symbolic Thunk) -> Symbolic Thunk)
+bind_SymbolicP = binaryP "Smten.SMT.Symbolic.bind_symbolic" ((>>=) :: Symbolic ExpH -> (ExpH -> Symbolic ExpH) -> Symbolic ExpH)
 
 nobind_SymbolicP :: Prim
-nobind_SymbolicP = binaryP "Smten.SMT.Symbolic.nobind_symbolic" ((>>) :: Symbolic Thunk -> Symbolic Thunk -> Symbolic Thunk)
+nobind_SymbolicP = binaryP "Smten.SMT.Symbolic.nobind_symbolic" ((>>) :: Symbolic ExpH -> Symbolic ExpH -> Symbolic ExpH)
 
-free_helper :: Type -> Symbolic Thunk
+free_helper :: Type -> Symbolic ExpH
 free_helper t 
   | Just (_, t') <- de_appT t = prim_free t'
   | otherwise = error $ "free_helper: " ++ pretty t
@@ -130,7 +130,7 @@ query_UsedP =
   -- Note: we can't use smtenEH to figure out the return type, because it
   -- doesn't know it. We have to construct the return object based on the
   -- dynamic input type.
-  let f :: Used Thunk -> SMT Thunk
+  let f :: Used ExpH -> SMT ExpH
       f arg@(Used _ v) = do
         let ta = AppT (ConT (name "Maybe") (ArrowK StarK StarK)) (typeof v)
         res <- query_Used (realize <$> arg)
@@ -140,17 +140,17 @@ query_UsedP =
   in unaryP "Smten.SMT.Symbolic.query_Used" f
 
 usedP :: Prim
-usedP = unaryP "Smten.SMT.Symbolic.used" (used :: Used Thunk -> Symbolic Thunk)
+usedP = unaryP "Smten.SMT.Symbolic.used" (used :: Used ExpH -> Symbolic ExpH)
 
 useP :: Prim
-useP = unaryP "Smten.SMT.Symbolic.use" (use :: Symbolic Thunk -> SMT (Used Thunk))
+useP = unaryP "Smten.SMT.Symbolic.use" (use :: Symbolic ExpH -> SMT (Used ExpH))
 
 nestP :: Prim
-nestP = unaryP "Smten.SMT.Symbolic.nest" (nest :: SMT Thunk -> SMT Thunk)
+nestP = unaryP "Smten.SMT.Symbolic.nest" (nest :: SMT ExpH -> SMT ExpH)
 
 runSMTP :: Prim
 runSMTP =
-  let f :: Solver -> Maybe FilePath -> SMT Thunk -> IO Thunk
+  let f :: Solver -> Maybe FilePath -> SMT ExpH -> IO ExpH
       f solver dbg q = do
         s <- case solver of
                 Yices1 -> yices1
@@ -160,6 +160,6 @@ runSMTP =
   in binaryP "Smten.SMT.Symbolic.runSMT" f
 
 liftIO_SMTP :: Prim
-liftIO_SMTP = unaryP "Smten.SMT.Symbolic.liftIO_SMT" (liftIO :: IO Thunk -> SMT Thunk)
+liftIO_SMTP = unaryP "Smten.SMT.Symbolic.liftIO_SMT" (liftIO :: IO ExpH -> SMT ExpH)
     
 

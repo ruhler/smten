@@ -37,13 +37,13 @@ import Smten.ExpH.ExpH
 import Smten.ExpH.Typeof
 
 -- Fully applied constructor
-aconEH :: Name -> Type -> [Thunk] -> Thunk
+aconEH :: Name -> Type -> [ExpH] -> ExpH
 aconEH n t [] = thunkNS $ ConEH n t []
 aconEH n t args = thunk $ ConEH n t args
 
-conEH :: Sig -> Thunk
+conEH :: Sig -> ExpH
 conEH (Sig n t) =
- let coneh :: Name -> Type -> [Thunk] -> Thunk
+ let coneh :: Name -> Type -> [ExpH] -> ExpH
      coneh n t args
         | Just (it, ot) <- de_arrowT t =
             lamEH (Sig (name "c") it) ot $ \x -> coneh n ot (args ++ [x])
@@ -51,35 +51,35 @@ conEH (Sig n t) =
  in coneh n t []
 
 -- Check for a fully applied constructor.
-de_conEH :: Thunk -> Maybe (Name, Type, [Thunk])
+de_conEH :: ExpH -> Maybe (Name, Type, [ExpH])
 de_conEH e
  | (ConEH n t xs) <- force e = Just (n, t, xs)
  | otherwise = Nothing
 
 -- Check for the given fully applied constructor.
-de_kconEH :: Name -> Thunk -> Maybe [Thunk]
+de_kconEH :: Name -> ExpH -> Maybe [ExpH]
 de_kconEH n x = do
     (nm, _, vs) <- de_conEH x
     guard $ nm == n
     return vs
 
-litEH :: Lit -> Thunk
+litEH :: Lit -> ExpH
 litEH = thunkNS . LitEH
 
-de_litEH :: Thunk -> Maybe Lit
+de_litEH :: ExpH -> Maybe Lit
 de_litEH e
  | LitEH l <- force e = Just l
  | otherwise = Nothing
 
-varEH :: Sig -> Thunk
+varEH :: Sig -> ExpH
 varEH = thunkNS . VarEH
 
-de_varEH :: Thunk -> Maybe Sig
+de_varEH :: ExpH -> Maybe Sig
 de_varEH t
  | VarEH s <- force t = Just s
  | otherwise = Nothing
 
-appEH :: Thunk -> Thunk -> Thunk
+appEH :: ExpH -> ExpH -> ExpH
 appEH f x
  | LamEH (Sig _ t) _ g <- force f = g x
  | IfEH {} <- force f =
@@ -91,79 +91,79 @@ smttype :: Type -> Bool
 --smttype t = or [ t == boolT, t == integerT, isJust (de_bitT t) ]
 smttype t = or [ t == boolT, isJust (de_bitT t) ]
 
-appsEH :: Thunk -> [Thunk] -> Thunk
+appsEH :: ExpH -> [ExpH] -> ExpH
 appsEH f xs = foldl appEH f xs
 
 -- lamEH s t f
 --  s - name and type of argument to function
 --  t - output type of the function
-lamEH :: Sig -> Type -> (Thunk -> Thunk) -> Thunk
+lamEH :: Sig -> Type -> (ExpH -> ExpH) -> ExpH
 lamEH s t f = thunk $ LamEH s t f
 
 -- letEH s t v f
 --  s - name and type of let variable
 --  t - type of the let expression
 --  v - value of the let variable
-letEH :: Sig -> Type -> Thunk -> (Thunk -> Thunk) -> Thunk
+letEH :: Sig -> Type -> ExpH -> (ExpH -> ExpH) -> ExpH
 letEH s t v b = appEH (lamEH s t b) v
 
-unitEH :: Thunk
+unitEH :: ExpH
 unitEH = conEH (Sig (name "()") unitT)
 
-trueEH :: Thunk
+trueEH :: ExpH
 trueEH = conEH (Sig (name "True") boolT)
 
-falseEH :: Thunk
+falseEH :: ExpH
 falseEH = conEH (Sig (name "False") boolT)
 
 -- | Boolean expression
-boolEH :: Bool -> Thunk
+boolEH :: Bool -> ExpH
 boolEH True = trueEH
 boolEH False = falseEH
 
-de_boolEH :: Thunk -> Maybe Bool
+de_boolEH :: ExpH -> Maybe Bool
 de_boolEH x =
  let detrue = de_kconEH (name "True") x >> return True
      defalse = de_kconEH (name "False") x >> return False
  in mplus detrue defalse
 
-integerEH :: Integer -> Thunk
+integerEH :: Integer -> ExpH
 integerEH = litEH . integerL 
 
 
-de_integerEH :: Thunk -> Maybe Integer
+de_integerEH :: ExpH -> Maybe Integer
 de_integerEH e = do
     l <- de_litEH e
     de_integerL l
 
-bitEH :: Bit -> Thunk
+bitEH :: Bit -> ExpH
 bitEH = litEH . bitL
 
-de_bitEH :: Thunk -> Maybe Bit
+de_bitEH :: ExpH -> Maybe Bit
 de_bitEH e = do
     l <- de_litEH e
     de_bitL l
 
-charEH :: Char -> Thunk
+charEH :: Char -> ExpH
 charEH = litEH . charL 
 
-de_charEH :: Thunk -> Maybe Char
+de_charEH :: ExpH -> Maybe Char
 de_charEH e = do
     l <- de_litEH e
     de_charL l
 
-ioEH :: IO Thunk -> Thunk
+ioEH :: IO ExpH -> ExpH
 ioEH x = litEH (dynamicL x)
 
-de_ioEH :: Thunk -> Maybe (IO Thunk)
+de_ioEH :: ExpH -> Maybe (IO ExpH)
 de_ioEH x = do
     l <- de_litEH x
     de_dynamicL l
 
-caseEH :: Type -> Thunk -> Sig -> Thunk -> Thunk -> Thunk
+caseEH :: Type -> ExpH -> Sig -> ExpH -> ExpH -> ExpH
 caseEH t x k y n = {-# SCC "CASE_EH" #-} caseEH' t x k y n
 
-caseEH' :: Type -> Thunk -> Sig -> Thunk -> Thunk -> Thunk
+caseEH' :: Type -> ExpH -> Sig -> ExpH -> ExpH -> ExpH
 caseEH' t x k@(Sig nk _) y n
  | Just (s, _, vs) <- de_conEH x
     = if s == nk then appsEH y vs else n
@@ -174,24 +174,24 @@ caseEH' t x k@(Sig nk _) y n
 
 -- Strict application.
 -- It traverses inside of if expressions. Sharing is preserved.
-strict_appEH :: Type -> (Thunk -> Thunk) -> Thunk -> Thunk
+strict_appEH :: Type -> (ExpH -> ExpH) -> ExpH -> ExpH
 strict_appEH t f =
-  let g :: (Thunk -> Thunk) -> Thunk -> Thunk
+  let g :: (ExpH -> ExpH) -> ExpH -> ExpH
       g use e
         | IfEH _ x y d <- force e = ifEH t x (use y) (use d)
         | otherwise = f e
   in shared g
 
-ifEH :: Type -> Thunk -> Thunk -> Thunk -> Thunk
+ifEH :: Type -> ExpH -> ExpH -> ExpH -> ExpH
 ifEH t p a b = caseEH t p (Sig (name "True") boolT) a b
 
-impliesEH :: Thunk -> Thunk -> Thunk
+impliesEH :: ExpH -> ExpH -> ExpH
 impliesEH p q = ifEH boolT p q trueEH
 
-notEH :: Thunk -> Thunk
+notEH :: ExpH -> ExpH
 notEH p = ifEH boolT p falseEH trueEH
 
-andEH :: Thunk -> Thunk -> Thunk
+andEH :: ExpH -> ExpH -> ExpH
 andEH p q = ifEH boolT p q falseEH
 
 -- Perform a generic transformation on an expression.
@@ -200,9 +200,9 @@ andEH p q = ifEH boolT p q falseEH
 -- to recurse.
 --
 -- Note: The transformation should NOT change the type of the expression.
-transform :: (Thunk -> Maybe Thunk) -> Thunk -> Thunk
+transform :: (ExpH -> Maybe ExpH) -> ExpH -> ExpH
 transform f =
-  let g :: (Thunk -> Thunk) -> Thunk -> Thunk
+  let g :: (ExpH -> ExpH) -> ExpH -> ExpH
       g use e
         | Just v <- f e = v
         | LitEH {} <- force e = e
@@ -214,7 +214,7 @@ transform f =
         | IfEH t x y d <- force e = ifEH t (use x) (use y) (use d)
   in shared g
 
-de_tupleEH :: Thunk -> Maybe [Thunk]
+de_tupleEH :: ExpH -> Maybe [ExpH]
 de_tupleEH x = 
     case de_conEH x of
        Just (nm, _, xs) -> do
@@ -231,15 +231,15 @@ de_tupleEH x =
 -- f - The function to apply which takes:
 --   f' - the shared version of 'f' to recurse with
 --   x - the argument
-shared :: ((Thunk -> a) -> Thunk -> a) -> Thunk -> a
+shared :: ((ExpH -> a) -> ExpH -> a) -> ExpH -> a
 shared f = 
   let {-# NOINLINE cache #-}
       -- Note: the IORef is a pair of map instead of just the map to ensure we
       -- get a new IORef every time the 'shared' function is called.
-      --cache :: IORef (Map.Map EID a, ((Thunk -> a) -> Thunk -> a))
+      --cache :: IORef (Map.Map EID a, ((ExpH -> a) -> ExpH -> a))
       cache = unsafePerformIO (newIORef (Map.empty, f))
 
-      --lookupIO :: EID -> Thunk -> IO a
+      --lookupIO :: EID -> ExpH -> IO a
       lookupIO x e = do
         m <- readIORef cache
         case Map.lookup x (fst m) of
@@ -250,13 +250,13 @@ shared f =
             modifyIORef cache $ \(m, g) -> (Map.insert x v m, g)
             return v
 
-      --lookupPure :: EID -> Thunk -> a
+      --lookupPure :: EID -> ExpH -> a
       lookupPure x e = unsafePerformIO (lookupIO x e)
 
-      --def :: Thunk -> a
+      --def :: ExpH -> a
       def = f use
 
-      --use :: Thunk -> a
+      --use :: ExpH -> a
       use e
        | Just x <- eid e = lookupPure x e
        | otherwise = def e

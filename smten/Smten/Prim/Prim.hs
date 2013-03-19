@@ -23,10 +23,10 @@ data PrimF a = PrimF {
 
 data Prim = Prim {
     p_name :: Name,
-    primEH :: Type -> Thunk
+    primEH :: Type -> ExpH
 }
 
-lookupPrim :: [Prim] -> Sig -> Maybe Thunk
+lookupPrim :: [Prim] -> Sig -> Maybe ExpH
 lookupPrim ps =
   let m = HT.table [(n, f) | Prim n f <- ps]
   in \(Sig n t) -> do
@@ -45,7 +45,7 @@ unaryTP n f =
   let nm = name n
 
       -- Type is the type of the fully applied primitive.
-      impl :: Type -> [Thunk] -> Thunk
+      impl :: Type -> [ExpH] -> ExpH
       impl t [a]
         | Just av <- de_smtenEH a = smtenEH (f t av)
         | IfEH {} <- force a
@@ -54,7 +54,7 @@ unaryTP n f =
 
       -- The type is the type of the primitive function without arguments
       -- applied.
-      eh :: Type -> Thunk
+      eh :: Type -> ExpH
       eh t
         | Just (at, ot) <- de_arrowT t =
             lamEH (Sig (name "a") at) ot $ \a ->
@@ -74,7 +74,7 @@ binaryTP n f =
   let nm = name n 
 
       -- The type is the type of the fully applied primitive
-      impl :: Type -> [Thunk] -> Thunk
+      impl :: Type -> [ExpH] -> ExpH
       impl t [a, b] 
         | Just av <- de_smtenEH a
         , Just bv <- de_smtenEH b = smtenEH (f t av bv)
@@ -86,7 +86,7 @@ binaryTP n f =
 
       -- The type is the type of the primitive function without arguments
       -- applied.
-      eh :: Type -> Thunk
+      eh :: Type -> ExpH
       eh t
         | Just (at, bzt) <- de_arrowT t
         , Just (bt, ot) <- de_arrowT bzt = 

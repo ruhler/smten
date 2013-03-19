@@ -20,16 +20,16 @@ import Smten.ExpH.SmtenEHs
 import Smten.Strict
 
 -- Translate back to the normal Exp representation
-fromExpH :: Thunk -> Exp
+fromExpH :: ExpH -> Exp
 fromExpH e = {-# SCC "CONVERT" #-} convert ({-# SCC "SHARING" #-} sharing e) e
 
 data Use = Multi | Single
     deriving (Eq)
 
 -- Find all the subexpressions in the given expression which should be shared.
-sharing :: Thunk -> Set.Set EID
+sharing :: ExpH -> Set.Set EID
 sharing e =
-  let traverse :: Thunk -> State (Map.Map EID Use) (Set.Set EID)
+  let traverse :: ExpH -> State (Map.Map EID Use) (Set.Set EID)
       traverse e
         | Just id <- eid e = do
             m <- get
@@ -43,7 +43,7 @@ sharing e =
                Just Multi -> return Set.empty
         | otherwise = return Set.empty
 
-      subtraverse :: Thunk -> State (Map.Map EID Use) (Set.Set EID)
+      subtraverse :: ExpH -> State (Map.Map EID Use) (Set.Set EID)
       subtraverse e
         | ConEH _ _ xs <- force e = Set.unions <$!> mapM traverse xs
         | PrimEH _ _ _ xs <- force e = Set.unions <$!> mapM traverse xs
@@ -56,10 +56,10 @@ data Defined = Defined {
     df_done :: Set.Set EID
 }
 
-convert :: Set.Set EID -> Thunk -> Exp
+convert :: Set.Set EID -> ExpH -> Exp
 convert share e =
   let -- Generate the definition for this expression.
-      defineM :: Thunk -> State Defined Exp
+      defineM :: ExpH -> State Defined Exp
       defineM e
         | LitEH l <- force e = return $ LitE l
         | ConEH n t xs <- force e = do
@@ -83,7 +83,7 @@ convert share e =
 
       -- Generate the use for this expression.
       -- So, if it's shared, turns into a VarE.
-      useM :: Thunk -> State Defined Exp
+      useM :: ExpH -> State Defined Exp
       useM e
         | Just id <- eid e
         , Set.member id share = do

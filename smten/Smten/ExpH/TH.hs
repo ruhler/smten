@@ -16,7 +16,7 @@ import Smten.ExpH.ExpH
 import Smten.ExpH.Sugar
 import Smten.ExpH.SmtenEH
 
-smtenEH_helper :: (S.SmtenT a) => String -> a -> [S.Type] -> [Thunk] -> Thunk
+smtenEH_helper :: (S.SmtenT a) => String -> a -> [S.Type] -> [ExpH] -> ExpH
 smtenEH_helper nm ty tys xs = 
   let t = S.arrowsT (tys ++ [S.smtenT ty])
   in appsEH (conEH (Sig (S.name nm) t)) xs
@@ -30,7 +30,7 @@ derive_SmtenEH nm = do
   
   
 -- Given the name of a type constructor Foo, produces the smtenEH function:
---  smtenEH :: Foo -> Thunk
+--  smtenEH :: Foo -> ExpH
 derive_smtenEH :: Name -> [TyVarBndr] -> [Con] -> [Dec]
 derive_smtenEH nm vars cs =
   let -- Each data constructor has it's own clause in the smtenEH function.
@@ -60,7 +60,7 @@ derive_smtenEH nm vars cs =
   in [dec]
     
 -- Given the name of a type constructor Foo, produces the de_smtenEH function:
---  de_smtenEH :: Thunk -> Maybe Foo
+--  de_smtenEH :: ExpH -> Maybe Foo
 derive_de_smtenEH :: Name -> [TyVarBndr] -> [Con] -> [Dec]
 derive_de_smtenEH nm vars cs =
   let -- Each data constructor has it's own match in the unpack case expr.

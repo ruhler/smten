@@ -18,9 +18,9 @@ import Smten.ExpH.SmtenEH
 import Smten.ExpH.SmtenEHs
 import Smten.ExpH.Typeof
 
-de_stringEH :: Thunk -> Maybe String
+de_stringEH :: ExpH -> Maybe String
 de_stringEH = de_smtenEH
 
-de_listEH :: Thunk -> Maybe [Thunk]
+de_listEH :: ExpH -> Maybe [ExpH]
 de_listEH = de_smtenEH
 

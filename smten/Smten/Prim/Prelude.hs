@@ -40,7 +40,7 @@ preludePs = [
     ]
 
 errorP :: Prim
-errorP = unaryP "Prelude.error" (error :: String -> Thunk)
+errorP = unaryP "Prelude.error" (error :: String -> ExpH)
 
 eq_IntegerP :: PrimF (Integer -> Integer -> Bool)
 eq_IntegerP = binaryPF "Prelude.__prim_eq_Integer" (==)
@@ -78,16 +78,16 @@ show_IntegerP :: Prim
 show_IntegerP = unaryP "Prelude.__prim_show_Integer" (show :: Integer -> String)
 
 return_IOP :: Prim
-return_IOP = unaryP "Prelude.return_io" (return :: Thunk -> IO Thunk)
+return_IOP = unaryP "Prelude.return_io" (return :: ExpH -> IO ExpH)
 
 bind_IOP :: Prim
-bind_IOP = binaryP "Prelude.bind_io" ((>>=) :: IO Thunk -> (Thunk -> IO Thunk) -> IO Thunk)
+bind_IOP = binaryP "Prelude.bind_io" ((>>=) :: IO ExpH -> (ExpH -> IO ExpH) -> IO ExpH)
 
 nobind_IOP :: Prim
-nobind_IOP = binaryP "Prelude.nobind_io" ((>>) :: IO Thunk -> IO Thunk -> IO Thunk)
+nobind_IOP = binaryP "Prelude.nobind_io" ((>>) :: IO ExpH -> IO ExpH -> IO ExpH)
 
 fail_IOP :: Prim
-fail_IOP = unaryP "Prelude.fail_io" (fail :: String -> IO Thunk)
+fail_IOP = unaryP "Prelude.fail_io" (fail :: String -> IO ExpH)
 
 putCharP :: Prim
 putCharP = unaryP "Prelude.putChar" putChar
@@ -97,22 +97,22 @@ getContentsP = nullaryP "Prelude.getContents" getContents
 
 numericP :: Prim
 numericP =
-  let f :: Type -> Thunk
+  let f :: Type -> ExpH
       f nt = conEH (Sig (name "#" `nappend` name (show (nteval nt))) nt)
   in nullaryTP "Prelude.numeric" f
 
 valueofP :: Prim
 valueofP = 
-  let f :: Thunk -> Thunk
+  let f :: ExpH -> ExpH
       f x = integerEH (nteval (typeof x))
   in unaryP "Prelude.valueof" f
 
 traceP :: Prim
-traceP = binaryP "Debug.Trace.trace" (trace :: String -> Thunk -> Thunk)
+traceP = binaryP "Debug.Trace.trace" (trace :: String -> ExpH -> ExpH)
 
 traceEP :: Prim
 traceEP =
- let f :: Thunk -> Thunk -> Thunk
+ let f :: ExpH -> ExpH -> ExpH
      f x a = trace (pretty (fromExpH x)) a
  in binaryP "Debug.Trace.traceE" f
         

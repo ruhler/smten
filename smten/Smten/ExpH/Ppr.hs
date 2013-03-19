@@ -11,7 +11,7 @@ import Smten.ExpH.ExpH
 import Smten.ExpH.Sugar
 import Smten.ExpH.Sugar2
 
-instance Ppr Thunk where
+instance Ppr ExpH where
     ppr e | Just v <- de_stringEH e = text (show v)
     ppr e | Just xs <- de_listEH e
       = text "[" <> sep (punctuate comma (map ppr xs)) <> text "]"
@@ -19,7 +19,7 @@ instance Ppr Thunk where
       = text "(" <> sep (punctuate comma (map ppr xs)) <> text ")"
     ppr e = ppr (force e)
 
-instance Ppr ExpH where
+instance Ppr ExpH_ where
     ppr (LitEH l) = ppr l
     ppr (ConEH n _ xs) = ppr (appsEH (varEH (Sig n UnknownT)) xs)
     ppr (VarEH s) = ppr s

@@ -20,6 +20,6 @@ derive_SmtenEH ''Maybe
 derive_SmtenEH ''[]
 derive_SmtenEH ''(,)
 
-stringEH :: String -> Thunk
+stringEH :: String -> ExpH
 stringEH = smtenEH
 

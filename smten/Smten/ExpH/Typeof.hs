@@ -9,7 +9,7 @@ import Smten.Sig
 import Smten.ExpH.ExpH
 
 
-instance Typeof ExpH where
+instance Typeof ExpH_ where
     typeof (LitEH l) = typeof l
     typeof (ConEH _ t _) = t
     typeof (VarEH s) = typeof s
@@ -17,6 +17,6 @@ instance Typeof ExpH where
     typeof (LamEH (Sig _ it) ot _) = arrowT it ot
     typeof (IfEH t _ _ _) = t
 
-instance Typeof Thunk where
+instance Typeof ExpH where
     typeof = typeof . force 
 
