@@ -47,7 +47,7 @@ module Smten.SMT.SMT (
     Symbolic,
     prim_free, assert, used,
     predicated, de_symbolicEH,
-    Realize(), RunOptions(..), runSMT,
+    Realize(), RunOptions(..), runSMT, runSymbolic,
     SMT, query, query_Used, query_Sat, nest, use, realize, prune,
     ) where
 
@@ -196,6 +196,9 @@ runSMT :: RunOptions -> SMT a -> IO a
 runSMT opts (SMT q) = do
     qs <- mkQS opts
     evalStateT q qs
+
+runSymbolic :: RunOptions -> Symbolic (Realize a) -> IO (Maybe a)
+runSymbolic opts q = runSMT opts (query q)
 
 -- | Given a free variable name and corresponding smten type, return the value
 -- of that free variable from the smt model.

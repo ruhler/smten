@@ -2,7 +2,7 @@
 {-# LANGUAGE PatternGuards #-}
 
 module Smten.HaskellF.SMT (
-    symbolicHF, assertHF, queryHF, queryHFC,
+    symbolicHF, assertHF, queryHF, queryHFC, runSymbolicHF,
     ) where
 
 import Data.Functor((<$>))
@@ -23,6 +23,11 @@ assertHF x = symbolicHF (S.assert x) >> return ()
 queryHF :: (HaskellF a) => Symbolic a -> SMT (Maybe a)
 queryHF s = do
     r <- query (realize . unbox <$> s)
+    return (box <$> r)
+
+runSymbolicHF :: (HaskellF a) => RunOptions -> Symbolic a -> IO (Maybe a)
+runSymbolicHF opts s = do
+    r <- runSymbolic opts (realize . unbox <$> s)
     return (box <$> r)
 
 queryHFC :: (SmtenHF c f) => Symbolic f -> SMT (Maybe c)

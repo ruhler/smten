@@ -42,7 +42,7 @@ data SE = SE {
 -- 'Symbolic a' represents a set (here list) of possible values of type 'a' in
 -- an environment of use contexts
 data Symbolic a = Symbolic {
-    runSymbolic :: SE -> [a]
+    runSymbolicM :: SE -> [a]
 }
 
 free_BoundedEnum :: (Bounded a, Enum a) => Symbolic a
@@ -82,7 +82,7 @@ instance Functor Symbolic where
 instance Monad Symbolic where
     return x = Symbolic $ const [x]
     (>>=) x f = Symbolic $ \e ->
-        concat [runSymbolic (f v) e | v <- runSymbolic x e]
+        concat [runSymbolicM (f v) e | v <- runSymbolicM x e]
 
 assert :: Bool -> Symbolic ()
 assert True = Symbolic $ const [()]
@@ -136,7 +136,7 @@ use x = SMT $ \s -> do
     let nref = ss_nref s
         ms' = do
            m <- ss_maps s
-           v <- runSymbolic x (SE (ss_ctx s) m)
+           v <- runSymbolicM x (SE (ss_ctx s) m)
            return (Map.insert nref (toDyn v) m)
         ref = Used (head $ ss_ctx s) nref
         s' = s { ss_nref = nref+1, ss_maps = ms' }
