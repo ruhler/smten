@@ -106,3 +106,7 @@ data Solver = Yices1 | Yices2 | STP
 -- debugging is enabled, outputting the generated SMT query to the given file.
 runSMT :: Solver -> Maybe FilePath -> SMT a -> IO a
 
+-- Run symbolic directly in IO. Uses its own SMT context.
+runSymbolic :: Solver -> Maybe FilePath -> Symbolic a -> IO (Maybe a)
+runSymbolic s d q = runSMT s d (query q)
+

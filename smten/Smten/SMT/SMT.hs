@@ -43,7 +43,7 @@
 {-# LANGUAGE TemplateHaskell #-}
 
 module Smten.SMT.SMT (
-    Realize(), RunOptions(..), runSMT,
+    Realize(), RunOptions(..), runSMT, runSymbolic,
     SMT, query, query_Used, nest, use, realize,
     ) where
 
@@ -192,6 +192,9 @@ runSMT opts (SMT q) = do
     qs <- mkQS opts
     evalStateT q qs
 
+runSymbolic :: RunOptions -> Symbolic (Realize a) -> IO (Maybe a)
+runSymbolic opts q = runSMT opts (query q)
+
 -- | Given a free variable name and corresponding smten type, return the value
 -- of that free variable from the smt model.
 --
@@ -252,7 +255,7 @@ use :: Symbolic a -> SMT (Used a)
 use s = {-# SCC "USE" #-} do
     ctx <- gets qs_ctx
     fid <- gets qs_freeid
-    let (fid', frees, asserts, v) = {-# SCC "RUN_SYMBOLIC" #-} runSymbolic ctx fid s
+    let (fid', frees, asserts, v) = {-# SCC "RUN_SYMBOLIC" #-} runSymbolicM ctx fid s
     modify $ \qs -> qs { qs_freeid = fid' }
     {-# SCC "MKFREES" #-} mapM mkfree frees
     {-# SCC "MKASSERTS" #-} mapM mkassert asserts

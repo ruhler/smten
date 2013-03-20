@@ -7,7 +7,7 @@
 
 module Smten.SMT.Symbolic (
     Used(..), Context, Contexts,
-    Symbolic, runSymbolic,
+    Symbolic, runSymbolicM,
     prim_free, assert, used,
     predicated,
     de_symbolicEH,
@@ -98,8 +98,8 @@ predicated p s = do
 --   free - the primitive free variables created (in order of creation)
 --   asserts - the assertions made (of type Bool) (in order of assertion)
 --   val - the result of the computation.
-runSymbolic :: Contexts -> Integer -> Symbolic a -> (Integer, [Sig], [ExpH], a)
-runSymbolic ctx nfree s = 
+runSymbolicM :: Contexts -> Integer -> Symbolic a -> (Integer, [Sig], [ExpH], a)
+runSymbolicM ctx nfree s = 
     let (v, ss) = runState (symbolic_state s) (SS ctx nfree [] [])
     in (ss_nfree ss, reverse (ss_free ss), reverse (ss_asserts ss), v)
 
