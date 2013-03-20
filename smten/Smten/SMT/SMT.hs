@@ -272,8 +272,22 @@ mkassert p = do
     Just v -> assert_pruned v
     _ -> return ()
 
+ispruned :: ExpH -> Bool
+ispruned =
+ let g :: (ExpH -> Bool) -> ExpH -> Bool
+     g use e
+       | not (forced e) = False
+       | LitEH {} <- force e = True
+       | ConEH _ _ xs <- force e = all ispruned xs
+       | VarEH {} <- force e = True
+       | PrimEH _ _ _ xs <- force e = all ispruned xs
+       | LamEH {} <- force e = error "ispruned: LamEH"
+       | IfEH _ p a b <- force e = all ispruned [p, a, b]
+ in shared g
+
 prune :: ExpH -> SMT (Maybe ExpH)
 prune x
+ | ispruned x = return (Just x)
  | forced x = Just <$> prune_forceable x
  | otherwise = do
      sat <- query_Sat
@@ -292,12 +306,16 @@ prune_forceable e
  | LamEH {} <- force e = error "LamEH in Prune"
  | IfEH t p a b <- force e = do
      p' <- prune_forceable p
-     ma <- nest $ do
-             assert_pruned p'
-             prune a
-     mb <- nest $ do
-             assert_pruned (notEH p')
-             prune b
+     ma <- if ispruned a
+                then return $ Just a
+                else nest $ do
+                   assert_pruned p'
+                   prune a
+     mb <- if ispruned b
+                then return $ Just b
+                else nest $ do
+                   assert_pruned (notEH p')
+                   prune b
      case (ma, mb) of
          (Just a', Just b') -> return $ ifEH t p' a' b'
          (Just a', _) -> return a'

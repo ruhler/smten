@@ -15,7 +15,7 @@ module Smten.ExpH.Sugar (
     charEH, de_charEH, de_tupleEH,
     ioEH, de_ioEH,
     smttype,
-    transform,
+    transform, shared,
     ) where
 
 import System.IO.Unsafe
