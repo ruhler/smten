@@ -48,7 +48,7 @@ module Smten.SMT.SMT (
     prim_free, assert, used,
     predicated, de_symbolicEH,
     Realize(), RunOptions(..), runSMT, runSymbolic,
-    SMT, query, query_Used, query_Sat, nest, use, realize, prune,
+    SMT, query, query_Used, query_Sat, nest, use, realize,
     ) where
 
 import Debug.Trace
@@ -265,46 +265,39 @@ assert_pruned p = do
 
 -- | Assert the given smten boolean expression.
 mkassert :: ExpH -> SMT ()
-mkassert p = {-# SCC "MKASSERT" #-}do
-  r <- check
-  case r of
-      SMT.Satisfiable -> do
-          pred <- gets qs_pred
-          p' <- prune (impliesEH pred p)
-          assert_pruned p'
-      SMT.Unsatisfiable -> return ()
-      _ -> error $ "Smten.SMT.SMT.mkasserts: check failed"
+mkassert p = do
+  pred <- gets qs_pred
+  mp <- prune (impliesEH pred p)
+  case mp of
+    Just v -> assert_pruned v
+    _ -> return ()
+
+prune :: ExpH -> SMT (Maybe ExpH)
+prune x
+ | forced x = Just <$> prune_forceable x
+ | otherwise = do
+     sat <- query_Sat
+     if sat
+        then Just <$> prune_forceable x
+        else return Nothing
 
 -- Prune unreachable branches from the given expression.
-prune :: ExpH -> SMT ExpH
-prune e
+-- It is assumed the given expression may be forced.
+prune_forceable :: ExpH -> SMT ExpH
+prune_forceable e
  | LitEH {} <- force e = return e
- | ConEH n t xs <- force e = aconEH n t <$> mapM prune xs
+ | ConEH n t xs <- force e = aconEH n t <$> mapM prune_forceable xs
  | VarEH {} <- force e = return e
- | PrimEH _ _ impl xs <- force e = impl <$> mapM prune xs
+ | PrimEH _ _ impl xs <- force e = impl <$> mapM prune_forceable xs
  | LamEH {} <- force e = error "LamEH in Prune"
  | IfEH t p a b <- force e = do
-     p' <- prune p
+     p' <- prune_forceable p
      ma <- nest $ do
              assert_pruned p'
-             if forced a
-                then Just <$> prune a
-                else do
-                  sat <- query_Sat
-                  if sat
-                     then Just <$> prune a
-                     else return Nothing
-
+             prune a
      mb <- nest $ do
              assert_pruned (notEH p')
-             if forced b
-                then Just <$> prune b
-                else do
-                  sat <- query_Sat
-                  if sat
-                     then Just <$> prune b
-                     else return Nothing
-
+             prune b
      case (ma, mb) of
          (Just a', Just b') -> return $ ifEH t p' a' b'
          (Just a', _) -> return a'
@@ -401,8 +394,10 @@ predicated p s = do
 -- (Symbolic a) into concrete (Symbolic a)
 de_symbolicEH :: ExpH -> Symbolic ExpH
 de_symbolicEH e = do
-    e' <- Symbolic $ prune e
-    de_symbolicEH_pruned e'
+    me <- Symbolic $ prune e
+    case me of
+        Just v -> de_symbolicEH_pruned v
+        Nothing -> return (errorEH "de_symbolicEH from invalid context")
 
 de_symbolicEH_pruned :: ExpH -> Symbolic ExpH
 de_symbolicEH_pruned e

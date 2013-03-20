@@ -7,7 +7,7 @@ module Smten.ExpH.Sugar (
     appEH, appsEH, strict_appEH,
     lamEH, letEH, aconEH,
     caseEH,
-    ifEH, impliesEH, notEH, andEH,
+    ifEH, impliesEH, notEH, andEH, errorEH,
 
     unitEH,
     boolEH, trueEH, falseEH, de_boolEH,
@@ -261,4 +261,7 @@ shared f =
        | Just x <- eid e = lookupPure x e
        | otherwise = def e
   in def
+
+errorEH :: String -> ExpH
+errorEH s = thunkNS $ error s
 

@@ -40,10 +40,7 @@ preludePs = [
     ]
 
 errorP :: Prim
-errorP = 
-  let f :: String -> ExpH
-      f s = thunkNS $ error s
-  in unaryP "Prelude.error" f
+errorP = unaryP "Prelude.error" errorEH
 
 eq_IntegerP :: PrimF (Integer -> Integer -> Bool)
 eq_IntegerP = binaryPF "Prelude.__prim_eq_Integer" (==)
