@@ -5,8 +5,6 @@ Focus::
 Recent::
 * I should be able to implement bv_zero_extend a as bv_concat 0 a
     Fix type system so that works.
-* bit vector support for:
-    signExtend, arithmetic right shift, XOR, signLT, signGT.
 * Don't pretty print numeric type 16 in haskellf as
     2*2*2*2*(1+0) ??
     depends if you want detailed type info or not.
