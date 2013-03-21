@@ -57,8 +57,8 @@ module Smten.SMT.Syntax (
     bvorE, de_bvorE, bvandE, de_bvandE,
     bvnotE, de_bvnotE,
     bvshlE, de_bvshlE, bvlshrE, de_bvlshrE,
-    bvzeroExtendE, de_bvzeroExtendE, bvextractE,
-    bvconcatE, de_bvconcatE,
+    bvzeroExtendE, de_bvzeroExtendE, bvsignExtendE, de_bvsignExtendE,
+    bvextractE, bvconcatE, de_bvconcatE,
   ) where
 
 type Symbol = String
@@ -321,6 +321,14 @@ bvzeroExtendE a b = AppE (varE "bv-zero-extend") [a, integerE b]
 de_bvzeroExtendE :: Expression -> Maybe (Expression, Integer)
 de_bvzeroExtendE (AppE (VarE "bv-zero-extend") [a, LitE (IntegerL b)]) = Just (a, b)
 de_bvzeroExtendE _ = Nothing
+
+-- | > (bv-sign-extend a w)
+bvsignExtendE :: Expression -> Integer -> Expression
+bvsignExtendE a b = AppE (varE "bv-sign-extend") [a, integerE b]
+
+de_bvsignExtendE :: Expression -> Maybe (Expression, Integer)
+de_bvsignExtendE (AppE (VarE "bv-sign-extend") [a, LitE (IntegerL b)]) = Just (a, b)
+de_bvsignExtendE _ = Nothing
 
 -- | > (bv-extract end begin bv)
 bvextractE :: Integer -> Integer -> Expression -> Expression

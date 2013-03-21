@@ -206,6 +206,8 @@ testbit = do
     test "bit sign lt --" (bv_slt (bit5 0x1c) 0x1d)
     test "bit ashr +" (bit5 0x2 == bv_ashr 0x0a 2)
     test "bit ashr -" (bit5 0x1e == bv_ashr 0x1a 2)
+    test "bit sign extend +" (bit5 0x03 == bv_sign_extend (bit3 3))
+    test "bit sign extend -" (bit5 0x1c == bv_sign_extend (bit3 4))
 
 shadowmeth :: Integer
 shadowmeth = let { foo = 3; } in foo

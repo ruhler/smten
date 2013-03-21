@@ -196,6 +196,9 @@ foreign import ccall "yices1_mk_bv_or"
 foreign import ccall "yices1_mk_bv_concat"
     c_yices_mk_bv_concat :: Ptr YContext -> YExpr -> YExpr -> IO YExpr
 
+foreign import ccall "yices1_mk_bv_sign_extend"
+    c_yices_mk_bv_sign_extend :: Ptr YContext -> YExpr -> CUInt -> IO YExpr
+
 foreign import ccall "yices1_mk_bv_lt"
     c_yices_mk_bv_lt :: Ptr YContext -> YExpr -> YExpr -> IO YExpr
 
@@ -392,6 +395,9 @@ yexprS y@(Yices1 fp) s e
         yexprS y (Map.union s (Map.fromList vars)) v
   | Just (w, v) <- de_mkbvE e = withForeignPtr fp $ \ctx ->
         c_yices_mk_bv_constant ctx (fromInteger w) (fromInteger v)
+  | Just (a, n) <- de_bvsignExtendE e = do
+        a' <- yexprS y s a
+        withForeignPtr fp $ \ctx -> c_yices_mk_bv_sign_extend ctx a' (fromInteger n)
   | Just (a, b) <- de_bvshlE e
   , Just bv <- de_integerE b = do
         a' <- yexprS y s a

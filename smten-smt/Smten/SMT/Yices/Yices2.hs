@@ -251,6 +251,9 @@ ytermS s e | Just (w, v) <- de_mkbvE e = do
 ytermS s e | Just (a, n) <- de_bvzeroExtendE e = do
     at <- ytermS s a
     c_yices_zero_extend at (fromInteger n)
+ytermS s e | Just (a, n) <- de_bvsignExtendE e = do
+    at <- ytermS s a
+    c_yices_sign_extend at (fromInteger n)
 
 -- syntax for bv-extract is: bv-extract end begin bv
 -- for the c api, we have: bvextract bv begin end

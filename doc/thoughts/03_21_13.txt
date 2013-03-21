@@ -98,3 +98,15 @@ Thu Mar 21 10:55:41 EDT 2013
 
 Okay! Cool. Implemented arithmetic right shift. It seems to work okay.
 
+What remains is: sign extend. This should be just like right shift now. I
+hope.
+
+I don't think I can do bv_sign_extend in the current type system. It's
+problems with numeric types.
+
+So, either I could fix those... (which would be good), or I could make sign
+extend a primitive.
+
+For now, I'll make it a primitive. All add fixing numeric type things to my
+todo list.
+

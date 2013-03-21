@@ -73,6 +73,9 @@ mkExpr s e | Just (a, n) <- de_bvzeroExtendE e = do
     ae <- mkExpr s a
     zeros <- withvc s $ \vc -> c_vc_bvConstExprFromLL vc (fromInteger n) (fromInteger 0)
     withvc s $ \vc -> c_vc_bvConcatExpr vc zeros ae
+mkExpr s e | Just (a, n) <- de_bvsignExtendE e = do
+    ae <- mkExpr s a
+    withvc s $ \vc -> c_vc_bvSignExtend vc ae (fromInteger n)
 mkExpr s e | Just args <- de_orE e = do
     args' <- mapM (mkExpr s) args
     withvc s $ \vc ->

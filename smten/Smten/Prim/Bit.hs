@@ -6,7 +6,7 @@ module Smten.Prim.Bit (
     add_BitP, sub_BitP, mul_BitP,
     and_BitP, or_BitP, not_BitP,
     shl_BitP, lshr_BitP,
-    fromInteger_BitP, toInteger_BitP, zeroExtend_BitP,
+    fromInteger_BitP, toInteger_BitP, zeroExtend_BitP, signExtend_BitP,
     truncate_BitP, extract_BitP, concat_BitP,
     ) where
 
@@ -23,7 +23,7 @@ bitPs = [
     add_BitP, sub_BitP, mul_BitP,
     and_BitP, or_BitP, not_BitP,
     shl_BitP, lshr_BitP,
-    fromInteger_BitP, toInteger_BitP, zeroExtend_BitP,
+    fromInteger_BitP, toInteger_BitP, zeroExtend_BitP, signExtend_BitP,
     truncate_BitP, extract_BitP, concat_BitP
     ]
 
@@ -63,6 +63,14 @@ zeroExtend_BitP =
         let AppT _ wt = t
         in bv_zero_extend (nteval wt - bv_width v) v
  in unaryTP "Smten.Bit.__prim_zeroExtend_Bit" f
+
+signExtend_BitP :: Prim
+signExtend_BitP =
+ let f :: Type -> Bit -> Bit
+     f t v =
+        let AppT _ wt = t
+        in bv_sign_extend (nteval wt - bv_width v) v
+ in unaryTP "Smten.Bit.__prim_signExtend_Bit" f
 
 add_BitP :: Prim
 add_BitP = binaryP "Smten.Bit.__prim_add_Bit" ((+) :: Bit -> Bit -> Bit)
