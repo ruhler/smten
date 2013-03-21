@@ -183,6 +183,14 @@ smtE' e@(AppE a b) =
                a' <- smtE' a
                return (SMT.bvzeroExtendE a' (tw - sw))
        (VarE (Sig n t), [a])
+            | n == name "Smten.Bit.__prim_signExtend_Bit"
+            , Just (bs, bt) <- de_arrowT t
+            , Just sw <- de_bitT bs
+            , Just tw <- de_bitT bt
+            -> do
+               a' <- smtE' a
+               return (SMT.bvsignExtendE a' (tw - sw))
+       (VarE (Sig n t), [a])
             | n == name "Smten.Bit.__prim_truncate_Bit"
             , Just (_, bt) <- de_arrowT t
             , Just tw <- de_bitT bt

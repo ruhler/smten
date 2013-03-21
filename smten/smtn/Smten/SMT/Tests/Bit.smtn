@@ -14,6 +14,20 @@ bitcmp = do
         return (a :: Bit #8)
     test "bitcmp" (r == Just 7)
 
+bitsignextend :: SMT ()
+bitsignextend = do
+    r <- query $ do
+        a <- free
+        assert (bv_sign_extend (a :: Bit #3) == (0x3 :: Bit #5))
+        return a
+    test "bitsignextend1" (r == Just 3)
+
+    r2 <- query $ do
+        a <- free
+        assert (bv_sign_extend (a :: Bit #3) == (0x1c :: Bit #5))
+        return a
+    test "bitsignextend2" (r2 == Just 4)
+
 qtest :: SMT ()
 qtest = do
     ra <- query $ do
@@ -68,6 +82,9 @@ qtest = do
     test "bit.lsh" (ri == Just 3)
 
     bitcmp
+
+    -- TODO: this fails in STP. STP bug?
+    --bitsignextend
 
 
 main :: IO ()

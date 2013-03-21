@@ -1,0 +1,199 @@
+
+Wed Mar 20 08:42:59 EDT 2013
+
+I think I've figured out how pruning should work, in a way that preserves as
+much sharing as I believe is reasonable to preserve.
+
+First, I suppose, start with the interface...
+
+Conceptually we will have two functions:
+    ispruned :: ExpH -> Bool
+ It does nothing but tell you if the given expression is totally pruned and
+ forced already (under all possible contexts). No assertions are made. That's
+ why it's not in an SMT context.  Presumably we'll cache this, so it's very
+ quick to figure out if it is pruned or not.
+
+ Pruning an expression which ispruned should return that same expression as
+ is, regardless of the context in which you do the pruning.
+
+   prune :: ...
+ Prunes an expression. Let's dive into the details about what it takes as
+ input and what it returns. This is a little complicated, so bear with me.
+
+data PruneResult = PruneResult {
+    pruned :: Maybe ExpH,
+    unforced :: Maybe (ExpH, ExpH)
+}
+
+prune :: Maybe ExpH -> ExpH -> SMT PruneResult
+
+prune ctx e
+  ctx - The context which, in conjunction with the current SMT context, must
+        be satisfied in order to force anything in the expression 'e'.
+
+        Nothing indicates: you can force anything at the top level of 'e'.
+        Just p means before you can force anything in 'e', you must assert p
+        in the current SMT context and check for satisfiability first.
+
+  e - The expression to prune.
+
+PruneResult.pruned
+  - An expression which is properly pruned for the context in which the call
+    to prune was made. 
+
+    "Nothing" indicates we weren't even allowed to look at the expression you
+    gave us, because the context was not satisfiable.
+
+PruneResult.unforced
+  - A predicate which, when satisfied, means evaluating 'e' would lead to one
+    of the unforced nodes which was pruned away from 'e' in this context.
+
+    And an expressions which, when the predicate is satisfied, gives the same
+    result as evaluating 'e'.
+
+    "Nothing" indicates there is no case in which evaluating 'e' could lead to
+    an unforceable node.
+
+    Another way of looking at it is:
+    let e' = case (pruned, unforced)
+                (Just v, Just (p, u)) -> if p then u else v
+                (Just v, Nothing) -> v
+                (Nothing, Just (p, u)) -> u
+                _ -> error "not possible"
+
+    Then e' is equivalent to e in all possible contexts, and 'v' is pruned.
+
+    Side question: we could maybe simplify the return type if instead we
+    returned:  (ExpH, ExpH, ExpH), which represents the explicit if
+    expression. When p is trueEH, that indicates we weren't allowed to look at
+    the expression at all. If p is falseEH, that indicates it is fully pruned.
+    Otherwise it is somewhere in the middle.
+
+    Or, another way to say it:
+    
+    let e' = if (fromMaybe falseEH (fst <$> unforced))
+                then fromJust (snd <$> unforced)
+                else fromJust pruned
+
+
+There. Now we know the interface. Next question is the algorithm and the
+sharing.
+
+I assume ispruned will be shared. Presumably we'll just cache for each EID the
+latest PruneResult. Then ispruned just checks whether there are any
+unforced. It becomes constant time (or however long it takes to look up the
+result for the EID). If we don't have any cache, then ispruned will have to
+traverse the expression, looking for anything unforced.
+
+The general idea for prune is we will do a depth first traversal, as I do now.
+The goal is to share assertions, so whenever I get to a place where I need to
+prune two children and I have an uncommitted context, I commit the context
+then, and fully prune both children under that context.
+
+So I guess we can look at the cases.
+
+Expression not seen before:
+* prune _ IsPruned
+    - return e.
+* prune Nothing Unforced
+    - traverse based on the expression. (force it)
+* prune (Just p) Unforced
+    - assert 'p'. check sat.
+       * unsat: pruned = Nothing
+                unforced = Just (True, e)
+* prune (Just p) Forced
+    - traverse based on the expression.
+ where Traverse based on the expression is:
+    * if multiple children are not ispruned, assert the given context (if any).
+    * prune all children. 
+    * combine prune results:
+        pruned = C <$> map pruned pxs
+        unforced:
+            predicate: an OR fold of all children predicates
+            value: an IF fold of all children unforced
+        Note: for IfEH, before combining prune results, update child 'a' with
+              predicate p, and child 'b' with predicate !p.
+
+Expression seen before:
+  prune e' (from above) as if it has not been seen before.
+
+And cache all the results to preserve sharing.
+
+Important features of this algorithm:
+* We use incremental queries (do a depth first search) to share assertions
+  sent to the SMT solver. This is like how the naive implementation works
+  currently.
+
+* We only commit an assertion to the SMT solver if we will actually do a check
+  based on it.
+
+* We preserve sharing of pruned expressions. So as soon as you know an
+  expression is fully pruned, you can reuse the fully pruned version of it
+  immediately without having to re-traverse the expression.
+
+* We put all the logic for verifying we can look at things in one place rather
+  than the current approach, which duplicates it in at least 4: top level
+  assertion, 'a' branch of if, 'b' branch of if, and de_symbolicEH.
+
+Optimizations:
+* Whenever we check for satisfiability, query the value of variables, and
+  evaluate the node we are now about to force under those values. This will
+  force a bunch of things quickly without having to go to the SMT solver.
+
+* If we find we are re-visiting a node we have visited before, and the same
+  expressions which were unforceable before are still unforceable, ask if
+  there is any context under which those expressions are forceable. (To ask
+  this I think we have to redeclare and rename all the variables to avoid the
+  current assertions in the context.). If there is no such context, then we
+  can prune these out of the shared result.
+
+  This is meant to capture an otherwise common bad case:
+        if p then (if not p then _|_ else x) else y.
+     It lets us prune _|_ given only the context that p was true in the
+     branch.
+
+
+If I can do all of these things, I think we will be in, perhaps, as best a
+shape we can be in and still implement the semantics properly.
+    
+Good. Let me stew on this. And then start the slow process of implementing.
+
+Wed Mar 20 13:56:54 EDT 2013
+
+
+First implementation step: switch to 'Maybe' interface with context?
+
+Or, maybe not.
+
+Maybe the first thing should be: implement (non-sharing) ispruned function.
+Use this to avoid making assertions which don't need to be made?
+
+Or, update the maybe thing.
+
+I should start with the maybe thing.
+
+prune :: ExpH -> Maybe ExpH.
+
+Which does a check if we can force. Maybe split into two different functions:
+
+prune :: ExpH -> SMT (Maybe ExpH).
+
+And:
+
+prune_forceable :: ExpH -> SMT ExpH.
+
+Yes. Good. I like that. Then implement this ispruned function.
+
+Little bits at a time will get me to where I want to go.
+
+Wed Mar 20 14:14:06 EDT 2013
+
+First step is done. Next step: ispruned. This should help performance a bunch
+I would guess.
+
+Wed Mar 20 17:56:17 EDT 2013
+
+Good news! datatype test now passes.
+
+Except... not in haskellf. Hmm... Unfortunate.
+

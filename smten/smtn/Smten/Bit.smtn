@@ -17,6 +17,7 @@ __prim_show_Bit :: Bit #n -> String
 __prim_fromInteger_Bit :: Integer -> Bit #n
 __prim_toInteger_Bit :: Bit #n -> Integer
 __prim_zeroExtend_Bit :: Bit #n -> Bit #m
+__prim_signExtend_Bit :: Bit #n -> Bit #m
 __prim_or_Bit :: Bit #n -> Bit #n -> Bit #n
 __prim_and_Bit :: Bit #n -> Bit #n -> Bit #n
 __prim_shl_Bit :: Bit #n -> Bit #n -> Bit #n
@@ -63,8 +64,16 @@ bv_sizeof x = valueof (bv_ntype x)
 bv_shl :: Bit #n -> Bit #n -> Bit #n
 bv_shl = __prim_shl_Bit
 
+-- Logical right shift
 bv_lshr :: Bit #n -> Bit #n -> Bit #n
 bv_lshr = __prim_lshr_Bit
+
+-- Arithmetic right shift
+bv_ashr :: Bit #n -> Bit #n -> Bit #n
+bv_ashr a b
+  = if bv_positive a
+       then bv_lshr a b
+       else bv_or (bv_lshr a b) (bv_not (bv_lshr (bv_not 0) b))
 
 bv_or :: Bit #n -> Bit #n -> Bit #n
 bv_or = __prim_or_Bit
@@ -75,8 +84,18 @@ bv_and = __prim_and_Bit
 bv_not :: Bit #n -> Bit #n 
 bv_not = __prim_not_Bit
 
+bv_xor :: Bit #n -> Bit #n -> Bit #n
+bv_xor a b = bv_and (bv_or a b) (bv_not (bv_and a b))
+
 bv_zero_extend :: Bit #n -> Bit #m
 bv_zero_extend = __prim_zeroExtend_Bit
+
+bv_sign_extend :: Bit #n -> Bit #m
+bv_sign_extend = __prim_signExtend_Bit
+
+-- Test whether a signed bit vector is positive.
+bv_positive :: Bit #n -> Bool
+bv_positive a = bv_extract a (bv_sizeof a - 1) == (0 :: Bit #1)
 
 bv_truncate :: Bit #n -> Bit #m
 bv_truncate = __prim_truncate_Bit
@@ -88,6 +107,24 @@ bv_concat = __prim_concat_Bit
 -- extract specified in the argument. The most significant bit is inferred.
 bv_extract :: Bit #n -> Integer -> Bit #m
 bv_extract = __prim_extract_Bit
+
+-- Signed comparisons
+bv_slt :: Bit #n -> Bit #n -> Bool
+bv_slt a b =
+  case (bv_positive a, bv_positive b) of
+     (True, False) -> False
+     (False, True) -> True
+     _ -> a < b
+
+bv_sle :: Bit #n -> Bit #n -> Bool
+bv_sle a b = bv_slt a b || a == b
+
+bv_sgt :: Bit #n -> Bit #n -> Bool
+bv_sgt a b = not $ bv_sle a b
+
+bv_sge :: Bit #n -> Bit #n -> Bool
+bv_sge a b = not $ bv_slt a b
+
 
 instance Ix (Bit #n) where
     range (l, h) = 

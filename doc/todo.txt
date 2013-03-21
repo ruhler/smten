@@ -3,8 +3,8 @@ Focus::
 * Look-ahead: Fix issues with _|_ so semantics are correctly implemented
 
 Recent::
-* bit vector support for:
-    signExtend, arithmetic right shift, XOR, signLT, signGT.
+* I should be able to implement bv_zero_extend a as bv_concat 0 a
+    Fix type system so that works.
 * Don't pretty print numeric type 16 in haskellf as
     2*2*2*2*(1+0) ??
     depends if you want detailed type info or not.
@@ -129,6 +129,7 @@ Bugs::
 * where shadow test (in Concrete)
 * tambig test (in State)
 * STP bug (in Nest)
+* STP bug (in Bit)
 * Report an error for an unknown primitive encountered in SMT Translation
 * It's possible to use a symbolic thing in a different context than it was
   defined, in which case bad stuff will happen.

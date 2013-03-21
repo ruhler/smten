@@ -30,7 +30,7 @@ module Smten.HaskellF.Lib.Prelude (
     __prim_fromInteger_Bit, __prim_toInteger_Bit,
     __prim_shl_Bit, __prim_lshr_Bit,
     __prim_or_Bit, __prim_and_Bit, __prim_not_Bit,
-    __prim_zeroExtend_Bit,
+    __prim_zeroExtend_Bit, __prim_signExtend_Bit,
     __prim_truncate_Bit, __prim_concat_Bit, __prim_extract_Bit,
     error,
     __main_wrapper,
@@ -443,6 +443,9 @@ __prim_not_Bit = primHF not_BitP
 
 __prim_zeroExtend_Bit :: (HaskellF n, HaskellF m) => Bit n -> Bit m
 __prim_zeroExtend_Bit = primHF zeroExtend_BitP
+
+__prim_signExtend_Bit :: (HaskellF n, HaskellF m) => Bit n -> Bit m
+__prim_signExtend_Bit = primHF signExtend_BitP
 
 __prim_truncate_Bit :: (HaskellF n, HaskellF m) => Bit n -> Bit m
 __prim_truncate_Bit = primHF truncate_BitP

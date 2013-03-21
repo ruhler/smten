@@ -94,6 +94,7 @@ module Smten.SMT.Yices.FFI2 (
     c_yices_bvor,
     c_yices_bvnot,
     c_yices_zero_extend,
+    c_yices_sign_extend,
     c_yices_bvshl,
     c_yices_bvlshr,
     c_yices_shift_left0,
@@ -292,6 +293,9 @@ foreign import ccall unsafe "yices_bvnot"
 
 foreign import ccall unsafe "yices_zero_extend"
     c_yices_zero_extend :: YTerm -> Word32 -> IO YTerm
+
+foreign import ccall unsafe "yices_sign_extend"
+    c_yices_sign_extend :: YTerm -> Word32 -> IO YTerm
 
 foreign import ccall unsafe "yices_bvshl"
     c_yices_bvshl :: YTerm -> YTerm -> IO YTerm

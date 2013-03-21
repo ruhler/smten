@@ -1,0 +1,112 @@
+
+Thu Mar 21 10:01:32 EDT 2013
+
+Goal for this morning: add the bit vector primitives Nirav wants:
+
+* sign extend
+* arithmetic right shift
+* bit XOR
+* signLT
+* signGT
+
+Let me look at each in turn.
+
+First question is: is this something supported by SMTLIB?
+Second question is: can I do this using existing primitives?
+
+1. Sign extend.
+Same as extend, but fill in with 1s. That shouldn't be too hard.
+
+Note: I don't see any of these in SMTLIB. So I shouldn't need to add any
+primitives at all.
+
+We can ask which ones the solvers support:
+  STP: Xor, SignExtend, signLE, signGT,
+       Not: arithmetic right shift
+
+  Yices1: xor, sign extend, slt, sgt
+       Not: arithmetic right shift
+
+  Yices2: xor, sign extend, signed stuff, arithmetic right shift
+
+Well, let me see which I can do manually in a reasonable way based on existing
+primitives. Otherwise, it looks like I can make xor, sign extend, and signed
+comparisons primitive. I need my own arithmetic right shift.
+
+1. xor, because it is the most straight forward.
+a b | a `xor` b
+0 0     0
+0 1     1
+1 0     1
+1 1     0
+
+Looks like:
+    a `xor` b = (a | b) & (not (a & b))
+
+So start with that. We can make it a primitive later if desired.
+
+Thu Mar 21 10:23:21 EDT 2013
+
+xor is all set.
+
+Next?
+
+SignLT.
+
+What does this mean? How does this work?
+
+If I can get this, the others are all easy to build on top.
+
+a, b
+
+If a and b are both positive:
+    Same as unsigned lt
+
+If a is negative and b is positive:
+    true
+
+If a is positive and b is negative:
+    false
+
+If a and b are both negative:
+    For example, with a 4 bit number: -2 <? -1
+    We have:   0x1110 < 0x1111
+
+    The more negative number has smaller positive value.
+    Same as unsigned lt
+
+Cool. That's easy enough. Let me try implementing it.
+
+Thu Mar 21 10:39:43 EDT 2013
+
+Done. Good. All the signed comparisons are implemented.
+
+Last two: sign extend and arithmetic shift right.
+
+Let's see. Both are similar.
+
+We do zero extend, and if the original was signed, we make a mask for the
+extended part.
+
+Start with sign extend? No, right shift will be easier to start with I think.
+
+Shift right logical. Then, if it was negative, or it with the right mask.
+
+What is the right mask? All ones shifted left logical?
+
+Thu Mar 21 10:55:41 EDT 2013
+
+Okay! Cool. Implemented arithmetic right shift. It seems to work okay.
+
+What remains is: sign extend. This should be just like right shift now. I
+hope.
+
+I don't think I can do bv_sign_extend in the current type system. It's
+problems with numeric types.
+
+So, either I could fix those... (which would be good), or I could make sign
+extend a primitive.
+
+For now, I'll make it a primitive. All add fixing numeric type things to my
+todo list.
+
