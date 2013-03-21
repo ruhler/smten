@@ -63,8 +63,17 @@ bv_sizeof x = valueof (bv_ntype x)
 bv_shl :: Bit #n -> Bit #n -> Bit #n
 bv_shl = __prim_shl_Bit
 
+-- Logical right shift
 bv_lshr :: Bit #n -> Bit #n -> Bit #n
 bv_lshr = __prim_lshr_Bit
+
+-- Arithmetic right shift
+bv_ashr :: Bit #n -> Bit #n -> Bit #n
+bv_ashr a b
+ = let apos = bv_extract a (bv_sizeof a - 1) == (0 :: Bit #1)
+   in if apos
+         then bv_lshr a b
+         else bv_or (bv_lshr a b) (bv_not (bv_lshr (bv_not 0) b))
 
 bv_or :: Bit #n -> Bit #n -> Bit #n
 bv_or = __prim_or_Bit
@@ -91,6 +100,26 @@ bv_concat = __prim_concat_Bit
 -- extract specified in the argument. The most significant bit is inferred.
 bv_extract :: Bit #n -> Integer -> Bit #m
 bv_extract = __prim_extract_Bit
+
+-- Signed comparisons
+bv_slt :: Bit #n -> Bit #n -> Bool
+bv_slt a b =
+  let apos = bv_extract a (bv_sizeof a - 1) == (0 :: Bit #1)
+      bpos = bv_extract b (bv_sizeof b - 1) == (0 :: Bit #1)
+  in case (apos, bpos) of
+        (True, False) -> False
+        (False, True) -> True
+        _ -> a < b
+
+bv_sle :: Bit #n -> Bit #n -> Bool
+bv_sle a b = bv_slt a b || a == b
+
+bv_sgt :: Bit #n -> Bit #n -> Bool
+bv_sgt a b = not $ bv_sle a b
+
+bv_sge :: Bit #n -> Bit #n -> Bool
+bv_sge a b = not $ bv_slt a b
+
 
 instance Ix (Bit #n) where
     range (l, h) = 

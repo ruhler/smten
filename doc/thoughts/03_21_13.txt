@@ -45,3 +45,56 @@ Looks like:
 
 So start with that. We can make it a primitive later if desired.
 
+Thu Mar 21 10:23:21 EDT 2013
+
+xor is all set.
+
+Next?
+
+SignLT.
+
+What does this mean? How does this work?
+
+If I can get this, the others are all easy to build on top.
+
+a, b
+
+If a and b are both positive:
+    Same as unsigned lt
+
+If a is negative and b is positive:
+    true
+
+If a is positive and b is negative:
+    false
+
+If a and b are both negative:
+    For example, with a 4 bit number: -2 <? -1
+    We have:   0x1110 < 0x1111
+
+    The more negative number has smaller positive value.
+    Same as unsigned lt
+
+Cool. That's easy enough. Let me try implementing it.
+
+Thu Mar 21 10:39:43 EDT 2013
+
+Done. Good. All the signed comparisons are implemented.
+
+Last two: sign extend and arithmetic shift right.
+
+Let's see. Both are similar.
+
+We do zero extend, and if the original was signed, we make a mask for the
+extended part.
+
+Start with sign extend? No, right shift will be easier to start with I think.
+
+Shift right logical. Then, if it was negative, or it with the right mask.
+
+What is the right mask? All ones shifted left logical?
+
+Thu Mar 21 10:55:41 EDT 2013
+
+Okay! Cool. Implemented arithmetic right shift. It seems to work okay.
+
