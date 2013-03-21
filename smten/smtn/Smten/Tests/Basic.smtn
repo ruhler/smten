@@ -199,6 +199,7 @@ testbit = do
     test "bit extract" (bit3 3 == bv_extract (bit5 7) 1)
     test "bit not" (bit5 0x15 == bv_not (0x0A))
     test "toInteger" (__prim_toInteger_Bit (bit5 0x15) == 0x15)
+    test "bit xor" (0x6 == bv_xor 0xa (0xc :: Bit #4))
 
 shadowmeth :: Integer
 shadowmeth = let { foo = 3; } in foo

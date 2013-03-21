@@ -1,0 +1,47 @@
+
+Thu Mar 21 10:01:32 EDT 2013
+
+Goal for this morning: add the bit vector primitives Nirav wants:
+
+* sign extend
+* arithmetic right shift
+* bit XOR
+* signLT
+* signGT
+
+Let me look at each in turn.
+
+First question is: is this something supported by SMTLIB?
+Second question is: can I do this using existing primitives?
+
+1. Sign extend.
+Same as extend, but fill in with 1s. That shouldn't be too hard.
+
+Note: I don't see any of these in SMTLIB. So I shouldn't need to add any
+primitives at all.
+
+We can ask which ones the solvers support:
+  STP: Xor, SignExtend, signLE, signGT,
+       Not: arithmetic right shift
+
+  Yices1: xor, sign extend, slt, sgt
+       Not: arithmetic right shift
+
+  Yices2: xor, sign extend, signed stuff, arithmetic right shift
+
+Well, let me see which I can do manually in a reasonable way based on existing
+primitives. Otherwise, it looks like I can make xor, sign extend, and signed
+comparisons primitive. I need my own arithmetic right shift.
+
+1. xor, because it is the most straight forward.
+a b | a `xor` b
+0 0     0
+0 1     1
+1 0     1
+1 1     0
+
+Looks like:
+    a `xor` b = (a | b) & (not (a & b))
+
+So start with that. We can make it a primitive later if desired.
+

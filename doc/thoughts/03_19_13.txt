@@ -1,0 +1,522 @@
+
+Tue Mar 19 07:54:47 EDT 2013
+
+Good news: Sudoku Integer only takes 14 minutes to run. That's a reasonable
+amount of time to be waiting.
+
+Here's what I'm going to do to start:
+
+1. Rename:  ExpH -> ExpH_
+            Thunk -> ExpH
+
+To keep the old name of ExpH where expected. And ExpH_ is internal mostly, so
+the name doesn't matter. The 'thunk', 'force', 'eid', and all that still makes
+sense for names.
+
+2. Record what has been forced using unsafe IO. Don't ask the SMT solver if
+something can be forced if it already has been forced.
+
+Maybe we'll save some work. We should be able to with shared expressions, so
+this could be fairly significant.
+
+I suppose Sudoku with Integer doesn't have a lot of shared expressions,
+though, so maybe it won't be very significant.
+
+Anyway, off to work I go.
+
+Tue Mar 19 08:07:14 EDT 2013
+
+Step (1) done. Relatively painlessly.
+
+Now, let's try step 2!
+
+Tue Mar 19 08:20:24 EDT 2013
+
+It doesn't work. I suspect because of typeof? Which claims it forces
+something, when it really doesn't?
+
+Tue Mar 19 08:24:29 EDT 2013
+
+I must be forcing something prematurely, because it's not working. Either
+that, or my force test doesn't work properly.
+
+Not sure. I'll have to look more closely into what's going on.
+
+For example, the de_symbolicEH test fails. That might be a good example to
+walk through by hand.
+
+I see the issue. Even if a has been forced, I still need to assert the
+predicate to make sure we have the existing context right.
+
+How about this, to start, I'll do that. But I'll save the call to Check, which
+will hopefully improve things a little bit.
+
+Then, as a next step, pass along the context, and don't send anything over
+until needed? Something like that. And maybe send it over all as one
+assertion. I don't know.
+
+No. Still doesn't work. Let me look for where I force things, and make sure
+it's always okay to do.
+
+* realize transformation forces its argument
+* strict_appEH forces things. Is that bad?
+* transform forces things
+* sharing forces things (shouldn't be a problem in this case)
+* ppr forces things. That's okay.
+
+So, I think the issue is the transformations. What we really wanted is to keep
+things as thunks, whereas force forces things.
+
+So, have an 'unforce' expression, which gives you the internal thunk if
+needed?
+
+The reason that should be okay is because why?
+
+I don't know. I don't get it. I need to think about it more.
+
+It also looks like useM in convert forces things to get at the type. That
+should be okay.
+
+Okay, so i'm going to take a short break. And I'm going to ponder things like:
+ can strict_appEH force things? Can transform force things? Would adding an
+'unforce' function help in any way at all?
+
+Tue Mar 19 09:05:49 EDT 2013
+
+I don't think 'unforce' would help at all. As soon as you look at the ExpH_,
+you have forced it, so you may as well mark it as forced.
+
+Hum...
+
+Let me move the de_symbolicEH test which causes error issues to the Error
+test, and make those errors more explicit.
+
+Interesting. It looks like the problem is just with this test case. The other
+error cases seem to pass okay...
+
+Except Datatype apparently doesn't, given how slow it is. Hmm...
+
+Let me solve one problem at a time.
+
+We did: assert (not a)
+Bind that to:
+    de_symbolicEH (if a then error else blah)
+
+What happens in this case?
+
+First thing we do: prune.
+That should leave us with: blah. Which should work just fine. I don't
+understand the issue.
+
+
+Well, de_symbolicEH never sees the if. That's good. So someone else must be
+forcing the error.
+
+The interesting things is: we call de_symbolicEH a lot, but only once do we
+reach 'pruned'. I suspect it's the time I expected for pruned.
+
+Looking at the debug output, it looks like what's happening is:
+1. we call de_symbolicEH out of context?
+    But it still doesn't look inside, so that should be okay. But why do we do
+    this?
+
+Oh. I see.
+
+1. assert (not a)  ==> assert (if a then False else True)
+Prune: 
+ check: assert a
+ check: assert (not a)
+ assert: assert (not free~1),
+
+2. de_symbolicEH
+    assert (free~1)
+      No check!
+
+That's where we went wrong. We made the assertion, but then we didn't check.
+We must, then, have see this object as forced when really it wasn't supposed
+to be. Why?
+
+why was 'forced a' true?
+
+Because it isn't a thunk! I bet I made it straight up error. But I have to
+make it a thunk first!
+
+Of course. Okay. I think I know the issue. Let's see.
+
+Yes. That's it. I should be able to fix that easily enough.
+
+Well, that solved the problem with error. I wonder, though, if this is a
+problem with ALL the primitives?
+
+That's worth thinking about.
+
+I don't think it's a problem with all the primitives. The only primitives to
+worry about are those that are not strict in their argument, such as 'return'.
+But I think we handle that correctly, because as soon as we can de_smtenEH it,
+we apply the function, and if we have an ExpH which is a lazy kind of thing,
+then we never force it.
+
+So, to figure out why I'm not pruning like I should in the Datatype test, I
+should look at what I'm doing, and see where I think I should not be doing
+something that I am. I should understand the problem.
+
+So, let me work on that then.
+
+Tue Mar 19 13:16:15 EDT 2013
+
+What am I working on next?
+
+Why does Datatype take so long now?
+
+Let me do a wc and see what's up with things.
+
+Looks like queries have gotten smaller. For Error they have gotten much
+smaller.
+
+Datatype is the same queries. I'm not sure why one takes longer than the
+other. Did it finish before?
+
+No. I bet it's the same because we never got to yices2 before.
+
+Oh, and Error is much smaller because I cut out lots of the tests.
+
+Oh. You know what it is I bet?
+
+We are pruning less now. Because we prune differently based on the context.
+And as soon as I'm in a specific context, something can be reduced from:
+    if foo the True else False
+ to just: True
+
+But I don't do that in my current approach. I said because we can better
+preserve sharing that way.
+
+Another thing I notice is we now spend a lot of time sending over assertions
+that we don't end up using. So I should not commit assertions to the context
+until I call 'check'.
+
+Okay, so now I have a better sense of the problem. We no longer do pruning
+like IVP. So it's like turning off IVP, and thus both Datatype and Sudoku2
+will take a lot longer to run.
+
+Fine.
+
+This challenges my idea about simplifying in a pruning like way vs. just
+traversing everything that can be traversed. It seems to be a tradeoff...
+
+I wonder if I could combine the two approaches?
+
+Err, not clear.
+
+Anyway, there's plenty of work left to do on this to get performance back up
+and running, and it will take some effort to figure out the best way to do
+that.
+
+I know the answer to Datatype is to do pruning based on context. But really
+the issue should just be: don't replicate so many assertions. Don't assert
+immediately, and that's an easy fix to make.
+
+And look, Datatype gets a stack overflow, spending all its time sending over
+queries (having debugging turned on doesn't help), so the change I want to
+make should make lots of difference. We only take about 3 minutes before
+datatype gets a stack overflow.
+
+So, how will I implement this? Prune should pass around a lazy context. Easy.
+
+Or, even more general: the SMT monad should not commit assertions until check
+is called (making sure to handle push and pop properly). I like that
+better. Cool. Let me try that out.
+
+How to organize this?
+
+1. assert: ExpH -> SMT (). Just adds the assertion (under the appropriate
+   predicate) to the list of assertions. It is not committed.
+2. commit_assert :: ExpH -> SMT ()
+    prunes the expression, then commits it
+3. check: commits all assertions.
+
+Skip this assert_pruned optimization. If it's pruned already, pruning again
+shouldn't cost us any more than a traversal.
+
+Cool. Here I go then.
+
+Err... some issues. Now there seems to be a difference between 'check', and
+'check'. One which forces all the existing assertions, and another which just
+calls check. Hmm...
+
+Maybe 'prune' should just use the user api entirely. Then 'check' and friends
+make sense.
+
+Um, that's slightly annoying. What I want is something like: query_Sat, to ask
+if we are satisfiable in the current context or not.
+
+Err... not having that don't reprune pruned optimization made a rather big
+difference.
+
+Hum. How do I want to do this?
+
+We may be running into a case where everything has to be right before we get
+the performance we want.
+
+Ug.
+
+Well, let me start by just optimizing prune, because it seems like that has to
+be done specially anyway.
+
+Trouble: what I want to do might end up loosing sharing. We may end up having
+to make more assertions, because we no longer do incremental queries.
+
+If I use 'nest' properly, I should be able to avoid this problem. The real
+issue is, I don't have a clean interface, and I'm getting confused by things
+because of that.
+
+Figure out what I want to do. What my end goal is. Then set up my abstractions
+to work correctly. Then implement my end goal, in stages.
+
+So I need to spend some more time thinking. Let me go to a pen and paper
+approach.
+
+Tue Mar 19 16:13:37 EDT 2013
+
+The summary of my thoughts are as follows:
+
+* I can't reasonably do pruning without violating sharing, potentially a lot.
+  Because even though expressions are shared, context is very likely to be
+  different. Exponential number of contexts leads to exponential number of
+  prunings.
+
+* forceall well generate smaller queries than pruning. I believe forceall
+  queries will not be in any significant way less efficient for the SMT
+  solvers than pruning queries. I really can't say. Certainly we are talking
+  constant factors, not exponential.
+
+* forceall traversal: should it be depth first or breadth first?
+    depth first: We can leverage incremental assertions to share predicates
+                 across multiple different EID tests. Same EID test may cause
+                 replication.
+    breadth first: We can share predicates common to the same EID, but may
+                   replicate for different EIDs.
+
+Which approach to take? In this case, it seems like locality is not
+necessarily a good thing, because we want as few assertions as possible, and
+we learn a lot more if we can look across the tree. And I have never seen
+incremental assertions make such a big difference, except in saving
+transmission.
+
+We could, perhaps, merge both, partially. Or rather, incorporate some of the
+depth first benefits in the breadth first approach.
+
+Let's say I do a breadth first traversal. I get a set of EIDs, each EID occurs
+in a tree of a context. The trees for different EIDs overlap...
+
+No. I can't mix them. I have to decide how much to tell the SMT solver at
+once. Well, I could save some work.
+
+If all the trees share a common prefix, assert that. Then ask for each sub
+EID.
+
+Note: breadth first may avoid the need for an SMT query. If we encounter the
+expression under no context, for example.
+
+So I feel like breadth first is the best approach.
+
+Okay? So I get back where I originally thought I wanted to go: forceall with
+breadth first traversal.
+
+We make 1 SMT query for each different expression we want to know about, if we
+can't figure it out some other way.
+
+Okay. So, I need a baseline in order to see how performance is, and to improve
+upon. How should this look?
+
+Well, there's another issue to ask about. We want de_symbolicEH, assert... but
+where maybe I'm not allowed to look at the top level things. Is there a better
+way of doing this than the messiness I have now?
+
+Answer is yes! I think. Well, not really sure.
+
+One thing we can do to clean is: keep sharing and assert_pruned as they are
+now. Just do a pruning phase after the allforce phase. Have: prune_forced.
+That way we can easily share all that logic. And we can preserve sharing in
+prune_forced. It's just a standard transformation, so that's easy to do.
+
+Good. I like that idea.
+
+So it sounds like: prune mixes: allforce and prune_allforced.
+
+Um. Wait. There is this recursive issue too, right? That predicates may not be
+forced, so we have an order requirement.
+
+
+Ah! This is so complicated.
+
+Is it better to just fix one problem at a time and see where it gets us?
+
+I really would like to make progress on this today. But in a clean way.
+
+Sounds like: Sharing, assert_pruned will stay the way they are. That's happy.
+
+So the only change to make is in 'prune'.
+
+Hmm... Can I do relatively easily a shared, depth-first prune?
+
+No. I can't. :(
+
+What about this... can we make the common case fast?
+Let's say the common case is there are no errors?
+
+Aside from these silly: if p then if not p then error things.
+
+Hmm... I wonder... Can I modify things slightly to better suit my needs?
+
+For example, what if we have something like:
+
+
+ohh.. I have an idea now. Interesting. Let me look a little bit.
+
+The idea is this. I can reorganize these expressions if I want.
+
+Each expression is a tree. It can be any of the leafs. It is compactly
+representing a list of things, sharing predicates at the top.
+
+But, I can change the structure. For example, something with the structure:
+
+.  a    c       v1
+        d       v2
+
+   b            v3
+
+Can have three values:
+
+a & c ==> v1
+a & d ==> v2
+b     ==> v3
+
+Can reorder these if I want, assuming I get the exclusion correct.
+
+In other words, at each branching point we have a predicate. The two branches
+are mutually exclusive.
+
+At each leaf, we have a path from root to that leaf, which is itself a
+predicate. What I can do is pull out those branches which we might be able to
+prune, and separate them from those branches we have totally forced.
+
+What's the value of this?
+
+We've now done some pruning we can share.
+
+Basically the goal is: get an expression to the point where we have seen all
+of its leafs. Then we can share it as is regardless of the context. I don't
+have to look inside for anything.
+
+But that's no different than I had before, right?
+
+But, we could go bottom up to figure this out?
+
+An interesting idea...
+
+Every expression has children which we didn't know if we could force, and
+conditions under which we could force them.
+
+Let's say by adding a parent condition, I could know for sure that I could or
+couldn't force something.
+
+The trouble is, we have to unroll things slowly.
+
+Err...
+
+So the real idea behind sharing, is we want to compute something that applies
+for an EID, regardless of its context. Or, where we know it is never going to
+be used under a different context. That's when we can share things nicely.
+
+I'm saying I could potentially pull it apart into two different pieces. 1
+piece which we can use regardless of context: a part of it which is fully
+pruned. And another piece which is context dependant.
+
+Err...
+
+I just don't know here.
+
+Maybe it's obvious what I want to do: for each expression, record those things
+you didn't know if you could force or not. Record those things you pruned, and
+maybe the resulting pruned thing.
+
+Then, when you encounter the expression again, in a slightly different
+context, you can: take what you pruned from before as is, no need to do that
+again. Just check the context for the iffy things, if they are still
+unforceable, you have the already pruned result, so you are done (besides
+having asked an SMT question). If any of them are forceable, then traverse
+into them. The previously pruned thing stays pruned from before as was.
+
+I claim we don't loose significant sharing, because predicates are shared.
+
+Okay, let me try again to summarize the current state of things.
+
+1. Using prune approach: I want to be lazy in committing the assertions, so if
+there is no need to assert, I don't. But, if I already know there is no need
+to assert... that is, I already know that expression is fully pruned, there's
+no need even to traverse.
+
+So it sounds like I want to record for each expression if it has been fully
+pruned yet or not. If yes: we don't need to traverse it again at all.
+
+If no? Traverse again, and we can avoid sub-traversing anything which was
+fully pruned.
+
+Maybe what I really want is a boolean: isallforced. Or ispruned. Which says I
+don't have to look inside. First time we have to traverse to figure this out,
+otherwise we can reuse the cached value.
+
+Okay, I think I see what I'm aiming for: incremental queries, to avoid sending
+duplicate assertions over and over again. But done in a depth first kind of
+way.
+
+So, what I'm sharing is the following:
+    EID -> [(ExpH, ExpH)]
+
+Given an expression, I return the list of leafs which are potentially
+unforceable, and the condition using the expression as the root to reach that
+leaf.
+
+The first time I compute this by traversing the expression. I don't make any
+assertions or ask about what can be pruned in that traversal.
+
+The next time I see this EID, I can reuse the same result as before.
+
+So, first step is... do this for every subexpression in the tree. Because we
+have done this preserving sharing, it did not cost us much. Just a single
+traversal. And because we have not done any SMT queries, it also did not cost
+us much.
+
+Now, do a second traversal, this time making assertions.
+
+If I have children nodes which are potentially unforceable, assert my
+predicate, because we will need this for the child which is potentially
+unforceable. Then traverse. When we get to the leaf nodes, then do the SMT
+query. Now we may have learned more about what could or could not be forced,
+so update the EID map by removing entries as appropriate.
+
+Actually, it seems like we ignored the predicate associated with each EID...
+
+My goal is to leverage incremental, to avoid sending over the same assertion
+multiple times. But to not commit an assertion until we know for sure we need
+to.
+
+How do I know if I need to commit an assertion? I need to commit an assertion
+if any child of the assertion is unforceable.
+
+Okay, so take the approach I have now. Only, don't make an assertion for a
+child... in fact, don't recurse at all for a child, if I know it is already
+pruned or fully forced.
+
+That's the simple optimization I'm trying to make. I don't know why it seems
+so hard.
+
+
+The trouble is: something which isn't fully forced. And I ask: can I force
+this? And the answer is: no. Not in this context.
+
+That guy is going to come up over and over again.
+
+Well, maybe we still get a lot of sharing? No. Because variations combine in
+exponential ways.
+

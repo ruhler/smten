@@ -1,0 +1,301 @@
+
+Mon Mar 18 07:23:56 EDT 2013
+
+Troubles with my error handling. Some of it I can deal with. Others of it, not
+so easily I fear.
+
+What I can handle:
+* try to capture and fix STP nesting bug
+* IfEH needs an explicit Type.
+
+What I need to think about:
+* how to prune in IfEH.
+I may have to make Symbolic a wrapper over SMT to make this work.
+
+Mon Mar 18 07:33:37 EDT 2013
+
+Well, I captured STP nesting bug. I won't claim to understand it.
+
+Perhaps I should write a C code to see if it's an issue with my understanding
+of the STP library?
+
+I wonder if this is an issue with how I do variables in STP. This shadowing
+bug?
+
+Yup! That was the problem. Fixed now.
+
+Mon Mar 18 08:01:46 EDT 2013
+
+I think I found a sharing violation: in appEH. Shouldn't I be using
+strict_appEH somewhere to apply the function? Why aren't I?
+
+This is worth testing individually, before switching over my if stuff.
+
+Question, what am I trying to share and why?
+
+Say I have:
+
+let g = \x -> x + x + x + x
+in (if p then if q then f
+                   else g
+         else g) 4
+
+Or, also known as:
+
+let f = \x -> x - x - x - x
+    g = \x -> x + x + x + x
+in (if p && q
+       then f
+       else g) 5
+
+Well, I expect this would evaluate to:
+
+if p && q
+    then f 5
+    else g 5
+
+Notice: g is only applied once. So I should only see 5+5+5+5 in the output
+once. That's the kind of thing I'm thinking of.
+
+Let me try it out then.
+
+Aha! Sharing violation captured. Good. Now to fix it using strict_appEH.
+
+And see if that fixes seri_arch_extract?
+
+Mon Mar 18 08:16:14 EDT 2013
+
+The fix didn't work. Not sure why. I'll have to look closer.
+
+Oh. Now it's working? That's rather confusing.
+
+Good then.
+
+That doesn't seem to have helped arch_extract though. Let me look at what
+Nirav sent me.
+
+Okay, so I see some duplication in the second query. Let's see where this is
+coming from.
+
+The issue is we do: f1 + f2 twice.
+
+f1 is x.
+f2 is y.
+f3 is z.
+
+We do the following:
+
+xyz' = (x, y, s1@(if x < 10 then z + 1 else z))
+xyz'' = (x, s2@(if x < 5 then y + 1 else y), s1@(if x < 10 then z + 1 else z))
+xyz''' = (x, s3@(if x < 5 then y + 1 else y), z)
+    note: s2 is not the same as s3.
+xyz'''' = (x, s3@(if x < 5 then y + 1 else y), s4@(if x < 10 then z+1 else z))
+    note: s4 is not the same as s3.
+
+pxyz' = (x + y + s1)
+pxyz'' = (x + s2 + s1)
+
+Note: x + y = x + y
+      x + s2 = if x < 5 then x + (y + 1) else (x + y)
+
+So, we have (x + y) twice, and no sharing. That is correct.
+
+So this is Nirav's violation of sharing, not Smtens.
+
+Thus I am no closer to finding a sharing violation.
+
+But... I am lead to suspect whatever violation I saw that I haven't solved is
+Nirav's fault.
+
+So! Back to adding a type to IfEH.
+
+Okay. That's done. Let's go back to bottom branch and see if it works.
+
+I've verified I can replicate the issue without the fix to IfEH.
+
+Now let me fix IfEH...
+
+Mon Mar 18 10:34:43 EDT 2013
+
+Okay! So, good news is: Now all the Error tests pass in the bottom branch.
+
+Bad news is:
+* de_symbolicEH still has trouble
+* I suspect STP still has trouble.
+
+Let me deal with first thing first. de_symbolicEH.
+
+I know the problem. Let's say I have something like this:
+
+de_symbolicEH (
+    do x <- free
+       assert x
+       if x
+            then return ()
+            else error "ah!"
+)
+
+Before de_symbolicEH can do its conversion, it needs to prune itself.
+In order to prune itself, we need to be in an SMT context.
+
+This can't happen unless Symbolic itself is part of an SMT context.
+
+Which suggests... maybe we should make Symbolic part of SMT for the underlying
+implementation.
+
+It has all the same state. Just do assertions and free variables directly to
+SMT. Then we would have access to prune, as desired.
+
+Okay then. There you have it. This shouldn't be too hard to do.
+
+Mon Mar 18 11:06:08 EDT 2013
+
+Good. That's done. Performance will be a big thing.
+
+But I still am having issues with STP for some reason. Issues that I thought I
+had resolved...
+
+Oh. I think I see the issue. The trouble with STP is it has no way to name
+free variable. So I have to pass around free variables myself. Free variables
+should be persistent, but locally scoped ones should not. But... what's the
+problem? That's what I already do, right?
+
+Mon Mar 18 11:23:02 EDT 2013
+
+I don't know what the issue with STP is.
+
+Each assertion should be in its own scope perhaps?
+
+No. That wasn't the problem. And it doesn't really make sense for it to be.
+
+Part of me feels like I should rewrite the STP translation and hope the bug
+magically goes away.
+
+I suppose a better approach would be to debug and actually figure out the
+problem. Because I'm in IO, that should not be hard to do.
+
+Okay, I caught the test case. It's terribly convoluted.
+
+Let me try now to simplify it.
+
+Okay, got it fairly well simplified.
+
+Now, let me verify I'm asking the question as I expect.
+
+Mon Mar 18 12:06:14 EDT 2013
+
+Looks like I'm asking the right question.
+
+So I need to take this to an STP level. Ask the same question using c code in
+STP, see if I get the same answer.
+
+Mon Mar 18 13:07:57 EDT 2013
+
+Okay, so I see what the issue is. For some reason vc_query is mucking with our
+state?
+
+Is this a bug in stp?
+
+Let me try to read the documentation better.
+
+I don't get it. Let me ask someone from STP.
+
+Mon Mar 18 13:27:07 EDT 2013
+
+I minimized the issue and sent it out to other people. So it's in their court
+now.
+
+Mon Mar 18 16:11:17 EDT 2013
+
+Next step: I'm excited. Switching to Thunk. Let me try it out and see how
+things are cleaned up. We may end up with a lot of type changes here, so wish
+me luck.
+
+An open question here is how I should avoid trying to share trivial things.
+
+Let me not worry about it right now. It's mostly a cleanliness issue. A little
+bit of a performance issue.
+
+Mon Mar 18 16:34:40 EDT 2013
+
+I want to handle non-sharing things from the start. Just create something as
+either shareable or not. Thunk now contains a Maybe EID.
+
+What should I call this special thunk?
+
+thunk'? I suppose... Or thunkNS for non-sharing thunk? I at least like that
+better.
+
+Mon Mar 18 17:05:22 EDT 2013
+
+Well, I implemented it. The naming is slightly annoying. What we used to call
+ExpH all over the place we now call Thunk.
+
+Oh well. I suppose I can rename it later.
+
+Note: SHampi will probably have to be updated to support this.
+
+Ga! I hate names. Let me keep it as is for now. ExpH isn't so much more
+expressive anyway, is it?
+
+Anyway, now I ought to be able to move on to bottom, right? What did we say
+was the next step? I need a way to ask whether a thunk has been forced or not.
+That's something specific to bottom.
+
+Mon Mar 18 17:16:16 EDT 2013
+
+Okay! So we merged into bottom.
+
+Now, how do I want to make progress on the performance of bottom? Ideally I
+could measure some improvements as I make them. What improvements do I want to
+make? What steps should I do this in?
+
+1. implement: forced :: Thunk -> Bool
+To test if something has been forced.
+
+2. change prune to forceall :: Thunk -> SMT Thunk
+   change de_symbolicEH, shared, assert, all those fun things to promise not
+   to touch anything which hasn't been forced.
+
+After this... we should now, once again, preserve sharing in the generated SMT
+query. Though we won't perform sharing at the haskell level for 'forceall'.
+
+3. Share at the haskell level in 'forceall'.
+And now we should be happy again performance wise, right?
+
+I hope. We shall see.
+
+Let me do profiling of Sudoku. I suspect all the time will be spent in Check,
+and RunCmds, because we make so many queries. The idea of 'forceall' and
+'forced' is to avoid making so many queries.
+
+It would be nice if I could count the number of these queries, just to see how
+much each thing reduces it. But for that, I need a benchmark which runs in a
+reasonable amount of time.
+
+Maybe sudoku without that one case?
+
+Okay, so running just the 'Integer' version of Sudoku. I'll wait a while, see
+if I can get a sense of how long it takes. I'm running profiling too.
+
+Note: we aren't spending any memory on this problem. Not surprising. I expect
+all our time in silly duplicate work checking the same thing over and over
+again.
+
+Err... I would really like to be able to observe improvements in the changes I
+make.
+
+Perhaps I should start by looking at all the easy test cases, and see how they
+improve in terms of the number of assertions and checks and such they have to
+ask to the SMT solver. I could just look at the number of lines for all of
+them. That should give a good sense of the improvement. Maybe look at a couple
+by hand to see what all things are saved.
+
+Okay, here's the deal. I'll take a little break, let Sudoku run in the
+background. Maybe if I give it 10, 20 minutes, something like that, then it
+will finish. That would be great news.
+
+Actually, I could probably use a simpler board to improve performance to a
+place where it is a nice runtime. Yes. That's definitely something worth
+doing. Start with a solved board, get harder and harder from there.
+
