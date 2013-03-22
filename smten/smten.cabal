@@ -11,7 +11,7 @@ cabal-version: >=1.8
 stability: experimental
 data-dir: share
 data-files:
-    doc/userguide.txt
+    doc/*.txt
     lib/Prelude.smtn
     lib/Control/Monad/*.smtn
     lib/Control/Monad/IO/*.smtn

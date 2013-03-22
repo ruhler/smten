@@ -1,10 +1,10 @@
-Smten ReadMe
-============
+Smten (Developer) ReadMe
+========================
 Richard Uhler <ruhler@csail.mit.edu>
-February 12, 2013
+March 22, 2013
 
-Configuring Smten for Build
----------------------------
+Configuring Smten for Development Build
+---------------------------------------
 Before building smten using the makefile, you must configure the build for your
 system. This is done by creating the file "tclmk/local.tcl" containing
 information about your system.
@@ -22,79 +22,25 @@ set ::env(PATH) "/bin:/usr/bin:/home/ruhler/local/bin"
 set ::env(LD_LIBRARY_PATH) "/home/ruhler/local/lib"
 =========================================
 
-Yices 1 and Yices 2
-~~~~~~~~~~~~~~~~~~~
-Smten requires both yices1 and yices2 be installed on the system. It looks
-for a yices1 library called "yices1" and a yices2 library called "yices2".
-Because the yices libraries are both shiped as "yices", you will need to
-rename them or provide a link to "yices1" and "yices2".
-
-In order to use both yices1 and yices2 libraries in a single executable, smten
-assumes the symbols in the yices1 library have been renamed so that prefixes
-yices_ are now yices1_. The rename map is included in the doc directory.
-
-In summary, if you have libyices.a for yices1 and libyices.so.2.1.0 for
-yices2 installed, to create the "yices1" and "yices2" libraries suitable for
-use with seri, run the commands:
-
-   objcopy --redefine-syms=doc/yicse1rename.txt libyices.a libyices1.a
-   ln -s libyices.so.2.1.0 libyices2.so
-   ln -s libyices.so.2.1.0 libyices.so.2.0 
-
-STP
-~~~
-Smten requires you have the STP library installed on your system to build.
-
+Yices1, Yices2, and STP
+-----------------------
+Smten currently requires yices1, yices2, and STP to be installed. See 
+smten/share/doc/userguide.txt for special instructions on how to install the
+yices solvers.
 
 Building Smten
 --------------
-Once smten is configured for build, it can be built by running `make`.
+Once smten is configured for build and the required SMT solvers are installed,
+it can be built by running `make`.
 
-The makefile installs the cabal packages for smten and smten-smt in a pretend
-home directory, compiles some programs against the installed packages, then
-runs some tests on the generated executables. During the process of
-installation, required packages will automatically be installed as well.
+The makefile installs the cabal packages for smten, smten-smt, and smten-bin
+in a pretend home directory, compiles some programs against the installed
+packages, then runs some tests on the generated executables. During the
+process of installation, required packages will automatically be installed as
+well.
 
-Trouble Shooting
-~~~~~~~~~~~~~~~~
-Build Error: Cannot find normal object file
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-When building for the first time, executable profiling must be disabled,
-otherwise an error such as 'cannot find normal object file' will be reported.
-To ensure executable profiling is disabled in the build script, remove the
-flag "--enable-executable-profiling" from cabal command in tclmk/make.tcl if
-it is present.
-
-Build Error: yices2 library not found
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-Verify first the yices2 library is properly installed on your system. You can
-do this by compiling and running the following program:
-
-----------
-#include <stdio.h>
-
-int main()
-{
-    yices_init();
-    int tv = yices_true();
-    int fv = yices_false();
-    printf("true-value: %i, false-value: %i\n", tv, fv);
-    yices_exit();
-    return 0;
-}
-----------
-
-You may need to add the library path to your C-compile, for example, with:
-    
-    gcc yices2test.c -L/home/ruhler/local/lib -lyices2 
-
-You may need to set your LD_LIBRARY_PATH to find the library at runtime:
-    
-    export LD_LIBRARY_PATH=/home/ruhler/local/lib
-    ./a.out
-    >>> true-value: 2, false-value: 3
-
-Once you have verified yices2 is install and working on your system, double
-check that:
-* tclmk/local.tcl has the right LD_LIBRARY_PATH set
+Using Smten
+-----------
+Consult the user guide in smten/share/doc/ for information on how to use
+Smten.
 
