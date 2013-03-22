@@ -1,0 +1,6 @@
+Smten User Guide
+================
+Richard Uhler <ruhler@csail.mit.edu>
+March 22, 2013
+
+Under construction.

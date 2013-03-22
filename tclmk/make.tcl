@@ -74,7 +74,7 @@ set SMTEN build/home/.cabal/bin/smten
 set DSEL build/smten-bin/dsel
 set SUDOKU build/smten-bin/sudoku
 
-set SMTN smten/smtn
+set SMTN smten/share/lib
 
 # Poorly typed tests.
 proc badtypetest {name} {
