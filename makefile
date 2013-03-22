@@ -10,13 +10,21 @@ userinstall:
 testio:
 	./build/home/.cabal/bin/smten --io \
 		--include smten/smtn \
-		--file smten/smtn/Smten/SMT/Tests/Datatype.smtn \
-		--main-is Smten.SMT.Tests.Datatype.main +RTS -p
+		--file smten/smtn/Smten/SMT/Tests/Error.smtn \
+		--main-is Smten.SMT.Tests.Error.main +RTS -p
+
+testh:
+	./build/home/.cabal/bin/smten --haskellf \
+		--include smten/smtn \
+		--file smten/smtn/Smten/SMT/Tests/Error.smtn \
+		--main-is Smten.SMT.Tests.Error.main -o foo.hs
+	HOME=`pwd`/build/home ghc -o foo foo.hs -main-is __main
+	./foo
 
 testsugar:
 	./build/home/.cabal/bin/smten --desugar \
 		--include smten/smtn \
-		--file smten/smtn/Smten/Tests/Concrete.smtn \
+		--file smten/smtn/Smten/SMT/Tests/Datatype.smtn \
 		-o desugared
 
 clean:

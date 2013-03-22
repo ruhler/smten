@@ -37,6 +37,19 @@ qboom = do
             return p
     test "error.boom" (a == Nothing)
 
+qcasepush :: SMT ()
+qcasepush = do
+    a <- query $ do
+            p <- free
+            assert p
+            assert (case (if p then (Nothing :: Maybe Bool) else error "qcasepush else") of
+                        Nothing -> True
+                        _ -> error "qcasepush _"
+                     )
+            return p
+    test "error.qcasepush" (a == Just True)
+            
+
 -- It should not take an infinite amount of time to test a finite number of
 -- things. Right?
 --
@@ -88,6 +101,7 @@ qtest :: SMT ()
 qtest = do
     qerror
     qboom
+    qcasepush
     qinc
     qinc2
     qinc3
