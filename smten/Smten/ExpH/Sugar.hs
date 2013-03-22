@@ -38,7 +38,7 @@ import Smten.ExpH.Typeof
 
 -- Fully applied constructor
 aconEH :: Name -> Type -> [ExpH] -> ExpH
-aconEH n t [] = thunkNS $ ConEH n t []
+aconEH n t [] = thunk $ ConEH n t []
 aconEH n t args = thunk $ ConEH n t args
 
 conEH :: Sig -> ExpH
@@ -64,7 +64,7 @@ de_kconEH n x = do
     return vs
 
 litEH :: Lit -> ExpH
-litEH = thunkNS . LitEH
+litEH = thunk . LitEH
 
 de_litEH :: ExpH -> Maybe Lit
 de_litEH e
@@ -72,7 +72,7 @@ de_litEH e
  | otherwise = Nothing
 
 varEH :: Sig -> ExpH
-varEH = thunkNS . VarEH
+varEH = thunk . VarEH
 
 de_varEH :: ExpH -> Maybe Sig
 de_varEH t
@@ -206,8 +206,7 @@ transform f =
       g use e
         | Just v <- f e = v
         | LitEH {} <- force e = e
-        | ConEH n s xs <- force e
-            = (if null xs then thunkNS else thunk) $ ConEH n s (map use xs)
+        | ConEH n s xs <- force e = thunk $ ConEH n s (map use xs)
         | VarEH {} <- force e = e
         | PrimEH _ _ f xs <- force e = f (map use xs)
         | LamEH s t f <- force e = lamEH s t $ \x -> use (f x)
@@ -257,11 +256,9 @@ shared f =
       def = f use
 
       --use :: ExpH -> a
-      use e
-       | Just x <- eid e = lookupPure x e
-       | otherwise = def e
+      use e = lookupPure (eid e) e
   in def
 
 errorEH :: String -> ExpH
-errorEH s = thunkNS $ error s
+errorEH s = thunk $ error s
 

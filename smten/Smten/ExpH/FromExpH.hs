@@ -30,18 +30,17 @@ data Use = Multi | Single
 sharing :: ExpH -> Set.Set EID
 sharing e =
   let traverse :: ExpH -> State (Map.Map EID Use) (Set.Set EID)
-      traverse e
-        | Just id <- eid e = do
-            m <- get
-            case Map.lookup id m of
-               Nothing -> do
-                    put (Map.insert id Single m)
-                    subtraverse e
-               Just Single -> do    
-                    put (Map.insert id Multi m)
-                    return $! Set.singleton id
-               Just Multi -> return Set.empty
-        | otherwise = return Set.empty
+      traverse e = do
+         let id = eid e
+         m <- get
+         case Map.lookup id m of
+            Nothing -> do
+                 put (Map.insert id Single m)
+                 subtraverse e
+            Just Single -> do    
+                 put (Map.insert id Multi m)
+                 return $! Set.singleton id
+            Just Multi -> return Set.empty
 
       subtraverse :: ExpH -> State (Map.Map EID Use) (Set.Set EID)
       subtraverse e
@@ -76,7 +75,7 @@ convert share e =
             x <- gets df_id
             modifyS $ \df -> df { df_id = x + 1 }
             let s' = Sig (nm `nappend` (name ("~c" ++ show x))) t
-            b <- useM (f (thunkNS $ VarEH s'))
+            b <- useM (f (thunk $ VarEH s'))
             return $ LamE s' b
         | IfEH _ arg yes no <- force e = do
             arg' <- useM arg
@@ -88,7 +87,7 @@ convert share e =
       -- So, if it's shared, turns into a VarE.
       useM :: ExpH -> State Defined Exp
       useM e
-        | Just id <- eid e
+        | let id = eid e
         , Set.member id share = do
             done <- gets df_done
             let var = VarE (Sig (nameof id) (typeof (force e)))
