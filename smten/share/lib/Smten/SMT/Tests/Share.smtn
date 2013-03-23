@@ -10,10 +10,9 @@ simple :: SMT ()
 simple = do
     r <- query $ do
         x <- free
-        y <- free
-        assert ((\a -> (a + a + a + a == (8 :: Integer))) (x - y))
-        return (x - y)
-    test "simple" (r == Just 2)
+        assert ((\a -> a + a == (10 :: Integer)) (x + x + x + x + x))
+        return x 
+    test "simple" (r == Just 1)
 
 samectx :: SMT ()
 samectx = do
@@ -72,10 +71,10 @@ appeval = do
 qmain :: SMT ()
 qmain = do
     simple
-    samectx
-    diffctx
-    casedesugar
-    appeval
+    --samectx
+    --diffctx
+    --casedesugar
+    --appeval
 
 main :: IO ()
 main = do

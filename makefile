@@ -10,8 +10,8 @@ userinstall:
 testio:
 	./build/home/.cabal/bin/smten --io \
 		--include smten/share/lib \
-		--file smten/share/lib/Smten/SMT/Tests/Error.smtn \
-		--main-is Smten.SMT.Tests.Error.main +RTS -p
+		--file smten/share/lib/Smten/SMT/Tests/Share.smtn \
+		--main-is Smten.SMT.Tests.Share.main +RTS -K1g
 
 testh:
 	./build/home/.cabal/bin/smten --haskellf \
