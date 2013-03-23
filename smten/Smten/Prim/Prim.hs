@@ -51,7 +51,7 @@ unaryTP n f =
         | IfEH {} <- force a
         , not (smttype (typeof (force a)))
             = strict_appEH t (\a' -> impl t [a']) a
-        | otherwise = thunk $ PrimEH nm t (impl t) [a]
+        | otherwise = exph $ PrimEH nm t (impl t) [a]
 
       -- The type is the type of the primitive function without arguments
       -- applied.
@@ -85,7 +85,7 @@ binaryTP n f =
         | IfEH {} <- force b
         , not (smttype (typeof (force b)))
             = strict_appEH t (\b' -> impl t [a, b']) b
-        | otherwise = thunk $ PrimEH nm t (impl t) [a, b]
+        | otherwise = exph $ PrimEH nm t (impl t) [a, b]
 
       -- The type is the type of the primitive function without arguments
       -- applied.

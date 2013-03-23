@@ -19,7 +19,7 @@ instance Ppr ExpH where
       = text "(" <> sep (punctuate comma (map ppr xs)) <> text ")"
     ppr e = ppr (force e)
 
-instance Ppr ExpH_ where
+instance Ppr ExpH_Value where
     ppr (LitEH l) = ppr l
     ppr (ConEH n _ xs) = ppr (appsEH (varEH (Sig n UnknownT)) xs)
     ppr (VarEH s) = ppr s

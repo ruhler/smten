@@ -6,10 +6,11 @@
 -- | HOAS form for Smten Expressions, geared towards high performance
 -- elaboration.
 module Smten.ExpH.ExpH (
-    ExpH_(..), EID, ExpH(), force, eid, thunk, forced,
+    ExpH_Value(..), EID(), ExpH(), force, eid, exph, forced,
     ) where
 
 import System.IO.Unsafe
+import Data.Functor((<$>))
 import Data.IORef
 import Data.Typeable
 import Data.Hashable
@@ -26,8 +27,9 @@ newtype EID = EID Integer
 instance Show EID where
     show (EID x) = show x
 
--- ExpH_ represents a symbolic Smten expression evaluated to normal form. 
-data ExpH_ =
+-- ExpH_Value represents a symbolic expression evaluated to weak head normal
+-- form, or a thunk.
+data ExpH_Value =
             -- | Literal characters and integers
             LitEH Lit
 
@@ -52,31 +54,55 @@ data ExpH_ =
 
           -- | Conditional expressions.
           | IfEH Type ExpH ExpH ExpH
-    deriving(Typeable)
 
-data ExpH = ExpH {
-    eid :: EID,
-    forced_ :: IORef Bool,
-    exph_ :: ExpH_
+          -- | Thunk.
+          | ThunkEH ExpH
+    deriving (Typeable)
+
+-- ExpH_Cell: an ExpH_Value labeled with an expression ID.
+data ExpH_Cell = ExpH_Cell {
+    cell_id :: EID,
+    cell_val :: ExpH_Value
 } deriving (Typeable)
 
-force :: ExpH -> ExpH_
-force x = unsafePerformIO $ do
-    writeIORef (forced_ x) True
-    return $! exph_ x
+newtype ExpH = ExpH {
+    exph_cell :: IORef ExpH_Cell
+} deriving (Typeable)
+
+force :: ExpH -> ExpH_Value
+force = 
+ let force_io :: ExpH -> IO ExpH_Cell
+     force_io (ExpH r) = do
+        c <- readIORef r
+        case cell_val c of
+            ThunkEH e -> do
+                c' <- force_io e
+                writeIORef r c'
+                return c'
+            _ -> return c
+ in cell_val . unsafePerformIO . force_io
+
+cell :: ExpH -> ExpH_Cell
+cell x = unsafePerformIO $ readIORef (exph_cell x)
+
+value :: ExpH -> ExpH_Value
+value = cell_val . cell
+
+eid :: ExpH -> EID
+eid = cell_id . cell
 
 forced :: ExpH -> Bool
-forced x = unsafePerformIO $ readIORef (forced_ x)
+forced x
+ | ThunkEH {} <- value x = True
+ | otherwise = False
 
--- Call the given function with a globally unique identifier.
-thunk :: ExpH_ -> ExpH
-thunk e = 
+exph :: ExpH_Value -> ExpH
+exph v = 
   let {-# NOINLINE idstore #-}
       idstore :: IORef Integer
       idstore = unsafePerformIO (newIORef 0)
   in unsafePerformIO $ do
         x <- readIORef idstore
         writeIORef idstore $! x + 1
-        r <- newIORef False
-        return $ ExpH (EID x) r e
+        ExpH <$> newIORef (ExpH_Cell (EID x) v)
 

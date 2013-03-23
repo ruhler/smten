@@ -75,7 +75,7 @@ convert share e =
             x <- gets df_id
             modifyS $ \df -> df { df_id = x + 1 }
             let s' = Sig (nm `nappend` (name ("~c" ++ show x))) t
-            b <- useM (f (thunk $ VarEH s'))
+            b <- useM (f (exph $ VarEH s'))
             return $ LamE s' b
         | IfEH _ arg yes no <- force e = do
             arg' <- useM arg

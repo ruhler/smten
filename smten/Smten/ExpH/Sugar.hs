@@ -7,7 +7,7 @@ module Smten.ExpH.Sugar (
     appEH, appsEH, strict_appEH,
     lamEH, letEH, aconEH,
     caseEH,
-    ifEH, impliesEH, notEH, andEH, errorEH,
+    ifEH, impliesEH, notEH, andEH, errorEH, thunkEH,
 
     unitEH,
     boolEH, trueEH, falseEH, de_boolEH,
@@ -38,8 +38,7 @@ import Smten.ExpH.Typeof
 
 -- Fully applied constructor
 aconEH :: Name -> Type -> [ExpH] -> ExpH
-aconEH n t [] = thunk $ ConEH n t []
-aconEH n t args = thunk $ ConEH n t args
+aconEH n t args = exph $ ConEH n t args
 
 conEH :: Sig -> ExpH
 conEH (Sig n t) =
@@ -64,7 +63,7 @@ de_kconEH n x = do
     return vs
 
 litEH :: Lit -> ExpH
-litEH = thunk . LitEH
+litEH = exph . LitEH
 
 de_litEH :: ExpH -> Maybe Lit
 de_litEH e
@@ -72,7 +71,7 @@ de_litEH e
  | otherwise = Nothing
 
 varEH :: Sig -> ExpH
-varEH = thunk . VarEH
+varEH = exph . VarEH
 
 de_varEH :: ExpH -> Maybe Sig
 de_varEH t
@@ -98,7 +97,7 @@ appsEH f xs = foldl appEH f xs
 --  s - name and type of argument to function
 --  t - output type of the function
 lamEH :: Sig -> Type -> (ExpH -> ExpH) -> ExpH
-lamEH s t f = thunk $ LamEH s t f
+lamEH s t f = exph $ LamEH s t f
 
 -- letEH s t v f
 --  s - name and type of let variable
@@ -160,15 +159,18 @@ de_ioEH x = do
     l <- de_litEH x
     de_dynamicL l
 
+thunkEH :: ExpH -> ExpH
+thunkEH = exph . ThunkEH
+
 caseEH :: Type -> ExpH -> Sig -> ExpH -> ExpH -> ExpH
-caseEH t x k y n = {-# SCC "CASE_EH" #-} caseEH' t x k y n
+caseEH t x k y n = thunkEH $ caseEH' t x k y n
 
 caseEH' :: Type -> ExpH -> Sig -> ExpH -> ExpH -> ExpH
 caseEH' t x k@(Sig nk _) y n
  | Just (s, _, vs) <- de_conEH x
     = if s == nk then appsEH y vs else n
- | nk == name "True" = thunk $ IfEH t x y n
- | nk == name "False" = thunk $ IfEH t x n y
+ | nk == name "True" = exph $ IfEH t x y n
+ | nk == name "False" = exph $ IfEH t x n y
  | IfEH {} <- force x = strict_appEH t (\x' -> caseEH t x' k y n) x
  | otherwise = error "caseEH"
 
@@ -206,7 +208,7 @@ transform f =
       g use e
         | Just v <- f e = v
         | LitEH {} <- force e = e
-        | ConEH n s xs <- force e = thunk $ ConEH n s (map use xs)
+        | ConEH n s xs <- force e = exph $ ConEH n s (map use xs)
         | VarEH {} <- force e = e
         | PrimEH _ _ f xs <- force e = f (map use xs)
         | LamEH s t f <- force e = lamEH s t $ \x -> use (f x)
@@ -260,5 +262,5 @@ shared f =
   in def
 
 errorEH :: String -> ExpH
-errorEH s = thunk $ error s
+errorEH s = thunkEH $ error s
 

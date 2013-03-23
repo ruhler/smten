@@ -9,7 +9,7 @@ import Smten.Sig
 import Smten.ExpH.ExpH
 
 
-instance Typeof ExpH_ where
+instance Typeof ExpH_Value where
     typeof (LitEH l) = typeof l
     typeof (ConEH _ t _) = t
     typeof (VarEH s) = typeof s
