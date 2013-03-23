@@ -145,7 +145,7 @@ haskellf Smten.SMT.Tests.Integer
 haskellf Smten.SMT.Tests.Bit
 haskellf Smten.SMT.Tests.Share
 haskellf Smten.SMT.Tests.Error
-haskellf Smten.SMT.Tests.Datatype
+#haskellf Smten.SMT.Tests.Datatype
 
 io Smten.SMT.Tests.AllQ
 io Smten.SMT.Tests.AllQ2
