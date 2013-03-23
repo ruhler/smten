@@ -1,0 +1,184 @@
+Smten User Guide
+================
+Richard Uhler <ruhler@csail.mit.edu>
+March 22, 2013
+
+Installing Smten
+----------------
+Smten is distributed as three separate cabal packages. The three packages are
+as follows.
+
+smten:: The Smten library, without backend SMT solvers.
+smten-smt:: SMT solver backends for Smten.
+smten-bin:: The smten executable.
+
+To install the smten packages, you must first install the yices1, yices2, and
+STP solvers. Note that yices1 requires special installation procedures to work
+correctly with Smten, as described below.
+
+Installing Yices 1 and Yices 2
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Smten requires both yices1 and yices2 be installed on the system. It looks
+for a yices1 library called "yices1" and a yices2 library called "yices2".
+Because the yices libraries are both shipped as "yices", you will need to
+rename them or provide a link to "yices1" and "yices2".
+
+In order to use both yices1 and yices2 libraries in a single executable, smten
+assumes the symbols in the yices1 library have been renamed so that prefixes
+yices_ are now yices1_. The rename map is included in the doc directory.
+
+For example, if you have libyices.a for yices1 and libyices.so.2.1.0 for
+yices2 installed, to create the "yices1" and "yices2" libraries suitable for
+use with smten, run the commands:
+
+   objcopy --redefine-syms=doc/yicse1rename.txt libyices.a libyices1.a
+   ln -s libyices.so.2.1.0 libyices2.so
+   ln -s libyices.so.2.1.0 libyices.so.2.0 
+
+Installing the Smten Packages
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+After yices1, yices2, and STP have all been installed, the three smten
+packages can be installed as normal cabal packages. For example:
+
+  cabal install smten smten-smt smten-bin
+
+See the cabal-install manual for more information on how to install cabal
+packages on your system.
+
+The Smten Language
+------------------
+The Smten language is a Haskell-like programming language with support for
+symbolic computations. Smten source files have the .smtn extension.
+
+Haskell vs Smten
+~~~~~~~~~~~~~~~~
+Aside from support symbolic computations, the Smten language has the same
+syntax and features as Haskell. In practice not all Haskell features have been
+implemented yet in the Smten compiler. More specifically:
+
+* Primitives types available in Smten include Integer and Char, but do not
+  include fixed width integers or floating point numbers.
+* Let blocks are currently sequential, not recursive.
+* Module support is very limited.
+* Newtype declarations are not supported.
+* Default class method implementations are not supported.
+* Top level variable declarations must have explicit types.
+* Various other minor features of Haskell are not yet supported.
+* Most haskell libraries have not yet been ported to Smten.
+
+Smten makes a few extensions to Haskell:
+
+* There is a primitive Bit vector type.
+* There is limited support for numeric (size) types.
+* Smten allows primitives to be specified by giving a type declaration without
+  an implementation for a function.
+* Smten includes primitive Symbolic and SMT monads for manipulating symbolic
+  computations and SMT queries.
+
+The Symbolic Monad
+~~~~~~~~~~~~~~~~~~
+Smten includes a Symbolic monad for manipulating symbolic computations. The
+Symbolic monad is defined in the Smten.SMT.Symbolic module. Its API is as
+follows:
+
+----------------
+data Symbolic a = ...
+
+instance Monad Symbolic
+    return :: a -> Symbolic a
+    return x = ...
+
+    (>>=) :: Symbolic a -> (a -> Symbolic b) -> Symbolic b
+    (>>=) x f = ...
+
+class Free a where
+    free :: Symbolic a
+
+instance Free Integer
+instance Free Bool
+instance Free (Bit #n)
+
+assert :: Bool -> Symbolic ()
+
+data Solver = Yices1 | Yices2 | STP
+    deriving (Eq, Show)
+
+runSymbolic :: Solver -> Maybe FilePath -> Symbolic a -> IO (Maybe a)
+-----------------------
+
+The type 'Symbolic a' represents a (possibly infinite) set of values of type
+'a'. It is very similar to the list monad in haskell.
+
+free:: The set of all possible values of the corresponding type. Primitive
+instances of 'free' are provided for Integer, Bool, and Bit. Instance of
+'free' for bounded algebraic data types can be automatically derived using
+Haskell's deriving mechanism.
+
+assert:: The assert primitive restricts the values represented by a 'Symbolic
+a' to those under which the given predicate is satisfied. More formally,
+'assert True' is the singleton set '{()}', and 'assert False' is the empty
+set.
+
+return:: The return primitive creates a 'Symbolic a' with its argument as the
+single value.
+
+>>=:: The second argument to bind is applied to each value in the first
+argument to bind, and the union of the results is returned.
+
+runSymbolic:: Run a symbolic computation using the given SMT solver. The
+second argument is an optional file where debug output should be logged. The
+symbolic computation nondeterministically returns one of the elements of the
+set, or Nothing if the set is empty.
+
+For example, the following program uses the Symbolic monad with the Yices2 SMT
+solver to test whether there exist any integers which satisfy the predicates
+'f' and 'g':
+
+------------
+import Smten.SMT.Symbolic
+
+f :: Integer -> Bool 
+f = ...
+
+g :: Integer -> Bool
+g = ...
+
+main :: IO ()
+main = do
+  result <- runSymbolic Yices2 (Just "debug.txt") $ do
+     x <- free
+     assert (f x)
+     assert (g x)
+     return x
+  case result of
+    Just v -> putStrLn $ "The Integer " ++ show v ++ " satisfies f and g"
+    Nothing -> putStrLn $ "No Integer satisfies both predicates f and g"
+-------------
+
+The SMT Monad
+~~~~~~~~~~~~~
+Smten includes an SMT monad for manipulating SMT contexts. The SMT monad
+allows you to make use of back-end support for incremental SMT queries.
+
+TODO: Describe the SMT Monad API.
+
+The Smten Interpreter and Compiler
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+There are two ways to run a Smten program: using the Smten interpreter, or
+compiling to Haskell and generating a separate executable from that. Both of
+these tasks are done using the 'smten' command.
+
+For example, to run a smten program called "foo.smtn" in the interpreter:
+    
+    smten --io --file foo.smtn 
+
+To compile "foo.smtn" and run the executable:
+
+    smten --haskellf -f foo.smtn -o foo.hs
+    ghc -o foo -main-is __main foo.hs 
+    ./foo
+
+For more detail on the options available to the 'smten' command, run:
+
+    smten --help
+

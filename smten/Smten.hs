@@ -5,5 +5,7 @@ import Paths_smten
     
 -- | Directory where the Smten library files (.smtn) are installed.
 smtendir :: IO FilePath
-smtendir = getDataDir
+smtendir = do
+    share <- getDataDir
+    return $ share ++ "/lib"
 
