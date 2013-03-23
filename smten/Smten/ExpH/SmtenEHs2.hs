@@ -33,9 +33,8 @@ instance (SmtenEH a, SmtenEH b) => SmtenEH (a -> b) where
       in lamEH (Sig (name "x") (smtenT (ta f))) (smtenT (tb f)) $ \x ->
             smtenEH $ f (fromMaybe (error "smtenEH (->)") (de_smtenEH x))
             
-    de_smtenEH e
-      | LamEH _ _ f <- force e = return $ \x ->
-           let fx = f (smtenEH x)
+    -- TODO: Verify this is a function type?
+    de_smtenEH e = return $ \x ->
+           let fx = appEH e (smtenEH x)
            in fromMaybe (error $ "de_smtenEH (->): " ++ pretty fx) (de_smtenEH fx)
-      | otherwise = Nothing
 

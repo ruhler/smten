@@ -93,8 +93,8 @@ eid = cell_id . cell
 
 forced :: ExpH -> Bool
 forced x
- | ThunkEH {} <- value x = True
- | otherwise = False
+ | ThunkEH {} <- value x = False
+ | otherwise = True
 
 exph :: ExpH_Value -> ExpH
 exph v = 

@@ -101,7 +101,7 @@ qtest :: SMT ()
 qtest = do
     qerror
     qboom
-    --qcasepush
+    qcasepush
     qinc
     qinc2
     qinc3

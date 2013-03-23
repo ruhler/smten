@@ -21,6 +21,8 @@ class (SmtenT a) => SmtenEH a where
     smtenEH :: a -> ExpH
 
     -- | Convert a smten representation to its haskell object
+    -- TODO: does Nothing mean the ExpH is the wrong type, or does Nothing
+    -- mean the ExpH is symbolic, or what?
     de_smtenEH :: ExpH -> Maybe a
 
 instance SmtenEH () where
