@@ -89,6 +89,7 @@ bv_xor a b = bv_and (bv_or a b) (bv_not (bv_and a b))
 
 bv_zero_extend :: Bit #n -> Bit #m
 bv_zero_extend = __prim_zeroExtend_Bit
+--bv_zero_extend = (bv_concat :: Bit #(m-n) -> Bit #n -> Bit #m) 0
 
 bv_sign_extend :: Bit #n -> Bit #m
 bv_sign_extend = __prim_signExtend_Bit

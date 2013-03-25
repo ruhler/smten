@@ -8,8 +8,10 @@ module Smten.Type.Utils (
     VarTs(..), kindof,
     ) where
 
+import Debug.Trace
+
 import Control.Monad.State
-import Data.List(nub, genericLength)
+import Data.List(nub)
 
 import Smten.Name
 import Smten.Type.Type
@@ -20,35 +22,17 @@ import Smten.Type.Sugar
 -- mapping from type variable name to concrete type.
 assignments :: Type -> Type -> [(Name, Type)]
 assignments (VarT n _) t = [(n, t)]
-assignments (OpT _ a b) (OpT _ a' b') = assignments a a' ++ assignments b b'
 assignments (AppT a b) (AppT a' b') = assignments a a' ++ assignments b b'
 assignments _ _ = []
 
 -- | isSubType t sub
 -- Return True if 'sub' is a concrete type of 't'.
 isSubType :: Type -> Type -> Bool
-isSubType t sub
-  = let isst :: Type -> Type -> State [(Name, Type)] Bool
-        isst (ConT n _) (ConT n' _) = return (n == n')
-        isst (NumT n) (NumT n') = return (n == n')
-        isst (AppT a b) (AppT a' b') = do
-            ar <- isst a a'
-            br <- isst b b'
-            return (ar && br)
-        isst (OpT o a b) (OpT o' a' b') = do
-            ar <- isst a a'
-            br <- isst b b'
-            return (o == o' && ar && br)
-        isst (VarT n _) t = do
-            modify $ \l -> (n, t) : l
-            return True
-        isst _ _ = return False
-
-        (b, tyvars) = runState (isst t sub) []
-        assignnub = nub tyvars
-        namenub = nub (map fst assignnub)
-     in length namenub == length assignnub && b
-    
+isSubType t sub =
+  let assigns = assignments t sub
+      t' = assign assigns t
+  in t' == sub
+ 
 -- | Replace all variable types with the given
 -- values. Uses association list lookup.
 assign :: (Assign a) => [(Name, Type)] -> a -> a
