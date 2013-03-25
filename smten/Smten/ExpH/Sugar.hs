@@ -185,7 +185,7 @@ caseEH' t x k@(Sig nk _) y n
  | nk == name "True" = thunk $ IfEH t x y n
  | nk == name "False" = thunk $ IfEH t x n y
  | IfEH {} <- force x = strict_appEH t (\x' -> caseEH t x' k y n) x
- | otherwise = error "caseEH"
+ | otherwise = error $ "caseEH: " ++ show x
 
 -- Strict application.
 -- It traverses inside of if expressions. Sharing is preserved.

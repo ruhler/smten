@@ -18,6 +18,7 @@ import Smten.Lit
 import Smten.Name
 import Smten.Type
 import Smten.Sig
+import Smten.Ppr
 import Smten.Strict
 
 newtype EID = EID Integer
@@ -65,10 +66,22 @@ data ExpH_ =
           | ErrorEH Type String
     deriving(Typeable)
 
+instance Show ExpH_ where
+   show (LitEH l) = pretty l
+   show (ConEH n t xs) = "ConEH " ++ show n ++ " " ++ show xs 
+   show (VarEH s) = pretty s
+   show (PrimEH n _ _ xs) = "PrimEH " ++ show n ++ " " ++ show xs
+   show (LamEH s _ _) = "LamEH \\" ++ show s ++ " -> ..."
+   show (IfEH _ p a b) = "IfEH " ++ show [p, a, b]
+   show (ErrorEH _ s) = "ErrorEH " ++ show s
+
 data ExpH = ExpH {
     eid :: Maybe EID,
     force :: ExpH_
 } deriving (Typeable)
+
+instance Show ExpH where
+    show = show . force
 
 -- Call the given function with a globally unique identifier.
 thunk :: ExpH_ -> ExpH

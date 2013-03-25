@@ -11,7 +11,7 @@ testio:
 	./build/home/.cabal/bin/smten --io \
 		--include smten/share/lib \
 		--file smten/share/lib/Smten/Tests/Concrete.smtn \
-		--main-is Smten.Tests.Concrete.main
+		--main-is Smten.Tests.Concrete.main +RTS -p
 
 testsugar:
 	./build/home/.cabal/bin/smten --desugar \

@@ -31,7 +31,7 @@ isSubType :: Type -> Type -> Bool
 isSubType t sub =
   let assigns = assignments t sub
       t' = assign assigns t
-  in t' == sub
+  in canonical t' == canonical sub
  
 -- | Replace all variable types with the given
 -- values. Uses association list lookup.

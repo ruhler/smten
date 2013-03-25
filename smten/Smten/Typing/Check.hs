@@ -115,7 +115,7 @@ instance TypeCheck Exp where
       typecheckM t
       tenv <- asks tcs_vars
       case lookup n tenv of
-          Just t' | t == t' -> return ()
+          Just t' | canonical t == canonical t' -> return ()
           Just t' -> throw $ "expected variable of type:\n  " ++ pretty t'
                      ++ "\nbut " ++ pretty n ++ " has type:\n  " ++ pretty t
           Nothing -> do

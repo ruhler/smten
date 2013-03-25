@@ -146,31 +146,34 @@ hsExp (LamE (Sig n _) x) = do
 hsExp (CaseE x (Sig kn kt) y n) = do
     [x', y', n'] <- mapM hsExp [x, y, n]
     return $ foldl1 H.AppE [H.VarE (constrcasenm kn), x', y', n']
-        
+
 hsType :: Type -> Failable H.Type
-hsType (ConT n _)
+hsType = hsType' . canonical
+        
+hsType' :: Type -> Failable H.Type
+hsType' (ConT n _)
   | n == name "()" = return $ H.ConT (H.mkName "Unit__")
   | Just x <- de_tupleN n
      = return $ H.ConT (H.mkName $ "Tuple" ++ show x ++ "__")
   | n == name "[]" = return $ H.ConT (H.mkName "List__")
   | n == name "->" = return H.ArrowT
   | otherwise = return $ H.ConT (hsName n)
-hsType (AppT a b) = do
-    a' <- hsType a
-    b' <- hsType b
+hsType' (AppT a b) = do
+    a' <- hsType' a
+    b' <- hsType' b
     return $ H.AppT a' b'
-hsType (VarT n _) = return $ H.VarT (hsName n)
-hsType (NumT i) = return $ hsnt i
-hsType (OpT f a b) = do
-    a' <- hsType a
-    b' <- hsType b
+hsType' (VarT n _) = return $ H.VarT (hsName n)
+hsType' (NumT i) = return $ hsnt i
+hsType' (OpT f a b) = do
+    a' <- hsType' a
+    b' <- hsType' b
     let f' = case f of
                 "+" -> H.ConT $ H.mkName "N__PLUS"
                 "-" -> H.ConT $ H.mkName "N__MINUS"
                 "*" -> H.ConT $ H.mkName "N__TIMES"
-                _ -> error $ "hsType TODO: AppNT " ++ f
+                _ -> error $ "hsType' TODO: AppNT " ++ f
     return $ H.AppT (H.AppT f' a') b'
-hsType t = throw $ "haskellf: unsupported type: " ++ pretty t
+hsType' t = throw $ "haskellf: unsupported type: " ++ pretty t
 
 -- Return the numeric type corresponding to the given integer.
 hsnt :: Integer -> H.Type

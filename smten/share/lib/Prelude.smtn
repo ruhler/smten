@@ -7,16 +7,6 @@ valueof :: #n -> Integer
 -- The single possible value for the given numeric type.
 numeric :: #n
 
--- Numeric type identity.
--- Checks dynamically if the two numeric types are the same. If so, acts as
--- the identity function, otherwise returns an error.
-ntid :: #n -> #m
-ntid n = 
-  let m = numeric
-  in if valueof n == valueof m
-        then m
-        else error "ntid: numeric type mismatch"
-
 class Eq a where
    (==) :: a -> a -> Bool
    (==) a b = not (a /= b)
