@@ -10,8 +10,8 @@ userinstall:
 testio:
 	./build/home/.cabal/bin/smten --io \
 		--include smten/share/lib \
-		--file smten/share/lib/Smten/SMT/Tests/Bit.smtn \
-		--main-is Smten.SMT.Tests.Bit.main
+		--file smten/share/lib/Smten/Tests/Concrete.smtn \
+		--main-is Smten.Tests.Concrete.main
 
 testsugar:
 	./build/home/.cabal/bin/smten --desugar \

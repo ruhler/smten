@@ -206,9 +206,9 @@ hsSig clsvars (TopSig n ctx t) = do
     t' <- hsTopType clsvars ctx t
     return $ H.SigD (hsName n) t'
 
-hsTopExp :: TopExp -> Failable [H.Dec]
-hsTopExp (TopExp (TopSig n ctx t) e) = do
-    t' <- hsTopType [] ctx t
+hsTopExp :: [Name] -> TopExp -> Failable [H.Dec]
+hsTopExp ign (TopExp (TopSig n ctx t) e) = do
+    t' <- hsTopType ign ctx t
     e' <- hsExp e
     let hsn = hsName n
     let sig = H.SigD hsn t'
@@ -216,7 +216,7 @@ hsTopExp (TopExp (TopSig n ctx t) e) = do
     return [sig, val]
     
 hsDec :: Dec -> Failable [H.Dec]
-hsDec (ValD e) = hsTopExp e
+hsDec (ValD e) = hsTopExp [] e
 
 hsDec (DataD n _ _) | n `elem` [
   name "Bool",
@@ -241,12 +241,12 @@ hsDec (DataD n tyvars constrs) = do
     casesD <- mapM (mkCaseD n tyvars) constrs
     return $ concat ([dataD, smtenTD, symbD] : casesD)
 
-hsDec (ClassD ctx n vars sigs@(TopSig _ _ t:_)) = do
+hsDec (ClassD ctx n vars exps@(TopExp (TopSig _ _ t) _:_)) = do
     let vts = map tyVarName vars
         (nctx, _) = mkContext (flip elem vts) t
     ctx' <- mapM hsClass ctx
-    sigs' <- mapM (hsSig vts) sigs
-    return $ [H.ClassD (nctx ++ ctx') (hsName n) (map (H.PlainTV . hsName) vts) [] sigs']
+    exps' <- mapM (hsTopExp vts) exps
+    return $ [H.ClassD (nctx ++ ctx') (hsName n) (map (H.PlainTV . hsName) vts) [] (concat exps')]
 
 hsDec (InstD ctx (Class n ts) ms) = do
     let (nctx, _) = mkContext (const True) (appsT (conT n) ts)

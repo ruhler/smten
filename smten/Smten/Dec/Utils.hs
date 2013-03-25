@@ -40,6 +40,9 @@ instance AssignK Dec where
 instance VarTs Class where
     varTs (Class nm ts) = nub (concatMap varTs ts)
 
+instance VarTs TyVar where
+    varTs (TyVar n k) = [(n, k)]
+
 instance VarTs TopSig where
     varTs (TopSig _ _ t) = varTs t
 

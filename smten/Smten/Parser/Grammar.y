@@ -199,15 +199,15 @@ decl :: { PDec }
  | funlhs rhs
     { PClause (fst $1) (MAlt (snd $1) $2) }
 
-cdecls :: { [TopSig] }
+cdecls :: { [TopExp] }
  : cdecl
     { [$1] }
  | cdecls ';' cdecl
     { $1 ++ [$3] }
 
-cdecl :: { TopSig }
+cdecl :: { TopExp }
  : gendecl
-    { $1 }
+    { nodefault $1 }
 
 ldecls :: { [LDec] }
  : ldecl

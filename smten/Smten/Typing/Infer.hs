@@ -81,16 +81,21 @@ inferdec env (ValD (TopExp ts@(TopSig n ctx t) e)) = do
     e' <- inferexp env t e
     return $ ValD (TopExp ts e')
 inferdec env d@(DataD {}) = return d
-inferdec env d@(ClassD {}) = return d
-inferdec env (InstD ctx cls ms) =
+inferdec env d@(ClassD ctx n vars ms) = do
+  let infermethod :: TopExp -> Failable TopExp
+      infermethod (TopExp ts@(TopSig _ _ t) e) = do
+        e' <- inferexp env t e
+        return (TopExp ts e')
+  ms' <- mapM infermethod ms
+  return (ClassD ctx n vars ms')
+inferdec env (InstD ctx cls ms) = do
   let infermethod :: Method -> Failable Method
       infermethod (Method n e) = do
          t <- lookupMethodType env n cls
          e' <- inferexp env t e
          return (Method n e')
-  in do
-    ms' <- mapM infermethod ms
-    return (InstD ctx cls ms')
+  ms' <- mapM infermethod ms
+  return (InstD ctx cls ms')
 inferdec _ d@(PrimD {}) = return d
 
 inferexp :: Env -> Type -> Exp -> Failable Exp

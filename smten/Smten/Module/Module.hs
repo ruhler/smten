@@ -287,7 +287,7 @@ resolve n =
       hasName n (DataD nm _ _) = (n == nm)
       hasName n (ClassD _ nm _ sigs) =
         let hasns [] = False
-            hasns ((TopSig snm _ _):_) | n == snm = True
+            hasns ((TopExp (TopSig snm _ _) _):_) | n == snm = True
             hasns (_:ss) = hasns ss
         in (n == nm) || hasns sigs
       hasName n (InstD {}) = False

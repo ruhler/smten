@@ -93,6 +93,7 @@ library
     Smten.Dec.Env
     Smten.Dec.Dec
     Smten.Dec.Ppr
+    Smten.Dec.Sugar
     Smten.Dec.Utils
 
     Smten.Typing

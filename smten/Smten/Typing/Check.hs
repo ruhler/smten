@@ -183,7 +183,19 @@ instance TypeCheck Dec where
       onfail (\s -> throw $ s ++ "\n in declaration " ++ pretty d) $
          local (\tcs -> tcs { tcs_tyvars = vs }) (mapM_ typecheckM cs)
 
-    typecheckM (ClassD {}) = return ()
+    typecheckM d@(ClassD ctx nm vars ms) = 
+      let checkmeth m@(TopExp (TopSig n c texpected) b) =
+            onfail (\s -> throw $ s ++ "\n in method " ++ pretty n) $ do
+              env <- asks tcs_env
+              local (addVarTs texpected) $ typecheckM b
+              if typeof b /= texpected
+                  then throw $ "expected type " ++ pretty texpected
+                          ++ " but found type " ++ pretty (typeof b)
+                          ++ " in Method " ++ pretty m
+                  else return ()
+              instcheck env (c ++ ctx) b
+      in onfail (\s -> throw $ s ++ "\n in declaration " ++ pretty d) $ do
+           local (addVarTs vars) $ mapM_ checkmeth ms
 
     typecheckM d@(InstD ctx cls@(Class nm ts) ms) =
       let checkmeth m@(Method n b) =
@@ -199,15 +211,10 @@ instance TypeCheck Dec where
               -- TODO: use the context from the signature
               instcheck env ctx b
     
-          methdefined :: [Method] -> TopSig -> Bool 
-          methdefined ms (TopSig n _ _) = n `elem` [mn | Method mn _ <- ms]
       in onfail (\s -> throw $ s ++ "\n in declaration " ++ pretty d) $ do
            local (addVarTs ts) $ mapM_ checkmeth ms
            env <- asks tcs_env
-           ClassD clsctx _ pts cms <- lookupClassD env nm 
-           case filter (not . methdefined ms) cms of
-              [] -> return ()
-              xs -> throw $ "methods not defined: " ++ show [pretty n | TopSig n _ _ <- xs]
+           ClassD clsctx _ pts _ <- lookupClassD env nm 
            let assigns = concat [assignments (tyVarType p) c | (p, c) <- zip pts ts]
            mapM_ (satisfied env ctx) (assign assigns clsctx)
     typecheckM d@(PrimD ts) =

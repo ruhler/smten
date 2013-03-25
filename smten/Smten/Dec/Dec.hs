@@ -73,7 +73,7 @@ data TyVar = TyVar Name Kind
 
 data Dec = ValD TopExp                  -- ^ nm :: ctx => ty ; nm = exp
          | DataD Name [TyVar] [Con]     -- ^ data nm vars = cons
-         | ClassD Context Name [TyVar] [TopSig] -- ^ class nm vars where { sigs }
+         | ClassD Context Name [TyVar] [TopExp] -- ^ class nm vars where { decs }
          | InstD Context Class [Method] -- ^ instance ctx => cls where { meths }
          | PrimD TopSig                 -- ^ nm :: ctx => ty ;
      deriving (Eq, Show)
