@@ -8,8 +8,6 @@ Recent::
 * Don't pretty print numeric type 16 in haskellf as
     2*2*2*2*(1+0) ??
     depends if you want detailed type info or not.
-* Finish cleaning up type check
-* varTs should return a list of TyVar, not (Name, Kind)
 * Bug: foo :: Integer
        fop = 3
     Is accepted, and 'fop' is treated like 'foo'.
@@ -32,9 +30,6 @@ Documentation::
 
 Type System::
 * Verify we handle case where default method given without sig in ClassD.
-* give a nice message if there's a type ambiguity?
-    That is, anything with ~?
-* Reimplement TypeCheck to make use of constraint generation from TypeInfer?
 * Implement enough math somewhere to know that
   Bit #3  -> Bit #4 -> Bit #7 is a valid subtype of
   Bit #m  -> Bit #n -> Bit #(m+n)
@@ -72,9 +67,6 @@ Pretty Printer::
 * Make it so I can compile pretty printed code?
 * Maybe dump the Doc approach and take my SMT concrete approach?
 
-Performance::
-* Play with GHC Sparks and non-strict state monads
-
 Sharing::
 * Don't share trivially things.
     Maybe need a thunk' function to create unshared thunks?
@@ -84,8 +76,7 @@ Primitives::
 * Concretize the rest of the haskellf primitives
 
 Cleanup::
-* typecheck - instcheck should be inlined in VarE,
-            - context should be passed through monad
+* varTs should return a list of TyVar, not (Name, Kind)
 * typeinfer - use structure like typecheck (if reasonable)
 * haskellf.Compile - use monadic structure like typecheck, infer (if
   reasonable)
