@@ -1,0 +1,391 @@
+
+Sat Mar 23 08:10:40 EDT 2013
+
+Okay, so after much thought, I realize my plan to make things ExpH_ -> ExpH_
+is not going to solve anything.
+
+Let me try to give the insight.
+
+Imagine we have a case expression:
+    case Just x of
+        Just v -> v
+        _ -> 3
+
+
+The final result of this expression should be 'x'. But we don't know that
+until we evaluate it. At the same time, we can share and do things to this
+expression before we have evaluated it (think strict_application, for
+example).
+
+So the question is, what ID do we assign to this expression? The ID of 'x'? We
+can't, because we don't know it's going to be 'x' until we evaluate it. The ID
+of the 'case'? But then, once we evaluate it, we loose track of the fact that
+it is 'x'.
+
+So we need a different structure. Thinking about how an actual implementation
+of this would work, I propose the following structure:
+
+data ExpH_ = LitEH Lit
+           | ConEH EID Name Type [ExpH]
+           | VarEH Sig
+           | PrimEH EID Name Type ([ExpH] -> ExpH) [ExpH]
+           | LamEH EID Sig Type (ExpH -> ExpH)
+           | IfEH EID Type ExpH ExpH ExpH
+           | ThunkEH EID ExpH_
+
+type ExpH = IORef ExpH
+            
+
+The idea is, when we force an expression, if it's a thunk, we replace the
+ExpH_ part of it with the forced value of whatever is on the thunk. At that
+time, the EID of the expression will change from the Thunk id to the final id
+of the expression.
+
+Now, for example, when we do caseEH, we put the result in a thunk always, even
+if it already returns a thunk. In that case, we just have a thunk of a thunk
+of a thunk ... a stack of thunks to evaluate when we force things.
+
+Yes. I think that makes sense, and is what I want. I'm slightly concerned
+about what it means for an expression to change EID during a traversal, but
+let me not be overly concerned about that until it causes a real problem.
+
+So, we want two things:
+    thunk :: ExpH -> ExpH
+    force :: ExpH -> ExpH_
+
+I don't even need a flag to ask if something is forced now.
+
+Err, so maybe I want another thing:
+
+    unforce :: ExpH -> ExpH_
+
+Reads the expression without forcing any thunks. Needed for pruning, and that
+sort of thing. Or I could stick with just 'forced' as a boolean predicate.
+
+Here's a question. Should every expression have an EID? Even simple ones?
+
+I don't see why not. I can have a separate 'issimple' predicate to ask if it
+is simple. That makes more sense to me.
+
+Then perhaps I ought to split things up a little bit, to reflect this.
+
+data ExpH_Value =
+             LitEH Lit
+           | ConEH Name Type [ExpH]
+           | VarEH Sig
+           | PrimEH Name Type ([ExpH] -> ExpH) [ExpH]
+           | LamEH Sig Type (ExpH -> ExpH)
+           | IfEH Type ExpH ExpH ExpH
+           | ThunkEH ExpH_
+
+data ExpH_Cell = ExpH_Cell EID ExpH_Value
+
+newtype ExpH = ExpH (IORef ExpH_Cell)
+
+You pass around ExpH always.
+You can ask for eid.
+You can ask for value.
+You can say 'force'.
+
+That just makes it easier to get the eid of everything and focus the value on
+the value.
+
+Another thing we may want to do is keep the Type with the cell:
+
+data ExpH_Value =
+             LitEH Lit
+           | ConEH Name [ExpH]
+           | VarEH Name
+           | PrimEH Name ([ExpH] -> ExpH) [ExpH]
+           | LamEH (ExpH -> ExpH)
+           | IfEH ExpH ExpH ExpH
+           | ThunkEH ExpH_Cell
+
+data ExpH_Cell = ExpH_Cell EID Type ExpH_Value
+
+newtype ExpH = ExpH (IORef ExpH_Cell)
+
+That focuses more on what we actually care about for each thing.
+I think that would be reasonable to do eventually. I'm not sure I want to
+jump straight to it all at once.
+
+Okay? Sound good? Shall I try it?
+
+Sure. First plan: as simply as possible switch to the new structure, get
+things running.
+
+Here I go. Wish me luck.
+
+Sat Mar 23 08:56:40 EDT 2013
+
+Okay, I think I got the ExpH definition and helper functions. Shall I try
+going on to the rest?
+
+Sat Mar 23 09:03:07 EDT 2013
+
+Okay! So I think I got that working. But I still need to better understand
+when I should be introducing a new thunk.
+
+Sat Mar 23 09:04:20 EDT 2013
+
+Why did I need to introduce a thunkEH for caseEH? And where else do I need to
+introduce a thunkEH?
+
+The goal is to avoid having: caseEH _|_ -> _|_, and instead have:
+caseEH _|_ -> thunkEH _|_.
+
+So, anything which forces an argument should wrap the result in a thunk. Easy.
+
+That would include:
+
+case, primitives, application.
+
+And that's it. So let me fix those.
+
+case - check
+app - check
+
+Do I need to add thunks in other places? Gosh, it's so confusing.
+ 
+Okay, let me figure out all the bugs I'm seeing and understand and fix them.
+
+First issue: 'boom!'.
+
+What does this happen now, when it didn't happen before?
+
+Sat Mar 23 09:26:13 EDT 2013
+
+I don't understand. I don't understand when I should be adding thunks.
+
+Anyway, I need to start digging to figure out the current problem.
+
+Bugger. I'm not terribly in the mood for this right now. Maybe I'll take a
+break and come back to it.
+
+Sat Mar 23 14:18:30 EDT 2013
+
+Goal: figure out why the error test case fails.
+
+It shouldn't be too hard to figure out.
+
+
+    a <- query $ do
+            p <- free
+            assert (p && not p)
+            assert (error "boom!")
+            return p
+    test "error.error" (a == Nothing)
+
+Here's what I expect:
+
+* declare p as free boolean
+* assert:           if p then (if p then False else True) else False
+    check context
+    push; assert p; pop         - fine
+    push; assert not p; pop     - fine
+    assert (p & not p)          - unsat
+* asset: error "boom!"
+    check context: unsat. So ignore.
+
+What I'm seeing:
+    
+So, 'prune' is what messes things up. Interesting...
+
+It seems like what we had before: a missing thunk.
+
+What do I expect?
+
+assert is a primitive. We get the argument. It should be: ThunkEH.
+Is it not? Or, do we force it accidentally?
+
+Well, it's either the call to ispruned, or the call to forced.
+Let's check them.
+
+Aha! ispruned. Let me set to false, see if that's it.
+
+That was certainly some thing. But not the only thing, because apparently the
+argument has been forced?
+
+Perhaps. Perhaps because of implication?
+
+Oh. Hmm... I wonder... No. That doesn't make sense.
+
+So, forced returns True, but as soon as I force, we blow up. Why is that?
+
+Because I flipped the logic. Forced means not forced.
+
+Yup. That was it.
+
+Okay! Good news. The error tests all pass now.
+
+Datatype test seems to take a while...
+
+In fact, it no longer works.
+
+Let me do some profiling to figure out what's up with it.
+
+
+Well, not a lot of memory use. So looks like we have a chain of thunks.
+
+But I already suspect I'm doing much more work than I have to. So maybe we
+should just cut down the amount of work, continue making progress?
+
+What if I up the stack?
+
+If I up the stack, then it finishes! Cool. So I just need to work on making it
+take less time.
+
+I might note: the profile for datatype is very interesting. Two spikes. I
+wonder what those are.
+
+Anyway, it's clear we are now spending all our time in making assertions and
+queries, we really have to not make so many assertions and queries.
+
+In fact, 6.5 Mb worth of queries for this simple test!
+
+Sounds like exponential explosion to me...
+
+Looking at the query, you know what I bet would help here? Evaluating the
+assertion under whatever current assignment we have to pre-force things
+without the SMT solver. Also, preservation of sharing. I should move on to the
+next phase.
+
+I should try the assignment thing first. That should be easy to do, and will
+hopefully make a decent difference in this case. I think it will immediately
+force the one path we will always take, so that is marked as ispruned and we
+don't spend all this time checking that path with SMT queries.
+
+And, good news is, I think all that is easily done inside the 'prune'
+function.
+
+Sounds good to me. I'm going to take a break, take a walk, think about things,
+then come back to this.
+
+Sat Mar 23 15:20:41 EDT 2013
+
+Okay, so I think evaluating the assertion will 'preforce' things very
+effectively, and that will make a big difference. But I don't think it makes a
+HUGE difference. Just little constant time stuff as opposed to exponential
+time. I'm worried doing this optimization now will help the exponential
+sharing issues to hide, and those are really the important ones.
+
+So I'm going to write down this point on my todo list, but I'm not going to do
+it yet.
+
+So, how about sharing?
+
+What do I need to do next? I'm adding to my todo list.
+
+The big things are...
+
+Prune should reorganize expressions to separate pruned from unpruned to
+maximize sharing of already pruned expressions. And preserve sharing in this
+process.
+
+Okay. So I wrote down all the big things. Now I just need to implement.
+
+I would like to be guided by some test cases. Because I believe sharing will
+make the biggest difference (exponential), I feel like I should focus on that.
+The rest can be constant side things.
+
+What's the best way to focus on sharing? How about my sharing test?
+
+Note that pruning is a global property of an expression. Any pruning you do
+can be reused anywhere anytime. Also note that a pruned expression never
+points to things not already pointed to by the original expression. That
+suggests to me that it may make sense to associate pruning with the ExpH
+itself. That may be the best way to share for pruning?
+
+I'm not sure. Somehow you have to keep track of the current context, right?
+
+Anyway, let me take a look at the share test, and see if we have anything to
+work with.
+
+Well, first thing we notice: we certainly aren't preserving sharing in smt
+queries. Let's start with the simple case. And let me try to make it simpler
+if I can.
+
+Okay, simplified the test case. By convention, let me just have
+(x + x + x + x + x) be my complicated expression to be shared.
+
+Observations:
+ * we don't preserve sharing
+ * we do try to share simple variables.
+
+Let me not share simple variables. That should be easy enough to fix in
+'sharing'.
+
+Fine. Now, next step is...
+
+What's wrong with the current thing? Why do we loose sharing?
+
+This could be difficult to figure out I fear. But it's worth a try.
+
+r <- query $ do
+    x <- free
+    assert ((\a -> a + a == (10 :: Integer)) (x + x + x + x + x))
+    return x 
+
+So, I have to 
+  assert (S1:(x+x+x+x+x) + S1:(x+x+x+x+x) == 10)
+
+This is the expression I have. So what do I do?
+
+I say: okay, I need to prune this. Is it pruned? The answer will be no. So how
+do I prune?
+
+Let me simplify it slightly.
+ assert S0:(S1:(x+x) + S1:(x+x) == 10)
+
+S0 = PrimEH [S1_plus_S1, 10]
+S1_plus_S1 = PrimEH [S1, S1]
+S1 = PrimEH [x, x]
+
+How does S0 get pruned?
+
+ispruned S0? No..
+forced S0? No...
+
+sat. Says yes. So, prune_forceable S0.
+
+PrimEH, 
+  call 'impl' mapped to children.
+
+S0' = impl [S1_plus_S1', 10]
+S1_plus_S1' = impl [S1'a, S1'b]
+S1'a = impl [x, x]
+S1'b = impl [x, x]
+
+So you see, we called 'prune' on S1 two different times, each time calls
+'impl', thus creating new, separate ids for each, and sharing is destroyed.
+
+The answer, I think, is clear. Whenever we have pruned an expression, and we
+go to prune it again, we need to share the previous result.
+
+Note, the previous result may have depended on the previous context. That's
+why what I need to share is a version of e which is equivalent to 'e', but has
+all its pruned stuff together. Try the unsat things in this context, but save
+the rest.
+
+I already worked out how to do this conceptually. After pruning, we save the
+pruned result, and what we pruned away in this context.
+
+So, a prune result should be augmented. Instead of Maybe ExpH, it should be a
+pair: (Maybe (ExpH, ExpH), Maybe ExpH)
+
+There are two parts to this transformation.
+
+1. Return the pair. And I may as well give it a better structure. Call it
+PruneResult and label the fields.
+
+2. Somehow I have to share this. At least within a call to prune.
+Preferably across calls to prune.
+
+The first step will be good to do, to make sure I know how to do it
+technically. The second step is vital to actually preserving sharing.
+
+Really, for performance, associating this info with each ExpH_Cell makes sense
+to me. I just don't know how to implement it cleanly.
+
+I'll have to think about that.
+

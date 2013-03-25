@@ -39,7 +39,7 @@ coalesce ((PSig s):ds) =
         (syns, dds, drv, rest) = coalesce rds
         d = case ms of
                 [] -> PrimD s
-                _ -> ValD s (clauseE [c | PClause _ c <- ms]) 
+                _ -> ValD (TopExp s (clauseE [c | PClause _ c <- ms]))
     in (syns, dds, drv, d:rest)
 coalesce ((PDec d):ds) =
    let (syns, dds, drv, rest) = coalesce ds

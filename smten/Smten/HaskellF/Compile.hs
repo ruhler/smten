@@ -206,15 +206,17 @@ hsSig clsvars (TopSig n ctx t) = do
     t' <- hsTopType clsvars ctx t
     return $ H.SigD (hsName n) t'
 
-    
-hsDec :: Dec -> Failable [H.Dec]
-hsDec (ValD (TopSig n ctx t) e) = do
+hsTopExp :: TopExp -> Failable [H.Dec]
+hsTopExp (TopExp (TopSig n ctx t) e) = do
     t' <- hsTopType [] ctx t
     e' <- hsExp e
     let hsn = hsName n
     let sig = H.SigD hsn t'
     let val = H.FunD hsn [H.Clause [] (H.NormalB e') []]
     return [sig, val]
+    
+hsDec :: Dec -> Failable [H.Dec]
+hsDec (ValD e) = hsTopExp e
 
 hsDec (DataD n _ _) | n `elem` [
   name "Bool",

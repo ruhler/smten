@@ -160,11 +160,9 @@ instance TypeCheck Exp where
          else throw $ "expected type " ++ pretty yt ++
                  " but got type " ++ pretty (typeof y) ++
                  " in expression " ++ pretty y
-        
 
-instance TypeCheck Dec where
-    typecheckM d@(ValD ts@(TopSig n c t) e) =
-      onfail (\s -> throw $ s ++ "\n in declaration " ++ pretty d) $ do
+instance TypeCheck TopExp where
+    typecheckM (TopExp ts@(TopSig n c t) e) = do
         typecheckM ts
         local (addVarTs ts) $ typecheckM e
         if (typeof e /= t)
@@ -174,6 +172,12 @@ instance TypeCheck Dec where
           else return ()
         env <- asks tcs_env
         instcheck env c e
+        
+
+instance TypeCheck Dec where
+    typecheckM d@(ValD e) = 
+      onfail (\s -> throw $ s ++ "\n in declaration " ++ pretty d) $ do
+        typecheckM e
 
     typecheckM d@(DataD n vs cs) =
       onfail (\s -> throw $ s ++ "\n in declaration " ++ pretty d) $

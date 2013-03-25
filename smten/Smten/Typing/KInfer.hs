@@ -91,11 +91,14 @@ instance Deunknown Kind where
             return $ ArrowK a' b'
       | otherwise = return k
 
+instance Deunknown TopExp where
+    deunknown (TopExp t e) = do
+        t' <- deunknown t
+        return (TopExp t' e)
+
 instance Deunknown Dec where
     deunknown d
-      | ValD t e <- d = do
-            t' <- deunknown t
-            return $ ValD t' e
+      | ValD e <- d = ValD <$> deunknown e
       | DataD n vs cs <- d = do
             vs' <- deunknown vs
             cs' <- deunknown cs
@@ -192,9 +195,12 @@ instance Constrain Class where
 instance Constrain Type where
     constrain t = constrainT t >> return ()
 
+instance Constrain TopExp where
+    constrain (TopExp t _) = constrain t
+
 instance Constrain Dec where
     constrain d
-      | ValD t _ <- d = constrain t
+      | ValD e <- d = constrain e
       | DataD _ vs cs <- d = do
           withtcs (Map.fromList [(n, k) | TyVar n k <- vs]) (constrain cs)
       | ClassD ctx _ vs ts <- d = do

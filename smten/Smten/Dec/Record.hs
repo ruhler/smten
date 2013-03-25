@@ -47,7 +47,7 @@ recordD nm vars cons derivings =
         let undefnm = (record_undefnm n)
             undefet = arrowsT $ ts ++ [dt]
             undefe = appsE (ConE (Sig n undefet)) [VarE (Sig (name "undefined") t) | t <- ts]
-        in ValD (TopSig undefnm [] dt) undefe
+        in ValD (TopExp (TopSig undefnm [] dt) undefe)
 
       -- TODO: handle correctly the case where two different constructors
       -- share the same accessor name.
@@ -61,7 +61,7 @@ recordD nm vars cons derivings =
                          ++ [VarP (name "x")]
                          ++ [WildP | _ <- drop (i+1) ts])
                   body = mlamE [pat] (varE (Sig (name "x") t))
-              in ValD (TopSig n [] at) body
+              in ValD (TopExp (TopSig n [] at) body)
         in map mkacc (zip ts [0..])
 
       mkupds :: ConRec -> [Dec]
@@ -77,7 +77,7 @@ recordD nm vars cons derivings =
                             ++ [VarP nm | (nm, _) <- drop (i+1) ts])
                   myexp = appsE (ConE (Sig cn ct)) [VarE (Sig n t) | (n, t) <- ts]
                   body = mlamE [VarP n, mypat] myexp
-              in ValD (TopSig (record_updnm n) [] ut) body
+              in ValD (TopExp (TopSig (record_updnm n) [] ut) body)
         in map mkupd (zip ts [0..])
                             
       cons' = map mkcon cons

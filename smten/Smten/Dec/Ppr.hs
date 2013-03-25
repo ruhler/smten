@@ -16,10 +16,13 @@ conlist (x:xs) = text " " <+> ppr x
 instance Ppr TyVar where
     ppr v = ppr (tyVarName v)
 
-instance Ppr Dec where
-    ppr (ValD s@(TopSig n _ _) e)
+instance Ppr TopExp where
+    ppr (TopExp s@(TopSig n _ _) e)
         = ppr s <> semi $$
           fsep [ppr n <+> text "=", nest tabwidth $ ppr e]
+
+instance Ppr Dec where
+    ppr (ValD e) = ppr e
     ppr (DataD n vs cs)
         = text "data" <+> ppr n <+> hsep (map ppr vs) <+> text "=" $$
             (nest tabwidth (conlist cs))

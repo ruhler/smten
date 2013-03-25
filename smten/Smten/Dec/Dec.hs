@@ -36,7 +36,7 @@
 -- | Smten declarations.
 module Smten.Dec.Dec (
     TyVar(..), tyVarType, tyVarName,
-    TopSig(..), Class(..), Context,
+    TopSig(..), TopExp(..), Class(..), Context,
     Con(..), Method(..), Dec(..),
     ) where
 
@@ -48,7 +48,11 @@ import Smten.Exp
 
 -- | 'TopSig' is a signature with a context.
 data TopSig = TopSig Name Context Type
-    deriving(Eq, Show)
+    deriving (Eq, Show)
+
+-- | 'TopExp' is an expression with a top level signature.
+data TopExp = TopExp TopSig Exp
+    deriving (Eq, Show)
 
 type Context = [Class]
 
@@ -67,7 +71,7 @@ data Method = Method Name Exp
 data TyVar = TyVar Name Kind
        deriving (Eq, Ord, Show)
 
-data Dec = ValD TopSig Exp              -- ^ nm :: ctx => ty ; nm = exp
+data Dec = ValD TopExp                  -- ^ nm :: ctx => ty ; nm = exp
          | DataD Name [TyVar] [Con]     -- ^ data nm vars = cons
          | ClassD Context Name [TyVar] [TopSig] -- ^ class nm vars where { sigs }
          | InstD Context Class [Method] -- ^ instance ctx => cls where { meths }

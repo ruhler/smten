@@ -1,0 +1,28 @@
+
+Sun Mar 24 09:41:34 EDT 2013
+
+So, here's what I propose for sharing pruning information.
+
+Have a generic ExpH sharing thing.
+
+share :: ExpH -> Unique -> a -> a
+shared :: ExpH -> Unique -> Maybe a
+
+But names conflict with existing ones, so...
+
+inserted :: ExpH -> Unique -> a -> a
+lookup
+
+Those names conflict too.
+
+But, anyway, whatever the names, the idea is you have a way to write and read
+entries associated with each ExpH based on a Unique identifier.
+
+So, for example, Prune will have an identifier. It can lookup in an expression
+to see if pruning has been done before.
+
+The implementation: Each ExpH_Cell should have an (IORef (Map Unique Dynamic))
+associated with it which can be read and written.
+
+Cool. Let me come back and try this when I have the chance.
+

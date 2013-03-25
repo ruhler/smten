@@ -26,9 +26,12 @@ instance AssignK Con where
 instance AssignK a => AssignK [a] where
     assignkl f = map (assignkl f)
 
+instance AssignK TopExp where
+    assignkl f (TopExp t e) = TopExp (assignkl f t) e
+
 instance AssignK Dec where
     assignkl f d
-      | ValD t e <- d = ValD (assignkl f t) e
+      | ValD e <- d = ValD (assignkl f e)
       | DataD n vs cs <- d = DataD n (assignkl f vs) (assignkl f cs)
       | ClassD ctx n vs ts <- d = ClassD (assignkl f ctx) n (assignkl f vs) (assignkl f ts)
       | InstD ctx cls ms <- d = InstD (assignkl f ctx) (assignkl f cls) ms

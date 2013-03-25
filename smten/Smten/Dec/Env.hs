@@ -120,7 +120,7 @@ vitable decs =
       methods = Map.unionsWith (++) (map mkinst insts)
 
       videc :: Dec -> [(Name, ValInfo)]
-      videc d@(ValD (TopSig n _ _) _) = [(n, DecVI d)]
+      videc d@(ValD (TopExp (TopSig n _ _) _)) = [(n, DecVI d)]
       videc d@(PrimD (TopSig n _ _)) = [(n, DecVI d)]
       videc (ClassD _ cn ts sigs) =  
         let isig :: TopSig -> (Name, ValInfo)
@@ -223,7 +223,7 @@ lookupInstD env (Class n t) =
 lookupVar :: Env -> Sig -> Failable (Type, Exp)
 lookupVar env s@(Sig n t) =
   case HT.lookup n (e_vitable env) of
-     Just (DecVI (ValD (TopSig _ _ t) v)) -> return (t, v)
+     Just (DecVI (ValD (TopExp (TopSig _ _ t) v))) -> return (t, v)
      Just (DecVI (PrimD {})) -> throw $ "lookupVar: " ++ pretty n ++ " is primitive"
      Just (ClassVI cn cts _ st meths) ->
         let ts = assign (assignments st t) (map tyVarType cts)
@@ -254,7 +254,7 @@ lookupVarValue e s = snd <$> lookupVar e s
 lookupVarType :: (MonadError String m) => Env -> Name -> m Type
 lookupVarType env n = do
   case HT.lookup n (e_vitable env) of
-    Just (DecVI (ValD (TopSig _ _ t) _)) -> return t
+    Just (DecVI (ValD (TopExp (TopSig _ _ t) _))) -> return t
     Just (DecVI (PrimD (TopSig _ _ t))) -> return t
     Just (ClassVI _ _ _ t _) -> return t
     Nothing -> throw $ "lookupVarType: '" ++ pretty n ++ "' not found"
@@ -293,7 +293,7 @@ lookupVarInfo env (Sig n t) =
 lookupVarContext :: (MonadError String m) => Env -> Sig -> m Context
 lookupVarContext env (Sig n t) = 
   case HT.lookup n (e_vitable env) of
-     Just (DecVI (ValD (TopSig _ ctx st) _)) ->
+     Just (DecVI (ValD (TopExp (TopSig _ ctx st) _))) ->
         return $ assign (assignments st t) ctx
      Just (DecVI (PrimD (TopSig _ ctx st))) ->
         return $ assign (assignments st t) ctx
