@@ -119,7 +119,6 @@ Bugs::
 * BadKind, DupInst, DupVar maltype tests
 * Error tests
 * where shadow test (in Concrete)
-* tambig test (in State)
 * STP bug (in Nest)
 * STP bug (in Bit)
 * Report an error for an unknown primitive encountered in SMT Translation

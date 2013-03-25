@@ -9,10 +9,10 @@ import Smten.Tests.Test
 fambig :: (Eq t) => (t, t) -> Bool
 fambig (a, b) = a == b
 
---tambig :: (Eq t) => State (t, t) Bool
---tambig = do
---    x <- get                        -- ambiguous type for 'get'
---    return (fambig (x :: (t, t)))   -- use scoped type variables to fix.
+tambig :: (Eq t) => State (t, t) Bool
+tambig = do
+    x <- get                        -- ambiguous type for 'get'
+    return (fambig (x :: (t, t)))   -- use scoped type variables to fix.
 
 funambig :: (t, t) -> State (t, t) ()
 funambig _ = return ()

@@ -125,7 +125,6 @@ hsExp e
 
 hsExp (LitE l) = return (hsLit l)
 hsExp (ConE (Sig n _)) = return $ H.ConE (hsName n)
-hsExp (VarE (Sig n t)) | unknowntype t = return $ H.VarE (hsName n)
 hsExp (VarE (Sig n t)) = do
     -- Give explicit type signature to make sure there are no type ambiguities
     ht <- hsType t
@@ -192,11 +191,11 @@ hsClass (Class nm ts) = do
     ts' <- mapM hsType ts
     return $ H.ClassP (hsName nm) ts'
     
-hsMethod :: Method -> Failable H.Dec
-hsMethod (Method n e) = do
-    let hsn = hsName n
-    e' <- hsExp e
-    return $ H.ValD (H.VarP hsn) (H.NormalB e') []
+hsMethod :: Env -> [Name] -> Class -> Method -> Failable [H.Dec]
+hsMethod env ign cls (Method n e) = do
+    mt <- lookupMethodType env n cls
+    mctx <- lookupMethodContext env n cls
+    hsTopExp ign (TopExp (TopSig n mctx mt) e)
 
 
 hsSig :: [Name]     -- ^ List of varTs to ignore, because they belong to the class.
@@ -215,10 +214,10 @@ hsTopExp ign (TopExp (TopSig n ctx t) e) = do
     let val = H.FunD hsn [H.Clause [] (H.NormalB e') []]
     return [sig, val]
     
-hsDec :: Dec -> Failable [H.Dec]
-hsDec (ValD e) = hsTopExp [] e
+hsDec :: Env -> Dec -> Failable [H.Dec]
+hsDec _ (ValD e) = hsTopExp [] e
 
-hsDec (DataD n _ _) | n `elem` [
+hsDec _ (DataD n _ _) | n `elem` [
   name "Bool",
   name "Char",
   name "Integer",
@@ -234,30 +233,30 @@ hsDec (DataD n _ _) | n `elem` [
   name "Used",
   name "IO"] = return []
 
-hsDec (DataD n tyvars constrs) = do
+hsDec _ (DataD n tyvars constrs) = do
     dataD <- mkDataD n tyvars constrs
     smtenTD <- mkSmtenTD n tyvars
     symbD <- mkSymbD n tyvars constrs
     casesD <- mapM (mkCaseD n tyvars) constrs
     return $ concat ([dataD, smtenTD, symbD] : casesD)
 
-hsDec (ClassD ctx n vars exps@(TopExp (TopSig _ _ t) _:_)) = do
+hsDec _ (ClassD ctx n vars exps@(TopExp (TopSig _ _ t) _:_)) = do
     let vts = map tyVarName vars
         (nctx, _) = mkContext (flip elem vts) t
     ctx' <- mapM hsClass ctx
     exps' <- mapM (hsTopExp vts) exps
     return $ [H.ClassD (nctx ++ ctx') (hsName n) (map (H.PlainTV . hsName) vts) [] (concat exps')]
 
-hsDec (InstD ctx (Class n ts) ms) = do
-    let (nctx, _) = mkContext (const True) (appsT (conT n) ts)
+hsDec env (InstD ctx cls@(Class n ts) ms) = do
+    let (nctx, ign) = mkContext (const True) (appsT (conT n) ts)
     ctx' <- mapM hsClass ctx
-    ms' <- mapM hsMethod ms
+    ms' <- mapM (hsMethod env ign cls) ms
     ts' <- mapM hsType ts
     let t = foldl H.AppT (H.ConT (hsName n)) ts'
-    return [H.InstanceD (nctx ++ ctx') t ms'] 
+    return [H.InstanceD (nctx ++ ctx') t (concat ms')] 
 
-hsDec (PrimD s@(TopSig n _ _)) = return []
-hsDec d = throw $ "haskellf: supported dec: " ++ pretty d
+hsDec _ (PrimD s@(TopSig n _ _)) = return []
+hsDec _ d = throw $ "haskellf: supported dec: " ++ pretty d
 
 -- haskell decs
 --  Compile the given declarations to haskell.
@@ -272,6 +271,7 @@ haskellf wrapmain modname env =
                  H.text "{-# LANGUAGE FlexibleContexts #-}" H.$+$
                  H.text "{-# LANGUAGE UndecidableInstances #-}" H.$+$
                  H.text "{-# LANGUAGE ScopedTypeVariables #-}" H.$+$
+                 H.text "{-# LANGUAGE InstanceSigs #-}" H.$+$
                  H.text ("module " ++ modname ++ " where") H.$+$
                  H.text "import qualified Prelude" H.$+$
                  H.text "import qualified Smten.HaskellF.HaskellF as S" H.$+$
@@ -285,16 +285,8 @@ haskellf wrapmain modname env =
                     then H.text "__main = __main_wrapper main"
                     else H.empty
 
-      ds = surely $ (concat <$> mapM hsDec env)
+      ds = surely $ (concat <$> mapM (hsDec (mkEnv env)) env)
   in hsHeader H.$+$ H.ppr ds
-
-unknowntype :: Type -> Bool
-unknowntype (ConT {}) = False
-unknowntype (AppT a b) = unknowntype a || unknowntype b
-unknowntype (VarT {}) = True
-unknowntype (OpT _ a b) = unknowntype a || unknowntype b
-unknowntype (NumT {}) = False
-unknowntype UnknownT = True
 
 harrowsT :: [H.Type] -> H.Type
 harrowsT = foldr1 (\a b -> H.AppT (H.AppT H.ArrowT a) b)
