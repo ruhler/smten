@@ -41,7 +41,7 @@ module Smten.Dec.Env (
     Env(), mkEnv, tweak,
     VarInfo(..),
     lookupVarType, lookupVarValue, lookupVar, lookupVarInfo, lookupVarContext,
-    lookupMethodType,
+    lookupMethodType, lookupMethodContext,
     lookupDataD, lookupDataConType,
     lookupInstD, lookupPrimD,
     lookupValD, lookupClassD,
@@ -267,6 +267,15 @@ lookupMethodType env n (Class _ ts) = do
         Just (ClassVI _ vars _ t _ _) ->
             return $ assign (zip (map tyVarName vars) ts) t
         _ -> throw $ "lookupMethodType: " ++ pretty n ++ " not found"
+
+-- | Given the name of a method and a specific class instance for the method,
+-- return the context of that method for the specific instance.
+lookupMethodContext :: (MonadError String m) => Env -> Name -> Class -> m Context
+lookupMethodContext env n (Class _ ts) = do
+    case HT.lookup n (e_vitable env) of
+        Just (ClassVI _ vars ctx _ _ _) ->
+            return $ assign (zip (map tyVarName vars) ts) ctx
+        _ -> throw $ "lookupMethodContext: " ++ pretty n ++ " not found"
 
 -- | Given the name of a data constructor in the environment, return its type.
 lookupDataConType :: (MonadError String m) => Env -> Name -> m Type

@@ -208,8 +208,8 @@ instance TypeCheck Dec where
                           ++ " but found type " ++ pretty (typeof b)
                           ++ " in Method " ++ pretty m
                   else return ()
-              -- TODO: use the context from the signature
-              instcheck env ctx b
+              mctx <- lookupMethodContext env n cls
+              instcheck env (mctx ++ ctx) b
     
       in onfail (\s -> throw $ s ++ "\n in declaration " ++ pretty d) $ do
            local (addVarTs ts) $ mapM_ checkmeth ms

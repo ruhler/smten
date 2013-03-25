@@ -125,6 +125,15 @@ instance MultiFoo Bool Integer where
 instance MultiFoo Integer Bool where
     multifoo _ _ = 4
 
+-- Verify the type checker looks at contexts of method signatures for
+-- verifying all contexts are satisfied
+class CheckCtx a where
+    checkctx :: (Monad m) => a -> m a
+
+instance CheckCtx Bool where
+    checkctx x = return x
+
+
 unused :: a -> Integer
 unused x = 42
 
