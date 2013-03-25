@@ -226,19 +226,19 @@ lookupVar env s@(Sig n t) =
   case HT.lookup n (e_vitable env) of
      Just (DecVI (ValD (TopExp (TopSig _ _ t) v))) -> return (t, v)
      Just (DecVI (PrimD {})) -> throw $ "lookupVar: " ++ pretty n ++ " is primitive"
-     Just (ClassVI cn cts _ st def meths) -> do
+     Just (ClassVI cn cts _ st def meths) -> return $ 
         let ts = assign (assignments st t) (map tyVarType cts)
 
             theMeth :: ([Type], Exp) -> Bool
             theMeth (x, _) = and [isSubType p c | (p, c) <- zip x ts]
 
-        (assigns, e) <- case filter theMeth meths of
-                        [] -> return (assignments st (typeof def), def)
-                        [x] -> return (concat [assignments p c | (p, c) <- zip (fst x) ts], snd x)
-                        xs -> -- multiple instances should not happen
-                              -- it means we have a bug in the type checker
-                              error $ "INTERNAL SMTEN ERROR: overlapping instances for: " ++ pretty s
-        return (st, assign assigns e)
+            (assigns, e) = case filter theMeth meths of
+                            [] -> (assignments st (typeof def), def)
+                            [x] -> (concat [assignments p c | (p, c) <- zip (fst x) ts], snd x)
+                            xs -> -- multiple instances should not happen
+                                  -- it means we have a bug in the type checker
+                                  error $ "INTERNAL SMTEN ERROR: overlapping instances for: " ++ pretty s
+        in (st, assign assigns e)
      _ -> throw $ "lookupVar: " ++ pretty n ++ " not found"
 
 -- | Look up the value of a variable in an environment.
