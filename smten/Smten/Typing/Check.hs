@@ -193,7 +193,7 @@ instance TypeCheck Dec where
                           ++ " but found type " ++ pretty (typeof b)
                           ++ " in Method " ++ pretty m
                   else return ()
-              instcheck env (c ++ ctx) b
+              instcheck env (Class nm (map tyVarType vars) : (c ++ ctx)) b
       in onfail (\s -> throw $ s ++ "\n in declaration " ++ pretty d) $ do
            local (addVarTs vars) $ mapM_ checkmeth ms
 

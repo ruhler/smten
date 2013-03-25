@@ -61,7 +61,6 @@ implemented yet in the Smten compiler. More specifically:
 * Let blocks are currently sequential, not recursive.
 * Module support is very limited.
 * Newtype declarations are not supported.
-* Default class method implementations are not supported.
 * Top level variable declarations must have explicit types.
 * Various other minor features of Haskell are not yet supported.
 * Most haskell libraries have not yet been ported to Smten.

@@ -30,8 +30,6 @@ import Smten.Parser.Grammar
 --
 -- - Empty class declarations.
 --
--- - Default class methods implementations.
---
 -- - Multiple vars for a single type signature.
 -- 
 -- - fixity declarations.

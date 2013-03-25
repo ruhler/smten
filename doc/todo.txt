@@ -16,13 +16,10 @@ Recent::
     I should give an error here.
 * What if you forget a type signature, does it error, or blow up?
 * Add support for semicolon error parsing rule in parser
-* If default implementation is missing for an instance, generate a default
-  of the form: error "Implementation of /= for Blah not defined"
 * Have flags in smten exe to call ghc appropriately.
 
 Haskell Features::
 * Allow parens in InstD: instance (Foo Bar) where...
-* default methods in classes?
 * auto derive Ord, Ix
 * recursive let blocks
 * modularity support
@@ -34,6 +31,7 @@ Documentation::
 * Write a user guide
 
 Type System::
+* Verify we handle case where default method given without sig in ClassD.
 * give a nice message if there's a type ambiguity?
     That is, anything with ~?
 * Reimplement TypeCheck to make use of constraint generation from TypeInfer?
@@ -84,6 +82,14 @@ Sharing::
 
 Primitives::
 * Concretize the rest of the haskellf primitives
+
+Cleanup::
+* typecheck - instcheck should be inlined in VarE,
+            - context should be passed through monad
+* typeinfer - use structure like typecheck (if reasonable)
+* haskellf.Compile - use monadic structure like typecheck, infer (if
+  reasonable)
+* enforce in Parser that all class methods must have a signature?
 
 SMT::
 * Remove bv-zero-extend from SMT syntax, use SMTLIB2 alternative

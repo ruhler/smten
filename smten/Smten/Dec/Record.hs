@@ -106,8 +106,6 @@ recordC (Sig cn ct) fields = recordU (VarE (Sig (record_undefnm cn) ct)) fields
 --            ...
 --       (==) (FooN a1 a2 ...) (FooN b1 b2 ...) = and [a1 == b1, a2 == b2, ...]
 --       (==) _ _ = False
---
---       (/=) = (/=#)
 deriveEq :: Context -> Class -> [ConRec] -> Dec
 deriveEq ctx cls cs =
   let mkcon :: ConRec -> MAlt
@@ -125,8 +123,7 @@ deriveEq ctx cls cs =
       def = simpleMA [WildP, WildP] falseE []
       eqclauses = map mkcon cs ++ [def]
       eq = Method (name "==") (clauseE eqclauses)
-      ne = Method (name "/=") (varE (Sig (name "/=#") UnknownT))
-  in InstD ctx cls [eq, ne]
+  in InstD ctx cls [eq]
 
 -- Derive an instance of Free (before flattening and inference) for the given
 -- data type declaration.
