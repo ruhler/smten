@@ -1,10 +1,12 @@
 
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE PatternGuards #-}
 
 module Smten.Dec.Utils () where
 
 import Data.List(nub)
 
+import Smten.Name
 import Smten.Type
 import Smten.Dec.Dec
 
@@ -45,5 +47,8 @@ instance VarTs TyVar where
 
 instance VarTs TopSig where
     varTs (TopSig _ _ t) = varTs t
+
+instance VarTs (Name, Kind) where
+    varTs x = [x]
 
     

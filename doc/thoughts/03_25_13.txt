@@ -1,0 +1,885 @@
+
+Mon Mar 25 09:03:22 EDT 2013
+
+Goal for today?
+
+Well, I have plenty of time for fun work, so fun work I should do.
+
+The main topics are:
+
+* deal with Nirav's problems
+  I suspect this is mostly about improving numeric type support.
+
+* sharing in pruning
+* user guide
+
+I know the plan for sharing in pruning. In fact, I want to start on that next
+and see how much progress I can make.
+
+But I also would like to take some time think about the numeric type issue,
+just so I can get the wheels turning. So let me start there.
+
+The motivating problem is:
+ * why can't I implement zero_extend as: concat 0 x?
+
+If I can get that working, then I should be a step in the right direction.
+
+Well, let me try it out and see what happens.
+
+I get:
+
+type variable ~3 not in scope
+ in declaration Smten.Bit.bv_zero_extend :: Bit #n -> Bit #m;
+Smten.Bit.bv_zero_extend =
+  (Smten.Bit.bv_concat :: Bit #~3 -> Bit #n -> Bit #(~3+n))
+  ((Prelude.fromInteger :: Integer -> Bit #~3) 0)
+make: *** [testio] Error 1
+
+In other words, we have something like the following process:
+
+(bv_concat :: ~1) (0 :: ~2)
+  has type: Bit n -> Bit m
+
+~1 = Bit ~3 -> Bit ~4 -> Bit (~3 + ~4)
+~1 = ~5 -> ~6
+~5 = ~2
+~6 = Bit n -> Bit m
+
+
+Not that hard. Now, how do I solve this?
+
+As follows:
+
+~1: Bit ~3 -> Bit n -> Bit (~3 + n)
+~2: Bit ~3
+~4: n
+~5: Bit ~3
+~6: Bit n -> Bit (~3 + n)
+
+~3 + n = m    -- dropped
+
+Which gives:
+
+(bv_concat :: Bit ~3 -> Bit n -> Bit (~3 + n)) (0 :: Bit ~3)
+
+Exactly what I'm seeing in the error message.
+
+This leads to an unknown type variable. Type inference failed.
+
+Why did it fail? It failed because we just ignored this constraint:
+    ~3 + n = m.
+
+What we should have done is solve for ~3:
+
+~3 = m - n
+
+Which would give:
+
+~1: Bit (m - n) -> Bit n -> Bit ((m - n) + n)
+~2: Bit (m-n)
+~4: n
+~5: Bit (m-n)
+~6: Bit n -> Bit ((m-n) + n)
+
+(bv_concat :: Bit (m-n) -> Bit n -> Bit ((m-n) + n)) (0 :: Bit (m-n))
+  has type: Bit n -> Bit m
+
+But does this type check? To see if this type checks, we'll need:
+
+(m-n) + n = m
+
+So, at least two things are needed here:
+ * inference should not drop the constraint on numeric types.
+ * type check needs to be smart.
+
+In general, I don't think we can solve everything. But I probably can make
+decent progress in easy cases.
+
+Here's what we have currently:
+  *, +, - are the operators. So every numeric type can be expanded and
+canonicalized to a (possibly non-linear) polynomial.
+
+There's a question about whether negative numeric types should be supported. I
+think, if it doesn't hurt anything, it's probably easier to start with. Maybe
+I can ignore the issue until it comes up. Yes. Let me do that.
+
+Now, given a constraint, when can and can't we solve it?
+
+Goal is to solve for the least defined? Goal is to solve for the "smallest"
+variable. So, for example, if we have anything starting with '~', we need to
+solve for that before anything else.
+
+
+Side note: this is going to cause problems for compilation to haskell. We can
+do the type inference for haskell, but we can't do the type checking for
+haskell. Not unless we canonicalize all the types in some way so that it's
+obvious that two types are the same. Maybe we can do that, if we just
+canonicalize all numeric types, and then it could just work out. Yes. That
+might be okay.
+
+So, first step will be: have a canonical form for numeric types. Easy enough.
+Just have a sum of products.
+
+And now type inference and checking should be easy.
+
+Type checking should be easy: just multiply everything out, check for
+equality.
+
+Type inference is doable... but there may be issues.
+
+What if we have non-linear constraints?
+What if we have constraint which aren't entirely integral?
+
+Let's look at the cases.
+
+We have a constraint(n1 = n2)
+
+I can form: (n1 - n2 = 0) as the same constraint.
+Now, canonicalize (n1-n2).
+
+Now I want to solve for some variable.
+
+If it appears in one term with coefficient of '1', and it is not raised to any
+power, then we are all set. It's equal to the opposite of the other terms.
+    
+    x + ... = 0     ==> x = 0-(...)
+
+If it appears in one term with a coefficient of '-1', that's fine too. It's
+equal to the other terms.
+
+    (-x) + ... = 0     ==> x = ...
+
+If it appears in one term with a non-unity coefficient?
+
+ex:
+    2x - y = 0
+
+To say x = y/2 is not right. We can't do y/2... Unless I allow rational
+numbers in intermediate stages. That may make sense to do. I can always rename
+the variables later on to get rid of those things. 
+
+Good then. That sounds like a plan. Keep rational numbers. That way we can
+handle coefficients. I may need to preserve this information to haskell.
+
+Because, for example:
+    x / 2
+
+Depends on 'x'. It could be:
+    x = 2 ==> x / 2 = 1
+    x = 3 ==> x / 2 = 2     -- which way should we round?
+    x = 4 ==> x / 2 = 2
+
+This suggests perhaps we want to have a '/' operator too. Which is, I think,
+not entirely undesirable from the user perspective. Or maybe that's more power
+than we need?
+
+Depends on how you think about non-linear constraints.
+
+Ug. It's all terribly complicated.
+
+Here's an idea. To get us by.
+
+1. Let users use scoped type variables.
+2. Use canonicalization in type checking to check whether numeric types are
+equal.
+
+Then, worst case, the user can annotate everything. And make sure, when you
+use a type, that you put it in its canonical type.
+
+Sounds good to me. Bypasses this type inference thing. Then I can do more and
+more type inference as makes sense.
+
+Okay. We can make progress on this now. Good.
+
+Step 1: support scoped type variables in HaskellF.
+It's mostly there, I just need to handle methods properly, because we don't
+have the types in scope.
+
+Step 2: implement a numeric type canonicalizer and use it in type check.
+
+And go from there.
+
+Fine. Now, how about for error stuff? Or should I do this now?
+
+I suppose I should deal with this now.
+
+Okay, so how do I give an explicit type for scoped variables in methods? Let's
+look it up.
+
+Mon Mar 25 10:15:00 EDT 2013
+
+I need: InstanceSigs language extension. I have to give the specialized
+signature. That hopefully won't be too hard. I just have to look it up.
+
+Except... I don't seem to have an environment with me.
+
+So, either pass around the environment during compilation (which makes sense),
+or change the IR to keep track of method types explicitly.
+
+For now I can just pass it around where needed. Let me try that.
+
+Except... the environment doesn't currently return a TopSig. That's terribly
+annoying. So maybe I should update the IR? Hum.
+
+No. I just need to change the environment to tell me what I want to know.
+
+Ug. Why is this so hard?
+
+You know, if I supported default methods in class declarations, then it seems
+to me like ClassD and InstD have the same kind of body: a bunch of ValDs: with
+TopSig and Exp. In which case, I could share the implementation for both
+cases.
+
+It also means I need help from type inference for InstD?
+
+Or, as a temporary hack, I can just not support scoped type variables in
+instance methods. Though that's pretty lame.
+
+Mon Mar 25 10:32:10 EDT 2013
+
+Okay, so here's what I think.
+
+As a first step in the right direction, and to help improve things, and just
+to feel better about things in general, let me add support for default methods
+in class declarations.
+
+Here's how it will work.
+
+IR: ClassD changes from [TopSig] to [Method]
+ where now Method has a TopSig?
+
+If I do that, may as well have Method have a TopSig first?
+
+This suggests to me I want to put TopSig with Method, even in instance
+declarations. You can't give one, but I should be able to infer one in type
+inference, and check it in type checking. That's not at all unreasonable.
+
+Which now suggests a different order.
+
+1. Add TopSig to Method.
+ Needs support in type inference, and verification in type checking.
+ Currently unused.
+
+2. Support scoped type variables using this information.
+ Now scoped type variables should work.
+
+3. Change ClassD to have [Method] in general. Default to an "error" body.
+ Now default methods are supported.
+
+If I can do all of that today, then I think I'll feel good. And try to do it
+in a clean way, if at all possible.
+
+Good.
+
+Note, this pairing of TopSig and Exp is not uncommon. Maybe I should give it a 
+better name than Method. Something like: Function? Variable? Value?
+
+Oh. Isn't it obvious: TopExp. Yes.
+
+Of course, If I'm going to have TopExp, I can do things in a different order
+if I want to.
+
+1. Change ValD to use TopExp, and try to clean up implementation of things it
+touches.
+
+2. Change ClassD to use TopExp, and support default methods.
+
+3. Change InstD to use TopExp, and support scoped type variables.
+
+Okay. Why not? I can call it cleanup.
+
+Mon Mar 25 10:56:39 EDT 2013
+
+Okay! So now I have (1) done. Let's try (2). It should be pretty easy now, I
+hope.
+
+The test...
+
+Let's have a default for /=.
+
+I need a few things:
+
+1. Update parser to support this.
+(It should default to error).
+
+2. update runtime.
+
+I can do (2) without having to worry about (1). Then figure out 1.
+
+Ack. So, I need to support type checking and inference. Why is this so messy?
+
+Tedious.
+
+Anyway, when I come back from lunch, figure out how to do typecheck properly.
+It may make sense to do a digression which cleans up type check.
+
+
+Gosh. I seem not to be thinking terribly well.
+
+What is it that I really want?
+
+Fix typecheck:
+ - do instcheck inline for VarE, and pass context through the monad.
+
+Where do we get contexts?
+ - class declaration,
+ - instance declaration,
+ - TopExp context
+
+And all of them count.
+
+'satisfied' takes care of the class declaration. instance and TopExp need to
+accumulate. Where do we get top exp?
+
+Currently I think I ignore that, which is bad.
+
+Maybe what I want is: given the name of a top level declaration (possibly
+method) return the context for it. This is based both on its signature and on
+its ...
+
+You know what? This seems to require the same thing as scoped type variables:
+A type and implementation for each instance method.
+
+How annoying.
+
+Why is everything so tedious today?
+
+Whatever. Let me ignore that problem for now? But that could change how I do
+things...
+
+Okay, push that problem back then. Push cleanup of type checking back. Just
+focus on the immediate problem: make sure I typecheck class methods.
+
+Mon Mar 25 13:03:20 EDT 2013
+
+Okay, back end support for default methods is there. Now all that is left is
+the parser. Good.
+
+Mon Mar 25 13:30:07 EDT 2013
+
+Done! I think. We shall see eventually I suppose.
+
+Thus bringing me to number 3. InstD should contain TopExp, not Method.
+
+I think this makes sense to do. The TopExp is the one you expect: it inherits
+everything...
+
+This brings up an interesting question, in my mind.
+
+Should we insert default methods for the ClassD, or for the InstD? If we do
+the InstD, we would get much better error messages. And we should be able to
+do it, so long as we can tell, given a method name, whether there exists a
+default implementation for it.
+
+Gah! I don't know. Let me ignore it for now?
+
+The trouble is, I feel like I'm hacking and making things messy, which doesn't
+feel good to me. I want to feel good.
+
+What can I clean up which will make me feel good?
+
+I know what I can cleanup. Ever so slightly. lookupVar.
+
+Err, okay, that didn't really feel terribly good.
+
+Let me clean up typecheck.
+
+It will still have this issue. I'll still have this TODO...
+
+In fact, let me catch that test case.
+
+The issue is when a method has a context which the implementation uses. We
+currently don't know about it. That should be easy to test. And that should,
+hopefully, feel good to have gotten.
+
+Yup! Exposed the bug.
+
+Perhaps what I ought to do is fix it, rather than just recording it.
+
+It's not that bad. I just need to look up the context for a method in the
+environment. That is, look up its TopExp?
+
+Mon Mar 25 14:00:57 EDT 2013
+
+Okay fixed that bug. Now, I should be able to clean up the type checker pretty
+nicely now.
+
+And... I also ought to have enough info in the haskell compiler to spit out
+method types and contexts, assuming I have access to the Env. Which I should
+build into its monad.
+
+Okay. Good. This I like. This I think I will feel better about. Adding
+features through cleaning.
+
+1. Clean up type check, finally. I can do this in little steps if desired.
+2. Add Env to Haskellf compilation monad.
+   Use this to lookup what we need for methods and support scoped type
+   variables.
+
+Mon Mar 25 14:21:57 EDT 2013
+
+There. (1) is done. That felt sort of good.
+
+Now, on to (2)?
+
+Should be easy enough.
+
+Mon Mar 25 14:41:58 EDT 2013
+
+Um, InstanceSigs is not supported in the installed version of GHC. I need to
+go to a later version (7.6), or use a hack: define each method as its own
+function, then use that. Hmm...
+
+
+Okay, so I'm downloading 7.6. We'll see how that works.
+
+In the meantime, let me think of how I want to represent numeric types
+canonically.
+
+I already know conceptually, you have a list of terms. Each term has: an
+integer coefficient, and for each variable in the term, the power of that
+variable.
+
+We don't store terms with 0 as the coefficient.
+We don't store variables with power 0 in a term.
+
+The rest is just: how do we sort things?
+
+How to sort variables within a term? Use a map.
+
+data Term = Term (Map Name Integer)
+
+How to sort terms? By Term. That's easy enough.
+
+data Sum = Map Term Integer
+
+Easy! Good. I like that. Let me write a rough draft now then.
+
+Mon Mar 25 15:28:03 EDT 2013
+
+Okay! Scoped type variables thing has been fixed! Wonderful. Now I should no
+longer have any type inference issues with numeric types that I can't override
+myself. The only issue now is type checking.
+
+Let me verify that is the case.
+
+This will be good to have. A fix for numeric types. Even if it isn't the
+prettiest, at least you can make things work.
+
+expected variable of type:
+  Bit #a -> Bit #b -> Bit #(a+b)
+but Smten.Bit.bv_concat has type:
+  Bit #(m-n) -> Bit #n -> Bit #m
+ in declaration Smten.Bit.bv_zero_extend :: Bit #n -> Bit #m;
+Smten.Bit.bv_zero_extend =
+  (Smten.Bit.bv_concat :: Bit #(m-n) -> Bit #n -> Bit #m)
+  ((Prelude.fromInteger :: Integer -> Bit #(m-n)) 0)
+
+Well, this is an issue. It looks like isSubType is failing when it ought not
+to.
+
+Concrete: (m-n) -> n -> m
+Poly:     a -> b -> (a+b)
+
+And it can't derive the assignments:
+    a = m - n
+    b = n
+    (a+b) = m - n + n = m
+
+So I need to start with this issue.
+
+isst of OpT OpT is wrong.
+And isst of OpT VarT is wrong.
+
+How do I want to check these in general?
+
+Can we use canonical forms? I'm not entirely convinced we can.
+
+Let me think in general first.
+
+Say I have two numeric types, p and c in canonical form. I want to know if c
+is a valid concrete instance of p.
+
+What does that mean? That means... there exists some assign of variables in
+'p' such that you get 'c'.
+
+Now, assuming we knew which assignments to guess, we could plug them in,
+canonicalize, then check for equality.
+
+The question is, how do we derive the assignments?
+
+Again, thinking about things in canonical form.
+
+Isn't that a graph isomorphism problem? At least. Because we can have
+renaming of things.
+
+Perhaps I should look at each case, and see what I can figure out.
+
+If both are NumT, we can check directly. Either they are equal or they are
+not.
+
+If the left hand side is a variable and the right hand side isn't, we know the
+variable maps to the right hand side.
+
+If we have two operations...
+
+We can't break it down into parts. So I have to canonicalize things. And I
+don't know names of variables (they don't line up from one to the other).
+
+And there could, in fact, be multiple solutions, right? Or infinite number?
+
+Consider my example:
+
+    Concrete: (m-n) -> n -> m
+    Poly:     a -> b -> (a+b)
+
+Assignments that are valid are:
+
+    a = m - n
+    b = n
+
+Oh. That's pretty clear.
+
+How about:
+
+   Concrete: m+n
+   Poly:a+b
+
+Now we have an infinite number of possible assignments.
+
+a: m, b: n
+a: m+1, b: n-1
+a: m+2, b: n-2
+...
+
+So my job can't be to try and find the assignments. I need some other way to
+figure things out.
+
+What if I try out a few different assignments and see if they work?
+
+That way I can at least simplify so that the concrete version is always in
+NumT.
+
+NumT NumT is easy to check.
+VarT NumT is easy to check.
+OpT NumT?
+
+   Poly:a+b = 3
+
+Again, we could have, potentially, an infinite number of assignments.
+
+Okay, what if I make another assumption. Let's say you can't write types like:
+
+foo :: #(m+n)
+
+Because that's not as "simple" as possible. Does this eliminate the infinite
+possible assignments thing?
+
+How about:
+foo :: #(a+b) -> #(a-b)
+
+Well, we could make this simpler:
+foo :: #a -> #b
+
+What about:
+foo :: #(a+b) -> #(a-b) -> #(2*a-b)
+
+Now it is in its simplest form, but still nothing so simple as to make it
+obvious what the assignments are.
+
+Well, maybe I could do a canonicalization:
+let c = a+b
+    
+foo :: #c -> #(c-2*b) -> #(2*c-3*b)
+
+Now, at least, we can figure out what 'c' is. And from there we can figure out
+all the rest.
+
+So, as long as there is some order of numeric type variables standing on their
+own, we can use this to check the subtype.
+
+Here's what I'm thinking then.
+
+I have some theorem:
+
+If you know that for c to be concrete of 'p', some var 'v' has to have value
+'x'. Then 'c' is a subtype of 'p' if 'c' is a subtype of 'p'[v=x].
+
+And, you know that if 'c' and 'p' are equal, it is trivially a subtype
+relationship.
+
+This suggests to me a new approach to 'isSubType'.
+
+1. If the types are equal, return yes.
+2. Figure out everything you can directly.
+3. Substitute what you figured out into 'p', and recursively subtype.
+
+If you can't figure anything out, and the types still are not equal, then we
+can say we can't show it's a subtype relationship (though some valid cases are
+missed).
+
+One thing I like about this is that non-numeric types work naturally as a
+special case.
+
+A side effect of this process is we get the assignments, which is also nice.
+
+Now, as I said, this won't work in general. But it certainly could work in the
+specific cases I'm seeing, and wouldn't that be useful to get working?
+
+Yes. I think so. And I don't think this is too hard a change to make, so I
+want to try it out.
+
+There is a namespace issue. I need to rename things for this to work right, to
+avoid name capture.
+
+And we need to make sure that once we have substituted something, we don't try
+to substitute it again.
+
+So, test for equality on the current set of assignments?
+
+I'm not sure that helps.
+
+Bugger. I need to work out better how I'm going to do this. I should stop
+being so hackish.
+
+Mon Mar 25 16:58:37 EDT 2013
+
+I changed isSubType to a very simple test. Find all the assignments, assuming
+it is a subtype, then do the assignment and verify the results are equal.
+
+That works swell, and is very simple, so I want to keep it.
+
+The only issue is ... it still doesn't do what I want for numeric types. Why?
+I suspect because we want a notion of equality which takes canonicalization
+into account.
+
+For example, what will I get here:
+
+  Bit #a -> Bit #b -> Bit #(a+b)
+but Smten.Bit.bv_concat has type:
+  Bit #(m-n) -> Bit #n -> Bit #m
+
+a = m-n
+b = n
+
+
+Bit #(m-n) -> Bit #n -> Bit #((m-n)+n) =?= Bit #(m-n) -> Bit #n -> Bit #m
+
+The answer I want is: yes! Because in their canonical form, all the types are
+the same.
+
+Cool. So, the question is, how can I get type equality to work? I just need to
+canonicalize the numeric types first.
+
+Okay, so here's what I'm thinking. Every type has a canonical form, for the
+purposes of Ord and Eq. That form ignores Kinds (sets them to UnknownK), and
+uses canonical forms for all numeric types.
+
+How do I want to do this?
+
+In some sense, I would like numeric types to always be in their canonical
+form. Can I use smart constructors so that is the case?
+
+I think, regardless, I'll want to have a separate function which puts a
+numeric type in canonical form.
+
+Let me take a walk to think about this more. It's not hard I don't think. I
+just have to figure out how I want to do it.
+
+Mon Mar 25 17:49:46 EDT 2013
+
+Okay, here's the plan.
+
+We need a way  to represent types which are malformed. So don't force
+everything to be canonical.
+
+We definitely want a canonicalization function:
+
+    canonical :: Type -> Type
+
+We can assume the type is well formed. Or, rather, any part that is not well
+formed, we can say is already in canonical form.
+
+Note: canonicalization gives a nice way to do nteval. Just canonicalize it and
+get the NumT result.
+
+So, I'm proposing the following...
+
+Have something called: Type.Canonical. Which implements the canonical
+function.
+
+Now, the question that remains is...
+
+Should (==) operate on canonical stuff or not?
+Should compare operate on canonical stuff or not?
+
+Where do I define those?
+
+First question: why do I need Ord for types?
+Answer:  because I need Ord for Sig.
+
+Question: why do I need Ord for Sig?
+
+Answer: for Inline. And we do want to differentiate by Type.
+
+Fine. Good to know.
+
+Let me implement a draft of Canonical to start, and worry about other issues
+later.
+
+Okay, so calculating the sum of products.
+
+Add and subtract are very easy.
+
+Multiply is the hard part...
+
+How do we do multiply?
+
+We take the cross product of terms. For each Product, we can multiply. That's
+not hard.
+
+Okay, let me try this then.
+
+Um. I need to think about this.
+
+I have a map from term to coefficients.
+
+How about this, let's start with:
+    Product * Sum -> Sum.
+
+What we do is a map over the keys?
+Yes. But then we have a combining function in case two keys turn out to be the
+same now... Except that they won't.
+
+So, we do a map over the keys, which is Product * Product, which is where we
+just add them together. That's doable.
+
+Then I can do Product * Sum.
+I would also like: Integer * Sum.
+
+Now what I can do is, for Sum * Sum:
+    For each term in the first Sum:
+    x = coeff * (p * b)
+And then take the unionsWith of the results. Easy!
+
+Cool.
+
+Mon Mar 25 18:23:09 EDT 2013
+
+Okay! So I have all of canonical in place. It's pretty easy.
+
+All that's left is to convert from a sum of products back to a Type. How do we
+do that?
+
+Well, the result is either:
+ - a Variable
+ - an Integer
+ - a product (*)
+ - a sum (-)
+
+Question: are negative values allowed? Or should I turn those into
+subtraction?
+
+I suppose every negative value can be represented as (0 - ...). As long as I'm
+consistent, I think that's fine, and easy.
+
+So, the plan is this.
+
+Given product and coefficient, I can generate a type. Then fold those
+together using *.
+
+Good. Now, how to unproduct?
+
+Trouble: how do we represent a constant term?
+
+Oh. That should be fine. It's the Empty set. So I'll end up doing 8*1, for
+example.
+
+Okay, so canonical format is not the most simple. That's fine. Just so long as
+it is canonical.
+
+So, how do I form the product?
+
+For each variable...
+    replicate it by the number of times it occurs.
+Now we get back a big list. Fold the product of this, defaulting with 1.
+Easy!
+
+Note: It seems we loose kind information when we canonicalize. Is that okay?
+
+I think so...
+
+Actually, no loss in kind information. Everything left is a NumK.
+
+There! I have now the implementation of canonical.
+
+How about this. I'll move the definition of Equality of Types into canonical?
+
+May as well destroy kind information for canonical, no? Then I can use it for
+Ord too? No... One thing at a time. Use it for Eq.
+
+Or, should I have 'Eq' be different from canonical eq? Then I could have a
+true Eq...
+
+But that still, probably, won't do what I want.
+
+Mess with one thing at a time only. Let me define Eq to work on canonicalized
+form.
+
+I see the issue.
+
+There should be a difference between '==' and '==' with canonicalization.
+
+Mon Mar 25 19:09:08 EDT 2013
+
+Cool! Now we go all the way to haskell. Nifty.
+
+But, we run into the expected issue. I need to canonicalize all types output
+to haskellf.
+
+Trouble: canonical should not change a VarT if it isn't a numeric VarT!
+
+Trouble: a single variable must be represented as such. Otherwise we blow up.
+So I really should make things as simple as possible.
+
+Now the issue I'm having is: we need to make sure to...
+
+Ideally ignore types in inline.
+
+Mon Mar 25 19:44:40 EDT 2013
+
+All that is fine, there's just one issue... Haskell can't do the type
+checking for numeric types. It needs more smarts.
+
+I'll tell you why.
+
+bv_concat :: Bit #a -> Bit #b -> Bit #(b+a)
+
+bv_zero_extend :: Bit #n -> Bit #m
+bv_zero_extend =
+    bv_concat (Bit #(m-n) -> Bit #n -> Bit #m) (0 :: Bit #(m-n))
+
+Now, each type is fully canonicalized. But still there is a problem. Why?
+
+Let's plug in the argument to bv_concat and see what type is inferred for it:
+
+
+a: m-n
+b: n
+
+So, according to haskell, bv_concat needs type:
+   Bit #(m-n) -> Bit #n -> Bit #(n + (m-n))
+
+But it doesn't have that type!
+
+Let me move all the changes I've made to a numT branch while I ponder what to
+do.
+
+Hmm... This really is... hum.
+
+Looks like TypeNats support, possibly in 7.6.2 could give what I want. I'll
+have to look into the status of that. I suppose I'll futz around with that
+next. And also think of alternative options, such as doing some type coercion
+in the backend.
+
+
