@@ -33,6 +33,7 @@
 -- 
 -------------------------------------------------------------------------------
 
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE PatternGuards #-}
 
 -- Back end target which translates smten programs into Haskell. Supports the
@@ -41,12 +42,12 @@ module Smten.HaskellF.Compile (
     haskellf,
     ) where
 
-import Debug.Trace
-
 import Data.Char(isAlphaNum)
 import Data.Functor((<$>))
-import Data.List(nub, genericLength)
-import Data.Maybe(fromJust)
+import Data.List(genericLength)
+
+import Control.Monad.Error
+import Control.Monad.Reader
 
 import qualified Language.Haskell.TH.PprLib as H
 import qualified Language.Haskell.TH as H
@@ -60,6 +61,15 @@ import Smten.Lit
 import Smten.Exp
 import Smten.Dec
 import Smten.Ppr
+
+data HFS = HFS {
+    hfs_env :: Env,
+
+    -- | A list of type variables already in scope.
+    hfs_tyvars :: [Name]
+}
+
+type HF = ReaderT HFS Failable
 
 -- TODO: Here we just drop the qualified part of the name.
 -- This is a hack, requiring there are no modules which define an entity of
@@ -111,7 +121,7 @@ symconstrnm n
  | Just x <- de_tupleN n = symconstrnm . name $ "Tuple" ++ show x ++ "__"
  | otherwise = hsName $ n `nappend` (name "__s")
 
-hsExp :: Exp -> Failable H.Exp
+hsExp :: (MonadError String m) => Exp -> m H.Exp
 
 -- String literals:
 -- TODO: the template haskell pretty printer doesn't print strings correctly
@@ -146,11 +156,11 @@ hsExp (LamE (Sig n _) x) = do
 hsExp (CaseE x (Sig kn kt) y n) = do
     [x', y', n'] <- mapM hsExp [x, y, n]
     return $ foldl1 H.AppE [H.VarE (constrcasenm kn), x', y', n']
-
-hsType :: Type -> Failable H.Type
-hsType = hsType' . canonical
         
-hsType' :: Type -> Failable H.Type
+hsType :: (MonadError String m) => Type -> m H.Type
+hsType = hsType' . canonical
+
+hsType' :: (MonadError String m) => Type -> m H.Type
 hsType' (ConT n _)
   | n == name "()" = return $ H.ConT (H.mkName "Unit__")
   | Just x <- de_tupleN n
@@ -180,47 +190,46 @@ hsnt :: Integer -> H.Type
 hsnt 0 = H.ConT (H.mkName "N__0")
 hsnt n = H.AppT (H.ConT (H.mkName $ "N__2p" ++ show (n `mod` 2))) (hsnt $ n `div` 2)
 
-hsTopType :: [Name] -> Context -> Type -> Failable H.Type
-hsTopType clsvars ctx t = do
-    let (nctx, use) = mkContext (flip notElem clsvars) t
+hsTopType :: Context -> Type -> HF H.Type
+hsTopType ctx t = do
+    (nctx, use) <- mkContext t
     t' <- hsType t
     ctx' <- mapM hsClass ctx
     case nctx ++ ctx' of
         [] -> return t'
         ctx'' -> return $ H.ForallT (map (H.PlainTV . hsName) use) ctx'' t'
 
-hsClass :: Class -> Failable H.Pred
+hsClass :: (MonadError String m) => Class -> m H.Pred
 hsClass (Class nm ts) = do
     ts' <- mapM hsType ts
     return $ H.ClassP (hsName nm) ts'
     
-hsMethod :: Env -> [Name] -> Class -> Method -> Failable [H.Dec]
-hsMethod env ign cls (Method n e) = do
+hsMethod :: Class -> Method -> HF [H.Dec]
+hsMethod cls (Method n e) = do
+    env <- asks hfs_env
     mt <- lookupMethodType env n cls
     mctx <- lookupMethodContext env n cls
-    hsTopExp ign (TopExp (TopSig n mctx mt) e)
+    hsTopExp (TopExp (TopSig n mctx mt) e)
 
 
-hsSig :: [Name]     -- ^ List of varTs to ignore, because they belong to the class.
-         -> TopSig
-         -> Failable H.Dec
-hsSig clsvars (TopSig n ctx t) = do
-    t' <- hsTopType clsvars ctx t
+hsSig :: TopSig -> HF H.Dec
+hsSig (TopSig n ctx t) = do
+    t' <- hsTopType ctx t
     return $ H.SigD (hsName n) t'
 
-hsTopExp :: [Name] -> TopExp -> Failable [H.Dec]
-hsTopExp ign (TopExp (TopSig n ctx t) e) = do
-    t' <- hsTopType ign ctx t
+hsTopExp :: TopExp -> HF [H.Dec]
+hsTopExp (TopExp (TopSig n ctx t) e) = do
+    t' <- hsTopType ctx t
     e' <- hsExp e
     let hsn = hsName n
     let sig = H.SigD hsn t'
     let val = H.FunD hsn [H.Clause [] (H.NormalB e') []]
     return [sig, val]
     
-hsDec :: Env -> Dec -> Failable [H.Dec]
-hsDec _ (ValD e) = hsTopExp [] e
+hsDec :: Dec -> HF [H.Dec]
+hsDec (ValD e) = hsTopExp e
 
-hsDec _ (DataD n _ _) | n `elem` [
+hsDec (DataD n _ _) | n `elem` [
   name "Bool",
   name "Char",
   name "Integer",
@@ -236,30 +245,37 @@ hsDec _ (DataD n _ _) | n `elem` [
   name "Used",
   name "IO"] = return []
 
-hsDec _ (DataD n tyvars constrs) = do
+hsDec (DataD n tyvars constrs) = do
     dataD <- mkDataD n tyvars constrs
     smtenTD <- mkSmtenTD n tyvars
     symbD <- mkSymbD n tyvars constrs
     casesD <- mapM (mkCaseD n tyvars) constrs
     return $ concat ([dataD, smtenTD, symbD] : casesD)
 
-hsDec _ (ClassD ctx n vars exps@(TopExp (TopSig _ _ t) _:_)) = do
-    let vts = map tyVarName vars
-        (nctx, _) = mkContext (flip elem vts) t
-    ctx' <- mapM hsClass ctx
-    exps' <- mapM (hsTopExp vts) exps
-    return $ [H.ClassD (nctx ++ ctx') (hsName n) (map (H.PlainTV . hsName) vts) [] (concat exps')]
+hsDec (ClassD ctx n vars exps@(TopExp (TopSig _ _ t) _:_)) = do
+    -- Kind inference doesn't currently update the kinds of the vars in the
+    -- ClassD declaration, so we look at the vars in one of the method
+    -- declarations to figure out the right kind.
+    -- TODO: Kind inference should update the vars in the ClassD declaration,
+    -- and we should use those here.
+    let tvs = filter (flip elem (map tyVarName vars) . fst) (varTs t) 
+    (nctx, tyvars) <- mkContext tvs
+    local (\s -> s { hfs_tyvars = tyvars}) $ do
+        ctx' <- mapM hsClass ctx
+        exps' <- mapM hsTopExp exps
+        return $ [H.ClassD (nctx ++ ctx') (hsName n) (map (H.PlainTV . hsName) (map tyVarName vars)) [] (concat exps')]
 
-hsDec env (InstD ctx cls@(Class n ts) ms) = do
-    let (nctx, ign) = mkContext (const True) (appsT (conT n) ts)
-    ctx' <- mapM hsClass ctx
-    ms' <- mapM (hsMethod env ign cls) ms
-    ts' <- mapM hsType ts
-    let t = foldl H.AppT (H.ConT (hsName n)) ts'
-    return [H.InstanceD (nctx ++ ctx') t (concat ms')] 
+hsDec (InstD ctx cls@(Class n ts) ms) = do
+    (nctx, tyvars) <- mkContext (appsT (conT n) ts)
+    local (\s -> s { hfs_tyvars = tyvars }) $ do
+        ctx' <- mapM hsClass ctx
+        ms' <- mapM (hsMethod cls) ms
+        ts' <- mapM hsType ts
+        let t = foldl H.AppT (H.ConT (hsName n)) ts'
+        return [H.InstanceD (nctx ++ ctx') t (concat ms')] 
 
-hsDec _ (PrimD s@(TopSig n _ _)) = return []
-hsDec _ d = throw $ "haskellf: supported dec: " ++ pretty d
+hsDec (PrimD s@(TopSig n _ _)) = return []
+hsDec d = throw $ "haskellf: supported dec: " ++ pretty d
 
 -- haskell decs
 --  Compile the given declarations to haskell.
@@ -288,7 +304,8 @@ haskellf wrapmain modname env =
                     then H.text "__main = __main_wrapper main"
                     else H.empty
 
-      ds = surely $ (concat <$> mapM (hsDec (mkEnv env)) env)
+      dsm = concat <$> mapM hsDec env
+      ds = surely $ runReaderT dsm (HFS (mkEnv env) [])
   in hsHeader H.$+$ H.ppr ds
 
 harrowsT :: [H.Type] -> H.Type
@@ -319,13 +336,16 @@ smtentmethq 0 = H.mkName "S.smtenT"
 smtentmethq n = H.mkName $ "S.smtenT" ++ show n
 
 -- Form the context for declarations.
-mkContext :: (Name -> Bool) -- ^ which variable types we should care about
-              -> Type       -- ^ a sample use of the variable types
-              -> ([H.Pred], [Name])  -- ^ generated context and list of names used.
-mkContext p t =
-  let vts = filter (p . fst) $ varTs t 
+--  t - The type to produce the context for. This is used to identify which
+--      variable types to declare.
+--  Returns the generated context and list of newly declared type variables.
+mkContext :: (VarTs a) => a -> HF ([H.Pred], [Name])
+mkContext t = do
+  tyvars <- asks hfs_tyvars
+  let p = flip notElem tyvars
+      vts = filter (p . fst) $ varTs t 
       tvs = [H.ClassP (clshaskellf (knum k)) [H.VarT (hsName n)] | (n, k) <- vts]
-  in (tvs, map fst vts)
+  return (tvs, map fst vts)
 
 knum :: Kind -> Integer
 knum StarK = 0
@@ -334,7 +354,7 @@ knum (ArrowK a b) = 1 + knum a
 knum (VarK i) = 0 -- default to StarK
 knum UnknownK = 0
 
-hsCon :: Con -> Failable H.Con
+hsCon :: (MonadError String m) => Con -> m H.Con
 hsCon (Con n tys) = do
     ts <- mapM hsType tys
     return $ H.NormalC (hsName n) (map (\t -> (H.NotStrict, t)) ts)
@@ -344,7 +364,7 @@ hsCon (Con n tys) = do
 --  | FooB FooB1 FooB2 ...
 --    ...
 --  | Foo__s ExpH
-mkDataD :: Name -> [TyVar] -> [Con] -> Failable H.Dec
+mkDataD :: (MonadError String m) => Name -> [TyVar] -> [Con] -> m H.Dec
 mkDataD n tyvars constrs = do
   let tyvars' = map (H.PlainTV . hsName . tyVarName) tyvars
   constrs' <- mapM hsCon constrs
@@ -360,7 +380,7 @@ mkDataD n tyvars constrs = do
 --
 -- instance (SmtenN c1, SmtenN c2, ...) => SmtenTN (Foo c1 c2 ...) where
 --    smtenTN _ = appsT (conT "Foo") [smtenT (undefined :: c1), smtenT (undefined :: c2), ...]
-mkSmtenTD :: Name -> [TyVar] -> Failable H.Dec
+mkSmtenTD :: (MonadError String m) => Name -> [TyVar] -> m H.Dec
 mkSmtenTD n tyvars = return $
   let (rkept, rdropped) = span (\(TyVar n k) -> knum k == 0) (reverse tyvars)
       nkept = genericLength rkept
@@ -390,7 +410,7 @@ mkSmtenTD n tyvars = return $
 --  unboxN ...
 --
 -- Note: we do the same thing with crazy kinds as mkSmtenTD
-mkSymbD :: Name -> [TyVar] -> [Con] -> Failable H.Dec
+mkSymbD :: (MonadError String m) => Name -> [TyVar] -> [Con] -> m H.Dec
 mkSymbD n tyvars constrs = do
     let (rkept, rdropped) = span (\(TyVar n k) -> knum k == 0) (reverse tyvars)
         nkept = genericLength rkept
@@ -408,7 +428,7 @@ mkSymbD n tyvars constrs = do
 --   | Just [a, b, ...] <- de_conHF "FooB" e = FooB (box a) (box b) ...
 --   ...
 --   | otherwise = Foo__s e
-mkBoxD :: Name -> Integer -> [Con] -> Failable H.Dec
+mkBoxD :: (MonadError String m) => Name -> Integer -> [Con] -> m H.Dec
 mkBoxD n bn constrs = do
   let boxnm = boxmeth bn
       
@@ -436,7 +456,7 @@ mkBoxD n bn constrs = do
 --   | FooB a b ... <- x = conHF x "FooB" [unbox a, unbox b, ...]
 --   ...
 --   | Foo__s v <- x = v
-mkUnboxD :: Name -> Integer -> [Con] -> Failable H.Dec
+mkUnboxD :: (MonadError String m) => Name -> Integer -> [Con] -> m H.Dec
 mkUnboxD n bn constrs = do
     let unboxnm = unboxmeth bn
 
@@ -466,12 +486,12 @@ mkUnboxD n bn constrs = do
 --   | FooB a b ... <- x = y a b ...
 --   | Foo__s _ <- x = caseHF "FooB" x y n
 --   | otherwise = n
-mkCaseD :: Name -> [TyVar] -> Con -> Failable [H.Dec]
+mkCaseD :: Name -> [TyVar] -> Con -> HF [H.Dec]
 mkCaseD n tyvars (Con cn tys) = do
   let dt = appsT (conT n) (map tyVarType tyvars)
       z = VarT (name "z") StarK
       t = arrowsT [dt, arrowsT (tys ++ [z]), z, z]
-  ht <- hsTopType [] [] t
+  ht <- hsTopType [] t
   let sigD = H.SigD (constrcasenm cn) ht
 
       body = H.AppE (H.VarE (H.mkName "S.caseHF")) (H.LitE (H.StringL (unname cn)))
