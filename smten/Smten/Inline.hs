@@ -55,7 +55,7 @@ inline env prims =
       inline' tm m (VarE s) = thunkNS $ VarEH (assign tm s)
       inline' tm m (AppE f x) = appEH (inline' tm m f) (inline' tm m x)
       inline' tm m (LamE s@(Sig n _) b) = lamEH (assign tm s) (assign tm $ typeof b) $ \x -> inline' tm ((n, x):m) b
-      inline' tm m (CaseE x k y n) = caseEH (typeof y) (inline' tm m x) (assign tm k) (inline' tm m y) (inline' tm m n)
+      inline' tm m (CaseE x k y n) = caseEH (typeof n) (inline' tm m x) (assign tm k) (inline' tm m y) (inline' tm m n)
   in inline' [] []
 
 
