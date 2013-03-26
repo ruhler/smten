@@ -3,26 +3,19 @@ Focus::
 * Look-ahead: Fix issues with _|_ so semantics are correctly implemented
 
 Recent::
-* I should be able to implement bv_zero_extend a as bv_concat 0 a
-    Fix type system so that works.
 * Don't pretty print numeric type 16 in haskellf as
     2*2*2*2*(1+0) ??
     depends if you want detailed type info or not.
-* Finish cleaning up type check
-* varTs should return a list of TyVar, not (Name, Kind)
 * Bug: foo :: Integer
        fop = 3
     Is accepted, and 'fop' is treated like 'foo'.
     I should give an error here.
 * What if you forget a type signature, does it error, or blow up?
 * Add support for semicolon error parsing rule in parser
-* If default implementation is missing for an instance, generate a default
-  of the form: error "Implementation of /= for Blah not defined"
 * Have flags in smten exe to call ghc appropriately.
 
 Haskell Features::
 * Allow parens in InstD: instance (Foo Bar) where...
-* default methods in classes?
 * auto derive Ord, Ix
 * recursive let blocks
 * modularity support
@@ -34,14 +27,7 @@ Documentation::
 * Write a user guide
 
 Type System::
-* give a nice message if there's a type ambiguity?
-    That is, anything with ~?
-* Reimplement TypeCheck to make use of constraint generation from TypeInfer?
-* Implement enough math somewhere to know that
-  Bit #3  -> Bit #4 -> Bit #7 is a valid subtype of
-  Bit #m  -> Bit #n -> Bit #(m+n)
-
-  Because otherwise bitvector concatentation is really annoying to use.
+* Verify we handle case where default method given without sig in ClassD.
 
 Front End::
 * line numbers for non-syntactic errors would be nice.
@@ -74,9 +60,6 @@ Pretty Printer::
 * Make it so I can compile pretty printed code?
 * Maybe dump the Doc approach and take my SMT concrete approach?
 
-Performance::
-* Play with GHC Sparks and non-strict state monads
-
 Pruning::
 * Preserve sharing in pruning:
   Idea is: whenever an expression is pruned for a given context, update the
@@ -101,6 +84,13 @@ Pruning::
 
 Primitives::
 * Concretize the rest of the haskellf primitives
+
+Cleanup::
+* varTs should return a list of TyVar, not (Name, Kind)
+* typeinfer - use structure like typecheck (if reasonable)
+* haskellf.Compile - use monadic structure like typecheck, infer (if
+  reasonable)
+* enforce in Parser that all class methods must have a signature?
 
 SMT::
 * Remove bv-zero-extend from SMT syntax, use SMTLIB2 alternative
@@ -146,7 +136,6 @@ Bugs::
 * BadKind, DupInst, DupVar maltype tests
 * Error tests
 * where shadow test (in Concrete)
-* tambig test (in State)
 * STP bug (in Nest)
 * STP bug (in Bit)
 * Report an error for an unknown primitive encountered in SMT Translation

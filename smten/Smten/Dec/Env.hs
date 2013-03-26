@@ -41,7 +41,7 @@ module Smten.Dec.Env (
     Env(), mkEnv, tweak,
     VarInfo(..),
     lookupVarType, lookupVarValue, lookupVar, lookupVarInfo, lookupVarContext,
-    lookupMethodType,
+    lookupMethodType, lookupMethodContext,
     lookupDataD, lookupDataConType,
     lookupInstD, lookupPrimD,
     lookupValD, lookupClassD,
@@ -93,10 +93,11 @@ data ValInfo
  = DecVI Dec     -- ^ The value is the given ValD or PrimD or DataD
 
  -- | The value belongs to the given class and has given type.
- -- Gives also the list of implementations for each instance of the class.
+ -- Gives also the list of implementations for each instance of the class, and
+ -- the default instance.
  -- The context is the context for the specific method, it does not include
  -- the class itself.
- | ClassVI Name [TyVar] Context Type [([Type], Exp)]
+ | ClassVI Name [TyVar] Context Type Exp [([Type], Exp)]
     deriving (Eq, Show)
 
 -- | Build a smten environment from the given list of declarations.
@@ -120,12 +121,12 @@ vitable decs =
       methods = Map.unionsWith (++) (map mkinst insts)
 
       videc :: Dec -> [(Name, ValInfo)]
-      videc d@(ValD (TopSig n _ _) _) = [(n, DecVI d)]
+      videc d@(ValD (TopExp (TopSig n _ _) _)) = [(n, DecVI d)]
       videc d@(PrimD (TopSig n _ _)) = [(n, DecVI d)]
       videc (ClassD _ cn ts sigs) =  
-        let isig :: TopSig -> (Name, ValInfo)
-            isig (TopSig n ctx t) = (n, ClassVI cn ts ctx t (fromMaybe [] (Map.lookup n methods)))
-        in map isig sigs
+        let iexp :: TopExp -> (Name, ValInfo)
+            iexp (TopExp (TopSig n ctx t) e) = (n, ClassVI cn ts ctx t e (fromMaybe [] (Map.lookup n methods)))
+        in map iexp sigs
       videc d@(DataD n _ _) = [(n, DecVI d)]
       videc (InstD {}) = []
   in concat $ map videc notinsts
@@ -223,22 +224,21 @@ lookupInstD env (Class n t) =
 lookupVar :: Env -> Sig -> Failable (Type, Exp)
 lookupVar env s@(Sig n t) =
   case HT.lookup n (e_vitable env) of
-     Just (DecVI (ValD (TopSig _ _ t) v)) -> return (t, v)
+     Just (DecVI (ValD (TopExp (TopSig _ _ t) v))) -> return (t, v)
      Just (DecVI (PrimD {})) -> throw $ "lookupVar: " ++ pretty n ++ " is primitive"
-     Just (ClassVI cn cts _ st meths) ->
+     Just (ClassVI cn cts _ st def meths) -> return $ 
         let ts = assign (assignments st t) (map tyVarType cts)
 
             theMeth :: ([Type], Exp) -> Bool
             theMeth (x, _) = and [isSubType p c | (p, c) <- zip x ts]
-        in do
-            (pts, e) <- case filter theMeth meths of 
-                            [] -> throw $ "method implementation not found for: " ++ pretty s
-                            [x] -> return x
+
+            (assigns, e) = case filter theMeth meths of
+                            [] -> (assignments st (typeof def), def)
+                            [x] -> (concat [assignments p c | (p, c) <- zip (fst x) ts], snd x)
                             xs -> -- multiple instances should not happen
                                   -- it means we have a bug in the type checker
                                   error $ "INTERNAL SMTEN ERROR: overlapping instances for: " ++ pretty s
-            let assigns = concat [assignments p c | (p, c) <- zip pts ts]
-            return (st, assign assigns e)
+        in (st, assign assigns e)
      _ -> throw $ "lookupVar: " ++ pretty n ++ " not found"
 
 -- | Look up the value of a variable in an environment.
@@ -254,9 +254,9 @@ lookupVarValue e s = snd <$> lookupVar e s
 lookupVarType :: (MonadError String m) => Env -> Name -> m Type
 lookupVarType env n = do
   case HT.lookup n (e_vitable env) of
-    Just (DecVI (ValD (TopSig _ _ t) _)) -> return t
+    Just (DecVI (ValD (TopExp (TopSig _ _ t) _))) -> return t
     Just (DecVI (PrimD (TopSig _ _ t))) -> return t
-    Just (ClassVI _ _ _ t _) -> return t
+    Just (ClassVI _ _ _ t _ _) -> return t
     Nothing -> throw $ "lookupVarType: '" ++ pretty n ++ "' not found"
 
 -- | Given the name of a method and a specific class instance for the method,
@@ -264,9 +264,18 @@ lookupVarType env n = do
 lookupMethodType :: (MonadError String m) => Env -> Name -> Class -> m Type
 lookupMethodType env n (Class _ ts) = do
     case HT.lookup n (e_vitable env) of
-        Just (ClassVI _ vars _ t _) ->
+        Just (ClassVI _ vars _ t _ _) ->
             return $ assign (zip (map tyVarName vars) ts) t
         _ -> throw $ "lookupMethodType: " ++ pretty n ++ " not found"
+
+-- | Given the name of a method and a specific class instance for the method,
+-- return the context of that method for the specific instance.
+lookupMethodContext :: (MonadError String m) => Env -> Name -> Class -> m Context
+lookupMethodContext env n (Class _ ts) = do
+    case HT.lookup n (e_vitable env) of
+        Just (ClassVI _ vars ctx _ _ _) ->
+            return $ assign (zip (map tyVarName vars) ts) ctx
+        _ -> throw $ "lookupMethodContext: " ++ pretty n ++ " not found"
 
 -- | Given the name of a data constructor in the environment, return its type.
 lookupDataConType :: (MonadError String m) => Env -> Name -> m Type
@@ -282,7 +291,7 @@ lookupVarInfo env (Sig n t) =
   case HT.lookup n (e_vitable env) of
      Just (DecVI (ValD {})) -> return Declared
      Just (DecVI (PrimD {})) -> return Primitive
-     Just (ClassVI cn cts _ st _) ->
+     Just (ClassVI cn cts _ st _ _) ->
         let ts = assign (assignments st t) (map tyVarType cts)
         in return $ Instance (Class cn ts)
      _ -> throw $ "lookupVarInfo: " ++ pretty n ++ " not found"
@@ -293,11 +302,11 @@ lookupVarInfo env (Sig n t) =
 lookupVarContext :: (MonadError String m) => Env -> Sig -> m Context
 lookupVarContext env (Sig n t) = 
   case HT.lookup n (e_vitable env) of
-     Just (DecVI (ValD (TopSig _ ctx st) _)) ->
+     Just (DecVI (ValD (TopExp (TopSig _ ctx st) _))) ->
         return $ assign (assignments st t) ctx
      Just (DecVI (PrimD (TopSig _ ctx st))) ->
         return $ assign (assignments st t) ctx
-     Just (ClassVI cn cts ctx st _) ->
+     Just (ClassVI cn cts ctx st _ _) ->
         return $ assign (assignments st t) (Class cn (map tyVarType cts) : ctx)
      _ -> throw $ "lookupVarContext: " ++ pretty n ++ " not found"
 

@@ -18,9 +18,12 @@ instance ConTs Type where
        | AppT a b <- t = conTs a `Set.union` conTs b
        | otherwise = Set.empty
 
+instance ConTs TopExp where
+    conTs (TopExp t _) = conTs t
+
 instance ConTs Dec where
     conTs d
-      | ValD t _ <- d = conTs t
+      | ValD e <- d = conTs e
       | DataD n _ cs <- d= Set.unions [conTs cs, Set.singleton n]
       | ClassD ctx n _ ts <- d 
             = Set.unions $ [conTs ctx, Set.singleton n, conTs ts]

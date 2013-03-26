@@ -1,10 +1,12 @@
 
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE PatternGuards #-}
 
 module Smten.Dec.Utils () where
 
 import Data.List(nub)
 
+import Smten.Name
 import Smten.Type
 import Smten.Dec.Dec
 
@@ -26,9 +28,12 @@ instance AssignK Con where
 instance AssignK a => AssignK [a] where
     assignkl f = map (assignkl f)
 
+instance AssignK TopExp where
+    assignkl f (TopExp t e) = TopExp (assignkl f t) e
+
 instance AssignK Dec where
     assignkl f d
-      | ValD t e <- d = ValD (assignkl f t) e
+      | ValD e <- d = ValD (assignkl f e)
       | DataD n vs cs <- d = DataD n (assignkl f vs) (assignkl f cs)
       | ClassD ctx n vs ts <- d = ClassD (assignkl f ctx) n (assignkl f vs) (assignkl f ts)
       | InstD ctx cls ms <- d = InstD (assignkl f ctx) (assignkl f cls) ms
@@ -37,7 +42,13 @@ instance AssignK Dec where
 instance VarTs Class where
     varTs (Class nm ts) = nub (concatMap varTs ts)
 
+instance VarTs TyVar where
+    varTs (TyVar n k) = [(n, k)]
+
 instance VarTs TopSig where
     varTs (TopSig _ _ t) = varTs t
+
+instance VarTs (Name, Kind) where
+    varTs x = [x]
 
     

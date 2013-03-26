@@ -19,6 +19,7 @@ import Smten.Lit
 import Smten.Name
 import Smten.Type
 import Smten.Sig
+import Smten.Ppr
 import Smten.Strict
 
 newtype EID = EID Integer

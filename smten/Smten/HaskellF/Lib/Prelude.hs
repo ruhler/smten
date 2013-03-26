@@ -450,7 +450,8 @@ __prim_signExtend_Bit = primHF signExtend_BitP
 __prim_truncate_Bit :: (HaskellF n, HaskellF m) => Bit n -> Bit m
 __prim_truncate_Bit = primHF truncate_BitP
 
-__prim_concat_Bit :: (HaskellF n, HaskellF m) => Bit n -> Bit m -> Bit (N__PLUS n m)
+__prim_concat_Bit :: (HaskellF n, HaskellF m, HaskellF n_plus_m)
+                     => Bit n -> Bit m -> Bit n_plus_m
 __prim_concat_Bit = primHF concat_BitP
 
 __prim_extract_Bit :: (HaskellF n, HaskellF m) => Bit n -> Integer -> Bit m

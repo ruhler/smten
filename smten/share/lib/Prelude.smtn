@@ -7,34 +7,20 @@ valueof :: #n -> Integer
 -- The single possible value for the given numeric type.
 numeric :: #n
 
--- Numeric type identity.
--- Checks dynamically if the two numeric types are the same. If so, acts as
--- the identity function, otherwise returns an error.
-ntid :: #n -> #m
-ntid n = 
-  let m = numeric
-  in if valueof n == valueof m
-        then m
-        else error "ntid: numeric type mismatch"
-
 class Eq a where
    (==) :: a -> a -> Bool
-   (/=) :: a -> a -> Bool
+   (==) a b = not (a /= b)
 
--- Default implementation for (/=)
-(/=#) :: (Eq a) => a -> a -> Bool
-(/=#) a b = not (a == b)
+   (/=) :: a -> a -> Bool
+   (/=) a b = not (a == b)
 
 instance (Eq a) => Eq [a] where
    (==) [] [] = True
    (==) (x:xs) (y:ys) = (x == y) && (xs == ys)
    (==) _ _ = False
 
-   (/=) = (/=#)
-
 instance (Eq a, Eq b) => Eq (a, b) where
    (==) a b = (fst a == fst b) && (snd a == snd b)
-   (/=) = (/=#)
 
 -- TODO: turn these into enum class methods.
 enumFromTo :: Integer -> Integer -> [Integer]
@@ -66,6 +52,7 @@ class Num a where
 class Monad m where
   (>>=) :: m a -> (a -> m b) -> m b
   (>>) :: m a -> m b -> m b
+  (>>) a b = a >>= const b
   return :: a -> m a
   fail :: String -> m a
 
@@ -85,6 +72,9 @@ mapM_ f as = mapM f as >>= (\_ -> return ())
 
 id :: a -> a
 id x = x
+
+const :: a -> b -> a
+const x _ = x
 
 (.) :: (b -> c) -> (a -> b) -> a -> c
 (.) f g x = f (g x)
@@ -125,7 +115,6 @@ data Maybe a = Nothing | Just a
 instance Monad Maybe where
     fail _ = Nothing
     return = Just
-    (>>) a b = a >>= (\_ -> b)
     (>>=) m f = 
         case m of
             Just x -> f x
@@ -133,20 +122,17 @@ instance Monad Maybe where
 
 instance Eq () where
     (==) () () = True
-    (/=) = (/=#)
 
 __prim_toInteger_Char :: Char -> Integer
 __prim_fromInteger_Char :: Integer -> Char
 
 instance Eq Char where
     (==) a b = __prim_toInteger_Char a == __prim_toInteger_Char b
-    (/=) = (/=#)
 
 __prim_eq_Integer :: Integer -> Integer -> Bool
 
 instance Eq Integer where
     (==) = __prim_eq_Integer
-    (/=) = (/=#)
 
 __prim_add_Integer :: Integer -> Integer -> Integer
 __prim_sub_Integer :: Integer -> Integer -> Integer
@@ -172,11 +158,24 @@ __lexorder = foldr __lexmerge EQ
 
 
 class (Eq a) => Ord a where
-    (<) :: a -> a -> Bool
-    (>) :: a -> a -> Bool
-    (<=) :: a -> a -> Bool
-    (>=) :: a -> a -> Bool
     compare :: a -> a -> Ordering
+    compare x y
+      | x == y = EQ
+      | x <= y = LT
+      | otherwise = GT
+
+    (<) :: a -> a -> Bool
+    (<) a b = compare a b == LT
+
+    (>) :: a -> a -> Bool
+    (>) a b = compare a b == GT
+
+    (<=) :: a -> a -> Bool
+    (<=) a b = compare a b /= GT
+
+    (>=) :: a -> a -> Bool
+    (>=) a b = compare a b /= LT
+
 
 __prim_lt_Integer :: Integer -> Integer -> Bool
 __prim_gt_Integer :: Integer -> Integer -> Bool
@@ -188,12 +187,6 @@ instance Ord Integer where
     (>) = __prim_gt_Integer
     (<=) = __prim_leq_Integer
     (>=) = __prim_geq_Integer
-    compare x y =
-      if (x == y)
-        then EQ
-        else if (x <= y)
-                then LT
-                else GT
 
 
 instance Ord Char where
@@ -209,18 +202,8 @@ instance (Ord a) => Ord [a] where
     compare (x:xs) [] = GT
     compare (x:xs) (y:ys) = __lexorder [compare x y, compare xs ys]
 
-    (<) a b = compare a b == LT
-    (>) a b = compare a b == GT
-    (<=) a b = compare a b /= GT
-    (>=) a b = compare a b /= LT
-
 instance (Ord a, Ord b) => Ord (a, b) where
     compare (a, b) (c, d) = __lexorder [compare a c, compare b d]
-
-    (<) a b = compare a b == LT
-    (>) a b = compare a b == GT
-    (<=) a b = compare a b /= GT
-    (>=) a b = compare a b /= LT
 
 fst :: (a, b) -> a
 fst (x, _) = x

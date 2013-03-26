@@ -89,6 +89,9 @@ instance Bits Bit where
     complement (Bit w a) = bv_make w (complement a)
     shift (Bit w a) i = bv_make w (shift a i)
     rotate = error $ "TODO: Bit rotate"
+    bit = error $ "TODO: Bit bit"
+    testBit = error $ "TODO: Bit testBit"
+    popCount = error $ "TODO: Bit popCount"
     bitSize (Bit w _) = fromInteger w
     isSigned _ = False
 

@@ -175,7 +175,7 @@ caseEH' t x k@(Sig nk _) y n
  | nk == name "True" = exph $ IfEH t x y n
  | nk == name "False" = exph $ IfEH t x n y
  | IfEH {} <- force x = strict_appEH t (\x' -> caseEH t x' k y n) x
- | otherwise = error "caseEH"
+ | otherwise = error $ "SMTEN INTERNAL ERROR: unexpected arg to caseEH"
 
 -- Strict application.
 -- It traverses inside of if expressions. Sharing is preserved.

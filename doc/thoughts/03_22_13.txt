@@ -1,0 +1,347 @@
+
+Fri Mar 22 07:19:25 EDT 2013
+
+Goal this morning: figure out why HaskellF Datatype gets an error which IO
+Datatype does not.
+
+First step: minimize the problem.
+
+Here's the minimization:
+
+d <- free
+assert (case (if d then E1 else E2) of
+           E1 -> False
+           E2 -> True
+         )
+return d
+
+Note, the enum includes E1, E2, ...
+
+Let me see what kind of query we are generating? How do I do that?
+
+Let me look at desugaring first:
+
+(let { _s = case d of {
+                      (True :: Bool) -> E1
+                      _ -> E2
+                    }
+         } in let { _s2 = let { _s1 = Prelude.error "case no match"
+                          } in case _s of {
+                                 E2 -> True
+                                 _ -> _s1
+                               }
+              } in case _s of {
+                     E1 -> False
+                     _ -> _s2
+                   })
+
+Let's take a look at the queries being sent to see if we do the pruning I
+expect.
+
+
+You know what it is?
+
+We have:
+    if p then E1 else error
+
+This turns into an ExpH of the if expression.
+Then we try to convert this to a haskellf E. That forces it prematurely!
+Because we have to look at it to know if it is concrete or not.
+
+That's bad.
+
+Let's look to verify:
+
+instance S.HaskellF MyEnum
+    where box e | Prelude.Just [] <- S.de_conHF "E1" e
+                    = E1
+                | Prelude.Just [] <- S.de_conHF "E2" e
+                    = E2
+                | Prelude.Just [] <- S.de_conHF "E3" e
+                    = E3
+                | Prelude.Just [] <- S.de_conHF "E4" e
+                    = E4
+                | Prelude.otherwise = MyEnum__s e
+
+Yup. Bad.
+
+You know what the solution is? Not a terribly happy one.
+
+Once we go into ExpH, we have to stay there. We can't ever get back. (Unless
+we know we are allowed to look at something.)
+
+Things that would help here: 
+ Do concretization of ALL primitives, so we don't ever go into ExpH if we
+ don't have to.
+
+The problem here is that haskell lazy is not good enough. We have to have
+extra information about the context?
+
+Or... Keep the same If structure in haskell we do in the interpreter?
+
+For example, if instead of
+
+MyEnum = E1 | E2 | E3 | E4 | MyEnum__s ExpH
+
+I could change this to:
+
+MyEnum = E1 | E2 | E3 | E4 | MyEnum__s ExpH MyEnum MyEnum
+
+Depending on the condition, we can do something different. Now everything is
+clear right? Because we can bury the error inside one of the conditions, and
+we'll never need to evaluate that condition?
+
+In other words, I'm proposing an update in how we represent symbolic things in
+HaskellF. The goal is to avoid this requirement that says: to know which
+constructor to use: E1, E2, E3, or E4, I have to traverse through the entire
+ExpH. Now we only have to look at the head?
+
+Question: do we keep box and unbox? I can always go from MyEnum to ExpH in the
+current version. That's no problem. But I can't necessarily go the other way
+around without triggering an error? No. That's not true. I can now because I
+don't have to look at the entire expression?
+
+No. This won't help any. That's not the issue. Maybe this isn't an issue.
+
+Clearly box calls force. The real question is, why does that cause us to force
+things we would otherwise?
+
+Well, I suppose something like: (id :: Foo -> Foo), when applied to an ExpH.
+Normally this should be lazy, but now, because you've given the type 'Foo',
+the implementation is: box the argument, apply the function, unbox the
+argument. But you still don't need to look at the result.
+
+Okay, in summary, I'm not convinced I know what the real problem is yet. Who
+is forcing things they should not be forcing?
+
+Fri Mar 22 09:15:10 EDT 2013
+
+After more thought, I don't think the issues is what I said above. It's fine
+for 'box' to force the thing, because it should only happen if the thing would
+be forced anyway. The real question is, who is forcing something that
+shouldn't be forced?
+
+Let me now look and compare the pruning that's being done. That may give some
+hints.
+
+I don't know. It doesn't appear to be checking things, but it may be, just not
+getting far enough.
+
+Let me do this. Let me look over the haskellf code and see if I see anything
+funny with the implementation of primitives or what not.
+
+I don't see any issue...
+
+Let me look at the generated haskell code?
+
+I still don't see any issue.
+
+Looking more: I still don't see any issues. What's going on?
+
+What is the argument we are passing to assert?
+
+Can I simplify this further?
+
+Well, Not much luck on that front, except! I seem to have found a bug in
+testio pruning. Perhaps it is related?
+
+Let me figure out what's going on here then. See if I can simplify that and
+make an error test case for it. Looks like something to do with strict_appEH?
+And maybe it's the same underlying problem as the haskell issue I'm seeing?
+
+Okay! So I have the test case that fails in IO. Let's see if I can figure out
+the problem with it? In 10 minutes. No more than that.
+
+I don't know. I'll have to come back to this.
+
+Fri Mar 22 13:07:54 EDT 2013
+
+What could be the problem?
+
+Let me trace through the execution by hand and see what I think should happen.
+
+1. p <- free
+So we should declare a free variable. Good.
+
+2. assert p.
+So we should assert p. Good.
+
+3. assert
+      case (if p then Nothing else _|_)
+        nothing -> True
+        _ -> _|_
+
+i. Call mkassert.
+ii. get the current predicate (trueEH)
+iii. prune (trueEH --> p)
+iv. assert_pruned
+
+I believe the problem is during pruning. So let me verify that.
+
+Yes. It's a problem in pruning. Okay, so let's look at pruning.
+
+if trueEH
+    then p
+    else trueEH
+
+Simplifies to the predicate:
+      case (if p then Nothing else _|_)
+        nothing -> True
+        _ -> _|_
+
+ispruned? Should be no.
+
+What do I expect?
+
+checking forceable
+yes forceable
+
+
+Hmm... First we have to ask how this is evaluated. I think as:
+
+if p
+    then True
+    else _|_
+
+checking forceable
+yes forceable
+prune_forceable if
+prune_forceable var
+pruning true branch (or ispruned true branch)
+pruning false branch
+    (asserts not p)
+checking forceable
+not forceable
+
+What we actually get...
+
+The true branch is set, but ispruned seems to be forcing something it
+shouldn't.
+
+Okay, how can that be?
+
+Let me make ispruned a nop: it always returns False. See if we still have the
+same issue.
+
+Now we get: pruning false branch.
+
+
+Okay, so here's what's happening.
+
+When I ask: 'forced?', the readIORef causes something to be forced.
+
+So, there are two possibilities here.
+
+1. We don't have: ExpH _|_ as we should, but rather _|_.
+2. We accidentally forced the (ExpH _|_) before, but it isn't actually forcing
+it until now, when the readIORef call requires it.
+
+Ah... so this is suggestive.
+
+Let me suggest a possibility:
+
+We have:    case (ExpH _|_) of
+                ...
+
+When we evaluate that, it goes to: _|_. In particular, it goes to _|_ and not:
+ExpH _|_. Thus causing the problem.
+
+Yes. I think this is it.
+Yes indeed.
+
+How do we solve this? The problem is, whether we do a thunk or thunkNS depends
+on the arg to case, so we are forcing the arg instead of returning a true
+Thunk. What we are going to want is for functions to return ExpH_, and ...
+perhaps just appEH installs the thunk?
+
+When do we create a thunk?
+
+Or, should the thunk already be created, and we just apply an ExpH_ -> ExpH_
+function on the thunk value?
+
+Well, some thoughts:
+
+* every expression must be wrapped in a thunk, so we can do sharing properly
+  and know if it has been forced or not.
+* functions which look at the forced value of a function should return
+  something of type ExpH_, not ExpH, because if they are looking at the forced
+  value, that value may be _|_, and we need to put the resulting haskell _|_
+  on a thunk.
+
+This suggests to me that we change lambdas from (ExpH -> ExpH) to
+(ExpH_ -> ExpH_). And all the sugar functions should produce ExpH_. And the
+only time we create thunks is when we call a constructor of ExpH_ and need to
+wrap the arguments in thunks.
+
+Note that we can't distinguish at runtime what is shareable or not, because it
+could be a thunk, so we can't tell if it is shareable or not. That means I
+should get rid of that optimization. Every expression should have an EID, and
+should be treated the same with regards to sharing. Perhaps what we'll do is
+optimize this after pruning when we can look at everything.
+
+Fri Mar 22 13:52:16 EDT 2013
+
+So, it would seem something is starting to form in my head.
+
+Make the change to ExpH and ExpH_. Now I may, once again, want to consider
+changing names of things. Thunk might make more sense for Thunk, and ExpH may
+make more sense for ExpH_.
+
+The master and bottom branches are going to diverge now, which will be ...
+unfortunate. I don't think I can keep them in sync. It's just this issue of
+how can we get the speed of the master branch in the bottom branch? Because I
+don't want to give up that performance without something comparable, but
+really the master branch is fundamentally broken.
+
+Another thing: I can do optimizations and simplifications in ExpH mode after
+pruning. That's when we can do simplifications like (p && True) ==> p, and all
+the other simplifications currently being done in SMT.Syntax. Then maybe we
+can get rid of SMT.Syntax entirely? Or at least simplify it a lot.
+
+I'm going to need to try things before I can get this ExpH switch working and
+understand how I want to name things.
+
+Shall I dive right in?
+
+Sure.
+
+Well, there's a problem. We can't access the EID from an ExpH_. But that could
+be very important to preserve sharing? Or do I need it in ExpH_?
+
+I'm not sure.
+
+I don't know the right way to do things.
+
+
+I should go through and see all the places I need the EID. Then ask if I'll
+have them available there or not.
+
+I'm... not so much feeling like this right now.
+
+Fri Mar 22 14:41:13 EDT 2013
+
+I made a place for the user guide, so I may as well start writing a user
+guide. Why not? It will be useful.
+
+Fri Mar 22 15:06:15 EDT 2013
+
+Okay, so user guide has install... But don't I really need a tutorial? Is that
+better than a user guide? Or worse?
+
+It's certainly easier for me to write.
+
+But what's the difference between a tutorial and a user guide?
+
+Looks like:
+  tutorial - set of lessons to teach
+  user guide - guide for getting started
+  reference manual - all the gory details
+
+A tutorial would be good. But separate from the user guide? I'm not sure.
+
+Maybe: user guide describes system in general: how to install, the smten
+executable and its modes, the symbolic api. The tutorial gives specific
+examples.
+
+Yes. I like that.
+

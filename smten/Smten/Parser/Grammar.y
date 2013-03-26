@@ -175,9 +175,9 @@ topdecl :: { [PDec] }
  | 'type' tycon lopt(tyvarnms) '=' type
     { [PSynonym (Synonym $2 $3 $5) ] }
  | 'class' tycon tyvars 'where' '{' cdecls opt(';') '}'
-    { [PDec (ClassD [] $2 $3 $6)] }
+    { [PDec (ClassD [] $2 $3 (ccoalesce $6))] }
  | 'class' context tycon tyvars 'where' '{' cdecls opt(';') '}'
-    { [PDec (ClassD $2 $3 $4 $7)] }
+    { [PDec (ClassD $2 $3 $4 (ccoalesce $7))] }
  | 'instance' class 'where' '{' idecls opt(';') '}'
     { [PDec (InstD [] $2 (icoalesce $5))] }
  | 'instance' context class 'where' '{' idecls opt(';') '}'
@@ -199,15 +199,17 @@ decl :: { PDec }
  | funlhs rhs
     { PClause (fst $1) (MAlt (snd $1) $2) }
 
-cdecls :: { [TopSig] }
+cdecls :: { [CDec] }
  : cdecl
     { [$1] }
  | cdecls ';' cdecl
     { $1 ++ [$3] }
 
-cdecl :: { TopSig }
+cdecl :: { CDec }
  : gendecl
-    { $1 }
+    { CSig $1 }
+ | funlhs rhs
+    { CClause (fst $1) (MAlt (snd $1) $2) }
 
 ldecls :: { [LDec] }
  : ldecl

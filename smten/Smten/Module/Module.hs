@@ -192,12 +192,16 @@ instance Qualify Class where
 instance Qualify Con where
     qualify (Con nm ts) = Con nm <$> qualify ts
 
-instance Qualify Dec where
-    qualify d@(ValD ts body) = 
-        onfailq (\msg -> lift $ throw (msg ++ "\n when flattening " ++ pretty d)) $ do
+instance Qualify TopExp where
+    qualify (TopExp ts body) = do
            ts' <- qualify ts
            body' <- qualify body
-           return (ValD ts' body')
+           return (TopExp ts' body')
+
+instance Qualify Dec where
+    qualify d@(ValD e) = 
+        onfailq (\msg -> lift $ throw (msg ++ "\n when flattening " ++ pretty d)) $
+            ValD <$> qualify e
 
     -- TODO: qualify type and data constructors.
     qualify (DataD n vars cs) = DataD n vars <$> qualify cs
@@ -279,11 +283,11 @@ instance Qualify Method where
 resolve :: Name -> QualifyM Name
 resolve n =
   let hasName :: Name -> Dec -> Bool
-      hasName n (ValD (TopSig nm _ _) _) = (n == nm)
+      hasName n (ValD (TopExp (TopSig nm _ _) _)) = (n == nm)
       hasName n (DataD nm _ _) = (n == nm)
       hasName n (ClassD _ nm _ sigs) =
         let hasns [] = False
-            hasns ((TopSig snm _ _):_) | n == snm = True
+            hasns ((TopExp (TopSig snm _ _) _):_) | n == snm = True
             hasns (_:ss) = hasns ss
         in (n == nm) || hasns sigs
       hasName n (InstD {}) = False

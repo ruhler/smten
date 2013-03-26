@@ -54,12 +54,11 @@ import Smten.Type
 
 type TypeEnv = [(Name, Type)]
 
--- TODO: add Context to this environment, and use it for instcheck and
--- checkmeth.
 data TCS = TCS {
     tcs_env :: Env,
     tcs_tyvars :: [TyVar],
-    tcs_vars :: TypeEnv
+    tcs_vars :: TypeEnv,
+    tcs_ctx :: Context
 }
 
 type TC = ReaderT TCS Failable
@@ -94,9 +93,12 @@ instance TypeCheck Sig where
 addVarTs :: VarTs a => a -> TCS -> TCS
 addVarTs x tcs = tcs { tcs_tyvars = [TyVar n k | (n, k) <- varTs x]  ++ tcs_tyvars tcs }
 
+addCtx :: Context -> TCS -> TCS
+addCtx x tcs = tcs { tcs_ctx = x ++ (tcs_ctx tcs) }
+
 instance TypeCheck TopSig where
     -- TODO: check the context too?
-    typecheckM (TopSig n c t) = local (addVarTs t) $ typecheckM t
+    typecheckM (TopSig n c t) = local (addCtx c . addVarTs t) $ typecheckM t
 
 instance TypeCheck Exp where
    typecheckM (LitE {}) = return ()
@@ -109,20 +111,26 @@ instance TypeCheck Exp where
          then return ()
          else throw $ "expecting type " ++ pretty texpected ++ ", but found type " ++ pretty ct ++ " in data constructor " ++ pretty n
 
-   typecheckM (VarE (Sig n t)) = do
+   typecheckM (VarE s@(Sig n t)) = do
       typecheckM t
       tenv <- asks tcs_vars
       case lookup n tenv of
-          Just t' | t == t' -> return ()
+          Just t' | canonical t == canonical t' -> return ()
           Just t' -> throw $ "expected variable of type:\n  " ++ pretty t'
                      ++ "\nbut " ++ pretty n ++ " has type:\n  " ++ pretty t
           Nothing -> do
               env <- asks tcs_env
+
+              -- Verify the type is satisfied for this variable.
               texpected <- lookupVarType env n
               if isSubType texpected t
                   then return ()
                   else throw $ "expected variable of type:\n  " ++ pretty texpected
                              ++ "\nbut " ++ pretty n ++ " has type:\n  " ++ pretty t
+
+              -- Verify the context is satisfied for this variable.
+              vctx <- lookupVarContext env s
+              mapM_ satisfied vctx
 
    typecheckM (AppE f x) = do    
       typecheckM f
@@ -160,59 +168,70 @@ instance TypeCheck Exp where
          else throw $ "expected type " ++ pretty yt ++
                  " but got type " ++ pretty (typeof y) ++
                  " in expression " ++ pretty y
-        
 
-instance TypeCheck Dec where
-    typecheckM d@(ValD ts@(TopSig n c t) e) =
-      onfail (\s -> throw $ s ++ "\n in declaration " ++ pretty d) $ do
+instance TypeCheck TopExp where
+    typecheckM (TopExp ts@(TopSig n c t) e) = do
         typecheckM ts
-        local (addVarTs ts) $ typecheckM e
+        local (addCtx c . addVarTs ts) $ typecheckM e
         if (typeof e /= t)
           then throw $ "expecting type " ++ pretty t
                       ++ " but found type " ++ pretty (typeof e)
                       ++ " in expression " ++ pretty e
           else return ()
-        env <- asks tcs_env
-        instcheck env c e
+        
+
+instance TypeCheck Dec where
+    typecheckM d@(ValD e) = 
+      onfail (\s -> throw $ s ++ "\n in declaration " ++ pretty d) $ do
+        typecheckM e
 
     typecheckM d@(DataD n vs cs) =
       onfail (\s -> throw $ s ++ "\n in declaration " ++ pretty d) $
          local (\tcs -> tcs { tcs_tyvars = vs }) (mapM_ typecheckM cs)
 
-    typecheckM (ClassD {}) = return ()
+    typecheckM d@(ClassD ctx nm vars ms) = 
+      let checkmeth m@(TopExp (TopSig n c texpected) b) =
+            onfail (\s -> throw $ s ++ "\n in method " ++ pretty n) $ do
+              env <- asks tcs_env
+              local (addCtx c . addVarTs texpected) $ typecheckM b
+              if typeof b /= texpected
+                  then throw $ "expected type " ++ pretty texpected
+                          ++ " but found type " ++ pretty (typeof b)
+                          ++ " in Method " ++ pretty m
+                  else return ()
+      in onfail (\s -> throw $ s ++ "\n in declaration " ++ pretty d) $ do
+           let me = Class nm (map tyVarType vars)
+           local (addCtx (me : ctx) . addVarTs vars) $ mapM_ checkmeth ms
 
     typecheckM d@(InstD ctx cls@(Class nm ts) ms) =
       let checkmeth m@(Method n b) =
             onfail (\s -> throw $ s ++ "\n in method " ++ pretty n) $ do
               env <- asks tcs_env
               texpected <- lookupMethodType env n cls
-              local (addVarTs texpected) $ typecheckM b
+              mctx <- lookupMethodContext env n cls
+              local (addCtx mctx . addVarTs texpected) $ typecheckM b
               if typeof b /= texpected
                   then throw $ "expected type " ++ pretty texpected
                           ++ " but found type " ++ pretty (typeof b)
                           ++ " in Method " ++ pretty m
                   else return ()
-              -- TODO: use the context from the signature
-              instcheck env ctx b
     
-          methdefined :: [Method] -> TopSig -> Bool 
-          methdefined ms (TopSig n _ _) = n `elem` [mn | Method mn _ <- ms]
       in onfail (\s -> throw $ s ++ "\n in declaration " ++ pretty d) $ do
-           local (addVarTs ts) $ mapM_ checkmeth ms
            env <- asks tcs_env
-           ClassD clsctx _ pts cms <- lookupClassD env nm 
-           case filter (not . methdefined ms) cms of
-              [] -> return ()
-              xs -> throw $ "methods not defined: " ++ show [pretty n | TopSig n _ _ <- xs]
+           ClassD clsctx _ pts _ <- lookupClassD env nm 
            let assigns = concat [assignments (tyVarType p) c | (p, c) <- zip pts ts]
-           mapM_ (satisfied env ctx) (assign assigns clsctx)
+           local (addCtx ctx . addVarTs ts) $ do
+                mapM_ checkmeth ms
+                mapM_ satisfied (assign assigns clsctx)
     typecheckM d@(PrimD ts) =
       onfail (\s -> throw $ s ++ "\n in declaration " ++ pretty d) $ do
         typecheckM ts
 
 -- Assert the given class requirement is satisfied.
-satisfied :: (MonadError String m) => Env -> Context -> Class -> m ()
-satisfied e c cls = do
+satisfied :: Class -> TC ()
+satisfied cls = do
+    e <- asks tcs_env
+    c <- asks tcs_ctx
     let -- Get the immediate context implied by the given class.
         -- For example, getclassctx (Ord Foo) would return [Eq Foo].
         getclassctx (Class nm ts) = do
@@ -234,18 +253,6 @@ satisfied e c cls = do
             mapM_ sat (assign assigns ctx)
     sat cls
 
--- | Verify all the needed class instances are either in the context or
--- declared for the given expression.
---
--- TODO: incorporate this into the rest of the type checking traversal.
-instcheck :: (MonadError String m) => Env -> Context -> Exp -> m ()
-instcheck env c e = do
-    let check :: (MonadError String m) => Sig -> m ()
-        check s = do
-            ctx <- lookupVarContext env s
-            mapM_ (satisfied env c) ctx
-    mapM_ check (free e)
-
 typecheck :: (TypeCheck a) => Env -> a -> Failable ()
-typecheck env x = runReaderT (typecheckM x) (TCS env [] [])
+typecheck env x = runReaderT (typecheckM x) (TCS env [] [] [])
 

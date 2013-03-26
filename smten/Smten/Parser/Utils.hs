@@ -1,7 +1,7 @@
 
 module Smten.Parser.Utils (
-    PDec(..), LDec(..),
-    coalesce, icoalesce, lcoalesce,
+    PDec(..), LDec(..), CDec(..),
+    coalesce, icoalesce, lcoalesce, ccoalesce,
     mkContext,
  ) where
 
@@ -24,6 +24,9 @@ data PDec =
   | PDeriving Deriving
     deriving (Show)
 
+data CDec = CSig TopSig
+          | CClause Name MAlt
+
 data LDec =
     LPat Pat Exp
   | LClause Name MAlt
@@ -32,6 +35,10 @@ isPClause :: PDec -> Bool
 isPClause (PClause {}) = True
 isPClause _ = False
 
+isCClause :: CDec -> Bool
+isCClause (CClause {}) = True
+isCClause _ = False
+
 coalesce :: [PDec] -> ([Synonym], [DataDec], [Deriving], [Dec])
 coalesce [] = ([], [], [], [])
 coalesce ((PSig s):ds) =
@@ -39,7 +46,7 @@ coalesce ((PSig s):ds) =
         (syns, dds, drv, rest) = coalesce rds
         d = case ms of
                 [] -> PrimD s
-                _ -> ValD s (clauseE [c | PClause _ c <- ms]) 
+                _ -> ValD (TopExp s (clauseE [c | PClause _ c <- ms]))
     in (syns, dds, drv, d:rest)
 coalesce ((PDec d):ds) =
    let (syns, dds, drv, rest) = coalesce ds
@@ -64,6 +71,17 @@ icoalesce ((n, c):ms) =
         rest = icoalesce rms
         m = Method n (clauseE (c : map snd me))
     in (m : rest)
+
+ccoalesce :: [CDec] -> [TopExp]
+ccoalesce [] = []
+ccoalesce ((CSig s):ds) =
+  let (ms, rds) = span isCClause ds
+      rest = ccoalesce rds
+      d = case ms of
+              [] -> nodefault s
+              _ -> TopExp s (clauseE [c | CClause _ c <- ms])
+  in d:rest
+ccoalesce (CClause {} : _) = error $ "SMTEN TODO: handle unexpected CClause in ccoalesce"
 
 lcoalesce :: [LDec] -> [(Pat, Exp)]
 lcoalesce [] = []
