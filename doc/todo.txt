@@ -3,8 +3,6 @@ Focus::
 * Look-ahead: Fix issues with _|_ so semantics are correctly implemented
 
 Recent::
-* I should be able to implement bv_zero_extend a as bv_concat 0 a
-    Fix type system so that works.
 * Don't pretty print numeric type 16 in haskellf as
     2*2*2*2*(1+0) ??
     depends if you want detailed type info or not.
@@ -30,11 +28,6 @@ Documentation::
 
 Type System::
 * Verify we handle case where default method given without sig in ClassD.
-* Implement enough math somewhere to know that
-  Bit #3  -> Bit #4 -> Bit #7 is a valid subtype of
-  Bit #m  -> Bit #n -> Bit #(m+n)
-
-  Because otherwise bitvector concatentation is really annoying to use.
 
 Front End::
 * line numbers for non-syntactic errors would be nice.

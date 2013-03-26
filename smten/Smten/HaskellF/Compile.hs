@@ -66,7 +66,13 @@ data HFS = HFS {
     hfs_env :: Env,
 
     -- | A list of type variables already in scope.
-    hfs_tyvars :: [Name]
+    hfs_tyvars :: [Name],
+    
+    -- | A map from Type to variable type name.
+    -- This is used to replace numeric type operations with variable types, to
+    -- get around issues with ghc doing math.
+    hfs_retype :: [(Type, Name)]
+
 }
 
 type HF = ReaderT HFS Failable
@@ -121,7 +127,7 @@ symconstrnm n
  | Just x <- de_tupleN n = symconstrnm . name $ "Tuple" ++ show x ++ "__"
  | otherwise = hsName $ n `nappend` (name "__s")
 
-hsExp :: (MonadError String m) => Exp -> m H.Exp
+hsExp :: Exp -> HF H.Exp
 
 -- String literals:
 -- TODO: the template haskell pretty printer doesn't print strings correctly
@@ -157,33 +163,37 @@ hsExp (CaseE x (Sig kn kt) y n) = do
     [x', y', n'] <- mapM hsExp [x, y, n]
     return $ foldl1 H.AppE [H.VarE (constrcasenm kn), x', y', n']
         
-hsType :: (MonadError String m) => Type -> m H.Type
+hsType :: Type -> HF H.Type
 hsType = hsType' . canonical
 
-hsType' :: (MonadError String m) => Type -> m H.Type
-hsType' (ConT n _)
-  | n == name "()" = return $ H.ConT (H.mkName "Unit__")
-  | Just x <- de_tupleN n
-     = return $ H.ConT (H.mkName $ "Tuple" ++ show x ++ "__")
-  | n == name "[]" = return $ H.ConT (H.mkName "List__")
-  | n == name "->" = return H.ArrowT
-  | otherwise = return $ H.ConT (hsName n)
-hsType' (AppT a b) = do
-    a' <- hsType' a
-    b' <- hsType' b
-    return $ H.AppT a' b'
-hsType' (VarT n _) = return $ H.VarT (hsName n)
-hsType' (NumT i) = return $ hsnt i
-hsType' (OpT f a b) = do
-    a' <- hsType' a
-    b' <- hsType' b
-    let f' = case f of
-                "+" -> H.ConT $ H.mkName "N__PLUS"
-                "-" -> H.ConT $ H.mkName "N__MINUS"
-                "*" -> H.ConT $ H.mkName "N__TIMES"
-                _ -> error $ "hsType' TODO: AppNT " ++ f
-    return $ H.AppT (H.AppT f' a') b'
-hsType' t = throw $ "haskellf: unsupported type: " ++ pretty t
+hsType' :: Type -> HF H.Type
+hsType' t = do
+    retype <- asks hfs_retype
+    case t of
+      _ | Just n <- lookup t retype -> return $ H.VarT (hsName n)
+      (ConT n _)
+        | n == name "()" -> return $ H.ConT (H.mkName "Unit__")
+        | Just x <- de_tupleN n
+           -> return $ H.ConT (H.mkName $ "Tuple" ++ show x ++ "__")
+        | n == name "[]" -> return $ H.ConT (H.mkName "List__")
+        | n == name "->" -> return H.ArrowT
+        | otherwise -> return $ H.ConT (hsName n)
+      (AppT a b) -> do
+        a' <- hsType' a
+        b' <- hsType' b
+        return $ H.AppT a' b'
+      (VarT n _) -> return $ H.VarT (hsName n)
+      (NumT i) -> return $ hsnt i
+      (OpT f a b) -> do
+        a' <- hsType' a
+        b' <- hsType' b
+        let f' = case f of
+                    "+" -> H.ConT $ H.mkName "N__PLUS"
+                    "-" -> H.ConT $ H.mkName "N__MINUS"
+                    "*" -> H.ConT $ H.mkName "N__TIMES"
+                    _ -> error $ "hsType' TODO: AppNT " ++ f
+        return $ H.AppT (H.AppT f' a') b'
+      t -> throw $ "haskellf: unsupported type: " ++ pretty t
 
 -- Return the numeric type corresponding to the given integer.
 hsnt :: Integer -> H.Type
@@ -199,7 +209,7 @@ hsTopType ctx t = do
         [] -> return t'
         ctx'' -> return $ H.ForallT (map (H.PlainTV . hsName) use) ctx'' t'
 
-hsClass :: (MonadError String m) => Class -> m H.Pred
+hsClass :: Class -> HF H.Pred
 hsClass (Class nm ts) = do
     ts' <- mapM hsType ts
     return $ H.ClassP (hsName nm) ts'
@@ -219,12 +229,33 @@ hsSig (TopSig n ctx t) = do
 
 hsTopExp :: TopExp -> HF [H.Dec]
 hsTopExp (TopExp (TopSig n ctx t) e) = do
-    t' <- hsTopType ctx t
-    e' <- hsExp e
-    let hsn = hsName n
-    let sig = H.SigD hsn t'
-    let val = H.FunD hsn [H.Clause [] (H.NormalB e') []]
-    return [sig, val]
+ let mkretype :: Type -> [(Type, Name)]
+     mkretype t
+        | OpT {} <- t = [(t, retypenm t)]
+        | AppT a b <- t = mkretype a ++ mkretype b
+        | otherwise = []
+    
+     retypenm :: Type -> Name
+     retypenm t
+        | VarT n _ <- t = n
+        | OpT o a b <- t =
+            let an = retypenm a 
+                bn = retypenm b
+                opn = case o of
+                        "+" -> "_plus_"
+                        "-" -> "_minus_"
+                        "*" -> "_times_"
+            in an `nappend` name opn `nappend` bn
+        | NumT i <- t = name ("_" ++ show i)
+        | otherwise = error "unexpected type in HaskellF.Compile.retypenm"
+
+ local (\s -> s { hfs_retype = mkretype (canonical t)}) $ do
+     t' <- hsTopType ctx t
+     e' <- hsExp e
+     let hsn = hsName n
+     let sig = H.SigD hsn t'
+     let val = H.FunD hsn [H.Clause [] (H.NormalB e') []]
+     return [sig, val]
     
 hsDec :: Dec -> HF [H.Dec]
 hsDec (ValD e) = hsTopExp e
@@ -305,7 +336,7 @@ haskellf wrapmain modname env =
                     else H.empty
 
       dsm = concat <$> mapM hsDec env
-      ds = surely $ runReaderT dsm (HFS (mkEnv env) [])
+      ds = surely $ runReaderT dsm (HFS (mkEnv env) [] [])
   in hsHeader H.$+$ H.ppr ds
 
 harrowsT :: [H.Type] -> H.Type
@@ -341,9 +372,10 @@ smtentmethq n = H.mkName $ "S.smtenT" ++ show n
 --  Returns the generated context and list of newly declared type variables.
 mkContext :: (VarTs a) => a -> HF ([H.Pred], [Name])
 mkContext t = do
+  retypes <- map snd <$> asks hfs_retype
   tyvars <- asks hfs_tyvars
   let p = flip notElem tyvars
-      vts = filter (p . fst) $ varTs t 
+      vts = filter (p . fst) $ (varTs t ++ [(n, NumK) | n <- retypes])
       tvs = [H.ClassP (clshaskellf (knum k)) [H.VarT (hsName n)] | (n, k) <- vts]
   return (tvs, map fst vts)
 
@@ -354,7 +386,7 @@ knum (ArrowK a b) = 1 + knum a
 knum (VarK i) = 0 -- default to StarK
 knum UnknownK = 0
 
-hsCon :: (MonadError String m) => Con -> m H.Con
+hsCon :: Con -> HF H.Con
 hsCon (Con n tys) = do
     ts <- mapM hsType tys
     return $ H.NormalC (hsName n) (map (\t -> (H.NotStrict, t)) ts)
@@ -364,7 +396,7 @@ hsCon (Con n tys) = do
 --  | FooB FooB1 FooB2 ...
 --    ...
 --  | Foo__s ExpH
-mkDataD :: (MonadError String m) => Name -> [TyVar] -> [Con] -> m H.Dec
+mkDataD :: Name -> [TyVar] -> [Con] -> HF H.Dec
 mkDataD n tyvars constrs = do
   let tyvars' = map (H.PlainTV . hsName . tyVarName) tyvars
   constrs' <- mapM hsCon constrs
