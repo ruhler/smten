@@ -3,12 +3,10 @@
 
 module Smten.Exp.Utils (
     isfree,
-    transformMTE, transform,
-    pushFunction,
+    transformMTE,
     ) where
 
 import Data.Functor
-import Data.List(nub, genericLength)
 
 import Smten.Name
 import Smten.Sig
@@ -60,39 +58,4 @@ instance Assign Exp where
          AppE a b -> AppE (me a) (me b)
          LamE (Sig n t) b -> LamE (Sig n (mt t)) (me b)
          CaseE x (Sig kn kt) y n -> CaseE (me x) (Sig kn (mt kt)) (me y) (me n)
-
--- Perform a generic transformation on an expression.
--- Applies the given function to each subexpression. Any matching
--- subexpression is replaced with the returned value, otherwise it continues
--- to recurse.
-transform :: (Exp -> Maybe Exp) -> Exp -> Exp
-transform g e | Just v <- g e = v
-transform g e =
-  let me = transform g
-  in case e of
-       LitE {} -> e
-       ConE {} -> e
-       VarE {} -> e 
-       AppE f x -> AppE (me f) (me x)
-       LamE s f -> LamE s (me f)
-       CaseE x k y d -> CaseE (me x) k (me y) (me d)
-
--- Push the function into the given argument.
--- This only makes sense, and only does anything, if the argument is a case
--- expression.
---
--- Transforms:
---   f (case x of k -> \a b ... -> y; _ -> n)
---  To:
---   case x of k -> \a b ... f y; _ -> f n
-pushFunction :: Exp -> Exp -> Exp
-pushFunction f (CaseE x k y n) =
-  let yify :: Integer -> (Exp -> Exp) -> Exp -> Exp
-      yify 0 f x = f x
-      yify n f (LamE s b) = LamE s (yify (n-1) f b)
-
-      kargs = genericLength (de_arrowsT (typeof k))
-      ybody = \x -> appE f x
-      y' = yify kargs ybody y
-  in CaseE x k y' (appE f n)
 
