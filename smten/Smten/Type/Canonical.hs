@@ -1,9 +1,12 @@
 
 {-# LANGUAGE PatternGuards #-}
 
-module Smten.Type.Canonical (canonical) where
+module Smten.Type.Canonical (
+   canonical,
+   Sum(), tosum, unsum, monomial, linear, divide,
+    ) where
 
-import Prelude hiding (sum)
+import Control.Monad
 import qualified Data.Map as Map
 
 import Data.Functor ((<$>))
@@ -36,23 +39,27 @@ mksum = Sum . Map.filter (/= 0) . Map.mapKeysWith (+) prune_p
 mkpsum :: Product -> Sum
 mkpsum p = mksum (Map.singleton p 1)
 
+-- given var 'x', produces the sum: x
+monomial :: Name -> Sum
+monomial n = mkpsum (Map.singleton n 1)
+
 -- Represent a numeric type as a sum of products.
 -- Does not remove unnecessary terms.
-sum :: Type -> Maybe Sum
-sum t
- | VarT n NumK <- t = Just $ mkpsum (Map.singleton n 1)
+tosum :: Type -> Maybe Sum
+tosum t
+ | VarT n NumK <- t = Just $ monomial n
  | NumT i <- t = Just $ fromInteger i
  | OpT "+" a b <- t = do
-     a' <- sum a
-     b' <- sum b
+     a' <- tosum a
+     b' <- tosum b
      return $ a' + b'
  | OpT "-" a b <- t = do
-     a' <- sum a
-     b' <- sum b
+     a' <- tosum a
+     b' <- tosum b
      return $ a' - b'
  | OpT "*" a b <- t = do
-     a' <- sum a
-     b' <- sum b
+     a' <- tosum a
+     b' <- tosum b
      return $ a' * b'
  | otherwise = Nothing
 
@@ -106,7 +113,24 @@ unsum s =
 -- In particular, numeric types are put into a canonical form.
 canonical :: Type -> Type
 canonical t
- | Just s <- sum t = unsum s
+ | Just s <- tosum t = unsum s
  | AppT a b <- t = AppT (canonical a) (canonical b)
  | otherwise = t
+
+-- Test if the variable with given name is linear in the given sum. If so,
+-- returns its coefficient, otherwise returns nothing.
+linear :: Name -> Sum -> Maybe Integer
+linear n s = do
+    guard $ length (filter (Map.member n) (Map.keys (terms s))) == 1
+    Map.lookup (Map.singleton n 1) (terms s)
+
+-- Divide the sum by a value.
+-- Succeeds only if all coefficients are evently divisible by that value.
+divide :: Sum -> Integer -> Maybe Sum
+divide s x = do
+  let dividable :: Integer -> Bool
+      dividable i = i `rem` x == 0
+
+  guard $ all dividable (Map.elems (terms s))
+  return $ mksum (Map.map (\i -> i `div` x) (terms s))
 

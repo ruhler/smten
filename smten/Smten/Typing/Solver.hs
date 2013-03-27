@@ -78,7 +78,24 @@ single (a, b)
       put ((a1,b1) : (a2,b2) : sys, sol)
   | VarT na _ <- a, istarget na = update na b
   | VarT nb _ <- b, istarget nb = update nb a
+  | Just (n, t) <- numeric a b = update n t
   | otherwise = return ()
+
+-- Solve a numeric constraint.
+numeric :: Type -> Type -> Maybe (Name, Type)
+numeric a b = do
+  sa <- tosum a
+  sb <- tosum b
+  let targets = filter istarget (map fst (varTs [a, b]))
+
+      s = sa - sb
+
+      trytarget :: Name -> Maybe (Name, Type)
+      trytarget n = do
+        c <- linear n s
+        s' <- divide s c
+        return (n, unsum $ negate (s' - monomial n))
+  msum (map trytarget targets)
 
 -- Update the solution with var n = t
 update :: Name -> Type -> Solver ()
