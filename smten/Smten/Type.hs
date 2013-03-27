@@ -1,5 +1,6 @@
 
 module Smten.Type (
+    module Smten.Type.Canonical,
     module Smten.Type.Ppr,
     module Smten.Type.SmtenT,
     module Smten.Type.SmtenTs,
@@ -10,6 +11,7 @@ module Smten.Type (
     module Smten.Type.Utils,
     ) where
 
+import Smten.Type.Canonical
 import Smten.Type.Ppr
 import Smten.Type.SmtenT
 import Smten.Type.SmtenTs

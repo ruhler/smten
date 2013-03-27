@@ -41,6 +41,7 @@ library
     Smten.Sig
 
     Smten.Type
+    Smten.Type.Canonical
     Smten.Type.Typeof
     Smten.Type.Sugar
     Smten.Type.TH
