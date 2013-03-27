@@ -269,7 +269,7 @@ mkassert p = do
   pred <- gets qs_pred
   mp <- prune (impliesEH pred p)
   case mp of
-    Just v -> assert_pruned v
+    Just v -> assert_pruned (fst v)
     _ -> return ()
 
 ispruned :: ExpH -> Bool
@@ -285,9 +285,16 @@ ispruned =
        | IfEH _ p a b <- force e = all ispruned [p, a, b]
  in shared g
 
-prune :: ExpH -> SMT (Maybe ExpH)
+-- Prune unreachable parts of the given expression, in the current context.
+-- Returns:
+--  Nothing - if we can't look at the expression in the current context.
+--  Just e, p 
+--      e - the pruned expression
+--      p - True if the pruned expression is the same as the original
+--          expression (nothing was pruned).
+prune :: ExpH -> SMT (Maybe (ExpH, Bool))
 prune x
- | ispruned x = return (Just x)
+ | ispruned x = return $ Just (x, True)
  | forced x = Just <$> prune_forceable x
  | otherwise = do
      sat <- query_Sat
@@ -297,29 +304,39 @@ prune x
 
 -- Prune unreachable branches from the given expression.
 -- It is assumed the given expression may be forced.
-prune_forceable :: ExpH -> SMT ExpH
+prune_forceable :: ExpH -> SMT (ExpH, Bool)
 prune_forceable e
- | LitEH {} <- force e = return e
- | ConEH n t xs <- force e = aconEH n t <$> mapM prune_forceable xs
- | VarEH {} <- force e = return e
- | PrimEH _ _ impl xs <- force e = impl <$> mapM prune_forceable xs
+ | LitEH {} <- force e = return (e, True)
+ | ConEH n t xs <- force e = do
+     xs' <- mapM prune_forceable xs
+     if all snd xs'
+        then return (e, True)
+        else return (aconEH n t (map fst xs'), False)
+ | VarEH {} <- force e = return (e, True)
+ | PrimEH _ _ impl xs <- force e = do
+     xs' <- mapM prune_forceable xs
+     if all snd xs'
+        then return (e, True)
+        else return (impl (map fst xs'), False)
  | LamEH {} <- force e = error "LamEH in Prune"
  | IfEH t p a b <- force e = do
-     p' <- prune_forceable p
+     (p', psame) <- prune_forceable p
      ma <- if ispruned a
-                then return $ Just a
+                then return $ Just (a, True)
                 else nest $ do
                    assert_pruned p'
                    prune a
      mb <- if ispruned b
-                then return $ Just b
+                then return $ Just (b, True)
                 else nest $ do
                     assert_pruned (notEH p')
                     prune b
      case (ma, mb) of
-         (Just a', Just b') -> return $ ifEH t p' a' b'
-         (Just a', _) -> return a'
-         (_, Just b') -> return b'
+         (Just (a', asame), Just (b', bsame))
+            | asame && bsame && psame -> return (e, True)
+            | otherwise -> return (ifEH t p' a' b', False)
+         (Just (a', _), _) -> return (a', False)
+         (_, Just (b', _)) -> return (b', False)
          _ -> error $ "Smten.SMT.SMT.prune: unreachable"
 
 use :: Symbolic a -> SMT (Used a)
@@ -414,7 +431,7 @@ de_symbolicEH :: ExpH -> Symbolic ExpH
 de_symbolicEH e = do
     me <- Symbolic $ prune e
     case me of
-        Just v -> de_symbolicEH_pruned v
+        Just v -> de_symbolicEH_pruned (fst v)
         Nothing -> return (errorEH "de_symbolicEH from invalid context")
 
 de_symbolicEH_pruned :: ExpH -> Symbolic ExpH
