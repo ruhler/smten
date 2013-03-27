@@ -2,7 +2,7 @@
 {-# LANGUAGE PatternGuards #-}
 
 module Smten.Exp.Utils (
-    free, free',
+    isfree,
     transformMTE, transform,
     pushFunction,
     ) where
@@ -16,21 +16,17 @@ import Smten.Type
 import Smten.Exp.Exp
 import Smten.Exp.Sugar
 
--- | Return a list of the free variables in the given expression.
-free :: Exp -> [Sig]
-free =
-  let free' :: [Name] -> Exp -> [Sig]
-      free' _ (LitE {}) = []
-      free' _ (ConE {}) = []
-      free' bound (VarE (Sig n _)) | n `elem` bound = []
-      free' _ (VarE s) = [s]
-      free' bound (AppE a b) = free' bound a ++ free' bound b
-      free' bound (LamE (Sig n _) b) = free' (n:bound) b
-      free' bound (CaseE x k y n) = free' bound x ++ free' bound y ++ free' bound n
-  in nub . free' []
-
-free' :: Exp -> [Name]
-free' e = [n | Sig n _ <- free e]
+-- | Check if the variable with given name is free in the given expression.
+isfree :: Name -> Exp -> Bool
+isfree n = 
+  let f :: Exp -> Bool
+      f (LitE {}) = False
+      f (ConE {}) = False
+      f (VarE (Sig nm _)) = n == nm
+      f (AppE a b) = f a || f b
+      f (LamE (Sig nm _) b) = (n /= nm) && f b
+      f (CaseE x _ y n) = any f [x, y, n]
+  in f
 
 -- Perform a monadic transformation on all the types appearing in the given
 -- expression

@@ -53,7 +53,7 @@ sharedM x f | isSimple x = f x
 sharedM x f = do
    xv@(Sig nv _) <- fresh (Sig (name "_s") UnknownT)
    body <- f (varE xv)
-   let z = if nv `elem` (free' body)
+   let z = if isfree nv body
              then letE xv x body 
              else body
    return z
