@@ -19,23 +19,20 @@ samectx = do
     r <- query $ do
         p <- free
         x <- free
-        y <- free
         assert ((\a -> (if p then a + a
-                            else 0) == (8 :: Integer)) (x - y))
-        return (x - y)
-    test "diffctx" (r == Just 4)
+                            else 0) == (10 :: Integer)) (x+x+x+x+x))
+        return x
+    test "diffctx" (r == Just 1)
 
 diffctx :: SMT ()
 diffctx = do
     r <- query $ do
         p <- free
         x <- free
-        y <- free
         assert ((\a -> (if p then a + a
-                            else a - a) == (8 :: Integer)) (x - y))
-        assert p
-        return (x - y)
-    test "diffctx" (r == Just 4)
+                            else a - a) == (10 :: Integer)) (x+x+x+x+x))
+        return x
+    test "diffctx" (r == Just 1)
 
 casedesugar :: SMT ()
 casedesugar = do
@@ -71,10 +68,10 @@ appeval = do
 qmain :: SMT ()
 qmain = do
     simple
-    --samectx
-    --diffctx
-    --casedesugar
-    --appeval
+    samectx
+    diffctx
+    casedesugar
+    appeval
 
 main :: IO ()
 main = do
