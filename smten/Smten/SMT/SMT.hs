@@ -314,8 +314,8 @@ prune_forceable e
      mb <- if ispruned b
                 then return $ Just b
                 else nest $ do
-                   assert_pruned (notEH p')
-                   prune b
+                    assert_pruned (notEH p')
+                    prune b
      case (ma, mb) of
          (Just a', Just b') -> return $ ifEH t p' a' b'
          (Just a', _) -> return a'

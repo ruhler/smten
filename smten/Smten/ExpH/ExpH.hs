@@ -70,6 +70,19 @@ newtype ExpH = ExpH {
     exph_cell :: IORef ExpH_Cell
 } deriving (Typeable)
 
+instance Show ExpH where
+    show = show . value
+
+instance Show ExpH_Value where
+    show (LitEH l) = pretty l
+    show (ConEH n _ xs) = pretty n ++ " " ++ show xs
+    show (VarEH s) = pretty s
+    show (PrimEH n _ _ xs) = pretty n ++ " " ++ show xs
+    show (LamEH s _ _) = "\\" ++ pretty s ++ " -> ..."
+    show (IfEH _ p a b) = "if " ++ show p ++ " then " ++ show a ++ " else " ++ show b
+    show (ThunkEH _) = "?thunk?"
+
+    
 force :: ExpH -> ExpH_Value
 force = 
  let force_io :: ExpH -> IO ExpH_Cell

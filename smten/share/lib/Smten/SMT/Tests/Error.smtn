@@ -96,6 +96,19 @@ qsymsym = do
             return (a, b)
     test "error.qsymsym" (s == Just (False, True))
 
+qhfeager :: SMT ()
+qhfeager = do
+    s <- query $ do
+            p <- free
+            assert p
+            assert (
+                if p
+                    then False
+                    else error "qhfeager"
+              )
+            return p
+    test "error.qhfeager" (s == Nothing)
+
             
 qtest :: SMT ()
 qtest = do
@@ -106,6 +119,7 @@ qtest = do
     qinc2
     qinc3
     qsymsym
+    qhfeager
 
 main :: IO ()
 main = do
