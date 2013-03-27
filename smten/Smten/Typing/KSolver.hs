@@ -14,10 +14,10 @@ ksolve :: [(Kind, Kind)] -> Map.Map Integer Kind
 ksolve xs = Map.mapKeys n2i . Map.map t2k $ solve [(k2t a, k2t b) | (a, b) <- xs]
 
 n2i :: Name -> Integer
-n2i = read . unname
+n2i = read . tail . unname
 
 i2n :: Integer -> Name
-i2n = name . show
+i2n i = name ('~' : show i)
 
 k2t :: Kind -> Type
 k2t StarK = conT (name "StarK")

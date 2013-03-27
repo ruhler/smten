@@ -33,6 +33,7 @@
 -- 
 -------------------------------------------------------------------------------
 
+{-# LANGUAGE PatternGuards #-}
 {-# LANGUAGE FlexibleInstances #-}
 
 module Smten.Typing.Solver (solve) where
@@ -48,19 +49,6 @@ import Smten.Type
 import Smten.Ppr
 
 -- | Solve a type constraint system.
--- Here's how we solve it:
---    We define an order on Types based on how well known they are. So
---    IntegerT, ConT, etc... are very well known. VarT less so, and we say
---    VarT 4 is less known than VarT 1, for instance.
---
---    For any constraint of the form X = Y, we use that to replace every
---    occurence of the less well known type with the more well known type. For
---    example, say Y is less well known. Every occurence of Y in all the
---    constraints is replaced with X, and we add Y = X to the solution set.
---
---    The claim is, after going through each constraint, we are left with
---    the best known definitions of each lesser known type we can find.
---
 --    The solution set is returned. Unsolveable constraints are ignored.
 solve :: [(Type, Type)] -> Map.Map Name Type
 solve xs = finalize $ evalState finish (xs, Map.empty)
@@ -78,23 +66,27 @@ finish = do
             single (fixassign l a, fixassign l b)
             finish
 
--- Solve a single constraint
+-- Apply a single constraint
 --  Updates the current system and solution.
 --
 -- Note: we ignore unsolvable constraints rather than throw an error here so
 -- the type checker can give more useful error messages.
 single :: (Type, Type) -> Solver ()
-single (a, b) | unsolvable (a, b) = return ()
-single (x, y) | x == y = return ()
-single (AppT a b, AppT c d) = do
+single (a, b)
+  | AppT a1 a2 <- a, AppT b1 b2 <- b = do
+      (sys, sol) <- get
+      put ((a1,b1) : (a2,b2) : sys, sol)
+  | VarT na _ <- a, istarget na = update na b
+  | VarT nb _ <- b, istarget nb = update nb a
+  | otherwise = return ()
+
+-- Update the solution with var n = t
+update :: Name -> Type -> Solver ()
+update n t
+ | hasVarT n t = return ()  -- avoid recursive definitions
+ | otherwise = do
     (sys, sol) <- get
-    put ((a,c) : (b,d) : sys, sol)
-single (a, b) | b `lessknown` a = single (b, a)
-single (VarT nm _, b) | hasVarT nm b = return ()
-single (VarT nm _, b) = do
-    (sys, sol) <- get
-    put (sys, Map.insert nm b sol)
-single (a, b) = error $ "single: unexpected assignment: " ++ show a ++ ": " ++ show b
+    put (sys, Map.insert n t sol)
 
 -- Return true if the given VarT name appears anywhere in the given type.
 hasVarT :: Name -> Type -> Bool
@@ -106,17 +98,6 @@ hasVarT nm t =
     VarT n _ -> nm == n
     NumT {} -> False
     UnknownT -> False
-
-solvable :: (Type, Type) -> Bool
-solvable (VarT {}, _) = True
-solvable (_, VarT {}) = True
-solvable (ConT a _, ConT b _) = a == b
-solvable (AppT {}, AppT {}) = True
-solvable (NumT a, NumT b) = a == b
-solvable _ = False
-
-unsolvable :: (Type, Type) -> Bool
-unsolvable = not . solvable
 
 -- | Apply assignments in the given table to the given type until a fixed point
 -- is reached.
@@ -135,11 +116,6 @@ finalize m =
         then m
         else finalize m'
 
-lessknown :: Type -> Type -> Bool
-lessknown (VarT a _) (VarT b _) = a > b
-lessknown (VarT {}) _ = True
-lessknown a b = False
-
 instance Ppr [(Type, Type)] where
     ppr ts =
        let pprt (a, b) = ppr a <> text ":" <+> ppr b
@@ -150,4 +126,20 @@ instance Ppr (Map.Map Name Type) where
         let pprt :: (Name, Type) -> Doc
             pprt (a, b) = ppr a <> text ":" <+> ppr b
         in vcat (map pprt (Map.assocs m))
+
+-- There are two kinds of type variables in our constraints:
+-- 1. User type variables.
+--      We don't need to solve for these, because they are already in
+--      scope.
+-- 2. Target type variables.
+--      We need to solve for these in terms of the user type variables.
+-- Currently the type inference procedure puts "~" at the beginning of
+-- each target type variable.
+--
+-- TODO: this is relies on assumptions about names of target type
+--  variables in other modules. That's terribly messy and hackish. We
+--  should instead make it explicit which variables we are solving for
+--  and which we can take as given.
+istarget :: Name -> Bool
+istarget n = nhead n == '~'
 
