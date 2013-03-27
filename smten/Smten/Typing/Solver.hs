@@ -43,7 +43,6 @@ import Control.Monad.State
 
 import qualified Data.Map as Map
 
-import Smten.Failable
 import Smten.Name
 import Smten.Type
 import Smten.Ppr
@@ -62,11 +61,9 @@ import Smten.Ppr
 --    The claim is, after going through each constraint, we are left with
 --    the best known definitions of each lesser known type we can find.
 --
---    The solution set is returned.
---
---  Fails if the constraints are inconsistent.
-solve :: [(Type, Type)] -> Failable (Map.Map Name Type)
-solve xs = return . finalize $ evalState finish (xs, Map.empty)
+--    The solution set is returned. Unsolveable constraints are ignored.
+solve :: [(Type, Type)] -> Map.Map Name Type
+solve xs = finalize $ evalState finish (xs, Map.empty)
 
 type Solver = State ([(Type, Type)], Map.Map Name Type)
 

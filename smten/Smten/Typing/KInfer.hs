@@ -278,8 +278,8 @@ group ds = do
     let temptcs = gettcs ds'
     withtcs temptcs (constrain ds')
     cons <- gets ks_cons
-    solution <- lift $ ksolve cons
-    let ds_inferred = assignkl (\n -> Map.lookup n solution) ds'
+    let solution = ksolve cons
+        ds_inferred = assignkl (\n -> Map.lookup n solution) ds'
         tcs = gettcs ds_inferred
     modify $ \ks -> ks { ks_cons = [], ks_tcs = Map.union tcs (ks_tcs ks) }
     return ds_inferred

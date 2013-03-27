@@ -101,11 +101,11 @@ inferdec _ d@(PrimD {}) = return d
 inferexp :: Env -> Type -> Exp -> Failable Exp
 inferexp env t e = do
  let (e', id) = runState (deunknown e) 1
- let ticomp = do
+     ticomp = do
          te' <- constrain e'
          addc t te'
  (_, TIS _ cons _ _) <- runStateT ticomp (TIS id [] [] env)
- sol <- solve cons
+ let sol = solve cons
  --trace ("e': " ++ pretty e') (return ())
  --trace ("constraints: " ++ pretty cons) (return ())
  --trace ("solution: " ++ pretty sol) (return ())
