@@ -297,10 +297,11 @@ prune x
  | ispruned x = return $ Just (x, True)
  | forced x = Just <$> prune_forceable x
  | otherwise = do
-     sat <- query_Sat
-     if sat
-        then Just <$> prune_forceable x
-        else return Nothing
+     ctx <- gets qs_ctx
+     sat <- query_Used (Used (head ctx) (realize x))
+     case sat of
+        Just v -> force v `seq` Just <$> prune_forceable x
+        Nothing -> return Nothing
 
 -- Prune unreachable branches from the given expression.
 -- It is assumed the given expression may be forced.

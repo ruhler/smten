@@ -77,10 +77,6 @@ Pruning::
   Expected: Possibly exponential improvement in prune.
 * Cache 'checks'. So if we have not changed anything, and we already checked,
   don't check again. Expected: decent constant factor improvement
-* When we ask the SMT sovler if forceable, use the assignment it returns and
-  evaluate the expression under that assignment to 'preforce' expressions. I
-  expect this could help a bunch in performance.
-  Expected: big constant factor improvement
 
 Primitives::
 * Concretize the rest of the haskellf primitives

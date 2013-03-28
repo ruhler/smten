@@ -10,21 +10,21 @@ userinstall:
 testio:
 	./build/home/.cabal/bin/smten --io \
 		--include smten/share/lib \
-		--file smten/share/lib/Smten/SMT/Tests/Share.smtn \
-		--main-is Smten.SMT.Tests.Share.main +RTS -K1g -p
+		--file smten/share/lib/Smten/SMT/Tests/Datatype.smtn \
+		--main-is Smten.SMT.Tests.Datatype.main +RTS -p
 
-testh:
+testhf:
 	./build/home/.cabal/bin/smten --haskellf \
 		--include smten/share/lib \
-		--file smten/share/lib/Smten/SMT/Tests/Error.smtn \
-		--main-is Smten.SMT.Tests.Error.main -o foo.hs
-	HOME=`pwd`/build/home ghc -o foo foo.hs -main-is __main -prof
-	./foo
+		--file smten/share/lib/Smten/SMT/Tests/Datatype.smtn \
+		--main-is Smten.SMT.Tests.Datatype.main -o testh.hs
+	HOME=./build/home/ ghc -o testh testh.hs -main-is __main -prof -rtsopts
+	./testh
 
 testsugar:
 	./build/home/.cabal/bin/smten --desugar \
 		--include smten/share/lib \
-		--file smten/share/lib/Smten/SMT/Tests/Datatype.smtn \
+		--file smten/share/lib/Smten/SMT/Tests/Share.smtn \
 		-o desugared
 
 clean:
