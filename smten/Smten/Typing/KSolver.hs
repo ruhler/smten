@@ -5,22 +5,19 @@ import qualified Data.Map as Map
 
 import Smten.Name
 import Smten.Type
-import Smten.Failable
 import Smten.Ppr
 import Smten.Typing.Solver
 
 -- We solver kind constraints by converting them to type constraints, solving
 -- the type constraints, and converting back to kinds.
-
--- TODO: this should return a generic ErrorMonad, not be specific to Failable
-ksolve :: [(Kind, Kind)] -> Failable (Map.Map Integer Kind)
-ksolve xs = Map.mapKeys n2i . Map.map t2k <$> solve [(k2t a, k2t b) | (a, b) <- xs]
+ksolve :: [(Kind, Kind)] -> Map.Map Integer Kind
+ksolve xs = Map.mapKeys n2i . Map.map t2k $ solve [(k2t a, k2t b) | (a, b) <- xs]
 
 n2i :: Name -> Integer
-n2i = read . unname
+n2i = read . tail . unname
 
 i2n :: Integer -> Name
-i2n = name . show
+i2n i = name ('~' : show i)
 
 k2t :: Kind -> Type
 k2t StarK = conT (name "StarK")

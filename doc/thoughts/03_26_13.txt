@@ -1,0 +1,561 @@
+
+Tue Mar 26 07:25:27 EDT 2013
+
+Looking into ghc numeric type support. It looks like they may have what I
+need.
+
+First, let me play with it without smten, to see if I can understand it.
+
+If this works well enough, perhaps I'll want to change Smten syntax and type
+system to mirror what they use. I'll have to see. That, at least, would avoid
+any issues with not being able to compile to haskell.
+
+Okay! So, first thing to try is: Implement my vector library in Haskell.
+
+Tue Mar 26 07:46:40 EDT 2013
+
+Okay, so I tried things. We have the syntax. We just have the same problem I'm
+currently having: ghc doesn't know enough math. So this is not going to be a
+solution in the current state it is in. Sadness.
+
+Tue Mar 26 08:20:34 EDT 2013
+
+Okay, so how can I work around ghc stupidity?
+
+I have a couple of ideas.
+
+1. have a 'coerce' primitive in smten.
+coerce :: a -> a
+
+It is totally type safe at the smten level. There it just acts as id. But at
+the haskell level, we change the signature: 
+    coerce :: a -> b
+
+Now, I can implement this, because I can always go through ExpH to do the
+conversion. I know it is safe because the smten type checker said it was. The
+only annoyance is that I have to manually insert it if haskellf doesn't work.
+But perhaps what starts a manual process can become automatic in time, and all
+is happy.
+
+2. be more general in compiled haskell.
+
+Instead of writing:   bv_concat :: Bit a -> Bit b -> Bit (a+b)
+ which forces the _structure_ of the numeric types,
+what we really want is a more general function for bv_concat. One that works
+on any numeric types, so long as they satisfy a certain criteria:
+
+bv_concat :: (ADD a b c) => Bit a -> Bit b -> Bit c
+
+Now, we can call this function with
+    Bit a -> Bit b -> Bit (a+b), 
+  because we know that (Add a b (a+b)) is satisfied then.
+
+But! We can also call this function with:
+    Bit (m-n) -> Bit n -> Bit m
+  because we also know that (Add (m-n) n m) is satisfied.
+
+That is, assuming I give the right primitive instances for Add, Mul, Sub.
+
+And we shouldn't have to worry about ambiguity, because we give explicit types
+everywhere.
+
+This second choice is appealing, because I think it could work without the
+smten user having to see things. It's a lot bigger of a change though, and I'm
+not entirely convinced it will work.
+
+Is there some way I can test both approaches out, to see if they will work?
+
+Well, the first approach should be easy to test. Let me start there.
+
+Tue Mar 26 08:55:23 EDT 2013
+
+Um... I don't think this coerce approach is going to work well at all. We are
+basically going to need to insert it in many places, and I couldn't even get
+it to work in one place, where it, to my mind, clearly should have worked.
+
+Oh, I see the problem. I gave an explicit type for bv_concat, and haskell does
+not agree with that specific type. No amount of coercion on the side will
+change that.
+
+Okay, so let me think more about this other option. The class approach. Can I
+make that work?
+
+Let's try it. Goal is to make bv_concat a little bit more generic.
+
+Hey! Guess what! It works!
+
+That's nifty.
+
+So, here's the idea...
+
+Every numeric type operation becomes a numeric type variable.
+I add the required context. I update the primitives. And I rely on smten type
+checking to make sure it works correctly.
+
+Okay! I feel like I'll probably run into problems. Oh well.
+
+Question: do I need N__PLUS, N__MINUS, N__TIMES, and friends anymore?
+
+I'm going to run into issues. I'm sure of that. But let me run into them and
+deal with them when I run into them. It will be an exploratory process.
+
+This will be cool if it works though. Then I don't need to rely on ghc. It
+also doesn't have any overhead, I don't think.
+
+Tue Mar 26 11:49:14 EDT 2013
+
+Okay, so here's the plan:
+
+For any occurrence of OpT in a top level type signature, replace the (outer)
+occurrence with a new variable type. We can automatically derive the new
+variable type based on the operation.
+
+That's a minimum. The question is, what else has to change?
+ - types inside the expression?
+ - types inside the expression not mentioned in the type signature?
+
+Let me start by doing the minimum, and see where I run into problems and why.
+
+Tue Mar 26 13:14:23 EDT 2013
+
+After more thought, I'm pretty convinced the right thing to do is:
+ - change types inside the expression which occur in the type signature.
+   leave all other types as is.
+
+Now, how to implement that? Not sure. But! We have a bug to chase down.
+
+In Nirav's code, for some reason, when we run the interpreter, we get a bogus
+typed query. When we run using haskell, everything is fine. What's up with
+that?
+
+Hmm... How to figure this out?
+
+First step: minimize the problem.
+
+It looks like a problem with types. As in, for some reason we are seeing a
+type (Bool -> Bool), when the actual type should be Bool. Why?
+
+Let me verify the types in the interpreter are properly maintained.
+
+Well, I think I see the bug. I'm not sure how to make it manifest in a test
+case.
+
+Yup. That was it. How do I test it?
+
+Let me ignore the testing issue. It's fixed. Fine. Whatever.
+
+Now then... back to numeric types?
+
+Yes. The question is, how do I want to approach this transformation?
+
+I'm transforming the code. The easiest way, I feel like, would be to transform
+declarations before compilation, and use the existing infrastructure to
+compile them just as they are.
+
+So, what things do I need to transform?
+
+ValD.
+ClassD sigs.
+InstD method bodies.
+
+The other thing I need to do is update the context... but that should be done
+automatically, right? I think so.
+
+So I want to change things at the TopExp level.
+
+Yes! So this should be easy. Let's see how well it works.
+
+Note: I'll also have to change the primitives to follow the same thing.
+
+Sadness: it looks like I can't reuse 'assign'. I would have to do an entire
+traversal.
+
+Well, I'm already doing a traversal, so how about just passing the map down as
+I go?
+
+I feel like a monad would help a bunch here...
+
+Where do I need to pass this rename map?
+  hsTopType, hsExp, hsType, hsClass
+
+That's tedious. A monad would certainly help...
+
+Is there no better way?
+
+Well, there is this 'transformMTE' thing. How about I'll just use that. That's
+a better approach, I think.
+  
+Except, it only works for expressions, not for types. :(.
+
+This would be easy if I used a monad for Compile. Then I could add it to the
+monad. hsTopExp can enter the things that need transforming. hsType can read
+the things that are transformed.
+
+If I'm going to do this, I think I want it in two steps. First step is to
+change Compile to use a monad. Clean it up. I can do that on the master
+branch. The next step is to add the extra field to it.
+
+Okay! So time for cleanup. We'll see how much energy I have for this.
+
+Tue Mar 26 13:54:15 EDT 2013
+
+Cleanup time! Cleaning up the haskell compiler.
+
+What sort of cleanup can I do? Let me start with a code review.
+
+* Use a Compile monad, instead of just Failable
+ include:
+    - Failable
+    - Env
+    - List of variable types in scope (that should not go into 'forall')
+* Support modular compilation? (Not till after CAV)
+* maybe split into multiple parts:
+    Names
+* Primitive data constructs could be specified in a separate list?
+* Pull out TH stuff that could be useful elsewhere?
+* Clean up prelude with the help of template haskell?
+
+I don't know. It's very messy. Doesn't seem like clean up is going to clean up
+a whole lot.
+          
+Tue Mar 26 14:17:43 EDT 2013
+
+So, the deal is, I need to change the compiler, and it's messy, so I don't
+want to, but I don't know how to clean it up. I'm not much in the mood for
+this right now.
+
+Perhaps, then, what I should do is work on my 'bottom' branch. Because it
+would be very nice if I could merge 'bottom' with master. Something that
+probably won't happen until after CAV because of performance issues... but it
+would make me feel much better the sooner I can have bottom working with
+decent performance.
+
+The problem is, that's a slightly messy change too.
+
+Clearly I'm not doing anything productive right now. I need to take a break. A
+breather. Something to get out of this productivity funk.
+
+When I come back, tasks are:
+
+* add Env to Reader monad in HaskellF.Compile where used.
+* Do this type operation transformation thing to make numeric types work when
+  compiling to haskell
+
+* Add IORef (Map Unique Dynamic) to ExpH_Cell in 'bottom' branch, and give a
+  way to read and write this value for a given Unique.
+* Change 'prune' to return both a global and local pruned version. Cache the
+  global versions using the ExpH_Cell Unique map.
+    After this, we should see sharing preserved in that sharing test case.
+
+If I can just push through the effort to get these things done, then I think
+I'll feel much better. Continue to clean where I can, if I can.
+
+Tue Mar 26 15:49:29 EDT 2013
+
+HaskellF.Compile is prepped. Now, what's the plan?
+
+Add to the Reader monad a map from Type to Type.
+
+Note. This has to be applied after canonicalization of types.
+
+That is, keys are canonicalized. So insert and lookup must be done on
+canonical types.
+
+The idea is... hsType' looks up to see if the type is in the map. If so, use
+the value in the map... which should be a variable type. So I should map Type
+to Name, just to make it obvious we don't have recursive mappings.
+
+That's the reading of the map. Next question is, who generates the map?
+I thought we already decided. Map is generated by hsTopExp. How?
+
+Extract the map from the type t. Then set the map. Then call hsTopType and
+hsExp. That's it!
+
+Cool. Let's see how well it works.
+
+For some reason, I'm not getting this info in the context...
+
+Of course. Hmm... How to get that info?
+
+Just have mkContext include all those in the retype map. Easy.
+
+Okay! Let's see... looks like we are making progress. Next step is to fix the
+primitives.
+
+Tue Mar 26 16:19:24 EDT 2013
+
+Guess what... it works! Amazing. Awesome.
+
+And now, to merge back to master.
+
+Tue Mar 26 16:24:48 EDT 2013
+
+So, it would seem numeric types, for the time being, are happy once again. Or,
+rather, for the first time.
+
+The limitations currently are just in type inference. I can deal with that
+later if it becomes a serious issue. The only other thing is... do I want to
+have the same syntax as Haskell?
+
+That is, ditch the '#' thing? Can I still do the kind inference I need in that
+case?
+
+Let me not worry about that now. It will come when it comes.
+
+And now, finally, I can focus again on bottom.
+
+It feels so close. Just a few performance issues to work out, and I know how I
+want to work them out. Then we will see how bad things really are when you try
+to do them correctly.
+
+Tue Mar 26 16:40:28 EDT 2013
+
+Okay, so plan is as stated above. Let me dive right in and see how it all
+goes.
+
+Tue Mar 26 16:48:59 EDT 2013
+
+There's an issue. The Error test still fails haskell. I thought I had sorted
+that out.
+
+I certainly shouldn't try to make progress on performance before things are
+working correctly, so I need to figure out what the problem is.
+
+I could have sworn I did all this work just to fix this issue. Hrm...
+
+Looking back at my notes, I never did get back to testing this. So looks like
+I still need to figure out what's wrong.
+
+Let me do just a little shallow digging to get started. Then I think I'll take
+a break and do other things.
+
+Tue Mar 26 17:00:10 EDT 2013
+
+What do I expect?
+
+Well, we have:
+
+case (if p then Nothing else _|_) of
+    Nothing -> True
+    _ -> _|_
+
+If we do a caseEH on that, then we have:
+
+thunkEH $ 
+    strict_appEH (\x' -> caseEH x' k y n) x
+
+Which, in a shared fashion... becomes:
+    ifEH p 
+        then caseEH Nothing k y n
+        else caseEH _|_ k y n
+
+Note: the caseEH for _|_ should give a thunk.
+
+Turns into:
+    IfEH p
+        then caseEH Nothing k y n
+        else caseEH _|_ k y n
+
+And now we go to assert that.
+
+What goes wrong? Let me compare interpreter with haskellf, and see where
+pruning diverges.
+
+Tue Mar 26 17:19:36 EDT 2013
+
+The divergence is...
+
+In haskellf, when we ask if (caseEH _|_ k y n) is pruned, it runs into _|_.
+    
+Well, what if we turn that optimization off?
+
+Okay, now it says b is not already pruned. Correct. Then we blow up. That
+would be because we ask 'isforced'. 
+
+So, in other words, it seems caseEH is blowing up on us. Why?
+
+Well, remember, this may not be a smten caseEH. It might be done at the
+haskell level...
+
+Except, as soon as we see an ifEH with symbolic value, it shouldn't be, right?
+
+I have:
+let s = __caseTrue p Nothing _|_
+    s2 = _|_
+in __caseNothing s True s2
+
+So, to execute the __caseNothing, we should see: ?
+let's execute __caseTrue and find out.
+
+I expect 'p' is Bool_s, because it is a variable.
+
+caseHF "True" p Nothing _|_  gives:
+
+box $ caseEH
+  We do call smtenT on n. That's for type maybe. It doesn't look at the type.
+  And we call unbox on the args.
+
+  But I already know that we shouldn't worry about the arguments...
+  Wait. Here the problem is with 'n', right?
+
+  Notes: box forces the result of the caseEH. That should be okay, because we
+         expect a thunk????
+
+  Is this the problem? I have this caseEH which is thunkEH _|_. Then, to
+  figure out what constructor to make it, I force it, to get _|_.
+
+  Wait. That assumes 'n' is an issue. It shouldn't even be yet.
+
+Okay, so what we get from box $ caseEH is:
+    Maybe__s (IfEH p Nothing _|_)
+
+Now:
+in __caseNothing (Maybe__s (IfEH p Nothing _|_)) True s2
+
+It is Maybe__s. So we call:
+
+    caseHF "Nothing" (IfEH p Nothing _|_) True _|_
+
+ which calls:
+    box $ caseEH (unbox (IfEH p Nothing _|_)) (unbox True) (unbox _|_)
+
+unbox should give IfEH back. So, the result of caseEH should be...
+    box $ IfEH p (caseEH Nothing True _|_)
+                 (caseEH _| True _|_)
+
+Now, what happens to that? It's all in an ExpH. So nothing should be going
+wrong I feel like. Erg...
+
+I don't understand the problem.
+
+What is the argument to assert? How about I start with that. Print out the
+argument, and put a "?unforced?" for anything which hasn't been forced. I like
+that idea.
+
+Tue Mar 26 19:08:11 EDT 2013
+
+What do we see? We see that somehow in the assertion predicate we generate, we
+don't get ?thunk?, but rather, we have seen parts of it. Why? What's the
+difference?
+
+I feel like I should walk through the haskell code again, more closely.
+
+Tue Mar 26 19:57:40 EDT 2013
+
+Okay, here's the plan. Do, in detail, a manual evaluation of what's going on.
+I suspect, if I am detailed enough, the answer will be clear.
+
+I suspect the problem is somehow I'm creating a thunk to an ExpH_Value which
+forces things instead of leaving them in ThunkEH form. Let me keep an eye out
+for that.
+
+
+Good then. Here we go:
+
+assert $
+
+let s = __caseTrue p Nothing (error "qcasepush else")
+    s2 = error "qcasepush _"
+in __caseNothing s True s2
+
+where 'p' is a free variable: free~1.
+
+Okay, I have this. Now I want to do 'show'. So I want to see what the
+ExpH_Value of it is, and all its children as I may.
+
+__caseNothing s True s2
+---> need s in WHNF
+
+WHNF of s:
+__caseTrue p Nothing (error "qcasepush else")
+  p is: Bool_s (VarEH free~1)        by confident assumption
+caseHF "True" p Nothing (error "qcasepush else")
+
+box (caseEH _ (unbox p) "True" (unbox Nothing) (unbox (error "qcasepush else")))
+---> need de_conHF
+
+WHNF of de_conHF:
+de_conHF "Just" (caseEH _ (unbox p) "True" (unbox Nothing) (unbox (error "qcasepush else")))
+
+de_kconEH "Just" (caseEH _ (unbox p) "True" (unbox Nothing) (unbox (error "qcasepush else")))
+
+de_conEH (caseEH _ (unbox p) "True" (unbox Nothing) (unbox (error "qcasepush else")))
+---> WHNF of force (caseEH ...) needed
+
+force (caseEH _ (unbox p) "True" (unbox Nothing) (unbox (error "qcasepush else")))
+
+So, totally dethunk the caseEH... to get WHNF.
+
+caseEH _ (unbox p) "True" (unbox Nothing) (unbox (error "qcasepush else"))
+
+thunkEH $ caseEH'_ (unbox p) "True" (unbox Nothing) (unbox (error "qcasepush else"))
+ but, because I am forcing it, this thunkEH is meaningless.
+
+caseEH'_ (unbox p) "True" (unbox Nothing) (unbox (error "qcasepush else"))
+
+IfEH _ (VarEH free~1) (unbox Nothing) (unbox (error "qcasepush else"))
+
+So, de_conEH returns Nothing.
+de_kconEH returns Nothing.
+
+box returns:
+  Maybe__s (IfEH _ (VarEH free~1) (unbox Nothing) (unbox (error "qcasepush else")))
+
+This is the WHNF of s.
+
+__caseNothing s True s2
+
+ let s3 = (Maybe__s (IfEH _ (VarEH free~1) (unbox Nothing) (unbox (error "qcasepush else"))))
+caseHF "Nothing" s3 True s2
+
+box $ caseEH _ (unbox s3) "Nothing" (unbox True) (unbox s2)
+---> need WHNF of de_conHF
+
+de_conHF "True" $ caseEH _ (unbox s3) "Nothing" (unbox True) (unbox s2)
+de_kconEH "True" $ caseEH _ (unbox s3) "Nothing" (unbox True) (unbox s2)
+de_conEH $ caseEH _ (unbox s3) "Nothing" (unbox True) (unbox s2)
+---> needs WHNF of (force caseEH ...)
+
+caseEH _ (unbox s3) "Nothing" (unbox True) (unbox s2)
+    ignore thunk, because we are forcing.
+
+caseEH' _ (unbox s3) "Nothing" (unbox True) (unbox s2)
+---> Need WHNF of de_conEH (unbox s3)
+---> Need WHNF of (force unbox ...)
+
+unbox (Maybe__s (IfEH _ (VarEH free~1) (unbox Nothing) (unbox (error "qcasepush else"))))
+
+IfEH _ (VarEH free~1) (unbox Nothing) (unbox (error "qcasepush else"))
+
+strict_appEH _ (\x' -> caseEH t x' k y n) $ IfEH _ (VarEH free~1) (unbox Nothing) (unbox (error "qcasepush else"))
+
+let f = (\x' -> caseEH t x' k y n)
+    g' use e
+        | IfEH _ x y d <- force e = ifEH t x (use y) (use d)
+        | otherwise = f e
+    g use e = thunkEH (g' use e)
+
+shared g $ IfEH _ (VarEH free~1) (unbox Nothing) (unbox (error "qcasepush else"))
+
+g use $ IfEH _ (VarEH free~1) (unbox Nothing) (unbox (error "qcasepush else"))
+g' use $ IfEH _ (VarEH free~1) (unbox Nothing) (unbox (error "qcasepush else"))
+ifEH _ (VarEH free~1) (use $ unbox Nothing) (use $ unbox (error "qcasepush else"))
+
+caseEH _ (VarEH free~1) "True" (use $ unbox Nothing) (use $ unbox (error "qcasepush else"))
+
+IfEH (VarEH free~1) (use $ unbox Nothing) (use $ unbox (error "qcasepush else"))
+    WHNF. Hurray! Now, where was this to be used?
+
+
+let s4 = IfEH (VarEH free~1) (use $ unbox Nothing) (use $ unbox (error "qcasepush else"))
+caseEH' _ s4 "Nothing" (unbox True) (unbox s2)
+
+strict_appEH _ (\x' -> caseEH _ x' k y n) x
+
+Um, now things will get messy, because we have two different calls to
+strict_appEH going at the same time.
+
+That's as far as I think I can get tonight. I'm not seeing anything
+enlightening so far.
+
+

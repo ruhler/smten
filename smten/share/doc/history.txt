@@ -1,9 +1,25 @@
+Mar 28, 2013
+  smten-2.1.0.0
+  smten-smt-2.1.0.0
+  smten-bin-2.1.0.0
+
+  Changes from smten-2.0.1.0
+  * Support nested comments
+  * Support for default methods in classes
+  * Add math knowledge to type inference and checking for numeric types
+  * Switch to ghc 7.6.2
+  * Add -o flag to smten
+  * Expose runSymbolic API
+  * Expanded bitvector library with xor, signed comparisons, etc.
+  * Started writing a user guide
+  * Many bug fixes.
+
 Feb 26, 2013
   smten-2.0.1.0
   smten-smt-2.0.1.0
   smten-bin-2.0.1.0
 
-  Changes from seri 2.0.0.0
+  Changes from smten 2.0.0.0
   * Made SMT monad an instance of MonadIO
   * Bug fixes.
 

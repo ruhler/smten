@@ -16,6 +16,7 @@ import Data.List(nub)
 import Smten.Name
 import Smten.Type.Type
 import Smten.Type.Sugar
+import Smten.Type.Canonical
 
 -- | assignments poly concrete
 -- Given a polymorphic type and a concrete type of the same form, return the
