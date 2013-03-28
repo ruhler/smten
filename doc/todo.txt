@@ -67,10 +67,6 @@ Pruning::
             e' = if p then unpruned else pruned, for some predicate p where
             'pruned' is fully pruned and e' is the same as e.
   Expected: Exponential improvement in prune.
-* Share isprune as much as possible.
-  Idea is: each expression keeps a list of descendants from it which have not
-           been forced. To check isprune, check those children only.
-  Expected: exponential improvement in isprune.
 * Whenever an expression is revisited, and results in the same unprunable
   thing as a previous context, try pruning that expression for all contexts
   all at once (by pruning independent of context).

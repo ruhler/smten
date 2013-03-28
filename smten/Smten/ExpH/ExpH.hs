@@ -6,12 +6,13 @@
 -- | HOAS form for Smten Expressions, geared towards high performance
 -- elaboration.
 module Smten.ExpH.ExpH (
-    ExpH_Value(..), EID(), ExpH(), force, eid, exph, forced,
+    ExpH_Value(..), EID(), ExpH(), force, eid, exph, forced, unforced,
     ) where
 
 import System.IO.Unsafe
 import Data.Functor((<$>))
 import Data.IORef
+import Data.Maybe (fromMaybe)
 import Data.Typeable
 import Data.Hashable
 
@@ -63,7 +64,8 @@ data ExpH_Value =
 -- ExpH_Cell: an ExpH_Value labeled with an expression ID.
 data ExpH_Cell = ExpH_Cell {
     cell_id :: EID,
-    cell_val :: ExpH_Value
+    cell_val :: ExpH_Value,
+    cell_unforced :: Maybe [ExpH]
 } deriving (Typeable)
 
 newtype ExpH = ExpH {
@@ -118,5 +120,26 @@ exph v =
   in unsafePerformIO $ do
         x <- readIORef idstore
         writeIORef idstore $! x + 1
-        ExpH <$> newIORef (ExpH_Cell (EID x) v)
+        ExpH <$> newIORef (ExpH_Cell (EID x) v Nothing)
+
+unforced' :: ExpH_Value -> [ExpH]
+unforced' v
+  | LitEH {} <- v = []
+  | ConEH _ _ xs <- v = concatMap unforced xs
+  | VarEH {} <- v = []
+  | PrimEH _ _ _ xs <- v = concatMap unforced xs
+  | LamEH {} <- v = []      -- TODO: what should this be?
+  | IfEH _ p a b <- v = concatMap unforced [p, a, b]
+  | ThunkEH {} <- v = error "unexpected ThunkEH in unforced'"
+
+unforced :: ExpH -> [ExpH]
+unforced e@(ExpH r) = unsafePerformIO $ do
+    c <- readIORef r
+    case (cell_val c) of
+        ThunkEH {} -> return [e]
+        v -> do 
+            let uf = fromMaybe (unforced' v) (cell_unforced c)
+                uf' = concatMap unforced uf
+            writeIORef r (c { cell_unforced = Just uf' })
+            return uf'
 

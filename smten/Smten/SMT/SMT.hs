@@ -273,18 +273,8 @@ mkassert p = do
     _ -> return ()
 
 ispruned :: ExpH -> Bool
-ispruned =
- let g :: (ExpH -> Bool) -> ExpH -> Bool
-     g use e
-       | not (forced e) = False
-       | LitEH {} <- force e = True
-       | ConEH _ _ xs <- force e = all ispruned xs
-       | VarEH {} <- force e = True
-       | PrimEH _ _ _ xs <- force e = all ispruned xs
-       | LamEH {} <- force e = error "ispruned: LamEH"
-       | IfEH _ p a b <- force e = all ispruned [p, a, b]
- in shared g
-
+ispruned = {-# SCC "ISPRUNED" #-} null . unforced
+ 
 -- Prune unreachable parts of the given expression, in the current context.
 -- Returns:
 --  Nothing - if we can't look at the expression in the current context.
@@ -294,9 +284,9 @@ ispruned =
 --          expression (nothing was pruned).
 prune :: ExpH -> SMT (Maybe (ExpH, Bool))
 prune x
- | ispruned x = return $ Just (x, True)
- | forced x = Just <$> prune_forceable x
- | otherwise = do
+ | ispruned x = {-# SCC "PRUNE_ISPRUNED" #-} return $ Just (x, True)
+ | forced x = {-# SCC "PRUNE_FORCED" #-} Just <$> prune_forceable x
+ | otherwise = {-# SCC "PRUNE_UNFORCED" #-} do
      ctx <- gets qs_ctx
      sat <- query_Used (Used (head ctx) (realize x))
      case sat of
