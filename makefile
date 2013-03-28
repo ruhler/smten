@@ -10,13 +10,21 @@ userinstall:
 testio:
 	./build/home/.cabal/bin/smten --io \
 		--include smten/share/lib \
-		--file smten/share/lib/Smten/Tests/Concrete.smtn \
-		--main-is Smten.Tests.Concrete.main +RTS -p
+		--file smten/share/lib/Smten/SMT/Tests/Share.smtn \
+		--main-is Smten.SMT.Tests.Share.main +RTS -p
+
+testhf:
+	./build/home/.cabal/bin/smten --haskellf \
+		--include smten/share/lib \
+		--file smten/share/lib/Smten/SMT/Tests/Share.smtn \
+		--main-is Smten.SMT.Tests.Share.main -o testh.hs
+	HOME=./build/home/ ghc -o testh testh.hs -main-is __main
+	./testh
 
 testsugar:
 	./build/home/.cabal/bin/smten --desugar \
 		--include smten/share/lib \
-		--file smten/smtn/Smten/Tests/Concrete.smtn \
+		--file smten/share/lib/Smten/SMT/Tests/Share.smtn \
 		-o desugared
 
 clean:
