@@ -243,7 +243,7 @@ toResult :: YBool -> S.Result
 toResult n
     | n == yFalse = S.Unsatisfiable
     | n == yTrue  = S.Satisfiable
-    | otherwise   = S.Undefined
+    | otherwise   = error "yices1 returned Unknown"
 
 run :: Yices1 -> Command -> IO ()
 run y@(Yices1 fp) (Assert p) = do

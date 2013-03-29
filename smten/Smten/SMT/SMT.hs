@@ -246,10 +246,7 @@ query sr = nest (use sr >>= query_Used)
 query_Sat :: SMT Bool
 query_Sat = do
     res <- check
-    return $ case res of
-                SMT.Satisfiable -> True
-                SMT.Unsatisfiable -> False
-                _ -> error $ "Smten.SMT.SMT.query_Sat: check failed"
+    return $ res == SMT.Satisfiable
 
 mkfree :: Sig -> SMT ()
 mkfree s@(Sig nm t) | isPrimT t = do

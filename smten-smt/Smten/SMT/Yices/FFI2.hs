@@ -141,7 +141,7 @@ type YSMTStatus = CInt
 fromYSMTStatus :: YSMTStatus -> Result
 fromYSMTStatus 3 = Satisfiable
 fromYSMTStatus 4 = Unsatisfiable
-fromYSMTStatus _ = Undefined
+fromYSMTStatus _ = error "yices2 returned Unknown"
 
 foreign import ccall unsafe "yices_init"
     c_yices_init :: IO ()

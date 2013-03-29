@@ -91,6 +91,6 @@ main :: IO ()
 main = do
     runSMT Yices1 (Just "build/test/Bit.yices1.dbg") qtest
     runSMT Yices2 (Just "build/test/Bit.yices2.dbg") qtest
-    --runSMT STP (Just "build/test/Bit.stp.dbg") qtest
+    runSMT STP (Just "build/test/Bit.stp.dbg") qtest
     putStrLn "BIT PASSED"
 

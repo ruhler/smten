@@ -43,7 +43,6 @@ import Smten.SMT.Syntax
 data Result
     = Satisfiable
     | Unsatisfiable
-    | Undefined
     deriving (Eq, Show)
 
 data Solver = Solver {
