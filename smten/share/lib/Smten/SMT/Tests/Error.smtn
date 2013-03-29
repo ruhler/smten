@@ -112,10 +112,9 @@ qhfeager = do
             
 qtest :: SMT ()
 qtest = do
-    --qerror
-    --qhfeager
-    --qcasepush
-    
+    qerror
+    qhfeager
+    qcasepush
     qsymsym
 
     --qboom
