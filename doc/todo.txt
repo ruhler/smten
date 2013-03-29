@@ -60,19 +60,11 @@ Pretty Printer::
 * Make it so I can compile pretty printed code?
 * Maybe dump the Doc approach and take my SMT concrete approach?
 
-Pruning::
-* Preserve sharing in pruning:
-  Idea is: whenever an expression is pruned for a given context, update the
-           value of that expression for all contexts to be 
-            e' = if p then unpruned else pruned, for some predicate p where
-            'pruned' is fully pruned and e' is the same as e.
-  Expected: Exponential improvement in prune.
-* Whenever an expression is revisited, and results in the same unprunable
-  thing as a previous context, try pruning that expression for all contexts
-  all at once (by pruning independent of context).
-  Expected: Possibly exponential improvement in prune.
-* Cache 'checks'. So if we have not changed anything, and we already checked,
-  don't check again. Expected: decent constant factor improvement
+Error::
+* evaluate assertion predicates under satisfying assignment to make sure no
+  explicit errors are encountered
+* detect potential non-termination and perform appropriate abstraction and
+  refinement.
 
 Primitives::
 * Concretize the rest of the haskellf primitives

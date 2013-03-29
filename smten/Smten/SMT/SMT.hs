@@ -366,5 +366,16 @@ de_symbolicEH e
         yr <- predicated py ys
         nr <- predicated pn ns
         return $ ifEH t x yr nr
- | otherwise = error $ "de_symbolicEH: " ++ pretty e
+ | ErrorEH symt s <- force e = do
+    -- TODO: This is messy. I'm sure there is a way to clean it up if I
+    -- actually spend time to think about it.
+    let Just (_, t) = de_appT symt
+    pred <- gets qs_pred
+    modify $ \qs -> qs { qs_pred = trueEH }
+    sat <- Symbolic $ query (assert pred >> return (return ()))
+    modify $ \qs -> qs { qs_pred = pred }
+    case sat of
+        Just () -> error $ "smten: " ++ s
+        Nothing -> return (errorEH t s)
+ | otherwise = error $ "SMTEN INTERNAL ERROR: unexpected argument to de_symbolicEH: " ++ pretty e
 
