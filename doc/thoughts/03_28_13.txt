@@ -1,0 +1,353 @@
+
+Thu Mar 28 13:25:52 EDT 2013
+
+Progress on the bug I'm seeing.
+
+It shows up in the master branch on haskellf, but not in io.
+
+Is that that case for bottom too?
+
+No. In bottom, neither share.
+
+Note also, that (= sxxx) is not shared in the second to last test case.
+
+Let me check out master and see what's up with that.
+
+In master, (= sxxx) is shared in haskell (and io). It's just the last test
+case where we loose sharing.
+
+Okay, so, issues:
+
+bottom.* second to last test, (= sxxx) is not shared (prim application?).
+bottom.* last test not shared.
+master.hf last test not shared.
+
+Hmm... Which one should I focus on?
+
+Or... alternatively... I could work on something completely different. Like,
+presenting my cav paper to the group.
+
+Thu Mar 28 16:16:13 EDT 2013
+
+Okay, I want to take a stab at something, to try and figure out what's going
+on. I suppose the best thing would be to start with 'master', because it's
+much simpler and should work.
+
+Okay, start with what the generated code looks like.
+
+assert $ 5 == (case () of
+                _ | p, q -> f
+                  | otherwise -> g
+              ) z
+
+(Prelude.==
+  ((Prelude.fromInteger :: Integer -> ?) 5)
+  ((\_s ->
+      let { _s1 = case Prelude.otherwise of {
+                    (True :: Bool) -> g
+                    _ -> _s
+                  }
+      } in case p of {
+             (True :: Bool) -> case q of {
+                                 (True :: Bool) -> f
+                                 _ -> _s1
+                               }
+             _ -> _s1
+           })
+   (Prelude.error "case no match")
+   z))
+
+Let's print out the assertion predicate, shall we? See if it is shared?
+
+It's not shared. Not surprising given the debug output. Why isn't it shared?
+
+I expect z to be symbolic.
+
+So, the function will be an (IfEH). But we convert that to a Haskell
+function...
+
+
+\e -> appEH (IfEH ... ) e.
+
+Wait a second... something funny is going on with the generated haskell
+code... maybe.
+
+((==) 5) (
+  let s = error "case no match"
+      s1 = if otherwise
+                then g
+                else s
+  in if p
+        then if q 
+                then f
+                else s1
+        else s1
+  ) z
+
+That looks fine.
+
+The functions 'g' and 'f' are direct haskell functions.
+
+So, how does this get evaluated?
+
+After inlining we have:
+
+if p
+    then if q
+        then 0
+        else (g z)
+    else (g z)
+
+Notice: g z is called multiple times, by haskell. It shows up in the different
+branches. Each time it is called, it creates a symbolic thing.
+
+In other words, what happens is:
+  1. inline the function g.
+  2. call the function g (which makes a symbolic id for the result).
+
+Or, said another way... If we had, in the application, recognized that the
+argument was symbolic, and thus turned the function into a symbolic thing
+before applying, we would have been okay, because appEH knows how to do things
+right. But! Because we evaluate the function (if ... then f else g) as a
+concrete thing, we end up duplicating calls to (g z), thus loosing sharing.
+
+No. That doesn't make sense. Does it? Maybe?
+
+Okay, I think this is it. Step 1: evaluate the function:
+
+(if p
+    then if q
+        then 0
+        else \x -> x + x + x + x + x
+    else \x -> x + x + x + x + x)
+
+And by that point, we already have a problem. Because the function is
+duplicated. At this point, we call appEH, but each time we see \x -> ... we
+make a new symbolic version of that function which is different, and we loose
+sharing.
+
+The way to preserve sharing would be to represent the function symbolically.
+But I don't want to do that.
+
+In other words, I'm not sure what to do about this case. But I do think I
+correctly understand why we are not sharing.
+
+Is this a big issue? It could be. I don't know. Things seem to work okay even
+with this, and we can always try the interpreter if this seems too slow.
+
+Let me table this issue then, and move on to the problems with 'bottom',
+focusing on why the interpreter doesn't work. As long as the interpreter
+shares properly, then I think we are okay.
+
+Thu Mar 28 16:46:36 EDT 2013
+
+On 'bottom' branch now, focusing on the interpreter. First question: what is
+the problem?
+
+1. second to last test has partial sharing.
+2. last test has no sharing.
+
+I suspect an issue with strict_appEH. Is it a problem with thunks?
+
+I don't think so. I think the thunking is right.
+
+Let's see. I have a couple thunks pointing to the right place...
+
+Interesting.
+
+Input:
+
+x = ThunkEH 1 y
+ ...
+x = ThunkEH 1 y
+
+(where y = Foo 2)
+
+Try x:
+    lookup 1: Nothing found.
+    define: f x ===>  ThunkEH 3 (f (Foo 2))
+      In map: 1: ThunkEH 3 (f (Foo 2))
+    Note: we haven't forced 'x' yet, because haven't applied f.
+
+Try x again:
+    lookup 1: got ThunkEH 3 (f (Foo 2))
+  That's fine.
+
+I don't know what the issue is. Perhaps I should play with other performance
+improvements first?
+
+May as well. Get things fast as I can easily. Then come back to this and maybe
+have more insight as to what the problem is.
+
+Cool, then the question now is: where do we spend all our performance, and how
+can I make it faster?
+
+Datatype test, with enough stack, takes about 5 seconds.
+
+I suspect the sharing issue is the problem...
+
+How does it do when compiled to haskell?
+
+Thu Mar 28 17:04:15 EDT 2013
+
+It does almost exactly the same as the interpreter. Good, so I can focus on
+the interpreter.
+
+Profile says:
+- lots of time in USE and RunCmds. 
+
+We are doing something like 150 thousand assertions. Thats a lot of
+assertions! Let me look at the generated output.
+
+Yes. We are doing 150,000 assertions.
+
+I bet 'preforcing' would help a lot here. The goal, I suppose, at this point
+is to cut down on the number of assertions as much as possible.
+
+Let me try preforcing. This means, instead of using query_Sat, I want to query
+an expression. The expression I'm trying to prune.
+
+Thu Mar 28 17:14:53 EDT 2013
+
+Some things.
+
+* it's not correct
+* it's not much faster (maybe 25% faster?)
+* it reduces the number of assertions by a huge amount in the Datatype test.
+
+Thu Mar 28 17:20:14 EDT 2013
+
+Fixed things.
+
+* now it is correct
+* it's still not much faster? Or it is? I'm a little confused about this.
+* Same huge reduction in number of assertions.
+
+I want to check perf one more time, to make sure I'm sane.
+
+Okay, performance is about a factor of 5. That's good.
+
+And note, we no longer have that stack overflow we were having. That's good.
+
+I don't have much of a benchmark now. Datatype takes a couple seconds, but
+that's not really enough to figure out where time is going, is it?
+
+I could try Sudoku.
+
+Anyway, let me try to add more SCCs to capture the cost of pruning and
+ispruned.
+
+Thu Mar 28 17:34:32 EDT 2013
+
+Aha! Not surprisingly, almost all our time is now spent in 'ispruned'. So that
+should be the next thing I try to fix. By caching the result for each
+expression, as I've though about in the past.
+
+Really what I want to cache is the list of children that still need to be
+pruned. So, wrap ispruned in 
+   unforced :: ExpH -> [ExpH]
+   
+Gives the list of unforced children of the given expression. This is
+cached.
+
+   ispruned = null . unforced 
+
+And the unforced predicate (which I can build into ExpH), says:
+    1. Get all unforced from your existing list of unforced.
+    2. concat the results to get the new list of unforced.
+    3. save the new list of unforced.
+    4. return the new list of unforced.
+
+Thu Mar 28 17:49:06 EDT 2013
+
+The problem I'm having: how do you distinguish between an expH which is forced
+or not?
+
+Perhaps I have to check for ThunkEH. If we have ThunkEH, unforced returns
+itself. Otherwise we ought to have a list of forced to pay attention to.
+
+Thu Mar 28 18:00:25 EDT 2013
+
+Done! Now datatype test is really fast. That's good.
+
+Thu Mar 28 18:07:53 EDT 2013
+
+Now, Sudoku still takes a long time. I'm going to let it run a while to see
+how long it really takes. But just a glimps at the profile...
+
+Says 100% of the time is spent in Check. Wow. Interesting.
+
+Thu Mar 28 19:12:47 EDT 2013
+
+Sudoku: takes 4 minutes for Integer. That's supposed to be really really fast.
+
+Profile says:
+
+All the time is in Check. Not an issue with memory or anything like that.
+
+I thought of some other cases of sharing we don't handle. How about sharing
+pruning of an expression which is pruned and appears multiple times in the
+same context? I bet I can test that pretty easily.
+
+Um... It works okay, but I don't understand why...
+
+Oh well. Let me ignore it then.
+
+Thu Mar 28 19:19:51 EDT 2013
+
+Question for Sudoku: what sort of smt queries are we generating that we spend
+so much time in check? What sort of duplicate work, if any, are we doing?
+
+Let me print out the query to see.
+
+Thu Mar 28 19:29:19 EDT 2013
+
+It's not a very big query at all.
+
+Notes:
+
+* we do lots of duplicate checks. Don't check something if we have already
+  checked and we haven't added any assertions or changed the context.
+  
+  We may also want to save the assignment to try it out for preforcing of top
+  level assertions.
+
+
+That's the only thing I can really see at this point. Maybe after cleaning
+that up things will become more obvious.
+
+So, here's what I propose. Just keep a field, which is a Maybe Bool, which
+contains the cached result of a previous 'check', or Nothing if the cache is
+out of date. And we force the cache out of date whenever we make a new
+assertion.
+
+Cool. I can put this in easily enough.
+
+Thu Mar 28 19:42:37 EDT 2013
+
+I'm getting a seg fault. Hmm... Not invalidating properly?
+
+Thu Mar 28 20:04:59 EDT 2013
+
+Made the change. Looks like it slows things down, though it does clean up the
+queries nicely. So I won't commit.
+
+So, how about that sudoku query now?
+
+Thu Mar 28 20:15:28 EDT 2013
+
+It doesn't look like redundant work to me. In the sense of sharing of pruning.
+In fact, I know sharing isn't an issue here, because there is nothing to
+share.
+
+It's just, we do a lot of checks. Say the query has size N. Then what was a
+single query of size N before has now turned into N queries of order size N.
+So we are now quadratic instead of linear in the size of the query. When a
+single query takes 1 second, that's a big deal.
+
+This is an interesting problem to think about. Especially because it isn't
+sharing related, and we only have a single big assertion.
+
+Let me think about it some more. Stew.
+
+

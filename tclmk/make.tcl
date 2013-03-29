@@ -115,7 +115,7 @@ proc io {module} {
 }
 
 # Run a HaskellF Test
-proc haskellf {module} {
+proc hf {module} {
     set hsdir build/test
     hrun $::SMTEN --haskellf \
         -f $::SMTN/[string map {. /} $module].smtn \
@@ -125,6 +125,12 @@ proc haskellf {module} {
         -main-is __main \
         -o $hsdir/[string map {. _} $module] $hsdir/[string map {. _} $module].hs
     hrun ./$hsdir/[string map {. _} $module]
+}
+
+proc expectfail {cmd} {
+    if { [catch $cmd] == 0 } {   
+        error "expected failure, but $cmd succeeded"
+    }
 }
 
 io Smten.Tests.Concrete
@@ -137,15 +143,19 @@ io Smten.SMT.Tests.Share
 io Smten.SMT.Tests.Error
 io Smten.SMT.Tests.Datatype
 
-haskellf Smten.Tests.Concrete
-haskellf Smten.SMT.Tests.Core
-haskellf Smten.SMT.Tests.Used
-haskellf Smten.SMT.Tests.Nest
-haskellf Smten.SMT.Tests.Integer
-haskellf Smten.SMT.Tests.Bit
-haskellf Smten.SMT.Tests.Share
-haskellf Smten.SMT.Tests.Error
-haskellf Smten.SMT.Tests.Datatype
+#expectfail { io Smten.SMT.Tests.MalError }
+
+hf Smten.Tests.Concrete
+hf Smten.SMT.Tests.Core
+hf Smten.SMT.Tests.Used
+hf Smten.SMT.Tests.Nest
+hf Smten.SMT.Tests.Integer
+hf Smten.SMT.Tests.Bit
+hf Smten.SMT.Tests.Share
+hf Smten.SMT.Tests.Error
+hf Smten.SMT.Tests.Datatype
+
+#expectfail { hf Smten.SMT.Tests.MalError }
 
 io Smten.SMT.Tests.AllQ
 io Smten.SMT.Tests.AllQ2

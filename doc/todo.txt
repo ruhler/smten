@@ -75,6 +75,7 @@ Cleanup::
 * haskellf.Compile - use monadic structure like typecheck, infer (if
   reasonable)
 * enforce in Parser that all class methods must have a signature?
+* perform error abstraction in SMT.SMT instead of SMT.Translate?
 
 SMT::
 * Remove bv-zero-extend from SMT syntax, use SMTLIB2 alternative

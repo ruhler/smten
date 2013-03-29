@@ -1,0 +1,588 @@
+
+Wed Mar 27 07:58:44 EDT 2013
+
+Status: looking for this bug.
+
+Doing hand evaluation. As much as I've done so far I get:
+
+1. want to see ExpH_Cell value for:
+
+let s = __caseTrue p Nothing (error "qcasepush else")
+    s2 = error "qcasepush _"
+in __caseNothing s True s2
+
+Causes s to be forced to
+  Maybe__s (IfEH (varEH free~1) (unbox Nothing) (unbox (error "qcasepush else")))
+
+__caseNothing now goes to: caseHF
+Causes the outer case to be forced.
+
+Turns into:
+ IfEH (VarEH free~1) (use $ unbox Nothing) (use $ unbox (error "qcasepush else"))
+ That is,
+    if p
+        then case (unbox Nothing) of
+                Nothing -> True
+                _ -> error
+        else case (unbox (error "qcasepush else")) of
+                Nothing -> True
+                _ -> error
+                
+You see what happened that worries me? We wanted to look at the value of the
+caseEH without forcing it, but because we called 'box', the value of the
+caseEH was forced. I suspect that continues down the line.
+
+Wed Mar 27 08:31:13 EDT 2013
+
+Okay, I think I figured it out. First, let me simplify the test case:
+
+Yes. Here is the simplified test case:
+
+p <- free
+assert p
+assert (
+    if p
+        then False
+        else error "qhfeager"
+  )
+                
+
+Now, if I want to do an experiment, what I'll really do is:
+
+assert (error "foo")
+
+In the interpreter, I'll find we have 'thunk'. In testh I'll find we have
+boom!
+
+Yup! That's what I see. And that's a much simpler case to look at, so let me
+look at that and understand what's up.
+
+assert :: Bool -> Symbolic ()
+
+First thing we do to the argument 'p', is call 'unbox'. Then we try to look at
+the result in ExpH_Value form.
+
+unbox (error "foo")
+
+What happens if you try to unbox (error "foo")? We look to see what it is, run
+into error, and go boom.
+
+Which is different from what we want to have happen. What we want, I feel
+like, is to get a ThunkEH in Bool_s.
+
+Or, more explicitly:
+
+unbox (error "foo")
+ --> need WHNF of (error "foo")
+
+primHF errorP
+box (primEH errorP _)
+ --> need WHNF of (de_conHF "True" (primEH errorP _))
+
+de_conHF "True" (primEH errorP _)
+de_kconEH "True" (primEH errorP _)
+de_conEH (primEH errorP _)
+ --> need WHNF of (force (primEH errorP _))
+
+force (primEH errorP _)
+ --> need WHNF of (primEH errorP _)
+
+primEH errorP _
+errorEH 
+ThunkEH $ error s
+
+ <-- got ThunkEH
+
+force 
+ --> need WHNF of error s
+boom!
+
+
+So, the bug is clear. The fix... not nearly so clear.
+
+Let me summarize the issue.
+
+In HaskellF we pass around potentially symbolic objects. For example, a Bool
+is represented as True, False, or Bool_s.
+
+In order to know what representation an object has (True, False, or Bool_s),
+we have to force the object. Previously that was fine, because we weren't
+looking at the object until we wanted its value for sure, so if forcing it
+would blow up, then looking at it would have made it blow up. Now that's not
+the case, because we want to be able to look at the object without forcing.
+
+What this means is, given some haskellf object Bool, we want to be able to
+distinguish between a bigger class:
+    True, False, Symbolic, OR Thunk.
+
+Now, my concern is, if we keep things which are thunks as thunks, then we
+loose much of the benefit of haskellf in the first place.
+
+Well, so the idea that's coming to my head is this. What we really want to
+store, for each haskellf object, are two different views of the object. One
+view is, like the current view: what the object is if you look at it. The
+other view, a new view, is the view of what the object looks like without
+forcing it.
+
+This is something I'm going to have to think about a bunch.
+
+But, good news is, I understand the problem. I just need to come up with a
+decent solution. This might lead to a whole new haskellf backend. We shall
+see.
+
+Wed Mar 27 11:19:51 EDT 2013
+
+Here's the solution:
+  Currently 'unbox' does a force. 
+  I want unbox not to force. So:
+    unbox_nonforcing = thunkEH . unbox
+
+Easy. Just make sure I use the right version in the right place. It will be
+worth spending a few moments to think about it.
+
+In the meantime, Nirav is complaining about some bugs, so let me see if they
+exist and what I can do about them.
+
+Wed Mar 27 11:26:42 EDT 2013
+
+Trouble. For some reason, something that works fine in my local directory
+isn't working with Nirav's code. What's up with that?
+
+And if I run 'smten', instead of whatever the makefile runs, it works
+fine...
+
+Okay, so I'll say it works fine. False alarm. No issue.
+
+Now, back to bottom.
+
+Question: where do we use 'unbox', and when should it force things, and when
+should it not force things?
+
+In the implementation of unbox, for each argument we use unbox.
+We should instead be using a non-forcing unbox.
+
+I feel like just about everywhere we want to use a non-forcing unbox. But we
+do want to define a forcing box.
+
+Okay, that's easy enough. Let me try it out.
+
+First question, what names should I use?
+
+I would like 'unbox' for just that.
+I would like ... 'unbox_strict' for the implementation. What do you think of
+that?
+
+Or 'unbox_force'.
+Or' unbox_forcing'.
+
+Or unbox_. 
+
+I think unbox_strict makes most sense. It is strict in its argument, instead
+of lazy, like we want. Good.
+
+Let me try it out then.
+
+Wed Mar 27 11:45:57 EDT 2013
+
+Yup! That was it. That fixes the problem. Cool. Let me stick with that.
+
+Cool. Now that that bug is fixed, can we get back to sharing?
+
+Perhaps after lunch.
+
+Now, for sharing, what I'm going to do is...
+
+Add this map thing to ExpH first. Then try to share pruning the easiest way I
+can (just go a step at a time), where it returns a locally pruned and a
+(cached) globally pruned object?
+
+Wait, would that preserve sharing at all?
+
+Why don't we currently preserve sharing?
+
+The problem is: when we prune something that can be totally forced, but we
+don't know it, we end up returning a different value for the pruned thing.
+
+So, either look at what it returned, and if nothing changed, don't change
+anything either, or cache what it returned and look that up next time. So next
+time you see it, you ask if it is pruned, the answer is yes, so you return the
+same thing.
+
+Let me think about it some.
+
+Wed Mar 27 12:33:32 EDT 2013
+
+Okay, new insight.
+
+Let's say I'm going a step at a time. The immediate question is: how to
+preserve sharing in pruning?
+
+The current problem is this:
+
+prune S0(x+x+x+x), the first time, produces S1(x+x+x+x).
+prune S0(x+x+x+x), the second time, produces S2(x+x+x+x).
+
+Now, there are two approaches we could take.
+
+1. Cache things that are pruned.
+
+prune S0(x+x+x+x), the first time, produces S1(x+x+x+x).
+prune S0(x+x+x+x), the second time, sees the cached S1(x+x+x+x).
+
+2. If nothing is pruned, don't change the exprssion.
+
+prune S0(x+x+x+x), the first time, nothing pruned, produces S0(x+x+x+x).
+prune S0(x+x+x+x), the second time, is pruned...
+
+Actually, it's important we do (2), because the act of producing S1 could
+prune S0, and then we see if S0 is pruned, the answer is yes...
+
+Except, I suppose that isn't an issue if I take approach (1).
+
+Regardless, approach (2) seems more efficient, because we can avoid making
+duplicate copies of expressions.
+
+In other words, what I want to do is a simple optimization to prune.
+
+Have prune return a boolean indicating if anything was pruned or not. If
+nothing was pruned, return the same expression we have rather than create a
+new one. Easy.
+
+Then I don't have to muck with ExpH any.
+
+I like this. Let me try it and see how it works.
+
+Wed Mar 27 12:48:34 EDT 2013
+
+Good news! The basic sharing test works now. Wonderful.
+
+Wed Mar 27 12:49:59 EDT 2013
+
+The Datatype test takes about 45 seconds at this point. I'll profile it, but
+really I should make sure all the share tests work before jumping right into
+Datatype.
+
+So, let's try out the rest of the sharing tests...
+
+Wed Mar 27 12:53:09 EDT 2013
+
+Note: the datatype test takes a long time because of debugging. It's
+generating some pretty big queries.
+
+I'll want to fix that eventually. But for now, if I turn off debugging, it
+only takes 7 seconds. It's not clear to me from the profile where all the time
+is spent. Presumably it has something to do with large queries.
+
+Anyway, plan is to get all the sharing tests to work first. Then we will see
+where we are.
+ 
+Wed Mar 27 13:00:03 EDT 2013
+
+Looks like all the sharing tests I have so far work, except for appeval.
+
+let f = \x -> 0
+    g = \x -> x + x + x + x + x
+p <- free
+q <- free
+z <- free
+assert $ 5 == (case () of
+                _ | p, q -> f
+                  | otherwise -> g
+              ) z
+assert (not q)
+return z
+
+What's wrong with this test?
+
+I suppose I ought to try it manually. Ug.
+
+Wed Mar 27 13:37:43 EDT 2013
+
+Anyway, divergence. We need to make type inference smarter. That may actually
+be easy to do in the current framework.
+
+There's also an issue with 'free' being really slow at compile time. If I can
+make that faster, I should.
+
+Where to start? Let me start on type inference, to get things flowing.
+
+Here's the idea: if we do type inference on a canonicalized type, then we can
+traverse into operations as desired. So, do type inference on canonical types.
+
+Let me try it.
+
+Without explicit type info, I'm getting:
+
+|| type variable ~3 not in scope
+||  in declaration Smten.Bit.bv_zero_extend :: Bit #n -> Bit #m;
+|| Smten.Bit.bv_zero_extend =
+||   (Smten.Bit.bv_concat :: Bit #~3 -> Bit #n -> Bit #(~3+n))
+||   ((Prelude.fromInteger :: Integer -> Bit #~3) 0)
+|| child process exited abnormally
+
+What are the constraints I expect?
+
+bv_zero_extend :: Bit #n -> Bit #m
+bv_zero_extend = (bv_concat :: ~1) (0 :: ~2)
+
+I printed out type constraints and it doesn't report the ones I'm looking for,
+for some reason. Let me do this by hand then.
+
+Constraints:
+  ~1 = 
+
+didn't I do this before? Yes:
+
+(bv_concat :: ~1) (0 :: ~2)
+  has type: Bit n -> Bit m
+
+~1 = Bit ~3 -> Bit ~4 -> Bit (~3 + ~4)
+~1 = ~5 -> ~6
+~5 = ~2
+~6 = Bit n -> Bit m
+
+Solution:
+
+~1: Bit ~3 -> Bit n -> Bit (~3 + n)
+~2: Bit ~3
+~5: Bit ~3
+~6: Bit n -> Bit (~3 + n)
+~4 = n
+
+And the one we don't get:
+    ~3 + n = m
+
+Oh. You know what I bet this does? I bet it says:
+
+m = ~3 + n
+
+And then it's done. But that's wrong.
+
+Well, it's right, because it is true that 'm' is ~3 + n. The problem is, it is
+the wrong order. It should be trying to solve for ~3, not for m.
+
+How? How can we support this?
+
+Well, I think, in general, the idea is this...
+
+If at least one side of a constraint contains a numeric type operation...
+
+Then currently we should ignore that?
+Except, I want to change it so we can recognize it. In which case, what do I
+do?
+
+If at least one side of a constraint contains a numeric type operation, I
+propose the following:
+
+1. Compute the canonical form of (a - b)
+This gives us a canonical numeric type which should be equal to 0.
+
+Actually, it might be nice to expose the 'sum' function, to compute the sum of
+products form for (a - b).
+
+Then I want to solve, if possible, for the least defined type variable in that
+list. When is that possible?
+
+When the least defined variable type exists in a single term with exponent 0
+and unit coefficient. What's hard about that?
+
+Certainly it will not work in general, but it should work fine for what Nirav
+wants it for, and it is definitely an improvement.
+
+I should write a separate function that knows how to do this.
+
+I don't know. Let me think about it a little. Let me instead try to make
+'free' faster.
+
+First question: who calls it?
+
+The reason I ask is, I want to know:
+Are they looking for a unique Name, or for each Sig with duplicate names, and
+does kind matter, or what?
+
+* free' is used in sharedM to see if a (fresh) variable survived.
+
+That's it!
+
+So, let's use a hash-set of Names, shall we?
+
+Or, better yet, do the predicate check: 'isfree'. Which is what we really want
+here.
+
+I should also check if any of these other utilities are used, or if they are
+dead code.
+
+Wed Mar 27 14:29:34 EDT 2013
+
+Okay! Updated free. The consequence?
+
+42s down to 12s.
+
+So that change is good.
+
+Now all the compile time is in attemptIO. That might be a bogus profiling
+thing though.
+
+Or, just that we dump such a huge error message. Yes, that's more likely. We
+get charged for printing to stderr.
+
+Wed Mar 27 14:40:28 EDT 2013
+
+Okay, so, I find myself once again with two tasks on my plate, and not
+entirely sure what's up with either.
+
+1. Smarter type inference.
+That can solve things like:
+    m = ~3 + n
+  means: ~3 = n - m
+
+2. Understand sharing bug in 'bottom'.
+
+Number (1) has higher priority.
+
+Wed Mar 27 15:00:31 EDT 2013
+
+I want to start by cleaning up the type solver, because I think it can be made
+much cleaner. Or, at least a little cleaner, but clean enough that the change
+I make makes sense.
+
+I want to solve each constraint separately, and do the right thing for it.
+Hopefully I can get rid of this idea of 'solveable' or 'unsolveable' or
+'lessknown'. Then I can add a branch which handles numeric type constraints
+properly.
+
+Sounds good to me. Let me try it out.
+
+Wed Mar 27 16:08:50 EDT 2013
+
+Trouble: kind inference stopped working, because of my bad assumption.
+
+Wed Mar 27 16:13:04 EDT 2013
+
+Okay, cool. So the type solver is now much cleaner, and it should be easier
+for me to modify it for numeric types in a way that makes sense.
+
+So, how am I going to modify it? What inference do I want to do?
+
+Currently we are dropping some constraints that we want to make use of.
+
+The constraints have the following form...
+
+At least one of the sides involves a numeric type operation with a target
+variable type. For example:
+
+m = ~3 + n
+
+Let me normalize these things to help me think about them. How? By extracting
+the sum of products format for (a - b). Now the constraint says these must be
+0.
+
+Now, I have a polynomial, which may contain target variables. How can I solve
+for the target variables?
+
+I only need to solve for one target variable. I don't have any preference for
+one target variable over another. So, what sorts of things can I solver?
+
+* If there exists a target variable in its own term with (positive or
+  negative) unit coefficient, I can easily solve for that.
+
+That will take care of things like the example above. And I expect everything
+Nirav wants for now.
+
+Some more complicated questions are things like:
+
+2x = 2
+
+Okay, so it seems like if there is a common integer factor, I would like to
+get rid of it. That way I can solve that. So I can do this as a pre-processing
+step. I can guide that test by the variables I'm trying to solve for. In other
+words, if we have a non-unit coefficient, as long as all the other terms are a
+multiple of that, we can solve the constraint.
+
+Anything else I can do?
+
+I don't think so. I think that's enough for now.
+
+So, here's the plan. I'll want some helper functions.
+
+Anytime I see a constraint with a numeric operation that isn't otherwise
+obviously solveable, 
+1. compute (a - b)  in sums form
+2. find all candidate target variables which occur alone
+3. filter out ones with bad coefficients.
+4. update the result of whatever is left, if there is any left.
+
+Cool. To help do this, I think I would like to put the Sum and Product stuff
+elsewhere. Is that possible? So I can have it as a library and expand it?
+
+The answer is yes! I can pull that out. Good. Put it in Type/Sum.hs
+
+Except, not really. Hmm...
+
+But, == does not use canonical, so I can pull canonical out into its own
+thing, and put more stuff there. Good.
+
+Now, what functions would I like to expose to the type solver?
+
+* subtract
+In general, I think Sum should be an instance of Num. Probably it could be its
+own type too, to make that make sense (though that could be annoying).
+
+* Type -> Sum
+The 'sum' function. Preferably with pruning?
+
+* I think... a list of terms would be nice. Then I can filter out the ones I
+  want.
+
+I don't know. Let me just make Canonical available to the type solver?
+
+Alternatively, I could, in Canonical, implement a function to find all
+solutions for all variables in terms of others. That seems reasonable to me?
+
+Not sure. Not sure at all.
+
+One thing I could do: ask for all the VarTs in a type. Filter out the target
+ones. Poll each target one (assuming I know the format for Sum). Then deal
+with things.
+
+In other words, this is not an issue with what I need to do, it's an issue
+with the modularity of my implementation. How much should type solver know
+about Canonical? How much should Canonical know about type solving?
+
+Let me ... start with cleanup. See if that helps things.
+
+I want a notion of 'Sum' as a numeric thing. I should be able to do
+'fromInteger', add, subtract, and multiply.
+
+Same for Product, only you can't add products, only multiply them.
+
+Wed Mar 27 16:58:08 EDT 2013
+
+Okay, so Sum is an instance of Num now. That's nice.
+
+I think all the type solver needs is the following api:
+
+ linear :: Name -> Sum -> Maybe Integer
+    Check if the given variables is linear in the given equation.
+    That is, it appears only once. 
+    If it is linear, returns the coefficient, otherwise returns Nothing.
+
+ divide :: Sum -> Integer -> Maybe Sum
+    Do division. But only if it can be done. Don't allow fractions.
+
+Then, what do I want to do?
+
+For each variable name V in the type constraints which is a target:
+  if linear with K
+  And can divide by K to get S
+  Then, var V = (S - V)
+
+Which means... I want a way to make a sum from a variable. Call it 
+monomial. Perfect!
+
+Let me get to work.
+
+Wed Mar 27 17:39:17 EDT 2013
+
+There! All done. Let me check it in. Nifty.
+
