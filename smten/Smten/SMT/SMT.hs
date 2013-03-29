@@ -92,11 +92,6 @@ data QS = QS {
     -- ID to use for the next primitive free variable.
     qs_freeid :: Integer,
 
-    -- The query compilation object.
-    -- TODO: we shouldn't need this, because the compilation should not need
-    -- to preserve state. Clean up SMT.Translate and get rid of this.
-    qs_qs :: Compilation,
-
     -- The current assertion predicate.
     -- Given predicate 'p', whenever the user says (assert q), we predicate
     -- the assertion by actually asserting (p `implies` q).
@@ -161,26 +156,6 @@ debug msg = do
         Nothing -> return ()
         Just h -> liftIO $ hPutStrLn h msg
 
-smte' :: ExpH -> SMT ([SMT.Command], SMT.Expression)
-smte' e = {-# SCC "SmtE" #-} do
-    qs <- gets qs_qs 
-    let se = {-# SCC "FROMEXPH" #-} fromExpH e
-        mkye :: CompilationM ([SMT.Command], SMT.Expression)
-        mkye = do
-          ye <- smtE se
-          cmds <- smtD
-          return (cmds, ye)
-    ((cmds, ye), qs') <- liftIO . attemptIO $ runCompilation mkye qs
-    modify $ \s -> s { qs_qs = qs' }
-    return (cmds, ye)
-
-smte :: ExpH -> SMT SMT.Expression
-smte e = do
-    (cmds, ye) <- smte' e
-    runCmds cmds
-    return ye
-
-
 isPrimT :: Type -> Bool
 isPrimT t | t == boolT = True
 isPrimT t | t == integerT = True
@@ -210,7 +185,6 @@ mkQS opts = do
         qs_solver = ro_solver opts,
         qs_dh = dh,
         qs_freeid = 1,
-        qs_qs = compilation,
         qs_pred = trueEH,
         qs_freevars = [],
         qs_freevals = [],
@@ -290,11 +264,10 @@ mkerr t = {-# SCC "MKERR" #-} do
 mkassert :: ExpH -> SMT ()
 mkassert p = do
   pred <- gets qs_pred
-  let p' = impliesEH pred p
-  p'' <- abstract p'
-  yp <- smte p''
-  runCmds [SMT.Assert yp]
-  modify $ \qs -> qs { qs_asserts = andEH (qs_asserts qs) p' }
+  let p_predicated = impliesEH pred p
+  p_abstracted <- abstract p_predicated
+  runCmds [SMT.Assert $ smtE (fromExpH p_abstracted)]
+  modify $ \qs -> qs { qs_asserts = andEH (qs_asserts qs) p_predicated }
 
 -- Replace all explicit _|_ with VarEH.
 abstract :: ExpH -> SMT ExpH
@@ -331,8 +304,7 @@ nest q = do
   v <- q
   runCmds [SMT.Pop]
   nfreeid <- gets qs_freeid
-  comp <- gets qs_qs
-  put qs { qs_freeid = nfreeid, qs_qs = comp }
+  put qs { qs_freeid = nfreeid }
   return v
 
 -- Read the current model from the SMT solver.

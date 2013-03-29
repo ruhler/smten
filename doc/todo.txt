@@ -68,7 +68,7 @@ Primitives::
 * Concretize the rest of the haskellf primitives
 
 Cleanup::
-* SMT.Translate should not need to preserve state between translations.
+* Merge FromExpH and Translate into a single operation.
 * varTs should return a list of TyVar, not (Name, Kind)
 * typeinfer - use structure like typecheck (if reasonable)
 * haskellf.Compile - use monadic structure like typecheck, infer (if
