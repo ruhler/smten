@@ -87,7 +87,7 @@ data QS = QS {
     qs_qs :: Compilation,
     qs_pred :: ExpH,
     qs_freevars :: [Sig],
-    qs_freevals :: Maybe [ExpH] -- ^ Cache of free variable values
+    qs_freevals :: [ExpH] -- ^ Cache of free variable values
 }
 
 newtype SMT a = SMT (StateT QS IO a)
@@ -113,7 +113,9 @@ check = {-# SCC "Check" #-} do
     debug (SMT.pretty solver SMT.Check)
     res <- liftIO $ SMT.check solver
     debug $ "; check returned: " ++ show res
-    modify $ \qs -> qs { qs_freevals = Nothing }
+    case res of
+        SMT.Satisfiable -> getmodel 
+        SMT.Unsatisfiable -> return ()
     return res
 
 -- Output a line to the debug output.
@@ -188,7 +190,7 @@ mkQS opts = do
         qs_qs = compilation,
         qs_pred = trueEH,
         qs_freevars = [],
-        qs_freevals = Nothing
+        qs_freevals = []
     }
 
 -- | Evaluate a query.
@@ -200,33 +202,31 @@ runSMT opts (SMT q) = do
 runSymbolic :: RunOptions -> Symbolic (Realize a) -> IO (Maybe a)
 runSymbolic opts q = runSMT opts (query q)
 
--- | Given a free variable name and corresponding smten type, return the value
--- of that free variable from the smt model.
+-- | Given a free variable name and corresponding smten type, return the
+-- assignment for that free variable from the smt model.
 --
 -- Assumes:
 --   Integers, Bools, and Bit vectors are implemented directly using the
 --   corresponding smt primitives. (Should I not be assuming this?)
-realizefree :: Sig -> SMT ExpH
-realizefree (Sig nm t) | t == boolT = do
+assignment :: Sig -> SMT ExpH
+assignment (Sig nm t) | t == boolT = do
     solver <- gets qs_solver
     bval <- liftIO $ SMT.getBoolValue solver (smtN nm)
     debug $ "; " ++ pretty nm ++ " is " ++ show bval
     return (boolEH bval)
-realizefree (Sig nm t) | t == integerT = do
+assignment (Sig nm t) | t == integerT = do
     solver <- gets qs_solver
     ival <- liftIO $ SMT.getIntegerValue solver (smtN nm)
     debug $ "; " ++ pretty nm ++ " is " ++ show ival
     return (integerEH ival)
-realizefree (Sig nm (AppT (ConT n _) wt)) | n == name "Bit" = do
+assignment (Sig nm (AppT (ConT n _) wt)) | n == name "Bit" = do
     let w = nteval wt
     solver <- gets qs_solver
     bval <- liftIO $ SMT.getBitVectorValue solver w (smtN nm)
     debug $ "; " ++ pretty nm ++ " has value " ++ show bval
     return (bitEH (bv_make w bval))
-realizefree (Sig _ t@(AppT (AppT (ConT n _) _) _)) | n == name "->"
-  = return (error $ "TODO: realizefree type " ++ pretty t)
-realizefree (Sig _ t)
-  = return (error $ "unexpected realizefree type: " ++ pretty t)
+assignment s = error $
+    "SMTEN INTERNAL ERROR: unexpected type for prim free var: " ++ pretty s
 
 query_Used :: (Used (Realize a)) -> SMT (Maybe a)
 query_Used (Used ctx rx) = {-# SCC "QUERY_USED" #-} do
@@ -278,18 +278,21 @@ nest q = do
   modify $ \qs -> qs { qs_freevars = freevars }
   return v
 
+-- Read the current model from the SMT solver.
+-- Assumes the state is satisfiable.
+getmodel :: SMT ()
+getmodel = do
+    freevars <- gets qs_freevars
+    freevals <- mapM assignment freevars
+    modify $ \qs -> qs { qs_freevals = freevals }
+
 -- | Update the free variables in the given expression based on the current
 -- model.
+-- Assumes the state is satisfiable and the model has already been read.
 realize :: ExpH -> Realize ExpH
 realize e = {-# SCC "REALIZE" #-} Realize $ do
     freevars <- gets qs_freevars
-    freevals <- gets qs_freevals
-    fvs <- case freevals of
-              Just vs -> return vs
-              Nothing -> do
-                freevals <- mapM realizefree freevars
-                modify $ \qs -> qs { qs_freevals = Just freevals }
-                return freevals
+    fvs <- gets qs_freevals
     let freemap = zip [n | Sig n _ <- freevars] fvs
         g e | VarEH (Sig nm _) <- force e = lookup nm freemap
             | otherwise = Nothing
