@@ -21,7 +21,7 @@ import Smten.Strict
 
 -- Translate back to the normal Exp representation
 fromExpH :: ExpH -> Exp
-fromExpH e = {-# SCC "CONVERT" #-} convert ({-# SCC "SHARING" #-} sharing e) e
+fromExpH e = {-# SCC "FromExpH" #-} convert ({-# SCC "SHARING" #-} sharing e) e
 
 data Use = Multi | Single
     deriving (Eq)

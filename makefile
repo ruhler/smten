@@ -11,7 +11,7 @@ testio:
 	./build/home/.cabal/bin/smten --io \
 		--include smten/share/lib \
 		--file smten/share/lib/Smten/SMT/Tests/Sudoku.smtn \
-		--main-is Smten.SMT.Tests.Sudoku.main +RTS -p -hy
+		--main-is Smten.SMT.Tests.Sudoku.main +RTS -p
 
 testhf:
 	./build/home/.cabal/bin/smten --haskellf \

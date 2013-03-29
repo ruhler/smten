@@ -150,7 +150,7 @@ check = {-# SCC "Check" #-} do
 
 -- Output a line to the debug output.
 debug :: String -> SMT ()
-debug msg = do
+debug msg = {-# SCC "DEBUG" #-} do
     dh <- gets qs_dh
     case dh of
         Nothing -> return ()
@@ -266,7 +266,7 @@ mkassert p = do
   pred <- gets qs_pred
   let p_predicated = impliesEH pred p
   p_abstracted <- abstract p_predicated
-  runCmds [SMT.Assert $ smtE (fromExpH p_abstracted)]
+  runCmds [SMT.Assert $ {-# SCC "TRANSLATE" #-} smtE (fromExpH p_abstracted)]
   modify $ \qs -> qs { qs_asserts = andEH (qs_asserts qs) p_predicated }
 
 -- Replace all explicit _|_ with VarEH.
@@ -345,7 +345,7 @@ deriving instance MonadState QS Symbolic
 
 -- | Assert the given predicate.
 assert :: ExpH -> Symbolic ()
-assert p = Symbolic (mkassert p)
+assert p = {-# SCC "ASSERT" #-} Symbolic (mkassert p)
 
 -- | Read the value of a Used.
 used :: Used a -> Symbolic a

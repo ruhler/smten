@@ -282,6 +282,9 @@ shared f =
 -- the result. The monadic actions are only performed the first time an
 -- expression is seen.
 --
+-- TODO: This only shares results for non-simple expressions (for performance
+-- reasons). Does that make sense to do in general?
+--
 -- f - The function to apply which takes:
 --   f' - the shared version of 'f' to recurse with
 --   x - the argument
@@ -289,7 +292,9 @@ sharedM :: (MonadIO m) => ((ExpH -> m a) -> ExpH -> m a) -> ExpH -> m a
 sharedM f x = {-# SCC "SHARED_M" #-} do
   cache <- liftIO $ newIORef Map.empty
   let --use :: ExpH -> m a
-      use e = do
+      use e
+       | issimple e = f use e
+       | otherwise = do
         m <- liftIO $ readIORef cache
         case Map.lookup (eid e) m of
           Just v -> return v    
@@ -305,3 +310,16 @@ sharedM f x = {-# SCC "SHARED_M" #-} do
 errorEH :: Type -> String -> ExpH
 errorEH t s = exph $ ErrorEH t s
 
+-- TODO: why is this function defined both here and in FromExpH?
+issimple :: ExpH -> Bool
+issimple e =
+  case force e of
+     LitEH {} -> True
+     ConEH _ _ [] -> True
+     ConEH {} -> False
+     VarEH {} -> True
+     PrimEH {} -> False
+     LamEH {} -> False
+     IfEH {} -> False
+     ThunkEH {} -> error "issimple: unexpected ThunkEH"
+     ErrorEH {} -> False
