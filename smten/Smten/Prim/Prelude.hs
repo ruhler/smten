@@ -104,7 +104,7 @@ numericP =
 valueofP :: Prim
 valueofP = 
   let f :: ExpH -> ExpH
-      f x = thunkEH $ integerEH (nteval (typeof (force x)))
+      f x = integerEH (nteval (typeof (force x)))
   in unaryP "Prelude.valueof" f
 
 traceP :: Prim

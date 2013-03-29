@@ -21,7 +21,7 @@ class (SmtenT a) => HaskellF a where
     unbox_strict :: a -> ExpH
 
 unbox :: (HaskellF a) => a -> ExpH
-unbox = thunkEH . unbox_strict
+unbox = unbox_strict
 
 class (SmtenT1 m) => HaskellF1 m where
     box1 :: (HaskellF a) => ExpH -> m a

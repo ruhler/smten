@@ -6,7 +6,7 @@
 -- | HOAS form for Smten Expressions, geared towards high performance
 -- elaboration.
 module Smten.ExpH.ExpH (
-    ExpH_Value(..), EID(), ExpH(), force, eid, exph, forced, unforced,
+    ExpH_Value(..), EID(), ExpH(), force, eid, exph,
     ) where
 
 import System.IO.Unsafe
@@ -59,24 +59,15 @@ data ExpH_Value =
 
           -- | Explicit _|_
           | ErrorEH Type String
-
-          -- | Thunk.
-          | ThunkEH ExpH
     deriving (Typeable)
 
--- ExpH_Cell: an ExpH_Value labeled with an expression ID.
-data ExpH_Cell = ExpH_Cell {
-    cell_id :: EID,
-    cell_val :: ExpH_Value,
-    cell_unforced :: Maybe [ExpH]
-} deriving (Typeable)
-
-newtype ExpH = ExpH {
-    exph_cell :: IORef ExpH_Cell
+data ExpH = ExpH {
+    eid :: EID,
+    force :: ExpH_Value
 } deriving (Typeable)
 
 instance Show ExpH where
-    show = show . value
+    show = show . force
 
 instance Show ExpH_Value where
     show (LitEH l) = pretty l
@@ -85,36 +76,7 @@ instance Show ExpH_Value where
     show (PrimEH n _ _ xs) = pretty n ++ " " ++ show xs
     show (LamEH s _ _) = "\\" ++ pretty s ++ " -> ..."
     show (IfEH _ p a b) = "if " ++ show p ++ " then " ++ show a ++ " else " ++ show b
-    show (ThunkEH _) = "?thunk?"
-
     
-force :: ExpH -> ExpH_Value
-force = 
- let force_io :: ExpH -> IO ExpH_Cell
-     force_io (ExpH r) = do
-        c <- readIORef r
-        case cell_val c of
-            ThunkEH e -> do
-                c' <- force_io e
-                writeIORef r c'
-                return c'
-            _ -> return c
- in cell_val . unsafePerformIO . force_io
-
-cell :: ExpH -> ExpH_Cell
-cell x = unsafePerformIO $ readIORef (exph_cell x)
-
-value :: ExpH -> ExpH_Value
-value = cell_val . cell
-
-eid :: ExpH -> EID
-eid = cell_id . cell
-
-forced :: ExpH -> Bool
-forced x
- | ThunkEH {} <- value x = False
- | otherwise = True
-
 exph :: ExpH_Value -> ExpH
 exph v = 
   let {-# NOINLINE idstore #-}
@@ -123,26 +85,5 @@ exph v =
   in unsafePerformIO $ do
         x <- readIORef idstore
         writeIORef idstore $! x + 1
-        ExpH <$> newIORef (ExpH_Cell (EID x) v Nothing)
-
-unforced' :: ExpH_Value -> [ExpH]
-unforced' v
-  | LitEH {} <- v = []
-  | ConEH _ _ xs <- v = concatMap unforced xs
-  | VarEH {} <- v = []
-  | PrimEH _ _ _ xs <- v = concatMap unforced xs
-  | LamEH {} <- v = []      -- TODO: what should this be?
-  | IfEH _ p a b <- v = concatMap unforced [p, a, b]
-  | ThunkEH {} <- v = error "unexpected ThunkEH in unforced'"
-
-unforced :: ExpH -> [ExpH]
-unforced e@(ExpH r) = unsafePerformIO $ do
-    c <- readIORef r
-    case (cell_val c) of
-        ThunkEH {} -> return [e]
-        v -> do 
-            let uf = fromMaybe (unforced' v) (cell_unforced c)
-                uf' = concatMap unforced uf
-            writeIORef r (c { cell_unforced = Just uf' })
-            return uf'
+        return $ ExpH (EID x) v
 

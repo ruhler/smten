@@ -44,12 +44,8 @@ unaryTP :: (SmtenEH a, SmtenEH b) => String -> (Type -> a -> b) -> Prim
 unaryTP n f =
   let nm = name n
 
-      -- Type is the type of the fully applied primitive.
       impl :: Type -> [ExpH] -> ExpH
-      impl t xs = thunkEH $ impl' t xs
-
-      impl' :: Type -> [ExpH] -> ExpH
-      impl' t [a]
+      impl t [a]
         | Just av <- de_smtenEH a = smtenEH (f t av)
         | IfEH {} <- force a
         , not (smttype (typeof (force a)))
@@ -80,10 +76,7 @@ binaryTP n f =
 
       -- The type is the type of the fully applied primitive
       impl :: Type -> [ExpH] -> ExpH
-      impl t xs = thunkEH $ impl' t xs
-
-      impl' :: Type -> [ExpH] -> ExpH
-      impl' t [a, b] 
+      impl t [a, b] 
         | Just av <- de_smtenEH a
         , Just bv <- de_smtenEH b = smtenEH (f t av bv)
         | IfEH {} <- force a

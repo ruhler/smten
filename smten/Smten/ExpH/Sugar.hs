@@ -7,7 +7,7 @@ module Smten.ExpH.Sugar (
     appEH, appsEH, strict_appEH,
     lamEH, letEH, aconEH,
     caseEH,
-    ifEH, impliesEH, notEH, andEH, errorEH, thunkEH,
+    ifEH, impliesEH, notEH, andEH, errorEH,
 
     unitEH,
     boolEH, trueEH, falseEH, de_boolEH,
@@ -79,11 +79,8 @@ de_varEH t
  | VarEH s <- force t = Just s
  | otherwise = Nothing
 
-appEH ::  ExpH -> ExpH -> ExpH
-appEH f x = thunkEH $ appEH' f x
-
-appEH' :: ExpH -> ExpH -> ExpH
-appEH' f x
+appEH :: ExpH -> ExpH -> ExpH
+appEH f x
  | LamEH (Sig _ t) _ g <- force f = g x
  | IfEH ft _ _ _ <- force f =
      let Just (_, t) = de_arrowT ft
@@ -166,14 +163,8 @@ de_ioEH x = do
     l <- de_litEH x
     de_dynamicL l
 
-thunkEH :: ExpH -> ExpH
-thunkEH = exph . ThunkEH
-
 caseEH :: Type -> ExpH -> Sig -> ExpH -> ExpH -> ExpH
-caseEH t x k y n = thunkEH $ caseEH' t x k y n
-
-caseEH' :: Type -> ExpH -> Sig -> ExpH -> ExpH -> ExpH
-caseEH' t x k@(Sig nk _) y n
+caseEH t x k@(Sig nk _) y n
  | Just (s, _, vs) <- de_conEH x
     = if s == nk then appsEH y vs else n
  | ErrorEH _ s <- force x = errorEH t s
@@ -187,10 +178,7 @@ caseEH' t x k@(Sig nk _) y n
 strict_appEH :: Type -> (ExpH -> ExpH) -> ExpH -> ExpH
 strict_appEH t f =
   let g :: (ExpH -> ExpH) -> ExpH -> ExpH
-      g use e = thunkEH (g' use e)
-
-      g' :: (ExpH -> ExpH) -> ExpH -> ExpH
-      g' use e
+      g use e
         | IfEH _ x y d <- force e = ifEH t x (use y) (use d)
         | otherwise = f e
   in shared g
@@ -216,10 +204,7 @@ andEH p q = ifEH boolT p q falseEH
 transform :: (ExpH -> Maybe ExpH) -> ExpH -> ExpH
 transform f =
   let g :: (ExpH -> ExpH) -> ExpH -> ExpH
-      g use e = thunkEH (g' use e)
-
-      g' :: (ExpH -> ExpH) -> ExpH -> ExpH
-      g' use e
+      g use e
         | Just v <- f e = v
         | LitEH {} <- force e = e
         | ConEH n s xs <- force e = aconEH n s (map use xs)
@@ -321,5 +306,4 @@ issimple e =
      PrimEH {} -> False
      LamEH {} -> False
      IfEH {} -> False
-     ThunkEH {} -> error "issimple: unexpected ThunkEH"
      ErrorEH {} -> False

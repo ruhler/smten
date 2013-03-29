@@ -65,7 +65,6 @@ issimple e =
      PrimEH {} -> False
      LamEH {} -> False
      IfEH {} -> False
-     ThunkEH {} -> error "issimple: unexpected ThunkEH"
      ErrorEH {} -> False
 
 data Defined = Defined {
