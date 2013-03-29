@@ -68,13 +68,12 @@ Primitives::
 * Concretize the rest of the haskellf primitives
 
 Cleanup::
-* Merge FromExpH and Translate into a single operation.
 * varTs should return a list of TyVar, not (Name, Kind)
 * typeinfer - use structure like typecheck (if reasonable)
 * haskellf.Compile - use monadic structure like typecheck, infer (if
   reasonable)
 * enforce in Parser that all class methods must have a signature?
-* perform error abstraction in SMT.SMT instead of SMT.Translate?
+* Merge FromExpH and Translate into a single operation?
 
 SMT::
 * Remove bv-zero-extend from SMT syntax, use SMTLIB2 alternative

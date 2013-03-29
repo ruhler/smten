@@ -274,7 +274,7 @@ shared f =
 --   f' - the shared version of 'f' to recurse with
 --   x - the argument
 sharedM :: (MonadIO m) => ((ExpH -> m a) -> ExpH -> m a) -> ExpH -> m a
-sharedM f x = {-# SCC "SHARED_M" #-} do
+sharedM f x = do
   cache <- liftIO $ newIORef Map.empty
   let --use :: ExpH -> m a
       use e
@@ -285,10 +285,7 @@ sharedM f x = {-# SCC "SHARED_M" #-} do
           Just v -> return v    
           Nothing -> do
             v <- f use e
-            -- The presence of this SCC appears to fix a stack overflow.
-            -- TODO: why? What's up with that?
-            liftIO $ {-# SCC "SHARED_M_INSERT" #-}
-                modifyIORef' cache (Map.insert (eid e) v)
+            liftIO $ modifyIORef' cache (Map.insert (eid e) v)
             return v
   f use x
 
