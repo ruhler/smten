@@ -6,7 +6,7 @@
 -- | HOAS form for Smten Expressions, geared towards high performance
 -- elaboration.
 module Smten.ExpH.ExpH (
-    ExpH_Value(..), EID(), ExpH(), force, eid, exph,
+    ExpH_Value(..), EID(), ExpH(), force, eid, exph, simple,
     ) where
 
 import System.IO.Unsafe
@@ -86,4 +86,17 @@ exph v =
         x <- readIORef idstore
         writeIORef idstore $! x + 1
         return $ ExpH (EID x) v
+
+-- Return true if the given expression is simple.
+-- Note: Error is not considered simple, because we want ABSTRACT to share the
+-- monadic abstraction.
+--
+-- TODO: That seems a bit hackish to have to know about here...
+simple :: ExpH -> Bool
+simple e =
+  case force e of
+     LitEH {} -> True
+     ConEH _ _ [] -> True
+     VarEH {} -> True
+     _ -> False
 

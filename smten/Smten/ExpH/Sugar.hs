@@ -278,7 +278,7 @@ sharedM f x = do
   cache <- liftIO $ newIORef Map.empty
   let --use :: ExpH -> m a
       use e
-       | issimple e = f use e
+       | simple e = f use e
        | otherwise = do
         m <- liftIO $ readIORef cache
         case Map.lookup (eid e) m of
@@ -292,15 +292,3 @@ sharedM f x = do
 errorEH :: Type -> String -> ExpH
 errorEH t s = exph $ ErrorEH t s
 
--- TODO: why is this function defined both here and in FromExpH?
-issimple :: ExpH -> Bool
-issimple e =
-  case force e of
-     LitEH {} -> True
-     ConEH _ _ [] -> True
-     ConEH {} -> False
-     VarEH {} -> True
-     PrimEH {} -> False
-     LamEH {} -> False
-     IfEH {} -> False
-     ErrorEH {} -> False

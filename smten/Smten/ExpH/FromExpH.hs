@@ -34,7 +34,7 @@ sharing :: ExpH -> Set.Set EID
 sharing e =
   let traverse :: ExpH -> State (Map.Map EID Use) (Set.Set EID)
       traverse e
-        | issimple e = return Set.empty
+        | simple e = return Set.empty
         | otherwise = do
              let id = eid e
              m <- get
@@ -54,18 +54,6 @@ sharing e =
         | IfEH _ x y n <- force e = Set.unions <$!> mapM traverse [x, y, n]
         | otherwise = return $ Set.empty
   in evalState (traverse e) Map.empty
-
-issimple :: ExpH -> Bool
-issimple e =
-  case force e of
-     LitEH {} -> True
-     ConEH _ _ [] -> True
-     ConEH {} -> False
-     VarEH {} -> True
-     PrimEH {} -> False
-     LamEH {} -> False
-     IfEH {} -> False
-     ErrorEH {} -> False
 
 data Defined = Defined {
     df_defs :: [(EID, Exp)],
