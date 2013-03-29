@@ -9,7 +9,7 @@ qtest = do
     r <- query $ do
             p <- free
             assert (if p
-                        then error "mal error (as desired)"
+                        then error "MALERROR PASSED"
                         else False)
             return p
     return ()

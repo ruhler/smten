@@ -273,19 +273,47 @@ query_Sat = do
     return $ res == SMT.Satisfiable
 
 mkfree :: Sig -> SMT ()
-mkfree s@(Sig nm t) | isPrimT t = do
+mkfree s@(Sig nm t) = do
   modify $ \qs -> qs { qs_freevars = s : qs_freevars qs }
   runCmds [SMT.Declare (smtN nm) (smtT t)]
-mkfree s = error $ "SMT.mkfree: unsupported type: " ++ pretty s
+
+mkerr :: Type -> SMT ExpH
+mkerr t = {-# SCC "MKERR" #-} do
+    fid <- gets qs_freeid
+    let nm = name $ "error~" ++ show fid
+        s = Sig nm t
+    modify $ \qs -> qs { qs_freeid = fid+1 }
+    runCmds [SMT.Declare (smtN nm) (smtT t)]
+    return (varEH s)
 
 -- | Assert the given smten boolean expression.
 mkassert :: ExpH -> SMT ()
 mkassert p = do
   pred <- gets qs_pred
   let p' = impliesEH pred p
-  yp <- smte p'
+  p'' <- abstract p'
+  yp <- smte p''
   runCmds [SMT.Assert yp]
   modify $ \qs -> qs { qs_asserts = andEH (qs_asserts qs) p' }
+
+-- Replace all explicit _|_ with VarEH.
+abstract :: ExpH -> SMT ExpH
+abstract = {-# SCC "ABSTRACT" #-}
+  let g :: (ExpH -> SMT ExpH) -> ExpH -> SMT ExpH
+      g use e =
+        case force e of
+            LitEH {} -> return e
+            ConEH n s xs -> aconEH n s <$> mapM use xs
+            VarEH {} -> return e
+            PrimEH _ _ f xs -> f <$> mapM use xs
+            LamEH {} -> error "SMT.abstract: unexpected LamEH"
+            IfEH t x y d -> do
+                x' <- use x
+                y' <- use y
+                d' <- use d
+                return $ ifEH t x' y' d'
+            ErrorEH t _ -> mkerr t
+  in sharedM g
  
 use :: Symbolic a -> SMT (Used a)
 use s = {-# SCC "USE" #-} do

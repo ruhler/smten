@@ -10,8 +10,8 @@ userinstall:
 testio:
 	./build/home/.cabal/bin/smten --io \
 		--include smten/share/lib \
-		--file smten/share/lib/Smten/SMT/Tests/MalError.smtn \
-		--main-is Smten.SMT.Tests.MalError.main +RTS -p
+		--file smten/share/lib/Smten/SMT/Tests/Sudoku.smtn \
+		--main-is Smten.SMT.Tests.Sudoku.main +RTS -p -hy
 
 testhf:
 	./build/home/.cabal/bin/smten --haskellf \

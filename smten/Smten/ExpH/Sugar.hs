@@ -15,12 +15,13 @@ module Smten.ExpH.Sugar (
     charEH, de_charEH, de_tupleEH,
     ioEH, de_ioEH,
     smttype,
-    transform, shared,
+    transform, shared, sharedM,
     ) where
 
 import System.IO.Unsafe
 
 import Control.Monad
+import Control.Monad.IO.Class
 
 import Data.Functor((<$>))
 import Data.List(genericLength)
@@ -221,7 +222,7 @@ transform f =
       g' use e
         | Just v <- f e = v
         | LitEH {} <- force e = e
-        | ConEH n s xs <- force e = exph $ ConEH n s (map use xs)
+        | ConEH n s xs <- force e = aconEH n s (map use xs)
         | VarEH {} <- force e = e
         | PrimEH _ _ f xs <- force e = f (map use xs)
         | LamEH s t f <- force e = lamEH s t $ \x -> use (f x)
@@ -274,6 +275,32 @@ shared f =
       --use :: ExpH -> a
       use e = lookupPure (eid e) e
   in def
+
+-- sharedM f
+-- Apply a monadic function to an ExpH which preserves sharing.
+-- If the function is called multiple times on the same ExpH, it shares
+-- the result. The monadic actions are only performed the first time an
+-- expression is seen.
+--
+-- f - The function to apply which takes:
+--   f' - the shared version of 'f' to recurse with
+--   x - the argument
+sharedM :: (MonadIO m) => ((ExpH -> m a) -> ExpH -> m a) -> ExpH -> m a
+sharedM f x = {-# SCC "SHARED_M" #-} do
+  cache <- liftIO $ newIORef Map.empty
+  let --use :: ExpH -> m a
+      use e = do
+        m <- liftIO $ readIORef cache
+        case Map.lookup (eid e) m of
+          Just v -> return v    
+          Nothing -> do
+            v <- f use e
+            -- The presence of this SCC appears to fix a stack overflow.
+            -- TODO: why? What's up with that?
+            liftIO $ {-# SCC "SHARED_M_INSERT" #-}
+                modifyIORef' cache (Map.insert (eid e) v)
+            return v
+  f use x
 
 errorEH :: Type -> String -> ExpH
 errorEH t s = exph $ ErrorEH t s
