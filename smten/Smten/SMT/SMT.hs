@@ -80,14 +80,40 @@ newtype Realize a = Realize {
 } deriving (Functor, Monad)
 
 data QS = QS {
+    -- The current context ID stack.
+    -- This is used to keep track of which context 'used' may be called.
     qs_ctx :: Contexts,
+
     qs_solver :: SMT.Solver,
+
+    -- Handle for debug output, if debugging is enabled.
     qs_dh :: Maybe Handle,
+
+    -- ID to use for the next primitive free variable.
     qs_freeid :: Integer,
+
+    -- The query compilation object.
+    -- TODO: we shouldn't need this, because the compilation should not need
+    -- to preserve state. Clean up SMT.Translate and get rid of this.
     qs_qs :: Compilation,
+
+    -- The current assertion predicate.
+    -- Given predicate 'p', whenever the user says (assert q), we predicate
+    -- the assertion by actually asserting (p `implies` q).
     qs_pred :: ExpH,
+
+    -- List of free variables in scope.
     qs_freevars :: [Sig],
-    qs_freevals :: [ExpH] -- ^ Cache of free variable values
+
+    -- Cache of free variable values.
+    -- These are only valid between the time 'check' returns satisfiable and
+    -- updates them, to the time a new assertion is made, or the SMT context
+    -- is changed in some other way. After that, these are meaningless.
+    qs_freevals :: [ExpH],
+
+    -- A single boolean predicate representing the conjunction of all
+    -- assertions made so far.
+    qs_asserts :: ExpH
 }
 
 newtype SMT a = SMT (StateT QS IO a)
@@ -114,7 +140,16 @@ check = {-# SCC "Check" #-} do
     res <- liftIO $ SMT.check solver
     debug $ "; check returned: " ++ show res
     case res of
-        SMT.Satisfiable -> getmodel 
+        SMT.Satisfiable -> do
+            -- Verify the assignment actual does satisfy the assertions to
+            -- make sure there was no issue with abstraction of _|_.
+            getmodel 
+            asserts <- gets qs_asserts
+            v <- runRealize (realize asserts)
+            case force v of
+                _ | Just True <- de_boolEH v -> return ()
+                ErrorEH _ s -> error $ "smten user error: " ++ s
+                _ -> error "SMTEN INTERNAL ERROR: SMT solver lied?"
         SMT.Unsatisfiable -> return ()
     return res
 
@@ -190,7 +225,8 @@ mkQS opts = do
         qs_qs = compilation,
         qs_pred = trueEH,
         qs_freevars = [],
-        qs_freevals = []
+        qs_freevals = [],
+        qs_asserts = trueEH
     }
 
 -- | Evaluate a query.
@@ -259,8 +295,10 @@ mkfree s = error $ "SMT.mkfree: unsupported type: " ++ pretty s
 mkassert :: ExpH -> SMT ()
 mkassert p = do
   pred <- gets qs_pred
-  yp <- smte (impliesEH pred p)
+  let p' = impliesEH pred p
+  yp <- smte p'
   runCmds [SMT.Assert yp]
+  modify $ \qs -> qs { qs_asserts = andEH (qs_asserts qs) p' }
  
 use :: Symbolic a -> SMT (Used a)
 use s = {-# SCC "USE" #-} do
@@ -271,11 +309,15 @@ use s = {-# SCC "USE" #-} do
 -- | Run the given query in its own scope and return the result.
 nest :: SMT a -> SMT a
 nest q = do
-  freevars <- gets qs_freevars
+  nctx <- liftIO newUnique
+  qs <- get
+  put $! qs { qs_ctx = nctx : qs_ctx qs }
   runCmds [SMT.Push]
   v <- q
   runCmds [SMT.Pop]
-  modify $ \qs -> qs { qs_freevars = freevars }
+  nfreeid <- gets qs_freeid
+  comp <- gets qs_qs
+  put qs { qs_freeid = nfreeid, qs_qs = comp }
   return v
 
 -- Read the current model from the SMT solver.

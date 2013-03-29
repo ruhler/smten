@@ -226,6 +226,7 @@ transform f =
         | PrimEH _ _ f xs <- force e = f (map use xs)
         | LamEH s t f <- force e = lamEH s t $ \x -> use (f x)
         | IfEH t x y d <- force e = ifEH t (use x) (use y) (use d)
+        | ErrorEH {} <- force e = e
   in shared g
 
 de_tupleEH :: ExpH -> Maybe [ExpH]

@@ -143,7 +143,7 @@ io Smten.SMT.Tests.Share
 io Smten.SMT.Tests.Error
 io Smten.SMT.Tests.Datatype
 
-#expectfail { io Smten.SMT.Tests.MalError }
+expectfail { io Smten.SMT.Tests.MalError }
 
 hf Smten.Tests.Concrete
 hf Smten.SMT.Tests.Core
@@ -155,7 +155,7 @@ hf Smten.SMT.Tests.Share
 hf Smten.SMT.Tests.Error
 hf Smten.SMT.Tests.Datatype
 
-#expectfail { hf Smten.SMT.Tests.MalError }
+expectfail { hf Smten.SMT.Tests.MalError }
 
 io Smten.SMT.Tests.AllQ
 io Smten.SMT.Tests.AllQ2

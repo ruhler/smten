@@ -16,8 +16,8 @@ testio:
 testhf:
 	./build/home/.cabal/bin/smten --haskellf \
 		--include smten/share/lib \
-		--file smten/share/lib/Smten/SMT/Tests/Datatype.smtn \
-		--main-is Smten.SMT.Tests.Datatype.main -o build/test/testhf.hs
+		--file smten/share/lib/Smten/SMT/Tests/MalError.smtn \
+		--main-is Smten.SMT.Tests.MalError.main -o build/test/testhf.hs
 	HOME=./build/home/ ghc -o build/test/testhf build/test/testhf.hs -main-is __main -prof -rtsopts
 	./build/test/testhf
 

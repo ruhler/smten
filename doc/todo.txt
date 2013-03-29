@@ -61,8 +61,6 @@ Pretty Printer::
 * Maybe dump the Doc approach and take my SMT concrete approach?
 
 Error::
-* evaluate assertion predicates under satisfying assignment to make sure no
-  explicit errors are encountered
 * detect potential non-termination and perform appropriate abstraction and
   refinement.
 
@@ -70,6 +68,7 @@ Primitives::
 * Concretize the rest of the haskellf primitives
 
 Cleanup::
+* SMT.Translate should not need to preserve state between translations.
 * varTs should return a list of TyVar, not (Name, Kind)
 * typeinfer - use structure like typecheck (if reasonable)
 * haskellf.Compile - use monadic structure like typecheck, infer (if
@@ -84,8 +83,6 @@ SMT::
 
 Query::
 * Figure out how to deal with debugging properly
-* Don't ask for the value of a free variable from an SMT solver unless it
-  shows up in a query.
 * Deal with errors in queries correctly.
 * Use value inference on assertion predicate to solve trivial predicates, then
   don't even send them to the SMT solver (?)
@@ -109,17 +106,9 @@ Build System::
 * don't hardcode build/test output directory into SMT tests
 * clean up tclmk script: maybe separate into init, build, and test sections.
 
-Error::
-* Performance is terrible
-** 1. Cache which things have been forced, and don't make an SMT query for them.
-** 2. Don't prune, but rather, 'forceall'
-** 3. preserve sharing in 'forceall'
-** 4. Evaluate assertion predicate under example assignment to quickly force a
-      bunch of paths without having to go to SMT solver?
-
 Bugs::
 * BadKind, DupInst, DupVar maltype tests
-* Error tests
+* Error non-termination tests
 * where shadow test (in Concrete)
 * STP bug (in Nest)
 * STP bug (in Bit)
@@ -127,7 +116,6 @@ Bugs::
 * It's possible to use a symbolic thing in a different context than it was
   defined, in which case bad stuff will happen.
             
-
 Other::
 * Have name sugar for arrowN, tupleN, de_tupleN, unitN, etc...
 * Update LICENCE files to include 2013 copyright.
