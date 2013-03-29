@@ -113,12 +113,12 @@ qhfeager = do
 qtest :: SMT ()
 qtest = do
     qerror
-    qboom
+    --qboom
     qcasepush
-    qinc
-    qinc2
-    qinc3
-    qsymsym
+    --qinc
+    --qinc2
+    --qinc3
+    --qsymsym
     qhfeager
 
 main :: IO ()

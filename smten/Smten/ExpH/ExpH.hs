@@ -57,6 +57,9 @@ data ExpH_Value =
           -- | Conditional expressions.
           | IfEH Type ExpH ExpH ExpH
 
+          -- | Explicit _|_
+          | ErrorEH Type String
+
           -- | Thunk.
           | ThunkEH ExpH
     deriving (Typeable)

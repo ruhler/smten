@@ -54,6 +54,7 @@ unaryTP n f =
         | IfEH {} <- force a
         , not (smttype (typeof (force a)))
             = strict_appEH t (\a' -> impl t [a']) a
+        | ErrorEH _ s <- force a = errorEH t s
         | otherwise = exph $ PrimEH nm t (impl t) [a]
 
       -- The type is the type of the primitive function without arguments
@@ -91,6 +92,8 @@ binaryTP n f =
         | IfEH {} <- force b
         , not (smttype (typeof (force b)))
             = strict_appEH t (\b' -> impl t [a, b']) b
+        | ErrorEH _ s <- force a = errorEH t s
+        | ErrorEH _ s <- force b = errorEH t s
         | otherwise = exph $ PrimEH nm t (impl t) [a, b]
 
       -- The type is the type of the primitive function without arguments

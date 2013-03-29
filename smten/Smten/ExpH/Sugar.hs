@@ -84,10 +84,13 @@ appEH f x = thunkEH $ appEH' f x
 appEH' :: ExpH -> ExpH -> ExpH
 appEH' f x
  | LamEH (Sig _ t) _ g <- force f = g x
- | IfEH {} <- force f =
-     let Just (_, t) = de_arrowT (typeof (force f))
+ | IfEH ft _ _ _ <- force f =
+     let Just (_, t) = de_arrowT ft
      in strict_appEH t (\g -> appEH g x) f
- | otherwise = error "appEH"
+ | ErrorEH ft s <- force f =
+     let Just (_, t) = de_arrowT ft
+     in errorEH t s
+ | otherwise = error "SMTEN INTERNAL ERROR: unexpected arg to appEH"
 
 smttype :: Type -> Bool
 --smttype t = or [ t == boolT, t == integerT, isJust (de_bitT t) ]
@@ -172,6 +175,7 @@ caseEH' :: Type -> ExpH -> Sig -> ExpH -> ExpH -> ExpH
 caseEH' t x k@(Sig nk _) y n
  | Just (s, _, vs) <- de_conEH x
     = if s == nk then appsEH y vs else n
+ | ErrorEH _ s <- force x = errorEH t s
  | nk == name "True" = exph $ IfEH t x y n
  | nk == name "False" = exph $ IfEH t x n y
  | IfEH {} <- force x = strict_appEH t (\x' -> caseEH t x' k y n) x
@@ -270,6 +274,6 @@ shared f =
       use e = lookupPure (eid e) e
   in def
 
-errorEH :: String -> ExpH
-errorEH s = thunkEH $ error s
+errorEH :: Type -> String -> ExpH
+errorEH t s = exph $ ErrorEH t s
 
