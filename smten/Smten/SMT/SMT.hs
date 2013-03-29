@@ -161,18 +161,6 @@ debug msg = do
         Nothing -> return ()
         Just h -> liftIO $ hPutStrLn h msg
 
-smtt :: Type -> SMT SMT.Type
-smtt t = do
-    qs <- gets qs_qs 
-    let mkyt = do
-          yt <- smtT t
-          cmds <- smtD
-          return (cmds, yt)
-    ((cmds, yt), qs') <- liftIO . attemptIO $ runCompilation mkyt qs
-    modify $ \s -> s { qs_qs = qs' }
-    runCmds cmds
-    return yt
-
 smte' :: ExpH -> SMT ([SMT.Command], SMT.Expression)
 smte' e = {-# SCC "SmtE" #-} do
     qs <- gets qs_qs 
@@ -286,9 +274,8 @@ query_Sat = do
 
 mkfree :: Sig -> SMT ()
 mkfree s@(Sig nm t) | isPrimT t = do
-  t' <- smtt t
   modify $ \qs -> qs { qs_freevars = s : qs_freevars qs }
-  runCmds [SMT.Declare (smtN nm) t']
+  runCmds [SMT.Declare (smtN nm) (smtT t)]
 mkfree s = error $ "SMT.mkfree: unsupported type: " ++ pretty s
 
 -- | Assert the given smten boolean expression.

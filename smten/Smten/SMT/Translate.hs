@@ -98,7 +98,7 @@ runCompilation = runStateT
 -- the smt name of a newly defined one.
 yfreeerr :: Type -> CompilationM String
 yfreeerr t = do
-    yt <- smtT t
+    let yt = smtT t
     id <- gets ys_errid
     let nm = "err~" ++ show id
     modifyS $ \ys -> ys { ys_errid = id+1 }
@@ -116,14 +116,13 @@ smtN :: Name -> String
 smtN = unname
 
 -- | Compile a smten type to a smt type
--- Before using the returned type, the smtD function should be called to
--- get the required smt declarations.
-smtT :: Type -> CompilationM SMT.Type
-smtT t | t == boolT = return SMT.BoolT
-smtT t | t == integerT = return SMT.IntegerT
-smtT t | t == charT = return SMT.IntegerT
-smtT t | Just w <- de_bitT t = return $ SMT.BitVectorT w
-smtT t = throw $ "smtT: unsupported type: " ++ pretty t
+smtT :: Type -> SMT.Type
+smtT t
+  | t == boolT = SMT.BoolT
+  | t == integerT = SMT.IntegerT
+  | t == charT = SMT.IntegerT
+  | Just w <- de_bitT t = SMT.BitVectorT w
+  | otherwise = error $ "smtT: unsupported type: " ++ pretty t
 
 -- | Compile a smten expression to a smt expression.
 -- Before using the returned expression, the smtD function should be called
