@@ -8,7 +8,6 @@ import Data.List(nub)
 
 import Smten.Name
 import Smten.Type
-import Smten.Typing.SubType
 import Smten.Sig
 import Smten.Fresh
 import Smten.Exp

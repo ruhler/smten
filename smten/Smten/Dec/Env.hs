@@ -69,7 +69,6 @@ import Smten.Dec.Ppr
 import Smten.Dec.Utils
 import Smten.Ppr
 import Smten.Type
-import Smten.Typing.SubType
 
 -- | Env is an abstract data type representing information about a smten
 -- environment.

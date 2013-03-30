@@ -18,7 +18,6 @@ import Smten.Exp
 import Smten.Dec
 import Smten.ExpH
 import Smten.Prim
-import Smten.Typing
 
 -- | Inline all variables from environment into the given expression.
 inline :: Env -> [Prim] -> Exp -> ExpH

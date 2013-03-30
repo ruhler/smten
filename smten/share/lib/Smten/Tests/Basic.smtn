@@ -222,12 +222,6 @@ testbit = do
 numt1 :: Bit #40
 numt1 = (id :: Bit #40 -> Bit #40) (3 :: Bit #(32+8))
 
-numt2 :: Bit #n -> Bit #(n+m)
-numt2 = error "who cares"
-
---numt3 :: Bit #16 -> Bit #(16+16)
---numt3 = numt2
-
 shadowmeth :: Integer
 shadowmeth = let { foo = 3; } in foo
 
