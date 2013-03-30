@@ -1,0 +1,620 @@
+
+Fri Mar 29 08:17:44 EDT 2013
+
+Some exciting ideas this morning.
+
+The high-level problem: I want a correct implementation of smten that is high
+performance. I have an incorrect implementation which is pretty high
+performance (master), I have a correct implementation which is pretty poor
+performance (bottom).
+
+The trouble with 'bottom' is we ask too many questions to the solver. It's not
+a sharing issue. It's just, too much. I think, fundamentally, there's not much
+improvement I can get with that approach. I'm asking exactly what I have to
+ask for the Sudoku case.
+
+So we need some kind of speculation, or something? Well, I have a plan. It's a
+mix between master and bottom, and I think it gives the best of both worlds.
+
+First, the special case. Assume we don't have any non-termination. All we have
+are explicit _|_. How can we handle that correctly?
+
+Anytime we encounter a _|_, replace it with a new variable in the SMT solver.
+This is what the master branch already does. I can clean things up a bit to
+make it do it nicer. But this we have.
+
+Now, here's the key. After you call 'check', we have the following cases:
+
+Unsat::
+  This means the assertions were unsatisfiable, regardless of the value's
+  taken on by _|_. Which means, they are unsatisfiable. It's not totally,
+  clear, but I think this is fine. Even if we would have encountered a _|_, we
+  could still prove unsatisfiable, so it doesn't matter that we didn't raise
+  the _|_. Well... I think its a close enough approximation of the semantics.
+  No need to blow up if we don't have to? At least, I think it's good enough
+  for any user.
+
+  In fact, I think it is fine, because on _|_ we can do whatever we want,
+  right? No... I don't know. I think it's fine.
+
+Sat::
+  This means, for some values assigned to the _|_, there was a satisfying
+  assignment. Re-evaluate all the assertion predicates under that assignment.
+  There are two cases:
+    1. All predicates are satisfied. Then this is a true satisfying
+       assignment.
+    2. We run into _|_. Then it's possible to run into _|_, fine, and we are
+       done.
+
+
+So, you see, we can handle explicit errors correctly, without any additional
+calls to the SMT solver. I love it.
+
+I should definitely support this in the master branch. It's an easy way to
+make things more correct without harming performance.
+
+There is one other thing to worry about. de_symbolicEH. What if it encounters
+an error?
+
+Well, the error is explicit. I think we should see the error, and have an
+errorSymbolic or something like that. The behavior will be:
+1. check if the current context is satisfiable.
+2. if so, raise the error. Otherwise, return ().
+
+And that's it. Easy.
+
+In fact, we ought to be able to use that to get rid of IVP in the master
+branch.
+
+
+Okay, all that stuff I should do for the master branch. I would like to clean
+up in the process, and pull some of the good changes I made in 'bottom' over
+to the master branch.
+
+Now, what remains is the question of non-termination.
+
+I'm going to assume I can detect a long running computation. I think this is
+entirely feasible in the interpreter. It might not work out in haskellf, but
+that's fine. I'm willing to start with just interpreter support and fixing up
+haskellf later.
+
+Now, in this case, we take the same approach. Any time you get to an
+expression which you think might be non-terminating, introduce a variable for
+it. Call this "abstraction". But this time, remember the expression we
+abstracted away.
+
+Send the query to the SMT solver. Again, we have cases:
+
+Unsat::
+  It was unsatisfiable, for any result the _|_ could have had, so the thing is
+  correctly unsatisfiable and we are done.
+
+Sat::
+  Evaluate the assertion predicates under the assignment.
+  Case:
+    1. all are satisfied. Then this is a correct satisfying assignment and we
+       are done.
+    2. we encounter a _|_ (of either sort). Then it's possible to encounter a
+       _|_, so we can do that and we are done.
+    3. we get 'False'. Then one of the _|_ variables was assigned a wrong
+       value. We need to perform refinement. Add additional assertions for
+       each nontermination we abstracted away, asserting its equal to its more
+       unrolled value. Now repeat the whole check process.
+
+If the non-termination looking thing is not a non-termination, we will
+eventually terminate. Otherwise we won't.
+
+As an extra bonus, if I can identify which _|_ we got wrong during step (3),
+then I can just refine those. That's probably better.
+
+You see? It's a win-win-win situation. No pruning. No IVP. No duplicated
+assertions. Works correctly. Only takes a long time when it should.
+
+The one parameter here is how course our abstraction should be. That is, what
+is the "abstraction depth"? A shorter depth means we waste less time sending
+details to the solver, but at the cost of more refinements sent to the solver
+. A longer depth means we may waste time sending details to the solver we
+don't need, but we don't have to refine as often. I'm willing to have that as
+a flag.
+    
+As I said, many of these improvements can be made to the master branch. That
+is, we can make versions which are as fast as the master branch, but more
+correct. Those should be incorporated into the master branch. The hope is,
+eventually, we'll have something as correct as the bottom branch, but as fast
+as the master branch, and then we get ditch the bottom branch.
+
+A lot of the work on the bottom branch is good work, that I want brought back
+to the master branch. So I propose the following. Make a new branch, call it
+bottom2, off of 'bottom'. Remove the pruning from bottom. Add back explicit
+error propagation (but perhaps in a cleaner manner), verify its as fast as
+master, then make it the master. Note, it is not 'correct', but it is as
+correct as master, and will be easier to make correct. Then go a step at a
+time. First support explicit _|_ correctly. Then support non-termination.
+Then we are done, and the world is a happy happy place.
+
+Fri Mar 29 09:15:22 EDT 2013
+
+Okay, plan is to start working on this, see how far I get before I get stuck,
+then take a break to think.
+
+I'll start by creating a new branch, getting rid of pruning, adding support
+for explicit bottom (the way master branch supports it now). But I want to
+clean it up. Maybe don't do so much cleanup to start. Just make it work using
+the framework of 'bottom', which should already be naturally cleaner.
+
+1. Remove 'prune'
+I expect we will get premature 'case no match'.
+
+2. Add explicit _|_.
+
+3. Handle de_symbolicEH properly (without IVP).
+
+Then we are back to where master is, and I should be able to update the master
+branch.
+
+Fri Mar 29 09:31:57 EDT 2013
+
+Okay, so I have something to stick and think about. How do I want to deal with
+explicit error?
+
+master approach:
+    ErrorEH converts to Prelude.error, converts to new var in SMT.Translate,
+    which is returned.
+
+alternate approach:
+    In 'assert', we first traverse the expression, looking for ErrorEH. We
+    replace each occurrence (in a shared way) with a new VarEH. We can use the
+    ID of the ErrorEH as the name of the error variable (?). We then declare
+    all the ErrorEHs using 'Declare'.
+
+    Now, ErrorEH does not survive to Exp...
+
+How about this, a step at a time. So stick with the master approach for now.
+
+Fri Mar 29 09:41:57 EDT 2013
+
+I added ErrorEH. I didn't add any of the propagation, but it seems to work
+okay with my current test cases. Oddly enough.
+
+Fri Mar 29 09:43:13 EDT 2013
+
+Okay, good. The Error test exposes the issues better. Let me get that working
+first. All except for the 'boom' case. I suppose the series cases will
+probably fail too.
+
+Fri Mar 29 09:53:56 EDT 2013
+
+Now, I've got explicit error, and I'm propagating errors.
+
+Next is to handle qsymsym. That is, handle explicit error in de_symbolicEH. (I
+suppose I haven't talked yet about implicit error in de_symbolicEH...).
+
+Fri Mar 29 10:18:46 EDT 2013
+
+Now qsymsym is handled. So we are as good as master branch. I ought to merge
+now.
+
+Fri Mar 29 10:21:34 EDT 2013
+
+We are all merged now. Good.
+
+Now, one thing I don't have a test for, that I should have a test for, is an
+expected failure. Expected _|_. A mal-typed SMT test, if you will. Set up that
+test, make a case which gives a wrong answer, then handle explicit error
+correctly, by saving previous assertions and, after every check, manually
+evaluating them to make sure they are all still satisfied under the given
+assignment.
+
+I'll do this now.
+
+Cool. That was easy enough.
+
+Next step is to fix the MalError test.
+
+How? 
+
+Any time we check, evaluate all the assertions.
+
+What all assertions do I have to evaluate? Every single one.
+
+Or, I can just combine them into one big blob of an assertion and evaluate
+that. That seems easier to me.
+
+I wonder if some cleanup makes sense.
+
+The change is, now, anytime I call check, I have to sample all the free
+variables. I can't get out of that, because I need to try all the assertions
+to make sure they are satisfied.
+
+Of course, later on I can do tricks to learn that variables are what they are,
+and just deal with it.
+
+So, I should read variables when I check. Not when I realize.
+
+Can that clean up anything? I would like to make this cleanup first, before
+verifying the assertions on a check.
+
+Another cleanup that would be nice: have SMT solvers return 'True' or 'False'.
+Who needs this silly Unknown thing? That will just make things a little nicer.
+
+Let me do that first.
+
+Um. I'm not convinced this is an improvement. Maybe the thing to do is just
+get rid of this 'unknown' leg of the Result.
+
+Fri Mar 29 10:51:45 EDT 2013
+
+I think I can do some cleanup, but it doesn't need much. I would suggest the
+following:
+
+We should cache the check result. It is saved as... 
+
+Oh. Maybe I need to think about this more.
+
+The idea is: we get assignments right away when we call check, so no need to
+check if they are available in realize.
+
+* Always update the model whenever check has been called.
+
+* The user should not be able to call realize without check. So that avoids
+  reading stale values. I might need a comment somewhere to enforce that.
+  Maybe whenever I make an assertion, I invalidate the assigned results by
+  making them (error "realize without check"). Yes. I like that.
+
+* realizefree should be renamed. Maybe to something like: readmodel, and
+  readmodelvar.
+
+Cool. Do this cleanup, and then fixing the MalType test should be easy. Just
+keep track of all the assertions so far (in a single ExpH), after getting the
+model, realize the value of ExpH, force it. If it is ErrorEH, throw that. If
+it is True, good. Otherwise... something is broken, so throw an error there
+too.
+
+Lovely! This is so nice.
+
+Time to take a break now. I'm excited to come back to this and make everything
+clean. Then I can think about how to detect possible non-termination.
+
+Fri Mar 29 13:33:04 EDT 2013
+
+Thoughts on non-termination.
+
+There are three kinds of non-termination to worry about (I think). We can
+classify them with their behavior: space leak, stack overflow, infinite loop.
+
+f x = if x 
+        then f False
+        else f True
+
+This is tail recursive. If 'x' is concrete, it will lead to an infinite loop.
+If 'x' is symbolic, it will lead to a space leak (aka, a really big, fully
+evaluated expression).
+
+f x = if (f x)
+        then False
+        else True
+
+This is a stack overflow.
+
+How to detect long running computations? I propose the following strategies.
+
+For stack overflow and infinite loop:
+
+Have a global 'force depth' counter. Any time you try to force a thunk,
+increment the counter. Any time you complete forcing a thunk, decrement the
+counter. If the counter is very high, instead of forcing it, return a
+LongEH, or whatever I want to call that. Which is just like a thunk, but that
+indicates this computation has been taking a long time, so it might be
+infinite.
+        
+For space leak this won't work, because we succeed in evaluating all the
+thunks, but the expression still grows infinitely. For that, we need a
+separate traversal, where we traverse the expression, keep track of the depth,
+and LongEH anything that's too deep.
+
+Both of these, I think, are plenty doable. For HaskellF, we may need to change
+caseEH somehow to increment the force counter. I'm not sure about how that
+will work, but I don't care for now. That's a problem to deal with later.
+
+Using these techniques, I'll produce an expression which has LongEH instead of
+infinite computations. I can look at LongEH, but I want to not go inside it.
+So, traverse this expression, create a new variable for each LongEH and
+ErrorEH (in a shared way), return the map from LongEH variable to LongEH
+expression. Declare the free variables. Make the assertion. Perhaps the
+easiest way would be to have fromExpH convert LongEH to a variable? Not sure.
+
+Then do everything I've talked about above. Easy!
+
+This is exciting. Let me get to work.
+
+First step: cleanup of SMT.
+
+Fri Mar 29 13:54:07 EDT 2013
+
+Cleanup of SMT is done. Good.
+
+Now it should be easy to fix the MalError bug.
+
+Here's what I should do.
+
+1. Add qs_asserts :: ExpH to the context. Any time I make an assertion, add
+that to the context using andEH.
+
+2. After 'check', if the result is satisfiable, get the model, realize the
+assertions under that model, force the result, verify it is true.
+
+That's all I need to do. I may slow things down ever so slightly, because we
+are evaluating the assertion predicates all over again, but I don't think it
+will be noticeable. So, if things appear to go as fast as before, don't worry
+about that cost (we can see in the profiler if that was the issue).
+
+Then the MalError test should pass, in both haskellf and io.
+
+Fri Mar 29 14:24:00 EDT 2013
+
+Cool! It works. All that's left now is to deal with non-termination. It feels
+so close!
+
+I want to take a little time to see if I can clean up SMT.Translate. The idea
+is: this should not need to maintain any state.
+
+But it might be mixed up with how we do error abstraction, so I'll have to
+look.
+
+Yes. This is mixed up with error abstraction. So now would be a good time to
+clean up error abstraction.
+
+Here is the idea.
+
+I want to turn each ErrorEH into a VarEH, in a shared fashion.
+
+I think the best approach to take is to do the transformation entirely in EH
+format, then not have to worry about anything in FromExpH or Translate. Yes,
+that sounds most clean to me.
+
+So, I want a function: abstract :: ExpH -> SMT ExpH. It will replace each
+errorEH with new free variables, while declaring those new free variables to
+the SMT solver. And, of course, it will do this all in a shared fashion.
+
+I guess what we want is a monadic, shared transformation of expressions. Is
+there an easy way to do that? Can I do it using shared? Somehow I suspect not.
+I don't want to duplicate the monadic action, I only want to perform that
+once for each expression.
+
+Anyway, the plan is clear.
+
+* mkassert should call 'abstract' before sending the predicate to the smt
+  solver.
+
+  Really we should ditch smte and just do, in mkassert,
+        abstract, fromExpH, smtE, runCmds.
+
+* implement abstract (the only hard part here).
+* SMT.Translate should not handle error specially in any way, and should not
+  need any state.
+
+Of course, the easy way to do one step at a time would be:
+1. implement abstract, use it.
+2. remove state and error handling from Translate.
+
+So, the big question is, how to implement 'abstract'?
+
+It's just a shared monadic transformation. So I'll deal with that, annoying as
+it may turn out to be.
+
+Fri Mar 29 14:42:02 EDT 2013
+
+Let me go and figure out how to do a shared, monadic thing. Or if that even
+makes sense.
+
+sharedM :: Monad m => ((ExpH -> m a) -> ExpH -> m a) -> ExpH -> m a
+
+I think that's fine. It just caches the 'a' part instead of the m a part?
+
+Or, I could restrict it to MonadIO. Then I can do the cache inline. I think
+that makes more sense to start. Let me try that.
+
+Fri Mar 29 15:03:41 EDT 2013
+
+Trouble with Sudoku. I suspect a space leak?
+
+Yes. And a compilation issue... That make me sad.
+
+Um...
+
+I'm getting funny behavior. With some SCC's, it works fine. Without them, it
+blows up. Nothing else changed.
+
+Fri Mar 29 15:49:53 EDT 2013
+
+You know what I might try? I might try do a pure shared thing, based on the
+EID of each error. I just need to pick a unique id for the context (which we
+already have).
+
+I don't know why adding an SCC fixes things.
+
+Fri Mar 29 16:00:36 EDT 2013
+
+Anyway, on to Translate cleanup.
+
+I feel like I ought to just Translate from ExpH directly. It seems silly going
+through Exp. Now, in the current state, it's nice to do that for the purposes
+of sharing. But I ought to be able to express sharing in ExpH using LamEH? Oh,
+but we don't have AppEH. Fine. Whatever.
+
+Fri Mar 29 16:08:23 EDT 2013
+
+You know what I should really do, is merge fromExpH and Translate. Skip the
+pass through Exp. Except, it's nice to have the Exp for pretty printing and
+other things, so maybe don't bother yet.
+
+Fri Mar 29 16:21:12 EDT 2013
+
+Trouble! I forgot we have a sharing leak. I should figure out what it is. It
+is not related to pruning apparently.
+
+Fri Mar 29 16:35:22 EDT 2013
+
+Anyway, time to dive in and understand and fix the sharing leak in IO. That
+could be a significant performance issue. It certainly was in the past.
+ 
+Fri Mar 29 16:50:06 EDT 2013
+
+It was something about ThunkEH which was messing things up. So, for now, I'll
+just get rid of ThunkEH. I may want to add it back in later though.
+
+Fri Mar 29 17:08:35 EDT 2013
+
+At this point the status is as follows:
+
+* Performance seems good.
+* All sharing is preserved.
+* Explicit _|_ is handled correctly.
+
+That leaves one thing left: handling non-termination.
+
+And now that I've gotten rid of ThunkEH, I may want to think of different
+ways of handling non-termination properly.
+
+Fri Mar 29 17:18:13 EDT 2013
+
+You know? I don't think I need ThunkEH. I think I can still use the same
+strategy. The idea is have a counter in unsafe IO. In force, I do something
+like:
+
+1. incr counter.
+2. seq the arg, to try to reduce it to WHNF.
+3. decr the counter.
+
+But, if you try to force, and the count is too high, then return an
+indirection.
+
+And that's it, right?
+
+I hope it doesn't cost us too much. I can probably use an Int instead of an
+Integer perfectly safely, depending on the threshold. That could help
+performance.
+
+Hmm... How could I test this?
+
+You know what, I think I may want a new branch to play around with this stuff.
+
+The idea for how to test is to start by putting in a check for possible
+non-termination. Verify the check is triggered on actual non-termination, but
+not on other things. We can also see this way how much overhead is introduced
+by tracking this.
+
+Sounds cool. I would like to try it out.
+
+Maybe I should just play around a bit, see if it could work, then go for my
+walk and have something to think about.
+
+Sounds good to me.
+
+Fri Mar 29 17:25:48 EDT 2013
+
+Wait, I'm not sure this makes sense. Because we will increment every time we
+call force. It has nothing to do with what has or has not been evaluated yet,
+does it?
+
+But, perhaps that's okay? Because it measures the depth of the expression, and
+that's what we care about anyway?
+
+I don't know. Let me try and see what happens.
+
+Fri Mar 29 17:33:21 EDT 2013
+
+I don't see it doing anything, but I'm thinking most of my test cases are not
+the kind this would catch, but the kind a depth check in the generated
+expression would catch. So, perhaps I ought to start with those? Be test
+driven? Makes sense to me.
+
+Fri Mar 29 18:25:08 EDT 2013
+
+Let me start with the incremental tests, which are much less contrived. I'll
+motivate my fixes in that direction.
+
+
+series :: Integer -> Integer
+series x = if x > 0
+              then x + series (x-1)
+              else 0
+
+Given the assertion that x == 2.
+
+Current behavior is we hang, eating up memory.
+
+How do I want this to work under my new strategy?
+
+x is symbolic. So, what happens when I inline this function entirely?
+
+I get:
+
+if x > 0
+    then x + (if x-1 > 0
+                then (x-1) + (if x-2 > 0
+                                then (x-2) + ( ...
+                                else 0
+                else 0
+    else 0
+
+It is an infinite symbolic expression.
+
+So, the trick should be, in ABSTRACT, we can detect this. Use a depth, only
+traverse in the expression to the given depth.
+
+Nothing conceptually hard about that. Nor, I think, any significant
+implementation issues.
+
+I'll want to rewrite 'abstract'. And probably make it a custom sharing
+function (throw away sharedM). Though I don't have to.
+
+The idea is this. Use a ReaderT monad on top of SMT, where the environment is
+the depth. First thing I do in 'g' is check the depth. If it is to deep,
+make an abstraction there. Otherwise do whatever it is I currently do.
+
+In fact, that's very easy to do. The only other thing I need is, whenever I
+call 'use', increment the depth by 1.
+
+I think I want to expand the environment also to contain the current
+predicate. I think that will be needed. Now, when I abstract one of these, I
+make a new variable, and I record the variable I made for it, the predicate in
+which it is used, and the expression. Note: this will complicate sharing,
+because I may have a different predicate in every place it is used. Sigh.
+
+Anyway, I collect whatever information I collect, make some variables. Do the
+check.
+
+The question is, what to do in check if we find not all the assertions are
+satisfied?
+
+It means our abstraction was too abstract. We need to do some refinement. The
+big question I have is, where do we need to do refinement? If I had predicates
+for each abstraction, then I could just test those under the current
+assignment, and do refinement of just those. So it sounds like I do want
+'abstract' to record predicates properly while preserving sharing. I certainly
+want a custom share implementation of abstract then.
+
+But after that, it's easy. How do we do refinement? We abstract the thing we
+didn't look into before. We assert the variable is equal to it. We do this for
+all the things we need to refine. These refinements will update the list of
+abstractions. We do check again. And we continue until done.
+
+So, really, this is very easy, all except for the shared implementation of
+'abstract', which, in a shared way, has to perform abstraction properly.
+
+How does abstract work? Well, we want a helper function which does the
+following:
+
+For each expression, we want to save the list of abstracted children and their
+predicates (from the current location). And also their value. But really, this
+is just what we want to return at the top level. Use a state monad to keep the
+cache, current context, and recursion depth.
+
+And that's it. Pretty straight forward. Nothing terribly complicated. Well
+within reach. So, I'll take a break, and come back to this. Maybe tonight,
+maybe tomorrow. Either way, I think it's just one sitting to get the
+incremental queries to work happily. Then it will be on to the more contrived,
+less useful cases.
+
+

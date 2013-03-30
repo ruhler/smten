@@ -115,7 +115,7 @@ instance TypeCheck Exp where
       typecheckM t
       tenv <- asks tcs_vars
       case lookup n tenv of
-          Just t' | canonical t == canonical t' -> return ()
+          Just t' | eqtypes t t' -> return ()
           Just t' -> throw $ "expected variable of type:\n  " ++ pretty t'
                      ++ "\nbut " ++ pretty n ++ " has type:\n  " ++ pretty t
           Nothing -> do
@@ -137,7 +137,7 @@ instance TypeCheck Exp where
       typecheckM x
       case typeof f of
          (AppT (AppT (ConT n _) a) _) | n == name "->" ->
-             if a == typeof x
+             if eqtypes a (typeof x)
                  then return ()
                  else throw $ "expected type " ++ pretty a ++
                      " but got type " ++ pretty (typeof x) ++
@@ -155,7 +155,7 @@ instance TypeCheck Exp where
 
      -- Verify the argument type matches the type of the constructor.
      let at = last $ de_arrowsT (typeof k)
-     if at == typeof x
+     if eqtypes at (typeof x)
          then return ()
          else throw $ "expected argument type " ++ pretty at ++
                  " but got type " ++ pretty (typeof x) ++
@@ -163,7 +163,7 @@ instance TypeCheck Exp where
 
      -- Verify y has the right type.
      let yt = arrowsT (init (de_arrowsT (typeof k)) ++ [typeof n])
-     if yt == typeof y
+     if eqtypes yt (typeof y)
          then return ()
          else throw $ "expected type " ++ pretty yt ++
                  " but got type " ++ pretty (typeof y) ++
@@ -255,4 +255,7 @@ satisfied cls = do
 
 typecheck :: (TypeCheck a) => Env -> a -> Failable ()
 typecheck env x = runReaderT (typecheckM x) (TCS env [] [] [])
+
+eqtypes :: Type -> Type -> Bool
+eqtypes a b = canonical a == canonical b
 

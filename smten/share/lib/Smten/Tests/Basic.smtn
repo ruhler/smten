@@ -218,6 +218,10 @@ testbit = do
     test "bit sign extend +" (bit5 0x03 == bv_sign_extend (bit3 3))
     test "bit sign extend -" (bit5 0x1c == bv_sign_extend (bit3 4))
 
+-- Verify numeric types are smart enough.
+numt1 :: Bit #40
+numt1 = (id :: Bit #40 -> Bit #40) (3 :: Bit #(32+8))
+
 shadowmeth :: Integer
 shadowmeth = let { foo = 3; } in foo
 
