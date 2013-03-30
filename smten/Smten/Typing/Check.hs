@@ -50,6 +50,7 @@ import Smten.Ppr
 import Smten.Exp
 import Smten.Dec
 import Smten.Type
+import Smten.Typing.SubType
 
 
 type TypeEnv = [(Name, Type)]

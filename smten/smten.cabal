@@ -89,21 +89,22 @@ library
     Smten.Module.Module
 
     Smten.Dec
+    Smten.Dec.Dec
+    Smten.Dec.Env
+    Smten.Dec.Ppr
     Smten.Dec.Prelude
     Smten.Dec.Record
-    Smten.Dec.Env
-    Smten.Dec.Dec
-    Smten.Dec.Ppr
     Smten.Dec.Sugar
     Smten.Dec.Utils
 
     Smten.Typing
-    Smten.Typing.Infer
     Smten.Typing.Check
-    Smten.Typing.Solver
     Smten.Typing.ConTs
+    Smten.Typing.Infer
     Smten.Typing.KInfer
     Smten.Typing.KSolver
+    Smten.Typing.Solver
+    Smten.Typing.SubType
 
     Smten.Parser
     Smten.Parser.Monad
