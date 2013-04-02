@@ -122,6 +122,7 @@ library
     Smten.Semantics
 
     Smten.Fresh
+    Smten.Location
 
     Smten.Ppr
     Smten.Lit

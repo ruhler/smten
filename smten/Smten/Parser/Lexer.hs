@@ -47,6 +47,7 @@ import Data.Functor
 import Data.Maybe (fromMaybe)
 
 import Smten.Name
+import Smten.Location
 import Smten.Parser.Monad
 
 isSmall :: Char -> Bool

@@ -35,7 +35,7 @@
 
 -- | Parser monad used in smten parsing.
 module Smten.Parser.Monad (
-    Location(..), Token(..), ParserMonad, runParser,
+    Token(..), ParserMonad, runParser,
     failE, lfailE, pfailE,
     single, many, newline, getText, setText, getLoc, getTLoc, saveLoc,
     expectBrace, setExpectBrace,
@@ -46,6 +46,7 @@ import Control.Monad.State
 
 import Smten.Failable
 import Smten.Name
+import Smten.Location
 
 data Token = 
        TokenOpenBracket
@@ -111,12 +112,6 @@ data Token =
      | TokenGE
      | TokenGT
     deriving (Eq, Show)
-
-data Location = Location {
-    file :: FilePath,
-    line :: Integer,
-    column :: Integer
-} deriving (Eq, Show)
 
 data PS = PS {
     ps_text :: String,          -- ^ remaining text to be parsed
