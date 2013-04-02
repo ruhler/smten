@@ -2,7 +2,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 
 module Smten.Location (
-    Location(..), Locate(..), lthrow,
+    Location(..), Locate(..), lthrow, lunknown,
  ) where
 
 import Control.Monad.Error
@@ -25,4 +25,7 @@ lthrow loc msg =
       ln = line loc
       cl = column loc
   in throw $ fp ++ ":" ++ show ln ++ ":" ++ show cl ++ ": " ++ msg
+
+lunknown :: Location
+lunknown = Location "unknown" 0 0
 
