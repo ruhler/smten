@@ -113,6 +113,7 @@ data Token =
     deriving (Eq, Show)
 
 data Location = Location {
+    file :: FilePath,
     line :: Integer,
     column :: Integer
 } deriving (Eq, Show)
@@ -121,7 +122,6 @@ data PS = PS {
     ps_text :: String,          -- ^ remaining text to be parsed
     ps_loc :: Location,         -- ^ current location
     ps_tloc :: Location,        -- ^ location of the start of the previous token
-    ps_filename :: FilePath,    -- ^ name of file being parsed
     ps_lstack :: [Integer],     -- ^ The layout stack
     ps_tbuffer :: [Token],      -- ^ The token buffer
     ps_ebrace :: Bool           -- ^ True if we expect a brace next
@@ -132,7 +132,7 @@ type ParserMonad = StateT PS Failable
 -- | Run a parser given the name and text of the file to parse.
 runParser :: ParserMonad a -> FilePath -> String -> Failable a
 runParser p fp text = do
-    (m, _) <- runStateT p (PS text (Location 1 1) (Location 0 1) fp [] [] True)
+    (m, _) <- runStateT p (PS text (Location fp 1 1) (Location fp 0 1) [] [] True)
     return m
 
 -- | Fail with a message.
@@ -144,7 +144,7 @@ lfailE :: String -> ParserMonad a
 lfailE msg = do
     ln <- gets (line . ps_loc)
     cl <- gets (column . ps_loc)
-    fp <- gets ps_filename
+    fp <- gets (file . ps_loc)
     failE $ fp ++ ":" ++ show ln ++ ":" ++ show cl ++ ": " ++ msg
 
 -- | advance a single column
@@ -162,10 +162,10 @@ many = mapM_ (const single)
 -- | Advance to the next line
 newline :: ParserMonad ()
 newline = do
-    ln <- gets (line . ps_loc)
+    loc <- gets ps_loc
     modify $ \ps -> ps {
-        ps_loc = Location {
-            line = 1 + ln,
+        ps_loc = loc {
+            line = 1 + line loc,
             column = 1
         }
     }
