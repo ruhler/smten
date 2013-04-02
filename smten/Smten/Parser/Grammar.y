@@ -171,21 +171,22 @@ topdecls :: { [PDec] }
 
 topdecl :: { [PDec] }
  : 'data' tycon lopt(tyvars) '=' lopt(constrs) lopt(deriving)
-    { PDataDec (DataDec $2 $3 $5) : [PDec ds | ds <- recordD $2 $3 $5 $6] }
+    {% withloc $ \l ->
+         PDataDec (DataDec $2 $3 $5) : [PDec ds | ds <- recordD l $2 $3 $5 $6] }
  | 'type' tycon lopt(tyvarnms) '=' type
     { [PSynonym (Synonym $2 $3 $5) ] }
  | 'class' tycon tyvars 'where' '{' cdecls opt(';') '}'
-    { [PDec (ClassD [] $2 $3 (ccoalesce $6))] }
+    {% withloc $ \l -> [PDec (ClassD l [] $2 $3 (ccoalesce $6))] }
  | 'class' context tycon tyvars 'where' '{' cdecls opt(';') '}'
-    { [PDec (ClassD $2 $3 $4 (ccoalesce $7))] }
+    {% withloc $ \l -> [PDec (ClassD l $2 $3 $4 (ccoalesce $7))] }
  | 'instance' class 'where' '{' idecls opt(';') '}'
-    { [PDec (InstD [] $2 (icoalesce $5))] }
+    {% withloc $ \l -> [PDec (InstD l [] $2 (icoalesce $5))] }
  | 'instance' context class 'where' '{' idecls opt(';') '}'
-    { [PDec (InstD $2 $3 (icoalesce $6))] }
+    {% withloc $ \l -> [PDec (InstD l $2 $3 (icoalesce $6))] }
  | 'deriving' 'instance' class
-    { [PDeriving (Deriving [] $3)] }
+    {% withloc $ \l -> [PDeriving (Deriving l [] $3)] }
  | 'deriving' 'instance' context class
-    { [PDeriving (Deriving $3 $4)] }
+    {% withloc $ \l -> [PDeriving (Deriving l $3 $4)] }
  | decl
     { [$1] }
 
@@ -195,7 +196,7 @@ deriving :: { [Name] }
 
 decl :: { PDec }
  : gendecl
-    { PSig $1 }
+    {% withloc $ \l ->  PSig l $1 }
  | funlhs rhs
     { PClause (fst $1) (MAlt (snd $1) $2) }
 

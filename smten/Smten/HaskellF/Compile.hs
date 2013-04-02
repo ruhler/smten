@@ -258,9 +258,9 @@ hsTopExp (TopExp (TopSig n ctx t) e) = do
      return [sig, val]
     
 hsDec :: Dec -> HF [H.Dec]
-hsDec (ValD e) = hsTopExp e
+hsDec (ValD _ e) = hsTopExp e
 
-hsDec (DataD n _ _) | n `elem` [
+hsDec (DataD _ n _ _) | n `elem` [
   name "Bool",
   name "Char",
   name "Integer",
@@ -276,14 +276,14 @@ hsDec (DataD n _ _) | n `elem` [
   name "Used",
   name "IO"] = return []
 
-hsDec (DataD n tyvars constrs) = do
+hsDec (DataD _ n tyvars constrs) = do
     dataD <- mkDataD n tyvars constrs
     smtenTD <- mkSmtenTD n tyvars
     symbD <- mkSymbD n tyvars constrs
     casesD <- mapM (mkCaseD n tyvars) constrs
     return $ concat ([dataD, smtenTD, symbD] : casesD)
 
-hsDec (ClassD ctx n vars exps@(TopExp (TopSig _ _ t) _:_)) = do
+hsDec (ClassD _ ctx n vars exps@(TopExp (TopSig _ _ t) _:_)) = do
     -- Kind inference doesn't currently update the kinds of the vars in the
     -- ClassD declaration, so we look at the vars in one of the method
     -- declarations to figure out the right kind.
@@ -296,7 +296,7 @@ hsDec (ClassD ctx n vars exps@(TopExp (TopSig _ _ t) _:_)) = do
         exps' <- mapM hsTopExp exps
         return $ [H.ClassD (nctx ++ ctx') (hsName n) (map (H.PlainTV . hsName) (map tyVarName vars)) [] (concat exps')]
 
-hsDec (InstD ctx cls@(Class n ts) ms) = do
+hsDec (InstD _ ctx cls@(Class n ts) ms) = do
     (nctx, tyvars) <- mkContext (appsT (conT n) ts)
     local (\s -> s { hfs_tyvars = tyvars }) $ do
         ctx' <- mapM hsClass ctx
@@ -305,8 +305,7 @@ hsDec (InstD ctx cls@(Class n ts) ms) = do
         let t = foldl H.AppT (H.ConT (hsName n)) ts'
         return [H.InstanceD (nctx ++ ctx') t (concat ms')] 
 
-hsDec (PrimD s@(TopSig n _ _)) = return []
-hsDec d = throw $ "haskellf: supported dec: " ++ pretty d
+hsDec (PrimD _ s@(TopSig n _ _)) = return []
 
 -- haskell decs
 --  Compile the given declarations to haskell.

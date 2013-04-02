@@ -98,21 +98,21 @@ instance Deunknown TopExp where
 
 instance Deunknown Dec where
     deunknown d
-      | ValD e <- d = ValD <$> deunknown e
-      | DataD n vs cs <- d = do
+      | ValD l e <- d = ValD l <$> deunknown e
+      | DataD l n vs cs <- d = do
             vs' <- deunknown vs
             cs' <- deunknown cs
-            return $ DataD n vs' cs'
-      | ClassD ctx n vs ts <- d = do
+            return $ DataD l n vs' cs'
+      | ClassD l ctx n vs ts <- d = do
             ctx' <- deunknown ctx
             vs' <- deunknown vs
             ts' <- deunknown ts
-            return $ ClassD ctx' n vs' ts'
-      | InstD ctx cls ms <- d = do
+            return $ ClassD l ctx' n vs' ts'
+      | InstD l ctx cls ms <- d = do
             ctx' <- deunknown ctx
             cls' <- deunknown cls
-            return $ InstD ctx' cls' ms
-      | PrimD t <- d = PrimD <$> deunknown t
+            return $ InstD l ctx' cls' ms
+      | PrimD l t <- d = PrimD l <$> deunknown t
 
 instance (Deunknown a) => Deunknown [a] where
     deunknown = mapM deunknown
@@ -200,20 +200,20 @@ instance Constrain TopExp where
 
 instance Constrain Dec where
     constrain d
-      | ValD e <- d = constrain e
-      | DataD _ vs cs <- d = do
+      | ValD _ e <- d = constrain e
+      | DataD _ _ vs cs <- d = do
           withtcs (Map.fromList [(n, k) | TyVar n k <- vs]) (constrain cs)
-      | ClassD ctx _ vs ts <- d = do
+      | ClassD _ ctx _ vs ts <- d = do
           let tcs = Map.fromList [(n, k) | TyVar n k <- vs]
           withtcs tcs $ do
             constrain ctx
             constrain ts
-      | InstD ctx cls _ <- d = do
+      | InstD _ ctx cls _ <- d = do
           let vs = varTs cls
           withtcs (Map.fromList vs) $ do
               constrain ctx
               constrain cls
-      | PrimD t <- d = constrain t
+      | PrimD _ t <- d = constrain t
         
            
 
@@ -260,10 +260,10 @@ gettcs [] = Map.empty
 gettcs (x:xs) =
    let m = gettcs xs
    in case x of
-        DataD n vs _ ->
+        DataD _ n vs _ ->
           let k = arrowKs $ [k | TyVar _ k <- vs] ++ [StarK]
           in Map.insert n k m
-        ClassD _ n vs _ -> 
+        ClassD _ _ n vs _ -> 
           let k = arrowKs $ [k | TyVar _ k <- vs] ++ [StarK]
           in Map.insert n k m
         _ -> m

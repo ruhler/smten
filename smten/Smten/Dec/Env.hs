@@ -113,7 +113,7 @@ vitable decs =
       (insts, notinsts) = partition isinst decs
 
       mkinst :: Dec -> Map.Map Name [([Type], Exp)]
-      mkinst (InstD _ (Class _ tys) ms)
+      mkinst (InstD _ _ (Class _ tys) ms)
         = Map.fromList [(n, [(tys, e)]) | Method n e <- ms]
       mkinst _ = Map.empty
 
@@ -121,20 +121,20 @@ vitable decs =
       methods = Map.unionsWith (++) (map mkinst insts)
 
       videc :: Dec -> [(Name, ValInfo)]
-      videc d@(ValD (TopExp (TopSig n _ _) _)) = [(n, DecVI d)]
-      videc d@(PrimD (TopSig n _ _)) = [(n, DecVI d)]
-      videc (ClassD _ cn ts sigs) =  
+      videc d@(ValD _ (TopExp (TopSig n _ _) _)) = [(n, DecVI d)]
+      videc d@(PrimD _ (TopSig n _ _)) = [(n, DecVI d)]
+      videc (ClassD _ _ cn ts sigs) =  
         let iexp :: TopExp -> (Name, ValInfo)
             iexp (TopExp (TopSig n ctx t) e) = (n, ClassVI cn ts ctx t e (fromMaybe [] (Map.lookup n methods)))
         in map iexp sigs
-      videc d@(DataD n _ _) = [(n, DecVI d)]
+      videc d@(DataD _ n _ _) = [(n, DecVI d)]
       videc (InstD {}) = []
   in concat $ map videc notinsts
 
 dctable :: [Dec] -> [(Name, Type)]
 dctable decs =
   let dcdec :: Dec -> [(Name, Type)]
-      dcdec d@(DataD dn vars cs) =
+      dcdec d@(DataD _ dn vars cs) =
         let dccon :: Con -> (Name, Type)
             dccon (Con n ts) = (n, arrowsT (ts ++ [appsT (conT dn) (map tyVarType vars)]))
         in map dccon cs
@@ -198,7 +198,7 @@ lookupDataD env n =
 lookupClassD :: (MonadError String m) => Env -> Name -> m Dec
 lookupClassD env n =
   let theClassD :: Dec -> Bool
-      theClassD (ClassD _ nm _ _) = n == nm
+      theClassD (ClassD _ _ nm _ _) = n == nm
       theClassD _ = False
   in theOneOf "ClassD" (pretty n) theClassD env
 
@@ -211,7 +211,7 @@ lookupTypeD e n = lookupDataD e n `mplus` lookupClassD e n
 lookupInstD :: (MonadError String m) => Env -> Class -> m Dec
 lookupInstD env (Class n t) =
   let theInstD :: Dec -> Bool
-      theInstD (InstD _ (Class nm ts) _)
+      theInstD (InstD _ _ (Class nm ts) _)
         = and $ (n == nm) : [isSubType p c | (p, c) <- zip ts t]
       theInstD _ = False
   in theOneOf "InstD" (pretty (Class n t)) theInstD env
@@ -224,7 +224,7 @@ lookupInstD env (Class n t) =
 lookupVar :: Env -> Sig -> Failable (Type, Exp)
 lookupVar env s@(Sig n t) =
   case HT.lookup n (e_vitable env) of
-     Just (DecVI (ValD (TopExp (TopSig _ _ t) v))) -> return (t, v)
+     Just (DecVI (ValD _ (TopExp (TopSig _ _ t) v))) -> return (t, v)
      Just (DecVI (PrimD {})) -> throw $ "lookupVar: " ++ pretty n ++ " is primitive"
      Just (ClassVI cn cts _ st def meths) -> return $ 
         let ts = assign (assignments st t) (map tyVarType cts)
@@ -254,8 +254,8 @@ lookupVarValue e s = snd <$> lookupVar e s
 lookupVarType :: (MonadError String m) => Env -> Name -> m Type
 lookupVarType env n = do
   case HT.lookup n (e_vitable env) of
-    Just (DecVI (ValD (TopExp (TopSig _ _ t) _))) -> return t
-    Just (DecVI (PrimD (TopSig _ _ t))) -> return t
+    Just (DecVI (ValD _ (TopExp (TopSig _ _ t) _))) -> return t
+    Just (DecVI (PrimD _ (TopSig _ _ t))) -> return t
     Just (ClassVI _ _ _ t _ _) -> return t
     Nothing -> throw $ "lookupVarType: '" ++ pretty n ++ "' not found"
 
@@ -302,9 +302,9 @@ lookupVarInfo env (Sig n t) =
 lookupVarContext :: (MonadError String m) => Env -> Sig -> m Context
 lookupVarContext env (Sig n t) = 
   case HT.lookup n (e_vitable env) of
-     Just (DecVI (ValD (TopExp (TopSig _ ctx st) _))) ->
+     Just (DecVI (ValD _ (TopExp (TopSig _ ctx st) _))) ->
         return $ assign (assignments st t) ctx
-     Just (DecVI (PrimD (TopSig _ ctx st))) ->
+     Just (DecVI (PrimD _ (TopSig _ ctx st))) ->
         return $ assign (assignments st t) ctx
      Just (ClassVI cn cts ctx st _ _) ->
         return $ assign (assignments st t) (Class cn (map tyVarType cts) : ctx)

@@ -33,11 +33,11 @@ instance AssignK TopExp where
 
 instance AssignK Dec where
     assignkl f d
-      | ValD e <- d = ValD (assignkl f e)
-      | DataD n vs cs <- d = DataD n (assignkl f vs) (assignkl f cs)
-      | ClassD ctx n vs ts <- d = ClassD (assignkl f ctx) n (assignkl f vs) (assignkl f ts)
-      | InstD ctx cls ms <- d = InstD (assignkl f ctx) (assignkl f cls) ms
-      | PrimD t <- d = PrimD (assignkl f t)
+      | ValD l e <- d = ValD l (assignkl f e)
+      | DataD l n vs cs <- d = DataD l n (assignkl f vs) (assignkl f cs)
+      | ClassD l ctx n vs ts <- d = ClassD l (assignkl f ctx) n (assignkl f vs) (assignkl f ts)
+      | InstD l ctx cls ms <- d = InstD l (assignkl f ctx) (assignkl f cls) ms
+      | PrimD l t <- d = PrimD l (assignkl f t)
 
 instance VarTs Class where
     varTs (Class nm ts) = nub (concatMap varTs ts)

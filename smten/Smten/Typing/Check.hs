@@ -43,6 +43,7 @@ import Control.Monad.Error
 import Control.Monad.Reader
 
 import Smten.Failable
+import Smten.Location
 import Smten.Name
 import Smten.Lit
 import Smten.Sig
@@ -181,15 +182,12 @@ instance TypeCheck TopExp where
         
 
 instance TypeCheck Dec where
-    typecheckM d@(ValD e) = 
-      onfail (\s -> throw $ s ++ "\n in declaration " ++ pretty d) $ do
-        typecheckM e
+    typecheckM d@(ValD l e) = onfail (lthrow l) $ typecheckM e
 
-    typecheckM d@(DataD n vs cs) =
-      onfail (\s -> throw $ s ++ "\n in declaration " ++ pretty d) $
+    typecheckM d@(DataD l n vs cs) = onfail (lthrow l) $
          local (\tcs -> tcs { tcs_tyvars = vs }) (mapM_ typecheckM cs)
 
-    typecheckM d@(ClassD ctx nm vars ms) = 
+    typecheckM d@(ClassD l ctx nm vars ms) = onfail (lthrow l) $ do
       let checkmeth m@(TopExp (TopSig n c texpected) b) =
             onfail (\s -> throw $ s ++ "\n in method " ++ pretty n) $ do
               env <- asks tcs_env
@@ -199,11 +197,10 @@ instance TypeCheck Dec where
                           ++ " but found type " ++ pretty (typeof b)
                           ++ " in Method " ++ pretty m
                   else return ()
-      in onfail (\s -> throw $ s ++ "\n in declaration " ++ pretty d) $ do
-           let me = Class nm (map tyVarType vars)
-           local (addCtx (me : ctx) . addVarTs vars) $ mapM_ checkmeth ms
+          me = Class nm (map tyVarType vars)
+      local (addCtx (me : ctx) . addVarTs vars) $ mapM_ checkmeth ms
 
-    typecheckM d@(InstD ctx cls@(Class nm ts) ms) =
+    typecheckM d@(InstD l ctx cls@(Class nm ts) ms) = onfail (lthrow l) $ do
       let checkmeth m@(Method n b) =
             onfail (\s -> throw $ s ++ "\n in method " ++ pretty n) $ do
               env <- asks tcs_env
@@ -216,16 +213,14 @@ instance TypeCheck Dec where
                           ++ " in Method " ++ pretty m
                   else return ()
     
-      in onfail (\s -> throw $ s ++ "\n in declaration " ++ pretty d) $ do
-           env <- asks tcs_env
-           ClassD clsctx _ pts _ <- lookupClassD env nm 
-           let assigns = concat [assignments (tyVarType p) c | (p, c) <- zip pts ts]
-           local (addCtx ctx . addVarTs ts) $ do
-                mapM_ checkmeth ms
-                mapM_ satisfied (assign assigns clsctx)
-    typecheckM d@(PrimD ts) =
-      onfail (\s -> throw $ s ++ "\n in declaration " ++ pretty d) $ do
-        typecheckM ts
+      env <- asks tcs_env
+      ClassD _ clsctx _ pts _ <- lookupClassD env nm 
+      let assigns = concat [assignments (tyVarType p) c | (p, c) <- zip pts ts]
+      local (addCtx ctx . addVarTs ts) $ do
+           mapM_ checkmeth ms
+           mapM_ satisfied (assign assigns clsctx)
+
+    typecheckM d@(PrimD l ts) = onfail (lthrow l) $ typecheckM ts
 
 -- Assert the given class requirement is satisfied.
 satisfied :: Class -> TC ()
@@ -235,7 +230,7 @@ satisfied cls = do
     let -- Get the immediate context implied by the given class.
         -- For example, getclassctx (Ord Foo) would return [Eq Foo].
         getclassctx (Class nm ts) = do
-            ClassD ctx _ pts _ <- lookupClassD e nm
+            ClassD _ ctx _ pts _ <- lookupClassD e nm
             let assigns = concat [assignments (tyVarType p) c | (p, c) <- zip pts ts]
             return (assign assigns ctx)
 
@@ -248,7 +243,7 @@ satisfied cls = do
     fullc <- expand [] c
     let sat cls | cls `elem` fullc = return ()
         sat cls@(Class _ ts) = do
-            InstD ctx (Class _ pts) _ <- lookupInstD e cls
+            InstD _ ctx (Class _ pts) _ <- lookupInstD e cls
             let assigns = concat [assignments p c | (p, c) <- zip pts ts]
             mapM_ sat (assign assigns ctx)
     sat cls

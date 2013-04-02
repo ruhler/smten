@@ -77,25 +77,25 @@ instance TypeInfer Dec where
 
 -- Run inference on a single declaration, given the environment.
 inferdec :: Env -> Dec -> Failable Dec
-inferdec env (ValD (TopExp ts@(TopSig n ctx t) e)) = do
+inferdec env (ValD l (TopExp ts@(TopSig n ctx t) e)) = do
     e' <- inferexp env t e
-    return $ ValD (TopExp ts e')
+    return $ ValD l (TopExp ts e')
 inferdec env d@(DataD {}) = return d
-inferdec env d@(ClassD ctx n vars ms) = do
+inferdec env d@(ClassD l ctx n vars ms) = do
   let infermethod :: TopExp -> Failable TopExp
       infermethod (TopExp ts@(TopSig _ _ t) e) = do
         e' <- inferexp env t e
         return (TopExp ts e')
   ms' <- mapM infermethod ms
-  return (ClassD ctx n vars ms')
-inferdec env (InstD ctx cls ms) = do
+  return (ClassD l ctx n vars ms')
+inferdec env (InstD l ctx cls ms) = do
   let infermethod :: Method -> Failable Method
       infermethod (Method n e) = do
          t <- lookupMethodType env n cls
          e' <- inferexp env t e
          return (Method n e')
   ms' <- mapM infermethod ms
-  return (InstD ctx cls ms')
+  return (InstD l ctx cls ms')
 inferdec _ d@(PrimD {}) = return d
 
 inferexp :: Env -> Type -> Exp -> Failable Exp

@@ -68,6 +68,7 @@ Primitives::
 * Concretize the rest of the haskellf primitives
 
 Cleanup::
+* type inference can't fail, so don't use Failable in it.
 * varTs should return a list of TyVar, not (Name, Kind)
 * typeinfer - use structure like typecheck (if reasonable)
 * haskellf.Compile - use monadic structure like typecheck, infer (if

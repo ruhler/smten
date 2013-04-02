@@ -36,13 +36,15 @@
 -- | Parser monad used in smten parsing.
 module Smten.Parser.Monad (
     Token(..), ParserMonad, runParser,
-    failE, lfailE, pfailE,
+    failE, lfailE, pfailE, withloc,
     single, many, newline, getText, setText, getLoc, getTLoc, saveLoc,
     expectBrace, setExpectBrace,
     lpush, ltop, lpop, tpush, tnext,
     ) where
 
 import Control.Monad.State
+
+import Data.Functor((<$>))
 
 import Smten.Failable
 import Smten.Name
@@ -137,10 +139,8 @@ failE = lift . throw
 -- | Fail with a message augmented with location information.
 lfailE :: String -> ParserMonad a
 lfailE msg = do
-    ln <- gets (line . ps_loc)
-    cl <- gets (column . ps_loc)
-    fp <- gets (file . ps_loc)
-    failE $ fp ++ ":" ++ show ln ++ ":" ++ show cl ++ ": " ++ msg
+    loc <- gets ps_loc
+    lthrow loc msg
 
 -- | advance a single column
 single :: ParserMonad ()
@@ -230,4 +230,7 @@ setExpectBrace b = modify $ \ps -> ps { ps_ebrace = b }
 
 pfailE :: Token -> ParserMonad a
 pfailE tok = lfailE $ "parser error at " ++ show tok
+
+withloc :: (Location -> a) -> ParserMonad a
+withloc f = f <$> getLoc
 

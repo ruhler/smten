@@ -7,6 +7,7 @@ module Smten.Dec.Record (
 import Data.List(nub)
 
 import Smten.Name
+import Smten.Location
 import Smten.Type
 import Smten.Sig
 import Smten.Fresh
@@ -34,8 +35,8 @@ record_updnm n = name "__" `nappend` n `nappend` name "_update"
 --   accessor functions for every field.
 --   update functions for every field.
 --   An undef declaration for each constructor.
-recordD :: Name -> [TyVar] -> [ConRec] -> [Name] -> [Dec]
-recordD nm vars cons derivings =
+recordD :: Location -> Name -> [TyVar] -> [ConRec] -> [Name] -> [Dec]
+recordD loc nm vars cons derivings =
   let mkcon :: ConRec -> Con
       mkcon (NormalC n ts) = Con n ts
       mkcon (RecordC n ts) = Con n (map snd ts)
@@ -47,7 +48,7 @@ recordD nm vars cons derivings =
         let undefnm = (record_undefnm n)
             undefet = arrowsT $ ts ++ [dt]
             undefe = appsE (ConE (Sig n undefet)) [VarE (Sig (name "undefined") t) | t <- ts]
-        in ValD (TopExp (TopSig undefnm [] dt) undefe)
+        in ValD loc (TopExp (TopSig undefnm [] dt) undefe)
 
       -- TODO: handle correctly the case where two different constructors
       -- share the same accessor name.
@@ -61,7 +62,7 @@ recordD nm vars cons derivings =
                          ++ [VarP (name "x")]
                          ++ [WildP | _ <- drop (i+1) ts])
                   body = mlamE [pat] (varE (Sig (name "x") t))
-              in ValD (TopExp (TopSig n [] at) body)
+              in ValD loc (TopExp (TopSig n [] at) body)
         in map mkacc (zip ts [0..])
 
       mkupds :: ConRec -> [Dec]
@@ -77,15 +78,15 @@ recordD nm vars cons derivings =
                             ++ [VarP nm | (nm, _) <- drop (i+1) ts])
                   myexp = appsE (ConE (Sig cn ct)) [VarE (Sig n t) | (n, t) <- ts]
                   body = mlamE [VarP n, mypat] myexp
-              in ValD (TopExp (TopSig (record_updnm n) [] ut) body)
+              in ValD loc (TopExp (TopSig (record_updnm n) [] ut) body)
         in map mkupd (zip ts [0..])
                             
       cons' = map mkcon cons
       undefs = map mkundef cons'
       accs = concatMap mkaccs cons
       upds = concatMap mkupds cons
-      derivations = [iderive d nm vars cons | d <- derivings]
-  in concat [[DataD nm vars cons'], derivations, undefs, accs, upds]
+      derivations = [iderive loc d nm vars cons | d <- derivings]
+  in concat [[DataD loc nm vars cons'], derivations, undefs, accs, upds]
 
 -- | Desugar labelled update.
 recordU :: Exp -> [(Name, Exp)] -> Exp
@@ -106,8 +107,8 @@ recordC (Sig cn ct) fields = recordU (VarE (Sig (record_undefnm cn) ct)) fields
 --            ...
 --       (==) (FooN a1 a2 ...) (FooN b1 b2 ...) = and [a1 == b1, a2 == b2, ...]
 --       (==) _ _ = False
-deriveEq :: Context -> Class -> [ConRec] -> Dec
-deriveEq ctx cls cs =
+deriveEq :: Location -> Context -> Class -> [ConRec] -> Dec
+deriveEq loc ctx cls cs =
   let mkcon :: ConRec -> MAlt
       mkcon (NormalC cn ts) =
         let fieldsA = [Sig (name $ 'a' : show i) UnknownT | i <- [1..length ts]]
@@ -123,7 +124,7 @@ deriveEq ctx cls cs =
       def = simpleMA [WildP, WildP] falseE []
       eqclauses = map mkcon cs ++ [def]
       eq = Method (name "==") (clauseE eqclauses)
-  in InstD ctx cls [eq]
+  in InstD loc ctx cls [eq]
 
 -- Derive an instance of Free (before flattening and inference) for the given
 -- data type declaration.
@@ -151,8 +152,8 @@ deriveEq ctx cls cs =
 --          else if isFoo2 then Foo2 a1Foo2 a2Foo2 ...
 --             ...
 --          else FooN a1FooN a2FooN ...)
-deriveFree :: Context -> Class -> [ConRec] -> Dec
-deriveFree ctx cls cs =
+deriveFree :: Location -> Context -> Class -> [ConRec] -> Dec
+deriveFree loc ctx cls cs =
   let -- name of tag for constructor: (isFooX :: Bool)
       mkTag :: ConRec -> Sig
       mkTag (NormalC nm _) = Sig (name "is" `nappend` nm) boolT
@@ -192,7 +193,7 @@ deriveFree ctx cls cs =
       rtn = NoBindS $ appE (varE (Sig (name "return") UnknownT)) value
       stmts = freevars ++ [rtn]
       free = Method (name "free") (doE stmts)
-  in InstD ctx cls [free]
+  in InstD loc ctx cls [free]
 
 -- Derive an instance of Show for the given data type declaration.
 -- Generates something of the form:
@@ -201,8 +202,8 @@ deriveFree ctx cls cs =
 --       show (Foo2 a1 a2 ...) = show_helper ["Foo2", show a1, show a2, ...]
 --            ...
 --       show (FooN a1 a2 ...) = show_helper ["FooN", show a1, show a2, ...]
-deriveShow :: Context -> Class -> [ConRec] -> Dec
-deriveShow ctx cls cs =
+deriveShow :: Location -> Context -> Class -> [ConRec] -> Dec
+deriveShow loc ctx cls cs =
   let mkcon :: ConRec -> MAlt
       mkcon (NormalC cn ts) =
         let fields = [Sig (name $ 'a' : show i) UnknownT | i <- [1..length ts]]
@@ -215,17 +216,17 @@ deriveShow ctx cls cs =
 
       shclauses = map mkcon cs
       sh = Method (name "show") (clauseE shclauses)
-  in InstD ctx cls [sh]
+  in InstD loc ctx cls [sh]
 
-derive :: Context -> Class -> [ConRec] -> Dec
-derive ctx cls@(Class n _)
- | n == name "Eq" = deriveEq ctx cls
- | n == name "Free" = deriveFree ctx cls
- | n == name "Show" = deriveShow ctx cls
+derive :: Location -> Context -> Class -> [ConRec] -> Dec
+derive loc ctx cls@(Class n _)
+ | n == name "Eq" = deriveEq loc ctx cls
+ | n == name "Free" = deriveFree loc ctx cls
+ | n == name "Show" = deriveShow loc ctx cls
  | otherwise = error $ "deriving " ++ show n ++ " not supported in smten"
       
-iderive :: Name -> Name -> [TyVar] -> [ConRec] -> Dec
-iderive n dn vars cs = 
+iderive :: Location -> Name -> Name -> [TyVar] -> [ConRec] -> Dec
+iderive loc n dn vars cs = 
   let dt = appsT (conT dn) (map tyVarType vars)
       cls = Class n [dt]
     
@@ -238,5 +239,5 @@ iderive n dn vars cs =
 
       fieldts = concatMap fields cs
       ctx = nub [Class n [t] | t <- filter keep fieldts]
-  in derive ctx cls cs
+  in derive loc ctx cls cs
 

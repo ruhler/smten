@@ -23,12 +23,12 @@ instance ConTs TopExp where
 
 instance ConTs Dec where
     conTs d
-      | ValD e <- d = conTs e
-      | DataD n _ cs <- d= Set.unions [conTs cs, Set.singleton n]
-      | ClassD ctx n _ ts <- d 
+      | ValD _ e <- d = conTs e
+      | DataD _ n _ cs <- d= Set.unions [conTs cs, Set.singleton n]
+      | ClassD _ ctx n _ ts <- d 
             = Set.unions $ [conTs ctx, Set.singleton n, conTs ts]
-      | InstD ctx cls _ <- d = Set.unions [conTs ctx, conTs cls]
-      | PrimD t <- d = conTs t
+      | InstD _ ctx cls _ <- d = Set.unions [conTs ctx, conTs cls]
+      | PrimD _ t <- d = conTs t
 
 instance ConTs Con where
     conTs (Con _ ts) = conTs ts

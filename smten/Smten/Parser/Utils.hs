@@ -7,6 +7,7 @@ module Smten.Parser.Utils (
 
 import Data.Maybe(fromMaybe)
 
+import Smten.Location
 import Smten.Sig
 import Smten.Name
 import Smten.Type
@@ -18,7 +19,7 @@ import Smten.Parser.Monad
 data PDec =
     PDec Dec
   | PDataDec DataDec
-  | PSig TopSig
+  | PSig Location TopSig
   | PClause Name MAlt
   | PSynonym Synonym
   | PDeriving Deriving
@@ -41,12 +42,12 @@ isCClause _ = False
 
 coalesce :: [PDec] -> ([Synonym], [DataDec], [Deriving], [Dec])
 coalesce [] = ([], [], [], [])
-coalesce ((PSig s):ds) =
+coalesce ((PSig l s):ds) =
     let (ms, rds) = span isPClause ds
         (syns, dds, drv, rest) = coalesce rds
         d = case ms of
-                [] -> PrimD s
-                _ -> ValD (TopExp s (clauseE [c | PClause _ c <- ms]))
+                [] -> PrimD l s
+                _ -> ValD l (TopExp s (clauseE [c | PClause _ c <- ms]))
     in (syns, dds, drv, d:rest)
 coalesce ((PDec d):ds) =
    let (syns, dds, drv, rest) = coalesce ds

@@ -42,6 +42,7 @@ module Smten.Dec.Dec (
 
 import Smten.Name
 import Smten.Type
+import Smten.Location
 import Smten.Lit
 import Smten.Sig
 import Smten.Exp
@@ -71,11 +72,11 @@ data Method = Method Name Exp
 data TyVar = TyVar Name Kind
        deriving (Eq, Ord, Show)
 
-data Dec = ValD TopExp                  -- ^ nm :: ctx => ty ; nm = exp
-         | DataD Name [TyVar] [Con]     -- ^ data nm vars = cons
-         | ClassD Context Name [TyVar] [TopExp] -- ^ class nm vars where { decs }
-         | InstD Context Class [Method] -- ^ instance ctx => cls where { meths }
-         | PrimD TopSig                 -- ^ nm :: ctx => ty ;
+data Dec = ValD Location TopExp                  -- ^ nm :: ctx => ty ; nm = exp
+         | DataD Location Name [TyVar] [Con]     -- ^ data nm vars = cons
+         | ClassD Location Context Name [TyVar] [TopExp] -- ^ class nm vars where { decs }
+         | InstD Location Context Class [Method] -- ^ instance ctx => cls where { meths }
+         | PrimD Location TopSig                 -- ^ nm :: ctx => ty ;
      deriving (Eq, Show)
 
 -- | Convert a type variable to a variable type.
@@ -85,4 +86,11 @@ tyVarType (TyVar n k) = VarT n k
 -- | Get the name of a type variable
 tyVarName :: TyVar -> Name
 tyVarName (TyVar n _) = n
+
+instance Locate Dec where
+    locate (ValD l _) = l
+    locate (DataD l _ _ _) = l
+    locate (ClassD l _ _ _ _) = l
+    locate (InstD l _ _ _) = l
+    locate (PrimD l _) = l
 

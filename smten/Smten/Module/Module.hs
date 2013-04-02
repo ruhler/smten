@@ -50,6 +50,7 @@ import Data.Maybe(fromMaybe)
 import qualified Smten.HashTable as HT
 import Smten.Failable
 import Smten.Ppr
+import Smten.Location
 import Smten.Name
 import Smten.Sig
 import Smten.Type
@@ -72,7 +73,7 @@ data DataDec = DataDec Name [TyVar] [ConRec]
     deriving (Show, Eq)
 
 -- deriving instance ctx => cls
-data Deriving = Deriving Context Class
+data Deriving = Deriving Location Context Class
     deriving (Show, Eq)
 
 data Module = Module {
@@ -103,7 +104,7 @@ instance Ppr Synonym where
                 ++ [text "=", ppr t]) <> semi
 
 instance Ppr Deriving where
-    ppr (Deriving ctx cls) = sep [
+    ppr (Deriving _ ctx cls) = sep [
             text "deriving",
             text "instance",
             ppr ctx,
@@ -199,31 +200,26 @@ instance Qualify TopExp where
            return (TopExp ts' body')
 
 instance Qualify Dec where
-    qualify d@(ValD e) = 
-        onfailq (\msg -> lift $ throw (msg ++ "\n when flattening " ++ pretty d)) $
-            ValD <$> qualify e
+    qualify d@(ValD l e) = onfailq (lthrow l) $ ValD l <$> qualify e
 
     -- TODO: qualify type and data constructors.
-    qualify (DataD n vars cs) = DataD n vars <$> qualify cs
+    qualify (DataD l n vars cs) = DataD l n vars <$> qualify cs
 
     -- TODO: qualify class names
-    qualify (ClassD ctx nm vars sigs) = do
+    qualify (ClassD l ctx nm vars sigs) = do
         ctx' <- qualify ctx
         sigs' <- mapM qualify sigs
-        return (ClassD ctx' nm vars sigs')
+        return (ClassD l ctx' nm vars sigs')
 
-    qualify (InstD ctx cls meths) = do
+    qualify (InstD l ctx cls meths) = do
         ctx' <- qualify ctx
         cls' <- qualify cls
         meths' <- mapM qualify meths
-        return (InstD ctx' cls' meths')
+        return (InstD l ctx' cls' meths')
 
-    qualify (PrimD ts) = do
+    qualify (PrimD l ts) = do
         ts' <- qualify ts
-        return (PrimD ts')
-
-qthrow :: String -> QualifyM a
-qthrow = throw
+        return (PrimD l ts')
 
 instance Qualify Type where
     qualify t = do
@@ -232,7 +228,7 @@ instance Qualify Type where
           t | (ConT nm _, args) <- de_appsT t
             , Just (vs, t') <- HT.lookup nm syns ->
                 if length vs > length args
-                    then qthrow $ "expecting at least "
+                    then throw $ "expecting at least "
                              ++ show (length vs)
                              ++ " argument(s) to synonym "
                              ++ pretty nm ++ " in " ++ pretty t
@@ -283,15 +279,15 @@ instance Qualify Method where
 resolve :: Name -> QualifyM Name
 resolve n =
   let hasName :: Name -> Dec -> Bool
-      hasName n (ValD (TopExp (TopSig nm _ _) _)) = (n == nm)
-      hasName n (DataD nm _ _) = (n == nm)
-      hasName n (ClassD _ nm _ sigs) =
+      hasName n (ValD _ (TopExp (TopSig nm _ _) _)) = (n == nm)
+      hasName n (DataD _ nm _ _) = (n == nm)
+      hasName n (ClassD _ _ nm _ sigs) =
         let hasns [] = False
             hasns ((TopExp (TopSig snm _ _) _):_) | n == snm = True
             hasns (_:ss) = hasns ss
         in (n == nm) || hasns sigs
       hasName n (InstD {}) = False
-      hasName n (PrimD (TopSig nm _ _)) = (n == nm)
+      hasName n (PrimD _ (TopSig nm _ _)) = (n == nm)
 
       r :: [Module] -> Module -> Failable Name
       r env me = 
@@ -325,12 +321,12 @@ flatten1 ms m = do
       ddecs = mkDDecs $ concatMap mod_ddecs ms
 
       mderive :: Deriving -> Failable Dec
-      mderive d@(Deriving ctx cls)
+      mderive d@(Deriving loc ctx cls)
         | Class _ [t] <- cls
         , (ct, _) <- de_appsT t
         , Just n <- de_conT ct
-        , Just cs <- HT.lookup n ddecs = return (derive ctx cls cs)
-        | otherwise = throw $ "unable to perform standalone derive: " ++ pretty d
+        , Just cs <- HT.lookup n ddecs = return (derive loc ctx cls cs)
+        | otherwise = lthrow loc $ "unable to perform standalone derive"
   derives <- mapM mderive (mod_derivings m)
   mod_decs <$> evalStateT (qualify (m { mod_decs = derives ++ mod_decs m})) (QS ms (error "not in module") [] syns)
 

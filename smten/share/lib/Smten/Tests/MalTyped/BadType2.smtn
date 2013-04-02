@@ -4,5 +4,5 @@ module Smten.Tests.MalTyped.BadType2 where
 import Prelude
 
 foo :: Bool
-foo = not 18
+foo = not (18 :: Integer)
 

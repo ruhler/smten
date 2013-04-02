@@ -22,23 +22,23 @@ instance Ppr TopExp where
           fsep [ppr n <+> text "=", nest tabwidth $ ppr e]
 
 instance Ppr Dec where
-    ppr (ValD e) = ppr e
-    ppr (DataD n vs cs)
+    ppr (ValD _ e) = ppr e
+    ppr (DataD _ n vs cs)
         = text "data" <+> ppr n <+> hsep (map ppr vs) <+> text "=" $$
             (nest tabwidth (conlist cs))
-    ppr (ClassD ctx n vs ss)
+    ppr (ClassD _ ctx n vs ss)
         = text "class"
                 <+> ppr ctx
                 <+> ppr n <+> hsep (map ppr vs)
                 <+> text "where" <+> text "{"
                 $+$ nest tabwidth (vcat (punctuate semi (map ppr ss))) $+$ text "}"
-    ppr (InstD ctx cls ms)
+    ppr (InstD _ ctx cls ms)
         = text "instance"
                 <+> ppr ctx
                 <+> ppr cls
                 <+> text "where" <+> text "{"
                 $+$ nest tabwidth (vcat (map ppr ms)) $+$ text "}"
-    ppr (PrimD s) = ppr s
+    ppr (PrimD _ s) = ppr s
 
 instance Ppr TopSig where
     ppr (TopSig n ctx t)
