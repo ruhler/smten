@@ -1,0 +1,321 @@
+
+Mon Apr  1 10:14:14 EDT 2013
+
+Nirav brought up a point which may be the problem I'm seeing with my
+abstraction refinement (but I fear it's actually not the issue).
+
+It is not necessarily okay if all the assertions are satisfied. Because they
+may be satisfied due to an incorrect abstraction. Any time we get satisfiable
+we need to refine any visited abstractions.
+
+It's worth a try at least.
+
+And we know we are done when we have done full refinement. (In which case all
+the assertions had better be satisfied).
+
+Mon Apr  1 10:23:34 EDT 2013
+
+Unfortunately that didn't fix the problem with Sudoku. I'm not entirely
+surprised. But it's a good change anyway.
+
+Here's what I think I should do about the Sudoku bug. Really understand it.
+And here is how:
+
+Dump the fully query, without any abstraction.
+Then run the design with abstraction. Trace the paths based on the assignments
+and see what's going on.
+
+It will be tedious, but not too bad, I hope. It is just sudoku.
+
+Let me submit a version of our CAV paper, then play with this for a little
+bit.
+
+Mon Apr  1 10:47:05 EDT 2013
+
+CAV submitted. Let me play with this for a little bit, see what I can find.
+
+I wish I could print out copies of both, but they aren't formatted nicely
+enough.
+
+Let me see what I can do on the computer.
+
+We start with 135 abstractions. We get back an assignment.
+
+Let me evaluate that assignment to see what abstractions we visit under it.
+
+The claim is: 1, 2, 3.
+
+Then we check again. Get another assignment.
+
+Claim is: 4.
+Then: 5.
+Then: 6,7,8.
+Then: 11, 14, 12, 15, 9, 13, 10
+Then: 19, 18, 16, 17
+Then: 23, 25, 24, 22, 21, 20
+Then: 34, 28, 26, 31, 27, 30, 38, 37, 40, 36,
+      39, 29, 35, 41, 33, 32
+Then: 47, 44, 46, 43, 45, 42
+Then: 61, 49, 67, 59, 64, 51, 62, 66, 52, 57, 56, 54,
+      70, 50, 63, 69, 68, 65, 53, 58, 71, 60, 55, 48, 72
+Then: 83, 79, 75, 82, 77, 74, 73, 80, 81, 76, 78
+
+Then the claim is: we have seen everything we have to see, but for some reason
+we don't get a satisfying assignment.
+
+Okay, so I know the assignment we get. I know 'and' is lazy. Let me evaluate
+the assignment and see what abstractions it runs into, and figure out which
+one is missing. Then I can ask for what the predicate should be. That should
+help me figure: is the predicate correct? Why is it missing?
+
+Okay, wish me luck. Here I go.
+
+Mon Apr  1 11:12:06 EDT 2013
+
+The assertion is very simple conceptually. We just have a bunch of pair-wise
+assertions. The question I have, is which of these fails, and why don't we
+have that assertion present?
+
+Let me try to search for that.
+
+free~1 is wrong. In the final solution, it should be 2, but in the abstracted
+version, we get '1'.
+
+That should be easy enough to figure out. What says 'free~1' can't be 1?
+
+We have an explicit assertion: 'free~1' is not 1.
+
+Where did that go?
+
+Let's see.
+
+Looks to me like its in abs~128.
+Did we expand that?
+
+No. We didn't. Why not?
+
+Interesting. I expect we need to expand all abstractions, in order.
+
+We expand as far as 83, then stop. Why didn't we look at 84?
+
+I suppose the question is: what is the predicate for 84? It should be
+satisfied. Why isn't it?
+
+Let me manually evaluate all the predicates, to see why they aren't satisfied?
+
+This is nasty. Can I eval by hand?
+
+Ack!
+
+I can't do this by hand.
+
+How about a different approach?
+
+The real question we have about refinement is: are all of our abstractions
+correct?
+
+We can test that, by sampling their values in the current model, and
+evaluating in the current model, and if correct, we are all done, otherwise,
+add the assertion.
+
+My concern is: it may not matter what the value is in the current model,
+because the thing is unused.
+
+Somehow my predicates must be wrong. The trouble is, it is too hard for me to
+check manually, because the predicates are too big.
+
+What if the problem is, under the current (incorrect) model, the abstraction
+is not encountered... Well, then that should be fine. We don't have to refine.
+
+But, what if an abstraction is wrong. Well, then if it is encountered, we will
+fix it.
+
+There has to be a bug in my predicate generation.
+
+Mon Apr  1 12:01:33 EDT 2013
+
+I do notice we  seem to duplicate lots of stuff in the predicates. Perhaps I
+can try to be lucky, reimplement the way I handle predicates and figuring out
+which thing to evaluate next, and see if that fixes things?
+
+I'm thinking something like: traverse the expression looking for where I
+abstracted things before.
+
+I don't know.
+
+Mon Apr  1 13:20:30 EDT 2013
+
+Here's the plan. I don't know what's going on. I'm just going to rewrite the
+predicate stuff from scratch. And hopefully do it in a way the preserves
+sharing better (though I'm not sure how to do that).
+
+And hope the bug goes away with that.
+
+I wonder. What if I keep track of:
+  For each abstracted variable, it's name and value.
+  err...
+
+I don't know. I'll have to think about it. Preserving sharing is going to be
+the tough part (as usual).
+
+Mon Apr  1 14:10:19 EDT 2013
+
+Okay, so what do I want?
+
+The goal is to figure out which abstracted variables are seen when 'SAT' is
+returned.
+
+We have, initially, a single tree. I could abstract that tree into a tree of
+predicates, where the nodes contain the set of abstracted variables seen.
+Then, to figure out what is seen, walk down the tree and include anything on
+the path.
+
+Because we only look at one path, I don't think we need to worry about
+sharing? Well, probably, but that seems too confusing to me. Maybe I'll want a
+special function which lets me do 'transform' on a set of things at once,
+preserving sharing in all of them. That we we preserve evaluation sharing.
+
+Follow the path, extract the list of things seen. Easy. We share according to
+the tree, which is good.
+
+I claim the trees are easy to produce. We may end up with replicating a tree
+in multiple places. So how do I preserve sharing there? I'll have to turn the
+tree into a dag, using a heap like structure somehow. Maybe worry about that
+as a later step in my refinement of the algorithm.
+
+So, for each expression, build up a tree. Walk the tree to figure out what we
+need to refine.
+
+Now, once we refine, we have more than one tree. How do I handle that?
+
+I need to update the original tree. That's fine. So, refining also updates the
+tree: on the path it takes, we'll want to merge with the newly refined thing
+(and remove the thing that was refined). Except, we want to do that for every
+occurrence of the refined thing in the tree, which is not as easy.
+
+Alternatively, whenever I get to an abstracted thing I've seen before, I check
+I've we've refined it.
+
+That sounds terribly complicated to me.
+
+Sounds like I need to maintain a dag explicitly.
+
+If this tree was an expression, I feel like I could reuse the sharing
+infrastructure there. So let's say we hold on to the abstracted tree? We have
+the same issues then too.
+
+I don't know.
+
+Mon Apr  1 16:23:38 EDT 2013
+
+I think, if I have a way to do 'transform' to a bunch of expressions all at
+once (sharing the same cache), then my current implementation can be made to
+preserve sharing as desired.
+
+I really wish I knew what was wrong with the current implementation. I think
+it makes sense as an implementation.
+
+So, I'm going to take another stab at figuring out the problem. Here is how:
+
+1. minimize the problem as much as possible by filling in holes in the sudoku
+board.
+2. Dump the abstracted expression in pretty form (not SMT form).
+3. The predicate generated for each abstracted expression.
+Use a diff tool to verify the predicate looks similar to the abstracted
+expression. I hope this will work. The only issue will be how things are
+joined...
+
+What if I built up the predicates differently? What if I have them mirror the
+structure of the abstracted expression? The only thing I change is, at the
+leaf nodes, I either have 'True', indicating this is where the abstraction is
+found, and 'False' indicating otherwise.
+
+That, at least, should help me debug the predicates.
+
+Then how does merge work? I get rid of this context thing. The 'if' is the
+only special combination logic?
+
+Except, what if you don't have an if? What if you have two different
+occurrences. For example (abs~1 + abs~1). And you could have predicates:
+
+(if p then abs~1 else 0) + abs~1
+
+What should that generate? It should generate an 'or'.
+
+It's pretty much what I have already, aside from if.
+
+How would things change then?
+
+ConEH and PrimEH and joins stays the same.
+In 'if', I do a different join. Except, it will not do the right thing for
+'union'. So that probably won't help.
+
+What would really be nice to have is, perhaps, rather than group by abstracted
+expression, group by path. Then say: if you follow this path, these are all
+the abstractions you see.
+
+Mon Apr  1 16:42:47 EDT 2013
+
+I've minimized the test case a fair amount. Hopefully this will help.
+
+Let me print the abstracted top level expression and all the predicates.
+
+In the simplified example, 34 is the first one we fail to refine. So that's
+the predicate I should check.
+
+I don't know. It's too hard to tell anything.
+
+What if I implement "and" flattening in SMT debug, and output that? Then it
+should be obvious. I can use a naive algorithm.
+
+Except, it might not make things clear.
+
+Mon Apr  1 17:07:16 EDT 2013
+
+How about this alternative approach.
+
+Keep track of the current abstracted expression.
+If I get an answer of 'SAT', then I evaluate the abstracted expression in the
+current model.
+
+This will result in a symbolic expression. I traverse it (in a shared way) to
+identify all the variable names left over. These are what I need to refine.
+
+Now, generate the assertions for each of these, and transform the notion of
+abstraction according to the update.
+
+That should work. What I need is:
+
+* shared function for querying the 'abs~...` vars in an expression. This
+  should be easy.
+* don't track predicates in 'abstract'. This should be easy.
+
+It's all easy.
+
+Cool. I'm going to try this then.
+
+Err... it's not so easy, because we have a bunch of assertions. :(
+
+Why is this so hard?
+
+I could keep around the abstracted predicates. Except, that won't handle
+'error' correctly.
+
+Unless I keep the set of error things and the set of abstracted things.
+
+Ug.
+
+That's actually not so unreasonable. I just have to be more in the mood for
+implementing it.
+
+It doesn't seem as natural or efficient to me though.
+
+What's wrong with Sudoku??
+
+Could it be a bug in yices2? Or some subtle issue? Like, maybe because the
+predicates use the true expression instead of the abstracted, so they could
+lead to different paths than the SMT solver saw in its abstraction...
+
+The reason I think this shouldn't matter is, whatever lead to the different
+path must be accessible. The first one we run into can't be wrong.
+

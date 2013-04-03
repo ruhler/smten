@@ -1,0 +1,351 @@
+
+Sat Mar 30 07:24:21 EDT 2013
+
+Trouble with numeric types. We aren't seeing that (32+8) = 40. Did I miss
+something?
+
+Sat Mar 30 07:32:53 EDT 2013
+
+I missed a few. Fixed now.
+
+Sat Mar 30 07:35:18 EDT 2013
+
+Alas, we have other problems now.
+
+Say you have a function of type
+    Bit #n -> Bit #(n+m)
+
+And you want to use it with something of type
+    Bit #16 -> Bit #(16+16)
+
+We currently don't see that that is valid.
+
+In other words, we have to be smarter in isSubType.
+
+Let me write up a test case for this while I think about solutions.
+
+
+Well, we can easily figure out that 'n' should be 16. What are we left with
+then?
+
+
+Bit #16 -> Bit #(16+m)
+ vs.
+Bit #16 -> Bit #(32)
+
+So, how do I figure out 'm'?
+
+I have to do more math in isSubType I fear.
+
+How about this: any time in isSubType we encounter...
+
+You know? I wonder if I can use type inference for 'isSubType'. I have a
+single constraint...
+
+I'll have to change target variables to get assignments for them (retype t).
+Figure out assignments to them. Then assign the assignments and verify they
+are all happy.
+
+That actually sounds like a good idea to me. Let me try it out.
+
+I'll want to move isSubType out of Type/Utils, and perhaps into Typing.Infer?
+
+No, the real problem is 'assignments'.
+
+But that doesn't seem like a problem either.
+
+So, where will I put these things?
+
+How about... Typing/SubType?
+
+Sounds good to me.
+
+1. Move them there.
+2. Change 'assignments' to use the type solver.
+
+Sat Mar 30 08:13:35 EDT 2013
+
+Okay, this works, but, one could argue it's not what I want to do, because
+haskellf doesn't support it, and it's kind of messy?
+
+The trouble is, you should not have a type called:
+
+    Bit #n -> Bit #(n+m)
+
+Because it is not simple. Instead, have:
+
+    Bit #n -> Bit #m
+
+Then, do I need all this fancy type solver stuff for assignments?
+
+I'd rather avoid it if possible. If I do support it, I need to do something
+about haskellf here, and I don't feel like doing it right now.
+
+Sat Mar 30 08:20:34 EDT 2013
+
+I think there is a shadowing bug in case desugaring. One which I don't feel
+like dealing with right now. Sigh.
+
+Sat Mar 30 09:16:07 EDT 2013
+
+Not a shadowing bug. A bug in Nirav's code. So everything is happy again.
+
+Back to nonterm.
+
+Here's the plan.
+
+1. pull abstract out into its own module.
+2. change the interface for abstract to return the set of abstracted away
+things. Currently it will be empty.
+Implement handling of refinement in SMT.SMT the way I expect it to work. Make
+sure the interface makes sense and it isn't too hard.
+3. add a depth counter to abstraction and do all that fun stuff.
+
+After all this, I expect abstraction/refinement to be working. That hopefully
+handles the most interesting cases of non-termination. That's all I want to
+worry about today.
+
+Cool. Here I go.
+
+Sat Mar 30 09:36:48 EDT 2013
+
+Okay, how do I do refinement?
+
+For each thing abstracted away...
+- realize the predicate.
+- if the predicate holds, 
+    - abstract the body.
+    - assert the var equals the abstracted body.
+    - return the new abstractions.
+- else, return itself
+
+Easy!
+
+Sat Mar 30 09:51:56 EDT 2013
+
+Good. One last step here, which is to actually implement abstraction.
+
+Let me split it into two parts.
+
+1. ditch the use of IO in abstract. Instead use StateT to hold the map.
+2. Keep track of Context and depth and actually do some abstraction.
+
+Sat Mar 30 10:07:04 EDT 2013
+
+Step 1 is done. Now for the last step...
+
+Which, of course, I can break into more steps. Or, rather, parts.
+
+* Cache (ExpH, [(Sig, (ExpH, ExpH))]) instead of just ExpH.
+* add predicate to context
+* add depth to context.
+
+And, overall, just make everything work.
+
+Wish me luck. This will be a bit tricky.
+
+Sat Mar 30 10:22:59 EDT 2013
+
+I've got depth counting going. I've got context tracking going. I need to make
+sure now to return the abstractions too. So I'll have to do some combining.
+
+
+Sat Mar 30 10:36:45 EDT 2013
+
+Now all that is left is... the base case. Detecting the depth.
+
+Sat Mar 30 10:39:29 EDT 2013
+
+That's it! Rough draft is all there.
+
+Shall I try it out and see if it works?
+
+Sat Mar 30 10:43:25 EDT 2013
+
+All the existing tests work. Probably because the abstraction threshold has
+not been exceeded.
+
+Let me try the incremental test, see what it does.
+
+Some tests: Sudoku goes up to a depth of 62. Just for reference.
+
+I fear 1000 is much too deep for us to handle. Let me stop at 100.
+
+Sat Mar 30 10:56:56 EDT 2013
+
+100 works for inc. But not for inc2 or inc3. I suspect it could work, the
+trouble is, just imagine, if we are expanding in both branches, a depth of 100
+gives 2^100 nodes that need to be abstracted away. That's a lot of nodes, and
+a very very big expression.
+
+Which suggests I need to lower the threshold.
+
+In fact, it seems to me a good way to test refinement would be to lower the
+threshold and verify all the tests still work.
+
+Let's see, what would be a good limit on the threshold?
+
+2^16 is about 65 thousand. That seems reasonable to me. So I'll go with that.
+
+Now sudoku gets stuck. Let me see if it's trying to do abstraction refinement.
+
+Sat Mar 30 11:12:24 EDT 2013
+
+Looks like we get stuck in an infinite loop. We don't make any more
+assertions, but we still don't find an answer. Why not?
+
+I should stop if there is nothing left to refine.
+
+Oh, I think I know what happened. We don't update the predicates properly when
+we refine.
+
+Um... That didn't help any, but I think it was the right thing to do.
+
+Sat Mar 30 11:22:07 EDT 2013
+
+Yes. So there seems to be a bug with abstraction refinement. After fully
+refining things, we still can't satisfy all the predicates?
+
+I can think of two problems we might be having:
+ * something is wrong with the SMT refine logic
+ * something is wrong with the construction of predicates.
+
+Let me do some investigation.
+
+What if:
+ * we don't do abs/refinement. Do we get a different final solution for
+   sudoku?
+
+  Yes. Which suggests the SMT solver really isn't finding a correct solution
+  with my abstraction refinement.
+
+ * we refine everything always, regardless of predicate?
+
+Sat Mar 30 11:34:49 EDT 2013
+
+It looks like the assertions we are giving say the right thing. Which leaves
+one possibility, as far as I can tell: we aren't telling the SMT solver about
+all the important assertions. We don't tell it about everything we need to
+refine.
+
+Why not? I can see two possible reasons:
+1. my strategy for determining where to do refinements is flawed
+2. my implementation of that strategy is flawed.
+
+The behavior we are seeing is that we expect to be able to do refinement where
+our predicates say we can't. 
+
+I don't know. I need a break to think about it a bit.
+
+Sat Mar 30 14:12:57 EDT 2013
+
+I think the strategy is right. Let me look for flaws in the implementation.
+Something is wrong with predicates.
+
+I see nothing wrong with the implementation of abstract.
+
+Sat Mar 30 14:22:55 EDT 2013
+
+Here's the problem: I need to keep track of the values of abstracted variables
+to figure out what the predicates are. I need to include them in the freevars
+list.
+
+Note: this is different from the _|_, where I don't care what value they had.
+
+So, I want to have an argument to mkvar saying wither it is an error or
+abstraction. I bet that solves the issue.
+
+Sat Mar 30 14:31:03 EDT 2013
+
+Two problems:
+1. Error now crashes.
+2. Sudoku still doesn't work.
+
+Let me figure out Error first.
+
+Sat Mar 30 14:34:49 EDT 2013
+
+I suspect the problem is I'm introducing freevars without updating freevals.
+
+So, let me filter out what to refine and what not, then do all the refining.
+
+Sat Mar 30 14:47:21 EDT 2013
+
+Good news now is Error doesn't crash. Bad news is, Sudoku still doesn't work.
+
+And why am I thinking the change I made was just pointless? These predicates
+can't contain any abstracted variables. And neither can the assertions.
+
+Bugger. I suppose I should revert then. Oh well.
+
+Sat Mar 30 14:52:19 EDT 2013
+
+How can we not have anything to refine? What's going on? I know there must be
+something wrong.
+
+Let me look at the things left unrefined, and see if they make sense to me or
+offer any other insight.
+
+I don't get it. Let me revisit what's going on here.
+
+We save assertions. In their original form. Possibly very big. Possibly with
+errors. They have no abstraction done on them.
+
+We save, for each abstracted thing, a predicate. Possibly a big predicate (but
+not very big). Possibly with errors. They have no abstraction done on them.
+
+For each abstracted thing, we have the abstracted thing. Possibly big.
+Possibly with errors. They have no abstraction done on them.
+
+My assumption is, if, under the current assignment, the assertion is not
+satisfied, that means one of the abstractions is wrong. If one of the
+abstractions is wrong, one of the abstractions must be visible, thus its
+predicate must be satisfied.
+
+Why isn't it working?
+
+Sat Mar 30 15:23:24 EDT 2013
+
+Is there an issue with different assertions having different names for the
+abstracted things? Not having them tied together?
+
+I don't think so. The assertions tie them together by equality.
+
+Sat Mar 30 15:31:42 EDT 2013
+
+You know what I should do? I should walk through by hand, and understand
+everything that happens. That will answer my question, as tedious as it is. It
+can't be that hard.
+
+Can I simplify the test case somehow? Let me lower the threshold a bunch and
+see if anything else fails.
+
+More STP bugs... but unrelated to what I'm trying to figure out.
+
+Isolate0 fails. That's interesting. Unrelated bug?
+
+But it just fails in the interpreter. So probably an issue with inline or Env.
+
+Probably the Ord issue with types and equality. Let me fix that.
+
+But, in short, no other tests fail.
+
+Can I simplify Sudoku?
+
+Sat Mar 30 15:40:04 EDT 2013
+
+Actually, I think I can debug with such a small level of nesting. Let me do
+something things first to clean up: have 3 error ids.
+
+It would also help if I printed the abstracted expressions prettily before
+going to SMT.
+
+Sat Mar 30 16:06:07 EDT 2013
+
+I don't know what's wrong. And changing the threshold leads to different
+results. It's a fragile bug we have exposed. And there are a few others too.
+
+I don't know what to do. Let me take a break and stew on things. Maybe if I
+talk to someone else and do a code review it will be more obvious what is
+going on.
+

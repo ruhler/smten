@@ -1,0 +1,594 @@
+
+Tue Apr  2 09:18:03 EDT 2013
+
+I have to think about what I want to do.
+
+Here's the problem:
+
+I currently do not correctly implement the smten semantics. In particular,
+with regards to non-terminating computations.
+
+There are a number of ways I could correctly implement the semantics, I
+believe, but there is a big performance tradeoff. On one end, we have:
+
+* full pruning
+Don't send anything to the SMT solver until the SMT solver has told you can.
+This is really really slow, because we have to call 'check' so many times in
+the server.
+
+On the other end:
+
+* almost no pruning
+Do abstraction/refinement, with no directed refinement, and large threshold.
+
+And we have options in the middle:
+
+* reasonable threshold, refine things which we think are likely to need
+  refining, but not others.
+
+I suppose a somewhat natural middle ground would be abstraction refinement,
+where I abstract based on a reasonable threshold (it's not clear what a
+reasonable threshold is), and refine only those things which I'm sure we need
+to refine. This could still lead to a lot of extra refinement.
+
+The problem is, it seems like we should let the user make these choices,
+because they have the higher level knowledge we need. They know that we are
+doing Sudoku, and it's totally bounded, so don't do any
+abstraction/refinement. Or that we are doing factorial, and it's unbounded, so
+do more abstraction refinement. They may want to allow the user of their tool
+to specify, and say back: this is correct, up to a depth of such and such.
+
+This notion that the user has control is also consistent with the idea that we
+want to generate the query the user specifies, not do all sorts of fancy stuff
+under the covers. Leave it to the user to figure out the 'algorithm', we just
+do the tedious constant time tricks to help performance.
+
+The problem with this notion is, it doesn't fit with the semantics I've
+specified for smten. In order to implement the semantics, I have to do
+intermediate checks to the SMT solver which are not explicitly specified by
+the user.
+
+In the case of explicit error there is no problem. But for non-termination, we
+do have a problem.
+
+So, that's the status. I don't know what to do about it. I could perhaps mix
+user control and automatic abstraction/refining. Only refine those we know we
+can't prune based on the SMT solvers assignment. We can keep a high threshold,
+or let the user specify that as a flag on the command line, or in the SMT
+runtime options.
+
+Regardless, I want to know what the issue I'm seeing with sudoku is. I want to
+understand it.
+
+So let me try again to minimize it.
+
+I can trigger it with a threshold of 1.
+Let me simplify the board as much as possible too.
+
+I simplified the board as much as possible.
+
+We are down to 15 variables. Mostly simple equations, because the threshold is
+so low. The predicates will probably be pretty big.
+
+What do I want to do?
+
+Figure out why 157 is not marked for refinement.
+
+It looks like it is just the one left over.
+
+What I want to do is look at the predicate for 157, and verify it makes sense.
+
+Let me print out the predicates for every thing after abstracting, and let me
+print them out as SMT pretty. That will be the simplest view of it. It should
+make the 'not', 'and', and 'or' structure explicit.
+
+My goal is this:
+- look at the predicate.
+  Is the predicate correct?
+  Is the predicate evaluated correctly?
+
+It has to be one of those which is the problem. I suspect the problem is the
+predicate is not correct.
+
+I should not need to see the hole, unabstracted expression. I assume the
+abstracting is correct.
+
+First step: print the abstraction predicates in SMT format.
+
+Tue Apr  2 09:55:50 EDT 2013
+
+There are 6 abstractions we don't refine, when I expect we should.
+
+Are the predicates correct? Are they evaluated correctly?
+
+Let me go one at a time.
+
+abs~91.
+
+Tue Apr  2 11:07:36 EDT 2013
+
+Talked to Nirav. Here's the current status.
+
+Nirav suggests we bound non-termination not by tree depth, but by node count.
+That way we could handle sudoku (a long, narrow computation) and factorial (a
+shallow, wide computation) reasonably. Our refinement cost stays constant,
+regardless of the shape of refinement. That seems reasonable to me.
+
+I want to understand the Sudoku bug. That may not be required, if I
+reimplement things.
+
+There is question as to what should be refined. Perhaps my refinement budge
+from the above approach could be used as a guide: refine everything you have a
+budget for refining, because really, it could all be useful eventually? Not
+sure.
+
+After this, we can figure out how to deal with other sorts of booms we don't
+handle.
+
+As a side issue, how to deal with large arrays efficiently?
+
+For type errors: need locations!
+
+My priority:
+1. sudoku bug. See how far I can get, but don't get too stuck on it.
+2. reshape abstraction/refinement.
+3. type locations.
+It shouldn't be too hard to do type locations, right? I just need to pass
+location information to each Exp (and I have this location info). And change
+how I report type errors (so it can add the right location info).
+
+I should do type locations when I have a chance. I think it won't be that
+hard, but it will have a big benefit.
+
+Back to Sudoku work.
+
+abs~91 predicate is not satisfied, because free~10 should not be 1, but it is.
+
+Why does free~10 need to not be 1 in order to see abs~91?
+
+It's part of the predicate for abs~91.
+Why? Must be because we only see abs~91 if:
+    (and abs~89 abs~90)
+
+Are those satisfied?
+
+abs~89 has been refined. It is satisfied if
+    not abs~100 and abs~101 and abs~102 are satisfied.
+
+note: we want abs~89 satisfied. That's different from seen.
+
+Let me run yices2 and print intermediate results based on the query.
+
+Now, yices2 believes abs~90 and abs~89 are true, so it thinks we should see
+the abs~91, but we shouldn't by the true assignment. So it thinks,
+incorrectly, that we should see abs~90 and abs~89. How can that be? It must be
+abstracting.
+
+abs~91 is only seen if abs~90 and abs~89 are True.
+abs~90 depends on 96 through 99. Do we have all those refined?
+abs~89 depends on 100 through 102. Do we have all those refined?
+
+Yes, we have refined those. But they may depend on others.
+We haven't refined: 92, 150, 151, 152, 157
+
+By dependency, 90 and 89 depend on:
+  96, 97, 98, 99, 100, 101, 102,
+  105, 106, 107, 108, 109, 110, 111, 112, 113, 114, 115
+  116, 117, 118, 119, 120, 121,
+  122, 123, 124, 125, 126, 127, 128, 129, 130, 131, 132, 133, 134,
+  135, 136, 137, 138, 139, 140, 141, 142, 146, 147, 148, 149, 150, 151, 152,
+  153, 154, 155, 156, 157
+
+Yes. It depends on 150, 151, 152, 157.
+
+So, before we can correctly know we need to refine 92, we must refine 150,
+151, 152, and 157.
+
+Question: why have we not refined these?
+
+yices thinks we need to refine 91, but really we need to refine 150 through
+157 before we think we need to refine 91.
+
+So, let me move on to 150 through 157, and see if their predicates say similar
+things. The question is, do we have a loop?
+
+150 requires 149 is true to be seen.
+151 requires 149 and 150 is true to be seen.
+152 requires 149, 150, and 151 is true to be seen.
+
+149 is true according to yices. But in reality? I suspect we will find it is
+false.
+
+149 is (not 156)
+156 is false...
+
+So, 156 must be incorrect?
+So, free10 and free9 must be incorrect.
+
+You know what? I think this is the problem. I think there is some circular
+stuff going on, where we manage to reach a fixed point where everything is
+wrong in such a way that we don't think we need to refine, but if we had
+guessed the way yices did, we do need to refine.
+
+So, let me claim, even though I don't have the concrete example I understand,
+that this is the problem. It is important that we refine those abstractions
+the SMT solver thinks it saw, not the things we saw if the values are correct.
+
+Good. I'll assume that's the bug, and follow that principal when redesigning
+refinement to work correctly.
+
+Now then, how to figure out what to refine?
+
+The idea is, I should not make use of the known value of the abstraction, I
+should make use of what we know without looking at the abstraction.
+
+Thus this forms a plan for a fix. A redesign of things.
+
+And it's one I already have worked out.
+
+Here's how it works.
+
+The assertion we keep around for qs_asserts is the abstracted assertion. We
+also keep: a map from err~x to String to say what the errors are. We also
+keep: a map from abs~x to ExpH to say what we have abstracted.
+
+Make the query. If unsat, we are done.
+
+If sat: evaluate the abstracted query under the assignment.
+
+If 'True', we are done.
+If 'False', there is a problem with the algorithm (this should never happen).
+If 'Error', there is a problem with the algorithm (those should have been
+abstracted away).
+
+Thus we are left with an expression containing err~x and abs~x variables.
+
+At this point, the question is, what do I want to refine? How about,
+every abs~x we encounter, because these all could affect the result of the
+expression potentially. And we can divide our refinement budget among them.
+
+If there are no abs~x, then there are err~x, throw the error for whichever one
+you prefer. (Or all of them at once). Because we have a fully refined
+expression, with an assignment, which leads to errors. Cool.
+
+After we refine the abs~x, substitute their new abstractions back into the
+qs_asserts.
+
+And that's it!
+
+Cool. I like this. I think it is correct. I think it is efficient, hopefully.
+I like this idea of a refinement budget, to balance things out. And I think
+a constant sized refinement budget makes much more sense than a constant sized
+depth, because it is a function of the SMT solver, current compute and memory
+power, etc... it is not a function of the query being asked.
+
+Very good.
+
+We have two changes to make then. Fairly straight-forward, I think. One for
+correctness, the other for efficiency.
+
+Let me do correctness first. Then efficiency.
+
+Cool! I'm excited about this. I feel good about this. Let me dive in after
+lunch, and try to do things right. I think it's okay doing it all at once.
+
+The idea is: abstract should take a budget as input. If an expression uses
+less than its budget, can we allocate that budget elsewhere? That would be
+nice. But maybe an optimization not to worry about right now?
+
+Well, it would be nice, but it would complicate the code?
+
+I should do it. It's not that hard. We just need a way to return from
+abstraction how much budget is left over. Good. That's easy.
+
+Happy now. Let me take lunch, then totally write this up.
+
+Tue Apr  2 13:42:07 EDT 2013
+
+Write up. To start, don't worry about depth. Keep that as is. Fix the
+refinement.
+
+Here's the plan:
+
+* qs_asserts is the abstracted thing
+* keep track of (Name -> String) for errors.
+* keep track of (Name -> ExpH) for abstractions.
+
+on check, evaluate the assertions. Get the set of variables that appear.
+Partition variables into errors and abstractions.
+
+If no abstractions, throw errors.
+Otherwise, refine each abstraction a little bit.
+ Updating the set of errors and abstractions and the qs_asserts.
+
+abstract should return: set of errors and set of abstractions along with the
+abstracted value.
+
+Simple. Let me get to work.
+
+And: I can return maps as maps. That will be useful.
+
+Tue Apr  2 14:00:29 EDT 2013
+
+I updated abstract. What do I do in check? And what in refine?
+
+Check:
+1. realize and evaluate abstracted assertions.
+   if true: we are done.
+   else: pass to 'realize' to refine it and check again?
+
+It's not clear to me how to partition. How about, refine takes the set of
+things to refine as input? That sounds reasonable to me.
+
+Cool. Then I can do check.
+
+What I need is: given an expression, return all the variables, preferably
+sorted into the set of errors and the set of abstractions.
+
+1. Compute the set of variables.
+    Done.
+2. take the intersection with the errs keyset: these are the error vars.
+3. take the intersection with the abs keyset: these are the refinements
+   needed.
+
+Tue Apr  2 14:28:07 EDT 2013
+
+Rough draft of check is done. How do I do refine? This is the last bit.
+Hopefully I take care of sharing.
+
+I believe what I want is the following:
+
+1. re-abstract each abstraction.
+2. 
+
+Hmm.. maybe I should just refine inline?
+
+Because I would like to reuse vars, to partition the abstraction map.
+
+Sure. Why not?
+
+For each thing to refine:
+ - refine it, return the refined thing.
+    Should give us a map from Name to Abstracted.
+ - transform the assertion value based on (Name -> ab_value) from that map.
+     Gives a new abstraction.
+ - for errs: union old new.
+       abs: union: get rid of old, new.
+
+I should be able to use bv_app. Just remove the doref ones from abs first. It
+will join everything right.
+ 
+Tue Apr  2 14:52:45 EDT 2013
+
+I believe I've got the rough draft done. We'll see if it works.
+
+Tue Apr  2 15:00:47 EDT 2013
+
+It works. All the tests pass as desired, and we are efficient.
+
+I could probably be more efficient by changing the threshold strategy from
+depth first to a budget like thing. I'll try that next perhaps... 
+
+The goal is to do less abstraction on things like Sudoku, while still handling
+error fast enough.
+
+Tue Apr  2 15:03:42 EDT 2013
+
+Let me play with this budget idea.
+
+The goal is, at every refinement, we refine a limited amount. This amount is
+related to the size of assertions, not the depth of them.
+
+So, abstract should take as argument a refinement budget. There are two
+versions we could do. The question is what to do when we have a bunch of
+things we want to refine.
+
+We could ether: allocate each sub-refinement a fair share of the total budget.
+If it wastes it, too bad.
+
+Or: do refinement in order, give other refinements an extra budget if earlier
+refinements didn't need that much.
+
+I think the later makes most sense.
+
+So, abstract should return how much of the budget was consumed. And have a way
+to 'refine many' with a given budget. This may as well be internal to
+Abstract. Call it: abstracts. That way I don't have to expose the return
+result. It can be an internal thing.
+
+Cool. It also means we can share abstractions across expressions if you think
+that would help. I'm not sure.
+
+Step 1: expose 'abstracts' interface. Use it and make sure it works.
+Step 2: add budget argument to abstract and abstracts.
+  Use simple division for abstracts.
+Step 3: use smarter division for abstracts.
+
+Tue Apr  2 15:16:02 EDT 2013
+
+Step 1 is done. Now step2 should be easy.
+
+Tue Apr  2 15:26:53 EDT 2013
+
+Looks like the budget approach isn't helping any, so I'll just stick with what
+I have. It should be easy to add budgeting back later if desired.
+
+Tue Apr  2 15:29:16 EDT 2013
+
+Uh oh! More sudoku errors?
+
+It reports errors when there are none.
+
+Tue Apr  2 15:32:35 EDT 2013
+
+Looks like we have another Sudoku error. Probably the same one. Sadness.
+
+Let me ignore it for now.
+
+Tue Apr  2 15:53:23 EDT 2013
+
+Looks like I have a space leak in INCR_DEPTH. How can I fix it?
+
+I wonder if I can use a Reader and State monad combined. It would be a good
+exercise I think.
+
+Tue Apr  2 16:24:11 EDT 2013
+
+I can, it helps a little, but doesn't get rid of what appears to be the space
+leak.
+
+The current status report is as follows:
+
+* maybe space leak we can fix (but also maybe not)
+* maybe bug in Sudoku to understand 
+    try threshold of 24.
+* performance of Sudoku is still less than desired.
+  I suspect this could be a significant performance hit for other
+  applications.
+
+It may be the case that, if we can properly implement budgeting, that
+budgeting will resolve the performance issues I'm seeing. To do budgeting
+right, we have to do it depth first. I don't know a good way of doing that. We
+may end up re-computing budget values?
+
+Because you don't know how to allocate the budget until you know how much
+space something will take up.
+
+My current 'depth' approach is the same as if we had a budget and we divided
+it equally in a breadth first search without re-allocation. So re-allocation
+is important.
+
+Hmm... I wonder. The expensive part is 'check', and having a huge query
+expression. So, what if I do the following:
+
+Call abstract, use the depth budget. But return the size of the abstracted
+expression. If it is relatively small, then refine some arbitrary expressions
+based on the remaining budget. Continue this until the budget is too small.
+
+That way we can do sudoku, we can abstract/refine, but make a single query,
+hopefully, because after using the depth technique, we find we can go further?
+
+No. That's not going to help. Because the problem is, what if the error thing
+has a long narrow shape? Then using the full budget will cost more than we
+want. It's the problem we had with the budget approach I already tried.
+
+I don't know. Perhaps now would be a good time to take a break and work on
+locations for type errors.
+
+Locations for type errors are at least worth thinking about.
+
+What do I need? Add a maybe Location to each Exp. This should be easy to do,
+if annoying and tedious. The real key is, when we report a type error, I have
+to find the location. But we may be inside the nearest location.
+
+So, maybe the trick is this: pass the current location as part of the context
+of type checking. Whenever we see an expression, update the current location
+before going inside it. That way I can report a nice error immediately, and
+don't have to change all that much.
+
+Type checking is already a reader monad, so that fits naturally.
+
+Cool. So, what I want to do is add location info to Exp. Is there a nice way I
+can do this?
+
+What if we had a: LocE Location Exp. It just inserts location information into
+the expression. Everywhere else we ignore the LocE (jump right to its body).
+But in type checking, we use it to update the current location. That way we
+can avoid yucky tediousness.
+
+Sounds good to me!
+
+I want to give it a try. I'll start a new branch.
+
+First, what is a location?
+ Filename, Line, Column.
+
+So I should pull that definition up to somewhere it can be shared.
+
+Maybe have 'Location', and 'FLocation'. Both of which can be useful.
+Or... just Location. That makes sense too.
+
+Now I have a way to track location information. The next question is, how do I
+add location information?
+
+I fear we'll end up using the parser monad a lot, but hopefully that's not too
+bad.
+
+Perhaps I can have a function:
+
+locate :: Exp -> Parser Exp
+
+Which will help things.
+
+Note: we may want locations with declarations too. Perhaps that makes more
+sense to start with. First step: on type error, report location information.
+Even if just for the top level declaration.
+
+That way I can have the location stuff in place for type errors.
+
+Sounds good to me.
+
+Tue Apr  2 17:29:46 EDT 2013
+
+This is really cool. Having this location information.
+
+Now, I just need a little more detail. I need information for expressions.
+Using LocE, as planned before. But now, because everything is in place, it
+should be easier.
+
+It may make sense first to change how I do type error messages, so that we
+only report a single location, not a location of a location of a location of a
+location.
+
+In other words, I want to pass the location in the context, and lthrow there.
+Let me implement that now.
+
+Tue Apr  2 17:37:51 EDT 2013
+
+Now I have implemented that, we are ready for locations in Exp. This will be
+messy (like Dec was), but very worthwhile. And then... we are done! We have
+locations with type errors and everyone is happy. Maybe. We shall see.
+
+Tue Apr  2 17:46:15 EDT 2013
+
+Question: should I use 'LocE', or should I use Location with every Exp?
+
+LocE means I can add more location info incrementally... But if I'm going to
+add it everywhere, why not... you know, have it everywhere?
+
+Let me try LocE, because I started trying Location everywhere, and I fear.
+
+Tue Apr  2 18:16:30 EDT 2013
+
+I broke it, and there's no easy way to figure out why.
+
+This suggests to me I really want to have a location for every expression, and
+I have to make sure that location is correct.
+
+And now, because every expression has a location, it seems like ... I don't
+know. Okay, whatever. I'll make every Exp have a location. And require
+everything to be annotated. Yucky yucky. But that, at least, will work
+correctly, I'm sure. And it will lead to more complete location information,
+because *everything* has a location.
+
+Good. First, let me take a break.
+
+Tue Apr  2 19:17:55 EDT 2013
+
+A cool side effect of this location info: case no match can report where the
+pattern failed to match.
+
+Tue Apr  2 20:11:46 EDT 2013
+
+Well, it's done. We have location information now.
+
+It's to be seen whether it actually helps. It's to be seen how accurate the
+location information is. It's to be seen if I need to add more detail.
+
+I'm a little worried about ambiguous type errors distracting from more
+meaningful error messages. Oh well. We'll see what happens.
+
+I'll let Nirav start playing with this now.
+
+
+
