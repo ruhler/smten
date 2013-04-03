@@ -35,6 +35,8 @@
 
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE PatternGuards #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE TypeSynonymInstances #-}
 
 -- Back end target which translates smten programs into Haskell. Supports the
 -- Query monad and SMT queries.
@@ -52,6 +54,7 @@ import Control.Monad.Reader
 import qualified Language.Haskell.TH.PprLib as H
 import qualified Language.Haskell.TH as H
 import qualified Language.Haskell.TH.Syntax as H
+import qualified Text.PrettyPrint.HughesPJ as HPJ
 
 import Smten.Failable
 import Smten.Name
@@ -312,7 +315,7 @@ hsDec (PrimD _ s@(TopSig n _ _)) = return []
 haskellf ::    Bool     -- ^ Should a "__main" wrapper be generated?
             -> String   -- ^ Name of target module.
             -> [Dec] -> H.Doc
-haskellf wrapmain modname env =
+haskellf wrapmain modname env = {-# SCC "HaskellF" #-}
   let hsHeader :: H.Doc
       hsHeader = H.text "{-# LANGUAGE ExplicitForAll #-}" H.$+$
                  H.text "{-# LANGUAGE MultiParamTypeClasses #-}" H.$+$
@@ -551,3 +554,10 @@ mkCaseD n tyvars (Con cn tys) = do
   return [sigD, funD]
 
 
+instance Ppr H.Doc where
+  ppr d =
+    let hpj = H.to_HPJ_Doc d
+        hstyle = (HPJ.style { HPJ.lineLength = maxBound })
+        str = {-# SCC "RenderHaskellF" #-} HPJ.renderStyle hstyle hpj
+    in text str 
+    

@@ -640,7 +640,7 @@ lopt(p)
 {
 
 parse :: FilePath -> String -> Failable Module
-parse fp str = {-# SCC "PARSE" #-} runParser smten_module fp str
+parse fp str = {-# SCC "Parse" #-} runParser smten_module fp str
 
 } 
 

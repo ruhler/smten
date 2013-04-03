@@ -69,6 +69,8 @@ Cleanup::
   reasonable)
 * enforce in Parser that all class methods must have a signature?
 * Merge FromExpH and Translate into a single operation?
+    Or perhaps have a FromExpH class, and be able to go to both Exp and
+    SMT.Expression
 * Maybe avoid withloc everywhere in Grammar.y by pushing that to PatOrExp
   functions?
 

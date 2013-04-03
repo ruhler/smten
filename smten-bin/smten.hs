@@ -129,5 +129,5 @@ main = do
             outf . pretty $ env
         HaskellF -> do
             env <- loadenv includes (file args)
-            outf . show $ haskellf (not (no_main args)) (Main.mod_name args) (getDecls env)
+            outf . pretty $ haskellf (not (no_main args)) (Main.mod_name args) (getDecls env)
 
