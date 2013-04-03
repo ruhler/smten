@@ -73,6 +73,20 @@ tthrow s = do
     loc <- asks tcs_loc
     lthrow loc s
 
+-- wrongtype kind object expected found
+-- Reports an error message of the form:
+--  expecting type: 
+--      <expected>
+--  but found type:
+--      <found>
+--  in <kind>: <obj>
+wrongtype :: (Ppr a) => String -> a -> Type -> Type -> TC b
+wrongtype kind obj exp fnd
+ = tthrow $ "expecting type:\n  " ++ pretty exp
+       ++ "\nbut found type:\n  " ++ pretty fnd
+       ++ "\nin " ++ kind ++ ": " ++ pretty obj
+  
+
 class TypeCheck a where
     -- | Type check the given object.
     -- Fails if there is a type error.
@@ -119,15 +133,14 @@ instance TypeCheck Exp where
       texpected <- lookupDataConType env n
       if isSubType texpected ct
          then return ()
-         else tthrow $ "expecting type " ++ pretty texpected ++ ", but found type " ++ pretty ct ++ " in data constructor " ++ pretty n
+         else wrongtype "data constructor" n texpected ct
 
    typecheckM (VarE l s@(Sig n t)) = withloc l $ do
       typecheckM t
       tenv <- asks tcs_vars
       case lookup n tenv of
           Just t' | eqtypes t t' -> return ()
-          Just t' -> tthrow $ "expected variable of type:\n  " ++ pretty t'
-                     ++ "\nbut " ++ pretty n ++ " has type:\n  " ++ pretty t
+          Just t' -> wrongtype "variable" n t' t
           Nothing -> do
               env <- asks tcs_env
 
@@ -135,8 +148,7 @@ instance TypeCheck Exp where
               texpected <- lookupVarType env n
               if isSubType texpected t
                   then return ()
-                  else tthrow $ "expected variable of type:\n  " ++ pretty texpected
-                             ++ "\nbut " ++ pretty n ++ " has type:\n  " ++ pretty t
+                  else wrongtype "variable" n texpected t
 
               -- Verify the context is satisfied for this variable.
               vctx <- lookupVarContext env s
@@ -149,10 +161,8 @@ instance TypeCheck Exp where
          (AppT (AppT (ConT n _) a) _) | n == name "->" ->
              if eqtypes a (typeof x)
                  then return ()
-                 else tthrow $ "expected type " ++ pretty a ++
-                     " but got type " ++ pretty (typeof x) ++
-                     " in expression " ++ pretty x
-         t -> tthrow $ "expected function type, but got type " ++ pretty t ++ " in expression " ++ pretty f
+                 else wrongtype "expression" x a (typeof x)
+         t -> wrongtype "expression" f (arrowT UnknownT UnknownT) t
 
    typecheckM (LamE l (Sig n t) x) = withloc l $ do
      local (\tcs -> tcs { tcs_vars = (n, t) : tcs_vars tcs}) $ typecheckM x
@@ -167,26 +177,20 @@ instance TypeCheck Exp where
      let at = last $ de_arrowsT (typeof k)
      if eqtypes at (typeof x)
          then return ()
-         else tthrow $ "expected argument type " ++ pretty at ++
-                 " but got type " ++ pretty (typeof x) ++
-                 " in expression " ++ pretty x
+         else wrongtype "expression" x at (typeof x)
 
      -- Verify y has the right type.
      let yt = arrowsT (init (de_arrowsT (typeof k)) ++ [typeof n])
      if eqtypes yt (typeof y)
          then return ()
-         else tthrow $ "expected type " ++ pretty yt ++
-                 " but got type " ++ pretty (typeof y) ++
-                 " in expression " ++ pretty y
+         else wrongtype "expression" y yt (typeof y)
 
 instance TypeCheck TopExp where
     typecheckM (TopExp ts@(TopSig n c t) e) = do
         typecheckM ts
         local (addCtx c . addVarTs ts) $ typecheckM e
         if (typeof e /= t)
-          then tthrow $ "expecting type " ++ pretty t
-                      ++ " but found type " ++ pretty (typeof e)
-                      ++ " in expression " ++ pretty e
+          then wrongtype "expression" e t (typeof e)
           else return ()
         
 
@@ -202,9 +206,7 @@ instance TypeCheck Dec where
               env <- asks tcs_env
               local (addCtx c . addVarTs texpected) $ typecheckM b
               if typeof b /= texpected
-                  then tthrow $ "expected type " ++ pretty texpected
-                          ++ " but found type " ++ pretty (typeof b)
-                          ++ " in Method " ++ pretty m
+                  then wrongtype "method" m texpected (typeof b)
                   else return ()
           me = Class nm (map tyVarType vars)
       local (addCtx (me : ctx) . addVarTs vars) $ mapM_ checkmeth ms
@@ -217,9 +219,7 @@ instance TypeCheck Dec where
               mctx <- lookupMethodContext env n cls
               local (addCtx mctx . addVarTs texpected) $ typecheckM b
               if typeof b /= texpected
-                  then tthrow $ "expected type " ++ pretty texpected
-                          ++ " but found type " ++ pretty (typeof b)
-                          ++ " in Method " ++ pretty m
+                  then wrongtype "method" m texpected (typeof b)
                   else return ()
     
       env <- asks tcs_env
