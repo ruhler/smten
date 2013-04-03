@@ -76,6 +76,7 @@ instance Show ExpH_Value where
     show (PrimEH n _ _ xs) = pretty n ++ " " ++ show xs
     show (LamEH s _ _) = "\\" ++ pretty s ++ " -> ..."
     show (IfEH _ p a b) = "if " ++ show p ++ " then " ++ show a ++ " else " ++ show b
+    show (ErrorEH _ s) = "error " ++ show s
     
 exph :: ExpH_Value -> ExpH
 exph v = 

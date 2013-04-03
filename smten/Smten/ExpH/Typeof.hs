@@ -16,4 +16,5 @@ instance Typeof ExpH_Value where
     typeof (PrimEH _ t _ _) = t
     typeof (LamEH (Sig _ it) ot _) = arrowT it ot
     typeof (IfEH t _ _ _) = t
+    typeof (ErrorEH t _) = t
 

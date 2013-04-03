@@ -252,9 +252,9 @@ mkfree s@(Sig nm t) = do
   runCmds [SMT.Declare (smtN nm) (smtT t)]
 
 mkerr :: Type -> SMT ExpH
-mkerr t = {-# SCC "MKERR" #-} do
+mkerr t = do
     fid <- gets qs_freeid
-    let nm = name $ "error~" ++ show fid
+    let nm = name $ "err~" ++ show fid
         s = Sig nm t
     modify $ \qs -> qs { qs_freeid = fid+1 }
     runCmds [SMT.Declare (smtN nm) (smtT t)]
@@ -339,7 +339,7 @@ instance Functor Used where
 
 newtype Symbolic a = Symbolic {
     symbolic_smt :: SMT a
-} deriving (Functor, Monad, Typeable)
+} deriving (Functor, Monad, MonadIO, Typeable)
 
 deriving instance MonadState QS Symbolic
 

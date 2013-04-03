@@ -107,6 +107,7 @@ Build System::
 Bugs::
 * BadKind, DupInst, DupVar maltype tests
 * Error non-termination tests
+* HaskellF sharing of appeval
 * where shadow test (in Concrete)
 * STP bug (in Nest)
 * STP bug (in Bit)
