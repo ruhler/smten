@@ -51,7 +51,7 @@ instance Num (Bit #n) where
    (+) = __prim_add_Bit
    (-) = __prim_sub_Bit
    (*) = __prim_mul_Bit
-   negate = error "todo: negate for Bit #n"
+   negate x = 0 - x
    abs = error "todo: abs for Bit #n"
    fromInteger = __prim_fromInteger_Bit
 
