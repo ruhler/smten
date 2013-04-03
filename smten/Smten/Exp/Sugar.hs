@@ -22,6 +22,7 @@ module Smten.Exp.Sugar (
 import Control.Monad
 import Data.List(genericLength)
 
+import Smten.Location
 import Smten.Bit
 import Smten.Lit
 import Smten.Name
@@ -30,38 +31,38 @@ import Smten.Sig
 import Smten.Exp.Exp
 import Smten.Exp.Typeof
 
-conE :: Sig -> Exp
+conE :: Location -> Sig -> Exp
 conE = ConE
 
 de_conE :: Exp -> Maybe Sig
-de_conE (ConE s) = Just s
+de_conE (ConE _ s) = Just s
 de_conE _ = Nothing
 
-varE :: Sig -> Exp
+varE :: Location -> Sig -> Exp
 varE = VarE
 
 de_varE :: Exp -> Maybe Sig
-de_varE (VarE s) = Just s
+de_varE (VarE _ s) = Just s
 de_varE _ = Nothing
 
-litE :: Lit -> Exp
+litE :: Location -> Lit -> Exp
 litE = LitE
 
-appE :: Exp -> Exp -> Exp
+appE :: Location -> Exp -> Exp -> Exp
 appE = AppE
 
-appsE :: Exp -> [Exp] -> Exp
-appsE = foldl AppE
+appsE :: Location -> Exp -> [Exp] -> Exp
+appsE l = foldl (AppE l)
 
-lamE :: Sig -> Exp -> Exp
+lamE :: Location -> Sig -> Exp -> Exp
 lamE = LamE
 
-lamsE :: [Sig] -> Exp -> Exp
-lamsE [] x = x
-lamsE (v:vs) x = lamE v (lamsE vs x)
+lamsE :: Location -> [Sig] -> Exp -> Exp
+lamsE _ [] x = x
+lamsE l (v:vs) x = lamE l v (lamsE l vs x)
 
 de_lamE :: Exp -> Maybe (Sig, Exp)
-de_lamE (LamE s e) = Just (s, e)
+de_lamE (LamE _ s e) = Just (s, e)
 de_lamE _ = Nothing
 
 de_lamsE :: Exp -> ([Sig], Exp)
@@ -71,48 +72,48 @@ de_lamsE e
      in (s:s', b')
  | otherwise = ([], e)
 
-letE :: Sig -> Exp -> Exp -> Exp
-letE s v b = appE (lamE s b) v
+letE :: Location -> Sig -> Exp -> Exp -> Exp
+letE l s v b = appE l (lamE l s b) v
 
-letsE :: [(Sig, Exp)] -> Exp -> Exp
-letsE [] x = x
-letsE ((s, v):bs) x = letE s v (letsE bs x)
+letsE :: Location -> [(Sig, Exp)] -> Exp -> Exp
+letsE _ [] x = x
+letsE l ((s, v):bs) x = letE l s v (letsE l bs x)
 
 de_letE :: Exp -> Maybe (Sig, Exp, Exp)
-de_letE (AppE (LamE s b) v) = Just (s, v, b)
+de_letE (AppE _ (LamE _ s b) v) = Just (s, v, b)
 de_letE _ = Nothing
 
 de_appE :: Exp -> Maybe (Exp, Exp)
-de_appE (AppE f x) = Just (f, x)
+de_appE (AppE _ f x) = Just (f, x)
 de_appE _ = Nothing
 
 de_appsE :: Exp -> (Exp, [Exp])
-de_appsE (AppE a b) =
+de_appsE (AppE _ a b) =
     let (f, as) = de_appsE a
     in (f, as ++ [b])
 de_appsE t = (t, [])
 
-ifE :: Exp -> Exp -> Exp -> Exp
-ifE p a b = CaseE p (Sig (name "True") boolT) a b
+ifE :: Location -> Exp -> Exp -> Exp -> Exp
+ifE l p a b = CaseE l p (Sig (name "True") boolT) a b
 
-trueE :: Exp
-trueE = conE (Sig (name "True") boolT)
+trueE :: Location -> Exp
+trueE l = conE l (Sig (name "True") boolT)
 
-falseE :: Exp
-falseE = conE (Sig (name "False") boolT)
+falseE :: Location -> Exp
+falseE l = conE l (Sig (name "False") boolT)
 
-boolE :: Bool -> Exp
-boolE True = trueE
-boolE False = falseE
+boolE :: Location -> Bool -> Exp
+boolE l True = trueE l
+boolE l False = falseE l
 
 de_boolE :: Exp -> Maybe Bool
-de_boolE e
-  | e == trueE = Just True
-  | e == falseE = Just False
-  | otherwise = Nothing
+de_boolE e = do
+    Sig nm _ <- de_conE e
+    guard $ nm == name "True" || nm == name "False"
+    return (nm == name "True")
 
-charE :: Char -> Exp
-charE = litE . charL
+charE :: Location -> Char -> Exp
+charE l = litE l . charL
 
 de_charE :: Exp -> Maybe Char
 de_charE e = do
@@ -120,20 +121,20 @@ de_charE e = do
     de_charL l
 
 de_litE :: Exp -> Maybe Lit
-de_litE (LitE l) = Just l
+de_litE (LitE _ l) = Just l
 de_litE _ = Nothing
 
 -- | [a, b, ..., c]
-listE :: [Exp] -> Exp
-listE [] = conE (Sig (name "[]") (listT UnknownT))
-listE [x] =
+listE :: Location -> [Exp] -> Exp
+listE l [] = conE l (Sig (name "[]") (listT UnknownT))
+listE l [x] =
  let t = typeof x
      consT = arrowsT [t, listT t, listT t]
- in appsE (conE (Sig (name ":") consT)) [x, conE (Sig (name "[]") (listT t))]
-listE (x:xs) = 
+ in appsE l (conE l (Sig (name ":") consT)) [x, conE l (Sig (name "[]") (listT t))]
+listE l (x:xs) = 
  let t = typeof x
      consT = arrowsT [t, listT t, listT t]
- in appsE (conE (Sig (name ":") consT)) [x, listE xs]
+ in appsE l (conE l (Sig (name ":") consT)) [x, listE l xs]
 
 de_listE :: Exp -> Maybe [Exp]
 de_listE e | Just (Sig n _) <- de_conE e, n == name "[]" = Just []
@@ -144,8 +145,8 @@ de_listE e | (f, [a, b]) <- de_appsE e = do
     return (a:xs)
 de_listE _ = Nothing
 
-stringE :: String -> Exp
-stringE str = listE (map charE str)
+stringE :: Location -> String -> Exp
+stringE l str = listE l (map (charE l) str)
 
 de_stringE :: Exp -> Maybe String
 de_stringE e = do
@@ -154,37 +155,37 @@ de_stringE e = do
     mapM de_charE elems
 
 -- Smten error, before flattening.
-errorE :: String -> Exp
-errorE msg = appE (varE (Sig (name "error") UnknownT)) (stringE msg)
+errorE :: Location -> String -> Exp
+errorE l msg = appE l (varE l (Sig (name "error") UnknownT)) (stringE l msg)
 
 -- | Type signature expression, of form: (e :: t)
 -- Assigns the given type to the given expression.
 --
 -- For constructors and variables, we update the signatures directly.
 -- For other expressions, we desugar to: ((id :: (t -> t)) e)
-sigE :: Exp -> Type -> Exp
-sigE (ConE (Sig n _)) t = ConE (Sig n t)
-sigE (VarE (Sig n _)) t = VarE (Sig n t)
-sigE e t = appE (varE (Sig (name "id") (arrowsT [t, t]))) e
+sigE :: Location -> Exp -> Type -> Exp
+sigE _ (ConE l (Sig n _)) t = ConE l (Sig n t)
+sigE _ (VarE l (Sig n _)) t = VarE l (Sig n t)
+sigE l e t = appE l (varE l (Sig (name "id") (arrowsT [t, t]))) e
 
-tupleE :: [Exp] -> Exp
-tupleE xs =
+tupleE :: Location -> [Exp] -> Exp
+tupleE l xs =
   let n = tupleN (length xs)
       ts = map typeof xs
       t = arrowsT $ ts ++ [tupleT ts]
-  in appsE (conE (Sig n t)) xs
+  in appsE l (conE l (Sig n t)) xs
 
 de_tupleE :: Exp -> Maybe [Exp]
 de_tupleE x = 
     case de_appsE x of
-       (ConE (Sig nm _), xs) -> do
+       (ConE _ (Sig nm _), xs) -> do
           n <- de_tupleN nm
           guard $ genericLength xs == n
           return xs
        _ -> Nothing
 
-integerE :: Integer -> Exp
-integerE = litE . integerL
+integerE :: Location -> Integer -> Exp
+integerE l = litE l . integerL
 
 de_integerE :: Exp -> Maybe Integer
 de_integerE e = do
@@ -196,58 +197,59 @@ de_bitE e = do
     l <- de_litE e
     de_bitL l
 
-numberE :: Integer -> Exp
-numberE i =
+numberE :: Location -> Integer -> Exp
+numberE l i =
  let t = arrowsT [integerT, UnknownT]
- in appE (VarE (Sig (name "fromInteger") t)) (integerE i)
+ in appE l (VarE l (Sig (name "fromInteger") t)) (integerE l i)
 
 -- a + b
-addE :: Exp -> Exp -> Exp
+addE :: Location -> Exp -> Exp -> Exp
 addE = opE "+"
 
 -- a - b
-subE :: Exp -> Exp -> Exp
+subE :: Location -> Exp -> Exp -> Exp
 subE = opE "-"
 
 -- a * b
-mulE :: Exp -> Exp -> Exp
+mulE :: Location -> Exp -> Exp -> Exp
 mulE = opE "*"
 
-opE :: String -> Exp -> Exp -> Exp
-opE op a b = appsE (varE (Sig (name op) UnknownT)) [a, b]
+opE :: String -> Location -> Exp -> Exp -> Exp
+opE op l a b = appsE l (varE l (Sig (name op) UnknownT)) [a, b]
 
-caseE :: Exp -> Sig -> Exp -> Exp -> Exp
-caseE x (Sig kn _) y n
-  | (ConE (Sig s _), vs) <- de_appsE x =
+caseE :: Location -> Exp -> Sig -> Exp -> Exp -> Exp
+caseE l x (Sig kn _) y n
+  | (ConE _ (Sig s _), vs) <- de_appsE x =
     if kn == s
-        then appsE y vs
+        then appsE l y vs
         else n
-caseE x k y n = CaseE x k y n
+caseE l x k y n = CaseE l x k y n
 
-eqE :: Exp -> Exp -> Exp
-eqE a b = appsE (varE (Sig (name "Prelude.==") (arrowsT [typeof a, typeof b, boolT]))) [a, b]
+eqE :: Location -> Exp -> Exp -> Exp
+eqE l a b = appsE l (varE l (Sig (name "Prelude.==") (arrowsT [typeof a, typeof b, boolT]))) [a, b]
 
-ltE :: Exp -> Exp -> Exp
-ltE a b = appsE (varE (Sig (name "Prelude.<") (arrowsT [typeof a, typeof b, boolT]))) [a, b]
+ltE :: Location -> Exp -> Exp -> Exp
+ltE l a b = appsE l (varE l (Sig (name "Prelude.<") (arrowsT [typeof a, typeof b, boolT]))) [a, b]
 
-leqE :: Exp -> Exp -> Exp
-leqE a b = appsE (varE (Sig (name "Prelude.<=") (arrowsT [typeof a, typeof b, boolT]))) [a, b]
+leqE :: Location -> Exp -> Exp -> Exp
+leqE l a b = appsE l (varE l (Sig (name "Prelude.<=") (arrowsT [typeof a, typeof b, boolT]))) [a, b]
 
-gtE :: Exp -> Exp -> Exp
-gtE a b = appsE (varE (Sig (name "Prelude.>") (arrowsT [typeof a, typeof b, boolT]))) [a, b]
+gtE :: Location -> Exp -> Exp -> Exp
+gtE l a b = appsE l (varE l (Sig (name "Prelude.>") (arrowsT [typeof a, typeof b, boolT]))) [a, b]
 
 -- [a..b]
-fromtoE :: Exp -> Exp -> Exp
-fromtoE a b = appsE (varE (Sig (name "enumFromTo") UnknownT)) [a, b]
+fromtoE :: Location -> Exp -> Exp -> Exp
+fromtoE l a b = appsE l (varE l (Sig (name "enumFromTo") UnknownT)) [a, b]
 
 -- [a,b,..]
-fromthenE :: Exp -> Exp -> Exp
-fromthenE a b = appsE (varE (Sig (name "enumFromThen") UnknownT)) [a, b]
+fromthenE :: Location -> Exp -> Exp -> Exp
+fromthenE l a b = appsE l (varE l (Sig (name "enumFromThen") UnknownT)) [a, b]
 
 -- [a..]
-fromE :: Exp -> Exp
-fromE a = appE (varE (Sig (name "enumFrom") UnknownT)) a
+fromE :: Location -> Exp -> Exp
+fromE l a = appE l (varE l (Sig (name "enumFrom") UnknownT)) a
 
 -- [a,b,..,c]
-fromthentoE :: Exp -> Exp -> Exp -> Exp
-fromthentoE a b c = appsE (varE (Sig (name "enumFromThenTo") UnknownT)) [a, b, c]
+fromthentoE :: Location -> Exp -> Exp -> Exp -> Exp
+fromthentoE l a b c = appsE l (varE l (Sig (name "enumFromThenTo") UnknownT)) [a, b, c]
+

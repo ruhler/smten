@@ -10,6 +10,7 @@ import Data.Functor ((<$>))
 import qualified Data.HashMap as Map
 import qualified Data.Set as Set
 
+import Smten.Location
 import Smten.Sig
 import Smten.Name
 import Smten.Type
@@ -61,34 +62,37 @@ data Defined = Defined {
     df_id :: Integer
 }
 
+l :: Location
+l = Location "fromExpH" 0 0
+
 convert :: Set.Set EID -> ExpH -> Exp
 convert share e =
   let -- Generate the definition for this expression.
       defineM :: ExpH -> State Defined Exp
       defineM e
-        | LitEH l <- force e = return $ LitE l
+        | LitEH v <- force e = return $ LitE l v
         | ConEH n t xs <- force e = do
             xs' <- mapM useM xs
             let t' = arrowsT $ (map typeof xs') ++ [t]
-            return $ appsE (ConE (Sig n t')) xs'
-        | VarEH s <- force e = return $ VarE s
+            return $ appsE l (ConE l (Sig n t')) xs'
+        | VarEH s <- force e = return $ VarE l s
         | PrimEH n t _ xs <- force e = do
             xs' <- mapM useM xs
             let t' = arrowsT $ (map typeof xs') ++ [t]
-            return $ appsE (varE (Sig n t')) xs'
+            return $ appsE l (varE l (Sig n t')) xs'
         | LamEH (Sig nm t) _ f <- force e = do
             x <- gets df_id
             modifyS $ \df -> df { df_id = x + 1 }
             let s' = Sig (nm `nappend` (name ("~c" ++ show x))) t
             b <- useM (f (exph $ VarEH s'))
-            return $ LamE s' b
+            return $ LamE l s' b
         | IfEH _ arg yes no <- force e = do
             arg' <- useM arg
             yes' <- useM yes
             no' <- useM no
-            return $ ifE arg' yes' no'
+            return $ ifE l arg' yes' no'
         | ErrorEH t s <- force e = return $
-            appE (varE (Sig (name "Prelude.error") (arrowT stringT t))) (stringE s)
+            appE l (varE l (Sig (name "Prelude.error") (arrowT stringT t))) (stringE l s)
 
       -- Generate the use for this expression.
       -- So, if it's shared, turns into a VarE.
@@ -97,7 +101,7 @@ convert share e =
         | let id = eid e
         , Set.member id share = do
             done <- gets df_done
-            let var = VarE (Sig (nameof id) (typeof (force e)))
+            let var = VarE l (Sig (nameof id) (typeof (force e)))
             case Set.member id done of
                 True -> return var
                 False -> do
@@ -113,5 +117,5 @@ convert share e =
 
       nameof :: EID -> Name
       nameof x = name $ "s~" ++ show x
-  in letsE [(Sig (nameof x) (typeof v), v) | (x, v) <- bindings] body
+  in letsE l [(Sig (nameof x) (typeof v), v) | (x, v) <- bindings] body
 

@@ -139,18 +139,18 @@ hsExp e
   , '\n' `notElem` str
     = return $ H.AppE (H.VarE (H.mkName "S.smtenHF")) (H.LitE (H.StringL str))
 
-hsExp (LitE l) = return (hsLit l)
-hsExp (ConE (Sig n _)) = return $ H.ConE (hsName n)
-hsExp (VarE (Sig n t)) = do
+hsExp (LitE _ l) = return (hsLit l)
+hsExp (ConE _ (Sig n _)) = return $ H.ConE (hsName n)
+hsExp (VarE _ (Sig n t)) = do
     -- Give explicit type signature to make sure there are no type ambiguities
     ht <- hsType t
     return $ H.SigE (H.VarE (hsName n)) ht
-hsExp (AppE f x) = do
+hsExp (AppE _ f x) = do
     f' <- hsExp f
     x' <- hsExp x
     return $ H.AppE f' x'
 
-hsExp (LamE (Sig n _) x) = do
+hsExp (LamE _ (Sig n _) x) = do
     x' <- hsExp x
     return $ H.LamE [H.VarP (hsName n)] x'
 
@@ -159,7 +159,7 @@ hsExp (LamE (Sig n _) x) = do
 --    _ -> n
 --
 -- Translates to:  __caseK x y n
-hsExp (CaseE x (Sig kn kt) y n) = do
+hsExp (CaseE _ x (Sig kn kt) y n) = do
     [x', y', n'] <- mapM hsExp [x, y, n]
     return $ foldl1 H.AppE [H.VarE (constrcasenm kn), x', y', n']
         

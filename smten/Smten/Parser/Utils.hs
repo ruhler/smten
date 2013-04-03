@@ -25,12 +25,12 @@ data PDec =
   | PDeriving Deriving
     deriving (Show)
 
-data CDec = CSig TopSig
+data CDec = CSig Location TopSig
           | CClause Name MAlt
 
 data LDec =
     LPat Pat Exp
-  | LClause Name MAlt
+  | LClause Location Name MAlt
 
 isPClause :: PDec -> Bool
 isPClause (PClause {}) = True
@@ -47,7 +47,7 @@ coalesce ((PSig l s):ds) =
         (syns, dds, drv, rest) = coalesce rds
         d = case ms of
                 [] -> PrimD l s
-                _ -> ValD l (TopExp s (clauseE [c | PClause _ c <- ms]))
+                _ -> ValD l (TopExp s (clauseE l [c | PClause _ c <- ms]))
     in (syns, dds, drv, d:rest)
 coalesce ((PDec d):ds) =
    let (syns, dds, drv, rest) = coalesce ds
@@ -65,36 +65,36 @@ coalesce (p@(PClause {}) : ds) = error $ "coalesce: TODO: handle unexpected PCla
 
 
 -- Merge clauses for the same method into a single method.
-icoalesce :: [(Name, MAlt)] -> [Method]
+icoalesce :: [(Name, Location, MAlt)] -> [Method]
 icoalesce [] = []
-icoalesce ((n, c):ms) =
-    let (me, rms) = span (\(n', _) -> n' == n) ms
+icoalesce ((n, l, c):ms) =
+    let (me, rms) = span (\(n', _, _) -> n' == n) ms
         rest = icoalesce rms
-        m = Method n (clauseE (c : map snd me))
+        m = Method n (clauseE l (c : map (\(_, _, x) -> x) me))
     in (m : rest)
 
 ccoalesce :: [CDec] -> [TopExp]
 ccoalesce [] = []
-ccoalesce ((CSig s):ds) =
+ccoalesce ((CSig l s):ds) =
   let (ms, rds) = span isCClause ds
       rest = ccoalesce rds
       d = case ms of
-              [] -> nodefault s
-              _ -> TopExp s (clauseE [c | CClause _ c <- ms])
+              [] -> nodefault l s
+              _ -> TopExp s (clauseE l [c | CClause _ c <- ms])
   in d:rest
 ccoalesce (CClause {} : _) = error $ "SMTEN TODO: handle unexpected CClause in ccoalesce"
 
 lcoalesce :: [LDec] -> [(Pat, Exp)]
 lcoalesce [] = []
 lcoalesce (LPat p e : ls) = (p, e) : lcoalesce ls
-lcoalesce (LClause n c : ls) =
+lcoalesce (LClause l n c : ls) =
     let isn :: LDec -> Bool
-        isn (LClause n' _) = n' == n
+        isn (LClause _ n' _) = n' == n
         isn (LPat {}) = False
 
         (me, rms) = span isn ls
         rest = lcoalesce rms
-        m = (VarP n, clauseE (c : [c' | LClause _ c' <- me]))
+        m = (VarP n, clauseE l (c : [c' | LClause _ _ c' <- me]))
     in (m : rest)
 
 -- A context is parsed first as a type to avoid a reduce/reduce conflict. Here

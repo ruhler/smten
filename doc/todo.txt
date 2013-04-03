@@ -1,7 +1,3 @@
-Focus::
-* Catch-up: Locations for type errors
-* Look-ahead: Fix issues with _|_ so semantics are correctly implemented
-
 Recent::
 * Don't pretty print numeric type 16 in haskellf as
     2*2*2*2*(1+0) ??
@@ -30,7 +26,6 @@ Type System::
 * Verify we handle case where default method given without sig in ClassD.
 
 Front End::
-* line numbers for non-syntactic errors would be nice.
 * support parser-error layout rule.
     For example: (let foo = bar in foo x)
 * Report an error if module name doesn't match source file name.
@@ -42,7 +37,6 @@ Front End::
 * derived instance of Show should handle record type constructors
   appropriately.
 * Better type errors
-** give location of type error more specific than top level declaration.
 ** use type synonyms in errors.
 ** report an error for use of a type that isn't defined
 * show string as "foobar" instead of ['f','o', 'o', 'b', 'a', 'r']
@@ -75,6 +69,8 @@ Cleanup::
   reasonable)
 * enforce in Parser that all class methods must have a signature?
 * Merge FromExpH and Translate into a single operation?
+* Maybe avoid withloc everywhere in Grammar.y by pushing that to PatOrExp
+  functions?
 
 SMT::
 * Remove bv-zero-extend from SMT syntax, use SMTLIB2 alternative

@@ -243,31 +243,31 @@ instance Qualify Type where
 instance Qualify Exp where
     -- TODO: qualify data constructors
     qualify e@(LitE {}) = return e
-    qualify (ConE (Sig n t)) = do
+    qualify (ConE l (Sig n t)) = do
         t' <- qualify t
-        return (ConE (Sig n t'))
-    qualify (VarE (Sig n t)) = do
+        return (ConE l (Sig n t'))
+    qualify (VarE l (Sig n t)) = do
         t' <- qualify t
         bound <- isbound n
         if bound 
-            then return (VarE (Sig n t'))
+            then return (VarE l (Sig n t'))
             else do
                 n' <- resolve n
-                return (VarE (Sig n' t'))
-    qualify (AppE f x) = do
+                return (VarE l (Sig n' t'))
+    qualify (AppE l f x) = do
         f' <- qualify f
         x' <- qualify x
-        return (AppE f' x')
-    qualify (LamE (Sig n t) b) = do
+        return (AppE l f' x')
+    qualify (LamE l (Sig n t) b) = do
         t' <- qualify t
-        LamE (Sig n t') <$> (withbound [n] $ qualify b)
+        LamE l (Sig n t') <$> (withbound [n] $ qualify b)
     
-    qualify (CaseE x (Sig kn kt) y n) = do
+    qualify (CaseE l x (Sig kn kt) y n) = do
         kt' <- qualify kt
         x' <- qualify x
         y' <- qualify y
         n' <- qualify n
-        return $ CaseE x' (Sig kn kt') y' n'
+        return $ CaseE l x' (Sig kn kt') y' n'
 
 instance Qualify Method where
     qualify (Method nm e) = do

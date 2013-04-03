@@ -34,10 +34,10 @@ instance Ppr Exp where
           ]
       | (f, xs@(_:_)) <- de_appsE e = sep (map atom (f:xs))
 
-    ppr (LitE l) = ppr l
-    ppr (ConE s) = ppr s
-    ppr (VarE s) = ppr s
-    ppr (CaseE x k y n)
+    ppr (LitE _ l) = ppr l
+    ppr (ConE _ s) = ppr s
+    ppr (VarE _ s) = ppr s
+    ppr (CaseE _ x k y n)
         = text "case" <+> atom x <+> text "of" <+> text "{"
             $+$ nest tabwidth (vcat [
                     ppr k <+> text "->" <+> ppr y,

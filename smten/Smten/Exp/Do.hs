@@ -3,6 +3,7 @@ module Smten.Exp.Do (
     Stmt(..), doE,
     ) where
 
+import Smten.Location
 import Smten.Type
 import Smten.Name
 import Smten.Sig
@@ -19,20 +20,20 @@ data Stmt =
 
 -- | do { stmts }
 -- The final statement of the 'do' must be a NoBindS.
-doE :: [Stmt] -> Exp
-doE [] = error $ "doE on empty list"
-doE [NoBindS e] = e 
-doE ((LetS bs):stmts) =
-  let rest = doE stmts
-  in mletsE bs rest
-doE ((NoBindS e):stmts) =
-  let rest = doE stmts
+doE :: Location -> [Stmt] -> Exp
+doE _ [] = error $ "doE on empty list"
+doE _ [NoBindS e] = e 
+doE l ((LetS bs):stmts) =
+  let rest = doE l stmts
+  in mletsE l bs rest
+doE l ((NoBindS e):stmts) =
+  let rest = doE l stmts
       tbind = (arrowsT [typeof e, typeof rest, typeof rest])
-  in appsE (varE (Sig (name ">>") tbind)) [e, rest]
-doE ((BindS p e):stmts) =
-  let rest = doE stmts
-      f = mlamE [p] rest
+  in appsE l (varE l (Sig (name ">>") tbind)) [e, rest]
+doE l ((BindS p e):stmts) =
+  let rest = doE l stmts
+      f = mlamE l [p] rest
       tbind = (arrowsT [typeof e, typeof f, typeof rest])
-  in appsE (varE (Sig (name ">>=") tbind)) [e, f]
+  in appsE l (varE l (Sig (name ">>=") tbind)) [e, f]
 
 

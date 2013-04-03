@@ -36,7 +36,7 @@
 -- | Parser monad used in smten parsing.
 module Smten.Parser.Monad (
     Token(..), ParserMonad, runParser,
-    failE, lfailE, pfailE, withloc,
+    failE, lfailE, pfailE, withloc, withlocM,
     single, many, newline, getText, setText, getLoc, getTLoc, saveLoc,
     expectBrace, setExpectBrace,
     lpush, ltop, lpop, tpush, tnext,
@@ -233,4 +233,7 @@ pfailE tok = lfailE $ "parser error at " ++ show tok
 
 withloc :: (Location -> a) -> ParserMonad a
 withloc f = f <$> getLoc
+
+withlocM :: (Location -> ParserMonad a) -> ParserMonad a
+withlocM f = getLoc >>= f
 

@@ -21,5 +21,5 @@ import Smten.ExpH.Sugar
 runio :: ExpH -> IO ExpH
 runio e
  | Just io <- de_ioEH e = io
- | otherwise = error $ "runio got non-IO: " ++ pretty e
+ | ErrorEH _ s <- force e = error s
 

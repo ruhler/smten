@@ -172,14 +172,14 @@ instance Constrain Lit where
     constrain l = return $ typeof l
 
 instance Constrain Exp where
-    constrain (LitE l) = constrain l
-    constrain (ConE (Sig n t)) = do
+    constrain (LitE _ l) = constrain l
+    constrain (ConE _ (Sig n t)) = do
         env <- gets ti_env
         cty <- lift $ lookupDataConType env n
         rcty <- retype cty
         addc rcty t
         return t
-    constrain v@(VarE (Sig n t)) = do
+    constrain v@(VarE _ (Sig n t)) = do
         tenv <- gets ti_tenv
         case lookup n (map (\(Sig n t) -> (n, t)) tenv) of
             Just t' -> addc t' t
@@ -189,7 +189,7 @@ instance Constrain Exp where
                 rvt <- retype vt
                 addc rvt t
         return t
-    constrain (AppE f x) = do
+    constrain (AppE _ f x) = do
         tf <- constrain f
         tx <- constrain x
         it <- newvt
@@ -197,10 +197,10 @@ instance Constrain Exp where
         addc (arrowT it ot) tf
         addc it tx
         return ot
-    constrain (LamE s x) = do
+    constrain (LamE _ s x) = do
         ot <- scoped [s] (constrain x)
         return $ arrowT (typeof s) ot
-    constrain (CaseE x (Sig kn kt) y n) = do
+    constrain (CaseE _ x (Sig kn kt) y n) = do
         xt <- constrain x
         yt <- constrain y
         nt <- constrain n 

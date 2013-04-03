@@ -113,7 +113,7 @@ instance TypeCheck TopSig where
 instance TypeCheck Exp where
    typecheckM (LitE {}) = return ()
 
-   typecheckM c@(ConE s@(Sig n ct)) = do
+   typecheckM c@(ConE l s@(Sig n ct)) = withloc l $ do
       typecheckM ct
       env <- asks tcs_env
       texpected <- lookupDataConType env n
@@ -121,7 +121,7 @@ instance TypeCheck Exp where
          then return ()
          else tthrow $ "expecting type " ++ pretty texpected ++ ", but found type " ++ pretty ct ++ " in data constructor " ++ pretty n
 
-   typecheckM (VarE s@(Sig n t)) = do
+   typecheckM (VarE l s@(Sig n t)) = withloc l $ do
       typecheckM t
       tenv <- asks tcs_vars
       case lookup n tenv of
@@ -142,7 +142,7 @@ instance TypeCheck Exp where
               vctx <- lookupVarContext env s
               mapM_ satisfied vctx
 
-   typecheckM (AppE f x) = do    
+   typecheckM (AppE l f x) = withloc l $ do    
       typecheckM f
       typecheckM x
       case typeof f of
@@ -154,10 +154,10 @@ instance TypeCheck Exp where
                      " in expression " ++ pretty x
          t -> tthrow $ "expected function type, but got type " ++ pretty t ++ " in expression " ++ pretty f
 
-   typecheckM (LamE (Sig n t) x)
-     = local (\tcs -> tcs { tcs_vars = (n, t) : tcs_vars tcs}) $ typecheckM x
+   typecheckM (LamE l (Sig n t) x) = withloc l $ do
+     local (\tcs -> tcs { tcs_vars = (n, t) : tcs_vars tcs}) $ typecheckM x
 
-   typecheckM (CaseE x k y n) = do
+   typecheckM (CaseE l x k y n) = withloc l $ do
      typecheckM x
      typecheckM k
      typecheckM y

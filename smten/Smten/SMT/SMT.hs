@@ -404,7 +404,7 @@ de_symbolicEH e
     sat <- Symbolic $ query (assert pred >> return (return ()))
     modify $ \qs -> qs { qs_pred = pred }
     case sat of
-        Just () -> error $ "smten: " ++ s
+        Just () -> error s
         Nothing -> return (errorEH t s)
  | otherwise = error $ "SMTEN INTERNAL ERROR: unexpected argument to de_symbolicEH: " ++ pretty e
 

@@ -39,6 +39,7 @@ module Smten.Parser.Grammar (parse) where
 
 import Data.Maybe
 
+import Smten.Location
 import Smten.Failable
 import Smten.Name
 import Smten.Lit
@@ -208,7 +209,7 @@ cdecls :: { [CDec] }
 
 cdecl :: { CDec }
  : gendecl
-    { CSig $1 }
+    {% withloc $ \l ->  CSig l $1 }
  | funlhs rhs
     { CClause (fst $1) (MAlt (snd $1) $2) }
 
@@ -219,24 +220,24 @@ ldecls :: { [LDec] }
     { $1 ++ [$3] }
 
 ldecl :: { LDec }
- : apoe lopt(apoes) rhs {% do
+ : apoe lopt(apoes) rhs {% withlocM $ \l -> do
       p <- toPat $1
       ps <- mapM toPat $2
       case (p, ps, $3) of
-        (p, [], WBodies [Body [] e] []) -> return (LPat p e)
-        (VarP n, _, _) -> return (LClause n (MAlt ps $3))
+        (p, [], WBodies _ [Body _ [] e] []) -> return (LPat p e)
+        (VarP n, _, _) -> return (LClause l n (MAlt ps $3))
         _ -> lfailE "invalid let declaration"
     }
 
-idecls :: { [(Name, MAlt)] }
+idecls :: { [(Name, Location, MAlt)] }
  : idecl
     { [$1] }
  | idecls ';' idecl
     { $1 ++ [$3] }
 
-idecl :: { (Name, MAlt) }
+idecl :: { (Name, Location, MAlt) }
  : funlhs rhs
-    { (fst $1, MAlt (snd $1) $2) }
+    {%withloc $ \l ->  (fst $1, l, MAlt (snd $1) $2) }
 
 gendecl :: { TopSig }
  : var '::' type
@@ -332,12 +333,12 @@ funlhs :: { (Name, [Pat]) }
     {% fmap ((,) $1) (mapM toPat $2) } 
 
 rhs :: { WBodies }
- : '=' poe lopt(wdecls) {% do
+ : '=' poe lopt(wdecls) {% withlocM $ \l -> do
     e <- toExp $2
-    return $ WBodies [Body [] e] $3
+    return $ WBodies l [Body l [] e] $3
    }
  | rhsbodies lopt(wdecls)
-    { WBodies $1 $2 }
+    {% withloc $ \l -> WBodies l $1 $2 }
 
 wdecls :: { [(Pat, Exp)] }
  : 'where' '{' ldecls opt(';') '}'
@@ -349,45 +350,45 @@ rhsbodies :: { [Body] }
 
 rhsbody :: { Body }
  : '|' guards '=' poe
-    {% fmap (Body $2) (toExp $4) }
+    {% withlocM $ \l -> fmap (Body l $2) (toExp $4) }
 
 poe :: { PatOrExp }
  : lpoe { $1 }
- | lpoe '::' type { sigPE $1 $3 }
- | poe '+' poe { opPE "+" $1 $3 }
- | poe '-' poe { opPE "-" $1 $3 }
- | poe '*' poe { opPE "*" $1 $3 }
- | poe '$' poe { opPE "$" $1 $3 }
- | poe '.' poe { opPE "." $1 $3 }
- | poe '>>' poe { opPE ">>" $1 $3 }
- | poe '>>=' poe { opPE ">>=" $1 $3 }
- | poe '||' poe { opPE "||" $1 $3 }
- | poe '&&' poe { opPE "&&" $1 $3 }
- | poe ':' poe { conopPE ":"$1 $3 }
- | poe '==' poe { opPE "==" $1 $3 }
- | poe '/=' poe { opPE "/=" $1 $3 }
- | poe '<' poe { opPE "<" $1 $3 }
- | poe '<=' poe { opPE "<=" $1 $3 }
- | poe '>=' poe { opPE ">=" $1 $3 }
- | poe '>' poe { opPE ">" $1 $3 }
- | poe op poe { appsPE $2 [$1, $3] }
+ | lpoe '::' type {% withloc $ \l -> sigPE l $1 $3 }
+ | poe '+' poe {% lopPE "+" $1 $3 }
+ | poe '-' poe {% lopPE "-" $1 $3 }
+ | poe '*' poe {% lopPE "*" $1 $3 }
+ | poe '$' poe {% lopPE "$" $1 $3 }
+ | poe '.' poe {% lopPE "." $1 $3 }
+ | poe '>>' poe {% lopPE ">>" $1 $3 }
+ | poe '>>=' poe {% lopPE ">>=" $1 $3 }
+ | poe '||' poe {% lopPE "||" $1 $3 }
+ | poe '&&' poe {% lopPE "&&" $1 $3 }
+ | poe ':' poe {% withloc $ \l -> conopPE l ":"$1 $3 }
+ | poe '==' poe {% lopPE "==" $1 $3 }
+ | poe '/=' poe {% lopPE "/=" $1 $3 }
+ | poe '<' poe {% lopPE "<" $1 $3 }
+ | poe '<=' poe {% lopPE "<=" $1 $3 }
+ | poe '>=' poe {% lopPE ">=" $1 $3 }
+ | poe '>' poe {% lopPE ">" $1 $3 }
+ | poe op poe {% withloc $ \l -> appsPE l $2 [$1, $3] }
 
 lpoe :: { PatOrExp }
  : '\\' apoes '->' poe
-    { lamPE $2 $4 }
+    {% withloc $ \l -> lamPE l $2 $4 }
  | 'let' '{' ldecls opt(';') '}' 'in' poe
-    { letPE $3 $7 }
+    {% withloc $ \l -> letPE l $3 $7 }
  | 'if' poe 'then' poe 'else' poe
-    { ifPE $2 $4 $6 }
+    {% withloc $ \l -> ifPE l $2 $4 $6 }
  | 'case' poe 'of' '{' alts opt(';') '}'
-    { casePE $2 $5 }
+    {% withloc $ \l -> casePE l $2 $5 }
  | 'do' '{' stmts opt(';') '}'
     {% case last $3 of
-         NoBindS _ -> return (doPE $3)
+         NoBindS _ -> withloc $ \l -> (doPE l $3)
          _ -> lfailE "last statement in do must be an expression"
     }
  | apoes
-    { appsPE (head $1) (tail $1) }
+    {% withloc $ \l -> appsPE l (head $1) (tail $1) }
 
 apoes :: { [PatOrExp] }
  : apoe
@@ -397,33 +398,33 @@ apoes :: { [PatOrExp] }
 
 apoe :: { PatOrExp }
  : var
-    { varPE $1 }
+    {% withloc $ \l -> varPE l $1 }
  | var '@' apoe
     { asPE $1 $3 }
  | gcon
-    { conPE $1 }
+    {% withloc $ \l -> conPE l $1 }
  | literal
     { $1 }
  | '(' poe ')'
     { $2 }
  | '(' poe ',' poes_commasep ')'
-    { tuplePE ($2 : $4) }
+    {% withloc $ \l -> tuplePE l ($2 : $4) }
  | '[' poe '..' ']'
-    { fromPE $2 }
+    {% withloc $ \l -> fromPE l $2 }
  | '[' poe '..' poe ']'
-    { fromtoPE $2 $4 }
+    {% withloc $ \l -> fromtoPE l $2 $4 }
  | '[' poe ',' poe '..' ']'
-    { fromthenPE $2 $4 }
+    {% withloc $ \l -> fromthenPE l $2 $4 }
  | '[' poe ',' poe '..' poe ']'
-    { fromthentoPE $2 $4 $6 }
+    {% withloc $ \l -> fromthentoPE l $2 $4 $6 }
  | '[' poe '|' guards ']'
-    { lcompPE $2 $4 }
+    {% withloc $ \l -> lcompPE l $2 $4 }
  | '[' poe ']'
-    { listPE [$2] }
+    {% withloc $ \l -> listPE l [$2] }
  | '[' poe ',' poes_commasep ']'
-    { listPE ($2 : $4) }
+    {% withloc $ \l -> listPE l ($2 : $4) }
  | apoe '{' lopt(fbinds) '}'
-    { updatePE $1 $3 }
+    {% withloc $ \l ->  updatePE l $1 $3 }
 
 guard :: { Guard }
  : poe '<-' poe {% do
@@ -444,11 +445,11 @@ guards :: { [Guard] }
 
 literal :: { PatOrExp }
  : integer
-    { integerPE $1 }
+    {% withloc $ \l -> integerPE l $1 }
  | char
-    { charPE $1 }
+    {% withloc $ \l -> charPE l $1 }
  | string
-    { stringPE $1 }
+    {% withloc $ \l -> stringPE l $1 }
 
 alts :: { [Alt] }
  : alt
@@ -460,11 +461,11 @@ alt :: { Alt }
  : poe '->' poe lopt(wdecls) {% do
     p <- toPat $1
     e <- toExp $3
-    return (simpleA p e $4)
+    withloc $ \l -> simpleA l p e $4
   }
- | poe bodies lopt(wdecls) {% do
+ | poe bodies lopt(wdecls) {% withlocM $ \l -> do
     p <- toPat $1
-    return (Alt p (WBodies $2 $3))
+    return (Alt p (WBodies l $2 $3))
   }
 
 bodies :: { [Body] }
@@ -473,7 +474,7 @@ bodies :: { [Body] }
 
 body :: { Body }
  : '|' guards '->' poe
-    {% fmap (Body $2) (toExp $4) }
+    {% withlocM $ \l -> fmap (Body l $2) (toExp $4) }
 
 stmts :: { [Stmt] }
  : stmt 
@@ -538,11 +539,11 @@ consym_op :: { Name }
 
 op :: { PatOrExp }
  : varsym
-    { varPE $1 }
+    {% withloc $ \l -> varPE l $1 }
  | '`' varid '`'
-    { varPE $2 }
+    {% withloc $ \l -> varPE l $2 }
  | consym
-    { conPE $1 }
+    {% withloc $ \l -> conPE l $1 }
 
 varsym_op :: { Name }
  : '+' { name "+" }
@@ -639,7 +640,7 @@ lopt(p)
 {
 
 parse :: FilePath -> String -> Failable Module
-parse = runParser smten_module
+parse fp str = {-# SCC "PARSE" #-} runParser smten_module fp str
 
 } 
 

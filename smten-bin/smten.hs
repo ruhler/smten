@@ -45,6 +45,7 @@ import System.Exit
 import qualified System.Console.CmdArgs.Implicit as A
 
 import Smten.Name
+import Smten.Location (lunknown)
 import Smten.Sig
 import Smten.Failable
 import Smten.Exp
@@ -116,7 +117,7 @@ main = do
         Io -> do 
             env <- loadenv includes (file args)
             tmain <- attemptIO $ lookupVarType env nmain
-            let m = varE (Sig (name (main_is args)) tmain)
+            let m = varE lunknown (Sig (name (main_is args)) tmain)
             runio (inline env (smtenPs ++ smtPs) m)
             return ()
         Desugar -> do
