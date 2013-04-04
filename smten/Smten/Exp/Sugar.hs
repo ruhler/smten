@@ -94,13 +94,13 @@ de_appsE (AppE _ a b) =
 de_appsE t = (t, [])
 
 ifE :: Location -> Exp -> Exp -> Exp -> Exp
-ifE l p a b = CaseE l p (Sig (name "True") boolT) a b
+ifE l p a b = CaseE l p (Sig trueN boolT) a b
 
 trueE :: Location -> Exp
-trueE l = conE l (Sig (name "True") boolT)
+trueE l = conE l (Sig trueN boolT)
 
 falseE :: Location -> Exp
-falseE l = conE l (Sig (name "False") boolT)
+falseE l = conE l (Sig falseN boolT)
 
 boolE :: Location -> Bool -> Exp
 boolE l True = trueE l
@@ -109,8 +109,8 @@ boolE l False = falseE l
 de_boolE :: Exp -> Maybe Bool
 de_boolE e = do
     Sig nm _ <- de_conE e
-    guard $ nm == name "True" || nm == name "False"
-    return (nm == name "True")
+    guard $ nm `elem` [trueN, falseN]
+    return (nm == trueN)
 
 charE :: Location -> Char -> Exp
 charE l = litE l . charL
