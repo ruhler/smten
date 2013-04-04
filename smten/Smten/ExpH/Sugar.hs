@@ -111,13 +111,13 @@ letEH :: Sig -> Type -> ExpH -> (ExpH -> ExpH) -> ExpH
 letEH s t v b = appEH (lamEH s t b) v
 
 unitEH :: ExpH
-unitEH = conEH (Sig (name "()") unitT)
+unitEH = conEH (Sig unitN unitT)
 
 trueEH :: ExpH
-trueEH = conEH (Sig (name "True") boolT)
+trueEH = conEH (Sig trueN boolT)
 
 falseEH :: ExpH
-falseEH = conEH (Sig (name "False") boolT)
+falseEH = conEH (Sig falseN boolT)
 
 -- | Boolean expression
 boolEH :: Bool -> ExpH

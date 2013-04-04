@@ -249,7 +249,7 @@ type :: { Type }
  : btype
     { $1 } 
  | btype '->' type
-    { AppT (AppT (conT (name "->")) $1) $3 }
+    { arrowT $1 $3 }
 
 btype :: { Type }
  : atype
@@ -287,11 +287,11 @@ gtycon :: { Name }
  : tycon
     { $1 }
  | '(' ')'
-    { name "()" }
+    { unitN }
  | '[' ']'
     { name "[]" }
  | '(' '->' ')'
-    { name "->" }
+    { arrowN }
  | '(' commas ')'
     { name $ "(" ++ $2 ++ ")" }
 
@@ -505,7 +505,7 @@ fbind :: { (Name, Exp) }
 
 gcon :: { Name }
  : '(' ')'
-    { name "()" }
+    { unitN }
  | '[' ']'
     { name "[]" }
  | '(' commas ')'

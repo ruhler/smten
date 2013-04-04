@@ -115,7 +115,6 @@ Bugs::
   defined, in which case bad stuff will happen.
             
 Other::
-* Have name sugar for arrowN, tupleN, de_tupleN, unitN, etc...
 * Update LICENCE files to include 2013 copyright.
 * TODO's inlined in the code
 * Do a code review of all of Smten, figure out what can be cleaned up and how.

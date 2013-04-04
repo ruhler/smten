@@ -22,7 +22,7 @@ prelude :: [Dec]
 prelude = [
     DataD ploc (name "Char") [] [],
     DataD ploc (name "Integer") [] [],
-    DataD ploc (name "()") [] [Con (name "()") []],
+    DataD ploc unitN [] [Con unitN []],
     tuple 2, tuple 3, tuple 4,
     -- tuple 5, tuple 6, tuple 7, tuple 8, tuple 9,
     DataD ploc (name "[]") [TyVar (name "a") StarK] [Con (name "[]") [], Con (name ":") [VarT (name "a") StarK, listT (VarT (name "a") StarK)]]

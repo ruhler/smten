@@ -38,6 +38,9 @@ library
     Smten.HashTable
 
     Smten.Name
+    Smten.Name.Name
+    Smten.Name.Sugar
+
     Smten.Sig
 
     Smten.Type
@@ -81,6 +84,8 @@ library
     Smten.Prim.Bit
 
     Smten.HaskellF.Compile
+    Smten.HaskellF.Compile.HF
+    Smten.HaskellF.Compile.Name
     Smten.HaskellF.Compile.Ppr
     Smten.HaskellF.HaskellF
     Smten.HaskellF.Lib.Prelude

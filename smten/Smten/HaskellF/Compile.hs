@@ -44,7 +44,6 @@ module Smten.HaskellF.Compile (
     haskellf,
     ) where
 
-import Data.Char(isAlphaNum)
 import Data.Functor((<$>))
 import Data.List(genericLength)
 
@@ -63,52 +62,9 @@ import Smten.Lit
 import Smten.Exp
 import Smten.Dec
 import Smten.Ppr
+import Smten.HaskellF.Compile.HF
+import Smten.HaskellF.Compile.Name
 import Smten.HaskellF.Compile.Ppr
-
-data HFS = HFS {
-    hfs_env :: Env,
-
-    -- | A list of type variables already in scope.
-    hfs_tyvars :: [Name],
-    
-    -- | A map from Type to variable type name.
-    -- This is used to replace numeric type operations with variable types, to
-    -- get around issues with ghc doing math.
-    hfs_retype :: [(Type, Name)]
-
-}
-
-type HF = ReaderT HFS Failable
-
-runHF :: Env -> HF a -> Failable a
-runHF e x = runReaderT x (HFS e [] [])
-
--- TODO: Here we just drop the qualified part of the name.
--- This is a hack, requiring there are no modules which define an entity of
--- the same name (unlikely...). Really we should form a proper haskell name
--- for whatever this name is used for (varid, conid)
-hsName :: Name -> H.Name
-hsName n
- | Just i <- de_tupleN n = H.mkName $ "Tuple" ++ show i ++ "__"
- | n == name "()" = H.mkName $ "Unit__"
- | n == name ":" = H.mkName $ "Cons__"
- | n == name "[]" = H.mkName $ "Nil__"
-hsName n =
-  let dequalify :: String -> String
-      dequalify n = 
-        case break (== '.') n of
-            (n', []) -> n'
-            (_, ".") -> "."
-            (_, n') -> dequalify (tail n')
-      symify :: String -> String
-      symify s = if issymbol s then "(" ++ s ++ ")" else s
-  in H.mkName . symify . dequalify . unname $ n
-
-issymbol :: String -> Bool
-issymbol ('(':_) = False
-issymbol "[]" = False
-issymbol (h:_) = not $ isAlphaNum h || h == '_'
-
 
 hsLit :: Lit -> H.Exp
 hsLit l
@@ -122,7 +78,7 @@ prependnm m n = hsName $ name m `nappend` n
 -- doing a case match against the constructor.
 constrcasenm :: Name -> H.Name
 constrcasenm n 
- | n == name "()" = constrcasenm $ name "Unit__"
+ | n == unitN = constrcasenm $ name "Unit__"
  | Just x <- de_tupleN n = constrcasenm . name $ "Tuple" ++ show x ++ "__"
  | n == name "[]" = constrcasenm $ name "Nil__"
  | n == name ":" = constrcasenm $ name "Cons__"
@@ -178,12 +134,8 @@ hsType' t = do
     case t of
       _ | Just n <- lookup t retype -> return $ H.VarT (hsName n)
       (ConT n _)
-        | n == name "()" -> return $ H.ConT (H.mkName "Unit__")
-        | Just x <- de_tupleN n
-           -> return $ H.ConT (H.mkName $ "Tuple" ++ show x ++ "__")
-        | n == name "[]" -> return $ H.ConT (H.mkName "List__")
-        | n == name "->" -> return H.ArrowT
-        | otherwise -> return $ H.ConT (hsName n)
+        | n == arrowN -> return H.ArrowT
+        | otherwise -> return $ H.ConT (hsTyName n)
       (AppT a b) -> do
         a' <- hsType' a
         b' <- hsType' b
@@ -272,7 +224,7 @@ hsDec (DataD _ n _ _) | n `elem` [
   name "Integer",
   name "Bit",
   name "[]",
-  name "()",
+  unitN,
   name "(,)",
   name "(,,)",
   name "(,,,)",
