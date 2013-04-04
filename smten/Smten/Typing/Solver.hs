@@ -51,19 +51,24 @@ import Smten.Ppr
 -- | Solve a type constraint system.
 --    The solution set is returned. Unsolveable constraints are ignored.
 solve :: [(Type, Type)] -> Map.Map Name Type
-solve xs = {-# SCC "TypeSolve" #-} finalize $ evalState finish (xs, Map.empty)
+solve xs = {-# SCC "TypeSolve" #-} finalize $ evalState finish (SS xs Map.empty)
 
-type Solver = State ([(Type, Type)], Map.Map Name Type)
+data SS = SS {
+    ss_sys :: [(Type, Type)],
+    ss_sol :: Map.Map Name Type
+}
+    
+type Solver = State SS
 
 finish :: Solver (Map.Map Name Type)
 finish = do
-    (sys, sol) <- get
+    SS sys sol <- get
     case sys of
         [] -> return sol
         ((a, b):xs) -> do
-            put (xs, sol)
+            put $ SS xs sol
             let l = \n -> Map.lookup n sol
-            single (fixassign l a, fixassign l b)
+            single (fixassign l a) (fixassign l b)
             finish
 
 -- Apply a single constraint
@@ -71,11 +76,11 @@ finish = do
 --
 -- Note: we ignore unsolvable constraints rather than throw an error here so
 -- the type checker can give more useful error messages.
-single :: (Type, Type) -> Solver ()
-single (a, b)
+single :: Type -> Type -> Solver ()
+single a b
   | AppT a1 a2 <- a, AppT b1 b2 <- b = do
-      (sys, sol) <- get
-      put ((a1,b1) : (a2,b2) : sys, sol)
+      SS sys sol <- get
+      put $ SS ((a1,b1) : (a2,b2) : sys) sol
   | VarT na _ <- a, istarget na = update na b
   | VarT nb _ <- b, istarget nb = update nb a
   | Just (n, t) <- numeric a b = update n t
@@ -102,8 +107,8 @@ update :: Name -> Type -> Solver ()
 update n t
  | hasVarT n t = return ()  -- avoid recursive definitions
  | otherwise = do
-    (sys, sol) <- get
-    put (sys, Map.insert n t sol)
+    SS sys sol <- get
+    put $ SS sys (Map.insert n t sol)
 
 -- Return true if the given VarT name appears anywhere in the given type.
 hasVarT :: Name -> Type -> Bool

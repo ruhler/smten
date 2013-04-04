@@ -40,7 +40,7 @@ qmain = do
 
 main :: IO ()
 main = do
-    runSMT Yices1 (Just "build/test/AllQ.yices1.dbg") qmain
-    runSMT Yices2 (Just "build/test/AllQ.yices2.dbg") qmain
-    putStrLn "AllQ PASSED"
+    runSMT Yices1 (Just "build/test/AllQ2.yices1.dbg") qmain
+    runSMT Yices2 (Just "build/test/AllQ2.yices2.dbg") qmain
+    putStrLn "AllQ2 PASSED"
 
