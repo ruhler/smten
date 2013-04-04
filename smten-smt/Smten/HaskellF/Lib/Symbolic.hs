@@ -30,7 +30,7 @@ instance SmtenT1 Used where
 
 instance HaskellF1 Used where
     box1 = Used
-    unbox_strict1 (Used x) = x
+    unbox1 (Used x) = x
 
 newtype Symbolic a = Symbolic ExpH
 
@@ -39,7 +39,7 @@ instance SmtenT1 Symbolic where
 
 instance HaskellF1 Symbolic where
     box1 = Symbolic
-    unbox_strict1 (Symbolic x) = x
+    unbox1 (Symbolic x) = x
 
 newtype SMT a = SMT ExpH
 
@@ -48,7 +48,7 @@ instance SmtenT1 SMT where
 
 instance HaskellF1 SMT where
     box1 = SMT
-    unbox_strict1 (SMT x) = x
+    unbox1 (SMT x) = x
 
 data Maybe a =
       Just a
@@ -64,7 +64,7 @@ instance HaskellF1 Maybe where
       | P.Just [] <- de_conHF "Nothing" e = Nothing
       | otherwise = Maybe__s e
 
-    unbox_strict1 x
+    unbox1 x
       | Just a <- x = conHF x "Just" [unbox a]
       | Nothing <- x = conHF x "Nothing" []
       | Maybe__s v <- x = v

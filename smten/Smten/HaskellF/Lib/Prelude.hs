@@ -63,7 +63,7 @@ instance HaskellF Char where
       | Just v <- de_charEH e = Char v
       | otherwise = Char__s e
 
-    unbox_strict x
+    unbox x
       | Char v <- x = charEH v
       | Char__s v <- x = v
 
@@ -85,7 +85,7 @@ instance HaskellF Integer where
      | Just v <- de_integerEH e = Integer v
      | otherwise = Integer__s e
 
-    unbox_strict x
+    unbox x
      | Integer v <- x = integerEH v
      | Integer__s v <- x = v
 
@@ -109,7 +109,7 @@ instance SmtenT1 Bit where
 
 instance HaskellF1 Bit where
     box1 = Bit
-    unbox_strict1 (Bit x) = x
+    unbox1 (Bit x) = x
 
 newtype IO a = IO ExpH
 
@@ -118,7 +118,7 @@ instance SmtenT1 IO where
 
 instance HaskellF1 IO where
     box1 = IO
-    unbox_strict1 (IO x) = x
+    unbox1 (IO x) = x
 
 data Unit__ = Unit__ | Unit__s ExpH
 
@@ -130,7 +130,7 @@ instance HaskellF Unit__ where
       | Just [] <- de_conHF "()" e = Unit__
       | otherwise = Unit__s e
 
-    unbox_strict x
+    unbox x
       | Unit__ <- x = conHF x "()" []
       | Unit__s v <- x = v
 
@@ -154,7 +154,7 @@ instance HaskellF Bool where
       | Just [] <- de_conHF "False" e = False
       | otherwise = Bool_s e
 
-    unbox_strict x
+    unbox x
       | True <- x = conHF x "True" []
       | False <- x = conHF x "False" []
       | Bool_s v <- x = v
@@ -186,7 +186,7 @@ instance HaskellF2 Tuple2__
     where box2 e | Prelude.Just [x1, x2] <- de_conHF "(,)" e
                      = Tuple2__ (box x1) (box x2)
                  | Prelude.otherwise = Tuple2____s e
-          unbox_strict2 x | Tuple2__ x1 x2 <- x
+          unbox2 x | Tuple2__ x1 x2 <- x
                        = conHF x "(,)" [unbox x1, unbox x2]
                    | Tuple2____s v <- x
                        = v
@@ -215,7 +215,7 @@ instance HaskellF3 Tuple3__
     where box3 e | Prelude.Just [x1, x2, x3] <- de_conHF "(,,)" e
                      = Tuple3__ (box x1) (box x2) (box x3)
                  | Prelude.otherwise = Tuple3____s e
-          unbox_strict3 x | Tuple3__ x1 x2 x3 <- x
+          unbox3 x | Tuple3__ x1 x2 x3 <- x
                        = conHF x "(,,)" [unbox x1, unbox x2, unbox x3]
                    | Tuple3____s v <- x
                        = v
@@ -236,7 +236,7 @@ instance HaskellF4 Tuple4__
     where box4 e | Prelude.Just [x1, x2, x3, x4] <- de_conHF "(,,,)" e
                      = Tuple4__ (box x1) (box x2) (box x3) (box x4)
                  | Prelude.otherwise = Tuple4____s e
-          unbox_strict4 x | Tuple4__ x1 x2 x3 x4 <- x
+          unbox4 x | Tuple4__ x1 x2 x3 x4 <- x
                        = conHF x "(,,,)" [unbox x1, unbox x2, unbox x3, unbox x4]
                    | Tuple4____s v <- x
                        = v
@@ -266,7 +266,7 @@ instance HaskellF1 List__ where
      | Just [x, xs] <- de_conHF ":" e = Cons__ (box x) (box xs)
      | otherwise = List__s e
 
-    unbox_strict1 x
+    unbox1 x
      | Nil__ <- x = conHF x "[]" []
      | Cons__ a b <- x = conHF x ":" [unbox a, unbox b]
      | List__s v <- x = v
@@ -303,7 +303,7 @@ instance SmtenT N__0 where
 
 instance HaskellF N__0 where
     box = N__0
-    unbox_strict (N__0 x) = x
+    unbox (N__0 x) = x
 
 newtype N__1 = N__1 ExpH
 
@@ -312,7 +312,7 @@ instance SmtenT N__1 where
 
 instance HaskellF N__1 where
     box = N__1
-    unbox_strict (N__1 x) = x
+    unbox (N__1 x) = x
 
 newtype N__2 = N__2 ExpH
 
@@ -321,7 +321,7 @@ instance SmtenT N__2 where
 
 instance HaskellF N__2 where
     box = N__2
-    unbox_strict (N__2 x) = x
+    unbox (N__2 x) = x
 
 newtype N__PLUS a b = N__PLUS ExpH
 
@@ -330,7 +330,7 @@ instance SmtenT2 N__PLUS where
 
 instance HaskellF2 N__PLUS where
     box2 = N__PLUS
-    unbox_strict2 (N__PLUS x) = x
+    unbox2 (N__PLUS x) = x
 
 newtype N__MINUS a b = N__MINUS ExpH
 
@@ -339,7 +339,7 @@ instance SmtenT2 N__MINUS where
 
 instance HaskellF2 N__MINUS where
     box2 = N__MINUS
-    unbox_strict2 (N__MINUS x) = x
+    unbox2 (N__MINUS x) = x
 
 newtype N__TIMES a b = N__TIMES ExpH
 
@@ -348,7 +348,7 @@ instance SmtenT2 N__TIMES where
 
 instance HaskellF2 N__TIMES where
     box2 = N__TIMES
-    unbox_strict2 (N__TIMES x) = x
+    unbox2 (N__TIMES x) = x
 
 type N__2p0 a = N__TIMES N__2 a
 type N__2p1 a = N__PLUS (N__2p0 a) N__1

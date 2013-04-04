@@ -304,9 +304,9 @@ boxmeth :: Integer -> H.Name
 boxmeth 0 = H.mkName "box"
 boxmeth n = H.mkName $ "box" ++ show n
 
-unboxstrictmeth :: Integer -> H.Name
-unboxstrictmeth 0 = H.mkName "unbox_strict"
-unboxstrictmeth n = H.mkName $ "unbox_strict" ++ show n
+unboxmeth :: Integer -> H.Name
+unboxmeth 0 = H.mkName "unbox"
+unboxmeth n = H.mkName $ "unbox" ++ show n
 
 clssmtent :: Integer -> H.Name
 clssmtent 0 = H.mkName "S.SmtenT"
@@ -393,7 +393,7 @@ mkSmtenTD n tyvars = return $
   
 -- instance S.HaskellFN Foo where
 --  boxN ...
---  unbox_strictN ...
+--  unboxN ...
 --
 -- Note: we do the same thing with crazy kinds as mkSmtenTD
 mkSymbD :: (MonadError String m) => Name -> [TyVar] -> [Con] -> m H.Dec
@@ -437,14 +437,14 @@ mkBoxD n bn constrs = do
   return $ H.FunD boxnm [clause]
   
 
---  unbox_strictN x
+--  unboxN x
 --   | FooA a b ... <- x = conHF x "FooA" [unbox a, unbox b, ...]
 --   | FooB a b ... <- x = conHF x "FooB" [unbox a, unbox b, ...]
 --   ...
 --   | Foo__s v <- x = v
 mkUnboxD :: (MonadError String m) => Name -> Integer -> [Con] -> m H.Dec
 mkUnboxD n bn constrs = do
-    let unboxnm = unboxstrictmeth bn
+    let unboxnm = unboxmeth bn
 
         mkGuard :: Con -> (H.Guard, H.Exp)
         mkGuard (Con cn tys) =

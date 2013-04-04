@@ -5,7 +5,7 @@
 
 module Smten.HaskellF.HaskellF (
     HaskellF(..), HaskellF1(..), HaskellF2(..), HaskellF3(..), HaskellF4(..),
-    SmtenHF(..), unbox,
+    SmtenHF(..),
     conHF, de_conHF, caseHF, primHF, unaryHF, binaryHF, 
     ) where
 
@@ -18,47 +18,44 @@ import Smten.Prim
 -- | HaskellF represents haskell data types with extra ExpH leg.
 class (SmtenT a) => HaskellF a where
     box :: ExpH -> a
-    unbox_strict :: a -> ExpH
-
-unbox :: (HaskellF a) => a -> ExpH
-unbox = unbox_strict
+    unbox :: a -> ExpH
 
 class (SmtenT1 m) => HaskellF1 m where
     box1 :: (HaskellF a) => ExpH -> m a
-    unbox_strict1 :: (HaskellF a) => m a -> ExpH 
+    unbox1 :: (HaskellF a) => m a -> ExpH 
 
 class (SmtenT2 m) => HaskellF2 m where
     box2 :: (HaskellF a, HaskellF b) => ExpH -> m a b
-    unbox_strict2 :: (HaskellF a, HaskellF b) => m a b -> ExpH
+    unbox2 :: (HaskellF a, HaskellF b) => m a b -> ExpH
 
 class (SmtenT3 m) => HaskellF3 m where
     box3 :: (HaskellF a, HaskellF b, HaskellF c) => ExpH -> m a b c
-    unbox_strict3 :: (HaskellF a, HaskellF b, HaskellF c) => m a b c -> ExpH
+    unbox3 :: (HaskellF a, HaskellF b, HaskellF c) => m a b c -> ExpH
 
 class (SmtenT4 m) => HaskellF4 m where
     box4 :: (HaskellF a, HaskellF b, HaskellF c, HaskellF d) => ExpH -> m a b c d
-    unbox_strict4 :: (HaskellF a, HaskellF b, HaskellF c, HaskellF d) => m a b c d -> ExpH
+    unbox4 :: (HaskellF a, HaskellF b, HaskellF c, HaskellF d) => m a b c d -> ExpH
 
 instance (HaskellF1 m, HaskellF a) => HaskellF (m a) where
     box = box1
-    unbox_strict = unbox_strict1
+    unbox = unbox1
 
 instance (HaskellF2 m, HaskellF a) => HaskellF1 (m a) where
     box1 = box2
-    unbox_strict1 = unbox_strict2
+    unbox1 = unbox2
 
 instance (HaskellF3 m, HaskellF a) => HaskellF2 (m a) where
     box2 = box3
-    unbox_strict2 = unbox_strict3
+    unbox2 = unbox3
 
 instance (HaskellF4 m, HaskellF a) => HaskellF3 (m a) where
     box3 = box4
-    unbox_strict3 = unbox_strict4
+    unbox3 = unbox4
 
 
 instance HaskellF2 (->) where
     box2 e = \x -> box $ appEH e (unbox x)
-    unbox_strict2 f =
+    unbox2 f =
        let ta :: (a -> b) -> a
            ta _ = undefined
     
@@ -87,7 +84,7 @@ caseHF k x y n =
   let tys = de_arrowsT $ smtenT y
       tcs = smtenT n
       tns = de_arrowsT tcs
-      r = box $ caseEH tcs (unbox_strict x) (Sig (name k) t) (unbox y) (unbox n)
+      r = box $ caseEH tcs (unbox x) (Sig (name k) t) (unbox y) (unbox n)
       tx = smtenT x
       t = arrowsT (take (length tys - length tns) tys ++ [tx])
   in r
