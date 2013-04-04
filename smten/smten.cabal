@@ -90,6 +90,7 @@ library
     Smten.HaskellF.Compile.Type
     Smten.HaskellF.Compile.Exp
     Smten.HaskellF.Compile.Data
+    Smten.HaskellF.Compile.Dec
     Smten.HaskellF.Compile.Ppr
 
     Smten.HaskellF.HaskellF

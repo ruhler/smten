@@ -2,7 +2,7 @@
 -- | The HaskellF compilation monad.
 module Smten.HaskellF.Compile.HF (
     HFS(..), HF, runHF,
-    asks, throw,
+    asks, local, throw,
     ) where
 
 import Control.Monad.Reader
