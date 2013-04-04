@@ -88,6 +88,7 @@ library
     Smten.HaskellF.Compile.Kind
     Smten.HaskellF.Compile.Name
     Smten.HaskellF.Compile.Type
+    Smten.HaskellF.Compile.Exp
     Smten.HaskellF.Compile.Ppr
 
     Smten.HaskellF.HaskellF

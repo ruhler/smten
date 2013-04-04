@@ -67,48 +67,8 @@ import Smten.HaskellF.Compile.Name
 import Smten.HaskellF.Compile.Kind
 import Smten.HaskellF.Compile.Ppr
 import Smten.HaskellF.Compile.Type
+import Smten.HaskellF.Compile.Exp
 
-hsLit :: Lit -> H.Exp
-hsLit l
- | Just i <- de_integerL l = H.LitE (H.IntegerL i)
- | Just c <- de_charL l = H.AppE (H.VarE (H.mkName "S.smtenHF")) (H.LitE (H.CharL c))
-
-hsExp :: Exp -> HF H.Exp
-
--- String literals:
--- TODO: the template haskell pretty printer doesn't print strings correctly
--- if they contain newlines, thus, we can't print those as string literals.
--- When they fix the template haskell pretty printer, that special case should
--- be removed here.
-hsExp e
-  | Just str <- de_stringE e
-  , '\n' `notElem` str
-    = return $ H.AppE (H.VarE (H.mkName "S.smtenHF")) (H.LitE (H.StringL str))
-
-hsExp (LitE _ l) = return (hsLit l)
-hsExp (ConE _ (Sig n _)) = return $ H.ConE (hsName n)
-hsExp (VarE _ (Sig n t)) = do
-    -- Give explicit type signature to make sure there are no type ambiguities
-    ht <- hsType t
-    return $ H.SigE (H.VarE (hsName n)) ht
-hsExp (AppE _ f x) = do
-    f' <- hsExp f
-    x' <- hsExp x
-    return $ H.AppE f' x'
-
-hsExp (LamE _ (Sig n _) x) = do
-    x' <- hsExp x
-    return $ H.LamE [H.VarP (hsName n)] x'
-
--- case x of
---    K -> y
---    _ -> n
---
--- Translates to:  __caseK x y n
-hsExp (CaseE _ x (Sig kn kt) y n) = do
-    [x', y', n'] <- mapM hsExp [x, y, n]
-    return $ foldl1 H.AppE [H.VarE (casenm kn), x', y', n']
-        
 hsMethod :: Class -> Method -> HF [H.Dec]
 hsMethod cls (Method n e) = do
     env <- asks hfs_env
