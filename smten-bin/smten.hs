@@ -121,13 +121,19 @@ main = do
             runio (inline env (smtenPs ++ smtPs) m)
             return ()
         Desugar -> do
-            mods <- load includes (file args)
+            mods <- loadmods includes (file args)
             flat <- attemptIO $ flatten mods
             outf . pretty $ flat
         Type -> do
             env <- loadenv includes (file args)
             outf . pretty $ env
         HaskellF -> do
+            -- Note: we end up parsing the main module twice. Once for the
+            -- environment, and once again to get just the main module.
+            --
+            -- I think this is acceptable, because it leads to cleaner code,
+            -- and shouldn't be overly costly.
             env <- loadenv includes (file args)
-            outf . pretty $ haskellf (not (no_main args)) (Main.mod_name args) (getDecls env)
+            mainmod <- loadmod (file args)
+            outf . pretty $ haskellf (not (no_main args)) env mainmod
 
