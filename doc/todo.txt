@@ -81,7 +81,6 @@ SMT::
 
 Query::
 * Figure out how to deal with debugging properly
-* Deal with errors in queries correctly.
 * Use value inference on assertion predicate to solve trivial predicates, then
   don't even send them to the SMT solver (?)
 

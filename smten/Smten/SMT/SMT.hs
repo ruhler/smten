@@ -132,7 +132,7 @@ check :: SMT SMT.Result
 check = {-# SCC "Check" #-} do
     solver <- gets qs_solver
     debug (SMT.pretty solver SMT.Check)
-    res <- liftIO $ SMT.check solver
+    res <- {-# SCC "SMTCheck" #-} liftIO $ SMT.check solver
     debug $ "; check returned: " ++ show res
     case res of
         SMT.Satisfiable -> do
@@ -290,13 +290,13 @@ abstract = {-# SCC "ABSTRACT" #-}
  
 use :: Symbolic a -> SMT (Used a)
 use s = {-# SCC "USE" #-} do
-    ctx <- gets qs_ctx
     v <- symbolic_smt s
+    ctx <- gets qs_ctx
     return (Used (head ctx) v)
     
 -- | Run the given query in its own scope and return the result.
 nest :: SMT a -> SMT a
-nest q = do
+nest q = {-# SCC "NEST" #-} do
   nctx <- liftIO newUnique
   qs <- get
   put $! qs { qs_ctx = nctx : qs_ctx qs }
@@ -310,7 +310,7 @@ nest q = do
 -- Read the current model from the SMT solver.
 -- Assumes the state is satisfiable.
 getmodel :: SMT ()
-getmodel = do
+getmodel = {-# SCC "GetModel" #-} do
     freevars <- gets qs_freevars
     freevals <- mapM assignment freevars
     modify $ \qs -> qs { qs_freevals = freevals }
@@ -349,7 +349,7 @@ assert p = {-# SCC "ASSERT" #-} Symbolic (mkassert p)
 
 -- | Read the value of a Used.
 used :: Used a -> Symbolic a
-used (Used ctx v) = do
+used (Used ctx v) = {-# SCC "USED" #-} do
     ctxs <- gets qs_ctx
     if (ctx `elem` ctxs)
        then return $ v
@@ -358,7 +358,7 @@ used (Used ctx v) = do
 -- | Allocate a primitive free variable of the given type.
 -- The underlying SMT solver must support this type for this to work.
 prim_free :: Type -> Symbolic ExpH
-prim_free t = do
+prim_free t = {-# SCC "PRIM_FREE" #-} do
     fid <- gets qs_freeid
     let f = Sig (name $ "free~" ++ show fid) t
     Symbolic $ mkfree f
