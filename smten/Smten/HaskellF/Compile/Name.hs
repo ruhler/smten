@@ -3,6 +3,7 @@
 
 module Smten.HaskellF.Compile.Name (
     hsName, hsTyName, nmn, nmk,
+    casenm, symnm,
     ) where
 
 import qualified Language.Haskell.TH.Syntax as H
@@ -23,11 +24,6 @@ import Smten.HaskellF.Compile.Kind
 -- the same name (unlikely...). Really we should form a proper haskell name
 -- for whatever this name is used for (varid, conid)
 hsName :: Name -> H.Name
-hsName n
- | Just i <- de_tupleN n = H.mkName $ "Tuple" ++ show i ++ "__"
- | n == unitN = H.mkName $ "Unit__"
- | n == name ":" = H.mkName $ "Cons__"
- | n == name "[]" = H.mkName $ "Nil__"
 hsName n =
   let dequalify :: String -> String
       dequalify n = 
@@ -37,7 +33,7 @@ hsName n =
             (_, n') -> dequalify (tail n')
       symify :: String -> String
       symify s = if issymbol s then "(" ++ s ++ ")" else s
-  in H.mkName . symify . dequalify . unname $ n
+  in H.mkName . symify . dequalify . hfnm $ n
 
 issymbol :: String -> Bool
 issymbol ('(':_) = False
@@ -47,11 +43,7 @@ issymbol (h:_) = not $ isAlphaNum h || h == '_'
 -- | Translate a type constructor name to haskell.
 -- Remaps builtin prelude type constructor names as appropriate.
 hsTyName :: Name -> H.Name
-hsTyName n
- | n == unitN = H.mkName "Unit__"
- | Just x <- de_tupleN n = H.mkName $ "Tuple" ++ show x ++ "__"
- | n == name "[]" = H.mkName "List__"
- | otherwise = hsName n
+hsTyName n = hsName $ name (hftynm n)
 
 -- Make a name with the number after it.
 -- If the number is 0, the original name is returned.
@@ -65,4 +57,33 @@ nmn s n = H.mkName $ s ++ show n
 
 nmk :: String -> Kind -> H.Name
 nmk s k = nmn s (knum k)
+
+-- Convert a Smten data constructor name to it's corresponding HaskellF data
+-- constructor name.
+hfnm :: Name -> String
+hfnm n
+ | Just i <- de_tupleN n = "Tuple" ++ show i ++ "__"
+ | n == unitN = "Unit__"
+ | n == name ":" = "Cons__"
+ | n == name "[]" = "Nil__"
+ | otherwise = unname n
+
+-- Convert a Smten type constructor name to it's corresponding HaskellF type
+-- constructor name.
+hftynm :: Name -> String
+hftynm n
+ | n == unitN = "Unit__"
+ | Just x <- de_tupleN n = "Tuple" ++ show x ++ "__"
+ | n == name "[]" = "List__"
+ | otherwise = unname n
+
+-- Given the name of a data constructor, return the name of the function for
+-- doing a case match against the constructor.
+casenm :: Name -> H.Name
+casenm n = H.mkName $ "__case" ++ hfnm n
+
+-- | Given the name of a type constructor, return the symbolic data
+-- constructor associated with it.
+symnm :: Name -> H.Name
+symnm n = H.mkName $ hftynm n ++ "__s"
 
