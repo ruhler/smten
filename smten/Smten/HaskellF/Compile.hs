@@ -66,6 +66,7 @@ import Smten.HaskellF.Compile.HF
 import Smten.HaskellF.Compile.Name
 import Smten.HaskellF.Compile.Kind
 import Smten.HaskellF.Compile.Ppr
+import Smten.HaskellF.Compile.Type
 
 hsLit :: Lit -> H.Exp
 hsLit l
@@ -108,53 +109,6 @@ hsExp (CaseE _ x (Sig kn kt) y n) = do
     [x', y', n'] <- mapM hsExp [x, y, n]
     return $ foldl1 H.AppE [H.VarE (casenm kn), x', y', n']
         
-hsType :: Type -> HF H.Type
-hsType = hsType' . canonical
-
-hsType' :: Type -> HF H.Type
-hsType' t = do
-    retype <- asks hfs_retype
-    case t of
-      _ | Just n <- lookup t retype -> return $ H.VarT (hsName n)
-      (ConT n _)
-        | n == arrowN -> return H.ArrowT
-        | otherwise -> return $ H.ConT (hsTyName n)
-      (AppT a b) -> do
-        a' <- hsType' a
-        b' <- hsType' b
-        return $ H.AppT a' b'
-      (VarT n _) -> return $ H.VarT (hsName n)
-      (NumT i) -> return $ hsnt i
-      (OpT f a b) -> do
-        a' <- hsType' a
-        b' <- hsType' b
-        let f' = case f of
-                    "+" -> H.ConT $ H.mkName "N__PLUS"
-                    "-" -> H.ConT $ H.mkName "N__MINUS"
-                    "*" -> H.ConT $ H.mkName "N__TIMES"
-                    _ -> error $ "hsType' TODO: AppNT " ++ f
-        return $ H.AppT (H.AppT f' a') b'
-      t -> throw $ "haskellf: unsupported type: " ++ pretty t
-
--- Return the numeric type corresponding to the given integer.
-hsnt :: Integer -> H.Type
-hsnt 0 = H.ConT (H.mkName "N__0")
-hsnt n = H.AppT (H.ConT (H.mkName $ "N__2p" ++ show (n `mod` 2))) (hsnt $ n `div` 2)
-
-hsTopType :: Context -> Type -> HF H.Type
-hsTopType ctx t = do
-    (nctx, use) <- mkContext t
-    t' <- hsType t
-    ctx' <- mapM hsClass ctx
-    case nctx ++ ctx' of
-        [] -> return t'
-        ctx'' -> return $ H.ForallT (map (H.PlainTV . hsName) use) ctx'' t'
-
-hsClass :: Class -> HF H.Pred
-hsClass (Class nm ts) = do
-    ts' <- mapM hsType ts
-    return $ H.ClassP (hsName nm) ts'
-    
 hsMethod :: Class -> Method -> HF [H.Dec]
 hsMethod cls (Method n e) = do
     env <- asks hfs_env
@@ -162,11 +116,6 @@ hsMethod cls (Method n e) = do
     mctx <- lookupMethodContext env n cls
     hsTopExp (TopExp (TopSig n mctx mt) e)
 
-
-hsSig :: TopSig -> HF H.Dec
-hsSig (TopSig n ctx t) = do
-    t' <- hsTopType ctx t
-    return $ H.SigD (hsName n) t'
 
 hsTopExp :: TopExp -> HF [H.Dec]
 hsTopExp (TopExp (TopSig n ctx t) e) = do
@@ -231,14 +180,14 @@ hsDec (ClassD _ ctx n vars exps@(TopExp (TopSig _ _ t) _:_)) = do
     -- TODO: Kind inference should update the vars in the ClassD declaration,
     -- and we should use those here.
     let tvs = filter (flip elem (map tyVarName vars) . fst) (varTs t) 
-    (nctx, tyvars) <- mkContext tvs
+    (nctx, tyvars) <- hsContext tvs
     local (\s -> s { hfs_tyvars = tyvars}) $ do
         ctx' <- mapM hsClass ctx
         exps' <- mapM hsTopExp exps
         return $ [H.ClassD (nctx ++ ctx') (hsName n) (map (H.PlainTV . hsName) (map tyVarName vars)) [] (concat exps')]
 
 hsDec (InstD _ ctx cls@(Class n ts) ms) = do
-    (nctx, tyvars) <- mkContext (appsT (conT n) ts)
+    (nctx, tyvars) <- hsContext (appsT (conT n) ts)
     local (\s -> s { hfs_tyvars = tyvars }) $ do
         ctx' <- mapM hsClass ctx
         ms' <- mapM (hsMethod cls) ms
@@ -278,19 +227,6 @@ haskellf wrapmain modname env = {-# SCC "HaskellF" #-} do
       dsm = concat <$> mapM hsDec (getDecls env)
   ds <- runHF env dsm
   return (hsHeader H.$+$ H.ppr ds)
-
--- Form the context for declarations.
---  t - The type to produce the context for. This is used to identify which
---      variable types to declare.
---  Returns the generated context and list of newly declared type variables.
-mkContext :: (VarTs a) => a -> HF ([H.Pred], [Name])
-mkContext t = do
-  retypes <- map snd <$> asks hfs_retype
-  tyvars <- asks hfs_tyvars
-  let p = flip notElem tyvars
-      vts = filter (p . fst) $ (varTs t ++ [(n, NumK) | n <- retypes])
-      tvs = [H.ClassP (nmk "S.HaskellF" k) [H.VarT (hsName n)] | (n, k) <- vts]
-  return (tvs, map fst vts)
 
 hsCon :: Con -> HF H.Con
 hsCon (Con n tys) = do

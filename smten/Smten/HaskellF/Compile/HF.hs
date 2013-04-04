@@ -1,7 +1,8 @@
 
 -- | The HaskellF compilation monad.
 module Smten.HaskellF.Compile.HF (
-    HFS(..), HF, runHF
+    HFS(..), HF, runHF,
+    asks, throw,
     ) where
 
 import Control.Monad.Reader
