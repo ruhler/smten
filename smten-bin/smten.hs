@@ -126,8 +126,9 @@ main = do
             outf . pretty $ flat
         Type -> do
             env <- loadenv includes (file args)
-            outf . pretty $ env
+            outf $ pretty env
         HaskellF -> do
             env <- loadenv includes (file args)
-            outf . pretty $ haskellf (not (no_main args)) (Main.mod_name args) (getDecls env)
+            hf <- attemptIO $ haskellf (not (no_main args)) (Main.mod_name args) env
+            outf $ pretty hf 
 

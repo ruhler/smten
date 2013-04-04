@@ -80,6 +80,9 @@ data HFS = HFS {
 
 type HF = ReaderT HFS Failable
 
+runHF :: Env -> HF a -> Failable a
+runHF e x = runReaderT x (HFS e [] [])
+
 -- TODO: Here we just drop the qualified part of the name.
 -- This is a hack, requiring there are no modules which define an entity of
 -- the same name (unlikely...). Really we should form a proper haskell name
@@ -314,8 +317,8 @@ hsDec (PrimD _ s@(TopSig n _ _)) = return []
 --  Compile the given declarations to haskell.
 haskellf ::    Bool     -- ^ Should a "__main" wrapper be generated?
             -> String   -- ^ Name of target module.
-            -> [Dec] -> H.Doc
-haskellf wrapmain modname env = {-# SCC "HaskellF" #-}
+            -> Env -> Failable H.Doc
+haskellf wrapmain modname env = {-# SCC "HaskellF" #-} do
   let hsHeader :: H.Doc
       hsHeader = H.text "{-# LANGUAGE ExplicitForAll #-}" H.$+$
                  H.text "{-# LANGUAGE MultiParamTypeClasses #-}" H.$+$
@@ -337,12 +340,9 @@ haskellf wrapmain modname env = {-# SCC "HaskellF" #-}
                     then H.text "__main = __main_wrapper main"
                     else H.empty
 
-      dsm = concat <$> mapM hsDec env
-      ds = surely $ runReaderT dsm (HFS (mkEnv env) [] [])
-  in hsHeader H.$+$ H.ppr ds
-
-harrowsT :: [H.Type] -> H.Type
-harrowsT = foldr1 (\a b -> H.AppT (H.AppT H.ArrowT a) b)
+      dsm = concat <$> mapM hsDec (getDecls env)
+  ds <- runHF env dsm
+  return (hsHeader H.$+$ H.ppr ds)
 
 clshaskellf :: Integer -> H.Name
 clshaskellf 0 = H.mkName "S.HaskellF"
