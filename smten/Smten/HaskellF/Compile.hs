@@ -54,7 +54,6 @@ import Control.Monad.Reader
 import qualified Language.Haskell.TH.PprLib as H
 import qualified Language.Haskell.TH as H
 import qualified Language.Haskell.TH.Syntax as H
-import qualified Text.PrettyPrint.HughesPJ as HPJ
 
 import Smten.Failable
 import Smten.Name
@@ -64,6 +63,7 @@ import Smten.Lit
 import Smten.Exp
 import Smten.Dec
 import Smten.Ppr
+import Smten.HaskellF.Compile.Ppr
 
 data HFS = HFS {
     hfs_env :: Env,
@@ -553,11 +553,3 @@ mkCaseD n tyvars (Con cn tys) = do
       funD = H.FunD (constrcasenm cn) [clause]
   return [sigD, funD]
 
-
-instance Ppr H.Doc where
-  ppr d =
-    let hpj = H.to_HPJ_Doc d
-        hstyle = (HPJ.style { HPJ.lineLength = maxBound })
-        str = {-# SCC "RenderHaskellF" #-} HPJ.renderStyle hstyle hpj
-    in text str 
-    

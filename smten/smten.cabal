@@ -81,6 +81,7 @@ library
     Smten.Prim.Bit
 
     Smten.HaskellF.Compile
+    Smten.HaskellF.Compile.Ppr
     Smten.HaskellF.HaskellF
     Smten.HaskellF.Lib.Prelude
     Smten.HaskellF.TH
