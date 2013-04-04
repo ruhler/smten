@@ -45,7 +45,7 @@ module Smten.HaskellF.Compile (
     ) where
 
 import Data.Functor((<$>))
-import Data.List(genericLength)
+import Data.List(genericLength, genericReplicate)
 
 import Control.Monad.Error
 import Control.Monad.Reader
@@ -64,6 +64,7 @@ import Smten.Dec
 import Smten.Ppr
 import Smten.HaskellF.Compile.HF
 import Smten.HaskellF.Compile.Name
+import Smten.HaskellF.Compile.Kind
 import Smten.HaskellF.Compile.Ppr
 
 hsLit :: Lit -> H.Exp
@@ -225,9 +226,9 @@ hsDec (DataD _ n _ _) | n `elem` [
   name "Bit",
   name "[]",
   unitN,
-  name "(,)",
-  name "(,,)",
-  name "(,,,)",
+  tupleN 2,
+  tupleN 3,
+  tupleN 4,
   name "Maybe",
   name "SMT",
   name "Symbolic",
@@ -296,30 +297,6 @@ haskellf wrapmain modname env = {-# SCC "HaskellF" #-} do
   ds <- runHF env dsm
   return (hsHeader H.$+$ H.ppr ds)
 
-clshaskellf :: Integer -> H.Name
-clshaskellf 0 = H.mkName "S.HaskellF"
-clshaskellf n = H.mkName $ "S.HaskellF" ++ show n
-
-boxmeth :: Integer -> H.Name
-boxmeth 0 = H.mkName "box"
-boxmeth n = H.mkName $ "box" ++ show n
-
-unboxmeth :: Integer -> H.Name
-unboxmeth 0 = H.mkName "unbox"
-unboxmeth n = H.mkName $ "unbox" ++ show n
-
-clssmtent :: Integer -> H.Name
-clssmtent 0 = H.mkName "S.SmtenT"
-clssmtent n = H.mkName $ "S.SmtenT" ++ show n
-
-smtentmeth :: Integer -> H.Name
-smtentmeth 0 = H.mkName "smtenT"
-smtentmeth n = H.mkName $ "smtenT" ++ show n
-
-smtentmethq :: Integer -> H.Name
-smtentmethq 0 = H.mkName "S.smtenT"
-smtentmethq n = H.mkName $ "S.smtenT" ++ show n
-
 -- Form the context for declarations.
 --  t - The type to produce the context for. This is used to identify which
 --      variable types to declare.
@@ -330,15 +307,8 @@ mkContext t = do
   tyvars <- asks hfs_tyvars
   let p = flip notElem tyvars
       vts = filter (p . fst) $ (varTs t ++ [(n, NumK) | n <- retypes])
-      tvs = [H.ClassP (clshaskellf (knum k)) [H.VarT (hsName n)] | (n, k) <- vts]
+      tvs = [H.ClassP (nmk "S.HaskellF" k) [H.VarT (hsName n)] | (n, k) <- vts]
   return (tvs, map fst vts)
-
-knum :: Kind -> Integer
-knum StarK = 0
-knum NumK = 0
-knum (ArrowK a b) = 1 + knum a
-knum (VarK i) = 0 -- default to StarK
-knum UnknownK = 0
 
 hsCon :: Con -> HF H.Con
 hsCon (Con n tys) = do
@@ -371,23 +341,22 @@ mkSmtenTD n tyvars = return $
   let (rkept, rdropped) = span (\(TyVar n k) -> knum k == 0) (reverse tyvars)
       nkept = genericLength rkept
       dropped = reverse rdropped
-      ctx = [H.ClassP (clssmtent (knum k)) [H.VarT (hsName n)] | TyVar n k <- dropped]
+      ctx = [H.ClassP (nmk "S.SmtenT" k) [H.VarT (hsName n)] | TyVar n k <- dropped]
       cont = H.AppE (H.VarE (H.mkName "S.conT"))
                     (H.AppE (H.VarE (H.mkName "S.name"))
                             (H.LitE (H.StringL (unname n))))
 
       mkarg :: TyVar -> H.Exp
       mkarg (TyVar n k) = 
-        H.AppE (H.VarE (smtentmethq (knum k)))
+        H.AppE (H.VarE (nmk "S.smtenT" k))
                (H.SigE (H.VarE (H.mkName "Prelude.undefined"))
-                       (foldl H.AppT (H.VarT (hsName n)) (replicate (fromInteger (knum k)) (H.ConT (H.mkName "()")))))
+                       (foldl H.AppT (H.VarT (hsName n)) (genericReplicate (knum k) (H.ConT (H.mkName "()")))))
 
       args = H.ListE (map mkarg dropped)
       body = H.AppE (H.AppE (H.VarE (H.mkName "S.appsT")) cont) args
-      smtent = H.FunD (smtentmeth nkept) [
+      smtent = H.FunD (nmn "smtenT" nkept) [
                 H.Clause [H.WildP] (H.NormalB body) []]
-      clsnamet = clssmtent nkept
-      tyt = H.AppT (H.ConT clsnamet)
+      tyt = H.AppT (H.ConT $ nmn "S.SmtenT" nkept)
                    (foldl H.AppT (H.ConT (hsName n)) [H.VarT (hsName n) | TyVar n _ <- dropped])
   in H.InstanceD ctx tyt [smtent]
   
@@ -403,8 +372,8 @@ mkSymbD n tyvars constrs = do
         dropped = reverse rdropped
     boxD <- mkBoxD n nkept constrs
     unboxD <- mkUnboxD n nkept constrs
-    let ctx = [H.ClassP (clshaskellf (knum k)) [H.VarT (hsName n)] | TyVar n k <- dropped]
-        clsname = clshaskellf nkept
+    let ctx = [H.ClassP (nmk "S.HaskellF" k) [H.VarT (hsName n)] | TyVar n k <- dropped]
+        clsname = nmn "S.HaskellF" nkept
         ty = H.AppT (H.ConT clsname) 
                     (foldl H.AppT (H.ConT (hsName n)) [H.VarT (hsName n) | TyVar n _ <- dropped])
     return $ H.InstanceD ctx ty [boxD, unboxD]
@@ -416,9 +385,7 @@ mkSymbD n tyvars constrs = do
 --   | otherwise = Foo__s e
 mkBoxD :: (MonadError String m) => Name -> Integer -> [Con] -> m H.Dec
 mkBoxD n bn constrs = do
-  let boxnm = boxmeth bn
-      
-      mkGuard :: Con -> (H.Guard, H.Exp)
+  let mkGuard :: Con -> (H.Guard, H.Exp)
       mkGuard (Con cn tys) = 
         let argnms = [H.mkName ("x" ++ show i) | i <- [1..length tys]]
             pat = H.ConP (H.mkName "Prelude.Just") [H.ListP (map H.VarP argnms)]
@@ -434,7 +401,7 @@ mkBoxD n bn constrs = do
       sguard = (H.NormalG (H.VarE (H.mkName "Prelude.otherwise")), H.AppE (H.ConE (symconstrnm n)) (H.VarE (H.mkName "e")))
       guards = map mkGuard constrs ++ [sguard]
       clause = H.Clause [H.VarP (H.mkName "e")] (H.GuardedB guards) []
-  return $ H.FunD boxnm [clause]
+  return $ H.FunD (nmn "box" bn) [clause]
   
 
 --  unboxN x
@@ -444,9 +411,7 @@ mkBoxD n bn constrs = do
 --   | Foo__s v <- x = v
 mkUnboxD :: (MonadError String m) => Name -> Integer -> [Con] -> m H.Dec
 mkUnboxD n bn constrs = do
-    let unboxnm = unboxmeth bn
-
-        mkGuard :: Con -> (H.Guard, H.Exp)
+    let mkGuard :: Con -> (H.Guard, H.Exp)
         mkGuard (Con cn tys) =
           let argnms = [H.mkName ("x" ++ show i) | i <- [1..length tys]]
               pat = H.ConP (hsName cn) (map H.VarP argnms)
@@ -465,7 +430,7 @@ mkUnboxD n bn constrs = do
         sguard = (H.PatG [H.BindS spat ssrc], H.VarE (H.mkName "v"))
         guards = map mkGuard constrs ++ [sguard]
         clause = H.Clause [H.VarP (H.mkName "x")] (H.GuardedB guards) []
-    return $ H.FunD unboxnm [clause]
+    return $ H.FunD (nmn "unbox" bn) [clause]
 
 -- __caseFooB :: Foo -> (FooB1 -> FooB2 -> ... -> z) -> z -> z
 -- __caseFooB x y n

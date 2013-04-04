@@ -51,7 +51,7 @@ import Smten.Ppr
 -- | Solve a type constraint system.
 --    The solution set is returned. Unsolveable constraints are ignored.
 solve :: [(Type, Type)] -> Map.Map Name Type
-solve xs = finalize $ evalState finish (xs, Map.empty)
+solve xs = {-# SCC "TypeSolve" #-} finalize $ evalState finish (xs, Map.empty)
 
 type Solver = State ([(Type, Type)], Map.Map Name Type)
 
