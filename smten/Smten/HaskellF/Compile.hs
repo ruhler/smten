@@ -33,43 +33,21 @@
 -- 
 -------------------------------------------------------------------------------
 
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE PatternGuards #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE TypeSynonymInstances #-}
-
--- Back end target which translates smten programs into Haskell. Supports the
--- Query monad and SMT queries.
+-- Back end target which translates smten programs into Haskell. Supports
+-- symbolic computation.
 module Smten.HaskellF.Compile (
     haskellf,
     ) where
 
 import Data.Functor((<$>))
-import Data.List(genericLength, genericReplicate)
-
-import Control.Monad.Error
-import Control.Monad.Reader
-
 import qualified Language.Haskell.TH.PprLib as H
 import qualified Language.Haskell.TH as H
-import qualified Language.Haskell.TH.Syntax as H
 
 import Smten.Failable
-import Smten.Name
-import Smten.Sig
-import Smten.Type
-import Smten.Lit
-import Smten.Exp
 import Smten.Dec
-import Smten.Ppr
 import Smten.HaskellF.Compile.HF
-import Smten.HaskellF.Compile.Name
-import Smten.HaskellF.Compile.Kind
-import Smten.HaskellF.Compile.Ppr
-import Smten.HaskellF.Compile.Type
-import Smten.HaskellF.Compile.Exp
-import Smten.HaskellF.Compile.Data
 import Smten.HaskellF.Compile.Dec
+import Smten.HaskellF.Compile.Ppr
 
 -- haskell decs
 --  Compile the given declarations to haskell.
