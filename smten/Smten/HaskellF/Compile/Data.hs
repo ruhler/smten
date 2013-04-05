@@ -35,7 +35,7 @@ mkDataD n tyvars constrs = do
   let tyvars' = map (H.PlainTV . hsName . tyVarName) tyvars
   constrs' <- mapM hsCon constrs
   let sconstr = H.NormalC (symnm n) [(H.NotStrict, H.ConT (H.mkName "S.ExpH"))]
-  return $ H.DataD [] (hsName n) tyvars' (constrs' ++ [sconstr]) []
+  return $ H.DataD [] (hsTyName n) tyvars' (constrs' ++ [sconstr]) []
 
 hsCon :: Con -> HF H.Con
 hsCon (Con n tys) = do
@@ -72,7 +72,7 @@ mkSmtenTD n tyvars = return $
       smtent = H.FunD (nmn "smtenT" nkept) [
                 H.Clause [H.WildP] (H.NormalB body) []]
       tyt = H.AppT (H.ConT $ nmn "S.SmtenT" nkept)
-                   (foldl H.AppT (H.ConT (hsName n)) [H.VarT (hsName n) | TyVar n _ <- dropped])
+                   (foldl H.AppT (H.ConT (hsTyName n)) [H.VarT (hsName n) | TyVar n _ <- dropped])
   in H.InstanceD ctx tyt [smtent]
   
 -- instance S.HaskellFN Foo where
@@ -90,7 +90,7 @@ mkSymbD n tyvars constrs = do
     let ctx = [H.ClassP (nmk "S.HaskellF" k) [H.VarT (hsName n)] | TyVar n k <- dropped]
         clsname = nmn "S.HaskellF" nkept
         ty = H.AppT (H.ConT clsname) 
-                    (foldl H.AppT (H.ConT (hsName n)) [H.VarT (hsName n) | TyVar n _ <- dropped])
+                    (foldl H.AppT (H.ConT (hsTyName n)) [H.VarT (hsName n) | TyVar n _ <- dropped])
     return $ H.InstanceD ctx ty [boxD, unboxD]
 
 --  boxN e

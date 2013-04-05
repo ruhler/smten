@@ -1,0 +1,598 @@
+
+Thu Apr  4 07:29:00 EDT 2013
+
+I think the best thing for me to focus on now is modularity. Modularity in
+haskellf compilation first, then adding better front end support.
+
+The target is to have a Map implementation added to Data.Map, and be able to
+use it like I would in haskell. This, I believe, will be a better approach to
+RegFile support in Nirav's work.
+
+The first step is haskellf compilation, because front end support will not
+work without first having backend support.
+
+In fact, I can probably expose some bugs in the current backend. The problem
+is when you have two files imported which define the same variable, even if
+there is no ambiguity.
+
+Let me write a test case for this. Just having Data.Map, and importing it in
+some test should reveal the issue.
+
+The solution is modularity in haskellf compilation.
+
+Before we can talk about an implementation, we need to talk about the user
+interface. The idea is, we compile a single smten module to a single haskell
+module. The names of the Smten module and haksell module must be related, but
+can't be the same. I think something like: every smten module Foo is compiled
+to a haskell module Smten.Lib.Foo. Except, we don't have to have that
+restriction for modules with main. Those we can let the user decide.
+
+If I generate a module called Smten.Lib.Foo, I need to put it in the directory
+Smten/Lib/Foo.
+
+We also need to ask how you will call the smten executable. Do we do automatic
+dependency analysis? Or is that left up to the user? If we do automatic
+dependency analysis, how do we figure out what things have changed? How do we
+know where to look for if something has been compiled yet or not?
+
+I think, to start, don't do automatic dependency and recompilation and such.
+Take a single module as input, assume all the things it depends on have been
+compiled, generate the output file.
+
+I could also, to start, force the user to put the output file in the right
+place. Anything to simplify the implementation task.
+
+Okay, so the first step is this: given all the same parameters ...
+
+The question is, what should be the arguments to haskellf function?
+
+* a typechecked environment
+* a Module
+* whether to generate a __main wrapper?
+Maybe we should only generate a __main wrapper when a 'main' function is
+defined? And always when 'main' is defined?
+
+For now, no need to worry about __main. Just do what I do.
+
+So, input is an Env and a Module. I generate the code for the module. The
+important step will be going through the declarations for the module which are
+not type checked, and looking up the type checked version of them. Once I have
+that implemented, the rest should be easy.
+
+1. Change interface to pass in Module and Env instead of String, [Dec]. I
+should be able to make this work under the current approach, and just get the
+right interface. The desired outputmodule name? Hmph.
+
+2. Implement this function: Env -> Module -> [Dec], which computes the 
+type infered values for the module declarations.
+
+3. The rest should be easy.
+
+Thu Apr  4 08:34:05 EDT 2013
+
+The other thing to figure out is primitives. I think what makes most sense for
+primitives is to put all primitives in their own module, without any
+non-primitive things. Or, without anything that I also won't manually
+implement. Then just implement that corresponding primitive module directly.
+
+I think that is the right way to go. So we never try to compile primitives.
+
+I wonder... Could we automatically compile primitives too? Don't we know how
+to compile them, assuming the primitives have been implemented in the
+Smten library?
+
+That's an interesting idea. Perhaps I should concretize primitives first, and
+then I can do that.
+
+Anyway, all of these issues will come out as soon as I start trying things, so
+may as well start trying things.
+
+Thu Apr  4 10:27:57 EDT 2013
+
+What are the steps here? What are the things I'll have to do eventually?
+
+* Change haskellf function to take as input an Env and a Module
+* Implement function which looks up typechecked module environment in the
+  environment
+* Update compilation to use imports from Module, and deal with qualified names
+  correctly
+* Work out how primitives and such will work.
+* Update the make script to build all the required smten haskellf modules.
+
+Let me go in order. Just dive in and see what issues come up. This will be
+very much a learning process.
+
+1. Change haskellf function to take as input an Env and a Module.
+
+Thu Apr  4 10:42:12 EDT 2013
+
+A rough draft of that is done. I also changed the loader to output the main
+module.
+
+2. Given Env, Module, return a new Module with typechecked values?
+
+Or just the declarations?
+
+Hmm... Is it okay to load the main module twice? Would that make things
+cleaner?
+
+Then I can have: loadenv, and loadone. Something like that...
+
+I think that might be cleaner.
+
+Thu Apr  4 11:55:05 EDT 2013
+
+Had a chat with Nirav about free functions. And other interesting stuff.
+
+The idea is, because Smten is about lambda calculus, it should be able to
+support lambda calculus stuff built in. In particular, free functions.
+
+Currently smten supports "simple" free functions. That is, functions whose
+argument is simple, or whose result is simple.
+
+For example, to make a free (Bool -> Integer):
+
+    a <- free
+    b <- free
+    return (\p -> if p then a else b)
+
+To make a free (Integer -> Bool):
+
+...
+
+Hmm...
+
+I guess we can't do this. So that's not simple.
+
+Which brings us to the question, How can we support a free function of the
+type:
+
+Big -> a
+
+where Big is a big type: Bit #32, Integer, etc...
+And assuming we can support 'a' as a free type?
+
+The idea is as follows. We may have a big function, but in practice, our SMT
+query will only look at a small number of arguments for it. We could take
+advantage of this to implement the free function.
+
+Let's say I call this free function with arguments [a, b, c, d]. These
+arguments could be symbolic or they could be concrete. For each application I
+get some result, but I don't know what the result is. So, let me pick a name
+for the result: [fa, fb, fc, fd].
+
+fa, fb, fc, and fd are symbolic things. I could make them free variables.
+This requires the result type of the function is an instance of Free, or we
+have some way to create a free version of it. Given that these could be
+symbolic free variables, I don't know what makes sense. (Perhaps lazy free
+variables?)
+
+Now, this works fine, so long as I encode the function property to the SMT
+solver. It would look like this:
+
+assert (a == b `implies` fa == fb)
+assert (a == c `implies` fa == fc)
+assert (a == d `implies` fa == fd)
+assert (b == c `implies` fb == fc)
+assert (b == d `implies` fb == fd)
+assert (c == d `implies` fc == fd)
+
+Then everything works great! We have free functions, and very small space.
+
+There are a couple of questions here. First, how can I shape these free
+functions? If one end has a user defined datatype, can I let the user restrict
+the possible values it tries? Wouldn't that be nice?
+
+I suppose they could do assertions on the functions? Could they? Would that
+require a 'forall' kind of thing?
+
+The other question is, how do I keep track of what applications have been done
+on the function to know what assertions to do?
+
+Let me think about these things over lunch, and while I continue work on
+module support.
+
+Thu Apr  4 12:47:53 EDT 2013
+
+Free functions... are hard I think.
+
+Let me focus now, not at all on the implementation, but rather on the user
+interface. Conceptually I would like to have a way to say: here is a free
+function, and to be able to make assertions about this free function.
+
+For example, I might want a way to say: Give me a free function of type
+Integer to Integer which always returns a positive integer. How could I say
+that?
+
+A primitive free function of the form Integer -> Integer ... could maybe be
+used to do this. For example, given 'f' as primitive free, I could do:
+
+g x = 
+  let v = f x
+  in if v < 0
+        then negate v
+        else v
+
+That may do what I want. I'm not totally sure it's the same as my
+specification though.
+
+In general, this approach won't work. In general what I want is something
+like: give me a function from Integer -> Integer such that all results of the
+function satisfy the property 'p'. I can't force a value which doesn't satisfy
+'p' into a value which does satisfy 'p'.
+
+Well, maybe I can take a different approach. A function is a special kind of
+relation. Could I make a free relation?
+
+I could specify all the tuples. ...
+
+I could specify a predicate on all the tuples..?
+
+Maybe the idea is this: a function can be represented as a possibly infinite
+set of tuples, with some extra requirements about these tuples (each argument
+appears only once).
+
+Okay, so how about, instead of thinking of it as a tuple, think of it as a
+Map. A Map is a function. But, it's potentially infinite, and the notion of
+equality of arguments is user defined. I think it's good to keep equality as a
+user defined notion.
+
+Better yet, let me represent my function as an association list. This could
+potentially be an infinite list.
+
+The idea behind the implementation is, in practice we only require a finite
+number of elements in this list, because we only call the function a finite
+amount of times, and we can make use of symmetry.
+
+If you only call the function N times, then you only need 'N' elements in this
+list.
+
+As soon as you have a bounded list, we can make it free. Note, it may not be
+efficient, but it could be.
+
+The question is, how do we know what the bound is?
+
+One idea is: we want to assert some relationship between the input and output
+of the function. There are a number of ways we could specify this:
+
+As a boolean predicate on a tuple.
+As a function from (a -> Symbolic b).
+
+Then, for example, I could say things like:
+
+f x = do
+    v <- free
+    assert (v > 0)
+    return v
+
+Could I have a primitive of the form:
+
+foo :: (a -> Symbolic b) -> Symbolic (a -> b) 
+
+
+What would that mean, semantically?
+
+You give me a function 'f' which says, for every argument 'a', what set of
+possible results are there for the answer 'b'. I return to you the set of
+functions 'G', where for all 'g' in 'G':
+    (g a) in (f a)
+
+And, the idea is, that could give me everything I need!
+
+For example, a function from Integer -> Integer is simple:
+
+f x = free
+    
+It gives me the set of all Integer -> Integer functions.
+
+Cool. I think this makes perfect sense semantically. I think it gives us all
+the power we want in describing functions. Now the question is, how could I
+implement this primitive?
+
+The trouble is, we need some notion of equality on arguments. Because I want
+to say, if you call the function twice with the same argument, it gives the
+same result. That's not to say, it gives the same symbolic result both times,
+it's to say it gives the same actually result both times. They are shared.
+
+That sounds like we need structural equality. Two values are the same if there
+is no function you can write which can distinguish between them. Aka, they are
+structurally equal.
+
+Is that enough? Or might the user want more power than that? For example, what
+if I want a function which says: for each of the arguments which are 'equal',
+give me the same result, otherwise give me a different result. Is there any
+way I could say that here?
+
+I could, but I would need to map all equal arguments to some shared other
+thing.
+
+So, what if I made things slightly more generic:
+
+foo :: (Eq a) => (a -> Symbolic b) -> Symbolic (a -> b)
+
+So, you supply a predicate which determines what arguments have the same
+results. Now the function we produce is a function with the property
+    (x == y `implies` g x = g y)
+
+But! what about the result? What does equality mean for that?
+
+Let's have the user decide there too then.
+
+foo :: (Eq a, Eq b) => (a -> Symbolic b) -> Symbolic (a -> b)
+
+    (x == y `implies` g x == g y)
+
+Where the user specifies what it means to be equal.
+
+I'm not sure if it makes sense to have the user specify a predicate, or if we
+should just use structural equality, and force users to do maps and such to
+make sure they get what they want.
+
+Anyway, it shouldn't matter. Let me start with the easiest case (which may be
+a mix between the two). Because we can derive structural equality for anything
+(except a function??). Let's assume I have a smten level notion of equality
+that I can use.
+
+How would I implement this then?
+
+Create an uninterpreted free function? Except, the types might be wrong. That
+is, the types may not be supported.
+
+So, make up an uninterpreted free sort.
+Then, make up an uninterpreted free function.
+
+Whenever I create a ...
+
+I don't like this idea of uninterpreted sorts. I want user defined things to
+go away at runtime.
+
+The idea is, the solver doesn't see a function. All it sees is the predicate:
+(x == y), and the predicate (gx == gy). And whatever other predicates you have
+based on when you call it.
+
+What if I knew the access bound on the function ahead of time? Could I
+describe it in smten already?
+
+Well, if you gave me all the arguments I would see, I think I could. I would
+write it as something like:
+
+foo :: (Eq a) => [a] -> (a -> Symbolic b) -> Symbolic (a -> b)
+foo args f = do
+    fxs <- mapM f args
+    return $ fromJust . lookup (zip args fxs)
+
+The trouble is, we don't know statically how many args will be applied, and we
+don't know statically what all the possible args that will be applied are.
+
+Note: in this case we don't need equality of the results. It's clear by
+sharing.
+
+Thinking about implementation: it looks like we will have to cheat. We need
+some way of keeping track of how many arguments it has... wait, maybe not?
+
+The idea is this. I will keep the applied function symbolic in my IR:
+
+AppEH ExpH ExpH     -- f x
+FunEH ExpH          -- foo f, where f has type (a -> Symbolic b)
+
+Now, after the expression has been fully elaborated, I traverse it for
+'abstract', as I already do, that's when I run the function you gave.
+
+Every time I see it, I apply 'f' to get a symbolic result, and add the
+following assertions:
+    (arg3 == arg1) ==> (sym3 == sym1)
+    (arg3 == arg2) ==> (sym3 == sym2)
+
+Note, I'll have to keep around state about which arguments we've encountered
+before for each function. Also note: this will involve doing some more
+elaboration while traversing the expression. I think that's okay. We'll see
+what complications come up.
+
+But that's it. That's all I have to do.
+
+Ah, now here's a question. What happens when you want to query the value of a
+function?
+
+That could be bad. Because generally we don't like to look at what we query,
+because we don't know if it will be used or not.
+
+So, we do transform, and we know about the functions we have, so that's
+doable, I think.
+
+I still don't like this idea of user defined equality. Because what if they
+say values aren't equal to themselves? That would cause problems.
+
+Then I have to project based on my notion of equality. It's like Eq and Ord,
+when they don't care about a field. Have a function to put things in canonical
+form so that testing for equality is a structural equality.
+
+But! What if you have functions as arguments? How can you do structural
+equality of those?
+
+I don't know. I give up on this for now. I'll keep thinking about it.
+
+Thu Apr  4 13:55:33 EDT 2013
+
+Back to Module support. Where was I?
+
+I cleaned up my rough draft of loading. Now back to the haskellf
+implementation. I want a function: Env -> Module -> Failable [Dec], to extract
+the proper declarations for a module.
+
+How about I actually start by implementing hsModule, and assume I have the
+functions I need. Then worry about how to implement them.
+
+Things I need to do for a module...
+
+* header: requires mod_name.
+* import list: requires mod_imports.
+* declarations: requires mod_decs.
+
+Easy.
+
+Thu Apr  4 14:10:59 EDT 2013
+
+As usual, it looks like some cleanup could help a bunch here. HaskellF.Compile
+is a huge file. Is there no nice way I can break it up?
+
+I think there is. How about something like:
+
+Compile.HF - the HF monad, utilities for working with that.
+Compile.Name - utilities for working with names. Standard names.
+Compile.Type - utilities for working with types.
+Compile.Exp - utilities for working with expressions
+Compile.Data - utilities for working with data types.
+Compile.Ppr - making H.Doc pretty printable.
+Compile.HaskellF - definition of the main function.
+
+At the very least this gives an order of dependency, instead of everything
+potentially being recursive. And it lets you focus in on things.
+
+I should definitely do this cleanup, on the master branch. And take advantage
+of the opportunity to clean things up more nicely.
+
+I could also add a Compile.TH, which would be useful later on.
+
+Sounds good to me. I could also, then, add a Compile.Module for dealing with
+modules.
+
+I may as well put everything in the HF monad. Lift errors all the way to the
+top. Make haskellf be of type Failable, and run it in IO.
+
+Thu Apr  4 14:49:19 EDT 2013
+
+What's the first thing to pull out?
+
+How about this as the first step: pull out:
+Compile.HF
+    HF, HFS, runHF
+
+And put everything into that?
+
+But, to start, do it all locally?
+
+Let me see how much cleaner, if at all, it gets.
+
+First step: Ppr.
+
+Thu Apr  4 15:04:07 EDT 2013
+
+Next step: Names.
+
+Names are a little funny, because it depends on the use. We have to do this
+remapping thing, but we remap differently depending on if the context is a
+type or a data.
+
+hsName does the following:
+* Name -> H.Name
+* remap builtins appropriately.
+* dequalification
+* symbolication
+
+Other things to go in the name module:
+* standard naming conventions for things.
+
+So, I vote for:
+
+hsName :: Name -> H.Name
+ * The name translation for a data constructor or variable name.
+
+hsTyName :: Name -> H.Name
+ * The name translation for a type constructor.
+
+And make the rename maps explicit.
+
+So, I ought to be able to do this first. hsName, hsTyName, clean those up.
+Then second pull them into Compile.Name.
+
+Thu Apr  4 15:50:59 EDT 2013
+
+Did that. Now, what other kinds of names do we have, and what interface do I
+want to export for those?
+
+* constrcasenm :: Name -> H.Name
+    __case*
+    (does prelude name remapping)
+* symconstrnm :: Name -> H.Name
+    (does tuple name remapping)
+    *__s
+* clshaskellf :: Integer -> H.Name
+    S.HaskellF?
+* boxmeth :: Integer -> H.Name
+    box?
+* unboxstrictmeth :: Integer -> H.Name
+    unbox_strict?
+* clssmtent :: Integer -> H.Name
+    S.SmtenT?
+* smtentmeth :: Integer -> H.Name
+    smtenT?
+* smtentmethq :: Integer -> H.Name
+    S.smtenT?
+
+Some other names are inlined directly. Some of these are single use.
+
+I think, at the very least, I want something for names like:
+
+foo :: String -> Integer -> H.Name
+
+I can use this for that whole class of names. Then, it might make sense to
+just inline. I think it makes more sense to define these names locally than
+with Names.hs.
+
+What do I call 'foo'?
+
+kname?
+
+hsKName?
+
+And we could have two versions:
+
+An 'N' version, which takes an integer.
+And a 'K' version, which takes a kind.
+
+Maybe call it: mkNameN and mkNameK?
+
+Thu Apr  4 18:52:33 EDT 2013
+
+I worked that out, and some other things.
+
+Next thing to pull out of HaskellF.Compile is... Type related stuff I think.
+That includes:
+
+hsType, 
+hsTopType
+mkContext
+hsClass
+
+Thu Apr  4 19:05:57 EDT 2013
+
+Cool. I like these changes. I think it at least breaks up the complexity into
+some nicer pieces.
+
+The pieces that are left are:
+* Exp: hsExp, (hsLit)
+* Data: mkCaseD, mkUnboxD, etc...
+* Dec: hsDec (hsMethod), (hsTopExp), (hsCon)
+* Compile: haskellf (but this could just go in HaskellF.Compile).
+
+Nifty. Let's keep working on things.
+
+Thu Apr  4 19:31:35 EDT 2013
+
+There. It's all cleaned up. And quite nicely too, if I may say so myself.
+
+While I have the change, I want to see if I can now use TH to help in the
+library. What would be a good candidate to try?
+
+I would like to be able to do them all I suppose:
+  Unit, Bool, TupleN, List
+
+That would be great.
+
+Start with 'Bool', which is the one without naming issues.
+
+What input do I want to give?
+
+I want to give the DataD if I can. Maybe have a separate thing for that.
+mkDataD. That kind of thing.
+

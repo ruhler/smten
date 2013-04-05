@@ -92,8 +92,6 @@ Specialization::
 
 HaskellF::
 * Translate a module at a time instead of one big blob
-* Use TH to defining the following from the HaskellF prelude:
-    tupleN, Unit, List, Maybe
 
 Build System::
 * Don't require yices1 and yices2 to be installed to build or use smten
