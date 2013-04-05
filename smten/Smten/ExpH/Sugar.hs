@@ -111,13 +111,13 @@ letEH :: Sig -> Type -> ExpH -> (ExpH -> ExpH) -> ExpH
 letEH s t v b = appEH (lamEH s t b) v
 
 unitEH :: ExpH
-unitEH = conEH (Sig (name "()") unitT)
+unitEH = conEH (Sig unitN unitT)
 
 trueEH :: ExpH
-trueEH = conEH (Sig (name "True") boolT)
+trueEH = conEH (Sig trueN boolT)
 
 falseEH :: ExpH
-falseEH = conEH (Sig (name "False") boolT)
+falseEH = conEH (Sig falseN boolT)
 
 -- | Boolean expression
 boolEH :: Bool -> ExpH
@@ -126,8 +126,8 @@ boolEH False = falseEH
 
 de_boolEH :: ExpH -> Maybe Bool
 de_boolEH x =
- let detrue = de_kconEH (name "True") x >> return True
-     defalse = de_kconEH (name "False") x >> return False
+ let detrue = de_kconEH trueN x >> return True
+     defalse = de_kconEH falseN x >> return False
  in mplus detrue defalse
 
 integerEH :: Integer -> ExpH
@@ -168,8 +168,8 @@ caseEH t x k@(Sig nk _) y n
  | Just (s, _, vs) <- de_conEH x
     = if s == nk then appsEH y vs else n
  | ErrorEH _ s <- force x = errorEH t s
- | nk == name "True" = exph $ IfEH t x y n
- | nk == name "False" = exph $ IfEH t x n y
+ | nk == trueN = exph $ IfEH t x y n
+ | nk == falseN = exph $ IfEH t x n y
  | IfEH {} <- force x = strict_appEH t (\x' -> caseEH t x' k y n) x
  | otherwise = error $ "SMTEN INTERNAL ERROR: unexpected arg to caseEH"
 
@@ -184,7 +184,7 @@ strict_appEH t f =
   in shared g
 
 ifEH :: Type -> ExpH -> ExpH -> ExpH -> ExpH
-ifEH t p a b = caseEH t p (Sig (name "True") boolT) a b
+ifEH t p a b = caseEH t p (Sig trueN boolT) a b
 
 impliesEH :: ExpH -> ExpH -> ExpH
 impliesEH p q = ifEH boolT p q trueEH

@@ -3,8 +3,6 @@
 
 module Smten.HaskellF.Lib.Symbolic (
     Used, Symbolic, SMT,
-    Maybe(Just, Nothing),
-    __caseJust, __caseNothing,
 
     __prim_free_Bool, __prim_free_Integer, __prim_free_Bit,
     assert, query_Used, nest, use, used,
@@ -30,7 +28,7 @@ instance SmtenT1 Used where
 
 instance HaskellF1 Used where
     box1 = Used
-    unbox_strict1 (Used x) = x
+    unbox1 (Used x) = x
 
 newtype Symbolic a = Symbolic ExpH
 
@@ -39,7 +37,7 @@ instance SmtenT1 Symbolic where
 
 instance HaskellF1 Symbolic where
     box1 = Symbolic
-    unbox_strict1 (Symbolic x) = x
+    unbox1 (Symbolic x) = x
 
 newtype SMT a = SMT ExpH
 
@@ -48,38 +46,7 @@ instance SmtenT1 SMT where
 
 instance HaskellF1 SMT where
     box1 = SMT
-    unbox_strict1 (SMT x) = x
-
-data Maybe a =
-      Just a
-    | Nothing
-    | Maybe__s ExpH
-
-instance SmtenT1 Maybe where
-    smtenT1 _ = conT (name "Maybe")
-
-instance HaskellF1 Maybe where
-    box1 e
-      | P.Just [a] <- de_conHF "Just" e = Just (box a)
-      | P.Just [] <- de_conHF "Nothing" e = Nothing
-      | otherwise = Maybe__s e
-
-    unbox_strict1 x
-      | Just a <- x = conHF x "Just" [unbox a]
-      | Nothing <- x = conHF x "Nothing" []
-      | Maybe__s v <- x = v
-
-__caseNothing :: (HaskellF a, HaskellF z) => Maybe a -> z -> z -> z
-__caseNothing x y n
-  | Nothing <- x = y
-  | Maybe__s _ <- x = caseHF "Nothing" x y n
-  | otherwise = n
-
-__caseJust :: (HaskellF a, HaskellF z) => Maybe a -> (a -> z) -> z -> z
-__caseJust x y n
-  | Just a <- x = y a
-  | Maybe__s _ <- x = caseHF "Just" x y n
-  | otherwise = n
+    unbox1 (SMT x) = x
 
 __prim_free_Bool :: Symbolic Bool
 __prim_free_Bool = primHF free_BoolP

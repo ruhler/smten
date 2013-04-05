@@ -1,0 +1,176 @@
+
+Wed Apr  3 10:24:02 EDT 2013
+
+Bug with Nirav's stuff: somehow we try to make an error variable of type 'b'.
+
+So, how did we mess up the type of that? Let's look at where these types come
+from.
+
+Wed Apr  3 10:47:56 EDT 2013
+
+The problem is, the generated query is really really really big. I gave up
+after printing out 3.3G of it, and it still didn't get to the error I expect.
+
+Wed Apr  3 10:50:51 EDT 2013
+
+I think I found the bug.
+
+Wed Apr  3 11:08:43 EDT 2013
+
+Yep. The bug is found.
+
+The issue now is performance. The queries seem really really big for some
+reason.
+
+I'm not entirely sure what to do about that. Maybe let Nirav work on it a bit
+first. It might be that we need a much primitive array support.
+
+Anyway, what can I work on now that would be useful?
+
+* modularity support
+ First in HaskellF compilation.
+ Then add more front end modularity support.
+
+The other idea I'm thinking about is a new way to handle conversion from ExpH
+to SMT query.
+
+The idea is this: it seems like we may want to perform different
+transformations on ExpH before going to an SMT solver. For example,
+simplification, specialization, free variable inference. All these make sense
+to do on ExpH, but they can look like an SMT solver.
+
+For example, maybe I have a Simplify SMT solver which wraps another solver,
+first performing simplification?
+
+That suggests the input to the SMT solver should maybe be ExpH.
+
+So, the new structure I'm thinking is: we have some type class for conversion
+of ExpH to SMT. Some way that SMT solvers can take as input an ExpH and go
+directly to whatever they want.
+
+I'll get rid of the translation into Exp (but we can keep it for debugging
+purposes as another kind of SMT solver like thing). Get rid of SMT.Expression.
+Just go directly to the underlying expression type for each builtin solver.
+And then easily wrap solvers in different ways.
+
+That would give a way to let the user expression things like: do you want to
+use the simplifier? Do you want to use yices, but restrict to 'Integer'? Do
+you want to use the inference thing? And treat each of these as different
+kinds of solvers.
+
+Let me see what the SMT, or FromExpH class would look like.
+
+litE, conE, varE, primE, letsE.
+
+In other words, its a very simple interface. So there would be no problem with
+this, and we can already do a bottom-up traversal for you.
+
+And we leave it up to the solver to choose to call this. Those solvers
+interested in ExpH can leave it there.
+
+Well, it's certainly something I could do. I think a nice way to start would
+be by moving simplification from SMT.Expression into an ExpH -> ExpH phase.
+
+I don't know. I don't know what I should be working on.
+
+Wed Apr  3 11:48:13 EDT 2013
+
+Simplification in ExpH is a little bit messy, because we don't represent
+'not', 'and', and 'or' explicitly, which we would like to do in
+simplification. Now, we could represent it explicitly, and even in a variable
+args kind of fashion, but that's, as I say, a little bit messy.
+
+One thing that does make sense to do, for cleanup purposes, is to have an ExpH
+directly to SMT pass, without going through Exp. That will simplify both ends
+of the translation. So, perhaps the best place to start there will be to make
+fromExpH a little more generic (probably with type classes to start), so it
+works both to Exp and to SMT.Expression. Then SMT.Translate turns into a
+'fromExpH' thing.
+
+And, you know... we could probably do pretty printing directly that way too?
+Maybe? Maybe not.
+
+But that sounds like a reasonable thing to try, which will clean things up.
+
+Now, for Modularity, the next step is to figure out how to implement it
+correctly in HaskellF. Once I have that worked out, I can try for an
+implementation.
+
+That's a fairly hefty change, so I'll probably want a branch for it.
+
+The other thing I ought to do is run profiling on Nirav's code, to at least
+get a sense of where all the time is spent. I'll do that now.
+
+Wed Apr  3 11:59:13 EDT 2013
+
+Interesting. All the time is in Check. But is it the SMT Check, or is it my
+check?
+
+Wed Apr  3 12:05:29 EDT 2013
+
+Yes! Most of the time is in SMT Check. That's good news. It means its not my
+fault. Nirav has to shrink his queries.
+
+What I ought to look into, though, is memory use, and see if we have any space
+leaks.
+
+Wed Apr  3 12:57:49 EDT 2013
+
+You know? The problem with haskellf could be that share issue. The interpreter
+actually makes more progress, running into Nirav's undefined array thing. So,
+perhaps it's Nirav's problem. Maybe we don't have a space leak. Maybe we are
+doing the right thing? It's just a big query?
+
+Wed Apr  3 14:13:18 EDT 2013
+
+How to deal with modular compilation to HaskellF?
+
+The issue is this. It seems like we want to compile before flattening, but
+after type inference and type checking. But currently we can only do type
+inference and type checking after flattening.
+
+I wonder if I can do the following.
+
+1. kind infer, type infer, type check, all that fun stuff, to produce an Env.
+2. Pass the original module to HaskellF.
+For each declaration, it looks up the inferred value of the declaration in the
+given environment, handling names correctly.
+
+Note: haskell supports qualification, so that, hopefully, will work out okay?
+Do I need to 'unqualify' names?
+
+I'll have to do something to the qualified names, if only to keep the smten
+namespace separate from the Haskell namespace.
+
+From the DSEL perspective, we don't want to mangle names. I want to be able to
+import (qualified), a generated Haskell module and use the names directly.
+That makes it clear what names I have to generate.
+
+Do I want to keep the import lists the same as the front end? In that case, I
+can't refer to names qualified defined in a separate module.
+
+Perhaps I could add extract imports based on what I see in the expression. You
+know? I probably don't have to worry about that for the first pass.
+
+In which case, I think it's straight forward.
+
+We fully qualify all names used, and assume they are imported directly. I
+think that should work.
+
+Thus, it sounds to me like we have a plan. Support qualified names. Go through
+a module and figure out the right declarations. Have the same imports. I just
+have to rename imported modules based on whatever namespace we use in
+HaskellF.
+
+Wed Apr  3 17:32:21 EDT 2013
+
+Update on requests: Implement Arrays as primitive haskell Arrays (get constant
+time update)...
+
+Well, really we want some way to represent a register file. How about a map?
+Isn't that easier to update than an array?
+
+I think Nirav needs to rethink his data structures.
+
+Anyway, high level is: next motivating application should be a model checker.
+

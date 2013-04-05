@@ -158,11 +158,11 @@ instance TypeCheck Exp where
       typecheckM f
       typecheckM x
       case typeof f of
-         (AppT (AppT (ConT n _) a) _) | n == name "->" ->
+         t | Just (a, _) <- de_arrowT t ->
              if eqtypes a (typeof x)
                  then return ()
                  else wrongtype "expression" x a (typeof x)
-         t -> wrongtype "expression" f (arrowT UnknownT UnknownT) t
+           | otherwise -> wrongtype "expression" f (arrowT UnknownT UnknownT) t
 
    typecheckM (LamE l (Sig n t) x) = withloc l $ do
      local (\tcs -> tcs { tcs_vars = (n, t) : tcs_vars tcs}) $ typecheckM x

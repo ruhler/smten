@@ -126,7 +126,7 @@ main = do
             outf . pretty $ flat
         Type -> do
             env <- loadenv includes (file args)
-            outf . pretty $ env
+            outf $ pretty env
         HaskellF -> do
             -- Note: we end up parsing the main module twice. Once for the
             -- environment, and once again to get just the main module.
@@ -134,6 +134,6 @@ main = do
             -- I think this is acceptable, because it leads to cleaner code,
             -- and shouldn't be overly costly.
             env <- loadenv includes (file args)
-            mainmod <- loadmod (file args)
-            outf . pretty $ haskellf (not (no_main args)) env mainmod
+            hf <- attemptIO $ haskellf (not (no_main args)) env mainmod
+            outf $ pretty hf 
 

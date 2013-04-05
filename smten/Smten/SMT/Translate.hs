@@ -73,8 +73,7 @@ smtE e
  | Just (Sig n _, v, x) <- de_letE e = SMT.letE [(smtN n, smtE v)] (smtE x)
  | Just v <- de_integerE e = SMT.integerE v
  | Just v <- de_bitE e = SMT.mkbvE (bv_width v) (bv_value v)
- | ConE _ (Sig n _) <- e, n == name "True" = SMT.trueE
- | ConE _ (Sig n _) <- e, n == name "False" = SMT.falseE
+ | Just b <- de_boolE e = if b then SMT.trueE else SMT.falseE
  | VarE _ (Sig n _) <- e = SMT.varE (smtN n)
  | AppE _ a b <- e =
     case de_appsE e of 
@@ -125,8 +124,8 @@ smtE e
        _ -> SMT.AppE (smtE a) [smtE b]
 smtE l@(LamE {}) = error $ "lambda expression in smt target generation: " ++ show l
 smtE (CaseE _ x (Sig nm _) y n)
-  | nm == name "True" = SMT.ifE (smtE x) (smtE y) (smtE n)
-  | nm == name "False" = SMT.ifE (smtE x) (smtE n) (smtE y)
+  | nm == trueN = SMT.ifE (smtE x) (smtE y) (smtE n)
+  | nm == falseN = SMT.ifE (smtE x) (smtE n) (smtE y)
 smtE e@(CaseE {})
   = error $ "unsupported case expression in smt target generation: " ++ show e
 

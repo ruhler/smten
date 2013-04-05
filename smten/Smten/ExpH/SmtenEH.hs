@@ -27,7 +27,7 @@ class (SmtenT a) => SmtenEH a where
 
 instance SmtenEH () where
     smtenEH () = unitEH
-    de_smtenEH x = de_kconEH (name "()") x >> return ()
+    de_smtenEH x = de_kconEH unitN x >> return ()
 
 instance SmtenEH Bool where
     smtenEH = boolEH

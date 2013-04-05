@@ -2,6 +2,7 @@
 {-# LANGUAGE PatternGuards #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE TemplateHaskell #-}
 
 module Smten.HaskellF.Lib.Prelude (
     Char,
@@ -14,6 +15,7 @@ module Smten.HaskellF.Lib.Prelude (
     Tuple3__(Tuple3__), __caseTuple3__,
     Tuple4__(Tuple4__), __caseTuple4__,
     List__(Cons__, Nil__), __caseCons__, __caseNil__,
+    Maybe(Just, Nothing), __caseJust, __caseNothing,
 
     N__0, N__2p1, N__2p0, N__PLUS, N__MINUS, N__TIMES,
 
@@ -38,17 +40,22 @@ module Smten.HaskellF.Lib.Prelude (
     ) where
 
 import Prelude hiding (
-    Char, String, Integer, Bool(..), IO,
+    Char, String, Integer, Bool(..), IO, Maybe(..),
     error, putChar, getContents,
     )
 import qualified Prelude as P
+import qualified Prelude as Prelude
 
 import Smten.Type
-import Smten.Name
+import Smten.Name as S
+import Smten.Dec
 import Smten.ExpH
 import Smten.Prim
 import Smten.Ppr
-import Smten.HaskellF.HaskellF
+import qualified Smten.Type as S
+import qualified Smten.ExpH as S
+import Smten.HaskellF.HaskellF as S
+import Smten.HaskellF.TH
 import qualified Smten.Bit as B
 
 data Char =
@@ -60,16 +67,16 @@ instance SmtenT Char where
 
 instance HaskellF Char where
     box e
-      | Just v <- de_charEH e = Char v
+      | P.Just v <- de_charEH e = Char v
       | otherwise = Char__s e
 
-    unbox_strict x
+    unbox x
       | Char v <- x = charEH v
       | Char__s v <- x = v
 
 instance SmtenHF P.Char Char where
     smtenHF = Char
-    de_smtenHF (Char v) = Just v
+    de_smtenHF (Char v) = P.Just v
     de_smtenHF (Char__s v) = de_smtenEH v
 
     
@@ -82,17 +89,17 @@ instance SmtenT Integer where
 
 instance HaskellF Integer where
     box e
-     | Just v <- de_integerEH e = Integer v
+     | P.Just v <- de_integerEH e = Integer v
      | otherwise = Integer__s e
 
-    unbox_strict x
+    unbox x
      | Integer v <- x = integerEH v
      | Integer__s v <- x = v
 
 instance SmtenHF P.Integer Integer where  
     smtenHF = Integer
 
-    de_smtenHF (Integer x) = Just x
+    de_smtenHF (Integer x) = P.Just x
     de_smtenHF (Integer__s v) = de_smtenEH v
 
 instance Prelude.Num Integer where
@@ -109,7 +116,7 @@ instance SmtenT1 Bit where
 
 instance HaskellF1 Bit where
     box1 = Bit
-    unbox_strict1 (Bit x) = x
+    unbox1 (Bit x) = x
 
 newtype IO a = IO ExpH
 
@@ -118,87 +125,32 @@ instance SmtenT1 IO where
 
 instance HaskellF1 IO where
     box1 = IO
-    unbox_strict1 (IO x) = x
+    unbox1 (IO x) = x
 
-data Unit__ = Unit__ | Unit__s ExpH
 
-instance SmtenT Unit__ where
-    smtenT _ = unitT
-    
-instance HaskellF Unit__ where
-    box e 
-      | Just [] <- de_conHF "()" e = Unit__
-      | otherwise = Unit__s e
+id $
+  let DataD _ n tyv cns = unitD
+  in haskellf_Data n tyv cns
 
-    unbox_strict x
-      | Unit__ <- x = conHF x "()" []
-      | Unit__s v <- x = v
+haskellf_Data (name "Bool") [] [Con trueN [], Con falseN []]
+derive_SmtenHF ''P.Bool ''Bool
 
-__caseUnit__ :: (HaskellF a) => Unit__ -> a -> a -> a
-__caseUnit__ x y n
-  | Unit__ <- x = y
-  | Unit__s _ <- x = caseHF "()" x y n
-  | otherwise = n
+haskellf_Data (name "Maybe") [TyVar (name "a") StarK] [
+    Con (name "Nothing") [],
+    Con (name "Just") [VarT (name "a") StarK]
+   ]
 
-data Bool =
-    True
-  | False
-  | Bool_s ExpH
+id $
+  let DataD _ n tyv cns = tupleD 2
+  in haskellf_Data n tyv cns
 
-instance SmtenT Bool where
-    smtenT _ = boolT
+id $
+  let DataD _ n tyv cns = tupleD 3
+  in haskellf_Data n tyv cns
 
-instance HaskellF Bool where
-    box e
-      | Just [] <- de_conHF "True" e = True
-      | Just [] <- de_conHF "False" e = False
-      | otherwise = Bool_s e
-
-    unbox_strict x
-      | True <- x = conHF x "True" []
-      | False <- x = conHF x "False" []
-      | Bool_s v <- x = v
-
-instance SmtenHF P.Bool Bool where
-    smtenHF P.True = True
-    smtenHF P.False = False
-
-    de_smtenHF True = Just P.True
-    de_smtenHF False = Just P.False
-    de_smtenHF (Bool_s v) = de_smtenEH v
-
-__caseTrue :: (HaskellF a) => Bool -> a -> a -> a
-__caseTrue x y n
-  | True <- x = y
-  | Bool_s _ <- x = caseHF "True" x y n
-  | otherwise = n
-
-__caseFalse :: (HaskellF a) => Bool -> a -> a -> a
-__caseFalse x y n
-  | False <- x = y
-  | Bool_s _ <- x = caseHF "False" x y n
-  | otherwise = n
-
-data Tuple2__ a b = Tuple2__ a b | Tuple2____s ExpH
-instance SmtenT2 Tuple2__
-    where smtenT2 _ = conT (name "(,)")
-instance HaskellF2 Tuple2__
-    where box2 e | Prelude.Just [x1, x2] <- de_conHF "(,)" e
-                     = Tuple2__ (box x1) (box x2)
-                 | Prelude.otherwise = Tuple2____s e
-          unbox_strict2 x | Tuple2__ x1 x2 <- x
-                       = conHF x "(,)" [unbox x1, unbox x2]
-                   | Tuple2____s v <- x
-                       = v
-__caseTuple2__ ::                (HaskellF a,
-                                  HaskellF b,
-                                  HaskellF z) =>
-                                 Tuple2__ a b -> (a -> b -> z) -> z -> z
-__caseTuple2__ x y n | Tuple2__ x1 x2 <- x
-                         = y x1 x2
-                     | Tuple2____s _ <- x
-                         = caseHF "(,)" x y n
-                     | Prelude.otherwise = n
+id $
+  let DataD _ n tyv cns = tupleD 4
+  in haskellf_Data n tyv cns
 
 instance (SmtenHF ca fa, SmtenHF cb fb) => SmtenHF (ca, cb) (Tuple2__ fa fb) where
     smtenHF (a, b) = Tuple2__ (smtenHF a) (smtenHF b)
@@ -208,91 +160,20 @@ instance (SmtenHF ca fa, SmtenHF cb fb) => SmtenHF (ca, cb) (Tuple2__ fa fb) whe
         return (a', b')
     de_smtenHF (Tuple2____s v) = de_smtenEH v
 
-data Tuple3__ a b c = Tuple3__ a b c | Tuple3____s ExpH
-instance SmtenT3 Tuple3__
-    where smtenT3 _ = conT (name "(,,)")
-instance HaskellF3 Tuple3__
-    where box3 e | Prelude.Just [x1, x2, x3] <- de_conHF "(,,)" e
-                     = Tuple3__ (box x1) (box x2) (box x3)
-                 | Prelude.otherwise = Tuple3____s e
-          unbox_strict3 x | Tuple3__ x1 x2 x3 <- x
-                       = conHF x "(,,)" [unbox x1, unbox x2, unbox x3]
-                   | Tuple3____s v <- x
-                       = v
-__caseTuple3__ ::                  (HaskellF a,
-                                    HaskellF b,
-                                    HaskellF c,
-                                    HaskellF z) =>
-                                   Tuple3__ a b c -> (a -> b -> c -> z) -> z -> z
-__caseTuple3__ x y n | Tuple3__ x1 x2 x3 <- x
-                         = y x1 x2 x3
-                     | Tuple3____s _ <- x
-                         = caseHF "(,,)" x y n
-                     | Prelude.otherwise = n
-data Tuple4__ a b c d = Tuple4__ a b c d | Tuple4____s ExpH
-instance SmtenT4 Tuple4__
-    where smtenT4 _ = conT (name "(,,,)")
-instance HaskellF4 Tuple4__
-    where box4 e | Prelude.Just [x1, x2, x3, x4] <- de_conHF "(,,,)" e
-                     = Tuple4__ (box x1) (box x2) (box x3) (box x4)
-                 | Prelude.otherwise = Tuple4____s e
-          unbox_strict4 x | Tuple4__ x1 x2 x3 x4 <- x
-                       = conHF x "(,,,)" [unbox x1, unbox x2, unbox x3, unbox x4]
-                   | Tuple4____s v <- x
-                       = v
-__caseTuple4__ ::                    (HaskellF a,
-                                      HaskellF b,
-                                      HaskellF c,
-                                      HaskellF d,
-                                      HaskellF z) =>
-                                     Tuple4__ a b c d -> (a -> b -> c -> d -> z) -> z -> z
-__caseTuple4__ x y n | Tuple4__ x1 x2 x3 x4 <- x
-                         = y x1 x2 x3 x4
-                     | Tuple4____s _ <- x
-                         = caseHF "(,,,)" x y n
-                     | Prelude.otherwise = n
-
-data List__ a =
-      Nil__ 
-    | Cons__ a (List__ a)
-    | List__s ExpH
-
-instance SmtenT1 List__ where
-    smtenT1 _ = smtenT1 [()]
-
-instance HaskellF1 List__ where
-    box1 e
-     | Just [] <- de_conHF "[]" e = Nil__
-     | Just [x, xs] <- de_conHF ":" e = Cons__ (box x) (box xs)
-     | otherwise = List__s e
-
-    unbox_strict1 x
-     | Nil__ <- x = conHF x "[]" []
-     | Cons__ a b <- x = conHF x ":" [unbox a, unbox b]
-     | List__s v <- x = v
+id $
+  let DataD _ n tyv cns = listD
+  in haskellf_Data n tyv cns
 
 instance (SmtenHF c f) => SmtenHF [c] (List__ f) where
     smtenHF [] = Nil__
     smtenHF (x:xs) = Cons__ (smtenHF x) (smtenHF xs)
     
-    de_smtenHF Nil__ = Just []
+    de_smtenHF Nil__ = P.Just []
     de_smtenHF (Cons__ x xs) = do
         x' <- de_smtenHF x
         xs' <- de_smtenHF xs
         return (x':xs')
-    de_smtenHF (List__s v) = de_smtenEH v
-
-__caseNil__ :: (HaskellF a, HaskellF z) => List__ a -> z -> z -> z
-__caseNil__ x y n
-  | Nil__ <- x = y
-  | List__s _ <- x = caseHF "[]" x y n
-  | otherwise = n
-
-__caseCons__ :: (HaskellF a, HaskellF z) => List__ a -> (a -> List__ a -> z) -> z -> z
-__caseCons__ x y n
-  | Cons__ a b <- x = y a b
-  | List__s _ <- x = caseHF ":" x y n
-  | otherwise = n
+    de_smtenHF (List____s v) = de_smtenEH v
 
 type String = List__ Char
 
@@ -303,7 +184,7 @@ instance SmtenT N__0 where
 
 instance HaskellF N__0 where
     box = N__0
-    unbox_strict (N__0 x) = x
+    unbox (N__0 x) = x
 
 newtype N__1 = N__1 ExpH
 
@@ -312,7 +193,7 @@ instance SmtenT N__1 where
 
 instance HaskellF N__1 where
     box = N__1
-    unbox_strict (N__1 x) = x
+    unbox (N__1 x) = x
 
 newtype N__2 = N__2 ExpH
 
@@ -321,7 +202,7 @@ instance SmtenT N__2 where
 
 instance HaskellF N__2 where
     box = N__2
-    unbox_strict (N__2 x) = x
+    unbox (N__2 x) = x
 
 newtype N__PLUS a b = N__PLUS ExpH
 
@@ -330,7 +211,7 @@ instance SmtenT2 N__PLUS where
 
 instance HaskellF2 N__PLUS where
     box2 = N__PLUS
-    unbox_strict2 (N__PLUS x) = x
+    unbox2 (N__PLUS x) = x
 
 newtype N__MINUS a b = N__MINUS ExpH
 
@@ -339,7 +220,7 @@ instance SmtenT2 N__MINUS where
 
 instance HaskellF2 N__MINUS where
     box2 = N__MINUS
-    unbox_strict2 (N__MINUS x) = x
+    unbox2 (N__MINUS x) = x
 
 newtype N__TIMES a b = N__TIMES ExpH
 
@@ -348,7 +229,7 @@ instance SmtenT2 N__TIMES where
 
 instance HaskellF2 N__TIMES where
     box2 = N__TIMES
-    unbox_strict2 (N__TIMES x) = x
+    unbox2 (N__TIMES x) = x
 
 type N__2p0 a = N__TIMES N__2 a
 type N__2p1 a = N__PLUS (N__2p0 a) N__1
@@ -462,7 +343,7 @@ error = primHF errorP
     
 __main_wrapper :: IO Unit__ -> P.IO ()
 __main_wrapper m
-  | Just x <- de_ioEH (unbox m) = x >> return ()
+  | P.Just x <- de_ioEH (unbox m) = x >> return ()
   | otherwise = P.error $ "__main_wrapper: " ++ pretty (unbox m)
 
 numeric :: (HaskellF a) => a

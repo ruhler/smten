@@ -6,11 +6,11 @@ module Smten.Type.Sugar (
     Type(),
     conT, de_conT,
     appT, de_appT, appsT, de_appsT,
-    arrowN, arrowT, de_arrowT, arrowsT, de_arrowsT,
+    arrowT, de_arrowT, arrowsT, de_arrowsT,
 
     unitT, boolT, charT, integerT, listT, de_listT, stringT,
     bitT, de_bitT,
-    tupleN, de_tupleN, tupleT, de_tupleT,
+    tupleT, de_tupleT,
 
     addNT, subNT, mulNT,
   ) where
@@ -59,10 +59,6 @@ de_appsT (AppT a b) =
   in (f, as ++ [b])
 de_appsT t = (t, [])
 
--- | The name of the (->) type constructor.
-arrowN :: Name
-arrowN = name "->"
-
 -- | Given types a, b, return type (a -> b)
 arrowT :: Type -> Type -> Type
 arrowT a b = appsT (conT arrowN) [a, b]
@@ -84,7 +80,7 @@ de_arrowsT t | Just (a, b) <- de_arrowT t = a : (de_arrowsT b)
 de_arrowsT t = [t]
 
 unitT :: Type
-unitT = conT (name "()")
+unitT = conT unitN
 
 charT :: Type
 charT = conT (name "Char")
@@ -115,22 +111,6 @@ bitT w = appT (conT (name "Bit")) (NumT w)
 de_bitT :: Type -> Maybe Integer
 de_bitT (AppT (ConT n _) w) | n == name "Bit" = Just (nteval w)
 de_bitT _ = Nothing
-
--- Generate the tuple name for given number of arguments.
-tupleN :: (Integral n) => n -> Name
-tupleN n = name $ "(" ++ replicate (fromIntegral (n-1)) ',' ++ ")"
-
--- Check if a name is a tuple name. If so, returns the number of elements in
--- the tuple.
-de_tupleN :: Name -> Maybe Integer
-de_tupleN n = do
-    let s = unname n
-    guard $ length s > 2
-    guard $ head s == '('
-    guard $ last s == ')'
-    let mid = init (tail s)
-    guard $ all (== ',') mid
-    return (genericLength mid + 1)
 
 -- | (a, b, ...)
 -- There must be at least one type given.
