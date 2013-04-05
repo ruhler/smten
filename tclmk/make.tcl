@@ -114,19 +114,6 @@ proc io {module} {
         -f $::SMTN/[string map {. /} $module].smtn
 }
 
-# Run a HaskellF Test
-proc hf {module} {
-    set hsdir build/test
-    hrun $::SMTEN --haskellf \
-        -f $::SMTN/[string map {. /} $module].smtn \
-        -o $hsdir/[string map {. _} $module].hs
-    hrun -ignorestderr ghc -fno-warn-overlapping-patterns \
-        -fno-warn-missing-fields \
-        -main-is __main \
-        -o $hsdir/[string map {. _} $module] $hsdir/[string map {. _} $module].hs
-    hrun ./$hsdir/[string map {. _} $module]
-}
-
 proc expectfail {cmd} {
     if { [catch $cmd] == 0 } {   
         error "expected failure, but $cmd succeeded"
@@ -144,6 +131,29 @@ io Smten.SMT.Tests.Error
 io Smten.SMT.Tests.Datatype
 
 expectfail { io Smten.SMT.Tests.MalError }
+
+proc hscomp {module} {
+    set hsdir build/test
+    hrun $::SMTEN --haskellf \
+        -f $::SMTN/[string map {. /} $module].smtn \
+        --hsdir $hsdir
+}
+
+proc hsghc {module} {
+    set hsdir build/test
+    hrun -ignorestderr ghc -fno-warn-overlapping-patterns \
+        -fno-warn-missing-fields \
+        -main-is Smten.Lib.$module.main__ -i$hsdir \
+        -o $hsdir/[string map {. _} $module] $hsdir/Smten/Lib/[string map {. /} $module].hs
+}
+
+# Run a HaskellF Test
+proc hf {module} {
+    set hsdir build/test
+    hscomp $module
+    hsghc $module
+    hrun ./$hsdir/[string map {. _} $module]
+}
 
 hf Smten.Tests.Concrete
 hf Smten.SMT.Tests.Core
@@ -179,13 +189,11 @@ hrun ./build/smten-bin/semtest
 # The dsel haskell integration test.
 hrun $::SMTEN --haskellf \
     --include $::SMTN \
-    --no-main \
-    --mod-name Smten_DSEL \
     -f $::SMTN/Smten/Tests/DSEL.smtn \
-    -o build/smten-bin/Smten_DSEL.hs
+    --hsdir build/test
 indir build/smten-bin {
     hrun ln -sf ../../smten-bin/dsel.hs dsel.hs
-    hrun ghc --make -o dsel dsel.hs
+    hrun ghc --make -o dsel -i../test dsel.hs
 }
 hrun ./build/smten-bin/dsel
 

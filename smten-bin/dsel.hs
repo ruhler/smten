@@ -14,8 +14,10 @@ import Smten.HaskellF.TH
 import Smten.HaskellF.SMT
 import qualified Smten.HaskellF.Lib.Prelude as S
 import qualified Smten.HaskellF.Lib.Symbolic as S
-import qualified Smten_DSEL as S
-import qualified Smten_DSEL
+import qualified Smten.Lib.Prelude as S
+import qualified Smten.Lib.Smten.SMT.Symbolic as S
+import qualified Smten.Lib.Smten.Tests.DSEL as S
+import qualified Smten.Lib.Smten.Tests.DSEL
 import Smten.SMT.Yices.Yices2    
 
 test :: (Monad m) => String -> Bool -> m ()

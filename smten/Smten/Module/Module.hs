@@ -39,7 +39,7 @@
 
 module Smten.Module.Module (
     Module(..), Import(..), Synonym(..), DataDec(..), Deriving(..),
-    flatten, flatten1,
+    sderive, flatten, flatten1,
     ) where
 
 import Control.Monad.State
@@ -313,12 +313,18 @@ flatten ms = do
     return $ concat (prelude : ds)
 
 -- | Flatten a single module.
+-- Assumes standalone deriving has already been performed.
 flatten1 :: [Module]    -- ^ The environment
             -> Module   -- ^ The module to flatten
             -> Failable [Dec] -- ^ Flattened declarations from the module
 flatten1 ms m = do
   let syns = mkSyns $ concatMap mod_synonyms ms
-      ddecs = mkDDecs $ concatMap mod_ddecs ms
+  mod_decs <$> evalStateT (qualify m) (QS ms (error "not in module") [] syns)
+
+-- Perform standalone derivings in the given module.
+sderive :: [Module] -> Module -> Failable Module
+sderive ms m = do
+  let ddecs = mkDDecs $ concatMap mod_ddecs ms
 
       mderive :: Deriving -> Failable Dec
       mderive d@(Deriving loc ctx cls)
@@ -328,5 +334,5 @@ flatten1 ms m = do
         , Just cs <- HT.lookup n ddecs = return (derive loc ctx cls cs)
         | otherwise = lthrow loc $ "unable to perform standalone derive"
   derives <- mapM mderive (mod_derivings m)
-  mod_decs <$> evalStateT (qualify (m { mod_decs = derives ++ mod_decs m})) (QS ms (error "not in module") [] syns)
-
+  return $ m { mod_decs = derives ++ mod_decs m }
+  

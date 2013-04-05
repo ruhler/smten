@@ -92,6 +92,7 @@ library
     Smten.HaskellF.Compile.Data
     Smten.HaskellF.Compile.Dec
     Smten.HaskellF.Compile.Ppr
+    Smten.HaskellF.Compile.Module
 
     Smten.HaskellF.HaskellF
     Smten.HaskellF.Lib.Prelude

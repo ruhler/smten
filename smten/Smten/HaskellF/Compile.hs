@@ -33,6 +33,8 @@
 -- 
 -------------------------------------------------------------------------------
 
+{-# LANGUAGE PatternGuards #-}
+
 -- Back end target which translates smten programs into Haskell. Supports
 -- symbolic computation.
 module Smten.HaskellF.Compile (
@@ -42,45 +44,40 @@ module Smten.HaskellF.Compile (
 import Data.Functor((<$>))
 import qualified Language.Haskell.TH.PprLib as H
 import qualified Language.Haskell.TH as H
+import System.Directory
 
 import Smten.Failable
 import Smten.Name
 import Smten.Dec
+import Smten.Module
+import Smten.Ppr
+import Smten.HaskellF.Compile.Name
 import Smten.HaskellF.Compile.HF
 import Smten.HaskellF.Compile.Data
 import Smten.HaskellF.Compile.Dec
 import Smten.HaskellF.Compile.Ppr
+import Smten.HaskellF.Compile.Module
 
--- haskell decs
+-- haskell odir env mods
 --  Compile the given declarations to haskell.
-haskellf ::    Bool     -- ^ Should a "__main" wrapper be generated?
-            -> String   -- ^ Name of target module.
-            -> Env -> Failable H.Doc
-haskellf wrapmain modname env = {-# SCC "HaskellF" #-} do
-  let hsHeader :: H.Doc
-      hsHeader = H.text "{-# LANGUAGE ExplicitForAll #-}" H.$+$
-                 H.text "{-# LANGUAGE MultiParamTypeClasses #-}" H.$+$
-                 H.text "{-# LANGUAGE FlexibleInstances #-}" H.$+$
-                 H.text "{-# LANGUAGE FlexibleContexts #-}" H.$+$
-                 H.text "{-# LANGUAGE UndecidableInstances #-}" H.$+$
-                 H.text "{-# LANGUAGE ScopedTypeVariables #-}" H.$+$
-                 H.text "{-# LANGUAGE InstanceSigs #-}" H.$+$
-                 H.text ("module " ++ modname ++ " where") H.$+$
-                 H.text "import qualified Prelude" H.$+$
-                 H.text "import qualified Smten.HaskellF.HaskellF as S" H.$+$
-                 H.text "import qualified Smten.Name as S" H.$+$
-                 H.text "import qualified Smten.Type as S" H.$+$
-                 H.text "import qualified Smten.ExpH as S" H.$+$
-                 H.text "import Smten.HaskellF.Lib.Prelude" H.$+$
-                 H.text "import Smten.HaskellF.Lib.Symbolic" H.$+$
-                 H.text "" H.$+$
-                 if wrapmain
-                    then H.text "__main = __main_wrapper main"
-                    else H.empty
+haskellf :: FilePath -> Env -> [Module] -> IO ()
+haskellf odir env mods = {-# SCC "HaskellF" #-} do
+  let mkmod m = do
+        hf <- pretty <$> attemptIO (hsModule env m)
+        let dst = map dot2slash . unname  . hfpre . mod_name $ m
+            tgt = odir ++ "/" ++ dst ++ ".hs"
+        createDirectoryIfMissing True (directory tgt)
+        writeFile tgt hf
+  mapM_ mkmod mods
 
-      dsm = concat <$> mapM hsDec (getDecls env)
-  ds <- runHF env dsm
-  return (hsHeader H.$+$ H.ppr ds)
+directory :: FilePath -> FilePath
+directory f
+  | '/' `notElem` f = ""
+  | (h, t) <- break (== '/') f = h ++ "/" ++ directory (tail t)
+
+dot2slash :: Char -> Char
+dot2slash '.' = '/'
+dot2slash c = c 
 
 hfData :: Name -> [TyVar] -> [Con] -> Failable [H.Dec]
 hfData n tyvars constrs = runHF (mkEnv []) (hsData n tyvars constrs)

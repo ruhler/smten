@@ -33,7 +33,7 @@
 -- 
 -------------------------------------------------------------------------------
 
-module Smten.Loader (SearchPath, loadmod, loadmods, loadenv) where
+module Smten.Loader (SearchPath, loadmods, compenv, loadenv) where
 
 import System.Directory
 
@@ -102,22 +102,28 @@ findmodule (s:ss) n =
         else findmodule ss n
 
 -- | Load the complete module hierarchy needed for the smtn file specified in
--- the given path.
+-- the given path. Also performs sderive on each module.
 loadmods :: SearchPath -> FilePath -> IO [Module]
 loadmods path mainmod = do
     main <- loadmod mainmod
-    loads path [n | Import n <- mod_imports main] [main]
+    ms <- loads path [n | Import n <- mod_imports main] [main]
+    attemptIO $ mapM (sderive ms) ms
 
+-- Given a set of modules, 
+-- flatten, kind infer, type infer, and type check to compile an Env.
+compenv :: [Module] -> Failable Env
+compenv mods = do
+    flat <- {-# SCC "Flatten" #-} flatten mods
+    kinded <- {-# SCC "KindInfer" #-} kindinfer (mkEnv flat)
+    decs <- {-# SCC "TypeInfer" #-} typeinfer (mkEnv kinded) kinded
+    let env = mkEnv decs
+    {-# SCC "TypeCheck" #-} typecheck env decs
+    return env
 
 -- Load a program into an environment.
 -- Performs module flattening, type inference, and type checking.
 loadenv :: SearchPath -> FilePath -> IO Env
 loadenv path fin = do
     mods <- loadmods path fin
-    flat <- attemptIO $ {-# SCC "Flatten" #-} flatten mods
-    kinded <- attemptIO $ {-# SCC "KindInfer" #-} kindinfer (mkEnv flat)
-    decs <- attemptIO $ {-# SCC "TypeInfer" #-} typeinfer (mkEnv kinded) kinded
-    let env = mkEnv decs
-    attemptIO $ {-# SCC "TypeCheck" #-} typecheck env decs
-    return env
+    attemptIO $ compenv mods
 

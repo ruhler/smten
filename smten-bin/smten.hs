@@ -69,10 +69,9 @@ data Args = Args {
     run :: Run,
     include :: [FilePath],
     main_is :: String,
-    no_main :: Bool,
-    mod_name :: String,
     file :: FilePath,
-    output :: FilePath
+    output :: FilePath,
+    hsdir :: FilePath
 } deriving (Show, Eq, Data, Typeable)
 
 argspec :: Args
@@ -87,15 +86,14 @@ argspec = Args {
        A.&= A.typDir,
     main_is = "Main.main"
        A.&= A.help "Fully qualified top-level function to use",
-    no_main = False
-       A.&= A.help "Don't generate a __main wrapper with haskellf",
-    Main.mod_name = "Main"
-       A.&= A.help "Haskell module to generate with haskellf",
     file = "Main.smtn"
        A.&= A.help "Input .smtn file"
        A.&= A.typFile,
     output = "-"
        A.&= A.help "Where to place output. Use '-' for stdout"
+       A.&= A.typFile,
+    hsdir = "."
+       A.&= A.help "Where to place generated .hs files for haskellf."
        A.&= A.typFile
     } A.&=
     A.verbosity A.&=
@@ -128,12 +126,7 @@ main = do
             env <- loadenv includes (file args)
             outf $ pretty env
         HaskellF -> do
-            -- Note: we end up parsing the main module twice. Once for the
-            -- environment, and once again to get just the main module.
-            --
-            -- I think this is acceptable, because it leads to cleaner code,
-            -- and shouldn't be overly costly.
-            env <- loadenv includes (file args)
-            hf <- attemptIO $ haskellf (not (no_main args)) env mainmod
-            outf $ pretty hf 
+            mods <- loadmods includes (file args)
+            env <- attemptIO $ compenv mods
+            haskellf (hsdir args) env mods
 

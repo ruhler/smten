@@ -4,6 +4,7 @@
 module Smten.HaskellF.Compile.Name (
     hsName, hsTyName, nmn, nmk,
     casenm, symnm,
+    qualified, hfpre,
     ) where
 
 import qualified Language.Haskell.TH.Syntax as H
@@ -86,4 +87,11 @@ casenm n = H.mkName $ "__case" ++ hfnm n
 -- constructor associated with it.
 symnm :: Name -> H.Name
 symnm n = H.mkName $ hftynm n ++ "__s"
+
+qualified :: Name -> Name -> Name
+qualified modname n = modname `nappend` name "." `nappend` n
+
+-- Prefix the given name to put it into the HaskellF library module namespace.
+hfpre :: Name -> Name
+hfpre = qualified (name "Smten.Lib")
 

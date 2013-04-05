@@ -24,7 +24,7 @@ testhf:
 testsugar:
 	./build/home/.cabal/bin/smten --desugar \
 		--include smten/share/lib \
-		--file smten/share/lib/Smten/SMT/Tests/Share.smtn \
+		--file smten/share/lib/Smten/Tests/Concrete.smtn \
 		-o desugared
 
 clean:
