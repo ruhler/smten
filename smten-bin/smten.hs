@@ -121,7 +121,7 @@ main = do
             runio (inline env (smtenPs ++ smtPs) m)
             return ()
         Desugar -> do
-            mods <- load includes (file args)
+            mods <- loadmods includes (file args)
             flat <- attemptIO $ flatten mods
             outf . pretty $ flat
         Type -> do

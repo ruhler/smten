@@ -33,7 +33,7 @@
 -- 
 -------------------------------------------------------------------------------
 
-module Smten.Loader (SearchPath, load, loadenv) where
+module Smten.Loader (SearchPath, loadmod, loadmods, loadenv) where
 
 import System.Directory
 
@@ -72,10 +72,11 @@ loads sp ns ms =
 loadone :: SearchPath -> Name -> IO Module
 loadone sp n = do
     fname <- findmodule sp n
-    loadthis fname
+    loadmod fname
 
-loadthis :: FilePath -> IO Module
-loadthis fname = do
+-- | Load a single module from the given file.
+loadmod :: FilePath -> IO Module
+loadmod fname = do
     text <- readFile fname
     attemptIO $ addprelude <$> parse fname text
 
@@ -102,9 +103,9 @@ findmodule (s:ss) n =
 
 -- | Load the complete module hierarchy needed for the smtn file specified in
 -- the given path.
-load :: SearchPath -> FilePath -> IO [Module]
-load path mainmod = do
-    main <- loadthis mainmod
+loadmods :: SearchPath -> FilePath -> IO [Module]
+loadmods path mainmod = do
+    main <- loadmod mainmod
     loads path [n | Import n <- mod_imports main] [main]
 
 
@@ -112,7 +113,7 @@ load path mainmod = do
 -- Performs module flattening, type inference, and type checking.
 loadenv :: SearchPath -> FilePath -> IO Env
 loadenv path fin = do
-    mods <- load path fin
+    mods <- loadmods path fin
     flat <- attemptIO $ {-# SCC "Flatten" #-} flatten mods
     kinded <- attemptIO $ {-# SCC "KindInfer" #-} kindinfer (mkEnv flat)
     decs <- attemptIO $ {-# SCC "TypeInfer" #-} typeinfer (mkEnv kinded) kinded
