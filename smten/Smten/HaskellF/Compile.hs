@@ -36,7 +36,7 @@
 -- Back end target which translates smten programs into Haskell. Supports
 -- symbolic computation.
 module Smten.HaskellF.Compile (
-    haskellf,
+    haskellf, hfData,
     ) where
 
 import Data.Functor((<$>))
@@ -44,8 +44,10 @@ import qualified Language.Haskell.TH.PprLib as H
 import qualified Language.Haskell.TH as H
 
 import Smten.Failable
+import Smten.Name
 import Smten.Dec
 import Smten.HaskellF.Compile.HF
+import Smten.HaskellF.Compile.Data
 import Smten.HaskellF.Compile.Dec
 import Smten.HaskellF.Compile.Ppr
 
@@ -79,4 +81,7 @@ haskellf wrapmain modname env = {-# SCC "HaskellF" #-} do
       dsm = concat <$> mapM hsDec (getDecls env)
   ds <- runHF env dsm
   return (hsHeader H.$+$ H.ppr ds)
+
+hfData :: Name -> [TyVar] -> [Con] -> Failable [H.Dec]
+hfData n tyvars constrs = runHF (mkEnv []) (hsData n tyvars constrs)
 

@@ -1,7 +1,7 @@
 
 {-# LANGUAGE TemplateHaskell #-}
 
-module Smten.HaskellF.TH (derive_SmtenHF) where
+module Smten.HaskellF.TH (derive_SmtenHF, haskellf_Data) where
 
 import Data.Maybe(fromMaybe)
 import Data.Functor((<$>))
@@ -9,7 +9,11 @@ import Data.Functor((<$>))
 import Language.Haskell.TH
 import Language.Haskell.TH.Syntax
 
+import Smten.Failable
+import qualified Smten.Name as S
+import qualified Smten.Dec as S
 import Smten.HaskellF.HaskellF
+import Smten.HaskellF.Compile
 
 -- Input are the names of a generated symbolic data type and a haskell data
 -- type. We expect the unqualified names to be the same.
@@ -53,4 +57,8 @@ derive_smtenHF c f vars cs =
 -- For now we'll just fall back on the less efficient default.
 derive_de_smtenHF :: String -> String -> [TyVarBndr] -> [Con] -> [Dec]
 derive_de_smtenHF c f vars cs = []
+
+
+haskellf_Data :: S.Name -> [S.TyVar] -> [S.Con] -> Q [Dec]
+haskellf_Data n tyvars constrs = attemptM $ hfData n tyvars constrs
 

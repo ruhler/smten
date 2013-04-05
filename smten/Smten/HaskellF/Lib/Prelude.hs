@@ -2,6 +2,7 @@
 {-# LANGUAGE PatternGuards #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE TemplateHaskell #-}
 
 module Smten.HaskellF.Lib.Prelude (
     Char,
@@ -44,11 +45,15 @@ import Prelude hiding (
 import qualified Prelude as P
 
 import Smten.Type
-import Smten.Name
+import Smten.Name as S
+import Smten.Dec
 import Smten.ExpH
 import Smten.Prim
 import Smten.Ppr
-import Smten.HaskellF.HaskellF
+import qualified Smten.Type as S
+import qualified Smten.ExpH as S
+import Smten.HaskellF.HaskellF as S
+import Smten.HaskellF.TH
 import qualified Smten.Bit as B
 
 data Char =
@@ -140,44 +145,8 @@ __caseUnit__ x y n
   | Unit__s _ <- x = caseHF "()" x y n
   | otherwise = n
 
-data Bool =
-    True
-  | False
-  | Bool_s ExpH
-
-instance SmtenT Bool where
-    smtenT _ = boolT
-
-instance HaskellF Bool where
-    box e
-      | Just [] <- de_conHF "True" e = True
-      | Just [] <- de_conHF "False" e = False
-      | otherwise = Bool_s e
-
-    unbox x
-      | True <- x = conHF x "True" []
-      | False <- x = conHF x "False" []
-      | Bool_s v <- x = v
-
-instance SmtenHF P.Bool Bool where
-    smtenHF P.True = True
-    smtenHF P.False = False
-
-    de_smtenHF True = Just P.True
-    de_smtenHF False = Just P.False
-    de_smtenHF (Bool_s v) = de_smtenEH v
-
-__caseTrue :: (HaskellF a) => Bool -> a -> a -> a
-__caseTrue x y n
-  | True <- x = y
-  | Bool_s _ <- x = caseHF "True" x y n
-  | otherwise = n
-
-__caseFalse :: (HaskellF a) => Bool -> a -> a -> a
-__caseFalse x y n
-  | False <- x = y
-  | Bool_s _ <- x = caseHF "False" x y n
-  | otherwise = n
+haskellf_Data (name "Bool") [] [Con trueN [], Con falseN []]
+derive_SmtenHF ''P.Bool ''Bool
 
 data Tuple2__ a b = Tuple2__ a b | Tuple2____s ExpH
 instance SmtenT2 Tuple2__

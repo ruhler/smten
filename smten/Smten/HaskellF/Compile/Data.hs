@@ -2,7 +2,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 
 module Smten.HaskellF.Compile.Data (
-   mkDataD, mkSmtenTD, mkSymbD, mkCaseD, 
+   hsData,
     ) where
 
 import Control.Monad.Error
@@ -17,6 +17,13 @@ import Smten.HaskellF.Compile.Name
 import Smten.HaskellF.Compile.Type
 import Smten.HaskellF.Compile.Kind
 
+hsData :: Name -> [TyVar] -> [Con] -> HF [H.Dec]
+hsData n tyvars constrs = do
+    dataD <- mkDataD n tyvars constrs
+    smtenTD <- mkSmtenTD n tyvars
+    symbD <- mkSymbD n tyvars constrs
+    casesD <- mapM (mkCaseD n tyvars) constrs
+    return $ concat ([dataD, smtenTD, symbD] : casesD)
 
 -- data Foo a b ... =
 --    FooA FooA1 FooA2 ...

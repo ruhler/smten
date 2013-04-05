@@ -65,8 +65,6 @@ Cleanup::
 * type inference can't fail, so don't use Failable in it.
 * varTs should return a list of TyVar, not (Name, Kind)
 * typeinfer - use structure like typecheck (if reasonable)
-* haskellf.Compile - use monadic structure like typecheck, infer (if
-  reasonable)
 * enforce in Parser that all class methods must have a signature?
 * Merge FromExpH and Translate into a single operation?
     Or perhaps have a FromExpH class, and be able to go to both Exp and
@@ -94,7 +92,8 @@ Specialization::
 
 HaskellF::
 * Translate a module at a time instead of one big blob
-* Perhaps use TH to make defining the HaskellF prelude easier?
+* Use TH to defining the following from the HaskellF prelude:
+    tupleN, Unit, List, Maybe
 
 Build System::
 * Don't require yices1 and yices2 to be installed to build or use smten

@@ -73,12 +73,7 @@ hsDec (DataD _ n _ _) | n `elem` [
   name "Used",
   name "IO"] = return []
 
-hsDec (DataD _ n tyvars constrs) = do
-    dataD <- mkDataD n tyvars constrs
-    smtenTD <- mkSmtenTD n tyvars
-    symbD <- mkSymbD n tyvars constrs
-    casesD <- mapM (mkCaseD n tyvars) constrs
-    return $ concat ([dataD, smtenTD, symbD] : casesD)
+hsDec (DataD _ n tyvars constrs) = hsData n tyvars constrs
 
 hsDec (ClassD _ ctx n vars exps@(TopExp (TopSig _ _ t) _:_)) = do
     -- Kind inference doesn't currently update the kinds of the vars in the
