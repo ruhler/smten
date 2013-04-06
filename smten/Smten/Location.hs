@@ -1,13 +1,7 @@
 
-{-# LANGUAGE FlexibleContexts #-}
-
 module Smten.Location (
-    Location(..), Locate(..), lthrow, lunknown, lmsg,
+    Location(..), Locate(..), lunknown, lmsg,
  ) where
-
-import Control.Monad.Error
-
-import Smten.Failable
 
 data Location = Location {
     file :: FilePath,
@@ -24,10 +18,6 @@ lmsg loc msg =
       ln = line loc
       cl = column loc
   in fp ++ ":" ++ show ln ++ ":" ++ show cl ++ ": " ++ msg
-
--- | Fail with a message augmented with location information.
-lthrow :: (MonadError String m) => Location -> String -> m a
-lthrow loc msg = throw $ lmsg loc msg
 
 lunknown :: Location
 lunknown = Location "unknown" 0 0

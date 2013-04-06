@@ -37,7 +37,7 @@
 
 -- | A monad for dealing with computations which can fail.
 module Smten.Failable (
-    Failable, throw, attempt, attemptM, attemptIO,
+    Failable, throw, lthrow, attempt, attemptM, attemptIO,
     ) where
 
 import Control.Monad
@@ -45,6 +45,8 @@ import Control.Monad.Error
 
 import System.IO
 import System.Exit
+
+import Smten.Location
 
 type Failable = Either String
 
@@ -70,4 +72,8 @@ attemptIO (Left msg) = do
     hPutStrLn stderr msg
     exitFailure
 attemptIO (Right a) = return a
+
+-- | Fail with a message augmented with location information.
+lthrow :: (MonadError String m) => Location -> String -> m a
+lthrow loc msg = throw $ lmsg loc msg
 
