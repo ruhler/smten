@@ -35,6 +35,7 @@
 
 {-# LANGUAGE PatternGuards #-}
 {-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 
 module Smten.Module.Module (
@@ -42,8 +43,10 @@ module Smten.Module.Module (
     sderive, flatten, flatten1,
     ) where
 
+import Control.Monad.Error
 import Control.Monad.Writer hiding ((<>))
 import Control.Monad.Reader
+
 import Data.Functor ((<$>))
 import Data.List(nub)
 import Data.Maybe(fromMaybe, catMaybes)
@@ -129,7 +132,7 @@ instance Ppr Module where
                 $+$ vcat (map ppr (mod_synonyms m))
                 $+$ ppr (mod_decs m)) $+$ text "}"
 
-lookupModule :: Name -> [Module] -> Failable Module
+lookupModule :: (MonadError String m) => Name -> [Module] -> m Module
 lookupModule n [] = throw $ "module " ++ pretty n ++ " not found"
 lookupModule n (m:_) | (n == mod_name m) = return m
 lookupModule n (_:ms) = lookupModule n ms
@@ -291,8 +294,8 @@ exports m =
 resolvein :: Name -> Import -> QualifyM (Maybe Name)
 resolvein n (Import fr as qo) = do
   mods <- asks qs_env
-  let [mod] = filter (\m -> mod_name m == fr) mods
-      matches = filter (== n) (exports mod)
+  mod <- lookupModule fr mods
+  let matches = filter (== n) (exports mod)
       uqn = unqualified n
       qn = qualification n
   return $ do
