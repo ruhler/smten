@@ -205,7 +205,8 @@ lookupClassD env n =
 -- | Look up the DataD or ClassD associated with the given Name in the given
 -- Environment.
 lookupTypeD :: (MonadPlus m, MonadError String m) => Env -> Name -> m Dec
-lookupTypeD e n = lookupDataD e n `mplus` lookupClassD e n
+lookupTypeD e n
+  = lookupDataD e n `mplus` lookupClassD e n `mplus` (throw $ "Type " ++ pretty n ++ " not defined")
 
 -- | Look up an InstD in the given Environment.
 lookupInstD :: (MonadError String m) => Env -> Class -> m Dec
