@@ -171,6 +171,33 @@ lexcomment depth ('{':'-':cs) = many "{-" >> lexcomment (depth+1) cs
 lexcomment depth ('\n':cs) = newline >> lexcomment depth cs
 lexcomment depth (c:cs) = single >> lexcomment depth cs
 
+-- Lex a qualified thing.
+-- It is one of:
+--  conid, qvarid, qconid
+--
+-- Assumes the first character in the string is large.
+lexqual :: String -> ParserMonad Token
+lexqual text = do
+  let (ns, rest) = span isIdChar text
+  many ns
+  let n = name ns
+  case rest of
+        ('.':x:xs)
+            | isLarge x -> do
+                single
+                q <- lexqual (x:xs)
+                case q of
+                    TokenConId n' -> return (TokenQConId (qualified n n'))
+                    TokenQConId n' -> return (TokenQConId (qualified n n'))
+                    TokenQVarId n' -> return (TokenQVarId (qualified n n'))
+            | isSmall x -> do
+                single
+                let (ns', rest') = span isIdChar (x:xs)
+                many ns'
+                setText rest'
+                return (TokenQVarId (qualified n (name ns')))
+        _ -> setText rest >> return (TokenConId n)
+
 -- Read the next token from the input stream.
 -- Updates the tloc with the location of the start of the token.
 lex :: ParserMonad Token
@@ -184,9 +211,7 @@ lex = do
       (c:cs) | Just tok <- (lookup c singles) -> osingle tok cs
       ('\n':cs) -> newline >> setText cs >> lex
       (c:cs) | isSpace c -> single >> setText cs >> lex
-      (c:cs) | isLarge c ->
-          let (ns, rest) = span isIdChar cs
-          in many (c:ns) >> setText rest >> return (TokenConId (name $ c:ns))
+      (c:cs) | isLarge c -> lexqual text
       (c:cs) | isSmall c ->
           let (ns, rest) = span isIdChar cs
           in case (c:ns) of

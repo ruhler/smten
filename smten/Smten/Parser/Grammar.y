@@ -99,6 +99,8 @@ import Smten.Parser.Utils
        '::'      { TokenDoubleColon }
        conid    { TokenConId $$ }
        varid_   { TokenVarId $$ }
+       qconid_  { TokenQConId $$ }
+       qvarid_  { TokenQVarId $$ }
        varsym  { TokenVarSym $$ }
        consym   { TokenConSym $$ }
        integer  { TokenInteger $$ }
@@ -402,7 +404,7 @@ apoes :: { [PatOrExp] }
     { $1 ++ [$2] }
 
 apoe :: { PatOrExp }
- : var
+ : qvar
     {% withloc $ \l -> varPE l $1 }
  | var '@' apoe
     { asPE $1 $3 }
@@ -505,7 +507,7 @@ fbinds :: { [(Name, Exp)] }
     { $1 ++ [$3] }
 
 fbind :: { (Name, Exp) }
- : var '=' poe
+ : qvar '=' poe
     {% fmap ((,) $1) (toExp $3) }
 
 gcon :: { Name }
@@ -525,6 +527,14 @@ varid :: { Name }
 
 var :: { Name }
  : varid
+    { $1 }
+ | '(' varsym ')'
+    { $2 }
+ | '(' varsym_op ')'
+    { $2 }
+
+qvar :: { Name }
+ : qvarid
     { $1 }
  | '(' varsym ')'
     { $2 }
@@ -571,8 +581,12 @@ varsym_op :: { Name }
 qconid :: { Name }
  : conid
     { $1 }
- | qconid '.' conid
-    { $1 `nappend` name "." `nappend` $3 }
+ | qconid_
+    { $1 }
+
+qvarid :: { Name }
+ : varid { $1 }
+ | qvarid_ { $1 }
 
 commas :: { String }
  : ','

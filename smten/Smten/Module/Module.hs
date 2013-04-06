@@ -273,8 +273,7 @@ resolvein :: Name -> Import -> QualifyM (Maybe Name)
 resolvein n (Import fr as qo) = do
   mods <- asks qs_env
   mod <- lookupModule fr mods
-  let matches = filter (== n) (exports mod)
-      uqn = unqualified n
+  let uqn = unqualified n
       qn = qualification n
   return $ do
     guard $ uqn `elem` exports mod

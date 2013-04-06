@@ -2,6 +2,7 @@
 module Smten.Tests.DataMap where
 
 import qualified Data.Map as Map
+import Smten.Tests.Test
 
 m1 :: Map.Map Integer Integer
 m1 = Map.fromList [(5, 3), (1, 4), (6, 2), (8, 9)]

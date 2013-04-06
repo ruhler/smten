@@ -76,6 +76,8 @@ data Token =
      | TokenVarId Name
      | TokenVarSym Name
      | TokenConSym Name
+     | TokenQConId Name
+     | TokenQVarId Name
      | TokenInteger Integer
      | TokenString String
      | TokenChar Char
