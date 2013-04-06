@@ -34,10 +34,13 @@
 -------------------------------------------------------------------------------
 
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE TypeSynonymInstances #-}
 
 -- | A monad for dealing with computations which can fail.
 module Smten.Failable (
     Failable, throw, lthrow, attempt, attemptM, attemptIO,
+    MonadErrorSL(..),
     ) where
 
 import Control.Monad
@@ -73,7 +76,16 @@ attemptIO (Left msg) = do
     exitFailure
 attemptIO (Right a) = return a
 
+-- A MonadError with String errors and location information.
+class (MonadError String m) => MonadErrorSL m where
+    errloc :: m Location
+
+instance MonadErrorSL Failable where
+    errloc = return $ Location "Failable Unknown" 0 0
+
 -- | Fail with a message augmented with location information.
-lthrow :: (MonadError String m) => Location -> String -> m a
-lthrow loc msg = throw $ lmsg loc msg
+lthrow :: (MonadErrorSL m) => String -> m a
+lthrow msg = do
+    loc <- errloc
+    throw $ lmsg loc msg
 

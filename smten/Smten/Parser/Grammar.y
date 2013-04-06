@@ -233,7 +233,7 @@ ldecl :: { LDec }
       case (p, ps, $3) of
         (p, [], WBodies _ [Body _ [] e] []) -> return (LPat p e)
         (VarP n, _, _) -> return (LClause l n (MAlt ps $3))
-        _ -> lfailE "invalid let declaration"
+        _ -> lthrow "invalid let declaration"
     }
 
 idecls :: { [(Name, Location, MAlt)] }
@@ -392,7 +392,7 @@ lpoe :: { PatOrExp }
  | 'do' '{' stmts opt(';') '}'
     {% case last $3 of
          NoBindS _ -> withloc $ \l -> (doPE l $3)
-         _ -> lfailE "last statement in do must be an expression"
+         _ -> lthrow "last statement in do must be an expression"
     }
  | apoes
     {% withloc $ \l -> appsPE l (head $1) (tail $1) }

@@ -1,4 +1,7 @@
 
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE TypeSynonymInstances #-}
+
 -- | The HaskellF compilation monad.
 module Smten.HaskellF.Compile.HF (
     HFS(..), HF, runHF,
@@ -8,6 +11,7 @@ module Smten.HaskellF.Compile.HF (
 import Control.Monad.Reader
 
 import Smten.Name
+import Smten.Location
 import Smten.Type
 import Smten.Dec
 import Smten.Failable
@@ -26,6 +30,9 @@ data HFS = HFS {
 }
 
 type HF = ReaderT HFS Failable
+
+instance MonadErrorSL HF where
+    errloc = return $ Location "HaskellF Unknown" 0 0
 
 runHF :: Env -> HF a -> Failable a
 runHF e x = runReaderT x (HFS e [] [])

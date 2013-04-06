@@ -1,5 +1,7 @@
 
 {-# LANGUAGE PatternGuards #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE TypeSynonymInstances #-}
 
 module Smten.Typing.KInfer (
     kindinfer,
@@ -12,6 +14,7 @@ import qualified Data.Map as Map
 import qualified Data.Set as Set
 
 import Smten.Name
+import Smten.Location
 import Smten.Type
 import Smten.Ppr
 import Smten.Failable
@@ -30,6 +33,9 @@ initSS :: Env -> SS
 initSS e = SS e (Set.singleton arrowN) []
 
 type SortM = StateT SS Failable
+
+instance MonadErrorSL SortM where
+    errloc = return $ Location "SortM Unknown" 0 0
 
 -- Determine the order in which to do kind inference on the type constructors
 sort :: Env -> Failable [[Name]]

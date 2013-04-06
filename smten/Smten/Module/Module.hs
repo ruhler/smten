@@ -116,13 +116,11 @@ data QS = QS {
 
 type QualifyM = ReaderT QS Failable
 
+instance MonadErrorSL QualifyM where
+    errloc = asks qs_loc
+
 withloc :: Location -> QualifyM a -> QualifyM a
 withloc l = local (\r -> r { qs_loc = l } )
-
-qthrow :: String -> QualifyM a
-qthrow s = do
-    loc <- asks qs_loc
-    lthrow loc s
 
 mkSyns :: [Synonym] -> HT.HashTable Name ([Name], Type)
 mkSyns xs = HT.table [(n, (vs, t)) | Synonym n vs t <- xs]
@@ -206,7 +204,7 @@ instance Qualify Type where
           t | (ConT nm _, args) <- de_appsT t
             , Just (vs, t') <- HT.lookup nm syns ->
                 if length vs > length args
-                    then qthrow $ "expecting at least "
+                    then lthrow $ "expecting at least "
                              ++ show (length vs)
                              ++ " argument(s) to synonym "
                              ++ pretty nm ++ " in " ++ pretty t
@@ -287,9 +285,9 @@ resolve n = do
   let meimport = Import (mod_name me) (mod_name me) False
   finds <- mapM (resolvein n) (meimport : mod_imports me)
   case nub $ catMaybes finds of
-      [] -> qthrow $ "'" ++ pretty n ++ "' not found in module " ++ pretty (mod_name me)
+      [] -> lthrow $ "'" ++ pretty n ++ "' not found in module " ++ pretty (mod_name me)
       [x] -> return x
-      xs -> qthrow $ "'" ++ pretty n ++ "' is ambiguous: " ++ show xs
+      xs -> lthrow $ "'" ++ pretty n ++ "' is ambiguous: " ++ show xs
 
 -- | Flatten a complete module hierarchy.
 -- Includes builtin prelude.
@@ -318,7 +316,7 @@ sderive ms m = do
         , (ct, _) <- de_appsT t
         , Just n <- de_conT ct
         , Just cs <- HT.lookup n ddecs = return (derive loc ctx cls cs)
-        | otherwise = lthrow loc $ "unable to perform standalone derive"
+        | otherwise = throw $ lmsg loc "unable to perform standalone derive"
   derives <- mapM mderive (mod_derivings m)
   return $ m { mod_decs = derives ++ mod_decs m }
   

@@ -47,6 +47,7 @@ import Data.Functor
 import Data.Maybe (fromMaybe)
 
 import Smten.Name
+import Smten.Failable
 import Smten.Location
 import Smten.Parser.Monad
 
@@ -318,7 +319,7 @@ layout = do
         lpop
         return TokenCloseBrace
     (TokenCloseBrace, _) -> do
-        lfailE "Parser error at '}' in layout processing"
+        lthrow "Parser error at '}' in layout processing"
     (TokenOpenBrace, _) -> do
         lpush 0
         return TokenOpenBrace

@@ -65,13 +65,11 @@ data TCS = TCS {
 
 type TC = ReaderT TCS Failable
 
+instance MonadErrorSL TC where
+    errloc = asks tcs_loc
+
 withloc :: Location -> TC a -> TC a
 withloc l = local (\r -> r { tcs_loc = l } )
-
-tthrow :: String -> TC a
-tthrow s = do
-    loc <- asks tcs_loc
-    lthrow loc s
 
 -- wrongtype kind object expected found
 -- Reports an error message of the form:
@@ -82,7 +80,7 @@ tthrow s = do
 --  in <kind>: <obj>
 wrongtype :: (Ppr a) => String -> a -> Type -> Type -> TC b
 wrongtype kind obj exp fnd
- = tthrow $ "expecting type:\n  " ++ pretty exp
+ = lthrow $ "expecting type:\n  " ++ pretty exp
        ++ "\nbut found type:\n  " ++ pretty fnd
        ++ "\nin " ++ kind ++ ": " ++ pretty obj
   
@@ -104,12 +102,12 @@ instance TypeCheck Type where
       | VarT n _ <- t = do
            m <- asks tcs_tyvars
            if n `notElem` (map tyVarName m)
-                then tthrow $ "type variable " ++ pretty n ++ " not in scope"
+                then lthrow $ "type variable " ++ pretty n ++ " not in scope"
                 else return ()
       | AppT a b <- t = typecheckM a >> typecheckM b
       | NumT {} <- t = return ()
       | OpT _ a b <- t = typecheckM a >> typecheckM b
-      | UnknownT <- t = tthrow $ "unknown type encountered"
+      | UnknownT <- t = lthrow $ "unknown type encountered"
 
 instance TypeCheck Sig where
     typecheckM (Sig n t) = typecheckM t

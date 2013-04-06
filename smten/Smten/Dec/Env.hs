@@ -49,10 +49,9 @@ module Smten.Dec.Env (
     getDecls,
     ) where
 
-import Debug.Trace
-
 import Control.Monad
-import Control.Monad.Error
+
+import Debug.Trace
 
 import Data.Functor
 import Data.List(partition)
@@ -165,10 +164,10 @@ data VarInfo = Primitive |  Declared | Instance Class
 --  name - the name of the declaration searched for (for error messages)
 --  predicate - a predicate which identifies the desired declaration
 --  env - the environment to search in.
-theOneOf :: (MonadError String m) => String -> String -> (Dec -> Bool) -> Env -> m Dec
+theOneOf :: (MonadErrorSL m) => String -> String -> (Dec -> Bool) -> Env -> m Dec
 theOneOf kind n p e =
     case filter p (e_decls e) of
-        [] -> throw $ kind ++ " for " ++ n ++ " not found"
+        [] -> lthrow $ kind ++ " for " ++ n ++ " not found"
         x -> return $ head x
 
 -- | Look up a ValD with given Name in the given Environment.
@@ -188,14 +187,14 @@ lookupPrimD env n =
         
 -- | Look up a DataD with given type constructor Name in the given
 -- Environment.
-lookupDataD :: (MonadError String m) => Env -> Name -> m Dec
+lookupDataD :: (MonadErrorSL m) => Env -> Name -> m Dec
 lookupDataD env n =
   case (HT.lookup n (e_vitable env)) of
      Just (DecVI d@(DataD {})) -> return d  
-     _ -> throw $ "lookupDataD: " ++ pretty n ++ " is not a DataD"
+     _ -> lthrow $ "lookupDataD: " ++ pretty n ++ " is not a DataD"
 
 -- | Look up a ClassD with given Name in the given Environment.
-lookupClassD :: (MonadError String m) => Env -> Name -> m Dec
+lookupClassD :: (MonadErrorSL m) => Env -> Name -> m Dec
 lookupClassD env n =
   let theClassD :: Dec -> Bool
       theClassD (ClassD _ _ nm _ _) = n == nm
@@ -204,12 +203,12 @@ lookupClassD env n =
 
 -- | Look up the DataD or ClassD associated with the given Name in the given
 -- Environment.
-lookupTypeD :: (MonadPlus m, MonadError String m) => Env -> Name -> m Dec
+lookupTypeD :: (MonadPlus m, MonadErrorSL m) => Env -> Name -> m Dec
 lookupTypeD e n
-  = lookupDataD e n `mplus` lookupClassD e n `mplus` (throw $ "Type " ++ pretty n ++ " not defined")
+  = lookupDataD e n `mplus` lookupClassD e n `mplus` (lthrow $ "Type " ++ pretty n ++ " not defined")
 
 -- | Look up an InstD in the given Environment.
-lookupInstD :: (MonadError String m) => Env -> Class -> m Dec
+lookupInstD :: (MonadErrorSL m) => Env -> Class -> m Dec
 lookupInstD env (Class n t) =
   let theInstD :: Dec -> Bool
       theInstD (InstD _ _ (Class nm ts) _)
@@ -252,38 +251,38 @@ lookupVarValue e s = snd <$> lookupVar e s
 -- instance.
 --
 -- Fails if the variable could not be found in the environment.
-lookupVarType :: (MonadError String m) => Env -> Name -> m Type
+lookupVarType :: (MonadErrorSL m) => Env -> Name -> m Type
 lookupVarType env n = do
   case HT.lookup n (e_vitable env) of
     Just (DecVI (ValD _ (TopExp (TopSig _ _ t) _))) -> return t
     Just (DecVI (PrimD _ (TopSig _ _ t))) -> return t
     Just (ClassVI _ _ _ t _ _) -> return t
-    Nothing -> throw $ "lookupVarType: '" ++ pretty n ++ "' not found"
+    Nothing -> lthrow $ "lookupVarType: '" ++ pretty n ++ "' not found"
 
 -- | Given the name of a method and a specific class instance for the method,
 -- return the type of that method for the specific instance.
-lookupMethodType :: (MonadError String m) => Env -> Name -> Class -> m Type
+lookupMethodType :: (MonadErrorSL m) => Env -> Name -> Class -> m Type
 lookupMethodType env n (Class _ ts) = do
     case HT.lookup n (e_vitable env) of
         Just (ClassVI _ vars _ t _ _) ->
             return $ assign (zip (map tyVarName vars) ts) t
-        _ -> throw $ "lookupMethodType: " ++ pretty n ++ " not found"
+        _ -> lthrow $ "lookupMethodType: " ++ pretty n ++ " not found"
 
 -- | Given the name of a method and a specific class instance for the method,
 -- return the context of that method for the specific instance.
-lookupMethodContext :: (MonadError String m) => Env -> Name -> Class -> m Context
+lookupMethodContext :: (MonadErrorSL m) => Env -> Name -> Class -> m Context
 lookupMethodContext env n (Class _ ts) = do
     case HT.lookup n (e_vitable env) of
         Just (ClassVI _ vars ctx _ _ _) ->
             return $ assign (zip (map tyVarName vars) ts) ctx
-        _ -> throw $ "lookupMethodContext: " ++ pretty n ++ " not found"
+        _ -> lthrow $ "lookupMethodContext: " ++ pretty n ++ " not found"
 
 -- | Given the name of a data constructor in the environment, return its type.
-lookupDataConType :: (MonadError String m) => Env -> Name -> m Type
+lookupDataConType :: (MonadErrorSL m) => Env -> Name -> m Type
 lookupDataConType env n = 
     case HT.lookup n (e_dctable env) of
         Just t -> return t
-        _ -> throw $ "lookupDataConType: " ++ pretty n ++ " not found"
+        _ -> lthrow $ "lookupDataConType: " ++ pretty n ++ " not found"
 
 -- | Look up VarInfo for the variable with given signature.
 -- Fails if the variable is not declared or an instance or primitive.
@@ -300,7 +299,7 @@ lookupVarInfo env (Sig n t) =
 -- | Look up the context specified for the given variable with given
 -- signature.
 -- Fails if the variable is not declared.
-lookupVarContext :: (MonadError String m) => Env -> Sig -> m Context
+lookupVarContext :: (MonadErrorSL m) => Env -> Sig -> m Context
 lookupVarContext env (Sig n t) = 
   case HT.lookup n (e_vitable env) of
      Just (DecVI (ValD _ (TopExp (TopSig _ ctx st) _))) ->
@@ -309,7 +308,7 @@ lookupVarContext env (Sig n t) =
         return $ assign (assignments st t) ctx
      Just (ClassVI cn cts ctx st _ _) ->
         return $ assign (assignments st t) (Class cn (map tyVarType cts) : ctx)
-     _ -> throw $ "lookupVarContext: " ++ pretty n ++ " not found"
+     _ -> lthrow $ "lookupVarContext: " ++ pretty n ++ " not found"
 
 instance Ppr Env where
    ppr e = ppr $ e_decls e

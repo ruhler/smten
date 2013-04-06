@@ -26,12 +26,12 @@ type PatOrExp = (Failable Pat, Failable Exp)
 
 toPat :: PatOrExp -> ParserMonad Pat
 toPat x = case attempt (fst x) of
-             Left msg -> lfailE msg
+             Left msg -> lthrow msg
              Right v -> return v
 
 toExp :: PatOrExp -> ParserMonad Exp
 toExp x = case attempt (snd x) of
-             Left msg -> lfailE msg
+             Left msg -> lthrow msg
              Right v -> return v
 
 sigPE :: Location -> PatOrExp -> Type -> PatOrExp

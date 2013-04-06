@@ -8,6 +8,7 @@ module Smten.Parser.Utils (
 import Data.Maybe(fromMaybe)
 
 import Smten.Location
+import Smten.Failable
 import Smten.Sig
 import Smten.Name
 import Smten.Type
@@ -105,7 +106,7 @@ mkContext t =
       mkclass t =
         case de_appsT t of
           (ConT nm _, ts) -> return $ Class nm ts
-          _ -> lfailE "invalid context"
+          _ -> lthrow "invalid context"
 
       classes = fromMaybe [t] (de_tupleT t)
   in mapM mkclass classes
