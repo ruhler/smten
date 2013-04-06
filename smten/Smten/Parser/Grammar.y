@@ -98,7 +98,7 @@ import Smten.Parser.Utils
        '\\'      { TokenBackSlash }
        '::'      { TokenDoubleColon }
        conid    { TokenConId $$ }
-       varid    { TokenVarId $$ }
+       varid_   { TokenVarId $$ }
        varsymt  { TokenVarSym $$ }
        consym   { TokenConSym $$ }
        integer  { TokenInteger $$ }
@@ -119,6 +119,8 @@ import Smten.Parser.Utils
        'do'     { TokenDo }
        'module' { TokenModule }
        'import' { TokenImport }
+       'qualified' { TokenQualified }
+       'as' { TokenAs }
        'deriving' { TokenDeriving }
 
 %right '$'
@@ -161,8 +163,11 @@ impdecls :: { [Import] }
     { $1 ++ [$3] }
 
 impdecl :: { Import }
- : 'import' modid
-    { Import $2 $2 False }
+ : 'import' opt('qualified') modid opt(asmod)
+    { Import $3 (fromMaybe $3 $4) (isJust $2) }
+
+asmod :: { Name }
+ : 'as' modid { $2 }
 
 topdecls :: { [PDec] }
  : topdecl
@@ -512,6 +517,11 @@ gcon :: { Name }
     { name $ "(" ++ $2 ++ ")" }
  | qcon
     { $1 }
+
+varid :: { Name }
+ : varid_ { $1 }
+ | 'qualified' { name "qualified" }
+ | 'as' { name "as" }
 
 var :: { Name }
  : varid

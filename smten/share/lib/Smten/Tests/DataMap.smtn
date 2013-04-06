@@ -1,0 +1,14 @@
+
+module Smten.Tests.DataMap where
+
+import qualified Data.Map as Map
+
+m1 :: Map.Map Integer Integer
+m1 = Map.fromList [(5, 3), (1, 4), (6, 2), (8, 9)]
+
+testdatamap :: IO ()
+testdatamap = do
+    test "DataMap.lookup_yes" (Map.lookup 1 m1 == Just 4)
+    test "DataMap.lookup_no" (Map.lookup 4 m1 == Nothing)
+    test "DataMap.insert" (Map.lookup 4 (Map.insert 4 17 m1) == Just 17)
+

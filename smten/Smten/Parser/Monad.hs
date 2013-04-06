@@ -95,6 +95,8 @@ data Token =
      | TokenDo
      | TokenModule
      | TokenImport
+     | TokenQualified
+     | TokenAs
      | TokenDeriving
      | TokenEOF
      | TokenLayoutBrace Integer

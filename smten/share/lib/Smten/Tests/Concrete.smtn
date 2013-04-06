@@ -5,12 +5,14 @@ module Smten.Tests.Concrete where
 import Smten.Tests.Test
 import Smten.Tests.Basic
 import Smten.Tests.State
+import Smten.Tests.DataMap
 
 tests :: IO ()
 tests = do
     test "test.dummy" True
     testbasics
     teststate
+    testdatamap
 
 main :: IO ()
 main = do
