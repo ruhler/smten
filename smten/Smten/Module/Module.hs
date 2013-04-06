@@ -59,10 +59,13 @@ import Smten.Exp
 import Smten.Dec
 
 
--- TODO: support qualified import and import specs.
+-- TODO: support import specs.
 data Import = Import { 
     imp_from :: Name,
-    imp_as :: Name
+    imp_as :: Name,
+
+    -- Import entities from the module qualified only.
+    imp_qonly :: Bool
 } deriving(Show, Eq)
 
 -- type Foo a b ... = ...
@@ -96,9 +99,14 @@ data Module = Module {
 } deriving(Show, Eq)
 
 instance Ppr Import where
-    ppr (Import f a)
-      | f == a = text "import" <+> ppr f <> semi
-      | otherwise = text "import" <+> ppr f <+> text "as" <+> ppr a <> semi
+    ppr (Import f a p) =
+      let as = if (f == a)
+                  then empty
+                  else text "as" <+> ppr a
+          qf = if p 
+                  then text "qualified"
+                  else empty
+      in text "import" <+> qf <+> ppr f <+> as <> semi
 
 instance Ppr Synonym where
     ppr (Synonym n vs t)
@@ -295,7 +303,7 @@ exports m =
 -- Resolve the given name based on the given import.
 -- Returns the unique name for the entity if it is accessible via this import.
 resolvein :: Name -> Import -> QualifyM (Maybe Name)
-resolvein n (Import fr as) = do
+resolvein n (Import fr as qo) = do
   mods <- gets qs_env
   let [mod] = filter (\m -> mod_name m == fr) mods
       matches = filter (== n) (exports mod)
@@ -303,14 +311,14 @@ resolvein n (Import fr as) = do
       qn = qualification n
   return $ do
     guard $ uqn `elem` exports mod
-    guard $ qn == name "" || qn == as
+    guard $ qn == as || (not qo && qn == name "")
     return $ qualified fr uqn
         
 -- | Return the unique name for the entity referred to by the given name.
 resolve :: Name -> QualifyM Name
 resolve n = do
   me <- gets qs_me
-  let meimport = Import (mod_name me) (mod_name me)
+  let meimport = Import (mod_name me) (mod_name me) False
   finds <- mapM (resolvein n) (meimport : mod_imports me)
   case nub $ catMaybes finds of
       [] -> throw $ "'" ++ pretty n ++ "' not found in module " ++ pretty (mod_name me)

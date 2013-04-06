@@ -162,7 +162,7 @@ impdecls :: { [Import] }
 
 impdecl :: { Import }
  : 'import' modid
-    { Import $2 $2 }
+    { Import $2 $2 False }
 
 topdecls :: { [PDec] }
  : topdecl

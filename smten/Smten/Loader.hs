@@ -65,7 +65,7 @@ loads sp ns ms =
   in do
     loaded <- mapM (loadone sp) needed
     let newimports = concatMap mod_imports loaded
-    let newnames = [n | Import n _ <- newimports]
+    let newnames = map imp_from newimports
     loads sp newnames (loaded ++ ms)
 
 -- | Load a single module with the given name.
@@ -84,7 +84,7 @@ loadmod fname = do
 addprelude :: Module -> Module
 addprelude m
   | mod_name m == name "Prelude" = m
-  | otherwise = m { mod_imports = Import (name "Prelude") (name "Prelude") : mod_imports m }
+  | otherwise = m { mod_imports = Import (name "Prelude") (name "Prelude") False : mod_imports m }
       
 findmodule :: SearchPath -> Name -> IO FilePath
 findmodule [] n = fail $ "Module " ++ unname n ++ " not found"
@@ -106,7 +106,7 @@ findmodule (s:ss) n =
 loadmods :: SearchPath -> FilePath -> IO [Module]
 loadmods path mainmod = do
     main <- loadmod mainmod
-    ms <- loads path [n | Import n _ <- mod_imports main] [main]
+    ms <- loads path (map imp_from (mod_imports main)) [main]
     attemptIO $ mapM (sderive ms) ms
 
 -- Given a set of modules, 
