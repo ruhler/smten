@@ -39,7 +39,7 @@ hsHeader modname =
   H.text "import Smten.HaskellF.Lib.Symbolic"
 
 hsImport :: Import -> H.Doc
-hsImport (Import n) = H.text $ "import " ++ unname (hfpre n)
+hsImport (Import fr _) = H.text $ "import " ++ unname (hfpre fr)
 
 hsImports :: [Import] -> H.Doc
 hsImports = H.vcat . map hsImport

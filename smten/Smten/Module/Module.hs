@@ -59,11 +59,11 @@ import Smten.Exp
 import Smten.Dec
 
 
--- | Currently imports are restricted to the form:
--- > import Foo.Bar
--- No hiding or qualification is supported.
-data Import = Import Name
-    deriving(Show, Eq)
+-- TODO: support qualified import and import specs.
+data Import = Import { 
+    imp_from :: Name,
+    imp_as :: Name
+} deriving(Show, Eq)
 
 -- type Foo a b ... = ...
 data Synonym = Synonym Name [Name] Type 
@@ -96,7 +96,9 @@ data Module = Module {
 } deriving(Show, Eq)
 
 instance Ppr Import where
-    ppr (Import n) = text "import" <+> ppr n <> semi
+    ppr (Import f a)
+      | f == a = text "import" <+> ppr f <> semi
+      | otherwise = text "import" <+> ppr f <+> text "as" <+> ppr a <> semi
 
 instance Ppr Synonym where
     ppr (Synonym n vs t)
@@ -293,20 +295,22 @@ exports m =
 -- Resolve the given name based on the given import.
 -- Returns the unique name for the entity if it is accessible via this import.
 resolvein :: Name -> Import -> QualifyM (Maybe Name)
-resolvein n (Import mn) = do
+resolvein n (Import fr as) = do
   mods <- gets qs_env
-  let [mod] = filter (\m -> mod_name m == mn) mods
+  let [mod] = filter (\m -> mod_name m == fr) mods
       matches = filter (== n) (exports mod)
-      fqn = mod_name mod `nappend` name "." `nappend` n
-  if n `elem` exports mod
-     then return (Just fqn)
-     else return Nothing
+      uqn = unqualified n
+      qn = qualification n
+  return $ do
+    guard $ uqn `elem` exports mod
+    guard $ qn == name "" || qn == as
+    return $ qualified fr uqn
         
 -- | Return the unique name for the entity referred to by the given name.
 resolve :: Name -> QualifyM Name
 resolve n = do
   me <- gets qs_me
-  let meimport = Import (mod_name me)
+  let meimport = Import (mod_name me) (mod_name me)
   finds <- mapM (resolvein n) (meimport : mod_imports me)
   case nub $ catMaybes finds of
       [] -> throw $ "'" ++ pretty n ++ "' not found in module " ++ pretty (mod_name me)
