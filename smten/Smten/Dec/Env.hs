@@ -282,7 +282,7 @@ lookupDataConType :: (MonadErrorSL m) => Env -> Name -> m Type
 lookupDataConType env n = 
     case HT.lookup n (e_dctable env) of
         Just t -> return t
-        _ -> lthrow $ "lookupDataConType: " ++ pretty n ++ " not found"
+        _ -> lthrow $ "data constructor " ++ pretty n ++ " not found"
 
 -- | Look up VarInfo for the variable with given signature.
 -- Fails if the variable is not declared or an instance or primitive.

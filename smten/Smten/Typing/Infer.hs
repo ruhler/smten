@@ -61,6 +61,27 @@ import Smten.Dec
 import Smten.Ppr(pretty)
 import Smten.Typing.Solver
 
+data TIS = TIS {
+    ti_varid :: Integer,        -- ^ The next free VarT id
+    ti_cons :: [(Type, Type)]   -- ^ A list of accumulated type constraints
+}
+
+data TIR = TIR {
+    ti_tenv :: [Sig],           -- ^ Types of bound variables in scope
+    ti_env :: Env,              -- ^ The environment
+    ti_loc :: Location
+}
+
+type TI = ReaderT TIR (StateT TIS Failable)
+
+withloc :: Location -> TI a -> TI a
+withloc l = local (\ti -> ti { ti_loc = l })
+
+instance (MonadErrorSL TI) where
+    errloc = asks ti_loc
+
+runTI :: Env -> TI a -> Failable a
+runTI env x = evalStateT (runReaderT x (TIR [] env lunknown)) (TIS 1 [])
 
 -- | Perform type inference on the given declarations.
 -- Types UnknownT are inferred.
@@ -73,18 +94,18 @@ typeinfer e xs = runTI e (mapM inferdec xs)
 
 -- Run inference on a single declaration, given the environment.
 inferdec :: Dec -> TI Dec
-inferdec (ValD l (TopExp ts@(TopSig n ctx t) e)) = do
+inferdec (ValD l (TopExp ts@(TopSig n ctx t) e)) = withloc l $ do
     e' <- inferexp t e
     return $ ValD l (TopExp ts e')
 inferdec d@(DataD {}) = return d
-inferdec d@(ClassD l ctx n vars ms) = do
+inferdec d@(ClassD l ctx n vars ms) = withloc l $ do
   let infermethod :: TopExp -> TI TopExp
       infermethod (TopExp ts@(TopSig _ _ t) e) = do
         e' <- inferexp t e
         return (TopExp ts e')
   ms' <- mapM infermethod ms
   return (ClassD l ctx n vars ms')
-inferdec (InstD l ctx cls ms) = do
+inferdec (InstD l ctx cls ms) = withloc l $ do
   let infermethod :: Method -> TI Method
       infermethod (Method n e) = do
          env <- asks ti_env
@@ -120,23 +141,6 @@ deunknown =
       f t = return t
   in transformMTE f
 
-data TIS = TIS {
-    ti_varid :: Integer,        -- ^ The next free VarT id
-    ti_cons :: [(Type, Type)]   -- ^ A list of accumulated type constraints
-}
-
-data TIR = TIR {
-    ti_tenv :: [Sig],           -- ^ Types of bound variables in scope
-    ti_env :: Env               -- ^ The environment
-}
-
-type TI = ReaderT TIR (StateT TIS Failable)
-
-instance (MonadErrorSL TI) where
-    errloc = return $ Location "TI Unknown" 0 0
-
-runTI :: Env -> TI a -> Failable a
-runTI env x = evalStateT (runReaderT x (TIR [] env)) (TIS 1 [])
 
 -- | Add a type constraint
 addc :: Type -> Type -> TI ()
@@ -170,14 +174,14 @@ instance Constrain Lit where
     constrain l = return $ typeof l
 
 instance Constrain Exp where
-    constrain (LitE _ l) = constrain l
-    constrain (ConE _ (Sig n t)) = do
+    constrain (LitE loc l) = withloc loc $ constrain l
+    constrain (ConE l (Sig n t)) = withloc l $ do
         env <- asks ti_env
         cty <- lookupDataConType env n
         rcty <- retype cty
         addc rcty t
         return t
-    constrain v@(VarE _ (Sig n t)) = do
+    constrain v@(VarE l (Sig n t)) = withloc l $ do
         tenv <- asks ti_tenv
         case lookup n (map (\(Sig n t) -> (n, t)) tenv) of
             Just t' -> addc t' t
@@ -187,7 +191,7 @@ instance Constrain Exp where
                 rvt <- retype vt
                 addc rvt t
         return t
-    constrain (AppE _ f x) = do
+    constrain (AppE l f x) = withloc l $ do
         tf <- constrain f
         tx <- constrain x
         it <- newvt
@@ -195,10 +199,10 @@ instance Constrain Exp where
         addc (arrowT it ot) tf
         addc it tx
         return ot
-    constrain (LamE _ s x) = do
+    constrain (LamE l s x) = withloc l $ do
         ot <- scoped [s] (constrain x)
         return $ arrowT (typeof s) ot
-    constrain (CaseE _ x (Sig kn kt) y n) = do
+    constrain (CaseE l x (Sig kn kt) y n) = withloc l $ do
         xt <- constrain x
         yt <- constrain y
         nt <- constrain n 
