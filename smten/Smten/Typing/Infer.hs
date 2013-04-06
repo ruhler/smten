@@ -38,7 +38,7 @@
 {-# LANGUAGE TypeSynonymInstances #-}
 
 module Smten.Typing.Infer (
-        TypeInfer(..)
+        typeinfer
     ) where
 
 import Debug.Trace
@@ -50,6 +50,7 @@ import qualified Data.Map as Map
 import Data.Maybe(fromMaybe)
 
 import Smten.Failable
+import Smten.Strict
 import Smten.Location
 import Smten.Name
 import Smten.Sig
@@ -61,63 +62,56 @@ import Smten.Ppr(pretty)
 import Smten.Typing.Solver
 
 
-class TypeInfer a where
-    -- | Perform type inference on the given object.
-    -- Types UnknownT are inferred.
-    --
-    -- The returned expression may have incorrectly inferred types if the
-    -- expression doesn't type check, so you should run typecheck after
-    -- inference to make sure it's valid.
-    typeinfer :: Env -> a -> Failable a
-
-instance TypeInfer [Dec] where
-    typeinfer e = mapM (typeinfer e)
-
-instance TypeInfer Dec where
-    typeinfer = inferdec
+-- | Perform type inference on the given declarations.
+-- Types UnknownT are inferred.
+--
+-- The returned expression may have incorrectly inferred types if the
+-- expression doesn't type check, so you should run typecheck after
+-- inference to make sure it's valid.
+typeinfer :: Env -> [Dec] -> Failable [Dec]
+typeinfer e xs = runTI e (mapM inferdec xs)
 
 -- Run inference on a single declaration, given the environment.
-inferdec :: Env -> Dec -> Failable Dec
-inferdec env (ValD l (TopExp ts@(TopSig n ctx t) e)) = do
-    e' <- inferexp env t e
+inferdec :: Dec -> TI Dec
+inferdec (ValD l (TopExp ts@(TopSig n ctx t) e)) = do
+    e' <- inferexp t e
     return $ ValD l (TopExp ts e')
-inferdec env d@(DataD {}) = return d
-inferdec env d@(ClassD l ctx n vars ms) = do
-  let infermethod :: TopExp -> Failable TopExp
+inferdec d@(DataD {}) = return d
+inferdec d@(ClassD l ctx n vars ms) = do
+  let infermethod :: TopExp -> TI TopExp
       infermethod (TopExp ts@(TopSig _ _ t) e) = do
-        e' <- inferexp env t e
+        e' <- inferexp t e
         return (TopExp ts e')
   ms' <- mapM infermethod ms
   return (ClassD l ctx n vars ms')
-inferdec env (InstD l ctx cls ms) = do
-  let infermethod :: Method -> Failable Method
+inferdec (InstD l ctx cls ms) = do
+  let infermethod :: Method -> TI Method
       infermethod (Method n e) = do
+         env <- asks ti_env
          t <- lookupMethodType env n cls
-         e' <- inferexp env t e
+         e' <- inferexp t e
          return (Method n e')
   ms' <- mapM infermethod ms
   return (InstD l ctx cls ms')
-inferdec _ d@(PrimD {}) = return d
+inferdec d@(PrimD {}) = return d
 
-inferexp :: Env -> Type -> Exp -> Failable Exp
-inferexp env t e = do
- let (e', id) = runState (deunknown e) 1
- (_, TIS _ cons) <- runTI env id $ do
-      te' <- constrain e'
-      addc t te'
+inferexp :: Type -> Exp -> TI Exp
+inferexp t e = do
+ e' <- deunknown e
+ modify $ \s -> s { ti_cons = [] }
+ te' <- constrain e'
+ addc t te'
+ cons <- gets ti_cons
  let sol = solve cons
- --trace ("e': " ++ pretty e') (return ())
- --trace ("constraints: " ++ pretty cons) (return ())
- --trace ("solution: " ++ pretty sol) (return ())
  return $ assignl (flip Map.lookup sol) e'
 
 -- | Replace all UnknownT with new variable types.
 -- State is the id of the next free type variable to use.
-deunknown :: Exp -> State Integer Exp
+deunknown :: Exp -> TI Exp
 deunknown = 
   let f UnknownT = do
-          id <- get
-          put (id+1)
+          id <- gets ti_varid
+          modifyS $ \s -> s { ti_varid = id+1 }
           return (VarT (name $ "~" ++ show id) UnknownK)
       f (AppT a b) = do
           a' <- f a
@@ -141,8 +135,8 @@ type TI = ReaderT TIR (StateT TIS Failable)
 instance (MonadErrorSL TI) where
     errloc = return $ Location "TI Unknown" 0 0
 
-runTI :: Env -> Integer -> TI a -> Failable (a, TIS)
-runTI env id x = runStateT (runReaderT x (TIR [] env)) (TIS id [])
+runTI :: Env -> TI a -> Failable a
+runTI env x = evalStateT (runReaderT x (TIR [] env)) (TIS 1 [])
 
 -- | Add a type constraint
 addc :: Type -> Type -> TI ()
