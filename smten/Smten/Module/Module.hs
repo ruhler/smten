@@ -110,10 +110,19 @@ data QS = QS {
     qs_env :: [Module],     -- ^ The environment
     qs_me :: Module,        -- ^ The current module
     qs_bound :: [Name],     -- ^ List of bound variable names
-    qs_syns :: HT.HashTable Name ([Name], Type) -- ^ All type synonyms
+    qs_syns :: HT.HashTable Name ([Name], Type), -- ^ All type synonyms
+    qs_loc :: Location      -- ^ The current location
 }
 
 type QualifyM = ReaderT QS Failable
+
+withloc :: Location -> QualifyM a -> QualifyM a
+withloc l = local (\r -> r { qs_loc = l } )
+
+qthrow :: String -> QualifyM a
+qthrow s = do
+    loc <- asks qs_loc
+    lthrow loc s
 
 mkSyns :: [Synonym] -> HT.HashTable Name ([Name], Type)
 mkSyns xs = HT.table [(n, (vs, t)) | Synonym n vs t <- xs]
@@ -169,24 +178,24 @@ instance Qualify TopExp where
            return (TopExp ts' body')
 
 instance Qualify Dec where
-    qualify d@(ValD l e) = onfail (lthrow l) $ ValD l <$> qualify e
+    qualify d@(ValD l e) = withloc l $ ValD l <$> qualify e
 
     -- TODO: qualify type and data constructors.
-    qualify (DataD l n vars cs) = DataD l n vars <$> qualify cs
+    qualify (DataD l n vars cs) = withloc l $ DataD l n vars <$> qualify cs
 
     -- TODO: qualify class names
-    qualify (ClassD l ctx nm vars sigs) = do
+    qualify (ClassD l ctx nm vars sigs) = withloc l $ do
         ctx' <- qualify ctx
         sigs' <- mapM qualify sigs
         return (ClassD l ctx' nm vars sigs')
 
-    qualify (InstD l ctx cls meths) = do
+    qualify (InstD l ctx cls meths) = withloc l $ do
         ctx' <- qualify ctx
         cls' <- qualify cls
         meths' <- mapM qualify meths
         return (InstD l ctx' cls' meths')
 
-    qualify (PrimD l ts) = do
+    qualify (PrimD l ts) = withloc l $ do
         ts' <- qualify ts
         return (PrimD l ts')
 
@@ -197,7 +206,7 @@ instance Qualify Type where
           t | (ConT nm _, args) <- de_appsT t
             , Just (vs, t') <- HT.lookup nm syns ->
                 if length vs > length args
-                    then throw $ "expecting at least "
+                    then qthrow $ "expecting at least "
                              ++ show (length vs)
                              ++ " argument(s) to synonym "
                              ++ pretty nm ++ " in " ++ pretty t
@@ -212,10 +221,10 @@ instance Qualify Type where
 instance Qualify Exp where
     -- TODO: qualify data constructors
     qualify e@(LitE {}) = return e
-    qualify (ConE l (Sig n t)) = do
+    qualify (ConE l (Sig n t)) = withloc l $ do
         t' <- qualify t
         return (ConE l (Sig n t'))
-    qualify (VarE l (Sig n t)) = do
+    qualify (VarE l (Sig n t)) = withloc l $ do
         t' <- qualify t
         bound <- isbound n
         if bound 
@@ -223,15 +232,15 @@ instance Qualify Exp where
             else do
                 n' <- resolve n
                 return (VarE l (Sig n' t'))
-    qualify (AppE l f x) = do
+    qualify (AppE l f x) = withloc l $ do
         f' <- qualify f
         x' <- qualify x
         return (AppE l f' x')
-    qualify (LamE l (Sig n t) b) = do
+    qualify (LamE l (Sig n t) b) = withloc l $ do
         t' <- qualify t
         LamE l (Sig n t') <$> (withbound [n] $ qualify b)
     
-    qualify (CaseE l x (Sig kn kt) y n) = do
+    qualify (CaseE l x (Sig kn kt) y n) = withloc l $ do
         kt' <- qualify kt
         x' <- qualify x
         y' <- qualify y
@@ -279,9 +288,9 @@ resolve n = do
   let meimport = Import (mod_name me) (mod_name me) False
   finds <- mapM (resolvein n) (meimport : mod_imports me)
   case nub $ catMaybes finds of
-      [] -> throw $ "'" ++ pretty n ++ "' not found in module " ++ pretty (mod_name me)
+      [] -> qthrow $ "'" ++ pretty n ++ "' not found in module " ++ pretty (mod_name me)
       [x] -> return x
-      xs -> throw $ "'" ++ pretty n ++ "' is ambiguous: " ++ show xs
+      xs -> qthrow $ "'" ++ pretty n ++ "' is ambiguous: " ++ show xs
 
 -- | Flatten a complete module hierarchy.
 -- Includes builtin prelude.
@@ -297,7 +306,7 @@ flatten1 :: [Module]    -- ^ The environment
             -> Failable [Dec] -- ^ Flattened declarations from the module
 flatten1 ms m = do
   let syns = mkSyns $ concatMap mod_synonyms ms
-  mod_decs <$> runReaderT (qualify m) (QS ms (error "not in module") [] syns)
+  mod_decs <$> runReaderT (qualify m) (QS ms (error "not in module") [] syns lunknown)
 
 -- Perform standalone derivings in the given module.
 sderive :: [Module] -> Module -> Failable Module

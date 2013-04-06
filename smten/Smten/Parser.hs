@@ -16,10 +16,6 @@ import Smten.Parser.Grammar
 --
 -- - Explicit module exports.
 --
--- - Qualified imports.
---
--- - Importing a module under a different name using 'as'.
---
 -- - Import specifications.
 --
 -- - Contexts in data declarations.
@@ -33,8 +29,6 @@ import Smten.Parser.Grammar
 -- - Multiple vars for a single type signature.
 -- 
 -- - fixity declarations.
---
--- - Qualified names.
 --
 -- - ! in constructor declarations.
 --

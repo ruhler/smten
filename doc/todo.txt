@@ -1,5 +1,4 @@
 Recent::
-* Locations with flatten errors
 * Don't pretty print numeric type 16 in haskellf as
     2*2*2*2*(1+0) ??
     depends if you want detailed type info or not.
@@ -63,6 +62,8 @@ Primitives::
 * Concretize the rest of the haskellf primitives
 
 Cleanup::
+* split Module.Module into different modules
+    Qualify, Resolve, and Flatten ought to do nicely
 * type inference can't fail, so don't use Failable in it.
 * varTs should return a list of TyVar, not (Name, Kind)
 * typeinfer - use structure like typecheck (if reasonable)
