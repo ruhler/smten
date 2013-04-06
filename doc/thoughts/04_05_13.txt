@@ -1,0 +1,215 @@
+
+Fri Apr  5 09:34:49 EDT 2013
+
+I cleaned up HaskellF compilation a bunch.
+I cleaned up the loader API.
+
+We are now back to the point where it's time to try working on modularity
+again. Hopefully it will be easier to do now that everything is cleaner.
+
+First step: merge master into module branch.
+Next step: dive into writing a Compile.Module thing. It's just like before. I
+need:
+* function to translate imports
+* function to look up typed declarations in Env
+
+That's it. Very simple. Then we'll have the fun of fixing qualified names, and
+all the other issues that come up.
+
+Fri Apr  5 11:59:37 EDT 2013
+
+I wrote the rough draft of the code. The one thing that remains is to
+understand how names are qualified...
+
+And also figure out how I want to test this end to end. What's the first
+end-to-end test to run? What commands do I need to call to try it? How will I
+change 'HaskellF' in the tclmk script?
+
+Fri Apr  5 13:51:22 EDT 2013
+
+It's clear. First step, manually compile each module needed for Concrete test.
+Get that working, check it in. Then I can figure out how to make usage easier.
+
+Let me write that up now.
+
+That's written. Now let me try it.
+
+I expect first the following error: can't find foo in Env, because really it
+should be looking for Foo.foo.
+
+Yup. How to fix that? I need the module name, and just qualify it when I do
+the lookup.
+
+Fri Apr  5 14:05:56 EDT 2013
+
+For my imports, and module definition, I need to add my hfprefix: Smten/Lib to
+everything.
+
+Good. Next step: in tclmk I need all the dependencies done right.
+
+Smten.Tests.Test, Smten.Tests.Basic, Smten.Tests.State to start.
+
+Fri Apr  5 14:19:34 EDT 2013
+
+Now, how to find Prelude? How about moving everything to where Prelude is:
+Smten.HaskellF.Lib.*
+
+Sounds fine to me.
+
+Fri Apr  5 14:27:04 EDT 2013
+
+There are a number of issues to work out:
+* don't typecheck and infer everything every time!
+* generated Prelude shadows builtin Prelude
+
+Other than that, I seem to be making progress, which is good.
+
+Fri Apr  5 15:41:55 EDT 2013
+
+The original goal of these changes is to support modularity in the front end.
+So Prelude and Data.Map can coexist.
+
+This means I don't have to support, yet, modular compilation. It's just that
+when I compile, I generate a bunch of haskell files, instead of just one.
+
+So that should be the model.
+
+Which changes things slightly.
+
+The change is this: we output multiple files...
+We call hsModule for each module we need.
+We output the module to the right place based on something.
+
+So, haskellf should be in IO (because we are reading and writing files). It
+should take as input a list of modules and the environment, and whatever info
+it needs to know where to output the files. Let's say it takes an output
+directory.
+
+You compile everything, put it in the right output directory. Perhaps I can
+interpret the -o flag that way?
+
+Sure. Don't worry about that for now. Whatever I need to to get things
+running. I imagine the way it will work out eventually is '-o' is used for the
+generated executable, and we have a -odir or some such to specify the output
+directory for compiled files.
+
+Good. Let me try this then. Set up the compilation to work the right way. Make
+sure I compile all the modules, and figure out where they should be written
+based on name. I can even make sure the directory exists if it doesn't
+already.
+
+Fine. Sounds simple enough. I'll give it a try.
+
+Fri Apr  5 16:29:39 EDT 2013
+
+Good. That's all set up happily. Now I need to figure out the builtin prelude
+thing. Same thing will happen with Symbolic.
+
+We need them to be in different name spaces.
+
+So... back to Smten.Lib, eh?
+
+The other thing: only create a main wrapper...
+
+If there exists a main function in the module?
+
+Fri Apr  5 16:37:47 EDT 2013
+
+Looks like standalone derived things aren't being added to the module
+declaration list. That's bad. Where do I do that?
+
+I'll just add them. I may end up doing duplicate work for derivation. I think
+that's okay.
+
+Maybe have a separate Module -> Module phase for this. sderive.
+
+That's set.
+
+Now the problem is: we don't produce a Main module. I should specify that
+manually when I call ghc.
+
+Fri Apr  5 16:56:24 EDT 2013
+
+There! Looks like it works. Nifty. Cool. That was pretty easy.
+
+Fri Apr  5 17:11:01 EDT 2013
+
+Now, everything is all in place. But Data.Map still won't work for two
+reasons:
+
+* We really need to support qualified import to make use of Data.Map
+* The current backend strips all qualifiers off of things, when we don't want
+  it to.
+
+Fri Apr  5 19:45:28 EDT 2013
+
+Next steps: support qualified import and explicitly qualified names.
+
+I feel like this ought not to be too hard. It's all about flatten.
+
+When I see a variable, I have to find what it refers to. Either the variable
+is qualified or not. If it's not qualified, I check everywhere. If it is
+qualified, I only check where it has that same qualification.
+
+Let me read about modules in the haskell report to get an idea about how to
+implement this.
+
+Now that I think about it, there are a couple of ways modules can be imported:
+
+* qualified or not
+    If qualified, then you must use the qualified name to access it.
+    If not qualified, you may, or may not, use the qualified name to access it.
+
+* qualified as
+    What name it is qualified under.
+
+Again, these should be easy to implement, because I only have to look, for a
+given import, can this match here or not?
+
+Currently the 'resolve' function works as follows:
+
+We check, for each import, whether that module has that name. That's the key.
+
+So I should reorganize it: Given a name and an Import statement, return
+whether or not that module defines the thing, and what the fully qualified
+thing should be.
+
+Yes, so, for each import we have:
+    Qualified? If so, only the qualified name is valid. Otherwise the
+    unqualified name is valid.
+
+    QualifiedName: The name to use for qualification.
+
+Note: the current module brings in to scope unqualified and qualified. So it's
+as if we have import Me as an import statement.
+
+Cool. So this is easy.
+
+Here's my plan for initial support.
+
+Import {
+    module :: Name,
+    qualified :: Bool,
+    as :: Name
+}
+
+Then, we want a function:
+
+resolvein :: Import -> Name -> Maybe Name
+    Resolves the name in the given import, returns the fully qualified value.
+
+Then I'll want to do some sort of catMaybes thing to get the list of all the
+Justs, and verify there is only one...
+
+Easy!
+
+Let me start by writing this structure.
+
+1. use catMaybes and resolvein structure for current implementation.
+2. add Qualified and As fields to Import, and handle those cases too.
+3. update the parser to be able to parse more complex Import statements.
+
+And that's it. Simple.
+
+Here I go on step one.
+

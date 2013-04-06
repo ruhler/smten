@@ -42,6 +42,7 @@ module Smten.Module.Module (
     sderive, flatten, flatten1,
     ) where
 
+import Control.Monad.Writer hiding ((<>))
 import Control.Monad.State
 import Data.Functor ((<$>))
 import Data.List(nub)
@@ -275,30 +276,31 @@ instance Qualify Method where
         nm' <- resolve nm
         return (Method nm' e')
 
+-- Return the set of entities exported by the given module.
+exports :: Module -> [Name]
+exports m =
+  let exdec :: Dec -> Writer [Name] ()
+      exdec (ValD _ (TopExp (TopSig nm _ _) _)) = tell [nm]
+      exdec (DataD _ nm _ _) = tell [nm]
+      exdec (ClassD _ _ nm _ sigs) = tell [nm] >> mapM_ exmeth sigs
+      exdec (InstD {}) = return ()
+      exdec (PrimD _ (TopSig nm _ _)) = tell [nm]
+
+      exmeth :: TopExp -> Writer [Name] ()
+      exmeth (TopExp (TopSig snm _ _) _) = tell [snm]
+  in execWriter (mapM exdec (mod_decs m))
+
 -- Resolve the given name based on the given import.
 -- Returns the unique name for the entity if it is accessible via this import.
 resolvein :: Name -> Import -> QualifyM (Maybe Name)
 resolvein n (Import mn) = do
   mods <- gets qs_env
   let [mod] = filter (\m -> mod_name m == mn) mods
-
-      hasName :: Dec -> Bool
-      hasName (ValD _ (TopExp (TopSig nm _ _) _)) = (n == nm)
-      hasName (DataD _ nm _ _) = (n == nm)
-      hasName (ClassD _ _ nm _ sigs) =
-        let hasns [] = False
-            hasns ((TopExp (TopSig snm _ _) _):_) | n == snm = True
-            hasns (_:ss) = hasns ss
-        in (n == nm) || hasns sigs
-      hasName (InstD {}) = False
-      hasName (PrimD _ (TopSig nm _ _)) = (n == nm)
-
-      matches = filter hasName (mod_decs mod)
+      matches = filter (== n) (exports mod)
       fqn = mod_name mod `nappend` name "." `nappend` n
-  case matches of
-     [] -> return Nothing
-     [x] -> return (Just fqn)
-     _ -> throw $ "'" ++ pretty fqn ++ "' is defined multiple times in"
+  if n `elem` exports mod
+     then return (Just fqn)
+     else return Nothing
         
 -- | Return the unique name for the entity referred to by the given name.
 resolve :: Name -> QualifyM Name
