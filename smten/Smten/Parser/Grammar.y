@@ -289,7 +289,7 @@ antype :: { Type }
     { $2 }
 
 gtycon :: { Name }
- : conid
+ : qconid
     { $1 }
  | '(' ')'
     { unitN }
