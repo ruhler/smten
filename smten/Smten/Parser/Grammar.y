@@ -99,7 +99,7 @@ import Smten.Parser.Utils
        '::'      { TokenDoubleColon }
        conid    { TokenConId $$ }
        varid_   { TokenVarId $$ }
-       varsymt  { TokenVarSym $$ }
+       varsym  { TokenVarSym $$ }
        consym   { TokenConSym $$ }
        integer  { TokenInteger $$ }
        char     { TokenChar $$ }
@@ -137,7 +137,7 @@ import Smten.Parser.Utils
 %%
 
 module :: { Module }
- : 'module' modid 'where' mbody
+ : 'module' qconid 'where' mbody
     { let (is, sy, dds, drv, ds) = $4
       in Module $2 is sy dds drv ds }
  | mbody
@@ -163,11 +163,11 @@ impdecls :: { [Import] }
     { $1 ++ [$3] }
 
 impdecl :: { Import }
- : 'import' opt('qualified') modid opt(asmod)
+ : 'import' opt('qualified') qconid opt(asmod)
     { Import $3 (fromMaybe $3 $4) (isJust $2) }
 
 asmod :: { Name }
- : 'as' modid { $2 }
+ : 'as' qconid { $2 }
 
 topdecls :: { [PDec] }
  : topdecl
@@ -176,14 +176,14 @@ topdecls :: { [PDec] }
     { $1 ++ $3 }
 
 topdecl :: { [PDec] }
- : 'data' tycon lopt(tyvars) '=' lopt(constrs) lopt(deriving)
+ : 'data' conid lopt(tyvars) '=' lopt(constrs) lopt(deriving)
     {% withloc $ \l ->
          PDataDec (DataDec $2 $3 $5) : [PDec ds | ds <- recordD l $2 $3 $5 $6] }
- | 'type' tycon lopt(tyvarnms) '=' type
+ | 'type' conid lopt(tyvarnms) '=' type
     { [PSynonym (Synonym $2 $3 $5) ] }
- | 'class' tycon tyvars 'where' '{' cdecls opt(';') '}'
+ | 'class' conid tyvars 'where' '{' cdecls opt(';') '}'
     {% withloc $ \l -> [PDec (ClassD l [] $2 $3 (ccoalesce $6))] }
- | 'class' context tycon tyvars 'where' '{' cdecls opt(';') '}'
+ | 'class' context conid tyvars 'where' '{' cdecls opt(';') '}'
     {% withloc $ \l -> [PDec (ClassD l $2 $3 $4 (ccoalesce $7))] }
  | 'instance' class 'where' '{' idecls opt(';') '}'
     {% withloc $ \l -> [PDec (InstD l [] $2 (icoalesce $5))] }
@@ -265,7 +265,7 @@ btype :: { Type }
 atype :: { Type }
  : gtycon
     { conT $1 }
- | tyvarnm
+ | varid
     { VarT $1 UnknownK }
  | '(' types_commasep ')'
     { tupleT $2 }     -- takes care of '(' type ')' case too.
@@ -283,13 +283,13 @@ ntype :: { Type }
 antype :: { Type }
  : integer
     { NumT $1 }
- | tyvarnm
+ | varid
     { VarT $1 NumK }
  | '(' ntype ')'
     { $2 }
 
 gtycon :: { Name }
- : tycon
+ : conid
     { $1 }
  | '(' ')'
     { unitN }
@@ -308,7 +308,7 @@ context :: { [Class] }
     {% mkContext $1 }
 
 class :: { Class }
- : tycon atypes
+ : conid atypes
     { Class $1 $2 }
 
 constrs :: { [ConRec] }
@@ -318,9 +318,9 @@ constrs :: { [ConRec] }
     { $1 ++ [$3] }
 
 constr :: { ConRec }
- : con lopt(atypes)
+ : conid lopt(atypes)
     { NormalC $1 $2 }
- | con '{' lopt(fielddecls) '}'
+ | conid '{' lopt(fielddecls) '}'
     { RecordC $1 $3 }
 
 fielddecls :: { [(Name, Type)] }
@@ -531,10 +531,6 @@ var :: { Name }
  | '(' varsym_op ')'
     { $2 }
 
-con :: { Name }
- : conid
-    { $1 }
-
 qcon :: { Name }
  : conid
     { $1 }
@@ -572,22 +568,10 @@ varsym_op :: { Name }
  | '>=' { name ">=" }
  | '>'  { name ">" }
 
-varsym :: { Name }
- : varsymt
-    { $1 }
-
-tyvarnm :: { Name }
- : varid
-    { $1 }
-
-tycon :: { Name }
+qconid :: { Name }
  : conid
     { $1 }
-
-modid :: { Name }
- : conid
-    { $1 }
- | modid '.' conid
+ | qconid '.' conid
     { $1 `nappend` name "." `nappend` $3 }
 
 commas :: { String }
@@ -597,9 +581,9 @@ commas :: { String }
     { ',':$1 }
 
 tycls_commasep :: { [Name] }
- : tycon 
+ : conid 
     { [$1] }
- | tycls_commasep ',' tycon
+ | tycls_commasep ',' conid
     { $1 ++ [$3] }
 
 types_commasep :: { [Type] }
@@ -615,9 +599,9 @@ poes_commasep :: { [PatOrExp] }
     { $1 ++ [$3] }
 
 tyvar :: { TyVar }
- : tyvarnm
+ : varid
     { TyVar $1 UnknownK }
- | '#' tyvarnm
+ | '#' varid
     { TyVar $2 NumK }
 
 tyvars :: { [TyVar] }
@@ -627,8 +611,8 @@ tyvars :: { [TyVar] }
     { $1 ++ [$2] }
 
 tyvarnms :: { [Name] }
- : tyvarnm { [$1] }
- | tyvarnms tyvarnm { $1 ++ [$2] }
+ : varid { [$1] }
+ | tyvarnms varid { $1 ++ [$2] }
 
 atypes :: { [Type] }
  : atype
