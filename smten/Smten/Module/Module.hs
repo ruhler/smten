@@ -45,7 +45,7 @@ module Smten.Module.Module (
 import Control.Monad.State
 import Data.Functor ((<$>))
 import Data.List(nub)
-import Data.Maybe(fromMaybe)
+import Data.Maybe(fromMaybe, catMaybes)
 
 import qualified Smten.HashTable as HT
 import Smten.Failable
@@ -274,36 +274,42 @@ instance Qualify Method where
         e' <- qualify e
         nm' <- resolve nm
         return (Method nm' e')
-        
--- | Return the unique name for the entity referred to by the given name.
-resolve :: Name -> QualifyM Name
-resolve n =
-  let hasName :: Name -> Dec -> Bool
-      hasName n (ValD _ (TopExp (TopSig nm _ _) _)) = (n == nm)
-      hasName n (DataD _ nm _ _) = (n == nm)
-      hasName n (ClassD _ _ nm _ sigs) =
+
+-- Resolve the given name based on the given import.
+-- Returns the unique name for the entity if it is accessible via this import.
+resolvein :: Name -> Import -> QualifyM (Maybe Name)
+resolvein n (Import mn) = do
+  mods <- gets qs_env
+  let [mod] = filter (\m -> mod_name m == mn) mods
+
+      hasName :: Dec -> Bool
+      hasName (ValD _ (TopExp (TopSig nm _ _) _)) = (n == nm)
+      hasName (DataD _ nm _ _) = (n == nm)
+      hasName (ClassD _ _ nm _ sigs) =
         let hasns [] = False
             hasns ((TopExp (TopSig snm _ _) _):_) | n == snm = True
             hasns (_:ss) = hasns ss
         in (n == nm) || hasns sigs
-      hasName n (InstD {}) = False
-      hasName n (PrimD _ (TopSig nm _ _)) = (n == nm)
+      hasName (InstD {}) = False
+      hasName (PrimD _ (TopSig nm _ _)) = (n == nm)
 
-      r :: [Module] -> Module -> Failable Name
-      r env me = 
-        let immediate :: Module -> [Name]
-            immediate m = map (const (mod_name m `nappend` name "." `nappend` n)) (filter (hasName n) (mod_decs m))
-        in do
-            imported <- mapM (\(Import mn) -> lookupModule mn env) (mod_imports me)
-            let names = map immediate (me : imported)
-            case nub $ concat names of
-                [] -> throw $ "'" ++ pretty n ++ "' not found in module " ++ pretty (mod_name me)
-                [x] -> return x
-                xs -> throw $ "'" ++ pretty n ++ "' is ambiguous: " ++ show xs
-  in do
-      me <- gets qs_me
-      env <- gets qs_env
-      lift $ r env me
+      matches = filter hasName (mod_decs mod)
+      fqn = mod_name mod `nappend` name "." `nappend` n
+  case matches of
+     [] -> return Nothing
+     [x] -> return (Just fqn)
+     _ -> throw $ "'" ++ pretty fqn ++ "' is defined multiple times in"
+        
+-- | Return the unique name for the entity referred to by the given name.
+resolve :: Name -> QualifyM Name
+resolve n = do
+  me <- gets qs_me
+  let meimport = Import (mod_name me)
+  finds <- mapM (resolvein n) (meimport : mod_imports me)
+  case nub $ catMaybes finds of
+      [] -> throw $ "'" ++ pretty n ++ "' not found in module " ++ pretty (mod_name me)
+      [x] -> return x
+      xs -> throw $ "'" ++ pretty n ++ "' is ambiguous: " ++ show xs
 
 -- | Flatten a complete module hierarchy.
 -- Includes builtin prelude.

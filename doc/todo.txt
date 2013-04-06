@@ -90,10 +90,6 @@ Query Optimizations::
 Specialization::
 * put it back in
 
-HaskellF::
-* Translate a module at a time instead of one big blob
-* Only typecheck, infer, flatten for a module at a time?
-
 Build System::
 * Don't require yices1 and yices2 to be installed to build or use smten
     If a solver isn't installed, just give a runtime error when you try to
