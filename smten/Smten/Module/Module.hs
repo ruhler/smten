@@ -43,7 +43,7 @@ module Smten.Module.Module (
     ) where
 
 import Control.Monad.Writer hiding ((<>))
-import Control.Monad.State
+import Control.Monad.Reader
 import Data.Functor ((<$>))
 import Data.List(nub)
 import Data.Maybe(fromMaybe, catMaybes)
@@ -141,7 +141,7 @@ data QS = QS {
     qs_syns :: HT.HashTable Name ([Name], Type) -- ^ All type synonyms
 }
 
-type QualifyM = StateT QS Failable
+type QualifyM = ReaderT QS Failable
 
 mkSyns :: [Synonym] -> HT.HashTable Name ([Name], Type)
 mkSyns xs = HT.table [(n, (vs, t)) | Synonym n vs t <- xs]
@@ -149,27 +149,15 @@ mkSyns xs = HT.table [(n, (vs, t)) | Synonym n vs t <- xs]
 mkDDecs :: [DataDec] -> HT.HashTable Name [ConRec]
 mkDDecs xs = HT.table [(n, cs) | DataDec n _ cs <- xs]
 
-onfailq :: (String -> QualifyM a) -> QualifyM a -> QualifyM a
-onfailq f q = do
-   s <- get
-   case (attempt $ runStateT q s) of
-     Left msg -> f msg
-     Right (v, s') -> put s' >> return v
-
 mename :: QualifyM Name
-mename = gets (mod_name . qs_me)
+mename = asks (mod_name . qs_me)
 
 withbound :: [Name] -> QualifyM a -> QualifyM a
-withbound binds x = do
-    bound <- gets qs_bound
-    modify $ \qs -> qs { qs_bound = (binds ++ bound) }
-    r <- x
-    modify $ \qs -> qs { qs_bound = bound }
-    return r
+withbound binds = local (\qs -> qs { qs_bound = binds ++ qs_bound qs })
 
 isbound :: Name -> QualifyM Bool
 isbound n = do
-    bound <- gets qs_bound
+    bound <- asks qs_bound
     return $ n `elem` bound
 
 class Qualify a where
@@ -177,11 +165,9 @@ class Qualify a where
     qualify :: a -> QualifyM a 
 
 instance Qualify Module where
-    qualify m = do
-        modify $ \qs -> qs { qs_me = m }
+    qualify m = local (\qs -> qs { qs_me = m }) $ do
         sy' <- mapM qualify (mod_synonyms m)
         ds' <- mapM qualify (mod_decs m)
-        modify $ \qs -> qs { qs_me = (error "not in module") }
         return $ m { mod_synonyms = sy', mod_decs = ds' }
 
 instance Qualify Synonym where
@@ -211,7 +197,7 @@ instance Qualify TopExp where
            return (TopExp ts' body')
 
 instance Qualify Dec where
-    qualify d@(ValD l e) = onfailq (lthrow l) $ ValD l <$> qualify e
+    qualify d@(ValD l e) = onfail (lthrow l) $ ValD l <$> qualify e
 
     -- TODO: qualify type and data constructors.
     qualify (DataD l n vars cs) = DataD l n vars <$> qualify cs
@@ -234,7 +220,7 @@ instance Qualify Dec where
 
 instance Qualify Type where
     qualify t = do
-        syns <- gets qs_syns
+        syns <- asks qs_syns
         case t of
           t | (ConT nm _, args) <- de_appsT t
             , Just (vs, t') <- HT.lookup nm syns ->
@@ -304,7 +290,7 @@ exports m =
 -- Returns the unique name for the entity if it is accessible via this import.
 resolvein :: Name -> Import -> QualifyM (Maybe Name)
 resolvein n (Import fr as qo) = do
-  mods <- gets qs_env
+  mods <- asks qs_env
   let [mod] = filter (\m -> mod_name m == fr) mods
       matches = filter (== n) (exports mod)
       uqn = unqualified n
@@ -317,7 +303,7 @@ resolvein n (Import fr as qo) = do
 -- | Return the unique name for the entity referred to by the given name.
 resolve :: Name -> QualifyM Name
 resolve n = do
-  me <- gets qs_me
+  me <- asks qs_me
   let meimport = Import (mod_name me) (mod_name me) False
   finds <- mapM (resolvein n) (meimport : mod_imports me)
   case nub $ catMaybes finds of
@@ -339,7 +325,7 @@ flatten1 :: [Module]    -- ^ The environment
             -> Failable [Dec] -- ^ Flattened declarations from the module
 flatten1 ms m = do
   let syns = mkSyns $ concatMap mod_synonyms ms
-  mod_decs <$> evalStateT (qualify m) (QS ms (error "not in module") [] syns)
+  mod_decs <$> runReaderT (qualify m) (QS ms (error "not in module") [] syns)
 
 -- Perform standalone derivings in the given module.
 sderive :: [Module] -> Module -> Failable Module
