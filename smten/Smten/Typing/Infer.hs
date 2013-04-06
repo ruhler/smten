@@ -43,12 +43,14 @@ module Smten.Typing.Infer (
 
 import Debug.Trace
 
+import Control.Monad.Reader
 import Control.Monad.State
 
 import qualified Data.Map as Map
 import Data.Maybe(fromMaybe)
 
 import Smten.Failable
+import Smten.Location
 import Smten.Name
 import Smten.Sig
 import Smten.Lit
@@ -100,10 +102,9 @@ inferdec _ d@(PrimD {}) = return d
 inferexp :: Env -> Type -> Exp -> Failable Exp
 inferexp env t e = do
  let (e', id) = runState (deunknown e) 1
-     ticomp = do
-         te' <- constrain e'
-         addc t te'
- (_, TIS _ cons _ _) <- runStateT ticomp (TIS id [] [] env)
+ (_, TIS _ cons) <- runTI env id $ do
+      te' <- constrain e'
+      addc t te'
  let sol = solve cons
  --trace ("e': " ++ pretty e') (return ())
  --trace ("constraints: " ++ pretty cons) (return ())
@@ -127,12 +128,21 @@ deunknown =
 
 data TIS = TIS {
     ti_varid :: Integer,        -- ^ The next free VarT id
-    ti_cons :: [(Type, Type)],  -- ^ A list of accumulated type constraints
+    ti_cons :: [(Type, Type)]   -- ^ A list of accumulated type constraints
+}
+
+data TIR = TIR {
     ti_tenv :: [Sig],           -- ^ Types of bound variables in scope
     ti_env :: Env               -- ^ The environment
 }
 
-type TI = StateT TIS Failable
+type TI = ReaderT TIR (StateT TIS Failable)
+
+instance (MonadErrorSL TI) where
+    errloc = return $ Location "TI Unknown" 0 0
+
+runTI :: Env -> Integer -> TI a -> Failable (a, TIS)
+runTI env id x = runStateT (runReaderT x (TIR [] env)) (TIS id [])
 
 -- | Add a type constraint
 addc :: Type -> Type -> TI ()
@@ -153,12 +163,7 @@ newvtn = do
 
 -- | Run type checking with additional bound variable's in scope.
 scoped :: [Sig] -> TI a -> TI a
-scoped vars x = do
-    tenv <- gets ti_tenv
-    modify $ \ti -> ti { ti_tenv = vars ++ tenv }
-    r <- x
-    modify $ \ti -> ti { ti_tenv = tenv }
-    return r
+scoped vars = local (\ti -> ti { ti_tenv = vars ++ ti_tenv ti })
 
 class Constrain a where
     -- | Generate type constraints for an expression, assuming no UnknownT types
@@ -173,18 +178,18 @@ instance Constrain Lit where
 instance Constrain Exp where
     constrain (LitE _ l) = constrain l
     constrain (ConE _ (Sig n t)) = do
-        env <- gets ti_env
-        cty <- lift $ lookupDataConType env n
+        env <- asks ti_env
+        cty <- lookupDataConType env n
         rcty <- retype cty
         addc rcty t
         return t
     constrain v@(VarE _ (Sig n t)) = do
-        tenv <- gets ti_tenv
+        tenv <- asks ti_tenv
         case lookup n (map (\(Sig n t) -> (n, t)) tenv) of
             Just t' -> addc t' t
             Nothing -> do
-                env <- gets ti_env
-                vt <- lift $ lookupVarType env n
+                env <- asks ti_env
+                vt <- lookupVarType env n
                 rvt <- retype vt
                 addc rvt t
         return t
@@ -204,8 +209,8 @@ instance Constrain Exp where
         yt <- constrain y
         nt <- constrain n 
 
-        env <- gets ti_env
-        kty <- lift $ lookupDataConType env kn
+        env <- asks ti_env
+        kty <- lookupDataConType env kn
         rkty <- retype kty
         addc rkty kt
 
