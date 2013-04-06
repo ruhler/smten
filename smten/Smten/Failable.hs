@@ -37,7 +37,7 @@
 
 -- | A monad for dealing with computations which can fail.
 module Smten.Failable (
-    Failable, throw, attempt, attemptM, attemptIO, surely, onfail,
+    Failable, throw, attempt, attemptM, attemptIO,
     ) where
 
 import Control.Monad
@@ -70,18 +70,4 @@ attemptIO (Left msg) = do
     hPutStrLn stderr msg
     exitFailure
 attemptIO (Right a) = return a
-
--- | Return the result of a failable computation sure to complete.
--- It's an error if the computation fails.
-surely :: Failable a -> a
-surely (Right a) = a
-surely (Left msg) = error msg
-    
--- | Run computation 'c', if it fails, return the result of calling 'f' on the
--- error message from the failing 'c'.
-onfail :: (MonadError String m)
-       => (String -> m a) -- ^ f
-       -> m a             -- ^ c
-       -> m a
-onfail = flip catchError
 

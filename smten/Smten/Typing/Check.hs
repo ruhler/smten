@@ -201,27 +201,24 @@ instance TypeCheck Dec where
          local (\tcs -> tcs { tcs_tyvars = vs }) (mapM_ typecheckM cs)
 
     typecheckM d@(ClassD l ctx nm vars ms) = withloc l $ do
-      let checkmeth m@(TopExp (TopSig n c texpected) b) =
-            onfail (\s -> tthrow $ s ++ "\n in method " ++ pretty n) $ do
-              env <- asks tcs_env
-              local (addCtx c . addVarTs texpected) $ typecheckM b
-              if typeof b /= texpected
-                  then wrongtype "method" m texpected (typeof b)
-                  else return ()
+      let checkmeth m@(TopExp (TopSig n c texpected) b) = do
+             env <- asks tcs_env
+             local (addCtx c . addVarTs texpected) $ typecheckM b
+             if typeof b /= texpected
+                 then wrongtype ("method " ++ pretty n) m texpected (typeof b)
+                 else return ()
           me = Class nm (map tyVarType vars)
       local (addCtx (me : ctx) . addVarTs vars) $ mapM_ checkmeth ms
 
     typecheckM d@(InstD l ctx cls@(Class nm ts) ms) = withloc l $ do
-      let checkmeth m@(Method n b) =
-            onfail (\s -> tthrow $ s ++ "\n in method " ++ pretty n) $ do
-              env <- asks tcs_env
-              texpected <- lookupMethodType env n cls
-              mctx <- lookupMethodContext env n cls
-              local (addCtx mctx . addVarTs texpected) $ typecheckM b
-              if typeof b /= texpected
-                  then wrongtype "method" m texpected (typeof b)
-                  else return ()
-    
+      let checkmeth m@(Method n b) = do
+             env <- asks tcs_env
+             texpected <- lookupMethodType env n cls
+             mctx <- lookupMethodContext env n cls
+             local (addCtx mctx . addVarTs texpected) $ typecheckM b
+             if typeof b /= texpected
+                 then wrongtype ("method " ++ pretty n) m texpected (typeof b)
+                 else return ()
       env <- asks tcs_env
       ClassD _ clsctx _ pts _ <- lookupClassD env nm 
       let assigns = concat [assignments (tyVarType p) c | (p, c) <- zip pts ts]

@@ -72,8 +72,7 @@ instance TypeInfer [Dec] where
     typeinfer e = mapM (typeinfer e)
 
 instance TypeInfer Dec where
-    typeinfer e d = onfail (\msg -> throw $ msg ++ "\nWhen running type inference on " ++ pretty d) $
-       inferdec e d
+    typeinfer = inferdec
 
 -- Run inference on a single declaration, given the environment.
 inferdec :: Env -> Dec -> Failable Dec
