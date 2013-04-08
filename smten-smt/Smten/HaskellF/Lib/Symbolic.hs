@@ -24,7 +24,7 @@ import Smten.SMT.Primitives
 newtype Used a = Used ExpH
 
 instance SmtenT1 Used where
-    smtenT1 _ = conT (name "Used")
+    smtenT1 _ = conT usedN
 
 instance HaskellF1 Used where
     box1 = Used
@@ -33,7 +33,7 @@ instance HaskellF1 Used where
 newtype Symbolic a = Symbolic ExpH
 
 instance SmtenT1 Symbolic where
-    smtenT1 _ = conT (name "Symbolic")
+    smtenT1 _ = conT symbolicN
 
 instance HaskellF1 Symbolic where
     box1 = Symbolic
@@ -42,7 +42,7 @@ instance HaskellF1 Symbolic where
 newtype SMT a = SMT ExpH
 
 instance SmtenT1 SMT where
-    smtenT1 _ = conT (name "SMT")
+    smtenT1 _ = conT smtN
 
 instance HaskellF1 SMT where
     box1 = SMT

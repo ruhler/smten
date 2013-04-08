@@ -135,9 +135,9 @@ id $
 haskellf_Data boolN [] [Con trueN [], Con falseN []]
 derive_SmtenHF ''P.Bool ''Bool
 
-haskellf_Data (name "Maybe") [TyVar (name "a") StarK] [
-    Con (name "Nothing") [],
-    Con (name "Just") [VarT (name "a") StarK]
+haskellf_Data maybeN [TyVar (name "a") StarK] [
+    Con nothingN [],
+    Con justN [VarT (name "a") StarK]
    ]
 
 id $

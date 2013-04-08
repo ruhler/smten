@@ -2,6 +2,7 @@
 module Smten.SMT.Tests.Sudoku where
 
 import Smten.SMT.Symbolic
+import Smten.Sudoku.Cell
 import Smten.Sudoku.Board
 import Smten.Sudoku.Boards
 import Smten.Sudoku.Solver

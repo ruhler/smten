@@ -67,10 +67,10 @@ hsDec (DataD _ n _ _) | n `elem` [
   tupleN 2,
   tupleN 3,
   tupleN 4,
-  name "Maybe",
-  name "SMT",
-  name "Symbolic",
-  name "Used",
+  maybeN,
+  smtN,
+  symbolicN,
+  usedN,
   ioN] = return []
 
 hsDec (DataD _ n tyvars constrs) = hsData n tyvars constrs

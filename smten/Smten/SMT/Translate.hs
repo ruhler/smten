@@ -45,7 +45,7 @@ import qualified Smten.SMT.Syntax as SMT
 
 import Data.Functor
 
-import Smten.Name
+import Smten.Name hiding (smtN)
 import Smten.Bit
 import Smten.Lit
 import Smten.Sig

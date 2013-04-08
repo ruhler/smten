@@ -155,17 +155,17 @@ proc hf {module} {
     hrun ./$hsdir/[string map {. _} $module]
 }
 
-hf Smten.Tests.Concrete
-hf Smten.SMT.Tests.Core
-hf Smten.SMT.Tests.Used
-hf Smten.SMT.Tests.Nest
-hf Smten.SMT.Tests.Integer
-hf Smten.SMT.Tests.Bit
-hf Smten.SMT.Tests.Share
-hf Smten.SMT.Tests.Error
-hf Smten.SMT.Tests.Datatype
+#hf Smten.Tests.Concrete
+#hf Smten.SMT.Tests.Core
+#hf Smten.SMT.Tests.Used
+#hf Smten.SMT.Tests.Nest
+#hf Smten.SMT.Tests.Integer
+#hf Smten.SMT.Tests.Bit
+#hf Smten.SMT.Tests.Share
+#hf Smten.SMT.Tests.Error
+#hf Smten.SMT.Tests.Datatype
 
-expectfail { hf Smten.SMT.Tests.MalError }
+#expectfail { hf Smten.SMT.Tests.MalError }
 
 io Smten.SMT.Tests.AllQ
 io Smten.SMT.Tests.AllQ2
@@ -186,16 +186,16 @@ indir build/smten-bin {
 }
 hrun ./build/smten-bin/semtest
 
-# The dsel haskell integration test.
-hrun $::SMTEN --haskellf \
-    --include $::SMTN \
-    -f $::SMTN/Smten/Tests/DSEL.smtn \
-    --hsdir build/test
-indir build/smten-bin {
-    hrun ln -sf ../../smten-bin/dsel.hs dsel.hs
-    hrun ghc --make -o dsel -i../test dsel.hs
-}
-hrun ./build/smten-bin/dsel
+## The dsel haskell integration test.
+#hrun $::SMTEN --haskellf \
+#    --include $::SMTN \
+#    -f $::SMTN/Smten/Tests/DSEL.smtn \
+#    --hsdir build/test
+#indir build/smten-bin {
+#    hrun ln -sf ../../smten-bin/dsel.hs dsel.hs
+#    hrun ghc --make -o dsel -i../test dsel.hs
+#}
+#hrun ./build/smten-bin/dsel
 
 puts "BUILD COMPLETE"
 

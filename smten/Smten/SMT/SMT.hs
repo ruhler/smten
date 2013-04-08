@@ -66,7 +66,7 @@ import qualified Smten.SMT.Solver as SMT
 
 import Smten.Bit
 import Smten.Failable
-import Smten.Name
+import Smten.Name hiding (smtN)
 import Smten.Sig
 import Smten.Lit
 import Smten.Type

@@ -144,8 +144,8 @@ qsymsym = do
 
 main :: IO ()
 main = do
-    runSMT Yices1 (Just "build/test/Core.yices1.dbg") qtest
+    --runSMT Yices1 (Just "build/test/Core.yices1.dbg") qtest
     runSMT Yices2 (Just "build/test/Core.yices2.dbg") qtest
-    runSMT STP (Just "build/test/Core.stp.dbg") qtest
+    --runSMT STP (Just "build/test/Core.stp.dbg") qtest
     putStrLn "CORE PASSED"
 

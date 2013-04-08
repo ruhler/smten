@@ -10,8 +10,8 @@ userinstall:
 testio:
 	./build/home/.cabal/bin/smten --io \
 		--include smten/share/lib \
-		--file smten/share/lib/Smten/Tests/Concrete.smtn \
-		--main-is Smten.Tests.Concrete.main +RTS -p
+		--file smten/share/lib/Smten/SMT/Tests/Core.smtn \
+		--main-is Smten.SMT.Tests.Core.main +RTS -p
 
 testhf:
 	./build/home/.cabal/bin/smten --haskellf \

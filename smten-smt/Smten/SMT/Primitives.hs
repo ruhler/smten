@@ -132,11 +132,11 @@ query_UsedP =
   -- dynamic input type.
   let f :: Used ExpH -> SMT ExpH
       f arg@(Used _ v) = do
-        let ta = AppT (ConT (name "Maybe") (ArrowK StarK StarK)) (typeof (force v))
+        let ta = AppT (ConT maybeN (ArrowK StarK StarK)) (typeof (force v))
         res <- query_Used (realize <$> arg)
         return $ case res of
-                    Just v' -> aconEH (name "Just") ta [v']
-                    Nothing -> aconEH (name "Nothing") ta []
+                    Just v' -> aconEH justN ta [v']
+                    Nothing -> aconEH nothingN ta []
   in unaryP "Smten.SMT.Symbolic.query_Used" f
 
 usedP :: Prim
