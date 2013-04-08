@@ -6,6 +6,6 @@ module Smten.Type.SmtenTs () where
 import Smten.Type.SmtenT
 import Smten.Type.TH
 
-derive_SmtenT ''Maybe
-derive_SmtenT ''[]
+derive_SmtenT "Prelude" ''Maybe
+derive_SmtenT "Prelude" ''[]
 

@@ -13,8 +13,8 @@ import qualified Smten.Type.Type as S
 import qualified Smten.Type.Sugar as S
 import Smten.Type.SmtenT
 
-derive_SmtenT :: Name -> Q [Dec]
-derive_SmtenT nm = do
+derive_SmtenT :: String -> Name -> Q [Dec]
+derive_SmtenT mod nm = do
   reified <- reify nm
   let vars = 
        case reified of
@@ -23,7 +23,7 @@ derive_SmtenT nm = do
           _ -> error $ "derive_SmtenT: " ++ show reified
       vn = if null vars then "" else show (length vars)
       ty = AppT (ConT (mkName $ "SmtenT" ++ vn)) (ConT nm)
-      body = AppE (VarE 'S.conT) (AppE (VarE 'S.name) (LitE (StringL (nameBase nm))))
+      body = AppE (VarE 'S.conT) (AppE (VarE 'S.name) (LitE (StringL (mod ++ "." ++ nameBase nm))))
       dec = FunD (mkName $ "smtenT" ++ vn) [Clause [WildP] (NormalB body) []]
   return [InstanceD [] ty [dec]]
 
