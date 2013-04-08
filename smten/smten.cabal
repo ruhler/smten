@@ -100,6 +100,7 @@ library
 
     Smten.Module
     Smten.Module.Module
+    Smten.Module.Qualify
     Smten.Module.Ppr
 
     Smten.Dec
