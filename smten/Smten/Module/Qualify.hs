@@ -4,7 +4,7 @@
 {-# LANGUAGE TypeSynonymInstances #-}
 
 module Smten.Module.Qualify (
-    flatten
+    qualify
     ) where
 
 import Control.Monad.Writer
@@ -62,16 +62,16 @@ isbound n = do
 
 class Qualify a where
     -- | Resolve all unqualified names in the given object.
-    qualify :: a -> QualifyM a 
+    qualifyM :: a -> QualifyM a 
 
 instance Qualify Module where
-    qualify m = local (\qs -> qs { qs_me = m }) $ do
-        sy' <- mapM qualify (mod_synonyms m)
-        ds' <- mapM qualify (mod_decs m)
+    qualifyM m = local (\qs -> qs { qs_me = m }) $ do
+        sy' <- mapM qualifyM (mod_synonyms m)
+        ds' <- mapM qualifyM (mod_decs m)
         return $ m { mod_synonyms = sy', mod_decs = ds' }
 
 instance Qualify Synonym where
-    qualify (Synonym n vs t) = Synonym n vs <$> qualify t
+    qualifyM (Synonym n vs t) = Synonym n vs <$> qualifyM t
 
 qdefine :: Name -> QualifyM Name
 qdefine n 
@@ -81,59 +81,59 @@ qdefine n
     return $ qualified menm n
 
 instance Qualify TopSig where
-    qualify (TopSig nm ctx t) = do
+    qualifyM (TopSig nm ctx t) = do
         nm' <- qdefine nm
-        ctx' <- qualify ctx
-        t' <- qualify t
+        ctx' <- qualifyM ctx
+        t' <- qualifyM t
         return (TopSig nm' ctx' t')
 
 instance (Qualify a) => Qualify [a] where
-    qualify = mapM qualify
+    qualifyM = mapM qualifyM
 
 instance Qualify Class where
-    qualify (Class nm ts) = do
-        nm' <- qualify nm
-        ts' <- qualify ts
+    qualifyM (Class nm ts) = do
+        nm' <- qualifyM nm
+        ts' <- qualifyM ts
         return $ Class nm' ts'
 
 instance Qualify Con where
-    qualify (Con nm ts) = do
+    qualifyM (Con nm ts) = do
         nm' <- qdefine nm
-        ts' <- qualify ts
+        ts' <- qualifyM ts
         return $ Con nm' ts'
 
 instance Qualify TopExp where
-    qualify (TopExp ts body) = do
-           ts' <- qualify ts
-           body' <- qualify body
+    qualifyM (TopExp ts body) = do
+           ts' <- qualifyM ts
+           body' <- qualifyM body
            return (TopExp ts' body')
 
 instance Qualify Dec where
-    qualify d@(ValD l e) = withloc l $ ValD l <$> qualify e
+    qualifyM d@(ValD l e) = withloc l $ ValD l <$> qualifyM e
 
-    qualify (DataD l n vars cs) = withloc l $ do
+    qualifyM (DataD l n vars cs) = withloc l $ do
         n' <- qdefine n
-        cs' <- qualify cs
+        cs' <- qualifyM cs
         return $ DataD l n' vars cs'
 
-    qualify (ClassD l ctx nm vars sigs) = withloc l $ do
+    qualifyM (ClassD l ctx nm vars sigs) = withloc l $ do
         nm' <- qdefine nm
-        ctx' <- qualify ctx
-        sigs' <- mapM qualify sigs
+        ctx' <- qualifyM ctx
+        sigs' <- mapM qualifyM sigs
         return (ClassD l ctx' nm' vars sigs')
 
-    qualify (InstD l ctx cls meths) = withloc l $ do
-        ctx' <- qualify ctx
-        cls' <- qualify cls
-        meths' <- mapM qualify meths
+    qualifyM (InstD l ctx cls meths) = withloc l $ do
+        ctx' <- qualifyM ctx
+        cls' <- qualifyM cls
+        meths' <- mapM qualifyM meths
         return (InstD l ctx' cls' meths')
 
-    qualify (PrimD l ts) = withloc l $ do
-        ts' <- qualify ts
+    qualifyM (PrimD l ts) = withloc l $ do
+        ts' <- qualifyM ts
         return (PrimD l ts')
 
 instance Qualify Type where
-    qualify t = do
+    qualifyM t = do
         syns <- asks qs_syns
         case t of
           t | (ConT nm _, args) <- de_appsT t
@@ -144,13 +144,13 @@ instance Qualify Type where
                              ++ " argument(s) to synonym "
                              ++ pretty nm ++ " in " ++ pretty t
                     else let (bound, rest) = splitAt (length vs) args
-                         in qualify (appsT (assign (zip vs bound) t') rest)
+                         in qualifyM (appsT (assign (zip vs bound) t') rest)
           ConT n k -> do
-            n' <- qualify n
+            n' <- qualifyM n
             return (ConT n' k)
           AppT a b -> do
-            a' <- qualify a
-            b' <- qualify b
+            a' <- qualifyM a
+            b' <- qualifyM b
             return (AppT a' b')
           VarT {} -> return t
           NumT {} -> return t
@@ -158,43 +158,43 @@ instance Qualify Type where
           UnknownT {} -> return t
 
 instance Qualify Exp where
-    qualify e@(LitE {}) = return e
-    qualify (ConE l (Sig n t)) = withloc l $ do
-        n' <- qualify n
-        t' <- qualify t
+    qualifyM e@(LitE {}) = return e
+    qualifyM (ConE l (Sig n t)) = withloc l $ do
+        n' <- qualifyM n
+        t' <- qualifyM t
         return (ConE l (Sig n' t'))
-    qualify (VarE l (Sig n t)) = withloc l $ do
-        t' <- qualify t
+    qualifyM (VarE l (Sig n t)) = withloc l $ do
+        t' <- qualifyM t
         bound <- isbound n
         if bound 
             then return (VarE l (Sig n t'))
             else do
                 n' <- resolve n
                 return (VarE l (Sig n' t'))
-    qualify (AppE l f x) = withloc l $ do
-        f' <- qualify f
-        x' <- qualify x
+    qualifyM (AppE l f x) = withloc l $ do
+        f' <- qualifyM f
+        x' <- qualifyM x
         return (AppE l f' x')
-    qualify (LamE l (Sig n t) b) = withloc l $ do
-        t' <- qualify t
-        LamE l (Sig n t') <$> (withbound [n] $ qualify b)
+    qualifyM (LamE l (Sig n t) b) = withloc l $ do
+        t' <- qualifyM t
+        LamE l (Sig n t') <$> (withbound [n] $ qualifyM b)
     
-    qualify (CaseE l x (Sig kn kt) y n) = withloc l $ do
-        kn' <- qualify kn
-        kt' <- qualify kt
-        x' <- qualify x
-        y' <- qualify y
-        n' <- qualify n
+    qualifyM (CaseE l x (Sig kn kt) y n) = withloc l $ do
+        kn' <- qualifyM kn
+        kt' <- qualifyM kt
+        x' <- qualifyM x
+        y' <- qualifyM y
+        n' <- qualifyM n
         return $ CaseE l x' (Sig kn' kt') y' n'
 
 instance Qualify Method where
-    qualify (Method nm e) = do
-        e' <- qualify e
-        nm' <- qualify nm
+    qualifyM (Method nm e) = do
+        e' <- qualifyM e
+        nm' <- qualifyM nm
         return (Method nm' e')
 
 instance Qualify Name where
-    qualify = resolve
+    qualifyM = resolve
 
 -- Return the set of entities exported by the given module.
 exports :: Module -> (Set.Set Name)
@@ -240,18 +240,10 @@ resolve n = do
       [x] -> return x
       xs -> lthrow $ "'" ++ pretty n ++ "' is ambiguous: " ++ show xs
 
--- | Flatten a complete module hierarchy.
-flatten :: [Module] -> Failable [Dec]
-flatten ms = do
-    ds <- mapM (flatten1 ms) ms
-    return $ concat ds
-
--- | Flatten a single module.
--- Assumes standalone deriving has already been performed.
-flatten1 :: [Module]    -- ^ The environment
-            -> Module   -- ^ The module to flatten
-            -> Failable [Dec] -- ^ Flattened declarations from the module
-flatten1 ms m = do
+-- | Perform name resolution on the given modules.
+qualify :: [Module] -> Failable [Module]
+qualify ms = do
   let syns = mkSyns $ concatMap mod_synonyms ms
       exps = mkExports ms
-  mod_decs <$> runReaderT (qualify m) (QS ms (error "not in module") [] syns exps lunknown)
+  runReaderT (qualifyM ms) (QS ms (error "not in module") [] syns exps lunknown)
+

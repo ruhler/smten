@@ -1,4 +1,6 @@
 
+{-# LANGUAGE FlexibleInstances #-}
+
 module Smten.Module.Ppr () where
 
 import Smten.Ppr
@@ -34,4 +36,7 @@ instance Ppr Module where
                 vcat (map ppr (mod_imports m))
                 $+$ vcat (map ppr (mod_synonyms m))
                 $+$ ppr (mod_decs m)) $+$ text "}"
+
+instance Ppr [Module] where
+    ppr ms = vcat (map ppr ms)
 

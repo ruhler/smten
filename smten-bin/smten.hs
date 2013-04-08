@@ -120,8 +120,7 @@ main = do
             return ()
         Desugar -> do
             mods <- loadmods includes (file args)
-            flat <- attemptIO $ flatten mods
-            outf . pretty $ flat
+            outf . pretty $ mods
         Type -> do
             env <- loadenv includes (file args)
             outf $ pretty env

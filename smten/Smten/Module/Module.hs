@@ -37,7 +37,7 @@
 
 module Smten.Module.Module (
     Module(..), Import(..), Synonym(..), DataDec(..), Deriving(..),
-    sderive,
+    flatten, sderive,
     ) where
 
 import qualified Smten.HashTable as HT
@@ -104,3 +104,6 @@ sderive ms m = do
   derives <- mapM mderive (mod_derivings m)
   return $ m { mod_decs = derives ++ mod_decs m }
   
+flatten :: [Module] -> [Dec]
+flatten = concat . map mod_decs
+
