@@ -64,9 +64,9 @@ hfnm :: Name -> String
 hfnm n
  | Just i <- de_tupleN n = "Tuple" ++ show i ++ "__"
  | n == unitN = "Unit__"
- | n == name ":" = "Cons__"
- | n == name "[]" = "Nil__"
- | otherwise = unname n
+ | n == consN = "Cons__"
+ | n == nilN = "Nil__"
+ | otherwise = unname (unqualified n)
 
 -- Convert a Smten type constructor name to it's corresponding HaskellF type
 -- constructor name.
@@ -74,8 +74,8 @@ hftynm :: Name -> String
 hftynm n
  | n == unitN = "Unit__"
  | Just x <- de_tupleN n = "Tuple" ++ show x ++ "__"
- | n == name "[]" = "List__"
- | otherwise = unname n
+ | n == nilN = "List__"
+ | otherwise = unname (unqualified n)
 
 -- Given the name of a data constructor, return the name of the function for
 -- doing a case match against the constructor.

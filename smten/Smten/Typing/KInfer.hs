@@ -30,7 +30,7 @@ data SS = SS {
 }
 
 initSS :: Env -> SS
-initSS e = SS e (Set.singleton arrowN) []
+initSS e = SS e Set.empty []
 
 type SortM = StateT SS Failable
 
@@ -296,5 +296,5 @@ groups ds = concat <$> mapM group ds
 kindinfer :: Env -> Failable [Dec]
 kindinfer e = do
     sorted <- sortd e
-    evalStateT (groups sorted) (KS [] 0 (Map.singleton arrowN (arrowKs [StarK, StarK, StarK])))
+    evalStateT (groups sorted) (KS [] 0 Map.empty)
 

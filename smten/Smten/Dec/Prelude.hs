@@ -19,15 +19,16 @@ tupleD i =
   in DataD ploc nm vars [Con nm (map tyVarType vars)]
 
 listD :: Dec
-listD = DataD ploc (name "[]") [TyVar (name "a") StarK] [Con (name "[]") [], Con (name ":") [VarT (name "a") StarK, listT (VarT (name "a") StarK)]]
+listD = DataD ploc listN [TyVar (name "a") StarK] [Con nilN [], Con consN [VarT (name "a") StarK, listT (VarT (name "a") StarK)]]
 
 unitD :: Dec
 unitD = DataD ploc unitN [] [Con unitN []]
 
 prelude :: [Dec]
 prelude = [
-    DataD ploc (name "Char") [] [],
-    DataD ploc (name "Integer") [] [],
+    DataD ploc arrowN [TyVar (name "a") StarK, TyVar (name "b") StarK] [],
+    DataD ploc charN [] [],
+    DataD ploc integerN [] [],
     unitD,
     tupleD 2, tupleD 3, tupleD 4,
     -- tuple 5, tuple 6, tuple 7, tuple 8, tuple 9,

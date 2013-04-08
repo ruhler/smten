@@ -22,4 +22,5 @@ runio :: ExpH -> IO ExpH
 runio e
  | Just io <- de_ioEH e = io
  | ErrorEH _ s <- force e = error s
+ | otherwise = error $ "runio: " ++ pretty e
 

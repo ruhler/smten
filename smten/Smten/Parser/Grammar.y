@@ -272,7 +272,7 @@ atype :: { Type }
  | '(' types_commasep ')'
     { tupleT $2 }     -- takes care of '(' type ')' case too.
  | '[' type ']'
-    { AppT (conT (name "[]")) $2 }
+    { AppT (conT listN) $2 }
  | '#' antype
     { $2 }
 
@@ -296,7 +296,7 @@ gtycon :: { Name }
  | '(' ')'
     { unitN }
  | '[' ']'
-    { name "[]" }
+    { listN }
  | '(' '->' ')'
     { arrowN }
  | '(' commas ')'
@@ -514,7 +514,7 @@ gcon :: { Name }
  : '(' ')'
     { unitN }
  | '[' ']'
-    { name "[]" }
+    { nilN }
  | '(' commas ')'
     { name $ "(" ++ $2 ++ ")" }
  | qcon
@@ -550,7 +550,7 @@ qcon :: { Name }
     { $2 }
 
 consym_op :: { Name }
- : ':' { name ":" }
+ : ':' { consN }
 
 
 op :: { PatOrExp }

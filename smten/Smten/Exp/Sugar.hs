@@ -126,21 +126,21 @@ de_litE _ = Nothing
 
 -- | [a, b, ..., c]
 listE :: Location -> [Exp] -> Exp
-listE l [] = conE l (Sig (name "[]") (listT UnknownT))
+listE l [] = conE l (Sig nilN (listT UnknownT))
 listE l [x] =
  let t = typeof x
      consT = arrowsT [t, listT t, listT t]
- in appsE l (conE l (Sig (name ":") consT)) [x, conE l (Sig (name "[]") (listT t))]
+ in appsE l (conE l (Sig consN consT)) [x, conE l (Sig nilN (listT t))]
 listE l (x:xs) = 
  let t = typeof x
      consT = arrowsT [t, listT t, listT t]
- in appsE l (conE l (Sig (name ":") consT)) [x, listE l xs]
+ in appsE l (conE l (Sig consN consT)) [x, listE l xs]
 
 de_listE :: Exp -> Maybe [Exp]
-de_listE e | Just (Sig n _) <- de_conE e, n == name "[]" = Just []
+de_listE e | Just (Sig n _) <- de_conE e, n == nilN = Just []
 de_listE e | (f, [a, b]) <- de_appsE e = do
     (Sig n _) <- de_conE f
-    guard $ n == name ":"
+    guard $ n == consN
     xs <- de_listE b
     return (a:xs)
 de_listE _ = Nothing
@@ -154,9 +154,8 @@ de_stringE e = do
     guard $ not (null elems)
     mapM de_charE elems
 
--- Smten error, before flattening.
 errorE :: Location -> String -> Exp
-errorE l msg = appE l (varE l (Sig (name "error") UnknownT)) (stringE l msg)
+errorE l msg = appE l (varE l (Sig errorN UnknownT)) (stringE l msg)
 
 -- | Type signature expression, of form: (e :: t)
 -- Assigns the given type to the given expression.
@@ -166,7 +165,7 @@ errorE l msg = appE l (varE l (Sig (name "error") UnknownT)) (stringE l msg)
 sigE :: Location -> Exp -> Type -> Exp
 sigE _ (ConE l (Sig n _)) t = ConE l (Sig n t)
 sigE _ (VarE l (Sig n _)) t = VarE l (Sig n t)
-sigE l e t = appE l (varE l (Sig (name "id") (arrowsT [t, t]))) e
+sigE l e t = appE l (varE l (Sig (name "Prelude.id") (arrowsT [t, t]))) e
 
 tupleE :: Location -> [Exp] -> Exp
 tupleE l xs =
@@ -200,7 +199,7 @@ de_bitE e = do
 numberE :: Location -> Integer -> Exp
 numberE l i =
  let t = arrowsT [integerT, UnknownT]
- in appE l (VarE l (Sig (name "fromInteger") t)) (integerE l i)
+ in appE l (VarE l (Sig (name "Prelude.fromInteger") t)) (integerE l i)
 
 -- a + b
 addE :: Location -> Exp -> Exp -> Exp
@@ -239,17 +238,17 @@ gtE l a b = appsE l (varE l (Sig (name "Prelude.>") (arrowsT [typeof a, typeof b
 
 -- [a..b]
 fromtoE :: Location -> Exp -> Exp -> Exp
-fromtoE l a b = appsE l (varE l (Sig (name "enumFromTo") UnknownT)) [a, b]
+fromtoE l a b = appsE l (varE l (Sig (name "Prelude.enumFromTo") UnknownT)) [a, b]
 
 -- [a,b,..]
 fromthenE :: Location -> Exp -> Exp -> Exp
-fromthenE l a b = appsE l (varE l (Sig (name "enumFromThen") UnknownT)) [a, b]
+fromthenE l a b = appsE l (varE l (Sig (name "Prelude.enumFromThen") UnknownT)) [a, b]
 
 -- [a..]
 fromE :: Location -> Exp -> Exp
-fromE l a = appE l (varE l (Sig (name "enumFrom") UnknownT)) a
+fromE l a = appE l (varE l (Sig (name "Prelude.enumFrom") UnknownT)) a
 
 -- [a,b,..,c]
 fromthentoE :: Location -> Exp -> Exp -> Exp -> Exp
-fromthentoE l a b c = appsE l (varE l (Sig (name "enumFromThenTo") UnknownT)) [a, b, c]
+fromthentoE l a b c = appsE l (varE l (Sig (name "Prelude.enumFromThenTo") UnknownT)) [a, b, c]
 

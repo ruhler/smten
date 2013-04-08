@@ -21,18 +21,18 @@ smtenEH_helper nm ty tys xs =
   let t = S.arrowsT (tys ++ [S.smtenT ty])
   in appsEH (conEH (Sig (S.name nm) t)) xs
 
-derive_SmtenEH :: Name -> Q [Dec]
-derive_SmtenEH nm = do
+derive_SmtenEH :: String -> Name -> Q [Dec]
+derive_SmtenEH mod nm = do
   TyConI (DataD _ _ vars cs _) <- reify nm
   let ctx = [ClassP ''SmtenEH [VarT v] | PlainTV v <- vars]
   let ty = AppT (ConT ''SmtenEH) (foldl AppT (ConT nm) [VarT v | PlainTV v <- vars])
-  return [InstanceD ctx ty (concat [derive_smtenEH nm vars cs, derive_de_smtenEH nm vars cs])]
+  return [InstanceD ctx ty (concat [derive_smtenEH mod nm vars cs, derive_de_smtenEH mod nm vars cs])]
   
   
 -- Given the name of a type constructor Foo, produces the smtenEH function:
 --  smtenEH :: Foo -> ExpH
-derive_smtenEH :: Name -> [TyVarBndr] -> [Con] -> [Dec]
-derive_smtenEH nm vars cs =
+derive_smtenEH :: String -> Name -> [TyVarBndr] -> [Con] -> [Dec]
+derive_smtenEH mod nm vars cs =
   let -- Each data constructor has it's own clause in the smtenEH function.
       -- A constructor of the form:
       --    Bar Sludge a
@@ -47,7 +47,7 @@ derive_smtenEH nm vars cs =
             tlist = ListE $ map (\a -> AppE (VarE 'S.smtenT) (VarE a)) args
             body = foldl1 AppE [
                       VarE 'smtenEH_helper,
-                      LitE (StringL (nameBase cnm)),
+                      LitE (StringL (mod ++ "." ++ nameBase cnm)),
                       VarE expvar,
                       tlist,
                       elist
@@ -61,8 +61,8 @@ derive_smtenEH nm vars cs =
     
 -- Given the name of a type constructor Foo, produces the de_smtenEH function:
 --  de_smtenEH :: ExpH -> Maybe Foo
-derive_de_smtenEH :: Name -> [TyVarBndr] -> [Con] -> [Dec]
-derive_de_smtenEH nm vars cs =
+derive_de_smtenEH :: String -> Name -> [TyVarBndr] -> [Con] -> [Dec]
+derive_de_smtenEH mod nm vars cs =
   let -- Each data constructor has it's own match in the unpack case expr.
       -- A constructor of the form:
       --    Bar Sludge Fudge
@@ -77,7 +77,7 @@ derive_de_smtenEH nm vars cs =
             args' = [mkName ("x" ++ show i ++ "'") | i <- take (length ts) [1..]]
             pat = VarP (mkName "x")
             argpat = ConP 'Just [ListP (map VarP args)]
-            guard = PatG [BindS argpat (AppE (AppE (VarE (mkName "de_kconEH")) (AppE (VarE 'S.name) (LitE (StringL (nameBase cnm))))) (VarE (mkName "x")))]
+            guard = PatG [BindS argpat (AppE (AppE (VarE (mkName "de_kconEH")) (AppE (VarE 'S.name) (LitE (StringL (mod ++ "." ++ nameBase cnm))))) (VarE (mkName "x")))]
             stmts = [BindS (VarP x') (AppE (VarE 'de_smtenEH) (VarE x)) | (x, x') <- zip args args']
             body = DoE $ stmts ++ [NoBindS (AppE (VarE 'return) (foldl AppE (ConE cnm) (map VarE args')))]
         in Match pat (GuardedB [(guard, body)]) []

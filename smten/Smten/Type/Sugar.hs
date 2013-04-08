@@ -83,34 +83,37 @@ unitT :: Type
 unitT = conT unitN
 
 charT :: Type
-charT = conT (name "Char")
+charT = conT charN
 
 integerT :: Type
-integerT = conT (name "Integer")
+integerT = conT integerN
 
 boolT :: Type
-boolT = conT (name "Bool")
+boolT = conT boolN
 
 -- | Given a type a, returns the type [a].
 listT :: Type -> Type
-listT t = appT (conT (name "[]")) t
+listT t = appT (conT listN) t
 
 de_listT :: Type -> Maybe Type
 de_listT t = do
     (l, v) <- de_appT t
     n <- de_conT l
-    guard $ n == name "[]"
+    guard $ n == listN
     return v
 
 stringT :: Type
 stringT = listT charT
 
 bitT :: Integer -> Type
-bitT w = appT (conT (name "Bit")) (NumT w)
+bitT w = appT (conT bitN) (NumT w)
 
 de_bitT :: Type -> Maybe Integer
-de_bitT (AppT (ConT n _) w) | n == name "Bit" = Just (nteval w)
-de_bitT _ = Nothing
+de_bitT t = do
+  (k, w) <- de_appT t
+  n <- de_conT k
+  guard $ n == bitN
+  return (nteval w)
 
 -- | (a, b, ...)
 -- There must be at least one type given.

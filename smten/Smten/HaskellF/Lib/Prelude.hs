@@ -112,7 +112,7 @@ instance Prelude.Num Integer where
 newtype Bit n = Bit ExpH
 
 instance SmtenT1 Bit where
-    smtenT1 _ = ConT (name "Bit") (ArrowK NumK StarK)
+    smtenT1 _ = ConT bitN (ArrowK NumK StarK)
 
 instance HaskellF1 Bit where
     box1 = Bit
@@ -121,7 +121,7 @@ instance HaskellF1 Bit where
 newtype IO a = IO ExpH
 
 instance SmtenT1 IO where
-    smtenT1 _ = ConT (name "IO") (ArrowK StarK StarK)
+    smtenT1 _ = ConT ioN (ArrowK StarK StarK)
 
 instance HaskellF1 IO where
     box1 = IO
@@ -132,7 +132,7 @@ id $
   let DataD _ n tyv cns = unitD
   in haskellf_Data n tyv cns
 
-haskellf_Data (name "Bool") [] [Con trueN [], Con falseN []]
+haskellf_Data boolN [] [Con trueN [], Con falseN []]
 derive_SmtenHF ''P.Bool ''Bool
 
 haskellf_Data (name "Maybe") [TyVar (name "a") StarK] [

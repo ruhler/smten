@@ -32,8 +32,8 @@ data Pat = ConP Name [Pat]
     deriving (Eq, Show)
 
 listP :: [Pat] -> Pat
-listP [] = ConP (name "[]") []
-listP (x:xs) = ConP (name ":") [x, listP xs]
+listP [] = ConP nilN []
+listP (x:xs) = ConP consN [x, listP xs]
 
 charP :: Location -> Char -> Pat
 charP l = LitP . litE l . charL

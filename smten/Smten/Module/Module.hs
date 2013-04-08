@@ -152,10 +152,16 @@ instance Qualify Module where
 instance Qualify Synonym where
     qualify (Synonym n vs t) = Synonym n vs <$> qualify t
 
+qdefine :: Name -> QualifyM Name
+qdefine n 
+ | isqualified n = return n
+ | otherwise = do
+    menm <- mename
+    return $ qualified menm n
+
 instance Qualify TopSig where
     qualify (TopSig nm ctx t) = do
-        menm <- mename
-        let nm' = menm `nappend` name "." `nappend` nm
+        nm' <- qdefine nm
         ctx' <- qualify ctx
         t' <- qualify t
         return (TopSig nm' ctx' t')
@@ -164,10 +170,16 @@ instance (Qualify a) => Qualify [a] where
     qualify = mapM qualify
 
 instance Qualify Class where
-    qualify (Class nm ts) = Class nm <$> qualify ts
+    qualify (Class nm ts) = do
+        nm' <- qualify nm
+        ts' <- qualify ts
+        return $ Class nm' ts'
 
 instance Qualify Con where
-    qualify (Con nm ts) = Con nm <$> qualify ts
+    qualify (Con nm ts) = do
+        nm' <- qdefine nm
+        ts' <- qualify ts
+        return $ Con nm' ts'
 
 instance Qualify TopExp where
     qualify (TopExp ts body) = do
@@ -178,14 +190,16 @@ instance Qualify TopExp where
 instance Qualify Dec where
     qualify d@(ValD l e) = withloc l $ ValD l <$> qualify e
 
-    -- TODO: qualify type and data constructors.
-    qualify (DataD l n vars cs) = withloc l $ DataD l n vars <$> qualify cs
+    qualify (DataD l n vars cs) = withloc l $ do
+        n' <- qdefine n
+        cs' <- qualify cs
+        return $ DataD l n' vars cs'
 
-    -- TODO: qualify class names
     qualify (ClassD l ctx nm vars sigs) = withloc l $ do
+        nm' <- qdefine nm
         ctx' <- qualify ctx
         sigs' <- mapM qualify sigs
-        return (ClassD l ctx' nm vars sigs')
+        return (ClassD l ctx' nm' vars sigs')
 
     qualify (InstD l ctx cls meths) = withloc l $ do
         ctx' <- qualify ctx
@@ -210,18 +224,24 @@ instance Qualify Type where
                              ++ pretty nm ++ " in " ++ pretty t
                     else let (bound, rest) = splitAt (length vs) args
                          in qualify (appsT (assign (zip vs bound) t') rest)
+          ConT n k -> do
+            n' <- qualify n
+            return (ConT n' k)
           AppT a b -> do
             a' <- qualify a
             b' <- qualify b
             return (AppT a' b')
-          t -> return t
+          VarT {} -> return t
+          NumT {} -> return t
+          OpT {} -> return t
+          UnknownT {} -> return t
 
 instance Qualify Exp where
-    -- TODO: qualify data constructors
     qualify e@(LitE {}) = return e
     qualify (ConE l (Sig n t)) = withloc l $ do
+        n' <- qualify n
         t' <- qualify t
-        return (ConE l (Sig n t'))
+        return (ConE l (Sig n' t'))
     qualify (VarE l (Sig n t)) = withloc l $ do
         t' <- qualify t
         bound <- isbound n
@@ -239,30 +259,38 @@ instance Qualify Exp where
         LamE l (Sig n t') <$> (withbound [n] $ qualify b)
     
     qualify (CaseE l x (Sig kn kt) y n) = withloc l $ do
+        kn' <- qualify kn
         kt' <- qualify kt
         x' <- qualify x
         y' <- qualify y
         n' <- qualify n
-        return $ CaseE l x' (Sig kn kt') y' n'
+        return $ CaseE l x' (Sig kn' kt') y' n'
 
 instance Qualify Method where
     qualify (Method nm e) = do
         e' <- qualify e
-        nm' <- resolve nm
+        nm' <- qualify nm
         return (Method nm' e')
+
+instance Qualify Name where
+    qualify = resolve
 
 -- Return the set of entities exported by the given module.
 exports :: Module -> [Name]
 exports m =
   let exdec :: Dec -> Writer [Name] ()
-      exdec (ValD _ (TopExp (TopSig nm _ _) _)) = tell [nm]
-      exdec (DataD _ nm _ _) = tell [nm]
-      exdec (ClassD _ _ nm _ sigs) = tell [nm] >> mapM_ exmeth sigs
+      exdec (ValD _ (TopExp (TopSig nm _ _) _)) = tell [unqualified nm]
+      exdec (DataD _ nm _ cs) = tell [unqualified nm] >> mapM_ excon cs
+      exdec (ClassD _ _ nm _ sigs) = tell [unqualified nm] >> mapM_ exmeth sigs
       exdec (InstD {}) = return ()
-      exdec (PrimD _ (TopSig nm _ _)) = tell [nm]
+      exdec (PrimD _ (TopSig nm _ _)) = tell [unqualified nm]
 
       exmeth :: TopExp -> Writer [Name] ()
-      exmeth (TopExp (TopSig snm _ _) _) = tell [snm]
+      exmeth (TopExp (TopSig snm _ _) _) = tell [unqualified snm]
+       
+      excon :: Con -> Writer [Name] ()
+      excon (Con n _) = tell [unqualified n]
+    
   in execWriter (mapM exdec (mod_decs m))
 
 -- Resolve the given name based on the given import.
@@ -275,7 +303,7 @@ resolvein n (Import fr as qo) = do
       qn = qualification n
   return $ do
     guard $ uqn `elem` exports mod
-    guard $ qn == as || (not qo && qn == name "")
+    guard $ qn == as || (not qo && nnull qn)
     return $ qualified fr uqn
         
 -- | Return the unique name for the entity referred to by the given name.
@@ -290,11 +318,10 @@ resolve n = do
       xs -> lthrow $ "'" ++ pretty n ++ "' is ambiguous: " ++ show xs
 
 -- | Flatten a complete module hierarchy.
--- Includes builtin prelude.
 flatten :: [Module] -> Failable [Dec]
 flatten ms = do
     ds <- mapM (flatten1 ms) ms
-    return $ concat (prelude : ds)
+    return $ concat ds
 
 -- | Flatten a single module.
 -- Assumes standalone deriving has already been performed.

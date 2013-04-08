@@ -78,14 +78,11 @@ loadone sp n = do
 loadmod :: FilePath -> IO Module
 loadmod fname = do
     text <- readFile fname
-    attemptIO $ addprelude <$> parse fname text
+    m <- attemptIO $ parse fname text
+    return $ if (mod_name m == name "Prelude")
+                then m { mod_decs = prelude ++ mod_decs m }
+                else m { mod_imports = Import (name "Prelude") (name "Prelude") False : mod_imports m }
 
--- Add the prelude import to a module if needed.
-addprelude :: Module -> Module
-addprelude m
-  | mod_name m == name "Prelude" = m
-  | otherwise = m { mod_imports = Import (name "Prelude") (name "Prelude") False : mod_imports m }
-      
 findmodule :: SearchPath -> Name -> IO FilePath
 findmodule [] n = fail $ "Module " ++ unname n ++ " not found"
 findmodule (s:ss) n =

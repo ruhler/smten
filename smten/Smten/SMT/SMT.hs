@@ -157,10 +157,11 @@ debug msg = {-# SCC "DEBUG" #-} do
         Just h -> liftIO $ hPutStrLn h msg
 
 isPrimT :: Type -> Bool
-isPrimT t | t == boolT = True
-isPrimT t | t == integerT = True
-isPrimT (AppT (ConT n _) _) | n == name "Bit" = True
-isPrimT _ = False
+isPrimT t
+  | t == boolT = True
+  | t == integerT = True
+  | Just _ <- de_bitT t = True
+  | otherwise = False
 
 data RunOptions = RunOptions {
     -- | Optionally output debug info to the given file.
@@ -207,23 +208,23 @@ runSymbolic opts q = runSMT opts (query q)
 --   Integers, Bools, and Bit vectors are implemented directly using the
 --   corresponding smt primitives. (Should I not be assuming this?)
 assignment :: Sig -> SMT ExpH
-assignment (Sig nm t) | t == boolT = do
+assignment s@(Sig nm t)
+  | t == boolT = do
     solver <- gets qs_solver
     bval <- liftIO $ SMT.getBoolValue solver (smtN nm)
     debug $ "; " ++ pretty nm ++ " is " ++ show bval
     return (boolEH bval)
-assignment (Sig nm t) | t == integerT = do
+  | t == integerT = do
     solver <- gets qs_solver
     ival <- liftIO $ SMT.getIntegerValue solver (smtN nm)
     debug $ "; " ++ pretty nm ++ " is " ++ show ival
     return (integerEH ival)
-assignment (Sig nm (AppT (ConT n _) wt)) | n == name "Bit" = do
-    let w = nteval wt
+  | Just w <- de_bitT t = do
     solver <- gets qs_solver
     bval <- liftIO $ SMT.getBitVectorValue solver w (smtN nm)
     debug $ "; " ++ pretty nm ++ " has value " ++ show bval
     return (bitEH (bv_make w bval))
-assignment s = error $
+  | otherwise = error $
     "SMTEN INTERNAL ERROR: unexpected type for prim free var: " ++ pretty s
 
 query_Used :: (Used (Realize a)) -> SMT (Maybe a)

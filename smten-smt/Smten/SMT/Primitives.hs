@@ -35,7 +35,7 @@ data Solver = Yices1 | Yices2 | STP
     deriving (Eq, Show)
 
 derive_SmtenT ''Solver
-derive_SmtenEH ''Solver
+derive_SmtenEH "Smten.SMT.Symbolic" ''Solver
 
 derive_SmtenT ''Symbolic
 derive_SmtenT ''Used

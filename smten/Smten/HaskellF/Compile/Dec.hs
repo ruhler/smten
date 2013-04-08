@@ -58,11 +58,11 @@ hsDec :: Dec -> HF [H.Dec]
 hsDec (ValD _ e) = hsTopExp e
 
 hsDec (DataD _ n _ _) | n `elem` [
-  name "Bool",
-  name "Char",
-  name "Integer",
-  name "Bit",
-  name "[]",
+  boolN,
+  charN,
+  integerN,
+  bitN,
+  nilN,
   unitN,
   tupleN 2,
   tupleN 3,
@@ -71,7 +71,7 @@ hsDec (DataD _ n _ _) | n `elem` [
   name "SMT",
   name "Symbolic",
   name "Used",
-  name "IO"] = return []
+  ioN] = return []
 
 hsDec (DataD _ n tyvars constrs) = hsData n tyvars constrs
 

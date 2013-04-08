@@ -29,11 +29,11 @@ doE l ((LetS bs):stmts) =
 doE l ((NoBindS e):stmts) =
   let rest = doE l stmts
       tbind = (arrowsT [typeof e, typeof rest, typeof rest])
-  in appsE l (varE l (Sig (name ">>") tbind)) [e, rest]
+  in appsE l (varE l (Sig nobindN tbind)) [e, rest]
 doE l ((BindS p e):stmts) =
   let rest = doE l stmts
       f = mlamE l [p] rest
       tbind = (arrowsT [typeof e, typeof f, typeof rest])
-  in appsE l (varE l (Sig (name ">>=") tbind)) [e, f]
+  in appsE l (varE l (Sig bindN tbind)) [e, f]
 
 

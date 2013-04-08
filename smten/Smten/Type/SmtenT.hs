@@ -71,11 +71,11 @@ instance SmtenT Bool where
     smtenT _ = boolT
 
 instance SmtenT1 IO where
-    smtenT1 _ = conT (name "IO")
+    smtenT1 _ = conT ioN
 
 instance SmtenT2 (->) where
     smtenT2 _ = conT arrowN
 
 instance SmtenT2 (,) where
-    smtenT2 _ = conT (name "(,)")
+    smtenT2 _ = conT (tupleN 2)
 

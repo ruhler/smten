@@ -1,5 +1,5 @@
 Recent::
-* add locations to SortM, TypeInfer
+* add locations to SortM
 * Don't pretty print numeric type 16 in haskellf as
     2*2*2*2*(1+0) ??
     depends if you want detailed type info or not.

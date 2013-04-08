@@ -1,8 +1,11 @@
 
 module Smten.Name.Sugar (
-    arrowN, unitN, trueN, falseN,
+    arrowN, unitN, trueN, falseN, charN, integerN, bitN,
     tupleN, de_tupleN,
-    unqualified, qualified, qualification,
+    listN, consN, nilN,
+    boolN,
+    errorN, ioN, bindN, nobindN,
+    unqualified, qualified, qualification, isqualified,
     ) where
 
 import Smten.Name.Name
@@ -10,28 +13,64 @@ import Smten.Name.Name
 import Control.Monad(guard)
 import Data.List(genericReplicate, genericLength)
 
+preludeN :: Name
+preludeN = name "Prelude"
+
 -- | The name of the (->) type constructor.
 arrowN :: Name
-arrowN = name "->"
+arrowN = qualified preludeN $ name "->"
 
 unitN :: Name
-unitN = name "()"
+unitN = qualified preludeN $ name "()"
+
+boolN :: Name
+boolN = qualified preludeN $ name "Bool"
 
 trueN :: Name
-trueN = name "True"
+trueN = qualified preludeN $ name "True"
 
 falseN :: Name
-falseN = name "False"
+falseN = qualified preludeN $ name "False"
+
+charN :: Name
+charN = qualified preludeN $ name "Char"
+
+integerN :: Name
+integerN = qualified preludeN $ name "Integer"
+
+listN :: Name
+listN = qualified preludeN $ name "[]"
+
+consN :: Name
+consN = qualified preludeN $ name ":"
+
+nilN :: Name
+nilN = listN
+
+errorN :: Name
+errorN = qualified preludeN $ name "error"
+
+nobindN :: Name
+nobindN = qualified preludeN $ name ">>"
+
+bindN :: Name
+bindN = qualified preludeN $ name ">>="
+
+bitN :: Name
+bitN = name "Smten.Bit.Bit"
+
+ioN :: Name
+ioN = qualified preludeN $ name "IO"
 
 -- Generate the tuple name for given number of arguments.
 tupleN :: (Integral n) => n -> Name
-tupleN n = name $ "(" ++ genericReplicate (n-1) ',' ++ ")"
+tupleN n = qualified preludeN $ name $ "(" ++ genericReplicate (n-1) ',' ++ ")"
 
 -- Check if a name is a tuple name. If so, returns the number of elements in
 -- the tuple.
 de_tupleN :: Name -> Maybe Integer
 de_tupleN n = do
-    let s = unname n
+    let s = unname (unqualified n)
     guard $ length s > 2
     guard $ head s == '('
     guard $ last s == ')'
@@ -66,4 +105,6 @@ qualification n =
 qualified :: Name -> Name -> Name
 qualified a b = a `nappend` name "." `nappend` b
 
+isqualified :: Name -> Bool
+isqualified = not . nnull . qualification
 

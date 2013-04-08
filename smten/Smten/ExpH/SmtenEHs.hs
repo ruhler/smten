@@ -16,9 +16,9 @@ import Smten.ExpH.SmtenEH
 import Smten.ExpH.Sugar
 import Smten.ExpH.TH
 
-derive_SmtenEH ''Maybe
-derive_SmtenEH ''[]
-derive_SmtenEH ''(,)
+derive_SmtenEH "Prelude" ''Maybe
+derive_SmtenEH "Prelude" ''[]
+derive_SmtenEH "Prelude" ''(,)
 
 stringEH :: String -> ExpH
 stringEH = smtenEH
