@@ -47,6 +47,7 @@ import Control.Monad.Error
 import Control.Monad.Writer hiding ((<>))
 import Control.Monad.Reader
 
+import qualified Data.HashSet as Set
 import Data.Functor ((<$>))
 import Data.List(nub)
 import Data.Maybe(fromMaybe, catMaybes)
@@ -101,17 +102,12 @@ data Module = Module {
     mod_decs :: [Dec]
 } deriving(Show, Eq)
 
-lookupModule :: (MonadError String m) => Name -> [Module] -> m Module
-lookupModule n [] = throw $ "module " ++ pretty n ++ " not found"
-lookupModule n (m:_) | (n == mod_name m) = return m
-lookupModule n (_:ms) = lookupModule n ms
-
 data QS = QS {
     qs_env :: [Module],     -- ^ The environment
     qs_me :: Module,        -- ^ The current module
     qs_bound :: [Name],     -- ^ List of bound variable names
     qs_syns :: HT.HashTable Name ([Name], Type), -- ^ All type synonyms
-    qs_exports :: HT.HashTable Name [Name],      -- ^ Module exports
+    qs_exports :: HT.HashTable Name (Set.Set Name),      -- ^ Module exports
     qs_loc :: Location      -- ^ The current location
 }
 
@@ -129,7 +125,7 @@ mkSyns xs = HT.table [(n, (vs, t)) | Synonym n vs t <- xs]
 mkDDecs :: [DataDec] -> HT.HashTable Name [ConRec]
 mkDDecs xs = HT.table [(n, cs) | DataDec n _ cs <- xs]
 
-mkExports :: [Module] -> HT.HashTable Name [Name]
+mkExports :: [Module] -> HT.HashTable Name (Set.Set Name)
 mkExports xs = HT.table [(mod_name m, exports m) | m <- xs]
 
 mename :: QualifyM Name
@@ -280,8 +276,8 @@ instance Qualify Name where
     qualify = resolve
 
 -- Return the set of entities exported by the given module.
-exports :: Module -> [Name]
-exports m = {-# SCC "Exports" #-}
+exports :: Module -> (Set.Set Name)
+exports m =
   let exdec :: Dec -> Writer [Name] ()
       exdec (ValD _ (TopExp (TopSig nm _ _) _)) = tell [unqualified nm]
       exdec (DataD _ nm _ cs) = tell [unqualified nm] >> mapM_ excon cs
@@ -295,26 +291,26 @@ exports m = {-# SCC "Exports" #-}
       excon :: Con -> Writer [Name] ()
       excon (Con n _) = tell [unqualified n]
     
-  in execWriter (mapM exdec (mod_decs m))
+  in Set.fromList $ execWriter (mapM exdec (mod_decs m))
 
 -- Resolve the given name based on the given import.
 -- Returns the unique name for the entity if it is accessible via this import.
 resolvein :: Name -> Import -> QualifyM (Maybe Name)
-resolvein n (Import fr as qo) = {-# SCC "ResolveIn" #-} do
+resolvein n (Import fr as qo) = do
   exps <- asks qs_exports
   case HT.lookup fr exps of
     Just xs -> do
       let uqn = unqualified n
           qn = qualification n
       return $ do
-          guard $ uqn `elem` xs
+          guard $ uqn `Set.member` xs
           guard $ qn == as || (not qo && nnull qn)
           return $ qualified fr uqn
     Nothing -> lthrow $ "Module " ++ pretty fr ++ " not found"
         
 -- | Return the unique name for the entity referred to by the given name.
 resolve :: Name -> QualifyM Name
-resolve n = {-# SCC "Resolve" #-} do
+resolve n = do
   me <- asks qs_me
   let meimport = Import (mod_name me) (mod_name me) False
   finds <- mapM (resolvein n) (meimport : mod_imports me)
