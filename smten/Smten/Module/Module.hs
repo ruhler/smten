@@ -111,6 +111,7 @@ data QS = QS {
     qs_me :: Module,        -- ^ The current module
     qs_bound :: [Name],     -- ^ List of bound variable names
     qs_syns :: HT.HashTable Name ([Name], Type), -- ^ All type synonyms
+    qs_exports :: HT.HashTable Name [Name],      -- ^ Module exports
     qs_loc :: Location      -- ^ The current location
 }
 
@@ -127,6 +128,9 @@ mkSyns xs = HT.table [(n, (vs, t)) | Synonym n vs t <- xs]
 
 mkDDecs :: [DataDec] -> HT.HashTable Name [ConRec]
 mkDDecs xs = HT.table [(n, cs) | DataDec n _ cs <- xs]
+
+mkExports :: [Module] -> HT.HashTable Name [Name]
+mkExports xs = HT.table [(mod_name m, exports m) | m <- xs]
 
 mename :: QualifyM Name
 mename = asks (mod_name . qs_me)
@@ -277,7 +281,7 @@ instance Qualify Name where
 
 -- Return the set of entities exported by the given module.
 exports :: Module -> [Name]
-exports m =
+exports m = {-# SCC "Exports" #-}
   let exdec :: Dec -> Writer [Name] ()
       exdec (ValD _ (TopExp (TopSig nm _ _) _)) = tell [unqualified nm]
       exdec (DataD _ nm _ cs) = tell [unqualified nm] >> mapM_ excon cs
@@ -296,19 +300,21 @@ exports m =
 -- Resolve the given name based on the given import.
 -- Returns the unique name for the entity if it is accessible via this import.
 resolvein :: Name -> Import -> QualifyM (Maybe Name)
-resolvein n (Import fr as qo) = do
-  mods <- asks qs_env
-  mod <- lookupModule fr mods
-  let uqn = unqualified n
-      qn = qualification n
-  return $ do
-    guard $ uqn `elem` exports mod
-    guard $ qn == as || (not qo && nnull qn)
-    return $ qualified fr uqn
+resolvein n (Import fr as qo) = {-# SCC "ResolveIn" #-} do
+  exps <- asks qs_exports
+  case HT.lookup fr exps of
+    Just xs -> do
+      let uqn = unqualified n
+          qn = qualification n
+      return $ do
+          guard $ uqn `elem` xs
+          guard $ qn == as || (not qo && nnull qn)
+          return $ qualified fr uqn
+    Nothing -> lthrow $ "Module " ++ pretty fr ++ " not found"
         
 -- | Return the unique name for the entity referred to by the given name.
 resolve :: Name -> QualifyM Name
-resolve n = do
+resolve n = {-# SCC "Resolve" #-} do
   me <- asks qs_me
   let meimport = Import (mod_name me) (mod_name me) False
   finds <- mapM (resolvein n) (meimport : mod_imports me)
@@ -330,7 +336,8 @@ flatten1 :: [Module]    -- ^ The environment
             -> Failable [Dec] -- ^ Flattened declarations from the module
 flatten1 ms m = do
   let syns = mkSyns $ concatMap mod_synonyms ms
-  mod_decs <$> runReaderT (qualify m) (QS ms (error "not in module") [] syns lunknown)
+      exps = mkExports ms
+  mod_decs <$> runReaderT (qualify m) (QS ms (error "not in module") [] syns exps lunknown)
 
 -- Perform standalone derivings in the given module.
 sderive :: [Module] -> Module -> Failable Module
