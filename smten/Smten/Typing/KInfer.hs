@@ -32,13 +32,13 @@ data SS = SS {
 initSS :: Env -> SS
 initSS e = SS e Set.empty []
 
-type SortM = StateT SS Failable
+type SortM = StateT SS
 
-instance MonadErrorSL SortM where
-    errloc = return $ Location "SortM Unknown" 0 0
+instance (MonadErrorSL m) => MonadErrorSL (StateT s m) where
+    errloc = lift errloc
 
 -- Determine the order in which to do kind inference on the type constructors
-sort :: Env -> Failable [[Name]]
+sort :: (MonadPlus m, MonadErrorSL m) => Env -> m [[Name]]
 sort e = do
   let tycons = conTs e
       
@@ -50,7 +50,7 @@ sort e = do
 --
 -- Returns the set of type constructors which mutually recursively depend on
 -- an element in the given set of type constructors.
-sortin :: Set.Set Name -> Name -> SortM (Set.Set Name)
+sortin :: (MonadPlus m, MonadErrorSL m) => Set.Set Name -> Name -> SortM m (Set.Set Name)
 sortin pending ty
   | ty `Set.member` pending = return (Set.singleton ty)
   | otherwise = do
@@ -71,7 +71,7 @@ sortin pending ty
                 else return v
               
 -- Sort all declarations into dependency groups.
-sortd :: Env -> Failable [[Dec]]
+sortd :: (MonadPlus m, MonadErrorSL m) => Env -> m [[Dec]]
 sortd e = do
   tys <- sort e
   tyds <- mapM (mapM (lookupTypeD e)) tys
