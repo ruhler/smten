@@ -50,6 +50,7 @@ import Smten.Sig
 import Smten.Ppr
 import Smten.Exp
 import Smten.Dec
+import Smten.Module
 import Smten.Type
 
 
@@ -190,7 +191,9 @@ instance TypeCheck TopExp where
         if (typeof e /= t)
           then wrongtype "expression" e t (typeof e)
           else return ()
-        
+
+instance TypeCheck Module where
+    typecheckM m = mapM_ typecheckM (mod_decs m)
 
 instance TypeCheck Dec where
     typecheckM d@(ValD l e) = withloc l $ typecheckM e
@@ -252,9 +255,10 @@ satisfied cls = do
             mapM_ sat (assign assigns ctx)
     sat cls
 
-typecheck :: (TypeCheck a) => Env -> a -> Failable ()
-typecheck env x = {-# SCC "TypeCheck" #-}
-    runReaderT (typecheckM x) (TCS env [] [] [] lunknown)
+typecheck :: [Module] -> Failable ()
+typecheck ms = {-# SCC "TypeCheck" #-} do
+  let env = mkEnv (flatten ms)
+  runReaderT (mapM_ typecheckM ms) (TCS env [] [] [] lunknown)
 
 eqtypes :: Type -> Type -> Bool
 eqtypes a b = canonical a == canonical b

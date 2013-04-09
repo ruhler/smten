@@ -44,16 +44,6 @@ hsImport (Import fr _ _) = H.text $ "import " ++ unname (hfpre fr)
 hsImports :: [Import] -> H.Doc
 hsImports = H.vcat . map hsImport
 
--- Given an untyped declaration from the module, get its typed version from
--- the environment.
-typedModDecl :: Env -> Name -> Dec -> Failable Dec
-typedModDecl env mn d
-  | ValD _ (TopExp (TopSig n _ _) _) <- d = lookupValD env (qualified mn n)
-  | DataD _ n _ _ <- d = lookupDataD env n
-  | ClassD _ _ n _ _ <- d = lookupClassD env n
-  | InstD _ _ cls _ <- d = lookupInstD env cls
-  | PrimD _ (TopSig n _ _) <- d = lookupPrimD env (qualified mn n)
-
 hsDecls :: Env -> [Dec] -> Failable [H.Dec]
 hsDecls env ds = runHF env (concat <$> mapM hsDec ds)
 
@@ -65,7 +55,6 @@ hsModule env mod = do
                Just _ -> H.text "main__ = __main_wrapper main"
                Nothing -> H.empty
       imports = hsImports (mod_imports mod)
-  tdecls <- mapM (typedModDecl env mn) (mod_decs mod)
-  hdecls <- hsDecls env tdecls
+  hdecls <- hsDecls env (mod_decs mod)
   return (header H.$+$ imports H.$+$ H.ppr hdecls H.$+$ main)
 

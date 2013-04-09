@@ -33,7 +33,7 @@
 -- 
 -------------------------------------------------------------------------------
 
-module Smten.Loader (SearchPath, loadmods, compenv, loadenv) where
+module Smten.Loader (SearchPath, loadmods, loadtyped) where
 
 import System.Directory
 
@@ -103,28 +103,15 @@ findmodule (s:ss) n =
 loadmods :: SearchPath -> FilePath -> IO [Module]
 loadmods path mainmod = do
     main <- loadmod mainmod
-    ms <- loads path (map imp_from (mod_imports main)) [main]
-    attemptIO $ do
-        sderived <- sderive ms
-        qualified <- qualify sderived
-        kinded <- kindinfer qualified
-        typeinfer kinded
+    loads path (map imp_from (mod_imports main)) [main]
 
-        
-
--- Given a set of modules, 
--- flatten, kind infer, type infer, and type check to compile an Env.
-compenv :: [Module] -> Failable Env
-compenv mods = do
-    let flat = flatten mods
-        env = mkEnv flat
-    typecheck env flat
-    return env
-
--- Load a program into an environment.
--- Performs module flattening, type inference, and type checking.
-loadenv :: SearchPath -> FilePath -> IO Env
-loadenv path fin = do
-    mods <- loadmods path fin
-    attemptIO $ compenv mods
-
+loadtyped :: SearchPath -> FilePath -> IO [Module]
+loadtyped includes fp = do
+  mods <- loadmods includes fp
+  attemptIO $ do
+      sderived <- sderive mods
+      qualified <- qualify sderived
+      kinded <- kindinfer qualified
+      inferred <- typeinfer kinded
+      typecheck inferred
+      return inferred

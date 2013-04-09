@@ -56,6 +56,7 @@ import Smten.Prim
 import Smten.Dec
 import Smten.Loader
 import Smten.Module
+import Smten.Typing
 import Smten
 
 import Smten.SMT.Primitives
@@ -113,19 +114,23 @@ main = do
 
     case (run args) of
         Io -> do 
-            env <- loadenv includes (file args)
+            mods <- loadtyped includes (file args)
+            let env = mkEnv (flatten mods)
             tmain <- attemptIO $ lookupVarType env nmain
             let m = varE lunknown (Sig (name (main_is args)) tmain)
             runio (inline env (smtenPs ++ smtPs) m)
             return ()
+
         Desugar -> do
             mods <- loadmods includes (file args)
-            outf . pretty $ mods
+            sderived <- attemptIO $ sderive mods
+            outf . pretty $ sderived
+
         Type -> do
-            env <- loadenv includes (file args)
-            outf $ pretty env
+            mods <- loadtyped includes (file args)
+            outf . pretty $ mods
+
         HaskellF -> do
-            mods <- loadmods includes (file args)
-            env <- attemptIO $ compenv mods
-            haskellf (hsdir args) env mods
+            mods <- loadtyped includes (file args)
+            haskellf (hsdir args) mods
 

@@ -60,9 +60,10 @@ import Smten.HaskellF.Compile.Module
 
 -- haskell odir env mods
 --  Compile the given declarations to haskell.
-haskellf :: FilePath -> Env -> [Module] -> IO ()
-haskellf odir env mods = {-# SCC "HaskellF" #-} do
-  let mkmod m = do
+haskellf :: FilePath -> [Module] -> IO ()
+haskellf odir mods = {-# SCC "HaskellF" #-} do
+  let env = mkEnv (flatten mods)
+      mkmod m = do
         hf <- pretty <$> attemptIO (hsModule env m)
         let dst = map dot2slash . unname  . hfpre . mod_name $ m
             tgt = odir ++ "/" ++ dst ++ ".hs"
