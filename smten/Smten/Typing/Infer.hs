@@ -92,7 +92,7 @@ runTI env x = evalStateT (runReaderT x (TIR [] env lunknown)) (TIS 1 [])
 -- inference to make sure it's valid.
 typeinfer :: [Module] -> Failable [Module]
 typeinfer ms = {-# SCC "TypeInfer" #-}
-  runTI (mkEnv $ flatten ms) (mapM infermod ms)
+  runTI (environ ms) (mapM infermod ms)
 
 -- Run inference on a single module.
 infermod :: Module -> TI Module

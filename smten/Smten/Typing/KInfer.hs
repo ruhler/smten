@@ -306,7 +306,6 @@ kimod e m = do
 --
 -- Note: this requires modules be non-recursive.
 kindinfer :: [Module] -> Failable [Module]
-kindinfer ms = {-# SCC "KindInfer" #-} do
-    let env = mkEnv (flatten ms)
-    evalStateT (mapM (kimod env) ms) (KS [] 0 Map.empty)
+kindinfer ms = {-# SCC "KindInfer" #-}
+    evalStateT (mapM (kimod (environ ms)) ms) (KS [] 0 Map.empty)
 

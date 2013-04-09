@@ -1,5 +1,4 @@
 Recent::
-* add locations to SortM (?)
 * Don't pretty print numeric type 16 in haskellf as
     2*2*2*2*(1+0) ??
     depends if you want detailed type info or not.
@@ -18,6 +17,8 @@ Haskell Features::
 * modularity support
 ** ability to re-export modules 
     (So we can include Smten.SMT instead of Smten.SMT.SMT, for example)
+** export lists
+** import lists
 * labeled pattern matching.
 
 Documentation::
@@ -63,8 +64,6 @@ Primitives::
 * Concretize the rest of the haskellf primitives
 
 Cleanup::
-* split Module.Module into different modules
-    Qualify, Resolve, and Flatten ought to do nicely
 * varTs should return a list of TyVar, not (Name, Kind)
 * typeinfer - use structure like typecheck (if reasonable)
 * enforce in Parser that all class methods must have a signature?

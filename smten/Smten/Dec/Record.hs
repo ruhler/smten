@@ -126,7 +126,7 @@ deriveEq l ctx cls cs =
       eq = Method (name "==") (clauseE l eqclauses)
   in InstD l ctx cls [eq]
 
--- Derive an instance of Free (before flattening and inference) for the given
+-- Derive an instance of Free (before qualify and inference) for the given
 -- data type declaration.
 --
 -- TODO: this should only work for non-recursive data types!

@@ -256,9 +256,8 @@ satisfied cls = do
     sat cls
 
 typecheck :: [Module] -> Failable ()
-typecheck ms = {-# SCC "TypeCheck" #-} do
-  let env = mkEnv (flatten ms)
-  runReaderT (mapM_ typecheckM ms) (TCS env [] [] [] lunknown)
+typecheck ms = {-# SCC "TypeCheck" #-}
+  runReaderT (mapM_ typecheckM ms) (TCS (environ ms) [] [] [] lunknown)
 
 eqtypes :: Type -> Type -> Bool
 eqtypes a b = canonical a == canonical b

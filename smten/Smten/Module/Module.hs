@@ -37,7 +37,7 @@
 
 module Smten.Module.Module (
     Module(..), Import(..), Synonym(..), DataDec(..), Deriving(..),
-    flatten, sderive,
+    environ, sderive,
     ) where
 
 import qualified Smten.HashTable as HT
@@ -108,6 +108,6 @@ sderive ms = {-# SCC "StandAloneDerive" #-} do
           return $ m { mod_decs = derives ++ mod_decs m }
   mapM sd1 ms
   
-flatten :: [Module] -> [Dec]
-flatten = concat . map mod_decs
+environ :: [Module] -> Env
+environ = mkEnv . concat . map mod_decs
 

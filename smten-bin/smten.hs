@@ -115,7 +115,7 @@ main = do
     case (run args) of
         Io -> do 
             mods <- loadtyped includes (file args)
-            let env = mkEnv (flatten mods)
+            let env = environ mods
             tmain <- attemptIO $ lookupVarType env nmain
             let m = varE lunknown (Sig (name (main_is args)) tmain)
             runio (inline env (smtenPs ++ smtPs) m)
