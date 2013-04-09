@@ -21,11 +21,11 @@ testhf:
 	HOME=./build/home/ ghc -o build/test/testhf build/test/testhf.hs -main-is __main -prof -rtsopts
 	./build/test/testhf
 
-testsugar:
-	./build/home/.cabal/bin/smten --desugar \
+testph:
+	./build/home/.cabal/bin/smten --phases \
 		--include smten/share/lib \
 		--file smten/share/lib/Smten/Tests/Concrete.smtn \
-		-o desugared
+		-o build/test/phases
 
 clean:
 	rm -rf build/smten-smt build/smten build/smten-bin build/test

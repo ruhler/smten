@@ -58,6 +58,7 @@ hsDec :: Dec -> HF [H.Dec]
 hsDec (ValD _ e) = hsTopExp e
 
 hsDec (DataD _ n _ _) | n `elem` [
+  arrowN,
   boolN,
   charN,
   integerN,

@@ -63,7 +63,7 @@ import Smten.SMT.Primitives
 
 import Smten.HaskellF.Compile
 
-data Run = Io | Type | Desugar | HaskellF
+data Run = Io | Type | Phases | HaskellF
     deriving (Show, Eq, Typeable, Data)
 
 data Args = Args {
@@ -79,7 +79,7 @@ argspec :: Args
 argspec = Args { 
     run = A.enum [Io A.&= A.help "Run a smten program in the IO monad",
                   Type A.&= A.help "Type infer and check a smten program",
-                  Desugar A.&= A.help "Desugar, but don't type a smten program",
+                  Phases A.&= A.help "Dump output from intermediate phases of compilation",
                   HaskellF A.&= A.help "Compile a smten program to Haskell"]
        A.&= A.typ "RUN MODE",
     include = []
@@ -98,7 +98,7 @@ argspec = Args {
        A.&= A.typFile
     } A.&=
     A.verbosity A.&=
-    A.help "Desugar/Typecheck/Interpret/Compile a smten program" A.&=
+    A.help "Compile/Run a smten program" A.&=
     A.summary "smten" 
 
 main :: IO ()
@@ -121,10 +121,24 @@ main = do
             runio (inline env (smtenPs ++ smtPs) m)
             return ()
 
-        Desugar -> do
+        Phases -> do
+            let outfphs :: String -> String -> IO ()
+                outfphs ext text = case (output args) of
+                            "-" -> do
+                                putStrLn $ "Phase: " ++ ext
+                                putStrLn text
+                            fout -> writeFile (fout ++ "." ++ ext) text
             mods <- loadmods includes (file args)
+            outfphs ".ldd" (pretty mods)
             sderived <- attemptIO $ sderive mods
-            outf . pretty $ sderived
+            outfphs ".sdr" (pretty sderived)
+            qualified <- attemptIO $ qualify sderived
+            outfphs ".qlf" (pretty qualified)
+            kinded <- attemptIO $ kindinfer qualified
+            outfphs ".knd" (pretty kinded)
+            inferred <- attemptIO $ typeinfer kinded
+            outfphs ".typ" (pretty inferred)
+            attemptIO $ typecheck inferred
 
         Type -> do
             mods <- loadtyped includes (file args)
