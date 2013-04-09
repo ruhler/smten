@@ -19,6 +19,7 @@ import Smten.Type
 import Smten.Ppr
 import Smten.Failable
 import Smten.Dec
+import Smten.Module
 
 import Smten.Typing.ConTs
 import Smten.Typing.KSolver
@@ -38,9 +39,9 @@ instance (MonadErrorSL m) => MonadErrorSL (StateT s m) where
     errloc = lift errloc
 
 -- Determine the order in which to do kind inference on the type constructors
-sort :: (MonadPlus m, MonadErrorSL m) => Env -> m [[Name]]
-sort e = do
-  let tycons = conTs e
+sort :: (MonadPlus m, MonadErrorSL m) => Env -> [Dec] -> m [[Name]]
+sort e ds = do
+  let tycons = conTs ds
       
   s <- execStateT (mapM (sortin Set.empty) (Set.elems tycons)) (initSS e)
   return $ map Set.elems (reverse (ss_groups s))
@@ -71,9 +72,9 @@ sortin pending ty
                 else return v
               
 -- Sort all declarations into dependency groups.
-sortd :: (MonadPlus m, MonadErrorSL m) => Env -> m [[Dec]]
-sortd e = do
-  tys <- sort e
+sortd :: (MonadPlus m, MonadErrorSL m) => Env -> [Dec] -> m [[Dec]]
+sortd e ds = do
+  tys <- sort e ds
   tyds <- mapM (mapM (lookupTypeD e)) tys
   let isnonty :: Dec -> Bool
       isnonty d
@@ -81,7 +82,7 @@ sortd e = do
         | InstD {} <- d = True
         | PrimD {} <- d = True
         | otherwise = False
-      ntyds = filter isnonty (getDecls e)
+      ntyds = filter isnonty ds
   return $ tyds ++ [[ntyd] | ntyd <- ntyds]
 
 -- | Replace all UnknownK with new variable kinds.
@@ -293,8 +294,19 @@ group ds = do
 groups :: [[Dec]] -> KIM [Dec]
 groups ds = concat <$> mapM group ds
 
-kindinfer :: Env -> Failable [Dec]
-kindinfer e = do
-    sorted <- sortd e
-    evalStateT (groups sorted) (KS [] 0 Map.empty)
+kimod :: Env -> Module -> KIM Module
+kimod e m = do
+    sorted <- sortd e (mod_decs m)
+    grouped <- groups sorted
+    return $ m { mod_decs = grouped }
+
+-- | Do kind inference on the given modules.
+-- The modules are assumed to be sorted in dependency order, where later
+-- elements in the list depend on earlier elements.
+--
+-- Note: this requires modules be non-recursive.
+kindinfer :: [Module] -> Failable [Module]
+kindinfer ms = do
+    let env = mkEnv (flatten ms)
+    evalStateT (mapM (kimod env) ms) (KS [] 0 Map.empty)
 

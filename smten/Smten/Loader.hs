@@ -106,15 +106,16 @@ loadmods path mainmod = do
     ms <- loads path (map imp_from (mod_imports main)) [main]
     attemptIO $ do
         sderived <- mapM (sderive ms) ms
-        {-# SCC "Qualify" #-} qualify sderived
+        qualified <- {-# SCC "Qualify" #-} qualify sderived
+        {-# SCC "KindInfer" #-} kindinfer qualified
+        
 
 -- Given a set of modules, 
 -- flatten, kind infer, type infer, and type check to compile an Env.
 compenv :: [Module] -> Failable Env
 compenv mods = do
     let flat = flatten mods
-    kinded <- {-# SCC "KindInfer" #-} kindinfer (mkEnv flat)
-    decs <- {-# SCC "TypeInfer" #-} typeinfer (mkEnv kinded) kinded
+    decs <- {-# SCC "TypeInfer" #-} typeinfer (mkEnv flat) flat
     let env = mkEnv decs
     {-# SCC "TypeCheck" #-} typecheck env decs
     return env
