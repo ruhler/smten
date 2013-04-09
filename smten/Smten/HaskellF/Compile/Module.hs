@@ -36,6 +36,7 @@ hsHeader modname =
   H.text "import qualified Smten.Type as S" H.$+$
   H.text "import qualified Smten.ExpH as S" H.$+$
   H.text "import Smten.HaskellF.Lib.Prelude" H.$+$
+  H.text "import Smten.HaskellF.Lib.Numeric" H.$+$
   H.text "import Smten.HaskellF.Lib.Symbolic"
 
 hsImport :: Import -> H.Doc

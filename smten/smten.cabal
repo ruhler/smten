@@ -96,6 +96,7 @@ library
 
     Smten.HaskellF.HaskellF
     Smten.HaskellF.Lib.Prelude
+    Smten.HaskellF.Lib.Numeric
     Smten.HaskellF.TH
 
     Smten.Module

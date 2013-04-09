@@ -17,8 +17,6 @@ module Smten.HaskellF.Lib.Prelude (
     List__(Cons__, Nil__), __caseCons__, __caseNil__,
     Maybe(Just, Nothing), __caseJust, __caseNothing,
 
-    N__0, N__2p1, N__2p0, N__PLUS, N__MINUS, N__TIMES,
-
     __prim_toInteger_Char, __prim_fromInteger_Char,
     __prim_eq_Integer,
     __prim_add_Integer, __prim_sub_Integer, __prim_mul_Integer,
@@ -35,8 +33,8 @@ module Smten.HaskellF.Lib.Prelude (
     __prim_zeroExtend_Bit, __prim_signExtend_Bit,
     __prim_truncate_Bit, __prim_concat_Bit, __prim_extract_Bit,
     error,
-    __main_wrapper,
     valueof, numeric, trace, traceE,
+    __main_wrapper,
     ) where
 
 import Prelude hiding (
@@ -177,64 +175,6 @@ instance (SmtenHF c f) => SmtenHF [c] (List__ f) where
 
 type String = List__ Char
 
-newtype N__0 = N__0 ExpH
-
-instance SmtenT N__0 where
-    smtenT _ = NumT 0
-
-instance HaskellF N__0 where
-    box = N__0
-    unbox (N__0 x) = x
-
-newtype N__1 = N__1 ExpH
-
-instance SmtenT N__1 where
-    smtenT _ = NumT 1
-
-instance HaskellF N__1 where
-    box = N__1
-    unbox (N__1 x) = x
-
-newtype N__2 = N__2 ExpH
-
-instance SmtenT N__2 where
-    smtenT _ = NumT 2
-
-instance HaskellF N__2 where
-    box = N__2
-    unbox (N__2 x) = x
-
-newtype N__PLUS a b = N__PLUS ExpH
-
-instance SmtenT2 N__PLUS where
-    smtenT2 _ = ConT (name "+") (ArrowK (ArrowK NumK NumK) NumK)
-
-instance HaskellF2 N__PLUS where
-    box2 = N__PLUS
-    unbox2 (N__PLUS x) = x
-
-newtype N__MINUS a b = N__MINUS ExpH
-
-instance SmtenT2 N__MINUS where
-    smtenT2 _ = ConT (name "-") (ArrowK (ArrowK NumK NumK) NumK)
-
-instance HaskellF2 N__MINUS where
-    box2 = N__MINUS
-    unbox2 (N__MINUS x) = x
-
-newtype N__TIMES a b = N__TIMES ExpH
-
-instance SmtenT2 N__TIMES where
-    smtenT2 _ = ConT (name "*") (ArrowK (ArrowK NumK NumK) NumK)
-
-instance HaskellF2 N__TIMES where
-    box2 = N__TIMES
-    unbox2 (N__TIMES x) = x
-
-type N__2p0 a = N__TIMES N__2 a
-type N__2p1 a = N__PLUS (N__2p0 a) N__1
-
-
 __prim_toInteger_Char :: Char -> Integer
 __prim_toInteger_Char = unaryHF toInteger_CharP
 
@@ -340,11 +280,6 @@ __prim_extract_Bit = primHF extract_BitP
 
 error :: (HaskellF a) => String -> a
 error = primHF errorP
-    
-__main_wrapper :: IO Unit__ -> P.IO ()
-__main_wrapper m
-  | P.Just x <- de_ioEH (unbox m) = x >> return ()
-  | otherwise = P.error $ "__main_wrapper: " ++ pretty (unbox m)
 
 numeric :: (HaskellF a) => a
 numeric = primHF numericP 
@@ -369,4 +304,10 @@ __prim_gt_Bit = primHF gt_BitP
 
 __prim_geq_Bit :: (HaskellF n) => Bit n -> Bit n -> Bool
 __prim_geq_Bit = primHF geq_BitP
+
+
+__main_wrapper :: IO Unit__ -> P.IO ()
+__main_wrapper m
+  | P.Just x <- de_ioEH (unbox m) = x >> return ()
+  | otherwise = P.error $ "__main_wrapper: " ++ pretty (unbox m)
 
