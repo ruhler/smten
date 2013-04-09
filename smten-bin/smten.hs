@@ -129,15 +129,15 @@ main = do
                                 putStrLn text
                             fout -> writeFile (fout ++ "." ++ ext) text
             mods <- loadmods includes (file args)
-            outfphs ".ldd" (pretty mods)
+            outfphs "ldd" (pretty mods)
             sderived <- attemptIO $ sderive mods
-            outfphs ".sdr" (pretty sderived)
+            outfphs "sdr" (pretty sderived)
             qualified <- attemptIO $ qualify sderived
-            outfphs ".qlf" (pretty qualified)
+            outfphs "qlf" (pretty qualified)
             kinded <- attemptIO $ kindinfer qualified
-            outfphs ".knd" (pretty kinded)
+            outfphs "knd" (pretty kinded)
             inferred <- attemptIO $ typeinfer kinded
-            outfphs ".typ" (pretty inferred)
+            outfphs "typ" (pretty inferred)
             attemptIO $ typecheck inferred
 
         Type -> do

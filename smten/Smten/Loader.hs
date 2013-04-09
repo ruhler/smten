@@ -37,6 +37,8 @@ module Smten.Loader (SearchPath, loadmods, loadtyped) where
 
 import System.Directory
 
+import Control.Monad.State
+import qualified Data.HashSet as Set
 import Data.Functor((<$>))
 import Data.List(nub)
 
@@ -49,24 +51,38 @@ import Smten.Typing
 
 type SearchPath = [FilePath]
 
--- | Load a bunch of modules.
--- Loads as many modules as are needed based on the import list and imports in
--- any modules which are loaded.
-loads :: SearchPath
-      -> [Name]     -- ^ List of module names to load
-      -> [Module]   -- ^ List of modules already loaded
-      -> IO [Module]
-loads _ [] ms = return ms
-loads sp ns ms =
-  let isLoaded :: Name -> Bool
-      isLoaded n = n `elem` map mod_name ms
+data LS = LS {
+    -- The set of modules already loaded
+    ls_loaded :: Set.Set Name,
 
-      needed = nub $ filter (not . isLoaded) ns
-  in do
-    loaded <- mapM (loadone sp) needed
-    let newimports = concatMap mod_imports loaded
-    let newnames = map imp_from newimports
-    loads sp newnames (loaded ++ ms)
+    -- The list of loaded modules stored in dependency order.
+    -- Modules in the tail of the list do not depend on the head of the list.
+    ls_mods :: [Module],
+
+    -- The module search path
+    ls_search :: SearchPath
+}
+
+type LSM = StateT LS IO
+
+-- | Load the given module and all modules required for the given module.
+loads :: Name -> LSM ()
+loads mn = do
+  loaded <- gets ls_loaded
+  if mn `Set.member` loaded
+    then return ()
+    else do
+      sp <- gets ls_search
+      m <- lift $ loadone sp mn
+      loadneeded m
+
+-- | Load all modules needed for the given module, and add the given module to
+-- the list of loaded modules.
+loadneeded :: Module -> LSM ()
+loadneeded m = do
+  modify $ \s -> s { ls_loaded = Set.insert (mod_name m) (ls_loaded s) }
+  mapM (loads . imp_from) (mod_imports m)
+  modify $ \s -> s { ls_mods = m : ls_mods s }
 
 -- | Load a single module with the given name.
 loadone :: SearchPath -> Name -> IO Module
@@ -99,11 +115,14 @@ findmodule (s:ss) n =
         else findmodule ss n
 
 -- | Load the complete module hierarchy needed for the smtn file specified in
--- the given path. Also performs sderive on each module.
+-- the given path.
+--
+-- Returns the modules in dependency order: The head module does not depend on
+-- any of the tail modules.
 loadmods :: SearchPath -> FilePath -> IO [Module]
 loadmods path mainmod = do
     main <- loadmod mainmod
-    loads path (map imp_from (mod_imports main)) [main]
+    reverse . ls_mods <$> execStateT (loadneeded main) (LS Set.empty [] path)
 
 loadtyped :: SearchPath -> FilePath -> IO [Module]
 loadtyped includes fp = do
