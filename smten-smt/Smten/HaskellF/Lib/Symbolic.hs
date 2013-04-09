@@ -50,13 +50,13 @@ instance HaskellF1 SMT where
     unbox1 (SMT x) = x
 
 __prim_free_Bool :: Symbolic Bool
-__prim_free_Bool = primHF free_BoolP
+__prim_free_Bool = primHF __prim_free_BoolP
 
 __prim_free_Integer :: Symbolic Integer
-__prim_free_Integer = primHF free_IntegerP
+__prim_free_Integer = primHF __prim_free_IntegerP
 
 __prim_free_Bit :: (HaskellF n) => Symbolic (Bit n)
-__prim_free_Bit = primHF free_BitP
+__prim_free_Bit = primHF __prim_free_BitP
 
 assert :: Bool -> Symbolic Unit__
 assert = primHF assertP
@@ -74,16 +74,16 @@ nest :: (HaskellF a) => SMT a -> SMT a
 nest = primHF nestP
 
 return_smt :: (HaskellF a) => a -> SMT a
-return_smt = primHF return_SMTP
+return_smt = primHF return_smtP
 
 bind_smt :: (HaskellF a, HaskellF b) => SMT a -> (a -> SMT b) -> SMT b
-bind_smt = primHF bind_SMTP
+bind_smt = primHF bind_smtP
 
 nobind_smt :: (HaskellF a, HaskellF b) => SMT a -> SMT b -> SMT b
-nobind_smt = primHF nobind_SMTP
+nobind_smt = primHF nobind_smtP
 
 fail_smt :: (HaskellF a) => List__ Char -> SMT a
-fail_smt = primHF fail_SMTP
+fail_smt = primHF fail_smtP
 
 return_symbolic :: (HaskellF a) => a -> Symbolic a
 return_symbolic = primHF return_SymbolicP
@@ -101,5 +101,5 @@ runSMT :: (HaskellF a, HaskellF s) => s -> Maybe (List__ Char) -> SMT a -> IO a
 runSMT = primHF runSMTP
 
 liftIO_SMT :: (HaskellF a) => IO a -> SMT a
-liftIO_SMT = primHF liftIO_SMTP
+liftIO_SMT = primHF liftIO_smtP
 

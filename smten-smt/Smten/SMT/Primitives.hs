@@ -6,10 +6,10 @@
 module Smten.SMT.Primitives (
     smtPs,
     return_SymbolicP, fail_SymbolicP, bind_SymbolicP, nobind_SymbolicP,
-    return_SMTP, fail_SMTP, bind_SMTP, nobind_SMTP,
-    free_IntegerP, free_BoolP, free_BitP,
+    return_smtP, fail_smtP, bind_smtP, nobind_smtP,
+    __prim_free_IntegerP, __prim_free_BoolP, __prim_free_BitP,
     assertP, usedP, query_UsedP, nestP, useP,
-    runSMTP, liftIO_SMTP,
+    runSMTP, liftIO_smtP,
     ) where
 
 import Control.Monad.IO.Class
@@ -78,23 +78,23 @@ instance (SmtenEH a) => SmtenEH (SMT a) where
 smtPs :: [Prim]
 smtPs = [
     return_SymbolicP, fail_SymbolicP, bind_SymbolicP, nobind_SymbolicP,
-    return_SMTP, fail_SMTP, bind_SMTP, nobind_SMTP,
-    free_IntegerP, free_BoolP, free_BitP,
+    return_smtP, fail_smtP, bind_smtP, nobind_smtP,
+    __prim_free_IntegerP, __prim_free_BoolP, __prim_free_BitP,
     assertP, query_UsedP, usedP, nestP, useP,
-    runSMTP, liftIO_SMTP
+    runSMTP, liftIO_smtP
     ]
 
-return_SMTP :: Prim
-return_SMTP = unaryP "Smten.SMT.Symbolic.return_smt" (return :: ExpH -> SMT ExpH)
+return_smtP :: Prim
+return_smtP = unaryP "Smten.SMT.Symbolic.return_smt" (return :: ExpH -> SMT ExpH)
 
-fail_SMTP :: Prim
-fail_SMTP = unaryP "Smten.SMT.Symbolic.fail_smt" (fail :: String -> SMT ExpH)
+fail_smtP :: Prim
+fail_smtP = unaryP "Smten.SMT.Symbolic.fail_smt" (fail :: String -> SMT ExpH)
 
-bind_SMTP :: Prim
-bind_SMTP = binaryP "Smten.SMT.Symbolic.bind_smt" ((>>=) :: SMT ExpH -> (ExpH -> SMT ExpH) -> SMT ExpH)
+bind_smtP :: Prim
+bind_smtP = binaryP "Smten.SMT.Symbolic.bind_smt" ((>>=) :: SMT ExpH -> (ExpH -> SMT ExpH) -> SMT ExpH)
 
-nobind_SMTP :: Prim
-nobind_SMTP = binaryP "Smten.SMT.Symbolic.nobind_smt" ((>>) :: SMT ExpH -> SMT ExpH -> SMT ExpH)
+nobind_smtP :: Prim
+nobind_smtP = binaryP "Smten.SMT.Symbolic.nobind_smt" ((>>) :: SMT ExpH -> SMT ExpH -> SMT ExpH)
 
 return_SymbolicP :: Prim
 return_SymbolicP = unaryP "Smten.SMT.Symbolic.return_symbolic" (return :: ExpH -> Symbolic ExpH)
@@ -113,14 +113,14 @@ free_helper t
   | Just (_, t') <- de_appT t = prim_free t'
   | otherwise = error $ "free_helper: " ++ pretty t
     
-free_IntegerP :: Prim
-free_IntegerP = nullaryTP "Smten.SMT.Symbolic.__prim_free_Integer" free_helper
+__prim_free_IntegerP :: Prim
+__prim_free_IntegerP = nullaryTP "Smten.SMT.Symbolic.__prim_free_Integer" free_helper
 
-free_BoolP :: Prim
-free_BoolP = nullaryTP "Smten.SMT.Symbolic.__prim_free_Bool" free_helper
+__prim_free_BoolP :: Prim
+__prim_free_BoolP = nullaryTP "Smten.SMT.Symbolic.__prim_free_Bool" free_helper
 
-free_BitP :: Prim
-free_BitP = nullaryTP "Smten.SMT.Symbolic.__prim_free_Bit" free_helper
+__prim_free_BitP :: Prim
+__prim_free_BitP = nullaryTP "Smten.SMT.Symbolic.__prim_free_Bit" free_helper
 
 assertP :: Prim
 assertP = unaryP "Smten.SMT.Symbolic.assert" assert
@@ -159,7 +159,7 @@ runSMTP =
         runSMT (RunOptions dbg s) q
   in binaryP "Smten.SMT.Symbolic.runSMT" f
 
-liftIO_SMTP :: Prim
-liftIO_SMTP = unaryP "Smten.SMT.Symbolic.liftIO_SMT" (liftIO :: IO ExpH -> SMT ExpH)
+liftIO_smtP :: Prim
+liftIO_smtP = unaryP "Smten.SMT.Symbolic.liftIO_SMT" (liftIO :: IO ExpH -> SMT ExpH)
     
 
