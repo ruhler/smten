@@ -19,6 +19,7 @@ import Smten.Type
 import Smten.ExpH
 import Smten.HaskellF.HaskellF
 import Smten.HaskellF.Lib.Prelude
+import Smten.HaskellF.Lib.Bit
 import Smten.SMT.Primitives
 
 newtype Used a = Used ExpH
