@@ -89,9 +89,9 @@ data Module = Module {
 mkDDecs :: [DataDec] -> HT.HashTable Name [ConRec]
 mkDDecs xs = HT.table [(n, cs) | DataDec n _ cs <- xs]
 
--- Perform standalone derivings in the given module.
-sderive :: [Module] -> Module -> Failable Module
-sderive ms m = do
+-- Perform standalone derivings in the given modules.
+sderive :: [Module] -> Failable [Module]
+sderive ms = {-# SCC "StandAloneDerive" #-} do
   let ddecs = mkDDecs $ concatMap mod_ddecs ms
 
       mderive :: Deriving -> Failable Dec
@@ -101,8 +101,12 @@ sderive ms m = do
         , Just n <- de_conT ct
         , Just cs <- HT.lookup n ddecs = return (derive loc ctx cls cs)
         | otherwise = throw $ lmsg loc "unable to perform standalone derive"
-  derives <- mapM mderive (mod_derivings m)
-  return $ m { mod_decs = derives ++ mod_decs m }
+
+      sd1 :: Module -> Failable Module
+      sd1 m = do
+          derives <- mapM mderive (mod_derivings m)
+          return $ m { mod_decs = derives ++ mod_decs m }
+  mapM sd1 ms
   
 flatten :: [Module] -> [Dec]
 flatten = concat . map mod_decs

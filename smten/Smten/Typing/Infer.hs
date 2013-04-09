@@ -58,6 +58,7 @@ import Smten.Lit
 import Smten.Type
 import Smten.Exp
 import Smten.Dec
+import Smten.Module
 import Smten.Ppr(pretty)
 import Smten.Typing.Solver
 
@@ -83,16 +84,23 @@ instance (MonadErrorSL TI) where
 runTI :: Env -> TI a -> Failable a
 runTI env x = evalStateT (runReaderT x (TIR [] env lunknown)) (TIS 1 [])
 
--- | Perform type inference on the given declarations.
+-- | Perform type inference on the given modules.
 -- Types UnknownT are inferred.
 --
 -- The returned expression may have incorrectly inferred types if the
 -- expression doesn't type check, so you should run typecheck after
 -- inference to make sure it's valid.
-typeinfer :: Env -> [Dec] -> Failable [Dec]
-typeinfer e xs = runTI e (mapM inferdec xs)
+typeinfer :: [Module] -> Failable [Module]
+typeinfer ms = {-# SCC "TypeInfer" #-}
+  runTI (mkEnv $ flatten ms) (mapM infermod ms)
 
--- Run inference on a single declaration, given the environment.
+-- Run inference on a single module.
+infermod :: Module -> TI Module
+infermod m = do
+    ds <- mapM inferdec (mod_decs m)
+    return $ m { mod_decs = ds }
+
+-- Run inference on a single declaration
 inferdec :: Dec -> TI Dec
 inferdec (ValD l (TopExp ts@(TopSig n ctx t) e)) = withloc l $ do
     e' <- inferexp t e

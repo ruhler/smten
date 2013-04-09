@@ -253,7 +253,8 @@ satisfied cls = do
     sat cls
 
 typecheck :: (TypeCheck a) => Env -> a -> Failable ()
-typecheck env x = runReaderT (typecheckM x) (TCS env [] [] [] lunknown)
+typecheck env x = {-# SCC "TypeCheck" #-}
+    runReaderT (typecheckM x) (TCS env [] [] [] lunknown)
 
 eqtypes :: Type -> Type -> Bool
 eqtypes a b = canonical a == canonical b

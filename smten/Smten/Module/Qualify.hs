@@ -242,7 +242,7 @@ resolve n = do
 
 -- | Perform name resolution on the given modules.
 qualify :: [Module] -> Failable [Module]
-qualify ms = do
+qualify ms = {-# SCC "Qualify" #-} do
   let syns = mkSyns $ concatMap mod_synonyms ms
       exps = mkExports ms
   runReaderT (qualifyM ms) (QS ms (error "not in module") [] syns exps lunknown)
