@@ -110,7 +110,7 @@ Bugs::
   defined, in which case bad stuff will happen.
             
 Other::
-* Update LICENCE files to include 2013 copyright.
+* Update LICENSE files to include 2013 copyright.
 * TODO's inlined in the code
 * Do a code review of all of Smten, figure out what can be cleaned up and how.
 * Switch to n-ary "and" to help in debugging of SMT queries?
