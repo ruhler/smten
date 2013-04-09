@@ -10,6 +10,7 @@ module Smten.Typing.KInfer (
 import Control.Monad.Error
 import Control.Monad.State
 import Data.Functor((<$>))
+import Data.Maybe(catMaybes)
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 
@@ -38,6 +39,9 @@ type SortM = StateT SS
 instance (MonadErrorSL m) => MonadErrorSL (StateT s m) where
     errloc = lift errloc
 
+maybeLookupTypeD :: Env -> Name -> Maybe Dec
+maybeLookupTypeD e n = attemptM $ lookupTypeD e n
+
 -- Determine the order in which to do kind inference on the type constructors
 sort :: (MonadPlus m, MonadErrorSL m) => Env -> [Dec] -> m [[Name]]
 sort e ds = do
@@ -60,8 +64,9 @@ sortin pending ty
           then return Set.empty
           else do
               env <- gets ss_env
-              dec <- lookupTypeD env ty
-              let deps = conTs dec
+              let deps = case maybeLookupTypeD env ty of
+                             Nothing -> Set.empty
+                             Just dec -> conTs dec
               sins <- mapM (sortin (Set.insert ty pending)) (Set.elems deps)
               let v = Set.insert ty (Set.unions sins)
               if Set.null (Set.intersection pending v)
@@ -71,17 +76,23 @@ sortin pending ty
                     return Set.empty
                 else return v
               
--- Sort all declarations into dependency groups.
-sortd :: (MonadPlus m, MonadErrorSL m) => Env -> [Dec] -> m [[Dec]]
-sortd e ds = do
+-- Sort the given declarations into dependency groups.
+sortd :: (MonadPlus m, MonadErrorSL m) =>  [Dec] -> m [[Dec]]
+sortd ds = do
+  let e = mkEnv ds
   tys <- sort e ds
-  tyds <- mapM (mapM (lookupTypeD e)) tys
-  let isnonty :: Dec -> Bool
+  let f :: [Name] -> [Dec]
+      f = catMaybes . map (maybeLookupTypeD e)
+
+      tyds = map f tys
+
+      isnonty :: Dec -> Bool
       isnonty d
         | ValD {} <- d = True
         | InstD {} <- d = True
         | PrimD {} <- d = True
         | otherwise = False
+
       ntyds = filter isnonty ds
   return $ tyds ++ [[ntyd] | ntyd <- ntyds]
 
@@ -296,7 +307,7 @@ groups ds = concat <$> mapM group ds
 
 kimod :: Env -> Module -> KIM Module
 kimod e m = do
-    sorted <- sortd e (mod_decs m)
+    sorted <- sortd (mod_decs m)
     grouped <- groups sorted
     return $ m { mod_decs = grouped }
 
