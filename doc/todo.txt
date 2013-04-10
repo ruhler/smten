@@ -40,7 +40,6 @@ Front End::
   appropriately.
 * Better type errors
 ** use type synonyms in errors.
-** report an error for use of a type that isn't defined
 * show string as "foobar" instead of ['f','o', 'o', 'b', 'a', 'r']
 
 Pretty Printer::
@@ -105,6 +104,7 @@ Bugs::
 * where shadow test (in Concrete)
 * STP bug (in Nest)
 * STP bug (in Bit)
+* haskellf needs to qualify more than just varE names.
 * Report an error for an unknown primitive encountered in SMT Translation
 * It's possible to use a symbolic thing in a different context than it was
   defined, in which case bad stuff will happen.

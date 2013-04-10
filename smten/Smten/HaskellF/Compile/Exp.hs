@@ -36,7 +36,7 @@ hsExp (ConE _ (Sig n _)) = return $ H.ConE (hsName n)
 hsExp (VarE _ (Sig n t)) = do
     -- Give explicit type signature to make sure there are no type ambiguities
     ht <- hsType t
-    return $ H.SigE (H.VarE (hsName n)) ht
+    return $ H.SigE (H.VarE (hsqName n)) ht
 hsExp (AppE _ f x) = do
     f' <- hsExp f
     x' <- hsExp x

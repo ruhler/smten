@@ -24,8 +24,7 @@ module Smten.HaskellF.Lib.Prelude (
     __prim_show_Integer,
 
     return_io, bind_io, nobind_io, fail_io, putChar, getContents,
-    error, valueof, numeric, trace, traceE,
-    __main_wrapper,
+    error, valueof, numeric, __main_wrapper,
     ) where
 
 import Prelude hiding (
@@ -215,12 +214,6 @@ numeric = primHF numericP
 
 valueof :: (HaskellF a) => a -> Integer
 valueof = primHF valueofP
-
-trace :: (HaskellF a) => String -> a -> a
-trace = primHF traceP
-
-traceE :: (HaskellF a, HaskellF b) => a -> b -> b
-traceE = primHF traceEP
 
 __main_wrapper :: IO Unit__ -> P.IO ()
 __main_wrapper m

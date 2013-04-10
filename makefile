@@ -13,14 +13,6 @@ testio:
 		--file smten/share/lib/Smten/Tests/Concrete.smtn \
 		--main-is Smten.Tests.Concrete.main +RTS -p
 
-testhf:
-	./build/home/.cabal/bin/smten --haskellf \
-		--include smten/share/lib \
-		--file smten/share/lib/Smten/SMT/Tests/MalError.smtn \
-		--main-is Smten.SMT.Tests.MalError.main -o build/test/testhf.hs
-	HOME=./build/home/ ghc -o build/test/testhf build/test/testhf.hs -main-is __main -prof -rtsopts
-	./build/test/testhf
-
 testph:
 	./build/home/.cabal/bin/smten --phases \
 		--include smten/share/lib \

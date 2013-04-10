@@ -29,16 +29,27 @@ hsHeader modname =
   H.text "{-# LANGUAGE UndecidableInstances #-}" H.$+$
   H.text "{-# LANGUAGE ScopedTypeVariables #-}" H.$+$
   H.text "{-# LANGUAGE InstanceSigs #-}" H.$+$
-  H.text ("module " ++ unname modname ++ " where") H.$+$
+  H.text ("module " ++ unname modname
+            ++ "(module " ++ unname modname ++ ") where") H.$+$
   H.text "import qualified Prelude" H.$+$
   H.text "import qualified Smten.HaskellF.HaskellF as S" H.$+$
   H.text "import qualified Smten.Name as S" H.$+$
   H.text "import qualified Smten.Type as S" H.$+$
   H.text "import qualified Smten.ExpH as S" H.$+$
-  H.text "import Smten.HaskellF.Lib.Prelude" H.$+$
-  H.text "import Smten.HaskellF.Lib.Numeric" H.$+$
-  H.text "import Smten.HaskellF.Lib.Bit" H.$+$
-  H.text "import Smten.HaskellF.Lib.Symbolic"
+  H.text "import qualified Smten.HaskellF.Lib.Numeric as S" H.$+$
+  primimports modname
+
+primimports :: Name -> H.Doc
+primimports n
+  | n == name "Smten.Lib.Prelude"
+      = H.text "import Smten.HaskellF.Lib.Prelude as Smten.Lib.Prelude"
+  | n == name "Smten.Lib.Debug.Trace"
+      = H.text "import Smten.HaskellF.Lib.Trace as Smten.Lib.Debug.Trace"
+  | n == name "Smten.Lib.Smten.Bit"
+      = H.text "import Smten.HaskellF.Lib.Bit as Smten.Lib.Smten.Bit"
+  | n == name "Smten.Lib.Smten.SMT.Symbolic"
+      = H.text "import Smten.HaskellF.Lib.Symbolic as Smten.Lib.Smten.SMT.Symbolic"
+  | otherwise = H.empty
 
 hsImport :: Import -> H.Doc
 hsImport (Import fr _ _) = H.text $ "import " ++ unname (hfpre fr)
