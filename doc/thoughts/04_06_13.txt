@@ -1,0 +1,411 @@
+
+Sat Apr  6 09:00:28 EDT 2013
+
+Now I've cleaned up resolve in Module flattening. It seems to me like I should
+be ready to make it more general.
+
+How?
+
+1. Add a qualified name to each import.
+By default it's just the name of the module. Next we'll support 'As' to let
+the user change this.
+
+2. Add support for qualified names to the parser.
+And accept qualified names in module resolution.
+
+3. Add "qualified only" option to each import.
+By default it is turned off. Handle this in module resolution.
+
+4. Add 'qualified' keyword support to the parser.
+
+These are four things I think it should be easy to do. We'll at least handle
+them correctly in the interpreter. I'll have to think about how to deal with
+qualification correctly in haskellf. But I don't have to worry about that now.
+I should only have to worry about it when we add explicit export lists and let
+you export things not defined locally. Good.
+
+That means I should be able to get Data.Map working just as I like after doing
+these 4 things, in both the interpreter and haskellf.
+
+Let me get started.
+
+Sat Apr  6 09:39:08 EDT 2013
+
+I added the internal support for qualified and 'as' imports. Now I just need
+to expose it to the user.
+
+After this, I expect Data.Map to work fine in the front end.
+I expect it won't work in HaskellF, because we will have ambiguous lookup.
+
+To fix HaskellF, I have to not strip qualifications from the names before
+outputting them. Then it should work okay.
+
+Let me try it.
+
+Add qualification and 'as' to the parser.
+Port my Data.Map implementation from SHampi.
+Test my Data.Map implementation.
+
+Make it all work.
+
+This will be cool if it does work. Maybe if I can get it to work, then I'll be
+happy with the current state of modularity, and wait until the next issue to
+advance it the next level.
+
+Wish me luck.
+
+Sat Apr  6 09:50:04 EDT 2013
+
+Parser changes don't seem to have broken anything. All that's left is for me
+to try it. Nifty.
+
+Oh. The other thing I need to do is support qualified varids in the parser.
+Sigh. That could be troublesome.
+
+Sat Apr  6 09:55:02 EDT 2013
+
+First thing to test: verify we have ambiguity in Data.Map when we call lookup.
+
+Then I'll try to explicitly qualify lookup and make sure that works (will
+require parser changes).
+
+First, my test case.
+
+I wrote it up. Time to try it...
+
+I need qualified name support in the parser.
+
+You know what's unhappy about this? It means I need qualified name support for
+type constructors first. That's a whole can of worms I would rather avoid
+right now.
+
+Maybe I can write my test case so I don't need that, but importing Preluding
+qualified instead of Map?
+
+No. I need to fork another branch and take this in pieces.
+
+Sat Apr  6 10:06:29 EDT 2013
+
+Let me solve problems one at a time.
+
+1. Support qualified names in the parser. This scares me. Let me start by
+taking one thing at a time. Test driven. Once I figure things out for a few
+cases, maybe then we can generalize it, or maybe there only are a few cases
+which I can write tests for and cover.
+
+First step: type constructors should be qualifiable.
+
+gtycon should have as the first field 'qtycon', not 'tycon'.
+
+That sounds easy enough to me.
+
+I'll try it after a short break.
+
+Or, let me try it real quick like, see why it doesn't work, then take my short
+break.
+
+Bugger. 7 reduce reduce conflicts. It is what I feared. Sigh.
+
+Sat Apr  6 10:29:22 EDT 2013
+
+Let's think and understand the problem.
+
+We have these entities:
+  modid, qtycon, tycon
+
+The parser cannot distinguish between modid and qtycon, because every qtycon
+is a modid, and every modid is a qtycon. So I should only have one.
+
+Can the parser distinguish between qtycon and tycon?
+
+What is the reduce/reduce conflict?
+
+Let me look into it and try and understand it, and see what insight that
+brings.
+
+State is:
+    tycon -> conid 
+    modid -> conid
+
+So, there are cases when the parser can't distiniguish between tycon and
+modid. Aka: tycon and qtycon.
+
+When does it have to?
+
+Ah, so, qtycon and tycon are the same if there is no '.'.
+
+Again, where could this problem come up? When am I in a context where I could
+expect either a modid or a conid? Let me consult the grammar.
+
+modid is used in the following places:
+   top level module name 
+   import statement: name and asmod.
+   gtycon 
+
+I bet it's a problem with gtycon.
+
+tycon is used the following places:
+    'data', 'type', 'class',
+
+  Ah, how about this: 'class' context vs. tycon?
+    Context is 'btype'.
+    btype is atype
+    atype is gtycon
+    gtycon is qtycon
+  
+  Thus the confusion.
+
+Note: tycon is conid, so maybe I shouldn't try to distiniguish between them.
+
+Here's what I'm thinking I need to do:
+
+* tycon is conid, so don't distinguish between them. Don't put in this extra
+  rule.
+
+It would be really nice if I could have rule synonyms in happy. It's worth
+checking.
+
+I may be able to use parametric productions, just one with no parameters, but
+it seems... not worth it.
+
+So, I'm voting for...
+
+"conid" instead of tycon.
+"qconid" instead of qtycon, modid.
+
+Becuase a modid is really just a qualified constructor id.
+
+I think, if I do this, getting rid of "identity" productions, that should
+resolve the issues I'm having. I hope.
+
+Let me give it a shot, first on the unmodified grammar.
+
+Sat Apr  6 10:54:00 EDT 2013
+
+I removed the identity productions. I think this should help a bunch.
+
+Now, let me change gtycon to use qconid instead of conid.
+
+Yes! That works now. Let's see if I can parse everything I want then.
+
+Sat Apr  6 10:57:06 EDT 2013
+
+Good. Looks like that solves the parser issue. Now on to resolution issues.
+
+The deal is, to qualify the name of something being defined, I should not look
+in imports, I should always use the current module name.
+
+Sat Apr  6 10:59:48 EDT 2013
+
+I don't understand. It looks like it's doing what I want.
+
+I need better location information. I think that's what I'm doing wrong.
+
+Sat Apr  6 11:02:46 EDT 2013
+
+Okay, first step: turn StateT into a reader monad. That will be much nicer.
+Then add location info like in type checking.
+
+Sat Apr  6 11:25:56 EDT 2013
+
+Good! That tells me what the real problem is, which is we think that
+
+Data.Map.lookup could belong to either
+    Prelude.lookup, or Data.Map.lookup.
+
+Which is wrong. It should not be resolvable in Prelude.lookup.
+
+Let me see what's wrong.
+
+Sat Apr  6 11:30:59 EDT 2013
+
+It looks like, for some reason, we are trying to resolve the unqualified name.
+What's up with that?
+
+You know what it is? I bet it is parsing as:
+
+   Data.Map . lookup
+
+So it's a bug in the parser. 
+
+Hmm...
+
+Now I expect a conflict. But it's a conflict where clearly we want to prefer
+    Data.Map.lookup to Data.Map . lookup?
+
+What a second. Maybe the lexer should be helping us here. With something
+called qvarid? Because what if we want: Data.Map . lookup?
+
+The idea is: we are always allowed to have spaces between tokens. So if there
+is something we aren't allowed to have spaces between, like
+Foo.Bar.Sludge, then that should be a single token.
+
+In fact, I ought to be able to put this to the test. Add spaces in my module
+id.
+
+Yup. So, I should think about how to fix that. But I don't feel like thinking
+about it now, so it's time for a walk.
+
+Sat Apr  6 12:45:39 EDT 2013
+
+Here's the plan.
+
+The lexer must return one of 4 tokens for symbols:
+    varid, conid, qvarid, qconid.
+
+It's that simple.
+
+If the first char we see is upper, we try to lex one of
+    conid, qvarid, qconid
+
+with a recursive function.
+
+1. span alpha chars
+2. if followed by '.' lower,
+    parse varid, return qvarid
+3. if followed by '.' upper,
+    recursively call ourselves, qualify the result.
+4. else
+    return conid
+
+That's my plan. Before trying it out, let me read up on haskell report to make
+sure it is consistent.
+
+I think it's right. I'm just going to go ahead and do it.
+
+Um... I guess I'll need qvarsym and qconsym too.
+
+Fine.
+
+To start, let me not support qualified symbols.
+
+Sat Apr  6 13:20:08 EDT 2013
+
+There. I think the parser stuff works now.
+
+Next problem to tackle is: type constructors need to be qualified too.
+
+That's going to be a big tedious change.
+
+But first, I can improve my error messages:
+ * when looking up an arbitrary constructor name, if nothing found, give a
+   better error than the last one we tried.
+ * when an env lookup fails, include location information whenever possible.
+
+Sat Apr  6 13:30:05 EDT 2013
+
+How to get location information?
+
+I wonder if it makes sense to define an error class with locations.
+
+That way I can make env stuff work on generic monads, but still give location
+information on failure.
+
+Maybe:
+
+MonadErrorL 
+   a monad with errors and locations.
+
+It is a MonadError String (because I always use it with string).
+It has a single function:
+    loc :: m Location
+
+To get the current location.
+
+And say 'throw' automatically takes the location into account in the error
+message. The obvious default for 'loc' is return lunknown.
+
+I think this would be worth while trying.
+
+Yes. I think so. Let me think about it some to figure out what, specifically,
+I ought to be doing to make this work.
+
+Some preliminary steps:
+* remove Failable from Type infer.
+* remove reference to Failable in Inline.
+
+I may as well make Failable an instance of MonadErrorL.
+
+You know what all of this suggests to me?
+
+Ditch Control.Monad.Error.Class entirely. Define my own kind of error with
+locations.
+
+Yes. I'll think about it some more.
+
+Sat Apr  6 16:46:58 EDT 2013
+
+The preliminary steps I listed don't make sense. Let me instead dive into
+thoughts about what I want to do.
+
+What interface do I want?
+
+The idea is, often I look up things in the environment. I want to throw an
+error if we don't find things. If that's the case, I want location info with
+the error whenever possible. Which would be almost always.
+
+The MonadError class doesn't let me do that. I need another class.
+
+If I'm going to use another class, I may as well scrap MonadError entirely and
+use my own for all kinds of errors.
+
+What's common about my use of Errors?
+- the error type is always string
+- we almost always (but not always) want to add location information to the
+  error.
+
+I propose the following class:
+
+class (Monad m) => ErrorM m where
+    -- Throw an error, attaching location info if available.
+    throw :: String -> m a
+
+    
+data Failable a = ...
+instance ErrorM Failable
+
+attemptIO :: Failable a -> IO a
+attemptM :: (Monad m) => Failable a -> m a
+
+
+I don't know. I'm not sure.
+
+It seems like I just need to overload 'throw' by adding location information
+whenever we throw. The challenge is, I want to give the instance explicitly
+for my StateT and ReaderT instances.
+
+But how would I add location to Failable, which has none?
+
+That is, if I try to say 'throw' to a child that has location information,
+with a string with location information, we end up duplicating the location
+information.
+
+Perhaps I could do something else. Something like:
+
+class (MonadError String m) => MonadErrorL m where
+    location :: m Location
+
+lthrow (MonadErrorL m) => String -> m a
+
+That way, I feel like, I get the best of all worlds.
+
+Sounds good to me.
+Let me do a little cleanup.
+
+Let me also say that Failable imports Location, and not the other way around.
+
+Sat Apr  6 17:30:06 EDT 2013
+
+It looks fine to me. I just need to add some more location info to a few
+things:
+
+* type inference
+* SortM (kind inference?)
+
+Let me do that now.
+
+Sat Apr  6 17:34:00 EDT 2013
+
+Actually, what do you think about Failable having locations?
+Is that a bad idea?
+

@@ -1,0 +1,11 @@
+
+Sun Apr  7 16:14:18 EDT 2013
+
+The next thing to do now is qualify data and type constructors.
+
+First issue: Can't find ':'.
+
+Why not? Is it not in prelude? Is it special because it is builtin?
+
+I don't know. I'll have to do some sleuthing.
+

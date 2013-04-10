@@ -1,0 +1,329 @@
+
+Mon Apr  8 10:05:24 EDT 2013
+
+Issue:
+    [] not found in Prelude
+    : not found in Data.Ix
+
+Question is, why don't we find [] and : in those places?
+
+Suspicion: exports only lists variable names, not constructor names?
+
+Yup. That's it. I can fix that easily enough.
+
+Mon Apr  8 10:07:54 EDT 2013
+
+It was not enough.
+
+Where will I find these? I'll only find them in the builtin prelude. I need to
+make sure  Prelude includes these definitions for the purpose of export.
+
+Here's the question:
+ - where do I include builtin prelude?
+
+Builtin prelude is considered its own module.
+
+I think, perhaps, it should not be. It should be stuffed into the "Prelude"
+module, whenever that is imported.
+
+Or... always look in the builtin prelude module. Yes. That makes sense to me.
+I'll try that.
+
+No. The problem with that is, we look up by name, and ideally we should return
+builtin prelude... Hmm...
+
+Mon Apr  8 10:12:50 EDT 2013
+
+I should figure out how to deal with builtin prelude vs. prelude cleanly.
+Currently I'm using a hack.
+
+What I should do is, anytime I load Prelude, add the builtin definitions. Let
+me just do that from the start.
+
+Mon Apr  8 10:16:26 EDT 2013
+
+The claim is: '()' is not defined in the environment.
+Why not?
+
+Mon Apr  8 10:18:18 EDT 2013
+
+Oh, I bet flatten works now, we just need to use a qualified '()'.
+
+Let me desugar and see how things look now.
+
+Well, first observation is desugar takes a long time. I can probably improve
+that. I probably ought to. But maybe as a next step, not a this step.
+
+Observations:
+* Prelude.: appears not to have qualified 'Char'.
+* string literals not recognized anymore.
+
+Probably issues with name sugar. I need to figure out how to deal with this.
+
+I think, internally, everything should refer to Prelude.Foo. It will work for
+pre-flattened because we will always import the qualified prelude.
+
+I think that's right.
+
+And I should take advantage of name sugar as much as possible now.
+
+Issues in desugared:
+* tuple, list not qualified (maybe just a pretty printer issue).
+
+So, let me ignore that issue, and switch to the problem with unit.
+    
+Mon Apr  8 10:32:36 EDT 2013
+
+This is going to take some more thought. Thought on how I want to do name
+sugar, and when to use qualified vs. unqualified names.
+
+* I have to use unqualified names when defining things.
+    So, in BuiltinPrelude, I need to use "()", not "Prelude.()", in the DataD
+    for unit.
+
+* I have to qualify case things
+    So, case of
+            Foo.Bar ...
+    Translates to: Foo.__caseBar.
+
+* I think, by convention, fooN should be qualified.
+    Use (unqualified fooN) to get the unqualified version.
+
+* Generated names in HaskellF need to be generated qualified if I expect to
+  find qualified names?
+
+* unitD is qualified by flatten, but not for HaskellF Prelude.
+So I'll have to manually qualify it for HaskellF Prelude?
+
+That's annoying.
+
+Perhaps: start with everything qualified, and in module flatten, don't qualify
+anything that's already qualified if it shouldn't be?
+
+Sounds reasonable to me.
+
+Now, sortM fails.
+Type Bool, type Apple, not defined.
+
+What's up?
+ * fields of constructors need qualification
+ * type signatures need qualification
+
+But they should have been. Why aren't they?
+
+Mon Apr  8 11:05:35 EDT 2013
+
+Good. Now, how about ->? Should that be a qualified type constructor?
+
+Let's say no? Not sure why. It's not something defined anywhere, is it?
+
+Or, is it defined in Prelude? I would say it's defined in Prelude, so it
+should have name Prelude.
+
+Mon Apr  8 11:52:41 EDT 2013
+
+derive_SmtenEH now needs a module name as an argument.
+
+That shouldn't be too hard, I don't think.
+
+Mon Apr  8 12:00:21 EDT 2013
+
+Concrete passed! Wow. That's cool.
+
+I think types are still wrong in smtenT.
+
+And we get other errors in SMT tests.
+
+But that's a great improvement.
+
+Mon Apr  8 12:02:00 EDT 2013
+
+Not surprisingly we spend all our time in flatten. Generating module export
+lists I would imagine. But again, don't worry about that until things are
+correct.
+
+Let me take a break, then come back and fix smtenT and figure out what other
+errors I have.
+
+Mon Apr  8 12:46:24 EDT 2013
+
+Guess what: Data.Map test works! Nifty.
+
+Now, what's wrong with the rest?
+
+smten: de_smtenEH (->): (Prelude.error :: [Prelude.Char] -> Smten.SMT.Symbolic.SMT Prelude.())
+
+Mon Apr  8 13:05:43 EDT 2013
+
+There! It actually works! That's cool.
+
+But, HaskellF doesn't work. And 'flatten' is really slow.
+
+Let me start by speeding up 'flatten'.
+
+I know the issue and the solution. The problem is we keep regenerating the
+export lists over and over and over. Do it once, save a map from module Name
+to export list (using HashTable), and store that in the environment. It will
+make a world of difference.
+
+To verify that's the problem first, I'll do some profiling. I expect most time
+to spent in exports.
+
+Mon Apr  8 13:11:28 EDT 2013
+
+It is as I expected. I expect the solution to be easy. Let me do that now.
+
+Mon Apr  8 13:17:58 EDT 2013
+
+For some reason, 'resolveIn' still takes a long time. Perhaps I should use a
+HashSet instead of list for the exports?
+
+Mon Apr  8 13:28:43 EDT 2013
+
+I'm satisfied with the performance for now. Next step is to get HaskellF
+working.
+
+The error: ClassD for Ix not found.
+
+The problem is HaskellF strips away all qualification. That is not acceptable.
+I may need to do some new design here for everything to work out right.
+
+I think the approach to take is:
+* by default, don't strip off qualification
+* strip off qualification when defining things
+
+Let me start with that, and fix whatever errors arise?
+
+My name utilities might be messed up, because I need both qualified and
+unqualified versions of things. Hmm...
+
+Mon Apr  8 13:55:37 EDT 2013
+
+Let's look and see?
+
+First let me look over the code, and gather requirements and thoughts. Then
+I'll decide what I should do and start hacking, perhaps.
+
+* symnm when defined (mkDataD) must be unqualified
+* hsTyName when defined (mkDataD) must be unqualified
+* hsName when defined (hsCon) must be unqualified
+
+How about I have: symnm, hsTyName, hsName,
+                  qsymnm, qhsTyName, qhsName
+
+So I can specify explicitly if I want the qualified or unqualified version.
+That should make things work swell, don't you think? Yes. I like that idea.
+
+Then all I have to do is figure out which one I need to use where.
+
+Reminder: when something is qualified, I need to add the hfpre to it.
+
+Okay. Good.
+
+First step:
+
+Where do we look up in the environment?
+
+hsMethod.
+
+Oh. I know.
+
+Hmm... Looking up InstD is going to be problematic.
+
+You know what I'm thinking?
+
+I'm thinking I should do...
+ name resolution, kind inference, and type inference
+
+All in the 'Module' format.
+
+That way the module declarations are fully checked and inferred for when I get
+to HaskellF. I don't have to do this silly extra pass. We can garbage collect
+the untyped versions. And, it leads much more naturally to a modular
+compilation.
+
+Yes. I like this idea.
+
+It shouldn't be too hard. I'm worried slightly about recursive dependencies,
+because it seems to me like Env should now depend on Module (though really it
+need not), and Module uses Env.
+
+Maybe have Env not depend on Module, but the other way around. And Module can
+export a mkEnv from a set of modules kind of a thing?
+
+Or I can break the loop easily enough, so I ought to do that. Move 'Module'
+into Dec, and pull 'Qualify', or Resolve, or whatever you want to call it into
+a different place.
+
+Good. Sounds like a plan to me.
+
+What are the steps?
+
+1. Separate Module.Resolve from Module.Module.
+2. Separate 'resolve :: [Module] -> m [Module]' from
+    'flatten :: [Module] -> [Dec]'
+3. Support Modules in kind inference
+4. Support Modules in type inference
+5. Support Modules in type checking
+6. Have mkEnv take a list of modules as input instead of Decs.
+   I should no longer need 'flatten'.
+
+After this, the interpreter should still be working. Then I'll be in good
+shape to fix haskellf.
+
+I feel good about this work. I think smten will be much more robust after
+these changes I've been making. Good cleanup work.
+
+Mon Apr  8 16:35:02 EDT 2013
+
+Kind inference...
+
+We need to run kindinfer one one module at a time, sorted in dependency order.
+They should already be in dependency order, right? I hope so.
+
+So, the way to do it: for each module, run kind inference separately. But
+build up the map across calls.
+
+I don't know. This one isn't so straight forward.
+
+I think I should be able to do a module at a time, and the modules should
+already be in sorted order. I just need to carry the map we have built up
+across to each next module.
+
+So, sounds like we want to interleave SortM and KIM.
+
+Actually, do sort inside of KIM? That should be fine, right?
+
+I should make sorting work inside any MonadErrorSL.
+
+It would be nice if this was in a separate file. Maybe KSort?
+
+Yes. So, make sort work inside any error monad. Then have:
+
+Env -> KIM [Dec]
+
+Which knows how to do kind inference for a set of declarations.
+
+Then have:
+
+[Module] -> KIM [Module]
+
+And then we are all set, assuming the modules come in sorted order.
+
+Note: this breaks recursive module stuff, but... that probably doesn't work
+anyway thanks to the loader? Or it isn't something I feel any need to support.
+
+You know, another problem with kind inference that I had, that I may want to
+fix, is we only updated top level kind info, and not any of the bodies of
+things?
+
+I don't remember. I don't know.
+
+Perhaps I could come up with the solution, then, at the end, update all the
+modules. What do you think of that, eh?
+
+That way I could support recursion, I don't have to worry about sorting.
+
+I don't know. Clearly this needs to wait for another time for my mind to be
+working.
+

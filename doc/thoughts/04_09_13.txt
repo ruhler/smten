@@ -1,0 +1,426 @@
+
+Tue Apr  9 09:38:34 EDT 2013
+
+Switching Kind inference to work on modules.
+
+Of course, I can't test this without HaskellF working. So probably this will
+end up going not tested. I hope it's not too hard to fix later when I find
+it's broken.
+
+Tue Apr  9 09:40:32 EDT 2013
+
+The other thing I'm going to want to do is come up with better names for the
+whole loading scheme.
+
+I feel like I ought to do as follows:
+
+load - loads a bunch of modules.
+
+Then I want a function for:
+    sderive, resolve, kinfer, tinfer, tcheck.
+
+What should that be called?
+
+Tue Apr  9 10:12:44 EDT 2013
+
+I just made a 'loadtyped' function, which combines all the above and loading.
+And I put it in Loader. I think that's fine.
+
+The next step is to ditch flatten, but it will take a little reorganization I
+suspect, because now Env depends on Module.
+
+I suggest the following:
+
+Module.Module goes into Dec.Module.
+Module.Qualify goes into Qualify?
+
+Not sure. What if we changed 'flatten' to be [Module] -> Env?
+
+But give it a different name, and have it different from mkEnv too?
+
+Or, turn mkEnv into a typeclass. That's probably the easiest way to deal with
+this. Add an instance for [Module] as well as [Dec].
+
+I don't much like the name mkEnv anyway. How about: environment?
+
+Sounds reasonable, if a bit long. environ :: [Module] -> Env. That sounds fine
+to me.
+
+Tue Apr  9 10:26:36 EDT 2013
+
+Now what?
+
+Now I ought to be able to get the haskellf backend working again.
+
+Let's give it a shot and see how it's doing. Remember the plan: have qualified
+and unqualified versions of all the HaskellF.Compile.Name sugars.
+
+Tue Apr  9 10:34:39 EDT 2013
+
+First problem:
+* For some reason it looks like I'm redefining classes in multiple modules.
+  What's up with that?
+
+In what stage do we mess things up like that?
+
+* First concern: desugared looks like things are not in module dependency
+  order! Let me double check we do load them in some sort of dependency order.
+  Otherwise kind inference can't work.
+
+The trouble is, what I really need is some way to debug these things nicely.
+To have a flag to smten which says: dump out all the phases. Not just
+desugared.
+
+Perhaps I can merge Desugar and TypeCheck? Because neither of these are useful
+by themselves. Unless you just want to typecheck a thing? Typechecking does
+seem reasonable.
+
+How about I modify the 'Desugar' phase to be a 'DumpPhases' phase? Or a
+'Debug' thing. Or a 'Phases' thing. It prints out all the phases of the
+compilation. You give an outfile. It generates:
+
+foo.sdr - sderived
+foo.qlf - qualified
+foo.knd - kinded
+foo.typ - inferred
+
+And it does so one after the other.
+
+That would be useful. I'll try that now.
+
+Tue Apr  9 10:55:31 EDT 2013
+
+It's useful.
+
+I have the following notes from it:
+
+* loading does not appear to happen in dependency order.
+* kindinfer adds declarations it shouldn't to a module.
+
+Let's look at one at a time.
+
+loading order. What do I want? Dependency order.
+What do I get?
+
+1. load main. Put that on the list.
+Call loads with all the imports from main.
+
+2. For each needed module, which is not already loaded...
+
+Ah. That would suggest how we can get out of order.
+
+main needs prelude, foo. Get main. Get prelude. Get foo.
+
+Foo needs prelude.
+
+If I want things to stay in order, I need to use a stack to collect the needed
+modules. I want a depth first search kind of thing.
+
+The thing is, we load modules before we know what they depend on...
+
+I suppose I could sort the modules pretty easily. As a separate pass?
+
+Because the current loading phase is more of a fixed point like algorithm.
+Keep loading more until no more need to be loaded.
+
+Tue Apr  9 11:04:54 EDT 2013
+
+I don't want to muck with what I have. Let me implement a separate sorting
+phase for modules? Unless I can easily implement loading in dependency order.
+
+Tue Apr  9 11:25:44 EDT 2013
+
+Good. A fairly easy change to loading, and now we load in dependency order
+(depth first instead of breadth first search).
+
+Tue Apr  9 11:26:53 EDT 2013
+
+Now I can look at the problem with kind inference.
+
+Tue Apr  9 11:34:04 EDT 2013
+
+What's the right way to do this?
+
+I would love to be able to do a bit at a time.
+
+Let's have sort not require we find the dependency of something. Just ignore
+it if we don't. Then only tell it about the information in the module.
+
+Tue Apr  9 11:45:49 EDT 2013
+
+There. It's a little messy, but it works. Maybe I'll clean it up later some
+time.
+
+Tue Apr  9 11:46:34 EDT 2013
+
+And now we get to the real problem I expected to get to: Data.Map qualified
+naming issues.
+
+I wonder if first I ought to disable that test and verify everything else
+still works okay. I like that idea.
+
+Tue Apr  9 11:48:21 EDT 2013
+
+Yup! It works swell.
+
+Good. Now, finally, I'm at what I thought was one of the original problems I
+would have to deal with when implementing Data.Map. Qualified names in
+haskellf.
+
+Let me take an initial stab at things and see how they go.
+
+Tue Apr  9 11:52:09 EDT 2013
+
+First problem is with qualification of used variables.
+
+Tue Apr  9 11:59:44 EDT 2013
+
+Now we run into trouble, because the primitives are implemented in
+Smten.HaskellF.Lib.Prelude, but we expect them to be in Smten.Lib.Prelude, so
+if we qualify them, bad things happen.
+
+Seems to me this would be a good time to take a break and think about how I
+want to handle this. On the surface it would seem like primitives have to be
+implemented where they are defined...
+
+Ah, so we have two possible approaches:
+1. split source files up into prim and non-primitive.
+2. automatically generate code for primitives based on some naming convention.
+
+The second is actually a bit appealing. I don't know what to do about those
+things we can't generate code for though, like the BuiltinPrelude. Hmm...
+
+Tue Apr  9 12:32:20 EDT 2013
+
+The haskell files we generate are exposed to the user. This means the module
+hierarchy at the Smten level must match that of the generated haskell level.
+Thus, no hacks like importing things under special qualified names for
+prelude.
+
+I can see two options. One is more general than the next.
+
+1. Require primitives be specified in different modules from non-primitives.
+In other words, you specify an interface file to give the names of primitive
+types, and you specify a separate .hs implementation which you have done
+manually.
+
+For this to be useable, we need to support exporting modules from other
+modules.
+
+2. Generate primitives inline.
+For generic primitives, use a convention.
+For issues like primitives depending on 'Bool' or list or list depending on
+bool, or whatever, have special code in the haskellf compiler to deal with
+everything right. That's how we can handle BuiltinPrelude. It will also lead
+to a cleaner prelude, I feel like. Depends.
+
+I kind of like 2 best. Because, as I say, it's more general.
+
+A big question that will come up is, what is the process for adding a new
+primitive? The answer the that question is very much relevant here.
+
+Fundamentally I have to supply the following:
+ - the meaning of the primitive for each back end.
+
+Currently that means: interpreter, haskellf, and each SMT solver.
+
+I don't know. I don't see any easy solution here.
+
+I suppose I could try to make the solution easier by doing some other work
+first. For example, try to concretize all the primitives. Or try add support
+for exporting modules, or separate out haskellF.prelude stuff which needs to
+be exposed under 'Prelude' and haskellf.prelude stuff which doesn't need to be
+exposed under 'Prelude'.
+
+Tue Apr  9 14:24:48 EDT 2013
+
+Back to the immediate goal: getting Data.Map to work in HaskellF, which means
+having primitives defined in the right module.
+
+I should be able to do this a bit a time. Slowly transfer over things from
+Smten.HaskellF.Lib.Prelude to Smten.Lib.Prelude (generated by HaskellF). I can
+deal with this stuff in HaskellF.Compile.Primitives.
+
+First, let me pull Numeric stuff out.
+
+Actually, I should be able to pull out a few things:
+
+* Numeric
+* Bit
+* __main_wrapper 
+
+Tue Apr  9 14:35:33 EDT 2013
+
+Problem with __main_wrapper: it depends on IO defined in prelude. That's
+annoying.
+
+Perhaps skip the function and just inline it. Or make a more polymorphic
+version of it. Something like that should work okay.
+
+Tue Apr  9 14:43:47 EDT 2013
+
+Okay, now that things are more separated, I can start working from the back.
+
+The back being HaskellF.Lib.Symbolic.
+
+The first goal should be to have this be entirely generated? Is that possible?
+Is that reasonable? Is that actually what we want?
+
+Let's look at what all it has:
+
+* definition of Used, including SmtenT1 and HaskellF1
+* definition of Symbolic, including SmtenT1 and HaskellF1
+* definition of SMT, including SmtenT1 and HaskellF1
+* definition of primitives: all use primHF
+
+The definitions of Used, Symbolic, and SMT are all the same, so that's fine to
+generate automatically. And the primitives are all the same too.
+
+The name convention for the primitives can be made consistent. I would say
+something like: append a 'P' to the name.
+
+I will want to import Smten.SMT.Primitives. That sounds reasonable to me.
+
+First step: use a consistent naming convention for the symbolic primitives.
+
+Tue Apr  9 15:06:03 EDT 2013
+
+I have the naming convention in place. Now everything should be easy to
+automatically generate. Let me start with the hf primitives.
+
+How do I know which way to generate the primitives?
+
+For now I'll just have an explicit list of them, and check for that list in
+PrimD.
+
+Let me have a separate Compile.Prim module for this to go in? Naw. No need for
+that.
+
+Tue Apr  9 15:23:09 EDT 2013
+
+Trouble: Smten.HaskellF.SMT depends on the Symbolic things, to make nice
+wrapper functions.
+
+Sadness.
+
+So this approach won't work in general, and will lead to lots of headaches. I
+want to be able to have things defined so I can include them in the smten and
+smten-smt packages.
+
+What are the alternatives?
+
+How about I assume all primitives are defined in the Smten package somewhere.
+This seems reasonable to me. So, for PrimEH, all I have to do is redeclare
+them. And assume they were imported qualified.
+
+Yes. So, PrimEh does the following:
+
+foo = S.foo
+
+And for data types I can do the same:
+
+type Foo = S.Foo
+
+That way we have the names available qualified under the right place.
+
+This way I have lots of flexibility.
+
+Cool. Sounds good.
+
+So, import the primitives qualified as 'S'. Re-export them all in the given
+module. Define the primitive types using synonyms. Then we are all happy.
+
+I should be able to get this to work without qualification first, then support
+qualification and Data.Map like stuff. Wonderful.
+
+Let's see if I can make it work.
+
+Tue Apr  9 15:53:46 EDT 2013
+
+It's very close. The trouble is, we need to import the constructors too. Then
+I think we'll have it.
+
+So, I should be able to do: mkPrimDataD, which is just like mkDataD, only it
+uses synonyms everywhere.
+
+Yes. I like that. Cool.
+
+Tue Apr  9 16:06:00 EDT 2013
+
+I'm close. The only other thing I need is to define the constructors.
+
+I'll do that when I get back.
+
+Cool. I think this is going to work out well.
+
+Tue Apr  9 19:22:39 EDT 2013
+
+Trouble. There's no way for me to redeclare constructors. Gah!
+
+So close.
+
+Well, let me take a different approach then. Skip synonyms and such.
+
+Put in a special case for the module definition of:
+  Prelude, Smten.Bit, Smten.SMT.Symbolic
+
+For those modules, import and export the appropriate primitive modules,
+unqualified.
+
+That's not so hard to do.
+
+Sigh.
+
+Okay. I'll try that.
+
+Tue Apr  9 19:52:07 EDT 2013
+
+You know what? Looks like I'll need a mix.
+
+For PrimE, do make a copy, so we can refer to things locally.
+
+Um... for constructors... tough luck?
+
+But if I want it to work for constructors eventually, I'll have to do
+something about that.
+
+This is quite the sticky situation.
+
+How to handle primitive types and values?
+
+The requirements are as follows:
+* Primitives have to be available in smten and smten-smt packages,
+  and not depend on generated code.
+* In generated code, primitives have  be in scope under the generated modules
+  name, both externally and internally.
+
+Value primitives are easy: just redefine the smten library primitive locally.
+Type constructors are easy: define a local type synonym.
+Data constructors are hard...
+ 
+The solution I see is to call each data constructor by a non-data constructor
+kind of name. __conFoo, for example.
+
+How terribly annoying.
+
+Hopefully it won't hurt performance too much.
+
+I shouldn't implement this right away. I should let it stew a little and see
+if anything better comes up.
+
+Ah, here's a problem: what if you want to refer externally to the name of the
+constructor, and it isn't defined where you expect?
+
+You know what might make more sense? Don't interleave primitives and
+non-primitives. Put all the primitives in a separate file, which I can include
+in the smten package, in the right namespace. And have the compiler somehow
+not output anything for those? Or maybe just import and export those modules.
+Yes. Then I don't have any of these issues...
+
+But, then I'll want to support explicit module re-export, otherwise I will get
+very annoyed.
+
+Okay, I'll think about these things. And think about how I can support
+explicit module re-export in a reasonable way. Hopefully we don't just run
+into the same issues then as we have now.
+
