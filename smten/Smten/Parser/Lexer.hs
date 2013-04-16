@@ -79,7 +79,8 @@ singles = [
     ('}', TokenCloseBrace),
     (',', TokenComma),
     (';', TokenSemicolon),
-    ('`', TokenBackTick)
+    ('`', TokenBackTick),
+    ('~', TokenTilde)
     ]
 
 reservedops :: [(String, Token)] 

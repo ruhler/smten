@@ -6,7 +6,7 @@ module Smten.Parser.PatOrExp (
     varPE, conPE, integerPE, charPE, stringPE, 
     tuplePE, lcompPE, listPE, updatePE,
     fromtoPE, fromPE, fromthenPE, fromthentoPE,
-    asPE,
+    asPE, irrefPE,
  ) where
 
 import Data.Functor ((<$>))
@@ -196,5 +196,11 @@ asPE :: Name -> PatOrExp -> PatOrExp
 asPE n (a, _) = 
   let p = AsP n <$> a
       e = throw "as patterns not allowed in expressions"
+  in (p, e)
+
+irrefPE :: PatOrExp -> PatOrExp
+irrefPE (a, _) = 
+  let p = IrrefP <$> a
+      e = throw "irrefutable patterns not allowed in expressions"
   in (p, e)
 

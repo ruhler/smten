@@ -94,6 +94,7 @@ import Smten.Parser.Utils
        '#'      { TokenHash }
        '@'      { TokenAt }
        '`'      { TokenBackTick }
+       '~'      { TokenTilde }
        '..'      { TokenDoubleDot }
        '\\'      { TokenBackSlash }
        '::'      { TokenDoubleColon }
@@ -432,6 +433,7 @@ apoe :: { PatOrExp }
     {% withloc $ \l -> listPE l ($2 : $4) }
  | apoe '{' lopt(fbinds) '}'
     {% withloc $ \l ->  updatePE l $1 $3 }
+ | '~' apoe { irrefPE $2 }
 
 guard :: { Guard }
  : poe '<-' poe {% do

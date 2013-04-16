@@ -72,6 +72,7 @@ data Token =
      | TokenHash
      | TokenAt
      | TokenBackTick
+     | TokenTilde
      | TokenBackSlash
      | TokenDoubleColon
      | TokenDoubleDot

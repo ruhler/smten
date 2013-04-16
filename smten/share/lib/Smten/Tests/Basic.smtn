@@ -305,6 +305,7 @@ testbasic = do
     testwhereclause
     testclassctx
     testsaderiving
+    testirrefutable
 
 data FunnyDeriveEQ a = FunnyDeriveEQ (a, a)
     deriving (Eq)
@@ -437,6 +438,18 @@ testlistcomprehension = do
     test "lcomp" (
       let l = [a | (a, _) <- [(1, 2), (3, 4), (5 :: Integer, 6 :: Integer)]]
       in [1, 3, 5] == l
+     )
+
+testirrefutable :: IO ()
+testirrefutable = do
+    test "irref 1" (case (error "irref 1 arg" :: (Bool, Bool)) of
+                        ~(x, y) -> True
+     )
+    test "irref 2" (case (True, False) of
+                      ~(x, y) -> x && not y
+     )
+    test "irref 3" (case [(False, True), error "irref 3 arg"] of
+                      ~[x, ~(a, b)] -> not (fst x) && snd x
      )
 
 teststringliteralpattern :: IO ()

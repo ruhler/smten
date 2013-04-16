@@ -36,8 +36,6 @@ import Smten.Parser.Grammar
 --
 -- - left and right sections.
 --
--- - irrefutable patterns.
---
 -- - float literals.
 --
 -- - recursive let expressions. (Currently let expressions

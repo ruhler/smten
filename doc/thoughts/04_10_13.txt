@@ -1,0 +1,453 @@
+
+Wed Apr 10 08:17:45 EDT 2013
+
+I believe I have figured out a reasonable solution for the time being.
+
+Here's the way it works.
+
+Say you have some module, Prelude, which contains primitives defined in
+Smten.HaskellF.Lib.Prelude.
+
+When defining Smten.Lib.Prelude, do the following:
+
+* export explicitly (module Smten.Lib.Prelude)
+* import Smten.HaskellF.lib.Prelude as Smten.Lib.Prelude
+
+Now all my requirements are satisfied. The primitives are available locally
+under the desired name, and externally under the desired name. I've tried
+this, and it works.
+
+Some notes before I'll be able to get this working:
+* I need to pull the trace primitives out of HaskellF.Lib.Prelude and into
+  HaskellF.Lib.Trace
+
+That should get the Data.Map test working in haskellf, one step along the way
+of supporting modularity properly. (Though there are still a number of bugs).
+
+Once I get that working, it should be okay for me to merge with master branch.
+I've done a lot of good work on this branch, so this is good.
+
+Open bugs will be those things we aren't qualifying properly. I'll put them in
+my todo, but not worry about them right now. I know the strategy to fix them.
+
+Wed Apr 10 09:23:18 EDT 2013
+
+Yup. That works. Awesome.
+
+Wed Apr 10 09:31:26 EDT 2013
+
+Question: what now?
+
+There will always be lots of things I can do to improve the front end, but I
+would really like to be application driven, because that's what matters. I
+shouldn't be doing things for silly, contrived, examples. I need to implement
+real applications and understand performance.
+
+That's what SHampi was. That's what arch_extract is.
+
+Is arch_extract enough to motivate the problem? Or should I start on another
+application as well?
+
+I think the obvious candidate for the next kind of application is a bounded
+model checker. Preferably a reimplementation of one that already exists so I
+don't have to come up with test cases, and I have things to compare against.
+
+Perhaps SAL?
+
+The overall goal is to show a model checker as a library, and be able to
+specialize the model checker easily with application specific knowledge.
+
+Review of big issues I could be working on (with proper motivation):
+
+* handle non-termination semantically correctly
+    But has to happen in the context of an application in order to know if the
+    implementation is efficient, and I currently have no applications which
+    have useful non-termination in them.
+
+* support for free functions with big argument type.
+    Nirav claims arch_extract would benefit from this. The challenge here is,
+    I don't know a good way to do it?
+
+    Or did I decide I do know a good way, so long as I specialize for Integer
+    and Bit (which have obvious notions of equality).
+
+* explicit module exports
+    Trust me. We already want it for Control.Monad.State. That's enough of an
+    excuse to try and support this.
+
+* recursive lets
+    * requires we change type inference to look like kind inference
+    No application which currently requires it, but it would be nice to have
+    from a completeness point of view. And SHampi may actually have been able
+    to make use of it nicely had we had it implemented (precompute the cache,
+    then evaluate purely rather than in the State monad).
+
+I think it would be good for me to start working on my own, realistic,
+application of Smten. SAL perhaps? Given we are thinking about using that over
+the summer. If I write my own application, then I can motivate haskell
+features from that. And we can have arch_extract going on at the same time,
+which I can also focus on.
+
+Wed Apr 10 10:12:26 EDT 2013
+
+The model checking problem, which SAL handles, and probably many other model
+checkers, in essence is the following:
+
+Given a model: 
+ data Model s = Model {
+    initial :: s,           -- the initial state of the system
+    transitions :: [Rule s] -- possible transitions
+ }
+
+ data Rule s = Rule {
+    name :: String,
+    transition :: s -> Maybe s
+ }
+
+Verify properties in linear temporal logic. Linear temporal logic is the
+following:
+
+ data LTL s =
+    -- The predicate holds in the first state of the trace.
+    Atom (s -> Bool) 
+
+    -- The formula holds in the tail of the trace.
+  | Next (LTL s)
+
+    -- The formula p holds for some finite sequence of traces, after which the
+    -- formula q holds.
+  | Until { p :: LTL s, q :: LTL s }
+
+We can build up more interesting operators out of these primitives.
+
+Note: we already have Bluespec as a fine way of describing models. Though it
+is a little bit limited. For example, we can't have an Integer in our state.
+
+There are different implementations of model checking. Bounded model checking
+verifies the properties hold for bounded length sequences. This means it is
+not sound: it may say your model satisfies the formula, when really it
+doesn't.
+
+I suspect the first version I would want to implement is a bounded model
+checker.
+
+We could just ask the question as a brute force question in Smten. It already
+does a lot of the optimization we want. It just doesn't do anything clever at
+the high level. It would be interesting to see how this compares in
+performance to existing bounded model checkers.
+
+How I would implement the Naive version:
+ * Given bound 'N', create N free states.
+ * Assert there is a transition from s0 to s1, s1 to s2, ... sn
+ * Assert the formula holds on the sequence.
+
+Note: this is hard, because of 'Until', which can lead to exponential number
+of choices. But, as in SHampi, we may be able to cache intermediate results to
+fix this. Of course, there are standard model checking algorithms we could
+use which will likely perform well too.
+
+I feel like, from an API point of view, we could make a nicer interface. I
+don't know if we could implement it efficiently. But if it were me, I might
+want to specify a formula such as: [s] -> Bool.
+
+ atom p =  p . head
+ next p = p . tail
+ until p q = \s -> q s || p s && (until p q (tail s))
+
+Could that be done efficiently?
+
+I wouldn't know until I tried. I should also read about how bounded model
+checking is implemented today.
+
+Wed Apr 10 10:43:39 EDT 2013
+
+I want to also spend a little time thinking about free functions, because I
+don't think I've explored the options entirely yet.
+
+The idea is this: let's start by restricting ouselves to the problem if
+Integer arguments.
+
+That is, I want a way to provide a free function of the form (Integer -> a),
+for some 'a'.
+
+If I can do it for integer, Bit vectors are exactly the same.
+The thought is, I can use this to compose any type of more complicated
+function. That is, any kind of function whose argument is a user defined data
+type. We may not be able to create free higher order functions. But that's
+fine. I don't need that yet.
+
+Just for sanity:
+
+Product type: easy, just uncurry:
+  freeProductF :: (Free (x -> y -> a)) => Symbolic ((x, y) -> a)
+  freeProductF = uncurry <$> free
+
+Sum type:
+  freeSumF :: (Free (x -> a), Free (y -> a)) => Symbolic (Either x y -> a)
+  freeSumF = do
+     fl <- free
+     fr <- free
+     return $ \x ->
+        case x of
+            Left l -> f l
+            Right r -> f r
+
+Yes. I can't build higher order symbolic functions this way, but that's
+probably for the better, because I suspect it has something to do with double
+quantification.
+ 
+Okay, so focusing on integer. What interface do I want?
+
+The most basic:
+  free_IntegerF :: (Free a) => Symbolic (Integer -> a)
+
+I claim this is more restrictive than you want to be, and for no reason.
+
+For example, let's say I want a free function where all results satisfy a
+general predicate. That should be easy to implement internally. But I can't do
+it here.
+
+So I suggest a slightly more general:
+
+  free_IntegerF :: (Integer -> Symbolic a) -> Symbolic (Integer -> a)
+
+Note, the old version is now trivially implemented as
+(free_IntegerF (const free))
+
+I claim semantically this is entirely meaningful.
+
+Call the argument to free_IntegerF f.
+
+I will produce a set of functions, where for each function g in the set:
+ For all x: g x belongs to the set f x.
+
+I claim this gives you full flexibility in the kinds of free functions you can
+create. You have total control over their shape. (It would be interesting if I
+could prove that). You can cover the entire space of symbolic functions.
+    
+Now, the real question is, can I implement this, and how?
+
+Conceptually the idea is this: any time we call this free function, we run the
+symbolic computation...
+
+I can already see problems. what if my symbolic computation was to assert
+False in the context? Does that not obey the semantics?
+
+The concern is, if you never call the function, we would not get UNSAT, even
+though I think we ought to?
+
+I don't know. That may not be a problem. It's not clear.
+
+So, any time we call this free function on argument 'a', run the symbolic
+computation and return its result, call it 'fa'.
+
+The type of 'a' is int. The type of 'fa' could be anything.
+
+Say I've called the function a number of times. I have symbolic arguments
+a, b, c, and results fa, fb, and fc. I need to produce some additional
+assertions:
+
+assert (a = b  implies fa = fb)
+assert (a = c  implies fa = fc)
+assert (b = c  implies fb = fc)
+
+And that's it. I'm all set.
+
+First issue: we need a notion of equality for the output type.
+
+This immediately causes problems. Because functions don't have notions of
+equality, so I can't do, for example: (Integer -> Integer -> Bool) as a free
+function.
+
+Of course, I could if I kept track of it as a two-argument function.
+
+Given a1 a2, produce fa.
+
+Then we have assertions like:
+
+assert (a1 = b1 && a2 = b2 implies fa = fb)
+
+Anyway, this notion of equality has to be user specified, right? But then we
+have the same issues of equality we had before. What if the user specifies a
+bogus equality implementation? Then sharing could violate it when it should
+not. I don't like that.
+
+I could have a notion of structural equality. Makes sense for primitives and
+user defined data types. But again, makes no sense for functions.
+
+This approach doesn't seem to be working out. Are there other approaches?
+
+The information I want to take advantage of is: how many times the function is
+called, and what the arguments it is called with are. Note that the arguments
+it is called with may be symbolic. The number of times it is called (assuming
+proper abstraction/refinement) should be finite, if your query terminates.
+
+Well, what if we gave that information to the user?
+
+What if we had partial functions with some notion of update? The key is to
+give them the arguments in the right order.
+
+For example... Say you want a function: (Integer -> a).
+We can represent a partial function as: (Integer -> Maybe a).
+We can refine a partial function, given the next argument, with another
+partial function: (Integer -> Maybe a).
+
+If we call it with the right argument...
+
+So, what if you specify a refinement function, and I'll call that if I have
+not seen that argument yet?
+
+But this is no different from before, is it?
+
+Oh, maybe the difference is this. Instead of making assertions, I return
+previous results...
+
+Oh. Hmm... That could be good. Then I don't have to worry about equality of
+the result.
+
+So, let's say you call the function f with: a, b, c, and we return a result:
+fa, fb, fc.
+
+But really we will return the result:
+
+fa, if a == b    ,  if a == c
+        then fa         then fa
+        else fb         else if b == c
+                            then fb
+                            else fc
+
+Yes. This is good.
+
+Now, I want to write down a distinction Nirav brought up about how we can
+handle this. The idea is, you have a function, you call it with some
+arguments. It may be that you call it with more arguments than the input space
+of the function. In this case, you want to create a single result for each
+input. That's something the user can do already in Smten, so I won't concern
+myself with that.
+
+The other case is you call the function with only a few arguments. Much less
+than the input size. This is the case I'm suspecting. Then we end up with the
+chain as above, and I think that's about the best we can do.
+
+Note, the SMT solver will never see fa, fb, fc. It will only see the primitive
+free components of it.
+
+Cool. This is good. Now I feel like the user API I expose can be meaningful:
+
+free_IntegerF :: (Integer -> Symbolic a) -> Symbolic (Integer -> a)
+
+It means exactly what you want. No need for equality on the result. In
+particular, the result can itself be a function. Wonderful.
+
+Now we could ask: can I generalize this in a meaningful way?
+
+free_Function :: (Eq a) => (a -> Symbolic b) -> Symbolic (a -> b)
+
+free_IntegerF = free_Function (== :: Integer -> Integer -> Bool)
+
+The trouble here is, again, if you have a bogus equality, we won't do the
+right thing. So I don't think that makes sense.
+
+If I had structural equality, this would make sense. Note: it still won't work
+for functions.
+
+Anyway, like I say, this shouldn't be an issue. As long as I can handle
+Integer and Bit, I should be swell. Of course, eventually we'll want to handle
+functions as arguments too, but that's a whole different ball park.
+
+Good. Now I have the interface:
+
+free_IntegerF :: (Integer -> Symbolic a) -> Symbolic (Integer -> a)
+
+Semantically it makes sense.
+The implementation strategy implements the semantics.
+
+Now for the details of the implementation strategy:
+
+In the free function I have to store:
+ - f - the result generator
+ - [(ExpH, ExpH)] - the list of previously returned results.
+
+Every time the function is called, we generate a new result, append it to the
+list (perhaps keep the list in reverse order?) and return the new result. This
+all happens in the Symbolic context at assertion time. I have to keep
+accumulating results associated with the given function... Those results are
+local to a Symbolic context, right? Yes. So I should keep a map there to avoid
+the need for unsafe IO here.
+
+The last question is: how do we deal with query?
+
+Simple, to concretize, include the map  from f and the list of results, just
+make the list of results concrete, and turn f into the function that way, and
+have a default branch which is 'error "undefined value in free function",
+because we are allowed to use whatever value we like.
+
+Or, just default to the same value as the last entry, to avoid introducing
+possible 'errors'. That's just as good a concrete function to use.
+
+I like it!
+
+I think this is absolutely doable.
+
+And we can do the same thing for the Bit type. Basically, we can do the same
+for any type with structural equality, but reserve it for Bit and Integer.
+
+I want to try this now. I can come up with an example easily: Nirav's register
+file. What proof do I want to make?
+
+How about something like:
+
+Wait. How is updating the array going to work?
+
+It will have to be like Data.Array update is currently implemented. I think
+that's fine.
+
+How about some silly example like this:
+
+Um... This is interesting. What nice example can I come up with where this is
+beneficial?
+
+Let me brainstorm:
+
+* Find a free array where two elements are equal?
+* Assert that if we start with an array initialized to some value, and we only
+  write things in a certain way, we will never get a bad value?
+    But that should already work just fine.
+
+In fact, I would argue, unless you start with a free state, nothing
+interesting will happen. And in Nirav's case, does he start with a free state?
+
+Okay, so ask the following question:
+    s0 is a free state.
+    assert (f s0 /= g s0)
+    query s0
+
+That is, find an initial state where f and g don't have the same affect. We
+can imagine f is rule a followed by b, and g is rule b followed by a, and a
+and b are conflict free. Thus we should be able to show there is no such state
+s0.
+
+But, s0 has a large free array, modeled as a function.
+
+How many times do we call this function? Only as many times as 'f' and 'g'
+call read, which will be small?
+
+That depends on how you define equality on the array! I should think you would
+have to look at all the possible elements of the array, in which case you call
+read too many times, and my optimization won't help any.
+
+I think I've reached a good point here. I know how to implement what Nirav
+wants in a reasonable way. I just don't have an example of how it would help,
+and I feel like it won't help where Nirav thinks it will. As soon as he can
+convince me otherwise, I can implement this and try it out.
+
+I'm beginning to think, what we really want, from the user perspective, is
+nested quantifications. Sigh.
+
+Anyway, that's settled. No need to think more on this topic until Nirav bugs
+me. Next thing to think about? I can do some language cleanup, get to work on
+my todo, clean up easy missing language features (like sections). And maybe
+find an example I can use to test out a bounded model checker of my own, and
+of SAL, and whatever other checkers we have. If there already exist
+benchmarks, that would be very good to use. I should do some research.
+

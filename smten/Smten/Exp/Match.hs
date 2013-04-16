@@ -29,7 +29,19 @@ data Pat = ConP Name [Pat]
          | LitP Exp
          | WildP
          | SigP Pat Type
+         | IrrefP Pat
     deriving (Eq, Show)
+
+-- Return the set of variable patterns in the given pattern.
+varPs :: Pat -> [Name]
+varPs p 
+  | ConP _ ps <- p = concatMap varPs ps
+  | VarP n <- p = [n]
+  | AsP n x <- p = n : varPs x
+  | LitP {} <- p = []
+  | WildP {} <- p = []
+  | SigP x _ <- p = varPs x
+  | IrrefP x <- p = varPs x
 
 listP :: [Pat] -> Pat
 listP [] = ConP nilN []
@@ -78,6 +90,13 @@ patM l x (SigP p t) yv n = patM l (sigE l x t) p yv n
 patM l x (ConP nm ps) yv n = sharedM l n $ \nv -> do
       y <- clauseM l [simpleMA l ps yv []] nv
       return $ CaseE l x (Sig nm UnknownT) y nv
+patM l x (IrrefP p) yv _ = sharedM l x $ \xv -> do
+  let vars = varPs p
+      argf :: Name -> Fresh Exp
+      argf nm = patM l xv p (varE l (Sig nm UnknownT)) (errorE l $ lmsg l "irrefutable pattern match failed")
+  args <- mapM argf vars
+  return $ appsE l (lamsE l [Sig n UnknownT | n <- vars] yv) args
+    
 
 data Guard = PatG Pat Exp
            | LetG [(Pat, Exp)]
