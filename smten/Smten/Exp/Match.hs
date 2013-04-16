@@ -242,10 +242,22 @@ mlamE l ps e = clauseE l [simpleMA l ps e []]
 mletE :: Location -> Pat -> Exp -> Exp -> Exp
 mletE l p v e = mcaseE l v [simpleA l p e []]
 
--- | Sequential let with pattern matching
+-- | Let with pattern matching
+-- TODO: currently the implementation is a sequential let with eager pattern
+-- matching. It should instead be a recursive let with lazy pattern matching.
+--
+-- The commented out code is a version appropriate for recursive let with lazy
+-- pattern matching assuming mletE supports recursive let.
 mletsE :: Location -> [(Pat, Exp)] -> Exp -> Exp
+--mletsE _ [] x = x
+--mletsE l [(p, v)] x = mletE l p v x
+--mletsE l ((p1, v1):(p2, v2):ps) x =
+--  let p' = tupleP [IrrefP p1, IrrefP p2]
+--      v' = tupleE l [v1, v2]
+--  in mletsE l ((p', v'):ps) x
 mletsE _ [] x = x
 mletsE l ((p, v):ps) x = mletE l p v (mletsE l ps x)
+
 
 -- Return true if the expression is simple.
 -- If an expression is simple, there's no cost to duplicating it.
