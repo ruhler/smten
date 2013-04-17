@@ -56,6 +56,10 @@ inline env prims =
       inline' tm m (AppE _ f x) = appEH (inline' tm m f) (inline' tm m x)
       inline' tm m (LamE _ s@(Sig n _) b) = lamEH (assign tm s) (assign tm $ typeof b) $ \x -> inline' tm ((n, x):m) b
       inline' tm m (CaseE _ x k y n) = caseEH (assign tm $ typeof n) (inline' tm m x) (assign tm k) (inline' tm m y) (inline' tm m n)
+      inline' tm m (LetE _ bs x) =
+        let bs' = [(n, inline' tm m' v) | (Sig n _, v) <- bs]
+            m' = bs' ++ m
+        in inline' tm m' x
   in inline' [] []
 
 

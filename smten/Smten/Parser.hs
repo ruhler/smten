@@ -38,9 +38,6 @@ import Smten.Parser.Grammar
 --
 -- - float literals.
 --
--- - recursive let expressions. (Currently let expressions
---   are sequential, not recursive).
---
 -- [@Things meant to be different from haskell@]
 --
 -- - Extra semicolons are often allowed.

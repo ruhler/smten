@@ -14,4 +14,5 @@ instance Typeof Exp where
     typeof (AppE _ f x) = fromMaybe UnknownT $ snd <$> de_arrowT (typeof f)
     typeof (LamE _ s b) = arrowT (typeof s) (typeof b)
     typeof (CaseE _ _ _ _ n) = typeof n
+    typeof (LetE _ _ x) = typeof x
 

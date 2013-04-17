@@ -1,5 +1,4 @@
 Recent::
-* Support for recursive let expressions (for shampi performance)
 * Don't pretty print numeric type 16 in haskellf as
     2*2*2*2*(1+0) ??
     depends if you want detailed type info or not.
@@ -14,7 +13,6 @@ Recent::
 Haskell Features::
 * Allow parens in InstD: instance (Foo Bar) where...
 * auto derive Ord, Ix
-* recursive let blocks
 * modularity support
 ** ability to re-export modules 
     (So we can include Smten.SMT instead of Smten.SMT.SMT, for example)
@@ -48,7 +46,6 @@ Pretty Printer::
 ** Don't print types of patterns?
 ** Recognize if statements.
 ** Recognize do statements.
-** Recognize multi-let statements?
 ** Recognize clauses:
     foo a b = blah  instead of  foo = \a b -> blah
 ** Print: Foo Bool b, not Foo (Bool) (b)

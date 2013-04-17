@@ -54,5 +54,15 @@ hsExp (LamE _ (Sig n _) x) = do
 hsExp (CaseE _ x (Sig kn kt) y n) = do
     [x', y', n'] <- mapM hsExp [x, y, n]
     return $ foldl1 H.AppE [H.VarE (casenm kn), x', y', n']
+
+hsExp (LetE _ bs x) = do
+  let f :: (Sig, Exp) -> HF H.Dec
+      f (Sig n t, v) = do
+        ht <- hsType t
+        v' <- hsExp v
+        return $ H.ValD (H.SigP (H.VarP (hsName n)) ht) (H.NormalB v') []
+  ds <- mapM f bs
+  x' <- hsExp x
+  return $ H.LetE ds x'
         
 

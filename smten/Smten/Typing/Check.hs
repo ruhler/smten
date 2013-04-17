@@ -184,6 +184,18 @@ instance TypeCheck Exp where
          then return ()
          else wrongtype "expression" y yt (typeof y)
 
+   typecheckM (LetE l bs x) = withloc l $ do
+      local (\tcs -> tcs { tcs_vars = [(n, t) | Sig n t <- map fst bs] ++ tcs_vars tcs}) $ do
+        let f :: (Sig, Exp) -> TC ()
+            f (Sig n t, v) = do
+                typecheckM v
+                if eqtypes t (typeof v)
+                    then return ()
+                    else wrongtype "let expr" v t (typeof v)
+        mapM f bs
+        typecheckM x
+    
+        
 instance TypeCheck TopExp where
     typecheckM (TopExp ts@(TopSig n c t) e) = do
         typecheckM ts

@@ -24,6 +24,8 @@ isfree n =
       f (AppE _ a b) = f a || f b
       f (LamE _ (Sig nm _) b) = (n /= nm) && f b
       f (CaseE _ x _ y n) = any f [x, y, n]
+      f (LetE _ bs x) = (n `notElem` [nm | (Sig nm _, _) <- bs])
+                     && any f (x : map snd bs)
   in f
 
 -- Perform a monadic transformation on all the types appearing in the given
@@ -46,6 +48,14 @@ transformMTE f e =
          kt' <- f kt
          [x', y', n'] <- mapM me [x, y, n]
          return $ CaseE l x' (Sig kn kt') y' n'
+       LetE l bs x -> do
+         let g (Sig n t, v) = do
+                t' <- f t
+                v' <- me v
+                return (Sig n t', v')
+         bs' <- mapM g bs
+         x' <- me x
+         return $ LetE l bs' x'
 
 instance Assign Exp where
    assignl f e =
@@ -58,4 +68,5 @@ instance Assign Exp where
          AppE l a b -> AppE l (me a) (me b)
          LamE l (Sig n t) b -> LamE l (Sig n (mt t)) (me b)
          CaseE l x (Sig kn kt) y n -> CaseE l (me x) (Sig kn (mt kt)) (me y) (me n)
+         LetE l bs x -> LetE l [(Sig n (mt t), me v) | (Sig n t, v) <- bs] (me x)
 

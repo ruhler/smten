@@ -6,7 +6,7 @@ module Smten.Exp.Sugar (
     litE, conE, de_conE, varE, de_varE,
     appE, de_appE, appsE, de_appsE,
     lamE, lamsE, de_lamE, de_lamsE,
-    letE, de_letE, letsE, ifE, sigE, caseE, de_litE,
+    letE, letsE, ifE, sigE, caseE, de_litE,
 
     boolE, de_boolE, falseE, trueE, charE, de_charE,
     listE, de_listE, stringE, de_stringE,
@@ -73,15 +73,11 @@ de_lamsE e
  | otherwise = ([], e)
 
 letE :: Location -> Sig -> Exp -> Exp -> Exp
-letE l s v b = appE l (lamE l s b) v
+letE l s v x = letsE l [(s, v)] x
 
 letsE :: Location -> [(Sig, Exp)] -> Exp -> Exp
 letsE _ [] x = x
-letsE l ((s, v):bs) x = letE l s v (letsE l bs x)
-
-de_letE :: Exp -> Maybe (Sig, Exp, Exp)
-de_letE (AppE _ (LamE _ s b) v) = Just (s, v, b)
-de_letE _ = Nothing
+letsE l bs x = LetE l bs x
 
 de_appE :: Exp -> Maybe (Exp, Exp)
 de_appE (AppE _ f x) = Just (f, x)

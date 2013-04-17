@@ -15,6 +15,7 @@ atom e
  | AppE {} <- e = parens (ppr e)
  | LamE {} <- e = parens (ppr e)
  | CaseE {} <- e = parens (ppr e)
+ | LetE {} <- e = parens (ppr e)
  | otherwise = ppr e
 
 instance Ppr Exp where
@@ -24,10 +25,6 @@ instance Ppr Exp where
         = text "[" <> sep (punctuate comma (map ppr xs)) <> text "]"
       | Just xs <- de_tupleE e  
         = text "(" <> sep (punctuate comma (map ppr xs)) <> text ")"
-      | Just (n, v, b) <- de_letE e
-        = text "let" <+> text "{"
-            <+> ppr n <+> text "=" <+> ppr v
-            $+$ text "}" <+> text "in" <+> ppr b
       | (ss@(_:_), x) <- de_lamsE e = fsep [
             text "\\" <> sep (map ppr ss) <+> text "->",
             nest tabwidth (ppr x)
@@ -43,4 +40,9 @@ instance Ppr Exp where
                     ppr k <+> text "->" <+> ppr y,
                     text "_" <+> text "->" <+> ppr n
                  ]) $+$ text "}"
+    ppr (LetE _ bs x) =
+      let f (s, v) = ppr s <+> text "=" <+> ppr v
+      in text "let" <+> text "{"
+                $+$ nest tabwidth (vcat (map f bs))
+            $+$ text "}" <+> text "in" <+> ppr x
 

@@ -159,10 +159,9 @@ instance Qualify Type where
 
 instance Qualify Exp where
     qualifyM e@(LitE {}) = return e
-    qualifyM (ConE l (Sig n t)) = withloc l $ do
-        n' <- qualifyM n
-        t' <- qualifyM t
-        return (ConE l (Sig n' t'))
+    qualifyM (ConE l s) = withloc l $ do
+        s' <- qualifyM s
+        return (ConE l s')
     qualifyM (VarE l (Sig n t)) = withloc l $ do
         t' <- qualifyM t
         bound <- isbound n
@@ -179,13 +178,29 @@ instance Qualify Exp where
         t' <- qualifyM t
         LamE l (Sig n t') <$> (withbound [n] $ qualifyM b)
     
-    qualifyM (CaseE l x (Sig kn kt) y n) = withloc l $ do
-        kn' <- qualifyM kn
-        kt' <- qualifyM kt
+    qualifyM (CaseE l x k y n) = withloc l $ do
+        k' <- qualifyM k
         x' <- qualifyM x
         y' <- qualifyM y
         n' <- qualifyM n
-        return $ CaseE l x' (Sig kn' kt') y' n'
+        return $ CaseE l x' k' y' n'
+
+    qualifyM (LetE l bs x) = withloc l $ withbound [n | (Sig n _, _) <- bs] $ do
+        bs' <- qualifyM bs
+        x' <- qualifyM x
+        return $ LetE l bs' x'
+
+instance Qualify (Sig, Exp) where
+    qualifyM (Sig n t, e) = do
+        t' <- qualifyM t
+        e' <- qualifyM e
+        return (Sig n t', e')
+
+instance Qualify Sig where
+    qualifyM (Sig n t) = do
+        n' <- qualifyM n
+        t' <- qualifyM t
+        return (Sig n' t')
 
 instance Qualify Method where
     qualifyM (Method nm e) = do

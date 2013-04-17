@@ -128,16 +128,27 @@ main = do
                                 putStrLn $ "Phase: " ++ ext
                                 putStrLn text
                             fout -> writeFile (fout ++ "." ++ ext) text
+            putStrLn "Loading modules..."
             mods <- loadmods includes (file args)
             outfphs "ldd" (pretty mods)
+
+            putStrLn "sderiving..."
             sderived <- attemptIO $ sderive mods
             outfphs "sdr" (pretty sderived)
+
+            putStrLn "qualifying..."
             qualified <- attemptIO $ qualify sderived
             outfphs "qlf" (pretty qualified)
+
+            putStrLn "kind inferring..."
             kinded <- attemptIO $ kindinfer qualified
             outfphs "knd" (pretty kinded)
+
+            putStrLn "type inferring..."
             inferred <- attemptIO $ typeinfer kinded
             outfphs "typ" (pretty inferred)
+
+            putStrLn "type checking..."
             attemptIO $ typecheck inferred
 
         Type -> do

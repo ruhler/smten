@@ -226,6 +226,13 @@ instance Constrain Exp where
         let ywt = arrowsT (init (de_arrowsT rkty) ++ [nt])
         addc ywt yt
         return nt
+    constrain (LetE l bs x) = withloc l $ scoped (map fst bs) $ do
+        let f :: (Sig, Exp) -> TI ()
+            f (Sig _ t, v) = do
+                vt <- constrain v
+                addc vt t
+        mapM f bs
+        constrain x
 
 -- Given a type, return a new version of the type with new VarTs.
 retype :: Type -> TI Type

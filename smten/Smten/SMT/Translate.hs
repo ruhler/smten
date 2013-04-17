@@ -70,11 +70,14 @@ smtT t
 -- | Compile a smten expression to a smt expression.
 smtE :: Exp -> SMT.Expression
 smtE e
- | Just (Sig n _, v, x) <- de_letE e = SMT.letE [(smtN n, smtE v)] (smtE x)
  | Just v <- de_integerE e = SMT.integerE v
  | Just v <- de_bitE e = SMT.mkbvE (bv_width v) (bv_value v)
  | Just b <- de_boolE e = if b then SMT.trueE else SMT.falseE
  | VarE _ (Sig n _) <- e = SMT.varE (smtN n)
+ | LetE _ [] x <- e = smtE x
+ | LetE l ((Sig n _, v):xs) x <- e =
+     let rest = smtE (LetE l xs x)
+     in SMT.letE [(smtN n, smtE v)] rest
  | AppE _ a b <- e =
     case de_appsE e of 
        (ConE _ s, args) -> error "SMT.Translate: unexpected constructor application"

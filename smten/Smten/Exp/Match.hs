@@ -5,7 +5,7 @@
 module Smten.Exp.Match (
     Pat(..), Guard(..), Body(..), Alt(..), MAlt(..), WBodies(..),
     tupleP, listP, charP, stringP, numberP, sigP,
-    mcaseE, clauseE, mlamE, mletE, mletsE,
+    mcaseE, clauseE, mlamE, mletsE,
     lcompE, normalB,
     simpleA, simpleMA,
     ) where
@@ -91,13 +91,22 @@ patM l x (ConP nm ps) yv n = sharedM l n $ \nv -> do
       y <- clauseM l [simpleMA l ps yv []] nv
       return $ CaseE l x (Sig nm UnknownT) y nv
 patM l x (IrrefP p) yv _ = sharedM l x $ \xv -> do
+  (vars, args) <- unzip <$> irref l xv p
+  return $ appsE l (lamsE l vars yv) args
+
+-- Perform irrefutable matching. Returns the definition for each variable in
+-- the pattern.
+--
+-- This requires the argument is simple, to avoid a sharing leak.
+irref :: Location -> Exp -> Pat -> Fresh [(Sig, Exp)]
+irref _ x p | not (isSimple x), _:_:_ <- varPs p = error "irref sharing leak"
+irref l xv p = do
   let vars = varPs p
       argf :: Name -> Fresh Exp
       argf nm = patM l xv p (varE l (Sig nm UnknownT)) (errorE l $ lmsg l "irrefutable pattern match failed")
-  args <- mapM argf vars
-  return $ appsE l (lamsE l [Sig n UnknownT | n <- vars] yv) args
+  args <- mapM argf vars 
+  return [(Sig nm UnknownT, v) | (nm, v) <- zip vars args]
     
-
 data Guard = PatG Pat Exp
            | LetG [(Pat, Exp)]
            | BoolG Exp
@@ -108,7 +117,7 @@ data Guard = PatG Pat Exp
 --   | otherwise = n
 guardM :: Location -> Guard -> Exp -> Exp -> Fresh Exp
 guardM l (PatG p x) y n = patM l x p y n
-guardM l (LetG decls) y _ = return (mletsE l decls y)
+guardM l (LetG decls) y _ = mletsM l decls y
 guardM l (BoolG x) y n = return (ifE l x y n)
 
 -- | Perform multiple guard matches
@@ -137,7 +146,9 @@ data WBodies = WBodies Location [Body] [(Pat, Exp)]
     deriving (Eq, Show)
 
 wbodiesM :: WBodies -> Exp -> Fresh Exp
-wbodiesM (WBodies l bs ls) n = mletsE l ls <$> bodiesM bs n
+wbodiesM (WBodies l bs ls) n = do
+  bs' <- bodiesM bs n
+  mletsM l ls bs'
 
 data Alt = Alt Pat WBodies
     deriving (Eq, Show)
@@ -238,25 +249,21 @@ clauseM l ms@(MAlt ps _ : _) n = do
 mlamE :: Location -> [Pat] -> Exp -> Exp
 mlamE l ps e = clauseE l [simpleMA l ps e []]
 
--- | Let with pattern matching
-mletE :: Location -> Pat -> Exp -> Exp -> Exp
-mletE l p v e = mcaseE l v [simpleA l p e []]
+mletsM :: Location -> [(Pat, Exp)] -> Exp -> Fresh Exp
+mletsM l bs x = do
+  let f :: (Pat, Exp) -> Fresh [(Sig, Exp)]
+      f (p, v)
+        | not (isSimple v), _:_:_ <- varPs p = do
+            s <- fresh (Sig (name "_s") UnknownT)
+            xs <- f (p, varE l s)
+            return $ (s, v) : xs
+        | otherwise = irref l v p
+  bs' <- mapM f bs
+  return (letsE l (concat bs') x)
 
--- | Let with pattern matching
--- TODO: currently the implementation is a sequential let with eager pattern
--- matching. It should instead be a recursive let with lazy pattern matching.
---
--- The commented out code is a version appropriate for recursive let with lazy
--- pattern matching assuming mletE supports recursive let.
+-- | Recursive let with pattern matching
 mletsE :: Location -> [(Pat, Exp)] -> Exp -> Exp
---mletsE _ [] x = x
---mletsE l [(p, v)] x = mletE l p v x
---mletsE l ((p1, v1):(p2, v2):ps) x =
---  let p' = tupleP [IrrefP p1, IrrefP p2]
---      v' = tupleE l [v1, v2]
---  in mletsE l ((p', v'):ps) x
-mletsE _ [] x = x
-mletsE l ((p, v):ps) x = mletE l p v (mletsE l ps x)
+mletsE l bs x = runFresh (mletsM l bs x)
 
 
 -- Return true if the expression is simple.
@@ -265,6 +272,7 @@ isSimple :: Exp -> Bool
 isSimple (AppE {}) = False
 isSimple (LamE {}) = False
 isSimple (CaseE {}) = False
+isSimple (LetE {}) = False
 isSimple _ = True
 
 -- | List comprehension.

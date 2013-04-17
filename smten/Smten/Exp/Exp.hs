@@ -13,14 +13,18 @@ data Exp = LitE Location Lit
          | VarE Location Sig
          | AppE Location Exp Exp
          | LamE Location Sig Exp
+
+           -- | case e1 of
+           --      k -> e2
+           --      _ -> e3
+           -- Note: if k is a constructor of type (a -> b -> c -> K),
+           -- Then e2 should have type: (a -> b -> c -> V),
+           -- And  e1 should have type: V
+           --  Where V is the type of the case expression.
          | CaseE Location Exp Sig Exp Exp
-            -- ^ case e1 of
-            --      k -> e2
-            --      _ -> e3
-            -- Note: if k is a constructor of type (a -> b -> c -> K),
-            -- Then e2 should have type: (a -> b -> c -> V),
-            -- And  e1 should have type: V
-            --  Where V is the type of the case expression.
+
+           -- | Recursive Let expression
+         | LetE Location [(Sig, Exp)] Exp
     deriving(Show, Eq)
 
 instance Locate Exp where
@@ -30,4 +34,5 @@ instance Locate Exp where
     locate (AppE l _ _) = l
     locate (LamE l _ _) = l
     locate (CaseE l _ _ _ _) = l
+    locate (LetE l _ _) = l
 
