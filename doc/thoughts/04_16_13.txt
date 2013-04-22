@@ -1,0 +1,866 @@
+
+Tue Apr 16 10:05:13 EDT 2013
+
+More thoughts on free functions.
+
+It seems like we want some way to say: this free function and this free
+function are equal. As part of an assertion.
+
+The questions are:
+ * how can we implement this?
+ * does it work reasonably for concrete functions?
+ * if not, what abstraction can you expose that is useful that it does work
+   on?
+
+For example, let's say I have two free functions, f and g.
+
+  f =  if a1 
+           then fa1
+           else if a2
+               then fa2 
+               else ???
+
+
+  g =  if b1
+            then gb1
+                else ???
+
+The arguments and results can all be symbolic.
+
+How could I say these two functions are equal? The hope is, because I don't
+care about ???, I don't have to worry about those.
+
+
+I know there are a finite number of kinds of arguments. So that should be my
+guide. What I want to say is, the functions are equal for: a1, a2, and b1.
+This I can do, maybe?
+
+Um. Not quite.
+
+Let me start with a simpler example, because I think it will still be hard.
+
+Wait... No. because even though 'a1' and 'b1' and 'a2' are symbolic, they
+represent a single instance of that. So this should be easy.
+
+    f a1 == g a1
+ && f a2 == g a2
+ && f b1 == f b1
+
+Is the formula. It is that easy. Any other argument is don't care...
+
+Oh. But even if every other argument is don't care, we now do care that they
+are equal. So, update f and g? But what to? Well, to a common function!
+
+Define a free function 'h'.
+
+Now 'f' and 'g' are no longer free. They are constant:
+
+  f = if a1 == x
+        then fa1
+        else if a2 == x
+            then fa2
+                else h x
+
+  g = if b1 == x then gb1 else h x
+
+What this means is, asserting equality of free functions changes the free
+functions. Erg... But only in the context of that equality? That might be
+possible to implement.
+
+And notice: I can handle equality between free functions and concrete too:
+
+ Say f is free, g is concrete. To assert equality:
+
+
+    f a1 == g a1
+ && f a2 = g a2
+
+And change f to be:
+   f = if a1 == x
+        then fa1
+        else if a2 == x
+            then fa2
+                else g x
+
+So, it looks like, in general, I don't need a new free function. I can just
+use one of the given functions.
+
+And, it's one sided. I only have to check the arguments for the function with
+the least number of arguments, because we want the intersection of arguments,
+and that's always covered by one side. We don't need the union.
+
+But, how would we do this for two concrete functions? The trouble is, they are
+defined for too many arguments.
+
+So, it sounds like I want to define a notion of a free function, where you use
+only a small number of possible values... Or rather, the shape of the function
+is small?
+
+Except that, in general, isn't the shape of the function small? Can't I look
+at it and ask?
+
+That's an interesting question.
+
+So, given two concrete functions, how could I test for equality? Couldn't I
+take the same approach? What can a function be?
+
+
+* primitive
+* if
+
+So, let's take two concrete functions:
+
+    f x = if p x
+            then fa x
+            else fb x
+
+    g x = \a -> a + 2
+
+I can decompose this into:
+
+ g = f      ==>
+
+
+Oh. We need to do a forall 'x' kind of thing. The reason I didn't have to do
+that before was, we only called the function with a small number of 'x' (even
+if we didn't know exactly what those 'x' were concretely).
+
+So I don't think I can do it for concrete g and f in general. The idea is we
+require that the number of important inputs be small. In concrete functions,
+every input is important. In free functions, only a small number of inputs are
+important. That's the key.
+
+So, sounds like I want some object to represent a function which has a small
+number of important inputs (but perhaps a large number of possible inputs).
+These I can compare equality of.
+
+I can have a different kind of interface for these kinds of functions. Make
+them a primitive data type. Say I can convert them to concrete functions. Say
+I can compare them for equality. But I can't compare free functions for
+equality.
+
+This might help the implementation too? I'm not sure.
+
+Ah. So here's the idea:
+
+-- primitive type constructor for free functions of the given type.
+data FreeFunction a b =
+
+-- how to create free functions.
+free_IntegerFunction :: (Integer -> Symbolic b) -> Symbolic (FreeFunction Integer b)
+free_BitFunction :: (Bit #n -> Symbolic b) -> Symbolic (FreeFunction (Bit #n) b)
+
+-- equality of free functions
+eq_FreeFunction :: FreeFunction a b -> FreeFunction a b -> Bool
+
+-- Evaluate a free function.
+eval :: FreeFunction a b -> a -> b
+
+
+Erg...
+
+I feel like, perhaps, there's another way to look at it.
+
+We know how to do free functions and equality of functions just fine if the
+input space is small. For example, say you have a bit #2. There are four
+possible inputs. So we can easily support this.
+
+free_Bit2F = do
+    [a, b, c, d] <- sequence (replicate 4 free)
+    return \x ->
+        case x of
+            0 -> a
+            1 -> b
+            2 -> c
+            _ -> d
+
+And I can do equality on them easily:
+
+eq_Bit2F f g = and [
+    f 0 == g 0,
+    f 1 == g 1,
+    f 2 == g 2,
+    f 3 == g 3
+]
+
+Now, the idea behind big input free functions is, really I can map them to a
+small function, because I only use a small number of the inputs. The rest of
+the function I don't care about.
+
+What I don't know ahead of time is, which of those small number of inputs I
+care about.
+
+Let's say we some how, magically knew ahead of time that I wanted to use the
+function with values: a, b, c, d. Note, these might overlap.
+
+Then what I could do is:
+
+f = do
+    smallf <- free_Bit2F
+    return \x ->
+        if x == a
+            smallf 0
+            else if x == b
+                smallf 1
+                else if x == c
+                    smallf 2
+                        else if x == d
+                            smallf 3
+                               else error "smallf not big enough"
+
+Or, we could do it another way:
+
+m :: Integer -> Maybe (Bit #2)
+m x = if x == a
+            then Just 0
+            else if x == b
+                then Just 1
+                    else if x == c
+                        then Just 2
+                            else if x == d
+                                then Just 3 
+                                    else Nothing
+
+f = \x -> case m x of
+            Just i -> smallf i
+            _ -> error "smallf not big enough"
+
+Now, it seems like what I want, then, is to keep around a couple of things
+separately: the index and the map? The thing is, one of these is going to be
+constructed at run time, depending on how I call the function. Let's say the
+map gets constructed dynamically.
+
+I have two functions:
+    m :: Integer -> Maybe (Bit #n)
+    smallf :: Bit #n -> a
+
+I use this to represent a partial function of type:
+    f :: Integer -> Maybe a
+
+Of course, why not just implement it as a partial function? Well, that depends
+on implementation stuff.
+
+Anyway, how can I compare equality of functions? I have to keep maps and
+function...
+
+What if I kept the map as a small list of tuples? 
+
+    m :: [(Integer, Bit #2)]
+    f :: Bit #2 -> a
+
+And in such a way that we know each Bit #2 has a single value?
+
+That would suggest a different representation:
+
+    m :: Bit #2 -> Integer
+    smallf :: Bit #2 -> a
+
+f = \x ->
+        if x == m 0
+            then smallf 0
+            else if x == m 1
+                then smallf 1
+                else if x == m 2
+                    then smallf 2
+                        else if x == m 3[
+                            then smallf 3
+                            else error "smallf not big enough"
+
+Now, m is small, smallf is small...
+
+How can we say if 'f' is equal to some 'g'?
+
+    f (f.m 0) == g (f.m 0)
+ && f (f.m 1) == g (f.m 1)
+ && f (f.m 2) == g (f.m 2)
+ && f (f.m 3) == g (f.m 3)
+
+And, because I'm assuming the function won't grow too big, that covers
+everything.
+
+The problem is... how do I come up with this mapping? Especially given I might
+have to do it out of order? That is, part of the mapping might happen before I
+do the equality assertion, another part might happen after I do the equality
+assertion.
+
+Could I expose the core stuff to the user level?
+
+What if I could give you a function:
+
+No. That sounds ... like it won't work semantically.
+
+I don't know. I'll let this stew for now.
+
+I like the idea of letting the user deal with smaller functions, where
+everything makes sense. I just don't know how to supply the information they
+need in a nice way. That is, information about what values the function is
+called with.
+
+Tue Apr 16 15:36:48 EDT 2013
+
+Taking another look at shampi performance, just for the fun of it. What do we
+find?
+
+Our worst case seems to be: tests/hard/test_cfg_voss_light_38.hmp 
+
+Let me profile that.
+
+We find that: 60% of the time is spent in AssertIn.
+
+What's there?
+
+S.assertIn.
+
+Calls: 'match'.
+
+That's all it calls.
+
+Why is match so expensive?
+
+24% of the time is in mc_lookup. So, obviously it would go faster if we had
+better support for arrays.
+
+30% of the time is spent in generic Match. The only way I see this going down
+is by shrinking the regular expression we match against, or improving
+performance of the state monad... possibly by getting rid of the state monad
+and turning it into a pure computation.
+
+So, I would say, if it were up to me, the next improvements I would try to do
+in SHampi are:
+
+* Add support for primitive arrays with constant time lookup.
+* Add support for let expressions.
+
+Then, pre-compute the cache ahead of time (lazily), and take advantage of
+constant time access to the cache. That will make it go faster, I'm almost
+certain.
+
+Both of these require smten work. Recursive lets and arrays. I could try
+recursive lets, and may get benefit from that before arrays (but may not). I
+couldn't do much with arrays before I have support for lets. So let should be
+the priority if I really care about this.
+
+Good to know.
+
+Tue Apr 16 16:23:09 EDT 2013
+
+Can I add support for recursive lets now?
+
+Don't worry about mixing polymorphic and monomorphic code. I can start by
+assuming everything is monomorphic, as I already do.
+
+So, I'm given: [(Pat, Exp)] and an Exp.
+
+Currently I form a sequential let. The goal is to form a recursive let.
+
+What's hard about that?
+
+We have a few problems. First, pattern matching in lets should be lazy.
+Consider the following example:
+
+let (a, b) = f x
+    (c, d) = g a b
+in h c d
+
+Currently this is desugared as:
+
+case f x of
+    (a, b) -> case g a b of
+                 (c, d) -> h c d
+                 _ -> error
+    _ -> error
+
+But this doesn't work if we are recursive:
+
+let (a, b) = f c d
+    (c, d) = g a b
+in h c d
+
+What I want is something like:
+
+let 
+    a = case f c d of
+            (v, _) -> v
+
+    b = case f c d of
+            (_, v) -> v
+
+    c = case g a b of
+            (v, _) -> v
+
+    d = case g a b of
+            (_, v) -> v
+in h c d
+
+This makes sense.
+
+I worry it may not be as efficient. Certainly I'll want to preserve sharing,
+so we only have to duplicate the case match in each case, not the argument.
+That should be fine.
+
+Now, if I had the let in this form, everything would be easy.
+
+So, looks to me like the steps for supporting recursive let are as follows:
+
+1. Add support for irrefutable (lazy) pattern matching.
+
+2. Change sequential lets to use irrefutable pattern matching.
+ That is, I want a translation mletsE :: [(Pat, Exp)] -> [(Sig, Exp)]
+
+3. Now adding support for recursive let should be easy.
+
+Cool. Let me start with irrefutable pattern matching.
+
+Um... wait. Not clear. irrefutable is maybe not what I'm looking for. Is it?
+Or, if it is, it is slightly different from what I think it is.
+
+An irrefutable pattern always matches. It never fails to match. It never
+diverges.
+
+Okay, so my understanding of '~' is now clear. It always matches. It assigns
+each variable in the pattern the value of a lazy match with no default (error
+instead of default).
+
+Next question: is this how let works?
+
+Yes. let patterns have an implicit '~'.
+
+They also give a kernel translation for let.
+
+You put all the patterns into a tuple, try to match them all at once, where
+each component is irrefutably matched. Then we can reduce let expressions to
+the single:
+
+let p = v in x
+
+If no variable in 'p' is free in 'v', then we can use a case:
+
+case v of
+    ~p -> x
+
+Otherwise use a fixpoint:
+
+let p = fix ( \ ~p -> v) in x
+
+Now, the reason this is interesting is because it would mean I don't have to
+change the IR to support let. All I would have to do is add a 'fix' primitive.
+It is also good in that, if you don't have a recursive let, it treats it as a
+case statement, which is hopefully more efficient. I don't know.
+
+I like this approach.
+
+It will help me break down the implementation better too.
+
+1. Support irrefutable patterns in case.
+2. Support irrefutable patterns in mlambda (if not already done).
+3. Support primitive 'fix'.
+
+Here's an interesting question. How does 'fix' translate to SMT? Do I ever
+have to worry about that?
+
+I don't know. Let me not worry about it for now. I may have to worry about it
+if I start supporting free functions.
+
+Cool.
+
+Anyway, time to support irrefutable patterns.
+
+case x of
+  ~p -> yv
+  _ -> n
+
+Turns into...
+
+Say x1, x2, ... are variables in pattern p:
+
+share x in:
+    (\x1 x2 ... -> yv)  case x of
+                            p -> x1
+                        case x of
+                            p -> x2
+                        ...
+
+That's easy enough. The question is, do I have syntax for multiple lams which
+are not patterns? I want to avoid an infinite recursion here.
+
+Yes. I do. Good.
+
+The other thing I need is: given a pattern, return all the variables in it.
+This will be useful to have anyway.
+
+Then this is easy! Cool.
+
+Tue Apr 16 17:02:12 EDT 2013
+
+I'm worried about types. Hopefully that's not an issue.
+
+Tue Apr 16 17:10:29 EDT 2013
+
+I wrote the code. Next step is to support irrefutable patterns in the parser.
+
+apat is ~apat.
+
+Tue Apr 16 17:27:52 EDT 2013
+
+I checked. Patterns in lambda are okay. No implicit ~ to worry about.
+
+Let me now update mlets to use irrefutable pattern matching.
+
+Hmm... First, I would like to say, I don't like the use of tuples for
+multi-arg matching. If it will be de-sugared away, there's no reason to
+introduce tuples. Then I don't have to worry about needed big tuples.
+
+First step with lets is:
+
+let p1 = x1
+    p2 = x2
+   ...
+in x
+
+Implement this as:
+
+cases x1, x2, ... of
+   ~p1, ~p2, ... -> x
+
+And have a special case which checks for the recursive version and throws an
+error then, saying recursive lets not supported yet.
+
+In this case, it seems to me mletE should use mletsE, not the other way
+around.
+
+Um...
+
+In order to properly handle 'fix', I need to do currying of some sort. Maybe,
+so I don't have to deal with big expressions, I can just curry into tuple2. Or
+something like that.
+
+So, something like:
+
+let p1 = x1
+    p2 = x2
+    ...
+in x
+
+Simplifies to:
+
+let (~p1, ~p2) = (x1, x2)
+    ...
+in x
+
+Which eventually turns into a single let:
+
+let p1 = x1
+in x
+
+Yes. That makes sense to me. Good. I'll try this approach.
+
+Note: I think I'll run into trouble with names of variables. I worry I may.
+We will see.
+
+Tue Apr 16 17:50:04 EDT 2013
+
+I can't do this update without also supporting recursion, because that's what
+we have now. For example:
+
+let  x = a
+     y = b + x
+in c + y
+
+This turns into:
+
+let (x, y) = (a, b + x)
+in c + y
+
+Where (x, y) = (a, b + x) is recursive!
+
+Is there any reason not to always use the fix point operator then?
+
+I don't know. Maybe there is. Not sure.
+
+Of course, if I have fix as a primitive, maybe that's all I need for SHampi to
+do this cache thing.
+
+Okay, whatever. It seems like the plan needs to change slightly.
+
+1. Implement 'fix'.
+2. Support single recursive lets, like:
+    let (x, y) = (a, b + x)
+    in x + y
+3. Then we can naturally support the full recursion.
+
+Tue Apr 16 17:56:55 EDT 2013
+
+Okay then! On to 'fix'.
+
+fix :: (a -> a) -> a
+
+It should be defined in Data.Function. Let me, for ease of things, define in
+Prelude:
+
+Prelude.__prim_fix :: (a -> a) -> a
+
+
+Yes. The one in Data.Function just uses recursive let to define fix.
+
+Let me dive in and see how I can implement this.
+
+I should motivate it with a recursive let example.
+
+f :: (Integer, Integer) -> (Integer -> Integer)
+f (x, y) = (3, x+2)
+
+Is this right?
+
+Start with: (_|_, _|_)
+Go to: (3, _|_+2)
+Then to: (3, 3+5)
+
+And we are done. Yes, so that's a fine example.
+
+let me try it out in haskell.
+
+It doesn't work! That's bad. You know what that suggests? That suggests using
+'fix' as a primitive is not going to work. I need to use syntax. Change the
+IR. That will probably be better in the long run anyway. Easier than using
+'fix'.
+
+Okay, then I can go back to my previous plan, I think? Now that we have
+irrefutable patterns.
+
+Goal is to have:
+    mletE just uses mletsE. No problem.
+
+Or, actually, it could be the other way around. But really, no need to be.
+
+So: mletE just uses mletsE.
+
+mletsE first converts [(Pat, Exp)] to [(Sig, Exp)].
+This is done in exactly the same way irrefutable patterns work, so that's
+easy. I should reuse the irrefutable pattern code if I can.
+
+Then we have a kind of Exp called 'LetE'.
+
+It would be nice if we could change sequential let uses to still use lambdas
+or cases, which I think should be more efficient. But I don't know. So don't
+worry about that until I see evidence one way or the other.
+
+LetE [(Sig, Exp)] Exp
+
+Now, we have LetE. What do I have to do with LetE?
+
+I need a way to inline it, and I need a way to compile it to Haskell.
+
+Compilation to Haskell is easy. Just compile it to a recursive let expression.
+Done.
+
+Inlining:
+
+inline' tm m (LetE bs x) =
+  let bs' = [(n, inline' tm m' e) | (n, e) <- bs]
+      m' = bs' ++ m
+  in inline tm m' x
+
+Easy!
+
+Cool. I like this.
+
+What do you think? Shall I just dive right in and make it work all at once?
+
+Let me dive right in, see how far I get before getting stuck, and then take a
+break.
+
+Needs:
++ add LetE to Exp
++ add letE to Exp.Sugar
++ change mletE to use mletsE
++ change mletsE to use irref + letE
++ add support for letE in inline
++ add support for letE in haskellf compile
+* add support for letE in the type checker and all those other places.
+
+How to typecheck letE? Hopefully it's obvious.
+
+Wish me luck. I'm going to do this on a new branch.
+
+Not sure what other places are needed. Shall I let the compiler figure out for
+me?
+
+Tue Apr 16 18:39:56 EDT 2013
+
+Got stuck:
+
+* when do we use 
+    let s = v
+    in x
+
+as opposed to:
+    (\s -> x) v ?
+
+Well, the answer is pretty clear, we can do the later if 'v' does not
+reference 's'. But the only reason to do this instead of keeping it as 'let'
+would be if that was faster, but I have no reason to believe that is the case,
+so don't worry about it.
+
+* how should I handle introduction of unused shared variable names in
+  syntactic sugar when dealing with let?
+
+Yes. I think I see. I need a special case.
+
+Wait, no. This is not obvious. Any expression that is used multiple times
+because of irrefutable pattern matching needs to itself be added to the set of
+let bindings. But at least in that case we know what it is.
+
+I don't know. Let me take a break to think about this more.
+
+Tue Apr 16 19:57:01 EDT 2013
+
+I thought more, I did more. Now rough draft is done. I'm running into bugs in
+qualification. The name is not being put into scope for some reason.
+
+
+Other notes:
+
+* we sometimes have things like:  let {} in False
+    That ought to be removed in Exp.Sugar.
+
+Hum...
+
+Tue Apr 16 20:06:39 EDT 2013
+
+Fixed the bugs. There! Cool.
+
+Tue Apr 16 20:16:16 EDT 2013
+
+That, I think, will satisfy my fun for today. I'm pretty happy about this.
+
+Now note: my semantics for the kernel language clean up a bit.
+
+Now, I honestly don't think we'll get much performance improvement in SHampi
+at all until we have primitive arrays. I'm talking constant time access. I
+should figure out if that's possible to support and how.
+
+The hard part is, an index might be symbolic. In which case, what do you do?
+
+I suppose I could approximate. Filter out all non-symbolic things, make an
+array out of those things. Then put the function in front. I have to do a
+linear search for the symbolic arguments, then I go to the primitive array in
+the back end.
+
+It looks to me like I can't expose this primitive backend array to the user,
+because I have no way to talk about what arguments are or are not symbolic in
+smten.
+
+I could use the alternative constructor for array though, right? Have a
+constructor where the index can't possibly be symbolic.
+
+Maybe have that as an underlying primitive array, and implement everything
+else on top of that?
+
+Yes. I can do that. That makes perfect sense to me, and should be easy to do.
+I should just note to the user: listArray is _much_ more efficient, if you can
+possibly use it.
+
+Tue Apr 16 20:53:14 EDT 2013
+
+I've been thinking about arrays. I think I know the right way to go.
+
+First, we have a primitive array type
+
+    data PrimArray a
+
+It stores elements of type 'a'. The index is an Integer, first element is at
+index 0.
+
+We can create an array from an ordered list of elements.
+
+  listPrimArray :: [a] -> PrimArray a
+
+This is O(n) in the length of the list.
+
+We can ask the length:
+  lengthPrimArray :: PrimArray a -> Integer
+
+This is a constant time operation.
+
+We can ask for an element:
+
+  selectPrimArray :: PrimArray a -> Integer -> a
+
+This is a constant time operation.
+
+  mapPrimArray :: (Integer -> a -> b) -> PrimArray a -> PrimArray b
+
+
+Now, I claim that I can implement generic arrays efficiently on top of this,
+even when things could be symbolic.
+
+Err... I don't know. The definition of 'Ix' doesn't support this terribly well
+I don't think.
+
+Anyway, the key idea is, I can do a symbolic update to a list like this by
+updating every element.
+
+For example, to set index i to value v, I apply a map:
+
+let  f :: (thisi, oldv) = 
+        if i == thisi
+            then v
+            else oldv
+in mapPrimArray f 
+
+If you give a list, then we can use maybe to do a lookup.
+
+The only issue to worry about is that the indexes map appropriately. Maybe my
+definition of 'range' doesn't have everything it needs yet to support things
+as efficiently as I would like. I should look into that.
+
+And that's that! Everything else we can do just fine, even when things are
+symbolic. I think.
+
+Cool.
+
+The other thing I would like to try now is using recursive let to simplify
+SHampi. Not simplify... just, ditch the state monad. If possible.
+
+Now, I'm concerned it may not speed things up, because on average the map is
+fuller than it was otherwise, but it could speed things up by avoiding monadic
+computation, which appears to take about 30% of the time now. I expect, after
+switching to recursive let, we spend much more time in mc_lookup, and less
+time in general match traversal.
+
+Then, once arrays are working well, we should be able to drastically reduce
+the mc_lookup cost, and shampi will be flying.
+
+I may as well take a look at it now, see if recursive let makes sense.
+
+Here's how I would do it:
+
+We are given a map:
+    RID, Length -> RegEx
+
+What I want is to build a cache:
+    RID, Length, Offset -> Bool
+
+And I want this map to be the input to match.
+
+Now, if I have Map.map, I could modify that slightly to
+
+    RID, Length -> (Offset -> Bool)
+
+we do the following:
+
+let f :: RegEx -> (Offset -> Bool)
+    f r = [(off, match' cache r (drop off str)) | off <- 0..max]
+
+    cache = Map.map regs f
+in match' cache r str
+
+Easy!
+
+Except, working with the caches is tedious at this point.
+
+It would be nice if I could switch to Data.Map instead of the builtin map
+implementation. That may also improve performance. I'll probably have to
+give a manual instance for smtenHF between Data.Map and Smten.Lib.Data.Map. I
+think that's okay.
+

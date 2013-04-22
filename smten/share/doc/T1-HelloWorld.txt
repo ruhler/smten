@@ -1,0 +1,37 @@
+Smten Tutorial 1: Hello World
+=============================
+Richard Uhler
+ruhler@<csail.mit.edu>
+April 18, 2013
+
+Introduction
+------------
+This tutorial demonstrates how to write a and run a "hello, world" program in
+Smten.
+
+Hello World
+-----------
+The following code gives an implementation of the classic "hello, world"
+program in Smten:
+
+    module HelloWorld where
+
+    main :: IO ()
+    main = putStrLn "hello, world"
+
+The syntax and features of Smten are (mostly) the same as the Haskell
+language. For a better understanding of what these lines of code mean, consult
+a Haskell tutorial.
+
+To run this program, first create a file called HelloWorld.smtn which contains
+this code. Smten programs must have the extension .smtn, and the filename
+should match the module name.
+
+Then run the command:
+    
+    smten --io --main-is HelloWorld.main -f HelloWorld.smtn
+
+The +smten+ command is used for interpreting or compiling smten programs. In
+this case, the +--io+ flag says to interpret the given smten program. You
+should see on the output the string "hello, world".
+

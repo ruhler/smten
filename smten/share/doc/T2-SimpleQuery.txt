@@ -1,0 +1,49 @@
+Smten Tutorial 2: Simple Query
+==============================
+Richard Uhler
+ruhler@<csail.mit.edu>
+April 18, 2013
+
+Introduction
+------------
+This tutorial demonstrates how to write a simple SMT query with free boolean
+variables in Smten.
+
+Simple Query
+------------
+The following code describes the SMT query
+(w or y or not z) and (z) and (x or y) in Smten:
+
+    module SimpleQuery where
+
+    import Smten.SMT.Symbolic
+
+    simplequery :: Symbolic (Bool, Bool, Bool, Bool)
+    simplequery = do
+        w <- free
+        x <- free
+        y <- free
+        z <- free
+        assert ((w || y || not z) && z && (x || y))
+        return (w, x, y, z)
+
+    main :: IO ()
+    main = do
+       result <- runSymbolic Yices2 Nothing simplequery
+       case result of
+          Nothing -> putStrLn "The assertion is unsatisfiable"
+          Just (w, x, y, z) -> do
+            putStrLn "The assertion is satisfied with:"
+            putStrLn $ "   w = " ++ show w
+            putStrLn $ "   x = " ++ show x
+            putStrLn $ "   y = " ++ show y
+            putStrLn $ "   z = " ++ show z
+
+If you run this program you will see an output such as:
+
+    The assertion is satisfied with:
+       w = False
+       x = False
+       y = True
+       z = True
+

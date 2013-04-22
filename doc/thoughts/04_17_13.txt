@@ -1,0 +1,60 @@
+
+Wed Apr 17 09:12:16 EDT 2013
+
+I thought more about arrays. There are a couple of problems.
+
+1. what if the initial list passed to the mkPrimArray is symbolic?
+
+For example, what if it is:
+    (4 : if p then [1, 2] else [])
+
+In this case, in my current implementation, it would get stuck, because it
+would not have the argument ready, and it wouldn't see an if on top to do
+argument pushing.
+
+2. what if the read index is symbolic?
+
+For example, read element 'x' of array [1,5, 2, 5, 7]
+
+We would have to do something like a linear search, and it might be out of
+bounds. In general, how can I deal with the possibility of symbolic arguments?
+
+
+One idea is we could somehow use 'seq' to change the list in (1) to:
+
+    if p then [4, 1, 2] else [4]
+
+In which case we can function push mkPrimArray easily enough. I don't know if
+this should be exposed to the user level, or if I should just implement this
+correctly when dealing with primitives to make sure the args are fully
+evaluated, pushing things as needed.
+
+I don't know how to get around (2) nicely.
+
+Which is a shame, because I really intend to use arrays for concrete things,
+not so much symbolic. Oh well... Not sure what to do about that for now.
+
+Another idea: now that we have irrefutable patterns, could we implement the
+state monad as a lazy one, and would that improve performance of SHampi? The
+idea is, if the tail of the state computation doesn't matter for the final
+result, we don't need to compute it at all!
+
+On the flip side, we could end up with a space leak.
+
+Either way, I think using recursive let should be better, but it's worth a try
+on the state monad to see how it works when lazy.
+
+Of course, to be consistent with Haskell, I would like to have a Strict and
+Lazy version of the State monad, which wants module re-exporting support.
+
+Ug! How annoying. Why does it seem like nothing works?
+
+Anyway, a couple of things to try with SHampi:
+
+1. switch to lazy state monad. See if it changes anything.
+2. switch to recursive let instead of state monad
+ But keep using the map. Maybe reorganize the map if that makes sense for
+ performance. Or just construct it in a smart way.
+
+I would be interested in seeing how these improve performance or not.
+

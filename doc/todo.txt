@@ -1,4 +1,13 @@
 Recent::
+* Modularity:
+** Fix HaskellF to generate qualified names for everything 
+** Determing haskellf import list automatically instead of from smten module
+** add support for explicit import lists (without (..))
+** add support for hiding (without (..))
+** add support for (..)
+** add support for explicit export lists (without export module)
+** add support for exporting modules.
+* Add better support for arrays for shampi performance
 * Don't pretty print numeric type 16 in haskellf as
     2*2*2*2*(1+0) ??
     depends if you want detailed type info or not.
@@ -6,7 +15,6 @@ Recent::
        fop = 3
     Is accepted, and 'fop' is treated like 'foo'.
     I should give an error here.
-* What if you forget a type signature, does it error, or blow up?
 * Add support for semicolon error parsing rule in parser
 * Have flags in smten exe to call ghc appropriately.
 

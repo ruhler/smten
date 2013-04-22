@@ -1,0 +1,197 @@
+
+Thu Apr 18 14:21:58 EDT 2013
+
+What to do? Well, there certainly is plenty to do, but I think the big thing
+to drive things is applications.
+
+So, let me have some fun with a model checker application.
+
+The interface I want is as follows:
+
+data Model s = Model {
+    initial :: s,
+    transitions :: [s -> Maybe s]
+}
+
+data Formula s =
+    Proposition (s -> Bool)
+  | Next Formula
+  | Until Formula Formula
+
+
+-- Returns true if the model satisfies the formula, false otherwise.
+modelcheck :: Model s -> Formula s -> Bool
+
+
+
+I'm not entirely sure about how the interface should look. Do we want to
+return counter examples? What does a counter example look like? How do you
+represent an infinite length counter example, that sort of thing. So for now,
+I'll start with the simple version.
+
+Now then... how do we go about checking the model?
+
+- A proposition is easy to test. All we have to do is check the initial state
+  and we are done.
+
+- Next?
+
+This is hard, because we can potentially have unbounded traces. There is no
+way to exhaustively search. Especially given I haven't said that the state
+'s' is finite.
+
+Now, I could simplify the problem a lot if I made it a bounded check. This
+means the property is satisfied for all traces up to a bounded length? Then
+the implementation with SMT is trivial: create a symbolic sequence, assert the
+formula holds on that sequence.
+
+Remember now, at this point, I haven't even gotten to the until operator yet.
+
+Let's say we have proposition and next, but I want to handle the unbounded
+case. Basically the only kind of question I can ask is... well, it turns out
+its bounded by the length of the formula. So I could handle the unbounded
+case.
+
+Because the formula I have, in general, has the form XX...Xp. So, create a
+symbolic state representing all the states I can reach starting from the
+initial state after N transitions (assuming there are N Xs), then assert the
+proposition does not hold on that state. Then you are done. It works in the
+unbounded case, because you can't look at infinite traces.
+
+Now, in practice this could be a rather large symbolic state we are
+constructing. If it is not efficient, we could try to be smarter using some
+sort of abstraction refinement.
+
+For example, I could first ask: does there exist any state which fails to
+satisfy... I don't know.
+
+Anyway, how about the 'until' case?
+
+Some formula holds for every state until some other formula holds.
+
+I feel like I'm looking for counter examples.
+
+If we had a finite model, we could do a fixed point approach. Assuming I knew
+things about the rest of the system:
+
+Proposition: p s
+Next: all (match f successors)
+Until: all (p of successors or match until successors)
+
+So, with a finite model, if we have enough space to keep track of every state
+in the model, we could handle this just fine.
+
+But! We may not have a finite model. So, what I would like to do, is take a
+potentially infinite model, and abstract it into a finite model. Then perform
+model checking on this finite model as I've said.
+
+Note: as soon as we have Until, we also have the possibility of multiple
+predicates.
+
+But, how do I do this abstraction in general? It should preserve some
+property, so that I can learn something always from the result of the
+abstraction.
+
+You know what I need? An example. Let me look at one of the SAL ones and see
+what I think.
+
+Thu Apr 18 15:11:25 EDT 2013
+
+They have a mutual exclusion thing.
+
+Thu Apr 18 15:20:16 EDT 2013
+
+Thinking some more about Until...
+
+Really the question is:
+  - does there exist some state s such that the formula p does not hold and
+    the formula q does not hold?
+
+Let's say you have a trace in which the Until is violated. The trace must not
+start with a state in which 'q' holds, because otherwise it is satisfied.
+Let's say the trace starts in a state in which 'p' holds. That means, if there
+is a problem, there is some subsequent state in which 'p' does not hold, and
+'q' does not hold.
+
+So, for any violation of 'until', there will be a state in which neither p nor
+q holds.
+
+Now, if 'p' and 'q' were simple predicates, this would be easy. The problem
+is, they themselves could contain untils.
+
+If they were simple predicates, I would ask for the following: a state in
+which neither 'p' nor 'q' holds. And then I would ask: is this state reachable
+from the initial state?
+
+If we have a finite model, then the only infinite traces have loops. Then I
+wonder if we could say: I will only look at finite traces without loops, and
+if I can prove things there, then that's the same as proving for the whole
+system.
+
+Could we do some sort of induction?
+
+The goal there would be something like: can we show, assuming some global
+predicate P, then your formula is satisfied everywhere, and P is satisfied
+everywhere, and then test P at the first state? That way we could prove
+infinite things.
+
+Aha... I think I see how to do abstraction.
+
+I will create an abstract state, which represents a bunch of states in the
+original model. A proposition holds for that abstract state only if it holds
+in all the concrete states being represented. There is a transition from that
+state to another state if there is a transition from some concrete state in the
+first abstract state to some concrete state in the second abstract state.
+
+Now, let me run my formula on this abstracted version.
+
+We are looking for counter examples.
+
+Proposition:
+  If the proposition holds on the initial abstract state, it holds for all
+  traces that start in that abstract state, so we are done.
+
+Next:
+  If the formula holds in all successor states, that's correct. Again, we are
+  done.
+
+Until: 
+  Same thing, I think.
+
+
+So, we can create a small abstraction, and refine as needed.
+
+How do we know we need to refine? When we say: this doesn't hold, and get a
+counter example of abstract states.
+
+Now, when I have a counter example in terms of abstract states, I have to know
+if it is a real example or not, and refine as appropriate.
+
+But that's pretty easy. I have a sequence of abstract states, I just ask if
+there is a corresponding sequence of concrete states which is bad. If yes,
+then I'm done. I have the counter example. If not... then there is something
+wrong with my abstraction, and I have to do refinement.
+
+The question is, how to refine smartly?
+
+What kinds of refinement do we do? State splitting. So, the problem with
+abstraction is when we go into one concrete state, and out from a different
+abstract state, and they aren't the same. Ah... so I have a false transition.
+When I have a false transition, which says I can go from state a to b to c,
+then I have to split the abstract state 'b' into: those parts I can reach from
+a, and others. Or something like that.
+
+If refinement is smart enough, this might be pretty efficient in practice.
+This implementation would be sound but not complete. So, if we prove your
+property holds on the abstract model, then for sure it holds in the real
+model. But we might end up taking forever to refine the abstract model to get
+rid of counter-examples, so we are not complete.
+
+I feel like the abstraction refinement problem could be made generic, and
+separate from the LTL problem. Though maybe, if we are smart, we could take
+advantage of the knowledge of both to influence the other.
+
+The conclusion of all this is: the first step I should take is to ignore
+abstraction refinement and scaling. Just build a model checker which can work
+on a finite state model. It should ideally work for infinite traces properly.
+
