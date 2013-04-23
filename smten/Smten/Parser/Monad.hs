@@ -103,6 +103,7 @@ data Token =
      | TokenImport
      | TokenQualified
      | TokenAs
+     | TokenHiding
      | TokenDeriving
      | TokenEOF
      | TokenLayoutBrace Integer

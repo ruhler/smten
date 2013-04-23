@@ -124,6 +124,7 @@ import Smten.Parser.Utils
        'import' { TokenImport }
        'qualified' { TokenQualified }
        'as' { TokenAs }
+       'hiding' { TokenHiding }
        'deriving' { TokenDeriving }
 
 %right '$'
@@ -166,8 +167,24 @@ impdecls :: { [Import] }
     { $1 ++ [$3] }
 
 impdecl :: { Import }
- : 'import' opt('qualified') qconid opt(asmod)
-    { Import $3 (fromMaybe $3 $4) (isJust $2) (Exclude []) }
+ : 'import' opt('qualified') qconid opt(asmod) impspec
+    { Import $3 (fromMaybe $3 $4) (isJust $2) $5 }
+
+impspec :: { ImportSpec }
+ : '(' lopt(imports) ')'
+    { Include $2 }
+ | 'hiding' '(' lopt(imports) ')'
+    { Exclude $3 }
+ |  -- empty
+    { Exclude [] }
+
+imports :: { [Name] }
+ : import               { [$1] }
+ | imports ',' import   { $1 ++ [$3] }
+
+import :: { Name }
+ : var { $1 }
+ | conid { $1 } 
 
 asmod :: { Name }
  : 'as' qconid { $2 }
@@ -526,6 +543,7 @@ varid :: { Name }
  : varid_ { $1 }
  | 'qualified' { name "qualified" }
  | 'as' { name "as" }
+ | 'hiding' { name "hiding" }
 
 var :: { Name }
  : varid

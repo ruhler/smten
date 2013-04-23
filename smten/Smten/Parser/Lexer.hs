@@ -132,6 +132,7 @@ keywords = [
     ("import", TokenImport),
     ("qualified", TokenQualified),
     ("as", TokenAs),
+    ("hiding", TokenHiding),
     ("deriving", TokenDeriving)
     ]
 

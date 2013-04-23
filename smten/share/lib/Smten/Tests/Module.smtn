@@ -1,0 +1,21 @@
+
+module Smten.Tests.Module where
+
+import Smten.Tests.Test
+
+-- This import should not import 'lookup'
+import Data.Map hiding (lookup)
+
+-- This import should not import 'lookup'
+import Data.Map (empty)
+
+-- This import should import 'nub'
+import Data.List (nub)
+
+testmodule :: IO ()
+testmodule = do
+    test "module lookup" (
+        lookup "foo" [("sludge", True), ("foo", False)] == Just False)
+
+    test "module nub" (nub ['a', 'b', 'a', 'a', 'd'] == ['a', 'b', 'd'])
+

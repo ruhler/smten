@@ -1,9 +1,7 @@
 Recent::
 * Modularity:
 ** Determine haskellf import list automatically instead of from smten module
-** add support for explicit import lists (without (..))
-** add support for hiding (without (..))
-** add support for (..)
+** add support for (..) in import specifications
 ** add support for explicit export lists (without export module)
 ** add support for exporting modules.
 * Add better support for arrays for shampi performance
@@ -24,7 +22,6 @@ Haskell Features::
 ** ability to re-export modules 
     (So we can include Smten.SMT instead of Smten.SMT.SMT, for example)
 ** export lists
-** import lists
 * labeled pattern matching.
 
 Documentation::
