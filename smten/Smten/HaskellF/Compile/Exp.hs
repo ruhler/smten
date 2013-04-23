@@ -32,7 +32,7 @@ hsExp e
     = return $ H.AppE (H.VarE (H.mkName "S.smtenHF")) (H.LitE (H.StringL str))
 
 hsExp (LitE _ l) = return (hsLit l)
-hsExp (ConE _ (Sig n _)) = return $ H.ConE (hsName n)
+hsExp (ConE _ (Sig n _)) = return $ H.ConE (hsqName n)
 hsExp (VarE _ (Sig n t)) = do
     -- Give explicit type signature to make sure there are no type ambiguities
     ht <- hsType t
@@ -53,7 +53,7 @@ hsExp (LamE _ (Sig n _) x) = do
 -- Translates to:  __caseK x y n
 hsExp (CaseE _ x (Sig kn kt) y n) = do
     [x', y', n'] <- mapM hsExp [x, y, n]
-    return $ foldl1 H.AppE [H.VarE (casenm kn), x', y', n']
+    return $ foldl1 H.AppE [H.VarE (qcasenm kn), x', y', n']
 
 hsExp (LetE _ bs x) = do
   let f :: (Sig, Exp) -> HF H.Dec

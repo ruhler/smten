@@ -1,0 +1,77 @@
+
+Mon Apr 22 09:22:06 EDT 2013
+
+For progress on Smten, I want to focus now on modularity support.
+
+The primary goal is to support module exports. But it would be nice if I can
+handle explicit import and export lists along the way.
+
+There are a number of technical challenges to overcome. I think mostly its
+straight forward and tedious. Here they are as I see them:
+
+* How to distinguish between type and data constructors of the same name.
+The export Set, instead of including just Name, should include some indication
+of what kind of name it is:  Type constructor, Data constructor, or other.
+
+* How to look up the fields to export with Foo(..) notation.
+Look in the environment of the module for what that defines. I think it's
+either a type class type constructor, so lookupType 'Foo', and figure out the
+fields needed based on the results.
+
+* How to export a name defined in a different entity
+Exported names should be fully qualified with where they are defined. In the
+generated HaskellF code, we should ignore the import list specified in the
+Smten module, and instead keep track of all the modules we need to import
+based on the generated code.
+
+I think that solves everything, and we can fairly easily support modularity in
+its entirety (aside from recursive modules, but I don't care about that).
+
+What would be a good order in which to implement this?
+
+1. Fix HaskellF to generate qualified names for everything.
+An easy way to test this: don't import anything unqualified. That will very
+quickly show what things I'm failing to qualify.
+
+2. Determine import list automatically instead of based on the given module.
+
+3. Add support for explicit import lists. But don't yet support (..) notation.
+4. Add support for 'hiding' in import lists. But don't yet support (..)
+notation.
+5. Add support for (..) notation in import decls.
+6. Add support for explicit export lists. But don't yet support module
+notation.
+7. Add support for module notation in explicit export lists.
+
+And then, in theory, we have all the support we need. That will feel good to
+have done and working.
+
+First step: Figure out what things I need to manually qualify in HaskellF. Try
+to fix them one at a time. I think I probably don't need to write test cases
+for this, because importing only qualified will test it plenty well enough.
+
+1. type constructors must be qualified. That should be easy enough.
+
+Mon Apr 22 09:45:56 EDT 2013
+
+Why doesn't it work? I'm confused.
+
+Mon Apr 22 09:56:47 EDT 2013
+
+I see. I fixed that issue. The problem now is, it looks like I can't use
+haskellf_Data to derive things in HaskellF.Lib.Prelude, because they need to
+find things at Smten.Lib.Prelude.*
+
+Not unless I keep track of everything that is defined in HaskellF.Lib.Prelude
+specially...
+
+Which may make sense to do now, actually.
+
+Mon Apr 22 10:02:22 EDT 2013
+
+Next issues:
+* everyone should import qualified HaskellF.Lib.Prelude,
+    at least until we support auto-import.
+* qualified type names in contexts
+* data constructors
+

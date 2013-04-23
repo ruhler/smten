@@ -2,8 +2,8 @@
 {-# LANGUAGE PatternGuards #-}
 
 module Smten.HaskellF.Compile.Name (
-    hsName, hsqName, hsTyName, nmn, nmk,
-    casenm, symnm, hfpre,
+    hsName, hsqName, hsTyName, hsqTyName,
+    nmn, nmk, qcasenm, casenm, symnm, hfpre,
     ) where
 
 import qualified Language.Haskell.TH.Syntax as H
@@ -40,7 +40,12 @@ issymbol (h:_) = not $ isAlphaNum h || h == '_'
 -- | Translate a type constructor name to an unqualified haskell name.
 -- Remaps builtin prelude type constructor names as appropriate.
 hsTyName :: Name -> H.Name
-hsTyName n = hsName $ name (hftynm n)
+hsTyName n = H.mkName $ hftynm n
+
+-- | Translate a type constructor name to a qualified haskell name.
+-- Remaps builtin prelude type constructor names as appropriate.
+hsqTyName :: Name -> H.Name
+hsqTyName n = H.mkName $ hfqtynm n
 
 -- Make a name with the number after it.
 -- If the number is 0, the original name is returned.
@@ -69,10 +74,10 @@ hfnm n
 -- HaskellF data constructor name.
 hfqnm :: Name -> String
 hfqnm n
- | Just i <- de_tupleN n = "S.Tuple" ++ show i ++ "__"
- | n == unitN = "S.Unit__"
- | n == consN = "S.Cons__"
- | n == nilN = "S.Nil__"
+ | Just i <- de_tupleN n = "Smten.HaskellF.Lib.Prelude.Tuple" ++ show i ++ "__"
+ | n == unitN = "Smten.HaskellF.Lib.Prelude.Unit__"
+ | n == consN = "Smten.HaskellF.Lib.Prelude.Cons__"
+ | n == nilN = "Smten.HaskellF.Lib.Prelude.Nil__"
  | isqualified n = unname (hfpre n)
  | otherwise = unname n
 
@@ -85,10 +90,30 @@ hftynm n
  | n == nilN = "List__"
  | otherwise = unname (unqualified n)
 
+-- Convert a Smten type constructor name to it's corresponding qualified
+-- HaskellF type constructor name.
+hfqtynm :: Name -> String
+hfqtynm n
+ | n == unitN = "Smten.HaskellF.Lib.Prelude.Unit__"
+ | n == boolN = "Smten.HaskellF.Lib.Prelude.Bool"
+ | n == maybeN = "Smten.HaskellF.Lib.Prelude.Maybe"
+ | Just x <- de_tupleN n = "Smten.HaskellF.Lib.Prelude.Tuple" ++ show x ++ "__"
+ | n == nilN = "Smten.HaskellF.Lib.Prelude.List__"
+ | otherwise = unname (qualified (name "Smten.Lib") n)
+
 -- Given the name of a data constructor, return the unqualified name of the
 -- function for doing a case match against the constructor.
 casenm :: Name -> H.Name
 casenm n = H.mkName $ "__case" ++ hfnm n
+
+-- Given the name of a data constructor, return the qualified name of the
+-- function for doing a case match against the constructor.
+qcasenm :: Name -> H.Name
+qcasenm n =
+  let qn = name $ hfqnm n
+      qlf = unname $ qualification qn
+      unq = unname $ unqualified qn
+  in H.mkName $ qlf ++ ".__case" ++ unq
 
 -- | Given the name of a type constructor, return the unqualified symbolic data
 -- constructor associated with it.

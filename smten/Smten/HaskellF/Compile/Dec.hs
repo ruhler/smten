@@ -95,7 +95,7 @@ hsDec (InstD _ ctx cls@(Class n ts) ms) = do
         ctx' <- mapM hsClass ctx
         ms' <- mapM (hsMethod cls) ms
         ts' <- mapM hsType ts
-        let t = foldl H.AppT (H.ConT (hsName n)) ts'
+        let t = foldl H.AppT (H.ConT (hsqTyName n)) ts'
         return [H.InstanceD (nctx ++ ctx') t (concat ms')] 
 
 hsDec (PrimD _ s@(TopSig n _ _)) = return []

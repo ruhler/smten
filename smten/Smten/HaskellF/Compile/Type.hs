@@ -27,7 +27,7 @@ hsType' t = do
       _ | Just n <- lookup t retype -> return $ H.VarT (hsName n)
       (ConT n _)
         | n == arrowN -> return H.ArrowT
-        | otherwise -> return $ H.ConT (hsTyName n)
+        | otherwise -> return $ H.ConT (hsqTyName n)
       (AppT a b) -> do
         a' <- hsType' a
         b' <- hsType' b
@@ -62,7 +62,7 @@ hsTopType ctx t = do
 hsClass :: Class -> HF H.Pred
 hsClass (Class nm ts) = do
     ts' <- mapM hsType ts
-    return $ H.ClassP (hsName nm) ts'
+    return $ H.ClassP (hsqTyName nm) ts'
     
 -- Form the context for declarations.
 --  t - The type to produce the context for. This is used to identify which

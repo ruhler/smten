@@ -37,12 +37,14 @@ hsHeader modname =
   H.text "import qualified Smten.Type as S" H.$+$
   H.text "import qualified Smten.ExpH as S" H.$+$
   H.text "import qualified Smten.HaskellF.Lib.Numeric as S" H.$+$
+  H.text "import qualified Smten.HaskellF.Lib.Prelude" H.$+$
   primimports modname
 
 primimports :: Name -> H.Doc
 primimports n
   | n == name "Smten.Lib.Prelude"
-      = H.text "import Smten.HaskellF.Lib.Prelude as Smten.Lib.Prelude"
+      = H.text "import qualified Smten.HaskellF.Lib.Prelude" H.$+$
+        H.text "import Smten.HaskellF.Lib.Prelude as Smten.Lib.Prelude"
   | n == name "Smten.Lib.Debug.Trace"
       = H.text "import Smten.HaskellF.Lib.Trace as Smten.Lib.Debug.Trace"
   | n == name "Smten.Lib.Smten.Bit"
@@ -52,7 +54,7 @@ primimports n
   | otherwise = H.empty
 
 hsImport :: Import -> H.Doc
-hsImport (Import fr _ _) = H.text $ "import " ++ unname (hfpre fr)
+hsImport (Import fr _ _) = H.text $ "import qualified " ++ unname (hfpre fr)
 
 hsImports :: [Import] -> H.Doc
 hsImports = H.vcat . map hsImport
@@ -65,7 +67,7 @@ hsModule env mod = do
   let header = hsHeader (hfpre $ mod_name mod)
       mn = mod_name mod
       main = case attemptM $ lookupValD env (qualified mn (name "main")) of
-               Just _ -> H.text "main__ = __main_wrapper main"
+               Just _ -> H.text "main__ = Smten.HaskellF.Lib.Prelude.__main_wrapper main"
                Nothing -> H.empty
       imports = hsImports (mod_imports mod)
   hdecls <- hsDecls env (mod_decs mod)
