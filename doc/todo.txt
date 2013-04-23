@@ -1,7 +1,6 @@
 Recent::
 * Modularity:
-** Fix HaskellF to generate qualified names for everything 
-** Determing haskellf import list automatically instead of from smten module
+** Determine haskellf import list automatically instead of from smten module
 ** add support for explicit import lists (without (..))
 ** add support for hiding (without (..))
 ** add support for (..)
@@ -110,7 +109,6 @@ Bugs::
 * where shadow test (in Concrete)
 * STP bug (in Nest)
 * STP bug (in Bit)
-* haskellf needs to qualify more than just varE names.
 * Report an error for an unknown primitive encountered in SMT Translation
 * It's possible to use a symbolic thing in a different context than it was
   defined, in which case bad stuff will happen.

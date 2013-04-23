@@ -167,7 +167,7 @@ impdecls :: { [Import] }
 
 impdecl :: { Import }
  : 'import' opt('qualified') qconid opt(asmod)
-    { Import $3 (fromMaybe $3 $4) (isJust $2) }
+    { Import $3 (fromMaybe $3 $4) (isJust $2) (Exclude []) }
 
 asmod :: { Name }
  : 'as' qconid { $2 }

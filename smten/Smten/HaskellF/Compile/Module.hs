@@ -54,7 +54,7 @@ primimports n
   | otherwise = H.empty
 
 hsImport :: Import -> H.Doc
-hsImport (Import fr _ _) = H.text $ "import qualified " ++ unname (hfpre fr)
+hsImport (Import fr _ _ _) = H.text $ "import qualified " ++ unname (hfpre fr)
 
 hsImports :: [Import] -> H.Doc
 hsImports = H.vcat . map hsImport

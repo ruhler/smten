@@ -36,7 +36,8 @@
 {-# LANGUAGE PatternGuards #-}
 
 module Smten.Module.Module (
-    Module(..), Import(..), Synonym(..), DataDec(..), Deriving(..),
+    Module(..), ImportSpec(..), Import(..),
+    Synonym(..), DataDec(..), Deriving(..),
     environ, sderive,
     ) where
 
@@ -48,12 +49,16 @@ import Smten.Name
 import Smten.Type
 import Smten.Dec
 
+data ImportSpec = Include [Name] | Exclude [Name]
+    deriving (Show, Eq)
+
 data Import = Import { 
     imp_from :: Name,
     imp_as :: Name,
 
     -- Import entities from the module qualified only.
-    imp_qonly :: Bool
+    imp_qonly :: Bool,
+    imp_spec :: ImportSpec
 } deriving(Show, Eq)
 
 -- type Foo a b ... = ...

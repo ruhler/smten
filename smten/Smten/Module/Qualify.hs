@@ -232,7 +232,7 @@ exports m =
 -- Resolve the given name based on the given import.
 -- Returns the unique name for the entity if it is accessible via this import.
 resolvein :: Name -> Import -> QualifyM (Maybe Name)
-resolvein n (Import fr as qo) = do
+resolvein n (Import fr as qo spec) = do
   exps <- asks qs_exports
   case HT.lookup fr exps of
     Just xs -> do
@@ -240,6 +240,9 @@ resolvein n (Import fr as qo) = do
           qn = qualification n
       return $ do
           guard $ uqn `Set.member` xs
+          guard $ case spec of
+                    Include ins -> uqn `elem` ins
+                    Exclude ens -> uqn `notElem` ens
           guard $ qn == as || (not qo && nnull qn)
           return $ qualified fr uqn
     Nothing -> lthrow $ "Module " ++ pretty fr ++ " not found"
@@ -248,7 +251,7 @@ resolvein n (Import fr as qo) = do
 resolve :: Name -> QualifyM Name
 resolve n = do
   me <- asks qs_me
-  let meimport = Import (mod_name me) (mod_name me) False
+  let meimport = Import (mod_name me) (mod_name me) False (Exclude [])
   finds <- mapM (resolvein n) (meimport : mod_imports me)
   case nub $ catMaybes finds of
       [] -> lthrow $ "'" ++ pretty n ++ "' not found in module " ++ pretty (mod_name me)

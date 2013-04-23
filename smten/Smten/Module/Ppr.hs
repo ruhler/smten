@@ -6,15 +6,21 @@ module Smten.Module.Ppr () where
 import Smten.Ppr
 import Smten.Module.Module
 
+instance Ppr ImportSpec where
+    ppr (Include ns) = parens $
+        sep $ punctuate comma (map ppr ns)
+    ppr (Exclude ns) = text "hiding" <+> (
+        parens $ sep $ punctuate comma (map ppr ns))
+
 instance Ppr Import where
-    ppr (Import f a p) =
+    ppr (Import f a p spec) =
       let as = if (f == a)
                   then empty
                   else text "as" <+> ppr a
           qf = if p 
                   then text "qualified"
                   else empty
-      in text "import" <+> qf <+> ppr f <+> as <> semi
+      in text "import" <+> qf <+> ppr f <+> as <+> ppr spec <> semi
 
 instance Ppr Synonym where
     ppr (Synonym n vs t)

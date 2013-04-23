@@ -97,7 +97,7 @@ loadmod fname = do
     m <- attemptIO $ parse fname text
     return $ if (mod_name m == name "Prelude")
                 then m { mod_decs = prelude ++ mod_decs m }
-                else m { mod_imports = Import (name "Prelude") (name "Prelude") False : mod_imports m }
+                else m { mod_imports = Import (name "Prelude") (name "Prelude") False (Exclude []): mod_imports m }
 
 findmodule :: SearchPath -> Name -> IO FilePath
 findmodule [] n = fail $ "Module " ++ unname n ++ " not found"
