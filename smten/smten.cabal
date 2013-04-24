@@ -102,6 +102,7 @@ library
     Smten.HaskellF.TH
 
     Smten.Module
+    Smten.Module.Entity
     Smten.Module.Module
     Smten.Module.Qualify
     Smten.Module.Ppr

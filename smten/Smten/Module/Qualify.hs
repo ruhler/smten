@@ -7,12 +7,12 @@ module Smten.Module.Qualify (
     qualify
     ) where
 
-import Control.Monad.Writer
 import Control.Monad.Reader
 
 import Data.List(nub)
 import Data.Functor ((<$>))
 import Data.Maybe(fromMaybe, catMaybes)
+import qualified Data.HashMap as Map
 import qualified Data.HashSet as Set
 
 import Smten.Failable
@@ -25,13 +25,14 @@ import Smten.Type
 import Smten.Exp
 import Smten.Dec
 import Smten.Module.Module
+import Smten.Module.Entity
 
 data QS = QS {
     qs_env :: [Module],     -- ^ The environment
     qs_me :: Module,        -- ^ The current module
     qs_bound :: [Name],     -- ^ List of bound variable names
     qs_syns :: HT.HashTable Name ([Name], Type), -- ^ All type synonyms
-    qs_exports :: HT.HashTable Name (Set.Set Name),      -- ^ Module exports
+    qs_entities :: Map.Map Name EntityMap,       -- ^ Module entities
     qs_loc :: Location      -- ^ The current location
 }
 
@@ -45,9 +46,6 @@ withloc l = local (\r -> r { qs_loc = l } )
 
 mkSyns :: [Synonym] -> HT.HashTable Name ([Name], Type)
 mkSyns xs = HT.table [(n, (vs, t)) | Synonym n vs t <- xs]
-
-mkExports :: [Module] -> HT.HashTable Name (Set.Set Name)
-mkExports xs = HT.table [(mod_name m, exports m) | m <- xs]
 
 mename :: QualifyM Name
 mename = asks (mod_name . qs_me)
@@ -211,57 +209,23 @@ instance Qualify Method where
 instance Qualify Name where
     qualifyM = resolve
 
--- Return the set of entities exported by the given module.
-exports :: Module -> (Set.Set Name)
-exports m =
-  let exdec :: Dec -> Writer [Name] ()
-      exdec (ValD _ (TopExp (TopSig nm _ _) _)) = tell [unqualified nm]
-      exdec (DataD _ nm _ cs) = tell [unqualified nm] >> mapM_ excon cs
-      exdec (ClassD _ _ nm _ sigs) = tell [unqualified nm] >> mapM_ exmeth sigs
-      exdec (InstD {}) = return ()
-      exdec (PrimD _ (TopSig nm _ _)) = tell [unqualified nm]
-
-      exmeth :: TopExp -> Writer [Name] ()
-      exmeth (TopExp (TopSig snm _ _) _) = tell [unqualified snm]
-       
-      excon :: Con -> Writer [Name] ()
-      excon (Con n _) = tell [unqualified n]
-    
-  in Set.fromList $ execWriter (mapM exdec (mod_decs m))
-
--- Resolve the given name based on the given import.
--- Returns the unique name for the entity if it is accessible via this import.
-resolvein :: Name -> Import -> QualifyM (Maybe Name)
-resolvein n (Import fr as qo spec) = do
-  exps <- asks qs_exports
-  case HT.lookup fr exps of
-    Just xs -> do
-      let uqn = unqualified n
-          qn = qualification n
-      return $ do
-          guard $ uqn `Set.member` xs
-          guard $ case spec of
-                    Include ins -> uqn `elem` ins
-                    Exclude ens -> uqn `notElem` ens
-          guard $ qn == as || (not qo && nnull qn)
-          return $ qualified fr uqn
-    Nothing -> lthrow $ "Module " ++ pretty fr ++ " not found"
-        
 -- | Return the unique name for the entity referred to by the given name.
 resolve :: Name -> QualifyM Name
 resolve n = do
   me <- asks qs_me
-  let meimport = Import (mod_name me) (mod_name me) False (Exclude [])
-  finds <- mapM (resolvein n) (meimport : mod_imports me)
-  case nub $ catMaybes finds of
-      [] -> lthrow $ "'" ++ pretty n ++ "' not found in module " ++ pretty (mod_name me)
-      [x] -> return x
-      xs -> lthrow $ "'" ++ pretty n ++ "' is ambiguous: " ++ show xs
+  allents <- asks qs_entities
+  myents <- case Map.lookup (mod_name me) allents of
+                Just ents -> return ents
+                Nothing -> lthrow $ "module " ++ pretty (mod_name me) ++ " not found"
+  case nub $ fromMaybe [] (Map.lookup n myents) of
+     [] -> lthrow $ "'" ++ pretty n ++ "' not found in module " ++ pretty (mod_name me)
+     [x] -> return x
+     xs -> lthrow $ "'" ++ pretty n ++ "' is ambiguous: " ++ show xs
 
 -- | Perform name resolution on the given modules.
 qualify :: [Module] -> Failable [Module]
 qualify ms = {-# SCC "Qualify" #-} do
   let syns = mkSyns $ concatMap mod_synonyms ms
-      exps = mkExports ms
-  runReaderT (qualifyM ms) (QS ms (error "not in module") [] syns exps lunknown)
+  ents <- entities ms
+  runReaderT (qualifyM ms) (QS ms (error "not in module") [] syns ents lunknown)
 

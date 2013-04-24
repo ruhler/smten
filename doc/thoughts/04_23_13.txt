@@ -1,0 +1,129 @@
+
+Tue Apr 23 07:58:40 EDT 2013
+
+Next issues:
++ everyone should import qualified HaskellF.Lib.Prelude,
+    at least until we support auto-import.
++ qualified type names in contexts
++ data constructors
++ qualified __case names
+
+Tue Apr 23 08:09:38 EDT 2013
+
+Done. Now names are all qualified totally.
+
+Tue Apr 23 08:12:58 EDT 2013
+
+Next step? I could automatically figure out the import lists, but that sounds
+tedious. We need to look at every name, collect a set of qualifications,
+ignore my special S qualification... It all sounds hard enough that I don't
+really want to bother right now.
+
+Instead, it should be entirely safe to move on to explicit import lists for
+names?
+
+Well, it will be slightly buggy at first because we don't distinguish between
+type and data constructors. For example, if you import: Foo, we will import
+both the data and type constructor, when you are only supposed to import the
+data constructor.
+
+Anyway, a good first step would be to not worry about that.
+
+Here's the idea behind explicit import lists: You should not import anything
+not on the list, so you avoid what otherwise would have been ambiguous. That's
+the test case I should use.
+
+How about the implementation? We define Import as having a HashSet of names.
+Um, list would probably do just fine. Okay, define it has having a list of
+names to import explicitly. These are unqualified names.
+
+This is easy. We just add another guard: the unqualified name is a member of
+this list, if there is such a list. Otherwise we don't care.
+
+You know? I could probably handle hiding too at the same time. Say it is a
+member of the import list of there is one, and it is not a member of the
+hiding list, if there is one.
+
+Let me look at the import specs to see what all we really can find there:
+
+Imports can be included or excluded, but not both.
+
+Not worry about data vs. type constructors or that sort of thing yet, it looks
+like, in general, the form of an import specification is:
+
+    Include [Name]
+  | Exclude [Name]
+
+Where default is to Exclude Nothing.
+
+So, this is easy. The import spec just adds an additional guard:
+
+    guard $ case spec of
+                Include ins -> uqn `elem` ins
+                Exclude ens -> uqn `notElem` ens
+
+Cool! I can totally support this.
+
+Here's the plan:
+
+1. define ImportSpec
+2. default to Exclude []
+3. add support internally for ImportSpec.
+Verify everything still works as planned.
+4. add syntax for importing names.
+5. add syntax for hiding.
+Probably ought to test at this point that it works as desired.
+
+Very easy.
+
+Tue Apr 23 18:59:01 EDT 2013
+
+Next step: It would be nice to support explicit export lists. For now I'm fine
+just starting with names defined locally, but it's more complicated. I'm not
+sure how I would like to support this in general.
+
+So, the plan now is to read about export lists, and figure out a nice general
+approach to handling things looks.
+
+
+If export list omitted:
+    export all locally defined values, but nothing imported.
+
+In export list:
+    any value in scope. Defined locally or imported.
+
+Module export:
+    export module M: exports entities in scope  
+        unqualified e and qualified M.e
+
+Hmm...
+
+I wonder if what I ought to do is this: for each module build up the set of
+all entities in scope, in all the names they are in scope. Also build up the
+list of locally defined values.
+
+If I have these, then exports should be easy. And imports too?
+
+Basically, if you want to know if a name is in scope, look it up in the map.
+It should be a map from Name to fully resolved qualified name. If export list
+is omitted, export what I already do. For module export, I can just do a
+filter of values.
+
+That way I don't even have to go through imports one by one, and maybe it's
+more efficient, because we only have to compute this once, rather than
+checking over and over again for the same name.
+
+That sounds cool to me. It sounds like a good idea.
+
+Still not sure how to handle data constructors, but maybe don't worry about
+that yet.
+
+This is something to think about a little. I don't think I'm ready to act on
+it yet. I'll just stew.
+
+So, just like we have an 'exports' function, where given a module, we return
+the things it exports, we can have an inscope function, where given a module,
+we return the things it puts in its own scope.
+
+I like this idea. I think it will totally work out.
+
