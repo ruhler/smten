@@ -31,7 +31,7 @@ data ES = ES {
   -- Map from module name to the entities in scope in that module.
   es_entities :: Map.Map Name EntityMap,
 
-  -- Map from module name to the (unqualified) entities that module exports.
+  -- Map from module name to the (resolved) entities that module exports.
   es_exports :: Map.Map Name (Set.Set Name),
 
   -- Map from module name to the (unqualified) locally defined entities in
@@ -80,7 +80,7 @@ locals mn = do
       return vs
       
 
--- Return the set of names exported by a module.
+-- Return the set of (resolved) names exported by a module.
 -- Looks up the result in the cache if it is already there.
 -- Saves the result in the cache if it isn't already there.
 exports :: (Functor m, MonadErrorSL m) => Name -> EM m (Set.Set Name)
@@ -89,7 +89,7 @@ exports mn = do
     case Map.lookup mn exs of
        Just vs -> return vs
        Nothing -> do
-         vs <- Set.fromList <$> locals mn
+         vs <- Set.fromList . map (qualified mn) <$> locals mn
          modify $ \s -> s { es_exports = Map.insert mn vs (es_exports s) }
          return vs
 
@@ -116,21 +116,14 @@ modents mn = do
 imports :: (Functor m, MonadErrorSL m) => Import -> EM m EntityMap
 imports imp@(Import fr as qo spec) = do
   exported <- exports fr
-  imported <- case spec of
-                    Include inlist -> do
-                       let ins = Set.fromList inlist
-                       if ins `Set.isSubsetOf` exported
-                           then return ins
-                           else lthrow $ "imports not all exported in " ++ pretty imp
-                    Exclude exlist -> do
-                       let exs = Set.fromList exlist
-                       if exs `Set.isSubsetOf` exported
-                           then return $ Set.difference exported exs
-                           else throw $ "hidden imports not all exported in " ++ pretty imp
-  let qfd = [(qualified as n, [qualified fr n]) | n <- Set.toList imported]
+  let imported = case spec of
+                    Include ins -> Set.filter (\n -> unqualified n `elem` ins) exported
+                    Exclude exs -> Set.filter (\n -> unqualified n `notElem` exs) exported
+
+      qfd = [(qualified as (unqualified n), [n]) | n <- Set.toList imported]
       unqfd = if qo 
                 then []
-                else [(n, [qualified fr n]) | n <- Set.toList imported]
+                else [(unqualified n, [n]) | n <- Set.toList imported]
   return $ Map.fromListWith (++) (unqfd ++ qfd)
 
 
