@@ -1,12 +1,13 @@
 
 {-# LANGUAGE FlexibleInstances #-}
 
-module Smten.Module.Entity (EntityMap, entities, sources) where
+module Smten.Module.Entity (EntityMap, entities, sources, resolve) where
 
 import Control.Monad.State
 import Control.Monad.Writer
 
 import Data.Functor ((<$>))
+import Data.Maybe (fromMaybe)
 import Data.List (nub)
 import qualified Data.HashMap as Map
 import qualified Data.HashSet as Set
@@ -147,4 +148,10 @@ sources mn m = do
             return (nub $ filter (not . ignore) nms)
         Nothing -> lthrow $ "module " ++ pretty mn ++ " not found"
    
+resolve :: (MonadErrorSL m) => Name -> EntityMap -> m Name
+resolve n ents = 
+  case nub $ fromMaybe [] (Map.lookup n ents) of
+     [] -> lthrow $ "'" ++ pretty n ++ "' is not defined"
+     [x] -> return x
+     xs -> lthrow $ "'" ++ pretty n ++ "' is ambiguous: " ++ show xs
 

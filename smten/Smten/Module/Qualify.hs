@@ -9,11 +9,8 @@ module Smten.Module.Qualify (
 
 import Control.Monad.Reader
 
-import Data.List(nub)
 import Data.Functor ((<$>))
-import Data.Maybe(fromMaybe, catMaybes)
 import qualified Data.HashMap as Map
-import qualified Data.HashSet as Set
 
 import Smten.Failable
 import qualified Smten.HashTable as HT
@@ -169,7 +166,7 @@ instance Qualify Exp where
         if bound 
             then return (VarE l (Sig n t'))
             else do
-                n' <- resolve n
+                n' <- qualifyM n
                 return (VarE l (Sig n' t'))
     qualifyM (AppE l f x) = withloc l $ do
         f' <- qualifyM f
@@ -210,20 +207,13 @@ instance Qualify Method where
         return (Method nm' e')
 
 instance Qualify Name where
-    qualifyM = resolve
-
--- | Return the unique name for the entity referred to by the given name.
-resolve :: Name -> QualifyM Name
-resolve n = do
-  me <- asks qs_me
-  allents <- asks qs_entities
-  myents <- case Map.lookup (mod_name me) allents of
-                Just ents -> return ents
-                Nothing -> lthrow $ "module " ++ pretty (mod_name me) ++ " not found"
-  case nub $ fromMaybe [] (Map.lookup n myents) of
-     [] -> lthrow $ "'" ++ pretty n ++ "' not found in module " ++ pretty (mod_name me)
-     [x] -> return x
-     xs -> lthrow $ "'" ++ pretty n ++ "' is ambiguous: " ++ show xs
+    qualifyM n = do
+        me <- asks qs_me
+        allents <- asks qs_entities
+        myents <- case Map.lookup (mod_name me) allents of
+                      Just ents -> return ents
+                      Nothing -> lthrow $ "module " ++ pretty (mod_name me) ++ " not found"
+        resolve n myents
 
 -- | Perform name resolution on the given modules.
 qualify :: [Module] -> Failable [Module]
