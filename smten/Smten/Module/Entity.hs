@@ -1,12 +1,13 @@
 
 {-# LANGUAGE FlexibleInstances #-}
 
-module Smten.Module.Entity (EntityMap, entities) where
+module Smten.Module.Entity (EntityMap, entities, sources) where
 
 import Control.Monad.State
 import Control.Monad.Writer
 
 import Data.Functor ((<$>))
+import Data.List (nub)
 import qualified Data.HashMap as Map
 import qualified Data.HashSet as Set
 
@@ -141,4 +142,16 @@ entities ms = do
         mapM_ modents (map mod_name ms)
         gets es_entities
   evalStateT getents (ES modmap Map.empty Map.empty Map.empty)
+
+-- Return the list of source modules needed for the entities defined in the
+-- given module.
+sources :: (MonadErrorSL m) => Name -> Map.Map Name EntityMap -> m [Name]
+sources mn m = do
+    case Map.lookup mn m of
+        Just es -> do
+            let nms = map qualification (concat $ Map.elems es)
+                ignore n = nnull n || n == mn
+            return (nub $ filter (not . ignore) nms)
+        Nothing -> lthrow $ "module " ++ pretty mn ++ " not found"
+   
 

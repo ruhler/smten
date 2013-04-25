@@ -66,7 +66,10 @@ instance Qualify Module where
     qualifyM m = local (\qs -> qs { qs_me = m }) $ do
         sy' <- mapM qualifyM (mod_synonyms m)
         ds' <- mapM qualifyM (mod_decs m)
-        return $ m { mod_synonyms = sy', mod_decs = ds' }
+        ents <- asks qs_entities
+        impmns <- sources (mod_name m) ents
+        let imps = [Import n n True (Exclude []) | n <- impmns]
+        return $ m { mod_synonyms = sy', mod_decs = ds', mod_imports = imps }
 
 instance Qualify Synonym where
     qualifyM (Synonym n vs t) = Synonym n vs <$> qualifyM t

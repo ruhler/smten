@@ -1,6 +1,5 @@
 Recent::
 * Modularity:
-** Determine haskellf import list automatically instead of from smten module
 ** add support for (..) in import specifications
 ** add support for explicit export lists (without export module)
 ** add support for exporting modules.
