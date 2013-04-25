@@ -1,0 +1,45 @@
+
+Wed Apr 24 07:50:49 EDT 2013
+
+Plan:
+Module.Entity
+  entities :: [Module] -> Failable (Map.Map Name (Map.Map Name [Name]))
+
+That is, given all the modules, we can return the set of entities in scope in
+the module.
+
+I'll want the following helper functions:
+  locals: the local entities defined in the module (currently called 'exports')
+  exports: the entities exported by a module
+  inscope: the entities in scope of a module
+  imports: the entities imported by a given import of a module
+
+Nice and clean and orderly like.
+
+Wed Apr 24 09:46:27 EDT 2013
+
+I'm worried about this recursion stuff.
+
+How about I use a State monad for the cache instead?
+
+It ought to be just as efficient (given we can have failures). But the code
+makes much more sense.
+
+Yes. I like that. Okay then.
+
+Wed Apr 24 10:11:34 EDT 2013
+
+There! Rough draft of code is done. I would be surprised if it works, but I've
+been surprised in the past before, so we shall see.
+
+Next question is: how should I use it?
+
+Wed Apr 24 10:26:12 EDT 2013
+
+It looks like it works. Cool.
+
+The claim is, this should make it easier to properly handle export lists.
+Good. I think I'll call that enough work on smten for today. Next steps will
+be export lists of names, then export lists of modules, then I've reached my
+target for the time being.
+

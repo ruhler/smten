@@ -34,7 +34,7 @@ mkDataD :: Name -> [TyVar] -> [Con] -> HF H.Dec
 mkDataD n tyvars constrs = do
   let tyvars' = map (H.PlainTV . hsName . tyVarName) tyvars
   constrs' <- mapM hsCon constrs
-  let sconstr = H.NormalC (symnm n) [(H.NotStrict, H.ConT (H.mkName "S.ExpH"))]
+  let sconstr = H.NormalC (symnm n) [(H.NotStrict, H.ConT (H.mkName "Smten.ExpH.ExpH"))]
   return $ H.DataD [] (hsTyName n) tyvars' (constrs' ++ [sconstr]) []
 
 hsCon :: Con -> HF H.Con
@@ -56,26 +56,26 @@ mkSmtenTD n tyvars = return $
   let (rkept, rdropped) = span (\(TyVar n k) -> knum k == 0) (reverse tyvars)
       nkept = genericLength rkept
       dropped = reverse rdropped
-      ctx = [H.ClassP (nmk "S.SmtenT" k) [H.VarT (hsName n)] | TyVar n k <- dropped]
-      cont = H.AppE (H.VarE (H.mkName "S.conT"))
-                    (H.AppE (H.VarE (H.mkName "S.name"))
+      ctx = [H.ClassP (nmk "Smten.Type.SmtenT" k) [H.VarT (hsName n)] | TyVar n k <- dropped]
+      cont = H.AppE (H.VarE (H.mkName "Smten.Type.conT"))
+                    (H.AppE (H.VarE (H.mkName "Smten.Name.name"))
                             (H.LitE (H.StringL (unname n))))
 
       mkarg :: TyVar -> H.Exp
       mkarg (TyVar n k) = 
-        H.AppE (H.VarE (nmk "S.smtenT" k))
+        H.AppE (H.VarE (nmk "Smten.Type.smtenT" k))
                (H.SigE (H.VarE (H.mkName "Prelude.undefined"))
                        (foldl H.AppT (H.VarT (hsName n)) (genericReplicate (knum k) (H.ConT (H.mkName "()")))))
 
       args = H.ListE (map mkarg dropped)
-      body = H.AppE (H.AppE (H.VarE (H.mkName "S.appsT")) cont) args
+      body = H.AppE (H.AppE (H.VarE (H.mkName "Smten.Type.appsT")) cont) args
       smtent = H.FunD (nmn "smtenT" nkept) [
                 H.Clause [H.WildP] (H.NormalB body) []]
-      tyt = H.AppT (H.ConT $ nmn "S.SmtenT" nkept)
+      tyt = H.AppT (H.ConT $ nmn "Smten.Type.SmtenT" nkept)
                    (foldl H.AppT (H.ConT (hsTyName n)) [H.VarT (hsName n) | TyVar n _ <- dropped])
   in H.InstanceD ctx tyt [smtent]
   
--- instance S.HaskellFN Foo where
+-- instance HaskellFN Foo where
 --  boxN ...
 --  unboxN ...
 --
@@ -87,8 +87,8 @@ mkSymbD n tyvars constrs = do
         dropped = reverse rdropped
     boxD <- mkBoxD n nkept constrs
     unboxD <- mkUnboxD n nkept constrs
-    let ctx = [H.ClassP (nmk "S.HaskellF" k) [H.VarT (hsName n)] | TyVar n k <- dropped]
-        clsname = nmn "S.HaskellF" nkept
+    let ctx = [H.ClassP (nmk "Smten.HaskellF.HaskellF.HaskellF" k) [H.VarT (hsName n)] | TyVar n k <- dropped]
+        clsname = nmn "Smten.HaskellF.HaskellF.HaskellF" nkept
         ty = H.AppT (H.ConT clsname) 
                     (foldl H.AppT (H.ConT (hsTyName n)) [H.VarT (hsName n) | TyVar n _ <- dropped])
     return $ H.InstanceD ctx ty [boxD, unboxD]
@@ -105,11 +105,11 @@ mkBoxD n bn constrs = do
         let argnms = [H.mkName ("x" ++ show i) | i <- [1..length tys]]
             pat = H.ConP (H.mkName "Prelude.Just") [H.ListP (map H.VarP argnms)]
             src = foldl1 H.AppE [
-                    H.VarE (H.mkName "S.de_conHF"),
+                    H.VarE (H.mkName "Smten.HaskellF.HaskellF.de_conHF"),
                     H.LitE (H.StringL (unname cn)),
                     H.VarE (H.mkName "e")]
             guard = H.PatG [H.BindS pat src]
-            boxes = [H.AppE (H.VarE (H.mkName "S.box")) (H.VarE an) | an <- argnms]
+            boxes = [H.AppE (H.VarE (H.mkName "Smten.HaskellF.HaskellF.box")) (H.VarE an) | an <- argnms]
             body = foldl H.AppE (H.ConE (hsName cn)) boxes
         in (guard, body)
 
@@ -132,9 +132,9 @@ mkUnboxD n bn constrs = do
               pat = H.ConP (hsName cn) (map H.VarP argnms)
               src = H.VarE (H.mkName "x")
               guard = H.PatG [H.BindS pat src]
-              unboxes = [H.AppE (H.VarE (H.mkName "S.unbox")) (H.VarE an) | an <- argnms]
+              unboxes = [H.AppE (H.VarE (H.mkName "Smten.HaskellF.HaskellF.unbox")) (H.VarE an) | an <- argnms]
               body = foldl1 H.AppE [
-                        H.VarE (H.mkName "S.conHF"),
+                        H.VarE (H.mkName "Smten.HaskellF.HaskellF.conHF"),
                         H.VarE (H.mkName "x"),
                         H.LitE (H.StringL (unname cn)),
                         H.ListE unboxes]
@@ -160,7 +160,7 @@ mkCaseD n tyvars (Con cn tys) = do
   ht <- hsTopType [] t
   let sigD = H.SigD (casenm cn) ht
 
-      body = H.AppE (H.VarE (H.mkName "S.caseHF")) (H.LitE (H.StringL (unname cn)))
+      body = H.AppE (H.VarE (H.mkName "Smten.HaskellF.HaskellF.caseHF")) (H.LitE (H.StringL (unname cn)))
 
       yargs = [H.mkName ("x" ++ show i) | i <- [1..length tys]]
       ypat = H.ConP (hsName cn) (map H.VarP yargs)
@@ -171,7 +171,7 @@ mkCaseD n tyvars (Con cn tys) = do
       spat = H.ConP (symnm n) [H.WildP]
       ssrc = H.VarE (H.mkName "x")
       sbody = foldl1 H.AppE [
-                H.VarE (H.mkName "S.caseHF"),
+                H.VarE (H.mkName "Smten.HaskellF.HaskellF.caseHF"),
                 H.LitE (H.StringL (unname cn)),
                 H.VarE (H.mkName "x"),
                 H.VarE (H.mkName "y"),

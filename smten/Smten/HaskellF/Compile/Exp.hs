@@ -17,7 +17,7 @@ import Smten.HaskellF.Compile.Type
 hsLit :: Lit -> H.Exp
 hsLit l
  | Just i <- de_integerL l = H.LitE (H.IntegerL i)
- | Just c <- de_charL l = H.AppE (H.VarE (H.mkName "S.smtenHF")) (H.LitE (H.CharL c))
+ | Just c <- de_charL l = H.AppE (H.VarE (H.mkName "Smten.HaskellF.HaskellF.smtenHF")) (H.LitE (H.CharL c))
 
 hsExp :: Exp -> HF H.Exp
 
@@ -29,7 +29,7 @@ hsExp :: Exp -> HF H.Exp
 hsExp e
   | Just str <- de_stringE e
   , '\n' `notElem` str
-    = return $ H.AppE (H.VarE (H.mkName "S.smtenHF")) (H.LitE (H.StringL str))
+    = return $ H.AppE (H.VarE (H.mkName "Smten.HaskellF.HaskellF.smtenHF")) (H.LitE (H.StringL str))
 
 hsExp (LitE _ l) = return (hsLit l)
 hsExp (ConE _ (Sig n _)) = return $ H.ConE (hsqName n)

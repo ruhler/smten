@@ -32,11 +32,11 @@ hsHeader modname =
   H.text ("module " ++ unname modname
             ++ "(module " ++ unname modname ++ ") where") H.$+$
   H.text "import qualified Prelude" H.$+$
-  H.text "import qualified Smten.HaskellF.HaskellF as S" H.$+$
-  H.text "import qualified Smten.Name as S" H.$+$
-  H.text "import qualified Smten.Type as S" H.$+$
-  H.text "import qualified Smten.ExpH as S" H.$+$
-  H.text "import qualified Smten.HaskellF.Lib.Numeric as S" H.$+$
+  H.text "import qualified Smten.HaskellF.HaskellF" H.$+$
+  H.text "import qualified Smten.Name" H.$+$
+  H.text "import qualified Smten.Type" H.$+$
+  H.text "import qualified Smten.ExpH" H.$+$
+  H.text "import qualified Smten.HaskellF.Lib.Numeric" H.$+$
   H.text "import qualified Smten.HaskellF.Lib.Prelude" H.$+$
   primimports modname
 

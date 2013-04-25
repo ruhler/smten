@@ -35,14 +35,14 @@ import qualified Prelude as P
 import qualified Prelude as Prelude
 
 import Smten.Type
-import Smten.Name as S
+import Smten.Name
 import Smten.Dec
 import Smten.ExpH
 import Smten.Prim
 import Smten.Ppr
-import qualified Smten.Type as S
-import qualified Smten.ExpH as S
-import Smten.HaskellF.HaskellF as S
+import qualified Smten.Type
+import qualified Smten.ExpH
+import Smten.HaskellF.HaskellF
 import Smten.HaskellF.TH
 
 data Char =

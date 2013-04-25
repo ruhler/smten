@@ -38,17 +38,17 @@ hsType' t = do
         a' <- hsType' a
         b' <- hsType' b
         let f' = case f of
-                    "+" -> H.ConT $ H.mkName "S.N__PLUS"
-                    "-" -> H.ConT $ H.mkName "S.N__MINUS"
-                    "*" -> H.ConT $ H.mkName "S.N__TIMES"
+                    "+" -> H.ConT $ H.mkName "Smten.HaskellF.Lib.Numeric.N__PLUS"
+                    "-" -> H.ConT $ H.mkName "Smten.HaskellF.Lib.Numeric.N__MINUS"
+                    "*" -> H.ConT $ H.mkName "Smten.HaskellF.Lib.Numeric.N__TIMES"
                     _ -> error $ "hsType' TODO: AppNT " ++ f
         return $ H.AppT (H.AppT f' a') b'
       t -> throw $ "haskellf: unsupported type: " ++ pretty t
 
 -- Return the numeric type corresponding to the given integer.
 hsnt :: Integer -> H.Type
-hsnt 0 = H.ConT (H.mkName "S.N__0")
-hsnt n = H.AppT (H.ConT (H.mkName $ "S.N__2p" ++ show (n `mod` 2))) (hsnt $ n `div` 2)
+hsnt 0 = H.ConT (H.mkName "Smten.HaskellF.Lib.Numeric.N__0")
+hsnt n = H.AppT (H.ConT (H.mkName $ "Smten.HaskellF.Lib.Numeric.N__2p" ++ show (n `mod` 2))) (hsnt $ n `div` 2)
 
 hsTopType :: Context -> Type -> HF H.Type
 hsTopType ctx t = do
@@ -74,7 +74,7 @@ hsContext t = do
   tyvars <- asks hfs_tyvars
   let p = flip notElem tyvars
       vts = filter (p . fst) $ (varTs t ++ [(n, NumK) | n <- retypes])
-      tvs = [H.ClassP (nmk "S.HaskellF" k) [H.VarT (hsName n)] | (n, k) <- vts]
+      tvs = [H.ClassP (nmk "Smten.HaskellF.HaskellF.HaskellF" k) [H.VarT (hsName n)] | (n, k) <- vts]
   return (tvs, map fst vts)
 
 
