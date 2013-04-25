@@ -12,6 +12,10 @@ instance Ppr ImportSpec where
     ppr (Exclude ns) = text "hiding" <+> (
         parens $ sep $ punctuate comma (map ppr ns))
 
+instance Ppr Exports where
+    ppr Local = empty
+    ppr (Exports es) = sep $ punctuate comma (map ppr es)
+
 instance Ppr Import where
     ppr (Import f a p spec) =
       let as = if (f == a)
@@ -37,7 +41,7 @@ instance Ppr Deriving where
 
 instance Ppr Module where
     ppr m
-        = text "module" <+> ppr (mod_name m) <+> text "where" <+> text "{"
+        = text "module" <+> ppr (mod_name m) <+> ppr (mod_exports m) <+> text "where" <+> text "{"
             $+$ nest tabwidth (
                 vcat (map ppr (mod_imports m))
                 $+$ vcat (map ppr (mod_synonyms m))

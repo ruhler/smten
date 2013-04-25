@@ -141,14 +141,28 @@ import Smten.Parser.Utils
 %%
 
 module :: { Module }
- : 'module' qconid 'where' mbody
-    { let (is, sy, dds, drv, ds) = $4
-      in Module $2 is sy dds drv ds }
+ : 'module' qconid exports 'where' mbody
+    { let (is, sy, dds, drv, ds) = $5
+      in Module $2 $3 is sy dds drv ds }
  | mbody
-    -- TODO: we should export only 'main' explicitly when explicit exports are
-    -- supported
     { let (is, sy, dds, drv, ds) = $1
-      in Module (name "Main") is sy dds drv ds}
+      in Module (name "Main") (Exports [name "Main.main"]) is sy dds drv ds}
+
+exports :: { Exports }
+ : '(' exportlist opt(',') ')'
+    { Exports $2 }
+ | '(' opt(',') ')'
+    { Exports [] }
+ | -- empty
+    { Local }
+
+exportlist :: { [Name] }
+ : export       { [$1] }
+ | exportlist ',' export  { $1 ++ [$3] }
+
+export :: { Name }
+ : qvar { $1 }
+ | qconid { $1 }
 
 mbody :: { ([Import], [Synonym], [DataDec], [Deriving], [Dec]) }
  : '{' impdecls ';' topdecls opt(';') '}'

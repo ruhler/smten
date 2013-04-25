@@ -90,7 +90,12 @@ exports mn = do
     case Map.lookup mn exs of
        Just vs -> return vs
        Nothing -> do
-         vs <- Set.fromList . map (qualified mn) <$> locals mn
+         m <- getmod mn
+         vs <- case (mod_exports m) of
+                 Local -> Set.fromList . map (qualified mn) <$> locals mn
+                 Exports ns -> do
+                   ents <- modents mn
+                   Set.fromList <$> mapM (flip resolve ents) ns
          modify $ \s -> s { es_exports = Map.insert mn vs (es_exports s) }
          return vs
 

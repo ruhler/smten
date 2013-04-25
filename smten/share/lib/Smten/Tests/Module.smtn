@@ -1,5 +1,5 @@
 
-module Smten.Tests.Module where
+module Smten.Tests.Module (testmodule) where
 
 import Smten.Tests.Test
 

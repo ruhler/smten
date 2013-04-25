@@ -14,8 +14,6 @@ import Smten.Parser.Grammar
 --
 -- [@Things to implement eventually, perhaps@]
 --
--- - Explicit module exports.
---
 -- - Contexts in data declarations.
 --
 -- - deriving of classes other than Eq, Free, Show.

@@ -1,7 +1,6 @@
 Recent::
 * Modularity:
 ** add support for (..) in import specifications
-** add support for explicit export lists (without export module)
 ** add support for exporting modules.
 * Add better support for arrays for shampi performance
 * Don't pretty print numeric type 16 in haskellf as
@@ -20,7 +19,6 @@ Haskell Features::
 * modularity support
 ** ability to re-export modules 
     (So we can include Smten.SMT instead of Smten.SMT.SMT, for example)
-** export lists
 * labeled pattern matching.
 
 Documentation::
