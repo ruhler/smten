@@ -1,0 +1,70 @@
+
+Thu Apr 25 10:24:03 EDT 2013
+
+Next steps for modularity:
+* auto generate the imports. This way, in theory I can handle things defined
+  in different modules from which they are imported.
+* export list should be a set of fully qualified, resolved names.
+* after those, then we should be able to add explicit export list easily
+  enough
+
+I was thinking I could use the module entities list to make auto-generation of
+imports easy, but I don't have access to that list in haskellf, and maybe it's
+better that way, so I guess I should use a different approach, like a writer
+monad.
+
+Thu Apr 25 14:41:12 EDT 2013
+
+Here's an idea for what I could do. Change the module.
+
+That is, when I do qualify, change the import list. And now, I can use what we
+generate in the module to do it.
+
+Change all import lists to the form:
+    import qualified Foo.Bar
+
+Sounds fair to me. What do you think?
+
+I think it sounds good.
+
+Yup. Looks like it works.
+
+Thu Apr 25 15:01:20 EDT 2013
+
+Next step: export list should be a set of fully qualified, resolved names.
+
+Currently that's easy to change, I think...
+
+Let me try it and see what goes wrong.
+
+Thu Apr 25 15:15:02 EDT 2013
+
+Looks like it works. That's good.
+
+Now we are very close to explicit export lists. I want the following:
+
+ExportSpec = Locals | Exports [Name]
+
+We already can handle the case of Locals just fine.
+Now we have a case for explicit export list.
+
+We will update the syntax to support this.
+
+How do I implement it? Conceptually: resolve each name in the Exports list,
+use the resulting qualified name as the answer.
+
+So, I'll want resolve to be part of Entity, and made slightly more generic if
+possible.
+
+I can start with just that switch.
+
+Thu Apr 25 15:53:10 EDT 2013
+
+Good. That's done. Now I want to generalize slightly, and allow for a Module
+export.
+
+Export = ExportEntity Name | ExportModule Name
+
+I think the implementation is clear: filter out and resolve all the names in
+scope under the given module. They should be unique I think.
+

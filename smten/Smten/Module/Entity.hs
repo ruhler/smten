@@ -93,9 +93,17 @@ exports mn = do
          m <- getmod mn
          vs <- case (mod_exports m) of
                  Local -> Set.fromList . map (qualified mn) <$> locals mn
-                 Exports ns -> do
+                 Exports exs -> do
                    ents <- modents mn
-                   Set.fromList <$> mapM (flip resolve ents) ns
+                   let --expnms :: Export -> EM m [Name]
+                       expnms (EntityExport n) = do
+                            n' <- resolve n ents
+                            return [n']
+                       expnms (ModuleExport mn) = do
+                            let keep n _ = qualification n == mn
+                                keeps = Map.filterWithKey keep ents
+                            return $ concat (Map.elems keeps)
+                   Set.fromList . concat <$> mapM expnms exs
          modify $ \s -> s { es_exports = Map.insert mn vs (es_exports s) }
          return vs
 

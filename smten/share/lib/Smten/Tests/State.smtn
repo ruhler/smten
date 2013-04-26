@@ -2,7 +2,6 @@
 module Smten.Tests.State where
 
 import Control.Monad.State
-import Control.Monad.State.Class
 import Smten.Tests.Test
 
 -- Test an ambiguous type which can come from using StateT.

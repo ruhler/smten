@@ -1,5 +1,9 @@
 
-module Control.Monad.State where
+module Control.Monad.State(
+    State, runState, evalState, execState, mapState, withState,
+    StateT, runStateT, evalStateT, execStateT, mapStateT, withStateT,
+    module Control.Monad.State.Class,
+    )  where
 
 import Control.Monad.State.Class
 

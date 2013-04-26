@@ -72,6 +72,10 @@ instance Qualify Module where
                      mod_decs = ds',
                      mod_imports = imps }
 
+instance Qualify Export where
+    qualifyM (EntityExport n) = EntityExport <$> qualifyM n
+    qualifyM (ModuleExport n) = return $ ModuleExport n
+
 instance Qualify Exports where
     qualifyM Local = return Local
     qualifyM (Exports ns) = Exports <$> mapM qualifyM ns

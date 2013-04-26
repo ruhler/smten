@@ -146,7 +146,7 @@ module :: { Module }
       in Module $2 $3 is sy dds drv ds }
  | mbody
     { let (is, sy, dds, drv, ds) = $1
-      in Module (name "Main") (Exports [name "Main.main"]) is sy dds drv ds}
+      in Module (name "Main") (Exports [EntityExport (name "Main.main")]) is sy dds drv ds}
 
 exports :: { Exports }
  : '(' exportlist opt(',') ')'
@@ -156,13 +156,14 @@ exports :: { Exports }
  | -- empty
     { Local }
 
-exportlist :: { [Name] }
+exportlist :: { [Export] }
  : export       { [$1] }
  | exportlist ',' export  { $1 ++ [$3] }
 
-export :: { Name }
- : qvar { $1 }
- | qconid { $1 }
+export :: { Export }
+ : qvar { EntityExport $1 }
+ | qconid { EntityExport $1 }
+ | 'module' qconid { ModuleExport $2 }
 
 mbody :: { ([Import], [Synonym], [DataDec], [Deriving], [Dec]) }
  : '{' impdecls ';' topdecls opt(';') '}'

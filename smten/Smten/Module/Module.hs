@@ -36,7 +36,7 @@
 {-# LANGUAGE PatternGuards #-}
 
 module Smten.Module.Module (
-    Module(..), Exports(..), ImportSpec(..), Import(..),
+    Module(..), Export(..), Exports(..), ImportSpec(..), Import(..),
     Synonym(..), DataDec(..), Deriving(..),
     environ, sderive,
     ) where
@@ -52,8 +52,12 @@ import Smten.Dec
 data ImportSpec = Include [Name] | Exclude [Name]
     deriving (Show, Eq)
 
-data Exports = Local | Exports [Name]
+data Export = EntityExport Name | ModuleExport Name
     deriving (Show, Eq)
+
+data Exports = Local | Exports [Export]
+    deriving (Show, Eq)
+
 
 data Import = Import { 
     imp_from :: Name,

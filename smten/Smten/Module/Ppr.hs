@@ -12,6 +12,10 @@ instance Ppr ImportSpec where
     ppr (Exclude ns) = text "hiding" <+> (
         parens $ sep $ punctuate comma (map ppr ns))
 
+instance Ppr Export where
+    ppr (EntityExport n) = ppr n
+    ppr (ModuleExport n) = text "module" <+> ppr n
+
 instance Ppr Exports where
     ppr Local = empty
     ppr (Exports es) = sep $ punctuate comma (map ppr es)

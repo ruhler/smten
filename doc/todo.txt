@@ -1,7 +1,6 @@
 Recent::
 * Modularity:
-** add support for (..) in import specifications
-** add support for exporting modules.
+** add support for (..) in import and export specifications
 * Add better support for arrays for shampi performance
 * Don't pretty print numeric type 16 in haskellf as
     2*2*2*2*(1+0) ??
@@ -16,9 +15,6 @@ Recent::
 Haskell Features::
 * Allow parens in InstD: instance (Foo Bar) where...
 * auto derive Ord, Ix
-* modularity support
-** ability to re-export modules 
-    (So we can include Smten.SMT instead of Smten.SMT.SMT, for example)
 * labeled pattern matching.
 
 Documentation::
@@ -96,7 +92,7 @@ Build System::
 * don't hardcode build/test output directory into SMT tests
 * clean up tclmk script: maybe separate into init, build, and test sections.
 
-Bugs::
+Known Bugs::
 * BadKind, DupInst, DupVar maltype tests
 * Error non-termination tests
 * HaskellF sharing of appeval
@@ -106,6 +102,11 @@ Bugs::
 * Report an error for an unknown primitive encountered in SMT Translation
 * It's possible to use a symbolic thing in a different context than it was
   defined, in which case bad stuff will happen.
+
+Suspected Bugs::
+* type synonyms are not qualified by their module
+* Does module import and export handle labelled update and construction
+  properly?
             
 Other::
 * Update LICENSE files to include 2013 copyright.
