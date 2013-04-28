@@ -165,6 +165,10 @@ testlet =
       bar = fudge + 3
   in bar + bar
 
+-- Verify layout inserts a '}' if needed on parse error.
+testcloseerr :: Integer
+testcloseerr = let x = 5 in x
+
 arr :: Array Integer Integer
 arr = array (0, 2) [(0, 42), (1, 12), (2, 19)]
 

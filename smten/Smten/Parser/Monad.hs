@@ -42,7 +42,7 @@ module Smten.Parser.Monad (
     failE, pfailE, withloc, withlocM,
     single, many, newline, getText, setText, getLoc, getTLoc, saveLoc,
     expectBrace, setExpectBrace,
-    lpush, ltop, lpop, tpush, tnext,
+    lpush, ltop, lpop, lcloseerr, tpush, tnext,
     ) where
 
 import Control.Monad.State
@@ -210,6 +210,15 @@ lpop = modify $ \ps -> ps {
                    [] -> error "lpop on empty layout stack in ParserMonad"
                    _:xs -> xs
     }
+
+-- | Called by the parser when an error is encountered where a close brace is
+-- expected.
+lcloseerr :: ParserMonad ()
+lcloseerr = do
+  top <- ltop
+  case top of
+    Just v | v /= 0 -> lpop
+    _ -> lthrow "explicit '{' can't be closed implicitly"
 
 -- | Push a token onto the front of the token buffer, to be returned before
 -- any further lexical analysis of the input text.

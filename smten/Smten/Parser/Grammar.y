@@ -166,12 +166,12 @@ export :: { Export }
  | 'module' qconid { ModuleExport $2 }
 
 mbody :: { ([Import], [Synonym], [DataDec], [Deriving], [Dec]) }
- : '{' impdecls ';' topdecls opt(';') '}'
+ : '{' impdecls ';' topdecls opt(';') close
     { let (syns, dds, drv, ds) = coalesce $4
       in ($2, syns, dds, drv, ds) }
- | '{' impdecls opt(';') '}'
+ | '{' impdecls opt(';') close
     { ($2, [], [], [], []) }
- | '{' topdecls opt(';') '}'
+ | '{' topdecls opt(';') close
     { let (syns, dds, drv, ds) = coalesce $2
       in ([], syns, dds, drv, ds) }
 
@@ -216,13 +216,13 @@ topdecl :: { [PDec] }
          PDataDec (DataDec $2 $3 $5) : [PDec ds | ds <- recordD l $2 $3 $5 $6] }
  | 'type' conid lopt(tyvarnms) '=' type
     { [PSynonym (Synonym $2 $3 $5) ] }
- | 'class' conid tyvars 'where' '{' cdecls opt(';') '}'
+ | 'class' conid tyvars 'where' '{' cdecls opt(';') close
     {% withloc $ \l -> [PDec (ClassD l [] $2 $3 (ccoalesce $6))] }
- | 'class' context conid tyvars 'where' '{' cdecls opt(';') '}'
+ | 'class' context conid tyvars 'where' '{' cdecls opt(';') close
     {% withloc $ \l -> [PDec (ClassD l $2 $3 $4 (ccoalesce $7))] }
- | 'instance' class 'where' '{' idecls opt(';') '}'
+ | 'instance' class 'where' '{' idecls opt(';') close
     {% withloc $ \l -> [PDec (InstD l [] $2 (icoalesce $5))] }
- | 'instance' context class 'where' '{' idecls opt(';') '}'
+ | 'instance' context class 'where' '{' idecls opt(';') close
     {% withloc $ \l -> [PDec (InstD l $2 $3 (icoalesce $6))] }
  | 'deriving' 'instance' class
     {% withloc $ \l -> [PDeriving (Deriving l [] $3)] }
@@ -355,7 +355,7 @@ constrs :: { [ConRec] }
 constr :: { ConRec }
  : conid lopt(atypes)
     { NormalC $1 $2 }
- | conid '{' lopt(fielddecls) '}'
+ | conid '{' lopt(fielddecls) close
     { RecordC $1 $3 }
 
 fielddecls :: { [(Name, Type)] }
@@ -381,7 +381,7 @@ rhs :: { WBodies }
     {% withloc $ \l -> WBodies l $1 $2 }
 
 wdecls :: { [(Pat, Exp)] }
- : 'where' '{' ldecls opt(';') '}'
+ : 'where' '{' ldecls opt(';') close
     { lcoalesce $3 }
 
 rhsbodies :: { [Body] }
@@ -416,13 +416,13 @@ poe :: { PatOrExp }
 lpoe :: { PatOrExp }
  : '\\' apoes '->' poe
     {% withloc $ \l -> lamPE l $2 $4 }
- | 'let' '{' ldecls opt(';') '}' 'in' poe
+ | 'let' '{' ldecls opt(';') close 'in' poe
     {% withloc $ \l -> letPE l $3 $7 }
  | 'if' poe 'then' poe 'else' poe
     {% withloc $ \l -> ifPE l $2 $4 $6 }
- | 'case' poe 'of' '{' alts opt(';') '}'
+ | 'case' poe 'of' '{' alts opt(';') close
     {% withloc $ \l -> casePE l $2 $5 }
- | 'do' '{' stmts opt(';') '}'
+ | 'do' '{' stmts opt(';') close
     {% case last $3 of
          NoBindS _ -> withloc $ \l -> (doPE l $3)
          _ -> lthrow "last statement in do must be an expression"
@@ -463,7 +463,7 @@ apoe :: { PatOrExp }
     {% withloc $ \l -> listPE l [$2] }
  | '[' poe ',' poes_commasep ']'
     {% withloc $ \l -> listPE l ($2 : $4) }
- | apoe '{' lopt(fbinds) '}'
+ | apoe '{' lopt(fbinds) close
     {% withloc $ \l ->  updatePE l $1 $3 }
  | '~' apoe { irrefPE $2 }
 
@@ -531,7 +531,7 @@ stmt :: { Stmt }
    }
  | poe 
     {% fmap NoBindS (toExp $1) }
- | 'let' '{' ldecls opt(';') '}'
+ | 'let' '{' ldecls opt(';') close
     { LetS (lcoalesce $3) }
 
 fbinds :: { [(Name, Exp)] }
@@ -668,6 +668,10 @@ atypes :: { [Type] }
     { [$1] }
  | atypes atype
     { $1 ++ [$2] }
+
+close :: { () }
+ : '}' { () }
+ | error {% lcloseerr }
 
 opt(p)
  : p

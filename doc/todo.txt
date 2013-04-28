@@ -1,6 +1,5 @@
 Recent::
-* Modularity:
-** add support for (..) in import and export specifications
+* Modularity: add support for (..) in import and export specifications
 * Add better support for arrays for shampi performance
 * Don't pretty print numeric type 16 in haskellf as
     2*2*2*2*(1+0) ??
@@ -9,13 +8,13 @@ Recent::
        fop = 3
     Is accepted, and 'fop' is treated like 'foo'.
     I should give an error here.
-* Add support for semicolon error parsing rule in parser
 * Have flags in smten exe to call ghc appropriately.
 
 Haskell Features::
 * Allow parens in InstD: instance (Foo Bar) where...
 * auto derive Ord, Ix
 * labeled pattern matching.
+* newtype
 
 Documentation::
 * Write a user guide
@@ -24,8 +23,6 @@ Type System::
 * Verify we handle case where default method given without sig in ClassD.
 
 Front End::
-* support parser-error layout rule.
-    For example: (let foo = bar in foo x)
 * Report an error if module name doesn't match source file name.
 * Review desugared expressions to see if they make sense or could be cleaned
   up.
@@ -58,6 +55,8 @@ Primitives::
 * Concretize the rest of the haskellf primitives
 
 Cleanup::
+* Move 'MalType' tests to 'Mal' tests, or some other thing. Because not all of
+  them have to do with type errors. Maybe 'ShouldFail'.
 * varTs should return a list of TyVar, not (Name, Kind)
 * typeinfer - use structure like typecheck (if reasonable)
 * enforce in Parser that all class methods must have a signature?
@@ -107,6 +106,9 @@ Suspected Bugs::
 * type synonyms are not qualified by their module
 * Does module import and export handle labelled update and construction
   properly?
+* haskellf doesn't do the module exports it should
+  If, for example, you want to interface with your haskell code
+* class names can't be qualified in instance declarations?
             
 Other::
 * Update LICENSE files to include 2013 copyright.
