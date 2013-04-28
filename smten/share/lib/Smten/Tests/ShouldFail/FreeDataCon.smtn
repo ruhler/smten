@@ -1,5 +1,5 @@
 
-module Smten.Tests.MalTyped.FreeDataCon where
+module Smten.Tests.ShouldFail.FreeDataCon where
 
 -- The data constructor Sludge.
 bar :: Bool

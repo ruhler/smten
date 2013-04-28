@@ -1,5 +1,5 @@
 
-module Smten.Tests.MalTyped.BadKind where
+module Smten.Tests.ShouldFail.BadKind where
 
 foo :: Maybe Bool Integer
 foo = error "huh?"

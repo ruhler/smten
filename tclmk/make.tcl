@@ -77,34 +77,34 @@ set SUDOKU build/smten-bin/sudoku
 set SMTN smten/share/lib
 
 # Poorly typed tests.
-proc badtypetest {name} {
+proc shouldfail {name} {
     set cmd {
         hrun $::SMTEN --type \
-            -f $::SMTN/Smten/Tests/MalTyped/$name.smtn \
+            -f $::SMTN/Smten/Tests/ShouldFail/$name.smtn \
             -o "build/test/$name.typed"
         }
 
     if { [catch $cmd] == 0 } {
-        error "expected type error, but $name passed type check"
+        error "expected failure, but $name passed type check"
     }
 }
 
-badtypetest "Ambiguous"
-#badtypetest "BadKind"
-badtypetest "BadType1"
-badtypetest "BadType2"
-badtypetest "BadType3"
-badtypetest "BadType4"
-badtypetest "ClassCtx1"
-badtypetest "ClauseArgCount"
-badtypetest "Ctx"
-#badtypetest "DupInst"
-#badtypetest "DupVar"
-badtypetest "FreeDataCon"
-badtypetest "FreeTyCon"
-badtypetest "FreeTypeVar"
-badtypetest "FreeVar"
-badtypetest "InstCtx"
+shouldfail "Ambiguous"
+#shouldfail "BadKind"
+shouldfail "BadType1"
+shouldfail "BadType2"
+shouldfail "BadType3"
+shouldfail "BadType4"
+shouldfail "ClassCtx1"
+shouldfail "ClauseArgCount"
+shouldfail "Ctx"
+#shouldfail "DupInst"
+#shouldfail "DupVar"
+shouldfail "FreeDataCon"
+shouldfail "FreeTyCon"
+shouldfail "FreeTypeVar"
+shouldfail "FreeVar"
+shouldfail "InstCtx"
 
 # Run an IO Test
 proc io {module} {

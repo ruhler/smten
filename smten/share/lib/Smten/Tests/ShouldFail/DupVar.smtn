@@ -1,5 +1,5 @@
 
-module Smten.Tests.MalTyped.DupVar where
+module Smten.Tests.ShouldFail.DupVar where
 
 -- Variable 'foo' is declared twice.
 foo :: Bool

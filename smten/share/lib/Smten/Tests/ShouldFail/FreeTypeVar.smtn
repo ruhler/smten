@@ -1,5 +1,5 @@
 
-module Smten.Tests.MalTyped.FreeTypeVar where
+module Smten.Tests.ShouldFail.FreeTypeVar where
 
 data Foo = Foo Bool b | Bar
 

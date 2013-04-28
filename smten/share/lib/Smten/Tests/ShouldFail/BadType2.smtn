@@ -1,5 +1,5 @@
 
-module Smten.Tests.MalTyped.BadType2 where
+module Smten.Tests.ShouldFail.BadType2 where
 
 import Prelude
 

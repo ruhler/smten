@@ -1,5 +1,5 @@
 
-module Smten.Tests.MalTyped.ClauseArgCount where
+module Smten.Tests.ShouldFail.ClauseArgCount where
 
 -- Two clauses have different number of arguments.
 foo :: Integer -> Integer -> Integer

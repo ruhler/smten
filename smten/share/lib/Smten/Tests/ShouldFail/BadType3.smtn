@@ -1,5 +1,5 @@
 
-module Smten.Tests.MalTyped.BadType3 where
+module Smten.Tests.ShouldFail.BadType3 where
 
 -- The 'Just a b' pattern has too many arguments.
 foo :: Maybe Bool -> Bool

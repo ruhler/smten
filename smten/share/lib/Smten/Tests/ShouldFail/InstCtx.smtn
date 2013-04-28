@@ -1,5 +1,5 @@
 
-module Smten.Tests.MalTyped.InstCtx where
+module Smten.Tests.ShouldFail.InstCtx where
 
 import Prelude
 

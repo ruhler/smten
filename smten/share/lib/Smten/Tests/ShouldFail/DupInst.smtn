@@ -1,5 +1,5 @@
 
-module Smten.Tests.MalTyped.DupInst where
+module Smten.Tests.ShouldFail.DupInst where
 
 data Foo = Foo | Bar
 

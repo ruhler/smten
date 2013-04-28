@@ -1,5 +1,5 @@
 
-module Smten.Tests.MalTyped.Ambiguous where
+module Smten.Tests.ShouldFail.Ambiguous where
 
 -- The type of x is ambiguous. This should be rejected.
 foo :: Integer

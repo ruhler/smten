@@ -11,7 +11,6 @@ Recent::
 * Have flags in smten exe to call ghc appropriately.
 
 Haskell Features::
-* Allow parens in InstD: instance (Foo Bar) where...
 * auto derive Ord, Ix
 * labeled pattern matching.
 * newtype
@@ -55,8 +54,6 @@ Primitives::
 * Concretize the rest of the haskellf primitives
 
 Cleanup::
-* Move 'MalType' tests to 'Mal' tests, or some other thing. Because not all of
-  them have to do with type errors. Maybe 'ShouldFail'.
 * varTs should return a list of TyVar, not (Name, Kind)
 * typeinfer - use structure like typecheck (if reasonable)
 * enforce in Parser that all class methods must have a signature?

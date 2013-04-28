@@ -20,7 +20,7 @@ data-files:
     lib/Data/*.smtn
     lib/Smten/*.smtn
     lib/Smten/Tests/*.smtn
-    lib/Smten/Tests/MalTyped/*.smtn
+    lib/Smten/Tests/ShouldFail/*.smtn
     lib/Smten/Sudoku/*.smtn
     lib/Smten/SMT/*.smtn
     lib/Smten/SMT/Tests/*.smtn
