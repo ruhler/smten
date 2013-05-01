@@ -133,3 +133,5 @@ instance Ix (Bit #n) where
           (_, True) -> [h]
           _ -> l : range (l+1, h)
 
+    index (l, _) x = __prim_toInteger_Bit (x - l)
+

@@ -3,21 +3,21 @@ module Data.Array where
 
 import Data.Ix
 
-data Array i e = MkArray (i, i) (i -> e)
+import Smten.PrimArray
 
--- TODO: check for out of bounds conditions.
+data Array i e = MkArray (i, i) (PrimArray e)
+
 array :: Ix i => (i, i) -> [(i, e)] -> Array i e
 array b ivs =
-  let isidx = \j -> \x -> fst x == j
-  in MkArray b (\j -> 
-        case filter (isidx j) ivs of
-            [(_, v)] -> v
-            [] -> error "Array.!: undefined array element"
-            _ -> error "Array.!: multiply defined array element"
-        )
+  let f x = case filter ((==) x . fst) ivs of
+                [] -> error "Array.!: undefined array element"
+                [(_, v)] -> v
+                _ -> error "Array.!: multiply defined array element"
+      arr = primArray (map f (range b))
+  in MkArray b arr
 
 (!) :: Ix i => Array i e -> i -> e
-(!) (MkArray _ f) = f
+(!) (MkArray b arr) x = primSelect arr (index b x)
 
 bounds :: Ix i => Array i e -> (i, i)
 bounds (MkArray b _) = b

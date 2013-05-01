@@ -1,6 +1,6 @@
 Recent::
-* Add better support for arrays
-    Re-implement Data.Array using PrimArray
+* Change shampi to use recursive let and arrays
+  Now that they are supported. Add instances of Ix as needed to be nice.
 * Add support for (..) in import and export specifications
 * Add support for signatures in let declarations
 
