@@ -49,6 +49,8 @@ primimports n
       = H.text "import Smten.HaskellF.Lib.Trace as Smten.Lib.Debug.Trace"
   | n == name "Smten.Lib.Smten.Bit"
       = H.text "import Smten.HaskellF.Lib.Bit as Smten.Lib.Smten.Bit"
+  | n == name "Smten.Lib.Smten.PrimArray"
+      = H.text "import Smten.HaskellF.Lib.PrimArray as Smten.Lib.Smten.PrimArray"
   | n == name "Smten.Lib.Smten.SMT.Symbolic"
       = H.text "import Smten.HaskellF.Lib.Symbolic as Smten.Lib.Smten.SMT.Symbolic"
   | otherwise = H.empty

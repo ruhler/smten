@@ -69,6 +69,7 @@ hsDec (DataD _ n _ _) | n `elem` [
   tupleN 3,
   tupleN 4,
   maybeN,
+  primArrayN,
   smtN,
   symbolicN,
   usedN,

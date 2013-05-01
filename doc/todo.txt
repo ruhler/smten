@@ -1,19 +1,21 @@
 Recent::
-* Modularity: add support for (..) in import and export specifications
-* Add better support for arrays for shampi performance
-* Don't pretty print numeric type 16 in haskellf as
-    2*2*2*2*(1+0) ??
-    depends if you want detailed type info or not.
-* Bug: foo :: Integer
-       fop = 3
-    Is accepted, and 'fop' is treated like 'foo'.
-    I should give an error here.
-* Have flags in smten exe to call ghc appropriately.
+* Add better support for arrays
+    Re-implement Data.Array using PrimArray
+* Add support for (..) in import and export specifications
+* Add support for signatures in let declarations
 
 Haskell Features::
+* support for (..) in import and export specifications
+* newtype
 * auto derive Ord, Ix
 * labeled pattern matching.
-* newtype
+* signatures in let declarations.
+* lack of signatures in top-level declarations.
+* strictness flags in data type declarations.
+* contexts in data type declarations.
+* sections.
+* Int type.
+* allow sigs and bodies to be separated.
 
 Documentation::
 * Write a user guide
@@ -45,6 +47,9 @@ Pretty Printer::
     When pretty printing data declarations
 * Make it so I can compile pretty printed code?
 * Maybe dump the Doc approach and take my SMT concrete approach?
+* Don't pretty print numeric type 16 in haskellf as
+    2*2*2*2*(1+0) ??
+    depends if you want detailed type info or not.
 
 Error::
 * detect potential non-termination and perform appropriate abstraction and
@@ -62,6 +67,8 @@ Cleanup::
     SMT.Expression
 * Maybe avoid withloc everywhere in Grammar.y by pushing that to PatOrExp
   functions?
+* Should PrimArray be Smten.PrimArray or Smten.Array?
+    I'm not consistent in my use of names for this.
 
 SMT::
 * Remove bv-zero-extend from SMT syntax, use SMTLIB2 alternative
@@ -95,9 +102,6 @@ Known Bugs::
 * where shadow test (in Concrete)
 * STP bug (in Nest)
 * STP bug (in Bit)
-* Report an error for an unknown primitive encountered in SMT Translation
-* It's possible to use a symbolic thing in a different context than it was
-  defined, in which case bad stuff will happen.
 
 Suspected Bugs::
 * type synonyms are not qualified by their module
@@ -106,10 +110,23 @@ Suspected Bugs::
 * haskellf doesn't do the module exports it should
   If, for example, you want to interface with your haskell code
 * class names can't be qualified in instance declarations?
+* It's possible to use a symbolic thing in a different context than it was
+  defined, in which case bad stuff will happen.
+* PrimArray does not support symbolic computation. Smten will probably crash
+  if you try to make a PrimArray from a symbolic list.
             
 Other::
 * Update LICENSE files to include 2013 copyright.
 * TODO's inlined in the code
 * Do a code review of all of Smten, figure out what can be cleaned up and how.
 * Switch to n-ary "and" to help in debugging of SMT queries?
+* Report an error for an unknown primitive encountered in SMT Translation
+* Bug: foo :: Integer
+       fop = 3
+    Is accepted, and 'fop' is treated like 'foo'.
+    I should give an error here.
+ 
+    Actually, this should eventually be treated as a primitive declaration and 
+    definition of a different function without explicit signature.
+* Have flags in smten exe to call ghc appropriately.
 

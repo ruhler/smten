@@ -6,6 +6,7 @@ module Smten.Name.Sugar (
     boolN,
     errorN, ioN, bindN, nobindN,
     maybeN, nothingN, justN,
+    primArrayN,
     smtN, usedN, symbolicN,
     unqualified, qualified, qualification, isqualified,
     ) where
@@ -60,6 +61,9 @@ bindN = qualified preludeN $ name ">>="
 
 bitN :: Name
 bitN = name "Smten.Bit.Bit"
+
+primArrayN :: Name
+primArrayN = name "Smten.PrimArray.PrimArray"
 
 ioN :: Name
 ioN = qualified preludeN $ name "IO"

@@ -82,6 +82,7 @@ library
     Smten.Prim.Prim
     Smten.Prim.Prelude
     Smten.Prim.Bit
+    Smten.Prim.Array
 
     Smten.HaskellF.Compile
     Smten.HaskellF.Compile.HF
@@ -98,6 +99,7 @@ library
     Smten.HaskellF.Lib.Prelude
     Smten.HaskellF.Lib.Numeric
     Smten.HaskellF.Lib.Bit
+    Smten.HaskellF.Lib.PrimArray
     Smten.HaskellF.Lib.Trace
     Smten.HaskellF.TH
 
