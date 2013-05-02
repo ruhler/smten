@@ -22,6 +22,9 @@ instance (Eq a) => Eq [a] where
 instance (Eq a, Eq b) => Eq (a, b) where
    (==) a b = (fst a == fst b) && (snd a == snd b)
 
+instance (Eq a, Eq b, Eq c) => Eq (a, b, c) where
+   (==) (a1, a2, a3) (b1, b2, b3) = and [a1 == b1,  a2 == b2, a3 == b3]
+
 -- TODO: turn these into enum class methods.
 enumFromTo :: Integer -> Integer -> [Integer]
 enumFromTo a b =
@@ -204,6 +207,10 @@ instance (Ord a) => Ord [a] where
 
 instance (Ord a, Ord b) => Ord (a, b) where
     compare (a, b) (c, d) = __lexorder [compare a c, compare b d]
+
+instance (Ord a, Ord b, Ord c) => Ord (a, b, c) where
+    compare (a, b, c) (d, e, f)
+      = __lexorder [ compare a d, compare b e, compare c f]
 
 fst :: (a, b) -> a
 fst (x, _) = x

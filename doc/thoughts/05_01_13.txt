@@ -1,0 +1,190 @@
+
+Wed May  1 13:45:34 EDT 2013
+
+There are now three things on my todo list that I want to focus on next:
+
+1. Add support for arrays
+2. Add support for (..) in import and export specifications
+3. Add support for signatures in let declarations.
+
+Each of these could be hard to do fully right, but could be easy to get off
+the ground. I think I should try to just get things off the ground.
+
+Let's go in order with some thoughts.
+
+1. Arrays.
+Challenges show up when asking about how we deal with symbolic arrays. Let me
+avoid that issue for now by just ignoring it. Assume concrete arrays only.
+
+Clearly we'll want to use an underlying Haskell array. What primitives should
+I expose?
+
+It's harder to call a smten level function in the smten implementation than in
+the library, so let me assume I do that. What should I do in the library?
+
+Fundamentally I want the following:
+ - Arrays indexed by integer starting at 0.
+
+And say we can keep track of the length in the library.
+
+Then I want a Haskell type, which is an Array of expressions.
+I want primitives for:
+ - constant time access given an integer:
+    access :: Array a -> Integer -> a
+
+ - a way to create an array from initial elements.
+    I'm not sure if listArray or array makes most sense. What primitive does
+    ghc use? I'll want to use whatever is most efficient, if any.
+
+    
+
+ - possibly a way to update an array.
+    Again, with fastest support I can. probably:
+    update :: Array a -> [(Integer, a)] -> Array a
+
+    And this sounds to me like I want to array version for construction rather
+    than listArray.
+
+Let me look at the array implementation in ghc to get an idea.
+
+Looks like normal array creation is fine. So I propose the following primitive
+array interface:
+
+-- Primitive array with integer indices starting at 0.
+data PrimArray a = ;
+
+-- Construct a primitive array of given length with given initial values.
+primArray :: Integer -> [(Integer, a)] -> PrimArray a
+
+-- Constant time access to the given element of the array.
+primSelect :: PrimArray a -> Integer -> a
+
+-- Primitive array update.
+primUpdate :: PrimArray a -> [(Integer, a)] -> PrimArray
+
+
+Now, here's an interesting observation: In the haskell array I make, I would
+really like to enforce all elements are defined. Those left undefined by the
+user ought to be defined as smten level Error, not haskell level error. Is
+there a nice way in the API to handle that?
+
+I suppose the way to enforce that in the API would be:
+
+primArray :: [a] -> PrimArray a
+primSelect :: PrimArray a -> Integer -> a
+
+Just provide those two. Now the length of the array and indices are implicit
+in primArray, so we know every element is defined. We don't provide a way to
+update an array... you can always create a new one from scratch.
+
+That might be enough for what I want for now.
+
+And it's a simpler interface. So yes, I propose this second interface with
+just the two functions. I can figure out how to build up everything else on
+top of this interface.
+
+This could even be made amenable to symbolic computation, as long as I wrap
+primArray in something that forces the entire list first, and so long as I
+have a way to identify whether the select index is symbolic or not. If it is
+symbolic, I'll want to create a big if statement.
+
+Again, don't worry about those things on the first pass.
+
+Cool. Then I think this ought to be doable. I'll need 3 things: define the
+PrimArray type and the 2 primitive array functions. Then build up bigger
+arrays on top of that.
+
+Good. I think I'm ready to start implementing down this track, with the given
+simplifications.
+
+Now, thoughts on (2).
+
+Adding (..). The thing is, we need some mechanism to distinguish between type
+constructors and data constructors. So instead of using Name for an export,
+we'll want to use:
+    EntityType = DataCon | Other
+    Entity = (EntityType, Name)
+
+When you look up an entity for a data constructor for name resolution, write
+down explicitly that that is what you are doing.
+
+So, that's the mechanism there. I'm proposing we may wish to do that as a
+second step. The first step, just have the syntax for importing a bunch of
+names (..), without, currently distinguishing between data or type
+constructors.
+
+Good. So, the way it works is, given the name of a type, you can add (..). So
+we have another kind of entity. I need a couple of things:
+
+For exports:
+  Given the name of a type constructor, return all the things it defines.
+
+  For data type constructor, this means the names of constructors and, if it
+  is a record type, the name of accessors functions.
+
+  For class type constructor, this means the fields of the class.
+
+Do I have this information at export time?
+
+The information I have at export time is locals.
+Note: we might also be talking about different modules here!
+
+So, I wonder if it makes most sense to include this information somehow in the
+list of exports/locals.
+
+What I'm suggesting then, is having this info in:
+* locals
+* EntityMap
+
+Notice they both have the same type:
+    Map.Map Name [Name]
+
+Given a local name, return the set of possibly fully resolved names for the
+entity. Perhaps what I should do is augment this to look something like:
+
+    Map.map Name [(Name, [Name])]
+
+So we give the fully resolved names for the entity along with the set of other
+names that go with it (data constructors or methods). This doesn't say which
+of those are in scope... or does it? I suppose it could. I'm not sure.
+
+But this is something easy enough to come by. For locals: we compute it as we
+see things. For exports, we just consult what's in scope, possibly restricting
+it. For imports, we consult the entity map and possibly restrict it.
+
+Cool! That sounds like a good answer to me.
+
+I may want to pull out the EntityMap and abstract it, just so I'm clear on
+what operations I want to perform on it. Including fast access to:
+    Name -> [Name]  for children defined by this thing
+    Name -> Name for fully resolved thing.
+
+That sort of stuff.
+
+Good. That, I believe, is enough to start on (2).
+
+Wed May  1 15:10:21 EDT 2013
+
+Now: thoughts on (3).
+
+If I want to assume monomorphic declarations, I could just allow the
+declarations, and desugar them as follows:
+
+let x :: a
+    x = ...
+in e
+
+desugars to:
+
+let x = (... :: a)
+in e
+
+
+To handle polymorphic declarations as described in the haskell report is...
+involved.  We need to do henry milner, generalization, monomorphism
+restriction, inference of contexts, dependency analysis, all that fun stuff.
+
+So, I think, push that back to a later time.
+
+Okay then. Shall I start working on Array?
+
