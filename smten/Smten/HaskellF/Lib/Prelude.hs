@@ -13,7 +13,7 @@ module Smten.HaskellF.Lib.Prelude (
     Tuple2__(Tuple2__), __caseTuple2__,
     Tuple3__(Tuple3__), __caseTuple3__,
     Tuple4__(Tuple4__), __caseTuple4__,
-    List__(Cons__, Nil__), __caseCons__, __caseNil__,
+    List__(Cons__, Nil__), __caseCons__, __caseNil__, de_listHF,
     String,
     Maybe(Just, Nothing), __caseJust, __caseNothing,
 
@@ -152,6 +152,13 @@ instance (SmtenHF c f) => SmtenHF [c] (List__ f) where
         xs' <- de_smtenHF xs
         return (x':xs')
     de_smtenHF (List____s v) = de_smtenEH v
+
+de_listHF :: List__ a -> P.Maybe [a]
+de_listHF Nil__ = P.Just []
+de_listHF (Cons__ x xs) = do
+    xs' <- de_listHF xs
+    return (x:xs')
+de_listHF (List____s v) = P.Nothing
 
 type String = List__ Char
 

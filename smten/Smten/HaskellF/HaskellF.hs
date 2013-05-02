@@ -72,6 +72,10 @@ class (SmtenEH c, HaskellF f) => SmtenHF c f where
     de_smtenHF :: f -> Maybe c
     de_smtenHF = de_smtenEH . unbox
 
+instance (SmtenEH a, HaskellF a) => SmtenHF a a where
+    smtenHF = id
+    de_smtenHF = return
+
 conHF :: (HaskellF a) => a -> String -> [ExpH] -> ExpH
 conHF x nm args = aconEH (name nm) (smtenT x) args
 

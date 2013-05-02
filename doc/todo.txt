@@ -69,6 +69,10 @@ Cleanup::
   functions?
 * Should PrimArray be Smten.PrimArray or Smten.Array?
     I'm not consistent in my use of names for this.
+    I think, move PrimArray entirely into Data.Array, and don't expose it
+    elsewhere.
+* What's the difference between de_listHF and de_smtenHF for list?
+    Should there be a difference?
 
 SMT::
 * Remove bv-zero-extend from SMT syntax, use SMTLIB2 alternative

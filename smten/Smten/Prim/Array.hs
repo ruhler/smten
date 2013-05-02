@@ -4,6 +4,7 @@
 {-# LANGUAGE TypeSynonymInstances #-}
 
 module Smten.Prim.Array (
+    PrimArray(..),
     arrayPs,
     primArrayP, 
     primSelectP,
