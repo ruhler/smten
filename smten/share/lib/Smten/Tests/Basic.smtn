@@ -499,15 +499,6 @@ testparsedot :: IO ()
 testparsedot = do
    putStrLn . show $ "parsehi!"
 
-testlist :: IO ()
-testlist = do
-   test "tails" (tails "abc" == ["abc", "bc", "c", ""])
-   test "isPrefixOf" (isPrefixOf "foo" "foosball")
-   test "not isPrefixOf" (not $ isPrefixOf "fish" "foosball")
-   test "isInfixOf" (isInfixOf "oba" "foobar")
-   test "not isInfixOf" (not $ isInfixOf "abo" "foobar")
-   test "nub" (nub "abaabccabdabeaabc" == "abcde")
-
 testchar :: IO ()
 testchar = do
    test "char.lt" ('a' < 'z')
@@ -527,7 +518,6 @@ testbasics = do
     testarray
     testvector
     testbit
-    testlist
     testchar
     testtrace
 

@@ -114,6 +114,7 @@ Suspected Bugs::
   defined, in which case bad stuff will happen.
 * PrimArray does not support symbolic computation. Smten will probably crash
   if you try to make a PrimArray from a symbolic list.
+* I fail to do any bounds checking in Data.Array
             
 Other::
 * Update LICENSE files to include 2013 copyright.
