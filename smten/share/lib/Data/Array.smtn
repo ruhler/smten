@@ -1,5 +1,8 @@
 
-module Data.Array where
+module Data.Array (
+    Array, array, listArray, (!), bounds, indices, assocs, (//),
+    module Data.Ix
+  ) where
 
 import Data.Ix
 import Data.List(sortBy)

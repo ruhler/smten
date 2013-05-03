@@ -3,6 +3,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE TemplateHaskell #-}
+{-# OPTIONS_GHC -fprof-auto-top #-}
 
 module Smten.HaskellF.Lib.Prelude (
     Char,
@@ -68,7 +69,7 @@ instance SmtenHF P.Char Char where
 
     
 data Integer =
-        Integer P.Integer
+        Integer !P.Integer
       | Integer__s ExpH
 
 instance SmtenT Integer where
@@ -168,29 +169,37 @@ __prim_toInteger_Char = unaryHF toInteger_CharP
 __prim_fromInteger_Char :: Integer -> Char
 __prim_fromInteger_Char = unaryHF fromInteger_CharP
 
-__prim_eq_Integer :: Integer -> Integer -> Bool
-__prim_eq_Integer = binaryHF eq_IntegerP
-
 __prim_add_Integer :: Integer -> Integer -> Integer
-__prim_add_Integer = binaryHF add_IntegerP
+__prim_add_Integer (Integer av) (Integer bv) = smtenHF (p_impl add_IntegerP av bv)
+__prim_add_Integer a b = primHF (p_prim add_IntegerP) a b
 
 __prim_sub_Integer :: Integer -> Integer -> Integer
-__prim_sub_Integer = binaryHF sub_IntegerP
+__prim_sub_Integer (Integer av) (Integer bv) = smtenHF (p_impl sub_IntegerP av bv)
+__prim_sub_Integer a b = primHF (p_prim sub_IntegerP) a b
 
 __prim_mul_Integer :: Integer -> Integer -> Integer
-__prim_mul_Integer = binaryHF mul_IntegerP
+__prim_mul_Integer (Integer av) (Integer bv) = smtenHF (p_impl mul_IntegerP av bv)
+__prim_mul_Integer a b = primHF (p_prim mul_IntegerP) a b
+
+__prim_eq_Integer :: Integer -> Integer -> Bool
+__prim_eq_Integer (Integer av) (Integer bv) = smtenHF (p_impl eq_IntegerP av bv)
+__prim_eq_Integer a b = primHF (p_prim eq_IntegerP) a b
 
 __prim_lt_Integer :: Integer -> Integer -> Bool
-__prim_lt_Integer = binaryHF lt_IntegerP
+__prim_lt_Integer (Integer av) (Integer bv) = smtenHF (p_impl lt_IntegerP av bv)
+__prim_lt_Integer a b = primHF (p_prim lt_IntegerP) a b
 
 __prim_leq_Integer :: Integer -> Integer -> Bool
-__prim_leq_Integer = binaryHF leq_IntegerP
-
-__prim_gt_Integer :: Integer -> Integer -> Bool
-__prim_gt_Integer = binaryHF gt_IntegerP
+__prim_leq_Integer (Integer av) (Integer bv) = smtenHF (p_impl leq_IntegerP av bv)
+__prim_leq_Integer a b = primHF (p_prim leq_IntegerP) a b
 
 __prim_geq_Integer :: Integer -> Integer -> Bool
-__prim_geq_Integer = binaryHF geq_IntegerP
+__prim_geq_Integer (Integer av) (Integer bv) = smtenHF (p_impl geq_IntegerP av bv)
+__prim_geq_Integer a b = primHF (p_prim geq_IntegerP) a b
+
+__prim_gt_Integer :: Integer -> Integer -> Bool
+__prim_gt_Integer (Integer av) (Integer bv) = smtenHF (p_impl gt_IntegerP av bv)
+__prim_gt_Integer a b = primHF (p_prim gt_IntegerP) a b
 
 __prim_show_Integer :: Integer -> String
 __prim_show_Integer = primHF show_IntegerP

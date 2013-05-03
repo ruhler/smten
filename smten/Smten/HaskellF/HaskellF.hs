@@ -6,7 +6,7 @@
 module Smten.HaskellF.HaskellF (
     HaskellF(..), HaskellF1(..), HaskellF2(..), HaskellF3(..), HaskellF4(..),
     SmtenHF(..),
-    conHF, de_conHF, caseHF, primHF, unaryHF, binaryHF, 
+    conHF, de_conHF, caseHF, primHF, unaryHF,
     ) where
 
 import Smten.Name
@@ -104,11 +104,4 @@ unaryHF p a
  | Just av <- de_smtenHF a = smtenHF (p_impl p av)
  | otherwise = primHF (p_prim p) a
 
-
-binaryHF :: (SmtenHF ca fa, SmtenHF cb fb, SmtenHF cc fc)
-           => PrimF (ca -> cb -> cc) -> fa -> fb -> fc
-binaryHF p a b
- | Just av <- de_smtenHF a
- , Just bv <- de_smtenHF b = smtenHF (p_impl p av bv)
- | otherwise = primHF (p_prim p) a b
 

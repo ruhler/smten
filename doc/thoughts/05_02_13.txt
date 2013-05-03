@@ -1,0 +1,54 @@
+
+Thu May  2 10:51:16 EDT 2013
+
+I cleaned up arrays a bit and switched to using them for regs in SHampi. It
+hurts a bunch. Array access takes up 20% of the program time.
+
+And the reason? Because of excessive time spent boxing. Is there some way to
+concertize arrays and array access?
+
+Let me try and make things clearer.
+
+box takes an ExpH and converts it to its HaskellF representation.
+
+So, I had: [(Integer, RegEx)]
+I converted it to: HF.[(HF.Integer, HF.RegEx)]
+In making an array, we switch to: [unbox (HF.RegEx)]
+Whenever we access an element, we do: box (elem)
+
+So, for each RegEx I access, I call: box (unbox (HF.RegEx)). Ideally this
+would be totally free. In practice, it requires a big traversal.
+
+Hmm... Maybe what I really want is to implement PrimArray more wisely in
+HaskellF? I mean, I'm assuming everything is concrete, so why not have it be:
+
+PrimArray a = PrimArray (Array P.Integer a)
+            | PrimArray__s ExpH
+
+box1 :: ExpH -> PrimArray a
+
+Ug. I don't know. Sigh.
+
+It would seem, before I can get any benefit from arrays, I need to concretize
+them in the HaskellF backend.
+
+I may as well try doing that now.
+
+Thu May  2 11:19:39 EDT 2013
+
+Ug. The trouble is, we still have to do a bunch of conversions I don't want to
+do. Sadness.
+
+I wonder if all these issues would go away if I used the interpreter? Then we
+don't have to pay the cost of boxing again, because we just use it in that
+format. But we also don't get speedups from concretization, and we need to be
+able to express everything we want (in particular: generated Happy code) in
+smten.
+
+There's also this question of whether I can somehow compile things ahead of
+time so that we don't have to pay the cost of type checking and all that stuff
+every time we run.
+
+I don't know. I'm going to take a nap now.
+
+
