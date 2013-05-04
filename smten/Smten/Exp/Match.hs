@@ -62,16 +62,20 @@ tupleP ps = ConP (tupleN (length ps)) ps
 sigP :: Pat -> Type -> Pat
 sigP = SigP
 
--- Share the given expression properly.
-sharedM :: Location -> Exp -> (Exp -> Fresh Exp) -> Fresh Exp
-sharedM _ x f | isSimple x = f x
-sharedM l x f = do
+-- Give a fresh name to the given expression.
+freshnameM :: Location -> Exp -> (Exp -> Fresh Exp) -> Fresh Exp
+freshnameM l x f = do
    xv@(Sig nv _) <- fresh (Sig (name "_s") UnknownT)
    body <- f (varE l xv)
    let z = if isfree nv body
              then letE l xv x body 
              else body
    return z
+
+-- Share the given expression properly.
+sharedM :: Location -> Exp -> (Exp -> Fresh Exp) -> Fresh Exp
+sharedM _ x f | isSimple x = f x
+sharedM l x f = freshnameM l x f
 
 -- | Perform a pattern match.
 -- case x of
@@ -100,6 +104,7 @@ patM l x (IrrefP p) yv _ = sharedM l x $ \xv -> do
 -- This requires the argument is simple, to avoid a sharing leak.
 irref :: Location -> Exp -> Pat -> Fresh [(Sig, Exp)]
 irref _ x p | not (isSimple x), _:_:_ <- varPs p = error "irref sharing leak"
+irref l x (VarP n) = return [(Sig n UnknownT, x)]
 irref l xv p = do
   let vars = varPs p
       argf :: Name -> Fresh Exp
@@ -146,8 +151,8 @@ data WBodies = WBodies Location [Body] [(Pat, Exp)]
     deriving (Eq, Show)
 
 wbodiesM :: WBodies -> Exp -> Fresh Exp
-wbodiesM (WBodies l bs ls) n = do
-  bs' <- bodiesM bs n
+wbodiesM (WBodies l bs ls) n = freshnameM l n $ \nv -> do
+  bs' <- bodiesM bs nv
   mletsM l ls bs'
 
 data Alt = Alt Pat WBodies

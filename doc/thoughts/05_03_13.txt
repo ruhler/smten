@@ -1,0 +1,404 @@
+
+Fri May  3 07:14:26 EDT 2013
+
+SHampi suggests there is still a large gap between haskell performance and
+concrete smten performance. This makes me sad. I would really like to reduce
+this.
+
+It shouldn't be such a big gap, I don't feel like. Not unless haskell does a
+whole bunch of special tricks for common, low level things, which it can't do
+in my generated code.
+
+I don't think that's just the case. I think there is some improvement I can
+make to the generated haskellf code so that it runs possibly much faster.
+
+So, in that vein, I want to reproduce the performance observations with some
+simple performance benchmarks, and see if I can't figure out what's up.
+
+One example of what the problem may be: consider '<' for integers. In haskell,
+the only memory required for that operator is the new boolean returned. In
+haskellf, because of how we do pattern guards, there is at least a couple of
+maybe types introduced that I bet we could get rid of. I'm not sure how much
+of a difference that will make.
+
+So let me try it. First thing I can think of: the simplest program: count the
+sum of integers from 0 to N.
+
+This includes comparisons, additions, and case expressions.
+
+Fri May  3 07:30:08 EDT 2013
+
+First case: stupid fibonacci of 40.
+
+Concrete Haskell: about 10 seconds and no memory
+Smten: about 30 seconds and lots of memory.
+
+This I ought to be able to improve. Let's look at some profiling.
+
+My feeling is, we ought not to have to make any Exp at all here. Because
+everything is concrete. If that is wrong, then that's certainly something to
+fix.
+
+I'll want to look at the heap profile to see where all this memory consumption
+is coming from.
+
+Time is being spent in the operators: subtract, add, less than.
+In binaryHF.
+
+Calls to p_impl and de_smtenHF...
+
+Observations:
+* de_smtenHF creates a Maybe object we could potentially avoid
+
+Ideas:
+* don't use binaryHF, hard code the best version I can for +, -, <
+* specialize binaryHF for (Integer -> Integer -> Integer) and 
+  (Integer -> Integer -> Bool)?
+* come up with some other way to case on concrete vs. symbolic which doesn't
+  require allocating a Maybe object?
+
+It might turn out that the prelude is just a little messy to write. I don't
+think binaryHF is used elsewhere.
+
+Looking at the memory profile: Everything is of type '*'. Which is not at all
+helpful.
+
+Let me try rewriting +, -, and < and see if that helps significantly.
+
+Fri May  3 07:51:29 EDT 2013
+
+After that change: smten still uses up a bunch of memory.
+But it goes about 3 times faster, and uses less than half the memory from
+before.
+
+Good news now: < takes up no memory in the profile.
+
+But why does (-) and (+) still take memory? Are we really paying so much for
+the Integer box?
+
+What if I made the constructor strict?
+
+That's it! That's the memory leak. The space leak anyway.
+
+The overall performance and memory usage hasn't actually improved that much.
+But a fair amount, so we will definitely want to do this.
+
+Unless... is there any reason to distinguish between _|_ and Integer _|_?
+I'm not sure.
+
+Anyway... you know what's interesting? The smten program now runs faster than
+the haskell one! Hurray.
+
+So clearly that's that problem.
+
+The question I have is... 
+
+do I have to fix all the primitives like this, or is there some way I can make
+them generic and high performance at the same time?
+
+Let me summarize the things I believe matter:
+* don't call de_smtenHF to figure out if concrete: it allocates a Maybe that
+  we don't want to allocate.
+* be strict in the application of smtenHF, or make smtenHF strict for Integer,
+  or something like that
+
+Let me think about how I could structure things to get the advantage of these
+things without having to manually rewrite every primitive.
+
+Fri May  3 08:48:33 EDT 2013
+
+Observations:
+* The strictness flag (!) on Integer does the same as using ($!) Integer in
+  place of the constructor. I'm not sure which is the better approach to use.
+* using p_impl add_IntegerP instead of (+) doesn't slow things down.
+* using smtenHF doesn't hurt (in this case we know the type)
+* using smtenHF hurts a little (30% overhead) if we use it polymorphically
+* using SPECIALIZE doesn't seem to fix the previous point.
+* using two non-polymorphic functions doesn't seem to fix the previous point.
+
+It looks like, for the purposes of optimization, I want to call p_prim on a
+specific PrimF. That puts a restriction on what kind of abstractions I can
+efficiently use.
+
+Fri May  3 09:38:38 EDT 2013
+
+Well, I think that was a good performance improvement, but it certainly wasn't
+everything. I wish I could use a real application, like shampi, to guide my
+exploration in this respect.
+
+Fri May  3 09:59:19 EDT 2013
+
+I don't know what next here. I fear the way I do case expressions could be
+doing bad things, but I don't know. I suppose lots of things could be doing
+bad things. Let me ponder a bit.
+
+Fri May  3 11:06:01 EDT 2013
+
+Another interesting thing to try is run my performance test in the
+interpreter. I suspect I do the same thing there as I did in binaryHF where we
+introduce a maybe type to test for concrete or not. It could, perhaps, be a
+significant advantage to use a switch statement instead.
+
+That is, we want something like:
+
+ de_smtenEH :: forall b. ExpH -> (a -> b) -> (ExpH -> b) -> b
+
+This says what to do if it is concrete and what to do if it is not concrete.
+We potentially avoid an overhead...
+
+But maybe not. Who knows? I introduce maybe types all over in my
+implementation. It would be sad to learn that's slowing us down in a
+significant way.
+
+binaryTP does seem to be expensive:
+    sub_IntegerP: 8.5% time, 16% mem
+    add_IntegerP 4% time, 8% mem
+    lt_IntegerP 6% time, 10% mem
+
+30% of time (but no alloc) is spent comparing types to look up primitives in
+the map. I wonder if we could come up with a more efficient map for primitives.
+
+43% time, 56% time is spent in appEH. 
+
+So, those are three possibilities for improving performance of the interpreted
+code: smarter primitive handling (like for haskellf), better inlining cache,
+and, somehow, better appEH.
+
+Again, I think the trouble with binaryTP is like before:
+ * we introduce 'Maybe' types to help with pattern matching, when we needn't.
+ * we use polymorphic code (this may or may not be a problem)
+
+This also brings up an idea which I've been having recently.
+
+Can I make a different backend, which compiles to haskell, but is totally
+interpreted?
+
+The goal would be: avoid the overhead of parsing and type checking all the
+time. And avoid the overhead of inlining. But leave all the computation in the
+interpreter.
+
+How to handle type classes is an open question.
+
+This actually sounds like a cool option to me. I would be interested in seeing
+how it performs compared to haskellf.
+
+The other question to explore is: how much is using Maybe for pattern matching
+hurting me?
+
+For example, anywhere I have:
+    de_foo :: a -> Maybe b
+
+Could I change that just as easily to:
+    de_foo :: a -> (b -> c) -> c -> c
+
+Something like a fromMaybe?
+
+Then how could we compose these things?
+
+For example:
+
+de_conEH :: ExpH -> a -> ((Name, Type, [ExpH]) -> a) -> a
+de_conEH e d f
+  | ConEH n t xs <- force e = f (n, t, xs)
+  | otherwise = d
+
+de_kconEH :: Name -> ExpH -> a -> ([ExpH] -> a) -> a
+de_kconEH n x d f = 
+  de_conEH x d (\(nm, _, vs) ->
+    if (nm == n)
+        then vs
+        else d
+
+That's slightly ugly... But it also may be possible to make a nice pattern
+matching monad, as it were.
+
+What is a pattern matching monad? It's something that computes either a value
+based on an object, or a default.
+
+For example, something like:
+
+de_conEH :: ExpH -> Match (Name, Type, [ExpH])
+de_conEH e
+  | ConEH n t xs <- force e = return (n, t, xs)
+  | otherwise = fail
+
+de_kconEH :: Name -> ExpH -> Match [ExpH]
+de_kconEH n x = do 
+  (nm, _, vs) <- de_conEH x
+  guard (nm == n)
+  return vs
+
+In other words, it looks just like Maybe.
+
+The difference is, I'm going to given you a special function for running a
+match?
+
+runMatch :: Match a -> b -> (a -> b) -> b
+
+But, what is match then?
+
+I could certainly implement it with maybe, but the whole point is that I want
+to avoid that.
+
+Conceptually match is a function you call, which either does something or a
+default.
+
+Oh. Maybe I want:
+
+runMatch :: a -> Match a -> a
+
+It's just like fromMaybe.
+
+Match a = (\a -> a)
+
+Given the default value, you give me the real value. Does that make sense?
+Let's see.
+
+return x = const x  -- ignore the default and return the matched value.
+fail = id           -- take the default value.
+
+bind :: Match a -> (a -> Match b) -> Match b
+bind x f = \bdef ->
+
+And here we run into a problem, because I don't have a default value to give
+for 'a'.
+
+What I want to say is: if we use the default for a...
+No. I want to say: if the match against 'a' failed, then we should fail.
+Otherwise succeed, get the result of the match.
+
+But that seems to suggest we need a Maybe, which I wanted to avoid.
+
+Could we use bigger types?
+
+I don't know. I'll think some more.
+
+Fri May  3 12:45:00 EDT 2013
+
+I think the following would give what you want:
+data Match b a = Match (b -> (a -> b) -> b)
+
+This says: you give me a default value 'b', a matching function to call if a
+matches, and the value to match against, and I either give you the default or
+call your function.
+
+Or something like that.
+
+Let me try a little harder.
+
+return x = ignore the default, always call the function you gave with x as the
+argument.
+
+return x = \_ f -> f x
+fail = \d _ -> d
+
+bind :: Match c a -> (a -> Match c b) -> Match c b
+bind x f = \cdef cf = x cdef (\av -> f av cdef)
+
+That might be it.
+
+Call 'x' with default of cdef. If that succeeds, take the result, figure out
+what 'f' is to match, and give it a default value.
+
+Then just make your Matches always polymorphic in 'c', because it shouldn't
+have to know that.
+
+Match t x says: I am going to try and match against some type 'x' to get an
+object of type 't'.
+
+That's exactly like a case expression.
+
+One wonders if we could do this to get rid of the need entirely for case
+expressions and exported constructors. We could be totally abstract then.
+
+For example:
+
+left :: Match c (Either a b) 
+left = \def f x -> case x of
+                      Left -> f x
+                      _ -> def
+
+Does this compose well? Can we do alternatives?
+
+I don't know. Does it really matter?
+
+I guess it only matters if it has better performance than Maybe, or if I could
+use it to make writing smten code in haskell easy enough to avoid the need for
+my own compiler.
+
+Fri May  3 14:05:19 EDT 2013
+
+Here's how it would work:
+
+left :: Either a b -> Match s a
+right :: Either a b -> Match s b
+
+Treat 's' as like an ST state phantom type like thing.
+
+
+data Match s a = Match ((a -> s) -> s -> s)
+
+match :: Match a a -> a -> a
+match m d = m id d
+
+return x = \f _ -> f x
+fail = \_ n -> n
+
+bind :: Match s a -> (a -> Match s b) -> Match s b
+bind x f = \(y :: b -> s) (d :: s) -> 
+  let g :: a -> s
+      g = \v -> f v y d
+  in x g d
+
+Now, something we might want is alternatives. So, like mplus.
+
+-- Matches the first, otherwise matches the second
+mplus :: Match s a -> Match s a -> Match s a
+mplus a b = \y d -> a y (b y d)
+
+Easy!
+
+Now, I wonder if we could re-write case syntax some how to desugar into this.
+Or if that would cause issues.
+
+Primitive implementation:
+
+left :: Either a b -> Match s a
+left x = \y d -> case x of
+                    Left a -> y a
+                    _ -> d
+
+Nice.
+
+So, maybe the question is... can I make use of this somehow?
+
+Maybe in the smten implementation to avoid introduction of 'Maybe'? That only
+makes sense if the performance is better than using maybe. Presumably
+functions cost something to allocate too.
+
+Maybe I could use it to make it easier to write smten as a DSEL in haskell?
+
+How would you handle nullary constructors? Or constructors with multiple
+arguments? I could use tuples and unit, but then I'm allocating those things
+when I rather not. I guess that's the natural thing to do here though. For
+example, I would like to do things like:
+
+  do 
+    true x
+    return a
+
+For example, an if statement would be:
+  mplus (true x >> return y) (return n)
+
+A syntax for that would be nice.
+
+And multi args:
+
+  do
+    (x, xs) <- de_cons y
+    ...
+    
+It's just like Maybe, except we don't create 'Nothing', we call a function.
+Not sure if this would have better performance. The code would look exactly
+the same.
+

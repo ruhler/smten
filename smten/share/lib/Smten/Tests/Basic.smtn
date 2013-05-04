@@ -408,15 +408,15 @@ testwhereclause = do
                where nv = not v
             _ -> False
       )
--- TODO: this test fails!
---    test "where clause shadow" (
---        3 == (let z = (3 :: Integer)
---              in case z of
---                    p | p /= 3 -> z
---                      where z = p+1
---                    _ -> z
---             )
---      )
+
+    test "where clause shadow" (
+        3 == (let z = (3 :: Integer)
+              in case z of
+                    p | p /= 3 -> z
+                      where z = p+1
+                    _ -> z
+             )
+      )
 
 testletclause :: IO ()
 testletclause = do
