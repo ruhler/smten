@@ -45,8 +45,8 @@ primArrayP :: PrimF ([ExpH] -> PrimArray)
 primArrayP =
   let f :: [ExpH] -> PrimArray
       f xs = PrimArray $ listArray (0, genericLength xs - 1) xs
-  in unaryPF "Smten.PrimArray.primArray" f
+  in unaryPF "Data.Array.primArray" f
 
 primSelectP :: PrimF (PrimArray -> Integer -> ExpH)
-primSelectP = binaryPF "Smten.PrimArray.primSelect" ((!) . prim_array )
+primSelectP = binaryPF "Data.Array.primSelect" ((!) . prim_array )
 

@@ -1,8 +1,0 @@
-
-module Smten.PrimArray where
-
-data PrimArray a = 
-
-primArray :: [a] -> PrimArray a
-primSelect :: PrimArray a -> Integer -> a
-

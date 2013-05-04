@@ -1,7 +1,7 @@
 
 {-# LANGUAGE PatternGuards #-}
 
-module Smten.HaskellF.Lib.PrimArray (
+module Smten.HaskellF.Lib.Array (
     PrimArray, primArray, primSelect,
     ) where
 

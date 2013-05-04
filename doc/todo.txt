@@ -1,6 +1,4 @@
 Recent::
-* Change shampi to use recursive let and arrays
-  Now that they are supported. Add instances of Ix as needed to be nice.
 * Add support for (..) in import and export specifications
 * Add support for signatures in let declarations
 
@@ -67,10 +65,6 @@ Cleanup::
     SMT.Expression
 * Maybe avoid withloc everywhere in Grammar.y by pushing that to PatOrExp
   functions?
-* Should PrimArray be Smten.PrimArray or Smten.Array?
-    I'm not consistent in my use of names for this.
-    I think, move PrimArray entirely into Data.Array, and don't expose it
-    elsewhere.
 * What's the difference between de_listHF and de_smtenHF for list?
     Should there be a difference?
 

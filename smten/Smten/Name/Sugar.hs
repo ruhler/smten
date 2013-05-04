@@ -63,7 +63,7 @@ bitN :: Name
 bitN = name "Smten.Bit.Bit"
 
 primArrayN :: Name
-primArrayN = name "Smten.PrimArray.PrimArray"
+primArrayN = name "Data.Array.PrimArray"
 
 ioN :: Name
 ioN = qualified preludeN $ name "IO"

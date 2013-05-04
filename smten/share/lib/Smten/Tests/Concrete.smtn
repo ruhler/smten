@@ -7,7 +7,6 @@ import Smten.Tests.Basic
 import Smten.Tests.State
 import Smten.Tests.DataMap
 import Smten.Tests.Module
-import Smten.Tests.PrimArray
 import Smten.Tests.List
 
 tests :: IO ()
@@ -18,7 +17,6 @@ tests = do
     testdatamap
     testmodule
     testlist
-    testprimarray
 
 main :: IO ()
 main = do

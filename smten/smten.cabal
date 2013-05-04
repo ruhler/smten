@@ -99,7 +99,7 @@ library
     Smten.HaskellF.Lib.Prelude
     Smten.HaskellF.Lib.Numeric
     Smten.HaskellF.Lib.Bit
-    Smten.HaskellF.Lib.PrimArray
+    Smten.HaskellF.Lib.Array
     Smten.HaskellF.Lib.Trace
     Smten.HaskellF.TH
 
