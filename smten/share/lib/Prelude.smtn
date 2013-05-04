@@ -54,10 +54,14 @@ class Num a where
 
 class Monad m where
   (>>=) :: m a -> (a -> m b) -> m b
+
   (>>) :: m a -> m b -> m b
   (>>) a b = a >>= const b
+
   return :: a -> m a
+
   fail :: String -> m a
+  fail s = error s
 
 sequence :: Monad m => [m a] -> m [a]
 sequence [] = return []
@@ -418,15 +422,11 @@ data IO a =
 
 -- The IO monad primitives
 return_io :: a -> IO a
-nobind_io :: IO a -> IO b -> IO b
 bind_io :: IO a -> (a -> IO b) -> IO b
-fail_io :: String -> IO a
 
 instance Monad IO where
   return = return_io
   (>>=) = bind_io
-  (>>) = nobind_io
-  fail = fail_io
 
 -- Print a character to stdou.
 putChar :: Char -> IO ()

@@ -24,7 +24,7 @@ module Smten.HaskellF.Lib.Prelude (
     __prim_lt_Integer, __prim_gt_Integer, __prim_leq_Integer, __prim_geq_Integer,
     __prim_show_Integer,
 
-    return_io, bind_io, nobind_io, fail_io, putChar, getContents,
+    return_io, bind_io, putChar, getContents,
     error, valueof, numeric, __main_wrapper,
     ) where
 
@@ -209,12 +209,6 @@ return_io = primHF return_IOP
 
 bind_io :: (HaskellF a, HaskellF b) => IO a -> (a -> IO b) -> IO b
 bind_io = primHF bind_IOP
-
-nobind_io :: (HaskellF a, HaskellF b) => IO a -> IO b -> IO b
-nobind_io = primHF nobind_IOP
-
-fail_io :: (HaskellF a) => String -> IO a
-fail_io = primHF fail_IOP
 
 putChar :: Char -> IO Unit__
 putChar = primHF putCharP

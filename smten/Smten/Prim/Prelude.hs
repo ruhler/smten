@@ -7,7 +7,7 @@ module Smten.Prim.Prelude (
     lt_IntegerP, leq_IntegerP, gt_IntegerP, geq_IntegerP,
     toInteger_CharP, fromInteger_CharP,
     show_IntegerP,
-    return_IOP, bind_IOP, nobind_IOP, fail_IOP,
+    return_IOP, bind_IOP,
     putCharP, getContentsP,
     numericP, valueofP,
     traceP, traceEP
@@ -32,8 +32,7 @@ preludePs = [
     p_prim gt_IntegerP, p_prim geq_IntegerP,
     p_prim toInteger_CharP, p_prim fromInteger_CharP,
     show_IntegerP,
-    return_IOP,  fail_IOP,
-    bind_IOP, nobind_IOP,
+    return_IOP, bind_IOP,
     putCharP, getContentsP,
     numericP, valueofP,
     traceP, traceEP
@@ -82,12 +81,6 @@ return_IOP = unaryP "Prelude.return_io" (return :: ExpH -> IO ExpH)
 
 bind_IOP :: Prim
 bind_IOP = binaryP "Prelude.bind_io" ((>>=) :: IO ExpH -> (ExpH -> IO ExpH) -> IO ExpH)
-
-nobind_IOP :: Prim
-nobind_IOP = binaryP "Prelude.nobind_io" ((>>) :: IO ExpH -> IO ExpH -> IO ExpH)
-
-fail_IOP :: Prim
-fail_IOP = unaryP "Prelude.fail_io" (fail :: String -> IO ExpH)
 
 putCharP :: Prim
 putCharP = unaryP "Prelude.putChar" putChar
