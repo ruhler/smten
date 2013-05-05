@@ -99,6 +99,8 @@ Known Bugs::
 * HaskellF sharing of appeval
 * STP bug (in Nest)
 * STP bug (in Bit)
+* precedence 2 bug (in Basic)
+* precedence 3 bug (in Basic)
 
 Suspected Bugs::
 * type synonyms are not qualified by their module

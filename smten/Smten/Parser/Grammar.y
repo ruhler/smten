@@ -136,7 +136,6 @@ import Smten.Parser.Utils
 %left '+' '-'
 %left '*'
 %right '.'
-%nonassoc op
 
 %%
 
@@ -411,6 +410,8 @@ poe :: { PatOrExp }
  | poe '<=' poe {% lopPE "<=" $1 $3 }
  | poe '>=' poe {% lopPE ">=" $1 $3 }
  | poe '>' poe {% lopPE ">" $1 $3 }
+    -- TODO: in poe op poe, op should be left associative with same precedence
+    -- as '.'
  | poe op poe {% withloc $ \l -> appsPE l $2 [$1, $3] }
 
 lpoe :: { PatOrExp }

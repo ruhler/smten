@@ -240,6 +240,11 @@ patternlet =
 data DerivedEq a = DEq1 a | DEq2 a a
     deriving (Eq)
 
+-- Funny operator, for testing precedence of operaters with no fixity
+-- specified.
+(++++) :: Integer -> Integer -> Integer
+(++++) a b = 2*a + b
+
 testbasic :: IO ()
 testbasic = do
     test "a" ((42 :: Integer) == (\x -> (((x*x) + (3*x)) + 2)) 5)
@@ -294,6 +299,11 @@ testbasic = do
     test "or lazy" (True || (error "or is not lazy"))
     test "and lazy" (not (False && (error "and is not lazy")))
     test "precedence" (1*2+3-4*5+6-7 == negate (16 :: Integer))
+--    TODO: fix these failing test cases!
+--    test "precedence 2" ((let f = (-) 
+--                          in 10 `f` 2 `f` 3
+--                         ) == (5 :: Integer))
+--    test "precedence 3" ((2 ++++ 3 ++++ 5) == (19 :: Integer))
     testaspattern
     testarithsequence
     teststringliteralpattern
