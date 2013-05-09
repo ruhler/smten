@@ -10,13 +10,13 @@ userinstall:
 testio:
 	./build/home/.cabal/bin/smten --io \
 		--include smten/share/lib \
-		--file smten/share/lib/Smten/Tests/Concrete.smtn \
-		--main-is Smten.Tests.Concrete.main +RTS -p
+		--file smten/share/lib/Smten/ModelChecking/Test.smtn \
+		--main-is Smten.ModelChecking.Test.main
 
 testph:
 	./build/home/.cabal/bin/smten --phases \
 		--include smten/share/lib \
-		--file smten/share/lib/Smten/Tests/Concrete.smtn \
+		--file smten/share/lib/Smten/ModelChecking/Test.smtn \
 		-o build/test/phases
 
 clean:

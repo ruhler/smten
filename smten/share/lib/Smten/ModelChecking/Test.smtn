@@ -1,0 +1,17 @@
+
+module Smten.ModelChecking.Test where
+
+import Smten.SMT.Symbolic
+import Smten.Tests.Test
+import Smten.ModelChecking.Bounded
+import Smten.ModelChecking.ShiftReg
+
+testsimple :: IO ()
+testsimple = do
+    s <- runSymbolic Yices2 Nothing (check shiftregm shiftregf 3)
+    putStrLn $ show s
+
+main :: IO ()
+main = do
+    testsimple
+

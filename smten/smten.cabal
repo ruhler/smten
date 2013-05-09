@@ -19,6 +19,7 @@ data-files:
     lib/Debug/*.smtn
     lib/Data/*.smtn
     lib/Smten/*.smtn
+    lib/Smten/ModelChecking/*.smtn
     lib/Smten/Tests/*.smtn
     lib/Smten/Tests/ShouldFail/*.smtn
     lib/Smten/Sudoku/*.smtn

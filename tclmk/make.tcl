@@ -171,6 +171,7 @@ io Smten.SMT.Tests.AllQ
 io Smten.SMT.Tests.AllQ2
 io Smten.SMT.Tests.Isolate0
 io Smten.SMT.Tests.Sudoku
+io Smten.ModelChecking.Test
 
 # The pretty printer test
 indir build/smten-bin {

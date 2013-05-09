@@ -183,6 +183,16 @@ class (Eq a) => Ord a where
     (>=) :: a -> a -> Bool
     (>=) a b = compare a b /= LT
 
+    max :: a -> a -> a
+    max x y
+        | x <= y = y
+        | otherwise = x
+
+    min :: a -> a -> a
+    min x y
+        | x <= y = x
+        | otherwise = y
+
 
 __prim_lt_Integer :: Integer -> Integer -> Bool
 __prim_gt_Integer :: Integer -> Integer -> Bool

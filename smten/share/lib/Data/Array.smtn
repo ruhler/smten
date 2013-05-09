@@ -1,6 +1,6 @@
 
 module Data.Array (
-    Array, array, listArray, (!), bounds, indices, assocs, (//),
+    Array, array, listArray, (!), bounds, indices, elems, assocs, (//),
     module Data.Ix
   ) where
 
@@ -44,6 +44,9 @@ bounds (MkArray b _) = b
 
 indices :: Ix i => Array i e -> [i]
 indices = range . bounds
+
+elems :: Ix i => Array i e -> [e]
+elems a = map (\i -> a ! i) (indices a)
 
 assocs :: Ix i => Array i e -> [(i, e)]
 assocs a = map (\i -> (i, a!i)) (indices a)
