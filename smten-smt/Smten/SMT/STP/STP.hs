@@ -124,7 +124,8 @@ mkExpr _ e = error $ "TODO: STP.mkExpr " ++ show e
 stp :: IO S.Solver
 stp = do
   ptr <- c_vc_createValidityChecker
-  fvc <- F.newForeignPtr ptr (c_vc_Destroy ptr)
+  -- TODO: this leaks STP pointers?
+  fvc <- F.newForeignPtr ptr (return ())
   vars <- newIORef Map.empty
   let s = STP { stp_fvc = fvc, stp_vars = vars }
   return $ S.Solver {

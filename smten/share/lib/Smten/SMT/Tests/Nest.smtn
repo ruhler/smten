@@ -1,5 +1,5 @@
 
-module Smten.SMT.Tests.Nest where
+module Smten.SMT.Tests.Nest (tests) where
 
 import Prelude
 import Smten.SMT.Symbolic
@@ -78,10 +78,9 @@ qtest = do
 --            test "nest.bug2.v" (v == Just ())
         
     
-main :: IO ()
-main = do
+tests :: IO ()
+tests = do
     runSMT Yices1 (Just "build/test/Nest.yices1.dbg") qtest
     runSMT Yices2 (Just "build/test/Nest.yices2.dbg") qtest
     runSMT STP (Just "build/test/Nest.stp.dbg") qtest
-    putStrLn "NEST PASSED"
 

@@ -25,7 +25,7 @@ instance SmtenT1 PrimArray where
     smtenT1 _ = ConT primArrayN (ArrowK NumK StarK)
 
 instance HaskellF1 PrimArray where
-    box1 = P.error "TODO: PrimArray box1"
+    box1 = PrimArray__s
     unbox1 = P.error "TODO: PrimArray unbox1"
 
 primArray :: (HaskellF a) => List__ a -> PrimArray a

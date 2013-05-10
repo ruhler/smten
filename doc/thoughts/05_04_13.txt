@@ -1,0 +1,218 @@
+
+Sat May  4 16:03:47 EDT 2013
+
+Goal: understand and fix where clause shadow bug.
+
+Here is the test case:
+
+let z = (3 :: Integer)
+in case z of
+      p | p /= 3 -> z
+        where z = p+1
+      _ -> z
+
+The claim is, this should be 3, but in my implementation it is 4.
+
+Why should it be 3? Well, I think that's clear.
+
+The question is, why are we getting 4?
+
+It has to do with how we desugar things. We desugar things something like:
+
+let z = 3
+in let p = z
+   in if (p /= 3)
+         then let z = p+1
+              in z
+         else z
+
+...
+
+But I'm not doing that. I must instead be doing:
+     
+
+let z = 3
+in let p = z
+   in let z = p+1
+      in if (p /= 3)
+         then z
+         else z
+
+Strange. 
+
+The where block should apply to the entire body: p | ..., and all its
+alternatives. But not to the next body?
+
+Wait. No. The where applies only to the "->"?
+
+We have the following cases:
+1.   f = ...  where ...
+2.  f | ...
+      | ...
+      ...
+         where ...
+3. p -> ... where ...
+4. p | ... -> ...
+     | ... -> ...
+     ...
+        where ...
+
+Is this right? Do I have the syntax wrong?
+
+Let's look at case alternatives first.
+
+3. This is correct.
+4. Wrong! We only have a where if there is a '->'.
+Wait. No. Maybe it is correct.
+
+Yes. We can have the where after any -> exp.
+
+The question is, what is the scope of the where?
+
+The 'where' scopes over all of the guards and the expressions of single
+alternative. An alternative matches a single pattern, but may have multiple
+pattern guard, result pairs.
+
+Here's how it works:
+1. Match the pattern: so pattern bindings come in scope
+2. Add the where bindings to scope
+3. Evaluate the guards sequentially
+
+Good. So I have the parser right, I believe. The where is associated with an
+alternative.
+
+So, back to our example:
+
+let z = (3 :: Integer)
+in case z of
+      p | p /= 3 -> z
+        where z = p+1
+      _ -> z
+
+This should desugar something like:
+
+let z = 3
+in let s = z    -- default case
+   in let p = z
+      in let z = p+1
+         in case p /= 3 of
+                True -> z
+                _ -> s
+
+And there should be no issues with shadowing.
+
+The desugaring I'm actually getting is:
+            
+let z = (\z -> z) (id (fromInteger 3))
+in (\p -> let z = (\z -> z) (+ p 1)
+          in case (p /= 3) of
+             True -> z
+             _ -> z) z
+
+There is some funniness going on here!
+
+Observations:
+* We don't make a variable 's' for the default case, because we see that 'z'
+  is already simple. This should change: we should always give a fresh
+  variable to the default case to avoid name capturing from where
+* What is this (\z -> z) thing?
+  It almost looks like trying to say: let z = 3 in z?
+  I don't understand why that is happening.
+
+Now, let me go through the desugaring manually, and see why it produces what
+it does.
+
+The structure I expect is:
+   let z = 3
+   in case z of
+        Alt p [[p /= 3] -> z] [z = p+1]
+        Alt _ [[] -> z] []
+
+First, let me understand this let thing. Why does:
+
+let z = 3
+in f z
+
+Turn into:
+    let z = (\z -> z) 3
+    in f z
+??
+
+Given (Pat VarP "z", Exp 3)
+I produce:
+    Let's assume v is not simple. There is only 1 pattern...
+So we call: irref
+
+Ah. We do irrefutable matching:
+
+case 3 of
+    z -> z
+Turns into: let z = 3 in z
+Or: (\z -> z) 3.
+
+That explains where that comes from. Can I simplify this any?
+
+How about: if a pattern is already irrefutable, there is no need to change it.
+
+That's a simple enough test.
+    
+Okay, good. That simplifies things:
+
+Now we have:
+
+let z = 3
+in let p = z
+   in let z = p+1
+      in case (p /= 3) of
+            True -> z
+            _ -> z
+
+This is fine, except that I failed to make the default case a fresh variable.
+
+So, it should work as follows. When doing an alternative, starting with the
+last, the default arg passed in must be a fresh variable.
+
+Or! When doing wbodies, because that's where things may get shadowed, the 'n'
+must be given a fresh name.
+
+That seems like it should be easy enough. I just need to make sure I test
+whether it is used or not, like we already do for sharing. I can factor that
+code out as common.
+
+Let's give it a try, shall we?
+
+Sat May  4 19:36:16 EDT 2013
+
+Looking at precedence now.
+
+`op` form says: if it doesn't have a fixity declaration, it defaults to the
+highest precedence and left associativity.
+
+Any operator lacking a fixity declaration is assumed to be infixl 9. Which
+says the same thing.
+
+So, a couple of things:
+* I think I have the default fixity wrong? It should be the same as '.', but
+  left. Hmm...
+* can I somehow avoid spelling things out for all the operators?
+
+Like, can I say :  opx is '+' | '-' | op | ...
+And have the precedence propagate up naturally?
+
+That's worth a try.
+
+Anyway, some precedence tests to try:
+
+Define a function f :: Integer -> Integer -> Integer.
+Try: 1 `f` 2 `f` 3, and see what answer it gives.
+
+Maybe:
+let f = -
+in 10 `f` 2 `f` 3
+
+Expected: (10 - 2) - 3  is 5.
+Not: 10 - (-1) which is 11.
+
+
+ 
+

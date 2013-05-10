@@ -120,18 +120,6 @@ proc expectfail {cmd} {
     }
 }
 
-io Smten.Tests.Concrete
-io Smten.SMT.Tests.Core
-io Smten.SMT.Tests.Used
-io Smten.SMT.Tests.Nest
-io Smten.SMT.Tests.Integer
-io Smten.SMT.Tests.Bit
-io Smten.SMT.Tests.Share
-io Smten.SMT.Tests.Error
-io Smten.SMT.Tests.Datatype
-
-expectfail { io Smten.SMT.Tests.MalError }
-
 proc hscomp {module} {
     set hsdir build/test
     hrun $::SMTEN --haskellf \
@@ -155,23 +143,11 @@ proc hf {module} {
     hrun ./$hsdir/[string map {. _} $module]
 }
 
-hf Smten.Tests.Concrete
-hf Smten.SMT.Tests.Core
-hf Smten.SMT.Tests.Used
-hf Smten.SMT.Tests.Nest
-hf Smten.SMT.Tests.Integer
-hf Smten.SMT.Tests.Bit
-hf Smten.SMT.Tests.Share
-hf Smten.SMT.Tests.Error
-hf Smten.SMT.Tests.Datatype
 
+io Smten.Tests.All
+hf Smten.Tests.All
+expectfail { io Smten.SMT.Tests.MalError }
 expectfail { hf Smten.SMT.Tests.MalError }
-
-io Smten.SMT.Tests.AllQ
-io Smten.SMT.Tests.AllQ2
-io Smten.SMT.Tests.Isolate0
-io Smten.SMT.Tests.Sudoku
-io Smten.ModelChecking.Test
 
 # The pretty printer test
 indir build/smten-bin {

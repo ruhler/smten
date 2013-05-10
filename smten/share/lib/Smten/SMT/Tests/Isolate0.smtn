@@ -63,8 +63,7 @@ qmain = do
     w <- qsketch2
     test "sketch2" (w == Just holeswanted)
 
-main :: IO ()
-main = do
+tests :: IO ()
+tests = do
     runSMT Yices2 (Just "build/test/Isolate0.dbg") qmain
-    putStrLn "Isolate0 PASSED"
 

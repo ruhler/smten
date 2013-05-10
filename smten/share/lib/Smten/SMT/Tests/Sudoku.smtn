@@ -28,8 +28,8 @@ qEnum = qtest "Enum" (readBoard diabolical :: Symbolic (Board EnumCell))
 qBit :: SMT ()
 qBit = qtest "Bit" (readBoard diabolical :: Symbolic (Board BitCell))
 
-main :: IO ()
-main = do
+tests :: IO ()
+tests = do
     runSMT Yices2 Nothing qInteger
     putStrLn "Sudoku Integer PASSED"
 

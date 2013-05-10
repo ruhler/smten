@@ -95,14 +95,17 @@ Build System::
 
 Known Bugs::
 * BadKind, DupInst, DupVar maltype tests
-* Error non-termination tests
-* HaskellF sharing of appeval
+* Error non-termination tests (in Error)
+* HaskellF sharing of appeval (in Share)
 * STP bug (in Nest)
 * STP bug (in Bit)
 * precedence 2 bug (in Basic)
 * precedence 3 bug (in Basic)
+* HaskellF ModelChecking test
 
 Suspected Bugs::
+* Memory leaks of solvers
+* Unused var defined in let isn't type checked
 * type synonyms are not qualified by their module
 * Does module import and export handle labelled update and construction
   properly?

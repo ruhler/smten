@@ -1,5 +1,5 @@
 
-module Smten.SMT.Tests.Used where
+module Smten.SMT.Tests.Used (tests) where
 
 import Smten.SMT.Symbolic
 import Smten.Tests.Test
@@ -39,10 +39,9 @@ qtest = do
             return vy
         test "used.join" (r == Just True)
         
-main :: IO ()
-main = do
+tests :: IO ()
+tests = do
     runSMT Yices1 (Just "build/test/Used.yices1.dbg") qtest
     runSMT Yices2 (Just "build/test/Used.yices2.dbg") qtest
     runSMT STP (Just "build/test/Used.stp.dbg") qtest
-    putStrLn "USED PASSED"
-        
+

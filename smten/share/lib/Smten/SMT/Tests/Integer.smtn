@@ -1,67 +1,54 @@
 
-module Smten.SMT.Tests.Integer where
+module Smten.SMT.Tests.Integer (testinteger) where
 
 import Smten.SMT.Symbolic
-import Smten.Tests.Test
+import Smten.SMT.Tests.Test
 
-qtest :: SMT ()
-qtest = do
-    ra <- query $ do
+testinteger :: IO ()
+testinteger = do
+    symtesteq "Integer.Trivial" (Just 0) [Yices1, Yices2] $ do
         a <- free 
         assert (a == 0)
         return (a :: Integer)
-    test "integer.trivial" (ra == Just 0)
 
-    rbc <- query $ do
+    symtesteq "Integer.Eq" (Just (4, 4)) [Yices1, Yices2] $ do
         b <- free
         c <- free
         assert (b == c)
         assert (b == 4)
         return (b :: Integer, c :: Integer)
-    test "integer.eq" (rbc == Just (4, 4))
 
-    rde <- query $ do
+    symtesteq "Integer.Add" (Just (6, 8)) [Yices1, Yices2] $ do
         d <- free
         e <- free
         assert ((d + 2) == e)
         assert (e == 8)
         return (d :: Integer, e :: Integer)
-    test "integer.add" (rde == Just (6, 8))
 
-    rfg <- query $ do
+    symtesteq "Integer.Sub" (Just (10, 8)) [Yices1, Yices2] $ do
         f <- free
         g <- free
         assert ((f - 2) == g)
         assert (g == 8)
         return (f :: Integer, g :: Integer)
-    test "integer.sub" (rfg == Just (10, 8))
 
-    rh <- query $ do
+    symtesteq "Integer.Compare" (Just 7) [Yices1, Yices2] $ do
         h <- free
         assert (h < 8)
         assert (h > 6)
         return (h :: Integer)
-    test "integer.compare" (rh == Just 7)
 
-    ri <- query $ do
+    symtesteq "Integer.Compare2" (Just 7) [Yices1, Yices2] $ do
         i <- free
         assert (i >= 7)
         assert (i <= 7)
         return (i :: Integer)
-    test "integer.compare2" (ri == Just 7)
 
     -- Test more complex
-    rxy <- query $ do
+    symtesteq "Integer.Complex" (Just (5, 3)) [Yices1, Yices2] $ do
         x <- free
         y <- free
         assert ((x + y) == 8)
         assert ((x - y) == 2)
         return (x :: Integer, y :: Integer)
-    test "integer.complex" (rxy == Just (5, 3))
-
-main :: IO ()
-main = do
-    runSMT Yices1 (Just "build/test/Integer.yices1.dbg") qtest
-    runSMT Yices2 (Just "build/test/Integer.yices2.dbg") qtest
-    putStrLn "INTEGER PASSED"
 

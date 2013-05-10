@@ -1,81 +1,53 @@
 
 
-module Smten.SMT.Tests.Share where
+module Smten.SMT.Tests.Share (test) where
 
-import Prelude
 import Smten.SMT.Symbolic
-import Smten.Tests.Test
+import Smten.SMT.Tests.Test
 
-simple :: SMT ()
-simple = do
-    r <- query $ do
+test :: IO ()
+test = do
+    symtesteq "Share.Simple" (Just 1) [Yices2] $ do
         x <- free
         assert ((\a -> a + a == (10 :: Integer)) (x + x + x + x + x))
         return x 
-    test "simple" (r == Just 1)
 
-samectx :: SMT ()
-samectx = do
-    r <- query $ do
+    symtesteq "Share.Samectx" (Just 1) [Yices2] $ do
         p <- free
         x <- free
         assert ((\a -> (if p then a + a
                             else 0) == (10 :: Integer)) (x+x+x+x+x))
         return x
-    test "diffctx" (r == Just 1)
 
-diffctx :: SMT ()
-diffctx = do
-    r <- query $ do
+    symtesteq "Share.Diffctx" (Just 1) [Yices2] $ do
         p <- free
         x <- free
         assert ((\a -> (if p then a + a
                             else a - a) == (10 :: Integer)) (x+x+x+x+x))
         return x
-    test "diffctx" (r == Just 1)
 
-casedesugar :: SMT ()
-casedesugar = do
-    r <- query $ do
-            x <- free
-            a <- free
-            b <- free
-            c <- free
-            d <- free
-            assert $ 5 == case () of
-                            _ | a, b, c, d -> 5
-                              | otherwise -> (x + x + x + x + x)
-            assert (not d)
-            return x
-    test "casedesugar" (r == Just (1 :: Integer))
+    symtesteq "Share.CaseDesugar" (Just (1 :: Integer)) [Yices2] $ do
+        x <- free
+        a <- free
+        b <- free
+        c <- free
+        d <- free
+        assert $ 5 == case () of
+                        _ | a, b, c, d -> 5
+                          | otherwise -> (x + x + x + x + x)
+        assert (not d)
+        return x
 
-appeval :: SMT ()
-appeval = do
-    r <- query $ do
-            let f = \x -> 0
-                g = \x -> x + x + x + x + x
-            p <- free
-            q <- free
-            z <- free
-            assert $ 5 == (case () of
-                            _ | p, q -> f
-                              | otherwise -> g
-                          ) z
-            assert (not q)
-            return z
-    test "appeval" (r == Just (1 :: Integer))
-
-qmain :: SMT ()
-qmain = do
-    simple
-    samectx
-    diffctx
-    casedesugar
-    appeval
-
-main :: IO ()
-main = do
-    runSMT Yices2 (Just "build/test/Share.yices2.dbg") qmain
-    
-    putStrLn "SHARE PASSED"
+    symtesteq "Share.AppEval" (Just (1 :: Integer)) [Yices2] $ do
+        let f = \x -> 0
+            g = \x -> x + x + x + x + x
+        p <- free
+        q <- free
+        z <- free
+        assert $ 5 == (case () of
+                        _ | p, q -> f
+                          | otherwise -> g
+                      ) z
+        assert (not q)
+        return z
 

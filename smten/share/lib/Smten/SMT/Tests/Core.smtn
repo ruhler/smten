@@ -1,9 +1,8 @@
 
-module Smten.SMT.Tests.Core where
+module Smten.SMT.Tests.Core (testcore) where
 
-import Control.Monad.IO.Class
 import Smten.SMT.Symbolic
-import Smten.Tests.Test
+import Smten.SMT.Tests.Test
 
 p :: Bool -> Bool -> Bool -> Bool
 p x y z =
@@ -11,141 +10,104 @@ p x y z =
         then not z
         else x == (y || z)
 
-qtest :: SMT ()
-qtest = do
-    test "core.dummy" True
-
-    -- Trivial test. Verifies we can make free booleans and assert things
-    -- about them.
-    ra <- query $ do
+testcore :: IO ()
+testcore = do
+    symtesteq "Core.Trivial" (Just True) [Yices1, Yices2, STP] $ do
         a <- free
         assert a
         return a
-    test "core.trivial" (ra == Just True)
 
     -- Verify we can handle functions in let expressions.
-    ra2 <- query $
-        assert (let f = (\x -> x)
-                in f True)
-    test "core.finlet" (ra2 == Just ())
+    symtesteq "Core.Finlet" (Just ()) [Yices1, Yices2, STP] $ do
+        assert (let f = (\x -> x) in f True)
 
     -- Test NOT
-    rb <- query $ do
+    symtesteq "Core.Not" (Just False) [Yices1, Yices2, STP] $ do
         b <- free
         assert (not b)
         return b
-    test "core.not" (rb == Just False)
 
     -- Test OR
-    rcd <- query $ do
+    symtesteq "Core.Or" (Just (False, True)) [Yices1, Yices2, STP] $ do
         c <- free
         d <- free
         assert (c || d)
         assert (not c)
         return (c, d)
-    test "core.or" (rcd == Just (False, True))
 
     -- Test AND
-    ref <- query $ do
+    symtesteq "Core.And" (Just (True, True)) [Yices1, Yices2, STP] $ do
         e <- free
         f <- free
         assert (e && f)
         return (e, f)
-    test "core.and" (ref == Just (True, True))
 
     -- Test EQ
-    rgh <- query $ do
+    symtesteq "Core.Eq" (Just (False, False)) [Yices1, Yices2, STP] $ do
         g <- free
         h <- free
         assert (g == h)
         assert (not g)
         return (g, h)
-    test "core.eq" (rgh == Just (False, False))
 
     -- Test IF
-    ri <- query $ do
+    symtesteq "Core.If" (Just False) [Yices1, Yices2, STP] $ do
         i <- free
         assert (if i then False else True)
         return i
-    test "core.if" (ri == Just False)
 
     -- Test more complex
-    rjkl <- query $ do
+    let tstcmplx (Just (jv, kv, lv)) = p jv kv lv
+        tstcmplx _ = False
+    symtest "Core.Complex" tstcmplx [Yices1, Yices2, STP] $ do
         j <- free
         k <- free
         l <- free
         assert (p j k l)
         return (j, k, l)
-    test "core.complex" $
-        case rjkl of
-            Just (jv, kv, lv) -> p jv kv lv
-            _ -> False
 
     -- Test an issue with lambdas that we've had issues with in the past.
-    rm <- query $ do
+    symtesteq "Core.Lambda" (Just False) [Yices1, Yices2, STP] $ do
         m <- free
         assert ((if m then (==) True else (==) False) False)
         return m
-    test "core.lambda" (rm == Just False)
 
     -- We should be able to using Integers, so long as they aren't free, even
     -- if the underlying solver doesn't support them.
-    rno <- query $ do
+    symtesteq "Core.Integer" (Just (False, True)) [Yices1, Yices2, STP] $ do
         n <- free
         o <- free
         assert ((if n then 3 else (4 :: Integer)) == (if o then 4 else 5))
         return (n, o)
-    test "core.integer" (rno == Just (False, True))
 
     -- Same with lists
-    rp <- query $ do
+    symtesteq "Core.List" (Just False) [Yices1, Yices2, STP] $ do
         p <- free
         assert (null (if p then [1, 2, 3 :: Integer] else []))
         return p
-    test "core.list" (rp == Just False)
 
     -- Same with char
-    rq <- query $ do
+    symtesteq "Core.Char" (Just True) [Yices1, Yices2, STP] $ do
         q <- free
         assert ('a' == (if q then 'a' else 'b'))
         return q
-    test "core.char" (rq == Just True)
 
-    qsymsym
-    qsubstitute
-
-    liftIO $ putStrLn "CORE LIFTIO TEST"
-    
-
--- Test that primitives are reapplied after substitution.
-qsubstitute :: SMT ()
-qsubstitute = do
-    r <- query $ do
+    -- Test that primitives are reapplied after substitution.
+    symtesteq "Core.Substitute" (Just True) [Yices1, Yices2, STP] $ do
         a <- free
         assert (not a)
         return (not a)
-    test "core.substitute" (r == Just True)
 
--- Test conversion of symbolic Symbolic to concrete Symbolic.
-qsymsym :: SMT ()
-qsymsym = do
-    r <- query $ do
-            a <- free
-            b <- free
-            if a
-                then do
-                    assert b
-                    assert False
-                else do
-                    assert (not b)
-            return (a, b)
-    test "core.qsymsym_if" (r == Just (False, False))
+    -- Test conversion of symbolic Symbolic to concrete Symbolic.
+    symtesteq "Core.Symsym" (Just (False, False)) [Yices1, Yices2, STP] $ do
+        a <- free
+        b <- free
+        if a
+            then do
+                assert b
+                assert False
+            else do
+                assert (not b)
+        return (a, b)
 
-
-main :: IO ()
-main = do
-    --runSMT Yices1 (Just "build/test/Core.yices1.dbg") qtest
-    runSMT Yices2 (Just "build/test/Core.yices2.dbg") qtest
-    --runSMT STP (Just "build/test/Core.stp.dbg") qtest
-    putStrLn "CORE PASSED"
 

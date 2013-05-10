@@ -1,5 +1,5 @@
 
-module Smten.SMT.Tests.AllQ where
+module Smten.SMT.Tests.AllQ (allQ, tests) where
 
 import Prelude
 import Smten.SMT.Symbolic
@@ -30,8 +30,8 @@ qmain = do
     test "6" (6 `elem` vs)
     test "7" (7 `elem` vs)
 
-main :: IO ()
-main = do
+tests :: IO ()
+tests = do
     runSMT Yices1 (Just "build/test/AllQ.yices1.dbg") qmain
     runSMT Yices2 (Just "build/test/AllQ.yices2.dbg") qmain
-    putStrLn "AllQ PASSED"
+
