@@ -54,12 +54,14 @@ module Smten.SMT.SMT (
 import Debug.Trace
 
 import Data.Functor
+import Data.IORef
 import Data.Unique
 import Data.Typeable
 
 import System.IO
 
 import Control.Monad.State
+import qualified Data.HashMap as Map
 
 import qualified Smten.SMT.Syntax as SMT
 import qualified Smten.SMT.Solver as SMT
@@ -141,7 +143,7 @@ check = {-# SCC "Check" #-} do
             getmodel 
             asserts <- gets qs_asserts
             v <- runRealize (realize asserts)
-            case force v of
+            case {-# SCC "CheckEval" #-} force v of
                 _ | Just True <- de_boolEH v -> return ()
                 ErrorEH _ s -> error $ "smten user error: " ++ s
                 _ -> error "SMTEN INTERNAL ERROR: SMT solver lied?"
@@ -272,22 +274,37 @@ mkassert p = do
 
 -- Replace all explicit _|_ with VarEH.
 abstract :: ExpH -> SMT ExpH
-abstract = {-# SCC "ABSTRACT" #-}
-  let g :: (ExpH -> SMT ExpH) -> ExpH -> SMT ExpH
-      g use e =
+abstract x = {-# SCC "Abstract" #-} do
+  cache <- liftIO $ newIORef Map.empty
+  let use :: ExpH -> SMT ExpH
+      use e =
         case force e of
             LitEH {} -> return e
-            ConEH n s xs -> aconEH n s <$> mapM use xs
+            ConEH {} -> return e
             VarEH {} -> return e
-            PrimEH _ _ f xs -> f <$> mapM use xs
-            LamEH {} -> error "SMT.abstract: unexpected LamEH"
+            _ -> do
+                m <- liftIO $ readIORef cache
+                case Map.lookup (eid e) m of
+                    Just v -> return v
+                    Nothing -> do
+                        v <- def e
+                        liftIO $ modifyIORef' cache (Map.insert (eid e) v)
+                        return v
+
+      def :: ExpH -> SMT ExpH
+      def e =
+        case force e of
+            PrimEH n t f xs -> exph . (PrimEH n t f) <$> mapM use xs
             IfEH t x y d -> do
                 x' <- use x
                 y' <- use y
                 d' <- use d
-                return $ ifEH t x' y' d'
+                return $ exph (IfEH t x' y' d')
             ErrorEH t _ -> mkerr t
-  in sharedM g
+            LitEH {} -> return e
+            ConEH {} -> return e
+            VarEH {} -> return e
+  def x
  
 use :: Symbolic a -> SMT (Used a)
 use s = {-# SCC "USE" #-} do

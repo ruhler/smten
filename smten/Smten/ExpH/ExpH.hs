@@ -89,15 +89,12 @@ exph v =
         return $ ExpH (EID x) v
 
 -- Return true if the given expression is simple.
--- Note: Error is not considered simple, because we want ABSTRACT to share the
--- monadic abstraction.
---
--- TODO: That seems a bit hackish to have to know about here...
 simple :: ExpH -> Bool
 simple e =
   case force e of
      LitEH {} -> True
      ConEH _ _ [] -> True
      VarEH {} -> True
+     ErrorEH {} -> True
      _ -> False
 

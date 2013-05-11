@@ -1,0 +1,63 @@
+
+Fri May 10 10:06:20 EDT 2013
+
+Goal: Eventually to clean things up a bunch by removing support for
+incremental queries, which I don't currently have a use for (though that may
+change with my model checker soon enough).
+
+The real reason of which is so I can reimplement the translation based on my
+new ideas for the api (fail_symbolic instead of assert), my translation
+process, handling of errors, and abstraction/refinement.
+
+But! The trouble I ran into is all the test cases use the SMT API, and not the
+Symbolic API. Which is silly, because they don't need the SMT API.
+
+The other issue is, it takes a long time to compile all the different tests.
+
+Is there any reason to have so many different tests? How about I just have 1?
+It combines all the SMT and all the Concrete into one big happy test.
+
+That will also simplify the makefile and such.
+
+So, I propose the following: have a test called "All", which runs all the
+tests. This can replace 'Concrete'. And have this do the SMT tests.
+
+Now, for the SMT tests, they are all of a similar format:
+
+* given Symbolic a, expected Maybe a, test name, list of solvers,
+  run the test on all the solvers.
+
+So I should arrange it like that.
+
+Sounds good to me. I like cleanup of this sort.
+
+Fri May 10 11:35:20 EDT 2013
+
+Good. But, I'm not all the way there yet, I don't think.
+
+The tests I plan to get rid of are:
+* Used, Nest, AllQ2.
+
+The tests I need to update to not use SMT API are:
+* Isolate0, AllQ
+
+
+Trouble: It really is nice to have an SMT monad, because then we can share the
+same SMT solver and same debug file implicitly.
+
+Hrm...
+
+Can I cleanup the translation without having to get rid of incremental
+queries? Do they really make things that much harder?
+
+You know? I actually think it shouldn't make things that much harder. So I
+ought to be able to clean things up even with incremental queries in place.
+That might be a better approach.
+
+Fri May 10 11:47:53 EDT 2013
+
+Okay, so what's to clean up?
+
+I suppose the value of starting from scratch is it starts clean, even if
+nothing else changes.
+

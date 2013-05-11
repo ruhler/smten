@@ -57,6 +57,7 @@ Primitives::
 * Concretize the rest of the haskellf primitives
 
 Cleanup::
+* Test convention: export 'tests' and in Tests.All, import qualified.
 * varTs should return a list of TyVar, not (Name, Kind)
 * typeinfer - use structure like typecheck (if reasonable)
 * enforce in Parser that all class methods must have a signature?

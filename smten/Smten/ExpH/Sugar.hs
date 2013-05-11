@@ -15,7 +15,7 @@ module Smten.ExpH.Sugar (
     charEH, de_charEH, de_tupleEH,
     ioEH, de_ioEH,
     smttype,
-    transform, shared, sharedM,
+    transform, shared,
     ) where
 
 import System.IO.Unsafe
@@ -260,34 +260,6 @@ shared f =
       --use :: ExpH -> a
       use e = lookupPure (eid e) e
   in def
-
--- sharedM f
--- Apply a monadic function to an ExpH which preserves sharing.
--- If the function is called multiple times on the same ExpH, it shares
--- the result. The monadic actions are only performed the first time an
--- expression is seen.
---
--- TODO: This only shares results for non-simple expressions (for performance
--- reasons). Does that make sense to do in general?
---
--- f - The function to apply which takes:
---   f' - the shared version of 'f' to recurse with
---   x - the argument
-sharedM :: (MonadIO m) => ((ExpH -> m a) -> ExpH -> m a) -> ExpH -> m a
-sharedM f x = do
-  cache <- liftIO $ newIORef Map.empty
-  let --use :: ExpH -> m a
-      use e
-       | simple e = f use e
-       | otherwise = do
-        m <- liftIO $ readIORef cache
-        case Map.lookup (eid e) m of
-          Just v -> return v    
-          Nothing -> do
-            v <- f use e
-            liftIO $ modifyIORef' cache (Map.insert (eid e) v)
-            return v
-  f use x
 
 errorEH :: Type -> String -> ExpH
 errorEH t s = exph $ ErrorEH t s
