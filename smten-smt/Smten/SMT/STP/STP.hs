@@ -129,28 +129,32 @@ stp = do
   vars <- newIORef Map.empty
   let s = STP { stp_fvc = fvc, stp_vars = vars }
   return $ S.Solver {
-       S.pretty = C.pretty,
-       S.run = run s,
+       S.push = push s,
+       S.pop = pop s,
+       S.declare = declare s,
+       S.assert = assert s,
        S.check = check s,
        S.getIntegerValue = getIntegerValue s,
        S.getBoolValue = getBoolValue s,
        S.getBitVectorValue = getBitVectorValue s
     }
         
-run :: STP -> Command -> IO ()
-run s (Declare nm t) = do
+declare :: STP -> Symbol -> Type -> IO ()
+declare s nm t = do
     st <- mkType s t        
     v <- withvc s $ \vc -> (withCString nm $ \cnm -> c_vc_varExpr vc cnm st)
     modifyIORef (stp_vars s) $ Map.insert nm v
 
-run s (Assert e) = do
+assert :: STP -> Expression -> IO ()
+assert s e = do
     se <- mkExpr s e
     withvc s $ \vc -> c_vc_assertFormula vc se
 
-run s Push = withvc s c_vc_push
-run s Pop = withvc s c_vc_pop
-    
-run _ cmd = error $ "TODO: STP.run " ++ show cmd
+push :: STP -> IO ()
+push s = withvc s c_vc_push
+
+pop :: STP -> IO ()
+pop s = withvc s c_vc_pop
 
 -- To check for satisfiability, we query if False is valid. If False is
 -- valid, the assertions imply False, meaning they are unsatisfiable. If

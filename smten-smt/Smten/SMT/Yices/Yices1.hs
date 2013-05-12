@@ -245,15 +245,20 @@ toResult n
     | n == yTrue  = S.Satisfiable
     | otherwise   = error "yices1 returned Unknown"
 
-run :: Yices1 -> Command -> IO ()
-run y@(Yices1 fp) (Assert p) = do
+push :: Yices1 -> IO ()
+push (Yices1 fp) = withForeignPtr fp c_yices_push
+
+pop :: Yices1 -> IO ()
+pop (Yices1 fp) = withForeignPtr fp c_yices_pop
+
+assert :: Yices1 -> Expression -> IO ()
+assert y@(Yices1 fp) p = do
     p' <- yexpr y p
     withForeignPtr fp $ \ctx -> c_yices_assert ctx p'
-run (Yices1 fp) Push = withForeignPtr fp c_yices_push
-run (Yices1 fp) Pop = withForeignPtr fp c_yices_pop
-run ctx Check = check ctx >> return ()
-run (Yices1 fp) cmd = do
-    worked <- withCString (YC.concrete cmd) $ \str -> do
+
+declare :: Yices1 -> Symbol -> Type -> IO ()
+declare (Yices1 fp) s t = do
+    worked <- withCString (YC.concrete (Declare s t)) $ \str -> do
           withForeignPtr fp $ \yctx ->
             c_yices_parse_command yctx str
     if worked 
@@ -263,7 +268,7 @@ run (Yices1 fp) cmd = do
           msg <- peekCString cstr
           fail $ show msg
                     ++ "\n when running command: \n" 
-                    ++ YC.pretty cmd
+                    ++ YC.pretty (Declare s t)
 
 check :: Yices1 -> IO S.Result
 check (Yices1 fp) = do
@@ -320,8 +325,10 @@ yices1 = do
   return $
     let y1 = Yices1 fp
     in S.Solver {
-          S.pretty = YC.pretty,
-          S.run = run y1,
+          S.push = push y1,
+          S.pop = pop y1,
+          S.declare = declare y1,
+          S.assert = assert y1,
           S.check = check y1,
           S.getIntegerValue = getIntegerValue y1,
           S.getBoolValue = getBoolValue y1,

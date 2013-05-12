@@ -62,27 +62,32 @@ yices2 = do
   return $    
     let y2 = Yices2 ptr
     in S.Solver {
-          S.pretty = YC.pretty,
-          S.run = run y2,
+          S.push = push y2,
+          S.pop = pop y2,
+          S.declare = declare y2,
+          S.assert = assert y2,
           S.check = check y2,
           S.getIntegerValue = getIntegerValue y2,
           S.getBoolValue = getBoolValue y2,
           S.getBitVectorValue = getBitVectorValue y2
        }
 
-run :: Yices2 -> Command -> IO ()
-run _ (Declare s ty) = do
+declare :: Yices2 -> Symbol -> Type -> IO ()
+declare _ s ty = do
     ty' <- ytype ty
     term <- c_yices_new_uninterpreted_term ty'
     withCString s $ c_yices_set_term_name term
-run (Yices2 yctx) (Assert p) = do
+
+assert :: Yices2 -> Expression -> IO ()
+assert (Yices2 yctx) p = do
     p' <- yterm p
     c_yices_assert_formula yctx p'
-run ctx Check = check ctx >> return ()
-run (Yices2 yctx) Push = do
-    c_yices_push yctx
-run (Yices2 yctx) Pop = do
-    c_yices_pop yctx
+
+push :: Yices2 -> IO ()
+push (Yices2 yctx) = c_yices_push yctx
+
+pop :: Yices2 -> IO ()
+pop (Yices2 yctx) = c_yices_pop yctx
 
 check :: Yices2 -> IO S.Result
 check (Yices2 yctx) = do
