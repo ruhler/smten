@@ -45,12 +45,13 @@ import Foreign
 import Foreign.C.String
 import Foreign.C.Types
 
-import Smten.SMT.Syntax (Symbol, Type(..))
+import qualified Smten.SMT.Syntax as STX
 import Smten.SMT.Yices.FFI2
 import qualified Smten.SMT.Yices.Concrete as YC
 import qualified Smten.SMT.Solver as S
 import Smten.Name
 import Smten.Sig
+import Smten.Type
 import Smten.Bit
 import Smten.ExpH
 import qualified Smten.HashTable as HT
@@ -77,7 +78,7 @@ yices2 = do
           S.getBitVectorValue = getBitVectorValue y2
        }
 
-declare :: Yices2 -> Symbol -> Type -> IO ()
+declare :: Yices2 -> STX.Symbol -> STX.Type -> IO ()
 declare _ s ty = do
     ty' <- ytype ty
     term <- c_yices_new_uninterpreted_term ty'
@@ -160,22 +161,11 @@ withstderr f = do
     x <- f cf 
     return $! x
 
-ytype :: Type -> IO YType
-ytype (BitVectorT i) = c_yices_bv_type (fromIntegral i)
-ytype (IntegerT) = c_yices_int_type
-ytype (BoolT) = c_yices_bool_type
+ytype :: STX.Type -> IO YType
+ytype (STX.BitVectorT i) = c_yices_bv_type (fromIntegral i)
+ytype (STX.IntegerT) = c_yices_int_type
+ytype (STX.BoolT) = c_yices_bool_type
     
-
-ytypebystr :: Type -> IO YType
-ytypebystr t = do
-    yt <- withCString (YC.concrete t) $ \str -> c_yices_parse_type str
-    if yt < 0
-        then do
-            withstderr $ \stderr -> c_yices_print_error stderr
-            error $ "ytype: " ++ YC.pretty t
-        else do
-            return $! yt
-
 type Y2 = StateT (Map.Map EID YTerm) IO
 
 yterm :: ExpH -> IO YTerm
@@ -198,15 +188,15 @@ def e
      c_yices_bvconst_uint64 (fromInteger (bv_width bv)) (fromInteger (bv_value bv))
  | Just p <- de_boolEH e = liftIO $ if p then c_yices_true else c_yices_false
  | VarEH (Sig nm _) <- force e = liftIO $ withCString (unname nm) c_yices_get_term_by_name
- | PrimEH n _ _ xs <- force e = do
+ | PrimEH n t _ xs <- force e = do
       case HT.lookup n prims of
-        Just f -> f xs
+        Just f -> f t xs
         Nothing -> error $ "yices2: primitive not supported: " ++ unname n
  | IfEH _ p a b <- force e = do
      [p', a', b'] <- mapM use [p, a, b]
      liftIO $ c_yices_ite p' a' b'
 
-prims :: HT.HashTable Name ([ExpH] -> Y2 YTerm)
+prims :: HT.HashTable Name (Type -> [ExpH] -> Y2 YTerm)
 prims = HT.table [
     (name "Prelude.__prim_eq_Integer", bprim c_yices_eq),
     (name "Prelude.__prim_add_Integer", bprim c_yices_add),
@@ -226,17 +216,58 @@ prims = HT.table [
     (name "Smten.Bit.__prim_mul_Bit", bprim c_yices_bvmul),
     (name "Smten.Bit.__prim_or_Bit", bprim c_yices_bvor),
     (name "Smten.Bit.__prim_and_Bit", bprim c_yices_bvand),
-    (name "Smten.Bit.__prim_not_Bit", uprim c_yices_bvnot)
+    (name "Smten.Bit.__prim_not_Bit", uprim c_yices_bvnot),
+    (name "Smten.Bit.__prim_concat_Bit", bprim c_yices_bvconcat),
+    (name "Smten.Bit.__prim_shl_Bit", bprim c_yices_bvshl),
+    (name "Smten.Bit.__prim_lshr_Bit", bprim c_yices_bvlshr),
+    (name "Smten.Bit.__prim_zeroExtend_Bit", primZeroExtend),
+    (name "Smten.Bit.__prim_signExtend_Bit", primSignExtend),
+    (name "Smten.Bit.__prim_truncate_Bit", primTruncate),
+    (name "Smten.Bit.__prim_extract_Bit", primExtract)
     ]
 
-uprim :: (YTerm -> IO YTerm) -> [ExpH] -> Y2 YTerm
-uprim f [a] = do
+uprim :: (YTerm -> IO YTerm) -> Type -> [ExpH] -> Y2 YTerm
+uprim f _ [a] = do
     a' <- use a
     liftIO $ f a'
 
-bprim :: (YTerm -> YTerm -> IO YTerm) -> [ExpH] -> Y2 YTerm
-bprim f [a, b] = do
+bprim :: (YTerm -> YTerm -> IO YTerm) -> Type -> [ExpH] -> Y2 YTerm
+bprim f _ [a, b] = do
     a' <- use a
     b' <- use b
     liftIO $ f a' b'
 
+primZeroExtend :: Type -> [ExpH] -> Y2 YTerm
+primZeroExtend bt [a] = do
+    let Just sw = de_bitT (typeof $ force a)
+        Just tw = de_bitT bt
+        n = tw - sw
+    a' <- use a
+    liftIO $ c_yices_zero_extend a' (fromInteger n)
+
+primSignExtend :: Type -> [ExpH] -> Y2 YTerm
+primSignExtend bt [a] = do
+    let Just sw = de_bitT (typeof (force a))
+        Just tw = de_bitT bt
+        n = tw - sw
+    a' <- use a
+    liftIO $ c_yices_sign_extend a' (fromInteger n)
+
+primExtract :: Type -> [ExpH] -> Y2 YTerm
+primExtract t [x, li]= do
+    let Just i = de_integerEH x
+        Just tw = de_bitT t
+        begin = i + tw - 1
+        end = i
+    x' <- use x
+    liftIO $ c_yices_bvextract x' (fromInteger begin) (fromInteger end)
+
+primTruncate :: Type -> [ExpH] -> Y2 YTerm
+primTruncate t [x] = do
+    let Just (_, bt) = de_arrowT t
+        Just tw = de_bitT bt
+        begin = tw - 1
+        end = 0
+    x' <- use x
+    liftIO $ c_yices_bvextract x' (fromInteger begin) (fromInteger end)
+    
