@@ -68,3 +68,5 @@ testbit = do
         assert (bv_shl (0x15 :: Bit #8) i == 0xA8)
         return (i :: Bit #8)
 
+    putStrLn "Bit PASSED"
+

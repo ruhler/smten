@@ -110,4 +110,6 @@ testcore = do
                 assert (not b)
         return (a, b)
 
+    putStrLn "CORE PASSED"
+
 

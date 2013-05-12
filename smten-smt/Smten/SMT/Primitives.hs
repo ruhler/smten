@@ -28,7 +28,7 @@ import Smten.ExpH
 import Smten.Ppr hiding (nest)
 import Smten.SMT.SMT
 import Smten.SMT.Yices.Yices1
-import Smten.SMT.Yices.Yices2
+import Smten.SMT.Yices.Yices2b
 import Smten.SMT.STP.STP
 import Smten.Prim
 

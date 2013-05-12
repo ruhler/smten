@@ -52,3 +52,5 @@ testinteger = do
         assert ((x - y) == 2)
         return (x :: Integer, y :: Integer)
 
+    putStrLn "Integer PASSED"
+
