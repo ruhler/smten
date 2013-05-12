@@ -115,18 +115,6 @@ group str elems = do
     indent $ sequence (reverse elems)
     line $ "(" ++ str
     
-instance Concrete Command where
-    concreteM (Declare s t)
-      = clump $ group ("declare-fun " ++ s ++ " ()") [concreteM t]
-    concreteM  (Assert e)
-      = clump $ group "assert" [concreteM e]
-    concreteM Check = line "(check-sat)"
-    concreteM Push = line "(push 1)"
-    concreteM Pop = line "(pop 1)"
-
-instance Concrete [Command] where
-    concreteM cmds = mapM_ concreteM (reverse cmds)
-
 instance Concrete Type where
     concreteM (BitVectorT i) = line $ "(_ BitVec " ++ show i ++ ")"
     concreteM IntegerT = line "Int"

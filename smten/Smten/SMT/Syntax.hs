@@ -37,7 +37,7 @@
 
 -- | An abstract syntax for SMT solvers.
 module Smten.SMT.Syntax (
-    Symbol, Command(..), Type(..), Expression(..),
+    Symbol, Type(..), Expression(..),
     Binding, Literal(..),
 
     -- * Core

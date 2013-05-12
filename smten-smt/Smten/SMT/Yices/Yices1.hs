@@ -258,7 +258,12 @@ assert y@(Yices1 fp) p = do
 
 declare :: Yices1 -> Symbol -> Type -> IO ()
 declare (Yices1 fp) s t = do
-    worked <- withCString (YC.concrete (Declare s t)) $ \str -> do
+    let ty = case t of
+                BoolT -> "bool"
+                IntegerT -> "int"
+                BitVectorT w -> "(bitvector " ++ show w ++ ")"
+        cmd = "(define " ++ s ++ " :: " ++ ty ++ ")"
+    worked <- withCString cmd $ \str -> do
           withForeignPtr fp $ \yctx ->
             c_yices_parse_command yctx str
     if worked 
@@ -266,9 +271,7 @@ declare (Yices1 fp) s t = do
        else do
           cstr <- c_yices_get_last_error_message
           msg <- peekCString cstr
-          fail $ show msg
-                    ++ "\n when running command: \n" 
-                    ++ YC.pretty (Declare s t)
+          fail $ show msg ++ "\n when running command: \n" ++ cmd
 
 check :: Yices1 -> IO S.Result
 check (Yices1 fp) = do
