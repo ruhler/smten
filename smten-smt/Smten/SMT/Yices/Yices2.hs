@@ -47,8 +47,10 @@ import Foreign.C.Types
 
 import Smten.SMT.Yices.FFI2
 import Smten.SMT.Syntax
+import Smten.SMT.Translate
 import qualified Smten.SMT.Yices.Concrete as YC
 import qualified Smten.SMT.Solver as S
+import Smten.ExpH
 
 data Yices2 = Yices2 (Ptr YContext)
 
@@ -78,9 +80,9 @@ declare _ s ty = do
     term <- c_yices_new_uninterpreted_term ty'
     withCString s $ c_yices_set_term_name term
 
-assert :: Yices2 -> Expression -> IO ()
+assert :: Yices2 -> ExpH -> IO ()
 assert (Yices2 yctx) p = do
-    p' <- yterm p
+    p' <- yterm $ {-# SCC "TRANSLATE" #-} smtE (fromExpH p)
     c_yices_assert_formula yctx p'
 
 push :: Yices2 -> IO ()

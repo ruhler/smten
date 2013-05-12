@@ -1,3 +1,9 @@
+NSAPI::
+* Rewrite yices2 to not use SMT.Syntax for assert
+* Change Solver.declare to take a Sig instead of Symbol, Type
+* Change Solver.get* to take Names instead of Strings
+* Get rid of SMT.Syntax
+
 Recent::
 * Add support for (..) in import and export specifications
 * Add support for signatures in let declarations

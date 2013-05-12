@@ -53,7 +53,9 @@ import qualified Data.Map as Map
 
 import qualified Smten.SMT.Solver as S
 import Smten.SMT.Syntax
+import Smten.SMT.Translate
 import qualified Smten.SMT.Yices.Concrete as YC
+import Smten.ExpH
 
 data YContext
 
@@ -251,9 +253,9 @@ push (Yices1 fp) = withForeignPtr fp c_yices_push
 pop :: Yices1 -> IO ()
 pop (Yices1 fp) = withForeignPtr fp c_yices_pop
 
-assert :: Yices1 -> Expression -> IO ()
+assert :: Yices1 -> ExpH -> IO ()
 assert y@(Yices1 fp) p = do
-    p' <- yexpr y p
+    p' <- yexpr y $ {-# SCC "TRANSLATE" #-} smtE (fromExpH p)
     withForeignPtr fp $ \ctx -> c_yices_assert ctx p'
 
 declare :: Yices1 -> Symbol -> Type -> IO ()

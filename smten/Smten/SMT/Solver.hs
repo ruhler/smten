@@ -39,6 +39,7 @@ module Smten.SMT.Solver (
     ) where
 
 import Smten.SMT.Syntax
+import Smten.ExpH
 
 data Result
     = Satisfiable
@@ -53,7 +54,7 @@ data Solver = Solver {
     declare :: Symbol -> Type -> IO (),
 
     -- | Assert the given expression.
-    assert :: Expression -> IO (),
+    assert :: ExpH -> IO (),
 
     -- | Run (check) and return the result.
     check :: IO Result,

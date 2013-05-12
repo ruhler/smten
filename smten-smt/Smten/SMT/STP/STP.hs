@@ -16,8 +16,9 @@ import Smten.SMT.STP.FFI
 
 import qualified Smten.SMT.Solver as S
 import Smten.SMT.Syntax
-
+import Smten.SMT.Translate
 import qualified Smten.SMT.STP.Concrete as C
+import Smten.ExpH
 
 data STP = STP {
     stp_fvc :: ForeignPtr STP_VC,
@@ -145,9 +146,9 @@ declare s nm t = do
     v <- withvc s $ \vc -> (withCString nm $ \cnm -> c_vc_varExpr vc cnm st)
     modifyIORef (stp_vars s) $ Map.insert nm v
 
-assert :: STP -> Expression -> IO ()
+assert :: STP -> ExpH -> IO ()
 assert s e = do
-    se <- mkExpr s e
+    se <- mkExpr s $ {-# SCC "TRANSLATE" #-} smtE (fromExpH e)
     withvc s $ \vc -> c_vc_assertFormula vc se
 
 push :: STP -> IO ()

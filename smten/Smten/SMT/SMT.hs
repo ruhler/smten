@@ -217,7 +217,7 @@ mkassert p = do
   pred <- gets qs_pred
   let p_predicated = impliesEH pred p
   p_abstracted <- abstract p_predicated
-  srun1 SMT.assert ({-# SCC "TRANSLATE" #-} smtE (fromExpH p_abstracted))
+  srun1 SMT.assert p_abstracted
   modify $ \qs -> qs { qs_asserts = andEH (qs_asserts qs) p_predicated }
 
 -- Replace all explicit _|_ with VarEH.
