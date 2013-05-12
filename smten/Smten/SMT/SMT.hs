@@ -115,18 +115,9 @@ newtype SMT a = SMT (StateT QS IO a)
 
 deriving instance MonadState QS SMT
 
-sendCmds :: [SMT.Command] -> SMT.Solver -> IO ()
-sendCmds cmds solver = mapM_ (SMT.run solver) cmds
-
-runCmds :: [SMT.Command] -> SMT ()
-runCmds cmds = {-# SCC "RunCmds" #-} do
-    solver <- gets qs_solver
-    liftIO $ sendCmds cmds solver
-
 check :: SMT SMT.Result
 check = {-# SCC "Check" #-} do
-    solver <- gets qs_solver
-    res <- {-# SCC "SMTCheck" #-} liftIO $ SMT.check solver
+    res <- {-# SCC "SMTCheck" #-} srun0 SMT.check
     case res of
         SMT.Satisfiable -> do
             -- Verify the assignment actual does satisfy the assertions to
@@ -178,17 +169,10 @@ runSymbolic s q = runSMT s (query q)
 --   corresponding smt primitives. (Should I not be assuming this?)
 assignment :: Sig -> SMT ExpH
 assignment s@(Sig nm t)
-  | t == boolT = do
-    solver <- gets qs_solver
-    bval <- liftIO $ SMT.getBoolValue solver (smtN nm)
-    return (boolEH bval)
-  | t == integerT = do
-    solver <- gets qs_solver
-    ival <- liftIO $ SMT.getIntegerValue solver (smtN nm)
-    return (integerEH ival)
+  | t == boolT = boolEH <$> srun1 SMT.getBoolValue (smtN nm)
+  | t == integerT = integerEH <$> srun1 SMT.getIntegerValue (smtN nm)
   | Just w <- de_bitT t = do
-    solver <- gets qs_solver
-    bval <- liftIO $ SMT.getBitVectorValue solver w (smtN nm)
+    bval <- srun2 SMT.getBitVectorValue w (smtN nm)
     return (bitEH (bv_make w bval))
   | otherwise = error $
     "SMTEN INTERNAL ERROR: unexpected type for prim free var: " ++ pretty s
@@ -216,7 +200,7 @@ query_Sat = do
 mkfree :: Sig -> SMT ()
 mkfree s@(Sig nm t) = do
   modify $ \qs -> qs { qs_freevars = s : qs_freevars qs }
-  runCmds [SMT.Declare (smtN nm) (smtT t)]
+  srun2 SMT.declare (smtN nm) (smtT t)
 
 mkerr :: Type -> SMT ExpH
 mkerr t = do
@@ -224,7 +208,7 @@ mkerr t = do
     let nm = name $ "err~" ++ show fid
         s = Sig nm t
     modify $ \qs -> qs { qs_freeid = fid+1 }
-    runCmds [SMT.Declare (smtN nm) (smtT t)]
+    srun2 SMT.declare (smtN nm) (smtT t)
     return (varEH s)
 
 -- | Assert the given smten boolean expression.
@@ -233,7 +217,7 @@ mkassert p = do
   pred <- gets qs_pred
   let p_predicated = impliesEH pred p
   p_abstracted <- abstract p_predicated
-  runCmds [SMT.Assert $ {-# SCC "TRANSLATE" #-} smtE (fromExpH p_abstracted)]
+  srun1 SMT.assert ({-# SCC "TRANSLATE" #-} smtE (fromExpH p_abstracted))
   modify $ \qs -> qs { qs_asserts = andEH (qs_asserts qs) p_predicated }
 
 -- Replace all explicit _|_ with VarEH.
@@ -275,6 +259,21 @@ use s = {-# SCC "USE" #-} do
     v <- symbolic_smt s
     ctx <- gets qs_ctx
     return (Used (head ctx) v)
+
+srun0 :: (SMT.Solver -> IO a) -> SMT a
+srun0 f = do
+    s <- gets qs_solver
+    liftIO $ f s
+
+srun1 :: (SMT.Solver -> a -> IO b) -> a -> SMT b
+srun1 f x = do
+    s <- gets qs_solver
+    liftIO $ f s x
+
+srun2 :: (SMT.Solver -> a -> b -> IO c) -> a -> b -> SMT c
+srun2 f x y = do
+    s <- gets qs_solver
+    liftIO $ f s x y
     
 -- | Run the given query in its own scope and return the result.
 nest :: SMT a -> SMT a
@@ -282,9 +281,9 @@ nest q = {-# SCC "NEST" #-} do
   nctx <- liftIO newUnique
   qs <- get
   put $! qs { qs_ctx = nctx : qs_ctx qs }
-  runCmds [SMT.Push]
+  srun0 SMT.push
   v <- q
-  runCmds [SMT.Pop]
+  srun0 SMT.pop
   nfreeid <- gets qs_freeid
   put qs { qs_freeid = nfreeid }
   return v

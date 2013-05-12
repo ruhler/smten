@@ -35,7 +35,9 @@
 
 -- | An SMT solver interface
 module Smten.SMT.Solver (
-    Result(..), Solver(..),
+    Result(..), Solver(Solver),
+    push, pop, declare, assert, run,
+    pretty, check, getIntegerValue, getBoolValue, getBitVectorValue,
     ) where
 
 import Smten.SMT.Syntax
@@ -70,4 +72,15 @@ data Solver = Solver {
     getBitVectorValue :: Integer -> String -> IO Integer
 }
 
+push :: Solver -> IO ()
+push s = run s Push
+
+pop :: Solver -> IO ()
+pop s = run s Pop
+
+declare :: Solver -> Symbol -> Type -> IO ()
+declare s n t = run s (Declare n t)
+
+assert :: Solver -> Expression -> IO ()
+assert s p = run s (Assert p)
 
