@@ -41,7 +41,7 @@ qtest = do
         
 tests :: IO ()
 tests = do
-    runSMT Yices1 (Just "build/test/Used.yices1.dbg") qtest
-    runSMT Yices2 (Just "build/test/Used.yices2.dbg") qtest
-    runSMT STP (Just "build/test/Used.stp.dbg") qtest
+    runSMT Yices1 qtest
+    runSMT Yices2 qtest
+    runSMT STP qtest
 

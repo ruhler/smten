@@ -47,7 +47,7 @@ module Smten.SMT.SMT (
     Symbolic,
     prim_free, assert, used,
     predicated, de_symbolicEH,
-    Realize(), RunOptions(..), runSMT, runSymbolic,
+    Realize(), runSMT, runSymbolic,
     SMT, query, query_Used, query_Sat, nest, use, realize,
     ) where
 
@@ -88,9 +88,6 @@ data QS = QS {
 
     qs_solver :: SMT.Solver,
 
-    -- Handle for debug output, if debugging is enabled.
-    qs_dh :: Maybe Handle,
-
     -- ID to use for the next primitive free variable.
     qs_freeid :: Integer,
 
@@ -118,24 +115,18 @@ newtype SMT a = SMT (StateT QS IO a)
 
 deriving instance MonadState QS SMT
 
-sendCmds :: [SMT.Command] -> SMT.Solver -> Maybe Handle -> IO ()
-sendCmds cmds solver Nothing = mapM_ (SMT.run solver) cmds
-sendCmds cmds solver (Just dh) = do
-    hPutStr dh (unlines (map (SMT.pretty solver) cmds))
-    mapM_ (SMT.run solver) cmds
+sendCmds :: [SMT.Command] -> SMT.Solver -> IO ()
+sendCmds cmds solver = mapM_ (SMT.run solver) cmds
 
 runCmds :: [SMT.Command] -> SMT ()
 runCmds cmds = {-# SCC "RunCmds" #-} do
     solver <- gets qs_solver
-    dh <- gets qs_dh
-    liftIO $ sendCmds cmds solver dh
+    liftIO $ sendCmds cmds solver
 
 check :: SMT SMT.Result
 check = {-# SCC "Check" #-} do
     solver <- gets qs_solver
-    debug (SMT.pretty solver SMT.Check)
     res <- {-# SCC "SMTCheck" #-} liftIO $ SMT.check solver
-    debug $ "; check returned: " ++ show res
     case res of
         SMT.Satisfiable -> do
             -- Verify the assignment actual does satisfy the assertions to
@@ -150,43 +141,19 @@ check = {-# SCC "Check" #-} do
         SMT.Unsatisfiable -> return ()
     return res
 
--- Output a line to the debug output.
-debug :: String -> SMT ()
-debug msg = {-# SCC "DEBUG" #-} do
-    dh <- gets qs_dh
-    case dh of
-        Nothing -> return ()
-        Just h -> liftIO $ hPutStrLn h msg
-
 isPrimT :: Type -> Bool
 isPrimT t
   | t == boolT = True
   | t == integerT = True
   | Just _ <- de_bitT t = True
   | otherwise = False
-
-data RunOptions = RunOptions {
-    -- | Optionally output debug info to the given file.
-    ro_debugout :: Maybe FilePath,
-
-    -- | The solver to use
-    ro_solver :: SMT.Solver
-}
             
-mkQS :: RunOptions -> IO QS
-mkQS opts = do
-    dh <- case ro_debugout opts of
-            Nothing -> return Nothing
-            Just dbgfile -> do
-                h <- openFile dbgfile WriteMode
-                hSetBuffering h NoBuffering
-                return (Just h)
+mkQS :: SMT.Solver -> IO QS
+mkQS s = do
     ctx0 <- newUnique
-
     return $ QS {
         qs_ctx = [ctx0],
-        qs_solver = ro_solver opts,
-        qs_dh = dh,
+        qs_solver = s,
         qs_freeid = 1,
         qs_pred = trueEH,
         qs_freevars = [],
@@ -195,13 +162,13 @@ mkQS opts = do
     }
 
 -- | Evaluate a query.
-runSMT :: RunOptions -> SMT a -> IO a
-runSMT opts (SMT q) = do
-    qs <- mkQS opts
+runSMT :: SMT.Solver -> SMT a -> IO a
+runSMT s (SMT q) = do
+    qs <- mkQS s
     evalStateT q qs
 
-runSymbolic :: RunOptions -> Symbolic (Realize a) -> IO (Maybe a)
-runSymbolic opts q = runSMT opts (query q)
+runSymbolic :: SMT.Solver -> Symbolic (Realize a) -> IO (Maybe a)
+runSymbolic s q = runSMT s (query q)
 
 -- | Given a free variable name and corresponding smten type, return the
 -- assignment for that free variable from the smt model.
@@ -214,17 +181,14 @@ assignment s@(Sig nm t)
   | t == boolT = do
     solver <- gets qs_solver
     bval <- liftIO $ SMT.getBoolValue solver (smtN nm)
-    debug $ "; " ++ pretty nm ++ " is " ++ show bval
     return (boolEH bval)
   | t == integerT = do
     solver <- gets qs_solver
     ival <- liftIO $ SMT.getIntegerValue solver (smtN nm)
-    debug $ "; " ++ pretty nm ++ " is " ++ show ival
     return (integerEH ival)
   | Just w <- de_bitT t = do
     solver <- gets qs_solver
     bval <- liftIO $ SMT.getBitVectorValue solver w (smtN nm)
-    debug $ "; " ++ pretty nm ++ " has value " ++ show bval
     return (bitEH (bv_make w bval))
   | otherwise = error $
     "SMTEN INTERNAL ERROR: unexpected type for prim free var: " ++ pretty s

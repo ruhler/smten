@@ -10,6 +10,7 @@ import Data.Maybe (fromMaybe)
 
 import Smten.SMT.SMT
 import Smten.HaskellF.HaskellF
+import Smten.SMT.Solver(Solver)
 import qualified Smten.HaskellF.Lib.Prelude as S
 import qualified Smten.HaskellF.Lib.Symbolic as S
 
@@ -25,9 +26,9 @@ queryHF s = do
     r <- query (realize . unbox <$> s)
     return (box <$> r)
 
-runSymbolicHF :: (HaskellF a) => RunOptions -> Symbolic a -> IO (Maybe a)
-runSymbolicHF opts s = do
-    r <- runSymbolic opts (realize . unbox <$> s)
+runSymbolicHF :: (HaskellF a) => Solver -> Symbolic a -> IO (Maybe a)
+runSymbolicHF solver s = do
+    r <- runSymbolic solver (realize . unbox <$> s)
     return (box <$> r)
 
 queryHFC :: (SmtenHF c f) => Symbolic f -> SMT (Maybe c)

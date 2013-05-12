@@ -65,5 +65,5 @@ qmain = do
 
 tests :: IO ()
 tests = do
-    runSMT Yices2 (Just "build/test/Isolate0.dbg") qmain
+    runSMT Yices2 qmain
 

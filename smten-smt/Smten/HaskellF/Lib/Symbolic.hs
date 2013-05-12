@@ -97,7 +97,7 @@ nobind_symbolic = primHF nobind_SymbolicP
 fail_symbolic :: (HaskellF a) => List__ Char -> Symbolic a
 fail_symbolic = primHF fail_SymbolicP
 
-runSMT :: (HaskellF a, HaskellF s) => s -> Maybe (List__ Char) -> SMT a -> IO a
+runSMT :: (HaskellF a, HaskellF s) => s -> SMT a -> IO a
 runSMT = primHF runSMTP
 
 liftIO_SMT :: (HaskellF a) => IO a -> SMT a

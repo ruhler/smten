@@ -151,13 +151,13 @@ nestP = unaryP "Smten.SMT.Symbolic.nest" (nest :: SMT ExpH -> SMT ExpH)
 
 runSMTP :: Prim
 runSMTP =
-  let f :: Solver -> Maybe FilePath -> SMT ExpH -> IO ExpH
-      f solver dbg q = do
+  let f :: Solver -> SMT ExpH -> IO ExpH
+      f solver q = do
         s <- case solver of
                 Yices1 -> yices1
                 Yices2 -> yices2
                 STP -> stp
-        runSMT (RunOptions dbg s) q
+        runSMT s q
   in binaryP "Smten.SMT.Symbolic.runSMT" f
 
 liftIO_smtP :: Prim

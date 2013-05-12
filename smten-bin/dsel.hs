@@ -56,6 +56,6 @@ qall = do
 main :: IO ()
 main = do
     s <- yices2
-    runSMT (RunOptions (Just "build/test/DSEL.yices2.dbg") s) qall
+    runSMT s qall
     putStrLn "DSEL PASSED"
     

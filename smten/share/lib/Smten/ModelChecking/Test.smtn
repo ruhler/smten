@@ -8,7 +8,7 @@ import Smten.ModelChecking.ShiftReg
 
 testsimple :: IO ()
 testsimple = do
-    s <- runSymbolic Yices2 Nothing (check shiftregm shiftregf 3)
+    s <- runSymbolic Yices2 (check shiftregm shiftregf 3)
     putStrLn $ show s
 
 tests :: IO ()

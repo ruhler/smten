@@ -40,6 +40,6 @@ qmain = do
 
 tests :: IO ()
 tests = do
-    runSMT Yices1 (Just "build/test/AllQ2.yices1.dbg") qmain
-    runSMT Yices2 (Just "build/test/AllQ2.yices2.dbg") qmain
+    runSMT Yices1 qmain
+    runSMT Yices2 qmain
 
