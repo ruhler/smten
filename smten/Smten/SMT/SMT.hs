@@ -68,7 +68,7 @@ import qualified Smten.SMT.Solver as SMT
 
 import Smten.Bit
 import Smten.Failable
-import Smten.Name hiding (smtN)
+import Smten.Name
 import Smten.Sig
 import Smten.Lit
 import Smten.Type
@@ -169,10 +169,10 @@ runSymbolic s q = runSMT s (query q)
 --   corresponding smt primitives. (Should I not be assuming this?)
 assignment :: Sig -> SMT ExpH
 assignment s@(Sig nm t)
-  | t == boolT = boolEH <$> srun1 SMT.getBoolValue (smtN nm)
-  | t == integerT = integerEH <$> srun1 SMT.getIntegerValue (smtN nm)
+  | t == boolT = boolEH <$> srun1 SMT.getBoolValue nm
+  | t == integerT = integerEH <$> srun1 SMT.getIntegerValue nm
   | Just w <- de_bitT t = do
-    bval <- srun2 SMT.getBitVectorValue w (smtN nm)
+    bval <- srun2 SMT.getBitVectorValue w nm
     return (bitEH (bv_make w bval))
   | otherwise = error $
     "SMTEN INTERNAL ERROR: unexpected type for prim free var: " ++ pretty s
@@ -200,7 +200,7 @@ query_Sat = do
 mkfree :: Sig -> SMT ()
 mkfree s@(Sig nm t) = do
   modify $ \qs -> qs { qs_freevars = s : qs_freevars qs }
-  srun2 SMT.declare (smtN nm) (smtT t)
+  srun2 SMT.declare nm (smtT t)
 
 mkerr :: Type -> SMT ExpH
 mkerr t = do
@@ -208,7 +208,7 @@ mkerr t = do
     let nm = name $ "err~" ++ show fid
         s = Sig nm t
     modify $ \qs -> qs { qs_freeid = fid+1 }
-    srun2 SMT.declare (smtN nm) (smtT t)
+    srun2 SMT.declare nm (smtT t)
     return (varEH s)
 
 -- | Assert the given smten boolean expression.
@@ -326,7 +326,7 @@ deriving instance MonadState QS Symbolic
 
 -- | Assert the given predicate.
 assert :: ExpH -> Symbolic ()
-assert p = {-# SCC "ASSERT" #-} Symbolic (mkassert p)
+assert p = {-# SCC "Assert" #-} Symbolic (mkassert p)
 
 -- | Read the value of a Used.
 used :: Used a -> Symbolic a

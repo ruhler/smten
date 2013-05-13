@@ -38,7 +38,7 @@
 
 -- Translate a Smten expression to SMT.
 module Smten.SMT.Translate (
-    smtN, smtT, smtE,
+    smtT, smtE,
     ) where
 
 import qualified Smten.SMT.Syntax as SMT

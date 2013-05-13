@@ -39,6 +39,7 @@ module Smten.SMT.Solver (
     ) where
 
 import Smten.SMT.Syntax
+import Smten.Name
 import Smten.ExpH
 
 data Result
@@ -51,7 +52,7 @@ data Solver = Solver {
     pop :: IO (),
 
     -- | Declare a free variable with given name and type.
-    declare :: Symbol -> Type -> IO (),
+    declare :: Name -> Type -> IO (),
 
     -- | Assert the given expression.
     assert :: ExpH -> IO (),
@@ -61,14 +62,14 @@ data Solver = Solver {
 
     -- | Given the name of a free variable with integer type, return its
     -- value.
-    getIntegerValue :: String -> IO Integer,
+    getIntegerValue :: Name -> IO Integer,
 
     -- | Given the name of a free variable with bool type, return its
     -- value.
-    getBoolValue :: String -> IO Bool,
+    getBoolValue :: Name -> IO Bool,
 
     -- | Given the width and name of a free variable with bit vector type,
     -- return its value as a positive integer.
-    getBitVectorValue :: Integer -> String -> IO Integer
+    getBitVectorValue :: Integer -> Name -> IO Integer
 }
 

@@ -78,11 +78,11 @@ yices2 = do
           S.getBitVectorValue = getBitVectorValue y2
        }
 
-declare :: Yices2 -> STX.Symbol -> STX.Type -> IO ()
+declare :: Yices2 -> Name -> STX.Type -> IO ()
 declare _ s ty = do
     ty' <- ytype ty
     term <- c_yices_new_uninterpreted_term ty'
-    withCString s $ c_yices_set_term_name term
+    withCString (unname s) $ c_yices_set_term_name term
 
 assert :: Yices2 -> ExpH -> IO ()
 assert (Yices2 yctx) p = do
@@ -100,11 +100,11 @@ check (Yices2 yctx) = do
     st <- c_yices_check_context yctx nullPtr
     return $! fromYSMTStatus st
 
-getIntegerValue :: Yices2 -> String -> IO Integer
+getIntegerValue :: Yices2 -> Name -> IO Integer
 getIntegerValue (Yices2 yctx) nm = do
     model <- c_yices_get_model yctx 1
     x <- alloca $ \ptr -> do
-            term <- withCString nm c_yices_get_term_by_name
+            term <- withCString (unname nm) c_yices_get_term_by_name
             ir <- c_yices_get_int64_value model term ptr
             if ir == 0
                then do 
@@ -114,11 +114,11 @@ getIntegerValue (Yices2 yctx) nm = do
     c_yices_free_model model
     return $! toInteger x
 
-getBoolValue :: Yices2 -> String -> IO Bool
+getBoolValue :: Yices2 -> Name -> IO Bool
 getBoolValue (Yices2 yctx) nm = do
     model <- c_yices_get_model yctx 1
     x <- alloca $ \ptr -> do
-            term <- withCString nm c_yices_get_term_by_name
+            term <- withCString (unname nm) c_yices_get_term_by_name
             ir <- c_yices_get_bool_value model term ptr
             case ir of
                _ | ir == (-1) -> do
@@ -137,11 +137,11 @@ getBoolValue (Yices2 yctx) nm = do
         1 -> return True
         _ -> error $ "yices2 get bool value got: " ++ show x
     
-getBitVectorValue :: Yices2 -> Integer -> String -> IO Integer
+getBitVectorValue :: Yices2 -> Integer -> Name -> IO Integer
 getBitVectorValue (Yices2 yctx) w nm = do
     model <- c_yices_get_model yctx 1
     bits <- allocaArray (fromInteger w) $ \ptr -> do
-        term <- withCString nm c_yices_get_term_by_name
+        term <- withCString (unname nm) c_yices_get_term_by_name
         ir <- c_yices_get_bv_value model term ptr
         if ir == 0
             then peekArray (fromInteger w) ptr

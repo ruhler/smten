@@ -18,6 +18,7 @@ import qualified Smten.SMT.Solver as S
 import Smten.SMT.Syntax
 import Smten.SMT.Translate
 import qualified Smten.SMT.STP.Concrete as C
+import Smten.Name
 import Smten.ExpH
 
 data STP = STP {
@@ -140,11 +141,11 @@ stp = do
        S.getBitVectorValue = getBitVectorValue s
     }
         
-declare :: STP -> Symbol -> Type -> IO ()
+declare :: STP -> Name -> Type -> IO ()
 declare s nm t = do
     st <- mkType s t        
-    v <- withvc s $ \vc -> (withCString nm $ \cnm -> c_vc_varExpr vc cnm st)
-    modifyIORef (stp_vars s) $ Map.insert nm v
+    v <- withvc s $ \vc -> (withCString (unname nm) $ \cnm -> c_vc_varExpr vc cnm st)
+    modifyIORef (stp_vars s) $ Map.insert (unname nm) v
 
 assert :: STP -> ExpH -> IO ()
 assert s e = do
@@ -170,22 +171,22 @@ check s = do
         1 -> return S.Unsatisfiable   -- False is VALID
         _ -> error $ "STP.check: vc_query returned " ++ show r
     
-getIntegerValue :: STP -> String -> IO Integer
+getIntegerValue :: STP -> Name -> IO Integer
 getIntegerValue _ _ = error $ "STP does not support free Integers"
 
-getBoolValue :: STP -> String -> IO Bool
+getBoolValue :: STP -> Name -> IO Bool
 getBoolValue s nm = do
-    var <- mkExpr s (varE nm)
+    var <- mkExpr s (varE (unname nm))
     val <- withvc s $ \vc -> c_vc_getCounterExample vc var
     b <- c_vc_isBool val
     case b of
         0 -> return False
         1 -> return True
-        x -> error $ "STP.getBoolValue got value " ++ show x ++ " for " ++ nm
+        x -> error $ "STP.getBoolValue got value " ++ show x ++ " for " ++ unname nm
     
-getBitVectorValue :: STP -> Integer -> String -> IO Integer
+getBitVectorValue :: STP -> Integer -> Name -> IO Integer
 getBitVectorValue s _ nm = do
-    var <- mkExpr s (varE nm)
+    var <- mkExpr s (varE (unname nm))
     val <- withvc s $ \vc -> c_vc_getCounterExample vc var
     fromIntegral <$> c_getBVUnsignedLongLong val
     

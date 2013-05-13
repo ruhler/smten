@@ -1,8 +1,11 @@
 NSAPI::
-* Rewrite yices2 to not use SMT.Syntax for assert
 * Change Solver.declare to take a Sig instead of Symbol, Type
 * Change Solver.get* to take Names instead of Strings
 * Get rid of SMT.Syntax
+* Get rid of Concrete stuff
+* Generalize Yices2b to work for Yices1, Yices2, and STP
+* Perform abstraction in generalized Yices2b.
+* Implement 'debug' solver based on Smten syntax
 
 Recent::
 * Add support for (..) in import and export specifications

@@ -55,6 +55,7 @@ import qualified Smten.SMT.Solver as S
 import Smten.SMT.Syntax
 import Smten.SMT.Translate
 import qualified Smten.SMT.Yices.Concrete as YC
+import Smten.Name
 import Smten.ExpH
 
 data YContext
@@ -258,13 +259,13 @@ assert y@(Yices1 fp) p = do
     p' <- yexpr y $ {-# SCC "TRANSLATE" #-} smtE (fromExpH p)
     withForeignPtr fp $ \ctx -> c_yices_assert ctx p'
 
-declare :: Yices1 -> Symbol -> Type -> IO ()
+declare :: Yices1 -> Name -> Type -> IO ()
 declare (Yices1 fp) s t = do
     let ty = case t of
                 BoolT -> "bool"
                 IntegerT -> "int"
                 BitVectorT w -> "(bitvector " ++ show w ++ ")"
-        cmd = "(define " ++ s ++ " :: " ++ ty ++ ")"
+        cmd = "(define " ++ unname s ++ " :: " ++ ty ++ ")"
     worked <- withCString cmd $ \str -> do
           withForeignPtr fp $ \yctx ->
             c_yices_parse_command yctx str
@@ -280,10 +281,10 @@ check (Yices1 fp) = do
     res <- withForeignPtr fp c_yices_check
     return $ toResult res
 
-getIntegerValue :: Yices1 -> String -> IO Integer
+getIntegerValue :: Yices1 -> Name -> IO Integer
 getIntegerValue (Yices1 fp) nm = do
     model <- withForeignPtr fp c_yices_get_model 
-    decl <- withCString nm $ \str ->
+    decl <- withCString (unname nm) $ \str ->
                 withForeignPtr fp $ \yctx ->
                     c_yices_get_var_decl_from_name yctx str
     x <- alloca $ \ptr -> do
@@ -293,10 +294,10 @@ getIntegerValue (Yices1 fp) nm = do
             else return 0
     return (toInteger x)
 
-getBoolValue :: Yices1 -> String -> IO Bool
+getBoolValue :: Yices1 -> Name -> IO Bool
 getBoolValue (Yices1 fp) nm = do
     model <- withForeignPtr fp c_yices_get_model 
-    decl <- withCString nm $ \str ->
+    decl <- withCString (unname nm) $ \str ->
                 withForeignPtr fp $ \yctx ->
                     c_yices_get_var_decl_from_name yctx str
     br <- c_yices_get_value model decl
@@ -305,10 +306,10 @@ getBoolValue (Yices1 fp) nm = do
       _ | br == yFalse -> return False
       _ | br == yUndef -> return False
 
-getBitVectorValue :: Yices1 -> Integer -> String -> IO Integer
+getBitVectorValue :: Yices1 -> Integer -> Name -> IO Integer
 getBitVectorValue (Yices1 fp) w nm = do
     model <- withForeignPtr fp c_yices_get_model 
-    decl <- withCString nm $ \str ->
+    decl <- withCString (unname nm) $ \str ->
                 withForeignPtr fp $ \yctx ->
                     c_yices_get_var_decl_from_name yctx str
     bits <- allocaArray (fromInteger w) $ \ptr -> do
