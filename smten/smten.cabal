@@ -136,6 +136,8 @@ library
 
     Smten.Loader
 
+    Smten.SMT.AST
+    Smten.SMT.Assert
     Smten.SMT.Solver
     Smten.SMT.Syntax
     Smten.SMT.Translate

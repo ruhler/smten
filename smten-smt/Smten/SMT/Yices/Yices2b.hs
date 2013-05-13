@@ -33,6 +33,8 @@
 -- 
 -------------------------------------------------------------------------------
 
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE PatternGuards #-}
 
 -- | Backend for the Yices2 solver
@@ -46,10 +48,12 @@ import Foreign.C.String
 import Foreign.C.Types
 
 import Smten.SMT.Yices.FFI2
-import qualified Smten.SMT.Yices.Concrete as YC
+import Smten.SMT.AST
+import qualified Smten.SMT.Assert as A
 import qualified Smten.SMT.Solver as S
 import Smten.Name
 import Smten.Sig
+import Smten.Lit
 import Smten.Type
 import Smten.Bit
 import Smten.ExpH
@@ -70,7 +74,7 @@ yices2 = do
           S.push = push y2,
           S.pop = pop y2,
           S.declare = declare y2,
-          S.assert = assert y2,
+          S.assert = y2assert y2,
           S.check = check y2,
           S.getIntegerValue = getIntegerValue y2,
           S.getBoolValue = getBoolValue y2,
@@ -83,10 +87,8 @@ declare _ (Sig s ty) = do
     term <- c_yices_new_uninterpreted_term ty'
     withCString (unname s) $ c_yices_set_term_name term
 
-assert :: Yices2 -> ExpH -> IO ()
-assert (Yices2 yctx) p = do
-    p' <- yterm p
-    c_yices_assert_formula yctx p'
+y2assert :: Yices2 -> ExpH -> IO ()
+y2assert = A.assert
 
 push :: Yices2 -> IO ()
 push (Yices2 yctx) = c_yices_push yctx
@@ -148,17 +150,9 @@ getBitVectorValue (Yices2 yctx) w nm = do
     c_yices_free_model model
     return $! bvInteger bits
         
-                
-
 bvInteger :: [Int32] -> Integer
 bvInteger [] = 0
 bvInteger (x:xs) = bvInteger xs * 2 + (fromIntegral x)
-
-withstderr :: (Ptr CFile -> IO a) -> IO a
-withstderr f = do
-    cf <- withCString "w" $ \str -> c_fdopen 2 str
-    x <- f cf 
-    return $! x
 
 ytype :: Type -> IO YType
 ytype t
@@ -166,108 +160,46 @@ ytype t
  | t == integerT = c_yices_int_type
  | t == boolT = c_yices_bool_type
 
-type Y2 = StateT (Map.Map EID YTerm) IO
+instance AST Yices2 YTerm where
+  assert (Yices2 yctx) = c_yices_assert_formula yctx
 
-yterm :: ExpH -> IO YTerm
-yterm e = evalStateT (def e) Map.empty
+  literal _ l
+    | Just i <- de_integerL l = c_yices_int64 (fromInteger i)
+    | Just bv <- de_bitL l =
+        let w = fromInteger $ bv_width bv
+            v = fromInteger $ bv_value bv
+        in c_yices_bvconst_uint64 w v
 
-use :: ExpH -> Y2 YTerm
-use e = do
-  m <- get
-  case Map.lookup (eid e) m of
-      Just v -> return v
-      Nothing -> do
-        v <- def e
-        modify $ Map.insert (eid e) v
-        return v
-
-def :: ExpH -> Y2 YTerm
-def e
- | Just i <- de_integerEH e = liftIO $ c_yices_int64 (fromInteger i)
- | Just bv <- de_bitEH e = liftIO $ do
-     c_yices_bvconst_uint64 (fromInteger (bv_width bv)) (fromInteger (bv_value bv))
- | Just p <- de_boolEH e = liftIO $ if p then c_yices_true else c_yices_false
- | VarEH (Sig nm _) <- force e = liftIO $ withCString (unname nm) c_yices_get_term_by_name
- | PrimEH n t _ xs <- force e = do
-      case HT.lookup n prims of
-        Just f -> f t xs
-        Nothing -> error $ "yices2: primitive not supported: " ++ unname n
- | IfEH _ p a b <- force e = do
-     [p', a', b'] <- mapM use [p, a, b]
-     liftIO $ c_yices_ite p' a' b'
-
-prims :: HT.HashTable Name (Type -> [ExpH] -> Y2 YTerm)
-prims = HT.table [
-    (name "Prelude.__prim_eq_Integer", bprim c_yices_eq),
-    (name "Prelude.__prim_add_Integer", bprim c_yices_add),
-    (name "Prelude.__prim_sub_Integer", bprim c_yices_sub),
-    (name "Prelude.__prim_mul_Integer", bprim c_yices_mul),
-    (name "Prelude.__prim_lt_Integer", bprim c_yices_arith_lt_atom),
-    (name "Prelude.__prim_leq_Integer", bprim c_yices_arith_leq_atom),
-    (name "Prelude.__prim_gt_Integer", bprim c_yices_arith_gt_atom),
-    (name "Prelude.__prim_geq_Integer", bprim c_yices_arith_geq_atom),
-    (name "Smten.Bit.__prim_eq_Bit", bprim c_yices_eq),
-    (name "Smten.Bit.__prim_lt_Bit", bprim c_yices_bvlt_atom),
-    (name "Smten.Bit.__prim_leq_Bit", bprim c_yices_bvle_atom),
-    (name "Smten.Bit.__prim_gt_Bit", bprim c_yices_bvgt_atom),
-    (name "Smten.Bit.__prim_geq_Bit", bprim c_yices_bvge_atom),
-    (name "Smten.Bit.__prim_add_Bit", bprim c_yices_bvadd),
-    (name "Smten.Bit.__prim_sub_Bit", bprim c_yices_bvsub),
-    (name "Smten.Bit.__prim_mul_Bit", bprim c_yices_bvmul),
-    (name "Smten.Bit.__prim_or_Bit", bprim c_yices_bvor),
-    (name "Smten.Bit.__prim_and_Bit", bprim c_yices_bvand),
-    (name "Smten.Bit.__prim_not_Bit", uprim c_yices_bvnot),
-    (name "Smten.Bit.__prim_concat_Bit", bprim c_yices_bvconcat),
-    (name "Smten.Bit.__prim_shl_Bit", bprim c_yices_bvshl),
-    (name "Smten.Bit.__prim_lshr_Bit", bprim c_yices_bvlshr),
-    (name "Smten.Bit.__prim_zeroExtend_Bit", primZeroExtend),
-    (name "Smten.Bit.__prim_signExtend_Bit", primSignExtend),
-    (name "Smten.Bit.__prim_truncate_Bit", primTruncate),
-    (name "Smten.Bit.__prim_extract_Bit", primExtract)
+  bool _ p = if p then c_yices_true else c_yices_false
+  var _ nm = withCString (unname nm) c_yices_get_term_by_name
+  ite _ = c_yices_ite 
+  unary = HT.table [(name "Smten.Bit.__prim_not_Bit", const c_yices_bvnot)]
+  binary = HT.table [
+    (name "Prelude.__prim_eq_Integer", const c_yices_eq),
+    (name "Prelude.__prim_add_Integer", const c_yices_add),
+    (name "Prelude.__prim_sub_Integer", const c_yices_sub),
+    (name "Prelude.__prim_mul_Integer", const c_yices_mul),
+    (name "Prelude.__prim_lt_Integer", const c_yices_arith_lt_atom),
+    (name "Prelude.__prim_leq_Integer", const c_yices_arith_leq_atom),
+    (name "Prelude.__prim_gt_Integer", const c_yices_arith_gt_atom),
+    (name "Prelude.__prim_geq_Integer", const c_yices_arith_geq_atom),
+    (name "Smten.Bit.__prim_eq_Bit", const c_yices_eq),
+    (name "Smten.Bit.__prim_lt_Bit", const c_yices_bvlt_atom),
+    (name "Smten.Bit.__prim_leq_Bit", const c_yices_bvle_atom),
+    (name "Smten.Bit.__prim_gt_Bit", const c_yices_bvgt_atom),
+    (name "Smten.Bit.__prim_geq_Bit", const c_yices_bvge_atom),
+    (name "Smten.Bit.__prim_add_Bit", const c_yices_bvadd),
+    (name "Smten.Bit.__prim_sub_Bit", const c_yices_bvsub),
+    (name "Smten.Bit.__prim_mul_Bit", const c_yices_bvmul),
+    (name "Smten.Bit.__prim_or_Bit", const c_yices_bvor),
+    (name "Smten.Bit.__prim_and_Bit", const c_yices_bvand),
+    (name "Smten.Bit.__prim_concat_Bit", const c_yices_bvconcat),
+    (name "Smten.Bit.__prim_shl_Bit", const c_yices_bvshl),
+    (name "Smten.Bit.__prim_lshr_Bit", const c_yices_bvlshr)
     ]
 
-uprim :: (YTerm -> IO YTerm) -> Type -> [ExpH] -> Y2 YTerm
-uprim f _ [a] = do
-    a' <- use a
-    liftIO $ f a'
+  zeroextend _ a' n = c_yices_zero_extend a' (fromInteger n)
+  signextend _ a' n = c_yices_sign_extend a' (fromInteger n)
+  extract _ x' begin end = c_yices_bvextract x' (fromInteger begin) (fromInteger end)
+  truncate _ x' w = c_yices_bvextract x' (fromInteger $ w-1) 0
 
-bprim :: (YTerm -> YTerm -> IO YTerm) -> Type -> [ExpH] -> Y2 YTerm
-bprim f _ [a, b] = do
-    a' <- use a
-    b' <- use b
-    liftIO $ f a' b'
-
-primZeroExtend :: Type -> [ExpH] -> Y2 YTerm
-primZeroExtend bt [a] = do
-    let Just sw = de_bitT (typeof $ force a)
-        Just tw = de_bitT bt
-        n = tw - sw
-    a' <- use a
-    liftIO $ c_yices_zero_extend a' (fromInteger n)
-
-primSignExtend :: Type -> [ExpH] -> Y2 YTerm
-primSignExtend bt [a] = do
-    let Just sw = de_bitT (typeof (force a))
-        Just tw = de_bitT bt
-        n = tw - sw
-    a' <- use a
-    liftIO $ c_yices_sign_extend a' (fromInteger n)
-
-primExtract :: Type -> [ExpH] -> Y2 YTerm
-primExtract t [x, li]= do
-    let Just i = de_integerEH x
-        Just tw = de_bitT t
-        begin = i + tw - 1
-        end = i
-    x' <- use x
-    liftIO $ c_yices_bvextract x' (fromInteger begin) (fromInteger end)
-
-primTruncate :: Type -> [ExpH] -> Y2 YTerm
-primTruncate t [x] = do
-    let Just (_, bt) = de_arrowT t
-        Just tw = de_bitT bt
-        begin = tw - 1
-        end = 0
-    x' <- use x
-    liftIO $ c_yices_bvextract x' (fromInteger begin) (fromInteger end)
-    
