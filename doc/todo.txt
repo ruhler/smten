@@ -1,6 +1,4 @@
 NSAPI::
-* Change Solver.declare to take a Sig instead of Symbol, Type
-* Change Solver.get* to take Names instead of Strings
 * Get rid of SMT.Syntax
 * Get rid of Concrete stuff
 * Generalize Yices2b to work for Yices1, Yices2, and STP
@@ -109,6 +107,7 @@ Known Bugs::
 * HaskellF sharing of appeval (in Share)
 * STP bug (in Nest)
 * STP bug (in Bit)
+* Yices1 left shift (in Bit)
 * precedence 2 bug (in Basic)
 * precedence 3 bug (in Basic)
 * HaskellF ModelChecking test
