@@ -198,9 +198,9 @@ query_Sat = do
     return $ res == SMT.Satisfiable
 
 mkfree :: Sig -> SMT ()
-mkfree s@(Sig nm t) = do
+mkfree s = do
   modify $ \qs -> qs { qs_freevars = s : qs_freevars qs }
-  srun2 SMT.declare nm (smtT t)
+  srun1 SMT.declare s
 
 mkerr :: Type -> SMT ExpH
 mkerr t = do
@@ -208,7 +208,7 @@ mkerr t = do
     let nm = name $ "err~" ++ show fid
         s = Sig nm t
     modify $ \qs -> qs { qs_freeid = fid+1 }
-    srun2 SMT.declare nm (smtT t)
+    srun1 SMT.declare s
     return (varEH s)
 
 -- | Assert the given smten boolean expression.

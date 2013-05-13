@@ -38,8 +38,8 @@ module Smten.SMT.Solver (
     Result(..), Solver(..),
     ) where
 
-import Smten.SMT.Syntax
 import Smten.Name
+import Smten.Sig
 import Smten.ExpH
 
 data Result
@@ -52,7 +52,7 @@ data Solver = Solver {
     pop :: IO (),
 
     -- | Declare a free variable with given name and type.
-    declare :: Name -> Type -> IO (),
+    declare :: Sig -> IO (),
 
     -- | Assert the given expression.
     assert :: ExpH -> IO (),

@@ -15,10 +15,12 @@ import qualified Foreign.Concurrent as F
 import Smten.SMT.STP.FFI
 
 import qualified Smten.SMT.Solver as S
-import Smten.SMT.Syntax
+import Smten.SMT.Syntax hiding (Type(..))
 import Smten.SMT.Translate
 import qualified Smten.SMT.STP.Concrete as C
 import Smten.Name
+import Smten.Type
+import Smten.Sig
 import Smten.ExpH
 
 data STP = STP {
@@ -30,9 +32,10 @@ withvc :: STP -> (Ptr STP_VC -> IO a) -> IO a
 withvc s = withForeignPtr (stp_fvc s)
 
 mkType :: STP -> Type -> IO (Ptr STP_Type)
-mkType s BoolT = withvc s c_vc_boolType
-mkType s (BitVectorT w) = withvc s $ \vc -> c_vc_bvType vc (fromInteger w)
-mkType _ IntegerT = error $ "STP does not support Integer type"
+mkType s t
+ | t == boolT = withvc s c_vc_boolType
+ | Just w <- de_bitT t = withvc s $ \vc -> c_vc_bvType vc (fromInteger w)
+ | t == integerT = error $ "STP does not support Integer type"
 
 mkBinExpr :: STP -> Expression -> Expression
       -> (Ptr STP_VC -> Ptr STP_Expr -> Ptr STP_Expr -> IO (Ptr STP_Expr))
@@ -141,8 +144,8 @@ stp = do
        S.getBitVectorValue = getBitVectorValue s
     }
         
-declare :: STP -> Name -> Type -> IO ()
-declare s nm t = do
+declare :: STP -> Sig -> IO ()
+declare s (Sig nm t) = do
     st <- mkType s t        
     v <- withvc s $ \vc -> (withCString (unname nm) $ \cnm -> c_vc_varExpr vc cnm st)
     modifyIORef (stp_vars s) $ Map.insert (unname nm) v

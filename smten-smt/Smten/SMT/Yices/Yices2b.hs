@@ -45,7 +45,6 @@ import Foreign
 import Foreign.C.String
 import Foreign.C.Types
 
-import qualified Smten.SMT.Syntax as STX
 import Smten.SMT.Yices.FFI2
 import qualified Smten.SMT.Yices.Concrete as YC
 import qualified Smten.SMT.Solver as S
@@ -78,8 +77,8 @@ yices2 = do
           S.getBitVectorValue = getBitVectorValue y2
        }
 
-declare :: Yices2 -> Name -> STX.Type -> IO ()
-declare _ s ty = do
+declare :: Yices2 -> Sig -> IO ()
+declare _ (Sig s ty) = do
     ty' <- ytype ty
     term <- c_yices_new_uninterpreted_term ty'
     withCString (unname s) $ c_yices_set_term_name term
@@ -161,11 +160,12 @@ withstderr f = do
     x <- f cf 
     return $! x
 
-ytype :: STX.Type -> IO YType
-ytype (STX.BitVectorT i) = c_yices_bv_type (fromIntegral i)
-ytype (STX.IntegerT) = c_yices_int_type
-ytype (STX.BoolT) = c_yices_bool_type
-    
+ytype :: Type -> IO YType
+ytype t
+ | Just i <- de_bitT t = c_yices_bv_type (fromIntegral i)
+ | t == integerT = c_yices_int_type
+ | t == boolT = c_yices_bool_type
+
 type Y2 = StateT (Map.Map EID YTerm) IO
 
 yterm :: ExpH -> IO YTerm

@@ -51,11 +51,13 @@ import qualified Foreign.Concurrent as F
 
 import qualified Data.Map as Map
 
+import Smten.SMT.Syntax hiding (Type(..))
 import qualified Smten.SMT.Solver as S
-import Smten.SMT.Syntax
 import Smten.SMT.Translate
 import qualified Smten.SMT.Yices.Concrete as YC
 import Smten.Name
+import Smten.Type
+import Smten.Sig
 import Smten.ExpH
 
 data YContext
@@ -259,13 +261,13 @@ assert y@(Yices1 fp) p = do
     p' <- yexpr y $ {-# SCC "TRANSLATE" #-} smtE (fromExpH p)
     withForeignPtr fp $ \ctx -> c_yices_assert ctx p'
 
-declare :: Yices1 -> Name -> Type -> IO ()
-declare (Yices1 fp) s t = do
-    let ty = case t of
-                BoolT -> "bool"
-                IntegerT -> "int"
-                BitVectorT w -> "(bitvector " ++ show w ++ ")"
-        cmd = "(define " ++ unname s ++ " :: " ++ ty ++ ")"
+declare :: Yices1 -> Sig -> IO ()
+declare (Yices1 fp) (Sig nm t) = do
+    let ty = case () of
+                _ | t == boolT -> "bool"
+                  | t == integerT -> "int"
+                  | Just w <- de_bitT t -> "(bitvector " ++ show w ++ ")"
+        cmd = "(define " ++ unname nm ++ " :: " ++ ty ++ ")"
     worked <- withCString cmd $ \str -> do
           withForeignPtr fp $ \yctx ->
             c_yices_parse_command yctx str

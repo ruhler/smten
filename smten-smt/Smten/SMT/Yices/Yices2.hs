@@ -46,11 +46,13 @@ import Foreign.C.String
 import Foreign.C.Types
 
 import Smten.SMT.Yices.FFI2
-import Smten.SMT.Syntax
+import Smten.SMT.Syntax hiding (Type(..))
 import Smten.SMT.Translate
 import qualified Smten.SMT.Yices.Concrete as YC
 import qualified Smten.SMT.Solver as S
 import Smten.Name
+import Smten.Type
+import Smten.Sig
 import Smten.ExpH
 
 data Yices2 = Yices2 (Ptr YContext)
@@ -75,8 +77,8 @@ yices2 = do
           S.getBitVectorValue = getBitVectorValue y2
        }
 
-declare :: Yices2 -> Name -> Type -> IO ()
-declare _ s ty = do
+declare :: Yices2 -> Sig -> IO ()
+declare _ (Sig s ty) = do
     ty' <- ytype ty
     term <- c_yices_new_uninterpreted_term ty'
     withCString (unname s) $ c_yices_set_term_name term
@@ -159,20 +161,10 @@ withstderr f = do
     return $! x
 
 ytype :: Type -> IO YType
-ytype (BitVectorT i) = c_yices_bv_type (fromIntegral i)
-ytype (IntegerT) = c_yices_int_type
-ytype (BoolT) = c_yices_bool_type
-    
-
-ytypebystr :: Type -> IO YType
-ytypebystr t = do
-    yt <- withCString (YC.concrete t) $ \str -> c_yices_parse_type str
-    if yt < 0
-        then do
-            withstderr $ \stderr -> c_yices_print_error stderr
-            error $ "ytype: " ++ YC.pretty t
-        else do
-            return $! yt
+ytype t
+ | Just i <- de_bitT t = c_yices_bv_type (fromIntegral i)
+ | t == integerT = c_yices_int_type
+ | t == boolT = c_yices_bool_type
 
 isbinop :: String -> Expression -> Bool
 isbinop nm (AppE (VarE n) [_, _]) = n == nm
