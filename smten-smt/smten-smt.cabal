@@ -16,11 +16,9 @@ source-repository this
 --tag:
 library
   exposed-modules:
-    Smten.SMT.STP.Concrete
     Smten.SMT.STP.FFI
     Smten.SMT.STP.STP
 
-    Smten.SMT.Yices.Concrete
     Smten.SMT.Yices.FFI2
     Smten.SMT.Yices.Yices1
     Smten.SMT.Yices.Yices2

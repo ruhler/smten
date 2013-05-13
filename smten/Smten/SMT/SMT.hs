@@ -63,7 +63,6 @@ import System.IO
 import Control.Monad.State
 import qualified Data.HashMap as Map
 
-import qualified Smten.SMT.Syntax as SMT
 import qualified Smten.SMT.Solver as SMT
 
 import Smten.Bit
@@ -75,7 +74,6 @@ import Smten.Type
 import Smten.ExpH
 import Smten.Dec hiding (Context)
 import Smten.Ppr hiding (nest)
-import Smten.SMT.Translate
 
 newtype Realize a = Realize {
     runRealize :: SMT a

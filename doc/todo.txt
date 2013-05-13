@@ -1,6 +1,4 @@
 NSAPI::
-* Get rid of SMT.Syntax
-* Get rid of Concrete stuff
 * Perform abstraction in generalized Yices2b.
 * Implement 'debug' solver based on Smten syntax
 
