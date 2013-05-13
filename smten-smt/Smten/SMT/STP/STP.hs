@@ -1,5 +1,7 @@
 
 {-# LANGUAGE PatternGuards #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 
 module Smten.SMT.STP.STP (stp) where
 
@@ -14,18 +16,20 @@ import Foreign.C.Types
 import qualified Foreign.Concurrent as F
 import Smten.SMT.STP.FFI
 
+import Smten.SMT.AST
+import qualified Smten.SMT.Assert as A
 import qualified Smten.SMT.Solver as S
-import Smten.SMT.Syntax hiding (Type(..))
-import Smten.SMT.Translate
-import qualified Smten.SMT.STP.Concrete as C
 import Smten.Name
+import Smten.Lit
+import Smten.Bit
 import Smten.Type
 import Smten.Sig
 import Smten.ExpH
+import qualified Smten.HashTable as HT
 
 data STP = STP {
     stp_fvc :: ForeignPtr STP_VC,
-    stp_vars :: IORef (Map.Map Symbol (Ptr STP_Expr))
+    stp_vars :: IORef (Map.Map Name (Ptr STP_Expr))
 }
 
 withvc :: STP -> (Ptr STP_VC -> IO a) -> IO a
@@ -37,94 +41,66 @@ mkType s t
  | Just w <- de_bitT t = withvc s $ \vc -> c_vc_bvType vc (fromInteger w)
  | t == integerT = error $ "STP does not support Integer type"
 
-mkBinExpr :: STP -> Expression -> Expression
-      -> (Ptr STP_VC -> Ptr STP_Expr -> Ptr STP_Expr -> IO (Ptr STP_Expr))
-      -> IO (Ptr STP_Expr)
-mkBinExpr s a b f = do
-    ae <- mkExpr s a
-    be <- mkExpr s b
-    withvc s $ \vc -> f vc ae be
+instance AST STP (Ptr STP_Expr) where
+  assert s e = withvc s $ \vc -> c_vc_assertFormula vc e
+ 
+  literal s l
+    | Just i <- de_integerL l = error $ "STP does not support integer literals"
+    | Just bv <- de_bitL l = withvc s $ \vc ->
+        let w = fromInteger $ bv_width bv
+            v = fromInteger $ bv_value bv
+        in c_vc_bvConstExprFromLL vc w v
 
-mkExpr :: STP -> Expression -> IO (Ptr STP_Expr)
-mkExpr s (LitE (BoolL True)) = withvc s c_vc_trueExpr
-mkExpr s (LitE (BoolL False)) = withvc s c_vc_falseExpr
-mkExpr s (LitE (IntegerL {})) = error $ "STP does not support integer literals"
-mkExpr s e | Just (a, b) <- de_eqE e = mkBinExpr s a b c_vc_eqExpr
-mkExpr s e | Just (a, b) <- de_bvltE e = mkBinExpr s a b c_vc_bvLtExpr
-mkExpr s e | Just (a, b) <- de_bvgtE e = mkBinExpr s a b c_vc_bvGtExpr
-mkExpr s e | Just (a, b) <- de_bvleqE e = mkBinExpr s a b c_vc_bvLeExpr
-mkExpr s e | Just (a, b) <- de_bvgeqE e = mkBinExpr s a b c_vc_bvGeExpr
-mkExpr s e | Just [a, b] <- de_orE e = mkBinExpr s a b c_vc_orExpr
-mkExpr s e | Just [a, b] <- de_andE e = mkBinExpr s a b c_vc_andExpr
-mkExpr s e | Just (a, b) <- de_bvorE e = mkBinExpr s a b c_vc_bvOrExpr
-mkExpr s e | Just (a, b) <- de_bvandE e = mkBinExpr s a b c_vc_bvAndExpr
-mkExpr s e | Just (a, b) <- de_bvconcatE e = mkBinExpr s a b c_vc_bvConcatExpr
-mkExpr s e | Just a <- de_bvnotE e = do
-    ae <- mkExpr s a
-    withvc s $ \vc -> c_vc_bvNotExpr vc ae
-mkExpr s e | Just (a, b) <- de_bvshlE e =
-  let f :: Ptr STP_VC -> Ptr STP_Expr -> Ptr STP_Expr -> IO (Ptr STP_Expr)
-      f vc ae be = do
-         n <- c_vc_getBVLength vc ae
-         c_vc_bvLeftShiftExprExpr vc n ae be
-  in mkBinExpr s a b f
-mkExpr s e | Just (a, b) <- de_bvlshrE e =
-  let f :: Ptr STP_VC -> Ptr STP_Expr -> Ptr STP_Expr -> IO (Ptr STP_Expr)
-      f vc ae be = do
-         n <- c_vc_getBVLength vc ae
-         c_vc_bvRightShiftExprExpr vc n ae be
-  in mkBinExpr s a b f
-mkExpr s e | Just (a, n) <- de_bvzeroExtendE e = do
-    ae <- mkExpr s a
-    zeros <- withvc s $ \vc -> c_vc_bvConstExprFromLL vc (fromInteger n) (fromInteger 0)
-    withvc s $ \vc -> c_vc_bvConcatExpr vc zeros ae
-mkExpr s e | Just (a, n) <- de_bvsignExtendE e = do
-    ae <- mkExpr s a
-    withvc s $ \vc -> c_vc_bvSignExtend vc ae (fromInteger n)
-mkExpr s e | Just args <- de_orE e = do
-    args' <- mapM (mkExpr s) args
-    withvc s $ \vc ->
-        withArray args' $ \ptr -> c_vc_orExprN vc ptr (genericLength args)
-mkExpr s e | Just args <- de_andE e = do
-    args' <- mapM (mkExpr s) args
-    withvc s $ \vc ->
-        withArray args' $ \ptr -> c_vc_andExprN vc ptr (genericLength args)
-mkExpr s e | Just a <- de_notE e = do
-    ae <- mkExpr s a
-    withvc s $ \vc -> c_vc_notExpr vc ae
-mkExpr s e | Just (p, a, b) <- de_ifE e = do
-    [pe, ae, be] <- mapM (mkExpr s) [p, a, b]
-    withvc s $ \vc -> c_vc_iteExpr vc pe ae be
-mkExpr s e | Just (a, b) <- de_bvaddE e = do
-    ae <- mkExpr s a
-    be <- mkExpr s b
-    w <- withvc s $ \vc -> c_vc_getBVLength vc ae
-    withvc s $ \vc -> c_vc_bvPlusExpr vc w ae be
-mkExpr s e | Just (a, b) <- de_bvsubE e = do
-    ae <- mkExpr s a
-    be <- mkExpr s b
-    w <- withvc s $ \vc -> c_vc_getBVLength vc ae
-    withvc s $ \vc -> c_vc_bvMinusExpr vc w ae be
-mkExpr s e | Just (w, v) <- de_mkbvE e = do
-    withvc s $ \vc -> c_vc_bvConstExprFromLL vc (fromInteger w) (fromInteger v)
-mkExpr s (VarE nm) = do
+  bool s True = withvc s c_vc_trueExpr
+  bool s False = withvc s c_vc_falseExpr
+
+  var s nm = do
     vars <- readIORef (stp_vars s)
     case Map.lookup nm vars of
         Just v -> return v
-        Nothing -> error $ "STP: unknown var: " ++ nm
-mkExpr s e | Just (bs, v) <- de_letE e =
-  let mkvar :: (String, Expression) -> IO ()
-      mkvar (nm, val) = do
-        val' <- mkExpr s val
-        modifyIORef (stp_vars s) $ Map.insert nm val'
-  in do
-    m <- readIORef (stp_vars s)
-    mapM_ mkvar bs
-    p <- mkExpr s v
-    writeIORef (stp_vars s) $! m
-    return p
-    
-mkExpr _ e = error $ "TODO: STP.mkExpr " ++ show e
+        Nothing -> error $ "STP: unknown var: " ++ unname nm
+
+  ite s p a b = withvc s $ \vc -> c_vc_iteExpr vc p a b
+
+  unary = HT.table [(name "Smten.Bit.__prim_not_Bit", \s x ->
+                        withvc s $ \vc -> c_vc_bvNotExpr vc x)]
+
+  binary = 
+    let bprim :: (Ptr STP_VC -> Ptr STP_Expr -> Ptr STP_Expr -> IO (Ptr STP_Expr))
+              -> STP -> Ptr STP_Expr -> Ptr STP_Expr -> IO (Ptr STP_Expr)
+        bprim f s a b = withvc s $ \vc -> f vc a b
+
+        blprim :: (Ptr STP_VC -> CInt -> Ptr STP_Expr -> Ptr STP_Expr -> IO (Ptr STP_Expr))
+               -> STP -> Ptr STP_Expr -> Ptr STP_Expr -> IO (Ptr STP_Expr)
+        blprim f s a b = withvc s $ \vc -> do
+            n <- c_vc_getBVLength vc a
+            f vc n a b
+
+    in HT.table [
+     (name "Smten.Bit.__prim_eq_Bit", bprim c_vc_eqExpr),
+     (name "Smten.Bit.__prim_lt_Bit", bprim c_vc_bvLtExpr),
+     (name "Smten.Bit.__prim_leq_Bit", bprim c_vc_bvLeExpr),
+     (name "Smten.Bit.__prim_gt_Bit", bprim c_vc_bvGtExpr),
+     (name "Smten.Bit.__prim_geq_Bit", bprim c_vc_bvGeExpr),
+     (name "Smten.Bit.__prim_add_Bit", blprim c_vc_bvPlusExpr),
+     (name "Smten.Bit.__prim_sub_Bit", blprim c_vc_bvMinusExpr),
+     (name "Smten.Bit.__prim_or_Bit", bprim c_vc_orExpr),
+     (name "Smten.Bit.__prim_and_Bit", bprim c_vc_andExpr),
+     (name "Smten.Bit.__prim_concat_Bit", bprim c_vc_bvConcatExpr),
+     (name "Smten.Bit.__prim_shl_Bit", blprim c_vc_bvLeftShiftExprExpr),
+     (name "Smten.Bit.__prim_lshr_Bit", blprim c_vc_bvRightShiftExprExpr)
+    ]
+
+  zeroextend s x n = withvc s $ \vc -> do
+    zeros <- c_vc_bvConstExprFromLL vc (fromInteger n) 0
+    c_vc_bvConcatExpr vc zeros x
+
+  signextend s x n = withvc s $ \vc -> do
+    c_vc_bvSignExtend vc x (fromInteger n)
+
+  extract = error "TODO: STP extract"
+  truncate = error "TODO: STP truncate"
+
 
 stp :: IO S.Solver
 stp = do
@@ -137,7 +113,7 @@ stp = do
        S.push = push s,
        S.pop = pop s,
        S.declare = declare s,
-       S.assert = assert s,
+       S.assert = stpassert s,
        S.check = check s,
        S.getIntegerValue = getIntegerValue s,
        S.getBoolValue = getBoolValue s,
@@ -148,12 +124,10 @@ declare :: STP -> Sig -> IO ()
 declare s (Sig nm t) = do
     st <- mkType s t        
     v <- withvc s $ \vc -> (withCString (unname nm) $ \cnm -> c_vc_varExpr vc cnm st)
-    modifyIORef (stp_vars s) $ Map.insert (unname nm) v
+    modifyIORef (stp_vars s) $ Map.insert nm v
 
-assert :: STP -> ExpH -> IO ()
-assert s e = do
-    se <- mkExpr s $ {-# SCC "TRANSLATE" #-} smtE (fromExpH e)
-    withvc s $ \vc -> c_vc_assertFormula vc se
+stpassert :: STP -> ExpH -> IO ()
+stpassert = A.assert
 
 push :: STP -> IO ()
 push s = withvc s c_vc_push
@@ -179,8 +153,8 @@ getIntegerValue _ _ = error $ "STP does not support free Integers"
 
 getBoolValue :: STP -> Name -> IO Bool
 getBoolValue s nm = do
-    var <- mkExpr s (varE (unname nm))
-    val <- withvc s $ \vc -> c_vc_getCounterExample vc var
+    v <- var s nm
+    val <- withvc s $ \vc -> c_vc_getCounterExample vc v
     b <- c_vc_isBool val
     case b of
         0 -> return False
@@ -189,7 +163,7 @@ getBoolValue s nm = do
     
 getBitVectorValue :: STP -> Integer -> Name -> IO Integer
 getBitVectorValue s _ nm = do
-    var <- mkExpr s (varE (unname nm))
-    val <- withvc s $ \vc -> c_vc_getCounterExample vc var
+    v <- var s nm
+    val <- withvc s $ \vc -> c_vc_getCounterExample vc v
     fromIntegral <$> c_getBVUnsignedLongLong val
     

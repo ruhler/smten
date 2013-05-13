@@ -1,7 +1,6 @@
 NSAPI::
 * Get rid of SMT.Syntax
 * Get rid of Concrete stuff
-* Generalize Yices2b to work for Yices1, Yices2, and STP
 * Perform abstraction in generalized Yices2b.
 * Implement 'debug' solver based on Smten syntax
 
@@ -107,6 +106,7 @@ Known Bugs::
 * HaskellF sharing of appeval (in Share)
 * STP bug (in Nest)
 * STP bug (in Bit)
+* STP bv_and bug (in Bit)
 * Yices1 left shift (in Bit)
 * precedence 2 bug (in Basic)
 * precedence 3 bug (in Basic)
