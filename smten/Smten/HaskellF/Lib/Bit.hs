@@ -8,7 +8,7 @@ module Smten.HaskellF.Lib.Bit (
     __prim_shl_Bit, __prim_lshr_Bit,
     __prim_or_Bit, __prim_and_Bit, __prim_not_Bit,
     __prim_zeroExtend_Bit, __prim_signExtend_Bit,
-    __prim_truncate_Bit, __prim_concat_Bit, __prim_extract_Bit,
+    __prim_concat_Bit, __prim_extract_Bit,
     ) where
 
 import Prelude hiding (Bool(..), Integer, String)
@@ -71,9 +71,6 @@ __prim_zeroExtend_Bit = primHF zeroExtend_BitP
 
 __prim_signExtend_Bit :: (HaskellF n, HaskellF m) => Bit n -> Bit m
 __prim_signExtend_Bit = primHF signExtend_BitP
-
-__prim_truncate_Bit :: (HaskellF n, HaskellF m) => Bit n -> Bit m
-__prim_truncate_Bit = primHF truncate_BitP
 
 __prim_concat_Bit :: (HaskellF n, HaskellF m, HaskellF n_plus_m)
                      => Bit n -> Bit m -> Bit n_plus_m

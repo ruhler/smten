@@ -102,7 +102,6 @@ instance AST STP (Ptr STP_Expr) where
 
   extract s x hi lo = withvc s $ \vc ->
     c_vc_bvExtract vc x (fromInteger hi) (fromInteger lo)
-  truncate = error "TODO: STP truncate"
 
 
 stp :: IO S.Solver

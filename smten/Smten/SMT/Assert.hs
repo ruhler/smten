@@ -56,13 +56,6 @@ def ctx e
     a' <- use a
     liftIO $ signextend ctx a' (tw - sw)
 
- | PrimEH n t _ [x] <- force e
- , n == name "Smten.Bit.__prim_truncate_Bit"  
- , Just (_, bt) <- de_arrowT t
- , Just tw <- de_bitT bt = do
-    x' <- use x
-    liftIO $ AST.truncate ctx x' tw
- 
  | PrimEH n t _ [x, li] <- force e
  , n == name "Smten.Bit.__prim_extract_Bit"  
  , Just i <- de_integerEH li

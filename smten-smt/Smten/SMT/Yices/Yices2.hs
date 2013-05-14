@@ -212,5 +212,4 @@ instance AST Yices2 YTerm where
   zeroextend _ a' n = c_yices_zero_extend a' (fromInteger n)
   signextend _ a' n = c_yices_sign_extend a' (fromInteger n)
   extract _ x' hi lo = c_yices_bvextract x' (fromInteger lo) (fromInteger hi)
-  truncate _ x' w = c_yices_bvextract x' 0 (fromInteger $ w-1)
 

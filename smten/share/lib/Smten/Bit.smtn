@@ -23,7 +23,6 @@ __prim_and_Bit :: Bit #n -> Bit #n -> Bit #n
 __prim_shl_Bit :: Bit #n -> Bit #n -> Bit #n
 __prim_lshr_Bit :: Bit #n -> Bit #n -> Bit #n
 __prim_not_Bit :: Bit #n -> Bit #n
-__prim_truncate_Bit :: Bit #n -> Bit #m
 __prim_extract_Bit :: Bit #n -> Integer -> Bit #m
 __prim_concat_Bit :: Bit #n -> Bit #m -> Bit #(n+m)
 
@@ -98,7 +97,7 @@ bv_positive :: Bit #n -> Bool
 bv_positive a = bv_extract a (bv_sizeof a - 1) == (0 :: Bit #1)
 
 bv_truncate :: Bit #n -> Bit #m
-bv_truncate = __prim_truncate_Bit
+bv_truncate x = bv_extract x 0
 
 bv_concat :: Bit #n -> Bit #m -> Bit #(n+m)
 bv_concat = __prim_concat_Bit

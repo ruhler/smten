@@ -7,7 +7,7 @@ module Smten.Prim.Bit (
     and_BitP, or_BitP, not_BitP,
     shl_BitP, lshr_BitP,
     fromInteger_BitP, toInteger_BitP, zeroExtend_BitP, signExtend_BitP,
-    truncate_BitP, extract_BitP, concat_BitP,
+    extract_BitP, concat_BitP,
     ) where
 
 import Data.Bits
@@ -24,7 +24,7 @@ bitPs = [
     and_BitP, or_BitP, not_BitP,
     shl_BitP, lshr_BitP,
     fromInteger_BitP, toInteger_BitP, zeroExtend_BitP, signExtend_BitP,
-    truncate_BitP, extract_BitP, concat_BitP
+    extract_BitP, concat_BitP
     ]
 
 eq_BitP :: Prim
@@ -95,14 +95,6 @@ lshr_BitP = binaryP "Smten.Bit.__prim_lshr_Bit" bv_lshr
 
 not_BitP :: Prim
 not_BitP = unaryP "Smten.Bit.__prim_not_Bit" (complement :: Bit -> Bit)
-
-truncate_BitP :: Prim
-truncate_BitP =
-  let f :: Type -> Bit -> Bit
-      f t v =
-        let AppT _ wt = t
-        in bv_truncate (nteval wt) v
-  in unaryTP "Smten.Bit.__prim_truncate_Bit" f
 
 extract_BitP :: Prim
 extract_BitP =

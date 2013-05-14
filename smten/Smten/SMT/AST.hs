@@ -24,5 +24,4 @@ class AST ctx exp | ctx -> exp where
 
   -- extract ctx bv hi lo
   extract :: ctx -> exp -> Integer -> Integer -> IO exp
-  truncate :: ctx -> exp -> Integer -> IO exp
   

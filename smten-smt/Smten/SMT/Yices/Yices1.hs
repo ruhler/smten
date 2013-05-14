@@ -395,6 +395,5 @@ instance AST Yices1 YExpr where
   zeroextend = error "TODO: yices1 zeroExtend"
   signextend y a n = withy1 y $ \ctx -> c_yices_mk_bv_sign_extend ctx a (fromInteger n)
   extract y x hi lo = withy1 y $ \ctx -> c_yices_mk_bv_extract ctx (fromInteger hi) (fromInteger lo) x
-  truncate y x w = extract y x (w-1) 0
 
 
