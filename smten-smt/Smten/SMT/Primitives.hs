@@ -27,13 +27,23 @@ import Smten.Sig
 import Smten.ExpH
 import Smten.Ppr hiding (nest)
 import Smten.SMT.SMT
+import qualified Smten.SMT.Solver
+import Smten.SMT.Debug
 import Smten.SMT.Yices.Yices1
 import Smten.SMT.Yices.Yices2
 import Smten.SMT.STP.STP
 import Smten.Prim
 
-data Solver = Yices1 | Yices2 | STP
+data Solver = Yices1 | Yices2 | STP | Debug FilePath Solver
     deriving (Eq, Show)
+
+mksolver :: Solver -> IO Smten.SMT.Solver.Solver
+mksolver Yices1 = yices1
+mksolver Yices2 = yices2
+mksolver STP = stp
+mksolver (Debug f s) = do
+    s' <- mksolver s
+    debug f s'
 
 derive_SmtenT "Smten.SMT.Symbolic" ''Solver
 derive_SmtenEH "Smten.SMT.Symbolic" ''Solver
@@ -153,10 +163,7 @@ runSMTP :: Prim
 runSMTP =
   let f :: Solver -> SMT ExpH -> IO ExpH
       f solver q = do
-        s <- case solver of
-                Yices1 -> yices1
-                Yices2 -> yices2
-                STP -> stp
+        s <- mksolver solver
         runSMT s q
   in binaryP "Smten.SMT.Symbolic.runSMT" f
 

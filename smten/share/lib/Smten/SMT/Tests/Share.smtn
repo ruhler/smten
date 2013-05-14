@@ -5,28 +5,31 @@ module Smten.SMT.Tests.Share (test) where
 import Smten.SMT.Symbolic
 import Smten.SMT.Tests.Test
 
+dbg :: String -> Solver 
+dbg s = Debug ("build/test/" ++ s ++ ".dbg") Yices2
+
 test :: IO ()
 test = do
-    symtesteq "Share.Simple" (Just 1) [Yices2] $ do
+    symtesteq "Share.Simple" (Just 1) [dbg "Share.Simple"] $ do
         x <- free
         assert ((\a -> a + a == (10 :: Integer)) (x + x + x + x + x))
         return x 
 
-    symtesteq "Share.Samectx" (Just 1) [Yices2] $ do
+    symtesteq "Share.Samectx" (Just 1) [dbg "Share.Samectx"] $ do
         p <- free
         x <- free
         assert ((\a -> (if p then a + a
                             else 0) == (10 :: Integer)) (x+x+x+x+x))
         return x
 
-    symtesteq "Share.Diffctx" (Just 1) [Yices2] $ do
+    symtesteq "Share.Diffctx" (Just 1) [dbg "Share.Diffctx"] $ do
         p <- free
         x <- free
         assert ((\a -> (if p then a + a
                             else a - a) == (10 :: Integer)) (x+x+x+x+x))
         return x
 
-    symtesteq "Share.CaseDesugar" (Just (1 :: Integer)) [Yices2] $ do
+    symtesteq "Share.CaseDesugar" (Just (1 :: Integer)) [dbg "Share.CaseDesugar"] $ do
         x <- free
         a <- free
         b <- free
@@ -38,7 +41,7 @@ test = do
         assert (not d)
         return x
 
-    symtesteq "Share.AppEval" (Just (1 :: Integer)) [Yices2] $ do
+    symtesteq "Share.AppEval" (Just (1 :: Integer)) [dbg "Share.AppEval"] $ do
         let f = \x -> 0
             g = \x -> x + x + x + x + x
         p <- free
