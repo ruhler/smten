@@ -65,7 +65,7 @@ def ctx e
  
  | PrimEH n t _ [x, li] <- force e
  , n == name "Smten.Bit.__prim_extract_Bit"  
- , Just i <- de_integerEH x
+ , Just i <- de_integerEH li
  , Just tw <- de_bitT t = do
     x' <- use x
     liftIO $ extract ctx x' (i+tw-1) i

@@ -60,6 +60,7 @@ Primitives::
 * Concretize the rest of the haskellf primitives
 
 Cleanup::
+* Don't make bv_truncate a primitive. Build it on top of bv_extract.
 * Test convention: export 'tests' and in Tests.All, import qualified.
 * varTs should return a list of TyVar, not (Name, Kind)
 * typeinfer - use structure like typecheck (if reasonable)

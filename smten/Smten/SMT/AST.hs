@@ -21,6 +21,8 @@ class AST ctx exp | ctx -> exp where
   binary :: HT.HashTable Name (ctx -> exp -> exp -> IO exp)
   zeroextend :: ctx -> exp -> Integer -> IO exp
   signextend :: ctx -> exp -> Integer -> IO exp
+
+  -- extract ctx bv hi lo
   extract :: ctx -> exp -> Integer -> Integer -> IO exp
   truncate :: ctx -> exp -> Integer -> IO exp
   

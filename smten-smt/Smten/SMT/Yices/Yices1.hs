@@ -213,6 +213,9 @@ foreign import ccall "yices1_mk_bv_concat"
 foreign import ccall "yices1_mk_bv_sign_extend"
     c_yices_mk_bv_sign_extend :: Ptr YContext -> YExpr -> CUInt -> IO YExpr
 
+foreign import ccall "yices1_mk_bv_extract"
+    c_yices_mk_bv_extract :: Ptr YContext -> CUInt -> CUInt -> YExpr -> IO YExpr
+
 foreign import ccall "yices1_mk_bv_lt"
     c_yices_mk_bv_lt :: Ptr YContext -> YExpr -> YExpr -> IO YExpr
 
@@ -391,7 +394,7 @@ instance AST Yices1 YExpr where
 
   zeroextend = error "TODO: yices1 zeroExtend"
   signextend y a n = withy1 y $ \ctx -> c_yices_mk_bv_sign_extend ctx a (fromInteger n)
-  extract = error "TODO: yices1 extract"
-  truncate = error "TODO: yices1 truncate"
+  extract y x hi lo = withy1 y $ \ctx -> c_yices_mk_bv_extract ctx (fromInteger hi) (fromInteger lo) x
+  truncate y x w = extract y x (w-1) 0
 
 

@@ -100,7 +100,8 @@ instance AST STP (Ptr STP_Expr) where
   signextend s x n = withvc s $ \vc -> do
     c_vc_bvSignExtend vc x (fromInteger n)
 
-  extract = error "TODO: STP extract"
+  extract s x hi lo = withvc s $ \vc ->
+    c_vc_bvExtract vc x (fromInteger hi) (fromInteger lo)
   truncate = error "TODO: STP truncate"
 
 

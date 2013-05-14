@@ -70,5 +70,11 @@ testbit = do
         assert (bv_shl (0x15 :: Bit #8) i == 0xA8)
         return (i :: Bit #8)
 
+    symtesteq "Bit.Extract" (Just 0xAB) [Yices1, Yices2, STP] $ do
+        i <- free
+        assert (bv_extract i 0 == (0xB :: Bit #4))
+        assert (bv_extract i 4 == (0xA :: Bit #4))
+        return (i :: Bit #8)
+
     putStrLn "Bit PASSED"
 

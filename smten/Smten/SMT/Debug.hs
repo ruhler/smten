@@ -12,6 +12,7 @@ import Smten.Ppr
 debug :: FilePath -> Solver -> IO Solver
 debug f s = do
     fout <- openFile f WriteMode
+    hSetBuffering fout NoBuffering
     return $ Solver {
         push = hPutStrLn fout "push" >> push s,
         pop = hPutStrLn fout "pop" >> pop s,

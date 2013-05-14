@@ -37,6 +37,7 @@ module Smten.SMT.STP.FFI (
     c_vc_bvRightShiftExprExpr,
     c_vc_bvConcatExpr,
     c_vc_bvSignExtend,
+    c_vc_bvExtract,
     c_vc_bvLtExpr,
     c_vc_bvLeExpr,
     c_vc_bvGtExpr,
@@ -143,6 +144,9 @@ foreign import ccall "vc_bvConcatExpr"
 
 foreign import ccall "vc_bvSignExtend"
     c_vc_bvSignExtend  :: Ptr STP_VC -> Ptr STP_Expr -> CInt -> IO (Ptr STP_Expr)
+
+foreign import ccall "vc_bvExtract"
+    c_vc_bvExtract  :: Ptr STP_VC -> Ptr STP_Expr -> CInt -> CInt -> IO (Ptr STP_Expr)
 
 foreign import ccall "vc_getCounterExample"
     c_vc_getCounterExample  :: Ptr STP_VC -> Ptr STP_Expr -> IO (Ptr STP_Expr)
