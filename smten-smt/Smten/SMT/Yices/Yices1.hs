@@ -52,6 +52,7 @@ import Foreign.C.String
 import Foreign.C.Types
 import qualified Foreign.Concurrent as F
 
+import Data.IORef
 import qualified Data.Map as Map
 
 import Smten.SMT.AST
@@ -76,7 +77,10 @@ type YDecl = Ptr YDecl_
 data YExpr_
 type YExpr = Ptr YExpr_
 
-data Yices1 = Yices1 (ForeignPtr YContext)
+data Yices1 = Yices1 {
+    y1_fp :: ForeignPtr YContext,
+    y1_nid :: IORef Integer
+}
 
 type YBool = CInt
 
@@ -237,42 +241,43 @@ toResult n
     | otherwise   = error "yices1 returned Unknown"
 
 push :: Yices1 -> IO ()
-push (Yices1 fp) = withForeignPtr fp c_yices_push
+push y = withy1 y c_yices_push
 
 pop :: Yices1 -> IO ()
-pop (Yices1 fp) = withForeignPtr fp c_yices_pop
+pop y = withy1 y c_yices_pop
 
 y1assert :: Yices1 -> ExpH -> IO ()
 y1assert = A.assert
 
-declare :: Yices1 -> Sig -> IO ()
-declare (Yices1 fp) (Sig nm t) = do
-    let ty = case () of
+y1fresh :: Yices1 -> Type -> IO Name
+y1fresh y t = do
+    nid <- readIORef (y1_nid y)
+    modifyIORef' (y1_nid y) (+ 1)
+    let nm = "f~" ++ show nid
+        ty = case () of
                 _ | t == boolT -> "bool"
                   | t == integerT -> "int"
                   | Just w <- de_bitT t -> "(bitvector " ++ show w ++ ")"
-        cmd = "(define " ++ unname nm ++ " :: " ++ ty ++ ")"
+        cmd = "(define " ++ nm ++ " :: " ++ ty ++ ")"
     worked <- withCString cmd $ \str -> do
-          withForeignPtr fp $ \yctx ->
-            c_yices_parse_command yctx str
+          withy1 y $ \yctx -> c_yices_parse_command yctx str
     if worked 
-       then return ()
+       then return $ name nm
        else do
           cstr <- c_yices_get_last_error_message
           msg <- peekCString cstr
           fail $ show msg ++ "\n when running command: \n" ++ cmd
 
 check :: Yices1 -> IO S.Result
-check (Yices1 fp) = do
-    res <- withForeignPtr fp c_yices_check
+check y = do
+    res <- withy1 y c_yices_check
     return $ toResult res
 
 getIntegerValue :: Yices1 -> Name -> IO Integer
-getIntegerValue (Yices1 fp) nm = do
-    model <- withForeignPtr fp c_yices_get_model 
+getIntegerValue y nm = do
+    model <- withy1 y c_yices_get_model 
     decl <- withCString (unname nm) $ \str ->
-                withForeignPtr fp $ \yctx ->
-                    c_yices_get_var_decl_from_name yctx str
+                withy1 y $ \yctx -> c_yices_get_var_decl_from_name yctx str
     x <- alloca $ \ptr -> do
         ir <- c_yices_get_int_value model decl ptr
         if ir == 1
@@ -281,11 +286,10 @@ getIntegerValue (Yices1 fp) nm = do
     return (toInteger x)
 
 getBoolValue :: Yices1 -> Name -> IO Bool
-getBoolValue (Yices1 fp) nm = do
-    model <- withForeignPtr fp c_yices_get_model 
+getBoolValue y nm = do
+    model <- withy1 y c_yices_get_model 
     decl <- withCString (unname nm) $ \str ->
-                withForeignPtr fp $ \yctx ->
-                    c_yices_get_var_decl_from_name yctx str
+                withy1 y $ \yctx -> c_yices_get_var_decl_from_name yctx str
     br <- c_yices_get_value model decl
     case br of
       _ | br == yTrue -> return True
@@ -293,11 +297,10 @@ getBoolValue (Yices1 fp) nm = do
       _ | br == yUndef -> return False
 
 getBitVectorValue :: Yices1 -> Integer -> Name -> IO Integer
-getBitVectorValue (Yices1 fp) w nm = do
-    model <- withForeignPtr fp c_yices_get_model 
+getBitVectorValue y w nm = do
+    model <- withy1 y c_yices_get_model 
     decl <- withCString (unname nm) $ \str ->
-                withForeignPtr fp $ \yctx ->
-                    c_yices_get_var_decl_from_name yctx str
+                withy1 y $ \yctx -> c_yices_get_var_decl_from_name yctx str
     bits <- allocaArray (fromInteger w) $ \ptr -> do
         ir <- c_yices_get_bitvector_value model decl (fromInteger w) ptr
         if ir == 1
@@ -314,12 +317,13 @@ yices1 = do
   c_yices_enable_type_checker True
   ptr <- c_yices_mk_context
   fp  <- F.newForeignPtr ptr (c_yices_del_context ptr)
+  nid <- newIORef 0
   return $
-    let y1 = Yices1 fp
+    let y1 = Yices1 fp nid
     in S.Solver {
           S.push = push y1,
           S.pop = pop y1,
-          S.declare = declare y1,
+          S.fresh = y1fresh y1,
           S.assert = y1assert y1,
           S.check = check y1,
           S.getIntegerValue = getIntegerValue y1,
@@ -328,10 +332,11 @@ yices1 = do
        }
 
 withy1 :: Yices1 -> (Ptr YContext -> IO a) -> IO a
-withy1 (Yices1 fp) f = withForeignPtr fp $ \ctx -> f ctx
+withy1 (Yices1 fp _) f = withForeignPtr fp $ \ctx -> f ctx
 
 instance AST Yices1 YExpr where
-  assert (Yices1 fp) p = withForeignPtr fp $ \ctx -> c_yices_assert ctx p
+  fresh = y1fresh
+  assert y p = withy1 y $ \ctx -> c_yices_assert ctx p
   
   literal y l
     | Just i <- de_integerL l = withy1 y $ \ctx ->

@@ -86,9 +86,6 @@ data QS = QS {
 
     qs_solver :: SMT.Solver,
 
-    -- ID to use for the next primitive free variable.
-    qs_freeid :: Integer,
-
     -- The current assertion predicate.
     -- Given predicate 'p', whenever the user says (assert q), we predicate
     -- the assertion by actually asserting (p `implies` q).
@@ -143,7 +140,6 @@ mkQS s = do
     return $ QS {
         qs_ctx = [ctx0],
         qs_solver = s,
-        qs_freeid = 1,
         qs_pred = trueEH,
         qs_freevars = [],
         qs_freevals = [],
@@ -194,20 +190,11 @@ query_Sat :: SMT Bool
 query_Sat = do
     res <- check
     return $ res == SMT.Satisfiable
-
-mkfree :: Sig -> SMT ()
-mkfree s = do
-  modify $ \qs -> qs { qs_freevars = s : qs_freevars qs }
-  srun1 SMT.declare s
-
+  
 mkerr :: Type -> SMT ExpH
 mkerr t = do
-    fid <- gets qs_freeid
-    let nm = name $ "err~" ++ show fid
-        s = Sig nm t
-    modify $ \qs -> qs { qs_freeid = fid+1 }
-    srun1 SMT.declare s
-    return (varEH s)
+    nm <- srun1 SMT.fresh t
+    return $ varEH (Sig nm t)
 
 -- | Assert the given smten boolean expression.
 mkassert :: ExpH -> SMT ()
@@ -282,8 +269,7 @@ nest q = {-# SCC "NEST" #-} do
   srun0 SMT.push
   v <- q
   srun0 SMT.pop
-  nfreeid <- gets qs_freeid
-  put qs { qs_freeid = nfreeid }
+  put qs
   return v
 
 -- Read the current model from the SMT solver.
@@ -337,12 +323,11 @@ used (Used ctx v) = {-# SCC "USED" #-} do
 -- | Allocate a primitive free variable of the given type.
 -- The underlying SMT solver must support this type for this to work.
 prim_free :: Type -> Symbolic ExpH
-prim_free t = {-# SCC "PRIM_FREE" #-} do
-    fid <- gets qs_freeid
-    let f = Sig (name $ "free~" ++ show fid) t
-    Symbolic $ mkfree f
-    modify $ \qs -> qs { qs_freeid = fid+1 }
-    return (varEH f)
+prim_free t = {-# SCC "PRIM_FREE" #-} Symbolic $ do
+    nm <- srun1 SMT.fresh t
+    let s = Sig nm t
+    modify $ \qs -> qs { qs_freevars = s : qs_freevars qs }
+    return $ varEH s
 
 -- | Predicate the symbolic computation on the given smten Bool.
 -- All assertions will only apply when the predicate is satisfied, otherwise

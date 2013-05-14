@@ -7,9 +7,11 @@ module Smten.SMT.AST (AST(..)) where
 
 import qualified Smten.HashTable as HT
 import Smten.Name
+import Smten.Type
 import Smten.Lit
 
 class AST ctx exp | ctx -> exp where
+  fresh :: ctx -> Type -> IO Name
   assert :: ctx -> exp -> IO ()
   literal :: ctx -> Lit -> IO exp
   bool :: ctx -> Bool -> IO exp

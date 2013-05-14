@@ -29,7 +29,8 @@ import qualified Smten.HashTable as HT
 
 data STP = STP {
     stp_fvc :: ForeignPtr STP_VC,
-    stp_vars :: IORef (Map.Map Name (Ptr STP_Expr))
+    stp_vars :: IORef (Map.Map Name (Ptr STP_Expr)),
+    stp_nid :: IORef Integer
 }
 
 withvc :: STP -> (Ptr STP_VC -> IO a) -> IO a
@@ -42,6 +43,7 @@ mkType s t
  | t == integerT = error $ "STP does not support Integer type"
 
 instance AST STP (Ptr STP_Expr) where
+  fresh = stpfresh
   assert s e = withvc s $ \vc -> c_vc_assertFormula vc e
  
   literal s l
@@ -108,11 +110,12 @@ stp = do
   -- TODO: this leaks STP pointers?
   fvc <- F.newForeignPtr ptr (return ())
   vars <- newIORef Map.empty
-  let s = STP { stp_fvc = fvc, stp_vars = vars }
+  nid <- newIORef 0
+  let s = STP { stp_fvc = fvc, stp_vars = vars, stp_nid = nid }
   return $ S.Solver {
        S.push = push s,
        S.pop = pop s,
-       S.declare = declare s,
+       S.fresh = stpfresh s,
        S.assert = stpassert s,
        S.check = check s,
        S.getIntegerValue = getIntegerValue s,
@@ -120,11 +123,15 @@ stp = do
        S.getBitVectorValue = getBitVectorValue s
     }
         
-declare :: STP -> Sig -> IO ()
-declare s (Sig nm t) = do
+stpfresh :: STP -> Type -> IO Name
+stpfresh s t = do
+    nid <- readIORef (stp_nid s)
+    modifyIORef' (stp_nid s) (+ 1)
+    let nm = name $ "f~" ++ show nid
     st <- mkType s t        
     v <- withvc s $ \vc -> (withCString (unname nm) $ \cnm -> c_vc_varExpr vc cnm st)
     modifyIORef (stp_vars s) $ Map.insert nm v
+    return nm
 
 stpassert :: STP -> ExpH -> IO ()
 stpassert = A.assert

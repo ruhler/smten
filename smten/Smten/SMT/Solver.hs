@@ -39,6 +39,7 @@ module Smten.SMT.Solver (
     ) where
 
 import Smten.Name
+import Smten.Type
 import Smten.Sig
 import Smten.ExpH
 
@@ -51,8 +52,9 @@ data Solver = Solver {
     push :: IO (),
     pop :: IO (),
 
-    -- | Declare a free variable with given name and type.
-    declare :: Sig -> IO (),
+    -- | Declare a fresh free variable with given type. Returns the name of
+    -- the fresh variable.
+    fresh :: Type -> IO Name,
 
     -- | Assert the given expression.
     assert :: ExpH -> IO (),

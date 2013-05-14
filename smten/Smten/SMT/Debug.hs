@@ -16,9 +16,11 @@ debug f s = do
         push = hPutStrLn fout "push" >> push s,
         pop = hPutStrLn fout "pop" >> pop s,
 
-        declare = \x -> do
-            hPutStrLn fout $ "declare " ++ pretty x
-            declare s x,
+        fresh = \t -> do
+            hPutStr fout $ "fresh... "
+            n <- fresh s t
+            hPutStrLn fout $ pretty (Sig n t)
+            return n,
 
         assert = \e -> do
             hPutStrLn fout $ "assert " ++ pretty e

@@ -1,0 +1,355 @@
+
+Sat May 11 10:18:35 EDT 2013
+
+Looking at allhaskell Hampi, we find we spend lots of time in ABSTRACT.
+
+Now, ABSTRACT = abstract + sharedM.
+
+It's job is to, given an expression, convert all explicit ErrorEH to new
+variables, and declare those free variables.
+
+It takes a long time. 30% of the time and allocation in the test case I'm
+looking at.
+
+I have an idea for how to improve it.
+
+The issue is... I'm trying to re-evaluate everything given this variable. But
+I don't want to do that. I want to just replace Error with that variable, and
+keep the structure of the expression the same.
+
+We could also ask where these _|_ could exist in the expression at the end. I
+think there's only one place: the body of an if branch.
+
+Okay, the body of an if branch, an argument to a constructor, an argument to a
+primitive?
+
+No, just the body of an if branch, and an argument to a constructor. If it was
+an argument to the primitive, we would have changed the whole primitive to be
+an error.
+
+And now consider, this is an SMT formula we are talking about. That means the
+only type of constructor we have is True or False. So the only place we can
+see an error is the branch of an If expression. And that' can't change the
+structure of anything.
+
+What I'm suggesting is...
+
+- For primitives, don't call 'f', do exph of PrimEH with the same arguments.
+- For ifs, don't call ifEH, do expH of the IfEH with the same arguments.
+
+The other idea is: maybe do a preprocessing path which does the traversal, but
+not the allocation. Then I can do the traversal again, only reallocating those
+branches which need to be reallocated.
+
+Cool. I like these ideas. Let me see if any of them work out.
+
+Sat May 11 10:54:12 EDT 2013
+
+Cool! We get enough of an improvement that Abstract is no longer the biggest
+cost. Though it is certainly still up there.
+
+Now we are getting into issues of the SMT solvers.
+
+yices1: 54% of time spent in RunCmds.
+yices2: 18% of time spent in RunCmds.
+STP:  40% of time in SMTCheck, 15% of time in RunCmds.
+
+I don't really care so much about SMTCheck right now. Ways to improve that
+would be to optimize the generated formula more.
+
+But I ought to be able to improve RunCmds.
+
+So, let me look into that. I'll have to look into each separately.
+
+1. Yices2.
+
+Most of the time is spent in dobinop'.
+Some in ytermS.
+
+I feel like I could improve this if I didn't jump through such funny hoops:
+  ExpH ---> Exp ---> SMT.Syntax ---> Yices2 AST
+
+Currently we have:
+  ExpH ---> Exp::  The only purpose is to have a way to express sharing.
+  Exp ---> SMT::   SMT optimizations: Map ifs to and, ||, etc...
+  SMT ---> AST::   Specialize for the SMT solver.
+
+Parts of these representations are not efficient. For example:
+
+* ExpH much more naturally represents fully applied primitives 
+    It's silly to go to a partially applied representation, then have to go
+    back to fully applied.
+
+* ExpH seems well suited for some optimizations
+    And, it seems like it makes sense to do these optimizations before
+    abstraction and sharing, because it would simplify those tasks.
+
+    Yes. It looks like SMT.Syntax duplicates concrete evaluation for its
+    optimizations. We ought not to! Just use ExpH.
+
+Optimizations to perform for SMT:
+* if p then False else True ===> not p
+* prim_eq_Integer x x ===> True
+* if p then x else x ===> x
+* if p then True else False ===> p
+* if p then (if p then a else x) else b ===> if p then a else b
+
+It looks like all the optimizations I do in SMT.Syntax make perfect sense to
+do in ExpH. Perhaps even more so. The only exceptions are those where we give
+names to 'not', 'or', and 'and'. I'm not sure if an SMT solver is better at
+those than ite. Probably. So it would be good to recognize. But I can
+recognize that after optimization. I need not recognize it before.
+
+not (not p)
+
+if (if p then False else True)
+    then a
+    else b ===>  if p then b else a
+
+I suppose the concern is, it would be nice to treat SMT.Syntax as a separate
+library that people can use outside the context of ExpH. It serves as a nice
+abstraction boundary. Because even though ExpH is well suited for describing
+generic SMT formulas, it is also meant to describe other things.
+
+
+How could we nicely specify the optimizations of primitives? How could we
+nicely perform this optimization pass?
+
+For instance, say I have 
+    if p then True else False
+
+When am I allowed to try and simplify that to just 'p'?
+
+Or:
+    if p then x else x
+When am I allowed to try and simplify that to just 'x'?
+
+In order to do that, I have to know I'm allowed to look at the bodies of both
+branches. This is related to non-termination issues.
+
+I think I'm only allowed to do that kind of simplification if I'm generating
+an ASSERT. Because, for example, we can build up all kinds of complicated SMT
+expressions with variables which we just want to use for queries, not for
+actual assertions.
+
+So, sounds like we want another pure computation for simplifying expressions
+which are part of assertions.
+
+And again, do this ... I suppose after abstraction? Depends what I want to do
+with abstraction long term. Short term, I could do it before abstraction. Long
+term, it ought to be after abstraction.
+
+Notice, for these optimizations, I'll need to preserve sharing.
+
+I'll also note: SMT optimizations are taking a fair amount of time: 5%. So it
+could be worth reducing that.
+
+But even more, I think best to perform these optimizations earlier, and save
+on the cost of Sharing and FromExpH, and in my current implementation, on
+Abstract too.
+
+So, here's what I'm proposing short term:
+1. implement a simplify pass on ExpH.
+   See if it improves performance any.
+2. Once that's implemented, remove the simplifications in SMT.Syntax
+   See if that improves performance any.
+
+In order to go the next step, we'll probably want the SMT solvers to know
+about ExpH. This doesn't make me terribly happy, but... who knows? Maybe it's
+okay?
+
+What I would like to do is have some notion of an SMT formula which is a
+restriction of an ExpH. So I can call any function I can call on ExpH, but I
+can also make other assumptions about it. This is something I would use a lot.
+
+The assumptions are:
+* literals are either Bool, Integer, or Bit
+* ConEH is either: True or False
+* LamEH does not exist
+ 
+At the very least, I could define a typedef to try and indicate this, because
+these are assumptions I already use for some things.
+
+I ought to give this a try then, and see how it goes.
+
+Note: for yices1, the call to 'assert' does a lot of work. It looks like it
+does some solving. So it's unfair to call that part of the translation
+separate from check.
+
+Sat May 11 13:27:24 EDT 2013
+
+Okay! I'm going to try this optimization. It should be easy to do.
+
+I want to perform the following optimizations:
+
+1. prim_eq_Integer x x ===> True
+2. if p then x else x ===> x
+
+Those are the big ones, because in both cases they can get rid of huge
+expressions. The other ones are minor structural things which I don't think
+will make a significant difference. Maybe a constant factor.
+
+Let me give it a shot.
+
+Sat May 11 13:48:07 EDT 2013
+
+It doesn't help. It looks like it doesn't help in performance, but it does add
+the cost of another traversal, which is significant.
+
+It seems that, in my current test case, the ExpH traversals dominate. It seems
+like, if I can get rid of these extra traversals, then I could make a big
+improvement in performance.
+
+So, I should focus on getting rid of traversals without adding more
+traversals. Is there a nice way I can do this? Let me review again the
+traversals I'm paying for:
+
+* Abstract      18%     Replace ErrorEH with new Var - must collect vars
+* Sharing       13%     Compute set of shared things - monadic
+* FromExpH      16%     Replace shared things with new VarE
+* Translate      8%     Pure, conversion of type: Exp -> SMT.Expression
+* RunCmds       18%     Monadic, SMT.Expression -> AST
+Total:          73%
+
+Wow. So, 73% of my time is spent in traversals. That's a lot. Definitely, I
+either want to make these traversals faster, or somehow share them.
+
+What traversals can I get rid of?
+
+I honestly think I could collapse this into a single traversal, but for proof
+of concept, I bet I could do the following:
+
+Given an abstract ExpH, and the set of things being shared...
+
+Merge: FromExpH, Translate, and RunCmds into a single traversal.
+
+How? Oh...
+
+I'm having an idea now. An idea about debug and SMT solvers...
+
+Make debug part of the SMT solver, not part of SMT.
+
+So, for each SMT solver, add another field: "debug". Which takes a string. The
+solver can do whatever it wants with that string. Treat it as a comment.
+
+Then, have Debug solvers, which take as arguments other solvers:
+
+Solver = Yices1 | Yices2 | Yices3 | Debug Solver
+
+Good. And why is this  good? Because I don't have to worry about debug in
+SMT.SMT. Which is very nice. It probably doesn't belong there anyway.
+
+So, the interface to a solver should have:
+  assert :: ExpH -> IO ()
+
+It does assertion of an ExpH.
+
+No. We don't actually want to do it like that, do we?
+
+What I really want is the following interface I can use in FromExpH:
+
+    integer :: Integer -> m e
+    bit :: Bit -> m e
+    bool :: Bool -> m e
+    var :: String -> m e
+    prim :: Name -> [e] -> m e
+    if :: e -> e -> e -> m e
+    lets :: [(Name, e)] -> e -> m e
+
+There's some question as to whether 'lets' will work out right, because of
+sorting issues. Hmm... Yes, I think that won't work.
+
+Okay, maybe I can start a little less ambitious.
+
+1. Share :: ExpH -> ([(Sig, ExpH)], ExpH)
+    Gives an explicit sharing representation of the expression.
+    Introduces free variables, defined in the list in proper sequential order.
+    Uses those free variables as VarEHs in the body.
+
+2. Each SMT solver ought to be able to do:
+    Assert :: ([(Sig, ExpH)] , ExpH) -> IO ()
+
+Hmm... I suddenly have another idea.
+
+None of the SMT solvers have the notion of an explicit let expression. You
+create the expression at some point, then refer to it later with the same
+given name.
+
+So... what if I let the SMT solvers handle sharing themselves?
+
+It's bad, because it is messy: now SMT solvers have to know about our ExpH and
+sharing representation. If I change that representation, I have to change all
+the SMT solvers. But I should be able to make the proper abstractions
+regardless.
+
+You know what this would mean?
+* no 'Sharing' to perform.
+* no 'FromExpH' to perform.
+* no 'Translate' to perform.
+
+That's something like 55% of the program time dropping to, maybe 20% of the
+program time. Or, a 35% performance improvement. That's pretty big.
+
+Hmm...
+
+I think it's worth starting a branch. Focus on just yices2, make this change.
+Don't worry about the abstraction issue (I can fix that later). And see how
+performance improves (or not). And how code improves...
+
+This could be pretty big. If only I can manage to maintain the proper
+abstractions... but I ought to be able to, right? I really hope so.
+
+I wish haskell could handle abstract datatypes better...
+
+Cool. When I get a chance, I'll give this a try.
+
+What order to start? I think it makes sense to get rid of debugging first.
+Because doing what I have listed as (1) will mess that up.
+
+Plan: Remove notion of debugging entirely. Should be easy enough.
+
+Sun May 12 13:39:07 EDT 2013
+
+Note: I'm getting rid of the optimizations in SMT.Syntax in my first attempt.
+So if things get slower, that may be why.
+
+Sun May 12 14:17:06 EDT 2013
+
+Okay, it's complete now. Let me try it on Hampi and see what happens.
+
+Sun May 12 14:22:28 EDT 2013
+
+Guess what? We get about a 33% improvement, just as predicted.
+
+Note: this is without the Simplify optimization pass. But it is with
+abstraction still.
+
+You know, I could get rid of abstraction entirely if I just handled ErrorEH in
+Yices2b assert? This would be easy to do for Yices2b. Not so easy for the ones
+which make use of SMT.Syntax.
+
+Just for the heck of it, let me try running without abstraction, and see what
+kind of numbers we get.
+
+Sun May 12 14:27:37 EDT 2013
+
+Without abstract, we drop another 33%, to what I suspect is as fast a shampi
+as we've ever had.
+
+You know? I could do Abstract and Simplify at the same time as this final
+traversal. The idea: we only have to do a single traversal, and if we can make
+it so we only do a single traversal, that is idea.
+
+Now, I'll certainly want to factor out this code so it is common to all SMT
+solvers.
+
+The difference between yices2 and the other solvers is the other solvers take
+a pointer to a context which they need for all the primitive functions. That
+could be hidden in a Monad.
+
+So. Next steps ought to be?
+
+I'll do all the cleanup stuff. That's fairly clear. For now, I can also avoid
+the cost of Abstraction by just doing it at translation time. In the future
+that may not work as well... It may also work fine.
+

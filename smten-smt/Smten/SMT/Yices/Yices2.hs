@@ -44,6 +44,8 @@ import Foreign
 import Foreign.C.String
 import Foreign.C.Types
 
+import Data.IORef
+
 import Smten.SMT.Yices.FFI2
 import Smten.SMT.AST
 import qualified Smten.SMT.Assert as A
@@ -56,7 +58,10 @@ import Smten.Bit
 import Smten.ExpH
 import qualified Smten.HashTable as HT
 
-data Yices2 = Yices2 (Ptr YContext)
+data Yices2 = Yices2 {
+    y2_ctx :: Ptr YContext,
+    y2_nid :: IORef Integer
+}
 
 -- TODO: this currently leaks context pointers!
 -- That should most certainly be fixed somehow.
@@ -65,12 +70,13 @@ yices2 :: IO S.Solver
 yices2 = do
   c_yices_init
   ptr <- c_yices_new_context nullPtr
+  nid <- newIORef 0
   return $    
-    let y2 = Yices2 ptr
+    let y2 = Yices2 ptr nid
     in S.Solver {
           S.push = push y2,
           S.pop = pop y2,
-          S.declare = declare y2,
+          S.fresh = y2fresh y2,
           S.assert = y2assert y2,
           S.check = check y2,
           S.getIntegerValue = getIntegerValue y2,
@@ -78,28 +84,35 @@ yices2 = do
           S.getBitVectorValue = getBitVectorValue y2
        }
 
-declare :: Yices2 -> Sig -> IO ()
-declare _ (Sig s ty) = do
+y2fresh :: Yices2 -> Type -> IO Name
+y2fresh y ty = do
+    nid <- readIORef (y2_nid y)
+    modifyIORef' (y2_nid y) (+ 1)
+    let nm = "f~" ++ show nid
     ty' <- ytype ty
     term <- c_yices_new_uninterpreted_term ty'
-    withCString (unname s) $ c_yices_set_term_name term
+    withCString nm $ c_yices_set_term_name term
+    return $ name nm
 
 y2assert :: Yices2 -> ExpH -> IO ()
 y2assert = A.assert
 
+withy2 :: Yices2 -> (Ptr YContext -> IO a) -> IO a
+withy2 y f = f (y2_ctx y)
+
 push :: Yices2 -> IO ()
-push (Yices2 yctx) = c_yices_push yctx
+push y = withy2 y c_yices_push
 
 pop :: Yices2 -> IO ()
-pop (Yices2 yctx) = c_yices_pop yctx
+pop y = withy2 y c_yices_pop
 
 check :: Yices2 -> IO S.Result
-check (Yices2 yctx) = do
-    st <- c_yices_check_context yctx nullPtr
+check y = withy2 y $ \ctx -> do
+    st <- c_yices_check_context ctx nullPtr
     return $! fromYSMTStatus st
 
 getIntegerValue :: Yices2 -> Name -> IO Integer
-getIntegerValue (Yices2 yctx) nm = do
+getIntegerValue y nm = withy2 y $ \yctx -> do
     model <- c_yices_get_model yctx 1
     x <- alloca $ \ptr -> do
             term <- withCString (unname nm) c_yices_get_term_by_name
@@ -113,7 +126,7 @@ getIntegerValue (Yices2 yctx) nm = do
     return $! toInteger x
 
 getBoolValue :: Yices2 -> Name -> IO Bool
-getBoolValue (Yices2 yctx) nm = do
+getBoolValue y nm = withy2 y $ \yctx -> do
     model <- c_yices_get_model yctx 1
     x <- alloca $ \ptr -> do
             term <- withCString (unname nm) c_yices_get_term_by_name
@@ -136,7 +149,7 @@ getBoolValue (Yices2 yctx) nm = do
         _ -> error $ "yices2 get bool value got: " ++ show x
     
 getBitVectorValue :: Yices2 -> Integer -> Name -> IO Integer
-getBitVectorValue (Yices2 yctx) w nm = do
+getBitVectorValue y w nm = withy2 y $ \yctx -> do
     model <- c_yices_get_model yctx 1
     bits <- allocaArray (fromInteger w) $ \ptr -> do
         term <- withCString (unname nm) c_yices_get_term_by_name
@@ -158,7 +171,8 @@ ytype t
  | t == boolT = c_yices_bool_type
 
 instance AST Yices2 YTerm where
-  assert (Yices2 yctx) = c_yices_assert_formula yctx
+  fresh = y2fresh
+  assert y e = withy2 y $ \ctx -> c_yices_assert_formula ctx e
 
   literal _ l
     | Just i <- de_integerL l = c_yices_int64 (fromInteger i)

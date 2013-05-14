@@ -1,0 +1,282 @@
+
+Mon May 13 10:32:10 EDT 2013
+
+I got rid of SMT.Syntax in the solver interface.
+
+The real question is: how to factor out common code from Yices2b?
+
+Can we assume all SMT solvers have the same structure? I think, for now, that
+may be the case. If so, I propose we have a function:
+
+assert :: Solver -> ExpH -> IO ()
+
+Which does the assert. And all solvers share this function. Because this is an
+important function which I don't think should be solver specific, because we
+are doing so much translation and traversal and sharing support in it.
+
+Okay, so that's what I should try to do.
+
+What things do I need to make this work?
+
+Let's look and see, for each of the solvers.
+
+Yices2:
+ * prim_assert :: E -> IO ()
+ * mkint :: Integer -> IO E
+ * mkbit :: Bit -> IO E
+ * mkbool :: Bool -> IO E
+ * mkvar :: Name -> IO E        (for free variables only, not shared vars)
+ * mkite :: E -> E -> E -> IO E
+ * binary primitives:  :: E -> E -> IO E
+     eq_integer, add_integer, sub_integer, mul_integer,
+     lt_integer, leq_integer, gt_integer, geq_integer,
+     eq_bit, lt_bit, le_bit, gt_bit, ge_bit, add_bit,
+     sub_bit, mul_bit, or_bit, and_bit, concat_bit,
+     shl_bit, lshr_bit
+ * unary primitives: not_bit
+ * other primitives:
+     zero_extend :: E -> Integer -> IO E
+     sign_extend :: E -> Integer -> IO E
+     extract :: E -> Integer -> Integer -> IO E
+     truncate :: E -> Integer -> IO E
+    
+Yices1:
+ * bvshl :: E -> Integer -> IO E
+      or    E -> ExpH -> IO E
+ * otherwise like Yices2. But pass context to all things (perhaps implicitly)
+
+STP:
+ * free vars must be passed via context.
+
+I don't know what to do about the Yices1 thing with bvshl. There must be some
+way to handle it. Or... just throw an error, and call it a bug in yices1?
+
+Otherwise, everything works fine so long as we pass around a context. The
+thing is, we have this notion of a type E. I don't want this to be a part of
+Solver. We want to treat all Solvers as having the same type. 
+
+So, it sounds like I have to hide things. The way we can hide is that we only
+call 'assert' and that assert returns IO (), and has no mention of 'E'. So I
+want to package things up there.
+
+I fear this will not be pretty.
+
+Anyway, whatever. I want the following things provided by each solver:
+
+mklit :: Ctx -> Lit -> IO E
+mkassert :: Ctx -> E -> IO ()
+mkvar :: Ctx -> IO E
+mkite :: Ctx -> E -> E -> E -> IO E
+mkbinary :: HT.Table Name (Ctx -> E -> E -> IO E)
+mkunary :: HT.Table Name (Ctx -> E -> IO E)
+mkzeroextend
+mksignextend
+mkextract
+mktruncate
+
+That's not too bad. A multi-parameter type class with Ctx and E. I can use
+that. And we just need those special cases where we need them. Makes sense to
+me.
+
+Hmm... Well, what do we call it?
+
+SMT.AST 
+  class AST ctx e where
+    ...
+
+SMT.Assert
+  assert :: (AST ctx e) => ctx -> ExpH -> IO ()
+
+I'll need to use functional dependencies to make it work.
+
+And the solvers can use this to define the assert function.
+
+Okay? First thing to try is convert Yices2b to use this and get it working.
+Then go from there.
+
+Let me give it a shot.
+
+Mon May 13 11:49:50 EDT 2013
+
+It works! Cool.
+
+Let me try switching over yices1 and stp then.
+
+Mon May 13 16:35:27 EDT 2013
+
+yices1 and stp have been switched over.
+
+At this point, I ought to be able to do some cleanup:
+Remove the following:
+* Smten.SMT.Syntax
+* Smten.SMT.Translate
+* Smten.SMT.STP.Concrete
+* Smten.SMT.Yices.Concrete
+
+Let's try it.
+
+Mon May 13 16:45:42 EDT 2013
+
+That works. Next step is... 
+
+To get back to the same as the master branch, I want debug capabilities. But
+maybe that doesn't matter? Until someone asks for it? I'm not sure.
+
+I need it for the share tests at the very least. I don't know. Something to
+think about.
+
+Mon May 13 16:55:19 EDT 2013
+
+The next thing to think about is how to deal with free Arrays for Nirav's
+stuff.
+
+Basically the question is: how do you represent a register file?
+
+We want the following things in a register file:
+* free
+* read
+* write
+* Eq
+
+If it's a realistically sized register file... that's  bad.
+
+Let me try to come up with a simple example to demonstrate the problem. Let's
+say the following: I have two rules, a and b, which are conflict free. I want
+to verify that that is the case. The state contains a register file.
+
+Let's say: a reads index 'x' and writes the value to register 'y'
+           b reads index 'x' and writes the value to register 'z'
+
+rule a (True)
+    y <= rf.read(x)
+
+rule b (True)
+    z <= rf.read(w)
+
+Or, in other words:
+
+a :: S -> S
+a s = s { y = read (rf s) (x s) }
+
+b :: S -> S
+b s = s { z = read (rf s) (w s) }
+
+query = do
+    s <- free
+    assert (a (b s) == (b (a s)))
+
+Yup! That's the heart of the issue.
+
+Currently how does it work?
+
+The size of the reg file is static. In a realistic design... let's say
+something like 2^20? No. That's not right. But we could have 32 element
+arrays.
+
+How big is it in Nirav's code? 32 reg files should be fine.
+
+Let me check out the bluespec code and see.
+
+Reg files in use:
+* memory: 2^20 elements
+* cache: 2^8 elements, many times
+* reg file: 2^5 elements
+
+So, if we try to do full memory, we are talking 1 million elements. That's way
+way too many.
+
+If we try to do even the cache, we are talking 256... That's not so bad. I
+would expect that to work.
+
+But the thing is, what if the index is symbolic, as it is above? Let's take
+the case of, say 1024 elements? No, let's start with the case of 32 elements.
+
+And say we represent the reg file using an array.
+
+Note: in this case, I have not updated the register file. It's read only. Even
+though it is free. The thing is, we don't know which element we are reading.
+
+So, at the end, we have:
+
+rf: f0, f1, ... f31
+x: fx
+w: fw
+y: if fx == 0 then f0
+        else if fx == 1 then f1
+        else if fx == 2 then f2
+        else if fx == 3 then f3
+        else if fx == 4 then f4
+        else ...
+z: if fw == 0 then f0
+        else if fw == 1 then f1
+        else ...
+
+When we assert equality of 'y', then 
+
+(if fx == 0  then f0
+        else if fx == 1 then f1
+        else if fx == 2 then f2
+        ...) == (if fx == 0 then f0
+                    else if fx == 1 then f1
+                    else if fx == 2 then f2
+                    ...)
+
+How hard is this?
+
+Well, how about a smaller version:
+
+(if fx == 0 
+    then f0
+    else f1) == (if fx == 0
+                    then f0
+                    else f1)
+
+Goes to:
+
+Well. It goes to that. That's it. So it is not exponential.
+
+More problematic is if we are writing?
+
+I don't understand.
+
+I need to try running Nirav's design, fix it up to use Data.Array...
+
+Except that Data.Array does not currently support symbolic stuff. How about
+use an association list, see how well that does? Or a Data.Map. Again, I think
+as long as we are willing to allocate all of the values...
+
+Okay, allocate all the values, then lookup is O(N). But that shouldn't be a
+problem.
+
+I'm not sure. I have to try running something and see. I really do need to
+come up with a clear example of how doing free arrays as big things will
+absolutely not work, but taking advantage of functions will. Let me leave that
+for tomorrow.
+
+Mon May 13 20:49:32 EDT 2013
+
+After some thought, I feel like arrays give things O(N) in array size in the
+worst case. I don't see that being a problem for even a 1024 size array. Not
+unless things can combine in an unhappy way, but I don't feel like they can.
+
+Anyway, looking into merge nsapi into master. Now that I've implemented a
+debug solver, which I like a bunch. What do I need before I should merge into
+master? Have I lost anything?
+
+Only that one silly STP test case. And Yices bvshl. I think that's acceptable.
+
+What's next?
+
+Shampi Performance::
+  Figure out how to make abstract not a separate traversal.
+  My proposal: replace 'declare' with 'fresh', which creates a fresh variable.
+  Let the SMT solver keep track of ids for that sort of thing. Then we can
+  naturally call 'fresh' in Assert for ErrorEH. Easy.
+
+Other Performance::
+  Update Nirav's stuff to work with the latest arrays, interface.
+  Figure out what's taking so long to do. Try to come up with a simple test
+  case, if possible.
+
+For now, I shall stew.
+

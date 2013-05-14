@@ -1,0 +1,90 @@
+
+Sun May 12 11:29:10 EDT 2013
+
+Goal for today: try out this new interface to the SMT solver. The idea is to
+get rid of entirely: sharing, fromexph, and translate. And instead just go
+directly from ExpH to the SMT solver.
+
+So we want:
+    assert :: ExpH -> IO ()
+
+This new setup has a number of consequences which I can prepare for.
+
+1. We no longer have SMT.Syntax. This suggests to me we no longer want:
+    run :: SMT.Command -> IO ()
+
+But instead, have different functions for each command:
+    push :: IO ()
+    pop :: IO ()
+    declare_Bool :: Name -> IO ()
+    declare_Integer :: Name -> IO ()
+    declare_Bit :: Integer -> Name -> IO ()
+    assert :: ExpH -> IO ()
+    check :: IO Result
+
+This is something I can do as a first pass without hurting anything else.
+
+2. Debug should no longer be part of SMT.SMT. It should be a special kind of
+solver. Now, this is slightly tricky.
+
+I think we have all the info we need from the above methods to know what to
+print out for debugging. Yes. We absolutely do.
+
+So I want a special debug solver. Note: the debug solver will want to use
+fromExpH. But that's okay, because that's no longer on the critical path.
+
+This is an API change. So I'll have to change tests and such.
+Perhaps, to get started, it makes sense to get rid of Debug entirely, and add
+it back later?
+
+3. Change the 'assert' function to take advantage of ExpH for Yices2. See how
+performance improves.
+
+You know? I think I may as well just do all of this on a new branch. Call
+it... nsapi for new solver api.
+
+Then I can go in order, and break things, and not worry about it at all.
+
+Good. Let me get started then.
+
+Sun May 12 12:36:07 EDT 2013
+
+I got started. The next step is the hard one to make. It's where we import
+ExpH into Solver.
+
+I can make Yices1 and STP work to start by using the existing thing I have to
+convert ExpH to SMT.Expression. Then try rewriting yices2 without having to
+worry about those things.
+
+I don't like having ExpH visible to the SMT solvers. That much I will readily
+admit. But, like I say, we can do abstraction later as needed to share as much
+code as needed between the solvers. So that will hopefully be okay.
+
+Let me dive in. Get started, then run for lunch when I run into trouble.
+ 
+Sun May 12 12:45:44 EDT 2013
+
+The next part is the interesting part, which could take some thought. We will
+see. It's implementing 'assert' in yices2.
+
+Goal: go directly from ExpH (with SMT restrictions) to the asserted thing.
+
+Let me take a look at how it could look, and go from there.
+
+I'll want a StateT IO monad, with following state:
+* Map from EID to YTerm
+    All the expressions built up thus far.
+
+I think that's it. For every expression, first check if I've dealt with it
+already. If so, reuse the previous value. If not, then I know what to do
+already.
+
+For primitives, it would be great to have a HashTable mapping from Name to
+function from list of args to YTerm. Then I could define these separately
+(with proper abstractions for unary, binary, etc...). That would be great.
+Nice and clean.
+
+And that's it! Cool. So I'll get some lunch now, and come back and make this
+change. It will be exciting to see how much of a performance improvement it
+leads to. And how much of a cleanliness it leads to.
+
