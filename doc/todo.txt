@@ -1,5 +1,5 @@
 NSAPI::
-* Perform abstraction in generalized Yices2b.
+* Perform abstraction in SMT.Assert instead of SMT.SMT?
 
 Recent::
 * Add support for (..) in import and export specifications
