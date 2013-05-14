@@ -88,3 +88,10 @@ def ctx e
      [p', a', b'] <- mapM use [p, a, b]
      liftIO $ ite ctx p' a' b'
 
+   -- abstract away explicit errors with a variable.
+   -- SMT.SMT will verify we don't actually reach this error under the
+   -- satisfying assignment.
+ | ErrorEH t _ <- force e = liftIO $ do
+     nm <- fresh ctx t
+     var ctx nm
+

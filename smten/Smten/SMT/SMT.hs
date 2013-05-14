@@ -201,44 +201,9 @@ mkassert :: ExpH -> SMT ()
 mkassert p = do
   pred <- gets qs_pred
   let p_predicated = impliesEH pred p
-  p_abstracted <- abstract p_predicated
-  srun1 SMT.assert p_abstracted
+  srun1 SMT.assert p_predicated
   modify $ \qs -> qs { qs_asserts = andEH (qs_asserts qs) p_predicated }
 
--- Replace all explicit _|_ with VarEH.
-abstract :: ExpH -> SMT ExpH
-abstract x = {-# SCC "Abstract" #-} do
-  cache <- liftIO $ newIORef Map.empty
-  let use :: ExpH -> SMT ExpH
-      use e =
-        case force e of
-            LitEH {} -> return e
-            ConEH {} -> return e
-            VarEH {} -> return e
-            _ -> do
-                m <- liftIO $ readIORef cache
-                case Map.lookup (eid e) m of
-                    Just v -> return v
-                    Nothing -> do
-                        v <- def e
-                        liftIO $ modifyIORef' cache (Map.insert (eid e) v)
-                        return v
-
-      def :: ExpH -> SMT ExpH
-      def e =
-        case force e of
-            PrimEH n t f xs -> exph . (PrimEH n t f) <$> mapM use xs
-            IfEH t x y d -> do
-                x' <- use x
-                y' <- use y
-                d' <- use d
-                return $ exph (IfEH t x' y' d')
-            ErrorEH t _ -> mkerr t
-            LitEH {} -> return e
-            ConEH {} -> return e
-            VarEH {} -> return e
-  def x
- 
 use :: Symbolic a -> SMT (Used a)
 use s = {-# SCC "USE" #-} do
     v <- symbolic_smt s
