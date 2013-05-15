@@ -47,7 +47,7 @@ recordD l nm vars cons derivings =
       mkundef (Con n ts) =
         let undefnm = (record_undefnm n)
             undefet = arrowsT $ ts ++ [dt]
-            undefe = appsE l (ConE l (Sig n undefet)) [VarE l (Sig (name "undefined") t) | t <- ts]
+            undefe = appsE l (ConE l (Sig n undefet)) [AppE l (VarE l (Sig (name "error") (arrowT stringT t))) (stringE l ("undefined " ++ unname n)) | t <- ts]
         in ValD l (TopExp (TopSig undefnm [] dt) undefe)
 
       -- TODO: handle correctly the case where two different constructors
