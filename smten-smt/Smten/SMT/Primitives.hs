@@ -29,12 +29,15 @@ import Smten.Ppr hiding (nest)
 import Smten.SMT.SMT
 import qualified Smten.SMT.Solver
 import Smten.SMT.Debug
+import Smten.SMT.DebugLL
 import Smten.SMT.Yices.Yices1
 import Smten.SMT.Yices.Yices2
 import Smten.SMT.STP.STP
 import Smten.Prim
 
-data Solver = Yices1 | Yices2 | STP | Debug FilePath Solver
+data Solver = Yices1 | Yices2 | STP
+            | Debug FilePath Solver
+            | DebugLL FilePath Solver
     deriving (Eq, Show)
 
 mksolver :: Solver -> IO Smten.SMT.Solver.Solver
@@ -44,6 +47,9 @@ mksolver STP = stp
 mksolver (Debug f s) = do
     s' <- mksolver s
     debug f s'
+mksolver (DebugLL f s) = do
+    s' <- mksolver s
+    debugll f s'
 
 derive_SmtenT "Smten.SMT.Symbolic" ''Solver
 derive_SmtenEH "Smten.SMT.Symbolic" ''Solver

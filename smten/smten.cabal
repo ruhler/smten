@@ -139,6 +139,7 @@ library
     Smten.SMT.AST
     Smten.SMT.Assert
     Smten.SMT.Debug
+    Smten.SMT.DebugLL
     Smten.SMT.Solver
     Smten.SMT.SMT
 

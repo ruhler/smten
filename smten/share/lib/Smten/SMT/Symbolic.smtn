@@ -98,7 +98,9 @@ liftIO_SMT :: IO a -> SMT a
 instance MonadIO SMT where
     liftIO = liftIO_SMT
 
-data Solver = Yices1 | Yices2 | STP | Debug FilePath Solver
+data Solver = Yices1 | Yices2 | STP
+            | Debug FilePath Solver
+            | DebugLL FilePath Solver
     deriving (Eq, Show)
 
 runSMT :: Solver -> SMT a -> IO a
