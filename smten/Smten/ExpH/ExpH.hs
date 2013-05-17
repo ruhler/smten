@@ -79,11 +79,11 @@ instance Show ExpH_Value where
     show (ErrorEH _ s) = "error " ++ show s
     
 exph :: ExpH_Value -> ExpH
-exph v = 
+exph v =
   let {-# NOINLINE idstore #-}
       idstore :: IORef Integer
-      idstore = unsafePerformIO (newIORef 0)
-  in unsafePerformIO $ do
+      idstore = unsafeDupablePerformIO (newIORef 0)
+  in unsafeDupablePerformIO $ do
         x <- readIORef idstore
         writeIORef idstore $! x + 1
         return $ ExpH (EID x) v

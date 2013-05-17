@@ -24,7 +24,7 @@ inline :: Env -> [Prim] -> Exp -> ExpH
 inline env prims =
   let {-# NOINLINE cache #-}
       cache :: IORef (Map.Map Sig (Maybe ExpH))
-      cache = unsafePerformIO (newIORef Map.empty)
+      cache = unsafeDupablePerformIO (newIORef Map.empty)
 
       priml :: Sig -> Maybe ExpH 
       priml = lookupPrim prims
@@ -45,7 +45,7 @@ inline env prims =
               return x
 
       lookupPure :: Sig -> Maybe ExpH
-      lookupPure s = unsafePerformIO (lookupIO s)
+      lookupPure s = unsafeDupablePerformIO (lookupIO s)
 
       inline' :: [(Name, Type)] -> [(Name, ExpH)] -> Exp -> ExpH
       inline' tm m (LitE _ l) = exph $ LitEH l

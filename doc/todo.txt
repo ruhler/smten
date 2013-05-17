@@ -1,6 +1,3 @@
-NSAPI::
-* Perform abstraction in SMT.Assert instead of SMT.SMT?
-
 Recent::
 * Add support for (..) in import and export specifications
 * Add support for signatures in let declarations

@@ -165,13 +165,14 @@ de_ioEH x = do
 
 caseEH :: Type -> ExpH -> Sig -> ExpH -> ExpH -> ExpH
 caseEH t x k@(Sig nk _) y n
- | Just (s, _, vs) <- de_conEH x
-    = if s == nk then appsEH y vs else n
- | ErrorEH _ s <- force x = errorEH t s
- | nk == trueN = exph $ IfEH t x y n
- | nk == falseN = exph $ IfEH t x n y
- | IfEH {} <- force x = strict_appEH t (\x' -> caseEH t x' k y n) x
- | otherwise = error $ "SMTEN INTERNAL ERROR: unexpected arg to caseEH"
+ | nk == trueN = ifEH t x y n
+ | nk == falseN = ifEH t x n y
+ | otherwise =
+  case force x of
+    ConEH k _ vs -> if k == nk then appsEH y vs else n
+    ErrorEH _ s -> errorEH t s
+    IfEH {} -> strict_appEH t (\x' -> caseEH t x' k y n) x
+    _ -> error $ "SMTEN INTERNAL ERROR: unexpected arg to caseEH"
 
 -- Strict application.
 -- It traverses inside of if expressions. Sharing is preserved.
@@ -184,7 +185,13 @@ strict_appEH t f =
   in shared g
 
 ifEH :: Type -> ExpH -> ExpH -> ExpH -> ExpH
-ifEH t p a b = caseEH t p (Sig trueN boolT) a b
+ifEH t p a b =
+  case force p of
+    ConEH k _ []
+      | k == trueN -> a
+      | k == falseN -> b
+    ErrorEH _ s -> errorEH t s
+    _ -> exph $ IfEH t p a b
 
 impliesEH :: ExpH -> ExpH -> ExpH
 impliesEH p q = ifEH boolT p q trueEH
@@ -238,7 +245,7 @@ shared f =
       -- Note: the IORef is a pair of map instead of just the map to ensure we
       -- get a new IORef every time the 'shared' function is called.
       --cache :: IORef (Map.Map EID a, ((ExpH -> a) -> ExpH -> a))
-      cache = unsafePerformIO (newIORef (Map.empty, f))
+      cache = unsafeDupablePerformIO (newIORef (Map.empty, f))
 
       --lookupIO :: EID -> ExpH -> IO a
       lookupIO x e = do
@@ -252,7 +259,7 @@ shared f =
             return v
 
       --lookupPure :: EID -> ExpH -> a
-      lookupPure x e = unsafePerformIO (lookupIO x e)
+      lookupPure x e = unsafeDupablePerformIO (lookupIO x e)
 
       --def :: ExpH -> a
       def = f use
