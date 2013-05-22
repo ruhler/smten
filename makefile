@@ -3,9 +3,9 @@ all:
 	tclsh8.5 tclmk/make.tcl
 
 userinstall:
-	cd smten ; cabal install --builddir ../build/smten-$(USER) --force-reinstalls -O2
-	cd smten-smt ; cabal install --builddir ../build/smten-smt-$(USER) --force-reinstalls -O2
-	cd smten-bin ; cabal install --builddir ../build/smten-bin-$(USER) --force-reinstalls -O2
+	cd smten ; cabal install --builddir ../build/smten-$(USER) --force-reinstalls
+	cd smten-smt ; cabal install --builddir ../build/smten-smt-$(USER) --force-reinstalls
+	cd smten-bin ; cabal install --builddir ../build/smten-bin-$(USER) --force-reinstalls
 
 testio:
 	./build/home/.cabal/bin/smten --io \

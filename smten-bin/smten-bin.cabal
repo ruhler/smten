@@ -19,5 +19,5 @@ executable smten
   build-depends: base ==4.6.*,
                  cmdargs ==0.10.*, syb ==0.4.*,
                  smten ==2.1.*, smten-smt ==2.1.*
-  --ghc-prof-options: -fprof-auto-top
+  ghc-prof-options: -fprof-auto-top
   ghc-options: -rtsopts

@@ -15,6 +15,12 @@ Haskell Features::
 * Int type.
 * allow sigs and bodies to be separated.
 
+Concrete Performance::
+* work with rsrsh/lcperf to improve
+** inline or specialize caseFOO functions?
+** manually inline caseFOO functions?
+** desugar list comprehension in a smarter way?
+
 Documentation::
 * Write a user guide
 

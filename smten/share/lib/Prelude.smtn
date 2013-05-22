@@ -261,7 +261,10 @@ concat :: [[a]] -> [a]
 concat xss = foldr (++) [] xss
 
 concatMap :: (a -> [b]) -> [a] -> [b]
-concatMap f = concat . map f
+concatMap f =
+  let g [] = []
+      g (x:xs) = f x ++ g xs
+  in g
 
 head :: [a] -> a
 head (x:_) = x
