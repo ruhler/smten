@@ -16,6 +16,7 @@ Haskell Features::
 * allow sigs and bodies to be separated.
 
 Concrete Performance::
+* Inline leaks memory for typemap and argmap
 * work with rsrsh/lcperf to improve
 ** inline or specialize caseFOO functions?
 ** manually inline caseFOO functions?
