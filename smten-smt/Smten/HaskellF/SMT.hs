@@ -19,7 +19,7 @@ symbolicHF :: (HaskellF a) => S.Symbolic a -> Symbolic a
 symbolicHF s = box <$> de_symbolicEH (unbox s)
 
 assertHF :: S.Bool -> Symbolic ()
-assertHF x = symbolicHF (S.assert x) >> return ()
+assertHF x = symbolicHF (applyHF S.assert x) >> return ()
 
 queryHF :: (HaskellF a) => Symbolic a -> SMT (Maybe a)
 queryHF s = do

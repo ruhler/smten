@@ -7,6 +7,7 @@ module Smten.HaskellF.Compile.Exp (
 
 import qualified Language.Haskell.TH.Syntax as H
 
+import Smten.Name
 import Smten.Lit
 import Smten.Sig
 import Smten.Exp
@@ -32,7 +33,7 @@ hsExp e
     = return $ H.AppE (H.VarE (H.mkName "Smten.HaskellF.HaskellF.smtenHF")) (H.LitE (H.StringL str))
 
 hsExp (LitE _ l) = return (hsLit l)
-hsExp (ConE _ (Sig n _)) = return $ H.ConE (hsqName n)
+hsExp (ConE _ (Sig n _)) = return $ H.VarE (qconnm n)
 hsExp (VarE _ (Sig n t)) = do
     -- Give explicit type signature to make sure there are no type ambiguities
     ht <- hsType t
@@ -40,11 +41,11 @@ hsExp (VarE _ (Sig n t)) = do
 hsExp (AppE _ f x) = do
     f' <- hsExp f
     x' <- hsExp x
-    return $ H.AppE f' x'
+    return $ H.AppE (H.AppE (H.VarE (H.mkName "Smten.HaskellF.HaskellF.applyHF")) f') x'
 
 hsExp (LamE _ (Sig n _) x) = do
     x' <- hsExp x
-    return $ H.LamE [H.VarP (hsName n)] x'
+    return $ foldl1 H.AppE [H.VarE (H.mkName "Smten.HaskellF.HaskellF.lamHF"), H.LitE (H.StringL (unname n)), H.LamE [H.VarP (hsName n)] x']
 
 -- case x of
 --    K -> y

@@ -163,16 +163,5 @@ indir build/smten-bin {
 }
 hrun ./build/smten-bin/semtest
 
-# The dsel haskell integration test.
-hrun $::SMTEN --haskellf \
-    --include $::SMTN \
-    -f $::SMTN/Smten/Tests/DSEL.smtn \
-    --hsdir build/test
-indir build/smten-bin {
-    hrun ln -sf ../../smten-bin/dsel.hs dsel.hs
-    hrun ghc --make -o dsel -i../test dsel.hs
-}
-hrun ./build/smten-bin/dsel
-
 puts "BUILD COMPLETE"
 

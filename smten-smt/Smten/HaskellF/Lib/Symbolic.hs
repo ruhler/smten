@@ -58,48 +58,48 @@ __prim_free_Integer = primHF __prim_free_IntegerP
 __prim_free_Bit :: (HaskellF n) => Symbolic (Bit n)
 __prim_free_Bit = primHF __prim_free_BitP
 
-assert :: Bool -> Symbolic Unit__
+assert :: Function Bool (Symbolic Unit__)
 assert = primHF assertP
 
-use :: (HaskellF a) => Symbolic a -> SMT (Used a)
+use :: (HaskellF a) => Function (Symbolic a) (SMT (Used a))
 use = primHF useP
 
-used :: (HaskellF a) => Used a -> Symbolic a
+used :: (HaskellF a) => Function (Used a) (Symbolic a)
 used = primHF usedP
 
-query_Used :: (HaskellF a) => Used a -> SMT (Maybe a)
+query_Used :: (HaskellF a) => Function (Used a) (SMT (Maybe a))
 query_Used = primHF query_UsedP
 
-nest :: (HaskellF a) => SMT a -> SMT a
+nest :: (HaskellF a) => Function (SMT a) (SMT a)
 nest = primHF nestP
 
-return_smt :: (HaskellF a) => a -> SMT a
+return_smt :: (HaskellF a) => Function a (SMT a)
 return_smt = primHF return_smtP
 
-bind_smt :: (HaskellF a, HaskellF b) => SMT a -> (a -> SMT b) -> SMT b
+bind_smt :: (HaskellF a, HaskellF b) => Function (SMT a) (Function (Function a (SMT b)) (SMT b))
 bind_smt = primHF bind_smtP
 
-nobind_smt :: (HaskellF a, HaskellF b) => SMT a -> SMT b -> SMT b
+nobind_smt :: (HaskellF a, HaskellF b) => Function (SMT a) (Function (SMT b) (SMT b))
 nobind_smt = primHF nobind_smtP
 
-fail_smt :: (HaskellF a) => List__ Char -> SMT a
+fail_smt :: (HaskellF a) => Function (List__ Char) (SMT a)
 fail_smt = primHF fail_smtP
 
-return_symbolic :: (HaskellF a) => a -> Symbolic a
+return_symbolic :: (HaskellF a) => Function a (Symbolic a)
 return_symbolic = primHF return_SymbolicP
 
-bind_symbolic :: (HaskellF a, HaskellF b) => Symbolic a -> (a -> Symbolic b) -> Symbolic b
+bind_symbolic :: (HaskellF a, HaskellF b) => Function (Symbolic a) (Function (Function a (Symbolic b)) (Symbolic b))
 bind_symbolic = primHF bind_SymbolicP
 
-nobind_symbolic :: (HaskellF a, HaskellF b) => Symbolic a -> Symbolic b -> Symbolic b
+nobind_symbolic :: (HaskellF a, HaskellF b) => Function (Symbolic a) (Function (Symbolic b) (Symbolic b))
 nobind_symbolic = primHF nobind_SymbolicP
 
-fail_symbolic :: (HaskellF a) => List__ Char -> Symbolic a
+fail_symbolic :: (HaskellF a) => Function (List__ Char) (Symbolic a)
 fail_symbolic = primHF fail_SymbolicP
 
-runSMT :: (HaskellF a, HaskellF s) => s -> SMT a -> IO a
+runSMT :: (HaskellF a, HaskellF s) => Function s (Function (SMT a) (IO a))
 runSMT = primHF runSMTP
 
-liftIO_SMT :: (HaskellF a) => IO a -> SMT a
+liftIO_SMT :: (HaskellF a) => Function (IO a) (SMT a)
 liftIO_SMT = primHF liftIO_smtP
 

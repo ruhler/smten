@@ -2,6 +2,11 @@ Recent::
 * Add support for (..) in import and export specifications
 * Add support for signatures in let declarations
 
+New HF Fixup::
+* array support in haskellf
+* concretization of haskellf stuff
+* support for DSEL?
+
 Haskell Features::
 * support for (..) in import and export specifications
 * newtype

@@ -28,20 +28,17 @@ instance HaskellF1 PrimArray where
     box1 = PrimArray__s
     unbox1 = P.error "TODO: PrimArray unbox1"
 
-primArray :: (HaskellF a) => List__ a -> PrimArray a
-primArray = {-# SCC "primArray" #-} primArray'
-
-primArray' :: (HaskellF a) => List__ a -> PrimArray a
-primArray' l
-  | P.Just vs <- de_listHF l = PrimArray $ listArray (0, genericLength vs -1) vs
-  | P.otherwise = P.error "TODO: primArray with symbolic argument"
-
-primSelect :: (HaskellF a) => PrimArray a -> Integer -> a
-primSelect = {-# SCC "primSelect" #-} primSelect'
-
-primSelect' :: (HaskellF a) => PrimArray a -> Integer -> a
-primSelect' (PrimArray arr) idx
-  | P.Just v <- de_smtenHF idx = arr ! v
-  | P.otherwise = P.error "TODO: primSelect with symbolic index"
-primSelect' _ _ = P.error "TODO: primSelect with symbolic array"
+primArray :: (HaskellF a) => Function (List__ a) (PrimArray a)
+primArray = {-# SCC "primArray" #-} lamHF "l" $ \l ->
+    case de_listHF l of
+        P.Just vs -> PrimArray $ listArray (0, genericLength vs -1) vs
+        _ -> P.error "TODO: primArray with symbolic argument"
+    
+primSelect :: (HaskellF a) => Function (PrimArray a) (Function Integer a)
+primSelect = {-# SCC "primSelect" #-} lamHF "par" $ \par ->
+    lamHF "idx" $ \idx ->
+        case (par, de_smtenHF idx) of
+            (PrimArray arr, P.Just v) -> arr ! v
+            (PrimArray arr, _) -> P.error "TODO: primSelect with symbolic index"
+            _ -> P.error "TODO: primSelect with symbolic array"
 

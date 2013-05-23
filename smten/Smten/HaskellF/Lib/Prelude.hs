@@ -6,17 +6,18 @@
 {-# OPTIONS_GHC -fprof-auto-top #-}
 
 module Smten.HaskellF.Lib.Prelude (
+    HFArrow__,
     Char,
     Integer,
     IO,
-    Unit__(Unit__), __caseUnit__,
-    Bool(True, False), __caseTrue, __caseFalse,
-    Tuple2__(Tuple2__), __caseTuple2__,
-    Tuple3__(Tuple3__), __caseTuple3__,
-    Tuple4__(Tuple4__), __caseTuple4__,
-    List__(Cons__, Nil__), __caseCons__, __caseNil__, de_listHF,
+    Unit__, __caseUnit__, __mkUnit__,
+    Bool, __mkTrue, __mkFalse, __caseTrue, __caseFalse,
+    Tuple2__, __mkTuple2__, __caseTuple2__,
+    Tuple3__, __mkTuple3__, __caseTuple3__,
+    Tuple4__, __mkTuple4__, __caseTuple4__,
+    List__, __mkCons__, __mkNil__, __caseCons__, __caseNil__, de_listHF,
     String,
-    Maybe(Just, Nothing), __caseJust, __caseNothing,
+    Maybe, __mkJust, __mkNothing, __caseJust, __caseNothing,
 
     __prim_toInteger_Char, __prim_fromInteger_Char,
     __prim_eq_Integer,
@@ -45,6 +46,8 @@ import qualified Smten.Type
 import qualified Smten.ExpH
 import Smten.HaskellF.HaskellF
 import Smten.HaskellF.TH
+
+type HFArrow__ = (->)
 
 data Char =
      Char P.Char
@@ -163,66 +166,58 @@ de_listHF (List____s v) = P.Nothing
 
 type String = List__ Char
 
-__prim_toInteger_Char :: Char -> Integer
+__prim_toInteger_Char :: Function Char Integer
 __prim_toInteger_Char = unaryHF toInteger_CharP
 
-__prim_fromInteger_Char :: Integer -> Char
+__prim_fromInteger_Char :: Function Integer Char
 __prim_fromInteger_Char = unaryHF fromInteger_CharP
 
-__prim_add_Integer :: Integer -> Integer -> Integer
-__prim_add_Integer (Integer av) (Integer bv) = smtenHF (p_impl add_IntegerP av bv)
-__prim_add_Integer a b = primHF (p_prim add_IntegerP) a b
+__prim_add_Integer :: Function Integer (Function Integer Integer)
+__prim_add_Integer = primHF (p_prim add_IntegerP)
 
-__prim_sub_Integer :: Integer -> Integer -> Integer
-__prim_sub_Integer (Integer av) (Integer bv) = smtenHF (p_impl sub_IntegerP av bv)
-__prim_sub_Integer a b = primHF (p_prim sub_IntegerP) a b
+__prim_sub_Integer :: Function Integer (Function Integer Integer)
+__prim_sub_Integer = primHF (p_prim sub_IntegerP)
 
-__prim_mul_Integer :: Integer -> Integer -> Integer
-__prim_mul_Integer (Integer av) (Integer bv) = smtenHF (p_impl mul_IntegerP av bv)
-__prim_mul_Integer a b = primHF (p_prim mul_IntegerP) a b
+__prim_mul_Integer :: Function Integer (Function Integer Integer)
+__prim_mul_Integer = primHF (p_prim mul_IntegerP)
 
-__prim_eq_Integer :: Integer -> Integer -> Bool
-__prim_eq_Integer (Integer av) (Integer bv) = smtenHF (p_impl eq_IntegerP av bv)
-__prim_eq_Integer a b = primHF (p_prim eq_IntegerP) a b
+__prim_eq_Integer :: Function Integer (Function Integer Bool)
+__prim_eq_Integer = primHF (p_prim eq_IntegerP)
 
-__prim_lt_Integer :: Integer -> Integer -> Bool
-__prim_lt_Integer (Integer av) (Integer bv) = smtenHF (p_impl lt_IntegerP av bv)
-__prim_lt_Integer a b = primHF (p_prim lt_IntegerP) a b
+__prim_lt_Integer :: Function Integer (Function Integer Bool)
+__prim_lt_Integer = primHF (p_prim lt_IntegerP)
 
-__prim_leq_Integer :: Integer -> Integer -> Bool
-__prim_leq_Integer (Integer av) (Integer bv) = smtenHF (p_impl leq_IntegerP av bv)
-__prim_leq_Integer a b = primHF (p_prim leq_IntegerP) a b
+__prim_leq_Integer :: Function Integer (Function Integer Bool)
+__prim_leq_Integer = primHF (p_prim leq_IntegerP)
 
-__prim_geq_Integer :: Integer -> Integer -> Bool
-__prim_geq_Integer (Integer av) (Integer bv) = smtenHF (p_impl geq_IntegerP av bv)
-__prim_geq_Integer a b = primHF (p_prim geq_IntegerP) a b
+__prim_geq_Integer :: Function Integer (Function Integer Bool)
+__prim_geq_Integer = primHF (p_prim geq_IntegerP)
 
-__prim_gt_Integer :: Integer -> Integer -> Bool
-__prim_gt_Integer (Integer av) (Integer bv) = smtenHF (p_impl gt_IntegerP av bv)
-__prim_gt_Integer a b = primHF (p_prim gt_IntegerP) a b
+__prim_gt_Integer :: Function Integer (Function Integer Bool)
+__prim_gt_Integer = primHF (p_prim gt_IntegerP)
 
-__prim_show_Integer :: Integer -> String
+__prim_show_Integer :: Function Integer String
 __prim_show_Integer = primHF show_IntegerP
 
-return_io :: (HaskellF a) => a -> IO a
+return_io :: (HaskellF a) => Function a (IO a)
 return_io = primHF return_IOP
 
-bind_io :: (HaskellF a, HaskellF b) => IO a -> (a -> IO b) -> IO b
+bind_io :: (HaskellF a, HaskellF b) => Function (IO a) (Function (Function a (IO b)) (IO b))
 bind_io = primHF bind_IOP
 
-putChar :: Char -> IO Unit__
+putChar :: Function Char (IO Unit__)
 putChar = primHF putCharP
 
 getContents :: IO String
 getContents = primHF getContentsP
 
-error :: (HaskellF a) => String -> a
+error :: (HaskellF a) => Function String a
 error = primHF errorP
 
 numeric :: (HaskellF a) => a
 numeric = primHF numericP 
 
-valueof :: (HaskellF a) => a -> Integer
+valueof :: (HaskellF a) => Function a Integer
 valueof = primHF valueofP
 
 __main_wrapper :: IO Unit__ -> P.IO ()

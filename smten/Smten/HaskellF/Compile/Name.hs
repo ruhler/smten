@@ -3,7 +3,7 @@
 
 module Smten.HaskellF.Compile.Name (
     hsName, hsqName, hsTyName, hsqTyName,
-    nmn, nmk, qcasenm, casenm, symnm, hfpre,
+    nmn, nmk, qcasenm, casenm, qconnm, connm, symnm, hfpre,
     ) where
 
 import qualified Language.Haskell.TH.Syntax as H
@@ -106,6 +106,9 @@ hfqtynm n
 casenm :: Name -> H.Name
 casenm n = H.mkName $ "__case" ++ hfnm n
 
+connm :: Name -> H.Name
+connm n = H.mkName $ "__mk" ++ hfnm n
+
 -- Given the name of a data constructor, return the qualified name of the
 -- function for doing a case match against the constructor.
 qcasenm :: Name -> H.Name
@@ -114,6 +117,14 @@ qcasenm n =
       qlf = unname $ qualification qn
       unq = unname $ unqualified qn
   in H.mkName $ qlf ++ ".__case" ++ unq
+
+qconnm :: Name -> H.Name
+qconnm n =
+  let qn = name $ hfqnm n
+      qlf = unname $ qualification qn
+      unq = unname $ unqualified qn
+  in H.mkName $ qlf ++ ".__mk" ++ unq
+
 
 -- | Given the name of a type constructor, return the unqualified symbolic data
 -- constructor associated with it.

@@ -6,6 +6,7 @@
 module Smten.HaskellF.HaskellF (
     HaskellF(..), HaskellF1(..), HaskellF2(..), HaskellF3(..), HaskellF4(..),
     SmtenHF(..),
+    Function(..), lamHF, applyHF,
     conHF, de_conHF, caseHF, primHF, unaryHF,
     ) where
 
@@ -52,17 +53,28 @@ instance (HaskellF4 m, HaskellF a) => HaskellF3 (m a) where
     box3 = box4
     unbox3 = unbox4
 
+newtype Function a b = Function {
+    function_unbox :: ExpH
+}
 
-instance HaskellF2 (->) where
-    box2 e = \x -> box $ appEH e (unbox x)
-    unbox2 f =
-       let ta :: (a -> b) -> a
-           ta _ = undefined
-    
-           tb :: (a -> b) -> b
-           tb _ = undefined
-       in lamEH (Sig (name "x") (smtenT (ta f))) (smtenT (tb f)) $ \x ->
-            unbox (f (box x))
+instance SmtenT2 Function where
+    smtenT2 x = conT arrowN
+
+instance HaskellF2 Function where
+    box2 = Function
+    unbox2 = function_unbox
+
+applyHF :: (HaskellF a, HaskellF b) => Function a b -> a -> b
+applyHF f x = box $ appEH (unbox f) (unbox x)
+
+lamHF :: (HaskellF a, HaskellF b) => String -> (a -> b) -> Function a b
+lamHF n f =
+  let g :: ExpH -> ExpH
+      g x = unbox $ f (box x)
+
+      r = box $ lamEH (Sig (name n) ta) tb g
+      Just (ta, tb) = de_arrowT (smtenT r)
+  in r
 
 -- | Convert a concrete haskell value to its HaskellF representation.
 class (SmtenEH c, HaskellF f) => SmtenHF c f where
@@ -98,10 +110,6 @@ primHF p =
  let z = box $ primEH p (smtenT z)
  in z
 
-unaryHF :: (SmtenHF ca fa, SmtenHF cb fb)
-            => PrimF (ca -> cb) -> fa -> fb
-unaryHF p a
- | Just av <- de_smtenHF a = smtenHF (p_impl p av)
- | otherwise = primHF (p_prim p) a
-
+unaryHF :: (SmtenHF ca fa, SmtenHF cb fb) => PrimF (ca -> cb) -> Function fa fb
+unaryHF p = primHF (p_prim p)
 

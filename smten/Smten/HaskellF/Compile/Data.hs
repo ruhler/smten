@@ -23,7 +23,8 @@ hsData n tyvars constrs = do
     smtenTD <- mkSmtenTD n tyvars
     symbD <- mkSymbD n tyvars constrs
     casesD <- mapM (mkCaseD n tyvars) constrs
-    return $ concat ([dataD, smtenTD, symbD] : casesD)
+    consD <- mapM (mkConD n tyvars) constrs
+    return $ concat ([dataD, smtenTD, symbD] : (casesD ++ consD))
 
 -- data Foo a b ... =
 --    FooA FooA1 FooA2 ...
@@ -147,41 +148,85 @@ mkUnboxD n bn constrs = do
         clause = H.Clause [H.VarP (H.mkName "x")] (H.GuardedB guards) []
     return $ H.FunD (nmn "unbox" bn) [clause]
 
--- __caseFooB :: Foo -> (FooB1 -> FooB2 -> ... -> z) -> z -> z
--- __caseFooB x y n
---   | FooB a b ... <- x = y a b ...
---   | Foo__s _ <- x = caseHF "FooB" x y n
---   | otherwise = n
+-- __caseFooB :: Foo -> (Function FooB1 (Function FooB2 ... z) -> z -> z
+-- __caseFooB = \x y n -> case x of
+--                           FooB a b ... -> applyHF (applyHF y a) b ...
+--                           Foo__s _ -> caseHF "FooB" x y n
+--                           _ -> n
 mkCaseD :: Name -> [TyVar] -> Con -> HF [H.Dec]
 mkCaseD n tyvars (Con cn tys) = do
+  -- Note: we use this funny arrow hack to be able to reuse hsTopType to
+  -- generate the context for us, but while using haskell -> instead of the HF
+  -- function type constructor.
+  -- TODO: surely there must be a nicer way to do this?
   let dt = appsT (conT n) (map tyVarType tyvars)
       z = VarT (name "z") StarK
-      t = arrowsT [dt, arrowsT (tys ++ [z]), z, z]
-  ht <- hsTopType [] t
-  let sigD = H.SigD (casenm cn) ht
+      arrT = \a b -> appsT (conT (name "HS_ARROW_HACK")) [a, b]
+      arrsT = foldr1 arrT
+      t = arrsT [dt, arrowsT (tys ++ [z]), z, z]
+  ht' <- hsTopType [] t
+  let arrowhack :: H.Type -> H.Type
+      arrowhack (H.ForallT vars ctx t) = H.ForallT vars ctx (arrowhack t)
+      arrowhack t@(H.ConT n)
+        | H.nameBase n == "HS_ARROW_HACK" = H.ArrowT
+        | otherwise = t
+      arrowhack t@(H.VarT {}) = t
+      arrowhack (H.AppT a b) = H.AppT (arrowhack a) (arrowhack b)
 
-      body = H.AppE (H.VarE (H.mkName "Smten.HaskellF.HaskellF.caseHF")) (H.LitE (H.StringL (unname cn)))
+      ht = arrowhack ht'
+
+      sigD = H.SigD (casenm cn) ht
+
+      xsrc = H.VarE (H.mkName "x")
 
       yargs = [H.mkName ("x" ++ show i) | i <- [1..length tys]]
       ypat = H.ConP (hsName cn) (map H.VarP yargs)
-      ysrc = H.VarE (H.mkName "x")
-      ybody = foldl H.AppE (H.VarE (H.mkName "y")) [H.VarE an | an <- yargs]
-      yguard = (H.PatG [H.BindS ypat ysrc], ybody)
+      apphf = H.VarE (H.mkName "Smten.HaskellF.HaskellF.applyHF")
+      app = \a b -> foldl1 H.AppE [apphf, a, b]
+      ybody = foldl app (H.VarE (H.mkName "y")) [H.VarE an | an <- yargs]
+      ymatch = H.Match ypat (H.NormalB ybody) []
 
       spat = H.ConP (symnm n) [H.WildP]
-      ssrc = H.VarE (H.mkName "x")
       sbody = foldl1 H.AppE [
                 H.VarE (H.mkName "Smten.HaskellF.HaskellF.caseHF"),
                 H.LitE (H.StringL (unname cn)),
                 H.VarE (H.mkName "x"),
                 H.VarE (H.mkName "y"),
                 H.VarE (H.mkName "n")]
-      sguard = (H.PatG [H.BindS spat ssrc], sbody)
+      smatch = H.Match spat (H.NormalB sbody) []
 
-      nguard = (H.NormalG (H.VarE (H.mkName "Prelude.otherwise")), H.VarE (H.mkName "n"))
+      npat = H.WildP
+      nbody = H.VarE (H.mkName "n")
+      nmatch = H.Match npat (H.NormalB nbody) []
 
-      guards = [yguard, sguard, nguard]
-      clause = H.Clause [H.VarP (H.mkName [c]) | c <- "xyn"] (H.GuardedB guards) []
+      thecase = H.CaseE xsrc [ymatch, smatch, nmatch]
+
+      lams = H.LamE [H.VarP (H.mkName n) | n <- ["x", "y", "n"]] $ thecase
+      clause = H.Clause [] (H.NormalB lams) []
       funD = H.FunD (casenm cn) [clause]
+  return [sigD, funD]
+
+-- __mkFooB :: Function FooB1 (Function FooB2 ... Foo)
+-- __mkFooB = lamHF "x1" $ \x1 ->
+--              lamHF "x2" $ \x2 ->
+--                ... -> FooB x1 x2 ...
+mkConD :: Name -> [TyVar] -> Con -> HF [H.Dec]
+mkConD n tyvars (Con cn tys) = do
+  let dt = appsT (conT n) (map tyVarType tyvars)
+      t = arrowsT $ tys ++ [dt]
+  ht <- hsTopType [] t
+  let sigD = H.SigD (connm cn) ht
+      vars = ["x" ++ show i | i <- take (length tys) [1..]]
+
+      mklam :: String -> H.Exp -> H.Exp
+      mklam nm x = foldl1 H.AppE [
+         H.VarE (H.mkName "Smten.HaskellF.HaskellF.lamHF"),
+         H.LitE (H.StringL nm),
+         H.LamE [H.VarP (H.mkName nm)] x]
+
+      body = foldl H.AppE (H.ConE (hsName cn)) [H.VarE (H.mkName nm) | nm <- vars]
+      lams = foldr mklam body vars
+      clause = H.Clause [] (H.NormalB lams) []
+      funD = H.FunD (connm cn) [clause]
   return [sigD, funD]
 

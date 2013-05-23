@@ -26,7 +26,7 @@ hsType' t = do
     case t of
       _ | Just n <- lookup t retype -> return $ H.VarT (hsName n)
       (ConT n _)
-        | n == arrowN -> return H.ArrowT
+        | n == arrowN -> return $ H.ConT (H.mkName "Smten.HaskellF.HaskellF.Function")
         | otherwise -> return $ H.ConT (hsqTyName n)
       (AppT a b) -> do
         a' <- hsType' a

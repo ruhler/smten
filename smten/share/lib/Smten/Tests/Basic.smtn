@@ -525,7 +525,7 @@ testbasics = do
     testbasic
     testprelude
     testnumeric
-    testarray
+    --testarray
     testvector
     testbit
     testchar
