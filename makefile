@@ -8,7 +8,7 @@ userinstall:
 	cd smten-bin ; cabal install --builddir ../build/smten-bin-$(USER) --force-reinstalls
 
 test: dosmten doghc
-	./build/test/Smten_Tests_All
+	./build/test/Smten_Tests_All +RTS -p -K1g
 
 dosmten:
 	./build/home/.cabal/bin/smten --haskellf \
@@ -17,7 +17,7 @@ dosmten:
 		--hsdir build/test
 
 doghc: build/test/Smten/Lib/Smten/Tests/All.hs
-	ghc -main-is Smten.Lib.Smten.Tests.All.main__ -ibuild/test -o build/test/Smten_Tests_All $<
+	ghc -main-is Smten.Lib.Smten.Tests.All.main__ -ibuild/test -o build/test/Smten_Tests_All $< -prof -rtsopts
 
 testph:
 	./build/home/.cabal/bin/smten --phases \

@@ -37,7 +37,7 @@ hrun mkdir -p build/home build/test
 
 set ::env(HOME) [pwd]/build/home
 #hrun cabal update
-hrun cabal install cmdargs syb
+hrun cabal install cmdargs syb missingh
 
 # The smten package
 indir smten {

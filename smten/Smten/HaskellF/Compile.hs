@@ -41,6 +41,8 @@ module Smten.HaskellF.Compile (
     haskellf, hfData,
     ) where
 
+import Data.Hash.MD5
+
 import Data.Functor((<$>))
 import qualified Language.Haskell.TH.PprLib as H
 import qualified Language.Haskell.TH as H
@@ -68,8 +70,22 @@ haskellf odir mods = {-# SCC "HaskellF" #-} do
         let dst = map dot2slash . unname  . hfpre . mod_name $ m
             tgt = odir ++ "/" ++ dst ++ ".hs"
         createDirectoryIfMissing True (directory tgt)
-        writeFile tgt hf
+        writeFileIfChanged tgt hf
   mapM_ mkmod mods
+
+-- Write to the given file, but only if we are writing something new.
+-- This keeps us from touching the timestamp of the file if there is no
+-- change, so ghc won't have to recompile that file.
+writeFileIfChanged :: FilePath -> String -> IO ()
+writeFileIfChanged tgt cnts = do
+   exists <- doesFileExist tgt
+   if exists 
+        then do
+            old <- readFile tgt
+            if md5 (Data.Hash.MD5.Str old) == md5 (Data.Hash.MD5.Str cnts)
+                then return ()
+                else writeFile tgt cnts
+        else writeFile tgt cnts
 
 directory :: FilePath -> FilePath
 directory f
