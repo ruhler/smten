@@ -17,7 +17,7 @@ dosmten:
 		--hsdir build/test
 
 doghc: build/test/Smten/Lib/Smten/Tests/All.hs
-	ghc -main-is Smten.Lib.Smten.Tests.All.main__ -ibuild/test -o build/test/Smten_Tests_All $< -prof -rtsopts
+	ghc -main-is Smten.Lib.Smten.Tests.All.main__ -ibuild/test -o build/test/Smten_Tests_All $< -prof -rtsopts -osuf prof_o
 
 testph:
 	./build/home/.cabal/bin/smten --phases \
