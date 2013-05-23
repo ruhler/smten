@@ -16,6 +16,6 @@ qtest = do
 
 main :: IO ()
 main = do
-    runSMT Yices2 (Just "build/test/MalError.yices2.dbg") qtest
+    runSMT Yices2 qtest
     putStrLn "MAL ERROR FAILED"
 

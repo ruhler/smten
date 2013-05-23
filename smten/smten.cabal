@@ -77,8 +77,6 @@ library
     Smten.ExpH.Ppr
     Smten.ExpH.Utils
 
-    Smten.Inline
-
     Smten.Prim
     Smten.Prim.Prim
     Smten.Prim.Prelude
@@ -142,8 +140,6 @@ library
     Smten.SMT.DebugLL
     Smten.SMT.Solver
     Smten.SMT.SMT
-
-    Smten.Semantics
 
     Smten.Fresh
     Smten.Location

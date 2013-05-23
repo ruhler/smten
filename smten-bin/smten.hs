@@ -50,7 +50,6 @@ import Smten.Sig
 import Smten.Failable
 import Smten.Exp
 import Smten.ExpH
-import Smten.Inline
 import Smten.Ppr
 import Smten.Prim
 import Smten.Dec
@@ -63,7 +62,7 @@ import Smten.SMT.Primitives
 
 import Smten.HaskellF.Compile
 
-data Run = Io | Type | Phases | HaskellF
+data Run = Phases | HaskellF
     deriving (Show, Eq, Typeable, Data)
 
 data Args = Args {
@@ -77,9 +76,7 @@ data Args = Args {
 
 argspec :: Args
 argspec = Args { 
-    run = A.enum [Io A.&= A.help "Run a smten program in the IO monad",
-                  Type A.&= A.help "Type infer and check a smten program",
-                  Phases A.&= A.help "Dump output from intermediate phases of compilation",
+    run = A.enum [Phases A.&= A.help "Dump output from intermediate phases of compilation",
                   HaskellF A.&= A.help "Compile a smten program to Haskell"]
        A.&= A.typ "RUN MODE",
     include = []
@@ -113,14 +110,6 @@ main = do
                   fout -> writeFile fout
 
     case (run args) of
-        Io -> do 
-            mods <- loadtyped includes (file args)
-            let env = environ mods
-            tmain <- attemptIO $ lookupVarType env nmain
-            let m = varE lunknown (Sig (name (main_is args)) tmain)
-            runio (inline env (smtenPs ++ smtPs) m)
-            return ()
-
         Phases -> do
             let outfphs :: String -> String -> IO ()
                 outfphs ext text = case (output args) of
@@ -150,10 +139,6 @@ main = do
 
             putStrLn "type checking..."
             attemptIO $ typecheck inferred
-
-        Type -> do
-            mods <- loadtyped includes (file args)
-            outf . pretty $ mods
 
         HaskellF -> do
             mods <- loadtyped includes (file args)

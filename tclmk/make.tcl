@@ -33,7 +33,7 @@ proc hrun {args} {
 }
 
 # Create and set up a build directory for the build.
-hrun mkdir -p build/home build/test build/test/Squares2
+hrun mkdir -p build/home build/test
 
 set ::env(HOME) [pwd]/build/home
 #hrun cabal update
@@ -71,17 +71,14 @@ indir smten-bin {
 }
 
 set SMTEN build/home/.cabal/bin/smten
-set DSEL build/smten-bin/dsel
-set SUDOKU build/smten-bin/sudoku
-
 set SMTN smten/share/lib
 
 # Poorly typed tests.
 proc shouldfail {name} {
     set cmd {
-        hrun $::SMTEN --type \
+        hrun $::SMTEN --phases \
             -f $::SMTN/Smten/Tests/ShouldFail/$name.smtn \
-            -o "build/test/$name.typed"
+            -o "build/test/$name"
         }
 
     if { [catch $cmd] == 0 } {
@@ -105,14 +102,6 @@ shouldfail "FreeTyCon"
 shouldfail "FreeTypeVar"
 shouldfail "FreeVar"
 shouldfail "InstCtx"
-
-# Run an IO Test
-proc io {module} {
-    set smtdir build/test
-    hrun $::SMTEN --io \
-        --main-is $module.main \
-        -f $::SMTN/[string map {. /} $module].smtn
-}
 
 proc expectfail {cmd} {
     if { [catch $cmd] == 0 } {   
@@ -144,24 +133,8 @@ proc hf {module} {
 }
 
 
-io Smten.Tests.All
 hf Smten.Tests.All
-expectfail { io Smten.SMT.Tests.MalError }
 expectfail { hf Smten.SMT.Tests.MalError }
-
-# The pretty printer test
-indir build/smten-bin {
-    hrun ln -sf ../../smten-bin/pprtest.hs pprtest.hs
-    hrun ghc --make -o pprtest pprtest.hs
-}
-hrun ./build/smten-bin/pprtest
-
-# The semantics test
-indir build/smten-bin {
-    hrun ln -sf ../../smten-bin/semtest.hs semtest.hs
-    hrun ghc --make -o semtest semtest.hs
-}
-hrun ./build/smten-bin/semtest
 
 puts "BUILD COMPLETE"
 
