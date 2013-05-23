@@ -1,0 +1,28 @@
+
+module Smten.Tests.Perf (tests) where
+
+import Smten.Tests.Test
+
+-- Test performance of deep recursion.
+-- We had issues where deep recursion lead to memory leaks.
+deeprecursion :: IO ()
+deeprecursion = do
+    putStrLn "Perf deep recursion test..."
+    test "perf deep recursion" (and (replicate 100000 True))
+
+-- Test performance of primitive integer operations.
+f :: Integer -> Integer
+f 0 = 1
+f n = n + f (n-1)
+
+intprim :: IO ()
+intprim = do
+    putStrLn "Perf int primitives test..."
+    test "perf integer primitives" (f 100000 > 0)
+
+tests :: IO ()
+tests = do
+    deeprecursion
+    intprim
+    putStrLn "Perf tests done"
+

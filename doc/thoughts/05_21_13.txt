@@ -1,0 +1,118 @@
+
+Tue May 21 09:44:16 EDT 2013
+
+Plan for today is: understand performance issues with:
+
+* range.concatMap
+* map
+* listArray.take
+* list comprehension
+
+I suppose the first thing is to check:
+* if we get rid of list comprehension in range function, does performance
+  improve much?
+
+Ah, so here is where I ought to be able to make a stand along performance test
+case.
+
+Use 'range' to generate a range of 3-tuples of integers, and map them over
+some function from 3-tuple of integer to Bool, and take the and of the result.
+
+Compare: 
+ - pure haskell
+ - smten io
+ - smten haskellf
+
+And try to figure out how to improve it.
+
+Tue May 21 10:00:35 EDT 2013
+
+I made a specialized test case which replicates this behavior.
+
+haskell takes like no time at all.
+smten haskellf takes 1 second to complete.
+smten io takes really long.
+
+Why?
+
+What experiments should I perform?
+
+Let me focus on understanding the problem with haskellf, because I really
+don't expect there to be a problem here.
+
+Where could the problems be?
+
+* we are desugaring things very poorly
+* use of Integer as opposed to Int
+* overhead of HaskellF boxing and unboxing
+
+Let me start by testing the desugaring problem.
+
+Much time is spent in the call to 'map' as part of concatMap.
+Much time is spent in enumFromTo.
+Much time is spent in foldr.
+Much time is spent in ++.
+Much time is spent in f map.
+Much time is spent in foldr.
+
+Focusing in on f map. Call it mapped.
+
+The way map is desugared is fairly verbose. One idea is: what if we did much
+better desugaring? If we change the haskellf generated code to something
+simple, would that make it go so much faster?
+
+Let me try changing the generated haskell implementation of Prelude.map to be
+more obvious.
+
+Well... let me start by trying to alter the desugared version, by making
+things as explicit as possible.
+
+map = \f l -> case l of
+                (x:xs) -> f x : map f xs
+                _ -> []
+
+See if that simplifies the desugared code in any significant way.
+
+Yes: if I write this in smten, then the desugared code is exactly this.
+Exactly as simple as I want. I get rid of a bunch of function applications and
+let expressions.
+
+Now, will it go faster?
+
+It makes a noticeable difference, but not significant.
+We are talking about .1 seconds out of 2 (or 5% improvement). Alloc and time
+go from something like 13% to 11%.
+
+I don't believe that's the big hammer then.
+
+And now, this is about as efficient a haskellf code I can expect to generate.
+The other thing to try, and I don't think this will make a significant
+difference, is to specialize the concrete case in the generated haskellf code.
+Let me try that now.
+
+Well, it make more of a difference than desugaring better.
+We go from 1.8 down to 1.56 time.
+
+Now, it's interesting, because we are only hitting the Cons and Nil cases. The
+concrete cases. We aren't doing anything symbolic here, as far as map is
+concerned. So why is it taking so much longer than it does with a list?
+
+Unless we are getting changed for the function call instead of just the
+traversal?
+
+Yes, it looks like a lot of time is from the function call.
+
+I wonder... how much more efficient do you think it would be if I manually
+inlined the case expressions, instead of calling a generic caseFoo thing?
+
+It's something worth trying I suppose. And presumably not too difficult.
+
+Let me now also consider the implementation of range. Can we get rid of list
+comprehension? Does that help?
+
+I fear the issue is that we do concat of big lists, which is quadratic instead
+of what it could be. That is, list comprehension ought to build the list from
+the back rather than concatenation a bunch of lists together.
+
+Let me try making the change to haskellf, and see what that does.
+

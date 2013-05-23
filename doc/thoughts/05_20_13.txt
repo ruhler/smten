@@ -1,0 +1,93 @@
+
+Mon May 20 07:41:40 EDT 2013
+
+I was thinking about operators and fixity and such.
+
+Claim: Operator order of operations must be handled after qualification.
+
+Because each operator may have a different fixity depending on how it gets
+qualified. This points to issues of how we currently mess things up. For
+example, operator precedence for '+' will work okay, but for 'Prelude.+' will
+fail entirely. That's no fun.
+
+Claim: Labelled construction, deconstruction, update ought to be handled after
+qualification.
+
+Because it depends on how things are qualified.
+
+Given these claims, in which I'm confident, it seems like, to do things
+properly, I need a way to do qualification before entirely desugaring things.
+
+Thus I propose the following restructuring. Introduce a Smten.Syntax module
+which has all the front end syntax. Or, at least, enough of the front end
+syntax to express things which must be dealt with after qualification. It may
+as well have all the front end syntax.
+
+Now the phases should be:
+
+Text
+ --> Parse -->
+ExpS
+ --> Qualify -->
+ExpS
+ --> Desugar -->
+Exp
+ --> etc...
+
+This way we can naturally support fixity, and labelled stuff, and whatever
+stuff comes up down the line that our previous format was too restrictive to
+handle. This should simplify the parser a little at least, and separate out
+desugaring from parsing, which is a good thing. We could also use it to
+generate better error messages in the future by remembering the sugared syntax
+for an expression.
+
+Sounds good to me. This is a bit of a change, and it will require some solid
+planning ahead. But I think it will be a good refactoring.
+
+Mon May 20 15:56:00 EDT 2013
+
+Looking into shampi just a little bit more. We find mostly that cav is better
+than master, and allhaskell is better than cav.
+
+Looking into the big (10x) difference between allhaskell and master, it looks
+like all the time is spent in building the cache...
+
+Well, that's not at all surprising I suppose... It just means concrete
+evaluation is the big cost, as opposed to working with the generated query.
+
+Wait... I suppose, specifically, the issue is not with matchM, it's entirely
+with forming this large, 3 dimensional array.
+
+How about I use arrayList instead of array? We already know it's sorted.
+
+That made a big difference. It about doubles performance.
+
+What's left then?
+
+concatMap still takes up a bunch of space. Is this an artifact of list
+comprehension? What if we didn't use list comprehension?
+
+That improves performance... not a whole lot, but a noticable amount. And I
+suspect list comprehension is used elsewhere too, because where else are these
+calls to concatMap coming from?
+
+Suspicion: list comprehension is desugaring very poorly.
+
+Let me go through and figure out where this concatMap is coming from, and if
+it's from list comprehension, get rid of it.
+
+I don't understand where it's coming from... Interesting. Maybe I need to turn
+off optimization to figure that out?
+
+Yes, turning off optimizations makes it fairly clear where we are spending
+time:
+
+range.concatMap
+map
+listArray.take
+
+For some reason, it looks like pattern matching is expensive?
+
+These are things to look into more in a bit. Otherwise, I would say I'm done
+for today.
+

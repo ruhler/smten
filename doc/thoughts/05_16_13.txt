@@ -1,0 +1,148 @@
+
+Thu May 16 10:45:41 EDT 2013
+
+I want to understand better how we fixed the performance of arch extract,
+because I just don't understand what happened.
+
+The problem was asserting disequality of fifos.
+
+Before:
+
+instance Eq (MOD_SizedFIFO v) where
+   (==) x y = ((maxBound_SizedFIFO x == maxBound_SizedFIFO y) &&
+               (enqPtr x  == enqPtr y) &&
+               (all id (map (\i -> ((arr_SizedFIFO x) ! i) == ((arr_SizedFIFO y) ! i)) (range (0, enqPtr x)))))
+
+instance Eq (MOD_SizedFIFO v) where
+   (==) x y = ((maxBound_SizedFIFO x == maxBound_SizedFIFO y) &&
+               (enqPtr x  == enqPtr y) &&
+               (all id (map (\i -> (i >= enqPtr x) || ((arr_SizedFIFO x) ! i) == ((arr_SizedFIFO y) ! i)) (range (0, maxBound_SizedFIFO x)))))
+
+First we test max sizes are the same. Easy.
+Then we test enqPtr is the same. In other words, current size the same. Easy.
+Then we want to say that all of the current elements are the same.
+
+Before:
+ We say
+   let p i = arr x ! i == arr y ! i
+   in all p (range (0, enqPtr x))
+
+After:
+ we say
+   let p i = (i >= enqPtr x) || (arr x ! i) == (arr y ! i)
+   in all p (range (0, max x))
+
+max x is a concrete value.
+enqPtr x is a symbolic value.
+
+The question I have, then, is how can range (0, enqPtr x) ever finish?
+
+It is for 'bit #32'...
+
+What does enqPtr look like in practice? It is literally f~3. A raw free
+variable.
+
+What does range look like?
+    range (l, h) =
+      case (l > h, l == h) of
+          (True, _) -> []
+          (_, True) -> [h]
+          _ -> l : range (l+1, h)
+
+This should never complete. That's what I don't understand. How could this
+complete?
+
+Well, I ought to be able to try it easily enough. Let's see what happens.
+
+For a 2 element array, I'm getting the following:
+f0: elem 0
+f1: elem 1
+f2: index
+assert (indx >= 0 && index <= 1)
+
+s207 = index > 0
+s215 = index == 0
+s993 = index > 1
+s1004 = index == 1
+s1704 = index > 2
+s1715 = index == 2
+s1724 = if index > 2    
+            then error
+            else if index == 2
+                then if (==)
+                         (if index == 0
+                            then f0
+                            else if index == 1
+                                then f1
+                                else "undefined elem")
+                         (if index == 0
+                            then f0
+                            else if index == 1
+                                then f1
+                                else "undefined elem")
+                    then true
+                    else false
+                else "undefined element"
+                  
+ 
+Thu May 16 11:14:56 EDT 2013
+
+You know what I think happened? As soon as the lower bound of the range was
+greater than 2, we read from both arrays _|_, then the comparison failed, so
+we didn't go any further. That's why that could finish.
+
+Okay. That makes sense.
+
+One thing I observe the query is some sort of inferred value propagation could
+make a big difference. If I could know that (index == 2) means it's not the
+case that (index == 1) and it's not the case that (index == 0), that could
+save us a lot. Note: here, if we treat predicates as opaque things, we
+wouldn't be able to make this simplification.
+
+I suppose the idea is: whatever simplification I can do in smten can cut down
+a lot on the size of the query in these kinds of cases. I don't know if I can
+do that efficiently or not, given it seems like it would cost a traversal.
+
+Let me take a moment to think about what kinds of things I could solve pretty
+easily. Given an SMT formula, how can I simplify it? What things can I infer?
+
+We learn things at case expressions and in primitives. The only thing that
+matters are predicates, because that's the only thing that could lead to
+simplification.
+
+if p 
+    then a
+    else b
+
+In the branch of 'a', we can assume 'p' is true.
+In the branch of 'b'... I'm not sure. Can we assume 'p' is false? What if 'p'
+is _|_? For this discussion, let me assume that means 'p' is false.
+
+So, the question is, how much can I learn about future predicates if I know a
+given expression is true or false?
+
+Let's start with the case of 'true'.
+
+Possibilities:
+  x == y:
+    I know x is y.
+
+  v: I know v is true.
+
+  if q
+    then a
+    else b
+    I know one of (q and a) must be true or (not q and b) must be true.
+    So, if I know one is false, I can know the other is true and recursively
+    learn more.
+
+The question is, how do you know which information matters? For example:
+    x <= 3: I know x is less than or equal to 3.
+    x >= 3: I know x is greater than or equal to 3.
+  Can I use that information to know that x == 3 is true?
+
+I feel like a good way to handle things may be to use the same techniques they
+use in SAT solvers.
+
+Anyway, something to stew over. I figured out what I wanted to figure out.
+

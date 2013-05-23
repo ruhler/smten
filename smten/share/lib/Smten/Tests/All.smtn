@@ -20,6 +20,7 @@ import qualified Smten.SMT.Tests.AllQ
 import qualified Smten.SMT.Tests.AllQ2
 import qualified Smten.SMT.Tests.Isolate0
 import qualified Smten.SMT.Tests.Sudoku
+import qualified Smten.Tests.Perf
 
 testconcrete :: IO ()
 testconcrete = do
@@ -46,6 +47,7 @@ testall = do
     Smten.SMT.Tests.Isolate0.tests
     Smten.SMT.Tests.Sudoku.tests
     --Smten.ModelChecking.Test.tests
+    --Smten.Tests.Perf.tests
 
 main :: IO ()
 main = do
