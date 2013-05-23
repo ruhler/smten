@@ -1,0 +1,188 @@
+
+Wed May 15 10:59:44 EDT 2013
+
+Figured out the issue with arch-extract performance. It was the way fifo
+equality was written. Instead of:
+    forall x from 0 to i, a x = b x
+ where i is symbolic
+
+Change to:
+    forall x from 0 to N, x < i ==> a x = bx
+ where N is concrete.
+
+So then! What's up now for smten?
+
+I need to be application defined. Then we have:
+* shampi - figure out why && takes 20% of the time.
+* model checker - come up with realistic problems to test out performance
+  with.
+* arch-extract - maybe arrays?
+
+Maybe a better way to do it is think about high level, significant things I
+can do:
+
+* inferred value propagation folded into Assert.
+    I worked out a way I can do this that may or may not be worth it.
+    It's based on keeping all predicates opaque and seeing if they show up
+    multiple times in a nest of if expressions.
+
+* low level debug
+    To see what happens after optimizations like inferred value propagation.
+    Make DebugLL an AST. exp is just an Integer representing the name of an
+    expression, and for every operator, we just print to file the definition
+    of a new expression.
+
+* Support free functions
+    Based on the assumption that if you don't use all of the domain in your
+    query, the free function may as well be significantly smaller.
+
+* Support symbolic arrays better
+    Maybe change how primitives are expressed to allow better access to the
+    arguments.
+
+* Abstraction/refinement for big expressions
+    Perhaps using the heuristic I came up with before to detect infinite
+    recursion.
+
+Wed May 15 11:27:47 EDT 2013
+
+I think it would be worth thinking about how I might support free functions as
+desired.
+
+We need an API for free functions, and an implementation.
+
+The idea is clear: you make a free function. We see how many times you call
+it. Every time you call it, we allocate a new free variable for the result,
+returning the new value if the argument is different before, otherwise
+whatever the old value was. And that's it. Easy.
+
+To query the value of the function, just query as much of the function as is
+defined. The rest can be undefined.
+
+For example... let's say I call free 'f' with arguments x, y, z.
+
+Initially:
+ I've called it with no args.
+ f = []
+
+Call with arg 'x':
+ f = [(x, vx)]
+
+Call with arg 'y':
+ Create free vy.
+ f = [(y, vy), (x, vx)]
+
+etc...
+
+So we build up this function. To get the value, we read from the back.
+Essentially: fromJust lookup x (reverse f)
+    
+To query: read from the back, default to undefined.
+Easy.
+
+The question is, how do we create a free value? It may be a symbolic value.
+
+So we need a value producer. I would say something like:
+
+For free function (a -> b),
+Given a function: (a -> Symbolic b)
+I can give you the free function (Symbolic (a -> b))
+
+Um... I'm not sure how to interleave this with the call to assert. We want
+generic Symbolic computations in assert? Can we do things recursively? How
+does that work?
+
+But anyway, the idea is clear and simple. I just need a primitive:
+
+free_Function :: (a -> Symbolic b) -> Symbolic (a -> b)
+
+It can work for ... oh. We need equality on the argument type 'a', and it
+needs to be structural. So let's limit it to:
+
+free_IntegerF :: (Integer -> Symbolic b) -> Symbolic (Integer -> b)
+free_BitF :: (Bit #n -> Symbolic b) -> Symbolic (Bit #n -> b)
+
+That's fine. Those are the only big things anyway. Everything else can be
+built on top of them. Or rather, many things can.
+
+Now, the next question is the question of equality. To assert equality of
+free functions...
+
+But it's not just assertion. It really is just a predicate. This seems hard to
+me. Because asserting equality and asserting not equality are very different.
+
+If you don't need equality, then we can do fine. If we do need equality,
+that's harder.
+
+Wed May 15 13:13:56 EDT 2013
+
+Here's how to do equality.
+
+A free 'f' with args [x, y, ...] defined is equal to some function 'g' if:
+    f x = g x and f y = g y and ...
+    and ALLOTHERARGSEQUAL.
+
+The question is, how do we know if all other args satisfy this? Easy, make a
+free variable.
+
+Or, another way is, have a boolean variable feqg to represent f = g.
+Then, from what we know before we do check, we have that:
+
+feqg implies (f x == g x && f y == g y && ... )
+
+That way we can handle negation of equality just fine. So, for the query you
+perform (the check you perform) we have all the information we have.
+
+Now, this functional equality... does it only work if one of the functions is
+free? What if both functions are free?
+
+We could still do the same trick: assert equality on whatever arguments were
+called, so, for the purposes if this query, the functions may as well be free.
+But the functions may not actually be equal, and I don't think anyone could
+tell if they were in a reasonably efficient way.
+
+And note, we have trouble if you say a free function is equal to a concrete
+one.
+
+Is there a way around this?
+
+I would propose something like: define a new primitive type for FreeFunction:
+
+data FreeFunction a b = ...
+
+We have the following way to access these:
+
+applyfree :: FreeFunction a b -> (a -> b)
+  Give the function view of a free function.
+
+eq_FreeIFunction :: (Eq b) => FreeFunction Integer b -> FreeFunction Integer b -> Bool
+eq_FreeBFunction :: (Eq b) => FreeFunction Bit#n b -> FreeFunction Bit#n b -> Bool
+
+free_FreeIFunction :: (Integer -> Symbolic b) -> Symbolic (Integer -> b)
+
+The trouble is, you could define a concrete function this way too. For
+example:
+
+mkFree :: (Integer -> b) -> Symbolic (FreeFunction Integer b)
+mkFree f = free_FreeIFunction (\i -> return f i)
+
+It seems we have too much freedom here, because we can describe things about
+arguments that we don't use. And as long as we describe things about arguments
+we don't use, there's no way we can do equality.
+
+So, if you want equality, I can give it for limited kinds of functions:
+totally free.
+
+If you don't want equality, I can give you more interesting free functions
+that work for whatever arguments you give them.
+
+Good. So the only thing that remains then? To implement this correctly... is
+to figure out how to execute a Symbolic computation inside of assert. The
+trouble is it, once again, mucks up with my abstractions. It's really too bad
+I can't have my abstractions and my single traversal too.
+
+I think it makes sense to have separate primitive types for these kinds of
+free functions, which I allow you to convert to real functions. Just to keep
+them clearly separate in the internals of smten. I don't know. Maybe it
+doesn't matter that much.
+

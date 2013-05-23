@@ -1,0 +1,304 @@
+
+Wed May 22 12:43:56 EDT 2013
+
+It appears we have identified a problem with the interpreter: it leaks memory.
+
+The hypothesis is it is due to how we inline. Currently we collect arguments,
+and save every argument in the call stack. This disallows tail-recursion in
+some sense. It never throws away arguments we can no longer access again.
+
+This could be a big problem. So, let me try and figure it out.
+
+First step: minimize the example.
+
+I expect I can just make a big list of Trues, take the and of it, and I'll see
+this behavior. Behavior which ought to be constant space.
+
+Wed May 22 12:49:18 EDT 2013
+
+Yes. I have replicated the issue.
+
+Now what?
+
+Let me try to inline by hand, and see how that goes?
+
+Or, somehow figure out what really is taking up so much space?
+Check out the retainer set?
+
+My hypothesis:
+
+inline builds up an expression containing appEH thunks.
+The appEH thunk has a thunk for inlining the function and inlining the argument.
+It doesn't even matter what I do, as long as we keep the thunk, the inline thunks hold stuff.
+
+So... I want what? appEH should be strict in the function? That's fine.
+Will it fix things?
+
+Let me add some SCCs and try to get a better sense of what's up.
+
+Wed May 22 13:04:08 EDT 2013
+
+SCCs suggest it is, indeed, the body of LamEH which is holding on to thinks it
+maybe doesn't need.
+
+So, what I want to do is...
+
+How about, print out the length of this list with 'n' filtered out, before
+returning the result. Hopefully that will keep things small.
+
+It didn't fix anything.
+
+Hmm...
+
+I really need to simplify the case as much as possible and manually step
+through evaluation to understand what's going on.
+
+I simplified. I should be able to evaluate by hand now. Let's give it a shot.
+
+
+runio (inline main)
+de_ioEH (inline main)
+de_litEH (inline main)
+force (inline main)
+inline main
+
+inline' [] [] main
+inline' [] [] (putStrLn (show result))
+
+Hmm.... Let me cut to the chase.
+
+mklist :: Integer -> a -> [a]
+mklist 0 _ = []
+mklist i v = v : mklist (i-1) v
+
+myand :: [Bool] -> Bool
+myand [] = True
+myand (True:xs) = myand xs
+myand (False:xs) = False
+
+elems :: [Bool]
+elems = mklist 1000000 True
+
+result :: Bool
+result = myand elems
+
+Force: inline' [] [] myand elems
+appEH (inline' [] [] myand) (inline' [] [] elems)
+ inline' [] [] myand
+ inline' [] [] (\p -> case p of
+                        [] -> True
+                        _ -> case p of
+                                : -> (\x xs -> case x of
+                                                   True -> myand xs
+                                                   _ -> False))
+ lamEH \x -> inline' [] (("p", x):[]) (case p of ...)
+inline' [] (("p", (inline' [] [] elems)):[]) (case p of ...)
+caseEH (inline' [] (("p", (inline' [] [] elems)):[]) p)
+       (inline' [] (("p", (inline' [] [] elems)):[]) True)
+       (inline' [] (("p", (inline' [] [] elems)):[]) (case p of : -> ...)
+> inline' [] (("p", (inline' [] [] elems)):[]) p
+  inline' [] [] elems
+  inline' [] [] (mklist 1000000 True)
+  appEH (appEH (inline' [] [] mklist) (inline' [] [] 1000000)) (inline [] [] True)
+  > appEH (inline' [] [] mklist) (inline' [] [] 1000000)
+    > inline' [] [] mklist
+      inline' [] [] (\i v -> case == 0 i of
+                        True -> []
+                        _ -> v : mklist (i-1) v)
+      lamEH \iv -> inline' [] [("i", iv)] (\v -> case ...)
+    inline' [] [("i", (inline' [] [] 100000))] (\v -> case ...)
+    lamEH \vv -> inline' [] [("v", vv), ("i", inline' [] [] 100000)]
+        (case == 0 i of ...)
+  inline' [] [("v", inline' [] [] True), "i", inline' [] [] 100000)]
+        (case == 0 i of ...)
+  caseEH (inline' [v, i] (== 0 i))
+         (inline' [v, i] ([])) (inline' [v, i] (v : mklist (i-1) v))
+  > inline' [v, i] (== 0 i)
+    ... False
+  inline' [v, i] (v : mklist (i-1) v)
+  appEH (appEH (inline [v, i] :) (inline [v, i] v)) (inline [v, i] (mklist (i-1) v))
+  > appEH (inline [v, i] :) (inline [v, i] v)
+    > inline [v, i] :
+      lamEH \a b -> : a b
+    \b -> : (inline [v, i] v) b
+  : (inline [v, i] v) (inline [v, i] (mklist (i-1) v))
+inline [(p, inline [] (: (inline [v, i] v) (inline [v, i] (mklist (i-1) v))))]
+    (case p of 
+        : -> (\x xs -> case x of
+                          True -> myand xs
+                          _ -> False))
+caseEH [(p, inline [] (: (inline [v, i] v) (inline [v, i] (mklist (i-1) v))))]
+
+Ug. I don't know. Even this example is too hard to work by hand.
+
+One thing to notice though is, in our list of expressions, we store inlines,
+which themselves store lists of expressions.
+
+The issue is, we need some sort of garbage collection which isn't happening.
+Either because we are not strict enough, or because we make it possible to
+reach something we don't need.
+
+What I'm thinking is... inline should be strict? Isn't that always fair?
+
+Never allow inline' to make a thunk. That way we never store intermediate
+maps? Is that possible? Does that make sense?
+
+Well, I can do it anywhere something strict is. So, first argument to appEH
+and argument to caseEH. And those are the ones which should matter.
+
+Let me try that then, and maybe I'll get lucky and it will work?
+    
+Wed May 22 14:00:48 EDT 2013
+
+That made a big difference. Let me see if I can go a step further by filtering
+things we don't use?
+
+Two options:
+1. if body of LamEH doesn't use the value, don't put it on the list. make a
+constant function.
+
+2. if body of LamEH doesn't use any vars already in the list, remove them.
+
+Shall I try this? Hopefully it isn't too expensive now?
+
+Just to summarize, current top memory consumers are:
+
+assignl/assign/INLINE_APPEH_FUNCTION/INLINE_LAMEH_BODY/appEH/INLINE_APPEH_ARG/inline/main
+INLINE_LAMEH_BODY/INLINE_APPEH_FUNCTION/appEH/INLINE_APPEH_ARG/inline/main
+conEH/INLINE_APPEH_FUNCTION/INLINE_LAMEH_BODY/appEH/INLINE_APPEH_ARG/inline/main
+aconEH/conEH/INLINE_APPEH_FUNCTION/INLINE_LAMEH_BODY/appEH/INLINE_APPEH_ARG/inline/main
+
+What does this suggest?
+
+Wed May 22 14:28:56 EDT 2013
+
+I tried switching from a polymorphic mklist function to concrete: it makes a
+pretty significant difference. I would seem, for some reason, we make big
+lists of types? I don't understand.
+
+And I feel like, in the current implementation, we don't actually make use of
+type information at all. Though I feel like I've thought this in the past many
+times and it has not been the case.
+
+Wed May 22 15:07:38 EDT 2013
+
+I don't know how to make things better. Use a smarter interpreter? Or make
+another backend which generates haskell, but keeps everything as Exp. I'll
+want newtypes to handle type classes properly. And phantom types, I suppose.
+Or just newtypes for everything like I already do.
+
+I'll want to define a function type:
+
+data Function a b = Function Exp
+apply :: Function a b -> a -> b
+apply f x = box (appEH (unbox f) (unbox x))
+
+We'll still want boxes for everything.
+
+But maybe they'll be much cheaper this time around because they really are
+nothing.
+
+I think this is something worth trying, and I think it shouldn't be too hard
+to implemented as a slight modification to the existing haskellf backend.
+Probably the easiest way to get things going would be to fork a new branch and 
+morph haskellf into this.
+
+I suppose the first thing to try would be get rid of the concrete
+constructors. The other big thing is changing the function type and function
+application.
+
+But yeah, start by getting rid of the concrete constructors.
+
+Well, what do you think? Shall I dive in and give it a shot?
+
+The trouble is, I'm terribly unfocused right now. Let me walk around, take a
+breather, then deal with this.
+
+Wed May 22 16:14:52 EDT 2013
+
+I think my conclusion is as follows:
+* I should remove the interpreter mode from smten.
+Instead, compile it always, for performance reasons. Just so people know they
+ought not to use the interpreter, and to avoid choice. What do they want to
+choose for? They probably don't.
+
+* For this to work, I need a working version of haskellf which preserves all
+  known sharing.
+
+Whether I want to continue to distinguish between haskellf and whatever
+correct compiled backend I have I don't know. If whatever correct compiled
+backend I have is good enough, I ought to use it...
+
+Which suggests to me, basically, I should just fix haskellf so it preserves
+all known sharing. Because it's pretty useless otherwise. (Except, maybe, in
+the case of shampi).
+
+Okay, so instead of making a brand new limited version of haskellf, let me
+actually work on fixing haskellf so it preserves sharing.
+
+What is the problem with sharing? It's appeval.
+
+So, functions get inlined, meaning duplicated, and I don't know about it.
+
+The fix: every function application in haskellf should go through appEH.
+
+Example:
+
+v <- free
+let g x = x+x+x+x
+return $
+  (if p 
+     then if q
+            then f
+            else g
+     else g) v
+
+
+Wed May 22 17:34:17 EDT 2013
+
+Here are the changes I want to make to see if this works.
+1. Change function type from    (a -> b)
+   to: Function a b
+  where: newtype Function a b = Function ExpH
+
+2. Change function definitions from     (\x -> ...)
+  to: functionHF (\x -> ...)
+
+3. Change function application from     (f x)
+  to: applyHF f x
+
+My hypothesis is this will not actually hurt performance too much?
+I don't know. That may or may not be right. The cost is in optimizations, but
+if we can give ghc enough info, hopefully it can inline things in its
+optimization pass.
+
+Regardless, as I say, the cost of loss of sharing is surely way bigger than
+this, so I have to do it. Once things work, we can ask how to improve their
+performance.
+
+Let me try this real quick, and see what issues we run into.
+
+Wed May 22 18:03:12 EDT 2013
+
+The issue ran into: 
+
+In order to make it work, I have to update my code generators, which is, like,
+the worst thing to have to do. It's so hard to touch these things. I'll just
+have to power through it. Perhaps another time.
+
+Wed May 22 18:31:51 EDT 2013
+
+Okay, I powered through. Now I just have to change all the primitives to use
+the Function notation instead of -> notation. I can do that more later.
+
+Wed May 22 19:15:33 EDT 2013
+
+One issue with this: it's now not as nice to use as a DSEL.
+
+That doesn't really bother me so much, personally... But it's something to be
+aware of.
+
+Next issue: I need conHF to convert a constructor (a -> b -> ...) to a
+function: (Function a (Function b ...))
+
+Ug.

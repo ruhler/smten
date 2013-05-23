@@ -11,7 +11,7 @@ testio:
 	./build/home/.cabal/bin/smten --io \
 		--include smten/share/lib \
 		--file smten/share/lib/Smten/Tests/All.smtn \
-		--main-is Smten.Tests.All.main
+		--main-is Smten.Tests.All.main +RTS -p -K1g
 
 testph:
 	./build/home/.cabal/bin/smten --phases \

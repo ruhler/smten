@@ -1,0 +1,313 @@
+
+Tue May 14 09:03:53 EDT 2013
+
+The goal today: get rid of the 'abstract' traversal.
+
+How? Do that in 'assert'.
+
+I think this makes sense enough. We can do all sorts of abstractions in
+'assert', and have that 'assert' deal with things. It's not so unreasonable,
+and it will save a lot.
+
+What I want in order to do this:
+ change 'declare' to 'fresh'. Where the SMT solver has the burden of coming up
+ with a unique name.
+
+It's slightly annoying that I have to replicate this for each solver, but I
+think that's the cleanest place to do it. I'll have to add an IORef to the
+solvers to keep track of fresh names.
+
+Okay? Fine. Let me implement it, see it work, and be happy.
+
+Tue May 14 09:40:27 EDT 2013
+
+It works. Not too bad. And 30% faster in shampi, which is nice. A lot better
+memory utilization.
+
+Now the top consumers are: the assertion traversal (not surprising), and &&.
+I'm a little surprised with &&. Maybe we can do little changes to how I handle
+case expressions in HaskellF, or something like that, to make it perform
+better. I think the Assert traversal has dropped pretty significantly, but
+it's still big. I suspect mostly just because we have a really big expression.
+
+Thus, from shampi's point of view, the things I could change in smten to
+further improve performance would be:
+
+* fiddle with boxing/unboxing/caseEH cost in haskellf
+* try to alter the generated query to be more simple.
+How to do this without an additional traversal which will cost more than it
+will gain, I'm not sure.
+
+But for now... good.
+
+Tue May 14 10:48:52 EDT 2013
+
+Working on the arch-extract tool.
+
+Problem: primSelect doesn't work with symbolic index.
+
+Now, it's pretty clear the behavior we want:
+
+Given array of N elements, and symbolic index 'x', I want ...
+
+Oh. This brings up another problem entirely, which is currently we have to
+convert index from Integer to Bit if we use a Bit index, and the SMT solvers
+can't support that.
+
+Sadness.
+
+In other words... Data.Array is not currently ready for symbolic computations.
+
+1. Bit index should use underlying Bit index in primArray
+2. primSelect should support symbolic index.
+
+How about, for now, I ditch arrays, and use lists instead?
+
+That's really annoying.
+
+Or, I could implement arrays based on lists. An alternative version of array
+with the same interface...
+
+In this version, arrays are: an association list with bounds.
+
+Okay, well, I have things to think about. How to allow different primitive
+index types for arrays (both Integer and Bit), and how to implement the
+behavior I want for primSelect with a symbolic argument?
+
+If arrays were not primitive, this would be easy...
+
+Let me try implementing non-primitive arrays, and see if that makes things
+better here.
+
+Tue May 14 13:06:39 EDT 2013
+
+Arch extract is up and running, and I've found a simplified test case to
+demonstrate the problem.
+
+I'm looking at the generated query: it's big. Much bigger than I expect.
+
+I wonder if I can do something even simpler to start. To show the issue.
+
+1. make a list of N free variables.
+2. randomly read an element from that list.
+
+3. make another list of N free variables.
+4. randomly read an element from that list.
+
+5. assert the elements are equal.
+
+I expect the following query to be generated:
+    (if x == 0
+        then x0 
+        else if x == 1
+             then x1 else ...) == (if y == 0
+                                     then y0
+                                     else if y == 1
+                                             then y1
+                                             else ...)
+Tue May 14 13:14:47 EDT 2013
+
+And that's more or less what we get. Fine.
+
+I notice the following:
+* my array test is exponential in the number of elements! The query size, that
+  is.
+* my list test is linear in the number of elements.
+
+The update to the array makes all the difference.
+
+So, here's the scenario:
+
+We make a free array.
+We make two free indices: x and y.
+1. xv is the value of the array at index 'x'
+2. xv2 is the value of the array at index 'x' after setting the value at index 'y' to 1.
+3. assert that xv and xv2 are equal.
+
+How can that be so expensive? How can it be exponential?
+
+Certainly it should be no harder than if I create 2 free lists, get random
+elements from each, and assert those are equal, right?
+
+And yet... somehow it is. I don't understand.
+
+Let me dive into the query then, and see what it's doing. Understand what it's
+doing.
+
+The query:
+          arr <- freearr
+          x <- freeidx
+          y <- freeidx
+
+          let xv = arr ! x
+              arr' = arr // [(y, 1)]
+              xv2 = arr' ! x
+          assert (xv == xv2)
+          return (xv, xv2)
+
+The generated query with array size of 4 elements:
+* allocate the four elements: f0 through f3
+* allocate x: f4
+  assert x is greater than 0 and less than or equal to 3 
+* allocate y: f5
+  assert y is greater than 0 and less than or equal to 3
+Assert:
+
+s~386 = y /= 0
+s~791 = y /= 1
+s~928 = y /= 2
+s~1072 = y /= 3
+s~1118 = if (y /= 3)
+            then if (y /= 3)
+                then if (y /= 3)
+                    then if (y /= 3)
+                        then if x == 3
+                            then f3
+                            else if x == y
+                                then 1
+                                else error "undefined element"
+                        else error "unhandled case"
+                    else error "unhandled case"
+                else error "unhandled case"
+            else if x == y
+                then 1
+                else error "undefined element"
+s~1988 = y /= 3
+s~980 = if (y /= 2)
+            then if (x == 2)
+                then f2
+                else if y /= 3
+                    then if y /= 3
+                        then if y /= 3
+                            then if y /= 3 
+                                then s1118
+                                else error "unhandled case"
+                            else error "unhandled case"
+                        else error "unhandled case"
+                else s1118
+            else if y /= 3
+                    then if x == 3
+                            then f3
+                            else if x == y
+                                then 1
+                                else error "undefined element"
+                    end else "unhandled case"
+    
+s~978 = if y /= 2
+            then s~980
+            else if y /= 3
+                then s~980
+                else error "unhandled case"
+
+s~976 = if y /= 2
+            then s~978
+            else if y /= 3
+                then s~978
+                else error "unhandled case"
+
+s~974 = if y /= 2
+            then s~976
+            else if y /= 3
+                then s~976
+                else if x == y
+                    then 1
+                    else error "undefined element"
+
+s~965 = if y /= 2
+            then s~974
+            else if y /= 3
+                then s~974
+                else error "unhandled case"
+
+s~962 = if y /= 2
+            then s~965
+            else if y /= 3
+                then s~965
+                else error "unhandled case"
+
+s~954 = if y /= 2
+            then s~962
+            else if y /= 3
+                then s~962
+                else error "unhandled case"
+
+
+Tue May 14 13:58:41 EDT 2013
+
+Okay, so I can simplify the case even more.
+
+Tue May 14 14:09:42 EDT 2013
+
+It was something about how I implemented array update. Let me try arch-extract
+now and see if we have the same problem.
+
+The issue was: array update was done as:
+
+(//) :: Ix i => Array i e -> [(i, e)] -> Array i e
+(//) a new_ivs =
+  let new_is = map fst new_ivs
+      old_ivs = map (\i -> (i, a ! i))
+                  (filter (\i -> (notElem i new_is)) (indices a))
+  in array (bounds a) (old_ivs ++ new_ivs)
+
+In other words, to update the array we do...
+
+1. Get the new indices (in this case, symbolic 'y').
+2. filter out the old values which contained those indices.
+3. add that to new values.
+
+I will say, though, much of the exponential blowup, I suspect, would be gone
+if we could do efficient inferred value propagation. I was getting a whole lot
+of nesting of the same predicate.
+
+Well, let's think then about this if we can. Inferred value propagation.
+
+It's always in if statements.
+
+Now, either we could try to infer actual values of things, or we can treat the
+predicates as opaque, and just see when we are using a predicate we already
+have.
+
+In other words, whenever I do an if, I add to a notion of context the EID of
+the predicate, and a tag of whether it is asserted or negated.
+
+Then, whenever I get to if, I look up that EID to see if it is in the context.
+If so, we can do the if reduction, otherwise not. What's the cost here?
+
+We don't need another traversal... the thing is, the result value depends on
+the context. And I don't know how to deal with that properly and efficiently
+in general.
+
+Tue May 14 16:21:17 EDT 2013
+
+What's the current status of architectural extraction?
+
+* All the time is spent in SMTCheck. All of it.
+
+I don't know which query, specifically, is leading to this. Probably an isCF
+query. Let me print out to the screen which query I am doing, if at all
+possible.
+
+Also note, from what I learned about array:
+* Small and seemingly innocuous changes in the source code can lead to
+  exponential blowups in the generated query.
+
+I don't know if this is the problem or not.
+
+I have to minimize though. That much is clear. Minimize to really understand
+why the generated query is so complicated for the smt solver, and how I can
+make it simpler.
+
+Tue May 14 17:59:21 EDT 2013
+
+Here's what seems to make the big difference in timing:
+In dmem_move rule, the call to themem.upd.
+If I comment that out, it goes quick.
+
+More things to try:
+* Change the upd arg to a constant. Does that help?
+* Do the upd unconditionally. Does that help?
+
+If I keep down this path, I ought to be able to come up with a good, simple
+case to demonstrate at least this first performance issue.
+

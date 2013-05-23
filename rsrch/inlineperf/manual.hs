@@ -108,7 +108,18 @@ __caseNil :: (TypeHF a, TypeHF b) => ExpHF (ListT a) -> ExpHF b -> ExpHF b -> Ex
 __caseNil = caseHF "Prelude.[]"
 
 __caseCons :: (TypeHF a, TypeHF b) => ExpHF (ListT a) -> ExpHF (FunT a (FunT (ListT a) b)) -> ExpHF b -> ExpHF b
-__caseCons = caseHF "Prelude.:"
+__caseCons x y n =
+  let caseme :: (TypeHF a, TypeHF b) => ExpHF (ListT a) -> ExpHF (FunT a (FunT (ListT a) b)) -> ExpHF b -> ExpHF b
+      caseme = caseHF "Prelude.:"
+
+      a = caseme x (lamHF "a" P.$ \a -> lamHF "_" P.$ \_ -> a)
+                               (P.error "caseCon.a")
+      b = caseme x (lamHF "_" P.$ \_ -> lamHF "as" P.$ \as -> as)
+                               (P.error "caseCon.a")
+      p = caseme x (lamHF "_" P.$ \_ -> lamHF "_" P.$ \_ -> __mkTrue) __mkFalse
+
+      yv = appHF (appHF y a) b
+  in __caseTrue p yv n
 
 __mkNil :: (TypeHF a) => ExpHF (ListT a)
 __mkNil = conHF "Prelude.[]"

@@ -1,0 +1,147 @@
+
+Fri May 17 13:11:38 EDT 2013
+
+Because I don't feel like doing useful work, I want to spend some time looking
+more into shampi performance. Just for the fun of it.
+
+Goal, again, is to improve smten level performance more than shampi level
+performance. So, keep the algorithm the same.
+
+I divide the performance improvements into:
+1. make concrete evaluation faster.
+2. make symbolic evaluation faster.
+
+I think those are the current road blocks.
+
+I suppose I could try to optimize the generated query too...
+
+Not sure. Anyway, I wanted to look and see what I see.
+
+First thing to look at: allhaskell, current bottlenecks.
+
+40% of time is in Assert. This is the traversal. Not unexpected.
+20% of time is in &&. This is a little unexpected to me.
+5% of time is in ||.
+
+All the rest is Haskell stuff which is not related to smten.
+
+I feel like I've spent a lot of time looking into Assert. Though maybe not
+this latest version, so it would be worth looking into more. I've spent very
+little time looking at &&, so that's worth more exploration.
+
+What I saw with && when changing the haskellf code is that concrete
+evaluation of && is not really the issue. It's how we do symbolic evaluation
+of &&.
+
+What information do I want to see here then?
+
+First let me focus on Assert. Narrow down to just Assert. Don't profile
+anything else. 
+
+I can look at how much time is spent in cache lookup and insertion. Just try
+to figure out what is happening where. Also look at memory profile.
+
+Sounds like a plan to me. Let me get started.
+
+Assert: 45% of entire program.
+ assert: 15%
+ ite: 10%
+ cache insert: 8%
+ cache lookup: 12%
+
+Looking at heap profile...
+ Most of it is cache insert: 12M and rising. Looks like possible leak.
+ Some of it is ite.
+
+Looks like most of the memory is in IntMap.
+
+I suspect we have a leak of IntMaps here that I can fix by being a little bit
+stricter. It's not clear it will improve performance much, but it's always
+nice to get rid of a leak like this.
+
+Fri May 17 14:13:13 EDT 2013
+
+I couldn't figure out how to reduce that memory usage. I tried a bunch of
+things, nothing did anything significant.
+
+I suspect the best thing I can do here is shrink the generated query.
+Potentially every little node lost could help.
+
+Fine. So let me look now into &&. Or, in other words, caseHF.
+
+caseHF is 20% of time. Let's see if we can figure out where that is coming
+from.
+
+Fri May 17 14:20:52 EDT 2013
+
+Almost all of the time comes from caseEH. A tiny bit of time comes from boxing
+the result.
+
+Fri May 17 15:00:31 EDT 2013
+
+We have a winner! Looks like unsafeDupablePerformIO is much faster than
+unsafePerformIO. That brought && use down from 20% to just 8%.
+
+Now all that's left is everything in Assert.
+
+Fri May 17 15:03:20 EDT 2013
+
+Now, the other thing I wanted to look into was specialization. Because I feel
+like, currently, we might be expanding things we don't have to in a bad way.
+
+I suppose the real question is, what do the shampi constraints look like?
+
+shampi constraints are all of the form: 
+    &&, ||, f == 'c', f <= 'c', 'c' <= f
+
+So the specialization issue doesn't come up here. I need different
+applications to understand that better.
+
+One thing I see a lot when looking at the generated query are many instances
+of:
+    if p then True else False
+
+I wonder how much performance would improve if we didn't have that?
+
+It could make the expression maps smaller, which would be very nice.
+
+I think this comes from:   foo && True, or foo || False. Both of these come up
+when doing folds.
+
+Again, in this case it wouldn't be a big O improvement at all, just a small
+one. But if every leaf is cut in half, doesn't that mean we have half as many
+expressions? Or at least half as many lookups and such? I'm not sure, but I
+would like to try and see if it changes anything.
+
+I'm just not sure how to simplify this without costing more than it is worth.
+
+But! I can give it a try anyway and see what happens.
+
+Nothing happens. It isn't significant at that level.
+
+You know what I would like? Try this low level debug output thing, and see if
+it gives any better insight into how the queries can be optimized.
+
+I'm feeling like shampi is reaching its limit in terms of smten runtime. The
+queries are too simple to do any significant optimizations not expressed at
+the user level. If I really wanted to improve shampi performance, I should
+look at the algorithmic level.
+
+It would be fun, real quick, to try the non-allhaskell version of shampi, see
+where that stands. Let me try that.
+
+Fri May 17 15:30:50 EDT 2013
+
+It's pretty big. We're talking 7x memory usage, 3x runtime. That's
+unfortunate.
+
+Wait. That's not true. Because we didn't have the -O2 flag turned on. It's
+more like 3x memory and 2x runtime.
+
+Oh. Wait. And before I wasn't using -O2. If I do that, then we find that
+almost all the time is spent in Assert...
+
+You know what? I bet because we don't use -O2 when we compile smten using
+cabal?
+
+
