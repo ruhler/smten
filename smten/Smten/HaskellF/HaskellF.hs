@@ -7,7 +7,7 @@ module Smten.HaskellF.HaskellF (
     HaskellF(..), HaskellF1(..), HaskellF2(..), HaskellF3(..), HaskellF4(..),
     SmtenHF(..),
     Function(..), lamHF, applyHF,
-    conHF, conHF', de_conHF, caseHF, primHF, unaryHF,
+    conHF, conHF', de_conHF, caseHF, primHF,
     ) where
 
 import Smten.Name
@@ -114,7 +114,4 @@ primHF :: (HaskellF a) => Prim -> a
 primHF p = 
  let z = box $ primEH p (smtenT z)
  in z
-
-unaryHF :: (SmtenHF ca fa, SmtenHF cb fb) => PrimF (ca -> cb) -> Function fa fb
-unaryHF p = primHF (p_prim p)
 

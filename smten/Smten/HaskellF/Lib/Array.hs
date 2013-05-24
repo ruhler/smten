@@ -28,8 +28,8 @@ instance HaskellF1 PrimArray where
     unbox1 (PrimArray__s x) = x
 
 primArray :: (HaskellF a) => Function (List__ a) (PrimArray a)
-primArray = primHF (p_prim PA.primArrayP)
+primArray = primHF PA.primArrayP
     
 primSelect :: (HaskellF a) => Function (PrimArray a) (Function Integer a)
-primSelect = primHF (p_prim PA.primSelectP)
+primSelect = primHF PA.primSelectP
 

@@ -39,14 +39,15 @@ instance SmtenEH PrimArray where
     de_smtenEH = de_arrayEH
 
 arrayPs :: [Prim]
-arrayPs = [p_prim primArrayP, p_prim primSelectP]
+arrayPs = [primArrayP, primSelectP]
 
-primArrayP :: PrimF ([ExpH] -> PrimArray)
+primArrayP :: Prim
 primArrayP =
   let f :: [ExpH] -> PrimArray
       f xs = PrimArray $ listArray (0, genericLength xs - 1) xs
-  in unaryPF "Data.Array.primArray" f
+  in unaryP "Data.Array.primArray" f
 
-primSelectP :: PrimF (PrimArray -> Integer -> ExpH)
-primSelectP = binaryPF "Data.Array.primSelect" ((!) . prim_array )
+primSelectP :: Prim
+primSelectP = binaryP "Data.Array.primSelect"
+  ((!) . prim_array :: PrimArray -> Integer -> ExpH)
 

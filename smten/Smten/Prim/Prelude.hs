@@ -26,11 +26,11 @@ import Smten.Prim.Prim
 preludePs :: [Prim]
 preludePs = [
     errorP,
-    p_prim eq_IntegerP,
-    p_prim add_IntegerP, p_prim sub_IntegerP, p_prim mul_IntegerP,
-    p_prim lt_IntegerP, p_prim leq_IntegerP,
-    p_prim gt_IntegerP, p_prim geq_IntegerP,
-    p_prim toInteger_CharP, p_prim fromInteger_CharP,
+    eq_IntegerP,
+    add_IntegerP, sub_IntegerP, mul_IntegerP,
+    lt_IntegerP, leq_IntegerP,
+    gt_IntegerP, geq_IntegerP,
+    toInteger_CharP, fromInteger_CharP,
     show_IntegerP,
     return_IOP, bind_IOP,
     putCharP, getContentsP,
@@ -41,37 +41,45 @@ preludePs = [
 errorP :: Prim
 errorP = unaryTP "Prelude.error" errorEH
 
-eq_IntegerP :: PrimF (Integer -> Integer -> Bool)
-eq_IntegerP = binaryPF "Prelude.__prim_eq_Integer" (==)
+eq_IntegerP :: Prim
+eq_IntegerP = binaryP "Prelude.__prim_eq_Integer"
+  ((==) :: Integer -> Integer -> Bool)
 
-toInteger_CharP :: PrimF (Char -> Integer)
-toInteger_CharP = unaryPF "Prelude.__prim_toInteger_Char" $
-    toInteger . fromEnum
+toInteger_CharP :: Prim
+toInteger_CharP = unaryP "Prelude.__prim_toInteger_Char"
+  (toInteger . fromEnum :: Char -> Integer)
 
-fromInteger_CharP :: PrimF (Integer -> Char)
-fromInteger_CharP = unaryPF "Prelude.__prim_fromInteger_Char" $
-    toEnum . fromInteger
+fromInteger_CharP :: Prim
+fromInteger_CharP = unaryP "Prelude.__prim_fromInteger_Char"
+  (toEnum . fromInteger :: Integer -> Char)
 
-add_IntegerP :: PrimF (Integer -> Integer -> Integer)
-add_IntegerP = binaryPF "Prelude.__prim_add_Integer" (+)
+add_IntegerP :: Prim
+add_IntegerP = binaryP "Prelude.__prim_add_Integer"
+  ((+) :: Integer -> Integer -> Integer)
 
-sub_IntegerP :: PrimF (Integer -> Integer -> Integer)
-sub_IntegerP = binaryPF "Prelude.__prim_sub_Integer" (-)
+sub_IntegerP :: Prim
+sub_IntegerP = binaryP "Prelude.__prim_sub_Integer"
+  ((-) :: Integer -> Integer -> Integer)
 
-mul_IntegerP :: PrimF (Integer -> Integer -> Integer)
-mul_IntegerP = binaryPF "Prelude.__prim_mul_Integer" (*)
+mul_IntegerP :: Prim
+mul_IntegerP = binaryP "Prelude.__prim_mul_Integer"
+  ((*) :: Integer -> Integer -> Integer)
 
-lt_IntegerP :: PrimF (Integer -> Integer -> Bool)
-lt_IntegerP = binaryPF "Prelude.__prim_lt_Integer" (<)
+lt_IntegerP :: Prim
+lt_IntegerP = binaryP "Prelude.__prim_lt_Integer"
+  ((<) :: Integer -> Integer -> Bool)
 
-leq_IntegerP :: PrimF (Integer -> Integer -> Bool)
-leq_IntegerP = binaryPF "Prelude.__prim_leq_Integer" (<=)
+leq_IntegerP :: Prim
+leq_IntegerP = binaryP "Prelude.__prim_leq_Integer"
+  ((<=) :: Integer -> Integer -> Bool)
 
-gt_IntegerP :: PrimF (Integer -> Integer -> Bool)
-gt_IntegerP = binaryPF "Prelude.__prim_gt_Integer" (>)
+gt_IntegerP :: Prim
+gt_IntegerP = binaryP "Prelude.__prim_gt_Integer"
+  ((>) :: Integer -> Integer -> Bool)
 
-geq_IntegerP :: PrimF (Integer -> Integer -> Bool)
-geq_IntegerP = binaryPF "Prelude.__prim_geq_Integer" (>=)
+geq_IntegerP :: Prim
+geq_IntegerP = binaryP "Prelude.__prim_geq_Integer"
+  ((>=) :: Integer -> Integer -> Bool)
 
 show_IntegerP :: Prim
 show_IntegerP = unaryP "Prelude.__prim_show_Integer" (show :: Integer -> String)

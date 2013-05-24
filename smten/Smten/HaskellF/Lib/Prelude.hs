@@ -129,34 +129,34 @@ instance (SmtenHF c f) => SmtenHF [c] (List__ f) where
 type String = List__ Char
 
 __prim_toInteger_Char :: Function Char Integer
-__prim_toInteger_Char = unaryHF toInteger_CharP
+__prim_toInteger_Char = primHF toInteger_CharP
 
 __prim_fromInteger_Char :: Function Integer Char
-__prim_fromInteger_Char = unaryHF fromInteger_CharP
+__prim_fromInteger_Char = primHF fromInteger_CharP
 
 __prim_add_Integer :: Function Integer (Function Integer Integer)
-__prim_add_Integer = primHF (p_prim add_IntegerP)
+__prim_add_Integer = primHF add_IntegerP
 
 __prim_sub_Integer :: Function Integer (Function Integer Integer)
-__prim_sub_Integer = primHF (p_prim sub_IntegerP)
+__prim_sub_Integer = primHF sub_IntegerP
 
 __prim_mul_Integer :: Function Integer (Function Integer Integer)
-__prim_mul_Integer = primHF (p_prim mul_IntegerP)
+__prim_mul_Integer = primHF mul_IntegerP
 
 __prim_eq_Integer :: Function Integer (Function Integer Bool)
-__prim_eq_Integer = primHF (p_prim eq_IntegerP)
+__prim_eq_Integer = primHF eq_IntegerP
 
 __prim_lt_Integer :: Function Integer (Function Integer Bool)
-__prim_lt_Integer = primHF (p_prim lt_IntegerP)
+__prim_lt_Integer = primHF lt_IntegerP
 
 __prim_leq_Integer :: Function Integer (Function Integer Bool)
-__prim_leq_Integer = primHF (p_prim leq_IntegerP)
+__prim_leq_Integer = primHF leq_IntegerP
 
 __prim_geq_Integer :: Function Integer (Function Integer Bool)
-__prim_geq_Integer = primHF (p_prim geq_IntegerP)
+__prim_geq_Integer = primHF geq_IntegerP
 
 __prim_gt_Integer :: Function Integer (Function Integer Bool)
-__prim_gt_Integer = primHF (p_prim gt_IntegerP)
+__prim_gt_Integer = primHF gt_IntegerP
 
 __prim_show_Integer :: Function Integer String
 __prim_show_Integer = primHF show_IntegerP
