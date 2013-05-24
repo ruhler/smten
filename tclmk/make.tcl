@@ -44,7 +44,7 @@ indir smten {
     hrun cabal install \
         --builddir ../build/smten \
         --with-happy=$::HAPPY \
-        --force-reinstalls 
+        --force-reinstalls  -O0
 
     #hrun cabal haddock --builddir ../build/smten
     hrun cabal sdist --builddir ../build/smten
@@ -55,7 +55,7 @@ indir smten-smt {
     hrun cabal install \
         --builddir ../build/smten-smt \
         --extra-lib-dirs $::env(LD_LIBRARY_PATH) \
-        --force-reinstalls 
+        --force-reinstalls  -O0
 
     #hrun cabal haddock --builddir ../build/smten-smt
     hrun cabal sdist --builddir ../build/smten-smt
@@ -65,7 +65,7 @@ indir smten-smt {
 indir smten-bin {
     hrun cabal install \
         --builddir ../build/smten-bin \
-        --force-reinstalls 
+        --force-reinstalls -O0
 
     hrun cabal sdist --builddir ../build/smten-bin
 }
@@ -86,23 +86,6 @@ proc shouldfail {name} {
     }
 }
 
-shouldfail "Ambiguous"
-#shouldfail "BadKind"
-shouldfail "BadType1"
-shouldfail "BadType2"
-shouldfail "BadType3"
-shouldfail "BadType4"
-shouldfail "ClassCtx1"
-shouldfail "ClauseArgCount"
-shouldfail "Ctx"
-#shouldfail "DupInst"
-#shouldfail "DupVar"
-shouldfail "FreeDataCon"
-shouldfail "FreeTyCon"
-shouldfail "FreeTypeVar"
-shouldfail "FreeVar"
-shouldfail "InstCtx"
-
 proc expectfail {cmd} {
     if { [catch $cmd] == 0 } {   
         error "expected failure, but $cmd succeeded"
@@ -121,6 +104,7 @@ proc hsghc {module} {
     hrun -ignorestderr ghc -fno-warn-overlapping-patterns \
         -fno-warn-missing-fields \
         -main-is Smten.Lib.$module.main__ -i$hsdir \
+        -prof -rtsopts -O0 \
         -o $hsdir/[string map {. _} $module] $hsdir/Smten/Lib/[string map {. /} $module].hs
 }
 
@@ -129,12 +113,29 @@ proc hf {module} {
     set hsdir build/test
     hscomp $module
     hsghc $module
-    hrun ./$hsdir/[string map {. _} $module]
+    hrun ./$hsdir/[string map {. _} $module] +RTS -K1g
 }
 
 
 hf Smten.Tests.All
 expectfail { hf Smten.SMT.Tests.MalError }
+
+shouldfail "Ambiguous"
+#shouldfail "BadKind"
+shouldfail "BadType1"
+shouldfail "BadType2"
+shouldfail "BadType3"
+shouldfail "BadType4"
+shouldfail "ClassCtx1"
+shouldfail "ClauseArgCount"
+shouldfail "Ctx"
+#shouldfail "DupInst"
+#shouldfail "DupVar"
+shouldfail "FreeDataCon"
+shouldfail "FreeTyCon"
+shouldfail "FreeTypeVar"
+shouldfail "FreeVar"
+shouldfail "InstCtx"
 
 puts "BUILD COMPLETE"
 

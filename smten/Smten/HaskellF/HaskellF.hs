@@ -65,12 +65,12 @@ instance HaskellF2 Function where
     unbox2 = function_unbox
 
 applyHF :: (HaskellF a, HaskellF b) => Function a b -> a -> b
-applyHF f x = box $ appEH ({-# SCC "appHF_fun" #-} unbox f) ({-# SCC "appHF_arg" #-}unbox x)
+applyHF f x = box ({-# SCC "appHF0" #-} appEH ({-# SCC "appHF_fun" #-} unbox f) ({-# SCC "appHF_arg" #-}unbox x))
 
 lamHF :: (HaskellF a, HaskellF b) => String -> (a -> b) -> Function a b
 lamHF n f =
   let g :: ExpH -> ExpH
-      g x = {-# SCC "lamHF_G" #-} unbox $ f (box x)
+      g x = {-# SCC "lamHF_G" #-} unbox ({-# SCC "lamHF_G2" #-} f ({-# SCC "lamHF_G3" #-} box ({-# SCC "lamHF_G4" #-} x)))
 
       r = box $ lamEH ({-# SCC "lamHF_Sig" #-} Sig (name n) ta) ({-# SCC "lamHF_tb" #-} tb) g
       Just (ta, tb) = de_arrowT (smtenT r)

@@ -77,16 +77,16 @@ instance Show ExpH_Value where
     show (LamEH s _ _) = "\\" ++ pretty s ++ " -> ..."
     show (IfEH _ p a b) = "if " ++ show p ++ " then " ++ show a ++ " else " ++ show b
     show (ErrorEH _ s) = "error " ++ show s
+
+{-# NOINLINE idstore #-}
+idstore :: IORef Integer
+idstore = unsafeDupablePerformIO (newIORef 0)
     
 exph :: ExpH_Value -> ExpH
-exph v =
-  let {-# NOINLINE idstore #-}
-      idstore :: IORef Integer
-      idstore = unsafeDupablePerformIO (newIORef 0)
-  in unsafeDupablePerformIO $ do
-        x <- readIORef idstore
-        writeIORef idstore $! x + 1
-        return $ ExpH (EID x) v
+exph v = unsafeDupablePerformIO $ do
+   x <- readIORef idstore
+   writeIORef idstore $! x + 1
+   return $ ExpH (EID x) v
 
 -- Return true if the given expression is simple.
 simple :: ExpH -> Bool
