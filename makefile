@@ -5,7 +5,7 @@ all:
 userinstall:
 	cd smten ; cabal install --builddir ../build/smten-$(USER) --force-reinstalls
 	cd smten-smt ; cabal install --builddir ../build/smten-smt-$(USER) --force-reinstalls
-	cd smten-bin ; cabal install --builddir ../build/smten-bin-$(USER) --force-reinstalls
+	cd smten-bin ; cabal install --builddir ../build/smten-bin-$(USER) --force-reinstalls 
 
 test: dosmten doghc
 	./build/test/Smten_Tests_All +RTS -p -K1g

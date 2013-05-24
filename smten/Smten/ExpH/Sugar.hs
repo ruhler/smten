@@ -1,6 +1,10 @@
 
 {-# LANGUAGE PatternGuards #-}
 
+-- Something about strictness analysis in this file leads to space leaks.
+-- So don't allow the strictness analysis here.
+{-# OPTIONS_GHC -fno-strictness #-}
+
 -- | Abstract constructors and deconstructors dealing with ExpH
 module Smten.ExpH.Sugar (
     litEH, de_litEH, varEH, de_varEH, conEH, de_conEH, de_kconEH,

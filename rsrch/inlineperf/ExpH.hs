@@ -1,5 +1,6 @@
 
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# OPTIONS_GHC -fno-strictness #-}
 
 module ExpH where
 

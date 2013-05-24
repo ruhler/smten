@@ -4,7 +4,7 @@ import Smten.Type
 import Smten.Sig
 import Smten.Lit
 import Smten.Ppr
-import ExpH
+import Smten.ExpH
 
 
 lamHF :: (ExpH -> ExpH) -> ExpH
