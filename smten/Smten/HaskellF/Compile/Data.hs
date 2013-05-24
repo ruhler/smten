@@ -26,7 +26,7 @@ hsData n tyvars constrs = do
     consD <- mapM (mkConD n tyvars) constrs
     return $ concat ([dataD, smtenTD, symbD] : (casesD ++ consD))
 
--- data Foo a b ... = Foo__s ExpH
+-- newtype Foo a b ... = Foo__s ExpH
 mkDataD :: Name -> [TyVar] -> [Con] -> HF H.Dec
 mkDataD n tyvars constrs = do
   let mkknd (ArrowK a b) = foldl H.AppT H.ArrowT [mkknd a, mkknd b]
@@ -38,7 +38,7 @@ mkDataD n tyvars constrs = do
 
       tyvars' = map mkty tyvars
       sconstr = H.NormalC (symnm n) [(H.NotStrict, H.ConT (H.mkName "Smten.ExpH.ExpH"))]
-  return $ H.DataD [] (hsTyName n) tyvars' [sconstr] []
+  return $ H.NewtypeD [] (hsTyName n) tyvars' sconstr []
 
 -- Note: we currently don't support crazy kinded instances of SmtenT. This
 -- means we are limited to "linear" kinds of the form (* -> * -> ... -> *)

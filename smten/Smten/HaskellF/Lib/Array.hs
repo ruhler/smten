@@ -18,7 +18,7 @@ import qualified Smten.Prim.Array as PA
 import Smten.HaskellF.HaskellF
 import Smten.HaskellF.Lib.Prelude
 
-data PrimArray a = PrimArray__s ExpH
+newtype PrimArray a = PrimArray__s ExpH
 
 instance SmtenT1 PrimArray where
     smtenT1 _ = ConT primArrayN (ArrowK NumK StarK)

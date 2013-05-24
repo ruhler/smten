@@ -49,46 +49,35 @@ import Smten.HaskellF.TH
 
 type HFArrow__ = (->)
 
-data Char =
-     Char P.Char
-   | Char__s ExpH
+newtype Char = Char__s ExpH
 
 instance SmtenT Char where
     smtenT _ = charT
 
 instance HaskellF Char where
     box = Char__s
-    unbox x
-      | Char v <- x = charEH v
-      | Char__s v <- x = v
+    unbox (Char__s v) = v
 
 instance SmtenHF P.Char Char where
-    smtenHF = Char
-    de_smtenHF (Char v) = P.Just v
+    smtenHF = Char__s . charEH
     de_smtenHF (Char__s v) = de_smtenEH v
 
     
-data Integer =
-        Integer !P.Integer
-      | Integer__s ExpH
+newtype Integer = Integer__s ExpH
 
 instance SmtenT Integer where
     smtenT _ = integerT
 
 instance HaskellF Integer where
     box = Integer__s
-    unbox x
-     | Integer v <- x = integerEH v
-     | Integer__s v <- x = v
+    unbox (Integer__s v) = v
 
 instance SmtenHF P.Integer Integer where  
-    smtenHF = Integer
-
-    de_smtenHF (Integer x) = P.Just x
+    smtenHF = Integer__s . integerEH
     de_smtenHF (Integer__s v) = de_smtenEH v
 
 instance Prelude.Num Integer where
-    fromInteger = Integer
+    fromInteger = smtenHF
     (+) = P.error $ "+ for haskellf Integer not defined"
     (*) = P.error $ "* for haskellf Integer not defined"
     abs = P.error $ "abs for haskellf Integer not defined"
