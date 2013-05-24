@@ -1,4 +1,6 @@
 
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+
 module ExpH where
 
 import System.IO.Unsafe
@@ -10,8 +12,11 @@ import Smten.Sig
 import Smten.Lit
 import Smten.Ppr
 
+import qualified Data.HashMap as Map
+import Data.Hashable
+
 newtype EID = EID Integer
-    deriving (Eq, Ord)
+    deriving (Eq, Hashable, Ord)
 
 -- ExpH_Value represents a symbolic expression evaluated to weak head normal
 -- form, or a thunk.
@@ -79,10 +84,19 @@ instance Show ExpH_Value where
     show (ErrorEH _ s) = "error " ++ show s
 
 trueEH :: ExpH
-trueEH = aconEH trueN boolT []
+trueEH = conEH (Sig trueN boolT)
 
 falseEH :: ExpH
-falseEH = aconEH falseN boolT []
+falseEH = conEH (Sig falseN boolT)
+
+conEH :: Sig -> ExpH
+conEH (Sig n t) =
+ let coneh :: Name -> Type -> [ExpH] -> ExpH
+     coneh n t args
+        | Just (it, ot) <- de_arrowT t =
+            lamEH (Sig (name "c") it) ot $ \x -> coneh n ot (args ++ [x])
+        | otherwise = aconEH n t args
+ in coneh n t []
 
 -- | Boolean expression
 boolEH :: Bool -> ExpH
@@ -92,6 +106,9 @@ boolEH False = falseEH
 appEH :: ExpH -> ExpH -> ExpH
 appEH f x
  | LamEH _ _ g <- force f = g x
+ | IfEH ft _ _ _ <- force f =
+     let Just (_, t) = de_arrowT ft
+     in strict_appEH t (\g -> appEH g x) f
  | ErrorEH ft s <- force f =
      let Just (_, t) = de_arrowT ft
      in errorEH t s
@@ -133,9 +150,56 @@ caseEH t x k@(Sig nk _) y n
   case force x of
     ConEH k _ vs -> if k == nk then appsEH y vs else n
     ErrorEH _ s -> errorEH t s
+    IfEH {} -> strict_appEH t (\x' -> caseEH t x' k y n) x
     _ -> error $ "SMTEN INTERNAL ERROR: unexpected arg to caseEH"
+
+-- Strict application.
+-- It traverses inside of if expressions. Sharing is preserved.
+strict_appEH :: Type -> (ExpH -> ExpH) -> ExpH -> ExpH
+strict_appEH t f =
+  let g :: (ExpH -> ExpH) -> ExpH -> ExpH
+      g use e
+        | IfEH _ x y d <- force e = ifEH t x (use y) (use d)
+        | otherwise = f e
+  in shared g
 
 
 appsEH :: ExpH -> [ExpH] -> ExpH
 appsEH f xs = foldl appEH f xs
 
+-- shared f
+-- Apply a function to an ExpH which preserves sharing.
+-- If the function is called multiple times on the same ExpH, it shares
+-- the result.
+--
+-- f - The function to apply which takes:
+--   f' - the shared version of 'f' to recurse with
+--   x - the argument
+shared :: ((ExpH -> a) -> ExpH -> a) -> ExpH -> a
+shared f = 
+  let {-# NOINLINE cache #-}
+      -- Note: the IORef is a pair of map instead of just the map to ensure we
+      -- get a new IORef every time the 'shared' function is called.
+      --cache :: IORef (Map.Map EID a, ((ExpH -> a) -> ExpH -> a))
+      cache = unsafeDupablePerformIO (newIORef (Map.empty, f))
+
+      --lookupIO :: EID -> ExpH -> IO a
+      lookupIO x e = do
+        m <- readIORef cache
+        case Map.lookup x (fst m) of
+          Just v -> return v    
+          Nothing -> do
+            let v = def e
+            -- TODO: Do we need to make the insert strict to avoid space leaks?
+            modifyIORef cache $ \(m, g) -> (Map.insert x v m, g)
+            return v
+
+      --lookupPure :: EID -> ExpH -> a
+      lookupPure x e = unsafeDupablePerformIO (lookupIO x e)
+
+      --def :: ExpH -> a
+      def = f use
+
+      --use :: ExpH -> a
+      use e = lookupPure (eid e) e
+  in def
