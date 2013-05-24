@@ -8,8 +8,6 @@ import Smten.Name
 import Smten.Type
 import Smten.Sig
 import Smten.ExpH
-import Smten.Prim
-import Smten.Ppr
 
 lamHF :: (ExpH -> ExpH) -> ExpH
 lamHF f =
@@ -28,10 +26,14 @@ caseHF nm x y n =
  in caseEH tcs x s y n
 
 eq :: ExpH
-eq = primEH eq_IntegerP (arrowsT [integerT, integerT, boolT])
+eq = lamHF $ \a -> lamHF $ \b ->
+        case (de_integerEH a, de_integerEH b) of
+            (Just av, Just bv) -> boolEH (av == bv)
 
 sub :: ExpH
-sub = primEH sub_IntegerP (arrowsT [integerT, integerT, integerT])
+sub = lamHF $ \a -> lamHF $ \b ->
+        case (de_integerEH a, de_integerEH b) of
+            (Just av, Just bv) -> integerEH (av - bv)
 
 mklist :: ExpH
 mklist = lamHF $ \i ->
@@ -55,5 +57,5 @@ result = appEH myand elems
 
 main :: IO ()
 main = do
-    putStrLn $ pretty result
+    putStrLn $ show result
 
