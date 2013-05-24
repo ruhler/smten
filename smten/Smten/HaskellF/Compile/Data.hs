@@ -26,22 +26,19 @@ hsData n tyvars constrs = do
     consD <- mapM (mkConD n tyvars) constrs
     return $ concat ([dataD, smtenTD, symbD] : (casesD ++ consD))
 
--- data Foo a b ... =
---    FooA FooA1 FooA2 ...
---  | FooB FooB1 FooB2 ...
---    ...
---  | Foo__s ExpH
+-- data Foo a b ... = Foo__s ExpH
 mkDataD :: Name -> [TyVar] -> [Con] -> HF H.Dec
 mkDataD n tyvars constrs = do
-  let tyvars' = map (H.PlainTV . hsName . tyVarName) tyvars
-  constrs' <- mapM hsCon constrs
-  let sconstr = H.NormalC (symnm n) [(H.NotStrict, H.ConT (H.mkName "Smten.ExpH.ExpH"))]
-  return $ H.DataD [] (hsTyName n) tyvars' (constrs' ++ [sconstr]) []
+  let mkknd (ArrowK a b) = foldl H.AppT H.ArrowT [mkknd a, mkknd b]
+      mkknd _ = H.StarT
 
-hsCon :: Con -> HF H.Con
-hsCon (Con n tys) = do
-    ts <- mapM hsType tys
-    return $ H.NormalC (hsName n) (map (\t -> (H.NotStrict, t)) ts)
+      mkty (TyVar nm k)
+        | knum k == 0 = H.PlainTV (hsName nm)
+        | otherwise = H.KindedTV (hsName nm) (mkknd k)
+
+      tyvars' = map mkty tyvars
+      sconstr = H.NormalC (symnm n) [(H.NotStrict, H.ConT (H.mkName "Smten.ExpH.ExpH"))]
+  return $ H.DataD [] (hsTyName n) tyvars' [sconstr] []
 
 -- Note: we currently don't support crazy kinded instances of SmtenT. This
 -- means we are limited to "linear" kinds of the form (* -> * -> ... -> *)
@@ -94,65 +91,27 @@ mkSymbD n tyvars constrs = do
                     (foldl H.AppT (H.ConT (hsTyName n)) [H.VarT (hsName n) | TyVar n _ <- dropped])
     return $ H.InstanceD ctx ty [boxD, unboxD]
 
---  boxN e
---   | Just [a, b, ...] <- de_conHF "FooA" e = FooA (box a) (box b) ...
---   | Just [a, b, ...] <- de_conHF "FooB" e = FooB (box a) (box b) ...
---   ...
---   | otherwise = Foo__s e
+--  boxN = Foo__s
 mkBoxD :: (MonadError String m) => Name -> Integer -> [Con] -> m H.Dec
 mkBoxD n bn constrs = do
-  let mkGuard :: Con -> (H.Guard, H.Exp)
-      mkGuard (Con cn tys) = 
-        let argnms = [H.mkName ("x" ++ show i) | i <- [1..length tys]]
-            pat = H.ConP (H.mkName "Prelude.Just") [H.ListP (map H.VarP argnms)]
-            src = foldl1 H.AppE [
-                    H.VarE (H.mkName "Smten.HaskellF.HaskellF.de_conHF"),
-                    H.LitE (H.StringL (unname cn)),
-                    H.VarE (H.mkName "e")]
-            guard = H.PatG [H.BindS pat src]
-            boxes = [H.AppE (H.VarE (H.mkName "Smten.HaskellF.HaskellF.box")) (H.VarE an) | an <- argnms]
-            body = foldl H.AppE (H.ConE (hsName cn)) boxes
-        in (guard, body)
-
-      sguard = (H.NormalG (H.VarE (H.mkName "Prelude.otherwise")), H.AppE (H.ConE (symnm n)) (H.VarE (H.mkName "e")))
-      guards = map mkGuard constrs ++ [sguard]
-      clause = H.Clause [H.VarP (H.mkName "e")] (H.GuardedB guards) []
+  let body = H.NormalB (H.ConE (symnm n))
+      clause = H.Clause [] body []
   return $ H.FunD (nmn "box" bn) [clause]
   
 
 --  unboxN x
---   | FooA a b ... <- x = conHF x "FooA" [unbox a, unbox b, ...]
---   | FooB a b ... <- x = conHF x "FooB" [unbox a, unbox b, ...]
---   ...
 --   | Foo__s v <- x = v
 mkUnboxD :: (MonadError String m) => Name -> Integer -> [Con] -> m H.Dec
 mkUnboxD n bn constrs = do
-    let mkGuard :: Con -> (H.Guard, H.Exp)
-        mkGuard (Con cn tys) =
-          let argnms = [H.mkName ("x" ++ show i) | i <- [1..length tys]]
-              pat = H.ConP (hsName cn) (map H.VarP argnms)
-              src = H.VarE (H.mkName "x")
-              guard = H.PatG [H.BindS pat src]
-              unboxes = [H.AppE (H.VarE (H.mkName "Smten.HaskellF.HaskellF.unbox")) (H.VarE an) | an <- argnms]
-              body = foldl1 H.AppE [
-                        H.VarE (H.mkName "Smten.HaskellF.HaskellF.conHF"),
-                        H.VarE (H.mkName "x"),
-                        H.LitE (H.StringL (unname cn)),
-                        H.ListE unboxes]
-          in (guard, body)
-
-        spat = H.ConP (symnm n) [H.VarP (H.mkName "v")]
+    let spat = H.ConP (symnm n) [H.VarP (H.mkName "v")]
         ssrc = H.VarE (H.mkName "x")
         sguard = (H.PatG [H.BindS spat ssrc], H.VarE (H.mkName "v"))
-        guards = map mkGuard constrs ++ [sguard]
+        guards = [sguard]
         clause = H.Clause [H.VarP (H.mkName "x")] (H.GuardedB guards) []
     return $ H.FunD (nmn "unbox" bn) [clause]
 
 -- __caseFooB :: Foo -> (Function FooB1 (Function FooB2 ... z) -> z -> z
--- __caseFooB = \x y n -> case x of
---                           FooB a b ... -> applyHF (applyHF y a) b ...
---                           Foo__s _ -> caseHF "FooB" x y n
---                           _ -> n
+-- __caseFooB = caseHF "FooB"
 mkCaseD :: Name -> [TyVar] -> Con -> HF [H.Dec]
 mkCaseD n tyvars (Con cn tys) = do
   -- Note: we use this funny arrow hack to be able to reuse hsTopType to
@@ -177,39 +136,16 @@ mkCaseD n tyvars (Con cn tys) = do
 
       sigD = H.SigD (casenm cn) ht
 
-      xsrc = H.VarE (H.mkName "x")
-
-      yargs = [H.mkName ("x" ++ show i) | i <- [1..length tys]]
-      ypat = H.ConP (hsName cn) (map H.VarP yargs)
-      apphf = H.VarE (H.mkName "Smten.HaskellF.HaskellF.applyHF")
-      app = \a b -> foldl1 H.AppE [apphf, a, b]
-      ybody = foldl app (H.VarE (H.mkName "y")) [H.VarE an | an <- yargs]
-      ymatch = H.Match ypat (H.NormalB ybody) []
-
-      spat = H.ConP (symnm n) [H.WildP]
-      sbody = foldl1 H.AppE [
-                H.VarE (H.mkName "Smten.HaskellF.HaskellF.caseHF"),
-                H.LitE (H.StringL (unname cn)),
-                H.VarE (H.mkName "x"),
-                H.VarE (H.mkName "y"),
-                H.VarE (H.mkName "n")]
-      smatch = H.Match spat (H.NormalB sbody) []
-
-      npat = H.WildP
-      nbody = H.VarE (H.mkName "n")
-      nmatch = H.Match npat (H.NormalB nbody) []
-
-      thecase = H.CaseE xsrc [ymatch, smatch, nmatch]
-
-      lams = H.LamE [H.VarP (H.mkName n) | n <- ["x", "y", "n"]] $ thecase
-      clause = H.Clause [] (H.NormalB lams) []
+      body = H.AppE (H.VarE (H.mkName "Smten.HaskellF.HaskellF.caseHF"))
+                    (H.LitE (H.StringL (unname cn)))
+      clause = H.Clause [] (H.NormalB body) []
       funD = H.FunD (casenm cn) [clause]
   return [sigD, funD]
 
 -- __mkFooB :: Function FooB1 (Function FooB2 ... Foo)
 -- __mkFooB = lamHF "x1" $ \x1 ->
 --              lamHF "x2" $ \x2 ->
---                ... -> FooB x1 x2 ...
+--                ... -> conHF' "FooB" [unbox x1, unbox x2, ...]
 mkConD :: Name -> [TyVar] -> Con -> HF [H.Dec]
 mkConD n tyvars (Con cn tys) = do
   let dt = appsT (conT n) (map tyVarType tyvars)
@@ -224,7 +160,11 @@ mkConD n tyvars (Con cn tys) = do
          H.LitE (H.StringL nm),
          H.LamE [H.VarP (H.mkName nm)] x]
 
-      body = foldl H.AppE (H.ConE (hsName cn)) [H.VarE (H.mkName nm) | nm <- vars]
+      unbox = H.VarE (H.mkName "Smten.HaskellF.HaskellF.unbox")
+      body = foldl1 H.AppE [
+                H.VarE (H.mkName "Smten.HaskellF.HaskellF.conHF'"),
+                H.LitE (H.StringL (unname cn)),
+                H.ListE [H.AppE unbox (H.VarE (H.mkName nm)) | nm <- vars]]
       lams = foldr mklam body vars
       clause = H.Clause [] (H.NormalB lams) []
       funD = H.FunD (connm cn) [clause]

@@ -15,7 +15,7 @@ module Smten.HaskellF.Lib.Prelude (
     Tuple2__, __mkTuple2__, __caseTuple2__,
     Tuple3__, __mkTuple3__, __caseTuple3__,
     Tuple4__, __mkTuple4__, __caseTuple4__,
-    List__, __mkCons__, __mkNil__, __caseCons__, __caseNil__, de_listHF,
+    List__, __mkCons__, __mkNil__, __caseCons__, __caseNil__,
     String,
     Maybe, __mkJust, __mkNothing, __caseJust, __caseNothing,
 
@@ -57,10 +57,7 @@ instance SmtenT Char where
     smtenT _ = charT
 
 instance HaskellF Char where
-    box e
-      | P.Just v <- de_charEH e = Char v
-      | otherwise = Char__s e
-
+    box = Char__s
     unbox x
       | Char v <- x = charEH v
       | Char__s v <- x = v
@@ -79,10 +76,7 @@ instance SmtenT Integer where
     smtenT _ = integerT
 
 instance HaskellF Integer where
-    box e
-     | P.Just v <- de_integerEH e = Integer v
-     | otherwise = Integer__s e
-
+    box = Integer__s
     unbox x
      | Integer v <- x = integerEH v
      | Integer__s v <- x = v
@@ -115,7 +109,6 @@ id $
   in haskellf_Data n tyv cns
 
 haskellf_Data boolN [] [Con trueN [], Con falseN []]
-derive_SmtenHF ''P.Bool ''Bool
 
 haskellf_Data maybeN [TyVar (name "a") StarK] [
     Con nothingN [],
@@ -134,35 +127,15 @@ id $
   let DataD _ n tyv cns = tupleD 4
   in haskellf_Data n tyv cns
 
-instance (SmtenHF ca fa, SmtenHF cb fb) => SmtenHF (ca, cb) (Tuple2__ fa fb) where
-    smtenHF (a, b) = Tuple2__ (smtenHF a) (smtenHF b)
-    de_smtenHF (Tuple2__ a b) = do
-        a' <- de_smtenHF a
-        b' <- de_smtenHF b    
-        return (a', b')
-    de_smtenHF (Tuple2____s v) = de_smtenEH v
-
 id $
   let DataD _ n tyv cns = listD
   in haskellf_Data n tyv cns
 
 instance (SmtenHF c f) => SmtenHF [c] (List__ f) where
-    smtenHF [] = Nil__
-    smtenHF (x:xs) = Cons__ (smtenHF x) (smtenHF xs)
+    smtenHF [] = __mkNil__
+    smtenHF (x:xs) = applyHF (applyHF __mkCons__ (smtenHF x)) (smtenHF xs)
     
-    de_smtenHF Nil__ = P.Just []
-    de_smtenHF (Cons__ x xs) = do
-        x' <- de_smtenHF x
-        xs' <- de_smtenHF xs
-        return (x':xs')
     de_smtenHF (List____s v) = de_smtenEH v
-
-de_listHF :: List__ a -> P.Maybe [a]
-de_listHF Nil__ = P.Just []
-de_listHF (Cons__ x xs) = do
-    xs' <- de_listHF xs
-    return (x:xs')
-de_listHF (List____s v) = P.Nothing
 
 type String = List__ Char
 

@@ -14,7 +14,7 @@ conlist (x:xs) = text " " <+> ppr x
                     $+$ vcat (map (\c -> text "|" <+> ppr c) xs)
 
 instance Ppr TyVar where
-    ppr v = ppr (tyVarName v)
+    ppr (TyVar nm knd) = parens (ppr nm <+> text "::" <+> ppr knd)
 
 instance Ppr TopExp where
     ppr (TopExp s@(TopSig n _ _) e)

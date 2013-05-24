@@ -42,3 +42,10 @@ pprnumt (OpT f a b) = parens $ pprnumt a <> text f <> pprnumt b
 pprnumt (VarT n _) = ppr n
 pprnumt t = ppr t
 
+instance Ppr Kind where
+    ppr StarK = text "*"
+    ppr NumK = text "#"
+    ppr (ArrowK a b) = ppr a <+> text "->" <+> ppr b
+    ppr UnknownK = text "?"
+    ppr (VarK i) = text "$" <> integer i
+

@@ -8,7 +8,7 @@ import Smten.Tests.Test
 deeprecursion :: IO ()
 deeprecursion = do
     putStrLn "Perf deep recursion test..."
-    test "perf deep recursion" (and (replicate 2000 True))
+    test "perf deep recursion" (and (replicate 1000000 True))
 
 -- Test performance of primitive integer operations.
 f :: Integer -> Integer
@@ -18,7 +18,7 @@ f n = n + f (n-1)
 intprim :: IO ()
 intprim = do
     putStrLn "Perf int primitives test..."
-    test "perf integer primitives" (f 1000000 > 0)
+    test "perf integer primitives" (f 4000000 > 0)
 
 tests :: IO ()
 tests = do

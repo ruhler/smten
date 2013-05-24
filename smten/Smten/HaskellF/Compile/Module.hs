@@ -29,6 +29,7 @@ hsHeader modname =
   H.text "{-# LANGUAGE UndecidableInstances #-}" H.$+$
   H.text "{-# LANGUAGE ScopedTypeVariables #-}" H.$+$
   H.text "{-# LANGUAGE InstanceSigs #-}" H.$+$
+  H.text "{-# LANGUAGE KindSignatures #-}" H.$+$
   H.text ("module " ++ unname modname
             ++ "(module " ++ unname modname ++ ") where") H.$+$
   H.text "import qualified Prelude" H.$+$

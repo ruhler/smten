@@ -7,7 +7,7 @@ module Smten.HaskellF.HaskellF (
     HaskellF(..), HaskellF1(..), HaskellF2(..), HaskellF3(..), HaskellF4(..),
     SmtenHF(..),
     Function(..), lamHF, applyHF,
-    conHF, de_conHF, caseHF, primHF, unaryHF,
+    conHF, conHF', de_conHF, caseHF, primHF, unaryHF,
     ) where
 
 import Smten.Name
@@ -90,6 +90,11 @@ instance (SmtenEH a, HaskellF a) => SmtenHF a a where
 
 conHF :: (HaskellF a) => a -> String -> [ExpH] -> ExpH
 conHF x nm args = aconEH (name nm) (smtenT x) args
+
+conHF' :: (HaskellF a) => String -> [ExpH] -> a
+conHF' nm args =
+  let r = box $ aconEH (name nm) (smtenT r) args
+  in r
 
 de_conHF :: String -> ExpH -> Maybe [ExpH]
 de_conHF nm = de_kconEH (name nm)
