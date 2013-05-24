@@ -14,9 +14,30 @@ import Smten.Prim
 
 import Prelude hiding (foldr, replicate, (&&), and, Bool(..), Integer) 
 import Smten.HaskellF.HaskellF
-import Smten.HaskellF.Lib.Prelude (
-    List__, __caseCons__, __mkCons__, __mkNil__,
-    )
+
+newtype List__ a = List____s ExpH
+
+instance SmtenT1 List__ where
+  smtenT1 _ = conT (name "Prelude.[]")
+
+instance HaskellF1 List__ where
+  box1 = List____s
+  unbox1 x | List____s v <- x = v
+
+__caseNil__ :: (HaskellF a, HaskellF z) => List__ a -> z -> z -> z
+__caseNil__ = caseHF "Prelude.[]"
+
+__caseCons__ :: (HaskellF a, HaskellF z) => List__ a -> Function a (Function (List__ a) z) -> z -> z
+__caseCons__ = caseHF "Prelude.:"
+
+__mkNil__ :: HaskellF a => List__ a
+__mkNil__ = conHF' "Prelude.[]" []
+
+__mkCons__ :: HaskellF a => Function a (Function (List__ a) (List__ a))
+__mkCons__ = lamHF "x1" $ \x1 ->
+                lamHF "x2" $ \x2 ->
+                  conHF' "Prelude.:" [unbox x1, unbox x2]
+
 newtype Bool = Bool__s ExpH
 
 instance SmtenT Bool where
