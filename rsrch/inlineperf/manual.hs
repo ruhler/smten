@@ -9,6 +9,7 @@ import Smten.Type
 import Smten.Sig
 import Smten.ExpH
 import Smten.Prim
+import Smten.Ppr
 
 newtype ExpHF a = ExpHF { 
     unbox :: ExpH
@@ -55,12 +56,19 @@ conHF n =
   in r
 
 caseHF :: (TypeHF a, TypeHF b, TypeHF c) => P.String -> ExpHF a -> ExpHF b -> ExpHF c -> ExpHF c
-caseHF nm x y n = ExpHF (caseEH (typeHF n) (unbox x) (Sig (name nm) (typeHF x)) (unbox y) (unbox n))
+caseHF nm x y n =
+ let tys = de_arrowsT P.$ typeHF y
+     tcs = typeHF n
+     tns = de_arrowsT tcs
+     r = ExpHF (caseEH tcs (unbox x) (Sig (name nm) t) (unbox y) (unbox n))
+     tx = typeHF x
+     t = arrowsT (P.take (P.length tys P.- P.length tns) tys P.++ [tx])
+ in r
 
 mainHF :: ExpHF (IoT UnitT) -> P.IO ()
 mainHF x = case de_ioEH (unbox x) of
               P.Just x -> x P.>> P.return ()
-              _ -> P.error "mainHF not concrete"
+              _ -> P.error P.$ "mainHF not concrete: " P.++ pretty (unbox x)
 
 charHF :: P.Char -> ExpHF CharT
 charHF c = ExpHF (charEH c)
@@ -108,18 +116,7 @@ __caseNil :: (TypeHF a, TypeHF b) => ExpHF (ListT a) -> ExpHF b -> ExpHF b -> Ex
 __caseNil = caseHF "Prelude.[]"
 
 __caseCons :: (TypeHF a, TypeHF b) => ExpHF (ListT a) -> ExpHF (FunT a (FunT (ListT a) b)) -> ExpHF b -> ExpHF b
-__caseCons x y n =
-  let caseme :: (TypeHF a, TypeHF b) => ExpHF (ListT a) -> ExpHF (FunT a (FunT (ListT a) b)) -> ExpHF b -> ExpHF b
-      caseme = caseHF "Prelude.:"
-
-      a = caseme x (lamHF "a" P.$ \a -> lamHF "_" P.$ \_ -> a)
-                               (P.error "caseCon.a")
-      b = caseme x (lamHF "_" P.$ \_ -> lamHF "as" P.$ \as -> as)
-                               (P.error "caseCon.a")
-      p = caseme x (lamHF "_" P.$ \_ -> lamHF "_" P.$ \_ -> __mkTrue) __mkFalse
-
-      yv = appHF (appHF y a) b
-  in __caseTrue p yv n
+__caseCons = caseHF "Prelude.:"
 
 __mkNil :: (TypeHF a) => ExpHF (ListT a)
 __mkNil = conHF "Prelude.[]"
@@ -170,10 +167,10 @@ instance Monad IoT where
     (>>=) = primHF bind_IOP
 
 instance Eq IntegerT where
-    (==) = primHF (p_prim eq_IntegerP)
+    (==) = primHF eq_IntegerP
 
 instance Num IntegerT where
-    (-) = primHF (p_prim sub_IntegerP)
+    (-) = primHF sub_IntegerP
 
 instance Show BoolT where
     show = lamHF "x" P.$ \x ->  
