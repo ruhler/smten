@@ -8,6 +8,7 @@ module Smten.HaskellF.SMT (
 import Data.Functor((<$>))
 import Data.Maybe (fromMaybe)
 
+import Smten.ExpH
 import Smten.SMT.SMT
 import Smten.HaskellF.HaskellF
 import Smten.SMT.Solver(Solver)
@@ -31,7 +32,7 @@ runSymbolicHF solver s = do
     r <- runSymbolic solver (realize . unbox <$> s)
     return (box <$> r)
 
-queryHFC :: (SmtenHF c f) => Symbolic f -> SMT (Maybe c)
+queryHFC :: (SmtenEH c, HaskellF f) => Symbolic f -> SMT (Maybe c)
 queryHFC s = do
     r <- queryHF s
     return (fromMaybe (error "queryHFC") . de_smtenHF <$> r)

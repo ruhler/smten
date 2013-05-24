@@ -58,11 +58,6 @@ instance HaskellF Char where
     box = Char__s
     unbox (Char__s v) = v
 
-instance SmtenHF P.Char Char where
-    smtenHF = Char__s . charEH
-    de_smtenHF (Char__s v) = de_smtenEH v
-
-    
 newtype Integer = Integer__s ExpH
 
 instance SmtenT Integer where
@@ -71,10 +66,6 @@ instance SmtenT Integer where
 instance HaskellF Integer where
     box = Integer__s
     unbox (Integer__s v) = v
-
-instance SmtenHF P.Integer Integer where  
-    smtenHF = Integer__s . integerEH
-    de_smtenHF (Integer__s v) = de_smtenEH v
 
 instance Prelude.Num Integer where
     fromInteger = smtenHF
@@ -119,12 +110,6 @@ id $
 id $
   let DataD _ n tyv cns = listD
   in haskellf_Data n tyv cns
-
-instance (SmtenHF c f) => SmtenHF [c] (List__ f) where
-    smtenHF [] = __mkNil__
-    smtenHF (x:xs) = applyHF (applyHF __mkCons__ (smtenHF x)) (smtenHF xs)
-    
-    de_smtenHF (List____s v) = de_smtenEH v
 
 type String = List__ Char
 

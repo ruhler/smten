@@ -5,9 +5,9 @@
 
 module Smten.HaskellF.HaskellF (
     HaskellF(..), HaskellF1(..), HaskellF2(..), HaskellF3(..), HaskellF4(..),
-    SmtenHF(..),
     Function(..), lamHF, applyHF,
     conHF, conHF', de_conHF, caseHF, primHF,
+    smtenHF, de_smtenHF,
     ) where
 
 import Smten.Name
@@ -76,17 +76,11 @@ lamHF n f =
       Just (ta, tb) = de_arrowT (smtenT r)
   in r
 
--- | Convert a concrete haskell value to its HaskellF representation.
-class (SmtenEH c, HaskellF f) => SmtenHF c f where
-    smtenHF :: c -> f
-    smtenHF = box . smtenEH
+smtenHF :: (SmtenEH c, HaskellF f) => c -> f
+smtenHF = box . smtenEH
 
-    de_smtenHF :: f -> Maybe c
-    de_smtenHF = de_smtenEH . unbox
-
-instance (SmtenEH a, HaskellF a) => SmtenHF a a where
-    smtenHF = id
-    de_smtenHF = return
+de_smtenHF :: (SmtenEH c, HaskellF f) => f -> Maybe c
+de_smtenHF = de_smtenEH . unbox
 
 conHF :: (HaskellF a) => a -> String -> [ExpH] -> ExpH
 conHF x nm args = aconEH (name nm) (smtenT x) args
