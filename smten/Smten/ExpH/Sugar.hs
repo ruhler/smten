@@ -81,7 +81,7 @@ de_varEH t
 
 appEH :: ExpH -> ExpH -> ExpH
 appEH f x
- | LamEH (Sig _ t) _ g <- force f = g x
+ | LamEH _ _ g <- force f = g x
  | IfEH ft _ _ _ <- force f =
      let Just (_, t) = de_arrowT ft
      in strict_appEH t (\g -> appEH g x) f

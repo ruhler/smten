@@ -3,6 +3,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 
 import qualified Prelude as P
+import Debug.Trace
 
 import Smten.Name
 import Smten.Type
@@ -40,14 +41,14 @@ instance (TypeHF a, TypeHF2 m) => TypeHF1 (m a) where
 appHF :: ExpHF (FunT a b) -> ExpHF a -> ExpHF b
 appHF f x = ExpHF (appEH (unbox f) (unbox x))
 
-lamHF :: (TypeHF a, TypeHF b) => P.String -> (ExpHF a -> ExpHF b) -> ExpHF (FunT a b)
-lamHF nm f =
+lamHF :: (TypeHF a, TypeHF b) => (ExpHF a -> ExpHF b) -> ExpHF (FunT a b)
+lamHF f =
   let g :: ExpH -> ExpH
       g x = unbox (f (ExpHF x))
 
-      P.Just (at, bt) = de_arrowT (typeHF r)
-      r = ExpHF (lamEH (Sig (name nm) at) bt g)
-  in r
+      s = P.error "lam sig"
+      bt = P.error "lam bt"
+  in ExpHF (lamEH s bt g)
 
 conHF :: (TypeHF a) => P.String -> ExpHF a
 conHF n = 
@@ -57,13 +58,13 @@ conHF n =
 
 caseHF :: (TypeHF a, TypeHF b, TypeHF c) => P.String -> ExpHF a -> ExpHF b -> ExpHF c -> ExpHF c
 caseHF nm x y n =
- let tys = de_arrowsT P.$ typeHF y
-     tcs = typeHF n
-     tns = de_arrowsT tcs
-     r = ExpHF (caseEH tcs (unbox x) (Sig (name nm) t) (unbox y) (unbox n))
-     tx = typeHF x
-     t = arrowsT (P.take (P.length tys P.- P.length tns) tys P.++ [tx])
- in r
+ let t = P.error "caseHF t"
+     tcs = P.error "caseHF tcs"
+     arg = {-# SCC "caseHF_X" #-} unbox x
+     yes = {-# SCC "caseHF_Y" #-} unbox y
+     no = {-# SCC "caseHF_N" #-} unbox n
+     s = {-# SCC "caseHF_SIG" #-} Sig (name nm) t
+ in ExpHF ({-# SCC "caseHF_caseEH" #-} caseEH tcs arg s yes no)
 
 mainHF :: ExpHF (IoT UnitT) -> P.IO ()
 mainHF x = case de_ioEH (unbox x) of
@@ -159,8 +160,8 @@ class (TypeHF1 m) => Monad m where
     return :: (TypeHF a) => ExpHF (FunT a (m a))
     (>>=) :: (TypeHF a, TypeHF b) => ExpHF (FunT (m a) (FunT (FunT a (m b)) (m b)))
     (>>) :: (TypeHF a, TypeHF b) => ExpHF (FunT (m a) (FunT (m b) (m b)))
-    (>>) = lamHF "x" P.$ \x -> lamHF "y" P.$ \y ->
-             appHF (appHF (>>=) x) (lamHF "_" P.$ \_ -> y)
+    (>>) = lamHF (\x -> lamHF (\y ->
+             appHF (appHF (>>=) x) (lamHF (\_ -> y))))
 
 instance Monad IoT where
     return = primHF return_IOP
@@ -173,8 +174,8 @@ instance Num IntegerT where
     (-) = primHF sub_IntegerP
 
 instance Show BoolT where
-    show = lamHF "x" P.$ \x ->  
-            __caseTrue x (stringHF "True") (stringHF "False")
+    show = lamHF (\x ->  
+            __caseTrue x (stringHF "True") (stringHF "False"))
 
 error :: (TypeHF a) => ExpHF (FunT (ListT CharT) a)
 error = primHF errorP
@@ -183,58 +184,59 @@ putChar :: ExpHF (FunT CharT (IoT UnitT))
 putChar = primHF putCharP
 
 map :: (TypeHF a, TypeHF b) => ExpHF (FunT (FunT a b) (FunT (ListT a) (ListT b)))
-map = lamHF "f" P.$ \f ->
-      lamHF "l" P.$ \l ->
+map = lamHF (\f ->
+      lamHF (\l ->
       __caseNil l __mkNil P.$
-        __caseCons l (lamHF "x" P.$ \x -> lamHF "xs" P.$ \xs ->
+        __caseCons l (lamHF (\x -> lamHF (\xs ->
                 appHF (appHF __mkCons (appHF f x)) (appHF (appHF map f) xs)
-              )
-              (appHF error (stringHF "case no match"))
+              )))
+              (appHF error (stringHF "case no match"))))
            
 
 sequence :: (TypeHF a, TypeHF1 m, Monad m) => ExpHF (FunT (ListT (m a)) (m (ListT a)))
 sequence
-  = lamHF "l" P.$ \l ->
+  = lamHF P.$ \l ->
       __caseNil l (appHF return __mkNil) P.$
-          __caseCons l (lamHF "x" P.$ \x -> lamHF "xs" P.$ \xs ->
-                appHF (appHF (>>=) x) (lamHF "v" P.$ \v ->
-                    appHF (appHF (>>=) (appHF sequence xs)) (lamHF "vs" P.$ \vs ->
+          __caseCons l (lamHF P.$ \x -> lamHF P.$ \xs ->
+                appHF (appHF (>>=) x) (lamHF P.$ \v ->
+                    appHF (appHF (>>=) (appHF sequence xs)) (lamHF P.$ \vs ->
                        appHF return (appHF (appHF __mkCons v) vs)))
               )
               (appHF error (stringHF "case no match"))
                     
 
 mapM :: (TypeHF a, TypeHF b, TypeHF1 m, Monad m) => ExpHF (FunT (FunT a (m b)) (FunT (ListT a) (m (ListT b))))
-mapM = lamHF "f" P.$ \f ->
-         lamHF "as" P.$ \as ->
+mapM = lamHF P.$ \f ->
+         lamHF P.$ \as ->
            appHF sequence (appHF (appHF map f) as)
 
 mapM_ :: (Monad m, TypeHF a, TypeHF b, TypeHF1 m) => ExpHF (FunT (FunT a (m b)) (FunT (ListT a) (m UnitT)))
-mapM_ = lamHF "f" P.$ \f ->
-          lamHF "as" P.$ \as ->
+mapM_ = lamHF P.$ \f ->
+          lamHF P.$ \as ->
             appHF (appHF (>>) (appHF (appHF mapM f) as)) (appHF return __mkUnit)
 
 putStr :: ExpHF (FunT (ListT CharT) (IoT UnitT))
 putStr = appHF mapM_ putChar
 
 putStrLn :: ExpHF (FunT (ListT CharT) (IoT UnitT))
-putStrLn = lamHF "str" P.$ \str ->
+putStrLn = lamHF P.$ \str ->
               appHF (appHF (>>) (appHF putStr str))
                                 (appHF putStr (stringHF "\n"))
 
 mklist :: (TypeHF a) => ExpHF (FunT IntegerT (FunT a (ListT a)))
-mklist = lamHF "i" P.$ \i ->
-            lamHF "v" P.$ \v ->
+mklist = lamHF P.$ \i ->
+            lamHF P.$ \v ->
                __caseTrue (appHF (appHF (==) (integerHF 0)) i)
                           (__mkNil)
                           (appHF (appHF __mkCons v) (appHF (appHF mklist (appHF (appHF (-) i) (integerHF 1))) v)) 
                       
 myand :: ExpHF (FunT (ListT BoolT) BoolT)
-myand = lamHF "l" P.$ \l ->
-            __caseNil l __mkTrue P.$
-            __caseCons l (lamHF "x" P.$ \x -> lamHF "xs" P.$ \xs ->
-                            __caseTrue x (appHF myand xs) __mkFalse)
-                         (appHF error (stringHF "unhandled case"))
+myand = lamHF P.$ \l ->
+            __caseCons l (lamHF P.$ \x ->
+                            lamHF P.$ \xs ->
+                                {-# SCC "LAMBDA_XS_BODY" #-}
+                              __caseTrue x (appHF myand xs) __mkFalse)
+                         __mkTrue
                                          
 elems :: ExpHF (ListT BoolT)
 elems = appHF (appHF mklist (integerHF 1000000)) __mkTrue
