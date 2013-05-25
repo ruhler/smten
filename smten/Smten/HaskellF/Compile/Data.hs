@@ -21,12 +21,11 @@ hsData :: Name -> [TyVar] -> [Con] -> HF [H.Dec]
 hsData n tyvars constrs = do
     dataD <- mkDataD n tyvars constrs
     smtenTD <- mkSmtenTD n tyvars
-    symbD <- mkSymbD n tyvars constrs
     casesD <- mapM (mkCaseD n tyvars) constrs
     consD <- mapM (mkConD n tyvars) constrs
-    return $ concat ([dataD, smtenTD, symbD] : (casesD ++ consD))
+    return $ concat ([dataD, smtenTD] : (casesD ++ consD))
 
--- newtype Foo a b ... = Foo__s ExpH
+-- data T__Foo a b ...
 mkDataD :: Name -> [TyVar] -> [Con] -> HF H.Dec
 mkDataD n tyvars constrs = do
   let mkknd (ArrowK a b) = foldl H.AppT H.ArrowT [mkknd a, mkknd b]
@@ -37,8 +36,7 @@ mkDataD n tyvars constrs = do
         | otherwise = H.KindedTV (hsName nm) (mkknd k)
 
       tyvars' = map mkty tyvars
-      sconstr = H.NormalC (symnm n) [(H.NotStrict, H.ConT (H.mkName "Smten.ExpH.ExpH"))]
-  return $ H.NewtypeD [] (hsTyName n) tyvars' sconstr []
+  return $ H.DataD [] (hsTyName n) tyvars' [] []
 
 -- Note: we currently don't support crazy kinded instances of SmtenT. This
 -- means we are limited to "linear" kinds of the form (* -> * -> ... -> *)
@@ -73,68 +71,14 @@ mkSmtenTD n tyvars = return $
                    (foldl H.AppT (H.ConT (hsTyName n)) [H.VarT (hsName n) | TyVar n _ <- dropped])
   in H.InstanceD ctx tyt [smtent]
   
--- instance HaskellFN Foo where
---  boxN ...
---  unboxN ...
---
--- Note: we do the same thing with crazy kinds as mkSmtenTD
-mkSymbD :: (MonadError String m) => Name -> [TyVar] -> [Con] -> m H.Dec
-mkSymbD n tyvars constrs = do
-    let (rkept, rdropped) = span (\(TyVar n k) -> knum k == 0) (reverse tyvars)
-        nkept = genericLength rkept
-        dropped = reverse rdropped
-    boxD <- mkBoxD n nkept constrs
-    unboxD <- mkUnboxD n nkept constrs
-    let ctx = [H.ClassP (nmk "Smten.HaskellF.HaskellF.HaskellF" k) [H.VarT (hsName n)] | TyVar n k <- dropped]
-        clsname = nmn "Smten.HaskellF.HaskellF.HaskellF" nkept
-        ty = H.AppT (H.ConT clsname) 
-                    (foldl H.AppT (H.ConT (hsTyName n)) [H.VarT (hsName n) | TyVar n _ <- dropped])
-    return $ H.InstanceD ctx ty [boxD, unboxD]
-
---  boxN = Foo__s
-mkBoxD :: (MonadError String m) => Name -> Integer -> [Con] -> m H.Dec
-mkBoxD n bn constrs = do
-  let body = H.NormalB (H.ConE (symnm n))
-      clause = H.Clause [] body []
-  return $ H.FunD (nmn "box" bn) [clause]
-  
-
---  unboxN x
---   | Foo__s v <- x = v
-mkUnboxD :: (MonadError String m) => Name -> Integer -> [Con] -> m H.Dec
-mkUnboxD n bn constrs = do
-    let spat = H.ConP (symnm n) [H.VarP (H.mkName "v")]
-        ssrc = H.VarE (H.mkName "x")
-        sguard = (H.PatG [H.BindS spat ssrc], H.VarE (H.mkName "v"))
-        guards = [sguard]
-        clause = H.Clause [H.VarP (H.mkName "x")] (H.GuardedB guards) []
-    return $ H.FunD (nmn "unbox" bn) [clause]
-
 -- __caseFooB :: Foo -> (Function FooB1 (Function FooB2 ... z) -> z -> z
 -- __caseFooB = caseHF "FooB"
 mkCaseD :: Name -> [TyVar] -> Con -> HF [H.Dec]
 mkCaseD n tyvars (Con cn tys) = do
-  -- Note: we use this funny arrow hack to be able to reuse hsTopType to
-  -- generate the context for us, but while using haskell -> instead of the HF
-  -- function type constructor.
-  -- TODO: surely there must be a nicer way to do this?
   let dt = appsT (conT n) (map tyVarType tyvars)
       z = VarT (name "z") StarK
-      arrT = \a b -> appsT (conT (name "HS_ARROW_HACK")) [a, b]
-      arrsT = foldr1 arrT
-      t = arrsT [dt, arrowsT (tys ++ [z]), z, z]
-  ht' <- hsTopType [] t
-  let arrowhack :: H.Type -> H.Type
-      arrowhack (H.ForallT vars ctx t) = H.ForallT vars ctx (arrowhack t)
-      arrowhack t@(H.ConT n)
-        | H.nameBase n == "HS_ARROW_HACK" = H.ArrowT
-        | otherwise = t
-      arrowhack t@(H.VarT {}) = t
-      arrowhack (H.AppT a b) = H.AppT (arrowhack a) (arrowhack b)
-
-      ht = arrowhack ht'
-
-      sigD = H.SigD (casenm cn) ht
+  ht <- hsTopFunctionType [] [dt, arrowsT (tys ++ [z]), z, z]
+  let sigD = H.SigD (casenm cn) ht
 
       body = H.AppE (H.VarE (H.mkName "Smten.HaskellF.HaskellF.caseHF"))
                     (H.LitE (H.StringL (unname cn)))

@@ -2,7 +2,7 @@
 {-# LANGUAGE PatternGuards #-}
 
 module Smten.HaskellF.Compile.Type (
-    hsType, hsTopType, hsContext, hsClass
+    hsType, hsTypeBare, hsTopFunctionType, hsTopType, hsContext, hsClass
     ) where
 
 import qualified Language.Haskell.TH.Syntax as H
@@ -15,9 +15,14 @@ import Smten.Ppr
 import Smten.HaskellF.Compile.HF
 import Smten.HaskellF.Compile.Name
 
+hsTypeBare :: Type -> HF H.Type
+hsTypeBare = hsType' . canonical
+
 -- Convert a Smten type to a Haskell type.
 hsType :: Type -> HF H.Type
-hsType = hsType' . canonical
+hsType t = do
+    t' <- hsTypeBare t
+    return $ H.AppT (H.ConT (H.mkName "Smten.HaskellF.HaskellF.ExpHF")) t'
 
 -- Convert a Smten type in canonical form to a Haskell type.
 hsType' :: Type -> HF H.Type
@@ -26,7 +31,7 @@ hsType' t = do
     case t of
       _ | Just n <- lookup t retype -> return $ H.VarT (hsName n)
       (ConT n _)
-        | n == arrowN -> return $ H.ConT (H.mkName "Smten.HaskellF.HaskellF.Function")
+        | n == arrowN -> return $ H.ConT (H.mkName "Smten.HaskellF.HaskellF.T__Function")
         | otherwise -> return $ H.ConT (hsqTyName n)
       (AppT a b) -> do
         a' <- hsType' a
@@ -50,18 +55,28 @@ hsnt :: Integer -> H.Type
 hsnt 0 = H.ConT (H.mkName "Smten.HaskellF.Numeric.N__0")
 hsnt n = H.AppT (H.ConT (H.mkName $ "Smten.HaskellF.Numeric.N__2p" ++ show (n `mod` 2))) (hsnt $ n `div` 2)
 
-hsTopType :: Context -> Type -> HF H.Type
-hsTopType ctx t = do
-    (nctx, use) <- hsContext t
-    t' <- hsType t
+-- Given a list of Smten types [a, b, ..., x]
+-- Produce a haskell type corresponding to a haskell function of the form:
+--  ExpHF a -> ExpHF b -> ... -> ExpHF x
+hsTopFunctionType :: Context -> [Type] -> HF H.Type
+hsTopFunctionType ctx ts = do
+    (nctx, use) <- hsContext ts
+    ts' <- mapM hsType ts
     ctx' <- mapM hsClass ctx
+    let arrT :: H.Type -> H.Type -> H.Type
+        arrT a b = H.AppT (H.AppT H.ArrowT a) b
+    
+        t = foldr1 arrT ts'
     case nctx ++ ctx' of
-        [] -> return t'
-        ctx'' -> return $ H.ForallT (map (H.PlainTV . hsName) use) ctx'' t'
+        [] -> return t
+        ctx'' -> return $ H.ForallT (map (H.PlainTV . hsName) use) ctx'' t
+
+hsTopType :: Context -> Type -> HF H.Type
+hsTopType ctx t = hsTopFunctionType ctx [t]
 
 hsClass :: Class -> HF H.Pred
 hsClass (Class nm ts) = do
-    ts' <- mapM hsType ts
+    ts' <- mapM hsTypeBare ts
     return $ H.ClassP (hsqTyName nm) ts'
     
 -- Form the context for declarations.
@@ -74,7 +89,7 @@ hsContext t = do
   tyvars <- asks hfs_tyvars
   let p = flip notElem tyvars
       vts = filter (p . fst) $ (varTs t ++ [(n, NumK) | n <- retypes])
-      tvs = [H.ClassP (nmk "Smten.HaskellF.HaskellF.HaskellF" k) [H.VarT (hsName n)] | (n, k) <- vts]
+      tvs = [H.ClassP (nmk "Smten.Type.SmtenT" k) [H.VarT (hsName n)] | (n, k) <- vts]
   return (tvs, map fst vts)
 
 

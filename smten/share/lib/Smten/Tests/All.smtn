@@ -46,7 +46,7 @@ testall = do
     Smten.SMT.Tests.AllQ2.tests
     Smten.SMT.Tests.Isolate0.tests
     Smten.SMT.Tests.Sudoku.tests
-    --Smten.ModelChecking.Test.tests
+    Smten.ModelChecking.Test.tests
     Smten.Tests.Perf.tests
 
 main :: IO ()

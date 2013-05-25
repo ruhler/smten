@@ -78,7 +78,7 @@ hsDec (InstD _ ctx cls@(Class n ts) ms) = do
     local (\s -> s { hfs_tyvars = tyvars }) $ do
         ctx' <- mapM hsClass ctx
         ms' <- mapM (hsMethod cls) ms
-        ts' <- mapM hsType ts
+        ts' <- mapM hsTypeBare ts
         let t = foldl H.AppT (H.ConT (hsqTyName n)) ts'
         return [H.InstanceD (nctx ++ ctx') t (concat ms')] 
 

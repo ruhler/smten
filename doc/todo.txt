@@ -2,11 +2,6 @@ Recent::
 * Add support for (..) in import and export specifications
 * Add support for signatures in let declarations
 
-New HF Fixup::
-* array support in haskellf
-* concretization of haskellf stuff
-* support for DSEL?
-
 Haskell Features::
 * support for (..) in import and export specifications
 * newtype
@@ -19,13 +14,6 @@ Haskell Features::
 * sections.
 * Int type.
 * allow sigs and bodies to be separated.
-
-Concrete Performance::
-* Inline leaks memory for typemap and argmap
-* work with rsrsh/lcperf to improve
-** inline or specialize caseFOO functions?
-** manually inline caseFOO functions?
-** desugar list comprehension in a smarter way?
 
 Documentation::
 * Write a user guide
@@ -65,9 +53,6 @@ Error::
 * detect potential non-termination and perform appropriate abstraction and
   refinement.
 
-Primitives::
-* Concretize the rest of the haskellf primitives
-
 Cleanup::
 * Test convention: export 'tests' and in Tests.All, import qualified.
 * varTs should return a list of TyVar, not (Name, Kind)
@@ -75,8 +60,6 @@ Cleanup::
 * enforce in Parser that all class methods must have a signature?
 * Maybe avoid withloc everywhere in Grammar.y by pushing that to PatOrExp
   functions?
-* What's the difference between de_listHF and de_smtenHF for list?
-    Should there be a difference?
 
 SMT::
 * Remove bv-zero-extend from SMT syntax, use SMTLIB2 alternative
@@ -112,7 +95,6 @@ Known Bugs::
 * Yices1 left shift (in Bit)
 * precedence 2 bug (in Basic)
 * precedence 3 bug (in Basic)
-* HaskellF ModelChecking test
 
 Suspected Bugs::
 * Memory leaks of solvers
@@ -120,8 +102,6 @@ Suspected Bugs::
 * type synonyms are not qualified by their module
 * Does module import and export handle labelled update and construction
   properly?
-* haskellf doesn't do the module exports it should
-  If, for example, you want to interface with your haskell code
 * class names can't be qualified in instance declarations?
 * It's possible to use a symbolic thing in a different context than it was
   defined, in which case bad stuff will happen.
