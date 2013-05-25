@@ -10,19 +10,8 @@ deeprecursion = do
     putStrLn "Perf deep recursion test..."
     test "perf deep recursion" (and (replicate 400000 True))
 
--- Test performance of primitive integer operations.
-f :: Integer -> Integer
-f 0 = 1
-f n = n + f (n-1)
-
-intprim :: IO ()
-intprim = do
-    putStrLn "Perf int primitives test..."
-    test "perf integer primitives" (f 4000000 > 0)
-
 tests :: IO ()
 tests = do
     deeprecursion
-    --intprim
     putStrLn "Perf tests done"
 

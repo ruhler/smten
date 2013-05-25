@@ -113,7 +113,7 @@ proc hf {module} {
     set hsdir build/test
     hscomp $module
     hsghc $module
-    hrun ./$hsdir/[string map {. _} $module] +RTS -K1g
+    hrun ./$hsdir/[string map {. _} $module]
 }
 
 
