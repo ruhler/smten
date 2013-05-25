@@ -78,13 +78,16 @@ instance Show ExpH_Value where
 
 {-# NOINLINE idstore #-}
 idstore :: IORef Integer
-idstore = unsafeDupablePerformIO (newIORef 0)
-    
-exph :: Type -> ExpH_Value -> ExpH
-exph t v = unsafeDupablePerformIO $ do
+idstore = unsafePerformIO (newIORef 0)
+
+mkeid :: Type -> (EID, Type)
+mkeid t = unsafePerformIO $ do
    x <- readIORef idstore
    writeIORef idstore $! x + 1
-   return $ ExpH (EID x) t v
+   return $ (EID x, t)
+    
+exph :: Type -> ExpH_Value -> ExpH
+exph t v = ExpH (fst (mkeid t)) t v
 
 -- Return true if the given expression is simple.
 simple :: ExpH -> Bool

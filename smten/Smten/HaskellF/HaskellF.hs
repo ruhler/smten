@@ -71,11 +71,9 @@ applyHF f x =
 
 lamHF :: (HaskellF a, HaskellF b) => String -> (a -> b) -> Function a b
 lamHF n f =
-  let g :: ExpH -> ExpH
-      g x = unbox (f (box x))
-
-      r = box $ lamEH t (name n) g
-      t = smtenT r
+  let g = {-# SCC "lamHF.g" #-} \x -> unbox (f (box x))
+      r = {-# SCC "lamHF.r" #-} box $ lamEH t (name n) g
+      t = {-# SCC "lamHF.t" #-} smtenT r
   in r
 
 smtenHF :: (SmtenEH c, HaskellF f) => c -> f
