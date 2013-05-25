@@ -37,7 +37,7 @@ hsHeader modname =
   H.text "import qualified Smten.Name" H.$+$
   H.text "import qualified Smten.Type" H.$+$
   H.text "import qualified Smten.ExpH" H.$+$
-  H.text "import qualified Smten.HaskellF.Lib.Numeric" H.$+$
+  H.text "import qualified Smten.HaskellF.Numeric" H.$+$
   H.text "import qualified Smten.HaskellF.Lib.Prelude" H.$+$
   primimports modname
 
