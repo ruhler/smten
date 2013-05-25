@@ -2,7 +2,6 @@
 {-# LANGUAGE PatternGuards #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE TemplateHaskell #-}
-{-# OPTIONS_GHC -fprof-auto-top #-}
 
 module Smten.SMT.Primitives (
     return_symbolicP, fail_symbolicP, bind_symbolicP, nobind_symbolicP,
