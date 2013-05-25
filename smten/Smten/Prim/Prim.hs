@@ -2,36 +2,23 @@
 {-# LANGUAGE PatternGuards #-}
 
 module Smten.Prim.Prim (
-    Prim(),
-    primEH, lookupPrim,
-    nullaryP, nullaryTP, unaryP, unaryTP, binaryTP, binaryP,
+    Prim, nullaryP, nullaryTP, unaryP, unaryTP, binaryTP, binaryP,
     ) where
 
 import Control.Monad
 
-import qualified Smten.HashTable as HT
 import Smten.Name
 import Smten.Type
 import Smten.Sig
 import Smten.Ppr
 import Smten.ExpH
 
-data Prim = Prim {
-    p_name :: Name,
-    primEH :: Type -> ExpH
-}
-
-lookupPrim :: [Prim] -> Sig -> Maybe ExpH
-lookupPrim ps =
-  let m = HT.table [(n, f) | Prim n f <- ps]
-  in \(Sig n t) -> do
-    f <- HT.lookup n m
-    return (f t)
+type Prim = Type -> ExpH
 
 nullaryTP :: (SmtenEH a) => String -> (Type -> a) -> Prim
-nullaryTP n f = Prim (name n) (smtenEH . f)
+nullaryTP n f = smtenEH . f
 
-nullaryP :: (SmtenEH a) => String -> a -> Prim
+nullaryP :: (SmtenEH a) => String -> a -> Type -> ExpH
 nullaryP n x = nullaryTP n (const x)
 
 -- | Construct a unary primitve from a haskell function.
@@ -55,7 +42,7 @@ unaryTP n f =
         | Just (_, ot) <- de_arrowT t =
             lamEH t (name "a") $ \a -> impl ot [a]
         | otherwise = error $ "unaryTP.eh type: " ++ pretty t
-  in Prim nm eh
+  in eh
 
 unaryP :: (SmtenEH a, SmtenEH b) => String -> (a -> b) -> Prim
 unaryP n f = unaryTP n (const f)
@@ -88,7 +75,7 @@ binaryTP n f =
             lamEH t (name "a") $ \a ->
               lamEH bzt (name "b") $ \b -> impl ot [a, b]
         | otherwise = error $ "binaryTP.eh type: " ++ pretty t
-  in Prim nm eh
+  in eh
 
 binaryP :: (SmtenEH a, SmtenEH b, SmtenEH c) => String -> (a -> b -> c) -> Prim
 binaryP n f = binaryTP n (const f)

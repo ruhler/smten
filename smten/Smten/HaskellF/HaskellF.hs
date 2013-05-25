@@ -65,8 +65,8 @@ caseHF :: (SmtenT x, SmtenT y, SmtenT n)
 caseHF k x y n = box $ caseEH (smtenTHF n) (unbox x) (name k) (unbox y) (unbox n)
 
 primHF :: (SmtenT a) => Prim -> ExpHF a
-primHF p = 
- let z = box $ primEH p (smtenTHF z)
+primHF f =
+ let z = box $ f (smtenTHF z)
  in z
 
 mainHF :: (SmtenT a) => ExpHF a -> IO ()
