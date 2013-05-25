@@ -28,7 +28,7 @@ instance ConTs Dec where
       | ClassD _ ctx n _ ts <- d 
             = Set.unions $ [conTs ctx, Set.singleton n, conTs ts]
       | InstD _ ctx cls _ <- d = Set.unions [conTs ctx, conTs cls]
-      | PrimD _ t <- d = conTs t
+      | PrimD _ _ t <- d = conTs t
 
 instance ConTs Con where
     conTs (Con _ ts) = conTs ts

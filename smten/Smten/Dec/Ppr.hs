@@ -4,6 +4,7 @@
 
 module Smten.Dec.Ppr () where
 
+import Smten.Name
 import Smten.Ppr
 import Smten.Type
 import Smten.Dec.Dec
@@ -38,7 +39,8 @@ instance Ppr Dec where
                 <+> ppr cls
                 <+> text "where" <+> text "{"
                 $+$ nest tabwidth (vcat (map ppr ms)) $+$ text "}"
-    ppr (PrimD _ s) = ppr s
+    ppr (PrimD _ n s)
+        = text "foreign import hs" <+> text (show n) <+> ppr s
 
 instance Ppr TopSig where
     ppr (TopSig n ctx t)

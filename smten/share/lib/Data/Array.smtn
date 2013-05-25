@@ -9,8 +9,11 @@ import Data.List(sortBy)
 
 data PrimArray a = 
 
-primArray :: [a] -> PrimArray a
-primSelect :: PrimArray a -> Integer -> a
+foreign import hs "Smten.Prim.primArrayP"
+    primArray :: [a] -> PrimArray a
+
+foreign import hs "Smten.Prim.primSelectP"
+    primSelect :: PrimArray a -> Integer -> a
 
 data Array i e = MkArray (i, i) (PrimArray e)
 

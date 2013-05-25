@@ -2,10 +2,12 @@
 module Prelude where
 
 -- Return the integer value of a numeric type.
-valueof :: #n -> Integer
+foreign import hs "Smten.Prim.valueofP"
+    valueof :: #n -> Integer
 
 -- The single possible value for the given numeric type.
-numeric :: #n
+foreign import hs "Smten.Prim.numericP"
+    numeric :: #n
 
 class Eq a where
    (==) :: a -> a -> Bool
@@ -130,20 +132,29 @@ instance Monad Maybe where
 instance Eq () where
     (==) () () = True
 
-__prim_toInteger_Char :: Char -> Integer
-__prim_fromInteger_Char :: Integer -> Char
+foreign import hs "Smten.Prim.__prim_toInteger_CharP"
+    __prim_toInteger_Char :: Char -> Integer
+
+foreign import hs "Smten.Prim.__prim_fromInteger_CharP"
+    __prim_fromInteger_Char :: Integer -> Char
 
 instance Eq Char where
     (==) a b = __prim_toInteger_Char a == __prim_toInteger_Char b
 
-__prim_eq_Integer :: Integer -> Integer -> Bool
+foreign import hs "Smten.Prim.__prim_eq_IntegerP"
+    __prim_eq_Integer :: Integer -> Integer -> Bool
 
 instance Eq Integer where
     (==) = __prim_eq_Integer
 
-__prim_add_Integer :: Integer -> Integer -> Integer
-__prim_sub_Integer :: Integer -> Integer -> Integer
-__prim_mul_Integer :: Integer -> Integer -> Integer
+foreign import hs "Smten.Prim.__prim_add_IntegerP"
+    __prim_add_Integer :: Integer -> Integer -> Integer
+
+foreign import hs "Smten.Prim.__prim_sub_IntegerP"
+    __prim_sub_Integer :: Integer -> Integer -> Integer
+
+foreign import hs "Smten.Prim.__prim_mul_IntegerP"
+    __prim_mul_Integer :: Integer -> Integer -> Integer
 
 instance Num Integer where
   (+) = __prim_add_Integer
@@ -194,10 +205,17 @@ class (Eq a) => Ord a where
         | otherwise = y
 
 
-__prim_lt_Integer :: Integer -> Integer -> Bool
-__prim_gt_Integer :: Integer -> Integer -> Bool
-__prim_leq_Integer :: Integer -> Integer -> Bool
-__prim_geq_Integer :: Integer -> Integer -> Bool
+foreign import hs "Smten.Prim.__prim_lt_IntegerP"
+    __prim_lt_Integer :: Integer -> Integer -> Bool
+
+foreign import hs "Smten.Prim.__prim_gt_IntegerP"
+    __prim_gt_Integer :: Integer -> Integer -> Bool
+
+foreign import hs "Smten.Prim.__prim_leq_IntegerP"
+    __prim_leq_Integer :: Integer -> Integer -> Bool
+
+foreign import hs "Smten.Prim.__prim_geq_IntegerP"
+    __prim_geq_Integer :: Integer -> Integer -> Bool
 
 instance Ord Integer where
     (<) = __prim_lt_Integer
@@ -235,7 +253,8 @@ snd (_, y) = y
 curry :: ((a, b) -> c) -> a -> b -> c
 curry f a b = f (a, b)
 
-error :: String -> a
+foreign import hs "Smten.Prim.errorP"
+    error :: String -> a
 
 undefined :: a
 undefined = error "Prelude.undefined"
@@ -407,7 +426,8 @@ __show_helper2 [] = ""
 __show_helper2 [x] = x
 __show_helper2 (x:xs) = x ++ " " ++ __show_helper2 xs
 
-__prim_show_Integer :: Integer -> String
+foreign import hs "Smten.Prim.__prim_show_IntegerP"
+    __prim_show_Integer :: Integer -> String
 
 instance Show Integer where
     show = __prim_show_Integer
@@ -441,15 +461,19 @@ showListHelper (x:xs) = concat [show x, ", ", showListHelper xs]
 data IO a = 
 
 -- The IO monad primitives
-return_io :: a -> IO a
-bind_io :: IO a -> (a -> IO b) -> IO b
+foreign import hs "Smten.Prim.return_ioP" 
+    return_io :: a -> IO a
+
+foreign import hs "Smten.Prim.bind_ioP"
+    bind_io :: IO a -> (a -> IO b) -> IO b
 
 instance Monad IO where
   return = return_io
   (>>=) = bind_io
 
 -- Print a character to stdou.
-putChar :: Char -> IO ()
+foreign import hs "Smten.Prim.putCharP"
+    putChar :: Char -> IO ()
 
 -- Print a string to stdout.
 putStr :: String -> IO ()
@@ -462,7 +486,7 @@ putStrLn str = do
   putStr "\n"
 
 -- Read the contents of stdin.
-getContents :: IO String
+foreign import hs "Smten.Prim.getContentsP" getContents :: IO String
 
 type FilePath = String
 

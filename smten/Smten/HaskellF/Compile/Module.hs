@@ -6,6 +6,8 @@ module Smten.HaskellF.Compile.Module (
     ) where
 
 import Data.Functor((<$>))
+import Data.List(nub)
+import Data.Maybe(catMaybes)
 import qualified Language.Haskell.TH.PprLib as H
 import qualified Language.Haskell.TH.Ppr as H
 import qualified Language.Haskell.TH.Syntax as H
@@ -36,8 +38,6 @@ hsHeader modname =
   H.text "import qualified Smten.Name" H.$+$
   H.text "import qualified Smten.Type" H.$+$
   H.text "import qualified Smten.ExpH" H.$+$
-  H.text "import qualified Smten.Prim" H.$+$
-  H.text "import qualified Smten.SMT.Primitives as Smten.Prim" H.$+$
   H.text "import qualified Smten.HaskellF.HaskellF" H.$+$
   H.text "import qualified Smten.HaskellF.Numeric"
 
@@ -46,6 +46,20 @@ hsImport (Import fr _ _ _) = H.text $ "import qualified " ++ unname (hfpre fr)
 
 hsImports :: [Import] -> H.Doc
 hsImports = H.vcat . map hsImport
+
+
+primImports :: [Dec] -> H.Doc
+primImports ds =
+ let pi :: Dec -> Maybe String
+     pi (PrimD _ s _) = Just (unname (qualification (name s)))
+     pi _ = Nothing
+
+     impstrs = nub $ catMaybes (map pi ds)
+
+     todoc :: String -> H.Doc
+     todoc s = H.text "import qualified" H.<+> H.text s
+ in H.vcat (map todoc impstrs)
+
 
 hsDecls :: Env -> [Dec] -> Failable [H.Dec]
 hsDecls env ds = runHF env (concat <$> mapM hsDec ds)
@@ -58,6 +72,7 @@ hsModule env mod = do
                Just _ -> H.text "main__ = Smten.HaskellF.HaskellF.mainHF main"
                Nothing -> H.empty
       imports = hsImports (mod_imports mod)
+      primports = primImports (mod_decs mod)
   hdecls <- hsDecls env (mod_decs mod)
-  return (header H.$+$ imports H.$+$ H.ppr hdecls H.$+$ main)
+  return (header H.$+$ primports H.$+$ imports H.$+$ H.ppr hdecls H.$+$ main)
 

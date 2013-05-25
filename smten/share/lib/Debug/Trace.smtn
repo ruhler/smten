@@ -1,9 +1,11 @@
 
 module Debug.Trace where
 
-trace :: String -> a -> a
+foreign import hs "Smten.Prim.traceP"
+    trace :: String -> a -> a
 
 -- Pretty prints the smten expression for first argument to stderr, returns the
 -- second argument.
-traceE :: a -> b -> b
+foreign import hs "Smten.Prim.traceEP"
+    traceE :: a -> b -> b
 

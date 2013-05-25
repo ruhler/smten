@@ -101,6 +101,8 @@ data Token =
      | TokenDo
      | TokenModule
      | TokenImport
+     | TokenForeign
+     | TokenHs
      | TokenQualified
      | TokenAs
      | TokenHiding

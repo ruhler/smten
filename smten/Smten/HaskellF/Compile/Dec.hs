@@ -82,11 +82,11 @@ hsDec (InstD _ ctx cls@(Class n ts) ms) = do
         let t = foldl H.AppT (H.ConT (hsqTyName n)) ts'
         return [H.InstanceD (nctx ++ ctx') t (concat ms')] 
 
-hsDec (PrimD _ s@(TopSig n ctx t)) = do
+hsDec (PrimD _ hsnm s@(TopSig n ctx t)) = do
  local (\s -> s { hfs_retype = mkretype (canonical t)}) $ do
      t' <- hsTopType ctx t
      let e = H.AppE (H.VarE (H.mkName "Smten.HaskellF.HaskellF.primHF"))
-                    (H.VarE (H.mkName ("Smten.Prim." ++ unname (unqualified n) ++ "P")))
+                    (H.VarE (H.mkName hsnm))
          hsn = hsName n
          sig = H.SigD hsn t'
          val = H.FunD hsn [H.Clause [] (H.NormalB e) []]

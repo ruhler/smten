@@ -21,7 +21,8 @@ data PDec =
     PDec Dec
   | PDataDec DataDec
   | PSig Location TopSig
-  | PClause Name MAlt
+  | PForeign Location String TopSig
+  | PClause Location Name MAlt
   | PSynonym Synonym
   | PDeriving Deriving
     deriving (Show)
@@ -41,28 +42,32 @@ isCClause :: CDec -> Bool
 isCClause (CClause {}) = True
 isCClause _ = False
 
-coalesce :: [PDec] -> ([Synonym], [DataDec], [Deriving], [Dec])
-coalesce [] = ([], [], [], [])
-coalesce ((PSig l s):ds) =
+coalesce :: [PDec] -> ParserMonad ([Synonym], [DataDec], [Deriving], [Dec])
+coalesce [] = return ([], [], [], [])
+coalesce ((PSig l s):ds) = do
     let (ms, rds) = span isPClause ds
-        (syns, dds, drv, rest) = coalesce rds
-        d = case ms of
-                [] -> PrimD l s
-                _ -> ValD l (TopExp s (clauseE l [c | PClause _ c <- ms]))
-    in (syns, dds, drv, d:rest)
-coalesce ((PDec d):ds) =
-   let (syns, dds, drv, rest) = coalesce ds
-   in (syns, dds, drv, d:rest)
-coalesce ((PDataDec dd):ds) = 
-   let (syns, rest, drv, d) = coalesce ds
-   in (syns, dd:rest, drv, d)
-coalesce ((PSynonym s):ds) =
-   let (syns, dds, drv, rest) = coalesce ds
-   in (s:syns, dds, drv, rest)
-coalesce ((PDeriving d):ds) =
-   let (syns, dds, drv, rest) = coalesce ds
-   in (syns, dds, d:drv, rest)
-coalesce (p@(PClause {}) : ds) = error $ "coalesce: TODO: handle unexpected PClause: " ++ show p
+    (syns, dds, drv, rest) <- coalesce rds
+    d <- case ms of
+           [] -> throw $ lmsg l "signature without accompanying binding"
+           _ -> return $ ValD l (TopExp s (clauseE l [c | PClause _ _ c <- ms]))
+    return (syns, dds, drv, d:rest)
+coalesce ((PForeign l n s):ds) = do
+   (syns, dds, drv, rest) <- coalesce ds
+   return (syns, dds, drv, (PrimD l n s) : rest)
+coalesce ((PDec d):ds) = do
+   (syns, dds, drv, rest) <- coalesce ds
+   return (syns, dds, drv, d:rest)
+coalesce ((PDataDec dd):ds) = do
+   (syns, rest, drv, d) <- coalesce ds
+   return (syns, dd:rest, drv, d)
+coalesce ((PSynonym s):ds) = do
+   (syns, dds, drv, rest) <- coalesce ds
+   return (s:syns, dds, drv, rest)
+coalesce ((PDeriving d):ds) = do
+   (syns, dds, drv, rest) <- coalesce ds
+   return (syns, dds, d:drv, rest)
+coalesce ((PClause l n _) : ds) = do
+   throw $ lmsg l $ "no type signature given for " ++ unname n
 
 
 -- Merge clauses for the same method into a single method.

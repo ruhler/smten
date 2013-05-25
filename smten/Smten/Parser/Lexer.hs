@@ -130,6 +130,8 @@ keywords = [
     ("do", TokenDo),
     ("module", TokenModule),
     ("import", TokenImport),
+    ("foreign", TokenForeign),
+    ("hs", TokenHs),
     ("qualified", TokenQualified),
     ("as", TokenAs),
     ("hiding", TokenHiding),

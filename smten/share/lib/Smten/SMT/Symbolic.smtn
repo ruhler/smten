@@ -11,9 +11,14 @@ data Used a =
 data Symbolic a =
 
 -- Built in symbolic things:
-__prim_free_Bool :: Symbolic Bool
-__prim_free_Integer :: Symbolic Integer
-__prim_free_Bit :: Symbolic (Bit #n)
+foreign import hs "Smten.SMT.Primitives.__prim_free_BoolP"
+    __prim_free_Bool :: Symbolic Bool
+
+foreign import hs "Smten.SMT.Primitives.__prim_free_IntegerP"
+    __prim_free_Integer :: Symbolic Integer
+
+foreign import hs "Smten.SMT.Primitives.__prim_free_BitP"
+    __prim_free_Bit :: Symbolic (Bit #n)
 
 class Free a where
     free :: Symbolic a
@@ -46,14 +51,24 @@ instance (Free a, Free b, Free c) => Free (a, b, c) where
 deriving instance (Free a) => Free (Maybe a)
 deriving instance Free Ordering
 
-assert :: Bool -> Symbolic ()
-used :: Used a -> Symbolic a
+foreign import hs "Smten.SMT.Primitives.assertP"
+    assert :: Bool -> Symbolic ()
+
+foreign import hs "Smten.SMT.Primitives.usedP"
+    used :: Used a -> Symbolic a
 
 -- The Symbolic monad primitives
-return_symbolic :: a -> Symbolic a
-nobind_symbolic :: Symbolic a -> Symbolic b -> Symbolic b
-bind_symbolic :: Symbolic a -> (a -> Symbolic b) -> Symbolic b
-fail_symbolic :: String -> Symbolic a
+foreign import hs "Smten.SMT.Primitives.return_symbolicP"
+    return_symbolic :: a -> Symbolic a
+
+foreign import hs "Smten.SMT.Primitives.nobind_symbolicP"
+    nobind_symbolic :: Symbolic a -> Symbolic b -> Symbolic b
+
+foreign import hs "Smten.SMT.Primitives.bind_symbolicP"
+    bind_symbolic :: Symbolic a -> (a -> Symbolic b) -> Symbolic b
+
+foreign import hs "Smten.SMT.Primitives.fail_symbolicP"
+    fail_symbolic :: String -> Symbolic a
 
 instance Monad Symbolic where
   return = return_symbolic
@@ -64,7 +79,8 @@ instance Monad Symbolic where
 -- Primitive SMT monad
 data SMT a = 
 
-query_Used :: Used a -> SMT (Maybe a)
+foreign import hs "Smten.SMT.Primitives.query_UsedP"
+    query_Used :: Used a -> SMT (Maybe a)
 
 -- Ask the SMT solver for a concrete value contained in the given symbolic
 -- expression.
@@ -73,18 +89,27 @@ query :: Symbolic a -> SMT (Maybe a)
 query s = nest (use s >>= query_Used)
 
 -- Run an SMT computation without changing the current SMT context.
-nest :: SMT a -> SMT a
+foreign import hs "Smten.SMT.Primitives.nestP"
+    nest :: SMT a -> SMT a
 
 -- Commit the given symbolic computation to the current SMT context.
 -- Returns a reference to the result of the symbolic computation in the SMT
 -- context.
-use :: Symbolic a -> SMT (Used a)
+foreign import hs "Smten.SMT.Primitives.useP"
+    use :: Symbolic a -> SMT (Used a)
 
 -- The SMT monad primitives
-return_smt :: a -> SMT a
-nobind_smt :: SMT a -> SMT b -> SMT b
-bind_smt :: SMT a -> (a -> SMT b) -> SMT b
-fail_smt :: String -> SMT a
+foreign import hs "Smten.SMT.Primitives.return_smtP"
+    return_smt :: a -> SMT a
+
+foreign import hs "Smten.SMT.Primitives.nobind_smtP"
+    nobind_smt :: SMT a -> SMT b -> SMT b
+
+foreign import hs "Smten.SMT.Primitives.bind_smtP"
+    bind_smt :: SMT a -> (a -> SMT b) -> SMT b
+
+foreign import hs "Smten.SMT.Primitives.fail_smtP"
+    fail_smt :: String -> SMT a
 
 instance Monad SMT where
   return = return_smt
@@ -93,7 +118,8 @@ instance Monad SMT where
   fail = fail_smt
 
 
-liftIO_SMT :: IO a -> SMT a
+foreign import hs "Smten.SMT.Primitives.liftIO_SMTP"
+    liftIO_SMT :: IO a -> SMT a
 
 instance MonadIO SMT where
     liftIO = liftIO_SMT
@@ -103,7 +129,8 @@ data Solver = Yices1 | Yices2 | STP
             | DebugLL FilePath Solver
     deriving (Eq, Show)
 
-runSMT :: Solver -> SMT a -> IO a
+foreign import hs "Smten.SMT.Primitives.runSMTP"
+    runSMT :: Solver -> SMT a -> IO a
 
 -- Run symbolic directly in IO. Uses its own SMT context.
 runSymbolic :: Solver -> Symbolic a -> IO (Maybe a)

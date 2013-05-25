@@ -121,7 +121,7 @@ vitable decs =
 
       videc :: Dec -> [(Name, ValInfo)]
       videc d@(ValD _ (TopExp (TopSig n _ _) _)) = [(n, DecVI d)]
-      videc d@(PrimD _ (TopSig n _ _)) = [(n, DecVI d)]
+      videc d@(PrimD _ _ (TopSig n _ _)) = [(n, DecVI d)]
       videc (ClassD _ _ cn ts sigs) =  
         let iexp :: TopExp -> (Name, ValInfo)
             iexp (TopExp (TopSig n ctx t) e) = (n, ClassVI cn ts ctx t e (fromMaybe [] (Map.lookup n methods)))
@@ -255,7 +255,7 @@ lookupVarType :: (MonadErrorSL m) => Env -> Name -> m Type
 lookupVarType env n = do
   case HT.lookup n (e_vitable env) of
     Just (DecVI (ValD _ (TopExp (TopSig _ _ t) _))) -> return t
-    Just (DecVI (PrimD _ (TopSig _ _ t))) -> return t
+    Just (DecVI (PrimD _ _ (TopSig _ _ t))) -> return t
     Just (ClassVI _ _ _ t _ _) -> return t
     Nothing -> lthrow $ "lookupVarType: '" ++ pretty n ++ "' not found"
 
@@ -304,7 +304,7 @@ lookupVarContext env (Sig n t) =
   case HT.lookup n (e_vitable env) of
      Just (DecVI (ValD _ (TopExp (TopSig _ ctx st) _))) ->
         return $ assign (assignments st t) ctx
-     Just (DecVI (PrimD _ (TopSig _ ctx st))) ->
+     Just (DecVI (PrimD _ _ (TopSig _ ctx st))) ->
         return $ assign (assignments st t) ctx
      Just (ClassVI cn cts ctx st _ _) ->
         return $ assign (assignments st t) (Class cn (map tyVarType cts) : ctx)

@@ -122,6 +122,8 @@ import Smten.Parser.Utils
        'do'     { TokenDo }
        'module' { TokenModule }
        'import' { TokenImport }
+       'foreign' { TokenForeign }
+       'hs' { TokenHs }
        'qualified' { TokenQualified }
        'as' { TokenAs }
        'hiding' { TokenHiding }
@@ -166,13 +168,15 @@ export :: { Export }
 
 mbody :: { ([Import], [Synonym], [DataDec], [Deriving], [Dec]) }
  : '{' impdecls ';' topdecls opt(';') close
-    { let (syns, dds, drv, ds) = coalesce $4
-      in ($2, syns, dds, drv, ds) }
+    {% do
+        (syns, dds, drv, ds) <- coalesce $4
+        return ($2, syns, dds, drv, ds) }
  | '{' impdecls opt(';') close
     { ($2, [], [], [], []) }
  | '{' topdecls opt(';') close
-    { let (syns, dds, drv, ds) = coalesce $2
-      in ([], syns, dds, drv, ds) }
+    {% do
+        (syns, dds, drv, ds) <- coalesce $2
+        return ([], syns, dds, drv, ds) }
 
 impdecls :: { [Import] }
  : impdecl 
@@ -227,6 +231,8 @@ topdecl :: { [PDec] }
     {% withloc $ \l -> [PDeriving (Deriving l [] $3)] }
  | 'deriving' 'instance' context class
     {% withloc $ \l -> [PDeriving (Deriving l $3 $4)] }
+ | 'foreign' 'import' 'hs' string gendecl
+    {% withloc $ \l -> [PForeign l $4 $5] }
  | decl
     { [$1] }
 
@@ -236,9 +242,9 @@ deriving :: { [Name] }
 
 decl :: { PDec }
  : gendecl
-    {% withloc $ \l ->  PSig l $1 }
+    {% withloc $ \l -> PSig l $1 }
  | funlhs rhs
-    { PClause (fst $1) (MAlt (snd $1) $2) }
+    {% withloc $ \l -> PClause l (fst $1) (MAlt (snd $1) $2) }
 
 cdecls :: { [CDec] }
  : cdecl
@@ -560,6 +566,7 @@ varid :: { Name }
  | 'qualified' { name "qualified" }
  | 'as' { name "as" }
  | 'hiding' { name "hiding" }
+ | 'hs' { name "hs" }
 
 var :: { Name }
  : varid

@@ -139,9 +139,9 @@ instance Qualify Dec where
         meths' <- mapM qualifyM meths
         return (InstD l ctx' cls' meths')
 
-    qualifyM (PrimD l ts) = withloc l $ do
+    qualifyM (PrimD l n ts) = withloc l $ do
         ts' <- qualifyM ts
-        return (PrimD l ts')
+        return (PrimD l n ts')
 
 instance Qualify Type where
     qualifyM t = do

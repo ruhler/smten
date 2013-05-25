@@ -68,7 +68,7 @@ locals mn = do
           exdec (DataD _ nm _ cs) = tell [unqualified nm] >> mapM_ excon cs
           exdec (ClassD _ _ nm _ sigs) = tell [unqualified nm] >> mapM_ exmeth sigs
           exdec (InstD {}) = return ()
-          exdec (PrimD _ (TopSig nm _ _)) = tell [unqualified nm]
+          exdec (PrimD _ _ (TopSig nm _ _)) = tell [unqualified nm]
 
           exmeth :: TopExp -> Writer [Name] ()
           exmeth (TopExp (TopSig snm _ _) _) = tell [unqualified snm]

@@ -5,26 +5,65 @@ import Data.Ix
 
 data Bit #n =
 
-__prim_eq_Bit :: Bit #n -> Bit #n -> Bool
-__prim_lt_Bit :: Bit #n -> Bit #n -> Bool
-__prim_leq_Bit :: Bit #n -> Bit #n -> Bool
-__prim_gt_Bit :: Bit #n -> Bit #n -> Bool
-__prim_geq_Bit :: Bit #n -> Bit #n -> Bool
-__prim_add_Bit :: Bit #n -> Bit #n -> Bit #n
-__prim_sub_Bit :: Bit #n -> Bit #n -> Bit #n
-__prim_mul_Bit :: Bit #n -> Bit #n -> Bit #n
-__prim_show_Bit :: Bit #n -> String
-__prim_fromInteger_Bit :: Integer -> Bit #n
-__prim_toInteger_Bit :: Bit #n -> Integer
-__prim_zeroExtend_Bit :: Bit #n -> Bit #m
-__prim_signExtend_Bit :: Bit #n -> Bit #m
-__prim_or_Bit :: Bit #n -> Bit #n -> Bit #n
-__prim_and_Bit :: Bit #n -> Bit #n -> Bit #n
-__prim_shl_Bit :: Bit #n -> Bit #n -> Bit #n
-__prim_lshr_Bit :: Bit #n -> Bit #n -> Bit #n
-__prim_not_Bit :: Bit #n -> Bit #n
-__prim_extract_Bit :: Bit #n -> Integer -> Bit #m
-__prim_concat_Bit :: Bit #n -> Bit #m -> Bit #(n+m)
+foreign import hs "Smten.Prim.__prim_eq_BitP"
+    __prim_eq_Bit :: Bit #n -> Bit #n -> Bool
+
+foreign import hs "Smten.Prim.__prim_lt_BitP"
+    __prim_lt_Bit :: Bit #n -> Bit #n -> Bool
+
+foreign import hs "Smten.Prim.__prim_leq_BitP"
+    __prim_leq_Bit :: Bit #n -> Bit #n -> Bool
+
+foreign import hs "Smten.Prim.__prim_gt_BitP"
+    __prim_gt_Bit :: Bit #n -> Bit #n -> Bool
+
+foreign import hs "Smten.Prim.__prim_geq_BitP"
+    __prim_geq_Bit :: Bit #n -> Bit #n -> Bool
+
+foreign import hs "Smten.Prim.__prim_add_BitP"
+    __prim_add_Bit :: Bit #n -> Bit #n -> Bit #n
+
+foreign import hs "Smten.Prim.__prim_sub_BitP"
+    __prim_sub_Bit :: Bit #n -> Bit #n -> Bit #n
+
+foreign import hs "Smten.Prim.__prim_mul_BitP"
+    __prim_mul_Bit :: Bit #n -> Bit #n -> Bit #n
+
+foreign import hs "Smten.Prim.__prim_show_BitP"
+    __prim_show_Bit :: Bit #n -> String
+
+foreign import hs "Smten.Prim.__prim_fromInteger_BitP"
+    __prim_fromInteger_Bit :: Integer -> Bit #n
+
+foreign import hs "Smten.Prim.__prim_toInteger_BitP"
+    __prim_toInteger_Bit :: Bit #n -> Integer
+
+foreign import hs "Smten.Prim.__prim_zeroExtend_BitP"
+    __prim_zeroExtend_Bit :: Bit #n -> Bit #m
+
+foreign import hs "Smten.Prim.__prim_signExtend_BitP"
+    __prim_signExtend_Bit :: Bit #n -> Bit #m
+
+foreign import hs "Smten.Prim.__prim_or_BitP"
+    __prim_or_Bit :: Bit #n -> Bit #n -> Bit #n
+
+foreign import hs "Smten.Prim.__prim_and_BitP"
+    __prim_and_Bit :: Bit #n -> Bit #n -> Bit #n
+
+foreign import hs "Smten.Prim.__prim_shl_BitP"
+    __prim_shl_Bit :: Bit #n -> Bit #n -> Bit #n
+
+foreign import hs "Smten.Prim.__prim_lshr_BitP"
+    __prim_lshr_Bit :: Bit #n -> Bit #n -> Bit #n
+
+foreign import hs "Smten.Prim.__prim_not_BitP"
+    __prim_not_Bit :: Bit #n -> Bit #n
+
+foreign import hs "Smten.Prim.__prim_extract_BitP"
+    __prim_extract_Bit :: Bit #n -> Integer -> Bit #m
+
+foreign import hs "Smten.Prim.__prim_concat_BitP"
+    __prim_concat_Bit :: Bit #n -> Bit #m -> Bit #(n+m)
 
 
 instance Eq (Bit #n) where

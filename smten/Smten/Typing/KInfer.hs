@@ -130,7 +130,7 @@ instance Deunknown Dec where
             ctx' <- deunknown ctx
             cls' <- deunknown cls
             return $ InstD l ctx' cls' ms
-      | PrimD l t <- d = PrimD l <$> deunknown t
+      | PrimD l n t <- d = PrimD l n <$> deunknown t
 
 instance (Deunknown a) => Deunknown [a] where
     deunknown = mapM deunknown
@@ -231,7 +231,7 @@ instance Constrain Dec where
           withtcs (Map.fromList vs) $ do
               constrain ctx
               constrain cls
-      | PrimD _ t <- d = constrain t
+      | PrimD _ _ t <- d = constrain t
         
            
 
