@@ -74,10 +74,10 @@ hfnm n
 -- HaskellF data constructor name.
 hfqnm :: Name -> String
 hfqnm n
- | Just i <- de_tupleN n = "Smten.HaskellF.Lib.Prelude.Tuple" ++ show i ++ "__"
- | n == unitN = "Smten.HaskellF.Lib.Prelude.Unit__"
- | n == consN = "Smten.HaskellF.Lib.Prelude.Cons__"
- | n == nilN = "Smten.HaskellF.Lib.Prelude.Nil__"
+ | Just i <- de_tupleN n = "Smten.Lib.Prelude.Tuple" ++ show i ++ "__"
+ | n == unitN = "Smten.Lib.Prelude.Unit__"
+ | n == consN = "Smten.Lib.Prelude.Cons__"
+ | n == nilN = "Smten.Lib.Prelude.Nil__"
  | isqualified n = unname (hfpre n)
  | otherwise = unname n
 
@@ -94,11 +94,11 @@ hftynm n
 -- HaskellF type constructor name.
 hfqtynm :: Name -> String
 hfqtynm n
- | n == unitN = "Smten.HaskellF.Lib.Prelude.Unit__"
- | n == boolN = "Smten.HaskellF.Lib.Prelude.Bool"
- | n == maybeN = "Smten.HaskellF.Lib.Prelude.Maybe"
- | Just x <- de_tupleN n = "Smten.HaskellF.Lib.Prelude.Tuple" ++ show x ++ "__"
- | n == nilN = "Smten.HaskellF.Lib.Prelude.List__"
+ | n == unitN = "Smten.Lib.Prelude.Unit__"
+ | n == boolN = "Smten.Lib.Prelude.Bool"
+ | n == maybeN = "Smten.Lib.Prelude.Maybe"
+ | Just x <- de_tupleN n = "Smten.Lib.Prelude.Tuple" ++ show x ++ "__"
+ | n == nilN = "Smten.Lib.Prelude.List__"
  | otherwise = unname (qualified (name "Smten.Lib") n)
 
 -- Given the name of a data constructor, return the unqualified name of the

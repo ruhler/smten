@@ -5,12 +5,11 @@
 {-# OPTIONS_GHC -fprof-auto-top #-}
 
 module Smten.SMT.Primitives (
-    smtPs,
-    return_SymbolicP, fail_SymbolicP, bind_SymbolicP, nobind_SymbolicP,
+    return_symbolicP, fail_symbolicP, bind_symbolicP, nobind_symbolicP,
     return_smtP, fail_smtP, bind_smtP, nobind_smtP,
     __prim_free_IntegerP, __prim_free_BoolP, __prim_free_BitP,
     assertP, usedP, query_UsedP, nestP, useP,
-    runSMTP, liftIO_smtP,
+    runSMTP, liftIO_SMTP,
     ) where
 
 import Control.Monad.IO.Class
@@ -92,15 +91,6 @@ instance (SmtenEH a) => SmtenEH (SMT a) where
         q <- de_smtEH e
         return $ fromMaybe (error "de_smtenEH SMT") . de_smtenEH <$> q
 
-smtPs :: [Prim]
-smtPs = [
-    return_SymbolicP, fail_SymbolicP, bind_SymbolicP, nobind_SymbolicP,
-    return_smtP, fail_smtP, bind_smtP, nobind_smtP,
-    __prim_free_IntegerP, __prim_free_BoolP, __prim_free_BitP,
-    assertP, query_UsedP, usedP, nestP, useP,
-    runSMTP, liftIO_smtP
-    ]
-
 return_smtP :: Prim
 return_smtP = unaryP "Smten.SMT.Symbolic.return_smt" (return :: ExpH -> SMT ExpH)
 
@@ -113,17 +103,17 @@ bind_smtP = binaryP "Smten.SMT.Symbolic.bind_smt" ((>>=) :: SMT ExpH -> (ExpH ->
 nobind_smtP :: Prim
 nobind_smtP = binaryP "Smten.SMT.Symbolic.nobind_smt" ((>>) :: SMT ExpH -> SMT ExpH -> SMT ExpH)
 
-return_SymbolicP :: Prim
-return_SymbolicP = unaryP "Smten.SMT.Symbolic.return_symbolic" (return :: ExpH -> Symbolic ExpH)
+return_symbolicP :: Prim
+return_symbolicP = unaryP "Smten.SMT.Symbolic.return_symbolic" (return :: ExpH -> Symbolic ExpH)
 
-fail_SymbolicP :: Prim
-fail_SymbolicP = unaryP "Smten.SMT.Symbolic.fail_symbolic" (fail :: String -> Symbolic ExpH)
+fail_symbolicP :: Prim
+fail_symbolicP = unaryP "Smten.SMT.Symbolic.fail_symbolic" (fail :: String -> Symbolic ExpH)
 
-bind_SymbolicP :: Prim
-bind_SymbolicP = binaryP "Smten.SMT.Symbolic.bind_symbolic" ((>>=) :: Symbolic ExpH -> (ExpH -> Symbolic ExpH) -> Symbolic ExpH)
+bind_symbolicP :: Prim
+bind_symbolicP = binaryP "Smten.SMT.Symbolic.bind_symbolic" ((>>=) :: Symbolic ExpH -> (ExpH -> Symbolic ExpH) -> Symbolic ExpH)
 
-nobind_SymbolicP :: Prim
-nobind_SymbolicP = binaryP "Smten.SMT.Symbolic.nobind_symbolic" ((>>) :: Symbolic ExpH -> Symbolic ExpH -> Symbolic ExpH)
+nobind_symbolicP :: Prim
+nobind_symbolicP = binaryP "Smten.SMT.Symbolic.nobind_symbolic" ((>>) :: Symbolic ExpH -> Symbolic ExpH -> Symbolic ExpH)
 
 free_helper :: Type -> Symbolic ExpH
 free_helper t 
@@ -173,7 +163,7 @@ runSMTP =
         runSMT s q
   in binaryP "Smten.SMT.Symbolic.runSMT" f
 
-liftIO_smtP :: Prim
-liftIO_smtP = unaryP "Smten.SMT.Symbolic.liftIO_SMT" (liftIO :: IO ExpH -> SMT ExpH)
+liftIO_SMTP :: Prim
+liftIO_SMTP = unaryP "Smten.SMT.Symbolic.liftIO_SMT" (liftIO :: IO ExpH -> SMT ExpH)
     
 

@@ -17,7 +17,7 @@ import Smten.HaskellF.Compile.Type
 
 hsLit :: Lit -> H.Exp
 hsLit l
- | Just i <- de_integerL l = H.LitE (H.IntegerL i)
+ | Just i <- de_integerL l = H.AppE (H.VarE (H.mkName "Smten.HaskellF.HaskellF.integerHF")) (H.LitE (H.IntegerL i))
  | Just c <- de_charL l = H.AppE (H.VarE (H.mkName "Smten.HaskellF.HaskellF.smtenHF")) (H.LitE (H.CharL c))
 
 hsExp :: Exp -> HF H.Exp

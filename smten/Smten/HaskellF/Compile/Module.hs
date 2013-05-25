@@ -33,28 +33,13 @@ hsHeader modname =
   H.text ("module " ++ unname modname
             ++ "(module " ++ unname modname ++ ") where") H.$+$
   H.text "import qualified Prelude" H.$+$
-  H.text "import qualified Smten.HaskellF.HaskellF" H.$+$
   H.text "import qualified Smten.Name" H.$+$
   H.text "import qualified Smten.Type" H.$+$
   H.text "import qualified Smten.ExpH" H.$+$
-  H.text "import qualified Smten.HaskellF.Numeric" H.$+$
-  H.text "import qualified Smten.HaskellF.Lib.Prelude" H.$+$
-  primimports modname
-
-primimports :: Name -> H.Doc
-primimports n
-  | n == name "Smten.Lib.Prelude"
-      = H.text "import qualified Smten.HaskellF.Lib.Prelude" H.$+$
-        H.text "import Smten.HaskellF.Lib.Prelude as Smten.Lib.Prelude"
-  | n == name "Smten.Lib.Debug.Trace"
-      = H.text "import Smten.HaskellF.Lib.Trace as Smten.Lib.Debug.Trace"
-  | n == name "Smten.Lib.Smten.Bit"
-      = H.text "import Smten.HaskellF.Lib.Bit as Smten.Lib.Smten.Bit"
-  | n == name "Smten.Lib.Data.Array"
-      = H.text "import Smten.HaskellF.Lib.Array as Smten.Lib.Data.Array"
-  | n == name "Smten.Lib.Smten.SMT.Symbolic"
-      = H.text "import Smten.HaskellF.Lib.Symbolic as Smten.Lib.Smten.SMT.Symbolic"
-  | otherwise = H.empty
+  H.text "import qualified Smten.Prim" H.$+$
+  H.text "import qualified Smten.SMT.Primitives as Smten.Prim" H.$+$
+  H.text "import qualified Smten.HaskellF.HaskellF" H.$+$
+  H.text "import qualified Smten.HaskellF.Numeric"
 
 hsImport :: Import -> H.Doc
 hsImport (Import fr _ _ _) = H.text $ "import qualified " ++ unname (hfpre fr)
@@ -70,7 +55,7 @@ hsModule env mod = do
   let header = hsHeader (hfpre $ mod_name mod)
       mn = mod_name mod
       main = case attemptM $ lookupValD env (qualified mn (name "main")) of
-               Just _ -> H.text "main__ = Smten.HaskellF.Lib.Prelude.__main_wrapper main"
+               Just _ -> H.text "main__ = Smten.HaskellF.HaskellF.mainHF main"
                Nothing -> H.empty
       imports = hsImports (mod_imports mod)
   hdecls <- hsDecls env (mod_decs mod)

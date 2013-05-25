@@ -6,7 +6,7 @@
 module Smten.HaskellF.HaskellF (
     HaskellF(..), HaskellF1(..), HaskellF2(..), HaskellF3(..), HaskellF4(..),
     Function(..), lamHF, applyHF,
-    conHF, conHF', de_conHF, caseHF, primHF,
+    conHF, conHF', de_conHF, caseHF, primHF, mainHF, integerHF,
     smtenHF, de_smtenHF,
     ) where
 
@@ -101,4 +101,13 @@ primHF :: (HaskellF a) => Prim -> a
 primHF p = 
  let z = box $ primEH p (smtenT z)
  in z
+
+mainHF :: (HaskellF a) => a -> IO ()
+mainHF x
+  | Just v <- de_ioEH (unbox x) = v >> return ()
+  | otherwise = error "mainHF: main failed to compute"
+
+
+integerHF :: (HaskellF a) => Integer -> a
+integerHF = smtenHF
 

@@ -95,10 +95,6 @@ library
 
     Smten.HaskellF.HaskellF
     Smten.HaskellF.Numeric
-    Smten.HaskellF.Lib.Prelude
-    Smten.HaskellF.Lib.Bit
-    Smten.HaskellF.Lib.Array
-    Smten.HaskellF.Lib.Trace
     Smten.HaskellF.TH
 
     Smten.Module

@@ -23,29 +23,29 @@ hsMethod cls (Method n e) = do
     mctx <- lookupMethodContext env n cls
     hsTopExp (TopExp (TopSig n mctx mt) e)
 
+mkretype :: Type -> [(Type, Name)]
+mkretype t
+   | OpT {} <- t = [(t, retypenm t)]
+   | AppT a b <- t = mkretype a ++ mkretype b
+   | otherwise = []
+
+retypenm :: Type -> Name
+retypenm t
+   | VarT n _ <- t = n
+   | OpT o a b <- t =
+       let an = retypenm a 
+           bn = retypenm b
+           opn = case o of
+                   "+" -> "_plus_"
+                   "-" -> "_minus_"
+                   "*" -> "_times_"
+       in an `nappend` name opn `nappend` bn
+   | NumT i <- t = name ("_" ++ show i)
+   | otherwise = error "unexpected type in HaskellF.Compile.retypenm"
+
 
 hsTopExp :: TopExp -> HF [H.Dec]
-hsTopExp (TopExp (TopSig n ctx t) e) = do
- let mkretype :: Type -> [(Type, Name)]
-     mkretype t
-        | OpT {} <- t = [(t, retypenm t)]
-        | AppT a b <- t = mkretype a ++ mkretype b
-        | otherwise = []
-    
-     retypenm :: Type -> Name
-     retypenm t
-        | VarT n _ <- t = n
-        | OpT o a b <- t =
-            let an = retypenm a 
-                bn = retypenm b
-                opn = case o of
-                        "+" -> "_plus_"
-                        "-" -> "_minus_"
-                        "*" -> "_times_"
-            in an `nappend` name opn `nappend` bn
-        | NumT i <- t = name ("_" ++ show i)
-        | otherwise = error "unexpected type in HaskellF.Compile.retypenm"
-
+hsTopExp (TopExp (TopSig n ctx t) e) = 
  local (\s -> s { hfs_retype = mkretype (canonical t)}) $ do
      t' <- hsTopType ctx t
      e' <- hsExp e
@@ -57,24 +57,7 @@ hsTopExp (TopExp (TopSig n ctx t) e) = do
 hsDec :: Dec -> HF [H.Dec]
 hsDec (ValD _ e) = hsTopExp e
 
-hsDec (DataD _ n _ _) | n `elem` [
-  arrowN,
-  boolN,
-  charN,
-  integerN,
-  bitN,
-  nilN,
-  unitN,
-  tupleN 2,
-  tupleN 3,
-  tupleN 4,
-  maybeN,
-  primArrayN,
-  smtN,
-  symbolicN,
-  usedN,
-  ioN] = return []
-
+hsDec (DataD _ n _ _) | n == arrowN = return []
 hsDec (DataD _ n tyvars constrs) = hsData n tyvars constrs
 
 hsDec (ClassD _ ctx n vars exps@(TopExp (TopSig _ _ t) _:_)) = do
@@ -99,5 +82,14 @@ hsDec (InstD _ ctx cls@(Class n ts) ms) = do
         let t = foldl H.AppT (H.ConT (hsqTyName n)) ts'
         return [H.InstanceD (nctx ++ ctx') t (concat ms')] 
 
-hsDec (PrimD _ s@(TopSig n _ _)) = return []
+hsDec (PrimD _ s@(TopSig n ctx t)) = do
+ local (\s -> s { hfs_retype = mkretype (canonical t)}) $ do
+     t' <- hsTopType ctx t
+     let e = H.AppE (H.VarE (H.mkName "Smten.HaskellF.HaskellF.primHF"))
+                    (H.VarE (H.mkName ("Smten.Prim." ++ unname (unqualified n) ++ "P")))
+         hsn = hsName n
+         sig = H.SigD hsn t'
+         val = H.FunD hsn [H.Clause [] (H.NormalB e) []]
+     return [sig, val]
+    
 

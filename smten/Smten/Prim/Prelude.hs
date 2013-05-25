@@ -1,17 +1,5 @@
 
-module Smten.Prim.Prelude (
-    preludePs,
-    errorP,
-    eq_IntegerP,
-    add_IntegerP, sub_IntegerP, mul_IntegerP,
-    lt_IntegerP, leq_IntegerP, gt_IntegerP, geq_IntegerP,
-    toInteger_CharP, fromInteger_CharP,
-    show_IntegerP,
-    return_IOP, bind_IOP,
-    putCharP, getContentsP,
-    numericP, valueofP,
-    traceP, traceEP
-    ) where
+module Smten.Prim.Prelude where
 
 import Debug.Trace
 
@@ -23,72 +11,57 @@ import Smten.Exp
 import Smten.Ppr
 import Smten.Prim.Prim
 
-preludePs :: [Prim]
-preludePs = [
-    errorP,
-    eq_IntegerP,
-    add_IntegerP, sub_IntegerP, mul_IntegerP,
-    lt_IntegerP, leq_IntegerP,
-    gt_IntegerP, geq_IntegerP,
-    toInteger_CharP, fromInteger_CharP,
-    show_IntegerP,
-    return_IOP, bind_IOP,
-    putCharP, getContentsP,
-    numericP, valueofP,
-    traceP, traceEP
-    ]
-
 errorP :: Prim
 errorP = unaryTP "Prelude.error" errorEH
 
-eq_IntegerP :: Prim
-eq_IntegerP = binaryP "Prelude.__prim_eq_Integer"
+__prim_eq_IntegerP :: Prim
+__prim_eq_IntegerP = binaryP "Prelude.__prim_eq_Integer"
   ((==) :: Integer -> Integer -> Bool)
 
-toInteger_CharP :: Prim
-toInteger_CharP = unaryP "Prelude.__prim_toInteger_Char"
+__prim_toInteger_CharP :: Prim
+__prim_toInteger_CharP = unaryP "Prelude.__prim_toInteger_Char"
   (toInteger . fromEnum :: Char -> Integer)
 
-fromInteger_CharP :: Prim
-fromInteger_CharP = unaryP "Prelude.__prim_fromInteger_Char"
+__prim_fromInteger_CharP :: Prim
+__prim_fromInteger_CharP = unaryP "Prelude.__prim_fromInteger_Char"
   (toEnum . fromInteger :: Integer -> Char)
 
-add_IntegerP :: Prim
-add_IntegerP = binaryP "Prelude.__prim_add_Integer"
+__prim_add_IntegerP :: Prim
+__prim_add_IntegerP = binaryP "Prelude.__prim_add_Integer"
   ((+) :: Integer -> Integer -> Integer)
 
-sub_IntegerP :: Prim
-sub_IntegerP = binaryP "Prelude.__prim_sub_Integer"
+__prim_sub_IntegerP :: Prim
+__prim_sub_IntegerP = binaryP "Prelude.__prim_sub_Integer"
   ((-) :: Integer -> Integer -> Integer)
 
-mul_IntegerP :: Prim
-mul_IntegerP = binaryP "Prelude.__prim_mul_Integer"
+__prim_mul_IntegerP :: Prim
+__prim_mul_IntegerP = binaryP "Prelude.__prim_mul_Integer"
   ((*) :: Integer -> Integer -> Integer)
 
-lt_IntegerP :: Prim
-lt_IntegerP = binaryP "Prelude.__prim_lt_Integer"
+__prim_lt_IntegerP :: Prim
+__prim_lt_IntegerP = binaryP "Prelude.__prim_lt_Integer"
   ((<) :: Integer -> Integer -> Bool)
 
-leq_IntegerP :: Prim
-leq_IntegerP = binaryP "Prelude.__prim_leq_Integer"
+__prim_leq_IntegerP :: Prim
+__prim_leq_IntegerP = binaryP "Prelude.__prim_leq_Integer"
   ((<=) :: Integer -> Integer -> Bool)
 
-gt_IntegerP :: Prim
-gt_IntegerP = binaryP "Prelude.__prim_gt_Integer"
+__prim_gt_IntegerP :: Prim
+__prim_gt_IntegerP = binaryP "Prelude.__prim_gt_Integer"
   ((>) :: Integer -> Integer -> Bool)
 
-geq_IntegerP :: Prim
-geq_IntegerP = binaryP "Prelude.__prim_geq_Integer"
+__prim_geq_IntegerP :: Prim
+__prim_geq_IntegerP = binaryP "Prelude.__prim_geq_Integer"
   ((>=) :: Integer -> Integer -> Bool)
 
-show_IntegerP :: Prim
-show_IntegerP = unaryP "Prelude.__prim_show_Integer" (show :: Integer -> String)
+__prim_show_IntegerP :: Prim
+__prim_show_IntegerP = unaryP "Prelude.__prim_show_Integer" (show :: Integer -> String)
 
-return_IOP :: Prim
-return_IOP = unaryP "Prelude.return_io" (return :: ExpH -> IO ExpH)
+return_ioP :: Prim
+return_ioP = unaryP "Prelude.return_io" (return :: ExpH -> IO ExpH)
 
-bind_IOP :: Prim
-bind_IOP = binaryP "Prelude.bind_io" ((>>=) :: IO ExpH -> (ExpH -> IO ExpH) -> IO ExpH)
+bind_ioP :: Prim
+bind_ioP = binaryP "Prelude.bind_io" ((>>=) :: IO ExpH -> (ExpH -> IO ExpH) -> IO ExpH)
 
 putCharP :: Prim
 putCharP = unaryP "Prelude.putChar" putChar
