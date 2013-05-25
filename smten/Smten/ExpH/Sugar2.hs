@@ -16,7 +16,6 @@ import Smten.ExpH.ExpH
 import Smten.ExpH.Sugar
 import Smten.ExpH.SmtenEH
 import Smten.ExpH.SmtenEHs
-import Smten.ExpH.Typeof
 
 de_stringEH :: ExpH -> Maybe String
 de_stringEH = de_smtenEH

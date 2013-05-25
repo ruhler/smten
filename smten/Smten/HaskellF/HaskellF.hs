@@ -65,15 +65,17 @@ instance HaskellF2 Function where
     unbox2 = function_unbox
 
 applyHF :: (HaskellF a, HaskellF b) => Function a b -> a -> b
-applyHF f x = box (appEH (unbox f) (unbox x))
+applyHF f x =
+  let Just (_, t) = de_arrowT (smtenT f)
+  in box (appEH t (unbox f) (unbox x))
 
 lamHF :: (HaskellF a, HaskellF b) => String -> (a -> b) -> Function a b
 lamHF n f =
   let g :: ExpH -> ExpH
       g x = unbox (f (box x))
 
-      r = box $ lamEH (Sig (name n) ta) tb g
-      Just (ta, tb) = de_arrowT (smtenT r)
+      r = box $ lamEH t (name n) g
+      t = smtenT r
   in r
 
 smtenHF :: (SmtenEH c, HaskellF f) => c -> f
@@ -83,11 +85,11 @@ de_smtenHF :: (SmtenEH c, HaskellF f) => f -> Maybe c
 de_smtenHF = de_smtenEH . unbox
 
 conHF :: (HaskellF a) => a -> String -> [ExpH] -> ExpH
-conHF x nm args = aconEH (name nm) (smtenT x) args
+conHF x nm args = aconEH (smtenT x) (name nm) args
 
 conHF' :: (HaskellF a) => String -> [ExpH] -> a
 conHF' nm args =
-  let r = box $ aconEH (name nm) (smtenT r) args
+  let r = box $ aconEH (smtenT r) (name nm) args
   in r
 
 de_conHF :: String -> ExpH -> Maybe [ExpH]
@@ -95,14 +97,7 @@ de_conHF nm = de_kconEH (name nm)
 
 caseHF :: (HaskellF x, HaskellF y, HaskellF n)
          => String -> x -> y -> n -> n
-caseHF k x y n =
-  let tys = de_arrowsT $ smtenT y
-      tcs = smtenT n
-      tns = de_arrowsT tcs
-      r = box $ caseEH tcs (unbox x) (Sig (name k) t) (unbox y) (unbox n)
-      tx = smtenT x
-      t = arrowsT (take (length tys - length tns) tys ++ [tx])
-  in r
+caseHF k x y n = box $ caseEH (smtenT n) (unbox x) (name k) (unbox y) (unbox n)
 
 primHF :: (HaskellF a) => Prim -> a
 primHF p = 

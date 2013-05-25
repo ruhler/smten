@@ -59,7 +59,7 @@ derive_SmtenT "Smten.SMT.Symbolic" ''Used
 derive_SmtenT "Smten.SMT.Symbolic" ''SMT
 
 symbolicEH :: Symbolic ExpH -> ExpH
-symbolicEH = litEH . dynamicL
+symbolicEH x = litEH (smtenT x) (dynamicL x)
 
 instance (SmtenEH a) => SmtenEH (Symbolic a) where
     smtenEH x = symbolicEH (smtenEH <$> x)
@@ -69,7 +69,7 @@ instance (SmtenEH a) => SmtenEH (Symbolic a) where
 
 
 usedEH :: Used ExpH -> ExpH
-usedEH = litEH . dynamicL
+usedEH x = litEH (smtenT x) (dynamicL x)
 
 de_usedEH :: ExpH -> Maybe (Used ExpH)
 de_usedEH e = de_litEH e >>= de_dynamicL
@@ -81,7 +81,7 @@ instance (SmtenEH a) => SmtenEH (Used a) where
         return $ fromMaybe (error "de_smtenEH Used") . de_smtenEH <$> q
 
 smtEH :: SMT ExpH -> ExpH
-smtEH = litEH . dynamicL
+smtEH x = litEH (smtenT x) (dynamicL x)
 
 de_smtEH :: ExpH -> Maybe (SMT ExpH)
 de_smtEH e = de_litEH e >>= de_dynamicL
@@ -149,11 +149,11 @@ query_UsedP =
   -- dynamic input type.
   let f :: Used ExpH -> SMT ExpH
       f arg@(Used _ v) = do
-        let ta = AppT (ConT maybeN (ArrowK StarK StarK)) (typeof (force v))
+        let ta = AppT (ConT maybeN (ArrowK StarK StarK)) (typeof v)
         res <- query_Used (realize <$> arg)
         return $ case res of
-                    Just v' -> aconEH justN ta [v']
-                    Nothing -> aconEH nothingN ta []
+                    Just v' -> aconEH ta justN [v']
+                    Nothing -> aconEH ta nothingN []
   in unaryP "Smten.SMT.Symbolic.query_Used" f
 
 usedP :: Prim

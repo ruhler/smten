@@ -122,7 +122,7 @@ check = {-# SCC "Check" #-} do
             v <- runRealize (realize asserts)
             case {-# SCC "CheckEval" #-} force v of
                 _ | Just True <- de_boolEH v -> return ()
-                ErrorEH _ s -> error $ "smten user error: " ++ s
+                ErrorEH s -> error $ "smten user error: " ++ s
                 _ -> error "SMTEN INTERNAL ERROR: SMT solver lied?"
         SMT.Unsatisfiable -> return ()
     return res
@@ -167,7 +167,7 @@ assignment s@(Sig nm t)
   | t == integerT = integerEH <$> srun1 SMT.getIntegerValue nm
   | Just w <- de_bitT t = do
     bval <- srun2 SMT.getBitVectorValue w nm
-    return (bitEH (bv_make w bval))
+    return (bitEH t (bv_make w bval))
   | otherwise = error $
     "SMTEN INTERNAL ERROR: unexpected type for prim free var: " ++ pretty s
 
@@ -194,7 +194,7 @@ query_Sat = do
 mkerr :: Type -> SMT ExpH
 mkerr t = do
     nm <- srun1 SMT.fresh t
-    return $ varEH (Sig nm t)
+    return $ varEH t nm
 
 -- | Assert the given smten boolean expression.
 mkassert :: ExpH -> SMT ()
@@ -253,7 +253,7 @@ realize e = {-# SCC "REALIZE" #-} Realize $ do
     freevars <- gets qs_freevars
     fvs <- gets qs_freevals
     let freemap = zip [n | Sig n _ <- freevars] fvs
-        g e | VarEH (Sig nm _) <- force e = lookup nm freemap
+        g e | VarEH nm <- force e = lookup nm freemap
             | otherwise = Nothing
     return $ if null freemap then e else transform g e
 
@@ -292,7 +292,7 @@ prim_free t = {-# SCC "PRIM_FREE" #-} Symbolic $ do
     nm <- srun1 SMT.fresh t
     let s = Sig nm t
     modify $ \qs -> qs { qs_freevars = s : qs_freevars qs }
-    return $ varEH s
+    return $ varEH t nm
 
 -- | Predicate the symbolic computation on the given smten Bool.
 -- All assertions will only apply when the predicate is satisfied, otherwise
@@ -314,7 +314,7 @@ predicated p s = do
 de_symbolicEH :: ExpH -> Symbolic ExpH
 de_symbolicEH e
  | Just l <- de_litEH e, Just s <- de_dynamicL l = s
- | IfEH t x y n <- force e =
+ | IfEH x y n <- force e =
     let py = x
         pn = ifEH boolT x falseEH trueEH
 
@@ -323,11 +323,11 @@ de_symbolicEH e
     in do
         yr <- predicated py ys
         nr <- predicated pn ns
-        return $ ifEH t x yr nr
- | ErrorEH symt s <- force e = do
+        return $ ifEH (typeof e) x yr nr
+ | ErrorEH s <- force e = do
     -- TODO: This is messy. I'm sure there is a way to clean it up if I
     -- actually spend time to think about it.
-    let Just (_, t) = de_appT symt
+    let Just (_, t) = de_appT (typeof e)
     pred <- gets qs_pred
     modify $ \qs -> qs { qs_pred = trueEH }
     sat <- Symbolic $ query (assert pred >> return (return ()))

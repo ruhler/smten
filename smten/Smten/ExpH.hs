@@ -9,7 +9,6 @@ module Smten.ExpH (
     module Smten.ExpH.Sugar,
     module Smten.ExpH.Sugar2,
     module Smten.ExpH.TH,
-    module Smten.ExpH.Typeof,
     module Smten.ExpH.Utils,
     ) where
 
@@ -22,6 +21,5 @@ import Smten.ExpH.SmtenEHs2
 import Smten.ExpH.Sugar
 import Smten.ExpH.Sugar2
 import Smten.ExpH.TH
-import Smten.ExpH.Typeof
 import Smten.ExpH.Utils
 

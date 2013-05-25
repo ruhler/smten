@@ -24,7 +24,7 @@ newtype PrimArray = PrimArray {
 } deriving (Typeable)
 
 arrayEH :: PrimArray -> ExpH
-arrayEH x = litEH (dynamicL x)
+arrayEH x = litEH (smtenT x) (dynamicL x)
 
 de_arrayEH :: ExpH -> Maybe PrimArray
 de_arrayEH x = do

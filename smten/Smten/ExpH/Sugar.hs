@@ -9,14 +9,14 @@
 module Smten.ExpH.Sugar (
     litEH, de_litEH, varEH, de_varEH, conEH, de_conEH, de_kconEH,
     appEH, appsEH, strict_appEH,
-    lamEH, letEH, aconEH,
+    lamEH, aconEH,
     caseEH,
     ifEH, impliesEH, notEH, andEH, errorEH,
 
     unitEH,
     boolEH, trueEH, falseEH, de_boolEH,
     integerEH, de_integerEH, bitEH, de_bitEH,
-    charEH, de_charEH, de_tupleEH,
+    charEH, de_charEH,
     ioEH, de_ioEH,
     smttype,
     transform, shared,
@@ -39,89 +39,77 @@ import Smten.Name
 import Smten.Sig
 import Smten.Type
 import Smten.ExpH.ExpH
-import Smten.ExpH.Typeof
 
 -- Fully applied constructor
-aconEH :: Name -> Type -> [ExpH] -> ExpH
-aconEH n t args = exph $ ConEH n t args
+aconEH :: Type -> Name -> [ExpH] -> ExpH
+aconEH t n args = exph t $ ConEH n args
 
-conEH :: Sig -> ExpH
-conEH (Sig n t) =
- let coneh :: Name -> Type -> [ExpH] -> ExpH
-     coneh n t args
-        | Just (it, ot) <- de_arrowT t =
-            lamEH (Sig (name "c") it) ot $ \x -> coneh n ot (args ++ [x])
-        | otherwise = aconEH n t args
- in coneh n t []
+conEH :: Type -> Name -> ExpH
+conEH t n =
+ let coneh :: Type -> Name -> [ExpH] -> ExpH
+     coneh t n args
+        | Just (_, ot) <- de_arrowT t =
+            lamEH t (name "c") $ \x -> coneh ot n (args ++ [x])
+        | otherwise = aconEH t n args
+ in coneh t n []
 
 -- Check for a fully applied constructor.
-de_conEH :: ExpH -> Maybe (Name, Type, [ExpH])
+de_conEH :: ExpH -> Maybe (Name, [ExpH])
 de_conEH e
- | (ConEH n t xs) <- force e = Just (n, t, xs)
+ | (ConEH n xs) <- force e = Just (n, xs)
  | otherwise = Nothing
 
 -- Check for the given fully applied constructor.
 de_kconEH :: Name -> ExpH -> Maybe [ExpH]
 de_kconEH n x = do
-    (nm, _, vs) <- de_conEH x
+    (nm, vs) <- de_conEH x
     guard $ nm == n
     return vs
 
-litEH :: Lit -> ExpH
-litEH = exph . LitEH
+litEH :: Type -> Lit -> ExpH
+litEH t = exph t . LitEH
 
 de_litEH :: ExpH -> Maybe Lit
 de_litEH e
  | LitEH l <- force e = Just l
  | otherwise = Nothing
 
-varEH :: Sig -> ExpH
-varEH = exph . VarEH
+varEH :: Type -> Name -> ExpH
+varEH t = exph t . VarEH
 
-de_varEH :: ExpH -> Maybe Sig
+de_varEH :: ExpH -> Maybe Name
 de_varEH t
- | VarEH s <- force t = Just s
+ | VarEH n <- force t = Just n
  | otherwise = Nothing
 
-appEH :: ExpH -> ExpH -> ExpH
-appEH f x
- | LamEH _ _ g <- force f = g x
- | IfEH ft _ _ _ <- force f =
-     let Just (_, t) = de_arrowT ft
-     in strict_appEH t (\g -> appEH g x) f
- | ErrorEH ft s <- force f =
-     let Just (_, t) = de_arrowT ft
-     in errorEH t s
+appEH :: Type -> ExpH -> ExpH -> ExpH
+appEH t f x
+ | LamEH _ g <- force f = g x
+ | IfEH _ _ _ <- force f = strict_appEH t (\g -> appEH t g x) f
+ | ErrorEH s <- force f = errorEH t s
  | otherwise = error "SMTEN INTERNAL ERROR: unexpected arg to appEH"
 
 smttype :: Type -> Bool
 --smttype t = or [ t == boolT, t == integerT, isJust (de_bitT t) ]
 smttype t = or [ t == boolT, isJust (de_bitT t) ]
 
-appsEH :: ExpH -> [ExpH] -> ExpH
-appsEH f xs = foldl appEH f xs
+appsEH :: Type -> ExpH -> [ExpH] -> ExpH
+appsEH _ x [] = x
+appsEH t f (x:xs) =
+ let ts = arrowsT (map typeof xs ++ [t])
+ in appsEH t (appEH ts f x) xs
 
--- lamEH s t f
---  s - name and type of argument to function
---  t - output type of the function
-lamEH :: Sig -> Type -> (ExpH -> ExpH) -> ExpH
-lamEH s t f = exph $ LamEH s t f
-
--- letEH s t v f
---  s - name and type of let variable
---  t - type of the let expression
---  v - value of the let variable
-letEH :: Sig -> Type -> ExpH -> (ExpH -> ExpH) -> ExpH
-letEH s t v b = appEH (lamEH s t b) v
+lamEH :: Type -> Name -> (ExpH -> ExpH) -> ExpH
+lamEH t n f = exph t $ LamEH n f
 
 unitEH :: ExpH
-unitEH = conEH (Sig unitN unitT)
+unitEH = aconEH unitT unitN []
 
 trueEH :: ExpH
-trueEH = conEH (Sig trueN boolT)
+trueEH = aconEH boolT trueN []
 
 falseEH :: ExpH
-falseEH = conEH (Sig falseN boolT)
+falseEH = aconEH boolT falseN []
 
 -- | Boolean expression
 boolEH :: Bool -> ExpH
@@ -135,7 +123,7 @@ de_boolEH x =
  in mplus detrue defalse
 
 integerEH :: Integer -> ExpH
-integerEH = litEH . integerL 
+integerEH = litEH integerT . integerL 
 
 
 de_integerEH :: ExpH -> Maybe Integer
@@ -143,8 +131,8 @@ de_integerEH e = do
     l <- de_litEH e
     de_integerL l
 
-bitEH :: Bit -> ExpH
-bitEH = litEH . bitL
+bitEH :: Type -> Bit -> ExpH
+bitEH t = litEH t . bitL
 
 de_bitEH :: ExpH -> Maybe Bit
 de_bitEH e = do
@@ -152,29 +140,29 @@ de_bitEH e = do
     de_bitL l
 
 charEH :: Char -> ExpH
-charEH = litEH . charL 
+charEH = litEH charT . charL 
 
 de_charEH :: ExpH -> Maybe Char
 de_charEH e = do
     l <- de_litEH e
     de_charL l
 
-ioEH :: IO ExpH -> ExpH
-ioEH x = litEH (dynamicL x)
+ioEH :: Type -> IO ExpH -> ExpH
+ioEH t x = litEH t (dynamicL x)
 
 de_ioEH :: ExpH -> Maybe (IO ExpH)
 de_ioEH x = do
     l <- de_litEH x
     de_dynamicL l
 
-caseEH :: Type -> ExpH -> Sig -> ExpH -> ExpH -> ExpH
-caseEH t x k@(Sig nk _) y n
- | nk == trueN = ifEH t x y n
- | nk == falseN = ifEH t x n y
+caseEH :: Type -> ExpH -> Name -> ExpH -> ExpH -> ExpH
+caseEH t x k y n
+ | k == trueN = ifEH t x y n
+ | k == falseN = ifEH t x n y
  | otherwise =
   case force x of
-    ConEH k _ vs -> if k == nk then appsEH y vs else n
-    ErrorEH _ s -> errorEH t s
+    ConEH k2 vs -> if k == k2 then appsEH t y vs else n
+    ErrorEH s -> errorEH t s
     IfEH {} -> strict_appEH t (\x' -> caseEH t x' k y n) x
     _ -> error $ "SMTEN INTERNAL ERROR: unexpected arg to caseEH"
 
@@ -184,18 +172,18 @@ strict_appEH :: Type -> (ExpH -> ExpH) -> ExpH -> ExpH
 strict_appEH t f =
   let g :: (ExpH -> ExpH) -> ExpH -> ExpH
       g use e
-        | IfEH _ x y d <- force e = ifEH t x (use y) (use d)
+        | IfEH x y d <- force e = ifEH t x (use y) (use d)
         | otherwise = f e
   in shared g
 
 ifEH :: Type -> ExpH -> ExpH -> ExpH -> ExpH
 ifEH t p a b =
   case force p of
-    ConEH k _ []
+    ConEH k []
       | k == trueN -> a
       | k == falseN -> b
-    ErrorEH _ s -> errorEH t s
-    _ -> exph $ IfEH t p a b
+    ErrorEH s -> errorEH t s
+    _ -> exph t $ IfEH p a b
 
 impliesEH :: ExpH -> ExpH -> ExpH
 impliesEH p q = ifEH boolT p q trueEH
@@ -218,22 +206,13 @@ transform f =
       g use e
         | Just v <- f e = v
         | LitEH {} <- force e = e
-        | ConEH n s xs <- force e = aconEH n s (map use xs)
+        | ConEH n xs <- force e = aconEH (typeof e) n (map use xs)
         | VarEH {} <- force e = e
-        | PrimEH _ _ f xs <- force e = f (map use xs)
-        | LamEH s t f <- force e = lamEH s t $ \x -> use (f x)
-        | IfEH t x y d <- force e = ifEH t (use x) (use y) (use d)
+        | PrimEH _ f xs <- force e = f (map use xs)
+        | LamEH n f <- force e = lamEH (typeof e) n $ \x -> use (f x)
+        | IfEH x y d <- force e = ifEH (typeof e) (use x) (use y) (use d)
         | ErrorEH {} <- force e = e
   in shared g
-
-de_tupleEH :: ExpH -> Maybe [ExpH]
-de_tupleEH x = 
-    case de_conEH x of
-       Just (nm, _, xs) -> do
-          n <- de_tupleN nm
-          guard $ genericLength xs == n
-          return xs
-       _ -> Nothing
 
 -- shared f
 -- Apply a function to an ExpH which preserves sharing.
@@ -273,5 +252,5 @@ shared f =
   in def
 
 errorEH :: Type -> String -> ExpH
-errorEH t s = exph $ ErrorEH t s
+errorEH t s = exph t $ ErrorEH s
 

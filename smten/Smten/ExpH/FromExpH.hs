@@ -50,9 +50,9 @@ sharing e =
 
       subtraverse :: ExpH -> State (Map.Map EID Use) (Set.Set EID)
       subtraverse e
-        | ConEH _ _ xs <- force e = Set.unions <$!> mapM traverse xs
-        | PrimEH _ _ _ xs <- force e = Set.unions <$!> mapM traverse xs
-        | IfEH _ x y n <- force e = Set.unions <$!> mapM traverse [x, y, n]
+        | ConEH _ xs <- force e = Set.unions <$!> mapM traverse xs
+        | PrimEH _ _ xs <- force e = Set.unions <$!> mapM traverse xs
+        | IfEH x y n <- force e = Set.unions <$!> mapM traverse [x, y, n]
         | otherwise = return $ Set.empty
   in evalState (traverse e) Map.empty
 
@@ -71,28 +71,29 @@ convert share e =
       defineM :: ExpH -> State Defined Exp
       defineM e
         | LitEH v <- force e = return $ LitE l v
-        | ConEH n t xs <- force e = do
+        | ConEH n xs <- force e = do
             xs' <- mapM useM xs
-            let t' = arrowsT $ (map typeof xs') ++ [t]
+            let t' = arrowsT $ (map typeof xs') ++ [typeof e]
             return $ appsE l (ConE l (Sig n t')) xs'
-        | VarEH s <- force e = return $ VarE l s
-        | PrimEH n t _ xs <- force e = do
+        | VarEH n <- force e = return $ VarE l (Sig n (typeof e))
+        | PrimEH n _ xs <- force e = do
             xs' <- mapM useM xs
-            let t' = arrowsT $ (map typeof xs') ++ [t]
+            let t' = arrowsT $ (map typeof xs') ++ [typeof e]
             return $ appsE l (varE l (Sig n t')) xs'
-        | LamEH (Sig nm t) _ f <- force e = do
+        | LamEH nm f <- force e = do
             x <- gets df_id
             modifyS $ \df -> df { df_id = x + 1 }
-            let s' = Sig (nm `nappend` (name ("~c" ++ show x))) t
-            b <- useM (f (exph $ VarEH s'))
-            return $ LamE l s' b
-        | IfEH _ arg yes no <- force e = do
+            let Just (it, _) = de_arrowT (typeof e)
+                nm' = nm `nappend` (name ("~c" ++ show x))
+            b <- useM (f (exph it $ VarEH nm'))
+            return $ LamE l (Sig nm' it) b
+        | IfEH arg yes no <- force e = do
             arg' <- useM arg
             yes' <- useM yes
             no' <- useM no
             return $ ifE l arg' yes' no'
-        | ErrorEH t s <- force e = return $
-            appE l (varE l (Sig (name "Prelude.error") (arrowT stringT t))) (stringE l s)
+        | ErrorEH s <- force e = return $
+            appE l (varE l (Sig (name "Prelude.error") (arrowT stringT (typeof e)))) (stringE l s)
 
       -- Generate the use for this expression.
       -- So, if it's shared, turns into a VarE.
@@ -101,7 +102,7 @@ convert share e =
         | let id = eid e
         , Set.member id share = do
             done <- gets df_done
-            let var = VarE l (Sig (nameof id) (typeof (force e)))
+            let var = VarE l (Sig (nameof id) (typeof e))
             case Set.member id done of
                 True -> return var
                 False -> do

@@ -24,17 +24,13 @@ import Smten.ExpH.Sugar
 --   returned 'b' is not concrete.
 instance (SmtenEH a, SmtenEH b) => SmtenEH (a -> b) where
     smtenEH f =
-      let ta :: (a -> b) -> a
-          ta _ = undefined
-        
-          tb :: (a -> b) -> b
-          tb _ = undefined
-          
-      in lamEH (Sig (name "x") (smtenT (ta f))) (smtenT (tb f)) $ \x ->
-            smtenEH $ f (fromMaybe (error "smtenEH (->)") (de_smtenEH x))
+      lamEH (smtenT f) (name "x") $ \x ->
+         smtenEH $ f (fromMaybe (error "smtenEH (->)") (de_smtenEH x))
             
     -- TODO: Verify this is a function type?
-    de_smtenEH e = return $ \x ->
-           let fx = appEH e (smtenEH x)
+    de_smtenEH e =
+      let Just (_, to) = de_arrowT (smtenT e)
+      in return $ \x ->
+           let fx = appEH to e (smtenEH x)
            in fromMaybe (error $ "de_smtenEH (->): " ++ pretty fx) (de_smtenEH fx)
 

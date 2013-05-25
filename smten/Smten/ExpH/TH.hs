@@ -16,10 +16,8 @@ import Smten.ExpH.ExpH
 import Smten.ExpH.Sugar
 import Smten.ExpH.SmtenEH
 
-smtenEH_helper :: (S.SmtenT a) => String -> a -> [S.Type] -> [ExpH] -> ExpH
-smtenEH_helper nm ty tys xs = 
-  let t = S.arrowsT (tys ++ [S.smtenT ty])
-  in appsEH (conEH (Sig (S.name nm) t)) xs
+smtenEH_helper :: (S.SmtenT a) => String -> a -> [ExpH] -> ExpH
+smtenEH_helper nm x xs = aconEH (S.smtenT x) (S.name nm) xs
 
 derive_SmtenEH :: String -> Name -> Q [Dec]
 derive_SmtenEH mod nm = do
@@ -37,7 +35,7 @@ derive_smtenEH mod nm vars cs =
       -- A constructor of the form:
       --    Bar Sludge a
       -- Maps to the clause:
-      --    *** exp@(Bar a b) = smtenEH_helper "Bar" exp [smtenT a, smtenT b] [smtenEH a, smtenEH b]
+      --    *** exp@(Bar a b) = smtenEH_helper "Bar" exp [smtenEH a, smtenEH b]
       mkcon :: Con -> Clause
       mkcon (NormalC cnm ts) =   
         let args = [mkName ('x' : show i) | i <- [1..length ts]]
@@ -49,7 +47,6 @@ derive_smtenEH mod nm vars cs =
                       VarE 'smtenEH_helper,
                       LitE (StringL (mod ++ "." ++ nameBase cnm)),
                       VarE expvar,
-                      tlist,
                       elist
                     ]
         in Clause [pat] (NormalB body) []

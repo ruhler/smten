@@ -43,18 +43,17 @@ unaryTP n f =
       impl t [a]
         | Just av <- de_smtenEH a = smtenEH (f t av)
         | IfEH {} <- force a
-        , not (smttype (typeof (force a)))
+        , not (smttype (typeof a))
             = strict_appEH t (\a' -> impl t [a']) a
-        | ErrorEH _ s <- force a = errorEH t s
-        | otherwise = exph $ PrimEH nm t (impl t) [a]
+        | ErrorEH s <- force a = errorEH t s
+        | otherwise = exph t $ PrimEH nm (impl t) [a]
 
       -- The type is the type of the primitive function without arguments
       -- applied.
       eh :: Type -> ExpH
       eh t
-        | Just (at, ot) <- de_arrowT t =
-            lamEH (Sig (name "a") at) ot $ \a ->
-              impl ot [a]
+        | Just (_, ot) <- de_arrowT t =
+            lamEH t (name "a") $ \a -> impl ot [a]
         | otherwise = error $ "unaryTP.eh type: " ++ pretty t
   in Prim nm eh
 
@@ -72,24 +71,22 @@ binaryTP n f =
         | Just av <- de_smtenEH a
         , Just bv <- de_smtenEH b = smtenEH (f t av bv)
         | IfEH {} <- force a
-        , not (smttype (typeof (force a)))
+        , not (smttype (typeof a))
             = strict_appEH t (\a' -> impl t [a', b]) a
         | IfEH {} <- force b
-        , not (smttype (typeof (force b)))
+        , not (smttype (typeof b))
             = strict_appEH t (\b' -> impl t [a, b']) b
-        | ErrorEH _ s <- force a = errorEH t s
-        | ErrorEH _ s <- force b = errorEH t s
-        | otherwise = exph $ PrimEH nm t (impl t) [a, b]
+        | ErrorEH s <- force b = errorEH t s
+        | otherwise = exph t $ PrimEH nm (impl t) [a, b]
 
       -- The type is the type of the primitive function without arguments
       -- applied.
       eh :: Type -> ExpH
       eh t
-        | Just (at, bzt) <- de_arrowT t
-        , Just (bt, ot) <- de_arrowT bzt = 
-            lamEH (Sig (name "a") at) bzt $ \a ->
-              lamEH (Sig (name "b") bt) ot $ \b ->
-                impl ot [a, b]
+        | Just (_, bzt) <- de_arrowT t
+        , Just (_, ot) <- de_arrowT bzt = 
+            lamEH t (name "a") $ \a ->
+              lamEH bzt (name "b") $ \b -> impl ot [a, b]
         | otherwise = error $ "binaryTP.eh type: " ++ pretty t
   in Prim nm eh
 

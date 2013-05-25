@@ -6,7 +6,7 @@
 -- | HOAS form for Smten Expressions, geared towards high performance
 -- elaboration.
 module Smten.ExpH.ExpH (
-    ExpH_Value(..), EID(), ExpH(), force, eid, exph, simple,
+    ExpH_Value(..), EID(), ExpH(), typeof, force, eid, exph, simple,
     ) where
 
 import System.IO.Unsafe
@@ -36,33 +36,31 @@ data ExpH_Value =
             LitEH Lit
 
             -- | Fully applied data constructors.
-            -- The Type field is the type of the fully applied constructor.
-          | ConEH Name Type [ExpH]
+          | ConEH Name [ExpH]
 
             -- | Primitive symbolic varibles.
             -- Current types supported are: Bool, Integer, Bit
-          | VarEH Sig
+          | VarEH Name
 
             -- | Fully applied primitive functions
-            -- | The Type field is the type of the fully applied primitive.
-          | PrimEH Name Type ([ExpH] -> ExpH) [ExpH]
+          | PrimEH Name ([ExpH] -> ExpH) [ExpH]
          
-          -- | LamEH s t f:
-          --    s - name and type of the function argument. 
-          --        The name is for debugging purposes only.
-          --    t - the return type of the function
+          -- | LamEH n f:
+          --    n - The name is for debugging purposes only.
+          --        It is the name of the argument.
           --    f - the haskell representation of the function.
-          | LamEH Sig Type (ExpH -> ExpH)
+          | LamEH Name (ExpH -> ExpH)
 
           -- | Conditional expressions.
-          | IfEH Type ExpH ExpH ExpH
+          | IfEH ExpH ExpH ExpH
 
           -- | Explicit _|_
-          | ErrorEH Type String
+          | ErrorEH String
     deriving (Typeable)
 
 data ExpH = ExpH {
     eid :: EID,
+    typeof_ :: Type,
     force :: ExpH_Value
 } deriving (Typeable)
 
@@ -71,30 +69,33 @@ instance Show ExpH where
 
 instance Show ExpH_Value where
     show (LitEH l) = pretty l
-    show (ConEH n _ xs) = pretty n ++ " " ++ show xs
-    show (VarEH s) = pretty s
-    show (PrimEH n _ _ xs) = pretty n ++ " " ++ show xs
-    show (LamEH s _ _) = "\\" ++ pretty s ++ " -> ..."
-    show (IfEH _ p a b) = "if " ++ show p ++ " then " ++ show a ++ " else " ++ show b
-    show (ErrorEH _ s) = "error " ++ show s
+    show (ConEH n xs) = pretty n ++ " " ++ show xs
+    show (VarEH n) = pretty n
+    show (PrimEH n _ xs) = pretty n ++ " " ++ show xs
+    show (LamEH n _) = "\\" ++ pretty n ++ " -> ..."
+    show (IfEH p a b) = "if " ++ show p ++ " then " ++ show a ++ " else " ++ show b
+    show (ErrorEH s) = "error " ++ show s
 
 {-# NOINLINE idstore #-}
 idstore :: IORef Integer
 idstore = unsafeDupablePerformIO (newIORef 0)
     
-exph :: ExpH_Value -> ExpH
-exph v = unsafeDupablePerformIO $ do
+exph :: Type -> ExpH_Value -> ExpH
+exph t v = unsafeDupablePerformIO $ do
    x <- readIORef idstore
    writeIORef idstore $! x + 1
-   return $ ExpH (EID x) v
+   return $ ExpH (EID x) t v
 
 -- Return true if the given expression is simple.
 simple :: ExpH -> Bool
 simple e =
   case force e of
      LitEH {} -> True
-     ConEH _ _ [] -> True
+     ConEH _ [] -> True
      VarEH {} -> True
      ErrorEH {} -> True
      _ -> False
+
+instance Typeof ExpH where
+    typeof = typeof_
 

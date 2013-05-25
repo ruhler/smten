@@ -56,7 +56,7 @@ instance SmtenEH ExpH where
 -- Note: de_smtenEH can return an IO a which will lead to an error if the
 -- returned 'a' is not concrete.
 instance (SmtenEH a) => SmtenEH (IO a) where
-    smtenEH x = ioEH (smtenEH <$> x)
+    smtenEH x = ioEH (smtenT x) (smtenEH <$> x)
     de_smtenEH e = do
         io <- de_ioEH e
         return $ fromMaybe (error "de_smtenEH IO") . de_smtenEH <$> io
@@ -66,6 +66,6 @@ instance SmtenT Bit where
     smtenT _ = error "smtenT on Bit"
 
 instance SmtenEH Bit where
-    smtenEH = bitEH
+    smtenEH x = bitEH (smtenT x) x
     de_smtenEH = de_bitEH
 

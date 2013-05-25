@@ -40,13 +40,13 @@ def :: (AST ctx exp) => ctx -> ExpH -> AssertM ctx exp exp
 def ctx e =
   case force e of
     LitEH l -> liftIO $ literal ctx l
-    ConEH n _ [] -> liftIO $ bool ctx (n == trueN)
-    VarEH (Sig nm _) -> liftIO $ var ctx nm
+    ConEH n [] -> liftIO $ bool ctx (n == trueN)
+    VarEH nm -> liftIO $ var ctx nm
 
-    PrimEH n t _ [a, b]
+    PrimEH n _ [a, b]
       | n == name "Smten.Bit.__prim_extract_Bit"  
       , Just i <- de_integerEH b
-      , Just tw <- de_bitT t -> do
+      , Just tw <- de_bitT (typeof e) -> do
             a' <- use a
             liftIO $ extract ctx a' (i+tw-1) i
 
@@ -58,16 +58,16 @@ def ctx e =
                 liftIO $ f ctx a' b'
             Nothing -> error $ "SMT binary primitive not supported: " ++ unname n
 
-    PrimEH n t _ [a] 
+    PrimEH n _ [a] 
       | n == name "Smten.Bit.__prim_zeroExtend_Bit"  
-      , Just sw <- de_bitT (typeof $ force a)
-      , Just tw <- de_bitT t -> do
+      , Just sw <- de_bitT (typeof a)
+      , Just tw <- de_bitT (typeof e) -> do
            a' <- use a
            liftIO $ zeroextend ctx a' (tw - sw)
 
       | n == name "Smten.Bit.__prim_signExtend_Bit"  
-      , Just sw <- de_bitT (typeof $ force a)
-      , Just tw <- de_bitT t -> do
+      , Just sw <- de_bitT (typeof a)
+      , Just tw <- de_bitT (typeof e) -> do
            a' <- use a
            liftIO $ signextend ctx a' (tw - sw)
 
@@ -78,14 +78,14 @@ def ctx e =
                 liftIO $ f ctx a'
             Nothing -> error $ "SMT unary primitive not supported: " ++ unname n
 
-    IfEH _ p a b -> do
+    IfEH p a b -> do
        [p', a', b'] <- mapM use [p, a, b]
        liftIO $ ite ctx p' a' b'
 
     -- abstract away explicit errors with a variable.
     -- SMT.SMT will verify we don't actually reach this error under the
     -- satisfying assignment.
-    ErrorEH t _ -> liftIO $ do
-       nm <- fresh ctx t
+    ErrorEH _ -> liftIO $ do
+       nm <- fresh ctx (typeof e)
        var ctx nm
 
