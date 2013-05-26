@@ -66,7 +66,7 @@ instance Qualify Module where
         ds' <- mapM qualifyM (mod_decs m)
         ents <- asks qs_entities
         impmns <- sources (mod_name m) ents
-        let imps = [Import n n True (Exclude []) | n <- impmns]
+        let imps = [Import lunknown n n True (Exclude []) | n <- impmns]
         return $ m { mod_exports = ex',
                      mod_synonyms = sy',
                      mod_decs = ds',

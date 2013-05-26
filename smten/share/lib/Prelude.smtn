@@ -319,6 +319,11 @@ foldr :: (a -> b -> b) -> b -> [a] -> b
 foldr f z (x:xs) = f x (foldr f z xs)
 foldr f z _ = z
 
+foldr1 :: (a -> a -> a) -> [a] -> a
+foldr1 f [x] = x
+foldr1 f (x:xs) = f x (foldr1 f xs)
+foldr1 _ [] = error "Prelude.foldr1: empty list"
+
 replicate :: Integer -> a -> [a]
 replicate 0 _ = []
 replicate n x = x : (replicate (n-1) x)
@@ -457,6 +462,13 @@ showListHelper [] = ""
 showListHelper [x] = show x
 showListHelper (x:xs) = concat [show x, ", ", showListHelper xs]
 
+data Either a b = Left a | Right b
+    deriving (Eq, Show)
+
+either :: (a -> c) -> (b -> c) -> Either a b -> c
+either f g (Left x) = f x
+either f g (Right y) = g y
+
 -- Primitive IO monad
 data IO a = 
 
@@ -471,7 +483,7 @@ instance Monad IO where
   return = return_io
   (>>=) = bind_io
 
--- Print a character to stdou.
+-- Print a character to stdout.
 foreign import hs "Smten.Prim.putCharP"
     putChar :: Char -> IO ()
 

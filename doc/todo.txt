@@ -22,6 +22,8 @@ Type System::
 * Verify we handle case where default method given without sig in ClassD.
 
 Front End::
+* I could give better locations for error messages if each token was
+  associated with a location.
 * Report an error if module name doesn't match source file name.
 * Review desugared expressions to see if they make sense or could be cleaned
   up.

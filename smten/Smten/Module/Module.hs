@@ -60,6 +60,7 @@ data Exports = Local | Exports [Export]
 
 
 data Import = Import { 
+    imp_loc :: Location,
     imp_from :: Name,
     imp_as :: Name,
 

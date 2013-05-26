@@ -17,6 +17,7 @@ import Smten.ExpH.Sugar
 import Smten.ExpH.TH
 
 derive_SmtenEH "Prelude" ''Maybe
+derive_SmtenEH "Prelude" ''Either
 derive_SmtenEH "Prelude" ''[]
 derive_SmtenEH "Prelude" ''(,)
 

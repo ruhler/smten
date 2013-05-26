@@ -17,8 +17,8 @@ data Model s = Model {
 
 data LTL s =
     Prop (s -> Bool)            -- p
-  | Both (LTL s) (LTL s)        -- f and g
-  | Either (LTL s) (LTL s)      -- f or g
+  | LAnd (LTL s) (LTL s)        -- f and g
+  | LOr (LTL s) (LTL s)      -- f or g
   | Globally (LTL s)            -- G f
   | Eventually (LTL s)          -- F f
   | Next (LTL s)                -- X f
@@ -42,8 +42,8 @@ noloop :: Array Integer s -> Integer -> Integer -> LTL s -> Bool
 noloop s i k ltl
  | k < i = error "noloop: k < i"
  | Prop p <- ltl = p (s ! i)
- | Both f g <- ltl = noloop s i k f && noloop s i k g
- | Either f g <- ltl = noloop s i k f || noloop s i k g
+ | LAnd f g <- ltl = noloop s i k f && noloop s i k g
+ | LOr f g <- ltl = noloop s i k f || noloop s i k g
  | Globally f <- ltl = False
  | Eventually f <- ltl = or [noloop s j k f | j <- [i..k]]
  | Next f <- ltl = if i < k then noloop s (i+1) k f else False
@@ -66,8 +66,8 @@ loop :: Array Integer s -> Integer -> Integer -> Integer -> LTL s -> Bool
 loop s l i k ltl
  | k < i = error "loop: k < i"
  | Prop p <- ltl = p (s ! i)
- | Both f g <- ltl = loop s l i k f && loop s l i k g
- | Either f g <- ltl = loop s l i k f || loop s l i k g
+ | LAnd f g <- ltl = loop s l i k f && loop s l i k g
+ | LOr f g <- ltl = loop s l i k f || loop s l i k g
  | Globally f <- ltl = and [loop s l j k f | j <- [min i l .. k]]
  | Eventually f <- ltl = or [loop s l j k f | j <- [min i l .. k]]
  | Next f <- ltl = loop s l (succ k l i) k f

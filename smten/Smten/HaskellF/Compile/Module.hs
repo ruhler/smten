@@ -42,7 +42,7 @@ hsHeader modname =
   H.text "import qualified Smten.HaskellF.Numeric"
 
 hsImport :: Import -> H.Doc
-hsImport (Import fr _ _ _) = H.text $ "import qualified " ++ unname (hfpre fr)
+hsImport (Import _ fr _ _ _) = H.text $ "import qualified " ++ unname (hfpre fr)
 
 hsImports :: [Import] -> H.Doc
 hsImports = H.vcat . map hsImport

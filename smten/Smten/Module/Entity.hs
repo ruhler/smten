@@ -128,7 +128,7 @@ modents mn = do
 
 -- Return the entities defined by the single import declaration.
 imports :: (Functor m, MonadErrorSL m) => Import -> EM m EntityMap
-imports imp@(Import fr as qo spec) = do
+imports imp@(Import _ fr as qo spec) = do
   exported <- exports fr
   let imported = case spec of
                     Include ins -> Set.filter (\n -> unqualified n `elem` ins) exported

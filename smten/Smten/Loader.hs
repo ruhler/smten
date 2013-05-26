@@ -43,6 +43,7 @@ import Data.Functor((<$>))
 import Data.List(nub)
 
 import Smten.Name
+import Smten.Location
 import Smten.Dec
 import Smten.Module
 import Smten.Parser
@@ -66,14 +67,14 @@ data LS = LS {
 type LSM = StateT LS IO
 
 -- | Load the given module and all modules required for the given module.
-loads :: Name -> LSM ()
-loads mn = do
+loads :: Location -> Name -> LSM ()
+loads l mn = do
   loaded <- gets ls_loaded
   if mn `Set.member` loaded
     then return ()
     else do
       sp <- gets ls_search
-      m <- lift $ loadone sp mn
+      m <- lift $ loadone sp l mn
       loadneeded m
 
 -- | Load all modules needed for the given module, and add the given module to
@@ -81,13 +82,13 @@ loads mn = do
 loadneeded :: Module -> LSM ()
 loadneeded m = do
   modify $ \s -> s { ls_loaded = Set.insert (mod_name m) (ls_loaded s) }
-  mapM (loads . imp_from) (mod_imports m)
+  sequence_ [loads (imp_loc i) (imp_from i) | i <- mod_imports m]
   modify $ \s -> s { ls_mods = m : ls_mods s }
 
 -- | Load a single module with the given name.
-loadone :: SearchPath -> Name -> IO Module
-loadone sp n = do
-    fname <- findmodule sp n
+loadone :: SearchPath -> Location -> Name -> IO Module
+loadone sp l n = do
+    fname <- findmodule sp l n
     loadmod fname
 
 -- | Load a single module from the given file.
@@ -97,11 +98,11 @@ loadmod fname = do
     m <- attemptIO $ parse fname text
     return $ if (mod_name m == name "Prelude")
                 then m { mod_decs = prelude ++ mod_decs m }
-                else m { mod_imports = Import (name "Prelude") (name "Prelude") False (Exclude []): mod_imports m }
+                else m { mod_imports = Import lunknown (name "Prelude") (name "Prelude") False (Exclude []): mod_imports m }
 
-findmodule :: SearchPath -> Name -> IO FilePath
-findmodule [] n = fail $ "Module " ++ unname n ++ " not found"
-findmodule (s:ss) n =
+findmodule :: SearchPath -> Location -> Name -> IO FilePath
+findmodule [] l n = attemptIO $ throw (lmsg l ("Module " ++ unname n ++ " not found"))
+findmodule (s:ss) l n =
  let dirify :: Name -> FilePath
      dirify n | nnull n = []
      dirify n | nhead n == '.' = '/' : dirify (ntail n)
@@ -112,7 +113,7 @@ findmodule (s:ss) n =
     exists <- doesFileExist fp
     if exists
         then return fp
-        else findmodule ss n
+        else findmodule ss l n
 
 -- | Load the complete module hierarchy needed for the smtn file specified in
 -- the given path.

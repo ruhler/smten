@@ -186,7 +186,7 @@ impdecls :: { [Import] }
 
 impdecl :: { Import }
  : 'import' opt('qualified') qconid opt(asmod) impspec
-    { Import $3 (fromMaybe $3 $4) (isJust $2) $5 }
+    {% withloc $ \l ->  Import l $3 (fromMaybe $3 $4) (isJust $2) $5 }
 
 impspec :: { ImportSpec }
  : '(' lopt(imports) ')'

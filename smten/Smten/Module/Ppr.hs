@@ -21,7 +21,7 @@ instance Ppr Exports where
     ppr (Exports es) = sep $ punctuate comma (map ppr es)
 
 instance Ppr Import where
-    ppr (Import f a p spec) =
+    ppr (Import _ f a p spec) =
       let as = if (f == a)
                   then empty
                   else text "as" <+> ppr a
