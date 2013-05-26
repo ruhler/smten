@@ -7,7 +7,7 @@
 
 -- | Abstract constructors and deconstructors dealing with ExpH
 module Smten.ExpH.Sugar (
-    litEH, de_litEH, varEH, de_varEH, conEH, de_conEH, de_kconEH,
+    litEH, de_litEH, varEH, de_varEH, de_conEH, de_kconEH,
     appEH, appsEH, strict_appEH,
     lamEH, aconEH,
     caseEH,
@@ -39,15 +39,6 @@ import Smten.ExpH.ExpH
 -- Fully applied constructor
 aconEH :: Type -> Name -> [ExpH] -> ExpH
 aconEH t n args = exph t $ ConEH n args
-
-conEH :: Type -> Name -> ExpH
-conEH t n =
- let coneh :: Type -> Name -> [ExpH] -> ExpH
-     coneh t n args
-        | Just (_, ot) <- de_arrowT t =
-            lamEH t (name "c") $ \x -> coneh ot n (args ++ [x])
-        | otherwise = aconEH t n args
- in coneh t n []
 
 -- Check for a fully applied constructor.
 de_conEH :: ExpH -> Maybe (Name, [ExpH])
