@@ -9,7 +9,7 @@
 module Smten.ExpH.Sugar (
     litEH, de_litEH, varEH, de_varEH, de_conEH, de_kconEH,
     appEH, appsEH, strict_appEH,
-    lamEH, aconEH,
+    lamEH, conEH,
     caseEH,
     ifEH, impliesEH, notEH, andEH, errorEH,
 
@@ -37,8 +37,8 @@ import Smten.Type
 import Smten.ExpH.ExpH
 
 -- Fully applied constructor
-aconEH :: Type -> Name -> [ExpH] -> ExpH
-aconEH t n args = exph t $ ConEH n args
+conEH :: Type -> Name -> [ExpH] -> ExpH
+conEH t n args = exph t $ ConEH n args
 
 -- Check for a fully applied constructor.
 de_conEH :: ExpH -> Maybe (Name, [ExpH])
@@ -90,13 +90,13 @@ lamEH :: Type -> Name -> (ExpH -> ExpH) -> ExpH
 lamEH t n f = exph t $ LamEH n f
 
 unitEH :: ExpH
-unitEH = aconEH unitT unitN []
+unitEH = conEH unitT unitN []
 
 trueEH :: ExpH
-trueEH = aconEH boolT trueN []
+trueEH = conEH boolT trueN []
 
 falseEH :: ExpH
-falseEH = aconEH boolT falseN []
+falseEH = conEH boolT falseN []
 
 -- | Boolean expression
 boolEH :: Bool -> ExpH
@@ -193,7 +193,7 @@ transform f =
       g use e
         | Just v <- f e = v
         | LitEH {} <- force e = e
-        | ConEH n xs <- force e = aconEH (typeof e) n (map use xs)
+        | ConEH n xs <- force e = conEH (typeof e) n (map use xs)
         | VarEH {} <- force e = e
         | PrimEH _ f xs <- force e = f (map use xs)
         | LamEH n f <- force e = lamEH (typeof e) n $ \x -> use (f x)

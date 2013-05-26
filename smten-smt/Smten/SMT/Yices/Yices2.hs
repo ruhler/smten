@@ -42,7 +42,6 @@ module Smten.SMT.Yices.Yices2 (yices2) where
 
 import Foreign
 import Foreign.C.String
-import Foreign.C.Types
 
 import Data.IORef
 
@@ -51,7 +50,6 @@ import Smten.SMT.AST
 import qualified Smten.SMT.Assert as A
 import qualified Smten.SMT.Solver as S
 import Smten.Name
-import Smten.Sig
 import Smten.Lit
 import Smten.Type
 import Smten.Bit

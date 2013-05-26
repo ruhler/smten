@@ -53,7 +53,7 @@ de_smtenHF = de_smtenEH . unbox
 
 conHF' :: (SmtenT a) => String -> [ExpH] -> ExpHF a
 conHF' nm args =
-  let r = box $ aconEH (smtenTHF r) (name nm) args
+  let r = box $ conEH (smtenTHF r) (name nm) args
   in r
 
 de_conHF :: String -> ExpH -> Maybe [ExpH]

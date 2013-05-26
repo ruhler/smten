@@ -13,15 +13,12 @@ module Smten.SMT.Primitives (
 
 import Control.Monad.IO.Class
 
-import Debug.Trace
-
 import Data.Functor((<$>))
 import Data.Maybe
 
 import Smten.Type
 import Smten.Name
 import Smten.Lit
-import Smten.Sig
 import Smten.ExpH
 import Smten.Ppr hiding (nest)
 import Smten.SMT.SMT
@@ -141,8 +138,8 @@ query_UsedP =
         let ta = AppT (ConT maybeN (ArrowK StarK StarK)) (typeof v)
         res <- query_Used (realize <$> arg)
         return $ case res of
-                    Just v' -> aconEH ta justN [v']
-                    Nothing -> aconEH ta nothingN []
+                    Just v' -> conEH ta justN [v']
+                    Nothing -> conEH ta nothingN []
   in unaryP "Smten.SMT.Symbolic.query_Used" f
 
 usedP :: Prim

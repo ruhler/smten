@@ -15,7 +15,7 @@ import Smten.ExpH.Sugar
 import Smten.ExpH.SmtenEH
 
 smtenEH_helper :: (S.SmtenT a) => String -> a -> [ExpH] -> ExpH
-smtenEH_helper nm x xs = aconEH (S.smtenT x) (S.name nm) xs
+smtenEH_helper nm x xs = conEH (S.smtenT x) (S.name nm) xs
 
 derive_SmtenEH :: String -> Name -> Q [Dec]
 derive_SmtenEH mod nm = do

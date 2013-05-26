@@ -53,7 +53,6 @@ import Foreign.C.Types
 import qualified Foreign.Concurrent as F
 
 import Data.IORef
-import qualified Data.Map as Map
 
 import Smten.SMT.AST
 import qualified Smten.SMT.Assert as A
@@ -62,7 +61,6 @@ import Smten.Name
 import Smten.Lit
 import Smten.Bit
 import Smten.Type
-import Smten.Sig
 import Smten.ExpH
 import qualified Smten.HashTable as HT
 

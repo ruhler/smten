@@ -5,9 +5,8 @@
 
 module Smten.SMT.STP.STP (stp) where
 
-import Data.Functor
-import Data.List(genericLength)
 import Data.IORef
+import Data.Functor
 import qualified Data.Map as Map
 
 import Foreign
@@ -20,11 +19,10 @@ import Smten.SMT.AST
 import qualified Smten.SMT.Assert as A
 import qualified Smten.SMT.Solver as S
 import Smten.Name
+import Smten.ExpH
 import Smten.Lit
 import Smten.Bit
 import Smten.Type
-import Smten.Sig
-import Smten.ExpH
 import qualified Smten.HashTable as HT
 
 data STP = STP {
