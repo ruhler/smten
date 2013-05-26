@@ -12,7 +12,6 @@ import Smten.Name
 import Smten.Sig
 import Smten.Type
 import Smten.Exp.Exp
-import Smten.Exp.Sugar
 
 -- | Check if the variable with given name is free in the given expression.
 isfree :: Name -> Exp -> Bool

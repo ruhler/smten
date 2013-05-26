@@ -29,7 +29,7 @@ import Smten.Name
 import Smten.Type
 import Smten.Sig
 import Smten.Exp.Exp
-import Smten.Exp.Typeof
+import Smten.Exp.Typeof ()
 
 conE :: Location -> Sig -> Exp
 conE = ConE

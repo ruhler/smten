@@ -148,3 +148,4 @@ library
                  containers ==0.5.*, bytestring ==0.10.*, hashmap ==1.3.*
   build-tools: happy
   --ghc-prof-options: -fprof-auto-top
+  ghc-options: -fwarn-unused-binds -fwarn-unused-imports

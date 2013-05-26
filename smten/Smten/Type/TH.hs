@@ -6,12 +6,9 @@
 module Smten.Type.TH (derive_SmtenT) where
 
 import Language.Haskell.TH
-import Language.Haskell.TH.Syntax
 
 import qualified Smten.Name as S
-import qualified Smten.Type.Type as S
 import qualified Smten.Type.Sugar as S
-import Smten.Type.SmtenT
 
 derive_SmtenT :: String -> Name -> Q [Dec]
 derive_SmtenT mod nm = do

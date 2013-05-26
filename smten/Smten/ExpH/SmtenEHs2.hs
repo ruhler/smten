@@ -6,14 +6,11 @@ module Smten.ExpH.SmtenEHs2 () where
 import Data.Maybe
 
 import Smten.Type
-import Smten.Lit
-import Smten.Sig
 import Smten.Name
 import Smten.Ppr
-import Smten.ExpH.ExpH
-import Smten.ExpH.Ppr
 import Smten.ExpH.SmtenEH
 import Smten.ExpH.Sugar
+import Smten.ExpH.Ppr ()
 
 -- SmtenEH for (a -> b)
 -- Notes:

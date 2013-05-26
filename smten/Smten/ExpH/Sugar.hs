@@ -25,10 +25,7 @@ module Smten.ExpH.Sugar (
 import System.IO.Unsafe
 
 import Control.Monad
-import Control.Monad.IO.Class
 
-import Data.Functor((<$>))
-import Data.List(genericLength)
 import Data.Maybe(isJust)
 import Data.IORef
 import qualified Data.HashMap as Map
@@ -36,7 +33,6 @@ import qualified Data.HashMap as Map
 import Smten.Bit
 import Smten.Lit
 import Smten.Name
-import Smten.Sig
 import Smten.Type
 import Smten.ExpH.ExpH
 

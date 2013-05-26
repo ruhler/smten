@@ -43,7 +43,6 @@ module Smten.Failable (
     MonadErrorSL(..),
     ) where
 
-import Control.Monad
 import Control.Monad.Error
 
 import System.IO

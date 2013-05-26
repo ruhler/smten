@@ -14,7 +14,6 @@ import qualified Smten.SMT.Assert as A
 import Smten.SMT.Solver
 import Smten.Name
 import Smten.Sig
-import Smten.ExpH
 import Smten.Ppr
 
 data DebugLL = DebugLL {

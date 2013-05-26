@@ -41,11 +41,7 @@ module Smten.HashTable (
 import Data.Array
 import Data.Hashable
 
-data HashTable k v = HashTable {
-    size :: Int,
-    elems :: Array Int [(k, v)]
-}
-
+data HashTable k v = HashTable Int (Array Int [(k, v)])
 
 -- A list of the hash table sizes we'll draw from.
 -- From http://planetmath.org/GoodHashTablePrimes.html 

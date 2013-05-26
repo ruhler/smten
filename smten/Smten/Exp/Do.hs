@@ -7,7 +7,6 @@ import Smten.Location
 import Smten.Type
 import Smten.Name
 import Smten.Sig
-import Smten.Fresh
 import Smten.Exp.Exp
 import Smten.Exp.Match
 import Smten.Exp.Sugar

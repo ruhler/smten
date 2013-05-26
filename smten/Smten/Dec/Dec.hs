@@ -43,8 +43,6 @@ module Smten.Dec.Dec (
 import Smten.Name
 import Smten.Type
 import Smten.Location
-import Smten.Lit
-import Smten.Sig
 import Smten.Exp
 
 -- | 'TopSig' is a signature with a context.

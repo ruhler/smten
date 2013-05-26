@@ -7,5 +7,5 @@ module Smten.Module (
 
 import Smten.Module.Module
 import Smten.Module.Qualify
-import Smten.Module.Ppr
+import Smten.Module.Ppr ()
 

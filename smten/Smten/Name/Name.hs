@@ -5,7 +5,6 @@ module Smten.Name.Name (
     Name, name, unname, ncons, ntake, nhead, ntail, nnull, nappend,
     ) where
 
-import Data.Monoid
 import qualified Data.ByteString.Char8 as STR
 
 import Smten.Ppr

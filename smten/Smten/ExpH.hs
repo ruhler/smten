@@ -14,10 +14,10 @@ module Smten.ExpH (
 
 import Smten.ExpH.ExpH
 import Smten.ExpH.FromExpH
-import Smten.ExpH.Ppr
+import Smten.ExpH.Ppr ()
 import Smten.ExpH.SmtenEH
 import Smten.ExpH.SmtenEHs
-import Smten.ExpH.SmtenEHs2
+import Smten.ExpH.SmtenEHs2 ()
 import Smten.ExpH.Sugar
 import Smten.ExpH.Sugar2
 import Smten.ExpH.TH

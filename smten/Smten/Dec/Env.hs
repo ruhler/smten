@@ -51,8 +51,6 @@ module Smten.Dec.Env (
 
 import Control.Monad
 
-import Debug.Trace
-
 import Data.Functor
 import Data.List(partition)
 import Data.Maybe
@@ -64,8 +62,8 @@ import Smten.HashTable as HT
 import Smten.Sig
 import Smten.Exp
 import Smten.Dec.Dec
-import Smten.Dec.Ppr
-import Smten.Dec.Utils
+import Smten.Dec.Ppr ()
+import Smten.Dec.Utils ()
 import Smten.Ppr
 import Smten.Type
 

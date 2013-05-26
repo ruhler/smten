@@ -40,7 +40,6 @@ module Smten.SMT.Solver (
 
 import Smten.Name
 import Smten.Type
-import Smten.Sig
 import Smten.ExpH
 
 data Result

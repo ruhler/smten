@@ -6,7 +6,6 @@ import System.IO
 import Smten.SMT.Solver
 import Smten.Name
 import Smten.Sig
-import Smten.ExpH
 import Smten.Ppr
 
 debug :: FilePath -> Solver -> IO Solver

@@ -15,7 +15,6 @@ import qualified Data.Map as Map
 import qualified Data.Set as Set
 
 import Smten.Name
-import Smten.Location
 import Smten.Type
 import Smten.Ppr
 import Smten.Failable

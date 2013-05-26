@@ -5,11 +5,8 @@ module Smten.Prim.Prim (
     Prim, nullaryP, nullaryTP, unaryP, unaryTP, binaryTP, binaryP,
     ) where
 
-import Control.Monad
-
 import Smten.Name
 import Smten.Type
-import Smten.Sig
 import Smten.Ppr
 import Smten.ExpH
 

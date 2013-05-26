@@ -11,7 +11,6 @@ module Smten.Exp.Match (
     ) where
 
 import Data.Functor((<$>))
-import Data.Maybe(fromMaybe)
 
 import Smten.Location
 import Smten.Lit

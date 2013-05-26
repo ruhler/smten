@@ -38,8 +38,6 @@
 
 module Smten.Typing.Solver (solve) where
 
-import Debug.Trace
-
 import Control.Monad.State
 
 import qualified Data.Map as Map
@@ -54,8 +52,8 @@ solve :: [(Type, Type)] -> Map.Map Name Type
 solve xs = {-# SCC "TypeSolve" #-} finalize $ evalState finish (SS xs Map.empty)
 
 data SS = SS {
-    ss_sys :: [(Type, Type)],
-    ss_sol :: Map.Map Name Type
+    _ss_sys :: [(Type, Type)],
+    _ss_sol :: Map.Map Name Type
 }
     
 type Solver = State SS

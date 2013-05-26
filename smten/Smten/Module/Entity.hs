@@ -17,7 +17,7 @@ import Smten.Failable
 import Smten.Ppr
 import Smten.Dec
 import Smten.Module.Module
-import Smten.Module.Ppr
+import Smten.Module.Ppr ()
 
 -- Entity map maps a local qualified or unqualified name to the list of 
 -- fully resolved entity names in scope for that local name. If there is more

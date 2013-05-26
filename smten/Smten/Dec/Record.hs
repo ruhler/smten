@@ -10,7 +10,6 @@ import Smten.Name
 import Smten.Location
 import Smten.Type
 import Smten.Sig
-import Smten.Fresh
 import Smten.Exp
 import Smten.Dec.Dec
 

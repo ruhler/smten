@@ -5,13 +5,11 @@ module Smten.ExpH.SmtenEH (
     SmtenEH(..),
     ) where
 
-import Control.Monad
 import Data.Functor((<$>))
 import Data.Maybe
 
 import Smten.Name
 import Smten.Bit
-import Smten.Sig
 import Smten.Type
 import Smten.ExpH.ExpH
 import Smten.ExpH.Sugar

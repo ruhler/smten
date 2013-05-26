@@ -5,15 +5,10 @@ module Smten.ExpH.Utils (
     runio,
     ) where
 
-import Data.Maybe
-
-import Smten.Type
-import Smten.Name
-import Smten.Sig
 import Smten.Ppr
-import Smten.ExpH.Ppr
 import Smten.ExpH.ExpH
 import Smten.ExpH.Sugar
+import Smten.ExpH.Ppr ()
 
 -- | Given a Smten expression of type IO a,
 -- returns the Smten expression of type a which results from running the IO

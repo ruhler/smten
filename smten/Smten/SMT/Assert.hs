@@ -9,7 +9,6 @@ import qualified Data.HashMap as Map
 import qualified Smten.HashTable as HT
 import Smten.Name
 import Smten.Type
-import Smten.Sig
 import Smten.ExpH
 import Smten.SMT.AST as AST
 

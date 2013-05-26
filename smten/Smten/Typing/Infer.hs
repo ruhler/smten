@@ -41,13 +41,10 @@ module Smten.Typing.Infer (
         typeinfer
     ) where
 
-import Debug.Trace
-
 import Control.Monad.Reader
 import Control.Monad.State
 
 import qualified Data.Map as Map
-import Data.Maybe(fromMaybe)
 
 import Smten.Failable
 import Smten.Strict
@@ -59,7 +56,6 @@ import Smten.Type
 import Smten.Exp
 import Smten.Dec
 import Smten.Module
-import Smten.Ppr(pretty)
 import Smten.Typing.Solver
 
 data TIS = TIS {

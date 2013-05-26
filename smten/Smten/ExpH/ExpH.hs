@@ -10,18 +10,14 @@ module Smten.ExpH.ExpH (
     ) where
 
 import System.IO.Unsafe
-import Data.Functor((<$>))
 import Data.IORef
-import Data.Maybe (fromMaybe)
 import Data.Typeable
 import Data.Hashable
 
 import Smten.Lit
 import Smten.Name
 import Smten.Type
-import Smten.Sig
 import Smten.Ppr
-import Smten.Strict
 
 newtype EID = EID Integer
     deriving (Eq, Hashable, Ord)

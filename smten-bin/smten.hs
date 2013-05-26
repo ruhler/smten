@@ -40,25 +40,14 @@ module Main where
 
 import Data.Generics
 
-import System.Environment
-import System.Exit
 import qualified System.Console.CmdArgs.Implicit as A
 
-import Smten.Name
-import Smten.Location (lunknown)
-import Smten.Sig
 import Smten.Failable
-import Smten.Exp
-import Smten.ExpH
 import Smten.Ppr
-import Smten.Prim
-import Smten.Dec
 import Smten.Loader
 import Smten.Module
 import Smten.Typing
 import Smten
-
-import Smten.SMT.Primitives
 
 import Smten.HaskellF.Compile
 
@@ -68,7 +57,6 @@ data Run = Phases | HaskellF
 data Args = Args {
     run :: Run,
     include :: [FilePath],
-    main_is :: String,
     file :: FilePath,
     output :: FilePath,
     hsdir :: FilePath
@@ -82,8 +70,6 @@ argspec = Args {
     include = []
        A.&= A.help "Smten include path" 
        A.&= A.typDir,
-    main_is = "Main.main"
-       A.&= A.help "Fully qualified top-level function to use",
     file = "Main.smtn"
        A.&= A.help "Input .smtn file"
        A.&= A.typFile,
@@ -103,12 +89,7 @@ main = do
     args <- A.cmdArgs argspec
     stdlib <- smtendir
 
-    let nmain = name (main_is args)
     let includes = include args ++ [stdlib]
-    let outf = case (output args) of
-                  "-" -> putStr
-                  fout -> writeFile fout
-
     case (run args) of
         Phases -> do
             let outfphs :: String -> String -> IO ()

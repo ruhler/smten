@@ -11,9 +11,9 @@ module Smten.Dec (
 
 import Smten.Dec.Dec
 import Smten.Dec.Env
-import Smten.Dec.Ppr
+import Smten.Dec.Ppr ()
 import Smten.Dec.Prelude
 import Smten.Dec.Record
 import Smten.Dec.Sugar
-import Smten.Dec.Utils
+import Smten.Dec.Utils ()
 

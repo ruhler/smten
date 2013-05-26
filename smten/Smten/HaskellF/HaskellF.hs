@@ -12,7 +12,6 @@ module Smten.HaskellF.HaskellF (
 
 import Smten.Name
 import Smten.Type
-import Smten.Sig
 import Smten.ExpH
 import Smten.Prim
 

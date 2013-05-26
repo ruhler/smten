@@ -51,28 +51,19 @@ module Smten.SMT.SMT (
     SMT, query, query_Used, query_Sat, nest, use, realize,
     ) where
 
-import Debug.Trace
-
 import Data.Functor
-import Data.IORef
 import Data.Unique
 import Data.Typeable
 
-import System.IO
-
 import Control.Monad.State
-import qualified Data.HashMap as Map
 
 import qualified Smten.SMT.Solver as SMT
 
 import Smten.Bit
-import Smten.Failable
-import Smten.Name
 import Smten.Sig
 import Smten.Lit
 import Smten.Type
 import Smten.ExpH
-import Smten.Dec hiding (Context)
 import Smten.Ppr hiding (nest)
 
 newtype Realize a = Realize {
@@ -111,8 +102,8 @@ newtype SMT a = SMT (StateT QS IO a)
 deriving instance MonadState QS SMT
 
 check :: SMT SMT.Result
-check = {-# SCC "Check" #-} do
-    res <- {-# SCC "SMTCheck" #-} srun0 SMT.check
+check = do
+    res <- srun0 SMT.check
     case res of
         SMT.Satisfiable -> do
             -- Verify the assignment actual does satisfy the assertions to
@@ -120,20 +111,13 @@ check = {-# SCC "Check" #-} do
             getmodel 
             asserts <- gets qs_asserts
             v <- runRealize (realize asserts)
-            case {-# SCC "CheckEval" #-} force v of
+            case force v of
                 _ | Just True <- de_boolEH v -> return ()
                 ErrorEH s -> error $ "smten user error: " ++ s
                 _ -> error "SMTEN INTERNAL ERROR: SMT solver lied?"
         SMT.Unsatisfiable -> return ()
     return res
 
-isPrimT :: Type -> Bool
-isPrimT t
-  | t == boolT = True
-  | t == integerT = True
-  | Just _ <- de_bitT t = True
-  | otherwise = False
-            
 mkQS :: SMT.Solver -> IO QS
 mkQS s = do
     ctx0 <- newUnique
@@ -172,7 +156,7 @@ assignment s@(Sig nm t)
     "SMTEN INTERNAL ERROR: unexpected type for prim free var: " ++ pretty s
 
 query_Used :: (Used (Realize a)) -> SMT (Maybe a)
-query_Used (Used ctx rx) = {-# SCC "QUERY_USED" #-} do
+query_Used (Used ctx rx) = do
     ctxs <- gets qs_ctx
     if (ctx `notElem` ctxs)
         then error "query_Used: invalid context for Used"
@@ -191,11 +175,6 @@ query_Sat = do
     res <- check
     return $ res == SMT.Satisfiable
   
-mkerr :: Type -> SMT ExpH
-mkerr t = do
-    nm <- srun1 SMT.fresh t
-    return $ varEH t nm
-
 -- | Assert the given smten boolean expression.
 mkassert :: ExpH -> SMT ()
 mkassert p = do
@@ -205,7 +184,7 @@ mkassert p = do
   modify $ \qs -> qs { qs_asserts = andEH (qs_asserts qs) p_predicated }
 
 use :: Symbolic a -> SMT (Used a)
-use s = {-# SCC "USE" #-} do
+use s = do
     v <- symbolic_smt s
     ctx <- gets qs_ctx
     return (Used (head ctx) v)
@@ -227,7 +206,7 @@ srun2 f x y = do
     
 -- | Run the given query in its own scope and return the result.
 nest :: SMT a -> SMT a
-nest q = {-# SCC "NEST" #-} do
+nest q = do
   nctx <- liftIO newUnique
   qs <- get
   put $! qs { qs_ctx = nctx : qs_ctx qs }
@@ -240,7 +219,7 @@ nest q = {-# SCC "NEST" #-} do
 -- Read the current model from the SMT solver.
 -- Assumes the state is satisfiable.
 getmodel :: SMT ()
-getmodel = {-# SCC "GetModel" #-} do
+getmodel = do
     freevars <- gets qs_freevars
     freevals <- mapM assignment freevars
     modify $ \qs -> qs { qs_freevals = freevals }
@@ -249,7 +228,7 @@ getmodel = {-# SCC "GetModel" #-} do
 -- model.
 -- Assumes the state is satisfiable and the model has already been read.
 realize :: ExpH -> Realize ExpH
-realize e = {-# SCC "REALIZE" #-} Realize $ do
+realize e = Realize $ do
     freevars <- gets qs_freevars
     fvs <- gets qs_freevals
     let freemap = zip [n | Sig n _ <- freevars] fvs
@@ -275,11 +254,11 @@ deriving instance MonadState QS Symbolic
 
 -- | Assert the given predicate.
 assert :: ExpH -> Symbolic ()
-assert p = {-# SCC "Assert" #-} Symbolic (mkassert p)
+assert p = Symbolic (mkassert p)
 
 -- | Read the value of a Used.
 used :: Used a -> Symbolic a
-used (Used ctx v) = {-# SCC "USED" #-} do
+used (Used ctx v) = do
     ctxs <- gets qs_ctx
     if (ctx `elem` ctxs)
        then return $ v
@@ -288,7 +267,7 @@ used (Used ctx v) = {-# SCC "USED" #-} do
 -- | Allocate a primitive free variable of the given type.
 -- The underlying SMT solver must support this type for this to work.
 prim_free :: Type -> Symbolic ExpH
-prim_free t = {-# SCC "PRIM_FREE" #-} Symbolic $ do
+prim_free t = Symbolic $ do
     nm <- srun1 SMT.fresh t
     let s = Sig nm t
     modify $ \qs -> qs { qs_freevars = s : qs_freevars qs }

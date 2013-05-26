@@ -1,6 +1,5 @@
 module Smten.Typing.KSolver (ksolve) where
 
-import Data.Functor((<$>))
 import qualified Data.Map as Map
 
 import Smten.Name

@@ -40,7 +40,6 @@ import System.Directory
 import Control.Monad.State
 import qualified Data.HashSet as Set
 import Data.Functor((<$>))
-import Data.List(nub)
 
 import Smten.Name
 import Smten.Location

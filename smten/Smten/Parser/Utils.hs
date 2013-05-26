@@ -9,7 +9,6 @@ import Data.Maybe(fromMaybe)
 
 import Smten.Location
 import Smten.Failable
-import Smten.Sig
 import Smten.Name
 import Smten.Type
 import Smten.Exp

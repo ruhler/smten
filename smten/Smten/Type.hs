@@ -12,9 +12,9 @@ module Smten.Type (
     ) where
 
 import Smten.Type.Canonical
-import Smten.Type.Ppr
+import Smten.Type.Ppr ()
 import Smten.Type.SmtenT
-import Smten.Type.SmtenTs
+import Smten.Type.SmtenTs ()
 import Smten.Type.Sugar
 import Smten.Type.TH
 import Smten.Type.Type

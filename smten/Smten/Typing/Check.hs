@@ -39,13 +39,11 @@
 
 module Smten.Typing.Check (typecheck) where
 
-import Control.Monad.Error
 import Control.Monad.Reader
 
 import Smten.Failable
 import Smten.Location
 import Smten.Name
-import Smten.Lit
 import Smten.Sig
 import Smten.Ppr
 import Smten.Exp

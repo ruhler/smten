@@ -39,11 +39,8 @@ module Smten.Parser.Lexer (
     lexer,
     ) where
 
-import Debug.Trace
-
 import Prelude hiding (lex)
 import Data.Char hiding (isSymbol)
-import Data.Functor
 import Data.Maybe (fromMaybe)
 
 import Smten.Name

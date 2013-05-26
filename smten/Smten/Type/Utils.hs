@@ -8,14 +8,10 @@ module Smten.Type.Utils (
     VarTs(..), kindof,
     ) where
 
-import Debug.Trace
-
-import Control.Monad.State
 import Data.List(nub)
 
 import Smten.Name
 import Smten.Type.Type
-import Smten.Type.Sugar
 import Smten.Type.Canonical
 
 -- | assignments poly concrete

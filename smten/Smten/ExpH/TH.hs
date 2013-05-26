@@ -7,10 +7,8 @@ module Smten.ExpH.TH (
     ) where
 
 import Language.Haskell.TH
-import Language.Haskell.TH.Syntax
 
 import qualified Smten.Name as S
-import Smten.Sig
 import qualified Smten.Type as S
 import Smten.ExpH.ExpH
 import Smten.ExpH.Sugar
@@ -42,7 +40,6 @@ derive_smtenEH mod nm vars cs =
             expvar = mkName "exp"
             pat = AsP expvar (ConP cnm (map VarP args))
             elist = ListE $ map (\a -> AppE (VarE 'smtenEH) (VarE a)) args
-            tlist = ListE $ map (\a -> AppE (VarE 'S.smtenT) (VarE a)) args
             body = foldl1 AppE [
                       VarE 'smtenEH_helper,
                       LitE (StringL (mod ++ "." ++ nameBase cnm)),

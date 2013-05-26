@@ -44,7 +44,6 @@ module Smten.HaskellF.Compile (
 import Data.Hash.MD5
 
 import Data.Functor((<$>))
-import qualified Language.Haskell.TH.PprLib as H
 import qualified Language.Haskell.TH as H
 import System.Directory
 
@@ -56,9 +55,8 @@ import Smten.Ppr
 import Smten.HaskellF.Compile.Name
 import Smten.HaskellF.Compile.HF
 import Smten.HaskellF.Compile.Data
-import Smten.HaskellF.Compile.Dec
-import Smten.HaskellF.Compile.Ppr
 import Smten.HaskellF.Compile.Module
+import Smten.HaskellF.Compile.Ppr ()
 
 -- haskell odir env mods
 --  Compile the given declarations to haskell.

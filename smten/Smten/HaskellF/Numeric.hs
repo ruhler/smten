@@ -7,8 +7,6 @@ module Smten.HaskellF.Numeric (
 
 import Smten.Name
 import Smten.Type
-import Smten.ExpH
-import Smten.HaskellF.HaskellF
 
 data N__0
 data N__1

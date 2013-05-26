@@ -5,9 +5,7 @@ import Debug.Trace
 
 import Smten.Type
 import Smten.Name
-import Smten.Sig
 import Smten.ExpH
-import Smten.Exp
 import Smten.Ppr
 import Smten.Prim.Prim
 

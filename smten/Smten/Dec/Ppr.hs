@@ -4,7 +4,6 @@
 
 module Smten.Dec.Ppr () where
 
-import Smten.Name
 import Smten.Ppr
 import Smten.Type
 import Smten.Dec.Dec

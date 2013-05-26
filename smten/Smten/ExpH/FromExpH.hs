@@ -6,7 +6,6 @@ module Smten.ExpH.FromExpH (
   ) where
 
 import Control.Monad.State
-import Data.Functor ((<$>))
 import qualified Data.HashMap as Map
 import qualified Data.Set as Set
 
@@ -16,13 +15,12 @@ import Smten.Name
 import Smten.Type
 import Smten.Exp
 import Smten.ExpH.ExpH
-import Smten.ExpH.Sugar
-import Smten.ExpH.SmtenEHs
+import Smten.ExpH.SmtenEHs ()
 import Smten.Strict
 
 -- Translate back to the normal Exp representation
 fromExpH :: ExpH -> Exp
-fromExpH e = {-# SCC "FromExpH" #-} convert ({-# SCC "SHARING" #-} sharing e) e
+fromExpH e = convert (sharing e) e
 
 data Use = Multi | Single
     deriving (Eq)
