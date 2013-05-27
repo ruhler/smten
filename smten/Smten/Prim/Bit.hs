@@ -1,4 +1,6 @@
 
+{-# OPTIONS_GHC -fprof-auto-top #-}
+
 module Smten.Prim.Bit where
 
 import Data.Bits

@@ -110,35 +110,35 @@ de_boolEH x =
  in mplus detrue defalse
 
 integerEH :: Integer -> ExpH
-integerEH = litEH integerT . integerL 
+integerEH = {-# SCC "integerEH" #-} litEH integerT . integerL 
 
 
 de_integerEH :: ExpH -> Maybe Integer
-de_integerEH e = do
+de_integerEH e = {-# SCC "de_integerEH" #-} do
     l <- de_litEH e
     de_integerL l
 
 bitEH :: Type -> Bit -> ExpH
-bitEH t = litEH t . bitL
+bitEH t = {-# SCC "bitEH" #-} litEH t . bitL
 
 de_bitEH :: ExpH -> Maybe Bit
-de_bitEH e = do
+de_bitEH e = {-# SCC "de_bitEH" #-} do
     l <- de_litEH e
     de_bitL l
 
 charEH :: Char -> ExpH
-charEH = litEH charT . charL 
+charEH = {-# SCC "charEH" #-} litEH charT . charL 
 
 de_charEH :: ExpH -> Maybe Char
-de_charEH e = do
+de_charEH e = {-# SCC "de_charEH" #-} do
     l <- de_litEH e
     de_charL l
 
 ioEH :: Type -> IO ExpH -> ExpH
-ioEH t x = litEH t (dynamicL x)
+ioEH t x = {-# SCC "ioEH" #-} litEH t (dynamicL x)
 
 de_ioEH :: ExpH -> Maybe (IO ExpH)
-de_ioEH x = do
+de_ioEH x = {-# SCC "de_ioEH" #-} do
     l <- de_litEH x
     de_dynamicL l
 
@@ -239,5 +239,5 @@ shared f =
   in def
 
 errorEH :: Type -> String -> ExpH
-errorEH t s = exph t $ ErrorEH s
+errorEH t s = {-# SCC "errorEH" #-} exph t $ ErrorEH s
 

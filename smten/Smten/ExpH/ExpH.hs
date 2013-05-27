@@ -74,7 +74,7 @@ idstore :: IORef Integer
 idstore = unsafePerformIO (newIORef 0)
 
 mkeid :: Type -> (EID, Type)
-mkeid t = unsafePerformIO $ do
+mkeid t = {-# SCC "mkeid" #-} unsafeDupablePerformIO $ do
    x <- readIORef idstore
    writeIORef idstore $! x + 1
    return $ (EID x, t)

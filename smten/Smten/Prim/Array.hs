@@ -2,6 +2,7 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE TypeSynonymInstances #-}
+{-# OPTIONS_GHC -fprof-auto-top #-}
 
 module Smten.Prim.Array (
     PrimArray(..),
@@ -44,7 +45,7 @@ arrayPs = [primArrayP, primSelectP]
 primArrayP :: Prim
 primArrayP =
   let f :: [ExpH] -> PrimArray
-      f xs = {-# SCC "primArray_f" #-} PrimArray $ listArray (0, genericLength xs - 1) xs
+      f xs = PrimArray $ listArray (0, genericLength xs - 1) xs
   in unaryP "Data.Array.primArray" f
 
 primSelectP :: Prim

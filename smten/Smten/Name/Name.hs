@@ -12,7 +12,9 @@ import Smten.Ppr
 
 newtype Name = Name {
     nm_str :: STR.ByteString
-} deriving (Eq, Ord, Hashable)
+} deriving (Ord, Hashable)
+
+
 
 name :: String -> Name
 name s = {-# SCC "name" #-} Name (STR.pack s)
@@ -34,6 +36,10 @@ nappend (Name a) (Name b) = Name (STR.append a b)
 
 instance Show Name where
     show (Name x) = show x
+
+instance Eq Name where
+    (==) (Name a) (Name b) = {-# SCC "name_eq" #-} a == b
+    (/=) (Name a) (Name b) = {-# SCC "name_ne" #-} a /= b
 
 instance Ppr Name where
     ppr = text . unname
