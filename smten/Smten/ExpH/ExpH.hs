@@ -41,11 +41,8 @@ data ExpH_Value =
             -- | Fully applied primitive functions
           | PrimEH Name ([ExpH] -> ExpH) [ExpH]
          
-          -- | LamEH n f:
-          --    n - The name is for debugging purposes only.
-          --        It is the name of the argument.
-          --    f - the haskell representation of the function.
-          | LamEH Name (ExpH -> ExpH)
+          -- | lambda expression
+          | LamEH (ExpH -> ExpH)
 
           -- | Conditional expressions.
           | IfEH ExpH ExpH ExpH
@@ -68,7 +65,7 @@ instance Show ExpH_Value where
     show (ConEH n xs) = pretty n ++ " " ++ show xs
     show (VarEH n) = pretty n
     show (PrimEH n _ xs) = pretty n ++ " " ++ show xs
-    show (LamEH n _) = "\\" ++ pretty n ++ " -> ..."
+    show (LamEH _) = "\\? -> ..."
     show (IfEH p a b) = "if " ++ show p ++ " then " ++ show a ++ " else " ++ show b
     show (ErrorEH s) = "error " ++ show s
 

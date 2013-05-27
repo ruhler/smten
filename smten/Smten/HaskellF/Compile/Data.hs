@@ -21,9 +21,10 @@ hsData :: Name -> [TyVar] -> [Con] -> HF [H.Dec]
 hsData n tyvars constrs = do
     dataD <- mkDataD n tyvars constrs
     smtenTD <- mkSmtenTD n tyvars
+    namesD <- mapM mkNameD constrs
     casesD <- mapM (mkCaseD n tyvars) constrs
     consD <- mapM (mkConD n tyvars) constrs
-    return $ concat ([dataD, smtenTD] : (casesD ++ consD))
+    return $ concat ([dataD, smtenTD] : (namesD ++ casesD ++ consD))
 
 -- data T__Foo a b ...
 mkDataD :: Name -> [TyVar] -> [Con] -> HF H.Dec
@@ -72,7 +73,7 @@ mkSmtenTD n tyvars = return $
   in H.InstanceD ctx tyt [smtent]
   
 -- __caseFooB :: Foo -> (Function FooB1 (Function FooB2 ... z) -> z -> z
--- __caseFooB = caseHF "FooB"
+-- __caseFooB = caseHF __nameFooB
 mkCaseD :: Name -> [TyVar] -> Con -> HF [H.Dec]
 mkCaseD n tyvars (Con cn tys) = do
   let dt = appsT (conT n) (map tyVarType tyvars)
@@ -81,15 +82,15 @@ mkCaseD n tyvars (Con cn tys) = do
   let sigD = H.SigD (casenm cn) ht
 
       body = H.AppE (H.VarE (H.mkName "Smten.HaskellF.HaskellF.caseHF"))
-                    (H.LitE (H.StringL (unname cn)))
+                    (H.VarE (qnamenm cn))
       clause = H.Clause [] (H.NormalB body) []
       funD = H.FunD (casenm cn) [clause]
   return [sigD, funD]
 
 -- __mkFooB :: Function FooB1 (Function FooB2 ... Foo)
--- __mkFooB = lamHF "x1" $ \x1 ->
---              lamHF "x2" $ \x2 ->
---                ... -> conHF' "FooB" [unbox x1, unbox x2, ...]
+-- __mkFooB = lamHF $ \x1 ->
+--              lamHF $ \x2 ->
+--                ... -> conHF __nameFooB [unbox x1, unbox x2, ...]
 mkConD :: Name -> [TyVar] -> Con -> HF [H.Dec]
 mkConD n tyvars (Con cn tys) = do
   let dt = appsT (conT n) (map tyVarType tyvars)
@@ -99,18 +100,26 @@ mkConD n tyvars (Con cn tys) = do
       vars = ["x" ++ show i | i <- take (length tys) [1..]]
 
       mklam :: String -> H.Exp -> H.Exp
-      mklam nm x = foldl1 H.AppE [
-         H.VarE (H.mkName "Smten.HaskellF.HaskellF.lamHF"),
-         H.LitE (H.StringL nm),
-         H.LamE [H.VarP (H.mkName nm)] x]
+      mklam nm x = H.AppE (H.VarE (H.mkName "Smten.HaskellF.HaskellF.lamHF"))
+                          (H.LamE [H.VarP (H.mkName nm)] x)
 
       unbox = H.VarE (H.mkName "Smten.HaskellF.HaskellF.unbox")
       body = foldl1 H.AppE [
-                H.VarE (H.mkName "Smten.HaskellF.HaskellF.conHF'"),
-                H.LitE (H.StringL (unname cn)),
+                H.VarE (H.mkName "Smten.HaskellF.HaskellF.conHF"),
+                H.VarE (qnamenm cn),
                 H.ListE [H.AppE unbox (H.VarE (H.mkName nm)) | nm <- vars]]
       lams = foldr mklam body vars
       clause = H.Clause [] (H.NormalB lams) []
       funD = H.FunD (connm cn) [clause]
   return [sigD, funD]
 
+-- __nameFooB :: Name
+-- __nameFooB = name "FooB"
+mkNameD :: Con -> HF [H.Dec]
+mkNameD (Con cn _) = do
+  let sigD = H.SigD (namenm cn) (H.ConT (H.mkName "Smten.Name.Name"))
+      body = H.AppE (H.VarE (H.mkName "Smten.Name.name"))
+                    (H.LitE (H.StringL (unname cn)))
+      clause = H.Clause [] (H.NormalB body) []
+      funD = H.FunD (namenm cn) [clause]
+  return [sigD, funD]

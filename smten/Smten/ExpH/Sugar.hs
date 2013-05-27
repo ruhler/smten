@@ -71,7 +71,7 @@ de_varEH t
 
 appEH :: Type -> ExpH -> ExpH -> ExpH
 appEH t f x
- | LamEH _ g <- force f = g x
+ | LamEH g <- force f = g x
  | IfEH _ _ _ <- force f = strict_appEH t (\g -> appEH t g x) f
  | ErrorEH s <- force f = errorEH t s
  | otherwise = error "SMTEN INTERNAL ERROR: unexpected arg to appEH"
@@ -86,8 +86,8 @@ appsEH t f (x:xs) =
  let ts = arrowsT (map typeof xs ++ [t])
  in appsEH t (appEH ts f x) xs
 
-lamEH :: Type -> Name -> (ExpH -> ExpH) -> ExpH
-lamEH t n f = exph t $ LamEH n f
+lamEH :: Type -> (ExpH -> ExpH) -> ExpH
+lamEH t f = exph t $ LamEH f
 
 unitEH :: ExpH
 unitEH = conEH unitT unitN []
@@ -196,7 +196,7 @@ transform f =
         | ConEH n xs <- force e = conEH (typeof e) n (map use xs)
         | VarEH {} <- force e = e
         | PrimEH _ f xs <- force e = f (map use xs)
-        | LamEH n f <- force e = lamEH (typeof e) n $ \x -> use (f x)
+        | LamEH f <- force e = lamEH (typeof e) $ \x -> use (f x)
         | IfEH x y d <- force e = ifEH (typeof e) (use x) (use y) (use d)
         | ErrorEH {} <- force e = e
   in shared g

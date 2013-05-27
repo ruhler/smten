@@ -3,7 +3,7 @@
 
 module Smten.HaskellF.Compile.Name (
     hsName, hsqName, hsTyName, hsqTyName,
-    nmn, nmk, qcasenm, casenm, qconnm, connm, symnm, hfpre,
+    nmn, nmk, qcasenm, casenm, qconnm, connm, symnm, hfpre, namenm, qnamenm,
     ) where
 
 import qualified Language.Haskell.TH.Syntax as H
@@ -106,6 +106,9 @@ hfqtynm n
 casenm :: Name -> H.Name
 casenm n = H.mkName $ "__case" ++ hfnm n
 
+namenm :: Name -> H.Name
+namenm n = H.mkName $ "__name" ++ hfnm n
+
 connm :: Name -> H.Name
 connm n = H.mkName $ "__mk" ++ hfnm n
 
@@ -117,6 +120,13 @@ qcasenm n =
       qlf = unname $ qualification qn
       unq = unname $ unqualified qn
   in H.mkName $ qlf ++ ".__case" ++ unq
+
+qnamenm :: Name -> H.Name
+qnamenm n =
+  let qn = name $ hfqnm n
+      qlf = unname $ qualification qn
+      unq = unname $ unqualified qn
+  in H.mkName $ qlf ++ ".__name" ++ unq
 
 qconnm :: Name -> H.Name
 qconnm n =

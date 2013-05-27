@@ -7,7 +7,6 @@ module Smten.HaskellF.Compile.Exp (
 
 import qualified Language.Haskell.TH.Syntax as H
 
-import Smten.Name
 import Smten.Lit
 import Smten.Sig
 import Smten.Exp
@@ -51,7 +50,8 @@ hsExp (AppE _ f x) = do
 
 hsExp (LamE _ (Sig n _) x) = do
     x' <- hsExp x
-    return $ foldl1 H.AppE [H.VarE (H.mkName "Smten.HaskellF.HaskellF.lamHF"), H.LitE (H.StringL (unname n)), H.LamE [H.VarP (hsName n)] x']
+    return $ H.AppE (H.VarE (H.mkName "Smten.HaskellF.HaskellF.lamHF"))
+                    (H.LamE [H.VarP (hsName n)] x')
 
 -- case x of
 --    K -> y

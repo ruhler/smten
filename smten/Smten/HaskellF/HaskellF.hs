@@ -6,7 +6,7 @@
 
 module Smten.HaskellF.HaskellF (
     ExpHF, box, unbox, T__Function,
-    lamHF, applyHF, conHF', de_conHF, caseHF, primHF, mainHF, integerHF,
+    lamHF, applyHF, conHF, caseHF, primHF, mainHF, integerHF,
     smtenHF, de_smtenHF,
     ) where
 
@@ -38,10 +38,10 @@ applyHF f x =
   let Just (_, t) = de_arrowT (smtenTHF f)
   in box (appEH t (unbox f) (unbox x))
 
-lamHF :: (SmtenT a, SmtenT b) => String -> (ExpHF a -> ExpHF b) -> ExpHF (T__Function a b)
-lamHF n f =
+lamHF :: (SmtenT a, SmtenT b) => (ExpHF a -> ExpHF b) -> ExpHF (T__Function a b)
+lamHF f =
   let g = \x -> unbox (f (box x))
-      r = box $ lamEH t (name n) g
+      r = box $ lamEH t g
       t = smtenTHF r
   in r
 
@@ -51,17 +51,14 @@ smtenHF = box . smtenEH
 de_smtenHF :: (SmtenEH c, SmtenT f) => ExpHF f -> Maybe c
 de_smtenHF = de_smtenEH . unbox
 
-conHF' :: (SmtenT a) => String -> [ExpH] -> ExpHF a
-conHF' nm args =
-  let r = box $ conEH (smtenTHF r) (name nm) args
+conHF :: (SmtenT a) => Name -> [ExpH] -> ExpHF a
+conHF k args =
+  let r = box $ conEH (smtenTHF r) k args
   in r
 
-de_conHF :: String -> ExpH -> Maybe [ExpH]
-de_conHF nm = de_kconEH (name nm)
-
 caseHF :: (SmtenT x, SmtenT y, SmtenT n)
-         => String -> ExpHF x -> ExpHF y -> ExpHF n -> ExpHF n
-caseHF k x y n = box $ caseEH (smtenTHF n) (unbox x) (name k) (unbox y) (unbox n)
+         => Name -> ExpHF x -> ExpHF y -> ExpHF n -> ExpHF n
+caseHF k x y n = box $ caseEH (smtenTHF n) (unbox x) k (unbox y) (unbox n)
 
 primHF :: (SmtenT a) => Prim -> ExpHF a
 primHF f =

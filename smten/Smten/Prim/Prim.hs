@@ -36,8 +36,7 @@ unaryTP n f =
       -- applied.
       eh :: Type -> ExpH
       eh t
-        | Just (_, ot) <- de_arrowT t =
-            lamEH t (name "a") $ \a -> impl ot [a]
+        | Just (_, ot) <- de_arrowT t = lamEH t $ \a -> impl ot [a]
         | otherwise = error $ "unaryTP.eh type: " ++ pretty t
   in eh
 
@@ -69,8 +68,8 @@ binaryTP n f =
       eh t
         | Just (_, bzt) <- de_arrowT t
         , Just (_, ot) <- de_arrowT bzt = 
-            lamEH t (name "a") $ \a ->
-              lamEH bzt (name "b") $ \b -> impl ot [a, b]
+            lamEH t $ \a ->
+              lamEH bzt $ \b -> impl ot [a, b]
         | otherwise = error $ "binaryTP.eh type: " ++ pretty t
   in eh
 

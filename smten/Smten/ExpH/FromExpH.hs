@@ -78,13 +78,13 @@ convert share e =
             xs' <- mapM useM xs
             let t' = arrowsT $ (map typeof xs') ++ [typeof e]
             return $ appsE l (varE l (Sig n t')) xs'
-        | LamEH nm f <- force e = do
+        | LamEH f <- force e = do
             x <- gets df_id
             modifyS $ \df -> df { df_id = x + 1 }
             let Just (it, _) = de_arrowT (typeof e)
-                nm' = nm `nappend` (name ("~c" ++ show x))
-            b <- useM (f (exph it $ VarEH nm'))
-            return $ LamE l (Sig nm' it) b
+                nm = name ("~c" ++ show x)
+            b <- useM (f (exph it $ VarEH nm))
+            return $ LamE l (Sig nm it) b
         | IfEH arg yes no <- force e = do
             arg' <- useM arg
             yes' <- useM yes

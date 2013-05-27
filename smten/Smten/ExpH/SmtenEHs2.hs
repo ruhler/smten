@@ -6,7 +6,6 @@ module Smten.ExpH.SmtenEHs2 () where
 import Data.Maybe
 
 import Smten.Type
-import Smten.Name
 import Smten.Ppr
 import Smten.ExpH.SmtenEH
 import Smten.ExpH.Sugar
@@ -21,7 +20,7 @@ import Smten.ExpH.Ppr ()
 --   returned 'b' is not concrete.
 instance (SmtenEH a, SmtenEH b) => SmtenEH (a -> b) where
     smtenEH f =
-      lamEH (smtenT f) (name "x") $ \x ->
+      lamEH (smtenT f) $ \x ->
          smtenEH $ f (fromMaybe (error "smtenEH (->)") (de_smtenEH x))
             
     -- TODO: Verify this is a function type?
