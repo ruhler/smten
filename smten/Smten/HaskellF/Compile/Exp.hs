@@ -38,6 +38,12 @@ hsExp (VarE _ (Sig n t)) = do
     -- Give explicit type signature to make sure there are no type ambiguities
     ht <- hsType t
     return $ H.SigE (H.VarE (hsqName n)) ht
+
+hsExp (AppE _ (LamE _ (Sig n _) b) x) = do
+    b' <- hsExp b
+    x' <- hsExp x
+    return $ H.AppE (H.LamE [H.VarP (hsName n)] b') x'
+
 hsExp (AppE _ f x) = do
     f' <- hsExp f
     x' <- hsExp x

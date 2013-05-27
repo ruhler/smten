@@ -44,7 +44,7 @@ arrayPs = [primArrayP, primSelectP]
 primArrayP :: Prim
 primArrayP =
   let f :: [ExpH] -> PrimArray
-      f xs = PrimArray $ listArray (0, genericLength xs - 1) xs
+      f xs = {-# SCC "primArray_f" #-} PrimArray $ listArray (0, genericLength xs - 1) xs
   in unaryP "Data.Array.primArray" f
 
 primSelectP :: Prim

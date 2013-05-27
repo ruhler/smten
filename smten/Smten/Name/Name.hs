@@ -1,39 +1,39 @@
 
-{-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
 module Smten.Name.Name (
-    Name, name, unname, ncons, ntake, nhead, ntail, nnull, nappend,
+    Name, name, unname, nhead, ntail, nnull, nappend,
     ) where
 
+import Data.Hashable
 import qualified Data.ByteString.Char8 as STR
 
 import Smten.Ppr
 
-type Name = STR.ByteString
+newtype Name = Name {
+    nm_str :: STR.ByteString
+} deriving (Eq, Ord, Hashable)
 
 name :: String -> Name
-name = STR.pack
+name s = {-# SCC "name" #-} Name (STR.pack s)
 
 unname :: Name -> String
-unname = STR.unpack
-
-ncons :: Char -> Name -> Name
-ncons = STR.cons
+unname = STR.unpack . nm_str
 
 nhead :: Name -> Char
-nhead = STR.head
+nhead = STR.head . nm_str
 
 ntail :: Name -> Name
-ntail = STR.tail
-
-ntake :: Int -> Name -> Name
-ntake = STR.take
+ntail = Name . STR.tail . nm_str
 
 nnull :: Name -> Bool
-nnull = STR.null
+nnull = STR.null . nm_str
 
 nappend :: Name -> Name -> Name
-nappend = STR.append
+nappend (Name a) (Name b) = Name (STR.append a b)
+
+instance Show Name where
+    show (Name x) = show x
 
 instance Ppr Name where
     ppr = text . unname
