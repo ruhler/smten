@@ -178,8 +178,8 @@ __lexorder = foldr __lexmerge EQ
 class (Eq a) => Ord a where
     compare :: a -> a -> Ordering
     compare x y
+      | x < y = LT
       | x == y = EQ
-      | x <= y = LT
       | otherwise = GT
 
     (<) :: a -> a -> Bool
@@ -235,10 +235,16 @@ instance (Ord a) => Ord [a] where
     compare [] [] = EQ
     compare [] _ = LT
     compare (x:xs) [] = GT
-    compare (x:xs) (y:ys) = __lexorder [compare x y, compare xs ys]
+    compare (x:xs) (y:ys) =
+      case (compare x y) of
+         EQ -> compare xs ys
+         v -> v
 
 instance (Ord a, Ord b) => Ord (a, b) where
-    compare (a, b) (c, d) = __lexorder [compare a c, compare b d]
+    compare (a, b) (c, d) =
+      case compare a c of
+         EQ -> compare b d
+         v -> v
 
 instance (Ord a, Ord b, Ord c) => Ord (a, b, c) where
     compare (a, b, c) (d, e, f)
