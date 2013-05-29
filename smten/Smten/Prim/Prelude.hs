@@ -70,7 +70,7 @@ getContentsP = {-# SCC "getContentsP" #-} nullaryP "Prelude.getContents" getCont
 numericP :: Prim
 numericP = {-# SCC "numericP" #-}
   let f :: Type -> ExpH
-      f nt = conEH nt (name "#" `nappend` name (show (nteval nt))) []
+      f nt = conEH nt (name $ "#" ++ show (nteval nt)) []
   in nullaryTP "Prelude.numeric" f
 
 valueofP :: Prim

@@ -21,11 +21,11 @@ data ConRec = NormalC Name [Type]
 
 -- return the undef variable name for a given data constructor name.
 record_undefnm :: Name -> Name
-record_undefnm n = name "__" `nappend` n `nappend` name "_undef"
+record_undefnm n = name $ "__" ++ unname n ++ "_undef"
 
 -- return the updater for a given field.
 record_updnm :: Name -> Name
-record_updnm n = name "__" `nappend` n `nappend` name "_update"
+record_updnm n = name $ "__" ++ unname n ++ "_update"
 
 -- | Desugar record constructors from a data declaration.
 -- Also handles deriving construts.
@@ -155,13 +155,13 @@ deriveFree :: Location -> Context -> Class -> [ConRec] -> Dec
 deriveFree l ctx cls cs =
   let -- name of tag for constructor: (isFooX :: Bool)
       mkTag :: ConRec -> Sig
-      mkTag (NormalC nm _) = Sig (name "is" `nappend` nm) boolT
+      mkTag (NormalC nm _) = Sig (name $ "is" ++ unname nm) boolT
       mkTag (RecordC nm ts) = mkTag (NormalC nm (map snd ts))
 
       -- fields for constructor: [a1FooX, a2FooX, ...]
       mkFields :: ConRec -> [Sig]
       mkFields (NormalC nm ts)
-        = [Sig (name ('a' : show i) `nappend` nm) UnknownT | i <- [1..length ts]]
+        = [Sig (name $ ('a' : show i) ++ unname nm) UnknownT | i <- [1..length ts]]
       mkFields (RecordC nm ts) = mkFields (NormalC nm (map snd ts))
 
       -- application of constructor to its fields:

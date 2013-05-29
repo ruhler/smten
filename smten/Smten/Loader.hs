@@ -102,12 +102,14 @@ loadmod fname = do
 findmodule :: SearchPath -> Location -> Name -> IO FilePath
 findmodule [] l n = attemptIO $ throw (lmsg l ("Module " ++ unname n ++ " not found"))
 findmodule (s:ss) l n =
- let dirify :: Name -> FilePath
-     dirify n | nnull n = []
-     dirify n | nhead n == '.' = '/' : dirify (ntail n)
-     dirify n = nhead n : dirify (ntail n)
+ let dirify :: String -> FilePath
+     dirify n =
+        case n of
+          [] -> []
+          ('.':xs) -> '/' : dirify xs
+          (x:xs) -> x : dirify xs
 
-     fp = s ++ "/" ++ dirify n ++ ".smtn"
+     fp = s ++ "/" ++ dirify (unname n) ++ ".smtn"
  in do
     exists <- doesFileExist fp
     if exists

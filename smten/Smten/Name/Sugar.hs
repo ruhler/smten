@@ -120,15 +120,15 @@ qualification n =
     ([], ['.']) -> name ""
     (x, '.':xs) -> 
         let qxs = qualification (name xs)
-        in if nnull qxs
+        in if null (unname qxs)
              then name x
              else qualified (name x) qxs
 
 -- | Make a qualified name.
 -- For example: qualified "Foo.Bar" "sludge" returns "Foo.Bar.sludge"
 qualified :: Name -> Name -> Name
-qualified a b = a `nappend` name "." `nappend` b
+qualified a b = name $ unname a ++ "." ++ unname b
 
 isqualified :: Name -> Bool
-isqualified = not . nnull . qualification
+isqualified = not . null . unname . qualification
 

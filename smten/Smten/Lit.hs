@@ -15,7 +15,7 @@ import Data.Dynamic
 import Smten.Bit
 import Smten.Ppr
 
-data Lit = Lit Dynamic
+newtype Lit = Lit Dynamic
     deriving (Show)
 
 instance Eq Lit where
@@ -27,28 +27,28 @@ instance Eq Lit where
       | otherwise = False
 
 dynamicL :: (Typeable a) => a -> Lit
-dynamicL = Lit . toDyn
+dynamicL = {-# SCC "dynamicL" #-} Lit . toDyn
 
 de_dynamicL :: (Typeable a) => Lit -> Maybe a
-de_dynamicL (Lit x) = fromDynamic x
+de_dynamicL (Lit x) = {-# SCC "de_dynamicL" #-} fromDynamic x
 
 integerL :: Integer -> Lit
-integerL = dynamicL
+integerL = {-# SCC "integerL" #-} dynamicL
 
 de_integerL :: Lit -> Maybe Integer
-de_integerL = de_dynamicL
+de_integerL = {-# SCC "de_integerL" #-} de_dynamicL
 
 charL :: Char -> Lit
-charL = dynamicL
+charL = {-# SCC "charL" #-} dynamicL
 
 de_charL :: Lit -> Maybe Char
-de_charL = de_dynamicL
+de_charL = {-# SCC "de_charL" #-} de_dynamicL
 
 bitL :: Bit -> Lit
-bitL = dynamicL
+bitL = {-# SCC "bitL" #-} dynamicL
 
 de_bitL :: Lit -> Maybe Bit
-de_bitL = de_dynamicL
+de_bitL = {-# SCC "de_bitL" #-} de_dynamicL
 
 instance Ppr Lit where
     ppr l

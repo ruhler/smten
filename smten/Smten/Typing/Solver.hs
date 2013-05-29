@@ -161,5 +161,5 @@ instance Ppr (Map.Map Name Type) where
 --  should instead make it explicit which variables we are solving for
 --  and which we can take as given.
 istarget :: Name -> Bool
-istarget n = nhead n == '~'
+istarget n = head (unname n) == '~'
 

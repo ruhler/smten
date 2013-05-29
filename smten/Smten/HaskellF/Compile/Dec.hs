@@ -39,7 +39,7 @@ retypenm t
                    "+" -> "_plus_"
                    "-" -> "_minus_"
                    "*" -> "_times_"
-       in an `nappend` name opn `nappend` bn
+       in name $ unname an ++ opn ++ unname bn
    | NumT i <- t = name ("_" ++ show i)
    | otherwise = error "unexpected type in HaskellF.Compile.retypenm"
 

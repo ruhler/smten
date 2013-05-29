@@ -157,7 +157,7 @@ sources mn m = do
     case Map.lookup mn m of
         Just es -> do
             let nms = map qualification (concat $ Map.elems es)
-                ignore n = nnull n || n == mn
+                ignore n = null (unname n) || n == mn
             return (nub $ filter (not . ignore) nms)
         Nothing -> lthrow $ "module " ++ pretty mn ++ " not found"
    

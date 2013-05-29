@@ -26,7 +26,7 @@ fresh s@(Sig n t) = do
    put $! m'
    case id of
       Nothing -> return $ Sig nbase t
-      Just x -> return $ Sig (nbase `nappend` name (show x)) t
+      Just x -> return $ Sig (name $ unname nbase ++ show x) t
 
 runFresh :: Fresh a -> a
 runFresh x = evalState x Map.empty
