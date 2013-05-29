@@ -15,45 +15,49 @@ import Data.Dynamic
 import Smten.Bit
 import Smten.Ppr
 
-newtype Lit = Lit Dynamic
+data Lit = DynamicL Dynamic
+         | IntegerL Integer
+         | CharL Char
+         | BitL Bit
     deriving (Show)
 
 instance Eq Lit where
-    (==) a b
-      | Just ai <- de_integerL a
-      , Just bi <- de_integerL b = ai == bi
-      | Just ac <- de_charL a
-      , Just bc <- de_charL b = ac == bc
-      | otherwise = False
+    (==) (IntegerL a) (IntegerL b) = a == b
+    (==) (CharL a) (CharL b) = a == b
+    (==) (BitL a) (BitL b) = a == b
+    (==) _ _ = False
 
 dynamicL :: (Typeable a) => a -> Lit
-dynamicL = {-# SCC "dynamicL" #-} Lit . toDyn
+dynamicL = {-# SCC "dynamicL" #-} DynamicL . toDyn
 
 de_dynamicL :: (Typeable a) => Lit -> Maybe a
-de_dynamicL (Lit x) = {-# SCC "de_dynamicL" #-} fromDynamic x
+de_dynamicL (DynamicL x) = {-# SCC "de_dynamicL" #-} fromDynamic x
+de_dynamicL _ = Nothing
 
 integerL :: Integer -> Lit
-integerL = {-# SCC "integerL" #-} dynamicL
+integerL = {-# SCC "integerL" #-} IntegerL
 
 de_integerL :: Lit -> Maybe Integer
-de_integerL = {-# SCC "de_integerL" #-} de_dynamicL
+de_integerL (IntegerL i) = {-# SCC "de_integerL" #-} Just i
+de_integerL _ = Nothing
 
 charL :: Char -> Lit
-charL = {-# SCC "charL" #-} dynamicL
+charL = {-# SCC "charL" #-} CharL
 
 de_charL :: Lit -> Maybe Char
-de_charL = {-# SCC "de_charL" #-} de_dynamicL
+de_charL (CharL c) = {-# SCC "de_charL" #-} Just c
+de_charL _ = Nothing
 
 bitL :: Bit -> Lit
-bitL = {-# SCC "bitL" #-} dynamicL
+bitL = {-# SCC "bitL" #-} BitL
 
 de_bitL :: Lit -> Maybe Bit
-de_bitL = {-# SCC "de_bitL" #-} de_dynamicL
+de_bitL (BitL b) = {-# SCC "de_bitL" #-} Just b
+de_bitL _ = Nothing
 
 instance Ppr Lit where
-    ppr l
-      | Just i <- de_integerL l = integer i
-      | Just c <- de_charL l = text (show c)
-      | Just b <- de_bitL l = text (show b)
-      | otherwise = text "?Lit?"
+    ppr (IntegerL i) = integer i
+    ppr (CharL c) = text (show c)
+    ppr (BitL b) = text (show b)
+    ppr _ = text "?Lit?"
 
