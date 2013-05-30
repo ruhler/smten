@@ -368,6 +368,8 @@ break p = span (not . p)
 isSpace :: Char -> Bool
 isSpace ' ' = True
 isSpace '\n' = True
+isSpace '\r' = True
+isSpace '\t' = True
 isSpace _ = False
 
 lines :: String -> [String]
@@ -466,7 +468,7 @@ instance (Show a) => Show [a] where
 showListHelper :: (Show a) => [a] -> String
 showListHelper [] = "" 
 showListHelper [x] = show x
-showListHelper (x:xs) = concat [show x, ", ", showListHelper xs]
+showListHelper (x:xs) = concat [show x, ",", showListHelper xs]
 
 data Either a b = Left a | Right b
     deriving (Eq, Show)
