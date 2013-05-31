@@ -144,11 +144,11 @@ de_ioEH x = {-# SCC "de_ioEH" #-} do
 
 caseEH :: Type -> ExpH -> Name -> ExpH -> ExpH -> ExpH
 caseEH t x k y n
- | k == trueN = ifEH t x y n
- | k == falseN = ifEH t x n y
+ | {-# SCC "CaseTestTrue" #-} k == trueN = ifEH t x y n
+ | {-# SCC "CaseTestFalse" #-} k == falseN = ifEH t x n y
  | otherwise =
   case force x of
-    ConEH k2 vs -> if k == k2 then appsEH t y vs else n
+    ConEH k2 vs -> if {-# SCC "CaseTestK" #-} k == k2 then appsEH t y vs else n
     ErrorEH s -> errorEH t s
     IfEH {} -> strict_appEH t (\x' -> caseEH t x' k y n) x
     _ -> error $ "SMTEN INTERNAL ERROR: unexpected arg to caseEH"
@@ -167,8 +167,8 @@ ifEH :: Type -> ExpH -> ExpH -> ExpH -> ExpH
 ifEH t p a b =
   case force p of
     ConEH k []
-      | k == trueN -> a
-      | k == falseN -> b
+      | {-# SCC "IfTestTrue" #-} k == trueN -> a
+      | {-# SCC "IfTestFalse" #-} k == falseN -> b
     ErrorEH s -> errorEH t s
     _ -> exph t $ IfEH p a b
 

@@ -33,49 +33,49 @@ class SmtenT4 m where
     smtenT4 :: m a b c d -> Type
 
 instance (SmtenT1 m, SmtenT a) => SmtenT (m a) where
-    smtenT x =
+    smtenT x = {-# SCC "SmtenT_fromT1" #-}
       let t :: m a -> a
           t _ = undefined
       in appT (smtenT1 x) (smtenT (t x))
 
 
 instance (SmtenT2 m, SmtenT a) => SmtenT1 (m a) where
-    smtenT1 x =
+    smtenT1 x = {-# SCC "SmtenT1_fromT2" #-}
       let t :: m a b -> a
           t _ = undefined
       in appT (smtenT2 x) (smtenT (t x))
 
 instance (SmtenT3 m, SmtenT a) => SmtenT2 (m a) where
-    smtenT2 x =
+    smtenT2 x = {-# SCC "SmtenT2_fromT3" #-}
       let t :: m a b c -> a
           t _ = undefined
       in appT (smtenT3 x) (smtenT (t x))
 
 instance (SmtenT4 m, SmtenT a) => SmtenT3 (m a) where
-    smtenT3 x =
+    smtenT3 x = {-# SCC "SmtenT3_fromT4" #-}
       let t :: m a b c d -> a
           t _ = undefined
       in appT (smtenT4 x) (smtenT (t x))
 
 
 instance SmtenT () where
-    smtenT _ = unitT
+    smtenT _ = {-# SCC "SmtenT_Unit" #-} unitT
 
 instance SmtenT Char where
-    smtenT _ = charT
+    smtenT _ = {-# SCC "SmtenT_Char" #-} charT
 
 instance SmtenT Integer where
-    smtenT _ = integerT
+    smtenT _ = {-# SCC "SmtenT_Integer" #-} integerT
 
 instance SmtenT Bool where
-    smtenT _ = boolT
+    smtenT _ = {-# SCC "SmtenT_Bool" #-} boolT
 
 instance SmtenT1 IO where
-    smtenT1 _ = conT ioN
+    smtenT1 _ = {-# SCC "SmtenT1_IO" #-} conT ioN
 
 instance SmtenT2 (->) where
-    smtenT2 _ = conT arrowN
+    smtenT2 _ = {-# SCC "SmtenT2_Arrow" #-} conT arrowN
 
 instance SmtenT2 (,) where
-    smtenT2 _ = conT (tupleN 2)
+    smtenT2 _ = {-# SCC "SmtenT2_Tuple2" #-} conT (tupleN 2)
 

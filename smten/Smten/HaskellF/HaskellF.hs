@@ -28,7 +28,7 @@ instance SmtenT2 T__Function where
     smtenT2 x = conT arrowN
 
 smtenTHF :: (SmtenT a) => ExpHF a -> Type
-smtenTHF x =
+smtenTHF x = {-# SCC "SmtenTHF" #-}
   let f :: ExpHF a -> a
       f _ = undefined
   in smtenT (f x)
@@ -69,7 +69,6 @@ mainHF :: (SmtenT a) => ExpHF a -> IO ()
 mainHF x
   | Just v <- de_ioEH (unbox x) = v >> return ()
   | otherwise = error "mainHF: main failed to compute"
-
 
 integerHF :: (SmtenT a) => Integer -> ExpHF a
 integerHF = smtenHF

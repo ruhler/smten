@@ -1,6 +1,5 @@
 
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# OPTIONS_GHC -fno-cse #-}
 
 module Smten.Name.Name (
     Name, name, unname
@@ -13,10 +12,13 @@ import Smten.Ppr
 
 newtype Name = Name {
     nm_str :: STR.ByteString
-} deriving (Ord, Eq, Hashable)
+} deriving (Ord, Hashable)
+
+instance Eq Name where
+    (==) a b = {-# SCC "NameEqual" #-} nm_str a == nm_str b
 
 name :: String -> Name
-name = Name . STR.pack
+name = {-# SCC "NameAlloc" #-} Name . STR.pack
 
 unname :: Name -> String
 unname = STR.unpack . nm_str
