@@ -10,20 +10,23 @@ module Smten.ExpH.ExpH (
     ) where
 
 import System.IO.Unsafe
-import Data.IORef
 import Data.Typeable
 import Data.Hashable
+import Data.Unique
 
 import Smten.Lit
 import Smten.Name
 import Smten.Type
 import Smten.Ppr
 
-newtype EID = EID Integer
-    deriving (Eq, Hashable, Ord)
+newtype EID = EID Unique
+    deriving (Eq, Ord)
 
 instance Show EID where
-    show (EID x) = show x
+    show (EID x) = show (hashUnique x)
+
+instance Hashable EID where
+    hashWithSalt s (EID x) = hashWithSalt s (hashUnique x)
 
 -- ExpH_Value represents a symbolic expression evaluated to weak head normal
 -- form, or a thunk.
@@ -68,19 +71,11 @@ instance Show ExpH_Value where
     show (LamEH _) = "\\? -> ..."
     show (IfEH p a b) = "if " ++ show p ++ " then " ++ show a ++ " else " ++ show b
     show (ErrorEH s) = "error " ++ show s
-
-{-# NOINLINE idstore #-}
-idstore :: IORef Integer
-idstore = unsafePerformIO (newIORef 0)
-
-mkeid :: Type -> (EID, Type)
-mkeid t = {-# SCC "mkeid" #-} unsafeDupablePerformIO $ do
-   x <- readIORef idstore
-   writeIORef idstore $! x + 1
-   return $ (EID x, t)
     
 exph :: Type -> ExpH_Value -> ExpH
-exph t v = ExpH (fst (mkeid t)) t v
+exph t v = {-# SCC "exph" #-} unsafeDupablePerformIO $ do
+   x <- newUnique
+   return $ ExpH (EID x) t v
 
 -- Return true if the given expression is simple.
 simple :: ExpH -> Bool

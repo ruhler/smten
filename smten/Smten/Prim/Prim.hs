@@ -59,6 +59,7 @@ binaryTP n f =
         | IfEH {} <- force b
         , not (smttype (typeof b))
             = strict_appEH t (\b' -> impl t [a, b']) b
+        | ErrorEH s <- force a = errorEH t s
         | ErrorEH s <- force b = errorEH t s
         | otherwise = exph t $ PrimEH nm (impl t) [a, b]
 
