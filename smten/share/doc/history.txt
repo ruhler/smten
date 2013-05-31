@@ -1,3 +1,22 @@
+May 31, 2013
+  smten-2.2.0.0
+  smten-smt-2.2.0.0
+  smten-bin-2.2.0.0
+ 
+  Changes from smten-2.1.0.0
+  * Add location information to errors
+  * Better support for modules
+    ** qualified imports, qualified names, import specs, export specs
+  * irrefutable patterns
+  * made lets recursive instead of sequential
+  * primitive array support
+  * support brace insertion layout rule
+  * --phases flag to smten to help debug compiler
+  * Handle explicit errors correctly in SMT queries
+  * Added Debug solver.
+  * Many bug fixes
+  * Much internal code revision
+
 Mar 28, 2013
   smten-2.1.0.0
   smten-smt-2.1.0.0
