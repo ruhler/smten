@@ -33,31 +33,30 @@ smtenTHF x = {-# SCC "SmtenTHF" #-}
       f _ = undefined
   in smtenT (f x)
 
-applyHF :: (SmtenT a, SmtenT b) => ExpHF (T__Function a b) -> ExpHF a -> ExpHF b
+applyHF :: (SmtenT b) => ExpHF (T__Function a b) -> ExpHF a -> ExpHF b
 applyHF f x =
-  let Just (_, t) = de_arrowT (smtenTHF f)
-  in box (appEH t (unbox f) (unbox x))
+  let r = box (appEH (smtenTHF r) (unbox f) (unbox x))
+  in r
 
 lamHF :: (SmtenT a, SmtenT b) => (ExpHF a -> ExpHF b) -> ExpHF (T__Function a b)
-lamHF f =
-  let g = \x -> unbox (f (box x))
+lamHF f = {-# SCC "lamHF" #-}
+  let g = {-# SCC "lamHF.g" #-} \x -> unbox (f (box x))
       r = box $ lamEH t g
       t = smtenTHF r
   in r
 
 smtenHF :: (SmtenEH c, SmtenT f) => c -> ExpHF f
-smtenHF = box . smtenEH
+smtenHF = {-# SCC "smtenHF" #-} box . smtenEH
 
 de_smtenHF :: (SmtenEH c, SmtenT f) => ExpHF f -> Maybe c
-de_smtenHF = de_smtenEH . unbox
+de_smtenHF = {-# SCC "de_smtenHF" #-} de_smtenEH . unbox
 
 conHF :: (SmtenT a) => Name -> [ExpH] -> ExpHF a
-conHF k args =
+conHF k args = {-# SCC "conHF" #-}
   let r = box $ conEH (smtenTHF r) k args
   in r
 
-caseHF :: (SmtenT x, SmtenT y, SmtenT n)
-         => Name -> ExpHF x -> ExpHF y -> ExpHF n -> ExpHF n
+caseHF :: (SmtenT n) => Name -> ExpHF x -> ExpHF y -> ExpHF n -> ExpHF n
 caseHF k x y n = box $ caseEH (smtenTHF n) (unbox x) k (unbox y) (unbox n)
 
 primHF :: (SmtenT a) => Prim -> ExpHF a
@@ -65,11 +64,11 @@ primHF f =
  let z = box $ f (smtenTHF z)
  in z
 
-mainHF :: (SmtenT a) => ExpHF a -> IO ()
+mainHF :: ExpHF a -> IO ()
 mainHF x
   | Just v <- de_ioEH (unbox x) = v >> return ()
   | otherwise = error "mainHF: main failed to compute"
 
-integerHF :: (SmtenT a) => Integer -> ExpHF a
-integerHF = smtenHF
+integerHF :: Integer -> ExpHF a
+integerHF = {-# SCC "integerHF" #-} box . integerEH
 

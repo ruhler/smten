@@ -1,0 +1,102 @@
+
+Sun May 26 15:05:32 EDT 2013
+
+I updated shampi to be done entirely in smten, except the parser, which is a
+foreign import.
+
+I suppose, not surprisingly, it's fairly slow. Not orders of magnitude... but,
+perhaps, a large constant factor.
+
+All the tests finish in under 3 minutes total, which is wonderful.
+
+The question that remains, though, is, can I make this faster?
+
+Looking at profiles with -fprof-auto-top is not terribly helpful, because
+everything is recursively nested. It doesn't give a good sense. 
+
+At least, the sense I get from shampi profiling, is most of the time is spent
+in Fix.
+
+Can I improve the performance of that?
+
+We know this is an issue with performance of concrete evaluation. So the
+changes I should be making are changes to smten, not to shampi.
+
+Assuming that really is the problem.
+
+One thing that would be wonderful is if I could put SCC annotations in smten
+code...
+
+Anyway, I think the way to go about it, perhaps, is come up with a hypothesis
+about what takes so much time, then add SCCs to target that without this
+nesting problem?
+
+For example, consider ifEH. I could put some SCCs which say how much time is
+spent testing whether 'k' is trueN or falseN.
+
+Perhaps we could cut things in half by only checking one or the other?
+Perhaps we could do even better by making constructors in ExpH ints instead of
+strings?
+
+Use profiling to gauge how significant that may be.
+
+For example, let me try this. I'll turn off all SCCs except for the cost of
+testing the constructor in ifEH. See how much percent of the program is
+assigned to that.
+
+If a lot of the program is assigned to that, then we can expect decent
+improvements by changing the representation of ExpH.
+
+I think using Int instead of name for a constructor is fine. Converting back
+to Exp will be difficult unless I have the environment.
+
+Or, what I could do, is have a name be, as Nirav has suggested would be good:
+an int and a string. To test for equality, just compare the int.
+
+Because we expect a small number of names, this could be a nice feature. Just
+use unsafe IO to allocate the IDs.
+
+So... in other words... this would be easy to change locally.
+
+Sun May 26 15:22:37 EDT 2013
+
+Almost 0 time is spent in this comparison. This suggests this change wouldn't
+help that much.
+
+I suspect how we desugar things could make a big difference. Perhaps that's a
+better approach to take towards making things faster?
+
+What else could I try?
+
+I don't know. 
+
+Should I merge to master branch?
+
+I don't know.
+
+Sad.
+
+Well, I can take some time to stew and see if I can figure out the next step
+that way.
+
+Sun May 26 16:30:22 EDT 2013
+
+I think the way to do make things faster will be either:
+ * make common base operations faster.
+ * do less work.
+
+I feel like doing less work has much more potential than making common base
+operations faster.
+
+Where can I do less work?
+Some ideas:
+
+* smarter desugaring?
+* alternate case format which does a single check instead of nested checks
+* multi-argument lambdas and applications?
+* an expression optimization pass?
+
+The real question is: what profiling information can I get to suggest to me
+what the best thing to try next would be?
+
+That's something to think about. How to guide this?

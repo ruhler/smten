@@ -1,0 +1,561 @@
+
+Fri May 24 06:15:21 EDT 2013
+
+Some thoughts:
+
+1. run bibliography profiling.
+If everything is in VOID state, then I'm confident the issue I'm seeing is the
+BLACKHOLE issue.
+
+2. generate the compiled C code for manual and look at it to get a better idea
+of what might be going on with the black hole issue.
+
+3. change the implementation of caseEH as follows:
+* have it take as an argument the number of args being extracted (computed
+  based on type).
+* use a function
+    fieldEH :: Name -> Integer -> ExpH -> ExpH
+      extracts the ith field from a corresponding constructor from this value.
+      unless the constructor doesn't match, in which case it returns smten
+      level error.
+    taggedEH :: Name -> ExpH -> ExpH
+      returns a smten boolean which is true if the expression is tagged as
+      indicated.
+
+  Then use an if expression.
+
+Test this change in manual.hs. See if it solves it more generally.
+
+
+Okay. First: bibliographic profiling says: there is some stuff in VOID, some
+stuff in DRAG and some in USE. It's not as clear as my manual test case. But
+DRAG is useless, and I bet VOID is holding on to it, or something, so I think
+this is the same problem.
+
+Let me go back to manual and see what I can accomplish now.
+
+1. manual bug reproduced.
+
+It looks like I can't generate 'c' code. It claims the compiler is
+unregistered. That's annoying. I don't even know what that means.
+
+Oh well. Let me try my fix then, and see if that solves the issue with manual.
+
+Review from yesterday:
+
+8.prof: use newtype for all haskellF definitions.
+  40.90, 35,397,648,768
+
+I changed caseEH, and now:
+
+9.prof: use field extraction and tag testing in caseEH
+   8.24s, 5,013,366,864 bytes
+
+That's big. Very big.
+
+Oh! Wait! What happened is I disabled the performance test. That's why it's so
+much faster.
+
+Darn.
+
+Okay, whatever. Let me see if this fixed the problem in manual.hs. For some
+reason, I suspect it did not.
+
+Fri May 24 07:12:42 EDT 2013
+
+Turns out: that change fixed nothing, but made things worse. Bummer.
+
+Back to the drawing board.
+
+Fri May 24 08:18:42 EDT 2013
+
+Here's the plan:
+
+1. minimize the test case as much as I can.
+2. use heap profiling to figure out where the blackholes are
+3. spend some time thinking about how this could happen,
+drive my thoughts by the solution which makes a difference.
+4. if need be, try to really minimize the case be removing Smten from it
+entirely.
+
+After this, I'll give a status update and we'll see what I learned, if
+anything.
+
+* removing __caseNil, because it's obvious from the default of __caseCons.
+18s down to 12s (suggests how we desugar cases could have a big affect on
+performance).
+Memory is down to 25M (from 55M), but we still have the leak. Good.
+
+This is as simple, I believe, as I can get. At least, right now.
+Once I find other possible causes of the problem, I may be able to trim more.
+
+Currently we have two closures responsible for memory:
+
+* main.result.appHF.appEH.myand.lamHF.__caseTrue.caseHF
+* main.result.appHF.appEH.myand.lamHF
+
+They seem to split the memory. I suspect each one is responsible for a single
+black hole as we make this change of black holes. So it looks to me like we
+have 2 black holes on the critical path of the chain.
+
+Both are in main.result.appHF.appEH.myand.lamHF.
+Let me add some SCCs, to see if I can get a better idea, precisely, of where
+things are.
+
+Both are from LAMBDA_XS. Not surprisingly perhaps, as that is the recursive
+call.
+
+Both are from LAMBDA_XS_BODY. The one stops there.
+The other goes to __caseTrue.caseHF, but does not involve its arguments.
+
+It goes to caseHF.R.
+
+Let me now go into smten some, see if we can't identify the problem.
+
+Actually, first let me get rid of these types and names and other stuff that I
+don't think should matter. Just to make sure.
+
+Fri May 24 08:53:09 EDT 2013
+
+I got rid of types and names and other unnecessary things, and I have isolated
+the places where the BLACKHOLES show up:
+
+* LAMBDA_XS_BODY
+* LAMBDA_XS_BODY.__caseTrue.caseHF
+
+They don't go any deeper than those two places.
+
+Let me now get all the info I can about this.
+
+1. double check memory type (hy): BLACKHOLE
+2. retainers (hr): SYSTEM
+3. closure (hd): BLACKHOLE
+4. double check bib (hb): VOID
+
+That's about as much detail as I can get. So, let me now take the time to
+understand this better.
+
+We want to evaluate:
+result = appHF myand elems
+
+I'm going to draw some pictures, and see if that helps.
+
+I think I should work this like a graph reduction machine would, and look at
+the memory myself. I fear it will get complex though. Too complex.
+
+But maybe if I work it until it gets too complex, that will make things more
+clear.
+
+Fri May 24 09:47:19 EDT 2013
+
+I think, perhaps, this is an issue of a complicated foldr.
+
+What's the issue?
+
+Consider foldr on a big list. If the function is strict, then it puts every
+element of the list on the stack before starting to reduce things.
+
+What does the heap profile report in this case? BLACKHOLE.
+
+The myand function is a foldr. The thing which is interesting is: I don't
+expect the function to be strict, I expect the function to be lazy.
+
+Is that not the case? There is a bit of complicated stuff going on here, is
+there something causing the function to be strict?
+
+Or, do I have this foldr thing somewhere else in my code?
+
+Aha! This is a good lead.
+
+Let me summarize the issue.
+
+foldr. strict f.
+
+Push elem on stack, recurse (pushing elements on stack).
+Only when we reach the end of the list cant we find two known values and start
+to reduce.
+
+How does that happen in the myand example?
+
+Fri May 24 10:31:42 EDT 2013
+
+Good news. I have managed to greatly simplify the test case by removing all
+the type stuff. Now it's just in raw ExpH form. Same issues arise.
+
+I bet I can simplify it more, so it doesn't use smten at all.
+
+Fri May 24 10:47:55 EDT 2013
+
+When I simplified it so it doesn't use smten at all, it no longer exhibits the
+same behavior. I must have removed something important. Rather, it does what I
+expect it to do.
+
+What are the differences?
+
+The things I can think of are:
+1. this eid/exph thing.
+2. opportunities for optimization.
+
+Let me add back in the eid/exph thing. See if that makes a big difference.
+
+That made no difference.
+
+What else could it be?
+
+I can only think of:
+
+* Extra Sigs and Types
+* Dynamic for integers
+* Implementation of primitives
+* Propagation of Error
+* Handling of Symbolic stuff
+
+We introduce no symbolic stuff, so that should not be a problem.
+Perhaps extra sigs and types are holding on to things they should not be? That
+doesn't make sense. That wouldn't force something early.
+
+Well, I can take a break from this problem and ask another question: do I
+really need to keep info about types and such along in ExpH?
+
+I feel like, in the future, I would need to. But right now, I don't. Let me,
+for cleaning purposes, remove all that stuff and see if it makes a difference.
+
+10.prof: baseline
+  time: 36.50 sec
+  alloc: 33,591,393,920
+
+Oh. I see. I use smttype in the primitives. That's where I do specialization.
+
+But! We shouldn't need typeof for that. The primitives all should know their
+type.
+
+So yes, for now, get rid of smttype, and I bet I can add the information back
+in less obtrusive ways if I ever want this back.
+
+Another problem: converting back to Exp for debug purposes. I need the type
+info there, and perhaps for arbitrary expressions.
+
+Though I suppose, in that case, we could just derive the type from the ground
+up. Yes. That sounds like a better approach to me.
+
+Okay, so here's the new proposal: reimplement typeof for ExpH to compute the
+type from the ground up. We only ask for the type when we force something, so
+it should be fine to do, unless we have a really big expression...
+
+Gah! So yucky.
+
+Here's the situation.
+
+I still don't know what's causing the stack overflow. There is something about
+ExpH that's doing it.
+
+I have the urge to completely rewrite ExpH, to make it cleaner. I bet I could
+get it to go noticeably faster if I rewrote things given my knowledge now.
+
+Some things I would like to change:
+
+* Have legs for Integer, Bit, Char
+    But this shouldn't make that big a difference...
+* Don't keep type info with ConEH
+* Use an int to name constructors based on position in typedef.
+* Use an int to name variables, and don't include type for VarEH.
+* Don't keep type info with PrimEH.
+* Identify PrimEH by enum rather than Name.
+* Don't include Sig or Type info with LamEH.
+* Don't include type info with IfEH.
+* Don't include type info with ErrorEH.
+* Define primitives as functions from type and ExpH args to ExpH.
+    Let them deal with symbolic stuff as they will.
+    We will provide helper functions as needed.
+* Use case expressions where possible (rather than pattern guards)
+* have fail_symbolic primitive instead of insert.
+* don't support incremental queries
+
+Well? What do you think? What should I do with all this info?
+
+It should be possible to morph here in small steps. Morphing is nice, because
+you make continuous progress, and have something working all the way. Starting
+from scratch can also be nice, though, because you can get rid of junk code
+and just, overall, make things pretty. You can break free of the confines of
+the existing code structure.
+
+Fri May 24 12:42:29 EDT 2013
+
+Okay, here is what I've decided.
+
+I want to understand what's going on with the stack overflow.
+
+I'll do the following:
+* remove things from ExpH which I feel like I don't need.
+In order to approach the hand coded version of the test case.
+
+* add things to the hand coded which I know we need for ExpH.
+In order to approach ExpH.
+
+As I remove things from ExpH, I will be cleaning up, and keep tabs on the
+performance changes.
+
+As I add things to hand coded, I'll be working from scratch.
+
+At some point they should converge, and I should understand what's up.
+
+Actually, one thing I could do is move the ExpH code directly in to the
+failing expH example, and play with it in this more isolated environment.
+
+That sounds rather attractive to me.
+
+Primary goal: understand the stack overflow.
+
+Fri May 24 12:51:24 EDT 2013
+
+Well, I just managed to delete my two versions of the code. Bummer.
+
+Oh well. That's okay. I can easily enough recreate them.
+
+You know what I'm thinking might be the best way to go?
+
+Take my example, inline the Smten libraries used, then whittle it down until
+it looks like the hand example. It should be easy to change without worrying
+about other things, and should eventually get there.
+
+Sounds like a plan to me.
+
+I'll get started now.
+
+0.prof: baseline
+  7.21 seconds
+  8.5 billion bytes 
+  25M heap
+
+1.prof: turn into raw ExpH.
+  2.58 seconds
+  3.8 billion bytes
+  14M heap
+
+Though, to be fair, it's doing a bit less work:
+* no IO
+
+So I'm not sure what all I can seriously take away from this.
+
+2.prof: manually implement the integer primitives.
+  2.59 seconds
+  3.8 billion bytes
+  12M heap
+
+Not a big difference.
+
+3.prof: port all the ExpH stuff from Smten library into local test.
+  7.54 seconds
+  6.5 billion bytes
+  40K heap
+
+Much slower, but does not have this leak.
+
+So... either it's something I changed in the files I imported,
+ or there is some sort of optimization going on
+ or there is something up with the compilation flags.
+
+Time to work backwards.
+
+I changed the imported code so it is the same verbatim.
+
+There must be something up with the compilation flags? This is very strange.
+
+Well, if it is verbatim, I ought to be able to switch over to the other easily
+enough.
+
+Yes. I can switch, and I see the problem.
+
+It has to be something about how things are compiled, or the way packages
+work.
+
+Let me try to recompile the smten library, and see what flags are being set.
+
+Fri May 24 13:44:08 EDT 2013
+
+Found it. -O1. Adds optimization which leads to the memory leak.
+Sadness.
+
+I suppose the more interesting question would be: which optimization is
+causing the problem? Can I try to find it by binary search?
+
+Found it: -fno-strictness.
+
+In fact, without this turned on, but with the other optimizations on, we do
+pretty darn good.
+
+Well, there you have it. Thus we reach the close of a long saga...
+
+Well, actually, I suppose the thing to do would be to try my perf tests on the
+fixhf branch with this change, and see if it helps.
+
+How to test this out? I wonder if I can put -fno-strictness on a module by
+module basis...
+
+Fri May 24 14:19:56 EDT 2013
+
+Yes, I did the -fno-strictness. That fixed my blackhole problem. Hurray.
+
+But! We have other problems now. The problems I thought were blackhole
+problems.
+
+I suppose I made some progress, which is good, but, sadly, it doesn't seem
+like I made much progress...
+
+Anyway, let me continue now by exploring the source of memory leaks now.
+
+I wonder... can I turn all optimizations off for development?
+
+I feel like that could be a healthy thing.
+
+Good. First step: figure out what's going on with the leak in the deep
+recursion test now.
+
+Fri May 24 15:46:12 EDT 2013
+
+Here's the status: I know very little. Um... I know the following:
+
+* There should be no memory leak here.
+I used the same implementations for all the primitives being used in haskell,
+with -O0, and it doesn't leak memory.
+
+* hy: ExpH and *
+
+Focusing on ExpH:
+ The producer of the thing (hc) is appHF0.
+ That is, this ExpH corresponds to an application.
+
+ The retainer of the thing (hr) is lamHF_G2.
+  This is the function call (f (box x))
+  Which is stored on a lambda.
+
+I wonder if I can get better information with less SCCs?
+Or smarter SCCs?
+
+The question I have is: which lamHF does this correspond to?
+
+Is that the right question?
+
+Gosh. I hate space leaks.
+
+Perhaps something I can do to figure out what's going on is generate the
+haskell code, then start playing with the generated code to try and... as
+before, minimize the test case.
+
+That sounds like a reasonable idea to me.
+
+Here I go then. Wish me luck.
+
+Fri May 24 16:22:48 EDT 2013
+
+I managed to pull out the code.
+
+Um... what do I want to play with?
+
+I want to extract all the HaskellF stuff I bet. Play with that.
+
+Ug. I don't know.
+
+Fri May 24 17:07:06 EDT 2013
+
+I simplified everything as much as I could. Now the code is mostly hand
+readable.
+
+Now I want to start playing with different ways of doing HaskellF.
+
+This means I should: copy the Prelude and HaskellF stuff over manually.
+
+We want to reuse ExpH (which I'm fairly confident isn't leaking. ???). But
+define HaskellF stuff locally.
+
+What's the first thing I might want to try?
+
+Well... actually, I already said it. I need to see if we have problems if we
+use the same structure for pure ExpH code.
+
+This I should be able to do easily enough. Let me give it a try.
+
+The hope is: no. We don't have problems with ExpH. Then I can build it back up
+and go from there.
+
+Fri May 24 20:49:07 EDT 2013
+
+Tried raw ExpH: it works just fine. No memory leak.
+
+So then... let me work backwards?
+
+Or should I work forwards?
+
+I think backwards.
+
+I don't know. I'll try working backwards, and when I get close, I can change
+to the other direction.
+
+Step 1:
+
+We really need to associate types with things in order to handle type classes
+by piggy backing off of haskell's type class support. This is really what the
+generated haskell code is all about: let haskell deal with classes.
+
+So, let me see if I can add that support without causing memory leaks.
+
+Fri May 24 21:07:57 EDT 2013
+
+I caused a memory leak. Good. This is pretty close.
+
+You know what I bet it is? This wrapper function for lambdas. But we shall see
+if I can figure it out better than that.
+
+applyHF gets all the memory leak.
+It's all of type ExpH.
+
+hc: CAF.result.applyHF
+hy: ExpH
+hr: applyHF
+hd: Main.sat_s109
+hb: LAG
+
+Fri May 24 21:21:48 EDT 2013
+
+It went away. The leak went away. And you know what I did? I turned of the
+-fprof-auto-top flag.
+
+Yup. That's it. Sadness.
+
+Well... let me see if that fixes the issue I was having with the performance
+test leaks.
+
+Fri May 24 21:59:52 EDT 2013
+
+That does not fix the issue I was having with the performance test leaks. But
+it's something.
+
+Anyway, this leads to the next big cleanup I want to do. Let me not worry
+about memory leaks just now, because I'm tired of wasting my time on them not
+learning anything or improving anything.
+
+The next big cleanup:
+* remove Type info from ExpH. Because really, nobody should need it.
+* rewrite HaskellF (from scratch, I propose)
+Based on the following notion: HaskellF (and I'll pick a new name) is as
+little as possible on top of ExpH to give haskell enough information so that
+it can deal with classes.
+
+In other words: every object is an ExpHF with a phantom type. I don't need any
+type classes like SmtenHF or SmtenT. That should fix issues with crazy kinds
+and clean things up a bunch. I'll make a dummy type corresponding to each user
+defined type. This will be unrelated to anything else, to avoid confusion.
+
+I think... call this SmtenHS: for Smten + Haskell. We can have HS be the
+suffix instead of HF.
+
+It will be good to rewrite this.
+
+Also, for primitives, use template haskell code to generate the code for them.
+
+If I can do all that, it may be I don't need to hand write almost any of the
+SmtenHS code. It can all be generated. Including the primitives and primitive
+types.
+
+Well... that's a test for tomorrow.
+

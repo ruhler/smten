@@ -38,7 +38,7 @@ import Smten.ExpH.ExpH
 
 -- Fully applied constructor
 conEH :: Type -> Name -> [ExpH] -> ExpH
-conEH t n args = exph t $ ConEH n args
+conEH t n args = {-# SCC "conEH" #-} exph t $ ConEH n args
 
 -- Check for a fully applied constructor.
 de_conEH :: ExpH -> Maybe (Name, [ExpH])
@@ -70,11 +70,12 @@ de_varEH t
  | otherwise = Nothing
 
 appEH :: Type -> ExpH -> ExpH -> ExpH
-appEH t f x
- | LamEH g <- force f = g x
- | IfEH _ _ _ <- force f = strict_appEH t (\g -> appEH t g x) f
- | ErrorEH s <- force f = errorEH t s
- | otherwise = error "SMTEN INTERNAL ERROR: unexpected arg to appEH"
+appEH t f x =
+    case force f of
+      LamEH g -> g x
+      IfEH _ _ _ -> strict_appEH t (\g -> appEH t g x) f
+      ErrorEH s -> errorEH t s
+      _ -> error "SMTEN INTERNAL ERROR: unexpected arg to appEH"
 
 smttype :: Type -> Bool
 --smttype t = or [ t == boolT, t == integerT, isJust (de_bitT t) ]
@@ -87,7 +88,7 @@ appsEH t f (x:xs) =
  in appsEH t (appEH ts f x) xs
 
 lamEH :: Type -> (ExpH -> ExpH) -> ExpH
-lamEH t f = exph t $ LamEH f
+lamEH t f = {-# SCC "lamEH" #-} exph t $ LamEH f
 
 unitEH :: ExpH
 unitEH = conEH unitT unitN []

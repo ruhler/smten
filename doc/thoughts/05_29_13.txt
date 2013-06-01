@@ -1,0 +1,313 @@
+
+Wed May 29 07:24:40 EDT 2013
+
+Looking at profiling for shampi. I suspect stuff is up with comparisons.
+
+ListCompare: 8%
+IntegerCompare: 6.5%
+Tuple2Compare: 4.4%
+
+And though it isn't shown here, if it were...
+CharCompare takes up a bunch of time.
+
+I rewrote list compare and tuple2 compare. They are as simple now as I know
+how to make them. I don't know what's up. Perhaps complex pattern matching is
+slow? That would be good to figure out, because that is something we do a lot.
+
+Brainstorm of improvements to make:
+* associate an Int with every name to allow for fast equality.
+    Use unsafe IO and a map to allocate the Int (lazily?)
+* give better implementation for list compare.
+* Make a field for Integer in Lit, rather than use dynamic.
+* Make a field for Integer in ExpH, rather than use Lit.
+* give a char_EqP primitive.
+* Make a field for Char in Lit, rather than use dynamic.
+* Make a field for Char in ExpH, rather than use Lit.
+
+Well... I should try these out. See if they make a difference.
+
+Start with Name, because that's at the top of my list, and should, hopefully,
+help with everything.
+
+First thing to try:
+* put SCCs on Lit
+* make Lit a newtype
+
+This made things a little slower, with a little better allocation.
+That makes sense, because I'm making Lit strict. No significant difference.
+
+I'm inclined to leave it like this.
+
+Next step: let me try smarter name equality, see if that works out okay.
+
+Wed May 29 09:32:25 EDT 2013
+
+I couldn't get the unsafe IO stuff to work right. So let me skip this
+optimization.
+
+Wed May 29 13:02:44 EDT 2013
+
+1. give better implementation for list compare. See how that helps or not.
+This made a significant difference. Let me double check, just to make sure it
+really was this and not something else.
+
+If this really is such a big difference, that means I'll want to put a fair
+bit of effort into case desugaring. Perhaps change how we represent case
+expressions in the runtime to support matching against multiple constructors
+simultaneously.
+
+Because having to manually desugar things properly is not really acceptable.
+
+Turns out this isn't because of how we generate list compare. I don't know
+what changed. Turning off common sub-expression elimination in Name stuff?
+Hmm...
+
+You know what it probably is? I bet we are just running a different set of
+test cases.
+
+Okay. That makes me feel better.
+
+Now I have a good reference. I know changing list desugaring doesn't help
+much. I can move on with exploration.
+
+Next: make a field for Integer in Lit instead of using dynamic.
+May as well do the same for Char.
+
+That change: not a significant difference. It makes things a little better,
+and it certainly makes sense to do, but nothing major going on here.
+
+I don't expect changing ExpH to help much here then. And that change is more
+messy. So I really ought to start exploring to figure out what could be going
+on.
+
+Wed May 29 13:31:47 EDT 2013
+
+Hypothesis is still that integer comparisons are costly.
+
+Let me put an SCC just around that. It will actually be DefaultCompare.
+
+Of course, the thing to really do would be make character comparison
+primitive. That feels a little like cheating to me.
+
+Yes. The Haskell report doesn't have it as primitive, so I'd rather not.
+
+I notice we spend a lot of time on primitive less than and de_integerEH.
+
+Let me try giving a more specialized implementation for integer equality and
+integer less than. And anything else which comes naturally enough as an
+integer boolean predicate.
+
+Hypothesis: by matching against an Integer instead of using de_integerEH, we
+can be, perhaps, noticeably faster? I'm not sure.
+
+Here's an idea: maybe we have the same issue with names for primitives that we
+had for caseHF? It's worth a try to see if I can fix it. That could be a big
+thing. I'll look at that in a little bit.
+
+Another hypothesis: primitives are being lazy in how they call the haskell
+function. Should they be strict instead?
+
+Wed May 29 14:05:39 EDT 2013
+
+Specialized implementation of primitives. Difference? None.
+
+So I won't be committing that.
+
+Wed May 29 15:37:43 EDT 2013
+
+Well, I made a test case. Focusing on state and map performance.
+
+We run into a stack overflow in Smten which does not exist in haskell. That
+ought not to be the case.
+
+We are using the same Map code and the same State code. Only the prelude is
+different between the two.
+
+Maybe I can simplify the example until I figure out what's up.
+
+Wed May 29 15:42:30 EDT 2013
+
+First observation: they give different results. That's bad. Why would they
+give different results? There must be a bug somewhere. It looks to be related
+to handling of newlines. Perhaps a problem with my implementation of words?
+
+Wed May 29 15:56:55 EDT 2013
+
+Definition of isSpace was wrong. Okay. That's better.
+
+Now then...
+
+Let's look at performance differences more closely.
+
+5000 lines of pride and prejudice looks like a good starting point.
+
+The implementations give the same results. That's good.
+
+haskell takes, like, no time at all.
+smten takes 10 seconds.
+
+Much longer than 5000 lines and smten gets a stack overflow.
+
+This would seem to capture the kind of issues we see with shampi. At least, it
+is something that I would like to see improved, and seems worth focusing on.
+
+First step: look at all the profiles, see what's up.
+
+Wed May 29 16:34:23 EDT 2013
+
+The trouble is this recursive stuff. The profiler giving bad assignments.
+
+For example, if the only SCC I give is for __caseTuple2__, then that gets all
+the time and allocations in the program! Because it calls the yes function.
+
+That can't be a good measure of the cost of __caseTuple2__.
+
+Wed May 29 16:38:54 EDT 2013
+
+Here's a question. Much of the memory is for SmtenT and SmtenT1.
+
+I should not need type information except for a little bit of stuff. Can I,
+just for experimental purposes, get rid of SmtenT and SmtenT1, use dummy
+types, and see how much faster it goes?
+
+It does seem like list compare and tuple2 compare cost a surprising amount...
+and they are polymorphic...
+
+Hmm...
+
+Something to think about. It would be really nice if I could get rid of
+SmtenT. But if I could do that, I don't need HaskellF. I could just use raw
+ExpH...
+
+Wed May 29 20:01:03 EDT 2013
+
+Here's the idea. I think it's a good one.
+
+The problem is: I don't understand why smten concrete evaluation is so slow.
+If I knew why, I could make it faster. Right now I'm just guessing, and
+hoping, and not doing terribly well.
+
+Let me instead focus my efforts on locating the problem.
+
+How?
+
+Well, first start this way: Many of the optimizations I've suggested: name
+equality, better primitive implementation and handling of literals, how code
+is desugared... all of these things would be captured by a pure, raw ExpH
+implementation. So, I feel like I should be able to do the following:
+
+1. try a raw ExpH implementation. See how its performance compares.
+
+Some things we might find:
+* it goes pretty darn fast  (this is what I expect)
+    This means I shouldn't focus on low-level issues, but rather ExpHF issues.
+
+* it goes way slow
+    Then keep working on ExpH issues, and hopefully I can do that more easily
+    without ExpHF distractions.
+
+Either way, I definitively learn something.
+
+Good. So that's the plan.
+
+The trouble is... it's not so easy to generate raw ExpH, because of
+polymorphism. I don't want to have to manually resolve things.
+The other option is manually generating the code, but that's way tedious.
+
+I think I can approach it in steps.
+
+Steps I can take:
+
+* make concrete versions of Map and State.
+How does this effect performance? Memory?
+
+If we see a big change in performance, then polymorphism has something to do
+with things.
+
+* don't use smtenT in HaskellF stuff.
+
+If we see a big change in performance, then looking up the type of things has
+something to do with it.
+
+* don't require SmtenT on polymorphic functions.
+
+And so on. You get the idea.
+
+Good! So let me start working on things then.
+
+0. Baseline on 5000 lines of pride and prejudice, no local SCCs.
+14s, 25B bytes
+
+1. Concretize State.
+Hard code it as holding a Map from String to Integer.
+
+This is totally parametric polymorphism. No ad-hoc stuff or overloading going
+on here.
+
+14s, 25B bytes.
+
+No appreciable difference.
+
+2. Concretize Map.
+14s, 24B bytes
+
+A little improvement in performance. Nothing major. But more than concretizing
+State.
+
+3. Don't use smtenTHF anywhere. See if that helps.
+This may not function correctly. I'm hoping it will.
+
+12s, 18B bytes
+
+Ah. So a fair amount of memory is going towards types, and a bit of time,
+though not a significant amount of time. The time is probably the savings from
+not having to allocate so much memory?
+
+4. Don't require smtenT in any of the haskellf primitives.
+11s, 15B bytes
+
+Wow. That's pretty big. Again, not so amazing in time, but in terms of
+allocation? All this space just for dictionaries?
+
+The takeaway here: ad-hoc polymorphic functions have overhead in haskell.
+
+Which leads to the real thing. The thing that could be big:
+
+5. Don't generate SmtenT requirements in generated code.
+11s, 14B bytes.
+
+So, save on space, but not a real big improvement in performance.
+
+It is pretty amazing how much memory is associated with Types. But really,
+runtime not significantly so.
+
+What's left? What more can I simplify in the generated code to make it be just
+ExpH?
+
+Currently I still use the generated code for instance resolution and type
+classes and stuff.
+
+The next thing to try is going to be rather a bit harder I fear. The thing to
+try is: get rid of overloading and type classes. Do that manually. Once I do
+that, then I can do raw ExpH.
+
+I wonder if it makes sense to add back in an optimization pass I had before
+which is: given a Smten program, and given the main function, fully specialize
+everything needed from that main function. Do a monomorphization pass.
+
+If I do this, I can certainly generate raw ExpH.
+
+The downside for practical purposes is: it makes it hard to deal with
+libraries. Like, I can make a smten library that you can then extend later on.
+But perhaps that's not so important just now?
+
+I already have to look at all the code. The fixhf way of doing things is to
+generate a main program, sort of. It's worth a try. Who knows, maybe I can do
+things more efficient this way?
+
+So yes. I think this is the next thing to try. But it's not something easy to
+try real quick like. It's a rather involved effort. Something that will take a
+bit of thought. But... is it worth trying? Somehow I think so.
+
+I'll let you know what I come up with and how it goes, if at all.
+

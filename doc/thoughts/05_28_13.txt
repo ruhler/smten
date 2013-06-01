@@ -1,0 +1,17 @@
+
+Tue May 28 09:04:40 EDT 2013
+
+I added enough SCCs to figure out the problem:
+
+We are spending a ton of time in comparisons:
+10% in __lexorder
+ 9% in string compare
+ 6% in integer compare
+ 6% in tuple2 compare
+31% Total.
+
+I bet I can improve that a lot by better user code for comparisons. I just
+need to figure out what the best code to use is.
+
+I'll do that... after my poster is done.
+

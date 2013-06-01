@@ -1,0 +1,235 @@
+
+Mon May 27 08:52:31 EDT 2013
+
+Goal for today: look through desugared code, see what things I would change by
+hand, and see how beneficial a complete case expression in Exp would be.
+
+Just looking at the prelude.
+
+* eta reduction:
+  Instead of:   \x -> foo x
+  Generate:     foo
+
+Consider equality of lists, because I think this is representative of the
+somewhat poor desugaring of smten.
+
+The code:
+   (==) [] [] = True
+   (==) (x:xs) (y:ys) = (x == y) && (xs == ys)
+   (==) _ _ = False
+
+Ideally I would generate something like:
+
+\a b -> case a of
+           [] -> case b of
+                    [] -> True
+                    (_:_) -> False
+           (x:xs) -> case b of
+                    [] -> False
+                    (y:ys) -> (x == y) && (xs == ys)
+
+Now, that, admittedly, is pretty fancy for us to figure out. I'm not sure I
+should expect that much smarts. But that's the idea.
+
+Currently I'm getting:
+
+\_p _p1 ->
+  let _s5 = case _p of
+                (x:xs) -> case _p1 of
+                            (y:ys) -> x == y && xs == ys
+                            _ -> False
+                _ -> False
+  in case _p of
+        [] -> case _p1 of
+                [] -> True
+                _ -> _s5
+        _ -> s5
+
+You know? That actually isn't bad at all.
+
+* complete case analysis
+  Instead of: 
+    let s = error "unhandled case"
+    in case x of
+          (a, b) -> foo a b
+          _ -> s
+  Generate:
+    case x of
+        (a, b) -> foo a b
+
+* inline single use
+  Instead of:
+     let s = error "unhandled case"
+     in case foo of
+           [] -> True
+           _ -> s
+  Generate:
+    case foo of
+        [] -> True
+        _ -> error "unhandled case"
+
+I don't know. We actually look to be generating pretty good code.
+
+Where is the time going? How can I figure out where the time is going?
+
+Brainstorm of ideas:
+* allocation of (almost entirely) unused names for lambdas
+* allocation of LitEH and Dynamic for each integer/char/io?
+* ???
+
+There has got to be some way to use the profiler to guide me in understand
+what is taking up all this time.
+
+We could see what type is dominating...
+
+How could I profile non-recursive things?
+Could I wrap up the recursive calls in SCCs so as to distinguish between their
+cost and other costs? That's worth a try.
+
+Let me do the following:
+1. run hy on shampi to get a sense of what types dominate on the heap.
+2. work on my cav poster for an hour at least.
+3. when I have break, come back, try to add some SCCs to smten with "recursive
+blockers", and see if I can get any meaningful information out of that.
+
+Mon May 27 09:36:00 EDT 2013
+
+hy profiling says what dominates, totally, is: ARR_WORDS.
+What is that from?
+
+google says: byte string, text, and unboxed arrays.
+ So, maybe I have a really big array (would not surprise me)
+ Or names are taking up a bunch of space (I should use a newtype for them, no?)
+ Or something about reading the input file?
+
+Let's look at who retains these ARR_WORDS.
+No, that won't give me anything useful... Except for constructors maybe.
+
+Let me try boxing names. See if that makes a difference.
+
+Mon May 27 10:48:15 EDT 2013
+
+google suggests ARR_WORDS is coming from byte strings.
+I wonder if readFile uses byte strings?
+
+Anyway, one thing to try, just for the fun of it, would be to use String
+instead of ByteString for Names, see if that makes a noticable difference.
+
+Wait! Look at the performance profile: 20% of our time is spent allocating
+names!
+
+I bet this is the cost we saw in lamHF and caseHF!
+
+Oh...
+
+And this should be pretty easy to fix too.
+
+1. Get rid of names in lamHF, because they are useless.
+2. for caseHF... for each constructor, define a __nameFoo
+    which is that name. Then reuse that.
+   This way we aren't creating lots of new names over and over and over again.
+
+This could be a very good improvement. Let me try it out.
+
+1. a minor improvement. This makes sense, because before we just made thunks.
+2. This should make a nice difference.
+But, maybe I can do it much more easily. Instead of passing a String to
+caseHF, pass a Name, because we only create the name in one place that way.
+
+Let me try that then, see if it makes a big difference or not.
+
+Hmm... Wait though. These names should be the same as in the constructors,
+ideally.
+
+Mon May 27 11:41:55 EDT 2013
+
+Yes! That doubled the performance. Creating names is no longer an issue.
+Awesome.
+
+I wonder if -fprof-auto-all was actually giving us useful information when it
+said all the time was in lamHF and caseHF... Do you think that will have
+changed now? I suppose it's worth a try.
+
+Mon May 27 12:03:34 EDT 2013
+
+No, I don't think it's giving me very useful information. I have to do
+something like the 'name' thing, to get lucky, and see if I can't really
+understand where the cost is coming from. I suppose try my recursive thing?
+
+Or, could I try specializing lamHF?
+
+What could possibly be taking so long in lamHF?
+
+I think I have to try my recursive thing.
+
+Mon May 27 13:17:56 EDT 2013
+
+Recursive thing doesn't help.
+
+I've stripped all SCCs except for the basics:
+* name equality. Which is supposed to represent time evaluating case match.
+* non-recursive primitives.
+* some other minor things.
+
+I'm only catching a very small fraction of the time in the entire program with
+these things, which surprises me. Where is all the work being done then?
+
+Name equality does account for 7%. I do think it would make sense to change
+name equality so it is as cheap as int equality. I would just make
+constructors int except for the fact that I want a way to translate back to
+Exp for debugging purposes (traceE and Debug solver).
+
+Well, for the debug solver it shouldn't matter, because the only constructor
+we have is bool. For traceE? Its used so little. Seems a shame to slow down
+the entire program for a rarely used debug call.
+
+If I'm smart, I'll do abstraction. Define something called a constructor.
+
+constr :: Int -> Name -> Constr
+instance Eq constr
+
+trueK :: Constr
+falseK :: Constr
+
+constrN :: Constr -> Name
+
+The first implementation ignores the offset, uses the name.
+The second implementation uses the name for debug only, the Int for
+comparisons.
+The third implementation ignores the name.
+
+But we can always go back if needed.
+
+This sounds like a plan to me.
+
+I have to be careful with smtenEH, to make sure the constructors match up with
+how they are defined in Haskell.
+
+Mon May 27 14:35:21 EDT 2013
+
+Turns out this is not worth it. I'm not sure why. And because it is messy, let
+me revert back.
+
+Where is all the time going?
+It has to be going somewhere, right?
+
+What if I annotate parts of shampi to try and narrow in better?
+
+For example, I might want to annotate:
+* fix function
+* match function
+* hampi parse function
+
+Fix dominates: 70% time
+Then Match:    10% time
+
+I want to get rid of the cost of Fix. Let's go inside.
+* cache lookup
+* getridM
+
+Fix: 27%
+  getridM: 24%
+  fixidM.lookup: 20%
+
+One does wonder why lookup leads to allocation...
+

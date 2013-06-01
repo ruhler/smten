@@ -102,7 +102,7 @@ newtype SMT a = SMT (StateT QS IO a)
 deriving instance MonadState QS SMT
 
 check :: SMT SMT.Result
-check = do
+check = {-# SCC "Check" #-} do
     res <- srun0 SMT.check
     case res of
         SMT.Satisfiable -> do

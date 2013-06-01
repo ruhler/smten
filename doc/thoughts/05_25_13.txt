@@ -1,0 +1,532 @@
+
+Sat May 25 07:46:47 EDT 2013
+
+Goal this morning: remove type info entirely from ExpH.
+
+Why?
+
+* It simplifies SmtenHS signifcantly: no need for a SmtenHS class which all
+  most obey, because we don't need a way to get at the type in the generated
+  code.
+* I expect noticeable performance improvements
+* It cleans up the ExpH code a bunch.
+
+Sat May 25 08:01:27 EDT 2013
+
+I have the performance tests set up, so I can get a sense of the benefits.
+
+First step: get rid of Typeof, and deal with the fallout.
+
+Trouble: We make use of types in the translation to SMT.
+
+In particular: __prim_zeroExtend_Bit needs its type to know the bitwidth of
+its input and the bitwidth of its output.
+
+So, for PrimEH, it would seem I need both its name and its type. I need its
+signature.
+
+Bummer.
+
+And, come to think of it, I need some way to get this type info to the
+primitive in the first place.
+
+Well, perhaps I could do other thing to improve performance.
+
+I think box and unbox are still taking a noticeable chunk of performance. I
+would put estimates at 10%. I think I can get rid of this entirely. So perhaps
+that should be my first goal.
+
+The question, then, is what I should create for each data type, and how I
+should handle types.
+
+I propose:
+
+-- empty type constructor to tag the type.
+data Foo__ a b ...
+
+-- instance of SmtenT as before.
+-- This is needed for the library api which wraps ExpH things to extract the
+-- Smten type.
+instance SmtenT ... where
+    smtenTN _ = ...
+
+-- cases, as before.
+-- constructors, as before.
+
+Hmm... You know what I think? I think it would be much easier to handle the
+types if they were done in a uniform way.
+
+I propose the following way of dealing uniformly with types:
+
+Add a Type field to ExpH, and remove it from ExpH_Value.
+
+And! Oh, this is good. And we can have all the sugar functions take the Type
+as an argument. That way I don't have to compute it based on subtypes of
+expressions. I just add it right there.
+
+Yes. That's good.
+
+This is a worthy change to make which will clean things up and could lead to
+a nice performance improvement.
+
+I like this. Let me dive in and see where I get stuck. It's a pretty big
+change.
+
+Sat May 25 09:43:11 EDT 2013
+
+I did it. It worked.
+
+The code is cleaner. I feel better about how type information is dealt with.
+
+Performance changes: basically none. Which surprises me a little, but I
+suppose that's laziness for you.
+
+Sat May 25 10:31:28 EDT 2013
+
+Looking at profiling...
+
+with -fprof-auto-top, lamHF is at the top, followed by exph.
+
+lamHF is mysterious. I'll look further into it, but I feel it's unlikely I'll
+make much progress on it.
+
+exph, however, is better understood.
+
+Here's my idea: what if we didn't allocate an EID until it was requested?
+
+Why would this help? It means we do that many fewer increments of the EID,
+which hopefully will make it faster.
+
+The idea with this, then, is rather than allocating a fresh EID, allocate an
+EID lazily.
+
+Is that doable? The trick is making sure we only get one EID when we ask for
+the value of that EID.
+
+So, we'll want to make the EID a thunk, which when evaluated, allocates a new
+ID. That doesn't sound too hard, does it?
+
+Anyway, update on lamHF: all the time is spent dealing with the wrapper
+function. This suggests to me getting rid of box and unbox as methods could
+improve things a bunch there.
+
+Hmm... what should I try?
+
+Let me start by trying the exph thing, because it's so (hopefully) easy to
+try. Then I'll start working on the more involved, but probably more
+significant change in HaskellF to be based on phantom types instead of
+newtypes.
+
+Sat May 25 10:47:16 EDT 2013
+
+exph thing: is a win! It still seems to work right, and it drops runtime from
+20 seconds down to 14. Awesome.
+
+That leaves us with boxing/unboxing.
+
+Okay, this will be a bit of work. I should try to take the opportunity to
+clean things up if I can (ARROW_HACK, I'm thinking about you...)
+
+The idea is clear enough, I think...
+
+Let me start by changing the implementation of HaskellF and the prelude. That
+will hopefully give me a better notion of how I want things to work.
+
+Sat May 25 11:06:43 EDT 2013
+
+I did HaskellF. It's very nice. The only thing that needs to change are types,
+not implementations.
+
+And another observation: I can automatically generate the code for all the
+primitive stuff. I should no longer need to manually change it. That's very
+nice.
+
+Question: Is this the case for the current system? If so, I should probably do
+this step first.
+
+I think the answer is yes. Cool. I'll stash my changes, make this big cleanup,
+then come back to my explorations with box/unbox.
+
+The thing it won't work for is my DSEL stuff, but that's fine by me. I have
+a plan to do foreign import/export between Smten and Haskell, which will make
+things much cleaner, and give much more flexibility to my code generation.
+
+How to go about this?
+
+I suppose start by remove all the library code and figuring out what I need to
+generate that I'm not already.
+
+Note: I still need Numeric types.
+
+Okay, so things missing from the generated code currently:
+* Bool, Integer, List, Char, Tuple*, primitive functions,
+
+That should be enough to get started.
+
+I believe the data types are taken care of.
+Next thing to handle: primitives.
+
+The format is:
+
+name :: top level type
+name = primHF <name of primitive>
+
+Assuming I use good naming conventions, this should be...
+
+name = primHF nameP
+
+And I'll want to import Smten.Prim... or the appropriate primitive file.
+Say, Smten.Prim and Smten.SMT.Primitive.Prim.
+
+Sat May 25 11:57:24 EDT 2013
+
+It totally works. I love it. Awesome.
+
+Surely I must have covered some todos in this whole thing I can mark as done?
+
+Yes. Good.
+
+Now... back to the original plan, because profiling looks same-ish.
+
+A new haskellf based on phantom types. Goal is to reduce the cost of lamHF.g,
+box, and unbox.
+
+Okay, I changed HaskellF.HaskellF. Now to change the generated code. How?
+
+* distinguish between top level types and type descriptors.
+  so... probably want an hsType which internally deals with type descriptors.
+  Or something like that.
+
+For generic data type:
+
+data T__Foo a b ...
+instance SmtenTN (as before)
+__case* (as before)
+    but fix the funny arrow hack
+__mk* (as before)
+
+So it's actually really easy to make the change. Let's see how it works.
+
+Okay, I think everything is in place except for the arrow hack.
+
+I want to generate the type:
+    forall ... (ExpHF Foo -> ExpHF Bar -> ExpHF Sludge ExpHF Sludge)
+
+The trick is  getting the forall right.
+
+So, get the context from somewhere, get the individual types from hsType.
+
+There! I did that happily enough. Let's see if it works.
+
+How to deal with classes?
+
+Classes are fine. It's the instances which need to change? Yes.
+
+Okay! It works, and guess what! It helps a lot.
+
+It runs in half the time with have the memory allocations. Wonderful. This is
+a good change.
+
+Sat May 25 12:48:46 EDT 2013
+
+Now what?
+
+No one thing sticks out as obviously needing improvement to me.
+
+We still have this mysterious space leak I don't like. Maybe turn of
+-fprof-auto-top now and see if it still exists?
+
+Yup! That was it. That's still the issue.
+
+So let me avoid -fprof-auto-top from now on.
+
+We no longer have that memory leak.
+
+How do I figure out where all the time is being spent?
+
+I suppose it depends on what things I want to work on. What things do I want
+to make faster?
+
+I wonder if I've done enough performance stuff just now, and if I shouldn't
+start thinking about how to do imports and exports so I can make hampi work in
+this new system and see how fast it runs.
+
+You know? I think that would be a very good thing to do. Because once I have
+that, then I can merge this back to master, and really start working on
+performance in earnest.
+
+Cool. I'm going to have lunch now, and in the meantime think about how to make
+shampi work again.
+
+Sat May 25 13:28:35 EDT 2013
+
+Thoughts on foreign function interface:
+
+Start with exporting smten functions to haskell. Because I think a much more
+common use case is that we write a haskell program which imports smten
+functions rather than a smten program which imports haskell functions.
+
+Anyway, that's the case we need for shampi, and we don't need the other case
+yet.
+
+The big thing for me to do is read about haskell's FFI. Exports in particular.
+And see what I can take away from that.
+
+Before doing so, I'll just write down my thoughts on how I think it should
+work:
+
+The user writes, in smten code (?), an export declaration. They provide the
+haskell type of what they want exported, and the name of the smten object.
+
+We generate for the user the haskell function with that type. This haskell
+function is basically a wrapper around the smten object.
+
+What's important is the user cannot see HaskellF, or anything about HaskellF.
+They see haskell.
+
+I suspect we'll also want them to be able to see ExpH.
+
+The one trouble with this approach is we don't have type safety across the
+interface. They could produce a bogus ExpH by writing smtenEH wrong... The
+results will be unpredictable, but mostly likely a hang.
+
+How does haskell's FFI deal with all these things? Let me see.
+
+* cross language type consistency checks are encouraged where reasonable, but
+  not required
+* only primitive types are passable between haskell and external entity
+* foreign functions are strict in all arguments
+
+Well... it says a lot, and yet, not all that much.
+
+It's really geared towards C.
+
+Let me tell you what I'm thinking I want. It doesn't have to be perfect the
+first time around.
+
+We know the compiler generates Haskell code. And we know the name of the
+Haskell code it generates.
+
+Let me just say the following: You can indicate a smten function to be
+exported.
+
+For example, I propose the following syntax:
+
+foreign export haskell "foo_hs" foo :: A -> B -> C
+
+Here:
+* 'foo' is the name of the smten function.
+* 'foo_hs' is the name of the generated haskell function.
+* A -> B -> C is the type to use for 
+...
+
+I don't know. I don't think haskell's syntax really works for what I want.
+It's too restrictive in the foreign type. I want to allow more things.
+
+How about I use the following syntax:
+
+foreign export haskell "foo_hs" foo
+
+This says: generate a haskell function called foo_hs which has the effect of
+calling smten function foo.
+
+The type of the haskell function generated will be syntactically identical to
+the type of the smten function 'foo'. It is the burden of the user to assert
+that:
+* that type is a valid haskell type
+* there exists an instance of smtenEH for that type which works properly.
+
+The code I would expect smten to generate for this is:
+
+foo_hs :: A -> B -> C
+foo_hs = fromJust (de_smtenHF foo)
+
+Well... That's pretty simple code. Perhaps, as an experiment, I could
+implement shampi based on this idea of foreign export, but leave the foreign
+export up to the haskell programmer.
+
+What this means is: 
+ haskell programmer sees the existence of de_smtenHF.
+
+I think that's not too bad.
+
+What do you think? Should I try making shampi work this way?
+
+I think I should.
+
+Let me put, like, 15 minutes into the effort, see how far I get, then take a
+break.
+
+Sat May 25 14:14:48 EDT 2013
+
+I didn't get very far. Probably because I didn't want to do things
+rigorously.
+
+I really should use fromJust (de_smtenHF x)...
+
+Let me try again, quickly, to see if I can make any progress.
+
+The problem is I'm trying to support polymorphic code. That, perhaps, is
+causing issues and making things more complicated than I like.
+
+I should not do that. I should define a new type class on the Haskell
+side to match the one on the Smten side.
+
+Let me start by making it work for just Bit vector, and see if that works out
+at all.
+
+No. The problem is my mixing of symbolic in smten and symbolic in haskell.
+
+What I should really do is figure out what goes in haskell and what in smten,
+and clearly make the boundary.
+
+I want:
+Haskell:
+ * main
+Smten:
+ * match
+
+Um... okay. I think I see now another issue: what really do we want to put
+where?
+
+Why can't all of hampi be implemented in smten?
+
+I will tell you why. It's the following reasons:
+
+* getArgs, exitSuccess, readFile, parseHampi, timeout
+
+Everything else is fine.
+
+So... it seems it would be nice, perhaps, to turn the problem the other way
+around. How to import haskell code into smten?
+
+I would say I could just provide primitives for all of the above, but being
+able to import haskell code is more general, and makes much more sense for the
+case of parseHampi, which is a user defined haskell function (not something
+expected to be part of a library).
+
+Good. This gives me something to think about.
+
+In fact, this might be a good way, in general, to handle smten primitives? Not
+sure. I'll have to think about it.
+
+Sat May 25 14:52:25 EDT 2013
+
+I think I've got it. And this is rather exciting.
+
+We define a foreign import specification. Something like:
+
+
+foreign import hs "Smten.Prim.add_Integer" __prim_add_Integer :: Integer -> Integer -> Bool
+
+The import entity is a fully qualified name of a haskell object of type ExpH.
+The smten compiler will automatically add an "import Smten.Prim" header for
+this, based on the qualification. The type is the smten type.
+
+So, for example, the following declaration will lead to the following
+generated haskell code:
+
+__prim_add_Integer :: ExpHF (T__Function Integer (T__Function Integer__ Integer__))
+__prim_add_Integer = box Smten.Prim.add_Integer
+
+It's perfect! I can do all my primitives this way. This replaces entirely the
+notion of specifying a primitive. I will keep the idea of a primitive in ExpH
+though. This now allows the user to import things.
+
+I like this. I like this a lot.
+
+Okay, so what's the plan?
+
+First step: support this syntax and use this for all the primitives.
+
+Oh. First. Slight modification. The type of the haskell object is: Type -> ExpH.
+
+First step: support this syntax and use it for all the primitives.
+
+I can do this in steps. 
+
+1. First step: write a generic:
+importHF :: (SmtenT a) => (Type -> ExpH) -> ExpHF a
+
+Use this to implement primHF.
+
+2. Change the definition of all the primitives to have type (Type -> ExpH),
+and to not mention any name. Get rid of primHF.
+
+3. Change the syntax for primitives to use foreign import.
+Change all primitives to use this approach.
+
+Then I'm done! At this point it should be easy to add more primitives. And, it
+should be easy to add user defined functions.
+
+Then, I should be able to re-implement shampi entirely in smten. That will be
+the crowning achievement.
+
+At which point I can be sad about performance... but we can always export
+concrete things to haskell, I think, which is nice.
+
+Awesome. Here I go. Let me see how far I can get in 90 minutes.
+
+1... done. Easy.
+
+2...
+* Get rid of Prim type (but keep binaryP, unaryP, etc...)
+* rewrite all primt to have this different type.
+* change code generator to generate inlineHF instead of primHF
+* remove primHF
+
+I decided to change Prim to be a type synonym for Type -> ExpH.
+And to keep primHF instead of inlineHF.
+
+But this is done. Easy.
+
+3...
+* Change the syntax for primitive function import.
+
+For the first step, let me not worry about figuring out the includes needed
+manually. That ought to follow pretty easily.
+
+So, what I want is to modify PrimD slightly.
+
+PrimD Location TopSig Name.
+
+Where the Name is the name of the haskell entity.
+
+It shouldn't be too hard to add this. The hardest part is just the parser.
+Oh, and rewriting the smten libraries... I suspect I won't get much in the way
+of useful error information from the compiler.
+
+I'll need:
+- keyword foreign
+- pseudo keywords hs
+
+Okay! I did the rough draft of the parser. And updated so I get better error
+information (I hope). Next I need to interpret the name...
+
+Or, may as well get things to compile first.
+
+Sat May 25 16:12:46 EDT 2013
+
+It works! Oh man. This is so totally cool.
+
+Sweet.
+
+Now then... I would say... the next question is: what's next?
+
+And the answer is pretty clear.
+
+I'm very happy with how this branch has progressed. I absolutely want to merge
+it into the master branch. The only thing left I require is to implement
+shampi in this branch.
+
+The way to implement it will be entirely in smten except for the parser, which
+will be imported.
+
+Well, I suppose I could import other things too, but start by just importing
+the parser.
+
+Then merge to the master branch.
+
+And then I feel good about things, and we can start asking again about
+performance or other cleanup.
+

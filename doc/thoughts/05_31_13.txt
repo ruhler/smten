@@ -1,0 +1,446 @@
+
+Fri May 31 08:46:26 EDT 2013
+
+Well, a lot of things going on with smten. Unfortunately it is rather
+scattered now.
+
+I want to summarize the big points I think I've learned, take a look at where
+we are now, and try to establish a good path forward.
+
+I'm not sure how to summarize it all.
+
+Runtime. This is all about the smten runtime, because that's what I'm trying
+to get fast and clean.
+
+Things we need from a runtime:
+* any object can be explicit Error
+* you can combine any two objects of the same type using If
+* sharing of objects must be preserved. Including functions.
+* we have enough type information at runtime to implement primitives
+  correctly. Namely: bitExtract, signExtend, etc...
+
+Things that are expensive:
+* requiring extra type classes. For example, for types or boxing/unboxing.
+* making fresh objects which are the same
+    ex: types, names
+* little things like: matching constr as name, not specializing for type,
+  converting between integers and characters and ExpH
+
+Things for code cleanliness:
+* Only have one mode: compilation to runtime. This simplifies use and frees us
+  to do many more things
+* If all types and primitives are uniform, the entire runtime can be generated
+  automatically
+
+Techniques:
+* for avoiding boxing/unboxing: have uniform representation for objects.
+    Ex: everything ExpH
+    If everything has the same structure, this makes sense to do.
+
+* for avoiding type classes for types:
+  ** monomorphize code: doesn't work in general because of vconcat issue.
+  ** change primitives so all type info needed is available at runtime?
+      For example: primBitExtract and primSignExtend can take the target width
+      as a parameter. We can wrap those primitive versions with type safe
+      ones. (this has not been tried yet)
+  ** implementing support for parametric code would require some sort of
+     dictionary which looks up a value based on a given expression. I fear
+     this would be slow.
+
+* for little things:
+  ** generate new data types for each object. Let haskell match them and
+     access them directly. In other words: specialize all the types.
+  ** perhaps unroll case match one level to make concrete case fast?
+    
+* for sharing:
+  ** use eid (lazily allocated)
+  ** use IORef with cache for each shared function?
+      (untested, but could be good to do)
+
+
+Problems with HaskellF:
+ * sharing is not preserved in functions. This is very bad.
+ * boxing/unboxing is costly
+ * code is complicated/messy
+
+Problems with fixhf:
+ * SmtenT stuff is costly
+ * It's a bit slow?
+ * shampi should be implemented to do concrete stuff all in haskell
+
+Problems with fixhf2:
+ * monomorphization won't work in general.
+ * little stuff is still slow.
+
+I have a proposal for a new backend which, hopefully, can take advantage of
+everything I've learned and be the most correct, best performing thing we have
+so far. The problem is, many of the ideas are still untested, and it's a
+little bit messy, I fear, to implement.
+
+The idea is to mix the notion of ExpH and concertized haskell stuff.
+
+Some sample code:
+
+data ExpH a = 
+    Concrete a
+  | If (ExpH Bool) (ExpH a) (ExpH a)
+  | Error (ExpH String)
+
+data Function a b = Function (ExpH a -> ExpH b)
+data Tuple2 a b = Tuple2 (ExpH a) (ExpH b)
+data Either a b = Left (ExpH a) | Right (ExpH b)
+data List a = Nil | Cons (ExpH a) (ExpH (List a))
+
+The idea is, any time you have an object smten type [Integer], for example,
+that will correspond to an object haskell type ExpH (List Integer).
+
+We will need to add support for sharing. Case does what you think: recursive
+case. But inline one level if it helps for performance.
+
+Bool and Integer are SMT-primitive types. Same with bit vector I suppose. This
+means they will be generated special to include constructors for the SMT
+primitives.
+
+data Bool = 
+   True | False | Var VarID | PrimEqInteger (ExpH Integer) (ExpH Integer)
+                            | PrimLtInteger (ExpH Integer) (ExpH Integer)
+                            | ...
+
+This suggests SMT primitives and concrete primitives should be treated
+separately. I agree with this. Let the user import concrete primitives, but
+smt primitives we have to handle in the Smten library. That could at least
+help limit the code messiness due to this. The messiness comes from the fact
+that primitives depend on generated code, and generated code depends on
+primitives, so we have to somehow mix them together. Probably via template
+haskell, as annoying as that is.
+
+The way to build this up and experiment with how to do things is to come up
+with a concrete example which demonstrates performance issues in my current
+implementations, and code up various alternatives manually to see which still
+performs efficiently for concrete code, but should also support our
+requirements for symbolic code.
+
+Well, there you have it. The summary of where I am and where I want to be. I'm
+not going to get to where I want to be all in one go. I need to take steps to
+get there.
+
+It's also important to realize that the motivator for performance should be
+mostly arch-extract. Not so much shampi.
+
+Here's what I suggest, then, for the path forward.
+
+1. Make a release of master smten and shampi for Nirav.
+
+2. Change fixhf shampi implementation to do everything concrete in haskell.
+At this point I expect shampi's performance will be good again.
+Then replace the master branch with fixhf.
+And get rid of the fixhf2 branch.
+
+3. Change how I do primitives so I don't need to keep track of type
+information at runtime. Each primitive should know enough about its own type
+based on the arguments to not need additional type information.
+
+4. Make a better abstraction for preservation of sharing.
+Have an opaque Share handle, and a way to use it for functions.
+The abstraction ought to support my two approaches:
+ * using EID and maps 
+ * using IORefs.
+
+5. Try my Concretized ExpH proposal.
+
+And go from there. Try to stay on the master branch as much as possible.
+
+Okay. We have a plan. I'll let you know how it turns out.
+
+1. Done.
+
+2. Update shampi to do all the heavy lifting of concrete stuff in Haskell.
+
+This will take some thought to figure out how I want to do.
+
+Let me say this. I want the haskell stuff to only do raw haskell stuff.
+
+In other words... I think it would be nice to have a primitive of the form:
+
+FileName -> IO Hampi
+
+And change Hampi to be a form which already has fixed sizing of CFGs done to
+it.
+
+The in smten I'll write the function hquery :: Solver -> Hampi -> IO String.
+
+What information do we want to have in this Hampi then?
+
+Remembering that the easiest kind of map to transfer between haskell and smten
+is an association list. Data.Map and Array are hard.
+
+Fri May 31 11:19:02 EDT 2013
+
+Something is broken. Integers don't seem to work right.
+
+It looks like a sharing bug. high level query is correct. Low level query is
+sharing something it shouldn't be.
+
+I suspect trouble with unsafeIO and eids. That's sad.
+
+Let me double check.
+
+Bug went away when I printed the EID. That's unpleasant, but I think makes it
+clear this is the problem.
+
+Fri May 31 11:52:39 EDT 2013
+
+I think I fixed the EID issue, by not lazily allocating EIDs. Too Bad.
+
+Anyway, shampi is now fast enough, given that Fix is implemented in haskell,
+so I merged fixhf into the master branch. Hurray!
+
+3. Getting rid of dynamic type information.
+
+Is this possible?
+
+The goal, I suppose, is make Prim be just ExpH.
+
+Why this won't work:
+
+We need to know what kind of free variable to create to abstract ErrorEH. So
+each ErrorEH needs to know its type.
+
+I suppose this should be pretty obvious by context...
+
+Perhaps I can infer this from the context rather than reading it from the
+expression. That would be a good thing to do? Maybe. But also maybe not...
+
+Everything else I'm fairly confident I can take care of reasonably well.
+
+What if I changed Use and Def to take an expected type?
+
+Top level: boolT. Easy.
+
+prim_extract_bit argument?
+generic binary argument?
+
+No. I need more information than I currently have.
+
+It's something to think about.
+
+Fri May 31 12:27:18 EDT 2013
+
+I don't think I can do it. I don't think I can get rid of types.
+
+Consider the following:
+    assert (error `bv_eq` error)
+
+There is no way for me to recover the types of the error...
+
+Wait. That's interesting.
+
+Errors propagate up to the top, right? So the only place we can have an error
+is...
+
+Well, we could have:
+    assert (let x = if p
+                        then error
+                        else error
+            in bv_eq x x)
+
+That's certainly something we could get. And the type is unknown. We need to
+know at runtime how big to make 'x', but we don't have that information.
+
+Let me step back and consider the high level goal. It is: get rid of smtenTHF.
+Get rid of the requirement to have every object be an instance of that class.
+
+Could we specialize the important things?
+
+Maybe that's the trick. Leave the type class there, but specialize enough
+stuff that we don't pay so big an overhead for it.
+
+We saw that haskellf was fast, even though it had type stuff and boxing.
+
+Reading up on specialize in ghc:
+
+* If I mark a function as INLINEABLE, then I can specialize it in modules
+  where it is used.
+* If I mark a function as INLINEABLE, and turn on ghc optimization, then gch
+  will try to specialize it for its uses.
+
+This is good to know. Specialization might be just the thing I'm looking for.
+
+Okay. Fine. So what is the takeaway?
+
+1. I could try to see if I can improve performance by using SPECIALIZE.
+That would be a good exercise.
+
+2. It seems like I need types. So I need a class like SmtenT, even if I use my
+concrete plan for ExpH.
+
+Cool. So let me play with specialize then.
+
+What benchmark should I use? Let's use wc.
+
+Let me start looking at the verbose output of ghc, to see if I can understand
+better what it is doing.
+
+First: baseline. No extra flags or pragmas. -O0.
+
+0: 21.43s, 33.73B: baseline
+  30% of time is in exph now that I fixed that bug. That's sad.
+1: 16.07s, 23.47B: -O1 instead of -O0
+2: 15.40s, 23.47B: -02 instead of -O1
+
+Looks like -O1 is as good as -O2, so may as well use -O1?
+
+But I'm thinking we can allow lots more specialization if we do inlineable.
+Both in the Smten library, but also in the generated Prelude. And really
+anything. Shouldn't all __caseFoo be inlineable?
+
+Hmm... What should I try next?
+
+How about mark the HaskellF stuff as inlineable? Just see if it does
+anything.
+
+3: 16.43s, 22.04B: -O1, with all the HaskellF.HaskellF things marked inlineable
+
+So, not so much faster. Indeed, rather slower. But I think, if I play around
+with things enough, I should be able to avoid the overhead of the SmtenT type
+class via inlineable and specialization.
+
+Let me summarize: I'm going to stop worrying about the overhead to types.
+
+Which means the next big step is concretization.
+
+Hmm...
+
+Let me try to get more profile information.
+
+Things like:
+* time (and space) spent allocating types in smtenTHF.
+* time spent on name equality
+* time spent on case compare
+* time spent on name allocation
+
+I'm thinking I should be able to save a lot of space on types if we can mostly
+create static pointers to them, rather than replicating them all over the
+place.
+
+Yes. Here's what I want to double check:
+* Names should not grow
+* Types should not grow
+
+Because we know them all statically.
+
+Let me verify this is the case.
+
+It looks to me like Names do not grow. But Types grow.
+
+I wonder if this is because of smtenT1, smtenT2, etc..., where they create new
+types rather than saving the old ones. Can I specialize that somehow?
+
+Fri May 31 13:43:12 EDT 2013
+
+Looking at the heap profile now: charEH allocates a lot!
+
+Which is a little silly, because there aren't that many characters. We could
+cache all these and save them. Couldn't we?
+
+Certainly we could make a 256 element static array and use that for the
+majority of new characters. That would save a bunch, no?
+
+Or have a dynamic cache built up? We could do this for char and integer.
+
+The goal is to avoid making lots of duplicate ExpHs.
+
+Fri May 31 15:59:48 EDT 2013
+
+I've done some looking. Found a paper on memoization with stable and weak
+pointers. I think this is totally what I want to handle preservation of
+sharing.
+
+There is a library in stable-memo package: Data.StableMemo, or
+Data.StableMemo.Weak.
+
+I may need to implement my own kind of memo table to handle the monadic stuff
+I have. But I think this is totally the way to go.
+
+We remove the cost of exph. We no longer need an EID. That should cut 30% off
+the time. And we also can be smarter and garbage collect things in the map
+when finalized.
+
+I think this is the next thing to try. Given the performance issues we have
+now are at least 30% time in exph, this ought to do it.
+
+Oh. But I forgot the original motivation for looking this up: caching
+character and integer expressions rather than allocating new ones. That
+requires a different kind of memoization. I should seek alternate things for
+that.
+
+Let's start with the char thing.
+ 
+So, heap usage improves by about 10M bytes. Performance is a tiny bit better.
+
+I think I won't commit it now, but it's something, certainly, to keep in mind.
+
+Fri May 31 17:00:10 EDT 2013
+
+Plan: use stable pointers, weakpointers, etc... to preserve sharing instead of
+EID.
+
+Why? Expect at least 30% performance improvement.
+
+There are some preliminary steps I'll need to do.
+
+1. understand stable and weak pointers.
+2. understand everywhere I make use of EIDs.
+3. make everything work.
+
+1.
+Stable Pointers:
+
+How I think they work:
+ * gives you a name for an object. If two objects are the same, they give the
+   same name.
+
+Note: it's not value equivalence. It is pointer equivalence. This is fine.
+This is what I want. But also note: I should reduce the object to weak head
+normal form before checking for equality, otherwise we could get a pointer to
+a thunk in one case, which is not what I want.
+
+Questions:
+* can the object be garbage collected if there is a live stable pointer to it?
+* can the stable pointer be garbage collected?
+
+What's different from what I thought:
+* you can get the value from the stable pointer if you want. I don't need
+  this.
+* you can free the value of a stable pointer
+    Which I think means: the stable pointer no longer retains its value. But
+    the stable pointer still exists.
+
+I think this means I'll want to create the stable pointer, then immediately
+free it from its value, because all I can about is the name?
+
+The documentation is terrible.
+
+Oh! I got the wrong thing then. That makes more sense. I really want:
+
+StableName
+* stable names are garbage collected
+* stable names don't retain the value.
+
+Perfect. This is exactly what I want and need. It makes perfect sense to me.
+You get the name of an object. I doesn't matter when (though if you don't
+force something, you could get a name of the thunk instead of the object you
+really want).
+
+Weak Pointers.
+
+My understanding:
+ A weak pointer is a tuple of key and value.
+ * You can ask for the value
+    This returns either the value, or Nothing if the value has been
+    dereferenced.
+ * Any occurrences of the the 'key' from value are not retained?
+    I'm fuzzy on this.
+
+What really happens:
+

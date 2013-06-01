@@ -1,0 +1,988 @@
+
+Thu May 23 07:53:38 EDT 2013
+
+Trouble now with new haskellf: arrays don't work. They need symbolic support.
+
+That's a problem with arrays in general.
+
+Another problem is I've gotten rid of all concretization. That's something I
+may want to fix somehow.
+
+For now? Let me just get rid of the array tests and see if everything else
+works.
+
+The DSEL test also fails.
+
+Good news though: appeval works!
+
+Now, let's try to get some sense of performance on inlining.
+
+Thu May 23 08:06:03 EDT 2013
+
+Well, good news is, we no longer have a memory leak. inlineperf goes in
+constant time with haskellf.
+
+The bad news is: it's really slow. Like, much slower than running in the
+interpreter.
+
+We spend all our time boxing and unboxing with lambdas.
+
+What's the idea here then? We ought to be able to make box and unbox cost
+nothing at all. If we make everything have a single constructor which is Exp.
+
+Now, typeclasses may be causing issues. So, if I'm smart, I should figure out
+how to avoid type classes and instead use a single type for everything, with
+phantom's for the type class?
+
+It's worth figuring out and trying. I really want box and unbox to be free. If
+I make everything a typed thing, with phantom types, then maybe we are okay.
+
+But, I want to think about this rather than trying to hack the existing system
+into this. It will be more likely to succeed and give a nice result.
+
+Here's the thought then... And I'll have to experiment to see if it works.
+
+newtype Typed a = Typed {
+  unbox :: ExpH
+}
+
+An expression with a type. Every smten expression will be one of these.
+
+The important question is, how to deal properly with type classes? I want to
+choose the right expression given the type.
+
+class Eq a where
+    (==) :: Typed (a -> a -> Bool)
+
+elem :: Eq a => Typed (a -> [a] -> Bool)
+
+
+I should only need accessors for primitive things: application, case. Things
+like that.
+
+Application:
+
+applyHF :: Typed (a -> b) -> Typed a -> Typed b
+applyHF f x = Typed $ appEH (unbox f) (unbox x)
+
+lamHF :: String -> (Typed a -> Typed b) -> Typed (a -> b)
+lamHF f = Typed $ lamEH ... \x -> unbox $ f (Typed x)
+
+Notice: no type classes. No HaskellF. I think I'll need SmtenT still, but that
+shouldn't be on the critical path.
+
+Okay, fine. First thing I should do is implement, say, the inlineperf thing in
+haskell this way by hand. Make sure it works.
+
+I should also test out type classes.
+
+And see how the performance is.
+
+Note: inlineperf just finished for current haskellf: 10 minutes before it runs
+out of stack space.
+
+Let me summarize:
+
+interpreter: 15 seconds
+fixhf.haskellf: 10 minutes leads to stack overflow
+master.haskellf: 0.2 seconds
+
+This is... worrisome. Do you think I can get to 0.2 seconds with my new
+proposed plan? I really don't...
+
+But, who knows. Maybe if I fix this box/unbox thing it will make all the
+difference. We shall see.
+
+Thu May 23 09:00:16 EDT 2013
+
+I wonder about some things...
+
+I think it's clear we want to separate the compilation phase from the runtime
+phase. So, it always makes sense to me to compile to haskell. This way we can
+separate compile from runtime, do all sorts of compilation optimizations once,
+and runtime doesn't pay that overhead.
+
+The only reason this wouldn't be the case is if you want to create Smten code
+on the fly and run it without the overhead of compilation. But, if you are
+creating smten code on the fly, you can create it in the ExpH form well typed,
+so we (hopefully) don't actually need to compile anything to get that to work?
+Not sure.
+
+Now, here's my question. Assuming you've generated haskell code so that ghc
+takes care of inlining and type classes, what about evaluting in ExpH form
+makes it slower than concrete haskell evaluation?
+
+My question is, can I recognize these things and fix them?
+
+Because we always have some sort of concrete evaluation going on in ExpH form:
+anytime we realize the value of an expression based on an assignment. It would
+be good to have high performance here as well as pure concrete evaluation.
+
+In general, anything could be used with a concrete value or a symbolic one,
+and we may not know statically (though some things we could know statically).
+
+Err... what I'm trying to say is, in my idea world, we do the following:
+
+* compile smten to haskell which uses raw ExpH (with type info if needed).
+* figure out how to optimize the representation and evaluation of ExpH so that
+  it's comparable to concrete haskell code.
+
+And if I find there is something ghc can do with concrete code it can't do
+with ExpH, understand what it is, and figure out a way to take advantage of it
+in ExpH.
+
+If I could just do this, and focus in on just the one version, that would be
+wonderful. I don't waste time improving performance of two independent code
+paths. Everything helps everything.
+
+Some other thoughts:
+
+There's a question about whether we should support a DSEL like interface.
+Should we make it so people can interact with smten code easily from
+haskell?
+
+I feel like... ideally no. Because that would give us much more flexibility.
+Perhaps we could make an FFI like interface so the user could explicitly say
+what he wants to export, and we could make the appropriate wrappers.
+
+The other thought is: we should, as much as possible, try to leverage ghc's
+existing work on things to improve performance. It will be much better, more
+robust, and then we could hopefully take advantage of future improvements.
+
+For example, use ghc's type classes rather than try to implement our own,
+because they presumably have put much more effort than I can on making it
+efficient.
+
+All this said, I want to experiment now with how we could generate code, and
+try to understand performance issues in the inline case. Don't worry about
+exposing a nice DSEL. See what I can do.
+
+Thu May 23 11:09:56 EDT 2013
+
+I made a manual version for my proposed new thing.
+
+It's better than the updated api. No issues with boxing or unboxing.
+
+What's interesting is... it's about twice as fast as the interpreter, but
+takes up a lot more memory. Why is that? How could that be?
+
+There must be a memory leak somewhere or something.
+
+Allocation is all BLACKHOLE, meaning, I believe, thunk.
+
+Let me focus on one of them: myand.__caseNil.caseHF
+
+- two are from CASE_NIL_NO
+- two are from CASE_NIL
+
+Nothing from CASE_NIL_YES. Not surprising.
+
+Things to try:
+ - make __caseBlah strict in its first argument.
+
+Except... it's not the ARG which costs us.
+
+Thu May 23 11:55:56 EDT 2013
+
+All of everything is in myand. Is that expected?
+
+I have a hypothesis. My hypothesis is this:
+
+We create the entire change of applications before evaluating them.
+
+So, we create:
+
+Hmm... How does it work?
+
+result
+appHF myand elems
+ExpHF (appEH (unbox myand) (unbox elems))
+
+And now we are done. What do we do when we are done? But something about
+newtype means we really have...?
+
+I'm confused by newtype. Let me not use that to start. It may help figure out
+the problem.
+
+
+Wow! That made a big difference. Switching away from newtype uses much less
+memory. 14M instead of 55M.
+
+And now we have different heap info.
+
+Interesting. Why do you suppose that is? I don't know.
+
+Now the memory is all in CASE_NIL_NO.lamHF.__caseTrue.
+
+The other stuff is still the same.
+
+All the space is in __caseTrue...
+
+In other words, we are creating the thunk:
+    __caseTrue x (appHF myand x) __mkFalse
+
+I don't understand.
+
+Why is it bad to create this thunk?
+Should we evaluate the arg instead?
+
+Okay, think.
+
+We must be creating a lot of thunks at __caseTrue.
+Do I expect there to be lots of thunks?
+No. I expect there to be a single thunk.
+
+So, why are we getting lots of thunks?
+
+Let me run through how evaluation goes.
+
+At some point we want the result of (appHF show result)
+
+appHF show result
+ExpHF (appEH (unbox show) (unbox result))
+
+There. We have the result. Are we done?
+
+What if I make ExpHF strict? Because we really always want it to be the case
+that if you read ExpHF, you've first done all the args.
+
+That has the same effect as using newtype.
+
+I'm so confused.
+
+Let me try going from the top.
+
+mainHF (appHF putStrLn (appHF show result))
+> de_ioEH (unbox (appHF putStrLn (appHF show result)))
+  de_litEH (unbox (appHF putStrLn (appHF show result)))
+  force (unbox (appHF putStrLn (appHF show result)))
+  unbox (appHF putStrLn (appHF show result))
+  > appHF putStrLn (appHF show result)
+    ExpHF (appEH (unbox putStrLn) (unbox (appHF show result))
+  appEH (unbox putStrLn) (unbox (appHF show result))
+  > unbox putStrLn
+    > putStrLn
+      lamHF \str -> appHF (appHF (>>) ...)
+      ExpHF (lamEH $ \x -> unbox ((\str -> appHF (appHF (>>) ...)) (ExpHF x)))
+    lamEH $ \x -> unbox ((\str -> appHF (appHF (>>) ...)) (ExpHF x))
+  unbox ((\str -> appHF (appHF (>>) (appHF putStr str))
+                                    (appHF putStr (stringHF "\n")))
+         (ExpHF (unbox (appHF show result))))
+  appHF (appHF (>>) (appHF putStr (ExpH (unbox (appHF show result)))))
+                    (appHF putStr (stringHF "\n"))
+  ExpHF (appEH (unbox (appHF putStr (ExpH (unbox (appHF show result)))) ) (unbox (appHF putStr (stringHF "\n")))
+
+Hum. What to do? Let me take a lunch break and think more about it.
+
+Thu May 23 12:54:00 EDT 2013
+
+Okay! I think I have a direction.
+
+The idea is this. Let's say, for example, I have some object:
+
+(foo :: ExpHF IntegerT)
+
+Now, if I refer to it as 'foo' in the code, then 'foo' represents the thunk
+for it.
+
+Now, as soon as I need to look at this thing, I'll force it.
+
+When I force it, I'll get back an ExpHF. The question is, what will the
+argument to that ExpHF look like?
+
+I claim what I want is for it to look like:
+
+ExpHF (ExpH # (LitEH (Dynamic 3)))
+
+That is, the thing really is in weak head normal form.
+
+Or, said another way, the only time I want to see a haskell thunk is when it
+corresponds to what I would like to have as a smten thunk.
+
+My hypothesis: currently I am having haskell thunks which don't correspond to
+a smten thunk.
+
+I should be able to build this from the ground up the way I want it, and it
+should fix things.
+
+There may be some issues. This will not be easy to get right, but let me try.
+
+1. How to represent a smten thunk.
+A smten thunk should always be of the form:
+    ExpH eid thunk
+
+That is, we have an ExpH for sure. We have an eid associated with the thunk.
+And the value is thunked out.
+
+Nowhere else should I see a haskell thunk.
+
+Now, there are two places we need to do this right. In the interpreter,
+dealing with ExpH. And in the haskellf, dealing with ExpHF.
+
+Let me look at some things and see how they should look and how they do look.
+
+* ExpHF thunk should be disallowed.
+It never makes sense to have ExpHF thunk. If you are forcing the ExpHF, then
+you are either looking for the eid of something, or you are looking for the
+value of something. So we should give you ExpHF (ExpH eid thunk).
+
+This means we should use newtype for ExpHF.
+
+Good. Now, anytime I force an ExpHF, I get either
+(ExpH eid thunk) or (ExpH eid value).
+
+Let me now work from above this.
+
+How can we form ExpHF?
+  appHF :: ExpHF (FunT a b) -> ExpHF a -> ExpHF b
+  lamHF :: (TypeHF a, TypeHF b) => P.String -> (ExpHF a -> ExpHF b) -> ExpHF (FunT a b)
+  conHF :: (TypeHF a) => P.String -> ExpHF a
+  caseHF :: (TypeHF a, TypeHF b, TypeHF c) => P.String -> ExpHF a -> ExpHF b -> ExpHF c -> ExpHF c
+  charHF
+  integerHF
+  stringHF
+  primHF
+  __mkTrue
+  etc...
+
+Start with __mkTrue and __caseTrue. I think this should clarify a bunch.
+
+Say I have:
+
+__mkTrue
+
+If I force __mkTrue, then the result I want to get is:
+
+ExpHF (ExpH eid (ConEH "True" []))
+
+In particular, I do not want to get:
+ExpHF (ExpH eid thunk)
+
+But there's another option. Which is, say I want to unbox __mkTrue.
+Then the result I want to get is:
+
+ExpHF (ExpH eid thunk).
+
+Do you see?
+
+So, there are two kinds of things we have.
+
+If you use an ExpH anywhere, first thing to do is to go to:
+    ExpH eid thunk.
+
+If you use the value of an ExpH, then go to:
+    ExpH eid value.
+
+Is it clear? Not quite. I want a concrete example to help me out.
+
+Let's try the following:
+
+__caseTrue __mkTrue foo bar
+
+there are two things you can do:
+  unbox
+  force
+
+unbox (__caseTrue __mkTrue foo bar)
+  Should give:
+    ExpHF (ExpH eid thunk)
+
+force (__caseTrue __mkTrue foo bar)
+  Should give:
+    ExpHF (ExpH eid value)
+
+Cool. Let me start with unbox then, and see how it looks in the current
+implementation, assuming ExpH is done right.
+
+unbox (__caseTrue __mkTrue foo bar)
+
+Wait. Who is forcing unbox?
+Don't worry about that. We will see it. Assume 'unbox' is being forced.
+
+unbox (__caseTrue __mkTrue foo bar)
+> __caseTrue __mkTrue foo bar
+  caseHF "Prelude.True" __mkTrue foo bar
+  ExpHF (caseEH (typeHF n) (unbox x) (Sig (name nm) (typeHF x)) (unbox y) (unbox n))
+caseEH (unbox __mkTrue) (unbox foo) (unbox bar)
+ifEH (unbox __mkTrue) (unbox foo) (unbox bar)
+> unbox __mkTrue
+  > __mkTrue
+    conHF "Prelude.True"
+    ExpHF (conEH (Sig (name "Prelude.True) t))
+  conEH (Sig (name "Prelude.True) t)
+  aconEH "Prelude.True" []
+  exph $ ConEH n t args
+  ExpH eid (ConEH "Prelude.True" [])
+unbox foo
+> foo
+  ...
+
+Notice: I'm passing around thunks:
+* unbox __mkTrue,
+* unbox foo
+* unbox bar
+These are thunks I don't want!
+
+So, here is what I propose to change.
+
+caseHF should make sure y and n are in (ExpH eid thunk) form before going on.
+
+Is this true? Or am I confusing how things actually work? Do we really
+allocate eid while still in thunk form? Or do we only get an eid after the
+thunk has been resolved?
+
+The answer is no. I am confused. We don't allocate an eid before putting the
+ExpH in weak head normal form.
+
+Or, another way to say it is... if you ask for an ExpH, then it will be in
+weak head normal form. If you ask for an ExpHF, it will give you an ExpH, and
+so it will be in weak head normal form.
+    
+Is the problem I'm being too strict?
+
+For some reason, it seems like I'm creating a big long list of thunks.
+
+Why?
+
+I have 4 kinds of thunks. That's why memory is divided that way. Somehow there
+is a loop from one of the thunks back to the parent thunk. That loop seems to
+be a function of the length of the list. Or, in other words, how often myand
+is called.
+
+We have a space leak. Someone is holding on to a thunk they should not be
+holding on to. So we are unable to free the thunks we have allocated.
+
+Bibliography profiling shows all this memory, all these black-holes are never
+used.
+
+Thu May 23 13:54:55 EDT 2013
+
+Aha! I see what the issue is now. I think.
+
+We are doing recursion on values, not on functions.
+
+myand is a value of type ExpH representing a recursive function.
+
+It includes itself recursively.
+
+So, at the start of the program, we have some heap object representing myand.
+This object has a pointer to itself.
+
+Every time we do the recursive call, we make a black hole?
+
+So, someone says they want the value of 'myand'.
+haskell runtime says: okay! let me go evaluate it.
+Creates a black hole to hold the final result of evaluation.
+
+The thing is... myand is a recursive function. It has no final result of
+evaluation.
+
+So, I go on, and eventually I need to figure out the value of myand again.
+So, I create another black hole. I go on...
+
+And so on. Every recursive call I create a black hole. This black hole is
+never completed.
+
+I am confident the black hole is never completed. What I don't understand is,
+* does it need to get completed?
+* why doesn't it get garbage collected?
+
+You know what? I bet this is the same inherent problem with the interpreter
+blowing up too. We keep inlining more and more, expanding functions more and
+more, and never being done with them. Because the environment (or CAF in
+manual.hs) has a pointer to the top level one, which holds the pointer to all
+the intermediate versions.
+
+So, it looks like the memory is limited to the maximum depth of call. That's
+why myand is problematic but not sequence. Because we sequence on at most,
+like, 20 deep. We myand 1000000 deep.
+
+How could we fix this problem?
+
+Well, making ExpHF non-strict can help, because it gives us a resting point in
+between. We can actually finish the blackhole and collect it.
+
+I feel like there should be other ways to help. Namely, make the recursive
+part be function recursion instead of value recursion. ghc can handle that
+just fine. And wrap that recursive function in a single value.
+
+Thu May 23 14:19:42 EDT 2013
+
+That didn't change anything. Which is slightly surprising to me.
+
+I don't understand! It didn't fix anything at all. Hmm...
+
+And also: we have LamEH. So it ought to finish just fine.
+
+This must not be the issue. It must be something else.
+
+How about this. What if I try using haskell functions for my functions. Let me
+see if it makes the problem go away. Let see if things are ugly now or not.
+
+Remember:
+* I don't want a class for box and unbox.
+* I need to be able to identify functions to know if they are the same or not.
+
+Hum.
+
+Note sure.
+
+Let me switch to functions, see if it's clean and fixes the issue. Then come
+from the other direction and understand the sharing issue better.
+
+Thu May 23 14:44:08 EDT 2013
+
+* I changed __mkCons to be a haskell function.
+  This was fine, because every place I used it it was fully applied.
+
+  This did not make a noticeable difference.
+
+* I changed myand to be a haskell function.
+  This was fine, because every place I used it it was fully applied.
+
+  This did not make a noticeable difference.
+
+* I changed __caseCons to take a haskell function for the yes case.
+  I had to convert that haskell function to a smten function for caseEH to
+  handle it
+
+  This did not make a noticeable difference.
+
+* I changed myand so that the recursive call is *not* passed and made by
+  __caseCons
+  In other words, instead of:
+        __caseCons l (\x xs -> myand xs) (error)
+        myand (__caseCons l (\x xs -> xs) (error))
+
+  This fixed the memory leak entirely.
+
+After fixing the memory leak... performance isn't terribly great, admittedly.
+But it's better than it was.
+
+Note: it's like, nowhere near the performance of haskellf.
+
+Thu May 23 15:04:45 EDT 2013
+
+What's the conclusion here?
+
+Don't pass a recursive function call as an argument to case.
+
+I did a transformation. It was something like:
+
+case x of
+    k -> \a b -> f a b
+    _ -> n
+
+I do something like:
+
+let a = case x of
+            k -> \a b -> a
+            _ -> error
+    b = case x of
+            k -> \a b -> b
+            _ -> error
+
+    isk = case x of
+            k -> \a b -> True
+            _ -> False
+
+    y = f a b
+in case isk of
+      True -> y
+      _ -> n
+
+Is this a general thing I can do?
+
+Does this work even if I don't change all those things to haskell functions
+which I changed to haskell functions? That's a good question.
+
+The answer is yes: I don't have to change things to haskell functions. I just
+have to, somehow, avoid passing recursive functions as the 'y' argument to
+caseHF.
+
+I'm not sure how to do that in general.
+
+Start by changing __caseCons to do this hack? Or does it only work because I
+know for sure the case will match? No. That's not the issue.
+
+Anyway, I could figure out what the issue is and fix it, perhaps, in general.
+
+Another interesting question I have is: why is haskellf so much faster than
+manual?
+
+Let me do a better comparison.
+
+observations:
+* the heap contains nothing. So it isn't a matter of how much heap we have.
+* manual allocates 12B bytes, haskellf only 784M
+What are all those bytes being allocated in manual that are not in haskellf?
+ * extra names for debugging of lamdas
+ * extra type info which we could otherwise infer
+ * extra eid
+ * larger types: ExpH_Value (Lit (Dynamic 3)) vs. (Integer 3)
+* looks like manual still has some black hole behavior.
+    Probably from mklist or sequence or some such.
+
+What is the takeaway here?
+
+It's interesting that a bunch of time is spent in caseHFSig for caseHF.
+
+But, um, I was supposed to come up with a takeaway...
+
+I want to do a big cleanup. I want to look more closely at things and
+understand what is going on, and slowly improve things, while staying clean.
+
+haskellf is very messy.
+
+In my mind, ideally, I could ditch the haskellf approach, and go instead to
+the manual.hs approach, which I think is much cleaner, and should also
+preserve sharing.
+
+First, I'll have to figure out the black hole issue in general. How can I
+define __caseCons to fix the issue itself?
+
+Then I'm worried about performance. Try to understand where all the cost is
+going, and arrange things as I can to improve the cost.
+
+I would like to ditch inlining. I may learn something useful from manual.hs
+which could help there (because I feel like inlining has this same blackhole
+issue).
+
+And yet... there is always this concern with performance. haskellf seems to be
+surprisingly fast. Why? Can we make manual.hs that fast? What are the
+important parts that make it fast?
+
+I should make a new branch. Call it clean. Try to be as clean as I can. See if
+performance matches that of master or not, and understand why not.
+
+I would like the interpreter to be fast. This much I know. And working on
+hasekllf isn't going to help that one bit, but working on a clean branch could
+help it a lot.
+
+Cool.
+
+Here's the first plan: generalize the solution to the case issue.
+
+Thu May 23 16:06:29 EDT 2013
+
+We can do it. We can generalize.
+
+The trick seems to be this:
+ * don't pass a large (aka, recursive) function to the y argument of caseEH.
+ * instead pass small functions to access the fields and tag.
+
+You know what that suggests? It may make sense to change caseEH from its
+current form into more of a tag/field extraction form.
+
+Okay, so here's my plan. Fork a 'clean' branch, and start cleaning it up. I
+can throw away the fixhf branch, which is pretty useless now.
+
+The goal is to head towards manual.hs, but in small steps. Ideally we measure
+the performance as we go, to see which steps make which differences.
+
+For this, it really would be nice to have a performance benchmark.
+
+Considering most of this only affects concrete evaluation, it would be nice to
+have a generic concrete performance benchmark which, hopefully, captures a lot
+of complex concrete behavior.
+
+Or, perhaps, a bunch of microbenchmarks combined together. Each with a tunable
+parameter, and I can modify that parameter to try and get a constant runtime.
+That sounds cool to me.
+
+What I can do is devise performance benchmarks which I think will be relevant
+to whatever change I'm about to make, and collect them that way.
+
+Brainstorm for changes to make to be clean:
+* Remove concretization of primitives.
+    benchmark: tight loops of integer additions.
+* Remove PrimF, as it should no longer be needed or useful.
+* Re-implement unbox so it always gives ExpH form. (It never concretizes)
+* ...
+
+It may actually lead to much cleaner code if I just try to rewrite the
+compiler from scratch (borrowing old code where it is the same).
+
+Gah. This is hard to organize. Let me take a walk and see how I feel after
+that. There must be some way to clean this up nicely.
+
+Thu May 23 17:24:12 EDT 2013
+
+Here's the plan:
+
+Continue with fixhf. Work on making it cleaner and better a step at a time.
+
+I think it will be very powerful to have the haskellf version entirely based
+on ExpH, because that will put pressure towards fixing ExpH, which well help
+everything, possibly in a major way, that otherwise wouldn't be helped.
+
+My current fixhf already does everything in ExpH? Maybe? Maybe not. But I'll
+work on getting it there, then clean from there.
+
+Let me start by writing a performance test.
+
+Thu May 23 17:35:24 EDT 2013
+
+I have a performance test.
+
+Now... let me get rid of the interpreter, and use only the haskellf back end.
+
+Thu May 23 17:56:56 EDT 2013
+
+I've switch to only the haskellf back end.
+Now, let me try running the performance tests to see how things go.
+
+Note: it's going to be really annoying to wait for haskell to recompile
+everything all the time. It would be worth taking a moment to add the
+following change:
+* before writing a .hs file out, compute its md5sum and compare with what's
+  already there. If they are the same, don't write it.
+
+This way ghc will know it hasn't changed, and hopefully minimize the amount of
+work done recompiling.
+
+Thu May 23 18:02:36 EDT 2013
+
+Okay, so I have the profile. Current state is:
+
+50% of time and allocation spent in box and unbox.
+
+So, let me get rid of that.
+
+First step: box simplifies to Foo__s e.
+
+Once something is an ExpH, it stays that way.
+
+First, though, I really should come up with params to the perf test finishes,
+ideally in about a minute.
+
+Thu May 23 18:40:59 EDT 2013
+
+I timed the perf tests. They take a good amount of time now.
+
+box and unbox are still top consumers of time and allocation. So let me keep
+on plan.
+
+0.prof: baseline
+  16.04s, 13,577,045,400 bytes.
+
+1.prof: change 'box' to keep as ExpH in generated codes (not builtin prelude).
+  15.29s, 12,040,679,976 bytes.
+
+Top consumer is still box and unbox. So let me now change the primitive box
+implementations.
+
+2.prof: change 'box' to keep as ExpH in Char and Integer as well.
+  6.88 secs, 4,769,722,256 bytes.
+
+Huge performance improvement! The deep recursion is almost instant now.
+
+Let me readjust my performance tests now to take more time again.
+
+3.prof: adjusted perf test size
+  37.26s, 35,118,106,256 bytes
+
+What now?
+
+The top consumers of time and memory are lamHF and applyHF. I could look into
+those. Or I could try to make progress on other things. Namely: unbox.
+
+I think, for cleanliness purposes, it makes sense to start by removing unbox.
+
+In other words, unbox will be just the accessor.
+
+In order for this to work, I'll want to remove the other constructors for
+things.
+
+Let me start by doing so in the generated code.
+
+Currently we have:
+
+__mkFooB = lamHF "x1" $ \x1 -> 
+                lamHF "x2" $ \x2 -> 
+                    ... -> FooB x1 x2 ...
+
+I want to change it to:
+
+__mkFooB = lamHF "x1" $ \x1 -> 
+                lamHF "x2" $ \x2 -> 
+                    ... -> conHF' "FooB" [unbox a, unbox b, ...]
+
+
+That's simple enough to change.
+
+1+ change constructors to the above.
+2. do the same for builtin prelude.
+3+ don't generate other constructors.
+4. same for builtin prelude.
+
+
+3.prof: adjusted perf test size
+  37.26s, 35,118,106,256 bytes
+
+4.prof: change constructor to use __s instead of concretized version.
+  36.96s, 35,199,064,840 bytes
+
+Not significant change.
+
+5.prof: remove checks for constructors in unbox.
+  37.42s, 35,159,652,728
+
+Not significant change.
+
+6.prof: don't generate other constructors.
+
+Trouble! Haskell is not properly inferring the kinds of type variables
+anymore. For example, for StateT. Because 'm' is a phantom type, it thinks it
+has kind *, but really it has kind *->*, so when I try to use it with kind 
+*->*, it messes up.
+
+Can I put an explicit kind signature for all kinds higher than *?
+
+Well... if I had that info. Does kind inference not change the type variables
+in DataD? I wish it would... I really do.
+
+5.prof: remove checks for constructors in unbox.
+  37.42s, 35,159,652,728
+
+6.prof: don't generate other constructors.
+  39.95, 35,157,834,792
+
+Not a significant difference. It's probably slower because we got rid of
+tuples in some cases.
+
+7.prof: don't generate concretized constructors in primitives.
+  41.60, 35,398,002,000
+
+A little bit more expensive.
+
+But, now here's the real trick.
+
+At this point, every type has the same form:
+
+data Foo = Foo__s ExpH
+
+Can I now take advantage of that to have all types be the same?
+
+data ExpHF a = ExpHF {
+    unbox :: ExpH
+}
+
+Let me tell you why this is valuable. Or rather, why I expect it to be
+valuable. Because if we do this, we no longer need the HaskellF class.
+
+I don't know. I don't know if I'm ready to make that big of a leap yet.
+
+How about, let me clean some things up first:
+
+* use newtype for everything instead of data.
+* remove smtenHF entirely?
+
+See how these help things or hurt.
+
+7.prof: don't generate concretized constructors in primitives.
+  41.60, 35,398,002,000
+
+8.prof: use newtype for all haskellF definitions.
+  40.90, 35,397,648,768
+
+Not much of an improvement, but that's okay.
+
+I want to note: I think we are likely having the blackhole issue I saw earlier
+today with manual.hs.
+
+But, before I deal with that: ditch PrimF and SmtenHF.
+
+Thu May 23 20:43:57 EDT 2013
+
+I took care of PrimF and SmtenHF.
+
+What's next?
+
+I'm a little bit afraid of switching away from newtype just yet. But that's
+okay. We aren't spending a ton of time in box and unbox.
+
+Well... okay, a little bit, but not a ton.
+
+Let me focus in on where problems are based on profiling.
+
+Firstly: I suspect a memory leak. Let me check out the heap and see how it
+looks.
+
+On top of the profile is:
+
+lamHF        Smten.HaskellF.HaskellF     31.4   53.4
+applyHF      Smten.HaskellF.HaskellF     21.4   18.0
+
+It would also be good to check those out and see what's taking so much time
+and memory there.
+
+But heap first.
+
+hc: 
+For deep recursion: applyHF, applyHF.appEH.lamHF
+For integer: integerEH.integerL, applyHF,
+             integerEH.integerL.litEH.exph
+             binaryTP
+
+I really should increase the label size for these.
+
+This doesn't tell me a whole lot.
+Let's look at what types we are talking about.
+
+hy:
+For deep recursion: ExpH, BLACKHOLE, *, ->*
+For integer: ExpH, Integer, Dynamic, BLACKHOLE, ExpH_Value, Lit
+
+I see BLACKHOLEs, which worries me.
+I'm generating the retainer sets now, to see if it gives useful info.
+
+My fear is we have the blackhole problem, and that's causes lots of other
+things not to be collected. The blackhole problem is scary, because I don't
+really understand it or how to fix it just yet.
+
+hr says:
+For deep recursion: a little system, then lamHF and applyHF.
+For integer: all SYSTEM. This looks like the BLACKHOLE problem to me.
+
+Both cases may be BLACKHOLE problems.
+
+Let me look at lamHF and applyHF, just to see if anything pops up.
+
+Let me first focus in on one of the test cases, because that's hard enough.
+intprim looks to be purest to me right now, so I'll focus on that.
+
+Goal: Eliminate space leak.
+
+Or: figure out what is causing space leak.
+Or: something like that.
+
+Try to use retainer profiling if possible.
+
+First, let me rerun the hc.
+
+I don't know. I don't know how to figure out what's going on. I think,
+perhaps, I should call it a day for today. Come back tomorrow and see how
+things go.
+
+I should be able to do things systematically though. I hope. Assuming I get
+good information from the profiler.
+
+I ought to be able to work as follows:
+
+1. pick some type which is being held on to.
+2. look at the closures responsible for holding on to that type.
+3. look at the retainers responsible for holding on to that type.
+4. look at the closure descriptions responsible for holding on to that type.
+
+Basically, understand who is holding on to that type.
+
+Once I figure that out, I can ask: why is the person holding on to the type
+being held on to?
+
+I just fear it will come down to: BLACKHOLEs hold on to everything.
+
+So, when I go to bed, spend some time thinking. Try to understand the behavior
+I was seeing with manual. If I can really understand that, I bet I'll have my
+answer.
+

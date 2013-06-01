@@ -1,0 +1,309 @@
+
+Thu May 30 07:55:23 EDT 2013
+
+Here's the plan: I've made a new branch. fixhf2. The goal is to have pure
+ExpH generated code.
+
+I actually believe this will be relatively simple to implement. The idea is
+pretty clear. And though the first attempt will not allow for library or
+modular compilation stuff, I think I could extend it easily enough to have
+that support.
+
+The plan is: in one big haskell module... which need not have a name, but I
+suppose call it Main.hs...
+
+For each top level declaration have a definition:
+
+e4 :: ExpH
+e4 = ...
+
+For each type have a definition:
+
+t4 :: Type
+t4 = ...
+
+For each name have a definition:
+
+n4 :: Name
+n4 = name "Foo"
+
+That way I get decent sharing of those things.
+
+First attempt, don't worry about making nice names. They just have to be
+unique and well founded.
+
+Everything else is, I believe, straight-forward.
+
+At the end, wrap the "main" function with main.
+
+This requires I specify which function is main. I used to have a way to do
+that. I suppose I could add it back.
+
+Because I'm on a new branch, I can get rid of HaskellF entirely.
+
+Cool. Hmm... How to go about this?
+
+A new name? How about... SmtenHS. Yes. I like that. And go from there. I can
+steal a bunch of code from HaskellF, but try to do so in a clean way.
+
+The only thing I think I need for SmtenHS is the compiler. There isn't any
+runtime involved, because ExpH is the only runtime.
+
+Good. Let me start with a splurge of rough draft code and see where that gets
+me.
+
+Thu May 30 09:02:51 EDT 2013
+
+Making progress. There is a fair amount of code to write... but I think it's
+mostly straight forward. I'll keep working on this after I get my visa.
+
+Thu May 30 11:35:41 EDT 2013
+
+Rough draft of the compiler is finished. I'm sure there are many bugs.
+
+Now to figure out how to use it...
+
+Thu May 30 13:24:11 EDT 2013
+
+Got it working. On the simple case anyway. It looks like the compiler is
+getting rather slow. I should test it on the test cases and verify it works.
+
+While I wait for it to finish compiling, I can ponder this:
+
+6.prof:
+9s, 12B bytes.
+
+Compare to: 5.  11s, 14B bytes.
+
+So, it's a little bit better. But... hmm...
+
+In summary: stuff related totally to the typed wrapper on top of ExpH amounts
+to about half of the cost. We still have half the cost to go.
+
+What should I do with this?
+
+It's clear before I can commit fixhf2 or adopt it, I need to make the compiler
+faster. I imagine that won't be too hard if I look into what's slowing it
+down.
+
+Assuming that is not a problem... then what?
+
+What we gain from fixhf2 (over fixhf)
+* about 2x in performance and memory improvement. Good
+* cleaner code. Good.
+
+What we loose:
+* We don't generate polymorphic code.
+But... do you need polymorphic code? Does anyone use it?
+
+And... I suspect it would be easy enough to add support for polymorphic code.
+Just make things a function from Type to ExpH rather than pure ExpH.
+
+Anyway, that's a future issue, not a now issue. I think the improvement in
+code and performance, and simplicity of generated code, is plenty enough
+motivation to stick with fixhf2.
+
+I only need to get it to compile faster...
+
+I'll work on that now. Then yes. Replace fixhf with it.
+
+Then I can start working on the things Nirav suggested. Specialize things
+based on types when possible.
+
+All the time is spent in looking up types.
+
+I'm surprised there are so many types...
+
+Thu May 30 14:00:29 EDT 2013
+
+It's a bug. The problem with this approach. Because of numeric types, we could
+have an infinite number of types. In this case in vappend.
+
+The issue is: we should not generate multiple versions of expressions with
+different type if it is only parameteric polymorphism. Or rather, that's my
+proposed solution. The trouble is vconcat depends on a smaller type. We can't
+see that dynamically you don't need that value.
+
+I don't want to worry about it now.
+
+Anyway, everything else still works.
+
+Thu May 30 14:12:41 EDT 2013
+
+I don't want to merge fixhf and fixhf2 yet. I would like to explore some more
+the performance of fixhf2, see if we can't really bring that down.
+
+fixhf2 baseline for wc:
+
+0: Baseline
+12.5s, 12.47B bytes
+
+1: Specialize caseEH: only call it with non-booleans.
+10.5s, 12.47B bytes
+
+Time improvement. No improvement in memory.
+
+Next hope: let me try, again, to see if I can get rid of types?
+
+Or... somehow handle names properly.
+
+Basically what I would like to have is all names are assigned an Int, and the
+only thing we have to do to compare names is compare that Int.
+
+One thing we could do is only do this with constructors. I tried that before.
+
+2: Take advantage of the fact that a bool which is not True is False
+9.77s, 12.47B bytes
+
+Thu May 30 14:58:38 EDT 2013
+
+I want to understand now who wants type information and why. I know i've tried
+this a number of times before, but for some reason, I never really understand
+it.
+
+Current uses:
+* in conversion from ExpH to Exp for debug purposes.
+    It should be okay to drop the types here.
+* in primitive implementations when testing for smttype
+    Primitives we will give the type statically, so we should be able to use
+    the static info.
+* in Smten.SMT.Assert
+    In order to implement __prim_extract_Bit.
+                          __prim_zeroExtend_Bit.
+                          __prim_signExtend_Bit.
+    We need to know the expected return type.
+    If we kept the type with PrimEH, then we would be okay here.
+* in Smten.SMT.Assert
+    To know what kind of free variable to create to abstract ErrorEH.
+
+Note: Concrete evaluation not involving these things still works.
+
+Just for the fun of it, let me see how much faster concrete evaluation is if
+we don't have to deal with these types all over the place.
+
+Overhead of types:
+2: Take advantage of the fact that a bool which is not True is False
+9.77s, 12.47B bytes
+
+unnamed : Remove all type info (breaks correctness in general)
+9.33s, 11.17B bytes
+
+Only a small improvement.
+
+Now let me try, again, to do Int for constructors?
+
+unnamed : Use Int instead of newtype Integer for EID.
+9.42s, 12.47B bytes
+
+Not significant.
+
+Um. Use Int for constructors. Let me see if I can get that back working again.
+
+2: 9.77s, 12.47B bytes
+3: Use Int for constructors instead of Name.
+8.62, 12.47B bytes
+
+Saves a little on performance. Okay, a noticeable amount. But not major yet.
+
+Now time seems to be dominated by integer primitives.
+
+Hmm...
+
+I want to take some time to think about an alternative approach, given what
+I've learned.
+
+The question is, if we were to compile as native a haskell like code as
+possible, how would it look? I'm suggesting I get rid of ExpH entirely, if
+possible.
+
+You know what the big challenge is?
+
+Preserving sharing. 
+
+If I didn't have to preserve sharing, I could generate true functions instead
+of wrapping them. I think that would help a bunch.
+
+ExpH is nice to work with too, so it could be not so nice to loose that,
+but...
+
+Back to what I'm thinking.
+
+Is there another way we could preserve sharing? Is there some ghc trick we can
+do? In other words... is there any way I can get a pointer to an object? I
+would like to be able to get a pointer to a thunk, a pointer to an expression,
+a pointer to a function. Really something like:
+
+addr :: a -> Ptr
+
+Or... perhaps, something like...
+
+Really what I want, with respect to sharing, is to create a map? Or, rather,
+remember that I've already done an operation.
+
+There must be a way to make a pointer which isn't broken by ghc?
+
+What I really want is a map where I can look up objects by pointer.
+
+I can approximate this with IORefs. But at that point, I may as well just use
+EIDs like I am now.
+
+So sharing is a big problem to work out.
+
+Disregarding that problem, consider something like:
+
+What can a bool be?
+
+data Bool =
+    True
+  | False
+  | Var VarId
+  | If Bool Bool Bool
+  | EqInteger Integer Integer
+  | GtInteger Integer Integer
+  | ...
+
+What can an integer be?
+
+data Integer = 
+    Integer Prelude.Integer
+  | Var VarId
+  | If Bool Integer Integer
+  | AddInteger Integer Integer
+  | SubInteger Integer Integer 
+  | ...
+
+What can a tuple be?
+
+data Tuple2 a b =
+    Tuple2 a b
+  | If Bool (Tuple2 a b) (Tuple2 a b)
+
+I can monomorphize things if I don't want any polymorphic types or functions,
+as we do with fixhf2. That avoids the need for type classes.
+
+But we still need functions for case, because they can't be done in a constant
+way. Unless we have a different structure.
+
+Oh, and everything might need an Error constructor too.
+
+Now the Assert function will traverse a Bool or Integer. So those will have
+to be known. Primitive, as it were. We have the type information we need. No
+problem there.
+
+Ug. I don't know.
+
+Here's an interesting question. How well does master's haskellf perform on wc?
+Are we close to it? That's worth trying.
+
+Haskellf is currently at:
+
+3: 8.62, 12.47B bytes
+haskellf: 6.30s, 10.54B bytes
+
+So we are close to that. It's still better though. But not amazingly so, which
+is interesting. Because it has no sharing stuff. Everything is totally
+concrete. The only thing it has that's bad is the overhead of the type
+classes.
+
+Gah. I don't know. Things to think about, that's for sure.
+

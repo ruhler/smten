@@ -20,7 +20,7 @@ data AS ctx exp = AS {
 type AssertM ctx exp = StateT (AS ctx exp) IO
 
 assert :: (AST ctx exp) => ctx -> ExpH -> IO ()
-assert ctx p = do
+assert ctx p = {-# SCC "Assert" #-} do
     e <- evalStateT (def ctx p) (AS ctx Map.empty)
     AST.assert ctx e
 
