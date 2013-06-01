@@ -1,6 +1,8 @@
 
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE TypeSynonymInstances #-}
+
 module Runtime.Prelude where
 
 import qualified Prelude as P
@@ -8,12 +10,19 @@ import qualified Data.Functor as P
 import qualified Data.Maybe as P
 import Runtime.Haskelly
 
+data S__ a = S__c a 
+           | S__if (S__ Bool) (S__ a) (S__ a)
+
+instance (Haskelly ha sa) => Haskelly ha (S__ sa) where
+    fromHaskell = S__c P.. fromHaskell
+    toHaskell (S__c x) = toHaskell x
+    toHaskell _ = P.Nothing
+
 type Char = P.Char
 
 instance Haskelly P.Char Char where
     fromHaskell = P.id
     toHaskell = P.return
-
 
 type IO = P.IO
 

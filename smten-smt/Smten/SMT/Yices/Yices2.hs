@@ -38,7 +38,7 @@
 {-# LANGUAGE PatternGuards #-}
 
 -- | Backend for the Yices2 solver
-module Smten.SMT.Yices.Yices2 (yices2) where
+module Smten.SMT.Yices.Yices2 (Yices2, yices2) where
 
 import Foreign
 import Foreign.C.String
