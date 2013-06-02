@@ -16,8 +16,7 @@ source-repository this
   --tag:
 executable smten
   main-is: smten.hs
-  build-depends: base ==4.6.*,
-                 cmdargs ==0.10.*, syb ==0.4.*,
-                 smten ==2.2.*, smten-smt ==2.2.*
+  build-depends: base ==4.6.*, cmdargs ==0.10.*, smten ==2.2.*
   --ghc-prof-options: -fprof-auto-top
   ghc-options: -rtsopts -fwarn-unused-binds -fwarn-unused-imports
+

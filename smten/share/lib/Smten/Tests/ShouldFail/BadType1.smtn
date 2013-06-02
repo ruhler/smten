@@ -1,8 +1,0 @@
-
-module Smten.Tests.ShouldFail.BadType1 where
-
-import Prelude
-
-foo :: Integer
-foo = True
-

@@ -1,8 +1,0 @@
-
-module Smten.Tests.ShouldFail.BadType2 where
-
-import Prelude
-
-foo :: Bool
-foo = not (18 :: Integer)
-

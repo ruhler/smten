@@ -1,8 +1,0 @@
-
-module Data.Functor where
-
-(<$>) :: (Monad m) => (a -> b) -> m a -> m b
-(<$>) f x = do
-    v <- x
-    return (f v)
-

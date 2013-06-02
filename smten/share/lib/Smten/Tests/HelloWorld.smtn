@@ -1,8 +1,0 @@
-
-module Smten.Tests.HelloWorld where
-
-import Prelude
-
-main :: IO ()
-main = putStrLn "hello, world"
-

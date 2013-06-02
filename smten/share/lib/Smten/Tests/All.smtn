@@ -2,52 +2,10 @@
 module Smten.Tests.All where
 
 import Smten.Tests.Test
-import Smten.Tests.Basic
-import Smten.Tests.State
-import Smten.Tests.DataMap
-import Smten.Tests.Module
-import Smten.Tests.List
-import Smten.SMT.Tests.Core
-import Smten.SMT.Tests.Integer
-import qualified Smten.ModelChecking.Test
-import qualified Smten.SMT.Tests.Bit
-import qualified Smten.SMT.Tests.Datatype
-import qualified Smten.SMT.Tests.Error
-import qualified Smten.SMT.Tests.Share
-import qualified Smten.SMT.Tests.Used
-import qualified Smten.SMT.Tests.Nest
-import qualified Smten.SMT.Tests.AllQ
-import qualified Smten.SMT.Tests.AllQ2
-import qualified Smten.SMT.Tests.Isolate0
-import qualified Smten.SMT.Tests.Sudoku
-import qualified Smten.Tests.Perf
-
-testconcrete :: IO ()
-testconcrete = do
-    test "test.dummy" True
-    testbasics
-    teststate
-    testdatamap
-    testmodule
-    testlist
 
 testall :: IO ()
-testall = do
-    testconcrete
-    testcore
-    testinteger
-    Smten.SMT.Tests.Bit.testbit
-    Smten.SMT.Tests.Datatype.test
-    Smten.SMT.Tests.Error.test
-    Smten.SMT.Tests.Share.test
-    Smten.SMT.Tests.Used.tests
-    Smten.SMT.Tests.Nest.tests
-    Smten.SMT.Tests.AllQ.tests
-    Smten.SMT.Tests.AllQ2.tests
-    Smten.SMT.Tests.Isolate0.tests
-    Smten.SMT.Tests.Sudoku.tests
-    Smten.ModelChecking.Test.tests
-    Smten.Tests.Perf.tests
+testall =
+    test "dummy" True
 
 main :: IO ()
 main = do

@@ -1,9 +1,0 @@
-
-module Data.Char where
-
-ord :: Char -> Integer
-ord = __prim_toInteger_Char
-
-chr :: Integer -> Char
-chr = __prim_fromInteger_Char
-

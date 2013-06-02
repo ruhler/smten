@@ -13,18 +13,7 @@ data-dir: share
 data-files:
     doc/*.txt
     lib/Prelude.smtn
-    lib/Control/Monad/*.smtn
-    lib/Control/Monad/IO/*.smtn
-    lib/Control/Monad/State/*.smtn
-    lib/Debug/*.smtn
-    lib/Data/*.smtn
-    lib/Smten/*.smtn
-    lib/Smten/ModelChecking/*.smtn
     lib/Smten/Tests/*.smtn
-    lib/Smten/Tests/ShouldFail/*.smtn
-    lib/Smten/Sudoku/*.smtn
-    lib/Smten/SMT/*.smtn
-    lib/Smten/SMT/Tests/*.smtn
 source-repository this
   type: git
   location: /afs/csail.mit.edu/u/r/ruhler/git/smten
@@ -64,39 +53,6 @@ library
     Smten.Exp.Do
     Smten.Exp.Ppr
 
-    Smten.ExpH
-    Smten.ExpH.ExpH
-    Smten.ExpH.SmtenEH
-    Smten.ExpH.Sugar
-    Smten.ExpH.Sugar2
-    Smten.ExpH.SmtenEHs
-    Smten.ExpH.SmtenEHs2
-    Smten.ExpH.TH
-    Smten.ExpH.FromExpH
-    Smten.ExpH.Ppr
-    Smten.ExpH.Utils
-
-    Smten.Prim
-    Smten.Prim.Prim
-    Smten.Prim.Prelude
-    Smten.Prim.Bit
-    Smten.Prim.Array
-
-    Smten.HaskellF.Compile
-    Smten.HaskellF.Compile.HF
-    Smten.HaskellF.Compile.Kind
-    Smten.HaskellF.Compile.Name
-    Smten.HaskellF.Compile.Type
-    Smten.HaskellF.Compile.Exp
-    Smten.HaskellF.Compile.Data
-    Smten.HaskellF.Compile.Dec
-    Smten.HaskellF.Compile.Ppr
-    Smten.HaskellF.Compile.Module
-
-    Smten.HaskellF.HaskellF
-    Smten.HaskellF.Numeric
-    Smten.HaskellF.TH
-
     Smten.Module
     Smten.Module.Entity
     Smten.Module.Module
@@ -129,23 +85,14 @@ library
 
     Smten.Loader
 
-    Smten.SMT.AST
-    Smten.SMT.Assert
-    Smten.SMT.Debug
-    Smten.SMT.DebugLL
-    Smten.SMT.Solver
-    Smten.SMT.SMT
-
     Smten.Fresh
     Smten.Location
 
     Smten.Ppr
     Smten.Lit
   other-modules: Paths_smten
-  build-depends: base ==4.6.*, mtl ==2.1.*, transformers ==0.3.*,
-                 pretty ==1.1.*, array ==0.4.*, MissingH ==1.2.*,
-                 directory ==1.2.*, template-haskell ==2.8.*, hashable ==1.2.*,
-                 containers ==0.5.*, bytestring ==0.10.*, hashmap ==1.3.*
+  build-depends: base ==4.6.*
   build-tools: happy
   --ghc-prof-options: -fprof-auto-top
   ghc-options: -fwarn-unused-binds -fwarn-unused-imports
+

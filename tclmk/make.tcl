@@ -37,7 +37,7 @@ hrun mkdir -p build/home build/test
 
 set ::env(HOME) [pwd]/build/home
 #hrun cabal update
-hrun cabal install cmdargs syb missingh
+#hrun cabal install
 
 # The smten package
 indir smten {
@@ -73,30 +73,9 @@ indir smten-bin {
 set SMTEN build/home/.cabal/bin/smten
 set SMTN smten/share/lib
 
-# Poorly typed tests.
-proc shouldfail {name} {
-    set cmd {
-        hrun $::SMTEN --phases \
-            -f $::SMTN/Smten/Tests/ShouldFail/$name.smtn \
-            -o "build/test/$name"
-        }
-
-    if { [catch $cmd] == 0 } {
-        error "expected failure, but $name passed type check"
-    }
-}
-
-proc expectfail {cmd} {
-    if { [catch $cmd] == 0 } {   
-        error "expected failure, but $cmd succeeded"
-    }
-}
-
 proc hscomp {module} {
     set hsdir build/test
-    hrun $::SMTEN --haskellf \
-        -f $::SMTN/[string map {. /} $module].smtn \
-        --hsdir $hsdir
+    hrun $::SMTEN -f $::SMTN/[string map {. /} $module].smtn --hsdir $hsdir
 }
 
 proc hsghc {module} {
@@ -118,24 +97,5 @@ proc hf {module} {
 
 
 hf Smten.Tests.All
-expectfail { hf Smten.SMT.Tests.MalError }
-
-shouldfail "Ambiguous"
-#shouldfail "BadKind"
-shouldfail "BadType1"
-shouldfail "BadType2"
-shouldfail "BadType3"
-shouldfail "BadType4"
-shouldfail "ClassCtx1"
-shouldfail "ClauseArgCount"
-shouldfail "Ctx"
-#shouldfail "DupInst"
-#shouldfail "DupVar"
-shouldfail "FreeDataCon"
-shouldfail "FreeTyCon"
-shouldfail "FreeTypeVar"
-shouldfail "FreeVar"
-shouldfail "InstCtx"
-
 puts "BUILD COMPLETE"
 

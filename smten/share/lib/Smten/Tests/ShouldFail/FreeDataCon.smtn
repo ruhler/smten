@@ -1,7 +1,0 @@
-
-module Smten.Tests.ShouldFail.FreeDataCon where
-
--- The data constructor Sludge.
-bar :: Bool
-bar = Sludge
-
