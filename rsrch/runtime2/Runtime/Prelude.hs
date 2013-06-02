@@ -98,6 +98,12 @@ instance (SmtenHS a) => SmtenHS (Maybe__ a) where
             Nothing -> Nothing
             Just v -> Just (realize m v)
 
+__mkJust :: a -> Maybe a
+__mkJust = Concrete1 P.. Just
+
+__mkNothing :: Maybe a
+__mkNothing = Concrete1 Nothing
+
 __caseJust :: (SmtenHS b) => Maybe a -> (a -> b) -> b -> b
 __caseJust x y n =
     case x of

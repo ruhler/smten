@@ -66,7 +66,7 @@ run_symbolic q = R.Concrete1 $ do
         Satisfiable -> do
             let vars = ss_free ss
             vals <- mapM (getBoolValue s) vars
-            return (R.Concrete1 (R.Just (R.realize (zip vars vals) x)))
+            return (R.__mkJust (R.realize (zip vars vals) x))
         Unsatisfiable -> return (R.Concrete1 R.Nothing)
 
 free_Bool :: Symbolic R.Bool
