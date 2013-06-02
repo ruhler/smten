@@ -124,3 +124,6 @@ not p = __caseTrue p False True
 (&&) :: Bool -> Bool -> Bool
 (&&) x y = __caseTrue x y False
 
+(||) :: Bool -> Bool -> Bool
+(||) x y = __caseTrue x True y
+

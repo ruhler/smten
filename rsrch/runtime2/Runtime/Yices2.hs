@@ -37,7 +37,8 @@ yices2 = do
 assert :: Solver -> R.Bool -> IO ()
 assert y p = do
     p' <- mkterm p
-    c_yices_assert_formula (yctx y) p'
+    putStrLn ("assert " ++ showt p')
+    c_yices_assert_formula (yctx y) (yterm p')
 
 check :: Solver -> IO Result
 check y = do
@@ -67,15 +68,42 @@ getBoolValue y nm = do
         1 -> return R.True
         _ -> error $ "yices2 get bool value got: " ++ show x
 
-mkterm :: R.Bool -> IO YTerm
-mkterm R.True = c_yices_true
-mkterm R.False = c_yices_false
-mkterm (R.BoolVar nm) = withCString (unname nm) c_yices_get_term_by_name
+data Term = Term {
+    yterm :: YTerm,
+    dterm :: Integer
+}
+
+{-# NOINLINE did #-}
+did :: IORef Integer
+did = unsafePerformIO (newIORef 0)
+
+newid :: IO Integer
+newid = do
+    v <- readIORef did
+    modifyIORef' did (+ 1)
+    return v
+    
+dbg :: String -> IO YTerm -> IO Term
+dbg msg m = do
+    v <- m
+    id <- newid
+    let t = Term v id
+    putStrLn $ showt t ++ ": " ++ msg
+    return t
+
+showt :: Term -> String
+showt x = "$" ++ show (dterm x)
+
+mkterm :: R.Bool -> IO Term
+mkterm R.True = dbg "True" c_yices_true
+mkterm R.False = dbg "False" c_yices_false
+mkterm (R.BoolVar nm) = dbg (unname nm) $
+    withCString (unname nm) c_yices_get_term_by_name
 mkterm (R.BoolMux p a b) = do
     p' <- mkterm p
     a' <- mkterm a
     b' <- mkterm b
-    c_yices_ite p' a' b'
+    dbg (showt p' ++ " ? " ++ showt a' ++ " : " ++ showt b') $ c_yices_ite (yterm p') (yterm a') (yterm b')
 
 fresh_bool :: Solver -> IO Name
 fresh_bool y = do

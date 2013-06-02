@@ -8,8 +8,9 @@ runmain (IO x) = x P.>> P.return ()
 
 query :: Symbolic Char
 query = (>>=) free_Bool P.$ \p ->
-    (>>) (__caseTrue p (fail_symbolic) (return Unit))
-         (return (__caseTrue p (Char 'Y') (Char 'y')))
+    let x = p && (p && (p && p))
+        y = x || x
+    in __caseTrue y (return (Char 'Y')) fail_symbolic
 
 main :: P.IO ()
 main = runmain P.$
