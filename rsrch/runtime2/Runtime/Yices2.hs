@@ -12,6 +12,9 @@ module Runtime.Yices2 (
 import Foreign
 import Foreign.C.String
 
+import qualified Data.HashTable.IO as H
+
+import System.Mem.StableName
 import Data.IORef
 
 import qualified Runtime.Prelude as R
@@ -82,6 +85,23 @@ newid = do
     v <- readIORef did
     modifyIORef' did (+ 1)
     return v
+
+
+type TermCache = H.BasicHashTable (StableName R.Bool) Term
+
+{-# NOINLINE tcache #-}
+tcache :: TermCache
+tcache = unsafePerformIO H.new
+
+tinsert :: R.Bool -> Term -> IO ()
+tinsert k v = do
+   nm <- makeStableName $! k
+   H.insert tcache nm v
+
+tlookup :: R.Bool -> IO (Maybe Term)
+tlookup v = do
+   nm <- makeStableName $! v 
+   H.lookup tcache nm
     
 dbg :: String -> IO YTerm -> IO Term
 dbg msg m = do
@@ -95,11 +115,21 @@ showt :: Term -> String
 showt x = "$" ++ show (dterm x)
 
 mkterm :: R.Bool -> IO Term
-mkterm R.True = dbg "True" c_yices_true
-mkterm R.False = dbg "False" c_yices_false
-mkterm (R.BoolVar nm) = dbg (unname nm) $
+mkterm p = do
+    r <- tlookup p
+    case r of 
+        Just v -> return v
+        Nothing -> do
+            v <- mkterm' p
+            tinsert p v
+            return v
+
+mkterm' :: R.Bool -> IO Term
+mkterm' R.True = dbg "True" c_yices_true
+mkterm' R.False = dbg "False" c_yices_false
+mkterm' (R.BoolVar nm) = dbg (unname nm) $
     withCString (unname nm) c_yices_get_term_by_name
-mkterm (R.BoolMux p a b) = do
+mkterm' (R.BoolMux p a b) = do
     p' <- mkterm p
     a' <- mkterm a
     b' <- mkterm b
