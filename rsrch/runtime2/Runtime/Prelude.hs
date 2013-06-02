@@ -10,6 +10,8 @@ import qualified Data.Maybe as P (fromMaybe)
 import qualified Data.Functor as P ((<$>))
 import Smten.Name
 
+import Data.StableMemo.Weak
+
 class SmtenHS a where
    -- mux p x y = if p then x else y
    -- Except here p, x, and y may all be symbolic.
@@ -33,6 +35,14 @@ instance (SmtenHS a) => SmtenHS (Mux a) where
 
     realize m (Concrete a) = Concrete (realize m a)
     realize m (Mux p a b) = __caseTrue (realize m p) (realize m a) (realize m b)
+
+mux1app :: (SmtenHS b) => (m a -> b) -> Mux1 m a -> b
+mux1app f =
+ let g = memo f
+
+     m (Concrete1 a) = g a
+     m (Mux1 p a b) = mux p (m a) (m b)
+ in m
 
 data Mux1 m a = Concrete1 (m a)
               | Mux1 Bool (Mux1 m a) (Mux1 m a)
@@ -105,11 +115,10 @@ __mkNothing :: Maybe a
 __mkNothing = Concrete1 Nothing
 
 __caseJust :: (SmtenHS b) => Maybe a -> (a -> b) -> b -> b
-__caseJust x y n =
-    case x of
-        Concrete1 (Just v) -> y v
-        Concrete1 Nothing -> n
-        Mux1 p a b -> mux p (__caseJust a y n) (__caseJust b y n)
+__caseJust x y n = mux1app (\x' ->
+    case x' of
+        Just v -> y v
+        Nothing -> n) x
 
 class Monad m where
     return :: a -> m a
