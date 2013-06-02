@@ -1,4 +1,8 @@
 
+{-# Language FlexibleContexts #-}
+{-# Language FlexibleInstances #-}
+{-# Language TypeSynonymInstances #-}
+
 module Runtime.Prelude where
 
 import qualified Prelude as P
@@ -15,33 +19,56 @@ class SmtenHS a where
 
    -- Update all variables in the given expression according to the given map.
    -- You may assume all free variables in the expression are in the map.
-   realize :: [(Name, Bool)] -> a -> a
+   realize :: [(Name, Bool__)] -> a -> a
 
 instance (SmtenHS a, SmtenHS b) => SmtenHS (a -> b) where
    mux p fa fb = \x -> mux p (fa x) (fb x)
    realize m f = \x -> realize m (f x)
 
-data Bool = False
-          | True
-          | BoolVar Name
-          | BoolMux Bool Bool Bool
+data Mux a = Concrete a
+           | Mux Bool (Mux a) (Mux a)
 
-instance SmtenHS Bool where
-   mux = BoolMux
+instance (SmtenHS a) => SmtenHS (Mux a) where
+    mux = Mux
+
+    realize m (Concrete a) = Concrete (realize m a)
+    realize m (Mux p a b) = __caseTrue (realize m p) (realize m a) (realize m b)
+
+data Mux1 m a = Concrete1 (m a)
+              | Mux1 Bool (Mux1 m a) (Mux1 m a)
+
+instance (SmtenHS (m a)) => SmtenHS (Mux1 m a) where
+    mux = Mux1
+
+    realize m (Concrete1 a) = Concrete1 (realize m a)
+    realize m (Mux1 p a b) = __caseTrue (realize m p) (realize m a) (realize m b)
+
+data Bool__ = False
+            | True
+            | BoolVar Name
+
+type Bool = Mux Bool__
+
+instance SmtenHS Bool__ where
+   mux = P.error "Bool__ mux"
 
    realize m False = False
    realize m True = True
    realize m (BoolVar n)
      = P.fromMaybe (P.error "realize name not found") (P.lookup n m)
-   realize m (BoolMux p a b)
-     = __caseTrue (realize m p) (realize m a) (realize m b)
 
 __caseTrue :: (SmtenHS a) => Bool -> a -> a -> a
 __caseTrue p y n =
     case p of
-        True -> y
-        False -> n
+        (Concrete True) -> y
+        (Concrete False) -> n
         _ -> mux p y n
+
+__mkTrue :: Bool
+__mkTrue = Concrete True
+
+__mkFalse :: Bool
+__mkFalse = Concrete False
 
 data Unit = Unit
 
@@ -49,44 +76,34 @@ instance SmtenHS Unit where
     mux p a b = Unit
     realize m _ = Unit
     
-data IO a = 
-    IO (P.IO a)
-  | IOMux Bool (IO a) (IO a)
+type IO = Mux1 P.IO
 
-instance (SmtenHS a) => SmtenHS (IO a) where
-    mux = IOMux
-    realize m x = 
-        case x of
-            IO v -> IO (realize m P.<$> v)
-            IOMux p a b -> __caseTrue (realize m p) (realize m a) (realize m b)
+instance (SmtenHS a) => SmtenHS (P.IO a) where
+    mux = P.error "Prelude.IO mux"
+    realize m x = realize m P.<$> x
 
-data Char = Char P.Char | CharMux Bool Char Char
+type Char = Mux P.Char
 
-instance SmtenHS Char where
-    mux = CharMux
-    realize m x =
-        case x of
-            Char v -> x
-            CharMux p a b -> __caseTrue (realize m p) (realize m a) (realize m b)
+instance SmtenHS P.Char where
+    mux = P.error "Prelude.Char mux"
+    realize m x = x
 
-data Maybe a = Nothing
-             | Just a
-             | MaybeMux Bool (Maybe a) (Maybe a)
+data Maybe__ a = Nothing | Just a
+type Maybe = Mux1 Maybe__
 
-instance (SmtenHS a) => SmtenHS (Maybe a) where
-    mux = MaybeMux
+instance (SmtenHS a) => SmtenHS (Maybe__ a) where
+    mux = P.error "Maybe__ mux"
     realize m x =
         case x of
             Nothing -> Nothing
             Just v -> Just (realize m v)
-            MaybeMux p a b -> __caseTrue (realize m p) (realize m a) (realize m b)
 
 __caseJust :: (SmtenHS b) => Maybe a -> (a -> b) -> b -> b
 __caseJust x y n =
     case x of
-        Just v -> y v
-        Nothing -> n
-        MaybeMux p a b -> mux p (__caseJust a y n) (__caseJust b y n)
+        Concrete1 (Just v) -> y v
+        Concrete1 Nothing -> n
+        Mux1 p a b -> mux p (__caseJust a y n) (__caseJust b y n)
 
 class Monad m where
     return :: a -> m a
@@ -103,27 +120,27 @@ const k = \_ -> k
 
 -- primitive return_io
 return_io :: a -> IO a
-return_io = IO P.. P.return
+return_io x = Concrete1 (P.return x)
 
 bind_io :: IO a -> (a -> IO b) -> IO b
 bind_io m f =
   case m of
-    IO mx ->
-        let g x = let IO z = f x in z
-        in IO (mx P.>>= g)
-    IOMux p a b -> IOMux p (bind_io a f) (bind_io b f)
+    Concrete1 mx ->
+        let g x = let Concrete1 z = f x in z
+        in Concrete1 (mx P.>>= g)
+    Mux1 p a b -> Mux1 p (bind_io a f) (bind_io b f)
 
 -- primitive putChar
 putChar :: Char -> IO Unit
-putChar (Char c) = IO (P.putChar c P.>> P.return Unit)
-putChar (CharMux p a b) = IOMux p (putChar a) (putChar b)
+putChar (Concrete c) = Concrete1 (P.putChar c P.>> P.return Unit)
+putChar (Mux p a b) = Mux1 p (putChar a) (putChar b)
 
 not :: Bool -> Bool
-not p = __caseTrue p False True
+not p = __caseTrue p __mkFalse __mkTrue
 
 (&&) :: Bool -> Bool -> Bool
-(&&) x y = __caseTrue x y False
+(&&) x y = __caseTrue x y __mkFalse
 
 (||) :: Bool -> Bool -> Bool
-(||) x y = __caseTrue x True y
+(||) x y = __caseTrue x __mkTrue y
 

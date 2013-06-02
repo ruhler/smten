@@ -48,7 +48,7 @@ check y = do
     st <- c_yices_check_context (yctx y) nullPtr
     return $! fromYSMTStatus st
 
-getBoolValue :: Solver -> Name -> IO R.Bool
+getBoolValue :: Solver -> Name -> IO R.Bool__
 getBoolValue y nm = do
     model <- c_yices_get_model (yctx y) 1
     x <- alloca $ \ptr -> do
@@ -125,11 +125,11 @@ mkterm p = do
             return v
 
 mkterm' :: R.Bool -> IO Term
-mkterm' R.True = dbg "True" c_yices_true
-mkterm' R.False = dbg "False" c_yices_false
-mkterm' (R.BoolVar nm) = dbg (unname nm) $
+mkterm' (R.Concrete R.True) = dbg "True" c_yices_true
+mkterm' (R.Concrete R.False) = dbg "False" c_yices_false
+mkterm' (R.Concrete (R.BoolVar nm)) = dbg (unname nm) $
     withCString (unname nm) c_yices_get_term_by_name
-mkterm' (R.BoolMux p a b) = do
+mkterm' (R.Mux p a b) = do
     p' <- mkterm p
     a' <- mkterm a
     b' <- mkterm b

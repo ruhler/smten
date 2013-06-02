@@ -57,22 +57,22 @@ fail_symbolic = do
     return (error "fail_symbolic")
 
 run_symbolic :: (R.SmtenHS a) => Symbolic a -> R.IO (R.Maybe a)
-run_symbolic q = R.IO $ do
+run_symbolic q = R.Concrete1 $ do
     s <- yices2
-    (x, ss) <- runStateT q (SS s R.True [] R.True)
+    (x, ss) <- runStateT q (SS s R.__mkTrue [] R.__mkTrue)
     assert s (ss_formula ss)
     res <- check s
     case res of
         Satisfiable -> do
             let vars = ss_free ss
             vals <- mapM (getBoolValue s) vars
-            return (R.Just (R.realize (zip vars vals) x))
-        Unsatisfiable -> return R.Nothing
+            return (R.Concrete1 (R.Just (R.realize (zip vars vals) x)))
+        Unsatisfiable -> return (R.Concrete1 R.Nothing)
 
 free_Bool :: Symbolic R.Bool
 free_Bool = do
     s <- gets ss_solver
     nm <- liftIO $ fresh_bool s
     modify $ \ss -> ss { ss_free = nm : ss_free ss }
-    return (R.BoolVar nm)
+    return (R.Concrete (R.BoolVar nm))
 
