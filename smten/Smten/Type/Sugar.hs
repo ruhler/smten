@@ -4,7 +4,7 @@
 -- Abstract constructors and deconstructors for manipulating smten types.
 module Smten.Type.Sugar (
     Type(),
-    conT, de_conT,
+    conT, de_conT, varT, 
     appT, de_appT, appsT, de_appsT,
     arrowT, de_arrowT, arrowsT, de_arrowsT,
 
@@ -24,6 +24,9 @@ import Smten.Type.Type
 -- | Form the type constructor with given name.
 conT :: Name -> Type
 conT n = ConT n UnknownK
+
+varT :: Name -> Type
+varT n = VarT n UnknownK
 
 de_conT :: Type -> Maybe Name
 de_conT (ConT n _) = Just n
