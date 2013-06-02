@@ -69,7 +69,58 @@ instance SmtenHS Char where
             Char v -> x
             CharMux p a b -> __caseTrue (realize m p) (realize m a) (realize m b)
 
+data Maybe a = Nothing
+             | Just a
+             | MaybeMux Bool (Maybe a) (Maybe a)
+
+instance (SmtenHS a) => SmtenHS (Maybe a) where
+    mux = MaybeMux
+    realize m x =
+        case x of
+            Nothing -> Nothing
+            Just v -> Just (realize m v)
+            MaybeMux p a b -> __caseTrue (realize m p) (realize m a) (realize m b)
+
+__caseJust :: (SmtenHS b) => Maybe a -> (a -> b) -> b -> b
+__caseJust x y n =
+    case x of
+        Just v -> y v
+        Nothing -> n
+        MaybeMux p a b -> mux p (__caseJust a y n) (__caseJust b y n)
+
+class Monad m where
+    return :: a -> m a
+    (>>=) :: m a -> (a -> m b) -> m b
+    (>>) :: m a -> m b -> m b
+    (>>) a b = a >>= const b
+            
+instance Monad IO where
+    return = return_io
+    (>>=) = bind_io
+
+const :: a -> b -> a
+const k = \_ -> k
+
+-- primitive return_io
+return_io :: a -> IO a
+return_io = IO P.. P.return
+
+bind_io :: IO a -> (a -> IO b) -> IO b
+bind_io m f =
+  case m of
+    IO mx ->
+        let g x = let IO z = f x in z
+        in IO (mx P.>>= g)
+    IOMux p a b -> IOMux p (bind_io a f) (bind_io b f)
+
+-- primitive putChar
 putChar :: Char -> IO Unit
 putChar (Char c) = IO (P.putChar c P.>> P.return Unit)
 putChar (CharMux p a b) = IOMux p (putChar a) (putChar b)
-            
+
+not :: Bool -> Bool
+not p = __caseTrue p False True
+
+(&&) :: Bool -> Bool -> Bool
+(&&) x y = __caseTrue x y False
+
