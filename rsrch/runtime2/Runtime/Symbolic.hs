@@ -3,7 +3,8 @@
 {-# LANGUAGE TypeSynonymInstances #-}
 
 module Runtime.Symbolic (
-    Symbolic, run_symbolic
+    Symbolic, run_symbolic, fail_symbolic,
+    free_Bool,
     ) where
 
 import Control.Monad.State
@@ -50,6 +51,11 @@ return_symbolic = return
 bind_symbolic :: Symbolic a -> (a -> Symbolic b) -> Symbolic b
 bind_symbolic = (>>=)
 
+fail_symbolic :: Symbolic a
+fail_symbolic = do
+    modify $ \ss -> ss { ss_formula = ss_formula ss R.&& R.not (ss_pred ss) }
+    return (error "fail_symbolic")
+
 run_symbolic :: (R.SmtenHS a) => Symbolic a -> R.IO (R.Maybe a)
 run_symbolic q = R.IO $ do
     s <- yices2
@@ -62,4 +68,11 @@ run_symbolic q = R.IO $ do
             vals <- mapM (getBoolValue s) vars
             return (R.Just (R.realize (zip vars vals) x))
         Unsatisfiable -> return R.Nothing
+
+free_Bool :: Symbolic R.Bool
+free_Bool = do
+    s <- gets ss_solver
+    nm <- liftIO $ fresh_bool s
+    modify $ \ss -> ss { ss_free = nm : ss_free ss }
+    return (R.BoolVar nm)
 
