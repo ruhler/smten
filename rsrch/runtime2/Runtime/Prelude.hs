@@ -33,24 +33,24 @@ data Mux a = Concrete a
 instance (SmtenHS a) => SmtenHS (Mux a) where
     mux = Mux
 
-    realize m (Concrete a) = Concrete (realize m a)
-    realize m (Mux p a b) = __caseTrue (realize m p) (realize m a) (realize m b)
-
+    realize =
+      let f m (Concrete a) = Concrete (realize m a)
+          f m (Mux p a b) = __caseTrue (realize m p) (realize m a) (realize m b)
+      in memo2 f 
+        
 muxapp :: (SmtenHS b) => (a -> b) -> Mux a -> b
 muxapp f =
- let g = memo f
-
-     m (Concrete a) = g a
+ let m (Concrete a) = f a
      m (Mux p a b) = mux p (m a) (m b)
- in m
+ in memo m
 
 mux1app :: (SmtenHS b) => (m a -> b) -> Mux1 m a -> b
 mux1app f =
- let g = memo f
+ let m (Concrete1 a) = f a
+     m (Mux1 p a b) = mux p (mm a) (mm b)
 
-     m (Concrete1 a) = g a
-     m (Mux1 p a b) = mux p (m a) (m b)
- in m
+     mm = memo m
+ in mm
 
 data Mux1 m a = Concrete1 (m a)
               | Mux1 Bool (Mux1 m a) (Mux1 m a)
@@ -58,8 +58,10 @@ data Mux1 m a = Concrete1 (m a)
 instance (SmtenHS (m a)) => SmtenHS (Mux1 m a) where
     mux = Mux1
 
-    realize m (Concrete1 a) = Concrete1 (realize m a)
-    realize m (Mux1 p a b) = __caseTrue (realize m p) (realize m a) (realize m b)
+    realize =
+      let f m (Concrete1 a) = Concrete1 (realize m a)
+          f m (Mux1 p a b) = __caseTrue (realize m p) (realize m a) (realize m b)
+      in memo2 f 
 
 data Bool__ = False
             | True
