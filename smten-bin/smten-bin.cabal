@@ -1,5 +1,5 @@
 name: smten-bin
-version: 2.2.0.0
+version: 3.0.0.0
 synopsis: Smten compiler and interpreter
 license: AllRightsReserved
 license-file: LICENSE
@@ -16,7 +16,8 @@ source-repository this
   --tag:
 executable smten
   main-is: smten.hs
-  build-depends: base ==4.6.*, cmdargs ==0.10.*, smten ==2.2.*
+  build-depends: base ==4.6.*, cmdargs ==0.10.*, syb ==0.4.*,
+                 smten ==3.0.*
   --ghc-prof-options: -fprof-auto-top
   ghc-options: -rtsopts -fwarn-unused-binds -fwarn-unused-imports
 

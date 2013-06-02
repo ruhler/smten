@@ -41,7 +41,6 @@ flip f x y = f y x
 ($) f x = f x
 
 data Bool = False | True
-    deriving (Show)
 
 (&&) :: Bool -> Bool -> Bool
 (&&) True x = x
@@ -62,6 +61,16 @@ type String = [Char]
 
 foreign import hs "Smten.Prim.errorP"
     error :: String -> a
+
+map :: (a -> b) -> [a] -> [b]
+map f [] = []
+map f (x:xs) = f x : map f xs
+
+(++) :: [a] -> [a] -> [a]
+(++) [] x = x
+(++) (x:xs) ys = x : (xs ++ ys)
+
+
 
 -- Primitive IO monad
 data IO a = 

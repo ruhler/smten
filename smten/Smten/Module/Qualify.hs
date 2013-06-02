@@ -25,7 +25,6 @@ import Smten.Module.Module
 import Smten.Module.Entity
 
 data QS = QS {
-    qs_env :: [Module],     -- ^ The environment
     qs_me :: Module,        -- ^ The current module
     qs_bound :: [Name],     -- ^ List of bound variable names
     qs_syns :: HT.HashTable Name ([Name], Type), -- ^ All type synonyms
@@ -233,5 +232,5 @@ qualify :: [Module] -> Failable [Module]
 qualify ms = {-# SCC "Qualify" #-} do
   let syns = mkSyns $ concatMap mod_synonyms ms
   ents <- entities ms
-  runReaderT (qualifyM ms) (QS ms (error "not in module") [] syns ents lunknown)
+  runReaderT (qualifyM ms) (QS (error "not in module") [] syns ents lunknown)
 

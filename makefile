@@ -7,13 +7,7 @@ userinstall:
 	cd smten-smt ; cabal install --builddir ../build/smten-smt-$(USER) --force-reinstalls
 	cd smten-bin ; cabal install --builddir ../build/smten-bin-$(USER) --force-reinstalls 
 
-testph:
-	./build/home/.cabal/bin/smten --phases \
-		--include smten/share/lib \
-		--file smten/share/lib/Smten/Tests/All.smtn \
-		-o build/test/All
-
 clean:
-	rm -rf build/smten-smt build/smten build/smten-bin build/test
+	rm -rf build/smten* build/test
 
 

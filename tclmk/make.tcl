@@ -50,17 +50,6 @@ indir smten {
     hrun cabal sdist --builddir ../build/smten
 }
 
-# The smten-smt package
-indir smten-smt {
-    hrun cabal install \
-        --builddir ../build/smten-smt \
-        --extra-lib-dirs $::env(LD_LIBRARY_PATH) \
-        --force-reinstalls  -O0
-
-    #hrun cabal haddock --builddir ../build/smten-smt
-    hrun cabal sdist --builddir ../build/smten-smt
-}
-
 # The smten-bin package
 indir smten-bin {
     hrun cabal install \
