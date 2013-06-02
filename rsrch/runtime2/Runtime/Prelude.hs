@@ -36,6 +36,14 @@ instance (SmtenHS a) => SmtenHS (Mux a) where
     realize m (Concrete a) = Concrete (realize m a)
     realize m (Mux p a b) = __caseTrue (realize m p) (realize m a) (realize m b)
 
+muxapp :: (SmtenHS b) => (a -> b) -> Mux a -> b
+muxapp f =
+ let g = memo f
+
+     m (Concrete a) = g a
+     m (Mux p a b) = mux p (m a) (m b)
+ in m
+
 mux1app :: (SmtenHS b) => (m a -> b) -> Mux1 m a -> b
 mux1app f =
  let g = memo f
@@ -122,8 +130,8 @@ __caseJust x y n = mux1app (\x' ->
 
 class Monad m where
     return :: a -> m a
-    (>>=) :: m a -> (a -> m b) -> m b
-    (>>) :: m a -> m b -> m b
+    (>>=) :: (SmtenHS b) => m a -> (a -> m b) -> m b
+    (>>) :: (SmtenHS b) => m a -> m b -> m b
     (>>) a b = a >>= const b
             
 instance Monad IO where
@@ -137,18 +145,14 @@ const k = \_ -> k
 return_io :: a -> IO a
 return_io x = Concrete1 (P.return x)
 
-bind_io :: IO a -> (a -> IO b) -> IO b
-bind_io m f =
-  case m of
-    Concrete1 mx ->
-        let g x = let Concrete1 z = f x in z
-        in Concrete1 (mx P.>>= g)
-    Mux1 p a b -> Mux1 p (bind_io a f) (bind_io b f)
+bind_io :: (SmtenHS b) => IO a -> (a -> IO b) -> IO b
+bind_io m f = mux1app (\mx ->
+    let g x = let Concrete1 z = f x in z
+    in Concrete1 (mx P.>>= g)) m
 
 -- primitive putChar
 putChar :: Char -> IO Unit
-putChar (Concrete c) = Concrete1 (P.putChar c P.>> P.return Unit)
-putChar (Mux p a b) = Mux1 p (putChar a) (putChar b)
+putChar = muxapp P.$ \c -> Concrete1 (P.putChar c P.>> P.return Unit)
 
 not :: Bool -> Bool
 not p = __caseTrue p __mkFalse __mkTrue
