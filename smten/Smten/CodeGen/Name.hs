@@ -5,6 +5,7 @@ module Smten.CodeGen.Name (
     modprefix, 
     nameCG, qnameCG, tynameCG, qtynameCG,
     casenmCG, qcasenmCG,
+    qhstynameCG, qhsnameCG,
     ) where
 
 import qualified Language.Haskell.TH.Syntax as H
@@ -81,4 +82,19 @@ qcasenmCG n
          qfn = unname $ qualification n
      in H.mkName (modprefixs $ qfn ++ ".__case" ++ unqfn)
  | otherwise = H.mkName ("__case" ++ (unname n))
+
+-- qualified haskell type constructor name
+qhstynameCG :: Name -> H.Name
+qhstynameCG n
+ | n == listN = H.mkName "[]"
+ | n == unitN = H.mkName "()"
+ | otherwise = H.mkName (unname n)
+
+-- qualified haskell variable or data constructor name
+qhsnameCG :: Name -> H.Name
+qhsnameCG n 
+ | n == nilN = H.mkName "[]"
+ | n == consN = H.mkName "(:)"
+ | n == unitN = H.mkName "()"
+ | otherwise = H.mkName (unname n)
 

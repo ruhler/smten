@@ -21,9 +21,11 @@ moduleCG env mod = do
   body <- decsCG env (mod_decs mod)
   return $
     H.text "{-# LANGUAGE InstanceSigs #-}" H.$+$
+    H.text "{-# LANGUAGE MultiParamTypeClasses #-}" H.$+$
     H.text "{-# LANGUAGE ScopedTypeVariables #-}" H.$+$
     H.text "module" H.<+> H.text (modprefix mn) H.<+> H.text "where" H.$+$
     H.text "import qualified Prelude" H.$+$
+    H.text "import qualified Smten.Runtime.Haskelly as Smten" H.$+$
     importsCG (mod_imports mod) H.$+$
     H.ppr body
 

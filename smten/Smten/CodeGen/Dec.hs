@@ -5,6 +5,8 @@ import qualified Language.Haskell.TH as H
 import Data.Functor((<$>))
 
 import Smten.Name
+import Smten.Type
+import Smten.Ppr
 import Smten.Dec
 import Smten.CodeGen.CG
 import Smten.CodeGen.Data
@@ -15,8 +17,14 @@ import Smten.CodeGen.Type
 decCG :: Dec -> CG [H.Dec]
 decCG (DataD _ n tyvars constrs)
   | n == arrowN = return []
-  | n == ioN = primDataCG "Prelude.IO" n tyvars 
-  | n == charN = primDataCG "Prelude.Char" n tyvars 
+  | n == ioN = do
+      ds <- primDataCG "Prelude.IO" n tyvars 
+      hs <- primHaskellyIOCG
+      return $ ds ++ hs
+  | n == charN = do
+      ds <- primDataCG "Prelude.Char" n tyvars 
+      hs <- primHaskelly0CG "Prelude.Char" n
+      return $ ds ++ hs
   | otherwise = dataCG n tyvars constrs
 decCG (ClassD _ ctx n vars exps) = do
     ctx' <- mapM classCG ctx
@@ -37,57 +45,7 @@ decCG (ValD _ e@(TopExp (TopSig n _ _) _)) = do
                  else return []
     return $ decs ++ main
 
-decCG (PrimD _ hsnm ts@(TopSig n ctx t))
-  | n == name "Prelude.putChar" = do
-      sig <- topSigCG ts
-      let -- putChar (Char x) = IO ((Prelude.>>) (Prelude.putChar x) (Prelude.return Unit__))
-          pat = [H.ConP (qtynameCG charN) [H.VarP (H.mkName "x")]]
-          bind = foldl1 H.AppE [
-                H.VarE $ H.mkName "(Prelude.>>)",
-                H.AppE (H.VarE $ H.mkName "Prelude.putChar") (H.VarE (H.mkName "x")),
-                H.AppE (H.VarE $ H.mkName "Prelude.return") (H.ConE $ qnameCG unitN)
-                ]
-          body = H.AppE (H.ConE (qtynameCG ioN)) bind
-          clause = H.Clause pat (H.NormalB body) []
-          fun = H.FunD (nameCG n) [clause]
-      return [sig, fun]
-
-  | n == name "Prelude.error" = do
-      sig <- topSigCG ts
-      let -- error = Prelude.error "smten error"
-          body = H.AppE (H.VarE $ H.mkName "Prelude.error")
-                        (H.LitE (H.StringL "smten error"))
-          clause = H.Clause [] (H.NormalB body) []
-          fun = H.FunD (nameCG n) [clause]
-      return [sig, fun]
-
-  | n == name "Prelude.return_io" = do
-      sig <- topSigCG ts
-      let -- return_io x = IO (Prelude.return x)
-          pat = [H.VarP (H.mkName "x")]
-          body = H.AppE (H.ConE (qtynameCG ioN))
-                        (H.AppE (H.VarE $ H.mkName "Prelude.return") (H.VarE (H.mkName "x")))
-          clause = H.Clause pat (H.NormalB body) []
-          fun = H.FunD (nameCG n) [clause]
-      return [sig, fun]
-
-  | n == name "Prelude.bind_io" = do
-      sig <- topSigCG ts
-      let -- bind_io (IO x) f =
-          --    IO ((Prelude.>>=) x (\v -> let IO r = f v in r))
-          pat = [H.ConP (qtynameCG ioN) [H.VarP (H.mkName "x")], H.VarP (H.mkName "f")]
-          bind = foldl1 H.AppE [
-                    H.VarE $ H.mkName "(Prelude.>>=)",
-                    H.VarE $ H.mkName "x",
-                    H.LamE [H.VarP $ H.mkName "v"] $
-                        H.LetE [H.ValD (H.ConP (qtynameCG ioN) [H.VarP $ H.mkName "r"]) (H.NormalB $ H.AppE (H.VarE (H.mkName "f")) (H.VarE (H.mkName "v"))) []] (H.VarE $ H.mkName "r")
-                  ]
-          body = H.AppE (H.ConE (qtynameCG ioN)) bind
-          clause = H.Clause pat (H.NormalB body) []
-          fun = H.FunD (nameCG n) [clause]
-      return [sig, fun]
-     
-  | otherwise = error $ "TODO: decCG prim " ++ unname n
+decCG (PrimD _ hsnm ts) = primCG hsnm ts
 
 methodCG :: Class -> Method -> CG [H.Dec]
 methodCG cls (Method n e) = do
@@ -98,16 +56,43 @@ methodCG cls (Method n e) = do
 
 mainCG :: Name -> CG [H.Dec]
 mainCG n = do
-  let -- main__ =
-      --   let IO x = main
-      --   in (Prelude.>>) x (Prelude.return ())
-     pat = H.ConP (qtynameCG ioN) [H.VarP (H.mkName "x")]
-     bind = foldl1 H.AppE [
-           H.VarE $ H.mkName "(Prelude.>>)",
-           H.VarE $ H.mkName "x",
-           H.AppE (H.VarE $ H.mkName "Prelude.return")
-                  (H.ConE $ H.mkName "()")]
-     body = H.LetE [H.ValD pat (H.NormalB (H.VarE (qnameCG n))) []] bind
+  let -- main__ :: Prelude.IO ()
+      -- main__ = Smten.tohs' main
+     sig = H.SigD (H.mkName "main__") (H.AppT (H.ConT $ H.mkName "Prelude.IO")
+                                              (H.ConT $ H.mkName "()"))
+     body = H.AppE (H.VarE $ H.mkName "Smten.tohs'") (H.VarE (qnameCG n))
      clause = H.Clause [] (H.NormalB body) []
-  return [H.FunD (H.mkName "main__") [clause]]
+     fun = H.FunD (H.mkName "main__") [clause] 
+  return [sig, fun]
+
+-- Sample primitive generation:
+--   foo :: A -> b -> C
+--   foo = frhs (Foo.foohs :: Foo.A -> AsSmten b -> Foo.C)
+--
+-- Notes:
+--   * haskell types are assumed to have the same names as smten types
+--   * haskell types are assumed to be exported by the same module as the
+--     haskell primitive
+--   * polymorphic types stay polymorphic, and are wrapped with AsSmten
+--   * It is the user's burden to ensure there are appropriate instances of
+--     Haskelly
+primCG :: String -> TopSig -> CG [H.Dec]
+primCG hsnm ts@(TopSig n ctx t) = do
+  sig <- topSigCG ts
+  let hsmod = unname . qualification . name $ hsnm
+
+      primty :: Type -> H.Type
+      primty (ConT n _)     
+        | n == arrowN = H.ArrowT
+        | n == listN = H.ListT
+        | n == unitN = H.ConT (H.mkName "()")
+        | otherwise = H.ConT (H.mkName $ hsmod ++ "." ++ unname (unqualified n))
+      primty (AppT a b) = H.AppT (primty a) (primty b)
+      primty (VarT n _) = H.AppT (H.ConT (H.mkName "Smten.Poly")) (H.VarT $ nameCG n)
+      primty t = error $ "TODO: primty: " ++ pretty t
+
+      body = H.AppE (H.VarE $ H.mkName "Smten.frhs")
+                    (H.SigE (H.VarE $ H.mkName hsnm) (primty t))
+      fun = H.FunD (nameCG n) [H.Clause [] (H.NormalB body) []]
+  return [sig, fun]
 

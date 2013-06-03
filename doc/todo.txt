@@ -1,3 +1,6 @@
+CodeGen:
+* primDataCG - can't we derive the haskell name from the smten name?
+
 Recent::
 * Add support for (..) in import and export specifications
 * Add support for signatures in let declarations

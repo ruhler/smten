@@ -1,5 +1,8 @@
 
-module Smten.CodeGen.Data (dataCG, primDataCG,) where
+module Smten.CodeGen.Data (
+    dataCG, primDataCG,
+    primHaskelly0CG, primHaskellyIOCG,
+    ) where
 
 import qualified Language.Haskell.TH.Syntax as H
 
@@ -12,11 +15,18 @@ import Smten.CodeGen.CG
 import Smten.CodeGen.Type
 import Smten.CodeGen.Name
 
+haskellys :: [Name]
+haskellys = [unitN, listN]
+
 dataCG :: Name -> [TyVar] -> [Con] -> CG [H.Dec]
 dataCG n tyvars constrs = do
     dataD <- mkDataD n tyvars constrs
     casesD <- concat <$> mapM (mkCaseD n tyvars) constrs
-    return $ concat [dataD, casesD]
+    haskellyD <-
+      if n `elem` haskellys 
+        then mkHaskellyD n tyvars constrs
+        else return []
+    return $ concat [dataD, casesD, haskellyD]
 
 -- data Foo a b ... = FooA A1 A2 ...
 --                  | FooB B1 B2 ...
@@ -59,6 +69,60 @@ mkCaseD n tyvars (Con cn tys) = do
       fun = H.FunD (casenmCG cn) [clause]
   return [sig, fun]
 
+-- instance (Haskelly ha sa, Haskelly hb sb, ...) =>
+--   Haskelly (Foo ha hb ...) (Smten.Lib.Foo sa sb ...) where
+--     frhs ...
+--     tohs ...
+mkHaskellyD :: Name -> [TyVar] -> [Con] -> CG [H.Dec]
+mkHaskellyD nm tyvars cons = do
+  let hvars = [H.VarT (H.mkName $ "h" ++ unname n) | TyVar n _ <- tyvars]
+      svars = [H.VarT (H.mkName $ "s" ++ unname n) | TyVar n _ <- tyvars]
+      ctx = [H.ClassP (H.mkName "Smten.Haskelly") [ht, st] | (ht, st) <- zip hvars svars]
+      ht = foldl H.AppT (H.ConT (qhstynameCG nm)) hvars
+      st = foldl H.AppT (H.ConT (qtynameCG nm)) svars
+      ty = foldl1 H.AppT [H.ConT $ H.mkName "Smten.Haskelly", ht, st]
+  frhs <- mkFrhsD cons
+  tohs <- mkTohsD cons
+  return [H.InstanceD ctx ty [frhs, tohs]]
+
+--     frhs (FooA x1 x2 ...) = Smten.Lib.FooA (frhs x1) (frhs x2) ...
+--     frhs (FooB x1 x2 ...) = Smten.Lib.FooB (frhs xs) (frhs x2) ...
+--     ...
+mkFrhsD :: [Con] -> CG H.Dec
+mkFrhsD cons = do
+  let mkcon :: Con -> H.Clause
+      mkcon (Con cn tys) = 
+        let xs = [H.mkName $ "x" ++ show i | i <- [1..(length tys)]]
+            pat = H.ConP (qhsnameCG cn) (map H.VarP xs)
+            body = foldl H.AppE (H.ConE (qnameCG cn)) [H.AppE (H.VarE $ H.mkName "Smten.frhs") (H.VarE x) | x <- xs]
+        in H.Clause [pat] (H.NormalB body) []
+  return $ H.FunD (H.mkName "frhs") (map mkcon cons)
+
+--     tohs (Smten.Lib.FooA x1 x2 ...) = do
+--        x1' <- tohs x1
+--        x2' <- tohs x2
+--        ...
+--        return (FooA x1' x2' ...)
+--     tohs (Smten.Lib.FooB x1 x2 ...) = do
+--        x1' <- tohs x1
+--        x2' <- tohs x2
+--        ...
+--        return (FooB x1' x2' ...)
+--     ...
+mkTohsD :: [Con] -> CG H.Dec
+mkTohsD cons = do
+  let mkcon :: Con -> H.Clause
+      mkcon (Con cn tys) = 
+        let xs = [H.mkName $ "x" ++ show i | i <- [1..(length tys)]]
+            xs' = [H.mkName $ "x" ++ show i ++ "'" | i <- [1..(length tys)]]
+            pat = H.ConP (qnameCG cn) (map H.VarP xs)
+            stmts = [H.BindS (H.VarP x') (H.AppE (H.VarE (H.mkName "Smten.tohs")) (H.VarE x)) | (x, x') <- zip xs xs']
+            rtn = H.NoBindS $ H.AppE (H.VarE (H.mkName "Prelude.return"))
+                                     (foldl H.AppE (H.ConE (qhsnameCG cn)) (map H.VarE xs'))
+            body = H.DoE (stmts ++ [rtn])
+        in H.Clause [pat] (H.NormalB body) []
+  return $ H.FunD (H.mkName "tohs") (map mkcon cons)
+
 -- Generate code for a primitive data type.
 -- data Foo a b ... = Foo (PrimFoo a b ...)
 primDataCG :: String -> Name -> [TyVar] -> CG [H.Dec]
@@ -67,4 +131,57 @@ primDataCG primnm nm tyvs = do
        pty = foldl H.AppT (H.ConT (H.mkName primnm)) [H.VarT (nameCG n) | TyVar n _ <- tyvs]
        con = H.NormalC (tynameCG nm) [(H.NotStrict, pty)]
    return [H.DataD [] (tynameCG nm) tyvs' [con] []]
+
+-- Generate an instance of Haskelly for a simple primitive data type
+--
+-- instance Haskelly PrimFoo Foo where
+--    frhs = Foo
+--    tohs (Foo x) = return x
+primHaskelly0CG :: String -> Name -> CG [H.Dec]
+primHaskelly0CG primnm nm = do
+  let ht = H.ConT (H.mkName primnm)
+      st = H.ConT (qtynameCG nm)
+      ty = foldl1 H.AppT [H.ConT $ H.mkName "Smten.Haskelly", ht, st]
+      frhs = H.FunD (H.mkName "frhs") [
+               H.Clause [] (H.NormalB (H.ConE (qtynameCG nm))) []]
+
+      tohs = H.FunD (H.mkName "tohs") [
+               H.Clause [H.ConP (qtynameCG nm) [H.VarP $ H.mkName "x"]]
+                        (H.NormalB (H.AppE (H.VarE $ H.mkName "Prelude.return")
+                                           (H.VarE $ H.mkName "x"))) []]
+  return [H.InstanceD [] ty [frhs, tohs]]
+
+-- Generate an instance of Haskelly for IO
+--
+-- instance (Haskelly ha sa) => Haskelly (Prelude.IO ha) (IO sa) where
+--    frhs x = IO $ do
+--       v <- x
+--       return (frhs v)
+--    tohs (IO x) = return $ do
+--       v <- x
+--       return (tohs' v)
+primHaskellyIOCG :: CG [H.Dec]
+primHaskellyIOCG = do
+  let ctx = H.ClassP (H.mkName "Smten.Haskelly") [
+              H.VarT $ H.mkName "ha",
+              H.VarT $ H.mkName "sa"]
+      ht = H.AppT (H.ConT (H.mkName "Prelude.IO")) (H.VarT $ H.mkName "ha")
+      st = H.AppT (H.ConT (qtynameCG ioN)) (H.VarT $ H.mkName "sa")
+      ty = foldl1 H.AppT [H.ConT $ H.mkName "Smten.Haskelly", ht, st]
+
+      frhsbody = H.AppE (H.ConE (qtynameCG ioN))
+                        (H.DoE [H.BindS (H.VarP $ H.mkName "v") (H.VarE $ H.mkName "x"),
+                                H.NoBindS (H.AppE (H.VarE $ H.mkName "Prelude.return")
+                                          (H.AppE (H.VarE $ H.mkName "Smten.frhs") (H.VarE $ H.mkName "v")))
+                                ])
+      frhs = H.FunD (H.mkName "frhs") [H.Clause [H.VarP $ H.mkName "x"] (H.NormalB frhsbody) []]
+
+      tohsbody = H.AppE (H.VarE $ H.mkName "Prelude.return")
+                        (H.DoE [H.BindS (H.VarP $ H.mkName "v") (H.VarE $ H.mkName "x"),
+                                H.NoBindS (H.AppE (H.VarE $ H.mkName "Prelude.return")
+                                          (H.AppE (H.VarE $ H.mkName "Smten.tohs'") (H.VarE $ H.mkName "v")))
+                                ])
+                           
+      tohs = H.FunD (H.mkName "tohs") [H.Clause [H.ConP (qtynameCG ioN) [H.VarP $ H.mkName "x"]] (H.NormalB tohsbody) []]
+  return [H.InstanceD [ctx] ty [frhs, tohs]]
 

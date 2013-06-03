@@ -93,6 +93,8 @@ library
     Smten.CodeGen.Type
     Smten.CodeGen.Ppr
 
+    Smten.Runtime.Haskelly
+
     Smten.Loader
 
     Smten.Fresh

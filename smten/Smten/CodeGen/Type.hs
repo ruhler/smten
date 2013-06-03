@@ -21,7 +21,7 @@ typeCG t =
        b' <- typeCG b
        return $ H.AppT a' b'
     VarT n _ -> return $ H.VarT (nameCG n)
-    _ -> error $ "todo: typeCG: " ++ pretty t
+    _ -> error $ "TODO: typeCG: " ++ pretty t
 
 classCG :: Class -> CG H.Pred
 classCG (Class n tys) = do

@@ -59,7 +59,7 @@ otherwise = True
 
 type String = [Char]
 
-foreign import hs "Smten.Prim.errorP"
+foreign import hs "Prelude.error"
     error :: String -> a
 
 map :: (a -> b) -> [a] -> [b]
@@ -76,10 +76,10 @@ map f (x:xs) = f x : map f xs
 data IO a = 
 
 -- The IO monad primitives
-foreign import hs "Smten.Prim.return_ioP" 
+foreign import hs "Prelude.return" 
     return_io :: a -> IO a
 
-foreign import hs "Smten.Prim.bind_ioP"
+foreign import hs "Prelude.>>="
     bind_io :: IO a -> (a -> IO b) -> IO b
 
 instance Monad IO where
@@ -87,7 +87,7 @@ instance Monad IO where
   (>>=) = bind_io
 
 -- Print a character to stdout.
-foreign import hs "Smten.Prim.putCharP"
+foreign import hs "Prelude.putChar"
     putChar :: Char -> IO ()
 
 -- Print a string to stdout.
