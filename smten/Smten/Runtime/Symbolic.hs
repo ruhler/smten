@@ -19,6 +19,7 @@ import Smten.Runtime.SmtenHS
 import qualified Smten.Runtime.Prelude as R
 import Smten.SMT.FreeID
 import Smten.SMT.Yices.Yices2
+import Smten.SMT.DebugLL
 
 data SS = SS {
     ss_pred :: R.Bool,
@@ -47,6 +48,9 @@ fail_symbolic = do
 
 mksolver :: Solver -> IO (SMT.Solver)
 mksolver Yices2 = yices2
+mksolver (DebugLL dbg s) = do
+    s' <- mksolver s
+    debugll dbg s'
 mksolver d = error $ "TODO: mksolver: " ++ show d
 
 run_symbolic :: (SmtenHS0 a) => Solver -> Symbolic a -> IO (Maybe a)
