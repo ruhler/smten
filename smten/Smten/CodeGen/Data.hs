@@ -22,7 +22,7 @@ dataCG :: Name -> [TyVar] -> [Con] -> CG [H.Dec]
 dataCG n tyvars constrs = do
     dataD <- mkDataD n tyvars constrs
     casesD <- concat <$> mapM (mkCaseD n tyvars) constrs
-    shsD <- smtenHS n tyvars
+    shsD <- smtenHS n tyvars constrs
     haskellyD <-
       if n `elem` haskellys 
         then mkHaskellyD n tyvars constrs
@@ -127,12 +127,30 @@ mkTohsD cons = do
 -- instance SmtenHSN Foo where
 --   muxN = ...
 --   realizeN = ...
-smtenHS :: Name -> [TyVar] -> CG [H.Dec]
-smtenHS nm tyvs = do
+smtenHS :: Name -> [TyVar] -> [Con] -> CG [H.Dec]
+smtenHS nm tyvs cs = do
    let n = length tyvs
        ty = H.AppT (H.VarT (H.mkName $ "Smten.SmtenHS" ++ show n))
                    (H.ConT $ qtynameCG nm)
-   return [H.InstanceD [] ty []]
+   rel <- realizeD nm tyvs cs
+   return [H.InstanceD [] ty [rel]]
+
+--   realizeN m (FooA x1 x2 ...) = FooA (realize0 m x1) (realize0 m x2) ...
+--   realizeN m (FooB x1 x2 ...) = FooB (realize0 m x1) (realize0 m x2) ...
+--   ...
+realizeD :: Name -> [TyVar] -> [Con] -> CG H.Dec
+realizeD n tys cs = do
+  let mkcon :: Con -> H.Clause
+      mkcon (Con cn cts) =
+        let xs = [H.mkName $ "x" ++ show i | i <- [1..length cts]]
+            pats = [H.VarP $ H.mkName "m", H.ConP (qnameCG cn) (map H.VarP xs)]
+            rs = [foldl1 H.AppE [
+                    H.VarE (H.mkName "Smten.realize0"),
+                    H.VarE (H.mkName "m"),
+                    H.VarE x] | x <- xs]
+            body = foldl H.AppE (H.ConE (qnameCG cn)) rs
+        in H.Clause pats (H.NormalB body) []
+  return $ H.FunD (H.mkName $ "realize" ++ show (length tys)) (map mkcon cs)
 
 -- Generate code for a primitive data type.
 -- data Foo a b ... = Foo (PrimFoo a b ...)
