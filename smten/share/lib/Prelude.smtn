@@ -1,6 +1,15 @@
 
 module Prelude where
 
+class Eq a where
+   (==) :: a -> a -> Bool
+   (==) a b = not (a /= b)
+
+   (/=) :: a -> a -> Bool
+   (/=) a b = not (a == b)
+
+deriving instance Eq ()
+
 class Monad m where
   (>>=) :: m a -> (a -> m b) -> m b
 
@@ -41,6 +50,7 @@ flip f x y = f y x
 ($) f x = f x
 
 data Bool = False | True
+    deriving (Eq, Show)
 
 (&&) :: Bool -> Bool -> Bool
 (&&) True x = x
@@ -59,6 +69,17 @@ otherwise = True
 
 type String = [Char]
 
+data Maybe a = Nothing | Just a
+  deriving (Eq, Show)
+
+instance Monad Maybe where
+    fail _ = Nothing
+    return = Just
+    (>>=) m f = 
+        case m of
+            Just x -> f x
+            Nothing -> Nothing
+
 foreign import hs "Prelude.error"
     error :: String -> a
 
@@ -70,7 +91,42 @@ map f (x:xs) = f x : map f xs
 (++) [] x = x
 (++) (x:xs) ys = x : (xs ++ ys)
 
+foldl :: (a -> b -> a) -> a -> [b] -> a
+foldl f z (x:xs) = foldl f (f z x) xs
+foldl f z _ = z
 
+foldr :: (a -> b -> b) -> b -> [a] -> b
+foldr f z (x:xs) = f x (foldr f z xs)
+foldr f z _ = z
+
+foldr1 :: (a -> a -> a) -> [a] -> a
+foldr1 f [x] = x
+foldr1 f (x:xs) = f x (foldr1 f xs)
+foldr1 _ [] = error "Prelude.foldr1: empty list"
+
+and :: [Bool] -> Bool
+and = foldr (&&) True
+
+or :: [Bool] -> Bool
+or = foldr (||) False
+
+class Show a where
+    show :: a -> String
+
+instance Show Char where
+    show c = ['\'', c, '\'']
+
+deriving instance (Show a) => Show [a]
+
+__show_helper :: [String] -> String
+__show_helper [] = ""
+__show_helper [x] = x
+__show_helper xs = "(" ++ __show_helper2 xs ++ ")"
+
+__show_helper2 :: [String] -> String
+__show_helper2 [] = ""
+__show_helper2 [x] = x
+__show_helper2 (x:xs) = x ++ " " ++ __show_helper2 xs
 
 -- Primitive IO monad
 data IO a = 
@@ -99,4 +155,6 @@ putStrLn :: String -> IO ()
 putStrLn str = do
   putStr str
   putStr "\n"
+
+type FilePath = String
 

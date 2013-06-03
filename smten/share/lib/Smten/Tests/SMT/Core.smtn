@@ -1,0 +1,14 @@
+
+module Smten.Tests.SMT.Core (tests) where
+
+import Smten.Symbolic
+import Smten.Tests.SMT.Test
+
+tests :: IO ()
+tests = do
+   symtesteq "SMT.Core.Trivial" (Just ()) [Yices2] $ do
+      return ()
+
+   putStrLn "SMT.Core PASSED"
+     
+

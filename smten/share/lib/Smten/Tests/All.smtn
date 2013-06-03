@@ -2,10 +2,12 @@
 module Smten.Tests.All where
 
 import Smten.Tests.Test
+import qualified Smten.Tests.SMT.Core
 
 testall :: IO ()
-testall =
+testall = do
     test "dummy" True
+    Smten.Tests.SMT.Core.tests
 
 main :: IO ()
 main = do

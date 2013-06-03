@@ -13,7 +13,9 @@ data-dir: share
 data-files:
     doc/*.txt
     lib/Prelude.smtn
+    lib/Smten/*.smtn
     lib/Smten/Tests/*.smtn
+    lib/Smten/Tests/SMT/*.smtn
 source-repository this
   type: git
   location: /afs/csail.mit.edu/u/r/ruhler/git/smten

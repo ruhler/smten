@@ -1,0 +1,23 @@
+
+module Smten.Symbolic where
+
+data Symbolic a = 
+
+foreign import hs "Smten.Symbolic.return_symbolic"
+    return_symbolic :: a -> Symbolic a
+
+foreign import hs "Smten.Symbolic.bind_symbolic"
+    bind_symbolic :: Symbolic a -> (a -> Symbolic b) -> Symbolic b
+
+instance Monad Symbolic where
+  return = return_symbolic
+  (>>=) = bind_symbolic
+
+data Solver = Yices1 | Yices2 | STP
+            | Debug FilePath Solver
+            | DebugLL FilePath Solver
+    deriving (Show)
+
+foreign import hs "Smten.Symbolic.run_symbolic"
+    run_symbolic :: Solver -> Symbolic a -> IO (Maybe a)
+
