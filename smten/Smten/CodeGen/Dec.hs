@@ -29,13 +29,12 @@ decCG (DataD _ n tyvars constrs)
 decCG (ClassD _ ctx n vars exps) = do
     ctx' <- mapM classCG ctx
     let vars' = map (H.PlainTV . nameCG . tyVarName) vars
-    exps' <- local (\s -> s { cg_tyvars = map tyVarName vars ++ cg_tyvars s }) $
-        concat <$> mapM topExpCG exps
+    exps' <- withTyVars vars $ concat <$> mapM topExpCG exps
     return [H.ClassD ctx' (tynameCG n) vars' [] exps']
 decCG (InstD _ ctx cls@(Class n ts) ms) = do
     ctx' <- mapM classCG ctx
     ts' <- mapM typeCG ts
-    ms' <- concat <$> mapM (methodCG cls) ms
+    ms' <- withTyVars ctx $ concat <$> mapM (methodCG cls) ms
     let t = foldl H.AppT (H.ConT (qtynameCG n)) ts'
     return [H.InstanceD ctx' t ms']
 decCG (ValD _ e@(TopExp (TopSig n _ _) _)) = do
