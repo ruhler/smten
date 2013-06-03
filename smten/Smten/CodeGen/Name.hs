@@ -76,6 +76,9 @@ qcasenmCG n
  | n == nilN = H.mkName $ modprefixs "Prelude.__caseNil__"
  | n == consN = H.mkName $ modprefixs "Prelude.__caseCons__"
  | Just i <- de_tupleN n = H.mkName $ modprefixs ("Prelude.__caseTuple" ++ show i ++ "__")
- | isqualified n = H.mkName $ modprefix n
+ | isqualified n =
+     let unqfn = unname $ unqualified n
+         qfn = unname $ qualification n
+     in H.mkName (modprefixs $ qfn ++ ".__case" ++ unqfn)
  | otherwise = H.mkName ("__case" ++ (unname n))
 

@@ -1,5 +1,5 @@
 
-module Smten.CodeGen.Data (dataCG) where
+module Smten.CodeGen.Data (dataCG, primDataCG,) where
 
 import qualified Language.Haskell.TH.Syntax as H
 
@@ -30,7 +30,7 @@ mkDataD n tyvars constrs = do
       mkcon (Con cn tys) = do
         let cn' = nameCG cn
         tys' <- mapM typeCG tys
-        return (H.NormalC cn' [(H.NotStrict , ty') | ty' <- tys'])
+        return (H.NormalC cn' [(H.NotStrict, ty') | ty' <- tys'])
   constrs' <- mapM mkcon constrs
   return [H.DataD [] (tynameCG n) tyvars' constrs' []]
 
@@ -49,7 +49,7 @@ mkCaseD n tyvars (Con cn tys) = do
   let sig = H.SigD (casenmCG cn) ty'
 
       [vx, vy, vn] = map H.mkName ["x", "y", "n"]
-      vxs = [H.mkName ("x" ++ show i) | i <- [1..(length tys -1)]]
+      vxs = [H.mkName ("x" ++ show i) | i <- [1..(length tys)]]
       matchy = H.Match (H.ConP (qnameCG cn) (map H.VarP vxs))
                        (H.NormalB (foldl H.AppE (H.VarE vy) (map H.VarE vxs))) []
       matchn = H.Match H.WildP (H.NormalB (H.VarE vn)) []
@@ -58,4 +58,13 @@ mkCaseD n tyvars (Con cn tys) = do
       clause = H.Clause (map H.VarP [vx, vy, vn]) (H.NormalB cse) []
       fun = H.FunD (casenmCG cn) [clause]
   return [sig, fun]
+
+-- Generate code for a primitive data type.
+-- data Foo a b ... = Foo (PrimFoo a b ...)
+primDataCG :: String -> Name -> [TyVar] -> CG [H.Dec]
+primDataCG primnm nm tyvs = do
+   let tyvs' = [H.PlainTV (nameCG n) | TyVar n _ <- tyvs] 
+       pty = foldl H.AppT (H.ConT (H.mkName primnm)) [H.VarT (nameCG n) | TyVar n _ <- tyvs]
+       con = H.NormalC (tynameCG nm) [(H.NotStrict, pty)]
+   return [H.DataD [] (tynameCG nm) tyvs' [con] []]
 

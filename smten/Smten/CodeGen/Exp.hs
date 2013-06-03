@@ -5,6 +5,7 @@ module Smten.CodeGen.Exp (topExpCG, expCG) where
 
 import qualified Language.Haskell.TH.Syntax as H
 
+import Smten.Name
 import Smten.Sig
 import Smten.Lit
 import Smten.Exp
@@ -15,16 +16,15 @@ import Smten.CodeGen.Name
 import Smten.CodeGen.Type
 
 topExpCG :: TopExp -> CG [H.Dec]
-topExpCG (TopExp (TopSig n ctx t) e) = do
-    t' <- typeCG t
+topExpCG (TopExp ts@(TopSig n ctx t) e) = do
+    sig <- topSigCG ts
     e' <- expCG e
-    let sig = H.SigD (nameCG n) t'
-        val = H.FunD (nameCG n) [H.Clause [] (H.NormalB e') []]
+    let val = H.FunD (nameCG n) [H.Clause [] (H.NormalB e') []]
     return [sig, val]
 
 litCG :: Lit -> CG H.Exp
 litCG l 
- | Just c <- de_charL l = return $ H.AppE (H.VarE $ H.mkName "__mkChar") (H.LitE (H.CharL c))
+ | Just c <- de_charL l = return $ H.AppE (H.ConE $ qtynameCG charN) (H.LitE (H.CharL c))
  | otherwise = error $ "todo: litCG: " ++ pretty l
 
 expCG :: Exp -> CG H.Exp

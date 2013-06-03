@@ -20,6 +20,7 @@ moduleCG env mod = do
   let mn = mod_name mod
   body <- decsCG env (mod_decs mod)
   return $
+    H.text "{-# LANGUAGE InstanceSigs #-}" H.$+$
     H.text "{-# LANGUAGE ScopedTypeVariables #-}" H.$+$
     H.text "module" H.<+> H.text (modprefix mn) H.<+> H.text "where" H.$+$
     H.text "import qualified Prelude" H.$+$

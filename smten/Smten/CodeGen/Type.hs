@@ -1,5 +1,5 @@
 
-module Smten.CodeGen.Type(typeCG, classCG) where
+module Smten.CodeGen.Type(typeCG, classCG, topSigCG,) where
 
 import qualified Language.Haskell.TH.Syntax as H
 
@@ -27,3 +27,14 @@ classCG :: Class -> CG H.Pred
 classCG (Class n tys) = do
     tys' <- mapM typeCG tys
     return $ H.ClassP (qtynameCG n) tys'
+
+topSigCG :: TopSig -> CG H.Dec
+topSigCG (TopSig nm ctx t) = do
+    t' <- typeCG t
+    ctx' <- mapM classCG ctx
+    tyvnmsbound <- asks cg_tyvars
+    let tyvnmsall = map fst (varTs t)
+        tyvnmslocal = filter (flip notElem tyvnmsbound) tyvnmsall
+        tyvs = map (H.PlainTV . nameCG) tyvnmslocal
+    return $ H.SigD (nameCG nm) (H.ForallT tyvs ctx' t')
+
