@@ -6,6 +6,7 @@ import Smten.Tests.SMT.Test
 
 tests :: IO ()
 tests = do
+   symtesteq "SMT.Core.Trivial" (Just ()) [Yices2] (return ())
    symtesteq "SMT.Core.Fail" Nothing [Yices2] (fail_symbolic :: Symbolic ())
    putStrLn "SMT.Core PASSED"
      

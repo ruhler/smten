@@ -97,10 +97,12 @@ library
 
     Smten.Runtime.Haskelly
     Smten.Runtime.Prelude
+    Smten.Runtime.SmtenHS
     Smten.Runtime.Symbolic
 
     Smten.SMT.Assert
     Smten.SMT.AST
+    Smten.SMT.FreeID
     Smten.SMT.Solver
     Smten.SMT.Yices.FFI2
     Smten.SMT.Yices.Yices2

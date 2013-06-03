@@ -195,8 +195,13 @@ instance (Constrain a) => Constrain [a] where
 
 instance Constrain TopSig where
     constrain (TopSig _ ctx ty) = do
-        let vs = varTs ty
-        withtcs (Map.fromList vs) $ do
+        tcs <- gets ks_tcs
+        let f :: (Name, Kind) -> KIM [(Name, Kind)]
+            f (n, k) = case Map.lookup n tcs of
+                            Just v -> addc v k >> return []
+                            Nothing -> return [(n, k)]
+        vsl <- concat <$> mapM f (varTs ty)
+        withtcs (Map.fromList vsl) $ do
             k <- constrainT ty
             addc StarK k
             constrain ctx

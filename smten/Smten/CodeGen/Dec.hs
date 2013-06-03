@@ -29,10 +29,9 @@ decCG (DataD _ n tyvars constrs)
   | n == name "Smten.Symbolic.Symbolic" = return []
   | otherwise = dataCG n tyvars constrs
 decCG (ClassD _ ctx n vars exps) = do
-    ctx' <- mapM classCG ctx
-    let vars' = map (H.PlainTV . nameCG . tyVarName) vars
+    (tyvs, ctx') <- contextCG vars ctx
     exps' <- withTyVars vars $ concat <$> mapM topExpCG exps
-    return [H.ClassD ctx' (tynameCG n) vars' [] exps']
+    return [H.ClassD ctx' (tynameCG n) tyvs [] exps']
 decCG (InstD _ ctx cls@(Class n ts) ms) = do
     ctx' <- mapM classCG ctx
     ts' <- mapM typeCG ts

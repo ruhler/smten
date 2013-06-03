@@ -1,5 +1,7 @@
 
-module Smten.CodeGen.Type(typeCG, classCG, topSigCG,) where
+module Smten.CodeGen.Type(
+    typeCG, classCG, topSigCG, contextCG,
+   ) where
 
 import qualified Language.Haskell.TH.Syntax as H
 
@@ -31,10 +33,23 @@ classCG (Class n tys) = do
 topSigCG :: TopSig -> CG H.Dec
 topSigCG (TopSig nm ctx t) = do
     t' <- typeCG t
-    ctx' <- mapM classCG ctx
-    tyvnmsbound <- asks cg_tyvars
-    let tyvnmsall = map fst (varTs t)
-        tyvnmslocal = filter (flip notElem tyvnmsbound) tyvnmsall
-        tyvs = map (H.PlainTV . nameCG) tyvnmslocal
+    (tyvs, ctx') <- contextCG t ctx
     return $ H.SigD (nameCG nm) (H.ForallT tyvs ctx' t')
+
+contextCG :: (VarTs a) => a -> Context -> CG ([H.TyVarBndr], [H.Pred])
+contextCG x ctx = do 
+    tyvnmsbound <- asks cg_tyvars
+    ctx' <- mapM classCG ctx
+    let tyvnmsall = varTs x
+        tyvnmslocal = filter (flip notElem tyvnmsbound . fst) tyvnmsall
+        tyvs = map (H.PlainTV . nameCG . fst) tyvnmslocal
+        shsctx = concatMap smtenhsCG tyvnmslocal
+    return (tyvs, shsctx ++ ctx')
+
+knum :: Kind -> Integer
+knum (ArrowK a b) = 1 + knum b
+knum _ = 0
+
+smtenhsCG :: (Name, Kind) -> [H.Pred]
+smtenhsCG (n, k) = [H.ClassP (H.mkName $ "Smten.SmtenHS" ++ show (knum k)) [H.VarT $ nameCG n]]
 

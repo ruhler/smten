@@ -22,11 +22,12 @@ dataCG :: Name -> [TyVar] -> [Con] -> CG [H.Dec]
 dataCG n tyvars constrs = do
     dataD <- mkDataD n tyvars constrs
     casesD <- concat <$> mapM (mkCaseD n tyvars) constrs
+    shsD <- smtenHS n tyvars
     haskellyD <-
       if n `elem` haskellys 
         then mkHaskellyD n tyvars constrs
         else return []
-    return $ concat [dataD, casesD, haskellyD]
+    return $ concat [dataD, casesD, shsD, haskellyD]
 
 -- data Foo a b ... = FooA A1 A2 ...
 --                  | FooB B1 B2 ...
@@ -123,6 +124,16 @@ mkTohsD cons = do
         in H.Clause [pat] (H.NormalB body) []
   return $ H.FunD (H.mkName "tohs") (map mkcon cons)
 
+-- instance SmtenHSN Foo where
+--   muxN = ...
+--   realizeN = ...
+smtenHS :: Name -> [TyVar] -> CG [H.Dec]
+smtenHS nm tyvs = do
+   let n = length tyvs
+       ty = H.AppT (H.VarT (H.mkName $ "Smten.SmtenHS" ++ show n))
+                   (H.ConT $ qtynameCG nm)
+   return [H.InstanceD [] ty []]
+
 -- Generate code for a primitive data type.
 -- data Foo a b ... = Foo (PrimFoo a b ...)
 primDataCG :: String -> Name -> [TyVar] -> CG [H.Dec]
@@ -130,7 +141,19 @@ primDataCG primnm nm tyvs = do
    let tyvs' = [H.PlainTV (nameCG n) | TyVar n _ <- tyvs] 
        pty = foldl H.AppT (H.ConT (H.mkName primnm)) [H.VarT (nameCG n) | TyVar n _ <- tyvs]
        con = H.NormalC (tynameCG nm) [(H.NotStrict, pty)]
-   return [H.DataD [] (tynameCG nm) tyvs' [con] []]
+   shs <- primSmtenHS primnm nm tyvs
+   return $ [H.DataD [] (tynameCG nm) tyvs' [con] []] ++ shs
+
+
+-- instance SmtenHSN Foo where
+--   muxN = ...
+--   realizeN = ...
+primSmtenHS :: String -> Name -> [TyVar] -> CG [H.Dec]
+primSmtenHS primnm nm tyvs = do
+   let n = length tyvs
+       ty = H.AppT (H.VarT (H.mkName $ "Smten.SmtenHS" ++ show n))
+                   (H.ConT $ qtynameCG nm)
+   return [H.InstanceD [] ty []]
 
 -- Generate an instance of Haskelly for a simple primitive data type
 --
