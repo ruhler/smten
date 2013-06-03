@@ -99,6 +99,12 @@ library
     Smten.Runtime.Prelude
     Smten.Runtime.Symbolic
 
+    Smten.SMT.Assert
+    Smten.SMT.AST
+    Smten.SMT.Solver
+    Smten.SMT.Yices.FFI2
+    Smten.SMT.Yices.Yices2
+
     Smten.Symbolic
 
     Smten.Loader
@@ -115,6 +121,7 @@ library
                  directory ==1.2.*, pretty ==1.1.*,
                  MissingH ==1.2.*
   build-tools: happy
+  extra-libraries: stp stdc++ yices2 yices1
   --ghc-prof-options: -fprof-auto-top
   ghc-options: -fwarn-unused-binds -fwarn-unused-imports
 

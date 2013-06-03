@@ -9,6 +9,9 @@ foreign import hs "Smten.Runtime.Symbolic.return_symbolic"
 foreign import hs "Smten.Runtime.Symbolic.bind_symbolic"
     bind_symbolic :: Symbolic a -> (a -> Symbolic b) -> Symbolic b
 
+foreign import hs "Smten.Runtime.Symbolic.fail_symbolic"
+    fail_symbolic :: Symbolic a
+
 instance Monad Symbolic where
   return = return_symbolic
   (>>=) = bind_symbolic
@@ -20,4 +23,5 @@ data Solver = Yices1 | Yices2 | STP
 
 foreign import hs "Smten.Runtime.Symbolic.run_symbolic"
     run_symbolic :: Solver -> Symbolic a -> IO (Maybe a)
+
 
