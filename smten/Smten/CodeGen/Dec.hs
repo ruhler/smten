@@ -25,6 +25,8 @@ decCG (DataD _ n tyvars constrs)
       ds <- primDataCG "Prelude.Char" n tyvars 
       hs <- primHaskelly0CG "Prelude.Char" n
       return $ ds ++ hs
+  | n == boolN = return []
+  | n == name "Smten.Symbolic.Symbolic" = return []
   | otherwise = dataCG n tyvars constrs
 decCG (ClassD _ ctx n vars exps) = do
     ctx' <- mapM classCG ctx

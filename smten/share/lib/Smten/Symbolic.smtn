@@ -3,10 +3,10 @@ module Smten.Symbolic where
 
 data Symbolic a = 
 
-foreign import hs "Smten.Symbolic.return_symbolic"
+foreign import hs "Smten.Runtime.Symbolic.return_symbolic"
     return_symbolic :: a -> Symbolic a
 
-foreign import hs "Smten.Symbolic.bind_symbolic"
+foreign import hs "Smten.Runtime.Symbolic.bind_symbolic"
     bind_symbolic :: Symbolic a -> (a -> Symbolic b) -> Symbolic b
 
 instance Monad Symbolic where
@@ -18,6 +18,6 @@ data Solver = Yices1 | Yices2 | STP
             | DebugLL FilePath Solver
     deriving (Show)
 
-foreign import hs "Smten.Symbolic.run_symbolic"
+foreign import hs "Smten.Runtime.Symbolic.run_symbolic"
     run_symbolic :: Solver -> Symbolic a -> IO (Maybe a)
 

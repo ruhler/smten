@@ -16,7 +16,7 @@ import Smten.CodeGen.Type
 import Smten.CodeGen.Name
 
 haskellys :: [Name]
-haskellys = [unitN, listN]
+haskellys = [unitN, listN, maybeN, name "Smten.Symbolic.Solver"]
 
 dataCG :: Name -> [TyVar] -> [Con] -> CG [H.Dec]
 dataCG n tyvars constrs = do

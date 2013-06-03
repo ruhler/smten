@@ -1,6 +1,10 @@
 CodeGen:
 * primDataCG - can't we derive the haskell name from the smten name?
 * use pragma in source to indicate which data types are Haskelly?
+* clean up/unify how we deal with primitives and Symbolic and such
+* automatically import modules needed for primitives
+* automatically import modules needed for haskelly
+* Smten.Symbolic seems a strange place to define Solver!
 
 Recent::
 * Add support for (..) in import and export specifications

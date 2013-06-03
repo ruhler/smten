@@ -96,6 +96,10 @@ library
     Smten.CodeGen.Ppr
 
     Smten.Runtime.Haskelly
+    Smten.Runtime.Prelude
+    Smten.Runtime.Symbolic
+
+    Smten.Symbolic
 
     Smten.Loader
 
