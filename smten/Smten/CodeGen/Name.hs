@@ -6,6 +6,7 @@ module Smten.CodeGen.Name (
     nameCG, qnameCG, tynameCG, qtynameCG,
     casenmCG, qcasenmCG,
     qhstynameCG, qhsnameCG,
+    muxnmCG, qmuxnmCG,
     ) where
 
 import qualified Language.Haskell.TH.Syntax as H
@@ -98,3 +99,19 @@ qhsnameCG n
  | n == unitN = H.mkName "()"
  | otherwise = H.mkName (unname n)
 
+-- | Generate code for the mux constructor of a given data type.
+muxnmCG :: Name -> H.Name
+muxnmCG nm
+  | nm == unitN = H.mkName "Unit__Mux__"
+  | nm == listN = H.mkName "List__Mux__"
+  | Just i <- de_tupleN nm = H.mkName $ "Tuple" ++ show i ++ "__Mux__"
+  | otherwise = H.mkName (unname (unqualified nm) ++ "Mux__")
+
+-- | qualified type constructor name.
+qmuxnmCG :: Name -> H.Name
+qmuxnmCG nm
+  | nm == unitN = H.mkName $ modprefixs "Prelude.Unit__Mux__"
+  | nm == listN = H.mkName $ modprefixs "Prelude.List__Mux__"
+  | Just i <- de_tupleN nm = H.mkName $ modprefixs ("Prelude.Tuple" ++ show i ++ "__Mux__")
+  | isqualified nm = H.mkName (modprefix nm ++ "Mux__")
+  | otherwise = H.mkName (unname nm ++ "Mux__")

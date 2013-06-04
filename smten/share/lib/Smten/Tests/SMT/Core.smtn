@@ -13,6 +13,11 @@ tests = do
       p <- free_Bool
       assert p
       return p
+
+   symtesteq "SMT.Core.JoinMaybe" (Just (Just ())) [Yices2] $ do
+      p <- free_Bool
+      assert p
+      return $ if p then Just () else Nothing
     
    putStrLn "SMT.Core PASSED"
      
