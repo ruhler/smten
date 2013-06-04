@@ -136,11 +136,11 @@ data Bool = False | True
 
 (&&) :: Bool -> Bool -> Bool
 (&&) True x = x
-(&&) False _ = False
+(&&) _ _ = False
 
 (||) :: Bool -> Bool -> Bool
 (||) True _ = True
-(||) False x = x
+(||) _ x = x
 
 not :: Bool -> Bool
 not True = False
@@ -346,7 +346,7 @@ init [] = error "Prelude.init: empty list"
 
 null :: [a] -> Bool
 null [] = True
-null (_:_) = False
+null _ = False
 
 length :: [a] -> Integer
 length [] = 0

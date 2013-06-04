@@ -1,5 +1,5 @@
 
-module Smten.Tests.SMT.Test (symtesteq) where
+module Smten.Tests.SMT.Test (symtesteq, symtest) where
 
 import Smten.Symbolic
 import Smten.Tests.Test
