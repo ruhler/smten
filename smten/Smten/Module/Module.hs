@@ -47,6 +47,7 @@ import Smten.Failable
 import Smten.Location
 import Smten.Name
 import Smten.Type
+import Smten.Ppr
 import Smten.Dec
 
 data ImportSpec = Include [Name] | Exclude [Name]
@@ -115,14 +116,17 @@ sderive ms = {-# SCC "StandAloneDerive" #-} do
   let ddecs = mkDDecs $ builtin_ddecs ++ concatMap mod_ddecs ms
 
       mderive :: Deriving -> Failable Dec
-      mderive d@(Deriving loc ctx cls)
-        | Class _ [t] <- cls
-        , (ct, _) <- de_appsT t
-        , Just n <- de_conT ct
-        , Just cs <- HT.lookup n ddecs = return (derive loc ctx cls cs)
-        | otherwise =
-            let msg = "unable to perform standalone derive: " ++ show d
-            in throw $ lmsg loc msg
+      mderive d@(Deriving loc ctx cls) = do
+         case cls of
+            Class _ [t] -> do
+              let ct = fst $ de_appsT t
+              case de_conT ct of
+                Just n -> do
+                    case HT.lookup n ddecs of
+                        Just cs -> return (derive loc ctx cls cs)
+                        _ -> throw $ lmsg loc $ "standalone deriving unable to find definition for type constructor: " ++ pretty n
+                _ -> throw $ lmsg loc $ "standalone deriving not supported on: " ++ pretty ct
+            Class _ _ -> throw $ lmsg loc "standalone deriving supports only single parameter classes"
 
       sd1 :: Module -> Failable Module
       sd1 m = do

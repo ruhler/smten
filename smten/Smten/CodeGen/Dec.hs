@@ -14,13 +14,15 @@ import Smten.CodeGen.Exp
 import Smten.CodeGen.Name
 import Smten.CodeGen.Type
 
+builtin :: [Name]
+builtin = [
+  arrowN, ioN, charN, boolN, integerN,
+  name "Smten.Symbolic.Symbolic"
+  ]
+
 decCG :: Dec -> CG [H.Dec]
 decCG (DataD _ n tyvars constrs)
-  | n == arrowN = return []
-  | n == ioN = return []
-  | n == charN = return []
-  | n == boolN = return []
-  | n == name "Smten.Symbolic.Symbolic" = return []
+  | n `elem` builtin = return []
   | otherwise = dataCG n tyvars constrs
 decCG (ClassD _ ctx n vars exps) = do
     (tyvs, ctx') <- contextCG vars ctx

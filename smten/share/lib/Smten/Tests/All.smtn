@@ -3,11 +3,13 @@ module Smten.Tests.All where
 
 import Smten.Tests.Test
 import qualified Smten.Tests.SMT.Core
+import qualified Smten.Tests.SMT.Integer
 
 testall :: IO ()
 testall = do
     test "dummy" True
     Smten.Tests.SMT.Core.tests
+    Smten.Tests.SMT.Integer.tests
 
 main :: IO ()
 main = do

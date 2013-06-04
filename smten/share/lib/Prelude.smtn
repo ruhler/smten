@@ -9,6 +9,7 @@ class Eq a where
    (/=) a b = not (a == b)
 
 deriving instance Eq ()
+deriving instance (Eq a, Eq b) => Eq (a, b)
 
 class Monad m where
   (>>=) :: m a -> (a -> m b) -> m b
@@ -138,9 +139,32 @@ foreign import hs "Prelude.return"
 foreign import hs "Prelude.>>="
     bind_io :: IO a -> (a -> IO b) -> IO b
 
+class Num a where
+  (+) :: a -> a -> a
+  (*) :: a -> a -> a
+  (-) :: a -> a -> a
+  negate :: a -> a
+  abs :: a -> a
+  fromInteger :: Integer -> a
+
 instance Monad IO where
   return = return_io
   (>>=) = bind_io
+
+foreign import hs "Prelude.=="
+    __prim_eq_Integer :: Integer -> Integer -> Bool
+
+instance Eq Integer where
+    (==) = __prim_eq_Integer
+
+instance Num Integer where
+  (+) = __prim_add_Integer
+  negate x = 0 - x
+  fromInteger x = x
+
+foreign import hs "Prelude.+"
+    __prim_add_Integer :: Integer -> Integer -> Integer
+
 
 -- Print a character to stdout.
 foreign import hs "Prelude.putChar"

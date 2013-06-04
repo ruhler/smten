@@ -42,6 +42,7 @@ import Data.Array
 import Data.Hashable
 
 data HashTable k v = HashTable Int (Array Int [(k, v)])
+    deriving (Show)
 
 -- A list of the hash table sizes we'll draw from.
 -- From http://planetmath.org/GoodHashTablePrimes.html 
@@ -67,5 +68,4 @@ lookup k (HashTable s es) = Prelude.lookup k (es ! indexof s k)
 -- size of the hash table.
 indexof :: (Hashable k) => Int -> k -> Int
 indexof s k = hash k `mod` s
-
 

@@ -14,7 +14,7 @@ ploc = Location "BuiltinPrelude" 0 0
 
 tupleD :: Int -> Dec
 tupleD i = 
-  let nm = name $ "(" ++ replicate (i-1) ',' ++ ")"
+  let nm = tupleN i
       vars = [TyVar (name ('x':show j)) StarK | j <- [1..i]]
   in DataD ploc nm vars [Con nm (map tyVarType vars)]
 

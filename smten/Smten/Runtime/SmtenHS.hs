@@ -22,6 +22,12 @@ instance Haskelly Bool Bool where
   frhs = id
   tohs = return
 
+instance Haskelly Prelude.Bool Bool where
+  frhs p = if p then True else False
+  tohs False = return Prelude.False
+  tohs True = return Prelude.True 
+  tohs _ = Nothing
+
 -- mux :: R.Bool -> a -> a -> a
 -- mux p x y = if p then x else y
 -- Except here p, x, and y may all be symbolic.

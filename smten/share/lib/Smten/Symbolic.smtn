@@ -15,6 +15,9 @@ foreign import hs "Smten.Runtime.Symbolic.fail_symbolic"
 foreign import hs "Smten.Runtime.Symbolic.free_Bool"
     free_Bool :: Symbolic Bool
 
+foreign import hs "Smten.Runtime.Symbolic.free_Integer"
+    free_Integer :: Symbolic Integer
+
 instance Monad Symbolic where
   return = return_symbolic
   (>>=) = bind_symbolic

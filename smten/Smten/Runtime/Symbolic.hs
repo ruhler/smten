@@ -5,7 +5,7 @@
 
 module Smten.Runtime.Symbolic (
     Symbolic, return_symbolic, bind_symbolic, run_symbolic,
-    fail_symbolic, free_Bool,
+    fail_symbolic, free_Bool, free_Integer,
     IO, Maybe, Solver, R.Bool,
     ) where
 

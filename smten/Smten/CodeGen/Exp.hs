@@ -25,6 +25,7 @@ topExpCG (TopExp ts@(TopSig n ctx t) e) = do
 litCG :: Lit -> CG H.Exp
 litCG l 
  | Just c <- de_charL l = return $ H.AppE (H.ConE $ qtynameCG charN) (H.LitE (H.CharL c))
+ | Just i <- de_integerL l = return $ H.AppE (H.ConE $ qtynameCG integerN) (H.LitE (H.IntegerL i))
  | otherwise = error $ "todo: litCG: " ++ pretty l
 
 expCG :: Exp -> CG H.Exp

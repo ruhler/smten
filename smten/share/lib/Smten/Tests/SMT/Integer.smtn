@@ -1,0 +1,27 @@
+
+module Smten.Tests.SMT.Integer(tests) where
+
+import Smten.Symbolic
+import Smten.Tests.SMT.Test
+
+tests :: IO ()
+tests = do
+    symtesteq "Integer.Trivial" (Just 0) [Yices2] $ do
+        a <- free_Integer
+        assert (a == 0)
+        return a
+
+    symtesteq "Integer.Eq" (Just (4, 4)) [Yices2] $ do
+        b <- free_Integer
+        c <- free_Integer
+        assert (b == c)
+        assert (b == 4)
+        return (b, c)
+
+    symtesteq "Integer.Add" (Just (6, 8)) [Yices2] $ do
+        d <- free_Integer
+        e <- free_Integer
+        assert ((d + 2) == e)
+        assert (e == 8)
+        return (d, e)
+
