@@ -12,7 +12,8 @@ stability: experimental
 data-dir: share
 data-files:
     doc/*.txt
-    lib/Prelude.smtn
+    lib/Data/*.smtn
+    lib/*.smtn
     lib/Smten/*.smtn
     lib/Smten/Tests/*.smtn
     lib/Smten/Tests/SMT/*.smtn

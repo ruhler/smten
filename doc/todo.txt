@@ -5,6 +5,17 @@ CodeGen:
 * automatically import modules needed for primitives
 * automatically import modules needed for haskelly
 * Smten.Symbolic seems a strange place to define Solver!
+* preservation of sharing:
+** from case
+** from strict primitive
+** from application
+* proper handling of explicit errors
+* support for numeric types
+* support for symbolic bit vectors
+* support for crazy kind StateT monad issues
+* flesh out the integer primitives
+* flesh out the bit vector primitives
+* flesh out the rest of the libraries and test cases
 
 Recent::
 * Add support for (..) in import and export specifications

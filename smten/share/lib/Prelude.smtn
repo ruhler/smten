@@ -8,14 +8,86 @@ class Eq a where
    (/=) :: a -> a -> Bool
    (/=) a b = not (a == b)
 
-deriving instance Eq ()
-deriving instance (Eq a, Eq b) => Eq (a, b)
+class (Eq a) => Ord a where
+    compare :: a -> a -> Ordering
+    compare x y
+        | x == y = EQ
+        | x <= y = LT
+        | otherwise = GT
+
+    (<) :: a -> a -> Bool
+    (<) x y = compare x y == LT
+
+    (<=) :: a -> a -> Bool
+    (<=) x y = compare x y /= GT
+
+    (>=) :: a -> a -> Bool
+    (>=) x y = compare x y /= LT
+
+    (>) :: a -> a -> Bool
+    (>) x y = compare x y == GT
+
+    max :: a -> a -> a
+    max x y
+        | x <= y = y
+        | otherwise = x
+
+    min :: a -> a -> a
+    min x y
+        | x <= y = x
+        | otherwise = y
+
+class Enum a where
+    succ :: a -> a
+    succ = toEnum . ((+) 1) . fromEnum
+
+    pred :: a -> a
+    pred = toEnum . (subtract 1) . fromEnum
+
+    toEnum :: Integer -> a
+    fromEnum :: a -> Integer
+
+    enumFrom :: a -> [a]
+    enumFrom x = map toEnum [fromEnum x ..]
+    
+    enumFromThen :: a -> a -> [a]
+    enumFromThen x y = map toEnum [fromEnum x, fromEnum y ..]
+
+    enumFromTo :: a -> a -> [a]
+    enumFromTo x y = map toEnum [fromEnum x .. fromEnum y]
+
+    enumFromThenTo :: a -> a -> a -> [a]
+    enumFromThenTo x y z = map toEnum [fromEnum x, fromEnum y .. fromEnum z]
+
+class Bounded a where
+    minBound :: a
+    maxBound :: a
+
+class (Eq a, Show a) => Num a where
+  (+) :: a -> a -> a
+  (*) :: a -> a -> a
+
+  (-) :: a -> a -> a
+  (-) x y = x + negate y
+
+  negate :: a -> a
+  negate x = 0 - x
+
+  abs :: a -> a
+  signum :: a -> a
+  fromInteger :: Integer -> a
+
+subtract :: (Num a) => a -> a -> a
+subtract = flip (-)
+
+class Functor f where
+    fmap :: (a -> b) -> f a -> f b  
 
 class Monad m where
   (>>=) :: m a -> (a -> m b) -> m b
 
   (>>) :: m a -> m b -> m b
-  (>>) a b = a >>= const b
+  (>>) m k = m >>= \_ -> k
 
   return :: a -> m a
 
@@ -29,12 +101,21 @@ sequence (x:xs) = do
     vs <- sequence xs
     return (v:vs)
 
+sequence_ :: Monad m => [m a] -> m ()
+sequence_ = foldr (>>) (return ())
+
 mapM :: Monad m => (a -> m b) -> [a] -> m [b]
 mapM f as = sequence (map f as)
 
 mapM_ :: Monad m => (a -> m b) -> [a] -> m ()
-mapM_ f as = mapM f as >> return ()
+mapM_ f as = sequence_ (map f as)
 
+(=<<) :: Monad m => (a -> m b) -> m a -> m b
+(=<<) f x = x >>= f
+
+-- data () = ()
+deriving instance Eq ()
+  
 id :: a -> a
 id x = x
 
@@ -42,7 +123,7 @@ const :: a -> b -> a
 const x _ = x
 
 (.) :: (b -> c) -> (a -> b) -> a -> c
-(.) f g x = f (g x)
+(.) f g = \x -> f (g x)
 
 flip :: (a -> b -> c) -> b -> a -> c
 flip f x y = f y x
@@ -55,11 +136,11 @@ data Bool = False | True
 
 (&&) :: Bool -> Bool -> Bool
 (&&) True x = x
-(&&) _ _ = False
+(&&) False _ = False
 
 (||) :: Bool -> Bool -> Bool
 (||) True _ = True
-(||) _ x = x
+(||) False x = x
 
 not :: Bool -> Bool
 not True = False
@@ -68,42 +149,310 @@ not _ = True
 otherwise :: Bool
 otherwise = True
 
+-- data Char = ... 'a' | 'b' ...
+
+instance Eq Char where
+    (==) a b = fromEnum a == fromEnum b
+
+instance Ord Char where
+    (<=) a b = fromEnum a <= fromEnum b
+
+instance Enum Char where
+    toEnum = error "TODO: Char.toEnum"
+    fromEnum = error "TODO: Char.fromEnum"
+    enumFrom c = error "TODO: Char.enumFrom"
+    enumFromThen c c' = error "TODO: Char.enumFromThen"
+
+instance Bounded Char where
+    minBound = '\0'
+    maxBound = error "TODO: Char.maxBound"
+
 type String = [Char]
 
 data Maybe a = Nothing | Just a
   deriving (Eq, Show)
 
-instance Monad Maybe where
-    fail _ = Nothing
-    return = Just
-    (>>=) m f = 
-        case m of
-            Just x -> f x
-            Nothing -> Nothing
+maybe :: b -> (a -> b) -> Maybe a -> b
+maybe n f Nothing = n
+maybe n f (Just x) = f x
 
-foreign import hs "Prelude.error"
-    error :: String -> a
+instance Functor Maybe where
+    fmap f Nothing = Nothing
+    fmap f (Just x) = Just (f x)
+
+instance Monad Maybe where
+    (>>=) (Just x) k = k x
+    (>>=) Nothing k = Nothing
+    return = Just
+    fail s = Nothing
+
+data Either a b = Left a | Right b
+    deriving (Eq, Show)
+
+either :: (a -> c) -> (b -> c) -> Either a b -> c
+either f g (Left x) = f x
+either f g (Right y) = g y
+
+
+-- Primitive IO monad
+data IO a = 
+
+instance Functor IO where
+    fmap f x = x >>= (return . f)
+
+foreign import hs "Prelude.return" 
+    return_io :: a -> IO a
+
+foreign import hs "Prelude.>>="
+    bind_io :: IO a -> (a -> IO b) -> IO b
+
+instance Monad IO where
+  return = return_io
+  (>>=) = bind_io
+
+data Ordering = LT | EQ | GT
+    deriving (Eq, Show)
+
+-- data Integer = ... -1 | 0 | 1 ...
+
+foreign import hs "Smten.eq_Integer"
+    __prim_eq_Integer :: Integer -> Integer -> Bool
+
+foreign import hs "Smten.add_Integer"
+    __prim_add_Integer :: Integer -> Integer -> Integer
+
+foreign import hs "Smten.sub_Integer"
+    __prim_sub_Integer :: Integer -> Integer -> Integer
+
+instance Eq Integer where
+    (==) = __prim_eq_Integer
+
+instance Ord Integer where
+    compare = error "TODO: Integer.Ord"
+
+instance Num Integer where
+  (+) = __prim_add_Integer
+  (-) = __prim_sub_Integer
+  (*) = error "TODO: Integer.*"
+  negate x = 0 - x
+  fromInteger x = x
+
+instance Enum Integer where
+    succ = (+) 1
+    pred = subtract 1
+    toEnum = id
+    fromEnum = id
+    enumFrom i = i : enumFrom (i+1)
+    enumFromThen a b = a : enumFromThen b (b + b - a)
+    enumFromTo a b = if a > b then [] else a : enumFromTo (a+1) b
+    enumFromThenTo a b c =
+        if a > c
+            then []
+            else a : enumFromThenTo b (b + b - a) c
+
+-- Lists
+
+deriving instance (Eq a) => Eq [a]
+
+instance Functor [] where
+    fmap = map
+
+instance Monad [] where
+    (>>=) m k = concat (map k m)
+    return x = [x]
+    fail s = []
+
+-- Tuples
+deriving instance (Eq a, Eq b) => Eq (a, b)
+deriving instance (Eq a, Eq b, Eq c) => Eq (a, b, c)
+
+fst :: (a, b) -> a
+fst (x, _) = x
+
+snd :: (a, b) -> b
+snd (_, y) = y
+
+curry :: ((a, b) -> c) -> a -> b -> c
+curry f a b = f (a, b)
+
+uncurry :: (a -> b -> c) -> ((a, b) -> c)
+uncurry f p = f (fst p) (snd p)
+
+until :: (a -> Bool) -> (a -> a) -> a -> a
+until p f x
+    | p x = x
+    | otherwise = until p f (f x)
+
+asTypeOf :: a -> a -> a
+asTypeOf = const
+
+foreign import hs "Prelude.error" error :: String -> a
+
+undefined :: a
+undefined = error "Prelude.undefined"
+
 
 map :: (a -> b) -> [a] -> [b]
 map f [] = []
 map f (x:xs) = f x : map f xs
 
 (++) :: [a] -> [a] -> [a]
-(++) [] x = x
+(++) [] ys = ys
 (++) (x:xs) ys = x : (xs ++ ys)
 
+filter :: (a -> Bool) -> [a] -> [a]
+filter p [] = []
+filter p (x:xs)
+ | p x = x : filter p xs
+ | otherwise = filter p xs
+
+concat :: [[a]] -> [a]
+concat xss = foldr (++) [] xss
+
+concatMap :: (a -> [b]) -> [a] -> [b]
+concatMap f = concat . map f
+
+head :: [a] -> a
+head (x:_) = x
+head [] = error "Prelude.head: empty list"
+
+tail :: [a] -> [a]
+tail (_:xs) = xs
+tail [] = error "Prelude.tail: empty list"
+
+last :: [a] -> a
+last [x] = x
+last (_:xs) = last xs
+last [] = error "Prelude.last: empty list"
+
+init :: [a] -> [a]
+init [x] = []
+init (x:xs) = x : init xs
+init [] = error "Prelude.init: empty list"
+
+null :: [a] -> Bool
+null [] = True
+null (_:_) = False
+
+length :: [a] -> Integer
+length [] = 0
+length (_:l) = 1 + length l
+
+(!!) :: [a] -> Integer -> a
+(!!) [] _ = error "Prelude.!!: index too large"
+(!!) (x:_) 0 = x
+(!!) (_:xs) n = xs !! (n-1)
+
 foldl :: (a -> b -> a) -> a -> [b] -> a
-foldl f z (x:xs) = foldl f (f z x) xs
 foldl f z _ = z
+foldl f z (x:xs) = foldl f (f z x) xs
+
+foldl1 :: (a -> a -> a) -> [a] -> a
+foldl1 f (x:xs) = foldl f x xs
+foldl1 _ [] = error "Prelude.foldl1: empty list"
+
+scanl :: (a -> b -> a) -> a -> [b] -> [a]
+scanl f q xs = q : (case xs of
+                       [] -> []
+                       x:xs -> scanl f (f q x) xs)
+
+scanl1 :: (a -> a -> a) -> [a] -> [a]
+scanl1 f (x:xs) = scanl f x xs
+scanl1 _ [] = []
 
 foldr :: (a -> b -> b) -> b -> [a] -> b
+foldr f z [] = z
 foldr f z (x:xs) = f x (foldr f z xs)
-foldr f z _ = z
 
 foldr1 :: (a -> a -> a) -> [a] -> a
 foldr1 f [x] = x
 foldr1 f (x:xs) = f x (foldr1 f xs)
 foldr1 _ [] = error "Prelude.foldr1: empty list"
+
+scanr :: (a -> b -> b) -> b -> [a] -> [b]
+scanr f q0 [] = [q0]
+scanr f q0 (x:xs) = f x q : qs
+    where qs@(q:_) = scanr f q0 xs
+
+scanr1 :: (a -> a -> a) -> [a] -> [a]
+scanr1 f [] = []
+scanr1 f [x] = [x]
+scanr1 f (x:xs) = f x q : qs
+    where qs@(q:_) = scanr1 f xs
+
+iterate :: (a -> a) -> a -> [a]
+iterate f x = x : iterate f (f x)
+
+repeat :: a -> [a]
+repeat x = xs where xs = x:xs
+
+replicate :: Integer -> a -> [a]
+replicate n x = take n (repeat x)
+
+cycle :: [a] -> [a]
+cycle [] = error "Prelude.cycle: empty list"
+cycle xs = xs' where xs' = xs ++ xs'
+
+take :: Integer -> [a] -> [a]
+take n _ | n <= 0 = []
+take _ [] = []
+take n (x:xs) = x : take (n-1) xs
+
+drop :: Integer -> [a] -> [a]
+drop n xs  | n <= 0 = xs
+drop _ [] = []
+drop n (_:xs) = drop (n-1) xs
+
+splitAt :: Integer -> [a] -> ([a],[a])
+splitAt n xs = (take n xs, drop n xs)
+
+takeWhile :: (a -> Bool) -> [a] -> [a]
+takeWhile p [] = []
+takeWhile p (x:xs)
+    | p x = x : takeWhile p xs
+    | otherwise = []
+
+dropWhile :: (a -> Bool) -> [a] -> [a]
+dropWhile p [] = []
+dropWhile p xs@(x:xs')
+ | p x = dropWhile p xs'
+ | otherwise = xs
+
+span :: (a -> Bool) -> [a] -> ([a], [a])
+span p [] = ([], [])
+span p xs@(x:xs')
+ | p x = (x:ys,zs)
+ | otherwise = ([], xs)
+     where (ys, zs) = span p xs'
+
+break :: (a -> Bool) -> [a] -> ([a], [a])
+break p = span (not . p)
+
+lines :: String -> [String]
+lines "" = []
+lines s = let (l, s') = break ((==) '\n') s
+          in l : case s' of
+                    [] -> []
+                    (_:s'') -> lines s''
+
+isSpace :: Char -> Bool
+isSpace = error "TODO: isSpace"
+
+words :: String -> [String]
+words s = case dropWhile isSpace s of
+            "" -> []
+            s' -> w : words s''
+                where (w, s'') = break isSpace s'
+
+unlines :: [String] -> String
+unlines = concatMap (flip (++) "\n")
+
+unwords :: [String] -> String
+unwords [] = ""
+unwords ws = foldr1 (\w s -> w ++ ' ':s) ws
+
+reverse :: [a] -> [a]
+reverse =  foldl (flip (:)) []
 
 and :: [Bool] -> Bool
 and = foldr (&&) True
@@ -111,13 +460,60 @@ and = foldr (&&) True
 or :: [Bool] -> Bool
 or = foldr (||) False
 
+any :: (a -> Bool) -> [a] -> Bool
+any p = or . map p
+
+all :: (a -> Bool) -> [a] -> Bool
+all p = and . map p
+
+elem :: (Eq a) => a -> [a] -> Bool
+elem x = any (\v -> v == x)
+
+notElem :: (Eq a) => a -> [a] -> Bool
+notElem x = all (\v -> v /= x)
+
+lookup :: (Eq a) => a -> [(a, b)] -> Maybe b
+lookup key [] = Nothing
+lookup key ((x, y):xys)
+ | key == x = Just y
+ | otherwise = lookup key xys
+
+sum :: (Num a) => [a] -> a
+sum = foldl (+) 0
+
+product :: (Num a) => [a] -> a
+product = foldl (*) 1
+
+maximum :: (Ord a) => [a] -> a
+maximum [] = error "Prelude.maximum: empty list"
+maximum xs = foldl1 max xs
+
+minimum :: (Ord a) => [a] -> a
+minimum [] = error "Prelude.minimum: empty list"
+minimum xs = foldl1 min xs
+
+zip :: [a] -> [b] -> [(a,b)]
+zip = zipWith (,)
+
+zip3 :: [a] -> [b] -> [c] -> [(a,b,c)]
+zip3 = zipWith3 (,,)
+
+zipWith :: (a->b->c) -> [a] -> [b] -> [c]
+zipWith z (a:as) (b:bs) = z a b : zipWith z as bs
+zipWith _ _ _ = []
+
+zipWith3 :: (a->b->c->d) -> [a] -> [b] -> [c] -> [d]
+zipWith3 z (a:as) (b:bs) (c:cs) = z a b c : zipWith3 z as bs cs
+zipWith3 _ _ _ _ = []
+
+unzip :: [(a, b)] -> ([a], [b])
+unzip = foldr (\(a,b) ~(as,bs) -> (a:as,b:bs)) ([],[])
+
+unzip3 :: [(a,b,c)] -> ([a],[b],[c])
+unzip3 = foldr (\(a,b,c) ~(as,bs,cs) -> (a:as,b:bs,c:cs)) ([],[],[])
+
 class Show a where
     show :: a -> String
-
-instance Show Char where
-    show c = ['\'', c, '\'']
-
-deriving instance (Show a) => Show [a]
 
 __show_helper :: [String] -> String
 __show_helper [] = ""
@@ -129,46 +525,19 @@ __show_helper2 [] = ""
 __show_helper2 [x] = x
 __show_helper2 (x:xs) = x ++ " " ++ __show_helper2 xs
 
--- Primitive IO monad
-data IO a = 
 
--- The IO monad primitives
-foreign import hs "Prelude.return" 
-    return_io :: a -> IO a
+instance Show Integer where
+    show = error "TODO: Integer.Show"
 
-foreign import hs "Prelude.>>="
-    bind_io :: IO a -> (a -> IO b) -> IO b
+instance Show () where
+    show () = "()"
 
-class Num a where
-  (+) :: a -> a -> a
-  (*) :: a -> a -> a
-  (-) :: a -> a -> a
-  negate :: a -> a
-  abs :: a -> a
-  fromInteger :: Integer -> a
+instance Show Char where
+    show c = ['\'', c, '\'']
 
-instance Monad IO where
-  return = return_io
-  (>>=) = bind_io
+deriving instance (Show a) => Show [a]
 
-foreign import hs "Smten.eq_Integer"
-    __prim_eq_Integer :: Integer -> Integer -> Bool
-
-instance Eq Integer where
-    (==) = __prim_eq_Integer
-
-instance Num Integer where
-  (+) = __prim_add_Integer
-  (-) = __prim_sub_Integer
-  negate x = 0 - x
-  fromInteger x = x
-
-foreign import hs "Smten.add_Integer"
-    __prim_add_Integer :: Integer -> Integer -> Integer
-
-foreign import hs "Smten.sub_Integer"
-    __prim_sub_Integer :: Integer -> Integer -> Integer
-
+type FilePath = String
 
 -- Print a character to stdout.
 foreign import hs "Prelude.putChar"
@@ -184,5 +553,9 @@ putStrLn str = do
   putStr str
   putStr "\n"
 
-type FilePath = String
+print :: Show a => a -> IO ()
+print x = putStrLn (show x)
+
+-- Read the contents of stdin.
+foreign import hs "Prelude.getContents" getContents :: IO String
 

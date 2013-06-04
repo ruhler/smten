@@ -145,7 +145,8 @@ charescs = [('a', '\a'),
             ('v', '\v'),
             ('\\', '\\'),
             ('"', '"'),
-            ('\'', '\'')]
+            ('\'', '\''),
+            ('0', '\0')]
 
 ischaresc :: Char -> Bool
 ischaresc c = c `elem` map fst charescs
