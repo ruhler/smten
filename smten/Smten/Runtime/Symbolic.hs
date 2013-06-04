@@ -6,10 +6,11 @@
 module Smten.Runtime.Symbolic (
     Symbolic, return_symbolic, bind_symbolic, run_symbolic,
     fail_symbolic, free_Bool, free_Integer,
-    IO, Maybe, Solver, R.Bool,
+    IO, Maybe, Solver, R.Bool, R.Integer,
     ) where
 
 import Control.Monad.State
+import Data.Dynamic
 import Data.Functor((<$>))
 
 import Smten.Symbolic
@@ -23,12 +24,15 @@ import Smten.SMT.DebugLL
 
 data SS = SS {
     ss_pred :: R.Bool,
-    ss_free :: [FreeID],
+    ss_free :: [(FreeID, SMTType)],
     ss_formula :: R.Bool
 }
 
 type Symbolic = StateT SS IO
 
+data SMTType = SMTBool | SMTInteger 
+    deriving (Eq, Show)
+    
 instance (Haskelly ha sa) => Haskelly (Symbolic ha) (Symbolic sa) where
     frhs x = frhs <$> x
     tohs x = return (tohs' <$> x)
@@ -56,8 +60,14 @@ fail_symbolic = do
 free_Bool :: Symbolic R.Bool
 free_Bool = do
     fid <- liftIO fresh
-    modify $ \s -> s { ss_free = fid : ss_free s }
+    modify $ \s -> s { ss_free = (fid, SMTBool) : ss_free s }
     return $ R.BoolVar fid
+
+free_Integer :: Symbolic R.Integer
+free_Integer = do
+    fid <- liftIO fresh
+    modify $ \s -> s { ss_free = (fid, SMTInteger) : ss_free s }
+    return $ R.IntegerVar fid
 
 predicated :: R.Bool -> Symbolic a -> Symbolic a
 predicated p q = do
@@ -78,15 +88,23 @@ run_symbolic :: (SmtenHS0 a) => Solver -> Symbolic a -> IO (Maybe a)
 run_symbolic s q = do
   solver <- mksolver s
   (x, ss) <- runStateT q (SS R.True [] R.True)
-  mapM_ (SMT.declare_bool solver . freenm) (ss_free ss)
+  mapM_ (declare solver) (ss_free ss)
   SMT.assert solver (ss_formula ss)
   res <- SMT.check solver
   case res of
     SMT.Satisfiable -> do
        let vars = ss_free ss
-       vals <- mapM (SMT.getBoolValue solver . freenm) vars
-       return (Just (realize0 (zip vars vals) x))
+       vals <- mapM (getValue solver) vars
+       return (Just (realize0 (zip (map fst vars) vals) x))
     SMT.Unsatisfiable -> return Nothing
+
+declare :: SMT.Solver -> (FreeID, SMTType) -> IO ()
+declare s (f, SMTBool) = SMT.declare_bool s (freenm f)
+declare s (f, SMTInteger) = SMT.declare_integer s (freenm f)
+
+getValue :: SMT.Solver -> (FreeID, SMTType) -> IO Dynamic
+getValue s (f, SMTBool) = toDyn <$> SMT.getBoolValue s (freenm f)
+getValue s (f, SMTInteger) = toDyn <$> SMT.getIntegerValue s (freenm f)
  
 andB :: R.Bool -> R.Bool -> R.Bool
 andB p q = R.__caseTrue p q R.False

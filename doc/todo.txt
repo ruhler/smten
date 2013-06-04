@@ -1,4 +1,5 @@
 CodeGen:
+* figure out how to specialize away integers for STP
 * use pragma in source to indicate which data types are Haskelly?
 * clean up/unify how we deal with primitives and Symbolic and such
 * automatically import modules needed for primitives

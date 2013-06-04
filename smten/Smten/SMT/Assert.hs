@@ -19,4 +19,21 @@ bool_term ctx (R.BoolMux p a b) = do
     a' <- bool_term ctx a
     b' <- bool_term ctx b
     ite ctx p' a' b'
+bool_term ctx (R.Bool__EqInteger a b) = do
+    a' <- int_term ctx a
+    b' <- int_term ctx b
+    eq_integer ctx a' b'
+
+int_term :: (AST ctx exp) => ctx -> R.Integer -> IO exp
+int_term ctx (R.Integer i) = integer ctx i
+int_term ctx (R.Integer_Add a b) = do
+    a' <- int_term ctx a
+    b' <- int_term ctx b
+    add_integer ctx a' b'
+int_term ctx (R.IntegerMux__ p a b) = do
+    p' <- bool_term ctx p
+    a' <- int_term ctx a
+    b' <- int_term ctx b
+    ite ctx p' a' b'
+int_term ctx (R.IntegerVar id) = var ctx (freenm id)
 

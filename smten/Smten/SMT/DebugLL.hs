@@ -31,8 +31,11 @@ dbgNew dbg s = do
 instance AST.AST DebugLL String where
     assert dbg e = dbgPutStrLn dbg $ "assert " ++ e
     bool dbg b = dbgNew dbg $ show b
+    integer dbg i = dbgNew dbg $ show i
     var dbg n = return n
     ite dbg p a b = dbgNew dbg $ p ++ " ? " ++ a ++ " : " ++ b
+    eq_integer dbg a b = dbgNew dbg $ a ++ "==" ++ b
+    add_integer dbg a b = dbgNew dbg $ a ++ "+" ++ b
 
 debugll :: FilePath -> Solver -> IO Solver
 debugll f s = do
@@ -48,9 +51,19 @@ debugll f s = do
             hPutStrLn fout $ "declare_bool " ++ nm
             declare_bool s nm,
 
+        declare_integer = \nm -> do
+            hPutStrLn fout $ "declare_integer " ++ nm
+            declare_integer s nm,
+
         getBoolValue = \n -> do
             hPutStr fout $ n ++ " = "
             r <- getBoolValue s n
+            hPutStrLn fout $ show r
+            return r,
+
+        getIntegerValue = \n -> do
+            hPutStr fout $ n ++ " = "
+            r <- getIntegerValue s n
             hPutStrLn fout $ show r
             return r,
 

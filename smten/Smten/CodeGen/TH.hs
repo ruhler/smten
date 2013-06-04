@@ -5,7 +5,7 @@ import Language.Haskell.TH
 
 -- class SmtenHSN m where
 --   muxN :: (SmtenHS a1, SmtenHS a2, ...) => Bool -> m a1 a2 ... aN -> m a1 a2 ... aN -> m a1 a2 ... aN
---   realizeN :: (SmtenHS a1, SmtenHS a2, ...) => [(FreeID, Bool)] -> m a1 a2 ... aN -> m a1 a2 ... aN
+--   realizeN :: (SmtenHS a1, SmtenHS a2, ...) => [(FreeID, Dynamic)] -> m a1 a2 ... aN -> m a1 a2 ... aN
 declare_SmtenHS :: Integer -> Q [Dec]
 declare_SmtenHS n = do
   let cls = mkName $ "SmtenHS" ++ show n
@@ -23,7 +23,7 @@ declare_SmtenHS n = do
         
       relN = SigD (mkName $ "realize" ++ show n) $
                 ForallT (map PlainTV as) ctx $
-                  arrowsT [AppT ListT (foldl AppT (TupleT 2) [ConT $ mkName "FreeID", ConT $ mkName "Prelude.Bool"]), mas, mas]
+                  arrowsT [AppT ListT (foldl AppT (TupleT 2) [ConT $ mkName "FreeID", ConT $ mkName "Dynamic"]), mas, mas]
       classD = ClassD [] cls tyvs [] [muxN, relN]
   return [classD]
   

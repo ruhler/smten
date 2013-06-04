@@ -65,7 +65,9 @@ yices2 = do
     in S.Solver {
           S.assert = y2assert y2,
           S.declare_bool = y2declare_bool y2,
+          S.declare_integer = y2declare_integer y2,
           S.getBoolValue = getBoolValue y2,
+          S.getIntegerValue = getIntegerValue y2,
           S.check = check y2
        }
 
@@ -75,6 +77,12 @@ y2assert = A.assert
 y2declare_bool :: Yices2 -> String -> IO ()
 y2declare_bool y nm = do
     ty <- c_yices_bool_type
+    term <- c_yices_new_uninterpreted_term ty
+    withCString nm $ c_yices_set_term_name term
+
+y2declare_integer :: Yices2 -> String -> IO ()
+y2declare_integer y nm = do
+    ty <- c_yices_int_type
     term <- c_yices_new_uninterpreted_term ty
     withCString nm $ c_yices_set_term_name term
 
@@ -89,8 +97,11 @@ check y = withy2 y $ \ctx -> do
 instance AST Yices2 YTerm where
   assert y e = withy2 y $ \ctx -> c_yices_assert_formula ctx e
   bool _ p = if p then c_yices_true else c_yices_false
+  integer _ i = c_yices_int64 (fromInteger i)
   var _ nm = withCString nm c_yices_get_term_by_name
   ite _ = c_yices_ite 
+  eq_integer _ = c_yices_eq
+  add_integer _ = c_yices_add
 
 getBoolValue :: Yices2 -> String -> IO Bool
 getBoolValue y nm = withy2 y $ \yctx -> do
@@ -114,3 +125,18 @@ getBoolValue y nm = withy2 y $ \yctx -> do
         0 -> return False
         1 -> return True
         _ -> error $ "yices2 get bool value got: " ++ show x
+
+getIntegerValue :: Yices2 -> String -> IO Integer
+getIntegerValue y nm = withy2 y $ \yctx -> do
+    model <- c_yices_get_model yctx 1
+    x <- alloca $ \ptr -> do
+            term <- withCString nm c_yices_get_term_by_name
+            ir <- c_yices_get_int64_value model term ptr
+            if ir == 0
+               then do 
+                  v <- peek ptr
+                  return $! v
+               else error $ "yices2 get int64 value returned: " ++ show ir
+    c_yices_free_model model
+    return $! toInteger x
+

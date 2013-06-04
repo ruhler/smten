@@ -14,8 +14,10 @@ data Solver = Solver {
 
     -- | Declare a free boolean variable with given name.
     declare_bool :: String -> IO (),
+    declare_integer :: String -> IO (),
 
     getBoolValue :: String -> IO Bool,
+    getIntegerValue :: String -> IO Integer,
 
     -- | Run (check) and return the result.
     check :: IO Result

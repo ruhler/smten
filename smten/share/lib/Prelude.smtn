@@ -151,7 +151,7 @@ instance Monad IO where
   return = return_io
   (>>=) = bind_io
 
-foreign import hs "Prelude.=="
+foreign import hs "Smten.eq_Integer"
     __prim_eq_Integer :: Integer -> Integer -> Bool
 
 instance Eq Integer where
@@ -162,7 +162,7 @@ instance Num Integer where
   negate x = 0 - x
   fromInteger x = x
 
-foreign import hs "Prelude.+"
+foreign import hs "Smten.add_Integer"
     __prim_add_Integer :: Integer -> Integer -> Integer
 
 

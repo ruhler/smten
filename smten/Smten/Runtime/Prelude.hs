@@ -3,7 +3,8 @@
 
 module Smten.Runtime.Prelude ( 
    S.Bool(..), S.__caseTrue, S.__caseFalse,
-   IO, Char(Char), Integer(Integer),
+   S.Integer(..),
+   IO, Char(Char),
      ) where
 
 import qualified Prelude
@@ -28,21 +29,6 @@ instance SmtenHS0 Char where
       case c of
          Char {} -> c
          CharMux__ p a b -> __caseTrue (realize0 m p) (realize0 m a) (realize0 m b)
-
-data Integer = Integer Prelude.Integer
-             | IntegerMux__ S.Bool Integer Integer
-
-instance Haskelly Prelude.Integer Integer where
-   frhs = Integer
-   tohs (Integer c) = return c
-   tohs _ = Nothing
-
-instance SmtenHS0 Integer where
-   mux0 = IntegerMux__
-   realize0 m c = 
-      case c of
-         Integer {} -> c
-         IntegerMux__ p a b -> __caseTrue (realize0 m p) (realize0 m a) (realize0 m b)
 
 data IO a = IO (Prelude.IO a)
           | IOMux__ S.Bool (IO a) (IO a)
