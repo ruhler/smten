@@ -2,7 +2,7 @@
 module Smten.Tests.All where
 
 import Smten.Tests.Test
---import qualified Smten.Tests.DataMap
+import qualified Smten.Tests.DataMap
 import qualified Smten.Tests.SMT.Core
 import qualified Smten.Tests.SMT.Integer
 import qualified Smten.Tests.SMT.Share
@@ -10,7 +10,7 @@ import qualified Smten.Tests.SMT.Share
 testall :: IO ()
 testall = do
     test "dummy" True
-    --Smten.Tests.DataMap.tests
+    Smten.Tests.DataMap.tests
     Smten.Tests.SMT.Core.tests
     Smten.Tests.SMT.Integer.tests
     Smten.Tests.SMT.Share.tests

@@ -218,22 +218,30 @@ data Ordering = LT | EQ | GT
 foreign import hs "Smten.eq_Integer"
     __prim_eq_Integer :: Integer -> Integer -> Bool
 
+-- TODO: this should support symbolic computation.
+foreign import hs "Prelude.<="
+    __prim_leq_Integer :: Integer -> Integer -> Bool
+
 foreign import hs "Smten.add_Integer"
     __prim_add_Integer :: Integer -> Integer -> Integer
 
 foreign import hs "Smten.sub_Integer"
     __prim_sub_Integer :: Integer -> Integer -> Integer
 
+-- TODO: this should support symbolic computation.
+foreign import hs "Prelude.*"
+    __prim_mul_Integer :: Integer -> Integer -> Integer
+
 instance Eq Integer where
     (==) = __prim_eq_Integer
 
 instance Ord Integer where
-    compare = error "TODO: Integer.Ord"
+    (<=) = __prim_leq_Integer
 
 instance Num Integer where
   (+) = __prim_add_Integer
   (-) = __prim_sub_Integer
-  (*) = error "TODO: Integer.*"
+  (*) = __prim_add_Integer
   negate x = 0 - x
   fromInteger x = x
 
@@ -535,7 +543,10 @@ instance Show () where
 instance Show Char where
     show c = ['\'', c, '\'']
 
+-- TODO: this is wrong! Instances of show for list and tuples are special, so
+-- we can't auto-derive them.
 deriving instance (Show a) => Show [a]
+deriving instance (Show a, Show b) => Show (a, b)
 
 type FilePath = String
 
