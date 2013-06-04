@@ -8,6 +8,12 @@ tests :: IO ()
 tests = do
    symtesteq "SMT.Core.Trivial" (Just ()) [Yices2] (return ())
    symtesteq "SMT.Core.Fail" Nothing [Yices2] (fail_symbolic :: Symbolic ())
+
+   symtesteq "SMT.Core.FreeBool" (Just True) [Yices2] $ do
+      p <- free_Bool
+      assert p
+      return p
+    
    putStrLn "SMT.Core PASSED"
      
 

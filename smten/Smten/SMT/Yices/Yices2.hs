@@ -64,11 +64,19 @@ yices2 = do
     let y2 = Yices2 ptr
     in S.Solver {
           S.assert = y2assert y2,
+          S.declare_bool = y2declare_bool y2,
+          S.getBoolValue = getBoolValue y2,
           S.check = check y2
        }
 
 y2assert :: Yices2 -> R.Bool -> IO ()
 y2assert = A.assert
+
+y2declare_bool :: Yices2 -> String -> IO ()
+y2declare_bool y nm = do
+    ty <- c_yices_bool_type
+    term <- c_yices_new_uninterpreted_term ty
+    withCString nm $ c_yices_set_term_name term
 
 withy2 :: Yices2 -> (Ptr YContext -> IO a) -> IO a
 withy2 y f = f (y2_ctx y)
@@ -84,3 +92,25 @@ instance AST Yices2 YTerm where
   var _ nm = withCString nm c_yices_get_term_by_name
   ite _ = c_yices_ite 
 
+getBoolValue :: Yices2 -> String -> IO Bool
+getBoolValue y nm = withy2 y $ \yctx -> do
+    model <- c_yices_get_model yctx 1
+    x <- alloca $ \ptr -> do
+            term <- withCString nm c_yices_get_term_by_name
+            ir <- c_yices_get_bool_value model term ptr
+            case ir of
+               _ | ir == (-1) -> do
+                  -- -1 means we don't care, so just return the equivalent
+                  -- of False.
+                  return 0
+
+               0 -> do 
+                  v <- peek ptr
+                  return v
+
+               _ -> error $ "yices2 get bool value returned: " ++ show ir
+    c_yices_free_model model
+    case x of
+        0 -> return False
+        1 -> return True
+        _ -> error $ "yices2 get bool value got: " ++ show x

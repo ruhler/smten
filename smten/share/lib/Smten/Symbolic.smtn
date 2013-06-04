@@ -12,9 +12,15 @@ foreign import hs "Smten.Runtime.Symbolic.bind_symbolic"
 foreign import hs "Smten.Runtime.Symbolic.fail_symbolic"
     fail_symbolic :: Symbolic a
 
+foreign import hs "Smten.Runtime.Symbolic.free_Bool"
+    free_Bool :: Symbolic Bool
+
 instance Monad Symbolic where
   return = return_symbolic
   (>>=) = bind_symbolic
+
+assert :: Bool -> Symbolic ()
+assert p = if p then return () else fail_symbolic
 
 data Solver = Yices1 | Yices2 | STP
             | Debug FilePath Solver
