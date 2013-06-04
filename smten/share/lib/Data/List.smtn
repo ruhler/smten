@@ -1,0 +1,49 @@
+
+module Data.List where
+
+tails :: [a] -> [[a]]
+tails x = x : (if null x then [] else tails (tail x))
+
+isPrefixOf :: (Eq a) => [a] -> [a] -> Bool
+isPrefixOf [] _ = True
+isPrefixOf (x:xs) (y:ys) = x == y && isPrefixOf xs ys
+isPrefixOf _ _ = False
+
+isInfixOf :: (Eq a) => [a] -> [a] -> Bool
+isInfixOf needle haystack = any (isPrefixOf needle) (tails haystack)
+
+nub :: (Eq a) => [a] -> [a]
+nub [] = []
+nub (x:xs) = x : nub (filter ((/=) x) xs)
+
+sort :: (Ord a) => [a] -> [a]
+sort = sortBy compare
+
+sortBy :: (a -> a -> Ordering) -> [a] -> [a]
+sortBy cmp = mergeAll . sequences
+   where
+     sequences (a:b:xs)
+       | (a `cmp` b) == GT = descending b [a]  xs
+       | otherwise       = ascending  b ((:) a) xs
+     sequences xs = [xs]
+
+     descending a as (b:bs)
+       | (a `cmp` b) == GT = descending b (a:as) bs
+     descending a as bs  = (a:as): sequences bs
+
+     ascending a as (b:bs)
+       | (a `cmp` b) /= GT = ascending b (\ys -> as (a:ys)) bs
+     ascending a as bs   = as [a]: sequences bs
+
+     mergeAll [x] = x
+     mergeAll xs  = mergeAll (mergePairs xs)
+
+     mergePairs (a:b:xs) = merge a b: mergePairs xs
+     mergePairs xs       = xs
+
+     merge as@(a:as') bs@(b:bs')
+       | (a `cmp` b) == GT = b:merge as  bs'
+       | otherwise       = a:merge as' bs
+     merge [] bs         = bs
+     merge as []         = as
+

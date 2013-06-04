@@ -151,6 +151,12 @@ otherwise = True
 
 -- data Char = ... 'a' | 'b' ...
 
+foreign import hs "Smten.Runtime.Primitives.primCharToInteger" 
+   primCharToInteger :: Char -> Integer
+
+foreign import hs "Smten.Runtime.Primitives.primIntegerToChar"
+   primIntegerToChar :: Integer -> Char
+
 instance Eq Char where
     (==) a b = fromEnum a == fromEnum b
 
@@ -158,8 +164,8 @@ instance Ord Char where
     (<=) a b = fromEnum a <= fromEnum b
 
 instance Enum Char where
-    toEnum = error "TODO: Char.toEnum"
-    fromEnum = error "TODO: Char.fromEnum"
+    toEnum = primIntegerToChar
+    fromEnum = primCharToInteger
     enumFrom c = error "TODO: Char.enumFrom"
     enumFromThen c c' = error "TODO: Char.enumFromThen"
 

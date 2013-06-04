@@ -33,6 +33,7 @@ moduleCG env mod = do
     H.text "import qualified Smten.Runtime.SmtenHS as Smten" H.$+$
     H.text "import qualified Smten.Runtime.Prelude as Smten.Lib.Prelude" H.$+$
     H.text "import qualified Smten.Runtime.Symbolic" H.$+$
+    H.text "import qualified Smten.Runtime.Primitives" H.$+$
     H.text "import qualified Smten.Symbolic" H.$+$
     H.text "import qualified Smten.Runtime.Symbolic as Smten.Lib.Smten.Symbolic (Symbolic)" H.$+$
     importsCG (mod_imports mod) H.$+$
