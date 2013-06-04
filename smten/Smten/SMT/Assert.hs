@@ -30,6 +30,10 @@ int_term ctx (R.Integer_Add a b) = do
     a' <- int_term ctx a
     b' <- int_term ctx b
     add_integer ctx a' b'
+int_term ctx (R.Integer_Sub a b) = do
+    a' <- int_term ctx a
+    b' <- int_term ctx b
+    sub_integer ctx a' b'
 int_term ctx (R.IntegerMux__ p a b) = do
     p' <- bool_term ctx p
     a' <- int_term ctx a

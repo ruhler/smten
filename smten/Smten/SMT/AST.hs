@@ -13,4 +13,5 @@ class AST ctx exp | ctx -> exp where
   ite :: ctx -> exp -> exp -> exp -> IO exp
   eq_integer :: ctx -> exp -> exp -> IO exp
   add_integer :: ctx -> exp -> exp -> IO exp
+  sub_integer :: ctx -> exp -> exp -> IO exp
 

@@ -1,0 +1,57 @@
+
+module Smten.Tests.SMT.Share (tests) where
+
+import Smten.Symbolic
+import Smten.Tests.SMT.Test
+
+dbg :: String -> Solver 
+dbg s = DebugLL ("build/test/" ++ s ++ ".dbg") Yices2
+
+tests :: IO ()
+tests = do
+    symtesteq "Share.Simple" (Just 1) [dbg "Share.Simple"] $ do
+        x <- free_Integer
+        assert ((\a -> a + a == 10) (x + x + x + x + x))
+        return x 
+
+    symtesteq "Share.Samectx" (Just 1) [dbg "Share.Samectx"] $ do
+        p <- free_Bool
+        x <- free_Integer
+        assert ((\a -> (if p then a + a
+                            else 0) == 10) (x+x+x+x+x))
+        return x
+
+    symtesteq "Share.Diffctx" (Just 1) [dbg "Share.Diffctx"] $ do
+        p <- free_Bool
+        x <- free_Integer
+        assert ((\a -> (if p then a + a
+                            else a - a) == 10) (x+x+x+x+x))
+        return x
+
+    symtesteq "Share.CaseDesugar" (Just 1) [dbg "Share.CaseDesugar"] $ do
+        x <- free_Integer
+        a <- free_Bool
+        b <- free_Bool
+        c <- free_Bool
+        d <- free_Bool
+        assert $ 5 == case () of
+                        _ | a, b, c, d -> 5
+                          | otherwise -> (x + x + x + x + x)
+        assert (not d)
+        return x
+
+    symtesteq "Share.AppEval" (Just 1) [dbg "Share.AppEval"] $ do
+        let f = \x -> 0
+            g = \x -> x + x + x + x + x
+        p <- free_Bool
+        q <- free_Bool
+        z <- free_Integer
+        assert $ 5 == (case () of
+                        _ | p, q -> f
+                          | otherwise -> g
+                      ) z
+        assert (not q)
+        return z
+
+    putStrLn "CHECK build/test/Share*.dbg for SHARE TESTS"
+

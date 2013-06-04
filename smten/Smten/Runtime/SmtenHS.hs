@@ -36,6 +36,7 @@ instance Haskelly Prelude.Bool Bool where
 data Integer =
     Integer Prelude.Integer
   | Integer_Add Integer Integer
+  | Integer_Sub Integer Integer
   | IntegerMux__ Bool Integer Integer
   | IntegerVar FreeID
 
@@ -122,3 +123,6 @@ add_Integer :: Integer -> Integer -> Integer
 add_Integer (Integer a) (Integer b) = Integer (a+b)
 add_Integer a b = Integer_Add a b
 
+sub_Integer :: Integer -> Integer -> Integer
+sub_Integer (Integer a) (Integer b) = Integer (a-b)
+sub_Integer a b = Integer_Sub a b

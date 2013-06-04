@@ -159,11 +159,15 @@ instance Eq Integer where
 
 instance Num Integer where
   (+) = __prim_add_Integer
+  (-) = __prim_sub_Integer
   negate x = 0 - x
   fromInteger x = x
 
 foreign import hs "Smten.add_Integer"
     __prim_add_Integer :: Integer -> Integer -> Integer
+
+foreign import hs "Smten.sub_Integer"
+    __prim_sub_Integer :: Integer -> Integer -> Integer
 
 
 -- Print a character to stdout.

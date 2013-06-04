@@ -4,12 +4,14 @@ module Smten.Tests.All where
 import Smten.Tests.Test
 import qualified Smten.Tests.SMT.Core
 import qualified Smten.Tests.SMT.Integer
+import qualified Smten.Tests.SMT.Share
 
 testall :: IO ()
 testall = do
     test "dummy" True
     Smten.Tests.SMT.Core.tests
     Smten.Tests.SMT.Integer.tests
+    Smten.Tests.SMT.Share.tests
 
 main :: IO ()
 main = do

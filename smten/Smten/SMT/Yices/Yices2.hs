@@ -102,6 +102,7 @@ instance AST Yices2 YTerm where
   ite _ = c_yices_ite 
   eq_integer _ = c_yices_eq
   add_integer _ = c_yices_add
+  sub_integer _ = c_yices_sub
 
 getBoolValue :: Yices2 -> String -> IO Bool
 getBoolValue y nm = withy2 y $ \yctx -> do

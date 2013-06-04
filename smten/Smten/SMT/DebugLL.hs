@@ -36,6 +36,7 @@ instance AST.AST DebugLL String where
     ite dbg p a b = dbgNew dbg $ p ++ " ? " ++ a ++ " : " ++ b
     eq_integer dbg a b = dbgNew dbg $ a ++ "==" ++ b
     add_integer dbg a b = dbgNew dbg $ a ++ "+" ++ b
+    sub_integer dbg a b = dbgNew dbg $ a ++ "-" ++ b
 
 debugll :: FilePath -> Solver -> IO Solver
 debugll f s = do
