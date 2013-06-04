@@ -17,14 +17,8 @@ import Smten.CodeGen.Type
 decCG :: Dec -> CG [H.Dec]
 decCG (DataD _ n tyvars constrs)
   | n == arrowN = return []
-  | n == ioN = do
-      ds <- primDataCG "Prelude.IO" n tyvars 
-      hs <- primHaskellyIOCG
-      return $ ds ++ hs
-  | n == charN = do
-      ds <- primDataCG "Prelude.Char" n tyvars 
-      hs <- primHaskelly0CG "Prelude.Char" n
-      return $ ds ++ hs
+  | n == ioN = return []
+  | n == charN = return []
   | n == boolN = return []
   | n == name "Smten.Symbolic.Symbolic" = return []
   | otherwise = dataCG n tyvars constrs
