@@ -14,6 +14,42 @@ import Data.Char (isAlphaNum)
 
 import Smten.Name
 
+-- doname ty f qlf nm
+-- Transform a Smten name to a haskell name.
+--  ty - True if this is a type constructor name.
+--  f - transformation to perform on the base of the name.
+--  qlf - True to generate a qualified version of the name.
+--        False to generate an unqualified version of the name.
+--  nm - The name to transform.
+doname :: Bool -> (String -> String) -> Bool -> Name -> H.Name
+doname ty f qlf nm = 
+  let nm' = if ty then tytrans nm else trans nm
+      base = f (unname (unqualified nm'))
+      qlfn = unname $ qualification nm'
+      qlfn' = if null qlfn
+                    then ""
+                    else modprefixs qlfn ++ "."
+      qlfn'' = if qlf then qlfn' else ""
+      full = qlfn'' ++ base
+      sym = if issymbol base then "(" ++ full ++ ")" else full
+  in H.mkName sym
+
+trans :: Name -> Name
+trans n
+ | n == unitN = name "Prelude.Unit__"
+ | n == nilN = name "Prelude.Nil__"
+ | n == consN = name "Prelude.Cons__"
+ | Just i <- de_tupleN n = name $ "Prelude.Tuple" ++ show i ++ "__"
+ | otherwise = n
+
+tytrans :: Name -> Name
+tytrans n
+ | n == unitN = name "Prelude.Unit__"
+ | n == listN = name "Prelude.List__"
+ | Just i <- de_tupleN n = name $ "Prelude.Tuple" ++ show i ++ "__"
+ | otherwise = n
+            
+
 modprefix :: Name -> String
 modprefix = modprefixs . unname
 
@@ -27,62 +63,25 @@ issymbol (h:_) = not $ isAlphaNum h || h == '_'
 
 -- | Generate code for an unqualified variable or data constructor name.
 nameCG :: Name -> H.Name
-nameCG nm 
-  | nm == unitN = H.mkName "Unit__"
-  | nm == nilN = H.mkName "Nil__"
-  | nm == consN = H.mkName "Cons__"
-  | Just i <- de_tupleN nm = H.mkName $ "Tuple" ++ show i ++ "__"
-  | issymbol (unname $ unqualified nm) = H.mkName ("(" ++ unname (unqualified nm) ++ ")")
-  | otherwise = H.mkName (unname $ unqualified nm)
+nameCG = doname False id False
 
 -- qualified variable or data constructor name.
 qnameCG :: Name -> H.Name
-qnameCG nm
-  | nm == unitN = H.mkName $ modprefixs "Prelude.Unit__"
-  | nm == nilN = H.mkName $ modprefixs "Prelude.Nil__"
-  | nm == consN = H.mkName $ modprefixs "Prelude.Cons__"
-  | Just i <- de_tupleN nm = H.mkName $ modprefixs ("Prelude.Tuple" ++ show i ++ "__")
-  | isqualified nm && issymbol (unname $ unqualified nm) = H.mkName ("(" ++ modprefix nm ++ ")")
-  | isqualified nm = H.mkName (modprefix nm)
-  | issymbol (unname $ unqualified nm) = H.mkName ("(" ++ unname nm ++ ")")
-  | otherwise = H.mkName (unname nm)
+qnameCG = doname False id True
 
 -- | Generate code for an unqualified type constructor name.
 tynameCG :: Name -> H.Name
-tynameCG nm
-  | nm == unitN = H.mkName "Unit__"
-  | nm == listN = H.mkName "List__"
-  | Just i <- de_tupleN nm = H.mkName $ "Tuple" ++ show i ++ "__"
-  | otherwise = H.mkName (unname $ unqualified nm)
+tynameCG = doname True id False
 
 -- | qualified type constructor name.
 qtynameCG :: Name -> H.Name
-qtynameCG nm
-  | nm == unitN = H.mkName $ modprefixs "Prelude.Unit__"
-  | nm == listN = H.mkName $ modprefixs "Prelude.List__"
-  | Just i <- de_tupleN nm = H.mkName $ modprefixs ("Prelude.Tuple" ++ show i ++ "__")
-  | isqualified nm = H.mkName (modprefix nm)
-  | otherwise = H.mkName (unname nm)
+qtynameCG = doname True id True
 
 casenmCG :: Name -> H.Name
-casenmCG n
- | n == unitN = H.mkName "__caseUnit__"
- | n == nilN = H.mkName "__caseNil__"
- | n == consN = H.mkName "__caseCons__"
- | Just i <- de_tupleN n = H.mkName $ "__caseTuple" ++ show i ++ "__"
- | otherwise = H.mkName ("__case" ++ (unname $ unqualified n))
+casenmCG = doname False ("__case" ++) False
 
 qcasenmCG :: Name -> H.Name
-qcasenmCG n
- | n == unitN = H.mkName $ modprefixs "Prelude.__caseUnit__"
- | n == nilN = H.mkName $ modprefixs "Prelude.__caseNil__"
- | n == consN = H.mkName $ modprefixs "Prelude.__caseCons__"
- | Just i <- de_tupleN n = H.mkName $ modprefixs ("Prelude.__caseTuple" ++ show i ++ "__")
- | isqualified n =
-     let unqfn = unname $ unqualified n
-         qfn = unname $ qualification n
-     in H.mkName (modprefixs $ qfn ++ ".__case" ++ unqfn)
- | otherwise = H.mkName ("__case" ++ (unname n))
+qcasenmCG = doname False ("__case" ++) True
 
 -- qualified haskell type constructor name
 qhstynameCG :: Name -> H.Name
@@ -101,17 +100,9 @@ qhsnameCG n
 
 -- | Generate code for the mux constructor of a given data type.
 muxnmCG :: Name -> H.Name
-muxnmCG nm
-  | nm == unitN = H.mkName "Unit__Mux__"
-  | nm == listN = H.mkName "List__Mux__"
-  | Just i <- de_tupleN nm = H.mkName $ "Tuple" ++ show i ++ "__Mux__"
-  | otherwise = H.mkName (unname (unqualified nm) ++ "Mux__")
+muxnmCG = doname True (++ "Mux__") False
 
 -- | qualified type constructor name.
 qmuxnmCG :: Name -> H.Name
-qmuxnmCG nm
-  | nm == unitN = H.mkName $ modprefixs "Prelude.Unit__Mux__"
-  | nm == listN = H.mkName $ modprefixs "Prelude.List__Mux__"
-  | Just i <- de_tupleN nm = H.mkName $ modprefixs ("Prelude.Tuple" ++ show i ++ "__Mux__")
-  | isqualified nm = H.mkName (modprefix nm ++ "Mux__")
-  | otherwise = H.mkName (unname nm ++ "Mux__")
+qmuxnmCG = doname True (++ "Mux__") True
+
