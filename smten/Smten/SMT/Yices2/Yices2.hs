@@ -47,7 +47,6 @@ import Smten.SMT.Yices2.FFI
 import Smten.SMT.AST
 import qualified Smten.SMT.Assert as A
 import qualified Smten.SMT.Solver as S
-import qualified Smten.Runtime.Prelude as R
 
 data Yices2 = Yices2 {
     y2_ctx :: Ptr YContext
@@ -63,16 +62,13 @@ yices2 = do
   return $    
     let y2 = Yices2 ptr
     in S.Solver {
-          S.assert = y2assert y2,
+          S.assert = A.assert y2,
           S.declare_bool = y2declare_bool y2,
           S.declare_integer = y2declare_integer y2,
           S.getBoolValue = getBoolValue y2,
           S.getIntegerValue = getIntegerValue y2,
           S.check = check y2
        }
-
-y2assert :: Yices2 -> R.Bool -> IO ()
-y2assert = A.assert
 
 y2declare_bool :: Yices2 -> String -> IO ()
 y2declare_bool y nm = do

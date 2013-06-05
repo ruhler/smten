@@ -1,4 +1,9 @@
 CodeGen:
+* don't change (if p then 3 else 4) == (if q then 4 else 5)
+    to: if p
+           then if q then False else False
+           else if q then True else False
+  if the underlying solver supports integers
 * figure out how to specialize away integers for STP
 * use pragma in source to indicate which data types are Haskelly?
 * clean up/unify how we deal with primitives and Symbolic and such
