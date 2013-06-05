@@ -63,25 +63,23 @@ def_bool ctx (R.BoolMux p a b) = do
     a' <- use_bool a
     b' <- use_bool b
     liftIO $ ite ctx p' a' b'
-def_bool ctx (R.Bool__EqInteger a b) = do
-    a' <- use_int a
-    b' <- use_int b
-    liftIO $ eq_integer ctx a' b'
+def_bool ctx (R.Bool__EqInteger a b) = int_binary (eq_integer ctx) a b
+def_bool ctx (R.Bool__LeqInteger a b) = int_binary (leq_integer ctx) a b
 
 def_int :: (AST ctx exp) => ctx -> R.Integer -> AM ctx exp exp
 def_int ctx (R.Integer i) = liftIO $ integer ctx i
-def_int ctx (R.Integer_Add a b) = do
-    a' <- use_int a
-    b' <- use_int b
-    liftIO $ add_integer ctx a' b'
-def_int ctx (R.Integer_Sub a b) = do
-    a' <- use_int a
-    b' <- use_int b
-    liftIO $ sub_integer ctx a' b'
+def_int ctx (R.Integer_Add a b) = int_binary (add_integer ctx) a b
+def_int ctx (R.Integer_Sub a b) = int_binary (sub_integer ctx) a b
 def_int ctx (R.IntegerMux__ p a b) = do
     p' <- use_bool p
     a' <- use_int a
     b' <- use_int b
     liftIO $ ite ctx p' a' b'
 def_int ctx (R.IntegerVar id) = liftIO $ var ctx (freenm id)
+
+int_binary :: (AST ctx exp) => (exp -> exp -> IO exp) -> R.Integer -> R.Integer -> AM ctx exp exp
+int_binary f a b = do
+    a' <- use_int a
+    b' <- use_int b
+    liftIO $ f a' b'
 

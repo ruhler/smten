@@ -225,8 +225,7 @@ data Ordering = LT | EQ | GT
 foreign import hs "Smten.eq_Integer"
     __prim_eq_Integer :: Integer -> Integer -> Bool
 
--- TODO: this should support symbolic computation.
-foreign import hs "Prelude.<="
+foreign import hs "Smten.leq_Integer"
     __prim_leq_Integer :: Integer -> Integer -> Bool
 
 foreign import hs "Smten.add_Integer"

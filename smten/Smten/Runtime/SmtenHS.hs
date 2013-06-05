@@ -21,6 +21,7 @@ data Bool =
   | BoolVar FreeID
   | BoolMux Bool Bool Bool
   | Bool__EqInteger Integer Integer
+  | Bool__LeqInteger Integer Integer
 
 data Integer =
     Integer Prelude.Integer
@@ -64,6 +65,7 @@ instance SmtenHS0 Bool where
    realize0 m (BoolMux p a b)
       = __caseTrue (realize0 m p) (realize0 m a) (realize0 m b)
    realize0 m (Bool__EqInteger a b) = eq_Integer (realize0 m a) (realize0 m b)
+   realize0 m (Bool__LeqInteger a b) = leq_Integer (realize0 m a) (realize0 m b)
 
    strict_app0 f (BoolMux p a b) = mux0 p (strict_app0 f a) (strict_app0 f b)
    strict_app0 f b = f b
@@ -102,7 +104,7 @@ instance Haskelly Integer Integer where
 instance Haskelly Prelude.Integer Integer where
    frhs = Integer
    tohs (Integer c) = c
-   tohs _ = error "tohs.Integer"
+   tohs _ = error "tohs.Integer failed"
 
 newtype Poly a = Poly a
 
@@ -143,6 +145,10 @@ __caseFalse x y n =
 eq_Integer :: Integer -> Integer -> Bool
 eq_Integer (Integer a) (Integer b) = frhs (a == b)
 eq_Integer a b = Bool__EqInteger a b
+
+leq_Integer :: Integer -> Integer -> Bool
+leq_Integer (Integer a) (Integer b) = frhs (a <= b)
+leq_Integer a b = Bool__LeqInteger a b
 
 add_Integer :: Integer -> Integer -> Integer
 add_Integer (Integer a) (Integer b) = Integer (a+b)

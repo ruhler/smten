@@ -25,3 +25,32 @@ tests = do
         assert (e == 8)
         return (d, e)
 
+    symtesteq "Integer.Sub" (Just (10, 8)) [Yices1, Yices2] $ do
+        f <- free_Integer
+        g <- free_Integer
+        assert ((f - 2) == g)
+        assert (g == 8)
+        return (f, g)
+
+    symtesteq "Integer.Compare" (Just 7) [Yices1, Yices2] $ do
+        h <- free_Integer
+        assert (h < 8)
+        assert (h > 6)
+        return h
+
+    symtesteq "Integer.Compare2" (Just 7) [Yices1, Yices2] $ do
+        i <- free_Integer
+        assert (i >= 7)
+        assert (i <= 7)
+        return i
+
+    -- Test more complex
+    symtesteq "Integer.Complex" (Just (5, 3)) [Yices1, Yices2] $ do
+        x <- free_Integer
+        y <- free_Integer
+        assert ((x + y) == 8)
+        assert ((x - y) == 2)
+        return (x, y)
+
+    putStrLn "Integer PASSED"
+

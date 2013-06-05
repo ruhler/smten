@@ -109,6 +109,7 @@ instance AST Yices1 YExpr where
      c_yices_mk_var_from_decl ctx decl
   ite y p a b = withy1 y $ \ctx -> c_yices_mk_ite ctx p a b
   eq_integer = bprim c_yices_mk_eq
+  leq_integer = bprim c_yices_mk_le
   add_integer = baprim c_yices_mk_sum
   sub_integer = baprim c_yices_mk_sub
 

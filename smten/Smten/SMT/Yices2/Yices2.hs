@@ -97,6 +97,7 @@ instance AST Yices2 YTerm where
   var _ nm = withCString nm c_yices_get_term_by_name
   ite _ = c_yices_ite 
   eq_integer _ = c_yices_eq
+  leq_integer _ = c_yices_arith_leq_atom
   add_integer _ = c_yices_add
   sub_integer _ = c_yices_sub
 

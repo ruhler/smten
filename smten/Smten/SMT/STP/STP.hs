@@ -73,6 +73,7 @@ instance AST STP (Ptr STP_Expr) where
         Nothing -> error $ "STP: unknown var: " ++ nm
   ite s p a b = withvc s $ \vc -> c_vc_iteExpr vc p a b
   eq_integer = nointegers
+  leq_integer = nointegers
   add_integer = nointegers
   sub_integer = nointegers
 
