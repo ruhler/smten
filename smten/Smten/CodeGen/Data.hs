@@ -53,7 +53,7 @@ mkDataD n tyvars constrs = do
 -- __caseFooX x y n =
 --    case x of
 --      FooX x1 x2 ... -> y x1 x2 ...
---      FooMux__ p a b -> mux0 p (__caseFooX a y n) (__caseFooX b y n)
+--      FooMux__ p a b -> strict_app0 (\v -> __caseFooX v y n) x
 --      _ -> n
 mkCaseD :: Name -> [TyVar] -> Con -> CG [H.Dec]
 mkCaseD n tyvars (Con cn tys) = do
@@ -70,10 +70,10 @@ mkCaseD n tyvars (Con cn tys) = do
                        (H.NormalB (foldl H.AppE (H.VarE vy) (map H.VarE vxs))) []
 
       mbody = foldl1 H.AppE [
-         H.VarE (H.mkName "Smten.mux0"),
-         H.VarE (H.mkName "p"),
-         foldl H.AppE (H.VarE (qcasenmCG cn)) [H.VarE $ H.mkName v | v <- ["a", "y", "n"]],
-         foldl H.AppE (H.VarE (qcasenmCG cn)) [H.VarE $ H.mkName v | v <- ["b", "y", "n"]]]
+         H.VarE (H.mkName "Smten.strict_app0"),
+         H.LamE [H.VarP $ H.mkName "v"] $
+             foldl H.AppE (H.VarE (qcasenmCG cn)) [H.VarE $ H.mkName v | v <- ["v", "y", "n"]],
+         H.VarE $ H.mkName "x"]
       matchm = H.Match (H.ConP (qmuxnmCG n) [H.VarP $ H.mkName v | v <- ["p", "a", "b"]]) (H.NormalB mbody) []
 
       matchn = H.Match H.WildP (H.NormalB (H.VarE vn)) []
