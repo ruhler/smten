@@ -12,6 +12,7 @@ symtest nm tst slv q = mapM_ (symtest1 nm tst q) slv
 
 symtest1 :: String -> (Maybe a -> Bool) -> Symbolic a -> Solver -> IO ()
 symtest1 nm tst q slv = do
+    let nm' = nm ++ "." ++ show slv
     got <- run_symbolic slv q
-    test (nm ++ "." ++ show slv) (tst got)
+    test nm' (tst got)
 

@@ -94,7 +94,7 @@ tests = do
        return p
 
    -- Same with char
-   symtesteq "Core.Char" (Just True) [Yices2] $ do
+   symtesteq "Core.Char" (Just True) [] $ do
        q <- free_Bool
        assert ('a' == (if q then 'a' else 'b'))
        return q
