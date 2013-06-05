@@ -3,6 +3,7 @@ module Smten.Tests.All where
 
 import Smten.Tests.Test
 import qualified Smten.Tests.Ord
+import qualified Smten.Tests.Show
 import qualified Smten.Tests.DataMap
 import qualified Smten.Tests.List
 import qualified Smten.Tests.Module
@@ -14,6 +15,7 @@ testall :: IO ()
 testall = do
     test "dummy" True
     Smten.Tests.Ord.tests
+    Smten.Tests.Show.tests
     Smten.Tests.DataMap.tests
     Smten.Tests.List.tests
     Smten.Tests.Module.tests

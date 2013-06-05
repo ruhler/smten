@@ -249,24 +249,41 @@ deriveFree l ctx cls cs =
 -- Derive an instance of Show for the given data type declaration.
 -- Generates something of the form:
 --    instance ctx => Show (Foo ...) where
---       show (Foo1 a1 a2 ...) = show_helper ["Foo1", show a1, show a2, ...]
---       show (Foo2 a1 a2 ...) = show_helper ["Foo2", show a1, show a2, ...]
---            ...
---       show (FooN a1 a2 ...) = show_helper ["FooN", show a1, show a2, ...]
+--       showsPrec d (Foo1 a1 a2 ...) =
+--          showParens (d > 10) (showString "Foo1"
+--              . (showString " " . showsPrec 11 a1)
+--              . (showString " " . showsPrec 11 a2)
+--              ...)
+--       showsPrec d (Foo2 a1 a2 ...) = ...
+--           ...
 deriveShow :: Location -> Context -> Class -> [ConRec] -> Dec
 deriveShow l ctx cls cs =
   let mkcon :: ConRec -> MAlt
       mkcon (NormalC cn ts) =
         let fields = [Sig (name $ 'a' : show i) UnknownT | i <- [1..length ts]]
-            p = ConP cn [VarP n | Sig n _ <- fields]
-            shows = [appE l (VarE l (Sig (name "show") UnknownT)) (VarE l a) | a <- fields]
-            body = appE l (VarE l (Sig (name "__show_helper") UnknownT)) $
-                     listE l (stringE l (unname cn) : shows)
-        in simpleMA l [p] body []
+            pats = [VarP (name "d"), ConP cn [VarP n | Sig n _ <- fields]]
+
+            showstr str = appE l (varE l (Sig (name "Prelude.showString") UnknownT)) (stringE l str)
+            showprec n = appsE l (varE l (Sig (name "Prelude.showsPrec") UnknownT)) [integerE l 11, varE l n]
+            dot a b = appsE l (varE l (Sig (name "Prelude..") UnknownT)) [a, b]
+            dots = foldr1 dot 
+            
+            showsubs = [dot (showstr " ") (showprec x) | x <- fields]
+            showme = dots (showstr (unname cn) : showsubs)
+            parencond = appsE l (varE l (Sig (name "Prelude.>") UnknownT)) [
+                           varE l (Sig (name "d") UnknownT), integerE l 10]
+            normalbody = appsE l (varE l (Sig (name "Prelude.showParen") UnknownT)) [parencond, showme]
+
+            atombody = showstr (unname cn)
+            body = if null fields then atombody else normalbody
+        in simpleMA l pats body []
+
+      -- TODO: Show based on record constructors. We should not convert to a
+      -- NormalC to show.
       mkcon (RecordC cn ts) = mkcon (NormalC cn (map snd ts))
 
       shclauses = map mkcon cs
-      sh = Method (name "show") (clauseE l shclauses)
+      sh = Method (name "showsPrec") (clauseE l shclauses)
   in InstD l ctx cls [sh]
 
 derive :: Location -> Context -> Class -> [ConRec] -> Dec
