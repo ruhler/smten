@@ -15,7 +15,6 @@ import Data.Functor((<$>))
 
 import Smten.Symbolic
 import qualified Smten.SMT.Solver as SMT
-import Smten.Runtime.Haskelly
 import Smten.Runtime.SmtenHS
 import qualified Smten.Runtime.Prelude as R
 import Smten.SMT.FreeID
@@ -44,6 +43,7 @@ instance SmtenHS1 Symbolic where
         return (mux0 p va vb)
 
     realize1 m x = realize0 m <$> x
+    strict_app1 f s = f s
       
 
 return_symbolic :: a -> Symbolic a

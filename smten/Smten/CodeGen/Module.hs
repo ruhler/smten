@@ -29,7 +29,6 @@ moduleCG env mod = do
         H.parens ( H.text "module" H.<+> H.text (modprefix mn)
         ) H.<+> H.text "where" H.$+$
     H.text "import qualified Prelude" H.$+$
-    H.text "import qualified Smten.Runtime.Haskelly as Smten" H.$+$
     H.text "import qualified Smten.Runtime.SmtenHS as Smten" H.$+$
     H.text "import qualified Smten.Runtime.Prelude as Smten.Lib.Prelude" H.$+$
     H.text "import qualified Smten.Runtime.Symbolic" H.$+$

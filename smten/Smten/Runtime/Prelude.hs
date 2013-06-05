@@ -13,7 +13,6 @@ import Prelude hiding (IO, Char, Integer)
 import Data.Functor((<$>))
 
 import Smten.Runtime.SmtenHS as S
-import Smten.Runtime.Haskelly
 
 data Char = Char Prelude.Char
           | CharMux__ S.Bool Char Char
@@ -29,6 +28,8 @@ instance SmtenHS0 Char where
       case c of
          Char {} -> c
          CharMux__ p a b -> __caseTrue (realize0 m p) (realize0 m a) (realize0 m b)
+   strict_app0 f (CharMux__ p a b) = mux0 p (strict_app0 f a) (strict_app0 f b)
+   strict_app0 f c = f c
 
 data IO a = IO (Prelude.IO a)
           | IOMux__ S.Bool (IO a) (IO a)
@@ -42,4 +43,5 @@ instance SmtenHS1 IO where
     mux1 = IOMux__
     realize1 m (IO x) = IO (realize0 m <$> x)
     realize1 m (IOMux__ p a b) = __caseTrue (realize0 m p) (realize0 m a) (realize0 m b)
+    strict_app1 f (IOMux__ p a b) = mux0 p (strict_app0 f a) (strict_app0 f b)
 

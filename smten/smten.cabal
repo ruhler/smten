@@ -96,7 +96,6 @@ library
     Smten.CodeGen.Type
     Smten.CodeGen.Ppr
 
-    Smten.Runtime.Haskelly
     Smten.Runtime.Prelude
     Smten.Runtime.Primitives
     Smten.Runtime.SmtenHS
