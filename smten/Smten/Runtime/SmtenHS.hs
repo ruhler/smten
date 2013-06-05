@@ -121,10 +121,9 @@ instance SmtenHS2 (->) where
    realize2 m f = \x -> realize0 m (f x)
    strict_app2 g f = g f
 
-instance (Haskelly ha sa, Haskelly hb sb) => Haskelly (ha -> hb) (sa -> sb) where
-    frhs hf sx = frhs $ hf (tohs sx)
+instance (Haskelly ha sa, Haskelly hb sb, SmtenHS0 sa, SmtenHS0 sb) => Haskelly (ha -> hb) (sa -> sb) where
+    frhs hf sx = strict_app0 (frhs . hf . tohs) sx
     tohs sf hx = tohs $ sf (frhs hx)
-
 
 
 __caseTrue :: (SmtenHS0 z) => Bool -> z -> z -> z

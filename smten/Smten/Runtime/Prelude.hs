@@ -44,4 +44,5 @@ instance SmtenHS1 IO where
     realize1 m (IO x) = IO (realize0 m <$> x)
     realize1 m (IOMux__ p a b) = __caseTrue (realize0 m p) (realize0 m a) (realize0 m b)
     strict_app1 f (IOMux__ p a b) = mux0 p (strict_app0 f a) (strict_app0 f b)
+    strict_app1 f x = f x
 
