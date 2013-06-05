@@ -18,7 +18,8 @@ import qualified Smten.SMT.Solver as SMT
 import Smten.Runtime.SmtenHS
 import qualified Smten.Runtime.Prelude as R
 import Smten.SMT.FreeID
-import Smten.SMT.Yices.Yices2
+import Smten.SMT.Yices1.Yices1
+import Smten.SMT.Yices2.Yices2
 import Smten.SMT.DebugLL
 
 data SS = SS {
@@ -78,6 +79,7 @@ predicated p q = do
     return v
 
 mksolver :: Solver -> IO (SMT.Solver)
+mksolver Yices1 = yices1
 mksolver Yices2 = yices2
 mksolver (DebugLL dbg s) = do
     s' <- mksolver s

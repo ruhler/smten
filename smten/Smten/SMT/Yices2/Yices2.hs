@@ -38,12 +38,12 @@
 {-# LANGUAGE PatternGuards #-}
 
 -- | Backend for the Yices2 solver
-module Smten.SMT.Yices.Yices2 (Yices2, yices2) where
+module Smten.SMT.Yices2.Yices2 (yices2) where
 
 import Foreign
 import Foreign.C.String
 
-import Smten.SMT.Yices.FFI2
+import Smten.SMT.Yices2.FFI
 import Smten.SMT.AST
 import qualified Smten.SMT.Assert as A
 import qualified Smten.SMT.Solver as S

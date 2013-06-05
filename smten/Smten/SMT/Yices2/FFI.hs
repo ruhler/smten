@@ -37,90 +37,7 @@
 {-# LANGUAGE ForeignFunctionInterface #-}
 
 -- | Raw FFI interface to yices2.
-module Smten.SMT.Yices.FFI2 (
-    YContext, YContextConfig, YParam, YType, YTerm, fromYSMTStatus,
-    c_yices_init,
-    c_yices_exit,
-    c_yices_print_error,
-    c_yices_new_scalar_type,
-    c_yices_constant,
-    c_yices_new_uninterpreted_type,
-    c_yices_new_uninterpreted_term,
-    c_yices_set_type_name,
-    c_yices_set_term_name,
-    c_yices_get_type_by_name,
-    c_yices_get_term_by_name,
-    c_yices_parse_type,
-    c_yices_parse_term,
-
-    -- Type constructors
-    c_yices_tuple_type,
-    c_yices_function_type,  
-    c_yices_bv_type,
-    c_yices_int_type,
-    c_yices_bool_type,
-    c_yices_real_type,
-
-    -- Term constructors
-    c_yices_true,
-    c_yices_false,
-    c_yices_int64,
-    c_yices_not,
-    c_yices_eq,
-    c_yices_tuple,
-    c_yices_tuple_update,
-    c_yices_select,
-    c_yices_application,
-    c_yices_update,
-    c_yices_ite,
-    c_yices_arith_lt_atom,
-    c_yices_arith_leq_atom,
-    c_yices_arith_gt_atom,
-    c_yices_arith_geq_atom,
-    c_yices_add,
-    c_yices_sub,
-    c_yices_mul,
-    c_yices_or2,
-    c_yices_and2,
-    c_yices_xor2,
-    c_yices_and,
-    c_yices_or,
-
-    c_yices_bvconst_uint64,
-    c_yices_bvadd,
-    c_yices_bvsub,
-    c_yices_bvmul,
-    c_yices_bvand,
-    c_yices_bvor,
-    c_yices_bvnot,
-    c_yices_zero_extend,
-    c_yices_sign_extend,
-    c_yices_bvshl,
-    c_yices_bvlshr,
-    c_yices_shift_left0,
-    c_yices_shift_right0,
-    c_yices_bvextract,
-    c_yices_bvconcat,
-    c_yices_bvlt_atom,
-    c_yices_bvle_atom,
-    c_yices_bvgt_atom,
-    c_yices_bvge_atom,
-
-    -- Working with contexts
-    c_yices_new_context,
-    c_yices_free_context,
-    c_yices_assert_formula,
-    c_yices_check_context,
-    c_yices_push,
-    c_yices_pop,
-    c_yices_get_model,
-    c_yices_free_model,
-    c_yices_get_bool_value,
-    c_yices_get_int64_value,
-    c_yices_get_bv_value,
-    c_yices_print_model,
-    c_fdopen,
-    ) where
+module Smten.SMT.Yices2.FFI where
 
 import Data.Int
 
@@ -351,8 +268,6 @@ foreign import ccall unsafe "yices_get_bv_value"
 foreign import ccall unsafe "yices_print_model"
     c_yices_print_model :: Ptr CFile -> Ptr YModel -> IO ()
 
-foreign import ccall unsafe "fdopen"
-    c_fdopen :: CInt -> CString -> IO (Ptr CFile)
 
 foreign import ccall unsafe "yices_bvlt_atom"
     c_yices_bvlt_atom :: YTerm -> YTerm -> IO YTerm

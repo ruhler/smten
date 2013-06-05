@@ -106,8 +106,10 @@ library
     Smten.SMT.DebugLL
     Smten.SMT.FreeID
     Smten.SMT.Solver
-    Smten.SMT.Yices.FFI2
-    Smten.SMT.Yices.Yices2
+    Smten.SMT.Yices1.FFI
+    Smten.SMT.Yices1.Yices1
+    Smten.SMT.Yices2.FFI
+    Smten.SMT.Yices2.Yices2
 
     Smten.Symbolic
 
