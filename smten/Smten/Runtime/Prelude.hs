@@ -19,8 +19,8 @@ data Char = Char Prelude.Char
 
 instance Haskelly Prelude.Char Char where
    frhs = Char
-   tohs (Char c) = return c
-   tohs _ = Nothing
+   tohs (Char c) = c
+   tohs _ = error "tohs.Char failed"
 
 instance SmtenHS0 Char where
    mux0 = CharMux__
@@ -36,8 +36,8 @@ data IO a = IO (Prelude.IO a)
 
 instance (Haskelly ha sa) => Haskelly (Prelude.IO ha) (IO sa) where
     frhs x = IO (frhs <$> x)
-    tohs (IO x) = return (tohs' <$> x)
-    tohs _ = Nothing
+    tohs (IO x) = tohs <$> x
+    tohs _ = error "tohs.IO failed"
 
 instance SmtenHS1 IO where
     mux1 = IOMux__

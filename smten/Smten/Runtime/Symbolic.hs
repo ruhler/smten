@@ -34,7 +34,7 @@ data SMTType = SMTBool | SMTInteger
     
 instance (Haskelly ha sa) => Haskelly (Symbolic ha) (Symbolic sa) where
     frhs x = frhs <$> x
-    tohs x = return (tohs' <$> x)
+    tohs x = tohs <$> x
 
 instance SmtenHS1 Symbolic where
     mux1 p a b = do

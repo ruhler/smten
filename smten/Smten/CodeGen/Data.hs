@@ -96,7 +96,7 @@ mkHaskellyD nm tyvars cons = do
       st = foldl H.AppT (H.ConT (qtynameCG nm)) svars
       ty = foldl1 H.AppT [H.ConT $ H.mkName "Smten.Haskelly", ht, st]
   frhs <- mkFrhsD cons
-  tohs <- mkTohsD cons
+  tohs <- mkTohsD nm cons
   return [H.InstanceD ctx ty [frhs, tohs]]
 
 --     frhs (FooA x1 x2 ...) = Smten.Lib.FooA (frhs x1) (frhs x2) ...
@@ -112,31 +112,22 @@ mkFrhsD cons = do
         in H.Clause [pat] (H.NormalB body) []
   return $ H.FunD (H.mkName "frhs") (map mkcon cons)
 
---     tohs (Smten.Lib.FooA x1 x2 ...) = do
---        x1' <- tohs x1
---        x2' <- tohs x2
---        ...
---        return (FooA x1' x2' ...)
---     tohs (Smten.Lib.FooB x1 x2 ...) = do
---        x1' <- tohs x1
---        x2' <- tohs x2
---        ...
---        return (FooB x1' x2' ...)
+--     tohs (Smten.Lib.FooA x1 x2 ...) = FooA (tohs x1) (tohs x2) ...
+--     tohs (Smten.Lib.FooB x1 x2 ...) = FooB (tohs xs) (tohs x2) ...
 --     ...
---     tohs _ = Nothing
-mkTohsD :: [Con] -> CG H.Dec
-mkTohsD cons = do
+--     _ = error "tohs.Foo failed"
+mkTohsD :: Name -> [Con] -> CG H.Dec
+mkTohsD nm cons = do
   let mkcon :: Con -> H.Clause
       mkcon (Con cn tys) = 
         let xs = [H.mkName $ "x" ++ show i | i <- [1..(length tys)]]
-            xs' = [H.mkName $ "x" ++ show i ++ "'" | i <- [1..(length tys)]]
             pat = H.ConP (qnameCG cn) (map H.VarP xs)
-            stmts = [H.BindS (H.VarP x') (H.AppE (H.VarE (H.mkName "Smten.tohs")) (H.VarE x)) | (x, x') <- zip xs xs']
-            rtn = H.NoBindS $ H.AppE (H.VarE (H.mkName "Prelude.return"))
-                                     (foldl H.AppE (H.ConE (qhsnameCG cn)) (map H.VarE xs'))
-            body = H.DoE (stmts ++ [rtn])
+            body = foldl H.AppE (H.ConE (qhsnameCG cn)) [H.AppE (H.VarE $ H.mkName "Smten.tohs") (H.VarE x) | x <- xs]
         in H.Clause [pat] (H.NormalB body) []
-      def = H.Clause [H.WildP] (H.NormalB (H.VarE (H.mkName "Prelude.Nothing"))) []
+
+      defbody = H.AppE (H.VarE $ H.mkName "Prelude.error")
+                       (H.LitE $ H.StringL ("tohs." ++ unname nm ++ " failed"))
+      def = H.Clause [H.WildP] (H.NormalB defbody) []
   return $ H.FunD (H.mkName "tohs") (map mkcon cons ++ [def])
 
 -- instance SmtenHSN Foo where

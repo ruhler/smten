@@ -53,10 +53,10 @@ methodCG cls (Method n e) = do
 mainCG :: Name -> CG [H.Dec]
 mainCG n = do
   let -- main__ :: Prelude.IO ()
-      -- main__ = Smten.tohs' main
+      -- main__ = Smten.tohs main
      sig = H.SigD (H.mkName "main__") (H.AppT (H.ConT $ H.mkName "Prelude.IO")
                                               (H.ConT $ H.mkName "()"))
-     body = H.AppE (H.VarE $ H.mkName "Smten.tohs'") (H.VarE (qnameCG n))
+     body = H.AppE (H.VarE $ H.mkName "Smten.tohs") (H.VarE (qnameCG n))
      clause = H.Clause [] (H.NormalB body) []
      fun = H.FunD (H.mkName "main__") [clause] 
   return [sig, fun]

@@ -51,10 +51,7 @@ derive_SmtenHS 3
 
 class Haskelly h s where
     frhs :: h -> s
-    tohs :: s -> Maybe h
-
-tohs' :: (Haskelly h s) => s -> h
-tohs' = fromMaybe (error "tohs'") . tohs
+    tohs :: s -> h
 
 instance SmtenHS0 Bool where
    mux0 = BoolMux
@@ -73,13 +70,14 @@ instance SmtenHS0 Bool where
 
 instance Haskelly Bool Bool where
   frhs = id
-  tohs = return
+  tohs = id
 
 instance Haskelly Prelude.Bool Bool where
   frhs p = if p then True else False
-  tohs False = return Prelude.False
-  tohs True = return Prelude.True 
-  tohs _ = Nothing
+
+  tohs False = Prelude.False
+  tohs True = Prelude.True 
+  tohs _ = error "tohs.Bool failed"
 
 
 instance SmtenHS0 Integer where
@@ -99,12 +97,12 @@ instance SmtenHS0 Integer where
 
 instance Haskelly Integer Integer where
    frhs = id
-   tohs = return
+   tohs = id
 
 instance Haskelly Prelude.Integer Integer where
    frhs = Integer
-   tohs (Integer c) = return c
-   tohs _ = Nothing
+   tohs (Integer c) = c
+   tohs _ = error "tohs.Integer"
 
 newtype Poly a = Poly a
 
@@ -115,7 +113,7 @@ instance SmtenHS1 Poly where
 
 instance Haskelly (Poly s) s where
     frhs (Poly x) = x
-    tohs x = return (Poly x)
+    tohs = Poly
 
 
 instance SmtenHS2 (->) where
@@ -124,8 +122,8 @@ instance SmtenHS2 (->) where
    strict_app2 g f = g f
 
 instance (Haskelly ha sa, Haskelly hb sb) => Haskelly (ha -> hb) (sa -> sb) where
-    frhs hf sx = frhs $ hf (tohs' sx)
-    tohs sf = return (\hx -> tohs' $ sf (frhs hx))
+    frhs hf sx = frhs $ hf (tohs sx)
+    tohs sf hx = tohs $ sf (frhs hx)
 
 
 
