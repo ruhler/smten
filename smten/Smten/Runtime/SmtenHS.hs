@@ -73,6 +73,7 @@ derive_SmtenHS 3
 
 instance SmtenHS0 Bool where
    mux0 = BoolMux
+
    realize0 m True = True
    realize0 m False = False
    realize0 m (BoolVar x) = fromMaybe (error "realize0 Bool failed") $ do
@@ -82,8 +83,12 @@ instance SmtenHS0 Bool where
       = __caseTrue (realize0 m p) (realize0 m a) (realize0 m b)
    realize0 m (Bool__EqInteger a b) = eq_Integer (realize0 m a) (realize0 m b)
 
+   strict_app0 f (BoolMux p a b) = mux0 p (strict_app0 f a) (strict_app0 f b)
+   strict_app0 f b = f b
+
 instance SmtenHS0 Integer where
    mux0 = IntegerMux__
+
    realize0 m c = 
       case c of
          Integer {} -> c
@@ -93,13 +98,18 @@ instance SmtenHS0 Integer where
             d <- lookup x m
             frhs <$> (fromDynamic d :: Maybe Prelude.Integer)
 
+   strict_app0 f (IntegerMux__ p a b) = mux0 p (strict_app0 f a) (strict_app0 f b)
+   strict_app0 f i = f i
+
 instance SmtenHS1 Poly where
    mux1 p (Poly a) (Poly b) = Poly (mux0 p a b)
    realize1 m (Poly a) = Poly (realize0 m a)
+   strict_app1 f p = f p
 
 instance SmtenHS2 (->) where
    mux2 p fa fb = \x -> mux0 p (fa x) (fb x)
    realize2 m f = \x -> realize0 m (f x)
+   strict_app2 g f = g f
 
 __caseTrue :: (SmtenHS0 z) => Bool -> z -> z -> z
 __caseTrue x y n = 

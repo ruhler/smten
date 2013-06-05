@@ -142,6 +142,7 @@ mkTohsD cons = do
 -- instance SmtenHSN Foo where
 --   muxN = ...
 --   realizeN = ...
+--   strict_appN = ...
 smtenHS :: Name -> [TyVar] -> [Con] -> CG [H.Dec]
 smtenHS nm tyvs cs = do
    let n = length tyvs
@@ -149,7 +150,8 @@ smtenHS nm tyvs cs = do
                    (H.ConT $ qtynameCG nm)
    mux <- muxD nm tyvs
    rel <- realizeD nm tyvs cs
-   return [H.InstanceD [] ty [mux, rel]]
+   app <- appD nm tyvs cs
+   return [H.InstanceD [] ty [mux, rel, app]]
 
 --   muxN = FooMux__
 muxD :: Name -> [TyVar] -> CG H.Dec
@@ -184,4 +186,22 @@ realizeD n tys cs = do
       mxbody = foldl H.AppE (H.VarE (qcasenmCG trueN)) mxrs
       mxcon = H.Clause mxpats (H.NormalB mxbody) []
   return $ H.FunD (H.mkName $ "realize" ++ show (length tys)) (map mkcon cs ++ [mxcon])
+
+-- strict_appN f (FooMux__ p a b) = mux0 p (strict_app0 f a) (strict_app0 f b) 
+-- strict_appN f x = f x
+appD :: Name -> [TyVar] -> [Con] -> CG H.Dec
+appD nm tyvs _ = do
+  let n = length tyvs
+      defpats@[fp, _] = [H.VarP $ H.mkName v | v <- ["f", "x"]]
+      defbody = H.AppE (H.VarE $ H.mkName "f") (H.VarE $ H.mkName "x")
+      defclause = H.Clause defpats (H.NormalB defbody) []
+
+      mxpats = [fp, H.ConP (qmuxnmCG nm) [H.VarP (H.mkName v) | v <- ["p", "a", "b"]]]
+      mxbody = foldl1 H.AppE [
+                  H.VarE $ H.mkName "Smten.mux0",
+                  H.VarE $ H.mkName "p",
+                  foldl1 H.AppE [H.VarE (H.mkName v) | v <- ["Smten.strict_app0", "f", "a"]],
+                  foldl1 H.AppE [H.VarE (H.mkName v) | v <- ["Smten.strict_app0", "f", "b"]]]
+      mxclause = H.Clause mxpats (H.NormalB mxbody) []
+  return $ H.FunD (H.mkName $ "strict_app" ++ show n) [mxclause, defclause]
 
