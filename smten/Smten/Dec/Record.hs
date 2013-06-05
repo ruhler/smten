@@ -125,6 +125,58 @@ deriveEq l ctx cls cs =
       eq = Method (name "==") (clauseE l eqclauses)
   in InstD l ctx cls [eq]
 
+-- Derive an instance of Ord for the given data type declaration.
+-- Generates something of the form:
+--    instance ctx => Ord (Foo ...) where
+--       (<=) (Foo1 a1 a2 ...) (Foo1 b1 b2 ...) =
+--              a1 < b1 || (a1 == b1 && a2 < b2 || ...)
+--       (<=) (Foo1 a1 a2 ...) (Foo2 b1 b2 ...) = False
+--       (<=) (Foo1 a1 a2 ...) (Foo3 b1 b2 ...) = False
+--            ...
+--       (<=) (Foo2 a1 a2 ...) (Foo1 b1 b2 ...) = True
+--       (<=) (Foo2 a1 a2 ...) (Foo2 b1 b2 ...) =
+--              a1 < b1 || (a1 == b1 && a2 < b2 || ...)
+--            ...
+deriveOrd :: Location -> Context -> Class -> [ConRec] -> Dec
+deriveOrd l ctx cls cs =
+  let mkclause :: (Name, [Type]) -> (Name, [Type]) -> Exp -> MAlt
+      mkclause (ln, lts) (rn, rts) body =
+        let pl = ConP ln [VarP (name $ "a" ++ show i) | i <- [1..length lts]]
+            pr = ConP rn [VarP (name $ "b" ++ show i) | i <- [1..length rts]]
+        in simpleMA l [pl, pr] body []
+
+      mkop :: String -> Int -> Exp
+      mkop op n = appsE l (varE l (Sig (name op) UnknownT)) [
+                           varE l (Sig (name $ "a" ++ show n) UnknownT),
+                           varE l (Sig (name $ "b" ++ show n) UnknownT)]
+
+      mkcmp :: Int -> Int -> Exp
+      mkcmp lo hi 
+        | lo < hi = 
+            let lt = mkop "Prelude.<" lo
+                eq = mkop "Prelude.==" lo
+                rest = mkcmp (lo+1) hi
+                eqcase = appsE l (varE l (Sig (name "Prelude.&&") UnknownT)) [eq, rest]
+            in appsE l (varE l (Sig (name "Prelude.||") UnknownT)) [lt, eqcase]
+        | lo == hi = mkop "Prelude.<=" lo
+        | lo > hi = trueE l
+
+      mkleft :: (ConRec, Integer) -> [MAlt]
+      mkleft (NormalC ln lts, li) =
+          let mkright :: (ConRec, Integer) -> MAlt
+              mkright (NormalC rn rts, ri)
+                | li < ri = mkclause (ln, lts) (rn, rts) (trueE l)
+                | li == ri = mkclause (ln, lts) (rn, rts) (mkcmp 1 (length lts))
+                | li > ri = mkclause (ln, lts) (rn, rts) (falseE l)
+              mkright (RecordC rn rts, ri) = mkright (NormalC rn (map snd rts), ri)
+          in map mkright (zip cs [0..])
+      mkleft (RecordC ln lts, li) = mkleft (NormalC ln (map snd lts), li)
+
+      clauses = concatMap mkleft (zip cs [0..])
+      ord = Method (name "<=") (clauseE l clauses)
+      inst = InstD l ctx cls [ord]
+  in inst
+
 -- Derive an instance of Free (before qualify and inference) for the given
 -- data type declaration.
 --
@@ -220,6 +272,7 @@ deriveShow l ctx cls cs =
 derive :: Location -> Context -> Class -> [ConRec] -> Dec
 derive l ctx cls@(Class n _)
  | n == name "Eq" = deriveEq l ctx cls
+ | n == name "Ord" = deriveOrd l ctx cls
  | n == name "Free" = deriveFree l ctx cls
  | n == name "Show" = deriveShow l ctx cls
  | otherwise = error $ "deriving " ++ show n ++ " not supported in smten"

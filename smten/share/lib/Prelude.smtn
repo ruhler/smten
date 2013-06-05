@@ -115,6 +115,7 @@ mapM_ f as = sequence_ (map f as)
 
 -- data () = ()
 deriving instance Eq ()
+deriving instance Ord ()
   
 id :: a -> a
 id x = x
@@ -132,7 +133,7 @@ flip f x y = f y x
 ($) f x = f x
 
 data Bool = False | True
-    deriving (Eq, Show)
+    deriving (Eq, Ord, Show)
 
 (&&) :: Bool -> Bool -> Bool
 (&&) True x = x
@@ -176,7 +177,7 @@ instance Bounded Char where
 type String = [Char]
 
 data Maybe a = Nothing | Just a
-  deriving (Eq, Show)
+  deriving (Eq, Ord, Show)
 
 maybe :: b -> (a -> b) -> Maybe a -> b
 maybe n f Nothing = n
@@ -193,7 +194,7 @@ instance Monad Maybe where
     fail s = Nothing
 
 data Either a b = Left a | Right b
-    deriving (Eq, Show)
+    deriving (Eq, Ord, Show)
 
 either :: (a -> c) -> (b -> c) -> Either a b -> c
 either f g (Left x) = f x
@@ -217,7 +218,7 @@ instance Monad IO where
   (>>=) = bind_io
 
 data Ordering = LT | EQ | GT
-    deriving (Eq, Show)
+    deriving (Eq, Ord, Show)
 
 -- data Integer = ... -1 | 0 | 1 ...
 
@@ -267,6 +268,7 @@ instance Enum Integer where
 -- Lists
 
 deriving instance (Eq a) => Eq [a]
+deriving instance (Ord a) => Ord [a]
 
 instance Functor [] where
     fmap = map
@@ -278,7 +280,9 @@ instance Monad [] where
 
 -- Tuples
 deriving instance (Eq a, Eq b) => Eq (a, b)
+deriving instance (Ord a, Ord b) => Ord (a, b)
 deriving instance (Eq a, Eq b, Eq c) => Eq (a, b, c)
+deriving instance (Ord a, Ord b, Ord c) => Ord (a, b, c)
 
 fst :: (a, b) -> a
 fst (x, _) = x

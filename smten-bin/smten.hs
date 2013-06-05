@@ -45,6 +45,8 @@ import qualified System.Console.CmdArgs.Implicit as A
 import Smten.Loader
 import Smten.CodeGen
 import Smten
+import Smten.Ppr
+import Smten.Module ()
 
 data Args = Args {
     include :: [FilePath],
@@ -75,5 +77,6 @@ main = do
 
     let includes = include args ++ [stdlib]
     mods <- loadtyped includes (file args)
+    A.whenLoud $ putStrLn (pretty mods)
     codegen (hsdir args) mods
 

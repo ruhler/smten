@@ -1,0 +1,16 @@
+
+module Smten.Tests.Ord (tests) where
+
+import Smten.Tests.Test
+
+tests :: IO ()
+tests = do
+    test "Ord.Unit" (() <= ())
+    test "Ord.Bool.FF" (False <= False)
+    test "Ord.Bool.FT" (False <= True)
+    test "Ord.Bool.TF" (not (True <= False))
+    test "Ord.Bool.TT" (True <= True)
+    test "Ord.Tuple3" ((True, False, False) <= (True, False, True))
+    test "Ord.List" (compare [True, False, False] [True, False] == GT)
+    putStrLn "Ord PASSED"
+
