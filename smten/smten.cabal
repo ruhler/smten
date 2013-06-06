@@ -20,13 +20,52 @@ data-files:
     lib/Smten/Bit/*.smtn
     lib/Smten/Tests/*.smtn
     lib/Smten/Tests/SMT/*.smtn
+
 source-repository this
   type: git
   location: /afs/csail.mit.edu/u/r/ruhler/git/smten
   --branch:
   --tag:
+
 library
   exposed-modules:
+    Smten.Runtime.Builtin
+    Smten.Runtime.Char
+    Smten.Runtime.IO
+    Smten.Runtime.Primitives
+    Smten.Runtime.SmtenHS
+    Smten.Runtime.Symbolic
+    Smten.SMT.Solvers
+
+  other-modules:
+    Smten.SMT.Assert
+    Smten.SMT.AST
+    Smten.SMT.DebugLL
+    Smten.SMT.FreeID
+    Smten.SMT.Solver
+    Smten.SMT.Yices1.FFI
+    Smten.SMT.Yices1.Yices1
+    Smten.SMT.Yices2.FFI
+    Smten.SMT.Yices2.Yices2
+    Smten.SMT.STP.FFI
+    Smten.SMT.STP.STP
+
+  build-depends: base ==4.6.*, template-haskell ==2.8.*, mtl ==2.1.*,
+                 hashtables ==1.0.*
+  extra-libraries: stp stdc++ yices2 yices1
+  --ghc-prof-options: -fprof-auto-top
+  ghc-options: -fwarn-unused-binds -fwarn-unused-imports
+
+executable smten
+  main-is: smten.hs
+  build-tools: happy
+  build-depends: base ==4.6.*, pretty ==1.1.*, bytestring ==0.10.*,
+                 hashable ==1.2.*, containers ==0.5.*,
+                 template-haskell ==2.8.*, mtl ==2.1.*, array ==0.4.*,
+                 hashmap ==1.3.*, directory ==1.2.*, MissingH ==1.2.*,
+                 cmdargs ==0.10.*, syb ==0.4.* 
+  other-modules:
+    Paths_smten
     Smten
     Smten.Bit
     Smten.Strict
@@ -100,26 +139,6 @@ library
     Smten.CodeGen.Type
     Smten.CodeGen.Ppr
 
-    Smten.Runtime.Builtin
-    Smten.Runtime.Char
-    Smten.Runtime.IO
-    Smten.Runtime.Primitives
-    Smten.Runtime.SmtenHS
-    Smten.Runtime.Symbolic
-
-    Smten.SMT.Assert
-    Smten.SMT.AST
-    Smten.SMT.DebugLL
-    Smten.SMT.FreeID
-    Smten.SMT.Solver
-    Smten.SMT.Solvers
-    Smten.SMT.Yices1.FFI
-    Smten.SMT.Yices1.Yices1
-    Smten.SMT.Yices2.FFI
-    Smten.SMT.Yices2.Yices2
-    Smten.SMT.STP.FFI
-    Smten.SMT.STP.STP
-
     Smten.Loader
 
     Smten.Fresh
@@ -127,14 +146,7 @@ library
 
     Smten.Ppr
     Smten.Lit
-  other-modules: Paths_smten
-  build-depends: base ==4.6.*, mtl ==2.1.*, hashable ==1.2.*, array ==0.4.*,
-                 bytestring ==0.10.*, containers ==0.5.*,
-                 template-haskell ==2.8.*, hashmap ==1.3.*,
-                 directory ==1.2.*, pretty ==1.1.*,
-                 MissingH ==1.2.*, hashtables ==1.0.*
-  build-tools: happy
-  extra-libraries: stp stdc++ yices2 yices1
+
   --ghc-prof-options: -fprof-auto-top
-  ghc-options: -fwarn-unused-binds -fwarn-unused-imports
+  ghc-options: -rtsopts -fwarn-unused-binds -fwarn-unused-imports
 

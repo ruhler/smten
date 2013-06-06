@@ -50,15 +50,6 @@ indir smten {
     hrun cabal sdist --builddir ../build/smten
 }
 
-# The smten-bin package
-indir smten-bin {
-    hrun cabal install \
-        --builddir ../build/smten-bin \
-        --force-reinstalls -O0
-
-    hrun cabal sdist --builddir ../build/smten-bin
-}
-
 set SMTEN build/home/.cabal/bin/smten
 set SMTN smten/share/lib
 

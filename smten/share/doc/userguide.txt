@@ -1,18 +1,13 @@
 Smten User Guide
 ================
 Richard Uhler <ruhler@csail.mit.edu>
-March 22, 2013
+June 06, 2013
 
 Installing Smten
 ----------------
-Smten is distributed as three separate cabal packages. The three packages are
-as follows.
+Smten is distributed as a cabal package.
 
-smten:: The Smten library, without backend SMT solvers.
-smten-smt:: SMT solver backends for Smten.
-smten-bin:: The smten executable.
-
-To install the smten packages, you must first install the yices1, yices2, and
+To install the smten package, you must first install the yices1, yices2, and
 STP solvers. Note that yices1 requires special installation procedures to work
 correctly with Smten, as described below.
 
@@ -35,12 +30,12 @@ use with smten, run the commands:
    ln -s libyices.so.2.1.0 libyices2.so
    ln -s libyices.so.2.1.0 libyices.so.2.0 
 
-Installing the Smten Packages
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-After yices1, yices2, and STP have all been installed, the three smten
-packages can be installed as normal cabal packages. For example:
+Installing the Smten Package
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+After yices1, yices2, and STP have all been installed, the smten
+packages can be installed as a normal cabal package. For example:
 
-  cabal install smten smten-smt smten-bin
+  cabal install smten
 
 See the cabal-install manual for more information on how to install cabal
 packages on your system.
@@ -58,7 +53,7 @@ implemented yet in the Smten compiler. More specifically:
 
 * Primitives types available in Smten include Integer and Char, but do not
   include fixed width integers or floating point numbers.
-* Module support is very limited.
+* Module support is limited.
 * Newtype declarations are not supported.
 * Top level variable declarations must have explicit types.
 * Various other minor features of Haskell are not yet supported.
@@ -68,15 +63,15 @@ Smten makes a few extensions to Haskell:
 
 * There is a primitive Bit vector type.
 * There is limited support for numeric (size) types.
-* Smten allows primitives to be specified by giving a type declaration without
-  an implementation for a function.
+* Smten allows importing of Haskell code using the foreign function interface
+  with a new calling convention "hs".
 * Smten includes primitive Symbolic and SMT monads for manipulating symbolic
   computations and SMT queries.
 
 The Symbolic Monad
 ~~~~~~~~~~~~~~~~~~
 Smten includes a Symbolic monad for manipulating symbolic computations. The
-Symbolic monad is defined in the Smten.SMT.Symbolic module. Its API is as
+Symbolic monad is defined in the Smten.Symbolic module. Its API is as
 follows:
 
 ----------------
@@ -96,12 +91,12 @@ instance Free Integer
 instance Free Bool
 instance Free (Bit #n)
 
-assert :: Bool -> Symbolic ()
+fail_symbolic :: Symbolic ()
 
-data Solver = Yices1 | Yices2 | STP
+data Solver = Yices1 | Yices2 | STP | Debug FilePath Solver
     deriving (Eq, Show)
 
-runSymbolic :: Solver -> Maybe FilePath -> Symbolic a -> IO (Maybe a)
+run_symbolic :: Solver -> Symbolic a -> IO (Maybe a)
 -----------------------
 
 The type 'Symbolic a' represents a (possibly infinite) set of values of type
@@ -112,10 +107,7 @@ instances of 'free' are provided for Integer, Bool, and Bit. Instance of
 'free' for bounded algebraic data types can be automatically derived using
 Haskell's deriving mechanism.
 
-assert:: The assert primitive restricts the values represented by a 'Symbolic
-a' to those under which the given predicate is satisfied. More formally,
-'assert True' is the singleton set '{()}', and 'assert False' is the empty
-set.
+fail_symbolic:: Represents the empty set.
 
 return:: The return primitive creates a 'Symbolic a' with its argument as the
 single value.
@@ -123,8 +115,7 @@ single value.
 >>=:: The second argument to bind is applied to each value in the first
 argument to bind, and the union of the results is returned.
 
-runSymbolic:: Run a symbolic computation using the given SMT solver. The
-second argument is an optional file where debug output should be logged. The
+run_symbolic:: Run a symbolic computation using the given SMT solver. The
 symbolic computation nondeterministically returns one of the elements of the
 set, or Nothing if the set is empty.
 
@@ -133,7 +124,7 @@ solver to test whether there exist any integers which satisfy the predicates
 'f' and 'g':
 
 ------------
-import Smten.SMT.Symbolic
+import Smten.Symbolic
 
 f :: Integer -> Bool 
 f = ...
@@ -143,37 +134,25 @@ g = ...
 
 main :: IO ()
 main = do
-  result <- runSymbolic Yices2 (Just "debug.txt") $ do
+  result <- run_symbolic (Debug "query.dbg" Yices2) $ do
      x <- free
-     assert (f x)
-     assert (g x)
-     return x
+     if (f x && g x)
+        then return x
+        else fail_symbolic
   case result of
     Just v -> putStrLn $ "The Integer " ++ show v ++ " satisfies f and g"
     Nothing -> putStrLn $ "No Integer satisfies both predicates f and g"
 -------------
 
-The SMT Monad
-~~~~~~~~~~~~~
-Smten includes an SMT monad for manipulating SMT contexts. The SMT monad
-allows you to make use of back-end support for incremental SMT queries.
+The Smten Compiler
+~~~~~~~~~~~~~~~~~~
+The Smten compiler compiles smten code to Haskell. This is done using the
+'smten' command.
 
-TODO: Describe the SMT Monad API.
+For example, to compile "foo.smtn" and run the executable:
 
-The Smten Interpreter and Compiler
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-There are two ways to run a Smten program: using the Smten interpreter, or
-compiling to Haskell and generating a separate executable from that. Both of
-these tasks are done using the 'smten' command.
-
-For example, to run a smten program called "foo.smtn" in the interpreter:
-    
-    smten --io --file foo.smtn 
-
-To compile "foo.smtn" and run the executable:
-
-    smten --haskellf -f foo.smtn -o foo.hs
-    ghc -o foo -main-is __main foo.hs 
+    smten --haskellf -f foo.smtn --hsdir build
+    ghc -o foo -ibuild -main-is Smten.Lib.Main.__main build/Smten/Lib/Main/Main.hs
     ./foo
 
 For more detail on the options available to the 'smten' command, run:
