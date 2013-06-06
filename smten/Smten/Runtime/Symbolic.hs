@@ -6,14 +6,17 @@
 module Smten.Runtime.Symbolic (
     Symbolic,
     return_symbolic, bind_symbolic, run_symbolic,
-    fail_symbolic, free_Bool, free_Integer,
-    IO, Maybe, Solvers.Solver, S.Bool, S.Integer,
+    fail_symbolic, free_Bool, free_Integer, free_Bit,
+    IO, Maybe, Solvers.Solver, S.Bool, S.Integer, S.Bit,
     ) where
+
+import Prelude as P
 
 import Control.Monad.State
 import Data.Dynamic
 import Data.Functor((<$>))
 
+import Smten.Bit
 import Smten.SMT.Solver
 import qualified Smten.SMT.Solvers as Solvers
 import Smten.Runtime.SmtenHS as S
@@ -27,7 +30,7 @@ data SS = SS {
 
 type Symbolic = StateT SS IO
 
-data SMTType = SMTBool | SMTInteger 
+data SMTType = SMTBool | SMTInteger | SMTBit P.Integer
     deriving (Eq, Show)
     
 instance (Haskelly ha sa) => Haskelly (Symbolic ha) (Symbolic sa) where
@@ -67,6 +70,12 @@ free_Integer = do
     modify $ \s -> s { ss_free = (fid, SMTInteger) : ss_free s }
     return $ S.IntegerVar fid
 
+free_Bit :: S.Integer -> Symbolic S.Bit
+free_Bit (S.Integer v) = do
+    fid <- liftIO fresh
+    modify $ \s -> s { ss_free = (fid, SMTBit v) : ss_free s }
+    return $ S.BitVar fid
+
 predicated :: S.Bool -> Symbolic a -> Symbolic a
 predicated p q = do
     pold <- gets ss_pred
@@ -92,10 +101,14 @@ run_symbolic s q = do
 declare :: Solver -> (FreeID, SMTType) -> IO ()
 declare s (f, SMTBool) = declare_bool s (freenm f)
 declare s (f, SMTInteger) = declare_integer s (freenm f)
+declare s (f, SMTBit w) = declare_bit s (freenm f) w
 
 getValue :: Solver -> (FreeID, SMTType) -> IO Dynamic
 getValue s (f, SMTBool) = toDyn <$> getBoolValue s (freenm f)
 getValue s (f, SMTInteger) = toDyn <$> getIntegerValue s (freenm f)
+getValue s (f, SMTBit w) = do
+    v <- getBitVectorValue s (freenm f) w
+    return $ toDyn (bv_make w v)
  
 andB :: S.Bool -> S.Bool -> S.Bool
 andB p q = S.__caseTrue p q S.False

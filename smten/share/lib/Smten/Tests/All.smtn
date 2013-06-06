@@ -11,6 +11,7 @@ import qualified Smten.Tests.State
 import qualified Smten.Tests.BitDynamic
 import qualified Smten.Tests.SMT.Core
 import qualified Smten.Tests.SMT.Integer
+import qualified Smten.Tests.SMT.BitDynamic
 import qualified Smten.Tests.SMT.Share
 
 testall :: IO ()
@@ -25,6 +26,7 @@ testall = do
     Smten.Tests.BitDynamic.tests
     Smten.Tests.SMT.Core.tests
     Smten.Tests.SMT.Integer.tests
+    Smten.Tests.SMT.BitDynamic.tests
     Smten.Tests.SMT.Share.tests
 
 main :: IO ()

@@ -1,7 +1,10 @@
 
 module Smten.Symbolic where
 
+import Smten.Bit.Dynamic
+
 data Symbolic a = 
+
 
 foreign import hs "Smten.Runtime.Symbolic.return_symbolic"
     return_symbolic :: a -> Symbolic a
@@ -17,6 +20,9 @@ foreign import hs "Smten.Runtime.Symbolic.free_Bool"
 
 foreign import hs "Smten.Runtime.Symbolic.free_Integer"
     free_Integer :: Symbolic Integer
+
+foreign import hs "Smten.Runtime.Symbolic.free_Bit"
+    free_Bit :: Integer -> Symbolic Bit
 
 instance Monad Symbolic where
   return = return_symbolic

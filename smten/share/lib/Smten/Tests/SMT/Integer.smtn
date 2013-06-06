@@ -52,5 +52,5 @@ tests = do
         assert ((x - y) == 2)
         return (x, y)
 
-    putStrLn "Integer PASSED"
+    putStrLn "SMT.Integer PASSED"
 

@@ -68,8 +68,10 @@ yices1 = do
           S.assert = A.assert y1,
           S.declare_bool = y1declare_bool y1,
           S.declare_integer = y1declare_integer y1,
+          S.declare_bit = y1declare_bit y1,
           S.getBoolValue = getBoolValue y1,
           S.getIntegerValue = getIntegerValue y1,
+          S.getBitVectorValue = getBitVectorValue y1,
           S.check = check y1
        }
 
@@ -91,6 +93,9 @@ y1declare_bool = y1declare "bool"
 y1declare_integer :: Yices1 -> String -> IO ()
 y1declare_integer = y1declare "int"
 
+y1declare_bit :: Yices1 -> String -> Integer -> IO ()
+y1declare_bit y1 nm w = y1declare ("(bitvector " ++ show w ++ ")") y1 nm
+
 withy1 :: Yices1 -> (Ptr YContext -> IO a) -> IO a
 withy1 y f = f (y1_ctx y)
 
@@ -104,14 +109,26 @@ instance AST Yices1 YExpr where
   bool y True = withy1 y c_yices_mk_true
   bool y False = withy1 y c_yices_mk_false
   integer y i = withy1 y $ \ctx -> c_yices_mk_num ctx (fromInteger i)
+  bit y w v = withy1 y $ \ctx ->
+        let w' = fromInteger w
+            v' = fromInteger v
+        in c_yices_mk_bv_constant ctx w' v'
+
   var y nm = withy1 y $ \ctx -> do
      decl <- withCString nm $ c_yices_get_var_decl_from_name ctx
      c_yices_mk_var_from_decl ctx decl
   ite y p a b = withy1 y $ \ctx -> c_yices_mk_ite ctx p a b
+
   eq_integer = bprim c_yices_mk_eq
   leq_integer = bprim c_yices_mk_le
   add_integer = baprim c_yices_mk_sum
   sub_integer = baprim c_yices_mk_sub
+
+  eq_bit = bprim c_yices_mk_eq
+  leq_bit = bprim c_yices_mk_bv_le
+  add_bit = bprim c_yices_mk_bv_add
+  sub_bit = bprim c_yices_mk_bv_sub
+  mul_bit = bprim c_yices_mk_bv_mul
 
 bprim :: (Ptr YContext -> YExpr -> YExpr -> IO YExpr) ->
          Yices1 -> YExpr -> YExpr -> IO YExpr
@@ -143,4 +160,20 @@ getIntegerValue y nm = do
             then peek ptr
             else return 0
     return (toInteger x)
+
+getBitVectorValue :: Yices1 -> String -> Integer -> IO Integer
+getBitVectorValue y nm w = do
+    model <- withy1 y c_yices_get_model 
+    decl <- withCString nm $ \str ->
+                withy1 y $ \yctx -> c_yices_get_var_decl_from_name yctx str
+    bits <- allocaArray (fromInteger w) $ \ptr -> do
+        ir <- c_yices_get_bitvector_value model decl (fromInteger w) ptr
+        if ir == 1
+            then peekArray (fromInteger w) ptr
+            else return []
+    return (bvInteger bits)
+
+bvInteger :: [CInt] -> Integer
+bvInteger [] = 0
+bvInteger (x:xs) = bvInteger xs * 2 + (fromIntegral x)
 

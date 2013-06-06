@@ -1,0 +1,37 @@
+
+module Smten.Tests.SMT.BitDynamic(tests) where
+
+import Smten.Symbolic
+import Smten.Bit.Dynamic
+import Smten.Tests.SMT.Test
+
+tests :: IO ()
+tests = do
+    symtesteq "BitDynamic.Trivial" (Just (bv_make 4 0)) [Yices1, Yices2, STP] $ do
+        a <- free_Bit 4
+        assert (a == bv_make 4 0)
+        return a
+
+    symtesteq "BitDynamic.Eq" (Just (bv_make 8 4, bv_make 8 4)) [Yices1, Yices2, STP] $ do
+        b <- free_Bit 8
+        c <- free_Bit 8
+        assert (b == c)
+        assert (b == bv_make 8 4)
+        return (b, c)
+
+    symtesteq "BitDynamic.Add" (Just (bv_make 8 6, bv_make 8 8)) [Yices1, Yices2, STP] $ do
+        d <- free_Bit 8
+        e <- free_Bit 8
+        assert ((d + bv_make 8 2) == e)
+        assert (e == bv_make 8 8)
+        return (d, e)
+
+    symtesteq "BitDynamic.Sub" (Just (bv_make 8 10, bv_make 8 8)) [Yices1, Yices2, STP] $ do
+        f <- free_Bit 8
+        g <- free_Bit 8
+        assert ((f - bv_make 8 2) == g)
+        assert (g == bv_make 8 8)
+        return (f, g)
+
+    putStrLn "SMT.BitDynamic PASSED"
+

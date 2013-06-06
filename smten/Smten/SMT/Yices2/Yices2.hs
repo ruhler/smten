@@ -65,8 +65,10 @@ yices2 = do
           S.assert = A.assert y2,
           S.declare_bool = y2declare_bool y2,
           S.declare_integer = y2declare_integer y2,
+          S.declare_bit = y2declare_bit y2,
           S.getBoolValue = getBoolValue y2,
           S.getIntegerValue = getIntegerValue y2,
+          S.getBitVectorValue = getBitVectorValue y2,
           S.check = check y2
        }
 
@@ -82,6 +84,12 @@ y2declare_integer y nm = do
     term <- c_yices_new_uninterpreted_term ty
     withCString nm $ c_yices_set_term_name term
 
+y2declare_bit :: Yices2 -> String -> Integer -> IO ()
+y2declare_bit y nm w = do
+    ty <- c_yices_bv_type (fromInteger w)
+    term <- c_yices_new_uninterpreted_term ty
+    withCString nm $ c_yices_set_term_name term
+
 withy2 :: Yices2 -> (Ptr YContext -> IO a) -> IO a
 withy2 y f = f (y2_ctx y)
 
@@ -92,14 +100,27 @@ check y = withy2 y $ \ctx -> do
 
 instance AST Yices2 YTerm where
   assert y e = withy2 y $ \ctx -> c_yices_assert_formula ctx e
+
   bool _ p = if p then c_yices_true else c_yices_false
   integer _ i = c_yices_int64 (fromInteger i)
+  bit _ w v = 
+        let w' = fromInteger w
+            v' = fromInteger v
+        in c_yices_bvconst_uint64 w' v'
+
   var _ nm = withCString nm c_yices_get_term_by_name
   ite _ = c_yices_ite 
+
   eq_integer _ = c_yices_eq
   leq_integer _ = c_yices_arith_leq_atom
   add_integer _ = c_yices_add
   sub_integer _ = c_yices_sub
+
+  eq_bit _ = c_yices_eq
+  leq_bit _ = c_yices_bvle_atom
+  add_bit _ = c_yices_bvadd
+  sub_bit _ = c_yices_bvsub
+  mul_bit _ = c_yices_bvmul
 
 getBoolValue :: Yices2 -> String -> IO Bool
 getBoolValue y nm = withy2 y $ \yctx -> do
@@ -137,4 +158,20 @@ getIntegerValue y nm = withy2 y $ \yctx -> do
                else error $ "yices2 get int64 value returned: " ++ show ir
     c_yices_free_model model
     return $! toInteger x
+
+getBitVectorValue :: Yices2 -> String -> Integer -> IO Integer
+getBitVectorValue y nm w = withy2 y $ \yctx -> do
+    model <- c_yices_get_model yctx 1
+    bits <- allocaArray (fromInteger w) $ \ptr -> do
+        term <- withCString nm c_yices_get_term_by_name
+        ir <- c_yices_get_bv_value model term ptr
+        if ir == 0
+            then peekArray (fromInteger w) ptr
+            else error $ "yices2 get bit vector value returned: " ++ show ir
+    c_yices_free_model model
+    return $! bvInteger bits
+        
+bvInteger :: [Int32] -> Integer
+bvInteger [] = 0
+bvInteger (x:xs) = bvInteger xs * 2 + (fromIntegral x)
 

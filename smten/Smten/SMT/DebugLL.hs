@@ -8,6 +8,7 @@ module Smten.SMT.DebugLL (debugll) where
 import Data.IORef
 import System.IO
 
+import Smten.Bit
 import qualified Smten.SMT.AST as AST
 import qualified Smten.SMT.Assert as A
 import Smten.SMT.Solver
@@ -35,12 +36,20 @@ instance AST.AST DebugLL String where
     assert dbg e = dbgPutStrLn dbg $ "assert " ++ e
     bool dbg b = dbgNew dbg $ show b
     integer dbg i = dbgNew dbg $ show i
+    bit dbg w v = dbgNew dbg $ show (bv_make w v)
     var dbg n = return n
     ite dbg p a b = dbgNew dbg $ p ++ " ? " ++ a ++ " : " ++ b
+
     eq_integer = dbgOp "=="
     leq_integer = dbgOp "<="
     add_integer = dbgOp "+"
     sub_integer = dbgOp "-"
+
+    eq_bit = dbgOp "=="
+    leq_bit = dbgOp "<="
+    add_bit = dbgOp "+"
+    sub_bit = dbgOp "-"
+    mul_bit = dbgOp "*"
 
 debugll :: FilePath -> Solver -> IO Solver
 debugll f s = do
@@ -60,6 +69,10 @@ debugll f s = do
             hPutStrLn fout $ "declare_integer " ++ nm
             declare_integer s nm,
 
+        declare_bit = \nm w -> do
+            hPutStrLn fout $ "declare_bit " ++ nm ++ " of width " ++ show w
+            declare_bit s nm w,
+
         getBoolValue = \n -> do
             hPutStr fout $ n ++ " = "
             r <- getBoolValue s n
@@ -70,6 +83,12 @@ debugll f s = do
             hPutStr fout $ n ++ " = "
             r <- getIntegerValue s n
             hPutStrLn fout $ show r
+            return r,
+
+        getBitVectorValue = \n w -> do
+            hPutStr fout $ n ++ " = "
+            r <- getBitVectorValue s n w
+            hPutStrLn fout $ show (bv_make w r)
             return r,
 
         check = do
