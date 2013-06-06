@@ -53,7 +53,6 @@ library
   build-depends: base ==4.6.*, template-haskell ==2.8.*, mtl ==2.1.*,
                  hashtables ==1.0.*
   extra-libraries: stp stdc++ yices2 yices1
-  --ghc-prof-options: -fprof-auto-top
   ghc-options: -fwarn-unused-binds -fwarn-unused-imports
 
 executable smten
@@ -66,11 +65,14 @@ executable smten
                  cmdargs ==0.10.*, syb ==0.4.* 
   other-modules:
     Paths_smten
+
     Smten
-    Smten.Bit
-    Smten.Strict
     Smten.Failable
+    Smten.Fresh
     Smten.HashTable
+    Smten.Location
+    Smten.Ppr
+    Smten.Strict
 
     Smten.Name
     Smten.Name.Name
@@ -89,6 +91,8 @@ executable smten
     Smten.Type.SmtenTs
     Smten.Type.Ppr
 
+    Smten.Lit
+
     Smten.Exp
     Smten.Exp.Exp
     Smten.Exp.Typeof
@@ -97,12 +101,6 @@ executable smten
     Smten.Exp.Utils
     Smten.Exp.Do
     Smten.Exp.Ppr
-
-    Smten.Module
-    Smten.Module.Entity
-    Smten.Module.Module
-    Smten.Module.Qualify
-    Smten.Module.Ppr
 
     Smten.Dec
     Smten.Dec.Prelude
@@ -113,6 +111,12 @@ executable smten
     Smten.Dec.Sugar
     Smten.Dec.Utils
 
+    Smten.Module
+    Smten.Module.Entity
+    Smten.Module.Module
+    Smten.Module.Qualify
+    Smten.Module.Ppr
+
     Smten.Typing
     Smten.Typing.Infer
     Smten.Typing.Check
@@ -120,13 +124,6 @@ executable smten
     Smten.Typing.ConTs
     Smten.Typing.KInfer
     Smten.Typing.KSolver
-
-    Smten.Parser
-    Smten.Parser.Monad
-    Smten.Parser.Lexer
-    Smten.Parser.Grammar
-    Smten.Parser.PatOrExp
-    Smten.Parser.Utils
 
     Smten.CodeGen
     Smten.CodeGen.Annotates
@@ -139,14 +136,14 @@ executable smten
     Smten.CodeGen.Type
     Smten.CodeGen.Ppr
 
+    Smten.Parser
+    Smten.Parser.Monad
+    Smten.Parser.Lexer
+    Smten.Parser.Grammar
+    Smten.Parser.PatOrExp
+    Smten.Parser.Utils
+
     Smten.Loader
 
-    Smten.Fresh
-    Smten.Location
-
-    Smten.Ppr
-    Smten.Lit
-
-  --ghc-prof-options: -fprof-auto-top
   ghc-options: -rtsopts -fwarn-unused-binds -fwarn-unused-imports
 

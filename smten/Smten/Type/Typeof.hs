@@ -3,7 +3,6 @@
 
 module Smten.Type.Typeof (Typeof(..)) where
 
-import Smten.Bit
 import Smten.Lit
 import Smten.Type.Type
 import Smten.Type.Sugar
@@ -17,7 +16,5 @@ instance Typeof Lit where
     typeof l
       | Just _ <- de_integerL l = integerT
       | Just _ <- de_charL l = charT
-      | Just v <- de_bitL l = bitT (bv_width v)
-      | otherwise = UnknownT
 
 

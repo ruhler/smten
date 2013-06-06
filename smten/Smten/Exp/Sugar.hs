@@ -10,7 +10,6 @@ module Smten.Exp.Sugar (
 
     boolE, de_boolE, falseE, trueE, charE, de_charE,
     listE, de_listE, stringE, de_stringE,
-    de_bitE,
     errorE, tupleE, de_tupleE,
     integerE, de_integerE, numberE,
 
@@ -23,7 +22,6 @@ import Control.Monad
 import Data.List(genericLength)
 
 import Smten.Location
-import Smten.Bit
 import Smten.Lit
 import Smten.Name
 import Smten.Type
@@ -186,11 +184,6 @@ de_integerE :: Exp -> Maybe Integer
 de_integerE e = do
     l <- de_litE e
     de_integerL l
-
-de_bitE :: Exp -> Maybe Bit
-de_bitE e = do
-    l <- de_litE e
-    de_bitL l
 
 numberE :: Location -> Integer -> Exp
 numberE l i =
