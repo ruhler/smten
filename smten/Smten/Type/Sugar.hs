@@ -9,7 +9,6 @@ module Smten.Type.Sugar (
     arrowT, de_arrowT, arrowsT, de_arrowsT,
 
     unitT, boolT, charT, integerT, listT, de_listT, stringT,
-    bitT, de_bitT,
     tupleT, de_tupleT,
 
     addNT, subNT, mulNT,
@@ -107,16 +106,6 @@ de_listT t = do
 
 stringT :: Type
 stringT = listT charT
-
-bitT :: Integer -> Type
-bitT w = appT (conT bitN) (NumT w)
-
-de_bitT :: Type -> Maybe Integer
-de_bitT t = do
-  (k, w) <- de_appT t
-  n <- de_conT k
-  guard $ n == bitN
-  return (nteval w)
 
 -- | (a, b, ...)
 -- There must be at least one type given.

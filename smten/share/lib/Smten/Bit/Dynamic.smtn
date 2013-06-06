@@ -14,36 +14,36 @@ data Bit =
 foreign import hs "Smten.Runtime.Primitives.bv_make"
     bv_make :: Integer -> Integer -> Bit
 
-foreign import hs "Smten.Runtime.Primitives.bv_add"
-    bv_add :: Bit -> Bit -> Bit
+foreign import hs "Smten.Runtime.SmtenHS.add_Bit"
+    add_Bit :: Bit -> Bit -> Bit
 
-foreign import hs "Smten.Runtime.Primitives.bv_sub"
-    bv_sub :: Bit -> Bit -> Bit
+foreign import hs "Smten.Runtime.SmtenHS.sub_Bit"
+    sub_Bit :: Bit -> Bit -> Bit
 
-foreign import hs "Smten.Runtime.Primitives.bv_mul"
-    bv_mul :: Bit -> Bit -> Bit
+foreign import hs "Smten.Runtime.SmtenHS.mul_Bit"
+    mul_Bit :: Bit -> Bit -> Bit
 
-foreign import hs "Smten.Runtime.Primitives.bv_eq"
-    bv_eq :: Bit -> Bit -> Bool
+foreign import hs "Smten.Runtime.SmtenHS.eq_Bit"
+    eq_Bit :: Bit -> Bit -> Bool
 
-foreign import hs "Smten.Runtime.Primitives.bv_leq"
-    bv_leq :: Bit -> Bit -> Bool
+foreign import hs "Smten.Runtime.SmtenHS.leq_Bit"
+    leq_Bit :: Bit -> Bit -> Bool
 
-foreign import hs "Smten.Runtime.Primitives.bv_show"
-    bv_show :: Bit -> String
+foreign import hs "Smten.Runtime.Primitives.show"
+    show_Bit :: Bit -> String
 
 instance Eq Bit where
-    (==) = bv_eq
+    (==) = eq_Bit
 
 instance Ord Bit where
-    (<=) = bv_leq
+    (<=) = leq_Bit
 
 instance Num Bit where
-    (+) = bv_add
-    (-) = bv_sub
-    (*) = bv_mul
+    (+) = add_Bit
+    (-) = sub_Bit
+    (*) = mul_Bit
     fromInteger = error "fromInteger.Bit with unspecified bit width"
 
 instance Show Bit where
-    show = bv_show
+    show = show_Bit
     

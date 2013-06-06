@@ -1,13 +1,11 @@
 
 module Smten.Name.Sugar (
-    arrowN, unitN, trueN, falseN, charN, integerN, bitN,
+    arrowN, unitN, trueN, falseN, charN, integerN,
     tupleN, de_tupleN,
     listN, consN, nilN,
     boolN,
     errorN, ioN, bindN, nobindN,
     maybeN, nothingN, justN,
-    primArrayN,
-    smtN, usedN, symbolicN,
     unqualified, qualified, qualification, isqualified,
     ) where
 
@@ -59,12 +57,6 @@ nobindN = qualified preludeN $ name ">>"
 bindN :: Name
 bindN = qualified preludeN $ name ">>="
 
-bitN :: Name
-bitN = name "Smten.Bit.Bit"
-
-primArrayN :: Name
-primArrayN = name "Data.Array.PrimArray"
-
 ioN :: Name
 ioN = qualified preludeN $ name "IO"
 
@@ -76,15 +68,6 @@ justN = qualified preludeN $ name "Just"
 
 nothingN :: Name
 nothingN = qualified preludeN $ name "Nothing"
-
-smtN :: Name
-smtN = name "Smten.SMT.Symbolic.SMT"
-
-symbolicN :: Name
-symbolicN = name "Smten.SMT.Symbolic.Symbolic"
-
-usedN :: Name
-usedN = name "Smten.SMT.Symbolic.Used"
 
 -- Generate the tuple name for given number of arguments.
 tupleN :: (Integral n) => n -> Name

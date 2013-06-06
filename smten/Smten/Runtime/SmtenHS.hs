@@ -7,6 +7,7 @@ module Smten.Runtime.SmtenHS where
 
 import Prelude hiding (Bool(..), Integer)
 import qualified Prelude as P
+import qualified Smten.Bit as P
 
 import Data.Dynamic
 import Data.Functor((<$>))
@@ -22,6 +23,8 @@ data Bool =
   | BoolMux Bool Bool Bool
   | Bool__EqInteger Integer Integer
   | Bool__LeqInteger Integer Integer
+  | Bool__EqBit Bit Bit
+  | Bool__LeqBit Bit Bit
 
 data Integer =
     Integer P.Integer
@@ -29,6 +32,14 @@ data Integer =
   | Integer_Sub Integer Integer
   | IntegerMux Bool Integer Integer
   | IntegerVar FreeID
+
+data Bit =
+    Bit P.Bit
+  | Bit_Add Bit Bit
+  | Bit_Sub Bit Bit
+  | Bit_Mul Bit Bit
+  | BitMux Bool Bit Bit
+  | BitVar FreeID
 
 -- mux :: R.Bool -> a -> a -> a
 -- mux p x y = if p then x else y
@@ -106,6 +117,8 @@ instance SmtenHS0 Bool where
       = __caseTrue (realize0 m p) (realize0 m a) (realize0 m b)
    realize0 m (Bool__EqInteger a b) = eq_Integer (realize0 m a) (realize0 m b)
    realize0 m (Bool__LeqInteger a b) = leq_Integer (realize0 m a) (realize0 m b)
+   realize0 m (Bool__EqBit a b) = eq_Bit (realize0 m a) (realize0 m b)
+   realize0 m (Bool__LeqBit a b) = leq_Bit (realize0 m a) (realize0 m b)
 
    strict_app0 f (BoolMux p a b) = mux0 p (strict_app0 f a) (strict_app0 f b)
    strict_app0 f b = f b
@@ -130,6 +143,7 @@ instance SmtenHS0 Integer where
       case c of
          Integer {} -> c
          Integer_Add a b -> add_Integer (realize0 m a) (realize0 m b)
+         Integer_Add a b -> sub_Integer (realize0 m a) (realize0 m b)
          IntegerMux p a b -> __caseTrue (realize0 m p) (realize0 m a) (realize0 m b)
          IntegerVar x -> fromMaybe (error "realize0 Integer failed") $ do
             d <- lookup x m
@@ -162,4 +176,51 @@ add_Integer a b = Integer_Add a b
 sub_Integer :: Integer -> Integer -> Integer
 sub_Integer (Integer a) (Integer b) = Integer (a-b)
 sub_Integer a b = Integer_Sub a b
+
+
+instance SmtenHS0 Bit where
+   mux0 = BitMux
+
+   realize0 m c = 
+      case c of
+         Bit {} -> c
+         Bit_Add a b -> add_Bit (realize0 m a) (realize0 m b)
+         Bit_Sub a b -> sub_Bit (realize0 m a) (realize0 m b)
+         Bit_Mul a b -> mul_Bit (realize0 m a) (realize0 m b)
+         BitMux p a b -> __caseTrue (realize0 m p) (realize0 m a) (realize0 m b)
+         BitVar x -> fromMaybe (error "realize0 Bit failed") $ do
+            d <- lookup x m
+            frhs <$> (fromDynamic d :: Maybe P.Bit)
+
+   strict_app0 f (BitMux p a b) = mux0 p (strict_app0 f a) (strict_app0 f b)
+   strict_app0 f i = f i
+
+instance Haskelly Bit Bit where
+   frhs = id
+   tohs = id
+
+instance Haskelly P.Bit Bit where
+   frhs = Bit
+   tohs (Bit c) = c
+   tohs _ = error "tohs.Integer failed"
+
+eq_Bit :: Bit -> Bit -> Bool
+eq_Bit (Bit a) (Bit b) = frhs (a == b)
+eq_Bit a b = Bool__EqBit a b
+
+leq_Bit :: Bit -> Bit -> Bool
+leq_Bit (Bit a) (Bit b) = frhs (a <= b)
+leq_Bit a b = Bool__LeqBit a b
+
+add_Bit :: Bit -> Bit -> Bit
+add_Bit (Bit a) (Bit b) = Bit (a+b)
+add_Bit a b = Bit_Add a b
+
+sub_Bit :: Bit -> Bit -> Bit
+sub_Bit (Bit a) (Bit b) = Bit (a+b)
+sub_Bit a b = Bit_Sub a b
+
+mul_Bit :: Bit -> Bit -> Bit
+mul_Bit (Bit a) (Bit b) = Bit (a+b)
+mul_Bit a b = Bit_Mul a b
 
