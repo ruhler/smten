@@ -90,6 +90,7 @@ library
     Smten.Parser.Utils
 
     Smten.CodeGen
+    Smten.CodeGen.Annotates
     Smten.CodeGen.CG
     Smten.CodeGen.Data
     Smten.CodeGen.Dec
@@ -99,7 +100,9 @@ library
     Smten.CodeGen.Type
     Smten.CodeGen.Ppr
 
-    Smten.Runtime.Prelude
+    Smten.Runtime.Builtin
+    Smten.Runtime.Char
+    Smten.Runtime.IO
     Smten.Runtime.Primitives
     Smten.Runtime.SmtenHS
     Smten.Runtime.Symbolic
@@ -109,14 +112,13 @@ library
     Smten.SMT.DebugLL
     Smten.SMT.FreeID
     Smten.SMT.Solver
+    Smten.SMT.Solvers
     Smten.SMT.Yices1.FFI
     Smten.SMT.Yices1.Yices1
     Smten.SMT.Yices2.FFI
     Smten.SMT.Yices2.Yices2
     Smten.SMT.STP.FFI
     Smten.SMT.STP.STP
-
-    Smten.Symbolic
 
     Smten.Loader
 

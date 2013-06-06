@@ -6,7 +6,7 @@
 module Smten.Runtime.SmtenHS where
 
 import Prelude hiding (Bool(..), Integer)
-import qualified Prelude
+import qualified Prelude as P
 
 import Data.Dynamic
 import Data.Functor((<$>))
@@ -24,10 +24,10 @@ data Bool =
   | Bool__LeqInteger Integer Integer
 
 data Integer =
-    Integer Prelude.Integer
+    Integer P.Integer
   | Integer_Add Integer Integer
   | Integer_Sub Integer Integer
-  | IntegerMux__ Bool Integer Integer
+  | IntegerMux Bool Integer Integer
   | IntegerVar FreeID
 
 -- mux :: R.Bool -> a -> a -> a
@@ -36,9 +36,14 @@ data Integer =
 -- You may assume the predicate p is symbolic (you don't have to check for
 -- it being true or false. That's taken care of elsewhere).
 
--- realize :: [(FreeID, R.Bool)] -> a -> a
+-- realize :: [(FreeID, Dynamic)] -> a -> a
 -- Update all variables in the given expression according to the given map.
 -- You may assume all free variables in the expression are in the map.
+
+-- strict_app :: (a -> b) -> a -> b
+-- Perform strict application of the function to the argument.
+-- In particular:
+--   The function will never see a Mux or Error constructor for the object.
 declare_SmtenHS 0
 declare_SmtenHS 1
 declare_SmtenHS 2
@@ -54,58 +59,6 @@ class Haskelly h s where
     frhs :: h -> s
     tohs :: s -> h
 
-instance SmtenHS0 Bool where
-   mux0 = BoolMux
-
-   realize0 m True = True
-   realize0 m False = False
-   realize0 m (BoolVar x) = fromMaybe (error "realize0 Bool failed") $ do
-      d <- lookup x m
-      frhs <$> (fromDynamic d :: Maybe Prelude.Bool)
-   realize0 m (BoolMux p a b)
-      = __caseTrue (realize0 m p) (realize0 m a) (realize0 m b)
-   realize0 m (Bool__EqInteger a b) = eq_Integer (realize0 m a) (realize0 m b)
-   realize0 m (Bool__LeqInteger a b) = leq_Integer (realize0 m a) (realize0 m b)
-
-   strict_app0 f (BoolMux p a b) = mux0 p (strict_app0 f a) (strict_app0 f b)
-   strict_app0 f b = f b
-
-instance Haskelly Bool Bool where
-  frhs = id
-  tohs = id
-
-instance Haskelly Prelude.Bool Bool where
-  frhs p = if p then True else False
-
-  tohs False = Prelude.False
-  tohs True = Prelude.True 
-  tohs _ = error "tohs.Bool failed"
-
-
-instance SmtenHS0 Integer where
-   mux0 = IntegerMux__
-
-   realize0 m c = 
-      case c of
-         Integer {} -> c
-         Integer_Add a b -> add_Integer (realize0 m a) (realize0 m b)
-         IntegerMux__ p a b -> __caseTrue (realize0 m p) (realize0 m a) (realize0 m b)
-         IntegerVar x -> fromMaybe (error "realize0 Integer failed") $ do
-            d <- lookup x m
-            frhs <$> (fromDynamic d :: Maybe Prelude.Integer)
-
-   strict_app0 f (IntegerMux__ p a b) = mux0 p (strict_app0 f a) (strict_app0 f b)
-   strict_app0 f i = f i
-
-instance Haskelly Integer Integer where
-   frhs = id
-   tohs = id
-
-instance Haskelly Prelude.Integer Integer where
-   frhs = Integer
-   tohs (Integer c) = c
-   tohs _ = error "tohs.Integer failed"
-
 newtype Poly a = Poly a
 
 instance SmtenHS1 Poly where
@@ -117,16 +70,15 @@ instance Haskelly (Poly s) s where
     frhs (Poly x) = x
     tohs = Poly
 
-
 instance SmtenHS2 (->) where
    mux2 p fa fb = \x -> mux0 p (fa x) (fb x)
    realize2 m f = \x -> realize0 m (f x)
    strict_app2 g f = g f
 
-instance (Haskelly ha sa, Haskelly hb sb, SmtenHS0 sa, SmtenHS0 sb) => Haskelly (ha -> hb) (sa -> sb) where
+instance (Haskelly ha sa, Haskelly hb sb, SmtenHS0 sa, SmtenHS0 sb)
+         => Haskelly (ha -> hb) (sa -> sb) where
     frhs hf sx = strict_app0 (frhs . hf . tohs) sx
     tohs sf hx = tohs $ sf (frhs hx)
-
 
 __caseTrue :: (SmtenHS0 z) => Bool -> z -> z -> z
 __caseTrue x y n = 
@@ -141,6 +93,59 @@ __caseFalse x y n =
      False -> y
      True -> n
      _ -> mux0 x n y
+
+instance SmtenHS0 Bool where
+   mux0 = BoolMux
+
+   realize0 m True = True
+   realize0 m False = False
+   realize0 m (BoolVar x) = fromMaybe (error "realize0 Bool failed") $ do
+      d <- lookup x m
+      frhs <$> (fromDynamic d :: Maybe P.Bool)
+   realize0 m (BoolMux p a b)
+      = __caseTrue (realize0 m p) (realize0 m a) (realize0 m b)
+   realize0 m (Bool__EqInteger a b) = eq_Integer (realize0 m a) (realize0 m b)
+   realize0 m (Bool__LeqInteger a b) = leq_Integer (realize0 m a) (realize0 m b)
+
+   strict_app0 f (BoolMux p a b) = mux0 p (strict_app0 f a) (strict_app0 f b)
+   strict_app0 f b = f b
+
+instance Haskelly Bool Bool where
+  frhs = id
+  tohs = id
+
+instance Haskelly P.Bool Bool where
+  frhs p = if p then True else False
+
+  tohs False = P.False
+  tohs True = P.True 
+  tohs _ = error "tohs.Bool failed"
+
+
+
+instance SmtenHS0 Integer where
+   mux0 = IntegerMux
+
+   realize0 m c = 
+      case c of
+         Integer {} -> c
+         Integer_Add a b -> add_Integer (realize0 m a) (realize0 m b)
+         IntegerMux p a b -> __caseTrue (realize0 m p) (realize0 m a) (realize0 m b)
+         IntegerVar x -> fromMaybe (error "realize0 Integer failed") $ do
+            d <- lookup x m
+            frhs <$> (fromDynamic d :: Maybe P.Integer)
+
+   strict_app0 f (IntegerMux p a b) = mux0 p (strict_app0 f a) (strict_app0 f b)
+   strict_app0 f i = f i
+
+instance Haskelly Integer Integer where
+   frhs = id
+   tohs = id
+
+instance Haskelly P.Integer Integer where
+   frhs = Integer
+   tohs (Integer c) = c
+   tohs _ = error "tohs.Integer failed"
 
 eq_Integer :: Integer -> Integer -> Bool
 eq_Integer (Integer a) (Integer b) = frhs (a == b)

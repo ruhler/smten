@@ -5,7 +5,6 @@ module Smten.CodeGen.Exp (topExpCG, expCG) where
 
 import qualified Language.Haskell.TH.Syntax as H
 
-import Smten.Name
 import Smten.Sig
 import Smten.Lit
 import Smten.Exp
@@ -24,8 +23,8 @@ topExpCG (TopExp ts@(TopSig n ctx t) e) = do
 
 litCG :: Lit -> CG H.Exp
 litCG l 
- | Just c <- de_charL l = return $ H.AppE (H.VarE $ H.mkName "Smten.frhs") (H.LitE (H.CharL c))
- | Just i <- de_integerL l = return $ H.AppE (H.ConE $ qtynameCG integerN) (H.LitE (H.IntegerL i))
+ | Just c <- de_charL l = return $ H.AppE (H.ConE $ H.mkName "Smten.Char") (H.LitE (H.CharL c))
+ | Just i <- de_integerL l = return $ H.AppE (H.ConE $ H.mkName "Smten.Integer") (H.LitE (H.IntegerL i))
  | otherwise = error $ "todo: litCG: " ++ pretty l
 
 expCG :: Exp -> CG H.Exp
@@ -33,6 +32,7 @@ expCG e =
   case e of
     LitE _ l -> litCG l
     ConE _ (Sig n _) -> return $ H.ConE (qnameCG n)
+
     VarE _ (Sig n t) -> do
         -- Give explicit type signature to make sure there are no type
         -- ambiguities
@@ -49,8 +49,8 @@ expCG e =
         return $ H.LamE [H.VarP (nameCG n)] x'
 
     CaseE _ x (Sig kn _) y n -> do
-        [x', y', n'] <- mapM expCG [x, y, n]
-        return $ foldl1 H.AppE [H.VarE (qcasenmCG kn), x', y', n']
+       [x', y', n'] <- mapM expCG [x, y, n]
+       return $ foldl1 H.AppE [H.VarE (qcasenmCG kn), x', y', n']
 
     LetE _ bs x -> do
       let f :: (Sig, Exp) -> CG H.Dec

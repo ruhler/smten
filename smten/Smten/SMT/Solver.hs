@@ -1,7 +1,7 @@
 
 module Smten.SMT.Solver (Result(..), Solver(..)) where
 
-import qualified Smten.Runtime.Prelude as R
+import qualified Smten.Runtime.SmtenHS as S
 
 data Result
     = Satisfiable
@@ -10,7 +10,7 @@ data Result
 
 data Solver = Solver {
     -- | Assert the given expression.
-    assert :: R.Bool -> IO (),
+    assert :: S.Bool -> IO (),
 
     -- | Declare a free boolean variable with given name.
     declare_bool :: String -> IO (),

@@ -10,22 +10,19 @@ import Data.Functor((<$>))
 import Smten.Name
 import Smten.Type
 import Smten.Dec
+import Smten.CodeGen.Annotates
 import Smten.CodeGen.CG
 import Smten.CodeGen.Type
 import Smten.CodeGen.Name
-
-haskellys :: [Name]
-haskellys = [unitN, listN, maybeN, name "Smten.Symbolic.Solver"]
 
 dataCG :: Name -> [TyVar] -> [Con] -> CG [H.Dec]
 dataCG n tyvars constrs = do
     dataD <- mkDataD n tyvars constrs
     casesD <- concat <$> mapM (mkCaseD n tyvars) constrs
     shsD <- smtenHS n tyvars constrs
-    haskellyD <-
-      if n `elem` haskellys 
-        then mkHaskellyD n tyvars constrs
-        else return []
+    haskellyD <- case lookup n haskellys of
+                    Just hsmod -> mkHaskellyD hsmod n tyvars constrs
+                    Nothing -> return []
     return $ concat [dataD, casesD, shsD, haskellyD]
 
 -- data Foo a b ... = FooA A1 A2 ...
@@ -87,27 +84,27 @@ mkCaseD n tyvars (Con cn tys) = do
 --   Haskelly (Foo ha hb ...) (Smten.Lib.Foo sa sb ...) where
 --     frhs ...
 --     tohs ...
-mkHaskellyD :: Name -> [TyVar] -> [Con] -> CG [H.Dec]
-mkHaskellyD nm tyvars cons = do
+mkHaskellyD :: String -> Name -> [TyVar] -> [Con] -> CG [H.Dec]
+mkHaskellyD hsmod nm tyvars cons = do
   let hvars = [H.VarT (H.mkName $ "h" ++ unname n) | TyVar n _ <- tyvars]
       svars = [H.VarT (H.mkName $ "s" ++ unname n) | TyVar n _ <- tyvars]
       ctx = [H.ClassP (H.mkName "Smten.Haskelly") [ht, st] | (ht, st) <- zip hvars svars]
-      ht = foldl H.AppT (H.ConT (qhstynameCG nm)) hvars
+      ht = foldl H.AppT (H.ConT (qhstynameCG hsmod nm)) hvars
       st = foldl H.AppT (H.ConT (qtynameCG nm)) svars
       ty = foldl1 H.AppT [H.ConT $ H.mkName "Smten.Haskelly", ht, st]
-  frhs <- mkFrhsD cons
-  tohs <- mkTohsD nm cons
+  frhs <- mkFrhsD hsmod cons
+  tohs <- mkTohsD hsmod nm cons
   return [H.InstanceD ctx ty [frhs, tohs]]
 
 --     frhs (FooA x1 x2 ...) = Smten.Lib.FooA (frhs x1) (frhs x2) ...
 --     frhs (FooB x1 x2 ...) = Smten.Lib.FooB (frhs xs) (frhs x2) ...
 --     ...
-mkFrhsD :: [Con] -> CG H.Dec
-mkFrhsD cons = do
+mkFrhsD :: String -> [Con] -> CG H.Dec
+mkFrhsD hsmod cons = do
   let mkcon :: Con -> H.Clause
       mkcon (Con cn tys) = 
         let xs = [H.mkName $ "x" ++ show i | i <- [1..(length tys)]]
-            pat = H.ConP (qhsnameCG cn) (map H.VarP xs)
+            pat = H.ConP (qhsnameCG hsmod cn) (map H.VarP xs)
             body = foldl H.AppE (H.ConE (qnameCG cn)) [H.AppE (H.VarE $ H.mkName "Smten.frhs") (H.VarE x) | x <- xs]
         in H.Clause [pat] (H.NormalB body) []
   return $ H.FunD (H.mkName "frhs") (map mkcon cons)
@@ -116,13 +113,13 @@ mkFrhsD cons = do
 --     tohs (Smten.Lib.FooB x1 x2 ...) = FooB (tohs xs) (tohs x2) ...
 --     ...
 --     _ = error "tohs.Foo failed"
-mkTohsD :: Name -> [Con] -> CG H.Dec
-mkTohsD nm cons = do
+mkTohsD :: String -> Name -> [Con] -> CG H.Dec
+mkTohsD hsmod nm cons = do
   let mkcon :: Con -> H.Clause
       mkcon (Con cn tys) = 
         let xs = [H.mkName $ "x" ++ show i | i <- [1..(length tys)]]
             pat = H.ConP (qnameCG cn) (map H.VarP xs)
-            body = foldl H.AppE (H.ConE (qhsnameCG cn)) [H.AppE (H.VarE $ H.mkName "Smten.tohs") (H.VarE x) | x <- xs]
+            body = foldl H.AppE (H.ConE (qhsnameCG hsmod cn)) [H.AppE (H.VarE $ H.mkName "Smten.tohs") (H.VarE x) | x <- xs]
         in H.Clause [pat] (H.NormalB body) []
 
       defbody = H.AppE (H.VarE $ H.mkName "Prelude.error")

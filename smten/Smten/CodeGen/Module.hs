@@ -14,6 +14,7 @@ import Smten.Dec
 import Smten.Name
 import Smten.Module
 
+import Smten.CodeGen.Annotates
 import Smten.CodeGen.CG
 import Smten.CodeGen.Name
 import Smten.CodeGen.Dec
@@ -32,11 +33,9 @@ moduleCG env mod = do
         H.parens ( H.text "module" H.<+> H.text (modprefix mn)
         ) H.<+> H.text "where" H.$+$
     H.text "import qualified Prelude" H.$+$
-    H.text "import qualified Smten.Runtime.SmtenHS as Smten" H.$+$
-    H.text "import qualified Smten.Runtime.Prelude as Smten.Lib.Prelude (Bool(..), __caseTrue, __caseFalse, Integer(..))" H.$+$
-    H.text "import qualified Smten.Symbolic" H.$+$
+    H.text "import qualified Smten.Runtime.Builtin as Smten" H.$+$
     importsCG (mod_imports mod) H.$+$
-    primportsCG (mod_decs mod) H.$+$
+    primportsCG (modprefix mn) (mod_decs mod) H.$+$
     H.ppr body
 
 importCG :: Import -> H.Doc
@@ -45,23 +44,46 @@ importCG (Import _ fr _ _ _) = H.text $ "import qualified " ++ modprefix fr
 importsCG :: [Import] -> H.Doc
 importsCG = H.vcat . map importCG
 
-primportsCG :: [Dec] -> H.Doc
-primportsCG ds =
- let pi :: Dec -> Maybe String
+primportsCG :: String -> [Dec] -> H.Doc
+primportsCG me ds =
+ let importfr :: String -> String
+     importfr s = unname (qualification (name s))
+
+     -- Primitive variable imports.
+     -- We import fully qualified the module where the haskell primitive is
+     -- defined.
+     pi :: Dec -> Maybe String
      pi (PrimD _ s _) = Just (importfr s)
      pi _ = Nothing
 
-     importfr :: String -> String
-     importfr s = unname (qualification (name s))
+     pidoc :: String -> H.Doc
+     pidoc s = H.text "import qualified" H.<+> H.text s
 
-     pis = catMaybes (map pi ds)
-     pids = map (importfr . snd) primData
+     piimps = map pidoc (nub $ catMaybes (map pi ds))
 
-     impstrs = nub $ pis ++ pids
+     -- Primitive data imports.
+     -- We import qualified as the local module just the data type definition
+     -- from where it is defined.
+     pid :: (Name, String) -> Maybe H.Doc
+     pid (nm, str)
+       | modprefix (qualification nm) == me = return $
+             H.text "import" H.<+> H.text str H.<+> H.text "as" H.<+>
+             H.text me H.<+> H.parens (H.text (unname $ unqualified nm))
+       | otherwise = Nothing
 
-     todoc :: String -> H.Doc
-     todoc s = H.text "import qualified" H.<+> H.text s
- in H.vcat (map todoc impstrs)
+     pidimps = catMaybes $ map pid primdatas
+
+     -- imports needed for Haskellys
+     
+     hs :: (Name, String) -> Maybe String
+     hs (nm, str)
+       | modprefix (qualification nm) == me = return str
+       | otherwise = Nothing
+
+     hsdoc :: String -> H.Doc
+     hsdoc str = H.text "import qualified" H.<+> H.text str 
+     hsimps = map hsdoc (nub $ catMaybes (map hs haskellys))
+ in H.vcat (piimps ++ pidimps ++ hsimps)
 
 decsCG :: Env -> [Dec] -> Failable [H.Dec]
 decsCG env ds = concat <$> runCG env (mapM decCG ds)

@@ -32,7 +32,13 @@ doname ty f qlf nm =
       qlfn'' = if qlf then qlfn' else ""
       full = qlfn'' ++ base
       sym = if issymbol base then "(" ++ full ++ ")" else full
-  in H.mkName sym
+
+      rebool | sym == "Smten.Lib.Prelude.True" = "Smten.True" 
+             | sym == "Smten.Lib.Prelude.False" = "Smten.False" 
+             | sym == "Smten.Lib.Prelude.__caseTrue" = "Smten.__caseTrue" 
+             | sym == "Smten.Lib.Prelude.__caseFalse" = "Smten.__caseFalse" 
+             | otherwise = sym
+  in H.mkName rebool
 
 trans :: Name -> Name
 trans n
@@ -84,19 +90,19 @@ qcasenmCG :: Name -> H.Name
 qcasenmCG = doname False ("__case" ++) True
 
 -- qualified haskell type constructor name
-qhstynameCG :: Name -> H.Name
-qhstynameCG n
+qhstynameCG :: String -> Name -> H.Name
+qhstynameCG s n
  | n == listN = H.mkName "[]"
  | n == unitN = H.mkName "()"
- | otherwise = H.mkName (unname n)
+ | otherwise = H.mkName $ s ++ "." ++ (unname (unqualified n))
 
 -- qualified haskell variable or data constructor name
-qhsnameCG :: Name -> H.Name
-qhsnameCG n 
+qhsnameCG :: String -> Name -> H.Name
+qhsnameCG s n 
  | n == nilN = H.mkName "[]"
  | n == consN = H.mkName "(:)"
  | n == unitN = H.mkName "()"
- | otherwise = H.mkName (unname n)
+ | otherwise = H.mkName $ s ++ "." ++ (unname (unqualified n))
 
 -- | Generate code for the mux constructor of a given data type.
 muxnmCG :: Name -> H.Name

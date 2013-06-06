@@ -4,29 +4,25 @@
 {-# LANGUAGE TypeSynonymInstances #-}
 
 module Smten.Runtime.Symbolic (
-    Symbolic, return_symbolic, bind_symbolic, run_symbolic,
+    Symbolic,
+    return_symbolic, bind_symbolic, run_symbolic,
     fail_symbolic, free_Bool, free_Integer,
-    IO, Maybe, Solver, R.Bool, R.Integer,
+    IO, Maybe, Solvers.Solver, S.Bool, S.Integer,
     ) where
 
 import Control.Monad.State
 import Data.Dynamic
 import Data.Functor((<$>))
 
-import Smten.Symbolic
-import qualified Smten.SMT.Solver as SMT
-import Smten.Runtime.SmtenHS
-import qualified Smten.Runtime.Prelude as R
+import Smten.SMT.Solver
+import qualified Smten.SMT.Solvers as Solvers
+import Smten.Runtime.SmtenHS as S
 import Smten.SMT.FreeID
-import Smten.SMT.Yices1.Yices1
-import Smten.SMT.Yices2.Yices2
-import Smten.SMT.STP.STP
-import Smten.SMT.DebugLL
 
 data SS = SS {
-    ss_pred :: R.Bool,
+    ss_pred :: S.Bool,
     ss_free :: [(FreeID, SMTType)],
-    ss_formula :: R.Bool
+    ss_formula :: S.Bool
 }
 
 type Symbolic = StateT SS IO
@@ -59,19 +55,19 @@ fail_symbolic = do
     modify $ \ss -> ss { ss_formula = ss_formula ss `andB` notB (ss_pred ss) }
     return (error "fail_symbolic")
 
-free_Bool :: Symbolic R.Bool
+free_Bool :: Symbolic S.Bool
 free_Bool = do
     fid <- liftIO fresh
     modify $ \s -> s { ss_free = (fid, SMTBool) : ss_free s }
-    return $ R.BoolVar fid
+    return $ S.BoolVar fid
 
-free_Integer :: Symbolic R.Integer
+free_Integer :: Symbolic S.Integer
 free_Integer = do
     fid <- liftIO fresh
     modify $ \s -> s { ss_free = (fid, SMTInteger) : ss_free s }
-    return $ R.IntegerVar fid
+    return $ S.IntegerVar fid
 
-predicated :: R.Bool -> Symbolic a -> Symbolic a
+predicated :: S.Bool -> Symbolic a -> Symbolic a
 predicated p q = do
     pold <- gets ss_pred
     modify $ \ss -> ss { ss_pred = pold `andB` p }
@@ -79,40 +75,31 @@ predicated p q = do
     modify $ \ss -> ss { ss_pred = pold }
     return v
 
-mksolver :: Solver -> IO (SMT.Solver)
-mksolver Yices1 = yices1
-mksolver Yices2 = yices2
-mksolver STP = stp
-mksolver (DebugLL dbg s) = do
-    s' <- mksolver s
-    debugll dbg s'
-mksolver d = error $ "TODO: mksolver: " ++ show d
-
-run_symbolic :: (SmtenHS0 a) => Solver -> Symbolic a -> IO (Maybe a)
+run_symbolic :: (SmtenHS0 a) => Solvers.Solver -> Symbolic a -> IO (Maybe a)
 run_symbolic s q = do
-  solver <- mksolver s
-  (x, ss) <- runStateT q (SS R.True [] R.True)
+  solver <- Solvers.mkSolver s
+  (x, ss) <- runStateT q (SS S.True [] S.True)
   mapM_ (declare solver) (ss_free ss)
-  SMT.assert solver (ss_formula ss)
-  res <- SMT.check solver
+  assert solver (ss_formula ss)
+  res <- check solver
   case res of
-    SMT.Satisfiable -> do
+    Satisfiable -> do
        let vars = ss_free ss
        vals <- mapM (getValue solver) vars
        return (Just (realize0 (zip (map fst vars) vals) x))
-    SMT.Unsatisfiable -> return Nothing
+    Unsatisfiable -> return Nothing
 
-declare :: SMT.Solver -> (FreeID, SMTType) -> IO ()
-declare s (f, SMTBool) = SMT.declare_bool s (freenm f)
-declare s (f, SMTInteger) = SMT.declare_integer s (freenm f)
+declare :: Solver -> (FreeID, SMTType) -> IO ()
+declare s (f, SMTBool) = declare_bool s (freenm f)
+declare s (f, SMTInteger) = declare_integer s (freenm f)
 
-getValue :: SMT.Solver -> (FreeID, SMTType) -> IO Dynamic
-getValue s (f, SMTBool) = toDyn <$> SMT.getBoolValue s (freenm f)
-getValue s (f, SMTInteger) = toDyn <$> SMT.getIntegerValue s (freenm f)
+getValue :: Solver -> (FreeID, SMTType) -> IO Dynamic
+getValue s (f, SMTBool) = toDyn <$> getBoolValue s (freenm f)
+getValue s (f, SMTInteger) = toDyn <$> getIntegerValue s (freenm f)
  
-andB :: R.Bool -> R.Bool -> R.Bool
-andB p q = R.__caseTrue p q R.False
+andB :: S.Bool -> S.Bool -> S.Bool
+andB p q = S.__caseTrue p q S.False
 
-notB :: R.Bool -> R.Bool
-notB p = R.__caseTrue p R.False R.True
+notB :: S.Bool -> S.Bool
+notB p = S.__caseTrue p S.False S.True
 
