@@ -1,5 +1,5 @@
 
-module Smten.CodeGen.Dec (decCG) where
+module Smten.CodeGen.Dec (decCG, primData) where
 
 import qualified Language.Haskell.TH as H
 import Data.Functor((<$>))
@@ -14,15 +14,20 @@ import Smten.CodeGen.Exp
 import Smten.CodeGen.Name
 import Smten.CodeGen.Type
 
-builtin :: [Name]
-builtin = [
-  arrowN, ioN, charN, boolN, integerN,
-  name "Smten.Symbolic.Symbolic"
+primData :: [(Name, String)]
+primData = [
+  (ioN, "Smten.Runtime.Prelude.IO"),
+  (charN, "Smten.Runtime.Prelude.Char"),
+  (name "Smten.Symbolic.Symbolic", "Smten.Runtime.Symbolic.Symbolic")
   ]
 
 decCG :: Dec -> CG [H.Dec]
 decCG (DataD _ n tyvars constrs)
-  | n `elem` builtin = return []
+  | n == arrowN = return []
+  | n == boolN = return []
+  | n == integerN = return []
+  | Just v <- lookup n primData = do
+    return [H.TySynD (tynameCG n) [] (H.ConT (H.mkName v))]
   | otherwise = dataCG n tyvars constrs
 decCG (ClassD _ ctx n vars exps) = do
     (tyvs, ctx') <- contextCG vars ctx

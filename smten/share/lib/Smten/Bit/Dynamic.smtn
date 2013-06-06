@@ -1,0 +1,49 @@
+
+-- | Bit vector library. Widths are specified dynamically instead of enforced
+-- statically to avoid complications with numeric types. But all operations
+-- assume properly related widths.
+module Smten.Bit.Dynamic (
+    Bit, bv_make
+    ) where
+
+-- Primitive bit vector type
+data Bit = 
+
+-- bv_make width value
+-- Construct a bit vector of given width and value.
+foreign import hs "Smten.Runtime.Primitives.bv_make"
+    bv_make :: Integer -> Integer -> Bit
+
+foreign import hs "Smten.Runtime.Primitives.bv_add"
+    bv_add :: Bit -> Bit -> Bit
+
+foreign import hs "Smten.Runtime.Primitives.bv_sub"
+    bv_sub :: Bit -> Bit -> Bit
+
+foreign import hs "Smten.Runtime.Primitives.bv_mul"
+    bv_mul :: Bit -> Bit -> Bit
+
+foreign import hs "Smten.Runtime.Primitives.bv_eq"
+    bv_eq :: Bit -> Bit -> Bool
+
+foreign import hs "Smten.Runtime.Primitives.bv_leq"
+    bv_leq :: Bit -> Bit -> Bool
+
+foreign import hs "Smten.Runtime.Primitives.bv_show"
+    bv_show :: Bit -> String
+
+instance Eq Bit where
+    (==) = bv_eq
+
+instance Ord Bit where
+    (<=) = bv_leq
+
+instance Num Bit where
+    (+) = bv_add
+    (-) = bv_sub
+    (*) = bv_mul
+    fromInteger = error "fromInteger.Bit with unspecified bit width"
+
+instance Show Bit where
+    show = bv_show
+    

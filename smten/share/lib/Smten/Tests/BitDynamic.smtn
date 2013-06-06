@@ -1,0 +1,13 @@
+
+module Smten.Tests.BitDynamic (tests) where
+
+import Smten.Tests.Test
+import Smten.Bit.Dynamic
+
+tests :: IO ()
+tests = do
+  test "BitDynamic.Simple" (bv_make 3 0 == (bv_make 3 7 + 1))
+  
+  putStrLn "BitDynamic PASSED"
+
+

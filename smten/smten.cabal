@@ -17,6 +17,7 @@ data-files:
     lib/Control/Monad/State/*.smtn
     lib/Data/*.smtn
     lib/Smten/*.smtn
+    lib/Smten/Bit/*.smtn
     lib/Smten/Tests/*.smtn
     lib/Smten/Tests/SMT/*.smtn
 source-repository this

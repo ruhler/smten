@@ -453,7 +453,7 @@ lines s = let (l, s') = break ((==) '\n') s
                     (_:s'') -> lines s''
 
 isSpace :: Char -> Bool
-isSpace = error "TODO: isSpace"
+isSpace c = c `elem` [' ', '\t', '\n', '\r', '\f', '\v']
 
 words :: String -> [String]
 words s = case dropWhile isSpace s of
