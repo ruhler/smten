@@ -130,25 +130,34 @@ mkTohsD nm cons = do
       def = H.Clause [H.WildP] (H.NormalB defbody) []
   return $ H.FunD (H.mkName "tohs") (map mkcon cons ++ [def])
 
--- instance SmtenHSN Foo where
+-- Note: we currently don't support crazy kinded instances of SmtenHS. This
+-- means we are limited to "linear" kinds of the form (* -> * -> ... -> *)
+--
+-- To handle that properly, we chop off as many type variables as needed to
+-- get to a linear kind.
+--   call the chopped off type variables c1, c2, ...
+--
+-- instance (SmtenN c1, SmtenN c2, ...) => SmtenHSN (Foo c1 c2 ...) where
 --   muxN = ...
 --   realizeN = ...
 --   strict_appN = ...
 smtenHS :: Name -> [TyVar] -> [Con] -> CG [H.Dec]
 smtenHS nm tyvs cs = do
-   let n = length tyvs
+   let (rkept, rdropped) = span (\(TyVar n k) -> knum k == 0) (reverse tyvs)
+       n = length rkept
+       dropped = reverse rdropped
+       ctx = [H.ClassP (H.mkName $ "Smten.SmtenHS" ++ show (knum k)) [H.VarT (nameCG n)] | TyVar n k <- dropped]
        ty = H.AppT (H.VarT (H.mkName $ "Smten.SmtenHS" ++ show n))
-                   (H.ConT $ qtynameCG nm)
-   mux <- muxD nm tyvs
-   rel <- realizeD nm tyvs cs
-   app <- appD nm tyvs cs
-   return [H.InstanceD [] ty [mux, rel, app]]
+                   (foldl H.AppT (H.ConT $ qtynameCG nm) [H.VarT (nameCG n) | TyVar n _ <- dropped])
+   mux <- muxD nm n
+   rel <- realizeD nm n cs
+   app <- appD nm n cs
+   return [H.InstanceD ctx ty [mux, rel, app]]
 
 --   muxN = FooMux__
-muxD :: Name -> [TyVar] -> CG H.Dec
-muxD nm tys = do
-  let n = length tys
-      body = H.NormalB $ H.VarE (qmuxnmCG nm)
+muxD :: Name -> Int -> CG H.Dec
+muxD nm n = do
+  let body = H.NormalB $ H.VarE (qmuxnmCG nm)
       fun = H.ValD (H.VarP (H.mkName $ "mux" ++ show n)) body []
   return fun
 
@@ -156,8 +165,8 @@ muxD nm tys = do
 --   realizeN m (FooB x1 x2 ...) = FooB (realize0 m x1) (realize0 m x2) ...
 --   ...
 --   realizeN m (FooMux__ p a b) = __caseTrue (realize0 m p) (realize0 m a) (realize0 m b)
-realizeD :: Name -> [TyVar] -> [Con] -> CG H.Dec
-realizeD n tys cs = do
+realizeD :: Name -> Int -> [Con] -> CG H.Dec
+realizeD n k cs = do
   let mkcon :: Con -> H.Clause
       mkcon (Con cn cts) =
         let xs = [H.mkName $ "x" ++ show i | i <- [1..length cts]]
@@ -176,14 +185,13 @@ realizeD n tys cs = do
                 H.VarE (H.mkName v)] | v <- ["p", "a", "b"]]
       mxbody = foldl H.AppE (H.VarE (qcasenmCG trueN)) mxrs
       mxcon = H.Clause mxpats (H.NormalB mxbody) []
-  return $ H.FunD (H.mkName $ "realize" ++ show (length tys)) (map mkcon cs ++ [mxcon])
+  return $ H.FunD (H.mkName $ "realize" ++ show k) (map mkcon cs ++ [mxcon])
 
 -- strict_appN f (FooMux__ p a b) = mux0 p (strict_app0 f a) (strict_app0 f b) 
 -- strict_appN f x = f x
-appD :: Name -> [TyVar] -> [Con] -> CG H.Dec
-appD nm tyvs _ = do
-  let n = length tyvs
-      defpats@[fp, _] = [H.VarP $ H.mkName v | v <- ["f", "x"]]
+appD :: Name -> Int -> [Con] -> CG H.Dec
+appD nm n _ = do
+  let defpats@[fp, _] = [H.VarP $ H.mkName v | v <- ["f", "x"]]
       defbody = H.AppE (H.VarE $ H.mkName "f") (H.VarE $ H.mkName "x")
       defclause = H.Clause defpats (H.NormalB defbody) []
 

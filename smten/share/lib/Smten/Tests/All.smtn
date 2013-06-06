@@ -7,6 +7,7 @@ import qualified Smten.Tests.Show
 import qualified Smten.Tests.DataMap
 import qualified Smten.Tests.List
 import qualified Smten.Tests.Module
+import qualified Smten.Tests.State
 import qualified Smten.Tests.SMT.Core
 import qualified Smten.Tests.SMT.Integer
 import qualified Smten.Tests.SMT.Share
@@ -19,6 +20,7 @@ testall = do
     Smten.Tests.DataMap.tests
     Smten.Tests.List.tests
     Smten.Tests.Module.tests
+    Smten.Tests.State.tests
     Smten.Tests.SMT.Core.tests
     Smten.Tests.SMT.Integer.tests
     Smten.Tests.SMT.Share.tests

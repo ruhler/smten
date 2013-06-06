@@ -1,6 +1,6 @@
 
 module Smten.CodeGen.Type(
-    typeCG, classCG, topSigCG, contextCG,
+    typeCG, classCG, topSigCG, contextCG, knum,
    ) where
 
 import qualified Language.Haskell.TH.Syntax as H

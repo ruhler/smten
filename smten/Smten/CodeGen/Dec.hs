@@ -29,9 +29,9 @@ decCG (ClassD _ ctx n vars exps) = do
     exps' <- withTyVars vars $ concat <$> mapM topExpCG exps
     return [H.ClassD ctx' (tynameCG n) tyvs [] exps']
 decCG (InstD _ ctx cls@(Class n ts) ms) = do
-    ctx' <- mapM classCG ctx
+    (_, ctx') <- contextCG cls ctx
     ts' <- mapM typeCG ts
-    ms' <- withTyVars ctx $ concat <$> mapM (methodCG cls) ms
+    ms' <- withTyVars cls $ concat <$> mapM (methodCG cls) ms
     let t = foldl H.AppT (H.ConT (qtynameCG n)) ts'
     return [H.InstanceD ctx' t ms']
 decCG (ValD _ e@(TopExp (TopSig n _ _) _)) = do

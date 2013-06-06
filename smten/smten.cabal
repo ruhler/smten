@@ -12,8 +12,10 @@ stability: experimental
 data-dir: share
 data-files:
     doc/*.txt
-    lib/Data/*.smtn
     lib/*.smtn
+    lib/Control/Monad/*.smtn
+    lib/Control/Monad/State/*.smtn
+    lib/Data/*.smtn
     lib/Smten/*.smtn
     lib/Smten/Tests/*.smtn
     lib/Smten/Tests/SMT/*.smtn
