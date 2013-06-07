@@ -8,6 +8,9 @@ import Smten.Sudoku.Cell
 
 data BitCell = BitCell { bits :: Bit#9 } deriving (Eq, Free)
 
+instance Show BitCell where
+    show = show . bits
+
 c1 :: BitCell
 c1 = BitCell 1
 

@@ -361,7 +361,7 @@ length (_:l) = 1 + length l
 (!!) (_:xs) n = xs !! (n-1)
 
 foldl :: (a -> b -> a) -> a -> [b] -> a
-foldl f z _ = z
+foldl f z [] = z
 foldl f z (x:xs) = foldl f (f z x) xs
 
 foldl1 :: (a -> a -> a) -> [a] -> a
@@ -593,6 +593,11 @@ instance (Show a) => Show [a] where
 instance (Show a, Show b) => Show (a,b) where
     showsPrec p (x,y) = showChar '(' . shows x . showChar ',' .
                                        shows y . showChar ')'
+
+instance (Show a, Show b, Show c) => Show (a,b,c) where
+    showsPrec p (x,y,z) = showChar '(' . shows x . showChar ',' .
+                                         shows y . showChar ',' .
+                                         shows z . showChar ')'
 
 type FilePath = String
 

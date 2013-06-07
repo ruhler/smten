@@ -7,7 +7,7 @@ import Smten.Bit.Static
 tests :: IO ()
 tests = do
   test "BitStatic.Simple" ((0 :: Bit #3) == 7 + 1)
-  
+  test "BitStatic.OR" ((3 :: Bit #3) == (bv_or 1 2))
   putStrLn "BitStatic PASSED"
 
 

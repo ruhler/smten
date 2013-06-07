@@ -1,0 +1,9 @@
+
+module Debug.Trace (trace, traceShow) where
+
+foreign import hs "Smten.Runtime.Primitives.trace" trace :: String -> b -> b
+
+traceShow :: (Show a) => a -> b -> b
+traceShow x = trace (show x)
+
+

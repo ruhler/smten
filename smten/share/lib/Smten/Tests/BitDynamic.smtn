@@ -7,6 +7,7 @@ import Smten.Bit.Dynamic
 tests :: IO ()
 tests = do
   test "BitDynamic.Simple" (bv_make 3 0 == (bv_make 3 7 + bv_make 3 1))
+  test "BitDynamic.OR" (bv_make 2 3 == bv_or (bv_make 2 1) (bv_make 2 2))
   
   putStrLn "BitDynamic PASSED"
 

@@ -16,6 +16,7 @@ data-files:
     lib/Control/Monad/*.smtn
     lib/Control/Monad/State/*.smtn
     lib/Data/*.smtn
+    lib/Debug/*.smtn
     lib/Smten/*.smtn
     lib/Smten/Bit/*.smtn
     lib/Smten/Sudoku/*.smtn

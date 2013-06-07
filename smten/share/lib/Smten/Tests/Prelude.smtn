@@ -1,0 +1,11 @@
+
+module Smten.Tests.Prelude (tests) where
+
+import Smten.Tests.Test
+
+tests :: IO ()
+tests = do
+  test "Prelude.foldl" ((1 :: Integer) == foldl (+) 0 [1])
+
+  putStrLn "Prelude PASSED"
+

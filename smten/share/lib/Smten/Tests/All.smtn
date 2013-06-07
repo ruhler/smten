@@ -2,6 +2,7 @@
 module Smten.Tests.All where
 
 import Smten.Tests.Test
+import qualified Smten.Tests.Prelude
 import qualified Smten.Tests.Ord
 import qualified Smten.Tests.Show
 import qualified Smten.Tests.DataMap
@@ -19,6 +20,7 @@ import qualified Smten.Tests.SMT.Sudoku
 testall :: IO ()
 testall = do
     test "dummy" True
+    Smten.Tests.Prelude.tests
     Smten.Tests.Ord.tests
     Smten.Tests.Show.tests
     Smten.Tests.DataMap.tests

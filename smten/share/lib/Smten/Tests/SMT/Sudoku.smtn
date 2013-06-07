@@ -13,7 +13,8 @@ import Smten.Tests.Test
 
 sudokutest :: (Cell c, Eq c) => String -> c -> IO ()
 sudokutest msg _ = do
-    board <- solve (DebugLL (msg ++ ".dbg") Yices2) (readBoard diabolical :: Symbolic (Board c))
+    putStrLn $ msg ++ "..."
+    board <- solve Yices2 (readBoard diabolical :: Symbolic (Board c))
     let wnt = Just diabolical_solved :: Maybe [String]
         got = fmap printBoard board :: Maybe [String]
     test msg (wnt == got)
@@ -22,6 +23,6 @@ tests :: IO ()
 tests = do
     sudokutest "Sudoku.Integer" (undefined :: IntegerCell)
     sudokutest "Sudoku.Enum" (undefined :: EnumCell)
-    --sudokutest "Sudoku.Bit" (undefined :: BitCell)
+    sudokutest "Sudoku.Bit" (undefined :: BitCell)
     putStrLn "Sudoku PASSED"
 
