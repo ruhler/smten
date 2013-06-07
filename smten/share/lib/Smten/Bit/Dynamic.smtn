@@ -3,7 +3,7 @@
 -- statically to avoid complications with numeric types. But all operations
 -- assume properly related widths.
 module Smten.Bit.Dynamic (
-    Bit, bv_make
+    Bit, bv_make, bv_or,
     ) where
 
 -- Primitive bit vector type
@@ -28,6 +28,9 @@ foreign import hs "Smten.Runtime.SmtenHS.eq_Bit"
 
 foreign import hs "Smten.Runtime.SmtenHS.leq_Bit"
     leq_Bit :: Bit -> Bit -> Bool
+
+foreign import hs "Smten.Runtime.SmtenHS.or_Bit"
+    bv_or :: Bit -> Bit -> Bit
 
 foreign import hs "Smten.Runtime.Primitives.show"
     show_Bit :: Bit -> String

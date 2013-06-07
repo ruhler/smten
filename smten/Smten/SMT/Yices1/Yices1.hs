@@ -129,6 +129,7 @@ instance AST Yices1 YExpr where
   add_bit = bprim c_yices_mk_bv_add
   sub_bit = bprim c_yices_mk_bv_sub
   mul_bit = bprim c_yices_mk_bv_mul
+  or_bit = bprim c_yices_mk_bv_or
 
 bprim :: (Ptr YContext -> YExpr -> YExpr -> IO YExpr) ->
          Yices1 -> YExpr -> YExpr -> IO YExpr

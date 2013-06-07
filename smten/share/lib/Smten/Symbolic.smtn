@@ -39,4 +39,14 @@ data Solver = Yices1 | Yices2 | STP
 foreign import hs "Smten.Runtime.Symbolic.run_symbolic"
     run_symbolic :: Solver -> Symbolic a -> IO (Maybe a)
 
+class Free a where
+    free :: Symbolic a
+
+deriving instance Free ()
+
+instance Free Integer where
+    free = free_Integer
+
+instance Free Bool where
+    free = free_Bool
 

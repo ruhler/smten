@@ -23,4 +23,5 @@ class AST ctx exp | ctx -> exp where
   add_bit :: ctx -> exp -> exp -> IO exp
   sub_bit :: ctx -> exp -> exp -> IO exp
   mul_bit :: ctx -> exp -> exp -> IO exp
+  or_bit :: ctx -> exp -> exp -> IO exp
 

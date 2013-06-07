@@ -18,6 +18,7 @@ data-files:
     lib/Data/*.smtn
     lib/Smten/*.smtn
     lib/Smten/Bit/*.smtn
+    lib/Smten/Sudoku/*.smtn
     lib/Smten/Tests/*.smtn
     lib/Smten/Tests/SMT/*.smtn
 

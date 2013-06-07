@@ -50,6 +50,7 @@ instance AST.AST DebugLL String where
     add_bit = dbgOp "+"
     sub_bit = dbgOp "-"
     mul_bit = dbgOp "*"
+    or_bit = dbgOp "|"
 
 debugll :: FilePath -> Solver -> IO Solver
 debugll f s = do

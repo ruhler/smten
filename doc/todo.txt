@@ -1,4 +1,5 @@
 CodeGen:
+* Sudoku.Enum generated query is huge!
 * don't change (if p then 3 else 4) == (if q then 4 else 5)
     to: if p
            then if q then False else False
@@ -15,6 +16,7 @@ CodeGen:
 * flesh out the bit vector primitives
 * add array library
 * flesh out the rest of the libraries and test cases
+* numeric type retyping hack
 
 Recent::
 * Add support for (..) in import and export specifications
@@ -106,6 +108,7 @@ Build System::
 * clean up tclmk script: maybe separate into init, build, and test sections.
 
 Known Bugs::
+* Sudoku Bit vector test fails!
 * BadKind, DupInst, DupVar maltype tests
 * Error non-termination tests (in Error)
 * HaskellF sharing of appeval (in Share)
@@ -117,6 +120,7 @@ Known Bugs::
 * precedence 3 bug (in Basic)
 
 Suspected Bugs::
+* qualified infix vars:    a `D.foo` b
 * Memory leaks of solvers
 * Unused var defined in let isn't type checked
 * type synonyms are not qualified by their module

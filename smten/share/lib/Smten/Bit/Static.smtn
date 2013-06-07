@@ -1,8 +1,9 @@
 
-module Smten.Bit.Static (Bit) where
+module Smten.Bit.Static (Bit, bv_or) where
 
 import Smten.Numeric
 import qualified Smten.Bit.Dynamic as D
+import Smten.Symbolic
 
 data Bit #n = Bit {
   dbit :: D.Bit
@@ -22,4 +23,12 @@ instance Num (Bit #n) where
 
 instance Show (Bit #n) where
     show = show . dbit
+
+instance Free (Bit #n) where
+    free = do
+        x <- free_Bit (valueof (numeric :: #n))
+        return (Bit x)
+
+bv_or :: Bit #n -> Bit #n -> Bit #n
+bv_or a b = Bit (D.bv_or (dbit a) (dbit b))
 

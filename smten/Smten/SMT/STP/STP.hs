@@ -98,6 +98,7 @@ instance AST STP (Ptr STP_Expr) where
   add_bit = blprim c_vc_bvPlusExpr
   sub_bit = blprim c_vc_bvMinusExpr
   mul_bit = error "TODO: STP mul_bit"
+  or_bit = bprim c_vc_orExpr
 
 bprim :: (Ptr STP_VC -> Ptr STP_Expr -> Ptr STP_Expr -> IO (Ptr STP_Expr))
       -> STP -> Ptr STP_Expr -> Ptr STP_Expr -> IO (Ptr STP_Expr)

@@ -121,6 +121,7 @@ instance AST Yices2 YTerm where
   add_bit _ = c_yices_bvadd
   sub_bit _ = c_yices_bvsub
   mul_bit _ = c_yices_bvmul
+  or_bit _ = c_yices_bvor
 
 getBoolValue :: Yices2 -> String -> IO Bool
 getBoolValue y nm = withy2 y $ \yctx -> do

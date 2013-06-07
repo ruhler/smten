@@ -1,0 +1,27 @@
+
+module Smten.Tests.SMT.Sudoku where
+
+import Smten.Symbolic
+import Smten.Sudoku.Cell
+import Smten.Sudoku.Board
+import Smten.Sudoku.Boards
+import Smten.Sudoku.Solver
+import Smten.Sudoku.IntegerCell
+import Smten.Sudoku.EnumCell
+import Smten.Sudoku.BitCell
+import Smten.Tests.Test
+
+sudokutest :: (Cell c, Eq c) => String -> c -> IO ()
+sudokutest msg _ = do
+    board <- solve (DebugLL (msg ++ ".dbg") Yices2) (readBoard diabolical :: Symbolic (Board c))
+    let wnt = Just diabolical_solved :: Maybe [String]
+        got = fmap printBoard board :: Maybe [String]
+    test msg (wnt == got)
+
+tests :: IO ()
+tests = do
+    sudokutest "Sudoku.Integer" (undefined :: IntegerCell)
+    sudokutest "Sudoku.Enum" (undefined :: EnumCell)
+    --sudokutest "Sudoku.Bit" (undefined :: BitCell)
+    putStrLn "Sudoku PASSED"
+

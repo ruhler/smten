@@ -42,11 +42,13 @@ import Data.Generics
 
 import qualified System.Console.CmdArgs.Implicit as A
 
-import Smten.Loader
-import Smten.CodeGen
 import Smten
+import Smten.Failable
 import Smten.Ppr
-import Smten.Module ()
+import Smten.Loader
+import Smten.Module
+import Smten.Typing
+import Smten.CodeGen
 
 data Args = Args {
     include :: [FilePath],
@@ -76,7 +78,31 @@ main = do
     stdlib <- smtendir
 
     let includes = include args ++ [stdlib]
-    mods <- loadtyped includes (file args)
+
+    A.whenLoud $ putStrLn "Loading Modules..."
+    mods <- loadmods includes (file args)
     A.whenLoud $ putStrLn (pretty mods)
-    codegen (hsdir args) mods
+
+    A.whenLoud $ putStrLn "Stand-along Deriving..."
+    sderived <- attemptIO $ sderive mods
+    A.whenLoud $ putStrLn (pretty sderived)
+
+    A.whenLoud $ putStrLn "Qualifying..."
+    qualified <- attemptIO $ qualify sderived
+    A.whenLoud $ putStrLn (pretty qualified)
+
+    A.whenLoud $ putStrLn "Kind Inferring..."
+    kinded <- attemptIO $ kindinfer qualified
+    A.whenLoud $ putStrLn (pretty kinded)
+
+    A.whenLoud $ putStrLn "Type Inferring..."
+    inferred <- attemptIO $ typeinfer kinded
+    A.whenLoud $ putStrLn (pretty inferred)
+
+    A.whenLoud $ putStrLn "Type Checking..."
+    attemptIO $ typecheck inferred
+
+    A.whenLoud $ putStrLn "Code Generating..."
+    codegen (hsdir args) inferred
+
 

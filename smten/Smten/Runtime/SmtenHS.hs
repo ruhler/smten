@@ -9,6 +9,7 @@ import Prelude hiding (Bool(..), Integer)
 import qualified Prelude as P
 import qualified Smten.Bit as P
 
+import Data.Bits
 import Data.Dynamic
 import Data.Functor((<$>))
 import Data.Maybe(fromMaybe)
@@ -38,6 +39,7 @@ data Bit =
   | Bit_Add Bit Bit
   | Bit_Sub Bit Bit
   | Bit_Mul Bit Bit
+  | Bit_Or Bit Bit
   | BitMux Bool Bit Bit
   | BitVar FreeID
 
@@ -187,6 +189,7 @@ instance SmtenHS0 Bit where
          Bit_Add a b -> add_Bit (realize0 m a) (realize0 m b)
          Bit_Sub a b -> sub_Bit (realize0 m a) (realize0 m b)
          Bit_Mul a b -> mul_Bit (realize0 m a) (realize0 m b)
+         Bit_Or a b -> or_Bit (realize0 m a) (realize0 m b)
          BitMux p a b -> __caseTrue (realize0 m p) (realize0 m a) (realize0 m b)
          BitVar x -> fromMaybe (error "realize0 Bit failed") $ do
             d <- lookup x m
@@ -223,4 +226,8 @@ sub_Bit a b = Bit_Sub a b
 mul_Bit :: Bit -> Bit -> Bit
 mul_Bit (Bit a) (Bit b) = Bit (a+b)
 mul_Bit a b = Bit_Mul a b
+
+or_Bit :: Bit -> Bit -> Bit
+or_Bit (Bit a) (Bit b) = Bit (a .|. b)
+or_Bit a b = Bit_Or a b
 

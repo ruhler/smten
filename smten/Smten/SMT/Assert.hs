@@ -107,6 +107,7 @@ def_bit ctx (S.Bit x) = liftIO $ bit ctx (bv_width x) (bv_value x)
 def_bit ctx (S.Bit_Add a b) = bit_binary (add_bit ctx) a b
 def_bit ctx (S.Bit_Sub a b) = bit_binary (sub_bit ctx) a b
 def_bit ctx (S.Bit_Mul a b) = bit_binary (mul_bit ctx) a b
+def_bit ctx (S.Bit_Or a b) = bit_binary (or_bit ctx) a b
 def_bit ctx (S.BitMux p a b) = do
     p' <- use_bool p
     a' <- use_bit a
