@@ -24,6 +24,9 @@ foreign import hs "Smten.Runtime.Symbolic.free_Integer"
 foreign import hs "Smten.Runtime.Symbolic.free_Bit"
     free_Bit :: Integer -> Symbolic Bit
 
+instance Functor Symbolic where
+  fmap f x = x >>= return . f
+
 instance Monad Symbolic where
   return = return_symbolic
   (>>=) = bind_symbolic

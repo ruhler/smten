@@ -17,6 +17,9 @@ instance Eq (Bit #n) where
 instance Ord (Bit #n) where
     (<=) a b = dbit a <= dbit b
 
+instance Integral (Bit #n) where
+    toInteger = toInteger . dbit
+
 instance Num (Bit #n) where
     (+) a b = Bit $ dbit a + dbit b
     (-) a b = Bit $ dbit a - dbit b

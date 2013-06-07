@@ -49,6 +49,9 @@ instance Eq Bit where
 instance Ord Bit where
     (<=) = leq_Bit
 
+instance Integral Bit where
+    toInteger = bv_value 
+
 instance Num Bit where
     (+) = add_Bit
     (-) = sub_Bit

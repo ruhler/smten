@@ -63,6 +63,9 @@ class Bounded a where
     minBound :: a
     maxBound :: a
 
+class Integral a where
+    toInteger :: a -> Integer
+
 class (Eq a, Show a) => Num a where
   (+) :: a -> a -> a
   (*) :: a -> a -> a
@@ -243,6 +246,9 @@ instance Eq Integer where
 
 instance Ord Integer where
     (<=) = __prim_leq_Integer
+
+instance Integral Integer where
+    toInteger = id
 
 instance Num Integer where
   (+) = __prim_add_Integer
