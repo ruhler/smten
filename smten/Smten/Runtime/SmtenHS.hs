@@ -143,7 +143,7 @@ instance SmtenHS0 Integer where
       case c of
          Integer {} -> c
          Integer_Add a b -> add_Integer (realize0 m a) (realize0 m b)
-         Integer_Add a b -> sub_Integer (realize0 m a) (realize0 m b)
+         Integer_Sub a b -> sub_Integer (realize0 m a) (realize0 m b)
          IntegerMux p a b -> __caseTrue (realize0 m p) (realize0 m a) (realize0 m b)
          IntegerVar x -> fromMaybe (error "realize0 Integer failed") $ do
             d <- lookup x m

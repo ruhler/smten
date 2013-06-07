@@ -85,11 +85,8 @@ executable smten
     Smten.Type.Canonical
     Smten.Type.Typeof
     Smten.Type.Sugar
-    Smten.Type.TH
     Smten.Type.Utils
-    Smten.Type.SmtenT
     Smten.Type.Type
-    Smten.Type.SmtenTs
     Smten.Type.Ppr
 
     Smten.Lit

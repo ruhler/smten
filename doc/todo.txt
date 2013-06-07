@@ -13,7 +13,6 @@ CodeGen:
 ** from application
 * proper handling of explicit errors
 * support for numeric types
-* support for symbolic bit vectors
 * flesh out the bit vector primitives
 * flesh out the rest of the libraries and test cases
 
