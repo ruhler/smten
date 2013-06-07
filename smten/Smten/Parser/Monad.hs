@@ -124,6 +124,9 @@ data Token =
      | TokenLE
      | TokenGE
      | TokenGT
+     | TokenOpenPragma
+     | TokenClosePragma
+     | TokenAsInHaskell
     deriving (Eq, Show)
 
 data PS = PS {

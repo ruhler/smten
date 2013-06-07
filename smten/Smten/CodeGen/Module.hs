@@ -55,6 +55,7 @@ primportsCG me ds =
      -- defined.
      pi :: Dec -> Maybe String
      pi (PrimD _ s _) = Just (importfr s)
+     pi (AsInHaskellD _ hsmod _) = Just (unname hsmod)
      pi _ = Nothing
 
      pidoc :: String -> H.Doc
@@ -73,18 +74,7 @@ primportsCG me ds =
        | otherwise = Nothing
 
      pidimps = catMaybes $ map pid primdatas
-
-     -- imports needed for Haskellys
-     
-     hs :: (Name, String) -> Maybe String
-     hs (nm, str)
-       | modprefix (qualification nm) == me = return str
-       | otherwise = Nothing
-
-     hsdoc :: String -> H.Doc
-     hsdoc str = H.text "import qualified" H.<+> H.text str 
-     hsimps = map hsdoc (nub $ catMaybes (map hs haskellys))
- in H.vcat (piimps ++ pidimps ++ hsimps)
+ in H.vcat (piimps ++ pidimps)
 
 decsCG :: Env -> [Dec] -> Failable [H.Dec]
 decsCG env ds = concat <$> runCG env (mapM decCG ds)

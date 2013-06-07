@@ -126,6 +126,7 @@ vitable decs =
         in map iexp sigs
       videc d@(DataD _ n _ _) = [(n, DecVI d)]
       videc (InstD {}) = []
+      videc (AsInHaskellD {}) = []
   in concat $ map videc notinsts
 
 dctable :: [Dec] -> [(Name, Type)]

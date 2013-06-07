@@ -1,6 +1,6 @@
 
 module Smten.CodeGen.Data (
-    dataCG,
+    dataCG, mkHaskellyD,
     ) where
 
 import qualified Language.Haskell.TH.Syntax as H
@@ -10,7 +10,6 @@ import Data.Functor((<$>))
 import Smten.Name
 import Smten.Type
 import Smten.Dec
-import Smten.CodeGen.Annotates
 import Smten.CodeGen.CG
 import Smten.CodeGen.Type
 import Smten.CodeGen.Name
@@ -20,10 +19,7 @@ dataCG n tyvars constrs = do
     dataD <- mkDataD n tyvars constrs
     casesD <- concat <$> mapM (mkCaseD n tyvars) constrs
     shsD <- smtenHS n tyvars constrs
-    haskellyD <- case lookup n haskellys of
-                    Just hsmod -> mkHaskellyD hsmod n tyvars constrs
-                    Nothing -> return []
-    return $ concat [dataD, casesD, shsD, haskellyD]
+    return $ concat [dataD, casesD, shsD]
 
 -- data Foo a b ... = FooA A1 A2 ...
 --                  | FooB B1 B2 ...

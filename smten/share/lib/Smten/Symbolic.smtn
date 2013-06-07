@@ -34,6 +34,7 @@ instance Monad Symbolic where
 assert :: Bool -> Symbolic ()
 assert p = if p then return () else fail_symbolic
 
+{-# AsInHaskell Smten.SMT.Solvers Solver #-}
 data Solver = Yices1 | Yices2 | STP
             | Debug FilePath Solver
             | DebugLL FilePath Solver

@@ -117,6 +117,7 @@ mapM_ f as = sequence_ (map f as)
 (=<<) f x = x >>= f
 
 -- data () = ()
+{-# AsInHaskell Prelude () #-}
 deriving instance Eq ()
 deriving instance Ord ()
   
@@ -179,6 +180,7 @@ instance Bounded Char where
 
 type String = [Char]
 
+{-# AsInHaskell Prelude Maybe #-}
 data Maybe a = Nothing | Just a
   deriving (Eq, Ord, Show)
 
@@ -271,7 +273,7 @@ instance Enum Integer where
             else a : enumFromThenTo b (b + b - a) c
 
 -- Lists
-
+{-# AsInHaskell Prelude [] #-}
 deriving instance (Eq a) => Eq [a]
 deriving instance (Ord a) => Ord [a]
 

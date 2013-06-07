@@ -21,6 +21,7 @@ data PDec =
   | PDataDec DataDec
   | PSig Location TopSig
   | PForeign Location String TopSig
+  | PAsInHaskell Location Name Name
   | PClause Location Name MAlt
   | PSynonym Synonym
   | PDeriving Deriving
@@ -53,6 +54,9 @@ coalesce ((PSig l s):ds) = do
 coalesce ((PForeign l n s):ds) = do
    (syns, dds, drv, rest) <- coalesce ds
    return (syns, dds, drv, (PrimD l n s) : rest)
+coalesce ((PAsInHaskell l a b):ds) = do
+   (syns, dds, drv, rest) <- coalesce ds
+   return (syns, dds, drv, (AsInHaskellD l a b) : rest)
 coalesce ((PDec d):ds) = do
    (syns, dds, drv, rest) <- coalesce ds
    return (syns, dds, drv, d:rest)

@@ -238,6 +238,7 @@ instance TypeCheck Dec where
            mapM_ satisfied (assign assigns clsctx)
 
     typecheckM d@(PrimD l n ts) = withloc l $ typecheckM ts
+    typecheckM d@(AsInHaskellD l n ts) = return ()
 
 -- Assert the given class requirement is satisfied.
 satisfied :: Class -> TC ()

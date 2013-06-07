@@ -142,6 +142,10 @@ instance Qualify Dec where
         ts' <- qualifyM ts
         return (PrimD l n ts')
 
+    qualifyM (AsInHaskellD l hsmod n) = withloc l $ do
+        n' <- qualifyM n
+        return (AsInHaskellD l hsmod n')
+
 instance Qualify Type where
     qualifyM t = do
         syns <- asks qs_syns

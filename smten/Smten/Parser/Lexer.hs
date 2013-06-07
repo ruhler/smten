@@ -210,11 +210,17 @@ lex = do
   saveLoc
   case text of
       [] -> return TokenEOF
+      ('{':'-':'#':cs) -> many "{-#" >> setText cs >> return TokenOpenPragma
+      ('#':'-':'}':cs) -> many "#-}" >> setText cs >> return TokenClosePragma
       ('{':'-':cs) -> lexcomment 0 text >> lex
       (c:cs) | Just tok <- (lookup c singles) -> osingle tok cs
       ('\n':cs) -> newline >> setText cs >> lex
       (c:cs) | isSpace c -> single >> setText cs >> lex
-      (c:cs) | isLarge c -> lexqual text
+      (c:cs) | isLarge c -> do
+        t <- lexqual text
+        case t of
+            TokenConId n | n == name "AsInHaskell" -> return TokenAsInHaskell
+            _ -> return t
       (c:cs) | isSmall c ->
           let (ns, rest) = span isIdChar cs
           in case (c:ns) of

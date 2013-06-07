@@ -29,6 +29,7 @@ instance ConTs Dec where
             = Set.unions $ [conTs ctx, Set.singleton n, conTs ts]
       | InstD _ ctx cls _ <- d = Set.unions [conTs ctx, conTs cls]
       | PrimD _ _ t <- d = conTs t
+      | AsInHaskellD {} <- d = Set.empty
 
 instance ConTs Con where
     conTs (Con _ ts) = conTs ts

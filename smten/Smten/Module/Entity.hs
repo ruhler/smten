@@ -69,6 +69,7 @@ locals mn = do
           exdec (ClassD _ _ nm _ sigs) = tell [unqualified nm] >> mapM_ exmeth sigs
           exdec (InstD {}) = return ()
           exdec (PrimD _ _ (TopSig nm _ _)) = tell [unqualified nm]
+          exdec (AsInHaskellD {}) = return ()
 
           exmeth :: TopExp -> Writer [Name] ()
           exmeth (TopExp (TopSig snm _ _) _) = tell [unqualified snm]

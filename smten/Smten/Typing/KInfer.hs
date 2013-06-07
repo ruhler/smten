@@ -90,6 +90,7 @@ sortd ds = do
         | ValD {} <- d = True
         | InstD {} <- d = True
         | PrimD {} <- d = True
+        | AsInHaskellD {} <- d = True
         | otherwise = False
 
       ntyds = filter isnonty ds
@@ -130,6 +131,7 @@ instance Deunknown Dec where
             cls' <- deunknown cls
             return $ InstD l ctx' cls' ms
       | PrimD l n t <- d = PrimD l n <$> deunknown t
+      | AsInHaskellD l a b <- d = return d
 
 instance (Deunknown a) => Deunknown [a] where
     deunknown = mapM deunknown
@@ -236,6 +238,7 @@ instance Constrain Dec where
               constrain ctx
               constrain cls
       | PrimD _ _ t <- d = constrain t
+      | AsInHaskellD {} <- d = return ()
         
            
 

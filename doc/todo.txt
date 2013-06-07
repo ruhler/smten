@@ -6,7 +6,6 @@ CodeGen:
            else if q then True else False
   if the underlying solver supports integers
 * figure out how to specialize away integers for STP
-* use pragma in source to indicate which data types are Haskelly.
 * use pragma in source to indicate which data types are primdatas.
 * preservation of sharing:
 ** from case

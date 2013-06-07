@@ -20,16 +20,19 @@ decCG (DataD _ n tyvars constrs)
   | n == arrowN = return []
   | n `elem` (map fst primdatas) = return []
   | otherwise = dataCG n tyvars constrs
+
 decCG (ClassD _ ctx n vars exps) = do
     (tyvs, ctx') <- contextCG vars ctx
     exps' <- withTyVars vars $ concat <$> mapM topExpCG exps
     return [H.ClassD ctx' (tynameCG n) tyvs [] exps']
+
 decCG (InstD _ ctx cls@(Class n ts) ms) = do
     (_, ctx') <- contextCG cls ctx
     ts' <- mapM typeCG ts
     ms' <- withTyVars cls $ concat <$> mapM (methodCG cls) ms
     let t = foldl H.AppT (H.ConT (qtynameCG n)) ts'
     return [H.InstanceD ctx' t ms']
+
 decCG (ValD _ e@(TopExp (TopSig n _ _) _)) = do
     decs <- topExpCG e
     main <- if unqualified n == name "main"
@@ -38,6 +41,11 @@ decCG (ValD _ e@(TopExp (TopSig n _ _) _)) = do
     return $ decs ++ main
 
 decCG (PrimD _ hsnm ts) = primCG hsnm ts
+
+decCG (AsInHaskellD _ hsmod nm) = do
+    env <- asks cg_env
+    DataD _ _ tyv cs <- lookupDataD env nm
+    mkHaskellyD (unname hsmod) nm tyv cs
 
 methodCG :: Class -> Method -> CG [H.Dec]
 methodCG cls (Method n e) = do

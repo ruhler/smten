@@ -75,6 +75,7 @@ data Dec = ValD Location TopExp                  -- ^ nm :: ctx => ty ; nm = exp
          | ClassD Location Context Name [TyVar] [TopExp] -- ^ class nm vars where { decs }
          | InstD Location Context Class [Method] -- ^ instance ctx => cls where { meths }
          | PrimD Location String TopSig          -- ^ foreign import hs "hsnm" nm :: ctx => ty ;
+         | AsInHaskellD Location Name Name       -- ^ {-# AsInHaskell hsmod tycon #-}
      deriving (Eq, Show)
 
 -- | Convert a type variable to a variable type.
@@ -91,4 +92,5 @@ instance Locate Dec where
     locate (ClassD l _ _ _ _) = l
     locate (InstD l _ _ _) = l
     locate (PrimD l _ _) = l
+    locate (AsInHaskellD l _ _) = l
 

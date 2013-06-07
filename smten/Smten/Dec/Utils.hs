@@ -38,6 +38,7 @@ instance AssignK Dec where
       | ClassD l ctx n vs ts <- d = ClassD l (assignkl f ctx) n (assignkl f vs) (assignkl f ts)
       | InstD l ctx cls ms <- d = InstD l (assignkl f ctx) (assignkl f cls) ms
       | PrimD l n t <- d = PrimD l n (assignkl f t)
+      | AsInHaskellD {} <- d = d
 
 instance VarTs Class where
     varTs (Class nm ts) = nub (concatMap varTs ts)

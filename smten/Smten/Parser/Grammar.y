@@ -128,6 +128,10 @@ import Smten.Parser.Utils
        'as' { TokenAs }
        'hiding' { TokenHiding }
        'deriving' { TokenDeriving }
+       'AsInHaskell' { TokenAsInHaskell }
+       '{-#'         { TokenOpenPragma }
+       '#-}'         { TokenClosePragma }
+       
 
 %right '$'
 %left '>>' '>>='
@@ -233,6 +237,8 @@ topdecl :: { [PDec] }
     {% withloc $ \l -> [PDeriving (Deriving l $3 $4)] }
  | 'foreign' 'import' 'hs' string gendecl
     {% withloc $ \l -> [PForeign l $4 $5] }
+ | '{-#' 'AsInHaskell' qconid gcon '#-}'
+    {% withloc $ \l -> [PAsInHaskell l $3 $4] }
  | decl
     { [$1] }
 

@@ -38,8 +38,9 @@ instance Ppr Dec where
                 <+> ppr cls
                 <+> text "where" <+> text "{"
                 $+$ nest tabwidth (vcat (map ppr ms)) $+$ text "}"
-    ppr (PrimD _ n s)
-        = text "foreign import hs" <+> text (show n) <+> ppr s
+    ppr (PrimD _ n s) = text "foreign import hs" <+> text (show n) <+> ppr s
+    ppr (AsInHaskellD _ a b)
+        = text "{-# AsInHaskell" <+> text (show a) <+> text (show b) <+> text "#-}"
 
 instance Ppr TopSig where
     ppr (TopSig n ctx t)

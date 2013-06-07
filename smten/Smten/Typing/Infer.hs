@@ -119,6 +119,7 @@ inferdec (InstD l ctx cls ms) = withloc l $ do
   ms' <- mapM infermethod ms
   return (InstD l ctx cls ms')
 inferdec d@(PrimD {}) = return d
+inferdec d@(AsInHaskellD {}) = return d
 
 inferexp :: Type -> Exp -> TI Exp
 inferexp t e = do
