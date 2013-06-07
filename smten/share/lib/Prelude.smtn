@@ -287,8 +287,11 @@ instance Monad [] where
     fail s = []
 
 -- Tuples
+{-# AsInHaskell Prelude (,) #-}
 deriving instance (Eq a, Eq b) => Eq (a, b)
 deriving instance (Ord a, Ord b) => Ord (a, b)
+
+{-# AsInHaskell Prelude (,,) #-}
 deriving instance (Eq a, Eq b, Eq c) => Eq (a, b, c)
 deriving instance (Ord a, Ord b, Ord c) => Ord (a, b, c)
 

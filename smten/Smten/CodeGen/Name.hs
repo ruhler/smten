@@ -94,6 +94,7 @@ qhstynameCG :: String -> Name -> H.Name
 qhstynameCG s n
  | n == listN = H.mkName "[]"
  | n == unitN = H.mkName "()"
+ | Just i <- de_tupleN n = H.mkName $ unname (unqualified n)
  | otherwise = H.mkName $ s ++ "." ++ (unname (unqualified n))
 
 -- qualified haskell variable or data constructor name
@@ -102,6 +103,7 @@ qhsnameCG s n
  | n == nilN = H.mkName "[]"
  | n == consN = H.mkName "(:)"
  | n == unitN = H.mkName "()"
+ | Just i <- de_tupleN n = H.mkName $ unname (unqualified n)
  | otherwise = H.mkName $ s ++ "." ++ (unname (unqualified n))
 
 -- | Generate code for the mux constructor of a given data type.
