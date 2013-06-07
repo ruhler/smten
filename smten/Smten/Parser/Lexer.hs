@@ -174,6 +174,18 @@ lexcomment depth ('{':'-':cs) = many "{-" >> lexcomment (depth+1) cs
 lexcomment depth ('\n':cs) = newline >> lexcomment depth cs
 lexcomment depth (c:cs) = single >> lexcomment depth cs
 
+-- Test if this is a pragma we know about.
+-- If so, return the open pragma token and continue lexing as normal.
+-- Otherwise treat this as a comment.
+lexpragma :: String -> ParserMonad Token
+lexpragma ('\n':cs) = newline >> lexpragma cs
+lexpragma (c:cs) | isSpace c = single >> lexpragma cs
+lexpragma text =
+  let word = takeWhile isIdChar text
+  in if word == "AsInHaskell"
+        then setText text >> return TokenOpenPragma
+        else lexcomment 1 text >> lex
+
 -- Lex a qualified thing.
 -- It is one of:
 --  conid, qvarid, qconid
@@ -210,7 +222,7 @@ lex = do
   saveLoc
   case text of
       [] -> return TokenEOF
-      ('{':'-':'#':cs) -> many "{-#" >> setText cs >> return TokenOpenPragma
+      ('{':'-':'#':cs) -> many "{-#" >> lexpragma cs
       ('#':'-':'}':cs) -> many "#-}" >> setText cs >> return TokenClosePragma
       ('{':'-':cs) -> lexcomment 0 text >> lex
       (c:cs) | Just tok <- (lookup c singles) -> osingle tok cs

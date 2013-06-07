@@ -198,6 +198,7 @@ instance Monad Maybe where
     return = Just
     fail s = Nothing
 
+{-# AsInHaskell Prelude Either #-}
 data Either a b = Left a | Right b
     deriving (Eq, Ord, Show)
 
