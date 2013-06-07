@@ -1,0 +1,25 @@
+
+module Smten.Bit.Static (Bit) where
+
+import Smten.Numeric
+import qualified Smten.Bit.Dynamic as D
+
+data Bit #n = Bit {
+  dbit :: D.Bit
+}
+
+instance Eq (Bit #n) where
+    (==) a b = dbit a == dbit b
+
+instance Ord (Bit #n) where
+    (<=) a b = dbit a <= dbit b
+
+instance Num (Bit #n) where
+    (+) a b = Bit $ dbit a + dbit b
+    (-) a b = Bit $ dbit a - dbit b
+    (*) a b = Bit $ dbit a * dbit b
+    fromInteger i = Bit (D.bv_make (valueof (numeric :: #n)) i)
+
+instance Show (Bit #n) where
+    show = show . dbit
+

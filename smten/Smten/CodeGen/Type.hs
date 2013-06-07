@@ -8,7 +8,6 @@ import qualified Language.Haskell.TH.Syntax as H
 import Smten.Name
 import Smten.Type
 import Smten.Dec
-import Smten.Ppr
 import Smten.CodeGen.CG
 import Smten.CodeGen.Name
 
@@ -18,12 +17,22 @@ typeCG t =
     ConT n _
      | n == arrowN -> return H.ArrowT
      | otherwise -> return $ H.ConT (qtynameCG n)
+
     AppT a b -> do
        a' <- typeCG a
        b' <- typeCG b
        return $ H.AppT a' b'
+
     VarT n _ -> return $ H.VarT (nameCG n)
-    _ -> error $ "TODO: typeCG: " ++ pretty t
+
+    NumT i -> return $ H.AppT (H.ConT (H.mkName "Smten.NumT"))
+                              (H.LitT (H.NumTyLit i))
+    OpT op a b -> do
+        a' <- typeCG a
+        b' <- typeCG b
+        return $ foldl1 H.AppT [H.ConT (H.mkName ("Smten.:" ++ op ++ ":")), a', b']
+                    
+    UnknownT -> error $ "typeCG: unknown type encountered"
 
 classCG :: Class -> CG H.Pred
 classCG (Class n tys) = do
@@ -51,5 +60,10 @@ knum (ArrowK a b) = 1 + knum b
 knum _ = 0
 
 smtenhsCG :: (Name, Kind) -> [H.Pred]
-smtenhsCG (n, k) = [H.ClassP (H.mkName $ "Smten.SmtenHS" ++ show (knum k)) [H.VarT $ nameCG n]]
+smtenhsCG (n, k) =
+  let smhs = H.ClassP (H.mkName $ "Smten.SmtenHS" ++ show (knum k)) [H.VarT $ nameCG n]
+      num = H.ClassP (H.mkName $ "Smten.Numeric") [H.VarT $ nameCG n]
+  in case k of
+        NumK -> [smhs, num]
+        _ -> [smhs]
 

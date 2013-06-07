@@ -12,8 +12,8 @@ CodeGen:
 ** from strict primitive
 ** from application
 * proper handling of explicit errors
-* support for numeric types
 * flesh out the bit vector primitives
+* add array library
 * flesh out the rest of the libraries and test cases
 
 Recent::

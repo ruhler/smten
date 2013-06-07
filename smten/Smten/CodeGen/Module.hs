@@ -24,6 +24,7 @@ moduleCG env mod = do
   let mn = mod_name mod
   body <- decsCG env (mod_decs mod)
   return $
+    H.text "{-# LANGUAGE DataKinds #-}" H.$+$
     H.text "{-# LANGUAGE FlexibleInstances #-}" H.$+$
     H.text "{-# LANGUAGE InstanceSigs #-}" H.$+$
     H.text "{-# LANGUAGE MultiParamTypeClasses #-}" H.$+$

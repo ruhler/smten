@@ -1,0 +1,9 @@
+
+module Smten.Numeric (valueof, numeric) where
+
+foreign import hs "Smten.Runtime.Numeric.valueof"
+    valueof :: #n -> Integer
+
+numeric :: #n
+numeric = error "numeric"
+
