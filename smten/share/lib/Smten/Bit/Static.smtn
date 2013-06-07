@@ -1,6 +1,8 @@
 
 module Smten.Bit.Static (Bit, bv_or) where
 
+import Data.Ix
+
 import Smten.Numeric
 import qualified Smten.Bit.Dynamic as D
 import Smten.Symbolic
@@ -23,6 +25,10 @@ instance Num (Bit #n) where
 
 instance Show (Bit #n) where
     show = show . dbit
+
+instance Ix (Bit #n) where
+    range (l, h) = map Bit $ range (dbit l, dbit h)
+    index (l, h) x = index (dbit l, dbit h) (dbit x)
 
 instance Free (Bit #n) where
     free = do

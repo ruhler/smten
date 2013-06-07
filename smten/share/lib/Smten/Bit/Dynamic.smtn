@@ -3,8 +3,10 @@
 -- statically to avoid complications with numeric types. But all operations
 -- assume properly related widths.
 module Smten.Bit.Dynamic (
-    Bit, bv_make, bv_or,
+    Bit, bv_make, bv_width, bv_value, bv_or,
     ) where
+
+import Data.Ix
 
 -- Primitive bit vector type
 data Bit = 
@@ -13,6 +15,12 @@ data Bit =
 -- Construct a bit vector of given width and value.
 foreign import hs "Smten.Runtime.Primitives.bv_make"
     bv_make :: Integer -> Integer -> Bit
+
+foreign import hs "Smten.Runtime.Primitives.bv_width"
+    bv_width :: Bit -> Integer
+
+foreign import hs "Smten.Runtime.Primitives.bv_value"
+    bv_value :: Bit -> Integer
 
 foreign import hs "Smten.Runtime.SmtenHS.add_Bit"
     add_Bit :: Bit -> Bit -> Bit
@@ -50,3 +58,12 @@ instance Num Bit where
 instance Show Bit where
     show = show_Bit
     
+instance Ix Bit where
+    range (l, h) = 
+      case (l > h, l == h) of
+          (True, _) -> []
+          (_, True) -> [h]
+          _ -> l : range (l + (bv_make (bv_width l) 1), h)
+
+    index (l, _) x = bv_value (x - l)
+

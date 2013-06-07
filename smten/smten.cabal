@@ -31,6 +31,7 @@ source-repository this
 
 library
   exposed-modules:
+    Smten.Runtime.Array
     Smten.Runtime.Builtin
     Smten.Runtime.Char
     Smten.Runtime.IO
@@ -55,7 +56,7 @@ library
     Smten.SMT.STP.STP
 
   build-depends: base ==4.6.*, template-haskell ==2.8.*, mtl ==2.1.*,
-                 hashtables ==1.0.*
+                 hashtables ==1.0.*, array ==0.4.*
   extra-libraries: stp stdc++ yices2 yices1
   ghc-options: -fwarn-unused-binds -fwarn-unused-imports
 

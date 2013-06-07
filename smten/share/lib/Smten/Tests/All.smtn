@@ -11,6 +11,7 @@ import qualified Smten.Tests.Module
 import qualified Smten.Tests.State
 import qualified Smten.Tests.BitDynamic
 import qualified Smten.Tests.BitStatic
+import qualified Smten.Tests.Array
 import qualified Smten.Tests.SMT.Core
 import qualified Smten.Tests.SMT.Integer
 import qualified Smten.Tests.SMT.BitDynamic
@@ -29,6 +30,7 @@ testall = do
     Smten.Tests.State.tests
     Smten.Tests.BitDynamic.tests
     Smten.Tests.BitStatic.tests
+    Smten.Tests.Array.tests
     Smten.Tests.SMT.Core.tests
     Smten.Tests.SMT.Integer.tests
     Smten.Tests.SMT.BitDynamic.tests

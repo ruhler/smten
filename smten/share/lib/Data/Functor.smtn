@@ -1,0 +1,6 @@
+
+module Data.Functor ((<$>)) where
+
+(<$>) :: Functor f => (a -> b) -> f a -> f b
+(<$>) = fmap
+
