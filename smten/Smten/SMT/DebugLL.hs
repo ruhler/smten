@@ -38,7 +38,10 @@ instance AST.AST DebugLL String where
     integer dbg i = dbgNew dbg $ show i
     bit dbg w v = dbgNew dbg $ show (bv_make w v)
     var dbg n = return n
-    ite dbg p a b = dbgNew dbg $ p ++ " ? " ++ a ++ " : " ++ b
+
+    ite_bool dbg p a b = dbgNew dbg $ p ++ " ? " ++ a ++ " : " ++ b
+    ite_integer dbg p a b = dbgNew dbg $ p ++ " ? " ++ a ++ " : " ++ b
+    ite_bit dbg p a b = dbgNew dbg $ p ++ " ? " ++ a ++ " : " ++ b
 
     eq_integer = dbgOp "=="
     leq_integer = dbgOp "<="

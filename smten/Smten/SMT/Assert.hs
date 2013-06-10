@@ -79,7 +79,7 @@ def_bool ctx (S.BoolMux p a b) = do
     p' <- use_bool p
     a' <- use_bool a
     b' <- use_bool b
-    liftIO $ ite ctx p' a' b'
+    liftIO $ ite_bool ctx p' a' b'
 def_bool ctx (S.Bool__EqInteger a b) = int_binary (eq_integer ctx) a b
 def_bool ctx (S.Bool__LeqInteger a b) = int_binary (leq_integer ctx) a b
 def_bool ctx (S.Bool__EqBit a b) = bit_binary (eq_bit ctx) a b
@@ -93,7 +93,7 @@ def_int ctx (S.IntegerMux p a b) = do
     p' <- use_bool p
     a' <- use_int a
     b' <- use_int b
-    liftIO $ ite ctx p' a' b'
+    liftIO $ ite_integer ctx p' a' b'
 def_int ctx (S.IntegerVar id) = liftIO $ var ctx (freenm id)
 
 int_binary :: (AST ctx exp) => (exp -> exp -> IO exp) -> S.Integer -> S.Integer -> AM ctx exp exp
@@ -112,7 +112,7 @@ def_bit ctx (S.BitMux p a b) = do
     p' <- use_bool p
     a' <- use_bit a
     b' <- use_bit b
-    liftIO $ ite ctx p' a' b'
+    liftIO $ ite_bit ctx p' a' b'
 def_bit ctx (S.BitVar id) = liftIO $ var ctx (freenm id)
 
 bit_binary :: (AST ctx exp) => (exp -> exp -> IO exp) -> S.Bit -> S.Bit -> AM ctx exp exp

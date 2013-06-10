@@ -109,7 +109,10 @@ instance AST Yices2 YTerm where
         in c_yices_bvconst_uint64 w' v'
 
   var _ nm = withCString nm c_yices_get_term_by_name
-  ite _ = c_yices_ite 
+
+  ite_bool _ = c_yices_ite 
+  ite_integer _ = c_yices_ite 
+  ite_bit _ = c_yices_ite 
 
   eq_integer _ = c_yices_eq
   leq_integer _ = c_yices_arith_leq_atom

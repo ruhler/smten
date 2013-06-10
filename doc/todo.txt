@@ -1,8 +1,6 @@
 CodeGen:
 * Fix primitives to work right with realize.
 * Sudoku.Enum generated query is huge!
-* Add integer support to STP:
-    Using list monad internally in STP solver backend.
 * use pragma in source to indicate which data types are primdatas.
 * preservation of sharing:
 ** from case

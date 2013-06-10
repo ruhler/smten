@@ -117,7 +117,9 @@ instance AST Yices1 YExpr where
   var y nm = withy1 y $ \ctx -> do
      decl <- withCString nm $ c_yices_get_var_decl_from_name ctx
      c_yices_mk_var_from_decl ctx decl
-  ite y p a b = withy1 y $ \ctx -> c_yices_mk_ite ctx p a b
+  ite_bool y p a b = withy1 y $ \ctx -> c_yices_mk_ite ctx p a b
+  ite_integer y p a b = withy1 y $ \ctx -> c_yices_mk_ite ctx p a b
+  ite_bit y p a b = withy1 y $ \ctx -> c_yices_mk_ite ctx p a b
 
   eq_integer = bprim c_yices_mk_eq
   leq_integer = bprim c_yices_mk_le

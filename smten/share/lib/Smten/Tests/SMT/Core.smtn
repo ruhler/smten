@@ -82,8 +82,7 @@ tests = do
 
    -- We should be able to using Integers, so long as they aren't free, even
    -- if the underlying solver doesn't support them.
-   -- TODO: support STP
-   symtesteq "Core.Integer" (Just (False, True)) [Yices1, Yices2] $ do
+   symtesteq "Core.Integer" (Just (False, True)) [Yices1, Yices2, STP] $ do
        n <- free_Bool
        o <- free_Bool
        assert ((if n then 3 else (4 :: Integer)) == (if o then 4 else 5))
