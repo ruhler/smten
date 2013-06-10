@@ -1,11 +1,8 @@
 CodeGen:
+* Fix primitives to work right with realize.
 * Sudoku.Enum generated query is huge!
-* don't change (if p then 3 else 4) == (if q then 4 else 5)
-    to: if p
-           then if q then False else False
-           else if q then True else False
-  if the underlying solver supports integers
-* figure out how to specialize away integers for STP
+* Add integer support to STP:
+    Using list monad internally in STP solver backend.
 * use pragma in source to indicate which data types are primdatas.
 * preservation of sharing:
 ** from case
@@ -19,6 +16,8 @@ CodeGen:
 Recent::
 * Add support for (..) in import and export specifications
 * Add support for signatures in let declarations
+* Change syntax of empty data type declarations to match haskell
+    Namely: have no equals sign.
 
 Haskell Features::
 * support for (..) in import and export specifications

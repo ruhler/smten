@@ -27,8 +27,6 @@ unitD = DataD ploc unitN [] [Con unitN []]
 prelude :: [Dec]
 prelude = [
     DataD ploc arrowN [TyVar (name "a") StarK, TyVar (name "b") StarK] [],
-    DataD ploc charN [] [],
-    DataD ploc integerN [] [],
     unitD,
     tupleD 2, tupleD 3, tupleD 4,
     -- tuple 5, tuple 6, tuple 7, tuple 8, tuple 9,

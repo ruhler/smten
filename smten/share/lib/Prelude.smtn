@@ -155,6 +155,8 @@ otherwise :: Bool
 otherwise = True
 
 -- data Char = ... 'a' | 'b' ...
+{-# AsInHaskell Prelude Char #-}
+data Char = 
 
 foreign import hs "Smten.Runtime.Primitives.primCharToInteger" 
    primCharToInteger :: Char -> Integer
@@ -227,6 +229,8 @@ data Ordering = LT | EQ | GT
     deriving (Eq, Ord, Show)
 
 -- data Integer = ... -1 | 0 | 1 ...
+{-# AsInHaskell Prelude Integer #-}
+data Integer = 
 
 foreign import hs "Smten.Runtime.SmtenHS.eq_Integer"
     __prim_eq_Integer :: Integer -> Integer -> Bool

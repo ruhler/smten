@@ -42,7 +42,9 @@ decCG (ValD _ e@(TopExp (TopSig n _ _) _)) = do
 
 decCG (PrimD _ hsnm ts) = primCG hsnm ts
 
-decCG (AsInHaskellD _ hsmod nm) = do
+decCG (AsInHaskellD _ hsmod nm)
+ | nm `elem` (map fst primdatas) = return []
+ | otherwise = do
     env <- asks cg_env
     DataD _ _ tyv cs <- lookupDataD env nm
     mkHaskellyD (unname hsmod) nm tyv cs
