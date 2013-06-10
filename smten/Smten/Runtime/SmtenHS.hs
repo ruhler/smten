@@ -1,5 +1,6 @@
 
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE IncoherentInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE TemplateHaskell #-}
 
@@ -72,16 +73,9 @@ class Haskelly h s where
     frhs :: h -> s
     tohs :: s -> h
 
-newtype Poly a = Poly a
-
-instance SmtenHS1 Poly where
-   mux1 p (Poly a) (Poly b) = Poly (mux0 p a b)
-   realize1 m (Poly a) = Poly (realize0 m a)
-   strict_app1 f p = f p
-
-instance Haskelly (Poly s) s where
-    frhs (Poly x) = x
-    tohs = Poly
+instance Haskelly a a where
+    frhs = id
+    tohs = id
 
 instance SmtenHS2 (->) where
    mux2 p fa fb = \x -> mux0 p (fa x) (fb x)
@@ -92,6 +86,10 @@ instance (Haskelly ha sa, Haskelly hb sb, SmtenHS0 sa, SmtenHS0 sb)
          => Haskelly (ha -> hb) (sa -> sb) where
     frhs hf sx = strict_app0 (frhs . hf . tohs) sx
     tohs sf hx = tohs $ sf (frhs hx)
+
+instance Haskelly (a -> b) (a -> b) where
+    frhs = id
+    tohs = id
 
 __caseTrue :: (SmtenHS0 z) => Bool -> z -> z -> z
 __caseTrue x y n = 

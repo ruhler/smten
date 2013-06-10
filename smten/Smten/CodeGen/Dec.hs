@@ -67,13 +67,13 @@ mainCG n = do
 
 -- Sample primitive generation:
 --   foo :: A -> b -> C
---   foo = frhs (Foo.foohs :: Foo.A -> AsSmten b -> Foo.C)
+--   foo = frhs (Foo.foohs :: Foo.A -> b -> Foo.C)
 --
 -- Notes:
 --   * haskell types are assumed to have the same names as smten types
 --   * haskell types are assumed to be exported by the same module as the
 --     haskell primitive
---   * polymorphic types stay polymorphic, and are wrapped with AsSmten
+--   * polymorphic types stay polymorphic
 --   * It is the user's burden to ensure there are appropriate instances of
 --     Haskelly
 primCG :: String -> TopSig -> CG [H.Dec]
@@ -88,7 +88,7 @@ primCG hsnm ts@(TopSig n ctx t) = do
         | n == unitN = H.ConT (H.mkName "()")
         | otherwise = H.ConT (H.mkName $ hsmod ++ "." ++ unname (unqualified n))
       primty (AppT a b) = H.AppT (primty a) (primty b)
-      primty (VarT n _) = H.AppT (H.ConT (H.mkName "Smten.Poly")) (H.VarT $ nameCG n)
+      primty (VarT n _) = H.VarT $ nameCG n
       primty t = error $ "TODO: primty: " ++ pretty t
 
       body = H.AppE (H.VarE $ H.mkName "Smten.frhs")

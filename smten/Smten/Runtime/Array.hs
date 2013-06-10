@@ -1,4 +1,5 @@
 
+{-# LANGUAGE IncoherentInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 
 module Smten.Runtime.Array (
@@ -23,6 +24,10 @@ instance SmtenHS1 PrimArray where
     realize1 m (PrimArrayMux p a b) = S.__caseTrue (realize0 m p) (realize0 m a) (realize0 m b)
     strict_app1 f (PrimArrayMux p a b) = mux0 p (strict_app0 f a) (strict_app0 f b)
     strict_app1 f c = f c
+
+instance Haskelly (PrimArray a) (PrimArray a) where
+    tohs = id
+    frhs = id
 
 instance (Haskelly h s) => Haskelly (PrimArray h) (PrimArray s) where
     tohs (PrimArray arr) = PrimArray (tohs <$> arr)

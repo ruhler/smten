@@ -26,6 +26,7 @@ moduleCG env mod = do
   return $
     H.text "{-# LANGUAGE DataKinds #-}" H.$+$
     H.text "{-# LANGUAGE FlexibleInstances #-}" H.$+$
+    H.text "{-# LANGUAGE IncoherentInstances #-}" H.$+$
     H.text "{-# LANGUAGE InstanceSigs #-}" H.$+$
     H.text "{-# LANGUAGE MultiParamTypeClasses #-}" H.$+$
     H.text "{-# LANGUAGE ScopedTypeVariables #-}" H.$+$

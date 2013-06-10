@@ -38,9 +38,6 @@ instance (Numeric a, Numeric b) => Numeric (a :-: b) where
 instance (Numeric a, Numeric b) => Numeric (a :*: b) where
     valueof x = valueof (numeric :: a) * valueof (numeric :: b)
 
-instance (Numeric a) => Numeric (S.Poly a) where
-    valueof x = valueof (numeric :: a)
-
 instance S.SmtenHS0 (NumT n) where
     mux0 _ _ _ = numeric
     realize0 _ _ = numeric

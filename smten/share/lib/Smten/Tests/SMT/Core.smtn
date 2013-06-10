@@ -82,7 +82,8 @@ tests = do
 
    -- We should be able to using Integers, so long as they aren't free, even
    -- if the underlying solver doesn't support them.
-   symtesteq "Core.Integer" (Just (False, True)) [Yices1, Yices2, STP] $ do
+   -- TODO: support STP
+   symtesteq "Core.Integer" (Just (False, True)) [Yices1, Yices2] $ do
        n <- free_Bool
        o <- free_Bool
        assert ((if n then 3 else (4 :: Integer)) == (if o then 4 else 5))
@@ -95,7 +96,8 @@ tests = do
        return p
 
    -- Same with char
-   symtesteq "Core.Char" (Just True) [Yices1, Yices2, STP] $ do
+   -- TODO: support STP
+   symtesteq "Core.Char" (Just True) [Yices1, Yices2] $ do
        q <- free_Bool
        assert ('a' == (if q then 'a' else 'b'))
        return q

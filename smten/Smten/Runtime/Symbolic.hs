@@ -1,4 +1,5 @@
 
+{-# LANGUAGE IncoherentInstances #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE TypeSynonymInstances #-}
@@ -36,6 +37,10 @@ data SMTType = SMTBool | SMTInteger | SMTBit P.Integer
 instance (Haskelly ha sa) => Haskelly (Symbolic ha) (Symbolic sa) where
     frhs x = frhs <$> x
     tohs x = tohs <$> x
+
+instance Haskelly (Symbolic a) (Symbolic a) where
+    frhs = id
+    tohs = id
 
 instance SmtenHS1 Symbolic where
     mux1 p a b = do
