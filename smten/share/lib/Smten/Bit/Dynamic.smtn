@@ -9,7 +9,7 @@ module Smten.Bit.Dynamic (
 import Data.Ix
 
 -- Primitive bit vector type
-data Bit = 
+data Bit
 
 -- bv_make width value
 -- Construct a bit vector of given width and value.

@@ -7,7 +7,7 @@ module Data.Array (
 import Data.Ix
 import Data.List(sortBy)
 
-data PrimArray a = 
+data PrimArray a
 
 foreign import hs "Smten.Runtime.Array.primArray"
     primArray :: [a] -> PrimArray a

@@ -16,7 +16,7 @@ import Smten.Parser.Grammar
 --
 -- - Contexts in data declarations.
 --
--- - deriving of classes other than Eq, Free, Show.
+-- - deriving of classes other than Eq, Free, Show, Ord.
 --
 -- - Newtype declarations.
 --
@@ -40,14 +40,11 @@ import Smten.Parser.Grammar
 --
 -- - Multi-param type classes are supported.
 --
--- - variable signatures not accompanied by an implementation are allowed,
--- indicating a primitive variable.
---
--- - Empty data declarations are supported, indicating a primitive type.
---
 -- - Numeric types are supported, introduced with the # symbol.
 --
 -- - deriving of Free is supported
+--
+-- - Empty data declarations are allowed.
 --
 -- - Pattern type signatures are allowed.
 --

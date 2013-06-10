@@ -218,9 +218,12 @@ topdecls :: { [PDec] }
     { $1 ++ $3 }
 
 topdecl :: { [PDec] }
- : 'data' conid lopt(tyvars) '=' lopt(constrs) lopt(deriving)
+ : 'data' conid lopt(tyvars) '=' constrs lopt(deriving)
     {% withloc $ \l ->
          PDataDec (DataDec $2 $3 $5) : [PDec ds | ds <- recordD l $2 $3 $5 $6] }
+ | 'data' conid lopt(tyvars)
+    {% withloc $ \l -> 
+         PDataDec (DataDec $2 $3 []) : [PDec ds | ds <- recordD l $2 $3 [] []] }
  | 'type' conid lopt(tyvarnms) '=' type
     { [PSynonym (Synonym $2 $3 $5) ] }
  | 'class' conid tyvars 'where' '{' cdecls opt(';') close

@@ -156,7 +156,7 @@ otherwise = True
 
 -- data Char = ... 'a' | 'b' ...
 {-# AsInHaskell Prelude Char #-}
-data Char = 
+data Char
 
 foreign import hs "Smten.Runtime.Primitives.primCharToInteger" 
    primCharToInteger :: Char -> Integer
@@ -210,7 +210,7 @@ either f g (Right y) = g y
 
 
 -- Primitive IO monad
-data IO a = 
+data IO a
 
 instance Functor IO where
     fmap f x = x >>= (return . f)
@@ -230,7 +230,7 @@ data Ordering = LT | EQ | GT
 
 -- data Integer = ... -1 | 0 | 1 ...
 {-# AsInHaskell Prelude Integer #-}
-data Integer = 
+data Integer
 
 foreign import hs "Smten.Runtime.SmtenHS.eq_Integer"
     __prim_eq_Integer :: Integer -> Integer -> Bool

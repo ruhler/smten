@@ -16,8 +16,6 @@ CodeGen:
 Recent::
 * Add support for (..) in import and export specifications
 * Add support for signatures in let declarations
-* Change syntax of empty data type declarations to match haskell
-    Namely: have no equals sign.
 
 Haskell Features::
 * support for (..) in import and export specifications

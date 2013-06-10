@@ -3,8 +3,7 @@ module Smten.Symbolic where
 
 import Smten.Bit.Dynamic
 
-data Symbolic a = 
-
+data Symbolic a
 
 foreign import hs "Smten.Runtime.Symbolic.return_symbolic"
     return_symbolic :: a -> Symbolic a
