@@ -39,16 +39,14 @@
 -- | Backend for the Yices2 solver
 module Smten.SMT.Yices2.Yices2 (yices2) where
 
-import Foreign
+import Foreign hiding (bit)
 import Foreign.C.String
 
 import Data.Dynamic
 import Data.Functor
 
 import Smten.SMT.Yices2.FFI
-import Smten.SMT.AST
-import qualified Smten.SMT.Assert as A
-import qualified Smten.SMT.Solver as S
+import Smten.SMT.Solver
 
 box :: YTerm -> Dynamic
 box = toDyn
@@ -63,21 +61,46 @@ data Yices2 = Yices2 {
 -- TODO: this currently leaks context pointers!
 -- That should most certainly be fixed somehow.
 -- TODO: when do we call c_yices_exit?
-yices2 :: IO S.Solver
+yices2 :: IO Solver
 yices2 = do
   c_yices_init
   ptr <- c_yices_new_context nullPtr
   return $    
-    let y2 = Yices2 ptr
-    in S.Solver {
-          S.assert = A.assert y2,
-          S.declare_bool = y2declare_bool y2,
-          S.declare_integer = y2declare_integer y2,
-          S.declare_bit = y2declare_bit y2,
-          S.getBoolValue = getBoolValue y2,
-          S.getIntegerValue = getIntegerValue y2,
-          S.getBitVectorValue = getBitVectorValue y2,
-          S.check = check y2
+    let y = Yices2 ptr
+    in Solver {
+          declare_bool = y2declare_bool y,
+          declare_integer = y2declare_integer y,
+          declare_bit = y2declare_bit y,
+          assert = \e -> withy2 y $ \ctx -> c_yices_assert_formula ctx (unbox e),
+          
+          bool = \p -> box <$> if p then c_yices_true else c_yices_false,
+          integer = \i -> box <$> c_yices_int64 (fromInteger i),
+          bit = \w v -> 
+                let w' = fromInteger w
+                    v' = fromInteger v
+                in box <$> c_yices_bvconst_uint64 w' v',
+          
+          var = \nm -> box <$> withCString nm c_yices_get_term_by_name,
+          
+          ite_bool = ite,
+          ite_integer = ite,
+          ite_bit = ite,
+          
+          eq_integer = bp c_yices_eq,
+          leq_integer = bp c_yices_arith_leq_atom,
+          add_integer = bp c_yices_add,
+          sub_integer = bp c_yices_sub,
+          
+          eq_bit = bp c_yices_eq,
+          leq_bit = bp c_yices_bvle_atom,
+          add_bit = bp c_yices_bvadd,
+          sub_bit = bp c_yices_bvsub,
+          mul_bit = bp c_yices_bvmul,
+          or_bit = bp c_yices_bvor,
+          getBoolValue = y2getBoolValue y,
+          getIntegerValue = y2getIntegerValue y,
+          getBitVectorValue = y2getBitVectorValue y,
+          check = y2check y
        }
 
 y2declare_bool :: Yices2 -> String -> IO ()
@@ -101,47 +124,20 @@ y2declare_bit y nm w = do
 withy2 :: Yices2 -> (Ptr YContext -> IO a) -> IO a
 withy2 y f = f (y2_ctx y)
 
-check :: Yices2 -> IO S.Result
-check y = withy2 y $ \ctx -> do
+y2check :: Yices2 -> IO Result
+y2check y = withy2 y $ \ctx -> do
     st <- c_yices_check_context ctx nullPtr
     return $! fromYSMTStatus st
 
-ite :: Yices2 -> Dynamic -> Dynamic -> Dynamic -> IO Dynamic
-ite _ p a b = box <$> c_yices_ite (unbox p) (unbox a) (unbox b)
+ite :: Dynamic -> Dynamic -> Dynamic -> IO Dynamic
+ite p a b = box <$> c_yices_ite (unbox p) (unbox a) (unbox b)
 
-instance AST Yices2 where
-  assert y e = withy2 y $ \ctx -> c_yices_assert_formula ctx (unbox e)
 
-  bool _ p = box <$> if p then c_yices_true else c_yices_false
-  integer _ i = box <$> c_yices_int64 (fromInteger i)
-  bit _ w v = 
-        let w' = fromInteger w
-            v' = fromInteger v
-        in box <$> c_yices_bvconst_uint64 w' v'
+bp :: (YTerm -> YTerm -> IO YTerm) -> Dynamic -> Dynamic -> IO Dynamic
+bp f a b = box <$> f (unbox a) (unbox b)
 
-  var _ nm = box <$> withCString nm c_yices_get_term_by_name
-
-  ite_bool = ite
-  ite_integer = ite
-  ite_bit = ite
-
-  eq_integer = bp c_yices_eq
-  leq_integer = bp c_yices_arith_leq_atom
-  add_integer = bp c_yices_add
-  sub_integer = bp c_yices_sub
-
-  eq_bit = bp c_yices_eq
-  leq_bit = bp c_yices_bvle_atom
-  add_bit = bp c_yices_bvadd
-  sub_bit = bp c_yices_bvsub
-  mul_bit = bp c_yices_bvmul
-  or_bit = bp c_yices_bvor
-
-bp :: (YTerm -> YTerm -> IO YTerm) -> Yices2 -> Dynamic -> Dynamic -> IO Dynamic
-bp f _ a b = box <$> f (unbox a) (unbox b)
-
-getBoolValue :: Yices2 -> String -> IO Bool
-getBoolValue y nm = withy2 y $ \yctx -> do
+y2getBoolValue :: Yices2 -> String -> IO Bool
+y2getBoolValue y nm = withy2 y $ \yctx -> do
     model <- c_yices_get_model yctx 1
     x <- alloca $ \ptr -> do
             term <- withCString nm c_yices_get_term_by_name
@@ -163,8 +159,8 @@ getBoolValue y nm = withy2 y $ \yctx -> do
         1 -> return True
         _ -> error $ "yices2 get bool value got: " ++ show x
 
-getIntegerValue :: Yices2 -> String -> IO Integer
-getIntegerValue y nm = withy2 y $ \yctx -> do
+y2getIntegerValue :: Yices2 -> String -> IO Integer
+y2getIntegerValue y nm = withy2 y $ \yctx -> do
     model <- c_yices_get_model yctx 1
     x <- alloca $ \ptr -> do
             term <- withCString nm c_yices_get_term_by_name
@@ -177,8 +173,8 @@ getIntegerValue y nm = withy2 y $ \yctx -> do
     c_yices_free_model model
     return $! toInteger x
 
-getBitVectorValue :: Yices2 -> String -> Integer -> IO Integer
-getBitVectorValue y nm w = withy2 y $ \yctx -> do
+y2getBitVectorValue :: Yices2 -> String -> Integer -> IO Integer
+y2getBitVectorValue y nm w = withy2 y $ \yctx -> do
     model <- c_yices_get_model yctx 1
     bits <- allocaArray (fromInteger w) $ \ptr -> do
         term <- withCString nm c_yices_get_term_by_name

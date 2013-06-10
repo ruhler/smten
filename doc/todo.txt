@@ -1,4 +1,5 @@
 CodeGen:
+* resurrect DebugLL solver.
 * Fix primitives to work right with realize.
 * Sudoku.Enum generated query is huge!
 * use pragma in source to indicate which data types are primdatas.

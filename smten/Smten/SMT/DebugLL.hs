@@ -9,7 +9,6 @@ import System.IO
 import Data.Dynamic
 
 import Smten.Bit
-import qualified Smten.SMT.AST as AST
 import qualified Smten.SMT.Assert as A
 import Smten.SMT.Solver
 
@@ -41,39 +40,12 @@ dbgOp op dbg a b = dbgNew dbg $ unbox a ++ op ++ unbox b
 ite :: DebugLL -> Dynamic -> Dynamic -> Dynamic -> IO Dynamic
 ite dbg p a b = dbgNew dbg $ unbox p ++ " ? " ++ unbox a ++ " : " ++ unbox b
 
-instance AST.AST DebugLL where
-    assert dbg e = dbgPutStrLn dbg $ "assert " ++ unbox e
-    bool dbg b = dbgNew dbg $ show b
-    integer dbg i = dbgNew dbg $ show i
-    bit dbg w v = dbgNew dbg $ show (bv_make w v)
-    var dbg n = return (box n)
-
-    ite_bool = ite
-    ite_integer = ite
-    ite_bit = ite
-
-    eq_integer = dbgOp "=="
-    leq_integer = dbgOp "<="
-    add_integer = dbgOp "+"
-    sub_integer = dbgOp "-"
-
-    eq_bit = dbgOp "=="
-    leq_bit = dbgOp "<="
-    add_bit = dbgOp "+"
-    sub_bit = dbgOp "-"
-    mul_bit = dbgOp "*"
-    or_bit = dbgOp "|"
-
 debugll :: FilePath -> Solver -> IO Solver
 debugll f s = do
     fout <- openFile f WriteMode
     hSetBuffering fout NoBuffering
     id <- newIORef 0
     return $ Solver {
-        assert = \e -> do
-            A.assert (DebugLL fout id) e
-            assert s e,
-    
         declare_bool = \nm -> do
             hPutStrLn fout $ "declare_bool " ++ nm
             declare_bool s nm,
@@ -85,6 +57,28 @@ debugll f s = do
         declare_bit = \nm w -> do
             hPutStrLn fout $ "declare_bit " ++ nm ++ " of width " ++ show w
             declare_bit s nm w,
+
+        assert = \e -> dbgPutStrLn dbg $ "assert " ++ unbox e,
+        bool = \b -> dbgNew dbg $ show b,
+        integer = \i -> dbgNew dbg $ show i,
+        bit = \w v -> dbgNew dbg $ show (bv_make w v),
+        var = \n -> return (box n),
+      
+        ite_bool = ite dbg,
+        ite_integer = ite dbg,
+        ite_bit = ite dbg,
+      
+        eq_integer = dbgOp "==" dbg,
+        leq_integer = dbgOp "<=" dbg,
+        add_integer = dbgOp "+" dbg,
+        sub_integer = dbgOp "-" dbg,
+      
+        eq_bit = dbgOp "==" dbg,
+        leq_bit = dbgOp "<=" dbg,
+        add_bit = dbgOp "+" dbg,
+        sub_bit = dbgOp "-" dbg,
+        mul_bit = dbgOp "*" dbg,
+        or_bit = dbgOp "|" dbg,
 
         getBoolValue = \n -> do
             hPutStr fout $ n ++ " = "

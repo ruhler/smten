@@ -44,8 +44,7 @@ library
   other-modules:
     Smten.Bit
     Smten.SMT.Assert
-    Smten.SMT.AST
-    Smten.SMT.DebugLL
+    --Smten.SMT.DebugLL
     Smten.SMT.FreeID
     Smten.SMT.Solver
     Smten.SMT.Yices1.FFI
