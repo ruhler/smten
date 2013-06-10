@@ -1,6 +1,4 @@
 
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 
 module Smten.SMT.DebugLL (debugll) where
@@ -8,10 +6,18 @@ module Smten.SMT.DebugLL (debugll) where
 import Data.IORef
 import System.IO
 
+import Data.Dynamic
+
 import Smten.Bit
 import qualified Smten.SMT.AST as AST
 import qualified Smten.SMT.Assert as A
 import Smten.SMT.Solver
+
+box :: String -> Dynamic
+box = toDyn
+
+unbox :: Dynamic -> String
+unbox = flip fromDyn (error "DebugLL.unbox")
 
 data DebugLL = DebugLL {
     dbg_handle :: Handle,
@@ -21,27 +27,30 @@ data DebugLL = DebugLL {
 dbgPutStrLn :: DebugLL -> String -> IO ()
 dbgPutStrLn dbg s = hPutStrLn (dbg_handle dbg) s
 
-dbgNew :: DebugLL -> String -> IO String
+dbgNew :: DebugLL -> String -> IO Dynamic
 dbgNew dbg s = do
     nid <- readIORef (dbg_id dbg)
     modifyIORef' (dbg_id dbg) (+ 1)
     let nm = "$" ++ show nid
     dbgPutStrLn dbg $ nm ++ " = " ++ s
-    return nm
+    return (box nm)
 
-dbgOp :: String -> DebugLL -> String -> String -> IO String
-dbgOp op dbg a b = dbgNew dbg $ a ++ op ++ b
+dbgOp :: String -> DebugLL -> Dynamic -> Dynamic -> IO Dynamic
+dbgOp op dbg a b = dbgNew dbg $ unbox a ++ op ++ unbox b
 
-instance AST.AST DebugLL String where
-    assert dbg e = dbgPutStrLn dbg $ "assert " ++ e
+ite :: DebugLL -> Dynamic -> Dynamic -> Dynamic -> IO Dynamic
+ite dbg p a b = dbgNew dbg $ unbox p ++ " ? " ++ unbox a ++ " : " ++ unbox b
+
+instance AST.AST DebugLL where
+    assert dbg e = dbgPutStrLn dbg $ "assert " ++ unbox e
     bool dbg b = dbgNew dbg $ show b
     integer dbg i = dbgNew dbg $ show i
     bit dbg w v = dbgNew dbg $ show (bv_make w v)
-    var dbg n = return n
+    var dbg n = return (box n)
 
-    ite_bool dbg p a b = dbgNew dbg $ p ++ " ? " ++ a ++ " : " ++ b
-    ite_integer dbg p a b = dbgNew dbg $ p ++ " ? " ++ a ++ " : " ++ b
-    ite_bit dbg p a b = dbgNew dbg $ p ++ " ? " ++ a ++ " : " ++ b
+    ite_bool = ite
+    ite_integer = ite
+    ite_bit = ite
 
     eq_integer = dbgOp "=="
     leq_integer = dbgOp "<="

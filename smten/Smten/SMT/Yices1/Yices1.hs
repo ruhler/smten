@@ -33,8 +33,6 @@
 -- 
 -------------------------------------------------------------------------------
 
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE PatternGuards #-}
 
@@ -49,6 +47,9 @@ import Foreign
 import Foreign.C.String
 import Foreign.C.Types
 
+import Data.Dynamic
+import Data.Functor ((<$>))
+
 import Smten.SMT.Yices1.FFI
 import Smten.SMT.AST
 import qualified Smten.SMT.Assert as A
@@ -57,6 +58,12 @@ import qualified Smten.SMT.Solver as S
 data Yices1 = Yices1 {
     y1_ctx :: Ptr YContext
 }
+
+unbox :: Dynamic -> YExpr
+unbox = flip fromDyn (error "Yices1.unbox")
+
+box :: YExpr -> Dynamic
+box = toDyn
 
 -- TODO: does this leak solvers?
 yices1 :: IO S.Solver
@@ -104,22 +111,29 @@ check y = do
     res <- withy1 y c_yices_check
     return $ toResult res
 
-instance AST Yices1 YExpr where
-  assert y p = withy1 y $ \ctx -> c_yices_assert ctx p
-  bool y True = withy1 y c_yices_mk_true
-  bool y False = withy1 y c_yices_mk_false
-  integer y i = withy1 y $ \ctx -> c_yices_mk_num ctx (fromInteger i)
+ite :: Yices1 -> Dynamic -> Dynamic -> Dynamic -> IO Dynamic
+ite y p a b = withy1 y $ \ctx -> box <$> c_yices_mk_ite ctx (unbox p) (unbox a) (unbox b)
+
+instance AST Yices1 where
+  assert y p = withy1 y $ \ctx -> c_yices_assert ctx (unbox p)
+
+  bool y True = box <$> withy1 y c_yices_mk_true
+  bool y False = box <$> withy1 y c_yices_mk_false
+
+  integer y i = withy1 y $ \ctx -> box <$> c_yices_mk_num ctx (fromInteger i)
+
   bit y w v = withy1 y $ \ctx ->
         let w' = fromInteger w
             v' = fromInteger v
-        in c_yices_mk_bv_constant ctx w' v'
+        in box <$> c_yices_mk_bv_constant ctx w' v'
 
   var y nm = withy1 y $ \ctx -> do
      decl <- withCString nm $ c_yices_get_var_decl_from_name ctx
-     c_yices_mk_var_from_decl ctx decl
-  ite_bool y p a b = withy1 y $ \ctx -> c_yices_mk_ite ctx p a b
-  ite_integer y p a b = withy1 y $ \ctx -> c_yices_mk_ite ctx p a b
-  ite_bit y p a b = withy1 y $ \ctx -> c_yices_mk_ite ctx p a b
+     box <$> c_yices_mk_var_from_decl ctx decl
+
+  ite_bool = ite
+  ite_integer = ite
+  ite_bit = ite
 
   eq_integer = bprim c_yices_mk_eq
   leq_integer = bprim c_yices_mk_le
@@ -134,12 +148,13 @@ instance AST Yices1 YExpr where
   or_bit = bprim c_yices_mk_bv_or
 
 bprim :: (Ptr YContext -> YExpr -> YExpr -> IO YExpr) ->
-         Yices1 -> YExpr -> YExpr -> IO YExpr
-bprim f y a b = withy1 y $ \ctx -> f ctx a b
+         Yices1 -> Dynamic -> Dynamic -> IO Dynamic
+bprim f y a b = withy1 y $ \ctx -> box <$> f ctx (unbox a) (unbox b)
 
 baprim :: (Ptr YContext -> Ptr YExpr -> CUInt -> IO YExpr) ->
-          Yices1 -> YExpr -> YExpr -> IO YExpr
-baprim f y a b = withy1 y $ \ctx -> withArray [a, b] $ \arr -> f ctx arr 2
+          Yices1 -> Dynamic -> Dynamic -> IO Dynamic
+baprim f y a b = withy1 y $ \ctx ->
+    withArray [unbox a, unbox b] $ \arr -> box <$> f ctx arr 2
 
 getBoolValue :: Yices1 -> String -> IO Bool
 getBoolValue y nm = do

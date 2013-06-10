@@ -1,30 +1,29 @@
 
-{-# LANGUAGE FunctionalDependencies #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
-
 -- Class for SMT solver's abstract syntax tree.
 module Smten.SMT.AST (AST(..)) where
 
-class AST ctx exp | ctx -> exp where
-  assert :: ctx -> exp -> IO ()
-  bool :: ctx -> Bool -> IO exp
-  integer :: ctx -> Integer -> IO exp
-  bit :: ctx -> Integer -> Integer -> IO exp
-  var :: ctx -> String -> IO exp
+import Data.Dynamic
 
-  ite_bool :: ctx -> exp -> exp -> exp -> IO exp
+class AST ctx where
+  assert :: ctx -> Dynamic -> IO ()
+  bool :: ctx -> Bool -> IO Dynamic
+  integer :: ctx -> Integer -> IO Dynamic
+  bit :: ctx -> Integer -> Integer -> IO Dynamic
+  var :: ctx -> String -> IO Dynamic
 
-  ite_integer :: ctx -> exp -> exp -> exp -> IO exp
-  eq_integer :: ctx -> exp -> exp -> IO exp
-  leq_integer :: ctx -> exp -> exp -> IO exp
-  add_integer :: ctx -> exp -> exp -> IO exp
-  sub_integer :: ctx -> exp -> exp -> IO exp
+  ite_bool :: ctx -> Dynamic -> Dynamic -> Dynamic -> IO Dynamic
 
-  ite_bit :: ctx -> exp -> exp -> exp -> IO exp
-  eq_bit :: ctx -> exp -> exp -> IO exp
-  leq_bit :: ctx -> exp -> exp -> IO exp
-  add_bit :: ctx -> exp -> exp -> IO exp
-  sub_bit :: ctx -> exp -> exp -> IO exp
-  mul_bit :: ctx -> exp -> exp -> IO exp
-  or_bit :: ctx -> exp -> exp -> IO exp
+  ite_integer :: ctx -> Dynamic -> Dynamic -> Dynamic -> IO Dynamic
+  eq_integer :: ctx -> Dynamic -> Dynamic -> IO Dynamic
+  leq_integer :: ctx -> Dynamic -> Dynamic -> IO Dynamic
+  add_integer :: ctx -> Dynamic -> Dynamic -> IO Dynamic
+  sub_integer :: ctx -> Dynamic -> Dynamic -> IO Dynamic
+
+  ite_bit :: ctx -> Dynamic -> Dynamic -> Dynamic -> IO Dynamic
+  eq_bit :: ctx -> Dynamic -> Dynamic -> IO Dynamic
+  leq_bit :: ctx -> Dynamic -> Dynamic -> IO Dynamic
+  add_bit :: ctx -> Dynamic -> Dynamic -> IO Dynamic
+  sub_bit :: ctx -> Dynamic -> Dynamic -> IO Dynamic
+  mul_bit :: ctx -> Dynamic -> Dynamic -> IO Dynamic
+  or_bit :: ctx -> Dynamic -> Dynamic -> IO Dynamic
 
