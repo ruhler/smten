@@ -50,9 +50,8 @@ data Bit =
 -- You may assume the predicate p is symbolic (you don't have to check for
 -- it being true or false. That's taken care of elsewhere).
 
--- realize :: [(FreeID, Dynamic)] -> a -> a
+-- realize :: Assignment -> a -> a
 -- Update all variables in the given expression according to the given map.
--- You may assume all free variables in the expression are in the map.
 
 -- strict_app :: (a -> b) -> a -> b
 -- Perform strict application of the function to the argument.
