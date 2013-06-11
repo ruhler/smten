@@ -13,6 +13,8 @@ import qualified Smten.Tests.BitDynamic
 import qualified Smten.Tests.BitStatic
 import qualified Smten.Tests.Array
 import qualified Smten.Tests.SMT.Core
+import qualified Smten.Tests.SMT.Error
+import qualified Smten.Tests.SMT.Datatype
 import qualified Smten.Tests.SMT.Integer
 import qualified Smten.Tests.SMT.BitDynamic
 import qualified Smten.Tests.SMT.Share
@@ -32,6 +34,8 @@ testall = do
     Smten.Tests.BitStatic.tests
     Smten.Tests.Array.tests
     Smten.Tests.SMT.Core.tests
+    Smten.Tests.SMT.Error.tests
+    Smten.Tests.SMT.Datatype.tests
     Smten.Tests.SMT.Integer.tests
     Smten.Tests.SMT.BitDynamic.tests
     Smten.Tests.SMT.Share.tests
