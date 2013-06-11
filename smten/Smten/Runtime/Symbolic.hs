@@ -22,7 +22,6 @@ import Smten.SMT.Solver
 import qualified Smten.SMT.Solvers as Solvers
 import Smten.Runtime.SmtenHS as S
 import Smten.SMT.FreeID
-import Smten.SMT.Assert as A
 
 data SS = SS {
     ss_pred :: S.Bool,
@@ -95,7 +94,7 @@ run_symbolic s q = do
   solver <- Solvers.mkSolver s
   (x, ss) <- runStateT q (SS S.True [] S.True)
   mapM_ (declare solver) (ss_free ss)
-  A.assert solver (ss_formula ss)
+  assert solver (ss_formula ss)
   res <- check solver
   case res of
     Satisfiable -> do

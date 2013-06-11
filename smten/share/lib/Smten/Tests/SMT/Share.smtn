@@ -5,8 +5,7 @@ import Smten.Symbolic
 import Smten.Tests.SMT.Test
 
 dbg :: String -> Solver 
---dbg s = DebugLL ("build/test/" ++ s ++ ".dbg") Yices2
-dbg s = Yices2
+dbg s = DebugLL ("build/test/" ++ s ++ ".dbg") Yices2
 
 tests :: IO ()
 tests = do
