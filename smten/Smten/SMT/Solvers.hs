@@ -3,7 +3,7 @@ module Smten.SMT.Solvers (
     Solver(..), mkSolver
     ) where
 
-import qualified Smten.SMT.Solver as SMT
+import qualified Smten.SMT.Solver.Dynamic as D
 
 import Smten.SMT.Yices1.Yices1
 import Smten.SMT.Yices2.Yices2
@@ -15,7 +15,7 @@ data Solver = Yices1 | Yices2 | STP
             | DebugLL FilePath Solver
     deriving (Show)
 
-mkSolver :: Solver -> IO (SMT.Solver)
+mkSolver :: Solver -> IO D.Solver
 mkSolver Yices1 = yices1
 mkSolver Yices2 = yices2
 mkSolver STP = stp

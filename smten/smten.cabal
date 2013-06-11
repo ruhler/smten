@@ -44,10 +44,10 @@ library
   other-modules:
     Smten.Bit
     Smten.SMT.Assert
-    Smten.SMT.AST
     Smten.SMT.DebugLL
     Smten.SMT.FreeID
-    Smten.SMT.Solver
+    Smten.SMT.Solver.Dynamic
+    Smten.SMT.Solver.Static
     Smten.SMT.Yices1.FFI
     Smten.SMT.Yices1.Yices1
     Smten.SMT.Yices2.FFI

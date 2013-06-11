@@ -9,13 +9,13 @@ import Data.IORef
 import System.IO
 
 import Smten.Bit
-import qualified Smten.SMT.AST as AST
-import qualified Smten.SMT.Assert as A
-import Smten.SMT.Solver
+import Smten.SMT.Solver.Static
+import qualified Smten.SMT.Solver.Dynamic as D
 
 data DebugLL = DebugLL {
     dbg_handle :: Handle,
-    dbg_id :: IORef Integer
+    dbg_id :: IORef Integer,
+    dbg_s :: D.Solver
 }
 
 dbgPutStrLn :: DebugLL -> String -> IO ()
@@ -32,8 +32,47 @@ dbgNew dbg s = do
 dbgOp :: String -> DebugLL -> String -> String -> IO String
 dbgOp op dbg a b = dbgNew dbg $ a ++ op ++ b
 
-instance AST.AST DebugLL String where
+instance Solver DebugLL String where
+    declare_bool dbg nm = do
+        dbgPutStrLn dbg $ "delare_bool " ++ nm
+        D.declare_bool (dbg_s dbg) nm
+
+    declare_integer dbg nm = do
+        dbgPutStrLn dbg $ "delare_integer " ++ nm
+        D.declare_integer (dbg_s dbg) nm
+
+    declare_bit dbg nm w = do
+        dbgPutStrLn dbg $ "delare_bit " ++ nm ++ " " ++ show w
+        D.declare_bit (dbg_s dbg) nm w
+
+    getBoolValue dbg n = do
+        dbgPutStrLn dbg $ n ++ " = "
+        r <- D.getBoolValue (dbg_s dbg) n
+        dbgPutStrLn dbg $ show r
+        return r
+
+    getIntegerValue dbg n = do
+        dbgPutStrLn dbg $ n ++ " = "
+        r <- D.getIntegerValue (dbg_s dbg) n
+        dbgPutStrLn dbg $ show r
+        return r
+
+    getBitVectorValue dbg n w = do
+        dbgPutStrLn dbg $ n ++ " = "
+        r <- D.getBitVectorValue (dbg_s dbg) n w
+        dbgPutStrLn dbg $ show (bv_make w r)
+        return r
+
+    check dbg = do
+        dbgPutStrLn dbg $ "check... "
+        r <- D.check (dbg_s dbg)
+        dbgPutStrLn dbg $ show r
+        return r
+
+    -- Note: this is overridden when we create the dynamic solver to call the
+    -- underlying solver's assert method.
     assert dbg e = dbgPutStrLn dbg $ "assert " ++ e
+
     bool dbg b = dbgNew dbg $ show b
     integer dbg i = dbgNew dbg $ show i
     bit dbg w v = dbgNew dbg $ show (bv_make w v)
@@ -55,50 +94,13 @@ instance AST.AST DebugLL String where
     mul_bit = dbgOp "*"
     or_bit = dbgOp "|"
 
-debugll :: FilePath -> Solver -> IO Solver
+debugll :: FilePath -> D.Solver -> IO D.Solver
 debugll f s = do
     fout <- openFile f WriteMode
     hSetBuffering fout NoBuffering
     id <- newIORef 0
-    return $ Solver {
-        assert = \e -> do
-            A.assert (DebugLL fout id) e
-            assert s e,
-    
-        declare_bool = \nm -> do
-            hPutStrLn fout $ "declare_bool " ++ nm
-            declare_bool s nm,
-
-        declare_integer = \nm -> do
-            hPutStrLn fout $ "declare_integer " ++ nm
-            declare_integer s nm,
-
-        declare_bit = \nm w -> do
-            hPutStrLn fout $ "declare_bit " ++ nm ++ " of width " ++ show w
-            declare_bit s nm w,
-
-        getBoolValue = \n -> do
-            hPutStr fout $ n ++ " = "
-            r <- getBoolValue s n
-            hPutStrLn fout $ show r
-            return r,
-
-        getIntegerValue = \n -> do
-            hPutStr fout $ n ++ " = "
-            r <- getIntegerValue s n
-            hPutStrLn fout $ show r
-            return r,
-
-        getBitVectorValue = \n w -> do
-            hPutStr fout $ n ++ " = "
-            r <- getBitVectorValue s n w
-            hPutStrLn fout $ show (bv_make w r)
-            return r,
-
-        check = do
-            hPutStr fout $ "check... "
-            r <- check s
-            hPutStrLn fout $ show r
-            return r
+    let dbgs = D.dynsolver (DebugLL fout id s)
+    return $ dbgs {
+        D.assert = \e -> D.assert dbgs e >> D.assert s e
     }
 

@@ -45,7 +45,7 @@ import Foreign
 import Foreign.C.String
 import Foreign.C.Types
 
-import Smten.SMT.Solver(Result(..))
+import Smten.SMT.Solver.Static(Result(..))
 
 data YContext
 data YModel

@@ -18,7 +18,7 @@ import Data.Dynamic
 import Data.Functor((<$>))
 
 import Smten.Bit
-import Smten.SMT.Solver
+import Smten.SMT.Solver.Dynamic
 import qualified Smten.SMT.Solvers as Solvers
 import Smten.Runtime.SmtenHS as S
 import Smten.SMT.FreeID
