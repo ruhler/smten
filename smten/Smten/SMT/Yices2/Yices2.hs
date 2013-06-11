@@ -33,6 +33,7 @@
 -- 
 -------------------------------------------------------------------------------
 
+{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE PatternGuards #-}
 
@@ -42,19 +43,10 @@ module Smten.SMT.Yices2.Yices2 (yices2) where
 import Foreign
 import Foreign.C.String
 
-import Data.Dynamic
-import Data.Functor
-
 import Smten.SMT.Yices2.FFI
 import Smten.SMT.AST
 import qualified Smten.SMT.Assert as A
 import qualified Smten.SMT.Solver as S
-
-box :: YTerm -> Dynamic
-box = toDyn
-
-unbox :: Dynamic -> YTerm
-unbox = flip fromDyn (error "Yices2.unbox")
 
 data Yices2 = Yices2 {
     y2_ctx :: Ptr YContext
@@ -106,39 +98,33 @@ check y = withy2 y $ \ctx -> do
     st <- c_yices_check_context ctx nullPtr
     return $! fromYSMTStatus st
 
-ite :: Yices2 -> Dynamic -> Dynamic -> Dynamic -> IO Dynamic
-ite _ p a b = box <$> c_yices_ite (unbox p) (unbox a) (unbox b)
+instance AST Yices2 YTerm where
+  assert y e = withy2 y $ \ctx -> c_yices_assert_formula ctx e
 
-instance AST Yices2 where
-  assert y e = withy2 y $ \ctx -> c_yices_assert_formula ctx (unbox e)
-
-  bool _ p = box <$> if p then c_yices_true else c_yices_false
-  integer _ i = box <$> c_yices_int64 (fromInteger i)
+  bool _ p = if p then c_yices_true else c_yices_false
+  integer _ i = c_yices_int64 (fromInteger i)
   bit _ w v = 
         let w' = fromInteger w
             v' = fromInteger v
-        in box <$> c_yices_bvconst_uint64 w' v'
+        in c_yices_bvconst_uint64 w' v'
 
-  var _ nm = box <$> withCString nm c_yices_get_term_by_name
+  var _ nm = withCString nm c_yices_get_term_by_name
 
-  ite_bool = ite
-  ite_integer = ite
-  ite_bit = ite
+  ite_bool _ = c_yices_ite 
+  ite_integer _ = c_yices_ite 
+  ite_bit _ = c_yices_ite 
 
-  eq_integer = bp c_yices_eq
-  leq_integer = bp c_yices_arith_leq_atom
-  add_integer = bp c_yices_add
-  sub_integer = bp c_yices_sub
+  eq_integer _ = c_yices_eq
+  leq_integer _ = c_yices_arith_leq_atom
+  add_integer _ = c_yices_add
+  sub_integer _ = c_yices_sub
 
-  eq_bit = bp c_yices_eq
-  leq_bit = bp c_yices_bvle_atom
-  add_bit = bp c_yices_bvadd
-  sub_bit = bp c_yices_bvsub
-  mul_bit = bp c_yices_bvmul
-  or_bit = bp c_yices_bvor
-
-bp :: (YTerm -> YTerm -> IO YTerm) -> Yices2 -> Dynamic -> Dynamic -> IO Dynamic
-bp f _ a b = box <$> f (unbox a) (unbox b)
+  eq_bit _ = c_yices_eq
+  leq_bit _ = c_yices_bvle_atom
+  add_bit _ = c_yices_bvadd
+  sub_bit _ = c_yices_bvsub
+  mul_bit _ = c_yices_bvmul
+  or_bit _ = c_yices_bvor
 
 getBoolValue :: Yices2 -> String -> IO Bool
 getBoolValue y nm = withy2 y $ \yctx -> do

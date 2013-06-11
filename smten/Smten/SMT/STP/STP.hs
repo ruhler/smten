@@ -1,5 +1,7 @@
 
 {-# LANGUAGE PatternGuards #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 
 module Smten.SMT.STP.STP (stp) where
 
@@ -11,24 +13,13 @@ import Foreign.C.Types
 
 import Data.Functor((<$>))
 
-import Data.Dynamic
-
 import Smten.SMT.STP.FFI
 import Smten.SMT.AST
 import qualified Smten.SMT.Assert as A
 import qualified Smten.SMT.Solver as S
 
-boxi :: [(Ptr STP_Expr, Integer)] -> Dynamic
-boxi = toDyn
-
-unboxi :: Dynamic -> [(Ptr STP_Expr, Integer)]
-unboxi = flip fromDyn (error "STP.unboxi")
-
-boxf :: Ptr STP_Expr -> Dynamic
-boxf = toDyn
-
-unboxf :: Dynamic -> Ptr STP_Expr
-unboxf = flip fromDyn (error "STP.unboxf")
+data Formula = STPF { expr :: Ptr STP_Expr }
+             | IntegerF { ints :: [(Formula, Integer)] }
 
 type VarMap = H.BasicHashTable String (Ptr STP_Expr)
 
@@ -84,39 +75,39 @@ check s = do
 nointegers :: a
 nointegers = error $ "STP does not support integers"
 
-instance AST STP where
-  assert s e = withvc s $ \vc -> c_vc_assertFormula vc (unboxf e)
+instance AST STP Formula where
+  assert s e = withvc s $ \vc -> c_vc_assertFormula vc (expr e)
 
-  bool s True = boxf <$> withvc s c_vc_trueExpr
-  bool s False = boxf <$> withvc s c_vc_falseExpr
+  bool s True = STPF <$> withvc s c_vc_trueExpr
+  bool s False = STPF <$> withvc s c_vc_falseExpr
 
   integer s i = do
     tt <- bool s True
-    return (boxi [(unboxf tt, i)])
+    return (IntegerF [(tt, i)])
 
   bit s w v = withvc s $ \vc -> do
      let w' = fromInteger w
          v' = fromInteger v
-     boxf <$> c_vc_bvConstExprFromLL vc w' v'
+     STPF <$> c_vc_bvConstExprFromLL vc w' v'
 
   var s nm = do
     vars <- H.lookup (stp_vars s) nm
     case vars of
-        Just v -> return (boxf v)
+        Just v -> return (STPF v)
         Nothing -> error $ "STP: unknown var: " ++ nm
 
-  ite_bool s p a b = withvc s $ \vc -> boxf <$> c_vc_iteExpr vc (unboxf p) (unboxf a) (unboxf b)
-  ite_bit s p a b = withvc s $ \vc -> boxf <$> c_vc_iteExpr vc (unboxf p) (unboxf a) (unboxf b)
+  ite_bool s p a b = withvc s $ \vc -> STPF <$> c_vc_iteExpr vc (expr p) (expr a) (expr b)
+  ite_bit s p a b = withvc s $ \vc -> STPF <$> c_vc_iteExpr vc (expr p) (expr a) (expr b)
 
   ite_integer s p a b = withvc s $ \vc -> do
-    let join :: Ptr STP_Expr -> (Ptr STP_Expr, Integer) -> IO (Ptr STP_Expr, Integer)
+    let join :: Ptr STP_Expr -> (Formula, Integer) -> IO (Formula, Integer)
         join p (a, v) = do
-          pa <- c_vc_andExpr vc p a
+          pa <- STPF <$> c_vc_andExpr vc p (expr a)
           return (pa, v)
-    not_p <- c_vc_notExpr vc (unboxf p)
-    a' <- mapM (join (unboxf p)) (unboxi a)
-    b' <- mapM (join not_p) (unboxi b)
-    return $ boxi (a' ++ b')
+    not_p <- c_vc_notExpr vc (expr p)
+    a' <- mapM (join (expr p)) (ints a)
+    b' <- mapM (join not_p) (ints b)
+    return $ IntegerF (a' ++ b')
 
   eq_integer = ibprim (==)
   leq_integer = ibprim (<=)
@@ -131,47 +122,47 @@ instance AST STP where
   or_bit = bprim c_vc_orExpr
 
 bprim :: (Ptr STP_VC -> Ptr STP_Expr -> Ptr STP_Expr -> IO (Ptr STP_Expr))
-      -> STP -> Dynamic -> Dynamic -> IO Dynamic
-bprim f s a b = withvc s $ \vc -> boxf <$> f vc (unboxf a) (unboxf b)
+      -> STP -> Formula -> Formula -> IO Formula
+bprim f s a b = withvc s $ \vc -> STPF <$> f vc (expr a) (expr b)
 
 blprim :: (Ptr STP_VC -> CInt -> Ptr STP_Expr -> Ptr STP_Expr -> IO (Ptr STP_Expr))
-       -> STP -> Dynamic -> Dynamic -> IO Dynamic
-blprim f s a b = withvc s $ \vc -> boxf <$> do
-    n <- c_vc_getBVLength vc (unboxf a)
-    f vc n (unboxf a) (unboxf b)
+       -> STP -> Formula -> Formula -> IO Formula
+blprim f s a b = withvc s $ \vc -> STPF <$> do
+    n <- c_vc_getBVLength vc (expr a)
+    f vc n (expr a) (expr b)
 
 ibprim :: (Integer -> Integer -> Bool) 
-       -> STP -> Dynamic -> Dynamic -> IO Dynamic
+       -> STP -> Formula -> Formula -> IO Formula
 ibprim f s a b = withvc s $ \vc -> do
-  let join :: (Ptr STP_Expr, Integer) -> (Ptr STP_Expr, Integer) -> IO (Ptr STP_Expr)
+  let join :: (Formula, Integer) -> (Formula, Integer) -> IO Formula
       join (pa, va) (pb, vb) = do
-        pab <- c_vc_andExpr vc pa pb
+        pab <- c_vc_andExpr vc (expr pa) (expr pb)
         v <- bool s (f va vb)
-        c_vc_andExpr vc pab (unboxf v)
+        STPF <$> c_vc_andExpr vc pab (expr v)
 
-      orN :: [Ptr STP_Expr] -> IO (Ptr STP_Expr)
-      orN [] = unboxf <$> bool s False
+      orN :: [Formula] -> IO Formula
+      orN [] = bool s False
       orN [x] = return x
       orN (x:xs) = do
         xs' <- orN xs
-        c_vc_orExpr vc x xs'
-  vals <- sequence [join ax bx | ax <- unboxi a, bx <- unboxi b]
-  boxf <$> orN vals
+        STPF <$> c_vc_orExpr vc (expr x) (expr xs')
+  vals <- sequence [join ax bx | ax <- ints a, bx <- ints b]
+  orN vals
 
 iiprim :: (Integer -> Integer -> Integer) 
-       -> STP -> Dynamic -> Dynamic -> IO Dynamic
+       -> STP -> Formula -> Formula -> IO Formula
 iiprim f s a b = withvc s $ \vc -> do
-  let join :: (Ptr STP_Expr, Integer) -> (Ptr STP_Expr, Integer) -> IO (Ptr STP_Expr, Integer)
+  let join :: (Formula, Integer) -> (Formula, Integer) -> IO (Formula, Integer)
       join (pa, va) (pb, vb) = do
-        pab <- c_vc_andExpr vc pa pb
+        pab <- STPF <$> c_vc_andExpr vc (expr pa) (expr pb)
         let vab = f va vb
         return (pab, vab)
-  boxi <$> sequence [join ax bx | ax <- unboxi a, bx <- unboxi b]
+  IntegerF <$> sequence [join ax bx | ax <- ints a, bx <- ints b]
 
 getBoolValue :: STP -> String -> IO Bool
 getBoolValue s nm = do
     v <- var s nm
-    val <- withvc s $ \vc -> c_vc_getCounterExample vc (unboxf v)
+    val <- withvc s $ \vc -> c_vc_getCounterExample vc (expr v)
     b <- c_vc_isBool val
     case b of
         0 -> return False
@@ -181,6 +172,6 @@ getBoolValue s nm = do
 getBitVectorValue :: STP -> String -> Integer -> IO Integer
 getBitVectorValue s nm w = do
     v <- var s nm
-    val <- withvc s $ \vc -> c_vc_getCounterExample vc (unboxf v)
+    val <- withvc s $ \vc -> c_vc_getCounterExample vc (expr v)
     fromIntegral <$> c_getBVUnsignedLongLong val
 

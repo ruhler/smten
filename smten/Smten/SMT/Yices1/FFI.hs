@@ -1,5 +1,4 @@
 
-{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE EmptyDataDecls #-}
 {-# LANGUAGE ForeignFunctionInterface #-}
 
@@ -9,8 +8,6 @@ module Smten.SMT.Yices1.FFI where
 import Foreign
 import Foreign.C.String
 import Foreign.C.Types
-
-import Data.Typeable
 
 import Smten.SMT.Solver(Result(..))
 
@@ -22,7 +19,7 @@ type YModel = Ptr YModel_
 data YDecl_
 type YDecl = Ptr YDecl_
 
-data YExpr_ deriving (Typeable)
+data YExpr_
 type YExpr = Ptr YExpr_
 
 type YBool = CInt

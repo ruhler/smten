@@ -1,5 +1,4 @@
 
-{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE EmptyDataDecls #-}
 {-# LANGUAGE ForeignFunctionInterface #-}
 
@@ -9,11 +8,9 @@ import Foreign
 import Foreign.C.String
 import Foreign.C.Types
 
-import Data.Typeable
-
 data STP_VC
 data STP_Type
-data STP_Expr deriving (Typeable)
+data STP_Expr
 
 foreign import ccall "vc_createValidityChecker"
     c_vc_createValidityChecker  :: IO (Ptr STP_VC)
