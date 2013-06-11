@@ -6,7 +6,7 @@ module Smten.CodeGen.Name (
     nameCG, qnameCG, tynameCG, qtynameCG,
     casenmCG, qcasenmCG,
     qhstynameCG, qhsnameCG,
-    muxnmCG, qmuxnmCG,
+    primnmCG, qprimnmCG,
     ) where
 
 import qualified Language.Haskell.TH.Syntax as H
@@ -106,11 +106,11 @@ qhsnameCG s n
  | Just i <- de_tupleN n = H.mkName $ unname (unqualified n)
  | otherwise = H.mkName $ s ++ "." ++ (unname (unqualified n))
 
--- | Generate code for the mux constructor of a given data type.
-muxnmCG :: Name -> H.Name
-muxnmCG = doname True (++ "Mux__") False
+-- | Generate code for the prim constructor of a given data type.
+primnmCG :: Name -> H.Name
+primnmCG = doname True (++ "_Prim") False
 
 -- | qualified type constructor name.
-qmuxnmCG :: Name -> H.Name
-qmuxnmCG = doname True (++ "Mux__") True
+qprimnmCG :: Name -> H.Name
+qprimnmCG = doname True (++ "_Prim") True
 

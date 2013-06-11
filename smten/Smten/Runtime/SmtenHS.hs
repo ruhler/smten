@@ -2,6 +2,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE IncoherentInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE PatternGuards #-}
 {-# LANGUAGE TemplateHaskell #-}
 
 module Smten.Runtime.SmtenHS where
@@ -18,22 +19,46 @@ import Data.Maybe(fromMaybe)
 import Smten.SMT.FreeID
 import Smten.CodeGen.TH
 
+data Cases a =
+    Concrete a
+  | Switch Bool (Cases a) (Cases a)
+
+concrete :: a -> Cases a
+concrete = Concrete
+
+switch :: Bool -> Cases a -> Cases a -> Cases a
+switch = Switch
+
+instance Functor Cases where
+    fmap f (Concrete x) = Concrete (f x)
+    fmap f (Switch p a b) = Switch p (fmap f a) (fmap f b)
+
+f2map :: (a -> b -> c) -> Cases a -> Cases b -> Cases c
+f2map f (Concrete a) y = fmap (f a) y
+f2map f (Switch p a b) y = Switch p (f2map f a y) (f2map f b y)
+
+f3map :: (a -> b -> c -> d) -> Cases a -> Cases b -> Cases c -> Cases d
+f3map f (Concrete a) y z = f2map (f a) y z
+f3map f (Switch p a b) y z = Switch p (f3map f a y z) (f3map f b y z)
+
 data Bool =
     False
   | True
-  | BoolVar FreeID
-  | BoolMux Bool Bool Bool
-  | Bool__EqInteger Integer Integer
-  | Bool__LeqInteger Integer Integer
-  | Bool__EqBit Bit Bit
-  | Bool__LeqBit Bit Bit
+  | Bool_Var FreeID
+  | Bool_EqInteger Integer Integer
+  | Bool_LeqInteger Integer Integer
+  | Bool_EqBit Bit Bit
+  | Bool_LeqBit Bit Bit
+  | Bool_Ite Bool Bool Bool
+  | Bool_Prim (Assignment -> Bool) (Cases Bool)
 
 data Integer =
     Integer P.Integer
   | Integer_Add Integer Integer
   | Integer_Sub Integer Integer
-  | IntegerMux Bool Integer Integer
-  | IntegerVar FreeID
+  | Integer_Ite Bool Integer Integer
+  | Integer_Var FreeID
+  | Integer_Prim (Assignment -> Integer) (Cases Integer)
 
 data Bit =
     Bit P.Bit
@@ -41,22 +66,20 @@ data Bit =
   | Bit_Sub Bit Bit
   | Bit_Mul Bit Bit
   | Bit_Or Bit Bit
-  | BitMux Bool Bit Bit
-  | BitVar FreeID
+  | Bit_Ite Bool Bit Bit
+  | Bit_Var FreeID
+  | Bit_Prim (Assignment -> Bit) (Cases Bit)
+  
 
--- mux :: R.Bool -> a -> a -> a
--- mux p x y = if p then x else y
--- Except here p, x, and y may all be symbolic.
--- You may assume the predicate p is symbolic (you don't have to check for
--- it being true or false. That's taken care of elsewhere).
-
+-- -- Update all variables in the given expression according to the given map.
 -- realize :: Assignment -> a -> a
--- Update all variables in the given expression according to the given map.
+--
+-- -- Return the cases of 'a'.
+-- cases :: a -> Cases a
+--
+-- -- Represent a primitive function resulting in the given object.
+-- primitive :: (Assignment -> a) -> Cases a -> a
 
--- strict_app :: (a -> b) -> a -> b
--- Perform strict application of the function to the argument.
--- In particular:
---   The function will never see a Mux or Error constructor for the object.
 declare_SmtenHS 0
 declare_SmtenHS 1
 declare_SmtenHS 2
@@ -68,105 +91,151 @@ derive_SmtenHS 1
 derive_SmtenHS 2
 derive_SmtenHS 3
 
+-- Convenience functions for unsupported primitives.
+--  f - a symbolic function which knows how to handle concrete arguments.
+--  x - a symbolic argument which 'f' can't handle.
+prim1 :: (SmtenHS0 a, SmtenHS0 b) => (a -> b) -> a -> b
+prim1 f x = primitive0 (\m -> f (realize0 m x)) (fmap f (cases0 x))
+
+prim3 :: (SmtenHS0 a, SmtenHS0 b, SmtenHS0 c, SmtenHS0 d) => (a -> b -> c -> d) -> a -> b -> c -> d
+prim3 f x y z = primitive0 (\m -> f (realize0 m x) (realize0 m y) (realize0 m z))
+                           (f3map f (cases0 x) (cases0 y) (cases0 z))
+
 class Haskelly h s where
+    -- Convert from a haskell object to a smten object.
     frhs :: h -> s
-    tohs :: s -> h
+
+    -- Maybe convert from a smten object to a haskell object.
+    -- Returns Nothing if the smten object can't be represented as a haskell
+    -- object.
+    mtohs :: s -> Maybe h
+    mtohs = return . stohs
+
+    -- Surely convert from a smten object to a haskell object.
+    -- Behavior is undefined if the smten object can't be represented as a
+    -- haskell object.
+    stohs :: s -> h
+    stohs = fromMaybe (error "stohs") . mtohs
 
 instance Haskelly a a where
     frhs = id
-    tohs = id
+    mtohs = return
+    stohs = id
 
 instance SmtenHS2 (->) where
-   mux2 p fa fb = \x -> mux0 p (fa x) (fb x)
    realize2 m f = \x -> realize0 m (f x)
-   strict_app2 g f = g f
+   cases2 f = concrete f
+   primitive2 r c = \x -> primitive0 (\m -> r m $ realize0 m x) (fmap ($ x) c)
 
 instance (Haskelly ha sa, Haskelly hb sb, SmtenHS0 sa, SmtenHS0 sb)
          => Haskelly (ha -> hb) (sa -> sb) where
-    frhs hf sx = strict_app0 (frhs . hf . tohs) sx
-    tohs sf hx = tohs $ sf (frhs hx)
+    frhs hf sx 
+      | Just hx <- mtohs sx = frhs (hf hx)
+      | otherwise = prim1 (frhs hf) sx
+    stohs sf = \hx -> stohs $ sf (frhs hx)
 
 instance Haskelly (a -> b) (a -> b) where
     frhs = id
-    tohs = id
+    stohs = id
 
-__caseTrue :: (SmtenHS0 z) => Bool -> z -> z -> z
-__caseTrue x y n = 
+__caseTrue_default :: (SmtenHS0 z) => Bool -> z -> z -> z
+__caseTrue_default x y n = 
    case x of
       True -> y
       False -> n
-      _ -> mux0 x y n
+      _ -> primitive0 (\m -> __caseTrue_default (realize0 m x) (realize0 m y) (realize0 m n))
+                      (switch x (cases0 y) (cases0 n))
 
 __caseFalse :: (SmtenHS0 z) => Bool -> z -> z -> z
-__caseFalse x y n =
-   case x of
-     False -> y
-     True -> n
-     _ -> mux0 x n y
+__caseFalse x y n = __caseTrue x n y
 
 instance SmtenHS0 Bool where
-   mux0 = BoolMux
-
    realize0 m True = True
    realize0 m False = False
-   realize0 m (BoolVar x) = fromMaybe (error "realize0 Bool failed") $ do
-      d <- lookup x m
-      frhs <$> (fromDynamic d :: Maybe P.Bool)
-   realize0 m (BoolMux p a b)
-      = __caseTrue (realize0 m p) (realize0 m a) (realize0 m b)
-   realize0 m (Bool__EqInteger a b) = eq_Integer (realize0 m a) (realize0 m b)
-   realize0 m (Bool__LeqInteger a b) = leq_Integer (realize0 m a) (realize0 m b)
-   realize0 m (Bool__EqBit a b) = eq_Bit (realize0 m a) (realize0 m b)
-   realize0 m (Bool__LeqBit a b) = leq_Bit (realize0 m a) (realize0 m b)
+   realize0 m (Bool_Var x) = fromMaybe (error "realize0.Bool") $ do
+      v <- lookup x m
+      frhs <$> (fromDynamic v :: Maybe P.Bool)
+   realize0 m (Bool_EqInteger a b) = eq_Integer (realize0 m a) (realize0 m b)
+   realize0 m (Bool_LeqInteger a b) = leq_Integer (realize0 m a) (realize0 m b)
+   realize0 m (Bool_EqBit a b) = eq_Bit (realize0 m a) (realize0 m b)
+   realize0 m (Bool_LeqBit a b) = leq_Bit (realize0 m a) (realize0 m b)
+   realize0 m (Bool_Ite p a b) = __caseTrue (realize0 m p) (realize0 m a) (realize0 m b)
+   realize0 m (Bool_Prim r _) = r m
 
-   strict_app0 f (BoolMux p a b) = mux0 p (strict_app0 f a) (strict_app0 f b)
-   strict_app0 f b = f b
+   cases0 True = concrete True
+   cases0 False = concrete False
+   cases0 p = switch p (concrete True) (concrete False)
+
+   primitive0 = Bool_Prim
+
+   __caseTrue x y n =
+      case x of
+        True -> y
+        False -> n
+        _ -> Bool_Ite x y n
 
 instance Haskelly Bool Bool where
   frhs = id
-  tohs = id
+  stohs = id
 
 instance Haskelly P.Bool Bool where
   frhs p = if p then True else False
 
-  tohs False = P.False
-  tohs True = P.True 
-  tohs _ = error "tohs.Bool failed"
+  mtohs False = return P.False
+  mtohs True = return P.True 
+  mtohs _ = Nothing
 
+  stohs False = P.False
+  stohs True = P.True
+  stohs _ = error "Bool stohs failed"
 
 
 instance SmtenHS0 Integer where
-   mux0 = IntegerMux
-
-   realize0 m c = 
-      case c of
-         Integer {} -> c
+   realize0 m x = 
+      case x of
+         Integer {} -> x
          Integer_Add a b -> add_Integer (realize0 m a) (realize0 m b)
          Integer_Sub a b -> sub_Integer (realize0 m a) (realize0 m b)
-         IntegerMux p a b -> __caseTrue (realize0 m p) (realize0 m a) (realize0 m b)
-         IntegerVar x -> fromMaybe (error "realize0 Integer failed") $ do
-            d <- lookup x m
+         Integer_Ite p a b -> __caseTrue (realize0 m p) (realize0 m a) (realize0 m b)
+         Integer_Var v -> fromMaybe (error "realize0 Integer failed") $ do
+            d <- lookup v m
             frhs <$> (fromDynamic d :: Maybe P.Integer)
+         Integer_Prim r _ -> r m
 
-   strict_app0 f (IntegerMux p a b) = mux0 p (strict_app0 f a) (strict_app0 f b)
-   strict_app0 f i = f i
+   cases0 x = 
+      case x of
+        Integer {} -> Concrete x
+        Integer_Prim _ c -> c
+        _ -> error "TODO: cases0 for symbolic Integer"
+
+   primitive0 = Integer_Prim
+
+   __caseTrue x y n =
+      case x of
+        True -> y
+        False -> n
+        _ -> Integer_Ite x y n
 
 instance Haskelly Integer Integer where
    frhs = id
-   tohs = id
+   stohs = id
 
 instance Haskelly P.Integer Integer where
    frhs = Integer
-   tohs (Integer c) = c
-   tohs _ = error "tohs.Integer failed"
+
+   mtohs (Integer x) = return x
+   mtohs _ = Nothing
+
+   stohs (Integer x) = x
+   stohs _ = error "tohs.Integer failed"
 
 eq_Integer :: Integer -> Integer -> Bool
 eq_Integer (Integer a) (Integer b) = frhs (a == b)
-eq_Integer a b = Bool__EqInteger a b
+eq_Integer a b = Bool_EqInteger a b
 
 leq_Integer :: Integer -> Integer -> Bool
 leq_Integer (Integer a) (Integer b) = frhs (a <= b)
-leq_Integer a b = Bool__LeqInteger a b
+leq_Integer a b = Bool_LeqInteger a b
 
 add_Integer :: Integer -> Integer -> Integer
 add_Integer (Integer a) (Integer b) = Integer (a+b)
@@ -178,8 +247,6 @@ sub_Integer a b = Integer_Sub a b
 
 
 instance SmtenHS0 Bit where
-   mux0 = BitMux
-
    realize0 m c = 
       case c of
          Bit {} -> c
@@ -187,30 +254,46 @@ instance SmtenHS0 Bit where
          Bit_Sub a b -> sub_Bit (realize0 m a) (realize0 m b)
          Bit_Mul a b -> mul_Bit (realize0 m a) (realize0 m b)
          Bit_Or a b -> or_Bit (realize0 m a) (realize0 m b)
-         BitMux p a b -> __caseTrue (realize0 m p) (realize0 m a) (realize0 m b)
-         BitVar x -> fromMaybe (error "realize0 Bit failed") $ do
+         Bit_Ite p a b -> __caseTrue (realize0 m p) (realize0 m a) (realize0 m b)
+         Bit_Var x -> fromMaybe (error "realize0 Bit failed") $ do
             d <- lookup x m
             frhs <$> (fromDynamic d :: Maybe P.Bit)
+         Bit_Prim r _ -> r m
+    
+   cases0 x = 
+      case x of
+         Bit {} -> Concrete x
+         Bit_Prim _ c -> c
+         _ -> error "TODO: cases0 for symbolic bit vector"
+       
+   primitive0 = Bit_Prim
 
-   strict_app0 f (BitMux p a b) = mux0 p (strict_app0 f a) (strict_app0 f b)
-   strict_app0 f i = f i
+   __caseTrue x y n =
+      case x of
+        True -> y
+        False -> n
+        _ -> Bit_Ite x y n
 
 instance Haskelly Bit Bit where
    frhs = id
-   tohs = id
+   stohs = id
 
 instance Haskelly P.Bit Bit where
    frhs = Bit
-   tohs (Bit c) = c
-   tohs _ = error "tohs.Integer failed"
+
+   mtohs (Bit c) = return c
+   mtohs _ = Nothing
+
+   stohs (Bit c) = c
+   stohs _ = error "tohs.Integer failed"
 
 eq_Bit :: Bit -> Bit -> Bool
 eq_Bit (Bit a) (Bit b) = frhs (a == b)
-eq_Bit a b = Bool__EqBit a b
+eq_Bit a b = Bool_EqBit a b
 
 leq_Bit :: Bit -> Bit -> Bool
 leq_Bit (Bit a) (Bit b) = frhs (a <= b)
-leq_Bit a b = Bool__LeqBit a b
+leq_Bit a b = Bool_LeqBit a b
 
 add_Bit :: Bit -> Bit -> Bit
 add_Bit (Bit a) (Bit b) = Bit (a+b)

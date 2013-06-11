@@ -8,6 +8,7 @@ import qualified Data.HashTable.IO as H
 
 import Smten.Bit
 import qualified Smten.Runtime.SmtenHS as S
+import Smten.Runtime.SmtenHS (Cases(..))
 import Smten.SMT.AST as AST
 import Smten.SMT.FreeID
 
@@ -74,27 +75,45 @@ use_bit i = do
 def_bool :: (AST ctx exp) => ctx -> S.Bool -> AM ctx exp exp
 def_bool ctx S.True = liftIO $ bool ctx True
 def_bool ctx S.False = liftIO $ bool ctx False
-def_bool ctx (S.BoolVar id) = liftIO $ var ctx (freenm id)
-def_bool ctx (S.BoolMux p a b) = do
+def_bool ctx (S.Bool_Var id) = liftIO $ var ctx (freenm id)
+def_bool ctx (S.Bool_EqInteger a b) = int_binary (eq_integer ctx) a b
+def_bool ctx (S.Bool_LeqInteger a b) = int_binary (leq_integer ctx) a b
+def_bool ctx (S.Bool_EqBit a b) = bit_binary (eq_bit ctx) a b
+def_bool ctx (S.Bool_LeqBit a b) = bit_binary (leq_bit ctx) a b
+def_bool ctx (S.Bool_Ite p a b) = do
     p' <- use_bool p
     a' <- use_bool a
     b' <- use_bool b
     liftIO $ ite_bool ctx p' a' b'
-def_bool ctx (S.Bool__EqInteger a b) = int_binary (eq_integer ctx) a b
-def_bool ctx (S.Bool__LeqInteger a b) = int_binary (leq_integer ctx) a b
-def_bool ctx (S.Bool__EqBit a b) = bit_binary (eq_bit ctx) a b
-def_bool ctx (S.Bool__LeqBit a b) = bit_binary (leq_bit ctx) a b
+def_bool ctx (S.Bool_Prim _ c) = decases_bool ctx c
+
+decases_bool :: (AST ctx exp) => ctx -> Cases S.Bool -> AM ctx exp exp
+decases_bool ctx (Concrete c) = use_bool c
+decases_bool ctx (Switch p a b) = do
+    p' <- use_bool p
+    a' <- decases_bool ctx a
+    b' <- decases_bool ctx b
+    liftIO $ ite_bool ctx p' a' b'
 
 def_int :: (AST ctx exp) => ctx -> S.Integer -> AM ctx exp exp
 def_int ctx (S.Integer i) = liftIO $ integer ctx i
 def_int ctx (S.Integer_Add a b) = int_binary (add_integer ctx) a b
 def_int ctx (S.Integer_Sub a b) = int_binary (sub_integer ctx) a b
-def_int ctx (S.IntegerMux p a b) = do
+def_int ctx (S.Integer_Ite p a b) = do
     p' <- use_bool p
     a' <- use_int a
     b' <- use_int b
     liftIO $ ite_integer ctx p' a' b'
-def_int ctx (S.IntegerVar id) = liftIO $ var ctx (freenm id)
+def_int ctx (S.Integer_Var id) = liftIO $ var ctx (freenm id)
+def_int ctx (S.Integer_Prim _ c) = decases_int ctx c
+
+decases_int :: (AST ctx exp) => ctx -> Cases S.Integer -> AM ctx exp exp
+decases_int ctx (Concrete c) = use_int c
+decases_int ctx (Switch p a b) = do
+    p' <- use_bool p
+    a' <- decases_int ctx a
+    b' <- decases_int ctx b
+    liftIO $ ite_integer ctx p' a' b'
 
 int_binary :: (AST ctx exp) => (exp -> exp -> IO exp) -> S.Integer -> S.Integer -> AM ctx exp exp
 int_binary f a b = do
@@ -108,12 +127,21 @@ def_bit ctx (S.Bit_Add a b) = bit_binary (add_bit ctx) a b
 def_bit ctx (S.Bit_Sub a b) = bit_binary (sub_bit ctx) a b
 def_bit ctx (S.Bit_Mul a b) = bit_binary (mul_bit ctx) a b
 def_bit ctx (S.Bit_Or a b) = bit_binary (or_bit ctx) a b
-def_bit ctx (S.BitMux p a b) = do
+def_bit ctx (S.Bit_Ite p a b) = do
     p' <- use_bool p
     a' <- use_bit a
     b' <- use_bit b
     liftIO $ ite_bit ctx p' a' b'
-def_bit ctx (S.BitVar id) = liftIO $ var ctx (freenm id)
+def_bit ctx (S.Bit_Var id) = liftIO $ var ctx (freenm id)
+def_bit ctx (S.Bit_Prim _ c) = decases_bit ctx c
+
+decases_bit :: (AST ctx exp) => ctx -> Cases S.Bit -> AM ctx exp exp
+decases_bit ctx (Concrete c) = use_bit c
+decases_bit ctx (Switch p a b) = do
+    p' <- use_bool p
+    a' <- decases_bit ctx a
+    b' <- decases_bit ctx b
+    liftIO $ ite_bit ctx p' a' b'
 
 bit_binary :: (AST ctx exp) => (exp -> exp -> IO exp) -> S.Bit -> S.Bit -> AM ctx exp exp
 bit_binary f a b = do

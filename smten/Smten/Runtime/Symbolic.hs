@@ -36,22 +36,21 @@ data SMTType = SMTBool | SMTInteger | SMTBit P.Integer
     
 instance (Haskelly ha sa) => Haskelly (Symbolic ha) (Symbolic sa) where
     frhs x = frhs <$> x
-    tohs x = tohs <$> x
+    stohs x = stohs <$> x
 
 instance Haskelly (Symbolic a) (Symbolic a) where
     frhs = id
-    tohs = id
+    stohs = id
 
 instance SmtenHS1 Symbolic where
-    mux1 p a b = do
-        va <- predicated p a
-        vb <- predicated (notB p) b
-        return (mux0 p va vb)
-
     realize1 m x = realize0 m <$> x
-    strict_app1 f s = f s
-      
-
+    cases1 x = concrete x
+    primitive1 _ (Concrete x) = x
+    primitive1 _ (Switch p a b) = do
+      va <- predicated p (primitive0 (error "Symbolic.primitive1") a)
+      vb <- predicated (notB p) (primitive0 (error "Symbolic.primitive1") b)
+      return (__caseTrue p va vb)
+    
 return_symbolic :: a -> Symbolic a
 return_symbolic = return
 
@@ -67,19 +66,19 @@ free_Bool :: Symbolic S.Bool
 free_Bool = do
     fid <- liftIO fresh
     modify $ \s -> s { ss_free = (fid, SMTBool) : ss_free s }
-    return $ S.BoolVar fid
+    return $ S.Bool_Var fid
 
 free_Integer :: Symbolic S.Integer
 free_Integer = do
     fid <- liftIO fresh
     modify $ \s -> s { ss_free = (fid, SMTInteger) : ss_free s }
-    return $ S.IntegerVar fid
+    return $ S.Integer_Var fid
 
 free_Bit :: S.Integer -> Symbolic S.Bit
 free_Bit (S.Integer v) = do
     fid <- liftIO fresh
     modify $ \s -> s { ss_free = (fid, SMTBit v) : ss_free s }
-    return $ S.BitVar fid
+    return $ S.Bit_Var fid
 
 predicated :: S.Bool -> Symbolic a -> Symbolic a
 predicated p q = do

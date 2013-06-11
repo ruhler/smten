@@ -39,22 +39,22 @@ instance (Numeric a, Numeric b) => Numeric (a :*: b) where
     valueof x = valueof (numeric :: a) * valueof (numeric :: b)
 
 instance S.SmtenHS0 (NumT n) where
-    mux0 _ _ _ = numeric
     realize0 _ _ = numeric
-    strict_app0 f x = f x
+    cases0 _ = S.concrete numeric
+    primitive0 _ _ = numeric
 
 instance S.SmtenHS2 (:+:) where
-    mux2 _ _ _ = numeric
     realize2 _ _ = numeric
-    strict_app2 f x = f x
+    cases2 _ = S.concrete numeric
+    primitive2 _ _ = numeric
 
 instance S.SmtenHS2 (:-:) where
-    mux2 _ _ _ = numeric
     realize2 _ _ = numeric
-    strict_app2 f x = f x
+    cases2 _ = S.concrete numeric
+    primitive2 _ _ = numeric
 
 instance S.SmtenHS2 (:*:) where
-    mux2 _ _ _ = numeric
     realize2 _ _ = numeric
-    strict_app2 f x = f x
+    cases2 _ = S.concrete numeric
+    primitive2 _ _ = numeric
 

@@ -8,22 +8,30 @@ module Smten.Runtime.Char (
 import Prelude hiding (Char)
 import qualified Prelude as P
 import Smten.Runtime.SmtenHS as S
+import Smten.SMT.FreeID
 
 data Char = Char P.Char
-          | CharMux__ S.Bool Char Char
+          | Char_Prim (Assignment -> Char) (Cases Char)
 
 instance Haskelly P.Char Char where
    frhs = Char
-   tohs (Char c) = c
-   tohs _ = error "tohs.Char failed"
+
+   stohs (Char c) = c
+   stohs _ = error "tohs.Char failed"
+
+   mtohs (Char c) = return c
+   mtohs _ = Nothing
 
 instance SmtenHS0 Char where
-   mux0 = CharMux__
    realize0 m c = 
       case c of
          Char {} -> c
-         CharMux__ p a b -> S.__caseTrue (realize0 m p) (realize0 m a) (realize0 m b)
-   strict_app0 f (CharMux__ p a b) = mux0 p (strict_app0 f a) (strict_app0 f b)
-   strict_app0 f c = f c
+         Char_Prim r _ -> r m
 
+   cases0 c =
+      case c of 
+        Char {} -> concrete c
+        Char_Prim _ x -> x
+
+   primitive0 = Char_Prim
 

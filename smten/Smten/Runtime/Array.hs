@@ -14,23 +14,26 @@ import Data.Functor
 import Data.List(genericLength)
 
 import Smten.Runtime.SmtenHS as S
+import Smten.SMT.FreeID
 
 data PrimArray a = PrimArray (Array P.Integer a)
-                 | PrimArrayMux S.Bool (PrimArray a) (PrimArray a)
+                 | PrimArray_Prim (Assignment -> PrimArray a) (Cases (PrimArray a))
 
 instance SmtenHS1 PrimArray where
-    mux1 = PrimArrayMux
-    realize1 m x@(PrimArray {}) = x
-    realize1 m (PrimArrayMux p a b) = S.__caseTrue (realize0 m p) (realize0 m a) (realize0 m b)
-    strict_app1 f (PrimArrayMux p a b) = mux0 p (strict_app0 f a) (strict_app0 f b)
-    strict_app1 f c = f c
+    realize1 m (PrimArray x) = PrimArray (realize0 m <$> x)
+    realize1 m (PrimArray_Prim r _) = realize0 m (r m)
+
+    cases1 x@(PrimArray {}) = concrete x
+    cases1 (PrimArray_Prim _ c) = c
+
+    primitive1 = PrimArray_Prim
 
 instance Haskelly (PrimArray a) (PrimArray a) where
-    tohs = id
+    stohs = id
     frhs = id
 
 instance (Haskelly h s) => Haskelly (PrimArray h) (PrimArray s) where
-    tohs (PrimArray arr) = PrimArray (tohs <$> arr)
+    stohs (PrimArray arr) = PrimArray (stohs <$> arr)
     frhs (PrimArray arr) = PrimArray (frhs <$> arr)
 
 primArray :: [a] -> PrimArray a

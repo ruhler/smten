@@ -9,21 +9,26 @@ import Prelude hiding (IO)
 import Data.Functor((<$>))
 
 import Smten.Runtime.SmtenHS as S
-
+import Smten.SMT.FreeID 
 
 data IO a = IO (P.IO a)
-          | IOMux__ S.Bool (IO a) (IO a)
+          | IO_Prim (Assignment -> IO a) (Cases (IO a))
 
 instance (Haskelly ha sa) => Haskelly (P.IO ha) (IO sa) where
     frhs x = IO (frhs <$> x)
-    tohs (IO x) = tohs <$> x
-    tohs _ = error "tohs.IO failed"
+
+    mtohs (IO x) = return (stohs <$> x)
+    mtohs _ = Nothing
+
+    stohs (IO x) = stohs <$> x
+    stohs _ = error "stohs.IO failed"
 
 instance SmtenHS1 IO where
-    mux1 = IOMux__
     realize1 m (IO x) = IO (realize0 m <$> x)
-    realize1 m (IOMux__ p a b) = S.__caseTrue (realize0 m p) (realize0 m a) (realize0 m b)
-    strict_app1 f (IOMux__ p a b) = mux0 p (strict_app0 f a) (strict_app0 f b)
-    strict_app1 f x = f x
+    realize1 m (IO_Prim r _) = realize0 m (r m)
 
+    cases1 x@(IO {}) = concrete x
+    cases1 (IO_Prim _ c) = c
+
+    primitive1 = IO_Prim
 
