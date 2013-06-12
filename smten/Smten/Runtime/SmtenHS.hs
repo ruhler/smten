@@ -51,7 +51,6 @@ data Bool =
   | Bool_LeqBit Bit Bit
   | Bool_Ite Bool Bool Bool
   | Bool_Prim (Assignment -> Bool) (Cases Bool)
-  | Bool_Error String
 
 data Integer =
     Integer P.Integer
@@ -60,7 +59,6 @@ data Integer =
   | Integer_Ite Bool Integer Integer
   | Integer_Var FreeID
   | Integer_Prim (Assignment -> Integer) (Cases Integer)
-  | Integer_Error String
 
 data Bit =
     Bit P.Bit
@@ -71,7 +69,6 @@ data Bit =
   | Bit_Ite Bool Bit Bit
   | Bit_Var FreeID
   | Bit_Prim (Assignment -> Bit) (Cases Bit)
-  | Bit_Error String
   
 
 -- -- Update all variables in the given expression according to the given map.
@@ -129,7 +126,6 @@ instance SmtenHS2 (->) where
    realize2 m f = \x -> realize0 m (f x)
    cases2 f = concrete f
    primitive2 r c = \x -> primitive0 (\m -> r m $ realize0 m x) (fmap ($ x) c)
-   error2 msg = \x -> error0 msg
 
 instance (Haskelly ha sa, Haskelly hb sb, SmtenHS0 sa, SmtenHS0 sb)
          => Haskelly (ha -> hb) (sa -> sb) where
@@ -142,13 +138,20 @@ instance Haskelly (a -> b) (a -> b) where
     frhs = id
     stohs = id
 
+__caseTrue_default :: (SmtenHS0 z) => Bool -> z -> z -> z
+__caseTrue_default x y n = 
+   case x of
+      True -> y
+      False -> n
+      _ -> primitive0 (\m -> __caseTrue_default (realize0 m x) (realize0 m y) (realize0 m n))
+                      (switch x (cases0 y) (cases0 n))
+
 __caseFalse :: (SmtenHS0 z) => Bool -> z -> z -> z
 __caseFalse x y n = __caseTrue x n y
 
 instance SmtenHS0 Bool where
-   realize0 m b@True = b
-   realize0 m b@False = b
-   realize0 m b@(Bool_Error {}) = b
+   realize0 m True = True
+   realize0 m False = False
    realize0 m (Bool_Var x) = fromMaybe (error "realize0.Bool") $ do
       v <- lookup x m
       frhs <$> (fromDynamic v :: Maybe P.Bool)
@@ -159,18 +162,16 @@ instance SmtenHS0 Bool where
    realize0 m (Bool_Ite p a b) = __caseTrue (realize0 m p) (realize0 m a) (realize0 m b)
    realize0 m (Bool_Prim r _) = r m
 
-   cases0 p@True = concrete p
-   cases0 p@False = concrete p
+   cases0 True = concrete True
+   cases0 False = concrete False
    cases0 p = switch p (concrete True) (concrete False)
 
    primitive0 = Bool_Prim
-   error0 = Bool_Error
 
    __caseTrue x y n =
       case x of
         True -> y
         False -> n
-        Bool_Error msg -> error0 msg
         _ -> Bool_Ite x y n
 
 instance Haskelly Bool Bool where
@@ -193,7 +194,6 @@ instance SmtenHS0 Integer where
    realize0 m x = 
       case x of
          Integer {} -> x
-         Integer_Error {} -> x
          Integer_Add a b -> add_Integer (realize0 m a) (realize0 m b)
          Integer_Sub a b -> sub_Integer (realize0 m a) (realize0 m b)
          Integer_Ite p a b -> __caseTrue (realize0 m p) (realize0 m a) (realize0 m b)
@@ -209,13 +209,11 @@ instance SmtenHS0 Integer where
         _ -> error "TODO: cases0 for symbolic Integer"
 
    primitive0 = Integer_Prim
-   error0 = Integer_Error
 
    __caseTrue x y n =
       case x of
         True -> y
         False -> n
-        Bool_Error msg -> error0 msg
         _ -> Integer_Ite x y n
 
 instance Haskelly Integer Integer where
@@ -233,26 +231,18 @@ instance Haskelly P.Integer Integer where
 
 eq_Integer :: Integer -> Integer -> Bool
 eq_Integer (Integer a) (Integer b) = frhs (a == b)
-eq_Integer (Integer_Error msg) _ = error0 msg
-eq_Integer _ (Integer_Error msg) = error0 msg
 eq_Integer a b = Bool_EqInteger a b
 
 leq_Integer :: Integer -> Integer -> Bool
 leq_Integer (Integer a) (Integer b) = frhs (a <= b)
-leq_Integer (Integer_Error msg) _ = error0 msg
-leq_Integer _ (Integer_Error msg) = error0 msg
 leq_Integer a b = Bool_LeqInteger a b
 
 add_Integer :: Integer -> Integer -> Integer
 add_Integer (Integer a) (Integer b) = Integer (a+b)
-add_Integer (Integer_Error msg) _ = error0 msg
-add_Integer _ (Integer_Error msg) = error0 msg
 add_Integer a b = Integer_Add a b
 
 sub_Integer :: Integer -> Integer -> Integer
 sub_Integer (Integer a) (Integer b) = Integer (a-b)
-sub_Integer (Integer_Error msg) _ = error0 msg
-sub_Integer _ (Integer_Error msg) = error0 msg
 sub_Integer a b = Integer_Sub a b
 
 
@@ -260,7 +250,6 @@ instance SmtenHS0 Bit where
    realize0 m c = 
       case c of
          Bit {} -> c
-         Bit_Error {} -> c
          Bit_Add a b -> add_Bit (realize0 m a) (realize0 m b)
          Bit_Sub a b -> sub_Bit (realize0 m a) (realize0 m b)
          Bit_Mul a b -> mul_Bit (realize0 m a) (realize0 m b)
@@ -278,13 +267,11 @@ instance SmtenHS0 Bit where
          _ -> error "TODO: cases0 for symbolic bit vector"
        
    primitive0 = Bit_Prim
-   error0 = Bit_Error
 
    __caseTrue x y n =
       case x of
         True -> y
         False -> n
-        Bool_Error msg -> error0 msg
         _ -> Bit_Ite x y n
 
 instance Haskelly Bit Bit where
@@ -302,37 +289,25 @@ instance Haskelly P.Bit Bit where
 
 eq_Bit :: Bit -> Bit -> Bool
 eq_Bit (Bit a) (Bit b) = frhs (a == b)
-eq_Bit (Bit_Error msg) _ = error0 msg
-eq_Bit _ (Bit_Error msg) = error0 msg
 eq_Bit a b = Bool_EqBit a b
 
 leq_Bit :: Bit -> Bit -> Bool
 leq_Bit (Bit a) (Bit b) = frhs (a <= b)
-leq_Bit (Bit_Error msg) _ = error0 msg
-leq_Bit _ (Bit_Error msg) = error0 msg
 leq_Bit a b = Bool_LeqBit a b
 
 add_Bit :: Bit -> Bit -> Bit
 add_Bit (Bit a) (Bit b) = Bit (a+b)
-add_Bit (Bit_Error msg) _ = error0 msg
-add_Bit _ (Bit_Error msg) = error0 msg
 add_Bit a b = Bit_Add a b
 
 sub_Bit :: Bit -> Bit -> Bit
-sub_Bit (Bit a) (Bit b) = Bit (a-b)
-sub_Bit (Bit_Error msg) _ = error0 msg
-sub_Bit _ (Bit_Error msg) = error0 msg
+sub_Bit (Bit a) (Bit b) = Bit (a+b)
 sub_Bit a b = Bit_Sub a b
 
 mul_Bit :: Bit -> Bit -> Bit
-mul_Bit (Bit a) (Bit b) = Bit (a*b)
-mul_Bit (Bit_Error msg) _ = error0 msg
-mul_Bit _ (Bit_Error msg) = error0 msg
+mul_Bit (Bit a) (Bit b) = Bit (a+b)
 mul_Bit a b = Bit_Mul a b
 
 or_Bit :: Bit -> Bit -> Bit
 or_Bit (Bit a) (Bit b) = Bit (a .|. b)
-or_Bit (Bit_Error msg) _ = error0 msg
-or_Bit _ (Bit_Error msg) = error0 msg
 or_Bit a b = Bit_Or a b
 

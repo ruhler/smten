@@ -1,9 +1,4 @@
 CodeGen:
-* change mtohs to express explicit errors?
-* how to deal with explicit error for cases?
-* bit-vector error abstraction
-* how to represent error for Symbolic?
-* represent explicit error for NumT and friends.
 * Sudoku.Enum generated query is huge!
 * use pragma in source to indicate which data types are primdatas.
 * preservation of sharing:

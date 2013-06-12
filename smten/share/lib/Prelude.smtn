@@ -319,7 +319,7 @@ until p f x
 asTypeOf :: a -> a -> a
 asTypeOf = const
 
-foreign import hs "Smten.Runtime.Primitives.error" error :: String -> a
+foreign import hs "Prelude.error" error :: String -> a
 
 undefined :: a
 undefined = error "Prelude.undefined"

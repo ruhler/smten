@@ -88,10 +88,6 @@ instance Supported S.Bool where
         b' <- use b
         liftIO $ ite_bool ctx p' a' b'
     define ctx (S.Bool_Prim _ c) = decases ctx c
-    define ctx (S.Bool_Error msg) = liftIO $ do
-        id <- fresh
-        declare_bool ctx (freenm id)
-        var ctx (freenm id)
 
     ite _ = ite_bool
        
@@ -114,10 +110,6 @@ instance Supported S.Integer where
         liftIO $ ite_integer ctx p' a' b'
     define ctx (S.Integer_Var id) = liftIO $ var ctx (freenm id)
     define ctx (S.Integer_Prim _ c) = decases ctx c
-    define ctx (S.Integer_Error msg) = liftIO $ do
-        id <- fresh
-        declare_integer ctx (freenm id)
-        var ctx (freenm id)
 
     ite _ = ite_integer
 
@@ -142,7 +134,6 @@ instance Supported S.Bit where
         liftIO $ ite_bit ctx p' a' b'
     define ctx (S.Bit_Var id) = liftIO $ var ctx (freenm id)
     define ctx (S.Bit_Prim _ c) = decases ctx c
-    define ctx (S.Bit_Error msg) = error "TODO: handle Bit_Error in Assert"
 
     ite _ = ite_bit
 

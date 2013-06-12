@@ -26,7 +26,6 @@ dataCG n tyvars constrs = do
 --                  ...
 --                  | FooK K1 K2 ...
 --                  | Foo_Prim (Assignment -> Foo a b ...) (Cases (Foo a b ...))
---                  | Foo_Error Prelude.String
 mkDataD :: Name -> [TyVar] -> [Con] -> CG [H.Dec]
 mkDataD n tyvars constrs = do
   let tyvars' = [H.PlainTV (nameCG nm) | TyVar nm _ <- tyvars]
@@ -41,17 +40,13 @@ mkDataD n tyvars constrs = do
       asn = foldl H.AppT H.ArrowT [H.ConT (H.mkName "Smten.Assignment"), tyme]
       css = H.AppT (H.ConT (H.mkName "Smten.Cases")) tyme
       prim = H.NormalC (primnmCG n) [(H.NotStrict, ty) | ty <- [asn, css]]
-
-      errty = H.ConT (H.mkName $ "Prelude.String")
-      err = H.NormalC (errnmCG n) [(H.NotStrict, errty)]
   constrs' <- mapM mkcon constrs
-  return [H.DataD [] (tynameCG n) tyvars' (constrs' ++ [prim, err]) []]
+  return [H.DataD [] (tynameCG n) tyvars' (constrs' ++ [prim]) []]
 
 -- __caseFooX :: Foo a b ... -> (X1 -> X2 -> ... -> z__) -> z__ -> z__
 -- __caseFooX x y n =
 --    case x of
 --      FooX x1 x2 ... -> y x1 x2 ...
---      Foo_Error msg -> error0 msg
 --      Foo_Prim _ _ -> prim3 __caseFooX x y n
 --      _ -> n
 mkCaseD :: Name -> [TyVar] -> Con -> CG [H.Dec]
@@ -68,16 +63,12 @@ mkCaseD n tyvars (Con cn tys) = do
       matchy = H.Match (H.ConP (qnameCG cn) (map H.VarP vxs))
                        (H.NormalB (foldl H.AppE (H.VarE vy) (map H.VarE vxs))) []
 
-      matche = H.Match (H.ConP (qerrnmCG n) [H.VarP $ H.mkName "msg"])
-                       (H.NormalB (H.AppE (H.VarE $ H.mkName "Smten.error0")
-                                          (H.VarE $ H.mkName "msg"))) []
-
       nms = [H.mkName "Smten.prim3", qcasenmCG cn, vx, vy, vn]
       mbody = foldl1 H.AppE [H.VarE n | n <- nms]
       matchm = H.Match (H.ConP (qprimnmCG n) [H.WildP, H.WildP]) (H.NormalB mbody) []
 
       matchn = H.Match H.WildP (H.NormalB (H.VarE vn)) []
-      cse = H.CaseE (H.VarE vx) [matchy, matche, matchm, matchn]
+      cse = H.CaseE (H.VarE vx) [matchy, matchm, matchn]
 
       clause = H.Clause (map H.VarP [vx, vy, vn]) (H.NormalB cse) []
       fun = H.FunD (casenmCG cn) [clause]
@@ -150,7 +141,6 @@ mkTohsD hsmod nm cons = do
 --   realizeN = ...
 --   casesN = ...
 --   primitiveN = ...
---   errorN = ...
 smtenHS :: Name -> [TyVar] -> [Con] -> CG [H.Dec]
 smtenHS nm tyvs cs = do
    let (rkept, rdropped) = span (\(TyVar n k) -> knum k == 0) (reverse tyvs)
@@ -162,21 +152,13 @@ smtenHS nm tyvs cs = do
    rel <- realizeD nm n cs
    cases <- casesD nm n cs
    prim <- primD nm n
-   err <- errorD nm n
-   return [H.InstanceD ctx ty [rel, cases, prim, err]]
+   return [H.InstanceD ctx ty [rel, cases, prim]]
 
 --   primN = Foo_Prim
 primD :: Name -> Int -> CG H.Dec
 primD nm n = do
   let body = H.NormalB $ H.VarE (qprimnmCG nm)
       fun = H.ValD (H.VarP (H.mkName $ "primitive" ++ show n)) body []
-  return fun
-
---   errorN = Foo_Error
-errorD :: Name -> Int -> CG H.Dec
-errorD nm n = do
-  let body = H.NormalB $ H.VarE (qerrnmCG nm)
-      fun = H.ValD (H.VarP (H.mkName $ "error" ++ show n)) body []
   return fun
 
 --   realizeN m (FooA x1 x2 ...) = FooA (realize0 m x1) (realize0 m x2) ...

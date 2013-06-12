@@ -44,17 +44,12 @@ instance Haskelly (Symbolic a) (Symbolic a) where
 
 instance SmtenHS1 Symbolic where
     realize1 m x = realize0 m <$> x
-
     cases1 x = concrete x
-
     primitive1 _ (Concrete x) = x
     primitive1 _ (Switch p a b) = do
       va <- predicated p (primitive0 (error "Symbolic.primitive1") a)
       vb <- predicated (notB p) (primitive0 (error "Symbolic.primitive1") b)
       return (__caseTrue p va vb)
-
-    error1 msg = predicated (error0 msg) fail_symbolic
-      
     
 return_symbolic :: a -> Symbolic a
 return_symbolic = return
@@ -104,12 +99,7 @@ run_symbolic s q = do
     Satisfiable -> do
        let vars = ss_free ss
        vals <- mapM (getValue solver) vars
-       let m = zip (map fst vars) vals
-       case (realize0 m (ss_formula ss)) of
-          S.True -> return ()
-          S.False -> error "SMTEN internal error: SMT solver lied?"
-          S.Bool_Error msg -> error $ "smten user error: " ++ msg
-       return (Just (realize0 m x))
+       return (Just (realize0 (zip (map fst vars) vals) x))
     Unsatisfiable -> return Nothing
 
 declare :: Solver -> (FreeID, SMTType) -> IO ()

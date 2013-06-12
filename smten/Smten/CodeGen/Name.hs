@@ -7,7 +7,6 @@ module Smten.CodeGen.Name (
     casenmCG, qcasenmCG,
     qhstynameCG, qhsnameCG,
     primnmCG, qprimnmCG,
-    errnmCG, qerrnmCG,
     ) where
 
 import qualified Language.Haskell.TH.Syntax as H
@@ -114,12 +113,4 @@ primnmCG = doname True (++ "_Prim") False
 -- | qualified type constructor name.
 qprimnmCG :: Name -> H.Name
 qprimnmCG = doname True (++ "_Prim") True
-
--- | Generate code for the err constructor of a given data type.
-errnmCG :: Name -> H.Name
-errnmCG = doname True (++ "_Error") False
-
--- | qualified type constructor name.
-qerrnmCG :: Name -> H.Name
-qerrnmCG = doname True (++ "_Error") True
 

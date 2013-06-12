@@ -35,8 +35,8 @@ testall = do
     Smten.Tests.BitStatic.tests
     Smten.Tests.Array.tests
     Smten.Tests.SMT.Core.tests
-    Smten.Tests.SMT.Error.tests
-    Smten.Tests.SMT.Datatype.tests
+    --Smten.Tests.SMT.Error.tests
+    --Smten.Tests.SMT.Datatype.tests
     Smten.Tests.SMT.Integer.tests
     Smten.Tests.SMT.BitDynamic.tests
     --Smten.Tests.SMT.Bit.tests
