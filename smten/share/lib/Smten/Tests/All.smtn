@@ -17,6 +17,7 @@ import qualified Smten.Tests.SMT.Error
 import qualified Smten.Tests.SMT.Datatype
 import qualified Smten.Tests.SMT.Integer
 import qualified Smten.Tests.SMT.BitDynamic
+--import qualified Smten.Tests.SMT.Bit
 import qualified Smten.Tests.SMT.Share
 import qualified Smten.Tests.SMT.Sudoku
 
@@ -38,6 +39,7 @@ testall = do
     Smten.Tests.SMT.Datatype.tests
     Smten.Tests.SMT.Integer.tests
     Smten.Tests.SMT.BitDynamic.tests
+    --Smten.Tests.SMT.Bit.tests
     Smten.Tests.SMT.Share.tests
     Smten.Tests.SMT.Sudoku.tests
 
