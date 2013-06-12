@@ -12,6 +12,7 @@ import Smten.SMT.FreeID
 
 data Char = Char P.Char
           | Char_Prim (Assignment -> Char) (Cases Char)
+          | Char_Error String
 
 instance Haskelly P.Char Char where
    frhs = Char
@@ -34,4 +35,5 @@ instance SmtenHS0 Char where
         Char_Prim _ x -> x
 
    primitive0 = Char_Prim
+   error0 = Char_Error
 

@@ -86,6 +86,10 @@ def_bool ctx (S.Bool_Ite p a b) = do
     b' <- use_bool b
     liftIO $ ite_bool ctx p' a' b'
 def_bool ctx (S.Bool_Prim _ c) = decases_bool ctx c
+def_bool ctx (S.Bool_Error msg) = liftIO $ do
+    id <- fresh
+    declare_bool ctx (freenm id)
+    var ctx (freenm id)
 
 decases_bool :: (Solver ctx exp) => ctx -> Cases S.Bool -> AM ctx exp exp
 decases_bool ctx (Concrete c) = use_bool c
@@ -106,6 +110,10 @@ def_int ctx (S.Integer_Ite p a b) = do
     liftIO $ ite_integer ctx p' a' b'
 def_int ctx (S.Integer_Var id) = liftIO $ var ctx (freenm id)
 def_int ctx (S.Integer_Prim _ c) = decases_int ctx c
+def_int ctx (S.Integer_Error msg) = liftIO $ do
+    id <- fresh
+    declare_integer ctx (freenm id)
+    var ctx (freenm id)
 
 decases_int :: (Solver ctx exp) => ctx -> Cases S.Integer -> AM ctx exp exp
 decases_int ctx (Concrete c) = use_int c
@@ -134,6 +142,7 @@ def_bit ctx (S.Bit_Ite p a b) = do
     liftIO $ ite_bit ctx p' a' b'
 def_bit ctx (S.Bit_Var id) = liftIO $ var ctx (freenm id)
 def_bit ctx (S.Bit_Prim _ c) = decases_bit ctx c
+def_bit ctx (S.Bit_Error msg) = error "TODO: handle Bit_Error in Assert"
 
 decases_bit :: (Solver ctx exp) => ctx -> Cases S.Bit -> AM ctx exp exp
 decases_bit ctx (Concrete c) = use_bit c
