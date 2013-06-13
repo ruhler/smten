@@ -20,8 +20,8 @@ data PrimArray a = PrimArray (Array P.Integer a)
                  | PrimArray_Prim (Assignment -> PrimArray a) (Cases (PrimArray a))
 
 instance SmtenHS1 PrimArray where
-    realize1 m (PrimArray x) = PrimArray (realize0 m <$> x)
-    realize1 m (PrimArray_Prim r _) = realize0 m (r m)
+    realize1 m (PrimArray x) = PrimArray (realize m <$> x)
+    realize1 m (PrimArray_Prim r _) = realize m (r m)
 
     cases1 x@(PrimArray {}) = concrete x
     cases1 (PrimArray_Prim _ c) = c

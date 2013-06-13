@@ -4,7 +4,7 @@ module Smten.Runtime.Builtin (
     Haskelly(..),
     Cases, concrete,
     Assignment,
-    prim3,
+    prim3, realize,
     Bool(True, False), __caseTrue, __caseFalse, Integer(Integer), Char(Char),
     Numeric, NumT, (:+:), (:-:), (:*:),
     ) where

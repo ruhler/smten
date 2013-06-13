@@ -24,8 +24,8 @@ instance (Haskelly ha sa) => Haskelly (P.IO ha) (IO sa) where
     stohs _ = error "stohs.IO failed"
 
 instance SmtenHS1 IO where
-    realize1 m (IO x) = IO (realize0 m <$> x)
-    realize1 m (IO_Prim r _) = realize0 m (r m)
+    realize1 m (IO x) = IO (realize m <$> x)
+    realize1 m (IO_Prim r _) = realize m (r m)
 
     cases1 x@(IO {}) = concrete x
     cases1 (IO_Prim _ c) = c

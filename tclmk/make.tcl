@@ -44,7 +44,7 @@ indir smten {
     hrun cabal install \
         --builddir ../build/smten \
         --with-happy=$::HAPPY \
-        --force-reinstalls  -O0
+        --force-reinstalls
 
     #hrun cabal haddock --builddir ../build/smten
     hrun cabal sdist --builddir ../build/smten
@@ -63,7 +63,7 @@ proc hsghc {module} {
     hrun -ignorestderr ghc -fno-warn-overlapping-patterns \
         -fno-warn-missing-fields \
         -main-is Smten.Lib.$module.main__ -i$hsdir \
-        -prof -rtsopts -O0 \
+        -prof -rtsopts \
         -o $hsdir/[string map {. _} $module] $hsdir/Smten/Lib/[string map {. /} $module].hs
 }
 

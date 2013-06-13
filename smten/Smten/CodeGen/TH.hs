@@ -36,7 +36,7 @@ declare_SmtenHS n = do
                    ForallT (map PlainTV as) ctx $
                      arrowsT [ConT (mkName "Bool"), mas, mas, mas]
 
-      rzs = [foldl1 AppE [VarE $ mkName v | v <- ["realize0", "m", x]]
+      rzs = [foldl1 AppE [VarE $ mkName v | v <- ["realize", "m", x]]
                 | x <- ["x", "y", "n"]]
       rval = LamE [VarP $ mkName "m"] $ foldl AppE (VarE $ mkName "__caseTrue0") rzs
       cval = foldl1 AppE [VarE $ mkName "switch",

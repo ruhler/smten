@@ -15,10 +15,18 @@ import Prelude hiding (Bool(..), Integer)
 import qualified Prelude as P
 import qualified Smten.Bit as P
 
+import GHC.Base (Any)
+import System.Mem.Weak
+import System.Mem.StableName
+import System.IO.Unsafe
+import Unsafe.Coerce
+
 import Data.Bits
 import Data.Dynamic
 import Data.Functor((<$>))
 import Data.Maybe(fromMaybe)
+
+import qualified Data.HashTable.IO as H
 
 import Smten.Numeric
 import Smten.SMT.FreeID
@@ -82,6 +90,31 @@ data Bit n where
     Bit_Var :: FreeID -> Bit n
     Bit_Prim :: (Assignment -> Bit n) -> Cases (Bit n) -> Bit n
   
+{-# NOINLINE realize_cache #-}
+realize_cache :: H.BasicHashTable (StableName Any) (H.BasicHashTable (StableName Any) Any)
+realize_cache = unsafePerformIO H.new
+
+realize :: (SmtenHS0 a) => Assignment -> a -> a
+realize m x = unsafePerformIO $ do
+    mnm <- makeStableName $! (unsafeCoerce m)
+    xnm <- makeStableName $! (unsafeCoerce x)
+    mfnd <- {-# SCC "RC_LOOKUP" #-} H.lookup realize_cache mnm
+    case mfnd of
+        Just mc -> do
+          xfnd <- {-# SCC "MC_LOOKUP" #-} H.lookup mc xnm
+          case xfnd of
+            Just v -> return (unsafeCoerce v)
+            Nothing -> do
+              let v = realize0 m x
+              H.insert mc xnm (unsafeCoerce v)
+              return v
+        Nothing -> do
+          mc <- H.new
+          H.insert realize_cache mnm mc
+          let v = realize0 m x
+          H.insert mc xnm (unsafeCoerce v)
+          addFinalizer m $ H.delete realize_cache mnm
+          return v
 
 class SmtenHS0 a where
     -- Update all variables in the given expression according to the given map.
@@ -98,7 +131,7 @@ class SmtenHS0 a where
         case x of
             True -> y
             False -> n
-            _ -> primitive0 (\m -> __caseTrue0 (realize0 m x) (realize0 m y) (realize0 m n))
+            _ -> primitive0 (\m -> __caseTrue0 (realize m x) (realize m y) (realize m n))
                             (switch x (cases0 y) (cases0 n))
 
 
@@ -116,10 +149,10 @@ derive_SmtenHS 3
 --  f - a symbolic function which knows how to handle concrete arguments.
 --  x - a symbolic argument which 'f' can't handle.
 prim1 :: (SmtenHS0 a, SmtenHS0 b) => (a -> b) -> a -> b
-prim1 f x = primitive0 (\m -> f (realize0 m x)) (fmap f (cases0 x))
+prim1 f x = primitive0 (\m -> f (realize m x)) (fmap f (cases0 x))
 
 prim3 :: (SmtenHS0 a, SmtenHS0 b, SmtenHS0 c, SmtenHS0 d) => (a -> b -> c -> d) -> a -> b -> c -> d
-prim3 f x y z = primitive0 (\m -> f (realize0 m x) (realize0 m y) (realize0 m z))
+prim3 f x y z = primitive0 (\m -> f (realize m x) (realize m y) (realize m z))
                            (f3map f (cases0 x) (cases0 y) (cases0 z))
 
 sprim1 :: (Haskelly ha sa, Haskelly hb sb) =>
@@ -156,9 +189,9 @@ instance Haskelly a a where
     stohs = id
 
 instance SmtenHS2 (->) where
-   realize2 m f = \x -> realize0 m (f x)
+   realize2 m f = \x -> realize m (f x)
    cases2 f = concrete f
-   primitive2 r c = \x -> primitive0 (\m -> r m $ realize0 m x) (fmap ($ x) c)
+   primitive2 r c = \x -> primitive0 (\m -> r m $ realize m x) (fmap ($ x) c)
 
 instance (Haskelly ha sa, Haskelly hb sb, SmtenHS0 sa, SmtenHS0 sb)
          => Haskelly (ha -> hb) (sa -> sb) where
@@ -183,11 +216,11 @@ instance SmtenHS0 Bool where
    realize0 m (Bool_Var x) = fromMaybe (error "realize0.Bool") $ do
       v <- lookup x m
       frhs <$> (fromDynamic v :: Maybe P.Bool)
-   realize0 m (Bool_EqInteger a b) = eq_Integer (realize0 m a) (realize0 m b)
-   realize0 m (Bool_LeqInteger a b) = leq_Integer (realize0 m a) (realize0 m b)
-   realize0 m (Bool_EqBit a b) = eq_Bit (realize0 m a) (realize0 m b)
-   realize0 m (Bool_LeqBit a b) = leq_Bit (realize0 m a) (realize0 m b)
-   realize0 m (Bool_Ite p a b) = __caseTrue (realize0 m p) (realize0 m a) (realize0 m b)
+   realize0 m (Bool_EqInteger a b) = eq_Integer (realize m a) (realize m b)
+   realize0 m (Bool_LeqInteger a b) = leq_Integer (realize m a) (realize m b)
+   realize0 m (Bool_EqBit a b) = eq_Bit (realize m a) (realize m b)
+   realize0 m (Bool_LeqBit a b) = leq_Bit (realize m a) (realize m b)
+   realize0 m (Bool_Ite p a b) = __caseTrue (realize m p) (realize m a) (realize m b)
    realize0 m (Bool_Prim r _) = r m
 
    cases0 True = concrete True
@@ -222,9 +255,9 @@ instance SmtenHS0 Integer where
    realize0 m x = 
       case x of
          Integer {} -> x
-         Integer_Add a b -> add_Integer (realize0 m a) (realize0 m b)
-         Integer_Sub a b -> sub_Integer (realize0 m a) (realize0 m b)
-         Integer_Ite p a b -> __caseTrue (realize0 m p) (realize0 m a) (realize0 m b)
+         Integer_Add a b -> add_Integer (realize m a) (realize m b)
+         Integer_Sub a b -> sub_Integer (realize m a) (realize m b)
+         Integer_Ite p a b -> __caseTrue (realize m p) (realize m a) (realize m b)
          Integer_Var v -> fromMaybe (error "realize0 Integer failed") $ do
             d <- lookup v m
             frhs <$> (fromDynamic d :: Maybe P.Integer)
@@ -274,18 +307,18 @@ instance SmtenHS1 Bit where
    realize1 m c = 
       case c of
          Bit {} -> c
-         Bit_Add a b -> add_Bit (realize0 m a) (realize0 m b)
-         Bit_Sub a b -> sub_Bit (realize0 m a) (realize0 m b)
-         Bit_Mul a b -> mul_Bit (realize0 m a) (realize0 m b)
-         Bit_Or a b -> or_Bit (realize0 m a) (realize0 m b)
-         Bit_And a b -> and_Bit (realize0 m a) (realize0 m b)
-         Bit_Shl a b -> shl_Bit (realize0 m a) (realize0 m b)
-         Bit_Lshr a b -> lshr_Bit (realize0 m a) (realize0 m b)
-         Bit_Concat a b -> concat_Bit (realize0 m a) (realize0 m b)
-         Bit_Extract a b -> extract_Bit (realize0 m a) (realize0 m b)
-         Bit_Not a -> not_Bit (realize0 m a)
-         Bit_SignExtend a -> sign_extend_Bit (realize0 m a)
-         Bit_Ite p a b -> __caseTrue (realize0 m p) (realize0 m a) (realize0 m b)
+         Bit_Add a b -> add_Bit (realize m a) (realize m b)
+         Bit_Sub a b -> sub_Bit (realize m a) (realize m b)
+         Bit_Mul a b -> mul_Bit (realize m a) (realize m b)
+         Bit_Or a b -> or_Bit (realize m a) (realize m b)
+         Bit_And a b -> and_Bit (realize m a) (realize m b)
+         Bit_Shl a b -> shl_Bit (realize m a) (realize m b)
+         Bit_Lshr a b -> lshr_Bit (realize m a) (realize m b)
+         Bit_Concat a b -> concat_Bit (realize m a) (realize m b)
+         Bit_Extract a b -> extract_Bit (realize m a) (realize m b)
+         Bit_Not a -> not_Bit (realize m a)
+         Bit_SignExtend a -> sign_extend_Bit (realize m a)
+         Bit_Ite p a b -> __caseTrue (realize m p) (realize m a) (realize m b)
          Bit_Var x -> fromMaybe (error "realize0 Bit failed") $ do
             d <- lookup x m
             frhs <$> (fromDynamic d :: Maybe P.Bit)

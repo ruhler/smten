@@ -1,6 +1,8 @@
 
 module Smten.Tests.SMT.Share (tests) where
 
+import Debug.Trace
+
 import Smten.Symbolic
 import Smten.Tests.SMT.Test
 
@@ -52,6 +54,14 @@ tests = do
                       ) z
         assert (not q)
         return z
+
+    putStrLn "CHECK: SHARE.REALIZE should only be output one time"
+    symtesteq "Share.Realize" (Just (15 :: Integer)) [dbg "Share.Realize"] $ do
+       p <- free_Bool
+       assert p
+       return $
+         let x = trace ("SHARE.REALIZE: " ++ show p) 3
+         in x+x+x+x+x
 
     putStrLn "CHECK build/test/Share*.dbg for SHARE TESTS"
 

@@ -161,8 +161,8 @@ primD nm n = do
       fun = H.ValD (H.VarP (H.mkName $ "primitive" ++ show n)) body []
   return fun
 
---   realizeN m (FooA x1 x2 ...) = FooA (realize0 m x1) (realize0 m x2) ...
---   realizeN m (FooB x1 x2 ...) = FooB (realize0 m x1) (realize0 m x2) ...
+--   realizeN m (FooA x1 x2 ...) = FooA (realize m x1) (realize m x2) ...
+--   realizeN m (FooB x1 x2 ...) = FooB (realize m x1) (realize m x2) ...
 --   ...
 --   realizeN m (Foo_Prim r _) = r m
 realizeD :: Name -> Int -> [Con] -> CG H.Dec
@@ -172,7 +172,7 @@ realizeD n k cs = do
         let xs = [H.mkName $ "x" ++ show i | i <- [1..length cts]]
             pats = [H.VarP $ H.mkName "m", H.ConP (qnameCG cn) (map H.VarP xs)]
             rs = [foldl1 H.AppE [
-                    H.VarE (H.mkName "Smten.realize0"),
+                    H.VarE (H.mkName "Smten.realize"),
                     H.VarE (H.mkName "m"),
                     H.VarE x] | x <- xs]
             body = foldl H.AppE (H.ConE (qnameCG cn)) rs
