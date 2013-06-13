@@ -15,7 +15,7 @@ import Smten.CodeGen.Name
 import Smten.CodeGen.Type
 
 topExpCG :: TopExp -> CG [H.Dec]
-topExpCG (TopExp ts@(TopSig n ctx t) e) = do
+topExpCG (TopExp ts@(TopSig n ctx t) e) = retyped t $ do
     sig <- topSigCG ts
     e' <- expCG e
     let val = H.FunD (nameCG n) [H.Clause [] (H.NormalB e') []]

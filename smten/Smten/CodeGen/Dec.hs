@@ -5,8 +5,6 @@ import qualified Language.Haskell.TH as H
 import Data.Functor((<$>))
 
 import Smten.Name
-import Smten.Type
-import Smten.Ppr
 import Smten.Dec
 import Smten.CodeGen.Annotates
 import Smten.CodeGen.CG
@@ -79,25 +77,11 @@ mainCG n = do
 --   * It is the user's burden to ensure there are appropriate instances of
 --     Haskelly
 primCG :: String -> TopSig -> CG [H.Dec]
-primCG hsnm ts@(TopSig n ctx t) = do
-  sig <- topSigCG ts
-  let hsmod = unname . qualification . name $ hsnm
-
-      primty :: Type -> H.Type
-      primty (ConT n _)     
-        | n == arrowN = H.ArrowT
-        | n == listN = H.ListT
-        | n == unitN = H.ConT (H.mkName "()")
-        | otherwise = H.ConT (H.mkName $ hsmod ++ "." ++ unname (unqualified n))
-      primty (AppT a b) = H.AppT (primty a) (primty b)
-      primty (VarT n _) = H.VarT $ nameCG n
-      primty (NumT i) = H.AppT (H.ConT (H.mkName "Smten.NumT"))
-                               (H.LitT (H.NumTyLit i))
-      primty (OpT op a b) = foldl1 H.AppT [H.ConT (H.mkName ("(Smten.:" ++ op ++ ":)")), primty a, primty b]
-      primty t = error $ "TODO: primty: " ++ pretty t
-
-      body = H.AppE (H.VarE $ H.mkName "Smten.frhs")
-                    (H.SigE (H.VarE $ H.mkName hsnm) (primty t))
-      fun = H.FunD (nameCG n) [H.Clause [] (H.NormalB body) []]
-  return [sig, fun]
-
+primCG hsnm ts@(TopSig n ctx t) = retyped t $ do
+      sig <- topSigCG ts
+      let hsmod = unname . qualification . name $ hsnm
+      ty <- primtypeCG hsmod t
+      let body = H.AppE (H.VarE $ H.mkName "Smten.frhs")
+                        (H.SigE (H.VarE $ H.mkName hsnm) ty)
+          fun = H.FunD (nameCG n) [H.Clause [] (H.NormalB body) []]
+      return [sig, fun]

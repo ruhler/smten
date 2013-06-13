@@ -6,9 +6,8 @@ import Smten.Numeric
 import Smten.Bit
 
 -- Verify numeric types are smart enough.
--- TODO: support this
---numt1 :: Bit #40
---numt1 = (id :: Bit #40 -> Bit #40) (3 :: Bit #(32+8))
+numt1 :: Bit #40
+numt1 = (id :: Bit #40 -> Bit #40) (3 :: Bit #(32+8))
 
 tests :: IO ()
 tests = do

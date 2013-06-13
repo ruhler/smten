@@ -1,6 +1,5 @@
 CodeGen:
 * Bit tests: bv_zero_extend, bv_xor, bv_slt, bv_ashr
-* Numeric tests: numeric type retyping hack
 * Sudoku.Enum generated query is huge!
 * use pragma in source to indicate which data types are primdatas.
 * preservation of sharing:
