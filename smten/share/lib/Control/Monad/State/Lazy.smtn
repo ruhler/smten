@@ -3,9 +3,11 @@ module Control.Monad.State.Lazy (
     State, runState, evalState, execState, mapState, withState,
     StateT, runStateT, evalStateT, execStateT, mapStateT, withStateT,
     module Control.Monad.State.Class,
+    module Control.Monad.IO.Class,
     )  where
 
 import Control.Monad.State.Class
+import Control.Monad.IO.Class
 
 data State s a = State {
     runState :: (s -> (a, s))
@@ -74,4 +76,8 @@ instance (Monad m) => MonadState s (StateT s m) where
     get = StateT $ \s -> return (s, s)
     put s = StateT $ \_ -> return ((), s)
 
+instance (MonadIO m) => MonadIO (StateT s m) where
+    liftIO x = StateT $ \s -> do
+        v <- liftIO x
+        return (v, s)
 

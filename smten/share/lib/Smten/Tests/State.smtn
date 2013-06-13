@@ -28,6 +28,12 @@ statething x = do
     put (s+x)
     return (s*x)
 
+-- StateT of IO should be an instance of MonadIO.
+stateio :: StateT Integer IO Integer
+stateio = do
+    liftIO $ putStrLn "hello!"
+    return 5
+
 tests :: IO ()
 tests = do
     test "State" (runState (statething 2) 3 == (6, 5))

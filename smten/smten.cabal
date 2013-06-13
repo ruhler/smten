@@ -14,6 +14,7 @@ data-files:
     doc/*.txt
     lib/*.smtn
     lib/Control/Monad/*.smtn
+    lib/Control/Monad/IO/*.smtn
     lib/Control/Monad/State/*.smtn
     lib/Data/*.smtn
     lib/Debug/*.smtn
