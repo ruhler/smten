@@ -73,6 +73,7 @@ data Bit n where
     Bit_Or :: Bit n -> Bit n -> Bit n
     Bit_And :: Bit n -> Bit n -> Bit n
     Bit_Shl :: Bit n -> Bit n -> Bit n
+    Bit_Lshr :: Bit n -> Bit n -> Bit n
     Bit_Concat :: (SmtenHS0 a, SmtenHS0 b) => Bit a -> Bit b -> Bit n
     Bit_Extract :: (SmtenHS0 a, Numeric n) => Bit a -> Integer -> Bit n
     Bit_Not :: Bit n -> Bit n
@@ -279,6 +280,7 @@ instance SmtenHS1 Bit where
          Bit_Or a b -> or_Bit (realize0 m a) (realize0 m b)
          Bit_And a b -> and_Bit (realize0 m a) (realize0 m b)
          Bit_Shl a b -> shl_Bit (realize0 m a) (realize0 m b)
+         Bit_Lshr a b -> lshr_Bit (realize0 m a) (realize0 m b)
          Bit_Concat a b -> concat_Bit (realize0 m a) (realize0 m b)
          Bit_Extract a b -> extract_Bit (realize0 m a) (realize0 m b)
          Bit_Not a -> not_Bit (realize0 m a)
@@ -339,6 +341,9 @@ and_Bit = sprim2 ((.&.) :: P.Bit -> P.Bit -> P.Bit) Bit_And
 
 shl_Bit :: (SmtenHS0 n) => Bit n -> Bit n -> Bit n
 shl_Bit = sprim2 P.bv_shl Bit_Shl
+
+lshr_Bit :: (SmtenHS0 n) => Bit n -> Bit n -> Bit n
+lshr_Bit = sprim2 P.bv_lshr Bit_Lshr
 
 not_Bit :: (SmtenHS0 n) => Bit n -> Bit n
 not_Bit = sprim1 (complement :: P.Bit -> P.Bit) Bit_Not

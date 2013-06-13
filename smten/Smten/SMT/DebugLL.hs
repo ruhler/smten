@@ -96,6 +96,7 @@ instance Solver DebugLL String where
     and_bit = dbgOp "&"
     concat_bit dbg a b = dbgNew dbg $ "{" ++ a ++ ", " ++ b ++ "}"
     shl_bit = dbgOp "<<"
+    lshr_bit = dbgOp ">>"
     not_bit dbg x = dbgNew dbg $ "~ " ++ x
     sign_extend_bit dbg n x = dbgNew dbg $ "sign_extend " ++ x ++ " by " ++ show n ++ " bits"
     extract_bit dbg hi lo x = dbgNew dbg $ x ++ "[" ++ show hi ++ ":" ++ show lo ++ "]"

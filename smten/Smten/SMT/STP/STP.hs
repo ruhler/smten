@@ -129,6 +129,7 @@ instance Solver STP Formula where
   and_bit = bprim c_vc_andExpr
   concat_bit = bprim c_vc_bvConcatExpr
   shl_bit = blprim c_vc_bvLeftShiftExprExpr
+  lshr_bit = blprim c_vc_bvRightShiftExprExpr
   not_bit = uprim c_vc_bvNotExpr
   sign_extend_bit = error "TODO: STP sign_extend_bit"
   extract_bit s hi lo x = withvc s $ \vc ->

@@ -44,6 +44,7 @@ class Solver ctx exp | ctx -> exp where
   and_bit :: ctx -> exp -> exp -> IO exp
   concat_bit :: ctx -> exp -> exp -> IO exp
   shl_bit :: ctx -> exp -> exp -> IO exp
+  lshr_bit :: ctx -> exp -> exp -> IO exp
   not_bit :: ctx -> exp -> IO exp
 
   -- sign_extend_bit ctx by x

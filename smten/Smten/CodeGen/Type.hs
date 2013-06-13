@@ -43,7 +43,7 @@ typeCG' t = do
         b' <- typeCG' b
         return $ foldl1 H.AppT [H.ConT (H.mkName ("(Smten.:" ++ op ++ ":)")), a', b']
                     
-    UnknownT -> error $ "typeCG: unknown type encountered"
+    UnknownT -> error $ "typeCG': unknown type encountered"
 
 classCG :: Class -> CG H.Pred
 classCG (Class n tys) = do
