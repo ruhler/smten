@@ -153,6 +153,7 @@ instance Solver Yices1 YExpr where
   sub_bit = bprim c_yices_mk_bv_sub
   mul_bit = bprim c_yices_mk_bv_mul
   or_bit = bprim c_yices_mk_bv_or
+  and_bit = bprim c_yices_mk_bv_and
 
 -- TODO: does this leak solvers?
 yices1 :: IO D.Solver

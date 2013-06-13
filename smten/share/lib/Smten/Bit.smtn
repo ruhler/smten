@@ -1,5 +1,8 @@
 
-module Smten.Bit (Bit, bv_or) where
+module Smten.Bit (
+    Bit,
+    bv_or, bv_and,
+    ) where
 
 import Data.Ix
 
@@ -25,6 +28,9 @@ foreign import hs "Smten.Runtime.SmtenHS.leq_Bit"
 
 foreign import hs "Smten.Runtime.SmtenHS.or_Bit"
     bv_or :: Bit #n -> Bit #n -> Bit #n
+
+foreign import hs "Smten.Runtime.SmtenHS.and_Bit"
+    bv_and :: Bit #n -> Bit #n -> Bit #n
 
 foreign import hs "Smten.Runtime.Bit.show_Bit"
     show_Bit :: Bit #n -> String

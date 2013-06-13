@@ -160,3 +160,4 @@ instance Solver Yices2 YTerm where
   sub_bit _ = c_yices_bvsub
   mul_bit _ = c_yices_bvmul
   or_bit _ = c_yices_bvor
+  and_bit _ = c_yices_bvand

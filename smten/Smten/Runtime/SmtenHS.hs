@@ -68,6 +68,7 @@ data Bit n =
   | Bit_Sub (Bit n) (Bit n)
   | Bit_Mul (Bit n) (Bit n)
   | Bit_Or (Bit n) (Bit n)
+  | Bit_And (Bit n) (Bit n)
   | Bit_Ite Bool (Bit n) (Bit n)
   | Bit_Var FreeID
   | Bit_Prim (Assignment -> (Bit n)) (Cases (Bit n))
@@ -262,6 +263,7 @@ instance SmtenHS1 Bit where
          Bit_Sub a b -> sub_Bit (realize0 m a) (realize0 m b)
          Bit_Mul a b -> mul_Bit (realize0 m a) (realize0 m b)
          Bit_Or a b -> or_Bit (realize0 m a) (realize0 m b)
+         Bit_And a b -> and_Bit (realize0 m a) (realize0 m b)
          Bit_Ite p a b -> __caseTrue (realize0 m p) (realize0 m a) (realize0 m b)
          Bit_Var x -> fromMaybe (error "realize0 Bit failed") $ do
             d <- lookup x m
@@ -312,6 +314,9 @@ mul_Bit = sprim2 ((*) :: P.Bit -> P.Bit -> P.Bit) Bit_Mul
 
 or_Bit :: (SmtenHS0 n) => Bit n -> Bit n -> Bit n
 or_Bit = sprim2 ((.|.) :: P.Bit -> P.Bit -> P.Bit) Bit_Or
+
+and_Bit :: (SmtenHS0 n) => Bit n -> Bit n -> Bit n
+and_Bit = sprim2 ((.&.) :: P.Bit -> P.Bit -> P.Bit) Bit_And
 
 toInteger_Bit :: (SmtenHS0 n) => Bit n -> Integer
 toInteger_Bit (Bit a) = frhs $ P.bv_value a
