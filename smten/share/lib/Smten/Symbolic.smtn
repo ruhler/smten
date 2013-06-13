@@ -46,6 +46,7 @@ class Free a where
     free :: Symbolic a
 
 deriving instance Free ()
+deriving instance (Free a) => Free (Maybe a)
 
 instance Free Integer where
     free = free_Integer
