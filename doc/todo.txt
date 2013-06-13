@@ -1,12 +1,15 @@
 CodeGen:
+* handle abstraction of error for bit vectors
+* change mtohs to express explicit errors
+    Use for concrete functions and sprim2.
+* how to deal with explicit error for cases?
+* represent explicit error for NumT and friends.
 * Sudoku.Enum generated query is huge!
 * use pragma in source to indicate which data types are primdatas.
 * preservation of sharing:
 ** from case
 ** from strict primitive
 ** from application
-** during realize
-* proper handling of explicit errors
 
 Recent::
 * Add support for (..) in import and export specifications

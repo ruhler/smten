@@ -17,6 +17,7 @@ import Smten.Runtime.SmtenHS as S
 
 data PrimArray a = PrimArray (Array P.Integer a)
                  | PrimArray_Prim (Assignment -> PrimArray a) (Cases (PrimArray a))
+                 | PrimArray_Error String
 
 instance SmtenHS1 PrimArray where
     realize1 m (PrimArray x) = PrimArray (realize m <$> x)
@@ -24,6 +25,8 @@ instance SmtenHS1 PrimArray where
 
     cases1 x@(PrimArray {}) = concrete x
     cases1 (PrimArray_Prim _ c) = c
+
+    error1 = PrimArray_Error
 
     primitive1 = PrimArray_Prim
 

@@ -62,6 +62,7 @@ data Bool where
     Bool_LeqBit :: (SmtenHS0 n) => Bit n -> Bit n -> Bool
     Bool_Ite :: Bool -> Bool -> Bool -> Bool
     Bool_Prim :: (Assignment -> Bool) -> Cases Bool -> Bool
+    Bool_Error :: String -> Bool
 
 data Integer =
     Integer P.Integer
@@ -70,6 +71,7 @@ data Integer =
   | Integer_Ite Bool Integer Integer
   | Integer_Var FreeID
   | Integer_Prim (Assignment -> Integer) (Cases Integer)
+  | Integer_Error String
 
 data Bit n where
     Bit :: P.Bit -> Bit n
@@ -87,6 +89,7 @@ data Bit n where
     Bit_Ite :: Bool -> Bit n -> Bit n -> Bit n
     Bit_Var :: FreeID -> Bit n
     Bit_Prim :: (Assignment -> Bit n) -> Cases (Bit n) -> Bit n
+    Bit_Error :: String -> Bit n
 
 data Assignment = Assignment {
    as_vars :: [(FreeID, Dynamic)],
@@ -121,6 +124,8 @@ class SmtenHS0 a where
 
     -- Return the cases of 'a'.
     cases0 :: a -> Cases a
+
+    error0 :: String -> a
 
     -- Represent a primitive function resulting in the given object.
     primitive0 :: (Assignment -> a) -> Cases a -> a
@@ -191,6 +196,7 @@ instance SmtenHS2 (->) where
    realize2 m f = \x -> realize m (f x)
    cases2 f = concrete f
    primitive2 r c = \x -> primitive0 (\m -> r m $ realize m x) (fmap ($ x) c)
+   error2 msg = \x -> error0 msg
 
 instance (Haskelly ha sa, Haskelly hb sb, SmtenHS0 sa, SmtenHS0 sb)
          => Haskelly (ha -> hb) (sa -> sb) where
@@ -210,8 +216,9 @@ __caseFalse :: (SmtenHS0 z) => Bool -> z -> z -> z
 __caseFalse x y n = __caseTrue x n y
 
 instance SmtenHS0 Bool where
-   realize0 m True = True
-   realize0 m False = False
+   realize0 m b@True = b
+   realize0 m b@False = b
+   realize0 m b@(Bool_Error {}) = b
    realize0 m (Bool_Var x) = frhs (as_lookup x m :: P.Bool)
    realize0 m (Bool_EqInteger a b) = eq_Integer (realize m a) (realize m b)
    realize0 m (Bool_LeqInteger a b) = leq_Integer (realize m a) (realize m b)
@@ -220,16 +227,18 @@ instance SmtenHS0 Bool where
    realize0 m (Bool_Ite p a b) = __caseTrue (realize m p) (realize m a) (realize m b)
    realize0 m (Bool_Prim r _) = r m
 
-   cases0 True = concrete True
-   cases0 False = concrete False
+   cases0 p@True = concrete p
+   cases0 p@False = concrete p
    cases0 p = switch p (concrete True) (concrete False)
 
    primitive0 = Bool_Prim
+   error0 = Bool_Error
 
    __caseTrue0 x y n =
       case x of
         True -> y
         False -> n
+        Bool_Error msg -> error0 msg
         _ -> Bool_Ite x y n
 
 instance Haskelly Bool Bool where
@@ -252,6 +261,7 @@ instance SmtenHS0 Integer where
    realize0 m x = 
       case x of
          Integer {} -> x
+         Integer_Error {} -> x
          Integer_Add a b -> add_Integer (realize m a) (realize m b)
          Integer_Sub a b -> sub_Integer (realize m a) (realize m b)
          Integer_Ite p a b -> __caseTrue (realize m p) (realize m a) (realize m b)
@@ -265,11 +275,13 @@ instance SmtenHS0 Integer where
         _ -> error "TODO: cases0 for symbolic Integer"
 
    primitive0 = Integer_Prim
+   error0 = Integer_Error
 
    __caseTrue0 x y n =
       case x of
         True -> y
         False -> n
+        Bool_Error msg -> error0 msg
         _ -> Integer_Ite x y n
 
 instance Haskelly Integer Integer where
@@ -297,11 +309,11 @@ add_Integer = sprim2 ((+) :: P.Integer -> P.Integer -> P.Integer) Integer_Add
 sub_Integer :: Integer -> Integer -> Integer
 sub_Integer = sprim2 ((-) :: P.Integer -> P.Integer -> P.Integer) Integer_Sub
 
-
 instance SmtenHS1 Bit where
    realize1 m c = 
       case c of
          Bit {} -> c
+         Bit_Error {} -> c
          Bit_Add a b -> add_Bit (realize m a) (realize m b)
          Bit_Sub a b -> sub_Bit (realize m a) (realize m b)
          Bit_Mul a b -> mul_Bit (realize m a) (realize m b)
@@ -324,11 +336,13 @@ instance SmtenHS1 Bit where
          _ -> error "TODO: cases0 for symbolic bit vector"
        
    primitive1 = Bit_Prim
+   error1 = Bit_Error
 
    __caseTrue1 x y n =
       case x of
         True -> y
         False -> n
+        Bool_Error msg -> error0 msg
         _ -> Bit_Ite x y n
 
 instance Haskelly (Bit n) (Bit n) where

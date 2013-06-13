@@ -8,6 +8,7 @@ import Language.Haskell.TH
 --   casesN :: (SmtenHS a1, SmtenHS a2, ..., SmtenHS b) => m a1 a2 ... aN -> Cases (m a1 a2 ...)
 --   primitiveN :: (SmtenHS a1, SmtenHS a2, ..., SmtenHS b) => (Assignment -> m a1 a2 ... aN)
 --                                                          -> Cases (m a1 a2 ...) -> m a1 a2 ... aN
+--   errorN :: (SmtenHS a1, SmtenHS a2, ..., SmtenHS b) => Prelude.String -> m a1 a2 ... aN
 declare_SmtenHS :: Integer -> Q [Dec]
 declare_SmtenHS n = do
   let cls = mkName $ "SmtenHS" ++ show n
@@ -32,6 +33,10 @@ declare_SmtenHS n = do
                 ForallT (map PlainTV as) ctx $
                   arrowsT [arrowsT [ConT $ mkName "Assignment", mas], css, mas]
 
+      errN = SigD (mkName $ "error" ++ show n) $
+                ForallT (map PlainTV as) ctx $
+                 arrowsT [ConT $ mkName "Prelude.String", mas]
+
       casetrue = SigD (mkName $ "__caseTrue" ++ show n) $ 
                    ForallT (map PlainTV as) ctx $
                      arrowsT [ConT (mkName "Bool"), mas, mas, mas]
@@ -47,18 +52,20 @@ declare_SmtenHS n = do
       ctbody = CaseE (VarE $ mkName "x") [
                   Match (ConP (mkName "True") []) (NormalB (VarE $ mkName "y")) [],
                   Match (ConP (mkName "False") []) (NormalB (VarE $ mkName "n")) [],
+                  Match (ConP (mkName "Bool_Error") [VarP $ mkName "msg"]) (NormalB (AppE (VarE $ mkName "error0") (VarE $ mkName "msg"))) [],
                   Match (WildP) (NormalB ctprim) []]
       ctcls = Clause [VarP $ mkName n | n <- ["x", "y", "n"]] (NormalB ctbody) []
       casetruedef = FunD (mkName $ "__caseTrue" ++ show n) [ctcls]
 
-      methods = [relN, casN, primN, casetrue, casetruedef]
+      methods = [relN, casN, primN, errN, casetrue, casetruedef]
       classD = ClassD [] cls tyvs [] methods
   return [classD]
   
 -- instance (SmtenHS(N+1) m, SMtenHS0 a) => SmtenHSN (m a) where
---   realizeN = mux(N+1)
---   casesN = realize(N+1)
---   primitiveN = strict_app(N+1)
+--   realizeN = realize(N+1)
+--   casesN = cases(N+1)
+--   primitiveN = primitive(N+1)
+--   errorN = error(N+1)
 derive_SmtenHS :: Integer -> Q [Dec]
 derive_SmtenHS n = do
   let ctx = [
@@ -73,8 +80,10 @@ derive_SmtenHS n = do
                   (NormalB $ VarE (mkName $ "cases" ++ show (n+1))) []
       primN = ValD (VarP (mkName $ "primitive" ++ show n)) 
                   (NormalB $ VarE (mkName $ "primitive" ++ show (n+1))) []
+      errN = ValD (VarP (mkName $ "error" ++ show n)) 
+                  (NormalB $ VarE (mkName $ "error" ++ show (n+1))) []
       casetrueN = ValD (VarP (mkName $ "__caseTrue" ++ show n)) 
                   (NormalB $ VarE (mkName $ "__caseTrue" ++ show (n+1))) []
-      instD = InstanceD ctx ty [relN, casesN, primN, casetrueN]
+      instD = InstanceD ctx ty [relN, casesN, primN, errN, casetrueN]
   return [instD]
 

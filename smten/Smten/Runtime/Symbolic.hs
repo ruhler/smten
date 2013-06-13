@@ -47,11 +47,15 @@ instance Haskelly (Symbolic a) (Symbolic a) where
 instance SmtenHS1 Symbolic where
     realize1 m x = realize m <$> x
     cases1 x = concrete x
+
     primitive1 _ (Concrete x) = x
     primitive1 _ (Switch p a b) = do
       va <- predicated p (primitive0 (error "Symbolic.primitive1") a)
       vb <- predicated (notB p) (primitive0 (error "Symbolic.primitive1") b)
       return (__caseTrue p va vb)
+
+    error1 msg = predicated (error0 msg) fail_symbolic
+      
     
 return_symbolic :: a -> Symbolic a
 return_symbolic = return
@@ -105,6 +109,7 @@ run_symbolic s q = do
        m <- as_make $ zip (map fst vars) vals
        case {-# SCC "DoubleCheck" #-} realize m (ss_formula ss) of
           S.True -> return ()
+          S.Bool_Error msg -> error $ "smten user error: " ++ msg
           _ -> error "SMTEN INTERNAL ERROR: SMT solver lied?"
        return (Just (realize m x))
     Unsatisfiable -> return Nothing

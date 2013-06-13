@@ -91,3 +91,5 @@ tests = do
           )
         return p
 
+    putStrLn "SMT.Error PASSED"
+

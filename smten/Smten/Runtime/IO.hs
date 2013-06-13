@@ -12,6 +12,7 @@ import Smten.Runtime.SmtenHS as S
 
 data IO a = IO (P.IO a)
           | IO_Prim (Assignment -> IO a) (Cases (IO a))
+          | IO_Error String
 
 instance (Haskelly ha sa) => Haskelly (P.IO ha) (IO sa) where
     frhs x = IO (frhs <$> x)
@@ -30,4 +31,5 @@ instance SmtenHS1 IO where
     cases1 (IO_Prim _ c) = c
 
     primitive1 = IO_Prim
+    error1 = IO_Error
 
