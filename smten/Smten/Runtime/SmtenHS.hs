@@ -5,7 +5,9 @@
 {-# LANGUAGE IncoherentInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE PatternGuards #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TypeOperators #-}
 
 module Smten.Runtime.SmtenHS where
 
@@ -18,6 +20,7 @@ import Data.Dynamic
 import Data.Functor((<$>))
 import Data.Maybe(fromMaybe)
 
+import Smten.Numeric
 import Smten.SMT.FreeID
 import Smten.CodeGen.TH
 
@@ -62,18 +65,19 @@ data Integer =
   | Integer_Var FreeID
   | Integer_Prim (Assignment -> Integer) (Cases Integer)
 
-data Bit n =
-    Bit P.Bit
-  | Bit_Add (Bit n) (Bit n)
-  | Bit_Sub (Bit n) (Bit n)
-  | Bit_Mul (Bit n) (Bit n)
-  | Bit_Or (Bit n) (Bit n)
-  | Bit_And (Bit n) (Bit n)
-  | Bit_Shl (Bit n) (Bit n)
-  | Bit_Not (Bit n)
-  | Bit_Ite Bool (Bit n) (Bit n)
-  | Bit_Var FreeID
-  | Bit_Prim (Assignment -> (Bit n)) (Cases (Bit n))
+data Bit n where
+    Bit :: P.Bit -> Bit n
+    Bit_Add :: Bit n -> Bit n -> Bit n
+    Bit_Sub :: Bit n -> Bit n -> Bit n
+    Bit_Mul :: Bit n -> Bit n -> Bit n
+    Bit_Or :: Bit n -> Bit n -> Bit n
+    Bit_And :: Bit n -> Bit n -> Bit n
+    Bit_Shl :: Bit n -> Bit n -> Bit n
+    Bit_Not :: Bit n -> Bit n
+    Bit_SignExtend :: (SmtenHS0 m, Numeric m, Numeric n) => Bit m -> Bit n
+    Bit_Ite :: Bool -> Bit n -> Bit n -> Bit n
+    Bit_Var :: FreeID -> Bit n
+    Bit_Prim :: (Assignment -> Bit n) -> Cases (Bit n) -> Bit n
   
 
 class SmtenHS0 a where
@@ -274,6 +278,7 @@ instance SmtenHS1 Bit where
          Bit_And a b -> and_Bit (realize0 m a) (realize0 m b)
          Bit_Shl a b -> shl_Bit (realize0 m a) (realize0 m b)
          Bit_Not a -> not_Bit (realize0 m a)
+         Bit_SignExtend a -> sign_extend_Bit (realize0 m a)
          Bit_Ite p a b -> __caseTrue (realize0 m p) (realize0 m a) (realize0 m b)
          Bit_Var x -> fromMaybe (error "realize0 Bit failed") $ do
             d <- lookup x m
@@ -333,6 +338,11 @@ shl_Bit = sprim2 P.bv_shl Bit_Shl
 
 not_Bit :: (SmtenHS0 n) => Bit n -> Bit n
 not_Bit = sprim1 (complement :: P.Bit -> P.Bit) Bit_Not
+
+sign_extend_Bit :: forall n m . (SmtenHS0 n, SmtenHS0 m, Numeric n, Numeric m) => Bit n -> Bit m
+sign_extend_Bit =
+  let w = (valueof (numeric :: m :-: n))
+  in sprim1 (P.bv_sign_extend w) Bit_SignExtend
 
 toInteger_Bit :: (SmtenHS0 n) => Bit n -> Integer
 toInteger_Bit (Bit a) = frhs $ P.bv_value a

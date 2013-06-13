@@ -10,6 +10,7 @@ import System.Mem.StableName
 import qualified Data.HashTable.IO as H
 
 import Smten.Bit
+import Smten.Numeric
 import qualified Smten.Runtime.SmtenHS as S
 import Smten.Runtime.SmtenHS (Cases(..))
 import Smten.SMT.Solver.Static as ST
@@ -107,6 +108,12 @@ instance Supported (S.Bit n) where
     define ctx (S.Bit_And a b) = binary (and_bit ctx) a b
     define ctx (S.Bit_Shl a b) = binary (shl_bit ctx) a b
     define ctx (S.Bit_Not a) = unary (not_bit ctx) a
+    define ctx x@(S.Bit_SignExtend a) =
+       let bt :: S.Bit m -> m
+           bt _ = undefined
+
+           by = valueof (bt x) - valueof (bt a)
+       in unary (sign_extend_bit ctx by) a
     define ctx (S.Bit_Ite p a b) = do
         p' <- use p
         a' <- use a

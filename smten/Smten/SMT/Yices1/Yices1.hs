@@ -160,6 +160,8 @@ instance Solver Yices1 YExpr where
   and_bit = bprim c_yices_mk_bv_and
   shl_bit = error "TODO: shl_bit for Yices1"
   not_bit = uprim c_yices_mk_bv_not
+  sign_extend_bit y n a = withy1 y $ \ctx ->
+     c_yices_mk_bv_sign_extend ctx a (fromInteger n)
 
 -- TODO: does this leak solvers?
 yices1 :: IO D.Solver

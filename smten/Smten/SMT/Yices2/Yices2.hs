@@ -163,3 +163,5 @@ instance Solver Yices2 YTerm where
   and_bit _ = c_yices_bvand
   shl_bit _ = c_yices_bvshl
   not_bit _ = c_yices_bvnot
+  sign_extend_bit _ n a = c_yices_sign_extend a (fromInteger n)
+
