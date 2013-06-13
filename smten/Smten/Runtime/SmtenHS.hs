@@ -112,6 +112,12 @@ prim3 :: (SmtenHS0 a, SmtenHS0 b, SmtenHS0 c, SmtenHS0 d) => (a -> b -> c -> d) 
 prim3 f x y z = primitive0 (\m -> f (realize0 m x) (realize0 m y) (realize0 m z))
                            (f3map f (cases0 x) (cases0 y) (cases0 z))
 
+sprim2 :: (Haskelly ha sa, Haskelly hb sb, Haskelly hc sc) =>
+          (ha -> hb -> hc) -> (sa -> sb -> sc) -> sa -> sb -> sc
+sprim2 hf sf a b 
+  | Just av <- mtohs a, Just bv <- mtohs b = frhs (hf av bv) 
+  | otherwise = sf a b
+
 class Haskelly h s where
     -- Convert from a haskell object to a smten object.
     frhs :: h -> s
@@ -236,20 +242,16 @@ instance Haskelly P.Integer Integer where
    stohs _ = error "tohs.Integer failed"
 
 eq_Integer :: Integer -> Integer -> Bool
-eq_Integer (Integer a) (Integer b) = frhs (a == b)
-eq_Integer a b = Bool_EqInteger a b
+eq_Integer = sprim2 ((==) :: P.Integer -> P.Integer -> P.Bool) Bool_EqInteger
 
 leq_Integer :: Integer -> Integer -> Bool
-leq_Integer (Integer a) (Integer b) = frhs (a <= b)
-leq_Integer a b = Bool_LeqInteger a b
+leq_Integer = sprim2 ((<=) :: P.Integer -> P.Integer -> P.Bool) Bool_LeqInteger
 
 add_Integer :: Integer -> Integer -> Integer
-add_Integer (Integer a) (Integer b) = Integer (a+b)
-add_Integer a b = Integer_Add a b
+add_Integer = sprim2 ((+) :: P.Integer -> P.Integer -> P.Integer) Integer_Add
 
 sub_Integer :: Integer -> Integer -> Integer
-sub_Integer (Integer a) (Integer b) = Integer (a-b)
-sub_Integer a b = Integer_Sub a b
+sub_Integer = sprim2 ((-) :: P.Integer -> P.Integer -> P.Integer) Integer_Sub
 
 
 instance SmtenHS1 Bit where
@@ -294,28 +296,22 @@ instance Haskelly P.Bit (Bit n) where
    stohs _ = error "tohs.Integer failed"
 
 eq_Bit :: (SmtenHS0 n) => Bit n -> Bit n -> Bool
-eq_Bit (Bit a) (Bit b) = frhs (a == b)
-eq_Bit a b = Bool_EqBit a b
+eq_Bit = sprim2 ((==) :: P.Bit -> P.Bit -> P.Bool) Bool_EqBit
 
 leq_Bit :: (SmtenHS0 n) => Bit n -> Bit n -> Bool
-leq_Bit (Bit a) (Bit b) = frhs (a <= b)
-leq_Bit a b = Bool_LeqBit a b
+leq_Bit = sprim2 ((<=) :: P.Bit -> P.Bit -> P.Bool) Bool_LeqBit
 
 add_Bit :: (SmtenHS0 n) => Bit n -> Bit n -> Bit n
-add_Bit (Bit a) (Bit b) = Bit (a+b)
-add_Bit a b = Bit_Add a b
+add_Bit = sprim2 ((+) :: P.Bit -> P.Bit -> P.Bit) Bit_Add
 
 sub_Bit :: (SmtenHS0 n) => Bit n -> Bit n -> Bit n
-sub_Bit (Bit a) (Bit b) = Bit (a+b)
-sub_Bit a b = Bit_Sub a b
+sub_Bit = sprim2 ((-) :: P.Bit -> P.Bit -> P.Bit) Bit_Sub
 
 mul_Bit :: (SmtenHS0 n) => Bit n -> Bit n -> Bit n
-mul_Bit (Bit a) (Bit b) = Bit (a+b)
-mul_Bit a b = Bit_Mul a b
+mul_Bit = sprim2 ((*) :: P.Bit -> P.Bit -> P.Bit) Bit_Mul
 
 or_Bit :: (SmtenHS0 n) => Bit n -> Bit n -> Bit n
-or_Bit (Bit a) (Bit b) = Bit (a .|. b)
-or_Bit a b = Bit_Or a b
+or_Bit = sprim2 ((.|.) :: P.Bit -> P.Bit -> P.Bit) Bit_Or
 
 toInteger_Bit :: (SmtenHS0 n) => Bit n -> Integer
 toInteger_Bit (Bit a) = frhs $ P.bv_value a
