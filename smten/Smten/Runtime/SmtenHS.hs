@@ -1,4 +1,6 @@
 
+{-# LANGUAGE GADTs #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE IncoherentInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
@@ -41,16 +43,16 @@ f3map :: (a -> b -> c -> d) -> Cases a -> Cases b -> Cases c -> Cases d
 f3map f (Concrete a) y z = f2map (f a) y z
 f3map f (Switch p a b) y z = Switch p (f3map f a y z) (f3map f b y z)
 
-data Bool =
-    False
-  | True
-  | Bool_Var FreeID
-  | Bool_EqInteger Integer Integer
-  | Bool_LeqInteger Integer Integer
-  | Bool_EqBit Bit Bit
-  | Bool_LeqBit Bit Bit
-  | Bool_Ite Bool Bool Bool
-  | Bool_Prim (Assignment -> Bool) (Cases Bool)
+data Bool where
+    False :: Bool
+    True :: Bool
+    Bool_Var :: FreeID -> Bool
+    Bool_EqInteger :: Integer -> Integer -> Bool
+    Bool_LeqInteger :: Integer -> Integer -> Bool
+    Bool_EqBit :: (SmtenHS0 n) => Bit n -> Bit n -> Bool
+    Bool_LeqBit :: (SmtenHS0 n) => Bit n -> Bit n -> Bool
+    Bool_Ite :: Bool -> Bool -> Bool -> Bool
+    Bool_Prim :: (Assignment -> Bool) -> Cases Bool -> Bool
 
 data Integer =
     Integer P.Integer
@@ -60,27 +62,36 @@ data Integer =
   | Integer_Var FreeID
   | Integer_Prim (Assignment -> Integer) (Cases Integer)
 
-data Bit =
+data Bit n =
     Bit P.Bit
-  | Bit_Add Bit Bit
-  | Bit_Sub Bit Bit
-  | Bit_Mul Bit Bit
-  | Bit_Or Bit Bit
-  | Bit_Ite Bool Bit Bit
+  | Bit_Add (Bit n) (Bit n)
+  | Bit_Sub (Bit n) (Bit n)
+  | Bit_Mul (Bit n) (Bit n)
+  | Bit_Or (Bit n) (Bit n)
+  | Bit_Ite Bool (Bit n) (Bit n)
   | Bit_Var FreeID
-  | Bit_Prim (Assignment -> Bit) (Cases Bit)
+  | Bit_Prim (Assignment -> (Bit n)) (Cases (Bit n))
   
 
--- -- Update all variables in the given expression according to the given map.
--- realize :: Assignment -> a -> a
---
--- -- Return the cases of 'a'.
--- cases :: a -> Cases a
---
--- -- Represent a primitive function resulting in the given object.
--- primitive :: (Assignment -> a) -> Cases a -> a
+class SmtenHS0 a where
+    -- Update all variables in the given expression according to the given map.
+    realize0 :: Assignment -> a -> a
 
-declare_SmtenHS 0
+    -- Return the cases of 'a'.
+    cases0 :: a -> Cases a
+
+    -- Represent a primitive function resulting in the given object.
+    primitive0 :: (Assignment -> a) -> Cases a -> a
+
+    __caseTrue0 :: Bool -> a -> a -> a
+    __caseTrue0 x y n =
+        case x of
+            True -> y
+            False -> n
+            _ -> primitive0 (\m -> __caseTrue0 (realize0 m x) (realize0 m y) (realize0 m n))
+                            (switch x (cases0 y) (cases0 n))
+
+
 declare_SmtenHS 1
 declare_SmtenHS 2
 declare_SmtenHS 3
@@ -241,8 +252,8 @@ sub_Integer (Integer a) (Integer b) = Integer (a-b)
 sub_Integer a b = Integer_Sub a b
 
 
-instance SmtenHS0 Bit where
-   realize0 m c = 
+instance SmtenHS1 Bit where
+   realize1 m c = 
       case c of
          Bit {} -> c
          Bit_Add a b -> add_Bit (realize0 m a) (realize0 m b)
@@ -255,25 +266,25 @@ instance SmtenHS0 Bit where
             frhs <$> (fromDynamic d :: Maybe P.Bit)
          Bit_Prim r _ -> r m
     
-   cases0 x = 
+   cases1 x = 
       case x of
          Bit {} -> Concrete x
          Bit_Prim _ c -> c
          _ -> error "TODO: cases0 for symbolic bit vector"
        
-   primitive0 = Bit_Prim
+   primitive1 = Bit_Prim
 
-   __caseTrue0 x y n =
+   __caseTrue1 x y n =
       case x of
         True -> y
         False -> n
         _ -> Bit_Ite x y n
 
-instance Haskelly Bit Bit where
+instance Haskelly (Bit n) (Bit n) where
    frhs = id
    stohs = id
 
-instance Haskelly P.Bit Bit where
+instance Haskelly P.Bit (Bit n) where
    frhs = Bit
 
    mtohs (Bit c) = return c
@@ -282,27 +293,31 @@ instance Haskelly P.Bit Bit where
    stohs (Bit c) = c
    stohs _ = error "tohs.Integer failed"
 
-eq_Bit :: Bit -> Bit -> Bool
+eq_Bit :: (SmtenHS0 n) => Bit n -> Bit n -> Bool
 eq_Bit (Bit a) (Bit b) = frhs (a == b)
 eq_Bit a b = Bool_EqBit a b
 
-leq_Bit :: Bit -> Bit -> Bool
+leq_Bit :: (SmtenHS0 n) => Bit n -> Bit n -> Bool
 leq_Bit (Bit a) (Bit b) = frhs (a <= b)
 leq_Bit a b = Bool_LeqBit a b
 
-add_Bit :: Bit -> Bit -> Bit
+add_Bit :: (SmtenHS0 n) => Bit n -> Bit n -> Bit n
 add_Bit (Bit a) (Bit b) = Bit (a+b)
 add_Bit a b = Bit_Add a b
 
-sub_Bit :: Bit -> Bit -> Bit
+sub_Bit :: (SmtenHS0 n) => Bit n -> Bit n -> Bit n
 sub_Bit (Bit a) (Bit b) = Bit (a+b)
 sub_Bit a b = Bit_Sub a b
 
-mul_Bit :: Bit -> Bit -> Bit
+mul_Bit :: (SmtenHS0 n) => Bit n -> Bit n -> Bit n
 mul_Bit (Bit a) (Bit b) = Bit (a+b)
 mul_Bit a b = Bit_Mul a b
 
-or_Bit :: Bit -> Bit -> Bit
+or_Bit :: (SmtenHS0 n) => Bit n -> Bit n -> Bit n
 or_Bit (Bit a) (Bit b) = Bit (a .|. b)
 or_Bit a b = Bit_Or a b
+
+toInteger_Bit :: (SmtenHS0 n) => Bit n -> Integer
+toInteger_Bit (Bit a) = frhs $ P.bv_value a
+toInteger_Bit b = prim1 toInteger_Bit b
 

@@ -1,0 +1,64 @@
+
+module Smten.Bit (Bit, bv_or) where
+
+import Data.Ix
+
+import Smten.Numeric
+
+-- Primitive bit vector type
+data Bit #n
+
+foreign import hs "Smten.Runtime.SmtenHS.add_Bit"
+    add_Bit :: Bit #n -> Bit #n -> Bit #n
+
+foreign import hs "Smten.Runtime.SmtenHS.sub_Bit"
+    sub_Bit :: Bit #n -> Bit #n -> Bit #n
+
+foreign import hs "Smten.Runtime.SmtenHS.mul_Bit"
+    mul_Bit :: Bit #n -> Bit #n -> Bit #n
+
+foreign import hs "Smten.Runtime.SmtenHS.eq_Bit"
+    eq_Bit :: Bit #n -> Bit #n -> Bool
+
+foreign import hs "Smten.Runtime.SmtenHS.leq_Bit"
+    leq_Bit :: Bit #n -> Bit #n -> Bool
+
+foreign import hs "Smten.Runtime.SmtenHS.or_Bit"
+    bv_or :: Bit #n -> Bit #n -> Bit #n
+
+foreign import hs "Smten.Runtime.Bit.show_Bit"
+    show_Bit :: Bit #n -> String
+
+foreign import hs "Smten.Runtime.Bit.fromInteger_Bit"
+    fromInteger_Bit :: Integer -> Bit #n
+
+foreign import hs "Smten.Runtime.SmtenHS.toInteger_Bit"
+    toInteger_Bit :: Bit #n -> Integer
+
+instance Eq (Bit #n) where
+    (==) = eq_Bit
+
+instance Ord (Bit #n) where
+    (<=) = leq_Bit
+
+instance Integral (Bit #n) where
+    toInteger = toInteger_Bit 
+
+instance Num (Bit #n) where
+    (+) = add_Bit
+    (-) = sub_Bit
+    (*) = mul_Bit
+    fromInteger = fromInteger_Bit
+
+instance Show (Bit #n) where
+    show = show_Bit
+
+instance Ix (Bit #n) where
+    range (l, h) = 
+      case (l > h, l == h) of
+          (True, _) -> []
+          (_, True) -> [h]
+          _ -> l : range (l + 1, h)
+
+    index (l, _) x = toInteger (x - l)
+

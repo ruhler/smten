@@ -3,7 +3,7 @@ module Smten.Tests.Array (tests) where
 
 import Data.Array
 import Smten.Tests.Test
-import Smten.Bit.Static
+import Smten.Bit
 
 arr :: Array Integer Integer
 arr = array (0, 2) [(0, 42), (1, 12), (2, 19)]

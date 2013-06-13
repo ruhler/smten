@@ -18,7 +18,6 @@ data-files:
     lib/Data/*.smtn
     lib/Debug/*.smtn
     lib/Smten/*.smtn
-    lib/Smten/Bit/*.smtn
     lib/Smten/Sudoku/*.smtn
     lib/Smten/Tests/*.smtn
     lib/Smten/Tests/SMT/*.smtn
@@ -32,6 +31,7 @@ source-repository this
 library
   exposed-modules:
     Smten.Runtime.Array
+    Smten.Runtime.Bit
     Smten.Runtime.Builtin
     Smten.Runtime.Char
     Smten.Runtime.IO
@@ -43,6 +43,7 @@ library
 
   other-modules:
     Smten.Bit
+    Smten.Numeric
     Smten.SMT.Assert
     Smten.SMT.DebugLL
     Smten.SMT.FreeID

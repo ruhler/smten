@@ -14,7 +14,7 @@ primdatas = [
   (ioN, "Smten.Runtime.IO"),
   (charN, "Smten.Runtime.Char"),
   (integerN, "Smten.Runtime.SmtenHS"),
-  (name "Smten.Bit.Dynamic.Bit", "Smten.Runtime.SmtenHS"),
+  (name "Smten.Bit.Bit", "Smten.Runtime.SmtenHS"),
   (name "Data.Array.PrimArray", "Smten.Runtime.Array"),
   (name "Smten.Symbolic.Symbolic", "Smten.Runtime.Symbolic")
   ]

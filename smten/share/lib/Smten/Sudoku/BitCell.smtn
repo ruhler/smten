@@ -2,7 +2,7 @@
 module Smten.Sudoku.BitCell where
 
 import Smten.Symbolic
-import Smten.Bit.Static
+import Smten.Bit
 
 import Smten.Sudoku.Cell
 

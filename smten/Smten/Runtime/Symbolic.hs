@@ -2,6 +2,7 @@
 {-# LANGUAGE IncoherentInstances #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 
 module Smten.Runtime.Symbolic (
@@ -21,6 +22,7 @@ import Smten.Bit
 import Smten.SMT.Solver.Dynamic
 import qualified Smten.SMT.Solvers as Solvers
 import Smten.Runtime.SmtenHS as S
+import Smten.Numeric
 import Smten.SMT.FreeID
 
 data SS = SS {
@@ -74,10 +76,11 @@ free_Integer = do
     modify $ \s -> s { ss_free = (fid, SMTInteger) : ss_free s }
     return $ S.Integer_Var fid
 
-free_Bit :: S.Integer -> Symbolic S.Bit
-free_Bit (S.Integer v) = do
+free_Bit :: forall n . (Numeric n) => Symbolic (S.Bit n)
+free_Bit = do
+    let w = valueof (numeric :: n)
     fid <- liftIO fresh
-    modify $ \s -> s { ss_free = (fid, SMTBit v) : ss_free s }
+    modify $ \s -> s { ss_free = (fid, SMTBit w) : ss_free s }
     return $ S.Bit_Var fid
 
 predicated :: S.Bool -> Symbolic a -> Symbolic a

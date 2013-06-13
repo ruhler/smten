@@ -1,7 +1,7 @@
 
 module Smten.Tests.SMT.Bit (tests) where
 
-import Smten.Bit.Static
+import Smten.Bit
 import Smten.Symbolic
 import Smten.Tests.SMT.Test
 

@@ -93,7 +93,7 @@ instance Supported S.Integer where
 
     ite _ = ite_integer
 
-instance Supported S.Bit where
+instance Supported (S.Bit n) where
     define ctx (S.Bit x) = liftIO $ bit ctx (bv_width x) (bv_value x)
     define ctx (S.Bit_Add a b) = binary (add_bit ctx) a b
     define ctx (S.Bit_Sub a b) = binary (sub_bit ctx) a b

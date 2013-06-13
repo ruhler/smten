@@ -15,6 +15,7 @@ import qualified Data.Map as Map
 import qualified Data.Set as Set
 
 import Smten.Name
+import Smten.Location
 import Smten.Type
 import Smten.Ppr
 import Smten.Failable
@@ -35,7 +36,7 @@ initSS e = SS e Set.empty []
 
 type SortM = StateT SS
 
-instance (MonadErrorSL m) => MonadErrorSL (StateT s m) where
+instance (MonadErrorSL m) => MonadErrorSL (SortM m) where
     errloc = lift errloc
 
 maybeLookupTypeD :: Env -> Name -> Maybe Dec
@@ -166,10 +167,22 @@ instance Deunknown Type where
 data KS = KS {
     ks_cons :: [(Kind, Kind)], -- ^ generated kind constraints
     ks_nvk :: Integer,         -- ^ next variable kind ID to use.
-    ks_tcs :: Map.Map Name Kind -- ^ type and var constructor kinds.
+    ks_tcs :: Map.Map Name Kind, -- ^ type and var constructor kinds.
+    ks_loc :: Location
 }
 
 type KIM = StateT KS Failable
+
+withloc :: Location -> KIM a -> KIM a
+withloc l q = do
+  oldl <- gets ks_loc
+  modify $ \ks -> ks { ks_loc = l }
+  v <- q
+  modify $ \ks -> ks { ks_loc = oldl }
+  return v
+
+instance (MonadErrorSL KIM) where
+    errloc = gets ks_loc
 
 -- Create a new variable kind.
 newvk :: KIM Kind
@@ -187,7 +200,7 @@ tckind n = do
     m <- gets ks_tcs
     case Map.lookup n m of
         Just k -> return k
-        Nothing -> throw $ "type variable " ++ pretty n ++ " not in scope"
+        Nothing -> lthrow $ "type constructor " ++ pretty n ++ " not in scope"
 
 class Constrain a where
     constrain :: a -> KIM ()
@@ -224,20 +237,20 @@ instance Constrain TopExp where
 
 instance Constrain Dec where
     constrain d
-      | ValD _ e <- d = constrain e
-      | DataD _ _ vs cs <- d = do
+      | ValD l e <- d = withloc l $ constrain e
+      | DataD l _ vs cs <- d = withloc l $ do
           withtcs (Map.fromList [(n, k) | TyVar n k <- vs]) (constrain cs)
-      | ClassD _ ctx _ vs ts <- d = do
+      | ClassD l ctx _ vs ts <- d = withloc l $ do
           let tcs = Map.fromList [(n, k) | TyVar n k <- vs]
           withtcs tcs $ do
             constrain ctx
             constrain ts
-      | InstD _ ctx cls _ <- d = do
+      | InstD l ctx cls _ <- d = withloc l $ do
           let vs = varTs cls
           withtcs (Map.fromList vs) $ do
               constrain ctx
               constrain cls
-      | PrimD _ _ t <- d = constrain t
+      | PrimD l _ t <- d = withloc l $ constrain t
       | AsInHaskellD {} <- d = return ()
         
            
@@ -325,5 +338,5 @@ kimod e m = do
 -- Note: this requires modules be non-recursive.
 kindinfer :: [Module] -> Failable [Module]
 kindinfer ms = {-# SCC "KindInfer" #-}
-    evalStateT (mapM (kimod (environ ms)) ms) (KS [] 0 Map.empty)
+    evalStateT (mapM (kimod (environ ms)) ms) (KS [] 0 Map.empty lunknown)
 

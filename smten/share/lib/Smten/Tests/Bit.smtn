@@ -1,8 +1,8 @@
 
-module Smten.Tests.BitStatic (tests) where
+module Smten.Tests.Bit (tests) where
 
 import Smten.Tests.Test
-import Smten.Bit.Static
+import Smten.Bit
 
 tests :: IO ()
 tests = do

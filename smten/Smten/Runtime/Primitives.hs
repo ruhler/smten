@@ -1,12 +1,11 @@
 
 module Smten.Runtime.Primitives (
-    Char, Integer, Bool, Bit,
+    Char, Integer, Bool,
     primCharToInteger, primIntegerToChar,
-    bv_make, bv_width, bv_value, show, trace,
+    trace,
     ) where
 
 import Debug.Trace
-import Smten.Bit
 
 primCharToInteger :: Char -> Integer
 primCharToInteger = toInteger . fromEnum
