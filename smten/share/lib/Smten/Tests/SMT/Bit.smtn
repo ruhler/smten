@@ -47,10 +47,10 @@ tests = do
         assert ((e - 3) == 6)
         return (e :: Bit #3)
 
---    symtesteq "Bit.Not" (Just 0x0A) [Yices1, Yices2, STP] $ do
---        f <- free
---        assert (bv_not f == 0x15)
---        return (f :: Bit #5)
+    symtesteq "Bit.Not" (Just 0x0A) [Yices1, Yices2, STP] $ do
+        f <- free
+        assert (bv_not f == 0x15)
+        return (f :: Bit #5)
 
     -- TODO: this fails for STP
     symtesteq "Bit.And" (Just 0x5) [Yices1, Yices2] $ do

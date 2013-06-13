@@ -76,6 +76,10 @@ bvInteger :: [CInt] -> Integer
 bvInteger [] = 0
 bvInteger (x:xs) = bvInteger xs * 2 + (fromIntegral x)
 
+uprim :: (Ptr YContext -> YExpr -> IO YExpr) ->
+         Yices1 -> YExpr -> IO YExpr
+uprim f y a = withy1 y $ \ctx -> f ctx a
+
 bprim :: (Ptr YContext -> YExpr -> YExpr -> IO YExpr) ->
          Yices1 -> YExpr -> YExpr -> IO YExpr
 bprim f y a b = withy1 y $ \ctx -> f ctx a b
@@ -154,6 +158,7 @@ instance Solver Yices1 YExpr where
   mul_bit = bprim c_yices_mk_bv_mul
   or_bit = bprim c_yices_mk_bv_or
   and_bit = bprim c_yices_mk_bv_and
+  not_bit = uprim c_yices_mk_bv_not
 
 -- TODO: does this leak solvers?
 yices1 :: IO D.Solver

@@ -127,6 +127,11 @@ instance Solver STP Formula where
   mul_bit = error "TODO: STP mul_bit"
   or_bit = bprim c_vc_orExpr
   and_bit = bprim c_vc_andExpr
+  not_bit = uprim c_vc_bvNotExpr
+
+uprim :: (Ptr STP_VC -> Ptr STP_Expr -> IO (Ptr STP_Expr))
+      -> STP -> Formula -> IO Formula
+uprim f s a = withvc s $ \vc -> STPF <$> f vc (expr a)
 
 bprim :: (Ptr STP_VC -> Ptr STP_Expr -> Ptr STP_Expr -> IO (Ptr STP_Expr))
       -> STP -> Formula -> Formula -> IO Formula

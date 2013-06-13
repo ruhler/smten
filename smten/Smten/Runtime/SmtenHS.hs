@@ -69,6 +69,7 @@ data Bit n =
   | Bit_Mul (Bit n) (Bit n)
   | Bit_Or (Bit n) (Bit n)
   | Bit_And (Bit n) (Bit n)
+  | Bit_Not (Bit n)
   | Bit_Ite Bool (Bit n) (Bit n)
   | Bit_Var FreeID
   | Bit_Prim (Assignment -> (Bit n)) (Cases (Bit n))
@@ -112,6 +113,12 @@ prim1 f x = primitive0 (\m -> f (realize0 m x)) (fmap f (cases0 x))
 prim3 :: (SmtenHS0 a, SmtenHS0 b, SmtenHS0 c, SmtenHS0 d) => (a -> b -> c -> d) -> a -> b -> c -> d
 prim3 f x y z = primitive0 (\m -> f (realize0 m x) (realize0 m y) (realize0 m z))
                            (f3map f (cases0 x) (cases0 y) (cases0 z))
+
+sprim1 :: (Haskelly ha sa, Haskelly hb sb) =>
+          (ha -> hb) -> (sa -> sb) -> sa -> sb
+sprim1 hf sf a
+  | Just av <- mtohs a = frhs (hf av) 
+  | otherwise = sf a
 
 sprim2 :: (Haskelly ha sa, Haskelly hb sb, Haskelly hc sc) =>
           (ha -> hb -> hc) -> (sa -> sb -> sc) -> sa -> sb -> sc
@@ -264,6 +271,7 @@ instance SmtenHS1 Bit where
          Bit_Mul a b -> mul_Bit (realize0 m a) (realize0 m b)
          Bit_Or a b -> or_Bit (realize0 m a) (realize0 m b)
          Bit_And a b -> and_Bit (realize0 m a) (realize0 m b)
+         Bit_Not a -> not_Bit (realize0 m a)
          Bit_Ite p a b -> __caseTrue (realize0 m p) (realize0 m a) (realize0 m b)
          Bit_Var x -> fromMaybe (error "realize0 Bit failed") $ do
             d <- lookup x m
@@ -317,6 +325,9 @@ or_Bit = sprim2 ((.|.) :: P.Bit -> P.Bit -> P.Bit) Bit_Or
 
 and_Bit :: (SmtenHS0 n) => Bit n -> Bit n -> Bit n
 and_Bit = sprim2 ((.&.) :: P.Bit -> P.Bit -> P.Bit) Bit_And
+
+not_Bit :: (SmtenHS0 n) => Bit n -> Bit n
+not_Bit = sprim1 (complement :: P.Bit -> P.Bit) Bit_Not
 
 toInteger_Bit :: (SmtenHS0 n) => Bit n -> Integer
 toInteger_Bit (Bit a) = frhs $ P.bv_value a

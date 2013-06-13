@@ -47,6 +47,11 @@ use x = do
             liftIO $ H.insert c nm v
             return v
 
+unary :: (Solver ctx exp, Supported a) => (exp -> IO exp) -> a -> AM ctx exp exp
+unary f a = do
+    a' <- use a
+    liftIO $ f a'
+
 binary :: (Solver ctx exp, Supported a) => (exp -> exp -> IO exp) -> a -> a -> AM ctx exp exp
 binary f a b = do
     a' <- use a
@@ -100,6 +105,7 @@ instance Supported (S.Bit n) where
     define ctx (S.Bit_Mul a b) = binary (mul_bit ctx) a b
     define ctx (S.Bit_Or a b) = binary (or_bit ctx) a b
     define ctx (S.Bit_And a b) = binary (and_bit ctx) a b
+    define ctx (S.Bit_Not a) = unary (not_bit ctx) a
     define ctx (S.Bit_Ite p a b) = do
         p' <- use p
         a' <- use a
