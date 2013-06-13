@@ -76,11 +76,11 @@ tests = do
         assert (bv_extract i 4 == (0xA :: Bit #4))
         return (i :: Bit #8)
 
---    symtesteq "SMT.Bit.Truncate" (Just 0xAB) [Yices1, Yices2, STP] $ do
---        i <- free
---        assert (bv_truncate i == (0xB :: Bit #4))
---        assert (bv_extract i 4 == (0xA :: Bit #4))
---        return (i :: Bit #8)
+    symtesteq "SMT.Bit.Truncate" (Just 0xAB) [Yices1, Yices2, STP] $ do
+        i <- free
+        assert (bv_truncate i == (0xB :: Bit #4))
+        assert (bv_extract i 4 == (0xA :: Bit #4))
+        return (i :: Bit #8)
 
     putStrLn "SMT.Bit PASSED"
 
