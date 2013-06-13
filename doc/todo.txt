@@ -1,14 +1,14 @@
 CodeGen:
+* Bit tests: bv_zero_extend, bv_xor, bv_slt, bv_ashr
+* Numeric tests: numeric type retyping hack
 * Sudoku.Enum generated query is huge!
 * use pragma in source to indicate which data types are primdatas.
 * preservation of sharing:
 ** from case
 ** from strict primitive
 ** from application
+** during realize
 * proper handling of explicit errors
-* flesh out the bit vector primitives
-* flesh out the rest of the libraries and test cases
-* numeric type retyping hack
 
 Recent::
 * Add support for (..) in import and export specifications
