@@ -1,6 +1,9 @@
 
 module Smten.SMT.Assert (Smten.SMT.Assert.assert) where
 
+import GHC.Base
+import Unsafe.Coerce
+
 import Control.Monad.Reader
 import System.Mem.StableName
 
@@ -12,43 +15,36 @@ import Smten.Runtime.SmtenHS (Cases(..))
 import Smten.SMT.Solver.Static as ST
 import Smten.SMT.FreeID
 
-type BoolCache exp = H.BasicHashTable (StableName S.Bool) exp
-type IntegerCache exp = H.BasicHashTable (StableName S.Integer) exp
-type BitCache exp = H.BasicHashTable (StableName S.Bit) exp
+type Cache exp = H.BasicHashTable (StableName Any) exp
 
 data AR ctx exp = AR {
   ar_ctx :: ctx,
-  ar_bools :: BoolCache exp,
-  ar_integers :: IntegerCache exp,
-  ar_bits :: BitCache exp
+  ar_cache :: Cache exp
 }
 
 type AM ctx exp = ReaderT (AR ctx exp) IO
 
 class Supported a where
-    lookupc :: StableName a -> AM ctx exp (Maybe exp)
-    insertc :: StableName a -> exp -> AM ctx exp ()
     define :: (Solver ctx exp) => ctx -> a -> AM ctx exp exp
     ite :: (Solver ctx exp) => Cases a -> ctx -> exp -> exp -> exp -> IO exp
 
 assert :: (Solver ctx exp) => ctx -> S.Bool -> IO ()
 assert ctx p = {-# SCC "Assert" #-} do
-    bc <- H.new
-    ic <- H.new
-    btc <- H.new
-    e <- runReaderT (define ctx p) (AR ctx bc ic btc)
+    c <- H.new
+    e <- runReaderT (define ctx p) (AR ctx c)
     ST.assert ctx e
 
 use :: (Solver ctx exp, Supported a) => a -> AM ctx exp exp
 use x = do
-    nm <- liftIO $ makeStableName $! x
-    found <- lookupc nm
+    nm <- liftIO $ makeStableName $! (unsafeCoerce x)
+    c <- asks ar_cache
+    found <- liftIO $ H.lookup c nm
     case found of
         Just v -> return v
         Nothing -> do
             ctx <- asks ar_ctx
             v <- define ctx x
-            insertc nm v
+            liftIO $ H.insert c nm v
             return v
 
 binary :: (Solver ctx exp, Supported a) => (exp -> exp -> IO exp) -> a -> a -> AM ctx exp exp
@@ -67,14 +63,6 @@ decases ctx (Switch p a b) = do
 
 
 instance Supported S.Bool where
-    lookupc nm = do
-       c <- asks ar_bools
-       liftIO $ H.lookup c nm
-
-    insertc nm v = do
-       c <- asks ar_bools
-       liftIO $ H.insert c nm v
-
     define ctx S.True = liftIO $ bool ctx True
     define ctx S.False = liftIO $ bool ctx False
     define ctx (S.Bool_Var id) = liftIO $ var ctx (freenm id)
@@ -92,14 +80,6 @@ instance Supported S.Bool where
     ite _ = ite_bool
        
 instance Supported S.Integer where
-    lookupc nm = do
-       c <- asks ar_integers
-       liftIO $ H.lookup c nm
-
-    insertc nm v = do
-       c <- asks ar_integers
-       liftIO $ H.insert c nm v
-
     define ctx (S.Integer i) = liftIO $ integer ctx i
     define ctx (S.Integer_Add a b) = binary (add_integer ctx) a b
     define ctx (S.Integer_Sub a b) = binary (sub_integer ctx) a b
@@ -114,14 +94,6 @@ instance Supported S.Integer where
     ite _ = ite_integer
 
 instance Supported S.Bit where
-    lookupc nm = do
-       c <- asks ar_bits
-       liftIO $ H.lookup c nm
-
-    insertc nm v = do
-       c <- asks ar_bits
-       liftIO $ H.insert c nm v
-
     define ctx (S.Bit x) = liftIO $ bit ctx (bv_width x) (bv_value x)
     define ctx (S.Bit_Add a b) = binary (add_bit ctx) a b
     define ctx (S.Bit_Sub a b) = binary (sub_bit ctx) a b
