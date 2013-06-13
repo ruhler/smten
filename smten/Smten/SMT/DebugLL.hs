@@ -98,6 +98,7 @@ instance Solver DebugLL String where
     shl_bit = dbgOp "<<"
     not_bit dbg x = dbgNew dbg $ "~ " ++ x
     sign_extend_bit dbg n x = dbgNew dbg $ "sign_extend " ++ x ++ " by " ++ show n ++ " bits"
+    extract_bit dbg hi lo x = dbgNew dbg $ x ++ "[" ++ show hi ++ ":" ++ show lo ++ "]"
 
 debugll :: FilePath -> D.Solver -> IO D.Solver
 debugll f s = do

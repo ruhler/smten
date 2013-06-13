@@ -1,7 +1,7 @@
 
 module Smten.Bit (
     Bit,
-    bv_or, bv_and, bv_not, bv_shl, bv_sign_extend, bv_concat,
+    bv_or, bv_and, bv_not, bv_shl, bv_sign_extend, bv_concat, bv_extract,
     ) where
 
 import Data.Ix
@@ -43,6 +43,11 @@ foreign import hs "Smten.Runtime.SmtenHS.sign_extend_Bit"
 
 foreign import hs "Smten.Runtime.SmtenHS.concat_Bit"
     bv_concat :: Bit #n -> Bit #m -> Bit #(n+m)
+
+-- Extract m bits from the given vector, with the least significant bit to be
+-- extracted specified in the argument. The most significant bit is inferred.
+foreign import hs "Smten.Runtime.SmtenHS.extract_Bit"
+    bv_extract :: Bit #n -> Integer -> Bit #m
 
 foreign import hs "Smten.Runtime.Bit.show_Bit"
     show_Bit :: Bit #n -> String

@@ -131,6 +131,8 @@ instance Solver STP Formula where
   shl_bit = blprim c_vc_bvLeftShiftExprExpr
   not_bit = uprim c_vc_bvNotExpr
   sign_extend_bit = error "TODO: STP sign_extend_bit"
+  extract_bit s hi lo x = withvc s $ \vc ->
+    STPF <$> c_vc_bvExtract vc (expr x) (fromInteger hi) (fromInteger lo)
 
 uprim :: (Ptr STP_VC -> Ptr STP_Expr -> IO (Ptr STP_Expr))
       -> STP -> Formula -> IO Formula

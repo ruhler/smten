@@ -109,6 +109,12 @@ instance Supported (S.Bit n) where
     define ctx (S.Bit_Shl a b) = binary (shl_bit ctx) a b
     define ctx (S.Bit_Concat a b) = binary (concat_bit ctx) a b
     define ctx (S.Bit_Not a) = unary (not_bit ctx) a
+    define ctx x@(S.Bit_Extract a (S.Integer i)) =
+       let bt :: S.Bit a -> a
+           bt _ = undefined
+           hi = i + valueof (bt x) - 1
+           lo = i
+       in unary (extract_bit ctx hi lo) a
     define ctx x@(S.Bit_SignExtend a) =
        let bt :: S.Bit m -> m
            bt _ = undefined

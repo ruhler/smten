@@ -74,6 +74,7 @@ data Bit n where
     Bit_And :: Bit n -> Bit n -> Bit n
     Bit_Shl :: Bit n -> Bit n -> Bit n
     Bit_Concat :: (SmtenHS0 a, SmtenHS0 b) => Bit a -> Bit b -> Bit n
+    Bit_Extract :: (SmtenHS0 a, Numeric n) => Bit a -> Integer -> Bit n
     Bit_Not :: Bit n -> Bit n
     Bit_SignExtend :: (SmtenHS0 m, Numeric m, Numeric n) => Bit m -> Bit n
     Bit_Ite :: Bool -> Bit n -> Bit n -> Bit n
@@ -279,6 +280,7 @@ instance SmtenHS1 Bit where
          Bit_And a b -> and_Bit (realize0 m a) (realize0 m b)
          Bit_Shl a b -> shl_Bit (realize0 m a) (realize0 m b)
          Bit_Concat a b -> concat_Bit (realize0 m a) (realize0 m b)
+         Bit_Extract a b -> extract_Bit (realize0 m a) (realize0 m b)
          Bit_Not a -> not_Bit (realize0 m a)
          Bit_SignExtend a -> sign_extend_Bit (realize0 m a)
          Bit_Ite p a b -> __caseTrue (realize0 m p) (realize0 m a) (realize0 m b)
@@ -348,6 +350,13 @@ sign_extend_Bit =
 
 concat_Bit :: (SmtenHS0 n, SmtenHS0 m) => Bit n -> Bit m -> Bit npm
 concat_Bit = sprim2 P.bv_concat Bit_Concat
+
+extract_Bit :: forall n m . (SmtenHS0 n, Numeric m) => Bit n -> Integer -> Bit m
+extract_Bit (Bit x) (Integer i) = 
+  let hi = i + valueof (numeric :: m) - 1
+      lo = i
+  in frhs (P.bv_extract hi lo x)
+extract_Bit b i = Bit_Extract b i
 
 toInteger_Bit :: (SmtenHS0 n) => Bit n -> Integer
 toInteger_Bit (Bit a) = frhs $ P.bv_value a
