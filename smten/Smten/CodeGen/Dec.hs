@@ -91,6 +91,9 @@ primCG hsnm ts@(TopSig n ctx t) = do
         | otherwise = H.ConT (H.mkName $ hsmod ++ "." ++ unname (unqualified n))
       primty (AppT a b) = H.AppT (primty a) (primty b)
       primty (VarT n _) = H.VarT $ nameCG n
+      primty (NumT i) = H.AppT (H.ConT (H.mkName "Smten.NumT"))
+                               (H.LitT (H.NumTyLit i))
+      primty (OpT op a b) = foldl1 H.AppT [H.ConT (H.mkName ("(Smten.:" ++ op ++ ":)")), primty a, primty b]
       primty t = error $ "TODO: primty: " ++ pretty t
 
       body = H.AppE (H.VarE $ H.mkName "Smten.frhs")

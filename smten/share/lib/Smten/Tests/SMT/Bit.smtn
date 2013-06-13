@@ -59,10 +59,10 @@ tests = do
         assert (bv_or g 0xA == 0xF)
         return (g :: Bit #4)
 
---    symtesteq "SMT.Bit.Concat" (Just 3) [Yices1, Yices2, STP] $ do
---        h <- free
---        assert (bv_concat (0x5 :: Bit #3) h == 0x17)
---        return (h :: Bit #2)
+    symtesteq "SMT.Bit.Concat" (Just 3) [Yices1, Yices2, STP] $ do
+        h <- free
+        assert (bv_concat (0x5 :: Bit #3) h == 0x17)
+        return (h :: Bit #2)
 
     -- TODO: this fails for Yices1!
     symtesteq "SMT.Bit.Lsh" (Just 3) [Yices2, STP] $ do

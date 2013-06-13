@@ -53,7 +53,7 @@ unary f a = do
     a' <- use a
     liftIO $ f a'
 
-binary :: (Solver ctx exp, Supported a) => (exp -> exp -> IO exp) -> a -> a -> AM ctx exp exp
+binary :: (Solver ctx exp, Supported a, Supported b) => (exp -> exp -> IO exp) -> a -> b -> AM ctx exp exp
 binary f a b = do
     a' <- use a
     b' <- use b
@@ -107,6 +107,7 @@ instance Supported (S.Bit n) where
     define ctx (S.Bit_Or a b) = binary (or_bit ctx) a b
     define ctx (S.Bit_And a b) = binary (and_bit ctx) a b
     define ctx (S.Bit_Shl a b) = binary (shl_bit ctx) a b
+    define ctx (S.Bit_Concat a b) = binary (concat_bit ctx) a b
     define ctx (S.Bit_Not a) = unary (not_bit ctx) a
     define ctx x@(S.Bit_SignExtend a) =
        let bt :: S.Bit m -> m

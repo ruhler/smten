@@ -94,6 +94,7 @@ instance Solver DebugLL String where
     mul_bit = dbgOp "*"
     or_bit = dbgOp "|"
     and_bit = dbgOp "&"
+    concat_bit dbg a b = dbgNew dbg $ "{" ++ a ++ ", " ++ b ++ "}"
     shl_bit = dbgOp "<<"
     not_bit dbg x = dbgNew dbg $ "~ " ++ x
     sign_extend_bit dbg n x = dbgNew dbg $ "sign_extend " ++ x ++ " by " ++ show n ++ " bits"

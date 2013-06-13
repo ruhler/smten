@@ -30,7 +30,7 @@ typeCG t =
     OpT op a b -> do
         a' <- typeCG a
         b' <- typeCG b
-        return $ foldl1 H.AppT [H.ConT (H.mkName ("Smten.:" ++ op ++ ":")), a', b']
+        return $ foldl1 H.AppT [H.ConT (H.mkName ("(Smten.:" ++ op ++ ":)")), a', b']
                     
     UnknownT -> error $ "typeCG: unknown type encountered"
 
