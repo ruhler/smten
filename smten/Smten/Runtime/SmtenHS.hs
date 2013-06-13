@@ -138,13 +138,8 @@ instance Haskelly (a -> b) (a -> b) where
     frhs = id
     stohs = id
 
-__caseTrue_default :: (SmtenHS0 z) => Bool -> z -> z -> z
-__caseTrue_default x y n = 
-   case x of
-      True -> y
-      False -> n
-      _ -> primitive0 (\m -> __caseTrue_default (realize0 m x) (realize0 m y) (realize0 m n))
-                      (switch x (cases0 y) (cases0 n))
+__caseTrue :: (SmtenHS0 z) => Bool -> z -> z -> z
+__caseTrue = __caseTrue0
 
 __caseFalse :: (SmtenHS0 z) => Bool -> z -> z -> z
 __caseFalse x y n = __caseTrue x n y
@@ -168,7 +163,7 @@ instance SmtenHS0 Bool where
 
    primitive0 = Bool_Prim
 
-   __caseTrue x y n =
+   __caseTrue0 x y n =
       case x of
         True -> y
         False -> n
@@ -210,7 +205,7 @@ instance SmtenHS0 Integer where
 
    primitive0 = Integer_Prim
 
-   __caseTrue x y n =
+   __caseTrue0 x y n =
       case x of
         True -> y
         False -> n
@@ -268,7 +263,7 @@ instance SmtenHS0 Bit where
        
    primitive0 = Bit_Prim
 
-   __caseTrue x y n =
+   __caseTrue0 x y n =
       case x of
         True -> y
         False -> n

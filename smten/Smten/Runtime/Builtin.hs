@@ -5,7 +5,7 @@ module Smten.Runtime.Builtin (
     Cases, concrete,
     Assignment,
     prim3,
-    Bool(True, False), __caseFalse, Integer(Integer), Char(Char),
+    Bool(True, False), __caseTrue, __caseFalse, Integer(Integer), Char(Char),
     Numeric, NumT, (:+:), (:-:), (:*:),
     ) where
 

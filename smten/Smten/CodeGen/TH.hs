@@ -32,13 +32,13 @@ declare_SmtenHS n = do
                 ForallT (map PlainTV as) ctx $
                   arrowsT [arrowsT [ConT $ mkName "Assignment", mas], css, mas]
 
-      casetrue = SigD (mkName $ "__caseTrue") $ 
+      casetrue = SigD (mkName $ "__caseTrue" ++ show n) $ 
                    ForallT (map PlainTV as) ctx $
                      arrowsT [ConT (mkName "Bool"), mas, mas, mas]
 
       rzs = [foldl1 AppE [VarE $ mkName v | v <- ["realize0", "m", x]]
                 | x <- ["x", "y", "n"]]
-      rval = LamE [VarP $ mkName "m"] $ foldl AppE (VarE $ mkName "__caseTrue") rzs
+      rval = LamE [VarP $ mkName "m"] $ foldl AppE (VarE $ mkName "__caseTrue0") rzs
       cval = foldl1 AppE [VarE $ mkName "switch",
                           VarE $ mkName "x",
                           AppE (VarE $ mkName "cases0") (VarE $ mkName "y"),
@@ -49,12 +49,9 @@ declare_SmtenHS n = do
                   Match (ConP (mkName "False") []) (NormalB (VarE $ mkName "n")) [],
                   Match (WildP) (NormalB ctprim) []]
       ctcls = Clause [VarP $ mkName n | n <- ["x", "y", "n"]] (NormalB ctbody) []
-      casetruedef = FunD (mkName $ "__caseTrue") [ctcls]
+      casetruedef = FunD (mkName $ "__caseTrue" ++ show n) [ctcls]
 
-      methods = if n == 0
-                 then [relN, casN, primN, casetrue, casetruedef]
-                 else [relN, casN, primN]
-                           
+      methods = [relN, casN, primN, casetrue, casetruedef]
       classD = ClassD [] cls tyvs [] methods
   return [classD]
   
@@ -76,5 +73,8 @@ derive_SmtenHS n = do
                   (NormalB $ VarE (mkName $ "cases" ++ show (n+1))) []
       primN = ValD (VarP (mkName $ "primitive" ++ show n)) 
                   (NormalB $ VarE (mkName $ "primitive" ++ show (n+1))) []
-      instD = InstanceD ctx ty [relN, casesN, primN]
+      casetrueN = ValD (VarP (mkName $ "__caseTrue" ++ show n)) 
+                  (NormalB $ VarE (mkName $ "__caseTrue" ++ show (n+1))) []
+      instD = InstanceD ctx ty [relN, casesN, primN, casetrueN]
   return [instD]
+
