@@ -1,17 +1,12 @@
 
 module Smten.SMT.FreeID (
     FreeID, fresh, freenm,
-    Assignment,
     ) where
 
 import System.IO.Unsafe
 import Data.IORef
 
-import Data.Dynamic
-
 type FreeID = Integer
-
-type Assignment = [(FreeID, Dynamic)]
 
 {-# NOINLINE freshpool #-}
 freshpool :: IORef FreeID

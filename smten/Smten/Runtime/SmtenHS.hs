@@ -16,14 +16,12 @@ import qualified Prelude as P
 import qualified Smten.Bit as P
 
 import GHC.Base (Any)
-import System.Mem.Weak
 import System.Mem.StableName
 import System.IO.Unsafe
 import Unsafe.Coerce
 
 import Data.Bits
 import Data.Dynamic
-import Data.Functor((<$>))
 import Data.Maybe(fromMaybe)
 
 import qualified Data.HashTable.IO as H
@@ -89,32 +87,33 @@ data Bit n where
     Bit_Ite :: Bool -> Bit n -> Bit n -> Bit n
     Bit_Var :: FreeID -> Bit n
     Bit_Prim :: (Assignment -> Bit n) -> Cases (Bit n) -> Bit n
-  
-{-# NOINLINE realize_cache #-}
-realize_cache :: H.BasicHashTable (StableName Any) (H.BasicHashTable (StableName Any) Any)
-realize_cache = unsafePerformIO H.new
 
+data Assignment = Assignment {
+   as_vars :: [(FreeID, Dynamic)],
+   as_cache :: H.BasicHashTable (StableName Any) Any
+}
+
+as_lookup :: (Typeable a) => FreeID -> Assignment -> a
+as_lookup x m = fromMaybe (error "as_lookup failed") $ do
+    v <- lookup x (as_vars m)
+    fromDynamic v
+
+as_make :: [(FreeID, Dynamic)] -> IO Assignment
+as_make vars = do
+    cache <- H.new
+    return (Assignment vars cache)
+  
 realize :: (SmtenHS0 a) => Assignment -> a -> a
-realize m x = unsafePerformIO $ do
-    mnm <- makeStableName $! (unsafeCoerce m)
+realize m x = unsafeDupablePerformIO $ do
     xnm <- makeStableName $! (unsafeCoerce x)
-    mfnd <- {-# SCC "RC_LOOKUP" #-} H.lookup realize_cache mnm
-    case mfnd of
-        Just mc -> do
-          xfnd <- {-# SCC "MC_LOOKUP" #-} H.lookup mc xnm
-          case xfnd of
-            Just v -> return (unsafeCoerce v)
-            Nothing -> do
-              let v = realize0 m x
-              H.insert mc xnm (unsafeCoerce v)
-              return v
-        Nothing -> do
-          mc <- H.new
-          H.insert realize_cache mnm mc
-          let v = realize0 m x
-          H.insert mc xnm (unsafeCoerce v)
-          addFinalizer m $ H.delete realize_cache mnm
-          return v
+    let mc = as_cache m
+    xfnd <- H.lookup mc xnm
+    case xfnd of
+      Just v -> return (unsafeCoerce v)
+      Nothing -> do
+        let v = realize0 m x
+        H.insert mc xnm (unsafeCoerce v)
+        return v
 
 class SmtenHS0 a where
     -- Update all variables in the given expression according to the given map.
@@ -213,9 +212,7 @@ __caseFalse x y n = __caseTrue x n y
 instance SmtenHS0 Bool where
    realize0 m True = True
    realize0 m False = False
-   realize0 m (Bool_Var x) = fromMaybe (error "realize0.Bool") $ do
-      v <- lookup x m
-      frhs <$> (fromDynamic v :: Maybe P.Bool)
+   realize0 m (Bool_Var x) = frhs (as_lookup x m :: P.Bool)
    realize0 m (Bool_EqInteger a b) = eq_Integer (realize m a) (realize m b)
    realize0 m (Bool_LeqInteger a b) = leq_Integer (realize m a) (realize m b)
    realize0 m (Bool_EqBit a b) = eq_Bit (realize m a) (realize m b)
@@ -258,9 +255,7 @@ instance SmtenHS0 Integer where
          Integer_Add a b -> add_Integer (realize m a) (realize m b)
          Integer_Sub a b -> sub_Integer (realize m a) (realize m b)
          Integer_Ite p a b -> __caseTrue (realize m p) (realize m a) (realize m b)
-         Integer_Var v -> fromMaybe (error "realize0 Integer failed") $ do
-            d <- lookup v m
-            frhs <$> (fromDynamic d :: Maybe P.Integer)
+         Integer_Var v -> frhs (as_lookup v m :: P.Integer)
          Integer_Prim r _ -> r m
 
    cases0 x = 
@@ -319,9 +314,7 @@ instance SmtenHS1 Bit where
          Bit_Not a -> not_Bit (realize m a)
          Bit_SignExtend a -> sign_extend_Bit (realize m a)
          Bit_Ite p a b -> __caseTrue (realize m p) (realize m a) (realize m b)
-         Bit_Var x -> fromMaybe (error "realize0 Bit failed") $ do
-            d <- lookup x m
-            frhs <$> (fromDynamic d :: Maybe P.Bit)
+         Bit_Var x -> frhs (as_lookup x m :: P.Bit)
          Bit_Prim r _ -> r m
     
    cases1 x = 

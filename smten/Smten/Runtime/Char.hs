@@ -8,7 +8,6 @@ module Smten.Runtime.Char (
 import Prelude hiding (Char)
 import qualified Prelude as P
 import Smten.Runtime.SmtenHS as S
-import Smten.SMT.FreeID
 
 data Char = Char P.Char
           | Char_Prim (Assignment -> Char) (Cases Char)

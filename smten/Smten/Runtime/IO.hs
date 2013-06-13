@@ -9,7 +9,6 @@ import Prelude hiding (IO)
 import Data.Functor((<$>))
 
 import Smten.Runtime.SmtenHS as S
-import Smten.SMT.FreeID 
 
 data IO a = IO (P.IO a)
           | IO_Prim (Assignment -> IO a) (Cases (IO a))

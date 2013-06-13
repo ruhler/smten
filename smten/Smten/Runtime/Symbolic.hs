@@ -102,7 +102,7 @@ run_symbolic s q = do
     Satisfiable -> do
        let vars = ss_free ss
        vals <- mapM (getValue solver) vars
-       let m = zip (map fst vars) vals
+       m <- as_make $ zip (map fst vars) vals
        case {-# SCC "DoubleCheck" #-} realize m (ss_formula ss) of
           S.True -> return ()
           _ -> error "SMTEN INTERNAL ERROR: SMT solver lied?"

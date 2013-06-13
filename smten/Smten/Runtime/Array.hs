@@ -14,7 +14,6 @@ import Data.Functor
 import Data.List(genericLength)
 
 import Smten.Runtime.SmtenHS as S
-import Smten.SMT.FreeID
 
 data PrimArray a = PrimArray (Array P.Integer a)
                  | PrimArray_Prim (Assignment -> PrimArray a) (Cases (PrimArray a))

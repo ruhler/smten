@@ -13,5 +13,4 @@ import qualified Prelude
 import Smten.Numeric
 import Smten.Runtime.SmtenHS
 import Smten.Runtime.Char
-import Smten.SMT.FreeID
 
