@@ -55,7 +55,7 @@ set SMTN smten/share/lib
 
 proc hscomp {module} {
     set hsdir build/test
-    hrun $::SMTEN -f $::SMTN/[string map {. /} $module].smtn --hsdir $hsdir
+    hrun $::SMTEN --include $::SMTN -f $::SMTN/[string map {. /} $module].smtn --hsdir $hsdir
 }
 
 proc hsghc {module} {
