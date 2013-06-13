@@ -105,6 +105,7 @@ instance Supported (S.Bit n) where
     define ctx (S.Bit_Mul a b) = binary (mul_bit ctx) a b
     define ctx (S.Bit_Or a b) = binary (or_bit ctx) a b
     define ctx (S.Bit_And a b) = binary (and_bit ctx) a b
+    define ctx (S.Bit_Shl a b) = binary (shl_bit ctx) a b
     define ctx (S.Bit_Not a) = unary (not_bit ctx) a
     define ctx (S.Bit_Ite p a b) = do
         p' <- use p

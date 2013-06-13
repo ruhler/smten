@@ -94,6 +94,7 @@ instance Solver DebugLL String where
     mul_bit = dbgOp "*"
     or_bit = dbgOp "|"
     and_bit = dbgOp "&"
+    shl_bit = dbgOp "<<"
     not_bit dbg x = dbgNew dbg $ "~ " ++ x
 
 debugll :: FilePath -> D.Solver -> IO D.Solver

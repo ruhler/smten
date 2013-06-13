@@ -42,5 +42,6 @@ class Solver ctx exp | ctx -> exp where
   mul_bit :: ctx -> exp -> exp -> IO exp
   or_bit :: ctx -> exp -> exp -> IO exp
   and_bit :: ctx -> exp -> exp -> IO exp
+  shl_bit :: ctx -> exp -> exp -> IO exp
   not_bit :: ctx -> exp -> IO exp
 

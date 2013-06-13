@@ -158,6 +158,7 @@ instance Solver Yices1 YExpr where
   mul_bit = bprim c_yices_mk_bv_mul
   or_bit = bprim c_yices_mk_bv_or
   and_bit = bprim c_yices_mk_bv_and
+  shl_bit = error "TODO: shl_bit for Yices1"
   not_bit = uprim c_yices_mk_bv_not
 
 -- TODO: does this leak solvers?

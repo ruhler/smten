@@ -69,6 +69,7 @@ data Bit n =
   | Bit_Mul (Bit n) (Bit n)
   | Bit_Or (Bit n) (Bit n)
   | Bit_And (Bit n) (Bit n)
+  | Bit_Shl (Bit n) (Bit n)
   | Bit_Not (Bit n)
   | Bit_Ite Bool (Bit n) (Bit n)
   | Bit_Var FreeID
@@ -271,6 +272,7 @@ instance SmtenHS1 Bit where
          Bit_Mul a b -> mul_Bit (realize0 m a) (realize0 m b)
          Bit_Or a b -> or_Bit (realize0 m a) (realize0 m b)
          Bit_And a b -> and_Bit (realize0 m a) (realize0 m b)
+         Bit_Shl a b -> shl_Bit (realize0 m a) (realize0 m b)
          Bit_Not a -> not_Bit (realize0 m a)
          Bit_Ite p a b -> __caseTrue (realize0 m p) (realize0 m a) (realize0 m b)
          Bit_Var x -> fromMaybe (error "realize0 Bit failed") $ do
@@ -325,6 +327,9 @@ or_Bit = sprim2 ((.|.) :: P.Bit -> P.Bit -> P.Bit) Bit_Or
 
 and_Bit :: (SmtenHS0 n) => Bit n -> Bit n -> Bit n
 and_Bit = sprim2 ((.&.) :: P.Bit -> P.Bit -> P.Bit) Bit_And
+
+shl_Bit :: (SmtenHS0 n) => Bit n -> Bit n -> Bit n
+shl_Bit = sprim2 P.bv_shl Bit_Shl
 
 not_Bit :: (SmtenHS0 n) => Bit n -> Bit n
 not_Bit = sprim1 (complement :: P.Bit -> P.Bit) Bit_Not
