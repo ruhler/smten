@@ -1,0 +1,586 @@
+
+Thu Jun 13 06:19:47 EDT 2013
+
+Goal for today: Get rid of dynamic bit vectors, only use static bit vectors.
+
+This is so I can get type information for bit vectors whereever I may need it.
+In particular, so I can easily do error and abstraction for bit vectors.
+
+I also think dynamic bit vectors don't make sense, because they really are not
+supported.
+
+What are the steps involved?
+
+* Add a phantom type to the SmtenHS Bit definition
+* Change Bool type to be GADT (so we can handle Eq_Bit, etc...)
+* Change bit vector primitives to take the phantom type
+* Change Assert to work with the phantom type
+    I expect we need to change the type of the bit cache to the Any object and
+    do some coercions to make that work.
+
+Sounds like a plan to me. Let me give it a shot. Dive in and see what trouble
+arises.
+
+Issues:
+ * We want a __caseTrue1 now.
+
+Issues:
+ * Bool_EqBit needs (SmtenHS0 n) on the context.
+  But because of template haskell, we have a dependency problem we can't
+  break.
+
+So... here's what I'm thinking. I should define SmtenHS0 manually. Only
+autoderive the other ones. As terrible as that is.
+
+Let me try that. See if it works out okay.
+
+Thu Jun 13 09:13:03 EDT 2013
+
+I got static bit vectors working. That's good.
+
+Oh. Let me check how shampi performance is now.
+
+It's good. Bit vector performance improved, which I actually expect, because
+we don't do this boxing/unboxing in smten anymore.
+
+Good. That's settled.
+
+What's the next step?
+
+I need to add back error support, in a way where performance is monitored
+closely. I want to flesh out the bit vector primitives by getting all the bit
+vector tests to pass.
+
+But! I also think I need to fix the way we handle primitives.
+
+The big problem is in how we figure out what type to use for the haskell side
+of the primitive.
+
+It is important we specify the type, right?
+
+Yes. Otherwise we don't know. There is an ambiguity. Especially because of
+polymorphic types.
+
+So we have to specify a haskell type.
+
+The current approach:
+ * For every type constructor, we assume the haskell type we want is a type of
+   the same name, specified in the same module as the primitive function.
+
+As a consequence:
+ * each module defining a primitive function must re-export the types involved
+   in all primitives it defines.
+
+As a consequence:
+ * all types used in primitives defined in the same module with the same base
+   name must be the same.
+
+This is very annoying. We end up scattering the primitives depending on how we
+want them defined.
+  toInteger_Bit is in SmtenHS, because I want S.Bit and S.Integer
+        Though really I would like: P.Bit and P.Integer
+        The trouble here is P.Bit has a different kind than S.Bit.
+
+Err... It's annoying. I don't like this restriction.
+
+What don't I like?
+ * the kinds have to match, so it seems I can't define any Bit primitives in
+   terms of P.Bit. I have to do it in terms of S.Bit.
+ * I don't like re-exporting type names from modules.
+
+What's the solution?
+
+One issue is: I need to be able to choose what every type constructor maps to.
+In some cases I'll want one thing, on some cases another, and we have to give
+that information to the compiler.
+
+Here's what I propose.
+
+You list the haskell type explicitly on the imported thing.
+
+For example:
+
+foreign import hs "Smten.Runtime.SmtenHS.eq_Integer ::
+    Smten.Runtime.SmtenHS.Integer
+ -> Smten.Runtime.SmtenHS.Integer
+ -> Smten.Runtime.SmtenHS.Bool"
+    __prim_eq_Integer :: Integer -> Integer -> Bool
+
+It is, sadly, quite verbose.
+
+Hmm... Really, I could probably get away without giving an explicit type in
+many cases.
+
+What if you only have to give an explicit type when you have a type variable?
+Only for polymorphic imports?
+
+What all would that affect?
+
+Basically, you have to give an explicit type signature whenever the haskell
+primitive has a polymorphic type. Even if the imported function's type is
+concrete.
+
+I don't personally mind having wrapper functions for things like Prelude.*.
+But regardless, you need an explicit type sometimes.
+
+For polymorphic imported function, we want the same polymorphic for the
+concrete type.
+
+For constructors in the imported function, we want either:
+ * the smten type: S.Integer, S.Bit, etc..
+ * the AsInHaskell type.
+
+Except that Bit doesn't work for AsInHaskell.
+And you could want your own type, I suppose.
+
+So, I propose we let you specify an optional type. Required for polymorphic
+functions.
+
+If you provide a type...
+
+It would be nice if you could use...
+
+I think you have to give the entire type for each constructor.
+
+I want to say: if you don't use the type constructor qualified, we'll just use
+the one defined in smten. But then what if the one defined in smten is only
+imported qualified?
+
+I would rather not expose Smten.Lib.... in the smten lib though, if I can
+avoid it.
+
+Perhaps we can't get around it.
+
+I don't know. I'm not entirely satisfied yet.
+
+Maybe I can get work done on expanding the bit vector primitives while I think
+about how I want to do this.
+
+Thu Jun 13 11:26:06 EDT 2013
+
+There! All the tested bit vector primitives are up and running.
+
+Thus, I can say, we now support as many bit vector primitives as master.
+
+And, more importantly, I am confident we have enough type information to
+support whatever strange bit vector primitives and numeric types at runtime.
+
+Nifty.
+
+The only things left now, before I can merge with the master branch:
+* explicit error support
+* concrete tests
+* arch-extract runs (on a hopefully simple example)
+
+Let me look at the concrete tests and try to add those back in.
+
+Thu Jun 13 11:53:49 EDT 2013
+
+Cool! The concrete tests are back in place. So now I can make my list of
+things to do slightly more specific:
+
+* numeric retype hack - get the numeric type tests all to work
+* bit vector support: bv_zero_extend, bv_xor, bv_slt, bv_ash
+* explicit error support (while watching performance)
+* arch-extract
+
+Exciting! So close!
+
+Let's see if I can do all this by the end of today. I think the first two
+should be straight-forward. The error support could take time to understand
+and fix performance issues. I think arch-extract should be pretty easy to port
+assuming my test cases are good enough and I can get a simple example to try.
+
+Time for lunch.
+
+Thu Jun 13 12:49:51 EDT 2013
+
+I need the numeric retype hack before I can get bit vector support going.
+Otherwise the bit-vector support is easy to add.
+
+I feel like all I need to do is introduce...
+
+Oh. So I need the following. Any type operation in the signature has to be
+replaced with a variable. Then, any occurrence of that operation in the body
+has to be replaced with the same variable, to make sure type checking works
+out.
+
+Let me look at what I did before.
+
+CG monad has 'retype': an AL list mapping type to name.
+contextCG deals with this.
+
+Looks easy enough to me. Let me implement it.
+
+Thu Jun 13 13:17:44 EDT 2013
+
+Bit vectors and numeric type hack is done! Hurray.
+
+Which leaves us with:
+* explicit error support (while watching performance)
+* arch-extract
+
+Cool. So close now. So very close.
+
+Now then.
+
+The issue with support for errors before:
+* I didn't understand how to deal with Cases.
+* I didn't propagate explicit error passed to concrete functions.
+* It was very slow.
+
+The way I will test performance is via shampi.
+
+Let me establish a baseline first.
+
+Yices2.Integer: 10.281s
+Yices2.Bit: 11.456s
+Yices1.Integer: 13.451
+Yices1.Bit: 15.787
+STP.Bit: 16.169
+
+Now, I think performance concerns will probably dominate how I choose to
+implement this. There is, honestly, only one overhead I can think of which
+would justify what I was seeing.
+
+Note: these tests are on queries which have no error. I want those to be fast.
+I'm okay with a little slow down in the case of error, which should hopefully
+be rare.
+
+Hypothesis: It is costly to double check the assertions are satisfied given
+the model.
+
+I suspect we are not preserving sharing in 'realize', which makes this the
+case. We are doing more work than we need to, in the case of shampi, because
+we ought to be able to know that there is no possibility of error, and avoid
+the check altogether. I'm not sure if that is worth doing though.
+
+So let's see. Let me do the check, and see how costly it is.
+
+Yes. It is noticeably slower now.
+
+Memory usage is not unreasonable.
+
+Again, I think this is because we don't preserve sharing in realize.
+
+How can I test that hypothesis?
+
+I could try to preserve sharing in realize and see if it improves. If so,
+that's the answer. If not, I don't know if it's because it wasn't the problem,
+or I didn't fix it right.
+
+Well. We could look at the profile, see where all the time is being spent.
+That sounds like a good idea to me.
+
+Yices2.Integer: 3m31.575s
+
+I should be able to create a test case.
+
+I have an assertion, which contains sharing.
+
+...
+
+Actually, I don't even need to have an assertion, right? I can query a value.
+
+Okay, so here's my idea:
+
+    p <- free_Bool
+    assert p
+    return $
+        let x = if p then trace "yes" 3  
+                     else trace "no" 2
+        in x+x+x+x+x
+
+Now, the question is, how many times do I see "yes" printed out?
+
+I expect to see it: 1 time if things are working right.
+                    5 times if things are working wrong.
+
+Cool. That's an easy enough test. Let me give it a shot.
+
+Err... no. It says things are working. Which I don't believe.
+
+Okay, I got it to print out 5 times. Cool.
+
+Now the question is, can I get it to only print out once?
+
+That is, how do we preserve sharing in realize?
+
+In every implementation of 
+    realize0 :: Assignment -> a -> a
+
+I want to cache the result for (Assignment, a)
+
+So... everywhere I define realize0, add a call to memo2.
+
+What's the best way to do this?
+
+Here is what I propose.
+
+define:
+
+realize :: (SmtenHS0 a) => Assignment -> a -> a
+realize = memo2 realize0
+
+Now, everywhere I use realize0 before, use realize now.
+
+And that should do it, right?
+
+I hope so.
+
+Let me first see if I can make it work at all.
+
+Thu Jun 13 14:01:03 EDT 2013
+
+It doesn't work. memo2. I still see the trace show up a bunch of times.
+
+Why?
+
+I think I need to understand better what's going on.
+
+I have the following:
+
+realize [(p, True)] (let x = trace p 3
+                     in x+x+x+x+x)
+
+Say I want to force this. What happens?
+Let's start without the memo.
+
+realize  [(p, True)] (let x = trace p 3 in x+x)
+realize0 [(p, True)] (let x = trace p 3 in x+x)
+> let x = trace p 3 in x+x
+  x@(trace p 3) + x@(trace p 3)
+  (sprim2 + Integer_Add) x@(trace p 3) x@(trace p 3)
+  > mtohs x@(trace p 3)
+    x> trace (show p) 3
+       frhs trace (show p) 3
+       > mtohs (show p)
+         > show p
+           __caseTrue p then "True" else "False"
+           > p
+             Bool_Free
+           primitive (\m -> __caseTrue (realize p) (realize "True") (realize "False"))
+           List_Prim (\m -> __caseTrue (realize p) (realize "True") (realize "False"))
+         Nothing
+       prim1 (frhs trace) (List_Prim (\m -> ...))
+       primitive (\m -> trace (realize m (List_Prim ...)))
+       \x -> primitive (\m -> (\m -> trace ...) (realize m x))
+       primitive (\m -> (\m -> trace (realize m (List_Prim ...))) (realize m 3))
+       Integer_Prim (\m -> ...)
+    Nothing
+  Integer_Add x@(Integer_Prim ...) x@(Integer_Prim ...)
+  add_Integer (realize [...] x@(...)) (realize [...] x@(...))
+    ** Note: this is where potential loss of sharing shows up.
+       We want to link the results of realize into one thing,
+       otherwise we'll end up calling realize twice in the Integer_Prim which
+       is x
+  > realize [...] x@(Integer_Prim (\m -> ..))
+    (\m -> trace (realize m (List_Prim ...))) [...] (realize [...] 3)
+    trace (realize [...] (List_Prim ...)) (realize [...] 3)
+    ** this prints out our trace.
+    realize [...] 3
+    3
+
+So, it looks to me like as long as we preserve sharing at that one crucial
+step, we should be okay.
+
+I fear the problem is like the problem I had with caches in Assert.
+I suspect the problem is: the memo2 call doesn't actually preserve sharing
+the way I want.
+
+How can I test this?
+
+What I would like to do is instrument the cache.
+Print out stats.
+
+If sharing is being preserved, the memo cache should show it. I expect what
+I'll find is the memo cache says it didn't share anything.
+
+That would at least direct the issue to the cache implementation rather than
+the concept of sharing.
+
+I want to write my own memo cache so I can debug it.
+
+The first version of the cache can leak. That's fine. I'm confident I can use
+finalizers to avoid the leak anyway when I see it showing up.
+
+In theory, I should only need to implement memo, and memo2 can be implemented
+on top of that.
+
+I would like to name the caches, so I can get a better idea of what's going
+on. Perhaps I can associate a unique ID with every cache?
+
+I expect there to be a lot of them.
+
+With a single call to assert, there should be a single assignment. So we
+should always recognize the assignment.
+
+I would like to have a memo2 cache per type: Integer, Bit, Functions
+in the above example.
+
+I expect each memo2 cache to create a single memo1 cache.
+I expect the memo1 caches may hold multiple objects, or not.
+
+I wonder if I could start by brute forcing it: a single cache that everyone
+uses whose keys are tuples of stable names. Just to see if the issue is a
+cache issue.
+
+That's an interesting idea...
+
+I think it's worth playing around with.
+
+Ah. Now this cache works, aside from, I'm sure, leaking a bunch.
+
+How about I make it a usable cache.
+Have a map from Assignment to Table of Object to Object.
+Keep the one cache.
+Garbage collect tables after the Assignment goes out of scope.
+
+Hopefully we won't end up holding onto the assignment in the value... Though I
+fear we will.
+
+Thu Jun 13 15:30:17 EDT 2013
+
+Interesting.
+
+With addFinalizer, we end up removing the object from the cache. That seems
+messed up to me. How could that be possible?
+
+So: with addFinalizer gives 2 calls to trace.
+    without gives 1 call to trace (as desired).
+
+Or maybe I just had the finalizer in the wrong place.
+
+Anyway, now I have my 2-level realize_cache with garbage collection
+(hopefully). And it preserves sharing the way I want in my test case.
+
+Let me try it out on shampi, see what we see.
+
+First: Yices2.Integer, without double checking assertion: 14.847s
+So there is a noticeable cost of memoization.
+
+Now: with double checking assertion: Yices2.Integer: 19.720s.
+
+Much better than 3.5 minutes. So that clearly was an issue.
+But... I don't like 1x performance degradation just to handle errors properly.
+
+Here's an idea: I can associate the cache with the assignment. That, at least,
+will avoid me getting the name of and checking the context every time we do
+realize.
+ 
+Let me do some profiling annotation and see if I can get a better sense here.
+
+Profiling says:
+* a lot of time is spent in hash tables, but mostly with Assert.
+* about 5% of the time is spent in DoubleCheck.
+  Which really isn't that much.
+It's not really consistent with the numbers I measure by hand.
+Perhaps I need to have optimization on for profiling to be more fair.
+
+With optimization: 7% of time in DoubleCheck.
+                   2% of time in RC_LOOKUP
+                   1% of time in MC_LOOKUP
+Assert time dominates, with almost half of it being hash table insertions. And
+the other half being hash table lookups.
+
+Interesting...
+
+Now, the other experiment worth doing is going back to the error branch, turn
+off double checking, and see if it goes as fast as we would like.
+
+In this case, we have no overhead at all. We go back to 10seconds.
+
+In other words... the slowdown from error was due entirely to DoubleCheck,
+mostly from not preserving sharing in realize.
+
+Well, I'm very close now. I just have to decide what I want to do.
+
+One option would be: support error without doing the DoubleCheck?
+
+I'm not sure.
+
+But clearly I want to add back in the error implementation from before. Round
+out my test cases, and I can fix the performance issues too, and be done with
+it. Or rather, know what some of the performance issues are, and mark them
+down to be dealt with later.
+
+I just wish the profiler reflected where we are spending time better.
+
+Let me think some and get back to you.
+
+I think primary goal should be: get all test cases working. Not sure if I want
+to handle sharing yet or not.
+
+Thu Jun 13 16:21:41 EDT 2013
+
+Okay, here's the plan.
+
+I need to handle sharing of realize.
+I need to do abstraction of errors.
+I need to do double checking.
+
+I think I can handle sharing of realize more efficiently by associating the
+cache with the assignment. Define assignment in SmtenHS, have a helper
+function for creating assignments, and then I should be in decent shape, and
+relatively clean. I should measure the performance difference of this. With or
+without DoubleCheck. Probably with DoubleCheck.
+
+Then, I'll revert my noerr revert. It will be some work. But after this, all
+my test cases should pass, and shampi should be, if not super fast, at least
+decently fast. I'm thinking somewhere on the order of 20s seconds. That's
+plenty good enough.
+
+I'll put down as TODOs possible optimizations to try and avoid the overhead of
+DoubleCheck, but really, I think it's more important to focus on actual
+problems. Anyway, it's always something I can try if I think it will make a
+big difference.
+
+And that's it. I will be all caught up except for arch-extract.
+
+Let me see if I can get that far in the next hour or so.
+
+Steps:
+
+1. Pass realize cache with each assignment.
+Basline: 19.653s
+Improves to: 16.634s.
+
+Good.
+
+2. Revert reverted error.
+
+Done!
+
+Cool. Now all tests are there. All tests pass. Shampi performance is
+reasonable.
+
+I just have the usual odds and ends to deal with. Nifty.
+
+Well, there you have it. The rewrite, which has taken 2 weeks, but lead to
+many many good things, is now, according to my test cases, complete.
+
+The only thing left now is to try out arch-extract. May as well give it a
+shot.
+
+If arch-extract runs. If the simplified example finishes, then I'm going to
+merge with the master branch.
+
+Thu Jun 13 17:26:09 EDT 2013
+
+I won't be able to get arch_extract to work on my own. The problem is it uses
+the SMT monad all over the place, for some sort of optimization.
+
+Thu Jun 13 17:58:38 EDT 2013
+
+Okay! I managed to make it compile. The trouble is, I'm running into:
+    TODO: cases0 for symbolic bit vector
+
+What's that from?
+
+I'm having a suspicion I need to resurrect the Debug solver, which prints out
+high level debug information.
+
+This must be from an unsupported symbolic operation.
+
+Let me think about how I can give high level debug information then.
+

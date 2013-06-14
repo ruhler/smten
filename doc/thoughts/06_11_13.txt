@@ -1,0 +1,687 @@
+
+Tue Jun 11 08:31:25 EDT 2013
+
+I want to put down some thoughts, because it is not clear to me what direction
+I should head moving forward. These are not really in any order.
+
+
+* Immediate high-level goal: Have all tests and all primitives working with
+  explicit error handling.
+
+* Describing Solver for SMT more cleanly.
+We can have a Solver.Class class with methods corresponding to each underlying
+action an SMT solver will do: the primitive functions and creation of formulas
+and queries. Then, using that class, write a generic function to transform
+from that static thing to a dynamic Solver instance.
+
+This way we can share issues like allocation/deallocation of solvers, and
+boxing/unboxing of arguments.
+
+* I say 'List Monad', or 'Mux' often. Just to be clear, they are the same
+  thing. Perhaps a better name would be 'Cases'. It is a set of elements, each
+  element associated with a condition.
+
+The choice of representation: as a list, a tree, a map, etc... could be
+significant for performance. But it doesn't matter for functionality. I should
+create an abstraction for this and use.
+
+* Symbolic objects are used in two ways:
+1. realize. Can happen for any type.
+2. assert. For bool, which presumably propagates up in some way to other
+types.
+
+* Eager/Delayed realize
+In eager realize, anything we know is not supported by an SMT solver is
+immediately turned into Cases. In Delayed realize, we leave the original
+primitive representation, and only realize it when we know the arguments.
+
+Delayed realize is never more costly than Eager realize, because we do things
+lazily anyway. So it doesn't cost more memory or less or anything like that.
+
+Eager realize for the ite primitive is not more costly than Delayed realize.
+Again because we are lazy.
+
+Eager realize for any primitive which takes a symbolic argument of non-Bool
+type *is* more costly than delayed.
+
+For example, imagine the type is integer, and we have this primitive:
+    primIntegerToChar f~1
+
+Delayed realize:
+  We save 'primIntegerToChar f~1'.
+  We learn f~1 is 42.
+  We compute primIntegerToChar 42
+
+Eager realize:
+  We mux:   f~1 == 0 ==> '\0'
+            f~1 == 1 ==> '\1'
+            ...
+  We learn f~1 is 42.
+  We  evaluate: 42 == 0?
+                42 == 1?
+                ...
+  We finally find: 42 == 42, and return '\42'
+  That's really bad.
+
+This suggests to me we should always do Delayed realize.
+
+Note: you can have polymorphic primitives like this:
+    timeout :: Integer -> IO a -> IO a
+
+Imagine:    
+    do x <- free_Integer
+       assert (f x)
+       return (timeout x)
+
+* There are an infinite number of possible SMT solvers.
+Which means it is very difficult to enumerate them all.
+
+* I would say, in practice there are a finite number of supported
+  SMT types and primitives. There are an infinite number of unsupported SMT
+  types and primitives.
+
+* For an SMT primitive, if some solver supports it, we can't take action for
+  that primitive until we know what the solver is.
+
+
+I think this makes at least one thing clear. I hope.
+
+SmtenHS objects: represent SMT formulas before knowledge of the SMT solver.
+They represent it as concisely as possible, entirely in terms of primitives.
+
+Note: under this approach, SmtenHS objects do *not* represent an object using
+Cases. They represent it using __caseFoo like primitives.
+
+SMT Formulas: represent SMT formulas specific to an SMT solver.
+This will be a pointer for supported types. It will be a Cases for unsupported
+types. SMT Formulas must be supported for every possible type of object under
+this view.
+
+* An SMT solver, ultimately, needs to be represented as a dynamic object.
+That's the only way we can allow for an infinite number of kinds of solvers
+and for the Smten user to be able to specify a list of solvers.
+
+But I think this is okay. If I can come up with a reasonable representation.
+It will help much in building more complex solvers.
+
+* We should commit to the choice of SMT solver at the time of run_symbolic,
+  not for every primitive SMT call.
+
+Otherwise I'm sure it will be totally inefficient.
+
+
+I'm beginning to get a sense of how things should look.
+
+A generic SmtenHS object has:
+* concrete constructors
+* a way to represent primitives.
+  
+A formula is:
+* either a pointer
+* or a cases.
+
+It would be rather nice if we could avoid boxing/unboxing...
+
+How about this:
+
+We enumerate all types with the following abstraction:
+
+data Type = Bool | Bit | Integer | Unsupported
+
+Any type for which there is an SMT solver supporting it will be listed
+explicitly. Otherwise it will be 'Unsupported'. My claim is there are a finite
+number of these types.
+
+We enumerate all primitives with the following abstraction:
+
+data Prim = IteBool | IteInteger | IteBit | AddInteger | ... | Unsupported
+
+Any primitive for which there is an SMT solver supporting it will be lisetd
+explicitly. Otherwise it will be 'Unsupported'. Each primitive corresponds to
+a single, concrete type. Except for Unsupported, which can represent a
+primitive of any type.
+
+We represent a Primitive constructor as:
+
+data Primitive a = Primitive {
+    preal :: Assignment -> a,
+    pprim :: Prim,
+    pargs :: [Dynamic]
+}
+
+We can change the representation. In particular, how to represent arguments is
+not really important for functionality, but could be important for
+performance. So really, what I would like, is you specify a primitive,
+depending on its type, by supplying:
+* The function for the primitive.
+* The name of the primitive.
+* The arguments to the primitive.
+
+Everything else should be generated.
+
+For example, for a two-argument primitive, we might have:
+
+prim1 :: Prim -> (a -> b) -> a -> Primitive b
+prim2 :: Prim -> (a -> b -> c) -> a -> b -> Primitive c
+prim3 :: Prim -> (a -> b -> c -> d) -> a -> b -> c -> Primitive d
+
+Good! And this way I can entirely hide the representation of Primitive.
+
+Note: we may have to be fancy to get __caseTrue to work out, because we want
+it to have a different Prim depending on its type. So, __caseTrue should be a
+class.
+
+class ITE a where
+    __caseTrue :: Bool -> a -> a -> a
+
+instance __caseTrue Integer where
+    __caseTrue = ...
+
+instance __caseTrue Bool where
+    __caseTrue = ...
+
+instance __caseTrue a where
+    __caseTrue = ...
+
+Yes. That is good.
+
+Now, things will look like they used to before. Or rather, sort of how they
+look now? Not entirely...
+
+How they used to look before:
+
+Solver has:
+    declare, assert, get, check
+
+assert hides internal stuff:
+    assert :: S.Bool -> IO ()
+
+Assert:
+  Is the implementation of assert, based on a class for the SMT solver which
+  says how to represent the different supported types and so on.
+
+This way we ought to be able to avoid boxing/unboxing almost entirely. We may
+need it for unsupported types and integers though.
+
+Cool! I think this is a plan.
+
+Summary of how to add a new, unsupported primitive:
+  Just call it Unsupported. You don't have to touch anything else.
+
+Summary of how to add a new, supported primitive:
+ Add it to list of supported, along with type.
+ Add its support in all the solvers.
+ Update the 'assert' traversal to handle this case.
+
+This is good. I think I can get it to work, and be reasonably pretty.
+And it has the following nice properties:
+
+* SMT solvers are all described in one file
+* Support for dynamic SMT solvers
+* Assert traversal is described in one file
+* Unsupported primitives can be added in a single place without knowledge of
+  SMT solvers
+* We properly handle primitives for realize not used in an SMT formula.
+* We properly handle everything inside an SMT formula, modulo infinity issues.
+
+Good.
+
+I think I probably want to revert my last two commits. Because they go in the
+wrong direction.
+
+Then, hopefully, I can make progress a bit at a time towards my target goal.
+
+Sounds like a plan to me.
+
+First step: Revert the last two commits.
+
+Good. Next?
+
+The ultimate thing I'm introducing is this idea of Primitive, which lists
+known primitives. I suggests they take their arguments.
+
+data Primitive a = 
+    P_IteBool :: Bool -> Bool -> Bool -> Primitive Bool
+  | P_IteBit :: Bool -> Bit -> Bit -> Primitive Bit
+  | P_IteInteger Bool Integer Integer 
+  | P_AddInteger Integer Integer
+  | P_
+
+Looks like we want GADTs?
+
+Could I add that later?
+
+What will assert look like?
+
+Somehow I have to handle generic muxing.
+
+I do believe Primitive should be typed. It can be phantom typed if desired, or
+GADTed.
+
+Let me just write some rough draft code, and see how I feel about it. Because
+I'm really not sure where to start here.
+
+I suppose my goal to start should be: don't worry about performance, so long
+as I use the proper abstractions to allow me to change performance later
+easily.
+
+In that case, what do I want for a generic primitive?
+Let's start with, how to deal with unsupported primitives?
+
+If a primitive is unsupported, I want to make a Cases object.
+* make a cases object of its argument.
+* make a cases object of its result.
+
+But, how I make such an argument depends on its type.
+Or, more specifically, whether or not its type is supported?
+
+Unsupported Type:
+  It can only be in the form of a Cases. So we are done.
+
+Supported Type:
+  It is either in the form of a Cases, or the form of a Formula.
+
+Hmm... Complicated...
+
+Tue Jun 11 12:43:47 EDT 2013
+
+Okay, here's an idea.
+
+Unsupported primitives are not supported by any SMT Solver. Which means their
+behavior does not depend on the SMT solver. Which means I can give a generic
+implementation for them based on type, independent of solver.
+
+Supported primitives I know the types of, and I can map them to the AST as
+appropriate.
+
+So do the following:
+
+For a supported primitive, represent it explicitly:
+    AddInteger (Integer -> Integer -> Integer) Integer Integer
+
+For an unsupported primitive, represent it abstractly:
+    Unsupported {
+        preal :: M -> a
+        pform :: Cases a
+    }
+
+Is that okay?
+
+I don't know. I just don't know.
+
+  Unsupported (Dynamic -> a) Dynamic
+
+Maybe that's the way to go, and wrap it properly?
+
+Ug.
+
+The challenge is dealing with arbitrary types and not knowing the SMT solver
+very far ahead of time?
+
+Here's a question: what's wrong with what I currently do?
+
+Support each supported primitive as a constructor on Bool, Bit, or Integer.
+For other types?
+Have a generic primitive?
+
+In which case, we want to mux the arguments...
+
+Cases can depend on the solver.
+
+Let me take another step back. What's the goal?
+Delayed Realize.
+
+
+Tue Jun 11 13:11:04 EDT 2013
+
+Okay, I have another plan. Another proposal. Let's see if this one can stand
+up.
+
+For every smtenhs object, we have the following functions:
+  realize :: Assignment -> a -> a
+  cases :: a -> Cases a
+
+What is Cases a?
+
+mempty :: Cases a
+mkcase :: S.Bool -> a -> Cases a
+mappend :: Cases a -> Cases a -> Cases a
+fmap :: (a -> b) -> Cases a -> Cases b
+
+It holds a bunch of cases, each predicated by an S.Bool. Note, the predication
+is S.Bool, not Formula. This means we don't have to know about the SMT solver
+in order to do cases. I'm basing it on the assumption that Bit, Integer, Bool
+are always supported by solvers. I think that's a good assumption for the
+immediate goal, which I can revise later.
+
+For unsupported primitives, we represent them as: 
+Primitive a = Primitive {
+  prealize :: Assignment -> a
+  pcases :: Cases a
+}
+
+For example, to construct a generic one argument primitive which is not
+supported:
+
+prim1 :: (a -> b) -> a -> Primitive b
+prim1 f x = Primitive {
+    prealize = \m -> f (realize m x),
+    pcases = fmap f (cases x)
+}
+
+For example, to construct a generic two argument primitive which is not
+supported:
+
+prim2 :: (a -> b -> c) -> a -> b -> Primitive c
+prim2 f x y = Primitive {
+    prealize = \m -> f (realize m x) (realize m y),
+    pcases = fmap2 f (cases x) (cases y)
+}
+
+Which suggests it would be nice to have an internal function for:
+
+fmap2 :: (a -> b -> c) -> Cases a -> Cases b -> Cases c
+fmap2 f a b = 
+
+Internally, this is just the cross product of the cases, properly joined.
+
+Can we, in general, go back to a non-cases representation?
+
+Now here is an interesting question. Because so long as we have mux, we can.
+Which is, perhaps, why I have mux now.
+
+Which now, to me, suggests an alternative approach?
+
+There should be no need to distinguish between an object of type 'a' and a
+Cases a, because we can always represent one as the other. Using primitives.
+
+Thus we see, no?
+
+* concrete value is just the cases mkcase, with case True.
+* mux is just the cases mappend
+* strict_app is just the cases fmap.
+
+Having a different representation for Cases can just make it easier for me
+to change and share the implementation of.
+
+So I think I should do that.
+
+mux :: Bool -> a -> a -> a
+mux p x y = joincases p (cases x) (cases y)
+
+So, if we have:
+ cases :: a -> Cases a
+
+We may as well also have 
+ decases :: Cases a -> a
+
+Right? Wrong? Only if needed?
+
+Well, that's the thing. That's something I can do in general? But only if we
+assume mux.
+
+But! I would argue we don't need this in general. We only need to go back for
+Cases Bool. Or Cases Integer. Or Cases Bit. In which case, we probably want to
+go directly to an SMT formula anyway?
+
+Let me try to step back again and understand what is going on.
+
+1. Every object must be realizable. This is easy.
+2. We must be able to do assert on Bool.
+3. We want to allow unsupported primitives for every type.
+
+Question is: when would we ever call cases?
+
+In assert, if we see, for either Integer, Bit, or Bool, an unsupported
+primitive. That's the only time this can come about.
+
+In this case, we have an opaque primitive, which returns the right result.
+We want to get the Cases for this result, turn that into a Formula, and return
+that.
+
+So, we only need to go back for Bool, Integer, or Bit, and when we go back, we
+want to go to SMT.
+
+But also, every type should support __caseTrue p a b. How can we implement
+this in general? I already said. As an unsupported primitive:
+
+__caseTrue p a b = primitive $ prim3 __caseTrue p a b
+
+This suggests one more thing, then. That every object can be described using
+an unsupported primitive. This is how I support 'mux'.
+
+Good. Perfect. This sounds to me like what I want.
+
+Question: how should I implement it?
+
+I could just dive in and see if I can get everything working all at once. Or I
+could try to make small progress.
+
+Steps involved:
+* Remove 'Mux' constructor for every generated type
+* Add 'Prim' constructor for every generated type
+* Add 'primitive' method for every generated type
+    We could implement 'mux' on top of this if desired.
+* Define 'Cases' type, fmap, fmap2, fmap3, etc...
+* Add 'cases' method for every generated type
+
+You know what? I think I should just dive in and see if I can get this to
+work. That should show me pretty quickly what the problems are with this
+approach.
+
+Start with the hand written library. Then go to generated code.
+
+One issue: looks like I need 'mux' as part of a SmtenHS, or at least something
+like it, because I need to distinguish between ite_bool, ite_integer, ite_bit,
+and ite_unsupp. Right?
+
+Or...
+
+Let's say I have:
+    Cases: if Bool then a else b
+Well, this will just get transformed to if then else, right? So that's fine.
+
+And what about for integer and bit vector?
+Same thing. So I'm actually fine using primitives. Cool.
+
+Tue Jun 11 14:46:47 EDT 2013
+
+Okay, so SmtenHS stuff seems to be working out well.
+
+Let me move on now to the implementation of Assert, because I think that
+should be fairly telling.
+
+And you know what? It was easy! Hurray.
+
+What's next, do you think?
+
+Shall I try to compile and see if things work?
+
+I'll have to change the generated code, but that shouldn't be too hard.
+
+Let me compile and guide things that way.
+
+Wish me luck.
+
+Tue Jun 11 16:15:35 EDT 2013
+
+Well, something runs, but there is a problem. I thought I thought of this
+before and checked it would be okay. I don't know.
+
+The issue is, what happens for, say, a boolean primitive...
+
+Wait. What is the issue?
+
+The symptoms are: it claims I need cases0 for Integer.
+I think that is rather unlikely.
+
+Oh.
+
+The trouble is this.
+
+IntegerMux.
+
+This is considered an unsupported primitive. So I call cases on the arguments.
+But cases isn't implemented.
+
+The issue is, there are two kinds of ways I want to call 'cases' for Integers?
+Well, not really.
+
+The issue is: for ite of integer, I don't want to call cases. I want to pass
+the SMT formula as is. For any other primitive not specified for integer, I do
+want to call cases.
+
+What? I'm confused still.
+
+let's say we have:
+    if p 
+        then x
+        else 5
+
+What are the cases of this expression?
+Well, if we are recursive, part of it is what are the cases of 'x'? And there
+are a whole lot of them.
+
+Here's the fix. __caseTrue is special. I can make it part of SmtenHS, and have
+a default implementation for everything which is not Bool or Integer or Bit.
+Easy.
+
+Tue Jun 11 16:51:40 EDT 2013
+
+So, not so easy, but I got it to work.
+
+And now all the tests pass.
+
+I think this is a good change. Let me check it in.
+
+Now... in theory everything is complete. You can mix and match any kinds of
+primitives, and it will work.
+
+In practice, I don't yet handle cases for Bit or Integer, so it probably
+won't, but otherwise, it should be good. Specialization should still work. Now
+other primitives should work. And it's still easy to specify primitives.
+
+Good!
+
+Well. That was a whole lot of work and very little appearance of progress...
+
+Now, I should focus on whatever I need to do to merge all my changes with the
+master branch. That is the primary goal.
+
+Let me see how much I can get done.
+
+Everything is test driven.
+
+Goal is basically: have all the same test cases we had before.
+
+Once they all work, I'm set and can check things in.
+
+* ShouldFail tests - I'm not entirely convinced these are useful.
+* Basic tests
+* Bit, Core, Datatype, Error, Integer,
+
+That should suffice, I believe.
+
+Let me start with the SMT tests, and go from there. Because that is most
+likely to reveal bugs.
+
+1. Core
+2. Datatype
+3. Integer
+4. Bit
+
+Core is done! Hurray.
+
+Now for Datatype.
+
+First big problem: we need to handle errors correctly.
+
+So, let me update the Error tests, and get those to work properly.
+
+I updated the tests. Next step is to fix it.
+
+How to handle errors properly?
+
+In particular, how to handle explicit errors properly?
+
+The idea is as follows.
+
+Explicit error is represented explicitly with a constructor.
+Every object has an error constructor: Foo_Error Prelude.String
+
+In Assert, if we see an error, we replace it with an abstract variable, and do
+the query then. After we do a query, we double check that when we realize it
+things are good.
+
+The only other thing I will probably want is...
+* case should propagate errors.
+* primitives should propagate errors.
+
+What is the mechanism we need for all of this?
+
++ Add a method to SmtenHS: error0 :: Prelude.String -> a
+* Modify assert to turn error0 into a free variable
++ Modify run_symbolic to double check solution
+* Change mtohs to return: HS a | Err Prelude.String | Symb
+    Or something like that. We could make this a monad, actually. Then the
+    implementations, other than primitive ones, don't have to change?
+    At least, not too much.
++ Implement error primitive using error0 
+
+That sounds straight-forward enough to me. Let me take a break, then dive in
+and see how far I can get.
+
+Tue Jun 11 18:21:11 EDT 2013
+
+Question...
+
+Should Cases include errors?
+
+I think the answer is... yes?
+
+But that's not a concrete thing.
+But you could have two errors which you want to express as a list.
+
+
+Fine. I did some stuff, but I think, to make this work...
+
+I want to see if I can expand the AST class to be like a Solver class.
+
+The idea: all Solver methods are provided as methods in this class.
+We give an instance, for any SMT solver, to convert from this class to the
+generic Solver instance.
+
+How about...
+
+class IsSolver?
+
+Hmm....
+
+class Solver?
+
+Can we just have them qualified? Then how?
+
+Solver/Static.
+Solver/Dynamic.
+
+You implement an instance of Static solver. It turns itself into a dynamic
+solver.
+
+That sounds good to me. Let me stash my present changes, see if I can make
+this change to clean it up.
+
+Tue Jun 11 19:21:17 EDT 2013
+
+Done. It's a little cleaner at least.
+
+The important thing now is ... Assert has access to declarations.
+
+Tue Jun 11 19:28:50 EDT 2013
+
+Problem: For the abstraction of Bit_Error, we don't know what size bit vector
+to use! That's bad.
+
+Sigh.
+
+Well, that leaves me at a good place for thought I suppose.
+

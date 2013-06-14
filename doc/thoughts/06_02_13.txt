@@ -1,0 +1,594 @@
+
+Sun Jun  2 08:03:36 EDT 2013
+
+I want to make forward progress today.
+
+I think the priority of issues is:
+
+1. free booleans
+2. verify we can then have
+    free Maybe, free char, free IO, etc... via composition
+3. free integers
+4. preservation of sharing
+5. handling of explicit errors
+
+If I can do all that today, I'll be in pretty good shape.
+
+Let's get started.
+
+Query:
+    p <- free_Bool
+    if p
+        then return 'Y'
+        else fail
+
+Okay, that seems to work out. Cool.
+
+Now, let me verify I can combine two chars and see what happens.
+
+It works swell.
+
+I think more things will work. Let me have fun and jump to the hard stuff?
+
+Or should I get sharing and such before worrying about Integer?
+
+I should get sharing and such before worrying about Integer.
+
+How can I test sharing? I need some debug output.
+
+How about just print out what we create in the solver?
+
+Good. Now I have all the debugging info.
+
+How can I demonstrate violation of sharing?
+
+I want something like:
+
+    p <- free_Bool
+    let x = (p && p && p && p)
+        y = (x || x)
+    if y 
+        then return (Char 'y')
+        else fail_symbolic
+
+The hope is we see (p && p && p && p) only constructed once.
+
+First issue: there's a problem with debug. The pointers we get aren't really
+what I'm looking for. I want a different name for every term. Not yices's
+name.
+
+But clearly we have a bunch of repetition. This demonstrates the problem well
+enough. Or, at least, the initial problem.
+
+Okay, for the benchmark: 27 terms allocated.
+
+We want to share.
+
+How to share? This is in yterm. In the assertion. I want to have a map, and I
+want to say: any terms which I have already allocated, I should reuse.
+
+Let's, to start, keep the cache local to an assertion.
+
+So... we have a cache.
+
+lookup :: R.Bool -> IO (Maybe Term)
+insert :: R.Bool -> Term -> IO ()
+
+And using stable pointers, this should be easy.
+
+Sun Jun  2 09:13:24 EDT 2013
+
+Okay,  Works with stable names and an IO based hash table. Cool.
+
+Now we are done from 27 to 8 terms. Sharing is preserved in translation. Good.
+
+However, we are not yet done. This is only one place we preserve sharing.
+
+I really need to preserve sharing any time we have:
+* a function applied to an object,
+  where the same function might be applied to the same object multiple times.
+
+For example:
+* in mux for (->),
+    what if fa and fb are the same? Is that a funny case?
+* in realize for Bool
+    the function (realize m)
+    could be applied to shared objects in p, a, and b.
+* same for realize IO, realize Char, realize Maybe
+* __caseJust  Mux case: (\x -> __caseJust x y n) applied to  both a and b.
+* same with bind_io
+* putChar
+
+Basically, anywhere we have a Mux... which is a recursive structure, we want
+to preserve sharing.
+
+I suggest the following.
+
+First: I recognize a common structure. Let me take advantage of it to simplify
+the code:
+
+data Mux a = Concrete a
+           | Mux Bool (Mux a) (Mux a)
+
+For example:
+
+type IO = Mux P.IO
+data Bool__ = False | True | BoolVar Name
+type Bool = Mux Bool__
+
+Hopefully this will limit the places we see possibility for sharing leaks.
+Then I can focus on fixing them there.
+
+Sun Jun  2 09:40:53 EDT 2013
+
+Trouble with Mux and higher kinds. It doesn't work nicely.
+
+We can't use a type synonym, and newtype causes boxing/unboxing headaches.
+
+Perhaps I should define Mux, Mux1, Mux2, and so on?
+
+That works.
+
+Now, back to preservation of sharing.
+
+Here's how this will work. I will identify potential places where we have a
+sharing leak. I will make a test to demonstrate the sharing leak. Then I will
+fix it.
+
+Start with the easiest ones.
+
+What constitutes a sharing leak?
+ * any transformation  from expression to expression
+   which may be applied to the same expression in different places.
+
+Let's start with the simplest one I can find.
+
+* __caseJust
+In the case of Mux1, we apply the following transformation:
+   (\x -> __caseJust x y n)  :: Maybe a -> b
+
+On two sides. We could be leaking sharing.
+
+The test case:
+
+    p <- free
+    q <- free
+    let n = Nothing
+        x = if p
+                then if q
+                    then Just True
+                    else n
+                else n
+    if (case x of
+            Just _ -> True
+            _ -> p && (p && (p && not p)))
+        then return (Char 'Y')
+        else fail_symbolic
+
+I believe the expression (p && (p&& ....) will be duplicated, even though it
+should not be, because it only appears once.
+
+Wait. Is that right? No, because the complex expression does not depend on the
+argument.
+
+Let me try again.
+
+        
+    p <- free
+    q <- free
+    let n = Just q
+        x = if p
+                then if q
+                    then Nothing
+                    else n
+                else n
+    if (case x of
+            Just v -> v && (v && (v && not v))
+            _ -> True
+        then return (Char 'Y')
+        else fail_symbolic
+
+This will produce two copies of q && (q && (q && not q)), which is bad.
+
+Okay. Let's give this a try.
+        
+        
+Yup. We see duplicate queries being made.
+
+How can I share these queries?
+
+I have a transformation: (Maybe a -> b)
+I have a Mux tree.
+
+I suppose the goal would be to write a function which knows how to apply a
+common transformation to a mux tree and preserve sharing.
+
+In Smten I have something called strict_appEH to do this for me. It would be
+something similar, I expect.
+
+I want something like:
+
+(a -> b) -> Mux a -> Mux b
+
+Call it... muxapp.
+
+Lets see where I could use this, to see where it will help.
+
+Okay, I have the form: mux1app. How do I preserve sharing?
+
+I have to memoize the function. Let me try using the stable-memo library.
+
+Cool! It works. That's nifty. Much easier when someone else has made the
+library.
+
+Now, we'll want to do the same with muxapp. Let me try to fix all these
+similar cases.
+
+Cool. So that works nicely there.
+
+Now, time to get to the fun one: realize.
+
+This is hard because the transformation is polymorphic. We are transforming
+over all sorts of different types, and we want to preserve the transformation
+across types.
+
+We need, somehow, to give each call to realize access to the cache.
+Before we did this by hiding it in the closure for the transformation. We
+can't do that here, because the transformation is done in different types.
+
+Hmm... Here's an interesting idea. What we share here is the map 'm'. This is
+like a multi-argument thing.
+
+What if I create a memo cache for each map and each type? Allow this to
+persist across calls to realize. Let garbage collection free the caches we
+don't need.
+
+Yes! I like this... this could work.
+
+So we do a memo 2.
+
+I need to come up with a test case for this to verify it actually works how I
+want. For now... let me take a brief break to think about how it should look.
+
+Sun Jun  2 11:23:23 EDT 2013
+
+Here's the query I want to demonstrate violation of sharing in realize.
+
+Gosh. It's hard to come up with. Can I just figure out how to memoize realize
+and hope it works and deal with problems when they come? Please?
+
+Yes. I think that's a fair plan. Because figuring out a violation is hard.
+
+Well, I wrote something. It may or may not be working correctly.
+
+I think I found another bug in sharing too.
+
+But! The point is... I'm pretty sure this method can work in general.
+
+So, let me assume the preservation of sharing has been taken care of.
+We'll see when I get far enough along to reach my sharing tests whether I've
+done everything right or not.
+
+Cool.
+
+Now, on to the next issue: how to handle explicit errors.
+
+I think it's fairly obvious. Each type now can have an Error branch. We make
+sure to deal with that properly in case. Let me not waste my time actually
+working out the details. I'm fairly confident in them.
+
+Which means we get to the last big thing...
+
+Integers. Actually, bit vectors are probably more of an issue, because they
+have so many types. But let's start with Integer.
+
+Goal: have Integer. And have integer primitives:
+
+add, subtract, equality, less than.
+
+Why this matters?
+
+The idea is, at some point I'll have a term:
+    IntegerEq Integer Integer
+
+Then, in mkterm, I'll want a mkterm_bool and mkterm_integer. That's how I know
+the appropriate type info.
+
+I think that is straight-forward enough as well.
+
+In other words, I feel like I'm getting ready to start with the full scale
+implementation.
+
+I feel like I can separate this from the compiler. How about this. Start from
+scratch with smten-runtime. It will have all the runtime code: The SMT
+solvers, the library, the primitives. But use smten to generate that code in a
+uniform way however I can. I don't want to write down anything that is a
+convention we can generate manually.
+
+We shouldn't run into any template haskell issues, I don't think.
+
+I would prefer to start simple and expand from there. Don't require that
+everything works in every way right away. Start with just the simplest test
+cases, and add more support only as I need it. And try to add it in an
+entirely clean way. As clean as I can make it in the Runtime.
+
+First step: concrete evaluation?
+Or core evaluation?
+
+You know? This will end up cleaning up a lot of stuff. That's pretty exciting.
+
+Where to start?
+
+I think I should start with the simple core test cases.
+
+Core.Trivial with Yices2 requires:
+
+err... So much stuff to even get off the ground. :(
+
+I'm not sure where to even begin.
+
+So start simple. As I have been. And build up from there.
+
+1. main = putStrLn "PASSED"
+
+* IO, Char, List, putChar, function
+
+We have the following class of things:
+* function type
+* primitive types: IO, Char
+* algebraic data types: List, Unit
+* primitive functions: putChar
+
+Fine. Let me figure out what I need for each. What I want for each.
+
+Start with primitive non-symbolic types.
+
+data Foo a b ... =
+    Foo (P.Foo a b ...)
+  | FooIf Bool (Foo a b ...) (Foo a b ...)
+  | FooError String
+
+We have the primitive type.
+We have the possibility of error. Note: the error string is a symbolic string,
+   not a concrete string? Sure.
+We have the possibility of choice.
+
+Um... I don't actually need choice or error yet, because I'm not testing those
+yet. Should I start without them?
+
+So I want a way to define a primitive type based on a haskell type. It takes
+as an argument the type variables and the DataD... Basically an empty DataD?
+Along with the corresponding haskell type.
+
+It might be nice in the future for me to support user defined primitive types
+with some syntax in the language. Let me hard code them for now in the
+compiler.
+
+Let me put the compiler in: Smten/CodeGen/...
+
+Gosh. So hard to start from scratch.
+
+Now, algebraic data types.
+
+I want to generate:
+* data type definition
+* __caseFoo for each constructor
+
+I want to use the actual constructors for data constructors.
+
+This is fine to start. I can add later:
+ * extra constructors for Mux and Err
+ * instance of SmtenHS
+
+I'm having trouble. I don't know how to get this thing off the ground and
+running.
+
+The prelude is too complicated to start.
+
+So I need to start with a simpler Prelude? Comment everything out I don't
+need or want to deal with yet?
+
+Sun Jun  2 12:37:06 EDT 2013
+
+I would like to take things slow today, but hopefully make some progress that
+I can use.
+
+So here's what my plan is:
+
+1. comment out as much of the test cases and prelude as I can to have a simple
+test case.
+
+The first test case should be just:
+    test "true" True
+
+Anything we need for that, and nothing more.
+
+Stub out functions for code generation. Add to them as needed to make this
+work.
+
+Once I have that up and going, I should be able to add concrete test cases a
+bit at a time. But I don't want to do too much concrete test case work before
+starting symbolic stuff.
+
+So, do enough concrete cases to test the test infrastructure, boolean && and
+||. Then start adding core tests.
+
+Add slowly new tests as I can. And we shall see how far we get.
+
+Try for breadth, not depth.
+
+Sounds like a plan to me.
+
+Code layout proposal:
+
+Smten.CodeGen.CodeGen.codegen :: FilePath -> [Module] -> IO ()
+  Generates code for the given set of modules.
+  Outputs results in directory specified, based on module names.
+
+Smten.CodeGen.Module.module :: Env -> Module -> Failable H.Doc
+
+Hmm... I wonder.
+
+Is there really any reason to do this all from scratch? Can I just modify my
+existing infrastructure until I can get it to work, then clean up from there?
+
+What do you think?
+
+Why not? I may as well give it a try. For the sake of forward progress.
+
+Sounds like a plan to me.
+
+What's the first step?
+
+I can tell you the first goal: get rid of ExpH entirely.
+
+So don't generate any code which refers to ExpH.
+
+1. Generate algebraic data types the way I want.
+May as well try to do the full thing right from the start?
+
+Ah! Yucky.
+
+I would rather start things from scratch. Copy over the old code if I need it,
+but otherwise come up with new names and such for things.
+
+Smten.CodeGen.All.allG :: FilePath -> [Module] -> IO ()
+Smten.CodeGen.Module.moduleG :: Env -> Module -> Failable H.Doc
+Smten.CodeGen.GM
+    -- definition of generate monad.
+        reader of: Env
+
+Oh. I see the problem. It's just that there is so much infrastucture I have
+that I'll still need. Sigh.
+
+We will see how many times more I ping-pong back and forth on this.
+
+1. Generate algebraic data types the way I want.
+for: Foo a b ... = FooA A1 A2 ...
+                 | FooB B1 B2 ...
+                 ... 
+                 | FooK K1 K2 ...
+
+Generate:
+
+data Foo a b ... = FooA A1 A2 ...
+                 | FooB B1 B2 ...
+                   ...
+                 | FooK K1 K2 ...
+                 | Foo__Mux Bool (Foo a b ...) (Foo a b ...)
+                 | Foo__Err String
+
+Sun Jun  2 13:52:10 EDT 2013
+
+Okay, here's my decision. I should do this from scratch. It's decided now.
+
+Work incrementally. Don't jump ahead. Only generate what I need for the
+current increment, and try to do it cleanly.
+
+I'm going to start by making a copy of the code that I can look back on. 
+
+Then I'm going to get rid of the entire runtime code. I'm going to delete all
+except the most basic part of the prelude.
+
+Things that I plan not to change in this refactor:
+* the front end: grammar through type checking.
+
+Things that I plan to change:
+* pretty much everything else.
+
+Wish me luck. Here I go.
+
+It will take time. Be patient.
+
+First step: clean up.
+
+Done.
+
+Next step: get test case to pass.
+
+I can let the compiler guide me here.
+
+Sun Jun  2 14:31:57 EDT 2013
+
+* Implement codegen.
+
+This is the generic code gen.
+How it works is: for each module, call moduleCG to generate the code for that
+module. Do my md5sum trick to avoid overwriting files unnecessarily.
+
+* Implement moduleCG
+
+What do I want here?
+
+I'll want a header.
+I'll want to import some things, but it's not clear to me what yet.
+I'll want some pragmas, but it's not clear to me what yet.
+I'll want to generate code for all the declarations.
+I'll want to generate a main wrapper if a main function exists.
+
+I can do all of that easily enough, I should think.
+
+* Implement declsCG
+
+Each of these may wish to refer to the environment. Thus we have a monad which
+knows how to refer to the environment.
+
+* Implement decCG
+
+Now things start getting interesting.
+
+First declaration to handle: DataD for Unit.
+
+Also known as: algebraic data type. This will want its own thing: dataCG.
+
+For the first step here, what do I want to generate for unit? For generic
+algebraic data types?
+
+* The data type, with appropriate (remapped) names.
+* A case for each data constructor.
+
+I have the data type.
+Now, what to generate for the case?
+
+Making progress!
+
+Now for types.
+
+Now for classes.
+
+Now for literals.
+
+How should I generate a character literal?
+let me assume: __mkChar :: Prelude.Char -> Char
+
+That seems reasonable to me.
+
+Now for ValD...
+
+Now for PrimD...
+
+Hurray! We are finally generating code!
+
+Nifty.
+
+Now for lots of bugs.
+
+1. The type for -> should be ->, not Smten.Lib.Prelude.->
+2. Generate different names for List type and constructors.
+3. Generate appropriate import declarations.
+4. Generate different names for TupleN type and constructors.
+5. Don't generate definition for (->) data type.
+6. Symbolic names need parens around them.
+7. Import Prelude qualified.
+8. caseFoo n is wrong name.
+11. ScopedTypeVariables needed
+
+9. __mkChar not defined.
+10. error primitive not defined.
+12. return_io and bind_io and putChar not defined.
+
+Now we get to the hard part. How do I want to integrate primitive functions
+and primitive types?
+
+This I will start to think about.
+

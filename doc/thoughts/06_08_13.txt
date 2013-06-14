@@ -1,0 +1,785 @@
+
+Sat Jun  8 07:11:44 EDT 2013
+
+I want to figure out primitives. I want to come to a good understanding of
+them. I want to use that understanding to come up with a good implementation
+of them, and a good interface specification for them.
+
+This is a hard problem, I'm sure. Let's go slow.
+
+Perhaps I can start with some high level goals:
+
+* A user, ideally, could define a primitive entirely in haskell without
+  knowing anything about generated smten code, so long as all the types he
+  uses are defined in smten AsInHaskell.
+
+* An expert, (namely, me), should be able to define a primitive which does no
+  unnecessary boxing and unboxing of arguments, and properly handles symbolic
+  stuff.
+
+Some constraints:
+* currently some of the data types we are working with are generated
+  automatically, and we may not have access to the generated smten version.
+  Though we do know they belong to some classes: SmtenHS and Haskelly.
+
+Some sample primitives which seem to be interesting:
+
+* putChar - the standard, fully concrete primitive.
+* trace - the concrete primitive with string argument.
+* eq_Integer - a standard symbolic primitive.
+* chr - conversion from supported symbolic object to unsupported symbolic
+        object.
+* run_symbolic - issues with generated code interface via maybe type.
+* primArray - the one which seems to require boxing/unboxing
+* timeout - the one which got me stumped as to how to even do.
+
+Perhaps I can think about each in turn.
+
+1. putChar :: Char -> IO ()
+Char is a "concrete" kind of data type. This means it can have the following
+forms:
+  * a haskell Char
+  * an explicit error
+  * a mux
+
+All of these we can easily handle.
+ The haskell Char: apply putChar to get a Haskell IO,
+ The explicit error: return an explicit error
+ The mux: apply putChar recursively within the mux, creating a muxed result.
+
+The only issue left, I would say, is how do you convert P.IO () to IO Unit__?
+Especially given Unit__ has not yet been defined?
+
+Assume we can convert from () to Unit__ with frhs. Then all I need to do to do
+this conversion is: IO (tohs <$> x). It is easy.
+
+Good. This is the happy kind of primitive I know how to deal with. Originally,
+I was treating all of my primitives this way, with a Poly hack as a back door.
+But the Poly hack was too costly with arrays.
+
+2. return_io :: a -> IO a
+I'm adding this one, so we can talk about polymorphic primitives.
+
+The implementation I want to give is, pretty clearly: IO (return x).
+Because return is polymorphic, even if the object passed to it is symbolic,
+that's okay, because we can already support the symbolic result, because we
+don't look at it in anyway. So I want to avoid boxing/unboxing of this
+argument. (Note that the Poly approach required boxing/unboxing here).
+
+Note a, perhaps, important difference here: return_io is not strict.
+We should compare to something like:
+  return_io_char :: Char -> IO Char.
+
+Now, I could treat this like putChar, but that would be wrong to do. We should
+not convert from Char to P.Char and back.
+
+What is it about return_io_char in this case which makes it different from
+putChar? It is not strict.
+
+Otherwise, the implementation to use for return_io is very clear in my mind.
+No need to worry about anything symbolic.
+
+3. trace :: String -> a -> a
+Here the issue is that the String argument could be symbolic, or partially
+symbolic. Now, because strings are made up of chars, and there is no inherent
+symbolic content, we can always convert the string to a form where it is a mux
+of concrete strings, then apply trace that way. 
+
+We don't care about the second argument, because we don't have to look at it.
+
+I'm not sure of an appropriate way to handle the transformation of the String
+into a Mux of concrete. But certainly it's a transformation we are readily
+capable of performing. (Just possibly not in general).
+
+One idea would be to have: traceChar as the primitive.
+traceChar :: Char -> a -> a
+
+Then, to trace a string?
+
+trace [] a = a
+trace [c] a = traceChar a
+trace (x:xs) a = traceChar x (trace x a)
+
+Actually, that's a rather nice solution I feel like.
+Because now we can say traceChar is strict in its argument, and it becomes
+just like putChar.
+
+4. error :: String -> a
+I would have said before this is like trace. Can we apply the same trick we
+did with trace?
+
+Um. I don't think it really makes any sense to.
+
+But, here's a special thought with regards to error.
+The only way we can have a symbolic argument is if the error is in a symbolic
+monad.
+
+Either: the smt formula contains error, or you are realizing a result which
+contains error.
+
+In the case of the smt formula, the whole error will be replaced with an
+abstract variable. It is only after we have an assignment that we would look
+at it. This means we ought to just leave the String symbolic, and realize it
+under that assignment.
+
+In the case of a returned thing, we will do a realization, so, again, error
+should support a symbolic string rather than get pushed inside.
+
+But, then again, maybe they are just saying the same thing?
+
+This is interesting though, because this kind of thing seems to happen
+multiple places. Consider data types which are primitive. They are not
+algebraic, so we can't perform case match on them.
+
+Like... IO, or symbolic, or such. You can't ever look at them inside the
+symbolic monad, so they will always be realized before you see them. Right?
+Then no need to worry about the symbolic case. You can assume the arguments
+are concrete.
+
+Same with putChar? Yes. Because we won't every try to run it inside a symbolic
+monad.
+
+This is not the case with trace, by the way. Because it could be given a
+symbolic argument.
+
+Hmm... This is another complexity of the discussion.
+
+5. eq_Integer
+This is easy. We know about Integer. We have eq_Integer as a primitive
+symbolic operation. We just use the Bool constructor if the arguments are not
+concrete.
+
+This brings up an interesting idea.
+
+What if we had a constructor for every kind of primitive?
+Consider IO and Char things. These will only be looked at after transformation
+has occurred, right? In which case, we may as well leave them as primitive
+rather than pushing things inside. This is like the error case. And it applies
+in general.
+
+That way we don't have to make muxes.
+
+The real question is...
+In a pure computation, where Bool, Integer, and BitVector could potentially be
+symbolic variables... what kinds of other symbolic types can you reach which
+are embedded in the SMT formula? And how should you deal with those things?
+
+In other words, what I'm suggesting is something like: never do function
+pushing unless required. In particular, you could have some complex symbolic
+expression not supported by the SMT solver, but if you are only querying that
+and you aren't using it in the formula, there is no need to expand it out so
+that it blows up!
+
+Hmm... This is an interesting question. Let me ponder it some more and get
+back to you.
+
+Sat Jun  8 11:28:05 EDT 2013
+
+I've had much thoughts which I think are good thoughts. I don't feel like
+repeating them here at this point.
+
+The big takeaways are:
+* I am on the right track. For each type we want a Mux. We don't have to
+  support all kinds of primitives with native constructors. Only the ones we
+  want to share with an SMT solver.
+* there is no cost to doing function pushing on things which will only get
+  realized, because we do it lazily.
+* for now, don't feel obligated to support things like conversion between
+  symbolic bit vectors and symbolic integers. We can just throw errors in that
+  case.
+
+Now, that doesn't really solve any major issues with the primitives. But
+perhaps I'll have better insight now as to how they should work.
+
+I think, given any primitive, I can be pretty clear how to implement it,
+assuming I have access to all the types. The real challenge now is, what
+abstractions can I provide for implementing primitives to hide information I
+don't want an end user to have to see, and to share common code so that I can
+put things like preservation of sharing all in one place.
+
+Here is what I propose for the purposes of making forward progress. For each
+primitive, write down how I want it to behave for any possible symbolic input.
+
+If I can, categorize common kinds of primitives. Write down what common things
+I want to do with primitives. This will hopefully help me come up with common
+abstractions.
+
+Primitives:
+
+Fully Support SMT Primitives
+----------------------------
+These primitives are fully support in the SMT back end. This means each of
+there return types (Bit, Bool, or Integer) have a special constructor
+representing the primitive.
+
+The desired behavior is: if the arguments are both concrete, evaluate the
+result directly. Otherwise use the special constructor for the primitive.
+
+Note: we may wish to perform specialization on these primitives, such as in
+the case of STP, which does not support integer things. I should investigate
+how to specialize these primitives away.
+
+  add_Bit :: Bit -> Bit -> Bit
+  sub_Bit :: Bit -> Bit -> Bit
+  mul_Bit :: Bit -> Bit -> Bit
+  eq_Bit :: Bit -> Bit -> Bool
+  leq_Bit :: Bit -> Bit -> Bool
+  eq_Integer :: Integer -> Integer -> Bool
+  leq_Integer :: Integer -> Integer -> Bool
+  add_Integer :: Integer -> Integer -> Integer
+  sub_Integer :: Integer -> Integer -> Integer
+  mul_Integer :: Integer -> Integer -> Integer
+
+I'm happy to write these primitives by hand. Though I suppose I could write
+code to automatically generate them, given the name of the corresponding
+primitive and concrete operations. In fact, I probably should automatically
+generate this code, to save my self in the future the effort of adding new
+ones or changing how I deal with these.
+
+Strict, Non-symbolic, Simple Arguments
+--------------------------------------
+These primitives are strict in their arguments, and their arguments have no
+special support in the back end, and they are simple. This means the arguments
+could either be the desired concrete values, muxes. The behavior here should
+be to map the concrete function across the mux. And we will want to do this in
+a way that preserves sharing, but I can hopefully hide that behind the mux
+implementation.
+
+  primCharToInteger :: Char -> Integer
+  putChar :: Char -> IO ()
+
+Strict, Symbolic Arguments
+--------------------------
+These primitives are strict in their arguments, their arguments are primitive
+symbolic types: Bit, or Integer.
+
+If the arguments are concrete, return the concrete value.
+If the arguments are mux, return the mux.
+If otherwise, we need some sort of thunk.
+For example:
+        x <- free_Integer
+        assert (x == 97)
+        return (primIntegerToChar x)
+    Then I would hope this works fine and return the character 'a'.
+    Which suggests to me I need a special constructor for it, so that realize
+    can see the integer argument and make it concrete.
+    Perhaps we can have a generic constructor for each type which is:
+        Thunk a (a -> Char)
+    Which is used to let us call 'realize' on the argument before attempting
+    to apply.
+
+This applies to multiple arguments by thinking of multiple argument functions
+as functions from single arguments to functions. I think.
+
+  primIntegerToChar :: Integer -> Char
+  show_Bit :: Bit -> String
+  __prim_show_Integer :: Integer -> String
+  bv_value :: Bit -> Integer
+  bv_width :: Bit -> Integer
+  bv_make :: Integer -> Integer -> Bit
+
+Unclassified
+------------
+  trace :: String -> a -> a
+    if we have traceChar :: Char -> a -> a, that would fall in the Strict,
+    Non-symbolic, Simple arguments category and I don't have to worry about
+    this.
+    trace [] = id
+    trace (x:xs) = traceChar x . trace xs
+    
+  valueof :: #n -> Integer
+    The argument is ignored. So just return the concrete integer.
+
+  getContents :: IO String
+  getArgs :: IO [String]
+  exitSuccess
+    There is no argument.
+    Call P.getContents. fmap over conversion of concrete String, and box the
+    result.
+
+  return_io :: a -> IO a
+    Call P.return, and box the result.
+
+  return_symbolic :: a -> Symbolic a
+    Call P.return. No need to box the result, because Symbolic is already the
+    type we use, without an extra box.
+
+  fail_symbolic :: Symbolic a
+  free_Bool :: Symbolic Bool
+  free_Integer :: Symbolic Integer
+    Just exactly what it is. No need to box the result.
+
+  primSelect :: PrimArray a -> Integer -> a
+    This is like a mix: a concrete first argument, a possibly symbolic second.
+    So, mux over the first argument if needed.
+    If the second is concrete or mux, do that.
+    Otherwise, it would be cool to turn this into a chain of comparisons?
+
+  error :: String -> a
+  read :: String -> Integer
+  parseHampi :: String -> Either String Hampi
+    The argument should be totally muxed. Let's call 'String' a complex
+    concrete type. Squeeze out any internal muxes, then apply the error
+    function inside.
+
+  primArray :: [a] -> PrimArray a
+    Like error, but it's okay if there are muxes in the elements, just not in
+    the list structure itself.
+
+  free_Bit :: Integer -> Symbolic Bit
+    Mix of strict, symbolic argument and returning a Symbolic thing.
+
+  bind_io :: IO a -> (a -> IO b) -> IO b
+    First argument is mux or concrete, so we can handle that as in the case of
+    strict, non-symbolic simple arguments.
+    Second argument is a function, which is always concrete.
+    The result of applying the second argument could be concrete or a mux.
+    Ideally, if it's a mux, we return the mux, and if it's concrete, we return
+    the concrete. But there is a problem here.
+    
+    If it's concrete, we can easily return the concrete value.
+    If it's a mux... that's a mux of IOs. How do I know which to take?
+    Aha! This should never happen, because if we are running bind_io, it is
+    outside the symbolic context, so the result should be fully realized.
+    phew! Wait. Is that the case? Do we have the visibility inside the
+    function we need to make it so? We may need to thunk this and realize the
+    function argument separately.
+
+  bind_symbolic :: Symbolic a -> (a -> Symbolic b) -> Symbolic b
+    A symbolic object is never muxed. So this is literally just bind. Simple.
+
+  run_symbolic :: Solver -> Symbolic a -> IO (Maybe a)
+    I think we need to thunk this. Then, when we go to run it, we know the
+    Solver is concrete. Symbolic is Symbolic. So we can do the right thing, no
+    worries.
+
+  readFile :: FilePath -> IO String
+    I could totally mux it, or I could thunk it.
+
+  timeout :: Integer -> IO a -> IO (Maybe a)
+    Strict in first argument.
+    Mux or thunk the second argument.
+
+I feel like a major determinate of the behavior are the type of the arguments.
+And the function itself.
+
+One new idea is this notion of a generic Thunk. We need this because you are
+calling a function with a symbolic argument, but you aren't going to use the
+result until after you already know the value of that argument. So we should
+not try to update the result with the value of that argument, because by then
+we would have an error. Instead you need to save the original argument and
+function, update the argument, then apply the function.
+
+This, actually, is very similar to how SMT primitive functions work.
+
+Is it also like muxing?
+
+Mux Bool a a
+
+Could also be represented as:
+
+Thunk Bool (Bool -> a)
+
+The thing is... this is a special kind of function. It's not ... hmm...
+
+It's not a function which operates on concrete things. It is a function which
+operates on symbolic things.
+
+If the function can handle the symbolic thing, then it should. If it can't, it
+should wait to make the thing concrete. If you try to apply the function with
+an argument which is not concrete?
+
+But another interesting thing. What if I call a function foo, and the argument
+is a thunk? Then I can just propagate the thunk.
+
+This suggests to me a somewhat different approach to the whole back end. Not
+something I'm terribly happy to say, because I had hoped I was almost done
+with revising the back end. But still something worth exploration.
+
+The idea is this. Primitive functions require certain things of their
+arguments.
+
+For example:
+  putChar, requires its argument is concrete.
+  return, requires nothing about its argument.
+
+If we can't deal with an argument, we need to wait. We need to wait until we
+know what that argument is.
+
+Let me focus on one argument functions for now. I can figure out how to make
+multi-argument functions work as well and as efficiently later if need be.
+
+Here's what I'm proposing now.
+
+We have the same structure as we had before for the symbolic types: Bit, Bool,
+Integer.
+
+Now, rather than adding a 'Mux' constructor to each other kind of object, we
+add a Thunk constructor.
+
+ Foo = FooA ...
+     | FooB ...
+     | Thunk a (a -> Maybe Foo)
+
+I don't know how I can deal with the forallness of this constructor. We may
+need to make use of GADTs (which I worry much about, because in my experience
+GADTs are never fun to deal with). But let me ignore that problem too.
+There may be other ways to hide things as well, without GADTs, so let me not
+worry about them now.
+
+So, a primitive function works on whatever arguments it can. It then returns a
+result saying whether or not it was successful. Presumably the function should
+always succeed if the arguments are entirely concrete.
+
+So, to apply a function, given an argument:
+1. try applying the function. If it is done, it is done. You win. Hurray!
+2. if it fails, you have to wait until we realize things.
+Note: SMT formula stuff will not fail, because it can deal with any kind of
+argument. Case matching may fail in this sense.
+
+Err... wait. There is a problem here. Something missing.
+
+I may not know the concrete argument. But it may be a mux, and I maybe should
+propagate the mux. Is that automatically taken care of?
+
+For example:
+    case (if p then Foo else Bar 4) of
+      Foo -> True
+      Bar v -> v < 5
+
+How would this look? Consider my object of type Foo.
+
+Concretes: Foo, Bar 4.
+Now I apply the if function:
+    FooThunk p (\pv -> if pv then Foo else Bar 4)
+
+Now I apply the case thunk. It sees a thunk, so it has to go inside:
+
+    BoolThunk p (\pv -> case (if pv then Foo else Bar 4) of
+                            Foo -> True
+                            Bar v -> v < 5)
+
+Now, how do I translate this BoolThunk to SMT?
+Well, that's actually quite easy:
+    ite p (f True) (f False)
+
+Ah, but that required our original value was Bool...
+But that's okay, because there are only three types of arguments that could
+lead to a thunk. Bool, Bit, and Integer.
+
+And, in general, any combination of the mix.
+    
+And now, I suppose, there is no need for a BoolThunk. Because if you were to
+create a BoolThunk with Bool b and function (Bool -> a) f, you could instead
+say... err...
+
+No. You may need a bool thunk. Just not for the Boolean type, which can
+convert your BoolThunk to an ite as needed.
+
+Is there some way I can hide the type of a thunk?
+Can I say it's an arbitrary thing which promises to give you a result if you
+give it the value of your variables?
+
+But that's not, exactly, what I want, I don't think. Or is it?
+
+To realize things, yes. It's what I want.
+To do this BoolThunk trick?
+
+Sounds like a Realize monad to me. A reader monad which takes the assignment
+as input. Some things ignore the assignment.
+
+Then, we could, somehow, give a partial assignment?
+
+Or... allow the assignment to be a FreeVar? But have that only work properly
+if the only things that need the FreeVar are SMT formula like things?
+
+Well, I suppose I just need to look at the primitives, function application,
+and case.
+
+Examples:
+
+Err... I don't know. This sounds complicated to me.
+Let me take a break for lunch and see if any useful thoughts come to mind.
+
+The summary idea is this idea of a thunk. This lets you realize things, so you
+don't bail out too eagerly.
+
+Then the idea is to specify a primitive function as a function which takes its
+arguments and returns a Maybe type, indicating whether or not it knew how to
+deal with its arguments. If we represent the functions explicitly, we can push
+functions inside other ones.
+
+And, hopefully, all of this is only after we've introduced symbolic stuff and
+know we can't do concrete evaluation...
+
+Sat Jun  8 14:08:46 EDT 2013
+
+Let me summarize again.
+
+The current problem I am facing is there are some functions which should
+generate thunks given symbolic arguments, but they aren't currently
+represented that way. For example: primIntegerToChar.
+
+I'm proposing a possible solution. Give every data type a constructor for
+thunks which is an argument and a function.
+
+I argue this representation is equivalent to the Mux representation for the
+case of Bool, but also supports much better symbolic Integer and bit Vector.
+
+Because, if you have a symbolic Integer or BitVector, either:
+1. it will be realized before you apply the function, in which case you can
+realize it now and apply the function, whereas you could not  before.
+2. you will try to use it in an SMT formula. In which case, the Assert
+traversal will see a thunk, know it can't do anything with it... and either
+throw an error, or, in the future, perform some abstraction of the result,
+which can then be refined using the satisfying assignment.
+
+That is, with this method, and abstraction refinement, I can handle any
+conversion between Integer and BitVector, or whatever, this way. (Here I'm
+still assuming a single SMT solver). Introduce an abstraction for every thunk.
+After you have realized, see what the argument is assigned to be, evaluate the
+function under that argument, and compare to the result. If the result is
+satisfied, you are all done, otherwise, you have more information about the
+function: that particular argument implies that particular result.
+
+That's why the thunk approach is very appealing to me. We can handle
+everything properly. I've never imagined I could do that before.
+
+Now, the big problem with this approach is how to represent thunks to capture
+everything I want.
+
+Primitive free types supported are Integer, Bool, and Bit.
+So, if we were willing to restrict ourselves to those (and the current
+implementation does make that assumption), then we could represent everything
+as one of three possible thunks: a Bool thunk, an Integer thunk, or a Bit
+think. One consequence of this approach is it does only partial
+applications of functions, which in the past bothered me.
+
+Perhaps it's okay if we only do it for symbolic stuff, not concrete stuff, but
+it still does bother me.
+
+In general, a thunk consists of some number of arguments, each of type Bit,
+Integer, or Bool.
+
+I suppose we would say a primitive function creates a Thunk.
+
+Some thunks, if the function is known, refer to primitives understood by the
+SMT solvers. It would be really cool if I could specify those in a generic way
+somehow so the user could easily add to the support functions.
+
+Well, we could use stable pointers I suppose, to test for a known primitive
+function? We just need to agree upon the pointers to use to indicate the
+different functions.
+
+Or I could have an explicit tag. Or use a name. Or something like that.
+
+What are the important things here?
+* given a thunk for an SMT primitive, figure out which primitive it is and
+  what all the arguments are.
+* given a realize map, realize all the arguments, and call the desired
+  function with the new arguments.
+
+I suppose a general way to represent it would be have a list of arguments,
+each of which could have any type which is realizable and optionally
+convertible to an SMT formula. And a function which takes these arguments.
+
+One question is, can I somehow package those features up into an opaque thing,
+so I don't have to worry about types?
+
+What, really, do we ever want to do with a thunk?
+
+* Realize it.
+So, given the assignments of variables (using a generic list is okay here),
+realize the values of the variables and call the function.
+
+* Convert it to an SMT formula.
+Given an SMT solver, return an SMT formula...
+Perhaps optionally, with an option to say: we don't support this.
+
+
+Well, the first is easily enough done:
+    Thunk a = [(FreeID, Dynamic)] -> a
+    
+The second? We want a common way to represent things... Err, um, how about:
+
+  Thunk a = a -> AM Exp
+
+Combining them together is easy enough:
+    Thunk a = ([(FreeID, Dynamic)] -> a, AM Exp)
+
+You can realize it, or you can turn it into an SMT formula. This is regardless
+of the type of thing involved.
+
+Okay, I have a proposal. The SMT formula thing is much complicated by the fact
+that we have different solvers, and different types of expressions. We need
+some way to hook things together. Ideally we could specify the functions
+dynamically, extended statically, or something like that.
+
+Fine then. Now I suppose it is time to try out some examples. Get a better
+flavor for how this would look.
+
+I'll try to start relatively easily.
+
+data Primitive a = Primitive {
+    realize :: Map FreeID Dynamic -> a,
+    formula :: AssertM Dynamic 
+}
+
+data Bool = True 
+          | False
+          | Primitive Bool
+
+Let me assume every type has a function:
+    primitive :: Primitive a -> a
+
+__caseTrue :: Bool -> a -> a -> a
+__caseTrue p a b =
+    case p of
+        True -> a
+        False -> b
+        Primitive prim -> primitive $ Primitive {
+            realize = do
+                p' <- realize p'
+                realize $ __caseTrue p' a b,
+            formula = do
+                p' <- formula p
+                a' <- formula a
+                b' <- formula b
+                ite p a b
+        }
+
+Well! That seems to work out well enough. I would refine my idea as follows:
+
+* make the realize thing a Reader monad, just to keep things cleaner.
+Though I really hope the reader monad doesn't impose ordering constraints...
+I fear it does. So maybe, really, we should not use the reader monad, so as to
+avoid these silly ordering constraints.
+
+Okay. No reader monad then.
+
+The other thing I need to distinguish is between the Primitive realize
+function, and the general realize function which every object is supposed to
+support.
+
+Same with the formula. I guess what I want is: every object can be converted
+into a formula (let me not, yet, worry about errors and such things). We'll
+want a different name for the primitive version and for whatever thing we want
+users to call when constructing the SMT formula.
+
+So, let me try again at an interface.
+
+-- A Primitive free variable of the given type.
+data Free a = ...
+
+-- Look up the value of a free variable in the given assignment.
+-- Every free variable will always have some value in the assignment. It's an
+-- error otherwise.
+assign :: Assignment -> Free a -> a
+
+-- A representation of an SMT formula for the object of type 'a'.
+-- The underlying type depends on the SMT solver?
+data Formula a = ...
+
+-- An SMT monad for building up formulas.
+data SMT a = ...
+
+data Primitive a = Primitive {
+    preal :: Assignment -> a -> a,
+    pform :: a -> Assert (Formula a)
+}
+
+All types 'a' must support the following:
+  realize :: Assignment -> a -> a
+    Return the value of the given object under the given assignment.
+
+  formula :: a -> Assert (Formula a)
+    Turn this object into an SMT formula.
+  
+  primitive :: Primitive a -> a
+    A primitive value of this object.
+
+
+But we will also distinguish between raw realize and formula, and wrapped
+realize and formula, which may perform caching or some such.
+
+Now then, let me try again.
+
+__caseTrue :: Bool -> a -> a -> a
+__caseTrue p a b =
+    case p of
+        True -> a
+        False -> b
+        Primitive prim -> primitive $ Primitive {
+            preal = \m -> __caseTrue (realize m p) (realize m a) (realize m b),
+            pform = do
+                p' <- formula p
+                a' <- formula a
+                b' <- formula b
+                ite p' a' b'
+
+How about:
+
+free_Bool :: Symbolic Bool
+free_Bool = do
+   id <- ... 
+   ...
+   return $ primitive $ Primitive {
+        preal = \m -> assign m id,
+        pform = var id
+   }
+
+Perfect!
+
+Well. Yes and no.
+
+It's good in that it's nice. It's bad in that it is, yet again, another
+rewrite of the smten runtime.
+
+I feel like it is a much cleaner one, admittedly.
+
+But first, let's run it through the harder tests.
+
+return_io a = IO (return a)
+
+eq_Integer :: Integer -> Integer -> Bool
+eq_Integer (Integer a) (Integer b) = if a == b then True else False
+eq_Integer a b = primitive $ Primitive {
+    preal = \m -> eq_Integer (realize m a) (realize m b),
+    pform = do
+        a' <- formula a
+        b' <- formula b
+        eq_integer a' b' 
+
+This suggests I'll have some class, or set of primitive functions for the SMT
+solvers. So if you want a new primitive, you'll have to add it to the class.
+As opposed to a named lookup. That seems fair to me. It seems a reasonable way
+to start. I suppose we can always add a back door function which allows named
+primitives so you could add whatever support you want for a solver.
+
+primCharToInteger :: Char -> Integer
+primCharToInteger (Char c) = Integer (toEnum c)
+primCharToInteger p@(CharPrim prim) = primitive $ Primitive {
+  preal = \m -> primCharToInteger (realize m p),
+  pform = unsupported prim
+}
+
+Or something like that.
+
+I feel like we could support arbitrary concrete functions in a reasonable way.
+
+Note: you still want to have ways to convert to concrete objects, right? In
+particular, concrete objects you may not have the constructors for?
+
+I think so. So that sounds like a separate issue to me.
+
+What am I to do??
+
+Ug. More thought must be done.
+
+Perhaps I should mock up an sample implementation, like I did for runtime2.
+
+Or work out more examples. That would be good to do.
+In particular, try to understand how to deal with specialization.
+
+I don't feel like figuring out how to do that right now.
+

@@ -1,0 +1,591 @@
+
+Mon Jun  3 07:36:42 EDT 2013
+
+
+Reminder of where we stand:
+
+9. __mkChar not defined.
+10. error primitive not defined.
+12. return_io and bind_io and putChar not defined.
+
+These are all issues with primitives.
+
+Thoughts I've had:
+
+* Dealing with primitives in a uniform way is a hard problem. I should not
+  feel the need to solve it now.
+
+For example: the behavior we want depends on the strictness of a function, in
+order to handle explicit errors correctly. How can you handle that in a
+general way? Especially when strictness can be conditional? In other words, to
+handle everything right, I think you have to know the implementation of the
+primitive.
+
+* anytime where code is being duplicated, I should only write it once.
+For example: Char and IO are basically defined the same way, on top of haskell
+types. Because we have two, I should write code to do the definition for me.
+Contrast this with, say, the error primitive, which seems unique. Maybe I
+should write that one out by hand.
+
+Either way, at this time I would say it isn't clear how I want to best do
+things. Just try to do things nicely, and we'll see how things shape up.
+
+First step: generate meaningful code for IO and Char.
+
+Next:
+* error, return_io, bind_io, putChar
+
+I think, to start, I'll write these by hand?
+
+I want something like:
+
+return_io :: a -> IO a
+return_io x = IO (Prelude.return x)
+
+putChar :: Char -> IO Unit
+putChar (Char x) = IO (Prelude.putChar x)
+
+error :: List__ Char -> a
+error = Prelude.error "smten error"
+
+bind_io :: IO a -> (a -> IO b) -> IO b
+bind_io (IO a) f =
+  let g :: a -> Prelude.IO b
+      g x = let IO r = f x in r
+  in IO (a Prelude.>>= g)
+
+One thing I can do to make my job easier is actually generate this code. Don't
+write it by hand. Then it will be more flexible to changes in how types are
+generated, etc...
+
+Okay. I'll give it a try.
+
+Mon Jun  3 08:24:08 EDT 2013
+
+Primitives are done. Now for type issues.
+
+* I think I need to generate forall for type variables for scoped type
+  variables to be handled properly.
+This requires I list them explicity. But then I have to know which ones to
+list. For example, in Monad return, I shouldn't list 'm'.
+
+So I want to add to my environment the list of type variables in scope.
+
+* next: generation of a main function.
+
+Mon Jun  3 08:48:05 EDT 2013
+
+It works! Wow.
+
+Fragile, I must admit. With problems. Mostly with the primitives? But this is
+a good place to start.
+
+What's the next step now?
+
+Brainstorm:
+* figure out a way to print error message on error?
+* better handling of primitive specification?
+* Work on a core SMT test?
+
+I think certainly we want error messages, and I'll need to figure that out
+eventually, so I may as well figure it out now.
+
+What's the idea?
+
+I am given a Smten String. I want to convert it to a Haskell String, then call
+the error primitive with that.
+
+* I need to define a function to do the conversion for me.
+Because it's a recursive conversion.
+
+* What should I do if the string is symbolic?
+In practice I don't really care, because it will be concrete.
+This will be answered better after doing work on symbolic stuff.
+I'll probably want to push the error inside of the symbolic object, and only
+trigger one where the argument is concrete.
+
+So, I need a way to convert from a Smten String to a Haskell String.
+
+I need to do give it after the definition of String, but before the definition
+of error. Because both happen in the same place, I need to generate the code
+for translation into the prelude.
+
+The code will look something like:
+
+foo (Nil__) = []
+foo (Cons__ a as) = (:) (foo a) (foo as)
+
+A couple of observations here:
+* we need to do this for both List and Char.
+  So it probably makes sense to have a type class for this.
+* could we use this to simplify specification of primitives?
+  would it work properly?
+
+It's a multi-parameter typeclass: smten type and haskell type.
+
+Let me think about the ways I could do it and the primitives I have.
+
+1. putChar:
+It would be cool if I could just say:
+
+putChar :: Char -> IO Unit
+putChar = toSmten Prelude.putChar
+
+In this case, it could totally work.
+
+The trouble comes with polymorphic functions.
+
+return_io :: a -> IO a
+return_io x = IO (Prelude.return x)
+
+I don't want to translate the 'a'... Or rather, I want the translation to be a
+no-op. Is there a way I can specify that?
+
+return_io :: a -> IO a
+return_io = toSmten (Prelude.return :: a -> Prelude.IO a)
+
+This could work if there was an instance of the conversion class for an object
+to itself, which makes sense to have.
+
+Perhaps I might want to create a dummy type to make this more obvious. And do
+something like:
+
+return_io :: a -> IO a
+return_io = toSmten (Prelude.return :: Smten a -> Prelude.IO (Smten a))
+
+Then this has the right behavior.
+
+Now... error:
+
+error = toSmten (error :: String -> Smten a)
+bind_io ...
+
+I think it will work!
+
+Now, this would be wonderful, because it would mean I can automatically
+generate all the primitives.
+
+Good. And I can support polymorphic primitives. Very good.
+
+This is what I want to do next. Update the primitives using this class. Then
+demonstrate the error gives me the error message I want.
+
+What should the class be called?
+
+I'll put it in Smten.Runtime.Haskelly
+
+class Haskelly h s where
+    toHaskell :: s -> Maybe h
+    fromHaskell :: h -> s
+
+This makes sense to me, name wise. Maybe we could simplify the names?
+
+class Haskelly h s where
+    tohs :: s -> Maybe h
+    frhs :: h -> s
+
+Sounds good to me.
+
+So. I have a class. I can use this to generate primitives. I want a dummy
+type:
+
+newtype Opaque a = Opaque a
+
+instance Haskelly h (Opaque h)
+
+Next I need: to generate definitions of Haskelly.
+
+How do I know when?
+
+For now: 
+ * for all primDataCG
+ * for all other indicated dataCG
+
+That is, I'll just keep a list of them for now in the compiler. Eventually I
+can make a pragma to put on a data type definition which says: this is like
+haskell, so generate an instance of Haskelly for it.
+
+Good!
+
+I have a plan. Let me try it out.
+
+1. I have the runtime stuff. That's implemented.
+2. Let me generate code for the primitives based on this.
+
+Problem. I need to know where the haskell types are defined and what they are
+called.
+
+Okay. That's okay. I'll do the following.
+1. assume they are defined with the same name as the smten types.
+2. assume they are defined in the same module as the primitive itself.
+
+Good. Primitives are now generated.
+
+What remains is: instances of Haskelly.
+
+I need two kinds:
+  primDataHaskellyCG
+  dataHaskellyCG
+
+I did dataHaskellyCG. It was tedious, but it seems to be okay.
+I'm sure there are bugs about context and stuff, but I don't care about them
+now.
+
+I need: Char and IO.
+
+Char is easy. IO? That's harder.
+
+What I want is:
+
+instance Haskelly Prelude.Char Char where
+   frhs = Char__
+   tohs (Char__ c) = return c
+
+instance (Haskelly ha sa) => Haskelly (Prelude.IO ha) (IO sa) where
+   frhs x = IO $ do
+     v <- x
+     return (frhs v)
+
+   tohs (IO x) = return $ do
+        v <- x  
+        return (tohs' v)
+
+You know what? These are so specific, and they are primitives. So I'll just
+hard code them.
+
+Or rather, have two categories. 0: which means zero type variables. And 1:
+which means 1 type variable, and we assume its a monad.
+
+Hmm... That's interesting.
+
+Could I give a generic definition for a monad?
+
+I could define a HaskellyMonad class.
+
+class Haskelly1 hm sm where
+  frhs1 :: hm a -> sm a
+  tohs2 
+
+No. This won't do what I want. I think just do things manually for now.
+Generalize later.
+
+Anyway! You know an interesting consequence of this? The main wrapper is
+trivial now: 
+main__ = tohs main
+
+Good. One last thing to hopefully get this working. The instance of Haskelly
+for IO.
+
+There! It works! Hurray.
+
+Now... let's see if I actually get a useful error message.
+
+Hurray!
+
+phew. That was a lot of work.
+
+What's next?
+
+I think it's fairly clear: work on a core smten test.
+
+This will be a lot of work. But after this, hopefully most stuff is in place
+to move forward relatively easily. So it's good for this to be the next step.
+
+First query:
+  r <- runSymbolic (return ())
+  test (r == Just ())
+    
+Mon Jun  3 12:14:50 EDT 2013
+
+I have the simple test case. To get there, I'll first have to fix a bunch more
+bugs.
+
+Let me take some lunch, then get back to that.
+
+I'll also have to think about how I want to implement the Symbolic primitives,
+which depend so much on the Prelude.
+
+Mon Jun  3 13:00:55 EDT 2013
+
+Let the bug hunting begin.
+
+1. in instance declaration, variables in context should be brought into scope.
+2. return_symbolic, Symbolic, bind_symbolic,
+
+So, now we dive right into the tricky part.
+How should I go about this?
+
+I know what I want Symbolic to be. A haskell state monad.
+It can actually be a pure state monad with:
+    ss_pred: the boolean predicate (depends on generated Bool)
+    ss_free: the list of free names (Prelude.Integer)
+    ss_formula: the boolean formula (depends on generated Bool)
+
+Depends on: generated Bool, &&, not
+
+In other words, it would be really nice if I could define this in the context
+of the Smten Prelude, but where the Smten Prelude is imported qualified and I
+can use Haskell code.
+
+Brainstorm of options:
+* Write the code as a Doc and plop it into the generated code
+ - means we don't get implicit Prelude
+ - means type checking is deferred until later
+
+* Write the code without needing the Bool definition?
+ - I don't think this can work
+
+* Write all of the generated Symbolic library by hand?
+ - Huh?
+
+* Generate the basic foundation stuff for Prelude using template haskell.
+  Compile this as part of the smten package or smten-runtime package.
+  Import it in Prelude, and import it in the Haskell definition of Symbolic.
+  Then treat Symbolic like any other primitive.
+
+
+This last option sounds, actually, reasonable to me...
+
+I have another idea, to help me out with it.
+
+Basically I have to split the prelude, right?
+
+Oh...
+
+This actually just gave me another idea.
+
+I can compile a module statically with template haskell...
+
+Err... except for imports and exports.
+
+But I could duplicate those easily enough.
+
+So here is what I'm proposing.
+
+Make Smten.Lib.Prelude be part of the smten package.
+Have the implementation be to use template haskell, load in the Prelude.smtn,
+and generate the declarations.
+
+Then, when you compile smten, skip the prelude module and use the one in
+Smten.Lib.Prelude? Hmm...
+
+* Implement the code assuming I have the definition from the prelude.
+  Just copy paste the generated haskell file.
+
+Or rather...
+
+I can include the haskell file as part of the ...
+
+This is silly. Gosh.
+
+What's going on here?
+
+Symbolic: clearly it depends on how the Prelude code is generated.
+
+If it depends on how the prelude code is generated, the user should not be
+allowed to change that code. So we may as well use template haskell to compile
+that.
+
+But here's the thing: we have a minimum amount of the Prelude we depend on. So
+why not just require that?
+
+In other words, I'm proposing the following:
+  ...
+
+Wait. I had another idea.
+
+What if we just say that Bool is a primitive data type?
+
+That will make case matching hard to do. :(
+
+
+Okay, here's what I'm proposing then:
+
+Identify the minimum part of the Prelude that Symbolic depends on.
+And which must be compiled together.
+
+Implement this in Smten.Runtime.Prelude using template haskell... or just by
+hand. Ideally I would do by hand those things that are really specific to how
+I do it (as in, the definition of Bool, for example), and do everything else
+needed by template haskell reading of the Prelude.smtn.
+
+Then I can have Smten.Runtime.Symbolic with all the SMT stuff, as desired.
+
+Sounds like a plan to me. I really do think this is the most reasonable
+approach.
+
+Okay. Then what is it that we need to do manually? What do we depend on?
+
+* Bool, __caseTrue, __caseFalse
+
+In other words, just the Boolean data type.
+
+It will expand later into much more I imagine. But that's fine for now.
+
+So I will do the following:
+* don't generate the data type declaration for Bool in the compiler.
+* import Smten.Runtime.Prelude as Smten.Lib.Prelude for Prelude
+* export module (Smten.Lib.Prelude) for Prelude.
+
+This should give me the flexibility I need to move more or less stuff into
+Smten.Runtime.Prelude, and hopefully make everyone happy.
+
+Good. Let me give it a try.
+
+Mon Jun  3 14:14:10 EDT 2013
+
+Okay, this works now, but it is very messy. It would be really nice if I could
+do this seamlessly and cleanly.
+
+What things have I done/assumptions have I made?
+What kinds of things do I want to support?
+
+* Import of haskell function
+The function is defined to work on haskell types, and we assume an instance of
+Haskelly exists to do the conversion.
+  - currently all primitives are implemented this way.
+  assumptions:
+    Module name of data types is exported by the file.
+     This is fine, because we can always re-export data types used.
+  - we should automatically import this file!
+
+* Generation of Haskelly
+Used for List, Unit, Maybe, Solver, IO, etc...
+assumptions: Data type is defined in the same module in haskell as in Smten.
+  So, for example: Prelude.Foo is defined in Foo in both.
+  Problem: Smten.Symbolic.Solver was not defined in Smten.Symbolic.Solver.
+    Though maybe it should be?
+  Consider, for example, Data.Map.
+  It might be nice to have a Haskelly version for it, but not for the real
+  Data.Map, but our local Data.Map.
+
+  So I propose an indirection.
+  Assume the data type is declared in:
+        Smten.Runtime....
+  For things like Maybe, we can re-export them from that module.
+  For things like Data.Map, we can use our own version.
+  For things like Symbolic... it still makes sense.
+  - we should automatically import this file!
+
+* Import of Raw datatype
+    So, I define the data type, and possibly other things.
+    I want it to be imported directly, as is, into Smten.
+    ex: Bool, Symbolic.
+   - we should automatically import as needed.
+        import Foo as ...
+ 
+I don't know how to do the last cleanly.
+Pragmas?
+
+I'll leave things as they are for now and keep forging ahead. I may learn
+more.
+
+Now, on to making the SMT query work.
+
+I think I'll need to make a separate package to deal properly with template
+haskell stuff, but if I can avoid it, I may as well try. I'll deal with that
+when it comes up.
+
+Now then. I want to involve an SMT solver.
+
+I need the following of a solver:
+* assert :: Solver -> R.Bool -> IO ()
+* check :: Solver -> IO Result
+* yicesXXX :: IO Solver
+
+Let me use the AST approach as before.
+
+Mon Jun  3 15:01:50 EDT 2013
+
+Okay, I have involved an SMT solver.
+
+Now is when things will start to get interesting. Or, said another way, hard.
+
+Because now I want to introduce my type class, which everything will need to
+belong to.
+
+It's called... SmtenHS.
+
+So, I want the following:
+
+* declare SmtenHS.
+* Have run_symbolic require SmtenHS on the result
+
+Make it so I can run the Trivial Test.
+
+* I need to generate SmtenHS as a class requirement for all type variables
+  everywhere in the generated code.
+
+For now, let me just do it for variables of kind level 1.
+
+And here is where we run into trouble.
+
+Basically I want to have that every type is an instance of SmtenHS.
+
+That is, any type we encounter.
+
+So I need my SmtenHSN trick.
+
+Sigh.
+
+There are no short cuts. Because we could have a type variable m of kind *->*,
+which is used in an intermediate expression applied to (m Bool), (m a), ...
+and I need all those things to be instances of SmtenHS. The way to say that is
+to say m is an instance of SmtenHS1.
+
+Well, now to the grind. I can deal with this well enough.
+
+Should I use template haskell to help me declare all the SmtenHSs?
+
+That's very tempting.
+
+Done.
+
+Now, more issues:
+
+* I have to give an instance of SmtenHS for every data type declaration
+
+Mon Jun  3 17:55:39 EDT 2013
+
+Now I need realize to be correctly implemented for unit. Yes, because I try to
+realize a unit.
+
+In general, I'll want it for any algebraic data type.
+
+For the time being, it's easy: just return itself
+
+Eventually though... And I suppose I ought to prepare for eventually...
+
+It's a recursion over all fields.
+
+So, for each constructor, recurse.
+
+That's easy enough, I suppose. May as well handle it now.
+
+Done.
+
+So now things pass again. That's good. That's happy.
+
+What's the next step?
+
+I think the next step is allocating a free boolean.
+
+* Write a simple test case which asserts true and gets the result
+
+And go from there. I'm sure there will be plenty of stuff to make work.
+
+Believe it or not, we really are making half decent progress.
+After the core is working, things will start to work generally very nicely.
+
+Well... now we have a problem.
+
+I need to add SmtenHS to __caseTrue.
+Which means I need to define __caseTrue after SmtenHS.
+
+Or at the same time.
+
+Sigh... I don't feel like dealing with this now.
+
+Maybe I'll do this: get the low level debug solver working, just for the fun
+of it. Then call it a day.
+

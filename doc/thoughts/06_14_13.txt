@@ -1,0 +1,289 @@
+
+Fri Jun 14 09:09:42 EDT 2013
+
+First issue: cases0 for bit vector.
+
+I wonder if it's just we need to add the case for ite.
+
+Can I come up with an example?
+
+I suppose the example would be:
+
+    p <- free_Bool
+    assert (toInteger (if p then 3 else 4 :: Bit #8) == 3)
+
+Here 'toInteger' is not supported, but the argument is a mux, so we should be
+able to do a cases on it just fine.
+
+Let me write up this test case and see how it works.
+
+In fact, this can be a Core test case.
+
+Well, that certainly reproduced the issue.
+
+It does side-step the issue of high level debug, which I'll certainly want at
+some point.
+
+That is: some way to show the symbolic expression with all original primitives
+(including cases) in tact.
+
+Fortunately for debug, my fix didn't fix the problem in arch-extract.
+
+I really should add support for the Debug solver.
+
+Okay. I know the goal:
+ * print a pretty version of the symbolic expression including all original
+   primitives.
+
+For now, I can limit it to assertions. This means we shouldn't have any
+functions or things like that.
+
+There are a number of issues it is worth thinking about:
+* How should I express sharing in the pretty formula?
+  - don't?
+      I fear this will lead to massive queries, and be misleading.
+  - use 'let' expressions like the master branch does?
+      This can be done, but it's hard to read the query.
+  - label every expression with a name?
+      That, I think, will be way too messy.
+  - label shared expressions with a name?
+      This is hard to do, should be easy to read, but will still generate
+      massive expressions.
+  - label shared expressions with a name the first time,
+    And every subsequent time, refer to the expression by name instead of
+    value.
+  - abbreviate expressions the second time with ...?
+
+Well, when you list it like that, I think it's pretty clear what I would like
+from the users perspective:
+
+Annotate an expression which is shared with a name the first time it appears.
+The next times it appears, just use the name.
+
+I think this will be easier to read than let expressions, because things will
+be defined inline rather than pulled out of the expression.
+
+
+* how do express to the debug unit what the name and argument to primitives are?
+I could add to each primitive another function: Dbg, which gives the debug
+output for the primitive. It's... a little dissatisfying to need to add a new
+function to the primitives for any traversal I want to perform.
+
+* how to make the debug output pretty?
+  I'm thinking in terms of inserting newlines and such so the thing is
+  actually readable.
+
+The show monad will not be good enough here for this reason.
+
+I think the second point has many ramifications to consider. It would be nice
+to have a representation for objects which is explicit, that we can do a
+generic traversal over. Rather than expressing each traversal explicitly.
+
+One challenge is, we want to traverse for each type.
+One challenge is: there are performance concerns with higher-order traversals.
+
+But modularity looks better...
+
+There is a choice to make. Either
+1. all objects are represented in the same structure.
+2. objects are reach represented in their own structure.
+
+I'm tending towards (2), because if you do (1), we can't have different
+structure for functions or the symbolic monad. In particular, I think
+functions are important for performance.
+
+If we have (2), then, in order to do a traversal, we either need:
+ - abstract deconstructors which can decompose the object into:
+     - a concrete thing
+     - an error
+     - a primitive with arguments.
+
+Or we need:
+ - an traversal function implemented for that object.
+
+I don't know which is more efficient.
+
+I wonder if we could somehow use specialization to make a generic traversal
+function as efficient as a list of concrete traversal functions. Perhaps by
+associating a type with each traversal function, and specializing every object
+for the traversals I know I want to do.
+
+Let me think along the lines of the later. First think about how I could
+describe a generic traversal function at all.
+
+The examples we have so far for traversal functions are:
+ * realize :: Assignment -> a -> a
+ * cases :: a -> Cases a
+ * debug :: a -> Debug
+
+The basic structure is: recurse and combine?
+
+Let's start with realize.
+Assume we keep the assignment 'm' with the function f...
+
+What is the function 'f' allowed to see though?
+
+I don't know. I don't know how to make it work the way I want to. I'm not sure
+what I want it to do.
+
+Well, maybe hold off on the general traversal thing for now, and just add a
+debug traversal like I have cases and realize.
+
+Let me start with not worrying about sharing. Just dump the full expression,
+wasteful as that is.
+
+Things I can have in the expression:
+ * constructors
+ * applications
+ * primitives - which may be case.
+
+In fact, you can think of constructors as like primitives too. I think of
+everything as functions, including case. But for the user, it would be much
+nicer to express case as case.
+
+Another problem here: I don't necessarily have information about the name of
+the function. If it comes from frhs, which all but the cases do, I don't have
+that info at all.
+
+Gar.
+ 
+Fri Jun 14 10:28:47 EDT 2013
+
+So, I output some more info about the failing bit vector.
+
+It looks like the problem is we are not propagating error properly?
+
+Yes. It's a bug in error handling. And it's a stupid bug.
+
+fromMaybe :: a -> Maybe a -> a
+fromMaybe d x = case x of 
+                   Nothing -> d
+                   Just v -> v
+
+Is leading to a superfluous error. If I get rid of the possibility for error,
+then the problem goes away.
+
+I should be able to reproduce this problem.
+
+The issue is not properly propagating errors.
+
+For example, ...
+
+Say I call fromMaybe. This leads to a __caseJust, which has an error branch.
+
+I ask for the cases of __caseJust, because it is an unsupported primitive. So
+I ask for the cases of the argument to __caseJust. One of the arguments is
+error. Even though I know that should never happen.
+
+So, this is not an issue with propagation of errors. It is a problem of cases
+of error.
+
+So, how should I handle that?
+
+If we assume all primitives are strict, then bad things will happen to case
+primitives!
+
+Treat error as a concrete case?
+
+Let me first capture this problem in a test case.
+
+Fri Jun 14 11:01:23 EDT 2013
+
+Okay! I finally captured it in a test case. Good.
+
+The problem is caseFoo should not be strict in all its arguments?
+
+No. The trouble is... one of the cases is Error? And so I should treat it as
+such explicitly?
+
+Sure. Let me try that.
+
+This is bad, because I'm taking a cross product now which includes Error.
+
+Hmm...
+
+Anyway, that fixes the problem I was seeing there.
+
+But now I'm getting: handle error in assert.
+
+This is bad. It means I'm introducing an error variable where really I ought
+not to need an error variable, because the case is unreachable. Grumble
+grumble.
+
+It means it could be very useful to do a pruning step which prunes away all
+these unreachable errors from the code before I generate it.
+
+Fri Jun 14 11:14:00 EDT 2013
+
+Trouble with bit errors: I don't have a way to enforce that the Bit type is
+numeric.
+
+An instance of SmtenHS1 asserts that Bit will work for anything, but here I'm
+saying it will only work for numeric n.
+
+Hmm...
+
+Well, I suppose I could give an instance of numeric to everything?
+
+That seems fair enough to me. Because we check statically that we only call it
+in the right place.
+
+Then I don't even have to include requirements for 'Numeric'...
+
+No. I think that's destined for trouble.
+
+Or I could just say:
+ - make valueof a method of SmtenHS, and give a default instance which is
+   undefined.
+
+Yes. That ought to solve it.
+
+Fri Jun 14 11:57:21 EDT 2013
+
+Fine, but we still have the issue with fromMaybe, because I abstract the
+error, then ask for the cases of it?
+
+So, I need to try and replicate this error.
+
+Some good news: arch-extract seems to be running now.
+
+I'll let it run a while and see what happens to it.
+
+The thing with errors, however... is still rather dissatisfying.
+As is the thing with debug.
+
+
+Fri Jun 14 12:25:10 EDT 2013
+
+Let me try to give now a high level summary of smten status?
+
+I don't know. There are lots of loose ends I don't think I can plug up.
+
+Let's say this.
+
+There are correctness concerns.
+ * dealing with errors the right way
+   currently arch-extract on "example" fails for some reason.
+
+There are functional concerns.
+ * we need high-level debugging of queries.
+
+There are code concerns.
+ * There is a lot of repeated code going on here.
+
+There are performance concerns.
+ * Change how we deal with cases to avoid the 'error'?
+ * These should be driven by applications:
+    ** shampi: overhead of DoubleCheck
+    ** arch-extract: figure out what it's doing to take so long
+        Currently dominated by conflict free checks.
+        Is it a smten problem? A user problem?
+    ** Sudoku.Enum: why does it take so long?
+
+Basically, I know I want to merge with the master branch.
+Let me just do that. There are too many things I like about this branch to
+give up now. If I want to go back to what I had before, I should do it by
+circling, not by reverting.
+
+Preservation of sharing should be motivated by applications.
+

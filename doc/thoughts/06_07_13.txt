@@ -1,0 +1,467 @@
+
+Fri Jun  7 07:17:25 EDT 2013
+
+Goal for today: get numeric types working enough to try out Sudoku.
+
+I realize I'll need arrays before I can get shampi working again. So save that
+for a later step.
+
+Here is the plan:
+
+Smten.Numeric:
+  defines primitive 'valueof :: #n -> Integer' function.
+  defines 'numeric :: #n = error "numeric"'
+    This is to hopefully make it nicer to use valueof.
+    For example, I expect valueof to be used as:
+        valueof (numeric :: #n)
+
+    Which is nicer than
+        valueof (undefined :: #n)
+
+Smten.Bit.Static
+    defines Bit on top of #n.
+
+I'll have to do a fair bit of work to support this in the code generator, but
+it's nothing new. I need to infer the Numeric context, and do numeric type
+variable introduction. It will be a pain, but it will work.
+
+The other thing I would like to try this time is making use of type-level
+naturals for the generated code, if at all possible.
+ 
+Let me do the following:
+1. write a rough draft of Smten.Numeric and Smten.Bit.Static
+2. read about type level naturals, and experiment with them.
+    I need the following:
+ * type signatures involving natural numbers
+ * given a natural number type, convert it to an integer
+ * have some notion of a 'numeric' type class
+    If one already exists, I may as well reuse it.
+    Otherwise right my own.
+
+Sounds like a plan to me.
+
+Fri Jun  7 07:35:00 EDT 2013
+
+(1) is done. It works out very nicely.
+
+2...
+
+Looks like we have:
+  Nat - the kind of a natural number type
+  42  - a sample natural number type
+  Sing n: a class that can be used for getting the value of a numeric type.
+  0+1: an operator type
+
+I'll want to make my own class wrapper around whatever they expose.
+
+One issue: these are natural numbers, not integers. So I can't do subtraction?
+
+Ah, looks like there is a type-level-numbers package which could be relevant.
+
+Typelevel.Number.Int
+
+But, looks like this doesn't use ghc type level natural support. So it's like
+what I would do myself by hand.
+
+That's okay. It's good to use someone else's library.
+
+Except... it has more than I need.
+
+I do all the type checking myself, so really all I need is:
+
+* a unqiue type to represent each Integer
+* an instance of Numeric with valueof method to convert that type to an Integer
+
+In other words, I'm thinking I should use the same numeric type code I used
+before. It, at least, works.
+
+Fri Jun  7 08:53:27 EDT 2013
+
+One more thing I need: a way to represent operations +, -, and *.
+
+Here's what I'm going to do. I don't think type level naturals will give me
+what I want, but perhaps there is a more generic infrastructure I could take
+advantage of.
+
+For example: 
+ * Using numbers as the syntax for numeric types.
+     As opposed to: N2P1__ N2P0__ N2P... 
+ * Using operators as the syntax for numeric types.
+     As opposed to: MUL a b
+ * Automatic conversion from numeric type to integer.
+    Though this is less big a deal, because it's easy to do myself once I have
+    type classes.
+
+So I'll look into these things.
+
+Okay, so here is what I propose.
+
+1. Use the syntax for natural numbers as types.
+This gives me my concrete types.
+
+2. Define my own type constructors:
+    Either as: :*:, :+:, :-:, or as *, +, -, depending on what ghc supports.
+This gives my operators with nice syntax.
+
+3. Define my own numeric class.
+Give an instance for naturals using Sing.
+Given an instance for operators manually.
+
+Easy! Then I get everything I want.
+
+I want to give this a try somehow. Let me experiment with it.
+
+Fri Jun  7 09:59:45 EDT 2013
+
+Okay! I figured out everything I need and how to do it.
+
+We want the following empty data type declarations.
+
+data NumT (n :: Nat)
+data a :+: b
+data a :-: b
+data a :*: b
+
+We want a class:
+
+class Numeric a where
+    valueof :: a -> Integer
+
+numeric :: a
+numeric = error "numeric"
+
+We can give an instance of Numeric for each of the above types.
+
+Now then, how do numeric types look?
+
+* #42:   NumT 42
+* #(3+m):  NumT 3 :+: m
+
+Nice. I like it. Better syntax.
+
+Could I have an operator for NumT? Such as... :#: ?
+Looks like I can't. That's okay.
+
+My PreludeBuiltin will export:
+    NumT, and these operators.
+
+Great! Let me write it up and go from there.
+
+Fri Jun  7 10:39:39 EDT 2013
+
+It works swell! Cool. I like this way better than what I was doing before.
+
+Now for... Sudoku.
+
+Let me see if I can make it work. And... let's see if it is still noticeably
+slow to run.
+
+Now keep in mind, we may not preserve sharing as effectively as before. So if
+things blow up, it's not the end of the world yet.
+
+Fri Jun  7 11:45:38 EDT 2013
+
+Observations I have:
+* Enum and Integer Sudoku tests pass. Hurray!
+* Bit vector Sudoku test fails. Sadness :(
+* The query for Enum is enormous
+
+Why aren't the Integer and BitVector queries almost identical, I wonder?
+
+How do I figure out what's going on?
+
+Fri Jun  7 11:49:45 EDT 2013
+
+It's good that I have bugs that I can figure out how to fix and make better. I
+like that.
+
+The question is... how do I find these bugs?
+
+It's with sudoku. One option would be: try a smaller sudoku?
+
+The trouble is, it's too hard to shrink the solver.
+
+One idea: shrink the problem.
+Start with an almost solved board, start adding holes, try to get the smallest
+query before we encounter the problem.
+
+Another idea: figure out how to print out a coherent high-level debug output
+of a query.
+
+Another idea: do more thorough unit tests for all the operations involved
+here. Try to catch the bug that way.
+
+Why does the BitCell not create any underlying calls to '|'?
+
+Let me think over things over lunch.
+
+Fri Jun  7 12:59:01 EDT 2013
+
+I can debug this. I can figure out what's up.
+
+First: minimize the problem.
+
+Is it a problem with Yices2?
+Let me test with Yices1 and STP to find out.
+
+Yices1 and Yices2 behave the same: Integer and Enum work. Bit returns unsat.
+STP also claims Bit is unsat.
+
+Thus it is not a problem with the SMT solvers. It must be something else.
+
+Is it a problem with concrete evaluation with BitCell?
+
+Let's try solving an already solved board.
+
+It fails! Wonderful. That means this is not an issue with symbolic evaluation.
+It is entirely a concrete issue.
+
+Let's decompose then, shall we?
+
+Fri Jun  7 13:41:39 EDT 2013
+
+Looks like a problem with foldl:
+    foldl (+) 0 [1]
+for integers doesn't return the right result.
+same with the bit vector analog.
+
+By just flipping...
+
+Oh! Of course. I see the bug. Ha. Very good.
+
+Now Sudoku works.
+
+I'm not convinced it's notably faster than it was before. But it certainly
+isn't notably slower, which is very nice.
+
+What's next?
+
+How about we try getting shampi to work?
+
+That ought to help force some issues. And it will give us a better sense of
+performance.
+
+Fri Jun  7 14:11:04 EDT 2013
+
+Next big thing: array support.
+
+I'll probably do it just like before?
+
+Yes. Just like before...
+
+Next thing: I have to update the shampi primitive import stuff.
+
+Hum. Hum indeed.
+
+Now, this is where we want pragmas, because I want a way to tell the compiler
+to automatically generate Haskelly instances for me.
+
+Yes. This is important now. The next step, in fact.
+
+Here is what I propose:
+
+Allow a pragma, optionally, before data type definitions:
+
+{-# HASKELLY Foo.Bar #-}
+
+
+This says: This data type being defined... (should I say what the data type
+is, or just associate it with what it is near?)
+
+Anyway, the idea is it says: the data type should have an instance of Haskelly
+automatically generated for it, because it looks just like the data type
+declaration of the same name in the haskell module Foo.Bar.
+
+First question: should they mention the data type in the pragma, or is it good
+enough just to put it in the right place?
+
+I think we want to mention it separately, because what if you want to derive
+the instance because whoever wrote the library forgot to?
+
+Hmm... In this case, is there any reason to use a pragma instead of a separate
+foreign like declaration?
+
+What it's like me doing is trying to Export a smten data type to haskell? Or
+import a haskell data type to smten? I don't know which way it would go.
+
+No. So I'm thinking better would be a pragma.
+
+And I think it should be allowed anywhere.
+
+Then it should be of the form:
+
+{-# HASKELLY Foo Foo.Bar #-}
+
+So: you give a... type constructor. It can be qualified or not, I don't care.
+And you give a fully qualified module name which is the haskell module.
+
+Sounds reasonable to me.
+
+Here's my plan for parsing:
+Treat: {-# HASKELLY
+
+As a token. If we see that in the lexer, pass the HASKELLY token, then
+continue parsing the comment as a regular string of tokens. Parse #-} as an
+EndPragma token.
+
+Sounds like a plan to me!
+
+First step: use this to get rid of the Haskelly annotations.
+
+Um... First thing: this pragma is going to turn into part of the Smten
+language, so I should think carefully about its name.
+
+And my careful thoughts are, it should be:
+
+{-# AsInHaskell ... #-}
+
+To say this data type you are defining is the same as it is in haskell.
+
+I'm not sure if that means I should change the Haskelly class yet. How about
+not yet.
+
+Well, I know the plan. Let me dive in and get to work.
+
+Perhaps first thing I can do is update the source with the annotations. Then
+figure out how to parse them, then go from there?
+
+I don't know. Just do it all at once I suppose.
+
+How about this: start with one. Maybe is a great candidate.
+
+I've decided to switch the order. Say:
+{-# AsInHaskell <hsmod> <tycon> #-}
+
+Hopefully that makes sense.
+
+Fri Jun  7 15:43:39 EDT 2013
+
+Wow! It looks like it works!
+
+Let me see if I can do the rest this way.
+
+Fri Jun  7 15:55:53 EDT 2013
+
+Next step: How should I handle unrecognized pragmas?
+
+That's... unpleasant.
+
+Well, the big question is: should it be in the lexer or in the parser?
+
+To put it in the parser,...
+
+I need a way to match against anything except for close pragma.
+No. That sounds bad.
+
+Really I should do it in the lexer if I can. If we don't recognize the pragma,
+switch to comment mode.
+
+Well, I could try to recognize things like SCCs...
+
+No. I can't recognize every kind of pragma.
+
+Fri Jun  7 16:28:30 EDT 2013
+
+Okay! Shampi appears to be up and running. That's nifty.
+
+How do I know if it works right? Let me see if I can recall the commands used
+to run it.
+
+Hmm... It appears to be going rather slowly. I suspect because of issues with
+preservation of sharing or specialization of something.
+
+In fact, I bet, if I run profiling, I'll see all the time is spent... in
+symbolic computation and queries?
+
+It will be an interesting experiment to try.
+
+You know what I bet it is? I bet it's primSelect. Every time I want to do
+primSelect, I have to convert the array argument to haskell. Which means
+mapping every element over id. And then back.
+
+Could we make a rewrite rule to rewrite a Poly array lookup to do nothing?
+Or somehow specialize like that?
+
+Or, make the primitive be of type Poly a instead of 'a'?
+
+Yup. Profiling supports my suspicion. Almost all the time and memory is spent
+in primSelect.
+
+Let me fix that now then.
+
+But how?
+
+I want to have a special implementation of primSelect...
+
+No.
+
+I want to have a special implementation of Haskelly for PrimArray...
+
+I can totally do this.
+
+Prim array for poly does nothing.
+
+Err... no. It's not working out. We have to change the type somehow if we are
+using Poly.
+
+I don't know the solution for this. I"ll have to think about it a bit more.
+
+And, ideally, I'll come up with a solution that's more general. Because we can
+have this problem for other things too potentially.
+
+Well, I think this is a decent place to take a break for the day. I need to
+think about this primitive thing. That, I think, has top priority.
+
+After that, we will have Sudoku and Shampi up and running.
+
+The next big thing to get up and running, I suppose, is arch_extract. And
+whatever other unit tests I want to bring over from before.
+
+I'm close! I really am.
+
+Fri Jun  7 18:58:29 EDT 2013
+
+I believe I have an answer to my problems. It is fairly simple.
+
+For primitives imported, don't call frhs. Just use them directly.
+
+The key ideas are:
+* the user can call frhs themselves if they want to have the current stuff.
+* otherwise we can fully specialize the right way, and handle polymorphism
+  without a box/unbox step
+* And the way to do it without knowing the smten generated type is just make
+  your code parametric in the type of object that you will convert from and to
+  the haskell objects you are interested in.
+
+This should fix everything up, and clean up that wart about rexporting types
+used with primitives.
+
+Let me give it a try, and see if I can get it to work at all.
+
+Fri Jun  7 19:52:48 EDT 2013
+
+Well... it doesn't work out perfectly, because I still have to box/unbox for
+List and Maybe, because I don't know what the code for them looks like.
+
+Fri Jun  7 20:01:15 EDT 2013
+
+Well, all the tests pass now. That's good.
+
+Unfortunately, this makes writing primitives on the Haskell side much messier.
+Err.. much much messier, in the case of timeout. Sadness.
+
+You know what I might need? Haskelly1, Haskelly2, etc...
+
+Sigh.
+
+I was so close!
+
+Let me take a rest, and see if that helps. Let me think about Haskelly1, and
+see if that, also, could help.
+
+And let me think about how, as a primitive implementor, I would ideally like
+to specify primitives. Because dealing with arbitrary symbolic inputs is not
+such an easy task!
+
+It's like the problem of __prim_fromInteger_Bit.
+

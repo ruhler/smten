@@ -1,0 +1,739 @@
+
+Mon Jun 10 07:59:01 EDT 2013
+
+I do believe I've figured out something important. Let me write it all down,
+and see where I should head from here.
+
+The high level idea is that we will mix list monad with SMT formulas in such a
+way that we can support any combination of primitives and types, regardless of
+what the underlying SMT solver supports, while taking advantage of everything
+the underlying SMT solver supports.
+
+How to go about this?
+
+Start with the foundations. You specify a symbolic object. When we run a
+symbolic object, we get:
+1. A boolean object consisting of primitive operations and free variables.
+   All concrete evaluation has already been performed.
+
+2. An arbitrary typed object consisting of primitive operations and free
+variables.
+
+Evaluate the arbitrary typed object under an assignment of free variables
+such that the boolean object evaluates to True under that same assignment.
+
+We want to make use of an SMT solver. I will assume the following about an SMT
+solver:
+
+* Some types are supported by the SMT solver, others are not.
+* If a type is supported, a free variable of that type can be instantiated.
+* If a type is supported, any concrete value of that type can be instantiated.
+* The solver supports the equality on that type.
+* The solver supports ite and the boolean type.
+* The solver supports some primitives, and not others.
+* If a solver supports a primitive, it supports all types involved in that
+  primitive.
+
+Or something like that.
+
+Here is my important claims:
+
+1. Any symbolic object of a type supported by the SMT solver can be
+represented as a (possibly infinite sized) SMT Formula.
+
+2. Any symbolic object, regardless of type, can be represented as a 
+list of [(Formula, a)], where 'a' is the type of the object, and Formula is a
+boolean SMT formula. The meaning of this representation is: if the formula
+holds, the object has as its value 'a'.
+
+I will try to demonstrate this inductively.
+
+Now, let's go back to the result of run symbolic. Given the above claims, we
+can always generate a (possibly infinitely sized) SMT formula for the boolean
+value, regardless of what primitives or types the SMT solver supports. So we
+will generate that formula, query for assignments, plug those into the result,
+and we are done.
+
+Actually, there is one thing I haven't mentioned. Which is if you declare a
+free variable of type the SMT solver does not support. In this case, you will
+generate the boolean formula and result under every concrete assignment to
+that free variable. This gives you a set of things. Go through the entire set
+using the above stated thing. If the set is empty, we have UNSAT, otherwise,
+if we find a satisfying assignment, we are done.
+
+Thus we can assume all free variables are of type supported by the SMT solver.
+
+All that remains is for me to justify claims (1) and (2).
+
+First: for a supported type, you can always convert between representations
+(1) and (2).
+
+Going from (1) to (2): enumerate all values of the supported type, and make a
+list:   [(x == v, v) | v in free].
+
+Going from (2) to (1): generate the formula:
+    if p1 then v1
+    else if p2 then v2
+    else if p3 then v3
+    else ...
+
+Now, let's consider supported types. The constructor may be:
+
+* A concrete value: then we can make a formula by assumption.
+* A free variable: then we can look up the variable, and that's the formula.
+* A supported primitive function.
+    In which case, all the argument types to the primitive are supported.
+    Compute the SMT formula for all argument types, and construct the formula
+    for this type based on that.
+* An unsupported primitive function.
+    Compute the list representation for all the arguments.
+    The result is a list:
+    [(pa && pb && ..., f va vb ...) | (pa, va) <- a
+                                    , (pb, vb) <- b
+                                    , ...]
+    Then convert into an SMT formula as described above.
+
+Now, let's consider unsupported types. The constructor may be:
+
+* A concrete value: form [(True, v)]
+* An unsupported primitive function:
+    Compute the list representation for all the arguments.
+    The result is a list:
+    [(pa && pb && ..., f va vb ...) | (pa, va) <- a
+                                    , (pb, vb) <- b
+                                    , ...]
+
+And that's it! Simple. Complete. And done.
+
+Assuming you don't have issues with infinite lists for unbounded types, but
+that's a separate issue which we have to solve other ways anyway, so I'm not
+too concerned about it.
+
+This is really cool. Simple. It means we can make any program you write in
+Smten work, even if it mixes unsupported types. It means we can take advantage
+of any SMT background theory you provide, even unforseen. It means we taylor
+the translation process to each and every SMT solver.
+
+So. That's the theory part. Now for the question of implementation.
+
+Let me start with my goal: to produce an implementation equivalent in
+functionality to the master branch (minus the SMT monad), which incorporates
+the latest cleanup stuff I've done.
+
+That is, I do not need a fully general implementation to start. I don't want
+one. I want something working.
+
+In particular, let me assume you don't declare a free variable of type
+unsupported by the SMT solver you are using. And that the only primitives any
+SMT solver may support are those I have explicitly listed. And that the only
+types any SMT solver may support are Bool, Integer, and Bit.
+
+Just to get off the ground, and back in sync with the master.
+
+One thing I probably should do is allow Integer to be optionally supported, so
+yices and STP can both work still. That hopefully will fall out from labeling
+some of the SMT primitives as supported or not.
+
+Here's what I want to have from every type:
+* A way to realize a concrete value for it given an assignment.
+* A way to produce an SMT formula for it assuming it is supported by the
+  solver.
+* A way to produce a [(Formula, a)] list for it.
+
+To start, I can assume we have some way to query if the base primitives are
+supported... Or rather, I could say some way to query if we are using STP,
+which comes to be a similar thing. Whatever is easiest I suppose.
+
+Do we need anything else? I don't think we do.
+
+This is very nice. It should clean up a bunch I hope.
+
+So I'm proposing the following:
+
+class SmtenHS a where
+    -- Apply the assignments to the given type.
+    -- This should be able to support partial assignments.
+    realize :: Assignment -> a -> a
+
+    -- Create a primitive for the given type.
+    primitive :: Primitive a -> a
+
+    -- Compute an SMT formula for the type if it is supported by the chosen
+    -- SMT solver. If type is not supported by the solver in use, behavior is
+    -- undefined.
+    formula :: a -> SMT (Formula a)
+
+    -- The list of concrete values this object represents, and the conditions
+    -- under which it takes those values.
+    concretes :: a -> SMT [(Formula Bool, a)]
+
+    -- Ignores the argument value.
+    -- Returns True if the SMT solver supports this type. False otherwise.
+    supported :: a -> SMT Bool
+
+Assignment is abstract. You can look up a value in the assignment:
+    assignment :: Assignment -> Free a -> a
+The lookup always succeeds. It may or may not return a concrete value.
+
+Formula is abstract. It will be a wrapper around a pointer that the SMT solver
+can interpret or not. Likely it will just be Dynamic, so it can handle any
+type needed by a new SMT solver.
+
+SMT is the monad for building an assertion (currently called AM). For each
+SMT-supported primitive, there is a function in the SMT monad you can use to
+create an SMT formula corresponding to that primitive.
+
+I think I may need a way to ask for the type of an object too. A way to ask if
+a type is supported.
+
+I feel like a good way to start would be to assume nothing but integers are
+supported. Get that working. Then see how much faster we can make something
+run by adding more primitive SMT support.
+
+And now I feel like I need to dive in and write code to figure out what other
+things I haven't figured out.
+
+Before I do that, I want my current code to be in a slightly more stable
+state. I want to try and get shampi working with the array code fixed and
+check it in. Just so we have something.
+
+Let me do that now.
+
+Mon Jun 10 08:57:28 EDT 2013
+
+Good. Shampi works and is fast. That tells me what I need to know. The proof
+of concept of the runtime redesign is done.
+
+It looks as if we may still have a memory leak though. From the imports. Let
+me figure out what's leaking.
+
+I don't know. It says its CAF. Let me not bother with this right now.
+
+So, I would say the runtime branch is as far as I want to take it without
+further prompting from others.
+
+Let me try to get this new approach up and running. What shall I call it?
+
+complete. Or, for short... cmplt. Sounds fine to me. The name doesn't really
+matter.
+
+How to go about this?
+
+Let me think about how I want things to look.
+In a demand driven kind of way?
+
+Here's an idea. Let's drive it from run_symbolic.
+
+I run the stateT.
+I declare free variables.
+I call 'assert'.
+
+So, assert will change.
+In fact, I think assert now just becomes: 'formula'.
+We still have realize.
+
+So, it's important I can implement 'formula', and it's important I can
+implement 'realize'. For each type.
+
+Realize is easy. I already do that.
+
+But... hmm... I should think about how to support the primitives.
+
+Let me do the following. Let me sketch out code for an SMT primitive, and then
+for a non-SMT primitive, and see what they look like.
+
+Note: we say all types support 'primitive' and 'realize' and 'formula'. This
+means Primitive a will have to support those things. Easy enough:
+
+data Primitive a = Primitive {
+    preal :: Assignment -> a,
+    pform :: SMT (Formula a),
+    pcons :: SMT [(Formula Bool), a)]
+}
+
+That's all I need. I hope.
+
+First step: supported primitive: integer add.
+
+add_Integer :: Integer -> Integer -> Integer
+add_Integer (Integer a) (Integer b) = Integer (a+b)
+add_Integer a b = primitive $ Primitive {
+    preal = \m -> add_Integer (realize m a) (realize m b),
+    pform = do
+    pcons = do...
+}
+
+So, two things to figure out. If it is supported, and if it is not.
+
+If supported:
+  pform = do
+        a' <- formula a
+        b' <- formula b
+        add_integer a' b'
+Easy.
+
+If not supported:
+  pcons = do
+     a' <- concretes a
+     b' <- concretes b
+     let join :: (Formula Bool, Integer) -> (Formula Bool, Integer) -> SMT (Formula Bool, Integer)
+         join (pa, Integer va) (pb, Integer vb) = do    
+            pz <- smt_and pa pb
+            let vz = va + vb
+            return (pz, Integer vz)
+     sequence [join a b | a <- a', b <- b']
+
+And mix as needed.
+
+Mon Jun 10 10:08:25 EDT 2013
+
+Thoughts from Nirav: I shouldn't bake the list monad approach into things.
+
+This is actually good. I want to be more conservative.
+
+I have the idea. That's good. That's happy.
+
+Now, for the immediate future, my implementation: if a primitive is not
+supported by SMT, and you use it in an SMT formula, I'll just blow up. We can
+refine things in the future to use, for example, list monad or other clever
+tricks, but for now, for the sake of getting something up and running and
+equivalent to the master branch, don't worry about it.
+
+So... Here's what I want to do:
+
+* Try to come up with an interface to expose to an smten user who just wants
+  to add primitive concrete functionality. Supporting both import and export
+  would be nice.
+
+* Fix the issues I have with that kind of thing when not used in the SMT
+  formula: use a generic Primitive representation for each object.
+
+A key point: for the time being, separate the notion of symbolic primitives:
+those we expect to use in SMT formulas, and concrete primitives: those we
+don't expect to use in SMT formulas. Because trying to unify these is causing
+me problems.
+
+Good. Let me see if I can slowly morph the existing branch into something that
+works better. I can motivate it with test cases.
+
+Oh. Hmm... Specialization for STP may be an issue. Or it may be an opportunity
+to try out the list monad thing. We shall see?
+
+Ug. I don't know. We shall see.
+
+
+First issue to deal with: how to specify concrete primitives.
+
+That is, what is the users point of view on the interface between smten and
+haskell?
+
+My assumption: 
+* any haskell function the user wants to use from smten will be used with
+  only concrete arguments. The behavior is undefined if you use one of these
+  functions in an SMT assertion with a non-concrete argument.
+
+Here is the interface I propose.
+
+Foreign import: syntax like we have.
+ You specify: the name and type on the local side.
+              the name on the foreign side.
+
+You are asserting all arguments to the function are defined in Smten
+AsInHaskell. We can figure out the names of the haskell types based on the
+AsInHaskell declarations (rather than requiring the user to re-export the
+types).
+
+For these functions, I will assume they are only called with fully concrete
+arguments. So there is no worry about strict application or anything like
+that.
+
+The key way to make this work will be to save the arguments and such so that
+we can realize them and get the result afterwards. Then everything here works
+fine.
+
+I believe this interface is now clear?
+
+All except for the issue with polymorphic types. Does this work for
+polymorphic types?
+
+Consider, for example, return_io.
+
+The haskell function is:
+    return :: h -> P.IO h
+
+The smten function is:
+    return_io :: s -> IO s
+
+We need to introduce a proper context which says that there is an instance of
+Haskelly h s. It is up to the user to provide that instance.
+
+Hopefully I should not need this Poly thing. Again, there should be no issue,
+because I don't expect you to use it with symbolic arguments.
+
+There is one question: How do I know if an argument is symbolic or not?
+
+I need this to know if I should apply the primitive right away (what we
+absolutely want for concrete evaluation), or if we need to wait to apply the
+primitive, because the arguments are not yet ready.
+
+Another issue: for polymorphic types, I do, actually, need something like
+Poly. Otherwise there is an ambiguity in what the type 'h' should be. As 'h'
+should be a function of the type 's' used, then the use of something like
+'Poly' makes sense.
+
+The cost of this, for shampi, is the issue with arrays.
+
+Can I fix the array issue using Haskelly1, Haskelly2, etc?
+
+How would this work? The goal is to avoid an extra wrap/unwrap.
+
+We could think of it as if we had a maybe type, and a primitive to return that
+type. Call it fromJust, for the purposes of the example.
+
+With Poly, we have:
+
+smten: fromJust :: Maybe a -> a
+
+Or, rather return_io is a fine example.
+
+return_io :: a -> IO a
+return_io = frhs (return :: Poly a -> IO (Poly a))
+  This requires we wrap the argument in Poly, call haskell return, then unwrap
+  the result.
+
+In the alternative, we have...
+
+instance Haskelly2 (->)
+instance Haskelly1 IO
+
+return_io :: (->) a (IO a)
+return_io = frhs (return :: (->) a (P.IO a))
+
+Does this help?
+No. Not unless we specialize the case where the argument and result are the
+same. In general we still have to convert by calling id for the conversion.
+
+Can we give these special instances? Is there any way to do so?
+
+Idea: don't introduce Poly. Use the same type for Haskell and Smten in that
+case. However I need to specify that.
+
+Then I need an instance of Haskelly a a. I could give that...
+
+One question is, can I give an instance of, say
+
+Haskelly (IO a) (P.IO a) where
+    ...
+
+Which does the right thing?
+
+I could, but only if I didn't give the other, generic instance.
+
+Is there something ghc can do to make that work for me?
+
+I feel like, worst case, I should be able to generate all the explicit
+instances by hand?
+
+Let that stew for a little.
+
+Next thing to think about: exporting smten code to haskell. Assume the same
+things about concreteness. Which is totally fair.
+
+We want to generate a haskell file the user can include, which defines
+functions using the Haskell types specified for the export.
+
+Question: how do I pick the name of the generated haskell file?
+
+Options:
+* generate the wrapper in the generated haskell file.
+    For example: Smten.Lib.Foo, for an export in the module Foo.
+  Problem: if same name is used for local var and exported var, this will lead
+  to a problem, unless the user is aware.
+
+* generate a wrapper in a different module based on name.
+    For example: Smten.Export.Foo, for an export in the module Foo.
+  That's kind of nice. We don't have to worry about any conflicts. Everything
+  is exported to the same file. I like this idea.
+
+* let the user specify exported module:
+    That's... confusing to me.
+
+Okay. I'm happy with the second option.
+
+Good. Then everything else is as we said.
+
+Good. Now, aside from Poly issues... concrete import and export is well enough
+defined.
+
+Another issue with poly: what if it is ad-hoc polymorphic, not parameteric?
+That suggests we want some mapping of type classes too. Ug. Something to worry
+about, but not something to figure out now, I think.
+
+Okay. I've had lots of thoughts. What should I do with those thoughts?
+
+
+Options:
+* do research on the Poly issue.
+  What things can I overload, and how can ghc help?
+  Can I use functional dependencies? Will that help?
+  No. That's actually wrong. Because I may want to convert things different
+  ways? Maybe, or maybe not.
+
+* Figure out how to implement primitives in a way so that they delay
+  evaluation if need be for their arguments to become concrete.
+  Write a proper test case to test for it.
+
+
+Handling of primitives is going to change. I should do that before worrying
+about error, preservation of sharing, specialization (?), fleshing out of
+primitives.
+
+I would like to create a good interface that concrete haskell functions can
+use, so I don't have to keep changing their code.
+
+I would like this interface, ideally, to not require extra boxing/unboxing.
+Especially in the case of Array.
+
+So that should be the priority?
+
+Next goal: figure out, and implement, a concrete haskell foreign function
+import which supports polymorphic functions efficiently.
+
+I want user to specify:
+* fully qualified name of haskell function
+* name and type of smten function
+* AsInHaskell for all data types passed back and forth
+
+We infer the haskell types based on AsInHaskell.
+
+That's the interface. Now then. How can I efficiently support polymorphic
+stuff?
+
+The idea:
+ The primitive is polymorphic.
+ For the time being, let me assume it is parametric polymorphism.
+
+You have a smten type for the polymorphic variable.
+You have a haskell type for the polymorphic variable.
+
+They must be related. We have to know what haskell type to use.
+My claim: they should be the same type. Otherwise there must be some
+conversion, which I want to possibly be able to avoid.
+
+I believe this make sense for ad-hoc polymorphism too. We'll just want to
+define instances of the haskell class for the object based on the smten
+instances. Or something like that. Not to worry about now.
+
+Consider:
+
+    return_io :: a -> IO a
+    return_io_int :: Integer -> IO Integer
+
+Currently I given an instance of Haskelly for any IO a. But it assumes the
+types are different, not the same.
+
+To give an instance assuming the same would lead to an overlap.
+
+That's the challenge.
+
+One solution: generate each instance manually. And treat instances which are
+the same specially.
+
+An alternative: can we do the overloading? Will ghc let us do that in a
+reasonable way? 
+
+That's the question I want to test.
+
+
+Oh. The other thing I have to figure out is how to test if the conversion will
+succeed.
+
+One thing at a time.
+
+Mon Jun 10 11:34:26 EDT 2013
+
+Turns out the answer is yes: OverlappingInstances gives us what we want.
+
+Perfect!
+
+This will let me specialize for PrimArray the way I want.
+
+Or rather, it ought to let me specialize the way I want.
+
+Wonderful.
+
+Well, that's great. That tells me the interface I want.
+
+How should I go about getting it?
+
+I think I should revert my previous change. Or work on a branch from there.
+Fix the Poly issue that way instead of what I did.
+
+Mon Jun 10 11:48:39 EDT 2013
+
+It doesn't seem to be working. Hmm...
+
+Mon Jun 10 12:05:16 EDT 2013
+
+Got it! I had to add some more specific instances, which is odd, maybe.
+Something to keep in mind.
+
+Anyway, that totally fixes the issue, and I think it's much cleaner than what
+I did before, so I'll stick with it. Good!
+
+Now. How do I merge that with the runtime branch?
+
+Don't. Just ditch the runtime branch in favor of polyfix.
+
+Very good.
+
+Now, continuing on with this cleanup. The next step, I would say is:
+* remove the requirement for users to re-export types for primitives.
+Figure out what the haskell types should be based on AsInHaskell instances.
+
+This is also good, because it means I can catch at smten compile time if an
+AsInHaskell instance has been declared or not.
+
+Mon Jun 10 12:33:31 EDT 2013
+
+Some thoughts before I forge ahead.
+
+Handling Integer in STP:
+ - build it into the STP primitives.
+   Make an SMT formula be a Term, or a list for integers.
+ Then it's easy!
+
+Okay. Then here is the plan:
+
+1. Use AsInHaskell to figure out names for haskell types. Not the name of the
+module of the primitive involved.
+a. Add AsInHaskell for the primdatas, and a flag to not generate Haskelly in
+those cases.
+b. Have env function to lookupAsInHaskell :: Env -> Name -> Name.
+  Given name of a smten type constructor, returns the haskell type.
+
+2. Support integers in STP with list monad approach.
+
+3. Give a general way of dealing with primitives which properly handles
+symbolic stuffs.
+
+If I can do all that today, then I'm in pretty good shape.
+
+
+1. There is no reason for charN or integerN to be builtin Prelude.
+Because they don't have special syntax. They are just primitive.
+All the rest have special syntax, so they should remain.
+
+Mon Jun 10 13:12:33 EDT 2013
+
+Trouble: With this new way to identify types, we don't have any way to use a
+different type. In particular, for SMT symbolic primitives.
+
+Sadness.
+
+Fine. Let me not worry about this for now.
+
+Perhaps it will be more obvious later.
+
+2. Support Integers in STP!
+Oh boy. This is exciting.
+
+Mon Jun 10 13:58:24 EDT 2013
+
+And that's done. It's a little messy, but I can clean it up later.
+
+Next step: handle realization of otherwise unsupported primitives properly.
+
+Also known as: come up with a uniform way of representing primitives?
+
+Yes. That's the better way to look at it. Come up with a single, uniform, way
+to represent primitives.
+
+I actually expect this to clean things up a bit.
+
+Let me go and think about it offline.
+
+Mon Jun 10 14:42:40 EDT 2013
+
+I think I found something I can be happy with.
+
+First thing: make the SMT primitive operations, as supported by the SMT
+solvers, dynamic.
+
+That is, AST should disappear, and all those things should go into Solver as
+methods. The SMT solver will hold its own context. The exp type will be
+Dynamic.
+
+Hopefully this doesn't cause excessive boxing/unboxing when generating the
+query.
+
+I can do this in parts. First step: make AST not depend on exp type. Use
+Dynamic instead.
+
+Then, after I've done that, I can move all the methods to Solver very easily.
+
+Let me try to do this in as clean a way as I can.
+
+Can we still cache by type? Probably...
+
+Mon Jun 10 15:52:39 EDT 2013
+
+This is really annoying.
+
+I would much rather give a class instance than give a record object.
+
+I have to rewrite DebugLL now, because it doesn't have access to the high
+level assert. How terribly annoying.
+
+Mon Jun 10 16:20:09 EDT 2013
+
+Next step: try to make a library for Assert.
+
+Things to have in the library:
+
+The important thing is: 'use'.
+But I would like for 'use' to be polymorphic, and I would like a much better
+name.
+
+I want access to a Solver primitive.
+Really, I ought to just be able to *give* the solver primitive. It should do
+all the rest for me. The use. The def. All that stuff.
+
+So really, I should start by using that interface to define everything.
+
+Or, in other words, I pretty much want a single function:
+    (Solver -> a) -> AM Dynamic
+
+Which is polymorphic in the type 'a'.
+
+Um... There is one important thing we haven't talked about. What about
+__caseFoo in an SMT query? Don't I want to automatically use the List monad
+for that?
+
+In which case, don't I want to automatically use the list monad for every
+non-SMT supported primitive? I think the answer is yes.
+
+In order to use the list monad, we need some better infrastructure I fear.
+
+I think use of Dynamic is fine for SMT formulas, but I would like not to loose
+that extra type information.
+
+We have to do a dynamic lookup of things regardless. There is no getting
+around that.
+
+We have to give a default implementation for every primitive, concrete or no.
+We have to use list monad by default.
+
+Note that the number of SMT solvers is limited. And that we can have a
+reasonable default for something.
+
+Here's what I'm thinking. Partly as a reaction to how painful it is to specify
+Solver.
+
+Hmm...
+
+To specify the default, we need the type?
+
+I need to spend more thought on this. Let me do it offline and get back to
+you.
+

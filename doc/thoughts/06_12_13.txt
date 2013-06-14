@@ -1,0 +1,445 @@
+
+Wed Jun 12 06:42:14 EDT 2013
+
+The problem I ran into yesterday: we don't know what type to use for
+abstracting bit vector errors.
+
+For the time being: ignore the problem. Make it a TODO.
+
+In the long run: I think we should make the primitive bit vector type be
+static, not dynamic.
+
+Either way, I'm confident I can make it work eventually, so I'll not worry
+about it right now.
+
+Wed Jun 12 06:57:35 EDT 2013
+
+What I should worry about is how we are supposed to handle errors at the top
+level.
+
+Consider, we have:
+    assert (False)
+    assert (error "foo")
+
+Also known as:
+    assert False
+    if (error "foo")
+        return ()
+        else fail_symbolic
+
+Also known as:
+    assert False
+    error "foo"
+
+Meaning I have to know how to handle an error at the symbolic level.
+
+What does it mean? What can it mean?
+
+It is a symbolic computation which may change the context in any way, and may
+return any value.
+
+Changing the context means adding some sort of assertion. That assertion will
+either be 'True' or 'False'. Or rather, we can abstract it as such. The return
+thing? Just the same error.
+
+So then it's clear. Upon error:
+ * create a new free boolean. 
+ * assert that boolean is true.
+ * return error.
+
+Let's give it a try and see how it goes.
+
+Wed Jun 12 07:24:56 EDT 2013
+
+The answer: Symbolic error is the same as: predicated error fail_symbolic.
+That does it. Now all the error tests pass.
+
+Even though I didn't change mtohs. Oh well. I updated the todo list to include
+those items which I can use to make tests later. I would say, for now, I
+handle errors as well as before, up to test cases, so I'm set enough there to
+take over the master branch.
+
+What's next?
+
+
+Next step: flesh out the integer and Bit tests.
+Given my thoughts on bit vectors, I would rather spend effort on the Static
+bit vector tests, not the dynamic ones.
+
+This sounds easy enough. Let me get to work.
+
+If I can do anything to factor out common code here, I absolutely ought to.
+Because I suspect there will be a lot of it.
+
+1. Integers. Are already done!
+2. Bit vectors:
+
+bv_sign_extend
+bv_not
+bv_and
+bv_or
+bv_concat
+bv_shl
+bv_extract
+bv_truncate
+
+Hmm... I feel like I should fix the Dynamic vs. Static issue for bit vectors
+before adding all these primitives, otherwise I'll just be making lots of busy
+work for myself.
+
+I suppose it is worth a try.
+
+The idea is: give the underlying Bit implementation a numeric type parameter.
+
+This way, in assert, I should always have access to the type info we need? For
+error and such?
+
+My concerns:
+
+* How can assert handle the different types? The possibly infinite different
+  types?
+
+Perhaps I can make the assert implementation type generic with what we have
+first. That will clean things up, and lead the way to different kinds of bits.
+
+* How do we express the Bit_Eq primitive, and other predicates?
+Can we use GADTs for it?
+
+I like the idea of trying to clean up Assert first. Let me go with that one
+for now.
+
+Issues:
+* how to have a cache for each (type, assertcall)?
+* we want 'use' to be a typeclass.
+  Assuming I can figure out the cache thing, this should be easy enough.
+* we want 'def' to be a typeclass.
+
+Well, it's easy enough to make a type class. The real question is, how much
+code can we share, and how much do we need to duplicate?
+
+For 'use', we want the following:
+  lookup :: StableName a -> AM ctx exp (Maybe exp)
+  insert :: StableName a -> exp -> AM ctx exp ()
+  define :: a -> AM exp
+
+Another useful thing would be:
+  decases :: ctx -> Cases a -> AM ctx exp exp
+
+I can do that all now. So let me do that first.
+The real key will be next, trying to figure out how to do the lookup and
+insert in a more general way.
+
+Wed Jun 12 08:27:20 EDT 2013
+
+Now, I have the type class. That's very good progress.
+
+The real trick, to make this work with an infinite number of types, is to
+figure out how to do the caches in a general way.
+
+Let me think about that and get back to you.
+ 
+Wed Jun 12 09:13:05 EDT 2013
+
+The answer is simple. I just want a special kind of stablename based memo
+table:
+
+memoIO :: (a -> IO b) -> a -> IO b
+
+Which does the IO operation the first time, otherwise it returns the previous
+result.
+
+I can certainly implement one myself. Regardless, I should use this
+abstraction and clean up the Assert code.
+
+In fact, memoIO looks very close to the implementation they use.
+
+For now, maybe I can hack up something silly:
+
+memoIO f =
+  let g :: a -> b
+      g = memo $ \x -> unsafePerformIO (f x)
+  in return . g
+
+It's a bit silly, but it should work to start. If it turns out to be slow, I
+can fix it later.
+
+Cool, let me give this a try.
+
+Trouble: we have a ReaderT monad. Can I support that too?
+Or should I skip the monad, pass the context in as an argument, and support
+memo2M? Yes... That probably makes most sense.
+
+Wed Jun 12 09:39:47 EDT 2013
+
+It's not working. Either we aren't preserving sharing, or it's just really
+slow.
+
+Let me try the share tests.
+
+They fail. So the cache is not working as desired.
+
+Is it a problem with the implementation? Or is it a problem with the use?
+
+Let me try to implement a version myself. Initially it will leak, but that
+shouldn't matter. See if sharing works then or not.
+
+Hmm... I don't want to use the unsafePerformIO stuff, because I want things to
+be in order. So I need my own implementation of the table.
+
+Okay. Let me try again.
+
+Wed Jun 12 13:03:15 EDT 2013
+
+I need to get memoIO working. Then I think I can build it on memo the right
+way to get memo2IO. And, if I'm using memo to get memo2IO, then I think I
+don't have to do any other kind of garbage collection, which is nifty.
+
+So, first step: test memoIO in isolation.
+
+memoIO works in isolation.
+
+Now, let me test memo2IO.
+
+The problem is there is a bug in memo2IO. It's not distinguishing based on
+context.
+
+Hmm... memo2 works fine.
+
+I don't know what's up.
+
+memo2IO is sensitive to the second argument, but it is not sensitive to the
+first argument. So we aren't getting a new, memoized function for each
+different context.
+
+Hum.
+
+Wed Jun 12 14:43:57 EDT 2013
+
+Looks like it was an unsafeIO issue. I think I fixed it.
+
+Nope. It's not fixed.
+
+Or rather, the specific problem I was seeing is fixed. I don't know what the
+problem is now with assert.
+
+Wed Jun 12 14:58:37 EDT 2013
+
+We are calling memo2IO too many times. With just the share test, I expect it
+to be called three times. Maybe 2. One for each different type.
+
+But it's really being called much more than that. Hmm...
+
+Oh. Idea: DebugLL could cause it to be called 6 times.
+
+So I turn that off. We still get too many calls.
+
+7 Bool. 20 Integer.
+
+Here's an idea. The functions we provide are polymorphic.
+
+Given a type: you get a function which works for every Solver.
+
+Perhaps what we want is: given a type and solver, you get a function which
+works for it?
+
+Wed Jun 12 15:05:59 EDT 2013
+
+That helped. Now we get: 6 integer and 3 bool, as opposed to 20 integer and 7
+bool.
+
+And now, many more memoIO.
+
+We still do not preserve sharing.
+
+ 1 Assert
+ 3 Bool memo2IO
+ 6 Integer memo2IO
+27 memoIO
+
+What do I expect to have?
+
+There is only one solver:
+    1 Bool memo2IO, 1 Integer memo2IO
+
+There is only one context:
+    1 memoIO for each memo2IO
+
+So there are a couple of problems here.
+
+Why do we have more than 1 bool and more than 1 integer?
+Why do we have more memoIO than we have memo2IO?
+
+Clearly it isn't working right.
+
+We are making a new memoIO table all the time. For every single call to
+'define'. Which means, we are not caching the context. Because I'm sure there
+is only one context.
+
+There are three things my debugging will trace:
+
+1. memoIO2 is called. This is the number of functions which I want to cache.
+I expect three of them: Bool, Integer, Bit.
+
+2. memoIO table is called. This is the number of context * memoIO2s we have.
+Because we have 1 context, I expect this to be the same as memoIO2.
+
+3. memoIO body is called. This is the number of memoIO2s * context * arg we
+have. I expect there to be one of these for each object we pass to define.
+
+Expected:
+memoIO2: 1 bool, 1 integer
+memoIO table: 2 
+memoIO body: X
+
+Actual:
+memoIO2: 3 bool, 6 integer
+memoIO table: 27
+memoIO body: 27
+
+Clearly we are not caching, because we make a new table for every call.
+
+What if I don't use weak pointers? Does that change anything?
+
+There is a fear of leaking, but maybe that's okay to start?
+
+Makes no difference.
+ 
+So, the question is... well, there are many questions.
+
+I see the 27 body firings.
+
+What I don't understand is... why 27 tables?
+Why 3 memoIO2 Bools?
+Why 6 integer?
+
+Oh. There is a question as to whether it is because of recursion.
+
+Let me try making my test case recursive and see if that does anything?
+
+Wed Jun 12 17:55:06 EDT 2013
+
+I suppose the question I have is: is this a problem because of type classes?
+Because if so, it's an artificial problem.
+
+The assertion code isn't so complicated. Nor dynsolver. Not so complicated I
+couldn't make a yices2 specific version, and see if that works better.
+
+I think that is a worthwhile thing to try.
+
+Wed Jun 12 18:05:02 EDT 2013
+
+What this gives us is: 
+  We now call memoIO2 only 1 time for Bool and 1 time for Integer.
+  Which is a good thing. But we still have the problem of running the body of
+  the rule too much.
+
+So I've made partial progress.
+
+I tried recursion in my simple example. No issues there...
+   
+Wed Jun 12 18:18:47 EDT 2013
+
+The short of it, I would say, is ... it just doesn't work.
+
+Why? What could it be?
+
+Maybe I can try to make small strides to the answer, starting from the working
+version, and see where things get messed up.
+
+Working version:
+* explicitly creates all the caches for a given context.
+
+One idea: see if we can make memo functions to read the cache globally based
+on type.
+
+That is: don't associate a cache with a context. Be able to look up the cache
+given the context.
+
+That's worth trying. Let me give it a shot.
+
+Wed Jun 12 18:32:12 EDT 2013
+
+It works. We dis-associate cache and context. That's cool.
+
+Note here I'm leaking caches, because we don't get rid of them when the
+context is collected.
+
+Let me take the next step then: have a polymorphic function for making the
+caches.
+
+Wed Jun 12 18:34:49 EDT 2013
+
+That works!
+
+So now, aside from the memory leak (which I should fix in Smten.Memo), I have
+exactly what I need. A cache for each type of object.
+
+Wed Jun 12 18:50:55 EDT 2013
+
+Trouble: shampi has slown down considerably. I don't know why.
+
+Let me try to figure out why.
+
+It's the support for Errors that I added.
+
+I suspect because I haven't really thought out how I should deal with cases or
+error properly. But do we expect any errors here? I don't think we do.
+
+Ug. I don't really want to deal with that right now. Is there some way I can
+revert that code, and continue playing with this Assert cleanup and static bit
+vectors?
+
+Wed Jun 12 19:28:43 EDT 2013
+
+Here's the deal:
+* Adding support for errors hurts a ton.
+* Looking up cache in Assert by context every time costs a bit:
+ ** with memory leaking: 30s over 10s
+ ** with no memory leaking (using addFinalizer): 22s over 10s
+
+That's bad. 2x performance loss...
+
+Is there any way I can associate an unknown number of share caches with a
+context?
+
+In other words... I have a context, and I know the call site of 'use' based on
+type. So there should be some fast way to figure out, given a context and the
+call site, what cache to use.
+
+The thing is, the cache to use depends on the type. And if there are many
+types, someone has to do a lookup.
+
+Perhaps I can approximate.
+
+Certainly I could have just one cache. I feel like it's great if we can split
+by call site. What if I compromise: one cache for bool, one cache for integer,
+and one cache for all BitN?
+
+This shouldn't be so bad. Just coerce to the Any type.
+
+There. It's settled then.
+
+So, where are we left then?
+
+* I need to figure out why Error support slowed things down so much and fix
+  it.
+
+This I can figure out by incrementally adding error support, watching
+performance at each step.
+
+It could be:
+* double checking the result expression. (easy to try on its own)
+* having the extra case match against Foo_Error.
+
+I'm not sure what else it could be.
+
+Is there any better way we can handle error, which will work fast in the
+absence of errors?
+
+Presumably I could set some flag indicating if we saw 0 errors, and make that
+special case fast. But how likely is that?
+
+For example, our Datatype tests run into potential errors for silly reasons.
+
+Well, I have some things to think about.
+

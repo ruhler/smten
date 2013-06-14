@@ -1,0 +1,842 @@
+
+Wed Jun  5 08:33:34 EDT 2013
+
+Lots of thoughts.
+
+Involving both errors and preservation of sharing, which turns out to go hand
+in hand.
+
+Let me see how nicely I can summarize my thoughts.
+
+The idea behind smten, roughly, is every object has explicit error which we
+can recognize (this is a bit of a hack, as really we should be able to treat
+error and non-termination the same, but in practice, it is important in the
+foreseeable future). And every object can be joined in a mux.
+
+What we need to understand, now, is how work is done. Work is done in three
+places. 1. case matching. 2. beta reduction. 3. primitive functions.
+
+For each case, we want to understand:
+ a. how is the concrete case handled (this is normally easy).
+ b. how is the explicit error case handled.
+ c. how is the mux case handled.
+
+Preservation of sharing comes from muxes, because it is often the case that a
+mux contains duplicate values for different conditions. The canonical example
+is the mux:
+    if p
+        then if q
+                then a
+                else b
+        else b
+
+The object 'b' shows up multiple times. Any work we do with 'b' as a part of
+this mux we only want to do once.
+
+Representation of objects:
+Every object is represented with:
+ * concrete constructors
+ * explicit error constructor
+ * explicit mux constructor
+
+Except for:
+ Functions. Which are represented as functions.
+ The Symbolic monad. Which is represented as an opaque State monad.
+
+These two exceptions will be important to consider.
+
+But first, the standard case.
+
+1a. Case matching of concrete values.
+ All algebraic data types represent concrete constructors explicitly.
+ This is easy.
+
+1b. Case matching of explicit error.
+ All algebraic data types represent error explicitly.
+ This is easy.
+
+1c. Case matching of mux.
+ All algebraic data types represent mux explicitly.
+ This is easy:
+    case x of
+        ...
+        FooMux p a b -> mux p (__caseBlah a y n) (__caseBlah b y n)
+
+ To preserve sharing, we would change this to something like:
+    ... well, what would really happen is we would memoize every __case?
+    Yes. Or we could create a specific recursive function to memoize:
+        let g = memo $ \x -> case x of
+                         Blah a b c -> y a b c
+                         Err s -> err s
+                         Mux p a b -> mux p (g a) (g b)
+        in mux p (g a) (g b) 
+
+ If that is faster then memoizing everything (and I imagine it could be quite
+ a bit so), then that would be worth doing. Perhaps.
+
+ Perhaps an important point is: we can arrange it so we only introduce the
+ memoization when we see a Mux.
+
+2a. Concrete arguments to primitives.
+ This is easy. It's what we already do.
+
+2b. Explicit error to primitives.
+ This we don't do properly in the current approach.
+ I propose the following: We assume all primitive functions are strict in all
+ arguments. And we say we can't propagate errors from the primitive functions
+ back to smten. This is consistent with how haskell FFI works, so I'm fine
+ with that.
+
+ Then what I want to do is recognize the Smten types.
+ For a given type, I would like to be able to convert it to:
+    Concrete a
+  | Error R.String
+  | Mux R.Bool a a
+
+ Where here the 'a' is a haskell data type. This is important, because it
+ means 'a' is completely concrete. For example, if 'a' is a string, we
+ represent it as a concrete string.
+
+ Perhaps I should make this part of Haskelly. Give the ability to convert, not
+ to a Maybe a, but to this structure. Then we represent things exactly as
+ needed, and in general we can handle primitives as desired, because we have
+ concrete, explicit error, and mux. Preservation of sharing will work the same
+ as for case.
+
+ This works for algebraic data types. Data types such as: Symbolic, Function,
+ IO should be considered separately.
+
+2c. See discussion in (2a).
+
+I should also mention that we have such things as SMT primitives. For the time
+being, those will all be implemented by hand, and will always hit the Concrete
+case, so there are no special issues with those to worry about.
+
+3a. Standard beta application. This is easy.
+
+3b. Applying a function which is explicit error to an argument.
+The result should be error. This means we can represent 
+    (error :: String -> (A -> B)) as the function:
+    (\a -> error :: String -> B)
+Because it has the desired behavior at application.
+
+The one issue we have is when passing the function as an argument to a
+primitive. But I am leaving that discussion for later.
+
+Otherwise this works fine, and serves as a fine way to represent errors for
+function types.
+
+3c. Applying a function which is a mux to an argument.
+We can use the approach that muxing two functions leads to a function whose
+result is the mux of the application of the functions. That works fine if you
+don't care about preservation of sharing. If you do care about preservation of
+sharing, then there are issues.
+
+
+So, in summary, everything is fine except:
+ * representing Mux and Error for functions for the purposes of primitives.
+ * representing Mux and Error for Symbolic for the purposes of primitives.
+ * representing Mux and Error for IO for the purposes of primitives.
+ * Preservation of sharing in muxing of functions.
+
+Here is an idea.
+I can keep a table which says, for interesting functions, whether it is a mux
+or an error. That means, for interesting cases, I can look up to see if it is
+a mux or an error, and handle it properly.
+
+So long as I don't have overhead of this from a concrete evaluation path, I'm
+okay with it. It should be fine.
+
+The question is... can it actually be done?
+
+error: yes, make a new function, then add an entry saying that function is the
+given error.
+
+mux: yes, make a new function, then add an entry saying that function is the
+given mux.
+
+We could do this for other kinds of objects too. Including Symbolic and IO.
+
+Symbolic is never a mux, because we have a clean way of joining things... But
+maybe that needs help for preservation of sharing too?
+
+There are some other issues to be concerned about. But let me make another
+summary of things to figure out:
+
+* For every type, how to convert to:
+    Concrete a | Mux R.Bool a a | Error R.String
+
+* For function application, how to preserve sharing.
+
+Let me spend a little time thinking about preservation of sharing. When is it
+important? Can we avoid the issues with it somehow?
+
+The reason preservation of sharing comes up is because we have these mux
+structures, which may contain duplicate values. We then try to do work on
+those mux structures.
+
+One idea is we could try to change the mux structure.
+
+Instead of: Mux Bool a a, which leads to a tree, perhaps we could change it
+to:
+    Mux [(a, Bool)]
+
+What this says is: for each value this expression could take, it says what the
+predicate is under which that expression is relevant.
+
+Why is this valuable? Because it means I can avoid duplication of the argument
+'a'. Rather than:
+    if p then if q then a   
+                   else b
+         else b
+
+We have:
+    a: if p then if q then True else False
+    b: if p then if q then False else True
+
+Now, I can do my work easily on 'a' and 'b', and just keep the predicate as
+is, because it is still valid.
+
+To maintain this properly, anytime I mux two things, I should take the union
+of them (disjunction of predicates). Anytime I do work, I should take the
+union of the results, for example if two different arguments lead to the same
+result.
+
+Basically I could abstract it away into a special kind of map which makes sure
+to represent sharing explicitly.
+
+Why is this good?
+ * We don't need memo tables to preserve sharing at runtime anymore.
+ * We only incur the cost of preserving sharing when we mux things.
+ * We don't have to do a traversal for work.
+
+Why is it bad?
+ It may be costly to duplicate the predicates if they are expensive. I'm not
+ sure.
+
+Now, does this address the muxing of functions?
+
+It can. It can using the trick I talked of before.
+
+Basically the idea is, whenever you mux two functions, lookup in a shared
+table to see if they are themselves muxed, and if so, what the contents are.
+Then join the submuxed things, save that, and create your function from it.
+
+Perfect!
+
+Note though, the solution to the muxing problem for functions is independent
+of how I represent muxes: as trees or not. Just so long as I have some way to
+represent them.
+
+Now, it seems to me like we may wish some common library for handling muxing.
+This way I could experiment with different approaches.
+
+What would the muxing library look like?
+
+data Mux a = ...
+singleton :: a -> Mux a
+mux :: R.Bool -> Mux a -> Mux a -> Mux a
+apply :: (a -> b) -> Mux a -> Mux b
+demux :: (a -> b) -> (R.Bool -> Mux a -> Mux a -> b) -> Mux a -> b
+
+If I can make use of a library like this, I definitely should.
+It will make my life much easier. The power of abstraction...
+
+Cool. I think that solves all my problems then. Good. That's the route I
+will, eventually, plan to take.
+
+For now, let me not worry so much about preservation of sharing, because I'm
+confident, with the above discussion, I can handle it.
+
+Let me instead worry about the immediate issue: proper handling of explicit
+errors.
+
+Actually, the real issue currently is muxing in primitives. So let me handle
+that first.
+
+1. Change Haskelly tohs to return a type which is either concrete or choice.
+2. Change primitives to propagate choice properly.
+
+That should resolve the current issue with failing test cases. The next step
+will be to add tracking of explicit error.
+
+Um...
+
+I'll probably want my Mux library first. Because I really need to return a
+mux.
+
+In the interest of making forward progress and letting things stew a little
+before they get crazy, let me let this sit a little. Comment out the failing
+tests. Try to add Yices1 back in, and maybe STP too.
+
+Wed Jun  5 09:54:44 EDT 2013
+
+I want to do the following:
+* Verify deriving of Eq is proper.
+    (==) (A a1 a2 ...) (A b1 b2 ...) = (a1 == b1) && (a2 == b2) && ...
+    (==) (B a1 a2 ...) (B b1 b2 ...) = (a1 == b1) && (a2 == b2) && ...
+    ...
+    (==) _ _ = False
+
+* Implement deriving of Ord
+    (<=) (A a1 a2 ...) (A b1 b2 ...) = (a1 < b1) || (a1 == b1 &&
+                                            (a2 < b2) | (a2 == b2 &&
+                                                ...   (aN <= bN)
+    (<=) (A a1 a2 ...) (B b1 b2 ...) = True
+    ...
+    (<=) (B a1 a2 ...) (A b1 b2 ...) = False
+    (<=) (B a1 a2 ...) (B b1 b2 ...) = (a1 < b1) ...
+    ...
+
+* Implement proper definition and deriving of Show.
+
+That will make me feel good. Even though it isn't really directly related to
+me getting things up and running.
+
+Wed Jun  5 10:50:53 EDT 2013
+
+Good. Ord is done. That makes me happy.
+
+Now for show...
+
+I suppose first I should try to figure out how show should work.
+
+We want to derive:
+
+showsPrec :: Integer -> a -> String -> String
+showsPrec d (FooA) = showString "FooA"
+
+* single constructors: show them directly. They are atomic.
+
+Here's the plan: I'll do some manually, just to get the hang of how I want to
+derive things.
+
+The existing version of auto-derived show can be used.
+
+Wed Jun  5 13:36:51 EDT 2013
+
+I finished up what I want to do of the Show stuff.
+
+Now I really need to make forward progress on the rest of the stuff. And
+because I feel like I haven't implemented anything major yet today, I want to
+make sure I do.
+
+Here's the deal.
+
+The current failing test case is because of primitives. I want primitives to
+be able to properly handled muxed inputs. In a little bit, we'll want them to
+also properly handled error, but let me not worry about error right now.
+
+I want the following:
+  tohs :: s -> Mux h
+
+Hmm... But really, we don't always want a Mux, because that could be
+expensive. I don't want any muxes for concrete evaluation. So have a wrapper.
+
+data Mux a = Concrete a
+           | Mux R.Bool (Mux a) (Mux a)
+
+data ToHS a = HS a
+            | Mux a
+
+tohs :: s -> ToHS h
+
+Using this, I should be able to redefine frhs of (->) so that Char works.
+
+A consequence of this is that we will have to change how haskelly is derived.
+
+Can we make use of Mux in the definition of generic objects? Would that help
+with anything?
+
+The only thing it would help with is the implementation of haskelly...
+
+Well, and be a common library for preservation of sharing, which will be
+important. So let me think about this.
+
+data Foo = Foo A
+         | Mux Foo
+
+That makes sense.
+
+Now for case we can use the Mux functions.
+
+Yes. This is, I think, the way to go.
+
+In which case, the first step should be switching everyone over to Mux rather
+than handling primitives.
+
+* switch over to mux, get the existing test cases to pass.
+
+Wish me luck. I don't know what issues I'm going to run into yet.
+
+The trouble here is we have duplication which I don't like.
+A Mux stores a concrete value and the mux structure. So, how do I represent
+True? As: True or Concrete True?
+
+How about this. Let me not change data types to use Mux. Let me start with
+using Mux just for primitive application. And when I'm more familiar with how
+it works, I can consider using it elsewhere.
+
+So, now then. What do I want to do?
+
+Gah.
+
+Let me go back to the top, and say what the issue is.
+
+The issue is, I want to execute a primitive function on an argument, but that
+argument could be one of many things. In this case, I want to call the
+primitive function on all those things, returning a similar structure.
+
+So, for a generic primitive, I want to know: is it all those things or not?
+
+Maybe the thing to do is to twist it around.
+
+This is all for Haskelly. Haskelly is all for primitives.
+
+What do I really want to do? Functions. In particular, frhs.
+
+Currently:
+    frhs hf sx = frhs $ hf (tohs' sx)
+
+Want:
+    frhs hf sx
+        | isconcrete sx = hf (tohs' sx)
+        | ismux sx = onall hf sx
+
+Or... said another way... we want a map function for every type?
+
+  hsmap :: (ha -> hb) -> sa -> sb
+
+So, for example, for Char this would
+  hsmap f (Char c) = frhs (f c)
+  hsmap f (CharMux p a b) = mux p (hsmap f a) (hsmap f b)
+
+There! In other words, each object is its own Mux.
+
+Now, this seems to have something to do with SmtenHS, because it talks about
+muxing. And, it seems likely we could want to use this hsmap function for
+case evaluation. So, what would it look like to make it part of SmtenHS?
+
+ muxmap :: (a -> b) -> a -> b
+
+Or, rather:
+ strict_app :: (a -> b) -> a -> b
+
+Or, rather:
+ ($!) :: (a -> b) -> a -> b
+
+Or, maybe:
+  seq :: a -> b -> b
+
+Does 'seq' make sense? What does it even mean?
+No. I want a strict apply. Make seq out of that.
+  seq a = const id $! a
+
+So, let's say we have ($!) as a generic member of SmtenHS. How is this to be
+used?
+
+class SmtenHS a where
+    realize ...
+    mux ...
+    ($!) :: SmtenHS b => (a -> b) -> a -> b
+
+What this means is...
+
+Apply the function to the argument. If the argument is a mux, it goes inside
+and muxes the result.
+
+This is different from normal application how?
+
+We promise the function you pass will never see a Mux or an Error. That's the
+key. That's what it means to be strict.
+
+Okay, let's assume that's the case then. Now I can do Haskelly for functions
+as:
+
+    frhs hf sx = frhs ((hf . tohs') $! sx)
+
+Which means tohs' should always succeed, because we have the mux.
+
+Is there any point in having tohs fail and return Nothing? Nothing doesn't
+give us enough information to do anything with. Nobody is going to say: you
+are Nothing, so I'm going to act differently.
+
+Okay!
+
+Now we have a plan forming.
+
+Haskelly changes to:
+    frhs :: h -> s
+    tohs :: s -> h
+
+With the behavior that if a conversion can't be made, it leads to an error.
+The idea is, we do strict application to make it so conversion can always be
+made. As I've said above.
+
+This should simplify things I think.
+
+Now, the question that remains to me (though admittedly there is a general
+all-around fuzziness), is how things like String arguments will work. How can
+we make sure we merge and lift and push things as needed to get the concrete
+string together all at once?
+
+Basically, what I want is:
+    Foo a (if p then b else c)
+
+Turns into:
+    if p then (Foo a b) else (Foo a c)
+
+I want to apply the constructors strictly? Would that do it?
+
+Let me look at some types. Some proposals for how to do this string
+conversion, and see if they hold up or not.
+
+Goal: apply a haskell function to a Smten string, resulting in a properly
+muxed result.
+
+Call the haskell function: hf
+Call the smten object: sx
+Call the smten result: sy
+
+First attempt:
+    sy = (hf . tohs) $! sx
+
+Types:
+    sx :: S.String
+    sy :: S.String
+    hf :: P.String -> P.String
+    tohs :: S.String -> P.String
+
+This is not well typed. The result of the haskell function is a haskell
+string. We end up muxing prelude strings instead of smten strings.
+
+And this depends on having tohs for the type String, which is what we are
+trying to define!
+
+Okay. Let me instead think about tohs for list, if I can?
+
+Nil goes to []
+Cons a b goes to: (:) ...
+
+I'm confused now. tohs has to be recursive with ($!)?
+
+
+Wed Jun  5 14:55:36 EDT 2013
+
+Here's what I propose.
+
+Have a primitive $! defined for each type:
+
+($!) :: SmtenHS b => (a -> b) -> a -> b
+($!) f (Err msg) = err msg
+($!) f (Mux p a b) = mux (f $! a) (f $! b)
+($!) f x = f x
+
+We can implement seq on top of ($!) at the user level easily:
+
+seq :: a -> b -> b
+seq a = const id $! a
+
+Use the primitive ($!) for implementing __caseFoo:
+
+__caseFooX :: Foo a b ... -> (X1 -> X2 -> ... -> z__) -> z__ -> z__
+__caseFooX x y n =
+    let f = \v -> case v of
+                    FooX x1 x2 ... -> y x1 x2 ...
+                    _ -> n
+    in f $! x
+
+This is slightly disturbing, because it seems we reate a new function f for
+every case instance. That's not what I want. So I should turn it around:
+
+__caseFooX (X1 -> X2 -> ... -> z__) -> z__ -> Foo a b ... -> z__
+__caseFooX ...
+
+Ug. Is there no way to get around it?
+
+I suppose I could inline case now?
+
+(\v -> case v of
+         FooX x1 x2 ... -> y x1 x2 ...
+         _ -> n) $! x
+
+No. Then I have to worry about name issues I'd rather avoid.
+
+At least now the function 'y' is fully applied. Perhaps that's what's
+important.
+
+We need to create a closure for every call site. There is no way to get around
+that. Because we need to potentially apply the function to multiple places.
+
+Unless! Unless we inline it so that we don't have to create the closure in the
+concrete case:
+
+__caseFooX :: Foo a b ... -> (X1 -> X2 -> ... -> z__) -> z__ -> z__
+__caseFooX x y n =
+    case x of
+       FooX x1 x2 ... -> y x1 x2 ...
+       FooMux {} -> (\v -> __caseFoo v y n) $! x
+       _ -> n
+
+Note: this may be necessary, because remember $! is not deep seq, it's just
+one level. So, in the above, even though __caseFoo is sure to encounter ...
+
+I don't know. I don't think it matters. But I do thing the above code is the
+right way to express it.
+
+Cool.
+
+Of course, when we go to preserve sharing, we'll want something like:
+
+($!) :: SmtenHS b => (a -> b) -> a -> b
+($!) f =
+  let g = memo $ \v -> case v of
+                         Err msg -> err msg
+                         Mux p a b -> mux (g a) (g b)
+                         x -> f x
+  in g
+
+Fine. Good.
+
+I should have enough now. Don't worry about symbolic strings passed to error,
+or things like that yet?
+
+Well, it's an interesting question. Can we provide a deep seq primitive?
+
+Let me start by not worrying about sharing.
+
+($!!) :: SmtenHS b => (a -> b) -> a -> b
+($!!) f (Err msg) = err msg
+($!!) f (Mux p a b) = mux (f $!! a) (f $!! b)
+($!!) f (Foo1 x1 x2 ...) = f $! (Foo1 $!! x1 $!! x2 $!! ...)
+($!!) f (Foo2 x1 x2 ...) = f $! (Foo2 $!! x1 $!! x2 $!! ...)
+    ...
+
+Is this right?
+
+Foo1 $! x1  -- should return something that may have ifs, but only outer
+level?
+
+Let me start more simply.
+
+The easy case:
+($!!) f Foo1 = f Foo1
+
+Single argument: ($!!) f (Foo1 x)
+
+The argument may have ifs, so what I first want to do is push Foo1 inside it.
+Of course, the argument may also have other things insdie, so I want to deeply
+push Foo1 inside it.
+
+For example, consider:
+
+    Just (if p then 1 
+               else 2)
+
+or: Just (if p then (if q then 1 else 2)
+               else 3)
+
+Err... there is no difference here, is there.
+
+for: Just x:
+
+Just (if p then (Just True)
+           else Nothing)
+
+Just (if p then (Just (if q then True
+                           else False))
+           else Nothing)
+
+now let's look at:
+    Just $! x:
+    
+if p then (Just (Just True))
+     else (Just Nothing)
+
+if p then (Just (Just (if q then True
+                            else False))
+     else (Just Nothing)
+
+Which is not as deep as I want. I really want:
+
+if p then (if q then Just (Just True)
+                else Just (Just False))
+     else Just Nothing
+
+Single argument: ($!!) f (Foo1 x)
+
+f $! (Foo1 $!! x)
+
+Good. Then I think I got it right.
+
+But! I want to make sure polymorphic things are okay.
+
+For poly:
+
+($!!) f (Poly x) = f (Poly x)
+
+Because Poly traps things.
+
+Now, my current claim is:
+  We want ($!) for case expressions.
+  We want ($!!) for primitive functions.
+    Poly lets us look at it not expanded out.
+    Simple primitive types are same as ($!)
+    Strings, Arrays, Lists, those sorts of things we really want deep seq on.
+
+Or! For those primitives which want deep, they can manually deal with it?
+
+That way I can say we want ($!) for case expressions and primitive functions.
+    
+In other words... For now, for the purposes of getting the Char thing working
+correctly?
+
+make ($!) work.
+
+We'll want and need it anyway.
+
+Thus! Finally, I'm going to go ahead with a concrete proposal. Even though I'm
+not yet totally satisfied with everything.
+
+Goal: Get Core.Char working with Yices2.
+How:
+
+1. add: strict_applyN method to SmtenHSN class.
+2. Implement strict_applyN for everything
+3. Use strict_apply0 for the Mux case of __caseFoo
+At this point I should be able to run the existing tests, and they should
+still all work.
+
+4. Change tohs to not be a Maybe type.
+5. Change The implementation of frhs for (->) to use strict_apply.
+At this point, the Core.Char test should work.
+
+I can continue to worry about deep strict apply later.
+
+Cool. I'll dive in. Wish me luck.
+
+Wed Jun  5 16:36:34 EDT 2013
+
+Done. Everything went smoothly. And my goal has been met.
+
+What's the next step?
+
+We now have all the core tests up and running for Yices2. That's good.
+
+Let me now try to get them up and running for Yices1 and STP.
+
+We can say my primary goal to start is to get shampi going?
+err... not sure.
+
+I just have a lot of work to do. Let me do the grunt work.
+
+Start with: Yices1. Then STP. That's easy enough grunt work to do this late in
+the day. For tomorrow, I suppose the big thing ought to be handling of
+Explicit errors.
+
+Wed Jun  5 17:10:51 EDT 2013
+
+Yices1 works without a hitch.
+Next step... STP?
+
+Yes. Let me put it in place, then see how much I can get working without
+specializing integers.
+
+I have a plan for how to specialize away integers which I'm a bit excited
+about.
+
+Wed Jun  5 17:33:44 EDT 2013
+
+Hmm... Looks like I'm already getting rid of Integers, which is concerning. I
+would much rather not be...
+
+But! Maybe I shouldn't worry about it for now. That's a performance issue to
+note down and worry about later.
+
+Okay then! What's next?
+
+How about: figure out what other integer primitives I would like to have.
+
+Currently we have: equals, add, subtract.
+Things we used to have?
+
+Well, I suppose the answer is to add more Integer tests, and make them work
+correctly.
+
+Sounds like a plan to me.
+
+Integer tests work now. I only needed to add <=. Which is really fine for me for
+now.
+
+Wed Jun  5 17:58:33 EDT 2013
+
+What's next now?
+
+Well, if our goal is to get shampi to run, as a sort of test of performance,
+we need bit vectors and arrays. bit vectors need numeric types.
+
+I'm thinking that I might like to have two versions of Bit vectors. A version
+with static types, and a version with dynamic types. I can have the static
+types be just a wrapper over the dynamic types.
+
+The value of this is: for primitives, I only have to deal with dynamic types.
+It's easy. Including down to the SMT solver?
+
+Wait. There is an issue with dynamic types. Which is even though we say they
+are dynamic, we want the width arguments to be static. Or rather, more to the
+point, we want the width arguments to be Concrete.
+
+You know what this suggests? What it suggests to me anyway?
+
+No. Neither do I.
+
+Regardless! I think I want to take numeric types out of the Prelude, and put
+them in Smten.Numeric. Just to have better separation and keep the prelude
+clean.
+
+If Bit is dynamically sized, I know how to support it as an SMT backend
+primitive. And this makes sense to me. We can always make a safe wrapper over
+the dynamically sized version.
+
+Something like:
+data Bit = { primitive }
+
+-- give the width and value
+__mkBit :: Integer -> Integer -> Bit
+
+And everything else is easy.
+
+Then, when you want numeric types:
+
+data Bit #n = Bit UnSized.Bit
+
+It's just a phantom type.
+
+fromInteger = __mkBit (valueof (undefined :: #n))
+
+Yes. I do like that.
+
+So I think the next step is to implement dynamically sized bit vectors.
+
+I will put them in: Smten.Bit.Unsized
+
+Make all the primitives work with those.
+And test those.
+
+In fact... I can change shampi to use these untyped bits directly, because I'm
+not worried about type safety there. That way I can try out performance, get a
+sense of where we are, that sort of thing.
+
+Cool. Sounds like a plan. I will follow up later.
+
+Wed Jun  5 20:57:15 EDT 2013
+
+For bit vectors, for shampi, I want the following:
+
+* make bit
+* test for equality
+* test for less than equal
+
+Those are the only things I need. That would be a great set of primitives to
+start with.
+

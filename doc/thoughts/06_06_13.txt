@@ -1,0 +1,386 @@
+
+Thu Jun  6 08:47:40 EDT 2013
+
+I changed the compiler to automatically import what is needed for primitives.
+
+Next I would like to change it... a little bit anyway, to import primitive
+data types properly too.
+
+I'm thinking the following:
+
+Each primitive data type is associated with a (fully qualified) Haskell type.
+So what we do is:
+ * import the Haskell module
+ * make a type synonym for it locally.
+
+Let me see if I can get that to work.
+
+Thu Jun  6 08:53:38 EDT 2013
+
+Slight trouble: what about __caseTrue and __caseFalse?
+What about the data constructors True and False? And Char and Integer?
+
+Sigh.
+
+So, I had to fudge things a little. In other words, I'm not happy, really,
+with where I'm at now. I'll have to think more on this.
+
+Ug! I really want to clean this up. I only wish I could figure out how.
+
+It's worth spending some time to think about now before charging ahead.
+
+Okay, let me break it down then.
+
+Some things I want to specify in haskell. Some things the user will want to
+specify in Haskell. Some things you can't specify in the language. Some things
+you can specify in the language. Let me organize by types, and see what the
+situation is.
+
+I should have a uniform way of adding user defined types and functions which
+may or may not depend on SMT?
+
+Type Categories: 
+* (->) 
+* Special syntax algebraic: (), [], (,) 
+* Algebraic (user defined, entirely within language) minus Bool
+* Primitive, non-SMT data types: Char, Int, IO, Symbolic, Array
+* Primitive SMT data types: Bool, Integer, Bit
+* Poly type
+Note: Char and Integer can be associated with haskell literals.
+
+In order to use a primitive function, we need an instance of Haskelly defined.
+Haskelly can convert between a smten type and a haskell type. You specify the
+function as a function of the Haskell type, it wraps it in the Smten type.
+Note that the smten and Haskell types can be the same, if you know about the
+Smten type.
+
+Every Smten type must be an instance of SmtenHS: 
+  mux, realize, strict_app.
+
+Use frhs to convert a haskell type to smten.
+This we can use for:
+    Integer literals,
+    Char literals,
+    Bool constructors True and False
+
+Other things can be specified as primitives:
+    __caseTrue, __caseFalse, for example, could be defined as primitives.
+
+I do worry slightly about the cost of representing __caseTrue and __caseFalse
+as primitives, but maybe that isn't really an issue.
+
+Or, maybe can just rewrite __caseTrue and __caseFalse to hard coded values.
+Smten.__caseTrue and Smten.__caseFalse, because they really are so special.
+
+Yes! Good! I have a plan.
+
+My plan is as follows:
+
+Smten.Runtime.SmtenHS:
+    defines Bool type.
+    defines SmtenHS classes and Boolean instance of it.
+    defines __caseTrue and __caseFalse
+    defines Poly.
+    defines Haskelly class, Bool instance, Function Instance, Poly Instance.
+
+Smten.Runtime.Integer:
+    defines Integer type, SmtenHS instance
+    defines __mkInteger
+    defines an instance of Num for the Integer type.
+
+Smten.Runtime.Char: will define Char type, SmtenHS instance
+    defines __mkChar
+
+Smten.Runtime.Bit: will define Bit type, SmtenHS instance
+Smten.Runtime.IO: will define IO type, SmtenHS instance
+Smten.Runtime.Symbolic: will define symbolic type, SmtenHS instance
+
+Character literals are written as: (Smten.__mkChar 'x')
+Integer literals are written as: (Smten.__mkInteger 42)
+True is written as: (Smten.True :: Smten.Lib.Prelude.Bool)
+False is written as: (Smten.False :: Smten.Lib.Prelude.Bool)
+__caseTrue is rewritten as: Smten.__caseTrue
+__caseFalse is rewritten as: Smten.__caseFalse
+
+__mkChar, __mkInteger, __caseTrue, __caseFalse, True, and False
+ are all imported specially qualified as Smten in every file.
+
+
+Wait. I have another idea.
+
+How about this: A primitive data type can be imported. To import the primitive
+data type, you import an entire module qualified as the current module.
+
+How would this look then?
+
+Smten.Runtime.SmtenHS:
+    defines Bool type.
+    defines SmtenHS classes and Boolean instance of it.
+    defines __caseTrue and __caseFalse
+    defines Poly.
+    defines Haskelly class, Bool instance, Function Instance, Poly Instance.
+
+Smten.Runtime.Bool:
+    Rexports: Bool, True, False, __caseTrue, __caseFalse
+
+Smten.Runtime.Char:
+    defines Char.
+    Exports: Char(Char)
+
+Smten.Runtime.Integer:
+    defines Integer.
+    Exports: Integer(Integer)
+
+We have a list (however specified) for each data type which optionally says:
+    Don't generate this code for this data type. Instead import it and
+    everything else related to it from this given module.
+
+Notice: These modules are imported in their entirety. So this should not be
+used for primitives which are otherwise specified.
+
+Really the only purpose is for things that the compiler needs to know about
+specially: __caseTrue, __caseFalse, True, False, Char, Integer.
+
+Primitives must be specified elsewhere, because these things are going to be
+imported wholesale, and we would pollute things otherwise. For this reason, it
+may make sense to create a special Haskell module which only exports what it
+needs to for this purpose.
+
+Hmm... But if this really is the case, the user doesn't really ever need this,
+right? Because we never make use of names that don't exist unless the compiler
+doesn't know about them. So if you want to define a data type, I ought to be
+able to use a type synonym, or just import that type from the specified
+module.
+
+Okay, in this case, I propose another approach. Everything special I will do
+specially.
+
+Okay, so this suggests a different approach again.
+
+Basic things:
+
+1. To define a new primitive type with no constructors:
+    Specify a haskell module which exports the type constructor and gives
+    instances of SmtenHS and Haskelly.
+
+    We will import this module qualified as the local module, importing only
+    the declared type.
+
+This works for: Symbolic, Char, Integer, Bool, IO, Bit, Array, etc...
+
+2. To define a primitive function:
+    Specify a haskell module which exports the function, 
+    and exports every data type involved in the function.
+
+    We will import this module qualified and use frhs, and Poly and type
+    rewriting as is currently done.
+
+3. Special builtin stuff:
+    Smten.__mkChar for character literals
+    Smten.__mkInteger for integer literals
+    Smten.__mkTrue for True
+    Smten.__mkFalse for False
+    Smten.__caseTrue for case True
+    Smten.__caseFalse for case False
+    Smten.Poly, etc...
+
+
+There. That makes sense. It makes sense to make __mkFoo special, because the
+user can't ever make use of a __mkFoo function. They can only make use of
+primitives. So they can use approach (2).
+
+Good.
+
+Eventually I'll use a foreign import or pragma to specify opaque primitive
+types. I suspect a pragma is better, so we can use it for Bool, for example.
+
+Now. This should all be happy and good.
+
+Let me give it a try! I hope it works.
+
+First, let me organize how I want to do everything:
+
+Smten.Runtime.SmtenHS
+  defines: Bool, SmtenHS, Haskelly, Poly
+
+Smten.Runtime.Bool
+  defines: Bool, __mkTrue, __mkFalse, __caseTrue, __caseFalse
+
+Smten.Runtime.Char
+  defines: Char, __mkChar
+
+Smten.Runtime.Integer
+  defines: Integer, __mkInteger
+  defines: SMT integer primitives: eq_Integer, leq_Integer, etc...
+
+Smten.Runtime.IO
+  defines: IO
+
+Smten.Runtime.Bit
+  defines: Bit
+  defines: bv_* primitives.
+  exports whichever Bool it needs to. (Eventually the Smten Bool)
+
+Smten.Runtime.Symbolic
+  defines: Symbolic, Symbolic primitives.
+
+Smten.Runtime.Prelude
+  exports Prelude.Char, Prelude.Integer, Prelude.IO
+  primCharToInteger, primIntegerToChar, 
+
+  Any other haskell primitives which can't be specified by direct foreign
+  import of the corresponding haskell Prelude function.
+
+
+The last thing I need is a uniform way of handling auto Haskelly generation.
+
+I think what I would like is to specify for each Smten data type, the module
+of the corresponding Haskell data type to generate it for.
+
+So, for example, I can define Smten.Solver somewhere other than Smten.Solver.
+I really ought to figure out a better place to put this. Can I put it in
+Smten.SMT.Solver? Maybe call the other Solver object something different.
+
+Yes. I like that. Good. Err... Something like that.
+
+Maybe: Smten.SMT.Solver defines as currently
+       Smten.SMT.Solvers defines the Solver data type used by Smten, and the
+       mkSolver function. Yes! I like that very much. Good.
+
+We have a plan. All that remains is to implement it.
+
+I like this a lot. I think it will make things much nicer.
+
+Thu Jun  6 12:52:31 EDT 2013
+
+Here I go. Wish me luck. I think I may need it.
+
+Murali also made another suggestion, which I would like to try, which I'm
+interpreting as: hide all the internals of the Smten library. Only export the
+top level things a user would need to make use of Smten. Maybe after this
+works out I'll give that a try? Or start along that path? Or something like
+that.
+
+First trouble: Bool needs to know about Integer. So I should define them
+initially both in SmtenHS. That's fair enough.
+
+Thu Jun  6 13:31:26 EDT 2013
+
+Problem:
+  * The instance of SmtenHS for Bool depends on eq_Integer and friends. 
+  * The implementation of SmtenHS for Integer depends on __caseTrue.
+ * I'd like to put SmtenHS for Bool with __caseTrue 
+               and SmtenHS for Integer with eq_Integer
+
+What should I do?
+
+Either:
+1. put Integer and Bool SmtenHS and primitives together.
+2. define SmtenHS for Bool and Integer elsewhere
+    Say... SmtenHSs? Or Smten.Runtime.Builtin?
+    It's a little bit unfortunate.
+
+Well, what do you think?
+
+Probably want to just put it all in one place.
+That place being, namely, SmtenHS.
+
+Oh well. That's okay. It's not too bad I don't think.
+
+I hope not.
+
+Everything else should work okay.
+
+Thu Jun  6 14:06:51 EDT 2013
+
+I don't understand. For some reason we aren't re-exporting the imported
+primitive data types. What's up with that?
+
+Okay, I see. I have to import unqualified and qualified for things to be
+exported. That's okay. That seems to work out still, because we qualify
+everything else.
+
+Now then. On to Haskelly issues: Solver.
+
+Thu Jun  6 14:33:42 EDT 2013
+
+It's done! It works! That's really cool.
+Now all I need are support for my pragmas, and I don't have to worry about
+much of anything in the code generation. The user can do everything in smten
+code. Awesome.
+
+But I won't worry about that now.
+
+This is very good progress. Now it should hopefully be easy to add support for
+bit vectors in a unified way. I may as well jump immediately to symbolic
+support.
+
+But! I want to take just a little bit of time to investigate:
+* can I make the smten package be both the library and executable?
+  If so, it would be really cool. Otherwise we need two packages, one of which
+  is practically nothing.
+
+What do other executable packages do, like Happy? Does it not have a library
+associated with it?
+
+* how do hidden modules work, and what modules would I want to hide?
+
+Fine. Play for the rest of today is clear:
+1. mix lib/exe?
+2. hide modules that don't need to be exposed
+3. add support for bit vectors.
+
+Thu Jun  6 15:16:42 EDT 2013
+
+I can totally mix lib and exe. Because the exe does not depend at all on the
+lib. That's wonderful!
+
+I just have to get dependencies right now...
+
+Here's an issue: it seems we can't make a profiling build of the executable,
+because it doesn't properly build the non-profiling libraries it needs first.
+
+Hopefully that's okay?
+
+Or I can deal with it later. That's fine with me.
+
+Cool. This is very nice now. I'm quite happy.
+
+But! Ever onwards must I press.
+
+Let's see if we can get bit vectors to work out.
+
+I'll need to define them in SmtenHS.
+I suspect what I'll want to do is define Smten.Bit as the pure haskell thing
+analogous to Prelude.Integer and Prelude.Bool. Then define a Bit in
+Smten.Runtime.SmtenHS which wraps Smten.Bit for SMT stuff.
+
+Cool. Let me get started then. Wish me luck.
+
+Thu Jun  6 16:20:32 EDT 2013
+
+I have concrete support. Let me try some SMT tests.
+
+Thu Jun  6 17:00:54 EDT 2013
+
+There! It works. I have basic bit vectors now. Still dynamically typed.
+And lots of stuff has gotten much cleaner along the way, which I love.
+
+The next step towards making smten 3.0 mainstream is numeric types.
+
+Add just enough numeric types to be able to wrap bit vectors nicely.
+I'll have to do that annoying re-typing thing. Which is annoying. Whatever.
+
+It might be nice if I can use ghc's type-level naturals in the generated code.
+
+Once I get that going, I'll want to try out shampi and sudoku.
+
+At this point I should be able to get some sense of performance, modulo
+preservation of sharing, handling error properly, and overspecialization of
+Integer and Bit Vector. Hopefully it's half decent. Regardless of whether it
+is good or not, I think this implementation is now much cleaner than the
+current master branch, so I can commit it on that grounds alone. And I'm
+confident performance will be better. Just not sure of by how much.
+
+Well, you know what to do tomorrow. Good luck.
+

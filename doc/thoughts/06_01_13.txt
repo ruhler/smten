@@ -1,0 +1,691 @@
+
+Sat Jun  1 06:09:00 EDT 2013
+
+I had a thought. Basically it's this: I can use just StableName, just as I use
+EID. It will work at least as well, only I avoid the problems of allocating
+names.
+
+We may be leaking memory, yes. But not more than we already do. So this is a
+good first step. Use stable name instead of EID.
+
+Cool! Let me give it a try, see how performance goes.
+
+In the future I can consider whether I want to use weak pointers to avoid
+memory leaks in my sharing maps.
+
+0: 21.43s, 33.73B: baseline
+1: 16.07s, 23.47B: -O1 instead of -O0
+2: 15.40s, 23.47B: -02 instead of -O1
+3: 16.43s, 22.04B: -O1, with all the HaskellF.HaskellF things marked inlineable
+4: 11.61s, 14.15B: use StableName to replace EID.
+
+So, stable names are good, as expected, for concrete evaluation. The thing is,
+I feel like shampi has gotten much slower! I don't understand why.
+
+Oh. I think there is a bug in the comparison for ExpH...
+
+Sat Jun  1 06:49:51 EDT 2013
+
+Yes. Something about StableName is making hampi noticeably slower. What's up
+with that?
+
+I don't understand!
+
+For reasons I don't understand, StableName is slowing us down.
+
+So I shouldn't use it. I wish I understood why it was slowing us down though.
+
+Well, perhaps I'll come revisit this another time.
+
+Which leaves us, at last, with the hard part: a concretized version of ExpH.
+
+This is going to take a bit of work to figure out and implement correctly.
+
+Sat Jun  1 08:38:55 EDT 2013
+
+It occurs to me handling preservation of sharing is going to be rather messy
+in a concretized version of ExpH. What are the types of maps?
+
+Anyway, I want to look, once again, to see if I can understand where the time
+is going. Let me look in shampi.
+
+My thought is this: it seems like fooHF takes a ton of time and allocation.
+If I put an SCC on fooHF, then on fooEH, then the time for fooHF should not be
+counting this recursive call stuff. That should be assigned to fooEH. Let me
+pick one of these, and focus in to try and find where the time is being spent.
+
+Sat Jun  1 12:15:35 EDT 2013
+
+First goal: try this fooHF thing with conHF. Because each conHF should just
+create a single function, right?
+
+I don't know. I don't know if an SCC on a function counts for the function or
+the body every time it is called. Better to start with appEH perhaps, which is
+the most straight forward?
+
+No. conHF makes sense. It is the fully applied version. Let's see how much
+time and energy it takes.
+
+conHF doesn't cost anything. So not a great example I guess.
+
+Let's try...
+
+It's either lamHF, appHF, or caseHF.
+
+All of those involve calls to recursive functions.
+
+caseHF is most complicated. Let me not do that one.
+
+Now, either lamHF or appHF should be getting assigned time for stuff.
+Let me  try appHF and appEH.
+
+Wait. First: I'm looking at the heap profile. It shows all the allocation is
+from Match. It looks like it could be a memory leak, because we go up, then
+never come back down. Is this a problem? I don't know.
+
+Strange, because the profiler says there is no time spent in match.
+
+Time is in MAIN: about 50%. Time is in exph, about 25%. The rest is scattered
+around little things.
+
+Let me look at the types of things on the heap. See if anything interesting
+comes from that. Somehow I doubt it.
+
+Then I'll look into applyHF. Because, honestly, heap is not time. Unless it
+gives a clear indication of us spending time reallocating things we needn't
+be, it's not going to tell me anything except to lead me on a space leak hunt,
+which is not what I want to be doing today.
+
+Heap has: lots of types. lots of functions to ExpHFs. lots of ExpHs. lots of
+functions to types.
+
+Okay. Fine. Probably making more Type than we need to, and leaking stuff.
+
+So here's one idea for a potential big improvement: figure out how not to be
+allocating lots of copies of types. We should be able to share.
+
+Let me put that on the list of things to go back to. Before I get to that, I
+want to dig a little further into where all the time is going. I'm going to
+try my appEH thing.
+
+You know what we might find? We might find all the time is in generating
+types? Well, I know from previous experiments no more than half the time is
+there. But... we'll see. 
+
+What I see?
+ appEH is assigned all the rest of the time.
+ note: applyHF is small. 2.1% time, 3.4% alloc.
+
+Let me try now the same with lamHF and lamEH, but without applyHF and applyEH
+doing the same thing? Yes.
+
+While I'm thinking about it...
+
+If I can figure out what's up with StableNames... If I can make them work
+(efficiently), then it may be I can generate functions as functions and still
+preserve sharing. That would be cool.
+
+Let me summarize my list of ideas at this point:
+
+* concretize ExpH
+  Start by a separate research test to figure out what I need to do to make it
+  work.
+* understand why stablenames seem less efficient. And fix them.
+* somehow generate all the types statically and refer to them rather than
+  always creating new copies of the same thing.
+
+For lamHF test: note that all the time is spent in lamHF, not lamEH.
+
+My suspicion is all the time is spent in this function g.
+
+Or, in other words...
+
+We make a bunch of anonymous lambdas. Every function is an anonymous lambda.
+All our time is spent doing execution in those anonymous lambdas.
+
+Could we somehow perform specialization for each type so we don't have to
+allocate new copies of these functions every time we call lamHF? Because I
+think it must be the type which prevents us from creating a static copy?
+
+Ah. so:
+
+lamHF: 3% time, 10% memory allocations (individually).
+lamEH: 15% time, 30% memory allocations (total)
+  All of this time spent allocating ExpHs.
+lamHF.g: 
+  All the rest of the time.
+
+Interesting... very interesting. 
+
+Let me think about this. I think it may be important.
+
+Sat Jun  1 14:46:27 EDT 2013
+
+Okay, so here is the hypothesis. It may or may not be right. But I can check
+it.
+
+I suspect that every time we have a lamHF... every time that is encountered in
+an expression, we allocate a new ExpH for it.
+
+The issue is, this leads to duplicate copies of the same function (perhaps?),
+and so it makes much more sense to just create one expH for each call site.
+
+Now, why might this not be the case? Because of closures. I wonder if lets
+cause problems. I wonder if nested lambdas cause problems.
+
+The hope would be: if I can make it clear we only need one ExpH for each
+lambda, then we should be able to save a whole lot of memory and time. Just
+like we were able to save on name allocation.
+
+How can I test this hypothesis?
+
+Hmm...
+
+I feel like it would be good to test this in a pure haskell environment. Try
+to replicate the issue.
+
+The idea is: call a function a lot. Have this function be defined as a lambda.
+See how much memory is allocated for it.
+
+Then, wrap the function in a data type, do the same, see now how much memory
+is allocated for it?
+
+Some info:
+* lamHF allocation is for the 'g' function and the types.
+
+This is big. 
+
+I feel like, maybe, if we can inline lamHF, ghc could figure out how to make
+'g' static. And then the lamEH too will be saved.
+
+We are calling lamHF 37,644,326 times. Each time allocating a new 'g' and
+type, and ExpH. That's what I want to save.
+
+One thing that might help is to figure out which functions are calling lamHF
+so much. What's on the critical path there? Let me see if I can get a better
+idea of that.
+
+I don't know. The information I'm getting isn't clear.
+
+Hmm... How to go about this then?
+
+I have a hypothesis. Let me see if I can replicate the issue I'm seeing?
+
+One thing to do would be to see if this happens on wc. That sounds like a good
+idea to me. Then I can debug issues there.
+
+Yes. The issue there looks the same. Good.
+
+Hmm... How can I answer this question?
+
+Let me try to test the following things in pure haskell.
+
+* If I have a pure function which I call a lot... does the function itself
+  take up memory?
+
+Um... I need to come up with a clearer question than that.
+
+The question is: when are lambdas allocated, and when not?
+
+I believe a top level lambda will only be allocated once, no matter how many
+times it is called...
+
+foo :: Integer -> Integer
+foo = {-# SCC "foo" #-} \x -> x + 1
+
+manyfoo :: Integer -> IO ()
+manyfoo 0 = return ()
+manyfoo x = do 
+    putStrLn $ show (foo x)
+    manyfoo (x-1)
+
+main :: IO ()
+main = manyfoo 100
+
+I expect to see 100 calls to 'foo'...
+
+Hmm... Maybe I can use debug.trace here. I like that idea.
+
+I expect to see 100 calls to 'foo', but only once is the lambda created:
+
+foo = trace "foo" (\x -> x+1)
+
+Yes. That's a test I can look at.
+
+And then keep making things more complex:
+
+* what if the function depends on another argument?
+* what if the function is passed to another function?
+* what if the function is passed to another function in another module?
+* what if the function is put on a Data structure before being used?
+
+Start exploring these things, and see what I can learn.
+
+Cool. Sounds like a plan. Let me get started.
+
+1. The standard case. No optimization.
+"foo" happens once.
+foo is called 100 times.
+
+As hoped for. And really, to me, all that makes sense.
+
+2. Add another argument:
+
+foo :: Integer -> Integer -> Integer
+foo y = trace "foo" (\x -> x + y)
+
+Now the lambda depends on y. So will we display "foo" every time?
+
+Yes! We call "foo" every time.
+
+But... if we floated the trace outside...
+
+3. Float the trace outside.
+foo only happens one time.
+
+Well. Duh. Right?
+
+Let us now consider what's going in with smten. If I generated the (two
+argument) function foo in smten, I would generate:
+
+foo :: ExpH
+foo = lamHF $ \y ->
+        lamHF $ \x -> x + y
+
+
+What would this allocate?
+
+This would allocate one ExpH for the top level foo.
+And then, every time you call foo, it would allocate another ExpH for the
+body.
+
+But, what we would really like is... What? Isn't that what we have to have?
+
+Okay, consider the following. What if we know we are always calling 'foo' with
+2 arguments? Could we have a special form of foo for that case?
+
+foo2 :: ExpH -> ExpH -> ExpH
+foo2 y x = x + y
+
+Here's an idea.
+
+For each function which takes N arguments, we can use the function either
+with: 0 args, 1 arg, 2 args, ... N args.
+
+Currently I assume all functions are used with 0 args except inlined lambdas
+where I know their arg.
+
+What if I specialized?
+
+For every function, generate N versions of it, one for each of the different
+numbers of arguments that could be applied. Specialize for the number of
+arguments, by making haskell functions.
+
+That way, if I always use it with, say, two arguments, I don't pay the cost of
+a lamEH for each partial application.
+
+Or... Another way to say it...
+
+What if we keep track of, for each function, how many arguments we expect it
+to take. Generate functions as if they were haskell functions. Only introduce
+a lambda if you call (apply) a function with too few arguments.
+
+For example, imagine we have a function expecting 3 arguments. We would
+generate:
+
+  foo x y z:        foo x y z
+  foo x y:          (lamEH $ \z -> foo x y z)
+  foo x:            (lamEH $ \y -> lamEH $ \z -> foo x y z)
+  foo:              (lamEH $ \x -> lamEH $ \y -> lamEH $ \z -> x y z)
+
+Now, for each lamEH we will have an allocation. If you mostly use the function
+fully applied, then we are all set: no cost!
+
+Otherwise we pay a little cost.
+
+I bet this could make a big difference.
+
+Now, the thing is... I also suspect ghc already does this for its own
+functions, so long as we don't have things in between.
+
+In other words: it would work just as well if I could generate code for smten
+functions which is haskell functions.
+
+This is actually pretty good news. Pretty good news for the following reason:
+
+1. I can use my counting trick above to make this work with preservation of
+sharing.
+
+2. We can probably use stable names to make it work with preservation of
+sharing without the counting trick.
+
+I bet this is it. I bet this is the big thing to try to fix.
+
+I bet it makes a big difference.
+
+The real question is... what approach do I want to take to try it out?
+
+I think making the leap all the way to concretized functions is too much to do
+at once. I would have to figure out how to deal with StableNames and types and
+conversion to ExpH... That sounds like too much to figure out.
+
+Better, I think, is to start with the counting method.
+
+But gosh. I think this is going to be a lot of work. Is there some nice, clean
+way I can do it? Hmm... Let me think about this for a bit and get back to you.
+
+Sat Jun  1 16:58:18 EDT 2013
+
+I thought about things a bit. One big observation: The way we do case
+currently forces me to have lamEHs that I otherwise would not need.
+
+This can be solved by specializing __caseFoo. If I'm going to do that, I
+figure I may as well figure out how to do things right. So I'm going to start
+experimenting with my concretize idea.
+
+I'll assume I'm still using EIDs and Types. The rest we make concrete. Don't
+distinguish between a typed ExpH and non-typed ExpH. There is only one ExpH.
+
+This, I believe, will go fast. Potentially very fast. Especially if I keep in
+mind these issues with names and lambdas.
+
+So let me start to play around and see what I get.
+
+Let me start on a new branch?
+
+And in a directory called smten/Smten/Runtime?
+
+Sure. Why not?
+
+First task: Figure out how to do a simple concrete evaluation. With Integer,
+Bool, List, Char.
+
+What should the example be?
+
+How about...
+
+foo :: Integer -> Integer
+foo x = x*x + 3*x + 2
+
+main :: IO ()
+main = putStrLn (show (foo 5))
+
+Or, rather, even simpler:
+
+main :: IO ()
+main = putStrLn 42
+
+Just to get the library going?
+
+Seems fair enough to me.
+
+So, even simpler:
+
+main :: IO ()
+main = putChar 'Y'
+
+And we can build up from there.
+
+Hmm... How much symbolic stuff should I support from the get go?
+
+Preservation of sharing? Types?
+
+Maybe start without those, as simple as I can, and build up from there?
+
+Then shouldn't I start with a query?
+
+Hmm...
+
+I don't know the best way to go about this.
+
+I should start with a query, because that is important. I should also start
+with some concrete stuff. Can I start with a mix?
+
+That sounds like a plan. A simple mix...
+
+main :: IO ()
+main = do
+    r <- runSymbolic Yices2 $ do
+           p <- free
+           let x = if p
+                     then 3
+                     else 4
+           assert (
+
+Gah! It's so complicated to start from scratch. :(
+
+Try anyway. It will be worth it. Trust me.
+
+Okay, I got the putChar thing to work easily enough. It's entirely concrete.
+
+Let me strive to introduce symbolic stuff as soon as possible.
+
+Thus I propose the following:
+
+main :: IO ()
+main = do
+  r <- runSymbolic Yices2 $ return ()
+  case r of
+    Just () -> putChar 'Y'
+    _ -> putChar 'N'
+
+So, we want the maybe type.
+
+Do I still want to access data type fields with matching against single
+element cases? I think, for now, probably yes. So let me set that up.
+    
+Next thing we'll want is runSymbolic I suppose.
+
+Let me not worry about incremental queries at this point. Let me focus on just
+the nice runSymbolic API.
+
+For now I can make a stub function for runSymbolic.
+
+Sat Jun  1 17:45:21 EDT 2013
+
+Ah, we run quickly into a problem.
+
+How to implement the return_io primitive?
+
+It only works for types which can be converted to and from Haskell.
+
+That shouldn't matter, because it doesn't look at the type.
+
+Well, no, I shouldn't have to convert the type. I may have to be clever about
+how I implement the primitive though...
+
+Let me see what I can come up with.
+
+Yes. That works fine. It just seems I can't use my haskelly conversion. Which
+makes sense, because I don't want to convert the argument, because I don't
+need to look at it.
+
+Back to symbolic...
+
+Let me assume I'm using yices2 to start, and not have that be an API choice.
+Just to simplify things for the time being.
+
+Oh boy. This is going to start getting very tricky soon. I can tell.
+
+Keep going a bit at a time. We'll get there.
+
+Okay. So we can handle fine where this is no symbolic query. Now it's time to
+start doing some symbolic stuff. This is where things will start to get
+interesting. I ought to be able to come up with a bunch of tests to show what
+more I need to add to my library structure to support symbolic computation.
+
+First query:
+  p <- free_Bool
+  if p
+      then return ()
+      else fail
+
+I really would like to use an SMT solver for this.
+
+Things are going to get a little messy.
+
+I need the following primitives to be implemented...
+
+* free_Bool
+* Bool type
+* return_symbolic
+* bind_symbolic
+* fail_symbolic
+* run_symbolic
+* __caseTrue
+
+Now, what is the symbolic monad going to look like?
+
+It's going to be a StateT on top of IO.
+
+The includes are going to get a little ugly here.
+
+Anything I can separate out into different files I probably should.
+
+In particular: the Symbolic monad and friends.
+
+Okay, so how will I implement it?
+
+As follows...
+* We have a solver.
+* We have a current predicate.
+* We have a list of free variables.
+* We have the current assertion.
+
+That's easy enough.
+
+Let me go from there.
+
+1. implement run_symbolic for real.
+
+How?
+1. allocate a new solver
+2. run the state monad to get an assertion and a value.
+3. assert the assertion (using an SMT.Assert like traversal)
+4. read in the model.
+5. Transform the value
+6. return the value.
+
+Hum. That's quite a bit to do.
+
+Okay. I can start by making the traversal an error and go from there?
+
+No. Well, really this brings up a big important thing: we need to be able to
+traverse anything. That means we have to call run_symbolic on a traversable
+thing. Thus my need for S__. (formerly ExpH).
+
+Now things start to get complicated. But I should be able to get a long way
+just with free booleans.
+
+I may as well push as far as I can on my proposed current example and see how
+it goes.
+
+And with just free bools, I should be able to demonstrate all the interesting
+things: 
+ * preservation of sharing of all forms
+ * proper handling of explicit Error.
+
+What do I need then?
+* Bool must have a VarId. It may as well be of type Name, as that's what the
+  solvers currently take and return.
+
+* We must allow __caseTrue for any type.
+* We must have a S__ thing to allow that.
+
+I'll not worry about errors for the time being.
+
+Hopefully that's enough.
+
+For something to accept a symbolic argument, that argument must be marked as
+S__.
+
+I want to allow __caseTrue to accept a symbolic argument, and symbolic values?
+
+Not sure...
+
+I feel like eventually I'll want everything to support symbolic arguments.
+For now... let me only make things symbolic where needed. If that even makes
+any sense.
+
+Here's a problem we are going to have: When we allow different types of free
+variables, we won't be able to keep them together in the same kind of list.
+I... can not worry about that for now. Wait until we introduce free Integers.
+There are plenty of problems which show up before that.
+
+So, I have everything now except for assert, because my implementation of
+assert had ExpH built in.
+
+I may wish to make a local copy of Yices2 which I can play around with.
+
+Err...
+
+There is going to be trouble with transform. Because I can only go inside a
+bool to change it if I know it is a bool, which in general, I don't know.
+
+Does this mean we need a generics approach to transform?
+
+If so, we may as well have a generics approach to if and error too, don't you
+think? And types while we are at it. I suspect I'll need to make use of
+Dynamic, or some other union structure. We have high level knowledge about
+which names correspond to which types. And given bit vectors, it could be an
+arbitrary number of different types, so I can handle it statically without
+something like Dynamic.
+
+Perhaps this would be a good time to take a break.
+
+Let me summarize the issues:
+
+* currently its not clear what things should be marked S__ and what things
+  should not. Presumably, eventually, I'll want everything marked S__.
+
+* assert is annoying, because it's tied up with how the solver is implemented.
+  I'll have to extract that to make things work.
+
+* transform fails to traverse inside objects whose type it does not know.
+  This is incorrect. It has to be able to traverse anything.
+
+A good initial attempt at things though... I think.
+
+This transform issue is pretty major. It may lead to an entirely different
+approach... Which could make things better or not.
+
+I suppose the thing to keep in mind is we should be able to make typeclass
+stuff fast with appropriate specialization and pragmas.
+
+Sat Jun  1 19:29:26 EDT 2013
+
+I'm going to try a different approach based on type classes.
+
+Let's see how it goes.
+
+Sat Jun  1 20:33:05 EDT 2013
+
+Okay! I have a query. We have the infrastructure in place. Nifty.
+
+Note: I've made some assumptions about there not being errors or symbolic IO
+or things like that. Hopefully that's okay to start.
+
+We also don't support sharing yet. That will come as a later step.
+
+Let me try writing some queries.
+
+We have return (). Now let's try fail.
+
+
+Cool! It works swell.
+
+Brainstorm of features to implement and figure out:
+
+* free_Bool
+* error
+* preservation of sharing
+* free integers
+* free bit vectors
+
+I think that's all I have in me for today. So I'll leave it there. But very
+good work. I think this could be the right approach to take. I just need to
+work out the above things.
+
+And once the proof of concept is up and running, the real trick will be to
+make it work for real, and see if performance is half decent.
+

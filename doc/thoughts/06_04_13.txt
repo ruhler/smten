@@ -1,0 +1,409 @@
+
+Tue Jun  4 08:55:55 EDT 2013
+
+I got free boolean variables to work. What's the next step?
+
+I see two kinds of next steps.
+
+Basically the issue is, I need to properly implement muxN for everything.
+
+How to test this? There are two flavors of thing to try it on. First is
+primitives: such as Character and IO. Second is algebraic data types, such as
+Maybe.
+
+That's easy enough to test for. Let me start with algebraic data types.
+
+How do I want to generate code for this?
+
+It's simple enough, I think. Isn't it? Yes.
+
+1. Add another constructor: FooMux__ Bool (Foo a b ...) (Foo a b ...)
+2. muxN = FooMux__
+3. realizeN m (FooMux__ p a b) =
+    __caseTrue (realize m p) (realize m a) (realize m b)
+
+Easy!
+
+Let me get to work then.
+
+Wait. I forgot a step.
+
+1.5 In case generation. I have to handle the Mux case.
+
+Tue Jun  4 09:28:48 EDT 2013
+
+That's all done. What remains now is to mux Char and IO.
+
+I think I should just write this code by hand. Because it really isn't so
+often that you have primitive data types, and they don't seem to follow much
+of a pattern. Now that I have a separate prelude, I may as well, right?
+
+Tue Jun  4 09:41:42 EDT 2013
+
+I did the primitive data types for Char and IO. So now, in theory, we support
+muxing of everything.
+
+Cool.
+
+What's next?
+
+Brainstorm:
+* clean up handling of names
+* add support for explicit error
+* add preservation of sharing
+* add support for free integers
+
+Let me take a stab at cleaning up name handling, because it's getting a little
+yucky.
+
+Basically here's what I want to do with names:
+* rename builtin syntax: (), [], :, (,), etc...
+    For both type and data constructors.
+* add parenthesis for symbols
+* transform the unqualified part of the name with:
+    __case, or Mux__
+  Having qualified and unqualified versions of each.
+* prefix qualified name with Smten.Lib.
+    Note: names can come in qualified or not. If they are not qualified, they
+    are local variable names.
+
+I can have a common structure for this easily enough.
+We have a name transformer that works as follows:
+
+1. Replace fully qualified syntax with new name.
+    unitN --> "Prelude.Unit__"
+    listN --> "Prelude.List__"
+    etc...
+
+2. Transform unqualified part of the name as desired.
+    So we pass a function which does this transformation.
+
+3. Qualify name or not.
+
+In other words, I'm seeing this as a single common function:
+
+donameCG :: Bool -> (String -> String) -> Bool -> Name -> H.Name
+
+I just have to implement the one, and everything else can be done on top.
+
+Cool. I like it.
+
+First, let me verify I can implement everything else on top easily enough.
+
+Yes. Everything fits on top quite nicely.
+
+Now, can I implement it?
+
+Yes. Cool. I like this much better.
+
+What's next?
+
+Brainstorm:
+* add support for explicit error
+* add preservation of sharing
+* add support for free integers
+
+Let me start by going for functionality as opposed to efficiency?
+
+How about this. I want to figure out how to do preservation of sharing. That
+is an important thing to do.
+
+I want to use my existing tests for sharing. These require some integer
+support.
+
+So, let me support basic symbolic integers.
+Enough to then try my sharing tests.
+
+Here's what I'll need:
+ * +, ==, free_Integer
+
+Sounds like a good start into integer support to me.
+This will be valuable to look into.
+
+So, what's the test case here to get started?
+An Integer test case.
+
+The first 3: trivial, eq, and add.
+
+First step: get these tests to compile.
+
+1. litCG for integers.
+So I need to define the Integer type, like I have for Bool and Char and IO and
+such.
+
+Now, concrete integers are fine and dandy.
+But symbolic integers are going to require thought.
+
+What are the issues?
+
+* realize now could realize a Bool or an Integer.
+  So it's type is going to have to change. Perhaps we should use Dynamic for
+  the values? (I think that's safe enough)
+
+* What to do about primitives which take an integer?
+  Currently we have two: equality of integer and addition of integer.
+
+Well, I should define these primitives specially, and know about the
+primitives.
+
+So it's really not hard. Do the following:
+
+* Add constructors:
+    Bool__EqInteger Bool Integer Integer
+    Integer__AddInteger Integer Integer
+
+* Change realize to take a map from FreeID to Dynamic.
+* Implement integer primitives in special Symbolic place, not using Prelude.
+
+I don't think anything else major has to change. No code generation changes,
+which is very nice indeed.
+
+Let's see if it works.
+
+It works now. Cool.
+
+Before I flesh out the implementation, I really need to re-organize and make
+sure I understand the structure of the source code.
+
+Next step now is preservation of sharing.
+
+This is important to do and get right, because it was so much of the
+motivation for abandoning HaskellF in the first place. But I think it should
+be pretty easy to do now. I hope.
+
+Just for myself, so I have some perspective, let me list all the big things
+remaining before I can adopt this:
+
+* preservation of sharing
+* proper handling of explicit errors
+* support for numeric types
+* support for symbolic bit vectors
+* support for crazy kind StateT monad issues
+* flesh out the integer primitives
+* flesh out the bit vector primitives
+* flesh out the rest of the libraries and test cases
+* figure out how to specialize away integers for STP
+
+Fine. So there is a fair amount of work ahead of me. Bit vectors and numeric
+types scare me the most. We will get there when we get there though.
+
+Now, to dive into the sharing tests.
+
+All the sharing tests work. Which is good.
+They just don't share. Which is expected.
+
+The first problem is just a translation one.
+In Assert: cache results of bool_term and int_term.
+I can use an IO hash table based on stable names for this.
+Actually, I can have two, one for each type of term: bool and int.
+
+We don't need to use memo here, because it's IO. I know when it is done it is
+done. Assuming I remember to clear the table when I'm done with it... or make
+it a local table (which makes much sense to do)
+
+I'll do this when I get back from lunch.
+
+Tue Jun  4 13:00:33 EDT 2013
+
+Baseline: 16 expressions. We fail to do sharing.
+
+Let me add the cache now.
+
+Here's how it works:
+* first thing you do when you get a term is look it up in the cache.
+If the result is there, return it right away. Otherwise, define it and add it
+to the cache.
+
+It would be good to have a Reader monad here. Not necessarily for the context,
+because we need that everywhere. But for the caches, certainly.
+
+Let me do it as follows:
+
+use_bool
+def_bool
+use_integer
+def_integer
+
+With the relevant parts.
+
+Now: Share.Simple down to 10 terms, and sharing is preserved. Good.
+
+Time to check the rest of the Sharing tests to make sure they still work.
+
+Share.Simple: Good.
+Share.Samectx: Good.
+  Though we do have (not (not p)), which could be simplified at some point.
+Share.Diffctx: Good.
+Share.CaseDesugar: Good.
+Share.AppEval: Bad.
+
+Okay. Now we get to see if I can actually make this work.
+I'm ... starting to worry.
+
+The situation is this:
+
+let f = \x -> x + x + x + x
+in (if p
+       then f
+       else f) 3
+
+Should we share this? That's actually an interesting question.
+
+I would say yes, because in the code, at the user level, f is only applied to
+a single argument.
+
+So, the question is, how do we handle muxing of functions? Because that's what
+is happening here. A function is getting muxed with itself.
+
+Of course in the more interesting case it is not directly obvious that a
+function is getting muxed with itself.
+
+Here's the code currently in question:
+
+ mux2 p fa fb = \x -> mux0 p (fa x) (fb x)
+
+I'm having a hard time understanding the case in question though, so let me
+try a better example:
+
+if p
+    then if q
+        then g
+    else f
+else f
+
+
+I can put a test to check if fa and fb are the same, but that will not help
+here. Because we really have:
+
+f = \x -> f_body
+g = \x -> g_body
+gf = mux2 q g f = \x -> mux0 p (g x) (f x)
+gff = mux2 p gf f = \x -> mux0 p (gf x) (f x)
+
+And there, now, you can see that we apply the function f to x twice.
+
+Options:
+ * memoize every function f. That sounds like not the right thing to do to me.
+
+What I want to do is... when I mux two functions, I want to keep track of
+which functions have been muxed, and share their results?
+
+Or, only introduce a memo cache here, for example, for f?
+
+Okay, here's the idea. When I apply the function 'f', I really want not to
+apply the function 'f', but to apply a modified function.
+
+Muxing of functions is, I think, a rare enough case that we can afford to
+introduce memo things for it.
+
+This brings up an interesting question, which is, can we get rid of this
+statically somehow? That might be a better approach.
+
+It's a form of common subexpression elimination?
+
+let f = ...
+in (if p
+        then if q
+            then g
+        else f
+    else f) x
+
+Wait a second, because this is an interesting question.
+
+Is this a violation in sharing at the run time, or a violation in sharing in
+desugaring?
+
+Even though we share the function in the desugared code... we don't share the
+application? Except that we do. There is only a single application shown here.
+
+It's just like:
+    putChar (if p then if q then x
+                            else y
+                  else y)
+
+Here I do want to only apply putChar to 'y' once.
+
+The way to handle this, currently, is... I bet I don't.
+I bet we try to convert to haskell, discover we can't, and crash.
+
+Interesting. So maybe app eval is not specific to function application, but
+rather, strict application of any form.
+
+But I knew that. I just don't have test cases to cover these things.
+
+Anyway, I should figure out how to preserve sharing in those other cases
+first, because it is almost certainly easier than functions, and I might gain
+some insight.
+
+Okay, so the thing to do with preservation of sharing is:
+
+* Make a test case demonstrating a sharing leak due to case application.
+    let x = Just 5
+    in case (if p then if q then Nothing
+                            else x
+                  else x) of
+           Just v -> v+v+v+v+v
+           Nothing -> 0 
+
+We should ideally see 5+5+5+5+5 only once?
+
+* Make a test case demonstrating a sharing leak due to a primitive function.
+    a char to int function would be good for this, if I had it.
+    let x = 'c'
+        y = ord (if p then if q then 'a'
+                                else x
+                      else x)
+
+Sigh. This is hard.
+
+Maybe I'll think about this for a bit, and come back to it. Meanwhile, I can
+forge ahead on the implementation in the other dimensions.
+
+Because I don't think anything is really going to change that much
+significantly? Or rather, I hope not?
+
+Next thing to do then:
+
+* flesh out all the concrete tests.
+* flesh out all the SMT tests.
+* get shampi to run.
+
+That will be plenty of work for me to do, and fairly easily guided, so I think
+I'll dive into that.
+
+Hopefully it won't be that much work, given we have so much of the
+infrastructure set up. The only difficulties I anticipate are numeric types
+and StateT monad issues.
+
+I don't want to deal with those issues right now, so let me add whatever tests
+I can which don't involve numeric types or StateT. That way I can get a good
+bulk of work done without requiring to much more thought today.
+
+Tue Jun  4 15:44:51 EDT 2013
+
+I fleshed out much of the prelude.
+I might be getting a little side tracked, because I want to fix Show.
+
+But that requires we can derive Show, which I don't feel like doing now.
+
+Anyway, let me keep fleshing things out, motivated by test cases, and see how
+far we get.
+
+Needs:
+* Integer.Ord.
+
+I really should support the comparisons in the SMT solver.
+
+Maybe I can cheat. I'll just give the definition for (<=) for now.
+
+That seems fair to me.
+
+Of course, I could start by only supporting concrete, and add SMT support
+later. That would be easy too.
+
+Tue Jun  4 16:21:28 EDT 2013
+
+For correctness, I think the biggest thing I can do next is handling explicit
+errors. That can be my big goal for tomorrow.
+
+
