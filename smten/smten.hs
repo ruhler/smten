@@ -80,7 +80,7 @@ main = do
     let includes = include args ++ [stdlib]
 
     A.whenLoud $ putStrLn "Loading Modules..."
-    mods <- loadmods includes (file args)
+    mods <- load includes (file args)
     A.whenLoud $ putStrLn (pretty mods)
 
     A.whenLoud $ putStrLn "Stand-along Deriving..."

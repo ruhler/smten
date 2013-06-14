@@ -339,3 +339,244 @@ Won't that fix things?
 
 Yup! That fixes everything Cool.
 
+That makes me feel much better.
+
+Now then... what is the status?
+
+I have a bunch of suspected bugs and other issues. I think they are mostly
+written down.
+
+We need support for the high level debug solver, certainly.
+
+As far as performance is concerned, I should investigate arch-extract. Because
+that's the big one.
+
+Most of the time now seems to be spent in conflict-free analysis.
+
+I'm going to let it run for a while and see how far it gets.
+
+Fri Jun 14 13:33:27 EDT 2013
+
+While arch-extract chugs along, I'd like to spend some time thinking about
+this case issue.
+
+What is the case issue?
+
+We only match against one constructor at a time. As a consequence, we always
+need a default case. But what if there is no default case in practice?
+
+We may still need to match, because we need a way to get at the argument to
+the constructor.
+
+So, what we end up having now is a bunch of things like
+
+  case x of
+    Foo a -> f a
+    _ -> case x of
+            Bar b -> f b
+            _ -> error "unhandled case"
+
+This is bad for two reasons.
+1. We do a case on 'x' twice.
+It seems like it would be more efficient to do a single case. Less primitives.
+Less cases in the generated haskell. Less code.
+2. We introduce unnecessary errors.
+
+I don't know if this is bad at the SMT level?
+For concrete things, we will never see the error. So it's just clutter.
+
+If the argument is symbolic, and we don't know that we can't reach that error,
+then we introduce a new free variable.
+
+That could be bad, because any free variable makes it harder for the SMT
+solver, and makes it harder to DoubleCheck, if we can somehow take advantage
+of lack of abstractions to make DoubleCheck go faster.
+
+So, even though I don't see it being a major, exponential improvement, or
+anything like that, it would certainly be much cleaner, and at least a little
+faster, if we represented case expressions better.
+
+Namely, as a list of all the options.
+
+We have to represent all the options at once. We may as well represent every
+branch explicitly for every case expression. There is some duplication, but
+because only one will be picked...
+
+Perhaps that could be bad for things though.
+
+The question is: do we want to represent the default case explicitly, or not.
+If it leads to duplication... well, if we preserve sharing it won't lead to
+duplication. So fine.
+
+I propose we represent case expressions with each constructor listed
+explicitly.
+
+Now, what are the question to address here? I think there are, perhaps, two
+big ones:
+
+1. How can I effectively desugar pattern matching into this representation.
+I want to avoid things like:
+    case x of
+        Foo -> 3
+        Bar -> case x of
+                  Foo -> error "unhandled case"
+                  Bar -> 4
+                  Sludge -> case x of
+                               Foo -> error "unhandled case"
+                               Bar -> error "unhandled case"
+                               Sludge -> 5
+        Sludge -> case x of
+                  Foo -> error "unhandled case"
+                  Bar -> 4
+                  Sludge -> case x of
+                               Foo -> error "unhandled case"
+                               Bar -> error "unhandled case"
+                               Sludge -> 5
+
+Make sure we get instead:
+    case x of
+      Foo -> 3
+      Bar -> 4
+      Sludge -> 5
+
+2. How do we generate haskell code for this kind of case?
+This should be pretty easy.
+Instead of __caseJust and __caseNothing, we have __caseMaybe.
+It takes as arguments the function for each case.
+We treat the primitive now as taking many arguments. So we'll probably want to
+generate the code for that primitive in the code generate instead of using the
+primcase library.
+
+That's easy.
+
+Cool. Then I should try now to focus on (1).
+
+I wonder if I can do this, somehow, in a compositional kind of way.
+
+1. Pattern Match. It either matches or it doesn't.
+The interesting kind of match is a constructor match.
+
+So matching against a constructor means you match or you don't.
+
+I wonder... Perhaps we could take a different approach?
+
+Keep the same __caseJust, __caseNothing.
+But this time allow there to be irrefutable versions.
+Call them __surelyJust, __surelyNothing, or something.
+
+Those are easy enough to generate code for.
+
+And now, in the process of desugaring pattern matches I can keep track of, for
+each case argument, the set of constructors it could possibly be.
+
+Inside a match of that constructor, it can only be that constructor.
+ (In which case, it doesn't really make sense to match again, because we
+  already have the variables corresponding to the match value, but maybe that
+  doesn't matter.)
+Outside a match of that constructor, it can't be that constructor.
+
+Then, when you match against a constructor, we can see: do we have variables
+for this match already, or is it impossible to match?
+
+If we have variables already, use them. If it is impossible to match, go
+straight to the default.
+
+Perhaps, for the default, we can have a 'nodefault' option? Some special token
+that we recognize?
+
+The question is, what happens after we match the last thing we know we can
+match?
+
+Or, perhaps, we go from above. As soon as we enter a constructor, we filter
+out any matches beneath it which we know could not occur.
+
+If it leads to an empty list, then we use the default value from above?
+
+No. That's not quite right.
+
+Hmm...
+
+I don't know.
+
+Hmm... Maybe the way to do it is this.
+
+Going into a case expression for a given argument, at first you know:
+
+* it must be one of the constructors given the data type.
+
+Some times we learn things:
+* it can't be this constructor, because we just failed to match it.
+* it must be this constructor, because we already matched it.
+
+So, for any case expression, at any given location, we have an enumeration of
+what constructors the argument could possibly be.
+
+Transform the case as follows:
+ * remove out all those constructor matches which we know can't be met.
+ * remove all those 'default' matches which we know can't be met
+     (because every constructor has a previous match).
+
+Hmm... The sequentiality of the matches, I feel like, is a good thing to
+preserve and keep track of. Let's say I still keep a sequence of matches.
+
+case x of
+  p -> yv
+  _ -> n
+
+If we know x will match p, do an irrefutable match.
+If we know x will not match p, use n.
+Otherwise, have the case. In the yes branch, update the info. In the no branch
+update the info.
+
+There. That's it. Simple. Easy.
+
+What we do when pattern matching is as follows: With each case argument we
+keep track of information about what may or may not match. We update that
+information as we go.
+
+The key thing to make it work is to have this irrefutable kind of a pattern
+match.
+
+This approach does not avoid doing the match multiple times.
+
+If we inlined __caseFoo, however, then it ought to expose that info to haskell
+for the concrete case, and all is happy. So I think that is worth doing as a
+first step to get almost all of the benefit.
+
+I'm not really convinced this will make so much of a performance difference.
+It just seems like the right thing to do.
+
+The change to make: 
+Well, to start with, we'll want information about the datatype before we do
+desugaring. But once we have that, change patM and all those things to take,
+rather than Exp as an argument, a bundle of Exp and match information.
+
+Yup! That's totally doable. Cool. That's a plan. After I change the front end
+to have the environment available at desugar time.
+
+Change CaseE Exp Exp Exp to CaseE Exp Exp (Maybe Exp) to represent the
+irrefutable match.
+
+Fri Jun 14 14:30:56 EDT 2013
+
+Anyway, what's next?
+
+Working now on two things:
+- smten via performance of arch-extract
+- popl paper.
+
+For the first, I'm almost certain the problem is we spend all our time in
+Check. If so, then the problem is with the query generated. If so, then I'll
+want to look at the query generated. In which case, I'll need high level
+debug.
+
+So, first step here is to just verify it really is SMTCheck where we spend all
+our time. The next step is to figure out how to get debugging working.
+
+For the popl paper next step is just to read the cfp and past papers.
+
+Let me see if I can do a little bit of everything.
+
+First step: verify time in arch-extract is indeed dominated by the SMT solver
+check time.
+

@@ -110,7 +110,7 @@ run_symbolic s q = do
           S.True -> return ()
           S.Bool_Error msg -> error $ "smten user error: " ++ msg
           _ -> error "SMTEN INTERNAL ERROR: SMT solver lied?"
-       return (Just (realize m x))
+       return (Just ({-# SCC "Realize" #-} realize m x))
     Unsatisfiable -> return Nothing
 
 declare :: Solver -> (FreeID, SMTType) -> IO ()

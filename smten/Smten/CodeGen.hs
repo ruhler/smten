@@ -17,7 +17,7 @@ import Smten.CodeGen.Name
 import Smten.CodeGen.Ppr ()
 
 codegen :: FilePath -> [Module] -> IO ()
-codegen odir mods = {-# SCC "CodeGEn" #-} do
+codegen odir mods = {-# SCC "CodeGen" #-} do
   let env = environ mods
       mkmod m = do
         hf <- pretty <$> attemptIO (moduleCG env m)
@@ -36,7 +36,7 @@ writeFileIfChanged tgt cnts = do
    if exists 
         then do
             old <- readFile tgt
-            if md5 (Data.Hash.MD5.Str old) == md5 (Data.Hash.MD5.Str cnts)
+            if {-# SCC "CompareMD5" #-} md5 (Data.Hash.MD5.Str old) == md5 (Data.Hash.MD5.Str cnts)
                 then return ()
                 else writeFile tgt cnts
         else writeFile tgt cnts

@@ -15,10 +15,10 @@ newtype Name = Name {
 } deriving (Ord, Hashable)
 
 instance Eq Name where
-    (==) a b = {-# SCC "NameEqual" #-} nm_str a == nm_str b
+    (==) a b = nm_str a == nm_str b
 
 name :: String -> Name
-name = {-# SCC "NameAlloc" #-} Name . STR.pack
+name = Name . STR.pack
 
 unname :: Name -> String
 unname = STR.unpack . nm_str

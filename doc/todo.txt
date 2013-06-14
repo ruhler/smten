@@ -1,4 +1,7 @@
 Recent::
+* DebugLL should take a (String -> IO ()) function rather than
+  a filename. To give more flexibility.
+* Add support for high level Debug solver
 * change mtohs to express explicit errors
     Use for concrete functions and sprim2.
 * how to deal with explicit error for cases?
@@ -28,6 +31,9 @@ Type System::
 * Verify we handle case where default method given without sig in ClassD.
 
 Front End::
+* Keep track of constructor possibilities during case desugar
+    - requires we have type info at case desugar time
+    - make the default of a CaseE optional.
 * I could give better locations for error messages if each token was
   associated with a location.
 * Report an error if module name doesn't match source file name.
@@ -80,8 +86,6 @@ Query::
   don't even send them to the SMT solver (?)
 
 Query Optimizations::
-* Perform case analysis to avoid inserting unnecessary error conditions
-  automatically.
 * Simplify (= x x) to True
 
 Specialization::

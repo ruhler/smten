@@ -33,7 +33,7 @@
 -- 
 -------------------------------------------------------------------------------
 
-module Smten.Loader (SearchPath, loadmods, loadtyped) where
+module Smten.Loader (SearchPath, load) where
 
 import System.Directory
 
@@ -47,7 +47,6 @@ import Smten.Dec
 import Smten.Module
 import Smten.Parser
 import Smten.Failable
-import Smten.Typing
 
 type SearchPath = [FilePath]
 
@@ -121,18 +120,8 @@ findmodule (s:ss) l n =
 --
 -- Returns the modules in dependency order: The head module does not depend on
 -- any of the tail modules.
-loadmods :: SearchPath -> FilePath -> IO [Module]
-loadmods path mainmod = do
+load :: SearchPath -> FilePath -> IO [Module]
+load path mainmod = {-# SCC "Load" #-} do
     main <- loadmod mainmod
     reverse . ls_mods <$> execStateT (loadneeded main) (LS Set.empty [] path)
 
-loadtyped :: SearchPath -> FilePath -> IO [Module]
-loadtyped includes fp = do
-  mods <- loadmods includes fp
-  attemptIO $ do
-      sderived <- sderive mods
-      qualified <- qualify sderived
-      kinded <- kindinfer qualified
-      inferred <- typeinfer kinded
-      typecheck inferred
-      return inferred

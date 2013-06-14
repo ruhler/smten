@@ -108,6 +108,6 @@ debugll f s = do
     id <- newIORef 0
     let dbgs = D.dynsolver (DebugLL fout id s)
     return $ dbgs {
-        D.assert = \e -> D.assert dbgs e >> D.assert s e
+        D.assert = \e -> ({-# SCC "DebugLL" #-} D.assert dbgs e) >> D.assert s e
     }
 

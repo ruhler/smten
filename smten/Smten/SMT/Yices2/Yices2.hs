@@ -84,7 +84,7 @@ instance Solver Yices2 YTerm where
     term <- c_yices_new_uninterpreted_term ty
     withCString nm $ c_yices_set_term_name term
 
-  check y = withy2 y $ \ctx -> do
+  check y = {-# SCC "Yices2Check" #-} withy2 y $ \ctx -> do
     st <- c_yices_check_context ctx nullPtr
     return $! fromYSMTStatus st
 

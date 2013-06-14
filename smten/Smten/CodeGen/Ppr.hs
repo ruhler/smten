@@ -13,6 +13,6 @@ instance Ppr H.Doc where
   ppr d =
     let hpj = H.to_HPJ_Doc d
         hstyle = (HPJ.style { HPJ.lineLength = maxBound })
-        str = {-# SCC "RenderHaskellF" #-} HPJ.renderStyle hstyle hpj
+        str = {-# SCC "Render" #-} HPJ.renderStyle hstyle hpj
     in text str 
     
