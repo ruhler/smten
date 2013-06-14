@@ -18,6 +18,9 @@ data DebugLL = DebugLL {
     dbg_s :: D.Solver
 }
 
+dbgPutStr :: DebugLL -> String -> IO ()
+dbgPutStr dbg s = hPutStr (dbg_handle dbg) s
+
 dbgPutStrLn :: DebugLL -> String -> IO ()
 dbgPutStrLn dbg s = hPutStrLn (dbg_handle dbg) s
 
@@ -46,19 +49,19 @@ instance Solver DebugLL String where
         D.declare_bit (dbg_s dbg) nm w
 
     getBoolValue dbg n = do
-        dbgPutStrLn dbg $ n ++ " = "
+        dbgPutStr dbg $ n ++ " = "
         r <- D.getBoolValue (dbg_s dbg) n
         dbgPutStrLn dbg $ show r
         return r
 
     getIntegerValue dbg n = do
-        dbgPutStrLn dbg $ n ++ " = "
+        dbgPutStr dbg $ n ++ " = "
         r <- D.getIntegerValue (dbg_s dbg) n
         dbgPutStrLn dbg $ show r
         return r
 
     getBitVectorValue dbg n w = do
-        dbgPutStrLn dbg $ n ++ " = "
+        dbgPutStr dbg $ n ++ " = "
         r <- D.getBitVectorValue (dbg_s dbg) n w
         dbgPutStrLn dbg $ show (bv_make w r)
         return r

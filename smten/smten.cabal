@@ -35,6 +35,7 @@ library
     Smten.Runtime.Bit
     Smten.Runtime.Builtin
     Smten.Runtime.Char
+    Smten.Runtime.Debug
     Smten.Runtime.IO
     Smten.Runtime.Numeric
     Smten.Runtime.Primitives
@@ -45,6 +46,7 @@ library
   other-modules:
     Smten.Bit
     Smten.SMT.Assert
+    Smten.SMT.Debug
     Smten.SMT.DebugLL
     Smten.SMT.FreeID
     Smten.SMT.Solver.Dynamic
@@ -57,7 +59,7 @@ library
     Smten.SMT.STP.STP
 
   build-depends: base ==4.6.*, template-haskell ==2.8.*, mtl ==2.1.*,
-                 hashtables ==1.0.*, array ==0.4.*
+                 hashtables ==1.0.*, array ==0.4.*, pretty ==1.1.*
   extra-libraries: stp stdc++ yices2 yices1
   ghc-options: -fwarn-unused-binds -fwarn-unused-imports
 

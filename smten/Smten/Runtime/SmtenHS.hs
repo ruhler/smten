@@ -29,6 +29,7 @@ import qualified Data.HashTable.IO as H
 
 import Smten.SMT.FreeID
 import Smten.CodeGen.TH
+import Smten.Runtime.Debug
 
 data Cases a =
     Concrete a
@@ -39,6 +40,9 @@ concrete = Concrete
 
 switch :: Bool -> Cases a -> Cases a -> Cases a
 switch = Switch
+
+debug :: (SmtenHS0 a) => a -> Debug
+debug = debug0
 
 instance Functor Cases where
     fmap f (Concrete x) = Concrete (f x)
@@ -131,6 +135,8 @@ class SmtenHS0 a where
     cases0 :: a -> Cases a
 
     error0 :: String -> a
+
+    debug0 :: a -> Debug
 
     -- Represent a primitive function resulting in the given object.
     primitive0 :: (Assignment -> a) -> Cases a -> a
@@ -244,6 +250,18 @@ instance SmtenHS0 Bool where
 
    primitive0 = Bool_Prim
    error0 = Bool_Error
+   debug0 x =
+     case x of
+        False -> dbgCon "False" []
+        True -> dbgCon "True" []
+        Bool_Var x -> dbgVar (freenm x)
+        Bool_EqInteger a b -> dbgOp "==" (debug a) (debug b)
+        Bool_LeqInteger a b -> dbgOp "<=" (debug a) (debug b)
+        Bool_EqBit a b -> dbgOp "==" (debug a) (debug b)
+        Bool_LeqBit a b -> dbgOp "<=" (debug a) (debug b)
+        Bool_Ite p a b -> dbgCase "True" (debug p) (debug a) (debug b)
+        Bool_Prim {} -> dbgPrim
+        Bool_Error msg -> dbgError msg
 
    __caseTrue0 x y n =
       case x of

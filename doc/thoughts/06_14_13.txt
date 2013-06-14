@@ -684,3 +684,48 @@ We'll also want some sort of cache for sharing.
 
 It might be good to recognize syntax like strings and lists and ifs.
 
+I really wish I could have Debug, realize, cases be separate traversals
+somehow, rather than embedding them inside the objects.
+
+Oh well.
+
+Fri Jun 14 18:12:35 EDT 2013
+
+I'm going to try to make progress on debug, even though I don't have worked
+out how it should work out.
+
+I do know I want the following:
+* a debug method in SmtenHS
+* an opaque Debug type
+* functions for expressing debug things
+    constructor, application, case, variable, literal, etc...
+
+So I'll start there, and work from there.
+
+Don't worry about primitives to start.
+Don't worry about sharing to start.
+Don't worry about prettiness of printing to start.
+
+Sounds like a plan to me.
+
+Fri Jun 14 18:58:04 EDT 2013
+
+Good. We have a half reasonable start.
+
+The biggest thing first:
+ * case expressions should take multiple lines.
+
+In particular:
+case ... of {
+  K -> ...
+  _ -> ...
+}
+
+For this to work reasonably, we need to have a notion of location or context.
+In particular, we need to know what the current tab indent is.
+
+Let me give this a try then.
+
+I used the pretty package to do this for me, because I don't really feel like
+figuring out how to do it for now.
+
