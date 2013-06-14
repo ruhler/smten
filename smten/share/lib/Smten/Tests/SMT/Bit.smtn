@@ -87,5 +87,23 @@ tests = do
         assert (toInteger (if p then (3 :: Bit #8) else 4) == 3)
         return p
 
+    symtesteq "SMT.Bit.Cases_Error" (Just (3 :: Bit #8)) [Yices1, Yices2, STP] $ do
+        p <- free_Bool
+        x <- free_Bit
+        y <- free_Bit
+        let m = if p then Just x else Just y
+        assert (y /= 3)
+        assert (3 == (case m of
+                        Just v -> v
+                        _ -> error "SMT.Bit.Cases_Error"))
+        return x
+
+    symtesteq "SMT.Bit.Cases_Error2" (Just True) [Yices1, Yices2, STP] $ do
+        p <- free_Bool
+        assert (if p then True
+                     else (3 :: Bit #8) == error "SMT.Bit.Cases_Error2")
+        assert p
+        return p
+
     putStrLn "SMT.Bit PASSED"
 
