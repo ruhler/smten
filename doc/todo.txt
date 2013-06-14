@@ -1,17 +1,10 @@
-CodeGen:
-* handle abstraction of error for bit vectors
+Recent::
 * change mtohs to express explicit errors
     Use for concrete functions and sprim2.
 * how to deal with explicit error for cases?
 * represent explicit error for NumT and friends.
 * Sudoku.Enum generated query is huge!
 * use pragma in source to indicate which data types are primdatas.
-* preservation of sharing:
-** from case
-** from strict primitive
-** from application
-
-Recent::
 * Add support for (..) in import and export specifications
 * Add support for signatures in let declarations
 
@@ -69,7 +62,8 @@ Error::
   refinement.
 
 Cleanup::
-* Test convention: export 'tests' and in Tests.All, import qualified.
+* Move all of Smten.Numeric into Smten.Runtime.Numeric
+    We don't need a separate 'Numeric' class.
 * varTs should return a list of TyVar, not (Name, Kind)
 * typeinfer - use structure like typecheck (if reasonable)
 * enforce in Parser that all class methods must have a signature?
