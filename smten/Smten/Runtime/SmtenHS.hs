@@ -164,9 +164,11 @@ derive_SmtenHS 3
 prim1 :: (SmtenHS0 a, SmtenHS0 b) => (a -> b) -> a -> b
 prim1 f x = primitive0 (\m -> f (realize m x)) (fmap f (cases0 x))
 
-prim3 :: (SmtenHS0 a, SmtenHS0 b, SmtenHS0 c, SmtenHS0 d) => (a -> b -> c -> d) -> a -> b -> c -> d
-prim3 f x y z = primitive0 (\m -> f (realize m x) (realize m y) (realize m z))
-                           (f3map f (cases0 x) (cases0 y) (cases0 z))
+-- Primitive Case.
+-- The function 'f' is assumed to be strict in its first argument only.
+primcase :: (SmtenHS0 a, SmtenHS0 b, SmtenHS0 c, SmtenHS0 d) => (a -> b -> c -> d) -> a -> b -> c -> d
+primcase f x y z = primitive0 (\m -> f (realize m x) (realize m y) (realize m z))
+                              (fmap (\v -> f v y z) (cases0 x))
 
 sprim1 :: (Haskelly ha sa, Haskelly hb sb) =>
           (ha -> hb) -> (sa -> sb) -> sa -> sb
@@ -282,7 +284,6 @@ instance SmtenHS0 Integer where
         Integer {} -> Concrete x
         Integer_Ite p a b -> switch p (cases0 a) (cases0 b)
         Integer_Prim _ c -> c
-        Integer_Error {} -> Concrete x
         _ -> error "TODO: cases0 for symbolic Integer"
 
    primitive0 = Integer_Prim
@@ -344,8 +345,9 @@ instance SmtenHS1 Bit where
       case x of
          Bit {} -> Concrete x
          Bit_Ite p a b -> switch p (cases0 a) (cases0 b)
-         Bit_Error {} -> Concrete x
          Bit_Prim _ c -> c
+         Bit_Var x -> error $ "TODO: cases1 of Bit_Var " ++ show x
+         Bit_Error msg -> error $ "TODO: cases1 of Error " ++ show msg
          _ -> error "TODO: cases1 for symbolic bit vector"
        
    primitive1 = Bit_Prim

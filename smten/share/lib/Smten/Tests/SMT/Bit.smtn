@@ -105,5 +105,16 @@ tests = do
         assert p
         return p
 
+    symtesteq "SMT.Bit.Cases_Var" (Just (3 :: Bit #8)) [Yices1, Yices2, STP] $ do
+        p <- free_Bool
+        x <- free_Bit
+        y <- free_Bit
+        let m = if p then Just x else Just y
+        assert (y /= 3)
+        assert (3 == (case m of
+                        Just v -> v
+                        _ -> x))
+        return x
+
     putStrLn "SMT.Bit PASSED"
 

@@ -52,7 +52,7 @@ mkDataD n tyvars constrs = do
 --    case x of
 --      FooX x1 x2 ... -> y x1 x2 ...
 --      Foo_Error msg -> error0 msg
---      Foo_Prim _ _ -> prim3 __caseFooX x y n
+--      Foo_Prim _ _ -> primcase __caseFooX x y n
 --      _ -> n
 mkCaseD :: Name -> [TyVar] -> Con -> CG [H.Dec]
 mkCaseD n tyvars (Con cn tys) = do
@@ -72,7 +72,7 @@ mkCaseD n tyvars (Con cn tys) = do
                        (H.NormalB (H.AppE (H.VarE $ H.mkName "Smten.error0")
                                           (H.VarE $ H.mkName "msg"))) []
 
-      nms = [H.mkName "Smten.prim3", qcasenmCG cn, vx, vy, vn]
+      nms = [H.mkName "Smten.primcase", qcasenmCG cn, vx, vy, vn]
       mbody = foldl1 H.AppE [H.VarE n | n <- nms]
       matchm = H.Match (H.ConP (qprimnmCG n) [H.WildP, H.WildP]) (H.NormalB mbody) []
 

@@ -287,3 +287,55 @@ circling, not by reverting.
 
 Preservation of sharing should be motivated by applications.
 
+Fri Jun 14 12:33:20 EDT 2013
+
+I merged with the master branch. It's done. I wasn't going to do anything
+different anyway.
+
+Status with arch-extract: It runs 30 minutes, then runs into the bit-vector
+symbolic cases1 bug.
+
+This is the fromMaybe issue we had with "example".
+So, maybe if I run it without that, it will make enough progress.
+
+In the meantime, clearly I need to fix this bug.
+Which means, first, I need to replicate the bug.
+
+I know it has something to do with fromMaybe.
+Something to do with cases and abstraction of errors?
+
+The problem is: Bit_Var.
+
+So, we have a cases Bit_Var, instead of cases Error.
+
+That should be easy enough to capture in a test case.
+
+Fri Jun 14 12:46:07 EDT 2013
+
+I caught it in a test case. Cool.
+
+You know what the problem is? I'm treating all the arguments to __caseJust as
+strict arguments. So I think I have to know the value of the default case
+before I can do anything. But that's the wrong way to do it.
+
+I could put a hack here, and claim any bit vector can be made into a concrete
+thing for cases, but that's wrong. It doesn't address the fundamental issue.
+
+So, I have this primitive. Let's use __caseNothing just for the fun of it.
+ __caseNothing x y n
+
+We see 'x' is symbolic, so we keep it as a primitive.
+
+Now, say I want to make an SMT formula for this.
+
+It's unsupported, so I'll need to look at all the cases of 'x'.
+
+But, in the current implementation, I'm actually looking at all the cases of 
+(x * y * n). That's terrible.
+
+In other words, I feel like this should really be a unary primitive.
+
+Won't that fix things?
+
+Yup! That fixes everything Cool.
+
