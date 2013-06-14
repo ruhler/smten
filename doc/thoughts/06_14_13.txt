@@ -588,3 +588,99 @@ Fri Jun 14 15:11:04 EDT 2013
 So it seems like we are generating a large query which is hard for Yices2, as
 I said.
 
+So it's clear what I need to do next: figure out how to support high level
+debugging.
+
+Let me start thinking about it then.
+
+It will be important to express sharing in the debug output. I'm sure.
+
+I do like the following approach:
+* identify any shared expression the first time it is used.
+* the next time it is used, use the identifier.
+
+How to identify an expression?
+By number, presumably.
+
+    _4:{foo bar sludge}
+
+I think that's fine.
+
+The kinds of things I will be printing:
+* variables
+* primitive applications
+* case expressions
+
+We should not have lambdas.
+We should not have lets (assuming I'll use the approach I've said above to
+indicate sharing).
+
+If it's noticeably easier, perhaps I don't need to indicate sharing the first
+time around. Just the second time and there-after?
+
+Or! How about this:
+
+Always dump the entire query, just annotate shared things the second time we
+see them. That should make it clear what is being shared?
+
+I don't know.
+
+Or...
+
+Use 'where'.
+
+I like this idea.
+
+First time we see something: print it out.
+Any subsequent time we see something: just print the identifier.
+At the bottom of the assertion, print out the contents of all the shared
+things for reference.
+
+Good.
+
+Now, how to format the output?
+
+* var - is atomic. Just output it where-ever we are.
+* case: I suggest the following format:
+    case (arg) of {
+      Con a b -> y ;
+      _ -> n
+    }
+
+In particular: always indent constructors by 2 from where the case was.
+* application: the trouble is what to do if any of the arguments are long.
+
+How about: if it can all fit within some number of characters:
+    f x y z ....
+
+Put it all one one line.
+
+If it can't all fit within some number of characters, spread across lines:
+   f x
+     y
+     z
+     ...
+
+With the indent.
+
+I think that's good.
+
+No type info needed.
+We probably do need to qualify type constructors with smten qualification.
+
+Good. Then I know what I want.
+
+I would split it into two parts:
+1. how to get the information to send to the debug unit.
+2. how to generate the pretty string given that info.
+
+I'm thinking an API like:
+  var :: String -> Debug
+  app :: Debug -> [Debug] -> Debug
+  op :: String -> Debug -> Debug -> Debug
+  case :: String -> [String] -> Debug -> Debug -> Debug
+
+We'll also want some sort of cache for sharing.
+
+It might be good to recognize syntax like strings and lists and ifs.
+

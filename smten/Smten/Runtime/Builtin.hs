@@ -10,7 +10,7 @@ module Smten.Runtime.Builtin (
     ) where
 
 import qualified Prelude
-import Smten.Numeric
 import Smten.Runtime.SmtenHS
 import Smten.Runtime.Char
+import Smten.Runtime.Numeric hiding (Integer)
 

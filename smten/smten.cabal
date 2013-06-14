@@ -44,7 +44,6 @@ library
 
   other-modules:
     Smten.Bit
-    Smten.Numeric
     Smten.SMT.Assert
     Smten.SMT.DebugLL
     Smten.SMT.FreeID
