@@ -6,6 +6,7 @@ module Smten.CodeGen (codegen) where
 import Data.Functor((<$>))
 
 import System.Directory
+import System.IO
 
 import Smten.Failable
 import Smten.Module
@@ -34,10 +35,13 @@ writeFileIfChanged tgt cnts = do
    exists <- doesFileExist tgt
    if exists 
         then do
-            old <- readFile tgt
+            oldh <- openFile tgt ReadMode
+            old <- hGetContents oldh
             if {-# SCC "CheckIfChanged" #-} old == cnts
                 then return ()
-                else writeFile tgt cnts
+                else do
+                    hClose oldh
+                    writeFile tgt cnts
         else writeFile tgt cnts
 
 directory :: FilePath -> FilePath
