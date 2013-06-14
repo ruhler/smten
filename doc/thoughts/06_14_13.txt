@@ -729,3 +729,11 @@ Let me give this a try then.
 I used the pretty package to do this for me, because I don't really feel like
 figuring out how to do it for now.
 
+Now, how about recognizing 'if' specially?
+
+Fri Jun 14 19:16:54 EDT 2013
+
+Good.
+
+Now what?
+

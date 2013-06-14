@@ -107,7 +107,7 @@ tests = do
        return (not a)
 
    -- Test conversion of symbolic Symbolic to concrete Symbolic.
-   symtesteq "Core.Symsym" (Just (False, False)) [Debug "foo.dbg" Yices1, Yices2, STP] $ do
+   symtesteq "Core.Symsym" (Just (False, False)) [Yices1, Yices2, STP] $ do
        a <- free_Bool
        b <- free_Bool
        if a

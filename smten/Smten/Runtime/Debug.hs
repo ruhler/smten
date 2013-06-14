@@ -19,11 +19,16 @@ tabwidth = 2
 
 dbgCase :: String -> Debug -> Debug -> Debug -> Debug
 dbgCase k x y n
- = text "case" <+> x <+> text "of" <+> text "{"
-     $+$ nest tabwidth (vcat [
-             text k <+> text "->" <+> y,
-             text "_" <+> text "->" <+> n
-          ]) $+$ text "}"
+ | k == "True"
+     = text "if" <+> x $+$
+        nest tabwidth (vcat [text "then" <+> y,
+                             text "else" <+> n])
+ | otherwise
+     = text "case" <+> x <+> text "of" <+> text "{"
+         $+$ nest tabwidth (vcat [
+                 text k <+> text "->" <+> y,
+                 text "_" <+> text "->" <+> n
+              ]) $+$ text "}"
 
 dbgPrim :: Debug
 dbgPrim = text "?Prim?"

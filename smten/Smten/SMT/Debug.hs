@@ -18,6 +18,7 @@ debug f s = do
     hSetBuffering fout NoBuffering
     return $ Solver {
         assert = \e -> do
+            hPutStrLn fout "assert:"
             hPutStrLn fout $ dbgRender (S.debug e)
             assert s e,
 
