@@ -82,5 +82,10 @@ tests = do
         assert (bv_extract i 4 == (0xA :: Bit #4))
         return (i :: Bit #8)
 
+    symtesteq "SMT.Bit.Cases" (Just True) [Yices1, Yices2, STP] $ do
+        p <- free_Bool
+        assert (toInteger (if p then (3 :: Bit #8) else 4) == 3)
+        return p
+
     putStrLn "SMT.Bit PASSED"
 

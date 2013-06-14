@@ -271,6 +271,7 @@ instance SmtenHS0 Integer where
    cases0 x = 
       case x of
         Integer {} -> Concrete x
+        Integer_Ite p a b -> switch p (cases0 a) (cases0 b)
         Integer_Prim _ c -> c
         _ -> error "TODO: cases0 for symbolic Integer"
 
@@ -332,6 +333,7 @@ instance SmtenHS1 Bit where
    cases1 x = 
       case x of
          Bit {} -> Concrete x
+         Bit_Ite p a b -> switch p (cases0 a) (cases0 b)
          Bit_Prim _ c -> c
          _ -> error "TODO: cases0 for symbolic bit vector"
        
