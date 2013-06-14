@@ -4,7 +4,6 @@
 module Smten.CodeGen (codegen) where
 
 import Data.Functor((<$>))
-import Data.Hash.MD5
 
 import System.Directory
 
@@ -36,7 +35,7 @@ writeFileIfChanged tgt cnts = do
    if exists 
         then do
             old <- readFile tgt
-            if {-# SCC "CompareMD5" #-} md5 (Data.Hash.MD5.Str old) == md5 (Data.Hash.MD5.Str cnts)
+            if {-# SCC "CheckIfChanged" #-} old == cnts
                 then return ()
                 else writeFile tgt cnts
         else writeFile tgt cnts

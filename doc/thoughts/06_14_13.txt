@@ -580,3 +580,11 @@ Let me see if I can do a little bit of everything.
 First step: verify time in arch-extract is indeed dominated by the SMT solver
 check time.
 
+Fri Jun 14 15:11:04 EDT 2013
+
+75% of the time is in Yices2 Check.
+20% of the time is in assert.
+
+So it seems like we are generating a large query which is hard for Yices2, as
+I said.
+
