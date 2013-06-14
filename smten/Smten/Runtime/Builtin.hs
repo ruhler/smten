@@ -6,7 +6,7 @@ module Smten.Runtime.Builtin (
     Assignment,
     prim3, realize,
     Bool(True, False), __caseTrue, __caseFalse, Integer(Integer), Char(Char),
-    Numeric, NumT, (:+:), (:-:), (:*:),
+    NumT, (:+:), (:-:), (:*:),
     ) where
 
 import qualified Prelude

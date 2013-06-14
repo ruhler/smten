@@ -9,6 +9,7 @@ import Language.Haskell.TH
 --   primitiveN :: (SmtenHS a1, SmtenHS a2, ..., SmtenHS b) => (Assignment -> m a1 a2 ... aN)
 --                                                          -> Cases (m a1 a2 ...) -> m a1 a2 ... aN
 --   errorN :: (SmtenHS a1, SmtenHS a2, ..., SmtenHS b) => Prelude.String -> m a1 a2 ... aN
+--   valueofN :: (SmtenHS a1, SmtenHS a2, ..., SmtenHS b) => m a1 a2 ... aN -> Prelude.Integer
 declare_SmtenHS :: Integer -> Q [Dec]
 declare_SmtenHS n = do
   let cls = mkName $ "SmtenHS" ++ show n
@@ -57,7 +58,15 @@ declare_SmtenHS n = do
       ctcls = Clause [VarP $ mkName n | n <- ["x", "y", "n"]] (NormalB ctbody) []
       casetruedef = FunD (mkName $ "__caseTrue" ++ show n) [ctcls]
 
-      methods = [relN, casN, primN, errN, casetrue, casetruedef]
+      valueofN = SigD (mkName $ "valueof" ++ show n) $
+                ForallT (map PlainTV as) ctx $
+                  arrowsT [mas, ConT (mkName "Prelude.Integer")]
+      vbody = AppE (VarE $ mkName "Prelude.error")
+                   (LitE $ StringL "valueof on non-numeric type")
+      vcls = Clause [] (NormalB vbody) []
+      valueofdef = FunD (mkName $ "valueof" ++ show n) [vcls]
+
+      methods = [relN, casN, primN, errN, casetrue, casetruedef, valueofN, valueofdef]
       classD = ClassD [] cls tyvs [] methods
   return [classD]
   
@@ -84,6 +93,8 @@ derive_SmtenHS n = do
                   (NormalB $ VarE (mkName $ "error" ++ show (n+1))) []
       casetrueN = ValD (VarP (mkName $ "__caseTrue" ++ show n)) 
                   (NormalB $ VarE (mkName $ "__caseTrue" ++ show (n+1))) []
-      instD = InstanceD ctx ty [relN, casesN, primN, errN, casetrueN]
+      valueofN = ValD (VarP (mkName $ "valueof" ++ show n)) 
+                  (NormalB $ VarE (mkName $ "valueof" ++ show (n+1))) []
+      instD = InstanceD ctx ty [relN, casesN, primN, errN, casetrueN, valueofN]
   return [instD]
 

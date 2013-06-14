@@ -72,12 +72,7 @@ knum (ArrowK a b) = 1 + knum b
 knum _ = 0
 
 smtenhsCG :: (Name, Kind) -> [H.Pred]
-smtenhsCG (n, k) =
-  let smhs = H.ClassP (H.mkName $ "Smten.SmtenHS" ++ show (knum k)) [H.VarT $ nameCG n]
-      num = H.ClassP (H.mkName $ "Smten.Numeric") [H.VarT $ nameCG n]
-  in case k of
-        NumK -> [smhs, num]
-        _ -> [smhs]
+smtenhsCG (n, k) = [H.ClassP (H.mkName $ "Smten.SmtenHS" ++ show (knum k)) [H.VarT $ nameCG n]]
 
 retyped :: Type -> CG a -> CG a
 retyped t = local (\cg -> cg { cg_retype = retypeCG (canonical t) })

@@ -22,7 +22,6 @@ import Smten.Bit
 import Smten.SMT.Solver.Dynamic
 import qualified Smten.SMT.Solvers as Solvers
 import Smten.Runtime.SmtenHS as S
-import Smten.Numeric
 import Smten.SMT.FreeID
 
 data SS = SS {
@@ -80,9 +79,9 @@ free_Integer = do
     modify $ \s -> s { ss_free = (fid, SMTInteger) : ss_free s }
     return $ S.Integer_Var fid
 
-free_Bit :: forall n . (Numeric n) => Symbolic (S.Bit n)
+free_Bit :: forall n . (SmtenHS0 n) => Symbolic (S.Bit n)
 free_Bit = do
-    let w = valueof (numeric :: n)
+    let w = S.valueof0 (S.numeric :: n)
     fid <- liftIO fresh
     modify $ \s -> s { ss_free = (fid, SMTBit w) : ss_free s }
     return $ S.Bit_Var fid

@@ -12,6 +12,7 @@
 module Smten.Runtime.SmtenHS where
 
 import Prelude hiding (Bool(..), Integer)
+import qualified Prelude as Prelude
 import qualified Prelude as P
 import qualified Smten.Bit as P
 
@@ -26,7 +27,6 @@ import Data.Maybe(fromMaybe)
 
 import qualified Data.HashTable.IO as H
 
-import Smten.Numeric
 import Smten.SMT.FreeID
 import Smten.CodeGen.TH
 
@@ -83,9 +83,9 @@ data Bit n where
     Bit_Shl :: Bit n -> Bit n -> Bit n
     Bit_Lshr :: Bit n -> Bit n -> Bit n
     Bit_Concat :: (SmtenHS0 a, SmtenHS0 b) => Bit a -> Bit b -> Bit n
-    Bit_Extract :: (SmtenHS0 a, Numeric n) => Bit a -> Integer -> Bit n
+    Bit_Extract :: (SmtenHS0 a) => Bit a -> Integer -> Bit n
     Bit_Not :: Bit n -> Bit n
-    Bit_SignExtend :: (SmtenHS0 m, Numeric m, Numeric n) => Bit m -> Bit n
+    Bit_SignExtend :: (SmtenHS0 m) => Bit m -> Bit n
     Bit_Ite :: Bool -> Bit n -> Bit n -> Bit n
     Bit_Var :: FreeID -> Bit n
     Bit_Prim :: (Assignment -> Bit n) -> Cases (Bit n) -> Bit n
@@ -95,6 +95,11 @@ data Assignment = Assignment {
    as_vars :: [(FreeID, Dynamic)],
    as_cache :: H.BasicHashTable (StableName Any) Any
 }
+
+-- Give a nicer name to 'undefined' to use for specifying the argument to
+-- valueof.
+numeric :: a
+numeric = error "numeric"
 
 as_lookup :: (Typeable a) => FreeID -> Assignment -> a
 as_lookup x m = fromMaybe (error "as_lookup failed") $ do
@@ -138,6 +143,10 @@ class SmtenHS0 a where
             _ -> primitive0 (\m -> __caseTrue0 (realize m x) (realize m y) (realize m n))
                             (switch x (cases0 y) (cases0 n))
 
+    -- For numeric types, this returns the value of the type.
+    -- For other types, this is undefined.
+    valueof0 :: a -> P.Integer
+    valueof0 = error "valueof0 for non-numeric type"
 
 declare_SmtenHS 1
 declare_SmtenHS 2
@@ -390,17 +399,17 @@ lshr_Bit = sprim2 P.bv_lshr Bit_Lshr
 not_Bit :: (SmtenHS0 n) => Bit n -> Bit n
 not_Bit = sprim1 (complement :: P.Bit -> P.Bit) Bit_Not
 
-sign_extend_Bit :: forall n m . (SmtenHS0 n, SmtenHS0 m, Numeric n, Numeric m) => Bit n -> Bit m
+sign_extend_Bit :: forall n m . (SmtenHS0 n, SmtenHS0 m) => Bit n -> Bit m
 sign_extend_Bit =
-  let w = (valueof (numeric :: m :-: n))
+  let w = (valueof0 (numeric :: m) - valueof0 (numeric :: n))
   in sprim1 (P.bv_sign_extend w) Bit_SignExtend
 
 concat_Bit :: (SmtenHS0 n, SmtenHS0 m) => Bit n -> Bit m -> Bit npm
 concat_Bit = sprim2 P.bv_concat Bit_Concat
 
-extract_Bit :: forall n m . (SmtenHS0 n, Numeric m) => Bit n -> Integer -> Bit m
+extract_Bit :: forall n m . (SmtenHS0 n, SmtenHS0 m) => Bit n -> Integer -> Bit m
 extract_Bit (Bit x) (Integer i) = 
-  let hi = i + valueof (numeric :: m) - 1
+  let hi = i + valueof0 (numeric :: m) - 1
       lo = i
   in frhs (P.bv_extract hi lo x)
 extract_Bit b i = Bit_Extract b i

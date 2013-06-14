@@ -1,4 +1,6 @@
 
+{-# LANGUAGE ScopedTypeVariables #-}
+
 module Smten.SMT.Assert (Smten.SMT.Assert.assert) where
 
 import GHC.Base
@@ -10,7 +12,6 @@ import System.Mem.StableName
 import qualified Data.HashTable.IO as H
 
 import Smten.Bit
-import Smten.Numeric
 import qualified Smten.Runtime.SmtenHS as S
 import Smten.Runtime.SmtenHS (Cases(..))
 import Smten.SMT.Solver.Static as ST
@@ -107,7 +108,7 @@ instance Supported S.Integer where
 
     ite _ = ite_integer
 
-instance Supported (S.Bit n) where
+instance (S.SmtenHS0 n) => Supported (S.Bit n) where
     define ctx (S.Bit x) = liftIO $ bit ctx (bv_width x) (bv_value x)
     define ctx (S.Bit_Add a b) = binary (add_bit ctx) a b
     define ctx (S.Bit_Sub a b) = binary (sub_bit ctx) a b
@@ -119,16 +120,11 @@ instance Supported (S.Bit n) where
     define ctx (S.Bit_Concat a b) = binary (concat_bit ctx) a b
     define ctx (S.Bit_Not a) = unary (not_bit ctx) a
     define ctx x@(S.Bit_Extract a (S.Integer i)) =
-       let bt :: S.Bit a -> a
-           bt _ = undefined
-           hi = i + valueof (bt x) - 1
+       let hi = i + bitwidth x - 1
            lo = i
        in unary (extract_bit ctx hi lo) a
     define ctx x@(S.Bit_SignExtend a) =
-       let bt :: S.Bit m -> m
-           bt _ = undefined
-
-           by = valueof (bt x) - valueof (bt a)
+       let by = bitwidth x - bitwidth a
        in unary (sign_extend_bit ctx by) a
     define ctx (S.Bit_Ite p a b) = do
         p' <- use p
@@ -140,4 +136,7 @@ instance Supported (S.Bit n) where
     define ctx (S.Bit_Error msg) = error "TODO: handle Bit_Error in Assert"
 
     ite _ = ite_bit
+
+bitwidth :: forall n . (S.SmtenHS0 n) => S.Bit n -> Integer
+bitwidth x = S.valueof0 (S.numeric :: n)
 

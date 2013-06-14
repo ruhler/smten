@@ -1,7 +1,7 @@
 
 module Smten.Numeric (valueof, numeric) where
 
-foreign import hs "Smten.Runtime.Numeric.valueof"
+foreign import hs "Smten.Runtime.Numeric.valueof0"
     valueof :: #n -> Integer
 
 numeric :: #n
