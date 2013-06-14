@@ -133,7 +133,10 @@ instance (S.SmtenHS0 n) => Supported (S.Bit n) where
         liftIO $ ite_bit ctx p' a' b'
     define ctx (S.Bit_Var id) = liftIO $ var ctx (freenm id)
     define ctx (S.Bit_Prim _ c) = decases ctx c
-    define ctx (S.Bit_Error msg) = error "TODO: handle Bit_Error in Assert"
+    define ctx x@(S.Bit_Error msg) = liftIO $ do
+        id <- fresh
+        declare_bit ctx (freenm id) (bitwidth x)
+        var ctx (freenm id)
 
     ite _ = ite_bit
 
