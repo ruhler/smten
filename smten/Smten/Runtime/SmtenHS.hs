@@ -310,7 +310,7 @@ instance SmtenHS0 Integer where
    error0 = Integer_Error
    debug0 x =
       case x of
-        Integer v -> dbgText (show v)
+        Integer v -> dbgLit v
         Integer_Add a b -> dbgOp "+" (debug a) (debug b)
         Integer_Sub a b -> dbgOp "-" (debug a) (debug b)
         Integer_Ite p a b -> dbgCase "True" (debug p) (debug a) (debug b)
@@ -383,7 +383,7 @@ instance SmtenHS1 Bit where
    error1 = Bit_Error
    debug1 x =
       case x of
-         Bit v -> dbgText (show v)
+         Bit v -> dbgLit v
          Bit_Add a b -> dbgOp "+" (debug a) (debug b)
          Bit_Sub a b -> dbgOp "-" (debug a) (debug b)
          Bit_Mul a b -> dbgOp "*" (debug a) (debug b)

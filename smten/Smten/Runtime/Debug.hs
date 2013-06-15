@@ -2,7 +2,7 @@
 module Smten.Runtime.Debug (
     Debug, dbgRender,
     dbgOp, dbgCase, dbgText, dbgError, dbgVar, dbgCon, dbgApp, dbgApps,
-    dbgShare,
+    dbgShare, dbgLit,
     ) where
 
 import Control.Monad.Reader
@@ -16,50 +16,69 @@ data DR = DR {
     dr_nid :: IORef Integer
 }
 
+data MyDoc = MyDoc {
+    md_doc :: Doc,
+    md_share :: Bool
+}
+
+mydoc :: Doc -> MyDoc
+mydoc d = MyDoc d True
+
+noshare :: Debug -> Debug
+noshare d = do
+  v <- d
+  return (v { md_share = False })
+
 type DebugM = ReaderT DR IO
-type Debug = DebugM Doc
+type Debug = DebugM MyDoc
 
 dbgShare :: (a -> Debug) -> a -> Debug
 dbgShare f x = do
   m <- ask
   fnd <- liftIO $ A.lookup (dr_seen m) x
   case fnd of
-    Just v -> return (text "@" <> integer v)
+    Just v -> return $ MyDoc (text "@" <> integer v) False
     Nothing -> do
       v <- f x
-      id <- liftIO $ readIORef (dr_nid m)
-      liftIO $ do
-        modifyIORef' (dr_nid m) (+ 1)
-        A.insert (dr_seen m) x id
-      return $ text ("@" ++ show id ++ "{") <+> v <+> text "}"
+      if (md_share v)
+        then do
+          id <- liftIO $ readIORef (dr_nid m)
+          liftIO $ do
+            modifyIORef' (dr_nid m) (+ 1)
+            A.insert (dr_seen m) x id
+          return (MyDoc (text ("@" ++ show id ++ "{") <+> (md_doc v) <+> text "}") False)
+        else do
+          return v
 
 (<+>.) :: Debug -> Debug -> Debug
 (<+>.) a b = do
-    a' <- a
-    b' <- b
-    return (a' <+> b')
+    a' <- md_doc <$> a
+    b' <- md_doc <$> b
+    return $ mydoc (a' <+> b')
 
 ($+$.) :: Debug -> Debug -> Debug
 ($+$.) a b = do
-    a' <- a
-    b' <- b
-    return (a' $+$ b')
+    a' <- md_doc <$> a
+    b' <- md_doc <$> b
+    return $ mydoc (a' $+$ b')
 
 text' :: String -> Debug 
-text' = return . text
+text' = return . mydoc . text
 
 sep' :: [Debug] -> Debug
 sep' ms = do
   vs <- sequence ms
-  return (sep vs)
+  return $ mydoc (sep (map md_doc vs))
 
 vcat' :: [Debug] -> Debug
 vcat' ms = do
   vs <- sequence ms
-  return (vcat vs)
+  return $ mydoc (vcat (map md_doc vs))
 
 nest' :: Int -> Debug -> Debug
-nest' i x = nest i <$> x
+nest' i x = do 
+  v <- md_doc <$> x
+  return $ mydoc (nest i v)
 
 dbgOp :: String -> Debug -> Debug -> Debug
 dbgOp op a b = a <+>. text' op <+>. b
@@ -71,7 +90,7 @@ dbgApps :: Debug -> [Debug] -> Debug
 dbgApps x xs = sep' (x:xs)
 
 dbgVar :: String -> Debug
-dbgVar = text'
+dbgVar = noshare . text'
 
 tabwidth :: Int
 tabwidth = 2
@@ -90,17 +109,21 @@ dbgCase k x y n
               ]) $+$. text' "}"
 
 dbgText :: String -> Debug
-dbgText = text'
+dbgText = noshare . text'
 
 dbgError :: String -> Debug
 dbgError s = text' "error" <+>. text' (show s)
 
 dbgCon :: String -> [Debug] -> Debug
+dbgCon k [] = dbgText k
 dbgCon k xs = sep' ((text' k) : xs)
 
 dbgRender :: Debug -> IO String
 dbgRender d = {-# SCC "DebugRender" #-} do
   m <- A.new
   id <- newIORef 0
-  render <$> runReaderT d (DR m id)
+  render . md_doc <$> runReaderT d (DR m id)
+
+dbgLit :: (Show a) => a -> Debug
+dbgLit = dbgText . show
 

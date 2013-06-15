@@ -12,7 +12,7 @@ Recent::
 
 Debug::
 * handle debugging of (->) for cases.
-* represent sharing somehow.
+* represent sharing less noisily.
 
 Haskell Features::
 * support for (..) in import and export specifications
