@@ -313,7 +313,15 @@ instance SmtenHS0 Integer where
 
    primitive0 = Integer_Prim
    error0 = Integer_Error
-   debug0 _ = dbgText "?Integer?"
+   debug0 x =
+      case x of
+        Integer v -> dbgText (show v)
+        Integer_Add a b -> dbgOp "+" (debug a) (debug b)
+        Integer_Sub a b -> dbgOp "-" (debug a) (debug b)
+        Integer_Ite p a b -> dbgCase "True" (debug p) (debug a) (debug b)
+        Integer_Var x -> dbgVar (freenm x)
+        Integer_Prim _ _ d -> d
+        Integer_Error msg -> dbgError msg
 
    __caseTrue0 x y n =
       case x of
