@@ -737,3 +737,31 @@ Good.
 
 Now what?
 
+Now I need to expand the debug in whatever way we need to see what the
+arch-extract query is about.
+
+It perhaps would be good to have a Debug solver test too.
+
+Anyway, shall we give it a try? And hope it works out?
+
+Fri Jun 14 19:23:14 EDT 2013
+
+First thing I run into: ?Prim?.
+
+Not terribly surprising...
+
+Note: an isCF which takes a while is 2.5. That might be a good one to study
+and try to understand.
+
+Yes. I definitely need to get ?Prim? to be something nicer.
+
+I think it's fairly clear what we want. Add another field to primitive, which
+is the debug value of the object. Easy.
+
+Fri Jun 14 20:20:38 EDT 2013
+
+Making good progress.
+
+Next things: expand ?BitExtract?, 
+Make sure debugN has all the cases: include Error and Prim.
+

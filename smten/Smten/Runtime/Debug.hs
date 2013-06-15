@@ -1,7 +1,7 @@
 
 module Smten.Runtime.Debug (
     Debug, dbgRender,
-    dbgOp, dbgCase, dbgPrim, dbgError, dbgVar, dbgCon,
+    dbgOp, dbgCase, dbgText, dbgError, dbgVar, dbgCon, dbgApp,
     ) where
 
 import Text.PrettyPrint.HughesPJ
@@ -10,6 +10,9 @@ type Debug = Doc
 
 dbgOp :: String -> Debug -> Debug -> Debug
 dbgOp op a b = a <+> text op <+> b
+
+dbgApp :: Debug -> Debug -> Debug
+dbgApp a b = a <+> b
 
 dbgVar :: String -> Debug
 dbgVar = text
@@ -30,8 +33,8 @@ dbgCase k x y n
                  text "_" <+> text "->" <+> n
               ]) $+$ text "}"
 
-dbgPrim :: Debug
-dbgPrim = text "?Prim?"
+dbgText :: String -> Debug
+dbgText = text
 
 dbgError :: String -> Debug
 dbgError s = text "error" <+> text (show s)
@@ -40,5 +43,5 @@ dbgCon :: String -> [Debug] -> Debug
 dbgCon k xs = sep ((text k) : xs)
 
 dbgRender :: Debug -> String
-dbgRender = render
+dbgRender = {-# SCC "DebugRender" #-} render
 

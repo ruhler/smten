@@ -6,9 +6,11 @@ import Language.Haskell.TH
 -- class SmtenHSN m where
 --   realizeN :: (SmtenHS a1, SmtenHS a2, ...) => Assignment -> m a1 a2 ... aN -> m a1 a2 ... aN
 --   casesN :: (SmtenHS a1, SmtenHS a2, ..., SmtenHS b) => m a1 a2 ... aN -> Cases (m a1 a2 ...)
---   primitiveN :: (SmtenHS a1, SmtenHS a2, ..., SmtenHS b) => (Assignment -> m a1 a2 ... aN)
---                                                          -> Cases (m a1 a2 ...) -> m a1 a2 ... aN
+--   primitiveN :: (SmtenHS a1, SmtenHS a2, ..., SmtenHS b)
+--                  => (Assignment -> m a1 a2 ... aN) -> Cases (m a1 a2 ...) -> Debug -> m a1 a2 ... aN                                                       a2 ...
+--
 --   errorN :: (SmtenHS a1, SmtenHS a2, ..., SmtenHS b) => Prelude.String -> m a1 a2 ... aN
+--   debugN :: (SmtenHS a1, SmtenHS a2, ..., SmtenHS b) => m a1 a2 ... aN -> Debug
 --   valueofN :: (SmtenHS a1, SmtenHS a2, ..., SmtenHS b) => m a1 a2 ... aN -> Prelude.Integer
 declare_SmtenHS :: Integer -> Q [Dec]
 declare_SmtenHS n = do
@@ -30,9 +32,13 @@ declare_SmtenHS n = do
                 ForallT (map PlainTV as) ctx $
                   arrowsT [mas, css]
 
+      debugN = SigD (mkName $ "debug" ++ show n) $
+                ForallT (map PlainTV as) ctx $
+                  arrowsT [mas, ConT $ mkName "Debug"]
+
       primN = SigD (mkName $ "primitive" ++ show n) $
                 ForallT (map PlainTV as) ctx $
-                  arrowsT [arrowsT [ConT $ mkName "Assignment", mas], css, mas]
+                  arrowsT [arrowsT [ConT $ mkName "Assignment", mas], css, ConT $ mkName "Debug", mas]
 
       errN = SigD (mkName $ "error" ++ show n) $
                 ForallT (map PlainTV as) ctx $
@@ -49,7 +55,12 @@ declare_SmtenHS n = do
                           VarE $ mkName "x",
                           AppE (VarE $ mkName "cases0") (VarE $ mkName "y"),
                           AppE (VarE $ mkName "cases0") (VarE $ mkName "n")]
-      ctprim = foldl1 AppE [VarE $ mkName "primitive0", rval, cval]
+      dval = foldl1 AppE [VarE $ mkName "dbgCase",
+                          LitE $ StringL "True",
+                          AppE (VarE $ mkName "debug") (VarE $ mkName "x"),
+                          AppE (VarE $ mkName "debug") (VarE $ mkName "y"),
+                          AppE (VarE $ mkName "debug") (VarE $ mkName "n")]
+      ctprim = foldl1 AppE [VarE $ mkName "primitive0", rval, cval, dval]
       ctbody = CaseE (VarE $ mkName "x") [
                   Match (ConP (mkName "True") []) (NormalB (VarE $ mkName "y")) [],
                   Match (ConP (mkName "False") []) (NormalB (VarE $ mkName "n")) [],
@@ -66,13 +77,14 @@ declare_SmtenHS n = do
       vcls = Clause [] (NormalB vbody) []
       valueofdef = FunD (mkName $ "valueof" ++ show n) [vcls]
 
-      methods = [relN, casN, primN, errN, casetrue, casetruedef, valueofN, valueofdef]
+      methods = [relN, casN, debugN, primN, errN, casetrue, casetruedef, valueofN, valueofdef]
       classD = ClassD [] cls tyvs [] methods
   return [classD]
   
 -- instance (SmtenHS(N+1) m, SMtenHS0 a) => SmtenHSN (m a) where
 --   realizeN = realize(N+1)
 --   casesN = cases(N+1)
+--   debugN = debug(N+1)
 --   primitiveN = primitive(N+1)
 --   errorN = error(N+1)
 derive_SmtenHS :: Integer -> Q [Dec]
@@ -87,6 +99,8 @@ derive_SmtenHS n = do
                   (NormalB $ VarE (mkName $ "realize" ++ show (n+1))) []
       casesN = ValD (VarP (mkName $ "cases" ++ show n)) 
                   (NormalB $ VarE (mkName $ "cases" ++ show (n+1))) []
+      debugN = ValD (VarP (mkName $ "debug" ++ show n)) 
+                  (NormalB $ VarE (mkName $ "debug" ++ show (n+1))) []
       primN = ValD (VarP (mkName $ "primitive" ++ show n)) 
                   (NormalB $ VarE (mkName $ "primitive" ++ show (n+1))) []
       errN = ValD (VarP (mkName $ "error" ++ show n)) 
@@ -95,6 +109,6 @@ derive_SmtenHS n = do
                   (NormalB $ VarE (mkName $ "__caseTrue" ++ show (n+1))) []
       valueofN = ValD (VarP (mkName $ "valueof" ++ show n)) 
                   (NormalB $ VarE (mkName $ "valueof" ++ show (n+1))) []
-      instD = InstanceD ctx ty [relN, casesN, primN, errN, casetrueN, valueofN]
+      instD = InstanceD ctx ty [relN, casesN, debugN, primN, errN, casetrueN, valueofN]
   return [instD]
 

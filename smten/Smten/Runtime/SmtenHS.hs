@@ -65,7 +65,7 @@ data Bool where
     Bool_EqBit :: (SmtenHS0 n) => Bit n -> Bit n -> Bool
     Bool_LeqBit :: (SmtenHS0 n) => Bit n -> Bit n -> Bool
     Bool_Ite :: Bool -> Bool -> Bool -> Bool
-    Bool_Prim :: (Assignment -> Bool) -> Cases Bool -> Bool
+    Bool_Prim :: (Assignment -> Bool) -> Cases Bool -> Debug -> Bool
     Bool_Error :: String -> Bool
 
 data Integer =
@@ -74,7 +74,7 @@ data Integer =
   | Integer_Sub Integer Integer
   | Integer_Ite Bool Integer Integer
   | Integer_Var FreeID
-  | Integer_Prim (Assignment -> Integer) (Cases Integer)
+  | Integer_Prim (Assignment -> Integer) (Cases Integer) Debug
   | Integer_Error String
 
 data Bit n where
@@ -92,7 +92,7 @@ data Bit n where
     Bit_SignExtend :: (SmtenHS0 m) => Bit m -> Bit n
     Bit_Ite :: Bool -> Bit n -> Bit n -> Bit n
     Bit_Var :: FreeID -> Bit n
-    Bit_Prim :: (Assignment -> Bit n) -> Cases (Bit n) -> Bit n
+    Bit_Prim :: (Assignment -> Bit n) -> Cases (Bit n) -> Debug -> Bit n
     Bit_Error :: String -> Bit n
 
 data Assignment = Assignment {
@@ -139,7 +139,7 @@ class SmtenHS0 a where
     debug0 :: a -> Debug
 
     -- Represent a primitive function resulting in the given object.
-    primitive0 :: (Assignment -> a) -> Cases a -> a
+    primitive0 :: (Assignment -> a) -> Cases a -> Debug -> a
 
     __caseTrue0 :: Bool -> a -> a -> a
     __caseTrue0 x y n =
@@ -148,6 +148,7 @@ class SmtenHS0 a where
             False -> n
             _ -> primitive0 (\m -> __caseTrue0 (realize m x) (realize m y) (realize m n))
                             (switch x (cases0 y) (cases0 n))
+                            (dbgCase "True" (debug x) (debug y) (debug n))
 
     -- For numeric types, this returns the value of the type.
     -- For other types, this is undefined.
@@ -168,13 +169,16 @@ derive_SmtenHS 3
 --  f - a symbolic function which knows how to handle concrete arguments.
 --  x - a symbolic argument which 'f' can't handle.
 prim1 :: (SmtenHS0 a, SmtenHS0 b) => (a -> b) -> a -> b
-prim1 f x = primitive0 (\m -> f (realize m x)) (fmap f (cases0 x))
+prim1 f x = primitive0 (\m -> f (realize m x))
+                       (fmap f (cases0 x))
+                       (dbgText "?prim1?")
 
 -- Primitive Case.
 -- The function 'f' is assumed to be strict in its first argument only.
-primcase :: (SmtenHS0 a, SmtenHS0 b, SmtenHS0 c, SmtenHS0 d) => (a -> b -> c -> d) -> a -> b -> c -> d
-primcase f x y z = primitive0 (\m -> f (realize m x) (realize m y) (realize m z))
+primcase :: (SmtenHS0 a, SmtenHS0 b, SmtenHS0 c, SmtenHS0 d) => String -> (a -> b -> c -> d) -> a -> b -> c -> d
+primcase k f x y z = primitive0 (\m -> f (realize m x) (realize m y) (realize m z))
                               (fmap (\v -> f v y z) (cases0 x))
+                              (dbgCase k (debug x) (debug y) (debug z))
 
 sprim1 :: (Haskelly ha sa, Haskelly hb sb) =>
           (ha -> hb) -> (sa -> sb) -> sa -> sb
@@ -212,7 +216,10 @@ instance Haskelly a a where
 instance SmtenHS2 (->) where
    realize2 m f = \x -> realize m (f x)
    cases2 f = concrete f
-   primitive2 r c = \x -> primitive0 (\m -> r m $ realize m x) (fmap ($ x) c)
+   primitive2 r c d = \x -> primitive0 (\m -> r m $ realize m x)
+                                       (fmap ($ x) c)
+                                       (dbgApp d (debug x))
+   debug2 _ = dbgText "?->?"
    error2 msg = \x -> error0 msg
 
 instance (Haskelly ha sa, Haskelly hb sb, SmtenHS0 sa, SmtenHS0 sb)
@@ -242,7 +249,7 @@ instance SmtenHS0 Bool where
    realize0 m (Bool_EqBit a b) = eq_Bit (realize m a) (realize m b)
    realize0 m (Bool_LeqBit a b) = leq_Bit (realize m a) (realize m b)
    realize0 m (Bool_Ite p a b) = __caseTrue (realize m p) (realize m a) (realize m b)
-   realize0 m (Bool_Prim r _) = r m
+   realize0 m (Bool_Prim r _ _) = r m
 
    cases0 p@True = concrete p
    cases0 p@False = concrete p
@@ -260,7 +267,7 @@ instance SmtenHS0 Bool where
         Bool_EqBit a b -> dbgOp "==" (debug a) (debug b)
         Bool_LeqBit a b -> dbgOp "<=" (debug a) (debug b)
         Bool_Ite p a b -> dbgCase "True" (debug p) (debug a) (debug b)
-        Bool_Prim {} -> dbgPrim
+        Bool_Prim _ _ d -> d
         Bool_Error msg -> dbgError msg
 
    __caseTrue0 x y n =
@@ -295,17 +302,18 @@ instance SmtenHS0 Integer where
          Integer_Sub a b -> sub_Integer (realize m a) (realize m b)
          Integer_Ite p a b -> __caseTrue (realize m p) (realize m a) (realize m b)
          Integer_Var v -> frhs (as_lookup v m :: P.Integer)
-         Integer_Prim r _ -> r m
+         Integer_Prim r _ _ -> r m
 
    cases0 x = 
       case x of
         Integer {} -> Concrete x
         Integer_Ite p a b -> switch p (cases0 a) (cases0 b)
-        Integer_Prim _ c -> c
+        Integer_Prim _ c _ -> c
         _ -> error "TODO: cases0 for symbolic Integer"
 
    primitive0 = Integer_Prim
    error0 = Integer_Error
+   debug0 _ = dbgText "?Integer?"
 
    __caseTrue0 x y n =
       case x of
@@ -357,19 +365,38 @@ instance SmtenHS1 Bit where
          Bit_SignExtend a -> sign_extend_Bit (realize m a)
          Bit_Ite p a b -> __caseTrue (realize m p) (realize m a) (realize m b)
          Bit_Var x -> frhs (as_lookup x m :: P.Bit)
-         Bit_Prim r _ -> r m
+         Bit_Prim r _ _ -> r m
     
    cases1 x = 
       case x of
          Bit {} -> Concrete x
          Bit_Ite p a b -> switch p (cases0 a) (cases0 b)
-         Bit_Prim _ c -> c
+         Bit_Prim _ c _ -> c
          Bit_Var x -> error $ "TODO: cases1 of Bit_Var " ++ show x
          Bit_Error msg -> error $ "TODO: cases1 of Error " ++ show msg
          _ -> error "TODO: cases1 for symbolic bit vector"
        
    primitive1 = Bit_Prim
    error1 = Bit_Error
+   debug1 x =
+      case x of
+         Bit v -> dbgText (show v)
+         Bit_Add a b -> dbgOp "+" (debug a) (debug b)
+         Bit_Sub a b -> dbgOp "-" (debug a) (debug b)
+         Bit_Mul a b -> dbgOp "*" (debug a) (debug b)
+         Bit_Or a b -> dbgOp "|" (debug a) (debug b)
+         Bit_And a b -> dbgOp "&" (debug a) (debug b)
+         Bit_Shl a b -> dbgOp "<<" (debug a) (debug b)
+         Bit_Lshr a b -> dbgOp ">>" (debug a) (debug b)
+         Bit_Concat a b -> dbgOp "++" (debug a) (debug b)
+         Bit_Extract {} -> dbgText "?BitExtract?"
+         Bit_Not {} -> dbgText "?BitNot?"
+         Bit_SignExtend {} -> dbgText "?SignExtend?"
+         Bit_Ite p a b -> dbgCase "True" (debug p) (debug a) (debug b)
+         Bit_Prim _ _ d -> d
+         Bit_Var x -> dbgVar (freenm x)
+         Bit_Error msg -> dbgError msg
+         
 
    __caseTrue1 x y n =
       case x of

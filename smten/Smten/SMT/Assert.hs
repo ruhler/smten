@@ -82,7 +82,7 @@ instance Supported S.Bool where
         a' <- use a
         b' <- use b
         liftIO $ ite_bool ctx p' a' b'
-    define ctx (S.Bool_Prim _ c) = decases ctx c
+    define ctx (S.Bool_Prim _ c _) = decases ctx c
     define ctx (S.Bool_Error msg) = liftIO $ do
         id <- fresh
         declare_bool ctx (freenm id)
@@ -100,7 +100,7 @@ instance Supported S.Integer where
         b' <- use b
         liftIO $ ite_integer ctx p' a' b'
     define ctx (S.Integer_Var id) = liftIO $ var ctx (freenm id)
-    define ctx (S.Integer_Prim _ c) = decases ctx c
+    define ctx (S.Integer_Prim _ c _) = decases ctx c
     define ctx (S.Integer_Error msg) = liftIO $ do
         id <- fresh
         declare_integer ctx (freenm id)
@@ -132,7 +132,7 @@ instance (S.SmtenHS0 n) => Supported (S.Bit n) where
         b' <- use b
         liftIO $ ite_bit ctx p' a' b'
     define ctx (S.Bit_Var id) = liftIO $ var ctx (freenm id)
-    define ctx (S.Bit_Prim _ c) = decases ctx c
+    define ctx (S.Bit_Prim _ c _) = decases ctx c
     define ctx x@(S.Bit_Error msg) = liftIO $ do
         id <- fresh
         declare_bit ctx (freenm id) (bitwidth x)

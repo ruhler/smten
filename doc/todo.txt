@@ -1,7 +1,6 @@
 Recent::
 * DebugLL should take a (String -> IO ()) function rather than
-  a filename. To give more flexibility.
-* Add support for high level Debug solver
+  a filename. To give more flexibility (?)
 * change mtohs to express explicit errors
     Use for concrete functions and sprim2.
 * how to deal with explicit error for cases?
@@ -10,6 +9,11 @@ Recent::
 * use pragma in source to indicate which data types are primdatas.
 * Add support for (..) in import and export specifications
 * Add support for signatures in let declarations
+
+Debug::
+* give more info for ?BitExtract?
+* handle Error constructor in generated debugN
+* represent sharing somehow.
 
 Haskell Features::
 * support for (..) in import and export specifications
