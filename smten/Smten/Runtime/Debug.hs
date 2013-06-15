@@ -1,7 +1,7 @@
 
 module Smten.Runtime.Debug (
     Debug, dbgRender,
-    dbgOp, dbgCase, dbgText, dbgError, dbgVar, dbgCon, dbgApp,
+    dbgOp, dbgCase, dbgText, dbgError, dbgVar, dbgCon, dbgApp, dbgApps,
     ) where
 
 import Text.PrettyPrint.HughesPJ
@@ -13,6 +13,9 @@ dbgOp op a b = a <+> text op <+> b
 
 dbgApp :: Debug -> Debug -> Debug
 dbgApp a b = a <+> b
+
+dbgApps :: Debug -> [Debug] -> Debug
+dbgApps x xs = sep (x:xs)
 
 dbgVar :: String -> Debug
 dbgVar = text

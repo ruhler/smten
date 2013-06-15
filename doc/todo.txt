@@ -11,8 +11,7 @@ Recent::
 * Add support for signatures in let declarations
 
 Debug::
-* give more info for ?BitExtract?
-* handle Error constructor in generated debugN
+* handle debugging of (->) for cases.
 * represent sharing somehow.
 
 Haskell Features::

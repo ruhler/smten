@@ -389,8 +389,14 @@ instance SmtenHS1 Bit where
          Bit_Shl a b -> dbgOp "<<" (debug a) (debug b)
          Bit_Lshr a b -> dbgOp ">>" (debug a) (debug b)
          Bit_Concat a b -> dbgOp "++" (debug a) (debug b)
-         Bit_Extract {} -> dbgText "?BitExtract?"
-         Bit_Not {} -> dbgText "?BitNot?"
+         Bit_Extract a (Integer lo) ->
+            let bt :: Bit a -> a
+                bt _ = undefined
+                hi = lo + valueof0 (bt x) - 1
+            in dbgApps (dbgText "extract")
+                        [dbgText $ "[" ++ show hi ++ ":" ++ show lo ++ "]",
+                         debug a]
+         Bit_Not b -> dbgApp (dbgText "~") (debug b)
          Bit_SignExtend {} -> dbgText "?SignExtend?"
          Bit_Ite p a b -> dbgCase "True" (debug p) (debug a) (debug b)
          Bit_Prim _ _ d -> d

@@ -221,6 +221,7 @@ casesD nm n _ = do
 --   debugN (FooB x1 x2 ...) = dbgCon "FooB" [debug x1, debug x2, ...]
 --   ...
 --   debugN (Foo_Prim _ _ d) = d
+--   debugN (Foo_Error msg) = dbgError msg
 debugD :: Name -> Int -> [Con] -> CG H.Dec
 debugD n k cs = do
   let mkcon :: Con -> H.Clause
@@ -238,5 +239,10 @@ debugD n k cs = do
       mxpats = [H.ConP (qprimnmCG n) [H.WildP, H.WildP, H.VarP (H.mkName "d")]]
       mxbody = H.VarE $ H.mkName "d"
       mxcon = H.Clause mxpats (H.NormalB mxbody) []
-  return $ H.FunD (H.mkName $ "debug" ++ show k) (map mkcon cs ++ [mxcon])
+
+      erpats = [H.ConP (qerrnmCG n) [H.VarP $ H.mkName "msg"]]
+      erbody = H.AppE (H.VarE $ H.mkName "Smten.dbgError")
+                      (H.VarE $ H.mkName "msg")
+      ercon = H.Clause erpats (H.NormalB erbody) []
+  return $ H.FunD (H.mkName $ "debug" ++ show k) (map mkcon cs ++ [mxcon, ercon])
 

@@ -4,7 +4,7 @@ module Smten.Runtime.Builtin (
     Haskelly(..),
     Cases, concrete,
     Assignment,
-    Debug, dbgCon, debug,
+    Debug, dbgCon, debug, dbgError,
     primcase, realize,
     Bool(True, False), __caseTrue, __caseFalse, Integer(Integer), Char(Char),
     NumT, (:+:), (:-:), (:*:),

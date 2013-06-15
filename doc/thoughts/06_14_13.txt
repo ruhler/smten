@@ -765,3 +765,18 @@ Making good progress.
 Next things: expand ?BitExtract?, 
 Make sure debugN has all the cases: include Error and Prim.
 
+Fri Jun 14 21:12:33 EDT 2013
+
+I did that. Next thing we really need is preservation of sharing.
+
+I want to think about that. I really think I should do it right: only mention
+each thing once, but if it is shared, annotate that it is shared.
+
+I may need to do multiple passes to figure out what is shared and what isn't.
+For example, I could do a mock traversal to start which just records which
+expressions are shared. Then do the traversal again, this time printing things
+out.
+
+I'll think about it and let you know what I decide upon.
+
+
