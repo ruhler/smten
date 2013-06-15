@@ -45,6 +45,8 @@ library
 
   other-modules:
     Smten.Bit
+    Smten.AnyMap
+    Smten.AnyKeyMap
     Smten.SMT.Assert
     Smten.SMT.Debug
     Smten.SMT.DebugLL

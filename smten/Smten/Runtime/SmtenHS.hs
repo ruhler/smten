@@ -16,17 +16,13 @@ import qualified Prelude as Prelude
 import qualified Prelude as P
 import qualified Smten.Bit as P
 
-import GHC.Base (Any)
-import System.Mem.StableName
 import System.IO.Unsafe
-import Unsafe.Coerce
 
 import Data.Bits
 import Data.Dynamic
 import Data.Maybe(fromMaybe)
 
-import qualified Data.HashTable.IO as H
-
+import qualified Smten.AnyMap as A
 import Smten.SMT.FreeID
 import Smten.CodeGen.TH
 import Smten.Runtime.Debug
@@ -42,7 +38,7 @@ switch :: Bool -> Cases a -> Cases a -> Cases a
 switch = Switch
 
 debug :: (SmtenHS0 a) => a -> Debug
-debug = debug0
+debug x = dbgShare debug0 x
 
 instance Functor Cases where
     fmap f (Concrete x) = Concrete (f x)
@@ -97,7 +93,7 @@ data Bit n where
 
 data Assignment = Assignment {
    as_vars :: [(FreeID, Dynamic)],
-   as_cache :: H.BasicHashTable (StableName Any) Any
+   as_cache :: A.AnyMap
 }
 
 -- Give a nicer name to 'undefined' to use for specifying the argument to
@@ -112,19 +108,18 @@ as_lookup x m = fromMaybe (error "as_lookup failed") $ do
 
 as_make :: [(FreeID, Dynamic)] -> IO Assignment
 as_make vars = do
-    cache <- H.new
+    cache <- A.new
     return (Assignment vars cache)
   
 realize :: (SmtenHS0 a) => Assignment -> a -> a
 realize m x = unsafeDupablePerformIO $ do
-    xnm <- makeStableName $! (unsafeCoerce x)
     let mc = as_cache m
-    xfnd <- H.lookup mc xnm
+    xfnd <- A.lookup mc x
     case xfnd of
-      Just v -> return (unsafeCoerce v)
+      Just v -> return v
       Nothing -> do
         let v = realize0 m x
-        H.insert mc xnm (unsafeCoerce v)
+        A.insert mc x v
         return v
 
 class SmtenHS0 a where

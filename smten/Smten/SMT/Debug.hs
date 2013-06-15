@@ -19,7 +19,8 @@ debug f s = do
     return $ Solver {
         assert = \e -> do
             hPutStrLn fout "assert:"
-            hPutStrLn fout $ dbgRender (S.debug e)
+            dbgstr <- dbgRender (S.debug e)
+            hPutStrLn fout dbgstr
             assert s e,
 
         declare_bool = \nm -> do
