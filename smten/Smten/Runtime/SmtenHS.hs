@@ -26,28 +26,6 @@ import qualified Smten.AnyMap as A
 import Smten.SMT.FreeID
 import Smten.CodeGen.TH
 
-data Cases a =
-    Concrete a
-  | Switch Bool (Cases a) (Cases a)
-
-concrete :: a -> Cases a
-concrete = Concrete
-
-switch :: Bool -> Cases a -> Cases a -> Cases a
-switch = Switch
-
-instance Functor Cases where
-    fmap f (Concrete x) = Concrete (f x)
-    fmap f (Switch p a b) = Switch p (fmap f a) (fmap f b)
-
-f2map :: (a -> b -> c) -> Cases a -> Cases b -> Cases c
-f2map f (Concrete a) y = fmap (f a) y
-f2map f (Switch p a b) y = Switch p (f2map f a y) (f2map f b y)
-
-f3map :: (a -> b -> c -> d) -> Cases a -> Cases b -> Cases c -> Cases d
-f3map f (Concrete a) y z = f2map (f a) y z
-f3map f (Switch p a b) y z = Switch p (f3map f a y z) (f3map f b y z)
-
 data Bool where
     False :: Bool
     True :: Bool
@@ -57,7 +35,7 @@ data Bool where
     Bool_EqBit :: (SmtenHS0 n) => Bit n -> Bit n -> Bool
     Bool_LeqBit :: (SmtenHS0 n) => Bit n -> Bit n -> Bool
     Bool_Ite :: Bool -> Bool -> Bool -> Bool
-    Bool_Prim :: (Assignment -> Bool) -> Cases Bool -> Bool
+    Bool_Prim :: (Assignment -> Bool) -> Bool -> Bool
     Bool_Error :: String -> Bool
 
 data Integer =
@@ -66,7 +44,7 @@ data Integer =
   | Integer_Sub Integer Integer
   | Integer_Ite Bool Integer Integer
   | Integer_Var FreeID
-  | Integer_Prim (Assignment -> Integer) (Cases Integer)
+  | Integer_Prim (Assignment -> Integer) Integer
   | Integer_Error String
 
 data Bit n where
@@ -84,7 +62,7 @@ data Bit n where
     Bit_SignExtend :: (SmtenHS0 m) => Bit m -> Bit n
     Bit_Ite :: Bool -> Bit n -> Bit n -> Bit n
     Bit_Var :: FreeID -> Bit n
-    Bit_Prim :: (Assignment -> Bit n) -> Cases (Bit n) -> Bit n
+    Bit_Prim :: (Assignment -> Bit n) -> Bit n -> Bit n
     Bit_Error :: String -> Bit n
 
 data Assignment = Assignment {
@@ -121,21 +99,20 @@ realize m x = unsafeDupablePerformIO $ do
 ite :: (SmtenHS0 a) => Bool -> a -> a -> a
 ite = ite0
 
+sapp :: (SmtenHS0 a, SmtenHS0 b) => (a -> b) -> a -> b
+sapp = sapp0
+
 class SmtenHS0 a where
     -- Update all variables in the given expression according to the given map.
     realize0 :: Assignment -> a -> a
 
-    -- Return the cases of 'a'.
-    cases0 :: a -> Cases a
-
     error0 :: String -> a
 
     -- Represent a primitive function resulting in the given object.
-    primitive0 :: (Assignment -> a) -> Cases a -> a
+    primitive0 :: (Assignment -> a) -> a -> a
 
     ite0 :: Bool -> a -> a -> a
-    ite0 x y n = primitive0 (\m -> __caseTrue (realize m x) (realize m y) (realize m n))
-                            (switch x (cases0 y) (cases0 n))
+    sapp0 :: (SmtenHS0 b) => (a -> b) -> a -> b
 
     -- For numeric types, this returns the value of the type.
     -- For other types, this is undefined.
@@ -146,15 +123,28 @@ class SmtenHS0 a where
 -- Convenience functions for unsupported primitives.
 --  f - a symbolic function which knows how to handle concrete arguments.
 --  x - a symbolic argument which 'f' can't handle.
+{-# INLINEABLE prim1 #-}
 prim1 :: (SmtenHS0 a, SmtenHS0 b) => (a -> b) -> a -> b
-prim1 f x = primitive0 (\m -> f (realize m x))
-                       (fmap f (cases0 x))
+prim1 f x = primitive0 (\m -> f (realize m x)) (sapp f x)
 
 -- Primitive Case.
 -- The function 'f' is assumed to be strict in its first argument only.
-primcase :: (SmtenHS0 a, SmtenHS0 b, SmtenHS0 c, SmtenHS0 d) => String -> (a -> b -> c -> d) -> a -> b -> c -> d
-primcase k f x y z = primitive0 (\m -> f (realize m x) (realize m y) (realize m z))
-                              (fmap (\v -> f v y z) (cases0 x))
+{-# INLINEABLE primcase #-}
+primcase :: (SmtenHS0 a, SmtenHS0 b, SmtenHS0 c, SmtenHS0 d) => (a -> b -> c -> d) -> a -> b -> c -> d
+primcase f x y z = primitive0 (\m -> f (realize m x) (realize m y) (realize m z))
+                                (sapp (\v -> f v y z) x)
+
+{-# INLINEABLE itecase #-}
+itecase :: (SmtenHS0 a, SmtenHS0 b, SmtenHS0 c, SmtenHS0 d) => (a -> b -> c -> d) -> Bool -> a -> a -> b -> c -> d
+itecase f p a b y n = ite p (f a y n) (f b y n)
+
+{-# INLINEABLE iterealize #-}
+iterealize :: (SmtenHS0 a) => Assignment -> Bool -> a -> a -> a
+iterealize m p a b = __caseTrue (realize m p) (realize m a) (realize m b)
+
+{-# INLINEABLE itesapp #-}
+itesapp :: (SmtenHS0 a, SmtenHS0 b) => (a -> b) -> Bool -> a -> a -> b
+itesapp f p a b = ite p (sapp f a) (sapp f b)
 
 sprim1 :: (Haskelly ha sa, Haskelly hb sb) =>
           (ha -> hb) -> (sa -> sb) -> sa -> sb
@@ -226,15 +216,18 @@ instance SmtenHS0 Bool where
    realize0 m (Bool_LeqInteger a b) = leq_Integer (realize m a) (realize m b)
    realize0 m (Bool_EqBit a b) = eq_Bit (realize m a) (realize m b)
    realize0 m (Bool_LeqBit a b) = leq_Bit (realize m a) (realize m b)
-   realize0 m (Bool_Ite p a b) = __caseTrue (realize m p) (realize m a) (realize m b)
+   realize0 m (Bool_Ite p a b) = iterealize m p a b
    realize0 m (Bool_Prim r _) = r m
-
-   cases0 p@True = concrete p
-   cases0 p@False = concrete p
-   cases0 p = switch p (concrete True) (concrete False)
 
    primitive0 = Bool_Prim
    error0 = Bool_Error
+
+   sapp0 f x =
+     case x of
+        False -> f x
+        True -> f x
+        Bool_Error msg -> error0 msg
+        _ -> ite x (f True) (f False)
 
    ite0 = Bool_Ite
 
@@ -261,16 +254,16 @@ instance SmtenHS0 Integer where
          Integer_Error {} -> x
          Integer_Add a b -> add_Integer (realize m a) (realize m b)
          Integer_Sub a b -> sub_Integer (realize m a) (realize m b)
-         Integer_Ite p a b -> __caseTrue (realize m p) (realize m a) (realize m b)
+         Integer_Ite p a b -> iterealize m p a b
          Integer_Var v -> frhs (as_lookup v m :: P.Integer)
          Integer_Prim r _ -> r m
 
-   cases0 x = 
+   sapp0 f x =
       case x of
-        Integer {} -> Concrete x
-        Integer_Ite p a b -> switch p (cases0 a) (cases0 b)
-        Integer_Prim _ c -> c
-        _ -> error "TODO: cases0 for symbolic Integer"
+        Integer {} -> f x
+        Integer_Error msg -> error0 msg
+        Integer_Ite p a b -> itesapp f p a b
+        _ -> error "TODO: sapp0 for symbolic Integer"
 
    primitive0 = Integer_Prim
    error0 = Integer_Error
@@ -376,9 +369,10 @@ derive_SmtenHS 3
 
 instance SmtenHS2 (->) where
    realize2 m f = \x -> realize m (f x)
-   cases2 f = concrete f
-   primitive2 r c = \x -> primitive0 (\m -> r m $ realize m x) (fmap ($ x) c)
+   primitive2 r f = \x -> primitive0 (\m -> r m $ realize m x) (sapp f x)
    error2 msg = \x -> error0 msg
+   sapp2 f x = f x
+   ite2 p fa fb = \x -> ite p (fa x) (fb x)
 
 instance SmtenHS1 Bit where
    realize1 m c = 
@@ -396,20 +390,16 @@ instance SmtenHS1 Bit where
          Bit_Extract a b -> extract_Bit (realize m a) (realize m b)
          Bit_Not a -> not_Bit (realize m a)
          Bit_SignExtend a -> sign_extend_Bit (realize m a)
-         Bit_Ite p a b -> __caseTrue (realize m p) (realize m a) (realize m b)
+         Bit_Ite p a b -> iterealize m p a b
          Bit_Var x -> frhs (as_lookup x m :: P.Bit)
          Bit_Prim r _ -> r m
     
-   cases1 x = 
-      case x of
-         Bit {} -> Concrete x
-         Bit_Ite p a b -> switch p (cases0 a) (cases0 b)
-         Bit_Prim _ c -> c
-         Bit_Var x -> error $ "TODO: cases1 of Bit_Var " ++ show x
-         Bit_Error msg -> error $ "TODO: cases1 of Error " ++ show msg
-         _ -> error "TODO: cases1 for symbolic bit vector"
-       
+   sapp1 f x =
+     case x of
+       Bit {} -> f x
+       Bit_Error msg -> error0 msg  
+       Bit_Ite p a b -> itesapp f p a b
+       _ -> error "TODO: sapp1 for symbolic bit vector"
    primitive1 = Bit_Prim
    error1 = Bit_Error
-
    ite1 = Bit_Ite

@@ -5,12 +5,12 @@ import Language.Haskell.TH
 
 -- class SmtenHSN m where
 --   realizeN :: (SmtenHS a1, SmtenHS a2, ...) => Assignment -> m a1 a2 ... aN -> m a1 a2 ... aN
---   casesN :: (SmtenHS a1, SmtenHS a2, ..., SmtenHS b) => m a1 a2 ... aN -> Cases (m a1 a2 ...)
---   primitiveN :: (SmtenHS a1, SmtenHS a2, ..., SmtenHS b)
---                  => (Assignment -> m a1 a2 ... aN) -> Cases (m a1 a2 ...) -> m a1 a2 ... aN
---
---   errorN :: (SmtenHS a1, SmtenHS a2, ..., SmtenHS b) => Prelude.String -> m a1 a2 ... aN
---   valueofN :: (SmtenHS a1, SmtenHS a2, ..., SmtenHS b) => m a1 a2 ... aN -> Prelude.Integer
+--   primitiveN :: (SmtenHS a1, SmtenHS a2, ...)
+--                  => (Assignment -> m a1 a2 ... aN) -> m a1 a2 ... -> m a1 a2 ... aN
+--   iteN :: (SmtenHS a1, SmtenHS a2, ...) => Bool -> a -> a -> a
+--   sappN :: (SmtenHS a1, SmtenHS a2, ...) => (a -> b) -> a -> b
+--   errorN :: (SmtenHS a1, SmtenHS a2, ...) => Prelude.String -> m a1 a2 ... aN
+--   valueofN :: (SmtenHS a1, SmtenHS a2, ...) => m a1 a2 ... aN -> Prelude.Integer
 declare_SmtenHS :: Integer -> Q [Dec]
 declare_SmtenHS n = do
   let cls = mkName $ "SmtenHS" ++ show n
@@ -18,7 +18,6 @@ declare_SmtenHS n = do
       as = [mkName $ "a" ++ show i | i <- [1..n]]
       ctx = [ClassP (mkName "SmtenHS0") [VarT a] | a <- as]
       mas = foldl AppT (VarT $ mkName "m") (map VarT as)
-      css = AppT (ConT (mkName "Cases")) mas
 
       arrowT a b = AppT (AppT ArrowT a) b
       arrowsT = foldr1 arrowT
@@ -27,13 +26,14 @@ declare_SmtenHS n = do
                 ForallT (map PlainTV as) ctx $
                   arrowsT [ConT $ mkName "Assignment", mas, mas]
 
-      casN = SigD (mkName $ "cases" ++ show n) $
-                ForallT (map PlainTV as) ctx $
-                  arrowsT [mas, css]
-
       primN = SigD (mkName $ "primitive" ++ show n) $
                 ForallT (map PlainTV as) ctx $
-                  arrowsT [arrowsT [ConT $ mkName "Assignment", mas], css, mas]
+                  arrowsT [arrowsT [ConT $ mkName "Assignment", mas], mas, mas]
+
+      sappctx = ctx ++ [ClassP (mkName "SmtenHS0") [VarT $ mkName "b"]]
+      sappN = SigD (mkName $ "sapp" ++ show n) $
+                ForallT (map PlainTV as ++ [PlainTV $ mkName "b"]) sappctx $
+                 arrowsT [arrowsT [mas, VarT $ mkName "b"], mas, VarT $ mkName "b"]
 
       errN = SigD (mkName $ "error" ++ show n) $
                 ForallT (map PlainTV as) ctx $
@@ -43,17 +43,6 @@ declare_SmtenHS n = do
                    ForallT (map PlainTV as) ctx $
                      arrowsT [ConT (mkName "Bool"), mas, mas, mas]
 
-      rzs = [foldl1 AppE [VarE $ mkName v | v <- ["realize", "m", x]]
-                | x <- ["x", "y", "n"]]
-      rval = LamE [VarP $ mkName "m"] $ foldl AppE (VarE $ mkName "__caseTrue") rzs
-      cval = foldl1 AppE [VarE $ mkName "switch",
-                          VarE $ mkName "x",
-                          AppE (VarE $ mkName "cases0") (VarE $ mkName "y"),
-                          AppE (VarE $ mkName "cases0") (VarE $ mkName "n")]
-      ctbody = foldl1 AppE [VarE $ mkName "primitive0", rval, cval]
-      ctcls = Clause [VarP $ mkName n | n <- ["x", "y", "n"]] (NormalB ctbody) []
-      iteN_default = FunD (mkName $ "ite" ++ show n) [ctcls]
-
       valueofN = SigD (mkName $ "valueof" ++ show n) $
                 ForallT (map PlainTV as) ctx $
                   arrowsT [mas, ConT (mkName "Prelude.Integer")]
@@ -62,15 +51,14 @@ declare_SmtenHS n = do
       vcls = Clause [] (NormalB vbody) []
       valueofdef = FunD (mkName $ "valueof" ++ show n) [vcls]
 
-      methods = [relN, casN, primN, errN, iteN, iteN_default, valueofN, valueofdef]
+      methods = [relN, primN, sappN, errN, iteN, valueofN, valueofdef]
       classD = ClassD [] cls tyvs [] methods
   return [classD]
   
 -- instance (SmtenHS(N+1) m, SMtenHS0 a) => SmtenHSN (m a) where
 --   realizeN = realize(N+1)
---   casesN = cases(N+1)
 --   primitiveN = primitive(N+1)
---   errorN = error(N+1)
+--   ...
 derive_SmtenHS :: Integer -> Q [Dec]
 derive_SmtenHS n = do
   let ctx = [
@@ -81,8 +69,8 @@ derive_SmtenHS n = do
                 (AppT (VarT $ mkName "m") (VarT $ mkName "a"))
       relN = ValD (VarP (mkName $ "realize" ++ show n)) 
                   (NormalB $ VarE (mkName $ "realize" ++ show (n+1))) []
-      casesN = ValD (VarP (mkName $ "cases" ++ show n)) 
-                  (NormalB $ VarE (mkName $ "cases" ++ show (n+1))) []
+      sappN = ValD (VarP (mkName $ "sapp" ++ show n)) 
+                  (NormalB $ VarE (mkName $ "sapp" ++ show (n+1))) []
       primN = ValD (VarP (mkName $ "primitive" ++ show n)) 
                   (NormalB $ VarE (mkName $ "primitive" ++ show (n+1))) []
       errN = ValD (VarP (mkName $ "error" ++ show n)) 
@@ -91,6 +79,6 @@ derive_SmtenHS n = do
                   (NormalB $ VarE (mkName $ "ite" ++ show (n+1))) []
       valueofN = ValD (VarP (mkName $ "valueof" ++ show n)) 
                   (NormalB $ VarE (mkName $ "valueof" ++ show (n+1))) []
-      instD = InstanceD ctx ty [relN, casesN, primN, errN, iteN, valueofN]
+      instD = InstanceD ctx ty [relN, sappN, primN, errN, iteN, valueofN]
   return [instD]
 

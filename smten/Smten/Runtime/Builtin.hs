@@ -2,9 +2,8 @@
 module Smten.Runtime.Builtin (
     SmtenHS0(..), SmtenHS1(..), SmtenHS2(..), SmtenHS3(..), SmtenHS4(..),
     Haskelly(..),
-    Cases, concrete,
     Assignment,
-    primcase, realize,
+    itecase, iterealize, itesapp, primcase, realize, sapp,
     Bool(True, False), __caseTrue, __caseFalse, Integer(Integer), Char(Char),
     NumT, (:+:), (:-:), (:*:),
     ) where

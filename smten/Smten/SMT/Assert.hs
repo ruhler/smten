@@ -13,7 +13,6 @@ import qualified Data.HashTable.IO as H
 
 import Smten.Bit
 import qualified Smten.Runtime.SmtenHS as S
-import Smten.Runtime.SmtenHS (Cases(..))
 import Smten.SMT.Solver.Static as ST
 import Smten.SMT.FreeID
 
@@ -28,7 +27,6 @@ type AM ctx exp = ReaderT (AR ctx exp) IO
 
 class Supported a where
     define :: (Solver ctx exp) => ctx -> a -> AM ctx exp exp
-    ite :: (Solver ctx exp) => Cases a -> ctx -> exp -> exp -> exp -> IO exp
 
 assert :: (Solver ctx exp) => ctx -> S.Bool -> IO ()
 assert ctx p = {-# SCC "Assert" #-} do
@@ -60,15 +58,6 @@ binary f a b = do
     b' <- use b
     liftIO $ f a' b'
 
-decases :: (Solver ctx exp, Supported a) => ctx -> Cases a -> AM ctx exp exp
-decases ctx (Concrete c) = use c
-decases ctx (Switch p a b) = do
-    p' <- use p
-    a' <- decases ctx a
-    b' <- decases ctx b
-    liftIO $ ite a ctx p' a' b'
-
-
 instance Supported S.Bool where
     define ctx S.True = liftIO $ bool ctx True
     define ctx S.False = liftIO $ bool ctx False
@@ -82,13 +71,11 @@ instance Supported S.Bool where
         a' <- use a
         b' <- use b
         liftIO $ ite_bool ctx p' a' b'
-    define ctx (S.Bool_Prim _ c) = decases ctx c
+    define ctx (S.Bool_Prim _ c) = define ctx c
     define ctx (S.Bool_Error msg) = liftIO $ do
         id <- fresh
         declare_bool ctx (freenm id)
         var ctx (freenm id)
-
-    ite _ = ite_bool
        
 instance Supported S.Integer where
     define ctx (S.Integer i) = liftIO $ integer ctx i
@@ -100,13 +87,11 @@ instance Supported S.Integer where
         b' <- use b
         liftIO $ ite_integer ctx p' a' b'
     define ctx (S.Integer_Var id) = liftIO $ var ctx (freenm id)
-    define ctx (S.Integer_Prim _ c) = decases ctx c
+    define ctx (S.Integer_Prim _ c) = define ctx c
     define ctx (S.Integer_Error msg) = liftIO $ do
         id <- fresh
         declare_integer ctx (freenm id)
         var ctx (freenm id)
-
-    ite _ = ite_integer
 
 instance (S.SmtenHS0 n) => Supported (S.Bit n) where
     define ctx (S.Bit x) = liftIO $ bit ctx (bv_width x) (bv_value x)
@@ -132,13 +117,11 @@ instance (S.SmtenHS0 n) => Supported (S.Bit n) where
         b' <- use b
         liftIO $ ite_bit ctx p' a' b'
     define ctx (S.Bit_Var id) = liftIO $ var ctx (freenm id)
-    define ctx (S.Bit_Prim _ c) = decases ctx c
+    define ctx (S.Bit_Prim _ c) = define ctx c
     define ctx x@(S.Bit_Error msg) = liftIO $ do
         id <- fresh
         declare_bit ctx (freenm id) (bitwidth x)
         var ctx (freenm id)
-
-    ite _ = ite_bit
 
 bitwidth :: forall n . (S.SmtenHS0 n) => S.Bit n -> Integer
 bitwidth x = S.valueof0 (S.numeric :: n)

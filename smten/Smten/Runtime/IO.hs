@@ -11,7 +11,8 @@ import Data.Functor((<$>))
 import Smten.Runtime.SmtenHS as S
 
 data IO a = IO (P.IO a)
-          | IO_Prim (Assignment -> IO a) (Cases (IO a))
+          | IO_Prim (Assignment -> IO a) (IO a)
+          | IO_Ite S.Bool (IO a) (IO a)
           | IO_Error String
 
 instance (Haskelly ha sa) => Haskelly (P.IO ha) (IO sa) where
@@ -26,10 +27,15 @@ instance (Haskelly ha sa) => Haskelly (P.IO ha) (IO sa) where
 instance SmtenHS1 IO where
     realize1 m (IO x) = IO (realize m <$> x)
     realize1 m (IO_Prim r _) = realize m (r m)
+    realize1 m (IO_Ite p a b) = __caseTrue (realize m p) (realize m a) (realize m b)
 
-    cases1 x@(IO {}) = concrete x
-    cases1 (IO_Prim _ c) = c
-
+    sapp1 f x =
+      case x of
+        IO {} -> f x
+        IO_Ite p a b -> ite p (sapp1 f a) (sapp1 f b)
+        IO_Error msg -> error0 msg
+        _ -> error "TODO: sapp1 symbolic IO"
     primitive1 = IO_Prim
     error1 = IO_Error
+    ite1 = IO_Ite
 

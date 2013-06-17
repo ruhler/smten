@@ -45,14 +45,14 @@ instance Haskelly (Symbolic a) (Symbolic a) where
 
 instance SmtenHS1 Symbolic where
     realize1 m x = realize m <$> x
-    cases1 x = concrete x
 
-    primitive1 _ (Concrete x) = x
-    primitive1 _ (Switch p a b) = do
+    ite1 p a b = do
       va <- predicated p (primitive0 (error "Symbolic.primitive1") a)
       vb <- predicated (notB p) (primitive0 (error "Symbolic.primitive1") b)
       return (__caseTrue p va vb)
 
+    sapp1 f x = f x
+    primitive1 _ x = x
     error1 msg = predicated (error0 msg) fail_symbolic
       
     

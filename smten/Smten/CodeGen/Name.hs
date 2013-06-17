@@ -8,6 +8,7 @@ module Smten.CodeGen.Name (
     qhstynameCG, qhsnameCG,
     primnmCG, qprimnmCG,
     errnmCG, qerrnmCG,
+    itenmCG, qitenmCG,
     ) where
 
 import qualified Language.Haskell.TH.Syntax as H
@@ -122,4 +123,12 @@ errnmCG = doname True (++ "_Error") False
 -- | qualified type constructor name.
 qerrnmCG :: Name -> H.Name
 qerrnmCG = doname True (++ "_Error") True
+
+-- | Generate code for the ite constructor of a given data type.
+itenmCG :: Name -> H.Name
+itenmCG = doname True (++ "_Ite") False
+
+-- | qualified type constructor name.
+qitenmCG :: Name -> H.Name
+qitenmCG = doname True (++ "_Ite") True
 

@@ -25,7 +25,8 @@ dataCG n tyvars constrs = do
 --                  | FooB B1 B2 ...
 --                  ...
 --                  | FooK K1 K2 ...
---                  | Foo_Prim (Assignment -> Foo a b ...) (Cases (Foo a b ...))
+--                  | Foo_Prim (Assignment -> Foo a b ...) (Foo a b ...)
+--                  | Foo_Ite Bool (Foo a b ...) (Foo a b ...)
 --                  | Foo_Error Prelude.String
 mkDataD :: Name -> [TyVar] -> [Con] -> CG [H.Dec]
 mkDataD n tyvars constrs = do
@@ -39,20 +40,23 @@ mkDataD n tyvars constrs = do
 
       tyme = foldl H.AppT (H.ConT (qtynameCG n)) [H.VarT (nameCG nm) | TyVar nm _ <- tyvars]
       asn = foldl H.AppT H.ArrowT [H.ConT (H.mkName "Smten.Assignment"), tyme]
-      css = H.AppT (H.ConT (H.mkName "Smten.Cases")) tyme
-      prim = H.NormalC (primnmCG n) [(H.NotStrict, ty) | ty <- [asn, css]]
+      prim = H.NormalC (primnmCG n) [(H.NotStrict, ty) | ty <- [asn, tyme]]
+
+      tybool = H.ConT (qtynameCG boolN)
+      ite = H.NormalC (itenmCG n) [(H.NotStrict, ty) | ty <- [tybool, tyme, tyme]]
 
       errty = H.ConT (H.mkName $ "Prelude.String")
       err = H.NormalC (errnmCG n) [(H.NotStrict, errty)]
   constrs' <- mapM mkcon constrs
-  return [H.DataD [] (tynameCG n) tyvars' (constrs' ++ [prim, err]) []]
+  return [H.DataD [] (tynameCG n) tyvars' (constrs' ++ [prim, ite, err]) []]
 
 -- __caseFooX :: Foo a b ... -> (X1 -> X2 -> ... -> z__) -> z__ -> z__
 -- __caseFooX x y n =
 --    case x of
 --      FooX x1 x2 ... -> y x1 x2 ...
 --      Foo_Error msg -> error0 msg
---      Foo_Prim _ _ -> primcase "Foo" __caseFooX x y n
+--      Foo_Prim _ _ -> primcase __caseFooX x y n
+--      Foo_Ite p a b -> itecase __caseFooX p a b y n
 --      _ -> n
 mkCaseD :: Name -> [TyVar] -> Con -> CG [H.Dec]
 mkCaseD n tyvars (Con cn tys) = do
@@ -63,7 +67,7 @@ mkCaseD n tyvars (Con cn tys) = do
   H.SigD _ ty' <- topSigCG (TopSig (name "DONT_CARE") [] ty)
   let sig = H.SigD (casenmCG cn) ty'
 
-      [vx, vy, vn] = map H.mkName ["x", "y", "n"]
+      [vp, va, vb, vx, vy, vn] = map H.mkName ["p", "a", "b", "x", "y", "n"]
       vxs = [H.mkName ("x" ++ show i) | i <- [1..(length tys)]]
       matchy = H.Match (H.ConP (qnameCG cn) (map H.VarP vxs))
                        (H.NormalB (foldl H.AppE (H.VarE vy) (map H.VarE vxs))) []
@@ -72,14 +76,16 @@ mkCaseD n tyvars (Con cn tys) = do
                        (H.NormalB (H.AppE (H.VarE $ H.mkName "Smten.error0")
                                           (H.VarE $ H.mkName "msg"))) []
 
-      pc = H.VarE (H.mkName $ "Smten.primcase")
-      str = H.LitE $ H.StringL (unname cn)
-      nms = [qcasenmCG cn, vx, vy, vn]
-      mbody = foldl H.AppE pc (str : [H.VarE n | n <- nms])
+      mnms = [H.mkName $ "Smten.primcase", qcasenmCG cn, vx, vy, vn]
+      mbody = foldl1 H.AppE (map H.VarE mnms)
       matchm = H.Match (H.ConP (qprimnmCG n) [H.WildP, H.WildP]) (H.NormalB mbody) []
 
+      inms = [H.mkName $ "Smten.itecase", qcasenmCG cn, vp, va, vb, vy, vn]
+      ibody = foldl1 H.AppE (map H.VarE inms)
+      matchi = H.Match (H.ConP (qitenmCG n) (map H.VarP [vp, va, vb])) (H.NormalB ibody) []
+      
       matchn = H.Match H.WildP (H.NormalB (H.VarE vn)) []
-      cse = H.CaseE (H.VarE vx) [matchy, matche, matchm, matchn]
+      cse = H.CaseE (H.VarE vx) [matchy, matche, matchi, matchm, matchn]
 
       clause = H.Clause (map H.VarP [vx, vy, vn]) (H.NormalB cse) []
       fun = H.FunD (casenmCG cn) [clause]
@@ -150,9 +156,9 @@ mkTohsD hsmod nm cons = do
 --
 -- instance (SmtenN c1, SmtenN c2, ...) => SmtenHSN (Foo c1 c2 ...) where
 --   realizeN = ...
---   casesN = ...
 --   primitiveN = ...
 --   errorN = ...
+--   ...
 smtenHS :: Name -> [TyVar] -> [Con] -> CG [H.Dec]
 smtenHS nm tyvs cs = do
    let (rkept, rdropped) = span (\(TyVar n k) -> knum k == 0) (reverse tyvs)
@@ -162,16 +168,24 @@ smtenHS nm tyvs cs = do
        ty = H.AppT (H.VarT (H.mkName $ "Smten.SmtenHS" ++ show n))
                    (foldl H.AppT (H.ConT $ qtynameCG nm) [H.VarT (nameCG n) | TyVar n _ <- dropped])
    rel <- realizeD nm n cs
-   cases <- casesD nm n cs
    prim <- primD nm n
+   ite <- iteD nm n
    err <- errorD nm n
-   return [H.InstanceD ctx ty [rel, cases, prim, err]]
+   sapp <- sappD nm n
+   return [H.InstanceD ctx ty [rel, ite, prim, err, sapp]]
 
 --   primN = Foo_Prim
 primD :: Name -> Int -> CG H.Dec
 primD nm n = do
   let body = H.NormalB $ H.VarE (qprimnmCG nm)
       fun = H.ValD (H.VarP (H.mkName $ "primitive" ++ show n)) body []
+  return fun
+
+--   iteN = Foo_Ite
+iteD :: Name -> Int -> CG H.Dec
+iteD nm n = do
+  let body = H.NormalB $ H.VarE (qitenmCG nm)
+      fun = H.ValD (H.VarP (H.mkName $ "ite" ++ show n)) body []
   return fun
 
 --   errorN = Foo_Error
@@ -185,6 +199,8 @@ errorD nm n = do
 --   realizeN m (FooB x1 x2 ...) = FooB (realize m x1) (realize m x2) ...
 --   ...
 --   realizeN m (Foo_Prim r _) = r m
+--   realizeN m (Foo_Ite p a b) = iterealize m p a b
+--   realizeN m x@(Foo_Error _) = x
 realizeD :: Name -> Int -> [Con] -> CG H.Dec
 realizeD n k cs = do
   let mkcon :: Con -> H.Clause
@@ -198,20 +214,41 @@ realizeD n k cs = do
             body = foldl H.AppE (H.ConE (qnameCG cn)) rs
         in H.Clause pats (H.NormalB body) []
 
-      mxpats = [H.VarP $ H.mkName "m", H.ConP (qprimnmCG n) [H.VarP (H.mkName "r"), H.WildP]]
-      mxbody = H.AppE (H.VarE (H.mkName "r")) (H.VarE (H.mkName "m"))
-      mxcon = H.Clause mxpats (H.NormalB mxbody) []
-  return $ H.FunD (H.mkName $ "realize" ++ show k) (map mkcon cs ++ [mxcon])
+      primpats = [H.VarP $ H.mkName "m", H.ConP (qprimnmCG n) [H.VarP (H.mkName "r"), H.WildP]]
+      primbody = H.AppE (H.VarE (H.mkName "r")) (H.VarE (H.mkName "m"))
+      primcon = H.Clause primpats (H.NormalB primbody) []
 
--- casesN (Foo_Prim _ c) = c
--- casesN x = concrete x
-casesD :: Name -> Int -> [Con] -> CG H.Dec
-casesD nm n _ = do
-  let defbody = H.AppE (H.VarE $ H.mkName "Smten.concrete") (H.VarE $ H.mkName "x")
-      defclause = H.Clause [H.VarP $ H.mkName "x"] (H.NormalB defbody) []
+      itepats = [H.VarP $ H.mkName "m", H.ConP (qitenmCG n) (map (H.VarP . H.mkName) ["p", "a", "b"])]
+      itebody = foldl1 H.AppE (map (H.VarE . H.mkName) ["Smten.iterealize", "m", "p", "a", "b"])
+      itecon = H.Clause itepats (H.NormalB itebody) []
 
-      mxpats = [H.ConP (qprimnmCG nm) [H.WildP, H.VarP (H.mkName "c")]]
-      mxbody = H.VarE (H.mkName "c")
-      mxclause = H.Clause mxpats (H.NormalB mxbody) []
-  return $ H.FunD (H.mkName $ "cases" ++ show n) [mxclause, defclause]
+      errpats = [H.VarP $ H.mkName "m", H.AsP (H.mkName "x") (H.ConP (qerrnmCG n) [H.WildP])]
+      errbody = H.VarE $ H.mkName "x"
+      errcon = H.Clause errpats (H.NormalB errbody) []
+  return $ H.FunD (H.mkName $ "realize" ++ show k) (map mkcon cs ++ [primcon, itecon, errcon])
+
+--   sappN f (Foo_Ite p a b) = itesapp f p a b
+--   sappN f (Foo_Error msg) = error0 msg
+--   sappN f (Foo_Prim r c) = primitive0 (f Prelude.. r) (sapp f c)
+--   sappN f x = f x
+sappD :: Name -> Int -> CG H.Dec
+sappD n k = do
+  let primpats = [H.VarP $ H.mkName "f", H.ConP (qprimnmCG n) [H.VarP (H.mkName "r"), H.VarP (H.mkName "c")]]
+      fdotr = foldl1 H.AppE (map (H.VarE . H.mkName) ["(Prelude..)", "f", "r"])
+      sapp = foldl1 H.AppE (map (H.VarE . H.mkName) ["Smten.sapp", "f", "c"])
+      primbody = foldl1 H.AppE [H.VarE $ H.mkName "Smten.primitive0", fdotr, sapp]
+      primcon = H.Clause primpats (H.NormalB primbody) []
+
+      itepats = [H.VarP $ H.mkName "f", H.ConP (qitenmCG n) (map (H.VarP . H.mkName) ["p", "a", "b"])]
+      itebody = foldl1 H.AppE (map (H.VarE . H.mkName) ["Smten.itesapp", "f", "p", "a", "b"])
+      itecon = H.Clause itepats (H.NormalB itebody) []
+
+      errpats = [H.VarP $ H.mkName "f", H.ConP (qerrnmCG n) [H.VarP $ H.mkName "msg"]]
+      errbody = H.AppE (H.VarE $ H.mkName "Smten.error0") (H.VarE $ H.mkName "msg")
+      errcon = H.Clause errpats (H.NormalB errbody) []
+
+      defpats = [H.VarP $ H.mkName "f", H.VarP $ H.mkName "x"]
+      defbody = H.AppE (H.VarE $ H.mkName "f") (H.VarE $ H.mkName "x")
+      defcon = H.Clause defpats (H.NormalB defbody) []
+  return $ H.FunD (H.mkName $ "sapp" ++ show k) [itecon, errcon, primcon, defcon]
 
