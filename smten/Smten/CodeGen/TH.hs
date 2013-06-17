@@ -39,25 +39,20 @@ declare_SmtenHS n = do
                 ForallT (map PlainTV as) ctx $
                  arrowsT [ConT $ mkName "Prelude.String", mas]
 
-      casetrue = SigD (mkName $ "__caseTrue" ++ show n) $ 
+      iteN = SigD (mkName $ "ite" ++ show n) $ 
                    ForallT (map PlainTV as) ctx $
                      arrowsT [ConT (mkName "Bool"), mas, mas, mas]
 
       rzs = [foldl1 AppE [VarE $ mkName v | v <- ["realize", "m", x]]
                 | x <- ["x", "y", "n"]]
-      rval = LamE [VarP $ mkName "m"] $ foldl AppE (VarE $ mkName "__caseTrue0") rzs
+      rval = LamE [VarP $ mkName "m"] $ foldl AppE (VarE $ mkName "__caseTrue") rzs
       cval = foldl1 AppE [VarE $ mkName "switch",
                           VarE $ mkName "x",
                           AppE (VarE $ mkName "cases0") (VarE $ mkName "y"),
                           AppE (VarE $ mkName "cases0") (VarE $ mkName "n")]
-      ctprim = foldl1 AppE [VarE $ mkName "primitive0", rval, cval]
-      ctbody = CaseE (VarE $ mkName "x") [
-                  Match (ConP (mkName "True") []) (NormalB (VarE $ mkName "y")) [],
-                  Match (ConP (mkName "False") []) (NormalB (VarE $ mkName "n")) [],
-                  Match (ConP (mkName "Bool_Error") [VarP $ mkName "msg"]) (NormalB (AppE (VarE $ mkName "error0") (VarE $ mkName "msg"))) [],
-                  Match (WildP) (NormalB ctprim) []]
+      ctbody = foldl1 AppE [VarE $ mkName "primitive0", rval, cval]
       ctcls = Clause [VarP $ mkName n | n <- ["x", "y", "n"]] (NormalB ctbody) []
-      casetruedef = FunD (mkName $ "__caseTrue" ++ show n) [ctcls]
+      iteN_default = FunD (mkName $ "ite" ++ show n) [ctcls]
 
       valueofN = SigD (mkName $ "valueof" ++ show n) $
                 ForallT (map PlainTV as) ctx $
@@ -67,7 +62,7 @@ declare_SmtenHS n = do
       vcls = Clause [] (NormalB vbody) []
       valueofdef = FunD (mkName $ "valueof" ++ show n) [vcls]
 
-      methods = [relN, casN, primN, errN, casetrue, casetruedef, valueofN, valueofdef]
+      methods = [relN, casN, primN, errN, iteN, iteN_default, valueofN, valueofdef]
       classD = ClassD [] cls tyvs [] methods
   return [classD]
   
@@ -92,10 +87,10 @@ derive_SmtenHS n = do
                   (NormalB $ VarE (mkName $ "primitive" ++ show (n+1))) []
       errN = ValD (VarP (mkName $ "error" ++ show n)) 
                   (NormalB $ VarE (mkName $ "error" ++ show (n+1))) []
-      casetrueN = ValD (VarP (mkName $ "__caseTrue" ++ show n)) 
-                  (NormalB $ VarE (mkName $ "__caseTrue" ++ show (n+1))) []
+      iteN = ValD (VarP (mkName $ "ite" ++ show n)) 
+                  (NormalB $ VarE (mkName $ "ite" ++ show (n+1))) []
       valueofN = ValD (VarP (mkName $ "valueof" ++ show n)) 
                   (NormalB $ VarE (mkName $ "valueof" ++ show (n+1))) []
-      instD = InstanceD ctx ty [relN, casesN, primN, errN, casetrueN, valueofN]
+      instD = InstanceD ctx ty [relN, casesN, primN, errN, iteN, valueofN]
   return [instD]
 

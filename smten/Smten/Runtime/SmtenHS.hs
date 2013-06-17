@@ -118,6 +118,9 @@ realize m x = unsafeDupablePerformIO $ do
         A.insert mc x v
         return v
 
+ite :: (SmtenHS0 a) => Bool -> a -> a -> a
+ite = ite0
+
 class SmtenHS0 a where
     -- Update all variables in the given expression according to the given map.
     realize0 :: Assignment -> a -> a
@@ -130,12 +133,8 @@ class SmtenHS0 a where
     -- Represent a primitive function resulting in the given object.
     primitive0 :: (Assignment -> a) -> Cases a -> a
 
-    __caseTrue0 :: Bool -> a -> a -> a
-    __caseTrue0 x y n =
-        case x of
-            True -> y
-            False -> n
-            _ -> primitive0 (\m -> __caseTrue0 (realize m x) (realize m y) (realize m n))
+    ite0 :: Bool -> a -> a -> a
+    ite0 x y n = primitive0 (\m -> __caseTrue (realize m x) (realize m y) (realize m n))
                             (switch x (cases0 y) (cases0 n))
 
     -- For numeric types, this returns the value of the type.
@@ -143,15 +142,6 @@ class SmtenHS0 a where
     valueof0 :: a -> P.Integer
     valueof0 = error "valueof0 for non-numeric type"
 
-declare_SmtenHS 1
-declare_SmtenHS 2
-declare_SmtenHS 3
-declare_SmtenHS 4
-
-derive_SmtenHS 0
-derive_SmtenHS 1
-derive_SmtenHS 2
-derive_SmtenHS 3
 
 -- Convenience functions for unsupported primitives.
 --  f - a symbolic function which knows how to handle concrete arguments.
@@ -199,12 +189,6 @@ instance Haskelly a a where
     mtohs = return
     stohs = id
 
-instance SmtenHS2 (->) where
-   realize2 m f = \x -> realize m (f x)
-   cases2 f = concrete f
-   primitive2 r c = \x -> primitive0 (\m -> r m $ realize m x) (fmap ($ x) c)
-   error2 msg = \x -> error0 msg
-
 instance (Haskelly ha sa, Haskelly hb sb, SmtenHS0 sa, SmtenHS0 sb)
          => Haskelly (ha -> hb) (sa -> sb) where
     frhs hf sx 
@@ -217,10 +201,21 @@ instance Haskelly (a -> b) (a -> b) where
     stohs = id
 
 __caseTrue :: (SmtenHS0 z) => Bool -> z -> z -> z
-__caseTrue = __caseTrue0
+__caseTrue x y n = 
+  case x of
+    True -> y
+    False -> n
+    Bool_Error msg -> error0 msg
+    _ -> ite x y n
+ 
 
 __caseFalse :: (SmtenHS0 z) => Bool -> z -> z -> z
-__caseFalse x y n = __caseTrue x n y
+__caseFalse x y n =
+  case x of
+    False -> y
+    True -> n
+    Bool_Error msg -> error0 msg
+    _ -> ite x n y 
 
 instance SmtenHS0 Bool where
    realize0 m b@True = b
@@ -241,12 +236,7 @@ instance SmtenHS0 Bool where
    primitive0 = Bool_Prim
    error0 = Bool_Error
 
-   __caseTrue0 x y n =
-      case x of
-        True -> y
-        False -> n
-        Bool_Error msg -> error0 msg
-        _ -> Bool_Ite x y n
+   ite0 = Bool_Ite
 
 instance Haskelly Bool Bool where
   frhs = id
@@ -284,12 +274,7 @@ instance SmtenHS0 Integer where
 
    primitive0 = Integer_Prim
    error0 = Integer_Error
-   __caseTrue0 x y n =
-      case x of
-        True -> y
-        False -> n
-        Bool_Error msg -> error0 msg
-        _ -> Integer_Ite x y n
+   ite0 = Integer_Ite
 
 instance Haskelly Integer Integer where
    frhs = id
@@ -316,44 +301,6 @@ add_Integer = sprim2 ((+) :: P.Integer -> P.Integer -> P.Integer) Integer_Add
 sub_Integer :: Integer -> Integer -> Integer
 sub_Integer = sprim2 ((-) :: P.Integer -> P.Integer -> P.Integer) Integer_Sub
 
-instance SmtenHS1 Bit where
-   realize1 m c = 
-      case c of
-         Bit {} -> c
-         Bit_Error {} -> c
-         Bit_Add a b -> add_Bit (realize m a) (realize m b)
-         Bit_Sub a b -> sub_Bit (realize m a) (realize m b)
-         Bit_Mul a b -> mul_Bit (realize m a) (realize m b)
-         Bit_Or a b -> or_Bit (realize m a) (realize m b)
-         Bit_And a b -> and_Bit (realize m a) (realize m b)
-         Bit_Shl a b -> shl_Bit (realize m a) (realize m b)
-         Bit_Lshr a b -> lshr_Bit (realize m a) (realize m b)
-         Bit_Concat a b -> concat_Bit (realize m a) (realize m b)
-         Bit_Extract a b -> extract_Bit (realize m a) (realize m b)
-         Bit_Not a -> not_Bit (realize m a)
-         Bit_SignExtend a -> sign_extend_Bit (realize m a)
-         Bit_Ite p a b -> __caseTrue (realize m p) (realize m a) (realize m b)
-         Bit_Var x -> frhs (as_lookup x m :: P.Bit)
-         Bit_Prim r _ -> r m
-    
-   cases1 x = 
-      case x of
-         Bit {} -> Concrete x
-         Bit_Ite p a b -> switch p (cases0 a) (cases0 b)
-         Bit_Prim _ c -> c
-         Bit_Var x -> error $ "TODO: cases1 of Bit_Var " ++ show x
-         Bit_Error msg -> error $ "TODO: cases1 of Error " ++ show msg
-         _ -> error "TODO: cases1 for symbolic bit vector"
-       
-   primitive1 = Bit_Prim
-   error1 = Bit_Error
-
-   __caseTrue1 x y n =
-      case x of
-        True -> y
-        False -> n
-        Bool_Error msg -> error0 msg
-        _ -> Bit_Ite x y n
 
 instance Haskelly (Bit n) (Bit n) where
    frhs = id
@@ -417,3 +364,52 @@ toInteger_Bit :: (SmtenHS0 n) => Bit n -> Integer
 toInteger_Bit (Bit a) = frhs $ P.bv_value a
 toInteger_Bit b = prim1 toInteger_Bit b
 
+declare_SmtenHS 1
+declare_SmtenHS 2
+declare_SmtenHS 3
+declare_SmtenHS 4
+
+derive_SmtenHS 0
+derive_SmtenHS 1
+derive_SmtenHS 2
+derive_SmtenHS 3
+
+instance SmtenHS2 (->) where
+   realize2 m f = \x -> realize m (f x)
+   cases2 f = concrete f
+   primitive2 r c = \x -> primitive0 (\m -> r m $ realize m x) (fmap ($ x) c)
+   error2 msg = \x -> error0 msg
+
+instance SmtenHS1 Bit where
+   realize1 m c = 
+      case c of
+         Bit {} -> c
+         Bit_Error {} -> c
+         Bit_Add a b -> add_Bit (realize m a) (realize m b)
+         Bit_Sub a b -> sub_Bit (realize m a) (realize m b)
+         Bit_Mul a b -> mul_Bit (realize m a) (realize m b)
+         Bit_Or a b -> or_Bit (realize m a) (realize m b)
+         Bit_And a b -> and_Bit (realize m a) (realize m b)
+         Bit_Shl a b -> shl_Bit (realize m a) (realize m b)
+         Bit_Lshr a b -> lshr_Bit (realize m a) (realize m b)
+         Bit_Concat a b -> concat_Bit (realize m a) (realize m b)
+         Bit_Extract a b -> extract_Bit (realize m a) (realize m b)
+         Bit_Not a -> not_Bit (realize m a)
+         Bit_SignExtend a -> sign_extend_Bit (realize m a)
+         Bit_Ite p a b -> __caseTrue (realize m p) (realize m a) (realize m b)
+         Bit_Var x -> frhs (as_lookup x m :: P.Bit)
+         Bit_Prim r _ -> r m
+    
+   cases1 x = 
+      case x of
+         Bit {} -> Concrete x
+         Bit_Ite p a b -> switch p (cases0 a) (cases0 b)
+         Bit_Prim _ c -> c
+         Bit_Var x -> error $ "TODO: cases1 of Bit_Var " ++ show x
+         Bit_Error msg -> error $ "TODO: cases1 of Error " ++ show msg
+         _ -> error "TODO: cases1 for symbolic bit vector"
+       
+   primitive1 = Bit_Prim
+   error1 = Bit_Error
+
+   ite1 = Bit_Ite
