@@ -48,7 +48,6 @@ library
     Smten.AnyMap
     Smten.AnyKeyMap
     Smten.SMT.Assert
-    Smten.SMT.Debug
     Smten.SMT.DebugLL
     Smten.SMT.FreeID
     Smten.SMT.Solver.Dynamic

@@ -14,22 +14,17 @@ import Data.Functor
 import Data.List(genericLength)
 
 import Smten.Runtime.SmtenHS as S
-import Smten.Runtime.Debug
 
 data PrimArray a = PrimArray (Array P.Integer a)
-                 | PrimArray_Prim (Assignment -> PrimArray a) (Cases (PrimArray a)) Debug
+                 | PrimArray_Prim (Assignment -> PrimArray a) (Cases (PrimArray a))
                  | PrimArray_Error String
 
 instance SmtenHS1 PrimArray where
     realize1 m (PrimArray x) = PrimArray (realize m <$> x)
-    realize1 m (PrimArray_Prim r _ _) = realize m (r m)
+    realize1 m (PrimArray_Prim r _) = realize m (r m)
 
     cases1 x@(PrimArray {}) = concrete x
-    cases1 (PrimArray_Prim _ c _) = c
-
-    debug1 (PrimArray {}) = dbgText "?PrimArray"
-    debug1 (PrimArray_Prim _ _ d) = d
-    debug1 (PrimArray_Error msg) = dbgError msg
+    cases1 (PrimArray_Prim _ c) = c
 
     error1 = PrimArray_Error
 

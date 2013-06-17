@@ -1,0 +1,237 @@
+
+Sat Jun 15 09:27:16 EDT 2013
+
+Goal today: express sharing in debug.
+
+I'll start just by annotating every expression with an ID. Perhaps we can use
+a much higher base for the id so the ids aren't so long (that's a separate
+refinement).
+
+Let me give it a try and see how it looks. I can test it out on the sharing
+tests.
+
+Sat Jun 15 09:36:51 EDT 2013
+
+I have the mechanism in place for sharing:
+    dbgShare.
+
+It takes an object and a function to generate its debug.
+
+It says: if you haven't seen this object before, here's how you can figure out
+the debug for it. If you have seen it before, then  you may wish to do
+something different as appropriate.
+
+The question, then, is how I want to make use of sharing.
+
+Let me put Debug in IO.
+Let me make it a ReaderT Cache IO.
+
+Then, I think, it should be easy? I hope.
+
+Let's give it a shot. I'll let you know how things turn out.
+
+Sat Jun 15 10:21:27 EDT 2013
+
+Okay... it seems to be working now.
+It does what I wanted it to do.
+
+But it is very noisy.
+
+* Don't put a mark around  (that is, don't "share")
+   - a literal
+   - a constructor with no arguments
+   - a variable
+
+Let me start with that and see how it helps.
+
+First step: how to avoid sharing of...
+ - variables and nullary constructors and literals.
+
+How do I figure out I shouldn't share these things?
+
+Debug should return a bool telling is whether it is sharable. Only add it to
+the map of seen if it is shareable, and only define an id for things that are
+shareable.
+
+Good. Works for me.
+
+Sat Jun 15 10:39:32 EDT 2013
+
+The last thing I want is not to give an id to things that only show up once.
+I fear this is harder to do.
+
+But perhaps it isn't so bad after all?
+
+What if we made Debug a tuple of reader monads?
+
+The first one just computes the table of values to share.
+The second one takes that table as input.
+
+Yes. That can work. Is it worth a try?
+
+I think... yes, it probably is. It will be worth the cleaning. It will make it
+much easier to debug, and it really isn't that hard to do, I don't think.
+
+What do we want then?
+
+type Debug = (ReaderT DR IO Bool, ReaderT DR Doc)
+
+That might even clean up the code a little. Not sure.
+
+How does it work?
+
+Well, really what we want is:
+
+For the first iteration:
+ Count the occurrences of a value in a map.
+    Not present, False (for not seen multiple times), or True for shared.
+
+The output of this is the map.
+
+For the second iteration:
+ Check if the given value appears multiple times. Only then, annotate it with
+ its id.
+
+I suppose the map could be to Maybe Integer. So we assign an ID if we don't
+already have one.
+
+Sounds good to me. Let me give it a try.
+
+Try to make it clean, please. As clean as I can anyway.
+
+Sat Jun 15 11:18:40 EDT 2013
+
+It works! Awesome.
+
+Now then. What's next? I would say we try out arch-extract and look at what we
+see.
+
+Sat Jun 15 11:23:25 EDT 2013
+
+Great news: debugging doesn't slow things down nearly so much now that we
+preserve sharing in debug.
+
+I still need to print (->) in a nice way, for case matches and, presumably,
+primitive functions. But for now just case matches.
+
+This should be fairly easy. Make up a fresh name for the variable being
+matched, print that out, then apply the function with the argument a primitive
+whose debug is dbgVar of that name.
+
+Perhaps I can appeal to dbg to give me a fresh name? Not sure.
+
+Let me take a little break for now, and come back to implement this.
+
+Once that's done, it really will be time to try and understand what's going on
+in the generated queries, and why they are so slow, and what, if anything, we
+can do to make the queries smaller.
+
+Sat Jun 15 14:24:54 EDT 2013
+
+Something about what I did was bad. We get stack overflow and use up all the
+memory.
+
+Bummer.
+
+Hmm... I'll have to think about this more then.
+
+Maybe we can't display that kind of information.
+
+Perhaps what I'll do is... hopefully I have enough information to get started.
+I'll try to look at the generated query and figure out what's going on.
+
+The other thing I've been thinking about is what kinds of improvements we
+could make to the generated query.
+
+The significant things are:
+* preservation of sharing. Make sure we really capture all the sharing there
+  is.
+* pruning.
+At a case expression, can we figure out that one option is not possible and
+prune the whole thing away?
+
+I bet this is a hard problem, but I also think it is the general solution to
+performance issues of this kind.
+
+Perhaps I should go one at a time.
+
+Um... I'm not entirely sure I want to do this on a weekend, because it really
+is a lot of work...
+
+Okay, I'll look a ways, and if it is too much for a weekend thing, I'll move
+on to something else.
+
+Let's start easy.
+
+Is Conflict Free:
+ instruction_fetch and memory?
+
+The rules:
+ fetch:
+   * enqueue load request
+   * enqueue info to decode stage
+   * update startRedir and pc registers
+
+ memory: 
+   * Read and dequeue the input fifo.
+   * if it's a load, enqueue the load request
+     if it's a store, enqueue the store request
+   * enqueue info to the writeback stage
+
+To me, these rules are fairly clearly conflict free, because they share no
+state. It may not be so obvious to smten that that is the case, however.
+
+The query to test for conflict free:
+ * create an initial state s
+ * apply fetch then memory to s
+ * apply memory then fetch to s
+ * see if the results are equal.
+
+We could do some simplified examples, perhaps, to break down the problem into
+a smaller one.
+
+For example: given a free state, see if it's possible the state is not equal
+to itself. How hard is that?
+
+It takes almost no time at all. But it may be worth looking at the generated
+query to get some ideas.
+
+Observations:
+* We create 122 free variables.
+* We see a long chain of testing for primitive variable equality
+    It's an 'if' chain, rather than an 'and' chain. I don't know if that
+    matters or not.
+* I suspect equality of fifos is still leading to rather big code:
+
+  (==) x y = ((maxBound_SizedFIFO x == maxBound_SizedFIFO y) &&
+              (enqPtr x  == enqPtr y) && 
+              (all id (map (\i -> (i >= enqPtr x) || ((arr_SizedFIFO x) ! i) == ((arr_SizedFIFO y) ! i)) (range (0, maxBound_SizedFIFO x)))))
+    
+For two fifos to be equal, we have:
+ * they are the same size
+ * their enq and deq pointers are in the same place
+ * in the range of indicies i, it is the case that  
+        the index is out of bounds.
+     or the elements at index i match.
+
+So, you enqueue at the enqueue pointer, and to dequeue, you shift all to the
+left.
+
+Other notes:
+ * Less than for bit vectors could be simplified noticeably if we supported it
+   as a primitive instead of using compare. But that's in the high level
+   query. If we propagate cases? It's perhaps not that bad.
+
+Can we do better for the FIFO? The trouble is, we don't know how many elements
+are in the fifo, so we don't know how many matter. It would be wrong to claim
+those elements that don't matter for equality really do.
+
+I don't see that we can do better.
+
+I suspect an important question that will come up is, how does this equality
+look after doing some transformation on the state?
+
+Perhaps the observation I want to make is, when you are trying cases of
+things, you should share everything that doesn't depend on the thing you are
+trying cases of. If that's possible. I'm not sure how that would show up.
+

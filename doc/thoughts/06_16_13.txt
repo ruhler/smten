@@ -1,0 +1,820 @@
+
+Sun Jun 16 07:21:24 EDT 2013
+
+I have a hypothesis as to what could be taking so long with arch-extract.
+
+When we do rule applications, we have a chain of maybes.
+
+My hypothesis is, because we represent Maybe as Nothing or Just, rather than a
+boolean predicate and a value, it causes a much bigger blowup than it should.
+
+Let me try an experiment.
+
+We have a single rule:
+
+Reg#(Bit#(32)) x <- mkReg 0
+
+rule incr (x < 100);
+    x <= x + 1
+
+I create a free state, apply incr N times, and compare that state with the
+original state. We can check to see if they are ever equal.
+
+I want to take a look at the generated query too.
+
+Okay? Let me give this a try.
+
+The high level debug info, unfortunately, is not very enlightening.
+
+The lower level debug info, hopefully more so.
+
+Sun Jun 16 07:44:28 EDT 2013
+
+Well, I ran into a smten bug. I suppose that must needs be solved first.
+
+Oh! You know what it is?
+
+The test is failing, so we are generating an Error, but that isn't propagating
+correctly, because we don't know how to convert IO_Error to haskell IO.
+
+What I ought to do is propagate the error up to the very top, then print it
+out there. What I could do as a hack is convert the error to explicit error,
+or just avoid the issue entirely for now.
+
+Sun Jun 16 07:56:51 EDT 2013
+
+Well, I'm not seeing a huge blowup from Maybe over Tuple. They seem to be
+about the same order.
+
+Oh well.
+
+Sun Jun 16 08:07:04 EDT 2013
+
+I've isolated a touch isCF call: rules 2 and 6.
+
+It takes almost a minute, and a surprising amount of memory.
+
+I believe this is representative of the time spent in arch-extract. So if I
+can understand this, I'll be in good shape.
+
+First, some information gathering.
+
+What does the time profiler say?
+What does the heap profiler say?
+
+Is there any way to minimize the rules?
+Note: it returns Just (), which means there is an example where they are
+different. In other words, they are not conflict free rules.
+
+Wow. This is interesting. Because all of the time is spent in Assert, not in
+SMT Check for this query.
+
+If we turn off debugging?
+
+It takes 13 seconds instead of a minute.
+Memory usage is still quite high.
+
+50% of time is in Yices2 Check.
+Why did debug not get assigned time when debug was turned on?
+
+Tons of memory are coming from MAIN. I don't know what that means.
+
+The type is:
+  SmtenHS0,
+  Lots of 3 arg functions to * (I bet this is __caseFoo primitives)
+  SmtenHS1,
+  Lots of 1 arg function to * (I bet this is prim1)
+  Lots of 2 arg functions to Maybe
+
+The retainers are:
+  unknown. seg faults.
+
+The descriptions are:
+  Smten.Lib.Prelude.sat_sXXX
+  Smten.Runtime.SmtenHS.sat_sXXX
+  dictionaries.
+  And a whole big bunch of OTHER.
+
+So maybe we have a memory leak. Or maybe we just use a lot of memory.
+That may or may not be contributing to the performance. Somehow I suspect...
+though it would be nice not to use so much memory, fixing that won't make
+things notably faster.
+
+Let me think about what I want to do next with this and get back to you.
+
+Sun Jun 16 09:00:08 EDT 2013
+
+1. Look at the rule, try to understand at the high level what is going on.
+2. Try to minimize the problem.
+Use the dbgll output as an indicator of the size of the problem.
+Goal is to find some variables I can change that lead to exponential behavior.
+Things to try:
+ * remove unrelated state
+ * shrink related state
+ * try a rule with itself
+3. See if I can replicate this problem in my own setting.
+
+And go from there.
+
+rule decode:
+ * get instruction response from imem
+ * dequeue infifo.
+ * enqueue to outfifo the decoded instruction
+    Note: the decode rule has lots of combinational logic involved.
+
+rule writeback:
+ * dequeue input fifo
+ * get data response
+ * update reg file
+
+These rules are talking through the register file.
+
+Thus we see that that could potentially be the issue?
+
+That is: 
+ decode is reading from 2 of 32 registers.
+ writeback is writing to 1 of 32 registers.
+
+The equality behavior depends on the square of the number of registers?
+
+The rules are otherwise unrelated.
+
+I wonder if I could model this somehow.
+
+For example:
+ * we could model writeback as a rule which writes a free value to a free
+   register.
+ * we could model decode as a rule which reads a free register
+
+My question is: how would this scenario scale with the number of registers?
+   
+Here's my proposed system:
+
+rf: an array of registers (using the same approach as in arch-extract)
+dcval: a free 32 bit value.
+dcidx: a free index into the register array.
+wbval: a free 32 bit value.
+wbidx: a free index into the register array.
+
+The rules are:
+ decode: read the register file from dcidx, placing the value in dcval.
+ writeback: write the register file wbidx with wbval.
+
+The question is: how does this scale with the number of registers?
+
+The answer will either be:
+ * very poorly. In which case, I should solve this problem.
+ * just fine. In which case... hopefully I've learned something.
+
+I made the test case.
+
+16 elements: dbgll of 299 terms.
+32 elements: dbgll of 587 terms.
+64 elements: dbgll of 1163 terms.
+
+It seems to scale linearly.
+
+What if we conditionally wroteback?
+
+16 elements: dbgll of 649 terms.
+32 elements: dbgll of 1257 terms.
+64 elements: dbgll of 2473 terms.
+
+It still scales linearly, but the number of terms have doubled!
+
+Thus, it would appear to be exponential in the number of conditions?
+Let me try to add another condition.
+
+16 elements: dbgll of 1486 terms.
+32 elements: dbgll of 2894 terms.
+64 elements: dbgll of 5709 terms.
+
+Yes. So I'm seeing exponential growth in the query size on the number of
+conditional updates.
+
+What if we had a conditional read too?
+
+32 elements: dbgll of 26354 terms.
+
+Whoa! That's massive! That's not just a simple doubling... It's an octupling!
+
+Let me get rid of one of the writeback conditions.
+
+32 elements: dbgll of 9394 terms
+
+That's a huge factor.
+
+This could certainly be the issue we are seeing.
+
+I should focus on this, and try to figure out what it is all about.
+
+I bet if I can understand this, it will be very valuable.
+
+The growth: 2 ^ (decode choices * writeback choices)
+
+I think that's good work for this morning. I can try to figure out what the
+problem is later.
+
+Sun Jun 16 11:11:20 EDT 2013
+
+Time to try to figure out what the problem is.
+
+First step: make the problem tractable to me, while still demonstrating it.
+Have a 2 bit index, so we have a 4 element register file.
+
+2 bit index, 1 choice for each of writeback and decode: 1274 terms.
+That's a lot.
+
+Let me simplify further for this?
+
+If can get just one of the choices from exponential to linear, the other
+should fall in place too.
+
+Removing choice in decode: 148 terms.
+Removing choice in writeback: 24 terms.
+
+Hmm... The scaling seems strange to me.
+
+But let me start here and see. 24 to 148 to 1274 is certainly a problem.
+
+In the current version we have:
+  both decode and writeback are identity.
+  So our 24 terms should correspond to disequality of the free state with
+  itself.
+
+Let's check.
+  8 free variables: 4 array, 2 index, 2 value.
+
+1. assert all the array values are equal.
+2. assert all the other values are equal.
+Perfect.
+
+Now, let's add the writeback choice? How about, not the choice, but the actual
+operation.
+
+Now we have 54 terms. Let me see if I can understand the high level query.
+
+Annoyance: I can't see inside the body of a case match against Just.
+
+Array update just adds the thing to the front of the list.
+Array equality compares the values of all the elements of the array by looking
+them each up individually.
+
+Array lookup is just lookup with a fromMaybe.
+
+So, what I expect to see for the high level query is something like...
+
+decode is identity. So really this is the same as calling the same function
+twice.
+
+Do we still have exponential blowup? Perhaps I could focus in and simplify the
+problem to just the one rule, applied twice, then tested for equality.
+
+0 choice: 54 terms.
+1 choice: 204 terms.
+2 choice: 452 terms. 
+3 choice: 798 terms.
+4 choice: 1242 terms.
+5 choice: 1784 terms.
+  It is a strange growth. But order exponential I would say?
+  No. It's linear. Each time we add about 300.
+
+So it seems this is not enough for my experiment to work out right.
+
+let's have decode do something interesting then.
+
+5 choice: 1898
+4 choice: 1339
+3 choice:  878
+ Hmm... Still not exponential. I'm confused now.
+
+But this is similar to what we see otherwise as well...
+
+Perhaps it doesn't have to do so much with how many choices of value of
+elements, or when we have those elements, as with how many elements are on the
+list?
+
+Decode reads a value from the array, at random.
+
+Let's say: writeback can either:
+ * write back 0 elements: 332
+ * write back 1 element: 1256
+ * write back 2 element  3477
+  etc...
+
+Hmm... I still don't understand. Is this exponential growth? Or just big
+constant growth?
+
+Should I still be looking into it to understand it?
+
+How about this. Let me just try to understand something. Understand what's
+going on. And start piece by piece.
+
+I understand the case of identity functions. 24 terms.
+Now let's add: do writeback operation: 363 terms.
+
+decode does nothing.
+writeback sets the register wbidx to 0.
+
+What I expect to see:
+ Compare original state to the state with register wbidx set to 0.
+
+The only change is in the array comparison.
+
+Before we knew the value of each element in each case:
+s.0: f0,
+s.1: f1,
+s.2: f2,
+s.3: f3,
+
+Now we aren't sure:
+s.0: if wbidx == 0
+        then 0
+        else f0
+s.1: if wbidx == 1
+        then 0
+        else f1
+s.2: if wbidx == 2
+        then 0
+        else f2
+s.3: if wbidx == 3
+        then 0
+        else f3
+    
+        
+I wonder if the way is in which we do lookup.
+
+In lookup we say: if we found the answer, then stop.
+Otherwise keep looking.
+
+What if we said instead: always look everywhere, and just combine the answers
+as needed?
+
+The hope is that this will mean, regardless of the contents of the list, we
+will always follow the same path?
+
+Instead of:
+    lookup :: (Eq a) => a -> [(a, b)] -> Maybe b
+    lookup key [] = Nothing
+    lookup key ((x, y):xys)
+     | key == x = Just y
+     | otherwise = lookup key xys
+
+What if we did:
+    lookup :: (Eq a) => a -> [(a, b)] -> Maybe b
+    lookup key [] = Nothing
+    lookup key ((x, y):xys) =
+      let f :: Maybe b -> Maybe b -> Maybe b
+          f Nothing x = x
+          f x _ = x
+
+          rest = lookup key xys
+      in f (if (key == x) then Just y else Nothing) rest
+
+Or, because we have error as the default, we could have an even easier
+implementation?
+
+No. That doesn't make any sense. That shouldn't make a difference.
+
+Okay, I think I've found a scheme that I like.
+
+For decode:
+ * either we decode or we decode.
+For writeback:
+ * either we write back or we write back.
+
+There will be duplication, because I call the same thing twice. 
+
+The question is, why does that duplication lead to exponential more work?
+
+First version to understand:
+No choice in either decode or writeback: 83 terms.
+
+Writeback is updating one of the 4 registers with wbval.
+Decode is reading one of the 4 registers.
+
+After just decode:
+  dcval = if dcidx == 0
+             then f0
+             else if dcidx == 1
+                     then f1
+                          else if dcidx == 2
+                                  then f2
+                                       else if dcidx == 3
+                                               then f3
+                                               else error "out of bounds"
+
+After just writeback:
+  r0 = if wbidx == 0 then wbval else f0
+  r1 = if wbidx == 1 then wbval else f1
+  r2 = if wbidx == 2 then wbval else f2
+  r3 = if wbidx == 3 then wbval else f3
+            
+
+After decode followed by writeback:
+
+  dcval = if dcidx == 0
+             then f0
+             else if dcidx == 1
+                     then f1
+                          else if dcidx == 2
+                                  then f2
+                                       else if dcidx == 3
+                                               then f3
+                                               else error "out of bounds"
+  r0 = if wbidx == 0 then wbval else f0
+  r1 = if wbidx == 1 then wbval else f1
+  r2 = if wbidx == 2 then wbval else f2
+  r3 = if wbidx == 3 then wbval else f3
+  
+After writeback followed by decode:
+
+  r0 = if wbidx == 0 then wbval else f0
+  r1 = if wbidx == 1 then wbval else f1
+  r2 = if wbidx == 2 then wbval else f2
+  r3 = if wbidx == 3 then wbval else f3
+
+  dcval = if dcidx == 0
+             then if wbidx == 0 then wbval else f0
+             else if dcidx == 1
+                     then if wbidx == 1 then wbval else f1
+                          else if dcidx == 2
+                                  then if wbidx == 2 then wbval else f2
+                                       else if dcidx == 3
+                                               then wbidx == 3 then wbval else f3
+                                               else error "out of bounds"
+
+I would like to be able to see these high level queries. Or rather, high level
+symbolic objects. Is there a way I could do that? My traceE primitive should
+be rather useful here, don't you think? And now that I have debug, I should be
+able to do it just fine.
+
+The query we are getting for the above case is:
+
+if if if if if if wbidx == 2'd0
+                 then wbval
+                 else f~0 == if wbidx == 2'd0
+                               then wbval
+                               else f~0
+              then if if if wbidx == 2'd1
+                           then wbval
+                           else f~1 == if wbidx == 2'd1
+                                         then wbval
+                                         else f~1
+                        then if if if wbidx == 2'd2
+                                     then wbval
+                                     else f~2 == if wbidx == 2'd2
+                                                   then wbval
+                                                   else f~2
+                                  then if if if wbidx == 2'd3
+                                               then wbval
+                                               else f~3 == if wbidx == 2'd3
+                                                             then wbval
+                                                             else f~3
+                                            then True
+                                            else False
+                                         then True
+                                         else False
+                                  else False
+                               then True
+                               else False
+                        else False
+                     then True
+                     else False
+              else False
+           then if dcidx == dcidx
+                  then if if wbidx == dcidx
+                            then wbval
+                            else if 2'd0 == dcidx
+                                   then f~0
+                                   else if 2'd1 == dcidx
+                                          then f~1
+                                          else if 2'd2 == dcidx
+                                                 then f~2
+                                                 else if 2'd3 == dcidx
+                                                        then f~3
+                                                        else error "Array.!: undefined element" == if 2'd0 == dcidx
+                                                                                                     then f~0
+                                                                                                     else if 2'd1 == dcidx
+                                                                                                            then f~1
+                                                                                                            else if 2'd2 == dcidx
+                                                                                                                   then f~2
+                                                                                                                   else if 2'd3 == dcidx
+                                                                                                                          then f~3
+                                                                                                                          else error "Array.!: undefined element"
+                         then if wbidx == wbidx
+                                then if wbval == wbval
+                                       then True
+                                       else False
+                                else False
+                         else False
+                  else False
+           else False
+        then False
+        else True
+     then False
+     else True
+  then False
+  else True
+
+This says: first check all the register values match. They do. It does the
+right thing.
+
+Then it says: does dcidx match? It does the right thing.
+Then it says: does dcval match?
+
+Yes. Okay! So the query looks exactly as I would like it to. My one note is I
+got decode after writeback wrong. It really looks like:
+
+if dcidx == wbidx
+    then wbval
+    else if dcidx == 0
+             then f0
+             else if dcidx == 1
+                     then f1 
+                         etc...
+
+Good!
+
+I understand this query. It makes sense to me. It looks right.
+
+Now then. What if I add a choice to writeback?
+
+66 terms goes to: 204.
+
+Let me try to do the same exercise.
+
+After just writeback:
+  r0 = if wbval == 0
+          then if wbidx == 0 then wbval else f0
+          else if wbidx == 0 then wbval else f0
+  r1 = if wbval == 0
+          then if wbidx == 1 then wbval else f1
+          else if wbidx == 1 then wbval else f1
+  r2 = if wbval == 0
+          then if wbidx == 2 then wbval else f2
+          else if wbidx == 2 then wbval else f2
+  r3 = if wbval == 0
+          then if wbidx == 3 then wbval else f3
+          else if wbidx == 3 then wbval else f3
+
+Ah. Now this is interesting. In the generated query...
+
+We have the mux at the level of the State object.
+
+  if wbval == 0
+     then
+          r0 = if wbidx == 0 then wbval else f0
+          r1 = if wbidx == 1 then wbval else f1
+          r2 = if wbidx == 2 then wbval else f2
+          r3 = if wbidx == 3 then wbval else f3
+          wbval = wbval
+          wbidx = wbidx
+          dcval = dcval
+          dcidx = dcidx
+     else
+          r0 = if wbidx == 0 then wbval else f0
+          r1 = if wbidx == 1 then wbval else f1
+          r2 = if wbidx == 2 then wbval else f2
+          r3 = if wbidx == 3 then wbval else f3
+          wbval = wbval
+          wbidx = wbidx
+          dcval = dcval
+          dcidx = dcidx
+
+And we do a case on that.
+
+So, for example, something like:
+ (if p then s else s) == s
+
+In this case, we call the equality function twice. If there are symbolic
+things, we duplicate the equality function for each field. If there are
+concrete things, we evaluate it twice for each field.
+
+Note that the first thing == does is:
+    case a of
+        State -> \ ... -> case b of
+                            State -> \ ... ->
+            
+So, we could think of this as:
+
+f (if p then s else s), which is strict in its argument.
+
+All good and well. So we say: recognize that 's' is the same in both, then
+just memoize to share the results. But! 's' may be very close to the same, but
+not quite the same:
+
+f (if p then s { dcidx = 0 } else s).
+
+These two are very close to the same. The only difference is in dcidx. But we
+end up duplicating the call to 'f' for every other field as well, even though
+all the other fields are exactly the same.
+
+This is a story of sharing we are not taking advantage of. It's a story I
+ought to be able to make an explicit example of, to demonstrate an exponential
+blowup.
+
+Imagine we have a list of elements. We apply a function to the elements of the
+list to get booleans, and we ask if any of those booleans are true.
+
+In other words: any f elems
+  For some list of elems and function f.
+
+Let's assume the elements of the list are all different symbolic things.
+The result of applying 'f' to an element will be a formula.
+
+Now then, compare the two cases:
+    any f (if p then x : elems else y : elems)
+    any f (if p then x else y) : elems
+
+In the first case, we have duplicated elems, so we are duplicating the call of
+'f' to every element of the elems. Or, said another way, we are duplicating
+the calls to (any f elems).
+
+This, I would argue, is what we want to be able to avoid somehow.
+
+Said another way: I apply a function on a large object. I modify the object
+slightly, then apply the function again. Much of the computation (and formula)
+will be the same in both cases, but it will be different in some cases. How
+can I capture that and share that?
+
+Let me think about it for a while.
+
+Sun Jun 16 14:25:25 EDT 2013
+
+One way I could test if this is the issue:
+Move the if statement inside in my example, and see how big a difference it
+makes. Let me try that.
+
+1855 terms went up to 4108!
+
+Wow. I did not expect that to happen.
+
+Thus, I suggest I spend more time to understand what is going on. That should
+point me to the real issue.
+
+If only I could get debugging of case bodies to work, instead of printing out
+(->)...
+
+Perhaps it will work okay on this smaller example?
+
+The trouble is, what if the function is recursive? Then this could lead to an
+infinite recursion, which is bad.
+
+Sun Jun 16 14:58:33 EDT 2013
+
+It doesn't work on the smaller example. I don't see a way to make this work
+out.
+
+I should just figure out what's going on by hand.
+
+First version: single writeback, single decode.
+This is already understood. I worked it out above.
+
+It is 66 terms.
+
+Now: have a choice in writeback: 204 terms.
+
+  if wbval == 0
+     then
+          r0 = if wbidx == 0 then wbval else f0
+          r1 = if wbidx == 1 then wbval else f1
+          r2 = if wbidx == 2 then wbval else f2
+          r3 = if wbidx == 3 then wbval else f3
+          wbval = wbval
+          wbidx = wbidx
+          dcval = dcval
+          dcidx = dcidx
+     else
+          r0 = if wbidx == 0 then wbval else f0
+          r1 = if wbidx == 1 then wbval else f1
+          r2 = if wbidx == 2 then wbval else f2
+          r3 = if wbidx == 3 then wbval else f3
+          wbval = wbval
+          wbidx = wbidx
+          dcval = dcval
+          dcidx = dcidx
+
+What we don't see in the high level debug output is the body of equality. But
+I know how that should look, given the arguments, and I have the arguments.
+
+At some point I will want the result of equality. The only way to get it is to
+get the cases of the argument, and try both of those.
+
+So we end up doing the equality twice.
+We get:
+
+if wbval == 0
+   then ... (whatever we had before)
+   else ... (whatever we had before)
+
+I expect almost a 2x increase in the terms. It's odd that we find not a 2x
+increase, but a 3x increase.
+
+Is it because we have:
+    if wbval s == 0
+        then s { ... }
+        else if True. 
+No. That doesn't make sense.
+
+I don't understand the 3x instead of 2x.
+
+I don't know. At some point we do end up with something equals itself.
+
+I suppose I could write it all out and see what we get.
+
+Let me try that. Maybe something interesting will happen.
+
+assert:
+if if if if @1{ wbval == 0 }
+           then if @2{ wbval == 0 }
+                  then if if if wbidx == 0
+                               then wbval
+                               else f0 == if wbidx == 0
+                                            then wbval
+                                            else f0
+                            then if if if wbidx == 1
+                                         then wbval
+                                         else f1 == if wbidx == 1
+                                                      then wbval
+                                                      else f1
+                                      then $34
+                                      else False
+                                   then True
+                                   else False
+                            else False
+                         then $77
+                         else False
+                  else if if if wbval == 0
+                               then wbval
+                               else f0 == if wbval == 0
+                                            then wbval
+                                            else f0
+                            then if if if wbidx == 1
+                                         then wbval
+                                         else f1 == if wbidx == 1
+                                                      then wbval
+                                                      else f1
+                                      then ...
+                                      else False
+                            else False
+                         then $117
+                         else False
+           else if @2{ wbval == 0 }
+                  then if if $121 == $123
+                            then $149
+                            else False
+                         then $158
+                         else False
+                  else if $190
+                         then if $191
+                                then if $62 == $70
+                                       then if wbidx == wbidx
+                                              then if wbval == wbval
+                                                     then True
+                                                     else False
+                                              else False
+                                       else False
+                                else False
+                         else False
+        then True
+        else False
+     then True
+     else False
+  then True
+  else False
+
+
+So, it looks like we do, indeed, repeat the thing 3 times. Not as
+
+if wbval == 0
+    then x  
+    else x
+
+But as:
+
+if wbval == 0
+    then if wbval == 0
+           then x
+           else x
+    else x
+
+Where could that be coming from?
+
+Notice: we call the rule writeback twice. So this choice will appear twice.
+That could, perhaps, explain what I am seeing here.
+
+So I think this cases thing is causing us problems.
+
+But the thing is: the person wrote the thing twice in their code.
+
+I think the more realistic example is when they modify part of the state
+conditionally. But as we saw, expressing that that way doesn't seem to improve
+things at all.
+
+I suppose we could just memo everything symbolic?
+
+Or... memo all the primitives? And here, constructors would have to count as
+primitives.
+
+I'll think about it some more and get back to you.

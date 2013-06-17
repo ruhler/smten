@@ -21,7 +21,6 @@ data a :*: b
 instance (SingI n) => SmtenHS0 (NumT n) where
     realize0 _ _ = numeric
     cases0 _ = concrete numeric
-    debug0 = error "TODO: debug0 for NumT"
     primitive0 _ _ = numeric
     error0 = error "TODO: error0 for NumT"
     valueof0 x =
@@ -32,7 +31,6 @@ instance (SingI n) => SmtenHS0 (NumT n) where
 instance SmtenHS2 (:+:) where
     realize2 _ _ = numeric
     cases2 _ = concrete numeric
-    debug2 = error "TODO: debug2 for :+:"
     primitive2 _ _ = numeric
     error2 = error "TODO: error0 for :+:"
 
@@ -43,7 +41,6 @@ instance SmtenHS2 (:+:) where
 instance SmtenHS2 (:-:) where
     realize2 _ _ = numeric
     cases2 _ = concrete numeric
-    debug2 = error "TODO: debug2 for :-:"
     primitive2 _ _ = numeric
     error2 = error "TODO: error0 for :-:"
 
@@ -53,7 +50,6 @@ instance SmtenHS2 (:-:) where
 instance SmtenHS2 (:*:) where
     realize2 _ _ = numeric
     cases2 _ = concrete numeric
-    debug2 = error "TODO: debug2 for :*:"
     primitive2 _ _ = numeric
     error2 = error "TODO: error0 for :*:"
 

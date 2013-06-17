@@ -25,7 +25,6 @@ import Data.Maybe(fromMaybe)
 import qualified Smten.AnyMap as A
 import Smten.SMT.FreeID
 import Smten.CodeGen.TH
-import Smten.Runtime.Debug
 
 data Cases a =
     Concrete a
@@ -36,9 +35,6 @@ concrete = Concrete
 
 switch :: Bool -> Cases a -> Cases a -> Cases a
 switch = Switch
-
-debug :: (SmtenHS0 a) => a -> Debug
-debug x = dbgShare debug0 x
 
 instance Functor Cases where
     fmap f (Concrete x) = Concrete (f x)
@@ -61,7 +57,7 @@ data Bool where
     Bool_EqBit :: (SmtenHS0 n) => Bit n -> Bit n -> Bool
     Bool_LeqBit :: (SmtenHS0 n) => Bit n -> Bit n -> Bool
     Bool_Ite :: Bool -> Bool -> Bool -> Bool
-    Bool_Prim :: (Assignment -> Bool) -> Cases Bool -> Debug -> Bool
+    Bool_Prim :: (Assignment -> Bool) -> Cases Bool -> Bool
     Bool_Error :: String -> Bool
 
 data Integer =
@@ -70,7 +66,7 @@ data Integer =
   | Integer_Sub Integer Integer
   | Integer_Ite Bool Integer Integer
   | Integer_Var FreeID
-  | Integer_Prim (Assignment -> Integer) (Cases Integer) Debug
+  | Integer_Prim (Assignment -> Integer) (Cases Integer)
   | Integer_Error String
 
 data Bit n where
@@ -88,7 +84,7 @@ data Bit n where
     Bit_SignExtend :: (SmtenHS0 m) => Bit m -> Bit n
     Bit_Ite :: Bool -> Bit n -> Bit n -> Bit n
     Bit_Var :: FreeID -> Bit n
-    Bit_Prim :: (Assignment -> Bit n) -> Cases (Bit n) -> Debug -> Bit n
+    Bit_Prim :: (Assignment -> Bit n) -> Cases (Bit n) -> Bit n
     Bit_Error :: String -> Bit n
 
 data Assignment = Assignment {
@@ -131,10 +127,8 @@ class SmtenHS0 a where
 
     error0 :: String -> a
 
-    debug0 :: a -> Debug
-
     -- Represent a primitive function resulting in the given object.
-    primitive0 :: (Assignment -> a) -> Cases a -> Debug -> a
+    primitive0 :: (Assignment -> a) -> Cases a -> a
 
     __caseTrue0 :: Bool -> a -> a -> a
     __caseTrue0 x y n =
@@ -143,7 +137,6 @@ class SmtenHS0 a where
             False -> n
             _ -> primitive0 (\m -> __caseTrue0 (realize m x) (realize m y) (realize m n))
                             (switch x (cases0 y) (cases0 n))
-                            (dbgCase "True" (debug x) (debug y) (debug n))
 
     -- For numeric types, this returns the value of the type.
     -- For other types, this is undefined.
@@ -166,14 +159,12 @@ derive_SmtenHS 3
 prim1 :: (SmtenHS0 a, SmtenHS0 b) => (a -> b) -> a -> b
 prim1 f x = primitive0 (\m -> f (realize m x))
                        (fmap f (cases0 x))
-                       (dbgText "?prim1?")
 
 -- Primitive Case.
 -- The function 'f' is assumed to be strict in its first argument only.
 primcase :: (SmtenHS0 a, SmtenHS0 b, SmtenHS0 c, SmtenHS0 d) => String -> (a -> b -> c -> d) -> a -> b -> c -> d
 primcase k f x y z = primitive0 (\m -> f (realize m x) (realize m y) (realize m z))
                               (fmap (\v -> f v y z) (cases0 x))
-                              (dbgCase k (debug x) (debug y) (debug z))
 
 sprim1 :: (Haskelly ha sa, Haskelly hb sb) =>
           (ha -> hb) -> (sa -> sb) -> sa -> sb
@@ -211,10 +202,7 @@ instance Haskelly a a where
 instance SmtenHS2 (->) where
    realize2 m f = \x -> realize m (f x)
    cases2 f = concrete f
-   primitive2 r c d = \x -> primitive0 (\m -> r m $ realize m x)
-                                       (fmap ($ x) c)
-                                       (dbgApp d (debug x))
-   debug2 _ = dbgText "?->?"
+   primitive2 r c = \x -> primitive0 (\m -> r m $ realize m x) (fmap ($ x) c)
    error2 msg = \x -> error0 msg
 
 instance (Haskelly ha sa, Haskelly hb sb, SmtenHS0 sa, SmtenHS0 sb)
@@ -244,7 +232,7 @@ instance SmtenHS0 Bool where
    realize0 m (Bool_EqBit a b) = eq_Bit (realize m a) (realize m b)
    realize0 m (Bool_LeqBit a b) = leq_Bit (realize m a) (realize m b)
    realize0 m (Bool_Ite p a b) = __caseTrue (realize m p) (realize m a) (realize m b)
-   realize0 m (Bool_Prim r _ _) = r m
+   realize0 m (Bool_Prim r _) = r m
 
    cases0 p@True = concrete p
    cases0 p@False = concrete p
@@ -252,18 +240,6 @@ instance SmtenHS0 Bool where
 
    primitive0 = Bool_Prim
    error0 = Bool_Error
-   debug0 x =
-     case x of
-        False -> dbgCon "False" []
-        True -> dbgCon "True" []
-        Bool_Var x -> dbgVar (freenm x)
-        Bool_EqInteger a b -> dbgOp "==" (debug a) (debug b)
-        Bool_LeqInteger a b -> dbgOp "<=" (debug a) (debug b)
-        Bool_EqBit a b -> dbgOp "==" (debug a) (debug b)
-        Bool_LeqBit a b -> dbgOp "<=" (debug a) (debug b)
-        Bool_Ite p a b -> dbgCase "True" (debug p) (debug a) (debug b)
-        Bool_Prim _ _ d -> d
-        Bool_Error msg -> dbgError msg
 
    __caseTrue0 x y n =
       case x of
@@ -297,27 +273,17 @@ instance SmtenHS0 Integer where
          Integer_Sub a b -> sub_Integer (realize m a) (realize m b)
          Integer_Ite p a b -> __caseTrue (realize m p) (realize m a) (realize m b)
          Integer_Var v -> frhs (as_lookup v m :: P.Integer)
-         Integer_Prim r _ _ -> r m
+         Integer_Prim r _ -> r m
 
    cases0 x = 
       case x of
         Integer {} -> Concrete x
         Integer_Ite p a b -> switch p (cases0 a) (cases0 b)
-        Integer_Prim _ c _ -> c
+        Integer_Prim _ c -> c
         _ -> error "TODO: cases0 for symbolic Integer"
 
    primitive0 = Integer_Prim
    error0 = Integer_Error
-   debug0 x =
-      case x of
-        Integer v -> dbgLit v
-        Integer_Add a b -> dbgOp "+" (debug a) (debug b)
-        Integer_Sub a b -> dbgOp "-" (debug a) (debug b)
-        Integer_Ite p a b -> dbgCase "True" (debug p) (debug a) (debug b)
-        Integer_Var x -> dbgVar (freenm x)
-        Integer_Prim _ _ d -> d
-        Integer_Error msg -> dbgError msg
-
    __caseTrue0 x y n =
       case x of
         True -> y
@@ -368,44 +334,19 @@ instance SmtenHS1 Bit where
          Bit_SignExtend a -> sign_extend_Bit (realize m a)
          Bit_Ite p a b -> __caseTrue (realize m p) (realize m a) (realize m b)
          Bit_Var x -> frhs (as_lookup x m :: P.Bit)
-         Bit_Prim r _ _ -> r m
+         Bit_Prim r _ -> r m
     
    cases1 x = 
       case x of
          Bit {} -> Concrete x
          Bit_Ite p a b -> switch p (cases0 a) (cases0 b)
-         Bit_Prim _ c _ -> c
+         Bit_Prim _ c -> c
          Bit_Var x -> error $ "TODO: cases1 of Bit_Var " ++ show x
          Bit_Error msg -> error $ "TODO: cases1 of Error " ++ show msg
          _ -> error "TODO: cases1 for symbolic bit vector"
        
    primitive1 = Bit_Prim
    error1 = Bit_Error
-   debug1 x =
-      case x of
-         Bit v -> dbgLit v
-         Bit_Add a b -> dbgOp "+" (debug a) (debug b)
-         Bit_Sub a b -> dbgOp "-" (debug a) (debug b)
-         Bit_Mul a b -> dbgOp "*" (debug a) (debug b)
-         Bit_Or a b -> dbgOp "|" (debug a) (debug b)
-         Bit_And a b -> dbgOp "&" (debug a) (debug b)
-         Bit_Shl a b -> dbgOp "<<" (debug a) (debug b)
-         Bit_Lshr a b -> dbgOp ">>" (debug a) (debug b)
-         Bit_Concat a b -> dbgOp "++" (debug a) (debug b)
-         Bit_Extract a (Integer lo) ->
-            let bt :: Bit a -> a
-                bt _ = undefined
-                hi = lo + valueof0 (bt x) - 1
-            in dbgApps (dbgText "extract")
-                        [dbgText $ "[" ++ show hi ++ ":" ++ show lo ++ "]",
-                         debug a]
-         Bit_Not b -> dbgApp (dbgText "~") (debug b)
-         Bit_SignExtend {} -> dbgText "?SignExtend?"
-         Bit_Ite p a b -> dbgCase "True" (debug p) (debug a) (debug b)
-         Bit_Prim _ _ d -> d
-         Bit_Var x -> dbgVar (freenm x)
-         Bit_Error msg -> dbgError msg
-         
 
    __caseTrue1 x y n =
       case x of

@@ -22,7 +22,6 @@ import Smten.Bit
 import Smten.SMT.Solver.Dynamic
 import qualified Smten.SMT.Solvers as Solvers
 import Smten.Runtime.SmtenHS as S
-import Smten.Runtime.Debug
 import Smten.SMT.FreeID
 
 data SS = SS {
@@ -48,13 +47,11 @@ instance SmtenHS1 Symbolic where
     realize1 m x = realize m <$> x
     cases1 x = concrete x
 
-    primitive1 _ (Concrete x) _ = x
-    primitive1 _ (Switch p a b) _ = do
-      va <- predicated p (primitive0 (error "Symbolic.primitive1") a (dbgText "?SymbPred.a?"))
-      vb <- predicated (notB p) (primitive0 (error "Symbolic.primitive1") b (dbgText "?SymbPred.b?"))
+    primitive1 _ (Concrete x) = x
+    primitive1 _ (Switch p a b) = do
+      va <- predicated p (primitive0 (error "Symbolic.primitive1") a)
+      vb <- predicated (notB p) (primitive0 (error "Symbolic.primitive1") b)
       return (__caseTrue p va vb)
-
-    debug1 _ = dbgText "?Symbolic?"
 
     error1 msg = predicated (error0 msg) fail_symbolic
       

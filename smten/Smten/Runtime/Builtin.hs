@@ -4,7 +4,6 @@ module Smten.Runtime.Builtin (
     Haskelly(..),
     Cases, concrete,
     Assignment,
-    Debug, dbgCon, debug, dbgError,
     primcase, realize,
     Bool(True, False), __caseTrue, __caseFalse, Integer(Integer), Char(Char),
     NumT, (:+:), (:-:), (:*:),
@@ -13,6 +12,5 @@ module Smten.Runtime.Builtin (
 import qualified Prelude
 import Smten.Runtime.SmtenHS
 import Smten.Runtime.Char
-import Smten.Runtime.Debug
 import Smten.Runtime.Numeric hiding (Integer)
 
