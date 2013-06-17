@@ -5,16 +5,15 @@
 
 module Smten.SMT.DebugLL (debugll) where
 
-import Data.IORef
 import System.IO
 
 import Smten.Bit
 import Smten.SMT.Solver.Static
+import Smten.Runtime.Debug
 import qualified Smten.SMT.Solver.Dynamic as D
 
 data DebugLL = DebugLL {
     dbg_handle :: Handle,
-    dbg_id :: IORef Integer,
     dbg_s :: D.Solver
 }
 
@@ -24,18 +23,14 @@ dbgPutStr dbg s = hPutStr (dbg_handle dbg) s
 dbgPutStrLn :: DebugLL -> String -> IO ()
 dbgPutStrLn dbg s = hPutStrLn (dbg_handle dbg) s
 
-dbgNew :: DebugLL -> String -> IO String
-dbgNew dbg s = do
-    nid <- readIORef (dbg_id dbg)
-    modifyIORef' (dbg_id dbg) (+ 1)
-    let nm = "$" ++ show nid
-    dbgPutStrLn dbg $ nm ++ " = " ++ s
-    return nm
+-- mark a debug object for sharing.
+sh :: Debug -> Debug
+sh x = dbgShare id x
 
-dbgOp :: String -> DebugLL -> String -> String -> IO String
-dbgOp op dbg a b = dbgNew dbg $ a ++ op ++ b
+op :: String -> DebugLL -> Debug -> Debug -> IO Debug
+op o _ a b = return $ dbgOp o (sh a) (sh b)
 
-instance Solver DebugLL String where
+instance Solver DebugLL Debug where
     declare_bool dbg nm = do
         dbgPutStrLn dbg $ "delare_bool " ++ nm
         D.declare_bool (dbg_s dbg) nm
@@ -72,44 +67,45 @@ instance Solver DebugLL String where
         dbgPutStrLn dbg $ show r
         return r
 
-    -- Note: this is overridden when we create the dynamic solver to call the
-    -- underlying solver's assert method.
-    assert dbg e = dbgPutStrLn dbg $ "assert " ++ e
+    assert dbg e = do
+        dbgPutStrLn dbg "assert:"
+        dbgstr <- dbgRender e
+        dbgPutStrLn dbg $ dbgstr
 
-    bool dbg b = dbgNew dbg $ show b
-    integer dbg i = dbgNew dbg $ show i
-    bit dbg w v = dbgNew dbg $ show (bv_make w v)
-    var dbg n = return n
+    bool dbg b = return $ dbgLit b
+    integer dbg i = return $ dbgLit i
+    bit dbg w v = return $ dbgLit (bv_make w v)
+    var dbg n = return $ dbgVar n
 
-    ite_bool dbg p a b = dbgNew dbg $ p ++ " ? " ++ a ++ " : " ++ b
-    ite_integer dbg p a b = dbgNew dbg $ p ++ " ? " ++ a ++ " : " ++ b
-    ite_bit dbg p a b = dbgNew dbg $ p ++ " ? " ++ a ++ " : " ++ b
+    ite_bool dbg p a b = return $ dbgCase "True" (sh p) (sh a) (sh b)
+    ite_integer dbg p a b = return $ dbgCase "True" (sh p) (sh a) (sh b)
+    ite_bit dbg p a b = return $ dbgCase "True" (sh p) (sh a) (sh b)
 
-    eq_integer = dbgOp "=="
-    leq_integer = dbgOp "<="
-    add_integer = dbgOp "+"
-    sub_integer = dbgOp "-"
+    eq_integer = op "=="
+    leq_integer = op "<="
+    add_integer = op "+"
+    sub_integer = op "-"
 
-    eq_bit = dbgOp "=="
-    leq_bit = dbgOp "<="
-    add_bit = dbgOp "+"
-    sub_bit = dbgOp "-"
-    mul_bit = dbgOp "*"
-    or_bit = dbgOp "|"
-    and_bit = dbgOp "&"
-    concat_bit dbg a b = dbgNew dbg $ "{" ++ a ++ ", " ++ b ++ "}"
-    shl_bit = dbgOp "<<"
-    lshr_bit = dbgOp ">>"
-    not_bit dbg x = dbgNew dbg $ "~ " ++ x
-    sign_extend_bit dbg n x = dbgNew dbg $ "sign_extend " ++ x ++ " by " ++ show n ++ " bits"
-    extract_bit dbg hi lo x = dbgNew dbg $ x ++ "[" ++ show hi ++ ":" ++ show lo ++ "]"
+    eq_bit = op "=="
+    leq_bit = op "<="
+    add_bit = op "+"
+    sub_bit = op "-"
+    mul_bit = op "*"
+    or_bit = op "|"
+    and_bit = op "&"
+    concat_bit = op "++"
+    shl_bit = op "<<"
+    lshr_bit = op ">>"
+    not_bit dbg x = return $ dbgApp (dbgText "~") (sh x)
+    sign_extend_bit dbg n x = return $ dbgText "?SignExtend"
+    extract_bit dbg hi lo x = return $
+      dbgApps (dbgText "extract") [dbgText $ "[" ++ show hi ++ ":" ++ show lo ++ "]", sh x]
 
 debugll :: FilePath -> D.Solver -> IO D.Solver
 debugll f s = do
     fout <- openFile f WriteMode
     hSetBuffering fout NoBuffering
-    id <- newIORef 0
-    let dbgs = D.dynsolver (DebugLL fout id s)
+    let dbgs = D.dynsolver (DebugLL fout s)
     return $ dbgs {
         D.assert = \e -> ({-# SCC "DebugLL" #-} D.assert dbgs e) >> D.assert s e
     }

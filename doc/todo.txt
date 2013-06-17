@@ -1,8 +1,7 @@
 Recent::
-* DebugLL should take a (String -> IO ()) function rather than
-  a filename. To give more flexibility (?)
 * change mtohs to express explicit errors
     Use for concrete functions and sprim2.
+    to test: just have a failing test case and you'll see.
 * how to deal with explicit error for cases?
 * represent explicit error for NumT and friends.
 * Sudoku.Enum generated query is huge!
@@ -11,8 +10,7 @@ Recent::
 * Add support for signatures in let declarations
 
 Debug::
-* handle debugging of (->) for cases.
-* represent sharing less noisily.
+* Get rid of high level debug, move DebugLL to Debug.
 
 Haskell Features::
 * support for (..) in import and export specifications
@@ -24,7 +22,7 @@ Haskell Features::
 * strictness flags in data type declarations.
 * contexts in data type declarations.
 * sections.
-* Int type.
+* Int type. - just make it another primitive type, like Char
 * allow sigs and bodies to be separated.
 
 Documentation::
@@ -49,7 +47,6 @@ Front End::
   appropriately.
 * Better type errors
 ** use type synonyms in errors.
-* show string as "foobar" instead of ['f','o', 'o', 'b', 'a', 'r']
 
 Pretty Printer::
 * Make pretty again:
@@ -62,9 +59,6 @@ Pretty Printer::
     When pretty printing data declarations
 * Make it so I can compile pretty printed code?
 * Maybe dump the Doc approach and take my SMT concrete approach?
-* Don't pretty print numeric type 16 in haskellf as
-    2*2*2*2*(1+0) ??
-    depends if you want detailed type info or not.
 
 Error::
 * detect potential non-termination and perform appropriate abstraction and
@@ -78,7 +72,6 @@ Cleanup::
   functions?
 
 SMT::
-* Remove bv-zero-extend from SMT syntax, use SMTLIB2 alternative
 * Add minisat as a solver (requires CNF)
 * Add Z3 as a solver
 
@@ -89,9 +82,6 @@ Query::
 Query Optimizations::
 * Simplify (= x x) to True
 
-Specialization::
-* put it back in
-
 Build System::
 * Don't require yices1 and yices2 to be installed to build or use smten
     If a solver isn't installed, just give a runtime error when you try to
@@ -100,10 +90,9 @@ Build System::
 * clean up tclmk script: maybe separate into init, build, and test sections.
 
 Known Bugs::
-* Sudoku Bit vector test fails!
 * BadKind, DupInst, DupVar maltype tests
 * Error non-termination tests (in Error)
-* HaskellF sharing of appeval (in Share)
+* Sharing of appeval (in Share)
 * STP bug (in Nest)
 * STP bug (in Bit)
 * STP bv_and bug (in Bit)
@@ -119,8 +108,6 @@ Suspected Bugs::
 * Does module import and export handle labelled update and construction
   properly?
 * class names can't be qualified in instance declarations?
-* It's possible to use a symbolic thing in a different context than it was
-  defined, in which case bad stuff will happen.
 * PrimArray does not support symbolic computation. Smten will probably crash
   if you try to make a PrimArray from a symbolic list.
 * I fail to do any bounds checking in Data.Array
