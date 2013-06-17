@@ -36,7 +36,6 @@ assert p = if p then return () else fail_symbolic
 {-# AsInHaskell Smten.SMT.Solvers Solver #-}
 data Solver = Yices1 | Yices2 | STP
             | Debug FilePath Solver
-            | DebugLL FilePath Solver
     deriving (Show)
 
 foreign import hs "Smten.Runtime.Symbolic.run_symbolic"

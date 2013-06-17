@@ -3,7 +3,7 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 
-module Smten.SMT.DebugLL (debugll) where
+module Smten.SMT.Debug (debug) where
 
 import System.IO
 
@@ -101,12 +101,12 @@ instance Solver DebugLL Debug where
     extract_bit dbg hi lo x = return $
       dbgApps (dbgText "extract") [dbgText $ "[" ++ show hi ++ ":" ++ show lo ++ "]", sh x]
 
-debugll :: FilePath -> D.Solver -> IO D.Solver
-debugll f s = do
+debug :: FilePath -> D.Solver -> IO D.Solver
+debug f s = do
     fout <- openFile f WriteMode
     hSetBuffering fout NoBuffering
     let dbgs = D.dynsolver (DebugLL fout s)
     return $ dbgs {
-        D.assert = \e -> ({-# SCC "DebugLL" #-} D.assert dbgs e) >> D.assert s e
+        D.assert = \e -> ({-# SCC "DebugAssert" #-} D.assert dbgs e) >> D.assert s e
     }
 
