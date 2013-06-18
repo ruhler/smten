@@ -12,7 +12,7 @@ import Smten.Runtime.SmtenHS as S
 data Char = Char P.Char
           | Char_Prim (Assignment -> Char) Char
           | Char_Ite S.Bool Char Char
-          | Char_Error String
+          | Char_Error ErrorString
 
 instance Haskelly P.Char Char where
    frhs = Char

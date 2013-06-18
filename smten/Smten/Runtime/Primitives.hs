@@ -16,5 +16,5 @@ primIntegerToChar :: Integer -> Char
 primIntegerToChar = toEnum . fromInteger
 
 error :: (S.SmtenHS0 a) => String -> a
-error = S.error0
+error = S.error0 . S.errstr
 

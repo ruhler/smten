@@ -2,8 +2,8 @@
 module Smten.Runtime.Builtin (
     SmtenHS0(..), SmtenHS1(..), SmtenHS2(..), SmtenHS3(..), SmtenHS4(..),
     Haskelly(..),
-    Assignment,
-    itecase, iterealize, itesapp, primcase, realize, sapp,
+    Assignment, ErrorString,
+    itecase, iterealize, itesapp, primcase, realize, sapp, runio,
     Bool(True, False), __caseTrue, __caseFalse, Integer(Integer), Char(Char),
     NumT, (:+:), (:-:), (:*:),
     ) where
@@ -11,5 +11,6 @@ module Smten.Runtime.Builtin (
 import qualified Prelude
 import Smten.Runtime.SmtenHS
 import Smten.Runtime.Char
+import Smten.Runtime.IO
 import Smten.Runtime.Numeric hiding (Integer)
 

@@ -27,7 +27,7 @@ dataCG n tyvars constrs = do
 --                  | FooK K1 K2 ...
 --                  | Foo_Prim (Assignment -> Foo a b ...) (Foo a b ...)
 --                  | Foo_Ite Bool (Foo a b ...) (Foo a b ...)
---                  | Foo_Error Prelude.String
+--                  | Foo_Error ErrorString
 mkDataD :: Name -> [TyVar] -> [Con] -> CG [H.Dec]
 mkDataD n tyvars constrs = do
   let tyvars' = [H.PlainTV (nameCG nm) | TyVar nm _ <- tyvars]
@@ -45,7 +45,7 @@ mkDataD n tyvars constrs = do
       tybool = H.ConT (qtynameCG boolN)
       ite = H.NormalC (itenmCG n) [(H.NotStrict, ty) | ty <- [tybool, tyme, tyme]]
 
-      errty = H.ConT (H.mkName $ "Prelude.String")
+      errty = H.ConT (H.mkName $ "Smten.ErrorString")
       err = H.NormalC (errnmCG n) [(H.NotStrict, errty)]
   constrs' <- mapM mkcon constrs
   return [H.DataD [] (tynameCG n) tyvars' (constrs' ++ [prim, ite, err]) []]

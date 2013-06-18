@@ -9,7 +9,7 @@ import Language.Haskell.TH
 --                  => (Assignment -> m a1 a2 ... aN) -> m a1 a2 ... -> m a1 a2 ... aN
 --   iteN :: (SmtenHS a1, SmtenHS a2, ...) => Bool -> a -> a -> a
 --   sappN :: (SmtenHS a1, SmtenHS a2, ...) => (a -> b) -> a -> b
---   errorN :: (SmtenHS a1, SmtenHS a2, ...) => Prelude.String -> m a1 a2 ... aN
+--   errorN :: (SmtenHS a1, SmtenHS a2, ...) => ErrorString -> m a1 a2 ... aN
 --   valueofN :: (SmtenHS a1, SmtenHS a2, ...) => m a1 a2 ... aN -> Prelude.Integer
 declare_SmtenHS :: Integer -> Q [Dec]
 declare_SmtenHS n = do
@@ -37,7 +37,7 @@ declare_SmtenHS n = do
 
       errN = SigD (mkName $ "error" ++ show n) $
                 ForallT (map PlainTV as) ctx $
-                 arrowsT [ConT $ mkName "Prelude.String", mas]
+                 arrowsT [ConT $ mkName "ErrorString", mas]
 
       iteN = SigD (mkName $ "ite" ++ show n) $ 
                    ForallT (map PlainTV as) ctx $

@@ -1,0 +1,536 @@
+
+Mon Jun 17 09:41:31 EDT 2013
+
+It occurs to me there is another form of debugging I could do which could be
+valuable.
+
+Instead of debugging the raw assertion expression, first do 'cases' on the
+expression, then do a 'decases' like thing and print that out. That should
+show us what happens after all the unsupported primitives are gotten rid of.
+
+Let me try that out, see if it gives me exactly what I was trying to
+reconstruct manually yesterday.
+
+Mon Jun 17 09:46:48 EDT 2013
+
+Nope. That did nothing. Because cases0 does not recurse through everything.
+
+I could implement something that does recurse through everything, but at that
+point, I fear it starts to become too different from what's actually going on.
+
+Here's a different idea. We could replace low level debug with something more
+high level. That is, it inlines all the expressions and does the trick in
+debug to only give ids to those things actually used more than once.
+
+I might even be able to use the existing debug structure for that?
+
+That might be a cool thing to try.
+
+Sounds good. Let me try it after reading some popl papers.
+
+Mon Jun 17 11:03:09 EDT 2013
+
+I'm going to try this debug thing.
+
+I like the current low level debug, mostly because it tells you the total
+number of terms, which gives a nice sense of the query size. It also gives you
+very precise information.
+
+But I'll try this different approach: Build up debugll on top of the Debug
+infrastructure. While still capturing sharing and such.
+
+Here is how it will work.
+
+The type of exp for DebugLL, instead of being 'String', should be a Debug
+object. Whenever we use a debug object in a bigger expression, we should wrap
+it in a call to dbgShared, in case it is a shared debug object.
+
+And that's it! Simple. No?
+
+Let me give it try.
+
+Mon Jun 17 11:18:55 EDT 2013
+
+Looks like it works? Looks like it does...
+
+Let me try it out on my foo example and see what we get.
+
+Looks like it works great!
+
+Hmm... So now, that means I have to decide what I want to do. Do I want to
+keep this form of low level debug?
+
+I think absolutely. The other form is unreadable. This is totally readable.
+
+Can I count terms somehow and print that out?
+
+That would be nice information to have.
+
+Do I still need the old low level debug? I think not.
+
+This change is good.
+
+Do I still need the high-level debug?
+
+Given that it can't tell us about things going inside of functions, I think
+it's probably not worth having the high-level debug. It will clean up the code
+too not to have that.
+
+Let me keep it around for now, but mark it as to get rid of. See if it turns
+out to be useful for anything or not.
+
+And now we can look at that query for foo.smtn with a choice for writeback.
+
+Mon Jun 17 12:47:39 EDT 2013
+
+I am going to sit down now and understand what is going on.
+
+Goal: understand completely:
+1. foo.smtn with no choice in decode and writeback.
+I believe I already understand this, so I should just be able to double check
+my understanding.
+
+2. foo.smtn with a choice in writeback.
+This is the thing I don't understand. So understand it. Deeply.
+
+Then I'll summarize my understanding. Wish me luck.
+
+Mon Jun 17 12:56:53 EDT 2013
+
+I'm going to try to start simpler. For 2., have the choice be between the
+writeback (in the normal case), and no writeback (in the case where wbval is
+42)
+
+First, let me say what I expect to find.
+
+After just decode:
+  dcval = if dcidx == 0
+             then f0
+             else if dcidx == 1
+                     then f1
+                          else if dcidx == 2
+                                  then f2
+                                       else if dcidx == 3
+                                               then f3
+                                               else error "out of bounds"
+
+After just writeback:
+  if wbval == 42 
+     then r0 = f0
+          r1 = f1
+          r2 = f2
+          r3 = f3
+     else
+      r0 = if wbidx == 0 then wbval else f0
+      r1 = if wbidx == 1 then wbval else f1
+      r2 = if wbidx == 2 then wbval else f2
+      r3 = if wbidx == 3 then wbval else f3
+
+All the other fields will look like:
+    if wbval == 42
+       then x
+       else x
+
+After decode followed by writeback.
+  if wbval == 42
+     then
+      dcval = @X{ if dcidx == 0
+                 then f0
+                 else if dcidx == 1
+                         then f1
+                              else if dcidx == 2
+                                      then f2
+                                           else if dcidx == 3
+                                                   then f3
+                                                   else error "out of bounds"
+      x* = x*
+    else
+      dcval = @X
+      rN = if wbidex = N
+              then wbval
+              else fN
+
+After writeback followed by decode:
+ decode is applied to   (if wbval == 42
+                            then ...
+                            else ...)
+ So it has to go inside:
+ if wbval == 42
+    then dcval = if dcidx == 0
+                     then f0
+                     else if dcidx == 1
+                         then f1 
+                         else ...
+         x* = x*
+    else dcval = if dcidx == wbidx
+                      then wbval
+                        else dcidx == 0
+                          then ...
+         r0 = if wbidx == 0 then wbval else f0
+         r1 = if wbidx == 1 then wbval else f1
+         r2 = if wbidx == 2 then wbval else f2
+         r3 = if wbidx == 3 then wbval else f3
+
+Notice: the lookup in the two different cases is *not* shared. It has been
+duplicated.
+
+So, I think I should see this structure in whatever code is generated.
+Let's check.
+
+Notice now we have 4 cases to check for equality.
+
+1. wbval == 42 in both cases.
+Compare original dcval with original dcval, because no writeback happened.
+2.
+3.
+4.
+
+Note: we compare the registers in equality multiple times: for register vs.
+register, and for dcval vs. dcval.
+
+I am confident I understand the register equality stuff.
+And I understand all the other stuff.
+
+What is left is to understand comparison of dcval.
+
+First I would like to note: we share the objects used in comparison of dcvals
+in each of the 4 cases, which is good.
+
+dcval1 is:
+  if wbval == 42
+      then  read the register directly.
+   But note: the index is: if wbval == 42 then dcidx else dcidx
+             in each case.
+     else: test for wbidx first.
+
+dcval2 is:
+  raw read
+
+So, I understand all the components. Let me see if I can make sense of the
+whole, in particular, what things are shared and what things are not shared.
+
+We have 4 cases for equality, because each sequence introduces two choices.
+
+Within each case:
+ * comparisons for equalities are duplicated.
+   That is, the eq function is duplicated.
+ * dcval1, which comes from decode after writeback,
+        is shared in all 4 configurations.
+   dcval2, which comes from decode after initial state,
+        is shared in all 4 configurations.
+
+This is actually more sharing than I expect?
+
+writeback s =
+    if wbval == 42
+       then s
+       else s'
+
+decode writeback s =
+    dcval1 = if wbval == 42
+               then decode s
+               else decode s'
+
+decode s =
+    dcval2
+
+writeback decode s =
+    dcval2, decval2.
+       
+For equality, for dcvals, we expect to compare:
+
+* dcval1 with dcval2
+  in every case.
+
+Good. So what I see does make sense. Now, to try again at the high level, just
+so I intuitively understand it:
+
+writeback s =
+  if wbval == 42
+     then s
+     else s { rs updated }
+
+decode writeback s =
+  rs updated,
+  dcval1 = if wbval == 42
+             then s
+             else s { rs updated }
+
+The important part here is: the lookup does not happen twice, it only happens
+once? Err... not clear to me.
+
+No. The lookup does happen twice, but the result of both options is given the
+name dcval1, which is shared.
+
+So, let me try again to abbreviate the goings on.
+
+writeback s =
+  if wbval == 42
+     then s
+     else s { rs updated }
+
+decode s = 
+  dcval2 = lookup
+
+decode writeback s =
+  dcval1 = if wbval == 42
+             then lookup s
+             else lookup s { rs updated }
+
+writeback decode s =
+  if wbval == 42
+     then dcval2
+     else dcval2, rs updated
+
+Thus we notice:
+ * rs updated shows up 4 times, because it is in both nests.
+ * lookup for dcval1 happens twice.
+ * lookup for dcval2 happens once (no nesting at that point).
+ * equality happens 4 times for everything, because it is in both nests.
+
+Which explains exactly what we see in the generated query.
+
+Thus I hereby claim I understand the generated query, and how it got to be.
+
+And now I also understand better what sharing we are not taking advantage of
+which we would like to be taking advantage of.
+
+Namely, we would like to take advantage of sharing in:
+ * rs updates, equality, and dcval1 lookup.
+
+There are a couple of ideas. Perhaps I should explore them both reasonably
+well to see what's going on.
+1. Keep track of common structure as much as possible.
+2. do inferred value propagation like things.
+
+Let me start with (1), which I feel is more general and promising.
+
+The idea is this. Say you have an if expression where the bodies of the if
+contain the same constructor. Then we can push the if predicate inside to the
+arguments, and return a single outside constructor.
+
+This should go all the way down to the end, where we say: if the bodies of the
+if are the same object, return that object.
+
+My claim is this would cause us to share everything we can reasonably expect
+to share about the structure, and identifies the difference only where they
+belong.
+
+Let me try this out, see if it would help then.
+
+s {
+  rs = [(0, f0), (1, f1), (2, f2), (3, f3)]
+  dcidx = dcidx
+  dcval = dcval
+  wbidx = wbidx
+  wbval = wbval
+}
+
+decode s {
+  rs = [(0, f0), (1, f1), (2, f2), (3, f3)]
+  dcidx = dcidx
+  dcval = dcval2
+  wbidx = wbidx
+  wbval = wbval
+}
+
+writeback s =
+  if wbval == 42
+     then {
+       rs = [(0, f0), (1, f1), (2, f2), (3, f3)]
+       dcidx = dcidx
+       dcval = dcval
+       wbidx = wbidx
+       wbval = wbval
+     }
+     else {
+       rs = [(wbidx, wbval), (0, f0), (1, f1), (2, f2), (3, f3)]
+       dcidx = dcidx
+       dcval = dcval
+       wbidx = wbidx
+       wbval = wbval
+     }
+
+Now here is the opportunity, because in the body of the if expression, we see
+the 'State' constructor shared. Thus let's push.
+
+writeback s = {
+       rs = if wbval == 42
+              then [(0, f0), (1, f1), (2, f2), (3, f3)]
+              else [(wbidx, wbval), (0, f0), (1, f1), (2, f2), (3, f3)]
+       dcidx = if wbval == 42 then dcidx else dcidx
+       dcval = if wbval == 42 then dcval else dcval
+       wbidx = if wbval == 42 then wbidx else wbidx
+       wbval = if wbval == 42 then wbval else wbval
+     }
+
+Now, in the last 4 cases, we see the same object, so we ditch the if:
+
+writeback s = {
+       rs = if wbval == 42
+              then [(0, f0), (1, f1), (2, f2), (3, f3)]
+              else [(wbidx, wbval), (0, f0), (1, f1), (2, f2), (3, f3)]
+       dcidx = dcidx
+       dcval = dcval
+       wbidx = wbidx
+       wbval = wbval
+     }
+
+Can we do anythign about the registers?
+
+We could... but it wouldn't do what we want I don't think, because they aren't
+aligned, so we would end up with something like:
+    [ if wbval == 42
+         then (0, f0)
+         else (wbidx, wbval),
+      if wbval == 42
+         then (1, f1)
+         else (0, f0)
+      ...]
+
+Because they don't happen to line up correctly, we loose sharing there.
+
+But! We maintain all our sharing everywhere else.
+
+The key is really this: when we push the 'if' down, we might find:
+  if p then a else a, which can be simplified to just 'a'.
+
+What happens to the list is pretty interesting.
+Knowing this, I might want to change how we update lists, if possible?
+Not sure. For example, if we had a backwards list, then we could continue to
+share the values.
+
+But maybe it also does what we want, because you only do a single lookup. A
+single traversal of that list...
+
+That's very interesting. Let's let that stew a bit.
+
+Next is (2), which I don't think is a good general solution.
+What is the benefit here? I think the benefit is just that, of the 4 choices
+for equality, we know only two of them are consistent choices. So we can, in
+this case, only look at consistent choices if we do some sort of inferred
+value propagation.
+
+But this problem doesn't even show up if I do (1), because even though there
+are 4 choices, we know they all have the same structure. I suppose at some
+point you would get 4 choices...
+
+Anyway, I don't want to use the inferred value propagation thing yet, because
+don't feel it is as general as I would like. But I do very much like this idea
+of pushing together things with the same structure.
+
+What is the cost of pushing together things with the same structure?
+
+It doesn't seem too high to me. We can use stable names to test for equality
+of two branches of a case expression, with or without evaluating them first
+(which is very nice).
+
+I think this is worth trying to implement.
+
+There will be some work to figure out how to implement it, but that should be
+fun.
+
+Cool!
+
+Now, when thinking about an implementation, I should arrange things by
+structure, not be predicate.
+
+In other words, instead of representing things by cases...
+Well, I could still represent things with cases, but the idea should be that
+each case has a different structure. So, if we had a list for example, I would
+expect at most 3 cases ever: a case for [], a case for :, and a case for
+error.
+
+We could even have a special representation for this for each data structure.
+Rather than using primitive __caseTrue, we could have a constructure for
+symbolic which has all fields, and predicates indicating when they are valid.
+
+We could maybe use this structure in general, but I still do want concrete
+stuff to be fast pathed. In realize we will figure out what the right case is.
+
+Nifty.
+
+Mon Jun 17 17:25:07 EDT 2013
+
+Here is the plan:
+
+1. remove Debug solver and debugN method.
+The high level Debug is not useful, as we can't see inside functions. And in
+general we can't see inside functions. The only thing we can do is either: try
+all cases (as DebugLL does), or come up with a name. I'll stick with DebugLL
+for now.
+
+This does remove the possibility for a traceE like function call, which might
+be nice to have... but again, you wouldn't be able to see inside functions
+with that. Better to be clean now and add it back later if desired.
+
+2. Rename DebugLL as Debug.
+
+3. Change __caseTrue method of SmtenHSN to ite.
+It should be doable now that I write out SmtenHS0 manually, so we no longer
+have these template haskell issues.
+
+4. Restructure as follows:
+* add sappN method: (SmtenHS0 b) => (a -> b) -> a -> b
+* remove casesN method and Cases.
+* change primitive0 and Foo_Prim to take arg of type 'a' instead of Cases a.
+* for initial version:
+  Add a Foo_Ite constructor to everything.
+
+At this point, we should be back to current working condition, but everything
+is using the interfaces I want them to use.
+
+
+5. Change Foo_Ite constructor
+To have the arguments for each constructor and a predicate for that
+constructor. Re-implement ite to merge as appropriate.
+
+6. Change ite to recognize when both branches are the same using stable names.
+
+After this, hopefully my foo.smtn query does not blow up anymore. We should be
+sharing much more. And arch-extract will go very fast, and the world will be
+happy.
+
+That's a lot of work to do. I doubt I'll get it all done tonight, but I should
+be able to get a decent chunk of it done, and have something interesting to
+work on tomorrow.
+
+Time to get started.
+
+Mon Jun 17 18:06:42 EDT 2013
+
+First 3 steps were easy. The next step is the tricky one, because it's rather
+involved. Is there no way I can break it down into smaller pieces?
+
+I think anything I would do to break it down into smaller pieces would just
+make more work, so I'll dive into doing everything at once. It shouldn't be
+too hard. I have enough experience at doing this sort of thing now.
+
+* add Foo_Ite constructor to everything.
+* implement iteN as Foo_Ite
+* add sappN method: (SmtenHS0 b) => (a -> b) -> a -> b
+* implement sappN as 
+    sappN f (FooN ...) = f Concrete
+    sappN f (Error msg) = error0 msg
+    sappN f (Foo_Ite p a b) = ite p (sappN f a) (sappN f b)
++ remove casesN method and Cases.
++ change primitive0 and Foo_Prim to take arg of type 'a' instead of Cases a.
+
+As a next step, I bet I can get rid of mtohs, and go back to raw tohs? Maybe
+or maybe not. Let me not worry about that for now.
+
+Mon Jun 17 19:26:26 EDT 2013
+
+There! That's all done.
+
+I fear things have gotten a little bit slower. shampi is down to 20 seconds
+for example. I'm not sure why.
+
+I bet it's because for sapp we list the concrete cases last.
+
+Oh, and some inlining stuff makes a noticeable difference too.
+
+I'll leave it there for today.
+
+Tomorrow I can do the fun stuff, now that everything is in place.
+

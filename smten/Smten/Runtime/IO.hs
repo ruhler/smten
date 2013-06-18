@@ -1,7 +1,7 @@
 
 {-# LANGUAGE MultiParamTypeClasses #-}
 
-module Smten.Runtime.IO (IO) where
+module Smten.Runtime.IO (IO, runio) where
 
 import qualified Prelude as P
 import Prelude hiding (IO)
@@ -13,7 +13,7 @@ import Smten.Runtime.SmtenHS as S
 data IO a = IO (P.IO a)
           | IO_Prim (Assignment -> IO a) (IO a)
           | IO_Ite S.Bool (IO a) (IO a)
-          | IO_Error String
+          | IO_Error ErrorString
 
 instance (Haskelly ha sa) => Haskelly (P.IO ha) (IO sa) where
     frhs x = IO (frhs <$> x)
@@ -38,4 +38,8 @@ instance SmtenHS1 IO where
     primitive1 = IO_Prim
     error1 = IO_Error
     ite1 = IO_Ite
+
+runio :: IO a -> P.IO ()
+runio (IO x) = x >> return ()
+runio (IO_Error msg) = doerr msg
 

@@ -18,7 +18,7 @@ import Smten.Runtime.SmtenHS as S
 data PrimArray a = PrimArray (Array P.Integer a)
                  | PrimArray_Prim (Assignment -> PrimArray a) (PrimArray a)
                  | PrimArray_Ite S.Bool (PrimArray a) (PrimArray a)
-                 | PrimArray_Error String
+                 | PrimArray_Error ErrorString
 
 instance SmtenHS1 PrimArray where
     realize1 m (PrimArray x) = PrimArray (realize m <$> x)

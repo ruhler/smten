@@ -108,7 +108,7 @@ run_symbolic s q = do
        m <- as_make $ zip (map fst vars) vals
        case {-# SCC "DoubleCheck" #-} realize m (ss_formula ss) of
           S.True -> return ()
-          S.Bool_Error msg -> error $ "smten user error: " ++ msg
+          S.Bool_Error msg -> doerr msg
           _ -> error "SMTEN INTERNAL ERROR: SMT solver lied?"
        return (Just ({-# SCC "Realize" #-} realize m x))
     Unsatisfiable -> return Nothing

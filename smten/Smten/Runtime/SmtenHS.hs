@@ -26,6 +26,14 @@ import qualified Smten.AnyMap as A
 import Smten.SMT.FreeID
 import Smten.CodeGen.TH
 
+data ErrorString = ErrorString String
+
+errstr :: String -> ErrorString
+errstr = ErrorString
+
+doerr :: ErrorString -> a
+doerr (ErrorString msg) = error $ "smten user error: " ++ msg
+
 data Bool where
     False :: Bool
     True :: Bool
@@ -36,7 +44,7 @@ data Bool where
     Bool_LeqBit :: (SmtenHS0 n) => Bit n -> Bit n -> Bool
     Bool_Ite :: Bool -> Bool -> Bool -> Bool
     Bool_Prim :: (Assignment -> Bool) -> Bool -> Bool
-    Bool_Error :: String -> Bool
+    Bool_Error :: ErrorString -> Bool
 
 data Integer =
     Integer P.Integer
@@ -45,7 +53,7 @@ data Integer =
   | Integer_Ite Bool Integer Integer
   | Integer_Var FreeID
   | Integer_Prim (Assignment -> Integer) Integer
-  | Integer_Error String
+  | Integer_Error ErrorString
 
 data Bit n where
     Bit :: P.Bit -> Bit n
@@ -63,7 +71,7 @@ data Bit n where
     Bit_Ite :: Bool -> Bit n -> Bit n -> Bit n
     Bit_Var :: FreeID -> Bit n
     Bit_Prim :: (Assignment -> Bit n) -> Bit n -> Bit n
-    Bit_Error :: String -> Bit n
+    Bit_Error :: ErrorString -> Bit n
 
 data Assignment = Assignment {
    as_vars :: [(FreeID, Dynamic)],
@@ -106,7 +114,7 @@ class SmtenHS0 a where
     -- Update all variables in the given expression according to the given map.
     realize0 :: Assignment -> a -> a
 
-    error0 :: String -> a
+    error0 :: ErrorString -> a
 
     -- Represent a primitive function resulting in the given object.
     primitive0 :: (Assignment -> a) -> a -> a
