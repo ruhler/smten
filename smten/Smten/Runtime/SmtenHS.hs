@@ -131,8 +131,7 @@ prim1 f x = primitive0 (\m -> f (realize m x)) (sapp f x)
 -- The function 'f' is assumed to be strict in its first argument only.
 {-# INLINEABLE primcase #-}
 primcase :: (SmtenHS0 a, SmtenHS0 b, SmtenHS0 c, SmtenHS0 d) => (a -> b -> c -> d) -> a -> b -> c -> d
-primcase f x y z = primitive0 (\m -> f (realize m x) (realize m y) (realize m z))
-                                (sapp (\v -> f v y z) x)
+primcase f x y z = primitive0 (\m -> f (realize m x) (realize m y) (realize m z)) (sapp (\v -> f v y z) x)
 
 {-# INLINEABLE itecase #-}
 itecase :: (SmtenHS0 a, SmtenHS0 b, SmtenHS0 c, SmtenHS0 d) => (a -> b -> c -> d) -> Bool -> a -> a -> b -> c -> d

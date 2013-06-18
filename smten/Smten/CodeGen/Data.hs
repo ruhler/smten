@@ -174,11 +174,19 @@ smtenHS nm tyvs cs = do
    sapp <- sappD nm n
    return [H.InstanceD ctx ty [rel, ite, prim, err, sapp]]
 
---   primN = Foo_Prim
+--   primN r x = Foo_Prim r (case x of
+--                              Foo_Prim _ v -> v
+--                              _ -> x)
 primD :: Name -> Int -> CG H.Dec
 primD nm n = do
-  let body = H.NormalB $ H.VarE (qprimnmCG nm)
-      fun = H.ValD (H.VarP (H.mkName $ "primitive" ++ show n)) body []
+  let 
+      [rv, xv, vv] = map H.mkName ["r", "x", "v"]
+      cas = H.CaseE (H.VarE xv) [
+                H.Match (H.ConP (qprimnmCG nm) [H.WildP, H.VarP vv]) (H.NormalB (H.VarE vv)) [],
+                H.Match (H.WildP) (H.NormalB (H.VarE xv)) []]
+      body = foldl1 H.AppE [H.ConE (qprimnmCG nm), H.VarE rv, cas]
+      clause = H.Clause [H.VarP rv, H.VarP xv] (H.NormalB body) []
+      fun = H.FunD (H.mkName $ "primitive" ++ show n) [clause]
   return fun
 
 --   iteN = Foo_Ite
