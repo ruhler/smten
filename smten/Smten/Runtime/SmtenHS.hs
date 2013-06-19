@@ -17,6 +17,7 @@ import qualified Prelude as P
 import qualified Smten.Bit as P
 
 import System.IO.Unsafe
+import System.Mem.StableName
 
 import Data.Bits
 import Data.Dynamic
@@ -26,7 +27,9 @@ import qualified Smten.AnyMap as A
 import Smten.SMT.FreeID
 import Smten.CodeGen.TH
 
-data ErrorString = ErrorString String
+data ErrorString =
+   ErrorString String
+ | ErrorString_Ite Bool ErrorString ErrorString
 
 errstr :: String -> ErrorString
 errstr = ErrorString
@@ -116,8 +119,16 @@ realize m x = unsafeDupablePerformIO $ do
         A.insert mc x v
         return v
 
+stableNameEq :: a -> a -> P.Bool
+stableNameEq x y = unsafeDupablePerformIO $ do
+    xnm <- makeStableName x
+    ynm <- makeStableName y
+    return (xnm == ynm)
+
 ite :: (SmtenHS0 a) => Bool -> a -> a -> a
-ite = ite0
+ite p a b
+ | stableNameEq a b = a
+ | otherwise = ite0 p a b
 
 sapp :: (SmtenHS0 a, SmtenHS0 b) => (a -> b) -> a -> b
 sapp = sapp0
@@ -152,12 +163,28 @@ class SmtenHS0 a where
     valueof0 = error "valueof0 for non-numeric type"
 
 {-# INLINEABLE iterealize #-}
-iterealize :: (SmtenHS0 a) => Assignment -> Bool -> a -> a -> a
-iterealize m p a b = __caseTrue (realize m p) (realize m a) (realize m b)
+iterealize :: (SmtenHS0 a) => Bool -> a -> a -> Assignment -> a
+iterealize p a b m = __caseTrue (realize m p) (realize m a) (realize m b)
 
+-- itesapp:
+--  The given list of tuples should have the following properties:
+--  * every pair of booleans is disjoint: p1 && p2 = False
+--  * the conjunction of all booleans is valid: p1 || p2 || .. | pn = True
 {-# INLINEABLE itesapp #-}
-itesapp :: (SmtenHS0 a, SmtenHS0 b) => (a -> b) -> Bool -> a -> a -> b
-itesapp f p a b = primitive0 (\m -> __caseTrue (realize m p) (realize m f a) (realize m f b)) (ite p (sapp f a) (sapp f b))
+itesapp :: (SmtenHS0 a, SmtenHS0 b) => (a -> b) -> a -> [(Bool, b)] -> b
+itesapp f x zs =
+ let join [(_, v)] = v
+     join ((p, a):bs) = ite p a (join bs)
+
+     notFalse False = P.False
+     notFalse _ = P.True
+
+     zs' = filter (notFalse . fst) zs
+ in primitive0 (\m -> realize m (f (realize m x))) (join zs')
+
+{-# INLINEABLE itesapp1 #-}
+itesapp1 :: (SmtenHS0 a, SmtenHS0 b) => (a -> b) -> Bool -> a -> a -> b
+itesapp1 f p a b = primitive0 (\m -> __caseTrue (realize m p) (realize m f a) (realize m f b)) (ite p (sapp f a) (sapp f b))
 
 {-# INLINEABLE primsapp #-}
 primsapp :: (SmtenHS0 a, SmtenHS0 b) => (a -> b) -> (Assignment -> a) -> a -> b
@@ -200,6 +227,14 @@ __caseFalse x y n =
     True -> n
     _ -> sapp (\v -> __caseFalse v y n) x
 
+instance SmtenHS0 ErrorString where
+   realize0 m x@(ErrorString str) = x
+   realize0 m (ErrorString_Ite p a b) = iterealize p a b m
+   primitive0 = error "primitive0 called on ErrorString"
+   error0 = id
+   sapp0 f x = error0 x
+   ite0 = ErrorString_Ite
+
 instance SmtenHS0 Bool where
    realize0 m b@True = b
    realize0 m b@False = b
@@ -209,7 +244,7 @@ instance SmtenHS0 Bool where
    realize0 m (Bool_LeqInteger a b) = leq_Integer (realize m a) (realize m b)
    realize0 m (Bool_EqBit a b) = eq_Bit (realize m a) (realize m b)
    realize0 m (Bool_LeqBit a b) = leq_Bit (realize m a) (realize m b)
-   realize0 m (Bool_Ite p a b) = iterealize m p a b
+   realize0 m (Bool_Ite p a b) = iterealize p a b m
    realize0 m (Bool_Prim r _) = r m
 
    primitive0 = Bool_Prim
@@ -243,7 +278,7 @@ instance SmtenHS0 Integer where
          Integer_Error {} -> x
          Integer_Add a b -> add_Integer (realize m a) (realize m b)
          Integer_Sub a b -> sub_Integer (realize m a) (realize m b)
-         Integer_Ite p a b -> iterealize m p a b
+         Integer_Ite p a b -> iterealize p a b m
          Integer_Var v -> frhs (as_lookup v m :: P.Integer)
          Integer_Prim r _ -> r m
 
@@ -399,7 +434,7 @@ instance SmtenHS1 Bit where
          Bit_Extract a b -> extract_Bit (realize m a) (realize m b)
          Bit_Not a -> not_Bit (realize m a)
          Bit_SignExtend a -> sign_extend_Bit (realize m a)
-         Bit_Ite p a b -> iterealize m p a b
+         Bit_Ite p a b -> iterealize p a b m
          Bit_Var x -> frhs (as_lookup x m :: P.Bit)
          Bit_Prim r _ -> r m
     

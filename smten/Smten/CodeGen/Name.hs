@@ -9,6 +9,9 @@ module Smten.CodeGen.Name (
     primnmCG, qprimnmCG,
     errnmCG, qerrnmCG,
     itenmCG, qitenmCG,
+    guardnmCG, qguardnmCG, errguardnmCG, qerrguardnmCG,
+    fieldnmCG, qfieldnmCG, errfieldnmCG, qerrfieldnmCG,
+    nullitenmCG, qnullitenmCG, liftitenmCG, qliftitenmCG,
     ) where
 
 import qualified Language.Haskell.TH.Syntax as H
@@ -132,3 +135,38 @@ itenmCG = doname True (++ "_Ite") False
 qitenmCG :: Name -> H.Name
 qitenmCG = doname True (++ "_Ite") True
 
+guardnmCG :: Name -> H.Name
+guardnmCG = doname False ("__gd" ++) False
+
+qguardnmCG :: Name -> H.Name
+qguardnmCG = doname False ("__gd" ++) True
+
+fieldnmCG :: Integer -> Name -> H.Name
+fieldnmCG i = doname False (("__fl" ++ show i) ++) False
+
+qfieldnmCG :: Integer -> Name -> H.Name
+qfieldnmCG i = doname False (("__fl" ++ show i) ++) True
+
+errfieldnmCG :: Name -> H.Name
+errfieldnmCG = doname True ("__efl" ++) False
+
+qerrfieldnmCG :: Name -> H.Name
+qerrfieldnmCG = doname True ("__efl" ++) True
+
+errguardnmCG :: Name -> H.Name
+errguardnmCG = doname True ("__egd" ++) False
+
+qerrguardnmCG :: Name -> H.Name
+qerrguardnmCG = doname True ("__egd" ++) True
+
+nullitenmCG :: Name -> H.Name
+nullitenmCG = doname True ("__NullIte" ++) False
+
+qnullitenmCG :: Name -> H.Name
+qnullitenmCG = doname True ("__NullIte" ++) True
+
+liftitenmCG :: Name -> H.Name
+liftitenmCG = doname True ("__LiftIte" ++) False
+
+qliftitenmCG :: Name -> H.Name
+qliftitenmCG = doname True ("__LiftIte" ++) True

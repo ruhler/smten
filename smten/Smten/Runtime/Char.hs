@@ -32,7 +32,7 @@ instance SmtenHS0 Char where
    sapp0 f x =
      case x of
        Char {} -> f x
-       Char_Ite p a b -> itesapp f p a b
+       Char_Ite p a b -> itesapp1 f p a b
        Char_Error msg -> error0 msg
        Char_Prim r c -> primsapp f r c
 
