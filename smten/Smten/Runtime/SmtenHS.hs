@@ -166,6 +166,19 @@ class SmtenHS0 a where
 iterealize :: (SmtenHS0 a) => Bool -> a -> a -> Assignment -> a
 iterealize p a b m = __caseTrue (realize m p) (realize m a) (realize m b)
 
+-- flmerge p ga gb a b
+-- Merge two fields.
+--  p - the ite predicate
+--  ga - the guard for field 'a'. We can't look at field 'a' if ga is False.
+--  gb - the guard for field 'a'. We can't look at field 'b' if gb is False.
+--  a - the field 'a' value
+--  b - the field 'b' value
+{-# INLINEABLE flmerge #-}
+flmerge :: (SmtenHS0 a) => Bool -> Bool -> Bool -> a -> a -> a
+flmerge _ False _ _ b = b
+flmerge _ _ False a _ = a
+flmerge p _ _ a b = ite p a b
+
 -- itesapp:
 --  The given list of tuples should have the following properties:
 --  * every pair of booleans is disjoint: p1 && p2 = False

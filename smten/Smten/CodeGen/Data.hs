@@ -192,7 +192,9 @@ primD nm n = do
 --  ...
 -- iteN p (Foo_Error a1) (Foo_Error b1) = Foo_Error (ite p a1 b1)
 -- iteN p a@(Foo_Ite {}) b@(Foo_ite {}) = Foo_Ite {
---           __* = ite p (__* a) (__* b)
+--           __glFooA = ite p (__glFooA a) (__glFooA b)
+--           __fl1FooA = flmerge p (__glFooA a) (__glFooA b) (__fl1FooA a) (__fl1FooA b)
+--           ...
 --         }
 -- iteN p a@(Foo_Prim r c) b -> Foo_Prim (iterealize p a b) (ite p c b)
 -- iteN p a b@(Foo_Prim r c) -> Foo_Prim (iterealize p a b) (ite p a c)
@@ -230,9 +232,13 @@ iteD n k cs = do
       mkfes (Con cn tys) = 
         let guard = (guardnmCG cn, ite (H.AppE (H.VarE $ qguardnmCG cn) ae)
                                        (H.AppE (H.VarE $ qguardnmCG cn) be))
-            fields = [(fieldnmCG i cn,
-                        ite (H.AppE (H.VarE $ qfieldnmCG i cn) ae)
-                            (H.AppE (H.VarE $ qfieldnmCG i cn) be))
+            fields = [(fieldnmCG i cn, foldl1 H.AppE [
+                        H.VarE $ H.mkName "Smten.flmerge",
+                        H.VarE $ H.mkName "p",
+                        H.AppE (H.VarE $ qguardnmCG cn) ae,
+                        H.AppE (H.VarE $ qguardnmCG cn) be,
+                        H.AppE (H.VarE $ qfieldnmCG i cn) ae,
+                        H.AppE (H.VarE $ qfieldnmCG i cn) be])
                               | (_, i) <- zip tys [1..]]
         in guard : fields
 
