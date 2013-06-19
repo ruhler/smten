@@ -136,6 +136,9 @@ flip f x y = f y x
 ($) :: (a -> b) -> a -> b
 ($) f x = f x
 
+foreign import hs "Smten.Runtime.Builtin.sapp"
+  ($!) :: (a -> b) -> a -> b
+
 data Bool = False | True
     deriving (Eq, Ord, Show)
 

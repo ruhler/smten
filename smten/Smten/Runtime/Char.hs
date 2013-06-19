@@ -17,11 +17,8 @@ data Char = Char P.Char
 instance Haskelly P.Char Char where
    frhs = Char
 
-   stohs (Char c) = c
-   stohs _ = error "tohs.Char failed"
-
-   mtohs (Char c) = return c
-   mtohs _ = Nothing
+   tohs (Char c) = c
+   tohs _ = error "tohs.Char failed"
 
 instance SmtenHS0 Char where
    realize0 m c = 
@@ -29,13 +26,15 @@ instance SmtenHS0 Char where
          Char {} -> c
          Char_Ite p a b -> __caseTrue (realize m p) (realize m a) (realize m b)
          Char_Prim r _ -> r m
+         Char_Error {} -> c
+
    primitive0 = Char_Prim
    sapp0 f x =
      case x of
        Char {} -> f x
-       Char_Ite p a b -> ite p (sapp f a) (sapp f b)
+       Char_Ite p a b -> itesapp f p a b
        Char_Error msg -> error0 msg
-       _ -> error "TODO: sapp0 for symbolic Char"
+       Char_Prim r c -> primsapp f r c
 
    error0 = Char_Error
    ite0 = Char_Ite

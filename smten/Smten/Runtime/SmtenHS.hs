@@ -46,6 +46,18 @@ data Bool where
     Bool_Prim :: (Assignment -> Bool) -> Bool -> Bool
     Bool_Error :: ErrorString -> Bool
 
+instance Show Bool where
+    show False = "False"
+    show True = "True"
+    show (Bool_Var x) = freenm x
+    show (Bool_EqInteger {}) = "EqInteger"
+    show (Bool_LeqInteger {}) = "LeqInteger"
+    show (Bool_EqBit {}) = "EqBit"
+    show (Bool_LeqBit {}) = "LeqBit"
+    show (Bool_Ite p a b) = "Ite (" ++ show p ++ ") (" ++ show a ++ ") (" ++ show b ++ ")"
+    show (Bool_Prim {}) = "Prim"
+    show (Bool_Error {}) = "Error"
+
 data Integer =
     Integer P.Integer
   | Integer_Add Integer Integer
@@ -116,10 +128,22 @@ class SmtenHS0 a where
 
     error0 :: ErrorString -> a
 
-    -- Represent a primitive function resulting in the given object.
+    -- primitive0 r c
+    --   r - Given an assignment, returns the concrete value of the object.
+    --   c - The SMT formula for the argument.
     primitive0 :: (Assignment -> a) -> a -> a
 
     ite0 :: Bool -> a -> a -> a
+
+    -- Apply the function to the argument.
+    -- * if arg is error, the function is not called and the result is error.
+    -- * if arg is WHNF concrete, the function is called to get the result.
+    -- * otherwise
+    --    for realize: a thunk is created
+    --    for formula: function is called for all WHNF concrete cases of the
+    --                 argument, and the results are joined.
+    -- In other words: the provided function is guarenteed to be called with a
+    -- non-error WHNF concrete argument.
     sapp0 :: (SmtenHS0 b) => (a -> b) -> a -> b
 
     -- For numeric types, this returns the value of the type.
@@ -127,83 +151,46 @@ class SmtenHS0 a where
     valueof0 :: a -> P.Integer
     valueof0 = error "valueof0 for non-numeric type"
 
-
--- Convenience functions for unsupported primitives.
---  f - a symbolic function which knows how to handle concrete arguments.
---  x - a symbolic argument which 'f' can't handle.
-{-# INLINEABLE prim1 #-}
-prim1 :: (SmtenHS0 a, SmtenHS0 b) => (a -> b) -> a -> b
-prim1 f x = primitive0 (\m -> f (realize m x)) (sapp f x)
-
--- Primitive Case.
--- The function 'f' is assumed to be strict in its first argument only.
-{-# INLINEABLE primcase #-}
-primcase :: (SmtenHS0 a, SmtenHS0 b, SmtenHS0 c, SmtenHS0 d) => (a -> b -> c -> d) -> a -> b -> c -> d
-primcase f x y z = primitive0 (\m -> f (realize m x) (realize m y) (realize m z)) (sapp (\v -> f v y z) x)
-
-{-# INLINEABLE itecase #-}
-itecase :: (SmtenHS0 a, SmtenHS0 b, SmtenHS0 c, SmtenHS0 d) => (a -> b -> c -> d) -> Bool -> a -> a -> b -> c -> d
-itecase f p a b y n = ite p (f a y n) (f b y n)
-
 {-# INLINEABLE iterealize #-}
 iterealize :: (SmtenHS0 a) => Assignment -> Bool -> a -> a -> a
 iterealize m p a b = __caseTrue (realize m p) (realize m a) (realize m b)
 
 {-# INLINEABLE itesapp #-}
 itesapp :: (SmtenHS0 a, SmtenHS0 b) => (a -> b) -> Bool -> a -> a -> b
-itesapp f p a b = ite p (sapp f a) (sapp f b)
+itesapp f p a b = primitive0 (\m -> __caseTrue (realize m p) (realize m f a) (realize m f b)) (ite p (sapp f a) (sapp f b))
 
-sprim1 :: (Haskelly ha sa, Haskelly hb sb) =>
-          (ha -> hb) -> (sa -> sb) -> sa -> sb
-sprim1 hf sf a
-  | Just av <- mtohs a = frhs (hf av) 
-  | otherwise = sf a
-
-sprim2 :: (Haskelly ha sa, Haskelly hb sb, Haskelly hc sc) =>
-          (ha -> hb -> hc) -> (sa -> sb -> sc) -> sa -> sb -> sc
-sprim2 hf sf a b 
-  | Just av <- mtohs a, Just bv <- mtohs b = frhs (hf av bv) 
-  | otherwise = sf a b
+{-# INLINEABLE primsapp #-}
+primsapp :: (SmtenHS0 a, SmtenHS0 b) => (a -> b) -> (Assignment -> a) -> a -> b
+primsapp f r c = primitive0 (\m -> realize m (f (r m))) (sapp f c)
 
 class Haskelly h s where
     -- Convert from a haskell object to a smten object.
     frhs :: h -> s
 
-    -- Maybe convert from a smten object to a haskell object.
-    -- Returns Nothing if the smten object can't be represented as a haskell
-    -- object.
-    mtohs :: s -> Maybe h
-    mtohs = return . stohs
-
-    -- Surely convert from a smten object to a haskell object.
-    -- Behavior is undefined if the smten object can't be represented as a
+    -- Convert a smten object to a haskell object.
+    -- The behavior is undefined if the smten object can't be converted to a
     -- haskell object.
-    stohs :: s -> h
-    stohs = fromMaybe (error "stohs") . mtohs
+    tohs :: s -> h
 
 instance Haskelly a a where
     frhs = id
-    mtohs = return
-    stohs = id
+    tohs = id
 
 instance (Haskelly ha sa, Haskelly hb sb, SmtenHS0 sa, SmtenHS0 sb)
          => Haskelly (ha -> hb) (sa -> sb) where
-    frhs hf sx 
-      | Just hx <- mtohs sx = frhs (hf hx)
-      | otherwise = prim1 (frhs hf) sx
-    stohs sf = \hx -> stohs $ sf (frhs hx)
+    frhs hf = sapp (frhs . hf . tohs)
+    tohs sf = tohs . sf . frhs
 
 instance Haskelly (a -> b) (a -> b) where
     frhs = id
-    stohs = id
+    tohs = id
 
 __caseTrue :: (SmtenHS0 z) => Bool -> z -> z -> z
 __caseTrue x y n = 
   case x of
     True -> y
     False -> n
-    Bool_Error msg -> error0 msg
-    _ -> ite x y n
+    _ -> sapp (\v -> __caseTrue v y n) x
  
 
 __caseFalse :: (SmtenHS0 z) => Bool -> z -> z -> z
@@ -211,8 +198,7 @@ __caseFalse x y n =
   case x of
     False -> y
     True -> n
-    Bool_Error msg -> error0 msg
-    _ -> ite x n y 
+    _ -> sapp (\v -> __caseFalse v y n) x
 
 instance SmtenHS0 Bool where
    realize0 m b@True = b
@@ -240,18 +226,14 @@ instance SmtenHS0 Bool where
 
 instance Haskelly Bool Bool where
   frhs = id
-  stohs = id
+  tohs = id
 
 instance Haskelly P.Bool Bool where
   frhs p = if p then True else False
 
-  mtohs False = return P.False
-  mtohs True = return P.True 
-  mtohs _ = Nothing
-
-  stohs False = P.False
-  stohs True = P.True
-  stohs _ = error "Bool stohs failed"
+  tohs False = P.False
+  tohs True = P.True
+  tohs _ = error "Bool tohs failed"
 
 
 instance SmtenHS0 Integer where
@@ -269,8 +251,14 @@ instance SmtenHS0 Integer where
       case x of
         Integer {} -> f x
         Integer_Error msg -> error0 msg
-        Integer_Ite p a b -> itesapp f p a b
-        _ -> error "TODO: sapp0 for symbolic Integer"
+        Integer_Ite p a b -> ite p (sapp f a) (sapp f b)
+        Integer_Prim r c -> primsapp f r c
+        _ -> -- TODO: We should generate the infinite sequence of integers:
+             --     0, 1, -1, 2, -2, 3, -3, ...
+             -- call the function on each one of those integers,
+             -- and then join the results.
+             -- For debug purposes, this behavior is currently disabled.
+          error "TODO: sapp0 for symbolic Integer"
 
    primitive0 = Integer_Prim
    error0 = Integer_Error
@@ -278,91 +266,105 @@ instance SmtenHS0 Integer where
 
 instance Haskelly Integer Integer where
    frhs = id
-   stohs = id
+   tohs = id
 
 instance Haskelly P.Integer Integer where
    frhs = Integer
 
-   mtohs (Integer x) = return x
-   mtohs _ = Nothing
+   tohs (Integer x) = x
+   tohs _ = error "tohs.Integer failed"
 
-   stohs (Integer x) = x
-   stohs _ = error "tohs.Integer failed"
+
+{-# SPECIALIZE iix :: (P.Integer -> P.Integer -> P.Bool) -> (Integer -> Integer -> Bool) -> Integer -> Integer -> Bool #-}
+{-# SPECIALIZE iix :: (P.Integer -> P.Integer -> P.Integer) -> (Integer -> Integer -> Integer) -> Integer -> Integer -> Integer #-}
+iix :: (SmtenHS0 sz, Haskelly hz sz) => (P.Integer -> P.Integer -> hz) -> (Integer -> Integer -> sz) -> Integer -> Integer -> sz
+iix hf _ (Integer a) (Integer b) = frhs (hf a b)
+iix _ _ (Integer_Error msg) _ = error0 msg
+iix _ _ _ (Integer_Error msg) = error0 msg
+iix _ sf a b = sf a b
 
 eq_Integer :: Integer -> Integer -> Bool
-eq_Integer = sprim2 ((==) :: P.Integer -> P.Integer -> P.Bool) Bool_EqInteger
+eq_Integer = iix (==) Bool_EqInteger
 
 leq_Integer :: Integer -> Integer -> Bool
-leq_Integer = sprim2 ((<=) :: P.Integer -> P.Integer -> P.Bool) Bool_LeqInteger
+leq_Integer = iix (<=) Bool_LeqInteger
 
 add_Integer :: Integer -> Integer -> Integer
-add_Integer = sprim2 ((+) :: P.Integer -> P.Integer -> P.Integer) Integer_Add
+add_Integer = iix (+) Integer_Add
 
 sub_Integer :: Integer -> Integer -> Integer
-sub_Integer = sprim2 ((-) :: P.Integer -> P.Integer -> P.Integer) Integer_Sub
+sub_Integer = iix (-) Integer_Sub
 
 
 instance Haskelly (Bit n) (Bit n) where
    frhs = id
-   stohs = id
+   tohs = id
 
 instance Haskelly P.Bit (Bit n) where
    frhs = Bit
 
-   mtohs (Bit c) = return c
-   mtohs _ = Nothing
+   tohs (Bit c) = c
+   tohs _ = error "tohs.Bit failed"
 
-   stohs (Bit c) = c
-   stohs _ = error "tohs.Integer failed"
+vvx :: (SmtenHS0 n, SmtenHS0 m, SmtenHS0 sz, Haskelly hz sz) => (P.Bit -> P.Bit -> hz) -> (Bit n -> Bit m -> sz) -> Bit n -> Bit m -> sz
+vvx hf _ (Bit a) (Bit b) = frhs (hf a b)
+vvx _ _ (Bit_Error msg) _ = error0 msg
+vvx _ _ _ (Bit_Error msg) = error0 msg
+vvx _ sf a b = sf a b
 
 eq_Bit :: (SmtenHS0 n) => Bit n -> Bit n -> Bool
-eq_Bit = sprim2 ((==) :: P.Bit -> P.Bit -> P.Bool) Bool_EqBit
+eq_Bit = vvx (==) Bool_EqBit
 
 leq_Bit :: (SmtenHS0 n) => Bit n -> Bit n -> Bool
-leq_Bit = sprim2 ((<=) :: P.Bit -> P.Bit -> P.Bool) Bool_LeqBit
+leq_Bit = vvx (<=) Bool_LeqBit
 
 add_Bit :: (SmtenHS0 n) => Bit n -> Bit n -> Bit n
-add_Bit = sprim2 ((+) :: P.Bit -> P.Bit -> P.Bit) Bit_Add
+add_Bit = vvx (+) Bit_Add
 
 sub_Bit :: (SmtenHS0 n) => Bit n -> Bit n -> Bit n
-sub_Bit = sprim2 ((-) :: P.Bit -> P.Bit -> P.Bit) Bit_Sub
+sub_Bit = vvx (-) Bit_Sub
 
 mul_Bit :: (SmtenHS0 n) => Bit n -> Bit n -> Bit n
-mul_Bit = sprim2 ((*) :: P.Bit -> P.Bit -> P.Bit) Bit_Mul
+mul_Bit = vvx (*) Bit_Mul
 
 or_Bit :: (SmtenHS0 n) => Bit n -> Bit n -> Bit n
-or_Bit = sprim2 ((.|.) :: P.Bit -> P.Bit -> P.Bit) Bit_Or
+or_Bit = vvx ((.|.)) Bit_Or
 
 and_Bit :: (SmtenHS0 n) => Bit n -> Bit n -> Bit n
-and_Bit = sprim2 ((.&.) :: P.Bit -> P.Bit -> P.Bit) Bit_And
+and_Bit = vvx ((.&.)) Bit_And
 
 shl_Bit :: (SmtenHS0 n) => Bit n -> Bit n -> Bit n
-shl_Bit = sprim2 P.bv_shl Bit_Shl
+shl_Bit = vvx P.bv_shl Bit_Shl
 
 lshr_Bit :: (SmtenHS0 n) => Bit n -> Bit n -> Bit n
-lshr_Bit = sprim2 P.bv_lshr Bit_Lshr
+lshr_Bit = vvx P.bv_lshr Bit_Lshr
 
 not_Bit :: (SmtenHS0 n) => Bit n -> Bit n
-not_Bit = sprim1 (complement :: P.Bit -> P.Bit) Bit_Not
+not_Bit (Bit x) = frhs $ complement x
+not_Bit (Bit_Error msg) = error0 msg
+not_Bit x = Bit_Not x
 
 sign_extend_Bit :: forall n m . (SmtenHS0 n, SmtenHS0 m) => Bit n -> Bit m
-sign_extend_Bit =
+sign_extend_Bit (Bit x) =
   let w = (valueof0 (numeric :: m) - valueof0 (numeric :: n))
-  in sprim1 (P.bv_sign_extend w) Bit_SignExtend
+  in frhs $ P.bv_sign_extend w x
+sign_extend_Bit (Bit_Error msg) = error0 msg
+sign_extend_Bit x = Bit_SignExtend x
 
-concat_Bit :: (SmtenHS0 n, SmtenHS0 m) => Bit n -> Bit m -> Bit npm
-concat_Bit = sprim2 P.bv_concat Bit_Concat
+concat_Bit :: (SmtenHS0 n, SmtenHS0 m, SmtenHS0 npm) => Bit n -> Bit m -> Bit npm
+concat_Bit = vvx P.bv_concat Bit_Concat
 
 extract_Bit :: forall n m . (SmtenHS0 n, SmtenHS0 m) => Bit n -> Integer -> Bit m
 extract_Bit (Bit x) (Integer i) = 
   let hi = i + valueof0 (numeric :: m) - 1
       lo = i
   in frhs (P.bv_extract hi lo x)
+extract_Bit (Bit_Error msg) _ = error0 msg
+extract_Bit _ (Integer_Error msg) = error0 msg
 extract_Bit b i = Bit_Extract b i
 
 toInteger_Bit :: (SmtenHS0 n) => Bit n -> Integer
-toInteger_Bit (Bit a) = frhs $ P.bv_value a
-toInteger_Bit b = prim1 toInteger_Bit b
+toInteger_Bit = frhs P.bv_value
 
 declare_SmtenHS 1
 declare_SmtenHS 2
@@ -375,8 +377,8 @@ derive_SmtenHS 2
 derive_SmtenHS 3
 
 instance SmtenHS2 (->) where
-   realize2 m f = \x -> realize m (f x)
-   primitive2 r f = \x -> primitive0 (\m -> r m $ realize m x) (sapp f x)
+   realize2 m f = \x -> realize m (f (realize m x))
+   primitive2 r f = \x -> primitive0 (\m -> r m x) (sapp f x)
    error2 msg = \x -> error0 msg
    sapp2 f x = f x
    ite2 p fa fb = \x -> ite p (fa x) (fb x)
@@ -405,8 +407,14 @@ instance SmtenHS1 Bit where
      case x of
        Bit {} -> f x
        Bit_Error msg -> error0 msg  
-       Bit_Ite p a b -> itesapp f p a b
-       _ -> error "TODO: sapp1 for symbolic bit vector"
+       Bit_Ite p a b -> ite p (sapp f a) (sapp f b)
+       Bit_Prim r c -> primsapp f r c
+       _ -> -- TODO: We should generate the list of bit vectors:
+            --     0, 1, 2, ..., 2^n-1
+            -- call the function on each one of those bit vectors,
+            -- and then join the results.
+            -- For debug purposes, this behavior is currently disabled.
+         error "TODO: sapp0 for symbolic bit vector"
    primitive1 = Bit_Prim
    error1 = Bit_Error
    ite1 = Bit_Ite

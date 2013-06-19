@@ -37,11 +37,11 @@ data SMTType = SMTBool | SMTInteger | SMTBit P.Integer
     
 instance (Haskelly ha sa) => Haskelly (Symbolic ha) (Symbolic sa) where
     frhs x = frhs <$> x
-    stohs x = stohs <$> x
+    tohs x = tohs <$> x
 
 instance Haskelly (Symbolic a) (Symbolic a) where
     frhs = id
-    stohs = id
+    tohs = id
 
 instance SmtenHS1 Symbolic where
     realize1 m x = realize m <$> x
@@ -109,7 +109,7 @@ run_symbolic s q = do
        case {-# SCC "DoubleCheck" #-} realize m (ss_formula ss) of
           S.True -> return ()
           S.Bool_Error msg -> doerr msg
-          _ -> error "SMTEN INTERNAL ERROR: SMT solver lied?"
+          x -> error $ "SMTEN INTERNAL ERROR: SMT solver lied? " ++ show x
        return (Just ({-# SCC "Realize" #-} realize m x))
     Unsatisfiable -> return Nothing
 

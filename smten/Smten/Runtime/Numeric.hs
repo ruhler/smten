@@ -21,8 +21,8 @@ data a :*: b
 instance (SingI n) => SmtenHS0 (NumT n) where
     realize0 _ _ = numeric
     primitive0 _ _ = numeric
-    ite0 = error "TODO: ite0 for NumT"
-    sapp0 = error "TODO: sapp0 for NumT"
+    ite0 = numeric
+    sapp0 = ($)
     error0 = error "TODO: error0 for NumT"
     valueof0 x =
       let f :: NumT n -> Sing n -> Integer
@@ -33,8 +33,8 @@ instance SmtenHS2 (:+:) where
     realize2 _ _ = numeric
     primitive2 _ _ = numeric
     error2 = error "TODO: error0 for :+:"
-    ite2 = error "TODO: ite2 for :+:"
-    sapp2 = error "TODO: sapp2 for :+:"
+    ite2 = numeric
+    sapp2 = ($)
 
     valueof2 :: forall a b . (SmtenHS0 a, SmtenHS0 b) => (a :+: b) -> Integer
     valueof2 _ = valueof0 (numeric :: a) + valueof0 (numeric :: b)
@@ -43,8 +43,8 @@ instance SmtenHS2 (:+:) where
 instance SmtenHS2 (:-:) where
     realize2 _ _ = numeric
     primitive2 _ _ = numeric
-    ite2 = error "TODO: ite2 for :-:"
-    sapp2 = error "TODO: sapp2 for :-:"
+    ite2 = numeric
+    sapp2 = ($)
     error2 = error "TODO: error0 for :-:"
 
     valueof2 :: forall a b . (SmtenHS0 a, SmtenHS0 b) => (a :-: b) -> Integer
@@ -52,8 +52,8 @@ instance SmtenHS2 (:-:) where
 
 instance SmtenHS2 (:*:) where
     realize2 _ _ = numeric
-    ite2 = error "TODO: ite2 for :*:"
-    sapp2 = error "TODO: sapp2 for :*:"
+    ite2 _ _ _ = numeric
+    sapp2 = ($)
     primitive2 _ _ = numeric
     error2 = error "TODO: error0 for :*:"
 

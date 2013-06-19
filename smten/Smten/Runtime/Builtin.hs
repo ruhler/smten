@@ -3,7 +3,7 @@ module Smten.Runtime.Builtin (
     SmtenHS0(..), SmtenHS1(..), SmtenHS2(..), SmtenHS3(..), SmtenHS4(..),
     Haskelly(..),
     Assignment, ErrorString,
-    itecase, iterealize, itesapp, primcase, realize, sapp, runio,
+    iterealize, itesapp, primsapp, realize, sapp, runio,
     Bool(True, False), __caseTrue, __caseFalse, Integer(Integer), Char(Char),
     NumT, (:+:), (:-:), (:*:),
     ) where

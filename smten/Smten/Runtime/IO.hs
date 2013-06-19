@@ -18,23 +18,21 @@ data IO a = IO (P.IO a)
 instance (Haskelly ha sa) => Haskelly (P.IO ha) (IO sa) where
     frhs x = IO (frhs <$> x)
 
-    mtohs (IO x) = return (stohs <$> x)
-    mtohs _ = Nothing
-
-    stohs (IO x) = stohs <$> x
-    stohs _ = error "stohs.IO failed"
+    tohs (IO x) = tohs <$> x
+    tohs _ = error "tohs.IO failed"
 
 instance SmtenHS1 IO where
     realize1 m (IO x) = IO (realize m <$> x)
     realize1 m (IO_Prim r _) = realize m (r m)
     realize1 m (IO_Ite p a b) = __caseTrue (realize m p) (realize m a) (realize m b)
+    realize1 m x@(IO_Error msg) = x
 
     sapp1 f x =
       case x of
         IO {} -> f x
-        IO_Ite p a b -> ite p (sapp1 f a) (sapp1 f b)
+        IO_Ite p a b -> ite p (sapp f a) (sapp f b)
         IO_Error msg -> error0 msg
-        _ -> error "TODO: sapp1 symbolic IO"
+        IO_Prim r c -> primsapp f r c
     primitive1 = IO_Prim
     error1 = IO_Error
     ite1 = IO_Ite

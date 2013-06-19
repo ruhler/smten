@@ -1,9 +1,17 @@
 
 module Debug.Trace (trace, traceShow) where
 
-foreign import hs "Smten.Runtime.Primitives.trace" trace :: String -> b -> b
+foreign import hs "Smten.Runtime.Primitives.trace" trace_str :: String -> b -> b
+
+dseq :: String -> String
+dseq [] = []
+dseq (x : xs) = ((:) $! x) $! dseq xs
+
+-- We use dseq so that the string, when made WHNF concrete, is made fully
+-- concrete.
+trace :: String -> a -> a
+trace = trace_str . dseq
 
 traceShow :: (Show a) => a -> b -> b
 traceShow x = trace (show x)
-
 

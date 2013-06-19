@@ -1,8 +1,5 @@
 Recent::
 * merge common constructors to avoid duplicate work.
-* change mtohs to express explicit errors
-    Use for concrete functions and sprim2.
-    to test: just have a failing test case and you'll see.
 * represent explicit error for NumT and friends.
 * Sudoku.Enum generated query is huge!
 * use pragma in source to indicate which data types are primdatas.

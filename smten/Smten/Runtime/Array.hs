@@ -24,6 +24,7 @@ instance SmtenHS1 PrimArray where
     realize1 m (PrimArray x) = PrimArray (realize m <$> x)
     realize1 m (PrimArray_Prim r _) = realize m (r m)
     realize1 m (PrimArray_Ite p a b) = __caseTrue (realize m p) (realize m a) (realize m b)
+    realize1 m x@(PrimArray_Error {}) = x
 
     error1 = PrimArray_Error
 
@@ -32,16 +33,16 @@ instance SmtenHS1 PrimArray where
     sapp1 f x = 
       case x of
         PrimArray {} -> f x
-        PrimArray_Ite p a b -> ite p (sapp1 f a) (sapp1 f b)
+        PrimArray_Ite p a b -> ite p (sapp f a) (sapp f b)
         PrimArray_Error msg -> error0 msg
-        _ -> error "TODO: sapp1 on symbolic PrimArray"
+        PrimArray_Prim r c -> primsapp f r c
 
 instance Haskelly (PrimArray a) (PrimArray a) where
-    stohs = id
+    tohs = id
     frhs = id
 
 instance (Haskelly h s) => Haskelly (PrimArray h) (PrimArray s) where
-    stohs (PrimArray arr) = PrimArray (stohs <$> arr)
+    tohs (PrimArray arr) = PrimArray (tohs <$> arr)
     frhs (PrimArray arr) = PrimArray (frhs <$> arr)
 
 primArray :: [a] -> PrimArray a
