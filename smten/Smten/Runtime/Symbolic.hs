@@ -62,10 +62,10 @@ return_symbolic = return
 bind_symbolic :: Symbolic a -> (a -> Symbolic b) -> Symbolic b
 bind_symbolic = (>>=)
 
-fail_symbolic :: Symbolic a
+fail_symbolic :: (SmtenHS0 a) => Symbolic a
 fail_symbolic = do
     modify $ \ss -> ss { ss_formula = ss_formula ss `andB` notB (ss_pred ss) }
-    return (error "fail_symbolic")
+    return (error0 (errstr "fail_symbolic"))
 
 free_Bool :: Symbolic S.Bool
 free_Bool = do

@@ -15,6 +15,12 @@ tests = do
       assert p
       return p
 
+   symtesteq "SMT.Core.FreeBool2" (Just ()) [Yices1, Yices2, STP] $ do
+        p <- free_Bool
+        if p
+           then return ()
+           else fail_symbolic
+
    symtesteq "SMT.Core.JoinMaybe" (Just (Just ())) [Yices1, Yices2, STP] $ do
       p <- free_Bool
       assert p
