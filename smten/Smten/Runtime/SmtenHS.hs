@@ -21,7 +21,7 @@ import System.Mem.StableName
 
 import Data.Bits
 import Data.Dynamic
-import Data.Maybe(fromMaybe)
+import Data.Maybe(fromMaybe, isJust)
 
 import qualified Smten.AnyMap as A
 import Smten.SMT.FreeID
@@ -166,33 +166,27 @@ class SmtenHS0 a where
 iterealize :: (SmtenHS0 a) => Bool -> a -> a -> Assignment -> a
 iterealize p a b m = __caseTrue (realize m p) (realize m a) (realize m b)
 
--- flmerge p ga gb a b
--- Merge two fields.
---  p - the ite predicate
---  ga - the guard for field 'a'. We can't look at field 'a' if ga is False.
---  gb - the guard for field 'a'. We can't look at field 'b' if gb is False.
---  a - the field 'a' value
---  b - the field 'b' value
+-- flmerge
+-- Merge two fields of an ite constructor.
 {-# INLINEABLE flmerge #-}
-flmerge :: (SmtenHS0 a) => Bool -> Bool -> Bool -> a -> a -> a
-flmerge _ False _ _ b = b
-flmerge _ _ False a _ = a
-flmerge p _ _ a b = ite p a b
+flmerge :: (SmtenHS0 a) => Bool -> Maybe (Bool, a) -> Maybe (Bool, a) -> Maybe (Bool, a)
+flmerge _ Nothing Nothing = Nothing
+flmerge p (Just (g, v)) Nothing = Just (ite p g False, v)
+flmerge p Nothing (Just (g, v)) = Just (ite p False g, v)
+flmerge p (Just (ga, va)) (Just (gb, vb)) = Just (ite p ga gb, ite p va vb)
 
--- itesapp:
---  The given list of tuples should have the following properties:
---  * every pair of booleans is disjoint: p1 && p2 = False
---  * the conjunction of all booleans is valid: p1 || p2 || .. | pn = True
-{-# INLINEABLE itesapp #-}
-itesapp :: (SmtenHS0 a, SmtenHS0 b) => (a -> b) -> a -> [(Bool, b)] -> b
-itesapp f x zs =
- let join [(_, v)] = v
-     join ((p, a):bs) = ite p a (join bs)
+flrealize :: (SmtenHS0 a) => Assignment -> [Maybe (Bool, a)] -> a
+flrealize m (Nothing : xs) = flrealize m xs
+flrealize m (Just (p, v) : xs) = __caseTrue (realize m p) (realize m v) (flrealize m xs)
+flrealize _ [] = error "flrealize failed"
 
-     notFalse False = P.False
-     notFalse _ = P.True
-
-     zs' = filter (notFalse . fst) zs
+-- flsapp:
+{-# INLINEABLE flsapp #-}
+flsapp :: (SmtenHS0 a, SmtenHS0 b) => (a -> b) -> a -> [Maybe (Bool, a)] -> b
+flsapp f x zs =
+ let join [Just (_, v)] = f v
+     join (Just (p, a):bs) = ite p (f a) (join bs)
+     zs' = filter isJust zs
  in primitive0 (\m -> realize m (f (realize m x))) (join zs')
 
 {-# INLINEABLE itesapp1 #-}

@@ -9,8 +9,8 @@ module Smten.CodeGen.Name (
     primnmCG, qprimnmCG,
     errnmCG, qerrnmCG,
     itenmCG, qitenmCG,
-    guardnmCG, qguardnmCG, errguardnmCG, qerrguardnmCG,
-    fieldnmCG, qfieldnmCG, errfieldnmCG, qerrfieldnmCG,
+    iteflnmCG, qiteflnmCG,
+    iteerrnmCG, qiteerrnmCG,
     nullitenmCG, qnullitenmCG, liftitenmCG, qliftitenmCG,
     ) where
 
@@ -135,29 +135,17 @@ itenmCG = doname True (++ "_Ite") False
 qitenmCG :: Name -> H.Name
 qitenmCG = doname True (++ "_Ite") True
 
-guardnmCG :: Name -> H.Name
-guardnmCG = doname False ("__gd" ++) False
+iteflnmCG :: Name -> H.Name
+iteflnmCG = doname False ("__ite" ++) False
 
-qguardnmCG :: Name -> H.Name
-qguardnmCG = doname False ("__gd" ++) True
+qiteflnmCG :: Name -> H.Name
+qiteflnmCG = doname False ("__ite" ++) True
 
-fieldnmCG :: Integer -> Name -> H.Name
-fieldnmCG i = doname False (("__fl" ++ show i) ++) False
+iteerrnmCG ::  Name -> H.Name
+iteerrnmCG = doname True ("__iteErr" ++) False
 
-qfieldnmCG :: Integer -> Name -> H.Name
-qfieldnmCG i = doname False (("__fl" ++ show i) ++) True
-
-errfieldnmCG :: Name -> H.Name
-errfieldnmCG = doname True ("__efl" ++) False
-
-qerrfieldnmCG :: Name -> H.Name
-qerrfieldnmCG = doname True ("__efl" ++) True
-
-errguardnmCG :: Name -> H.Name
-errguardnmCG = doname True ("__egd" ++) False
-
-qerrguardnmCG :: Name -> H.Name
-qerrguardnmCG = doname True ("__egd" ++) True
+qiteerrnmCG :: Name -> H.Name
+qiteerrnmCG = doname True ("__iteErr" ++) True
 
 nullitenmCG :: Name -> H.Name
 nullitenmCG = doname True ("__NullIte" ++) False

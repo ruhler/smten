@@ -29,13 +29,10 @@ dataCG n tyvars constrs = do
 --                  | Foo_Prim (Assignment -> Foo a b ...) (Foo a b ...)
 --                  | Foo_Error ErrorString
 --                  | Foo_Ite {
---                      __gdFooA :: Bool,
---                      __fl1FooA :: A1, __fl2FooA :: A2, ...,
---                      __gdFooB :: Bool,
---                      __fl1FooB :: B1, __fl2FooB :: B2, ...,
+--                      __iteFooA :: P.Maybe (Bool, Foo a b ...),
+--                      __iteFooB :: P.Maybe (Bool, Foo a b ...),
 --                      ...,
---                      __egdFoo :: Bool,
---                      __eflFoo ErrorString
+--                      __iteFoo_Error :: P.Maybe (Bool, Foo a b ...)
 --                    }
 mkDataD :: Name -> [TyVar] -> [Con] -> CG [H.Dec]
 mkDataD n tyvars constrs = do
@@ -55,18 +52,12 @@ mkDataD n tyvars constrs = do
       err = H.NormalC (errnmCG n) [(H.NotStrict, tyerr)]
 
       tybool = H.ConT (qtynameCG boolN)
+      tyfield = H.AppT (H.ConT (H.mkName "Prelude.Maybe"))
+                       (foldl H.AppT (H.TupleT 2) [tybool, tyme])
 
-      mkites :: Con -> CG [H.VarStrictType]
-      mkites (Con cn tys) = do
-        tys' <- mapM typeCG tys
-        let guard = (guardnmCG cn, H.NotStrict, tybool)
-            fields = [(fieldnmCG i cn, H.NotStrict, t) | (t, i) <- zip tys' [1..]]
-        return $ guard : fields
-
-      iteerr = [(errguardnmCG n, H.NotStrict, tybool),  
-                (errfieldnmCG n, H.NotStrict, tyerr)]
-  ites <- concat <$> mapM mkites constrs
-  let ite = H.RecC (itenmCG n) (ites ++ iteerr)
+      iteerr = (iteerrnmCG n, H.NotStrict, tyfield)
+      ites = [(iteflnmCG cn, H.NotStrict, tyfield) | Con cn _ <- constrs]
+      ite = H.RecC (itenmCG n) (ites ++ [iteerr])
 
   constrs' <- mapM mkcon constrs
   return [H.DataD [] (tynameCG n) tyvars' (constrs' ++ [prim, err, ite]) []]
@@ -192,8 +183,8 @@ primD nm n = do
 --  ...
 -- iteN p (Foo_Error a1) (Foo_Error b1) = Foo_Error (ite p a1 b1)
 -- iteN p a@(Foo_Ite {}) b@(Foo_ite {}) = Foo_Ite {
---           __glFooA = ite p (__glFooA a) (__glFooA b)
---           __fl1FooA = flmerge p (__glFooA a) (__glFooA b) (__fl1FooA a) (__fl1FooA b)
+--           __iteFooA = flmerge p (__iteFooA a) (__iteFooA b)
+--           __iteFooB = flmerge p (__iteFooB a) (__iteFooB b)
 --           ...
 --         }
 -- iteN p a@(Foo_Prim r c) b -> Foo_Prim (iterealize p a b) (ite p c b)
@@ -228,28 +219,22 @@ iteD n k cs = do
       errbody = H.AppE (H.ConE (qerrnmCG n)) (ite ae be)
       errcon = H.Clause errpats (H.NormalB errbody) []
 
-      mkfes :: Con -> [H.FieldExp]
-      mkfes (Con cn tys) = 
-        let guard = (guardnmCG cn, ite (H.AppE (H.VarE $ qguardnmCG cn) ae)
-                                       (H.AppE (H.VarE $ qguardnmCG cn) be))
-            fields = [(fieldnmCG i cn, foldl1 H.AppE [
+      mkfe :: Con -> H.FieldExp
+      mkfe (Con cn tys) = (iteflnmCG cn, foldl1 H.AppE [
                         H.VarE $ H.mkName "Smten.flmerge",
                         H.VarE $ H.mkName "p",
-                        H.AppE (H.VarE $ qguardnmCG cn) ae,
-                        H.AppE (H.VarE $ qguardnmCG cn) be,
-                        H.AppE (H.VarE $ qfieldnmCG i cn) ae,
-                        H.AppE (H.VarE $ qfieldnmCG i cn) be])
-                              | (_, i) <- zip tys [1..]]
-        in guard : fields
+                        H.AppE (H.VarE $ qiteflnmCG cn) ae,
+                        H.AppE (H.VarE $ qiteflnmCG cn) be])
 
-      egdfe = (errguardnmCG n, ite (H.AppE (H.VarE $ qerrguardnmCG n) ae)
-                                   (H.AppE (H.VarE $ qerrguardnmCG n) be))
-      eflfe = (errfieldnmCG n, ite (H.AppE (H.VarE $ qerrfieldnmCG n) ae)
-                                   (H.AppE (H.VarE $ qerrfieldnmCG n) be))
+      efe = (iteerrnmCG n, foldl1 H.AppE [
+                        H.VarE $ H.mkName "Smten.flmerge",
+                        H.VarE $ H.mkName "p",
+                        H.AppE (H.VarE $ qiteerrnmCG n) ae,
+                        H.AppE (H.VarE $ qiteerrnmCG n) be])
       itepats = [H.VarP $ H.mkName "p",
                  H.AsP an (H.RecP (qitenmCG n) []),
                  H.AsP bn (H.RecP (qitenmCG n) [])]
-      itebody = H.RecConE (qitenmCG n) (concatMap mkfes cs ++ [egdfe, eflfe])
+      itebody = H.RecConE (qitenmCG n) (map mkfe cs ++ [efe])
       itecon = H.Clause itepats (H.NormalB itebody) []
 
       lprimpats = [H.VarP $ H.mkName "p",
@@ -287,11 +272,7 @@ errorD nm n = do
 --   realizeN m (FooB x1 x2 ...) = FooB (realize m x1) (realize m x2) ...
 --   ...
 --   realizeN m (Foo_Prim r _) = r m
---   realizeN m x@(Foo_Ite {}) = 
---      __caseTrue (realize m (__gdFooA x)) (FooA (realize m (__fl1FooA x)) (realize m (__fl2FooA x)) ...)
---      (__caseTrue (realize m (__gdFooB x)) (FooB (realize m (__fl1FooB x)) (realize m (__fl2FooB x)) ...)
---       ...
---        (Foo_Error (realize m (__eflFoo x)))
+--   realizeN m x@(Foo_Ite {}) = flrealize m [__iteFooA x, __iteFooB x, ...]
 --   realizeN m x@(Foo_Error _) = x
 realizeD :: Name -> Int -> [Con] -> CG H.Dec
 realizeD n k cs = do
@@ -310,21 +291,13 @@ realizeD n k cs = do
       primbody = H.AppE (H.VarE (H.mkName "r")) (H.VarE (H.mkName "m"))
       primcon = H.Clause primpats (H.NormalB primbody) []
 
-      mkrel :: H.Name -> H.Exp
-      mkrel nm = foldl1 H.AppE [
-                  H.VarE $ H.mkName "Smten.realize",
-                  H.VarE $ H.mkName "m",
-                  H.AppE (H.VarE nm) (H.VarE $ H.mkName "x")]
-
-      mkite :: Con -> H.Exp -> H.Exp
-      mkite (Con cn tys) e = 
-        let rel = mkrel (qguardnmCG cn)
-            this = foldl H.AppE (H.ConE $ qnameCG cn) [mkrel (qfieldnmCG i cn) | (_, i) <- zip tys [1..]]
-        in foldl1 H.AppE [H.VarE $ H.mkName "Smten.__caseTrue", rel, this, e]
-
-      iteerr = H.AppE (H.ConE $ qerrnmCG n) (mkrel (qerrfieldnmCG n))
+      itecons = [H.AppE (H.VarE $ qiteflnmCG cn) (H.VarE $ H.mkName "x") | Con cn _ <- cs]
+      iteerr = H.AppE (H.VarE $ qiteerrnmCG n) (H.VarE $ H.mkName "x")
       itepats = [H.VarP $ H.mkName "m", H.AsP (H.mkName "x") (H.RecP (qitenmCG n) [])]
-      itebody = foldr mkite iteerr cs
+      itebody = foldl1 H.AppE [
+                    H.VarE $ H.mkName "Smten.flrealize",
+                    H.VarE $ H.mkName "m",
+                    H.ListE $ itecons ++ [iteerr]]
       itecon = H.Clause itepats (H.NormalB itebody) []
 
       errpats = [H.VarP $ H.mkName "m", H.AsP (H.mkName "x") (H.ConP (qerrnmCG n) [H.WildP])]
@@ -332,10 +305,7 @@ realizeD n k cs = do
       errcon = H.Clause errpats (H.NormalB errbody) []
   return $ H.FunD (H.mkName $ "realize" ++ show k) (map mkcon cs ++ [primcon, itecon, errcon])
 
--- sappN f x@(Foo_Ite {}) = 
---    itesapp f x [(__gdFooA x, f (FooA (__fl1FooA x) (__fl2FooA x) ...),
---                 (__gdFooB x, ...),
---                 (__egdFoo x, error0 (__eflFoo x)]
+-- sappN f x@(Foo_Ite {}) = flsapp f x [__iteFooA x, __iteFooB x, ...]
 -- sappN f (Foo_Error msg) = error0 msg
 -- sappN f (Foo_Prim r c) = primsapp f r c
 -- sappN f x = f x
@@ -351,24 +321,13 @@ sappD n k cs = do
 
       x = H.VarE $ H.mkName "x"
 
-      mkite :: Con -> H.Exp
-      mkite (Con cn tys) =
-        let gd = H.AppE (H.VarE $ qguardnmCG cn) x
-            con = foldl H.AppE (H.ConE $ qnameCG cn) [H.AppE (H.VarE $ qfieldnmCG i cn) x | (_, i) <- zip tys [1..]]
-            fl = H.AppE (H.VarE $ H.mkName "f") con
-        in H.TupE [gd, fl]
-
-      iteerr = H.TupE [
-        H.AppE (H.VarE $ qerrguardnmCG n) x,
-        H.AppE (H.VarE $ H.mkName "Smten.error0")
-            (H.AppE (H.VarE $ qerrfieldnmCG n) x)]
-
+      itecons = [H.AppE (H.VarE $ qiteflnmCG cn) x | Con cn _ <- cs]
+      iteerr = H.AppE (H.VarE $ qiteerrnmCG n) x
       itepats = [H.VarP $ H.mkName "f", H.AsP (H.mkName "x") (H.RecP (qitenmCG n) [])]
       itebody = foldl1 H.AppE [
-        H.VarE $ H.mkName "Smten.itesapp",
-        H.VarE $ H.mkName "f",
-        H.VarE $ H.mkName "x",
-        H.ListE (map mkite cs ++ [iteerr])]
+                    H.VarE $ H.mkName "Smten.flsapp",
+                    H.VarE $ H.mkName "f", x,
+                    H.ListE $ itecons ++ [iteerr]]
       itecon = H.Clause itepats (H.NormalB itebody) []
 
       errpats = [H.VarP $ H.mkName "f", H.ConP (qerrnmCG n) [H.VarP $ H.mkName "msg"]]
@@ -388,39 +347,29 @@ mkIteHelpersD n ts cs = do
 
 -- __IteNullFoo :: Foo a b ...
 -- __IteNullFoo = Foo_Ite {
---    __gd* = False,
---    __fl* = Prelude.error "__FooIte_Null field *"
+--    __fl* = Nothing,
+--    ...
 -- }
 mkNullIteD :: Name -> [TyVar] -> [Con] -> CG [H.Dec]
 mkNullIteD n ts cs = do
   let dt = appsT (conT n) (map tyVarType ts)
   H.SigD _ ty' <- topSigCG (TopSig (name "DONT_CARE") [] dt)
   let sig = H.SigD (nullitenmCG n) ty'
-      mkfes :: Con -> [H.FieldExp]
-      mkfes (Con cn tys) =
-        let guard = (guardnmCG cn, H.ConE $ H.mkName "Smten.False")
-            fields = [(fieldnmCG i cn,
-                       H.AppE (H.VarE $ H.mkName "Prelude.error")
-                              (H.LitE (H.StringL $ H.nameBase (fieldnmCG i cn) ++ " undefined"))) | (_, i) <- zip tys [1..]]
-        in guard : fields
 
-      egdfe = (errguardnmCG n, H.ConE $ H.mkName "Smten.False")
-      eflfe = (errfieldnmCG n, H.AppE (H.VarE $ H.mkName "Prelude.error")
-                                      (H.LitE (H.StringL $ H.nameBase (errfieldnmCG n) ++ " undefined")))
-      body = H.RecConE (qitenmCG n) (concatMap mkfes cs ++ [egdfe, eflfe])
+      fes = [(iteflnmCG cn, H.ConE $ H.mkName "Prelude.Nothing") | Con cn _ <- cs]
+      efe = (iteerrnmCG n, H.ConE $ H.mkName "Prelude.Nothing")
+      body = H.RecConE (qitenmCG n) (fes ++ [efe])
       clause = H.Clause [] (H.NormalB body) []
       fun = H.FunD (nullitenmCG n) [clause]
   return [sig, fun]
 
 -- __IteLiftFoo :: Foo a b ... -> Foo a b ...
--- __IteLiftFoo (FooA x1 x2 ...) = (__IteNullFoo :: Foo a b ...) {
---         __gdFooA = True,
---         __fl1FooA = x1, __fl2FooA = x2, ...
+-- __IteLiftFoo x@(FooA {}) = (__IteNullFoo :: Foo a b ...) {
+--         __iteFooA = Just (True, x)
 --         }
 --  ...
--- __IteLiftFoo (Foo_Error msg) = (__IteNullFoo :: Foo a b ...) {
---         __egdFoo = True,
---         __eflFoo = msg
+-- __IteLiftFoo x@(Foo_Error msg) = (__IteNullFoo :: Foo a b ...) {
+--         __iteErrFoo = Just (True, x)
 --         }
 -- __IteLiftFoo x@(Foo_Ite {}) = x
 -- __IteLiftFoo (Foo_Prim {}) = Prelude.error "iteliftFoo.prim"
@@ -434,17 +383,16 @@ mkLiftIteD n ts cs = do
 
       mkcon :: Con -> H.Clause
       mkcon (Con cn cts) =
-        let xs = [H.mkName $ "x" ++ show i | i <- [1..length cts]]
-            pats = [H.ConP (qnameCG cn) (map H.VarP xs)]
-            guard = (guardnmCG cn, H.ConE $ H.mkName "Smten.True")
-            fields = [(fieldnmCG i cn, H.VarE x) | (x, i) <- zip xs [1..]]
-            body = H.RecUpdE (H.SigE (H.VarE $ qnullitenmCG n) tyme) (guard : fields)
+        let pats = [H.AsP (H.mkName "x") (H.RecP (qnameCG cn) [])]
+            tuple = H.TupE [H.ConE $ H.mkName "Smten.True", H.VarE $ H.mkName "x"]
+            fields = [(iteflnmCG cn, H.AppE (H.ConE $ H.mkName "Prelude.Just") tuple)]
+            body = H.RecUpdE (H.SigE (H.VarE $ qnullitenmCG n) tyme) fields
         in H.Clause pats (H.NormalB body) []
 
-      errpats = [H.ConP (qerrnmCG n) [H.VarP $ H.mkName "msg"]]
-      errguard = (errguardnmCG n, H.ConE $ H.mkName "Smten.True")
-      errfield = (errfieldnmCG n, H.VarE $ H.mkName "msg")
-      errbody = H.RecUpdE (H.SigE (H.VarE $ qnullitenmCG n) tyme) ([errguard, errfield])
+      errpats = [H.AsP (H.mkName "x") (H.RecP (qerrnmCG n) [])]
+      errtuple = H.TupE [H.ConE $ H.mkName "Smten.True", H.VarE $ H.mkName "x"]
+      errfields = [(iteerrnmCG n, H.AppE (H.ConE $ H.mkName "Prelude.Just") errtuple)]
+      errbody = H.RecUpdE (H.SigE (H.VarE $ qnullitenmCG n) tyme) errfields
       errcon = H.Clause errpats (H.NormalB errbody) []
 
       itepats = [H.AsP (H.mkName "x") (H.RecP (qitenmCG n) [])]
