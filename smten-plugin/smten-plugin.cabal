@@ -1,0 +1,25 @@
+name: smten-plugin
+version: 3.0.0.0
+synopsis: Smten library
+license: AllRightsReserved
+license-file: LICENSE
+author: Richard Uhler
+maintainer: ruhler@csail.mit.edu
+category: Language
+build-type: Simple
+cabal-version: >=1.8
+stability: experimental
+
+source-repository this
+  type: git
+  location: /afs/csail.mit.edu/u/r/ruhler/git/smten
+  --branch:
+  --tag:
+
+library
+  exposed-modules:
+    Smten.Plugin.Plugin
+  other-modules:
+  build-depends: base ==4.6.*, ghc ==7.6.*
+  ghc-options: -fwarn-unused-binds -fwarn-unused-imports
+

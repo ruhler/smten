@@ -1,0 +1,56 @@
+name: smten-runtime
+version: 3.0.0.0
+synopsis: Smten library
+license: AllRightsReserved
+license-file: LICENSE
+author: Richard Uhler
+maintainer: ruhler@csail.mit.edu
+category: Language
+build-type: Simple
+cabal-version: >=1.8
+stability: experimental
+data-dir: share
+data-files:
+    doc/*.txt
+
+source-repository this
+  type: git
+  location: /afs/csail.mit.edu/u/r/ruhler/git/smten
+  --branch:
+  --tag:
+
+library
+  exposed-modules:
+    Smten.Runtime.Array
+    Smten.Runtime.Bit
+    Smten.Runtime.Builtin
+    Smten.Runtime.Char
+    Smten.Runtime.Debug
+    Smten.Runtime.IO
+    Smten.Runtime.Numeric
+    Smten.Runtime.Primitives
+    Smten.Runtime.SmtenHS
+    Smten.Runtime.Symbolic
+    Smten.SMT.Solvers
+
+  other-modules:
+    Smten.Bit
+    Smten.AnyMap
+    Smten.AnyKeyMap
+    Smten.SMT.Assert
+    Smten.SMT.Debug
+    Smten.SMT.FreeID
+    Smten.SMT.Solver.Dynamic
+    Smten.SMT.Solver.Static
+    Smten.SMT.Yices1.FFI
+    Smten.SMT.Yices1.Yices1
+    Smten.SMT.Yices2.FFI
+    Smten.SMT.Yices2.Yices2
+    Smten.SMT.STP.FFI
+    Smten.SMT.STP.STP
+
+  build-depends: base ==4.6.*, template-haskell ==2.8.*, mtl ==2.1.*,
+                 hashtables ==1.0.*, array ==0.4.*, pretty ==1.1.*
+  extra-libraries: stp stdc++ yices2 yices1
+  ghc-options: -fwarn-unused-binds -fwarn-unused-imports
+

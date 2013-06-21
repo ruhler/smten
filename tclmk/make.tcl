@@ -39,36 +39,45 @@ set ::env(HOME) [pwd]/build/home
 #hrun cabal update
 #hrun cabal install
 
-# The smten package
-indir smten {
+# The smten-runtime package
+indir smten-runtime {
     hrun cabal install \
-        --builddir ../build/smten \
+        --builddir ../build/smten-runtime \
         --with-happy=$::HAPPY \
         --force-reinstalls
 
-    #hrun cabal haddock --builddir ../build/smten
-    hrun cabal sdist --builddir ../build/smten
+    #hrun cabal haddock --builddir ../build/smten-runtime
+    hrun cabal sdist --builddir ../build/smten-runtime
 }
 
-set SMTEN build/home/.cabal/bin/smten
-set SMTN smten/share/lib
+# The smten-plugin package
+indir smten-plugin {
+    hrun cabal install \
+        --builddir ../build/smten-plugin \
+        --with-happy=$::HAPPY \
+        --force-reinstalls
+
+    #hrun cabal haddock --builddir ../build/smten-plugin
+    hrun cabal sdist --builddir ../build/smten-plugin
+}
+
+set SMTN smten-lib/
 
 proc hscomp {module} {
     set hsdir build/test
-    hrun $::SMTEN --include $::SMTN -f $::SMTN/[string map {. /} $module].smtn --hsdir $hsdir
+    hrun -ignorestderr ghc -fplugin=Smten.Plugin.Plugin \
+    -o $hsdir/[string map {. _} $module].haskell -odir $hsdir -hidir $hsdir\
+    $::SMTN/[string map {. /} $module].hs
 }
 
 proc hsghc {module} {
     set hsdir build/test
-    hrun -ignorestderr ghc -fno-warn-overlapping-patterns \
-        -fno-warn-missing-fields \
-        -main-is Smten.Lib.$module.main__ -i$hsdir \
+    hrun -ignorestderr ghc \
         -prof -rtsopts \
         -o $hsdir/[string map {. _} $module] $hsdir/Smten/Lib/[string map {. /} $module].hs
 }
 
-# Run a HaskellF Test
-proc hf {module} {
+proc hsrun {module} {
     set hsdir build/test
     hscomp $module
     hsghc $module
@@ -76,6 +85,6 @@ proc hf {module} {
 }
 
 
-hf Smten.Tests.All
+hsrun Smten.Tests.All
 puts "BUILD COMPLETE"
 
