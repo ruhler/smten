@@ -1,3 +1,8 @@
+Plugin::
+* pass in the path for where to output modules.
+* figure out how to avoid .hi and .o file confusion.
+    Eventually this should be obvious: Foo.hs vs Smten.Lib.Foo.hs
+
 Recent::
 * merge common constructors to avoid duplicate work.
 * represent explicit error for NumT and friends.

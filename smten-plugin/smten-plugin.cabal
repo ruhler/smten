@@ -20,6 +20,9 @@ library
   exposed-modules:
     Smten.Plugin.Plugin
   other-modules:
-  build-depends: base ==4.6.*, ghc ==7.6.*
+    Smten.Plugin.CG
+    Smten.Plugin.Name
+  build-depends: base ==4.6.*, ghc ==7.6.*, directory ==1.2.*,
+                 mtl ==2.1.*
   ghc-options: -fwarn-unused-binds -fwarn-unused-imports
 

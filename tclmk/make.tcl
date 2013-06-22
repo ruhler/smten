@@ -74,7 +74,9 @@ proc hsghc {module} {
     set hsdir build/test
     hrun -ignorestderr ghc \
         -prof -rtsopts \
-        -o $hsdir/[string map {. _} $module] $hsdir/Smten/Lib/[string map {. /} $module].hs
+        -main-is $module.main \
+        -o $hsdir/[string map {. _} $module] \
+        $hsdir/[string map {. /} $module].hs
 }
 
 proc hsrun {module} {

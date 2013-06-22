@@ -1,0 +1,26 @@
+
+module Smten.Plugin.CG (
+   CG, runCG,
+   addimport, getimports,
+    ) where
+
+import GhcPlugins
+
+import Control.Monad.State
+
+data CGS = CGS {
+  -- Accumulated set of imports required for this module.
+  cgs_imports :: [ModuleName]
+}
+
+type CG = StateT CGS CoreM
+
+addimport :: ModuleName -> CG ()
+addimport nm = modify $ \s -> s { cgs_imports = nm : cgs_imports s }
+
+getimports :: CG [ModuleName]
+getimports = gets cgs_imports
+
+runCG :: CG a -> CoreM a
+runCG m = evalStateT m (CGS [])
+
