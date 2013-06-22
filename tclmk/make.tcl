@@ -66,6 +66,7 @@ set SMTN smten-lib/
 proc hscomp {module} {
     set hsdir build/test
     hrun -ignorestderr ghc -fplugin=Smten.Plugin.Plugin \
+    -i$::SMTN \
     -o $hsdir/[string map {. _} $module].haskell -odir $hsdir -hidir $hsdir\
     $::SMTN/[string map {. /} $module].hs
 }
@@ -75,6 +76,7 @@ proc hsghc {module} {
     hrun -ignorestderr ghc \
         -prof -rtsopts \
         -main-is $module.main \
+        -i$hsdir \
         -o $hsdir/[string map {. _} $module] \
         $hsdir/[string map {. /} $module].hs
 }

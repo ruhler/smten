@@ -47,19 +47,44 @@ moduleCG m = do
 
 bindCG :: CoreBind -> CG SDoc
 bindCG (Rec xs) = vcat <$> mapM bindCG [NonRec x v | (x, v) <- xs]
-bindCG (NonRec var body) = do
+bindCG b@(NonRec var body) = do
   body' <- expCG body
   nm <- nameCG $ varName var
-  return $ nm <+> text "=" <+> body'
+  ty <- typeCG $ varType var
+  return $
+    nm <+> text "::" <+> ty $+$
+    nm <+> text "=" <+> body'
+
+typeCG :: Type -> CG SDoc
+typeCG t = return (ppr t)
 
 expCG :: CoreExpr -> CG SDoc
-expCG (Var x) = qnameCG $ varName x
+expCG (Var x)
+ | "GHC.Tuple.()" == renderDoc (ppr x) = return $ text "()"
+ | otherwise = qnameCG $ varName x
 expCG (Lit (MachStr str)) = return $ text (show (unpackFS str)) <> text "#"
+expCG (App a (Type {})) = expCG a
+expCG (App a (Var x)) | isDictId x = expCG a
 expCG (App a b) = do
     a' <- expCG a
     b' <- expCG b
     return $ parens (a' <+> b')
-expCG x = return (ppr x)
+expCG (Lam b body) = do
+    b' <- qnameCG $ varName b
+    body' <- expCG body
+    return $ parens (text "\\" <+> b' <+> text "->" <+> body')
+expCG (Case x v _ ms) = do
+    x' <- expCG x
+    ms' <- mapM (altCG v) ms
+    return $ text "case" <+> x' <+> text "of" <+> braces (vcat ms')
+expCG x = error ("TODO: expCG " ++ renderDoc (ppr x))
+
+altCG :: CoreBndr -> CoreAlt -> CG SDoc
+altCG v (DataAlt k, xs, body) = do
+    body' <- expCG body
+    xs' <- sep <$> mapM (nameCG . varName) xs
+    k' <- qnameCG $ getName k
+    return $ k' <+> xs' <+> text "->" <+> body' <+> semi
 
 targetFile :: Module -> FilePath
 targetFile m =

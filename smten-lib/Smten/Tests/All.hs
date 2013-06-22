@@ -1,6 +1,10 @@
 
 module Smten.Tests.All (main) where
 
+import Smten.Tests.Test
+
 main :: IO ()
-main = putStrLn "PASSED"
+main = do
+  test "Dummy" True
+  putStrLn "ALL PASSED"
 

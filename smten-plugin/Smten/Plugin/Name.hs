@@ -13,6 +13,8 @@ nameCG nm = return (ppr $ localiseName nm)
 -- Generate code for a qualified name.
 qnameCG :: Name -> CG SDoc
 qnameCG nm = do
-  addimport (moduleName $ nameModule nm)
+  case (nameModule_maybe nm) of
+     Just mn -> addimport (moduleName mn)
+     _ -> return ()
   return (ppr nm)
 

@@ -1,6 +1,6 @@
 
 module Smten.Plugin.CG (
-   CG, runCG,
+   CG, runCG, lift,
    addimport, getimports,
     ) where
 
