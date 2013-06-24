@@ -10,7 +10,11 @@ import Smten.Plugin.CG
 
 -- Generate code for an unqualified name.
 nameCG :: Name -> CG SDoc
-nameCG nm = return $ text (unqualified $ nameString nm)
+nameCG nm =
+ let full = trans $ nameString nm
+     base = unqualified full
+     sym = if issymbol base then "(" ++ base ++ ")" else base
+ in return $ text sym
 
 -- Generate code for a qualified name.
 qnameCG :: Name -> CG SDoc

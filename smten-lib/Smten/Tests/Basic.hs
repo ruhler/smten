@@ -179,8 +179,8 @@ patternlet =
 
 -- Funny operator, for testing precedence of operaters with no fixity
 -- specified.
---(++++) :: Integer -> Integer -> Integer
---(++++) a b = 2*a + b
+(++++) :: Integer -> Integer -> Integer
+(++++) a b = 2*a + b
 
 tests :: IO ()
 tests = do
@@ -239,7 +239,7 @@ tests = do
     test "precedence 2" ((let f = (-) 
                           in 10 `f` 2 `f` 3
                          ) == (5 :: Integer))
-    --test "precedence 3" ((2 ++++ 3 ++++ 5) == (19 :: Integer))
+    test "precedence 3" ((2 ++++ 3 ++++ 5) == (19 :: Integer))
     testaspattern
     testarithsequence
     teststringliteralpattern
