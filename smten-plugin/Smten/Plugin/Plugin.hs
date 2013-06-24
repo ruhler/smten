@@ -97,8 +97,10 @@ typeCG t
 expCG :: CoreExpr -> CG SDoc
 expCG (Var x) = qnameCG $ varName x
 expCG (Lit (MachStr str)) = return $ text (show (unpackFS str)) <> text "#"
+expCG (Lit (MachChar c)) = return $ text (show c) <> text "#"
+expCG (Lit (MachInt i)) = return $ text (show i) <> text "#"
 expCG (Lit (LitInteger i _)) = return $ integer i
-expCG (Lit l) = return $ ppr l
+expCG (Lit l) = error $ "litCG: " ++ renderDoc (ppr l)
 expCG (App a (Type {})) = expCG a
 expCG (App a (Var x)) | isDictId x = expCG a
 expCG (App a b) = do
