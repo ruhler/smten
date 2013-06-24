@@ -1,5 +1,4 @@
 Plugin::
-* user defined data types
 * class definitions
 * all the Smten Basic tests.
 * pass in the path for where to output modules.

@@ -109,7 +109,9 @@ expCG (Let x body) = do
     x' <- bindCG x
     body' <- expCG body
     return $ parens (text "let" <+> braces x' <+> text "in" <+> body')
-expCG (Lam b body) = do
+expCG (Lam b body)
+ | isTyVar b = expCG body
+ | otherwise = do
     b' <- qnameCG $ varName b
     body' <- expCG body
     return $ parens (text "\\" <+> b' <+> text "->" <+> body')
