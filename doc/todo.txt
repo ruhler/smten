@@ -1,4 +1,7 @@
 Plugin::
+* user defined data types
+* class definitions
+* all the Smten Basic tests.
 * pass in the path for where to output modules.
 * figure out how to avoid .hi and .o file confusion.
     Eventually this should be obvious: Foo.hs vs Smten.Lib.Foo.hs

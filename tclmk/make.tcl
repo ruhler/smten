@@ -37,7 +37,7 @@ hrun mkdir -p build/home build/test
 
 set ::env(HOME) [pwd]/build/home
 #hrun cabal update
-#hrun cabal install
+#hrun cabal install integer-gmp
 
 # The smten-runtime package
 indir smten-runtime {
@@ -66,7 +66,7 @@ set SMTN smten-lib/
 proc hscomp {module} {
     set hsdir build/test
     hrun -ignorestderr ghc -fplugin=Smten.Plugin.Plugin \
-    -i$::SMTN \
+    -O0 -i$::SMTN \
     -o $hsdir/[string map {. _} $module].haskell -odir $hsdir -hidir $hsdir\
     $::SMTN/[string map {. /} $module].hs
 }
