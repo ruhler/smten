@@ -33,6 +33,7 @@ pass m = do
 
 moduleCG :: ModGuts -> CG SDoc
 moduleCG m = do
+  tycons <- vcat <$> mapM tyconCG (mg_tcs m)
   body <- vcat <$> mapM bindCG (mg_binds m)
   importmods <- getimports
   let myname = moduleName (mg_module m)
@@ -44,8 +45,26 @@ moduleCG m = do
     text "{-# LANGUAGE ScopedTypeVariables #-}" $+$
     text "module" <+> text modnm <+> text "where" <+> text "{" $+$
     imports $+$
+    tycons $+$
     body $+$
     text "}"
+
+-- Declare a type constructor.
+tyconCG :: TyCon -> CG SDoc
+tyconCG t
+ | Just cs <- tyConDataCons_maybe t = do
+     let mkcon :: DataCon -> CG SDoc
+         mkcon d = do
+           tys <- mapM typeCG (dataConOrigArgTys d)
+           nm <- nameCG (dataConName d)
+           return $ nm <+> sep tys
+     ks <- mapM mkcon cs
+     t' <- nameCG (tyConName t)
+     vs <- mapM (qnameCG . varName) (tyConTyVars t)
+     return $ text "data" <+> t' <+> sep vs <+> text "=" <+> vcat (punctuate (text "|") ks) <+> semi
+ | isSynTyCon t = return empty
+ | otherwise = error $ "tyconCG: " ++ renderDoc (ppr t)
+  
 
 bindCG :: CoreBind -> CG SDoc
 bindCG (Rec xs) = vcat <$> mapM bindCG [NonRec x v | (x, v) <- xs]
