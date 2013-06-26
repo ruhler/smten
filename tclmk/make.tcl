@@ -50,8 +50,10 @@ indir smten-plugin {
 }
 
 # The smten-base package
-hrun cp -r -l smten-base build/smten-base
+hrun cp -r -l smten-base build/
 indir build/smten-base {
+    hrun ghc -c -fplugin=Smten.Plugin.Plugin src/GHC/Err.lhs
+
     hrun cabal install \
         --builddir smten-base-build \
         --with-happy=$::HAPPY \

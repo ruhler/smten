@@ -5,6 +5,7 @@ module Smten.Plugin.Plugin (plugin) where
 
 import Data.Functor
 import Data.List
+import Data.Maybe
 import System.Directory
 
 import GhcPlugins
@@ -27,7 +28,10 @@ install _ todo = do
 pass :: ModGuts -> CoreM ModGuts
 pass m = do
   mod <- runCG (moduleCG m)
-  let tgt = targetFile (mg_module m)
+  flags <- getDynFlags
+  let slashes = moduleNameSlashes $ moduleName (mg_module m)
+      odir = fromMaybe "./" (objectDir flags)
+      tgt = odir ++ "Smten/Lib/" ++ slashes ++ ".hs"
   liftIO $ do
       createDirectoryIfMissing True (directory tgt)
       writeFile tgt (S.render mod)
@@ -139,11 +143,6 @@ altsCG v ((DEFAULT, _, body) : xs) = do
   body' <- expCG body
   return $ xs' ++ [S.Alt (S.VarP v') body']
 altsCG v xs = mapM (altCG v) xs
-
-targetFile :: Module -> FilePath
-targetFile m =
-  let slashes = moduleNameSlashes $ moduleName m
-  in "build/test/Smten/Lib/" ++ slashes ++ ".hs"
 
 renderDoc :: SDoc -> String
 renderDoc d = renderWithStyle tracingDynFlags d defaultUserStyle

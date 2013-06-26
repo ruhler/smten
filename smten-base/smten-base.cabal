@@ -18,6 +18,8 @@ source-repository this
 
 library
   exposed-modules:
+    Smten.Lib.GHC.Err
+
   build-depends: base ==4.6.*
   ghc-options: -fwarn-unused-binds -fwarn-unused-imports
 
