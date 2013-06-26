@@ -40,8 +40,7 @@ moduleCG m = do
   importmods <- getimports
   let myname = moduleName (mg_module m)
       modnm = moduleNameString myname
-      importnms = filter ((/=) myname) . nub $ importmods
-      imports = map (renderDoc . ppr) importnms
+      imports = filter ((/=) modnm) . nub $ importmods
   return $ S.Module {
     S.mod_langs = ["MagicHash", "ScopedTypeVariables"],
     S.mod_name = modnm,

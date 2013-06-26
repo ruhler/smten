@@ -23,7 +23,7 @@ qnameCG nm
  | nameString nm == "GHC.Integer.Type.Integer" = return $ "Prelude.Integer"
  | otherwise = do
   case (nameModule_maybe nm) of
-     Just mn -> addimport (moduleName mn)
+     Just mn -> addimport (moduleNameString (moduleName mn))
      _ -> return ()
   let full = trans $ nameString nm
       base = unqualified full
