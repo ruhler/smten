@@ -22,7 +22,9 @@ library
   other-modules:
     Smten.Plugin.CG
     Smten.Plugin.Name
+    Smten.Plugin.Output.Syntax
+    Smten.Plugin.Output.Ppr
   build-depends: base ==4.6.*, ghc ==7.6.*, directory ==1.2.*,
-                 mtl ==2.1.*
+                 mtl ==2.1.*, pretty ==1.1.*
   ghc-options: -fwarn-unused-binds -fwarn-unused-imports
 

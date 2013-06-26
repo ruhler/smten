@@ -7,19 +7,20 @@ import Data.Char
 
 import GhcPlugins
 import Smten.Plugin.CG
+import qualified Smten.Plugin.Output.Syntax as S
 
 -- Generate code for an unqualified name.
-nameCG :: Name -> CG SDoc
+nameCG :: Name -> CG S.Name
 nameCG nm =
  let full = trans $ nameString nm
      base = unqualified full
      sym = if issymbol base then "(" ++ base ++ ")" else base
- in return $ text sym
+ in return sym
 
 -- Generate code for a qualified name.
-qnameCG :: Name -> CG SDoc
+qnameCG :: Name -> CG S.Name
 qnameCG nm
- | nameString nm == "GHC.Integer.Type.Integer" = return $ text "Prelude.Integer"
+ | nameString nm == "GHC.Integer.Type.Integer" = return $ "Prelude.Integer"
  | otherwise = do
   case (nameModule_maybe nm) of
      Just mn -> addimport (moduleName mn)
@@ -27,7 +28,7 @@ qnameCG nm
   let full = trans $ nameString nm
       base = unqualified full
       sym = if issymbol base then "(" ++ full ++ ")" else full
-  return $ text sym
+  return $ sym
 
 -- | Return the unqualified part of the given name.
 -- For example: unqualified "Foo.Bar.sludge" returns "sludge"

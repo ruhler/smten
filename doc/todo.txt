@@ -1,5 +1,7 @@
 Plugin::
-* class definitions
+* generate all the smten code:
+    use Smten.Lib.*, not the raw thing.
+* support for classes
 * all the Smten Basic tests.
 * pass in the path for where to output modules.
 * figure out how to avoid .hi and .o file confusion.
