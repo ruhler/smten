@@ -39,7 +39,7 @@ moduleCG m = do
   vals <- concat <$> mapM bindCG (mg_binds m)
   importmods <- getimports
   let myname = moduleName (mg_module m)
-      modnm = moduleNameString myname
+      modnm = "Smten.Lib." ++ moduleNameString myname
       imports = filter ((/=) modnm) . nub $ importmods
   return $ S.Module {
     S.mod_langs = ["MagicHash", "ScopedTypeVariables"],
@@ -143,7 +143,7 @@ altsCG v xs = mapM (altCG v) xs
 targetFile :: Module -> FilePath
 targetFile m =
   let slashes = moduleNameSlashes $ moduleName m
-  in "build/test/" ++ slashes ++ ".hs"
+  in "build/test/Smten/Lib/" ++ slashes ++ ".hs"
 
 renderDoc :: SDoc -> String
 renderDoc d = renderWithStyle tracingDynFlags d defaultUserStyle
