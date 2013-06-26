@@ -37,28 +37,27 @@ hrun mkdir -p build/home build/test
 
 set ::env(HOME) [pwd]/build/home
 #hrun cabal update
-#hrun cabal install integer-gmp
-
-# The smten-runtime package
-indir smten-runtime {
-    hrun cabal install \
-        --builddir ../build/smten-runtime \
-        --with-happy=$::HAPPY \
-        --force-reinstalls
-
-    #hrun cabal haddock --builddir ../build/smten-runtime
-    hrun cabal sdist --builddir ../build/smten-runtime
-}
 
 # The smten-plugin package
 indir smten-plugin {
     hrun cabal install \
-        --builddir ../build/smten-plugin \
+        --builddir ../build/smten-plugin-build \
         --with-happy=$::HAPPY \
         --force-reinstalls
 
-    #hrun cabal haddock --builddir ../build/smten-plugin
-    hrun cabal sdist --builddir ../build/smten-plugin
+    #hrun cabal haddock --builddir ../build/smten-plugin-build
+    hrun cabal sdist --builddir ../build/smten-plugin-build
+}
+
+# The smten-base package
+hrun cp -r -l smten-base build/smten-base
+indir build/smten-base {
+    hrun cabal install \
+        --builddir smten-base-build \
+        --with-happy=$::HAPPY \
+        --force-reinstalls
+
+    hrun cabal sdist --builddir smten-base-build
 }
 
 set SMTN smten-lib/
