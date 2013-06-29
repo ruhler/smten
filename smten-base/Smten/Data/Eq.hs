@@ -3,9 +3,9 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 module Smten.Data.Eq (Eq(..)) where
 
-import qualified Prelude as P
 import Smten.Smten.Base
 import Smten.Data.Bool
+import Smten.Data.Eq0
 
 infix 4 ==, /=
 
@@ -17,7 +17,7 @@ class Eq a where
     (/=) x y = not (x == y)
 
 instance Eq Int where
-    (==) a b = if a P.== b then True else False
+    (==) = int_eq
 
 instance Eq Integer where
-    (==) a b = if a P.== b then True else False
+    (==) = integer_eq

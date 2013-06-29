@@ -50,12 +50,11 @@ indir smten-plugin {
 }
 
 # The smten-base package
-hrun cp -r -l smten-base build/
+hrun cp -r -f -l smten-base build/
 indir build/smten-base {
-#    set srcs [exec find src -type f -name "*.hs"]
-#    foreach src $srcs {
-#        hrun ghc -c -fplugin=Smten.Plugin.Plugin $src
-#    }
+    hrun rm -rf Smten/Compiled
+    hrun ghc --make -c -fplugin=Smten.Plugin.Plugin Smten/Prelude.hs
+    hrun cp -r -f -l {*}[glob Manual/*] Smten/Compiled/
 
     hrun cabal install \
         --builddir smten-base-build \
@@ -80,18 +79,19 @@ proc hsghc {module} {
     set hsdir build/test
     hrun -ignorestderr ghc \
         -prof -rtsopts \
-        -main-is Smten.Lib.$module.main \
+        -main-is Smten.Compiled.$module.main \
         -i$hsdir \
         -o $hsdir/[string map {. _} $module].smten \
-        $hsdir/[string map {. /} Smten.Lib.$module].hs
+        $hsdir/[string map {. /} Smten.Compiled.$module].hs
 }
 
 proc hsrun {module} {
     set hsdir build/test
     hscomp $module
-    #hsghc $module
     hrun ./$hsdir/[string map {. _} $module].haskell
-    #hrun ./$hsdir/[string map {. _} $module].smten
+
+    hsghc $module
+    hrun ./$hsdir/[string map {. _} $module].smten
 }
 
 

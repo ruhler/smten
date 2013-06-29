@@ -5,11 +5,11 @@ module Smten.Data.Show (
     ShowS, Show(..), shows, showChar, showString, showParen,
     ) where
 
-import qualified Prelude as P
 import Smten.Smten.Base
 import Smten.Data.Bool
 import Smten.Data.Function
 import Smten.Data.List0
+import Smten.Data.Show0
 
 type ShowS = String -> String
 
@@ -42,15 +42,15 @@ showParen b p =
     False -> p
 
 instance Show Int where
-    showsPrec = P.showsPrec
+    showsPrec = int_showsPrec
 
 instance Show Char where
-    showsPrec = P.showsPrec
-    showList = P.showList
+    showsPrec = char_showsPrec
+    showList = char_showList
 
 instance (Show a) => Show [a] where
     showsPrec p = showList
 
 instance Show Integer where
-    showsPrec = P.showsPrec
+    showsPrec = integer_showsPrec
 

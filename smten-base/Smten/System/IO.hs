@@ -1,6 +1,6 @@
 
 {-# LANGUAGE TypeSynonymInstances #-}
-{-# LANGUAGE NoImplicitPrelude #-}
+{-# LANGUAGE NoImplicitPrelude, RebindableSyntax #-}
 module Smten.System.IO (
     IO, putChar, putStr, putStrLn,
  ) where
@@ -9,16 +9,12 @@ import qualified Prelude as P
 
 import Smten.Smten.Base
 import Smten.Control.Monad
-
-type IO = P.IO
+import Smten.System.IO0
 
 instance Monad IO where
-    return = P.return
-    (>>=) = (P.>>=)
+    return = return_io
+    (>>=) = bind_io
     
-putChar :: Char -> IO ()
-putChar = P.putChar
-
 putStr :: String -> IO ()
 putStr s = mapM_ putChar s
 

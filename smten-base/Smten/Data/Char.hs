@@ -8,10 +8,11 @@ module Smten.Data.Char (
 import qualified Prelude as P
 import Smten.Smten.Base
 import Smten.Data.Bool
+import Smten.Data.Char0
 import Smten.Data.Eq
 
 instance Eq Char where 
-   (==) a b = if a P.== b then True else False
+   (==) = char_eq
 
 isSpace :: Char -> Bool
 isSpace c = c == ' '    

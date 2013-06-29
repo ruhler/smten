@@ -31,7 +31,7 @@ pass m = do
   flags <- getDynFlags
   let slashes = moduleNameSlashes $ moduleName (mg_module m)
       odir = fromMaybe "." (objectDir flags)
-      tgt = odir ++ "/Smten/Lib/" ++ slashes ++ ".hs"
+      tgt = odir ++ "/Smten/Compiled/" ++ slashes ++ ".hs"
   liftIO $ do
       createDirectoryIfMissing True (directory tgt)
       writeFile tgt (S.render mod)
@@ -43,7 +43,7 @@ moduleCG m = do
   vals <- concat <$> mapM bindCG (mg_binds m)
   importmods <- getimports
   let myname = moduleName (mg_module m)
-      modnm = "Smten.Lib." ++ moduleNameString myname
+      modnm = "Smten.Compiled." ++ moduleNameString myname
       imports = filter ((/=) modnm) . nub $ importmods
   return $ S.Module {
     S.mod_langs = ["MagicHash", "ScopedTypeVariables"],
