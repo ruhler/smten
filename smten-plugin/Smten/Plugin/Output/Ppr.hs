@@ -47,6 +47,7 @@ instance Ppr Type where
       = text "forall" <+> sep (map ppr vs) <+> text "." <+> ppr ty
 
     ppr (VarT n) = text n
+    ppr (AppT a b) = parens $ ppr a <+> ppr b
 
 instance Ppr Exp where
     ppr (VarE nm) = ppr nm
@@ -73,5 +74,6 @@ instance Ppr Literal where
     ppr (StringL str) = text (show str) <> text "#"
     ppr (CharL c) = text (show c) <> text "#"
     ppr (IntL i) = text (show i) <> text "#"
+    ppr (WordL i) = text (show i) <> text "##"
     ppr (IntegerL i) = integer i
 

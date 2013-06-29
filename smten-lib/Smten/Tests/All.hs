@@ -1,6 +1,8 @@
 
+{-# LANGUAGE NoImplicitPrelude #-}
 module Smten.Tests.All (main) where
 
+import Smten.Prelude
 import Smten.Tests.Test
 import qualified Smten.Tests.Basic
 

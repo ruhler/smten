@@ -18,7 +18,21 @@ source-repository this
 
 library
   exposed-modules:
-    Smten.Lib.GHC.Err
+    Smten.Prelude
+    Smten.Control.Monad
+    Smten.Data.Bool
+    Smten.Data.Char
+    Smten.Data.Function
+    Smten.Data.Eq
+    Smten.Data.List
+    Smten.Data.List0
+    Smten.Data.Maybe
+    Smten.Data.Num
+    Smten.Data.Show
+    Smten.Data.Ord
+    Smten.Data.Tuple
+    Smten.Smten.Base
+    Smten.System.IO
 
   build-depends: base ==4.6.*
   ghc-options: -fwarn-unused-binds -fwarn-unused-imports

@@ -26,6 +26,7 @@ data Con = Con Name [Type]
 data Type = ConAppT Name [Type]
           | ForallT [TyVar] Type
           | VarT Name
+          | AppT Type Type
 
 data Exp =
    VarE Name
@@ -46,5 +47,6 @@ data Literal =
     StringL String
   | CharL Char
   | IntL Integer
+  | WordL Integer
   | IntegerL Integer
 

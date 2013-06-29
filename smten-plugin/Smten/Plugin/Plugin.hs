@@ -30,8 +30,8 @@ pass m = do
   mod <- runCG (moduleCG m)
   flags <- getDynFlags
   let slashes = moduleNameSlashes $ moduleName (mg_module m)
-      odir = fromMaybe "./" (objectDir flags)
-      tgt = odir ++ "Smten/Lib/" ++ slashes ++ ".hs"
+      odir = fromMaybe "." (objectDir flags)
+      tgt = odir ++ "/Smten/Lib/" ++ slashes ++ ".hs"
   liftIO $ do
       createDirectoryIfMissing True (directory tgt)
       writeFile tgt (S.render mod)
@@ -74,6 +74,7 @@ bindCG :: CoreBind -> CG [S.ValD]
 bindCG (Rec xs) = concat <$> mapM bindCG [NonRec x v | (x, v) <- xs]
 bindCG (NonRec x _) | isDictId x = return []
 bindCG b@(NonRec var body) = do
+  --lift $ putMsg (ppr b)
   body' <- expCG body
   nm <- nameCG $ varName var
   ty <- typeCG $ varType var
@@ -90,6 +91,10 @@ typeCG t
      t' <- typeCG t
      return $ S.ForallT vs' t'
  | Just v <- getTyVar_maybe t = S.VarT <$> qnameCG (varName v)
+ | Just (a, b) <- splitAppTy_maybe t = do
+     a' <- typeCG a
+     b' <- typeCG b
+     return $ S.AppT a' b'
  | otherwise = error ("typeCG: " ++ renderDoc (ppr t))
 
 expCG :: CoreExpr -> CG S.Exp
@@ -115,12 +120,16 @@ expCG (Case x v _ ms) = do
     x' <- expCG x
     ms' <- altsCG v ms
     return $ S.CaseE x' ms'
+
+-- TODO: insert a call to unsafeCoerce# here?
+expCG (Cast x _) = expCG x
 expCG x = error ("TODO: expCG " ++ renderDoc (ppr x))
 
 litCG :: Literal -> S.Literal
 litCG (MachStr str) = S.StringL (unpackFS str)
 litCG (MachChar c) = S.CharL c
 litCG (MachInt i) = S.IntL i
+litCG (MachWord i) = S.WordL i
 litCG (LitInteger i _) = S.IntegerL i
 litCG l = error $ "litCG: " ++ renderDoc (ppr l)
 

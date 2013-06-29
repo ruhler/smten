@@ -21,7 +21,9 @@ nameCG nm =
 qnameCG :: Name -> CG S.Name
 qnameCG nm = do
   case (nameModule_maybe nm) of
-     Just mn -> addimport ("Smten.Lib." ++ moduleNameString (moduleName mn))
+     Just mn
+       | moduleNameString (moduleName mn) /= "GHC.Prim" -> do
+            addimport ("Smten.Lib." ++ moduleNameString (moduleName mn))
      _ -> return ()
   let nm' = trans $ nameString nm
       base = unqualified nm'
