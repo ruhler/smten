@@ -4,68 +4,47 @@ module Smten.Plugin.Name (
     ) where
 
 import Data.Char
+import Data.Functor
 
 import GhcPlugins
 import Smten.Plugin.CG
 import qualified Smten.Plugin.Output.Syntax as S
 
+nameis :: String -> Name -> Bool
+nameis str nm = str == (occNameString $ nameOccName nm)
+
+nmCG :: Bool -> Name -> CG S.Name
+nmCG q nm
+  | nameis "(->)" nm = return "(->)"
+  | nameis "[]" nm = return "[]"
+  | nameis ":" nm = return "(:)"
+  | otherwise = do
+      let modnm = moduleNameString . moduleName <$> nameModule_maybe nm
+          occnm = occNameString $ nameOccName nm
+          unqnm = show $ nameUnique nm
+
+          desym :: Char -> Char
+          desym c | isAlphaNum c = c
+          desym c = toEnum $ fromEnum 'a' + (fromEnum c `mod` 26)
+
+          occnm' = map desym occnm
+
+          useuniq = False
+          unqlf = if useuniq
+                    then occnm' ++ "_" ++ unqnm
+                    else occnm'
+      if q
+         then case modnm of
+                Just v -> do addimport $ "Smten.Compiled." ++ v
+                             return $ "Smten.Compiled." ++ v ++ "." ++ unqlf
+                _ -> return unqlf
+         else return unqlf
+
 -- Generate code for an unqualified name.
 nameCG :: Name -> CG S.Name
-nameCG nm =
- let full = trans $ nameString nm
-     base = unqualified full
-     sym = if issymbol base then "(" ++ base ++ ")" else base
- in return sym
+nameCG = nmCG False
 
 -- Generate code for a qualified name.
 qnameCG :: Name -> CG S.Name
-qnameCG nm = do
-  let nm' = trans $ nameString nm
-      base = unqualified nm'
-      qlfn = qualification nm'
-      qlfn' = if null qlfn then "" else "Smten.Compiled." ++ qlfn ++ "."
-      full = qlfn' ++ base
-      sym = if issymbol base then "(" ++ full ++ ")" else full
-  if null qlfn
-      then return ()
-      else addimport $ "Smten.Compiled." ++ qlfn
-  return $ sym
-
--- | Return the unqualified part of the given name.
--- For example: unqualified "Foo.Bar.sludge" returns "sludge"
-unqualified :: String -> String
-unqualified n = 
-  case (span (/= '.') n) of
-    (_, []) -> n
-    ([], ['.']) -> "."
-    (_, '.':xs) -> unqualified xs
-
-nameString :: Name -> String
-nameString nm = renderWithStyle tracingDynFlags (ppr nm) defaultUserStyle
-
-issymbol :: String -> Bool
-issymbol ('(':_) = False
-issymbol "[]" = False
-issymbol (h:_) = not $ isAlphaNum h || h == '_'
-
-trans :: String -> String
-trans "GHC.Types.:" = ":"
-trans "GHC.Types.[]" = "[]"
-trans s = s
-
--- | Return the qualification on the given name.
--- For example: qualification "Foo.Bar.sludge" returns "Foo.Bar"
-qualification :: String -> String
-qualification n =
-  case (span (/= '.') n) of
-    (_, []) -> ""
-    ([], ['.']) -> ""
-    (x, '.':xs) -> 
-        let qxs = qualification xs
-        in if null qxs
-             then x
-             else qualified x qxs
-
-qualified :: String -> String -> String
-qualified a b = a ++ "." ++ b
+qnameCG = nmCG True
 

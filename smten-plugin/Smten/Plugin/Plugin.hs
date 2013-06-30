@@ -46,7 +46,7 @@ moduleCG m = do
       modnm = "Smten.Compiled." ++ moduleNameString myname
       imports = filter ((/=) modnm) . nub $ importmods
   return $ S.Module {
-    S.mod_langs = ["MagicHash", "ScopedTypeVariables"],
+    S.mod_langs = ["MagicHash", "RankNTypes"],
     S.mod_name = modnm,
     S.mod_imports = imports,
     S.mod_datas = datas,
