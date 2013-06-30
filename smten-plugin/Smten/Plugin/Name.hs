@@ -25,11 +25,13 @@ nmCG q nm
 
           desym :: Char -> Char
           desym c | isAlphaNum c = c
+          desym c | c == '#' = c
+          desym c | c == '_' = c
           desym c = toEnum $ fromEnum 'a' + (fromEnum c `mod` 26)
 
           occnm' = map desym occnm
 
-          useuniq = False
+          useuniq = head occnm == '$'
           unqlf = if useuniq
                     then occnm' ++ "_" ++ unqnm
                     else occnm'

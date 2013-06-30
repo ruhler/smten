@@ -2,7 +2,7 @@
 module Smten.Plugin.Output.Syntax (
     Name, LanguagePragma, TyVar,
     Module(..), DataD(..), ValD(..), Con(..), Type(..), Exp(..), Alt(..),
-    Pat(..), Literal(..),
+    Pat(..), Literal(..), RecField(..),
     ) where
 
 type Name = String
@@ -21,7 +21,10 @@ data DataD = DataD Name [TyVar] [Con]
 
 data ValD = ValD Name Type Exp
 
+data RecField = RecField Name Type
+
 data Con = Con Name [Type]
+         | RecC Name [RecField]
 
 data Type = ConAppT Name [Type]
           | ForallT [TyVar] Type

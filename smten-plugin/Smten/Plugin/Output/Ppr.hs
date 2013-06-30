@@ -32,8 +32,12 @@ instance Ppr DataD where
        text "data" <+> ppr nm <+> sep (map ppr vs) <+> text "=" <+>
        vcat (punctuate (text "|") (map ppr cs)) <+> semi 
 
+instance Ppr RecField where
+    ppr (RecField nm ty) = ppr nm <+> text "::" <+> ppr ty
+
 instance Ppr Con where
     ppr (Con nm tys) = ppr nm <+> sep (map ppr tys)
+    ppr (RecC nm fs) = ppr nm <+> braces (vcat $ punctuate comma (map ppr fs))
 
 instance Ppr ValD where
     ppr (ValD nm ty e) =

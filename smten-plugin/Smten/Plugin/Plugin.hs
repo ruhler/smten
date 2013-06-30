@@ -8,6 +8,7 @@ import Data.List
 import Data.Maybe
 import System.Directory
 
+import Class
 import GhcPlugins
 
 import Smten.Plugin.CG
@@ -56,6 +57,19 @@ moduleCG m = do
 -- Declare a type constructor.
 tyconCG :: TyCon -> CG [S.DataD]
 tyconCG t
+ | Just cls <- tyConClass_maybe t
+ , Just [dc] <- tyConDataCons_maybe t = do
+     let mkfield :: Id -> CG S.RecField
+         mkfield x = do
+           t <- typeCG $ varType x
+           nm <- nameCG $ varName x
+           return $ S.RecField nm t
+     fields <- mapM mkfield (classMethods cls)
+     cn <- nameCG $ dataConName dc
+     t' <- nameCG $ tyConName t
+     vs <- mapM (qnameCG . varName) (tyConTyVars t)
+     return [S.DataD t' vs [S.RecC cn fields]]
+        
  | Just cs <- tyConDataCons_maybe t = do
      let mkcon :: DataCon -> CG S.Con
          mkcon d = do
@@ -72,7 +86,6 @@ tyconCG t
 
 bindCG :: CoreBind -> CG [S.ValD]
 bindCG (Rec xs) = concat <$> mapM bindCG [NonRec x v | (x, v) <- xs]
-bindCG (NonRec x _) | isDictId x = return []
 bindCG b@(NonRec var body) = do
   --lift $ putMsg (ppr b)
   body' <- expCG body
@@ -101,7 +114,6 @@ expCG :: CoreExpr -> CG S.Exp
 expCG (Var x) = S.VarE <$> (qnameCG $ varName x)
 expCG (Lit l) = return (S.LitE (litCG l))
 expCG (App a (Type {})) = expCG a
-expCG (App a (Var x)) | isDictId x = expCG a
 expCG (App a b) = do
     a' <- expCG a
     b' <- expCG b

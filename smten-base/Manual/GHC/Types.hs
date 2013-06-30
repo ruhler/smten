@@ -1,3 +1,8 @@
 
-module Smten.Compiled.GHC.Types (Char) where
+{-# LANGUAGE NoImplicitPrelude #-}
+{-# LANGUAGE MagicHash #-}
+
+module Smten.Compiled.GHC.Types (Char(..), Int(..)) where
+
+import GHC.Types
 
