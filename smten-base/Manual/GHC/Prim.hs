@@ -2,7 +2,7 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE MagicHash #-}
 module Smten.Compiled.GHC.Prim (
-    realWorld# 
+    realWorld#, State#, RealWorld,
     ) where
 
 import GHC.Prim

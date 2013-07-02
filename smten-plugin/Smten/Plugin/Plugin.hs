@@ -47,7 +47,7 @@ moduleCG m = do
       modnm = "Smten.Compiled." ++ moduleNameString myname
       imports = filter ((/=) modnm) . nub $ importmods
   return $ S.Module {
-    S.mod_langs = ["MagicHash", "RankNTypes"],
+    S.mod_langs = ["MagicHash", "RankNTypes", "ScopedTypeVariables"],
     S.mod_name = modnm,
     S.mod_imports = imports,
     S.mod_datas = datas,
@@ -61,10 +61,13 @@ tyconCG t
  , Just [dc] <- tyConDataCons_maybe t = do
      let mkfield :: Id -> CG S.RecField
          mkfield x = do
-           t <- typeCG $ varType x
+           let (vs, mt) = splitForAllTys $ varType x
+               vs' = filter (flip notElem (tyConTyVars t)) vs
+               mt' = snd $ splitFunTy mt
+           t <- typeCG $ mkForAllTys vs' mt'
            nm <- nameCG $ varName x
            return $ S.RecField nm t
-     fields <- mapM mkfield (classMethods cls)
+     fields <- mapM mkfield (classAllSelIds cls)
      cn <- nameCG $ dataConName dc
      t' <- nameCG $ tyConName t
      vs <- mapM (qnameCG . varName) (tyConTyVars t)

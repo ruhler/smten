@@ -48,7 +48,7 @@ instance Ppr Type where
     ppr (ConAppT nm tys)
       = parens (sep (ppr nm : map ppr tys))
     ppr (ForallT vs ty)
-      = text "forall" <+> sep (map ppr vs) <+> text "." <+> ppr ty
+      = parens $ text "forall" <+> sep (map ppr vs) <+> text "." <+> ppr ty
 
     ppr (VarT n) = text n
     ppr (AppT a b) = parens $ ppr a <+> ppr b

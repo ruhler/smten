@@ -5,6 +5,7 @@ module Smten.Plugin.Name (
 
 import Data.Char
 import Data.Functor
+import Data.Maybe
 
 import GhcPlugins
 import Smten.Plugin.CG
@@ -18,6 +19,10 @@ nmCG q nm
   | nameis "(->)" nm = return "(->)"
   | nameis "[]" nm = return "[]"
   | nameis ":" nm = return "(:)"
+  | nameis "()" nm = return "()"
+  | nameis "(,)" nm = return "(,)"
+  | nameis "(,,)" nm = return "(,,)"
+  | nameis "(,,,)" nm = return "(,,,)"
   | otherwise = do
       let modnm = moduleNameString . moduleName <$> nameModule_maybe nm
           occnm = occNameString $ nameOccName nm
