@@ -243,7 +243,7 @@ tests = do
                          ) == (5 :: Integer))
     test "precedence 3" ((2 ++++ 3 ++++ 5) == (19 :: Integer))
     testaspattern
-    --testarithsequence
+    testarithsequence
     teststringliteralpattern
     testletclause
     testlistcomprehension
@@ -364,12 +364,12 @@ testletclause = do
         in foo False False
      )
 
---testarithsequence :: IO ()
---testarithsequence = do
---    test "fromto" ([1..5] == [1,2,3,4,5 :: Integer])
---    test "from" (take 4 [1..] == [1, 2, 3, 4 :: Integer])
---    test "fromthento" ([1, 3 .. 9] == [1,3,5,7,9 :: Integer])
---    test "fromthen" (take 4 [1, 3 ..] == [1,3,5,7 :: Integer])
+testarithsequence :: IO ()
+testarithsequence = do
+    test "fromto" ([1..5] == [1,2,3,4,5 :: Integer])
+    test "from" (take 4 [1..] == [1, 2, 3, 4 :: Integer])
+    test "fromthento" ([1, 3 .. 9] == [1,3,5,7,9 :: Integer])
+    test "fromthen" (take 4 [1, 3 ..] == [1,3,5,7 :: Integer])
 
 testlistcomprehension :: IO ()
 testlistcomprehension = do

@@ -24,6 +24,8 @@ library
     Smten.Data.Char
     Smten.Data.Char0
     Smten.Data.Function
+    Smten.Data.Enum
+    Smten.Data.EnumInteger
     Smten.Data.Eq
     Smten.Data.Eq0
     Smten.Data.List
@@ -47,6 +49,8 @@ library
     Smten.Compiled.Smten.Data.Char
     Smten.Compiled.Smten.Data.Char0
     Smten.Compiled.Smten.Data.Function
+    Smten.Compiled.Smten.Data.Enum
+    Smten.Compiled.Smten.Data.EnumInteger
     Smten.Compiled.Smten.Data.Eq
     Smten.Compiled.Smten.Data.Eq0
     Smten.Compiled.Smten.Data.List
@@ -67,6 +71,7 @@ library
     Smten.Compiled.Control.Exception.Base
     Smten.Compiled.GHC.Base
     Smten.Compiled.GHC.CString
+    Smten.Compiled.GHC.Enum
     Smten.Compiled.GHC.Integer.Type
     Smten.Compiled.GHC.Prim
     Smten.Compiled.GHC.TopHandler

@@ -2,7 +2,8 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 
 module Smten.Data.Bool (
-    Bool(False,True), (&&), (||), not, otherwise
+    Bool(False,True), (&&), (||), not, otherwise,
+    ifThenElse,
   ) where
 
 infixr 3 &&
@@ -24,4 +25,10 @@ not False = True
 
 otherwise :: Bool
 otherwise = True
+
+ifThenElse :: Bool -> a -> a -> a
+ifThenElse p x y = 
+    case p of
+      True -> x 
+      False -> y
 

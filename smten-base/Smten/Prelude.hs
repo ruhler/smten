@@ -9,6 +9,7 @@ module Smten.Prelude (
 
     Eq((==), (/=)),
     Ord(compare, (<), (<=), (>=), (>), max, min),
+    Enum(..),
     Num((+), (-), (*), negate, abs, signum, fromInteger),
     Monad(..),
     maybe,
@@ -39,6 +40,8 @@ module Smten.Prelude (
 import Smten.Control.Monad
 import Smten.Data.Bool
 import Smten.Data.Function
+import Smten.Data.Enum
+import Smten.Data.EnumInteger ()
 import Smten.Data.Eq
 import Smten.Data.Ord
 import Smten.Data.List
@@ -48,10 +51,4 @@ import Smten.Data.Show
 import Smten.Data.Tuple
 import Smten.Smten.Base
 import Smten.System.IO
-
-ifThenElse :: Bool -> a -> a -> a
-ifThenElse p x y = 
-    case p of
-      True -> x 
-      False -> y
 
