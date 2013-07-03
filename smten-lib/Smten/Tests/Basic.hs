@@ -1,5 +1,6 @@
 
 {-# LANGUAGE RebindableSyntax, NoImplicitPrelude #-}
+{-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE StandaloneDeriving #-}
 
@@ -66,18 +67,18 @@ unary2int :: [()] -> Integer
 unary2int [] = 0
 unary2int (_:xs) = 1 + unary2int xs
 
---class Foo a where
---    foo :: a -> Integer
---
---instance Foo Bool where
---    foo _ = 1
---
---instance Foo Integer where
---    foo _ = 2
---
---foofun :: (Foo a) => a -> Integer
---foofun x = foo x * foo x + 3*(foo x) + foo True
---
+class Foo a where
+    foo :: a -> Integer
+
+instance Foo Bool where
+    foo _ = 1
+
+instance Foo Integer where
+    foo _ = 2
+
+foofun :: (Foo a) => a -> Integer
+foofun x = foo x * foo x + 3*(foo x) + foo True
+
 --class (Foo a) => FooBar a where
 --    bar :: a -> a -> Integer
 --
@@ -106,21 +107,21 @@ thegreatthing w = thething w + howgreat w
 -- record type construction with no fields
 data EmptyRecord = EmptyRecord {}
 
---class MultiFoo a b where
---    multifoo :: a -> b -> Integer
---
---instance MultiFoo Bool Bool where
---    multifoo _ _ = 1
---
---instance MultiFoo Integer Integer where
---    multifoo _ _ = 2
---
---instance MultiFoo Bool Integer where
---    multifoo _ _ = 3
---
---instance MultiFoo Integer Bool where
---    multifoo _ _ = 4
---
+class MultiFoo a b where
+    multifoo :: a -> b -> Integer
+
+instance MultiFoo Bool Bool where
+    multifoo _ _ = 1
+
+instance MultiFoo Integer Integer where
+    multifoo _ _ = 2
+
+instance MultiFoo Bool Integer where
+    multifoo _ _ = 3
+
+instance MultiFoo Integer Bool where
+    multifoo _ _ = 4
+
 ---- Verify the type checker looks at contexts of method signatures for
 ---- verifying all contexts are satisfied
 --class CheckCtx a where
@@ -133,9 +134,9 @@ data EmptyRecord = EmptyRecord {}
 unused :: a -> Integer
 unused x = 42
 
---multifoofun :: (MultiFoo a b) => a -> b -> Integer
---multifoofun x y = (((multifoo x y) * (multifoo x y))
---                    + (3 * (multifoo x y))) + (multifoo True False)
+multifoofun :: (MultiFoo a b) => a -> b -> Integer
+multifoofun x y = (((multifoo x y) * (multifoo x y))
+                    + (3 * (multifoo x y))) + (multifoo True False)
 
 -- shadow x = 2*(x+1)
 shadow :: Integer -> Integer
@@ -211,16 +212,16 @@ tests = do
     test "q" (12 == (sum2 5 7))
     test "r" (20 == (sum3 5 7 8))
     test "s" (3 == (unary2int [(), (), ()]))
-    --test "t" (1 == (foo True))
-    --test "u" (2 == (foo (42 :: Integer)))
-    --test "v" (5 == (foofun False))
-    --test "w" (11 == (foofun (5 :: Integer)))
+    test "t" (1 == (foo True))
+    test "u" (2 == (foo (42 :: Integer)))
+    test "v" (5 == (foofun False))
+    test "w" (11 == (foofun (5 :: Integer)))
     test "x" (11 == (numseeds (Apple True 11)))
     test "y" (11 == (numseeds (Apple { numseeds = 11, isgreen = False })))
     test "z" (8 == (numseeds ((Apple True 11) { numseeds = 8 })))
     test "A" ((11 :: Integer) == (thething (Wonderful 11 32)))
     test "B" (42 == (unused True))
-    --test "C" (19 == (multifoofun True (12 :: Integer)))
+    test "C" (19 == (multifoofun True (12 :: Integer)))
     test "D" (8 == (shadow 3))
     test "E" (6 == (caseshadow 3))
     test "F" (12 == testlet)
