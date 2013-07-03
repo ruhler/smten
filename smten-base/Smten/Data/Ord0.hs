@@ -8,7 +8,6 @@ module Smten.Data.Ord0 (
     comparing,
  ) where
 
-import Smten.Smten.Base
 import Smten.Data.Bool
 import Smten.Data.Eq
 

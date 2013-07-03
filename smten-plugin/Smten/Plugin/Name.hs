@@ -5,7 +5,6 @@ module Smten.Plugin.Name (
 
 import Data.Char
 import Data.Functor
-import Data.Maybe
 
 import GhcPlugins
 import Smten.Plugin.CG
@@ -24,6 +23,7 @@ nmCG q nm
   | nameis "(,,)" nm = return "(,,)"
   | nameis "(,,,)" nm = return "(,,,)"
   | otherwise = do
+      isl <- islocal nm
       let modnm = moduleNameString . moduleName <$> nameModule_maybe nm
           occnm = occNameString $ nameOccName nm
           unqnm = show $ nameUnique nm
@@ -36,7 +36,8 @@ nmCG q nm
 
           occnm' = map desym occnm
 
-          useuniq = head occnm == '$'
+          useuniq = take 2 occnm `elem` ["$c", "$d"] || isl
+            || (occnm == "main" && modnm /= Just ":Main")
           unqlf = if useuniq
                     then occnm' ++ "_" ++ unqnm
                     else occnm'

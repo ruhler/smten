@@ -30,11 +30,16 @@ library
     Smten.Data.List0
     Smten.Data.Maybe
     Smten.Data.Num
+    Smten.Data.Num0
     Smten.Data.Show
+    Smten.Data.Show0
     Smten.Data.Ord
+    Smten.Data.Ord0
+    Smten.Data.Ord1
     Smten.Data.Tuple
     Smten.Smten.Base
     Smten.System.IO
+    Smten.System.IO0
 
     Smten.Compiled.Smten.Prelude
     Smten.Compiled.Smten.Control.Monad
@@ -48,12 +53,23 @@ library
     Smten.Compiled.Smten.Data.List0
     Smten.Compiled.Smten.Data.Maybe
     Smten.Compiled.Smten.Data.Num
+    Smten.Compiled.Smten.Data.Num0
     Smten.Compiled.Smten.Data.Show
+    Smten.Compiled.Smten.Data.Show0
     Smten.Compiled.Smten.Data.Ord
+    Smten.Compiled.Smten.Data.Ord0
+    Smten.Compiled.Smten.Data.Ord1
     Smten.Compiled.Smten.Data.Tuple
     Smten.Compiled.Smten.Smten.Base
     Smten.Compiled.Smten.System.IO
+    Smten.Compiled.Smten.System.IO0
+    Smten.Compiled.Control.Exception.Base
+    Smten.Compiled.GHC.CString
+    Smten.Compiled.GHC.Integer.Type
+    Smten.Compiled.GHC.Prim
+    Smten.Compiled.GHC.TopHandler
     Smten.Compiled.GHC.Tuple
+    Smten.Compiled.GHC.Types
 
   build-depends: base ==4.6.*, ghc-prim ==0.3.*
   ghc-options: -fwarn-unused-binds -fwarn-unused-imports

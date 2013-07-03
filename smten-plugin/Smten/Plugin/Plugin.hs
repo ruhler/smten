@@ -121,17 +121,17 @@ expCG (App a b) = do
     a' <- expCG a
     b' <- expCG b
     return $ S.AppE a' b'
-expCG (Let x body) = do
+expCG (Let x body) = withlocals (map varName (bindersOf x)) $ do
     x' <- bindCG x
     body' <- expCG body
     return $ S.LetE x' body'
 expCG (Lam b body)
  | isTyVar b = expCG body
- | otherwise = do
+ | otherwise = withlocal (varName b) $ do
     b' <- qnameCG $ varName b
     body' <- expCG body
     return $ S.LamE b' body'
-expCG (Case x v _ ms) = do
+expCG (Case x v _ ms) = withlocal (varName v) $ do
     x' <- expCG x
     ms' <- altsCG v ms
     return $ S.CaseE x' ms'
@@ -149,7 +149,7 @@ litCG (LitInteger i _) = S.IntegerL i
 litCG l = error $ "litCG: " ++ renderDoc (ppr l)
 
 altCG :: CoreBndr -> CoreAlt -> CG S.Alt
-altCG v (DataAlt k, xs, body) = do
+altCG v (DataAlt k, xs, body) = withlocals (map varName xs) $ do
     body' <- expCG body
     xs' <- mapM (qnameCG . varName) xs
     k' <- qnameCG $ getName k

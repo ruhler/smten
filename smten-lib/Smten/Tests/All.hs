@@ -1,5 +1,5 @@
 
-{-# LANGUAGE NoImplicitPrelude #-}
+{-# LANGUAGE NoImplicitPrelude, RebindableSyntax #-}
 module Smten.Tests.All (main) where
 
 import Smten.Prelude
