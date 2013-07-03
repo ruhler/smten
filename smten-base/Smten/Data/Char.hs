@@ -2,7 +2,7 @@
 {-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 module Smten.Data.Char (
-    Char, isSpace
+    Char, isSpace, eqString,
  ) where
 
 import qualified Prelude as P
@@ -13,6 +13,12 @@ import Smten.Data.Eq
 
 instance Eq Char where 
    (==) = char_eq
+
+-- used for string literal pattern matching.
+eqString :: String -> String -> Bool
+eqString [] [] = True
+eqString (c1:cs1) (c2:cs2) = c1 == c2 && cs1 `eqString` cs2
+eqString _ _ = False
 
 isSpace :: Char -> Bool
 isSpace c = c == ' '    

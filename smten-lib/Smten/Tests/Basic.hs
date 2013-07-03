@@ -244,7 +244,7 @@ tests = do
     test "precedence 3" ((2 ++++ 3 ++++ 5) == (19 :: Integer))
     testaspattern
     --testarithsequence
-    --teststringliteralpattern
+    teststringliteralpattern
     testletclause
     testlistcomprehension
     testdopattern
@@ -407,13 +407,13 @@ testletrec = do
       )
     
 
---teststringliteralpattern :: IO ()
---teststringliteralpattern = do
---    test "stringliteralpattern" (
---        case "foo" of
---          "bar" -> False
---          "foo" -> True
---      )
+teststringliteralpattern :: IO ()
+teststringliteralpattern = do
+    test "stringliteralpattern" (
+        case "foo" of
+          "bar" -> False
+          "foo" -> True
+      )
 
 testparsedot :: IO ()
 testparsedot = do

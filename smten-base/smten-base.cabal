@@ -63,7 +63,9 @@ library
     Smten.Compiled.Smten.Smten.Base
     Smten.Compiled.Smten.System.IO
     Smten.Compiled.Smten.System.IO0
+
     Smten.Compiled.Control.Exception.Base
+    Smten.Compiled.GHC.Base
     Smten.Compiled.GHC.CString
     Smten.Compiled.GHC.Integer.Type
     Smten.Compiled.GHC.Prim

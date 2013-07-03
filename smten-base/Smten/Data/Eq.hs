@@ -21,3 +21,4 @@ instance Eq Int where
 
 instance Eq Integer where
     (==) = integer_eq
+
