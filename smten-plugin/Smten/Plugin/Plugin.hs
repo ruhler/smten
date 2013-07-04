@@ -97,25 +97,29 @@ bindCG b@(NonRec var body) = do
   return [S.ValD nm ty body']
 
 typeCG :: Type -> CG S.Type
-typeCG t 
+typeCG t = subst t >>= typeCG'
+
+typeCG' :: Type -> CG S.Type
+typeCG' t 
  | Just (tycon, args) <- splitTyConApp_maybe t = do
      k <- qnameCG (tyConName tycon)
-     args' <- mapM typeCG args
+     args' <- mapM typeCG' args
      return $ S.ConAppT k args'
  | (vs@(_:_), t) <- splitForAllTys t = do
      vs' <- mapM (qnameCG . varName) vs
-     t' <- typeCG t
+     t' <- typeCG' t
      return $ S.ForallT vs' t'
  | Just v <- getTyVar_maybe t = S.VarT <$> qnameCG (varName v)
  | Just (a, b) <- splitAppTy_maybe t = do
-     a' <- typeCG a
-     b' <- typeCG b
+     a' <- typeCG' a
+     b' <- typeCG' b
      return $ S.AppT a' b'
- | otherwise = error ("typeCG: " ++ renderDoc (ppr t))
+ | otherwise = error ("typeCG': " ++ renderDoc (ppr t))
 
 expCG :: CoreExpr -> CG S.Exp
 expCG (Var x) = S.VarE <$> (qnameCG $ varName x)
 expCG (Lit l) = return (S.LitE (litCG l))
+expCG (App (Lam b body) (Type t)) = withtype b t $ expCG body
 expCG (App a (Type {})) = expCG a
 expCG (App a b) = do
     a' <- expCG a

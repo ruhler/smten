@@ -79,17 +79,17 @@ instance Foo Integer where
 foofun :: (Foo a) => a -> Integer
 foofun x = foo x * foo x + 3*(foo x) + foo True
 
---class (Foo a) => FooBar a where
---    bar :: a -> a -> Integer
---
---instance FooBar Bool where
---    bar a b = foo a + foo b
---
---instance FooBar Integer where
---    bar a b = foo a - foo b
---
---foobarfun :: (FooBar a) => a -> Integer
---foobarfun x = foo x + bar x x 
+class (Foo a) => FooBar a where
+    bar :: a -> a -> Integer
+
+instance FooBar Bool where
+    bar a b = foo a + foo b
+
+instance FooBar Integer where
+    bar a b = foo a - foo b
+
+foobarfun :: (FooBar a) => a -> Integer
+foobarfun x = foo x + bar x x 
 
 data Apple = Apple {
     isgreen :: Bool,
@@ -254,7 +254,7 @@ tests = do
     testpatternguard
     testtypesyn
     testwhereclause
-    --testclassctx
+    testclassctx
     --testsaderiving
     testirrefutable
     testletrec
@@ -272,9 +272,9 @@ tests = do
 --    test "saderive1" (SDEq2 (5 :: Integer) 9 == SDEq2 5 9)
 --    test "saderive2" (SDEq1 (5 :: Integer) /= SDEq2 5 9)
 
---testclassctx :: IO ()
---testclassctx = do
---    test "class ctx" (foobarfun True == 3)
+testclassctx :: IO ()
+testclassctx = do
+    test "class ctx" (foobarfun True == 3)
 
 type AMultiArgSynonym a = (a, a)
 

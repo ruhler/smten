@@ -3,6 +3,7 @@ module Smten.Plugin.CG (
    CG, runCG, lift,
    addimport, getimports,
    withlocal, withlocals, islocal,
+   withtype, subst,
     ) where
 
 import GhcPlugins
@@ -15,7 +16,10 @@ data CGS = CGS {
   cgs_imports :: [String],
 
   -- local variables in scope.
-  cgs_locals :: NameSet
+  cgs_locals :: NameSet,
+
+  -- type substitutions to perform.
+  cgs_types :: [(TyVar, Type)]
 }
 
 type CG = StateT CGS CoreM
@@ -41,5 +45,19 @@ islocal :: Name -> CG Bool
 islocal nm = elemNameSet nm <$> gets cgs_locals
 
 runCG :: CG a -> CoreM a
-runCG m = evalStateT m (CGS [] emptyNameSet)
+runCG m = evalStateT m (CGS [] emptyNameSet [])
+
+withtype :: TyVar -> Type -> CG a -> CG a
+withtype tyv t q = do
+  ts <- gets cgs_types
+  modify $ \s -> s { cgs_types = (tyv, t) : ts }
+  v <- q
+  modify $ \s -> s { cgs_types = ts }
+  return v
+
+subst :: Type -> CG Type
+subst t = do
+    (tyvs, ts) <- unzip <$> gets cgs_types
+    return (substTyWith tyvs ts t)
+  
 
