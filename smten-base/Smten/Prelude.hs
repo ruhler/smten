@@ -12,6 +12,7 @@ module Smten.Prelude (
     Enum(..),
     Num((+), (-), (*), negate, abs, signum, fromInteger),
     Monad(..),
+    mapM, mapM_, sequence, sequence_,
     maybe,
     (&&), (||), not, otherwise,
     fst, snd, curry, uncurry, id, const, (.), flip, ($),

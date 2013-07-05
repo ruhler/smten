@@ -5,6 +5,7 @@ module Smten.Plugin.Name (
 
 import Data.Char
 import Data.Functor
+import Data.List
 
 import GhcPlugins
 import Smten.Plugin.CG
@@ -36,7 +37,9 @@ nmCG q nm
 
           occnm' = map desym occnm
 
-          useuniq = take 2 occnm `elem` ["$c", "$d"] || isl
+          useuniq = isPrefixOf "$c" occnm
+            || (isPrefixOf "$d" occnm && not (isPrefixOf "$dm" occnm))
+            || isl
             || (occnm == "main" && modnm /= Just ":Main")
           unqlf = if useuniq
                     then occnm' ++ "_" ++ unqnm

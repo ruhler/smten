@@ -22,3 +22,12 @@ instance Eq Int where
 instance Eq Integer where
     (==) = integer_eq
 
+instance Eq () where
+    (==) () () = True
+
+instance Eq Bool where
+    (==) True True = True
+    (==) True False = False
+    (==) False True = False
+    (==) False False = True
+

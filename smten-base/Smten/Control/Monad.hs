@@ -2,6 +2,7 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 module Smten.Control.Monad (
     Monad(..), sequence, sequence_, mapM, mapM_,
+    MonadPlus(..),
     ) where
 
 import Smten.Smten.Base
@@ -29,4 +30,8 @@ mapM f as = sequence (map f as)
 
 mapM_ :: Monad m => (a -> m b) -> [a] -> m ()
 mapM_ f as = sequence_ (map f as)
+
+class MonadPlus m where
+    mzero :: m a
+    mplus :: m a -> m a -> m a
 
