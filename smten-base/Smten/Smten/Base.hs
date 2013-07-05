@@ -6,10 +6,8 @@ module Smten.Smten.Base (
     ) where
 
 import qualified Prelude as P
+import Prelude (Char, Int, Integer)
 
-type Char = P.Char
-type Int = P.Int
-type Integer = P.Integer
 type String = [Char]
 
 error :: String -> a

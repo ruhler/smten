@@ -1,6 +1,5 @@
 
 {-# LANGUAGE NoImplicitPrelude #-}
-{-# LANGUAGE TypeSynonymInstances #-}
 module Smten.Data.Show (
     ShowS, Show(..), shows, showChar, showString, showParen,
     ) where

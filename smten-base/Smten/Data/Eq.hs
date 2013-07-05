@@ -1,5 +1,4 @@
 
-{-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 module Smten.Data.Eq (Eq(..)) where
 

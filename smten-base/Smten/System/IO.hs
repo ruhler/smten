@@ -1,5 +1,4 @@
 
-{-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE NoImplicitPrelude, RebindableSyntax #-}
 module Smten.System.IO (
     IO, putChar, putStr, putStrLn,

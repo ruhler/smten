@@ -1,5 +1,4 @@
 
-{-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE NoImplicitPrelude, RebindableSyntax #-}
 module Smten.Data.EnumInteger () where
 

@@ -1,5 +1,4 @@
 
-{-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 module Smten.Prelude (
     Bool(False, True),

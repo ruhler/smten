@@ -1,5 +1,4 @@
 
-{-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE RebindableSyntax #-}
 module Smten.Data.Num (
     Num(..)
