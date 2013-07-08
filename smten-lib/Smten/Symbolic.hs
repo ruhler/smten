@@ -1,7 +1,7 @@
 
 {-# LANGUAGE NoImplicitPrelude, RebindableSyntax #-}
 module Smten.Symbolic (
-    Symbolic, Solver(..), run_symbolic,
+    Symbolic, Solver, run_symbolic,
     MonadPlus(..),
     free_Bool, assert,
     ) where
@@ -9,13 +9,7 @@ module Smten.Symbolic (
 import Smten.Prelude
 import Smten.Control.Monad
 
-data Solver = Yices1 | Yices2 | STP | Pure
-
-instance Show Solver where
-    show Yices1 = "Yices1"
-    show Yices2 = "Yices2"
-    show STP = "STP"
-    show Pure = "Pure"
+data Solver = Solver
 
 -- List implementation of Symbolic monad.
 data Symbolic a = Symbolic { s_elems :: [a] }
@@ -30,11 +24,8 @@ instance MonadPlus Symbolic where
     mplus a b = Symbolic (s_elems a ++ s_elems b)
 
 run_symbolic :: Solver -> Symbolic a -> IO (Maybe a)
-run_symbolic Yices1 _ = error "Yices1 not supported purely"
-run_symbolic Yices2 _ = error "Yices2 not supported purely"
-run_symbolic STP _ = error "STP not supported purely"
-run_symbolic Pure (Symbolic []) = return Nothing
-run_symbolic Pure (Symbolic (x:_)) = return (Just x)
+run_symbolic _ (Symbolic []) = return Nothing
+run_symbolic _ (Symbolic (x:_)) = return (Just x)
 
 free_Bool :: Symbolic Bool
 free_Bool = mplus (return True) (return False)
