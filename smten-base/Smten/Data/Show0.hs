@@ -6,6 +6,9 @@ module Smten.Data.Show0 (
 
 import qualified Prelude as P
 import Smten.Smten.Base
+import Smten.Plugin.Annotations
+
+{-# ANN module PrimitiveModule #-}
 
 int_showsPrec :: Int -> Int -> String -> String
 int_showsPrec = P.showsPrec

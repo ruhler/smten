@@ -7,6 +7,9 @@ module Smten.Data.Ord1 (
 import qualified Prelude as P
 import Smten.Smten.Base
 import Smten.Data.Ord0
+import Smten.Plugin.Annotations
+
+{-# ANN module PrimitiveModule #-}
 
 
 fromp :: P.Ordering -> Ordering

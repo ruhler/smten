@@ -13,6 +13,7 @@ import GhcPlugins
 
 import Smten.Plugin.CG
 import Smten.Plugin.Name
+import Smten.Plugin.Annotations
 import qualified Smten.Plugin.Output.Syntax as S
 import qualified Smten.Plugin.Output.Ppr as S
 
@@ -29,14 +30,26 @@ install _ todo = do
 pass :: ModGuts -> CoreM ModGuts
 pass m = do
   mod <- runCG (moduleCG m)
-  flags <- getDynFlags
-  let slashes = moduleNameSlashes $ moduleName (mg_module m)
-      odir = fromMaybe "." (objectDir flags)
-      tgt = odir ++ "/Smten/Compiled/" ++ slashes ++ ".hs"
-  liftIO $ do
-      createDirectoryIfMissing True (directory tgt)
-      writeFile tgt (S.render mod)
+  isprim <- getIsPrim m 
+  if isprim
+     then putMsg (ppr (mg_module m) <+> text "is primitive.")
+     else do
+      flags <- getDynFlags
+      let slashes = moduleNameSlashes $ moduleName (mg_module m)
+          odir = fromMaybe "." (objectDir flags)
+          tgt = odir ++ "/Smten/Compiled/" ++ slashes ++ ".hs"
+      liftIO $ do
+          createDirectoryIfMissing True (directory tgt)
+          writeFile tgt (S.render mod)
   return m
+
+getIsPrim :: ModGuts -> CoreM Bool
+getIsPrim m = do
+    anns <- getAnnotations deserializeWithData m
+    let elems :: [PrimitiveModule]
+        elems = lookupWithDefaultUFM anns [] ((ModuleTarget (mg_module m) :: CoreAnnTarget))
+    return (not (null elems))
+
 
 moduleCG :: ModGuts -> CG S.Module
 moduleCG m = do

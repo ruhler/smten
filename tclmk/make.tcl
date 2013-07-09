@@ -52,9 +52,7 @@ indir smten-plugin {
 # The smten-base package
 hrun cp -r -f -l smten-base build/
 indir build/smten-base {
-    hrun rm -rf Smten/Compiled
     hrun ghc --make -c -fplugin=Smten.Plugin.Plugin Smten/Prelude.hs
-    hrun cp -r -f -l {*}[glob Manual/*] Smten/Compiled/
 
     hrun cabal install \
         --builddir smten-base-build \

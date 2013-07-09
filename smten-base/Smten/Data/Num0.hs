@@ -10,6 +10,9 @@ module Smten.Data.Num0 (
 
 import qualified Prelude as P
 import Smten.Smten.Base
+import Smten.Plugin.Annotations
+
+{-# ANN module PrimitiveModule #-}
 
 int_add :: Int -> Int -> Int
 int_add = (P.+)

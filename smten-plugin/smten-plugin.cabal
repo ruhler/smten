@@ -18,6 +18,7 @@ source-repository this
 
 library
   exposed-modules:
+    Smten.Plugin.Annotations
     Smten.Plugin.Plugin
   other-modules:
     Smten.Plugin.CG

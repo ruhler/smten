@@ -7,6 +7,9 @@ module Smten.Smten.Base (
 
 import qualified Prelude as P
 import Prelude (Char, Int, Integer)
+import Smten.Plugin.Annotations
+
+{-# ANN module PrimitiveModule #-}
 
 type String = [Char]
 

@@ -7,6 +7,9 @@ module Smten.System.IO0 (
 import Prelude (IO)
 import qualified Prelude as P
 import Smten.Smten.Base
+import Smten.Plugin.Annotations
+
+{-# ANN module PrimitiveModule #-}
 
 return_io :: a -> IO a
 return_io = P.return
