@@ -43,6 +43,11 @@ library
     Smten.System.IO
     Smten.System.IO0
 
+    Smten.Runtime.ErrorString
+    Smten.Runtime.Formula
+    Smten.Runtime.FreeID
+    Smten.Runtime.SmtenHS
+
     Smten.Compiled.Smten.Prelude
     Smten.Compiled.Smten.Control.Monad
     Smten.Compiled.Smten.Data.Bool
