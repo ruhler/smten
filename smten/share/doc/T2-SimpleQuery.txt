@@ -2,7 +2,7 @@ Smten Tutorial 2: Simple Query
 ==============================
 Richard Uhler
 ruhler@<csail.mit.edu>
-April 18, 2013
+July 11, 2013
 
 Introduction
 ------------
@@ -16,7 +16,7 @@ The following code describes the SMT query
 
     module SimpleQuery where
 
-    import Smten.SMT.Symbolic
+    import Smten.Symbolic
 
     simplequery :: Symbolic (Bool, Bool, Bool, Bool)
     simplequery = do
@@ -29,7 +29,7 @@ The following code describes the SMT query
 
     main :: IO ()
     main = do
-       result <- runSymbolic Yices2 Nothing simplequery
+       result <- run_symbolic Yices2 simplequery
        case result of
           Nothing -> putStrLn "The assertion is unsatisfiable"
           Just (w, x, y, z) -> do

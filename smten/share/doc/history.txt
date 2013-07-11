@@ -1,3 +1,14 @@
+July 11, 2013
+  smten-3.0.0.0
+
+  Changes from smten-2.2.0.0
+  * Merged all of smten into a single cabal package
+  * Updated Prelude to match haskell report
+  * Support deriving of Ord class
+  * Remove interpreter
+  * Complete rewrite of code generator
+  
+
 May 31, 2013
   smten-2.2.0.0
   smten-smt-2.2.0.0

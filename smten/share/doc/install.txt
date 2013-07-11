@@ -1,0 +1,53 @@
+Smten Installation
+==================
+Richard Uhler <ruhler@csail.mit.edu>
+June 26, 2013
+
+This document contains a more detailed example of the commands to run to
+install Smten from scratch on a unix system.
+
+1. Install ghc 7.6.2 and cabal
+ $ sudo apt-get install cabal
+ $ wget http://www.haskell.org/ghc/dist/7.6.2/ghc-7.6.2-x86_64-unknown-linux.tar.bz2
+ $ tar xf ghc-7.6.2-x86_64-unknown-linux.tar.bz2
+ $ cd ghc-7.6.2
+ ghc-7.6.2$ ./configure
+ ghc-7.6.2$ make install
+
+2. Install happy: 
+ $ cabal update
+ $ cabal install happy
+
+Verify happy is in your PATH.
+You may need to add it:
+ export PATH=$PATH:$HOME/.cabal/bin
+
+3. Acquire the smten cabal package.
+Either from a release tarball or from the git repository.
+For tarball: $ tar xf smten-x.x.x.x.tar.gz
+For git: $ git clone file:///afs/csail.mit.edu/u/r/ruhler/git/smten
+
+4. Install 'stp'
+ $ svn co https://stp-fast-prover.svn.sourceforge.net/svnroot/stp-fast-prover/trunk/stp stp
+ $ cd stp
+ stp$ ./clean-install.sh
+
+5. Install 'yices1'
+ Download from SRI's website.
+ $ tar xf yices-1.0.38-x86_64-pc-linux-gnu-static-gmp.tar.gz
+ $ objcopy --redefine-syms=smten/share/doc/yices1rename.txt yices-1.0.38/lib/libyices.a $PREFIX/lib/libyices1.a
+
+6. Install 'yices2'
+ Download from SRI's website.
+ $ tar xf yices-2.1.0-x86_64-unknown-linux-gnu-static-gmp.tar.gz
+ $ cp yices-2.1.0/lib/libyices.so.2.1.0 $PREFIX/lib
+ $ cd $PREFIX/lib
+ .../lib$ ln -s libyices.so.2.1.0 libyices2.so
+ .../lib$ ln -s libyices.so.2.1.0 libyices2.so.2.0
+
+7. Make sure $PREFIX/lib is in your cabal config
+ Edit $HOME/.cabal/config
+ extra-lib-dirs: <PREFIX>/lib
+
+7. Run 'cabal install' from the directory containing 'smten.cabal'.
+

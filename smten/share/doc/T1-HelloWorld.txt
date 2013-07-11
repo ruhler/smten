@@ -2,7 +2,7 @@ Smten Tutorial 1: Hello World
 =============================
 Richard Uhler
 ruhler@<csail.mit.edu>
-April 18, 2013
+July 11, 2013
 
 Introduction
 ------------
@@ -27,11 +27,18 @@ To run this program, first create a file called HelloWorld.smtn which contains
 this code. Smten programs must have the extension .smtn, and the filename
 should match the module name.
 
-Then run the command:
+Then run the commands:
     
-    smten --io --main-is HelloWorld.main -f HelloWorld.smtn
+    smten -f HelloWorld.smtn
+    ghc -o helloworld -main-is Smten.Lib.HelloWorld.main__ Smten/Lib/HelloWorld.hs
 
-The +smten+ command is used for interpreting or compiling smten programs. In
-this case, the +--io+ flag says to interpret the given smten program. You
-should see on the output the string "hello, world".
+The +smten+ command is used for compiling smten programs. The result of this
+command is the generation of Haskell files corresponding to the Smten files
+in the directory Smten/Lib. The +ghc+ command compiles the Haskell files into
+an executable called helloworld which can then be run. To run the compiled
+program:
+
+   ./helloworld
+
+You should see on the output the string "hello, world".
 
