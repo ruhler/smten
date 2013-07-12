@@ -26,7 +26,7 @@ data-files:
 source-repository this
   type: git
   location: /afs/csail.mit.edu/u/r/ruhler/git/smten
-  --branch:
+  --branch: master
   --tag:
 
 library
@@ -140,6 +140,7 @@ executable smten
     Smten.CodeGen.Module
     Smten.CodeGen.Name
     Smten.CodeGen.Type
+    Smten.CodeGen.TH
     Smten.CodeGen.Ppr
 
     Smten.Parser
