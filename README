@@ -33,11 +33,10 @@ Building Smten
 Once smten is configured for build and the required SMT solvers are installed,
 it can be built by running `make`.
 
-The makefile installs the cabal packages for smten, smten-smt, and smten-bin
-in a pretend home directory, compiles some programs against the installed
-packages, then runs some tests on the generated executables. During the
-process of installation, required packages will automatically be installed as
-well.
+The makefile installs the cabal packages for smten in a pretend home
+directory, compiles some programs against the installed packages, then runs
+some tests on the generated executables. During the process of installation,
+required packages will automatically be installed as well.
 
 Using Smten
 -----------
