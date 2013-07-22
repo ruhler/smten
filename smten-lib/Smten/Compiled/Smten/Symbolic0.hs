@@ -1,6 +1,9 @@
 
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE TypeSynonymInstances #-}
+
 module Smten.Compiled.Smten.Symbolic0 (
-    Symbolic,
+    Symbolic, Solver,
     return_symbolic, bind_symbolic, run_symbolic,
     mzero_symbolic, mplus_symbolic
     ) where
@@ -12,6 +15,8 @@ import Data.Functor((<$>))
 import Smten.Runtime.ErrorString
 import Smten.Runtime.FreeID
 import Smten.Runtime.Formula
+import Smten.Runtime.Model
+import Smten.Runtime.Result
 import Smten.Runtime.SmtenHS
 import Smten.Runtime.Solver
 
@@ -22,6 +27,16 @@ data SS = SS {
 }
 
 type Symbolic = StateT SS IO
+
+instance SmtenHS1 Symbolic where
+    error1 msg = return (error0 msg)
+
+    ite1 p a b = do
+      va <- predicated p a
+      vb <- predicated (notF p) b
+      return (ite p va vb)
+
+    realize1 m x = realize m <$> x
 
 return_symbolic :: a -> Symbolic a
 return_symbolic = return
@@ -34,11 +49,11 @@ mzero_symbolic = do
     modify $ \ss -> ss { ss_formula = ss_formula ss `andF` notF (ss_pred ss) }
     return (error0 (errstr "mzero_symbolic"))
 
-mplus_symbolic :: (SmtenHS0 a) => Symbolic a -> Symbolic b -> Symbolic c
+mplus_symbolic :: (SmtenHS0 a) => Symbolic a -> Symbolic a -> Symbolic a
 mplus_symbolic a b = do
     fid <- liftIO fresh
     modify $ \s -> s { ss_free = (fid, BoolTF) : ss_free s }
-    return $ ite0 (VarF fid) a b
+    ite0 (VarF fid) a b
 
 predicated :: BoolF -> Symbolic a -> Symbolic a
 predicated p q = do
@@ -52,21 +67,24 @@ run_symbolic :: (SmtenHS0 a) => Solver -> Symbolic a -> IO (Maybe a)
 run_symbolic s q = do
   solver <- s
   (x, ss) <- runStateT q (SS TrueF [] TrueF)
-  mapM_ (uncurry (declare solver)) (ss_free ss)
+  mapM_ (declVar solver) (ss_free ss)
   assert solver (ss_formula ss)
   res <- check solver
   case res of
-    Satisfiable -> do
+    Sat -> do
        let vars = ss_free ss
        vals <- mapM (getValue solver) vars
-       m <- as_make $ zip (map fst vars) vals
+       m <- model $ zip (map fst vars) vals
        case {-# SCC "DoubleCheck" #-} realize m (ss_formula ss) of
-          S.True -> return ()
-          S.Bool_Error msg -> doerr msg
+          TrueF -> return ()
           x -> error $ "SMTEN INTERNAL ERROR: SMT solver lied? " ++ show x
        return (Just ({-# SCC "Realize" #-} realize m x))
-    Unsatisfiable -> return Nothing
+    Unsat -> return Nothing
 
-getValue :: Solver -> (FreeID, SMTType) -> IO Dynamic
-getValue s (f, BoolF) = toDyn <$> getBoolValue s (freenm f)
+getValue :: SolverInst -> (FreeID, TypeF) -> IO AnyF
+getValue s (f, BoolTF) = do
+   b <- getBoolValue s (freenm f)
+   return (BoolF $ if b then TrueF else FalseF)
 
+declVar :: SolverInst -> (FreeID, TypeF) -> IO ()
+declVar s (nm, ty) = declare s ty (freenm nm)

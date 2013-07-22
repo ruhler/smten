@@ -1,12 +1,16 @@
 
-module Smten.Runtime.Solver (Solver(..), solverFromAST) where
+module Smten.Runtime.Solver (
+    Solver, SolverInst(..), solverInstFromAST,
+    ) where
 
 import Smten.Runtime.Formula
 import Smten.Runtime.Result
 import qualified Smten.Runtime.SolverAST as AST
 import qualified Smten.Runtime.Assert as A
 
-data Solver = Solver {
+type Solver = IO SolverInst
+
+data SolverInst = SolverInst {
     -- | Assert the given expression.
     assert :: BoolF -> IO (),
 
@@ -19,12 +23,11 @@ data Solver = Solver {
     check :: IO Result
 }
 
-solverFromAST :: (AST.SolverAST ctx exp) => ctx -> Solver
-solverFromAST x = Solver {
+solverInstFromAST :: (AST.SolverAST ctx exp) => ctx -> SolverInst
+solverInstFromAST x = SolverInst {
     assert = A.assert x,
     declare = AST.declare x,
     getBoolValue = AST.getBoolValue x,
     check = AST.check x
 }
-    
 

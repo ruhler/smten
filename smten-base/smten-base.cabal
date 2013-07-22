@@ -46,6 +46,7 @@ library
     Smten.Runtime.ErrorString
     Smten.Runtime.Formula
     Smten.Runtime.FreeID
+    Smten.Runtime.Model
     Smten.Runtime.SmtenHS
 
     Smten.Compiled.Smten.Prelude

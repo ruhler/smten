@@ -1,12 +1,14 @@
 
 module Smten.Runtime.Formula (
-    TypeF(..), BoolF(..),
+    TypeF(..), AnyF(..), BoolF(..),
     andF, notF,
     ) where
 
 import Smten.Runtime.FreeID
 
 data TypeF = BoolTF
+
+data AnyF = BoolF BoolF
 
 data BoolF =
       TrueF
@@ -15,6 +17,7 @@ data BoolF =
     | AndF BoolF BoolF
     | NotF BoolF
     | VarF FreeID
+    deriving (Show)
 
 andF :: BoolF -> BoolF -> BoolF
 andF TrueF x = x
