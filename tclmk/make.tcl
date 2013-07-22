@@ -78,7 +78,7 @@ proc hsghc {module} {
     hrun -ignorestderr ghc \
         -prof -rtsopts \
         -main-is Smten.Compiled.$module.main \
-        -i$hsdir -ismten-lib \
+        -i$hsdir -ismten-lib -hidir $hsdir -odir $hsdir \
         -o $hsdir/[string map {. _} $module].smten \
         $hsdir/[string map {. /} Smten.Compiled.$module].hs
 }
