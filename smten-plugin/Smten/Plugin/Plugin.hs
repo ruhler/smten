@@ -13,6 +13,7 @@ import GhcPlugins
 
 import Smten.Plugin.CG
 import Smten.Plugin.Name
+import Smten.Plugin.Type
 import Smten.Plugin.Annotations
 import qualified Smten.Plugin.Output.Syntax as S
 import qualified Smten.Plugin.Output.Ppr as S
@@ -108,26 +109,6 @@ bindCG b@(NonRec var body) = do
   nm <- nameCG $ varName var
   ty <- typeCG $ varType var
   return [S.ValD nm ty body']
-
-typeCG :: Type -> CG S.Type
-typeCG t = subst t >>= typeCG'
-
-typeCG' :: Type -> CG S.Type
-typeCG' t 
- | Just (tycon, args) <- splitTyConApp_maybe t = do
-     k <- qnameCG (tyConName tycon)
-     args' <- mapM typeCG' args
-     return $ S.ConAppT k args'
- | (vs@(_:_), t) <- splitForAllTys t = do
-     vs' <- mapM (qnameCG . varName) vs
-     t' <- typeCG' t
-     return $ S.ForallT vs' t'
- | Just v <- getTyVar_maybe t = S.VarT <$> qnameCG (varName v)
- | Just (a, b) <- splitAppTy_maybe t = do
-     a' <- typeCG' a
-     b' <- typeCG' b
-     return $ S.AppT a' b'
- | otherwise = error ("typeCG': " ++ renderDoc (ppr t))
 
 expCG :: CoreExpr -> CG S.Exp
 expCG (Var x) = S.VarE <$> (qnameCG $ varName x)

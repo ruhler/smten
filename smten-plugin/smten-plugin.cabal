@@ -23,6 +23,7 @@ library
   other-modules:
     Smten.Plugin.CG
     Smten.Plugin.Name
+    Smten.Plugin.Type
     Smten.Plugin.Output.Syntax
     Smten.Plugin.Output.Ppr
   build-depends: base ==4.6.*, ghc ==7.6.*, directory ==1.2.*,
