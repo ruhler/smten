@@ -46,6 +46,7 @@ library
     Smten.System.IO
     Smten.System.IO0
 
+    Smten.Runtime.AnyMap
     Smten.Runtime.ErrorString
     Smten.Runtime.Formula
     Smten.Runtime.FreeID
@@ -90,6 +91,7 @@ library
     Smten.Compiled.GHC.Tuple
     Smten.Compiled.GHC.Types
 
-  build-depends: base ==4.6.*, ghc-prim ==0.3.*, smten-plugin ==3.0.*
+  build-depends: base ==4.6.*, ghc-prim ==0.3.*, smten-plugin ==3.0.*,
+                 hashtables ==1.0.*
   ghc-options: -fwarn-unused-binds -fwarn-unused-imports
 

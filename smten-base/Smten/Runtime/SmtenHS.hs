@@ -62,7 +62,7 @@ ite (NotF x) a b = ite x b a
 ite p a b = ite0 p a b
     
 realize :: (SmtenHS0 a) => Model -> a -> a
-realize = error "TODO: realize"
+realize m x = m_cached m realize0 x
 
 instance SmtenHS0 BoolF where
     error0 = error "TODO: BoolF.error0"
