@@ -53,7 +53,7 @@ instance SmtenHS0 P.Integer where
     ite0 = P.error "TODO: Integer.ite0"
 
 instance SmtenHS1 P.IO where
-    error1 = P.error "TODO: P.IO.error1"
+    error1 msg = doerr msg
     realize1 = P.error "TODO: P.IO.realize1"
     ite1 = P.error "TODO: P.IO.ite1"
 
