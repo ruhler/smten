@@ -3,7 +3,7 @@
 
 module Smten.Runtime.SmtenHS (
     SmtenHS0(..), SmtenHS1(..), SmtenHS2(..), SmtenHS3(..), SmtenHS4(..),
-    ite, realize,
+    ite, realize, flrealize,
     ) where
 
 import Smten.Runtime.ErrorString
@@ -63,6 +63,11 @@ ite p a b = ite0 p a b
     
 realize :: (SmtenHS0 a) => Model -> a -> a
 realize m x = m_cached m realize0 x
+
+flrealize :: (SmtenHS0 a) => Model -> [Maybe (BoolF, a)] -> a
+flrealize m (Nothing : xs) = flrealize m xs
+flrealize m (Just (p, v) : xs) = ite (realize m p) (realize m v) (flrealize m xs)
+flrealize _ [] = error "flrealize failed"
 
 instance SmtenHS0 BoolF where
     error0 = error "TODO: BoolF.error0"

@@ -121,13 +121,13 @@ smtenHS nm tyvs cs = do
    let ctx = [S.ConAppT ("Smten.Runtime.SmtenHS.SmtenHS" ++ show (knum (tyVarKind v))) [tyv] | (v, tyv) <- zip dropped tyvs']
        ty = S.ConAppT ("Smten.Runtime.SmtenHS.SmtenHS" ++ show n) [S.ConAppT qtyname tyvs']
    addimport "Smten.Runtime.SmtenHS"
-   --rel <- realizeD nm n cs
+   rel <- realizeD nm n cs
    --prim <- primD nm n
    --ite <- iteD nm n cs
    --err <- errorD nm n
    --sapp <- sappD nm n cs
    --return [S.InstD ctx ty [rel, ite, prim, err, sapp]]
-   return [S.InstD ctx ty []]
+   return [S.InstD ctx ty [rel]]
 
 --   primN = Foo_Prim
 primD :: Name -> Int -> CG S.Method
@@ -224,44 +224,58 @@ primD nm n = do
 --  let body = H.NormalB $ H.VarE (qerrnmCG nm)
 --      fun = H.ValD (H.VarP (H.mkName $ "error" ++ show n)) body []
 --  return fun
---
-----   realizeN m (FooA x1 x2 ...) = FooA (realize m x1) (realize m x2) ...
-----   realizeN m (FooB x1 x2 ...) = FooB (realize m x1) (realize m x2) ...
-----   ...
-----   realizeN m (Foo_Prim r _) = r m
-----   realizeN m x@(Foo_Ite {}) = flrealize m [__iteFooA x, __iteFooB x, ...]
-----   realizeN m x@(Foo_Error _) = x
---realizeD :: Name -> Int -> [Con] -> CG H.Dec
---realizeD n k cs = do
---  let mkcon :: Con -> H.Clause
---      mkcon (Con cn cts) =
---        let xs = [H.mkName $ "x" ++ show i | i <- [1..length cts]]
---            pats = [H.VarP $ H.mkName "m", H.ConP (qnameCG cn) (map H.VarP xs)]
---            rs = [foldl1 H.AppE [
---                    H.VarE (H.mkName "Smten.realize"),
---                    H.VarE (H.mkName "m"),
---                    H.VarE x] | x <- xs]
---            body = foldl H.AppE (H.ConE (qnameCG cn)) rs
---        in H.Clause pats (H.NormalB body) []
---
---      primpats = [H.VarP $ H.mkName "m", H.ConP (qprimnmCG n) [H.VarP (H.mkName "r"), H.WildP]]
---      primbody = H.AppE (H.VarE (H.mkName "r")) (H.VarE (H.mkName "m"))
---      primcon = H.Clause primpats (H.NormalB primbody) []
---
---      itecons = [H.AppE (H.VarE $ qiteflnmCG cn) (H.VarE $ H.mkName "x") | Con cn _ <- cs]
---      iteerr = H.AppE (H.VarE $ qiteerrnmCG n) (H.VarE $ H.mkName "x")
---      itepats = [H.VarP $ H.mkName "m", H.AsP (H.mkName "x") (H.RecP (qitenmCG n) [])]
---      itebody = foldl1 H.AppE [
---                    H.VarE $ H.mkName "Smten.flrealize",
---                    H.VarE $ H.mkName "m",
---                    H.ListE $ itecons ++ [iteerr]]
---      itecon = H.Clause itepats (H.NormalB itebody) []
---
---      errpats = [H.VarP $ H.mkName "m", H.AsP (H.mkName "x") (H.ConP (qerrnmCG n) [H.WildP])]
---      errbody = H.VarE $ H.mkName "x"
---      errcon = H.Clause errpats (H.NormalB errbody) []
---  return $ H.FunD (H.mkName $ "realize" ++ show k) (map mkcon cs ++ [primcon, itecon, errcon])
---
+
+--   realizeN = \m -> \x ->
+--     case x of
+--       (FooA x1 x2 ...) -> FooA (realize m x1) (realize m x2) ...
+--       (FooB x1 x2 ...) -> FooB (realize m x1) (realize m x2) ...
+--       ...
+--       (Foo_Prim r _) -> r m
+--       (Foo_Ite {}) -> flrealize m [__iteFooA x, __iteFooB x, ...]
+--       (Foo_Error _) -> x
+realizeD :: Name -> Int -> [DataCon] -> CG S.Method
+realizeD n k cs = do
+  addimport "Smten.Runtime.SmtenHS"
+  let mkcon :: DataCon -> CG S.Alt
+      mkcon d = do
+        cn <- qnameCG $ dataConName d
+        let nargs = length $ dataConOrigArgTys d
+            xs = ["x" ++ show i | i <- [1..nargs]]
+            pat = S.ConP cn xs
+            rs = [foldl1 S.AppE [
+                    S.VarE "Smten.Runtime.SmtenHS.realize",
+                    S.VarE "m",
+                    S.VarE x] | x <- xs]
+            body = S.conE cn rs
+        return $ S.Alt pat body
+
+  qprimnm <- qprimnmCG n
+  let primpat = S.ConP qprimnm ["r", "_"]
+      primbody = S.AppE (S.VarE "r") (S.VarE "m")
+      primcon = S.Alt primpat primbody
+
+  qiteflnms <- mapM (qiteflnmCG . dataConName) cs
+  qiteerrnm <- qiteerrnmCG n
+  qitenm <- qitenmCG n
+  let itecons = [S.AppE (S.VarE qiteflnm) (S.VarE "x") | qiteflnm <- qiteflnms]
+      iteerr = S.AppE (S.VarE qiteerrnm) (S.VarE "x")
+      itepat = S.RecP qitenm
+      itebody = foldl1 S.AppE [
+                    S.VarE $ "Smten.Runtime.SmtenHS.flrealize",
+                    S.VarE $ "m",
+                    S.ListE $ itecons ++ [iteerr]]
+      itecon = S.Alt itepat itebody
+
+  qerrnm <- qerrnmCG n
+  let errpat = S.ConP qerrnm ["_"]
+      errbody = S.VarE "x"
+      errcon = S.Alt errpat errbody
+
+  cons <- mapM mkcon cs
+  let casee = S.CaseE (S.VarE "x") (cons ++ [primcon, itecon, errcon])
+      body = S.LamE "m" $ (S.LamE "x") casee
+  return $ S.Method ("realize" ++ show k) body
+  
 ---- sappN f x@(Foo_Ite {}) = flsapp f x [__iteFooA x, __iteFooB x, ...]
 ---- sappN f (Foo_Error msg) = error0 msg
 ---- sappN f (Foo_Prim r c) = primsapp f r c

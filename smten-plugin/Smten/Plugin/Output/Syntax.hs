@@ -4,6 +4,7 @@ module Smten.Plugin.Output.Syntax (
     Module(..), Con(..), Type(..), Class, Dec(..), Val(..), Data(..),
     Method(..), Exp(..), Alt(..), Pat(..), Literal(..), RecField(..),
     arrowT,
+    conE,
     ) where
 
 type Name = String
@@ -45,11 +46,16 @@ data Exp =
  | LetE [Val] Exp 
  | LamE Name Exp
  | CaseE Exp [Alt]
+ | ListE [Exp]
+
+conE :: Name -> [Exp] -> Exp
+conE nm xs = foldl AppE (VarE nm) xs
 
 data Alt = Alt Pat Exp
 
 data Pat = LitP Literal
          | ConP Name [Name]
+         | RecP Name            -- Foo {}
          | VarP Name
          | AsP Name Pat
 

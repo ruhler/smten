@@ -77,8 +77,8 @@ instance Ppr Exp where
     ppr (AppE a b) = parens (ppr a <+> ppr b)
     ppr (LetE xs b) = parens (text "let" <+> braces (vcat $ map ppr xs) <+> text "in" <+> ppr b)
     ppr (LamE n e) = parens (text "\\" <+> ppr n <+> text "->" <+> ppr e)
-    ppr (CaseE x ms)
-      = parens (text "case" <+> ppr x <+> text "of" <+> braces (ppr ms))
+    ppr (CaseE x ms) = parens (text "case" <+> ppr x <+> text "of" <+> braces (ppr ms))
+    ppr (ListE xs) = text "[" <+> sep (punctuate comma (map ppr xs)) <+> text "]"
 
 instance Ppr [Alt] where
     ppr = vcat . map ppr
@@ -89,6 +89,7 @@ instance Ppr Alt where
 instance Ppr Pat where
     ppr (LitP l) = ppr l
     ppr (ConP nm xs) = parens (ppr nm <+> sep (map ppr xs))
+    ppr (RecP nm) = ppr nm <+> braces empty
     ppr (VarP nm) = ppr nm
     ppr (AsP nm p) = ppr nm <> text "@" <> ppr p
 
