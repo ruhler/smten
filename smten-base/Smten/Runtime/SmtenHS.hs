@@ -2,7 +2,8 @@
 {-# LANGUAGE FlexibleInstances #-}
 
 module Smten.Runtime.SmtenHS (
-    SmtenHS0(..), SmtenHS1(..), ite, realize,
+    SmtenHS0(..), SmtenHS1(..), SmtenHS2(..), SmtenHS3(..), SmtenHS4(..),
+    ite, realize,
     ) where
 
 import Smten.Runtime.ErrorString
@@ -23,6 +24,36 @@ instance (SmtenHS0 a, SmtenHS1 m) => SmtenHS0 (m a) where
     error0 = error1
     ite0 = ite1
     realize0 = realize1
+
+class SmtenHS2 m where
+    error2 :: (SmtenHS0 a, SmtenHS0 b) => ErrorString -> m a b
+    ite2 :: (SmtenHS0 a, SmtenHS0 b) => BoolF -> m a b -> m a b -> m a b
+    realize2 :: (SmtenHS0 a, SmtenHS0 b) => Model -> m a b -> m a b
+
+instance (SmtenHS0 a, SmtenHS2 m) => SmtenHS1 (m a) where
+    error1 = error2
+    ite1 = ite2
+    realize1 = realize2
+
+class SmtenHS3 m where
+    error3 :: (SmtenHS0 a, SmtenHS0 b, SmtenHS0 c) => ErrorString -> m a b c
+    ite3 :: (SmtenHS0 a, SmtenHS0 b, SmtenHS0 c) => BoolF -> m a b c -> m a b c -> m a b c
+    realize3 :: (SmtenHS0 a, SmtenHS0 b, SmtenHS0 c) => Model -> m a b c -> m a b c
+
+instance (SmtenHS0 a, SmtenHS3 m) => SmtenHS2 (m a) where
+    error2 = error3
+    ite2 = ite3
+    realize2 = realize3
+
+class SmtenHS4 m where
+    error4 :: (SmtenHS0 a, SmtenHS0 b, SmtenHS0 c, SmtenHS0 d) => ErrorString -> m a b c d
+    ite4 :: (SmtenHS0 a, SmtenHS0 b, SmtenHS0 c, SmtenHS0 d) => BoolF -> m a b c d -> m a b c d -> m a b c d
+    realize4 :: (SmtenHS0 a, SmtenHS0 b, SmtenHS0 c, SmtenHS0 d) => Model -> m a b c d -> m a b c d
+
+instance (SmtenHS0 a, SmtenHS4 m) => SmtenHS3 (m a) where
+    error3 = error4
+    ite3 = ite4
+    realize3 = realize4
 
 ite :: (SmtenHS0 a) => BoolF -> a -> a -> a
 ite TrueF a _ = a

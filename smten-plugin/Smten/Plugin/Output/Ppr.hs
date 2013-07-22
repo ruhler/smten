@@ -26,9 +26,18 @@ instance Ppr Module where
     vcat (map ppr $ mod_decs m) $+$
     text "}"
 
+pprctx :: [Class] -> Doc 
+pprctx ctx = if null ctx
+                then empty
+                else parens (sep (punctuate comma (map ppr ctx))) <+> text "=>"
+
+
 instance Ppr Dec where
     ppr (DataD x) = ppr x
     ppr (ValD x) = ppr x
+    ppr (InstD ctx ty ms)
+      = text "instance" <+> pprctx ctx <+> ppr ty <+> text "where"
+            <+> braces (ppr ms) <+> semi
     
 instance Ppr Data where
     ppr (Data nm vs cs) =
@@ -40,6 +49,12 @@ instance Ppr Val where
       ppr nm <+> text "::" <+> ppr ty <+> semi $+$
       ppr nm <+> text "=" <+> ppr e <+> semi
 
+instance Ppr Method where
+    ppr (Method nm e) = ppr nm <+> text "=" <+> ppr e <+> semi
+
+instance Ppr [Method] where
+    ppr ms = vcat (map ppr ms)
+    
 instance Ppr RecField where
     ppr (RecField nm ty) = ppr nm <+> text "::" <+> ppr ty
 
@@ -50,11 +65,8 @@ instance Ppr Con where
 instance Ppr Type where
     ppr (ConAppT nm tys)
       = parens (sep (ppr nm : map ppr tys))
-    ppr (ForallT vs ctx ty) =
-      let pprctx = if null ctx
-                      then empty
-                      else parens (sep (punctuate comma (map ppr ctx))) <+> text "=>"
-      in parens $ text "forall" <+> sep (map ppr vs) <+> text "." <+> pprctx <+> ppr ty
+    ppr (ForallT vs ctx ty)
+      = parens $ text "forall" <+> sep (map ppr vs) <+> text "." <+> pprctx ctx <+> ppr ty
 
     ppr (VarT n) = text n
     ppr (AppT a b) = parens $ ppr a <+> ppr b

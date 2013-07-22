@@ -1,11 +1,13 @@
 
 module Smten.Plugin.Name (
     nameCG, qnameCG, qtynameCG,
-    primnmCG,
-    errnmCG,
-    iteerrnmCG,
-    iteflnmCG,
-    itenmCG,
+    primnmCG, qprimnmCG,
+    errnmCG, qerrnmCG,
+    iteerrnmCG, qiteerrnmCG,
+    iteflnmCG, qiteflnmCG,
+    itenmCG, qitenmCG,
+    nullitenmCG, qnullitenmCG,
+    liftitenmCG, qliftitenmCG,
     ) where
 
 import Data.Char

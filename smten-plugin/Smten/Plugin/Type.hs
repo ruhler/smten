@@ -3,6 +3,7 @@
 
 module Smten.Plugin.Type (
     typeCG, topTypeCG, tyvarCG,
+    knum,
     ) where
 
 import Kind

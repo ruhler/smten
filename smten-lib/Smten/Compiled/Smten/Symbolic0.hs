@@ -20,6 +20,8 @@ import Smten.Runtime.Result
 import Smten.Runtime.SmtenHS
 import Smten.Runtime.Solver
 
+import Smten.Compiled.Smten.Data.Maybe as S
+
 data SS = SS {
     ss_pred :: BoolF,
     ss_free :: [(FreeID, TypeF)],
@@ -63,7 +65,7 @@ predicated p q = do
     modify $ \ss -> ss { ss_pred = pold }
     return v
 
-run_symbolic :: (SmtenHS0 a) => Solver -> Symbolic a -> IO (Maybe a)
+run_symbolic :: (SmtenHS0 a) => Solver -> Symbolic a -> IO (S.Maybe a)
 run_symbolic s q = do
   solver <- s
   (x, ss) <- runStateT q (SS TrueF [] TrueF)
@@ -78,8 +80,8 @@ run_symbolic s q = do
        case {-# SCC "DoubleCheck" #-} realize m (ss_formula ss) of
           TrueF -> return ()
           x -> error $ "SMTEN INTERNAL ERROR: SMT solver lied? " ++ show x
-       return (Just ({-# SCC "Realize" #-} realize m x))
-    Unsat -> return Nothing
+       return (S.Just ({-# SCC "Realize" #-} realize m x))
+    Unsat -> return S.Nothing
 
 getValue :: SolverInst -> (FreeID, TypeF) -> IO AnyF
 getValue s (f, BoolTF) = do

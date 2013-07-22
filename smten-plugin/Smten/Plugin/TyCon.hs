@@ -42,10 +42,10 @@ tyconCG t
 dataCG :: Name -> [TyVar] -> [DataCon] -> CG [S.Dec]
 dataCG n tyvars constrs = do
     dataD <- mkDataD n tyvars constrs
-    --shsD <- smtenHS n tyvars constrs
+    shsD <- smtenHS n tyvars constrs
     --itehelpers <- mkIteHelpersD n tyvars constrs
     --return $ concat [dataD, itehelpers, shsD]
-    return $ concat [dataD]
+    return $ concat [dataD, shsD]
   
 -- data Foo a b ... = FooA A1 A2 ...
 --                  | FooB B1 B2 ...
@@ -99,41 +99,42 @@ mkDataD nm tyvars constrs = do
   addimport "Prelude"
   return [S.DataD (S.Data nm' vs allks)]
 
----- Note: we currently don't support crazy kinded instances of SmtenHS. This
----- means we are limited to "linear" kinds of the form (* -> * -> ... -> *)
-----
----- To handle that properly, we chop off as many type variables as needed to
----- get to a linear kind.
-----   call the chopped off type variables c1, c2, ...
-----
----- instance (SmtenN c1, SmtenN c2, ...) => SmtenHSN (Foo c1 c2 ...) where
-----   realizeN = ...
-----   primitiveN = ...
-----   errorN = ...
-----   ...
---smtenHS :: Name -> [TyVar] -> [Con] -> CG [H.Dec]
---smtenHS nm tyvs cs = do
---   let (rkept, rdropped) = span (\(TyVar n k) -> knum k == 0) (reverse tyvs)
---       n = length rkept
---       dropped = reverse rdropped
---       ctx = [H.ClassP (H.mkName $ "Smten.SmtenHS" ++ show (knum k)) [H.VarT (nameCG n)] | TyVar n k <- dropped]
---       ty = H.AppT (H.VarT (H.mkName $ "Smten.SmtenHS" ++ show n))
---                   (foldl H.AppT (H.ConT $ qtynameCG nm) [H.VarT (nameCG n) | TyVar n _ <- dropped])
---   rel <- realizeD nm n cs
---   prim <- primD nm n
---   ite <- iteD nm n cs
---   err <- errorD nm n
---   sapp <- sappD nm n cs
---   return [H.InstanceD ctx ty [rel, ite, prim, err, sapp]]
+-- Note: we currently don't support crazy kinded instances of SmtenHS. This
+-- means we are limited to "linear" kinds of the form (* -> * -> ... -> *)
 --
-----   primN = Foo_Prim
---primD :: Name -> Int -> CG H.Dec
---primD nm n = do
---  let body = H.ConE (qprimnmCG nm)
---      clause = H.Clause [] (H.NormalB body) []
---      fun = H.FunD (H.mkName $ "primitive" ++ show n) [clause]
---  return fun
+-- To handle that properly, we chop off as many type variables as needed to
+-- get to a linear kind.
+--   call the chopped off type variables c1, c2, ...
 --
+-- instance (SmtenN c1, SmtenN c2, ...) => SmtenHSN (Foo c1 c2 ...) where
+--   realizeN = ...
+--   primitiveN = ...
+--   errorN = ...
+--   ...
+smtenHS :: Name -> [TyVar] -> [DataCon] -> CG [S.Dec]
+smtenHS nm tyvs cs = do
+   let (rkept, rdropped) = span ((==) 0 . knum . tyVarKind) (reverse tyvs)
+       n = length rkept
+       dropped = reverse rdropped
+   tyvs' <- mapM tyvarCG dropped
+   qtyname <- qtynameCG nm
+   let ctx = [S.ConAppT ("Smten.Runtime.SmtenHS.SmtenHS" ++ show (knum (tyVarKind v))) [tyv] | (v, tyv) <- zip dropped tyvs']
+       ty = S.ConAppT ("Smten.Runtime.SmtenHS.SmtenHS" ++ show n) [S.ConAppT qtyname tyvs']
+   addimport "Smten.Runtime.SmtenHS"
+   --rel <- realizeD nm n cs
+   --prim <- primD nm n
+   --ite <- iteD nm n cs
+   --err <- errorD nm n
+   --sapp <- sappD nm n cs
+   --return [S.InstD ctx ty [rel, ite, prim, err, sapp]]
+   return [S.InstD ctx ty []]
+
+--   primN = Foo_Prim
+primD :: Name -> Int -> CG S.Method
+primD nm n = do
+  qprimnm <- qprimnmCG nm
+  return $ S.Method ("primitive" ++ show n) (S.VarE qprimnm)
+
 ---- iteN p (FooA a1 a2 ...) (FooA b1 b2 ...) = FooA (ite p a1 b1) (ite p a2 b2) ...
 ---- iteN p (FooB a1 a2 ...) (FooB b1 b2 ...) = FooB (ite p a1 b1) (ite p a2 b2) ...
 ----  ...

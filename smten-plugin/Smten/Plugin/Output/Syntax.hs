@@ -2,7 +2,7 @@
 module Smten.Plugin.Output.Syntax (
     Name, LanguagePragma, TyVar,
     Module(..), Con(..), Type(..), Class, Dec(..), Val(..), Data(..),
-    Exp(..), Alt(..), Pat(..), Literal(..), RecField(..),
+    Method(..), Exp(..), Alt(..), Pat(..), Literal(..), RecField(..),
     arrowT,
     ) where
 
@@ -19,6 +19,9 @@ data Module = Module {
 
 data Dec = DataD Data
          | ValD Val
+         | InstD [Class] Type [Method]
+
+data Method = Method Name Exp
 
 data Data = Data Name [TyVar] [Con]
 data Val = Val Name Type Exp

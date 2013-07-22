@@ -5,6 +5,7 @@ module Smten.Runtime.Solver (
 
 import Smten.Runtime.Formula
 import Smten.Runtime.Result
+import Smten.Runtime.SmtenHS
 import qualified Smten.Runtime.SolverAST as AST
 import qualified Smten.Runtime.Assert as A
 
@@ -22,6 +23,8 @@ data SolverInst = SolverInst {
     -- | Run (check) and return the result.
     check :: IO Result
 }
+
+instance SmtenHS0 SolverInst where {}
 
 solverInstFromAST :: (AST.SolverAST ctx exp) => ctx -> SolverInst
 solverInstFromAST x = SolverInst {
