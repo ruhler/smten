@@ -23,6 +23,7 @@ library
   other-modules:
     Smten.Plugin.CG
     Smten.Plugin.Name
+    Smten.Plugin.TyCon
     Smten.Plugin.Type
     Smten.Plugin.Output.Syntax
     Smten.Plugin.Output.Ppr
