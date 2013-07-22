@@ -23,14 +23,22 @@ instance Ppr Module where
     vcat [text ("{-# LANGUAGE " ++ p ++ " #-}") | p <- mod_langs m] $+$
     text "module" <+> text (mod_name m) <+> text "where {" $+$
     vcat [text ("import qualified " ++ x) <+> semi | x <- mod_imports m] $+$
-    vcat (map ppr $ mod_datas m) $+$
-    vcat (map ppr $ mod_vals m) $+$
+    vcat (map ppr $ mod_decs m) $+$
     text "}"
+
+instance Ppr Dec where
+    ppr (DataD x) = ppr x
+    ppr (ValD x) = ppr x
     
-instance Ppr DataD where
-    ppr (DataD nm vs cs) =
+instance Ppr Data where
+    ppr (Data nm vs cs) =
        text "data" <+> ppr nm <+> sep (map ppr vs) <+> text "=" <+>
        vcat (punctuate (text "|") (map ppr cs)) <+> semi 
+
+instance Ppr Val where
+    ppr (Val nm ty e) =
+      ppr nm <+> text "::" <+> ppr ty <+> semi $+$
+      ppr nm <+> text "=" <+> ppr e <+> semi
 
 instance Ppr RecField where
     ppr (RecField nm ty) = ppr nm <+> text "::" <+> ppr ty
@@ -38,11 +46,6 @@ instance Ppr RecField where
 instance Ppr Con where
     ppr (Con nm tys) = ppr nm <+> sep (map ppr tys)
     ppr (RecC nm fs) = ppr nm <+> braces (vcat $ punctuate comma (map ppr fs))
-
-instance Ppr ValD where
-    ppr (ValD nm ty e) =
-      ppr nm <+> text "::" <+> ppr ty <+> semi $+$
-      ppr nm <+> text "=" <+> ppr e <+> semi
 
 instance Ppr Type where
     ppr (ConAppT nm tys)

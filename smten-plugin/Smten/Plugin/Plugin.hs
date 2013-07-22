@@ -64,19 +64,18 @@ moduleCG m = do
     S.mod_langs = ["MagicHash", "RankNTypes", "ScopedTypeVariables"],
     S.mod_name = modnm,
     S.mod_imports = imports,
-    S.mod_datas = datas,
-    S.mod_vals = vals
+    S.mod_decs = datas ++ (map S.ValD vals)
    }
 
 
-bindCG :: CoreBind -> CG [S.ValD]
+bindCG :: CoreBind -> CG [S.Val]
 bindCG (Rec xs) = concat <$> mapM bindCG [NonRec x v | (x, v) <- xs]
 bindCG b@(NonRec var body) = do
   --lift $ putMsg (ppr b)
   body' <- expCG body
   nm <- nameCG $ varName var
   ty <- topTypeCG $ varType var
-  return [S.ValD nm ty body']
+  return [S.Val nm ty body']
 
 expCG :: CoreExpr -> CG S.Exp
 expCG (Var x) = S.VarE <$> (qnameCG $ varName x)

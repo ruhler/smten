@@ -2,7 +2,7 @@
 {-# LANGUAGE PatternGuards #-}
 
 module Smten.Plugin.Type (
-    typeCG, topTypeCG,
+    typeCG, topTypeCG, tyvarCG,
     ) where
 
 import Kind
@@ -24,7 +24,7 @@ topTypeCG t = subst t >>= typeCG' True
 typeCG' :: Bool -> Type -> CG S.Type
 typeCG' mkctx t 
  | Just (tycon, args) <- splitTyConApp_maybe t = do
-     k <- qnameCG (tyConName tycon)
+     k <- qtynameCG (tyConName tycon)
      args' <- mapM (typeCG' mkctx) args
      return $ S.ConAppT k args'
  | (vs@(_:_), t) <- splitForAllTys t = do

@@ -40,6 +40,9 @@ library
     Smten.Data.Ord1
     Smten.Data.Tuple
     Smten.Smten.Base
+    Smten.Smten.List
+    Smten.Smten.Tuple
+    Smten.Smten.Unit
     Smten.System.IO
     Smten.System.IO0
 
@@ -71,6 +74,9 @@ library
     Smten.Compiled.Smten.Data.Ord1
     Smten.Compiled.Smten.Data.Tuple
     Smten.Compiled.Smten.Smten.Base
+    Smten.Compiled.Smten.Smten.List
+    Smten.Compiled.Smten.Smten.Tuple
+    Smten.Compiled.Smten.Smten.Unit
     Smten.Compiled.Smten.System.IO
     Smten.Compiled.Smten.System.IO0
 

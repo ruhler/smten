@@ -1,8 +1,9 @@
 
 module Smten.Plugin.Output.Syntax (
     Name, LanguagePragma, TyVar,
-    Module(..), DataD(..), ValD(..), Con(..), Type(..), Class,
+    Module(..), Con(..), Type(..), Class, Dec(..), Val(..), Data(..),
     Exp(..), Alt(..), Pat(..), Literal(..), RecField(..),
+    arrowT,
     ) where
 
 type Name = String
@@ -13,13 +14,14 @@ data Module = Module {
   mod_langs :: [LanguagePragma],
   mod_name :: Name,
   mod_imports :: [Name],
-  mod_datas :: [DataD],
-  mod_vals :: [ValD]
+  mod_decs :: [Dec]
 }
 
-data DataD = DataD Name [TyVar] [Con]
+data Dec = DataD Data
+         | ValD Val
 
-data ValD = ValD Name Type Exp
+data Data = Data Name [TyVar] [Con]
+data Val = Val Name Type Exp
 
 data RecField = RecField Name Type
 
@@ -37,7 +39,7 @@ data Exp =
    VarE Name
  | LitE Literal
  | AppE Exp Exp
- | LetE [ValD] Exp 
+ | LetE [Val] Exp 
  | LamE Name Exp
  | CaseE Exp [Alt]
 
@@ -54,4 +56,7 @@ data Literal =
   | IntL Integer
   | WordL Integer
   | IntegerL Integer
+
+arrowT :: Type -> Type -> Type
+arrowT a b = ConAppT "(->)" [a, b]
 

@@ -8,6 +8,9 @@ module Smten.Smten.Base (
 import qualified Prelude as P
 import Prelude (Char, Int, Integer)
 import Smten.Plugin.Annotations
+import Smten.Smten.List ()
+import Smten.Smten.Tuple ()
+import Smten.Smten.Unit ()
 
 {-# ANN module PrimitiveModule #-}
 
