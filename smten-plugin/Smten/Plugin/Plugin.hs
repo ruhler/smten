@@ -78,7 +78,7 @@ tyconCG t
            let (vs, mt) = splitForAllTys $ varType x
                vs' = filter (flip notElem (tyConTyVars t)) vs
                mt' = snd $ splitFunTy mt
-           t <- typeCG $ mkForAllTys vs' mt'
+           t <- topTypeCG $ mkForAllTys vs' mt'
            nm <- nameCG $ varName x
            return $ S.RecField nm t
      fields <- mapM mkfield (classAllSelIds cls)
@@ -107,7 +107,7 @@ bindCG b@(NonRec var body) = do
   --lift $ putMsg (ppr b)
   body' <- expCG body
   nm <- nameCG $ varName var
-  ty <- typeCG $ varType var
+  ty <- topTypeCG $ varType var
   return [S.ValD nm ty body']
 
 expCG :: CoreExpr -> CG S.Exp

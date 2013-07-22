@@ -47,8 +47,11 @@ instance Ppr ValD where
 instance Ppr Type where
     ppr (ConAppT nm tys)
       = parens (sep (ppr nm : map ppr tys))
-    ppr (ForallT vs ty)
-      = parens $ text "forall" <+> sep (map ppr vs) <+> text "." <+> ppr ty
+    ppr (ForallT vs ctx ty) =
+      let pprctx = if null ctx
+                      then empty
+                      else parens (sep (punctuate comma (map ppr ctx))) <+> text "=>"
+      in parens $ text "forall" <+> sep (map ppr vs) <+> text "." <+> pprctx <+> ppr ty
 
     ppr (VarT n) = text n
     ppr (AppT a b) = parens $ ppr a <+> ppr b
