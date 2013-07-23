@@ -45,8 +45,10 @@ instance Ppr Data where
        vcat (punctuate (text "|") (map ppr cs)) <+> semi 
 
 instance Ppr Val where
-    ppr (Val nm ty e) =
+    ppr (Val nm (Just ty) e) =
       ppr nm <+> text "::" <+> ppr ty <+> semi $+$
+      ppr nm <+> text "=" <+> ppr e <+> semi
+    ppr (Val nm Nothing e) =
       ppr nm <+> text "=" <+> ppr e <+> semi
 
 instance Ppr Method where

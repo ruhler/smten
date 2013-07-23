@@ -295,7 +295,7 @@ mkNullIteD t n ts cs = do
   let fes = [S.Field iteflnm (S.conE "Prelude.Nothing" []) | iteflnm <- iteflnms]
       efe = S.Field iteerrnm (S.conE "Prelude.Nothing" [])
       body = S.RecE (S.VarE qitenm) (fes ++ [efe])
-  return [S.ValD (S.Val nullitenm ty body)]
+  return [S.ValD (S.Val nullitenm (Just ty) body)]
 
 -- __IteLiftFoo :: Foo a b ... -> Foo a b ...
 -- __IteLiftFoo = \x ->
@@ -343,5 +343,5 @@ mkLiftIteD t n ts cs = do
   cons <- mapM mkcon cs
   let casee = S.CaseE (S.VarE "x") (cons ++ [itecon, errcon])
       body = S.LamE "x" casee
-  return [S.ValD (S.Val liftitenm ty' body)]
+  return [S.ValD (S.Val liftitenm (Just ty') body)]
 

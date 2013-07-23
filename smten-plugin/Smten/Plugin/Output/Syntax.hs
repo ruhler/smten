@@ -26,7 +26,7 @@ data Dec = DataD Data
 data Method = Method Name Exp
 
 data Data = Data Name [TyVar] [Con]
-data Val = Val Name Type Exp
+data Val = Val Name (Maybe Type) Exp
 
 data RecField = RecField Name Type
 

@@ -20,7 +20,7 @@ bindCG b@(NonRec var body) = do
   body' <- expCG body
   nm <- nameCG $ varName var
   ty <- topTypeCG $ varType var
-  return [S.Val nm ty body']
+  return [S.Val nm (Just ty) body']
 
 
 expCG :: CoreExpr -> CG S.Exp
@@ -42,10 +42,32 @@ expCG (Lam b body)
     b' <- qnameCG $ varName b
     body' <- expCG body
     return $ S.LamE b' body'
-expCG (Case x v _ ms) = withlocal (varName v) $ do
-    x' <- expCG x
-    ms' <- altsCG v ms
-    return $ S.CaseE x' ms'
+
+-- Case expressions are generated as follows:
+--   let casef_XX = \v ->
+--          case v of
+--             FooA a b ... -> ...
+--             FooB a b ... -> ...
+--             ...
+--             Foo_Error msg -> error0 msg
+--             Foo_Ite {} -> flsapp casef_XX v [__iteFooA v, __iteFooB v, ...]
+--             Foo_Prim {} -> ???
+--             _ -> default_body
+--   in case_XX x
+expCG (Case x v ty ms) = do
+    uniq <- lift $ getUniqueM
+    let occ = mkVarOcc "casef"
+        casef = mkSystemName uniq occ
+    withlocals [varName v, casef] $ do
+        v' <- qnameCG $ varName v
+        casef' <- qnameCG casef
+        x' <- expCG x
+        ms' <- altsCG (varType v) ms
+        let casee = S.CaseE (S.VarE v') ms'
+            lame = S.LamE v' casee
+            bind = S.Val casef' Nothing lame
+            ine = S.AppE (S.VarE casef') x'
+        return $ S.LetE [bind] ine
 
 -- TODO: insert a call to unsafeCoerce# here?
 expCG (Cast x _) = expCG x
@@ -60,35 +82,32 @@ litCG (MachInt i) = S.IntL i
 litCG (MachWord i) = S.WordL i
 litCG (LitInteger i _) = S.IntegerL i
 
-altCG :: CoreBndr -> CoreAlt -> CG S.Alt
-altCG v (DataAlt k, xs, body) = withlocals (map varName xs) $ do
+altCG :: CoreAlt -> CG S.Alt
+altCG (DataAlt k, xs, body) = withlocals (map varName xs) $ do
     body' <- expCG body
     xs' <- mapM (qnameCG . varName) xs
     k' <- qnameCG $ getName k
-    v' <- qnameCG $ varName v
-    return $ S.Alt (S.AsP v' (S.ConP k' (map S.VarP xs'))) body'
-altCG v (LitAlt l, _, body) = do
+    return $ S.Alt (S.ConP k' (map S.VarP xs')) body'
+altCG (LitAlt l, _, body) = do
     body' <- expCG body
-    v' <- qnameCG $ varName v
-    return $ S.Alt (S.AsP v' (S.LitP (litCG l))) body'
+    return $ S.Alt (S.LitP (litCG l)) body'
 
 -- Foo_Error msg -> error0 msg
-erraltCG :: Var -> CG S.Alt
-erraltCG v = do 
-  let tynm = tyConName . fst $ splitTyConApp (varType v)
+erraltCG :: Type -> CG S.Alt
+erraltCG t = do 
+  let tynm = tyConName . fst $ splitTyConApp t
   qerrnm <- qerrnmCG tynm
   addimport "Smten.Runtime.SmtenHS"
   return $ S.Alt (S.ConP qerrnm [S.VarP "msg"])
                  (S.AppE (S.VarE "Smten.Runtime.SmtenHS.error0") (S.VarE "msg"))
 
-altsCG :: Var -> [CoreAlt] -> CG [S.Alt]
-altsCG v ((DEFAULT, _, body) : xs) = do
-  xs' <- altsCG v xs
-  v' <- qnameCG $ varName v
+altsCG :: Type -> [CoreAlt] -> CG [S.Alt]
+altsCG t ((DEFAULT, _, body) : xs) = do
+  xs' <- altsCG t xs
   body' <- expCG body
-  return $ xs' ++ [S.Alt (S.VarP v') body']
-altsCG v xs = do
-  alts <- mapM (altCG v) xs
-  erralt <- erraltCG v
+  return $ xs' ++ [S.Alt S.wildP body']
+altsCG t xs = do
+  alts <- mapM altCG xs
+  erralt <- erraltCG t
   return (alts ++ [erralt])
 
