@@ -1,6 +1,6 @@
 
 module Smten.Runtime.ErrorString (
-    ErrorString, errstr, doerr
+    ErrorString(..), errstr, doerr
  ) where
 
 import Smten.Runtime.Formula

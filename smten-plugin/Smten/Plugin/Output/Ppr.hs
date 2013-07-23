@@ -79,6 +79,11 @@ instance Ppr Exp where
     ppr (LamE n e) = parens (text "\\" <+> ppr n <+> text "->" <+> ppr e)
     ppr (CaseE x ms) = parens (text "case" <+> ppr x <+> text "of" <+> braces (ppr ms))
     ppr (ListE xs) = text "[" <+> sep (punctuate comma (map ppr xs)) <+> text "]"
+    ppr (RecE x ms) = parens (ppr x <+> braces (vcat $ punctuate comma (map ppr ms)))
+    ppr (SigE x t) = parens (ppr x <+> text "::" <+> ppr t)
+
+instance Ppr Field where
+    ppr (Field n v) = ppr n <+> text "=" <+> ppr v
 
 instance Ppr [Alt] where
     ppr = vcat . map ppr

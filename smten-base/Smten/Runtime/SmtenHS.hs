@@ -3,7 +3,7 @@
 
 module Smten.Runtime.SmtenHS (
     SmtenHS0(..), SmtenHS1(..), SmtenHS2(..), SmtenHS3(..), SmtenHS4(..),
-    ite, realize, flrealize,
+    ite, iterealize, realize, flrealize, flmerge,
     ) where
 
 import Smten.Runtime.ErrorString
@@ -60,6 +60,10 @@ ite TrueF a _ = a
 ite FalseF _ b = b
 ite (NotF x) a b = ite x b a
 ite p a b = ite0 p a b
+
+{-# INLINEABLE iterealize #-}
+iterealize :: (SmtenHS0 a) => BoolF -> a -> a -> Model -> a
+iterealize p a b m = ite (realize m p) (realize m a) (realize m b)
     
 realize :: (SmtenHS0 a) => Model -> a -> a
 realize m x = m_cached m realize0 x
@@ -68,6 +72,15 @@ flrealize :: (SmtenHS0 a) => Model -> [Maybe (BoolF, a)] -> a
 flrealize m (Nothing : xs) = flrealize m xs
 flrealize m (Just (p, v) : xs) = ite (realize m p) (realize m v) (flrealize m xs)
 flrealize _ [] = error "flrealize failed"
+
+-- flmerge
+-- Merge two fields of an ite constructor.
+{-# INLINEABLE flmerge #-}
+flmerge :: (SmtenHS0 a) => BoolF -> Maybe (BoolF, a) -> Maybe (BoolF, a) -> Maybe (BoolF, a)
+flmerge _ Nothing Nothing = Nothing
+flmerge p (Just (g, v)) Nothing = Just (andF p g, v)
+flmerge p Nothing (Just (g, v)) = Just (andF (notF p) g, v)
+flmerge p (Just (ga, va)) (Just (gb, vb)) = Just (ite p ga gb, ite p va vb)
 
 instance SmtenHS0 BoolF where
     error0 = error "TODO: BoolF.error0"
@@ -80,3 +93,11 @@ instance SmtenHS0 BoolF where
         AndF a b -> andF (realize m a) (realize m b)
         NotF p -> notF (realize m p)
         VarF n -> lookupBoolF m n
+
+instance SmtenHS0 ErrorString where
+   realize0 m x@(ErrorString str) = x
+   realize0 m (ErrorString_Ite p a b) = iterealize p a b m
+   --primitive0 = error "primitive0 called on ErrorString"
+   error0 = id
+   --sapp0 f x = error0 x
+   ite0 = ErrorString_Ite

@@ -2,9 +2,10 @@
 module Smten.Plugin.Output.Syntax (
     Name, LanguagePragma, TyVar,
     Module(..), Con(..), Type(..), Class, Dec(..), Val(..), Data(..),
-    Method(..), Exp(..), Alt(..), Pat(..), Literal(..), RecField(..),
+    Method(..), Field(..), Exp(..), Alt(..), Pat(..), Literal(..), RecField(..),
     arrowT,
-    conE,
+    tup2P, wildP,
+    conE, tup2E,
     ) where
 
 type Name = String
@@ -29,6 +30,8 @@ data Val = Val Name Type Exp
 
 data RecField = RecField Name Type
 
+data Field = Field Name Exp
+
 data Con = Con Name [Type]
          | RecC Name [RecField]
 
@@ -47,6 +50,8 @@ data Exp =
  | LamE Name Exp
  | CaseE Exp [Alt]
  | ListE [Exp]
+ | RecE Exp [Field]
+ | SigE Exp Type
 
 conE :: Name -> [Exp] -> Exp
 conE nm xs = foldl AppE (VarE nm) xs
@@ -54,7 +59,7 @@ conE nm xs = foldl AppE (VarE nm) xs
 data Alt = Alt Pat Exp
 
 data Pat = LitP Literal
-         | ConP Name [Name]
+         | ConP Name [Pat]
          | RecP Name            -- Foo {}
          | VarP Name
          | AsP Name Pat
@@ -68,4 +73,13 @@ data Literal =
 
 arrowT :: Type -> Type -> Type
 arrowT a b = ConAppT "(->)" [a, b]
+
+tup2P :: Pat -> Pat -> Pat
+tup2P a b = ConP "(,)" [a, b]
+
+tup2E :: Exp -> Exp -> Exp
+tup2E a b = conE "(,)" [a, b]
+
+wildP :: Pat
+wildP = VarP "_"
 

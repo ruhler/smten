@@ -20,6 +20,7 @@ typeCG :: Type -> CG S.Type
 typeCG t = subst t >>= typeCG' False
 
 -- Return the type with SmtenHSN added to context as needed.
+topTypeCG :: Type -> CG S.Type
 topTypeCG t = subst t >>= typeCG' True
 
 typeCG' :: Bool -> Type -> CG S.Type

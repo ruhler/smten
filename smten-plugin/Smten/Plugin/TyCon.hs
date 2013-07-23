@@ -33,19 +33,20 @@ tyconCG t
      vs <- mapM (qnameCG . varName) (tyConTyVars t)
      return [S.DataD (S.Data t' vs [S.RecC cn fields])]
         
- | Just cs <- tyConDataCons_maybe t = dataCG (tyConName t) (tyConTyVars t) cs
+ | Just cs <- tyConDataCons_maybe t = dataCG t cs
  | isSynTyCon t = return []
  | otherwise = do
       lift $ errorMsg (text "Unsupported TyCon in tyconCG: " <+> ppr t)
       return []
 
-dataCG :: Name -> [TyVar] -> [DataCon] -> CG [S.Dec]
-dataCG n tyvars constrs = do
+dataCG :: TyCon -> [DataCon] -> CG [S.Dec]
+dataCG t constrs = do
+    let n = tyConName t
+        tyvars = tyConTyVars t
     dataD <- mkDataD n tyvars constrs
     shsD <- smtenHS n tyvars constrs
-    --itehelpers <- mkIteHelpersD n tyvars constrs
-    --return $ concat [dataD, itehelpers, shsD]
-    return $ concat [dataD, shsD]
+    itehelpers <- mkIteHelpersD t n tyvars constrs
+    return $ concat [dataD, itehelpers, shsD]
   
 -- data Foo a b ... = FooA A1 A2 ...
 --                  | FooB B1 B2 ...
@@ -123,11 +124,11 @@ smtenHS nm tyvs cs = do
    addimport "Smten.Runtime.SmtenHS"
    rel <- realizeD nm n cs
    --prim <- primD nm n
-   --ite <- iteD nm n cs
+   ite <- iteD nm n cs
    --err <- errorD nm n
    --sapp <- sappD nm n cs
    --return [S.InstD ctx ty [rel, ite, prim, err, sapp]]
-   return [S.InstD ctx ty [rel]]
+   return [S.InstD ctx ty [rel, ite]]
 
 --   primN = Foo_Prim
 primD :: Name -> Int -> CG S.Method
@@ -135,89 +136,88 @@ primD nm n = do
   qprimnm <- qprimnmCG nm
   return $ S.Method ("primitive" ++ show n) (S.VarE qprimnm)
 
----- iteN p (FooA a1 a2 ...) (FooA b1 b2 ...) = FooA (ite p a1 b1) (ite p a2 b2) ...
----- iteN p (FooB a1 a2 ...) (FooB b1 b2 ...) = FooB (ite p a1 b1) (ite p a2 b2) ...
-----  ...
----- iteN p (Foo_Error a1) (Foo_Error b1) = Foo_Error (ite p a1 b1)
----- iteN p a@(Foo_Ite {}) b@(Foo_ite {}) = Foo_Ite {
-----           __iteFooA = flmerge p (__iteFooA a) (__iteFooA b)
-----           __iteFooB = flmerge p (__iteFooB a) (__iteFooB b)
-----           ...
-----         }
----- iteN p a@(Foo_Prim r c) b -> Foo_Prim (iterealize p a b) (ite p c b)
----- iteN p a b@(Foo_Prim r c) -> Foo_Prim (iterealize p a b) (ite p a c)
----- iteN p a b -> ite p (__LiftIteFoo a) (__LiftIteFoo b)
---iteD :: Name -> Int -> [Con] -> CG H.Dec
---iteD n k cs = do
---  let ite a b = foldl1 H.AppE [
---                  H.VarE $ H.mkName "Smten.ite",
---                  H.VarE $ H.mkName "p", a, b]
---
---      mkcon :: Con -> H.Clause
---      mkcon (Con cn cts) =
---        let as = [H.mkName $ "a" ++ show i | i <- [1..length cts]]
---            bs = [H.mkName $ "b" ++ show i | i <- [1..length cts]]
---            pats = [H.VarP $ H.mkName "p",
---                    H.ConP (qnameCG cn) (map H.VarP as),
---                    H.ConP (qnameCG cn) (map H.VarP bs)]
---            ites = [ite (H.VarE a) (H.VarE b) | (a, b) <- zip as bs]
---            body = foldl H.AppE (H.ConE $ qnameCG cn) ites
---        in H.Clause pats (H.NormalB body) []
---
---      an = H.mkName "a"
---      bn = H.mkName "b"
---      ap = H.VarP an
---      bp = H.VarP bn
---      ae = H.VarE an
---      be = H.VarE bn
---      errpats = [H.VarP $ H.mkName "p",
---                 H.ConP (qerrnmCG n) [ap],
---                 H.ConP (qerrnmCG n) [bp]]
---      errbody = H.AppE (H.ConE (qerrnmCG n)) (ite ae be)
---      errcon = H.Clause errpats (H.NormalB errbody) []
---
---      mkfe :: Con -> H.FieldExp
---      mkfe (Con cn tys) = (iteflnmCG cn, foldl1 H.AppE [
---                        H.VarE $ H.mkName "Smten.flmerge",
---                        H.VarE $ H.mkName "p",
---                        H.AppE (H.VarE $ qiteflnmCG cn) ae,
---                        H.AppE (H.VarE $ qiteflnmCG cn) be])
---
---      efe = (iteerrnmCG n, foldl1 H.AppE [
---                        H.VarE $ H.mkName "Smten.flmerge",
---                        H.VarE $ H.mkName "p",
---                        H.AppE (H.VarE $ qiteerrnmCG n) ae,
---                        H.AppE (H.VarE $ qiteerrnmCG n) be])
---      itepats = [H.VarP $ H.mkName "p",
---                 H.AsP an (H.RecP (qitenmCG n) []),
---                 H.AsP bn (H.RecP (qitenmCG n) [])]
---      itebody = H.RecConE (qitenmCG n) (map mkfe cs ++ [efe])
---      itecon = H.Clause itepats (H.NormalB itebody) []
---
---      lprimpats = [H.VarP $ H.mkName "p",
---                   H.AsP an (H.ConP (qprimnmCG n) [H.VarP (H.mkName "r"), H.VarP $ H.mkName "c"]),
---                   bp]
---      lprimbody = foldl1 H.AppE [
---         H.ConE $ qprimnmCG n,
---         foldl1 H.AppE (map H.VarE [H.mkName $ "Smten.iterealize", H.mkName "p", an, bn]),
---         ite (H.VarE $ H.mkName "c") be]
---      lprimcon = H.Clause lprimpats (H.NormalB lprimbody) []
---
---      rprimpats = [H.VarP $ H.mkName "p", ap,
---                   H.AsP bn (H.ConP (qprimnmCG n) [H.VarP (H.mkName "r"), H.VarP $ H.mkName "c"])]
---      rprimbody = foldl1 H.AppE [
---         H.ConE $ qprimnmCG n,
---         foldl1 H.AppE (map H.VarE [H.mkName $ "Smten.iterealize", H.mkName "p", an, bn]),
---         ite ae (H.VarE $ H.mkName "c")]
---      rprimcon = H.Clause rprimpats (H.NormalB rprimbody) []
---
---      defpats = [H.VarP $ H.mkName "p", ap, bp]
---      defbody = ite (H.AppE (H.VarE $ qliftitenmCG n) ae)
---                    (H.AppE (H.VarE $ qliftitenmCG n) be)
---      defcon = H.Clause defpats (H.NormalB defbody) []
---
---  return $ H.FunD (H.mkName $ "ite" ++ show k) (map mkcon cs ++ [errcon, lprimcon, rprimcon, itecon, defcon])
---
+-- iteN = \p a b ->
+--   case (a, b) of
+--      (FooA a1 a2 ..., FooA b1 b2 ...) -> FooA (ite p a1 b1) (ite p a2 b2) ...
+--      (FooB a1 a2 ..., FooB b1 b2 ...) -> FooB (ite p a1 b1) (ite p a2 b2) ...
+--      ...
+--      (Foo_Error a1, Foo_Error b1) -> Foo_Error (ite p a1 b1)
+--      (Foo_Ite {}, Foo_Ite {}) -> Foo_Ite {
+--           __iteFooA = flmerge p (__iteFooA a) (__iteFooA b)
+--           __iteFooB = flmerge p (__iteFooB a) (__iteFooB b)
+--           ...
+--         }
+--      (Foo_Prim r c, _) -> Foo_Prim (iterealize p a b) (ite p c b)
+--      (_, Foo_Prim r c) -> Foo_Prim (iterealize p a b) (ite p a c)
+--      _ -> ite p (__LiftIteFoo a) (__LiftIteFoo b)
+iteD :: Name -> Int -> [DataCon] -> CG S.Method
+iteD n k cs = do
+  addimport "Smten.Runtime.SmtenHS"
+  let ite a b = foldl1 S.AppE [S.VarE "Smten.Runtime.SmtenHS.ite", S.VarE "p", a, b]
+
+      mkcon :: DataCon -> CG S.Alt
+      mkcon d = do
+        cn <- qnameCG $ dataConName d
+        let nargs = length (dataConOrigArgTys d)
+            as = ["a" ++ show i | i <- [1..nargs]]
+            bs = ["b" ++ show i | i <- [1..nargs]]
+            pat = S.tup2P (S.ConP cn (map S.VarP as)) (S.ConP cn (map S.VarP bs))
+            ites = [ite (S.VarE a) (S.VarE b) | (a, b) <- zip as bs]
+            body = S.conE cn ites
+        return $ S.Alt pat body
+
+  qerrnm <- qerrnmCG n
+  let errpat = S.tup2P (S.ConP qerrnm [S.VarP "a"]) (S.ConP qerrnm [S.VarP "b"])
+      errbody = S.AppE (S.VarE qerrnm) (ite (S.VarE "a") (S.VarE "b"))
+      errcon = S.Alt errpat errbody
+
+      mkfe :: DataCon -> CG S.Field
+      mkfe d = do
+        iteflnm <- iteflnmCG $ dataConName d
+        qiteflnm <- qiteflnmCG $ dataConName d
+        return $ S.Field iteflnm (foldl1 S.AppE [
+                        S.VarE "Smten.Runtime.SmtenHS.flmerge",
+                        S.VarE "p",
+                        S.AppE (S.VarE qiteflnm) (S.VarE "a"),
+                        S.AppE (S.VarE qiteflnm) (S.VarE "b")])
+
+  iteerrnm <- iteerrnmCG n
+  qiteerrnm <- qiteerrnmCG n
+  let efe = S.Field iteerrnm (foldl1 S.AppE [
+                        S.VarE "Smten.Runtime.SmtenHS.flmerge",
+                        S.VarE "p",
+                        S.AppE (S.VarE qiteerrnm) (S.VarE "a"),
+                        S.AppE (S.VarE qiteerrnm) (S.VarE "b")])
+  qitenm <- qitenmCG n
+  fes <- mapM mkfe cs
+  let itepat = S.tup2P (S.RecP qitenm) (S.RecP qitenm)
+      itebody = S.RecE (S.VarE qitenm) (fes ++ [efe])
+      itecon = S.Alt itepat itebody
+
+  qprimnm <- qprimnmCG n
+  let lprimpat = S.tup2P (S.ConP qprimnm [S.VarP "r", S.VarP "c"]) S.wildP
+      lprimbody = S.conE qprimnm [
+         foldl1 S.AppE (map S.VarE ["Smten.Runtime.SmtenHS.iterealize", "p", "a", "b"]),
+         ite (S.VarE "c") (S.VarE "b")]
+      lprimcon = S.Alt lprimpat lprimbody
+
+      rprimpat = S.tup2P S.wildP (S.ConP qprimnm [S.VarP "r", S.VarP "c"])
+      rprimbody = S.conE qprimnm [
+         foldl1 S.AppE (map S.VarE ["Smten.Runtime.SmtenHS.iterealize", "p", "a", "b"]),
+         ite (S.VarE "a") (S.VarE "c")]
+      rprimcon = S.Alt rprimpat rprimbody
+
+  qliftitenm <- qliftitenmCG n
+  let defpat = S.wildP
+      defbody = ite (S.AppE (S.VarE qliftitenm) (S.VarE "a"))
+                    (S.AppE (S.VarE qliftitenm) (S.VarE "b"))
+      defcon = S.Alt defpat defbody
+
+  cons <- mapM mkcon cs
+  let casee = S.CaseE (S.tup2E (S.VarE "a") (S.VarE "b")) (cons ++ [errcon, lprimcon, rprimcon, itecon, defcon])
+      body = S.LamE "p" (S.LamE "a" (S.LamE "b" casee))
+  return $ S.Method ("ite" ++ show k) body
+
 ----   errorN = Foo_Error
 --errorD :: Name -> Int -> CG H.Dec
 --errorD nm n = do
@@ -241,7 +241,7 @@ realizeD n k cs = do
         cn <- qnameCG $ dataConName d
         let nargs = length $ dataConOrigArgTys d
             xs = ["x" ++ show i | i <- [1..nargs]]
-            pat = S.ConP cn xs
+            pat = S.ConP cn (map S.VarP xs)
             rs = [foldl1 S.AppE [
                     S.VarE "Smten.Runtime.SmtenHS.realize",
                     S.VarE "m",
@@ -250,7 +250,7 @@ realizeD n k cs = do
         return $ S.Alt pat body
 
   qprimnm <- qprimnmCG n
-  let primpat = S.ConP qprimnm ["r", "_"]
+  let primpat = S.ConP qprimnm [S.VarP "r", S.wildP]
       primbody = S.AppE (S.VarE "r") (S.VarE "m")
       primcon = S.Alt primpat primbody
 
@@ -267,7 +267,7 @@ realizeD n k cs = do
       itecon = S.Alt itepat itebody
 
   qerrnm <- qerrnmCG n
-  let errpat = S.ConP qerrnm ["_"]
+  let errpat = S.ConP qerrnm [S.wildP]
       errbody = S.VarE "x"
       errcon = S.Alt errpat errbody
 
@@ -309,72 +309,76 @@ realizeD n k cs = do
 --      defbody = H.AppE (H.VarE $ H.mkName "f") (H.VarE $ H.mkName "x")
 --      defcon = H.Clause defpats (H.NormalB defbody) []
 --  return $ H.FunD (H.mkName $ "sapp" ++ show k) [itecon, errcon, primcon, defcon]
---
---mkIteHelpersD :: Name -> [TyVar] -> [Con] -> CG [H.Dec]
---mkIteHelpersD n ts cs = do
---    null <- mkNullIteD n ts cs
---    to <- mkLiftIteD n ts cs
---    return $ concat [null, to]
---
----- __IteNullFoo :: Foo a b ...
----- __IteNullFoo = Foo_Ite {
-----    __fl* = Nothing,
-----    ...
----- }
---mkNullIteD :: Name -> [TyVar] -> [Con] -> CG [H.Dec]
---mkNullIteD n ts cs = do
---  let dt = appsT (conT n) (map tyVarType ts)
---  H.SigD _ ty' <- topSigCG (TopSig (name "DONT_CARE") [] dt)
---  let sig = H.SigD (nullitenmCG n) ty'
---
---      fes = [(iteflnmCG cn, H.ConE $ H.mkName "Prelude.Nothing") | Con cn _ <- cs]
---      efe = (iteerrnmCG n, H.ConE $ H.mkName "Prelude.Nothing")
---      body = H.RecConE (qitenmCG n) (fes ++ [efe])
---      clause = H.Clause [] (H.NormalB body) []
---      fun = H.FunD (nullitenmCG n) [clause]
---  return [sig, fun]
---
----- __IteLiftFoo :: Foo a b ... -> Foo a b ...
----- __IteLiftFoo x@(FooA {}) = (__IteNullFoo :: Foo a b ...) {
-----         __iteFooA = Just (True, x)
-----         }
-----  ...
----- __IteLiftFoo x@(Foo_Error msg) = (__IteNullFoo :: Foo a b ...) {
-----         __iteErrFoo = Just (True, x)
-----         }
----- __IteLiftFoo x@(Foo_Ite {}) = x
----- __IteLiftFoo (Foo_Prim {}) = Prelude.error "iteliftFoo.prim"
---mkLiftIteD :: Name -> [TyVar] -> [Con] -> CG [H.Dec]
---mkLiftIteD n ts cs = do
---  let dt = appsT (conT n) (map tyVarType ts)
---      ty = arrowT dt dt
---  tyme <- typeCG dt
---  H.SigD _ ty' <- topSigCG (TopSig (name "DONT_CARE") [] ty)
---  let sig = H.SigD (liftitenmCG n) ty'
---
---      mkcon :: Con -> H.Clause
---      mkcon (Con cn cts) =
---        let pats = [H.AsP (H.mkName "x") (H.RecP (qnameCG cn) [])]
---            tuple = H.TupE [H.ConE $ H.mkName "Smten.True", H.VarE $ H.mkName "x"]
---            fields = [(iteflnmCG cn, H.AppE (H.ConE $ H.mkName "Prelude.Just") tuple)]
---            body = H.RecUpdE (H.SigE (H.VarE $ qnullitenmCG n) tyme) fields
---        in H.Clause pats (H.NormalB body) []
---
---      errpats = [H.AsP (H.mkName "x") (H.RecP (qerrnmCG n) [])]
---      errtuple = H.TupE [H.ConE $ H.mkName "Smten.True", H.VarE $ H.mkName "x"]
---      errfields = [(iteerrnmCG n, H.AppE (H.ConE $ H.mkName "Prelude.Just") errtuple)]
---      errbody = H.RecUpdE (H.SigE (H.VarE $ qnullitenmCG n) tyme) errfields
---      errcon = H.Clause errpats (H.NormalB errbody) []
---
---      itepats = [H.AsP (H.mkName "x") (H.RecP (qitenmCG n) [])]
---      itebody = H.VarE $ H.mkName "x"
---      itecon = H.Clause itepats (H.NormalB itebody) []
---
---      primpats = [H.RecP (qprimnmCG n) []]
---      primbody = H.AppE (H.VarE $ H.mkName "Prelude.error")
---                        (H.LitE $ H.StringL (H.nameBase (liftitenmCG n) ++ ".prim"))
---      primcon = H.Clause primpats (H.NormalB primbody) []
---
---      fun = H.FunD (liftitenmCG n) (map mkcon cs ++ [primcon, itecon, errcon])
---  return [sig, fun]
---
+
+mkIteHelpersD :: TyCon -> Name -> [TyVar] -> [DataCon] -> CG [S.Dec]
+mkIteHelpersD t n ts cs = do
+    null <- mkNullIteD t n ts cs
+    to <- mkLiftIteD t n ts cs
+    return $ concat [null, to]
+
+-- __IteNullFoo :: Foo a b ...
+-- __IteNullFoo = Foo_Ite {
+--    __fl* = Nothing,
+--    ...
+-- }
+mkNullIteD :: TyCon -> Name -> [TyVar] -> [DataCon] -> CG [S.Dec]
+mkNullIteD t n ts cs = do
+  let dt = mkTyConApp t (mkTyVarTys ts)
+  ty <- topTypeCG dt
+  nullitenm <- nullitenmCG n
+  iteflnms <- mapM (iteflnmCG . dataConName) cs
+  iteerrnm <- iteerrnmCG n
+  qitenm <- qitenmCG n
+  let fes = [S.Field iteflnm (S.conE "Prelude.Nothing" []) | iteflnm <- iteflnms]
+      efe = S.Field iteerrnm (S.conE "Prelude.Nothing" [])
+      body = S.RecE (S.VarE qitenm) (fes ++ [efe])
+  return [S.ValD (S.Val nullitenm ty body)]
+
+-- __IteLiftFoo :: Foo a b ... -> Foo a b ...
+-- __IteLiftFoo = \x ->
+--    case x of
+--      FooA {} -> (__IteNullFoo :: Foo a b ...) {
+--                      __iteFooA = Just (True, x)
+--                   }
+--      ...
+--      Foo_Error msg -> (__IteNullFoo :: Foo a b ...) {
+--                      __iteErrFoo = Just (True, x)
+--                   }
+--      Foo_Ite {} -> x
+mkLiftIteD :: TyCon -> Name -> [TyVar] -> [DataCon] -> CG [S.Dec]
+mkLiftIteD t n ts cs = do
+  let dt = mkTyConApp t (mkTyVarTys ts)
+      ty = mkFunTy dt dt
+  tyme <- typeCG dt
+  ty' <- topTypeCG ty
+  liftitenm <- liftitenmCG n
+  qnullitenm <- qnullitenmCG n
+  let mkcon :: DataCon -> CG S.Alt
+      mkcon d = do
+        let cn = dataConName d
+        qname <- qnameCG cn
+        iteflnm <- iteflnmCG cn
+        let pat = S.RecP qname
+            tuple = S.tup2E (S.conE "Smten.Runtime.Formula.TrueF" []) (S.VarE "x")
+            fields = [S.Field iteflnm (S.conE "Prelude.Just" [tuple])]
+            body = S.RecE (S.SigE (S.VarE qnullitenm) tyme) fields
+        return $ S.Alt pat body
+
+  qerrnm <- qerrnmCG n
+  iteerrnm <- iteerrnmCG n
+  let errpat = S.RecP qerrnm
+      errtuple = S.tup2E (S.conE "Smten.Runtime.Formula.TrueF" []) (S.VarE "x")
+      errfields = [S.Field iteerrnm (S.conE "Prelude.Just" [errtuple])]
+      errbody = S.RecE (S.SigE (S.VarE qnullitenm) tyme) errfields
+      errcon = S.Alt errpat errbody
+
+  qitenm <- qitenmCG n
+  let itepat = S.RecP qitenm
+      itebody = S.VarE "x"
+      itecon = S.Alt itepat itebody
+
+  cons <- mapM mkcon cs
+  let casee = S.CaseE (S.VarE "x") (cons ++ [itecon, errcon])
+      body = S.LamE "x" casee
+  return [S.ValD (S.Val liftitenm ty' body)]
+

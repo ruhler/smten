@@ -119,7 +119,7 @@ altCG v (DataAlt k, xs, body) = withlocals (map varName xs) $ do
     xs' <- mapM (qnameCG . varName) xs
     k' <- qnameCG $ getName k
     v' <- qnameCG $ varName v
-    return $ S.Alt (S.AsP v' (S.ConP k' xs')) body'
+    return $ S.Alt (S.AsP v' (S.ConP k' (map S.VarP xs'))) body'
 altCG v (LitAlt l, _, body) = do
     body' <- expCG body
     v' <- qnameCG $ varName v
