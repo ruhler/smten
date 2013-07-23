@@ -72,11 +72,23 @@ altCG v (LitAlt l, _, body) = do
     v' <- qnameCG $ varName v
     return $ S.Alt (S.AsP v' (S.LitP (litCG l))) body'
 
+-- Foo_Error msg -> error0 msg
+erraltCG :: Var -> CG S.Alt
+erraltCG v = do 
+  let tynm = tyConName . fst $ splitTyConApp (varType v)
+  qerrnm <- qerrnmCG tynm
+  addimport "Smten.Runtime.SmtenHS"
+  return $ S.Alt (S.ConP qerrnm [S.VarP "msg"])
+                 (S.AppE (S.VarE "Smten.Runtime.SmtenHS.error0") (S.VarE "msg"))
+
 altsCG :: Var -> [CoreAlt] -> CG [S.Alt]
 altsCG v ((DEFAULT, _, body) : xs) = do
-  xs' <- mapM (altCG v) xs
+  xs' <- altsCG v xs
   v' <- qnameCG $ varName v
   body' <- expCG body
   return $ xs' ++ [S.Alt (S.VarP v') body']
-altsCG v xs = mapM (altCG v) xs
+altsCG v xs = do
+  alts <- mapM (altCG v) xs
+  erralt <- erraltCG v
+  return (alts ++ [erralt])
 
