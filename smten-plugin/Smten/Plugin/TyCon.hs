@@ -123,12 +123,10 @@ smtenHS nm tyvs cs = do
        ty = S.ConAppT ("Smten.Runtime.SmtenHS.SmtenHS" ++ show n) [S.ConAppT qtyname tyvs']
    addimport "Smten.Runtime.SmtenHS"
    rel <- realizeD nm n cs
-   --prim <- primD nm n
+   prim <- primD nm n
    ite <- iteD nm n cs
    err <- errorD nm n
-   --sapp <- sappD nm n cs
-   --return [S.InstD ctx ty [rel, ite, prim, err, sapp]]
-   return [S.InstD ctx ty [rel, ite, err]]
+   return [S.InstD ctx ty [rel, ite, prim, err]]
 
 --   primN = Foo_Prim
 primD :: Name -> Int -> CG S.Method
@@ -275,40 +273,6 @@ realizeD n k cs = do
       body = S.LamE "m" $ (S.LamE "x") casee
   return $ S.Method ("realize" ++ show k) body
   
----- sappN f x@(Foo_Ite {}) = flsapp f x [__iteFooA x, __iteFooB x, ...]
----- sappN f (Foo_Error msg) = error0 msg
----- sappN f (Foo_Prim r c) = primsapp f r c
----- sappN f x = f x
---sappD :: Name -> Int -> [Con] -> CG H.Dec
---sappD n k cs = do
---  let primpats = [H.VarP $ H.mkName "f", H.ConP (qprimnmCG n) [H.VarP (H.mkName "r"), H.VarP (H.mkName "c")]]
---      primbody = foldl1 H.AppE [
---                    H.VarE $ H.mkName "Smten.primsapp",
---                    H.VarE $ H.mkName "f",
---                    H.VarE $ H.mkName "r",
---                    H.VarE $ H.mkName "c"]
---      primcon = H.Clause primpats (H.NormalB primbody) []
---
---      x = H.VarE $ H.mkName "x"
---
---      itecons = [H.AppE (H.VarE $ qiteflnmCG cn) x | Con cn _ <- cs]
---      iteerr = H.AppE (H.VarE $ qiteerrnmCG n) x
---      itepats = [H.VarP $ H.mkName "f", H.AsP (H.mkName "x") (H.RecP (qitenmCG n) [])]
---      itebody = foldl1 H.AppE [
---                    H.VarE $ H.mkName "Smten.flsapp",
---                    H.VarE $ H.mkName "f", x,
---                    H.ListE $ itecons ++ [iteerr]]
---      itecon = H.Clause itepats (H.NormalB itebody) []
---
---      errpats = [H.VarP $ H.mkName "f", H.ConP (qerrnmCG n) [H.VarP $ H.mkName "msg"]]
---      errbody = H.AppE (H.VarE $ H.mkName "Smten.error0") (H.VarE $ H.mkName "msg")
---      errcon = H.Clause errpats (H.NormalB errbody) []
---
---      defpats = [H.VarP $ H.mkName "f", H.VarP $ H.mkName "x"]
---      defbody = H.AppE (H.VarE $ H.mkName "f") (H.VarE $ H.mkName "x")
---      defcon = H.Clause defpats (H.NormalB defbody) []
---  return $ H.FunD (H.mkName $ "sapp" ++ show k) [itecon, errcon, primcon, defcon]
-
 mkIteHelpersD :: TyCon -> Name -> [TyVar] -> [DataCon] -> CG [S.Dec]
 mkIteHelpersD t n ts cs = do
     null <- mkNullIteD t n ts cs
