@@ -125,10 +125,10 @@ smtenHS nm tyvs cs = do
    rel <- realizeD nm n cs
    --prim <- primD nm n
    ite <- iteD nm n cs
-   --err <- errorD nm n
+   err <- errorD nm n
    --sapp <- sappD nm n cs
    --return [S.InstD ctx ty [rel, ite, prim, err, sapp]]
-   return [S.InstD ctx ty [rel, ite]]
+   return [S.InstD ctx ty [rel, ite, err]]
 
 --   primN = Foo_Prim
 primD :: Name -> Int -> CG S.Method
@@ -218,12 +218,11 @@ iteD n k cs = do
       body = S.LamE "p" (S.LamE "a" (S.LamE "b" casee))
   return $ S.Method ("ite" ++ show k) body
 
-----   errorN = Foo_Error
---errorD :: Name -> Int -> CG H.Dec
---errorD nm n = do
---  let body = H.NormalB $ H.VarE (qerrnmCG nm)
---      fun = H.ValD (H.VarP (H.mkName $ "error" ++ show n)) body []
---  return fun
+--   errorN = Foo_Error
+errorD :: Name -> Int -> CG S.Method
+errorD nm n = do
+  qerrnm <- qerrnmCG nm
+  return $ S.Method ("error" ++ show n) (S.VarE qerrnm)
 
 --   realizeN = \m -> \x ->
 --     case x of

@@ -5,7 +5,6 @@ module Smten.Compiled.Smten.System.IO0 (
   ) where
 
 import qualified Prelude as P
-import Smten.Runtime.SmtenHS
 import Smten.Compiled.Smten.Smten.Base
 
 return_io :: a -> P.IO a
