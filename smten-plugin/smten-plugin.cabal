@@ -22,6 +22,7 @@ library
     Smten.Plugin.Plugin
   other-modules:
     Smten.Plugin.CG
+    Smten.Plugin.Exp
     Smten.Plugin.Name
     Smten.Plugin.TyCon
     Smten.Plugin.Type
