@@ -76,7 +76,7 @@ tests = do
 
        tstcmplx (Just (jv, kv, lv)) = p jv kv lv
        tstcmplx _ = False
-   symtest "SMT.Core.Complex" tstcmplx [pure] $ do
+   symtest "SMT.Core.Complex" tstcmplx [debug "complex.dbg" pure] $ do
        j <- free_Bool
        k <- free_Bool
        l <- free_Bool

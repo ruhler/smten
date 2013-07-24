@@ -22,6 +22,8 @@ class SolverAST ctx exp | ctx -> exp where
 --  bit :: ctx -> Integer -> Integer -> IO exp
   var :: ctx -> String -> IO exp
 
+  not_bool :: ctx -> exp -> IO exp
+  and_bool :: ctx -> exp -> exp -> IO exp
   ite_bool :: ctx -> exp -> exp -> exp -> IO exp
 
 --  ite_integer :: ctx -> exp -> exp -> exp -> IO exp

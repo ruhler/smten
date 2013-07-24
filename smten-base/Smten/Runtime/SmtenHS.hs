@@ -113,12 +113,12 @@ primsapp f r c = primitive0 (\m -> realize m (f (r m))) (f c)
 
 instance SmtenHS0 BoolF where
     error0 = error "TODO: BoolF.error0"
-    ite0 = IteF
+    ite0 = iteF
     realize0 m x =
       case x of
         TrueF -> TrueF
         FalseF -> FalseF
-        IteF p a b -> ite (realize m p) (realize m a) (realize m b)
+        IteF p a b -> iteF (realize m p) (realize m a) (realize m b)
         AndF a b -> andF (realize m a) (realize m b)
         NotF p -> notF (realize m p)
         VarF n -> lookupBoolF m n

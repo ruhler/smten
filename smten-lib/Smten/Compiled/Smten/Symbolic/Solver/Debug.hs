@@ -71,6 +71,8 @@ instance SolverAST DebugLL Debug where
     --bit dbg w v = return $ dbgLit (bv_make w v)
     var dbg n = return $ dbgVar n
 
+    and_bool = op "&&"
+    not_bool dbg x = return $ dbgApp (dbgText "!") (sh x)
     ite_bool dbg p a b = return $ dbgCase "True" (sh p) (sh a) (sh b)
     --ite_integer dbg p a b = return $ dbgCase "True" (sh p) (sh a) (sh b)
     --ite_bit dbg p a b = return $ dbgCase "True" (sh p) (sh a) (sh b)

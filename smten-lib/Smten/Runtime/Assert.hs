@@ -72,9 +72,15 @@ instance Supported BoolF where
         b' <- use b
         liftIO $ ite_bool ctx p' a' b'
 
-    -- TODO: add method for these in SolverAST.
-    define ctx (AndF a b) = define ctx (IteF a b FalseF)
-    define ctx (NotF x) = define ctx (IteF x FalseF TrueF)
+    define ctx (AndF a b) = do
+        a' <- use a
+        b' <- use b
+        liftIO $ and_bool ctx a' b'
+
+    define ctx (NotF a) = do
+        a' <- use a
+        liftIO $ not_bool ctx a'
+
 --   define ctx (S.Bool_Prim _ c) = define ctx c
 --   define ctx (S.Bool_Error msg) = liftIO $ do
 --       id <- fresh

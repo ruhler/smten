@@ -61,6 +61,9 @@ instance SolverAST PureSolver Exp where
                     Just x -> x
                     Nothing -> error $ "var: " ++ nm ++ " not found"
 
+  and_bool ctx a b = ite_bool ctx a b (Exp $ const (Bool False))
+  not_bool ctx a = ite_bool ctx a (Exp $ const (Bool False)) (Exp $ const (Bool True))
+
   ite_bool _ (Exp p) (Exp a) (Exp b) = return . Exp $ \m ->
      case p m of
         Bool True -> a m
