@@ -1,0 +1,41 @@
+name: smten-yices2
+version: 3.0.0.0
+synopsis: Smten library
+license: AllRightsReserved
+license-file: LICENSE
+author: Richard Uhler
+maintainer: ruhler@csail.mit.edu
+category: Language
+build-type: Simple
+cabal-version: >=1.8
+stability: experimental
+
+source-repository this
+  type: git
+  location: /afs/csail.mit.edu/u/r/ruhler/git/smten
+  --branch:
+  --tag:
+
+library
+  exposed-modules:
+    Smten.Symbolic.Solver.Yices2
+    Smten.Compiled.Smten.Symbolic.Solver.Yices2
+  
+    Smten.Tests.Yices2
+    Smten.Compiled.Smten.Tests.Yices2
+
+  other-modules:
+    Smten.Runtime.Yices2FFI
+    
+  build-depends: base ==4.6.*,
+                 smten-plugin ==3.0.*, smten-base ==3.0.*, smten-lib ==3.0.*
+  extra-libraries: yices2
+  ghc-options: -fwarn-unused-binds -fwarn-unused-imports
+
+Test-Suite test-smten-yices2
+  type: exitcode-stdio-1.0
+  main-is: tests.hs
+  build-depends: base ==4.6.*,
+                 smten-base ==3.0.*, smten-lib ==3.0.*
+  extra-libraries: yices2
+

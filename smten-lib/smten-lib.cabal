@@ -27,22 +27,30 @@ library
 
     Smten.Control.Monad.Reader
     Smten.Control.Monad.Reader.Class
+    Smten.Control.Monad.Trans
+    Smten.Symbolic0
+    Smten.Symbolic
+    Smten.Symbolic.Solver.Pure
+    Smten.Symbolic.Solver.Debug
     Smten.Tests.SMT.Test
     Smten.Tests.SMT.Core
     Smten.Tests.Test
     Smten.Tests.Basic
     Smten.Tests.All
 
-    Smten.Symbolic0
-    Smten.Symbolic
-    Smten.Symbolic.Solver.Pure
-    Smten.Symbolic.Solver.Debug
-
     Smten.Compiled.Smten.Control.Monad.Reader
     Smten.Compiled.Smten.Control.Monad.Reader.Class
+    Smten.Compiled.Smten.Control.Monad.Trans
+    Smten.Compiled.Smten.Symbolic0
+    Smten.Compiled.Smten.Symbolic
     Smten.Compiled.Smten.Symbolic.Solver.Pure
     Smten.Compiled.Smten.Symbolic.Solver.Debug
-    Smten.Compiled.Smten.Symbolic0
+    Smten.Compiled.Smten.Tests.SMT.Test
+    Smten.Compiled.Smten.Tests.SMT.Core
+    Smten.Compiled.Smten.Tests.Test
+    Smten.Compiled.Smten.Tests.Basic
+    Smten.Compiled.Smten.Tests.All
+
 
   build-depends: base ==4.6.*, hashtables ==1.0.*, mtl ==2.1.*, pretty ==1.1.*, 
                  smten-base ==3.0.*, smten-plugin ==3.0.*

@@ -1,6 +1,4 @@
 Priority::
-* Add yices2 solver (verifying we can actually use an SMT solver)
-
 * Add SMT Datatype test
 * Add SMT Error test
 
