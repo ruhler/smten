@@ -9,7 +9,6 @@ module Smten.Compiled.Smten.Symbolic0 (
     ) where
 
 import Control.Monad.State
-import Data.Dynamic
 import Data.Functor((<$>))
 
 import Smten.Runtime.ErrorString

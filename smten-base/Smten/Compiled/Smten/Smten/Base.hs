@@ -34,12 +34,6 @@ toList__ (x:xs) = Cons__ x (toList__ xs)
 error :: (SmtenHS0 a) => List__ Char -> a
 error msg = error0 (errstr (toHSString msg))
 
-instance SmtenHS2 (->) where
-    error2 msg = \x -> error0 msg
-    realize2 m f = \x -> realize m (f (realize m x))
-    ite2 p fa fb = \x -> ite p (fa x) (fb x)
-    primitive2 r f = \x -> primitive0 (\m -> r m x) (f x)
-
 instance SmtenHS0 P.Int where
     error0 = P.error "TODO: Int.error0"
     realize0 = P.error "TODO: Int.realize0"

@@ -22,9 +22,7 @@ data Model = Model {
 
 data Exp = Exp (Model -> Any)
 
-data PureSolver = PureSolver {
-    models :: IORef [Model]
-}
+data PureSolver = PureSolver (IORef [Model])
 
 instance SolverAST PureSolver Exp where
   declare (PureSolver mref) BoolTF nm = do

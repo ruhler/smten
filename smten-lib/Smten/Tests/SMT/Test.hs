@@ -1,20 +1,26 @@
 
 {-# LANGUAGE NoImplicitPrelude, RebindableSyntax #-}
-module Smten.Tests.SMT.Test (symtesteq, symtest) where
+module Smten.Tests.SMT.Test (SMTTest, symtesteq, symtest, runtest) where
 
 import Smten.Prelude
+
+import Smten.Control.Monad.Reader
 import Smten.Symbolic
 import Smten.Tests.Test
 
-symtesteq :: (Eq a) => String -> Maybe a -> [Solver] -> Symbolic a -> IO ()
-symtesteq nm wnt slv q = symtest nm ((==) wnt) slv q
+type SMTTest = ReaderT Solver IO
 
-symtest :: String -> (Maybe a -> Bool) -> [Solver] -> Symbolic a -> IO ()
-symtest nm tst slv q = mapM_ (symtest1 nm tst q) slv
+symtesteq :: (Eq a) => String -> Maybe a -> Symbolic a -> SMTTest ()
+symtesteq nm wnt q = symtest nm ((==) wnt) q
 
-symtest1 :: String -> (Maybe a -> Bool) -> Symbolic a -> Solver -> IO ()
-symtest1 nm tst q slv = do
+symtest :: String -> (Maybe a -> Bool) -> Symbolic a -> SMTTest ()
+symtest nm tst q = do
+  slv <- ask
+  liftIO $ do
     putStrLn $ nm ++ "..."
     got <- run_symbolic slv q
     test nm (tst got)
+
+runtest :: Solver -> SMTTest () -> IO ()
+runtest s t = runReaderT t s
 

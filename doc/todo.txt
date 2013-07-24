@@ -44,9 +44,9 @@ Known Bugs::
 * STP bug (in Bit)
 * STP bv_and bug (in Bit)
 * Yices1 left shift (in Bit)
+* newtype doesn't work: the generated code doesn't typecheck.
 
 Suspected Bugs::
-* Test newtype
 * Memory leaks of solvers
             
 Other::

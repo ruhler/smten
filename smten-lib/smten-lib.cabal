@@ -25,6 +25,8 @@ library
     Smten.Runtime.Debug
     Smten.Runtime.Result
 
+    Smten.Control.Monad.Reader
+    Smten.Control.Monad.Reader.Class
     Smten.Tests.SMT.Test
     Smten.Tests.SMT.Core
     Smten.Tests.Test
@@ -36,6 +38,8 @@ library
     Smten.Symbolic.Solver.Pure
     Smten.Symbolic.Solver.Debug
 
+    Smten.Compiled.Smten.Control.Monad.Reader
+    Smten.Compiled.Smten.Control.Monad.Reader.Class
     Smten.Compiled.Smten.Symbolic.Solver.Pure
     Smten.Compiled.Smten.Symbolic.Solver.Debug
     Smten.Compiled.Smten.Symbolic0

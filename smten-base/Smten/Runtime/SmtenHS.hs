@@ -128,3 +128,10 @@ instance SmtenHS0 ErrorString where
    realize0 m (ErrorString_Ite p a b) = iterealize p a b m
    error0 = id
    ite0 = ErrorString_Ite
+
+instance SmtenHS2 (->) where
+    error2 msg = \x -> error0 msg
+    realize2 m f = \x -> realize m (f (realize m x))
+    ite2 p fa fb = \x -> ite p (fa x) (fb x)
+    primitive2 r f = \x -> primitive0 (\m -> r m x) (f x)
+

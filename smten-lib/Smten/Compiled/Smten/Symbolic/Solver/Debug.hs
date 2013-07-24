@@ -8,8 +8,6 @@ module Smten.Compiled.Smten.Symbolic.Solver.Debug (debug) where
 import System.IO
 
 import Smten.Runtime.Debug
-import Smten.Runtime.Formula
-import Smten.Runtime.Result
 import Smten.Runtime.SolverAST
 import Smten.Runtime.Solver as D
 import qualified Smten.Compiled.Smten.Smten.Base as S

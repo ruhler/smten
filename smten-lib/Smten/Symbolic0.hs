@@ -1,4 +1,5 @@
 
+{-# LANGUAGE EmptyDataDecls #-}
 {-# LANGUAGE NoImplicitPrelude, RebindableSyntax #-}
 module Smten.Symbolic0 (
     Symbolic, Solver, run_symbolic,
@@ -11,7 +12,7 @@ import Smten.Plugin.Annotations
 
 {-# ANN module PrimitiveModule #-}
 
-data Solver = Solver
+data Solver
 
 -- List implementation of Symbolic monad.
 data Symbolic a = Symbolic { s_elems :: [a] }

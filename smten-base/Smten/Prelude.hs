@@ -11,6 +11,7 @@ module Smten.Prelude (
     Enum(..),
     Num((+), (-), (*), negate, abs, signum, fromInteger),
     Monad(..),
+    Functor(fmap),
     mapM, mapM_, sequence, sequence_,
     maybe,
     (&&), (||), not, otherwise,
@@ -40,6 +41,7 @@ module Smten.Prelude (
 import Smten.Control.Monad
 import Smten.Data.Bool
 import Smten.Data.Function
+import Smten.Data.Functor
 import Smten.Data.Enum
 import Smten.Data.EnumInteger ()
 import Smten.Data.Eq

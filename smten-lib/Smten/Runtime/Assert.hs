@@ -13,7 +13,6 @@ import qualified Data.HashTable.IO as H
 
 import Smten.Runtime.FreeID
 import Smten.Runtime.Formula
-import Smten.Runtime.SmtenHS
 import Smten.Runtime.SolverAST as ST
 
 type Cache exp = H.BasicHashTable (StableName Any) exp
@@ -72,14 +71,8 @@ instance Supported BoolF where
         b' <- use b
         liftIO $ ite_bool ctx p' a' b'
 
-    define ctx (AndF a b) = do
-        a' <- use a
-        b' <- use b
-        liftIO $ and_bool ctx a' b'
-
-    define ctx (NotF a) = do
-        a' <- use a
-        liftIO $ not_bool ctx a'
+    define ctx (AndF a b) = binary (and_bool ctx) a b
+    define ctx (NotF a) = unary (not_bool ctx) a
 
 --   define ctx (S.Bool_Prim _ c) = define ctx c
 --   define ctx (S.Bool_Error msg) = liftIO $ do
