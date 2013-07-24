@@ -1,124 +1,57 @@
-Plugin::
-* generate all the smten code:
-    use Smten.Lib.*, not the raw thing.
-* support for classes
-* all the Smten Basic tests.
-* pass in the path for where to output modules.
-* figure out how to avoid .hi and .o file confusion.
-    Eventually this should be obvious: Foo.hs vs Smten.Lib.Foo.hs
+Priority::
+* Add debug solver (verify the generated queries for Core tests look right)
+* Add yices2 solver (verifying we can actually use an SMT solver)
 
-Recent::
-* merge common constructors to avoid duplicate work.
-* represent explicit error for NumT and friends.
-* Sudoku.Enum generated query is huge!
-* use pragma in source to indicate which data types are primdatas.
-* Add support for (..) in import and export specifications
-* Add support for signatures in let declarations
+* Add SMT Datatype test
+* Add SMT Error test
 
-Haskell Features::
-* support for (..) in import and export specifications
-* newtype
-* auto derive Ord, Ix
-* labeled pattern matching.
-* signatures in let declarations.
-* lack of signatures in top-level declarations.
-* strictness flags in data type declarations.
-* contexts in data type declarations.
-* sections.
-* Int type. - just make it another primitive type, like Char
-* allow sigs and bodies to be separated.
+* Add support for symbolic Integers: Add SMT Integer test
+* Add SMT Share test
 
-Documentation::
-* Write a user guide
+* Add support for concrete Bit Vectors
+* Add support for symbolic Bit Vectors: Add SMT Bit test
+* Add SMT Sudoku test
 
-Type System::
-* Verify we handle case where default method given without sig in ClassD.
+* Add yices1 solver
+* Add stp solver
 
-Front End::
-* Keep track of constructor possibilities during case desugar
-    - requires we have type info at case desugar time
-    - make the default of a CaseE optional.
-* I could give better locations for error messages if each token was
-  associated with a location.
-* Report an error if module name doesn't match source file name.
-* Review desugared expressions to see if they make sense or could be cleaned
-  up.
-* Don't allow deriving of Free for recursive data types
-* The code for handling stand-alone deriving feels very messy to me. Can we
-  clean up how that works somehow?
-* derived instance of Show should handle record type constructors
-  appropriately.
-* Better type errors
-** use type synonyms in errors.
-
-Pretty Printer::
-* Make pretty again:
-** Don't print types of patterns?
-** Recognize if statements.
-** Recognize do statements.
-** Recognize clauses:
-    foo a b = blah  instead of  foo = \a b -> blah
-** Print: Foo Bool b, not Foo (Bool) (b)
-    When pretty printing data declarations
-* Make it so I can compile pretty printed code?
-* Maybe dump the Doc approach and take my SMT concrete approach?
-
-Error::
-* detect potential non-termination and perform appropriate abstraction and
-  refinement.
+* Port shampi to ghc-plugin
+* Port arch-extract to ghc-plugin
 
 Cleanup::
-* varTs should return a list of TyVar, not (Name, Kind)
-* typeinfer - use structure like typecheck (if reasonable)
-* enforce in Parser that all class methods must have a signature?
-* Maybe avoid withloc everywhere in Grammar.y by pushing that to PatOrExp
-  functions?
+* Cleanup primitive Char
+* Cleanup primitive Integer
+* Support symbolic Int
+* Support symbolic IO
 
-SMT::
+Future Work::
 * Add minisat as a solver (requires CNF)
 * Add Z3 as a solver
 
-Query::
-* Use value inference on assertion predicate to solve trivial predicates, then
-  don't even send them to the SMT solver (?)
+Front End::
+* Auto-derive Show, Eq, Ord, Ix
 
-Query Optimizations::
-* Simplify (= x x) to True
+Documentation
+* Update user guide
+* Update LICENSE files to include 2013 copyright.
 
-Build System::
-* Don't require yices1 and yices2 to be installed to build or use smten
-    If a solver isn't installed, just give a runtime error when you try to
-    use it. (As per request of Nirav)
-* don't hardcode build/test output directory into SMT tests
-* clean up tclmk script: maybe separate into init, build, and test sections.
+Runtime::
+* detect potential non-termination and perform appropriate abstraction and
+  refinement.
 
 Known Bugs::
-* BadKind, DupInst, DupVar maltype tests
 * Error non-termination tests (in Error)
 * Sharing of appeval (in Share)
 * STP bug (in Nest)
 * STP bug (in Bit)
 * STP bv_and bug (in Bit)
 * Yices1 left shift (in Bit)
-* precedence 2 bug (in Basic)
-* precedence 3 bug (in Basic)
 
 Suspected Bugs::
-* qualified infix vars:    a `D.foo` b
+* Test newtype
 * Memory leaks of solvers
-* Unused var defined in let isn't type checked
-* type synonyms are not qualified by their module
-* Does module import and export handle labelled update and construction
-  properly?
-* class names can't be qualified in instance declarations?
-* PrimArray does not support symbolic computation. Smten will probably crash
-  if you try to make a PrimArray from a symbolic list.
-* I fail to do any bounds checking in Data.Array
             
 Other::
-* Update LICENSE files to include 2013 copyright.
 * TODO's inlined in the code
 * Do a code review of all of Smten, figure out what can be cleaned up and how.
-* Switch to n-ary "and" to help in debugging of SMT queries?
-* Have flags in smten exe to call ghc appropriately.
 
