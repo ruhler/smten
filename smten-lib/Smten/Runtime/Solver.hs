@@ -25,7 +25,10 @@ data SolverInst = SolverInst {
 }
 
 -- TODO: why do we need this?
-instance SmtenHS0 SolverInst where {}
+instance SmtenHS0 SolverInst where
+  error0 = error "SolverInst.error0"
+  ite0 = error "SolverInst.ite0"
+  realize0 = error "SolverInst.realize0"
 
 solverInstFromAST :: (AST.SolverAST ctx exp) => ctx -> SolverInst
 solverInstFromAST x = SolverInst {

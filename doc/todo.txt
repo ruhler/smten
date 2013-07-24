@@ -1,5 +1,4 @@
 Priority::
-* Add debug solver (verify the generated queries for Core tests look right)
 * Add yices2 solver (verifying we can actually use an SMT solver)
 
 * Add SMT Datatype test

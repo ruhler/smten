@@ -5,6 +5,7 @@ module Smten.Tests.SMT.Core (tests) where
 import Smten.Prelude
 import Smten.Symbolic
 import Smten.Symbolic.Solver.Pure
+import Smten.Symbolic.Solver.Debug
 import Smten.Tests.SMT.Test
 
 tests :: IO ()

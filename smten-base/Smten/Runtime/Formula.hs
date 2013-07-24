@@ -7,6 +7,7 @@ module Smten.Runtime.Formula (
 import Smten.Runtime.FreeID
 
 data TypeF = BoolTF
+    deriving (Show)
 
 data AnyF = BoolF BoolF
 
