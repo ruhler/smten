@@ -6,7 +6,6 @@ foreach key [array names ::env] {
 
 # Get infomation about the local environment.
 # local.tcl should set
-#   ::HAPPY - path to the happy executable
 #   ::env(...) - needed environment variables, such as: PATH
 source tclmk/local.tcl
 set ::env(LANG) "en_US.UTF-8"
@@ -42,7 +41,6 @@ set ::env(HOME) [pwd]/build/home
 indir smten-plugin {
     hrun cabal install \
         --builddir ../build/smten-plugin-build \
-        --with-happy=$::HAPPY \
         --force-reinstalls
 
     #hrun cabal haddock --builddir ../build/smten-plugin-build
@@ -56,43 +54,23 @@ indir build/smten-base {
 
     hrun cabal install \
         --builddir smten-base-build \
-        --with-happy=$::HAPPY \
         --force-reinstalls
 
     hrun cabal sdist --builddir smten-base-build
 }
 
-set SMTN smten-lib/
+# The smten-lib package
+hrun cp -r -f -l smten-lib build/
+indir build/smten-lib {
+    hrun ghc --make -c -main-is Smten.Tests.All.main \
+        -fplugin=Smten.Plugin.Plugin Smten/Tests/All.hs
 
-proc hscomp {module} {
-    set hsdir build/test
-    hrun -ignorestderr ghc -fplugin=Smten.Plugin.Plugin \
-    -O0 -i$::SMTN -odir $hsdir \
-    -main-is $module.main \
-    -o $hsdir/[string map {. _} $module].haskell -odir $hsdir -hidir $hsdir\
-    $::SMTN/[string map {. /} $module].hs
+    hrun cabal configure --enable-tests
+    hrun cabal build
+    hrun cabal test
+    hrun cabal sdist --builddir smten-lib-build
+    hrun cabal install \
+        --builddir smten-lib-build \
+        --force-reinstalls
 }
-
-proc hsghc {module} {
-    set hsdir build/test
-    hrun -ignorestderr ghc \
-        -prof -rtsopts \
-        -main-is Smten.Compiled.$module.main \
-        -i$hsdir -ismten-lib -hidir $hsdir -odir $hsdir \
-        -o $hsdir/[string map {. _} $module].smten \
-        $hsdir/[string map {. /} Smten.Compiled.$module].hs
-}
-
-proc hsrun {module} {
-    set hsdir build/test
-    hscomp $module
-    hrun ./$hsdir/[string map {. _} $module].haskell
-
-    hsghc $module
-    hrun ./$hsdir/[string map {. _} $module].smten
-}
-
-
-hsrun Smten.Tests.All
-puts "BUILD COMPLETE"
 

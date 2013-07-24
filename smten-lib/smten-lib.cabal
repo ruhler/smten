@@ -1,0 +1,54 @@
+name: smten-lib
+version: 3.0.0.0
+synopsis: Smten library
+license: AllRightsReserved
+license-file: LICENSE
+author: Richard Uhler
+maintainer: ruhler@csail.mit.edu
+category: Language
+build-type: Simple
+cabal-version: >=1.8
+stability: experimental
+
+source-repository this
+  type: git
+  location: /afs/csail.mit.edu/u/r/ruhler/git/smten
+  --branch:
+  --tag:
+
+library
+  exposed-modules:
+    Smten.Runtime.AnyKeyMap
+    Smten.Runtime.Assert
+    Smten.Runtime.Solver
+    Smten.Runtime.SolverAST
+    Smten.Runtime.Debug
+    Smten.Runtime.Result
+
+    Smten.Tests.SMT.Test
+    Smten.Tests.SMT.Core
+    Smten.Tests.Test
+    Smten.Tests.Basic
+    Smten.Tests.All
+
+    Smten.Symbolic0
+    Smten.Symbolic
+    Smten.Symbolic.Solver.Pure
+    Smten.Symbolic.Solver.Debug
+
+    Smten.Compiled.Smten.Symbolic.Solver.Pure
+    Smten.Compiled.Smten.Symbolic.Solver.Debug
+    Smten.Compiled.Smten.Symbolic0
+
+  build-depends: base ==4.6.*, hashtables ==1.0.*, mtl ==2.1.*, pretty ==1.1.*, 
+                 smten-base ==3.0.*, smten-plugin ==3.0.*
+  ghc-options: -fwarn-unused-binds -fwarn-unused-imports
+
+Test-Suite test-smten-lib
+    type: exitcode-stdio-1.0
+    main-is: tests.hs
+    build-depends: base ==4.6.*, hashtables ==1.0.*, mtl ==2.1.*,
+                   pretty ==1.1.*, 
+                   smten-base ==3.0.*, smten-plugin ==3.0.*
+
+
