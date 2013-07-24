@@ -34,8 +34,9 @@ undefined = error0 (errstr "Prelude.undefined")
 
 instance SmtenHS2 (->) where
     error2 msg = \x -> error0 msg
-    realize2 = P.error "TODO: ->.realize2"
-    ite2 p a b = P.error "TODO: ->.ite2"
+    realize2 m f = \x -> realize m (f (realize m x))
+    ite2 p fa fb = \x -> ite p (fa x) (fb x)
+    primitive2 r f = \x -> primitive0 (\m -> r m x) (f x)
 
 instance SmtenHS0 P.Char where
     error0 = P.error "TODO: Char.error0"
