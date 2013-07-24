@@ -9,6 +9,9 @@ category: Language
 build-type: Simple
 cabal-version: >=1.8
 stability: experimental
+data-dir: share
+data-files:
+    README.txt
 
 source-repository this
   type: git
