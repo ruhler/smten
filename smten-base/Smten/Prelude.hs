@@ -34,7 +34,7 @@ module Smten.Prelude (
     -- PreludeIO
     putChar, putStr, putStrLn,
 
-    ifThenElse,
+    ifThenElse, primitive,
     ) where
 
 import Smten.Control.Monad
@@ -51,4 +51,10 @@ import Smten.Data.Show
 import Smten.Data.Tuple
 import Smten.Smten.Base
 import Smten.System.IO
+
+undefined :: a
+undefined = error "Prelude.undefined"
+
+primitive :: String -> a
+primitive nm = error ("Smten.primitive: " ++ nm)
 

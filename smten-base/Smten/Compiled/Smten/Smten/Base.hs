@@ -4,7 +4,7 @@
 module Smten.Compiled.Smten.Smten.Base (
     Char(..), P.Int, Integer(..),
     List__(..), Tuple2__(..), Tuple3__(..), Tuple4__(..), Unit__(..), 
-    error, undefined,
+    error,
 
     fromList__, toList__, toHSChar, fromHSChar, toHSString, fromHSString,
  )  where
@@ -33,11 +33,6 @@ toList__ (x:xs) = Cons__ x (toList__ xs)
 
 error :: (SmtenHS0 a) => List__ Char -> a
 error msg = error0 (errstr (toHSString msg))
-
--- TODO: this function should not be specified manually, it should be
--- auto-generated.
-undefined :: (SmtenHS0 a) => a
-undefined = error0 (errstr "Prelude.undefined")
 
 instance SmtenHS2 (->) where
     error2 msg = \x -> error0 msg

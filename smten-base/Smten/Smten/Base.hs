@@ -2,7 +2,7 @@
 module Smten.Smten.Base (
     Char, String,
     Int, Integer,
-    error, undefined,
+    error,
     ) where
 
 import qualified Prelude as P
@@ -18,7 +18,4 @@ type String = [Char]
 
 error :: String -> a
 error = P.error
-
-undefined :: a
-undefined = error "Prelude.undefined"
 

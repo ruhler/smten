@@ -24,6 +24,7 @@ data SolverInst = SolverInst {
     check :: IO Result
 }
 
+-- TODO: why do we need this?
 instance SmtenHS0 SolverInst where {}
 
 solverInstFromAST :: (AST.SolverAST ctx exp) => ctx -> SolverInst

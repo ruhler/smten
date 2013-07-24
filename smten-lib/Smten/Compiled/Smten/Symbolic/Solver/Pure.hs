@@ -41,7 +41,6 @@ instance SolverAST PureSolver Exp where
         (x:_) ->
           case lookup nm (vars x) of
             Just (Bool b) -> return b
-            Just _ -> error $ "getBoolValue: " ++ nm ++ " is not a bool var"
             Nothing -> error $ "getBoolValue: " ++ nm ++ " not found"
 
   check (PureSolver mref) = do
