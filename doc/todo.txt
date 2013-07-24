@@ -32,7 +32,6 @@ Front End::
 
 Documentation
 * Update user guide
-* Update LICENSE files to include 2013 copyright.
 
 Runtime::
 * detect potential non-termination and perform appropriate abstraction and
