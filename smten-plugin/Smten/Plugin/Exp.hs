@@ -69,6 +69,7 @@ expCG (Case x v ty ms) = do
       qitenm <- qitenmCG tynm
       qiteflnms <- mapM (qiteflnmCG . dataConName) (tyConDataCons tycon)
       qiteerrnm <- qiteerrnmCG tynm
+      qprimnm <- qprimnmCG tynm
       arg <- expCG x
 
       (defalt, nodefms) <- case ms of
@@ -87,10 +88,14 @@ expCG (Case x v ty ms) = do
              S.ListE (itefls ++ [iteerr])]
           itealt = S.Alt (S.RecP qitenm) itebody
 
+          primbody = foldl1 S.AppE (map S.VarE [
+                        "Smten.Runtime.SmtenHS.primsapp", casefnm, "r", "c"])
+          primalt = S.Alt (S.ConP qprimnm [S.VarP "r", S.VarP "c"]) primbody
+                          
           erralt = S.Alt (S.ConP qerrnm [S.VarP "msg"])
                          (S.AppE (S.VarE "Smten.Runtime.SmtenHS.error0") (S.VarE "msg"))
 
-          allalts = alts ++ [itealt, erralt] ++ defalt
+          allalts = alts ++ [itealt, erralt, primalt] ++ defalt
           casee = S.CaseE (S.VarE vnm) allalts
           lame = S.LamE vnm casee
           bind = S.Val casefnm Nothing lame

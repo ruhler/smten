@@ -3,7 +3,7 @@
 
 module Smten.Runtime.SmtenHS (
     SmtenHS0(..), SmtenHS1(..), SmtenHS2(..), SmtenHS3(..), SmtenHS4(..),
-    ite, iterealize, realize, flrealize, flmerge, flsapp,
+    ite, iterealize, realize, flrealize, flmerge, flsapp, primsapp,
     ) where
 
 import Data.Maybe
@@ -106,6 +106,10 @@ flsapp f x zs =
      join (Just (p, a):bs) = ite p (f a) (join bs)
      zs' = filter isJust zs
  in primitive0 (\m -> realize m (f (realize m x))) (join zs')
+
+{-# INLINEABLE primsapp #-}
+primsapp :: (SmtenHS0 a, SmtenHS0 b) => (a -> b) -> (Model -> a) -> a -> b
+primsapp f r c = primitive0 (\m -> realize m (f (r m))) (f c)
 
 instance SmtenHS0 BoolF where
     error0 = error "TODO: BoolF.error0"
