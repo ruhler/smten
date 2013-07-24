@@ -1,14 +1,19 @@
 
+{-# LANGUAGE MagicHash #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 module Smten.Compiled.Smten.Smten.Base (
-    P.Char, P.Int, Integer(..),
+    Char(..), P.Int, Integer(..),
     List__(..), Tuple2__(..), Tuple3__(..), Tuple4__(..), Unit__(..), 
     error, undefined,
 
-    fromList__, toList__,
+    fromList__, toList__, toHSChar, fromHSChar, toHSString, fromHSString,
  )  where
 
 import qualified Prelude as P
+
+import qualified GHC.Types as P
+import qualified GHC.Prim as P
+
 import Smten.Runtime.ErrorString
 import Smten.Runtime.Formula
 import Smten.Runtime.Model
@@ -26,8 +31,8 @@ toList__ :: [a] -> List__ a
 toList__ [] = Nil__
 toList__ (x:xs) = Cons__ x (toList__ xs)
 
-error :: (SmtenHS0 a) => List__ P.Char -> a
-error msg = error0 (errstr (fromList__ msg))
+error :: (SmtenHS0 a) => List__ Char -> a
+error msg = error0 (errstr (toHSString msg))
 
 -- TODO: this function should not be specified manually, it should be
 -- auto-generated.
@@ -40,11 +45,6 @@ instance SmtenHS2 (->) where
     ite2 p fa fb = \x -> ite p (fa x) (fb x)
     primitive2 r f = \x -> primitive0 (\m -> r m x) (f x)
 
-instance SmtenHS0 P.Char where
-    error0 = P.error "TODO: Char.error0"
-    realize0 = P.error "TODO: Char.realize0"
-    ite0 = P.error "TODO: Char.ite0"
-
 instance SmtenHS0 P.Int where
     error0 = P.error "TODO: Int.error0"
     realize0 = P.error "TODO: Int.realize0"
@@ -54,6 +54,35 @@ instance SmtenHS1 P.IO where
     error1 msg = doerr msg
     realize1 = P.error "TODO: P.IO.realize1"
     ite1 = P.error "TODO: P.IO.ite1"
+
+data Char =
+    C# P.Char#
+  | Char_Ite BoolF Char Char
+  | Char_Err ErrorString
+  | Char_Prim (Model -> Char) Char
+
+toHSChar :: Char -> P.Char
+toHSChar (C# x) = P.C# x
+
+toHSString :: List__ Char -> P.String
+toHSString x = P.map toHSChar (fromList__ x)
+
+fromHSString :: P.String -> List__ Char
+fromHSString x = toList__ (P.map fromHSChar x)
+
+fromHSChar :: P.Char -> Char
+fromHSChar (P.C# x) = C# x
+
+instance SmtenHS0 Char where
+    error0 = Char_Err
+    realize0 m x = 
+      case x of
+        C# {} -> x
+        Char_Ite p a b -> iterealize p a b m
+        Char_Err msg -> Char_Err (realize m msg)
+        Char_Prim r _ -> r m
+    ite0 = Char_Ite
+    primitive0 = Char_Prim
 
 data Integer =
     Integer P.Integer
@@ -74,4 +103,8 @@ instance SmtenHS0 Integer where
 
 instance P.Num Integer where
     fromInteger = Integer
+    (+) = P.error "Smten Integer P.Num (+) not supported"
+    (*) = P.error "Smten Integer P.Num (*) not supported"
+    abs = P.error "Smten Integer P.Num abs not supported"
+    signum = P.error "Smten Integer P.Num signum not supported"
 

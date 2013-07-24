@@ -14,5 +14,5 @@ bind_io :: P.IO a -> (a -> P.IO b) -> P.IO b
 bind_io = (P.>>=)
 
 putChar :: Char -> P.IO Unit__
-putChar c = P.putChar c P.>> P.return Unit__
+putChar c = P.putChar (toHSChar c) P.>> P.return Unit__
 
