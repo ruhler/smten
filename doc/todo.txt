@@ -1,5 +1,4 @@
 Priority::
-* Add SMT Datatype test
 * Add SMT Error test
 
 * Add support for symbolic Integers: Add SMT Integer test

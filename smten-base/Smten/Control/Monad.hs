@@ -2,7 +2,7 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 module Smten.Control.Monad (
     Monad(..), sequence, sequence_, mapM, mapM_,
-    MonadPlus(..),
+    MonadPlus(..), msum,
     ) where
 
 import Smten.Smten.Base
@@ -34,4 +34,8 @@ mapM_ f as = sequence_ (map f as)
 class MonadPlus m where
     mzero :: m a
     mplus :: m a -> m a -> m a
+
+msum :: MonadPlus m => [m a] -> m a
+{-# INLINE msum #-}
+msum = foldr mplus mzero
 

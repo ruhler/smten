@@ -34,6 +34,7 @@ library
     Smten.Symbolic.Solver.Debug
     Smten.Tests.SMT.Test
     Smten.Tests.SMT.Core
+    Smten.Tests.SMT.Datatype
     Smten.Tests.Test
     Smten.Tests.Basic
     Smten.Tests.All
@@ -47,6 +48,7 @@ library
     Smten.Compiled.Smten.Symbolic.Solver.Debug
     Smten.Compiled.Smten.Tests.SMT.Test
     Smten.Compiled.Smten.Tests.SMT.Core
+    Smten.Compiled.Smten.Tests.SMT.Datatype
     Smten.Compiled.Smten.Tests.Test
     Smten.Compiled.Smten.Tests.Basic
     Smten.Compiled.Smten.Tests.All
