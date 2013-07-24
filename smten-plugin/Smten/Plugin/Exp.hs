@@ -55,19 +55,47 @@ expCG (Lam b body)
 --             _ -> default_body
 --   in case_XX x
 expCG (Case x v ty ms) = do
-    uniq <- lift $ getUniqueM
-    let occ = mkVarOcc "casef"
-        casef = mkSystemName uniq occ
-    withlocals [varName v, casef] $ do
-        v' <- qnameCG $ varName v
-        casef' <- qnameCG casef
-        x' <- expCG x
-        ms' <- altsCG (varType v) ms
-        let casee = S.CaseE (S.VarE v') ms'
-            lame = S.LamE v' casee
-            bind = S.Val casef' Nothing lame
-            ine = S.AppE (S.VarE casef') x'
-        return $ S.LetE [bind] ine
+  uniq <- lift $ getUniqueM
+  let occ = mkVarOcc "casef"
+      casef = mkSystemName uniq occ
+      tycon = fst $ splitTyConApp (varType v)
+      tynm = tyConName tycon
+  withlocals [varName v, casef] $ do
+      addimport "Smten.Runtime.SmtenHS"
+
+      vnm <- qnameCG $ varName v
+      casefnm <- qnameCG casef
+      qerrnm <- qerrnmCG tynm
+      qitenm <- qitenmCG tynm
+      qiteflnms <- mapM (qiteflnmCG . dataConName) (tyConDataCons tycon)
+      qiteerrnm <- qiteerrnmCG tynm
+      arg <- expCG x
+
+      (defalt, nodefms) <- case ms of
+                          ((DEFAULT, _, body) : xs) -> do
+                             body' <- expCG body
+                             return ([S.Alt S.wildP body'], xs)
+                          _ -> return ([], ms)
+
+      alts <- mapM altCG nodefms
+      let itefls = [S.AppE (S.VarE qiteflnm) (S.VarE vnm) | qiteflnm <- qiteflnms]
+          iteerr = S.AppE (S.VarE qiteerrnm) (S.VarE vnm)
+          itebody = foldl1 S.AppE [
+             S.VarE "Smten.Runtime.SmtenHS.flsapp",
+             S.VarE casefnm,
+             S.VarE vnm,
+             S.ListE (itefls ++ [iteerr])]
+          itealt = S.Alt (S.RecP qitenm) itebody
+
+          erralt = S.Alt (S.ConP qerrnm [S.VarP "msg"])
+                         (S.AppE (S.VarE "Smten.Runtime.SmtenHS.error0") (S.VarE "msg"))
+
+          allalts = alts ++ [itealt, erralt] ++ defalt
+          casee = S.CaseE (S.VarE vnm) allalts
+          lame = S.LamE vnm casee
+          bind = S.Val casefnm Nothing lame
+          ine = S.AppE (S.VarE casefnm) arg
+      return $ S.LetE [bind] ine
 
 -- TODO: insert a call to unsafeCoerce# here?
 expCG (Cast x _) = expCG x
@@ -91,23 +119,4 @@ altCG (DataAlt k, xs, body) = withlocals (map varName xs) $ do
 altCG (LitAlt l, _, body) = do
     body' <- expCG body
     return $ S.Alt (S.LitP (litCG l)) body'
-
--- Foo_Error msg -> error0 msg
-erraltCG :: Type -> CG S.Alt
-erraltCG t = do 
-  let tynm = tyConName . fst $ splitTyConApp t
-  qerrnm <- qerrnmCG tynm
-  addimport "Smten.Runtime.SmtenHS"
-  return $ S.Alt (S.ConP qerrnm [S.VarP "msg"])
-                 (S.AppE (S.VarE "Smten.Runtime.SmtenHS.error0") (S.VarE "msg"))
-
-altsCG :: Type -> [CoreAlt] -> CG [S.Alt]
-altsCG t ((DEFAULT, _, body) : xs) = do
-  xs' <- altsCG t xs
-  body' <- expCG body
-  return $ xs' ++ [S.Alt S.wildP body']
-altsCG t xs = do
-  alts <- mapM altCG xs
-  erralt <- erraltCG t
-  return (alts ++ [erralt])
 
