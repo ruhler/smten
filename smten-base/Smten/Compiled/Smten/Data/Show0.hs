@@ -13,7 +13,7 @@ int_showsPrec :: Int -> Int -> List__ Char -> List__ Char
 int_showsPrec a b c = toList__ (P.showsPrec a b (fromList__ c))
 
 integer_showsPrec :: Int -> Integer -> List__ Char -> List__ Char
-integer_showsPrec a b c = toList__ (P.showsPrec a b (fromList__ c))
+integer_showsPrec a (Integer b) c = toList__ (P.showsPrec a b (fromList__ c))
 
 char_showsPrec :: Int -> Char -> List__ Char -> List__ Char
 char_showsPrec a b c = toList__ (P.showsPrec a b (fromList__ c))

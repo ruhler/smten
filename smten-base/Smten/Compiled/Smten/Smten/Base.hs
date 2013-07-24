@@ -1,7 +1,7 @@
 
 {-# LANGUAGE NoImplicitPrelude #-}
 module Smten.Compiled.Smten.Smten.Base (
-    P.Char, P.Int, P.Integer,
+    P.Char, P.Int, Integer(..),
     List__(..), Tuple2__(..), Tuple3__(..), Tuple4__(..), Unit__(..), 
     error, undefined,
 
@@ -10,6 +10,8 @@ module Smten.Compiled.Smten.Smten.Base (
 
 import qualified Prelude as P
 import Smten.Runtime.ErrorString
+import Smten.Runtime.Formula
+import Smten.Runtime.Model
 import Smten.Runtime.SmtenHS
 
 import Smten.Compiled.Smten.Smten.List
@@ -48,13 +50,28 @@ instance SmtenHS0 P.Int where
     realize0 = P.error "TODO: Int.realize0"
     ite0 = P.error "TODO: Int.ite0"
 
-instance SmtenHS0 P.Integer where
-    error0 = P.error "TODO: Integer.error0"
-    realize0 = P.error "TODO: Integer.realize0"
-    ite0 = P.error "TODO: Integer.ite0"
-
 instance SmtenHS1 P.IO where
     error1 msg = doerr msg
     realize1 = P.error "TODO: P.IO.realize1"
     ite1 = P.error "TODO: P.IO.ite1"
+
+data Integer =
+    Integer P.Integer
+  | Integer_Ite BoolF Integer Integer
+  | Integer_Err ErrorString
+  | Integer_Prim (Model -> Integer) Integer
+
+instance SmtenHS0 Integer where
+    error0 = Integer_Err
+    realize0 m x =
+      case x of
+        Integer {} -> x
+        Integer_Ite p a b -> iterealize p a b m
+        Integer_Err msg -> Integer_Err (realize m msg)
+        Integer_Prim r _ -> r m
+    ite0 = Integer_Ite
+    primitive0 = Integer_Prim
+
+instance P.Num Integer where
+    fromInteger = Integer
 
