@@ -1,6 +1,4 @@
 Priority::
-* Add SMT Share test
-
 * Add support for concrete Bit Vectors
 * Add support for symbolic Bit Vectors: Add SMT Bit test
 * Add SMT Sudoku test
@@ -11,6 +9,7 @@ Priority::
 * Port shampi to ghc-plugin
 * Port arch-extract to ghc-plugin
 * Add SMT Error test (if needed)
+* Add SMT Share test (if needed)
 
 Cleanup::
 * Support symbolic IO
