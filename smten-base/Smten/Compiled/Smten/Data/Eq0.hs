@@ -6,9 +6,13 @@ import qualified Prelude as P
 import Smten.Compiled.Smten.Smten.Base
 import Smten.Compiled.Smten.Data.Bool
 import Smten.Runtime.SmtenHS
+import Smten.Runtime.SymbolicOf
 
 int_eq :: Int -> Int -> Bool
-int_eq a b = if a P.== b then True else False
+int_eq = symapp2 P.$ \av bv ->
+    if (av :: P.Int) P.== bv    
+        then True
+        else False
 
 integer_eq :: Integer -> Integer -> Bool
 integer_eq (Integer a) (Integer b) = if a P.== b then True else False

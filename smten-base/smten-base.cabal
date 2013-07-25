@@ -42,6 +42,7 @@ library
     Smten.Data.Tuple
     Smten.Smten.Base
     Smten.Smten.Char
+    Smten.Smten.Int
     Smten.Smten.List
     Smten.Smten.Tuple
     Smten.Smten.Unit
@@ -80,6 +81,7 @@ library
     Smten.Compiled.Smten.Data.Tuple
     Smten.Compiled.Smten.Smten.Base
     Smten.Compiled.Smten.Smten.Char
+    Smten.Compiled.Smten.Smten.Int
     Smten.Compiled.Smten.Smten.List
     Smten.Compiled.Smten.Smten.Tuple
     Smten.Compiled.Smten.Smten.Unit

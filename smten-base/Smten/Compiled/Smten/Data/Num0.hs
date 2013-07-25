@@ -9,24 +9,25 @@ module Smten.Compiled.Smten.Data.Num0 (
 
 import qualified Prelude as P
 import Smten.Compiled.Smten.Smten.Base
+import Smten.Runtime.SymbolicOf
 
 int_add :: Int -> Int -> Int
-int_add = (P.+)
+int_add = symapp2 P.$ \av bv -> tosym P.$ (av :: P.Int) P.+ bv
 
 int_sub :: Int -> Int -> Int
-int_sub = (P.-)
+int_sub = symapp2 P.$ \av bv -> tosym P.$ (av :: P.Int) P.- bv
 
 int_mul :: Int -> Int -> Int
-int_mul = (P.*)
+int_mul = symapp2 P.$ \av bv -> tosym P.$ (av :: P.Int) P.* bv
 
 int_negate :: Int -> Int
-int_negate = P.negate
+int_negate = symapp (tosym P.. (P.negate :: P.Int -> P.Int))
 
 int_abs :: Int -> Int
-int_abs = P.abs
+int_abs = symapp (tosym P.. (P.abs :: P.Int -> P.Int))
 
 int_signum :: Int -> Int
-int_signum = P.signum
+int_signum = symapp (tosym P.. (P.signum :: P.Int -> P.Int))
 
 int_fromInteger :: Integer -> Int
 int_fromInteger (Integer x) = P.fromInteger x

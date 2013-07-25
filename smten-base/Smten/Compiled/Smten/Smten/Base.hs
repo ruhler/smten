@@ -1,7 +1,7 @@
 
 {-# LANGUAGE NoImplicitPrelude #-}
 module Smten.Compiled.Smten.Smten.Base (
-    Char(..), P.Int, Integer(..),
+    Char(..), Int(..), Integer(..),
     List__(..), Tuple2__(..), Tuple3__(..), Tuple4__(..), Unit__(..), 
     error,
 
@@ -16,10 +16,11 @@ import Smten.Runtime.Model
 import Smten.Runtime.SmtenHS
 import Smten.Runtime.SymbolicOf
 
+import Smten.Compiled.Smten.Smten.Char
+import Smten.Compiled.Smten.Smten.Int
 import Smten.Compiled.Smten.Smten.List
 import Smten.Compiled.Smten.Smten.Tuple
 import Smten.Compiled.Smten.Smten.Unit
-import Smten.Compiled.Smten.Smten.Char
 
 fromList__ :: List__ a -> [a]
 fromList__ Nil__ = []
@@ -31,11 +32,6 @@ toList__ (x:xs) = Cons__ x (toList__ xs)
 
 error :: (SmtenHS0 a) => List__ Char -> a
 error msg = error0 (errstr (toHSString msg))
-
-instance SmtenHS0 P.Int where
-    error0 = P.error "TODO: Int.error0"
-    realize0 = P.error "TODO: Int.realize0"
-    ite0 = P.error "TODO: Int.ite0"
 
 instance SmtenHS1 P.IO where
     error1 msg = doerr msg
