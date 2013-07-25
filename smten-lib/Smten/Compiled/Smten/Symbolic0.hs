@@ -51,14 +51,17 @@ mzero_symbolic = do
     modify $ \ss -> ss { ss_formula = ss_formula ss `andB` notB (ss_pred ss) }
     return (error0 (errstr "mzero_symbolic"))
 
-free_Integer :: Symbolic (S.Integer)
-free_Integer = error "TODO: free_Integer"
-
 mplus_symbolic :: (SmtenHS0 a) => Symbolic a -> Symbolic a -> Symbolic a
 mplus_symbolic a b = do
     fid <- liftIO fresh
     modify $ \s -> s { ss_free = (fid, BoolT) : ss_free s }
     ite0 (S.Bool_Var fid) a b
+
+free_Integer :: Symbolic (S.Integer)
+free_Integer = do
+    fid <- liftIO fresh
+    modify $ \s -> s { ss_free = (fid, IntegerT) : ss_free s }
+    return (S.Integer_Var fid)
 
 predicated :: S.Bool -> Symbolic a -> Symbolic a
 predicated p q = do
@@ -90,6 +93,9 @@ getValue :: SolverInst -> (FreeID, Type) -> IO Any
 getValue s (f, BoolT) = do
    b <- getBoolValue s (freenm f)
    return (BoolA $ if b then S.True else S.False)
+getValue s (f, IntegerT) = do
+   b <- getIntegerValue s (freenm f)
+   return (IntegerA $ S.Integer b)
 
 declVar :: SolverInst -> (FreeID, Type) -> IO ()
 declVar s (nm, ty) = declare s ty (freenm nm)

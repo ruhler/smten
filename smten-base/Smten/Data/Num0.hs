@@ -1,10 +1,10 @@
 
 {-# LANGUAGE NoImplicitPrelude #-}
 module Smten.Data.Num0 (
-   int_add, int_sub, int_mul, int_negate,
+   int_add, int_sub, int_mul,
    int_abs, int_signum, int_fromInteger,
 
-   integer_add, integer_sub, integer_mul, integer_negate,
+   integer_add, integer_sub, integer_mul,
    integer_abs, integer_signum,
     ) where
 
@@ -23,9 +23,6 @@ int_sub = (P.-)
 int_mul :: Int -> Int -> Int
 int_mul = (P.*)
 
-int_negate :: Int -> Int
-int_negate = P.negate
-
 int_abs :: Int -> Int
 int_abs = P.abs
 
@@ -43,9 +40,6 @@ integer_sub = (P.-)
 
 integer_mul :: Integer -> Integer -> Integer
 integer_mul = (P.*)
-
-integer_negate :: Integer -> Integer
-integer_negate = P.negate
 
 integer_abs :: Integer -> Integer
 integer_abs = P.abs

@@ -41,12 +41,12 @@ instance SolverAST DebugLL Debug where
         dbgPutStrLn dbg $ show r
         return r
 
---    getIntegerValue dbg n = do
---        dbgPutStr dbg $ n ++ " = "
---        r <- D.getIntegerValue (dbg_s dbg) n
---        dbgPutStrLn dbg $ show r
---        return r
---
+    getIntegerValue dbg n = do
+        dbgPutStr dbg $ n ++ " = "
+        r <- D.getIntegerValue (dbg_s dbg) n
+        dbgPutStrLn dbg $ show r
+        return r
+
 --    getBitVectorValue dbg n w = do
 --        dbgPutStr dbg $ n ++ " = "
 --        r <- D.getBitVectorValue (dbg_s dbg) n w
@@ -65,21 +65,21 @@ instance SolverAST DebugLL Debug where
         dbgPutStrLn dbg $ dbgstr
 
     bool dbg b = return $ dbgLit b
-    --integer dbg i = return $ dbgLit i
+    integer dbg i = return $ dbgLit i
     --bit dbg w v = return $ dbgLit (bv_make w v)
     var dbg n = return $ dbgVar n
 
     and_bool = op "&&"
     not_bool dbg x = return $ dbgApp (dbgText "!") (sh x)
     ite_bool dbg p a b = return $ dbgCase "True" (sh p) (sh a) (sh b)
-    --ite_integer dbg p a b = return $ dbgCase "True" (sh p) (sh a) (sh b)
+    ite_integer dbg p a b = return $ dbgCase "True" (sh p) (sh a) (sh b)
     --ite_bit dbg p a b = return $ dbgCase "True" (sh p) (sh a) (sh b)
 
---    eq_integer = op "=="
---    leq_integer = op "<="
---    add_integer = op "+"
---    sub_integer = op "-"
---
+    eq_integer = op "=="
+    leq_integer = op "<="
+    add_integer = op "+"
+    sub_integer = op "-"
+
 --    eq_bit = op "=="
 --    leq_bit = op "<="
 --    add_bit = op "+"

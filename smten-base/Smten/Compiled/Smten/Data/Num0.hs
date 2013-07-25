@@ -1,15 +1,16 @@
 
 module Smten.Compiled.Smten.Data.Num0 (
-   int_add, int_sub, int_mul, int_negate,
+   int_add, int_sub, int_mul,
    int_abs, int_signum, int_fromInteger,
 
-   integer_add, integer_sub, integer_mul, integer_negate,
+   integer_add, integer_sub, integer_mul,
    integer_abs, integer_signum,
     ) where
 
 import qualified Prelude as P
 import Smten.Compiled.Smten.Smten.Base
 import Smten.Runtime.SymbolicOf
+import Smten.Runtime.Types
 
 int_add :: Int -> Int -> Int
 int_add = symapp2 P.$ \av bv -> tosym P.$ (av :: P.Int) P.+ bv
@@ -19,9 +20,6 @@ int_sub = symapp2 P.$ \av bv -> tosym P.$ (av :: P.Int) P.- bv
 
 int_mul :: Int -> Int -> Int
 int_mul = symapp2 P.$ \av bv -> tosym P.$ (av :: P.Int) P.* bv
-
-int_negate :: Int -> Int
-int_negate = symapp (tosym P.. (P.negate :: P.Int -> P.Int))
 
 int_abs :: Int -> Int
 int_abs = symapp (tosym P.. (P.abs :: P.Int -> P.Int))
@@ -33,16 +31,13 @@ int_fromInteger :: Integer -> Int
 int_fromInteger (Integer x) = P.fromInteger x
 
 integer_add :: Integer -> Integer -> Integer
-integer_add = symapp2 P.$ \av bv -> tosym P.$ (av :: P.Integer) P.+ bv
+integer_add = add_Integer
 
 integer_sub :: Integer -> Integer -> Integer
-integer_sub = symapp2 P.$ \av bv -> tosym P.$ (av :: P.Integer) P.- bv
+integer_sub = sub_Integer
 
 integer_mul :: Integer -> Integer -> Integer
 integer_mul = symapp2 P.$ \av bv -> tosym P.$ (av :: P.Integer) P.* bv
-
-integer_negate :: Integer -> Integer
-integer_negate = symapp (tosym P.. (P.negate :: P.Integer -> P.Integer))
 
 integer_abs :: Integer -> Integer
 integer_abs = symapp (tosym P.. (P.abs :: P.Integer -> P.Integer))

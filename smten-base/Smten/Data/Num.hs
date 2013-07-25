@@ -27,7 +27,6 @@ instance Num Int where
     (+) = int_add
     (-) = int_sub
     (*) = int_mul
-    negate = int_negate
     abs = int_abs
     signum = int_signum
     fromInteger = int_fromInteger
@@ -36,7 +35,6 @@ instance Num Integer where
     (+) = integer_add
     (-) = integer_sub
     (*) = integer_mul
-    negate = integer_negate
     abs = integer_abs
     signum = integer_signum
     fromInteger x = x

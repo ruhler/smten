@@ -6,7 +6,7 @@ module Smten.Runtime.SmtenHS (
     ite, iterealize, realize, flrealize, flmerge, flsapp, primsapp,
     ) where
 
-import Prelude hiding (Bool(..))
+import Prelude hiding (Bool(..), Integer)
 import Data.Maybe
 
 import Smten.Runtime.Types
@@ -121,9 +121,24 @@ instance SmtenHS0 Bool where
         Bool_Ite p a b -> iterealize p a b m
         Bool_And a b -> andB (realize m a) (realize m b)
         Bool_Not p -> notB (realize m p)
+        Bool_EqInteger a b -> eq_Integer (realize m a) (realize m b)
+        Bool_LeqInteger a b -> leq_Integer (realize m a) (realize m b)
         Bool_Var n -> lookupBool m n
         Bool_Err msg -> Bool_Err (realize m msg)
         Bool_Prim r _ -> r m
+
+instance SmtenHS0 Integer where
+   error0 = Integer_Err
+   ite0 = Integer_Ite
+   realize0 m x = 
+      case x of
+         Integer {} -> x
+         Integer_Add a b -> add_Integer (realize m a) (realize m b)
+         Integer_Sub a b -> sub_Integer (realize m a) (realize m b)
+         Integer_Ite p a b -> iterealize p a b m
+         Integer_Var n -> lookupInteger m n
+         Integer_Err msg -> Integer_Err (realize m msg)
+         Integer_Prim r _ -> r m
 
 instance SmtenHS0 ErrorString where
    realize0 m x@(ErrorString str) = x

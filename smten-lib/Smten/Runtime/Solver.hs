@@ -19,6 +19,7 @@ data SolverInst = SolverInst {
     declare :: S.Type -> String -> IO (),
 
     getBoolValue :: String -> IO Bool,
+    getIntegerValue :: String -> IO Integer,
 
     -- | Run (check) and return the result.
     check :: IO Result
@@ -35,6 +36,7 @@ solverInstFromAST x = SolverInst {
     assert = A.assert x,
     declare = AST.declare x,
     getBoolValue = AST.getBoolValue x,
+    getIntegerValue = AST.getIntegerValue x,
     check = AST.check x
 }
 

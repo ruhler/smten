@@ -61,8 +61,8 @@ instance Supported S.Bool where
     define ctx S.True = liftIO $ bool ctx True
     define ctx S.False = liftIO $ bool ctx False
     define ctx (S.Bool_Var id) = liftIO $ var ctx (freenm id)
---    define ctx (S.Bool_EqInteger a b) = binary (eq_integer ctx) a b
---    define ctx (S.Bool_LeqInteger a b) = binary (leq_integer ctx) a b
+    define ctx (S.Bool_EqInteger a b) = binary (eq_integer ctx) a b
+    define ctx (S.Bool_LeqInteger a b) = binary (leq_integer ctx) a b
 --    define ctx (S.Bool_EqBit a b) = binary (eq_bit ctx) a b
 --    define ctx (S.Bool_LeqBit a b) = binary (leq_bit ctx) a b
     define ctx (S.Bool_Ite p a b) = do
@@ -79,22 +79,22 @@ instance Supported S.Bool where
        declare ctx S.BoolT (freenm id)
        var ctx (freenm id)
        
---instance Supported S.Integer where
---    define ctx (S.Integer i) = liftIO $ integer ctx i
---    define ctx (S.Integer_Add a b) = binary (add_integer ctx) a b
---    define ctx (S.Integer_Sub a b) = binary (sub_integer ctx) a b
---    define ctx (S.Integer_Ite p a b) = do
---        p' <- use p
---        a' <- use a
---        b' <- use b
---        liftIO $ ite_integer ctx p' a' b'
---    define ctx (S.Integer_Var id) = liftIO $ var ctx (freenm id)
---    define ctx (S.Integer_Prim _ c) = define ctx c
---    define ctx (S.Integer_Error msg) = liftIO $ do
---        id <- fresh
---        declare_integer ctx (freenm id)
---        var ctx (freenm id)
---
+instance Supported S.Integer where
+    define ctx (S.Integer i) = liftIO $ integer ctx i
+    define ctx (S.Integer_Add a b) = binary (add_integer ctx) a b
+    define ctx (S.Integer_Sub a b) = binary (sub_integer ctx) a b
+    define ctx (S.Integer_Ite p a b) = do
+        p' <- use p
+        a' <- use a
+        b' <- use b
+        liftIO $ ite_integer ctx p' a' b'
+    define ctx (S.Integer_Var id) = liftIO $ var ctx (freenm id)
+    define ctx (S.Integer_Prim _ c) = define ctx c
+    define ctx (S.Integer_Err msg) = liftIO $ do
+        id <- fresh
+        declare ctx S.IntegerT (freenm id)
+        var ctx (freenm id)
+
 --instance (S.SmtenHS0 n) => Supported (S.Bit n) where
 --    define ctx (S.Bit x) = liftIO $ bit ctx (bv_width x) (bv_value x)
 --    define ctx (S.Bit_Add a b) = binary (add_bit ctx) a b

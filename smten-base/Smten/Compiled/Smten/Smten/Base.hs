@@ -16,7 +16,7 @@ import Smten.Runtime.SymbolicOf
 
 import Smten.Compiled.Smten.Smten.Char
 import Smten.Compiled.Smten.Smten.Int
-import Smten.Compiled.Smten.Smten.Integer
+import Smten.Compiled.Smten.Smten.Integer ()
 import Smten.Compiled.Smten.Smten.List
 import Smten.Compiled.Smten.Smten.Tuple
 import Smten.Compiled.Smten.Smten.Unit

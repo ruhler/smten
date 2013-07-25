@@ -41,11 +41,11 @@ instance SolverAST Yices2 YTerm where
     term <- c_yices_new_uninterpreted_term ty
     withCString nm $ c_yices_set_term_name term
 
---  declare_integer y nm = do
---    ty <- c_yices_int_type
---    term <- c_yices_new_uninterpreted_term ty
---    withCString nm $ c_yices_set_term_name term
---
+  declare y S.IntegerT nm = do
+    ty <- c_yices_int_type
+    term <- c_yices_new_uninterpreted_term ty
+    withCString nm $ c_yices_set_term_name term
+
 --  declare_bit y nm w = do
 --    ty <- c_yices_bv_type (fromInteger w)
 --    term <- c_yices_new_uninterpreted_term ty
@@ -73,19 +73,19 @@ instance SolverAST Yices2 YTerm where
         1 -> return True
         _ -> error $ "yices2 get bool value got: " ++ show x
 
---  getIntegerValue y nm = withy2 y $ \yctx -> do
---    model <- c_yices_get_model yctx 1
---    x <- alloca $ \ptr -> do
---            term <- withCString nm c_yices_get_term_by_name
---            ir <- c_yices_get_int64_value model term ptr
---            if ir == 0
---               then do 
---                  v <- peek ptr
---                  return $! v
---               else error $ "yices2 get int64 value returned: " ++ show ir
---    c_yices_free_model model
---    return $! toInteger x
---
+  getIntegerValue y nm = withy2 y $ \yctx -> do
+    model <- c_yices_get_model yctx 1
+    x <- alloca $ \ptr -> do
+            term <- withCString nm c_yices_get_term_by_name
+            ir <- c_yices_get_int64_value model term ptr
+            if ir == 0
+               then do 
+                  v <- peek ptr
+                  return $! v
+               else error $ "yices2 get int64 value returned: " ++ show ir
+    c_yices_free_model model
+    return $! toInteger x
+
 --  getBitVectorValue y nm w = withy2 y $ \yctx -> do
 --    model <- c_yices_get_model yctx 1
 --    bits <- allocaArray (fromInteger w) $ \ptr -> do
@@ -104,7 +104,7 @@ instance SolverAST Yices2 YTerm where
   assert y e = withy2 y $ \ctx -> c_yices_assert_formula ctx e
 
   bool _ p = if p then c_yices_true else c_yices_false
---  integer _ i = c_yices_int64 (fromInteger i)
+  integer _ i = c_yices_int64 (fromInteger i)
 --  bit _ w v = 
 --        let w' = fromInteger w
 --            v' = fromInteger v
@@ -115,14 +115,14 @@ instance SolverAST Yices2 YTerm where
   and_bool _ = c_yices_and2
   not_bool _ = c_yices_not
   ite_bool _ = c_yices_ite 
---  ite_integer _ = c_yices_ite 
+  ite_integer _ = c_yices_ite 
 --  ite_bit _ = c_yices_ite 
 --
---  eq_integer _ = c_yices_eq
---  leq_integer _ = c_yices_arith_leq_atom
---  add_integer _ = c_yices_add
---  sub_integer _ = c_yices_sub
---
+  eq_integer _ = c_yices_eq
+  leq_integer _ = c_yices_arith_leq_atom
+  add_integer _ = c_yices_add
+  sub_integer _ = c_yices_sub
+
 --  eq_bit _ = c_yices_eq
 --  leq_bit _ = c_yices_bvle_atom
 --  add_bit _ = c_yices_bvadd

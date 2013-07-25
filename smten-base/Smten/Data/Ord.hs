@@ -15,5 +15,5 @@ instance Ord Int where
     compare = int_compare
 
 instance Ord Integer where
-    compare = integer_compare
+    (<=) = integer_leq
 

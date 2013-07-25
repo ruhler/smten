@@ -4,20 +4,23 @@
 module Smten.Runtime.Types (
     Type(..), Any(..),
     ErrorString(..), errstr, doerr,
-    Model, model, m_cached, lookupBool,
+    Model, model, m_cached, lookupBool, lookupInteger,
     Bool(..), andB, notB, iteB,
+    Integer(..), eq_Integer, leq_Integer, add_Integer, sub_Integer,
     ) where
 
-import Prelude hiding (Bool(..))
+import Prelude hiding (Bool(..), Integer(..))
+import qualified Prelude as P
 
 import System.IO.Unsafe
 import qualified Smten.Runtime.AnyMap as A
 import Smten.Runtime.FreeID
 
-data Type = BoolT
+data Type = BoolT | IntegerT
     deriving (Show)
 
 data Any = BoolA Bool
+         | IntegerA Integer
 
 data ErrorString =
    ErrorString String
@@ -58,12 +61,20 @@ lookupBool m nm
   | Just (BoolA x) <- lookup nm (m_vars m) = x
   | otherwise = error "lookupBool failed"
 
+lookupInteger :: Model -> FreeID -> Integer
+lookupInteger m nm
+  | Just (IntegerA x) <- lookup nm (m_vars m) = x
+  | otherwise = error "lookupInteger failed"
+
+
 data Bool =
      True
    | False
    | Bool_Ite Bool Bool Bool
    | Bool_And Bool Bool
    | Bool_Not Bool
+   | Bool_EqInteger Integer Integer
+   | Bool_LeqInteger Integer Integer
    | Bool_Var FreeID
    | Bool_Err ErrorString
    | Bool_Prim (Model -> Bool) Bool
@@ -88,4 +99,37 @@ iteB (Bool_Not x) a b = iteB x b a
 iteB p True False = p
 iteB p False True = notB p
 iteB p a b = Bool_Ite p a b
+
+data Integer =
+    Integer P.Integer
+  | Integer_Add Integer Integer
+  | Integer_Sub Integer Integer
+  | Integer_Ite Bool Integer Integer
+  | Integer_Var FreeID
+  | Integer_Prim (Model -> Integer) Integer
+  | Integer_Err ErrorString
+
+eq_Integer :: Integer -> Integer -> Bool
+eq_Integer (Integer a) (Integer b) = if a == b then True else False
+eq_Integer (Integer_Err msg) _ = Bool_Err msg
+eq_Integer _ (Integer_Err msg) = Bool_Err msg
+eq_Integer a b = Bool_EqInteger a b
+
+leq_Integer :: Integer -> Integer -> Bool
+leq_Integer (Integer a) (Integer b) = if a <= b then True else False
+leq_Integer (Integer_Err msg) _ = Bool_Err msg
+leq_Integer _ (Integer_Err msg) = Bool_Err msg
+leq_Integer a b = Bool_LeqInteger a b
+
+add_Integer :: Integer -> Integer -> Integer
+add_Integer (Integer a) (Integer b) = Integer (a + b)
+add_Integer (Integer_Err msg) _ = Integer_Err msg
+add_Integer _ (Integer_Err msg) = Integer_Err msg
+add_Integer a b = Integer_Add a b
+
+sub_Integer :: Integer -> Integer -> Integer
+sub_Integer (Integer a) (Integer b) = Integer (a - b)
+sub_Integer (Integer_Err msg) _ = Integer_Err msg
+sub_Integer _ (Integer_Err msg) = Integer_Err msg
+sub_Integer a b = Integer_Sub a b
 

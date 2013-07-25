@@ -1,5 +1,4 @@
 Priority::
-* Add smt support for symbolic Integers: Add SMT Integer test
 * Add SMT Share test
 
 * Add support for concrete Bit Vectors
@@ -15,6 +14,8 @@ Priority::
 
 Cleanup::
 * Support symbolic IO
+* Figure out a way so that Bool and Integer and Bit definitions are not so
+  tied up with each other?
 
 Future Work::
 * Add minisat as a solver (requires CNF)
