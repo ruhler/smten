@@ -15,8 +15,8 @@ int_showsPrec a b c = symapp2 (\av bv ->
     fromHSString (P.showsPrec av (bv :: P.Int) (toHSString c))) a b
 
 integer_showsPrec :: Int -> Integer -> List__ Char -> List__ Char
-integer_showsPrec a (Integer b) c = symapp (\av ->
-    fromHSString (P.showsPrec av b (toHSString c))) a
+integer_showsPrec a b c = symapp2 (\av bv ->
+    fromHSString (P.showsPrec av (bv :: P.Integer) (toHSString c))) a b
 
 char_showsPrec :: Int -> Char -> List__ Char -> List__ Char
 char_showsPrec a b c = symapp (\av ->

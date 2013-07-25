@@ -14,9 +14,8 @@ Priority::
 * Add SMT Error test (if needed)
 
 Cleanup::
-* Cleanup primitive Char
+* Look into possibility of using Eq, Ord from ghc to allow auto-deriving
 * Cleanup primitive Integer
-* Support symbolic Int
 * Support symbolic IO
 
 Future Work::

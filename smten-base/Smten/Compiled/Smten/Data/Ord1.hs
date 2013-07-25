@@ -19,5 +19,6 @@ int_compare = symapp2 P.$ \a b ->
     fromp (P.compare (a :: P.Int) b)
   
 integer_compare :: Integer -> Integer -> Ordering
-integer_compare (Integer a) (Integer b) = fromp (P.compare a b)
+integer_compare = symapp2 P.$ \a b ->
+    fromp (P.compare (a :: P.Integer) b)
 

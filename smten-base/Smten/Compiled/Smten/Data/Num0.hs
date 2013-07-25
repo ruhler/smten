@@ -33,20 +33,20 @@ int_fromInteger :: Integer -> Int
 int_fromInteger (Integer x) = P.fromInteger x
 
 integer_add :: Integer -> Integer -> Integer
-integer_add (Integer a) (Integer b) = Integer (a P.+ b)
+integer_add = symapp2 P.$ \av bv -> tosym P.$ (av :: P.Integer) P.+ bv
 
 integer_sub :: Integer -> Integer -> Integer
-integer_sub (Integer a) (Integer b) = Integer (a P.- b)
+integer_sub = symapp2 P.$ \av bv -> tosym P.$ (av :: P.Integer) P.- bv
 
 integer_mul :: Integer -> Integer -> Integer
-integer_mul (Integer a) (Integer b) = Integer (a P.* b)
+integer_mul = symapp2 P.$ \av bv -> tosym P.$ (av :: P.Integer) P.* bv
 
 integer_negate :: Integer -> Integer
-integer_negate (Integer x) = Integer (P.negate x)
+integer_negate = symapp (tosym P.. (P.negate :: P.Integer -> P.Integer))
 
 integer_abs :: Integer -> Integer
-integer_abs (Integer x) = Integer (P.abs x)
+integer_abs = symapp (tosym P.. (P.abs :: P.Integer -> P.Integer))
 
 integer_signum :: Integer -> Integer
-integer_signum (Integer x) = Integer (P.signum x)
+integer_signum = symapp (tosym P.. (P.signum :: P.Integer -> P.Integer))
 
