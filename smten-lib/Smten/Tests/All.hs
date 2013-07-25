@@ -7,6 +7,7 @@ import Smten.Tests.Test
 import qualified Smten.Tests.Basic
 import qualified Smten.Tests.SMT.Core
 import qualified Smten.Tests.SMT.Datatype
+import qualified Smten.Tests.SMT.Integer ()
 
 main :: IO ()
 main = do

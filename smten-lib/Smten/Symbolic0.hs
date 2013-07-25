@@ -5,6 +5,7 @@ module Smten.Symbolic0 (
     Symbolic, Solver, run_symbolic,
     return_symbolic, bind_symbolic, 
     mzero_symbolic, mplus_symbolic,
+    free_Integer,
     ) where
 
 import Smten.Prelude
@@ -32,4 +33,7 @@ mplus_symbolic a b = Symbolic (s_elems a ++ s_elems b)
 run_symbolic :: Solver -> Symbolic a -> IO (Maybe a)
 run_symbolic _ (Symbolic []) = return Nothing
 run_symbolic _ (Symbolic (x:_)) = return (Just x)
+
+free_Integer :: Symbolic Integer
+free_Integer = primitive "Smten.Symbolic0.free_Integer"
 

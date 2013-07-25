@@ -35,6 +35,7 @@ library
     Smten.Tests.SMT.Test
     Smten.Tests.SMT.Core
     Smten.Tests.SMT.Datatype
+    Smten.Tests.SMT.Integer
     Smten.Tests.Test
     Smten.Tests.Basic
     Smten.Tests.All
@@ -49,6 +50,7 @@ library
     Smten.Compiled.Smten.Tests.SMT.Test
     Smten.Compiled.Smten.Tests.SMT.Core
     Smten.Compiled.Smten.Tests.SMT.Datatype
+    Smten.Compiled.Smten.Tests.SMT.Integer
     Smten.Compiled.Smten.Tests.Test
     Smten.Compiled.Smten.Tests.Basic
     Smten.Compiled.Smten.Tests.All

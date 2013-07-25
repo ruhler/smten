@@ -5,7 +5,8 @@
 module Smten.Compiled.Smten.Symbolic0 (
     Symbolic, Solver,
     return_symbolic, bind_symbolic, run_symbolic,
-    mzero_symbolic, mplus_symbolic
+    mzero_symbolic, mplus_symbolic,
+    free_Integer,
     ) where
 
 import Control.Monad.State
@@ -20,6 +21,7 @@ import Smten.Runtime.SmtenHS
 import Smten.Runtime.Solver
 
 import Smten.Compiled.Smten.Data.Maybe as S
+import Smten.Compiled.Smten.Smten.Integer as S
 
 data SS = SS {
     ss_pred :: BoolF,
@@ -49,6 +51,9 @@ mzero_symbolic :: (SmtenHS0 a) => Symbolic a
 mzero_symbolic = do
     modify $ \ss -> ss { ss_formula = ss_formula ss `andF` notF (ss_pred ss) }
     return (error0 (errstr "mzero_symbolic"))
+
+free_Integer :: Symbolic (S.Integer)
+free_Integer = error "TODO: free_Integer"
 
 mplus_symbolic :: (SmtenHS0 a) => Symbolic a -> Symbolic a -> Symbolic a
 mplus_symbolic a b = do

@@ -1,5 +1,5 @@
 Priority::
-* Add support for symbolic Integers: Add SMT Integer test
+* Add smt support for symbolic Integers: Add SMT Integer test
 * Add SMT Share test
 
 * Add support for concrete Bit Vectors
@@ -14,8 +14,6 @@ Priority::
 * Add SMT Error test (if needed)
 
 Cleanup::
-* Look into possibility of using Eq, Ord from ghc to allow auto-deriving
-* Cleanup primitive Integer
 * Support symbolic IO
 
 Future Work::
@@ -24,6 +22,7 @@ Future Work::
 
 Front End::
 * Auto-derive Show, Eq, Ord, Ix
+  maybe look into possibility of using Eq, Ord, etc... from ghc for this
 
 Documentation
 * Update user guide
