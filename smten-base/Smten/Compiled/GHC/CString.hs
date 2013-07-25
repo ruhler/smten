@@ -10,5 +10,5 @@ import qualified GHC.CString as GHC
 import Smten.Compiled.Smten.Smten.Base
 
 unpackCString# :: Addr# -> List__ Char
-unpackCString# x = toList__ (P.map fromHSChar (GHC.unpackCString# x))
+unpackCString# x = fromHSString (GHC.unpackCString# x)
 

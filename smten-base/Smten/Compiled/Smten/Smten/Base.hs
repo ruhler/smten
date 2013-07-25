@@ -1,19 +1,14 @@
 
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE MagicHash #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 module Smten.Compiled.Smten.Smten.Base (
     Char(..), P.Int, Integer(..),
     List__(..), Tuple2__(..), Tuple3__(..), Tuple4__(..), Unit__(..), 
     error,
 
-    fromList__, toList__, toHSChar, fromHSChar, toHSString, fromHSString,
+    fromList__, toList__, toHSChar, toHSString, fromHSString,
  )  where
 
 import qualified Prelude as P
-
-import qualified GHC.Types as P
-import qualified GHC.Prim as P
 
 import Smten.Runtime.ErrorString
 import Smten.Runtime.Formula
@@ -24,6 +19,7 @@ import Smten.Runtime.SymbolicOf
 import Smten.Compiled.Smten.Smten.List
 import Smten.Compiled.Smten.Smten.Tuple
 import Smten.Compiled.Smten.Smten.Unit
+import Smten.Compiled.Smten.Smten.Char
 
 fromList__ :: List__ a -> [a]
 fromList__ Nil__ = []
@@ -46,43 +42,11 @@ instance SmtenHS1 P.IO where
     realize1 = P.error "TODO: P.IO.realize1"
     ite1 = P.error "TODO: P.IO.ite1"
 
-data Char =
-    C# P.Char#
-  | Char_Ite BoolF Char Char
-  | Char_Err ErrorString
-  | Char_Prim (Model -> Char) Char
-
-instance SymbolicOf P.Char Char where
-    tosym = fromHSChar
-    symapp f x =
-      case x of
-        C# c -> f (P.C# c)
-        Char_Ite p a b -> ite0 p (f $$ a) (f $$ b)
-        Char_Err msg -> error0 msg
-        Char_Prim r x -> primitive0 (\m -> realize m (f $$ (r m))) (f $$ x)
-
-toHSChar :: Char -> P.Char
-toHSChar (C# x) = P.C# x
-
 toHSString :: List__ Char -> P.String
 toHSString x = P.map toHSChar (fromList__ x)
 
 fromHSString :: P.String -> List__ Char
-fromHSString x = toList__ (P.map fromHSChar x)
-
-fromHSChar :: P.Char -> Char
-fromHSChar (P.C# x) = C# x
-
-instance SmtenHS0 Char where
-    error0 = Char_Err
-    realize0 m x = 
-      case x of
-        C# {} -> x
-        Char_Ite p a b -> iterealize p a b m
-        Char_Err msg -> Char_Err (realize m msg)
-        Char_Prim r _ -> r m
-    ite0 = Char_Ite
-    primitive0 = Char_Prim
+fromHSString x = toList__ (P.map tosym x)
 
 data Integer =
     Integer P.Integer
