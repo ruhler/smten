@@ -2,14 +2,14 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 
 module Smten.Data.Bool (
-    Bool(False,True), (&&), (||), not, otherwise,
+    Bool(..), (&&), (||), not, otherwise,
     ifThenElse,
   ) where
 
+import Smten.Data.Bool0
+
 infixr 3 &&
 infixr 2 ||
-
-data Bool = False | True
 
 (&&) :: Bool -> Bool -> Bool
 (&&) True x = x

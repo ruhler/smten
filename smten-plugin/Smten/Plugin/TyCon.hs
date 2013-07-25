@@ -81,12 +81,12 @@ mkDataD nm tyvars constrs = do
   iteflnms <- mapM (iteflnmCG . dataConName) constrs
   itenm <- itenmCG nm
   let tyme = S.ConAppT qtyname tyvs'
-      asn = S.arrowT (S.ConAppT "Smten.Runtime.Model.Model" []) tyme
+      asn = S.arrowT (S.ConAppT "Smten.Runtime.Types.Model" []) tyme
       prim = S.Con primnm [asn, tyme]
 
-      err = S.Con errnm [S.ConAppT "Smten.Runtime.ErrorString.ErrorString" []]
+      err = S.Con errnm [S.ConAppT "Smten.Runtime.Types.ErrorString" []]
 
-      tybool = S.ConAppT "Smten.Runtime.Formula.BoolF" []
+      tybool = S.ConAppT "Smten.Runtime.Types.Bool" []
       tyfield = S.ConAppT "Prelude.Maybe" [S.ConAppT "(,)" [tybool, tyme]]
 
       iteerr = S.RecField iteerrnm tyfield
@@ -94,9 +94,7 @@ mkDataD nm tyvars constrs = do
       ite = S.RecC itenm (ites ++ [iteerr])
 
       allks = ks ++ [prim, err, ite]
-  addimport "Smten.Runtime.ErrorString"
-  addimport "Smten.Runtime.Formula"
-  addimport "Smten.Runtime.Model"
+  addimport "Smten.Runtime.Types"
   addimport "Prelude"
   return [S.DataD (S.Data nm' vs allks)]
 
@@ -322,7 +320,7 @@ mkLiftIteD t n ts cs = do
         qname <- qnameCG cn
         iteflnm <- iteflnmCG cn
         let pat = S.RecP qname
-            tuple = S.tup2E (S.conE "Smten.Runtime.Formula.TrueF" []) (S.VarE "x")
+            tuple = S.tup2E (S.conE "Smten.Runtime.Types.True" []) (S.VarE "x")
             fields = [S.Field iteflnm (S.conE "Prelude.Just" [tuple])]
             body = S.RecE (S.SigE (S.VarE qnullitenm) tyme) fields
         return $ S.Alt pat body
@@ -330,7 +328,7 @@ mkLiftIteD t n ts cs = do
   qerrnm <- qerrnmCG n
   iteerrnm <- iteerrnmCG n
   let errpat = S.RecP qerrnm
-      errtuple = S.tup2E (S.conE "Smten.Runtime.Formula.TrueF" []) (S.VarE "x")
+      errtuple = S.tup2E (S.conE "Smten.Runtime.Types.True" []) (S.VarE "x")
       errfields = [S.Field iteerrnm (S.conE "Prelude.Just" [errtuple])]
       errbody = S.RecE (S.SigE (S.VarE qnullitenm) tyme) errfields
       errcon = S.Alt errpat errbody

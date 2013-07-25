@@ -10,8 +10,7 @@ import Foreign
 import Foreign.C.String
 
 import Smten.Runtime.Yices2FFI
-import Smten.Runtime.Formula
-import Smten.Runtime.Result
+import qualified Smten.Runtime.Types as S
 import Smten.Runtime.SolverAST
 import Smten.Runtime.Solver
 
@@ -37,7 +36,7 @@ bvInteger (x:xs) = bvInteger xs * 2 + (fromIntegral x)
 
 
 instance SolverAST Yices2 YTerm where
-  declare y BoolTF nm = do
+  declare y S.BoolT nm = do
     ty <- c_yices_bool_type
     term <- c_yices_new_uninterpreted_term ty
     withCString nm $ c_yices_set_term_name term

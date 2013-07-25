@@ -4,7 +4,7 @@ module Smten.Compiled.Smten.Data.Eq0 (int_eq, integer_eq) where
 
 import qualified Prelude as P
 import Smten.Compiled.Smten.Smten.Base
-import Smten.Compiled.Smten.Data.Bool
+import Smten.Compiled.Smten.Data.Bool0
 import Smten.Runtime.SymbolicOf
 
 int_eq :: Int -> Int -> Bool

@@ -8,7 +8,7 @@ import Control.Monad
 import Data.IORef
 import Data.Functor
 
-import Smten.Runtime.Formula
+import Smten.Runtime.Types (Type(..))
 import Smten.Runtime.Result
 import Smten.Runtime.SolverAST
 import Smten.Runtime.Solver
@@ -25,7 +25,7 @@ data Exp = Exp (Model -> Any)
 data PureSolver = PureSolver (IORef [Model])
 
 instance SolverAST PureSolver Exp where
-  declare (PureSolver mref) BoolTF nm = do
+  declare (PureSolver mref) BoolT nm = do
      ms <- readIORef mref
      writeIORef mref $ do
         vs <- vars <$> ms

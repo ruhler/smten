@@ -10,15 +10,13 @@ import qualified Prelude as P
 import qualified GHC.Types as P
 import qualified GHC.Prim as P
 
-import Smten.Runtime.ErrorString
-import Smten.Runtime.Formula
-import Smten.Runtime.Model
+import Smten.Runtime.Types
 import Smten.Runtime.SmtenHS
 import Smten.Runtime.SymbolicOf
 
 data Int =
     I# P.Int#
-  | Int_Ite BoolF Int Int
+  | Int_Ite Bool Int Int
   | Int_Err ErrorString
   | Int_Prim (Model -> Int) Int
 

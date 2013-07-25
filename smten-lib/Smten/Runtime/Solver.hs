@@ -3,7 +3,7 @@ module Smten.Runtime.Solver (
     Solver, SolverInst(..), solverInstFromAST,
     ) where
 
-import Smten.Runtime.Formula
+import qualified Smten.Runtime.Types as S
 import Smten.Runtime.Result
 import Smten.Runtime.SmtenHS
 import qualified Smten.Runtime.SolverAST as AST
@@ -13,10 +13,10 @@ type Solver = IO SolverInst
 
 data SolverInst = SolverInst {
     -- | Assert the given expression.
-    assert :: BoolF -> IO (),
+    assert :: S.Bool -> IO (),
 
     -- | Declare a free variable with given name and type.
-    declare :: TypeF -> String -> IO (),
+    declare :: S.Type -> String -> IO (),
 
     getBoolValue :: String -> IO Bool,
 

@@ -12,7 +12,7 @@ import System.Mem.StableName
 import qualified Data.HashTable.IO as H
 
 import Smten.Runtime.FreeID
-import Smten.Runtime.Formula
+import qualified Smten.Runtime.Types as S
 import Smten.Runtime.SolverAST as ST
 
 type Cache exp = H.BasicHashTable (StableName Any) exp
@@ -27,7 +27,7 @@ type AM ctx exp = ReaderT (AR ctx exp) IO
 class Supported a where
     define :: (SolverAST ctx exp) => ctx -> a -> AM ctx exp exp
 
-assert :: (SolverAST ctx exp) => ctx -> BoolF -> IO ()
+assert :: (SolverAST ctx exp) => ctx -> S.Bool -> IO ()
 assert ctx p = {-# SCC "Assert" #-} do
     c <- H.new
     e <- runReaderT (define ctx p) (AR ctx c)
@@ -57,28 +57,27 @@ binary f a b = do
     b' <- use b
     liftIO $ f a' b'
 
-instance Supported BoolF where
-    define ctx TrueF = liftIO $ bool ctx True
-    define ctx FalseF = liftIO $ bool ctx False
-    define ctx (VarF id) = liftIO $ var ctx (freenm id)
+instance Supported S.Bool where
+    define ctx S.True = liftIO $ bool ctx True
+    define ctx S.False = liftIO $ bool ctx False
+    define ctx (S.Bool_Var id) = liftIO $ var ctx (freenm id)
 --    define ctx (S.Bool_EqInteger a b) = binary (eq_integer ctx) a b
 --    define ctx (S.Bool_LeqInteger a b) = binary (leq_integer ctx) a b
 --    define ctx (S.Bool_EqBit a b) = binary (eq_bit ctx) a b
 --    define ctx (S.Bool_LeqBit a b) = binary (leq_bit ctx) a b
-    define ctx (IteF p a b) = do
+    define ctx (S.Bool_Ite p a b) = do
         p' <- use p
         a' <- use a
         b' <- use b
         liftIO $ ite_bool ctx p' a' b'
 
-    define ctx (AndF a b) = binary (and_bool ctx) a b
-    define ctx (NotF a) = unary (not_bool ctx) a
-
---   define ctx (S.Bool_Prim _ c) = define ctx c
---   define ctx (S.Bool_Error msg) = liftIO $ do
---       id <- fresh
---       declare_bool ctx (freenm id)
---       var ctx (freenm id)
+    define ctx (S.Bool_And a b) = binary (and_bool ctx) a b
+    define ctx (S.Bool_Not a) = unary (not_bool ctx) a
+    define ctx (S.Bool_Prim _ c) = define ctx c
+    define ctx (S.Bool_Err msg) = liftIO $ do
+       id <- fresh
+       declare ctx S.BoolT (freenm id)
+       var ctx (freenm id)
        
 --instance Supported S.Integer where
 --    define ctx (S.Integer i) = liftIO $ integer ctx i

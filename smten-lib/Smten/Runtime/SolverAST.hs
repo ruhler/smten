@@ -4,11 +4,11 @@
 
 module Smten.Runtime.SolverAST (SolverAST(..)) where
 
-import Smten.Runtime.Formula
+import Smten.Runtime.Types (Type)
 import Smten.Runtime.Result
 
 class SolverAST ctx exp | ctx -> exp where
-  declare :: ctx -> TypeF -> String -> IO ()
+  declare :: ctx -> Type -> String -> IO ()
 
   getBoolValue :: ctx -> String -> IO Bool
 --  getIntegerValue :: ctx -> String -> IO Integer

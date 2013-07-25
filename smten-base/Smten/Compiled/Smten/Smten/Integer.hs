@@ -8,15 +8,13 @@ module Smten.Compiled.Smten.Smten.Integer (
 
 import qualified Prelude as P
 
-import Smten.Runtime.ErrorString
-import Smten.Runtime.Formula
-import Smten.Runtime.Model
+import Smten.Runtime.Types
 import Smten.Runtime.SmtenHS
 import Smten.Runtime.SymbolicOf
 
 data Integer =
     Integer P.Integer
-  | Integer_Ite BoolF Integer Integer
+  | Integer_Ite Bool Integer Integer
   | Integer_Err ErrorString
   | Integer_Prim (Model -> Integer) Integer
 

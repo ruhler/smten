@@ -11,15 +11,13 @@ import qualified Prelude as P
 import qualified GHC.Types as P
 import qualified GHC.Prim as P
 
-import Smten.Runtime.ErrorString
-import Smten.Runtime.Formula
-import Smten.Runtime.Model
+import Smten.Runtime.Types
 import Smten.Runtime.SmtenHS
 import Smten.Runtime.SymbolicOf
 
 data Char =
     C# P.Char#
-  | Char_Ite BoolF Char Char
+  | Char_Ite Bool Char Char
   | Char_Err ErrorString
   | Char_Prim (Model -> Char) Char
 

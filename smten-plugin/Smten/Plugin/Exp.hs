@@ -43,7 +43,32 @@ expCG (Lam b body)
     body' <- expCG body
     return $ S.LamE b' body'
 
--- Case expressions are generated as follows:
+-- Boolean case expressions are generated specially as:
+--   let v = x
+--   in ite v t f
+expCG (Case x v ty ms) | isBoolType (varType v) =
+  let mkite tb fb = do
+        addimport "Smten.Runtime.SmtenHS"
+        vnm <- qnameCG $ varName v
+        arg <- expCG x
+        tb' <- expCG tb
+        fb' <- expCG fb
+        let ite = foldl1 S.AppE [
+              S.VarE "Smten.Runtime.SmtenHS.ite", 
+              S.VarE vnm,
+              tb', fb']
+        return $ S.LetE [S.Val vnm Nothing arg] ite
+  in case ms of
+       [(DataAlt fk, [], fb), (DataAlt tk, [], tb)]
+          | isFalseK fk && isTrueK tk -> mkite tb fb
+       [(DEFAULT, _, fb), (DataAlt tk, [], tb)] | isTrueK tk -> mkite tb fb
+       [(DEFAULT, _, tb), (DataAlt fk, [], fb)] | isFalseK fk -> mkite tb fb
+       _ -> do
+           lift $ fatalErrorMsg (text "TODO: expCG Bool Case: " <+> ppr ms)
+           return $ S.VarE "???"
+
+        
+-- General case expressions are generated as follows:
 --   let casef_XX = \v ->
 --          case v of
 --             FooA a b ... -> ...
@@ -105,7 +130,7 @@ expCG (Case x v ty ms) = do
 -- TODO: insert a call to unsafeCoerce# here?
 expCG (Cast x _) = expCG x
 expCG x = do
-  lift $ errorMsg (text "TODO: expCG " <+> ppr x)
+  lift $ fatalErrorMsg (text "TODO: expCG " <+> ppr x)
   return (S.VarE "???")
 
 litCG :: Literal -> S.Literal
@@ -124,4 +149,29 @@ altCG (DataAlt k, xs, body) = withlocals (map varName xs) $ do
 altCG (LitAlt l, _, body) = do
     body' <- expCG body
     return $ S.Alt (S.LitP (litCG l)) body'
+
+isBoolType :: Type -> Bool
+isBoolType t = 
+   case splitTyConApp t of
+        (tycon, []) -> 
+            let nm = tyConName tycon
+                occnm = occNameString $ nameOccName nm
+                modnm = moduleNameString . moduleName <$> nameModule_maybe nm
+            in if occnm == "Bool"
+                 then if modnm `elem` [Just "Smten.Data.Bool0",
+                                       Just "GHC.Types"]
+                        then True
+                        else error (show modnm)
+                 else False
+        _ -> False
+
+isFalseK :: DataCon -> Bool
+isFalseK d =
+  let nm = dataConName d
+  in "False" == (occNameString $ nameOccName nm)
+
+isTrueK :: DataCon -> Bool
+isTrueK d =
+  let nm = dataConName d
+  in "True" == (occNameString $ nameOccName nm)
 
