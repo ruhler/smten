@@ -1,4 +1,5 @@
 
+{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE MagicHash #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 module Smten.Compiled.Smten.Smten.Base (
@@ -18,6 +19,7 @@ import Smten.Runtime.ErrorString
 import Smten.Runtime.Formula
 import Smten.Runtime.Model
 import Smten.Runtime.SmtenHS
+import Smten.Runtime.SymbolicOf
 
 import Smten.Compiled.Smten.Smten.List
 import Smten.Compiled.Smten.Smten.Tuple
@@ -49,6 +51,15 @@ data Char =
   | Char_Ite BoolF Char Char
   | Char_Err ErrorString
   | Char_Prim (Model -> Char) Char
+
+instance SymbolicOf P.Char Char where
+    tosym = fromHSChar
+    symapp f x =
+      case x of
+        C# c -> f (P.C# c)
+        Char_Ite p a b -> ite0 p (f $$ a) (f $$ b)
+        Char_Err msg -> error0 msg
+        Char_Prim r x -> primitive0 (\m -> realize m (f $$ (r m))) (f $$ x)
 
 toHSChar :: Char -> P.Char
 toHSChar (C# x) = P.C# x

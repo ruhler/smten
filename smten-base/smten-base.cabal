@@ -53,6 +53,7 @@ library
     Smten.Runtime.FreeID
     Smten.Runtime.Model
     Smten.Runtime.SmtenHS
+    Smten.Runtime.SymbolicOf
 
     Smten.Compiled.Smten.Prelude
     Smten.Compiled.Smten.Control.Monad
