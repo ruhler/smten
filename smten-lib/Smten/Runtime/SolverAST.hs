@@ -34,7 +34,7 @@ class SolverAST ctx exp | ctx -> exp where
 
   ite_bit :: ctx -> exp -> exp -> exp -> IO exp
   eq_bit :: ctx -> exp -> exp -> IO exp
---  leq_bit :: ctx -> exp -> exp -> IO exp
+  leq_bit :: ctx -> exp -> exp -> IO exp
   add_bit :: ctx -> exp -> exp -> IO exp
   sub_bit :: ctx -> exp -> exp -> IO exp
 --  mul_bit :: ctx -> exp -> exp -> IO exp

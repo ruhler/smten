@@ -15,9 +15,8 @@ bit5 = fromInteger
 
 tests :: IO ()
 tests = do
-    test "Bit.Simple" (bit3 0 == 7 + 1)
+    test "Bit.simple" (bit3 0 == 7 + 1)
 --    test "Bit.OR" ((3 :: Bit #3) == (bv_or 1 2))
---    test "Bit.simple" (bit3 0 == ((bit3 7) + 1))
 --    test "Bit.zeroext" (bit5 7 == bv_zero_extend (bit3 (0-1)))
 --    test "Bit.or" (bit5 0x1E == bv_or (bit5 0x12) (bit5 0x0C))
 --    test "Bit.shl" (bit5 10 == bv_shl (bit5 5) (bit5 1))

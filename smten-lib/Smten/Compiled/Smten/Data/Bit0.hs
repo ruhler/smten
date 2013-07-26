@@ -2,7 +2,7 @@
 {-# LANGUAGE DataKinds, KindSignatures #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 module Smten.Compiled.Smten.Data.Bit0 (
-    Bit, bv_eq, bv_show, bv_fromInteger, bv_add, bv_sub,
+    Bit, bv_eq, bv_leq, bv_show, bv_fromInteger, bv_add, bv_sub,
     ) where
 
 import qualified Prelude as P
@@ -25,6 +25,9 @@ instance SymbolicOf P.Bit (Bit n) where
 
 bv_eq :: Bit n -> Bit n -> Bool
 bv_eq = eq_Bit
+
+bv_leq :: Bit n -> Bit n -> Bool
+bv_leq = leq_Bit
 
 bv_show :: Bit n -> List__ Char
 bv_show = symapp P.$ \av -> fromHSString (P.show (av :: P.Bit))

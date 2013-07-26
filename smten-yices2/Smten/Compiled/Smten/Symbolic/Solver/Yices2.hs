@@ -124,7 +124,7 @@ instance SolverAST Yices2 YTerm where
   sub_integer _ = c_yices_sub
 
   eq_bit _ = c_yices_eq
---  leq_bit _ = c_yices_bvle_atom
+  leq_bit _ = c_yices_bvle_atom
   add_bit _ = c_yices_bvadd
   sub_bit _ = c_yices_bvsub
 --  mul_bit _ = c_yices_bvmul

@@ -107,6 +107,10 @@ instance SolverAST PureSolver Exp where
      case (a m, b m) of
         (BV av, BV bv) -> B (av == bv)
 
+  leq_bit _ (Exp a) (Exp b) = return . Exp $ \m ->
+     case (a m, b m) of
+        (BV av, BV bv) -> B (av <= bv)
+
   add_bit _ (Exp a) (Exp b) = return . Exp $ \m ->
      case (a m, b m) of
         (BV av, BV bv) -> BV (av + bv)

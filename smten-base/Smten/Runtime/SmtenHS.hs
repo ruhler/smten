@@ -122,8 +122,9 @@ instance SmtenHS0 Bool where
         Bool_And a b -> andB (realize m a) (realize m b)
         Bool_Not p -> notB (realize m p)
         Bool_EqInteger a b -> eq_Integer (realize m a) (realize m b)
-        Bool_EqBit a b -> eq_Bit (realize m a) (realize m b)
         Bool_LeqInteger a b -> leq_Integer (realize m a) (realize m b)
+        Bool_EqBit a b -> eq_Bit (realize m a) (realize m b)
+        Bool_LeqBit a b -> leq_Bit (realize m a) (realize m b)
         Bool_Var n -> lookupBool m n
         Bool_Err msg -> Bool_Err (realize m msg)
         Bool_Prim r _ -> r m

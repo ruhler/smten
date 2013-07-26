@@ -10,24 +10,6 @@ import Smten.Tests.SMT.Test
 
 smttests :: SMTTest ()
 smttests = do
---    symtesteq "SMT.Bit.Cmp" (Just 7) [Yices1, Yices2, STP] $ do
---        a <- free
---        assert (a < 8)
---        assert (a > 6)
---        return (a :: Bit #8)
---
---    -- TODO: STP fails this test!
---    symtesteq "SMT.Bit.SignExt1" (Just 3) [Yices1, Yices2] $ do
---        a <- free
---        assert (bv_sign_extend (a :: Bit #3) == (0x3 :: Bit #5))
---        return a
---
---    -- TODO: STP fails this test!
---    symtesteq "SMT.Bit.SignExt2" (Just 4) [Yices1, Yices2] $ do
---        a <- free
---        assert (bv_sign_extend (a :: Bit #3) == (0x1c :: Bit #5))
---        return a
-
     symtesteq "SMT.Bit.Simple" (Just 0) $ do
         a <- free_Bit
         assert (a == 0)
@@ -50,6 +32,24 @@ smttests = do
         assert ((e - 3) == 6)
         return (e :: Bit 3)
 
+    symtesteq "SMT.Bit.Cmp" (Just 7) $ do
+        a <- free_Bit
+        assert (a < 8)
+        assert (a > 6)
+        return (a :: Bit 8)
+
+--    -- TODO: STP fails this test!
+--    symtesteq "SMT.Bit.SignExt1" (Just 3) [Yices1, Yices2] $ do
+--        a <- free
+--        assert (bv_sign_extend (a :: Bit #3) == (0x3 :: Bit #5))
+--        return a
+--
+--    -- TODO: STP fails this test!
+--    symtesteq "SMT.Bit.SignExt2" (Just 4) [Yices1, Yices2] $ do
+--        a <- free
+--        assert (bv_sign_extend (a :: Bit #3) == (0x1c :: Bit #5))
+--        return a
+--
 --    symtesteq "SMT.Bit.Not" (Just 0x0A) [Yices1, Yices2, STP] $ do
 --        f <- free
 --        assert (bv_not f == 0x15)

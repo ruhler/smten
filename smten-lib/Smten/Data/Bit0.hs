@@ -4,7 +4,7 @@
 {-# LANGUAGE NoImplicitPrelude, RebindableSyntax #-}
 module Smten.Data.Bit0 (
     Bit, 
-    bv_eq,
+    bv_eq, bv_leq,
     bv_show,
     bv_fromInteger, bv_add, bv_sub,
     ) where
@@ -20,6 +20,9 @@ data Bit (n :: Nat)
 
 bv_eq :: Bit n -> Bit n -> Bool
 bv_eq = primitive "Smten.Data.Bit0.bv_eq"
+
+bv_leq :: Bit n -> Bit n -> Bool
+bv_leq = primitive "Smten.Data.Bit0.bv_leq"
 
 bv_show :: Bit n -> String
 bv_show = primitive "Smten.Data.Bit0.bv_show"

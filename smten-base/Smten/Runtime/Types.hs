@@ -9,7 +9,7 @@ module Smten.Runtime.Types (
     Model, model, m_cached, lookupBool, lookupInteger, lookupBit,
     Bool(..), andB, notB, iteB,
     Integer(..), eq_Integer, leq_Integer, add_Integer, sub_Integer,
-    Bit(..), eq_Bit, add_Bit, sub_Bit,
+    Bit(..), eq_Bit, leq_Bit, add_Bit, sub_Bit,
     ) where
 
 import GHC.TypeLits
@@ -86,6 +86,7 @@ data Bool where
    Bool_EqInteger :: Integer -> Integer -> Bool
    Bool_LeqInteger :: Integer -> Integer -> Bool
    Bool_EqBit :: Bit n -> Bit n -> Bool
+   Bool_LeqBit :: Bit n -> Bit n -> Bool
    Bool_Var :: FreeID -> Bool
    Bool_Err :: ErrorString -> Bool
    Bool_Prim :: (Model -> Bool) -> Bool -> Bool
@@ -158,6 +159,12 @@ eq_Bit (Bit a) (Bit b) = if a == b then True else False
 eq_Bit (Bit_Err msg) _ = Bool_Err msg
 eq_Bit _ (Bit_Err msg) = Bool_Err msg
 eq_Bit a b = Bool_EqBit a b
+
+leq_Bit :: Bit n -> Bit n -> Bool
+leq_Bit (Bit a) (Bit b) = if a <= b then True else False
+leq_Bit (Bit_Err msg) _ = Bool_Err msg
+leq_Bit _ (Bit_Err msg) = Bool_Err msg
+leq_Bit a b = Bool_LeqBit a b
 
 add_Bit :: Bit n -> Bit n -> Bit n
 add_Bit (Bit a) (Bit b) = Bit (a + b)

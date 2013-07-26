@@ -65,7 +65,7 @@ instance Supported S.Bool where
     define ctx (S.Bool_EqInteger a b) = binary (eq_integer ctx) a b
     define ctx (S.Bool_LeqInteger a b) = binary (leq_integer ctx) a b
     define ctx (S.Bool_EqBit a b) = binary (eq_bit ctx) a b
---    define ctx (S.Bool_LeqBit a b) = binary (leq_bit ctx) a b
+    define ctx (S.Bool_LeqBit a b) = binary (leq_bit ctx) a b
     define ctx (S.Bool_Ite p a b) = do
         p' <- use p
         a' <- use a

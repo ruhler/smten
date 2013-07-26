@@ -82,7 +82,7 @@ instance SolverAST DebugLL Debug where
     sub_integer = op "-"
 
     eq_bit = op "=="
---    leq_bit = op "<="
+    leq_bit = op "<="
     add_bit = op "+"
     sub_bit = op "-"
 --    mul_bit = op "*"

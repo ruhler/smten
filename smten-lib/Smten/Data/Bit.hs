@@ -11,6 +11,9 @@ import Smten.Data.Bit0
 instance Eq (Bit n) where
     (==) = bv_eq
 
+instance Ord (Bit n) where
+    (<=) = bv_leq
+
 instance Show (Bit n) where
     show = bv_show
 
