@@ -11,6 +11,7 @@ import System.Mem.StableName
 
 import qualified Data.HashTable.IO as H
 
+import Smten.Runtime.Bit
 import Smten.Runtime.FreeID
 import qualified Smten.Runtime.Types as S
 import Smten.Runtime.SolverAST as ST
@@ -63,7 +64,7 @@ instance Supported S.Bool where
     define ctx (S.Bool_Var id) = liftIO $ var ctx (freenm id)
     define ctx (S.Bool_EqInteger a b) = binary (eq_integer ctx) a b
     define ctx (S.Bool_LeqInteger a b) = binary (leq_integer ctx) a b
---    define ctx (S.Bool_EqBit a b) = binary (eq_bit ctx) a b
+    define ctx (S.Bool_EqBit a b) = binary (eq_bit ctx) a b
 --    define ctx (S.Bool_LeqBit a b) = binary (leq_bit ctx) a b
     define ctx (S.Bool_Ite p a b) = do
         p' <- use p
@@ -95,10 +96,10 @@ instance Supported S.Integer where
         declare ctx S.IntegerT (freenm id)
         var ctx (freenm id)
 
---instance (S.SmtenHS0 n) => Supported (S.Bit n) where
---    define ctx (S.Bit x) = liftIO $ bit ctx (bv_width x) (bv_value x)
---    define ctx (S.Bit_Add a b) = binary (add_bit ctx) a b
---    define ctx (S.Bit_Sub a b) = binary (sub_bit ctx) a b
+instance Supported (S.Bit n) where
+    define ctx (S.Bit x) = liftIO $ bit ctx (bv_width x) (bv_value x)
+    define ctx (S.Bit_Add a b) = binary (add_bit ctx) a b
+    define ctx (S.Bit_Sub a b) = binary (sub_bit ctx) a b
 --    define ctx (S.Bit_Mul a b) = binary (mul_bit ctx) a b
 --    define ctx (S.Bit_Or a b) = binary (or_bit ctx) a b
 --    define ctx (S.Bit_And a b) = binary (and_bit ctx) a b
@@ -113,13 +114,13 @@ instance Supported S.Integer where
 --    define ctx x@(S.Bit_SignExtend a) =
 --       let by = bitwidth x - bitwidth a
 --       in unary (sign_extend_bit ctx by) a
---    define ctx (S.Bit_Ite p a b) = do
---        p' <- use p
---        a' <- use a
---        b' <- use b
---        liftIO $ ite_bit ctx p' a' b'
---    define ctx (S.Bit_Var id) = liftIO $ var ctx (freenm id)
---    define ctx (S.Bit_Prim _ c) = define ctx c
+    define ctx (S.Bit_Ite p a b) = do
+        p' <- use p
+        a' <- use a
+        b' <- use b
+        liftIO $ ite_bit ctx p' a' b'
+    define ctx (S.Bit_Var id) = liftIO $ var ctx (freenm id)
+    define ctx (S.Bit_Prim _ c) = define ctx c
 --    define ctx x@(S.Bit_Error msg) = liftIO $ do
 --        id <- fresh
 --        declare_bit ctx (freenm id) (bitwidth x)

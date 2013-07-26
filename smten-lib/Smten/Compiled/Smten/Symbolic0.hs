@@ -12,6 +12,7 @@ module Smten.Compiled.Smten.Symbolic0 (
 import Control.Monad.State
 import Data.Functor((<$>))
 
+import Smten.Runtime.Bit
 import Smten.Runtime.FreeID
 import Smten.Runtime.Types hiding (Integer)
 import Smten.Runtime.Result
@@ -65,7 +66,10 @@ free_Integer = do
     return (S.Integer_Var fid)
 
 free_Bit :: Integer -> Symbolic (S.Bit n)
-free_Bit = error "TODO: free_Bit"
+free_Bit w = do
+    fid <- liftIO fresh
+    modify $ \s -> s { ss_free = (fid, BitT w) : ss_free s }
+    return (S.Bit_Var fid)
 
 predicated :: S.Bool -> Symbolic a -> Symbolic a
 predicated p q = do
@@ -100,6 +104,9 @@ getValue s (f, BoolT) = do
 getValue s (f, IntegerT) = do
    b <- getIntegerValue s (freenm f)
    return (IntegerA $ S.Integer b)
+getValue s (f, BitT w) = do
+   b <- getBitVectorValue s w (freenm f)
+   return (BitA $ bv_make w b)
 
 declVar :: SolverInst -> (FreeID, Type) -> IO ()
 declVar s (nm, ty) = declare s ty (freenm nm)

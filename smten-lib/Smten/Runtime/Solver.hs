@@ -20,6 +20,7 @@ data SolverInst = SolverInst {
 
     getBoolValue :: String -> IO Bool,
     getIntegerValue :: String -> IO Integer,
+    getBitVectorValue :: Integer -> String -> IO Integer,
 
     -- | Run (check) and return the result.
     check :: IO Result
@@ -37,6 +38,7 @@ solverInstFromAST x = SolverInst {
     declare = AST.declare x,
     getBoolValue = AST.getBoolValue x,
     getIntegerValue = AST.getIntegerValue x,
+    getBitVectorValue = AST.getBitVectorValue x,
     check = AST.check x
 }
 

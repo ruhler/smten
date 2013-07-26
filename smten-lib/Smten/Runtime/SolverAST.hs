@@ -12,14 +12,14 @@ class SolverAST ctx exp | ctx -> exp where
 
   getBoolValue :: ctx -> String -> IO Bool
   getIntegerValue :: ctx -> String -> IO Integer
---  getBitVectorValue :: ctx -> String -> Integer -> IO Integer
+  getBitVectorValue :: ctx -> Integer -> String -> IO Integer
 
   check :: ctx -> IO Result
 
   assert :: ctx -> exp -> IO ()
   bool :: ctx -> Bool -> IO exp
   integer :: ctx -> Integer -> IO exp
---  bit :: ctx -> Integer -> Integer -> IO exp
+  bit :: ctx -> Integer -> Integer -> IO exp
   var :: ctx -> String -> IO exp
 
   not_bool :: ctx -> exp -> IO exp
@@ -32,11 +32,11 @@ class SolverAST ctx exp | ctx -> exp where
   add_integer :: ctx -> exp -> exp -> IO exp
   sub_integer :: ctx -> exp -> exp -> IO exp
 
---  ite_bit :: ctx -> exp -> exp -> exp -> IO exp
---  eq_bit :: ctx -> exp -> exp -> IO exp
+  ite_bit :: ctx -> exp -> exp -> exp -> IO exp
+  eq_bit :: ctx -> exp -> exp -> IO exp
 --  leq_bit :: ctx -> exp -> exp -> IO exp
---  add_bit :: ctx -> exp -> exp -> IO exp
---  sub_bit :: ctx -> exp -> exp -> IO exp
+  add_bit :: ctx -> exp -> exp -> IO exp
+  sub_bit :: ctx -> exp -> exp -> IO exp
 --  mul_bit :: ctx -> exp -> exp -> IO exp
 --  or_bit :: ctx -> exp -> exp -> IO exp
 --  and_bit :: ctx -> exp -> exp -> IO exp

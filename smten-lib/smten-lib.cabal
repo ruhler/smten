@@ -20,7 +20,6 @@ library
   exposed-modules:
     Smten.Runtime.AnyKeyMap
     Smten.Runtime.Assert
-    Smten.Runtime.Bit
     Smten.Runtime.Solver
     Smten.Runtime.SolverAST
     Smten.Runtime.Debug

@@ -46,10 +46,10 @@ instance SolverAST Yices2 YTerm where
     term <- c_yices_new_uninterpreted_term ty
     withCString nm $ c_yices_set_term_name term
 
---  declare_bit y nm w = do
---    ty <- c_yices_bv_type (fromInteger w)
---    term <- c_yices_new_uninterpreted_term ty
---    withCString nm $ c_yices_set_term_name term
+  declare y (S.BitT w) nm = do
+    ty <- c_yices_bv_type (fromInteger w)
+    term <- c_yices_new_uninterpreted_term ty
+    withCString nm $ c_yices_set_term_name term
   
   getBoolValue y nm = withy2 y $ \yctx -> do
     model <- c_yices_get_model yctx 1
@@ -86,16 +86,16 @@ instance SolverAST Yices2 YTerm where
     c_yices_free_model model
     return $! toInteger x
 
---  getBitVectorValue y nm w = withy2 y $ \yctx -> do
---    model <- c_yices_get_model yctx 1
---    bits <- allocaArray (fromInteger w) $ \ptr -> do
---        term <- withCString nm c_yices_get_term_by_name
---        ir <- c_yices_get_bv_value model term ptr
---        if ir == 0
---            then peekArray (fromInteger w) ptr
---            else error $ "yices2 get bit vector value returned: " ++ show ir
---    c_yices_free_model model
---    return $! bvInteger bits
+  getBitVectorValue y w nm = withy2 y $ \yctx -> do
+    model <- c_yices_get_model yctx 1
+    bits <- allocaArray (fromInteger w) $ \ptr -> do
+        term <- withCString nm c_yices_get_term_by_name
+        ir <- c_yices_get_bv_value model term ptr
+        if ir == 0
+            then peekArray (fromInteger w) ptr
+            else error $ "yices2 get bit vector value returned: " ++ show ir
+    c_yices_free_model model
+    return $! bvInteger bits
 
   check y = {-# SCC "Yices2Check" #-} withy2 y $ \ctx -> do
     st <- c_yices_check_context ctx nullPtr
@@ -105,10 +105,10 @@ instance SolverAST Yices2 YTerm where
 
   bool _ p = if p then c_yices_true else c_yices_false
   integer _ i = c_yices_int64 (fromInteger i)
---  bit _ w v = 
---        let w' = fromInteger w
---            v' = fromInteger v
---        in c_yices_bvconst_uint64 w' v'
+  bit _ w v = 
+        let w' = fromInteger w
+            v' = fromInteger v
+        in c_yices_bvconst_uint64 w' v'
 
   var _ nm = withCString nm c_yices_get_term_by_name
 
@@ -116,17 +116,17 @@ instance SolverAST Yices2 YTerm where
   not_bool _ = c_yices_not
   ite_bool _ = c_yices_ite 
   ite_integer _ = c_yices_ite 
---  ite_bit _ = c_yices_ite 
---
+  ite_bit _ = c_yices_ite 
+
   eq_integer _ = c_yices_eq
   leq_integer _ = c_yices_arith_leq_atom
   add_integer _ = c_yices_add
   sub_integer _ = c_yices_sub
 
---  eq_bit _ = c_yices_eq
+  eq_bit _ = c_yices_eq
 --  leq_bit _ = c_yices_bvle_atom
---  add_bit _ = c_yices_bvadd
---  sub_bit _ = c_yices_bvsub
+  add_bit _ = c_yices_bvadd
+  sub_bit _ = c_yices_bvsub
 --  mul_bit _ = c_yices_bvmul
 --  or_bit _ = c_yices_bvor
 --  and_bit _ = c_yices_bvand

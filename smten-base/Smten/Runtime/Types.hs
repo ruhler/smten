@@ -1,26 +1,32 @@
 
+{-# LANGUAGE DataKinds, KindSignatures #-}
+{-# LANGUAGE GADTs #-}
 {-# LANGUAGE PatternGuards #-}
 
 module Smten.Runtime.Types (
     Type(..), Any(..),
     ErrorString(..), errstr, doerr,
-    Model, model, m_cached, lookupBool, lookupInteger,
+    Model, model, m_cached, lookupBool, lookupInteger, lookupBit,
     Bool(..), andB, notB, iteB,
     Integer(..), eq_Integer, leq_Integer, add_Integer, sub_Integer,
+    Bit(..), eq_Bit, add_Bit, sub_Bit,
     ) where
 
+import GHC.TypeLits
 import Prelude hiding (Bool(..), Integer(..))
 import qualified Prelude as P
+import qualified Smten.Runtime.Bit as P
 
 import System.IO.Unsafe
 import qualified Smten.Runtime.AnyMap as A
 import Smten.Runtime.FreeID
 
-data Type = BoolT | IntegerT
+data Type = BoolT | IntegerT | BitT P.Integer
     deriving (Show)
 
 data Any = BoolA Bool
          | IntegerA Integer
+         | BitA P.Bit
 
 data ErrorString =
    ErrorString String
@@ -66,18 +72,23 @@ lookupInteger m nm
   | Just (IntegerA x) <- lookup nm (m_vars m) = x
   | otherwise = error "lookupInteger failed"
 
+lookupBit :: Model -> FreeID -> Bit n
+lookupBit m nm
+  | Just (BitA x) <- lookup nm (m_vars m) = Bit x
+  | otherwise = error "lookupBit failed"
 
-data Bool =
-     True
-   | False
-   | Bool_Ite Bool Bool Bool
-   | Bool_And Bool Bool
-   | Bool_Not Bool
-   | Bool_EqInteger Integer Integer
-   | Bool_LeqInteger Integer Integer
-   | Bool_Var FreeID
-   | Bool_Err ErrorString
-   | Bool_Prim (Model -> Bool) Bool
+data Bool where
+   True :: Bool
+   False :: Bool
+   Bool_Ite :: Bool -> Bool -> Bool -> Bool
+   Bool_And :: Bool -> Bool -> Bool
+   Bool_Not :: Bool -> Bool
+   Bool_EqInteger :: Integer -> Integer -> Bool
+   Bool_LeqInteger :: Integer -> Integer -> Bool
+   Bool_EqBit :: Bit n -> Bit n -> Bool
+   Bool_Var :: FreeID -> Bool
+   Bool_Err :: ErrorString -> Bool
+   Bool_Prim :: (Model -> Bool) -> Bool -> Bool
 
 andB :: Bool -> Bool -> Bool
 andB True x = x
@@ -132,4 +143,31 @@ sub_Integer (Integer a) (Integer b) = Integer (a - b)
 sub_Integer (Integer_Err msg) _ = Integer_Err msg
 sub_Integer _ (Integer_Err msg) = Integer_Err msg
 sub_Integer a b = Integer_Sub a b
+
+data Bit (n :: Nat) =
+    Bit P.Bit
+  | Bit_Add (Bit n) (Bit n)
+  | Bit_Sub (Bit n) (Bit n)
+  | Bit_Ite Bool (Bit n) (Bit n)
+  | Bit_Var FreeID
+  | Bit_Err ErrorString
+  | Bit_Prim (Model -> Bit n) (Bit n)
+
+eq_Bit :: Bit n -> Bit n -> Bool
+eq_Bit (Bit a) (Bit b) = if a == b then True else False
+eq_Bit (Bit_Err msg) _ = Bool_Err msg
+eq_Bit _ (Bit_Err msg) = Bool_Err msg
+eq_Bit a b = Bool_EqBit a b
+
+add_Bit :: Bit n -> Bit n -> Bit n
+add_Bit (Bit a) (Bit b) = Bit (a + b)
+add_Bit (Bit_Err msg) _ = Bit_Err msg
+add_Bit _ (Bit_Err msg) = Bit_Err msg
+add_Bit a b = Bit_Add a b
+
+sub_Bit :: Bit n -> Bit n -> Bit n
+sub_Bit (Bit a) (Bit b) = Bit (a - b)
+sub_Bit (Bit_Err msg) _ = Bit_Err msg
+sub_Bit _ (Bit_Err msg) = Bit_Err msg
+sub_Bit a b = Bit_Sub a b
 

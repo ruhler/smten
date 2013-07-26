@@ -122,6 +122,7 @@ instance SmtenHS0 Bool where
         Bool_And a b -> andB (realize m a) (realize m b)
         Bool_Not p -> notB (realize m p)
         Bool_EqInteger a b -> eq_Integer (realize m a) (realize m b)
+        Bool_EqBit a b -> eq_Bit (realize m a) (realize m b)
         Bool_LeqInteger a b -> leq_Integer (realize m a) (realize m b)
         Bool_Var n -> lookupBool m n
         Bool_Err msg -> Bool_Err (realize m msg)
@@ -139,6 +140,20 @@ instance SmtenHS0 Integer where
          Integer_Var n -> lookupInteger m n
          Integer_Err msg -> Integer_Err (realize m msg)
          Integer_Prim r _ -> r m
+   
+instance SmtenHS0 (Bit n) where
+    error0 = Bit_Err
+    realize0 m x = 
+      case x of
+        Bit {} -> x
+        Bit_Add a b -> add_Bit (realize m a) (realize m b)
+        Bit_Sub a b -> sub_Bit (realize m a) (realize m b)
+        Bit_Ite p a b -> iterealize p a b m
+        Bit_Var n -> lookupBit m n
+        Bit_Err msg -> Bit_Err (realize m msg)
+        Bit_Prim r _ -> r m
+    ite0 = Bit_Ite
+    primitive0 = Bit_Prim
 
 instance SmtenHS0 ErrorString where
    realize0 m x@(ErrorString str) = x

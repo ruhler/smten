@@ -52,6 +52,7 @@ library
     Smten.System.IO0
 
     Smten.Runtime.AnyMap
+    Smten.Runtime.Bit
     Smten.Runtime.FreeID
     Smten.Runtime.SmtenHS
     Smten.Runtime.SymbolicOf

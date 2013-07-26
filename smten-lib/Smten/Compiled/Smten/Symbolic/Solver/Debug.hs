@@ -7,6 +7,7 @@ module Smten.Compiled.Smten.Symbolic.Solver.Debug (debug) where
 
 import System.IO
 
+import Smten.Runtime.Bit
 import Smten.Runtime.Debug
 import Smten.Runtime.SolverAST
 import Smten.Runtime.Solver as D
@@ -47,12 +48,12 @@ instance SolverAST DebugLL Debug where
         dbgPutStrLn dbg $ show r
         return r
 
---    getBitVectorValue dbg n w = do
---        dbgPutStr dbg $ n ++ " = "
---        r <- D.getBitVectorValue (dbg_s dbg) n w
---        dbgPutStrLn dbg $ show (bv_make w r)
---        return r
---
+    getBitVectorValue dbg w n = do
+        dbgPutStr dbg $ n ++ " = "
+        r <- D.getBitVectorValue (dbg_s dbg) w n
+        dbgPutStrLn dbg $ show (bv_make w r)
+        return r
+
     check dbg = do
         dbgPutStrLn dbg $ "check... "
         r <- D.check (dbg_s dbg)
@@ -66,24 +67,24 @@ instance SolverAST DebugLL Debug where
 
     bool dbg b = return $ dbgLit b
     integer dbg i = return $ dbgLit i
-    --bit dbg w v = return $ dbgLit (bv_make w v)
+    bit dbg w v = return $ dbgLit (bv_make w v)
     var dbg n = return $ dbgVar n
 
     and_bool = op "&&"
     not_bool dbg x = return $ dbgApp (dbgText "!") (sh x)
     ite_bool dbg p a b = return $ dbgCase "True" (sh p) (sh a) (sh b)
     ite_integer dbg p a b = return $ dbgCase "True" (sh p) (sh a) (sh b)
-    --ite_bit dbg p a b = return $ dbgCase "True" (sh p) (sh a) (sh b)
+    ite_bit dbg p a b = return $ dbgCase "True" (sh p) (sh a) (sh b)
 
     eq_integer = op "=="
     leq_integer = op "<="
     add_integer = op "+"
     sub_integer = op "-"
 
---    eq_bit = op "=="
+    eq_bit = op "=="
 --    leq_bit = op "<="
---    add_bit = op "+"
---    sub_bit = op "-"
+    add_bit = op "+"
+    sub_bit = op "-"
 --    mul_bit = op "*"
 --    or_bit = op "|"
 --    and_bit = op "&"
