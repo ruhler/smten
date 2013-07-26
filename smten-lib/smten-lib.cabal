@@ -37,6 +37,7 @@ library
     Smten.Symbolic.Solver.Pure
     Smten.Symbolic.Solver.Debug
     Smten.Tests.SMT.Test
+    Smten.Tests.SMT.Bit
     Smten.Tests.SMT.Core
     Smten.Tests.SMT.Datatype
     Smten.Tests.SMT.Integer
@@ -57,6 +58,7 @@ library
     Smten.Compiled.Smten.Symbolic.Solver.Pure
     Smten.Compiled.Smten.Symbolic.Solver.Debug
     Smten.Compiled.Smten.Tests.SMT.Test
+    Smten.Compiled.Smten.Tests.SMT.Bit
     Smten.Compiled.Smten.Tests.SMT.Core
     Smten.Compiled.Smten.Tests.SMT.Datatype
     Smten.Compiled.Smten.Tests.SMT.Integer

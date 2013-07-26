@@ -3,7 +3,7 @@
 module Smten.Symbolic (
     Symbolic, Solver, run_symbolic,
     MonadPlus(..),
-    free_Bool, free_Integer, assert,
+    free_Bool, free_Integer, free_Bit, assert,
     ) where
 
 import Smten.Prelude

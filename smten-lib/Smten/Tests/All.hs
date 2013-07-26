@@ -6,6 +6,7 @@ import Smten.Prelude
 import Smten.Tests.Test
 import qualified Smten.Tests.Basic
 import qualified Smten.Tests.Bit
+import qualified Smten.Tests.SMT.Bit ()
 import qualified Smten.Tests.SMT.Core
 import qualified Smten.Tests.SMT.Datatype
 import qualified Smten.Tests.SMT.Integer ()

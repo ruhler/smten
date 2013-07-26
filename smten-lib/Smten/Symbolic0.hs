@@ -5,10 +5,12 @@ module Smten.Symbolic0 (
     Symbolic, Solver, run_symbolic,
     return_symbolic, bind_symbolic, 
     mzero_symbolic, mplus_symbolic,
-    free_Integer,
+    free_Integer, free_Bit,
     ) where
 
 import Smten.Prelude
+import Smten.Data.Bit
+import Smten.Smten.TypeLits
 import Smten.Plugin.Annotations
 
 {-# ANN module PrimitiveModule #-}
@@ -36,4 +38,7 @@ run_symbolic _ (Symbolic (x:_)) = return (Just x)
 
 free_Integer :: Symbolic Integer
 free_Integer = primitive "Smten.Symbolic0.free_Integer"
+
+free_Bit :: (SingI n) => Symbolic (Bit n)
+free_Bit = primitive "Smten.Symbolic0.free_Bit"
 

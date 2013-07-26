@@ -6,6 +6,7 @@ import Smten.Prelude
 import qualified Smten.Tests.SMT.Core as Core
 import qualified Smten.Tests.SMT.Datatype as Datatype
 import qualified Smten.Tests.SMT.Integer as Integer
+import qualified Smten.Tests.SMT.Bit as Bit
 import Smten.Tests.SMT.Test
 import Smten.Symbolic.Solver.Yices2
 
@@ -20,3 +21,5 @@ main = do
     runtest yices2 Integer.smttests
     putStrLn "Yices2.SMT.Integer PASSED"
 
+    runtest yices2 Bit.smttests
+    putStrLn "Yices2.SMT.Bit PASSED"

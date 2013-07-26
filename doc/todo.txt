@@ -1,5 +1,4 @@
 Priority::
-* Add support for concrete Bit Vectors
 * Add support for symbolic Bit Vectors: Add SMT Bit test
 * Add SMT Sudoku test
 

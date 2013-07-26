@@ -6,20 +6,21 @@ module Smten.Compiled.Smten.Symbolic0 (
     Symbolic, Solver,
     return_symbolic, bind_symbolic, run_symbolic,
     mzero_symbolic, mplus_symbolic,
-    free_Integer,
+    free_Integer, free_Bit,
     ) where
 
 import Control.Monad.State
 import Data.Functor((<$>))
 
 import Smten.Runtime.FreeID
-import Smten.Runtime.Types
+import Smten.Runtime.Types hiding (Integer)
 import Smten.Runtime.Result
 import Smten.Runtime.SmtenHS
 import Smten.Runtime.Solver
 
+import Smten.Compiled.Smten.Data.Bit0 as S
 import Smten.Compiled.Smten.Data.Maybe as S
-import Smten.Compiled.Smten.Smten.Integer as S
+import qualified Smten.Compiled.Smten.Smten.Integer as S
 import qualified Smten.Runtime.Types as S
 
 data SS = SS {
@@ -62,6 +63,9 @@ free_Integer = do
     fid <- liftIO fresh
     modify $ \s -> s { ss_free = (fid, IntegerT) : ss_free s }
     return (S.Integer_Var fid)
+
+free_Bit :: Integer -> Symbolic (S.Bit n)
+free_Bit = error "TODO: free_Bit"
 
 predicated :: S.Bool -> Symbolic a -> Symbolic a
 predicated p q = do
