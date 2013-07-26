@@ -10,6 +10,7 @@ import qualified Smten.Tests.SMT.Bit ()
 import qualified Smten.Tests.SMT.Core
 import qualified Smten.Tests.SMT.Datatype
 import qualified Smten.Tests.SMT.Integer ()
+import qualified Smten.Tests.SMT.Sudoku ()
 
 main :: IO ()
 main = do

@@ -7,6 +7,7 @@ import qualified Smten.Tests.SMT.Core as Core
 import qualified Smten.Tests.SMT.Datatype as Datatype
 import qualified Smten.Tests.SMT.Integer as Integer
 import qualified Smten.Tests.SMT.Bit as Bit
+import qualified Smten.Tests.SMT.Sudoku as Sudoku
 import Smten.Tests.SMT.Test
 import Smten.Symbolic.Solver.Yices2
 
@@ -23,4 +24,10 @@ main = do
 
     runtest (SMTTestCfg yices2 []) Bit.smttests
     putStrLn "Yices2.SMT.Bit PASSED"
+
+    runtest (SMTTestCfg yices2 []) Bit.smttests
+    putStrLn "Yices2.SMT.Bit PASSED"
+
+    Sudoku.tests yices2
+    putStrLn "Yices2.Sudoku PASSED"
 

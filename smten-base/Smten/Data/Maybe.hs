@@ -8,6 +8,7 @@ module Smten.Data.Maybe (
 import Smten.Control.Monad
 import Smten.Data.Bool
 import Smten.Data.Eq
+import Smten.Data.Functor
 import Smten.Smten.Base
 
 data Maybe a = Nothing | Just a
@@ -16,6 +17,10 @@ instance (Eq a) => Eq (Maybe a) where
     (==) Nothing Nothing = True
     (==) (Just a) (Just b) = a == b
     (==) _ _ = False
+
+instance Functor Maybe where
+    fmap _ Nothing = Nothing
+    fmap f (Just a) = Just (f a)
 
 instance Monad Maybe where
     (>>=) (Just v) f = f v
