@@ -5,13 +5,12 @@ module Smten.Tests.Bit (tests) where
 
 import Smten.Prelude
 import Smten.Tests.Test
-import Smten.Data.NumT
 import Smten.Data.Bit
 
-bit3 :: Integer -> Bit (NumT 3)
+bit3 :: Integer -> Bit 3
 bit3 = fromInteger
 
-bit5 :: Integer -> Bit (NumT 5)
+bit5 :: Integer -> Bit 5
 bit5 = fromInteger
 
 tests :: IO ()

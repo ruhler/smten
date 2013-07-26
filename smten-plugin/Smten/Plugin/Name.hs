@@ -60,6 +60,7 @@ nmCG ty f qlf nm
           desym c | isAlphaNum c = c
           desym c | c == '#' = c
           desym c | c == '_' = c
+          desym c | c == ':' = toEnum $ fromEnum 'A' + (fromEnum c `mod` 26)
           desym c = toEnum $ fromEnum 'a' + (fromEnum c `mod` 26)
 
           occnm' = map desym occnm

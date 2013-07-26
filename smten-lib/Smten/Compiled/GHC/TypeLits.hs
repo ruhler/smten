@@ -1,12 +1,12 @@
 
-{-# LANGUAGE EmptyDataDecls #-}
+{-# LANGUAGE DataKinds, EmptyDataDecls #-}
 {-# LANGUAGE TypeFamilies #-}
 module Smten.Compiled.GHC.TypeLits (
-    SingI, Nat
+    SingI, Nat,
     ) where
 
-data Nat
+import GHC.TypeLits (Nat)
 
-type family SingI a b
-type instance SingI Nat b = Integer
+type family SingI a (b :: Nat)
+type instance SingI Nat (b :: Nat) = Integer
 

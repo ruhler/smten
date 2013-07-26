@@ -5,16 +5,16 @@ module Smten.Data.Bit (
     ) where
 
 import Smten.Prelude
+import Smten.Smten.TypeLits
 import Smten.Data.Bit0
-import Smten.Data.NumT
 
-instance (Numeric n) => Eq (Bit n) where
+instance Eq (Bit n) where
     (==) = bv_eq
 
-instance (Numeric n) => Show (Bit n) where
+instance Show (Bit n) where
     show = bv_show
 
-instance (Numeric n) => Num (Bit n) where
+instance (SingI n) => Num (Bit n) where
     (+) = bv_add
     (-) = bv_sub
     (*) = error "TODO: Bit.*"

@@ -37,15 +37,6 @@ hrun mkdir -p build/home build/test
 set ::env(HOME) [pwd]/build/home
 #hrun cabal update
 
-# The fixed-width bit-vector package
-indir fwbv {
-    hrun cabal install \
-        --builddir ../build/fwbv-build \
-        --force-reinstalls
-
-    hrun cabal sdist --builddir ../build/fwbv-build
-}
-
 # The smten-plugin package
 indir smten-plugin {
     hrun cabal install \
@@ -59,7 +50,7 @@ indir smten-plugin {
 # The smten-base package
 hrun cp -r -f -l smten-base build/
 indir build/smten-base {
-    hrun ghc --make -c -fplugin=Smten.Plugin.Plugin Smten/Prelude.hs
+    hrun ghc --make -osuf smten_o -c -fplugin=Smten.Plugin.Plugin Smten/Prelude.hs
 
     hrun cabal install \
         --builddir smten-base-build \
@@ -71,7 +62,7 @@ indir build/smten-base {
 # The smten-lib package
 hrun cp -r -f -l smten-lib build/
 indir build/smten-lib {
-    hrun ghc --make -c -main-is Smten.Tests.All.main \
+    hrun ghc --make -osuf smten_o -c -main-is Smten.Tests.All.main \
         -fplugin=Smten.Plugin.Plugin Smten/Tests/All.hs
 
     hrun cabal configure --enable-tests
@@ -86,7 +77,7 @@ indir build/smten-lib {
 # The smten-yices2 package
 hrun cp -r -f -l smten-yices2 build/
 indir build/smten-yices2 {
-    hrun ghc --make -c -main-is Smten.Tests.Yices2.main \
+    hrun ghc --make -c -osuf smten_o -main-is Smten.Tests.Yices2.main \
         -fplugin=Smten.Plugin.Plugin Smten/Tests/Yices2.hs
 
     hrun cabal configure --enable-tests

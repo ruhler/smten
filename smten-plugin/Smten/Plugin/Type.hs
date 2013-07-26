@@ -32,7 +32,7 @@ typeCG' mkctx t
  | (vs@(_:_), t) <- splitForAllTys t = do
      vs' <- mapM (qnameCG . varName) vs
      t' <- (typeCG' mkctx) t
-     ctx <- mapM ctxCG vs
+     ctx <- concat <$> mapM ctxCG vs
      let usectx = if mkctx then ctx else []
      return $ S.ForallT vs' usectx t'
  | Just v <- getTyVar_maybe t = tyvarCG v
@@ -48,11 +48,13 @@ typeCG' mkctx t
 tyvarCG :: TyVar -> CG S.Type
 tyvarCG v = S.VarT <$> qnameCG (varName v)
 
-ctxCG :: TyVar -> CG S.Class
-ctxCG v = do
+ctxCG :: TyVar -> CG [S.Class]
+ctxCG v
+ | tyVarKind v `eqKind` typeNatKind = return []
+ | otherwise = do
   tyv <- tyvarCG v
   addimport "Smten.Runtime.SmtenHS"
-  return (S.ConAppT ("Smten.Runtime.SmtenHS.SmtenHS" ++ show (knum (tyVarKind v))) [tyv])
+  return [S.ConAppT ("Smten.Runtime.SmtenHS.SmtenHS" ++ show (knum (tyVarKind v))) [tyv]]
 
 knum :: Kind -> Int
 knum k = length (fst (splitKindFunTys k))
