@@ -2,8 +2,6 @@ Priority::
 * Add support for symbolic Bit Vectors: Add SMT Bit test
 * Add SMT Sudoku test
 
-* Add stp solver
-
 * Port shampi to ghc-plugin
 * Port arch-extract to ghc-plugin
 * Add SMT Error test (if needed)

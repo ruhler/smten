@@ -104,3 +104,18 @@ indir build/smten-yices1 {
         --force-reinstalls
 }
 
+# The smten-stp package
+hrun cp -r -f -l smten-stp build/
+indir build/smten-stp {
+    hrun ghc --make -c -osuf smten_o -main-is Smten.Tests.STP.main \
+        -fplugin=Smten.Plugin.Plugin Smten/Tests/STP.hs
+
+    hrun cabal configure --enable-tests
+    hrun cabal build
+    hrun cabal test
+    hrun cabal sdist --builddir smten-stp-build
+    hrun cabal install \
+        --builddir smten-stp-build \
+        --force-reinstalls
+}
+

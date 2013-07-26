@@ -1,0 +1,44 @@
+name: smten-stp
+version: 4.0.0.0
+synopsis: Smten library
+license: AllRightsReserved
+license-file: LICENSE
+author: Richard Uhler
+maintainer: ruhler@csail.mit.edu
+category: Language
+build-type: Simple
+cabal-version: >=1.8
+stability: experimental
+data-dir: share
+data-files:
+    README.txt
+
+source-repository this
+  type: git
+  location: /afs/csail.mit.edu/u/r/ruhler/git/smten
+  --branch:
+  --tag:
+
+library
+  exposed-modules:
+    Smten.Symbolic.Solver.STP
+    Smten.Compiled.Smten.Symbolic.Solver.STP
+  
+    Smten.Tests.STP
+    Smten.Compiled.Smten.Tests.STP
+
+  other-modules:
+    Smten.Runtime.STPFFI
+    
+  build-depends: base ==4.6.*, hashtables ==1.0.*,
+                 smten-plugin ==4.0.*, smten-base ==4.0.*, smten-lib ==4.0.*
+  extra-libraries: stp stdc++
+  ghc-options: -fwarn-unused-binds -fwarn-unused-imports
+
+Test-Suite test-smten-stp
+  type: exitcode-stdio-1.0
+  main-is: tests.hs
+  build-depends: base ==4.6.*, hashtables ==1.0.*,
+                 smten-base ==4.0.*, smten-lib ==4.0.*
+  extra-libraries: stp stdc++
+
