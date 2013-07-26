@@ -5,6 +5,7 @@ module Smten.Compiled.Smten.Symbolic.Solver.Pure (pure) where
 
 import Control.Monad
 
+import Data.Bits
 import Data.IORef
 import Data.Functor
 
@@ -118,6 +119,30 @@ instance SolverAST PureSolver Exp where
   sub_bit _ (Exp a) (Exp b) = return . Exp $ \m ->
      case (a m, b m) of
         (BV av, BV bv) -> BV (av - bv)
+
+  mul_bit _ (Exp a) (Exp b) = return . Exp $ \m ->
+     case (a m, b m) of
+        (BV av, BV bv) -> BV (av * bv)
+
+  or_bit _ (Exp a) (Exp b) = return . Exp $ \m ->
+     case (a m, b m) of
+        (BV av, BV bv) -> BV (av .|. bv)
+
+  and_bit _ (Exp a) (Exp b) = return . Exp $ \m ->
+     case (a m, b m) of
+        (BV av, BV bv) -> BV (av .&. bv)
+
+  shl_bit _ (Exp a) (Exp b) = return . Exp $ \m ->
+     case (a m, b m) of
+        (BV av, BV bv) -> BV (av `bv_shl` bv)
+
+  lshr_bit _ (Exp a) (Exp b) = return . Exp $ \m ->
+     case (a m, b m) of
+        (BV av, BV bv) -> BV (av `bv_lshr` bv)
+
+  not_bit _ (Exp a) = return . Exp $ \m ->
+     case a m of
+        BV av -> BV (complement av)
 
 pure :: Solver
 pure = do

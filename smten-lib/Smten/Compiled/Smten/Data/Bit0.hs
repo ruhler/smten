@@ -2,7 +2,8 @@
 {-# LANGUAGE DataKinds, KindSignatures #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 module Smten.Compiled.Smten.Data.Bit0 (
-    Bit, bv_eq, bv_leq, bv_show, bv_fromInteger, bv_add, bv_sub,
+    Bit, bv_eq, bv_leq, bv_show, bv_fromInteger, bv_add, bv_sub, bv_mul,
+    bv_or, bv_and, bv_shl, bv_lshr, bv_not,
     ) where
 
 import qualified Prelude as P
@@ -41,3 +42,20 @@ bv_add = add_Bit
 bv_sub :: Bit n -> Bit n -> Bit n
 bv_sub = sub_Bit
 
+bv_mul :: Bit n -> Bit n -> Bit n
+bv_mul = mul_Bit
+
+bv_or :: Bit n -> Bit n -> Bit n
+bv_or = or_Bit
+
+bv_and :: Bit n -> Bit n -> Bit n
+bv_and = and_Bit
+
+bv_shl :: Bit n -> Bit n -> Bit n
+bv_shl = shl_Bit
+
+bv_lshr :: Bit n -> Bit n -> Bit n
+bv_lshr = lshr_Bit
+
+bv_not :: Bit n -> Bit n
+bv_not = not_Bit

@@ -9,13 +9,16 @@ module Smten.Runtime.Types (
     Model, model, m_cached, lookupBool, lookupInteger, lookupBit,
     Bool(..), andB, notB, iteB,
     Integer(..), eq_Integer, leq_Integer, add_Integer, sub_Integer,
-    Bit(..), eq_Bit, leq_Bit, add_Bit, sub_Bit,
+    Bit(..), eq_Bit, leq_Bit, add_Bit, sub_Bit, mul_Bit,
+    or_Bit, and_Bit, shl_Bit, lshr_Bit, not_Bit,
     ) where
 
-import GHC.TypeLits
 import Prelude hiding (Bool(..), Integer(..))
 import qualified Prelude as P
 import qualified Smten.Runtime.Bit as P
+
+import Data.Bits
+import GHC.TypeLits
 
 import System.IO.Unsafe
 import qualified Smten.Runtime.AnyMap as A
@@ -149,6 +152,12 @@ data Bit (n :: Nat) =
     Bit P.Bit
   | Bit_Add (Bit n) (Bit n)
   | Bit_Sub (Bit n) (Bit n)
+  | Bit_Mul (Bit n) (Bit n)
+  | Bit_Or (Bit n) (Bit n)
+  | Bit_And (Bit n) (Bit n)
+  | Bit_Shl (Bit n) (Bit n)
+  | Bit_Lshr (Bit n) (Bit n)
+  | Bit_Not (Bit n)
   | Bit_Ite Bool (Bit n) (Bit n)
   | Bit_Var FreeID
   | Bit_Err ErrorString
@@ -177,4 +186,39 @@ sub_Bit (Bit a) (Bit b) = Bit (a - b)
 sub_Bit (Bit_Err msg) _ = Bit_Err msg
 sub_Bit _ (Bit_Err msg) = Bit_Err msg
 sub_Bit a b = Bit_Sub a b
+
+mul_Bit :: Bit n -> Bit n -> Bit n
+mul_Bit (Bit a) (Bit b) = Bit (a * b)
+mul_Bit (Bit_Err msg) _ = Bit_Err msg
+mul_Bit _ (Bit_Err msg) = Bit_Err msg
+mul_Bit a b = Bit_Mul a b
+
+or_Bit :: Bit n -> Bit n -> Bit n
+or_Bit (Bit a) (Bit b) = Bit (a .|. b)
+or_Bit (Bit_Err msg) _ = Bit_Err msg
+or_Bit _ (Bit_Err msg) = Bit_Err msg
+or_Bit a b = Bit_Or a b
+
+and_Bit :: Bit n -> Bit n -> Bit n
+and_Bit (Bit a) (Bit b) = Bit (a .&. b)
+and_Bit (Bit_Err msg) _ = Bit_Err msg
+and_Bit _ (Bit_Err msg) = Bit_Err msg
+and_Bit a b = Bit_And a b
+
+shl_Bit :: Bit n -> Bit n -> Bit n
+shl_Bit (Bit a) (Bit b) = Bit (a `P.bv_shl` b)
+shl_Bit (Bit_Err msg) _ = Bit_Err msg
+shl_Bit _ (Bit_Err msg) = Bit_Err msg
+shl_Bit a b = Bit_Shl a b
+
+lshr_Bit :: Bit n -> Bit n -> Bit n
+lshr_Bit (Bit a) (Bit b) = Bit (a `P.bv_lshr` b)
+lshr_Bit (Bit_Err msg) _ = Bit_Err msg
+lshr_Bit _ (Bit_Err msg) = Bit_Err msg
+lshr_Bit a b = Bit_Lshr a b
+
+not_Bit :: Bit n -> Bit n
+not_Bit (Bit a) = Bit (complement a)
+not_Bit (Bit_Err msg) = Bit_Err msg
+not_Bit a = Bit_Not a
 

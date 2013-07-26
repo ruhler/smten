@@ -85,13 +85,13 @@ instance SolverAST DebugLL Debug where
     leq_bit = op "<="
     add_bit = op "+"
     sub_bit = op "-"
---    mul_bit = op "*"
---    or_bit = op "|"
---    and_bit = op "&"
+    mul_bit = op "*"
+    or_bit = op "|"
+    and_bit = op "&"
 --    concat_bit = op "++"
---    shl_bit = op "<<"
---    lshr_bit = op ">>"
---    not_bit dbg x = return $ dbgApp (dbgText "~") (sh x)
+    shl_bit = op "<<"
+    lshr_bit = op ">>"
+    not_bit dbg x = return $ dbgApp (dbgText "~") (sh x)
 --    sign_extend_bit dbg n x = return $ dbgText "?SignExtend"
 --    extract_bit dbg hi lo x = return $
 --      dbgApps (dbgText "extract") [dbgText $ "[" ++ show hi ++ ":" ++ show lo ++ "]", sh x]

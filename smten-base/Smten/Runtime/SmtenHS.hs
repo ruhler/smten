@@ -149,6 +149,12 @@ instance SmtenHS0 (Bit n) where
         Bit {} -> x
         Bit_Add a b -> add_Bit (realize m a) (realize m b)
         Bit_Sub a b -> sub_Bit (realize m a) (realize m b)
+        Bit_Mul a b -> mul_Bit (realize m a) (realize m b)
+        Bit_Or a b -> or_Bit (realize m a) (realize m b)
+        Bit_And a b -> and_Bit (realize m a) (realize m b)
+        Bit_Shl a b -> shl_Bit (realize m a) (realize m b)
+        Bit_Lshr a b -> lshr_Bit (realize m a) (realize m b)
+        Bit_Not a -> not_Bit (realize m a)
         Bit_Ite p a b -> iterealize p a b m
         Bit_Var n -> lookupBit m n
         Bit_Err msg -> Bit_Err (realize m msg)

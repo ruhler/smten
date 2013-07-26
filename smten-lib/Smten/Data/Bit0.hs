@@ -6,7 +6,8 @@ module Smten.Data.Bit0 (
     Bit, 
     bv_eq, bv_leq,
     bv_show,
-    bv_fromInteger, bv_add, bv_sub,
+    bv_fromInteger, bv_add, bv_sub, bv_mul,
+    bv_and, bv_or, bv_shl, bv_lshr, bv_not,
     ) where
 
 import GHC.TypeLits
@@ -35,4 +36,22 @@ bv_add = primitive "Smten.Data.Bit0.bv_add"
 
 bv_sub :: Bit n -> Bit n -> Bit n
 bv_sub = primitive "Smten.Data.Bit0.bv_sub"
+
+bv_mul :: Bit n -> Bit n -> Bit n
+bv_mul = primitive "Smten.Data.Bit0.bv_mul"
+
+bv_and :: Bit n -> Bit n -> Bit n
+bv_and = primitive "Smten.Data.Bit0.bv_and"
+
+bv_or :: Bit n -> Bit n -> Bit n
+bv_or = primitive "Smten.Data.Bit0.bv_or"
+
+bv_shl :: Bit n -> Bit n -> Bit n
+bv_shl = primitive "Smten.Data.Bit0.bv_shl"
+
+bv_lshr :: Bit n -> Bit n -> Bit n
+bv_lshr = primitive "Smten.Data.Bit0.bv_lshr"
+
+bv_not :: Bit n -> Bit n
+bv_not = primitive "Smten.Data.Bit0.bv_not"
 

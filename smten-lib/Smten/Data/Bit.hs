@@ -1,7 +1,8 @@
 
 {-# LANGUAGE NoImplicitPrelude, RebindableSyntax #-}
 module Smten.Data.Bit (
-    Bit
+    Bit,
+    bv_and, bv_or, bv_xor, bv_shl, bv_lshr, bv_not,
     ) where
 
 import Smten.Prelude
@@ -20,8 +21,11 @@ instance Show (Bit n) where
 instance (SingI n) => Num (Bit n) where
     (+) = bv_add
     (-) = bv_sub
-    (*) = error "TODO: Bit.*"
+    (*) = bv_mul
     abs = error "TODO: Bit.abs"
     signum = error "TODO: Bit.signum"
     fromInteger = bv_fromInteger
+
+bv_xor :: Bit n -> Bit n -> Bit n
+bv_xor a b = bv_and (bv_or a b) (bv_not (bv_and a b))
 

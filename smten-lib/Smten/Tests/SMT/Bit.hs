@@ -50,29 +50,27 @@ smttests = do
 --        assert (bv_sign_extend (a :: Bit #3) == (0x1c :: Bit #5))
 --        return a
 --
---    symtesteq "SMT.Bit.Not" (Just 0x0A) [Yices1, Yices2, STP] $ do
---        f <- free
---        assert (bv_not f == 0x15)
---        return (f :: Bit #5)
---
---    -- TODO: this fails for STP
---    symtesteq "SMT.Bit.And" (Just 0x5) [Yices1, Yices2] $ do
---        g <- free
---        assert (bv_and g 0xA == 0x0)
---        assert (bv_or g 0xA == 0xF)
---        return (g :: Bit #4)
---
+    symtesteq "SMT.Bit.Not" (Just 0x0A) $ do
+        f <- free_Bit
+        assert (bv_not f == 0x15)
+        return (f :: Bit 5)
+
+    symtesteq "SMT.Bit.And" (Just 0x5) $ do
+        g <- free_Bit
+        assert (bv_and g 0xA == 0x0)
+        assert (bv_or g 0xA == 0xF)
+        return (g :: Bit 4)
+
 --    symtesteq "SMT.Bit.Concat" (Just 3) [Yices1, Yices2, STP] $ do
 --        h <- free
 --        assert (bv_concat (0x5 :: Bit #3) h == 0x17)
 --        return (h :: Bit #2)
 --
---    -- TODO: this fails for Yices1!
---    symtesteq "SMT.Bit.Lsh" (Just 3) [Yices2, STP] $ do
---        i <- free
---        assert (bv_shl (0x15 :: Bit #8) i == 0xA8)
---        return (i :: Bit #8)
---
+    symtesteq "SMT.Bit.Lsh" (Just 3) $ do
+        i <- free_Bit
+        assert (bv_shl (0x15 :: Bit 8) i == 0xA8)
+        return (i :: Bit 8)
+
 --    symtesteq "SMT.Bit.Extract" (Just 0xAB) [Yices1, Yices2, STP] $ do
 --        i <- free
 --        assert (bv_extract i 0 == (0xB :: Bit #4))
