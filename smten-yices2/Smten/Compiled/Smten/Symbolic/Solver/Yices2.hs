@@ -114,6 +114,7 @@ instance SolverAST Yices2 YTerm where
 
   and_bool _ = c_yices_and2
   not_bool _ = c_yices_not
+
   ite_bool _ = c_yices_ite 
   ite_integer _ = c_yices_ite 
   ite_bit _ = c_yices_ite 

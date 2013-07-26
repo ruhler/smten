@@ -89,3 +89,18 @@ indir build/smten-yices2 {
         --force-reinstalls
 }
 
+# The smten-yices1 package
+hrun cp -r -f -l smten-yices1 build/
+indir build/smten-yices1 {
+    hrun ghc --make -c -osuf smten_o -main-is Smten.Tests.Yices1.main \
+        -fplugin=Smten.Plugin.Plugin Smten/Tests/Yices1.hs
+
+    hrun cabal configure --enable-tests
+    hrun cabal build
+    hrun cabal test
+    hrun cabal sdist --builddir smten-yices1-build
+    hrun cabal install \
+        --builddir smten-yices1-build \
+        --force-reinstalls
+}
+

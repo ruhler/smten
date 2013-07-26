@@ -1,0 +1,44 @@
+name: smten-yices1
+version: 4.0.0.0
+synopsis: Smten library
+license: AllRightsReserved
+license-file: LICENSE
+author: Richard Uhler
+maintainer: ruhler@csail.mit.edu
+category: Language
+build-type: Simple
+cabal-version: >=1.8
+stability: experimental
+data-dir: share
+data-files:
+    README.txt
+
+source-repository this
+  type: git
+  location: /afs/csail.mit.edu/u/r/ruhler/git/smten
+  --branch:
+  --tag:
+
+library
+  exposed-modules:
+    Smten.Symbolic.Solver.Yices1
+    Smten.Compiled.Smten.Symbolic.Solver.Yices1
+  
+    Smten.Tests.Yices1
+    Smten.Compiled.Smten.Tests.Yices1
+
+  other-modules:
+    Smten.Runtime.Yices1FFI
+    
+  build-depends: base ==4.6.*,
+                 smten-plugin ==4.0.*, smten-base ==4.0.*, smten-lib ==4.0.*
+  extra-libraries: yices2
+  ghc-options: -fwarn-unused-binds -fwarn-unused-imports
+
+Test-Suite test-smten-yices1
+  type: exitcode-stdio-1.0
+  main-is: tests.hs
+  build-depends: base ==4.6.*,
+                 smten-base ==4.0.*, smten-lib ==4.0.*
+  extra-libraries: yices1
+
