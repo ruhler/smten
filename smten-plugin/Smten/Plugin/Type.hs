@@ -40,8 +40,9 @@ typeCG' mkctx t
      a' <- (typeCG' mkctx) a
      b' <- (typeCG' mkctx) b
      return $ S.AppT a' b'
+ | Just v <- isNumLitTy t = return $ S.NumT v
  | otherwise = do
-     lift $ errorMsg (text "Unsupported type in typeCG': " <+> (ppr t))
+     lift $ fatalErrorMsg (text "Unsupported type in typeCG': " <+> (ppr t))
      return (S.ConAppT "???" [])
 
 tyvarCG :: TyVar -> CG S.Type

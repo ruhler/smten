@@ -39,6 +39,7 @@ data Type = ConAppT Name [Type]
           | ForallT [TyVar] [Class] Type
           | VarT Name
           | AppT Type Type
+          | NumT Integer
 
 type Class = Type
 

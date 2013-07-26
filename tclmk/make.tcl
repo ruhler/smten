@@ -37,6 +37,15 @@ hrun mkdir -p build/home build/test
 set ::env(HOME) [pwd]/build/home
 #hrun cabal update
 
+# The fixed-width bit-vector package
+indir fwbv {
+    hrun cabal install \
+        --builddir ../build/fwbv-build \
+        --force-reinstalls
+
+    hrun cabal sdist --builddir ../build/fwbv-build
+}
+
 # The smten-plugin package
 indir smten-plugin {
     hrun cabal install \

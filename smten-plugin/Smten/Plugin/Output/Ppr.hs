@@ -72,6 +72,7 @@ instance Ppr Type where
 
     ppr (VarT n) = text n
     ppr (AppT a b) = parens $ ppr a <+> ppr b
+    ppr (NumT x) = integer x
 
 instance Ppr Exp where
     ppr (VarE nm) = ppr nm

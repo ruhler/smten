@@ -28,6 +28,9 @@ library
     Smten.Control.Monad.Reader
     Smten.Control.Monad.Reader.Class
     Smten.Control.Monad.Trans
+    Smten.Data.Bit
+    Smten.Data.Bit0
+    Smten.Data.NumT
     Smten.Symbolic0
     Smten.Symbolic
     Smten.Symbolic.Solver.Pure
@@ -40,9 +43,13 @@ library
     Smten.Tests.Basic
     Smten.Tests.All
 
+    Smten.Compiled.GHC.TypeLits
     Smten.Compiled.Smten.Control.Monad.Reader
     Smten.Compiled.Smten.Control.Monad.Reader.Class
     Smten.Compiled.Smten.Control.Monad.Trans
+    Smten.Compiled.Smten.Data.Bit
+    Smten.Compiled.Smten.Data.Bit0
+    Smten.Compiled.Smten.Data.NumT
     Smten.Compiled.Smten.Symbolic0
     Smten.Compiled.Smten.Symbolic
     Smten.Compiled.Smten.Symbolic.Solver.Pure
@@ -65,6 +72,6 @@ Test-Suite test-smten-lib
     main-is: tests.hs
     build-depends: base ==4.6.*, hashtables ==1.0.*, mtl ==2.1.*,
                    pretty ==1.1.*, 
-                   smten-base ==4.0.*, smten-plugin ==4.0.*
+                   fwbv ==1.0.*, smten-base ==4.0.*, smten-plugin ==4.0.*
 
 
