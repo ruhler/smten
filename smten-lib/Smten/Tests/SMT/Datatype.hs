@@ -95,6 +95,6 @@ smttests = do
 
 tests :: IO ()
 tests = do
-   runtest pure smttests
+   runtest (SMTTestCfg pure []) smttests
    putStrLn "SMT.DataType PASSED"
 
