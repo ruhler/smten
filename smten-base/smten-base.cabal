@@ -1,5 +1,5 @@
 name: smten-base
-version: 3.0.0.0
+version: 4.0.0.0
 synopsis: Smten library
 license: AllRightsReserved
 license-file: LICENSE
@@ -100,7 +100,7 @@ library
     Smten.Compiled.GHC.Tuple
     Smten.Compiled.GHC.Types
 
-  build-depends: base ==4.6.*, ghc-prim ==0.3.*, smten-plugin ==3.0.*,
+  build-depends: base ==4.6.*, ghc-prim ==0.3.*, smten-plugin ==4.0.*,
                  hashtables ==1.0.*
   ghc-options: -fwarn-unused-binds -fwarn-unused-imports
 
