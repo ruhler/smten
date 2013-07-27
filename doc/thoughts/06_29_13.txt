@@ -1,0 +1,141 @@
+
+Sat Jun 29 10:23:02 EDT 2013
+
+I think I want to continue on a research path. That is, I'm not trying to make
+the next better smten, I'm trying to understand what is involved in making a
+smten which leverages the ghc front end.
+
+To that end, I will not worry about how hard it is to write the code. I'll
+assume we have some syntactic sugar to generate the code for us. Then my goal
+is to look at the easiest way I can use ghc in terms of implementing the
+plugin. For that, anyway I can use my own code and compile my own libraries
+will help.
+
+So, for starters, try to implement the entire Prelude library manually, and
+try not to rely on anything built in. Define my own Unit, Tuple, manually
+derive Eq, etc...
+
+I'll put things under Smten.*
+
+Sounds like a plan to me.
+
+What will the build process look like?
+
+1. compile plugin.
+2. make smten-base, compile all the sources there from
+    Smten/Foo.hs
+to: Smten/Compiled/Smten/Foo.hs
+3. install smten-base
+4. do as I was.
+
+Let's see what happens then.
+
+Oh, but I can also try running the test bench first. Which is what I ought to
+do first.
+
+Sat Jun 29 11:22:46 EDT 2013
+
+First issue I'm running into:
+* I can't use my own Bool for: if, pattern guards, etc...
+
+Can I use rebindable syntax for that? Let's try.
+
+Looks like no. So looks like pattern guards as a syntax are out.
+
+But we can change them to:
+    | True <- ...
+
+With patten guards.
+
+Next issue: is there any way we can have auto deriving for Eq? For my Eq?
+Please?
+
+ghc claims Eq is not derivable.
+
+It looks like, regardless, I'll need to auto derive something. Generic, or
+Data, or something like that. On any class that you want this kind of thing
+for. Is that worth doing?
+
+I will get sick very quickly of defining my own instances for everything.
+I'll also want to add deriving 'Free', for example, and maybe other things.
+So I think it's worth trying.
+
+Let me try it out now.
+
+What do I need?
+
+Data.Eq should say how to given the general instance. There is even an example
+implementation already I can use.
+
+Hopefully it works. We shall see.
+
+Sat Jun 29 12:43:07 EDT 2013
+
+Trouble with dependencies now:
+* Show needs List((++))
+  List needs Num(+)
+  Num needs Show
+
+Ug.
+
+Well, let me make a List0 which does not depend on Show, as it were?
+If I can?
+
+It just needs (++) really.
+
+Sat Jun 29 12:57:10 EDT 2013
+
+Next problem: we can't pattern match against literals, because the return type
+of equality is my Bool, not haskell's Bool.
+
+Sat Jun 29 13:39:04 EDT 2013
+
+Okay! I did it. I got everything to work.
+
+I suppose the summary of things we have lost so far is:
+
+* deriving anything
+* | foo     -- but can be translated to:  | True <- foo
+* literal pattern - can be translated, sort of, with pattern guards:    
+                    True <- x == *         
+
+What's next? Next is getting this to work with my plugin.
+And, perhaps, thinking about how I could make deriving and other things nicer.
+
+Sat Jun 29 14:50:09 EDT 2013
+
+About deriving...
+
+I should use template haskell.
+
+Other options are less attractive:
+* make Eq, Ord, special cases
+  Doesn't support deriving of 'Free'
+* use Generics
+  Doesn't generate good code. 
+
+But template haskell can generate the code I want, and I can automatically
+replace 'deriving' with a template haskell call.
+
+Anyway, next step is to get this working with my plugin.
+
+I suppose I'll try it out and see what happens.
+
+Sat Jun 29 16:10:45 EDT 2013
+
+Okay! Great progress made. I separated out the primitives in a reasonably nice
+fashion, so hopefully it will be pretty easy to switch over to SmtenHS-like
+code.
+
+But!  First thing I have to do is be able to handle dictionaries now in
+smten-plugin.
+
+The first issue I'm facing:
+
+The name for the default method is not a valid haskell name.
+
+($dm/=)...
+
+So I need to make sure I'm sanitizing names.
+ 
+Perhaps I'll come back to this in a bit.

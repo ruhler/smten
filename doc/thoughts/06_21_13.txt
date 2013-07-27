@@ -1,0 +1,147 @@
+
+Fri Jun 21 08:39:43 EDT 2013
+
+Nirav had an interesting suggestion. I could change how I handle errors.
+
+Instead of generating free variables for errors, I can generate arbitrary
+literals for them. But also keep track of and produce a symbolic boolean
+indicating whether error was reached or not.
+
+If the SAT solver returns satisfiable, evaluate that predicate to determine if
+any errors occurred.
+
+So, what I'm proposing is, the process of 'Assert' returns a list:
+ [(S.Bool, P.String)]
+
+Which are all the errors.
+
+This is cool because in shampi, the list will be empty. We will spend no time
+checking for errors. In other things, if parts of the realization between
+predicates can be shared, they will be.
+
+Is this a valid thing to do?
+
+I fear not. It means we could be told something is unsatisfiable, when really
+it should be error. Consider:
+    assert (error "foo")
+
+This would return unsat, we wouldn't have an assignment to verify things.
+
+So, while I could use this trick to reduce the cost of DoubleCheck, I can't
+use it to get rid of free error variables, and those are what currently cost
+us more.
+
+Thus I should continue with my proposal of fixing case desugaring... which may
+be re-routed into a proposal to use ghc for the smten front end (which would
+solve so many of the current issues I'm having, that it's almost too good an
+opportunity not to take a significant attempt at).
+
+Fri Jun 21 08:49:09 EDT 2013
+
+Anyway, here's the plan for playing with ghc as a front end:
+
+1. Create a new branch, called plugin.
+2. Create two separate packages:
+  smten-plugin, smten-runtime
+
+smten-runtime is just like the existing smten package library.
+smten-plugin is a completely new package. It will have code similar to the
+smten executable, but I want to rewrite it from scratch using the ghc
+infrastructure for describing modules and environments and such.
+
+We have to split into two packages to avoid issues with dynamic loading of
+SMT solver static libraries.
+
+3. Set up some test infrastructure:
+I describe a .hs file with my smten tests. It has a main function.
+I compile that through ghc using my smten-plugin to generate a haskell file.
+I then compile that haskell file through ghc again to generate an executable.
+I then run the executable.
+
+The first goal will figure out how to compile concrete code to concrete
+haskell code. Once I've worked this out for things of interest:
+  functions, data type declarations, classes, instances
+Then I can change how I generate code to match what the current smten compiler
+does.
+
+If I get this far, then I've succeeded! We have ghc as the front end. Issues
+it solves:
+* Add support for (..) in import and export specifications
+* Add support for signatures in let declarations
+* newtype
+* auto derive Ord, Ix
+* labeled pattern matching.
+* signatures in let declarations.
+* lack of signatures in top-level declarations.
+* strictness flags in data type declarations.
+* contexts in data type declarations.
+* sections.
+* Int type. - just make it another primitive type, like Char
+* allow sigs and bodies to be separated.
+* better error messages
+* operator precedence bugs
+
+Basically, a whole huge big slew of things go away if I can use ghc as the
+front end. That's why this is exciting.
+
+
+Fri Jun 21 09:19:03 EDT 2013
+
+An idea about the error idea above.
+* If the SMT solver gives you an assignment, you can test it and you are done. 
+* If the SMT solver says UNSAT...
+Well, then we can ask if any error can be reached. If not, then it truly is
+UNSAT, otherwise we have an assignment where an error can be reached, and we
+are done. This would make the SAT case work well in practice. I fear it could
+be bad for the UNSAT case, which might lead to duplicated work.
+
+Fri Jun 21 16:42:31 EDT 2013
+
+Time to dive into this plugin idea.
+
+First step: generate a haskell module.
+
+I'll want to use a similar approach to my compiler.
+
+moduleCG :: ModGuts -> Doc
+bindCG :: Bind -> Dec
+
+Let me start with that.
+
+First goal is to just generate haskell code. Don't do anything transformations
+for symbolic stuff. This is to understand the issue of dictionaries and type
+arguments.
+
+Fri Jun 21 17:26:16 EDT 2013
+
+Trouble: I don't see a good way to get the name of a variable as a string.
+
+I'm starting to wonder if I should be using the haskellTH stuff for pretty
+printing, or if I ought not to just do my own pretty printing, making use of
+GHC's pretty printer?
+
+I should be doing simple enough stuff that GHC's pretty printer is fine.
+Let me continue with that idea in mind.
+
+Fri Jun 21 17:45:10 EDT 2013
+
+Trouble: how do I figure out imports?
+I should look at all the names used and figure it out from there I suppose.
+
+It looks like I literally have to keep track of, and look at, all the names we
+use when we generate code.
+
+That's unpleasant.
+
+Sounds like a kind of a Writer monad to me.
+
+Okay, so we reach the first place where I want to start doing things more
+cleanly.
+
+Define a CG monad, which is a WriterT CoreM. Anytime I generate code for a
+name, I should write it out. that way, at the top level, I can figure out what
+they were...
+
+Of course, Writer won't be good enough if I want to read the results. Maybe
+just use a state monad. Keep track of the list of modules we need to import.
+

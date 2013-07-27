@@ -1,0 +1,48 @@
+
+Thu Jun 27 19:37:41 EDT 2013
+
+Here is the current issue I'm facing:
+
+GHC.Classes defines both Eq and a bunch of derivations for it.
+
+If I redefine Eq, then we can't derive, because my Eq is different from GHC's
+Eq. Which is bad. Which ought not to be the case...
+
+Remember the goal of this though... it's solely to generate 
+a Smten.Lib.GHC.Classes file. But I want that file to include the definition
+of Eq and the auto derived stuff.
+
+Perhaps I need to split things into two parts, and manually write
+Smten.Lib.GHC.Classes to import the right parts.
+
+That sounds good to me. How about:
+
+Smten.Lib.GHC.Classes_NoDerivings
+Smten.Lib.GHC.Classes_Derivings
+
+Sound reasonable?
+
+It's at least worth a try.
+
+Thu Jun 27 19:48:13 EDT 2013
+
+Another problem: in order to define the instances for Eq, I have to know what
+the Eq class is. But to know what the Eq class is, the instances will already
+have been defined, so we'll end up with duplicate instances.
+
+Sadness.
+
+Is there any way I can see the auto-derived instances for these things?
+
+Aha! An idea: only separate out the deriving instances. For those I shouldn't
+(hopefully) need the definition of Eq.
+
+Nope. Won't work. We need Eq and Ord to be in scope. Thus leading to duplicate
+instances...
+
+To work around that: I uncommented the derivings for now.
+Next issue, though: For Foreign, I need CTypes defined.
+
+I'm pulling in a whole lot of stuff current smten does not support. I think
+it's worth revisiting whether I think this is the right approach to be taking.
+

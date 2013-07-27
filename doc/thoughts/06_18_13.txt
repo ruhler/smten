@@ -1,0 +1,487 @@
+
+Tue Jun 18 09:03:21 EDT 2013
+
+I know the high level idea about the next step, but there are a lot of details
+to work out to make sure I do it right. Let me work out those details now.
+
+High level goal:
+
+Organize symbolic (algebraic) objects by constructor. Rather than have a tree
+of symbolic objects, flatten it.
+
+Hmm... I'm not saying it very well. But that's the idea.
+
+Or, said another way: when doing ite of two objects, if they have the same
+constructor, the result should be a concrete version of that constructor with
+symbolic arguments.
+
+Perhaps some examples would help. Let me use Maybe, because that should give
+plenty of insight into the issues.
+
+if p
+  then Nothing
+  else Nothing          ==>  Nothing
+
+if p
+  then Just x
+  else Just y           ==> Just (if p then x else y)
+
+if p
+  then Just x
+  else Nothing          ==> Just x  when p
+                            Nothing when (not p)
+
+If we wanted to think of the most general representation, we could say we have
+a list for each constructor, with a when guard. This is certainly useful. It
+is not what I will do in practice, because I want to fast-path concrete
+evaluation. But conceptually this is exactly what is going on.
+
+Let me think of it like this for a while then.
+
+
+Nothing ==>    Just _|_ when False
+               Nothing when True
+
+Just x  ==>    Just x when True
+               Nothing when False
+
+if p
+  then Just a when pja
+       Nothing when pna
+  else Just b when pjb
+       Nothing when pnb
+
+==>  Just (if p then a else b) when (if p then pja else pjb)
+     Nothing when (if p then pna else pnb)
+
+caseJust (Just a when p
+          Nothing when q) y n
+
+==> if p
+       then y a
+       else if q
+               then n
+               else _|_
+
+That's very easy. Everything makes good sense. We may even be able to do
+concrete evaluation efficiently with a single constructor. I don't know.
+
+Note: all the when guards should add up to 100%. That is:
+    pj = not pn
+
+In general: (p1 || p2 || ... p(n-1)) = not pn
+
+We can take advantage of that to either leave out the last predicate, or do
+better translation to ifs for case.
+
+Good. Now, where do things get hard?
+
+Things get hard because we have a couple other kinds of objects:
+* Foo_Error P.String
+* Foo_Prim (Assignment -> Foo) Foo
+* Foo_Ite Bool Foo Foo      ??
+
+It's not clear we need Foo_Ite anymore. So let's assume that's gone.
+
+How to handle Foo_Error and Foo_Prim?
+
+The trouble here is, we need a way to push the ite down into the arguments of
+all the constructors.
+
+For Foo_Error, this could make sense if we had a SmtenHS String. That causes
+annoyances with template haskell and generated code and such. We could also
+just have a special Cases structure for the String argument.
+
+For Foo_Prim...
+
+If we are going to realize it, only one choice will apply. There's no need to
+merge realizes. We can keep them as a tree.
+
+If we are not going to realize it, we will generate an ite which we may want
+to merge with other things.
+
+if p
+    then Just 5
+    else foo ...
+
+We can always merge the results when we read them though, so that shouldn't be
+so much of a problem?
+
+Except when applying a function, such as case just, to it. Because now  we end
+up duplicating the function.
+
+Or! We could just stuff everything inside the Foo_Prim?
+
+The idea is this: We do two things with objects. We convert them to formulas
+and we realize them. For primitives, we want to treat each thing differently,
+because they lead to different performance consequences.
+
+Hmm...
+
+You know what I'm considering then?
+
+Primitives don't take part in the when thing. If the object contains a call to
+a primitive anywhere inside it, that primitive will be pushed up to the top.
+
+That handles the primitive case. But we still don't handle the error case.
+An object could be a mix between an error and a normal constructor. But, there
+could be many different error strings.
+
+I see a couple ways we can do it:
+
+data Maybe a =
+    Nothing
+  | Just a
+  | Error ErrorString
+  | Maybe_Ite {
+      __Nothing_guard :: Bool,
+      __Just_arg0 :: a,
+      __Just_guard :: Bool,
+      __Error_arg0 :: ErrorString,
+      __Error_guard :: Bool
+    }
+  | Maybe_Prim (Assignment -> Maybe a) (Maybe a)
+
+There. I think that's the way to do it.
+
+And I think using the labels makes sense. I should simplify compilation, and
+leave some debug info in the generated code.
+
+Cool.
+
+Now I should figure out what kind of code I need to generate for this.
+
+__caseNothing x y n =
+  case x of
+    Nothing -> y
+    Maybe_Ite = ite (__Nothing_guard x) y $
+                ite (__Error_guard x) (error0 $ __Error_arg0 x) n
+    Maybe_Prim r c = primitive0 (\m -> __caseNothing (r m) (realize m y) (realize m n)) (__caseNothing c y n)
+    Maybe_Error msg -> error0 msg
+    _ -> n
+
+__caseJust x y n =
+  case x of
+    Just a -> y a   
+    Maybe_Ite = ite (__Just_guard x) (y (__Just_arg0 x)) $
+                ite (__Error_guard x) (error0 $ __Error_arg0 x) n
+    Maybe_Prim r c = primitive0 (\m -> __caseJust (r m) (realize m y) (reailze m n))
+                                (__caseJust c y n)
+    Maybe_Error msg -> error0 msg
+    _ -> n
+
+realize1 m x =
+  case x of
+    Nothing -> Nothing
+    Just a -> Just (realize m a)
+    Maybe_Error msg -> x
+    Maybe_Ite ->
+        __caseTrue (__Nothing_guard x) Nothing $
+        __caseTrue (__Just_guard x) (Just (realize m (__Just_arg0 x))) $
+        Maybe_Error (realize m (__Error_arg0 x))
+    Maybe_Prim r _ = r m
+    
+
+primitive1 = Maybe_Prim
+error1 = Maybe_Error
+sapp1 f x =
+  case x of
+     Nothing {} -> f x
+     Just {} -> f x
+     Error msg -> error0 msg
+     Maybe_Ite {} -> 
+        ite (__Nothing_guard x) (f Nothing) $
+        ite (__Just_guard x) (f (Just (__Just_arg0 x))) $
+        (error0 (__Error_arg0 x))
+     Maybe_Prim r c -> primitive0 (f . r) (sapp1 f c)
+     
+Okay, so it looks like ite is the big one to try and figure out. There are a
+bunch of cases to consider.
+
+ite1 p a b =
+  case (a, b) of
+     Nothing, Nothing -> Nothing
+     Just av, Just bv -> Just (ite p av bv)
+     Error av, Error bv -> Error (ite p av bv)
+     Maybe_Ite {}, Maybe_ite {} ->
+        Maybe_Ite {
+          __Nothing_guard = ite p (__Nothing_guard a) (__Nothing_guard b)
+          __Just_guard = ite p (__Just_guard a) (__Just_guard b)
+          __Just_arg0 = ite p (__Just_arg0 a) (__Just_arg0 b)
+          ...
+        }
+     Maybe_Prim r c, _ -> Maybe_Prim (\m -> __caseTrue (realize m p) (r m) (realize m b)) (ite0 p c b)
+     _, Maybe_Prim r c -> Maybe_Prim (\m -> __caseTrue (realize m p) (realize m a) (r m)) (ite0 p a c)
+     _, _ -> ite0 p (toite a) (toite b)
+
+Where:
+
+toite x = 
+  case x of
+    Nothing -> Maybe_Ite {
+                    __Nothing_guard = True
+                    __Just_guard = False
+                    __Error_guard = False }
+    Just a -> Maybe_Ite {
+                    __Nothing_guard = False
+                    __Just_guard = True
+                    __Just_arg = a
+                    __Error_guard = False }
+    ...
+
+
+And there you have it!
+
+Note: toite is an artifact of fast-pathing concrete values.
+
+Well. There you have it.
+
+That's a lot of code to write, but it seems figured out enough to me.
+
+One issue though. Notice that ite is strict in all its arguments. Is that
+okay? It's certainly a big difference from what we have now.
+
+I would say, it is a problem if what you are going to do is realize the
+object. Because one path may blow up and you shouldn't run into it.
+
+It's not a problem if you are converting to an SMT formula, because you have
+to look at it anyway.
+
+So, the fix I would make: ite should always return a Foo_Prim. Where the
+realize is not strict in the branches, but the object is.
+
+But now I fear I'll get these long chains of primitives.
+
+The thing is, as soon as we know we are realizing something, we don't need to
+represent a primitive. The outer most primitive has all the info we need.
+
+So, what we should do, I think, is something like:
+
+primitive0 r x =
+  Foo_Prim r (case x of
+                Foo_Prim _ c -> c
+                _ -> x)
+
+There! That makes sense to me.
+
+And now the idea is: 
+ - if we know we are using something in an SMT query, then we are allowed to
+   look at all of it.
+
+This, of course, fails to handle issues of non-termination, but it's no worse
+than what we already have now.
+
+Gosh. So complicated.
+
+Tue Jun 18 11:26:02 EDT 2013
+
+I'd like to dive into this and see what comes of it.
+
+Steps:
+* change primitive0 impl to check for Prim arg and extract the body of it
+* change Ite constructor
+* define __FooToIte function for every type.
+* define ErrorString with instances of realize, ite.
+* change errorN to take an ErrorString as input.
+* handle Ite constructor in __caseFoo
+    obsoletes itecase
+* handle Ite constructor in realize
+    obsoletes iterealize
+* handle Ite constructor in sapp
+    obsoletes itesapp
+* change iteN to do the merging.
+
+That's it. All fairly straight forward. A bunch of it is going to be annoying
+though.
+
+Let me get started then.
+
+Things I can do individually:
++ update primitiveN to check for Prim arg.
++ define ErrorString type and use it instead of P.String.
+
+First things first then.
+
+Easy thing's done.
+
+If I want to, now might be a good time to try and fix the issues I'm having
+with error reporting, and get rid of mtohs.
+
+Perhaps after lunch.
+
+Tue Jun 18 12:53:21 EDT 2013
+
+I don't think I can get rid of mtohs. I need it for concrete evaluation of the
+SMT primitives. I don't know what's going on with the error reporting. I
+should figure it out.
+
+Tue Jun 18 13:04:29 EDT 2013
+
+The problem is with bind. If the first argument to bind is error, we don't
+propagate that.
+
+Let me try to find where I expect it to be propagated.
+
+We use (Prelude.>>=).
+
+We have: frhs (Prelude.>>=) (error ...) (...)
+
+And frhs calls mtohs. Thus answering the question.
+
+I know I don't support this.
+
+You may ask, can't I use sapp instead of mtohs? The answer is no, because it
+may not create a primitive where I want a primitive created. It pushes the
+argument inside.
+
+But wait! I'm proposing ite should always create a primitive.
+If this is the case, then we can use sapp.
+
+So, the proposal is as follows:
+
+__caseTrue:: checks for True and False literals.
+ite:: assumes predicate is symbolic.
+      always creates a primitive.
+iteN:: does what we already say.
+
+Then I should be able to handle the error issue just fine using sapp.
+
+Err. it doesn't work for some reason. And clearly I'm not in a kind of mood to
+figure out why. Which is bad, because I need to understand what's going on if
+I want to make my upcoming change.
+
+I should come up with descriptions for each of the methods. Understand how
+they work, and how things are supposed to work, and then make them work that
+way, and if they don't work, understand why they don't work.
+
+Fine then. Let me go through everything and see how things look. Then fix this
+error issue and clean up, before going on to my big changes.
+
+realize:: Given an assignment, return a concrete value.
+  The assignment should be complete. No free variables should exist in the
+  returned object, and no symbolic things should exist in the returned object.
+
+ite:: Merge two objects.
+ * it is assumed the predicate is symbolic.
+ * This is strict only in the predicate.
+    Required so 'realize' can be done without blowing up.
+    I should write a test case or two for this.
+ * if the objects are the same by stable name, it should return that object.
+
+sapp:: Apply the given function to the argument.
+ * This is strict in the function and the argument.
+ * If the argument has a concrete constructor,
+     the function is applied to it directly.
+     But note: the constructors arguments may be symbolic.
+ * If the argument is Error, the result is Error
+ * If the argument is a set (Ite), the result is...
+     for realize: the application of the function to the realized argument.
+     for smt: the ite of the application of the function at each leaf.
+
+Why is this so hard?
+
+How strict functions should work:
+ call sapp, where the function is wrapped in conversion to and from hs.
+It will only work for weak head normal form stuff though. If you have, for
+example, a String you are passing to haskell, and you want the entire thing to
+be concrete, then you'll run into issues here.
+
+Tue Jun 18 15:01:55 EDT 2013
+
+Here is the plan. I've got it worked out.
+
+The key point is this. I'm changing how foreign function import works.
+
+Foreign function import, when an argument has to be converted to haskell to be
+applied, will work as follows:
+* if the arg is error, the result is error
+* if the arg is WHNF concrete, the function is called
+* otherwise
+ 1. for realize, makes a thunk
+ 2. for formula: calls f for all WHNF concrete cases of the arg.
+
+If you want to pass things like lists, or functions or IO in a complete
+concrete way, you have to write a wrapper.
+
+This is the same behavior required by __caseFoo. They will both be implemented
+using sapp.
+
+I should no longer need mtohs.
+
+Let me make this work first before trying optimizations or changing how I do
+ite.
+
+Note in particular: sapp is responsible for introducing a primitive if needed.
+
+Wait. There is a problem.
+
+How can sapp properly handle the realize case if the function itself contains
+symbolic arguments?
+
+It has to call realize on the result. That's fine. Okay. Good.
+
+Tue Jun 18 17:09:56 EDT 2013
+
+Something is wrong. It's not working.
+
+In particular: realize is not working. It's not fully realizing things.
+
+As far in as I can see is: we have some realize thing which is returning a
+primitive. How can that be?
+
+The query involves no primitive functions.
+It involves only __caseE1, __caseE2, ...
+And __caseTrue.
+
+Thus, the problem must be there.
+
+I suspect the way to work this out is to expand it by hand. See what's going
+on with the realize.
+
+This will also be a good example to work on extracting common structure,
+because it seems to duplicate a ton in the generated query.
+
+Here's what I'll do. I'll work this out by hand. I should only have to worry
+about the 'realize' parts of things. And see what I see and if it makes sense
+or not to me.
+
+If I want, I can also try to understand the generated query and see what I
+expect to happen after my extracting common structure change.
+
+Tue Jun 18 17:57:33 EDT 2013
+
+Thoughts suggest the problem is:
+    sapp (Foo_Prim r c) = primitive (f . r) (sapp f c)
+is wrong!
+
+Because f might have symbolic stuff in it. Which is exactly the case for case.
+Instead it should be:
+    primitive (\m -> realize m (f (r m))) (sapp f c)
+
+Tue Jun 18 18:09:05 EDT 2013
+
+That was it.
+
+Next step is to get TRACE to work right with a symbolic argument.
+
+Tue Jun 18 20:29:37 EDT 2013
+
+Now it works. I would also like to point out: shampi now goes way fast. Like,
+10 seconds instead of 17. Nifty.
+
+Cool. So this seems to work out.
+
+Tue Jun 18 20:40:39 EDT 2013
+
+Now that that's sorted out, what's up for extracting common structures?
+
+I'll think about it more tomorrow. Something about ite needs to produce a
+primitive so it can look at the branches to do things?
+
+Why can't it be lazy?
+
+Or, perhaps more importantly, why can't it look at the body of its branches?
+If you want the result of ite, you certainly want the result of its body.
+
+I'll think about it and see what I come up with.
+

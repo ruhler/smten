@@ -1,0 +1,379 @@
+
+Tue Jun 25 09:43:56 EDT 2013
+
+The popl paper is brining up this desire to be able to support infinite
+symbolic objects in some manner.
+
+For example, free_Integer, or free_List, built from some "natural" primitive,
+if there is such a thing.
+
+In the current approach you can't do this, because you can't create an
+infinite number of free variables, then go on to do something.
+
+I wonder if you could have some way to create any free object. That is, some
+kind of uninterpreted object.
+
+Then, all that should matter, is how you use that object in an assertion.
+Though I'm not sure how we could reconstruct the object...
+
+Let me try to be more specific. The idea is this. Have some notion of a
+(totally) free object.
+
+Any time you apply a function to that object, it gives a totally free object
+(err... which could be wrong...)
+
+Let me focus in on the kinds of free objects we could have:
+
+* primitive
+* algebraic
+
+Consider algebraic.
+
+What we can do with algebraic is:
+ a case expression.
+
+That's it.
+
+So, if you have a case expression:
+
+    __caseFoo x y n...
+
+Well, perhaps I could construct the object lazily.
+I suppose that's what I would really want to do.
+
+In fact, that would make things rather easy to express, and pretty general.
+
+That would give us a way to say: here is a symbolic thing, but only expand it
+if you need to.
+
+And then it makes sense to do the query of the object.
+
+I'm not being very clear.
+
+What I would like is some way to describe a symbolic object lazily.
+
+But... it's not really any kind of symbolic object we are talking about? Or is
+it? I suppose, ideally, it really is.
+
+The issue is, I don't see how we can do mzero lazily.
+
+What do my current semantics say?
+
+Let me give a concrete example of what I'm talking about.
+
+free_List = do
+  isnull <- free
+  if isnull
+     then return []
+     else do 
+        hd <- free
+        tl <- free_List
+        return (hd : tl)
+
+query = do
+  l <- free_List
+  assert (not (null l) && head l == 4)
+  return (head l)
+  
+The trouble is, we might have deep down inside the free_List function, an
+mzero.
+
+We can think of it in terms of bind I suppose.
+
+(>>=) x f
+
+We say 'x' is _|_.
+
+But is 'x' _|_?
+
+According to the semantics?
+'x' is really { ... }_|_. It has all the elements of the list, with the
+possibility of _|_?
+
+Okay, good question. What is the following:
+
+(>>=) (return x) (const mzero)
+
+It should be { }.
+
+So, in general...
+
+(>>=) _|_ (const mzero)
+ should be { }
+
+Or...
+
+(>>=) (return x) {}_|_
+
+That's the real question.
+And that turns into {}_|_. 
+
+The trouble is, an isolated Symbolic object can affect the entire query. So we
+can't give any answer until we have seen everything...
+
+For both SAT and UNSAT.
+
+Because, say you make an abstraction, it says 'SAT'. You can fill in the
+assertions you've seen and check those, but there's no way to check the
+assertions you have not yet seen.
+
+Oh! But that's not true. Because some of the assertions depend on the
+assignment.
+
+For example, say we had the following:
+
+    p <- free_Bool
+    if p
+      then return ()
+      else _|_
+
+For this, we should be allowed to say: yes, this is satisfiable, with 'p'
+equal to True. Even though we don't know what _|_ is!
+
+Now, consider our free list thing: we can find an assignment that works,
+assume the list only has, say, 2 elements, then verify that assignment.
+
+In other words, the current semantics allow me to implement lazy free
+variables, exactly like I would want to have. The current limitation is in my
+implementation.
+
+That is, taking mplus as the primitive for choice? Or 'if' as the primitive of
+choice?
+
+I'm not sure what the primitive of choice should be. But the idea is:
+
+mplus ma mb
+
+We don't have to evaluate 'ma' or 'mb' right away.
+Just part of the way, and we could introduce an abstraction.
+
+The only side effect a Symbolic computation can have is to cause failure. That
+can be represented as a free boolean. It's result can be represented as a free
+result.
+
+mux p ma mb
+
+We could also do abstraction here.
+
+What am I saying? I'm saying, if we did some form of abstraction/refinement,
+and we did fair unrolling, then we could handle these infinite things!
+Infinite lists, infinite integers. Whatever you want. The monad supports it.
+It's just my current implementation which does not.
+
+Can I fix that? Is there anyway to make a decent performing implementation
+that can do the abstraction/refinement stuff?
+
+Note: The pruning implementation is not enough here. We have to do some sort
+of abstraction/refinement.
+
+Well... it's enough to be correct, I suppose, because the semantics say: if
+you have an infinite list, we don't have to return an answer if we don't want.
+But in practice, you would like to be able to get an answer.
+
+So, I suppose I need to revise my statement: It is not the case that if there
+exists a model, the semantics say you must find it eventually. That's
+something an implementation can guarantee. But I'm not sure we should make
+that a requirement of the semantics?
+
+Because what I'm suggesting now is...
+
+It's something interesting. Something going on about: I can find an
+assignment, so I can show unsatisfiable.
+
+For example, we want to ask something like: does there exist a list 'xs', such
+that ys = reverse xs and null xs <=> null ys.
+
+The question is: can we answer that by saying: we only have to check this for
+the case where 'xs' is 0, 1, or maybe 2 elements. After that, it's clear?
+
+It's sort of like the question:
+
+  let x = error "foo" :: Bool
+  assert (x /= x)
+
+Can we return 'UNSAT' here?
+
+Regardless of what the value of 'x' is: True or False, this is unsat. But what
+if 'x' is _|_ (as it is)
+
+(x /= x) is indistinguishable from _|_, which is indistinguishable from 
+(x == x), so we probably ought no to be able to distinguish the results.
+
+Unless we want to carry around more structure for our objects. But that's
+asking too much of an implementation.
+
+Except... in practice, perhaps we could handle these things. And we might want
+to be able to assume we can handle them, for the case of infinite lists and
+infinite integers, and such.
+
+So, perhaps point out that the current semantics doesn't allow this sort of
+thing, but if you relax them slightly, with some form of abstraction
+refinement, then you can handle this sort of thing.
+
+We'll have to wait for implementations to come around that can do it
+successfully before changing the semantics of the Symbolic monad.
+
+One question I might ask is: could we change the semantics to allow, or
+require abstraction/refinement like implementations?
+
+How about this: keep that idea in mind for future work. If I can't get my
+current semantics to work, I won't be able to get those semantics to work. We
+can talk about this, but not solve it yet. It's good to have a working
+baseline.
+
+Could we implement a free function this way?
+
+That is... do we have excessive ordering constraints?
+
+The algebraic data types don't have issues with ordering constraints, because
+the order is consistent with how you have to access it.
+
+Free integers would have an issue with ordering constraints.
+
+Tue Jun 25 12:38:51 EDT 2013
+
+Back to plugin work for a little while.
+
+Goal is to figure out how class declarations work.
+
+I'm getting:
+
+* For the class type constructor
+  An algebraic data type:
+    data Foo a = D:Foo (a -> Integer)
+
+* For instance methods:
+$cfoo :: (Bool -> Integer)
+$cfoo = ...
+
+$cfoo :: (Integer -> Integer)
+$cfoo = ...
+
+The 'foo' method is otherwise not defined. It's not given any arguments.
+
+Experiments to try:
+1. dump out the SystemFC code, see if it gives more info
+2. try adding another method to the class, see how the Foo definition changes
+3. look at the mg_insts structure, see what info it has.
+
+1.
+* $cfoo really is called $cfoo in the pretty printed core.
+But I recall there being a note somewhere about that possibly being the case,
+and we could use 'unique' to distinguish.
+
+* We have a dictionary definition for Foo Bool.
+$fFooBool :: Foo Bool
+$fFooBool = Foo $cfoo
+
+Currently we don't generate code for this because I ignore dictionary
+definitions.
+
+Note: it looks like I'm also getting some specialized instances of other
+classes.
+
+Now, when we call 'foo', we pass:
+  A type, a dictionary, an argument.
+
+'foo' does not appear to be otherwise declared in this pretty printed output.
+That is, 'foo' is not declared as a binding. Can I print out all the type
+constructors too?
+
+Somehow we seem to loose information about the method 'foo'.
+
+2.
+Now the Foo dictionary has two arguments and takes two arguments.
+The 'foo' method is called as before: taking the dictionary as an argument.
+
+2a. 
+What if we have a default method?
+
+We define something called: $dmfoo10.
+Then $cfoo10 for something without a method is defined as $dmfoo10.
+
+3. What other info do we have about these things?
+
+tyConClass_maybe will give a Class for the class declaration:
+classMethods gives a list of the methods for that class.
+classOpItems gives, perhaps, which of those methods have default
+    implementations.
+
+mg_insts gives a list of class instances, for which you can get the name of
+the corresponding dictionary definition.
+
+The last question I think I need to answer before I can figure out what to do
+with all this is: is there any way to distinguish between the names of the
+implementation methods for the different instances?
+
+The 'Unique' part of a name can be used to distinguish them.
+
+Cool!
+
+Now then, we have a question about how we want to deal with classes.
+
+1. Try to reconstruct the class and instance declarations
+2. Generate and use the underlying dictionaries without need for class
+   declarations.
+
+I will want to use my own class declarations for things like SmtenHS, but
+those will be separate from the classes defined at the smten user level.
+
+I must say, I'm leaning towards (2). I think it will be much easier.
+
+I just need to remain the dictionary and method names to something acceptable,
+don't throw away dictionary arguments, and define the methods for each class
+by accessing the dictionary. Better yet, I can use record constructors to
+define the dictionaries.
+
+Yes. I think that's the route to take.
+
+Note though, it's going to not work well with my current setup, where I'm
+trying to run things concretely using standard haskell packages. Because those
+packages don't export things the way I want.
+
+In other words, if I take this route, then I need to be generating the code
+for everything.
+
+Given that we need to do this eventually anyway, it makes sense to do now. But
+it is, itself, a notable effort to undertake.
+
+I think, though, given I can do all this, that the ghc-plugin approach ought
+to work out. The key will be figuring out how to do everything from scratch:
+how to deal with the boot-strapping.
+
+Cool. That's something to stew over.
+
+Tue Jun 25 17:00:29 EDT 2013
+
+Here's the plan.
+
+1. Define my own syntax for outgoing haskell
+This should contain whatever, and only whatever, I need to describe the
+haskell code I am generating. 
+
+Include syntax for modules, pragmas, all that fun stuff.
+
+The main goal of this is to separate pretty printing from code generation.
+
+In this syntax, it should be the user's responsibility to make sure things
+like names follow acceptable haskell syntax.
+
+Thus we have modules:
+  Smten.Plugin.Output.Syntax
+  Smten.Plugin.Output.Ppr
+
+2. Deal with names nicely.
+Really, come up with a good abstraction and sugar for working with names.
+
+I personally believe a name should just be a String, but I shouldn't have to
+care about those details. I also should avoid going back and forth into and
+out of different representations. That is, avoid lots of name and unname
+calls.
+
+Thus we have a module
+  Smten.Plugin.Name
+
+Let me update the current code with this structure. Then, switching to my new
+approach should be as easy as changing how names are generated to add
+Smten.Lib.
+
+I think start with syntax.

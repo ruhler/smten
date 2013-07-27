@@ -1,0 +1,152 @@
+
+Fri Jun 28 08:01:32 EDT 2013
+
+Trouble with the current approach to plugin: I'm trying to pull in everything
+from GHC. Do everything the way GHC does it. Including all of the primitives,
+error handling, foreign function interfaces.
+
+That's a big step up over what smten currently handles.
+
+I suggest I try to focus my efforts. Let's not try to make smten handle
+everything all at once. Let's try to take a single step which is to switch
+from my front end to ghc.
+
+What will we get from this?
+ * case desugar doesn't introduce extra 'error'
+ * proper handling of module imports and exports
+ * proper handling of operator precedence 
+ * functional dependencies
+ * let bindings can be polymorphic
+ * top level declarations need not have explicit type
+ * newtype support
+ * proper handling of record labels and synonyms
+
+What should we not be trying to get from this yet?
+ * foreign function interfaces
+ * optimizations for primitives
+ * the ghc base library and prelude implementations
+
+So here's what I propose.
+
+I should write my own prelude in haskell (as I have now).
+
+I can certainly make it look like ghc base's implementation, but use the same
+primitives now instead of bringing in a whole slew of ghc base code that I
+don't want to deal with.
+
+What are the issues that may come up for me to answer?
+* If I use my own prelude, where do I define it?
+    Smten.Prelude? Perhaps put all the haskell libraries under
+    Smten.*. This is the haskell implementation of the libraries from which
+    I'll be generating SmtenGen.*, or some such.
+
+    We can debate about the names. I would argue the former should be as short
+    as possible, because we'll want to include it everywhere. The later
+    doesn't matter how long it is.
+
+* Do we get support for builtin syntax?
+   - Can we use (), (,), []?
+   - List comprehensions? Arithmetic sequences?
+   - Do notation?
+
+* Do we get support for builtin deriving?
+   - Show, Eq, Ord
+    
+I should also bring up the following issue. I expect we will depend on the
+generated unique names for things to distinguish between them. I also expect
+ghc outputs the unique names for things in the interface files.
+
+If I write haskell code which links with a ghc library, but I compile my own
+version of the library, the names will not match up.
+
+Some things I'm going to want to link with the ghc library, but I want to keep
+that down to a minimum, because every single case where I link to the ghc
+library I'm going to have to have a special case in the plugin to handle.
+
+Good.
+
+So I think the next steps should be to rewrite my test case to not use ghc's
+prelude for anything. Have NoImplicitPrelude. But do write my own prelude and
+use that instead.
+
+If I can break it down into different modules, instead of putting the entire
+prelude in one place, that would be nice. I can try to mimic ghc's structure,
+or not. Do what I think makes sense.
+
+I can run the test cases as pure haskell code for the first step of this
+improvement, to make sure I have all the primitives I need.
+
+And, I suppose, to see what ghc primitives I need to link to because they are
+from builtin things.
+
+Good. That sounds like a plan. Let me go into slightly more detail.
+
+smten-plugin:  The smten plugin code.
+smten-base:
+  Smten.Prelude - the smten version of Prelude.
+  Smten.Compiled.Prelude - the compiled version of Smten.Prelude.
+
+
+Let's say, by convention, you write your modules under Smten.*, and we compile
+them to Smten.Compiled.*.
+
+Note: I probably won't need smten-runtime, because we can just provide the
+Smten.Compiled.Symbolic.* manually.
+
+Perhaps I'll want a: Smten.Runtime.* directory. I don't know. Let me not worry
+about that for now.
+
+Good. I have a plan. I like that.
+
+Umm... it would be worth looking now into how I can autoderive Show and Eq.
+
+It might be worth trying to use RebindableSyntax. That way I can at least get
+my own do notation and equality for pattern matching.
+
+When I port the test case over to this new approach, do what I can to make it
+as nice to specify the test case as I can, while using as much of my own code
+as I can (instead of existing library code). If RebindableSyntax helps with
+that, use it.
+
+Fri Jun 28 08:38:46 EDT 2013
+
+Um... I have some concerns.
+
+The concern is this: my choice of compiler implementation (based on ghc), is
+visible to the user of my language.
+
+Why is this bad?
+
+It means nobody else can write their own compiler. It means users depend on my
+implementation, and on how I implement things. That's very bad.
+
+If I can... Perhaps I can do a preprocessor.
+
+1. Read your code, do a preprocessing pass to prepare for ghc.
+2. compile with ghc and smten-plugin to haskell.
+3. compile haskell to a binary.
+
+I don't have a problem with limiting the smten language so it is easy to
+pre-process to ghc input. For example, by using a different syntax for numeric
+types. That sort of thing.
+
+This also gives a bit of flexibility into how I handle support for builtin
+things like [], :, (,), (), [ .. ], do, deriving. In the haskell code, they
+can refer to whatever I want them to refer to.
+
+Of course, error messages could get tricky.
+
+Remember the goal: take advantage of ghc's front end in my implementation of
+the compiler. Which means ghc should ideally be doing parsing, type checking,
+type inference, desugaring, error messages.
+
+My preprocessing should be simple enough not to have to do any of that,
+ideally. Or at least the core desugaring of case expressions and support for
+the full syntax.
+
+Hmm... This is seeming rather a bleak picture.
+
+I would like to see if we can use ghc as a front end.
+
+I don't know.
+

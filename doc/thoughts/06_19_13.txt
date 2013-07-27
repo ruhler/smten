@@ -1,0 +1,530 @@
+
+Wed Jun 19 07:42:28 EDT 2013
+
+Goal for smten today: extracting common structure.
+How about an easier name: re-ite.
+
+Let me summarize again the proposed changes and work through my example again.
+
+data Maybe a =
+    Nothing
+  | Just a
+  | Error ErrorString
+  | Maybe_Ite {
+      __Nothing_guard :: Bool,
+      __Just_arg0 :: a,
+      __Just_guard :: Bool,
+      __Error_arg0 :: ErrorString,
+      __Error_guard :: Bool
+    }
+  | Maybe_Prim (Assignment -> Maybe a) (Maybe a)
+
+__caseNothing x y n =
+  case x of
+    Nothing -> y
+    Just {} -> n
+    _ -> sapp (\v -> __caseNothing v y n) x
+
+__caseJust x y n =
+  case x of
+    Nothing -> n
+    Just a -> y a   
+    _ -> sapp (\v -> __caseNothing v y n) x
+
+realize1 m x =
+  case x of
+    Nothing -> Nothing
+    Just a -> Just (realize m a)
+    Maybe_Error msg -> x
+    Maybe_Ite ->
+        __caseTrue (realize m $ __Nothing_guard x) Nothing $
+        __caseTrue (realize m $ __Just_guard x) (Just (realize m (__Just_arg0 x))) $
+        Maybe_Error (realize m (__Error_arg0 x))
+    Maybe_Prim r _ = r m
+    
+
+primitive1 = Maybe_Prim
+error1 = Maybe_Error
+
+sapp1 f x =
+  case x of
+     Nothing {} -> f x
+     Just {} -> f x
+     Error msg -> error0 msg
+     Maybe_Ite {} -> primitive0 (\m -> realize m (f (realize m x))) $
+        ite (__Nothing_guard x) (f Nothing) $
+        ite (__Just_guard x) (f (Just (__Just_arg0 x))) $
+        (error0 (__Error_arg0 x))
+     Maybe_Prim r c -> primsapp f r c
+
+ite1 p a b =
+  case (a, b) of
+     Nothing, Nothing -> Nothing
+     Just av, Just bv -> Just (ite p av bv)
+     Error av, Error bv -> Error (ite p av bv)
+     Maybe_Ite {}, Maybe_ite {} ->
+        Maybe_Ite {
+          __Nothing_guard = ite p (__Nothing_guard a) (__Nothing_guard b)
+          __Just_guard = ite p (__Just_guard a) (__Just_guard b)
+          __Just_arg0 = ite p (__Just_arg0 a) (__Just_arg0 b)
+          ...
+        }
+     Maybe_Prim r c, _ -> Maybe_Prim (iterealize p a b) (ite p c b)
+     _, Maybe_Prim r c -> Maybe_Prim (iterealize p a b) (ite p a c)
+     _, _ -> ite p (toite a) (toite b)
+
+Where:
+
+toite x = 
+  case x of
+    Nothing -> Maybe_Ite {
+                    __Nothing_guard = True
+                    __Just_guard = False
+                    __Error_guard = False }
+    Just a -> Maybe_Ite {
+                    __Nothing_guard = False
+                    __Just_guard = True
+                    __Just_arg = a
+                    __Error_guard = False }
+    ...
+
+List of things to change:
++ Foo_Ite constructor
++ iterealize    - a generalization of its current form
++ itesapp       - a generalization of its current form (leveraging realize)
+* reimplement ite
+* define toite
++ make ErrorString an instance of SmtenHS0
++ ite should check for stable name equals.
+
+I think it's straight-forward. I'm not worried about other things. Just do
+this much, and that should be fine.
+
+Question: do we need the error guard? Can we just take it to be whatever
+everything else is not?
+
+I'll leave it as it is for now, but try to remember for later that I can maybe
+get rid of it.
+
+One problem that may come up: we might be showing lots of error where it
+doesn't exist. For example, I can imagine things like:
+
+if p then FooA
+ else if not p then FooB
+        else error ...
+
+Ideally we could recognize somehow that in this case, there really can't be an
+error.
+
+I'm not going to worry about it just now, but it's worth keeping in the back
+of my mind in case bad things start happening.
+
+Okay! making steady progress.
+
+Wed Jun 19 10:11:33 EDT 2013
+
+Thoughts on this error guard issue.
+
+* We should have an error guard, even though the information is "redundant"
+Because it is much easier to tell that 'False' is False than to tell
+that (not (p or not p)) is False.
+
+* For sapp, when we do the ite, we should do the following:
+1. Make a list of [(Bool, a)],
+2. Filter out all the 'False' elements of the list.
+3. ite the results of that.
+This way we take advantage of the fact that the predicates are all disjoint
+and add to 1 to avoid introducing spurious cases.
+
+* For ite, make sure we have:
+ if p then False else False ===> False
+
+* For lifting to ite, if a guard is False, it should be safe now to use
+  Prelude.error for the argument.
+
+* It may make sense to have an initial ite with all guard False and all
+  arguments 'Prelude.error', just to share that.
+  Then all we have to do to lift is set a guard to true and update all the
+  right args.
+
+* Note that for realize, it is okay not to do this list thing, because each
+  predicate is either True or False, so we always make the right choice.
+
+That's the plan.
+
+Let me add back the error guard, then continue on with the implementation.
+
+Wed Jun 19 10:20:41 EDT 2013
+
+Continuing on... time for sapp.
+
+sappN f x@(Foo_Ite {}) = 
+    itesapp f x [(__gdFooA x, f (FooA (__fl1FooA x) (__fl2FooA x) ...),
+                 (__gdFooB x, ...),
+                 (__egdFoo x, error0 (__eflFoo x)]
+
+Looks easy enough to me.
+    
+Wed Jun 19 10:56:20 EDT 2013
+
+Continuing to make good progress.
+All that remains now is the implementation of iteN.
+
+I suppose I want some helper functions.
+
+__itenullFoo :: Foo a b ...
+__itenullFoo = Foo_Ite {
+    __gd* = False,
+    __fl* = Prelude.error "itenullFoo"
+}
+
+__iteliftFoo :: Foo a b ... -> Foo a b ...
+__iteliftFoo x =
+  case x of
+    FooA x1 x2 ... -> __itenullFoo {
+        __gdFooA = True,
+        __fl1FooA = x1, __fl2FooA = x2, ...
+        }
+    ...
+    FooA_error msg -> __itenull Foo {
+        __gdFoo = True,
+        __flFoo = msg}
+    FooA_Ite {} -> x
+    FooA_Prim {} -> Prelude.error "iteliftFoo.prim"
+
+And now we can do ite:
+
+ite1 p a b =
+  case (a, b) of
+     FooA a1 a2 ..., FooA b1 b2 ... -> FooA (ite p a1 b1) (ite p a2 b2) ...
+     ...
+     Foo_Error a1, Foo_Error b1 -> Foo_Error (ite p a1 b1)
+     Foo_Ite {}, Foo_ite {} ->
+        Foo_Ite {
+          __* = ite p (__* a) (__* b)
+        }
+     Foo_Prim r c, _ -> Foo_Prim (iterealize p a b) (ite p c b)
+     _, Foo_Prim r c -> Foo_Prim (iterealize p a b) (ite p a c)
+     _, _ -> ite p (toite a) (toite b)
+
+Only these three functions to write, then we'll see how things go.
+
+Wish me luck. I'll start with the helper functions.
+
+NullIte is done.
+LiftIte is done.
+
+Only one more remains... ite itself.
+
+And, after this is all done... theoretically, everything will be working.
+
+Wed Jun 19 14:07:24 EDT 2013
+
+It compiles now. Problem: we are hitting __fl1Just undefined.
+
+I think I may have messed up how we deal with errors.
+
+For example, consider:
+
+    if p 
+        then Foo a
+        else Bar b
+
+This turns into:
+
+  gdFoo = p
+  flFoo = ite p a (error "flFoo undefined")
+  gdBar = not p
+  flBar = ite p (error "flBar undefined") b
+
+And ite looks at the value.
+
+The thing is... I know, because of gdFoo, that we should never run into error.
+So we aught to be able to say: flFoo = a. We don't need to guard it on p.
+
+More specifically:
+  gdFoo = if p then True else False
+  flFoo = ite p a (error "...")
+
+Grumble grumble...
+
+Options:
+ * don't use Prelude.error, use error0.
+ * somehow be smart:
+    if a guard is marked False, then accept the predicate and guard from the
+    other thing.
+
+If I can do the later, I would feel better about it. Because it means we
+aren't introducing spurious errors.
+
+This comes from the ite ite case. That's the only way we can change a guard
+for error "flFoo undefined" to something other than False. It's the only time
+we can look at a field without first testing its guard.
+
+Wed Jun 19 14:23:04 EDT 2013
+
+We might already have the way to do this in place.
+
+We want an ite join.
+
+Here are the cases:
+
+Given: p, ga, gb, a, b:
+
+ p, False, _, _, b ==> b
+ p, _, False, a, _ ==> a
+ p, ga, gb, a, b ==> ite p a b
+
+That's what we want to do. The value depends on the previous guards.
+
+So let me just do this. Simple.
+
+The rule is: you may not look at a field value if its guard is false.
+
+Okay. I'll try the change.
+
+Wed Jun 19 14:34:20 EDT 2013
+
+Okay. Now all the tests pass.
+
+It's slower for Sudoku.Enum, which is a little worrisome.
+
+Let's try out shampi.
+
+If I'm lucky, shampi won't be affected because it doesn't do symbolic stuff on
+interesting data types.
+
+shampi is a little slower, but still a decent 12 seconds.
+
+Now... let me try out foo.smtn.
+
+It fails with: fail_symbolic.
+
+So, it's trying to read the result of a symbolic thing. Probably for the
+purposes of merge...
+
+We also have lots of abstracted error variables, which I don't expect to see.
+We end up duplicating the predicate a whole bunch, because of this list
+perforation.
+
+Something is not the way I expect it.
+Other things are.
+
+TODO:
+* understand the new generated query for foo.smtn.
+* understand this fail_symbolic issue.
+
+What I expect to get now:
+
+writeback s = {
+       rs = [(if wbval == 42 then 0 else wbidx,
+              if wbval == 42 then f0 else wbval),
+             (if wbval == 42 then 1 else 0,
+              if wbval == 42 then f1 else f0),
+             (if wbval == 42 then 2 else 1,
+              if wbval == 42 then f2 else f1),
+             (if wbval == 42 then 3 else 2,
+              if wbval == 42 then f3 else f2)] ++ 
+                 (if wbval == 42 then [] else (3, f3))
+       dcidx = dcidx
+       dcval = dcval
+       wbidx = wbidx
+       wbval = wbval
+     }
+
+decode s = {
+       rs = [(0, f0), (1, f1), (2, f2), (3, f3)]
+       dcidx = dcidx
+       dcval = if dcval == 0 then f0
+             else if dcval == 1 then f1
+             else if dcval == 2 then f2
+             else if dcval == 3 then f3
+             else error "out of bounds"
+       wbidx = wbidx
+       wbval = wbval
+     }
+
+writeback decode s = {
+   rs = [(if wbval == 42 then 0 else wbidx,
+          if wbval == 42 then f0 else wbval),
+         (if wbval == 42 then 1 else 0,
+          if wbval == 42 then f1 else f0),
+         (if wbval == 42 then 2 else 1,
+          if wbval == 42 then f2 else f1),
+         (if wbval == 42 then 3 else 2,
+          if wbval == 42 then f3 else f2)] ++ 
+             (if wbval == 42 then [] else (3, f3))
+  dcidx = dcidx
+  dcval = if dcval == 0 then f0
+        else if dcval == 1 then f1
+        else if dcval == 2 then f2
+        else if dcval == 3 then f3
+        else error "out of bounds"
+  wbidx = wbidx
+  wbval = wbval
+     }
+
+writeback decode s = {
+       rs = [(if wbval == 42 then 0 else wbidx,
+              if wbval == 42 then f0 else wbval),
+             (if wbval == 42 then 1 else 0,
+              if wbval == 42 then f1 else f0),
+             (if wbval == 42 then 2 else 1,
+              if wbval == 42 then f2 else f1),
+             (if wbval == 42 then 3 else 2,
+              if wbval == 42 then f3 else f2)] ++ 
+                 (if wbval == 42 then [] else (3, f3))
+       dcidx = dcidx
+  dcval = if dcidx == (if wbval == 42 then 0 else wbidx) then (if wbval == 42 then f0 else wbval)
+        else if dcidx == (if wbval == 42 then 1 else wbidx) then (if wbval == 42 then f1 else f0)
+        else if dcidx == (if wbval == 42 then 2 else wbidx) then (if wbval == 42 then f2 else f1)
+        else if dcidx == (if wbval == 42 then 3 else wbidx) then (if wbval == 42 then f3 else f2)
+        else if wbval == 42
+            then error "out of bounds"
+            else if dcidx == 3
+                    then f3
+                    else error "out of bounds"
+       wbidx = wbidx
+       wbval = wbval
+     }
+
+Does this match what I'm seeing?
+
+Yes. With a couple of important observations:
+* because we pushed the predicate (wbidx == 42) down inside the registers
+  array, we can no longer perform that operation concretely, and hence have to
+  tell the SMT solver about something we otherwise would not have.
+
+That's the big reason for the increase in size. The register lookups are now
+order the length of the array instead of constant.
+
+So, to summarize, I would say this is doing what I want in terms of the
+generated query.
+
+I don't know what's up with this fail_symbolic issue. It's a problem with
+realize?
+
+Wed Jun 19 15:19:50 EDT 2013
+
+I ran master vs. common on that one isCF query that was causing issues.
+
+master query size: 123M
+common query size: 4.2M
+
+That is significant!
+
+The only problem, again, is this fail_symbolic issue.
+
+An issue which I need to figure out, and an issue which I need to write a test
+case for. Fortunately, the issue is triggered by foo.smtn, so it shouldn't be
+too hard to figure out. That's the next step.
+
+Wed Jun 19 15:24:42 EDT 2013
+
+I can simplify it to a single assertion (s == s).
+The query finishes fine. The problem is the value returned is not fully
+realized?
+
+Well, it's not even that, so much as it is giving me the result of fail
+symbolic instead of unit.
+
+Well, I've got a simple test case. Let me try to replicate the issue.
+
+It's a very simple test case:
+
+p <- free_Bool
+if p
+   then return ()
+   else fail_symbolic
+
+Let's see what should happen.
+
+p <- free_Bool
+__caseTrue p
+   then return ()
+   else fail_symbolic
+
+__caseTrue (BoolVar p) (return ()) fail_symbolic
+sapp (\v -> __caseTrue v (return ()) fail_symbolic) (BoolVar p)
+ite (BoolVar p) (__caseTrue True (return ()) fail_symbolic)
+                (__caseTrue False (return ()) fail_symbolic)
+
+do 
+  va <- predicated (BoolVar p) (primitive0 (error "...")
+            (__caseTrue True (return ()) fail_symbolic))
+  vb <- predicated  (not BoolVar p) (primitive 0 (error "...")
+            (__caseTrue False (return ()) fail_symbolic))
+  return (__caseTrue p va vb)
+
+let va = ()
+    vb = error "fail_symbolic"
+in __caseTrue p () (error "fail_symbolic")
+
+ite p () (error "fail_symbolic")
+ite0 p () (error "fail_symbolic")
+ite0 p (unit when True) BOOM!
+
+There you have it. So don't use prelude error. Use error0.
+            
+Wed Jun 19 15:47:14 EDT 2013
+
+I think it's working! I think arch-extract is going, perhaps significantly,
+faster. The only trouble is we ran into a bug: __fl1Just undefined.
+
+It takes about 3 minutes now to do all the isCF tests, without debugging on.
+
+Let me compare that to the master branch.
+
+master branch: going on 15 minutes plus, with 2.4% of memory (lots more than
+common branch!).
+
+So I would say: common branch is a win!
+
+If only it didn't mess up with __fl1Just undefined...
+
+Perhaps I should work out all the ways we can run into the fl1Just undefined
+issue, and prove to myself it can't be a problem.
+
+Wed Jun 19 16:21:15 EDT 2013
+
+Okay, here's the plan. I'm not going to worry about the bug, because I can fix
+it for sure, and clean things up nicely by doing the following:
+
+Foo_Ite {
+    __iteFooA :: P.Maybe (Bool, Foo a b ...)
+    __iteFooB :: P.Maybe (Bool, Foo a b ...)
+    ...
+    __iteFooError :: P.Maybe (Bool, Foo a b ...)
+}
+
+Where each branch is guaranteed to hold a concrete WHNF of the corresponding
+constructor.
+
+Because we use Maybe, it is very explicit what we are and are not allowed to
+look at, so we can't mess up the way I am.
+
+There are some other nice properties of this too. Like grouping field values
+together, making it very easy to lift objects into ite, reusing ite code for
+field values, reusing code for realize. All sorts of good stuff!
+
+I'm excited about this.
+
+It takes about 42 minutes to do all the isCF tests, without debugging on, on
+the master branch. Memory goes as high as 2.7% of purity.
+
+Wed Jun 19 18:41:27 EDT 2013
+
+Time to make my changes. Once I change the ite constructor, everything else
+should fall in naturally, I expect.
+
+Here I go.
+
+Step 1: Change the Ite constructor.
+Step 2: Change the ite implementation.
+ Like before, only we just have the merge thing, and it takes the two args.
+Step 3: Change the realize implementation.
+Step 4: Change itesapp
+Step 5: Change __IteNullFoo
+Step 6: Change LiftFoo
+
+

@@ -1,0 +1,21 @@
+
+Mon Jun 24 16:50:24 EDT 2013
+
+Trouble: what to do about things like GHC.Integer.Type.Integer? Because
+GHC.Integer.Type is a hidden module...
+
+Well, I suppose this won't be a problem long term for smten, because we will
+be generating Smten.Lib.GHC.Integer.Type, which I can expose.
+
+I suppose, for the time being, I may as well make that a special case.
+
+Mon Jun 24 17:27:30 EDT 2013
+
+And everything works! That is, all the stuff not involving type classes. And
+it actually runs. That's pretty cool.
+
+The next challenge will be to get type classes to work.
+
+I'll have to understand how they work, because currently I don't understand
+how they work.
+
