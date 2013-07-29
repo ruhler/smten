@@ -1,6 +1,4 @@
 Priority::
-* Add support for symbolic Bit Vectors: Add SMT Bit test
-
 * Port shampi to ghc-plugin
 * Port arch-extract to ghc-plugin
 * Add SMT Error test (if needed)
@@ -32,7 +30,6 @@ Runtime::
 Known Bugs::
 * Error non-termination tests (in Error)
 * Sharing of appeval (in Share)
-* STP bug (in Nest)
 * STP bug (in Bit)
 * STP bv_and bug (in Bit)
 * Yices1 left shift (in Bit)

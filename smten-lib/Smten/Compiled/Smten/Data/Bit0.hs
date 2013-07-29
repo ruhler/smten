@@ -5,7 +5,7 @@
 module Smten.Compiled.Smten.Data.Bit0 (
     Bit, bv_eq, bv_leq, bv_show, bv_fromInteger, bv_add, bv_sub, bv_mul,
     bv_or, bv_and, bv_shl, bv_lshr, bv_not, bv_concat,
-    bv_sign_extend, bv_extract, bv_width,
+    bv_sign_extend, bv_extract, bv_width, bv_value,
     ) where
 
 import qualified Prelude as P
@@ -73,4 +73,7 @@ bv_extract nw x = symapp (\lsb -> extract_Bit (lsb P.+ nw P.- 1) lsb x)
 
 bv_width :: P.Integer -> Bit n -> Integer
 bv_width w _ = tosym w
+
+bv_value :: Bit n -> Integer
+bv_value = symapp (\b -> tosym (P.bv_value b))
 

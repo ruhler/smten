@@ -21,7 +21,7 @@ tests = do
     test "Bit.shl" (bit5 10 == bv_shl (bit5 5) (bit5 1))
     test "Bit.extract" (bit3 3 == bv_extract (bit5 7) 1)
     test "Bit.not" (bit5 0x15 == bv_not (0x0A))
---    test "Bit.toInteger" (toInteger (bit5 0x15) == 0x15)
+    test "Bit.value" (bv_value (bit5 0x15) == 0x15)
     test "Bit.xor" (0x6 == bv_xor 0xa (0xc :: Bit 4))
     test "Bit.sign lt ++" (bv_slt (bit5 4) 13)
     test "Bit.sign lt +-" (not $ bv_slt (bit5 4) 0x1d)

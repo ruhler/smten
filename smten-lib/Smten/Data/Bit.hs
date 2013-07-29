@@ -7,7 +7,7 @@ module Smten.Data.Bit (
     Bit,
     bv_and, bv_or, bv_xor, bv_shl, bv_lshr, bv_not, bv_concat,
     bv_extract, bv_truncate, bv_zero_extend, bv_sign_extend,
-    bv_sle, bv_slt, bv_sge, bv_sgt, bv_ashr,
+    bv_sle, bv_slt, bv_sge, bv_sgt, bv_ashr, bv_width, bv_value,
     ) where
 
 import Smten.Prelude
