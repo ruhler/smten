@@ -11,6 +11,7 @@ Cleanup::
     Or is it okay because it can't ever appear in an assertion?
 * Figure out a way so that Bool and Integer and Bit definitions are not so
   tied up with each other?
+* Why is bv_extract primitive? Why not just shift right and truncate?
 
 Future Work::
 * Add minisat as a solver (requires CNF)
@@ -37,6 +38,8 @@ Known Bugs::
 * Yices1 left shift (in Bit)
 * newtype doesn't work: the generated code doesn't typecheck.
 * pattern matching against chars generates code which doesn't compile.
+* bv_concat type is too general
+    perhaps add a runtime check to assert the types line up properly?
 
 Suspected Bugs::
 * Memory leaks of solvers

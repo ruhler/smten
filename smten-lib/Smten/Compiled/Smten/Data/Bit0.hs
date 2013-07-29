@@ -5,9 +5,9 @@
 module Smten.Compiled.Smten.Data.Bit0 (
     Bit, bv_eq, bv_leq, bv_show, bv_fromInteger, bv_add, bv_sub, bv_mul,
     bv_or, bv_and, bv_shl, bv_lshr, bv_not, bv_concat,
+    bv_sign_extend, bv_extract,
     ) where
 
-import GHC.TypeLits
 import qualified Prelude as P
 import qualified Smten.Runtime.Bit as P
 import Smten.Runtime.SmtenHS
@@ -64,4 +64,10 @@ bv_not = not_Bit
 
 bv_concat :: Bit a -> Bit b -> Bit n
 bv_concat = concat_Bit
+
+bv_sign_extend :: P.Integer -> P.Integer -> Bit m -> Bit n
+bv_sign_extend mw nw = sign_extend_Bit (nw P.- mw)
+
+bv_extract :: P.Integer -> Bit m -> Integer -> Bit n
+bv_extract nw x = symapp (\lsb -> extract_Bit (lsb P.+ nw P.- 1) lsb x)
 

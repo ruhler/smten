@@ -25,9 +25,6 @@ main = do
     runtest (SMTTestCfg yices2 []) Bit.smttests
     putStrLn "Yices2.SMT.Bit PASSED"
 
-    runtest (SMTTestCfg yices2 []) Bit.smttests
-    putStrLn "Yices2.SMT.Bit PASSED"
-
     Sudoku.tests yices2
     putStrLn "Yices2.Sudoku PASSED"
 

@@ -108,13 +108,8 @@ instance Supported (S.Bit n) where
     define ctx (S.Bit_Lshr a b) = binary (lshr_bit ctx) a b
     define ctx (S.Bit_Concat a b) = binary (concat_bit ctx) a b
     define ctx (S.Bit_Not a) = unary (not_bit ctx) a
---    define ctx x@(S.Bit_Extract a (S.Integer i)) =
---       let hi = i + bitwidth x - 1
---           lo = i
---       in unary (extract_bit ctx hi lo) a
---    define ctx x@(S.Bit_SignExtend a) =
---       let by = bitwidth x - bitwidth a
---       in unary (sign_extend_bit ctx by) a
+    define ctx (S.Bit_Extract hi lo a) = unary (extract_bit ctx hi lo) a
+    define ctx (S.Bit_SignExtend by a) = unary (sign_extend_bit ctx by) a
     define ctx (S.Bit_Ite p a b) = do
         p' <- use p
         a' <- use a

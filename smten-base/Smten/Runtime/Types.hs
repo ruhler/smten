@@ -12,6 +12,7 @@ module Smten.Runtime.Types (
     Integer(..), eq_Integer, leq_Integer, add_Integer, sub_Integer,
     Bit(..), eq_Bit, leq_Bit, add_Bit, sub_Bit, mul_Bit,
     or_Bit, and_Bit, shl_Bit, lshr_Bit, not_Bit, concat_Bit,
+    sign_extend_Bit, extract_Bit,
     ) where
 
 import Prelude hiding (Bool(..), Integer(..))
@@ -160,6 +161,12 @@ data Bit (n :: Nat) where
   Bit_Lshr :: Bit n -> Bit n -> Bit n
   Bit_Concat :: Bit a -> Bit b -> Bit n
   Bit_Not :: Bit n -> Bit n
+
+  -- Bit_SignExtend by x
+  Bit_SignExtend :: P.Integer -> Bit m -> Bit n
+
+  -- Bit_Extract hi lo x
+  Bit_Extract :: P.Integer -> P.Integer -> Bit m -> Bit n
   Bit_Ite :: Bool -> Bit n -> Bit n -> Bit n
   Bit_Var :: FreeID -> Bit n
   Bit_Err :: ErrorString -> Bit n
@@ -229,4 +236,14 @@ not_Bit :: Bit n -> Bit n
 not_Bit (Bit a) = Bit (complement a)
 not_Bit (Bit_Err msg) = Bit_Err msg
 not_Bit a = Bit_Not a
+
+sign_extend_Bit :: P.Integer -> Bit m -> Bit n
+sign_extend_Bit by (Bit a) = Bit (P.bv_sign_extend by a)
+sign_extend_Bit _ (Bit_Err msg) = Bit_Err msg
+sign_extend_Bit by x = Bit_SignExtend by x
+
+extract_Bit :: P.Integer -> P.Integer -> Bit m -> Bit n
+extract_Bit hi lo (Bit a) = Bit (P.bv_extract hi lo a)
+extract_Bit _ _ (Bit_Err msg) = Bit_Err msg
+extract_Bit hi lo x = Bit_Extract hi lo x
 

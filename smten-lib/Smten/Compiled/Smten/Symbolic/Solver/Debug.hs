@@ -92,9 +92,9 @@ instance SolverAST DebugLL Debug where
     shl_bit = op "<<"
     lshr_bit = op ">>"
     not_bit dbg x = return $ dbgApp (dbgText "~") (sh x)
---    sign_extend_bit dbg n x = return $ dbgText "?SignExtend"
---    extract_bit dbg hi lo x = return $
---      dbgApps (dbgText "extract") [dbgText $ "[" ++ show hi ++ ":" ++ show lo ++ "]", sh x]
+    sign_extend_bit dbg n x = return $ dbgText "?SignExtend"
+    extract_bit dbg hi lo x = return $
+      dbgApps (dbgText "extract") [dbgText $ "[" ++ show hi ++ ":" ++ show lo ++ "]", sh x]
 
 debug :: S.List__ S.Char -> Solver -> Solver
 debug fsmten s = do

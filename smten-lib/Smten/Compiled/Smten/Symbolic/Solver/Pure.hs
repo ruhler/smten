@@ -148,6 +148,14 @@ instance SolverAST PureSolver Exp where
      case a m of
         BV av -> BV (complement av)
 
+  sign_extend_bit _ av (Exp b) = return . Exp $ \m ->
+    case b m of
+        BV bv -> BV (bv_sign_extend av bv)
+
+  extract_bit _ hiv lov (Exp x) = return . Exp $ \m ->
+    case x m of
+        BV xv -> BV (bv_extract hiv lov xv)
+
 pure :: Solver
 pure = do
    mref <- newIORef [Model []]

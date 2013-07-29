@@ -157,6 +157,8 @@ instance SmtenHS0 (Bit n) where
         Bit_Lshr a b -> lshr_Bit (realize m a) (realize m b)
         Bit_Concat a b -> concat_Bit (realize m a) (realize m b)
         Bit_Not a -> not_Bit (realize m a)
+        Bit_SignExtend by x -> sign_extend_Bit by (realize m x)
+        Bit_Extract hi lo x -> extract_Bit hi lo (realize m x)
         Bit_Ite p a b -> iterealize p a b m
         Bit_Var n -> lookupBit m n
         Bit_Err msg -> Bit_Err (realize m msg)

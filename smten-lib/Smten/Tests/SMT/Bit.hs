@@ -40,18 +40,16 @@ smttests = do
         assert (a > 6)
         return (a :: Bit 8)
 
---    -- TODO: STP fails this test!
---    symtesteq "SMT.Bit.SignExt1" (Just 3) [Yices1, Yices2] $ do
---        a <- free
---        assert (bv_sign_extend (a :: Bit #3) == (0x3 :: Bit #5))
---        return a
---
---    -- TODO: STP fails this test!
---    symtesteq "SMT.Bit.SignExt2" (Just 4) [Yices1, Yices2] $ do
---        a <- free
---        assert (bv_sign_extend (a :: Bit #3) == (0x1c :: Bit #5))
---        return a
---
+    symtesteq "SMT.Bit.SignExt1" (Just 3) $ do
+        a <- free_Bit
+        assert (bv_sign_extend (a :: Bit 3) == (0x3 :: Bit 5))
+        return a
+
+    symtesteq "SMT.Bit.SignExt2" (Just 4) $ do
+        a <- free_Bit
+        assert (bv_sign_extend (a :: Bit 3) == (0x1c :: Bit 5))
+        return a
+
     symtesteq "SMT.Bit.Not" (Just 0x0A) $ do
         f <- free_Bit
         assert (bv_not f == 0x15)
@@ -73,18 +71,18 @@ smttests = do
         assert (bv_shl (0x15 :: Bit 8) i == 0xA8)
         return (i :: Bit 8)
 
---    symtesteq "SMT.Bit.Extract" (Just 0xAB) [Yices1, Yices2, STP] $ do
---        i <- free
---        assert (bv_extract i 0 == (0xB :: Bit #4))
---        assert (bv_extract i 4 == (0xA :: Bit #4))
---        return (i :: Bit #8)
---
---    symtesteq "SMT.Bit.Truncate" (Just 0xAB) [Yices1, Yices2, STP] $ do
---        i <- free
---        assert (bv_truncate i == (0xB :: Bit #4))
---        assert (bv_extract i 4 == (0xA :: Bit #4))
---        return (i :: Bit #8)
---
+    symtesteq "SMT.Bit.Extract" (Just 0xAB) $ do
+        i <- free_Bit
+        assert (bv_extract i 0 == (0xB :: Bit 4))
+        assert (bv_extract i 4 == (0xA :: Bit 4))
+        return (i :: Bit 8)
+
+    symtesteq "SMT.Bit.Truncate" (Just 0xAB) $ do
+        i <- free_Bit
+        assert (bv_truncate i == (0xB :: Bit 4))
+        assert (bv_extract i 4 == (0xA :: Bit 4))
+        return (i :: Bit 8)
+
 --    symtesteq "SMT.Bit.Cases" (Just True) [Yices1, Yices2, STP] $ do
 --        p <- free_Bool
 --        assert (toInteger (if p then (3 :: Bit #8) else 4) == 3)

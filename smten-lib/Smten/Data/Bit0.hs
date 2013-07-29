@@ -9,7 +9,7 @@ module Smten.Data.Bit0 (
     bv_show,
     bv_fromInteger, bv_add, bv_sub, bv_mul,
     bv_and, bv_or, bv_shl, bv_lshr, bv_not,
-    bv_concat,
+    bv_concat, bv_extract, bv_sign_extend,
     ) where
 
 import GHC.TypeLits
@@ -61,4 +61,10 @@ bv_not = primitive "Smten.Data.Bit0.bv_not"
 --   When ghc supports such constraints reasonably.
 bv_concat :: Bit a -> Bit b -> Bit n
 bv_concat = primitive "Smten.Data.Bit0.bv_concat"
+
+bv_extract :: (SingI n) => Bit m -> Integer -> Bit n
+bv_extract = primitive "Smten.Data.Bit0.bv_extract"
+
+bv_sign_extend :: (SingI m, SingI n) => Bit m -> Bit n
+bv_sign_extend = primitive "Smten.Data.Bit0.bv_sign_extend"
 

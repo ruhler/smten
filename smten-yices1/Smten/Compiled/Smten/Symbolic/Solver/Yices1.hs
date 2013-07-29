@@ -144,10 +144,10 @@ instance SolverAST Yices1 YExpr where
   shl_bit = error "TODO: shl_bit for Yices1"
   lshr_bit = error "TODO: lshr_bit for Yices1"
   not_bit = uprim c_yices_mk_bv_not
---  sign_extend_bit y n a = withy1 y $ \ctx ->
---     c_yices_mk_bv_sign_extend ctx a (fromInteger n)
---  extract_bit y hi lo x = withy1 y $ \ctx ->
---     c_yices_mk_bv_extract ctx (fromInteger hi) (fromInteger lo) x
+  sign_extend_bit y n a = withy1 y $ \ctx ->
+     c_yices_mk_bv_sign_extend ctx a (fromInteger n)
+  extract_bit y hi lo x = withy1 y $ \ctx ->
+     c_yices_mk_bv_extract ctx (fromInteger hi) (fromInteger lo) x
 
 -- TODO: does this leak solvers?
 yices1 :: Solver
