@@ -12,7 +12,7 @@ module Smten.Data.List (
     sum, product, maximum, minimum,
     zip, zip3, zipWith, zipWith3, unzip, unzip3,
 
-    sort, sortBy,
+    sort, sortBy, tails, isPrefixOf, isInfixOf, nub,
  ) where
 
 import Smten.Smten.Base
@@ -267,4 +267,19 @@ sortBy cmp = mergeAll . sequences
        | otherwise       = a:merge as' bs
      merge [] bs         = bs
      merge as []         = as
+
+tails :: [a] -> [[a]]
+tails x = x : (if null x then [] else tails (tail x))
+
+isPrefixOf :: (Eq a) => [a] -> [a] -> Bool
+isPrefixOf [] _ = True
+isPrefixOf (x:xs) (y:ys) = x == y && isPrefixOf xs ys
+isPrefixOf _ _ = False
+
+isInfixOf :: (Eq a) => [a] -> [a] -> Bool
+isInfixOf needle haystack = any (isPrefixOf needle) (tails haystack)
+
+nub :: (Eq a) => [a] -> [a]
+nub [] = []
+nub (x:xs) = x : nub (filter ((/=) x) xs)
 
