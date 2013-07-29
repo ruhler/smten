@@ -2,7 +2,7 @@
 {-# LANGUAGE NoImplicitPrelude, RebindableSyntax #-}
 module Smten.System.IO (
     IO, FilePath,
-    putChar, putStr, putStrLn,
+    putChar, putStr, putStrLn, readFile,
  ) where
 
 import qualified Prelude as P

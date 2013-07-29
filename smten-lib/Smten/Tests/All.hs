@@ -15,6 +15,9 @@ import qualified Smten.Tests.SMT.Core
 import qualified Smten.Tests.SMT.Datatype
 import qualified Smten.Tests.SMT.Integer ()
 import qualified Smten.Tests.SMT.Sudoku ()
+import qualified Smten.System.Environment ()
+import qualified Smten.System.Exit ()
+import qualified Smten.System.Timeout ()
 
 main :: IO ()
 main = do

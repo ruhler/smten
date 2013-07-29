@@ -13,6 +13,11 @@ import Smten.Smten.TypeLits
 import Smten.Symbolic0
 import Smten.Control.Monad
 
+instance Functor Symbolic where
+    fmap f x = do
+        v <- x
+        return (f v)
+
 instance Monad Symbolic where
     return = return_symbolic
     (>>=) = bind_symbolic

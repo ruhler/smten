@@ -28,11 +28,6 @@ import Smten.Data.List0
 infixl 9 !!
 infix 4 `elem`, `notElem`
 
-instance (Eq a) => Eq [a] where
-    (==) [] [] = True
-    (==) (a:as) (b:bs) = (a == b) && (as == bs)
-    (==) _ _ = False
-
 filter :: (a -> Bool) -> [a] -> [a]
 filter p [] = []
 filter p (x:xs) | p x = x : filter p xs

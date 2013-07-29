@@ -3,6 +3,7 @@
 module Smten.Prelude (
     Bool(False, True),
     Maybe(Nothing, Just),
+    Either(Left, Right),
     Ordering(LT, EQ, GT),
     Char, String, Int, Integer, IO,
 
@@ -13,7 +14,7 @@ module Smten.Prelude (
     Monad(..),
     Functor(fmap),
     mapM, mapM_, sequence, sequence_,
-    maybe,
+    maybe, either,
     (&&), (||), not, otherwise,
     fst, snd, curry, uncurry, id, const, (.), flip, ($),
     error, undefined,
@@ -42,6 +43,7 @@ import Smten.Control.Monad
 import Smten.Data.Bool
 import Smten.Data.Function
 import Smten.Data.Functor
+import Smten.Data.Either
 import Smten.Data.Enum
 import Smten.Data.EnumInteger ()
 import Smten.Data.EnumInt ()

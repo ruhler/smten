@@ -1,7 +1,7 @@
 
 {-# LANGUAGE NoImplicitPrelude #-}
 module Smten.System.IO0 (
-    IO, putChar, return_io, bind_io,
+    IO, putChar, return_io, bind_io, readFile,
  ) where
 
 import Prelude (IO)
@@ -19,4 +19,7 @@ bind_io = (P.>>=)
 
 putChar :: Char -> IO ()
 putChar = P.putChar
+
+readFile :: String -> IO String
+readFile = P.readFile
 

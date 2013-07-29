@@ -1,4 +1,5 @@
 
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 module Smten.Compiled.Smten.Smten.Base (
@@ -34,12 +35,24 @@ instance SymbolicOf [a] (List__ a) where
          List___Error msg -> error0 msg
          List___Ite itenil itcon iteerr -> P.error "TODO: syammp List__Ite"
 
+instance SymbolicOf [P.Char] (List__ Char) where
+    tosym [] = Nil__
+    tosym (x:xs) = Cons__ (tosym x) (tosym xs)
+
+    symapp f x =
+      case x of
+         Nil__ -> f []
+         Cons__ x xs -> symapp2 (\xv xsv -> f (xv:xsv)) x xs
+         List___Prim r m -> primitive0 (\m -> realize m (f $$ (r m))) (f $$ x)
+         List___Error msg -> error0 msg
+         List___Ite itenil itcon iteerr -> P.error "TODO: syammp List__Ite"
+
 fromList__ :: List__ a -> [a]
 fromList__ Nil__ = []
 fromList__ (Cons__ x xs) = x : fromList__ xs
 
 error :: (SmtenHS0 a) => List__ Char -> a
-error msg = error0 (errstr (toHSString msg))
+error = symapp (\msg -> error0 (errstr msg))
 
 instance SmtenHS1 P.IO where
     error1 msg = doerr msg

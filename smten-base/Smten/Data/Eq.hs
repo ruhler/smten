@@ -29,7 +29,11 @@ instance (Eq a, Eq b) => Eq (a, b) where
 
 instance (Eq a, Eq b, Eq c) => Eq (a, b, c) where
     (==) (a1, a2, a3) (b1, b2, b3) = (a1 == b1) && (a2 == b2) && (a3 == b3)
-                        
+
+instance (Eq a) => Eq [a] where
+    (==) [] [] = True
+    (==) (a:as) (b:bs) = a == b && as == bs
+    (==) _ _ = False
 
 instance Eq Bool where
     (==) True True = True

@@ -51,6 +51,9 @@ library
     Smten.Symbolic
     Smten.Symbolic.Solver.Pure
     Smten.Symbolic.Solver.Debug
+    Smten.System.Environment
+    Smten.System.Exit
+    Smten.System.Timeout
     Smten.Tests.Array
     Smten.Tests.Basic
     Smten.Tests.Bit
@@ -93,6 +96,9 @@ library
     Smten.Compiled.Smten.Symbolic
     Smten.Compiled.Smten.Symbolic.Solver.Pure
     Smten.Compiled.Smten.Symbolic.Solver.Debug
+    Smten.Compiled.Smten.System.Environment
+    Smten.Compiled.Smten.System.Exit
+    Smten.Compiled.Smten.System.Timeout
     Smten.Compiled.Smten.Tests.Array
     Smten.Compiled.Smten.Tests.Basic
     Smten.Compiled.Smten.Tests.Bit

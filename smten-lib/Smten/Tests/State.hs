@@ -8,22 +8,22 @@ import Smten.Control.Monad.State
 import Smten.Tests.Test
 
 -- Test an ambiguous type which can come from using StateT.
-fambig :: (Eq t) => (t, t) -> Bool
-fambig (a, b) = a == b
+_fambig :: (Eq t) => (t, t) -> Bool
+_fambig (a, b) = a == b
 
-tambig :: forall t . (Eq t) => State (t, t) Bool
-tambig = do
+_tambig :: forall t . (Eq t) => State (t, t) Bool
+_tambig = do
     x <- get                        -- ambiguous type for 'get'
-    return (fambig (x :: (t, t)))   -- use scoped type variables to fix.
+    return (_fambig (x :: (t, t)))   -- use scoped type variables to fix.
 
-funambig :: (t, t) -> State (t, t) ()
-funambig _ = return ()
+_funambig :: (t, t) -> State (t, t) ()
+_funambig _ = return ()
 
-tunambig :: (Eq t) => State (t, t) Bool
-tunambig = do
+_tunambig :: (Eq t) => State (t, t) Bool
+_tunambig = do
     x <- get
-    funambig x
-    return (fambig x)
+    _funambig x
+    return (_fambig x)
 
 statething :: Integer -> State Integer Integer
 statething x = do
@@ -32,8 +32,8 @@ statething x = do
     return (s*x)
 
 -- StateT of IO should be an instance of MonadIO.
-stateio :: StateT Integer IO Integer
-stateio = do
+_stateio :: StateT Integer IO Integer
+_stateio = do
     liftIO $ putStrLn "hello!"
     return 5
 
