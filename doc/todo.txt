@@ -40,6 +40,11 @@ Known Bugs::
 
 Suspected Bugs::
 * Memory leaks of solvers
+* pass a symbolic list to 'error'
+* something's wrong with code generation for monomorphic let bindings of
+  variable types.
+    For example: try removing types on local bindings in the
+    Smten.Data.Array.array function
             
 Other::
 * TODO's inlined in the code

@@ -28,6 +28,7 @@ library
     Smten.Data.Functor
     Smten.Data.Enum
     Smten.Data.EnumInteger
+    Smten.Data.EnumInt
     Smten.Data.Eq
     Smten.Data.Eq0
     Smten.Data.List
@@ -68,6 +69,7 @@ library
     Smten.Compiled.Smten.Data.Functor
     Smten.Compiled.Smten.Data.Enum
     Smten.Compiled.Smten.Data.EnumInteger
+    Smten.Compiled.Smten.Data.EnumInt
     Smten.Compiled.Smten.Data.Eq
     Smten.Compiled.Smten.Data.Eq0
     Smten.Compiled.Smten.Data.List

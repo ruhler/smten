@@ -24,9 +24,17 @@ instance Eq Integer where
 instance Eq () where
     (==) () () = True
 
+instance (Eq a, Eq b) => Eq (a, b) where
+    (==) (a, b) (c, d) = (a == c) && (b == d)
+
+instance (Eq a, Eq b, Eq c) => Eq (a, b, c) where
+    (==) (a1, a2, a3) (b1, b2, b3) = (a1 == b1) && (a2 == b2) && (a3 == b3)
+                        
+
 instance Eq Bool where
     (==) True True = True
     (==) True False = False
     (==) False True = False
     (==) False False = True
+
 

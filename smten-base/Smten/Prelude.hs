@@ -44,6 +44,7 @@ import Smten.Data.Function
 import Smten.Data.Functor
 import Smten.Data.Enum
 import Smten.Data.EnumInteger ()
+import Smten.Data.EnumInt ()
 import Smten.Data.Eq
 import Smten.Data.Ord
 import Smten.Data.List

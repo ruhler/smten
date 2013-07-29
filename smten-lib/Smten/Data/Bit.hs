@@ -13,6 +13,7 @@ module Smten.Data.Bit (
 import Smten.Prelude
 import Smten.Smten.TypeLits
 import Smten.Data.Bit0
+import Smten.Data.Ix
 
 instance Eq (Bit n) where
     (==) = bv_eq
@@ -66,3 +67,11 @@ bv_ashr a b
 bv_positive :: (SingI n) => Bit n -> Bool
 bv_positive a = bv_extract a (bv_width a - 1) == (0 :: Bit 1)
 
+instance (SingI n) => Ix (Bit n) where
+    range (l, h) = 
+      case (l > h, l == h) of
+          (True, _) -> []
+          (_, True) -> [h]
+          _ -> l : range (l + 1, h)
+
+    index (l, _) x = fromInteger (bv_value (x - l))

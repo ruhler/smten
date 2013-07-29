@@ -4,12 +4,6 @@ module Smten.Data.Tuple (
     fst, snd, curry, uncurry, swap
  ) where
 
-import Smten.Data.Bool
-import Smten.Data.Eq
-
-instance (Eq a, Eq b) => Eq (a, b) where
-    (==) (a, b) (x, y) = a == x && b == y
-
 fst :: (a, b) -> a
 fst (x, y) = x
 

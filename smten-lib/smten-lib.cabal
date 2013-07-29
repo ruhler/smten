@@ -28,8 +28,11 @@ library
     Smten.Control.Monad.Reader
     Smten.Control.Monad.Reader.Class
     Smten.Control.Monad.Trans
+    Smten.Data.Array
+    Smten.Data.Array0
     Smten.Data.Bit
     Smten.Data.Bit0
+    Smten.Data.Ix
     Smten.Data.Map
     Smten.Smten.TypeLits
 
@@ -45,6 +48,7 @@ library
     Smten.Symbolic
     Smten.Symbolic.Solver.Pure
     Smten.Symbolic.Solver.Debug
+    Smten.Tests.Array
     Smten.Tests.Basic
     Smten.Tests.Bit
     Smten.Tests.DataMap
@@ -61,8 +65,11 @@ library
     Smten.Compiled.Smten.Control.Monad.Reader
     Smten.Compiled.Smten.Control.Monad.Reader.Class
     Smten.Compiled.Smten.Control.Monad.Trans
+    Smten.Compiled.Smten.Data.Array
+    Smten.Compiled.Smten.Data.Array0
     Smten.Compiled.Smten.Data.Bit
     Smten.Compiled.Smten.Data.Bit0
+    Smten.Compiled.Smten.Data.Ix
     Smten.Compiled.Smten.Data.Map
     Smten.Compiled.Smten.Smten.TypeLits
 
@@ -78,6 +85,7 @@ library
     Smten.Compiled.Smten.Symbolic
     Smten.Compiled.Smten.Symbolic.Solver.Pure
     Smten.Compiled.Smten.Symbolic.Solver.Debug
+    Smten.Compiled.Smten.Tests.Array
     Smten.Compiled.Smten.Tests.Basic
     Smten.Compiled.Smten.Tests.Bit
     Smten.Compiled.Smten.Tests.DataMap
@@ -91,7 +99,8 @@ library
     Smten.Compiled.Smten.Tests.All
 
 
-  build-depends: base ==4.6.*, hashtables ==1.0.*, mtl ==2.1.*, pretty ==1.1.*, 
+  build-depends: base ==4.6.*, hashtables ==1.0.*, mtl ==2.1.*,
+                 pretty ==1.1.*, array ==0.4.*,
                  smten-base ==4.0.*, smten-plugin ==4.0.*
   ghc-options: -fwarn-unused-binds -fwarn-unused-imports
 
@@ -99,7 +108,7 @@ Test-Suite test-smten-lib
     type: exitcode-stdio-1.0
     main-is: tests.hs
     build-depends: base ==4.6.*, hashtables ==1.0.*, mtl ==2.1.*,
-                   pretty ==1.1.*, 
+                   pretty ==1.1.*,  array ==0.4.*,
                    smten-base ==4.0.*, smten-plugin ==4.0.*
 
 
