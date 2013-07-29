@@ -10,6 +10,7 @@ module Smten.Data.Bit0 (
     bv_fromInteger, bv_add, bv_sub, bv_mul,
     bv_and, bv_or, bv_shl, bv_lshr, bv_not,
     bv_concat, bv_extract, bv_sign_extend,
+    bv_width,
     ) where
 
 import GHC.TypeLits
@@ -67,4 +68,7 @@ bv_extract = primitive "Smten.Data.Bit0.bv_extract"
 
 bv_sign_extend :: (SingI m, SingI n) => Bit m -> Bit n
 bv_sign_extend = primitive "Smten.Data.Bit0.bv_sign_extend"
+
+bv_width :: (SingI n) => Bit n -> Integer
+bv_width = primitive "Smten.Data.Bit0.bv_width"
 
