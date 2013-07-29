@@ -28,6 +28,9 @@ library
     Smten.Control.Monad.Reader
     Smten.Control.Monad.Reader.Class
     Smten.Control.Monad.Trans
+    Smten.Control.Monad.State.Class
+    Smten.Control.Monad.State.Lazy
+    Smten.Control.Monad.State
     Smten.Data.Array
     Smten.Data.Array0
     Smten.Data.Bit
@@ -52,6 +55,7 @@ library
     Smten.Tests.Basic
     Smten.Tests.Bit
     Smten.Tests.DataMap
+    Smten.Tests.State
     Smten.Tests.SMT.Test
     Smten.Tests.SMT.Bit
     Smten.Tests.SMT.Core
@@ -65,6 +69,9 @@ library
     Smten.Compiled.Smten.Control.Monad.Reader
     Smten.Compiled.Smten.Control.Monad.Reader.Class
     Smten.Compiled.Smten.Control.Monad.Trans
+    Smten.Compiled.Smten.Control.Monad.State.Class
+    Smten.Compiled.Smten.Control.Monad.State.Lazy
+    Smten.Compiled.Smten.Control.Monad.State
     Smten.Compiled.Smten.Data.Array
     Smten.Compiled.Smten.Data.Array0
     Smten.Compiled.Smten.Data.Bit
@@ -89,6 +96,7 @@ library
     Smten.Compiled.Smten.Tests.Basic
     Smten.Compiled.Smten.Tests.Bit
     Smten.Compiled.Smten.Tests.DataMap
+    Smten.Compiled.Smten.Tests.State
     Smten.Compiled.Smten.Tests.SMT.Test
     Smten.Compiled.Smten.Tests.SMT.Bit
     Smten.Compiled.Smten.Tests.SMT.Core
