@@ -1,6 +1,7 @@
 
 {-# LANGUAGE DataKinds, KindSignatures #-}
 {-# LANGUAGE EmptyDataDecls #-}
+{-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE NoImplicitPrelude, RebindableSyntax #-}
 module Smten.Data.Bit0 (
     Bit, 
@@ -8,6 +9,7 @@ module Smten.Data.Bit0 (
     bv_show,
     bv_fromInteger, bv_add, bv_sub, bv_mul,
     bv_and, bv_or, bv_shl, bv_lshr, bv_not,
+    bv_concat,
     ) where
 
 import GHC.TypeLits
@@ -54,4 +56,9 @@ bv_lshr = primitive "Smten.Data.Bit0.bv_lshr"
 
 bv_not :: Bit n -> Bit n
 bv_not = primitive "Smten.Data.Bit0.bv_not"
+
+-- TODO: restrict this to (n ~ a + b)
+--   When ghc supports such constraints reasonably.
+bv_concat :: Bit a -> Bit b -> Bit n
+bv_concat = primitive "Smten.Data.Bit0.bv_concat"
 

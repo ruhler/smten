@@ -1,4 +1,5 @@
 
+{-# LANGUAGE GADTs #-}
 {-# LANGUAGE FlexibleInstances #-}
 
 module Smten.Runtime.SmtenHS (
@@ -154,6 +155,7 @@ instance SmtenHS0 (Bit n) where
         Bit_And a b -> and_Bit (realize m a) (realize m b)
         Bit_Shl a b -> shl_Bit (realize m a) (realize m b)
         Bit_Lshr a b -> lshr_Bit (realize m a) (realize m b)
+        Bit_Concat a b -> concat_Bit (realize m a) (realize m b)
         Bit_Not a -> not_Bit (realize m a)
         Bit_Ite p a b -> iterealize p a b m
         Bit_Var n -> lookupBit m n

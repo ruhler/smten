@@ -1,7 +1,8 @@
 
 {-# LANGUAGE NoImplicitPrelude, RebindableSyntax #-}
+{-# LANGUAGE ExplicitNamespaces #-}
 module Smten.Smten.TypeLits (
-    Nat, SingI
+    Nat, SingI, type (+),
  ) where
 
 import GHC.TypeLits

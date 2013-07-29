@@ -1,5 +1,7 @@
 
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE NoImplicitPrelude, RebindableSyntax #-}
 module Smten.Tests.SMT.Bit (smttests) where
 
@@ -61,11 +63,11 @@ smttests = do
         assert (bv_or g 0xA == 0xF)
         return (g :: Bit 4)
 
---    symtesteq "SMT.Bit.Concat" (Just 3) [Yices1, Yices2, STP] $ do
---        h <- free
---        assert (bv_concat (0x5 :: Bit #3) h == 0x17)
---        return (h :: Bit #2)
---
+    symtesteq "SMT.Bit.Concat" (Just 3) $ do
+        h <- free_Bit
+        assert (bv_concat (0x5 :: Bit 3) h == (0x17 :: Bit 5))
+        return (h :: Bit 2)
+
     symtesteq "SMT.Bit.Lsh" (Just 3) $ do
         i <- free_Bit
         assert (bv_shl (0x15 :: Bit 8) i == 0xA8)

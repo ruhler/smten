@@ -140,6 +140,10 @@ instance SolverAST PureSolver Exp where
      case (a m, b m) of
         (BV av, BV bv) -> BV (av `bv_lshr` bv)
 
+  concat_bit _ (Exp a) (Exp b) = return . Exp $ \m ->
+     case (a m, b m) of
+        (BV av, BV bv) -> BV (av `bv_concat` bv)
+
   not_bit _ (Exp a) = return . Exp $ \m ->
      case a m of
         BV av -> BV (complement av)

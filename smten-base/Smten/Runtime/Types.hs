@@ -1,5 +1,6 @@
 
 {-# LANGUAGE DataKinds, KindSignatures #-}
+{-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE PatternGuards #-}
 
@@ -10,7 +11,7 @@ module Smten.Runtime.Types (
     Bool(..), andB, notB, iteB,
     Integer(..), eq_Integer, leq_Integer, add_Integer, sub_Integer,
     Bit(..), eq_Bit, leq_Bit, add_Bit, sub_Bit, mul_Bit,
-    or_Bit, and_Bit, shl_Bit, lshr_Bit, not_Bit,
+    or_Bit, and_Bit, shl_Bit, lshr_Bit, not_Bit, concat_Bit,
     ) where
 
 import Prelude hiding (Bool(..), Integer(..))
@@ -148,20 +149,21 @@ sub_Integer (Integer_Err msg) _ = Integer_Err msg
 sub_Integer _ (Integer_Err msg) = Integer_Err msg
 sub_Integer a b = Integer_Sub a b
 
-data Bit (n :: Nat) =
-    Bit P.Bit
-  | Bit_Add (Bit n) (Bit n)
-  | Bit_Sub (Bit n) (Bit n)
-  | Bit_Mul (Bit n) (Bit n)
-  | Bit_Or (Bit n) (Bit n)
-  | Bit_And (Bit n) (Bit n)
-  | Bit_Shl (Bit n) (Bit n)
-  | Bit_Lshr (Bit n) (Bit n)
-  | Bit_Not (Bit n)
-  | Bit_Ite Bool (Bit n) (Bit n)
-  | Bit_Var FreeID
-  | Bit_Err ErrorString
-  | Bit_Prim (Model -> Bit n) (Bit n)
+data Bit (n :: Nat) where
+  Bit :: P.Bit -> Bit n
+  Bit_Add :: Bit n -> Bit n -> Bit n
+  Bit_Sub :: Bit n -> Bit n -> Bit n
+  Bit_Mul :: Bit n -> Bit n -> Bit n
+  Bit_Or :: Bit n -> Bit n -> Bit n
+  Bit_And :: Bit n -> Bit n -> Bit n
+  Bit_Shl :: Bit n -> Bit n -> Bit n
+  Bit_Lshr :: Bit n -> Bit n -> Bit n
+  Bit_Concat :: Bit a -> Bit b -> Bit n
+  Bit_Not :: Bit n -> Bit n
+  Bit_Ite :: Bool -> Bit n -> Bit n -> Bit n
+  Bit_Var :: FreeID -> Bit n
+  Bit_Err :: ErrorString -> Bit n
+  Bit_Prim :: (Model -> Bit n) -> Bit n -> Bit n
 
 eq_Bit :: Bit n -> Bit n -> Bool
 eq_Bit (Bit a) (Bit b) = if a == b then True else False
@@ -216,6 +218,12 @@ lshr_Bit (Bit a) (Bit b) = Bit (a `P.bv_lshr` b)
 lshr_Bit (Bit_Err msg) _ = Bit_Err msg
 lshr_Bit _ (Bit_Err msg) = Bit_Err msg
 lshr_Bit a b = Bit_Lshr a b
+
+concat_Bit :: Bit a -> Bit b -> Bit n
+concat_Bit (Bit a) (Bit b) = Bit (a `P.bv_concat` b)
+concat_Bit (Bit_Err msg) _ = Bit_Err msg
+concat_Bit _ (Bit_Err msg) = Bit_Err msg
+concat_Bit a b = Bit_Concat a b
 
 not_Bit :: Bit n -> Bit n
 not_Bit (Bit a) = Bit (complement a)

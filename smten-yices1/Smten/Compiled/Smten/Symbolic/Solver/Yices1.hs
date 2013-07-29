@@ -140,7 +140,7 @@ instance SolverAST Yices1 YExpr where
   mul_bit = bprim c_yices_mk_bv_mul
   or_bit = bprim c_yices_mk_bv_or
   and_bit = bprim c_yices_mk_bv_and
-  --concat_bit = bprim c_yices_mk_bv_concat
+  concat_bit = bprim c_yices_mk_bv_concat
   shl_bit = error "TODO: shl_bit for Yices1"
   lshr_bit = error "TODO: lshr_bit for Yices1"
   not_bit = uprim c_yices_mk_bv_not
