@@ -1,7 +1,7 @@
 
 {-# LANGUAGE NoImplicitPrelude #-}
 module Smten.Data.Char (
-    Char, isSpace, eqString,
+    Char, isSpace, eqString, ord,
  ) where
 
 import qualified Prelude as P

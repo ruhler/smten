@@ -15,9 +15,9 @@ infix 4 <, <=, >=, >
 class (Eq a) => Ord a where
     compare :: a -> a -> Ordering
     compare x y
-       | True <- x == y = EQ
-       | True <- x <= y = LT
-       | True <- otherwise = GT
+       | x == y = EQ
+       | x <= y = LT
+       | otherwise = GT
 
     (<) :: a -> a -> Bool
     (<) x y = compare x y == LT
@@ -33,13 +33,13 @@ class (Eq a) => Ord a where
 
     max :: a -> a -> a
     max x y 
-      | True <- x <= y = y
-      | True <- otherwise = x
+      | x <= y = y
+      | otherwise = x
 
     min :: a -> a -> a
     min x y
-      | True <- x <= y = x
-      | True <- otherwise = y
+      | x <= y = x
+      | otherwise = y
 
 data Ordering = LT | EQ | GT
 

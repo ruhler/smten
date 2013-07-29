@@ -35,8 +35,8 @@ instance (Eq a) => Eq [a] where
 
 filter :: (a -> Bool) -> [a] -> [a]
 filter p [] = []
-filter p (x:xs) | True <- p x = x : filter p xs
-                | True <- otherwise = filter p xs
+filter p (x:xs) | p x = x : filter p xs
+                | otherwise = filter p xs
 
 concat :: [[a]] -> [a]
 concat xss = foldr (++) [] xss
@@ -71,9 +71,9 @@ length [] = 0
 length (_:l) = 1 + length l
 
 (!!) :: [a] -> Int -> a
-(!!) xs n | True <- n < 0 = error "Prelude.!!: negative index"
+(!!) xs n | n < 0 = error "Prelude.!!: negative index"
 (!!) [] _ = error "Prelude.!!: index too large"
-(!!) (x:_) n | True <- n == 0 = x
+(!!) (x:_) n | n == 0 = x
 (!!) (_:xs) n = xs !! (n-1)
 
 foldl :: (a -> b -> a) -> a -> [b] -> a
@@ -123,12 +123,12 @@ cycle [] = error "Prelude.cycle: empty list"
 cycle xs = xs' where xs' = xs ++ xs'
 
 take :: Int -> [a] -> [a]
-take n _ | True <- n <= 0 = []
+take n _ | n <= 0 = []
 take _ [] = []
 take n (x:xs) = x : take (n-1) xs
 
 drop :: Int -> [a] -> [a]
-drop n xs | True <- n <= 0 = xs
+drop n xs | n <= 0 = xs
 drop _ [] = []
 drop n (_:xs) = drop (n-1) xs
 
@@ -138,20 +138,20 @@ splitAt n xs = (take n xs, drop n xs)
 takeWhile :: (a -> Bool) -> [a] -> [a]
 takeWhile p [] = []
 takeWhile p (x:xs)
-   | True <- p x = x : takeWhile p xs
-   | True <- otherwise = []
+   | p x = x : takeWhile p xs
+   | otherwise = []
 
 dropWhile :: (a -> Bool) -> [a] -> [a]
 dropWhile p [] = []
 dropWhile p xs@(x:xs')
-  | True <- p x = dropWhile p xs'
-  | True <- otherwise = xs
+  | p x = dropWhile p xs'
+  | otherwise = xs
 
 span :: (a -> Bool) -> [a] -> ([a], [a])
 span p [] = ([], [])
 span p xs@(x:xs')
- | True <- p x = (x:ys, zs)
- | True <- otherwise = ([], xs)
+ | p x = (x:ys, zs)
+ | otherwise = ([], xs)
                        where (ys, zs) = span p xs'
 
 break :: (a -> Bool) -> [a] -> ([a], [a])
@@ -201,8 +201,8 @@ notElem x = all (/= x)
 lookup :: (Eq a) => a -> [(a, b)] -> Maybe b
 lookup key [] = Nothing
 lookup key ((x,y):xys)
- | True <- key == x = Just y
- | True <- otherwise = lookup key xys
+ | key == x = Just y
+ | otherwise = lookup key xys
 
 sum :: (Num a) => [a] -> a
 sum = foldl (+) 0
@@ -244,16 +244,16 @@ sortBy :: (a -> a -> Ordering) -> [a] -> [a]
 sortBy cmp = mergeAll . sequences
    where
      sequences (a:b:xs)
-       | True <- (a `cmp` b) == GT = descending b [a]  xs
-       | True <- otherwise       = ascending  b ((:) a) xs
+       | (a `cmp` b) == GT = descending b [a]  xs
+       | otherwise       = ascending  b ((:) a) xs
      sequences xs = [xs]
 
      descending a as (b:bs)
-       | True <- (a `cmp` b) == GT = descending b (a:as) bs
+       | (a `cmp` b) == GT = descending b (a:as) bs
      descending a as bs  = (a:as): sequences bs
 
      ascending a as (b:bs)
-       | True <- (a `cmp` b) /= GT = ascending b (\ys -> as (a:ys)) bs
+       | (a `cmp` b) /= GT = ascending b (\ys -> as (a:ys)) bs
      ascending a as bs   = as [a]: sequences bs
 
      mergeAll [x] = x
@@ -263,8 +263,8 @@ sortBy cmp = mergeAll . sequences
      mergePairs xs       = xs
 
      merge as@(a:as') bs@(b:bs')
-       | True <- (a `cmp` b) == GT = b:merge as  bs'
-       | True <- otherwise       = a:merge as' bs
+       | (a `cmp` b) == GT = b:merge as  bs'
+       | otherwise       = a:merge as' bs
      merge [] bs         = bs
      merge as []         = as
 

@@ -18,7 +18,6 @@ Future Work::
 Front End::
 * Auto-derive Show, Eq, Ord, Ix
   maybe look into possibility of using Eq, Ord, etc... from ghc for this
-* Figure out how to do pattern matching on numbers?
 
 Documentation
 * Update user guide

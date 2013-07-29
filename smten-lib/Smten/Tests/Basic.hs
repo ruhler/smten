@@ -45,10 +45,10 @@ fromMaybeBool def = \mb ->
         Nothing -> def
 
 multiclause :: Integer -> Integer
-multiclause x | True <- x == 2 = 10
-multiclause x | True <- x == 3 = 20
-multiclause x | True <- x == 4 = 30
-multiclause x | True <- x == 5 = 40
+multiclause x | x == 2 = 10
+multiclause x | x == 3 = 20
+multiclause x | x == 4 = 30
+multiclause x | x == 5 = 40
 multiclause _ = 50
 
 tupleswap :: (a, b) -> (b, a)
@@ -203,10 +203,10 @@ tests = do
     test "k" (Just (18 :: Integer) /= Just 16)
     test "l" (Just (18 :: Integer) /= Nothing)
     test "m" ((30 :: Integer) == (case ((1+3) :: Integer) of
-                                       x | True <- x == 2 -> 10
-                                       x | True <- x == 3 -> 20
-                                       x | True <- x == 4 -> 30
-                                       x | True <- x == 5 -> 40
+                                       2 -> 10
+                                       3 -> 20
+                                       4 -> 30
+                                       5 -> 40
                                        _ -> 50
                                  ))
     test "n" (30 == (multiclause 4))
@@ -291,17 +291,17 @@ testtypesyn = do
 
 fpatgd :: (Integer, Integer) -> Integer
 fpatgd p = case p of
-             (x, _) | True <- x == 1 -> 0
-                    | True <- x > 3 -> 1
-             _ | (x, y) <- p, True <- y == 2 -> x
+             (x, _) | x == 1 -> 0
+                    | x > 3 -> 1
+             _ | (x, y) <- p, y == 2 -> x
              _ -> 3
 
 fpatgd2 :: (Integer, Integer) -> Integer
 fpatgd2 (x, _)
-  | True <- x == 1 = 0
-  | True <- x > 3 = 1
+  | x == 1 = 0
+  | x > 3 = 1
 fpatgd2 p
-  | (x, y) <- p, True <- y == 2 = x
+  | (x, y) <- p, y == 2 = x
 fpatgd2 _ = 3
 
 testpatternguard :: IO ()
@@ -349,7 +349,7 @@ testwhereclause = do
     test "where clause shadow" (
         3 == (let z = (3 :: Integer)
               in case z of
-                    p | True <- p /= 3 -> z
+                    p | p /= 3 -> z
                       where z = p+1
                     _ -> z
              )
