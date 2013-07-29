@@ -10,6 +10,8 @@ module Smten.Data.Ord0 (
 import Smten.Data.Bool
 import Smten.Data.Eq
 
+infix 4 <, <=, >=, >
+
 class (Eq a) => Ord a where
     compare :: a -> a -> Ordering
     compare x y

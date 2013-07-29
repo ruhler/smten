@@ -30,6 +30,7 @@ library
     Smten.Control.Monad.Trans
     Smten.Data.Bit
     Smten.Data.Bit0
+    Smten.Data.Map
     Smten.Smten.TypeLits
 
     Smten.Sudoku.BitCell
@@ -44,6 +45,9 @@ library
     Smten.Symbolic
     Smten.Symbolic.Solver.Pure
     Smten.Symbolic.Solver.Debug
+    Smten.Tests.Basic
+    Smten.Tests.Bit
+    Smten.Tests.DataMap
     Smten.Tests.SMT.Test
     Smten.Tests.SMT.Bit
     Smten.Tests.SMT.Core
@@ -51,8 +55,6 @@ library
     Smten.Tests.SMT.Integer
     Smten.Tests.SMT.Sudoku
     Smten.Tests.Test
-    Smten.Tests.Basic
-    Smten.Tests.Bit
     Smten.Tests.All
 
     Smten.Compiled.GHC.TypeLits
@@ -61,6 +63,7 @@ library
     Smten.Compiled.Smten.Control.Monad.Trans
     Smten.Compiled.Smten.Data.Bit
     Smten.Compiled.Smten.Data.Bit0
+    Smten.Compiled.Smten.Data.Map
     Smten.Compiled.Smten.Smten.TypeLits
 
     Smten.Compiled.Smten.Sudoku.BitCell
@@ -75,6 +78,9 @@ library
     Smten.Compiled.Smten.Symbolic
     Smten.Compiled.Smten.Symbolic.Solver.Pure
     Smten.Compiled.Smten.Symbolic.Solver.Debug
+    Smten.Compiled.Smten.Tests.Basic
+    Smten.Compiled.Smten.Tests.Bit
+    Smten.Compiled.Smten.Tests.DataMap
     Smten.Compiled.Smten.Tests.SMT.Test
     Smten.Compiled.Smten.Tests.SMT.Bit
     Smten.Compiled.Smten.Tests.SMT.Core
@@ -82,8 +88,6 @@ library
     Smten.Compiled.Smten.Tests.SMT.Integer
     Smten.Compiled.Smten.Tests.SMT.Sudoku
     Smten.Compiled.Smten.Tests.Test
-    Smten.Compiled.Smten.Tests.Basic
-    Smten.Compiled.Smten.Tests.Bit
     Smten.Compiled.Smten.Tests.All
 
 

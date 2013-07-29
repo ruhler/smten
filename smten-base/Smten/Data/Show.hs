@@ -53,3 +53,7 @@ instance (Show a) => Show [a] where
 instance Show Integer where
     showsPrec = integer_showsPrec
 
+instance (Show a, Show b) => Show (a, b) where
+    show (a, b) = "(" ++ show a ++ "," ++ show b ++ ")"
+
+
