@@ -44,9 +44,6 @@ Suspected Bugs::
   variable types.
     For example: try removing types on local bindings in the
     Smten.Data.Array.array function
-* something's wrong with generation of type variable name shadowing.
-    For example: try changing instance Functor (Either e) to
-                              instance Functor (Either a)
 * I suspect problems with using a function called 'main' as a normal function
   exported to another module instead of just as a top level main function.
             
