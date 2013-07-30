@@ -67,6 +67,23 @@ expCG (Case x v ty ms) | isBoolType (varType v) =
            lift $ fatalErrorMsg (text "TODO: expCG Bool Case: " <+> ppr ms)
            return $ S.VarE "???"
 
+-- Char# case is special: generate the case as a normal case expression.
+expCG (Case x v ty ms) | isPrimCharType (varType v) = do
+  withlocals [varName v] $ do
+      vnm <- qnameCG $ varName v
+      arg <- expCG x
+
+      (defalt, nodefms) <- case ms of
+                          ((DEFAULT, _, body) : xs) -> do
+                             body' <- expCG body
+                             return ([S.Alt (S.VarP vnm) body'], xs)
+                          _ -> return ([], ms)
+
+      let alt (LitAlt l, _, body) = do
+            body' <- expCG body
+            return $ S.Alt (S.AsP vnm (S.LitP (litCG l))) body'
+      alts <- mapM alt nodefms
+      return $ S.CaseE arg (alts ++ defalt)
         
 -- General case expressions are generated as follows:
 --   let casef_XX = \v ->
@@ -164,6 +181,21 @@ isBoolType t =
                         else error (show modnm)
                  else False
         _ -> False
+
+isPrimCharType :: Type -> Bool
+isPrimCharType t = 
+   case splitTyConApp t of
+        (tycon, []) -> 
+            let nm = tyConName tycon
+                occnm = occNameString $ nameOccName nm
+                modnm = moduleNameString . moduleName <$> nameModule_maybe nm
+            in if occnm == "Char#"
+                 then if modnm `elem` [Just "GHC.Prim"]
+                        then True
+                        else error (show modnm)
+                 else False
+        _ -> False
+            
 
 isFalseK :: DataCon -> Bool
 isFalseK d =

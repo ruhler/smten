@@ -248,6 +248,7 @@ tests = do
     test "precedence 3" ((2 ++++ 3 ++++ 5) == (19 :: Integer))
     testaspattern
     testarithsequence
+    testcharliteralpattern
     teststringliteralpattern
     testletclause
     testlistcomprehension
@@ -410,6 +411,15 @@ testletrec = do
         in (x, y)
       )
     
+testcharliteralpattern :: IO ()
+testcharliteralpattern = do
+    test "charliteralpattern0" (
+        case 'b' of
+            'a' -> False
+            'b' -> True
+            'c' -> False
+     )
+            
 
 teststringliteralpattern :: IO ()
 teststringliteralpattern = do
