@@ -52,7 +52,6 @@ nmCG :: Bool -> (String -> String) -> Bool -> Name -> CG S.Name
 nmCG ty f qlf nm
   | nameis "(->)" nm = return "(->)"
   | otherwise = do
-      isl <- islocal nm
       let (modnm, occnm, unqnm) = dename ty nm
 
           desym :: Char -> Char
@@ -64,10 +63,6 @@ nmCG ty f qlf nm
 
           occnm' = map desym occnm
 
---          useuniq = isPrefixOf "$c" occnm
---            || (isPrefixOf "$d" occnm && not (isPrefixOf "$dm" occnm))
---            || isl
---            || (occnm == "main" && modnm /= Just ":Main")
           useuniq = (not $ isExternalName nm)
               || (occnm == "main" && modnm /= Just ":Main")
 
