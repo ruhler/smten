@@ -32,7 +32,7 @@ instance SymbolicOf [a] (List__ a) where
          Nil__ -> f []
          Cons__ x xs -> symapp (\xsl -> f (x:xsl)) xs
          List___Prim r m -> primitive0 (\m -> realize m (f $$ (r m))) (f $$ x)
-         List___Error msg -> error0 msg
+         List___Err msg -> error0 msg
          List___Ite itenil itcon iteerr -> P.error "TODO: syammp List__Ite"
 
 instance SymbolicOf [P.Char] (List__ Char) where
@@ -44,7 +44,7 @@ instance SymbolicOf [P.Char] (List__ Char) where
          Nil__ -> f []
          Cons__ x xs -> symapp2 (\xv xsv -> f (xv:xsv)) x xs
          List___Prim r m -> primitive0 (\m -> realize m (f $$ (r m))) (f $$ x)
-         List___Error msg -> error0 msg
+         List___Err msg -> error0 msg
          List___Ite itenil itcon iteerr -> P.error "TODO: syammp List__Ite"
 
 fromList__ :: List__ a -> [a]

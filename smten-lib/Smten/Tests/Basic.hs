@@ -419,6 +419,12 @@ testcharliteralpattern = do
             'b' -> True
             'c' -> False
      )
+
+    test "charlitpat1" (
+        let f :: String -> String
+            f ('*':'/':cs) = cs
+        in null (f "*/")
+      )
             
 
 teststringliteralpattern :: IO ()

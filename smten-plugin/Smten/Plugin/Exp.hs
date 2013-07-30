@@ -84,6 +84,52 @@ expCG (Case x v ty ms) | isPrimCharType (varType v) = do
             return $ S.Alt (S.AsP vnm (S.LitP (litCG l))) body'
       alts <- mapM alt nodefms
       return $ S.CaseE arg (alts ++ defalt)
+
+-- Char case is special.
+expCG (Case x v ty ms) | isCharType (varType v) = do
+  uniq <- lift $ getUniqueM
+  let occ = mkVarOcc "casef"
+      casef = mkSystemName uniq occ
+      tycon = fst $ splitTyConApp (varType v)
+      tynm = tyConName tycon
+  withlocals [varName v, casef] $ do
+      addimport "Smten.Runtime.SmtenHS"
+
+      vnm <- qnameCG $ varName v
+      casefnm <- qnameCG casef
+      qerrnm <- qerrnmCG tynm
+      qitenm <- qitenmCG tynm
+      qprimnm <- qprimnmCG tynm
+      arg <- expCG x
+
+      (defalt, nodefms) <- case ms of
+                          ((DEFAULT, _, body) : xs) -> do
+                             body' <- expCG body
+                             return ([S.Alt S.wildP body'], xs)
+                          _ -> return ([], ms)
+
+      alts <- mapM altCG nodefms
+      let itebody = foldl1 S.AppE [
+             S.VarE "Smten.Runtime.SmtenHS.ite0",
+             S.VarE "p",
+             S.AppE (S.VarE casefnm) (S.VarE "a"),
+             S.AppE (S.VarE casefnm) (S.VarE "b")]
+          itepat = S.ConP qitenm [S.VarP "p", S.VarP "a", S.VarP "b"]
+          itealt = S.Alt itepat itebody
+
+          primbody = foldl1 S.AppE (map S.VarE [
+                        "Smten.Runtime.SmtenHS.primsapp", casefnm, "r", "c"])
+          primalt = S.Alt (S.ConP qprimnm [S.VarP "r", S.VarP "c"]) primbody
+                          
+          erralt = S.Alt (S.ConP qerrnm [S.VarP "msg"])
+                         (S.AppE (S.VarE "Smten.Runtime.SmtenHS.error0") (S.VarE "msg"))
+
+          allalts = alts ++ [itealt, erralt, primalt] ++ defalt
+          casee = S.CaseE (S.VarE vnm) allalts
+          lame = S.LamE vnm casee
+          bind = S.Val casefnm Nothing lame
+          ine = S.AppE (S.VarE casefnm) arg
+      return $ S.LetE [bind] ine
         
 -- General case expressions are generated as follows:
 --   let casef_XX = \v ->
@@ -168,32 +214,22 @@ altCG (LitAlt l, _, body) = do
     return $ S.Alt (S.LitP (litCG l)) body'
 
 isBoolType :: Type -> Bool
-isBoolType t = 
-   case splitTyConApp t of
-        (tycon, []) -> 
-            let nm = tyConName tycon
-                occnm = occNameString $ nameOccName nm
-                modnm = moduleNameString . moduleName <$> nameModule_maybe nm
-            in if occnm == "Bool"
-                 then if modnm `elem` [Just "Smten.Data.Bool0",
-                                       Just "GHC.Types"]
-                        then True
-                        else error (show modnm)
-                 else False
-        _ -> False
+isBoolType = isType "Bool" ["Smten.Data.Bool0", "GHC.Types"]
 
 isPrimCharType :: Type -> Bool
-isPrimCharType t = 
+isPrimCharType = isType "Char#" ["GHC.Prim"]
+
+isCharType :: Type -> Bool
+isCharType = isType "Char" ["GHC.Types"]
+
+isType :: String -> [String] -> Type -> Bool
+isType wnm wmods t = 
    case splitTyConApp t of
         (tycon, []) -> 
             let nm = tyConName tycon
                 occnm = occNameString $ nameOccName nm
                 modnm = moduleNameString . moduleName <$> nameModule_maybe nm
-            in if occnm == "Char#"
-                 then if modnm `elem` [Just "GHC.Prim"]
-                        then True
-                        else error (show modnm)
-                 else False
+            in occnm == wnm && modnm `elem` (map Just wmods)
         _ -> False
             
 

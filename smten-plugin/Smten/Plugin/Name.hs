@@ -101,11 +101,11 @@ qprimnmCG = nmCG True (++ "_Prim") True
 
 -- | Generate code for the err constructor of a given data type.
 errnmCG :: Name -> CG S.Name
-errnmCG = nmCG True (++ "_Error") False
+errnmCG = nmCG True (++ "_Err") False
 
 -- | qualified type constructor name.
 qerrnmCG :: Name -> CG S.Name
-qerrnmCG = nmCG True (++ "_Error") True
+qerrnmCG = nmCG True (++ "_Err") True
 
 -- | Generate code for the ite constructor of a given data type.
 itenmCG :: Name -> CG S.Name
