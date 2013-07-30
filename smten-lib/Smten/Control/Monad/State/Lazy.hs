@@ -5,6 +5,7 @@
 module Smten.Control.Monad.State.Lazy (
     State, runState, evalState, execState, mapState, withState,
     StateT, runStateT, evalStateT, execStateT, mapStateT, withStateT,
+    liftCatch,
     module Smten.Control.Monad.State.Class,
     module Smten.Control.Monad.Trans,
     )  where
@@ -80,8 +81,18 @@ instance (Monad m) => MonadState s (StateT s m) where
     get = StateT $ \s -> return (s, s)
     put s = StateT $ \_ -> return ((), s)
 
+instance MonadTrans (StateT s) where
+    lift m = StateT $ \s -> do
+        a <- m
+        return (a, s)
+
 instance (MonadIO m) => MonadIO (StateT s m) where
     liftIO x = StateT $ \s -> do
         v <- liftIO x
         return (v, s)
+
+liftCatch :: (m (a,s) -> (e -> m (a,s)) -> m (a,s)) ->
+    StateT s m a -> (e -> StateT s m a) -> StateT s m a
+liftCatch catchError m h
+ = StateT $ \s -> runStateT m s `catchError` \e -> runStateT (h e) s
 

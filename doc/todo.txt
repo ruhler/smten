@@ -44,6 +44,9 @@ Suspected Bugs::
   variable types.
     For example: try removing types on local bindings in the
     Smten.Data.Array.array function
+* something's wrong with generation of type variable name shadowing.
+    For example: try changing instance Functor (Either e) to
+                              instance Functor (Either a)
             
 Other::
 * TODO's inlined in the code

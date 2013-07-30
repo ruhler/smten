@@ -9,8 +9,6 @@ module Smten.Data.Ord (
 
 import Smten.Smten.Base
 import Smten.Data.Bool
-import Smten.Data.Char0
-import Smten.Data.Char ()
 import Smten.Data.Eq
 import Smten.Data.Ord0
 import Smten.Data.Ord1
@@ -20,9 +18,6 @@ instance Ord Int where
 
 instance Ord Integer where
     (<=) = integer_leq
-
-instance Ord Char where
-    (<=) = char_leq
 
 instance (Ord a, Ord b) => Ord (a, b) where
     (<=) (a, b) (c, d) = (a < c) || (a == c && b <= d)

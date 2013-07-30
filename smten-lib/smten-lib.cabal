@@ -25,12 +25,14 @@ library
     Smten.Runtime.Debug
     Smten.Runtime.Result
 
+    Smten.Control.Monad.Error
+    Smten.Control.Monad.Error.Class
     Smten.Control.Monad.Reader
     Smten.Control.Monad.Reader.Class
-    Smten.Control.Monad.Trans
     Smten.Control.Monad.State.Class
     Smten.Control.Monad.State.Lazy
     Smten.Control.Monad.State
+    Smten.Control.Monad.Trans
     Smten.Data.Array
     Smten.Data.Array0
     Smten.Data.Bit
@@ -70,12 +72,14 @@ library
     Smten.Tests.All
 
     Smten.Compiled.GHC.TypeLits
+    Smten.Compiled.Smten.Control.Monad.Error
+    Smten.Compiled.Smten.Control.Monad.Error.Class
     Smten.Compiled.Smten.Control.Monad.Reader
     Smten.Compiled.Smten.Control.Monad.Reader.Class
-    Smten.Compiled.Smten.Control.Monad.Trans
     Smten.Compiled.Smten.Control.Monad.State.Class
     Smten.Compiled.Smten.Control.Monad.State.Lazy
     Smten.Compiled.Smten.Control.Monad.State
+    Smten.Compiled.Smten.Control.Monad.Trans
     Smten.Compiled.Smten.Data.Array
     Smten.Compiled.Smten.Data.Array0
     Smten.Compiled.Smten.Data.Bit

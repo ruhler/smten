@@ -10,14 +10,18 @@ import qualified Smten.Tests.Bit
 import qualified Smten.Tests.DataMap
 import qualified Smten.Tests.List
 import qualified Smten.Tests.State
-import qualified Smten.Tests.SMT.Bit ()
 import qualified Smten.Tests.SMT.Core
 import qualified Smten.Tests.SMT.Datatype
-import qualified Smten.Tests.SMT.Integer ()
-import qualified Smten.Tests.SMT.Sudoku ()
+
+-- Import things so that they will be compiled by the plugin, even though we
+-- don't actually have tests to run for them.
+import qualified Smten.Control.Monad.Error ()
 import qualified Smten.System.Environment ()
 import qualified Smten.System.Exit ()
 import qualified Smten.System.Timeout ()
+import qualified Smten.Tests.SMT.Bit ()
+import qualified Smten.Tests.SMT.Integer ()
+import qualified Smten.Tests.SMT.Sudoku ()
 
 main :: IO ()
 main = do
