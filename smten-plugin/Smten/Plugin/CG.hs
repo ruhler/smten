@@ -3,7 +3,8 @@ module Smten.Plugin.CG (
    CG, runCG, lift,
    addimport, getimports,
    withlocal, withlocals, islocal,
-   withtype, subst,
+   withtype,
+   cgs_types, gets,
     ) where
 
 import GhcPlugins
@@ -54,10 +55,5 @@ withtype tyv t q = do
   v <- q
   modify $ \s -> s { cgs_types = ts }
   return v
-
-subst :: Type -> CG Type
-subst t = do
-    (tyvs, ts) <- unzip <$> gets cgs_types
-    return (substTyWith tyvs ts t)
   
 

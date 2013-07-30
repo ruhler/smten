@@ -59,3 +59,8 @@ ctxCG v
 knum :: Kind -> Int
 knum k = length (fst (splitKindFunTys k))
 
+subst :: Type -> CG Type
+subst t = do
+    (tyvs, ts) <- unzip <$> gets cgs_types
+    return $ substTyWith tyvs ts t
+

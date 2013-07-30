@@ -12,7 +12,6 @@ module Smten.Plugin.Name (
 
 import Data.Char
 import Data.Functor
-import Data.List
 
 import GhcPlugins
 import Smten.Plugin.CG
@@ -65,10 +64,13 @@ nmCG ty f qlf nm
 
           occnm' = map desym occnm
 
-          useuniq = isPrefixOf "$c" occnm
-            || (isPrefixOf "$d" occnm && not (isPrefixOf "$dm" occnm))
-            || isl
-            || (occnm == "main" && modnm /= Just ":Main")
+--          useuniq = isPrefixOf "$c" occnm
+--            || (isPrefixOf "$d" occnm && not (isPrefixOf "$dm" occnm))
+--            || isl
+--            || (occnm == "main" && modnm /= Just ":Main")
+          useuniq = (not $ isExternalName nm)
+              || (occnm == "main" && modnm /= Just ":Main")
+
           unqlf = f $ if useuniq
                         then occnm' ++ "_" ++ unqnm
                         else occnm'

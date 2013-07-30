@@ -17,11 +17,16 @@ bindCG :: CoreBind -> CG [S.Val]
 bindCG (Rec xs) = concat <$> mapM bindCG [NonRec x v | (x, v) <- xs]
 bindCG b@(NonRec var body) = do
   --lift $ putMsg (ppr b)
-  body' <- expCG body
-  nm <- nameCG $ varName var
-  ty <- topTypeCG $ varType var
-  return [S.Val nm (Just ty) body']
+  let ty = varType var
+      vs = fst $ splitForAllTys ty
+      vts = mkTyVarTys vs
 
+      f (Lam b x) (t:ts) | isTyVar b = withtype b t $ f x ts
+      f x _ = expCG x
+  body' <- f body vts
+  nm <- nameCG $ varName var
+  ty' <- topTypeCG ty
+  return [S.Val nm (Just ty') body']
 
 expCG :: CoreExpr -> CG S.Exp
 expCG (Var x) = S.VarE <$> (qnameCG $ varName x)
@@ -36,7 +41,7 @@ expCG (Let x body) = withlocals (map varName (bindersOf x)) $ do
     x' <- bindCG x
     body' <- expCG body
     return $ S.LetE x' body'
-expCG (Lam b body)
+expCG x@(Lam b body)
  | isTyVar b = expCG body
  | otherwise = withlocal (varName b) $ do
     b' <- qnameCG $ varName b
