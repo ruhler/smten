@@ -76,6 +76,11 @@ class Foo a where
 instance Foo Bool where
     foo _ = 1
 
+newtype NewBool = NewBool Bool
+
+instance Foo NewBool where
+    foo _ = 3
+
 instance Foo Integer where
     foo _ = 2
 
@@ -219,6 +224,7 @@ tests = do
     test "u" (2 == (foo (42 :: Integer)))
     test "v" (5 == (foofun False))
     test "w" (11 == (foofun (5 :: Integer)))
+    test "w2" (19 == (foofun (NewBool False)))
     test "x" (11 == (numseeds (Apple True 11)))
     test "y" (11 == (numseeds (Apple { numseeds = 11, isgreen = False })))
     test "z" (8 == (numseeds ((Apple True 11) { numseeds = 8 })))
@@ -250,6 +256,7 @@ tests = do
     testarithsequence
     testcharliteralpattern
     teststringliteralpattern
+    testnewtype
     testletclause
     testlistcomprehension
     testdopattern
@@ -434,6 +441,14 @@ teststringliteralpattern = do
           "bar" -> False
           "foo" -> True
       )
+
+fnewbool :: NewBool -> Integer
+fnewbool (NewBool True) = 1
+fnewbool (NewBool x) = if x then 2 else 3
+
+testnewtype :: IO ()
+testnewtype = do
+    test "newtype0" (fnewbool (NewBool True) == 1)
 
 testparsedot :: IO ()
 testparsedot = do

@@ -32,7 +32,21 @@ tyconCG t
      t' <- nameCG $ tyConName t
      vs <- mapM (qnameCG . varName) (tyConTyVars t)
      return [S.DataD (S.Data t' vs [S.RecC cn fields])]
-        
+
+ | isNewTyCon t
+ , Just [constr] <- tyConDataCons_maybe t = do
+    let mkcon :: DataCon -> CG S.Con
+        mkcon d = do
+          nm <- nameCG (dataConName d)
+          tys <- mapM typeCG (dataConOrigArgTys d)
+          return $ S.Con nm tys
+
+    nm' <- nameCG (tyConName t)
+    vs <- mapM (qnameCG . varName) (tyConTyVars t)
+    k <- mkcon constr
+    addimport "Smten.Runtime.SmtenHS"
+    return [S.NewTypeD nm' vs k ["Smten.Runtime.SmtenHS.SmtenHS" ++ show (length vs)]]
+
  | Just cs <- tyConDataCons_maybe t = dataCG t cs
  | isSynTyCon t = return []
  | otherwise = do

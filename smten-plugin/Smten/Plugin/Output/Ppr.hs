@@ -38,6 +38,13 @@ instance Ppr Dec where
     ppr (InstD ctx ty ms)
       = text "instance" <+> pprctx ctx <+> ppr ty <+> text "where"
             <+> braces (ppr ms) <+> semi
+    ppr (NewTypeD nm vs c ds) =
+       text "newtype" <+> ppr nm <+> sep (map ppr vs) <+> text "=" <+> ppr c
+            <+> (if null ds
+                    then empty
+                    else text "deriving" <+> parens (sep (punctuate comma (map ppr ds))))
+            <+> semi
+        
     
 instance Ppr Data where
     ppr (Data nm vs cs) =

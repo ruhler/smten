@@ -18,6 +18,7 @@ Future Work::
 Front End::
 * Auto-derive Show, Eq, Ord, Ix
   maybe look into possibility of using Eq, Ord, etc... from ghc for this
+* Can we generate code after optimizations? How?
 
 Documentation
 * Update user guide
@@ -32,7 +33,6 @@ Known Bugs::
 * STP bug (in Bit)
 * STP bv_and bug (in Bit)
 * Yices1 left shift (in Bit)
-* newtype doesn't work: the generated code doesn't typecheck.
 * pattern matching against chars generates code which doesn't compile.
 * bv_concat type is too general
     perhaps add a runtime check to assert the types line up properly?

@@ -120,7 +120,7 @@ library
 
 
   build-depends: base ==4.6.*, hashtables ==1.0.*, mtl ==2.1.*,
-                 pretty ==1.1.*, array ==0.4.*,
+                 pretty ==1.1.*, array ==0.4.*, ghc-prim ==0.3.*,
                  smten-base ==4.0.*, smten-plugin ==4.0.*
   ghc-options: -fwarn-unused-binds -fwarn-unused-imports
 
@@ -128,7 +128,7 @@ Test-Suite test-smten-lib
     type: exitcode-stdio-1.0
     main-is: tests.hs
     build-depends: base ==4.6.*, hashtables ==1.0.*, mtl ==2.1.*,
-                   pretty ==1.1.*,  array ==0.4.*,
+                   pretty ==1.1.*,  array ==0.4.*, ghc-prim ==0.3.*,
                    smten-base ==4.0.*, smten-plugin ==4.0.*
 
 

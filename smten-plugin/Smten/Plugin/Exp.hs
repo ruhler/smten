@@ -192,8 +192,11 @@ expCG (Case x v ty ms) = do
       ine = S.AppE (S.VarE casefnm) arg
   return $ S.LetE [bind] ine
 
--- TODO: insert a call to unsafeCoerce# here?
-expCG (Cast x _) = expCG x
+expCG (Cast x _) = do
+    x' <- expCG x
+    addimport "GHC.Prim"
+    return (S.AppE (S.VarE "GHC.Prim.unsafeCoerce#") x')
+
 expCG x = do
   lift $ fatalErrorMsg (text "TODO: expCG " <+> ppr x)
   return (S.VarE "???")
