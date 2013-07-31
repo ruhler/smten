@@ -3,7 +3,7 @@
 
 module Smten.Plugin.Type (
     typeCG, topTypeCG, tyvarCG,
-    knum,
+    isStarKind, ctxCG,
     ) where
 
 import Kind
@@ -58,6 +58,9 @@ ctxCG v
 
 knum :: Kind -> Int
 knum k = length (fst (splitKindFunTys k))
+
+isStarKind :: Kind -> Bool
+isStarKind = isLiftedTypeKind
 
 subst :: Type -> CG Type
 subst t = do

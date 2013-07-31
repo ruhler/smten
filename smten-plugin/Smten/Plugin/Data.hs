@@ -5,6 +5,8 @@ module Smten.Plugin.Data (
 
 import GhcPlugins
 
+import Data.Functor
+
 import Smten.Plugin.CG
 import Smten.Plugin.Name
 import Smten.Plugin.Type
@@ -83,13 +85,13 @@ mkDataD nm tyvars constrs = do
 --   ...
 smtenHS :: Name -> [TyVar] -> [DataCon] -> CG [S.Dec]
 smtenHS nm tyvs cs = do
-   let (rkept, rdropped) = span ((==) 0 . knum . tyVarKind) (reverse tyvs)
+   let (rkept, rdropped) = span (isStarKind . tyVarKind) (reverse tyvs)
        n = length rkept
        dropped = reverse rdropped
    tyvs' <- mapM tyvarCG dropped
    qtyname <- qtynameCG nm
-   let ctx = [S.ConAppT ("Smten.Runtime.SmtenHS.SmtenHS" ++ show (knum (tyVarKind v))) [tyv] | (v, tyv) <- zip dropped tyvs']
-       ty = S.ConAppT ("Smten.Runtime.SmtenHS.SmtenHS" ++ show n) [S.ConAppT qtyname tyvs']
+   ctx <- concat <$> mapM ctxCG dropped
+   let ty = S.ConAppT ("Smten.Runtime.SmtenHS.SmtenHS" ++ show n) [S.ConAppT qtyname tyvs']
    addimport "Smten.Runtime.SmtenHS"
    rel <- realizeD nm n cs
    prim <- primD nm n

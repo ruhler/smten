@@ -36,7 +36,6 @@ Known Bugs::
 * pattern matching against chars generates code which doesn't compile.
 * bv_concat type is too general
     perhaps add a runtime check to assert the types line up properly?
-* Nat -> * kind bug (in non-smt Bit)
 
 Suspected Bugs::
 * Memory leaks of solvers
