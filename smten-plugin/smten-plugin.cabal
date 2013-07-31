@@ -26,6 +26,7 @@ library
     Smten.Plugin.Data
     Smten.Plugin.Exp
     Smten.Plugin.Name
+    Smten.Plugin.Newtype
     Smten.Plugin.TyCon
     Smten.Plugin.Type
     Smten.Plugin.Output.Syntax
