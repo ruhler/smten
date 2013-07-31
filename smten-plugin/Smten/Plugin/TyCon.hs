@@ -5,11 +5,11 @@ module Smten.Plugin.TyCon (
     tyconCG,    
   ) where
 
-import Class
 import GhcPlugins
 
 import Smten.Plugin.CG
 import Smten.Plugin.Name
+import Smten.Plugin.Class
 import Smten.Plugin.Type
 import qualified Smten.Plugin.Output.Syntax as S
 
@@ -18,20 +18,7 @@ import qualified Smten.Plugin.Output.Syntax as S
 tyconCG :: TyCon -> CG [S.Dec]
 tyconCG t
  | Just cls <- tyConClass_maybe t
- , Just [dc] <- tyConDataCons_maybe t = do
-     let mkfield :: Id -> CG S.RecField
-         mkfield x = do
-           let (vs, mt) = splitForAllTys $ varType x
-               vs' = filter (flip notElem (tyConTyVars t)) vs
-               mt' = snd $ splitFunTy mt
-           t <- topTypeCG $ mkForAllTys vs' mt'
-           nm <- nameCG $ varName x
-           return $ S.RecField nm t
-     fields <- mapM mkfield (classAllSelIds cls)
-     cn <- nameCG $ dataConName dc
-     t' <- nameCG $ tyConName t
-     vs <- mapM (qnameCG . varName) (tyConTyVars t)
-     return [S.DataD (S.Data t' vs [S.RecC cn fields])]
+ , Just [dc] <- tyConDataCons_maybe t = classCG t cls dc
 
  | isNewTyCon t
  , Just [constr] <- tyConDataCons_maybe t = do
