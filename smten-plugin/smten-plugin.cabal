@@ -23,6 +23,7 @@ library
   other-modules:
     Smten.Plugin.CG
     Smten.Plugin.Class
+    Smten.Plugin.Data
     Smten.Plugin.Exp
     Smten.Plugin.Name
     Smten.Plugin.TyCon
