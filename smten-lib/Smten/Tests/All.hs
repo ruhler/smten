@@ -16,6 +16,7 @@ import qualified Smten.Tests.SMT.Datatype
 
 -- Import things so that they will be compiled by the plugin, even though we
 -- don't actually have tests to run for them.
+import qualified Smten.Debug.Trace ()
 import qualified Smten.Control.Monad.Error ()
 import qualified Smten.System.Environment ()
 import qualified Smten.System.Exit ()

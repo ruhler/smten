@@ -45,3 +45,9 @@ instance Free Integer where
 instance (SingI n) => Free (Bit n) where
     free = free_Bit
 
+instance (Free a) => Free (Maybe a) where
+    free = do
+       isJust <- free
+       v <- free
+       return (if isJust then Just v else Nothing)
+

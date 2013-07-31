@@ -1,11 +1,12 @@
 
+{-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE NoImplicitPrelude, RebindableSyntax #-}
 module Smten.Control.Monad.State.Class where
 
 import Smten.Prelude
 
-class (Monad m) => MonadState s m where
+class (Monad m) => MonadState s m | m -> s where
     get :: m s
     put :: s -> m ()
 

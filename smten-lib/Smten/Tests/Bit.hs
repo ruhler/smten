@@ -37,3 +37,6 @@ tests = do
     putStrLn "Bit PASSED"
 
 
+-- Verify we can generate code for data types with this funny kind: (Nat -> *)
+--data FunnyKind a = FunnyKind (Bit a)
+

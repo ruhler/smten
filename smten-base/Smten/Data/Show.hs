@@ -40,6 +40,10 @@ showParen b p =
     True -> showChar '(' . p . showChar ')' 
     False -> p
 
+instance Show Bool where
+    show True = "True"
+    show False = "False"
+
 instance Show Int where
     showsPrec = int_showsPrec
 
