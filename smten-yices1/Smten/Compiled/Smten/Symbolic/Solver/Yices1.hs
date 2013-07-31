@@ -24,18 +24,6 @@ data Yices1 = Yices1 {
     y1_ctx :: Ptr YContext
 }
 
-declare :: String -> Yices1 -> String -> IO ()
-declare ty y nm = do
-    let cmd = "(define " ++ nm ++ " :: " ++ ty ++ ")"
-    worked <- withCString cmd $ \str -> do
-          withy1 y $ \yctx -> c_yices_parse_command yctx str
-    if worked 
-       then return ()
-       else do
-          cstr <- c_yices_get_last_error_message
-          msg <- peekCString cstr
-          fail $ show msg ++ "\n when running command: \n" ++ cmd
-
 withy1 :: Yices1 -> (Ptr YContext -> IO a) -> IO a
 withy1 y f = f (y1_ctx y)
 

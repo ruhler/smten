@@ -22,7 +22,7 @@ data Module = Module {
 data Dec = DataD Data
          | ValD Val
          | InstD [Class] Type [Method]
-         | NewTypeD Name [TyVar] Con [Name]
+         | NewTypeD Name [TyVar] Con
 
 data Method = Method Name Exp
 

@@ -8,6 +8,7 @@ module Smten.Plugin.Name (
     itenmCG, qitenmCG,
     nullitenmCG, qnullitenmCG,
     liftitenmCG, qliftitenmCG,
+    denewtynmCG, qdenewtynmCG,
     ) where
 
 import Data.Char
@@ -135,4 +136,10 @@ liftitenmCG = nmCG True ("__LiftIte" ++) False
 
 qliftitenmCG :: Name -> CG S.Name
 qliftitenmCG = nmCG True ("__LiftIte" ++) True
+
+denewtynmCG :: Name -> CG S.Name
+denewtynmCG = nmCG True ("__deNewTy" ++) False
+
+qdenewtynmCG :: Name -> CG S.Name
+qdenewtynmCG = nmCG True ("__deNewTy" ++) True
 

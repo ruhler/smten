@@ -80,7 +80,7 @@ newtype NewBool = NewBool Bool
 
 newtype NewMaybe a = NewMaybe (Maybe a)
 
---newtype NewFun a b = NewFun (a -> NewFun a b -> b)
+newtype NewFun a b = NewFun (a -> NewFun a b -> b)
 
 instance Foo NewBool where
     foo _ = 3
@@ -455,14 +455,14 @@ fnewmaybe (NewMaybe (Just True)) = 1
 fnewmaybe (NewMaybe (Just False)) = 2
 fnewmaybe (NewMaybe Nothing) = 3
 
---fnewfun :: NewFun Bool Integer -> Integer
---fnewfun n@(NewFun f) = f True n
+fnewfun :: NewFun Bool Integer -> Integer
+fnewfun n@(NewFun f) = f True n
 
 testnewtype :: IO ()
 testnewtype = do
     test "newtype0" (fnewbool (NewBool True) == 1)
     test "newtype1" (fnewmaybe (NewMaybe (Just False)) == 2)
-    --test "newtype2" (fnewfun (NewFun (\p _ -> if p then 1 else 2)) == 1)
+    test "newtype2" (fnewfun (NewFun (\p _ -> if p then 1 else 2)) == 1)
 
 testparsedot :: IO ()
 testparsedot = do
