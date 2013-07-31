@@ -2,7 +2,7 @@
 module Smten.Smten.Base (
     Char, String,
     Int, Integer,
-    error,
+    error, int_toInteger,
     ) where
 
 import qualified Prelude as P
@@ -21,4 +21,7 @@ type String = [Char]
 
 error :: String -> a
 error = P.error
+
+int_toInteger :: Int -> Integer
+int_toInteger = P.toInteger
 

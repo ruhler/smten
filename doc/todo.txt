@@ -36,6 +36,7 @@ Known Bugs::
 * pattern matching against chars generates code which doesn't compile.
 * bv_concat type is too general
     perhaps add a runtime check to assert the types line up properly?
+* newtype deriving fails with recursive newtypes. (in Basic)
 
 Suspected Bugs::
 * Memory leaks of solvers

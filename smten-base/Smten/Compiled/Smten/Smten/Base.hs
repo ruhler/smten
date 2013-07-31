@@ -5,7 +5,7 @@
 module Smten.Compiled.Smten.Smten.Base (
     Char(..), Int(..), Integer(..),
     List__(..), Tuple2__(..), Tuple3__(..), Tuple4__(..), Unit__(..), 
-    error,
+    error, int_toInteger,
 
     fromList__, toHSChar, toHSString, fromHSString,
  )  where
@@ -64,4 +64,7 @@ toHSString x = P.map toHSChar (fromList__ x)
 
 fromHSString :: P.String -> List__ Char
 fromHSString x = tosym (P.map tosym x :: [Char])
+
+int_toInteger :: Int -> Integer
+int_toInteger = symapp (\x -> tosym (P.toInteger (x :: P.Int)))
 

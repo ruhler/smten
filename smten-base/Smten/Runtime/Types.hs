@@ -36,6 +36,7 @@ data Any = BoolA Bool
 data ErrorString =
    ErrorString String
  | ErrorString_Ite Bool ErrorString ErrorString
+    deriving (Show)
 
 errstr :: String -> ErrorString
 errstr = ErrorString
@@ -96,23 +97,41 @@ data Bool where
    Bool_Err :: ErrorString -> Bool
    Bool_Prim :: (Model -> Bool) -> Bool -> Bool
 
+instance Show Bool where
+    show True = "True"
+    show False = "False"
+    show (Bool_Ite p a b) = show p ++ " ? " ++ show a ++ " : " ++ show b
+    show (Bool_And a b) = show a ++ " & " ++ show b
+    show (Bool_Not a) = "~ " ++ show a
+    show (Bool_EqInteger a b) = "?EqInteger?"
+    show (Bool_LeqInteger a b) = "?LeqInteger?"
+    show (Bool_EqBit a b) = "?EqBit?"
+    show (Bool_LeqBit a b) = "?LeqBit?"
+    show (Bool_Var a) = freenm a
+    show (Bool_Err msg) = "Bool_Err " ++ show msg
+    show (Bool_Prim r x) = "?Bool_Prim?"
+
 andB :: Bool -> Bool -> Bool
 andB True x = x
 andB False x = False
 andB a True = a
 andB a False = False
+andB a@(Bool_Err {}) _ = a
+andB _ b@(Bool_Err {}) = b
 andB a b = Bool_And a b
 
 notB :: Bool -> Bool
 notB True = False
 notB False = True
 notB (Bool_Not x) = x
+notB x@(Bool_Err {}) = x
 notB x = Bool_Not x
 
 iteB :: Bool -> Bool -> Bool -> Bool
 iteB True x _ = x
 iteB False _ x = x
 iteB (Bool_Not x) a b = iteB x b a
+iteB x@(Bool_Err {}) _ _ = x
 iteB p True False = p
 iteB p False True = notB p
 iteB p a b = Bool_Ite p a b

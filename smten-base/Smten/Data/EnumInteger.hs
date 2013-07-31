@@ -11,7 +11,7 @@ import Smten.Data.Num
 instance Enum Integer where
     succ x = x + 1
     pred x = x - 1
-    toEnum = error "TODO: toEnum.Integer"
+    toEnum = int_toInteger
     fromEnum = fromInteger
 
     enumFrom i = i : enumFrom (i+1)

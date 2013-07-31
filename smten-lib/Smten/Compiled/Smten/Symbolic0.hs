@@ -94,6 +94,7 @@ run_symbolic s q = do
        case {-# SCC "DoubleCheck" #-} realize m (ss_formula ss) of
           S.True -> return ()
           x -> error $ "SMTEN INTERNAL ERROR: SMT solver lied?"
+                 ++ " Got: " ++ show x
        return (S.Just ({-# SCC "Realize" #-} realize m x))
     Unsat -> return S.Nothing
 
