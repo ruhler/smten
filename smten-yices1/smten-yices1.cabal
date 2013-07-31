@@ -32,7 +32,7 @@ library
     
   build-depends: base ==4.6.*,
                  smten-plugin ==4.0.*, smten-base ==4.0.*, smten-lib ==4.0.*
-  extra-libraries: yices2
+  extra-libraries: yices1
   ghc-options: -fwarn-unused-binds -fwarn-unused-imports
 
 Test-Suite test-smten-yices1
