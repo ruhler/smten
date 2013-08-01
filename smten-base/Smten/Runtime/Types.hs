@@ -100,13 +100,13 @@ data Bool where
 instance Show Bool where
     show True = "True"
     show False = "False"
-    show (Bool_Ite p a b) = show p ++ " ? " ++ show a ++ " : " ++ show b
-    show (Bool_And a b) = show a ++ " & " ++ show b
+    show (Bool_Ite p a b) = "(" ++ show p ++ " ? " ++ show a ++ " : " ++ show b ++ ")"
+    show (Bool_And a b) = "(" ++ show a ++ " & " ++ show b ++ ")"
     show (Bool_Not a) = "~ " ++ show a
     show (Bool_EqInteger a b) = "?EqInteger?"
     show (Bool_LeqInteger a b) = "?LeqInteger?"
-    show (Bool_EqBit {}) = "?EqBit?"
-    show (Bool_LeqBit {}) = "?LeqBit?"
+    show (Bool_EqBit _ a b) = "(" ++ show a ++ " == " ++ show b ++ ")"
+    show (Bool_LeqBit _ a b) = "(" ++ show a ++ " <= " ++ show b ++ ")"
     show (Bool_Var a) = freenm a
     show (Bool_Err msg) = "Bool_Err " ++ show msg
     show (Bool_Prim r x) = "?Bool_Prim?"
@@ -196,6 +196,25 @@ data Bit (n :: Nat) where
   Bit_Var :: FreeID -> Bit n
   Bit_Err :: ErrorString -> Bit n
   Bit_Prim :: (Model -> Bit n) -> Bit n -> Bit n
+
+instance Show (Bit n) where
+  show (Bit x) = show x
+  show (Bit_Add a b) = "(" ++ show a ++ " + " ++ show b ++ ")"
+  show (Bit_Sub a b) = "(" ++ show a ++ " - " ++ show b ++ ")"
+  show (Bit_Mul a b) = "(" ++ show a ++ " * " ++ show b ++ ")"
+  show (Bit_Or a b) = "(" ++ show a ++ " | " ++ show b ++ ")"
+  show (Bit_And a b) = "(" ++ show a ++ " & " ++ show b ++ ")"
+  show (Bit_Shl {}) = "?Bit_Shl?"
+  show (Bit_Lshr {}) = "?Bit_Lshr?"
+  show (Bit_Concat {}) = "?Bit_Concat?"
+  show (Bit_Not a) = "~ " ++ show a
+  show (Bit_SignExtend {}) = "?Bit_SignExtend?"
+  show (Bit_Extract _ hi lo x) = show x ++ "[" ++ show hi ++ ":" ++ show lo ++ "]"
+  show (Bit_Ite p a b) = "(" ++ show p ++ " ? " ++ show a ++ " : " ++ show b ++ ")"
+  show (Bit_Var x) = freenm x
+  show (Bit_Err msg) = "Bit_Err " ++ show msg
+  show (Bit_Prim _ x) = show x
+    
 
 eq_Bit :: P.Integer -> Bit n -> Bit n -> Bool
 eq_Bit _ (Bit a) (Bit b) = if a == b then True else False

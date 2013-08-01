@@ -7,8 +7,12 @@ module Smten.Runtime.SmtenHS (
     ite, iterealize, realize, flrealize, flmerge, flsapp, primsapp,
     ) where
 
+import qualified Prelude as P
 import Prelude hiding (Bool(..), Integer)
 import Data.Maybe
+
+import System.IO.Unsafe
+import System.Mem.StableName
 
 import Smten.Runtime.Types
 
@@ -72,12 +76,20 @@ instance (SmtenHS0 a, SmtenHS4 m) => SmtenHS3 (m a) where
     realize3 = realize4
     primitive3 = primitive4
 
+stableNameEq :: a -> a -> P.Bool
+stableNameEq x y = unsafeDupablePerformIO $ do
+    xnm <- makeStableName x
+    ynm <- makeStableName y
+    return (xnm == ynm)
+
 {-# INLINEABLE ite #-}
 ite :: (SmtenHS0 a) => Bool -> a -> a -> a
 ite True a _ = a
 ite False _ b = b
 ite (Bool_Not x) a b = ite x b a
-ite p a b = ite0 p a b
+ite p a b 
+  | a `stableNameEq` b = a
+  | otherwise = ite0 p a b
 
 {-# INLINEABLE iterealize #-}
 iterealize :: (SmtenHS0 a) => Bool -> a -> a -> Model -> a
