@@ -96,7 +96,10 @@ instance SolverAST STP Formula where
   bit s w v = withvc s $ \vc -> do
      let w' = fromInteger w
          v' = fromInteger v
-     STPF <$> c_vc_bvConstExprFromLL vc w' v'
+     if w <= 64
+        then STPF <$> c_vc_bvConstExprFromLL vc w' v'
+        else STPF <$> (withCString (show v) $ \str ->
+                         c_vc_bvConstExprFromDecStr vc w' str)
 
   var s nm = do
     vars <- H.lookup (stp_vars s) nm

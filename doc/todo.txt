@@ -9,6 +9,21 @@ Cleanup::
   tied up with each other?
 * Why is bv_extract primitive? Why not just shift right and truncate?
 
+Performance::
+* put yices2 in one-shot mode?
+* understand odd yices2 behavior with repeated identical queries
+* simplifications:
+    x && True ==> x
+    x && False ==> False
+    if p then False else False ==> False
+    if p then True else True ==> True
+    if p then True else False ==> p
+    if p then False else True ==> not p
+* move plugin to later stage of ghc compilation
+* add -O2 flag when compiling with plugin
+* verify State, Reader, and Map libraries match the haskell libraries
+    
+
 Future Work::
 * Add minisat as a solver (requires CNF)
 * Add Z3 as a solver

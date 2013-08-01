@@ -70,6 +70,9 @@ foreign import ccall "vc_iteExpr"
 foreign import ccall "vc_bvConstExprFromLL"
     c_vc_bvConstExprFromLL  :: Ptr STP_VC -> CInt -> CULLong -> IO (Ptr STP_Expr)
 
+foreign import ccall "vc_bvConstExprFromDecStr"
+    c_vc_bvConstExprFromDecStr  :: Ptr STP_VC -> CInt -> CString -> IO (Ptr STP_Expr)
+
 foreign import ccall "vc_bvPlusExpr"
     c_vc_bvPlusExpr  :: Ptr STP_VC -> CInt -> Ptr STP_Expr -> Ptr STP_Expr -> IO (Ptr STP_Expr)
 
