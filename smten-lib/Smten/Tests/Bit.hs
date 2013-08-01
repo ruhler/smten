@@ -1,7 +1,7 @@
 
-{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE DataKinds, TypeOperators #-}
 {-# LANGUAGE NoImplicitPrelude, RebindableSyntax #-}
-module Smten.Tests.Bit (tests) where
+module Smten.Tests.Bit (tests, FunnyKind(..)) where
 
 import Smten.Prelude
 import Smten.Tests.Test
@@ -16,7 +16,7 @@ bit5 = fromInteger
 tests :: IO ()
 tests = do
     test "Bit.simple" (bit3 0 == 7 + 1)
-    test "Bit.zeroext" (bit5 7 == bv_zero_extend (bit3 (0-1)))
+    test "Bit.zeroext" (7 == bv_concat (0 :: Bit 2) (bit3 (0-1)))
     test "Bit.or" (bit5 0x1E == bv_or (bit5 0x12) (bit5 0x0C))
     test "Bit.shl" (bit5 10 == bv_shl (bit5 5) (bit5 1))
     test "Bit.extract" (bit3 3 == bv_extract (bit5 7) 1)

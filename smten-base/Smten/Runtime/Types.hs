@@ -91,8 +91,8 @@ data Bool where
    Bool_Not :: Bool -> Bool
    Bool_EqInteger :: Integer -> Integer -> Bool
    Bool_LeqInteger :: Integer -> Integer -> Bool
-   Bool_EqBit :: Bit n -> Bit n -> Bool
-   Bool_LeqBit :: Bit n -> Bit n -> Bool
+   Bool_EqBit :: P.Integer -> Bit n -> Bit n -> Bool
+   Bool_LeqBit :: P.Integer -> Bit n -> Bit n -> Bool
    Bool_Var :: FreeID -> Bool
    Bool_Err :: ErrorString -> Bool
    Bool_Prim :: (Model -> Bool) -> Bool -> Bool
@@ -105,8 +105,8 @@ instance Show Bool where
     show (Bool_Not a) = "~ " ++ show a
     show (Bool_EqInteger a b) = "?EqInteger?"
     show (Bool_LeqInteger a b) = "?LeqInteger?"
-    show (Bool_EqBit a b) = "?EqBit?"
-    show (Bool_LeqBit a b) = "?LeqBit?"
+    show (Bool_EqBit {}) = "?EqBit?"
+    show (Bool_LeqBit {}) = "?LeqBit?"
     show (Bool_Var a) = freenm a
     show (Bool_Err msg) = "Bool_Err " ++ show msg
     show (Bool_Prim r x) = "?Bool_Prim?"
@@ -114,10 +114,12 @@ instance Show Bool where
 andB :: Bool -> Bool -> Bool
 andB True x = x
 andB False x = False
-andB a True = a
-andB a False = False
 andB a@(Bool_Err {}) _ = a
-andB _ b@(Bool_Err {}) = b
+
+---- TODO: Are these optimizations safe?
+--andB a True = a
+--andB a False = False
+--andB _ b@(Bool_Err {}) = b
 andB a b = Bool_And a b
 
 notB :: Bool -> Bool
@@ -132,8 +134,10 @@ iteB True x _ = x
 iteB False _ x = x
 iteB (Bool_Not x) a b = iteB x b a
 iteB x@(Bool_Err {}) _ _ = x
-iteB p True False = p
-iteB p False True = notB p
+
+---- TODO: Are these optimizations safe?
+--iteB p True False = p
+--iteB p False True = notB p
 iteB p a b = Bool_Ite p a b
 
 data Integer =
@@ -178,30 +182,32 @@ data Bit (n :: Nat) where
   Bit_And :: Bit n -> Bit n -> Bit n
   Bit_Shl :: Bit n -> Bit n -> Bit n
   Bit_Lshr :: Bit n -> Bit n -> Bit n
-  Bit_Concat :: Bit a -> Bit b -> Bit n
+
+  -- Bit_Concat a_width a b 
+  Bit_Concat :: P.Integer -> Bit a -> Bit b -> Bit n
   Bit_Not :: Bit n -> Bit n
 
   -- Bit_SignExtend by x
   Bit_SignExtend :: P.Integer -> Bit m -> Bit n
 
-  -- Bit_Extract hi lo x
-  Bit_Extract :: P.Integer -> P.Integer -> Bit m -> Bit n
+  -- Bit_Extract x_width hi lo x
+  Bit_Extract :: P.Integer -> P.Integer -> P.Integer -> Bit m -> Bit n
   Bit_Ite :: Bool -> Bit n -> Bit n -> Bit n
   Bit_Var :: FreeID -> Bit n
   Bit_Err :: ErrorString -> Bit n
   Bit_Prim :: (Model -> Bit n) -> Bit n -> Bit n
 
-eq_Bit :: Bit n -> Bit n -> Bool
-eq_Bit (Bit a) (Bit b) = if a == b then True else False
-eq_Bit (Bit_Err msg) _ = Bool_Err msg
-eq_Bit _ (Bit_Err msg) = Bool_Err msg
-eq_Bit a b = Bool_EqBit a b
+eq_Bit :: P.Integer -> Bit n -> Bit n -> Bool
+eq_Bit _ (Bit a) (Bit b) = if a == b then True else False
+eq_Bit _ (Bit_Err msg) _ = Bool_Err msg
+eq_Bit _ _ (Bit_Err msg) = Bool_Err msg
+eq_Bit w a b = Bool_EqBit w a b
 
-leq_Bit :: Bit n -> Bit n -> Bool
-leq_Bit (Bit a) (Bit b) = if a <= b then True else False
-leq_Bit (Bit_Err msg) _ = Bool_Err msg
-leq_Bit _ (Bit_Err msg) = Bool_Err msg
-leq_Bit a b = Bool_LeqBit a b
+leq_Bit :: P.Integer -> Bit n -> Bit n -> Bool
+leq_Bit _ (Bit a) (Bit b) = if a <= b then True else False
+leq_Bit _ (Bit_Err msg) _ = Bool_Err msg
+leq_Bit _ _ (Bit_Err msg) = Bool_Err msg
+leq_Bit w a b = Bool_LeqBit w a b
 
 add_Bit :: Bit n -> Bit n -> Bit n
 add_Bit (Bit a) (Bit b) = Bit (a + b)
@@ -245,11 +251,11 @@ lshr_Bit (Bit_Err msg) _ = Bit_Err msg
 lshr_Bit _ (Bit_Err msg) = Bit_Err msg
 lshr_Bit a b = Bit_Lshr a b
 
-concat_Bit :: Bit a -> Bit b -> Bit n
-concat_Bit (Bit a) (Bit b) = Bit (a `P.bv_concat` b)
-concat_Bit (Bit_Err msg) _ = Bit_Err msg
-concat_Bit _ (Bit_Err msg) = Bit_Err msg
-concat_Bit a b = Bit_Concat a b
+concat_Bit :: P.Integer -> Bit a -> Bit b -> Bit n
+concat_Bit _ (Bit a) (Bit b) = Bit (a `P.bv_concat` b)
+concat_Bit _ (Bit_Err msg) _ = Bit_Err msg
+concat_Bit _ _ (Bit_Err msg) = Bit_Err msg
+concat_Bit w a b = Bit_Concat w a b
 
 not_Bit :: Bit n -> Bit n
 not_Bit (Bit a) = Bit (complement a)
@@ -261,8 +267,8 @@ sign_extend_Bit by (Bit a) = Bit (P.bv_sign_extend by a)
 sign_extend_Bit _ (Bit_Err msg) = Bit_Err msg
 sign_extend_Bit by x = Bit_SignExtend by x
 
-extract_Bit :: P.Integer -> P.Integer -> Bit m -> Bit n
-extract_Bit hi lo (Bit a) = Bit (P.bv_extract hi lo a)
-extract_Bit _ _ (Bit_Err msg) = Bit_Err msg
-extract_Bit hi lo x = Bit_Extract hi lo x
+extract_Bit :: P.Integer -> P.Integer -> P.Integer -> Bit m -> Bit n
+extract_Bit _ hi lo (Bit a) = Bit (P.bv_extract hi lo a)
+extract_Bit _ _ _ (Bit_Err msg) = Bit_Err msg
+extract_Bit wx hi lo x = Bit_Extract wx hi lo x
 

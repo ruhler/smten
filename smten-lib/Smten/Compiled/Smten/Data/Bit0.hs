@@ -26,10 +26,10 @@ instance SymbolicOf P.Bit (Bit n) where
         Bit_Prim r x -> primitive0 (\m -> realize m (f $$ (r m))) (f $$ x)
         _ -> P.error "symapp on non-ite symbolic bit vector"
 
-bv_eq :: Bit n -> Bit n -> Bool
+bv_eq :: P.Integer -> Bit n -> Bit n -> Bool
 bv_eq = eq_Bit
 
-bv_leq :: Bit n -> Bit n -> Bool
+bv_leq :: P.Integer -> Bit n -> Bit n -> Bool
 bv_leq = leq_Bit
 
 bv_show :: Bit n -> List__ Char
@@ -62,14 +62,14 @@ bv_lshr = lshr_Bit
 bv_not :: Bit n -> Bit n
 bv_not = not_Bit
 
-bv_concat :: Bit a -> Bit b -> Bit n
+bv_concat :: P.Integer -> Bit a -> Bit b -> Bit n
 bv_concat = concat_Bit
 
 bv_sign_extend :: P.Integer -> P.Integer -> Bit m -> Bit n
 bv_sign_extend mw nw = sign_extend_Bit (nw P.- mw)
 
-bv_extract :: P.Integer -> Bit m -> Integer -> Bit n
-bv_extract nw x = symapp (\lsb -> extract_Bit (lsb P.+ nw P.- 1) lsb x)
+bv_extract :: P.Integer -> P.Integer -> Bit m -> Integer -> Bit n
+bv_extract mw nw x = symapp (\lsb -> extract_Bit mw (lsb P.+ nw P.- 1) lsb x)
 
 bv_width :: P.Integer -> Bit n -> Integer
 bv_width w _ = tosym w

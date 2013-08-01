@@ -6,7 +6,7 @@
 module Smten.Data.Bit (
     Bit,
     bv_and, bv_or, bv_xor, bv_shl, bv_lshr, bv_not, bv_concat,
-    bv_extract, bv_truncate, bv_zero_extend, bv_sign_extend,
+    bv_extract, bv_truncate, bv_sign_extend,
     bv_sle, bv_slt, bv_sge, bv_sgt, bv_ashr, bv_width, bv_value,
     ) where
 
@@ -15,13 +15,13 @@ import Smten.Smten.TypeLits
 import Smten.Data.Bit0
 import Smten.Data.Ix
 
-instance Eq (Bit n) where
+instance (SingI n) => Eq (Bit n) where
     (==) = bv_eq
 
-instance Ord (Bit n) where
+instance (SingI n) => Ord (Bit n) where
     (<=) = bv_leq
 
-instance Show (Bit n) where
+instance (SingI n) => Show (Bit n) where
     show = bv_show
 
 instance (SingI n) => Num (Bit n) where
@@ -35,10 +35,12 @@ instance (SingI n) => Num (Bit n) where
 bv_xor :: Bit n -> Bit n -> Bit n
 bv_xor a b = bv_and (bv_or a b) (bv_not (bv_and a b))
 
-bv_zero_extend :: forall n m . (SingI m) => Bit n -> Bit m
-bv_zero_extend x = bv_truncate (bv_concat (0 :: Bit m) x)
+--  There are numeric type issues with this function.
+--  Use instead (bv_concat 0)
+--bv_zero_extend :: forall n m . (SingI m) => Bit n -> Bit (m+n)
+--bv_zero_extend x = bv_concat (0 :: Bit m) x
 
-bv_truncate :: (SingI m) => Bit n -> Bit m
+bv_truncate :: (SingI m, SingI n) => Bit m -> Bit n
 bv_truncate x = bv_extract x 0
 
 bv_slt :: (SingI n) => Bit n -> Bit n -> Bool

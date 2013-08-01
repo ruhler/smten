@@ -22,6 +22,7 @@ import qualified Smten.System.Environment ()
 import qualified Smten.System.Exit ()
 import qualified Smten.System.Timeout ()
 import qualified Smten.Tests.SMT.Bit ()
+import qualified Smten.Tests.SMT.Error ()
 import qualified Smten.Tests.SMT.Integer ()
 import qualified Smten.Tests.SMT.Sudoku ()
 

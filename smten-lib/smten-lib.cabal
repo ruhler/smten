@@ -69,6 +69,7 @@ library
     Smten.Tests.SMT.Bit
     Smten.Tests.SMT.Core
     Smten.Tests.SMT.Datatype
+    Smten.Tests.SMT.Error
     Smten.Tests.SMT.Integer
     Smten.Tests.SMT.Sudoku
     Smten.Tests.Test
@@ -119,6 +120,7 @@ library
     Smten.Compiled.Smten.Tests.SMT.Bit
     Smten.Compiled.Smten.Tests.SMT.Core
     Smten.Compiled.Smten.Tests.SMT.Datatype
+    Smten.Compiled.Smten.Tests.SMT.Error
     Smten.Compiled.Smten.Tests.SMT.Integer
     Smten.Compiled.Smten.Tests.SMT.Sudoku
     Smten.Compiled.Smten.Tests.Test
@@ -128,6 +130,7 @@ library
   build-depends: base ==4.6.*, hashtables ==1.0.*, mtl ==2.1.*,
                  pretty ==1.1.*, array ==0.4.*, ghc-prim ==0.3.*,
                  smten-base ==4.0.*, smten-plugin ==4.0.*
+  --ghc-prof-options: -fprof-auto-top
   ghc-options: -fwarn-unused-binds -fwarn-unused-imports
 
 Test-Suite test-smten-lib

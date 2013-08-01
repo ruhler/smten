@@ -124,8 +124,8 @@ instance SmtenHS0 Bool where
         Bool_Not p -> notB (realize m p)
         Bool_EqInteger a b -> eq_Integer (realize m a) (realize m b)
         Bool_LeqInteger a b -> leq_Integer (realize m a) (realize m b)
-        Bool_EqBit a b -> eq_Bit (realize m a) (realize m b)
-        Bool_LeqBit a b -> leq_Bit (realize m a) (realize m b)
+        Bool_EqBit w a b -> eq_Bit w (realize m a) (realize m b)
+        Bool_LeqBit w a b -> leq_Bit w (realize m a) (realize m b)
         Bool_Var n -> lookupBool m n
         Bool_Err msg -> Bool_Err (realize m msg)
         Bool_Prim r _ -> r m
@@ -155,10 +155,10 @@ instance SmtenHS0 (Bit n) where
         Bit_And a b -> and_Bit (realize m a) (realize m b)
         Bit_Shl a b -> shl_Bit (realize m a) (realize m b)
         Bit_Lshr a b -> lshr_Bit (realize m a) (realize m b)
-        Bit_Concat a b -> concat_Bit (realize m a) (realize m b)
+        Bit_Concat w a b -> concat_Bit w (realize m a) (realize m b)
         Bit_Not a -> not_Bit (realize m a)
         Bit_SignExtend by x -> sign_extend_Bit by (realize m x)
-        Bit_Extract hi lo x -> extract_Bit hi lo (realize m x)
+        Bit_Extract wx hi lo x -> extract_Bit wx hi lo (realize m x)
         Bit_Ite p a b -> iterealize p a b m
         Bit_Var n -> lookupBit m n
         Bit_Err msg -> Bit_Err (realize m msg)

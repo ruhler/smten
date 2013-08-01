@@ -22,10 +22,10 @@ import Smten.Plugin.Annotations
 -- Primitive fixed-width bit-vector type.
 data Bit (n :: Nat)
 
-bv_eq :: Bit n -> Bit n -> Bool
+bv_eq :: (SingI n) => Bit n -> Bit n -> Bool
 bv_eq = primitive "Smten.Data.Bit0.bv_eq"
 
-bv_leq :: Bit n -> Bit n -> Bool
+bv_leq :: (SingI n) => Bit n -> Bit n -> Bool
 bv_leq = primitive "Smten.Data.Bit0.bv_leq"
 
 bv_show :: Bit n -> String
@@ -60,10 +60,10 @@ bv_not = primitive "Smten.Data.Bit0.bv_not"
 
 -- TODO: restrict this to (n ~ a + b)
 --   When ghc supports such constraints reasonably.
-bv_concat :: Bit a -> Bit b -> Bit n
+bv_concat :: (SingI a) => Bit a -> Bit b -> Bit (a+b)
 bv_concat = primitive "Smten.Data.Bit0.bv_concat"
 
-bv_extract :: (SingI n) => Bit m -> Integer -> Bit n
+bv_extract :: (SingI m, SingI n) => Bit m -> Integer -> Bit n
 bv_extract = primitive "Smten.Data.Bit0.bv_extract"
 
 bv_sign_extend :: (SingI m, SingI n) => Bit m -> Bit n

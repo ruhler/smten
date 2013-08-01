@@ -1,6 +1,4 @@
 Priority::
-* Port shampi to ghc-plugin
-* Port arch-extract to ghc-plugin
 * Add SMT Error test (if needed)
 * Add SMT Share test (if needed)
 
@@ -46,6 +44,7 @@ Suspected Bugs::
     Smten.Data.Array.array function
 * I suspect problems with using a function called 'main' as a normal function
   exported to another module instead of just as a top level main function.
+* calling plugin with -O2 flag causes issues
             
 Other::
 * TODO's inlined in the code

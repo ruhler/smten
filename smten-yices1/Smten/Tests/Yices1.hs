@@ -5,6 +5,7 @@ module Smten.Tests.Yices1 (main) where
 import Smten.Prelude
 import qualified Smten.Tests.SMT.Core as Core
 import qualified Smten.Tests.SMT.Datatype as Datatype
+import qualified Smten.Tests.SMT.Error as Error
 import qualified Smten.Tests.SMT.Integer as Integer
 import qualified Smten.Tests.SMT.Bit as Bit
 import Smten.Tests.SMT.Test
@@ -23,3 +24,7 @@ main = do
 
     runtest (SMTTestCfg yices1 ["SMT.Bit.Lsh"]) Bit.smttests
     putStrLn "Yices1.SMT.Bit PASSED"
+
+    runtest (SMTTestCfg yices1 []) Error.smttests
+    putStrLn "Yices1.SMT.Error PASSED"
+

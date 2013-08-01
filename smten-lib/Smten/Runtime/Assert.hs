@@ -21,10 +21,17 @@ type Cache exp = H.BasicHashTable (StableName Any) exp
 
 data AR ctx exp = AR {
   ar_ctx :: ctx,
-  ar_cache :: Cache exp
+  ar_cache :: Cache exp,
+
+  -- If we are currently defining the expression for a bit-vector object, this
+  -- holds the width of that object.
+  ar_bitwidth :: Integer
 }
 
 type AM ctx exp = ReaderT (AR ctx exp) IO
+
+withbitwidth :: Integer -> AM ctx exp a -> AM ctx exp a
+withbitwidth i = local (\r -> r { ar_bitwidth = i })
 
 class Supported a where
     define :: (SolverAST ctx exp) => ctx -> a -> AM ctx exp exp
@@ -32,7 +39,7 @@ class Supported a where
 assert :: (SolverAST ctx exp) => ctx -> S.Bool -> IO ()
 assert ctx p = {-# SCC "Assert" #-} do
     c <- H.new
-    e <- runReaderT (define ctx p) (AR ctx c)
+    e <- runReaderT (define ctx p) (AR ctx c (error "ar_bitwidth not set!"))
     ST.assert ctx e
 
 use :: (SolverAST ctx exp, Supported a) => a -> AM ctx exp exp
@@ -65,8 +72,8 @@ instance Supported S.Bool where
     define ctx (S.Bool_Var id) = liftIO $ var ctx (freenm id)
     define ctx (S.Bool_EqInteger a b) = binary (eq_integer ctx) a b
     define ctx (S.Bool_LeqInteger a b) = binary (leq_integer ctx) a b
-    define ctx (S.Bool_EqBit a b) = binary (eq_bit ctx) a b
-    define ctx (S.Bool_LeqBit a b) = binary (leq_bit ctx) a b
+    define ctx (S.Bool_EqBit w a b) = withbitwidth w $ binary (eq_bit ctx) a b
+    define ctx (S.Bool_LeqBit w a b) = withbitwidth w $ binary (leq_bit ctx) a b
     define ctx (S.Bool_Ite p a b) = do
         p' <- use p
         a' <- use a
@@ -106,10 +113,16 @@ instance Supported (S.Bit n) where
     define ctx (S.Bit_And a b) = binary (and_bit ctx) a b
     define ctx (S.Bit_Shl a b) = binary (shl_bit ctx) a b
     define ctx (S.Bit_Lshr a b) = binary (lshr_bit ctx) a b
-    define ctx (S.Bit_Concat a b) = binary (concat_bit ctx) a b
+    define ctx (S.Bit_Concat wa a b) = do
+        w <- asks ar_bitwidth
+        a' <- withbitwidth wa $ use a
+        b' <- withbitwidth (w - wa) $ use b
+        liftIO $ concat_bit ctx a' b'
     define ctx (S.Bit_Not a) = unary (not_bit ctx) a
-    define ctx (S.Bit_Extract hi lo a) = unary (extract_bit ctx hi lo) a
-    define ctx (S.Bit_SignExtend by a) = unary (sign_extend_bit ctx by) a
+    define ctx (S.Bit_Extract wa hi lo a) = withbitwidth wa $ unary (extract_bit ctx hi lo) a
+    define ctx (S.Bit_SignExtend by a) = do
+        w <- asks ar_bitwidth
+        withbitwidth (w - by) $ unary (sign_extend_bit ctx by) a
     define ctx (S.Bit_Ite p a b) = do
         p' <- use p
         a' <- use a
@@ -117,11 +130,10 @@ instance Supported (S.Bit n) where
         liftIO $ ite_bit ctx p' a' b'
     define ctx (S.Bit_Var id) = liftIO $ var ctx (freenm id)
     define ctx (S.Bit_Prim _ c) = define ctx c
---    define ctx x@(S.Bit_Error msg) = liftIO $ do
---        id <- fresh
---        declare_bit ctx (freenm id) (bitwidth x)
---        var ctx (freenm id)
---
---bitwidth :: forall n . (S.SmtenHS0 n) => S.Bit n -> Integer
---bitwidth x = S.valueof0 (S.numeric :: n)
---
+    define ctx (S.Bit_Err msg) = do
+      w <- asks ar_bitwidth
+      liftIO $ do
+        id <- fresh
+        declare ctx (S.BitT w) (freenm id)
+        var ctx (freenm id)
+
