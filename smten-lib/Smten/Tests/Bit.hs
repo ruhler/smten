@@ -1,10 +1,11 @@
 
 {-# LANGUAGE DataKinds, TypeOperators #-}
 {-# LANGUAGE NoImplicitPrelude, RebindableSyntax #-}
-module Smten.Tests.Bit (tests, FunnyKind(..)) where
+module Smten.Tests.Bit (tests, FunnyKind(..), my_bv_concat) where
 
 import Smten.Prelude
 import Smten.Tests.Test
+import Smten.Smten.TypeLits
 import Smten.Data.Bit
 
 bit3 :: Integer -> Bit 3
@@ -34,9 +35,14 @@ tests = do
     test "Bit.ashr -" (bit5 0x1e == bv_ashr 0x1a 2)
     test "Bit.sign extend +" (bit5 0x03 == bv_sign_extend (bit3 3))
     test "Bit.sign extend -" (bit5 0x1c == bv_sign_extend (bit3 4))
+    test "Bit.my_bv_concat" (0x1c == my_bv_concat (3 :: Bit 2) (4 :: Bit 3))
     putStrLn "Bit PASSED"
 
 
 -- Verify we can generate code for data types with this funny kind: (Nat -> *)
 data FunnyKind a = FunnyKind (Bit a)
+
+-- Verify we can write a non-primitive function with the (+) type.
+my_bv_concat :: (SingI a) => Bit a -> Bit b -> Bit (a+b)
+my_bv_concat = bv_concat
 

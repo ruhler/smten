@@ -42,6 +42,23 @@ dename ty nm
           unqnm = show $ nameUnique nm
       in (modnm, occnm, unqnm)
 
+-- Given a base name, turn it into an acceptable haskell name.
+-- Returns 'True' if the resulting name is symbolic, false otherwise.
+resym :: String -> (Bool, String)
+resym nm =
+  let issym :: Char -> Bool
+      issym c = c `elem` "!#$%&*+./<=>?@\\^|-~:"
+
+      desym :: Char -> Char
+      desym c | isAlphaNum c = c
+      desym c | c == '#' = c
+      desym c | c == '_' = c
+      desym c | c == ':' = toEnum $ fromEnum 'A' + (fromEnum c `mod` 26)
+      desym c = toEnum $ fromEnum 'a' + (fromEnum c `mod` 26)
+  in case nm of
+        _ | all issym nm -> (True, nm)
+          | otherwise -> (False, map desym nm)
+
 -- nmCG ty f qlf nm
 -- translate a name to a smten name.
 --  ty - True if this is a type constructor name.
@@ -55,14 +72,7 @@ nmCG ty f qlf nm
   | otherwise = do
       let (modnm, occnm, unqnm) = dename ty nm
 
-          desym :: Char -> Char
-          desym c | isAlphaNum c = c
-          desym c | c == '#' = c
-          desym c | c == '_' = c
-          desym c | c == ':' = toEnum $ fromEnum 'A' + (fromEnum c `mod` 26)
-          desym c = toEnum $ fromEnum 'a' + (fromEnum c `mod` 26)
-
-          occnm' = map desym occnm
+          (issym, occnm') = resym occnm
 
           useuniq = (not $ isExternalName nm)
               || (occnm == "main" && modnm /= Just ":Main")
@@ -70,12 +80,14 @@ nmCG ty f qlf nm
           unqlf = f $ if useuniq
                         then occnm' ++ "_" ++ unqnm
                         else occnm'
-      if qlf
-         then case modnm of
-                Just v -> do addimport $ "Smten.Compiled." ++ v
-                             return $ "Smten.Compiled." ++ v ++ "." ++ unqlf
-                _ -> return unqlf
-         else return unqlf
+
+      full <- case (qlf, modnm) of
+                 (True, Just v) -> do
+                      addimport $ "Smten.Compiled." ++ v
+                      return $ "Smten.Compiled." ++ v ++ "." ++ unqlf
+                 _ -> return unqlf
+
+      return $ if issym then "(" ++ full ++ ")" else full
 
 -- Generate code for an unqualified name.
 nameCG :: Name -> CG S.Name
