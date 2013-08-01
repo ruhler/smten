@@ -40,6 +40,9 @@ showParen b p =
     True -> showChar '(' . p . showChar ')' 
     False -> p
 
+instance Show () where
+    show () = "()"
+
 instance Show Bool where
     show True = "True"
     show False = "False"

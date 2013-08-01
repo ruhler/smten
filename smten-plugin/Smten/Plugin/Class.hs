@@ -25,6 +25,8 @@ classCG t cls dc = do
   cn <- nameCG $ dataConName dc
   t' <- nameCG $ tyConName t
   vs <- mapM (qnameCG . varName) (tyConTyVars t)
-  return [S.DataD (S.Data t' vs [S.RecC cn fields])]
+  if length fields == 1
+    then return [S.NewTypeD t' vs (S.RecC cn fields)]
+    else return [S.DataD (S.Data t' vs [S.RecC cn fields])]
 
 
