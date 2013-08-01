@@ -139,7 +139,8 @@ instance SolverAST STP Formula where
   shl_bit = blprim c_vc_bvLeftShiftExprExpr
   lshr_bit = blprim c_vc_bvRightShiftExprExpr
   not_bit = uprim c_vc_bvNotExpr
-  sign_extend_bit = error "TODO: STP sign_extend_bit"
+  sign_extend_bit s fr to x = withvc s $ \vc ->
+    STPF <$> c_vc_bvSignExtend vc (expr x) (fromInteger to)
   extract_bit s hi lo x = withvc s $ \vc ->
     STPF <$> c_vc_bvExtract vc (expr x) (fromInteger hi) (fromInteger lo)
 

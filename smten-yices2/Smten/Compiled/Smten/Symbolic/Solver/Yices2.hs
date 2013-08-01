@@ -135,6 +135,6 @@ instance SolverAST Yices2 YTerm where
   shl_bit _ = c_yices_bvshl
   lshr_bit _ = c_yices_bvlshr
   not_bit _ = c_yices_bvnot
-  sign_extend_bit _ n a = c_yices_sign_extend a (fromInteger n)
+  sign_extend_bit _ fr to a = c_yices_sign_extend a (fromInteger $ to - fr)
   extract_bit _ hi lo x = c_yices_bvextract x (fromInteger lo) (fromInteger hi)
 

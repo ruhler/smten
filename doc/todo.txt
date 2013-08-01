@@ -12,13 +12,6 @@ Cleanup::
 Performance::
 * put yices2 in one-shot mode?
 * understand odd yices2 behavior with repeated identical queries
-* simplifications:
-    x && True ==> x
-    x && False ==> False
-    if p then False else False ==> False
-    if p then True else True ==> True
-    if p then True else False ==> p
-    if p then False else True ==> not p
 * move plugin to later stage of ghc compilation
 * add -O2 flag when compiling with plugin
 * verify State, Reader, and Map libraries match the haskell libraries
@@ -43,7 +36,6 @@ Runtime::
 Known Bugs::
 * Error non-termination tests (in Error)
 * Sharing of appeval (in Share)
-* STP bug (in Bit)
 * STP bv_and bug (in Bit)
 * Yices1 left shift (in Bit)
 

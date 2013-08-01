@@ -17,9 +17,6 @@ main = do
     runtest (SMTTestCfg stp []) Datatype.smttests
     putStrLn "STP.SMT.Datatype PASSED"
 
-    runtest (SMTTestCfg stp [
-        "SMT.Bit.And",
-        "SMT.Bit.SignExt1",
-        "SMT.Bit.SignExt2"]) Bit.smttests
+    runtest (SMTTestCfg stp ["SMT.Bit.And"]) Bit.smttests
     putStrLn "STP.SMT.Bit PASSED"
 

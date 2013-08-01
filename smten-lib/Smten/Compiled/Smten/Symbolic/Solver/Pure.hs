@@ -148,9 +148,9 @@ instance SolverAST PureSolver Exp where
      case a m of
         BV av -> BV (complement av)
 
-  sign_extend_bit _ av (Exp b) = return . Exp $ \m ->
+  sign_extend_bit _ fr to (Exp b) = return . Exp $ \m ->
     case b m of
-        BV bv -> BV (bv_sign_extend av bv)
+        BV bv -> BV (bv_sign_extend (to - fr) bv)
 
   extract_bit _ hiv lov (Exp x) = return . Exp $ \m ->
     case x m of

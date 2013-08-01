@@ -45,9 +45,10 @@ class SolverAST ctx exp | ctx -> exp where
   lshr_bit :: ctx -> exp -> exp -> IO exp
   not_bit :: ctx -> exp -> IO exp
 
-  -- sign_extend_bit ctx by x
-  --   by - the number of bits by which to extend x
-  sign_extend_bit :: ctx -> Integer -> exp -> IO exp
+  -- sign_extend_bit ctx fr to x
+  --   fr - the number of bits of x
+  --   to - the number of bits after sign extending
+  sign_extend_bit :: ctx -> Integer -> Integer -> exp -> IO exp
   
   -- extract ctx hi lo x
   extract_bit :: ctx -> Integer -> Integer -> exp -> IO exp

@@ -121,8 +121,9 @@ instance Supported (S.Bit n) where
     define ctx (S.Bit_Not a) = unary (not_bit ctx) a
     define ctx (S.Bit_Extract wa hi lo a) = withbitwidth wa $ unary (extract_bit ctx hi lo) a
     define ctx (S.Bit_SignExtend by a) = do
-        w <- asks ar_bitwidth
-        withbitwidth (w - by) $ unary (sign_extend_bit ctx by) a
+        to <- asks ar_bitwidth
+        let fr = to - by
+        withbitwidth fr $ unary (sign_extend_bit ctx fr to) a
     define ctx (S.Bit_Ite p a b) = do
         p' <- use p
         a' <- use a
