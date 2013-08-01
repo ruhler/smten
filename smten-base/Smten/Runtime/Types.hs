@@ -115,10 +115,8 @@ andB :: Bool -> Bool -> Bool
 andB True x = x
 andB False x = False
 andB a@(Bool_Err {}) _ = a
-
----- TODO: Are these optimizations safe?
---andB a True = a
---andB a False = False
+andB a True = a
+andB a False = False
 --andB _ b@(Bool_Err {}) = b
 andB a b = Bool_And a b
 
@@ -134,10 +132,10 @@ iteB True x _ = x
 iteB False _ x = x
 iteB (Bool_Not x) a b = iteB x b a
 iteB x@(Bool_Err {}) _ _ = x
-
----- TODO: Are these optimizations safe?
---iteB p True False = p
---iteB p False True = notB p
+iteB p True False = p
+iteB p True True = True
+iteB p False True = notB p
+iteB p False False = False
 iteB p a b = Bool_Ite p a b
 
 data Integer =

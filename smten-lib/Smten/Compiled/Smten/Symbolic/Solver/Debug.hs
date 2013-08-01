@@ -94,7 +94,7 @@ instance SolverAST DebugLL Debug where
     not_bit dbg x = return $ dbgApp (dbgText "~") (sh x)
     sign_extend_bit dbg n x = return $ dbgText "?SignExtend"
     extract_bit dbg hi lo x = return $
-      dbgApps (dbgText "extract") [dbgText $ "[" ++ show hi ++ ":" ++ show lo ++ "]", sh x]
+      dbgApp (sh x) (dbgText $ "[" ++ show hi ++ ":" ++ show lo ++ "]")
 
 debug :: S.List__ S.Char -> Solver -> Solver
 debug fsmten s = do
