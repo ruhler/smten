@@ -92,6 +92,9 @@ b f (Debug sha goa) (Debug shb gob) =
 text' :: String -> Debug 
 text' s = Debug (return True) (return $ text s)
 
+parens' :: Debug -> Debug
+parens' x = text' "(" <+>. x <+>. text' ")"
+
 l :: ([Doc] -> Doc) -> [Debug] -> Debug
 l f xs =
   let sh = sequence [s | Debug s _ <- xs] >> return True 
@@ -128,9 +131,9 @@ tabwidth = 2
 dbgCase :: String -> Debug -> Debug -> Debug -> Debug
 dbgCase k x y n
  | k == "True"
-     = text' "if" <+>. x $+$.
-        nest' tabwidth (vcat' [text' "then" <+>. y,
-                             text' "else" <+>. n])
+     = parens' (text' "if" <+>. x $+$.
+                  nest' tabwidth (vcat' [text' "then" <+>. y,
+                                         text' "else" <+>. n]))
  | otherwise
      = text' "case" <+>. x <+>. text' "of" <+>. text' "{"
          $+$. nest' tabwidth (vcat' [
