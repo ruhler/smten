@@ -27,6 +27,9 @@ library
     Smten.Tests.Yices2
     Smten.Compiled.Smten.Tests.Yices2
 
+    Smten.Tests.SMT.Memory.Yices2
+    Smten.Compiled.Smten.Tests.SMT.Memory.Yices2
+
   other-modules:
     Smten.Runtime.Yices2FFI
     
@@ -40,5 +43,11 @@ Test-Suite test-smten-yices2
   main-is: tests.hs
   build-depends: base ==4.6.*,
                  smten-base ==4.0.*, smten-lib ==4.0.*
+  extra-libraries: yices2
+
+Benchmark bench-memory
+  type: exitcode-stdio-1.0
+  main-is: bench-memory.hs
+  build-depends: base ==4.6.*, smten-base ==4.0.*, smten-lib ==4.0.*
   extra-libraries: yices2
 

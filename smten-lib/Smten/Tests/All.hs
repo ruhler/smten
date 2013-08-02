@@ -24,6 +24,8 @@ import qualified Smten.System.Timeout ()
 import qualified Smten.Tests.SMT.Bit ()
 import qualified Smten.Tests.SMT.Error ()
 import qualified Smten.Tests.SMT.Integer ()
+import qualified Smten.Tests.SMT.Memory ()
+import qualified Smten.Tests.SMT.Memory.Pure ()
 import qualified Smten.Tests.SMT.Sudoku ()
 
 main :: IO ()

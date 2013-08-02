@@ -1,7 +1,7 @@
 Smten (Developer) ReadMe
 ========================
 Richard Uhler <ruhler@csail.mit.edu>
-March 22, 2013
+August 2, 2013
 
 Configuring Smten for Development Build
 ---------------------------------------
@@ -10,14 +10,12 @@ system. This is done by creating the file "tclmk/local.tcl" containing
 information about your system.
 
 The following variables should be set in tclmk/local.tcl:
-::HAPPY - The path to the happy executable for building the parser.
 ::env(PATH) - The PATH to use for executables
 ::env(LD_LIBRARY_PATH) - the ld library path
 
 For example, tclmk/local.tcl might look like:
 
 =========================================
-set ::HAPPY /home/ruhler/.cabal/bin/happy
 set ::env(PATH) "/bin:/usr/bin:/home/ruhler/local/bin"
 set ::env(LD_LIBRARY_PATH) "/home/ruhler/local/lib"
 =========================================
@@ -25,22 +23,15 @@ set ::env(LD_LIBRARY_PATH) "/home/ruhler/local/lib"
 Yices1, Yices2, and STP
 -----------------------
 Smten currently requires yices1, yices2, and STP to be installed. See 
-smten/share/doc/userguide.txt for special instructions on how to install the
-yices solvers.
+the documentation in smten-yices1, smten-yices2, and smten-stp packages for
+more special instructions on how to install them.
 
 Building Smten
 --------------
 Once smten is configured for build and the required SMT solvers are installed,
 it can be built by running `make`.
 
-The makefile installs the cabal packages for smten, smten-smt, and smten-bin
-in a pretend home directory, compiles some programs against the installed
-packages, then runs some tests on the generated executables. During the
-process of installation, required packages will automatically be installed as
-well.
-
-Using Smten
------------
-Consult the user guide in smten/share/doc/ for information on how to use
-Smten.
+The makefile creates, installs, and runs the tests for the cabal packages for
+smten in a pretend home directory. During the process of installation,
+required packages will automatically be installed as well.
 

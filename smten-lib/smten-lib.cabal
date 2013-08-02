@@ -71,6 +71,8 @@ library
     Smten.Tests.SMT.Datatype
     Smten.Tests.SMT.Error
     Smten.Tests.SMT.Integer
+    Smten.Tests.SMT.Memory
+    Smten.Tests.SMT.Memory.Pure
     Smten.Tests.SMT.Sudoku
     Smten.Tests.Test
     Smten.Tests.All
@@ -122,6 +124,8 @@ library
     Smten.Compiled.Smten.Tests.SMT.Datatype
     Smten.Compiled.Smten.Tests.SMT.Error
     Smten.Compiled.Smten.Tests.SMT.Integer
+    Smten.Compiled.Smten.Tests.SMT.Memory
+    Smten.Compiled.Smten.Tests.SMT.Memory.Pure
     Smten.Compiled.Smten.Tests.SMT.Sudoku
     Smten.Compiled.Smten.Tests.Test
     Smten.Compiled.Smten.Tests.All
@@ -140,4 +144,10 @@ Test-Suite test-smten-lib
                    pretty ==1.1.*,  array ==0.4.*, ghc-prim ==0.3.*,
                    smten-base ==4.0.*, smten-plugin ==4.0.*
 
+Benchmark bench-memory
+    type: exitcode-stdio-1.0
+    main-is: bench-memory.hs
+    build-depends: base ==4.6.*, hashtables ==1.0.*, mtl ==2.1.*,
+                   pretty ==1.1.*,  array ==0.4.*, ghc-prim ==0.3.*,
+                   smten-base ==4.0.*, smten-plugin ==4.0.*
 

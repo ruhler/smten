@@ -35,8 +35,10 @@ Runtime::
 * detect potential non-termination and perform appropriate abstraction and
   refinement.
 
+Known Bugs::
+* Memory leaks of solvers yices1, yices2, and stp
+
 Suspected Bugs::
-* Memory leaks of solvers
 * pass a symbolic list to 'error'
 * something's wrong with code generation for monomorphic let bindings of
   variable types.

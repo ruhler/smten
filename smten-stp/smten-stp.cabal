@@ -27,6 +27,9 @@ library
     Smten.Tests.STP
     Smten.Compiled.Smten.Tests.STP
 
+    Smten.Tests.SMT.Memory.STP
+    Smten.Compiled.Smten.Tests.SMT.Memory.STP
+
   other-modules:
     Smten.Runtime.STPFFI
     
@@ -38,6 +41,13 @@ library
 Test-Suite test-smten-stp
   type: exitcode-stdio-1.0
   main-is: tests.hs
+  build-depends: base ==4.6.*, hashtables ==1.0.*,
+                 smten-base ==4.0.*, smten-lib ==4.0.*
+  extra-libraries: stp stdc++
+
+Benchmark bench-memory
+  type: exitcode-stdio-1.0
+  main-is: bench-memory.hs
   build-depends: base ==4.6.*, hashtables ==1.0.*,
                  smten-base ==4.0.*, smten-lib ==4.0.*
   extra-libraries: stp stdc++
