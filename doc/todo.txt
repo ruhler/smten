@@ -36,7 +36,6 @@ Runtime::
 Known Bugs::
 * Error non-termination tests (in Error)
 * Sharing of appeval (in Share)
-* STP bv_and bug (in Bit)
 * Yices1 left shift (in Bit)
 
 Suspected Bugs::

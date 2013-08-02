@@ -133,8 +133,8 @@ instance SolverAST STP Formula where
   add_bit = blprim c_vc_bvPlusExpr
   sub_bit = blprim c_vc_bvMinusExpr
   mul_bit = error "TODO: STP mul_bit"
-  or_bit = bprim c_vc_orExpr
-  and_bit = bprim c_vc_andExpr
+  or_bit = bprim c_vc_bvOrExpr
+  and_bit = bprim c_vc_bvAndExpr
   concat_bit = bprim c_vc_bvConcatExpr
   shl_bit = blprim c_vc_bvLeftShiftExprExpr
   lshr_bit = blprim c_vc_bvRightShiftExprExpr
