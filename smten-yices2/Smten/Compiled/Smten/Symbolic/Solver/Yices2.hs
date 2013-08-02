@@ -104,6 +104,10 @@ instance SolverAST Yices2 YTerm where
     st <- c_yices_check_context ctx nullPtr
     return $! fromYSMTStatus st
 
+  cleanup y = do
+     withy2 y c_yices_free_context
+     c_yices_exit
+
   assert y e = withy2 y $ \ctx -> c_yices_assert_formula ctx e
 
   bool _ p = if p then c_yices_true else c_yices_false

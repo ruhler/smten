@@ -36,7 +36,6 @@ Runtime::
   refinement.
 
 Known Bugs::
-* Major memory leak of yices2 solver
 * There's a very tiny memory leak in stp.
 
 Suspected Bugs::
