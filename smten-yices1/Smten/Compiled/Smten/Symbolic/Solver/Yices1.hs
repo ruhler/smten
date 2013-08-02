@@ -126,6 +126,8 @@ instance SolverAST Yices1 YExpr where
     res <- withy1 y c_yices_check
     return $ toResult res
 
+  cleanup y = withy1 y c_yices_del_context
+
   assert y p = withy1 y $ \ctx -> c_yices_assert ctx p
   bool y True = withy1 y c_yices_mk_true
   bool y False = withy1 y c_yices_mk_false
@@ -170,7 +172,6 @@ instance SolverAST Yices1 YExpr where
   extract_bit y hi lo x = withy1 y $ \ctx ->
      c_yices_mk_bv_extract ctx (fromInteger hi) (fromInteger lo) x
 
--- TODO: does this leak solvers?
 yices1 :: Solver
 yices1 = do
   ptr <- c_yices_mk_context
