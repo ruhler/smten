@@ -71,6 +71,11 @@ smttests = do
         assert (bv_shl (0x15 :: Bit 8) i == 0xA8)
         return (i :: Bit 8)
 
+    symtesteq "SMT.Bit.Lshr" (Just 3) $ do
+        i <- free_Bit
+        assert (bv_lshr (0xA8 :: Bit 8) i == 0x15)
+        return (i :: Bit 8)
+
     symtesteq "SMT.Bit.Extract" (Just 0xAB) $ do
         i <- free_Bit
         assert (bv_extract i 0 == (0xB :: Bit 4))

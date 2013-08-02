@@ -55,6 +55,18 @@ shl_bit_from y fr w a b
       rest <- shl_bit_from y (fr+1) w a b
       ite_bit y eq sh rest
 
+-- Yices1 does not expose a generic right shift function. Only right shift by
+-- constants. This makes a generic version based on that.
+lshr_bit_from :: Yices1 -> Integer -> Integer -> YExpr -> YExpr -> IO YExpr
+lshr_bit_from y fr w a b 
+  | fr == w = bit y w 0
+  | otherwise = do
+      n <- bit y w fr
+      eq <- eq_bit y b n
+      sh <- withy1 y (\ctx -> c_yices_mk_bv_shift_right0 ctx a (fromInteger fr))
+      rest <- lshr_bit_from y (fr+1) w a b
+      ite_bit y eq sh rest
+
 instance SolverAST Yices1 YExpr where
   declare y ty nm = do
       let tynm = case ty of
@@ -142,7 +154,7 @@ instance SolverAST Yices1 YExpr where
   and_bit = bprim c_yices_mk_bv_and
   concat_bit = bprim c_yices_mk_bv_concat
   shl_bit y = shl_bit_from y 0
-  lshr_bit = error "TODO: lshr_bit for Yices1"
+  lshr_bit y = lshr_bit_from y 0
   not_bit = uprim c_yices_mk_bv_not
   sign_extend_bit y fr to a = withy1 y $ \ctx ->
      c_yices_mk_bv_sign_extend ctx a (fromInteger (to - fr))

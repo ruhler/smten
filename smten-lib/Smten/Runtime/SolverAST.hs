@@ -43,8 +43,12 @@ class SolverAST ctx exp | ctx -> exp where
   concat_bit :: ctx -> exp -> exp -> IO exp
 
   -- shl_bit ctx bitwidth a b
+  --    Shift left, introducing 0s
   shl_bit :: ctx -> Integer -> exp -> exp -> IO exp
-  lshr_bit :: ctx -> exp -> exp -> IO exp
+
+  -- lshr_bit ctx bitwidth a b
+  --    Logical shift right (introducing 0s)
+  lshr_bit :: ctx -> Integer -> exp -> exp -> IO exp
   not_bit :: ctx -> exp -> IO exp
 
   -- sign_extend_bit ctx fr to x

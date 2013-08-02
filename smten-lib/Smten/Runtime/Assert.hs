@@ -114,7 +114,9 @@ instance Supported (S.Bit n) where
     define ctx (S.Bit_Shl a b) = do
         w <- asks ar_bitwidth
         binary (shl_bit ctx w) a b
-    define ctx (S.Bit_Lshr a b) = binary (lshr_bit ctx) a b
+    define ctx (S.Bit_Lshr a b) = do
+        w <- asks ar_bitwidth
+        binary (lshr_bit ctx w) a b
     define ctx (S.Bit_Concat wa a b) = do
         w <- asks ar_bitwidth
         a' <- withbitwidth wa $ use a

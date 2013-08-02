@@ -15,6 +15,8 @@ Performance::
 * move plugin to later stage of ghc compilation
 * add -O2 flag when compiling with plugin
 * verify State, Reader, and Map libraries match the haskell libraries
+* for yices1: having a shl_n function, which shifts by a constant amount,
+    could lead to a decent performance improvement in that case.
     
 
 Future Work::

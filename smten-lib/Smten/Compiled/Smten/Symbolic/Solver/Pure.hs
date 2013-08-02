@@ -136,7 +136,7 @@ instance SolverAST PureSolver Exp where
      case (a m, b m) of
         (BV av, BV bv) -> BV (av `bv_shl` bv)
 
-  lshr_bit _ (Exp a) (Exp b) = return . Exp $ \m ->
+  lshr_bit _ _ (Exp a) (Exp b) = return . Exp $ \m ->
      case (a m, b m) of
         (BV av, BV bv) -> BV (av `bv_lshr` bv)
 

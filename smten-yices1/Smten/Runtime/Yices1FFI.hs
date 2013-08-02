@@ -177,6 +177,9 @@ foreign import ccall "yices1_mk_bv_constant"
 foreign import ccall "yices1_mk_bv_shift_left0"
     c_yices_mk_bv_shift_left0 :: Ptr YContext -> YExpr -> CUInt -> IO YExpr
 
+foreign import ccall "yices1_mk_bv_shift_right0"
+    c_yices_mk_bv_shift_right0 :: Ptr YContext -> YExpr -> CUInt -> IO YExpr
+
 toResult :: YBool -> Result
 toResult n
     | n == yFalse = Unsat
