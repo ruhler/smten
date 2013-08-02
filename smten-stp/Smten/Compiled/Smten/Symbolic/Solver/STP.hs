@@ -95,6 +95,8 @@ instance SolverAST STP Formula where
         0 -> return Sat     -- False is INVALID
         1 -> return Unsat   -- False is VALID
         _ -> error $ "STP.check: vc_query returned " ++ show r
+
+  cleanup s = withvc s c_vc_Destroy
         
   assert s e = withvc s $ \vc -> c_vc_assertFormula vc (expr e)
 

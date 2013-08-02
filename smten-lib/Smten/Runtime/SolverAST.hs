@@ -16,6 +16,9 @@ class SolverAST ctx exp | ctx -> exp where
 
   check :: ctx -> IO Result
 
+  cleanup :: ctx -> IO ()
+  cleanup _ = return ()
+
   assert :: ctx -> exp -> IO ()
   bool :: ctx -> Bool -> IO exp
   integer :: ctx -> Integer -> IO exp

@@ -95,8 +95,11 @@ run_symbolic s q = do
           S.True -> return ()
           x -> error $ "SMTEN INTERNAL ERROR: SMT solver lied?"
                  ++ " Got: " ++ show x
+       cleanup solver
        return (S.Just ({-# SCC "Realize" #-} realize m x))
-    Unsat -> return S.Nothing
+    Unsat -> do
+       cleanup solver
+       return S.Nothing
 
 getValue :: SolverInst -> (FreeID, Type) -> IO Any
 getValue s (f, BoolT) = do

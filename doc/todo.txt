@@ -36,7 +36,8 @@ Runtime::
   refinement.
 
 Known Bugs::
-* Memory leaks of solvers yices1, yices2, and stp
+* Major memory leaks of solvers yices1, yices2
+* There's a very tiny memory leak in stp.
 
 Suspected Bugs::
 * pass a symbolic list to 'error'

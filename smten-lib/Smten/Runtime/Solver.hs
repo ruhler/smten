@@ -23,7 +23,10 @@ data SolverInst = SolverInst {
     getBitVectorValue :: Integer -> String -> IO Integer,
 
     -- | Run (check) and return the result.
-    check :: IO Result
+    check :: IO Result,
+
+    -- | Called after a query is complete.
+    cleanup :: IO ()
 }
 
 -- TODO: why do we need this?
@@ -39,6 +42,7 @@ solverInstFromAST x = SolverInst {
     getBoolValue = AST.getBoolValue x,
     getIntegerValue = AST.getIntegerValue x,
     getBitVectorValue = AST.getBitVectorValue x,
-    check = AST.check x
+    check = AST.check x,
+    cleanup = AST.cleanup x
 }
 
