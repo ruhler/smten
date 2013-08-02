@@ -1,4 +1,5 @@
 
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE NoImplicitPrelude, RebindableSyntax #-}
 module Smten.Tests.Yices2 (main) where
 

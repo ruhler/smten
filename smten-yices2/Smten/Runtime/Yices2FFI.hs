@@ -156,6 +156,9 @@ foreign import ccall unsafe "yices_xor2"
 foreign import ccall unsafe "yices_bvconst_uint64"
     c_yices_bvconst_uint64 :: Word32 -> Word64 -> IO YTerm
 
+foreign import ccall unsafe "yices_parse_bvbin"
+    c_yices_parse_bvbin :: CString -> IO YTerm
+
 foreign import ccall unsafe "yices_bvadd"
     c_yices_bvadd :: YTerm -> YTerm -> IO YTerm
 

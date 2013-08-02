@@ -114,7 +114,7 @@ nest' :: Int -> Debug -> Debug
 nest' i (Debug shx gox) = Debug shx (nest i <$> gox)
 
 dbgOp :: String -> Debug -> Debug -> Debug
-dbgOp op a b = a <+>. text' op <+>. b
+dbgOp op a b = parens' (a <+>. text' op <+>. b)
 
 dbgApp :: Debug -> Debug -> Debug
 dbgApp a b = a <+>. b

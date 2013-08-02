@@ -88,9 +88,9 @@ smttests = do
         assert (bv_extract i 4 == (0xA :: Bit 4))
         return (i :: Bit 8)
 
-    symtesteq "SMT.Bit.Large" (Just 1) $ do
+    symtesteq "SMT.Bit.Large" (Just 0x123456789ABCDEFEDCBA9876543210123) $ do
         i <- free_Bit
-        assert (i == (1 :: Bit 134))
+        assert (i == (0x123456789ABCDEFEDCBA9876543210123 :: Bit 132))
         return i
         
 

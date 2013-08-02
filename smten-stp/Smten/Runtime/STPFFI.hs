@@ -94,6 +94,9 @@ foreign import ccall "vc_bvLeftShiftExpr"
 foreign import ccall "vc_bvLeftShiftExprExpr"
     c_vc_bvLeftShiftExprExpr  :: Ptr STP_VC -> CInt -> Ptr STP_Expr -> Ptr STP_Expr -> IO (Ptr STP_Expr)
 
+foreign import ccall "vc_bvRightShiftExpr"
+    c_vc_bvRightShiftExpr  :: Ptr STP_VC -> CInt -> Ptr STP_Expr -> IO (Ptr STP_Expr)
+
 foreign import ccall "vc_bvRightShiftExprExpr"
     c_vc_bvRightShiftExprExpr  :: Ptr STP_VC -> CInt -> Ptr STP_Expr -> Ptr STP_Expr -> IO (Ptr STP_Expr)
 

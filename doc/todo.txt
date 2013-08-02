@@ -35,11 +35,6 @@ Runtime::
 * detect potential non-termination and perform appropriate abstraction and
   refinement.
 
-Known Bugs::
-* Error non-termination tests (in Error)
-* Sharing of appeval (in Share)
-* Yices1 left shift (in Bit)
-
 Suspected Bugs::
 * Memory leaks of solvers
 * pass a symbolic list to 'error'

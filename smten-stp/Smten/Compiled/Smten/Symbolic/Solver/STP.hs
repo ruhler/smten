@@ -43,6 +43,17 @@ withvc s f = f (stp_ctx s)
 nointegers :: a
 nointegers = error $ "STP does not support integers"
 
+getbits :: Ptr STP_VC -> Integer -> Ptr STP_Expr -> IO Integer
+getbits vc w e
+  | w <= 64 = fromIntegral <$> c_getBVUnsignedLongLong e
+  | otherwise = do
+      elo <- c_vc_bvExtract vc e 63 0
+      lo <- getbits vc 64 elo
+
+      ehi <- c_vc_bvRightShiftExpr vc 64 e
+      hi <- getbits vc (w-64) ehi
+      return $ shiftL hi 64 + lo
+
 instance SolverAST STP Formula where
   declare s S.BoolT nm = do
     st <- withvc s c_vc_boolType
@@ -69,8 +80,9 @@ instance SolverAST STP Formula where
 
   getBitVectorValue s w nm = do
     v <- var s nm
-    val <- withvc s $ \vc -> c_vc_getCounterExample vc (expr v)
-    fromIntegral <$> c_getBVUnsignedLongLong val
+    withvc s $ \vc -> do
+      val <- c_vc_getCounterExample vc (expr v)
+      getbits vc w val
 
   -- To check for satisfiability, we query if False is valid. If False is
   -- valid, the assertions imply False, meaning they are unsatisfiable. If

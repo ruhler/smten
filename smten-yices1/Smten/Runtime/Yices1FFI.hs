@@ -174,6 +174,9 @@ foreign import ccall "yices1_mk_num"
 foreign import ccall "yices1_mk_bv_constant"
     c_yices_mk_bv_constant :: Ptr YContext -> CUInt -> CULong -> IO YExpr
 
+foreign import ccall "yices1_mk_bv_constant_from_array"
+    c_yices_mk_bv_constant_from_array :: Ptr YContext -> CUInt -> Ptr CInt -> IO YExpr
+
 foreign import ccall "yices1_mk_bv_shift_left0"
     c_yices_mk_bv_shift_left0 :: Ptr YContext -> YExpr -> CUInt -> IO YExpr
 

@@ -9,6 +9,9 @@ module Smten.Compiled.Smten.Symbolic.Solver.Yices2 (yices2) where
 import Foreign
 import Foreign.C.String
 
+import Data.Char
+import Numeric
+
 import Smten.Runtime.Yices2FFI
 import qualified Smten.Runtime.Types as S
 import Smten.Runtime.SolverAST
@@ -105,10 +108,14 @@ instance SolverAST Yices2 YTerm where
 
   bool _ p = if p then c_yices_true else c_yices_false
   integer _ i = c_yices_int64 (fromInteger i)
-  bit _ w v = 
-        let w' = fromInteger w
-            v' = fromInteger v
-        in c_yices_bvconst_uint64 w' v'
+  bit _ w v = do
+     let w' = fromInteger w
+         v' = fromInteger v
+         base2 = showIntAtBase 2 (\x -> chr (x + ord '0')) v ""
+         binstr = replicate (fromInteger w - length base2) '0' ++ base2
+     if w <= 64
+        then c_yices_bvconst_uint64 w' v'
+        else withCString binstr $ \str -> c_yices_parse_bvbin str
 
   var _ nm = withCString nm c_yices_get_term_by_name
 

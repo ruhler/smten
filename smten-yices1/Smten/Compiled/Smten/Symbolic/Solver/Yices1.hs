@@ -31,6 +31,12 @@ bvInteger :: [CInt] -> Integer
 bvInteger [] = 0
 bvInteger (x:xs) = bvInteger xs * 2 + (fromIntegral x)
 
+bvBits :: Integer -> Integer -> [CInt]
+bvBits w v = 
+  let bitx :: Int -> CInt
+      bitx p = if testBit v p then 1 else 0
+  in map bitx [0..(fromInteger w - 1)]
+
 uprim :: (Ptr YContext -> YExpr -> IO YExpr) ->
          Yices1 -> YExpr -> IO YExpr
 uprim f y a = withy1 y $ \ctx -> f ctx a
@@ -124,10 +130,13 @@ instance SolverAST Yices1 YExpr where
   bool y True = withy1 y c_yices_mk_true
   bool y False = withy1 y c_yices_mk_false
   integer y i = withy1 y $ \ctx -> c_yices_mk_num ctx (fromInteger i)
-  bit y w v = withy1 y $ \ctx ->
+  bit y w v = withy1 y $ \ctx -> do
         let w' = fromInteger w
             v' = fromInteger v
-        in c_yices_mk_bv_constant ctx w' v'
+        if w <= 64 
+            then c_yices_mk_bv_constant ctx w' v'
+            else withArray (bvBits w v) $
+                    c_yices_mk_bv_constant_from_array ctx w'
 
   var y nm = withy1 y $ \ctx -> do
      decl <- withCString nm $ c_yices_get_var_decl_from_name ctx

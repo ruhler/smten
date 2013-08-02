@@ -8,6 +8,7 @@ module Smten.Runtime.Bit (
     bv_shl, bv_lshr,
     ) where
 
+import Numeric
 import Data.Bits
 
 data Bit = Bit {
@@ -19,7 +20,7 @@ data Bit = Bit {
 }
 
 instance Show Bit where
-    show (Bit w v) = show w ++ "'d" ++ show v
+    show (Bit w v) = show w ++ "'h" ++ showHex v ""
 
 -- | Construct a bit vector of the given width and value.
 -- Truncates the value as appropriate to fit in the given width.
