@@ -11,7 +11,7 @@
 -- coexist.
 module Smten.Compiled.Smten.Symbolic.Solver.Yices1 (yices1) where
 
-import Foreign
+import Foreign hiding (bit)
 import Foreign.C.String
 import Foreign.C.Types
 
@@ -42,6 +42,18 @@ bprim f y a b = withy1 y $ \ctx -> f ctx a b
 baprim :: (Ptr YContext -> Ptr YExpr -> CUInt -> IO YExpr) ->
           Yices1 -> YExpr -> YExpr -> IO YExpr
 baprim f y a b = withy1 y $ \ctx -> withArray [a, b] $ \arr -> f ctx arr 2
+
+-- Yices1 does not expose a generic left shift function. Only left shift by
+-- constants. This makes a generic version based on that.
+shl_bit_from :: Yices1 -> Integer -> Integer -> YExpr -> YExpr -> IO YExpr
+shl_bit_from y fr w a b 
+  | fr == w = bit y w 0
+  | otherwise = do
+      n <- bit y w fr
+      eq <- eq_bit y b n
+      sh <- withy1 y (\ctx -> c_yices_mk_bv_shift_left0 ctx a (fromInteger fr))
+      rest <- shl_bit_from y (fr+1) w a b
+      ite_bit y eq sh rest
 
 instance SolverAST Yices1 YExpr where
   declare y ty nm = do
@@ -129,7 +141,7 @@ instance SolverAST Yices1 YExpr where
   or_bit = bprim c_yices_mk_bv_or
   and_bit = bprim c_yices_mk_bv_and
   concat_bit = bprim c_yices_mk_bv_concat
-  shl_bit = error "TODO: shl_bit for Yices1"
+  shl_bit y = shl_bit_from y 0
   lshr_bit = error "TODO: lshr_bit for Yices1"
   not_bit = uprim c_yices_mk_bv_not
   sign_extend_bit y fr to a = withy1 y $ \ctx ->

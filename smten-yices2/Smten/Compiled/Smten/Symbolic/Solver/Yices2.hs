@@ -132,7 +132,7 @@ instance SolverAST Yices2 YTerm where
   or_bit _ = c_yices_bvor
   and_bit _ = c_yices_bvand
   concat_bit _ = c_yices_bvconcat
-  shl_bit _ = c_yices_bvshl
+  shl_bit _ _ = c_yices_bvshl
   lshr_bit _ = c_yices_bvlshr
   not_bit _ = c_yices_bvnot
   sign_extend_bit _ fr to a = c_yices_sign_extend a (fromInteger $ to - fr)

@@ -89,7 +89,7 @@ instance SolverAST DebugLL Debug where
     or_bit = op "|"
     and_bit = op "&"
     concat_bit = op "++"
-    shl_bit = op "<<"
+    shl_bit d _ = op "<<" d
     lshr_bit = op ">>"
     not_bit dbg x = return $ dbgApp (dbgText "~") (sh x)
     sign_extend_bit dbg fr to x = return $ dbgText "?SignExtend"

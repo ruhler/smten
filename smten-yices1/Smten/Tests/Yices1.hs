@@ -22,7 +22,7 @@ main = do
     runtest (SMTTestCfg yices1 []) Integer.smttests
     putStrLn "Yices1.SMT.Integer PASSED"
 
-    runtest (SMTTestCfg yices1 ["SMT.Bit.Lsh"]) Bit.smttests
+    runtest (SMTTestCfg yices1 []) Bit.smttests
     putStrLn "Yices1.SMT.Bit PASSED"
 
     runtest (SMTTestCfg yices1 []) Error.smttests

@@ -136,7 +136,7 @@ instance SolverAST STP Formula where
   or_bit = bprim c_vc_bvOrExpr
   and_bit = bprim c_vc_bvAndExpr
   concat_bit = bprim c_vc_bvConcatExpr
-  shl_bit = blprim c_vc_bvLeftShiftExprExpr
+  shl_bit s _ = blprim c_vc_bvLeftShiftExprExpr s
   lshr_bit = blprim c_vc_bvRightShiftExprExpr
   not_bit = uprim c_vc_bvNotExpr
   sign_extend_bit s fr to x = withvc s $ \vc ->
