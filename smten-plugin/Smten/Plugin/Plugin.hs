@@ -17,6 +17,7 @@ import Smten.Plugin.Annotations
 import qualified Smten.Plugin.Output.Syntax as S
 import qualified Smten.Plugin.Output.Ppr as S
 
+-- | The smten plugin for ghc.
 plugin :: Plugin
 plugin = defaultPlugin {
     installCoreToDos = install
