@@ -2,8 +2,9 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE PatternGuards #-}
+{-# OPTIONS_HADDOCK hide #-}
 
--- | Backend for the Yices2 solver
+-- | Implementation of the Yices2 backend for smten.
 module Smten.Compiled.Smten.Symbolic.Solver.Yices2 (yices2) where
 
 import Foreign
@@ -21,9 +22,6 @@ data Yices2 = Yices2 {
     y2_ctx :: Ptr YContext
 }
 
--- TODO: this currently leaks context pointers!
--- That should most certainly be fixed somehow.
--- TODO: when do we call c_yices_exit?
 yices2 :: Solver
 yices2 = do
   c_yices_init

@@ -2,6 +2,7 @@
 {-# LANGUAGE PatternGuards #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# OPTIONS_HADDOCK hide #-}
 
 module Smten.Compiled.Smten.Symbolic.Solver.STP (stp) where
 

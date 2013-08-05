@@ -1,17 +1,28 @@
 name: smten-stp
 version: 4.0.0.0
 synopsis: Smten library
-license: AllRightsReserved
+license: BSD3
 license-file: LICENSE
+copyright: Copyright (c) 2012, 2013  SRI International, Inc.
 author: Richard Uhler
 maintainer: ruhler@csail.mit.edu
 category: Language
 build-type: Simple
 cabal-version: >=1.8
 stability: experimental
-data-dir: share
-data-files:
-    README.txt
+description:
+  This package provides an STP backend for smten.
+  .
+  The smten-stp solver requires STP is installed. STP can be downloaded
+  from <http://sites.google.com/site/stpfastprover>.
+  .
+  You may need to add the library path containing libstp as an extra
+  library directory to your cabal configuration file. For example, if the stp
+  library is installed in \/home\/ruhler\/local\/lib, and your cabal
+  configuration is in ~\/.cabal\/config, add the following line to
+  ~\/.cabal\/config:
+  .
+  >   extra-lib-dirs: /home/ruhler/local/lib
 
 source-repository this
   type: git
@@ -23,15 +34,15 @@ library
   exposed-modules:
     Smten.Symbolic.Solver.STP
     Smten.Compiled.Smten.Symbolic.Solver.STP
+
+  other-modules:
+    Smten.Runtime.STPFFI
   
     Smten.Tests.STP
     Smten.Compiled.Smten.Tests.STP
 
     Smten.Tests.SMT.Memory.STP
     Smten.Compiled.Smten.Tests.SMT.Memory.STP
-
-  other-modules:
-    Smten.Runtime.STPFFI
     
   build-depends: base ==4.6.*, hashtables ==1.0.*,
                  smten-plugin ==4.0.*, smten-base ==4.0.*, smten-lib ==4.0.*

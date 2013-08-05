@@ -87,6 +87,7 @@ indir build/smten-yices2 {
     hrun cabal configure --enable-tests --enable-benchmarks
     hrun cabal build
     hrun cabal test
+    hrun cabal haddock --builddir smten-yices2-build
     hrun cabal sdist --builddir smten-yices2-build
     hrun cabal install \
         --builddir smten-yices2-build \
@@ -104,6 +105,7 @@ indir build/smten-yices1 {
     hrun cabal configure --enable-tests --enable-benchmarks
     hrun cabal build
     hrun cabal test
+    hrun cabal haddock --builddir smten-yices1-build
     hrun cabal sdist --builddir smten-yices1-build
     hrun cabal install \
         --builddir smten-yices1-build \
@@ -121,6 +123,7 @@ indir build/smten-stp {
     hrun cabal configure --enable-tests --enable-benchmarks
     hrun cabal build
     hrun cabal test
+    hrun cabal haddock --builddir smten-stp-build
     hrun cabal sdist --builddir smten-stp-build
     hrun cabal install \
         --builddir smten-stp-build \

@@ -1,8 +1,9 @@
 name: smten-plugin
 version: 4.0.0.0
 synopsis: Smten library
-license: AllRightsReserved
+license: BSD3
 license-file: LICENSE
+copyright: Copyright (c) 2012, 2013  SRI International, Inc.
 author: Richard Uhler
 maintainer: ruhler@csail.mit.edu
 category: Language

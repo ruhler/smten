@@ -3,6 +3,7 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE PatternGuards #-}
+{-# OPTIONS_HADDOCK hide #-}
 
 -- | Backend for the Yices1 Solver
 --
