@@ -211,8 +211,9 @@ expCG (Cast x c)
 expCG (Cast x c) = do
   lift $ errorMsg (text "Warning: Using unsafeCoerce for cast " <+> ppr x <+> showco c)
   x' <- expCG x
+  t' <- typeCG . dropForAlls $ pFst (coercionKind c)
   addimport "GHC.Prim"
-  return (S.AppE (S.VarE "GHC.Prim.unsafeCoerce#") x')
+  return (S.AppE (S.VarE "GHC.Prim.unsafeCoerce#") (S.SigE x' t'))
 
 expCG x = do
   lift $ fatalErrorMsg (text "TODO: expCG " <+> ppr x)
@@ -269,6 +270,7 @@ de_typeApp :: CoreExpr -> ([(TyVar, Type)], CoreExpr)
 de_typeApp (App a (Type t)) =
   case de_typeApp a of
     (bnds, Lam b body) -> ((b, t):bnds, body)
+    (bnds, Cast (Lam _ body) (ForAllCo b co)) -> ((b, t):bnds, Cast body co)
     (bnds, x) -> (bnds, x)
 de_typeApp x = ([], x)
 

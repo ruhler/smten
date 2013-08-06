@@ -50,15 +50,20 @@ tyvarCG v = S.VarT <$> qnameCG (varName v)
 
 ctxCG :: TyVar -> CG [S.Class]
 ctxCG v
- | tyVarKind v `eqKind` typeNatKind = return []
- | otherwise = do
-  tyv <- tyvarCG v
-  addimport "Smten.Runtime.SmtenHS"
-  return [S.ConAppT ("Smten.Runtime.SmtenHS.SmtenHS" ++ show (knum (tyVarKind v))) [tyv]]
+ | isLinearKind (tyVarKind v) = do
+    tyv <- tyvarCG v
+    addimport "Smten.Runtime.SmtenHS"
+    return [S.ConAppT ("Smten.Runtime.SmtenHS.SmtenHS" ++ show (knum (tyVarKind v))) [tyv]]
+ | otherwise = return []
 
 knum :: Kind -> Int
 knum k = length (fst (splitKindFunTys k))
 
 isStarKind :: Kind -> Bool
 isStarKind = isLiftedTypeKind
+
+isLinearKind :: Kind -> Bool
+isLinearKind k =
+  let (args, res) = splitKindFunTys k
+  in all isStarKind (args) && isStarKind res
 
