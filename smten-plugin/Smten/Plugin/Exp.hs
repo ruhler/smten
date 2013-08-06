@@ -1,4 +1,6 @@
 
+{-# LANGUAGE PatternGuards #-}
+
 module Smten.Plugin.Exp (
     bindCG
   ) where
@@ -31,8 +33,9 @@ bindCG b@(NonRec var body) = do
 expCG :: CoreExpr -> CG S.Exp
 expCG (Var x) = S.VarE <$> (qnameCG $ varName x)
 expCG (Lit l) = return (S.LitE (litCG l))
-expCG (App (Lam b body) (Type t)) = withtype b t $ expCG body
-expCG (App a (Type {})) = expCG a
+expCG x@(App a (Type {})) =
+  case de_typeApp x of
+    (bs, x') -> withtypes bs $ expCG x'
 expCG (App a b) = do
     a' <- expCG a
     b' <- expCG b
@@ -247,4 +250,10 @@ isTrueK :: DataCon -> Bool
 isTrueK d =
   let nm = dataConName d
   in "True" == (occNameString $ nameOccName nm)
+
+de_typeApp :: CoreExpr -> ([(TyVar, Type)], CoreExpr)
+de_typeApp (App a (Type t))
+  | (bnds, (Lam b body)) <- de_typeApp a = ((b, t):bnds, body)
+  | (bnds, x) <- de_typeApp a = (bnds, x)
+de_typeApp x = ([], x)
 

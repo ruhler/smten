@@ -15,13 +15,10 @@ data Array i e = MkArray (i, i) (PrimArray e)
 
 array :: forall i e . Ix i => (i, i) -> [(i, e)] -> Array i e
 array b ivs =
-  let indexed :: [(Int, e)]
-      indexed = map (\(x, v) -> (index b x, v)) ivs
+  let indexed = map (\(x, v) -> (index b x, v)) ivs
 
-      sorted :: [(Int, e)]
       sorted = sortBy (\(x, _) (y, _) -> compare x y) indexed
 
-      mkelems :: [Int] -> [(Int, e)] -> [e]
       mkelems [] [] = []
       mkelems [] _ = error "Array.array: index out of bounds"
       mkelems (x:xs) vs =
