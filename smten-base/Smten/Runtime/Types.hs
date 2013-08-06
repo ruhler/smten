@@ -6,7 +6,7 @@
 
 module Smten.Runtime.Types (
     Type(..), Any(..),
-    ErrorString(..), errstr, doerr,
+    ErrorString(..), errstr, doerr, stableNameEq,
     Model, model, m_cached, lookupBool, lookupInteger, lookupBit,
     Bool(..), andB, notB, iteB,
     Integer(..), eq_Integer, leq_Integer, add_Integer, sub_Integer,
@@ -23,6 +23,8 @@ import Data.Bits
 import GHC.TypeLits
 
 import System.IO.Unsafe
+import System.Mem.StableName
+
 import qualified Smten.Runtime.AnyMap as A
 import Smten.Runtime.FreeID
 
@@ -151,6 +153,7 @@ eq_Integer :: Integer -> Integer -> Bool
 eq_Integer (Integer a) (Integer b) = if a == b then True else False
 eq_Integer (Integer_Err msg) _ = Bool_Err msg
 eq_Integer _ (Integer_Err msg) = Bool_Err msg
+eq_Integer a b | a `stableNameEq` b = True
 eq_Integer a b = Bool_EqInteger a b
 
 leq_Integer :: Integer -> Integer -> Bool
@@ -218,6 +221,7 @@ eq_Bit :: P.Integer -> Bit n -> Bit n -> Bool
 eq_Bit _ (Bit a) (Bit b) = if a == b then True else False
 eq_Bit _ (Bit_Err msg) _ = Bool_Err msg
 eq_Bit _ _ (Bit_Err msg) = Bool_Err msg
+eq_Bit _ a b | a `stableNameEq` b = True
 eq_Bit w a b = Bool_EqBit w a b
 
 leq_Bit :: P.Integer -> Bit n -> Bit n -> Bool
@@ -288,4 +292,10 @@ extract_Bit :: P.Integer -> P.Integer -> P.Integer -> Bit m -> Bit n
 extract_Bit _ hi lo (Bit a) = Bit (P.bv_extract hi lo a)
 extract_Bit _ _ _ (Bit_Err msg) = Bit_Err msg
 extract_Bit wx hi lo x = Bit_Extract wx hi lo x
+
+stableNameEq :: a -> a -> P.Bool
+stableNameEq x y = unsafeDupablePerformIO $ do
+    xnm <- makeStableName x
+    ynm <- makeStableName y
+    return (xnm == ynm)
 

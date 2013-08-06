@@ -4,7 +4,9 @@
 
 -- | Raw FFI interface to yices2.
 module Smten.Runtime.Yices2FFI (
-    YContext, YModel, YType, YTerm,  fromYSMTStatus,
+    YContext, YModel, YType, YTerm, YContextConfig,
+    YParam, YSMTStatus,
+    fromYSMTStatus,
     c_yices_init,
     c_yices_exit,
     c_yices_print_error,

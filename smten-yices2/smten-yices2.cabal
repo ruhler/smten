@@ -46,6 +46,7 @@ library
   
   other-modules:
     Smten.Runtime.Yices2FFI
+    Smten.Runtime.Yices2FFICGen
 
     Smten.Tests.Yices2
     Smten.Compiled.Smten.Tests.Yices2

@@ -11,9 +11,6 @@ import qualified Prelude as P
 import Prelude hiding (Bool(..), Integer)
 import Data.Maybe
 
-import System.IO.Unsafe
-import System.Mem.StableName
-
 import Smten.Runtime.Types
 
 class SmtenHS0 a where
@@ -75,12 +72,6 @@ instance (SmtenHS0 a, SmtenHS4 m) => SmtenHS3 (m a) where
     ite3 = ite4
     realize3 = realize4
     primitive3 = primitive4
-
-stableNameEq :: a -> a -> P.Bool
-stableNameEq x y = unsafeDupablePerformIO $ do
-    xnm <- makeStableName x
-    ynm <- makeStableName y
-    return (xnm == ynm)
 
 {-# INLINEABLE ite #-}
 ite :: (SmtenHS0 a) => Bool -> a -> a -> a
