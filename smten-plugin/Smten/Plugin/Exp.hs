@@ -70,6 +70,11 @@ expCG (Case x v ty ms) | isBoolType (varType v) =
           | isFalseK fk && isTrueK tk -> mkite tb fb
        [(DEFAULT, _, fb), (DataAlt tk, [], tb)] | isTrueK tk -> mkite tb fb
        [(DEFAULT, _, tb), (DataAlt fk, [], fb)] | isFalseK fk -> mkite tb fb
+       [(DEFAULT, _, b)] -> do
+           vnm <- qnameCG $ varName v
+           arg <- expCG x
+           b' <- expCG b
+           return $ S.LetE [S.Val vnm Nothing arg] b'
        _ -> do
            lift $ fatalErrorMsg (text "TODO: expCG Bool Case: " <+> ppr ms)
            return $ S.VarE "???"
