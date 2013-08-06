@@ -1,7 +1,8 @@
 
+{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 module Smten.Data.List0 (
-    map, (++), foldr,
+    map, (++), foldr, build,
  ) where
 
 infixr 5 ++
@@ -17,4 +18,7 @@ map f (x:xs) = f x : map f xs
 foldr :: (a -> b -> b) -> b -> [a] -> b
 foldr f z [] = z
 foldr f z (x:xs) = f x (foldr f z xs)
+
+build :: forall a . (forall b. (a -> b -> b) -> b -> b) -> [a]
+build g = g (:) []
 
