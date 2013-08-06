@@ -52,11 +52,8 @@ hrun cp -r -f -l smten-base build/
 indir build/smten-base {
     hrun ghc --make -osuf smten_o -c -fplugin=Smten.Plugin.Plugin Smten/Prelude.hs
 
-    hrun cabal install \
-        --builddir smten-base-build \
-        --force-reinstalls
-
-    hrun cabal sdist --builddir smten-base-build
+    hrun cabal install --force-reinstalls
+    hrun cabal sdist
 }
 
 # The smten-lib package
@@ -70,10 +67,8 @@ indir build/smten-lib {
     hrun cabal configure --enable-tests --enable-benchmarks
     hrun cabal build
     hrun cabal test
-    hrun cabal sdist --builddir smten-lib-build
-    hrun cabal install \
-        --builddir smten-lib-build \
-        --force-reinstalls
+    hrun cabal sdist
+    hrun cabal install --force-reinstalls
 }
 
 # The smten-yices2 package
@@ -87,11 +82,9 @@ indir build/smten-yices2 {
     hrun cabal configure --enable-tests --enable-benchmarks
     hrun cabal build
     hrun cabal test
-    hrun cabal haddock --builddir smten-yices2-build
-    hrun cabal sdist --builddir smten-yices2-build
-    hrun cabal install \
-        --builddir smten-yices2-build \
-        --force-reinstalls
+    hrun cabal haddock
+    hrun cabal sdist
+    hrun cabal install --force-reinstalls
 }
 
 # The smten-yices1 package
@@ -105,11 +98,9 @@ indir build/smten-yices1 {
     hrun cabal configure --enable-tests --enable-benchmarks
     hrun cabal build
     hrun cabal test
-    hrun cabal haddock --builddir smten-yices1-build
-    hrun cabal sdist --builddir smten-yices1-build
-    hrun cabal install \
-        --builddir smten-yices1-build \
-        --force-reinstalls
+    hrun cabal haddock
+    hrun cabal sdist
+    hrun cabal install --force-reinstalls
 }
 
 # The smten-stp package
@@ -123,10 +114,8 @@ indir build/smten-stp {
     hrun cabal configure --enable-tests --enable-benchmarks
     hrun cabal build
     hrun cabal test
-    hrun cabal haddock --builddir smten-stp-build
-    hrun cabal sdist --builddir smten-stp-build
-    hrun cabal install \
-        --builddir smten-stp-build \
-        --force-reinstalls
+    hrun cabal haddock
+    hrun cabal sdist
+    hrun cabal install --force-reinstalls
 }
 

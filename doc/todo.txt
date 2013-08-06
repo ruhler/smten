@@ -17,6 +17,7 @@ Performance::
 * verify State, Reader, and Map libraries match the haskell libraries
 * for yices1: having a shl_n function, which shifts by a constant amount,
     could lead to a decent performance improvement in that case.
+* make <, >, >= primitives?
     
 
 Future Work::
