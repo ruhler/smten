@@ -1,0 +1,67 @@
+
+Sat Jun 22 09:49:54 EDT 2013
+
++ handle lambda 
++ handle case
+* handle type arguments.
+
+How should I handle type arguments?
+
+Let's assume the function is parametric polymorphic. That is, assume it does
+not have a dictionary associated with it.
+
+Then it can have some number of type arguments: one for each variable type in
+its signature, presumably in order.
+
+So, the way I want to compile this is:
+* gather all the type arguments.
+* output the function argument, surrounded by a signature based on the type
+  arguments.
+
+I think that makes sense conceptually, and should be relatively straight
+forward.
+
+Now, let's imagine we have dictionary (which will be the case pretty soonly).
+I should be able to just ignore that argument.
+
+One thing we could do to start is: just ignore type arguments.
+Worry about adding back extra type info later.
+
+So: App (x, Type) = x
+
+Sounds like a plan to me!
+
+* How to recognize a dictionary argument and ignore it?
+* GHC.Tuple.() should be rewritten as just ().
+
+
+I don't know how to recognize a dictionary argument based on just the variable
+for it. Perhaps we can recognize the dictionary argument from the type of the
+function being applied.
+
+Given a Var, how do I look up its Core type?
+
+Aha! Look what I can do: I can look up the type of a variable
+and see if it is a class type, which means its a dictionary. I can ignore it
+based on that if I want.
+
+So I should write a 'isDictionary' predicate and use that to drop the
+dictionaries.
+
+Sat Jun 22 13:03:12 EDT 2013
+
+Next issue: how to recognize GHC.Tuple.() as unit?
+
+I just hacked around it. Good enough for now.
+
+Next issue: I need to output the type of the binding.
+Do I have that info?
+
+Sat Jun 22 13:11:28 EDT 2013
+
+It works! Cool.
+
+What's next?
+
+Data type declarations I suppose.
+

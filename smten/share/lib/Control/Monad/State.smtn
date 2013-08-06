@@ -1,7 +1,0 @@
-
-module Control.Monad.State(
-    module Control.Monad.State.Lazy
-   ) where
-
-import Control.Monad.State.Lazy
-

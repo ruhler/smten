@@ -1,0 +1,45 @@
+
+Mon Jul  8 16:34:20 EDT 2013
+
+Idea for handling solvers. It makes so much sense, I don't know why I didn't
+think of it before? We'll see.
+
+Basically the api is this:
+
+-- Abstract solver type.
+-- internally implemented as dictionary for solvers
+data Solver
+
+-- The builtin-solver instances:
+stp :: Solver
+yices1 :: Solver
+yices2 :: Solver
+debug :: Solver -> Solver
+
+
+Easy! The only downside now, it would seem is... do we have equality tests for
+solvers? Or show? Are those things that are desired? I don't think so. Not
+things to worry about. And Show is easy enough to add an instance for.
+
+And note: now the support solvers are extendible. Hurray!
+
+I should try to switch to this.
+
+What should the pure implementation be?
+Perhaps a dictionary with the builtin methods: mplus, mzero, etc...?
+No. That's silly. The builtin can just be 'error'. Or: error: this solver not
+supported in pure evaluation. Except for pure, which could be... a unit type.
+Something like that.
+
+Sounds reasonable to me.
+
+I'll wander around, maybe work on this some, maybe go over the popl paper some
+to see what areas I can improve it in and how. That should be a worthwhile use
+of my time. I hope.
+
+Mon Jul  8 21:29:54 EDT 2013
+
+I made good progress tonight. Where I left off was with the difference between
+Solver and IO Solver. I may want to spend a little more time thinking about
+names here.
+

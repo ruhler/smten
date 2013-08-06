@@ -1,0 +1,113 @@
+name: smten-base
+version: 4.0.0.0
+synopsis: Smten library
+license: BSD3
+license-file: LICENSE
+copyright: Copyright (c) 2012, 2013  SRI International, Inc.
+author: Richard Uhler
+maintainer: ruhler@csail.mit.edu
+category: Language
+build-type: Simple
+cabal-version: >=1.8
+stability: experimental
+
+source-repository this
+  type: git
+  location: /afs/csail.mit.edu/u/r/ruhler/git/smten
+  --branch:
+  --tag:
+
+library
+  exposed-modules:
+    Smten.Prelude
+    Smten.Control.Monad
+    Smten.Data.Bool
+    Smten.Data.Bool0
+    Smten.Data.Char
+    Smten.Data.Char0
+    Smten.Data.Function
+    Smten.Data.Functor
+    Smten.Data.Either
+    Smten.Data.Enum
+    Smten.Data.EnumInteger
+    Smten.Data.EnumInt
+    Smten.Data.Eq
+    Smten.Data.Eq0
+    Smten.Data.List
+    Smten.Data.List0
+    Smten.Data.Maybe
+    Smten.Data.Num
+    Smten.Data.Num0
+    Smten.Data.Show
+    Smten.Data.Show0
+    Smten.Data.Ord
+    Smten.Data.Ord0
+    Smten.Data.Ord1
+    Smten.Data.Tuple
+    Smten.Smten.Base
+    Smten.Smten.Char
+    Smten.Smten.Int
+    Smten.Smten.Integer
+    Smten.Smten.List
+    Smten.Smten.Tuple
+    Smten.Smten.Unit
+    Smten.System.IO
+    Smten.System.IO0
+
+    Smten.Runtime.AnyMap
+    Smten.Runtime.Bit
+    Smten.Runtime.FreeID
+    Smten.Runtime.SmtenHS
+    Smten.Runtime.SymbolicOf
+    Smten.Runtime.Types
+
+    Smten.Compiled.Smten.Prelude
+    Smten.Compiled.Smten.Control.Monad
+    Smten.Compiled.Smten.Data.Bool
+    Smten.Compiled.Smten.Data.Bool0
+    Smten.Compiled.Smten.Data.Char
+    Smten.Compiled.Smten.Data.Char0
+    Smten.Compiled.Smten.Data.Function
+    Smten.Compiled.Smten.Data.Functor
+    Smten.Compiled.Smten.Data.Either
+    Smten.Compiled.Smten.Data.Enum
+    Smten.Compiled.Smten.Data.EnumInteger
+    Smten.Compiled.Smten.Data.EnumInt
+    Smten.Compiled.Smten.Data.Eq
+    Smten.Compiled.Smten.Data.Eq0
+    Smten.Compiled.Smten.Data.List
+    Smten.Compiled.Smten.Data.List0
+    Smten.Compiled.Smten.Data.Maybe
+    Smten.Compiled.Smten.Data.Num
+    Smten.Compiled.Smten.Data.Num0
+    Smten.Compiled.Smten.Data.Show
+    Smten.Compiled.Smten.Data.Show0
+    Smten.Compiled.Smten.Data.Ord
+    Smten.Compiled.Smten.Data.Ord0
+    Smten.Compiled.Smten.Data.Ord1
+    Smten.Compiled.Smten.Data.Tuple
+    Smten.Compiled.Smten.Smten.Base
+    Smten.Compiled.Smten.Smten.Char
+    Smten.Compiled.Smten.Smten.Int
+    Smten.Compiled.Smten.Smten.Integer
+    Smten.Compiled.Smten.Smten.List
+    Smten.Compiled.Smten.Smten.Tuple
+    Smten.Compiled.Smten.Smten.Unit
+    Smten.Compiled.Smten.System.IO
+    Smten.Compiled.Smten.System.IO0
+
+    Smten.Compiled.Control.Exception.Base
+    Smten.Compiled.GHC.Base
+    Smten.Compiled.GHC.CString
+    Smten.Compiled.GHC.Enum
+    Smten.Compiled.GHC.Integer.Type
+    Smten.Compiled.GHC.Prim
+    Smten.Compiled.GHC.TopHandler
+    Smten.Compiled.GHC.Tuple
+    Smten.Compiled.GHC.Types
+
+  build-depends: base ==4.6.*, ghc-prim ==0.3.*, smten-plugin ==4.0.*,
+                 hashtables ==1.0.*
+  --ghc-prof-options: -fprof-auto-top
+  ghc-options: -fwarn-unused-binds -fwarn-unused-imports
+

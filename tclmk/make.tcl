@@ -6,7 +6,6 @@ foreach key [array names ::env] {
 
 # Get infomation about the local environment.
 # local.tcl should set
-#   ::HAPPY - path to the happy executable
 #   ::env(...) - needed environment variables, such as: PATH
 source tclmk/local.tcl
 set ::env(LANG) "en_US.UTF-8"
@@ -37,45 +36,86 @@ hrun mkdir -p build/home build/test
 
 set ::env(HOME) [pwd]/build/home
 #hrun cabal update
-#hrun cabal install
 
-# The smten package
-indir smten {
+# The smten-plugin package
+indir smten-plugin {
     hrun cabal install \
-        --builddir ../build/smten \
-        --with-happy=$::HAPPY \
+        --builddir ../build/smten-plugin-build \
         --force-reinstalls
 
-    #hrun cabal haddock --builddir ../build/smten
-    hrun cabal sdist --builddir ../build/smten
+    #hrun cabal haddock --builddir ../build/smten-plugin-build
+    hrun cabal sdist --builddir ../build/smten-plugin-build
 }
 
-set SMTEN build/home/.cabal/bin/smten
-set SMTN smten/share/lib
+# The smten-base package
+hrun cp -r -f -l smten-base build/
+indir build/smten-base {
+    hrun ghc --make -osuf smten_o -c -fplugin=Smten.Plugin.Plugin Smten/Prelude.hs
 
-proc hscomp {module} {
-    set hsdir build/test
-    hrun $::SMTEN --include $::SMTN -f $::SMTN/[string map {. /} $module].smtn --hsdir $hsdir
+    hrun cabal install --force-reinstalls
+    hrun cabal sdist
 }
 
-proc hsghc {module} {
-    set hsdir build/test
-    hrun -ignorestderr ghc -fno-warn-overlapping-patterns \
-        -fno-warn-missing-fields \
-        -main-is Smten.Lib.$module.main__ -i$hsdir \
-        -prof -rtsopts \
-        -o $hsdir/[string map {. _} $module] $hsdir/Smten/Lib/[string map {. /} $module].hs
+# The smten-lib package
+hrun cp -r -f -l smten-lib build/
+indir build/smten-lib {
+    hrun ghc --make -osuf smten_o -c -main-is Smten.Tests.All.main \
+        -fplugin=Smten.Plugin.Plugin Smten/Tests/All.hs
+    hrun ghc --make -osuf smten_o -c -main-is Smten.Tests.SMT.Memory.Pure.main \
+        -fplugin=Smten.Plugin.Plugin Smten/Tests/SMT/Memory/Pure.hs
+
+    hrun cabal configure --enable-tests --enable-benchmarks
+    hrun cabal build
+    hrun cabal test
+    hrun cabal sdist
+    hrun cabal install --force-reinstalls
 }
 
-# Run a HaskellF Test
-proc hf {module} {
-    set hsdir build/test
-    hscomp $module
-    hsghc $module
-    hrun ./$hsdir/[string map {. _} $module]
+# The smten-yices2 package
+hrun cp -r -f -l smten-yices2 build/
+indir build/smten-yices2 {
+    hrun ghc --make -c -osuf smten_o -main-is Smten.Tests.Yices2.main \
+        -fplugin=Smten.Plugin.Plugin Smten/Tests/Yices2.hs
+    hrun ghc --make -osuf smten_o -c -main-is Smten.Tests.SMT.Memory.Yices2.main \
+        -fplugin=Smten.Plugin.Plugin Smten/Tests/SMT/Memory/Yices2.hs
+
+    hrun cabal configure --enable-tests --enable-benchmarks
+    hrun cabal build
+    hrun cabal test
+    hrun cabal haddock
+    hrun cabal sdist
+    hrun cabal install --force-reinstalls
 }
 
+# The smten-yices1 package
+hrun cp -r -f -l smten-yices1 build/
+indir build/smten-yices1 {
+    hrun ghc --make -c -osuf smten_o -main-is Smten.Tests.Yices1.main \
+        -fplugin=Smten.Plugin.Plugin Smten/Tests/Yices1.hs
+    hrun ghc --make -osuf smten_o -c -main-is Smten.Tests.SMT.Memory.Yices1.main \
+        -fplugin=Smten.Plugin.Plugin Smten/Tests/SMT/Memory/Yices1.hs
 
-hf Smten.Tests.All
-puts "BUILD COMPLETE"
+    hrun cabal configure --enable-tests --enable-benchmarks
+    hrun cabal build
+    hrun cabal test
+    hrun cabal haddock
+    hrun cabal sdist
+    hrun cabal install --force-reinstalls
+}
+
+# The smten-stp package
+hrun cp -r -f -l smten-stp build/
+indir build/smten-stp {
+    hrun ghc --make -c -osuf smten_o -main-is Smten.Tests.STP.main \
+        -fplugin=Smten.Plugin.Plugin Smten/Tests/STP.hs
+    hrun ghc --make -osuf smten_o -c -main-is Smten.Tests.SMT.Memory.STP.main \
+        -fplugin=Smten.Plugin.Plugin Smten/Tests/SMT/Memory/STP.hs
+
+    hrun cabal configure --enable-tests --enable-benchmarks
+    hrun cabal build
+    hrun cabal test
+    hrun cabal haddock
+    hrun cabal sdist
+    hrun cabal install --force-reinstalls
+}
 

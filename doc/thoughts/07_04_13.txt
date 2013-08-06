@@ -1,0 +1,64 @@
+
+Thu Jul  4 17:03:39 EDT 2013
+
+Here's an idea on the current issue I'm facing:
+
+In Core, there are functions of types. So, I might be getting
+
+(\a -> ...) Bool
+
+What I ought to do is do the substitution directly, don't you think?
+
+Because it is a lambda, it has a single use. If it was given a name, then it
+could be polymorphic. So, hopefully, I only need to do this for type lambdas.
+
+Let me try it out, see what support we have for the substitutions.
+
+Thu Jul  4 17:27:55 EDT 2013
+
+Looks like we can substitute types, but not in expressions.
+So perhaps what I want to do is maintain a type environment in CG, and
+substitute the types as we go.
+
+Relevant functions:
+    substTyWith :: [TyVar] -> [Type] -> Type -> Type
+
+So, keep a collection of (TyVar, Type) pairs, and do the substitution on
+typeCG before doing recursion in typeCG.
+
+Let me try that and see if it works at all.
+
+Thu Jul  4 17:39:15 EDT 2013
+
+It works! Nifty.
+
+Thu Jul  4 17:40:24 EDT 2013
+
+At this point, all the basic tests that are going to work work. The only ones
+which don't work are the deriving tests.
+
+Very cool.
+
+Which raises the question now. What's the next step?
+
+I feel like it's time to start supporting symbolic queries.
+
+For the haskell lib, I could give a list monad implementation. Then we would
+also have something to compare against for performance in later studies, which
+would be cool.
+
+I know the API I want to have.
+
+What's going to be harder is... deciding how I want to implement things.
+
+Let me not do any major changes from what we currently have. Just try to
+replicate that?
+
+Well, it's worth thinking about a little anyway.
+
+But first things first. Let me give the list monad implementation and get some
+core tests up and running.
+
+All the core tests ought to work swell with the list monad implementation.
+I'll copy that file and get it running first.
+

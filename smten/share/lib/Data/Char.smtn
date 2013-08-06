@@ -1,9 +1,0 @@
-
-module Data.Char (ord, chr) where
-
-ord :: Char -> Integer
-ord = fromEnum
-
-chr :: Integer -> Char
-chr = toEnum
-

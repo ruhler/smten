@@ -1,0 +1,33 @@
+
+Sat Jul  6 12:16:57 EDT 2013
+
+Lot's of code to layout and organize. Can I plan ahead somehow?
+
+Ultimately the goal is:
+* generate the properly Smten class instances.
+* implement the Symbolic primitives
+
+To start, I would like to just support booleans. But perhaps keep the general
+structure as is, because I know I'll want to add bit vectors and integers
+eventually.
+
+I want to separate Bool, Integer, and Bit from SMT formulas. Just because it
+doesn't seem like it should hurt much, but it makes things cleaner and easier
+to understand.
+
+What things will I want then?
+
+Smten.Runtime.Formula (BoolF(..))
+Smten.Runtime.ErrorString (ErrorString(..))
+Smten.Runtime.Smten
+  class SmtenN a where
+    realizeN :: Model -> a -> a
+    errorN :: ErrorString -> a
+    iteN :: BoolF -> a -> a -> a
+    
+
+Smten.Compiled.Smten.Symbolic0
+  Symbolic, return_symbolic, bind_symbolic,
+  mzero_symbolic, mplus_symbolic, run_symbolic
+    (I'm not sure how to pass the 'solver' argument to run_symbolic)
+

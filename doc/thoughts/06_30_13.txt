@@ -1,0 +1,98 @@
+
+Sun Jun 30 14:40:23 EDT 2013
+
+Names.
+
+Given a name, I want to turn it into a unique identifying properly formed
+haskell name.
+
+In particular:
+* constructors start caps
+* others start lower
+* either all symbols or no symbols
+* if symbols, surround by parens.
+
+For unique: use the unique name.
+For now, I'll take the following approach:
+* convert all symbolic things to lower case letters.
+* always append the unique name with "_XXX" at the end.
+
+I think that should do it.
+
+nameUnique gives the Unique thing.
+nameOccName gives the "occurrence" name. This is the human readable thing I
+            want to include for debugging.
+nameModule_maybe gives the module for the name, if it has any.
+
+Unique is an instance of Show. I should be able to get the string that way.
+occNameString can be used to get the String for an occName.
+
+moduleNameString . moduleName 
+
+can be used to get the string for the module name.
+
+So I propose the following:
+
+1. extract the module name, if any.
+2. extract the occ name.
+3. translate chars in the occ name to supported characters.
+4. extract the unique name.
+5. append: module "." occ' _ uniq
+
+Let's see what that does.
+
+Sun Jun 30 14:59:11 EDT 2013
+
+Okay... looks good. But now I have the following issues:
+
+* (->) should remain as (->). Don't sanitize it, and don't qualify it.
+
+Sun Jun 30 15:09:29 EDT 2013
+
+Good... But now 'fix' isn't type checking. I don't understand why.
+Something about the types not working out.
+
+Can I comment that out for now?
+
+Next problem: the Unique names are saying things are different from what they
+are. It has two different False, for example.
+
+How about: let me not add the unique name to data constructors.
+
+isDataConName.
+
+Apparently that doesn't work...
+
+Hmm... It would seem, perhaps, that I need more information about the context
+of use of the name. Do I have that anywhere?
+
+Hmm... This suggests to me I really don't want to use the unique part of the
+name except in special circumstances....
+
+Note: this means I need to be more careful about how I translate symbols.
+
+Now I'm running into the problem that...
+
+We call a method 'foo', but there is no implementation given for it.
+
+In other words, I need to generate the code for methods.
+
+The proposal is, for class TyCons, I should generate record constructors.
+
+Okay. That works... but I'll need to fix how I generate the type. In
+particular: I need to remove the class type variables from the forall for each
+method.
+
+And I need to put dictionaries back in.
+
+I put dictionaries back in. Now I need to make sure the methods are unique.
+Ug. How do I do that?
+
+See if the occname starts with '$'? That's worth a try, I suppose.
+
+Cool. That works. But now I need to generate the 'dictionary' argument in the
+type.
+
+Let me come back to this later, when I'm willing to think properly about how
+it should be done.
+

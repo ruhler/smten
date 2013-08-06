@@ -1,0 +1,65 @@
+name: smten-stp
+version: 4.0.0.0
+synopsis: Smten library
+license: BSD3
+license-file: LICENSE
+copyright: Copyright (c) 2012, 2013  SRI International, Inc.
+author: Richard Uhler
+maintainer: ruhler@csail.mit.edu
+category: Language
+build-type: Simple
+cabal-version: >=1.8
+stability: experimental
+description:
+  This package provides an STP backend for smten.
+  .
+  The smten-stp solver requires STP is installed. STP can be downloaded
+  from <http://sites.google.com/site/stpfastprover>.
+  .
+  You may need to add the library path containing libstp as an extra
+  library directory to your cabal configuration file. For example, if the stp
+  library is installed in \/home\/ruhler\/local\/lib, and your cabal
+  configuration is in ~\/.cabal\/config, add the following line to
+  ~\/.cabal\/config:
+  .
+  >   extra-lib-dirs: /home/ruhler/local/lib
+
+source-repository this
+  type: git
+  location: /afs/csail.mit.edu/u/r/ruhler/git/smten
+  --branch:
+  --tag:
+
+library
+  exposed-modules:
+    Smten.Symbolic.Solver.STP
+    Smten.Compiled.Smten.Symbolic.Solver.STP
+
+  other-modules:
+    Smten.Runtime.STPFFI
+  
+    Smten.Tests.STP
+    Smten.Compiled.Smten.Tests.STP
+
+    Smten.Tests.SMT.Memory.STP
+    Smten.Compiled.Smten.Tests.SMT.Memory.STP
+    
+  build-depends: base ==4.6.*, hashtables ==1.0.*,
+                 smten-plugin ==4.0.*, smten-base ==4.0.*, smten-lib ==4.0.*
+  extra-libraries: stp stdc++
+  ghc-options: -fwarn-unused-binds -fwarn-unused-imports
+
+Test-Suite test-smten-stp
+  type: exitcode-stdio-1.0
+  main-is: tests.hs
+  build-depends: base ==4.6.*, hashtables ==1.0.*,
+                 smten-base ==4.0.*, smten-lib ==4.0.*
+  extra-libraries: stp stdc++
+
+Benchmark bench-memory
+  type: exitcode-stdio-1.0
+  main-is: bench-memory.hs
+  build-depends: base ==4.6.*, hashtables ==1.0.*,
+                 smten-base ==4.0.*, smten-lib ==4.0.*
+  extra-libraries: stp stdc++
+

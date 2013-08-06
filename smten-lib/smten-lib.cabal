@@ -1,0 +1,154 @@
+name: smten-lib
+version: 4.0.0.0
+synopsis: Smten library
+license: BSD3
+license-file: LICENSE
+copyright: Copyright (c) 2012, 2013  SRI International, Inc.
+author: Richard Uhler
+maintainer: ruhler@csail.mit.edu
+category: Language
+build-type: Simple
+cabal-version: >=1.8
+stability: experimental
+
+source-repository this
+  type: git
+  location: /afs/csail.mit.edu/u/r/ruhler/git/smten
+  --branch:
+  --tag:
+
+library
+  exposed-modules:
+    Smten.Runtime.AnyKeyMap
+    Smten.Runtime.Assert
+    Smten.Runtime.Solver
+    Smten.Runtime.SolverAST
+    Smten.Runtime.Debug
+    Smten.Runtime.Result
+
+    Smten.Control.Monad.Error
+    Smten.Control.Monad.Error.Class
+    Smten.Control.Monad.Reader
+    Smten.Control.Monad.Reader.Class
+    Smten.Control.Monad.State.Class
+    Smten.Control.Monad.State.Lazy
+    Smten.Control.Monad.State
+    Smten.Control.Monad.Trans
+    Smten.Data.Array
+    Smten.Data.Array0
+    Smten.Data.Bit
+    Smten.Data.Bit0
+    Smten.Data.Ix
+    Smten.Data.Map
+    Smten.Debug.Trace0
+    Smten.Debug.Trace
+    Smten.Smten.TypeLits
+
+    Smten.Sudoku.BitCell
+    Smten.Sudoku.Board
+    Smten.Sudoku.Boards
+    Smten.Sudoku.Cell
+    Smten.Sudoku.EnumCell
+    Smten.Sudoku.IntegerCell
+    Smten.Sudoku.Solver
+
+    Smten.Symbolic0
+    Smten.Symbolic
+    Smten.Symbolic.Solver.Pure
+    Smten.Symbolic.Solver.Debug
+    Smten.System.Environment
+    Smten.System.Exit
+    Smten.System.Timeout
+    Smten.Tests.Array
+    Smten.Tests.Basic
+    Smten.Tests.Bit
+    Smten.Tests.DataMap
+    Smten.Tests.List
+    Smten.Tests.Prelude
+    Smten.Tests.State
+    Smten.Tests.SMT.Test
+    Smten.Tests.SMT.Bit
+    Smten.Tests.SMT.Core
+    Smten.Tests.SMT.Datatype
+    Smten.Tests.SMT.Error
+    Smten.Tests.SMT.Integer
+    Smten.Tests.SMT.Memory
+    Smten.Tests.SMT.Memory.Pure
+    Smten.Tests.SMT.Sudoku
+    Smten.Tests.Test
+    Smten.Tests.All
+
+    Smten.Compiled.GHC.TypeLits
+    Smten.Compiled.Smten.Control.Monad.Error
+    Smten.Compiled.Smten.Control.Monad.Error.Class
+    Smten.Compiled.Smten.Control.Monad.Reader
+    Smten.Compiled.Smten.Control.Monad.Reader.Class
+    Smten.Compiled.Smten.Control.Monad.State.Class
+    Smten.Compiled.Smten.Control.Monad.State.Lazy
+    Smten.Compiled.Smten.Control.Monad.State
+    Smten.Compiled.Smten.Control.Monad.Trans
+    Smten.Compiled.Smten.Data.Array
+    Smten.Compiled.Smten.Data.Array0
+    Smten.Compiled.Smten.Data.Bit
+    Smten.Compiled.Smten.Data.Bit0
+    Smten.Compiled.Smten.Data.Ix
+    Smten.Compiled.Smten.Data.Map
+    Smten.Compiled.Smten.Debug.Trace0
+    Smten.Compiled.Smten.Debug.Trace
+    Smten.Compiled.Smten.Smten.TypeLits
+
+    Smten.Compiled.Smten.Sudoku.BitCell
+    Smten.Compiled.Smten.Sudoku.Board
+    Smten.Compiled.Smten.Sudoku.Boards
+    Smten.Compiled.Smten.Sudoku.Cell
+    Smten.Compiled.Smten.Sudoku.EnumCell
+    Smten.Compiled.Smten.Sudoku.IntegerCell
+    Smten.Compiled.Smten.Sudoku.Solver
+
+    Smten.Compiled.Smten.Symbolic0
+    Smten.Compiled.Smten.Symbolic
+    Smten.Compiled.Smten.Symbolic.Solver.Pure
+    Smten.Compiled.Smten.Symbolic.Solver.Debug
+    Smten.Compiled.Smten.System.Environment
+    Smten.Compiled.Smten.System.Exit
+    Smten.Compiled.Smten.System.Timeout
+    Smten.Compiled.Smten.Tests.Array
+    Smten.Compiled.Smten.Tests.Basic
+    Smten.Compiled.Smten.Tests.Bit
+    Smten.Compiled.Smten.Tests.DataMap
+    Smten.Compiled.Smten.Tests.List
+    Smten.Compiled.Smten.Tests.Prelude
+    Smten.Compiled.Smten.Tests.State
+    Smten.Compiled.Smten.Tests.SMT.Test
+    Smten.Compiled.Smten.Tests.SMT.Bit
+    Smten.Compiled.Smten.Tests.SMT.Core
+    Smten.Compiled.Smten.Tests.SMT.Datatype
+    Smten.Compiled.Smten.Tests.SMT.Error
+    Smten.Compiled.Smten.Tests.SMT.Integer
+    Smten.Compiled.Smten.Tests.SMT.Memory
+    Smten.Compiled.Smten.Tests.SMT.Memory.Pure
+    Smten.Compiled.Smten.Tests.SMT.Sudoku
+    Smten.Compiled.Smten.Tests.Test
+    Smten.Compiled.Smten.Tests.All
+
+
+  build-depends: base ==4.6.*, hashtables ==1.0.*, mtl ==2.1.*,
+                 pretty ==1.1.*, array ==0.4.*, ghc-prim ==0.3.*,
+                 smten-base ==4.0.*, smten-plugin ==4.0.*
+  --ghc-prof-options: -fprof-auto-top
+  ghc-options: -fwarn-unused-binds -fwarn-unused-imports
+
+Test-Suite test-smten-lib
+    type: exitcode-stdio-1.0
+    main-is: tests.hs
+    build-depends: base ==4.6.*, hashtables ==1.0.*, mtl ==2.1.*,
+                   pretty ==1.1.*,  array ==0.4.*, ghc-prim ==0.3.*,
+                   smten-base ==4.0.*, smten-plugin ==4.0.*
+
+Benchmark bench-memory
+    type: exitcode-stdio-1.0
+    main-is: bench-memory.hs
+    build-depends: base ==4.6.*, hashtables ==1.0.*, mtl ==2.1.*,
+                   pretty ==1.1.*,  array ==0.4.*, ghc-prim ==0.3.*,
+                   smten-base ==4.0.*, smten-plugin ==4.0.*
+

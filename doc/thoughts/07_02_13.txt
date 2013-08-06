@@ -1,0 +1,110 @@
+
+Tue Jul  2 08:47:12 EDT 2013
+
+Current issue I'm seeing:
+
+We need to recognize what bindings take dictionaries as arguments in their
+types.
+
+For example, the type of the default show method should be
+ show :: Show a -> a -> String
+
+But currently we are outputting...
+
+Actually, we are outputting the right type. That's not the issue.
+
+Where is the type error here?
+
+I see the problem. It's in the definition of the method. I need to fix that
+somehow.
+
+For example: the method show is having type:
+
+forall a . Show a -> a -> String
+
+Which is the right type. But, when I turn it into a record constructor, I want
+it to have type:
+
+    forall . a -> String
+
+Note: We don't bind the type variable 'a' here, because it's bound in the Show
+data declarations, and we don't include the dictionary.
+
+I think it's safe to assume the first argument is the dictionary, and we
+always want to drop it? Maybe not. What if you have additional contexts in the
+method?
+
+Let me see if there's any other information I can get at.
+
+Tue Jul  2 09:03:12 EDT 2013
+
+No, but it looks like if I get rid of the type variables already bound the
+drop the first argument, things could go okay, so I'll do that for now and
+we'll see when we run into trouble because of it.
+
+Next issue:
+ Scoped type variables: this issue of having a monomorphic local let binding
+ with a variable type. Scoped type variables seems to have fixed it.
+
+Next issue: parse error?
+
+I don't understand.
+
+Oh. I think I see. We have nested forall types.
+
+Is that okay? We'll find out I suppose.
+
+Next issue: recognize () as a syntax.
+
+Next issue: dealing with class contexts.
+
+It looks like the way class contexts are handled is the dictionary takes as
+argument, before its methods, the dictionaries of its contexts.
+
+I need to include that in the generated dictionary declaration.
+
+Where do I get that info?
+
+I wonder... would this not be easier if I used the types given by the
+algebraic constructor instead of from the methods? The only thing I need the
+methods for are the names...
+
+But I suppose, if I need to line up names anyway, I may as well do it the way
+I am doing it now.
+
+So, how do I figure out the context args?
+
+Err...
+
+Or, is there another way to line things up? Just assume the methods come last,
+match those up with the algebraic constructors, and go from there?
+
+I suppose it depends what it looks like when you call, say, (==) on an
+argument of type Num. Do I need a name to extract the dictionary from that?
+
+Looks like there's something called 
+classAllSelIds. Maybe that does exactly what I want? Let's see.
+
+Cool. That appears to work.
+
+Next issue: I need unique names on local variables.
+
+Except, then we can't tell if it's False or not...
+
+How about, starts with a lower case character?
+
+No. Hmm...
+
+I need more context, if I can get it. Because type variables look just like
+local variables, but if I use the unique name for type variables, then we have
+this monomorphic issue.
+
+Perhaps there is a better solution to that problem than not using unique
+names?
+
+Let me leave it here for now. This is good progress.
+
+You know... this just might actually work?
+
+I'm getting pretty close.
+

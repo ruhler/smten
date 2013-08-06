@@ -1,0 +1,307 @@
+
+Thu Jun 20 08:40:38 EDT 2013
+
+arch-extract is still running now. It has been over 12 hours. It is still
+making progress. Memory usage has crept up to 14%. I don't think it's going to
+finish anytime soon.
+
+It's obviously way better than before my changes.
+
+So... what do I want to do?
+
+I should re-establish what the performance problem is.
+
+* is it still time spent in the SMT solver? I suspect yes.
+* is it because of really big queries? 
+  If so, I should look at the queries and see if there's a way to shrink them.
+* could it be from loss of equality information?
+For example, we have the high level knowledge that
+    x == y ==> f x == f y
+What if I kept track of that and added it to the query? Even though the query
+will be larger from doing this, perhaps it will solve much faster?
+* is it a memory leak issue?
+
+Whatever I do, I should do it with understanding. Understand the problem.
+Do mini experiments to test my hypothesis for a solution, and go from there.
+
+I'm pretty confident if I want to get all of arch-extract faster, I'll have to
+get the isCF queries to go a lot faster, so I think it's safe to focus on
+those.
+
+1. time profile the isCF queries.
+99.6% time in Yices2Check.
+
+2. heap profile the isCF queries.
+hc: Not a whole lot. Top is: MOD_mkCore.CAF, MAIN, Smten.Lib.CAF
+hy: Evenly distributed: SmtenHS0, ARR_WORDS, Bit, Bool, Integer, etc...
+
+3. Isolate a single isCF query which takes a while that I can focus on.
+2.8 looks to be about the worst.
+2: decode
+8: dmem move
+
+The rules are conflict free. There is not counterexample, so we are talking
+about an UNSAT query here.
+
+time profile of 2.8: 99.8% time in Yices2 Check.
+
+Let me try, just for the fun of it, running master branch to see if it makes
+a difference.
+
+time in common branch: 34 seconds.
+time in master branch: 23 seconds.
+
+Let me print out the queries for each:
+  master: 9.4M
+  common: 3.5M
+
+Now that's interesting. A smaller query takes longer to run?
+
+Let me try to get a sense of the queries if I can.
+master:
+  * 414 vars total. 122 of them user. The rest error.
+  * opportunity for inferred value propagation
+  * we see things like: if p then x else x
+  * see nested nots: not (not p)
+
+common:
+  * 511 vars total, 122 of the user. The rest error.
+  * opportunity for inferred value propagation
+  * we see things like: if p then x else x
+     which surprises me...
+  * see nested nots
+
+Note: the opportunity for inferred value propagation came from fromMaybe not
+being as smart as it could. That is, it's an issue with case desugaring.
+
+If I change fromMaybe to be a little smarter, we end up with half as many
+error variables, and it takes half as much time to answer the query.
+
+Here's a test I could perform. Let's assume we won't have any errors. Because
+I've run it before, and I know we don't.
+
+Then, let's say for error I just pick an arbitrary value. Say False for bool,
+0 for Integer, and 0 for bit vector. Then measure how long it takes to do
+things.
+
+That is: how much improvement can I expect to get if we don't introduce
+spurious error variables?
+
+Thu Jun 20 10:08:56 EDT 2013
+
+It looks like: a lot of improvement.
+
+with error abstraction as variable: 4m55s
+with default values for errors: 37s
+
+That is an 8x improvement. That is big.
+
+What this suggests to me: if I do static analysis to avoid errors we know we
+can't reach, that could make a big difference.
+
+In fact... let me try running the whole program that way, see how it does?
+
+Note: that time is still dominated by yices2 check.
+
+I'm running the whole program now with this hack.
+It's hard to judge how much better it is performing.
+I would guess this is a significant improvement, but we still have a ways to
+go.
+
+Of course, I have to implement the static analysis to do this improvement
+"legally" in practice.
+
+But this is a good find. I think this is a worthy next step to work on. I can
+continue focusing on the isCF queries. I think the last isCF query in
+particular demonstrates a case where this error hack does not help, so once I
+get the error thing going, I can try to figure out what's up with that before
+having to go into a deeper query.
+
+Okay then! Let's talk about how I'm going to handle this error thing.
+
+The goal: reduce the number of 'errors' in expressions. Especially given I
+know all of these errors are unreachable. I have seen that reducing the number
+of error variables, without otherwise changing the structure of the query, can
+improve the SMT check time by a significant amount (factor of 8).
+
+I believe most of these errors are as a result of case desugaring. If we did
+proper static analysis, they would go away.
+
+I already worked out a plan for how to do this, but I assumed I would be doing
+it at desugar time. I think I may wish to move it to a separate static
+analysis phase.
+
+The idea is as follows:
+
+case expressions turn into nested things:
+
+case x of
+    Foo -> ...
+    _ -> case x of
+              Bar -> ...
+              _ -> case x of
+                       Sludge -> ...
+                       _ -> error
+
+Notice the 'error' at the end. If the only options for 'x' are Foo, Bar, or
+Sludge, then we know statically the error can never be encountered.
+
+Here's what we want to do:
+* allow an irrefutable case match
+    case x of
+        Foo -> ...
+
+This means we know for sure it is going to match.
+
+* have an optimization pass which does the following:
+
+Keep track of a current context. The context is: for each expression that has
+been in a case argument above us, list the set of possible constructors for
+that expression.
+
+If we want, we should be able to simplify it to: a context for each *variable*
+that has been in a case argument above us, under the assumption that any
+expression that is used as the argument to multiple case expressions, which is
+obviously used that way, will have been desugared into a variable for sharing
+purposes. Then this should be easy to keep track of.
+
+When we reach a new case expression: look up its argument in the context. If
+it is there, and we can see that the argument cannot match, then get rid of
+the case, turn it into the default branch. If it is there, and we see that the
+argument must match, then get rid of the case, turn it into the taken branch.
+
+Umm... we have to be careful about errors though, so in the case where we know
+it must be taken, probably just want to use an irrefutable case match.
+
+When traversing inside a body of a case, add info about the matched or
+not-matched constructor to the context.
+
+It really is quite a simple traversal. We can do it post type inference.
+We can do it post type checking too I suppose... but I would want to type
+check again just to make sure I didn't mess anything up. It could be bad to do
+before type inference, because we might introduce ambiguities that way.
+
+I'll want to generate special code for handling irrefutable cases.
+
+To test the transformation: I should dump the smten code before and after the
+pass and see if it's done the right thing that I expect.
+
+One problem. What about let expressions?
+
+For example, in practice I expect to have things like:
+    let s = case x of
+              Foo ->
+              _ -> error
+    in case x of
+          Bar -> ...
+          _ -> s
+
+If the only options for x are Foo and Bar, we should be able to get rid of
+this error, but my proposed optimization above will fail to detect this,
+because it doesn't see the context of use when it tries to simplify the first
+case expression.
+
+That's sad.
+
+It's hard, because you could use 's' in two different contexts. Is it worth
+losing sharing to specialize it for one context but not the other?
+
+I feel like it could help to look at some examples.
+
+We could try to do this at desugar time instead of as a separate pass. The
+advantage is: I think we start with all the interesting information I want to
+take advantage of. The disadvantage is: we have to have information about data
+types, which means we have to do type checking before desugaring. In which
+case, what is the point of desugaring at all?
+
+...
+
+Is there any way we could use the ghc front end for smten?
+
+Then it would do all this stuff for us. And a lot more interesting stuff too.
+I'm just not sure how I would insert the symbolic stuff into it.
+
+It would be really cool if I could get it to work. Because then you really
+could write any sort of haskell you want. We could reuse all of Haskell's
+parsing, type checking, optimizations, modular compilation.
+
+We would loose out on numeric type support, which is sad... But perhaps not
+too important?
+
+I just don't know how we would change things.
+
+One idea could be convert the Core to something I understand, then you my
+existing CodeGen on the Core. It's just a question of whether we have all the
+information we need, and not too much information.
+
+I think it's worth looking at. Can I compile Core to Haskell code?
+Meaning: can I read in Core, and can I write out Core, and can I translate
+everything from core back into a surface Haskell syntax?
+
+Thu Jun 20 11:54:21 EDT 2013
+
+One issue: I only get access to things being compiled. I don't get access, for
+example, to pre-compiled packages or prelude.
+
+Perhaps that's okay. It's no worse than what I have now. So long as I can
+provide primitive types somehow, and primitive functions?
+
+I must say. This is very tempting. To let ghc do all the work.
+
+The interface isn't so bad. I just need to work out the key issues:
+* numeric type support (don't worry about initially)
+* access to pre-compiled code
+* how to specify primitive types 
+
+Let me come up with some basic test I can try to get up and running which
+exercises some of these issues.
+
+Thu Jun 20 12:40:35 EDT 2013
+
+The question is how do I want to leverage this?
+
+1. Extract the desugared program. Then generate haskell just like I do now.
+2. Try to generate code into the given module.
+This, I fear, is tricky. I'm not doing simple transformations. We are talking
+about linking with new files, importing new things, defining and exporting
+new things.
+
+
+So I think (1) is the way to go.
+
+Things to figure out:
+* What does a data type definition look like?
+
+Thu Jun 20 13:13:06 EDT 2013
+
+I have access to that information.
+
+There certainly are many cases to worry about I otherwise wouldn't. But that
+doesn't mean we are less capable. It just means we have the potential to be
+very much more capable, as I desire to do things.
+
+Note: my plugin can liftIO. So I can certainly generate a file from this. I
+can generate a haskell file from this.
+
+For primitive data types, I can use empty data declarations.
+For primitive functions, I can define them as 'error'. Or, just have them in a
+module you import, and I'll compile those modules manually. Which I sort of do
+anyway.
+
+We can use annotations if desired to link to a primitive.
+
+What do you think? Should I try making this work?
+
+The first step would be to get concrete evaluation going.
+
+I suppose one approach I could take would be: convert a ModuleGuts to my own
+Module data type. Then I can use my existing back end to do the rest. That at
+least would provide an abstraction. It would also reveal fairly quickly, I
+think, what problems I'm going to run into.
+
+I like that approach. It let's me keep reusing my own compiler. It just uses
+ghc as an alternative front end.
+
+I don't know. This is a big project. And while I think it's worth considering,
+I fear it is too big a distraction for right now.
+

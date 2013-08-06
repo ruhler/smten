@@ -1,0 +1,128 @@
+
+Wed Jul  3 08:49:15 EDT 2013
+
+I think, better than trying to recognize which variables are type variables
+and which aren't, it would be better to try and recognize which variables are
+local variables and which not.
+
+Though I could probably do them both as easily using my monad...
+
+The other question is: is 'cast' used to resolve issues with monomorphic type
+variables?
+
+Wed Jul  3 09:05:11 EDT 2013
+
+Looks like using unique names for local variables works.
+
+Now I just need to work through some library issues. This shouldn't be hard.
+
+Wed Jul  3 09:25:42 EDT 2013
+
+That's done. We are very close now. Very very close.
+
+Problem: dictionaries should not have unique name. But methods should.
+
+I think the differences is...
+
+$c...   - method, add unique name.
+$f...   - dictionary, don't add unique name ?
+
+Wed Jul  3 09:34:02 EDT 2013
+
+Trouble now: we generate 2 mains.
+
+Is there some way for me to know which main is the main main?
+
+Looks like: runMainIOName.
+
+Err, no. That's not it. That's the name of runMainIO function.
+
+Looks like... call it  ":Main.main"?
+
+Wed Jul  3 09:48:30 EDT 2013
+
+It worked!
+
+Wow. That's nifty.
+
+Let me try to enable more of the test cases. The ones involving dictionaries.
+Then I'll summarize what we are not allowed currently.
+
+Not allowed:
+* deriving anything
+    "can't make a derived instance of Foo. Foo is not a derivable class".
+* arithmetic sequences (hard-wired to toEnum and fromEnum).
+    rebindable syntax does not fix this.
+* string literal patterns (hard-wired to stringEq)
+    (but maybe rebindable syntax will fix this?)
+* boolean guard: need to do  True <- x  instead.
+
+Err... okay, so there are some other things to work out too. Like the other
+test cases I have. I don't feel like dealing with that now.
+
+But that's good work for today on this.
+
+Wed Jul  3 15:00:21 EDT 2013
+
+You know? I could probably get some of these builtin things to work. They are
+just function calls. Why not redirect the function calls to the ones I want to
+use?
+
+Let me start with stringEq then:
+  Smten.Compiled.GHC.Base.stringEq
+
+I don't have a GHC.Base implementation... And really, I don't think I can.
+
+How about I put this in Eq something, and I'll re-export it in a manual
+Smten.Compiled.GHC.Base.stringEq.
+
+Wed Jul  3 15:15:20 EDT 2013
+
+String literal patterns work now. Next: arithmetic sequence.
+
+For this, I'll need to define the Enum class and implementations for it I
+suppose. Start with just the definition of it.
+
+Need: GHC.Enum.enumFrom
+              .enumFromTo
+              .enumFromThen
+              .enumFromThenTo
+              .kfEnumInteger
+
+Now I need the implementation for integer. Where should that go?
+
+How about its own file?
+
+Because Enum need not know anything about Integer, and Integer need not know
+anything about Enum.
+
+Wed Jul  3 15:48:17 EDT 2013
+
+Now we have support for arithmetic sequences.
+Next step?
+
+Uncomment some more thought to be failing tests and handle those.
+
+Foo tests. I expect these to work.
+
+The Foo tests work.
+
+Now the MultiFoo tests? They work.
+
+Which leaves just:
+* deriving tests - which will not work
+* class context test.
+  Which I suspect does not work now, but should.
+
+The problem is this: we are extracting the superclass of a FooBar, by creating
+an anonymous polymorphic function and applying it to a monomorphic argument.
+
+Brainstorm to fix:
+* turn (\x -> ...) y    into let x = y in ...
+    Which would turn x into ...
+    Which would not help at all, really.
+* don't emit types in let declarations?
+    Though we'll probably end up with some ambiguous types?
+
+I don't know. Perhaps this is a good stopping place for now.
+

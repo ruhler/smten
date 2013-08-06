@@ -1,0 +1,38 @@
+name: smten-plugin
+version: 4.0.0.0
+synopsis: Smten library
+license: BSD3
+license-file: LICENSE
+copyright: Copyright (c) 2012, 2013  SRI International, Inc.
+author: Richard Uhler
+maintainer: ruhler@csail.mit.edu
+category: Language
+build-type: Simple
+cabal-version: >=1.8
+stability: experimental
+
+source-repository this
+  type: git
+  location: /afs/csail.mit.edu/u/r/ruhler/git/smten
+  --branch:
+  --tag:
+
+library
+  exposed-modules:
+    Smten.Plugin.Annotations
+    Smten.Plugin.Plugin
+  other-modules:
+    Smten.Plugin.CG
+    Smten.Plugin.Class
+    Smten.Plugin.Data
+    Smten.Plugin.Exp
+    Smten.Plugin.Name
+    Smten.Plugin.Newtype
+    Smten.Plugin.TyCon
+    Smten.Plugin.Type
+    Smten.Plugin.Output.Syntax
+    Smten.Plugin.Output.Ppr
+  build-depends: base ==4.6.*, ghc ==7.6.*, directory ==1.2.*,
+                 mtl ==2.1.*, pretty ==1.1.*
+  ghc-options: -fwarn-unused-binds -fwarn-unused-imports
+
