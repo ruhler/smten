@@ -3,15 +3,19 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE TypeSynonymInstances #-}
-{-# LANGUAGE NoImplicitPrelude, RebindableSyntax #-}
 {-# LANGUAGE ExplicitNamespaces #-}
+{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE UndecidableInstances #-}
 module Smten.Smten.TypeLits (
     Nat, SingI, type (+),
  ) where
 
-import qualified Prelude as P
 import GHC.TypeLits
+import Smten.Smten.TypeLitsTH
 
-type instance 2 + 3 = 5
-type instance 3 + 2 = 5
+-- Tell GHC about addition. At least for numbers up to 256.
+-- If you need math for bigger numbers, expand them here.
+mksuccs [0..256]
+mkadds [2..256]
+type instance a + b = TAdd a b
 

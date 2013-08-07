@@ -19,11 +19,8 @@ source-repository this
 
 library
   exposed-modules:
-    Smten.Runtime.AnyKeyMap
-    Smten.Runtime.Assert
     Smten.Runtime.Solver
     Smten.Runtime.SolverAST
-    Smten.Runtime.Debug
     Smten.Runtime.Result
 
     Smten.Control.Monad.Error
@@ -131,9 +128,15 @@ library
     Smten.Compiled.Smten.Tests.Test
     Smten.Compiled.Smten.Tests.All
 
+  other-modules:
+    Smten.Runtime.AnyKeyMap
+    Smten.Runtime.Assert
+    Smten.Runtime.Debug
+    Smten.Smten.TypeLitsTH
 
   build-depends: base ==4.6.*, hashtables ==1.0.*, mtl ==2.1.*,
                  pretty ==1.1.*, array ==0.4.*, ghc-prim ==0.3.*,
+                 template-haskell ==2.8.*,
                  smten-base ==4.0.*, smten-plugin ==4.0.*
   --ghc-prof-options: -fprof-auto-top
   ghc-options: -fwarn-unused-binds -fwarn-unused-imports
@@ -143,6 +146,7 @@ Test-Suite test-smten-lib
     main-is: tests.hs
     build-depends: base ==4.6.*, hashtables ==1.0.*, mtl ==2.1.*,
                    pretty ==1.1.*,  array ==0.4.*, ghc-prim ==0.3.*,
+                   template-haskell ==2.8.*,
                    smten-base ==4.0.*, smten-plugin ==4.0.*
 
 Benchmark bench-memory
@@ -150,5 +154,6 @@ Benchmark bench-memory
     main-is: bench-memory.hs
     build-depends: base ==4.6.*, hashtables ==1.0.*, mtl ==2.1.*,
                    pretty ==1.1.*,  array ==0.4.*, ghc-prim ==0.3.*,
+                   template-haskell ==2.8.*,
                    smten-base ==4.0.*, smten-plugin ==4.0.*
 
