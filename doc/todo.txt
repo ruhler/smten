@@ -1,7 +1,3 @@
-Priority::
-* Add SMT Error test (if needed)
-* Add SMT Share test (if needed)
-
 Cleanup::
 * Support symbolic IO?
     Or is it okay because it can't ever appear in an assertion?
@@ -11,6 +7,7 @@ Cleanup::
 
 Performance::
 * put yices2 in one-shot mode?
+* add back in post-optimization code generation
 * add -O1 flag when compiling with plugin
 * add -O2 flag when compiling with plugin
 * verify State, Reader, and Map libraries match the haskell libraries
@@ -18,6 +15,9 @@ Performance::
     could lead to a decent performance improvement in that case.
 * make <, >, >= primitives?
 * use explicit export lists in generated code?
+* STP goes much faster than yices2 on arch-extract
+    Could this be because STP case splits on Integers?
+    Could we try doing that for yices2?
     
 
 Future Work::
@@ -27,10 +27,16 @@ Future Work::
 Front End::
 * Auto-derive Show, Eq, Ord, Ix
   maybe look into possibility of using Eq, Ord, etc... from ghc for this
-* Can we generate code after optimizations? How?
 
 Documentation
-* Update user guide
+* Write a user's guide and put it somewhere reasonable. Include:
+** how to use the plugin with -fplugin switch
+** use of NoImplicitPrelude, RebindableSyntax, Smten.Prelude
+** How code is generated as Smten.Compiled.*
+* Generated code should have {-# OPTIONS_HADDOCK hide #-}
+* Generated code should have a comment saying it was automatically generated.
+* Make it so generated haddock documentation for smten-base is nice
+* Make it so generated haddock documentation for smten-lib is nice
 
 Runtime::
 * detect potential non-termination and perform appropriate abstraction and
@@ -38,12 +44,12 @@ Runtime::
 
 Known Bugs::
 * There's a very tiny memory leak in stp.
+* yices1 seg faults on arch-extract isCF for rules 2, 4
 
 Suspected Bugs::
 * pass a symbolic list to 'error'
 * I suspect problems with using a function called 'main' as a normal function
   exported to another module instead of just as a top level main function.
-* calling plugin with -O2 flag causes issues
             
 Other::
 * TODO's inlined in the code

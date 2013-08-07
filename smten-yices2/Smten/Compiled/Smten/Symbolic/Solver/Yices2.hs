@@ -106,7 +106,7 @@ instance SolverAST Yices2 YTerm where
      withy2 y c_yices_free_context
      c_yices_exit
 
-  assert y e = withy2 y $ \ctx -> c_yices_assert_formula ctx e
+  assert y e = {-# SCC "Yices2Assert" #-} withy2 y $ \ctx -> c_yices_assert_formula ctx e
 
   bool _ p = if p then c_yices_true else c_yices_false
   integer _ i = c_yices_int64 (fromInteger i)

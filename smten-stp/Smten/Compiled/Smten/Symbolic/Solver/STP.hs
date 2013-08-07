@@ -89,7 +89,7 @@ instance SolverAST STP Formula where
   -- valid, the assertions imply False, meaning they are unsatisfiable. If
   -- False is not valid, then there's some assignment which satisfies all
   -- the assertions.
-  check s = do
+  check s = {-# SCC "STPCheck" #-} do
     false <- withvc s c_vc_falseExpr
     r <- withvc s $ \vc -> c_vc_query vc false
     case r of
@@ -99,7 +99,7 @@ instance SolverAST STP Formula where
 
   cleanup s = withvc s c_vc_Destroy
         
-  assert s e = withvc s $ \vc -> c_vc_assertFormula vc (expr e)
+  assert s e = {-# SCC "STPAssert" #-} withvc s $ \vc -> c_vc_assertFormula vc (expr e)
 
   bool s True = STPF <$> withvc s c_vc_trueExpr
   bool s False = STPF <$> withvc s c_vc_falseExpr

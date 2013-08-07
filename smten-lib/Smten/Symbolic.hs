@@ -1,5 +1,8 @@
 
 {-# LANGUAGE NoImplicitPrelude, RebindableSyntax #-}
+
+-- | This module provides the Symbolic monad, for orchestration of symbolic
+-- computations.
 module Smten.Symbolic (
     Symbolic, Solver, run_symbolic,
     MonadPlus(..),
@@ -27,9 +30,11 @@ instance MonadPlus Symbolic where
     mzero = mzero_symbolic
     mplus = mplus_symbolic
 
+-- | The set of booleans { True, False }
 free_Bool :: Symbolic Bool
 free_Bool = mplus (return True) (return False)
 
+-- | Assert the given predicate is satisfied.
 assert :: Bool -> Symbolic ()
 assert p = if p then return () else mzero
 

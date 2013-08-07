@@ -73,6 +73,7 @@ indir build/smten-lib {
     hrun cabal configure --enable-tests --enable-benchmarks
     hrun cabal build
     hrun cabal test
+    hrun cabal haddock
     hrun cabal sdist
     hrun cabal install --force-reinstalls
 }

@@ -123,13 +123,13 @@ instance SolverAST Yices1 YExpr where
     return (bvInteger bits)
 
 
-  check y = do
+  check y = {-# SCC "Yices1Check" #-} do
     res <- withy1 y c_yices_check
     return $ toResult res
 
   cleanup y = withy1 y c_yices_del_context
 
-  assert y p = withy1 y $ \ctx -> c_yices_assert ctx p
+  assert y p = {-# SCC "Yices1Assert" #-} withy1 y $ \ctx -> c_yices_assert ctx p
   bool y True = withy1 y c_yices_mk_true
   bool y False = withy1 y c_yices_mk_false
   integer y i = withy1 y $ \ctx -> c_yices_mk_num ctx (fromInteger i)
