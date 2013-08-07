@@ -219,7 +219,7 @@ expCG (Cast x c)
       return $ S.AppE (S.VarE dcnm') x'
 
 expCG (Cast x c) = do
-  lift $ errorMsg (text "Warning: Using unsafeCoerce for cast " <+> ppr x <+> showco c)
+  --lift $ errorMsg (text "Warning: Using unsafeCoerce for cast " <+> ppr x <+> showco c)
   x' <- expCG x
   t' <- typeCG . dropForAlls $ pFst (coercionKind c)
   addimport "GHC.Prim"
