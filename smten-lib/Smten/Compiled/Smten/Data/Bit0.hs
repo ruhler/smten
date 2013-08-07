@@ -14,6 +14,7 @@ import Smten.Runtime.SmtenHS
 import Smten.Runtime.SymbolicOf
 import Smten.Runtime.Types
 import Smten.Compiled.Smten.Smten.Base
+import Smten.Compiled.GHC.TypeLits
 
 instance SymbolicOf P.Bit (Bit n) where
     tosym = Bit
@@ -26,17 +27,17 @@ instance SymbolicOf P.Bit (Bit n) where
         Bit_Prim r x -> primitive0 (\m -> realize m (f $$ (r m))) (f $$ x)
         _ -> P.error "symapp on non-ite symbolic bit vector"
 
-bv_eq :: P.Integer -> Bit n -> Bit n -> Bool
-bv_eq = eq_Bit
+bv_eq :: SingI Nat n -> Bit n -> Bit n -> Bool
+bv_eq x = eq_Bit (__deNewTyDGSingI x)
 
-bv_leq :: P.Integer -> Bit n -> Bit n -> Bool
-bv_leq = leq_Bit
+bv_leq :: SingI Nat n -> Bit n -> Bit n -> Bool
+bv_leq x = leq_Bit (__deNewTyDGSingI x)
 
 bv_show :: Bit n -> List__ Char
 bv_show = symapp P.$ \av -> fromHSString (P.show (av :: P.Bit))
 
-bv_fromInteger :: P.Integer -> Integer -> Bit n
-bv_fromInteger w = symapp P.$ \v -> Bit (P.bv_make w v)
+bv_fromInteger :: SingI Nat n -> Integer -> Bit n
+bv_fromInteger w = symapp P.$ \v -> Bit (P.bv_make (__deNewTyDGSingI w) v)
 
 bv_add :: Bit n -> Bit n -> Bit n
 bv_add = add_Bit
@@ -62,17 +63,17 @@ bv_lshr = lshr_Bit
 bv_not :: Bit n -> Bit n
 bv_not = not_Bit
 
-bv_concat :: P.Integer -> Bit a -> Bit b -> Bit n
-bv_concat = concat_Bit
+bv_concat :: SingI Nat a -> Bit a -> Bit b -> Bit n
+bv_concat x = concat_Bit (__deNewTyDGSingI x)
 
-bv_sign_extend :: P.Integer -> P.Integer -> Bit m -> Bit n
-bv_sign_extend mw nw = sign_extend_Bit (nw P.- mw)
+bv_sign_extend :: SingI Nat m -> SingI Nat n -> Bit m -> Bit n
+bv_sign_extend mw nw = sign_extend_Bit (__deNewTyDGSingI nw P.- __deNewTyDGSingI mw)
 
-bv_extract :: P.Integer -> P.Integer -> Bit m -> Integer -> Bit n
-bv_extract mw nw x = symapp (\lsb -> extract_Bit mw (lsb P.+ nw P.- 1) lsb x)
+bv_extract :: SingI Nat m -> SingI Nat n -> Bit m -> Integer -> Bit n
+bv_extract mw nw x = symapp (\lsb -> extract_Bit (__deNewTyDGSingI mw) (lsb P.+ (__deNewTyDGSingI nw) P.- 1) lsb x)
 
-bv_width :: P.Integer -> Bit n -> Integer
-bv_width w _ = tosym w
+bv_width :: SingI Nat n -> Bit n -> Integer
+bv_width w _ = tosym (__deNewTyDGSingI w)
 
 bv_value :: Bit n -> Integer
 bv_value = symapp (\b -> tosym (P.bv_value b))

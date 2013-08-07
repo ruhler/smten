@@ -204,26 +204,27 @@ expCG (Case x v ty ms) = do
       ine = S.AppE (S.VarE casefnm) arg
   return $ S.LetE [bind] ine
 
--- newtype construction cast
-expCG (Cast x c)
-  | Just dcnm <- newtypeCast c = do
-      dcnm' <- qnameCG dcnm
-      x' <- expCG x
-      return $ S.AppE (S.VarE dcnm') x'
-
--- newtype de-construction cast
-expCG (Cast x c)
-  | Just dcnm <- denewtypeCast c = do
-      dcnm' <- qdenewtynmCG dcnm
-      x' <- expCG x
-      return $ S.AppE (S.VarE dcnm') x'
+---- newtype construction cast
+--expCG (Cast x c)
+--  | Just dcnm <- newtypeCast c = do
+--      dcnm' <- qnameCG dcnm
+--      x' <- expCG x
+--      return $ S.AppE (S.VarE dcnm') x'
+--
+---- newtype de-construction cast
+--expCG (Cast x c)
+--  | Just dcnm <- denewtypeCast c = do
+--      dcnm' <- qdenewtynmCG dcnm
+--      x' <- expCG x
+--      return $ S.AppE (S.VarE dcnm') x'
 
 expCG (Cast x c) = do
   --lift $ errorMsg (text "Warning: Using unsafeCoerce for cast " <+> ppr x <+> showco c)
   x' <- expCG x
   t' <- typeCG . dropForAlls $ pFst (coercionKind c)
   addimport "GHC.Prim"
-  return (S.AppE (S.VarE "GHC.Prim.unsafeCoerce#") (S.SigE x' t'))
+  --return (S.AppE (S.VarE "GHC.Prim.unsafeCoerce#") (S.SigE x' t'))
+  return (S.AppE (S.VarE "GHC.Prim.unsafeCoerce#") x')
 
 expCG x = do
   lift $ fatalErrorMsg (text "TODO: expCG " <+> ppr x)

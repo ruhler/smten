@@ -21,6 +21,7 @@ import Smten.Runtime.Solver
 
 import Smten.Compiled.Smten.Data.Bit0 as S
 import Smten.Compiled.Smten.Data.Maybe as S
+import Smten.Compiled.GHC.TypeLits
 import qualified Smten.Compiled.Smten.Smten.Integer as S
 import qualified Smten.Runtime.Types as S
 
@@ -65,10 +66,10 @@ free_Integer = do
     modify $ \s -> s { ss_free = (fid, IntegerT) : ss_free s }
     return (S.Integer_Var fid)
 
-free_Bit :: Integer -> Symbolic (S.Bit n)
+free_Bit :: SingI Nat n -> Symbolic (S.Bit n)
 free_Bit w = do
     fid <- liftIO fresh
-    modify $ \s -> s { ss_free = (fid, BitT w) : ss_free s }
+    modify $ \s -> s { ss_free = (fid, BitT (__deNewTyDGSingI w)) : ss_free s }
     return (S.Bit_Var fid)
 
 predicated :: S.Bool -> Symbolic a -> Symbolic a
