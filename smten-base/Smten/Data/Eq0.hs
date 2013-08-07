@@ -9,9 +9,11 @@ import Smten.Plugin.Annotations
 
 {-# ANN module PrimitiveModule #-}
 
+{-# NOINLINE int_eq #-}
 int_eq :: Int -> Int -> Bool
 int_eq a b = if a P.== b then True else False
 
+{-# NOINLINE integer_eq #-}
 integer_eq :: Integer -> Integer -> Bool
 integer_eq a b = if a P.== b then True else False
 

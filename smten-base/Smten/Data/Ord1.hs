@@ -18,9 +18,11 @@ fromp P.LT = LT
 fromp P.EQ = EQ
 fromp P.GT = GT
 
+{-# NOINLINE int_compare #-}
 int_compare :: Int -> Int -> Ordering
 int_compare a b = fromp (P.compare a b)
   
+{-# NOINLINE integer_leq #-}
 integer_leq :: Integer -> Integer -> Bool
 integer_leq a b = if a P.<= b then True else False
 

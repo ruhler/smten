@@ -79,8 +79,8 @@ expCG (Case x v ty ms) | isBoolType (varType v) =
            lift $ fatalErrorMsg (text "TODO: expCG Bool Case: " <+> ppr ms)
            return $ S.VarE "???"
 
--- Char# case is special: generate the case as a normal case expression.
-expCG (Case x v ty ms) | isPrimCharType (varType v) = do
+-- Generate normal case expressions for concrete types.
+expCG (Case x v ty ms) | isConcreteType (varType v) = do
   vnm <- qnameCG $ varName v
   arg <- expCG x
 
@@ -93,11 +93,16 @@ expCG (Case x v ty ms) | isPrimCharType (varType v) = do
   let alt (LitAlt l, _, body) = do
         body' <- expCG body
         return $ S.Alt (S.AsP vnm (S.LitP (litCG l))) body'
+      alt (DataAlt k, xs, body) = do
+        body' <- expCG body
+        xs' <- mapM (qnameCG .varName) xs
+        k' <- qnameCG $ getName k
+        return $ S.Alt (S.AsP vnm (S.ConP k' (map S.VarP xs'))) body'
   alts <- mapM alt nodefms
   return $ S.CaseE arg (alts ++ defalt)
 
--- Char case is special.
-expCG (Case x v ty ms) | isCharType (varType v) = do
+-- Char, Int are special.
+expCG (Case x v ty ms) | isCharType (varType v) || isIntType (varType v) = do
   uniq <- lift $ getUniqueM
   let occ = mkVarOcc "casef"
       casef = mkSystemName uniq occ
@@ -244,8 +249,13 @@ altCG (LitAlt l, _, body) = do
 isBoolType :: Type -> Bool
 isBoolType = isType "Bool" ["Smten.Data.Bool0", "GHC.Types"]
 
-isPrimCharType :: Type -> Bool
-isPrimCharType = isType "Char#" ["GHC.Prim"]
+isConcreteType :: Type -> Bool
+isConcreteType t = isType "Char#" ["GHC.Prim"] t
+                || isType "Int#" ["GHC.Prim"] t
+                || isDictTy t
+
+isIntType :: Type -> Bool
+isIntType = isType "Int" ["GHC.Types"]
 
 isCharType :: Type -> Bool
 isCharType = isType "Char" ["GHC.Types"]

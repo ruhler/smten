@@ -11,13 +11,13 @@ Cleanup::
 
 Performance::
 * put yices2 in one-shot mode?
-* understand odd yices2 behavior with repeated identical queries
-* move plugin to later stage of ghc compilation
+* add -O1 flag when compiling with plugin
 * add -O2 flag when compiling with plugin
 * verify State, Reader, and Map libraries match the haskell libraries
 * for yices1: having a shl_n function, which shifts by a constant amount,
     could lead to a decent performance improvement in that case.
 * make <, >, >= primitives?
+* use explicit export lists in generated code?
     
 
 Future Work::

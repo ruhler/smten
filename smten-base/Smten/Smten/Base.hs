@@ -19,9 +19,11 @@ import Smten.Smten.Unit ()
 
 type String = [Char]
 
+{-# NOINLINE error #-}
 error :: String -> a
 error = P.error
 
+{-# NOINLINE int_toInteger #-}
 int_toInteger :: Int -> Integer
 int_toInteger = P.toInteger
 
