@@ -126,3 +126,19 @@ indir build/smten-stp {
     hrun cabal install --force-reinstalls
 }
 
+# The smten-z3 package
+hrun cp -r -f -l smten-z3 build/
+indir build/smten-z3 {
+    hrun ghc {*}$::PLUGIN_OPTS --make -c -osuf smten_o -main-is Smten.Tests.Z3.main \
+        -fplugin=Smten.Plugin.Plugin Smten/Tests/Z3.hs
+    hrun ghc {*}$::PLUGIN_OPTS --make -osuf smten_o -c -main-is Smten.Tests.SMT.Memory.Z3.main \
+        -fplugin=Smten.Plugin.Plugin Smten/Tests/SMT/Memory/Z3.hs
+
+    hrun cabal configure --enable-tests --enable-benchmarks
+    hrun cabal build
+    hrun cabal test
+    hrun cabal haddock
+    hrun cabal sdist
+    hrun cabal install --force-reinstalls
+}
+
