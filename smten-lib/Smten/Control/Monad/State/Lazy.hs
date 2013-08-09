@@ -14,7 +14,7 @@ import Smten.Prelude
 import Smten.Control.Monad.State.Class
 import Smten.Control.Monad.Trans
 
-data State s a = State {
+newtype State s a = State {
     runState :: (s -> (a, s))
 }
 
@@ -47,7 +47,7 @@ instance MonadState s (State s) where
     put s = State $ \_ -> ((), s)
 
 
-data StateT s m a = StateT {
+newtype StateT s m a = StateT {
     runStateT :: s -> m (a, s)
 }
 

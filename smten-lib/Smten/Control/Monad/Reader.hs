@@ -20,7 +20,7 @@ import Smten.Control.Monad
 import Smten.Control.Monad.Reader.Class
 import Smten.Control.Monad.Trans
 
-data Reader r a = Reader {
+newtype Reader r a = Reader {
     runReader :: r -> a
 }
 
@@ -41,7 +41,7 @@ instance MonadReader r (Reader r) where
     ask = Reader id
     local f m = Reader $ runReader m . f
 
-data ReaderT r m a = ReaderT { runReaderT :: r -> m a }
+newtype ReaderT r m a = ReaderT { runReaderT :: r -> m a }
 
 mapReaderT :: (m a -> n b) -> ReaderT w m a -> ReaderT w n b
 mapReaderT f m = ReaderT $ f . runReaderT m
