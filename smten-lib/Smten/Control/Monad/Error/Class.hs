@@ -10,7 +10,6 @@ module Smten.Control.Monad.Error.Class (
     )  where
 
 import Smten.Prelude
-import Smten.Control.Monad.State.Lazy as LazyState
 
 class Error a where
     noMsg :: a
@@ -26,8 +25,4 @@ instance Error String where
 class (Monad m) => MonadError e m | m -> e where
     throwError :: e -> m a
     catchError :: m a -> (e -> m a) -> m a
-
-instance (MonadError e m) => MonadError e (LazyState.StateT s m) where
-    throwError = lift . throwError
-    catchError = LazyState.liftCatch catchError
 

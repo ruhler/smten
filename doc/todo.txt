@@ -43,6 +43,7 @@ Known Bugs::
     Looks like it's leaking all exprs that we make.
     So I should delete whatever exprs we build.
 * yices1 seg faults on arch-extract isCF for rules 2, 4
+* support strict fields in constructors
 
 Suspected Bugs::
 * pass a symbolic list to 'error'

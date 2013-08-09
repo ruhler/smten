@@ -1,16 +1,31 @@
 
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE NoImplicitPrelude, RebindableSyntax #-}
+-- | The implementation of this module is based on 
+-- the source for Control.Monad.State.Lazy from mtl-1.1.1.1
 module Smten.Control.Monad.State.Lazy (
-    State, runState, evalState, execState, mapState, withState,
-    StateT, runStateT, evalStateT, execStateT, mapStateT, withStateT,
-    liftCatch,
     module Smten.Control.Monad.State.Class,
+    -- * The State Monad
+    State(..),
+    evalState,
+    execState,
+    mapState,
+    withState,
+    -- * The StateT Monad
+    StateT(..),
+    evalStateT,
+    execStateT,
+    mapStateT,
+    withStateT,
+    module Smten.Control.Monad,
     module Smten.Control.Monad.Trans,
     )  where
 
 import Smten.Prelude
+import Smten.Control.Monad
+import Smten.Control.Monad.Error.Class
 import Smten.Control.Monad.State.Class
 import Smten.Control.Monad.Trans
 
@@ -31,16 +46,15 @@ withState :: (s -> s) -> State s a -> State s a
 withState f m = State $ runState m . f
 
 instance Functor (State s) where
-    fmap f m = do
-        v <- m
-        return (f v)
+    fmap f m = State $ \s ->
+      let (a, s') = runState m s
+      in (f a, s')
 
 instance Monad (State s) where
     return x = State $ \s -> (x, s)
     (>>=) x f = State $ \s ->   
         let (a, s') = runState x s
         in runState (f a) s'
-    fail str = State $ \_ -> error str
 
 instance MonadState s (State s) where
     get = State $ \s -> (s, s)
@@ -67,8 +81,10 @@ mapStateT f m = StateT $ f . runStateT m
 withStateT :: (s -> s) -> StateT s m a -> StateT s m a
 withStateT f m = StateT $ runStateT m . f
 
-instance (Functor m) => Functor (StateT s m) where
-    fmap f m = StateT $ \s -> fmap (\ ~(a, s') -> (f a, s')) $ runStateT m s
+instance (Monad m) => Functor (StateT s m) where
+    fmap f m = StateT $ \s -> do
+        ~(x, s') <- runStateT m s
+        return (f x, s')
 
 instance (Monad m) => Monad (StateT s m) where
     return a = StateT $ \s -> return (a, s)
@@ -76,6 +92,10 @@ instance (Monad m) => Monad (StateT s m) where
         ~(a, s') <- runStateT m s
         runStateT (k a) s'
     fail str = StateT $ \_ -> fail str
+
+instance (MonadPlus m) => MonadPlus (StateT s m) where
+    mzero = StateT $ \_ -> mzero
+    m `mplus` n = StateT $ \s -> runStateT m s `mplus` runStateT n s
 
 instance (Monad m) => MonadState s (StateT s m) where
     get = StateT $ \s -> return (s, s)
@@ -87,12 +107,10 @@ instance MonadTrans (StateT s) where
         return (a, s)
 
 instance (MonadIO m) => MonadIO (StateT s m) where
-    liftIO x = StateT $ \s -> do
-        v <- liftIO x
-        return (v, s)
+    liftIO = lift . liftIO
 
-liftCatch :: (m (a,s) -> (e -> m (a,s)) -> m (a,s)) ->
-    StateT s m a -> (e -> StateT s m a) -> StateT s m a
-liftCatch catchError m h
- = StateT $ \s -> runStateT m s `catchError` \e -> runStateT (h e) s
+instance (MonadError e m) => MonadError e (StateT s m) where
+    throwError = lift . throwError
+    m `catchError` h = StateT $ \s -> runStateT m s
+        `catchError` \e -> runStateT (h e) s
 
