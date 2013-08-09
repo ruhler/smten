@@ -151,9 +151,9 @@ data Integer =
 
 eq_Integer :: Integer -> Integer -> Bool
 eq_Integer (Integer a) (Integer b) = if a == b then True else False
+eq_Integer a b | a `symeq` b = True
 eq_Integer (Integer_Err msg) _ = Bool_Err msg
 eq_Integer _ (Integer_Err msg) = Bool_Err msg
-eq_Integer a b | a `stableNameEq` b = True
 eq_Integer a b = Bool_EqInteger a b
 
 leq_Integer :: Integer -> Integer -> Bool
@@ -219,9 +219,9 @@ instance Show (Bit n) where
 
 eq_Bit :: P.Integer -> Bit n -> Bit n -> Bool
 eq_Bit _ (Bit a) (Bit b) = if a == b then True else False
+eq_Bit _ a b | a `symeq` b = True
 eq_Bit _ (Bit_Err msg) _ = Bool_Err msg
 eq_Bit _ _ (Bit_Err msg) = Bool_Err msg
-eq_Bit _ a b | a `stableNameEq` b = True
 eq_Bit w a b = Bool_EqBit w a b
 
 leq_Bit :: P.Integer -> Bit n -> Bit n -> Bool
@@ -299,3 +299,77 @@ stableNameEq x y = unsafeDupablePerformIO $ do
     ynm <- makeStableName y
     return (xnm == ynm)
 
+class SymEq a where
+    -- Return 'True' if the two (symbolic) objects are structurally equal.
+    -- Error constructors are never equal (even if they have the same message).
+    -- Prim constructors are equal if their cases are equal.
+    symeq :: a -> a -> P.Bool
+
+instance SymEq Bool where
+    symeq True True = P.True
+    symeq False False = P.True
+    symeq a b | a `stableNameEq` b = P.True
+    symeq (Bool_Ite a1 a2 a3) (Bool_Ite b1 b2 b3)
+        = a1 `symeq` b1 && a2 `symeq` b2 && a3 `symeq` b3
+    symeq (Bool_And a1 a2) (Bool_And b1 b2)
+        = a1 `symeq` b1 && a2 `symeq` b2
+    symeq (Bool_Not a) (Bool_Not b) = a `symeq` b
+    symeq (Bool_EqInteger a1 a2) (Bool_EqInteger b1 b2)
+        = a1 `symeq` b1 && a2 `symeq` b2
+    symeq (Bool_LeqInteger a1 a2) (Bool_LeqInteger b1 b2)
+        = a1 `symeq` b1 && a2 `symeq` b2
+--  Note: we can't do these checks, because we don't know statically that the
+--  equalities are for the same bitwidth.
+--    symeq (Bool_EqBit _ a1 a2) (Bool_EqBit _ b1 b2)
+--        = a1 `symeq` b1 && a2 `symeq` b2
+--    symeq (Bool_LeqBit _ a1 a2) (Bool_LeqBit _ b1 b2)
+--        = a1 `symeq` b1 && a2 `symeq` b2
+    symeq (Bool_Var a) (Bool_Var b) = a == b
+    symeq (Bool_Prim r a) b = a `symeq` b
+    symeq a (Bool_Prim r b) = a `symeq` b
+    symeq a b = P.False
+
+instance SymEq Integer where
+    symeq (Integer a) (Integer b) = a == b
+    symeq a b | a `stableNameEq` b = P.True
+    symeq (Integer_Add a1 a2) (Integer_Add b1 b2)
+      = a1 `symeq` b1 && a2 `symeq` b2
+    symeq (Integer_Sub a1 a2) (Integer_Sub b1 b2)
+      = a1 `symeq` b1 && a2 `symeq` b2
+    symeq (Integer_Ite ap a1 a2) (Integer_Ite bp b1 b2)
+      = ap `symeq` bp && a1 `symeq` b1 && a2 `symeq` b2
+    symeq (Integer_Var a) (Integer_Var b) = a == b
+    symeq (Integer_Prim r a) b = a `symeq` b
+    symeq a (Integer_Prim r b) = a `symeq` b
+    symeq a b = P.False
+    
+instance SymEq (Bit n) where
+    symeq (Bit a) (Bit b) = a == b
+    symeq a b | a `stableNameEq` b = P.True
+    symeq (Bit_Add a1 a2) (Bit_Add b1 b2)
+      = a1 `symeq` b1 && a2 `symeq` b2
+    symeq (Bit_Sub a1 a2) (Bit_Sub b1 b2)
+      = a1 `symeq` b1 && a2 `symeq` b2
+    symeq (Bit_Mul a1 a2) (Bit_Mul b1 b2)
+      = a1 `symeq` b1 && a2 `symeq` b2
+    symeq (Bit_Or a1 a2) (Bit_Or b1 b2)
+      = a1 `symeq` b1 && a2 `symeq` b2
+    symeq (Bit_And a1 a2) (Bit_And b1 b2)
+      = a1 `symeq` b1 && a2 `symeq` b2
+    symeq (Bit_Shl a1 a2) (Bit_Shl b1 b2)
+      = a1 `symeq` b1 && a2 `symeq` b2
+    symeq (Bit_Lshr a1 a2) (Bit_Lshr b1 b2)
+      = a1 `symeq` b1 && a2 `symeq` b2
+--    symeq (Bit_Concat _ a1 a2) (Bit_Concat _ b1 b2)
+--      = a1 `symeq` b1 && a2 `symeq` b2
+    symeq (Bit_Not a) (Bit_Not b) = a `symeq` b
+--    symeq (Bit_SignExtend a1 a2) (Bit_SignExtend b1 b2)
+--        = a1 == b1 && a2 `symeq` b2
+--    symeq (Bit_Extract _ a1 a2 a3) (Bit_Extract _ b1 b2 b3)
+--        = a1 == b1 && a2 == b2 && a3 `symeq` b3
+    symeq (Bit_Ite ap a1 a2) (Bit_Ite bp b1 b2)
+      = ap `symeq` bp && a1 `symeq` b1 && a2 `symeq` b2
+    symeq (Bit_Var a) (Bit_Var b) = a == b
+    symeq (Bit_Prim r a) b = a `symeq` b
+    symeq a (Bit_Prim r b) = a `symeq` b
+    symeq a b = P.False

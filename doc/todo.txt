@@ -15,14 +15,10 @@ Performance::
     could lead to a decent performance improvement in that case.
 * make <, >, >= primitives?
 * use explicit export lists in generated code?
-* STP goes much faster than yices2 on arch-extract
-    Could this be because STP case splits on Integers?
-    Could we try doing that for yices2?
     
 
 Future Work::
 * Add minisat as a solver (requires CNF)
-* Add Z3 as a solver
 
 Front End::
 * Auto-derive Show, Eq, Ord, Ix
@@ -43,7 +39,9 @@ Runtime::
   refinement.
 
 Known Bugs::
-* There's a very tiny memory leak in stp.
+* There's a memory leak in stp.
+    Looks like it's leaking all exprs that we make.
+    So I should delete whatever exprs we build.
 * yices1 seg faults on arch-extract isCF for rules 2, 4
 
 Suspected Bugs::
