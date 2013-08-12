@@ -20,13 +20,13 @@ import Smten.Runtime.Result
 import Smten.Runtime.SolverAST
 import Smten.Runtime.Solver
 
-data Formula = STPF { expr :: Ptr STP_Expr }
+data Formula = STPF { expr :: STP_Expr }
              | IntegerF { ints :: [(Formula, Integer)] }
 
-type VarMap = H.BasicHashTable String (Ptr STP_Expr)
+type VarMap = H.BasicHashTable String STP_Expr
 
 data STP = STP {
-    stp_ctx :: Ptr STP_VC,
+    stp_ctx :: STP_VC,
     stp_vars :: VarMap
 }
 
@@ -37,14 +37,14 @@ stp = do
   let s = STP { stp_ctx = ptr, stp_vars = vars }
   return $ solverInstFromAST s
 
-withvc :: STP -> (Ptr STP_VC -> IO a) -> IO a
+withvc :: STP -> (STP_VC -> IO a) -> IO a
 withvc s f = f (stp_ctx s)
 
 
 nointegers :: a
 nointegers = error $ "STP does not support integers"
 
-getbits :: Ptr STP_VC -> Integer -> Ptr STP_Expr -> IO Integer
+getbits :: STP_VC -> Integer -> STP_Expr -> IO Integer
 getbits vc w e
   | w <= 64 = fromIntegral <$> c_getBVUnsignedLongLong e
   | otherwise = do
@@ -129,7 +129,7 @@ instance SolverAST STP Formula where
   ite_bit s p a b = withvc s $ \vc -> STPF <$> c_vc_iteExpr vc (expr p) (expr a) (expr b)
 
   ite_integer s p a b = withvc s $ \vc -> do
-    let join :: Ptr STP_Expr -> (Formula, Integer) -> IO (Formula, Integer)
+    let join :: STP_Expr -> (Formula, Integer) -> IO (Formula, Integer)
         join p (a, v) = do
           pa <- STPF <$> c_vc_andExpr vc p (expr a)
           return (pa, v)
@@ -159,15 +159,15 @@ instance SolverAST STP Formula where
   extract_bit s hi lo x = withvc s $ \vc ->
     STPF <$> c_vc_bvExtract vc (expr x) (fromInteger hi) (fromInteger lo)
 
-uprim :: (Ptr STP_VC -> Ptr STP_Expr -> IO (Ptr STP_Expr))
+uprim :: (STP_VC -> STP_Expr -> IO STP_Expr)
       -> STP -> Formula -> IO Formula
 uprim f s a = withvc s $ \vc -> STPF <$> f vc (expr a)
 
-bprim :: (Ptr STP_VC -> Ptr STP_Expr -> Ptr STP_Expr -> IO (Ptr STP_Expr))
+bprim :: (STP_VC -> STP_Expr -> STP_Expr -> IO STP_Expr)
       -> STP -> Formula -> Formula -> IO Formula
 bprim f s a b = withvc s $ \vc -> STPF <$> f vc (expr a) (expr b)
 
-blprim :: (Ptr STP_VC -> CInt -> Ptr STP_Expr -> Ptr STP_Expr -> IO (Ptr STP_Expr))
+blprim :: (STP_VC -> CInt -> STP_Expr -> STP_Expr -> IO STP_Expr)
        -> STP -> Formula -> Formula -> IO Formula
 blprim f s a b = withvc s $ \vc -> STPF <$> do
     n <- c_vc_getBVLength vc (expr a)

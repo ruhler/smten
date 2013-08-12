@@ -50,6 +50,7 @@ Suspected Bugs::
 * pass a symbolic list to 'error'
 * I suspect problems with using a function called 'main' as a normal function
   exported to another module instead of just as a top level main function.
+* DEFAULT branches should use strict pattern matching?
             
 Other::
 * TODO's inlined in the code
