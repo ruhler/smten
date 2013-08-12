@@ -62,3 +62,6 @@ instance (Ix i, Eq e) => Eq (Array i e) where
     (==) a b = (assocs a == assocs b)
     (/=) a b = not (a == b)
 
+instance (Ix i, Show i, Show e) => Show (Array i e) where
+    show x = "array " ++ show (bounds x) ++ " " ++ show (assocs x)
+

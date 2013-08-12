@@ -15,6 +15,7 @@ Performance::
     could lead to a decent performance improvement in that case.
 * make <, >, >= primitives?
 * use explicit export lists in generated code?
+* compile generated smten-lib code with -O2?
     
 
 Future Work::
