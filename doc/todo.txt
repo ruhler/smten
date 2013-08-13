@@ -7,15 +7,39 @@ Cleanup::
 
 Performance::
 * add back in post-optimization code generation
-* add -O1 flag when compiling with plugin
-* add -O2 flag when compiling with plugin
+* add -O flag when compiling with plugin
+ - digitToInt: ghc infers strict, but generated code doesn't obey that,
+   leading to a type error.
+   Temporary workaround: use -fno-strictness in Smten.Data.Char
+ - Unboxed tuple2 in Data.List.
+    Temporary workaround: use -O0 for Smten.System.IO
+    Possible fix: have type synonym Tuple2__#, but what about the constructor?
+    Possible fix: generate (#, #) as type, but it needs to be infix?
+ - IO a gets un-newtyped into (# State RealWorld, a #)
+    But if 'a' is a type parameter, we use SmtenHS0 on it
+    Leading to a kind mismatch ??
+    (i'm not sure what's wrong here)
+    Possible fix: wrap Smten primitive IO in a datatype so things aren't
+    inlined.
+ - How to deal with case expressions with empty bodies?
+    Generate an empty case expression?
+ - -O flag is inlining smten primitives, which gives bogus values.
+    Even with the NOINLINE pragma.
+ - There is something funny with names:
+    For $fShow(,)_$cshowList, we generate a function kcshowList_aXXX
+    But then we go to use it under the first name and can't find it.
+    What's up with that?
+    
+        
+* add -O2 flag when compiling with plugin (?)
 * verify State, Reader, and Map libraries match the haskell libraries
 * for yices1: having a shl_n function, which shifts by a constant amount,
     could lead to a decent performance improvement in that case.
 * make <, >, >= primitives?
 * use explicit export lists in generated code?
+    (See isExportedId in ghc api)
 * generate INLINE pragmas for bindings annotated as inline?
-    
+    (see inlinePragInfo in ghc api)
 
 Future Work::
 * Add minisat as a solver (requires CNF)
@@ -44,6 +68,7 @@ Known Bugs::
 * when error is encountered in a query, smten reports "SMT SOLVER LIED?"
     when it should instead tell the user an error was encountered in the
     query.
+* see problems with -O optimization above
 
 Suspected Bugs::
 * pass a symbolic list to 'error'

@@ -49,8 +49,9 @@ indir smten-plugin {
 
 # Optimizations causing problems:
 #   -fdo-eta-reduction
-set ::PLUGIN_OPTS [list "-fcse" "-fstrictness" "-fspecialise" "-ffloat-in" \
+#set ::PLUGIN_OPTS [list "-fcse" "-fstrictness" "-fspecialise" "-ffloat-in" \
         "-ffull-laziness" "-fdo-lambda-eta-expansion" "-fcase-merge"]
+set ::PLUGIN_OPTS "-O -fno-strictness"        
 
 # The smten-base package
 hrun cp -r -f -l smten-base build/

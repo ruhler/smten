@@ -6,6 +6,7 @@ module Smten.Plugin.Exp (
   ) where
 
 import Data.Functor
+import Data.Maybe
 
 import Pair
 import GhcPlugins
@@ -106,7 +107,8 @@ expCG (Case x v ty ms) | isCharType (varType v) || isIntType (varType v) = do
   uniq <- lift $ getUniqueM
   let occ = mkVarOcc "casef"
       casef = mkSystemName uniq occ
-      tycon = fst $ splitTyConApp (varType v)
+      tycon = fst (fromMaybe (error "Char,Int splitTyConApp failed") $
+                       splitTyConApp_maybe (varType v))
       tynm = tyConName tycon
   addimport "Smten.Runtime.SmtenHS"
 
@@ -161,48 +163,52 @@ expCG (Case x v ty ms) = do
   uniq <- lift $ getUniqueM
   let occ = mkVarOcc "casef"
       casef = mkSystemName uniq occ
-      tycon = fst $ splitTyConApp (varType v)
-      tynm = tyConName tycon
-  addimport "Smten.Runtime.SmtenHS"
+  case splitTyConApp_maybe (varType v) of
+      Just (tycon, _) -> do
+          let tynm = tyConName tycon
+          addimport "Smten.Runtime.SmtenHS"
 
-  vnm <- qnameCG $ varName v
-  casefnm <- qnameCG casef
-  qerrnm <- qerrnmCG tynm
-  qitenm <- qitenmCG tynm
-  qiteflnms <- mapM (qiteflnmCG . dataConName) (tyConDataCons tycon)
-  qiteerrnm <- qiteerrnmCG tynm
-  qprimnm <- qprimnmCG tynm
-  arg <- expCG x
+          vnm <- qnameCG $ varName v
+          casefnm <- qnameCG casef
+          qerrnm <- qerrnmCG tynm
+          qitenm <- qitenmCG tynm
+          qiteflnms <- mapM (qiteflnmCG . dataConName) (tyConDataCons tycon)
+          qiteerrnm <- qiteerrnmCG tynm
+          qprimnm <- qprimnmCG tynm
+          arg <- expCG x
 
-  (defalt, nodefms) <- case ms of
-                      ((DEFAULT, _, body) : xs) -> do
-                         body' <- expCG body
-                         return ([S.Alt S.wildP body'], xs)
-                      _ -> return ([], ms)
+          (defalt, nodefms) <- case ms of
+                              ((DEFAULT, _, body) : xs) -> do
+                                 body' <- expCG body
+                                 return ([S.Alt S.wildP body'], xs)
+                              _ -> return ([], ms)
 
-  alts <- mapM altCG nodefms
-  let itefls = [S.AppE (S.VarE qiteflnm) (S.VarE vnm) | qiteflnm <- qiteflnms]
-      iteerr = S.AppE (S.VarE qiteerrnm) (S.VarE vnm)
-      itebody = foldl1 S.AppE [
-         S.VarE "Smten.Runtime.SmtenHS.flsapp",
-         S.VarE casefnm,
-         S.VarE vnm,
-         S.ListE (itefls ++ [iteerr])]
-      itealt = S.Alt (S.RecP qitenm) itebody
+          alts <- mapM altCG nodefms
+          let itefls = [S.AppE (S.VarE qiteflnm) (S.VarE vnm) | qiteflnm <- qiteflnms]
+              iteerr = S.AppE (S.VarE qiteerrnm) (S.VarE vnm)
+              itebody = foldl1 S.AppE [
+                 S.VarE "Smten.Runtime.SmtenHS.flsapp",
+                 S.VarE casefnm,
+                 S.VarE vnm,
+                 S.ListE (itefls ++ [iteerr])]
+              itealt = S.Alt (S.RecP qitenm) itebody
 
-      primbody = foldl1 S.AppE (map S.VarE [
-                    "Smten.Runtime.SmtenHS.primsapp", casefnm, "r", "c"])
-      primalt = S.Alt (S.ConP qprimnm [S.VarP "r", S.VarP "c"]) primbody
-                      
-      erralt = S.Alt (S.ConP qerrnm [S.VarP "msg"])
-                     (S.AppE (S.VarE "Smten.Runtime.SmtenHS.error0") (S.VarE "msg"))
+              primbody = foldl1 S.AppE (map S.VarE [
+                            "Smten.Runtime.SmtenHS.primsapp", casefnm, "r", "c"])
+              primalt = S.Alt (S.ConP qprimnm [S.VarP "r", S.VarP "c"]) primbody
+                              
+              erralt = S.Alt (S.ConP qerrnm [S.VarP "msg"])
+                             (S.AppE (S.VarE "Smten.Runtime.SmtenHS.error0") (S.VarE "msg"))
 
-      allalts = alts ++ [itealt, erralt, primalt] ++ defalt
-      casee = S.CaseE (S.VarE vnm) allalts
-      lame = S.LamE vnm casee
-      bind = S.Val casefnm Nothing lame
-      ine = S.AppE (S.VarE casefnm) arg
-  return $ S.LetE [bind] ine
+              allalts = alts ++ [itealt, erralt, primalt] ++ defalt
+              casee = S.CaseE (S.VarE vnm) allalts
+              lame = S.LamE vnm casee
+              bind = S.Val casefnm Nothing lame
+              ine = S.AppE (S.VarE casefnm) arg
+          return $ S.LetE [bind] ine
+      _ -> do
+          lift $ errorMsg (text "SMTEN PLUGIN ERROR: no tycon for: " <+> ppr (varType v))
+          return (S.VarE "???")
 
 ---- newtype construction cast
 --expCG (Cast x c)
@@ -263,8 +269,8 @@ isCharType = isType "Char" ["GHC.Types"]
 
 isType :: String -> [String] -> Type -> Bool
 isType wnm wmods t = 
-   case splitTyConApp t of
-        (tycon, []) -> 
+   case splitTyConApp_maybe t of
+        Just (tycon, []) -> 
             let nm = tyConName tycon
                 occnm = occNameString $ nameOccName nm
                 modnm = moduleNameString . moduleName <$> nameModule_maybe nm

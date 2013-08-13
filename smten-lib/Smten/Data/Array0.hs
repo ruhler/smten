@@ -12,9 +12,11 @@ import Smten.Plugin.Annotations
 
 data PrimArray a
 
+{-# NOINLINE primArray #-}
 primArray :: [a] -> PrimArray a
 primArray = primitive "Smten.Data.Array0.primArray"
 
+{-# NOINLINE primSelect #-}
 primSelect :: PrimArray a -> Int -> a
 primSelect = primitive "smten.Data.Array0.primSelect"
 
