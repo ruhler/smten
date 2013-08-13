@@ -40,11 +40,11 @@ Runtime::
   refinement.
 
 Known Bugs::
-* There's a memory leak in stp.
-    Looks like it's leaking all exprs that we make.
-    So I should delete whatever exprs we build.
 * yices1 seg faults on arch-extract isCF for rules 2, 4
 * support strict fields in constructors
+* when error is encountered in a query, smten reports "SMT SOLVER LIED?"
+    when it should instead tell the user an error was encountered in the
+    query.
 
 Suspected Bugs::
 * pass a symbolic list to 'error'

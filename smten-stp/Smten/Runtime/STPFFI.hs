@@ -6,6 +6,7 @@ module Smten.Runtime.STPFFI (
     STP_VC, STP_Type, STP_Expr,
     c_vc_createValidityChecker,
     c_vc_Destroy,
+    c_vc_DeleteExpr,
     c_vc_boolType,
     c_vc_bvType,
     c_vc_varExpr,
@@ -53,17 +54,19 @@ import Foreign.C.Types
 data STP_VC_
 type STP_VC = Ptr STP_VC_
 
-data STP_Type_
-type STP_Type = Ptr STP_Type_
 
 data STP_Expr_
 type STP_Expr = Ptr STP_Expr_
+type STP_Type = STP_Expr
 
 foreign import ccall "vc_createValidityChecker"
     c_vc_createValidityChecker  :: IO STP_VC
 
 foreign import ccall "vc_Destroy"
     c_vc_Destroy  :: STP_VC -> IO ()
+
+foreign import ccall "vc_DeleteExpr"
+    c_vc_DeleteExpr  :: STP_Expr -> IO ()
 
 foreign import ccall "vc_boolType"
     c_vc_boolType  :: STP_VC -> IO STP_Type
