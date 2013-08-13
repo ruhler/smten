@@ -6,7 +6,6 @@ Cleanup::
 * Why is bv_extract primitive? Why not just shift right and truncate?
 
 Performance::
-* put yices2 in one-shot mode?
 * add back in post-optimization code generation
 * add -O1 flag when compiling with plugin
 * add -O2 flag when compiling with plugin
@@ -15,7 +14,7 @@ Performance::
     could lead to a decent performance improvement in that case.
 * make <, >, >= primitives?
 * use explicit export lists in generated code?
-* compile generated smten-lib code with -O2?
+* generate INLINE pragmas for bindings annotated as inline?
     
 
 Future Work::
