@@ -21,8 +21,6 @@ Performance::
     (i'm not sure what's wrong here)
     Possible fix: wrap Smten primitive IO in a datatype so things aren't
     inlined.
- - How to deal with case expressions with empty bodies?
-    Generate an empty case expression?
  - -O flag is inlining smten primitives, which gives bogus values.
     Even with the NOINLINE pragma.
  - There is something funny with names:

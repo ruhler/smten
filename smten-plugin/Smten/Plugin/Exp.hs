@@ -51,6 +51,20 @@ expCG x@(Lam b body)
     body' <- expCG body
     return $ S.LamE b' body'
 
+-- Empty case expressions:
+--  case x of {}
+-- 
+-- Is translated as:  x `seq` (error "inaccessable case" :: t)
+expCG (Case x v ty []) = do
+  x' <- expCG x
+  ty' <- typeCG ty
+  addimport "Prelude"
+  addimport "Smten.Runtime.SmtenHS"
+  let err = S.VarE "Smten.Runtime.SmtenHS.emptycase"
+      terr = S.SigE err ty'
+      seq = S.AppE (S.AppE (S.VarE "Prelude.seq") x') terr
+  return seq
+
 -- Boolean case expressions are generated specially as:
 --   let v = x
 --   in ite v t f
