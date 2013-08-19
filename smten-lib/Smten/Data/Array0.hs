@@ -5,18 +5,20 @@ module Smten.Data.Array0 (
     PrimArray, primArray, primSelect,
     ) where
 
-import Smten.Prelude
+import Prelude
+import Data.Array
+
 import Smten.Plugin.Annotations
 
 {-# ANN module PrimitiveModule #-}
 
-data PrimArray a
+data PrimArray a = PrimArray (Array Int a)
 
 {-# NOINLINE primArray #-}
 primArray :: [a] -> PrimArray a
-primArray = primitive "Smten.Data.Array0.primArray"
+primArray xs = PrimArray (listArray (0, length xs) xs)
 
 {-# NOINLINE primSelect #-}
 primSelect :: PrimArray a -> Int -> a
-primSelect = primitive "smten.Data.Array0.primSelect"
+primSelect (PrimArray x) i = x ! i
 
