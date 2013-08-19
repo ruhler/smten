@@ -9,6 +9,7 @@ import Data.Maybe
 import System.Directory
 
 import GhcPlugins
+import TidyPgm
 
 import Smten.Plugin.CG
 import Smten.Plugin.Exp
@@ -31,11 +32,13 @@ install _ todo = do
 
 pass :: ModGuts -> CoreM ModGuts
 pass m = do
-  mod <- runCG (moduleCG m)
   isprim <- getIsPrim m 
   if isprim
      then putMsg (ppr (mg_module m) <+> text "is primitive.")
      else do
+      hsc_env <- getHscEnv
+      (cg, details) <- liftIO $ tidyProgram hsc_env m
+      mod <- runCG (moduleCG cg)
       flags <- getDynFlags
       let slashes = moduleNameSlashes $ moduleName (mg_module m)
           odir = fromMaybe "." (objectDir flags)
@@ -53,12 +56,12 @@ getIsPrim m = do
     return (not (null elems))
 
 
-moduleCG :: ModGuts -> CG S.Module
-moduleCG m = do
-  datas <- concat <$> mapM tyconCG (mg_tcs m)
-  vals <- concat <$> mapM bindCG (mg_binds m)
+moduleCG :: CgGuts -> CG S.Module
+moduleCG cg = do
+  datas <- concat <$> mapM tyconCG (cg_tycons cg)
+  vals <- concat <$> mapM bindCG (cg_binds cg)
   importmods <- getimports
-  let myname = moduleName (mg_module m)
+  let myname = moduleName (cg_module cg)
       modnm = "Smten.Compiled." ++ moduleNameString myname
       imports = filter ((/=) modnm) . nub $ importmods
   return $ S.Module {

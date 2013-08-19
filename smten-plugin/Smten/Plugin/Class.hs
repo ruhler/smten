@@ -15,9 +15,7 @@ import qualified Smten.Plugin.Output.Syntax as S
 classCG :: TyCon -> Class -> DataCon -> CG [S.Dec]
 classCG t cls dc
   | [fld] <- classAllSelIds cls = do
-      -- Generate a newtype for this class, because it only has a single
-      -- field. We need to generate both the method, and the newtype
-      -- de-constructor.
+      -- Generate a newtype for this class, because it only has a single field.
       let (vs, mt) = splitForAllTys $ varType fld
           vs' = filter (flip notElem (tyConTyVars t)) vs
           mt' = snd $ splitFunTy mt
@@ -28,27 +26,20 @@ classCG t cls dc
       cn <- nameCG $ dataConName dc
       t' <- nameCG $ tyConName t
       vs <- mapM (qnameCG . varName) (tyConTyVars t)
-      let nty = S.NewTypeD t' vs (S.RecC cn [denew])
-
-      flt <- topTypeCG $ varType fld
-      flnm <- nameCG $ varName fld
-      let fldf = S.ValD (S.Val flnm (Just flt) (S.VarE dnm))
-      return [nty, fldf]
+      return [S.NewTypeD t' vs (S.RecC cn [denew])]
 
   | otherwise = do
-      let mkfield :: Id -> CG S.RecField
+      let mkfield :: Id -> CG S.Type
           mkfield x = do
             let (vs, mt) = splitForAllTys $ varType x
                 vs' = filter (flip notElem (tyConTyVars t)) vs
                 mt' = snd $ splitFunTy mt
-            t <- topTypeCG $ mkForAllTys vs' mt'
-            nm <- nameCG $ varName x
-            return $ S.RecField nm t
+            topTypeCG $ mkForAllTys vs' mt'
       fields <- mapM mkfield (classAllSelIds cls)
       cn <- nameCG $ dataConName dc
       t' <- nameCG $ tyConName t
       vs <- mapM (qnameCG . varName) (tyConTyVars t)
-      return [S.DataD (S.Data t' vs [S.RecC cn fields])]
+      return [S.DataD (S.Data t' vs [S.Con cn fields])]
 
 
 

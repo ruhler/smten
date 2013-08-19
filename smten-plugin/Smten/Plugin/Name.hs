@@ -44,8 +44,10 @@ dename ty nm
 
 -- Given a base name, turn it into an acceptable haskell name.
 -- Returns 'True' if the resulting name is symbolic, false otherwise.
-resym :: String -> (Bool, String)
-resym nm =
+--
+-- If 'nosym' is True, then never return a symbolic name.
+resym :: Bool -> String -> (Bool, String)
+resym nosym nm =
   let issym :: Char -> Bool
       issym c = c `elem` "!#$%&*+./<=>?@\\^|-~:"
 
@@ -55,9 +57,9 @@ resym nm =
       desym c | c == '_' = c
       desym c | c == ':' = toEnum $ fromEnum 'A' + (fromEnum c `mod` 26)
       desym c = toEnum $ fromEnum 'a' + (fromEnum c `mod` 26)
-  in case nm of
-        _ | all issym nm -> (True, nm)
-          | otherwise -> (False, map desym nm)
+  in case (nosym, nm) of
+        (False, _) | all issym nm -> (True, nm)
+        _ -> (False, map desym nm)
 
 -- nmCG ty f qlf nm
 -- translate a name to a smten name.
@@ -72,10 +74,10 @@ nmCG ty f qlf nm
   | otherwise = do
       let (modnm, occnm, unqnm) = dename ty nm
 
-          (issym, occnm') = resym occnm
-
           useuniq = (not $ isExternalName nm)
               || (occnm == "main" && modnm /= Just ":Main")
+
+          (issym, occnm') = resym useuniq occnm
 
           unqlf = f $ if useuniq
                         then occnm' ++ "_" ++ unqnm
