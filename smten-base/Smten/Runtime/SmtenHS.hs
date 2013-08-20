@@ -5,6 +5,7 @@
 module Smten.Runtime.SmtenHS (
     SmtenHS0(..), SmtenHS1(..), SmtenHS2(..), SmtenHS3(..), SmtenHS4(..),
     ite, iterealize, realize, flrealize, flmerge, flsapp, primsapp,
+    emptycase,
     ) where
 
 import qualified Prelude as P
@@ -180,4 +181,7 @@ instance SmtenHS2 (->) where
     realize2 m f = \x -> realize m (f (realize m x))
     ite2 p fa fb = \x -> ite p (fa x) (fb x)
     primitive2 r f = \x -> primitive0 (\m -> r m x) (f x)
+
+emptycase :: a
+emptycase = P.error "inaccessable case"
 
