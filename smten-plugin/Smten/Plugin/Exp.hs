@@ -21,22 +21,20 @@ bindCG :: CoreBind -> CG [S.Val]
 bindCG (Rec xs) = concat <$> mapM bindCG [NonRec x v | (x, v) <- xs]
 bindCG b@(NonRec var body) = do
   --lift $ putMsg (ppr b)
-  let ty = varType var
-      (vs, ty_body) = de_typeAbs ty
-      vts = mkTyVarTys vs
-      apped = foldl App body (map Type vts)
-  lift $ putMsg (ppr ty <+> text "SPLIT INTO " <+> ppr vs <+> ppr ty_body)
-  body' <- expCG apped
+  body' <- expCG body
   nm <- nameCG $ varName var
-  ty' <- topTypeCG ty
+  ty' <- topTypeCG $ varType var
   return [S.Val nm (Just ty') body']
 
 expCG :: CoreExpr -> CG S.Exp
 expCG (Var x) = S.VarE <$> (qnameCG $ varName x)
 expCG (Lit l) = return (S.LitE (litCG l))
-expCG x@(App a (Type {})) =
-  case de_typeApp x of
-    (bs, x') -> withtypes bs $ expCG x'
+expCG x@(App a t@(Type {})) = do
+  let tya = exprType a
+      tyb = applyTypeToArg tya t
+  tyb' <- topTypeCG tyb
+  a' <- expCG a
+  return (S.SigE a' tyb')
 expCG (App a b) = do
     a' <- expCG a
     b' <- expCG b
@@ -46,7 +44,10 @@ expCG (Let x body) = do
     body' <- expCG body
     return $ S.LetE x' body'
 expCG x@(Lam b body)
- | isTyVar b = expCG body
+ | isTyVar b = do
+    ty <- topTypeCG $ exprType x
+    body' <- expCG body
+    return $ S.SigE body' ty
  | otherwise = do
     b' <- qnameCG $ varName b
     body' <- expCG body
@@ -225,27 +226,28 @@ expCG (Case x v ty ms) = do
           lift $ errorMsg (text "SMTEN PLUGIN ERROR: no tycon for: " <+> ppr (varType v))
           return (S.VarE "???")
 
----- newtype construction cast
---expCG (Cast x c)
---  | Just dcnm <- newtypeCast c = do
---      dcnm' <- qnameCG dcnm
---      x' <- expCG x
---      return $ S.AppE (S.VarE dcnm') x'
---
----- newtype de-construction cast
---expCG (Cast x c)
---  | Just dcnm <- denewtypeCast c = do
---      dcnm' <- qdenewtynmCG dcnm
---      x' <- expCG x
---      return $ S.AppE (S.VarE dcnm') x'
+-- newtype construction cast
+expCG (Cast x c)
+  | Just dcnm <- newtypeCast c = do
+      dcnm' <- qnameCG dcnm
+      x' <- expCG x
+      return $ S.AppE (S.VarE dcnm') x'
+
+-- newtype de-construction cast
+expCG (Cast x c)
+  | Just dcnm <- denewtypeCast c = do
+      dcnm' <- qdenewtynmCG dcnm
+      x' <- expCG x
+      return $ S.AppE (S.VarE dcnm') x'
 
 expCG (Cast x c) = do
   --lift $ errorMsg (text "Warning: Using unsafeCoerce for cast " <+> ppr x <+> showco c)
   x' <- expCG x
-  at' <- typeCG . dropForAlls $ pFst (coercionKind c)
-  ot' <- typeCG . dropForAlls $ pSnd (coercionKind c)
+  let (at, bt) = unPair $ coercionKind c
+  at' <- topTypeCG $ dropForAlls at
+  bt' <- topTypeCG bt
   addimport "GHC.Prim"
-  return (S.SigE (S.AppE (S.VarE "GHC.Prim.unsafeCoerce#") (S.SigE x' at')) ot')
+  return (S.SigE (S.AppE (S.VarE "GHC.Prim.unsafeCoerce#") (S.SigE x' at')) bt')
   --return (S.AppE (S.VarE "GHC.Prim.unsafeCoerce#") x')
 
 expCG x = do
@@ -304,48 +306,11 @@ isTrueK d =
   let nm = dataConName d
   in "True" == (occNameString $ nameOccName nm)
 
-de_typeAbs :: Type -> ([TyVar], Type)
-de_typeAbs t
-  | Just (v, t') <- splitForAllTy_maybe t = 
-     let (vs, t'') = de_typeAbs t'
-     in (v:vs, t'')
-  | Just (a, b) <- splitFunTy_maybe t =
-     let (vs, b') = de_typeAbs b
-     in (vs, mkFunTy a b')
-  | otherwise = ([], t)
-
-
-de_typeApp :: CoreExpr -> ([(TyVar, Type)], CoreExpr)
-de_typeApp (App a (Type t)) =
-  case de_typeApp a of
-    (bnds, Lam b body)
-        | isTypeVar b -> ((b, t):bnds, body)
-        | otherwise -> 
-            let (ibnds, ibody) = de_typeApp (App body (Type t))
-            in (bnds ++ ibnds, Lam b ibody)
-    (bnds, Cast (Lam _ body) (ForAllCo b co)) -> ((b, t):bnds, Cast body co)
-    (bnds, Cast body (ForAllCo b co)) -> ((b, t):bnds, Cast body co)
-    (bnds, x) -> (bnds, x)
-de_typeApp x = ([], x)
-
-showco :: Coercion -> SDoc
-showco (Refl t) = text "Refl" <+> ppr t
-showco (TyConAppCo ty cs) = text "TyConAppCo" <+> ppr ty <+> sep (map showco cs)
-showco (AppCo a b) = text "AppCo" <+> ppr a <+> ppr b
-showco (ForAllCo t c) = text "ForAllCo" <+> ppr t <+> showco c
-showco (CoVarCo v) = text "CoVarCo" <+> ppr v
-showco (AxiomInstCo c cs) = text "AxiomInstCo" <+> ppr c <+> sep (map showco cs)
-showco (UnsafeCo a b) = text "UnsafeCo" <+> ppr a <+> ppr b
-showco (SymCo c) = text "SymCo" <+> showco c
-showco (TransCo a b) = text "TransCo" <+> showco a <+> showco b
-showco (NthCo a b) = text "NthCo" <+> ppr a <+> showco b
-showco (InstCo c t) = text "InstCo" <+> showco c <+> ppr t
-
 -- Test if the coercion looks like a newtype cast.
 -- If so, returns the name of the data constructor to use for the conversion.
 newtypeCast :: Coercion -> Maybe Name
 newtypeCast c = 
-  let rhs = snd . unPair $ coercionKind c
+  let rhs = dropForAlls . snd . unPair $ coercionKind c
   in case splitTyConApp_maybe rhs of
         Just (tycon, _) | isNewTyCon tycon ->
            let [dcon] = tyConDataCons tycon
@@ -356,7 +321,7 @@ newtypeCast c =
 -- If so, returns the name of the data constructor to use for the de-conversion.
 denewtypeCast :: Coercion -> Maybe Name
 denewtypeCast c = 
-  let lhs = fst . unPair $ coercionKind c
+  let lhs = dropForAlls . fst . unPair $ coercionKind c
   in case splitTyConApp_maybe lhs of
         Just (tycon, _) | isNewTyCon tycon ->
            let [dcon] = tyConDataCons tycon

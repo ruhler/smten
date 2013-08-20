@@ -9,6 +9,7 @@ import Smten.Plugin.Annotations
 
 {-# ANN module PrimitiveModule #-}
 
+{-# NOINLINE timeout #-}
 timeout :: Int -> IO a -> IO (Maybe a)
 timeout a b = do
   r <- P.timeout a b
