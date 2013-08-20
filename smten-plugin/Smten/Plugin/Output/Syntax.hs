@@ -54,6 +54,7 @@ data Exp =
  | ListE [Exp]
  | RecE Exp [Field]
  | SigE Exp Type
+ | SccE Name Exp
 
 conE :: Name -> [Exp] -> Exp
 conE nm xs = foldl AppE (VarE nm) xs

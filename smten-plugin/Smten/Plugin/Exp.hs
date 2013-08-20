@@ -8,6 +8,7 @@ module Smten.Plugin.Exp (
 import Data.Functor
 import Data.Maybe
 
+import CostCentre
 import Pair
 import GhcPlugins
 
@@ -249,6 +250,9 @@ expCG (Cast x c) = do
   addimport "GHC.Prim"
   return (S.SigE (S.AppE (S.VarE "GHC.Prim.unsafeCoerce#") (S.SigE x' at')) bt')
   --return (S.AppE (S.VarE "GHC.Prim.unsafeCoerce#") x')
+expCG (Tick (ProfNote cc _ _) x) = do
+   x' <- expCG x
+   return (S.SccE (unpackFS $ cc_name cc) x')
 
 expCG x = do
   lift $ fatalErrorMsg (text "TODO: expCG " <+> ppr x)

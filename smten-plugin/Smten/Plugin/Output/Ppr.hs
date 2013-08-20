@@ -87,6 +87,7 @@ instance Ppr Exp where
     ppr (ListE xs) = text "[" <+> sep (punctuate comma (map ppr xs)) <+> text "]"
     ppr (RecE x ms) = parens (ppr x <+> braces (vcat $ punctuate comma (map ppr ms)))
     ppr (SigE x t) = parens (ppr x <+> text "::" <+> ppr t)
+    ppr (SccE nm x) = parens (text ("{-# SCC \"" ++ nm ++ "\" #-}") <+> ppr x)
 
 instance Ppr Field where
     ppr (Field n v) = ppr n <+> text "=" <+> ppr v
