@@ -21,9 +21,9 @@ type String = [Char]
 
 {-# NOINLINE error #-}
 error :: String -> a
-error = P.error
+error = {-# SCC "PRIM_ERROR" #-} P.error
 
 {-# NOINLINE int_toInteger #-}
 int_toInteger :: Int -> Integer
-int_toInteger = P.toInteger
+int_toInteger = {-# SCC "PRIM_INT_TOINTEGER" #-} P.toInteger
 

@@ -52,7 +52,7 @@ fromList__ Nil__ = []
 fromList__ (Cons__ x xs) = x : fromList__ xs
 
 error :: (SmtenHS0 a) => List__ Char -> a
-error = symapp (\msg -> error0 (errstr msg))
+error = {-# SCC "PRIM_ERROR" #-} symapp (\msg -> error0 (errstr msg))
 
 instance SmtenHS1 P.IO where
     error1 msg = doerr msg
@@ -66,5 +66,5 @@ fromHSString :: P.String -> List__ Char
 fromHSString x = tosym (P.map tosym x :: [Char])
 
 int_toInteger :: Int -> Integer
-int_toInteger = symapp (\x -> tosym (P.toInteger (x :: P.Int)))
+int_toInteger = {-# SCC "PRIM_INT_TOINTEGER" #-} symapp (\x -> tosym (P.toInteger (x :: P.Int)))
 

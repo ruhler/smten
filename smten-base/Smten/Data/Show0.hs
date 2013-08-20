@@ -12,17 +12,17 @@ import Smten.Plugin.Annotations
 
 {-# NOINLINE int_showsPrec #-}
 int_showsPrec :: Int -> Int -> String -> String
-int_showsPrec = P.showsPrec
+int_showsPrec = {-# SCC "PRIM_INT_SHOWSPREC" #-} P.showsPrec
 
 {-# NOINLINE integer_showsPrec #-}
 integer_showsPrec :: Int -> Integer -> String -> String
-integer_showsPrec = P.showsPrec
+integer_showsPrec = {-# SCC "PRIM_INTEGER_SHOWSPREC" #-} P.showsPrec
 
 {-# NOINLINE char_showsPrec #-}
 char_showsPrec :: Int -> Char -> String -> String
-char_showsPrec = P.showsPrec
+char_showsPrec = {-# SCC "PRIM_CHAR_SHOWSPREC" #-} P.showsPrec
 
 {-# NOINLINE char_showList #-}
 char_showList :: [Char] -> String -> String
-char_showList = P.showList
+char_showList = {-# SCC "PRIM_CHAR_SHOWLIST" #-} P.showList
 

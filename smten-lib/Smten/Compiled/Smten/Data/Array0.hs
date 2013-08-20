@@ -43,8 +43,8 @@ instance SymbolicOf (Array P.Int a) (PrimArray a) where
         PrimArray_Prim r x -> primitive0 (\m -> realize m (f $$ (r m))) (f $$ x)
 
 primArray :: (SmtenHS0 a) => List__ a -> PrimArray a
-primArray = symapp (\xs -> PrimArray (listArray (0, genericLength xs) xs))
+primArray = {-# SCC "PRIM_PRIMARRAY" #-} symapp (\xs -> PrimArray (listArray (0, genericLength xs) xs))
 
 primSelect :: (SmtenHS0 a) => PrimArray a -> Int -> a
-primSelect = symapp2 (\arr i -> arr ! (i :: P.Int))
+primSelect = {-# SCC "PRIM_PRIMSELECT" #-} symapp2 (\arr i -> arr ! (i :: P.Int))
 

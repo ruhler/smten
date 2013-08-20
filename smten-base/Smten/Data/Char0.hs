@@ -11,18 +11,18 @@ import Smten.Plugin.Annotations
 
 {-# NOINLINE char_eq #-}
 char_eq :: P.Char -> P.Char -> Bool
-char_eq a b = a P.== b
+char_eq a b = {-# SCC "PRIM_CHAR_EQ" #-}  a P.== b
 
 {-# NOINLINE char_leq #-}
 char_leq :: P.Char -> P.Char -> Bool
-char_leq a b = a P.<= b
+char_leq a b = {-# SCC "PRIM_CHAR_LEQ" #-} a P.<= b
 
 {-# NOINLINE ord #-}
 ord :: P.Char -> P.Int
-ord = P.ord
+ord = {-# SCC "PRIM_ORD" #-} P.ord
 
 {-# NOINLINE chr #-}
 chr :: P.Int -> P.Char
-chr = P.chr
+chr = {-# SCC "PRIM_CHR" #-} P.chr
 
 

@@ -23,6 +23,8 @@ data Int =
 instance SymbolicOf P.Int Int where
     tosym (P.I# x) = I# x
 
+    {-# INLINEABLE symapp #-}
+    {-# SPECIALIZE symapp :: (P.Int -> Bool) -> Int -> Bool #-}
     symapp f x =
       case x of
         I# i -> f (P.I# i)

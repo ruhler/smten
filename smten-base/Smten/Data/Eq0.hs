@@ -11,9 +11,9 @@ import Smten.Plugin.Annotations
 
 {-# NOINLINE int_eq #-}
 int_eq :: Int -> Int -> Bool
-int_eq a b = if a P.== b then True else False
+int_eq = {-# SCC "PRIM_INT_EQ" #-} (P.==)
 
 {-# NOINLINE integer_eq #-}
 integer_eq :: Integer -> Integer -> Bool
-integer_eq a b = if a P.== b then True else False
+integer_eq = {-# SCC "PRIM_INTEGER_EQ" #-} (P.==)
 

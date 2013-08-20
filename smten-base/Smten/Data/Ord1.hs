@@ -20,9 +20,9 @@ fromp P.GT = GT
 
 {-# NOINLINE int_compare #-}
 int_compare :: Int -> Int -> Ordering
-int_compare a b = fromp (P.compare a b)
+int_compare a b = {-# SCC "PRIM_INT_COMPARE" #-} fromp (P.compare a b)
   
 {-# NOINLINE integer_leq #-}
 integer_leq :: Integer -> Integer -> Bool
-integer_leq a b = if a P.<= b then True else False
+integer_leq = {-# SCC "PRIM_INTEGER_LEQ" #-} (P.<=)
 

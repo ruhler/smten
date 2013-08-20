@@ -16,6 +16,7 @@ class SymbolicOf c s where
 ($$) :: (SymbolicOf c s, SmtenHS0 a) => (c -> a) -> s -> a
 ($$) = symapp
 
+{-# INLINEABLE symapp2 #-}
 symapp2 :: (SymbolicOf c1 s1, SymbolicOf c2 s2, SmtenHS0 a)
             => (c1 -> c2 -> a) -> s1 -> s2 -> a
 symapp2 f a b = symapp (\av -> symapp (\bv -> f av bv) b) a
