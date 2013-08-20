@@ -28,7 +28,6 @@ install :: [CommandLineOption] -> [CoreToDo] -> CoreM [CoreToDo]
 install _ todo = do
   reinitializeGlobals
   return (todo ++ [CoreDoPluginPass "Smten" pass])
-  --return (CoreDoPluginPass "Smten" pass : todo)
 
 pass :: ModGuts -> CoreM ModGuts
 pass m = do

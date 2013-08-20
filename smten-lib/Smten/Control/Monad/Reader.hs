@@ -2,7 +2,6 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE NoImplicitPrelude, RebindableSyntax #-}
-{-# OPTIONS_GHC -ddump-simpl #-}
 module Smten.Control.Monad.Reader (
     module Smten.Control.Monad.Reader.Class,
     Reader(..),

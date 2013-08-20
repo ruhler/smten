@@ -7,7 +7,7 @@ Cleanup::
 
 Performance::
 * add back in post-optimization code generation
-* add -O flag when compiling with plugin
+* support -O flag when compiling with plugin
  - digitToInt: ghc infers strict, but generated code doesn't obey that,
    leading to a type error.
    Temporary workaround: use -fno-strictness in Smten.Data.Char
@@ -23,13 +23,8 @@ Performance::
     inlined.
  - -O flag is inlining smten primitives, which gives bogus values.
     Even with the NOINLINE pragma.
- - There is something funny with names:
-    For $fShow(,)_$cshowList, we generate a function kcshowList_aXXX
-    But then we go to use it under the first name and can't find it.
-    What's up with that?
     
         
-* add -O2 flag when compiling with plugin (?)
 * verify State, Reader, and Map libraries match the haskell libraries
 * for yices1: having a shl_n function, which shifts by a constant amount,
     could lead to a decent performance improvement in that case.
