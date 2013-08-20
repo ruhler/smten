@@ -51,7 +51,8 @@ indir smten-plugin {
 #   -fdo-eta-reduction
 #set ::PLUGIN_OPTS [list "-fcse" "-fstrictness" "-fspecialise" "-ffloat-in" \
         "-ffull-laziness" "-fdo-lambda-eta-expansion" "-fcase-merge"]
-set ::PLUGIN_OPTS "-O -fno-strictness"        
+#set ::PLUGIN_OPTS "-O -fno-strictness"        
+set ::PLUGIN_OPTS ""        
 
 # The smten-base package
 hrun cp -r -f -l smten-base build/

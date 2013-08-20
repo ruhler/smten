@@ -22,9 +22,10 @@ bindCG (Rec xs) = concat <$> mapM bindCG [NonRec x v | (x, v) <- xs]
 bindCG b@(NonRec var body) = do
   --lift $ putMsg (ppr b)
   let ty = varType var
-      vs = fst $ splitForAllTys ty
+      (vs, ty_body) = de_typeAbs ty
       vts = mkTyVarTys vs
       apped = foldl App body (map Type vts)
+  lift $ putMsg (ppr ty <+> text "SPLIT INTO " <+> ppr vs <+> ppr ty_body)
   body' <- expCG apped
   nm <- nameCG $ varName var
   ty' <- topTypeCG ty
@@ -241,10 +242,11 @@ expCG (Case x v ty ms) = do
 expCG (Cast x c) = do
   --lift $ errorMsg (text "Warning: Using unsafeCoerce for cast " <+> ppr x <+> showco c)
   x' <- expCG x
-  t' <- typeCG . dropForAlls $ pFst (coercionKind c)
+  at' <- typeCG . dropForAlls $ pFst (coercionKind c)
+  ot' <- typeCG . dropForAlls $ pSnd (coercionKind c)
   addimport "GHC.Prim"
-  --return (S.AppE (S.VarE "GHC.Prim.unsafeCoerce#") (S.SigE x' t'))
-  return (S.AppE (S.VarE "GHC.Prim.unsafeCoerce#") x')
+  return (S.SigE (S.AppE (S.VarE "GHC.Prim.unsafeCoerce#") (S.SigE x' at')) ot')
+  --return (S.AppE (S.VarE "GHC.Prim.unsafeCoerce#") x')
 
 expCG x = do
   lift $ fatalErrorMsg (text "TODO: expCG " <+> ppr x)
@@ -302,11 +304,27 @@ isTrueK d =
   let nm = dataConName d
   in "True" == (occNameString $ nameOccName nm)
 
+de_typeAbs :: Type -> ([TyVar], Type)
+de_typeAbs t
+  | Just (v, t') <- splitForAllTy_maybe t = 
+     let (vs, t'') = de_typeAbs t'
+     in (v:vs, t'')
+  | Just (a, b) <- splitFunTy_maybe t =
+     let (vs, b') = de_typeAbs b
+     in (vs, mkFunTy a b')
+  | otherwise = ([], t)
+
+
 de_typeApp :: CoreExpr -> ([(TyVar, Type)], CoreExpr)
 de_typeApp (App a (Type t)) =
   case de_typeApp a of
-    (bnds, Lam b body) -> ((b, t):bnds, body)
+    (bnds, Lam b body)
+        | isTypeVar b -> ((b, t):bnds, body)
+        | otherwise -> 
+            let (ibnds, ibody) = de_typeApp (App body (Type t))
+            in (bnds ++ ibnds, Lam b ibody)
     (bnds, Cast (Lam _ body) (ForAllCo b co)) -> ((b, t):bnds, Cast body co)
+    (bnds, Cast body (ForAllCo b co)) -> ((b, t):bnds, Cast body co)
     (bnds, x) -> (bnds, x)
 de_typeApp x = ([], x)
 
@@ -344,8 +362,4 @@ denewtypeCast c =
            let [dcon] = tyConDataCons tycon
            in Just $ dataConName dcon
         _ -> Nothing
-        
-    
-
-    
 
