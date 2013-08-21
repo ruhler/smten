@@ -58,8 +58,6 @@ bv_lshr = primitive "Smten.Data.Bit0.bv_lshr"
 bv_not :: Bit n -> Bit n
 bv_not = primitive "Smten.Data.Bit0.bv_not"
 
--- TODO: restrict this to (n ~ a + b)
---   When ghc supports such constraints reasonably.
 bv_concat :: (SingI a) => Bit a -> Bit b -> Bit (a+b)
 bv_concat = primitive "Smten.Data.Bit0.bv_concat"
 

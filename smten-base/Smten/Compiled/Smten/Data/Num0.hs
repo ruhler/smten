@@ -20,10 +20,14 @@ int_add a b = {-# SCC "PRIM_INT_ADD" #-} (symapp2 P.$ \av bv ->
     tosym P.$ (av :: P.Int) P.+ bv) a b
 
 int_sub :: Int -> Int -> Int
-int_sub = {-# SCC "PRIM_INT_SUB" #-} symapp2 P.$ \av bv -> tosym P.$ (av :: P.Int) P.- bv
+int_sub (I# a) (I# b) = {-# SCC "PRIM_INT_SUB" #-} I# (a -# b)
+int_sub a b = {-# SCC "PRIM_INT_SUB" #-} (symapp2 P.$ \av bv ->
+    tosym P.$ (av :: P.Int) P.- bv) a b
 
 int_mul :: Int -> Int -> Int
-int_mul = {-# SCC "PRIM_INT_MUL" #-} symapp2 P.$ \av bv -> tosym P.$ (av :: P.Int) P.* bv
+int_mul (I# a) (I# b) = {-# SCC "PRIM_INT_MUL" #-} I# (a *# b)
+int_mul a b = {-# SCC "PRIM_INT_MUL" #-} (symapp2 P.$ \av bv ->
+    tosym P.$ (av :: P.Int) P.* bv) a b
 
 int_abs :: Int -> Int
 int_abs = {-# SCC "PRIM_INT_ABS" #-} symapp (tosym P.. (P.abs :: P.Int -> P.Int))

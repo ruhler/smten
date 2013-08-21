@@ -29,53 +29,53 @@ instance SymbolicOf P.Bit (Bit n) where
         _ -> P.error "symapp on non-ite symbolic bit vector"
 
 bv_eq :: SingI Nat n -> Bit n -> Bit n -> Bool
-bv_eq x = eq_Bit (__deNewTyDGSingI x)
+bv_eq x = {-# SCC "PRIM_BV_EQ" #-} eq_Bit (__deNewTyDGSingI x)
 
 bv_leq :: SingI Nat n -> Bit n -> Bit n -> Bool
-bv_leq x = leq_Bit (__deNewTyDGSingI x)
+bv_leq x = {-# SCC "PRIM_BV_LEQ" #-} leq_Bit (__deNewTyDGSingI x)
 
 bv_show :: Bit n -> List__ Char
-bv_show = symapp P.$ \av -> fromHSString (P.show (av :: P.Bit))
+bv_show = {-# SCC "PRIM_BV_SHOW" #-} symapp P.$ \av -> fromHSString (P.show (av :: P.Bit))
 
 bv_fromInteger :: SingI Nat n -> Integer -> Bit n
-bv_fromInteger w = symapp P.$ \v -> Bit (P.bv_make (__deNewTyDGSingI w) v)
+bv_fromInteger w = {-# SCC "PRIM_BV_FROMINTEGER" #-} symapp P.$ \v -> Bit (P.bv_make (__deNewTyDGSingI w) v)
 
 bv_add :: Bit n -> Bit n -> Bit n
-bv_add = add_Bit
+bv_add = {-# SCC "PRIM_BV_ADD" #-} add_Bit
 
 bv_sub :: Bit n -> Bit n -> Bit n
-bv_sub = sub_Bit
+bv_sub = {-# SCC "PRIM_BV_SUB" #-} sub_Bit
 
 bv_mul :: Bit n -> Bit n -> Bit n
-bv_mul = mul_Bit
+bv_mul = {-# SCC "PRIM_BV_MUL" #-} mul_Bit
 
 bv_or :: Bit n -> Bit n -> Bit n
-bv_or = or_Bit
+bv_or = {-# SCC "PRIM_BV_OR" #-} or_Bit
 
 bv_and :: Bit n -> Bit n -> Bit n
-bv_and = and_Bit
+bv_and = {-# SCC "PRIM_BV_AND" #-} and_Bit
 
 bv_shl :: Bit n -> Bit n -> Bit n
-bv_shl = shl_Bit
+bv_shl = {-# SCC "PRIM_BV_SHL" #-} shl_Bit
 
 bv_lshr :: Bit n -> Bit n -> Bit n
-bv_lshr = lshr_Bit
+bv_lshr = {-# SCC "PRIM_BV_LSHR" #-} lshr_Bit
 
 bv_not :: Bit n -> Bit n
-bv_not = not_Bit
+bv_not = {-# SCC "PRIM_BV_NOT" #-} not_Bit
 
 bv_concat :: SingI Nat a -> Bit a -> Bit b -> Bit n
-bv_concat x = concat_Bit (__deNewTyDGSingI x)
+bv_concat x = {-# SCC "PRIM_BV_CONCAT" #-} concat_Bit (__deNewTyDGSingI x)
 
 bv_sign_extend :: SingI Nat m -> SingI Nat n -> Bit m -> Bit n
-bv_sign_extend mw nw = sign_extend_Bit (__deNewTyDGSingI nw P.- __deNewTyDGSingI mw)
+bv_sign_extend mw nw = {-# SCC "PRIM_BV_SIGN_EXTEND" #-} sign_extend_Bit (__deNewTyDGSingI nw P.- __deNewTyDGSingI mw)
 
 bv_extract :: SingI Nat m -> SingI Nat n -> Bit m -> Integer -> Bit n
-bv_extract mw nw x = symapp (\lsb -> extract_Bit (__deNewTyDGSingI mw) (lsb P.+ (__deNewTyDGSingI nw) P.- 1) lsb x)
+bv_extract mw nw x = {-# SCC "PRIM_BV_EXTRACT" #-} symapp (\lsb -> extract_Bit (__deNewTyDGSingI mw) (lsb P.+ (__deNewTyDGSingI nw) P.- 1) lsb x)
 
 bv_width :: SingI Nat n -> Bit n -> Integer
-bv_width w _ = tosym (__deNewTyDGSingI w)
+bv_width w _ = {-# SCC "PRIM_BV_WIDTH" #-} tosym (__deNewTyDGSingI w)
 
 bv_value :: Bit n -> Integer
-bv_value = symapp (\b -> tosym (P.bv_value b))
+bv_value = {-# SCC "PRIM_BV_VALUE" #-} symapp (\b -> tosym (P.bv_value b))
 
