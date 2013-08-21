@@ -42,7 +42,6 @@ Front End::
   maybe look into possibility of using Eq, Ord, etc... from ghc for this
 
 Documentation
-* Generated code should have {-# OPTIONS_HADDOCK hide #-}
 * Generated code should have a comment saying it was automatically generated.
 * Make it so generated haddock documentation for smten-base is nice
 * Make it so generated haddock documentation for smten-lib is nice

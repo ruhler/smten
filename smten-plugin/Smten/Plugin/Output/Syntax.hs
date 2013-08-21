@@ -1,7 +1,7 @@
 
 module Smten.Plugin.Output.Syntax (
-    Name, LanguagePragma, TyVar,
-    Module(..), Con(..), Type(..), Class, Dec(..), Val(..), Data(..),
+    Name, TyVar,
+    Module(..), Pragma(..), Con(..), Type(..), Class, Dec(..), Val(..), Data(..),
     Method(..), Field(..), Exp(..), Alt(..), Pat(..), Literal(..), RecField(..),
     arrowT,
     tup2P, wildP,
@@ -9,11 +9,13 @@ module Smten.Plugin.Output.Syntax (
     ) where
 
 type Name = String
-type LanguagePragma = String
 type TyVar = String
 
+data Pragma = LanguagePragma String
+            | HaddockHide
+
 data Module = Module {
-  mod_langs :: [LanguagePragma],
+  mod_pragmas :: [Pragma],
   mod_name :: Name,
   mod_imports :: [Name],
   mod_decs :: [Dec]

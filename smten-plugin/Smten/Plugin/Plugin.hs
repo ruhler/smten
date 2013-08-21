@@ -63,8 +63,10 @@ moduleCG cg = do
   let myname = moduleName (cg_module cg)
       modnm = "Smten.Compiled." ++ moduleNameString myname
       imports = filter ((/=) modnm) . nub $ importmods
+      langs = map S.LanguagePragma [
+            "DataKinds", "MagicHash", "RankNTypes", "ScopedTypeVariables"]
   return $ S.Module {
-    S.mod_langs = ["DataKinds", "MagicHash", "RankNTypes", "ScopedTypeVariables"],
+    S.mod_pragmas = S.HaddockHide : langs,
     S.mod_name = modnm,
     S.mod_imports = imports,
     S.mod_decs = datas ++ (map S.ValD vals)

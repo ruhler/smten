@@ -32,7 +32,7 @@ proc hrun {args} {
 }
 
 # Create and set up a build directory for the build.
-hrun mkdir -p build/home build/test
+hrun mkdir -p build/home
 
 set ::env(HOME) [pwd]/build/home
 #hrun cabal update
@@ -43,7 +43,6 @@ indir smten-plugin {
         --builddir ../build/smten-plugin-build \
         --force-reinstalls
 
-    hrun cabal haddock --builddir ../build/smten-plugin-build
     hrun cabal sdist --builddir ../build/smten-plugin-build
 }
 
@@ -75,7 +74,6 @@ indir build/smten-lib {
     hrun cabal configure --enable-tests --enable-benchmarks
     hrun cabal build
     hrun cabal test
-    hrun cabal haddock
     hrun cabal sdist
     hrun cabal install --force-reinstalls
 }
@@ -91,7 +89,6 @@ indir build/smten-yices2 {
     hrun cabal configure --enable-tests --enable-benchmarks
     hrun cabal build
     hrun cabal test
-    hrun cabal haddock
     hrun cabal sdist
     hrun cabal install --force-reinstalls
 }
@@ -107,7 +104,6 @@ indir build/smten-yices1 {
     hrun cabal configure --enable-tests --enable-benchmarks
     hrun cabal build
     hrun cabal test
-    hrun cabal haddock
     hrun cabal sdist
     hrun cabal install --force-reinstalls
 }
@@ -123,7 +119,6 @@ indir build/smten-stp {
     hrun cabal configure --enable-tests --enable-benchmarks
     hrun cabal build
     hrun cabal test
-    hrun cabal haddock
     hrun cabal sdist
     hrun cabal install --force-reinstalls
 }
@@ -139,7 +134,6 @@ indir build/smten-z3 {
     hrun cabal configure --enable-tests --enable-benchmarks
     hrun cabal build
     hrun cabal test
-    hrun cabal haddock
     hrun cabal sdist
     hrun cabal install --force-reinstalls
 }

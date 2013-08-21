@@ -1,4 +1,5 @@
 
+{-# OPTIONS_HADDOCK hide #-}
 module Smten.Compiled.Smten.System.Environment (getArgs) where
 
 import qualified Prelude as P

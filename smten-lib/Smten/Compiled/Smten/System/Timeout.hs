@@ -1,4 +1,5 @@
 
+{-# OPTIONS_HADDOCK hide #-}
 module Smten.Compiled.Smten.System.Timeout (timeout) where
 
 import qualified Prelude as P

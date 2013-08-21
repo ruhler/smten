@@ -1,5 +1,6 @@
 
 {-# LANGUAGE NoImplicitPrelude #-}
+{-# OPTIONS_HADDOCK hide #-}
 module Smten.Compiled.Smten.Debug.Trace0 (trace) where
 
 import qualified Prelude as P

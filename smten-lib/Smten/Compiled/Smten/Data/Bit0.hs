@@ -2,6 +2,7 @@
 {-# LANGUAGE DataKinds, KindSignatures #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# OPTIONS_HADDOCK hide #-}
 module Smten.Compiled.Smten.Data.Bit0 (
     Bit, bv_eq, bv_leq, bv_show, bv_fromInteger, bv_add, bv_sub, bv_mul,
     bv_or, bv_and, bv_shl, bv_lshr, bv_not, bv_concat,

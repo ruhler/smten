@@ -1,6 +1,7 @@
 
 {-# LANGUAGE MagicHash #-}
 {-# LANGUAGE NoImplicitPrelude #-}
+{-# OPTIONS_HADDOCK hide #-}
 module Smten.Compiled.Smten.Data.Ord1 (
     int_compare, integer_leq,
   ) where

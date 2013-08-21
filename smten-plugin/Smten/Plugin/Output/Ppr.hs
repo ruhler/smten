@@ -20,11 +20,15 @@ instance Ppr String where
 
 instance Ppr Module where
   ppr m = 
-    vcat [text ("{-# LANGUAGE " ++ p ++ " #-}") | p <- mod_langs m] $+$
+    vcat (map ppr (mod_pragmas m)) $+$
     text "module" <+> text (mod_name m) <+> text "where {" $+$
     vcat [text ("import qualified " ++ x) <+> semi | x <- mod_imports m] $+$
     vcat (map ppr $ mod_decs m) $+$
     text "}"
+
+instance Ppr Pragma where
+  ppr (LanguagePragma p) = text ("{-# LANGUAGE " ++ p ++ " #-}")
+  ppr HaddockHide = text "{-# OPTIONS_HADDOCK hide #-}"
 
 pprctx :: [Class] -> Doc 
 pprctx ctx = if null ctx
