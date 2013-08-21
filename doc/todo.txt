@@ -42,10 +42,6 @@ Front End::
   maybe look into possibility of using Eq, Ord, etc... from ghc for this
 
 Documentation
-* Write a user's guide and put it somewhere reasonable. Include:
-** how to use the plugin with -fplugin switch
-** use of NoImplicitPrelude, RebindableSyntax, Smten.Prelude
-** How code is generated as Smten.Compiled.*
 * Generated code should have {-# OPTIONS_HADDOCK hide #-}
 * Generated code should have a comment saying it was automatically generated.
 * Make it so generated haddock documentation for smten-base is nice

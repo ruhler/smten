@@ -43,7 +43,7 @@ indir smten-plugin {
         --builddir ../build/smten-plugin-build \
         --force-reinstalls
 
-    #hrun cabal haddock --builddir ../build/smten-plugin-build
+    hrun cabal haddock --builddir ../build/smten-plugin-build
     hrun cabal sdist --builddir ../build/smten-plugin-build
 }
 

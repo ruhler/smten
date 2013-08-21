@@ -15,7 +15,7 @@ description:
 
 source-repository this
   type: git
-  location: /afs/csail.mit.edu/u/r/ruhler/git/smten
+  location: https://github.com/ruhler/smten.git
   --branch:
   --tag:
 
