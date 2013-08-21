@@ -13,6 +13,7 @@ import TidyPgm
 
 import Smten.Plugin.CG
 import Smten.Plugin.Exp
+import Smten.Plugin.Name
 import Smten.Plugin.TyCon
 import Smten.Plugin.Annotations
 import qualified Smten.Plugin.Output.Syntax as S
@@ -37,7 +38,7 @@ pass m = do
      else do
       hsc_env <- getHscEnv
       (cg, details) <- liftIO $ tidyProgram hsc_env m
-      mod <- runCG (moduleCG cg)
+      mod <- runCG (moduleCG cg details)
       flags <- getDynFlags
       let slashes = moduleNameSlashes $ moduleName (mg_module m)
           odir = fromMaybe "." (objectDir flags)
@@ -55,22 +56,39 @@ getIsPrim m = do
     return (not (null elems))
 
 
-moduleCG :: CgGuts -> CG S.Module
-moduleCG cg = do
+moduleCG :: CgGuts -> ModDetails -> CG S.Module
+moduleCG cg details = do
   datas <- concat <$> mapM tyconCG (cg_tycons cg)
   vals <- concat <$> mapM bindCG (cg_binds cg)
   importmods <- getimports
+  exports <- concat <$> mapM exportCG (typeEnvElts (md_types details))
   let myname = moduleName (cg_module cg)
       modnm = "Smten.Compiled." ++ moduleNameString myname
       imports = filter ((/=) modnm) . nub $ importmods
       langs = map S.LanguagePragma [
-            "DataKinds", "MagicHash", "RankNTypes", "ScopedTypeVariables"]
+            "DataKinds", "MagicHash", "NoImplicitPrelude",
+            "RankNTypes", "ScopedTypeVariables"]
   return $ S.Module {
     S.mod_pragmas = S.HaddockHide : langs,
     S.mod_name = modnm,
+    S.mod_exports = exports,
     S.mod_imports = imports,
     S.mod_decs = datas ++ (map S.ValD vals)
    }
+
+exportCG :: TyThing -> CG [S.Export]
+exportCG (AnId x)
+  | Just _ <- isDataConId_maybe x = return []
+  | otherwise = do
+    nm <- qnameCG (varName x)
+    return [S.VarExport nm]
+exportCG (ADataCon _) = return []
+exportCG (ATyCon t)
+  | isSynTyCon t = return []
+  | otherwise = do
+    nm <- qtynameCG (tyConName t)
+    return [S.TyConExport nm]
+exportCG (ACoAxiom _) = return []
 
 directory :: FilePath -> FilePath
 directory f

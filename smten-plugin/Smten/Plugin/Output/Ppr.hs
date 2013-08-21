@@ -21,7 +21,9 @@ instance Ppr String where
 instance Ppr Module where
   ppr m = 
     vcat (map ppr (mod_pragmas m)) $+$
-    text "module" <+> text (mod_name m) <+> text "where {" $+$
+    text "module" <+> text (mod_name m) <+> text "(" $+$
+        (vcat (punctuate comma (map ppr (mod_exports m)))) $+$
+        text ") where {" $+$
     vcat [text ("import qualified " ++ x) <+> semi | x <- mod_imports m] $+$
     vcat (map ppr $ mod_decs m) $+$
     text "}"
@@ -35,6 +37,9 @@ pprctx ctx = if null ctx
                 then empty
                 else parens (sep (punctuate comma (map ppr ctx))) <+> text "=>"
 
+instance Ppr Export where
+  ppr (VarExport x) = ppr x
+  ppr (TyConExport x) = ppr x <> parens (text "..")
 
 instance Ppr Dec where
     ppr (DataD x) = ppr x

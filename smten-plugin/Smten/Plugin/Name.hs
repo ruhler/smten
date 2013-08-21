@@ -84,6 +84,7 @@ nmCG ty f qlf nm
                         else occnm'
 
       full <- case (qlf, modnm) of
+                 (True, Just ":Main") -> return unqlf
                  (True, Just v) -> do
                       addimport $ "Smten.Compiled." ++ v
                       return $ "Smten.Compiled." ++ v ++ "." ++ unqlf
