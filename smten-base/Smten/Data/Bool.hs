@@ -1,5 +1,6 @@
 
 {-# LANGUAGE NoImplicitPrelude #-}
+{-# OPTIONS_GHC -O #-}
 
 module Smten.Data.Bool (
     Bool(..), (&&), (||), not, otherwise,

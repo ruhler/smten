@@ -1,8 +1,6 @@
 
 {-# LANGUAGE NoImplicitPrelude, RebindableSyntax #-}
 
--- TODO: figure out how to enable optimizations on this module.
-{-# OPTIONS_GHC -O0 #-}
 module Smten.System.IO (
     IO, FilePath,
     putChar, putStr, putStrLn, readFile, getContents,

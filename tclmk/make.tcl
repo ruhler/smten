@@ -46,17 +46,11 @@ indir smten-plugin {
     hrun cabal sdist --builddir ../build/smten-plugin-build
 }
 
-# Optimizations causing problems:
-#   -fdo-eta-reduction
-#set ::PLUGIN_OPTS [list "-fcse" "-fstrictness" "-fspecialise" "-ffloat-in" \
-        "-ffull-laziness" "-fdo-lambda-eta-expansion" "-fcase-merge"]
-#set ::PLUGIN_OPTS "-O -fno-strictness"        
-set ::PLUGIN_OPTS ""        
 
 # The smten-base package
 hrun cp -r -f -l smten-base build/
 indir build/smten-base {
-    hrun ghc {*}$::PLUGIN_OPTS --make -osuf o_smten -hisuf hi_smten -c \
+    hrun ghc --make -osuf o_smten -hisuf hi_smten -c \
         -fplugin=Smten.Plugin.Plugin Smten/Prelude.hs
 
     hrun cabal install --force-reinstalls
@@ -66,7 +60,7 @@ indir build/smten-base {
 # The smten-lib package
 hrun cp -r -f -l smten-lib build/
 indir build/smten-lib {
-    hrun ghc {*}$::PLUGIN_OPTS --make -osuf o_smten -hisuf hi_smten -c \
+    hrun ghc --make -osuf o_smten -hisuf hi_smten -c \
         -main-is Smten.Tests.All.main \
         -fplugin=Smten.Plugin.Plugin Smten/Tests/All.hs
 
@@ -80,7 +74,7 @@ indir build/smten-lib {
 # The smten-yices2 package
 hrun cp -r -f -l smten-yices2 build/
 indir build/smten-yices2 {
-    hrun ghc {*}$::PLUGIN_OPTS --make -c -osuf o_smten -hisuf hi_smten \
+    hrun ghc --make -c -osuf o_smten -hisuf hi_smten \
         -main-is Smten.Tests.Yices2.main \
         -fplugin=Smten.Plugin.Plugin Smten/Tests/Yices2.hs
 
@@ -94,7 +88,7 @@ indir build/smten-yices2 {
 # The smten-yices1 package
 hrun cp -r -f -l smten-yices1 build/
 indir build/smten-yices1 {
-    hrun ghc {*}$::PLUGIN_OPTS --make -c -osuf o_smten -hisuf hi_smten \
+    hrun ghc --make -c -osuf o_smten -hisuf hi_smten \
         -main-is Smten.Tests.Yices1.main \
         -fplugin=Smten.Plugin.Plugin Smten/Tests/Yices1.hs
 
@@ -108,7 +102,7 @@ indir build/smten-yices1 {
 # The smten-stp package
 hrun cp -r -f -l smten-stp build/
 indir build/smten-stp {
-    hrun ghc {*}$::PLUGIN_OPTS --make -c -osuf o_smten -hisuf hi_smten \
+    hrun ghc --make -c -osuf o_smten -hisuf hi_smten \
         -main-is Smten.Tests.STP.main \
         -fplugin=Smten.Plugin.Plugin Smten/Tests/STP.hs
 
@@ -122,7 +116,7 @@ indir build/smten-stp {
 # The smten-z3 package
 hrun cp -r -f -l smten-z3 build/
 indir build/smten-z3 {
-    hrun ghc {*}$::PLUGIN_OPTS --make -c -osuf o_smten -hisuf hi_smten \
+    hrun ghc --make -c -osuf o_smten -hisuf hi_smten \
         -main-is Smten.Tests.Z3.main \
         -fplugin=Smten.Plugin.Plugin Smten/Tests/Z3.hs
 

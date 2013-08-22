@@ -1,5 +1,6 @@
 
 {-# LANGUAGE NoImplicitPrelude #-}
+{-# OPTIONS_GHC -O #-}
 module Smten.Data.Eq (Eq(..)) where
 
 import Smten.Smten.Base

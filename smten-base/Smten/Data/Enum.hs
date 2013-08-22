@@ -1,5 +1,6 @@
 
 {-# LANGUAGE NoImplicitPrelude #-}
+{-# OPTIONS_GHC -O #-}
 module Smten.Data.Enum (Enum(..)) where
 
 import Smten.Smten.Base
