@@ -66,10 +66,9 @@ indir build/smten-base {
 # The smten-lib package
 hrun cp -r -f -l smten-lib build/
 indir build/smten-lib {
-    hrun ghc {*}$::PLUGIN_OPTS --make -osuf o_smten -hisuf hi_smten -c -main-is Smten.Tests.All.main \
+    hrun ghc {*}$::PLUGIN_OPTS --make -osuf o_smten -hisuf hi_smten -c \
+        -main-is Smten.Tests.All.main \
         -fplugin=Smten.Plugin.Plugin Smten/Tests/All.hs
-    hrun ghc {*}$::PLUGIN_OPTS --make -osuf o_smten -hisuf hi_smten -c -main-is Smten.Tests.SMT.Memory.Pure.main \
-        -fplugin=Smten.Plugin.Plugin Smten/Tests/SMT/Memory/Pure.hs
 
     hrun cabal configure --enable-tests --enable-benchmarks
     hrun cabal build
@@ -81,10 +80,9 @@ indir build/smten-lib {
 # The smten-yices2 package
 hrun cp -r -f -l smten-yices2 build/
 indir build/smten-yices2 {
-    hrun ghc {*}$::PLUGIN_OPTS --make -c -osuf o_smten -hisuf hi_smten -main-is Smten.Tests.Yices2.main \
+    hrun ghc {*}$::PLUGIN_OPTS --make -c -osuf o_smten -hisuf hi_smten \
+        -main-is Smten.Tests.Yices2.main \
         -fplugin=Smten.Plugin.Plugin Smten/Tests/Yices2.hs
-    hrun ghc {*}$::PLUGIN_OPTS --make -osuf o_smten -hisuf hi_smten -c -main-is Smten.Tests.SMT.Memory.Yices2.main \
-        -fplugin=Smten.Plugin.Plugin Smten/Tests/SMT/Memory/Yices2.hs
 
     hrun cabal configure --enable-tests --enable-benchmarks
     hrun cabal build
@@ -96,10 +94,9 @@ indir build/smten-yices2 {
 # The smten-yices1 package
 hrun cp -r -f -l smten-yices1 build/
 indir build/smten-yices1 {
-    hrun ghc {*}$::PLUGIN_OPTS --make -c -osuf o_smten -hisuf hi_smten -main-is Smten.Tests.Yices1.main \
+    hrun ghc {*}$::PLUGIN_OPTS --make -c -osuf o_smten -hisuf hi_smten \
+        -main-is Smten.Tests.Yices1.main \
         -fplugin=Smten.Plugin.Plugin Smten/Tests/Yices1.hs
-    hrun ghc {*}$::PLUGIN_OPTS --make -osuf o_smten -hisuf hi_smten -c -main-is Smten.Tests.SMT.Memory.Yices1.main \
-        -fplugin=Smten.Plugin.Plugin Smten/Tests/SMT/Memory/Yices1.hs
 
     hrun cabal configure --enable-tests --enable-benchmarks
     hrun cabal build
@@ -111,10 +108,9 @@ indir build/smten-yices1 {
 # The smten-stp package
 hrun cp -r -f -l smten-stp build/
 indir build/smten-stp {
-    hrun ghc {*}$::PLUGIN_OPTS --make -c -osuf o_smten -hisuf hi_smten -main-is Smten.Tests.STP.main \
+    hrun ghc {*}$::PLUGIN_OPTS --make -c -osuf o_smten -hisuf hi_smten \
+        -main-is Smten.Tests.STP.main \
         -fplugin=Smten.Plugin.Plugin Smten/Tests/STP.hs
-    hrun ghc {*}$::PLUGIN_OPTS --make -osuf o_smten -hisuf hi_smten -c -main-is Smten.Tests.SMT.Memory.STP.main \
-        -fplugin=Smten.Plugin.Plugin Smten/Tests/SMT/Memory/STP.hs
 
     hrun cabal configure --enable-tests --enable-benchmarks
     hrun cabal build
@@ -126,10 +122,9 @@ indir build/smten-stp {
 # The smten-z3 package
 hrun cp -r -f -l smten-z3 build/
 indir build/smten-z3 {
-    hrun ghc {*}$::PLUGIN_OPTS --make -c -osuf o_smten -hisuf hi_smten -main-is Smten.Tests.Z3.main \
+    hrun ghc {*}$::PLUGIN_OPTS --make -c -osuf o_smten -hisuf hi_smten \
+        -main-is Smten.Tests.Z3.main \
         -fplugin=Smten.Plugin.Plugin Smten/Tests/Z3.hs
-    hrun ghc {*}$::PLUGIN_OPTS --make -osuf o_smten -hisuf hi_smten -c -main-is Smten.Tests.SMT.Memory.Z3.main \
-        -fplugin=Smten.Plugin.Plugin Smten/Tests/SMT/Memory/Z3.hs
 
     hrun cabal configure --enable-tests --enable-benchmarks
     hrun cabal build

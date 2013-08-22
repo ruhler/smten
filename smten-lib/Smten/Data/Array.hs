@@ -37,7 +37,7 @@ listArray :: Ix i => (i, i) -> [e] -> Array i e
 listArray b vs = MkArray b (primArray $ take (rangeSize b) vs)
 
 (!) :: Ix i => Array i e -> i -> e
-(!) (MkArray b arr) x = primSelect arr (index b x)
+(!) (MkArray b arr) x = primSelect arr ({-# SCC "ArrayBangIndex" #-} index b x)
 
 bounds :: Ix i => Array i e -> (i, i)
 bounds (MkArray b _) = b
