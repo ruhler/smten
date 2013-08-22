@@ -173,7 +173,9 @@ unwords [] = ""
 unwords ws = foldr1 (\w s -> w ++ ' ':s) ws
 
 reverse :: [a] -> [a]
-reverse = foldl (flip (:)) []
+reverse l = rev l []
+  where rev [] a = a
+        rev (x:xs) a = rev xs (x:a)
 
 and :: [Bool] -> Bool
 and = foldr (&&) True
