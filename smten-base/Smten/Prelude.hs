@@ -34,7 +34,7 @@ module Smten.Prelude (
     ShowS, Show(..), shows, showChar, showString, showParen,
 
     -- PreludeIO
-    FilePath, putChar, putStr, putStrLn,
+    FilePath, putChar, putStr, putStrLn, getContents,
 
     ifThenElse, primitive,
     ) where

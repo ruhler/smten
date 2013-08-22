@@ -1,7 +1,7 @@
 
 {-# LANGUAGE NoImplicitPrelude #-}
 module Smten.Compiled.Smten.System.IO0 (
-    P.IO, return_io, bind_io, putChar, readFile,
+    P.IO, return_io, bind_io, putChar, readFile, getContents,
   ) where
 
 import qualified Prelude as P
@@ -23,3 +23,7 @@ readFile = {-# SCC "PRIM_READ_FILE" #-} symapp (\x -> do
     P.return (tosym txt))
 
 
+getContents :: P.IO (List__ Char)
+getContents = {-# SCC "PRIM_GET_CONTENTS" #-} do
+    txt <- P.getContents
+    P.return (tosym txt)

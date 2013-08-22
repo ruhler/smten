@@ -5,7 +5,7 @@
 {-# OPTIONS_GHC -O0 #-}
 module Smten.System.IO (
     IO, FilePath,
-    putChar, putStr, putStrLn, readFile,
+    putChar, putStr, putStrLn, readFile, getContents,
  ) where
 
 import qualified Prelude as P
