@@ -43,6 +43,7 @@ set ::env(HOME) [pwd]/build/home
 indir smten-plugin {
     hrun cabal install \
         --builddir ../build/smten-plugin-build \
+        --with-compiler=$::GHC \
         --force-reinstalls
 
     hrun cabal sdist --builddir ../build/smten-plugin-build
@@ -55,7 +56,7 @@ indir build/smten-base {
     hrun $::GHC --make -osuf o_smten -hisuf hi_smten -c \
         -fplugin=Smten.Plugin.Plugin Smten/Prelude.hs
 
-    hrun cabal install --force-reinstalls
+    hrun cabal install --force-reinstalls --with-compiler=$::GHC
     hrun cabal sdist
 }
 
@@ -66,11 +67,12 @@ indir build/smten-lib {
         -main-is Smten.Tests.All.main \
         -fplugin=Smten.Plugin.Plugin Smten/Tests/All.hs
 
-    hrun cabal configure --enable-tests --enable-benchmarks
+    hrun cabal configure --enable-tests --enable-benchmarks \
+        --with-compiler=$::GHC
     hrun cabal build
     hrun cabal test
     hrun cabal sdist
-    hrun cabal install --force-reinstalls
+    hrun cabal install --force-reinstalls --with-compiler=$::GHC
 }
 
 # The smten-yices2 package
@@ -80,11 +82,11 @@ indir build/smten-yices2 {
         -main-is Smten.Tests.Yices2.main \
         -fplugin=Smten.Plugin.Plugin Smten/Tests/Yices2.hs
 
-    hrun cabal configure --enable-tests --enable-benchmarks
+    hrun cabal configure --enable-tests --enable-benchmarks --with-compiler=$::GHC
     hrun cabal build
     hrun cabal test
     hrun cabal sdist
-    hrun cabal install --force-reinstalls
+    hrun cabal install --force-reinstalls --with-compiler=$::GHC
 }
 
 # The smten-yices1 package
@@ -94,11 +96,11 @@ indir build/smten-yices1 {
         -main-is Smten.Tests.Yices1.main \
         -fplugin=Smten.Plugin.Plugin Smten/Tests/Yices1.hs
 
-    hrun cabal configure --enable-tests --enable-benchmarks
+    hrun cabal configure --enable-tests --enable-benchmarks --with-compiler=$::GHC
     hrun cabal build
     hrun cabal test
     hrun cabal sdist
-    hrun cabal install --force-reinstalls
+    hrun cabal install --force-reinstalls --with-compiler=$::GHC
 }
 
 # The smten-stp package
@@ -108,11 +110,11 @@ indir build/smten-stp {
         -main-is Smten.Tests.STP.main \
         -fplugin=Smten.Plugin.Plugin Smten/Tests/STP.hs
 
-    hrun cabal configure --enable-tests --enable-benchmarks
+    hrun cabal configure --enable-tests --enable-benchmarks --with-compiler=$::GHC
     hrun cabal build
     hrun cabal test
     hrun cabal sdist
-    hrun cabal install --force-reinstalls
+    hrun cabal install --force-reinstalls --with-compiler=$::GHC
 }
 
 # The smten-z3 package
@@ -122,10 +124,10 @@ indir build/smten-z3 {
         -main-is Smten.Tests.Z3.main \
         -fplugin=Smten.Plugin.Plugin Smten/Tests/Z3.hs
 
-    hrun cabal configure --enable-tests --enable-benchmarks
+    hrun cabal configure --enable-tests --enable-benchmarks --with-compiler=$::GHC
     hrun cabal build
     hrun cabal test
     hrun cabal sdist
-    hrun cabal install --force-reinstalls
+    hrun cabal install --force-reinstalls --with-compiler=$::GHC
 }
 
