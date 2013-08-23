@@ -17,11 +17,11 @@ import qualified Smten.Plugin.Output.Syntax as S
 
 -- Return the type without SmtenHSN added to the context.
 typeCG :: Type -> CG S.Type
-typeCG t = subst t >>= typeCG' False
+typeCG = typeCG' False
 
 -- Return the type with SmtenHSN added to context as needed.
 topTypeCG :: Type -> CG S.Type
-topTypeCG t = subst t >>= typeCG' True
+topTypeCG = typeCG' True
 
 typeCG' :: Bool -> Type -> CG S.Type
 typeCG' mkctx t 

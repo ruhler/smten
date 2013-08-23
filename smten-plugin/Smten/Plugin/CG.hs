@@ -3,12 +3,9 @@ module Smten.Plugin.CG (
    CG, runCG, lift,
    addimport, getimports,
    addexport, getexports,
-   withtype, withtypes,
-   cgs_types, gets,
-   subst,
+   gets,
     ) where
 
-import Data.Functor
 import GhcPlugins
 
 import Control.Monad.State
@@ -19,10 +16,7 @@ data CGS = CGS {
   cgs_imports :: [String],
 
   -- Accumulated set of exports required for this module.
-  cgs_exports :: [S.Export],
-
-  -- type substitutions to perform.
-  cgs_types :: [(TyVar, Type)]
+  cgs_exports :: [S.Export]
 }
 
 type CG = StateT CGS CoreM
@@ -40,23 +34,5 @@ getexports :: CG [S.Export]
 getexports = gets cgs_exports
 
 runCG :: CG a -> CoreM a
-runCG m = evalStateT m (CGS [] [] [])
-
-withtype :: TyVar -> Type -> CG a -> CG a
-withtype tyv t q = do
-  t' <- subst t
-  ts <- gets cgs_types
-  modify $ \s -> s { cgs_types = (tyv, t') : ts }
-  v <- q
-  modify $ \s -> s { cgs_types = ts }
-  return v
-  
-withtypes :: [(TyVar, Type)] -> CG a -> CG a
-withtypes [] q = q
-withtypes ((tyv, t):xs) q = withtype tyv t (withtypes xs q)
-
-subst :: Type -> CG Type
-subst t = do
-    (tyvs, ts) <- unzip <$> gets cgs_types
-    return $ substTyWith tyvs ts t
+runCG m = evalStateT m (CGS [] [])
 
