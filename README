@@ -12,19 +12,21 @@ information about your system.
 The following variables should be set in tclmk/local.tcl:
 ::env(PATH) - The PATH to use for executables
 ::env(LD_LIBRARY_PATH) - the ld library path
+::GHC - the path the the ghc executable to use
 
 For example, tclmk/local.tcl might look like:
 
 =========================================
 set ::env(PATH) "/bin:/usr/bin:/home/ruhler/local/bin"
 set ::env(LD_LIBRARY_PATH) "/home/ruhler/local/lib"
+set ::GHC "/home/ruhler/local/bin/ghc"
 =========================================
 
 Yices1, Yices2, and STP
 -----------------------
-Smten currently requires yices1, yices2, and STP to be installed. See 
-the documentation in smten-yices1, smten-yices2, and smten-stp packages for
-more special instructions on how to install them.
+Smten currently requires yices1, yices2, STP, and Z3 to be installed. See 
+the documentation in smten-yices1, smten-yices2, smten-z3, and smten-stp
+packages for more special instructions on how to install them.
 
 Building Smten
 --------------
