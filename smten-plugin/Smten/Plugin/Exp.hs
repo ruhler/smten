@@ -133,25 +133,18 @@ caseCG x v ty ms = do
   let (ndefs, def) = findDefault ms
   vnm <- qnameCG $ varName v
   arg <- expCG x
-
-  -- generate the concrete alternatives. We always do this in order to keep
-  -- concrete evaluation fast.
-  cms <- mapM altCG ndefs
-
-  -- generate the symbolic (and default) alternatives.
-  sms <- mkSymAlts vnm (varType v) ty def ndefs
-  let casee = S.CaseE (S.VarE vnm) (concat [cms, sms])
-  return $ S.LetE [S.Val vnm Nothing arg] casee
+  body <- mkSymBody vnm (varType v) ty def ndefs
+  return $ S.LetE [S.Val vnm Nothing arg] body
                
 
--- mkSymAlts vnm argty ty default alts
---  Generate the set of alternatives for the case branch which will follow the
---  concrete alternatives. This should also generate a concrete default
---  alternative if needed.
-mkSymAlts :: S.Name -> Type -> Type -> Maybe CoreExpr -> [CoreAlt] -> CG [S.Alt]
-mkSymAlts vnm argty ty mdef ms 
+-- mkSymBody vnm argty ty default alts
+mkSymBody :: S.Name -> Type -> Type -> Maybe CoreExpr -> [CoreAlt] -> CG S.Exp
+mkSymBody vnm argty ty mdef ms 
  | isBoolType argty = mkSymBool vnm mdef ms
- | isConcreteType argty = mkDefault mdef
+ | isConcreteType argty = do
+     ms' <- mapM altCG ms
+     d <- mkDefault mdef
+     return (S.CaseE (S.VarE vnm) (ms' ++ d))
  | isSmtenPrimType argty = mkSymSmtenPrim vnm argty mdef ms
  | otherwise = mkSymData vnm argty mdef ms
 
@@ -159,10 +152,10 @@ mkSymAlts vnm argty ty mdef ms
 --   Generate the symbolic alternatives for case expression with boolean
 --   argument.
 --
---  _ -> ite0 v tb fb
+--  ite v tb fb
 --    where tb is the True body
 --          fb is the False body
-mkSymBool :: S.Name -> Maybe CoreExpr -> [CoreAlt] -> CG [S.Alt]
+mkSymBool :: S.Name -> Maybe CoreExpr -> [CoreAlt] -> CG S.Exp
 mkSymBool vnm mdef ms = do
   let mkite tb fb = do
         addimport "Smten.Runtime.SmtenHS"
@@ -183,13 +176,12 @@ mkSymBool vnm mdef ms = do
         let nm = dataConName d
         in "True" == (occNameString $ nameOccName nm)
 
-  body <- case (ms, mdef) of
-            ([(DataAlt fk, [], fb), (DataAlt tk, [], tb)], Nothing)
-               | isFalseK fk && isTrueK tk -> mkite tb fb
-            ([(DataAlt tk, [], tb)], Just fb) | isTrueK tk -> mkite tb fb
-            ([(DataAlt fk, [], fb)], Just tb) | isFalseK fk -> mkite tb fb
-            ([], Just b) -> expCG b
-  return [S.Alt (S.VarP "_") body]
+  case (ms, mdef) of
+    ([(DataAlt fk, [], fb), (DataAlt tk, [], tb)], Nothing)
+       | isFalseK fk && isTrueK tk -> mkite tb fb
+    ([(DataAlt tk, [], tb)], Just fb) | isTrueK tk -> mkite tb fb
+    ([(DataAlt fk, [], fb)], Just tb) | isFalseK fk -> mkite tb fb
+    ([], Just b) -> expCG b
 
 -- mkDefault mdef
 --  Generate the default alternative.
@@ -200,18 +192,16 @@ mkDefault (Just b) = do
   return [S.Alt (S.VarP "_") b']
 
 -- For "Smten" primitive types: Char and Int
---   X# _ -> default    
---   _ -> let casef __vnm =
---              case __vnm of
---                   X# ... -> ...
---                   X# ... -> ...
---                   X# -> default
---                   Ite p a b -> ite0 p (casef a) (casef b)
---                   Prim r c -> primsapp casef r c
---                   Error msg -> error0 msg
---        in casef vnm
--- TODO: actually generate the first 'default' alternative.
-mkSymSmtenPrim :: S.Name -> Type -> Maybe CoreExpr -> [CoreAlt] -> CG [S.Alt]
+--   let casef __vnm =
+--         case __vnm of
+--              X# ... -> ...
+--              X# ... -> ...
+--              X# -> default
+--              Ite p a b -> ite0 p (casef a) (casef b)
+--              Prim r c -> primsapp casef r c
+--              Error msg -> error0 msg
+--   in casef vnm
+mkSymSmtenPrim :: S.Name -> Type -> Maybe CoreExpr -> [CoreAlt] -> CG S.Exp
 mkSymSmtenPrim vnm argty mdef ms = do
   uniqf <- lift $ getUniqueM
   uniqv <- lift $ getUniqueM
@@ -253,20 +243,20 @@ mkSymSmtenPrim vnm argty mdef ms = do
       lame = S.LamE vnmv' casee
       bind = S.Val casefnm Nothing lame
       ine = S.AppE (S.VarE casefnm) (S.VarE vnm)
-  return [S.Alt (S.VarP "_") (S.LetE [bind] ine)]
+  return (S.LetE [bind] ine)
 
 -- For regular algebraic data types.
---   _ -> let casef __vnm =
---              case __vnm of
---                FooA a b ... -> ...
---                FooB a b ... -> ...
---                ...
---                Foo_Error msg -> error0 msg
---                Foo_Ite {} -> flsapp casef __vnm [__iteFooA __vnm, __iteFooB __vnm, ...]
---                Foo_Prim {} -> ???
---                _ -> default
---        in casef vnm
-mkSymData :: S.Name -> Type -> Maybe CoreExpr -> [CoreAlt] -> CG [S.Alt]
+--   let casef __vnm =
+--         case __vnm of
+--           FooA a b ... -> ...
+--           FooB a b ... -> ...
+--           ...
+--           Foo_Error msg -> error0 msg
+--           Foo_Ite {} -> flsapp casef __vnm [__iteFooA __vnm, __iteFooB __vnm, ...]
+--           Foo_Prim {} -> ???
+--           _ -> default
+--   in casef vnm
+mkSymData :: S.Name -> Type -> Maybe CoreExpr -> [CoreAlt] -> CG S.Exp
 mkSymData vnm argty mdef ms = do
   uniqf <- lift $ getUniqueM
   uniqv <- lift $ getUniqueM
@@ -310,10 +300,10 @@ mkSymData vnm argty mdef ms = do
               lame = S.LamE vnmv' casee
               bind = S.Val casefnm Nothing lame
               ine = S.AppE (S.VarE casefnm) (S.VarE vnm)
-          return [S.Alt (S.VarP "_") (S.LetE [bind] ine)]
+          return (S.LetE [bind] ine)
       _ -> do
           lift $ errorMsg (text "SMTEN PLUGIN ERROR: no tycon for: " <+> ppr argty)
-          return [S.Alt (S.VarP "_") (S.VarE "???")]
+          return (S.VarE "???")
       
 
 -- | Translate a case alternative directly to haskell
