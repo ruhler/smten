@@ -262,16 +262,24 @@ mkSymSmtenPrim vnm argty mdef ms = do
   return (S.LetE [bind] ine)
 
 -- For regular algebraic data types.
---   let casef __vnm =
+--   let fFooA a b ... = ...
+--       fFooB a b ... = ...
+--       ...
+--
+--       casef = \__vnm ->
 --         case __vnm of
---           FooA a b ... -> ...
---           FooB a b ... -> ...
+--           FooA a b ... -> fFooA a b ...
+--           FooB a b ... -> fFooB a b ...
 --           ...
 --           Foo_Error msg -> error0 msg
 --           Foo_Ite {} -> flsapp casef __vnm [__iteFooA __vnm, __iteFooB __vnm, ...]
---           Foo_Prim {} -> ???
+--           Foo_Prim r c -> primsapp casef r c
 --           _ -> default
---   in casef vnm
+--   in case vnm of
+--          FooA a b ... -> fFooA a b ...
+--          FooB a b ... -> fFooB a b ...
+--          ...
+--          _ -> casef vnm
 mkSymData :: S.Name -> Type -> Maybe CoreExpr -> [CoreAlt] -> CG S.Exp
 mkSymData vnm argty mdef ms = do
   uniqf <- lift $ getUniqueM
@@ -281,6 +289,25 @@ mkSymData vnm argty mdef ms = do
 
       occv = mkVarOcc vnm
       vnmv = mkSystemName uniqv occv
+
+      mkalt :: CoreAlt -> CG (S.Val, S.Alt)
+      mkalt a@(DataAlt k, xs, body) = do
+        uniqf <- lift $ getUniqueM
+        let occf = mkVarOcc "f"
+            ff = mkSystemName uniqf occf
+        ff' <- nameCG ff
+        xs' <- mapM (qnameCG .varName) xs
+        body' <- expCG body
+        k' <- qnameCG $ getName k
+        --ty <- topTypeCG $ mkFunTys (map varType xs) (exprType body)
+        let lam = foldr (S.LamE) body' xs'
+            altf = S.Val ff' Nothing lam
+
+            applied = foldl S.AppE (S.VarE ff') (map S.VarE xs')
+            alta = S.Alt (S.ConP k' (map S.VarP xs')) applied
+        return (altf, alta)
+  alts <- mapM mkalt ms
+
   case splitTyConApp_maybe argty of
       Just (tycon, _) -> do
           let tynm = tyConName tycon
@@ -294,8 +321,10 @@ mkSymData vnm argty mdef ms = do
           qiteerrnm <- qiteerrnmCG tynm
           qprimnm <- qprimnmCG tynm
           defalt <- mkDefault mdef
-          alts <- mapM altCG ms
-          let itefls = [S.AppE (S.VarE qiteflnm) (S.VarE vnmv') | qiteflnm <- qiteflnms]
+          let altfs = map fst alts
+              calts = map snd alts
+
+              itefls = [S.AppE (S.VarE qiteflnm) (S.VarE vnmv') | qiteflnm <- qiteflnms]
               iteerr = S.AppE (S.VarE qiteerrnm) (S.VarE vnmv')
               itebody = foldl1 S.AppE [
                  S.VarE "Smten.Runtime.SmtenHS.flsapp",
@@ -311,12 +340,14 @@ mkSymData vnm argty mdef ms = do
               erralt = S.Alt (S.ConP qerrnm [S.VarP "msg"])
                              (S.AppE (S.VarE "Smten.Runtime.SmtenHS.error0") (S.VarE "msg"))
 
-              allalts = alts ++ [itealt, erralt, primalt] ++ defalt
+              allalts = calts ++ [itealt, erralt, primalt] ++ defalt
               casee = S.CaseE (S.VarE vnmv') allalts
               lame = S.LamE vnmv' casee
-              bind = S.Val casefnm Nothing lame
-              ine = S.AppE (S.VarE casefnm) (S.VarE vnm)
-          return (S.LetE [bind] ine)
+              caseb = S.Val casefnm Nothing lame
+
+              def = S.Alt (S.VarP "_") (S.AppE (S.VarE casefnm) (S.VarE vnm))
+              ine = S.CaseE (S.VarE vnm) (calts ++ [def])
+          return (S.LetE (altfs ++ [caseb]) ine)
       _ -> do
           lift $ errorMsg (text "SMTEN PLUGIN ERROR: no tycon for: " <+> ppr argty)
           return (S.VarE "???")
