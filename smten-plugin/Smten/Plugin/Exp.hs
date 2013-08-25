@@ -152,19 +152,35 @@ mkSymBody vnm argty ty mdef ms
 --   Generate the symbolic alternatives for case expression with boolean
 --   argument.
 --
---  ite v tb fb
---    where tb is the True body
---          fb is the False body
+--  let tb = the True body
+--      fb = the False body
+--  in case v of
+--        True -> tb
+--        False -> fb
+--        _ -> ite tb fb
 mkSymBool :: S.Name -> Maybe CoreExpr -> [CoreAlt] -> CG S.Exp
 mkSymBool vnm mdef ms = do
   let mkite tb fb = do
+        addimport "Smten.Runtime.Types"
         addimport "Smten.Runtime.SmtenHS"
         tb' <- expCG tb
         fb' <- expCG fb
-        return $ foldl1 S.AppE [
-          S.VarE "Smten.Runtime.SmtenHS.ite", 
-          S.VarE vnm,
-          tb', fb']
+        let tbn = "tb"
+            fbn = "fb"
+
+            itee = foldl1 S.AppE [
+              S.VarE "Smten.Runtime.SmtenHS.ite0", 
+              S.VarE vnm,
+              S.VarE tbn,
+              S.VarE fbn]
+
+            casee = S.CaseE (S.VarE vnm) [
+              S.Alt (S.ConP "Smten.Runtime.Types.True" []) (S.VarE tbn),
+              S.Alt (S.ConP "Smten.Runtime.Types.False" []) (S.VarE fbn),
+              S.Alt (S.VarP "_") itee]
+        return $ S.LetE [
+                S.Val tbn Nothing tb',
+                S.Val fbn Nothing fb'] casee
 
       isFalseK :: DataCon -> Bool
       isFalseK d =
