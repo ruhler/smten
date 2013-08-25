@@ -265,21 +265,20 @@ mkSymSmtenPrim vnm argty mdef ms = do
 --   let fFooA a b ... = ...
 --       fFooB a b ... = ...
 --       ...
---
---       casef = \__vnm ->
---         case __vnm of
---           FooA a b ... -> fFooA a b ...
---           FooB a b ... -> fFooB a b ...
---           ...
---           Foo_Error msg -> error0 msg
---           Foo_Ite {} -> flsapp casef __vnm [__iteFooA __vnm, __iteFooB __vnm, ...]
---           Foo_Prim r c -> primsapp casef r c
---           _ -> default
 --   in case vnm of
 --          FooA a b ... -> fFooA a b ...
 --          FooB a b ... -> fFooB a b ...
 --          ...
---          _ -> casef vnm
+--          _ -> let casef = \__vnm ->
+--                     case __vnm of
+--                       FooA a b ... -> fFooA a b ...
+--                       FooB a b ... -> fFooB a b ...
+--                       ...
+--                       Foo_Error msg -> error0 msg
+--                       Foo_Ite {} -> flsapp casef __vnm [__iteFooA __vnm, __iteFooB __vnm, ...]
+--                       Foo_Prim r c -> primsapp casef r c
+--                       _ -> default
+--               in casef vnm
 mkSymData :: S.Name -> Type -> Maybe CoreExpr -> [CoreAlt] -> CG S.Exp
 mkSymData vnm argty mdef ms = do
   uniqf <- lift $ getUniqueM
@@ -299,7 +298,6 @@ mkSymData vnm argty mdef ms = do
         xs' <- mapM (qnameCG .varName) xs
         body' <- expCG body
         k' <- qnameCG $ getName k
-        --ty <- topTypeCG $ mkFunTys (map varType xs) (exprType body)
         let lam = foldr (S.LamE) body' xs'
             altf = S.Val ff' Nothing lam
 
@@ -345,9 +343,10 @@ mkSymData vnm argty mdef ms = do
               lame = S.LamE vnmv' casee
               caseb = S.Val casefnm Nothing lame
 
-              def = S.Alt (S.VarP "_") (S.AppE (S.VarE casefnm) (S.VarE vnm))
+              def = S.Alt (S.VarP "_") (
+                        S.LetE [caseb] (S.AppE (S.VarE casefnm) (S.VarE vnm)))
               ine = S.CaseE (S.VarE vnm) (calts ++ [def])
-          return (S.LetE (altfs ++ [caseb]) ine)
+          return (S.LetE altfs ine)
       _ -> do
           lift $ errorMsg (text "SMTEN PLUGIN ERROR: no tycon for: " <+> ppr argty)
           return (S.VarE "???")
